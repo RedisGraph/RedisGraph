@@ -41,8 +41,7 @@ AllPathsCtx *AllPathsCtx_New(
 	int *relationIDs,       // Edge type(s) on which we'll traverse.
 	int relationCount,      // Length of relationIDs.
 	GRAPH_EDGE_DIR dir,     // Traversal direction.
-	unsigned int
-	minLen,    // Path length must contain be at least minLen + 1 nodes.
+	unsigned int minLen,    // Path length must contain be at least minLen + 1 nodes.
 	unsigned int maxLen     // Path length must not exceed maxLen + 1 nodes.
 );
 

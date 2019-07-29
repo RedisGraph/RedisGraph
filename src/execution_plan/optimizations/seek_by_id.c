@@ -14,7 +14,7 @@
 
 static bool _idFilter(FT_FilterNode *f, int *rel, EntityID *id, bool *reverse) {
 	if(f->t == FT_N_COND) return false;
-	if(f->pred.op == NE) return false;
+	if(f->pred.op == OP_NEQUAL) return false;
 
 	AR_OpNode *op;
 	AR_OperandNode *operand;
@@ -48,24 +48,24 @@ static bool _idFilter(FT_FilterNode *f, int *rel, EntityID *id, bool *reverse) {
 	return true;
 }
 
-static void _setupIdRange(int rel, EntityID id, bool reverse, NodeID *minId,
-						  NodeID *maxId, bool *inclusiveMin, bool *inclusiveMax) {
+static void _setupIdRange(int rel, EntityID id, bool reverse, NodeID *minId, NodeID *maxId,
+						  bool *inclusiveMin, bool *inclusiveMax) {
 	switch(rel) {
-	case GT:
+	case OP_GT:
 		*minId = id;
 		break;
-	case GE:
+	case OP_GE:
 		*minId = id;
 		*inclusiveMin = true;
 		break;
-	case LT:
+	case OP_LT:
 		*maxId = id;
 		break;
-	case LE:
+	case OP_LE:
 		*maxId = id;
 		*inclusiveMax = true;
 		break;
-	case EQ:
+	case OP_EQUAL:
 		*minId = id;
 		*maxId = id;
 		*inclusiveMin = true;
@@ -93,7 +93,7 @@ static void _setupIdRange(int rel, EntityID id, bool reverse, NodeID *minId,
 	}
 }
 
-void _reduceTap(ExecutionPlan *plan, const AST *ast, OpBase *tap) {
+void _reduceTap(ExecutionPlan *plan, OpBase *tap) {
 	if(tap->type & OP_SCAN) {
 		/* See if there's a filter of the form
 		 * ID(n) = X
@@ -129,7 +129,7 @@ void _reduceTap(ExecutionPlan *plan, const AST *ast, OpBase *tap) {
 				}
 
 				_setupIdRange(rel, id, reverse, &minId, &maxId, &inclusiveMin, &inclusiveMax);
-				opNodeByIdSeek = NewOpNodeByIdSeekOp(ast, nodeRecIdx, minId, maxId,
+				opNodeByIdSeek = NewOpNodeByIdSeekOp(nodeRecIdx, minId, maxId,
 													 inclusiveMin, inclusiveMax);
 
 				// Managed to reduce!
@@ -144,14 +144,14 @@ void _reduceTap(ExecutionPlan *plan, const AST *ast, OpBase *tap) {
 	}
 }
 
-void seekByID(ExecutionPlan *plan, const AST *ast) {
+void seekByID(ExecutionPlan *plan) {
 	assert(plan);
 
 	OpBase **taps = array_new(OpBase *, 1);
 	ExecutionPlan_Taps(plan->root, &taps);
 
 	for(int i = 0; i < array_len(taps); i++) {
-		_reduceTap(plan, ast, taps[i]);
+		_reduceTap(plan, taps[i]);
 	}
 
 	array_free(taps);

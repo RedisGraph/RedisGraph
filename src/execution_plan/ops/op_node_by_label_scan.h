@@ -8,7 +8,6 @@
 #define __OP_NODE_BY_LABEL_SCAN_H
 
 #include "op.h"
-#include "../../parser/ast.h"
 #include "../../graph/graph.h"
 #include "../../graph/entities/node.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
@@ -17,16 +16,17 @@
 
 typedef struct {
 	OpBase op;
-	Node *node;                 /* Node being scanned. */
+	QGNode *node;                 /* Node being scanned. */
 	unsigned int nodeRecIdx;    /* Node position within record. */
-	unsigned int recLength;     /* Number of entries in a record. */
 	Graph *g;
 	GxB_MatrixTupleIter *iter;
 	GrB_Matrix _zero_matrix;    /* Fake matrix, in-case label does not exists. */
 } NodeByLabelScan;
 
 /* Creates a new NodeByLabelScan operation */
-OpBase *NewNodeByLabelScanOp(Node *node, AST *ast);
+OpBase *NewNodeByLabelScanOp(QGNode *node, uint node_idx);
+
+OpResult NodeByLabelScanInit(OpBase *ctx);
 
 /* NodeByLabelScan next operation
  * called each time a new ID is required */

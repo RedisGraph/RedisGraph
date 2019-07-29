@@ -34,8 +34,7 @@ static bool _record_islt(Record a, Record b, const OpSort *op) {
 		int rel = SIValue_Order(aVal, bVal);
 		if(rel == 0) continue;  // Elements are equal; try next ORDER BY element
 		rel *= op->direction;   // Flip value for descending order.
-		return rel >
-			   0;         // Return true if the current left element is less than the right.
+		return rel > 0;         // Return true if the current left element is less than the right.
 	}
 	return false;   // b >= a
 }
@@ -107,7 +106,7 @@ uint _determineOffset(OpBase *op) {
 
 	if(op->type == OPType_AGGREGATE) {
 		OpAggregate *aggregate = (OpAggregate *)op;
-		return aggregate->exp_count;
+		return array_len(aggregate->exps);
 	} else if(op->type == OPType_PROJECT) {
 		OpProject *project = (OpProject *)op;
 		return project->exp_count;
@@ -116,24 +115,15 @@ uint _determineOffset(OpBase *op) {
 	return _determineOffset(op->children[0]);
 }
 
-OpBase *NewSortOp(const AST *ast, AR_ExpNode **expressions) {
-	assert(expressions && array_len(expressions) > 0);
+OpBase *NewSortOp(AR_ExpNode **expressions, int direction, unsigned int limit) {
 	OpSort *sort = malloc(sizeof(OpSort));
-	sort->ast = ast;
-	sort->direction = (ast->orderNode->direction == ORDER_DIR_DESC) ? DIR_DESC :
-					  DIR_ASC;
-	sort->limit = 0;
 	sort->offset = 0;
 	sort->expressions = expressions;
+	sort->direction = direction;
 	sort->heap = NULL;
 	sort->buffer = NULL;
 
-	if(ast->limitNode) {
-		sort->limit = ast->limitNode->limit;
-		if(ast->skipNode) {
-			sort->limit += ast->skipNode->skip;
-		}
-	}
+	sort->limit = limit;
 
 	if(sort->limit) sort->heap = heap_new(_heap_elem_compare, sort);
 	else sort->buffer = array_new(Record, 32);
@@ -181,7 +171,6 @@ Record SortConsume(OpBase *opBase) {
 		QSORT(Record, op->buffer, array_len(op->buffer), RECORD_SORT);
 	} else {
 		// Heap, responses need to be reversed.
-		int record_idx = 0;
 		int records_count = heap_count(op->heap);
 		op->buffer = array_new(Record, records_count);
 
@@ -243,7 +232,7 @@ void SortFree(OpBase *ctx) {
 		array_free(op->buffer);
 	}
 
-	for(int i = 0; i < array_len(op->expressions);
-		i++) AR_EXP_Free(op->expressions[i]);
+	uint exp_count = array_len(op->expressions);
+	for(uint i = 0; i < exp_count; i++) AR_EXP_Free(op->expressions[i]);
 	array_free(op->expressions);
 }

@@ -25,7 +25,7 @@ typedef struct {
 	RSResultsIterator *iter;
 } QueryNodeContext;
 
-ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, char **args) {
+ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const char **args) {
 	if(array_len(args) < 2) return PROCEDURE_ERR;
 
 	QueryNodeContext *pdata = rm_malloc(sizeof(QueryNodeContext));
@@ -67,8 +67,7 @@ SIValue *Proc_FulltextQueryNodeStep(ProcedureCtx *ctx) {
 	/* Try to get a result out of the iterator.
 	 * NULL is returned if iterator id depleted. */
 	size_t len = 0;
-	NodeID *id = (NodeID *)RediSearch_ResultsIteratorNext(pdata->iter, pdata->idx,
-														  &len);
+	NodeID *id = (NodeID *)RediSearch_ResultsIteratorNext(pdata->iter, pdata->idx, &len);
 
 	// Depleted.
 	if(!id) return NULL;

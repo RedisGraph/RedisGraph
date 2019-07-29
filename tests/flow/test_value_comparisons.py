@@ -3,7 +3,8 @@ from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
 
 redis_graph = None
-
+dis_redis = None
+redis_con = None
 values = ["str1", "str2", False, True, 5, 10.5]
 
 class testValueComparison(FlowTestsBase):
@@ -16,7 +17,7 @@ class testValueComparison(FlowTestsBase):
 
     @classmethod
     def populate_graph(self):
-        redis_graph
+        global redis_graph
 
         for v in values:
             node = Node(label="value", properties={"val": v})
@@ -57,16 +58,16 @@ class testValueComparison(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], 10.5)
 
-    # Verify that disjoint types pass != filters
+    # Verify that disjoint types pass <> filters
     def test_disjoint_comparisons(self):
         # Compare all node pairs under a Cartesian product
-        query = """MATCH (v:value), (w:value) WHERE ID(v) != ID(w) AND v.val = w.val RETURN v"""
+        query = """MATCH (v:value), (w:value) WHERE ID(v) <> ID(w) AND v.val = w.val RETURN v"""
         actual_result = redis_graph.query(query)
         # No nodes have the same property, so there should be 0 equal results
         expected_result_count = 0
         self.env.assertEquals(len(actual_result.result_set), expected_result_count)
 
-        query = """MATCH (v:value), (w:value) WHERE ID(v) != ID(w) AND v.val != w.val RETURN v"""
+        query = """MATCH (v:value), (w:value) WHERE ID(v) <> ID(w) AND v.val <> w.val RETURN v"""
         actual_result = redis_graph.query(query)
         # Every comparison should produce an inequal result
         node_count = len(redis_graph.nodes)

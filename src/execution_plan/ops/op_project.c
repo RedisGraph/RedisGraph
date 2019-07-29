@@ -22,27 +22,8 @@ static AR_ExpNode **_getOrderExpressions(OpBase *op) {
 	return _getOrderExpressions(op->parent);
 }
 
-/**
- * @brief Counts the actual aliases inside the aliases array.
- * The aliases array is an array with size of the original projected values.
- * It holds the mapping between a variable and its alias, or null if such alias does not exists.
- * We need to use this function in order to allow a projected record to hold both its
- * projected variables values, and their alises values. If a record is allocated only with the
- * length of the size of the expression variables count, it cannot store its alises values,
- * and will cause a memory leak.
- * @param  aliases: aliases mapping array
- * @retval the amount of alised variables.
- */
-int _actualAliasesCount(char **aliases) {
-	int count = 0;
-	int aliasesLen = array_len(aliases);
-	for(int i = 0; i < aliasesLen; i++) {
-		if(aliases[i]) count++;
-	}
-	return count;
-}
-
-OpBase *NewProjectOp(const AST *ast, AR_ExpNode **exps, char **aliases) {
+OpBase *NewProjectOp(AR_ExpNode **exps, uint *modifies) {
+	AST *ast = AST_GetFromTLS();
 	OpProject *project = malloc(sizeof(OpProject));
 	project->ast = ast;
 	project->exps = exps;
@@ -50,9 +31,7 @@ OpBase *NewProjectOp(const AST *ast, AR_ExpNode **exps, char **aliases) {
 	project->order_exps = NULL;
 	project->order_exp_count = 0;
 	project->singleResponse = false;
-	project->aliases = aliases;
-	project->record_len = project->exp_count;
-	project->record_len += _actualAliasesCount(aliases);
+
 	// Set our Op operations
 	OpBase_Init(&project->op);
 	project->op.name = "Project";
@@ -62,10 +41,7 @@ OpBase *NewProjectOp(const AST *ast, AR_ExpNode **exps, char **aliases) {
 	project->op.reset = ProjectReset;
 	project->op.free = ProjectFree;
 
-	project->op.modifies = NewVector(char *, 0);
-	for(uint i = 0; i < array_len(aliases); i++) {
-		if(aliases[i]) Vector_Push(project->op.modifies, aliases[i]);
-	}
+	project->op.modifies = modifies;
 
 	return (OpBase *)project;
 }
@@ -76,7 +52,6 @@ OpResult ProjectInit(OpBase *opBase) {
 	if(order_exps) {
 		op->order_exps = order_exps;
 		op->order_exp_count = array_len(order_exps);
-		op->record_len += op->order_exp_count;
 	}
 
 	return OP_OK;
@@ -94,24 +69,17 @@ Record ProjectConsume(OpBase *opBase) {
 		// QUERY: RETURN 1+2
 		// Return a single record followed by NULL
 		// on the second call.
+
 		if(op->singleResponse) return NULL;
 		op->singleResponse = true;
-		r = Record_New(AST_AliasCount(op->ast));  // Fake empty record.
+		r = Record_New(opBase->record_map->record_len);  // Fake empty record.
 	}
 
-	Record projection = Record_New(op->record_len);
+	Record projection = Record_New(op->exp_count + op->order_exp_count);
 	int rec_idx = 0;
 	for(unsigned short i = 0; i < op->exp_count; i++) {
 		SIValue v = AR_EXP_Evaluate(op->exps[i], r);
-		/* Incase expression is aliased, add it to record
-		 * as it might be referenced by other expressions:
-		 * e.g. RETURN n.v AS X ORDER BY X * X
-		 * WITH 1 as one, one+one as two */
-		char *alias = op->aliases[i];
-
 		Record_Add(projection, rec_idx, v);
-		if(alias) Record_Add(r, AST_GetAliasID(op->ast, alias), v);
-
 		rec_idx++;
 	}
 
@@ -132,8 +100,8 @@ OpResult ProjectReset(OpBase *ctx) {
 
 void ProjectFree(OpBase *ctx) {
 	OpProject *op = (OpProject *)ctx;
-
-	for(unsigned short i = 0; i < op->exp_count; i++) AR_EXP_Free(op->exps[i]);
-	array_free(op->exps);
-	array_free(op->aliases);
+	// TODO These expressions are typically freed as part of
+	// _ExecutionPlanSegment_Free, but this forms a leak in scenarios
+	// like the ReduceCount optimization.
+	// if (op->exps) array_free(op->exps);
 }

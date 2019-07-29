@@ -32,7 +32,7 @@ class testGraphMultiPatternQueryFlow(FlowTestsBase):
 
     # Connect a single node to all other nodes.
     def test01_connect_node_to_rest(self):
-        query = """MATCH(r:person {name:"Roi"}), (f:person) WHERE f.name != r.name CREATE (r)-[:friend]->(f) RETURN count(f)"""
+        query = """MATCH(r:person {name:"Roi"}), (f:person) WHERE f.name <> r.name CREATE (r)-[:friend]->(f) RETURN count(f)"""
         actual_result = redis_graph.query(query)
         friend_count = actual_result.result_set[0][0]
         self.env.assertEquals(friend_count, 6)
@@ -53,7 +53,7 @@ class testGraphMultiPatternQueryFlow(FlowTestsBase):
 
     # Connect every node to every node.
     def test03_create_fully_connected_graph(self):
-        query = """MATCH(a:person), (b:person) WHERE a.name != b.name CREATE (a)-[f:friend]->(b) RETURN count(f)"""
+        query = """MATCH(a:person), (b:person) WHERE a.name <> b.name CREATE (a)-[f:friend]->(b) RETURN count(f)"""
         actual_result = redis_graph.query(query)
         friend_count = actual_result.result_set[0][0]
         self.env.assertEquals(friend_count, 42)

@@ -32,14 +32,10 @@ class testProcedures(FlowTestsBase):
         print "ProceduresTest"
         global redis_graph
         global redis_con
-        cls.r = _redis()
-        cls.r.start()
-        redis_con = cls.r.client()
-        redis_graph = Graph(GRAPH_ID, redis_con)
+        redis_con = get_redis()
 
-        # cls.r = redis.Redis()
-        # redis_graph = Graph(GRAPH_ID, cls.r)
-        # redis_con = redis_graph.redis_con
+        GRAPH_ID = random_string()
+        redis_graph = Graph(GRAPH_ID, redis_con)
 
         cls.populate_graph()
   
@@ -281,5 +277,5 @@ class testProcedures(FlowTestsBase):
     
     def test_procedure_propertyKeys(self):
         actual_resultset = redis_graph.call_procedure("db.propertyKeys").result_set
-        expected_results = [["value"], ["name"]]
+        expected_results = [["name"], ["value"]]
         self.env.assertEquals(actual_resultset, expected_results)

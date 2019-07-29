@@ -7,12 +7,13 @@
 #ifndef ALGEBRAIC_EXPRESSION_H
 #define ALGEBRAIC_EXPRESSION_H
 
+#include "../execution_plan/record_map.h"
 #include "../graph/query_graph.h"
 #include "../graph/graph.h"
-#include "../parser/ast.h"
 
 // Matrix, vector operations.
 typedef enum {
+	AL_EXP_UNARY,
 	AL_EXP_ADD,
 	AL_EXP_MUL,
 	AL_EXP_TRANSPOSE,
@@ -42,8 +43,7 @@ struct AlgebraicExpressionNode {
 };
 
 AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperationNode(AL_EXP_OP op);
-AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperandNode(
-	GrB_Matrix operand);
+AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperandNode(GrB_Matrix operand);
 void AlgebraicExpressionNode_AppendLeftChild(AlgebraicExpressionNode *root,
 											 AlgebraicExpressionNode *child);
 void AlgebraicExpressionNode_AppendRightChild(AlgebraicExpressionNode *root,
@@ -67,18 +67,18 @@ typedef struct {
 	size_t operand_count;                   // Number of operands.
 	size_t operand_cap;                     // Allocated number of operands.
 	AlgebraicExpressionOperand *operands;   // Array of operands.
-	Node *src_node;                         // Nodes represented by the first operand columns.
-	Node *dest_node;                        // Nodes represented by the last operand rows.
-	Edge *edge;                             // Edge represented by sole operand.
+	QGNode *src_node;                       // Nodes represented by the first operand columns.
+	QGNode *dest_node;                      // Nodes represented by the last operand rows.
+	QGEdge *edge;                           // Edge represented by sole operand.
 } AlgebraicExpression;
 
 /* Constructs an empty expression. */
 AlgebraicExpression *AlgebraicExpression_Empty(void);
 
 /* Construct algebraic expression(s) from query graph. */
-AlgebraicExpression **AlgebraicExpression_From_QueryGraph(
+AlgebraicExpression **AlgebraicExpression_FromQueryGraph(
 	const QueryGraph *g,    // Graph to construct expression from.
-	const AST *ast,         // Abstract syntax tree.
+	RecordMap *record_map,  // Map of Record IDs of referenced entities
 	size_t *exp_count       // Number of expression created.
 );
 
@@ -86,12 +86,12 @@ AlgebraicExpression **AlgebraicExpression_From_QueryGraph(
 void AlgebraicExpression_Execute(AlgebraicExpression *ae, GrB_Matrix res);
 
 /* Appends m as the last term in the expression ae. */
-void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m,
-									bool transposeOp, bool freeOp, bool diagonal);
+void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp,
+									bool freeOp, bool diagonal);
 
 /* Prepend m as the first term in the expression ae. */
-void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m,
-									 bool transposeOp, bool freeOp, bool diagonal);
+void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp,
+									 bool freeOp, bool diagonal);
 
 /* Removes operand at position idx */
 void AlgebraicExpression_RemoveTerm(AlgebraicExpression *ae, int idx,

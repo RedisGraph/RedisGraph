@@ -5,22 +5,21 @@
 */
 
 #include "op_index_scan.h"
-#include "../../parser/ast.h"
 
 int IndexScanToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const IndexScan *op = (const IndexScan *)ctx;
 	int offset = snprintf(buff, buff_len, "%s | ", op->op.name);
-	offset += Node_ToString(op->n, buff + offset, buff_len - offset);
+	offset += QGNode_ToString(op->n, buff + offset, buff_len - offset);
 	return offset;
 }
 
-OpBase *NewIndexScanOp(Graph *g, Node *n, IndexIter *iter, AST *ast) {
+OpBase *NewIndexScanOp(Graph *g, QGNode *n, uint node_idx, IndexIter *iter) {
 	IndexScan *indexScan = malloc(sizeof(IndexScan));
 	indexScan->g = g;
 	indexScan->n = n;
 	indexScan->iter = iter;
-	indexScan->nodeRecIdx = AST_GetAliasID(ast, n->alias);
-	indexScan->recLength = AST_AliasCount(ast);
+
+	indexScan->nodeRecIdx = node_idx;
 
 	// Set our Op operations
 	OpBase_Init(&indexScan->op);
@@ -31,8 +30,8 @@ OpBase *NewIndexScanOp(Graph *g, Node *n, IndexIter *iter, AST *ast) {
 	indexScan->op.toString = IndexScanToString;
 	indexScan->op.free = IndexScanFree;
 
-	indexScan->op.modifies = NewVector(char *, 1);
-	Vector_Push(indexScan->op.modifies, n->alias);
+	indexScan->op.modifies = array_new(uint, 1);
+	indexScan->op.modifies = array_append(indexScan->op.modifies, indexScan->nodeRecIdx);
 
 	return (OpBase *)indexScan;
 }
@@ -43,7 +42,7 @@ Record IndexScanConsume(OpBase *opBase) {
 	EntityID *nodeId = IndexIter_Next(op->iter);
 	if(!nodeId) return NULL;
 
-	Record r = Record_New(op->recLength);
+	Record r = Record_New(opBase->record_map->record_len);
 	// Get a pointer to a heap allocated node.
 	Node *n = Record_GetNode(r, op->nodeRecIdx);
 	// Update node's internal entity pointer.

@@ -5,46 +5,9 @@
 */
 
 #include "./op_delete.h"
+#include "../../arithmetic/arithmetic_expression.h"
 #include "../../util/arr.h"
-#include "../../util/qsort.h"
 #include <assert.h>
-
-#define EDGES_ID_ISLT(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
-
-void _LocateEntities(OpDelete *op, QueryGraph *qg,
-					 AST_DeleteNode *ast_delete_node) {
-	AST *ast = op->ast;
-	for(int i = 0; i < Vector_Size(ast_delete_node->graphEntities); i++) {
-		char *entity_alias;
-		Vector_Get(ast_delete_node->graphEntities, i, &entity_alias);
-
-		// Current entity is a node.
-		int entityRecIdx = AST_GetAliasID(ast, entity_alias);
-		Node *n = QueryGraph_GetNodeByAlias(qg, entity_alias);
-		if(n != NULL) {
-			op->nodes_to_delete[op->node_count++] = entityRecIdx;
-		} else {
-			// Current entity is an edge.
-			op->edges_to_delete[op->edge_count++] = entityRecIdx;
-		}
-	}
-}
-
-static uint64_t _binarySearch(Edge *array, EdgeID id) {
-	uint32_t edgeCount = array_len(array);
-	uint32_t left = 0;
-	uint32_t right = edgeCount;
-	uint32_t pos;
-	while(left < right) {
-		pos = (right + left) / 2;
-		if(ENTITY_GET_ID(array + pos) < id) {
-			left = pos + 1;
-		} else {
-			right = pos;
-		}
-	}
-	return left;
-}
 
 void _DeleteEntities(OpDelete *op) {
 	Graph *g = op->gc->g;
@@ -69,38 +32,48 @@ void _DeleteEntities(OpDelete *op) {
 	/* Release lock. */
 	Graph_ReleaseLock(g);
 
-	if(op->result_set) op->result_set->stats.nodes_deleted += node_deleted;
-	if(op->result_set) op->result_set->stats.relationships_deleted +=
-			relationships_deleted;
+	if(op->stats) op->stats->nodes_deleted += node_deleted;
+	if(op->stats) op->stats->relationships_deleted += relationships_deleted;
 }
 
-OpBase *NewDeleteOp(AST_DeleteNode *ast_delete_node, QueryGraph *qg,
-					ResultSet *result_set, AST *ast) {
+OpBase *NewDeleteOp(uint *nodes_ref, uint *edges_ref, ResultSetStatistics *stats) {
 	OpDelete *op_delete = malloc(sizeof(OpDelete));
 
 	op_delete->gc = GraphContext_GetFromTLS();
-	op_delete->ast = ast;
-	op_delete->node_count = 0;
-	op_delete->edge_count = 0;
-	op_delete->nodes_to_delete = malloc(sizeof(int) * Vector_Size(
-											ast_delete_node->graphEntities));
-	op_delete->edges_to_delete = malloc(sizeof(int) * Vector_Size(
-											ast_delete_node->graphEntities));
+
+	op_delete->nodes_to_delete = nodes_ref;
+	op_delete->edges_to_delete = edges_ref;
+	op_delete->node_count = array_len(op_delete->nodes_to_delete);
+	op_delete->edge_count = array_len(op_delete->edges_to_delete);
+
 	op_delete->deleted_nodes = array_new(Node, 32);
 	op_delete->deleted_edges = array_new(Edge, 32);
-	op_delete->result_set = result_set;
-
-	_LocateEntities(op_delete, qg, ast_delete_node);
+	op_delete->stats = stats;
 
 	// Set our Op operations
 	OpBase_Init(&op_delete->op);
 	op_delete->op.name = "Delete";
 	op_delete->op.type = OPType_DELETE;
 	op_delete->op.consume = OpDeleteConsume;
+	op_delete->op.init = OpDeleteInit;
 	op_delete->op.reset = OpDeleteReset;
 	op_delete->op.free = OpDeleteFree;
 
+	op_delete->op.modifies = array_new(uint, op_delete->node_count + op_delete->edge_count);
+	// Update modifies array to include all deleted nodes
+	for(uint i = 0; i < op_delete->node_count; i ++) {
+		op_delete->op.modifies = array_append(op_delete->op.modifies, nodes_ref[i]);
+	}
+	// Update modifies array to include all deleted edges
+	for(uint i = 0; i < op_delete->edge_count; i ++) {
+		op_delete->op.modifies = array_append(op_delete->op.modifies, edges_ref[i]);
+	}
+
 	return (OpBase *)op_delete;
+}
+
+OpResult OpDeleteInit(OpBase *opBase) {
+	return OP_OK;
 }
 
 Record OpDeleteConsume(OpBase *opBase) {
@@ -133,8 +106,8 @@ void OpDeleteFree(OpBase *ctx) {
 
 	_DeleteEntities(op);
 
-	free(op->nodes_to_delete);
-	free(op->edges_to_delete);
+	array_free(op->nodes_to_delete);
+	array_free(op->edges_to_delete);
 	array_free(op->deleted_nodes);
 	array_free(op->deleted_edges);
 }

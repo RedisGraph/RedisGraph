@@ -24,4 +24,4 @@ class testGraphCreationFlow(FlowTestsBase):
         self.env.assertEquals(result.nodes_created, 2)
         self.env.assertEquals(result.relationships_created, 2)
         self.env.assertEquals(len(result.result_set), 1)
-        self.env.assertEquals(result.result_set[0][0].properties['name'], 'A')
+        self.env.assertEquals(result.result_set[0][0].properties['name'], 'B')

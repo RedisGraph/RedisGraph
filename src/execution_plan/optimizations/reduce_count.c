@@ -24,10 +24,11 @@ static int _identifyResultAndAggregateOps(OpBase *root, OpResult **opResult,
 
 	// Expecting a single aggregation, without ordering.
 	*opAggregate = (OpAggregate *)op;
-	if((*opAggregate)->exp_count != 1 ||
-	   (*opAggregate)->order_exp_count != 0) return 0;
+	uint exp_count = array_len((*opAggregate)->exps);
+	uint order_exp_count = array_len((*opAggregate)->order_exps);
+	if(exp_count != 1 || order_exp_count != 0) return 0;
 
-	AR_ExpNode *exp = (*opAggregate)->expressions[0];
+	AR_ExpNode *exp = (*opAggregate)->exps[0];
 
 	// Make sure aggregation performs counting.
 	if(exp->type != AR_EXP_OP ||
@@ -45,8 +46,8 @@ static int _identifyResultAndAggregateOps(OpBase *root, OpResult **opResult,
 
 }
 /* Checks if execution plan solely performs node count */
-static int _identifyNodeCountPattern(OpBase *root, OpResult **opResult,
-									 OpAggregate **opAggregate, OpBase **opScan, char **label) {
+static int _identifyNodeCountPattern(OpBase *root, OpResult **opResult, OpAggregate **opAggregate,
+									 OpBase **opScan, const char **label) {
 	// Reset.
 	*label = NULL;
 	*opScan = NULL;
@@ -73,10 +74,10 @@ static int _identifyNodeCountPattern(OpBase *root, OpResult **opResult,
 	return 1;
 }
 
-bool _reduceNodeCount(ExecutionPlan *plan, AST *ast) {
+bool _reduceNodeCount(ExecutionPlan *plan) {
 	/* We'll only modify execution plan if it is structured as follows:
 	     * "Scan -> Aggregate -> Results" */
-	char *label;
+	const char *label;
 	OpBase *opScan;
 	OpResult *opResult;
 	OpAggregate *opAggregate;
@@ -84,8 +85,7 @@ bool _reduceNodeCount(ExecutionPlan *plan, AST *ast) {
 	/* See if execution-plan matches the pattern:
 	 * "Scan -> Aggregate -> Results".
 	 * if that's not the case, simply return without making any modifications. */
-	if(!_identifyNodeCountPattern(plan->root, &opResult, &opAggregate, &opScan,
-								  &label)) return false;
+	if(!_identifyNodeCountPattern(plan->root, &opResult, &opAggregate, &opScan, &label)) return false;
 
 	/* User is trying to get total number of nodes in the graph
 	 * optimize by skiping SCAN and AGGREGATE. */
@@ -102,11 +102,11 @@ bool _reduceNodeCount(ExecutionPlan *plan, AST *ast) {
 	}
 
 	// Incase alias is specified: RETURN count(n) as X
-	char **aliases = NULL;
-	if(opAggregate->aliases) {
-		assert(array_len(opAggregate->aliases) == 1);
-		aliases = array_new(char *, 1);
-		aliases = array_append(aliases, opAggregate->aliases[0]);
+	uint *modifies = NULL;
+	if(opAggregate->op.modifies) {
+		assert(array_len(opAggregate->op.modifies) == 1);
+		modifies = array_new(uint, 1);
+		modifies = array_append(modifies, opAggregate->op.modifies[0]);
 	}
 
 	/* Construct a constant expression, used by a new
@@ -115,7 +115,11 @@ bool _reduceNodeCount(ExecutionPlan *plan, AST *ast) {
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 	exps = array_append(exps, exp);
 
-	OpBase *opProject = NewProjectOp(ast, exps, aliases);
+	OpBase *opProject = NewProjectOp(exps, modifies);
+
+	// TODO this shouldn't need to be an explicit step.
+	// See _associateRecordMap and ExecutionPlanInit to come up with solution.
+	opProject->record_map = opScan->record_map;
 
 	// New execution plan: "Project -> Results"
 	ExecutionPlan_RemoveOp(plan, (OpBase *)opScan);
@@ -129,8 +133,8 @@ bool _reduceNodeCount(ExecutionPlan *plan, AST *ast) {
 }
 
 /* Checks if execution plan solely performs edge count */
-static int _identifyEdgeCountPattern(OpBase *root, OpResult **opResult,
-									 OpAggregate **opAggregate, OpBase **opTraverse, OpBase **opScan) {
+static int _identifyEdgeCountPattern(OpBase *root, OpResult **opResult, OpAggregate **opAggregate,
+									 OpBase **opTraverse, OpBase **opScan) {
 	// Reset.
 	*opScan = NULL;
 	*opTraverse = NULL;
@@ -170,8 +174,7 @@ void _countEdges(void *_z, const void *_x, const void *_y) {
 uint64_t _countRelationshipEdges(GrB_Matrix M) {
 	if(!edgeCountMonoid) {
 		GrB_BinaryOp edgeCountBinaryOp;
-		GrB_BinaryOp_new(&edgeCountBinaryOp, _countEdges, GrB_UINT64, GrB_UINT64,
-						 GrB_UINT64);
+		GrB_BinaryOp_new(&edgeCountBinaryOp, _countEdges, GrB_UINT64, GrB_UINT64, GrB_UINT64);
 		GrB_Monoid_new(&edgeCountMonoid, edgeCountBinaryOp, (uint64_t) 0);
 	}
 	uint64_t edges = 0;
@@ -180,7 +183,7 @@ uint64_t _countRelationshipEdges(GrB_Matrix M) {
 	return edges;
 }
 
-void _reduceEdgeCount(ExecutionPlan *plan, AST *ast) {
+void _reduceEdgeCount(ExecutionPlan *plan) {
 	/* We'll only modify execution plan if it is structured as follows:
 	 * "Full Scan -> Conditional Traverse -> Aggregate -> Results" */
 	OpBase *opScan;
@@ -191,8 +194,7 @@ void _reduceEdgeCount(ExecutionPlan *plan, AST *ast) {
 	/* See if execution-plan matches the pattern:
 	 * "Full Scan -> Conditional Traverse -> Aggregate -> Results".
 	 * if that's not the case, simply return without making any modifications. */
-	if(!_identifyEdgeCountPattern(plan->root, &opResult, &opAggregate, &opTraverse,
-								  &opScan))
+	if(!_identifyEdgeCountPattern(plan->root, &opResult, &opAggregate, &opTraverse, &opScan))
 		return;
 
 	/* User is trying to get total number of edges in the graph
@@ -206,29 +208,24 @@ void _reduceEdgeCount(ExecutionPlan *plan, AST *ast) {
 	if(condTraverse->edgeRelationTypes[0] != GRAPH_NO_RELATION) {
 		uint64_t edges = 0;
 		for(int i = 0; i < edgeRelationCount; i++) {
-			edges += _countRelationshipEdges(Graph_GetRelationMap(gc->g,
-																  condTraverse->edgeRelationTypes[i]));
+			edges += _countRelationshipEdges(Graph_GetRelationMap(gc->g, condTraverse->edgeRelationTypes[i]));
 		}
 		edgeCount = SI_LongVal(edges);
 	} else {
 		edgeCount = SI_LongVal(Graph_EdgeCount(gc->g));
 	}
 
-	// Incase alias is specified: RETURN count(r) as X
-	char **aliases = NULL;
-	if(opAggregate->aliases) {
-		assert(array_len(opAggregate->aliases) == 1);
-		aliases = array_new(char *, 1);
-		aliases = array_append(aliases, opAggregate->aliases[0]);
-	}
-
 	/* Construct a constant expression, used by a new
 	 * projection operation. */
 	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(edgeCount);
-	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
+	AR_ExpNode **exps = array_new(AR_ExpNode *, 1); // TODO memory leak!
 	exps = array_append(exps, exp);
 
-	OpBase *opProject = NewProjectOp(ast, exps, aliases);
+	OpBase *opProject = NewProjectOp(exps, NULL);
+
+	// TODO this shouldn't need to be an explicit step.
+	// See _associateRecordMap and ExecutionPlanInit to come up with solution.
+	opProject->record_map = opScan->record_map;
 
 	// New execution plan: "Project -> Results"
 	ExecutionPlan_RemoveOp(plan, (OpBase *)opScan);
@@ -243,12 +240,12 @@ void _reduceEdgeCount(ExecutionPlan *plan, AST *ast) {
 	ExecutionPlan_AddOp((OpBase *)opResult, opProject);
 }
 
-void reduceCount(ExecutionPlan *plan, AST *ast) {
+void reduceCount(ExecutionPlan *plan) {
 	/* both _reduceNodeCount and _reduceEdgeCount should count nodes or edges, respectively,
 	 * out of the same execution plan.
 	 * If node count optimization was unable to execute,
 	 * meaning that the execution plan does not hold any node count pattern,
 	 * then edge count will be tried to be executed upon the same execution plan */
-	bool reduceNodeCountSucsses = _reduceNodeCount(plan, ast);
-	if(!reduceNodeCountSucsses) _reduceEdgeCount(plan, ast);
+	bool reduceNodeCountSucsses = _reduceNodeCount(plan);
+	if(!reduceNodeCountSucsses) _reduceEdgeCount(plan);
 }

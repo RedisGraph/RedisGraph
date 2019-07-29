@@ -9,8 +9,7 @@
 #include <string.h>
 #include <assert.h>
 
-long long Config_GetThreadCount(RedisModuleCtx *ctx, RedisModuleString **argv,
-								int argc) {
+long long Config_GetThreadCount(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// Default.
 	int CPUCount = sysconf(_SC_NPROCESSORS_ONLN);
 	long long threadCount = (CPUCount != -1) ? CPUCount : 1;

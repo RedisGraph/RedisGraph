@@ -5,27 +5,27 @@
 */
 
 #include "./select_entry_point.h"
+#include "../../util/arr.h"
 #include "../../../deps/rax/rax.h"
 
-void selectEntryPoint(AlgebraicExpression *ae, const FT_FilterNode *tree) {
+void selectEntryPoint(AlgebraicExpression *ae, const RecordMap *record_map,
+					  const FT_FilterNode *tree) {
 	if(ae->operand_count == 1 && ae->src_node == ae->dest_node) return;
 
-	rax *aliases = FilterTree_CollectAliases(tree);
-	char *srcAlias = ae->src_node->alias;
-	char *destAlias = ae->dest_node->alias;
+	rax *modifies = FilterTree_CollectModified(tree);
+	uint src_id = RecordMap_LookupID(record_map, ae->src_node->id);
+	uint dest_id = RecordMap_LookupID(record_map, ae->dest_node->id);
 
 	bool destFiltered = false;
 	bool srcLabeled = ae->src_node->label != NULL;
 	bool destLabeled = ae->dest_node->label != NULL;
 
 	// See if either source or destination nodes are filtered.
-	if(raxFind(aliases, (unsigned char *)srcAlias,
-			   strlen(srcAlias)) != raxNotFound) {
+	if(raxFind(modifies, (unsigned char *)&src_id, sizeof(src_id)) != raxNotFound) {
 		goto cleanup;
 	}
 
-	if(raxFind(aliases, (unsigned char *)destAlias,
-			   strlen(destAlias)) != raxNotFound) {
+	if(raxFind(modifies, (unsigned char *)&dest_id, sizeof(dest_id)) != raxNotFound) {
 		destFiltered = true;
 	}
 
@@ -45,5 +45,5 @@ void selectEntryPoint(AlgebraicExpression *ae, const FT_FilterNode *tree) {
 	}
 
 cleanup:
-	raxFree(aliases);
+	raxFree(modifies);
 }

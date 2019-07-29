@@ -17,6 +17,7 @@
  * and the columns of E aren't filtered.
  * As a result of transposing rows will be come columns
  * and we'll be able to perform filtering much quicker. */
-void selectEntryPoint(AlgebraicExpression *ae, const FT_FilterNode *tree);
+void selectEntryPoint(AlgebraicExpression *ae, const RecordMap *record_map,
+					  const FT_FilterNode *tree);
 
 #endif

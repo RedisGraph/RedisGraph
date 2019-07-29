@@ -7,7 +7,6 @@
 #include "cmd_bulk_insert.h"
 #include "./cmd_context.h"
 #include "../graph/graph.h"
-#include "../query_executor.h"
 #include "../bulk_insert/bulk_insert.h"
 #include "../util/rmalloc.h"
 
@@ -46,8 +45,7 @@ void _MGraph_BulkInsert(void *args) {
 		key = RedisModule_OpenKey(ctx, rs_graph_name, REDISMODULE_READ);
 		if(key) {
 			char *err;
-			asprintf(&err,
-					 "Graph with name '%s' cannot be created, as Redis key '%s' already exists.",
+			asprintf(&err, "Graph with name '%s' cannot be created, as Redis key '%s' already exists.",
 					 graphname, graphname);
 			RedisModule_ReplyWithError(ctx, err);
 			free(err);
@@ -61,8 +59,7 @@ void _MGraph_BulkInsert(void *args) {
 		goto cleanup;
 	}
 
-	if(RedisModule_StringToLongLong(*argv++,
-									&relations_in_query) != REDISMODULE_OK) {
+	if(RedisModule_StringToLongLong(*argv++, &relations_in_query) != REDISMODULE_OK) {
 		RedisModule_ReplyWithError(ctx, "Error parsing relation count.");
 		goto cleanup;
 	}
@@ -127,8 +124,7 @@ int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		// Execute bulk on redis main thread.
 		_MGraph_BulkInsert(context);
 	} else {
-		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL,
-															   0);
+		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
 		// Construct concurent query context.
 		context = CommandCtx_New(NULL, bc, NULL, NULL, argv, argc);
 		// Execute bulk insert on a dedicated thread.

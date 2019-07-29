@@ -8,7 +8,6 @@
 #define __OP_TRAVERSE_H
 
 #include "op.h"
-#include "../../parser/ast.h"
 #include "../../arithmetic/algebraic_expression.h"
 #include "../../util/vector.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"

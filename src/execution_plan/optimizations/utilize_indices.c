@@ -4,16 +4,16 @@
 
 /* Reverse an inequality symbol so that indices can support
  * inequalities with right-hand variables. */
-int _reverseOp(int op) {
+AST_Operator _reverseOp(AST_Operator op) {
 	switch(op) {
-	case LT:
-		return GT;
-	case LE:
-		return GE;
-	case GT:
-		return LT;
-	case GE:
-		return LE;
+	case OP_LT:
+		return OP_GT;
+	case OP_LE:
+		return OP_GE;
+	case OP_GT:
+		return OP_LT;
+	case OP_GE:
+		return OP_LE;
 	default:
 		return op;
 	}
@@ -54,9 +54,7 @@ void _locateScanOp(OpBase *root, NodeByLabelScan ***scanOps) {
 	}
 }
 
-void utilizeIndices(ExecutionPlan *plan, AST *ast) {
-	GraphContext *gc = GraphContext_GetFromTLS();
-
+void utilizeIndices(GraphContext *gc, ExecutionPlan *plan) {
 	// Return immediately if the graph has no indices
 	if(!GraphContext_HasIndices(gc)) return;
 
@@ -68,13 +66,13 @@ void utilizeIndices(ExecutionPlan *plan, AST *ast) {
 	NodeByLabelScan *scanOp;
 	OpBase **filterOps = array_new(OpBase *, 0);
 	FT_FilterNode *ft;
-	char *label;
+	const char *label;
 
 	// Variables to be used when comparing filters against available indices
-	char *filterProp = NULL;
+	const char *filterProp = NULL;
 	SIValue constVal;
 	int lhsType, rhsType;
-	int op = 0;
+	AST_Operator op = OP_NULL;
 
 	int scanOpCount = array_len(scanOps);
 	for(int i = 0; i < scanOpCount; i++) {
@@ -144,7 +142,7 @@ void utilizeIndices(ExecutionPlan *plan, AST *ast) {
 		}
 
 		if(iter != NULL) {
-			OpBase *indexOp = NewIndexScanOp(scanOp->g, scanOp->node, iter, ast);
+			OpBase *indexOp = NewIndexScanOp(scanOp->g, scanOp->node, scanOp->nodeRecIdx, iter);
 			ExecutionPlan_ReplaceOp(plan, (OpBase *)scanOp, indexOp);
 		}
 	}

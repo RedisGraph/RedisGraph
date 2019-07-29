@@ -12,20 +12,18 @@ extern "C" {
 
 #include <stdio.h>
 #include <string.h>
-#include "../../src/util/vector.h"
-#include "../../src/parser/ast.h"
-#include "../../src/parser/grammar.h"
-#include "../../src/parser/ast_arithmetic_expression.h"
-#include "../../src/filter_tree/filter_tree.h"
 #include "../../src/util/arr.h"
+#include "../../src/util/vector.h"
 #include "../../src/util/rmalloc.h"
-#include "../../src/query_executor.h"
+#include "../../src/filter_tree/filter_tree.h"
+#include "../../src/ast/ast_build_filter_tree.h"
 
 #ifdef __cplusplus
 }
 #endif
 
-extern pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
+pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
+pthread_key_t _tlsASTKey;  // Thread local storage AST key.
 
 class FilterTreeTest: public ::testing::Test {
     protected:
@@ -34,6 +32,9 @@ class FilterTreeTest: public ::testing::Test {
       // Use the malloc family for allocations
       Alloc_Reset();
       _fake_graph_context();
+
+      int error = pthread_key_create(&_tlsASTKey, NULL);
+      ASSERT_EQ(error, 0);
     }
 
     static void TearDownTestCase()
@@ -56,58 +57,58 @@ class FilterTreeTest: public ::testing::Test {
         int error = pthread_key_create(&_tlsGCKey, NULL);
         ASSERT_EQ(error, 0);
         pthread_setspecific(_tlsGCKey, gc);
+
     }
 
     AST* _build_ast(const char *query) {
-        char *errMsg;
-        AST **ast = ParseQuery(query, strlen(query), &errMsg);
-        AST_NameAnonymousNodes(ast[0]);
-        return ast[0];
+        cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+        AST *ast = AST_Build(parse_result);
+        return ast;
     }
 
     FT_FilterNode* _build_simple_const_tree() {
         const char *query = "MATCH (me) WHERE me.age = 34 RETURN me";
         AST *ast = _build_ast(query);
-        AST_FilterNode *root = ast->whereNode->filters;
-        FT_FilterNode *tree = BuildFiltersTree(ast, root);
+        RecordMap *map = RecordMap_New();
+        FT_FilterNode *tree = AST_BuildFilterTree(ast, map);
         return tree;
     }
 
     FT_FilterNode* _build_simple_varying_tree() {
         const char *query = "MATCH (me),(him) WHERE me.age > him.age RETURN me, him";
         AST *ast = _build_ast(query);
-        AST_FilterNode *root = ast->whereNode->filters;
-        FT_FilterNode *tree = BuildFiltersTree(ast, root);
+        RecordMap *map = RecordMap_New();
+        FT_FilterNode *tree = AST_BuildFilterTree(ast, map);
         return tree;
     }
 
     FT_FilterNode* _build_cond_tree(int cond) {
         const char *query;
-        if(cond == AND) query = "MATCH (me) WHERE me.age > 34 AND me.height <= 188 RETURN me";
+        if(cond == OP_AND) query = "MATCH (me) WHERE me.age > 34 AND me.height <= 188 RETURN me";
         else  query = "MATCH (me) WHERE me.age > 34 OR me.height <= 188 RETURN me";
 
         AST *ast = _build_ast(query);
-        AST_FilterNode *root = ast->whereNode->filters;
-        FT_FilterNode *tree = BuildFiltersTree(ast, root);
+        RecordMap *map = RecordMap_New();
+        FT_FilterNode *tree = AST_BuildFilterTree(ast, map);
         return tree;
     }
 
     FT_FilterNode* _build_AND_cond_tree() {
-        return _build_cond_tree(AND);
+        return _build_cond_tree(OP_AND);
     }
 
     FT_FilterNode* _build_OR_cond_tree() {
-        return _build_cond_tree(OR);
+        return _build_cond_tree(OP_OR);
     }
 
     FT_FilterNode* _build_deep_tree() {
-        /* Build a tree with an AND at the root
-        * AND as a left child
-        * OR as a right child */
+        /* Build a tree with an OP_AND at the root
+        * OP_AND as a left child
+        * OP_OR as a right child */
         const char *query = "MATCH (me),(he),(she),(theirs) WHERE (me.age > 34 AND he.height <= 188) AND (she.age > 34 OR theirs.height <= 188) RETURN me, he, she, theirs";
         AST *ast = _build_ast(query);
-        AST_FilterNode *root = ast->whereNode->filters;
-        FT_FilterNode *tree = BuildFiltersTree(ast, root);
+        RecordMap *map = RecordMap_New();
+        FT_FilterNode *tree = AST_BuildFilterTree(ast, map);
         return tree;
     }
 
@@ -220,15 +221,15 @@ TEST_F(FilterTreeTest, SubTrees) {
     FilterTree_Free(original_tree);
 }
 
-TEST_F(FilterTreeTest, CollectAliases) {
+TEST_F(FilterTreeTest, CollectModified) {
     FT_FilterNode *tree = _build_deep_tree();
-    rax *aliases = FilterTree_CollectAliases(tree);
+    rax *aliases = FilterTree_CollectModified(tree);
     ASSERT_EQ(raxSize(aliases), 4);
 
-    const char *expectation[4] = {"me", "he", "she", "theirs"};
+    uint expectation[4] = {0, 1, 2, 3};
     for(int i = 0; i < 4; i++) {
-        const char *expected = expectation[i];
-        ASSERT_NE(raxFind(aliases, (unsigned char*)expected, strlen(expected)), raxNotFound);
+        uint expected = expectation[i];
+        ASSERT_NE(raxFind(aliases, (unsigned char*)&expected, sizeof(expected)), raxNotFound);
     }
 
     /* Clean up. */    

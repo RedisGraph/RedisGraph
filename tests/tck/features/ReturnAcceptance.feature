@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2015-2018 "Neo Technology,"
+# Copyright (c) 2015-2019 "Neo Technology,"
 # Network Engine for Objects in Lund AB [http://neotechnology.com]
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -61,7 +61,6 @@ Feature: ReturnAcceptanceTest
       | 1 |
     And no side effects
 
-  
   Scenario: Limit to two hits with explicit order
     Given an empty graph
     And having executed:
@@ -109,7 +108,7 @@ Feature: ReturnAcceptanceTest
       | ({name: 'E'}) |
     And no side effects
 
-  @skip
+@skip
   Scenario: Start the result from the second row by param
     Given an empty graph
     And having executed:
@@ -160,7 +159,7 @@ Feature: ReturnAcceptanceTest
       | ({name: 'D'}) |
     And no side effects
 
-  @skip
+@skip
   Scenario: Get rows in the middle by param
     Given an empty graph
     And having executed:
@@ -188,7 +187,6 @@ Feature: ReturnAcceptanceTest
       | ({name: 'D'}) |
     And no side effects
 
-  
   Scenario: Sort on aggregated function
     Given an empty graph
     And having executed:
@@ -248,7 +246,6 @@ Feature: ReturnAcceptanceTest
       | (:Singleton) |
     And no side effects
 
-  @skip
   Scenario: Support ordering by a property after being distinct-ified
     Given an empty graph
     And having executed:
@@ -288,7 +285,7 @@ Feature: ReturnAcceptanceTest
       | -15                  |
     And no side effects
 
-  @skip
+@skip
   Scenario: Count star should count everything in scope
     Given an empty graph
     And having executed:

@@ -9,7 +9,7 @@
 #include <assert.h>
 #include "./cmd_context.h"
 #include "../graph/graph.h"
-#include "../query_executor.h"
+#include "../graph/graphcontext.h"
 #include "../util/simple_timer.h"
 
 extern RedisModuleType *GraphContextRedisModuleType;
@@ -31,8 +31,7 @@ void _MGraph_Delete(void *args) {
 		RedisModule_ReplyWithError(ctx, "Graph was not found in database.");
 		goto cleanup;
 	} else if(keytype != REDISMODULE_KEYTYPE_MODULE) {
-		RedisModule_ReplyWithError(ctx,
-								   "Specified graph name referred to incorrect key type.");
+		RedisModule_ReplyWithError(ctx, "Specified graph name referred to incorrect key type.");
 		goto cleanup;
 	}
 
@@ -49,8 +48,7 @@ void _MGraph_Delete(void *args) {
 	if(RedisModule_DeleteKey(key) == REDISMODULE_OK) {
 		char *strElapsed;
 		double t = simple_toc(tic) * 1000;
-		asprintf(&strElapsed,
-				 "Graph removed, internal execution time: %.6f milliseconds", t);
+		asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
 		RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
 		free(strElapsed);
 	} else {
@@ -78,8 +76,7 @@ int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		context = CommandCtx_New(ctx, NULL, NULL, graph_name, argv, argc);
 		_MGraph_Delete(context);
 	} else {
-		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL,
-															   0);
+		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
 		context = CommandCtx_New(NULL, bc, NULL, graph_name, argv, argc);
 		thpool_add_work(_thpool, _MGraph_Delete, context);
 	}

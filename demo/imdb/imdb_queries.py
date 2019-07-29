@@ -99,7 +99,7 @@ class IMDBQueries(object):
         self.actors_over_50_that_played_in_blockbusters_query = QueryInfo(
             query="""MATCH (a:actor)-[:act]->(m:movie)
                     WHERE a.age >= 50 AND m.votes > 10000 AND m.rating > 8.2
-                    RETURN *""",
+                    RETURN a, m ORDER BY a.name, m.name""",
             description='Which actors who are over 50 played in blockbuster movies?',
             max_run_time_ms=4.0,
             expected_result=expected_result
@@ -175,7 +175,7 @@ class IMDBQueries(object):
         self.young_actors_played_with_cameron_diaz_query = QueryInfo(
             query="""MATCH (Cameron:actor {name:"Cameron Diaz"})-[:act]->(m:movie)<-[:act]-(a:actor)
                     WHERE a.age < 35
-                    RETURN a, m.title""",
+                    RETURN a, m.title ORDER BY m.title""",
             description='Which young actors played along side Cameron Diaz?',
             max_run_time_ms=5,
             expected_result=expected_result
@@ -385,6 +385,6 @@ class IMDBQueries(object):
             self.same_year_higher_rating_than_huntforthewilderpeople_query
             # self.all_actors_named_tim
         ]
-    
+
     def queries(self):
         return self.queries_info

@@ -7,7 +7,7 @@
 #pragma once
 
 #include "op.h"
-#include "../../parser/ast.h"
+#include "../../ast/ast.h"
 #include "../../procedures/procedure.h"
 
 /* Maps procedure outout to record index.
@@ -22,17 +22,17 @@ typedef struct {
 typedef struct {
 	OpBase op;                  // Base op.
 	AST *ast;                   // AST.
-	char **args;                // Arguments passed to procedure.
-	char **output;              // Procedure output.
+	const char **args;          // Arguments passed to procedure.
+	const char **output;        // Procedure output.
 	ProcedureCtx *procedure;    // Procedure to call.
 	OutputMap *yield_map;       // Maps between yield to procedure output and record idx.
 } OpProcCall;
 
 OpBase *NewProcCallOp(
-	char *procedure,    // Procedure name.
-	char **args,        // Arguments passed to procedure invocation.
-	char **output,      // Procedure output.
-	AST *ast            // AST.
+	const char *procedure,    // Procedure name.
+	const char **args,        // Arguments passed to procedure invocation.
+	const char **output,      // Procedure output.
+	uint *modifies            // Record IDs of outputs
 );
 
 OpResult OpProcCallInit(

@@ -14,7 +14,6 @@ endif
 CFLAGS = \
 	-Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result \
 	-fPIC -std=gnu99 \
- 	-I"$(abs_path)" -I"$(abs_path)/../deps" \
 	-D_GNU_SOURCE -DREDIS_MODULE_TARGET -DREDISMODULE_EXPERIMENTAL_API -DXXH_STATIC_LINKING_ONLY
 CFLAGS += $(DEBUGFLAGS)
 
@@ -47,12 +46,7 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/serializers/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/GraphBLASExt/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/grouping/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/index/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/parser/clauses/*.c)
-CC_SOURCES += $(SOURCEDIR)/parser/ast.c
-CC_SOURCES += $(SOURCEDIR)/parser/ast_common.c
-CC_SOURCES += $(SOURCEDIR)/parser/ast_arithmetic_expression.c
-CC_SOURCES += $(SOURCEDIR)/parser/lex.yy.c
-CC_SOURCES += $(SOURCEDIR)/parser/grammar.c
+CC_SOURCES += $(wildcard $(SOURCEDIR)/ast/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/resultset/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/resultset/formatters/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/schema/*.c)
@@ -79,7 +73,7 @@ LIBCYPHER-PARSER=../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
 # Compilation deps for the module
 LIBS=$(LIBTRIEMAP) $(GRAPHBLAS) $(LIBXXHASH) $(LIBCYPHER-PARSER)
-MODULE=$(CC_OBJECTS) $(RAX) $(LIBS)
+MODULE=$(LIBS) $(RAX) $(CC_OBJECTS)
 
 REDISGRAPH_CC=$(QUIET_CC)$(CC)
 
@@ -125,7 +119,6 @@ endif
 # Build libcypher-parser only if library does not already exists.
 $(LIBCYPHER-PARSER):
 ifeq (,$(wildcard $(LIBCYPHER-PARSER)))
-	# Note we're passing empty CFLAGS to libcypher-parser.
 	cd ../deps/libcypher-parser; \
 	./autogen.sh; \
 	./configure --disable-shared;
@@ -148,6 +141,7 @@ clean:
 	@-rm -f redisgraph.so
 ifeq ($(ALL),1)
 	@$(MAKE) -C ../deps/GraphBLAS clean
+	@$(MAKE) -C ../deps/libcypher-parser clean
 	@$(MAKE) -C ../deps/xxhash clean
 	@$(MAKE) -C ../deps/rax clean
 endif

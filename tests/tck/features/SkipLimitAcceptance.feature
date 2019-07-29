@@ -32,21 +32,24 @@ Feature: SkipLimitAcceptanceTest
 
   Background:
     Given any graph
-  @skip
+
+@skip
   Scenario: SKIP with an expression that depends on variables should fail
     When executing query:
       """
       MATCH (n) RETURN n SKIP n.count
       """
     Then a SyntaxError should be raised at compile time: NonConstantExpression
-  @skip
+
+@skip
   Scenario: LIMIT with an expression that depends on variables should fail
     When executing query:
       """
       MATCH (n) RETURN n LIMIT n.count
       """
     Then a SyntaxError should be raised at compile time: NonConstantExpression
-  @skip
+
+@skip
   Scenario: SKIP with an expression that does not depend on variables
     And having executed:
       """
@@ -65,7 +68,8 @@ Feature: SkipLimitAcceptanceTest
       | true     |
     And no side effects
 
-  @skip
+
+@skip
   Scenario: LIMIT with an expression that does not depend on variables
     And having executed:
       """

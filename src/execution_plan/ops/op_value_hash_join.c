@@ -24,8 +24,7 @@ static bool _record_islt(Record l, Record r, uint idx) {
 #define RECORD_SORT_ON_ENTRY(a, b) (_record_islt((*a), (*b), idx))
 
 // Performs binary search, returns the leftmost index of a match.
-static int64_t _binarySearchLeftmost(Record *array, int join_key_idx,
-									 SIValue v) {
+static int64_t _binarySearchLeftmost(Record *array, int join_key_idx, SIValue v) {
 	int64_t recordCount = array_len(array);
 	int64_t pos;
 	int64_t left = 0;
@@ -40,8 +39,8 @@ static int64_t _binarySearchLeftmost(Record *array, int join_key_idx,
 }
 
 // Performs binary search, returns the rightmost index of a match.
-static int64_t _binarySearchRightmost(Record *array, int64_t array_len,
-									  int join_key_idx, SIValue v) {
+static int64_t _binarySearchRightmost(Record *array, int64_t array_len, int join_key_idx,
+									  SIValue v) {
 	int64_t pos;
 	int64_t left = 0;
 	int64_t right = array_len;
@@ -77,8 +76,7 @@ static bool _set_intersection_idx(OpValueHashJoin *op, SIValue v) {
 	op->number_of_intersections = 0;
 	uint record_count = array_len(op->cached_records);
 
-	int64_t leftmost_idx = _binarySearchLeftmost(op->cached_records,
-												 op->join_value_rec_idx, v);
+	int64_t leftmost_idx = _binarySearchLeftmost(op->cached_records, op->join_value_rec_idx, v);
 	if(leftmost_idx >= record_count) return false;
 
 	// Make sure value was found.
@@ -94,8 +92,7 @@ static bool _set_intersection_idx(OpValueHashJoin *op, SIValue v) {
 
 	/* Count how many records share the same node.
 	 * reduce search space by truncating left bound */
-	int64_t rightmost_idx = _binarySearchRightmost(op->cached_records +
-												   leftmost_idx,
+	int64_t rightmost_idx = _binarySearchRightmost(op->cached_records + leftmost_idx,
 												   record_count - leftmost_idx,
 												   op->join_value_rec_idx,
 												   v);

@@ -34,8 +34,8 @@ typedef struct {
 
 /* Index_Create builds an index for a label-property pair so that queries reliant
  * on these entities can use expedited scan logic. */
-Index *Index_Create(Graph *g, const char *label, int label_id,
-					const char *attr_str, Attribute_ID attr_id);
+Index *Index_Create(Graph *g, const char *label, int label_id, const char *attr_str,
+					Attribute_ID attr_id);
 
 /* Delete a single entity from an index if it is present. */
 void Index_DeleteNode(Index *idx, NodeID node, SIValue *val);

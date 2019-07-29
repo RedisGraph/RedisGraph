@@ -296,8 +296,7 @@ int __agg_percContReduceNext(AggCtx *ctx) {
 	double float_idx = ac->percentile * (ac->count - 1);
 	// Split the temp value into its integer and fractional values
 	fraction_val = modf(float_idx, &int_val);
-	int index =
-		int_val; // Casting the integral part of the value to an int for convenience
+	int index = int_val; // Casting the integral part of the value to an int for convenience
 
 	if(!fraction_val) {
 		// A valid index was requested, so we can directly return a value

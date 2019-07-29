@@ -49,17 +49,15 @@ ProcedureCtx *ProcCtxNew(const char *name,
 
 ProcedureCtx *Proc_Get(const char *proc_name) {
 	if(!__procedures) return NULL;
-	ProcGenerator gen = TrieMap_Find(__procedures, (char *)proc_name,
-									 strlen(proc_name));
+	ProcGenerator gen = TrieMap_Find(__procedures, (char *)proc_name, strlen(proc_name));
 	if(gen == TRIEMAP_NOTFOUND) return NULL;
 	ProcedureCtx *ctx = gen();
 	return ctx;
 }
 
-ProcedureResult Proc_Invoke(ProcedureCtx *proc, char **args) {
+ProcedureResult Proc_Invoke(ProcedureCtx *proc, const char **args) {
 	assert(proc);
-	if(proc->argc != PROCEDURE_VARIABLE_ARG_COUNT) assert(proc->argc == array_len(
-																  args));
+	if(proc->argc != PROCEDURE_VARIABLE_ARG_COUNT) assert(proc->argc == array_len(args));
 	// TODO: procedure can only be invoke once.
 	return proc->Invoke(proc, args);
 }

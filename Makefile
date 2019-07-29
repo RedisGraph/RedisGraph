@@ -6,6 +6,12 @@ all:
 clean:
 	@$(MAKE) -C ./src $@
 
+clean-parser:
+	$(MAKE) -C ./deps/libcypher-parser distclean
+
+clean-graphblas:
+	$(MAKE) -C ./deps/GraphBLAS clean
+
 package: all
 	@$(MAKE) -C ./src package
 
@@ -28,4 +34,4 @@ test:
 	@$(MAKE) -C ./src test
 
 format:
-	astyle -Q --options=.astylerc -R "./*.c,*.h"
+	astyle -Q --options=.astylerc -R --ignore-exclude-errors "./*.c,*.h"

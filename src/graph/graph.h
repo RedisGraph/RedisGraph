@@ -59,21 +59,17 @@ typedef void (*SyncMatrixFunc)(const Graph *, GrB_Matrix);
 struct Graph {
 	DataBlock *nodes;                   // Graph nodes stored in blocks.
 	DataBlock *edges;                   // Graph edges stored in blocks.
-	GrB_Matrix
-	adjacency_matrix;        // Adjacency matrix, holds all graph connections.
+	GrB_Matrix adjacency_matrix;        // Adjacency matrix, holds all graph connections.
 	GrB_Matrix _t_adjacency_matrix;     // Transposed Adjacency matrix.
 	GrB_Matrix *labels;                 // Label matrices.
 	GrB_Matrix *relations;              // Relation matrices.
-	GrB_Matrix
-	*_relations_map;         // Maps from (relation, row, col) to edge id.
+	GrB_Matrix *_relations_map;         // Maps from (relation, row, col) to edge id.
 	GrB_Matrix _zero_matrix;            // Zero matrix.
 	pthread_mutex_t _writers_mutex;     // Mutex restrict single writer.
 	pthread_mutex_t _mutex;             // Mutex for accessing critical sections.
-	pthread_rwlock_t
-	_rwlock;           // Read-write lock scoped to this specific graph
+	pthread_rwlock_t _rwlock;           // Read-write lock scoped to this specific graph
 	bool _writelocked;                  // true if the read-write lock was acquired by a writer
-	SyncMatrixFunc
-	SynchronizeMatrix;   // Function pointer to matrix synchronization routine.
+	SyncMatrixFunc SynchronizeMatrix;   // Function pointer to matrix synchronization routine.
 };
 
 /* Graph synchronization functions

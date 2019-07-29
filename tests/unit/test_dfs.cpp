@@ -20,6 +20,16 @@ extern "C" {
 #endif
 
 class DFSTest: public ::testing::Test {
+
+    public:
+        static QGNode *A;
+        static QGNode *B;
+        static QGNode *C;
+        static QGNode *D;
+        static QGEdge *AB;
+        static QGEdge *BC;
+        static QGEdge *CD;
+
     protected:
     static void SetUpTestCase()
     {
@@ -39,14 +49,15 @@ class DFSTest: public ::testing::Test {
         const char *label = "L";
         const char *relation = "R";
 
-        Node *A = Node_New(label, "A");
-        Node *B = Node_New(label, "B");
-        Node *C = Node_New(label, "C");
-        Node *D = Node_New(label, "D");
+        uint id = 0;
+        A = QGNode_New(label, "A", id++);
+        B = QGNode_New(label, "B", id++);
+        C = QGNode_New(label, "C", id++);
+        D = QGNode_New(label, "D", id++);
 
-        Edge *AB = Edge_New(A, B, relation, "AB");
-        Edge *BC = Edge_New(B, C, relation, "BC");
-        Edge *CD = Edge_New(C, D, relation, "CD");
+        AB = QGEdge_New(A, B, relation, "AB", id++);
+        BC = QGEdge_New(B, C, relation, "BC", id++);
+        CD = QGEdge_New(C, D, relation, "CD", id++);
 
         QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
         QueryGraph_AddNode(g, A);
@@ -63,24 +74,20 @@ class DFSTest: public ::testing::Test {
 };
 
 TEST_F(DFSTest, DFSLevels) {
-    Node *S;        // DFS starts here.
-    Edge **path;    // Path reached by DFS.
+    QGNode *S;        // DFS starts here.
+    QGEdge **path;    // Path reached by DFS.
     QueryGraph *g;  // Graph traversed.
 
     g = BuildGraph();
-    S = QueryGraph_GetNodeByAlias(g, "A");
+    S = QueryGraph_GetNodeByID(g, A->id);
 
-    Edge *AB = QueryGraph_GetEdgeByAlias(g, "AB");
-    Edge *BC = QueryGraph_GetEdgeByAlias(g, "BC");
-    Edge *CD = QueryGraph_GetEdgeByAlias(g, "CD");
-
-    Edge *expected_level_0[0] = {};
-    Edge *expected_level_1[1] = {AB};
-    Edge *expected_level_2[2] = {AB, BC};
-    Edge *expected_level_3[3] = {AB, BC, CD};
-    Edge *expected_level_4[0] = {};
+    QGEdge *expected_level_0[0] = {};
+    QGEdge *expected_level_1[1] = {AB};
+    QGEdge *expected_level_2[2] = {AB, BC};
+    QGEdge *expected_level_3[3] = {AB, BC, CD};
+    QGEdge *expected_level_4[0] = {};
     
-    Edge **expected[5] = {
+    QGEdge **expected[5] = {
         expected_level_0,
         expected_level_1,
         expected_level_2,
@@ -94,7 +101,7 @@ TEST_F(DFSTest, DFSLevels) {
 
     for(int level = 0; level < 5; level++) {
         path = DFS(S, level);
-        Edge **expectation = expected[level];
+        QGEdge **expectation = expected[level];
 
         int edge_count = array_len(path);
         for(int i = 0; i < edge_count; i++) {
@@ -113,3 +120,13 @@ TEST_F(DFSTest, DFSLevels) {
     // Clean up.
     QueryGraph_Free(g);
 }
+
+// Static function declarations
+QGNode *DFSTest::A;
+QGNode *DFSTest::B;
+QGNode *DFSTest::C;
+QGNode *DFSTest::D;
+
+QGEdge *DFSTest::AB;
+QGEdge *DFSTest::BC;
+QGEdge *DFSTest::CD;

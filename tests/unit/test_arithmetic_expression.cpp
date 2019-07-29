@@ -12,28 +12,35 @@ extern "C"
 #endif
 
 #include "../../src/value.h"
-#include "../../src/query_executor.h"
 #include "../../src/arithmetic/arithmetic_expression.h"
 #include "../../src/graph/entities/node.h"
 #include "../../src/arithmetic/agg_funcs.h"
 #include "../../src/execution_plan/record.h"
+#include "../../src/execution_plan/execution_plan.h"
 #include "../../src/util/rmalloc.h"
+#include "../../src/util/arr.h"
 #include <time.h>
+
+// Declaration of function in execution_plan.h
+AR_ExpNode** _BuildReturnExpressions(RecordMap *record_map, const cypher_astnode_t *ret_clause);
 
 #ifdef __cplusplus
 }
 #endif
 
-class ArithmeticTest : public ::testing::Test
-{
-protected:
-    static void SetUpTestCase()
-    {
-        // Use the malloc family for allocations
-        Alloc_Reset();
+pthread_key_t _tlsASTKey;  // Thread local storage AST key.
 
-        AR_RegisterFuncs();
-        Agg_RegisterFuncs();
+class ArithmeticTest: public ::testing::Test {
+  protected:
+    static void SetUpTestCase() {
+      // Use the malloc family for allocations
+      Alloc_Reset();
+
+      AR_RegisterFuncs();
+      Agg_RegisterFuncs();
+
+      int error = pthread_key_create(&_tlsASTKey, NULL);
+      ASSERT_EQ(error, 0);
     }
 
     static void TearDownTestCase()
@@ -68,18 +75,15 @@ void _test_ar_func(AR_ExpNode *root, SIValue expected, const Record r)
     }
 }
 
-AR_ExpNode *_exp_from_query(const char *query)
-{
-    char *errMsg;
-    AST **ast = ParseQuery(query, strlen(query), &errMsg);
+AR_ExpNode* _exp_from_query(const char *query) {
+  cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+  AST *ast = AST_Build(parse_result);
+  ast->entity_map = NewTrieMap();
 
-    AST_ReturnElementNode *elm = ast[0]->returnNode->returnElements[0];
+  const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
+  AR_ExpNode **return_elems = _BuildReturnExpressions(NULL, ret_clause);
 
-    AST_ArithmeticExpressionNode *exp = elm->exp;
-    AR_ExpNode *arExp = AR_EXP_BuildFromAST(ast[0], exp);
-
-    AST_Free(ast);
-    return arExp;
+  return return_elems[0];
 }
 
 TEST_F(ArithmeticTest, ExpressionTest)

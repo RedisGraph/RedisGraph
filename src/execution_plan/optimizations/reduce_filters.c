@@ -7,7 +7,7 @@
 #include "reduce_filters.h"
 #include "../ops/op_filter.h"
 #include "../../filter_tree/filter_tree.h"
-#include "../../parser/grammar.h"
+#include "../../ast/ast_build_filter_tree.h"
 
 void _reduceFilter(OpBase *op) {
 	OpBase *parent = op;
@@ -23,7 +23,7 @@ void _reduceFilter(OpBase *op) {
 		Filter *childFilter = (Filter *)child;
 
 		/* Create a new root for the tree, merge trees using an AND. */
-		FT_FilterNode *root = CreateCondFilterNode(AND);
+		FT_FilterNode *root = FilterTree_CreateConditionFilter(OP_AND);
 		AppendLeftChild(root, tree);
 		AppendRightChild(root, childFilter->filterTree);
 		tree = root;

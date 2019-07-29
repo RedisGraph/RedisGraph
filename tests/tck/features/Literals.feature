@@ -32,7 +32,7 @@ Feature: Literals
 
   Background:
     Given any graph
-  @skip
+
   Scenario: Return an integer
     When executing query:
       """
@@ -52,7 +52,7 @@ Feature: Literals
       | literal |
       | 1.0     |
     And no side effects
-@skip
+
   Scenario: Return a float in exponent form
     When executing query:
       """
@@ -72,7 +72,7 @@ Feature: Literals
       | literal |
       | true    |
     And no side effects
-@skip
+
   Scenario: Return a single-quoted string
     When executing query:
       """
@@ -82,7 +82,7 @@ Feature: Literals
       | literal |
       | ''      |
     And no side effects
-@skip
+
   Scenario: Return a double-quoted string
     When executing query:
       """
@@ -102,6 +102,7 @@ Feature: Literals
       | literal |
       | null    |
     And no side effects
+
 @skip
   Scenario: Return an empty list
     When executing query:
@@ -112,6 +113,7 @@ Feature: Literals
       | literal |
       | []      |
     And no side effects
+
 @skip
   Scenario: Return a nonempty list
     When executing query:
@@ -122,6 +124,7 @@ Feature: Literals
       | literal   |
       | [0, 1, 2] |
     And no side effects
+
 @skip
   Scenario: Return an empty map
     When executing query:
@@ -132,6 +135,7 @@ Feature: Literals
       | literal |
       | {}      |
     And no side effects
+
 @skip
   Scenario: Return a nonempty map
     When executing query:

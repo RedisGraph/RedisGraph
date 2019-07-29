@@ -7,14 +7,17 @@
 #include "cmd_query.h"
 #include "cmd_context.h"
 #include "../graph/graph.h"
-#include "../query_executor.h"
+#include "../ast/ast.h"
 #include "../util/simple_timer.h"
 #include "../execution_plan/execution_plan.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
+#include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
 
-static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc,
-							 AST_IndexNode *indexNode) {
+extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
+
+void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, const cypher_astnode_t *index_op) {
+
 	/* Set up nested array response for index creation and deletion,
 	 * Following the response struture of other queries:
 	 * First element is an empty result-set followed by statistics.
@@ -24,30 +27,31 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc,
 	RedisModule_ReplyWithArray(ctx, 0); // Empty result-set
 	RedisModule_ReplyWithArray(ctx, 2); // Statistics.
 
-	switch(indexNode->operation) {
-	case CREATE_INDEX:
-		if(GraphContext_AddIndex(gc, indexNode->label,
-								 indexNode->property) != INDEX_OK) {
+	if(cypher_astnode_type(index_op) == CYPHER_AST_CREATE_NODE_PROP_INDEX) {
+		// Retrieve strings from AST node
+		const char *label = cypher_ast_label_get_name(cypher_ast_create_node_prop_index_get_label(
+														  index_op));
+		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_create_node_prop_index_get_prop_name(
+															  index_op));
+		if(GraphContext_AddIndex(gc, label, prop) != INDEX_OK) {
 			// Index creation may have failed if the label or property was invalid, or the index already exists.
 			RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
-			break;
+			return;
 		}
 		RedisModule_ReplyWithSimpleString(ctx, "Indices added: 1");
-		break;
-	case DROP_INDEX:
-		if(GraphContext_DeleteIndex(gc, indexNode->label,
-									indexNode->property) == INDEX_OK) {
+	} else {
+		// Retrieve strings from AST node
+		const char *label = cypher_ast_label_get_name(cypher_ast_drop_node_prop_index_get_label(index_op));
+		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_drop_node_prop_index_get_prop_name(
+															  index_op));
+		if(GraphContext_DeleteIndex(gc, label, prop) == INDEX_OK) {
 			RedisModule_ReplyWithSimpleString(ctx, "Indices removed: 1");
 		} else {
 			char *reply;
-			asprintf(&reply, "ERR Unable to drop index on :%s(%s): no such index.",
-					 indexNode->label, indexNode->property);
+			asprintf(&reply, "ERR Unable to drop index on :%s(%s): no such index.", label, prop);
 			RedisModule_ReplyWithError(ctx, reply);
 			free(reply);
 		}
-		break;
-	default:
-		assert(0);
 	}
 }
 
@@ -58,35 +62,30 @@ static inline bool _check_compact_flag(CommandCtx *qctx) {
 			!strcasecmp(RedisModule_StringPtrLen(qctx->argv[3], NULL), "--compact"));
 }
 
-static ResultSet *_prepare_resultset(RedisModuleCtx *ctx, AST **ast,
-									 bool compact) {
-	// The last AST will contain the return clause, if one is specified
-	AST *final_ast = ast[array_len(ast) - 1];
-	ResultSet *set = NewResultSet(final_ast, ctx, compact);
-	ResultSet_ReplyWithPreamble(set, ast);
-	return set;
-}
-
 void _MGraph_Query(void *args) {
 	CommandCtx *qctx = (CommandCtx *)args;
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
-	ResultSet *resultSet = NULL;
-	AST **ast = qctx->ast;
-	bool readonly = AST_ReadOnly(ast);
+	ResultSet *result_set = NULL;
 	bool lockAcquired = false;
+	AST *ast = NULL;
+
+	// Perform query validations
+	if(AST_Validate(ctx, qctx->parse_result) != AST_VALID) goto cleanup;
+
+	ast = AST_Build(qctx->parse_result);
+	bool readonly = AST_ReadOnly(qctx->parse_result);
 
 	// Try to access the GraphContext
 	CommandCtx_ThreadSafeContextLock(qctx);
 	GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName, readonly);
 	if(!gc) {
-		if(!ast[0]->createNode && !ast[0]->mergeNode) {
+		if(!AST_ContainsClause(ast, CYPHER_AST_CREATE) &&
+		   !AST_ContainsClause(ast, CYPHER_AST_MERGE)) {
 			CommandCtx_ThreadSafeContextUnlock(qctx);
 			RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
 			goto cleanup;
 		}
-		assert(!readonly);
-		gc = GraphContext_New(ctx, qctx->graphName, GRAPH_DEFAULT_NODE_CAP,
-							  GRAPH_DEFAULT_EDGE_CAP);
+		gc = GraphContext_New(ctx, qctx->graphName, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 
 		if(!gc) {
 			CommandCtx_ThreadSafeContextUnlock(qctx);
@@ -95,30 +94,27 @@ void _MGraph_Query(void *args) {
 		}
 		/* TODO: free graph if no entities were created. */
 	}
-
-	bool compact = _check_compact_flag(qctx);
-
 	CommandCtx_ThreadSafeContextUnlock(qctx);
 
-	// Perform query validations before and after ModifyAST
-	if(AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
-
-	ModifyAST(ast);
-	if(AST_PerformValidations(ctx, ast) != AST_VALID) goto cleanup;
+	bool compact = _check_compact_flag(qctx);
 
 	// Acquire the appropriate lock.
 	if(readonly) Graph_AcquireReadLock(gc->g);
 	else Graph_WriterEnter(gc->g);  // Single writer.
 	lockAcquired = true;
 
-	if(ast[0]->indexNode) {  // index operation
-		_index_operation(ctx, gc, ast[0]->indexNode);
+	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
+	if(root_type == CYPHER_AST_QUERY) {  // query operation
+		ResultSet *result_set = NewResultSet(ctx, compact);
+		ExecutionPlan *plan = NewExecutionPlan(ctx, gc, result_set);
+		result_set = ExecutionPlan_Execute(plan);
+		ExecutionPlan_Free(plan);
+		ResultSet_Replay(result_set);    // Send result-set back to client.
+	} else if(root_type == CYPHER_AST_CREATE_NODE_PROP_INDEX ||
+			  root_type == CYPHER_AST_DROP_NODE_PROP_INDEX) {
+		_index_operation(ctx, gc, ast->root);
 	} else {
-		resultSet = _prepare_resultset(ctx, ast, compact);
-		ExecutionPlan *plan = NewExecutionPlan(ctx, ast, resultSet, false);
-		ExecutionPlan_Execute(plan);
-		ExecutionPlanFree(plan);
-		ResultSet_Replay(resultSet);    // Send result-set back to client.
+		assert("Unhandled query type" && false);
 	}
 
 	/* Report execution timing. */
@@ -136,7 +132,8 @@ cleanup:
 		else Graph_WriterLeave(gc->g);
 	}
 
-	ResultSet_Free(resultSet);
+	ResultSet_Free(result_set);
+	AST_Free(ast);
 	CommandCtx_Free(qctx);
 }
 
@@ -150,24 +147,13 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 	simple_tic(tic);
 
-	// Parse AST.
-	char *errMsg = NULL;
 	const char *query = RedisModule_StringPtrLen(argv[2], NULL);
 
-	AST **ast = ParseQuery(query, strlen(query), &errMsg);
-	if(!ast) {
-		RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
-		RedisModule_ReplyWithError(ctx, errMsg);
-		free(errMsg);
-		return REDISMODULE_OK;
-	}
-	if(AST_Empty(ast[0])) {
-		AST_Free(ast);
-		RedisModule_ReplyWithError(ctx, "Error empty query.");
-		return REDISMODULE_OK;
-	}
+	// Parse AST.
+	// TODO move into thread when possible
+	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 
-	bool readonly = AST_ReadOnly(ast);
+	bool readonly = AST_ReadOnly(parse_result);
 
 	/* Determin query execution context
 	 * queries issued within a LUA script or multi exec block must
@@ -176,15 +162,14 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	int flags = RedisModule_GetContextFlags(ctx);
 	if(flags & (REDISMODULE_CTX_FLAGS_MULTI | REDISMODULE_CTX_FLAGS_LUA)) {
 		// Run query on Redis main thread.
-		context = CommandCtx_New(ctx, NULL, ast, argv[1], argv, argc);
+		context = CommandCtx_New(ctx, NULL, parse_result, argv[1], argv, argc);
 		context->tic[0] = tic[0];
 		context->tic[1] = tic[1];
 		_MGraph_Query(context);
 	} else {
 		// Run query on a dedicated thread.
-		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL,
-															   0);
-		context = CommandCtx_New(NULL, bc, ast, argv[1], argv, argc);
+		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
+		context = CommandCtx_New(NULL, bc, parse_result, argv[1], argv, argc);
 		context->tic[0] = tic[0];
 		context->tic[1] = tic[1];
 		thpool_add_work(_thpool, _MGraph_Query, context);

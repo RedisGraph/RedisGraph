@@ -13,7 +13,7 @@
 
 // Tests to see if given filter can act as a join condition.
 static bool _applicableFilter(const FT_FilterNode *f) {
-	return (f->t == FT_N_PRED && f->pred.op == EQ);
+	return (f->t == FT_N_PRED && f->pred.op == OP_EQUAL);
 }
 
 // Collects all consecutive filters beneath given op.
@@ -29,20 +29,20 @@ static Filter **_locate_filters(OpBase *cp) {
 	return filters;
 }
 
-// Tests if stream resolves all aliases.
-static bool _stream_resolves_entities(const OpBase *root, rax *aliases) {
+// Tests if stream resolves all entities.
+static bool _stream_resolves_entities(const OpBase *root, rax *entities) {
 	if(root->modifies) {
-		for(int i = 0; i < Vector_Size(root->modifies); i++) {
-			char *alias;
-			Vector_Get(root->modifies, i, &alias);
-			raxRemove(aliases, (unsigned char *)alias, strlen(alias), NULL);
+		uint modifies_count = array_len(root->modifies);
+		for(uint i = 0; i < modifies_count; i++) {
+			uint modified = root->modifies[i];
+			raxRemove(entities, (unsigned char *)&modified, sizeof(modified), NULL);
 		}
 	}
 
-	if(raxSize(aliases) == 0) return true;
+	if(raxSize(entities) == 0) return true;
 
 	for(int i = 0; i < root->childCount; i++) {
-		if(_stream_resolves_entities(root->children[i], aliases)) {
+		if(_stream_resolves_entities(root->children[i], entities)) {
 			return true;
 		}
 	}
@@ -57,8 +57,8 @@ static bool _stream_resolves_entities(const OpBase *root, rax *aliases) {
  * either left or right of the cartesian product operation
  * _relate_exp_to_stream will try to associate each expression
  * lhs and rhs with the appropriate branch. */
-static void _relate_exp_to_stream(const OpBase *cp, const FT_FilterNode *f,
-								  AR_ExpNode **lhs, AR_ExpNode **rhs) {
+static void _relate_exp_to_stream(const OpBase *cp, const FT_FilterNode *f, AR_ExpNode **lhs,
+								  AR_ExpNode **rhs) {
 	*lhs = NULL;
 	*rhs = NULL;
 	bool expression_resolved = true;
@@ -70,19 +70,19 @@ static void _relate_exp_to_stream(const OpBase *cp, const FT_FilterNode *f,
 	OpBase *left_child = cp->children[0];
 	OpBase *right_child = cp->children[1];
 
-	rax *aliases = raxNew();
+	rax *entities = raxNew();
 
 	/* Make sure LHS and RHS expressions can be resolved.
 	 * Left expression - Left branch
 	 * Right expression - Right branch */
-	AR_EXP_CollectAliases(lhs_exp, aliases);
-	if(_stream_resolves_entities(left_child, aliases)) {
-		// aliases is now empty.
-		AR_EXP_CollectAliases(rhs_exp, aliases);
-		if(_stream_resolves_entities(right_child, aliases)) {
+	AR_EXP_CollectEntityIDs(lhs_exp, entities);
+	if(_stream_resolves_entities(left_child, entities)) {
+		// entities is now empty.
+		AR_EXP_CollectEntityIDs(rhs_exp, entities);
+		if(_stream_resolves_entities(right_child, entities)) {
 			*lhs = lhs_exp;
 			*rhs = rhs_exp;
-			raxFree(aliases);
+			raxFree(entities);
 			return;
 		}
 	}
@@ -92,17 +92,17 @@ static void _relate_exp_to_stream(const OpBase *cp, const FT_FilterNode *f,
 	*lhs = NULL;
 	*rhs = NULL;
 
-	raxFree(aliases);
-	aliases = raxNew();
+	raxFree(entities);
+	entities = raxNew();
 
-	AR_EXP_CollectAliases(lhs_exp, aliases);
-	if(_stream_resolves_entities(right_child, aliases)) {
-		// aliases is now empty.
-		AR_EXP_CollectAliases(rhs_exp, aliases);
-		if(_stream_resolves_entities(left_child, aliases)) {
+	AR_EXP_CollectEntityIDs(lhs_exp, entities);
+	if(_stream_resolves_entities(right_child, entities)) {
+		// entities is now empty.
+		AR_EXP_CollectEntityIDs(rhs_exp, entities);
+		if(_stream_resolves_entities(left_child, entities)) {
 			*lhs = rhs_exp;
 			*rhs = lhs_exp;
-			raxFree(aliases);
+			raxFree(entities);
 			return;
 		}
 	}
@@ -110,7 +110,7 @@ static void _relate_exp_to_stream(const OpBase *cp, const FT_FilterNode *f,
 	// Couldn't completely resolve either lhs_exp or rhs_exp.
 	*lhs = NULL;
 	*rhs = NULL;
-	raxFree(aliases);
+	raxFree(entities);
 }
 
 /* Try to replace cartesian product with a value hash join operation */
@@ -156,10 +156,8 @@ void applyJoin(ExecutionPlan *plan) {
 				 * of records, currently prefer a branch with a filter. */
 				OpBase *left_branch = cp->children[0];
 				OpBase *right_branch = cp->children[1];
-				bool left_branch_filtered = (ExecutionPlan_LocateOp(left_branch,
-																	OPType_FILTER) != NULL);
-				bool right_branch_filtered = (ExecutionPlan_LocateOp(right_branch,
-																	 OPType_FILTER) != NULL);
+				bool left_branch_filtered = (ExecutionPlan_LocateOp(left_branch, OPType_FILTER) != NULL);
+				bool right_branch_filtered = (ExecutionPlan_LocateOp(right_branch, OPType_FILTER) != NULL);
 				if(!left_branch_filtered && right_branch_filtered) {
 					// Swap branches!
 					cp->children[0] = right_branch;

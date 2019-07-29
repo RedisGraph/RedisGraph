@@ -29,7 +29,8 @@
 #encoding: utf-8
 
 Feature: MatchAcceptance
-  @skip
+
+@skip
   Scenario: Path query should return results in written order
     Given an empty graph
     And having executed:
@@ -45,7 +46,8 @@ Feature: MatchAcceptance
       | p                              |
       | <(:Label1)<-[:TYPE]-(:Label2)> |
     And no side effects
-  @skip
+
+@skip
   Scenario: Longer path query should return results in written order
     Given an empty graph
     And having executed:
@@ -87,7 +89,8 @@ Feature: MatchAcceptance
       | 3 | 1 |
       | 3 | 2 |
     And no side effects
-  @skip
+
+@skip
   Scenario: Use params in pattern matching predicates
     Given an empty graph
     And having executed:
@@ -106,7 +109,8 @@ Feature: MatchAcceptance
       | b                 |
       | (:B {name: 'me'}) |
     And no side effects
-  @skip
+
+@skip
   Scenario: Filter out based on node prop name
     Given an empty graph
     And having executed:
@@ -123,7 +127,7 @@ Feature: MatchAcceptance
       | a                  |
       | ({name: 'Andres'}) |
     And no side effects
-  @skip
+
   Scenario: Honour the column name for RETURN items
     Given an empty graph
     And having executed:
@@ -157,7 +161,7 @@ Feature: MatchAcceptance
       | a    |
       | (:A) |
     And no side effects
-  @skip
+
   Scenario: Cope with shadowed variables
     Given an empty graph
     And having executed:
@@ -211,7 +215,7 @@ Feature: MatchAcceptance
       | (:B {num: 2}) |
       | (:C {num: 3}) |
     And no side effects
-  @skip
+
   Scenario: Get related to related to
     Given an empty graph
     And having executed:
@@ -252,7 +256,8 @@ Feature: MatchAcceptance
       | (:A {animal: 'monkey'}) | (:C {animal: 'monkey'}) |
       | (:D {animal: 'cow'})    | (:B {animal: 'cow'})    |
     And no side effects
-  @skip
+
+@skip
   Scenario: Return two subgraphs with bound undirected relationship
     Given an empty graph
     And having executed:
@@ -269,7 +274,8 @@ Feature: MatchAcceptance
       | (:B {num: 2}) | (:A {num: 1}) |
       | (:A {num: 1}) | (:B {num: 2}) |
     And no side effects
-  @skip
+
+@skip
   Scenario: Return two subgraphs with bound undirected relationship and optional relationship
     Given an empty graph
     And having executed:
@@ -352,7 +358,8 @@ Feature: MatchAcceptance
       | (:A {p1: 12}) |
       | (:B {p2: 13}) |
     And no side effects
-  @skip
+
+@skip
   Scenario: Return a simple path
     Given an empty graph
     And having executed:
@@ -368,7 +375,8 @@ Feature: MatchAcceptance
       | p                                             |
       | <(:A {name: 'A'})-[:KNOWS]->(:B {name: 'B'})> |
     And no side effects
-  @skip
+
+@skip
   Scenario: Return a three node path
     Given an empty graph
     And having executed:
@@ -384,7 +392,8 @@ Feature: MatchAcceptance
       | p                                                                        |
       | <(:A {name: 'A'})-[:KNOWS]->(:B {name: 'B'})-[:KNOWS]->(:C {name: 'C'})> |
     And no side effects
-  @skip
+
+@skip
   Scenario: Do not return anything because path length does not match
     Given an empty graph
     And having executed:
@@ -400,7 +409,8 @@ Feature: MatchAcceptance
     Then the result should be:
       | x |
     And no side effects
-  @skip
+
+@skip
   Scenario: Pass the path length test
     Given an empty graph
     And having executed:
@@ -417,7 +427,8 @@ Feature: MatchAcceptance
       | x                |
       | (:B {name: 'B'}) |
     And no side effects
-  @skip
+
+@skip
   Scenario: Return relationships by fetching them from the path - starting from the end
     Given an empty graph
     And having executed:
@@ -433,7 +444,8 @@ Feature: MatchAcceptance
       | relationships(p)                   |
       | [[:REL {num: 1}], [:REL {num: 2}]] |
     And no side effects
-  @skip
+
+@skip
   Scenario: Return relationships by fetching them from the path
     Given an empty graph
     And having executed:
@@ -449,7 +461,8 @@ Feature: MatchAcceptance
       | relationships(p)                   |
       | [[:REL {num: 1}], [:REL {num: 2}]] |
     And no side effects
-  @skip
+
+@skip
   Scenario: Return relationships by collecting them as a list - directed, one way
     Given an empty graph
     And having executed:
@@ -465,7 +478,8 @@ Feature: MatchAcceptance
       | r                                  |
       | [[:REL {num: 1}], [:REL {num: 2}]] |
     And no side effects
-  @skip
+
+@skip
   Scenario: Return relationships by collecting them as a list - undirected, starting from two extremes
     Given an empty graph
     And having executed:
@@ -482,7 +496,8 @@ Feature: MatchAcceptance
       | [[:REL {num:1}], [:REL {num:2}]] |
       | [[:REL {num:2}], [:REL {num:1}]] |
     And no side effects
-  @skip
+
+@skip
   Scenario: Return relationships by collecting them as a list - undirected, starting from one extreme
     Given an empty graph
     And having executed:
@@ -498,7 +513,8 @@ Feature: MatchAcceptance
       | r                                  |
       | [[:REL {num: 1}], [:REL {num: 2}]] |
     And no side effects
-  @skip
+
+@skip
   Scenario: Return a var length path
     Given an empty graph
     And having executed:
@@ -515,7 +531,8 @@ Feature: MatchAcceptance
       | <(:A {name: 'A'})-[:KNOWS {num: 1}]->(:B {name: 'B'})>                                     |
       | <(:A {name: 'A'})-[:KNOWS {num: 1}]->(:B {name: 'B'})-[:KNOWS {num: 2}]->(:C {name: 'C'})> |
     And no side effects
-  @skip
+
+@skip
   Scenario: Return a var length path of length zero
     Given an empty graph
     And having executed:
@@ -533,7 +550,8 @@ Feature: MatchAcceptance
       | (:B) | (:B) | 0 |
       | (:A) | (:B) | 1 |
     And no side effects
-  @skip
+
+@skip
   Scenario: Return a named var length path of length zero
     Given an empty graph
     And having executed:
@@ -552,7 +570,6 @@ Feature: MatchAcceptance
       | <(:A {name: 'A'})-[:KNOWS]->(:B {name: 'B'})-[:FRIEND]->(:C {name: 'C'})> |
     And no side effects
 
-  @skip
   Scenario: Accept skip zero
     Given any graph
     When executing query:

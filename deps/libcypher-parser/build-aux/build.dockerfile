@@ -9,6 +9,7 @@ RUN apt-get install -y check valgrind
 RUN apt-get install -y peg
 RUN apt-get install -y libssl-dev
 RUN apt-get install -y libedit-dev
+RUN apt-get install -y xsltproc
 
 RUN useradd -m build
 USER build

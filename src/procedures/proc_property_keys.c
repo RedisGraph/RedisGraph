@@ -18,7 +18,7 @@ typedef struct {
 	SIValue *output;    // Output label.
 } RelationsContext;
 
-ProcedureResult Proc_PropKeysInvoke(ProcedureCtx *ctx, char **args) {
+ProcedureResult Proc_PropKeysInvoke(ProcedureCtx *ctx, const char **args) {
 	if(array_len(args) != 0) return PROCEDURE_ERR;
 
 	RelationsContext *pdata = rm_malloc(sizeof(RelationsContext));
@@ -26,8 +26,7 @@ ProcedureResult Proc_PropKeysInvoke(ProcedureCtx *ctx, char **args) {
 	pdata->gc = GraphContext_GetFromTLS();
 	pdata->output = array_new(SIValue, 2);
 	pdata->output = array_append(pdata->output, SI_ConstStringVal("propertyKey"));
-	pdata->output = array_append(pdata->output,
-								 SI_ConstStringVal("")); // Place holder.
+	pdata->output = array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
 
 	ctx->privateData = pdata;
 	return PROCEDURE_OK;
@@ -43,8 +42,7 @@ SIValue *Proc_PropKeysStep(ProcedureCtx *ctx) {
 		return NULL;
 
 	// Get attribute name.
-	char *name = (char *)GraphContext_GetAttributeString(pdata->gc,
-														 pdata->prop_id++);
+	char *name = (char *)GraphContext_GetAttributeString(pdata->gc, pdata->prop_id++);
 	pdata->output[1] = SI_ConstStringVal(name);
 	return pdata->output;
 }

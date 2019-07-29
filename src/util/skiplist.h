@@ -31,9 +31,6 @@
 #ifndef __DISQUE_SKIPLIST_H
 #define __DISQUE_SKIPLIST_H
 
-// Required to interpret tokens like EQ and LT for updating bounds
-#include "../parser/grammar.h"
-
 // TODO these are being included just for the typedefs here
 #include "../value.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"

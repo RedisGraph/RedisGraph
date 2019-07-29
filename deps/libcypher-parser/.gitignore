@@ -23,6 +23,7 @@ TAGS
 **/doc/*.tag
 **/test/*.trs
 **/test/*.log
+**/test/*.xml
 **/test/*_suite.c
 /INSTALL
 /aclocal.m4

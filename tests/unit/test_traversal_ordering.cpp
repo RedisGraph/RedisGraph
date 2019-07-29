@@ -11,10 +11,9 @@ extern "C" {
 #endif
 #include "../../src/util/rmalloc.h"
 
-#include "../../src/parser/ast.h"
-#include "../../src/query_executor.h"
 #include "../../src/graph/query_graph.h"
 #include "../../src/filter_tree/filter_tree.h"
+#include "../../src/ast/ast_build_filter_tree.h"
 #include "../../src/arithmetic/algebraic_expression.h"
 #include "../../src/execution_plan/optimizations/traverse_order.h"
 
@@ -22,32 +21,35 @@ extern "C" {
 }
 #endif
 
+pthread_key_t _tlsASTKey;  // Thread local storage AST key.
+
 class TraversalOrderingTest: public ::testing::Test {
     protected:
     static void SetUpTestCase() {
         // Use the malloc family for allocations
         Alloc_Reset();
+
+        int error = pthread_key_create(&_tlsASTKey, NULL);
+        ASSERT_EQ(error, 0);
     }
 
     static void TearDownTestCase() {
     }
 
     AST* _build_ast(const char *query) {
-        char *errMsg;
-        AST **ast = ParseQuery(query, strlen(query), &errMsg);
-        AST_NameAnonymousNodes(ast[0]);
-        return ast[0];
+        cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+        AST *ast = AST_Build(parse_result);
+        return ast;
     }
 
-    FT_FilterNode* build_filter_tree_from_query(const char *query) {
+    FT_FilterNode* build_filter_tree_from_query(RecordMap *map, const char *query) {
         AST *ast = _build_ast(query);
-        AST_FilterNode *root = ast->whereNode->filters;
-        FT_FilterNode *tree = BuildFiltersTree(ast, root);
-        return tree;
+        return AST_BuildFilterTree(ast, map);
     }
 };
 
 TEST_F(TraversalOrderingTest, TransposeFree) {
+    RecordMap *map = RecordMap_New();
     /* Given the ordered (left to right) set of algebraic expression:
      * { [CD], [BC], [AB] }
      * Which represents the traversal:
@@ -73,14 +75,15 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
      * Arrangement { [AB], [BC], [CD] } 
      * Is the only one that doesn't requires any transposes. */
 
-    Node *A = Node_New(NULL, "A");
-    Node *B = Node_New(NULL, "B");
-    Node *C = Node_New(NULL, "C");
-    Node *D = Node_New(NULL, "D");
+    uint id = 0;
+    QGNode *A = QGNode_New(NULL, "A", id++);
+    QGNode *B = QGNode_New(NULL, "B", id++);
+    QGNode *C = QGNode_New(NULL, "C", id++);
+    QGNode *D = QGNode_New(NULL, "D", id++);
 
-    Edge *AB = Edge_New(A, B, "E", "AB");
-    Edge *BC = Edge_New(B, C, "E", "BC");
-    Edge *CD = Edge_New(C, D, "E", "CD");
+    QGEdge *AB = QGEdge_New(A, B, "E", "AB", id++);
+    QGEdge *BC = QGEdge_New(B, C, "E", "BC", id++);
+    QGEdge *CD = QGEdge_New(C, D, "E", "CD", id++);
 
     QueryGraph *qg = QueryGraph_New(4, 3);
 
@@ -113,7 +116,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
     set[1] = ExpBC;
     set[2] = ExpAB;
 
-    orderExpressions(set, 3, NULL);
+    orderExpressions(set, 3, map, NULL);
     ASSERT_EQ(set[0], ExpAB);
     ASSERT_EQ(set[1], ExpBC);
     ASSERT_EQ(set[2], ExpCD);
@@ -122,7 +125,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
     set[0] = ExpAB;
     set[1] = ExpBC;
     set[2] = ExpCD;
-    orderExpressions(set, 3, NULL);
+    orderExpressions(set, 3, map, NULL);
     ASSERT_EQ(set[0], ExpAB);
     ASSERT_EQ(set[1], ExpBC);
     ASSERT_EQ(set[2], ExpCD);
@@ -131,7 +134,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
     set[0] = ExpAB;
     set[1] = ExpCD;
     set[2] = ExpBC;
-    orderExpressions(set, 3, NULL);
+    orderExpressions(set, 3, map, NULL);
     ASSERT_EQ(set[0], ExpAB);
     ASSERT_EQ(set[1], ExpBC);
     ASSERT_EQ(set[2], ExpCD);
@@ -140,7 +143,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
     set[0] = ExpBC;
     set[1] = ExpAB;
     set[2] = ExpCD;
-    orderExpressions(set, 3, NULL);
+    orderExpressions(set, 3, map, NULL);
     ASSERT_EQ(set[0], ExpAB);
     ASSERT_EQ(set[1], ExpBC);
     ASSERT_EQ(set[2], ExpCD);
@@ -149,7 +152,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
     set[0] = ExpBC;
     set[1] = ExpCD;
     set[2] = ExpAB;
-    orderExpressions(set, 3, NULL);
+    orderExpressions(set, 3, map, NULL);
     ASSERT_EQ(set[0], ExpAB);
     ASSERT_EQ(set[1], ExpBC);
     ASSERT_EQ(set[2], ExpCD);
@@ -158,7 +161,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
     set[0] = ExpCD;
     set[1] = ExpAB;
     set[2] = ExpBC;
-    orderExpressions(set, 3, NULL);
+    orderExpressions(set, 3, map, NULL);
     ASSERT_EQ(set[0], ExpAB);
     ASSERT_EQ(set[1], ExpBC);
     ASSERT_EQ(set[2], ExpCD);
@@ -171,6 +174,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
 }
 
 TEST_F(TraversalOrderingTest, FilterFirst) {
+    RecordMap *map = RecordMap_New();
     /* Given the ordered (left to right) set of algebraic expression:
      * { [AB], [BC], [CD] }
      * Which represents the traversal:
@@ -187,15 +191,16 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
      * { [CB], [CD], [BA] } (D)<-(C)->(B)->(A) (2 transposes)
      * { [CD], [CB], [BA] } (A)<-(B)<-(C)->(D) (2 transposes) */
 
+    uint id = 0;
     FT_FilterNode *filters;
-    Node *A = Node_New(NULL, "A");
-    Node *B = Node_New(NULL, "B");
-    Node *C = Node_New(NULL, "C");
-    Node *D = Node_New(NULL, "D");
+    QGNode *A = QGNode_New(NULL, "A", id++);
+    QGNode *B = QGNode_New(NULL, "B", id++);
+    QGNode *C = QGNode_New(NULL, "C", id++);
+    QGNode *D = QGNode_New(NULL, "D", id++);
 
-    Edge *AB = Edge_New(A, B, "E", "AB");
-    Edge *BC = Edge_New(B, C, "E", "BC");
-    Edge *CD = Edge_New(C, D, "E", "CD");
+    QGEdge *AB = QGEdge_New(A, B, "E", "AB", id++);
+    QGEdge *BC = QGEdge_New(B, C, "E", "BC", id++);
+    QGEdge *CD = QGEdge_New(C, D, "E", "CD", id++);
 
     QueryGraph *qg = QueryGraph_New(4, 3);
 
@@ -228,9 +233,9 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
     set[1] = ExpBC;
     set[2] = ExpCD;
 
-    filters = build_filter_tree_from_query("MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE A.val = 1 RETURN *");
+    filters = build_filter_tree_from_query(map, "MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE A.val = 1 RETURN *");
 
-    orderExpressions(set, 3, filters);
+    orderExpressions(set, 3, map, filters);
     ASSERT_EQ(set[0], ExpAB);
     ASSERT_EQ(set[1], ExpBC);
     ASSERT_EQ(set[2], ExpCD);
@@ -242,9 +247,9 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
     set[1] = ExpBC;
     set[2] = ExpCD;
 
-    filters = build_filter_tree_from_query("MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE B.val = 1 RETURN *");
+    filters = build_filter_tree_from_query(map, "MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE B.val = 1 RETURN *");
 
-    orderExpressions(set, 3, filters);
+    orderExpressions(set, 3, map, filters);
     ASSERT_TRUE (set[0] == ExpAB || set[0] == ExpBC);
 
     FilterTree_Free(filters);
@@ -254,9 +259,9 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
     set[1] = ExpBC;
     set[2] = ExpCD;
 
-    filters = build_filter_tree_from_query("MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE C.val = 1 RETURN *");
+    filters = build_filter_tree_from_query(map, "MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE C.val = 1 RETURN *");
 
-    orderExpressions(set, 3, filters);
+    orderExpressions(set, 3, map, filters);
     ASSERT_TRUE(set[0] == ExpBC || set[0] == ExpCD);
 
     FilterTree_Free(filters);
@@ -266,9 +271,9 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
     set[1] = ExpBC;
     set[2] = ExpCD;
 
-    filters = build_filter_tree_from_query("MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE D.val = 1 RETURN *");
+    filters = build_filter_tree_from_query(map, "MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE D.val = 1 RETURN *");
 
-    orderExpressions(set, 3, filters);
+    orderExpressions(set, 3, map, filters);
 
     ASSERT_EQ(set[0], ExpCD);
     ASSERT_EQ(set[1], ExpBC);
@@ -276,6 +281,7 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 
     // Clean up.
     FilterTree_Free(filters);
+    RecordMap_Free(map);
     AlgebraicExpression_Free(ExpAB);
     AlgebraicExpression_Free(ExpBC);
     AlgebraicExpression_Free(ExpCD);

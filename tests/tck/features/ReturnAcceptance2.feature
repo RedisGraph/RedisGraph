@@ -29,21 +29,23 @@
 #encoding: utf-8
 
 Feature: ReturnAcceptance2
-  @skip
+
+@skip
   Scenario: Fail when returning properties of deleted nodes
     Given an empty graph
     And having executed:
       """
-      CREATE ({p: 0})
+      CREATE ({num: 0})
       """
     When executing query:
       """
       MATCH (n)
       DELETE n
-      RETURN n.p
+      RETURN n.num
       """
     Then a EntityNotFound should be raised at runtime: DeletedEntityAccess
-  @skip
+
+@skip
   Scenario: Fail when returning labels of deleted nodes
     Given an empty graph
     And having executed:
@@ -57,21 +59,23 @@ Feature: ReturnAcceptance2
       RETURN labels(n)
       """
     Then a EntityNotFound should be raised at runtime: DeletedEntityAccess
-  @skip
+
+@skip
   Scenario: Fail when returning properties of deleted relationships
     Given an empty graph
     And having executed:
       """
-      CREATE ()-[:T {p: 0}]->()
+      CREATE ()-[:T {num: 0}]->()
       """
     When executing query:
       """
       MATCH ()-[r]->()
       DELETE r
-      RETURN r.p
+      RETURN r.num
       """
     Then a EntityNotFound should be raised at runtime: DeletedEntityAccess
-  @skip
+
+@skip
   Scenario: Do not fail when returning type of deleted relationships
     Given an empty graph
     And having executed:
@@ -89,7 +93,8 @@ Feature: ReturnAcceptance2
       | 'T'     |
     And the side effects should be:
       | -relationships | 1 |
-  @skip
+
+@skip
   Scenario: Accept valid Unicode literal
     Given any graph
     When executing query:
@@ -116,7 +121,8 @@ Feature: ReturnAcceptance2
     Then the result should be:
       | n |
     And no side effects
-  @skip
+
+@skip
   Scenario: Fail when sorting on variable removed by DISTINCT
     Given an empty graph
     And having executed:
@@ -130,7 +136,8 @@ Feature: ReturnAcceptance2
         ORDER BY a.age
       """
     Then a SyntaxError should be raised at compile time: UndefinedVariable
-  @skip
+
+@skip
   Scenario: Ordering with aggregation
     Given an empty graph
     And having executed:
@@ -147,7 +154,7 @@ Feature: ReturnAcceptance2
       | n.name  | foo |
       | 'nisse' | 1   |
     And no side effects
-  
+
   Scenario: DISTINCT on nullable values
     Given an empty graph
     And having executed:
@@ -157,14 +164,15 @@ Feature: ReturnAcceptance2
     When executing query:
       """
       MATCH (n)
-      RETURN DISTINCT n.name ORDER by n.name
+      RETURN DISTINCT n.name
       """
     Then the result should be:
       | n.name     |
       | 'Florescu' |
       | null       |
     And no side effects
-  @skip
+
+@skip
   Scenario: Return all variables
     Given an empty graph
     And having executed:
@@ -180,7 +188,8 @@ Feature: ReturnAcceptance2
       | a        | b  | p                   |
       | (:Start) | () | <(:Start)-[:T]->()> |
     And no side effects
-  @skip
+
+@skip
   Scenario: `sqrt()` returning float values
     Given any graph
     When executing query:
@@ -191,7 +200,8 @@ Feature: ReturnAcceptance2
       | sqrt(12.96) |
       | 3.6         |
     And no side effects
-  @skip
+
+@skip
   Scenario: Arithmetic expressions inside aggregation
     Given an empty graph
     And having executed:
@@ -224,7 +234,8 @@ Feature: ReturnAcceptance2
       | ({name: 'Michael'}) | ({name: 'Andres'}) | -7  |
       | ({name: 'Michael'}) | ({name: 'Peter'})  | 0   |
     And no side effects
-  @skip
+
+@skip
   Scenario: Matching and disregarding output, then matching again
     Given an empty graph
     And having executed:
@@ -255,12 +266,13 @@ Feature: ReturnAcceptance2
       | sum(r1.times) |
       | 776           |
     And no side effects
-  @skip
+
+@skip
   Scenario: Returning a list property
     Given an empty graph
     And having executed:
       """
-      CREATE ({foo: [1, 2, 3]})
+      CREATE ({numbers: [1, 2, 3]})
       """
     When executing query:
       """
@@ -268,15 +280,16 @@ Feature: ReturnAcceptance2
       RETURN n
       """
     Then the result should be:
-      | n                  |
-      | ({foo: [1, 2, 3]}) |
+      | n                      |
+      | ({numbers: [1, 2, 3]}) |
     And no side effects
-  @skip
+
+@skip
   Scenario: Returning a projected map
     Given an empty graph
     And having executed:
       """
-      CREATE ({foo: [1, 2, 3]})
+      CREATE ({numbers: [1, 2, 3]})
       """
     When executing query:
       """
@@ -286,7 +299,8 @@ Feature: ReturnAcceptance2
       | {a: 1, b: 'foo'} |
       | {a: 1, b: 'foo'} |
     And no side effects
-  @skip
+
+@skip
   Scenario: Returning an expression
     Given an empty graph
     And having executed:
@@ -302,7 +316,8 @@ Feature: ReturnAcceptance2
       | exists(a.id) | a IS NOT NULL |
       | false        | true          |
     And no side effects
-  @skip
+
+@skip
   Scenario: Limiting amount of rows when there are fewer left than the LIMIT argument
     Given an empty graph
     And having executed:
@@ -327,7 +342,7 @@ Feature: ReturnAcceptance2
       | 14      |
       | 15      |
     And no side effects
-  @skip
+
   Scenario: `substring()` with default second argument
     Given any graph
     When executing query:
@@ -356,7 +371,7 @@ Feature: ReturnAcceptance2
       | ({id: 1})  |
       | ({id: 10}) |
     And no side effects
-  @skip
+
   Scenario: Using aliased DISTINCT expression in ORDER BY
     Given an empty graph
     And having executed:
@@ -392,7 +407,8 @@ Feature: ReturnAcceptance2
       | ({id: 1})  |
       | ({id: 10}) |
     And no side effects
-  @skip
+
+@skip
   Scenario: Arithmetic expressions should propagate null values
     Given any graph
     When executing query:
@@ -403,7 +419,7 @@ Feature: ReturnAcceptance2
       | a    |
       | null |
     And no side effects
-  @skip
+
   Scenario: Aliasing expressions
     Given an empty graph
     And having executed:
@@ -419,7 +435,7 @@ Feature: ReturnAcceptance2
       | a  | a.id |
       | 42 | 42   |
     And no side effects
-  
+
   Scenario: Projecting an arithmetic expression with aggregation
     Given an empty graph
     And having executed:
@@ -435,7 +451,8 @@ Feature: ReturnAcceptance2
       | a          | count(a) + 3 |
       | ({id: 42}) | 4            |
     And no side effects
-  @skip
+
+@skip
   Scenario: Multiple aliasing and backreferencing
     Given any graph
     When executing query:
@@ -451,7 +468,8 @@ Feature: ReturnAcceptance2
     And the side effects should be:
       | +nodes      | 1 |
       | +properties | 1 |
-  @skip
+
+@skip
   Scenario: Aggregating by a list property has a correct definition of equality
     Given an empty graph
     And having executed:
@@ -461,14 +479,15 @@ Feature: ReturnAcceptance2
     When executing query:
       """
       MATCH (a)
-      WITH a.a AS a, count(*) AS count
+      WITH a.num AS a, count(*) AS count
       RETURN count
       """
     Then the result should be:
       | count |
       | 2     |
     And no side effects
-  @skip
+
+@skip
   Scenario: Reusing variable names
     Given an empty graph
     And having executed:
@@ -489,7 +508,8 @@ Feature: ReturnAcceptance2
       | likeTime |
       | 20160614 |
     And no side effects
-  @skip
+
+@skip
   Scenario: DISTINCT inside aggregation should work with lists in maps
     Given an empty graph
     And having executed:
@@ -499,13 +519,14 @@ Feature: ReturnAcceptance2
     When executing query:
       """
       MATCH (n)
-      RETURN count(DISTINCT {foo: n.list}) AS count
+      RETURN count(DISTINCT {name: n.list}) AS count
       """
     Then the result should be:
       | count |
       | 1     |
     And no side effects
-  @skip
+
+@skip
   Scenario: Handling DISTINCT with lists in maps
     Given an empty graph
     And having executed:
@@ -515,14 +536,15 @@ Feature: ReturnAcceptance2
     When executing query:
       """
       MATCH (n)
-      WITH DISTINCT {foo: n.list} AS map
+      WITH DISTINCT {name: n.list} AS map
       RETURN count(*)
       """
     Then the result should be:
       | count(*) |
       | 1        |
     And no side effects
-  @skip
+
+@skip
   Scenario: DISTINCT inside aggregation should work with nested lists in maps
     Given an empty graph
     And having executed:
@@ -532,13 +554,14 @@ Feature: ReturnAcceptance2
     When executing query:
       """
       MATCH (n)
-      RETURN count(DISTINCT {foo: [[n.list, n.list], [n.list, n.list]]}) AS count
+      RETURN count(DISTINCT {name: [[n.list, n.list], [n.list, n.list]]}) AS count
       """
     Then the result should be:
       | count |
       | 1     |
     And no side effects
-  @skip
+
+@skip
   Scenario: DISTINCT inside aggregation should work with nested lists of maps in maps
     Given an empty graph
     And having executed:
@@ -548,7 +571,7 @@ Feature: ReturnAcceptance2
     When executing query:
       """
       MATCH (n)
-      RETURN count(DISTINCT {foo: [{bar: n.list}, {baz: {apa: n.list}}]}) AS count
+      RETURN count(DISTINCT {name: [{name2: n.list}, {baz: {apa: n.list}}]}) AS count
       """
     Then the result should be:
       | count |

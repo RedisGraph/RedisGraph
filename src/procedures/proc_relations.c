@@ -18,17 +18,15 @@ typedef struct {
 	SIValue *output;    // Output label.
 } RelationsContext;
 
-ProcedureResult Proc_RelationsInvoke(ProcedureCtx *ctx, char **args) {
+ProcedureResult Proc_RelationsInvoke(ProcedureCtx *ctx, const char **args) {
 	if(array_len(args) != 0) return PROCEDURE_ERR;
 
 	RelationsContext *pdata = rm_malloc(sizeof(RelationsContext));
 	pdata->schema_id = 0;
 	pdata->gc = GraphContext_GetFromTLS();
 	pdata->output = array_new(SIValue, 2);
-	pdata->output = array_append(pdata->output,
-								 SI_ConstStringVal("relationshipType"));
-	pdata->output = array_append(pdata->output,
-								 SI_ConstStringVal("")); // Place holder.
+	pdata->output = array_append(pdata->output, SI_ConstStringVal("relationshipType"));
+	pdata->output = array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
 
 	ctx->privateData = pdata;
 	return PROCEDURE_OK;
@@ -44,8 +42,7 @@ SIValue *Proc_RelationsStep(ProcedureCtx *ctx) {
 		return NULL;
 
 	// Get schema name.
-	Schema *s = GraphContext_GetSchemaByID(pdata->gc, pdata->schema_id++,
-										   SCHEMA_EDGE);
+	Schema *s = GraphContext_GetSchemaByID(pdata->gc, pdata->schema_id++, SCHEMA_EDGE);
 	char *name = (char *)Schema_GetName(s);
 	pdata->output[1] = SI_ConstStringVal(name);
 	return pdata->output;

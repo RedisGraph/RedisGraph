@@ -5,7 +5,6 @@
  */
 
 #include "resultset_formatters.h"
-#include "../../parser/ast_common.h"
 #include "../../util/arr.h"
 
 static inline PropertyTypeUser _mapValueType(const SIValue v) {
@@ -25,13 +24,11 @@ static inline PropertyTypeUser _mapValueType(const SIValue v) {
 	}
 }
 
-static inline void _ResultSet_ReplyWithValueType(RedisModuleCtx *ctx,
-												 const SIValue v) {
+static inline void _ResultSet_ReplyWithValueType(RedisModuleCtx *ctx, const SIValue v) {
 	RedisModule_ReplyWithLongLong(ctx, _mapValueType(v));
 }
 
-static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx,
-											   GraphContext *gc, const SIValue v) {
+static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, const SIValue v) {
 	_ResultSet_ReplyWithValueType(ctx, v);
 	// Emit the actual value, then the value type (to facilitate client-side parsing)
 	switch(SI_TYPE(v)) {
@@ -58,8 +55,8 @@ static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx,
 	}
 }
 
-static void _ResultSet_CompactReplyWithProperties(RedisModuleCtx *ctx,
-												  GraphContext *gc, const GraphEntity *e) {
+static void _ResultSet_CompactReplyWithProperties(RedisModuleCtx *ctx, GraphContext *gc,
+												  const GraphEntity *e) {
 	int prop_count = ENTITY_PROP_COUNT(e);
 	RedisModule_ReplyWithArray(ctx, prop_count);
 	// Iterate over all properties stored on entity
@@ -70,12 +67,11 @@ static void _ResultSet_CompactReplyWithProperties(RedisModuleCtx *ctx,
 		// Emit the string index
 		RedisModule_ReplyWithLongLong(ctx, prop.id);
 		// Emit the value
-		_ResultSet_CompactReplyWithSIValue(ctx, gc, prop.value);
+		_ResultSet_CompactReplyWithSIValue(ctx, prop.value);
 	}
 }
 
-static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx,
-											GraphContext *gc, Node *n) {
+static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n) {
 	/*  Compact node reply format:
 	 *  [
 	 *      Node ID (integer),
@@ -106,8 +102,7 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx,
 	_ResultSet_CompactReplyWithProperties(ctx, gc, (GraphEntity *)n);
 }
 
-static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx,
-											GraphContext *gc, Edge *e) {
+static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e) {
 	/*  Compact edge reply format:
 	 *  [
 	 *      Edge ID (integer),
@@ -139,8 +134,8 @@ static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx,
 	_ResultSet_CompactReplyWithProperties(ctx, gc, (GraphEntity *)e);
 }
 
-void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc,
-								 const Record r, unsigned int numcols) {
+void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
+								 unsigned int numcols) {
 	// Prepare return array sized to the number of RETURN entities
 	RedisModule_ReplyWithArray(ctx, numcols);
 
@@ -153,9 +148,8 @@ void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc,
 			_ResultSet_CompactReplyWithEdge(ctx, gc, Record_GetEdge(r, i));
 			break;
 		default:
-			RedisModule_ReplyWithArray(ctx,
-									   2); // Reply with array with space for type and value
-			_ResultSet_CompactReplyWithSIValue(ctx, gc, Record_GetScalar(r, i));
+			RedisModule_ReplyWithArray(ctx, 2); // Reply with array with space for type and value
+			_ResultSet_CompactReplyWithSIValue(ctx, Record_GetScalar(r, i));
 		}
 	}
 }
@@ -163,24 +157,29 @@ void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc,
 // For every column in the header, emit a 2-array that specifies
 // the column alias followed by an enum denoting what type
 // (scalar, node, or relation) it holds.
-void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx,
-									  const ResultSetHeader *header, void *data) {
-	TrieMap *entities = (TrieMap *)data;
-	RedisModule_ReplyWithArray(ctx, header->columns_len);
-	for(int i = 0; i < header->columns_len; i++) {
+void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const QueryGraph *qg,
+									  AR_ExpNode **exps) {
+	uint columns_len = array_len(exps);
+	RedisModule_ReplyWithArray(ctx, columns_len);
+	for(uint i = 0; i < columns_len; i++) {
+		AR_ExpNode *exp = exps[i];
 		RedisModule_ReplyWithArray(ctx, 2);
-		Column *c = header->columns[i];
 		ColumnTypeUser t;
-		char *identifier = c->alias ? c->alias : c->name;
-		AST_GraphEntity *entity = TrieMap_Find(entities, c->name, strlen(c->name));
-
 		// First, emit the column type enum
-		if(entity == TRIEMAP_NOTFOUND) {
-			t = COLUMN_SCALAR;
-		} else if(entity->t == N_ENTITY) {
-			t = COLUMN_NODE;
-		} else if(entity->t == N_LINK) {
-			t = COLUMN_RELATION;
+		if(exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_VARIADIC &&
+		   exp->operand.variadic.entity_prop == NULL) {
+			const char *alias = exp->operand.variadic.entity_alias;
+			EntityType type = QueryGraph_GetEntityTypeByAlias(qg, alias);
+			switch(type) {
+			case ENTITY_NODE:
+				t = COLUMN_NODE;
+				break;
+			case ENTITY_EDGE:
+				t = COLUMN_RELATION;
+				break;
+			default:
+				t = COLUMN_SCALAR;
+			}
 		} else {
 			t = COLUMN_SCALAR;
 		}
@@ -188,6 +187,7 @@ void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx,
 		RedisModule_ReplyWithLongLong(ctx, t);
 
 		// Second, emit the identifier string associated with the column
-		RedisModule_ReplyWithStringBuffer(ctx, identifier, strlen(identifier));
+		RedisModule_ReplyWithStringBuffer(ctx, exp->resolved_name, strlen(exp->resolved_name));
 	}
 }
+

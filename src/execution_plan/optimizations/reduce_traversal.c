@@ -12,25 +12,24 @@
 #include "../ops/op_conditional_traverse.h"
 #include "../ops/op_cond_var_len_traverse.h"
 
-static bool _entity_resolved(OpBase *root, const char *entity) {
-	int count = (root->modifies) ? Vector_Size(root->modifies) : 0;
+static bool _entity_resolved(OpBase *root, uint entity_record_idx) {
+	uint count = (root->modifies) ? array_len(root->modifies) : 0;
 
-	for(int i = 0; i < count; i++) {
-		char *alias;
-		Vector_Get(root->modifies, i, &alias);
-		if(strcmp(entity, alias) == 0) return true;
+	for(uint i = 0; i < count; i++) {
+		uint modifies_id = root->modifies[i];
+		if(modifies_id == entity_record_idx) return true;
 	}
 
 	for(int i = 0; i < root->childCount; i++) {
 		OpBase *child = root->children[i];
-		if(_entity_resolved(child, entity)) return true;
+		if(_entity_resolved(child, entity_record_idx)) return true;
 	}
 
 	return false;
 }
 
 void _removeRedundantTraversal(ExecutionPlan *plan, CondTraverse *traverse) {
-	AlgebraicExpression *ae =  traverse->algebraic_expression;
+	AlgebraicExpression *ae =  traverse->ae;
 	if(ae->operand_count == 1 && ae->src_node == ae->dest_node) {
 		ExecutionPlan_RemoveOp(plan, (OpBase *)traverse);
 		OpBase_Free((OpBase *)traverse);
@@ -41,7 +40,7 @@ void _removeRedundantTraversal(ExecutionPlan *plan, CondTraverse *traverse) {
  * For each T see if T's source and destination nodes
  * are already resolved, in which case replace traversal operation
  * with expand-into op. */
-void reduceTraversal(ExecutionPlan *plan, AST *ast) {
+void reduceTraversal(ExecutionPlan *plan) {
 	OPType t = OPType_CONDITIONAL_TRAVERSE | OPType_CONDITIONAL_VAR_LEN_TRAVERSE;
 	OpBase **traversals = ExecutionPlan_LocateOps(plan->root, t);
 	uint traversals_count = array_len(traversals);
@@ -57,7 +56,7 @@ void reduceTraversal(ExecutionPlan *plan, AST *ast) {
 
 		if(op->type == OPType_CONDITIONAL_TRAVERSE) {
 			CondTraverse *traverse = (CondTraverse *)op;
-			ae = traverse->algebraic_expression;
+			ae = traverse->ae;
 		} else if(op->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE) {
 			CondVarLenTraverse *traverse = (CondVarLenTraverse *)op;
 			ae = traverse->ae;
@@ -77,17 +76,20 @@ void reduceTraversal(ExecutionPlan *plan, AST *ast) {
 		   ae->operands[0].diagonal) continue;
 
 		/* Search to see if dest is already resolved */
-		const char *dest = ae->dest_node->alias;
-		if(!_entity_resolved(op->children[0], dest)) continue;
+		uint dest_id = ae->dest_node->id;
+		// Convert the entity ID to a Record ID
+		uint entity_record_idx = RecordMap_LookupID(op->record_map, dest_id);
+		assert(entity_record_idx != IDENTIFIER_NOT_FOUND);
+		if(!_entity_resolved(op->children[0], entity_record_idx)) continue;
 
 		/* Both src and dest are already known
 		 * perform expand into instaed of traverse. */
 		if(op->type == OPType_CONDITIONAL_TRAVERSE) {
 			CondTraverse *traverse = (CondTraverse *)op;
-			OpBase *expand_into = NewExpandIntoOp(traverse->algebraic_expression, ast);
+			OpBase *expand_into = NewExpandIntoOp(traverse->ae, op->record_map, traverse->recordsCap);
 
 			// Set traverse algebraic_expression to NULL to avoid early free.
-			traverse->algebraic_expression = NULL;
+			traverse->ae = NULL;
 			ExecutionPlan_ReplaceOp(plan, (OpBase *)traverse, expand_into);
 			OpBase_Free((OpBase *)traverse);
 		} else {

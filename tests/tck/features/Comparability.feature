@@ -29,7 +29,8 @@
 #encoding: utf-8
 
 Feature: Comparability
-  @skip
+
+@skip
   Scenario: Comparing strings and integers using > in an AND'd predicate
     Given an empty graph
     And having executed:
@@ -49,7 +50,7 @@ Feature: Comparability
       | 'xx'  |
     And no side effects
 
-  @skip
+@skip
   Scenario: Comparing strings and integers using > in a OR'd predicate
     Given an empty graph
     And having executed:
@@ -70,7 +71,7 @@ Feature: Comparability
       | null  |
     And no side effects
 
-  @skip
+@skip
   Scenario Outline: Comparing across types yields null, except numbers
     Given an empty graph
     And having executed:
@@ -101,7 +102,7 @@ Feature: Comparability
       | >=       | 3.14 | 1    |
       | >        | 3.14 | 1    |
 
-  @skip
+@skip
   Scenario Outline: Comparing lists
     Given an empty graph
     When executing query:

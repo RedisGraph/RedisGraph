@@ -26,31 +26,51 @@ static inline int _validate_numeric(const SIValue v) {
 	return SI_TYPE(v) & SI_NUMERIC;
 }
 
-AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant) {
-	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
-	node->type = AR_EXP_OPERAND;
-	node->operand.type = AR_EXP_CONSTANT;
-	node->operand.constant = constant;
-	return node;
-}
-
-AR_ExpNode *AR_EXP_NewVariableOperandNode(const AST *ast, char *entity_prop,
-										  char *entity_alias) {
-	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
-	node->type = AR_EXP_OPERAND;
-	node->operand.type = AR_EXP_VARIADIC;
-	node->operand.variadic.entity_alias = rm_strdup(entity_alias);
-	node->operand.variadic.entity_alias_idx = AST_GetAliasID(ast, entity_alias);
-	node->operand.variadic.entity_prop = NULL;
-
-	if(entity_prop) {
-		node->operand.variadic.entity_prop = rm_strdup(entity_prop);
-		node->operand.variadic.entity_prop_idx = ATTRIBUTE_NOTFOUND;
+static bool _AR_SetFunction(AR_ExpNode *exp, AST_Operator op) {
+	switch(op) {
+	case OP_PLUS:
+		exp->op.f = AR_ADD;
+		exp->op.func_name = "ADD";
+		return true;
+	case OP_MINUS:
+		exp->op.f = AR_SUB;
+		exp->op.func_name = "SUB";
+		return true;
+	case OP_MULT:
+		exp->op.f = AR_MUL;
+		exp->op.func_name = "MUL";
+		return true;
+	case OP_DIV:
+		exp->op.f = AR_DIV;
+		exp->op.func_name = "DIV";
+		return true;
+	case OP_MOD: // TODO implement
+	case OP_POW: // TODO implement
+	// Includes operators like <, AND, etc
+	default:
+		assert(false && "Unhandled operator was specified in query");
+		return NULL;
 	}
-	return node;
 }
 
-AR_ExpNode *AR_EXP_NewOpNode(char *func_name, int child_count) {
+static AR_ExpNode *_AR_EXP_NewOpNodeFromAST(AST_Operator op, int child_count) {
+	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
+	node->type = AR_EXP_OP;
+	node->op.func_name = NULL;
+	node->op.child_count = child_count;
+	node->op.children = rm_malloc(child_count * sizeof(AR_ExpNode *));
+
+	/* Determine function type. */
+	node->op.type = AR_OP_FUNC;
+	_AR_SetFunction(node, op);
+
+	return node;
+
+}
+
+// TODO we don't really have as many func_name strings as before (they were generated in grammar.y).
+// It should be possible to combine this function with _AR_EXP_NewOpNodeFromAST
+AR_ExpNode *_AR_EXP_NewOpNode(char *func_name, int child_count) {
 	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
 	node->type = AR_EXP_OP;
 	node->op.func_name = func_name;
@@ -77,29 +97,151 @@ AR_ExpNode *AR_EXP_NewOpNode(char *func_name, int child_count) {
 	return node;
 }
 
-AR_ExpNode *AR_EXP_BuildFromAST(const AST *ast,
-								const AST_ArithmeticExpressionNode *exp) {
-	AR_ExpNode *root;
-
-	if(exp->type == AST_AR_EXP_OP) {
-		root = AR_EXP_NewOpNode(exp->op.function, Vector_Size(exp->op.args));
-		/* Process operands. */
-		for(int i = 0; i < root->op.child_count; i++) {
-			AST_ArithmeticExpressionNode *child;
-			Vector_Get(exp->op.args, i, &child);
-			root->op.children[i] = AR_EXP_BuildFromAST(ast, child);
-		}
+AR_ExpNode *AR_EXP_NewVariableOperandNode(RecordMap *record_map, const char *alias,
+										  const char *prop) {
+	AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
+	node->type = AR_EXP_OPERAND;
+	node->operand.type = AR_EXP_VARIADIC;
+	node->operand.variadic.entity_alias = alias;
+	if(alias) {
+		node->operand.variadic.entity_alias_idx = RecordMap_FindOrAddAlias(record_map, alias);
 	} else {
-		if(exp->operand.type == AST_AR_EXP_CONSTANT) {
-			root = AR_EXP_NewConstOperandNode(exp->operand.constant);
-		} else {
-			root = AR_EXP_NewVariableOperandNode(ast,
-												 exp->operand.variadic.property,
-												 exp->operand.variadic.alias);
+		node->operand.variadic.entity_alias_idx = IDENTIFIER_NOT_FOUND;
+	}
+	node->operand.variadic.entity_prop = prop;
+	node->operand.variadic.entity_prop_idx = ATTRIBUTE_NOTFOUND;
+
+	return node;
+}
+
+AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant) {
+	AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
+	node->type = AR_EXP_OPERAND;
+	node->operand.type = AR_EXP_CONSTANT;
+	node->operand.constant = constant;
+	return node;
+}
+
+AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
+	const cypher_astnode_type_t type = cypher_astnode_type(expr);
+
+	/* Function invocations */
+	if(type == CYPHER_AST_APPLY_OPERATOR || type == CYPHER_AST_APPLY_ALL_OPERATOR) {
+		// TODO handle CYPHER_AST_APPLY_ALL_OPERATOR
+		const cypher_astnode_t *func_node = cypher_ast_apply_operator_get_func_name(expr);
+		const char *func_name = cypher_ast_function_name_get_value(func_node);
+		// TODO When implementing calls like COUNT(DISTINCT), use cypher_ast_apply_operator_get_distinct()
+		unsigned int arg_count = cypher_ast_apply_operator_narguments(expr);
+		AR_ExpNode *op = _AR_EXP_NewOpNode((char *)func_name, arg_count);
+
+		for(unsigned int i = 0; i < arg_count; i ++) {
+			const cypher_astnode_t *arg = cypher_ast_apply_operator_get_argument(expr, i);
+			// Recursively convert arguments
+			op->op.children[i] = AR_EXP_FromExpression(record_map, arg);
 		}
+		return op;
+
+		/* Variables (full nodes and edges, UNWIND artifacts */
+	} else if(type == CYPHER_AST_IDENTIFIER) {
+		// Identifier referencing another record_map entity
+		const char *alias = cypher_ast_identifier_get_name(expr);
+		return AR_EXP_NewVariableOperandNode(record_map, alias, NULL);
+
+		/* Entity-property pair */
+	} else if(type == CYPHER_AST_PROPERTY_OPERATOR) {
+		// Identifier and property pair
+		// Extract the entity alias from the property. Currently, the embedded
+		// expression should only refer to the IDENTIFIER type.
+		const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(expr);
+		assert(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
+		const char *alias = cypher_ast_identifier_get_name(prop_expr);
+
+		// Extract the property name
+		const cypher_astnode_t *prop_name_node = cypher_ast_property_operator_get_prop_name(expr);
+		const char *prop_name = cypher_ast_prop_name_get_value(prop_name_node);
+
+		return AR_EXP_NewVariableOperandNode(record_map, alias, prop_name);
+
+		/* SIValue constant types */
+	} else if(type == CYPHER_AST_INTEGER) {
+		const char *value_str = cypher_ast_integer_get_valuestr(expr);
+		char *endptr = NULL;
+		int64_t l = strtol(value_str, &endptr, 0);
+		assert(endptr[0] == 0);
+		SIValue converted = SI_LongVal(l);
+		return AR_EXP_NewConstOperandNode(converted);
+	} else if(type == CYPHER_AST_FLOAT) {
+		const char *value_str = cypher_ast_float_get_valuestr(expr);
+		char *endptr = NULL;
+		double d = strtod(value_str, &endptr);
+		assert(endptr[0] == 0);
+		SIValue converted = SI_DoubleVal(d);
+		return AR_EXP_NewConstOperandNode(converted);
+	} else if(type == CYPHER_AST_STRING) {
+		const char *value_str = cypher_ast_string_get_value(expr);
+		SIValue converted = SI_ConstStringVal((char *)value_str);
+		return AR_EXP_NewConstOperandNode(converted);
+	} else if(type == CYPHER_AST_TRUE) {
+		SIValue converted = SI_BoolVal(true);
+		return AR_EXP_NewConstOperandNode(converted);
+	} else if(type == CYPHER_AST_FALSE) {
+		SIValue converted = SI_BoolVal(false);
+		return AR_EXP_NewConstOperandNode(converted);
+	} else if(type == CYPHER_AST_NULL) {
+		SIValue converted = SI_NullVal();
+		return AR_EXP_NewConstOperandNode(converted);
+
+		/* Handling for unary operators (-5, +a.val) */
+	} else if(type == CYPHER_AST_UNARY_OPERATOR) {
+		const cypher_astnode_t *arg = cypher_ast_unary_operator_get_argument(expr); // CYPHER_AST_EXPRESSION
+		const cypher_operator_t *operator = cypher_ast_unary_operator_get_operator(expr);
+		if(operator == CYPHER_OP_UNARY_MINUS) {
+			// This expression can be something like -3 or -a.val
+			// TODO In the former case, we can construct a much simpler tree than this.
+			AR_ExpNode *ar_exp = AR_EXP_FromExpression(record_map, arg);
+			AR_ExpNode *op = _AR_EXP_NewOpNodeFromAST(OP_MULT, 2);
+			op->op.children[0] = AR_EXP_NewConstOperandNode(SI_LongVal(-1));
+			op->op.children[1] = AR_EXP_FromExpression(record_map, arg);
+			return op;
+		} else if(operator == CYPHER_OP_UNARY_PLUS) {
+			// This expression is something like +3 or +a.val.
+			// I think the + can always be safely ignored.
+			return AR_EXP_FromExpression(record_map, arg);
+		} else if(operator == CYPHER_OP_NOT) {
+			assert(false); // This should be handled in the FilterTree code
+		}
+	} else if(type == CYPHER_AST_BINARY_OPERATOR) {
+		const cypher_operator_t *operator = cypher_ast_binary_operator_get_operator(expr);
+		AST_Operator operator_enum = AST_ConvertOperatorNode(operator);
+		// Arguments are of type CYPHER_AST_EXPRESSION
+		AR_ExpNode *op = _AR_EXP_NewOpNodeFromAST(operator_enum, 2);
+		const cypher_astnode_t *lhs_node = cypher_ast_binary_operator_get_argument1(expr);
+		op->op.children[0] = AR_EXP_FromExpression(record_map, lhs_node);
+		const cypher_astnode_t *rhs_node = cypher_ast_binary_operator_get_argument2(expr);
+		op->op.children[1] = AR_EXP_FromExpression(record_map, rhs_node);
+		return op;
+
+	} else {
+		/*
+		   Unhandled types:
+		   CYPHER_AST_COLLECTION
+		   CYPHER_AST_CASE
+		   CYPHER_AST_LABELS_OPERATOR
+		   CYPHER_AST_LIST_COMPREHENSION
+		   CYPHER_AST_MAP
+		   CYPHER_AST_MAP_PROJECTION
+		   CYPHER_AST_PARAMETER
+		   CYPHER_AST_PATTERN_COMPREHENSION
+		   CYPHER_AST_SLICE_OPERATOR
+		   CYPHER_AST_REDUCE
+		   CYPHER_AST_SUBSCRIPT_OPERATOR
+		*/
+		printf("Encountered unhandled type '%s'\n", cypher_astnode_typestr(type));
+		assert(false);
 	}
 
-	return root;
+	assert(false);
+	return NULL;
 }
 
 int AR_EXP_GetOperandType(AR_ExpNode *exp) {
@@ -122,7 +264,6 @@ void _AR_EXP_UpdatePropIdx(AR_ExpNode *root, const Record r) {
 
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 	SIValue result;
-	/* Deal with Operation node. */
 	if(root->type == AR_EXP_OP) {
 		/* Aggregation function should be reduced by now.
 		 * TODO: verify above statement. */
@@ -145,13 +286,16 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 		} else {
 			// Fetch entity property value.
 			if(root->operand.variadic.entity_prop != NULL) {
-				GraphEntity *ge = Record_GetGraphEntity(r,
-														root->operand.variadic.entity_alias_idx);
+				RecordEntryType t = Record_GetType(r, root->operand.variadic.entity_alias_idx);
+				// Property requested on a scalar value.
+				// TODO this should issue a TypeError
+				if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) return SI_NullVal();
+
+				GraphEntity *ge = Record_GetGraphEntity(r, root->operand.variadic.entity_alias_idx);
 				if(root->operand.variadic.entity_prop_idx == ATTRIBUTE_NOTFOUND) {
 					_AR_EXP_UpdatePropIdx(root, r);
 				}
-				SIValue *property = GraphEntity_GetProperty(ge,
-															root->operand.variadic.entity_prop_idx);
+				SIValue *property = GraphEntity_GetProperty(ge, root->operand.variadic.entity_prop_idx);
 				if(property == PROPERTY_NOTFOUND) result = SI_NullVal();
 				else result = SI_ShallowCopy(*property);
 			} else {
@@ -205,15 +349,16 @@ void AR_EXP_Reduce(const AR_ExpNode *root) {
 	}
 }
 
-void AR_EXP_CollectAliases(AR_ExpNode *root, rax *aliases) {
+void AR_EXP_CollectEntityIDs(AR_ExpNode *root, rax *record_ids) {
 	if(root->type == AR_EXP_OP) {
 		for(int i = 0; i < root->op.child_count; i ++) {
-			AR_EXP_CollectAliases(root->op.children[i], aliases);
+			AR_EXP_CollectEntityIDs(root->op.children[i], record_ids);
 		}
 	} else { // type == AR_EXP_OPERAND
 		if(root->operand.type == AR_EXP_VARIADIC) {
-			char *alias = root->operand.variadic.entity_alias;
-			if(alias) raxInsert(aliases, (unsigned char *)alias, strlen(alias), NULL, NULL);
+			int record_idx = root->operand.variadic.entity_alias_idx;
+			assert(record_idx != IDENTIFIER_NOT_FOUND);
+			raxInsert(record_ids, (unsigned char *)&record_idx, sizeof(record_idx), NULL, NULL);
 		}
 	}
 }
@@ -236,8 +381,7 @@ int AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node) {
 	return 0;
 }
 
-void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
-					  size_t *bytes_written) {
+void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size, size_t *bytes_written) {
 	/* Make sure there are at least 64 bytes in str. */
 	if(*str == NULL) {
 		*bytes_written = 0;
@@ -293,8 +437,7 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 	} else {
 		// Concat Operand node.
 		if(root->operand.type == AR_EXP_CONSTANT) {
-			size_t len = SIValue_ToString(root->operand.constant, (*str + *bytes_written),
-										  64);
+			size_t len = SIValue_ToString(root->operand.constant, (*str + *bytes_written), 64);
 			*bytes_written += len;
 		} else {
 			if(root->operand.variadic.entity_prop != NULL) {
@@ -302,8 +445,7 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 									  (*str + *bytes_written), "%s.%s",
 									  root->operand.variadic.entity_alias, root->operand.variadic.entity_prop);
 			} else {
-				*bytes_written += sprintf((*str + *bytes_written), "%s",
-										  root->operand.variadic.entity_alias);
+				*bytes_written += sprintf((*str + *bytes_written), "%s", root->operand.variadic.entity_alias);
 			}
 		}
 	}
@@ -325,14 +467,11 @@ static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 		clone->operand.constant = exp->operand.constant;
 		break;
 	case AR_EXP_VARIADIC:
-		clone->operand.type = AR_EXP_VARIADIC;
-		clone->operand.variadic.entity_alias = rm_strdup(
-												   exp->operand.variadic.entity_alias);
-		clone->operand.variadic.entity_alias_idx =
-			exp->operand.variadic.entity_alias_idx;
+		clone->operand.type = exp->operand.type;
+		clone->operand.variadic.entity_alias = exp->operand.variadic.entity_alias;
+		clone->operand.variadic.entity_alias_idx = exp->operand.variadic.entity_alias_idx;
 		if(exp->operand.variadic.entity_prop) {
-			clone->operand.variadic.entity_prop = rm_strdup(
-													  exp->operand.variadic.entity_prop);
+			clone->operand.variadic.entity_prop = exp->operand.variadic.entity_prop;
 		}
 		clone->operand.variadic.entity_prop_idx = exp->operand.variadic.entity_prop_idx;
 		break;
@@ -344,7 +483,7 @@ static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 }
 
 static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
-	AR_ExpNode *clone = AR_EXP_NewOpNode(exp->op.func_name, exp->op.child_count);
+	AR_ExpNode *clone = _AR_EXP_NewOpNode(exp->op.func_name, exp->op.child_count);
 	for(uint i = 0; i < exp->op.child_count; i++) {
 		AR_ExpNode *child = AR_EXP_Clone(exp->op.children[i]);
 		clone->op.children[i] = child;
@@ -365,6 +504,7 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
 		assert(false);
 		break;
 	}
+	clone->resolved_name = exp->resolved_name;
 	return clone;
 }
 
@@ -377,15 +517,8 @@ void AR_EXP_Free(AR_ExpNode *root) {
 		if(root->op.type == AR_OP_AGGREGATE) {
 			AggCtx_Free(root->op.agg_func);
 		}
-	} else {
-		if(root->operand.type == AR_EXP_CONSTANT) {
-			SIValue_Free(&root->operand.constant);
-		} else {
-			if(root->operand.variadic.entity_alias) rm_free(
-					root->operand.variadic.entity_alias);
-			if(root->operand.variadic.entity_prop) rm_free(
-					root->operand.variadic.entity_prop);
-		}
+	} else if(root->operand.type == AR_EXP_CONSTANT) {
+		SIValue_Free(&root->operand.constant);
 	}
 	rm_free(root);
 }
@@ -398,7 +531,6 @@ SIValue AR_ADD(SIValue *argv, int argc) {
 	SIValue result = argv[0];
 	char buffer[512];
 	char *string_arg = NULL;
-	double numeric_arg;
 
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	for(int i = 1; i < argc; i++) {
@@ -483,8 +615,7 @@ SIValue AR_DIV(SIValue *argv, int argc) {
 SIValue AR_ABS(SIValue *argv, int argc) {
 	SIValue result = argv[0];
 	if(!_validate_numeric(result)) return SI_NullVal();
-	if(SI_GET_NUMERIC(argv[0]) < 0) return SIValue_Multiply(argv[0],
-																SI_LongVal(-1));
+	if(SI_GET_NUMERIC(argv[0]) < 0) return SIValue_Multiply(argv[0], SI_LongVal(-1));
 	return argv[0];
 }
 
@@ -747,7 +878,6 @@ SIValue AR_TYPE(SIValue *argv, int argc) {
 	char *type = "";
 	Edge *e = argv[0].ptrval;
 	GraphContext *gc = GraphContext_GetFromTLS();
-	Graph *g = gc->g;
 	int id = Graph_GetEdgeRelation(gc->g, e);
 	if(id != GRAPH_NO_RELATION) type = gc->relation_schemas[id]->name;
 	return SI_ConstStringVal(type);
@@ -779,8 +909,7 @@ AR_Func AR_GetFunc(char *func_name) {
 	char lower_func_name[32] = {0};
 	size_t lower_func_name_len = 32;
 	_toLower(func_name, &lower_func_name[0], &lower_func_name_len);
-	void *f = TrieMap_Find(__aeRegisteredFuncs, lower_func_name,
-						   lower_func_name_len);
+	void *f = TrieMap_Find(__aeRegisteredFuncs, lower_func_name, lower_func_name_len);
 	if(f != TRIEMAP_NOTFOUND) {
 		return f;
 	}
@@ -791,8 +920,7 @@ bool AR_FuncExists(const char *func_name) {
 	char lower_func_name[32] = {0};
 	size_t lower_func_name_len = 32;
 	_toLower(func_name, &lower_func_name[0], &lower_func_name_len);
-	void *f = TrieMap_Find(__aeRegisteredFuncs, lower_func_name,
-						   lower_func_name_len);
+	void *f = TrieMap_Find(__aeRegisteredFuncs, lower_func_name, lower_func_name_len);
 	return (f != TRIEMAP_NOTFOUND);
 }
 

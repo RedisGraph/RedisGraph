@@ -5,29 +5,28 @@
 */
 
 #include "op_node_by_label_scan.h"
-#include "../../parser/ast.h"
+#include "../../ast/ast.h"
 
 int NodeByLabelScanToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const NodeByLabelScan *op = (const NodeByLabelScan *)ctx;
 	int offset = snprintf(buff, buff_len, "%s | ", op->op.name);
-	offset += Node_ToString(op->node, buff + offset, buff_len - offset);
+	offset += QGNode_ToString(op->node, buff + offset, buff_len - offset);
 	return offset;
 }
 
-OpBase *NewNodeByLabelScanOp(Node *node, AST *ast) {
+OpBase *NewNodeByLabelScanOp(QGNode *node, unsigned int node_idx) {
 	NodeByLabelScan *nodeByLabelScan = malloc(sizeof(NodeByLabelScan));
 	GraphContext *gc = GraphContext_GetFromTLS();
 	nodeByLabelScan->g = gc->g;
 	nodeByLabelScan->node = node;
 	nodeByLabelScan->_zero_matrix = NULL;
-	nodeByLabelScan->nodeRecIdx = AST_GetAliasID(ast, node->alias);
-	nodeByLabelScan->recLength = AST_AliasCount(ast);
+
+	nodeByLabelScan->nodeRecIdx = node_idx;
 
 	/* Find out label matrix ID. */
 	Schema *schema = GraphContext_GetSchema(gc, node->label, SCHEMA_NODE);
 	if(schema) {
-		GxB_MatrixTupleIter_new(&nodeByLabelScan->iter, Graph_GetLabelMatrix(gc->g,
-																			 schema->id));
+		GxB_MatrixTupleIter_new(&nodeByLabelScan->iter, Graph_GetLabelMatrix(gc->g, schema->id));
 	} else {
 		/* Label does not exist, use a fake empty matrix. */
 		GrB_Matrix_new(&nodeByLabelScan->_zero_matrix, GrB_BOOL, 1, 1);
@@ -39,14 +38,19 @@ OpBase *NewNodeByLabelScanOp(Node *node, AST *ast) {
 	nodeByLabelScan->op.name = "Node By Label Scan";
 	nodeByLabelScan->op.type = OPType_NODE_BY_LABEL_SCAN;
 	nodeByLabelScan->op.consume = NodeByLabelScanConsume;
+	nodeByLabelScan->op.init = NodeByLabelScanInit;
 	nodeByLabelScan->op.reset = NodeByLabelScanReset;
 	nodeByLabelScan->op.toString = NodeByLabelScanToString;
 	nodeByLabelScan->op.free = NodeByLabelScanFree;
 
-	nodeByLabelScan->op.modifies = NewVector(char *, 1);
-	Vector_Push(nodeByLabelScan->op.modifies, node->alias);
+	nodeByLabelScan->op.modifies = array_new(uint, 1);
+	nodeByLabelScan->op.modifies = array_append(nodeByLabelScan->op.modifies, node_idx);
 
 	return (OpBase *)nodeByLabelScan;
+}
+
+OpResult NodeByLabelScanInit(OpBase *opBase) {
+	return OP_OK;
 }
 
 Record NodeByLabelScanConsume(OpBase *opBase) {
@@ -57,7 +61,7 @@ Record NodeByLabelScanConsume(OpBase *opBase) {
 	GxB_MatrixTupleIter_next(op->iter, NULL, &nodeId, &depleted);
 	if(depleted) return NULL;
 
-	Record r = Record_New(op->recLength);
+	Record r = Record_New(opBase->record_map->record_len);
 	// Get a pointer to a heap allocated node.
 	Node *n = Record_GetNode(r, op->nodeRecIdx);
 	// Update node's internal entity pointer.

@@ -22,8 +22,7 @@ GraphContext *GraphContext_New(RedisModuleCtx *ctx, const char *graphname,
 	GraphContext *gc = NULL;
 
 	// Create key for GraphContext from the unmodified string provided by the user
-	RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphname,
-														  strlen(graphname));
+	RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphname, strlen(graphname));
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_WRITE);
 	if(RedisModule_KeyType(key) != REDISMODULE_KEYTYPE_EMPTY) {
 		goto cleanup;
@@ -55,11 +54,9 @@ cleanup:
 	return gc;
 }
 
-GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname,
-									bool readOnly) {
+GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname, bool readOnly) {
 	GraphContext *gc = NULL;
-	RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphname,
-														  strlen(graphname));
+	RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphname, strlen(graphname));
 	int readWriteFlag = readOnly ? REDISMODULE_READ : REDISMODULE_WRITE;
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, readWriteFlag);
 	if(RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
@@ -88,8 +85,7 @@ GraphContext *GraphContext_GetFromTLS() {
 // Schema API
 //------------------------------------------------------------------------------
 // Find the ID associated with a label for schema and matrix access
-int _GraphContext_GetLabelID(const GraphContext *gc, const char *label,
-							 SchemaType t) {
+int _GraphContext_GetLabelID(const GraphContext *gc, const char *label, SchemaType t) {
 	// Choose the appropriate schema array given the entity type
 	Schema **schemas = (t == SCHEMA_NODE) ? gc->node_schemas : gc->relation_schemas;
 
@@ -106,21 +102,18 @@ unsigned short GraphContext_SchemaCount(const GraphContext *gc, SchemaType t) {
 	else return array_len(gc->relation_schemas);
 }
 
-Schema *GraphContext_GetSchemaByID(const GraphContext *gc, int id,
-								   SchemaType t) {
+Schema *GraphContext_GetSchemaByID(const GraphContext *gc, int id, SchemaType t) {
 	Schema **schemas = (t == SCHEMA_NODE) ? gc->node_schemas : gc->relation_schemas;
 	if(id == GRAPH_NO_LABEL) return NULL;
 	return schemas[id];
 }
 
-Schema *GraphContext_GetSchema(const GraphContext *gc, const char *label,
-							   SchemaType t) {
+Schema *GraphContext_GetSchema(const GraphContext *gc, const char *label, SchemaType t) {
 	int id = _GraphContext_GetLabelID(gc, label, t);
 	return GraphContext_GetSchemaByID(gc, id, t);
 }
 
-Schema *GraphContext_AddSchema(GraphContext *gc, const char *label,
-							   SchemaType t) {
+Schema *GraphContext_AddSchema(GraphContext *gc, const char *label, SchemaType t) {
 	int label_id;
 	Schema *schema;
 
@@ -153,8 +146,7 @@ uint GraphContext_AttributeCount(GraphContext *gc) {
 	return gc->attributes->cardinality;
 }
 
-Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc,
-											 const char *attribute) {
+Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attribute) {
 	// See if attribute already exists.
 	Attribute_ID *pAttribute_id = NULL;
 	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, attribute);
@@ -175,16 +167,13 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc,
 	return attribute_id;
 }
 
-const char *GraphContext_GetAttributeString(const GraphContext *gc,
-											Attribute_ID id) {
+const char *GraphContext_GetAttributeString(const GraphContext *gc, Attribute_ID id) {
 	assert(id < array_len(gc->string_mapping));
 	return gc->string_mapping[id];
 }
 
-Attribute_ID GraphContext_GetAttributeID(const GraphContext *gc,
-										 const char *attribute) {
-	Attribute_ID *id = TrieMap_Find(gc->attributes, (char *)attribute,
-									strlen(attribute));
+Attribute_ID GraphContext_GetAttributeID(const GraphContext *gc, const char *attribute) {
+	Attribute_ID *id = TrieMap_Find(gc->attributes, (char *)attribute, strlen(attribute));
 	if(id == TRIEMAP_NOTFOUND) return ATTRIBUTE_NOTFOUND;
 	return *id;
 }
@@ -196,8 +185,7 @@ bool GraphContext_HasIndices(GraphContext *gc) {
 	return (gc->index_count > 0);
 }
 
-Index *GraphContext_GetIndex(const GraphContext *gc, const char *label,
-							 const char *attribute) {
+Index *GraphContext_GetIndex(const GraphContext *gc, const char *label, const char *attribute) {
 	// Retrieve the schema for this label
 	Schema *schema = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(schema == NULL) return NULL;
@@ -208,8 +196,7 @@ Index *GraphContext_GetIndex(const GraphContext *gc, const char *label,
 	return Schema_GetIndex(schema, attr_id);
 }
 
-int GraphContext_AddIndex(GraphContext *gc, const char *label,
-						  const char *attribute) {
+int GraphContext_AddIndex(GraphContext *gc, const char *label, const char *attribute) {
 	// Retrieve the schema for this label
 	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(s == NULL) return INDEX_FAIL;
@@ -226,8 +213,7 @@ int GraphContext_AddIndex(GraphContext *gc, const char *label,
 	return INDEX_FAIL;
 }
 
-int GraphContext_DeleteIndex(GraphContext *gc, const char *label,
-							 const char *attribute) {
+int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *attribute) {
 	// Retrieve the schema for this label
 	Schema *schema = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(schema == NULL) return INDEX_FAIL;

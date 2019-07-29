@@ -6,8 +6,6 @@
 
 #include "op_node_by_id_seek.h"
 
-#define MIN(a,b) (((a) < (b)) ? (a) : (b))
-
 // Checks to see if operation index is within its bounds.
 static inline bool _outOfBounds(OpNodeByIdSeek *op) {
 	/* Because currentId starts at minimum and only increases
@@ -19,7 +17,6 @@ static inline bool _outOfBounds(OpNodeByIdSeek *op) {
 
 OpBase *NewOpNodeByIdSeekOp
 (
-	const AST *ast,
 	unsigned int nodeRecIdx,
 	NodeID minId,
 	NodeID maxId,
@@ -41,10 +38,8 @@ OpBase *NewOpNodeByIdSeekOp
 	if(minId == ID_RANGE_UNBOUND) op_nodeByIdSeek->minId = 0;
 
 	// The largest possible entity ID is the same as Graph_RequiredMatrixDim.
-	if(maxId == ID_RANGE_UNBOUND) maxId = Graph_RequiredMatrixDim(
-												  op_nodeByIdSeek->g);
-	op_nodeByIdSeek->maxId = MIN(Graph_RequiredMatrixDim(op_nodeByIdSeek->g),
-								 maxId);
+	if(maxId == ID_RANGE_UNBOUND) maxId = Graph_RequiredMatrixDim(op_nodeByIdSeek->g);
+	op_nodeByIdSeek->maxId = MIN(Graph_RequiredMatrixDim(op_nodeByIdSeek->g), maxId);
 
 	op_nodeByIdSeek->currentId = op_nodeByIdSeek->minId;
 	/* Advance current ID when min is not inclusive and
@@ -52,16 +47,20 @@ OpBase *NewOpNodeByIdSeekOp
 	if(!minInclusive && minId != ID_RANGE_UNBOUND) op_nodeByIdSeek->currentId++;
 
 	op_nodeByIdSeek->nodeRecIdx = nodeRecIdx;
-	op_nodeByIdSeek->recLength = AST_AliasCount(ast);
 
 	OpBase_Init(&op_nodeByIdSeek->op);
 	op_nodeByIdSeek->op.name = "NodeByIdSeek";
 	op_nodeByIdSeek->op.type = OPType_NODE_BY_ID_SEEK;
 	op_nodeByIdSeek->op.consume = OpNodeByIdSeekConsume;
+	op_nodeByIdSeek->op.init = OpNodeByIdSeekInit;
 	op_nodeByIdSeek->op.reset = OpNodeByIdSeekReset;
 	op_nodeByIdSeek->op.free = OpNodeByIdSeekFree;
 
 	return (OpBase *)op_nodeByIdSeek;
+}
+
+OpResult OpNodeByIdSeekInit(OpBase *opBase) {
+	return OP_OK;
 }
 
 Record OpNodeByIdSeekConsume(OpBase *opBase) {
@@ -85,7 +84,7 @@ Record OpNodeByIdSeekConsume(OpBase *opBase) {
 	// TODO If we're replacing a label scan, the correct label can be populated now.
 	n.label = NULL;
 
-	Record r = Record_New(op->recLength);
+	Record r = Record_New(opBase->record_map->record_len);
 	Record_AddNode(r, op->nodeRecIdx, n);
 	return r;
 }

@@ -29,7 +29,8 @@
 #encoding: utf-8
 
 Feature: WhereAcceptance
-  @skip
+
+@skip
   Scenario: NOT and false
     Given an empty graph
     And having executed:

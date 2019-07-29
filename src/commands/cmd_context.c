@@ -6,7 +6,7 @@ CommandCtx *CommandCtx_New
 (
 	RedisModuleCtx *ctx,
 	RedisModuleBlockedClient *bc,
-	AST **ast,
+	cypher_parse_result_t *parse_result,
 	RedisModuleString *graphName,
 	RedisModuleString **argv,
 	int argc
@@ -14,14 +14,13 @@ CommandCtx *CommandCtx_New
 	CommandCtx *context = rm_malloc(sizeof(CommandCtx));
 	context->bc = bc;
 	context->ctx = ctx;
-	context->ast = ast;
+	context->parse_result = parse_result;
 	context->argv = argv;
 	context->argc = argc;
 	context->graphName = NULL;
 
 	// Make a copy of graph name.
-	if(graphName) context->graphName = rm_strdup(RedisModule_StringPtrLen(graphName,
-																			  NULL));
+	if(graphName) context->graphName = rm_strdup(RedisModule_StringPtrLen(graphName, NULL));
 	return context;
 }
 
@@ -57,7 +56,7 @@ void CommandCtx_Free(CommandCtx *qctx) {
 		RedisModule_FreeThreadSafeContext(qctx->ctx);
 	}
 
-	if(qctx->ast) AST_Free(qctx->ast);
+	if(qctx->parse_result) cypher_parse_result_free(qctx->parse_result);
 	if(qctx->graphName) rm_free(qctx->graphName);
 	rm_free(qctx);
 }

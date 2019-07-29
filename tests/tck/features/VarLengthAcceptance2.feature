@@ -29,7 +29,8 @@
 #encoding: utf-8
 
 Feature: VarLengthAcceptance2
-  @skip
+
+@skip
   Scenario: Handling relationships that are already bound in variable length paths
     Given an empty graph
     And having executed:

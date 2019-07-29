@@ -55,8 +55,7 @@ static Attribute_ID *_BulkInsert_ReadHeader(GraphContext *gc, SchemaType t,
 }
 
 // Read an SIValue from the data stream and update the index appropriately
-static inline SIValue _BulkInsert_ReadProperty(const char *data,
-											   size_t *data_idx) {
+static inline SIValue _BulkInsert_ReadProperty(const char *data, size_t *data_idx) {
 	/* Binary property format:
 	 * - property type : 1-byte integer corresponding to TYPE enum
 	 * - Nothing if type is NULL
@@ -90,14 +89,14 @@ static inline SIValue _BulkInsert_ReadProperty(const char *data,
 	return v;
 }
 
-int _BulkInsert_ProcessNodeFile(RedisModuleCtx *ctx, GraphContext *gc,
-								const char *data, size_t data_len) {
+int _BulkInsert_ProcessNodeFile(RedisModuleCtx *ctx, GraphContext *gc, const char *data,
+								size_t data_len) {
 	size_t data_idx = 0;
 
 	int label_id;
 	unsigned int prop_count;
-	Attribute_ID *prop_indicies = _BulkInsert_ReadHeader(gc, SCHEMA_NODE, data,
-														 &data_idx, &label_id, &prop_count);
+	Attribute_ID *prop_indicies = _BulkInsert_ReadHeader(gc, SCHEMA_NODE, data, &data_idx, &label_id,
+														 &prop_count);
 
 	while(data_idx < data_len) {
 		Node n;
@@ -112,15 +111,15 @@ int _BulkInsert_ProcessNodeFile(RedisModuleCtx *ctx, GraphContext *gc,
 	return BULK_OK;
 }
 
-int _BulkInsert_ProcessRelationFile(RedisModuleCtx *ctx, GraphContext *gc,
-									const char *data, size_t data_len) {
+int _BulkInsert_ProcessRelationFile(RedisModuleCtx *ctx, GraphContext *gc, const char *data,
+									size_t data_len) {
 	size_t data_idx = 0;
 
 	int reltype_id;
 	unsigned int prop_count;
 	// Read property keys from header and update schema
-	Attribute_ID *prop_indicies = _BulkInsert_ReadHeader(gc, SCHEMA_EDGE, data,
-														 &data_idx, &reltype_id, &prop_count);
+	Attribute_ID *prop_indicies = _BulkInsert_ReadHeader(gc, SCHEMA_EDGE, data, &data_idx, &reltype_id,
+														 &prop_count);
 	NodeID src;
 	NodeID dest;
 
@@ -148,8 +147,7 @@ int _BulkInsert_ProcessRelationFile(RedisModuleCtx *ctx, GraphContext *gc,
 	return BULK_OK;
 }
 
-int _BulkInsert_InsertNodes(RedisModuleCtx *ctx, GraphContext *gc,
-							int token_count,
+int _BulkInsert_InsertNodes(RedisModuleCtx *ctx, GraphContext *gc, int token_count,
 							RedisModuleString ***argv, int *argc) {
 	int rc;
 	for(int i = 0; i < token_count; i ++) {
@@ -164,8 +162,7 @@ int _BulkInsert_InsertNodes(RedisModuleCtx *ctx, GraphContext *gc,
 	return BULK_OK;
 }
 
-int _BulkInsert_Insert_Edges(RedisModuleCtx *ctx, GraphContext *gc,
-							 int token_count,
+int _BulkInsert_Insert_Edges(RedisModuleCtx *ctx, GraphContext *gc, int token_count,
 							 RedisModuleString ***argv, int *argc) {
 	int rc;
 	for(int i = 0; i < token_count; i ++) {
@@ -180,29 +177,23 @@ int _BulkInsert_Insert_Edges(RedisModuleCtx *ctx, GraphContext *gc,
 	return BULK_OK;
 }
 
-int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv,
-			   int argc) {
+int BulkInsert(RedisModuleCtx *ctx, GraphContext *gc, RedisModuleString **argv, int argc) {
 
 	if(argc < 2) {
-		RedisModule_ReplyWithError(ctx,
-								   "Bulk insert format error, failed to parse bulk insert sections.");
+		RedisModule_ReplyWithError(ctx, "Bulk insert format error, failed to parse bulk insert sections.");
 		return BULK_FAIL;
 	}
 
 	// Read the number of node tokens
 	long long node_token_count;
 	long long relation_token_count;
-	if(RedisModule_StringToLongLong(*argv++,
-									&node_token_count)  != REDISMODULE_OK) {
-		RedisModule_ReplyWithError(ctx,
-								   "Error parsing number of node descriptor tokens.");
+	if(RedisModule_StringToLongLong(*argv++, &node_token_count)  != REDISMODULE_OK) {
+		RedisModule_ReplyWithError(ctx, "Error parsing number of node descriptor tokens.");
 		return BULK_FAIL;
 	}
 
-	if(RedisModule_StringToLongLong(*argv++,
-									&relation_token_count)  != REDISMODULE_OK) {
-		RedisModule_ReplyWithError(ctx,
-								   "Error parsing number of relation descriptor tokens.");
+	if(RedisModule_StringToLongLong(*argv++, &relation_token_count)  != REDISMODULE_OK) {
+		RedisModule_ReplyWithError(ctx, "Error parsing number of relation descriptor tokens.");
 		return BULK_FAIL;
 	}
 	argc -= 2;

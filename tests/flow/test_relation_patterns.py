@@ -78,7 +78,7 @@ class testRelationPattern(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         # Conditional two-hop traversal with referenced intermediate node
-        query = """MATCH (a)-[:e]->(b)-[:e]->(c) RETURN a.val, b.val, c.val"""
+        query = """MATCH (a)-[:e]->(b)-[:e]->(c) RETURN a.val, b.val, c.val ORDER BY a.val, b.val"""
         actual_result = redis_graph.query(query)
         expected_result = [['v1', 'v2', 'v3']]
         self.env.assertEquals(actual_result.result_set, expected_result)

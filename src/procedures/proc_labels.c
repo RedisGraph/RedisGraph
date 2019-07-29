@@ -18,7 +18,7 @@ typedef struct {
 	SIValue *output;    // Output label.
 } LabelsContext;
 
-ProcedureResult Proc_LabelsInvoke(ProcedureCtx *ctx, char **args) {
+ProcedureResult Proc_LabelsInvoke(ProcedureCtx *ctx, const char **args) {
 	if(array_len(args) != 0) return PROCEDURE_ERR;
 
 	LabelsContext *pdata = rm_malloc(sizeof(LabelsContext));
@@ -26,8 +26,7 @@ ProcedureResult Proc_LabelsInvoke(ProcedureCtx *ctx, char **args) {
 	pdata->gc = GraphContext_GetFromTLS();
 	pdata->output = array_new(SIValue, 2);
 	pdata->output = array_append(pdata->output, SI_ConstStringVal("label"));
-	pdata->output = array_append(pdata->output,
-								 SI_ConstStringVal("")); // Place holder.
+	pdata->output = array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
 
 	ctx->privateData = pdata;
 	return PROCEDURE_OK;
@@ -43,8 +42,7 @@ SIValue *Proc_LabelsStep(ProcedureCtx *ctx) {
 		return NULL;
 
 	// Get schema label.
-	Schema *s = GraphContext_GetSchemaByID(pdata->gc, pdata->schema_id++,
-										   SCHEMA_NODE);
+	Schema *s = GraphContext_GetSchemaByID(pdata->gc, pdata->schema_id++, SCHEMA_NODE);
 	char *label = (char *)Schema_GetName(s);
 	pdata->output[1] = SI_ConstStringVal(label);
 	return pdata->output;

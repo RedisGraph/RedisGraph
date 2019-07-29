@@ -32,7 +32,8 @@ Feature: ExpressionAcceptance
 
   Background:
     Given any graph
-  @skip
+
+@skip
   Scenario: Execute n['name'] in read queries
     And having executed:
       """
@@ -47,7 +48,8 @@ Feature: ExpressionAcceptance
       | value |
       | 'Apa' |
     And no side effects
-  @skip
+
+@skip
   Scenario: Execute n['name'] in update queries
     When executing query:
       """
@@ -60,7 +62,8 @@ Feature: ExpressionAcceptance
     And the side effects should be:
       | +nodes      | 1 |
       | +properties | 1 |
-  @skip
+
+@skip
   Scenario: Use dynamic property lookup based on parameters when there is no type information
     And parameters are:
       | expr | {name: 'Apa'} |
@@ -74,7 +77,8 @@ Feature: ExpressionAcceptance
       | value |
       | 'Apa' |
     And no side effects
-  @skip
+
+@skip
   Scenario: Use dynamic property lookup based on parameters when there is lhs type information
     And parameters are:
       | idx | 'name' |
@@ -89,7 +93,8 @@ Feature: ExpressionAcceptance
     And the side effects should be:
       | +nodes      | 1 |
       | +properties | 1 |
-  @skip
+
+@skip
   Scenario: Use dynamic property lookup based on parameters when there is rhs type information
     And parameters are:
       | expr | {name: 'Apa'} |
@@ -103,7 +108,8 @@ Feature: ExpressionAcceptance
       | value |
       | 'Apa' |
     And no side effects
-  @skip
+
+@skip
   Scenario: Fail at runtime when attempting to index with an Int into a Map
     And parameters are:
       | expr | {name: 'Apa'} |
@@ -114,7 +120,8 @@ Feature: ExpressionAcceptance
       RETURN expr[idx]
       """
     Then a TypeError should be raised at runtime: MapElementAccessByNonString
-  @skip
+
+@skip
   Scenario: Fail at runtime when trying to index into a map with a non-string
     And parameters are:
       | expr | {name: 'Apa'} |
@@ -125,7 +132,8 @@ Feature: ExpressionAcceptance
       RETURN expr[idx]
       """
     Then a TypeError should be raised at runtime: MapElementAccessByNonString
-  @skip
+
+@skip
   Scenario: Fail at runtime when trying to index something which is not a map or list
     And parameters are:
       | expr | 100 |

@@ -29,7 +29,7 @@
 #encoding: utf-8
 
 Feature: NullAcceptance
-  
+
   Scenario: Property existence check on non-null node
     Given an empty graph
     And having executed:
@@ -46,7 +46,7 @@ Feature: NullAcceptance
       | exists(n.missing) | exists(n.exists) |
       | false             | true             |
     And no side effects
-  @skip
+
   Scenario: Property existence check on optional non-null node
     Given an empty graph
     And having executed:
@@ -63,7 +63,8 @@ Feature: NullAcceptance
       | exists(n.missing) | exists(n.exists) |
       | false             | true             |
     And no side effects
-  @skip
+
+@skip
   Scenario: Property existence check on null node
     Given an empty graph
     When executing query:
@@ -75,59 +76,64 @@ Feature: NullAcceptance
       | exists(n.missing) |
       | null              |
     And no side effects
-  @skip
+
+@skip
   Scenario: Ignore null when setting property
     Given an empty graph
     When executing query:
       """
       OPTIONAL MATCH (a:DoesNotExist)
-      SET a.prop = 42
+      SET a.num = 42
       RETURN a
       """
     Then the result should be:
       | a    |
       | null |
     And no side effects
-  @skip
+
+@skip
   Scenario: Ignore null when removing property
     Given an empty graph
     When executing query:
       """
       OPTIONAL MATCH (a:DoesNotExist)
-      REMOVE a.prop
+      REMOVE a.num
       RETURN a
       """
     Then the result should be:
       | a    |
       | null |
     And no side effects
-  @skip
+
+@skip
   Scenario: Ignore null when setting properties using an appending map
     Given an empty graph
     When executing query:
       """
       OPTIONAL MATCH (a:DoesNotExist)
-      SET a += {prop: 42}
+      SET a += {num: 42}
       RETURN a
       """
     Then the result should be:
       | a    |
       | null |
     And no side effects
-  @skip
+
+@skip
   Scenario: Ignore null when setting properties using an overriding map
     Given an empty graph
     When executing query:
       """
       OPTIONAL MATCH (a:DoesNotExist)
-      SET a = {prop: 42}
+      SET a = {num: 42}
       RETURN a
       """
     Then the result should be:
       | a    |
       | null |
     And no side effects
-  @skip
+
+@skip
   Scenario: Ignore null when setting label
     Given an empty graph
     When executing query:
@@ -140,7 +146,8 @@ Feature: NullAcceptance
       | a    |
       | null |
     And no side effects
-  @skip
+
+@skip
   Scenario: Ignore null when removing label
     Given an empty graph
     When executing query:
@@ -153,7 +160,8 @@ Feature: NullAcceptance
       | a    |
       | null |
     And no side effects
-  @skip
+
+@skip
   Scenario: Ignore null when deleting node
     Given an empty graph
     When executing query:
@@ -166,7 +174,8 @@ Feature: NullAcceptance
       | a    |
       | null |
     And no side effects
-  @skip
+
+@skip
   Scenario: Ignore null when deleting relationship
     Given an empty graph
     When executing query:

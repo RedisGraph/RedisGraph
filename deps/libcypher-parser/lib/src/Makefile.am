@@ -150,7 +150,7 @@ libcypher_parser_la_LIBADD = $(PTHREAD_LIBS) $(OPENSSL_LIBS) $(LIBM)
 #    increment age.
 # 4. If any interfaces have been removed or changed since the last public
 #    release, then set age to 0.
-libcypher_parser_la_LDFLAGS = -version-info 10:1:2
+libcypher_parser_la_LDFLAGS = -version-info 10:2:2
 
 parser.c: parser_leg.c
 quick_parser.c: quick_parser_leg.c

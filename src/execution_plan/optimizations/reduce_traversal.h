@@ -22,4 +22,4 @@
  * but A and B are known, we just need to make sure there's an edge
  * of type Y connecting B to A
  * this is done by the EXPAND-INTO operation. */
-void reduceTraversal(ExecutionPlan *plan, AST *ast);
+void reduceTraversal(ExecutionPlan *plan);

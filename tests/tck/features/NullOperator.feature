@@ -29,7 +29,8 @@
 #encoding: utf-8
 
 Feature: NullOperator
-  @skip
+
+@skip
   Scenario: Property null check on non-null node
     Given an empty graph
     And having executed:
@@ -46,7 +47,8 @@ Feature: NullOperator
       | n.missing IS NULL | n.exists IS NULL |
       | true              | false            |
     And no side effects
-  @skip
+
+@skip
   Scenario: Property not null check on non-null node
     Given an empty graph
     And having executed:
@@ -63,7 +65,8 @@ Feature: NullOperator
       | n.missing IS NOT NULL | n.exists IS NOT NULL |
       | false                 | true                 |
     And no side effects
-  @skip
+
+@skip
   Scenario: Property null check on optional non-null node
     Given an empty graph
     And having executed:
@@ -80,7 +83,8 @@ Feature: NullOperator
       | n.missing IS NULL | n.exists IS NULL |
       | true              | false            |
     And no side effects
-  @skip
+
+@skip
   Scenario: Property not null check on optional non-null node
     Given an empty graph
     And having executed:
@@ -97,7 +101,8 @@ Feature: NullOperator
       | n.missing IS NOT NULL | n.exists IS NOT NULL |
       | false                 | true                 |
     And no side effects
-  @skip
+
+@skip
   Scenario: Property null check on null node
     Given an empty graph
     When executing query:
@@ -109,7 +114,8 @@ Feature: NullOperator
       | n.missing IS NULL |
       | true              |
     And no side effects
-  @skip
+
+@skip
   Scenario: Property not null check on null node
     Given an empty graph
     When executing query:

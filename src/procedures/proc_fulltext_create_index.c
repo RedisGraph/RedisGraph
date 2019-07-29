@@ -27,7 +27,7 @@ static void _populateIndex(
 	RSIndex *idx,
 	Graph *g,
 	int label_id,
-	char **fields,
+	const char **fields,
 	uint *fields_ids,
 	uint fields_count) {
 	Node node;
@@ -53,8 +53,8 @@ static void _populateIndex(
 			SIValue *v = GraphEntity_GetProperty((GraphEntity *)&node, fields_ids[i]);
 			if(v == PROPERTY_NOTFOUND) continue;
 			if(v->type != T_STRING) continue;
-			RediSearch_DocumentAddFieldString(doc, fields[i], v->stringval,
-											  strlen(v->stringval), RSFLDTYPE_FULLTEXT);
+			RediSearch_DocumentAddFieldString(doc, fields[i], v->stringval, strlen(v->stringval),
+											  RSFLDTYPE_FULLTEXT);
 		}
 
 		RediSearch_SpecAddDocument(idx, doc);
@@ -63,8 +63,8 @@ static void _populateIndex(
 	GxB_MatrixTupleIter_free(it);
 }
 
-static int _getNodeAttribute(void *ctx, const char *fieldName, const void *id,
-							 char **strVal, double *doubleVal) {
+static int _getNodeAttribute(void *ctx, const char *fieldName, const void *id, char **strVal,
+							 double *doubleVal) {
 	Node n;
 	NodeID nId = *(NodeID *)id;
 	_fulltextIndexCtx *indexCtx = ctx;
@@ -91,12 +91,11 @@ static int _getNodeAttribute(void *ctx, const char *fieldName, const void *id,
 	return ret;
 }
 
-ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
-												 char **args) {
+ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx, const char **args) {
 	if(array_len(args) < 2) return PROCEDURE_ERR;
 
 	// Create full-text index.
-	char *label = args[0];
+	const char *label = args[0];
 	GraphContext *gc = GraphContext_GetFromTLS();
 	_fulltextIndexCtx *indexCtx = rm_malloc(sizeof(_fulltextIndexCtx));
 	Graph *g = gc->g;
@@ -109,11 +108,11 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 	int label_id = s->id;
 	uint fields_count = array_len(args) - 1;
 	uint fields_ids[fields_count];
-	char **fields = args + 1; // Skip index name.
+	const char **fields = args + 1; // Skip index name.
 
 	// Validate that all specified fields exists.
 	for(int i = 0; i < fields_count; i++) {
-		char *field = fields[i];
+		const char *field = fields[i];
 		if(GraphContext_GetAttributeID(gc, field) == ATTRIBUTE_NOTFOUND) {
 			// TODO: report error.
 			return PROCEDURE_ERR;
@@ -123,7 +122,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
 	RSIndex *idx = RediSearch_CreateIndex(label, _getNodeAttribute, indexCtx);
 	Schema_SetFullTextIndex(s, idx);
 	for(int i = 0; i < fields_count; i++) {
-		char *field = fields[i];
+		const char *field = fields[i];
 		fields_ids[i] = GraphContext_GetAttributeID(gc, field);
 		// Introduce text fields.
 		RediSearch_CreateTextField(idx, field);

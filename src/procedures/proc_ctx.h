@@ -30,7 +30,7 @@ typedef struct ProcedureCtx *(*ProcGenerator)();
 // Procedure step function.
 typedef SIValue *(*ProcStep)(struct ProcedureCtx *ctx);
 // Procedure function pointer.
-typedef ProcedureResult(*ProcInvoke)(struct ProcedureCtx *ctx, char **args);
+typedef ProcedureResult(*ProcInvoke)(struct ProcedureCtx *ctx, const char **args);
 // Procedure free resources.
 typedef ProcedureResult(*ProcFree)(struct ProcedureCtx *ctx);
 

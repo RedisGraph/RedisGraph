@@ -19,8 +19,7 @@ extern pthread_key_t _tlsGCKey;
 /* Declaration of the type for redis registration. */
 RedisModuleType *GraphContextRedisModuleType;
 
-void static _GraphContextType_SerializeIndicies(RedisModuleIO *rdb,
-												GraphContext *gc) {
+void static _GraphContextType_SerializeIndicies(RedisModuleIO *rdb, GraphContext *gc) {
 	// Currently indicies are only defined on nodes.
 	unsigned short schema_count = GraphContext_SchemaCount(gc, SCHEMA_NODE);
 
@@ -175,8 +174,7 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
 	return gc;
 }
 
-void GraphContextType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key,
-								 void *value) {
+void GraphContextType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, void *value) {
 	// TODO: implement.
 }
 

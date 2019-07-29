@@ -8,7 +8,6 @@
 #define __OP_RESULTS_H
 
 #include "op.h"
-#include "../../parser/ast.h"
 #include "../../redismodule.h"
 #include "../../graph/query_graph.h"
 #include "../../graph/graphcontext.h"

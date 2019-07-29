@@ -23,7 +23,7 @@ class QueryGraphTest: public ::testing::Test {
             Alloc_Reset();
     }
 
-    void compare_nodes(const Node *a, const Node *b) {
+    void compare_nodes(const QGNode *a, const QGNode *b) {
         ASSERT_STREQ(a->alias, b->alias);
         ASSERT_STREQ(a->label, b->label);
         ASSERT_EQ(a->labelID, b->labelID);
@@ -31,13 +31,33 @@ class QueryGraphTest: public ::testing::Test {
         ASSERT_EQ(array_len(a->outgoing_edges), array_len(b->outgoing_edges));
     }
 
-    void compare_edges(const Edge *a, const Edge *b) {
+    void compare_edges(const QGEdge *a, const QGEdge *b) {
         ASSERT_STREQ(a->alias, b->alias);
-        ASSERT_STREQ(a->relationship, b->relationship);
-        ASSERT_EQ(a->relationID, b->relationID);
+        uint relcount = array_len(a->reltypes);
+        ASSERT_EQ(relcount, array_len(b->reltypes));
+        for (uint i = 0; i < relcount; i ++) {
+            ASSERT_STREQ(a->reltypes[i], b->reltypes[i]);
+            ASSERT_EQ(a->reltypeIDs[i], b->reltypeIDs[i]);
+        }
 
         compare_nodes(a->src, b->src);
         compare_nodes(a->dest, b->dest);
+    }
+
+    bool contains_node(const QueryGraph *qg, const QGNode *n) {
+        uint count = QueryGraph_NodeCount(qg);
+        for (uint i = 0; i < count; i ++) {
+            if (qg->nodes[i] == n) return true;
+        }
+        return false;
+    }
+
+    bool contains_edge(const QueryGraph *qg, const QGEdge *e) {
+        uint count = QueryGraph_EdgeCount(qg);
+        for (uint i = 0; i < count; i ++) {
+            if (qg->edges[i] == e) return true;
+        }
+        return false;
     }
 
     QueryGraph* SingleNodeGraph() {
@@ -49,7 +69,7 @@ class QueryGraphTest: public ::testing::Test {
         // Create nodes.
         const char *label = "L";
 
-        Node *A = Node_New(label, "A");
+        QGNode *A = QGNode_New(label, "A", 0);
         QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
         QueryGraph_AddNode(g, A);
         
@@ -66,13 +86,14 @@ class QueryGraphTest: public ::testing::Test {
         const char *label = "L";
         const char *relation = "R";
 
-        Node *A = Node_New(label, "A");
-        Node *B = Node_New(label, "B");
-        Node *C = Node_New(label, "C");
+        uint id = 0;
+        QGNode *A = QGNode_New(label, "A", id++);
+        QGNode *B = QGNode_New(label, "B", id++);
+        QGNode *C = QGNode_New(label, "C", id++);
 
-        Edge *AB = Edge_New(A, B, relation, "AB");
-        Edge *BC = Edge_New(B, C, relation, "BC");
-        Edge *CA = Edge_New(C, A, relation, "CA");
+        QGEdge *AB = QGEdge_New(A, B, relation, "AB", id++);
+        QGEdge *BC = QGEdge_New(B, C, relation, "BC", id++);
+        QGEdge *CA = QGEdge_New(C, A, relation, "CA", id++);
 
         QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
         QueryGraph_AddNode(g, A);
@@ -96,11 +117,12 @@ class QueryGraphTest: public ::testing::Test {
         const char *label = "L";
         const char *relation = "R";
 
-        Node *A = Node_New(label, "A");
-        Node *B = Node_New(label, "B");
-        Node *C = Node_New(label, "C");
+        uint id = 0;
+        QGNode *A = QGNode_New(label, "A", id++);
+        QGNode *B = QGNode_New(label, "B", id++);
+        QGNode *C = QGNode_New(label, "C", id++);
 
-        Edge *AB = Edge_New(A, B, relation, "AB");
+        QGEdge *AB = QGEdge_New(A, B, relation, "AB", id++);
 
         QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
         QueryGraph_AddNode(g, A);
@@ -122,8 +144,9 @@ class QueryGraphTest: public ::testing::Test {
         const char *label = "L";
         const char *relation = "R";
 
-        Node *A = Node_New(label, "A");
-        Edge *AA = Edge_New(A, A, relation, "AA");
+        uint id = 0;
+        QGNode *A = QGNode_New(label, "A", id++);
+        QGEdge *AA = QGEdge_New(A, A, relation, "AA", id++);
 
         QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
         QueryGraph_AddNode(g, A);
@@ -144,13 +167,14 @@ TEST_F(QueryGraphTest, QueryGraphClone) {
     const char *label = "L";
     const char *relation = "R";
 
-    Node *A = Node_New(label, "A");
-    Node *B = Node_New(label, "B");
-    Node *C = Node_New(label, "C");
+    uint id = 0;
+    QGNode *A = QGNode_New(label, "A", id++);
+    QGNode *B = QGNode_New(label, "B", id++);
+    QGNode *C = QGNode_New(label, "C", id++);
 
-    Edge *AB = Edge_New(A, B, relation, "AB");
-    Edge *BC = Edge_New(B, C, relation, "BC");
-    Edge *CA = Edge_New(C, A, relation, "CA");
+    QGEdge *AB = QGEdge_New(A, B, relation, "AB", id++);
+    QGEdge *BC = QGEdge_New(B, C, relation, "BC", id++);
+    QGEdge *CA = QGEdge_New(C, A, relation, "CA", id++);
 
     QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
     QueryGraph_AddNode(g, A);
@@ -164,28 +188,20 @@ TEST_F(QueryGraphTest, QueryGraphClone) {
     QueryGraph *clone = QueryGraph_Clone(g);
 
     // Validations.
-    ASSERT_EQ(g->node_count, clone->node_count);
-    ASSERT_EQ(g->edge_count, clone->edge_count);
-
-    // Validate aliases.
-    for(int i = 0; i < g->node_count; i++) {
-        ASSERT_STREQ(g->node_aliases[i], clone->node_aliases[i]);
-    }
-    for(int i = 0; i < g->edge_count; i++) {
-        ASSERT_STREQ(g->edge_aliases[i], clone->edge_aliases[i]);
-    }
+    ASSERT_EQ(QueryGraph_NodeCount(g), QueryGraph_NodeCount(clone));
+    ASSERT_EQ(QueryGraph_EdgeCount(g), QueryGraph_EdgeCount(clone));
 
     // Validate nodes.
-    for(int i = 0; i < g->node_count; i++) {
-        Node *a = g->nodes[i];
-        Node *b = clone->nodes[i];
+    for(int i = 0; i < QueryGraph_NodeCount(g); i++) {
+        QGNode *a = g->nodes[i];
+        QGNode *b = clone->nodes[i];
         compare_nodes(a, b);
     }
 
     // Validate edges.
-    for(int i = 0; i < g->edge_count; i++) {
-        Edge *a = g->edges[i];
-        Edge *b = clone->edges[i];
+    for(int i = 0; i < QueryGraph_EdgeCount(g); i++) {
+        QGEdge *a = g->edges[i];
+        QGEdge *b = clone->edges[i];
         compare_edges(a, b);  
     }
 
@@ -205,13 +221,14 @@ TEST_F(QueryGraphTest, QueryGraphRemoveEntities) {
     const char *label = "L";
     const char *relation = "R";
 
-    Node *A = Node_New(label, "A");
-    Node *B = Node_New(label, "B");
-    Node *C = Node_New(label, "C");
+    uint id = 0;
+    QGNode *A = QGNode_New(label, "A", id++);
+    QGNode *B = QGNode_New(label, "B", id++);
+    QGNode *C = QGNode_New(label, "C", id++);
 
-    Edge *AB = Edge_New(A, B, relation, "AB");
-    Edge *BC = Edge_New(B, C, relation, "BC");
-    Edge *CA = Edge_New(C, A, relation, "CA");
+    QGEdge *AB = QGEdge_New(A, B, relation, "AB", id++);
+    QGEdge *BC = QGEdge_New(B, C, relation, "BC", id++);
+    QGEdge *CA = QGEdge_New(C, A, relation, "CA", id++);
 
     QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
     QueryGraph_AddNode(g, A);
@@ -223,41 +240,41 @@ TEST_F(QueryGraphTest, QueryGraphRemoveEntities) {
     QueryGraph_ConnectNodes(g, C, A, CA);
 
     // Remove an edge.
-    ASSERT_TRUE(QueryGraph_ContainsEdge(g, AB));
-    ASSERT_TRUE(QueryGraph_GetEdgeByAlias(g, AB->alias) != NULL);
+    ASSERT_TRUE(contains_edge(g, AB));
+    ASSERT_TRUE(QueryGraph_GetEdgeByID(g, AB->id) != NULL);
     
     QueryGraph_RemoveEdge(g, AB);
 
-    ASSERT_FALSE(QueryGraph_ContainsEdge(g, AB));
-    ASSERT_FALSE(QueryGraph_GetEdgeByAlias(g, AB->alias) != NULL);
+    ASSERT_FALSE(contains_edge(g, AB));
+    ASSERT_FALSE(QueryGraph_GetEdgeByID(g, AB->id) != NULL);
     
     // Remove node.
-    ASSERT_TRUE(QueryGraph_ContainsNode(g, C));
-    ASSERT_TRUE(QueryGraph_GetNodeByAlias(g, C->alias) != NULL);
+    ASSERT_TRUE(contains_node(g, C));
+    ASSERT_TRUE(QueryGraph_GetNodeByID(g, C->id) != NULL);
 
     QueryGraph_RemoveNode(g, C);
     
-    ASSERT_FALSE(QueryGraph_ContainsNode(g, C));
-    ASSERT_FALSE(QueryGraph_GetNodeByAlias(g, C->alias) != NULL);
+    ASSERT_FALSE(contains_node(g, C));
+    ASSERT_FALSE(QueryGraph_GetNodeByID(g, C->id) != NULL);
 
     // Both CA BC edges should be removed.
-    ASSERT_FALSE(QueryGraph_ContainsEdge(g, CA));
-    ASSERT_FALSE(QueryGraph_GetEdgeByAlias(g, CA->alias) != NULL);
+    ASSERT_FALSE(contains_edge(g, CA));
+    ASSERT_FALSE(QueryGraph_GetEdgeByID(g, CA->id) != NULL);
     
-    ASSERT_FALSE(QueryGraph_ContainsEdge(g, BC));
-    ASSERT_FALSE(QueryGraph_GetEdgeByAlias(g, BC->alias) != NULL);
+    ASSERT_FALSE(contains_edge(g, BC));
+    ASSERT_FALSE(QueryGraph_GetEdgeByID(g, BC->id) != NULL);
 
     /* Assert entity count:
      * Nodes - A was removed.
      * Edges - AB explicitly removed, BC and CA implicitly removed. */
-    ASSERT_EQ(g->node_count, 2);    
-    ASSERT_EQ(g->edge_count, 0);
+    ASSERT_EQ(QueryGraph_NodeCount(g), 2);    
+    ASSERT_EQ(QueryGraph_EdgeCount(g), 0);
 
     // Assert remaining entities, 
-    ASSERT_TRUE(QueryGraph_ContainsNode(g, A));
-    ASSERT_TRUE(QueryGraph_GetNodeByAlias(g, A->alias) != NULL);
-    ASSERT_TRUE(QueryGraph_ContainsNode(g, B));
-    ASSERT_TRUE(QueryGraph_GetNodeByAlias(g, B->alias) != NULL);
+    ASSERT_TRUE(contains_node(g, A));
+    ASSERT_TRUE(QueryGraph_GetNodeByID(g, A->id) != NULL);
+    ASSERT_TRUE(contains_node(g, B));
+    ASSERT_TRUE(QueryGraph_GetNodeByID(g, B->id) != NULL);
 
     // Clean up.
     QueryGraph_Free(g);

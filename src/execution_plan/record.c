@@ -6,9 +6,8 @@
 
 #include "./record.h"
 #include "../util/rmalloc.h"
+#include "../../deps/xxhash/xxhash.h"
 #include <assert.h>
-
-#include "xxhash/xxhash.h"
 
 #define RECORD_HEADER(r) (r-1)
 #define RECORD_HEADER_ENTRY(r) *(RECORD_HEADER((r)))
@@ -25,14 +24,18 @@ Record Record_New(int entries) {
 }
 
 void Record_Extend(Record *r, int len) {
-	int rec_len = Record_length(*r);
-	if(rec_len >= len) return;
+	int original_len = Record_length(*r);
+	if(original_len >= len) return;
 
 	Record header = RECORD_HEADER(*r);
 	header->value.s.longval = len;
 	header = rm_realloc(header, sizeof(Entry) * (len + 1));
 
-	// Skip header entry.
+	// Initialize the added space to 0 (as Record_Merge will access it directly)
+	int added_count = len - original_len;
+	memset(header + original_len + 1, 0, added_count * sizeof(Entry));
+
+	// Reposition the Record's data pointer in case it was moved by the realloc
 	*r = header + 1;
 }
 
@@ -234,8 +237,8 @@ unsigned long long Record_Hash64(const Record r) {
 }
 
 void Record_Free(Record r) {
-	int length = Record_length(r);
-	for(int i = 0; i < length; i++) {
+	unsigned int length = Record_length(r);
+	for(unsigned int i = 0; i < length; i++) {
 		if(r[i].type == REC_TYPE_SCALAR) {
 			SIValue_Free(&r[i].value.s);
 		}

@@ -112,17 +112,18 @@ END_TEST
 START_TEST (parse_simple_binary_operators)
 {
     struct cypher_input_position last = cypher_input_position_zero;
-    result = cypher_parse("RETURN a-1, 1 / b, c STARTS WITH 'foo';",
+    result = cypher_parse(
+            "RETURN a-1, 1 / b, c STARTS WITH 'foo', d =~ '.*', e = 1;",
             &last, NULL, 0);
     ck_assert_ptr_ne(result, NULL);
-    ck_assert_int_eq(last.offset, 39);
+    ck_assert_int_eq(last.offset, 57);
 
     ck_assert(cypher_parse_result_fprint_ast(result, memstream, 0, NULL, 0) == 0);
     fflush(memstream);
     const char *expected = "\n"
-" @0   0..39  statement                body=@1\n"
-" @1   0..39  > query                  clauses=[@2]\n"
-" @2   0..38  > > RETURN               projections=[@3, @8, @13]\n"
+" @0   0..57  statement                body=@1\n"
+" @1   0..57  > query                  clauses=[@2]\n"
+" @2   0..56  > > RETURN               projections=[@3, @8, @13, @18, @23]\n"
 " @3   7..10  > > > projection         expression=@4, alias=@7\n"
 " @4   7..10  > > > > binary operator  @5 - @6\n"
 " @5   7..8   > > > > > identifier     `a`\n"
@@ -137,7 +138,17 @@ START_TEST (parse_simple_binary_operators)
 "@14  19..38  > > > > binary operator  @15 STARTS WITH @16\n"
 "@15  19..20  > > > > > identifier     `c`\n"
 "@16  33..38  > > > > > string         \"foo\"\n"
-"@17  19..38  > > > > identifier       `c STARTS WITH 'foo'`\n";
+"@17  19..38  > > > > identifier       `c STARTS WITH 'foo'`\n"
+"@18  40..49  > > > projection         expression=@19, alias=@22\n"
+"@19  40..49  > > > > binary operator  @20 =~ @21\n"
+"@20  40..41  > > > > > identifier     `d`\n"
+"@21  45..49  > > > > > string         \".*\"\n"
+"@22  40..49  > > > > identifier       `d =~ '.*'`\n"
+"@23  51..56  > > > projection         expression=@24, alias=@27\n"
+"@24  51..56  > > > > binary operator  @25 = @26\n"
+"@25  51..52  > > > > > identifier     `e`\n"
+"@26  55..56  > > > > > integer        1\n"
+"@27  51..56  > > > > identifier       `e = 1`\n";
     ck_assert_str_eq(memstream_buffer, expected);
 
     const cypher_astnode_t *ast = cypher_parse_result_get_directive(result, 0);
@@ -145,7 +156,7 @@ START_TEST (parse_simple_binary_operators)
     const cypher_astnode_t *clause = cypher_ast_query_get_clause(query, 0);
     ck_assert_int_eq(cypher_astnode_type(clause), CYPHER_AST_RETURN);
 
-    ck_assert_int_eq(cypher_ast_return_nprojections(clause), 3);
+    ck_assert_int_eq(cypher_ast_return_nprojections(clause), 5);
 
     const cypher_astnode_t *proj = cypher_ast_return_get_projection(clause, 0);
     ck_assert_int_eq(cypher_astnode_type(proj), CYPHER_AST_PROJECTION);
@@ -179,6 +190,28 @@ START_TEST (parse_simple_binary_operators)
     ck_assert_int_eq(cypher_astnode_type(arg), CYPHER_AST_IDENTIFIER);
     arg = cypher_ast_binary_operator_get_argument2(exp);
     ck_assert_int_eq(cypher_astnode_type(arg), CYPHER_AST_STRING);
+
+    proj = cypher_ast_return_get_projection(clause, 3);
+    ck_assert_int_eq(cypher_astnode_type(proj), CYPHER_AST_PROJECTION);
+    exp = cypher_ast_projection_get_expression(proj);
+    ck_assert_int_eq(cypher_astnode_type(exp), CYPHER_AST_BINARY_OPERATOR);
+    ck_assert_ptr_eq(cypher_ast_binary_operator_get_operator(exp),
+            CYPHER_OP_REGEX);
+    arg = cypher_ast_binary_operator_get_argument1(exp);
+    ck_assert_int_eq(cypher_astnode_type(arg), CYPHER_AST_IDENTIFIER);
+    arg = cypher_ast_binary_operator_get_argument2(exp);
+    ck_assert_int_eq(cypher_astnode_type(arg), CYPHER_AST_STRING);
+
+    proj = cypher_ast_return_get_projection(clause, 4);
+    ck_assert_int_eq(cypher_astnode_type(proj), CYPHER_AST_PROJECTION);
+    exp = cypher_ast_projection_get_expression(proj);
+    ck_assert_int_eq(cypher_astnode_type(exp), CYPHER_AST_BINARY_OPERATOR);
+    ck_assert_ptr_eq(cypher_ast_binary_operator_get_operator(exp),
+            CYPHER_OP_EQUAL);
+    arg = cypher_ast_binary_operator_get_argument1(exp);
+    ck_assert_int_eq(cypher_astnode_type(arg), CYPHER_AST_IDENTIFIER);
+    arg = cypher_ast_binary_operator_get_argument2(exp);
+    ck_assert_int_eq(cypher_astnode_type(arg), CYPHER_AST_INTEGER);
 }
 END_TEST
 
