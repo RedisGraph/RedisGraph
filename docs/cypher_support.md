@@ -23,7 +23,7 @@ Patterns are fully supported.
 - Maps
 
 ### Literal types
-+ Numeric types (though in most cases, we convert integers to 64-bit double representations)
++ Numeric types (64-bit doubles and 64-bit signed integer representations)
 + String literals
 + Booleans
 
@@ -75,11 +75,8 @@ We do not support any of these properties at the type level, meaning nodes and r
 
 ### Reading/Writing Clauses
 + MERGE
-    - MERGE is partially supported, as it can only be combined with the SET clause.
-
-  **Unsupported:**
-
-- CALL (stored procedures)
++ CALL (procedures)
+    - The currently-supported procedures can be found in [the Procedures documentation](commands.md#procedures).
 
 ### Set Operations
 **Unsupported:**
@@ -164,7 +161,7 @@ String operators (STARTS WITH, ENDS WITH, CONTAINS) are not supported, though eq
 ### Boolean operators
 + AND
 + OR
-+ NOT (currently implemented with the syntax `!=`)
++ NOT (currently implemented with the syntax `<>`)
 
   **Unsupported:**
 
