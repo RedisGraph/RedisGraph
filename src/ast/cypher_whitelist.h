@@ -10,3 +10,6 @@
 
 // Check if any entity in the AST is not in the RedisGraph supported whitelist.
 AST_Validation CypherWhitelist_ValidateQuery(const cypher_astnode_t *root, char **reason);
+
+// Construct a whitelist of all currently-supported Cypher clauses, expressions, and operators.
+void CypherWhitelist_Build(void);

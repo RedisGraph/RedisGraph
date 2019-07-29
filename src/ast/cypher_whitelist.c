@@ -198,11 +198,6 @@ static void _buildOperatorsWhitelist(void) {
 
 }
 
-static void _CypherWhitelist_Build(void) {
-	_buildTypesWhitelist();
-	_buildOperatorsWhitelist();
-}
-
 static AST_Validation _CypherWhitelist_ValidateQuery(const cypher_astnode_t *elem, char **reason) {
 	if(elem == NULL) return AST_VALID;
 	cypher_astnode_type_t type = cypher_astnode_type(elem);
@@ -241,7 +236,10 @@ static AST_Validation _CypherWhitelist_ValidateQuery(const cypher_astnode_t *ele
 }
 
 AST_Validation CypherWhitelist_ValidateQuery(const cypher_astnode_t *root, char **reason) {
-	if(_astnode_type_whitelist == NULL)
-		_CypherWhitelist_Build();  // Build whitelist of supported Cypher elements.
 	return _CypherWhitelist_ValidateQuery(root, reason);
+}
+
+void CypherWhitelist_Build() {
+	_buildTypesWhitelist();
+	_buildOperatorsWhitelist();
 }
