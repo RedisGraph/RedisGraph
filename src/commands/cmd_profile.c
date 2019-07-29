@@ -19,11 +19,18 @@ void _MGraph_Profile(void *args) {
 	bool lockAcquired = false;
 	AST *ast = NULL;
 
-	// Perform query validations
-	if(AST_Validate(ctx, qctx->parse_result) != AST_VALID) goto cleanup;
+	// Parse AST.
+	cypher_parse_result_t *parse_result = cypher_parse(qctx->query, NULL, NULL,
+													   CYPHER_PARSE_ONLY_STATEMENTS);
 
-	ast = AST_Build(qctx->parse_result);
-	bool readonly = AST_ReadOnly(qctx->parse_result);
+	bool readonly = AST_ReadOnly(parse_result);
+	// If we are a replica and the query is read-only, no work needs to be done.
+	if(readonly && qctx->replicated_command) goto cleanup;
+
+	// Perform query validations
+	if(AST_Validate(ctx, parse_result) != AST_VALID) goto cleanup;
+
+	ast = AST_Build(parse_result);
 
 	// Try to access the GraphContext
 	CommandCtx_ThreadSafeContextLock(qctx);
@@ -75,6 +82,7 @@ cleanup:
 
 	ResultSet_Free(result_set);
 	AST_Free(ast);
+	cypher_parse_result_free(parse_result);
 	CommandCtx_Free(qctx);
 }
 
@@ -85,31 +93,26 @@ cleanup:
 int MGraph_Profile(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(argc < 3) return RedisModule_WrongArity(ctx);
 
-	const char *query = RedisModule_StringPtrLen(argv[2], NULL);
-
-	// Parse AST.
-	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
-
-	bool readonly = AST_ReadOnly(parse_result);
-
 	/* Determin query execution context
 	 * queries issued within a LUA script or multi exec block must
 	 * run on Redis main thread, others can run on different threads. */
 	CommandCtx *context;
 	int flags = RedisModule_GetContextFlags(ctx);
+	bool is_replicated = RedisModule_GetContextFlags(ctx) & REDISMODULE_CTX_FLAGS_REPLICATED;
 	if(flags & (REDISMODULE_CTX_FLAGS_MULTI | REDISMODULE_CTX_FLAGS_LUA)) {
 		// Run query on Redis main thread.
-		context = CommandCtx_New(ctx, NULL, parse_result, argv[1], argv, argc);
+		context = CommandCtx_New(ctx, NULL, argv[1], argv[2], argv, argc, is_replicated);
 		_MGraph_Profile(context);
 	} else {
 		// Run query on a dedicated thread.
 		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
-		context = CommandCtx_New(NULL, bc, parse_result, argv[1], argv, argc);
+		context = CommandCtx_New(NULL, bc, argv[1], argv[2], argv, argc, is_replicated);
 		thpool_add_work(_thpool, _MGraph_Profile, context);
 	}
 
-	// Replicate only if query has potential to modify key space.
+	// Replicate the command to slaves and AOF.
+	// If the query is read-only, slaves will do nothing after parsing.
 	// TODO is this necessary for Profile queries?
-	if(!readonly) RedisModule_ReplicateVerbatim(ctx);
+	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
