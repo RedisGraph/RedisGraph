@@ -32,6 +32,8 @@ RedisGraph replies are formatted using the [RESP protocol](https://redis.io/topi
 
 When full entities are specified in a RETURN clause, all data relevant to each entity value is emitted within a nested array. Key-value pairs in the data, such as the combination of a property name and its corresponding value, are represented as 2-arrays.
 
+Internal IDs are returned with nodes and relations, but these IDs are not immutable. After entities have been deleted, higher IDs may be migrated to the vacated lower IDs.
+
 #### Nodes
 
 The node representation contains 3 top-level elements:

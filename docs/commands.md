@@ -113,7 +113,7 @@ This clause is not mandatory, but if you want to filter results, you can specify
 Supported operations:
 
 - `=`
-- `!=`
+- `<>`
 - `<`
 - `<=`
 - `>`
@@ -370,7 +370,7 @@ GRAPH.QUERY DEMO_GRAPH
 "MERGE (charlie { name: 'Charlie Sheen', age: 10 })-[r:ACTED_IN]->(wallStreet:MOVIE)"
 ```
 #### WITH
-The With clause allows parts of queries to be independently executed and have their results handled uniquely.
+The WITH clause allows parts of queries to be independently executed and have their results handled uniquely.
 
 This allows for more flexible query composition as well as data manipulations that would otherwise not be possible in a single query.
 
@@ -380,7 +380,7 @@ GRAPH.QUERY DEMO_GRAPH
 "MATCH (p:Person) WITH AVG(p.age) AS average_age MATCH (:Person)-[:PARENT_OF]->(child:Person) WHERE child.age > average_age return child
 ```
 
-This also allows us to use modifiers like `SKIP`, `LIMIT`, and `ORDER` that otherwise require `RETURN` clauses.
+This also allows us to use modifiers like `DISTINCT`, `SKIP`, `LIMIT`, and `ORDER` that otherwise require `RETURN` clauses.
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
@@ -442,7 +442,7 @@ This section contains information on all supported functions from the Cypher que
 
 |Function | Description|
 | ------- |:-----------|
-|id() | Returns the ID of a relationship or node |
+|id() | Returns the internal ID of a relationship or node (which is not immutable.) |
 |labels() | Returns a string representation of the label of a node. |
 |type() | Returns a string representation of the type of a relation. |
 |timestamp() | Returns the the amount of milliseconds since epoch. |
@@ -452,6 +452,26 @@ This section contains information on all supported functions from the Cypher que
 |Function | Description|
 | ------- |:-----------|
 |exists() | Returns true if the specified property exists in the node or relationship. |
+
+## Procedures
+Procedures are invoked using the syntax:
+```sh
+GRAPH.QUERY social "CALL db.labels()"
+```
+
+Or the variant:
+```sh
+GRAPH.QUERY social "CALL db.labels() YIELD label"
+```
+
+YIELD modifiers are only required if explicitly specified; by default the value in the 'Yields' column will be emitted automatically.
+
+|Procedure | Yields | Description|
+| -------  |:-------|:-----------|
+|db.labels() | `label` | Yields all node labels in the graph. |
+|db.relationshipTypes() | `relationshipType` | Yields all relationship types in the graph. |
+|db.propertyKeys() | `propertyKey` | Yields all property keys in the graph. |
+
 
 ## Indexing
 RedisGraph supports single-property indexes for node labels.
