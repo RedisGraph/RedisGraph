@@ -46,7 +46,6 @@ class testImdbFlow(FlowTestsBase):
     def test_imdb(self):
         for q in queries:
             query = q.query
-            print q.description
             actual_result = redis_graph.query(query)
 
             # assert result set
