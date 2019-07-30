@@ -13,11 +13,12 @@
 typedef struct {
 	RedisModuleCtx *ctx;                  // Redis module context.
 	RedisModuleBlockedClient *bc;         // Blocked client.
-	cypher_parse_result_t *parse_result;  // Parser output.
 	char *graphName;                      // Graph ID.
+	char *query;                          // Query string.
 	double tic[2];                        // Timings.
 	RedisModuleString **argv;             // Arguments.
 	int argc;                             // Argument count.
+	bool replicated_command;              // Whether this instance was spawned by a replication command.
 } CommandCtx;
 
 // Create a new command context.
@@ -25,10 +26,11 @@ CommandCtx *CommandCtx_New
 (
 	RedisModuleCtx *ctx,                  // Redis module context.
 	RedisModuleBlockedClient *bc,         // Blocked client.
-	cypher_parse_result_t *parse_result,  // Parser output.
 	RedisModuleString *graphName,         // Graph ID.
+	RedisModuleString *query,             // Query string.
 	RedisModuleString **argv,             // Arguments.
-	int argc                              // Argument count.
+	int argc,                             // Argument count.
+	bool replicated_command               // Whether this instance was spawned by a replication command.
 );
 
 // Get Redis module context

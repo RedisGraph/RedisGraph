@@ -41,21 +41,16 @@ void _MGraph_Explain(void *args) {
 	bool free_graph_ctx = false;
 	AST *ast = NULL;
 	const char *graphname = qctx->graphName;
-	const char *query;
+	const char *query = qctx->query;
 
-	if(graphname) {
-		query = RedisModule_StringPtrLen(qctx->argv[2], NULL);
-	} else {
-		query = RedisModule_StringPtrLen(qctx->argv[1], NULL);
-	}
-
-	/* Parse query, get AST. */
+	// Parse the query to construct an AST
 	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
-	qctx->parse_result = parse_result;
+	if(parse_result == NULL) goto cleanup;
 
 	// Perform query validations
-	if(AST_Validate(ctx, qctx->parse_result) != AST_VALID) goto cleanup;
+	if(AST_Validate(ctx, parse_result) != AST_VALID) goto cleanup;
 
+	// Prepare the constructed AST for accesses from the module
 	ast = AST_Build(parse_result);
 
 	// Handle replies for index creation/deletion
@@ -91,6 +86,7 @@ cleanup:
 	}
 
 	AST_Free(ast);
+	if(parse_result) cypher_parse_result_free(parse_result);
 	CommandCtx_Free(qctx);
 	if(free_graph_ctx) GraphContext_Free(gc);
 }
@@ -99,9 +95,13 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(argc < 2) return RedisModule_WrongArity(ctx);
 
 	RedisModuleString *graphName = NULL;
+	RedisModuleString *query;
 
-	if(argc > 2) {
+	if(argc == 2) {
+		query = argv[1];
+	} else {
 		graphName = argv[1];
+		query = argv[2];
 	}
 
 	/* Determin execution context
@@ -111,12 +111,12 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	int flags = RedisModule_GetContextFlags(ctx);
 	if(flags & (REDISMODULE_CTX_FLAGS_MULTI | REDISMODULE_CTX_FLAGS_LUA)) {
 		// Run on Redis main thread.
-		context = CommandCtx_New(ctx, NULL, NULL, graphName, argv, argc);
+		context = CommandCtx_New(ctx, NULL, graphName, query, argv, argc, false);
 		_MGraph_Explain(context);
 	} else {
 		// Run on a dedicated thread.
 		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
-		context = CommandCtx_New(NULL, bc, NULL, graphName, argv, argc);
+		context = CommandCtx_New(NULL, bc, graphName, query, argv, argc, false);
 		thpool_add_work(_thpool, _MGraph_Explain, context);
 	}
 
