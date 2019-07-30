@@ -15,6 +15,7 @@
 #include <sys/param.h>
 #include <assert.h>
 #include "util/rmalloc.h"
+#include "util/arr.h"
 
 SIValue SI_LongVal(int64_t i) {
 	return (SIValue) {
@@ -55,6 +56,11 @@ SIValue SI_Node(void *n) {
 SIValue SI_Edge(void *e) {
 	return (SIValue) {
 		.ptrval = e, .type = T_EDGE, .allocation = M_VOLATILE
+	};
+}
+SIValue SI_Array(SIValue *array) {
+	return (SIValue) {
+		.array = array, .type = T_ARRAY, .allocation = M_VOLATILE
 	};
 }
 
@@ -174,6 +180,19 @@ const char *SIType_ToString(SIType t) {
 		return "Unknown";
 	}
 }
+int SIArray_ToString(SIValue *array, char *buf, size_t len) {
+	int bytes_written = snprintf(buf, len, "[");
+	len -= bytes_written;
+	size_t arrayLen = array_len(array);
+	for(int i = 0; i < arrayLen; i ++) {
+		int b = SIValue_ToString(array[i], buf + bytes_written, len);
+		b += snprintf(buf + b, len - b, ", ");
+		bytes_written += b;
+		len -= b;
+	}
+	bytes_written += snprintf(buf, len,  "]");
+	return bytes_written;
+}
 
 int SIValue_ToString(SIValue v, char *buf, size_t len) {
 	int bytes_written = 0;
@@ -195,6 +214,9 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
 	case T_NODE:
 	case T_EDGE:
 		bytes_written = snprintf(buf, len, "%llu", ENTITY_GET_ID((GraphEntity *)v.ptrval));
+		break;
+	case T_ARRAY:
+		bytes_written = SIArray_ToString(v.array, buf, len);
 		break;
 	case T_NULL:
 	default:
@@ -299,6 +321,26 @@ SIValue SIValue_Divide(const SIValue a, const SIValue b) {
 	return SI_DoubleVal(SI_GET_NUMERIC(a) / (double)SI_GET_NUMERIC(b));
 }
 
+int SIArray_Compare(SIValue *arrayA, SIValue *arrayB) {
+
+	// check for the common range of indices
+	size_t arrayALen = array_len(arrayA);
+	size_t arrayBLen = array_len(arrayB);
+	size_t minLengh = arrayALen < arrayBLen ? arrayALen : arrayBLen;
+
+	// go over the common range for both arrays
+	for(int i = 0; i < minLengh; i++) {
+		SIValue aValue = arrayA[i];
+		SIValue bValue = arrayB[i];
+		int compareResult = SIValue_Compare(aValue, bValue);
+		// if comparison is not 0 (a != b), return it.
+		if(compareResult) return compareResult;
+	}
+
+	// if both arrays are identical for the range checked, compare length
+	return arrayALen - arrayBLen;
+}
+
 int SIValue_Compare(const SIValue a, const SIValue b) {
 	/* In order to be comparable, both SIValues must be strings,
 	 * booleans, or numerics. */
@@ -314,6 +356,8 @@ int SIValue_Compare(const SIValue a, const SIValue b) {
 		case T_NODE:
 		case T_EDGE:
 			return ENTITY_GET_ID((GraphEntity *)a.ptrval) - ENTITY_GET_ID((GraphEntity *)b.ptrval);
+		case T_ARRAY:
+			return SIArray_Compare(a.array, b.array);
 		default:
 			// Both inputs were of an incomparable type, like a pointer or NULL
 			return DISJOINT;
