@@ -183,8 +183,8 @@ const char *SIType_ToString(SIType t) {
 int SIArray_ToString(SIValue *array, char *buf, size_t len) {
 	int bytes_written = snprintf(buf, len, "[");
 	len -= bytes_written;
-	size_t arrayLen = array_len(array);
-	for(int i = 0; i < arrayLen; i ++) {
+	uint arrayLen = array_len(array);
+	for(uint i = 0; i < arrayLen; i ++) {
 		int b = SIValue_ToString(array[i], buf + bytes_written, len);
 		b += snprintf(buf + b, len - b, ", ");
 		bytes_written += b;
@@ -324,12 +324,12 @@ SIValue SIValue_Divide(const SIValue a, const SIValue b) {
 int SIArray_Compare(SIValue *arrayA, SIValue *arrayB) {
 
 	// check for the common range of indices
-	size_t arrayALen = array_len(arrayA);
-	size_t arrayBLen = array_len(arrayB);
-	size_t minLengh = arrayALen < arrayBLen ? arrayALen : arrayBLen;
+	uint arrayALen = array_len(arrayA);
+	uint arrayBLen = array_len(arrayB);
+	uint minLengh = arrayALen < arrayBLen ? arrayALen : arrayBLen;
 
 	// go over the common range for both arrays
-	for(int i = 0; i < minLengh; i++) {
+	for(uint i = 0; i < minLengh; i++) {
 		SIValue aValue = arrayA[i];
 		SIValue bValue = arrayB[i];
 		int compareResult = SIValue_Compare(aValue, bValue);
