@@ -41,7 +41,6 @@ static inline void _ResultSet_ReplyWithValueType(RedisModuleCtx *ctx, const SIVa
 
 static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, GraphContext *gc,
 											   const SIValue v) {
-	RedisModule_ReplyWithArray(ctx, 2); // Reply with array with space for type and value
 	_ResultSet_ReplyWithValueType(ctx, v);
 	// Emit the actual value, then the value type (to facilitate client-side parsing)
 	switch(SI_TYPE(v)) {
@@ -60,6 +59,7 @@ static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 		return;
 	case T_ARRAY:
 		_ResultSet_CompactReplyWithSIArray(ctx, gc, v.array);
+		break;
 	case T_NULL:
 		RedisModule_ReplyWithNull(ctx);
 		return;
@@ -67,7 +67,7 @@ static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 		_ResultSet_CompactReplyWithNode(ctx, gc, v.ptrval);
 		return;
 	case T_EDGE:
-		_ResultSet_CompactReplyWithNode(ctx, gc, v.ptrval);
+		_ResultSet_CompactReplyWithEdge(ctx, gc, v.ptrval);
 		return;
 	default:
 		assert("Unhandled value type" && false);
@@ -155,9 +155,10 @@ static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
 
 static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext *gc,
 											   SIValue *array) {
-	size_t arrayLen = array_len(array);
+	uint arrayLen = array_len(array);
 	RedisModule_ReplyWithArray(ctx, arrayLen);
-	for(size_t i = 0; i < arrayLen; i++) {
+	for(uint i = 0; i < arrayLen; i++) {
+		RedisModule_ReplyWithArray(ctx, 2); // Reply with array with space for type and value
 		_ResultSet_CompactReplyWithSIValue(ctx, gc, array[i]);
 	}
 }
@@ -176,6 +177,7 @@ void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Re
 			_ResultSet_CompactReplyWithEdge(ctx, gc, Record_GetEdge(r, i));
 			break;
 		default:
+			RedisModule_ReplyWithArray(ctx, 2); // Reply with array with space for type and value
 			_ResultSet_CompactReplyWithSIValue(ctx, gc, Record_GetScalar(r, i));
 		}
 	}
