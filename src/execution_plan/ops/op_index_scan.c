@@ -61,13 +61,6 @@ OpResult IndexScanInit(OpBase *opBase) {
 	return OP_OK;
 }
 
-OpResult IndexScanInit(OpBase *opBase) {
-	IndexScan *op = (IndexScan *)opBase;
-	assert(op->iter == NULL);
-	op->iter = RediSearch_GetResultsIterator(op->qn, op->idx);
-	return OP_OK;
-}
-
 OpResult IndexScanReset(OpBase *ctx) {
 	IndexScan *op = (IndexScan *)ctx;
 	RediSearch_ResultsIteratorReset(op->iter);

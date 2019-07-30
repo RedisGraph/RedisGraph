@@ -77,9 +77,14 @@ OpResult NodeByLabelScanReset(OpBase *ctx) {
 
 void NodeByLabelScanFree(OpBase *op) {
 	NodeByLabelScan *nodeByLabelScan = (NodeByLabelScan *)op;
-	GxB_MatrixTupleIter_free(nodeByLabelScan->iter);
 
-	if(nodeByLabelScan->_zero_matrix != NULL) {
+	if(nodeByLabelScan->iter) {
+		GxB_MatrixTupleIter_free(nodeByLabelScan->iter);
+		nodeByLabelScan->iter = NULL;
+	}
+
+	if(nodeByLabelScan->_zero_matrix) {
 		GrB_Matrix_free(&nodeByLabelScan->_zero_matrix);
+		nodeByLabelScan->_zero_matrix = NULL;
 	}
 }

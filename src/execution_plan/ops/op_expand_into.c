@@ -247,16 +247,37 @@ OpResult ExpandIntoReset(OpBase *ctx) {
 /* Frees ExpandInto */
 void ExpandIntoFree(OpBase *ctx) {
 	OpExpandInto *op = (OpExpandInto *)ctx;
-	if(op->F) GrB_Matrix_free(&op->F);
-	if(op->M) GrB_Matrix_free(&op->M);
-	if(op->edges) array_free(op->edges);
-	if(op->edgeRelationTypes) array_free(op->edgeRelationTypes);
-	if(op->ae) AlgebraicExpression_Free(op->ae);
+	if(op->F) {
+		GrB_Matrix_free(&op->F);
+		op->F = NULL;
+	}
+
+	if(op->M) {
+		GrB_Matrix_free(&op->M);
+		op->M = NULL;
+	}
+
+	if(op->edges) {
+		array_free(op->edges);
+		op->edges = NULL;
+	}
+
+	if(op->edgeRelationTypes) {
+		array_free(op->edgeRelationTypes);
+		op->edgeRelationTypes = NULL;
+	}
+
+	if(op->ae) {
+		AlgebraicExpression_Free(op->ae);
+		op->ae = NULL;
+	}
+
 	if(op->records) {
 		for(int i = 0; i < op->recordsCap; i++) {
 			if(op->records[i]) Record_Free(op->records[i]);
 			else break;
 		}
 		rm_free(op->records);
+		op->records = NULL;
 	}
 }

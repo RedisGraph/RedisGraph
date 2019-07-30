@@ -12,12 +12,17 @@ redis_graph = None
 
 class testIndexScanFlow(FlowTestsBase):
     def __init__(self):
-        super(testIndexScanFlow, self).__init__()
+        super(testIndexScanFlow, self).__init__()        
+
+    def setUp(self):
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph(social_utils.graph_name, redis_con)
         social_utils.populate_graph(redis_con, redis_graph)
-        self.build_indices() 
+        self.build_indices()
+
+    def tearDown(self):
+        self.env.cmd('flushall')
 
     def build_indices(self):
         global redis_graph

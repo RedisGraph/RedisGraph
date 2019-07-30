@@ -104,10 +104,25 @@ OpResult OpDeleteReset(OpBase *ctx) {
 void OpDeleteFree(OpBase *ctx) {
 	OpDelete *op = (OpDelete *)ctx;
 
-	_DeleteEntities(op);
+	if(op->deleted_nodes || op->deleted_edges) _DeleteEntities(op);
 
-	array_free(op->nodes_to_delete);
-	array_free(op->edges_to_delete);
-	array_free(op->deleted_nodes);
-	array_free(op->deleted_edges);
+	if(op->nodes_to_delete) {
+		free(op->nodes_to_delete);
+		op->nodes_to_delete = NULL;
+	}
+
+	if(op->edges_to_delete) {
+		free(op->edges_to_delete);
+		op->edges_to_delete = NULL;
+	}
+
+	if(op->deleted_nodes) {
+		array_free(op->deleted_nodes);
+		op->deleted_nodes = NULL;
+	}
+
+	if(op->deleted_edges) {
+		array_free(op->deleted_edges);
+		op->deleted_edges = NULL;
+	}
 }

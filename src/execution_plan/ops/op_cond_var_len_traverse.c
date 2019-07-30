@@ -146,8 +146,23 @@ OpResult CondVarLenTraverseReset(OpBase *ctx) {
 
 void CondVarLenTraverseFree(OpBase *ctx) {
 	CondVarLenTraverse *op = (CondVarLenTraverse *)ctx;
-	array_free(op->edgeRelationTypes);
-	AlgebraicExpression_Free(op->ae);
-	if(op->r) Record_Free(op->r);
-	if(op->allPathsCtx) AllPathsCtx_Free(op->allPathsCtx);
+	if(op->relationIDs) {
+		array_free(op->relationIDs);
+		op->relationIDs = NULL;
+	}
+
+	if(op->ae) {
+		AlgebraicExpression_Free(op->ae);
+		op->ae = NULL;
+	}
+
+	if(op->r) {
+		Record_Free(op->r);
+		op->r = NULL;
+	}
+
+	if(op->allPathsCtx) {
+		AllPathsCtx_Free(op->allPathsCtx);
+		op->allPathsCtx = NULL;
+	}
 }

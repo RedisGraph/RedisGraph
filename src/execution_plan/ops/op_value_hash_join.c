@@ -280,7 +280,10 @@ OpResult ValueHashJoinReset(OpBase *ctx) {
 void ValueHashJoinFree(OpBase *ctx) {
 	OpValueHashJoin *op = (OpValueHashJoin *)ctx;
 	// Free cached records.
-	if(op->rhs_rec) Record_Free(op->rhs_rec);
+	if(op->rhs_rec) {
+		Record_Free(op->rhs_rec);
+		op->rhs_rec = NULL;
+	}
 
 	if(op->cached_records) {
 		uint record_count = array_len(op->cached_records);
@@ -289,7 +292,16 @@ void ValueHashJoinFree(OpBase *ctx) {
 			Record_Free(r);
 		}
 		array_free(op->cached_records);
+		op->cached_records = NULL;
 	}
-	if(op->lhs_exp) AR_EXP_Free(op->lhs_exp);
-	if(op->rhs_exp) AR_EXP_Free(op->rhs_exp);
+
+	if(op->lhs_exp) {
+		AR_EXP_Free(op->lhs_exp);
+		op->lhs_exp = NULL;
+	}
+
+	if(op->rhs_exp) {
+		AR_EXP_Free(op->rhs_exp);
+		op->rhs_exp = NULL;
+	}
 }

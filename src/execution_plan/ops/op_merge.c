@@ -166,7 +166,16 @@ Record OpMergeConsume(OpBase *opBase) {
 		if(op->matched) return r;
 
 		// No previous match, create MERGE pattern.
-		r = Record_New(opBase->record_map->record_len);
+
+		/* TODO: once MATCH and MERGE will be mixed
+		 * we'll need to apply a similar strategy applied by op_create. */
+
+		/* Done reading, we're not going to call consume any longer
+		 * there might be operations e.g. index scan that need to free
+		 * index R/W lock, as such free all execution plan operation up the chain. */
+		OpBase_PropegateFree(child);
+
+		r = Record_New(AST_AliasCount(op->ast));
 		_CreateEntities(op, r);
 		op->created = true;
 	}

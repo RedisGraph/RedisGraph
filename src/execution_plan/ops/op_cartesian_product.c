@@ -24,8 +24,13 @@ OpBase *NewCartesianProductOp(void) {
 }
 
 static void _ResetStreams(CartesianProduct *cp, int streamIdx) {
+	<<< <<< < HEAD
 	// Reset each child stream, Reset propagates upwards.
 	for(int i = 0; i < streamIdx; i++) OpBase_Reset(cp->op.children[i]);
+	== == == =
+		// Reset each child stream, Reset propagates upwards.
+		for(int i = 0; i < streamIdx; i++) OpBase_PropegateReset(cp->op.children[i]);
+	>>> >>> > free safe operations, index scan reset iterator
 }
 
 static int _PullFromStreams(CartesianProduct *op) {
@@ -114,5 +119,8 @@ OpResult CartesianProductReset(OpBase *opBase) {
 
 void CartesianProductFree(OpBase *opBase) {
 	CartesianProduct *op = (CartesianProduct *)opBase;
-	if(op->r) Record_Free(op->r);
+	if(op->r) {
+		Record_Free(op->r);
+		op->r = NULL;
+	}
 }

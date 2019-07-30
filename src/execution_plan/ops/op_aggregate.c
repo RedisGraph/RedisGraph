@@ -307,10 +307,40 @@ void AggregateFree(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
 	if(!op) return;
 
-	if(op->group_keys) rm_free(op->group_keys);
-	if(op->groupIter) CacheGroupIterator_Free(op->groupIter);
-	if(op->expression_classification) rm_free(op->expression_classification);
-	if(op->non_aggregated_expressions) array_free(op->non_aggregated_expressions);
+	if(op->group_keys) {
+		rm_free(op->group_keys);
+		op->group_keys = NULL;
+	}
 
-	FreeGroupCache(op->groups);
+	if(op->groupIter) {
+		CacheGroupIterator_Free(op->groupIter);
+		op->groupIter = NULL;
+	}
+
+	if(op->expression_classification) {
+		rm_free(op->expression_classification);
+		op->expression_classification = NULL;
+	}
+
+	if(op->none_aggregated_expressions) {
+		array_free(op->none_aggregated_expressions);
+		op->none_aggregated_expressions = NULL;
+	}
+
+	if(op->expressions) {
+		uint expCount = array_len(op->expressions);
+		for(uint i = 0; i < expCount; i++) AR_EXP_Free(op->expressions[i]);
+		array_free(op->expressions);
+		op->expressions = NULL;
+	}
+
+	if(op->aliases) {
+		array_free(op->aliases);
+		op->aliases = NULL;
+	}
+
+	if(op->groups) {
+		FreeGroupCache(op->groups);
+		op->groups = NULL;
+	}
 }

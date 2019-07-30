@@ -3,7 +3,7 @@ class QueryInfo(object):
     This class contains the needed data about a query
     """
 
-    def __init__(self, query=None, description=None, max_run_time_ms=None, expected_result=None):
+    def __init__(self, query=None, description=None, max_run_time_ms=None, expected_result=None, reversible=True):
         """
         QueryInfo contructor
 
@@ -18,3 +18,5 @@ class QueryInfo(object):
         self.description = description
         self.expected_result = expected_result
         self.max_run_time_ms = max_run_time_ms
+        self.reversible = reversible
+
