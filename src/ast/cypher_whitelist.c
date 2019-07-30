@@ -7,6 +7,7 @@
 #include "cypher_whitelist.h"
 #include "../../deps/libcypher-parser/lib/src/operators.h" // TODO safe?
 #include "../../deps/rax/rax.h"
+#include <assert.h>
 
 /* Whitelist of all accepted cypher_astnode types:
  * Includes entities like CREATE clauses and node patterns,
@@ -240,6 +241,9 @@ AST_Validation CypherWhitelist_ValidateQuery(const cypher_astnode_t *root, char 
 }
 
 void CypherWhitelist_Build() {
+	assert(_astnode_type_whitelist == NULL && _operator_whitelist == NULL &&
+		   "Attempted to build query whitelist twice - was the module correctly?");
+
 	_buildTypesWhitelist();
 	_buildOperatorsWhitelist();
 }

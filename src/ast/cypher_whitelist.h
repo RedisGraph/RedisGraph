@@ -13,3 +13,4 @@ AST_Validation CypherWhitelist_ValidateQuery(const cypher_astnode_t *root, char 
 
 // Construct a whitelist of all currently-supported Cypher clauses, expressions, and operators.
 void CypherWhitelist_Build(void);
+

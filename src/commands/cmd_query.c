@@ -69,8 +69,10 @@ void _MGraph_Query(void *args) {
 	bool lockAcquired = false;
 	AST *ast = NULL;
 
+	// Parse the query to construct an AST
 	cypher_parse_result_t *parse_result = cypher_parse(qctx->query, NULL, NULL,
 													   CYPHER_PARSE_ONLY_STATEMENTS);
+	if(parse_result == NULL) goto cleanup;
 
 	bool readonly = AST_ReadOnly(parse_result);
 	// If we are a replica and the query is read-only, no work needs to be done.
@@ -79,6 +81,7 @@ void _MGraph_Query(void *args) {
 	// Perform query validations
 	if(AST_Validate(ctx, parse_result) != AST_VALID) goto cleanup;
 
+	// Prepare the constructed AST for accesses from the module
 	ast = AST_Build(parse_result);
 
 	// Try to access the GraphContext
@@ -140,7 +143,7 @@ cleanup:
 
 	ResultSet_Free(result_set);
 	AST_Free(ast);
-	cypher_parse_result_free(parse_result);
+	if(parse_result) cypher_parse_result_free(parse_result);
 	CommandCtx_Free(qctx);
 }
 

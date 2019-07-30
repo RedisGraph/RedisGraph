@@ -43,12 +43,14 @@ void _MGraph_Explain(void *args) {
 	const char *graphname = qctx->graphName;
 	const char *query = qctx->query;
 
-	/* Parse query, get AST. */
+	// Parse the query to construct an AST
 	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+	if(parse_result == NULL) goto cleanup;
 
 	// Perform query validations
 	if(AST_Validate(ctx, parse_result) != AST_VALID) goto cleanup;
 
+	// Prepare the constructed AST for accesses from the module
 	ast = AST_Build(parse_result);
 
 	// Handle replies for index creation/deletion
@@ -84,7 +86,7 @@ cleanup:
 	}
 
 	AST_Free(ast);
-	cypher_parse_result_free(parse_result);
+	if(parse_result) cypher_parse_result_free(parse_result);
 	CommandCtx_Free(qctx);
 	if(free_graph_ctx) GraphContext_Free(gc);
 }
