@@ -32,9 +32,17 @@ inline Record OpBase_Consume(OpBase *op) {
 	return op->consume(op);
 }
 
-void OpBase_Reset(OpBase *op) {
+void OpBase_PropegateReset(OpBase *op) {
 	assert(op->reset(op) == OP_OK);
-	for(int i = 0; i < op->childCount; i++) OpBase_Reset(op->children[i]);
+	for(int i = 0; i < op->childCount; i++) OpBase_PropegateReset(op->children[i]);
+}
+
+void OpBase_PropegateFree(OpBase *op) {
+	/* TODO: decide rather or not we want to perform
+	 * op->free or OpBase_Free. */
+	op->free(op);
+	for(int i = 0; i < op->childCount; i++) OpBase_PropegateFree(op->children[i]);
+	// OpBase_Free(op);
 }
 
 static int _OpBase_StatsToString(const OpBase *op, char *buff, uint buff_len) {

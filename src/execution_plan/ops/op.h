@@ -72,26 +72,27 @@ typedef struct {
 }  OpStats;
 
 struct OpBase {
-	OPType type;                // Type of operation
-	fpInit init;                // Called once before execution.
-	fpConsume consume;          // Produce next record.
-	fpConsume profile;          // Profiled version of consume.
-	fpReset reset;              // Reset operation state.
-	fpFree free;                // Free operation.
-	fpToString toString;        // operation string representation.
-	char *name;                 // Operation name.
-	uint *modifies;                // List of Record indices this op modifies.
-	RecordMap *record_map;         // Mapping of entities into Record IDs in the scope of this ExecutionPlanSegment.
-	struct OpBase **children;   // Child operations.
-	int childCount;             // Number of children.
-	OpStats *stats;             // Profiling statistics.
-	struct OpBase *parent;      // Parent operations.
+    OPType type;                // Type of operation
+    fpInit init;                // Called once before execution.
+    fpFree free;                // Free operation.
+    fpReset reset;              // Reset operation state.
+    fpConsume consume;          // Produce next record.
+    fpConsume profile;          // Profiled version of consume.
+    fpToString toString;        // operation string representation.
+    char *name;                 // Operation name.
+    Vector *modifies;           // List of aliases, this op modifies.
+    struct OpBase **children;   // Child operations.
+    int childCount;             // Number of children.
+    OpStats *stats;             // Profiling statistics.
+    struct OpBase *parent;      // Parent operations.
 };
 typedef struct OpBase OpBase;
 
 void OpBase_Init(OpBase *op);       // Initialize op.
 void OpBase_Free(OpBase *op);       // Free op.
-void OpBase_Reset(OpBase *op);      // Reset op.
 Record OpBase_Consume(OpBase *op);  // Consume op.
 Record OpBase_Profile(OpBase *op);  // Profile op.
 int OpBase_ToString(const OpBase *op, char *buff, uint buff_len);
+
+void OpBase_PropegateFree(OpBase *op); // Sends free request to each operation up the chain.
+void OpBase_PropegateReset(OpBase *op); // Sends reset request to each operation up the chain.

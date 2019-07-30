@@ -221,6 +221,7 @@ void SortFree(OpBase *ctx) {
 			Record_Free(r);
 		}
 		heap_free(op->heap);
+		op->heap = NULL;
 	}
 
 	if(op->buffer) {
@@ -230,9 +231,12 @@ void SortFree(OpBase *ctx) {
 			Record_Free(r);
 		}
 		array_free(op->buffer);
+		op->buffer = NULL;
 	}
 
-	uint exp_count = array_len(op->expressions);
-	for(uint i = 0; i < exp_count; i++) AR_EXP_Free(op->expressions[i]);
-	array_free(op->expressions);
+	if(op->expressions) {
+		for(int i = 0; i < array_len(op->expressions); i++) AR_EXP_Free(op->expressions[i]);
+		array_free(op->expressions);
+		op->expressions = NULL;
+	}
 }

@@ -63,5 +63,6 @@ void UnwindFree(OpBase *ctx) {
 		uint expCount = array_len(unwind->expressions);
 		for(uint i = 0; i < expCount; i++) AR_EXP_Free(unwind->expressions[i]);
 		array_free(unwind->expressions);
+		unwind->expressions = NULL;
 	}
 }

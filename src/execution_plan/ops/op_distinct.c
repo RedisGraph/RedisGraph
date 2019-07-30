@@ -43,6 +43,9 @@ OpResult DistinctReset(OpBase *ctx) {
 }
 
 void DistinctFree(OpBase *ctx) {
-	OpDistinct *self = (OpDistinct *)ctx;
-	TrieMap_Free(self->trie, TrieMap_NOP_CB);
+	OpDistinct *op = (OpDistinct *)ctx;
+	if(op->trie) {
+		TrieMap_Free(op->trie, TrieMap_NOP_CB);
+		op->trie = NULL;
+	}
 }
