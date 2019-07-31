@@ -9,7 +9,7 @@
 #include "../../util/arr.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-OpBase *NewUnwindOp(uint record_idx, AR_ExpNode **exps) {
+OpBase *NewUnwindOp(uint record_idx, AR_ExpNode *exps) {
 	OpUnwind *unwind = malloc(sizeof(OpUnwind));
 	unwind->expIdx = 0;
 	unwind->expressions = exps;
@@ -32,6 +32,9 @@ OpBase *NewUnwindOp(uint record_idx, AR_ExpNode **exps) {
 }
 
 OpResult UnwindInit(OpBase *opBase) {
+	OpUnwind *op = (OpUnwind *)opBase;
+	Record r = Record_New(opBase->record_map->record_len);
+	op->list = AR_EXP_Evaluate(op->expressions, r);
 	return OP_OK;
 }
 
@@ -39,12 +42,9 @@ Record UnwindConsume(OpBase *opBase) {
 	OpUnwind *op = (OpUnwind *)opBase;
 
 	// Evaluated and returned all expressions.
-	if(op->expIdx == array_len(op->expressions)) return NULL;
-
-	AR_ExpNode *exp = op->expressions[op->expIdx];
+	if(op->expIdx == array_len(op->list.array)) return NULL;
 	Record r = Record_New(opBase->record_map->record_len);
-	SIValue v = AR_EXP_Evaluate(exp, r);
-	Record_AddScalar(r, op->unwindRecIdx, v);
+	Record_AddScalar(r, op->unwindRecIdx, op->list.array[op->expIdx]);
 	op->expIdx++;
 
 	return r;
@@ -60,9 +60,7 @@ void UnwindFree(OpBase *ctx) {
 	OpUnwind *unwind = (OpUnwind *)ctx;
 
 	if(unwind->expressions) {
-		uint expCount = array_len(unwind->expressions);
-		for(uint i = 0; i < expCount; i++) AR_EXP_Free(unwind->expressions[i]);
-		array_free(unwind->expressions);
-		unwind->expressions = NULL;
+		AR_EXP_Free(unwind->expressions);
 	}
+	SIValue_Free(&unwind->list);
 }

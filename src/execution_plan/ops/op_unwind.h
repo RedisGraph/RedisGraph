@@ -14,13 +14,14 @@
 
 typedef struct {
 	OpBase op;
-	AR_ExpNode **expressions;   // Array of expressions
-	uint expIdx;                // Current expression index to evaluate.
-	int unwindRecIdx;           // Update record at this index.
+	AR_ExpNode *expressions; // Array of expressions
+	uint expIdx;             // Current expression index to evaluate.
+	int unwindRecIdx;        // Update record at this index.
+	SIValue list;
 } OpUnwind;
 
 /* Creates a new Unwind operation */
-OpBase *NewUnwindOp(uint record_idx, AR_ExpNode **exprs);
+OpBase *NewUnwindOp(uint record_idx, AR_ExpNode *exprs);
 
 OpResult UnwindInit(OpBase *opBase);
 

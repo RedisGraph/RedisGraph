@@ -121,19 +121,30 @@ static rax *_MatchMerge_DefinedEntities(const AST *ast) {
 	return map;
 }
 
-AR_ExpNode **_AST_ConvertCollection(const cypher_astnode_t *collection, RecordMap *record_map) {
-	assert(cypher_astnode_type(collection) == CYPHER_AST_COLLECTION);
+PropertyMap *AST_ConvertPropertiesMap(const cypher_astnode_t *props, RecordMap *record_map) {
+	if(props == NULL) return NULL;
+	assert(cypher_astnode_type(props) == CYPHER_AST_MAP); // TODO add parameter support
 
-	uint expCount = cypher_ast_collection_length(collection);
-	AR_ExpNode **expressions = array_new(AR_ExpNode *, expCount);
+	uint prop_count = cypher_ast_map_nentries(props);
 
-	for(uint i = 0; i < expCount; i ++) {
-		const cypher_astnode_t *exp_node = cypher_ast_collection_get(collection, i);
-		AR_ExpNode *exp = AR_EXP_FromExpression(record_map, exp_node);
-		expressions = array_append(expressions, exp);
+	PropertyMap *map = malloc(sizeof(PropertyMap));
+	map->keys = malloc(prop_count * sizeof(char *));
+	map->values = malloc(prop_count * sizeof(SIValue));
+	map->property_count = prop_count;
+
+	for(uint prop_idx = 0; prop_idx < prop_count; prop_idx++) {
+		const cypher_astnode_t *ast_key = cypher_ast_map_get_key(props, prop_idx);
+		map->keys[prop_idx] = cypher_ast_prop_name_get_value(ast_key);
+
+		const cypher_astnode_t *ast_value = cypher_ast_map_get_value(props, prop_idx);
+		AR_ExpNode *value_exp = AR_EXP_FromExpression(record_map, ast_value);
+		// TODO It will be really nice to store AR_ExpNodes rather than resolved SIValues;
+		// allowing things like "CREATE (:b {prop: a.name})"
+		SIValue value = AR_EXP_Evaluate(value_exp, NULL);
+		AR_EXP_Free(value_exp);
+		map->values[prop_idx] = value;
 	}
-
-	return expressions;
+	return map;
 }
 
 EntityUpdateEvalCtx *AST_PrepareUpdateOp(const cypher_astnode_t *set_clause, RecordMap *record_map,
@@ -229,11 +240,11 @@ int AST_PrepareSortOp(const cypher_astnode_t *order_clause) {
 AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause,
 									  RecordMap *record_map) {
 	const cypher_astnode_t *collection = cypher_ast_unwind_get_expression(unwind_clause);
-	AR_ExpNode **exps = AR_EXP_FromExpression(record_map, collection)->expressions;
+	AR_ExpNode *exp = AR_EXP_FromExpression(record_map, collection);
 	const char *alias = cypher_ast_identifier_get_name(cypher_ast_unwind_get_alias(unwind_clause));
 	uint record_idx = RecordMap_FindOrAddAlias(record_map, alias);
 
-	AST_UnwindContext ctx = { .exps = exps, .record_idx = record_idx };
+	AST_UnwindContext ctx = { .exp = exp, .record_idx = record_idx };
 	return ctx;
 }
 
