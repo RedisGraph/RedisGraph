@@ -43,7 +43,7 @@ GraphContext *GraphContext_New(RedisModuleCtx *ctx, const char *graphname,
 	gc->string_mapping = array_new(char *, 64);
 	gc->attributes = NewTrieMap();
 
-	pthread_setspecific(_tlsGCKey, gc);
+	assert(pthread_setspecific(_tlsGCKey, gc) == 0);
 
 	// Set and close GraphContext key in Redis keyspace
 	RedisModule_ModuleTypeSetValue(key, GraphContextRedisModuleType, gc);
@@ -67,7 +67,7 @@ GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname, 
 	// Force GraphBLAS updates and resize matrices to node count by default
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 
-	pthread_setspecific(_tlsGCKey, gc);
+	assert(pthread_setspecific(_tlsGCKey, gc) == 0);
 
 cleanup:
 	RedisModule_FreeString(ctx, rs_name);

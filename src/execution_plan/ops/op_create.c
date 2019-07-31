@@ -125,12 +125,11 @@ static void _CommitNodes(OpCreate *op) {
 		}
 
 		// Introduce attributes to graph.
+		if(!node_ctx->properties) continue;
 		uint prop_count = node_ctx->properties->property_count;
-		if(prop_count > 0) {
-			for(int prop_idx = 0; prop_idx < prop_count; prop_idx ++) {
-				const char *prop = node_ctx->properties->keys[i];
-				GraphContext_FindOrAddAttribute(gc, prop);
-			}
+		for(int prop_idx = 0; prop_idx < prop_count; prop_idx ++) {
+			const char *prop = node_ctx->properties->keys[prop_idx];
+			GraphContext_FindOrAddAttribute(gc, prop);
 		}
 	}
 

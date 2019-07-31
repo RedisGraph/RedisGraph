@@ -120,7 +120,7 @@ static TrieMap *_AST_GetReturnProjections(const cypher_astnode_t *return_clause)
 
 /* Compares a triemap of user-specified functions with the registered functions we provide. */
 static AST_Validation _ValidateReferredFunctions(TrieMap *referred_functions, char **reason,
-													 bool include_aggregates) {
+												 bool include_aggregates) {
 	AST_Validation res = AST_VALID;
 	void *value;
 	tm_len_t len;
@@ -1139,15 +1139,14 @@ AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *re
 	AST_Validation res = AST_VALID;
 	// TODO either merge this all with AST_Build
 	// or modify these calls to accept a cypher_astnode
-	AST *ast = rm_malloc(sizeof(AST));
-	ast->root = body;
+	AST ast;
+	ast.root = body;
 	// Check for invalid queries not captured by libcypher-parser
-	res = _ValidateClauses(ast, &reason);
+	res = _ValidateClauses(&ast, &reason);
 	if(res != AST_VALID) {
 		RedisModule_ReplyWithError(ctx, reason);
 		free(reason);
 	}
-	rm_free(ast);
 
 	return res;
 }

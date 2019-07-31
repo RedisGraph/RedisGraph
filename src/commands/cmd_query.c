@@ -18,13 +18,12 @@
 extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
 
 void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, const cypher_astnode_t *index_op) {
-
 	/* Set up nested array response for index creation and deletion,
 	 * Following the response struture of other queries:
 	 * First element is an empty result-set followed by statistics.
 	 * We'll enqueue one string response to indicate the operation's success,
 	 * and the query runtime will be appended after this call returns. */
-	RedisModule_ReplyWithArray(ctx, 2); // Two Array
+	RedisModule_ReplyWithArray(ctx, 2); // Two Arrays
 	RedisModule_ReplyWithArray(ctx, 0); // Empty result-set
 	RedisModule_ReplyWithArray(ctx, 2); // Statistics.
 	Index *idx = NULL;
@@ -119,8 +118,8 @@ void _MGraph_Query(void *args) {
 		ResultSet *result_set = NewResultSet(ctx, compact);
 		ExecutionPlan *plan = NewExecutionPlan(ctx, gc, result_set);
 		result_set = ExecutionPlan_Execute(plan);
-		ExecutionPlan_Free(plan);
 		ResultSet_Replay(result_set);    // Send result-set back to client.
+		ExecutionPlan_Free(plan);
 	} else if(root_type == CYPHER_AST_CREATE_NODE_PROP_INDEX ||
 			  root_type == CYPHER_AST_DROP_NODE_PROP_INDEX) {
 		_index_operation(ctx, gc, ast->root);

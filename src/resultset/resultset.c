@@ -118,7 +118,7 @@ int ResultSet_AddRecord(ResultSet *set, Record r) {
 void ResultSet_Replay(ResultSet *set) {
 	// If we have emitted records, set the number of elements in the
 	// preceding array
-	if(set->exps) {
+	if(set->exps && array_len(set->exps) > 0) {
 		RedisModule_ReplySetArrayLength(set->ctx, set->recordCount);
 	}
 	_ResultSet_ReplayStats(set->ctx, set);

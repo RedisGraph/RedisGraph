@@ -238,13 +238,20 @@ static const char **_BuildCallArguments(RecordMap *record_map,
 	uint arg_count = cypher_ast_call_narguments(call_clause);
 	const char **arguments = array_new(const char *, arg_count);
 	for(uint i = 0; i < arg_count; i ++) {
+		/* For the timebeing we're only supporting procedures that accept
+		 * string argument, as such we can quickly transfer AST procedure
+		 * call arguments to strings.
+		 * TODO: create an arithmetic expression for each argument
+		 * evaluate it and pass SIValues as arguments to procedure. */
+		const cypher_astnode_t *exp = cypher_ast_call_get_argument(call_clause, i);
+		const cypher_astnode_type_t type = cypher_astnode_type(exp);
 
-		const cypher_astnode_t *ast_exp = cypher_ast_call_get_argument(call_clause, i);
+		if(type != CYPHER_AST_STRING) continue;
 
-		const cypher_astnode_t *identifier_node = cypher_ast_projection_get_alias(ast_exp);
-		const char *identifier = cypher_ast_identifier_get_name(identifier_node);
-
-		arguments = array_append(arguments, identifier);
+		const char *arg = cypher_ast_string_get_value(exp);
+		arguments = array_append(arguments, arg);
+		// AR_ExpNode *arg = AR_EXP_FromExpression(record_map, ast_exp);
+		// SIValue si_arg = AR_EXP_Evaluate(arg, NULL);
 	}
 
 	return arguments;
@@ -839,6 +846,7 @@ void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx) {
 	// No idea how many operation are in execution plan.
 	RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
 	_ExecutionPlan_Print(plan->root, ctx, buffer, 1024, 0, &op_count);
+
 	RedisModule_ReplySetArrayLength(ctx, op_count);
 }
 

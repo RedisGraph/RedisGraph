@@ -24,7 +24,7 @@ GraphContext *_empty_graph_context() {
 	gc->relation_schemas = NULL;
 	gc->graph_name = rm_strdup("");
 
-	pthread_setspecific(_tlsGCKey, gc);
+	assert(pthread_setspecific(_tlsGCKey, gc) == 0);
 	return gc;
 }
 

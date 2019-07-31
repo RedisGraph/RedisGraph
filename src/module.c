@@ -83,9 +83,12 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	Proc_Register();        // Register procedures.
-	AR_RegisterFuncs();     // Register arithmetic functions.
-	Agg_RegisterFuncs();    // Register aggregation functions.
+	Proc_Register();            // Register procedures.
+	AR_RegisterFuncs();         // Register arithmetic functions.
+	Agg_RegisterFuncs();        // Register aggregation functions.
+	CypherWhitelist_Build();    // Build whitelist of supported Cypher elements.
+
+	if(!_Setup_ThreadLocalStorage()) return REDISMODULE_ERR;
 
 	long long threadCount = Config_GetThreadCount(ctx, argv, argc);
 	if(!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
