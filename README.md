@@ -1,6 +1,7 @@
 [![GitHub issues](https://img.shields.io/github/release/RedisGraph/RedisGraph.svg)](https://github.com/RedisGraph/RedisGraph/releases/latest)
 [![CircleCI](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master.svg?style=svg)](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master)
 [![DockerHub](https://dockerbuildbadges.quelltext.eu/status.svg?organization=redislabs&repository=redisgraph)](https://hub.docker.com/r/redislabs/redisgraph/builds/)
+[![Mailing List](https://img.shields.io/badge/Mailing%20List-RedisGraph-blue)](https://groups.google.com/forum/#!forum/redisgraph)
 
 # RedisGraph - A graph database module for Redis
 
