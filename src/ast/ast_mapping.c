@@ -129,6 +129,11 @@ static void _AST_MapExpression(AST *ast, const cypher_astnode_t *expr) {
 			  type == CYPHER_AST_FALSE   ||
 			  type == CYPHER_AST_NULL) {
 		return;
+	} else if(type == CYPHER_AST_COLLECTION) {
+		uint collectionLength = cypher_ast_collection_length(expr);
+		for(uint i = 0; i < collectionLength; i++) {
+			_AST_MapExpression(ast, cypher_ast_collection_get(expr, i));
+		}
 	} else {
 		printf("Encountered unhandled type '%s'\n", cypher_astnode_typestr(type));
 		assert(false);

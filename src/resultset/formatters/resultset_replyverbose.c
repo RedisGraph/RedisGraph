@@ -40,6 +40,9 @@ static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 	case T_EDGE:
 		_ResultSet_VerboseReplyWithEdge(ctx, gc, v.ptrval);
 		return;
+	case T_ARRAY:
+		_ResultSet_VerboseReplyWithArray(ctx, gc, v.array);
+		return;
 	default:
 		assert("Unhandled value type" && false);
 	}
