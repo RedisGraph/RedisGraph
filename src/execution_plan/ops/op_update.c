@@ -9,27 +9,10 @@
 #include "../../util/rmalloc.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-/* Build an evaluation context foreach update expression. */
-static void _BuildUpdateEvalCtx(OpUpdate *op, AST *ast) {
-	AST_SetElement *element;
-	AST_SetNode *setNode = ast->setNode;
-	op->update_expressions_count = Vector_Size(setNode->set_elements);
-	op->update_expressions = rm_malloc(sizeof(EntityUpdateEvalCtx) * op->update_expressions_count);
-
-	for(uint i = 0; i < op->update_expressions_count; i++) {
-		/* Get a reference to the entity in the SET clause. */
-		Vector_Get(setNode->set_elements, i, &element);
-		/* Track all required informantion to perform an update. */
-		op->update_expressions[i].attribute = element->entity->property;
-		op->update_expressions[i].exp = AR_EXP_BuildFromAST(ast, element->exp);
-		op->update_expressions[i].entityRecIdx = AST_GetAliasID(op->ast, element->entity->alias);
-	}
-}
-
 /* Delay updates until all entities are processed,
  * _QueueUpdate will queue up all information necessary to perform an update. */
-static void _QueueUpdate(OpUpdate *op, GraphEntity *entity, GraphEntityType type, char *attribute,
-						 SIValue new_value) {
+static void _QueueUpdate(OpUpdate *op, GraphEntity *entity, GraphEntityType type,
+						 const char *attribute, SIValue new_value) {
 	/* Make sure we've got enough room in queue. */
 	if(op->pending_updates_count == op->pending_updates_cap) {
 		op->pending_updates_cap *= 2;
@@ -52,7 +35,8 @@ static void _QueueUpdate(OpUpdate *op, GraphEntity *entity, GraphEntityType type
 }
 
 /* Introduce updated entity to index. */
-static void _UpdateIndex(EntityUpdateCtx *ctx, GraphContext *gc, Schema *s) {
+static void _UpdateIndex(EntityUpdateCtx *ctx, GraphContext *gc, Schema *s, SIValue *old_value,
+						 SIValue *new_value) {
 	Node *n = &ctx->n;
 	EntityID node_id = ENTITY_GET_ID(n);
 
@@ -86,7 +70,7 @@ static void _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
 	}
 
 	// Update index for node entities.
-	if(s) _UpdateIndex(ctx, op->gc, s);
+	_UpdateIndex(ctx, op->gc, s, old_value, &ctx->new_value);
 }
 
 static void _UpdateEdge(OpUpdate *op, EntityUpdateCtx *ctx) {
@@ -98,7 +82,6 @@ static void _UpdateEdge(OpUpdate *op, EntityUpdateCtx *ctx) {
 	Edge *edge = &ctx->e;
 
 	int label_id = Graph_GetEdgeRelation(op->gc->g, edge);
-	Schema *s = GraphContext_GetSchemaByID(op->gc, label_id, SCHEMA_EDGE);
 
 	// Try to get current property value.
 	SIValue *old_value = GraphEntity_GetProperty((GraphEntity *)edge, ctx->attr_id);
@@ -127,7 +110,7 @@ static void _CommitUpdates(OpUpdate *op) {
 		}
 	}
 
-	if(op->result_set) op->result_set->stats.properties_set += op->pending_updates_count;
+	if(op->stats) op->stats->properties_set += op->pending_updates_count;
 }
 
 /* We only cache records if op_update is not the last
@@ -146,22 +129,19 @@ static Record _handoff(OpUpdate *op) {
 	return NULL;
 }
 
-OpBase *NewUpdateOp(AST *ast, ResultSet *result_set) {
+OpBase *NewUpdateOp(GraphContext *gc, EntityUpdateEvalCtx *update_exps, uint update_exp_count,
+					ResultSetStatistics *stats) {
 	OpUpdate *op_update = calloc(1, sizeof(OpUpdate));
-	op_update->gc = GraphContext_GetFromTLS();
-	op_update->ast = ast;
-	op_update->result_set = result_set;
+	op_update->gc = gc;
+	op_update->stats = stats;
 
-	op_update->update_expressions = NULL;
-	op_update->update_expressions_count = 0;
+	op_update->update_expressions = update_exps;
+	op_update->update_expressions_count = update_exp_count;
 	op_update->pending_updates_count = 0;
 	op_update->pending_updates_cap = 16; /* 16 seems reasonable number to start with. */
 	op_update->pending_updates = rm_malloc(sizeof(EntityUpdateCtx) * op_update->pending_updates_cap);
 	op_update->records = NULL;
 	op_update->updates_commited = false;
-
-	// Create a context for each update expression.
-	_BuildUpdateEvalCtx(op_update, ast);
 
 	// Set our Op operations
 	OpBase_Init(&op_update->op);
@@ -172,6 +152,12 @@ OpBase *NewUpdateOp(AST *ast, ResultSet *result_set) {
 	op_update->op.free = OpUpdateFree;
 	op_update->op.init = OpUpdateInit;
 
+	// Construct the array of IDs this operation modifies
+	op_update->op.modifies = array_new(uint, update_exp_count);
+	for(uint i = 0; i < update_exp_count; i ++) {
+		// TODO does 'modifies' need to be unique?
+		op_update->op.modifies = array_append(op_update->op.modifies, update_exps[i].entityRecIdx);
+	}
 	return (OpBase *)op_update;
 }
 

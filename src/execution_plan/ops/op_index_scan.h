@@ -10,23 +10,19 @@
 #include "op.h"
 #include "../../graph/graph.h"
 #include "../../index/index.h"
-#include "../../graph/entities/node.h"
 #include "../../../deps/RediSearch/src/redisearch_api.h"
-
 
 typedef struct {
     OpBase op;
-    Node *n;
+    QGNode *n;
     Graph *g;
-    uint recLength;  // Number of entries in a record.
-    uint nodeRecIdx;
     RSIndex *idx;
-    RSQNode *qn;
+    uint nodeRecIdx;
     RSResultsIterator *iter;
 } IndexScan;
 
 /* Creates a new IndexScan operation */
-OpBase *NewIndexScanOp(Graph *g, Node *n, RSIndex *idx, RSQNode *qn, AST *ast);
+OpBase *NewIndexScanOp(Graph *g, QGNode *n, uint node_idx, RSIndex *idx, RSResultsIterator *iter);
 
 /* IndexScan next operation
  * called each time a new node is required */

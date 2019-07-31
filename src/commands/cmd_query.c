@@ -35,8 +35,7 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, const cypher_astnod
 														  index_op));
 		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_create_node_prop_index_get_prop_name(
 															  index_op));
-		if(GraphContext_AddIndex(&idx, gc, indexNode->label, indexNode->property,
-								 IDX_EXACT_MATCH) != INDEX_OK) {
+		if(GraphContext_AddIndex(&idx, gc, label, prop, IDX_EXACT_MATCH) != INDEX_OK) {
 			// Index creation may have failed if the label or property was invalid, or the index already exists.
 			RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
 			return;

@@ -31,7 +31,6 @@ static void _BuildQueryGraphAddNode(const GraphContext *gc,
 		n = QGNode_New(NULL, alias, id);
 
 		QueryGraph_AddNode(qg, n);
-
 	}
 
 	// Retrieve node labels from the AST entity.

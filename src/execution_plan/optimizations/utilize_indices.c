@@ -2,7 +2,7 @@
 #include "../../value.h"
 #include "../../util/arr.h"
 #include "../ops/op_index_scan.h"
-#include "../../parser/grammar.h"
+#include "../../ast/ast_shared.h"
 #include "../../util/range/string_range.h"
 #include "../../util/range/numeric_range.h"
 
@@ -10,14 +10,14 @@
  * inequalities with right-hand variables. */
 int _reverseOp(int op) {
 	switch(op) {
-	case LT:
-		return GT;
-	case LE:
-		return GE;
-	case GT:
-		return LT;
-	case GE:
-		return LE;
+	case OP_LT:
+		return OP_GT;
+	case OP_LE:
+		return OP_GE;
+	case OP_GT:
+		return OP_LT;
+	case OP_GE:
+		return OP_LE;
 	default:
 		return op;
 	}
@@ -65,18 +65,20 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 		RSQNode *left = NULL;
 		RSQNode *right = NULL;
 		switch(filter->cond.op) {
-		case OR:
+		case OP_OR:
 			node = RediSearch_CreateUnionNode(sp);
 			left = _filterTreeToQueryNode(filter->cond.left, sp);
 			right = _filterTreeToQueryNode(filter->cond.right, sp);
 			RediSearch_QueryNodeAddChild(node, left);
 			RediSearch_QueryNodeAddChild(node, right);
-		case AND:
+		case OP_AND:
 			node = RediSearch_CreateIntersectNode(sp, false);
 			left = _filterTreeToQueryNode(filter->cond.left, sp);
 			right = _filterTreeToQueryNode(filter->cond.right, sp);
 			RediSearch_QueryNodeAddChild(node, left);
 			RediSearch_QueryNodeAddChild(node, right);
+		default:
+			assert("unexpected conditional operation");
 		}
 	} else if(filter->t == FT_N_PRED) {
 		// Make sure left hand side is variadic and right hand side is constant.
@@ -88,22 +90,22 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 		case T_STRING:
 		case T_CONSTSTRING:
 			switch(filter->pred.op) {
-			case LT:    // <
+			case OP_LT:    // <
 				node = RediSearch_CreateLexRangeNode(sp, field, RSLEXRANGE_NEG_INF, v.stringval, 0, 0);
 				break;
-			case LE:    // <=
+			case OP_LE:    // <=
 				node = RediSearch_CreateLexRangeNode(sp, field, RSLEXRANGE_NEG_INF, v.stringval, 0, 1);
 				break;
-			case GT:    // >
+			case OP_GT:    // >
 				node = RediSearch_CreateLexRangeNode(sp, field, v.stringval, RSLECRANGE_INF, 0, 0);
 				break;
-			case GE:    // >=
+			case OP_GE:    // >=
 				node = RediSearch_CreateLexRangeNode(sp, field, v.stringval, RSLECRANGE_INF, 1, 0);
 				break;
-			case EQ:    // ==
+			case OP_EQUAL:  // ==
 				node = RediSearch_CreateTokenNode(sp, field, v.stringval);
 				break;
-			case NE:    // !=
+			case OP_NEQUAL: // !=
 				node = RediSearch_CreateNotNode(sp);
 				RediSearch_QueryNodeAddChild(node, RediSearch_CreateTokenNode(sp, field, v.stringval));
 				break;
@@ -117,22 +119,22 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 		case T_BOOL:
 			d = SI_GET_NUMERIC(v);
 			switch(filter->pred.op) {
-			case LT:    // <
+			case OP_LT:    // <
 				node = RediSearch_CreateNumericNode(sp, field, d, RSRANGE_NEG_INF, false, false);
 				break;
-			case LE:    // <=
+			case OP_LE:    // <=
 				node = RediSearch_CreateNumericNode(sp, field, d, RSRANGE_NEG_INF, true, false);
 				break;
-			case GT:    // >
+			case OP_GT:    // >
 				node = RediSearch_CreateNumericNode(sp, field, RSRANGE_INF, d, false, false);
 				break;
-			case GE:    // >=
+			case OP_GE:    // >=
 				node = RediSearch_CreateNumericNode(sp, field, RSRANGE_INF, d, false, true);
 				break;
-			case EQ:    // ==
+			case OP_EQUAL:  // ==
 				node = RediSearch_CreateNumericNode(sp, field, d, d, true, true);
 				break;
-			case NE:    // !=
+			case OP_NEQUAL: // !=
 				node = RediSearch_CreateNotNode(sp);
 				RediSearch_QueryNodeAddChild(node, RediSearch_CreateNumericNode(sp, field, d, d, true, true));
 				break;
@@ -198,12 +200,12 @@ bool _applicableFilter(Index *idx, Filter *filter) {
 
 	/* filterTree will either be a predicate or a tree with an OR root.
 	 * make sure filter doesn't contains predicates of type: a.v = b.y */
-	rax *aliases = FilterTree_CollectAliases(filter_tree);
-	uint alias_count = raxSize(aliases);
-	raxFree(aliases);
+	rax *entities = FilterTree_CollectModified(filter_tree);
+	uint entity_count = raxSize(entities);
+	raxFree(entities);
 
 	// a.v op b.k
-	if(alias_count != 1) return false;
+	if(entity_count != 1) return false;
 
 	// Make sure all filtered attributes are indexed.
 	rax *attr = FilterTree_CollectAttributes(filter_tree);
@@ -287,7 +289,7 @@ void _predicateTreeToRange(const FT_FilterNode *tree, rax *string_ranges, rax *n
 
 /* Try to replace given Label Scan operation and a set of Filter operations with
  * a single Index Scan operation. */
-void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan, AST *ast) {
+void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 	RSQNode *root = NULL;
 	uint rsqnode_count = 0;
 
@@ -405,16 +407,15 @@ cleanup:
 	}
 
 	if(root) {
-		OpBase *indexOp = NewIndexScanOp(scan->g, scan->node, rs_idx, root, ast);
+		// Pass ownership of root to iterator.
+		RSResultsIterator *iter = RediSearch_GetResultsIterator(root, rs_idx);
+		OpBase *indexOp = NewIndexScanOp(scan->g, scan->node, scan->nodeRecIdx, rs_idx, iter);
 		ExecutionPlan_ReplaceOp(plan, (OpBase *)scan, indexOp);
 		OpBase_Free((OpBase *)scan);
 	}
 }
 
-void utilizeIndices(ExecutionPlan *plan, AST *ast) {
-	Index *idx = NULL;
-	GraphContext *gc = GraphContext_GetFromTLS();
-
+void utilizeIndices(GraphContext *gc, ExecutionPlan *plan) {
 	// Return immediately if the graph has no indices
 	if(!GraphContext_HasIndices(gc)) return;
 
@@ -424,7 +425,7 @@ void utilizeIndices(ExecutionPlan *plan, AST *ast) {
 	int scanOpCount = array_len(scanOps);
 	for(int i = 0; i < scanOpCount; i++) {
 		NodeByLabelScan *scanOp = (NodeByLabelScan *)scanOps[i];
-		reduce_scan_op(plan, scanOp, ast);
+		reduce_scan_op(plan, scanOp);
 	}
 
 	// Cleanup

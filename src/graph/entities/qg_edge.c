@@ -16,7 +16,7 @@ QGEdge *QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const ch
 	e->id = id;
 	e->alias = alias;
 	e->reltypes = array_new(const char *, 1);
-	e->reltypeIDs = array_new(uint, 1);
+	e->reltypeIDs = array_new(int, 1);
 	e->src = NULL;
 	e->dest = NULL;
 	e->minHops = 1;
