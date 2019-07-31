@@ -203,7 +203,7 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	if(cypher_astnode_type(ast->root) == CYPHER_AST_QUERY) AST_BuildEntityMap(ast);
 
 	// Set thread-local AST
-	pthread_setspecific(_tlsASTKey, ast);
+	assert(pthread_setspecific(_tlsASTKey, ast) == 0);
 
 	return ast;
 }
@@ -222,7 +222,7 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 
 	// TODO This overwrites the previously-held AST pointer, which could lead to inconsistencies
 	// in the future if we expect the variable to hold a different AST.
-	pthread_setspecific(_tlsASTKey, ast);
+	assert(pthread_setspecific(_tlsASTKey, ast) == 0);
 	AST_BuildEntityMap(ast);
 
 	return ast;

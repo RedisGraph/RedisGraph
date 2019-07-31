@@ -363,6 +363,19 @@ void AR_EXP_CollectEntityIDs(AR_ExpNode *root, rax *record_ids) {
 	}
 }
 
+void AR_EXP_CollectAttributes(AR_ExpNode *root, rax *attributes) {
+	if(root->type == AR_EXP_OP) {
+		for(int i = 0; i < root->op.child_count; i ++) {
+			AR_EXP_CollectAttributes(root->op.children[i], attributes);
+		}
+	} else { // type == AR_EXP_OPERAND
+		if(root->operand.type == AR_EXP_VARIADIC) {
+			const char *attr = root->operand.variadic.entity_prop;
+			if(attr) raxInsert(attributes, (unsigned char *)attr, strlen(attr), NULL, NULL);
+		}
+	}
+}
+
 int AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node) {
 	if(root->type == AR_EXP_OP && root->op.type == AR_OP_AGGREGATE) {
 		if(agg_node != NULL) *agg_node = root;

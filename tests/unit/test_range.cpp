@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2019 Redis Labs OP_Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 #include "../../src/util/rmalloc.h"
-#include "../../src/parser/grammar.h"
+#include "../../src/ast/ast_shared.h"
 #include "../../src/util/range/string_range.h"
 #include "../../src/util/range/numeric_range.h"
 #include <math.h>
@@ -108,27 +108,27 @@ TEST_F(RangeTest, NumericTightenRange) {
     NumericRange *r = NumericRange_New();
 
     // X < 100
-    NumericRange_TightenRange(r, LT, 100);
+    NumericRange_TightenRange(r, OP_LT, 100);
     ASSERT_EQ(r->max, 100);
     ASSERT_FALSE(r->include_max);
 
     // X <= 100
-    NumericRange_TightenRange(r, LE, 100);
+    NumericRange_TightenRange(r, OP_LE, 100);
     ASSERT_EQ(r->max, 100);
     ASSERT_FALSE(r->include_max);
 
     // X >= 50
-    NumericRange_TightenRange(r, GE, 50);
+    NumericRange_TightenRange(r, OP_GE, 50);
     ASSERT_EQ(r->min, 50);
     ASSERT_TRUE(r->include_min);
 
     // X > 50
-    NumericRange_TightenRange(r, GT, 50);
+    NumericRange_TightenRange(r, OP_GT, 50);
     ASSERT_EQ(r->min, 50);
     ASSERT_FALSE(r->include_min);
 
     // 75 <= X >= 75
-    NumericRange_TightenRange(r, EQ, 75);
+    NumericRange_TightenRange(r, OP_EQUAL, 75);
     ASSERT_EQ(r->min, 75);
     ASSERT_TRUE(r->include_min);
     ASSERT_EQ(r->max, 75);
@@ -144,24 +144,24 @@ TEST_F(RangeTest, NumericContainsValue) {
     ASSERT_TRUE(NumericRange_ContainsValue(r, 100));
 
     // X <= 100
-    NumericRange_TightenRange(r, LE, 100);
+    NumericRange_TightenRange(r, OP_LE, 100);
     ASSERT_FALSE(NumericRange_ContainsValue(r, 101));
     ASSERT_TRUE(NumericRange_ContainsValue(r, 100));
     ASSERT_TRUE(NumericRange_ContainsValue(r, -9999));
 
     // X > -10
-    NumericRange_TightenRange(r, GT, -10);
+    NumericRange_TightenRange(r, OP_GT, -10);
     ASSERT_FALSE(NumericRange_ContainsValue(r, -10));
     ASSERT_TRUE(NumericRange_ContainsValue(r, -9));
 
     // X >= 0 AND X <= 0
-    NumericRange_TightenRange(r, EQ, 0);
+    NumericRange_TightenRange(r, OP_EQUAL, 0);
     ASSERT_FALSE(NumericRange_ContainsValue(r, 1));
     ASSERT_FALSE(NumericRange_ContainsValue(r, -1));
     ASSERT_TRUE(NumericRange_ContainsValue(r, 0));
 
     // X > 0
-    NumericRange_TightenRange(r, GT, 0);
+    NumericRange_TightenRange(r, OP_GT, 0);
     ASSERT_FALSE(NumericRange_ContainsValue(r, 0));
 
     NumericRange_Free(r);
@@ -188,57 +188,57 @@ TEST_F(RangeTest, StringRangeValidation) {
 
     // X > "a" AND X < "a"
     r = StringRange_New();
-    StringRange_TightenRange(r, LT, "a");
-    StringRange_TightenRange(r, GT, "a");
+    StringRange_TightenRange(r, OP_LT, "a");
+    StringRange_TightenRange(r, OP_GT, "a");
     ASSERT_FALSE(StringRange_IsValid(r));
     StringRange_Free(r);
 
     // X >= "a" AND X < "a"
     r = StringRange_New();
-    StringRange_TightenRange(r, LT, "a");
-    StringRange_TightenRange(r, GE, "a");
+    StringRange_TightenRange(r, OP_LT, "a");
+    StringRange_TightenRange(r, OP_GE, "a");
     ASSERT_FALSE(StringRange_IsValid(r));
     StringRange_Free(r);
     
     // X >= "a" AND X <= "a"
     r = StringRange_New();
-    StringRange_TightenRange(r, LE, "a");
-    StringRange_TightenRange(r, GE, "a");
+    StringRange_TightenRange(r, OP_LE, "a");
+    StringRange_TightenRange(r, OP_GE, "a");
     ASSERT_TRUE(StringRange_IsValid(r));
     StringRange_Free(r);
 
     // X > "a" AND X <= "a"
     r = StringRange_New();
-    StringRange_TightenRange(r, LE, "a");
-    StringRange_TightenRange(r, GT, "a");
+    StringRange_TightenRange(r, OP_LE, "a");
+    StringRange_TightenRange(r, OP_GT, "a");
     ASSERT_FALSE(StringRange_IsValid(r));
     StringRange_Free(r);
 
     // ("a", "z")  X > "a" AND x < "z".
     r = StringRange_New();
-    StringRange_TightenRange(r, LT, "z");
-    StringRange_TightenRange(r, GT, "a");
+    StringRange_TightenRange(r, OP_LT, "z");
+    StringRange_TightenRange(r, OP_GT, "a");
     ASSERT_TRUE(StringRange_IsValid(r));
     StringRange_Free(r);
 
     // ("a", "z"]  X > "a" AND x <= "z".
     r = StringRange_New();
-    StringRange_TightenRange(r, LE, "z");
-    StringRange_TightenRange(r, GT, "a");
+    StringRange_TightenRange(r, OP_LE, "z");
+    StringRange_TightenRange(r, OP_GT, "a");
     ASSERT_TRUE(StringRange_IsValid(r));
     StringRange_Free(r);
 
     // ["a", "z")  X >= "a" AND x < "z".
     r = StringRange_New();
-    StringRange_TightenRange(r, LT, "z");
-    StringRange_TightenRange(r, GE, "a");
+    StringRange_TightenRange(r, OP_LT, "z");
+    StringRange_TightenRange(r, OP_GE, "a");
     ASSERT_TRUE(StringRange_IsValid(r));
     StringRange_Free(r);
 
     // ["a", "z"]  X >= "a" AND x =< "z".
     r = StringRange_New();
-    StringRange_TightenRange(r, LE, "z");
-    StringRange_TightenRange(r, GE, "a");
+    StringRange_TightenRange(r, OP_LE, "z");
+    StringRange_TightenRange(r, OP_GE, "a");
     ASSERT_TRUE(StringRange_IsValid(r));
     StringRange_Free(r);
 }
@@ -247,27 +247,27 @@ TEST_F(RangeTest, StringTightenRange) {
     StringRange *r = StringRange_New();
 
     // X < "z"
-    StringRange_TightenRange(r, LT, "z");
+    StringRange_TightenRange(r, OP_LT, "z");
     ASSERT_STREQ(r->max, "z");
     ASSERT_FALSE(r->include_max);
 
     // X <= "z"
-    StringRange_TightenRange(r, LE, "z");
+    StringRange_TightenRange(r, OP_LE, "z");
     ASSERT_STREQ(r->max, "z");
     ASSERT_FALSE(r->include_max);
 
     // X >= "a"
-    StringRange_TightenRange(r, GE, "a");
+    StringRange_TightenRange(r, OP_GE, "a");
     ASSERT_STREQ(r->min, "a");
     ASSERT_TRUE(r->include_min);
 
     // X > "a"
-    StringRange_TightenRange(r, GT, "a");
+    StringRange_TightenRange(r, OP_GT, "a");
     ASSERT_STREQ(r->min, "a");
     ASSERT_FALSE(r->include_min);
 
     // "g" <= X >= "g"
-    StringRange_TightenRange(r, EQ, "g");
+    StringRange_TightenRange(r, OP_EQUAL, "g");
     ASSERT_STREQ(r->min, "g");
     ASSERT_TRUE(r->include_min);
     ASSERT_STREQ(r->max, "g");
@@ -283,24 +283,24 @@ TEST_F(RangeTest, StringContainsValue) {
     ASSERT_TRUE(StringRange_ContainsValue(r, "k"));
 
     // X <= "y"
-    StringRange_TightenRange(r, LE, "y");
+    StringRange_TightenRange(r, OP_LE, "y");
     ASSERT_FALSE(StringRange_ContainsValue(r, "z"));
     ASSERT_TRUE(StringRange_ContainsValue(r, "y"));
     ASSERT_TRUE(StringRange_ContainsValue(r, "a"));
 
     // X > "a"
-    StringRange_TightenRange(r, GT, "a");
+    StringRange_TightenRange(r, OP_GT, "a");
     ASSERT_FALSE(StringRange_ContainsValue(r, "a"));
     ASSERT_TRUE(StringRange_ContainsValue(r, "b"));
 
     // X >= "k" AND X <= "k"
-    StringRange_TightenRange(r, EQ, "k");
+    StringRange_TightenRange(r, OP_EQUAL, "k");
     ASSERT_FALSE(StringRange_ContainsValue(r, "l"));
     ASSERT_FALSE(StringRange_ContainsValue(r, "j"));
     ASSERT_TRUE(StringRange_ContainsValue(r, "k"));
 
     // X > "k"
-    StringRange_TightenRange(r, GT, "k");
+    StringRange_TightenRange(r, OP_GT, "k");
     ASSERT_FALSE(StringRange_ContainsValue(r, "k"));
 
     StringRange_Free(r);
