@@ -65,6 +65,7 @@ class testWithClause(FlowTestsBase):
         self.env.assertEqual(actual_result.properties_set, 0)
 
         self.env.assertEqual(actual_result.result_set, expected)
+
     def test02_with_arithmetic_op_read_queries(self):
         # Iterate over nodes
         query = """MATCH (a) WITH ID(a) AS id RETURN id ORDER BY id"""
@@ -171,3 +172,15 @@ class testWithClause(FlowTestsBase):
         expected = [[50]]
         self.env.assertEqual(actual_result.result_set, expected)
         self.env.assertEqual(actual_result.properties_set, 1)
+
+    # Verify that projected nodes, edges, and scalars can be returned properly
+    def test07_projected_graph_entities(self):
+        query = """MATCH (a)-[e]->(b) WITH a, e, b.b_val AS b_val ORDER BY a.a_val LIMIT 2 RETURN *"""
+        actual_result = redis_graph.query(query)
+
+        # Validate the header strings and value types
+        expected_header = [[2, 'a'], [3, 'e'], [1, 'b_val']]
+        self.env.assertEqual(actual_result.header, expected_header)
+        # Verify that 2 rows and 3 columns are returned
+        self.env.assertEqual(len(actual_result.result_set), 2)
+        self.env.assertEqual(len(actual_result.result_set[0]), 3)

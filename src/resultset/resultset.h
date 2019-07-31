@@ -21,8 +21,9 @@ typedef struct {
 	RedisModuleCtx *ctx;
 	GraphContext *gc;           /* Context used for mapping attribute strings and IDs */
 	uint column_count;          /* Number of columns in result set. */
-	AR_ExpNode **exps;          /* Expression nodes containing result set header strings. */
 	bool compact;               /* Whether records should be returned in compact form. */
+	bool header_emitted;        /* Whether a header row has been issued to the user. */
+	const char **columns;       /* Field names for each column of results. */
 	size_t recordCount;         /* Number of records introduced. */
 	ResultSetStatistics stats;  /* ResultSet statistics. */
 	ResultSetFormatter *formatter;  /* ResultSet data formatter. */
@@ -30,7 +31,9 @@ typedef struct {
 
 ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact);
 
-void ResultSet_ReplyWithPreamble(ResultSet *set, QueryGraph *qg);
+void ResultSet_BuildColumns(ResultSet *set, AR_ExpNode **projections);
+
+void ResultSet_ReplyWithPreamble(ResultSet *set, Record r);
 
 int ResultSet_AddRecord(ResultSet *set, Record r);
 

@@ -152,12 +152,12 @@ void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Re
 }
 
 // Emit the alias or descriptor for each column in the header.
-void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const QueryGraph *unused,
-									  AR_ExpNode **exps) {
-	uint columns_len = array_len(exps);
+void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns,
+									  const Record unused) {
+	uint columns_len = array_len(columns);
 	RedisModule_ReplyWithArray(ctx, columns_len);
 	for(uint i = 0; i < columns_len; i++) {
-		AR_ExpNode *exp = exps[i];
-		RedisModule_ReplyWithStringBuffer(ctx, exp->resolved_name, strlen(exp->resolved_name));
+		// Emit the identifier string associated with the column
+		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
 	}
 }
