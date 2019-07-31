@@ -129,6 +129,12 @@ AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant) {
 	node->operand.constant = constant;
 	return node;
 }
+AR_ExpNode *AR_EXP_NewArrayNode(AR_ExpNode **expressions) {
+	AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
+	node->expressions = expressions;
+	node->type = AR_EXP_ARRAY;
+	return node;
+}
 
 int AR_EXP_GetOperandType(AR_ExpNode *exp) {
 	if(exp->type == AR_EXP_OPERAND) return exp->operand.type;
@@ -334,8 +340,20 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 		*str = rm_realloc(*str, sizeof(char) * *str_size);
 	}
 
+	if(root->type == AR_EXP_ARRAY) {
+		*bytes_written += sprintf((*str + *bytes_written), "[");
+		uint arrayLen = array_len(root->expressions);
+		for(uint i = 0; i < arrayLen; i++) {
+			_AR_EXP_ToString(root->expressions[i], str, str_size, bytes_written);
+			if(i < (arrayLen - 1)) {
+				*bytes_written += sprintf((*str + *bytes_written), ", ");
+			}
+		}
+		*bytes_written += sprintf((*str + *bytes_written), "]");
+	}
+
 	/* Concat Op. */
-	if(root->type == AR_EXP_OP) {
+	else if(root->type == AR_EXP_OP) {
 		/* Binary operation? */
 		char binary_op = 0;
 
@@ -431,6 +449,15 @@ static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 	return clone;
 }
 
+static AR_ExpNode *_AR_Exp_CloneArray(AR_ExpNode *exp) {
+	uint arrayLen = array_len(exp->expressions);
+	AR_ExpNode **clonedExpressions = array_new(AR_ExpNode *, arrayLen);
+	for(uint i = 0; i < arrayLen; i++) {
+		clonedExpressions = array_append(clonedExpressions, AR_EXP_Clone(exp->expressions[i]));
+	}
+	return AR_EXP_NewArrayNode(clonedExpressions);
+}
+
 AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
 	AR_ExpNode *clone;
 	switch(exp->type) {
@@ -457,6 +484,12 @@ void AR_EXP_Free(AR_ExpNode *root) {
 		if(root->op.type == AR_OP_AGGREGATE) {
 			AggCtx_Free(root->op.agg_func);
 		}
+	} else if(root->type == AR_EXP_ARRAY) {
+		uint arrayLen = array_len(root->expressions);
+		for(uint i = 0; i < arrayLen; i++) {
+			AR_EXP_Free(root->expressions[i]);
+		}
+		array_free(root->expressions);
 	} else if(root->operand.type == AR_EXP_CONSTANT) {
 		SIValue_Free(&root->operand.constant);
 	}

@@ -229,7 +229,7 @@ int AST_PrepareSortOp(const cypher_astnode_t *order_clause) {
 AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause,
 									  RecordMap *record_map) {
 	const cypher_astnode_t *collection = cypher_ast_unwind_get_expression(unwind_clause);
-	AR_ExpNode **exps = _AST_ConvertCollection(collection, record_map);
+	AR_ExpNode **exps = AR_EXP_FromExpression(record_map, collection)->expressions;
 	const char *alias = cypher_ast_identifier_get_name(cypher_ast_unwind_get_alias(unwind_clause));
 	uint record_idx = RecordMap_FindOrAddAlias(record_map, alias);
 
