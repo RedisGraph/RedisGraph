@@ -6,7 +6,6 @@
 
 #include "op_conditional_traverse.h"
 #include "../../util/arr.h"
-#include "../../util/rmalloc.h"
 #include "../../GraphBLASExt/GxB_Delete.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
@@ -233,39 +232,14 @@ OpResult CondTraverseReset(OpBase *ctx) {
 /* Frees CondTraverse */
 void CondTraverseFree(OpBase *ctx) {
 	CondTraverse *op = (CondTraverse *)ctx;
-	if(op->iter) {
-		GxB_MatrixTupleIter_free(op->iter);
-		op->iter = NULL;
-	}
-
-	if(op->F) {
-		GrB_Matrix_free(&op->F);
-		op->F = NULL;
-	}
-
-	if(op->M) {
-		GrB_Matrix_free(&op->M);
-		op->M = NULL;
-	}
-
-	if(op->edges) {
-		array_free(op->edges);
-		op->edges = NULL;
-	}
-
-	if(op->algebraic_expression) {
-		AlgebraicExpression_Free(op->algebraic_expression);
-		op->algebraic_expression = NULL;
-	}
-
-	if(op->edgeRelationTypes) {
-		array_free(op->edgeRelationTypes);
-		op->edgeRelationTypes = NULL;
-	}
-
+	if(op->iter) GxB_MatrixTupleIter_free(op->iter);
+	if(op->F) GrB_Matrix_free(&op->F);
+	if(op->M) GrB_Matrix_free(&op->M);
+	if(op->edges) array_free(op->edges);
+	if(op->ae) AlgebraicExpression_Free(op->ae);
+	if(op->edgeRelationTypes) array_free(op->edgeRelationTypes);
 	if(op->records) {
 		for(int i = 0; i < op->recordsLen; i++) Record_Free(op->records[i]);
 		rm_free(op->records);
-		op->records = NULL;
 	}
 }

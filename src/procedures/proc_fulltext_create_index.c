@@ -17,13 +17,13 @@
 
 // CALL db.idx.fulltext.createNodeIndex(label, fields...)
 // CALL db.idx.fulltext.createNodeIndex('book', 'title', 'authors')
-ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx, char **args) {
+ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx, const char **args) {
 	if(array_len(args) < 2) return PROCEDURE_ERR;
 
 	// Create full-text index.
-	char *label = args[0];
+	const char *label = args[0];
 	uint fields_count = array_len(args) - 1;
-	char **fields = args + 1; // Skip index name.
+	const char **fields = args + 1; // Skip index name.
 
 	GraphContext *gc = GraphContext_GetFromTLS();
 	Index *idx = GraphContext_GetIndex(gc, label, NULL, IDX_FULLTEXT);
@@ -35,7 +35,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx, char **args)
 
 	// Introduce fields to index.
 	for(int i = 0; i < fields_count; i++) {
-		char *field = fields[i];
+		const char *field = fields[i];
 		// It's OK to add existing field.
 		Index_AddField(idx, field);
 	}

@@ -175,7 +175,7 @@ Record OpMergeConsume(OpBase *opBase) {
 		 * index R/W lock, as such free all execution plan operation up the chain. */
 		OpBase_PropegateFree(child);
 
-		r = Record_New(AST_AliasCount(op->ast));
+		r = Record_New(opBase->record_map->record_len);
 		_CreateEntities(op, r);
 		op->created = true;
 	}

@@ -17,39 +17,39 @@
 // CALL db.index.fulltext.drop(label)
 // CALL db.index.fulltext.drop('books')
 
-ProcedureResult Proc_FulltextDropIndexInvoke(ProcedureCtx *ctx, char **args) {
-    if(array_len(args) != 1) return PROCEDURE_ERR;
+ProcedureResult Proc_FulltextDropIndexInvoke(ProcedureCtx *ctx, const char **args) {
+	if(array_len(args) != 1) return PROCEDURE_ERR;
 
-    char *label = args[0];
-    GraphContext *gc = GraphContext_GetFromTLS();
-    Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-    // Schema doesn't exists, TODO: report error.
-    if(!s) return PROCEDURE_ERR;
+	const char *label = args[0];
+	GraphContext *gc = GraphContext_GetFromTLS();
+	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+	// Schema doesn't exists, TODO: report error.
+	if(!s) return PROCEDURE_ERR;
 
-    if(Schema_RemoveIndex(s, NULL, IDX_FULLTEXT) == INDEX_FAIL) return PROCEDURE_OK;
+	if(Schema_RemoveIndex(s, NULL, IDX_FULLTEXT) == INDEX_FAIL) return PROCEDURE_OK;
 
-    return PROCEDURE_ERR;
+	return PROCEDURE_ERR;
 }
 
-SIValue* Proc_FulltextDropIndexStep(ProcedureCtx *ctx) {
-    return NULL;
+SIValue *Proc_FulltextDropIndexStep(ProcedureCtx *ctx) {
+	return NULL;
 }
 
 ProcedureResult Proc_FulltextDropIndexFree(ProcedureCtx *ctx) {
-    // Clean up.
-    return PROCEDURE_OK;
+	// Clean up.
+	return PROCEDURE_OK;
 }
 
-ProcedureCtx* Proc_FulltextDropIdxGen() {
-    void *privateData = NULL;
-    ProcedureOutput **output = array_new(ProcedureOutput*, 0);
-    ProcedureCtx *ctx = ProcCtxNew("db.index.fulltext.drop",
-                                    1,
-                                    output,
-                                    Proc_FulltextDropIndexStep,
-                                    Proc_FulltextDropIndexInvoke,
-                                    Proc_FulltextDropIndexFree,
-                                    privateData);
+ProcedureCtx *Proc_FulltextDropIdxGen() {
+	void *privateData = NULL;
+	ProcedureOutput **output = array_new(ProcedureOutput *, 0);
+	ProcedureCtx *ctx = ProcCtxNew("db.index.fulltext.drop",
+								   1,
+								   output,
+								   Proc_FulltextDropIndexStep,
+								   Proc_FulltextDropIndexInvoke,
+								   Proc_FulltextDropIndexFree,
+								   privateData);
 
-    return ctx;
+	return ctx;
 }

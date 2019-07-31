@@ -7,7 +7,6 @@
 #include "seek_by_id.h"
 #include "../../util/arr.h"
 #include "../ops/op_filter.h"
-#include "../../parser/grammar.h"
 #include "../ops/op_index_scan.h"
 #include "../ops/op_all_node_scan.h"
 #include "../ops/op_node_by_id_seek.h"

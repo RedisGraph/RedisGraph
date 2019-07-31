@@ -322,21 +322,9 @@ void AggregateFree(OpBase *opBase) {
 		op->expression_classification = NULL;
 	}
 
-	if(op->none_aggregated_expressions) {
-		array_free(op->none_aggregated_expressions);
-		op->none_aggregated_expressions = NULL;
-	}
-
-	if(op->expressions) {
-		uint expCount = array_len(op->expressions);
-		for(uint i = 0; i < expCount; i++) AR_EXP_Free(op->expressions[i]);
-		array_free(op->expressions);
-		op->expressions = NULL;
-	}
-
-	if(op->aliases) {
-		array_free(op->aliases);
-		op->aliases = NULL;
+	if(op->non_aggregated_expressions) {
+		array_free(op->non_aggregated_expressions);
+		op->non_aggregated_expressions = NULL;
 	}
 
 	if(op->groups) {
