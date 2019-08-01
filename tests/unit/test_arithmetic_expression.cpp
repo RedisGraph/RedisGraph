@@ -1268,3 +1268,84 @@ TEST_F(ArithmeticTest, NE)
 
         ASSERT_TRUE(SIValue_IsNull(nullVal));
     }
+    TEST_F(ArithmeticTest, ListSliceTest)
+    {
+        SIValue result;
+        const char *query;
+        AR_ExpNode *arExp;
+        Record r = Record_New(0);
+
+        query = "RETURN [0,1,2,3,4,5,6,7,8,9,10][3]";
+        arExp = _exp_from_query(query);
+        result = AR_EXP_Evaluate(arExp, r);
+
+        ASSERT_EQ(T_INT64, result.type);
+        ASSERT_EQ(3, result.longval);
+
+        query = "RETURN [0,1,2,3,4,5,6,7,8,9,10][-3]";
+        arExp = _exp_from_query(query);
+        result = AR_EXP_Evaluate(arExp, r);
+
+        ASSERT_EQ(T_INT64, result.type);
+        ASSERT_EQ(8, result.longval);
+
+        query = "RETURN [0,1,2,3,4,5,6,7,8,9,10][0..3]";
+        arExp = _exp_from_query(query);
+        result = AR_EXP_Evaluate(arExp, r);
+
+        ASSERT_EQ(T_ARRAY, result.type);
+        SIValue *array = result.array;
+        ASSERT_EQ(3, array_len(array));
+
+        for (int i = 0; i < 3; i++)
+        {
+            SIValue value = array[i];
+            ASSERT_EQ(T_INT64, value.type);
+            ASSERT_EQ(i, value.longval);
+        }
+
+        query = "RETURN [0,1,2,3,4,5,6,7,8,9,10][0..-5]";
+        arExp = _exp_from_query(query);
+        result = AR_EXP_Evaluate(arExp, r);
+
+        ASSERT_EQ(T_ARRAY, result.type);
+        array = result.array;
+        ASSERT_EQ(6, array_len(array));
+
+        for (int i = 0; i < 6; i++)
+        {
+            SIValue value = array[i];
+            ASSERT_EQ(T_INT64, value.type);
+            ASSERT_EQ(i, value.longval);
+        }
+
+        query = "RETURN [0,1,2,3,4,5,6,7,8,9,10][-5..]";
+        arExp = _exp_from_query(query);
+        result = AR_EXP_Evaluate(arExp, r);
+
+        ASSERT_EQ(T_ARRAY, result.type);
+        array = result.array;
+        ASSERT_EQ(5, array_len(array));
+
+        for (int i = 0; i < 5; i++)
+        {
+            SIValue value = array[i];
+            ASSERT_EQ(T_INT64, value.type);
+            ASSERT_EQ(i + 6, value.longval);
+        }
+
+        query = "RETURN [0,1,2,3,4,5,6,7,8,9,10][..4]";
+        arExp = _exp_from_query(query);
+        result = AR_EXP_Evaluate(arExp, r);
+
+        ASSERT_EQ(T_ARRAY, result.type);
+        array = result.array;
+        ASSERT_EQ(4, array_len(array));
+
+        for (int i = 0; i < 4; i++)
+        {
+            SIValue value = array[i];
+            ASSERT_EQ(T_INT64, value.type);
+            ASSERT_EQ(i, value.longval);
+        }
+    }

@@ -839,7 +839,7 @@ Feature: ListOperations
 
     # List slice
 
-    @skip
+
     Scenario: List slice
         Given any graph
         When executing query:
@@ -852,7 +852,7 @@ Feature: ListOperations
             | [2, 3] |
         And no side effects
 
-    @skip
+
     Scenario: List slice with implicit end
         Given any graph
         When executing query:
@@ -865,7 +865,7 @@ Feature: ListOperations
             | [2, 3] |
         And no side effects
 
-    @skip
+
     Scenario: List slice with implicit start
         Given any graph
         When executing query:
@@ -878,7 +878,7 @@ Feature: ListOperations
             | [1, 2] |
         And no side effects
 
-    @skip
+
     Scenario: List slice with singleton range
         Given any graph
         When executing query:
@@ -891,7 +891,7 @@ Feature: ListOperations
             | [1] |
         And no side effects
 
-    @skip
+
     Scenario: List slice with empty range
         Given any graph
         When executing query:
@@ -904,7 +904,7 @@ Feature: ListOperations
             | [] |
         And no side effects
 
-    @skip
+
     Scenario: List slice with negative range
         Given any graph
         When executing query:
@@ -917,7 +917,7 @@ Feature: ListOperations
             | [1, 2] |
         And no side effects
 
-    @skip
+
     Scenario: List slice with invalid range
         Given any graph
         When executing query:
@@ -930,7 +930,7 @@ Feature: ListOperations
             | [] |
         And no side effects
 
-    @skip
+
     Scenario: List slice with exceeding range
         Given any graph
         When executing query:
@@ -943,7 +943,7 @@ Feature: ListOperations
             | [1, 2, 3] |
         And no side effects
 
-    @skip
+
     Scenario Outline: List slice with null range
         Given any graph
         When executing query:

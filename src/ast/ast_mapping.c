@@ -134,6 +134,20 @@ static void _AST_MapExpression(AST *ast, const cypher_astnode_t *expr) {
 		for(uint i = 0; i < collectionLength; i++) {
 			_AST_MapExpression(ast, cypher_ast_collection_get(expr, i));
 		}
+	} else if(type == CYPHER_AST_SUBSCRIPT_OPERATOR) {
+		_AST_MapExpression(ast, cypher_ast_subscript_operator_get_expression(expr));
+		_AST_MapExpression(ast, cypher_ast_subscript_operator_get_subscript(expr));
+		return;
+	} else if(type == CYPHER_AST_SLICE_OPERATOR) {
+		const cypher_astnode_t *val = cypher_ast_slice_operator_get_expression(expr);
+		if(val) _AST_MapExpression(ast, val);
+
+		const cypher_astnode_t *start = cypher_ast_slice_operator_get_start(expr);
+		if(start) _AST_MapExpression(ast, start);
+
+		const cypher_astnode_t *end = cypher_ast_slice_operator_get_end(expr);
+		if(end) _AST_MapExpression(ast, end);
+		return;
 	} else {
 		printf("Encountered unhandled type '%s'\n", cypher_astnode_typestr(type));
 		assert(false);
