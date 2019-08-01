@@ -74,6 +74,30 @@ ProcedureResult ProcedureReset(ProcedureCtx *proc) {
 	return PROCEDURE_OK;
 }
 
+uint Procedure_Argc(const ProcedureCtx *proc) {
+	assert(proc);
+	return proc->argc;
+}
+
+uint Procedure_OutputCount(const ProcedureCtx *proc) {
+	assert(proc);
+	return array_len(proc->output);
+}
+
+const char *Procedure_GetOutput(const ProcedureCtx *proc, uint output_idx) {
+	assert(proc && output_idx < Procedure_OutputCount(proc));
+	return proc->output[output_idx]->name;
+}
+
+bool Procedure_ContainsOutput(const ProcedureCtx *proc, const char *output) {
+	assert(proc && output);
+	uint output_count = array_len(proc->output);
+	for(uint i = 0; i < output_count; i++) {
+		if(strcmp(proc->output[i]->name, output) == 0) return true;
+	}
+	return false;
+}
+
 void Proc_Free(ProcedureCtx *proc) {
 	if(!proc) return;
 	proc->Free(proc);

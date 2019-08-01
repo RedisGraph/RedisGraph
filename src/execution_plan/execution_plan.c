@@ -111,7 +111,6 @@ AR_ExpNode **_BuildReturnExpressions(RecordMap *record_map, const cypher_astnode
 		// Construction an AR_ExpNode to represent this return entity.
 		AR_ExpNode *exp = AR_EXP_FromExpression(record_map, ast_exp);
 
-
 		// Find the resolved name of the entity - its alias, its identifier if referring to a full entity,
 		// the entity.prop combination ("a.val"), or the function call ("MAX(a.val)")
 		const char *identifier = NULL;
@@ -121,7 +120,6 @@ AR_ExpNode **_BuildReturnExpressions(RecordMap *record_map, const cypher_astnode
 			identifier = cypher_ast_identifier_get_name(alias_node);
 		} else {
 			// This expression did not have an alias, so it must be an identifier
-			const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
 			assert(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
 			// Retrieve "a" from "RETURN a" or "RETURN a AS e" (theoretically; the latter case is already handled)
 			identifier = cypher_ast_identifier_get_name(ast_exp);
@@ -195,14 +193,12 @@ static AR_ExpNode **_BuildCallProjections(RecordMap *record_map,
 			identifier = cypher_ast_identifier_get_name(alias_node);
 		} else {
 			// This expression did not have an alias, so it must be an identifier
-			const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
 			assert(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
 			// Retrieve "a" from "RETURN a" or "RETURN a AS e" (theoretically; the latter case is already handled)
 			identifier = cypher_ast_identifier_get_name(ast_exp);
 		}
 
 		exp->resolved_name = identifier;
-
 		expressions = array_append(expressions, exp);
 	}
 
@@ -212,9 +208,9 @@ static AR_ExpNode **_BuildCallProjections(RecordMap *record_map,
 		ProcedureCtx *proc = Proc_Get(proc_name);
 		assert(proc);
 
-		unsigned int output_count = array_len(proc->output);
+		unsigned int output_count = Procedure_OutputCount(proc);
 		for(uint i = 0; i < output_count; i++) {
-			const char *name = proc->output[i]->name;
+			const char *name = Procedure_GetOutput(proc, i);
 
 			// TODO the 'name' variable doesn't have an AST ID, so an assertion in
 			// AR_EXP_NewVariableOperandNode() fails without this call.
@@ -367,7 +363,6 @@ static void _ExecutionPlanSegment_BuildProjections(ExecutionPlanSegment *segment
 // Map the AST entities described in SET and DELETE clauses.
 // This is necessary so that edge references will be constructed prior to forming AlgebraicExpressions.
 static void _ExecutionPlanSegment_MapReferences(ExecutionPlanSegment *segment, AST *ast) {
-
 	const cypher_astnode_t *set_clause = AST_GetClause(ast, CYPHER_AST_SET);
 	if(set_clause) {
 		uint nitems = cypher_ast_set_nitems(set_clause);
@@ -469,18 +464,26 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 		AR_ExpNode **yield_exps = _BuildCallProjections(record_map, call_clause, ast);
 		uint yield_count = array_len(yield_exps);
 		const char **yields = array_new(const char *, yield_count);
-		if(segment->projections == NULL) segment->projections = array_new(AR_ExpNode *, yield_count);
+
 		uint *call_modifies = array_new(uint, yield_count);
 		for(uint i = 0; i < yield_count; i ++) {
-			// TODO revisit this logic, room for improvement
-			// Add yielded expressions to segment projections.
-			segment->projections = array_append(segment->projections, yield_exps[i]);
 			// Track the names of yielded variables.
-			yields = array_append(yields, yield_exps[i]->resolved_name);
+			// yields = array_append(yields, yield_exps[i]->resolved_name);
+			yields = array_append(yields, yield_exps[i]->operand.variadic.entity_alias);
 			// Track which variables are modified by this operation.
-			call_modifies = array_append(call_modifies, yield_exps[i]->operand.variadic.entity_alias_idx);
+			call_modifies = array_append(call_modifies, RecordMap_LookupAlias(record_map,
+																			  yield_exps[i]->resolved_name));
 		}
 		array_free(yield_exps);
+
+		if(segment->projections == NULL) {
+			segment->projections = array_new(AR_ExpNode *, yield_count);
+			for(uint i = 0; i < yield_count; i ++) {
+				// TODO revisit this logic, room for improvement
+				// Add yielded expressions to segment projections.
+				segment->projections = array_append(segment->projections, yield_exps[i]);
+			}
+		}
 
 		OpBase *opProcCall = NewProcCallOp(proc_name, arguments, yields, call_modifies);
 		Vector_Push(ops, opProcCall);

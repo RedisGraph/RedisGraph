@@ -6,11 +6,15 @@
 
 #include "ast.h"
 #include "ast_shared.h"
-#include "cypher_whitelist.h"
 #include "../util/arr.h"
+#include "cypher_whitelist.h"
+#include "../procedures/procedure.h"
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
 #include <assert.h>
+
+/* Forward declarations */
+static void _CollectIdentifiers(const cypher_astnode_t *root, TrieMap *projections);
 
 // Validate that an input string can be completely converted to a positive integer in range.
 static inline AST_Validation _ValidatePositiveInteger(const char *input) {
@@ -70,6 +74,29 @@ static void _AST_GetWithAliases(const cypher_astnode_t *node, TrieMap *aliases) 
 			alias = cypher_ast_identifier_get_name(expr);
 		}
 		TrieMap_Add(aliases, (char *)alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+	}
+}
+
+// Extract identifiers / aliases from a procedure call.
+static void _AST_GetProcCallAliases(const cypher_astnode_t *node, TrieMap *identifiers) {
+	// CALL db.labels() yield label
+	// CALL db.labels() yield label as l
+	assert(node && identifiers);
+	assert(cypher_astnode_type(node) == CYPHER_AST_CALL);
+
+	uint projection_count = cypher_ast_call_nprojections(node);
+	for(uint i = 0; i < projection_count; i++) {
+		const cypher_astnode_t *proj = cypher_ast_call_get_projection(node, i);
+		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(proj);
+
+		if(alias_node) {
+			// Alias is given: YIELD label AS l.
+			const char *alias = cypher_ast_identifier_get_name(alias_node);
+			TrieMap_Add(identifiers, (char *)alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+		} else {
+			// No alias use identifier as is: Alias is given: YIELD label
+			_CollectIdentifiers(proj, identifiers);
+		}
 	}
 }
 
@@ -449,6 +476,90 @@ static AST_Validation _Validate_MATCH_Clause_Filters(const cypher_astnode_t *cla
 	if(_ValidateFilterPredicates(predicate, reason) != AST_VALID) return AST_INVALID;
 
 	return AST_VALID;
+}
+
+static AST_Validation _Validate_CALL_Clauses(const AST *ast, char **reason) {
+	/* Make sure procedure calls are valid:
+	 * 1. procedure exists
+	 * 2. number of arguments to procedure is as expected
+	 * 3. yield refers to procedure output */
+	AST_Validation res = AST_VALID;
+	ProcedureCtx *proc = NULL;
+	TrieMap *identifiers = NewTrieMap();
+
+	const cypher_astnode_t **call_clauses = AST_GetClauses(ast, CYPHER_AST_CALL);
+	if(call_clauses == NULL) return AST_VALID;
+
+	uint call_count = array_len(call_clauses);
+	for(uint i = 0; i < call_count; i ++) {
+		const cypher_astnode_t *call_clause = call_clauses[i];
+
+		// Make sure procedure exists.
+		const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
+		proc = Proc_Get(proc_name);
+
+		if(proc == NULL) {
+			asprintf(reason, "Procedure `%s` is not registered", proc_name);
+			res = AST_INVALID;
+			goto cleanup;
+		}
+
+		// Validate num of arguments.
+		if(proc->argc != PROCEDURE_VARIABLE_ARG_COUNT) {
+			unsigned int given_arg_count = cypher_ast_call_narguments(call_clause);
+			if(Procedure_Argc(proc) != given_arg_count) {
+				asprintf(reason, "Procedure `%s` requires %d arguments, got %d", proc_name, proc->argc,
+						 given_arg_count);
+				res = AST_INVALID;
+				goto cleanup;
+			}
+		}
+
+		// Validate projections.
+		uint proj_count = cypher_ast_call_nprojections(call_clause);
+		if(proj_count > 0) {
+			// Collect call projections.
+			for(uint j = 0; j < proj_count; j++) {
+				const cypher_astnode_t *proj = cypher_ast_call_get_projection(call_clause, j);
+				const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(proj);
+				assert(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
+				const char *identifier = cypher_ast_identifier_get_name(ast_exp);
+				TrieMap_Add(identifiers, (char *)identifier, strlen(identifier), NULL, TrieMap_DONT_CARE_REPLACE);
+			}
+
+			// Make sure procedure is aware of each output.
+			char output[256];
+			void *value;
+			tm_len_t len;
+			char *identifier;
+			TrieMapIterator *it = TrieMap_Iterate(identifiers, "", 0);
+
+			while(TrieMapIterator_Next(it, &identifier, &len, &value)) {
+				assert(len < 256);
+				memcpy(output, identifier, len);
+				output[len] = 0;
+				if(!Procedure_ContainsOutput(proc, output)) {
+					TrieMapIterator_Free(it);
+					asprintf(reason, "Procedure `%s` does not yield output `%s`", proc_name, output);
+					res = AST_INVALID;
+					goto cleanup;
+				}
+			}
+
+			TrieMapIterator_Free(it);
+			TrieMap_Free(identifiers, TrieMap_NOP_CB);
+			identifiers = NULL;
+		}
+
+		Proc_Free(proc);
+		proc = NULL;
+	}
+
+cleanup:
+	if(proc) Proc_Free(proc);
+	array_free(call_clauses);
+	if(identifiers) TrieMap_Free(identifiers, TrieMap_NOP_CB);
+	return res;
 }
 
 static AST_Validation _Validate_MATCH_Clauses(const AST *ast, char **reason) {
@@ -890,14 +1001,20 @@ static AST_Validation _ValidateQueryTermination(const AST *ast, char **reason) {
 static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, TrieMap *identifiers) {
 	if(!node) return;
 	cypher_astnode_type_t type = cypher_astnode_type(node);
+
 	if(type == CYPHER_AST_RETURN) {
-		// Only collect aliases (which may be referenced in an ORDER BY)
-		// from the RETURN clause, rather than all identifiers
+		/* Only collect aliases (which may be referenced in an ORDER BY)
+		 * from the RETURN clause, rather than all identifiers */
 		_AST_GetReturnAliases(node, identifiers);
 	} else if(type == CYPHER_AST_WITH) {
 		// Get alias if one is provided; otherwise use the expression identifier
 		_AST_GetWithAliases(node, identifiers);
-	} else if(type == CYPHER_AST_MERGE || type == CYPHER_AST_UNWIND || type == CYPHER_AST_MATCH ||
+	} else if(type == CYPHER_AST_CALL) {
+		// Get alias if one is provided; otherwise use the expression identifier
+		_AST_GetProcCallAliases(node, identifiers);
+	} else if(type == CYPHER_AST_MERGE ||
+			  type == CYPHER_AST_UNWIND ||
+			  type == CYPHER_AST_MATCH ||
 			  type == CYPHER_AST_CREATE) {
 		_AST_GetIdentifiers(node, identifiers);
 	} else {
@@ -1040,6 +1157,10 @@ static AST_Validation _ValidateMaps(const cypher_astnode_t *root, char **reason)
 }
 
 static AST_Validation _ValidateClauses(const AST *ast, char **reason) {
+	if(_Validate_CALL_Clauses(ast, reason) == AST_INVALID) {
+		return AST_INVALID;
+	}
+
 	if(_Validate_MATCH_Clauses(ast, reason) == AST_INVALID) {
 		return AST_INVALID;
 	}

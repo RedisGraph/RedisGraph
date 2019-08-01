@@ -16,10 +16,8 @@ static void _yield(OpProcCall *op, SIValue *proc_output, Record r) {
 			const char *yield = op->output[i];
 			for(uint j = 0; j < array_len(proc_output); j += 2) {
 				char *key = (proc_output + j)->stringval;
-				SIValue *val = &proc_output[j + 1];
 				if(strcmp(yield, key) == 0) {
-					OpBase *base = (OpBase *)op;
-					int idx = RecordMap_LookupAlias(base->record_map, key);
+					int idx = op->op.modifies[i];
 					op->yield_map[i].proc_out_idx = j + 1;
 					op->yield_map[i].rec_idx = idx;
 					break;
