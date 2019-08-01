@@ -39,6 +39,7 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, const cypher_astnod
 			RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
 			return;
 		}
+		Index_Construct(idx);
 		RedisModule_ReplyWithSimpleString(ctx, "Indices added: 1");
 	} else {
 		// Retrieve strings from AST node
