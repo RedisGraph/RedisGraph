@@ -1349,3 +1349,42 @@ TEST_F(ArithmeticTest, NE)
             ASSERT_EQ(i, value.longval);
         }
     }
+}
+
+TEST_F(ArithmeticTest, RangeTest)
+{
+    SIValue result;
+    const char *query;
+    AR_ExpNode *arExp;
+    Record r = Record_New(0);
+
+    query = "RETURN range(0,10)";
+    arExp = _exp_from_query(query);
+    result = AR_EXP_Evaluate(arExp, r);
+
+    ASSERT_EQ(T_ARRAY, result.type);
+    SIValue *array = result.array;
+    ASSERT_EQ(11, array_len(array));
+
+    for (int i = 0; i < 11; i++)
+    {
+        SIValue value = array[i];
+        ASSERT_EQ(T_INT64, value.type);
+        ASSERT_EQ(i, value.longval);
+    }
+
+    query = "RETURN range(2,18,3)";
+    arExp = _exp_from_query(query);
+    result = AR_EXP_Evaluate(arExp, r);
+
+    ASSERT_EQ(T_ARRAY, result.type);
+    array = result.array;
+    ASSERT_EQ(6, array_len(array));
+
+    for (int i = 0; i < 6; i++)
+    {
+        SIValue value = array[i];
+        ASSERT_EQ(T_INT64, value.type);
+        ASSERT_EQ(i * 3 + 2, value.longval);
+    }
+}

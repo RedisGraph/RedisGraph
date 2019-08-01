@@ -840,11 +840,11 @@ static AST_Validation _Validate_UNWIND_Clauses(const AST *ast, char **reason) {
 		const cypher_astnode_t *expression = cypher_ast_unwind_get_expression(unwind_clauses[i]);
 		cypher_astnode_type_t type = cypher_astnode_type(expression);
 		// Ensure that the UNWIND expression is a collection (aka list/array)
-		if(type != CYPHER_AST_COLLECTION) {
-			asprintf(reason, "UNWIND expects a list argument; encountered ''%s'", cypher_astnode_typestr(type));
-			res = AST_INVALID;
-			goto cleanup;
-		}
+		// if(type != CYPHER_AST_COLLECTION) {
+		// 	asprintf(reason, "UNWIND expects a list argument; encountered ''%s'", cypher_astnode_typestr(type));
+		// 	res = AST_INVALID;
+		// 	goto cleanup;
+		// }
 		// Verify that all elements of the UNWIND collection are supported by RedisGraph
 		uint child_count = cypher_astnode_nchildren(expression);
 		for(uint j = 0; j < child_count; j ++) {

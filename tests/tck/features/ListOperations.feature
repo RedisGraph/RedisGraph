@@ -680,7 +680,7 @@ Feature: ListOperations
         And the side effects should be:
             | +properties | 1 |
 
-    @skip
+
     Scenario: Indexing into literal list
         Given any graph
         When executing query:
@@ -692,7 +692,7 @@ Feature: ListOperations
             | 1     |
         And no side effects
 
-    @skip
+
     Scenario: Indexing into nested literal lists
         Given any graph
         When executing query:
