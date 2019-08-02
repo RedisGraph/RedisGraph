@@ -9,4 +9,4 @@
 // Formatter for verbose (human-readable) replies
 void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
 								 unsigned int numcols);
-void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const QueryGraph *qg, AR_ExpNode **exps);
+void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns, const Record r);

@@ -157,37 +157,38 @@ void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Re
 // For every column in the header, emit a 2-array that specifies
 // the column alias followed by an enum denoting what type
 // (scalar, node, or relation) it holds.
-void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const QueryGraph *qg,
-									  AR_ExpNode **exps) {
-	uint columns_len = array_len(exps);
+void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns,
+									  const Record r) {
+	uint columns_len = array_len(columns);
 	RedisModule_ReplyWithArray(ctx, columns_len);
 	for(uint i = 0; i < columns_len; i++) {
-		AR_ExpNode *exp = exps[i];
 		RedisModule_ReplyWithArray(ctx, 2);
 		ColumnTypeUser t;
 		// First, emit the column type enum
-		if(exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_VARIADIC &&
-		   exp->operand.variadic.entity_prop == NULL) {
-			const char *alias = exp->operand.variadic.entity_alias;
-			EntityType type = QueryGraph_GetEntityTypeByAlias(qg, alias);
-			switch(type) {
-			case ENTITY_NODE:
+		if(r) {
+			RecordEntryType entry_type = Record_GetType(r, i);
+			switch(entry_type) {
+			case REC_TYPE_NODE:
 				t = COLUMN_NODE;
 				break;
-			case ENTITY_EDGE:
+			case REC_TYPE_EDGE:
 				t = COLUMN_RELATION;
 				break;
-			default:
+			case REC_TYPE_SCALAR:
 				t = COLUMN_SCALAR;
+				break;
+			default:
+				assert(false);
 			}
 		} else {
+			// If we didn't receive a record, no results will be returned,
+			// and the column types don't matter.
 			t = COLUMN_SCALAR;
 		}
 
 		RedisModule_ReplyWithLongLong(ctx, t);
 
 		// Second, emit the identifier string associated with the column
-		RedisModule_ReplyWithStringBuffer(ctx, exp->resolved_name, strlen(exp->resolved_name));
+		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
 	}
 }
-

@@ -7,7 +7,7 @@
 #include "resultset_formatters.h"
 #include "../../util/arr.h"
 
-void ResultSet_EmitNOPHeader(RedisModuleCtx *ctx, const QueryGraph *qg, AR_ExpNode **exps) {
+void ResultSet_EmitNOPHeader(RedisModuleCtx *ctx, const char **columns, const Record r) {
 
 }
 void ResultSet_EmitNOPRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
