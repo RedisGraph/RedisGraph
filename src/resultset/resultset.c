@@ -56,6 +56,22 @@ static void _ResultSet_ReplayStats(RedisModuleCtx *ctx, ResultSet *set) {
 	}
 }
 
+static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
+	assert(set->recordCount == 0);
+
+	// Prepare a response containing a header, records, and statistics
+	RedisModule_ReplyWithArray(set->ctx, 3);
+
+	// Emit the table header using the appropriate formatter
+	set->formatter->EmitHeader(set->ctx, set->columns, r);
+
+	set->header_emitted = true;
+
+	// We don't know at this point the number of records we're about to return.
+	RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
+}
+
+
 ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact) {
 	ResultSet *set = rm_malloc(sizeof(ResultSet));
 	set->ctx = ctx;
@@ -89,28 +105,9 @@ void ResultSet_BuildColumns(ResultSet *set, AR_ExpNode **projections) {
 	}
 }
 
-void ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
-	assert(set->recordCount == 0);
-
-	// Prepare a response containing a header, records, and statistics
-	RedisModule_ReplyWithArray(set->ctx, 3);
-
-	// Emit the table header using the appropriate formatter
-	if(set->compact) {
-		set->formatter->EmitHeader(set->ctx, set->columns, r);
-	} else {
-		set->formatter->EmitHeader(set->ctx, set->columns, NULL);
-	}
-
-	set->header_emitted = true;
-
-	// We don't know at this point the number of records we're about to return.
-	RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
-}
-
 int ResultSet_AddRecord(ResultSet *set, Record r) {
 	// Prepare response arrays and emit the header if this is the first Record encountered
-	if(set->header_emitted == false) ResultSet_ReplyWithPreamble(set, r);
+	if(set->header_emitted == false) _ResultSet_ReplyWithPreamble(set, r);
 
 	set->recordCount++;
 
@@ -129,7 +126,7 @@ void ResultSet_Replay(ResultSet *set) {
 		assert(set->recordCount == 0);
 		// Handle the edge case in which the query was intended to return results,
 		// but none were created.
-		ResultSet_ReplyWithPreamble(set, NULL);
+		_ResultSet_ReplyWithPreamble(set, NULL);
 		RedisModule_ReplySetArrayLength(set->ctx, 0);
 	} else {
 		// Queries that don't emit data will only emit statistics

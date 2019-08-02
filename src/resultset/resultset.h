@@ -33,8 +33,6 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact);
 
 void ResultSet_BuildColumns(ResultSet *set, AR_ExpNode **projections);
 
-void ResultSet_ReplyWithPreamble(ResultSet *set, Record r);
-
 int ResultSet_AddRecord(ResultSet *set, Record r);
 
 void ResultSet_Replay(ResultSet *set);

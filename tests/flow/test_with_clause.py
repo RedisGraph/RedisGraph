@@ -178,8 +178,12 @@ class testWithClause(FlowTestsBase):
         query = """MATCH (a)-[e]->(b) WITH a, e, b.b_val AS b_val ORDER BY a.a_val LIMIT 2 RETURN *"""
         actual_result = redis_graph.query(query)
 
+        # These definitions are duplicates of the non-public ResultSetColumnTypes values in redisgraph-py
+        COLUMN_SCALAR = 1
+        COLUMN_NODE = 2
+        COLUMN_RELATION = 3
         # Validate the header strings and value types
-        expected_header = [[2, 'a'], [3, 'e'], [1, 'b_val']]
+        expected_header = [[COLUMN_NODE, 'a'], [COLUMN_RELATION, 'e'], [COLUMN_SCALAR, 'b_val']]
         self.env.assertEqual(actual_result.header, expected_header)
         # Verify that 2 rows and 3 columns are returned
         self.env.assertEqual(len(actual_result.result_set), 2)
