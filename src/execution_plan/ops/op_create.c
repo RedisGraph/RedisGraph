@@ -175,7 +175,6 @@ static void _CommitEdges(OpCreate *op) {
 				const char *reltype = reltypes[j];
 				if(GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE) == NULL) {
 					Schema *s = GraphContext_AddSchema(gc, reltype, SCHEMA_EDGE);
-					op->stats->labels_added++;
 				}
 			}
 
