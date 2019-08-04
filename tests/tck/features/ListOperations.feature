@@ -618,7 +618,7 @@ Feature: ListOperations
 
     # General
 
-    @skip
+
     Scenario: Return list size
         Given any graph
         When executing query:
@@ -630,7 +630,7 @@ Feature: ListOperations
             | 3 |
         And no side effects
 
-    @skip
+
     Scenario: Setting and returning the size of a list property
         Given an empty graph
         And having executed:
