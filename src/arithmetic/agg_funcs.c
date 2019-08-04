@@ -12,6 +12,7 @@
 #include "../util/qsort.h"
 #include <assert.h>
 #include <math.h>
+#include "../util/arr.h"
 
 #define ISLT(a,b) ((*a) < (*b))
 
@@ -417,6 +418,41 @@ AggCtx *Agg_StdevPFunc() {
 
 //------------------------------------------------------------------------
 
+typedef struct {
+	SIValue *array;
+} __agg_collectCtx;
+
+int __agg_collectStep(AggCtx *ctx, SIValue *argv, int argc) {
+	// convert the value of the input sequence to a double if possible
+	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
+
+	for(int i = 0; i < argc; i ++) {
+		SIValue value = argv[i];
+		if(value.type != T_NULL) {
+			ac->array = array_append(ac->array, argv[i]);
+			SIValue_Persist(ac->array + array_len(ac->array) - 1);
+		}
+	}
+
+	return AGG_OK;
+}
+
+int __agg_collectReduceNext(AggCtx *ctx) {
+	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
+
+	Agg_SetResult(ctx, SI_Array(ac->array));
+	return AGG_OK;
+}
+
+AggCtx *Agg_CollectFunc() {
+	__agg_collectCtx *ac = malloc(sizeof(__agg_collectCtx));
+	ac->array = array_new(SIValue, 0);
+
+	return Agg_Reduce(ac, __agg_collectStep, __agg_collectReduceNext);
+}
+
+//------------------------------------------------------------------------
+
 void Agg_RegisterFuncs() {
 	Agg_RegisterFunc("sum", Agg_SumFunc);
 	Agg_RegisterFunc("avg", Agg_AvgFunc);
@@ -427,4 +463,5 @@ void Agg_RegisterFuncs() {
 	Agg_RegisterFunc("percentileCont", Agg_PercContFunc);
 	Agg_RegisterFunc("stDev", Agg_StdevFunc);
 	Agg_RegisterFunc("stDevP", Agg_StdevPFunc);
+	Agg_RegisterFunc("collect", Agg_CollectFunc);
 }
