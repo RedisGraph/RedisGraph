@@ -20,6 +20,7 @@ StringRange *StringRange_New(void) {
 }
 
 bool StringRange_IsValid(const StringRange *range) {
+	if(!range->valid) return false;
 	if(!range->max || !range->min) return true;
 
 	if(range->include_min && range->include_max) {
@@ -103,6 +104,9 @@ void StringRange_TightenRange(StringRange *range, int op, const char *v) {
 		if(range->max) rm_free(range->max);
 		range->max = rm_strdup(v);
 		break;
+
+	default:
+		assert("none supported operation");
 	}
 
 	// See if range is still valid.

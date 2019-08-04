@@ -9,9 +9,15 @@
 #include "graphcontext_type.h"
 #include "encoder/encode_graphcontext.h"
 #include "decoders/decode_graphcontext.h"
+#include "decoders/prev/prev_decode_graphcontext.h"
 
 /* Declaration of the type for redis registration. */
 RedisModuleType *GraphContextRedisModuleType;
+
+#define DECODER_SUPPORT_MAX_V 5
+#define DECODER_SUPPORT_MIN_V 5
+#define PREV_DECODER_SUPPORT_MAX_V 4
+#define PREV_DECODER_SUPPORT_MIN_V 0
 
 void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
 	GraphContext *gc = NULL;
@@ -20,10 +26,14 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
 		// Not forward compatible.
 		printf("Failed loading Graph, RedisGraph version (%d) is not forward compatible.\n",
 			   REDISGRAPH_MODULE_VERSION);
-	} else {
+	} else if(encver >= DECODER_SUPPORT_MIN_V && encver <= DECODER_SUPPORT_MAX_V) {
 		gc = RdbLoadGraphContext(rdb);
+	} else if(encver >= PREV_DECODER_SUPPORT_MAX_V && encver <= PREV_DECODER_SUPPORT_MAX_V) {
+		gc = PrevRdbLoadGraphContext(rdb);
+	} else {
+		printf("Failed loading Graph, RedisGraph version (%d) is not backward compatible with encoder version %d.\n",
+			   REDISGRAPH_MODULE_VERSION, encver);
 	}
-
 	return gc;
 }
 

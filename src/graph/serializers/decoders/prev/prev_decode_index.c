@@ -6,12 +6,16 @@
 
 #include "prev_decode_index.h"
 
-Index* PrevRdbLoadIndex(RedisModuleIO *rdb, GraphContext *gc) {
-    char *label = RedisModule_LoadStringBuffer(rdb, NULL);
-    char *property = RedisModule_LoadStringBuffer(rdb, NULL);
+Index *PrevRdbLoadIndex(RedisModuleIO *rdb, GraphContext *gc) {
+	Index *idx = NULL;
+	char *label = RedisModule_LoadStringBuffer(rdb, NULL);
+	char *field = RedisModule_LoadStringBuffer(rdb, NULL);
 
-    Index *idx = Index_New(label, IDX_EXACT_MATCH);
-    Index_AddField(idx, property);
+	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+	Schema_AddIndex(&idx, s, field, IDX_EXACT_MATCH);
 
-    return idx;
+	RedisModule_Free(label);
+	RedisModule_Free(field);
+
+	return idx;
 }

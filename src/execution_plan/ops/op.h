@@ -95,5 +95,5 @@ Record OpBase_Consume(OpBase *op);  // Consume op.
 Record OpBase_Profile(OpBase *op);  // Profile op.
 int OpBase_ToString(const OpBase *op, char *buff, uint buff_len);
 
-void OpBase_PropegateFree(OpBase *op); // Sends free request to each operation up the chain.
-void OpBase_PropegateReset(OpBase *op); // Sends reset request to each operation up the chain.
+void OpBase_PropagateFree(OpBase *op); // Sends free request to each operation up the chain.
+void OpBase_PropagateReset(OpBase *op); // Sends reset request to each operation up the chain.

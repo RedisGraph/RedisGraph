@@ -26,30 +26,30 @@ static inline int _validate_numeric(const SIValue v) {
 	return SI_TYPE(v) & SI_NUMERIC;
 }
 
-static bool _AR_SetFunction(AR_ExpNode *exp, AST_Operator op) {
+static void _AR_SetFunction(AR_ExpNode *exp, AST_Operator op) {
 	switch(op) {
 	case OP_PLUS:
 		exp->op.f = AR_ADD;
 		exp->op.func_name = "ADD";
-		return true;
+		break;
 	case OP_MINUS:
 		exp->op.f = AR_SUB;
 		exp->op.func_name = "SUB";
-		return true;
+		break;
 	case OP_MULT:
 		exp->op.f = AR_MUL;
 		exp->op.func_name = "MUL";
-		return true;
+		break;
 	case OP_DIV:
 		exp->op.f = AR_DIV;
 		exp->op.func_name = "DIV";
-		return true;
+		break;
 	case OP_MOD: // TODO implement
 	case OP_POW: // TODO implement
 	// Includes operators like <, AND, etc
 	default:
 		assert(false && "Unhandled operator was specified in query");
-		return NULL;
+		break;
 	}
 }
 
@@ -97,6 +97,47 @@ AR_ExpNode *_AR_EXP_NewOpNode(char *func_name, int child_count) {
 	return node;
 }
 
+/* Compact tree by evaluating constant expressions
+ * e.g. MINUS(X) where X is a constant number will be reduced to
+ * a single node with the value -X
+ * PLUS(MINUS(A), B) will be reduced to a single constant: B-A. */
+static int _AR_EXP_ReduceToScalar(AR_ExpNode **root) {
+	if((*root)->type == AR_EXP_OPERAND) {
+		if((*root)->operand.type == AR_EXP_CONSTANT) {
+			// Root is already a constant
+			return 1;
+		}
+		// Root is variadic, no way to reduce.
+		return 0;
+	} else {
+		// root represents an operation.
+		assert((*root)->type == AR_EXP_OP);
+
+		if((*root)->op.type == AR_OP_FUNC) {
+			/* See if we're able to reduce each child of root
+			 * if so we'll be able to reduce root. */
+			bool reduce_children = true;
+			for(int i = 0; i < (*root)->op.child_count; i++) {
+				if(!_AR_EXP_ReduceToScalar((*root)->op.children + i)) {
+					reduce_children = false;
+					break;
+				}
+			}
+			// Can't reduce root as one of its children is not a constant.
+			if(!reduce_children) return 0;
+
+			// All child nodes are constants, reduce.
+			SIValue v = AR_EXP_Evaluate(*root, NULL);
+			AR_EXP_Free(*root);
+			*root = AR_EXP_NewConstOperandNode(v);
+			return 1;
+		}
+
+		// Root is an aggregation function, can't reduce.
+		return 0;
+	}
+}
+
 AR_ExpNode *AR_EXP_NewVariableOperandNode(RecordMap *record_map, const char *alias,
 										  const char *prop) {
 	AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
@@ -122,7 +163,7 @@ AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant) {
 	return node;
 }
 
-AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
+AR_ExpNode *_AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
 	const cypher_astnode_type_t type = cypher_astnode_type(expr);
 
 	/* Function invocations */
@@ -137,7 +178,7 @@ AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t 
 		for(unsigned int i = 0; i < arg_count; i ++) {
 			const cypher_astnode_t *arg = cypher_ast_apply_operator_get_argument(expr, i);
 			// Recursively convert arguments
-			op->op.children[i] = AR_EXP_FromExpression(record_map, arg);
+			op->op.children[i] = _AR_EXP_FromExpression(record_map, arg);
 		}
 		return op;
 
@@ -198,15 +239,15 @@ AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t 
 		if(operator == CYPHER_OP_UNARY_MINUS) {
 			// This expression can be something like -3 or -a.val
 			// TODO In the former case, we can construct a much simpler tree than this.
-			AR_ExpNode *ar_exp = AR_EXP_FromExpression(record_map, arg);
+			AR_ExpNode *ar_exp = _AR_EXP_FromExpression(record_map, arg);
 			AR_ExpNode *op = _AR_EXP_NewOpNodeFromAST(OP_MULT, 2);
 			op->op.children[0] = AR_EXP_NewConstOperandNode(SI_LongVal(-1));
-			op->op.children[1] = AR_EXP_FromExpression(record_map, arg);
+			op->op.children[1] = _AR_EXP_FromExpression(record_map, arg);
 			return op;
 		} else if(operator == CYPHER_OP_UNARY_PLUS) {
 			// This expression is something like +3 or +a.val.
 			// I think the + can always be safely ignored.
-			return AR_EXP_FromExpression(record_map, arg);
+			return _AR_EXP_FromExpression(record_map, arg);
 		} else if(operator == CYPHER_OP_NOT) {
 			assert(false); // This should be handled in the FilterTree code
 		}
@@ -216,9 +257,9 @@ AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t 
 		// Arguments are of type CYPHER_AST_EXPRESSION
 		AR_ExpNode *op = _AR_EXP_NewOpNodeFromAST(operator_enum, 2);
 		const cypher_astnode_t *lhs_node = cypher_ast_binary_operator_get_argument1(expr);
-		op->op.children[0] = AR_EXP_FromExpression(record_map, lhs_node);
+		op->op.children[0] = _AR_EXP_FromExpression(record_map, lhs_node);
 		const cypher_astnode_t *rhs_node = cypher_ast_binary_operator_get_argument2(expr);
-		op->op.children[1] = AR_EXP_FromExpression(record_map, rhs_node);
+		op->op.children[1] = _AR_EXP_FromExpression(record_map, rhs_node);
 		return op;
 
 	} else {
@@ -242,6 +283,12 @@ AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t 
 
 	assert(false);
 	return NULL;
+}
+
+AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
+	AR_ExpNode *root = _AR_EXP_FromExpression(record_map, expr);
+	_AR_EXP_ReduceToScalar(&root);
+	return root;
 }
 
 int AR_EXP_GetOperandType(AR_ExpNode *exp) {
@@ -541,7 +588,8 @@ void AR_EXP_Free(AR_ExpNode *root) {
 /* The '+' operator is overloaded to perform string concatenation
  * as well as arithmetic addition. */
 SIValue AR_ADD(SIValue *argv, int argc) {
-	SIValue result = argv[0];
+	// Don't modify input.
+	SIValue result = SI_Clone(argv[0]);
 	char buffer[512];
 	char *string_arg = NULL;
 

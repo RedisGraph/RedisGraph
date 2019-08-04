@@ -21,6 +21,7 @@ NumericRange *NumericRange_New(void) {
 }
 
 bool NumericRange_IsValid(const NumericRange *range) {
+	if(!range->valid) return false;
 	if(range->include_min && range->include_max) {
 		// X >= y AND X <= z
 		return (range->min <= range->max);
@@ -83,7 +84,7 @@ void NumericRange_TightenRange(NumericRange *range, int op, double v) {
 	case OP_EQUAL:  // =
 		// Make sure v is within range.
 		if(!NumericRange_ContainsValue(range, v)) {
-			range->valid = true;
+			range->valid = false;
 			return;
 		}
 
@@ -92,6 +93,8 @@ void NumericRange_TightenRange(NumericRange *range, int op, double v) {
 		range->min = v;
 		range->max = v;
 		break;
+	default:
+		assert("operation not supported");
 	}
 
 	// See if range is still valid.

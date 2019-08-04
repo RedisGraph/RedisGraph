@@ -222,12 +222,12 @@ RSResultsIterator *Index_Query
 }
 
 // Return indexed label.
-char *Index_GetLabel
+const char *Index_GetLabel
 (
 	const Index *idx
 ) {
 	assert(idx);
-	return rm_strdup(idx->label);
+	return (const char *)idx->label;
 }
 
 // Returns number of fields indexed.
@@ -257,8 +257,7 @@ bool Index_ContainsField
 	assert(idx && field);
 
 	for(uint i = 0; i < idx->fields_count; i++) {
-		if(strcmp(idx->fields[i], field) == 0)
-			return true;
+		if(strcmp(idx->fields[i], field) == 0) return true;
 	}
 
 	return false;

@@ -81,9 +81,11 @@ SIValue SI_Clone(SIValue v) {
 		// Allocate a new copy of the input's string value
 		return SI_DuplicateStringVal(v.stringval);
 	}
-	SIValue dup;
-	memcpy(&dup, &v, sizeof(SIValue));
-	return dup;
+	// SIValue dup;
+	// memcpy(&dup, &v, sizeof(SIValue));
+	// return dup;
+	// Note, v is not a pointer.
+	return v;
 }
 
 SIValue SI_ShallowCopy(SIValue v) {

@@ -10,4 +10,4 @@
 #include "../../../../index/index.h"
 #include "../../../../redismodule.h"
 
-Index* PrevRdbLoadIndex(RedisModuleIO *rdb, GraphContext *gc);
+Index *PrevRdbLoadIndex(RedisModuleIO *rdb, GraphContext *gc);

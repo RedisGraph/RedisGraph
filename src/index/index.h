@@ -77,7 +77,7 @@ RSResultsIterator *Index_Query
 );
 
 // Return indexed label.
-char *Index_GetLabel
+const char *Index_GetLabel
 (
 	const Index *idx
 );

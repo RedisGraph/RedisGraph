@@ -355,11 +355,6 @@ static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segmen
 	Vector_Free(traversals);
 }
 
-// Map the required AST entities and build expressions to match
-// the AST slice's WITH, RETURN, and ORDER clauses
-static void _ExecutionPlanSegment_BuildProjections(ExecutionPlanSegment *segment, AST *ast) {
-}
-
 // Map the AST entities described in SET and DELETE clauses.
 // This is necessary so that edge references will be constructed prior to forming AlgebraicExpressions.
 static void _ExecutionPlanSegment_MapReferences(ExecutionPlanSegment *segment, AST *ast) {
@@ -777,7 +772,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 			// Slice the AST to only include the clauses in the current segment.
 			ast_segment = AST_NewSegment(ast, start_offset, end_offset);
 
-			// Construct a new ExecutionPlanSEgment.
+			// Construct a new ExecutionPlanSegment.
 			segment = _NewExecutionPlanSegment(ctx, gc, ast_segment, plan->result_set, input_projections,
 											   prev_op);
 			plan->segments[i] = segment;
@@ -809,11 +804,9 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 	// Optimize the operations in the ExecutionPlan.
 	optimizePlan(gc, plan);
 
-	// Prepare the result set if this query returns records.
-	if(result_set) {
-		result_set->exps = segment->projections;
-		ResultSet_ReplyWithPreamble(result_set, segment->query_graph);
-	}
+	// Prepare column names for the ResultSet if this query contains data in addition to statistics.
+	if(result_set) ResultSet_BuildColumns(result_set, segment->projections);
+
 
 	// Free current AST segment if it has been constructed here.
 	if(ast_segment != ast) AST_Free(ast_segment);

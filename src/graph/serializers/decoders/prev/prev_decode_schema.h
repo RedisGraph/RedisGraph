@@ -10,4 +10,4 @@
 #include "../../../../redismodule.h"
 #include "../../../../schema/schema.h"
 
-Schema* PrevRdbLoadSchema(RedisModuleIO *rdb, SchemaType type);
+Schema *PrevRdbLoadSchema(RedisModuleIO *rdb);

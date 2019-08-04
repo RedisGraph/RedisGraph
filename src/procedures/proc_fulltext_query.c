@@ -53,9 +53,7 @@ ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const char **arg
 
 	// Execute query
 	pdata->iter = Index_Query(pdata->idx, query, &err);
-	if(!pdata->iter) {
-		// TODO: report error!
-	}
+	assert(pdata->iter);
 
 	ctx->privateData = pdata;
 	return PROCEDURE_OK;

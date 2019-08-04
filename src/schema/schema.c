@@ -61,7 +61,7 @@ int Schema_AddIndex(Index **idx, Schema *s, const char *field, IndexType type) {
 	*idx = NULL;
 	Index *_idx = Schema_GetIndex(s, NULL, type);
 
-	// Index exits, make sure attribute isn't already indexed.
+	// Index exists, make sure attribute isn't already indexed.
 	if(_idx != NULL) {
 		if(Index_ContainsField(_idx, field)) return INDEX_FAIL;
 	}
@@ -94,8 +94,20 @@ int Schema_RemoveIndex(Schema *s, const char *field, IndexType type) {
 
 	Index_RemoveField(idx, field);
 
-	// TODO: if index field count dropped to 0, delete index.
-	assert("TODO!");
+	/* If index field count dropped to 0
+	 * remove index from schema. */
+	if(Index_FieldsCount(idx) == 0) {
+		Index_Free(idx);
+		switch(type) {
+		case IDX_EXACT_MATCH:
+			s->index = NULL;
+			break;
+		case IDX_FULLTEXT:
+			s->fulltextIdx = NULL;
+			break;
+		}
+	}
+
 	return INDEX_OK;
 }
 

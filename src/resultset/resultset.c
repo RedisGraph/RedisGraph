@@ -56,28 +56,32 @@ static void _ResultSet_ReplayStats(RedisModuleCtx *ctx, ResultSet *set) {
 	}
 }
 
-static void _ResultSet_ReplyWithHeader(ResultSet *set, QueryGraph *qg) {
+static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
 	assert(set->recordCount == 0);
 
-	set->column_count = array_len(set->exps);
+	// Prepare a response containing a header, records, and statistics
+	RedisModule_ReplyWithArray(set->ctx, 3);
 
-	/* Replay with table header. */
-	if(set->compact) {
-		set->formatter->EmitHeader(set->ctx, qg, set->exps);
-	} else {
-		set->formatter->EmitHeader(set->ctx, NULL, set->exps);
-	}
+	// Emit the table header using the appropriate formatter
+	set->formatter->EmitHeader(set->ctx, set->columns, r);
+
+	set->header_emitted = true;
+
+	// We don't know at this point the number of records we're about to return.
+	RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
 }
 
+
 ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact) {
-	ResultSet *set = (ResultSet *)malloc(sizeof(ResultSet));
+	ResultSet *set = rm_malloc(sizeof(ResultSet));
 	set->ctx = ctx;
 	set->gc = GraphContext_GetFromTLS();
 	set->compact = compact;
 	set->formatter = (compact) ? &ResultSetFormatterCompact : &ResultSetFormatterVerbose;
 	set->recordCount = 0;
 	set->column_count = 0;
-	set->exps = NULL;
+	set->header_emitted = false;
+	set->columns = NULL;
 
 	set->stats.labels_added = 0;
 	set->stats.nodes_created = 0;
@@ -89,24 +93,22 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact) {
 	return set;
 }
 
-// Initialize the user-facing reply arrays.
-void ResultSet_ReplyWithPreamble(ResultSet *set, QueryGraph *qg) {
-	if(set->exps == NULL || array_len(set->exps) == 0) {
-		// Queries that don't form result sets will only emit statistics
-		RedisModule_ReplyWithArray(set->ctx, 1);
-		return;
+void ResultSet_BuildColumns(ResultSet *set, AR_ExpNode **projections) {
+	if(projections == NULL) return;
+
+	uint projection_count = array_len(projections);
+	set->column_count = projection_count;
+	set->columns = array_new(const char *, projection_count);
+
+	for(uint i = 0; i < projection_count; i ++) {
+		set->columns = array_append(set->columns, projections[i]->resolved_name);
 	}
-
-	// header, records, statistics
-	RedisModule_ReplyWithArray(set->ctx, 3);
-
-	_ResultSet_ReplyWithHeader(set, qg);
-
-	// We don't know at this point the number of records we're about to return.
-	RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
 }
 
 int ResultSet_AddRecord(ResultSet *set, Record r) {
+	// Prepare response arrays and emit the header if this is the first Record encountered
+	if(set->header_emitted == false) _ResultSet_ReplyWithPreamble(set, r);
+
 	set->recordCount++;
 
 	// Output the current record using the defined formatter
@@ -116,10 +118,19 @@ int ResultSet_AddRecord(ResultSet *set, Record r) {
 }
 
 void ResultSet_Replay(ResultSet *set) {
-	// If we have emitted records, set the number of elements in the
-	// preceding array
-	if(set->exps && array_len(set->exps) > 0) {
+	if(set->header_emitted) {
+		// If we have emitted a header, set the number of elements in the
+		// preceding array
 		RedisModule_ReplySetArrayLength(set->ctx, set->recordCount);
+	} else if(set->header_emitted == false && set->columns != NULL) {
+		assert(set->recordCount == 0);
+		// Handle the edge case in which the query was intended to return results,
+		// but none were created.
+		_ResultSet_ReplyWithPreamble(set, NULL);
+		RedisModule_ReplySetArrayLength(set->ctx, 0);
+	} else {
+		// Queries that don't emit data will only emit statistics
+		RedisModule_ReplyWithArray(set->ctx, 1);
 	}
 	_ResultSet_ReplayStats(set->ctx, set);
 }
@@ -127,5 +138,7 @@ void ResultSet_Replay(ResultSet *set) {
 void ResultSet_Free(ResultSet *set) {
 	if(!set) return;
 
-	free(set);
+	array_free(set->columns);
+
+	rm_free(set);
 }

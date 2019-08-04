@@ -25,7 +25,7 @@ OpBase *NewCartesianProductOp(void) {
 
 static void _ResetStreams(CartesianProduct *cp, int streamIdx) {
 	// Reset each child stream, Reset propagates upwards.
-	for(int i = 0; i < streamIdx; i++) OpBase_PropegateReset(cp->op.children[i]);
+	for(int i = 0; i < streamIdx; i++) OpBase_PropagateReset(cp->op.children[i]);
 }
 
 static int _PullFromStreams(CartesianProduct *op) {

@@ -71,12 +71,14 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 			right = _filterTreeToQueryNode(filter->cond.right, sp);
 			RediSearch_QueryNodeAddChild(node, left);
 			RediSearch_QueryNodeAddChild(node, right);
+			break;
 		case OP_AND:
 			node = RediSearch_CreateIntersectNode(sp, false);
 			left = _filterTreeToQueryNode(filter->cond.left, sp);
 			right = _filterTreeToQueryNode(filter->cond.right, sp);
 			RediSearch_QueryNodeAddChild(node, left);
 			RediSearch_QueryNodeAddChild(node, right);
+			break;
 		default:
 			assert("unexpected conditional operation");
 		}
@@ -106,8 +108,7 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 				node = RediSearch_CreateTokenNode(sp, field, v.stringval);
 				break;
 			case OP_NEQUAL: // !=
-				node = RediSearch_CreateNotNode(sp);
-				RediSearch_QueryNodeAddChild(node, RediSearch_CreateTokenNode(sp, field, v.stringval));
+				assert("Index can't utilize the 'not equals' operation.");
 				break;
 			default:
 				assert("unexpected operation");
@@ -135,8 +136,7 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 				node = RediSearch_CreateNumericNode(sp, field, d, d, true, true);
 				break;
 			case OP_NEQUAL: // !=
-				node = RediSearch_CreateNotNode(sp);
-				RediSearch_QueryNodeAddChild(node, RediSearch_CreateNumericNode(sp, field, d, d, true, true));
+				assert("Index can't utilize the 'not equals' operation.");
 				break;
 			default:
 				assert("unexpected operation");
@@ -179,11 +179,8 @@ bool _simple_predicates(const FT_FilterNode *filter) {
 		if(filter->pred.lhs->operand.type == AR_EXP_CONSTANT) c = filter->pred.lhs->operand.constant;
 		if(filter->pred.rhs->operand.type == AR_EXP_CONSTANT) c = filter->pred.rhs->operand.constant;
 		SIType t = SI_TYPE(c);
-		if(!((t & SI_NUMERIC) | (t & SI_STRING) | (t & T_BOOL))) {
-			return false;
-		}
 
-		return true;
+		return(t & (SI_NUMERIC | SI_STRING | T_BOOL));
 	}
 
 	// FT_N_COND.
@@ -194,25 +191,40 @@ bool _simple_predicates(const FT_FilterNode *filter) {
 
 /* Checks to see if given filter can be resolved by index. */
 bool _applicableFilter(Index *idx, Filter *filter) {
+	bool res = true;
+	rax *attr = NULL;
+	rax *entities = NULL;
+
 	uint idx_fields_count = Index_FieldsCount(idx);
 	const char **idx_fields = Index_GetFields(idx);
 	FT_FilterNode *filter_tree = filter->filterTree;
 
 	/* filterTree will either be a predicate or a tree with an OR root.
 	 * make sure filter doesn't contains predicates of type: a.v = b.y */
-	rax *entities = FilterTree_CollectModified(filter_tree);
+	entities = FilterTree_CollectModified(filter_tree);
 	uint entity_count = raxSize(entities);
-	raxFree(entities);
 
 	// a.v op b.k
-	if(entity_count != 1) return false;
+	if(entity_count != 1) {
+		res = false;
+		goto cleanup;
+	}
+
+	// Make sure the "not equal, <>" operator isn't used.
+	if(FilterTree_containsOp(filter_tree, OP_NEQUAL)) {
+		res = false;
+		goto cleanup;
+	}
 
 	// Make sure all filtered attributes are indexed.
-	rax *attr = FilterTree_CollectAttributes(filter_tree);
+	attr = FilterTree_CollectAttributes(filter_tree);
 	uint filter_attribute_count = raxSize(attr);
 
 	// Filter refers to a greater number of attributes.
-	if(filter_attribute_count > idx_fields_count) return false;
+	if(filter_attribute_count > idx_fields_count) {
+		res = false;
+		goto cleanup;
+	}
 
 	for(uint i = 0; i < idx_fields_count; i++) {
 		const char *field = idx_fields[i];
@@ -222,9 +234,12 @@ bool _applicableFilter(Index *idx, Filter *filter) {
 			if(filter_attribute_count == 0) break;
 		}
 	}
+	res = (filter_attribute_count == 0);
 
-	raxFree(attr);
-	return (filter_attribute_count == 0);
+cleanup:
+	if(attr) raxFree(attr);
+	if(entities) raxFree(entities);
+	return res;
 }
 
 /* Returns an array of filter operation which can be
@@ -302,8 +317,8 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 	/* Reduce filters into ranges.
 	 * we differentiate between between numeric filters
 	 * and string filters. */
-	rax *string_ranges = raxNew();
-	rax *numeric_ranges = raxNew();
+	rax *string_ranges = NULL;
+	rax *numeric_ranges = NULL;
 	RSQNode **rsqnodes = array_new(RSQNode *, 1);
 
 	// Get all applicable filter for index.
@@ -313,6 +328,9 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 	// No filters, return.
 	uint filters_count = array_len(filters);
 	if(filters_count == 0) goto cleanup;
+
+	string_ranges = raxNew();
+	numeric_ranges = raxNew();
 
 	for(uint i = 0; i < filters_count; i++) {
 		Filter *filter = filters[i];
@@ -393,8 +411,8 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 	}
 
 cleanup:
-	raxFreeWithCallback(string_ranges, (void(*)(void *))StringRange_Free);
-	raxFreeWithCallback(numeric_ranges, (void(*)(void *))NumericRange_Free);
+	if(string_ranges) raxFreeWithCallback(string_ranges, (void(*)(void *))StringRange_Free);
+	if(numeric_ranges) raxFreeWithCallback(numeric_ranges, (void(*)(void *))NumericRange_Free);
 	if(rsqnodes) array_free(rsqnodes);
 
 	if(filters) {

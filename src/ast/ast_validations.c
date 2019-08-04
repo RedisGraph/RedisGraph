@@ -86,16 +86,17 @@ static void _AST_GetProcCallAliases(const cypher_astnode_t *node, TrieMap *ident
 
 	uint projection_count = cypher_ast_call_nprojections(node);
 	for(uint i = 0; i < projection_count; i++) {
-		const cypher_astnode_t *proj = cypher_ast_call_get_projection(node, i);
-		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(proj);
-
+		const cypher_astnode_t *proj_node = cypher_ast_call_get_projection(node, i);
+		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(proj_node);
 		if(alias_node) {
 			// Alias is given: YIELD label AS l.
 			const char *alias = cypher_ast_identifier_get_name(alias_node);
 			TrieMap_Add(identifiers, (char *)alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
 		} else {
-			// No alias use identifier as is: Alias is given: YIELD label
-			_CollectIdentifiers(proj, identifiers);
+			// No alias, use identifier: YIELD label
+			_CollectIdentifiers(proj_node, identifiers);
+			// const char *identifier = cypher_ast_identifier_get_name(proj_node);
+			// TrieMap_Add(identifiers, (char *)identifier, strlen(identifier), NULL, TrieMap_DONT_CARE_REPLACE);
 		}
 	}
 }
@@ -425,9 +426,7 @@ static AST_Validation _ValidateFilterPredicates(const cypher_astnode_t *predicat
 			// comparison function. Failing expressions include:
 			// WHERE EXISTS(a.age) AND a.age > 30
 			if(_ValidateFilterPredicates(left, reason) != AST_VALID) return AST_INVALID;
-
 			if(_ValidateFilterPredicates(right, reason) != AST_VALID) return AST_INVALID;
-
 		} else {
 			// Check for chains of form:
 			// WHERE n.prop1 < m.prop1 = n.prop2 <> m.prop2
@@ -524,7 +523,13 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast, char **reason) {
 				const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(proj);
 				assert(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
 				const char *identifier = cypher_ast_identifier_get_name(ast_exp);
-				TrieMap_Add(identifiers, (char *)identifier, strlen(identifier), NULL, TrieMap_DONT_CARE_REPLACE);
+				// Make sure each yield output is mentioned only once.
+				if(!TrieMap_Add(identifiers, (char *)identifier, strlen(identifier), NULL,
+								TrieMap_DONT_CARE_REPLACE)) {
+					asprintf(reason, "Variable `%s` already declared", identifier);
+					res = AST_INVALID;
+					goto cleanup;
+				}
 			}
 
 			// Make sure procedure is aware of each output.
@@ -535,7 +540,12 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast, char **reason) {
 			TrieMapIterator *it = TrieMap_Iterate(identifiers, "", 0);
 
 			while(TrieMapIterator_Next(it, &identifier, &len, &value)) {
-				assert(len < 256);
+				if(len >= 256) {
+					asprintf(reason, "Output name `%s` too long", identifier);
+					res = AST_INVALID;
+					goto cleanup;
+				}
+
 				memcpy(output, identifier, len);
 				output[len] = 0;
 				if(!Procedure_ContainsOutput(proc, output)) {

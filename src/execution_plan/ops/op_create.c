@@ -157,7 +157,37 @@ static void _CommitNodes(OpCreate *op) {
 
 static void _CommitEdges(OpCreate *op) {
 	Edge *e;
+	GraphContext *gc = op->gc;
 	Graph *g = op->gc->g;
+
+	/* Create missing schemas.
+	 * this loop iterates over the CREATE pattern, e.g.
+	 * CREATE (p:Person)-[e:VISITED]->(q)
+	 * As such we're not expecting a large number of iterations. */
+	uint blueprint_edge_count = array_len(op->edges_to_create);
+	for(uint i = 0; i < blueprint_edge_count; i++) {
+		EdgeCreateCtx *edge_ctx = op->edges_to_create + i;
+
+		const char **reltypes = edge_ctx->edge->reltypes;
+		if(reltypes) {
+			uint reltype_count = array_len(reltypes);
+			for(uint j = 0; j < reltype_count; j ++) {
+				const char *reltype = reltypes[j];
+				if(GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE) == NULL) {
+					Schema *s = GraphContext_AddSchema(gc, reltype, SCHEMA_EDGE);
+				}
+			}
+
+			// Introduce attributes to graph.
+			if(!edge_ctx->properties) continue;
+			uint prop_count = edge_ctx->properties->property_count;
+			for(int prop_idx = 0; prop_idx < prop_count; prop_idx ++) {
+				const char *prop = edge_ctx->properties->keys[prop_idx];
+				GraphContext_FindOrAddAttribute(gc, prop);
+			}
+		}
+	}
+
 	int relationships_created = 0;
 
 	uint edge_count = array_len(op->created_edges);
@@ -256,7 +286,7 @@ Record OpCreateConsume(OpBase *opBase) {
 	/* Done reading, we're not going to call consume any longer
 	 * there might be operations e.g. index scan that need to free
 	 * index R/W lock, as such free all execution plan operation up the chain. */
-	if(child) OpBase_PropegateFree(child);
+	if(child) OpBase_PropagateFree(child);
 
 	// Create entities.
 	_CommitNewEntities(op);

@@ -82,7 +82,7 @@ TEST_F(IndexTest, Index_New) {
     Index *idx = Index_New(l, IDX_EXACT_MATCH);
 
     // Return indexed label.
-    char *label = Index_GetLabel(idx);
+    const char *label = Index_GetLabel(idx);
     ASSERT_STREQ(label, l);
 
     const char *field = "name";

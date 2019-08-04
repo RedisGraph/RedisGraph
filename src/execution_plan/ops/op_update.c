@@ -202,7 +202,7 @@ Record OpUpdateConsume(OpBase *opBase) {
 	/* Done reading, we're not going to call consume any longer
 	 * there might be operations e.g. index scan that need to free
 	 * index R/W lock, as such free all execution plan operation up the chain. */
-	OpBase_PropegateFree(child);
+	OpBase_PropagateFree(child);
 
 	/* Lock everything. */
 	Graph_AcquireWriteLock(op->gc->g);

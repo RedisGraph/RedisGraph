@@ -217,6 +217,16 @@ rax *FilterTree_CollectAttributes(const FT_FilterNode *root) {
 	return attributes;
 }
 
+bool FilterTree_containsOp(const FT_FilterNode *root, AST_Operator op) {
+	if(root->t == FT_N_COND) {
+		bool contains_op = false;
+		if(FilterTree_containsOp(root->cond.left, op)) return true;
+		if(FilterTree_containsOp(root->cond.right, op)) return true;
+		return false;
+	}
+	return (root->pred.op == op);
+}
+
 void _FilterTree_Print(const FT_FilterNode *root, int ident) {
 	// Ident
 	printf("%*s", ident, "");

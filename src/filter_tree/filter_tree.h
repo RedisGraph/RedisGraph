@@ -68,6 +68,9 @@ rax *FilterTree_CollectModified(const FT_FilterNode *root);
  * without duplications. */
 rax* FilterTree_CollectAttributes(const FT_FilterNode *root);
 
+/* Checks to see if tree contains given operation. */
+bool FilterTree_containsOp(const FT_FilterNode *root, AST_Operator op);
+
 /* Prints tree. */
 void FilterTree_Print(const FT_FilterNode *root);
 
