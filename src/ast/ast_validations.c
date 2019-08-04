@@ -12,6 +12,8 @@
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
 #include <assert.h>
+#include <ctype.h>
+#include "../util/common.h"
 
 inline static void _prepareIterateAll(rax *map, raxIterator *iter) {
 	raxStart(iter, map);
@@ -840,11 +842,23 @@ static AST_Validation _Validate_UNWIND_Clauses(const AST *ast, char **reason) {
 		const cypher_astnode_t *expression = cypher_ast_unwind_get_expression(unwind_clauses[i]);
 		cypher_astnode_type_t type = cypher_astnode_type(expression);
 		// Ensure that the UNWIND expression is a collection (aka list/array)
-		// if(type != CYPHER_AST_COLLECTION) {
-		// 	asprintf(reason, "UNWIND expects a list argument; encountered ''%s'", cypher_astnode_typestr(type));
-		// 	res = AST_INVALID;
-		// 	goto cleanup;
-		// }
+		if(type == CYPHER_AST_APPLY_OPERATOR) {
+			const cypher_astnode_t *funcNode =  cypher_ast_apply_operator_get_func_name(expression);
+			const char *funcName = cypher_ast_function_name_get_value(funcNode);
+			size_t lower_func_name_len = 32;
+			char lowerFuncName[lower_func_name_len];
+			_toLower(funcName, lowerFuncName, &lower_func_name_len);
+			if(strcmp(lowerFuncName, "range")) {
+				asprintf(reason, "UNWIND expects range funcition; encountered '%s'", funcName);
+				res = AST_INVALID;
+				goto cleanup;
+			}
+		} else if(!(type == CYPHER_AST_COLLECTION || type == CYPHER_AST_IDENTIFIER)) {
+			asprintf(reason, "UNWIND expects a list argument or an list identifier; encountered ''%s'",
+					 cypher_astnode_typestr(type));
+			res = AST_INVALID;
+			goto cleanup;
+		}
 		// Verify that all elements of the UNWIND collection are supported by RedisGraph
 		uint child_count = cypher_astnode_nchildren(expression);
 		for(uint j = 0; j < child_count; j ++) {

@@ -15,7 +15,7 @@
 typedef struct {
 	OpBase op;
 	AR_ExpNode *expressions; // Array of expressions
-	uint expIdx;             // Current expression index to evaluate.
+	uint listIdx;            // Current list index
 	int unwindRecIdx;        // Update record at this index.
 	SIValue list;
 } OpUnwind;

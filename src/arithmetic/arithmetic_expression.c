@@ -19,6 +19,7 @@
 #include "assert.h"
 #include <math.h>
 #include <ctype.h>
+#include "../util/common.h"
 
 /* Arithmetic function repository. */
 static rax *__aeRegisteredFuncs = NULL;
