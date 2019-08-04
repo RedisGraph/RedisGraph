@@ -1371,3 +1371,43 @@ TEST_F(ArithmeticTest, RangeTest)
         ASSERT_EQ(i * 3 + 2, value.longval);
     }
 }
+
+TEST_F(ArithmeticTest, InTest)
+{
+    SIValue result;
+    const char *query;
+    AR_ExpNode *arExp;
+    Record r = Record_New(0);
+
+    // check if 3 in [1,2,3]
+    query = "RETURN 3 IN [1,2,3]";
+    arExp = _exp_from_query(query);
+    result = AR_EXP_Evaluate(arExp, r);
+
+    ASSERT_EQ(T_BOOL, result.type);
+    ASSERT_EQ(true, result.longval);
+
+    // check if 4 in [1,2,3]
+    query = "RETURN 4 IN [1,2,3]";
+    arExp = _exp_from_query(query);
+    result = AR_EXP_Evaluate(arExp, r);
+
+    ASSERT_EQ(T_BOOL, result.type);
+    ASSERT_EQ(false, result.longval);
+
+    // check if [1,2] in [1,2,3]
+    query = "RETURN [1,2] IN [1,2,3]";
+    arExp = _exp_from_query(query);
+    result = AR_EXP_Evaluate(arExp, r);
+
+    ASSERT_EQ(T_BOOL, result.type);
+    ASSERT_EQ(false, result.longval);
+
+    // check if [1,2] in [[1,2],3]
+    query = "RETURN [1,2] IN [[1,2],3]";
+    arExp = _exp_from_query(query);
+    result = AR_EXP_Evaluate(arExp, r);
+
+    ASSERT_EQ(T_BOOL, result.type);
+    ASSERT_EQ(true, result.longval);
+}

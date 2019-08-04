@@ -82,7 +82,7 @@ Feature: ListOperations
             | false |
         And no side effects
 
-    @skip
+
     Scenario: IN should return false when matching a number with a string
         Given any graph
         When executing query:
@@ -94,7 +94,7 @@ Feature: ListOperations
             | false |
         And no side effects
 
-    @skip
+
     Scenario: IN should return false when matching a number with a string - list version
         Given any graph
         When executing query:
@@ -106,7 +106,7 @@ Feature: ListOperations
             | false |
         And no side effects
 
-    @skip
+
     Scenario: IN should return false when types of LHS and RHS don't match - singleton list
         Given any graph
         When executing query:
@@ -118,7 +118,7 @@ Feature: ListOperations
             | false |
         And no side effects
 
-    @skip
+
     Scenario: IN should return false when types of LHS and RHS don't match - list
         Given any graph
         When executing query:
@@ -130,7 +130,7 @@ Feature: ListOperations
             | false |
         And no side effects
 
-    @skip
+
     Scenario: IN should return true when types of LHS and RHS match - singleton list
         Given any graph
         When executing query:
@@ -142,7 +142,7 @@ Feature: ListOperations
             | true |
         And no side effects
 
-    @skip
+
     Scenario: IN should return true when types of LHS and RHS match - list
         Given any graph
         When executing query:
@@ -154,7 +154,7 @@ Feature: ListOperations
             | true |
         And no side effects
 
-    @skip
+
     Scenario: IN should return false when order of elements in LHS list and RHS list don't match
         Given any graph
         When executing query:
@@ -166,7 +166,7 @@ Feature: ListOperations
             | false |
         And no side effects
 
-    @skip
+
     Scenario: IN with different length lists should return false
         Given any graph
         When executing query:
@@ -178,7 +178,7 @@ Feature: ListOperations
             | false |
         And no side effects
 
-    @skip
+
     Scenario: IN should return false when matching a list with a nested list with same elements
         Given any graph
         When executing query:
@@ -190,7 +190,7 @@ Feature: ListOperations
             | false |
         And no side effects
 
-    @skip
+
     Scenario: IN should return true when both LHS and RHS contain nested lists
         Given any graph
         When executing query:
@@ -202,7 +202,7 @@ Feature: ListOperations
             | true |
         And no side effects
 
-    @skip
+
     Scenario: IN should return true when both LHS and RHS contain a nested list alongside a scalar element
         Given any graph
         When executing query:
@@ -214,7 +214,7 @@ Feature: ListOperations
             | true |
         And no side effects
 
-    @skip
+
     Scenario: IN should return true when LHS and RHS contain a nested list - singleton version
         Given any graph
         When executing query:
@@ -226,7 +226,7 @@ Feature: ListOperations
             | true |
         And no side effects
 
-    @skip
+
     Scenario: IN should return true when LHS and RHS contain a nested list
         Given any graph
         When executing query:
@@ -238,7 +238,7 @@ Feature: ListOperations
             | true |
         And no side effects
 
-    @skip
+
     Scenario: IN should return false when LHS contains a nested list and type mismatch on RHS - singleton version
         Given any graph
         When executing query:
@@ -250,7 +250,7 @@ Feature: ListOperations
             | false |
         And no side effects
 
-    @skip
+
     Scenario: IN should return false when LHS contains a nested list and type mismatch on RHS
         Given any graph
         When executing query:
@@ -300,7 +300,7 @@ Feature: ListOperations
             | null |
         And no side effects
 
-    @skip
+
     Scenario: IN with different length lists should return false despite nulls
         Given any graph
         When executing query:
@@ -312,7 +312,7 @@ Feature: ListOperations
             | false |
         And no side effects
 
-    @skip
+
     Scenario: IN should return true if match despite nulls
         Given any graph
         When executing query:
@@ -336,7 +336,7 @@ Feature: ListOperations
             | null |
         And no side effects
 
-    @skip
+
     Scenario: IN should return true if correct list found despite other lists having nulls
         Given any graph
         When executing query:
@@ -348,7 +348,7 @@ Feature: ListOperations
             | true |
         And no side effects
 
-    @skip
+
     Scenario: IN should return true if correct list found despite null being another element within containing list
         Given any graph
         When executing query:
@@ -360,7 +360,7 @@ Feature: ListOperations
             | true |
         And no side effects
 
-    @skip
+
     Scenario: IN should return false if no match can be found, despite nulls
         Given any graph
         When executing query:
@@ -384,7 +384,7 @@ Feature: ListOperations
             | null |
         And no side effects
 
-    @skip
+
     Scenario: IN should return false if different length lists compared, even if the extra element is null
         Given any graph
         When executing query:
@@ -408,7 +408,7 @@ Feature: ListOperations
             | null |
         And no side effects
 
-    @skip
+
     Scenario: IN should return true with previous null match, list version
         Given any graph
         When executing query:
@@ -420,7 +420,7 @@ Feature: ListOperations
             | true |
         And no side effects
 
-    @skip
+
     Scenario: IN should return false if different length lists with nested elements compared, even if the extra element is null
         Given any graph
         When executing query:
@@ -446,7 +446,7 @@ Feature: ListOperations
 
     # IN operator - empty list
 
-    @skip
+
     Scenario: IN should work with an empty list
         Given any graph
         When executing query:
@@ -458,7 +458,7 @@ Feature: ListOperations
             | true |
         And no side effects
 
-    @skip
+
     Scenario: IN should return false for the empty list if the LHS and RHS types differ
         Given any graph
         When executing query:
@@ -470,7 +470,7 @@ Feature: ListOperations
             | false |
         And no side effects
 
-    @skip
+
     Scenario: IN should work with an empty list in the presence of other list elements: matching
         Given any graph
         When executing query:
@@ -482,7 +482,7 @@ Feature: ListOperations
             | true |
         And no side effects
 
-    @skip
+
     Scenario: IN should work with an empty list in the presence of other list elements: not matching
         Given any graph
         When executing query:
@@ -494,7 +494,7 @@ Feature: ListOperations
             | false |
         And no side effects
 
-    @skip
+
     Scenario: IN should work with an empty list when comparing nested lists
         Given any graph
         When executing query:
@@ -518,7 +518,7 @@ Feature: ListOperations
             | null |
         And no side effects
 
-    @skip
+
     Scenario: IN should return true when LHS and RHS contain nested list with multiple empty lists
         Given any graph
         When executing query:
