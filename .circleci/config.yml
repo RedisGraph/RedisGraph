@@ -13,7 +13,7 @@ jobs:
       - run:
           name: Install prerequisite
           command: >-
-            pip install git+https://github.com/RedisGraph/redisgraph-py.git &&
+            pip install git+https://github.com/RedisGraph/redisgraph-py.git@array_support &&
             pip install psutil behave backports.csv && 
             pip install redis-py-cluster &&
             pip install git+https://github.com/RedisLabsModules/RLTest.git@3550ba5e772773a157bce776eef8d8ca3efee3dc &&
