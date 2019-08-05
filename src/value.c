@@ -289,7 +289,64 @@ size_t SIValue_StringConcat(SIValue *strings, unsigned int string_count, char *b
 	return offset;
 }
 
+SIValue SIValue_ConcatString(const SIValue a, const SIValue b) {
+	SIValue result;
+	char buffer[512];
+	char *string_arg = NULL;
+	// a is not a string - scalar + string
+	if(a.type != T_STRING) {
+		/* a is numeric, convert to string. */
+		SIValue_ToString(a, buffer, 512);
+		result = SI_DuplicateStringVal(buffer);
+	}
+	// string + value
+	else result = SI_Clone(a);
+
+	unsigned int argument_len = 0;
+	if(b.type != T_STRING) {
+		/* b is not a numeric, get a string representation. */
+		argument_len = SIValue_ToString(b, buffer, 512);
+		string_arg = buffer;
+	} else {
+		string_arg = b.stringval;
+		argument_len = strlen(string_arg);
+	}
+
+	/* Concat, make sure result has enough space to hold new string. */
+	unsigned int required_size = strlen(result.stringval) + argument_len + 1;
+	result.stringval = rm_realloc(result.stringval, required_size);
+	strcat(result.stringval, string_arg);
+	return result;
+}
+
+SIValue SIValue_ConcatList(const SIValue a, const SIValue b) {
+	SIValue resultArray;
+	// scalar + array
+	if(a.type != T_ARRAY) {
+		SIValue *array = array_new(SIValue, 1);
+		array = array_append(array, a);
+		resultArray = SI_Array(array);
+	}
+	// array + value
+	else resultArray = SI_Clone(a);
+
+	// b is scalar
+	if(b.type != T_ARRAY) {
+		resultArray.array = array_append(resultArray.array, b);
+	} else {
+		uint bArrayLen = array_len(b.array);
+		for(uint i = 0; i < bArrayLen; i++) {
+			resultArray.array = array_append(resultArray.array, b.array[i]);
+		}
+	}
+	SIValue_Persist(&resultArray);
+	return resultArray;
+}
+
 SIValue SIValue_Add(const SIValue a, const SIValue b) {
+	if(a.type == T_NULL || b.type == T_NULL) return SI_NullVal();
+	if(a.type == T_ARRAY || b.type == T_ARRAY) return SIValue_ConcatList(a, b);
+	if(a.type == T_STRING || b.type == T_STRING) return SIValue_ConcatString(a, b);
 	/* Only construct an integer return if both operands are integers. */
 	if(a.type & b.type & T_INT64) {
 		return SI_LongVal(a.longval + b.longval);

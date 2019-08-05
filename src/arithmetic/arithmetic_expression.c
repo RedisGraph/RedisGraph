@@ -467,8 +467,6 @@ void AR_EXP_Free(AR_ExpNode *root) {
 //=== Mathematical functions - numeric =========================================
 //==============================================================================
 
-/* The '+' operator is overloaded to perform string concatenation
- * as well as arithmetic addition. */
 SIValue AR_ADD(SIValue *argv, int argc) {
 	// Don't modify input.
 	SIValue result = SI_CloneValue(argv[0]);
@@ -477,45 +475,8 @@ SIValue AR_ADD(SIValue *argv, int argc) {
 
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	for(int i = 1; i < argc; i++) {
-		if(SIValue_IsNull(argv[i])) return SI_NullVal();
-
-		/* Perform numeric addition only if both result and current argument
-		 * are numeric. */
-		if(_validate_numeric(result) && _validate_numeric(argv[i])) {
-			result = SIValue_Add(result, argv[i]);
-		} else {
-			/* String concatenation.
-			 * Make sure result is a String. */
-			if(SI_TYPE(result) & SI_NUMERIC) {
-				/* Result is numeric, convert to string. */
-				SIValue_ToString(result, buffer, 512);
-				result = SI_DuplicateStringVal(buffer);
-			} else {
-				/* Result is already a string,
-				 * Make sure result owns the string. */
-				if(result.allocation != M_SELF) {
-					result = SI_DuplicateStringVal(result.stringval);
-				}
-			}
-
-			/* Get a string representation of argument. */
-			unsigned int argument_len = 0;
-			if(SI_TYPE(argv[i]) != T_STRING) {
-				/* Argument is not a string, get a string representation. */
-				argument_len = SIValue_ToString(argv[i], buffer, 512);
-				string_arg = buffer;
-			} else {
-				string_arg = argv[i].stringval;
-				argument_len = strlen(string_arg);
-			}
-
-			/* Concat, make sure result has enough space to hold new string. */
-			unsigned int required_size = strlen(result.stringval) + argument_len + 1;
-			result.stringval = rm_realloc(result.stringval, required_size);
-			strcat(result.stringval, string_arg);
-		}
+		result = SIValue_Add(result, argv[i]);
 	}
-
 	return result;
 }
 

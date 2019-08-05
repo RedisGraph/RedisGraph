@@ -75,7 +75,12 @@ def listToString(listToConvert):
 
 
 def toString(value):
-    if is_numeric(value):
+    if isinstance(value, bool):
+        if value == True:
+            return "true"
+        elif value == False:
+            return "false"
+    elif is_numeric(value):
         return str(value)
     elif isinstance(value, basestring):
         # remove qoutes if any
@@ -88,10 +93,6 @@ def toString(value):
         return edgeToString(value)
     elif isinstance(value, list):
         return listToString(value)
-    elif value == True:
-        return "true"
-    elif value == False:
-        return "false"
     elif value == None:
         return "null"
 

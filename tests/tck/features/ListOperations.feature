@@ -649,7 +649,7 @@ Feature: ListOperations
         And the side effects should be:
             | +properties | 1 |
 
-    @skip
+
     Scenario: Concatenating and returning the size of literal lists
         Given any graph
         When executing query:
@@ -704,7 +704,7 @@ Feature: ListOperations
             | 1           |
         And no side effects
 
-    @skip
+
     Scenario: Concatenating lists of same type
         Given any graph
         When executing query:
@@ -716,7 +716,7 @@ Feature: ListOperations
             | [1, 10, 100, 4, 5] |
         And no side effects
 
-    @skip
+
     Scenario: Concatenating lists of same type
         Given any graph
         When executing query:
