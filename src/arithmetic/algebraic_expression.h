@@ -7,7 +7,6 @@
 #ifndef ALGEBRAIC_EXPRESSION_H
 #define ALGEBRAIC_EXPRESSION_H
 
-#include "../execution_plan/record_map.h"
 #include "../graph/query_graph.h"
 #include "../graph/graph.h"
 
@@ -78,7 +77,6 @@ AlgebraicExpression *AlgebraicExpression_Empty(void);
 /* Construct algebraic expression(s) from query graph. */
 AlgebraicExpression **AlgebraicExpression_FromQueryGraph(
 	const QueryGraph *g,    // Graph to construct expression from.
-	RecordMap *record_map,  // Map of Record IDs of referenced entities
 	size_t *exp_count       // Number of expression created.
 );
 

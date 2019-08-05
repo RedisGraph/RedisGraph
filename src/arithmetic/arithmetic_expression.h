@@ -8,14 +8,12 @@
 #define __ARITHMETIC_EXPRESSION_H
 
 #include "./agg_ctx.h"
-#include "../../deps/rax/rax.h"
-// #include "../graph/query_graph.h"
-#include "../execution_plan/record.h"
-#include "../execution_plan/record_map.h"
-#include "../graph/entities/graph_entity.h"
-#include "../ast/ast_shared.h"
-#include "../ast/ast.h"
 #include "./agg_ctx.h"
+#include "../ast/ast.h"
+#include "../ast/ast_shared.h"
+#include "../../deps/rax/rax.h"
+#include "../execution_plan/record.h"
+#include "../graph/entities/graph_entity.h"
 
 /* AR_ExpNodeType lists the type of nodes within
  * an arithmetic expression tree. */
@@ -169,7 +167,7 @@ void AR_EXP_Reduce(const AR_ExpNode *root);
 /* Utility functions */
 /* Traverse an expression tree and add all graph entity record IDs
  * (from variadic) to a triemap. */
-void AR_EXP_CollectEntityIDs(AR_ExpNode *root, rax *record_ids);
+void AR_EXP_CollectEntities(AR_ExpNode *root, rax *record_ids);
 
 /* Traverse an expression tree and add all mentioned attributes:
  * n.attr > 3 to a prefix tree. */
@@ -183,12 +181,11 @@ int AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node);
 /* Constructs string representation of arithmetic expression tree. */
 void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 
-AR_ExpNode *AR_EXP_NewVariableOperandNode(RecordMap *record_map, const char *alias,
-										  const char *prop);
+AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias, const char *prop);
 AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant);
 
 /* Construct an arithmetic expression tree from a CYPHER_AST_EXPRESSION node. */
-AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t *expr);
+AR_ExpNode *AR_EXP_FromExpression(const cypher_astnode_t *expr);
 
 /* Clones given expression. */
 AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp);

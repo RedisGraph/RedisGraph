@@ -9,46 +9,79 @@
 #include "../../deps/xxhash/xxhash.h"
 #include <assert.h>
 
-#define RECORD_HEADER(r) (r-1)
-#define RECORD_HEADER_ENTRY(r) *(RECORD_HEADER((r)))
+Record Record_New(rax *mapping) {
+	assert(mapping);
+	// Determin record size.
+	uint entries_count = raxSize(mapping);
+	uint rec_size = sizeof(Record);
+	rec_size += sizeof(Entry) * entries_count;
 
-Record Record_New(int entries) {
-	Record r = rm_calloc((entries + 1), sizeof(Entry));
+	Record r = rm_calloc(1, rec_size);
+	r->mapping = mapping;
 
-	// First entry holds records length.
-	r[0].type = REC_TYPE_HEADER;
-	r[0].value.s = SI_LongVal(entries);
-
-	// Skip header entry.
-	return r + 1;
+	return r;
 }
 
+// Returns the number of entries held by record.
+uint Record_length(const Record r) {
+	assert(r);
+	return raxSize(r->mapping);
+}
+
+// Make sure record is able to hold len entries.
 void Record_Extend(Record *r, int len) {
 	int original_len = Record_length(*r);
 	if(original_len >= len) return;
 
-	Record header = RECORD_HEADER(*r);
-	header->value.s.longval = len;
-	header = rm_realloc(header, sizeof(Entry) * (len + 1));
+	// Determin record size.
+	size_t required_record_size = sizeof(Record);
+	required_record_size += sizeof(Entry) * len ;
 
-	// Initialize the added space to 0 (as Record_Merge will access it directly)
-	int added_count = len - original_len;
-	memset(header + original_len + 1, 0, added_count * sizeof(Entry));
-
-	// Reposition the Record's data pointer in case it was moved by the realloc
-	*r = header + 1;
+	*r = rm_realloc(*r, required_record_size);
 }
 
-unsigned int Record_length(const Record r) {
-	Entry header = RECORD_HEADER_ENTRY(r);
-	int recordLength = header.value.s.longval;
-	return recordLength;
+/* Resolve aliased entry position within record
+ * create entry if it does not exists. */
+int Record_GetEntryIdx(Record r, const char *alias) {
+	assert(r && alias);
+
+	void *idx = raxFind(r->mapping, (unsigned char *)alias, strlen(alias));
+	if(idx == raxNotFound) {
+		// Introduce new entry.
+		idx = (void*)Record_length(r);
+		raxInsert(r->mapping, (unsigned char *)alias, strlen(alias), idx, NULL);
+
+		// Make sure record has enough space to accommodate entry.
+		Record_Extend(&r, Record_length(r) + 1);
+	}
+
+	return (int)idx;
+}
+
+int Record_AliasEntry(Record r, const char *entry, const char *alias) {
+	assert(r && entry && alias);
+
+	// Make sure entry is in record
+	void *idx = raxFind(r->mapping, (unsigned char *)entry, strlen(entry));
+	assert(idx != raxNotFound);
+
+	// Make sure alias isn't in record.
+	assert(raxFind(r->mapping, (unsigned char *)alias, strlen(alias)) == raxNotFound);
+
+	// Alias entry.
+	raxInsert(r->mapping, (unsigned char *)alias, strlen(alias), idx, NULL);
+
+	return (int)idx;
 }
 
 Record Record_Clone(const Record r) {
-	int recordLength = Record_length(r);
-	Record clone = Record_New(recordLength);
-	memcpy(clone, r, sizeof(Entry) * recordLength);
+	// Determin record size.
+	Record clone = Record_New(r->mapping);
+	
+    int entry_count = Record_length(r);
+	size_t required_record_size = sizeof(Entry) * entry_count;
+
+    memcpy(clone->entries, r->entries, required_record_size);
 	return clone;
 }
 
@@ -58,33 +91,33 @@ void Record_Merge(Record *a, const Record b) {
 	if(aLength < bLength) Record_Extend(a, bLength);
 
 	for(int i = 0; i < bLength; i++) {
-		if(b[i].type != REC_TYPE_UNKNOWN) {
-			(*a)[i] = b[i];
+		if(b->entries[i].type != REC_TYPE_UNKNOWN) {
+			(*a)->entries[i] = b->entries[i];
 		}
 	}
 }
 
 RecordEntryType Record_GetType(const Record r, int idx) {
-	return r[idx].type;
+	return r->entries[idx].type;
 }
 
 SIValue Record_GetScalar(Record r,  int idx) {
-	r[idx].type = REC_TYPE_SCALAR;
-	return r[idx].value.s;
+	r->entries[idx].type = REC_TYPE_SCALAR;
+	return r->entries[idx].value.s;
 }
 
 Node *Record_GetNode(const Record r,  int idx) {
-	r[idx].type = REC_TYPE_NODE;
-	return &(r[idx].value.n);
+	r->entries[idx].type = REC_TYPE_NODE;
+	return &(r->entries[idx].value.n);
 }
 
 Edge *Record_GetEdge(const Record r,  int idx) {
-	r[idx].type = REC_TYPE_EDGE;
-	return &(r[idx].value.e);
+	r->entries[idx].type = REC_TYPE_EDGE;
+	return &(r->entries[idx].value.e);
 }
 
 SIValue Record_Get(Record r, int idx) {
-	Entry e = r[idx];
+	Entry e = r->entries[idx];
 	switch(e.type) {
 	case REC_TYPE_NODE:
 		return SI_Node(Record_GetNode(r, idx));
@@ -98,7 +131,7 @@ SIValue Record_Get(Record r, int idx) {
 }
 
 GraphEntity *Record_GetGraphEntity(const Record r, int idx) {
-	Entry e = r[idx];
+	Entry e = r->entries[idx];
 	switch(e.type) {
 	case REC_TYPE_NODE:
 		return (GraphEntity *)Record_GetNode(r, idx);
@@ -127,18 +160,18 @@ void Record_Add(Record r, int idx, SIValue v) {
 }
 
 void Record_AddScalar(Record r, int idx, SIValue v) {
-	r[idx].value.s = v;
-	r[idx].type = REC_TYPE_SCALAR;
+	r->entries[idx].value.s = v;
+	r->entries[idx].type = REC_TYPE_SCALAR;
 }
 
 void Record_AddNode(Record r, int idx, Node node) {
-	r[idx].value.n = node;
-	r[idx].type = REC_TYPE_NODE;
+	r->entries[idx].value.n = node;
+	r->entries[idx].type = REC_TYPE_NODE;
 }
 
 void Record_AddEdge(Record r, int idx, Edge edge) {
-	r[idx].value.e = edge;
-	r[idx].type = REC_TYPE_EDGE;
+	r->entries[idx].value.e = edge;
+	r->entries[idx].type = REC_TYPE_EDGE;
 }
 
 size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {
@@ -177,7 +210,7 @@ unsigned long long Record_Hash64(const Record r) {
 	assert(res != XXH_ERROR);
 
 	for(int i = 0; i < rec_len; ++i) {
-		Entry e = r[i];
+		Entry e = r->entries[i];
 		switch(e.type) {
 		case REC_TYPE_NODE:
 		case REC_TYPE_EDGE:
@@ -239,9 +272,9 @@ unsigned long long Record_Hash64(const Record r) {
 void Record_Free(Record r) {
 	unsigned int length = Record_length(r);
 	for(unsigned int i = 0; i < length; i++) {
-		if(r[i].type == REC_TYPE_SCALAR) {
-			SIValue_Free(&r[i].value.s);
+		if(r->entries[i].type == REC_TYPE_SCALAR) {
+			SIValue_Free(&r->entries[i].value.s);
 		}
 	}
-	rm_free((r - 1));
+	rm_free(r);
 }

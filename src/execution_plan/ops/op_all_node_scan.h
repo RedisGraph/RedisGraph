@@ -22,7 +22,7 @@ typedef struct {
 	uint nodeRecIdx;
 } AllNodeScan;
 
-OpBase *NewAllNodeScanOp(const Graph *g, QGNode *n, uint rec_idx);
+OpBase *NewAllNodeScanOp(const Graph *g, QGNode *n);
 Record AllNodeScanConsume(OpBase *opBase);
 OpResult AllNodeScanInit(OpBase *opBase);
 OpResult AllNodeScanReset(OpBase *op);

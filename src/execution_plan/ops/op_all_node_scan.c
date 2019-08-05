@@ -14,11 +14,11 @@ int AllNodeScanToString(const OpBase *ctx, char *buff, uint buff_len) {
 	return offset;
 }
 
-OpBase *NewAllNodeScanOp(const Graph *g, QGNode *n, uint node_idx) {
+OpBase *NewAllNodeScanOp(const Graph *g, QGNode *n) {
 	AllNodeScan *allNodeScan = malloc(sizeof(AllNodeScan));
 	allNodeScan->n = n;
 	allNodeScan->iter = Graph_ScanNodes(g);
-	allNodeScan->nodeRecIdx = node_idx;
+	allNodeScan->nodeRecIdx = -1;
 
 	// Set our Op operations
 	OpBase_Init(&allNodeScan->op);
@@ -30,8 +30,7 @@ OpBase *NewAllNodeScanOp(const Graph *g, QGNode *n, uint node_idx) {
 	allNodeScan->op.toString = AllNodeScanToString;
 	allNodeScan->op.free = AllNodeScanFree;
 
-	allNodeScan->op.modifies = array_new(uint, 1);
-	allNodeScan->op.modifies = array_append(allNodeScan->op.modifies, node_idx);
+	OpBase_Modifies(allNodeScan, n->alias);
 
 	return (OpBase *)allNodeScan;
 }
@@ -46,7 +45,10 @@ Record AllNodeScanConsume(OpBase *opBase) {
 	Entity *en = (Entity *)DataBlockIterator_Next(op->iter);
 	if(en == NULL) return NULL;
 
-	Record r = Record_New(opBase->record_map->record_len);
+	Record r = OpBase_CreateRecord(op);
+	if(op->nodeRecIdx == -1) {
+		op->nodeRecIdx = Record_GetEntryIdx(r, op->n->alias);
+	}
 	Node *n = Record_GetNode(r, op->nodeRecIdx);
 	n->entity = en;
 

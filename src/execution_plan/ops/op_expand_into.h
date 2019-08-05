@@ -32,7 +32,7 @@ typedef struct {
 	Record r;                   // Current selected record.
 } OpExpandInto;
 
-OpBase *NewExpandIntoOp(AlgebraicExpression *ae, RecordMap *record_map, uint records_cap);
+OpBase *NewExpandIntoOp(AlgebraicExpression *ae, uint records_cap);
 OpResult ExpandIntoInit(OpBase *opBase);
 Record ExpandIntoConsume(OpBase *opBase);
 OpResult ExpandIntoReset(OpBase *ctx);

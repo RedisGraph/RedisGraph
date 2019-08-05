@@ -29,7 +29,7 @@ typedef struct {
 	Record r;
 } CondVarLenTraverse;
 
-OpBase *NewCondVarLenTraverseOp(Graph *g, RecordMap *record_map, AlgebraicExpression *ae);
+OpBase *NewCondVarLenTraverseOp(Graph *g, AlgebraicExpression *ae);
 Record CondVarLenTraverseConsume(OpBase *opBase);
 OpResult CondVarLenTraverseReset(OpBase *ctx);
 

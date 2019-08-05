@@ -15,6 +15,7 @@
 typedef struct {
 	OpBase op;
 	Graph *g;               // Graph object.
+    QGNode *node;           // Node being set by operation.
 	int nodeRecIdx;         // Position of entity within record.
 	NodeID minId;           // Min ID to fetch.
 	bool minInclusive;      // Include min ID.
@@ -25,7 +26,7 @@ typedef struct {
 
 OpBase *NewOpNodeByIdSeekOp
 (
-	unsigned int nodeRecIdx,
+    QGNode *node,
 	NodeID minId,
 	NodeID maxId,
 	bool includeMin,

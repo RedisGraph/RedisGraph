@@ -9,7 +9,7 @@
 #include "../../util/arr.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-OpBase *NewUnwindOp(uint record_idx, AR_ExpNode **exps) {
+OpBase *NewUnwindOp(const char *alias, AR_ExpNode **exps) {
 	OpUnwind *unwind = malloc(sizeof(OpUnwind));
 	unwind->expIdx = 0;
 	unwind->expressions = exps;
@@ -24,9 +24,8 @@ OpBase *NewUnwindOp(uint record_idx, AR_ExpNode **exps) {
 	unwind->op.free = UnwindFree;
 
 	// Handle introduced entity
-	unwind->op.modifies = array_new(uint, 1);
-	unwind->op.modifies = array_append(unwind->op.modifies, record_idx);
-	unwind->unwindRecIdx = record_idx;
+	OpBase_Modifies(unwind, alias);
+	unwind->unwindRecIdx = -1;
 
 	return (OpBase *)unwind;
 }

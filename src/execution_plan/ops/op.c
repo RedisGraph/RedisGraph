@@ -24,25 +24,35 @@ void OpBase_Init(OpBase *op) {
 	op->reset = NULL;
 	op->consume = NULL;
 	op->toString = NULL;
-
-	op->record_map = NULL;
 }
 
 inline Record OpBase_Consume(OpBase *op) {
 	return op->consume(op);
 }
 
-void OpBase_PropagateReset(OpBase *op) {
-	assert(op->reset(op) == OP_OK);
-	for(int i = 0; i < op->childCount; i++) OpBase_PropagateReset(op->children[i]);
+void OpBase_Modifies(OpBase *op, const char *alias) {
+	if(!op->modifies) op->modifies = array_new(uint, 1);
+	op->modifies = array_append(op->modifies, alias);
+
+	/* Make sure alias has an entry associated with it
+	 * within the record mapping. */
+	if(raxFind(op->record_map, (unsigned char *)alias, strlen(alias)) == raxNotFound) {
+		uint alias_count = raxSize(op->record_map);
+		raxInsert(op->record_map, (unsigned char *)alias, strlen(alias), (void *)alias_count, NULL);
+	}
 }
 
 void OpBase_PropagateFree(OpBase *op) {
 	/* TODO: decide rather or not we want to perform
-	 * op->free or OpBase_Free. */
+	    * op->free or OpBase_Free. */
 	op->free(op);
 	for(int i = 0; i < op->childCount; i++) OpBase_PropagateFree(op->children[i]);
 	// OpBase_Free(op);
+}
+
+void OpBase_PropagateReset(OpBase *op) {
+	assert(op->reset(op) == OP_OK);
+	for(int i = 0; i < op->childCount; i++) OpBase_PropagateReset(op->children[i]);
 }
 
 static int _OpBase_StatsToString(const OpBase *op, char *buff, uint buff_len) {
@@ -76,6 +86,10 @@ Record OpBase_Profile(OpBase *op) {
 	op->stats->profileExecTime += simple_toc(tic);
 	if(r) op->stats->profileRecordCount++;
 	return r;
+}
+
+Record OpBase_CreateRecord(const OpBase *op) {
+	return Record_New(op->record_map);
 }
 
 void OpBase_Free(OpBase *op) {

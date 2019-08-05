@@ -156,7 +156,7 @@ OpBase *NewUpdateOp(GraphContext *gc, EntityUpdateEvalCtx *update_exps, uint upd
 	op_update->op.modifies = array_new(uint, update_exp_count);
 	for(uint i = 0; i < update_exp_count; i ++) {
 		// TODO does 'modifies' need to be unique?
-		op_update->op.modifies = array_append(op_update->op.modifies, update_exps[i].entityRecIdx);
+		OpBase_Modifies(op_update, update_exps[i].alias);
 	}
 	return (OpBase *)op_update;
 }

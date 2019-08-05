@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "record_map.h"
 #include "./ops/op.h"
 #include "../graph/graph.h"
 #include "../resultset/resultset.h"
@@ -23,19 +22,20 @@ typedef enum {
 
 typedef struct {
 	OpBase *root;                      // Root operation of this specific segment.
-	RecordMap *record_map;             // Mapping of aliases and entity/AST IDs to Record IDs
+	// RecordMap *record_map;             // Mapping of aliases and entity/AST IDs to Record IDs
 	QueryGraph **connected_components; // Array of all connected components in this segment.
 	QueryGraph *query_graph;           // QueryGraph representing all graph entities in this segment.
 	FT_FilterNode *filter_tree;        // FilterTree containing filters to be applied to this segment.
 	AR_ExpNode **projections;          // Expressions to be constructed for a WITH or RETURN clause.
+
+	rax *record_map;                // Mapping between identifiers and record indices.
 } ExecutionPlanSegment;
 
 typedef struct {
-	OpBase *root;                      // Root operation of overall ExecutionPlan.
-	ExecutionPlanSegment
-	**segments;   // The segments contained in this ExecutionPlan (only stored for proper freeing).
-	ResultSet *result_set;             // ResultSet populated by this query.
-	uint segment_count;                // Number of segments in query.
+	OpBase *root;                       // Root operation of overall ExecutionPlan.
+	ExecutionPlanSegment **segments;    // The segments contained in this ExecutionPlan.
+	ResultSet *result_set;              // ResultSet populated by this query.
+	uint segment_count;                 // Number of segments in query.
 } ExecutionPlan;
 
 /* execution_plan_modify.c

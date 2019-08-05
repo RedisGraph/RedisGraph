@@ -75,10 +75,10 @@ static void _relate_exp_to_stream(const OpBase *cp, const FT_FilterNode *f, AR_E
 	/* Make sure LHS and RHS expressions can be resolved.
 	 * Left expression - Left branch
 	 * Right expression - Right branch */
-	AR_EXP_CollectEntityIDs(lhs_exp, entities);
+	AR_EXP_CollectEntities(lhs_exp, entities);
 	if(_stream_resolves_entities(left_child, entities)) {
 		// entities is now empty.
-		AR_EXP_CollectEntityIDs(rhs_exp, entities);
+		AR_EXP_CollectEntities(rhs_exp, entities);
 		if(_stream_resolves_entities(right_child, entities)) {
 			*lhs = lhs_exp;
 			*rhs = rhs_exp;
@@ -95,10 +95,10 @@ static void _relate_exp_to_stream(const OpBase *cp, const FT_FilterNode *f, AR_E
 	raxFree(entities);
 	entities = raxNew();
 
-	AR_EXP_CollectEntityIDs(lhs_exp, entities);
+	AR_EXP_CollectEntities(lhs_exp, entities);
 	if(_stream_resolves_entities(right_child, entities)) {
 		// entities is now empty.
-		AR_EXP_CollectEntityIDs(rhs_exp, entities);
+		AR_EXP_CollectEntities(rhs_exp, entities);
 		if(_stream_resolves_entities(left_child, entities)) {
 			*lhs = rhs_exp;
 			*rhs = lhs_exp;

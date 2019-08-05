@@ -83,7 +83,7 @@ static void _traverse(OpExpandInto *op) {
 	GrB_Matrix_clear(op->F);
 }
 
-OpBase *NewExpandIntoOp(AlgebraicExpression *ae, RecordMap *record_map, uint records_cap) {
+OpBase *NewExpandIntoOp(AlgebraicExpression *ae, uint records_cap) {
 	OpExpandInto *expandInto = calloc(1, sizeof(OpExpandInto));
 	GraphContext *gc = GraphContext_GetFromTLS();
 	expandInto->ae = ae;
@@ -97,8 +97,8 @@ OpBase *NewExpandIntoOp(AlgebraicExpression *ae, RecordMap *record_map, uint rec
 	expandInto->edgeRelationTypes = NULL;
 	expandInto->recordsCap = _determinRecordCap(ast);
 	// Make sure that all entities are represented in Record
-	expandInto->srcNodeIdx = RecordMap_FindOrAddID(record_map, ae->src_node->id);
-	expandInto->destNodeIdx = RecordMap_FindOrAddID(record_map, ae->dest_node->id);
+	expandInto->srcNodeIdx = -1;
+	expandInto->destNodeIdx = -1;
 	expandInto->edgeIdx = IDENTIFIER_NOT_FOUND;
 	expandInto->records = rm_calloc(expandInto->recordsCap, sizeof(Record));
 
@@ -114,10 +114,8 @@ OpBase *NewExpandIntoOp(AlgebraicExpression *ae, RecordMap *record_map, uint rec
 	expandInto->op.modifies = NULL;
 
 	if(ae->edge) {
-		expandInto->edgeIdx = ae->edge->id;
+		OpBase_Modifies(expandInto, ae->edge);
 		_setupTraversedRelations(expandInto, ae->edge);
-		expandInto->op.modifies = array_new(uint, 1);
-		expandInto->op.modifies = array_append(expandInto->op.modifies, expandInto->edgeIdx);
 		expandInto->edges = array_new(Edge, 32);
 	}
 

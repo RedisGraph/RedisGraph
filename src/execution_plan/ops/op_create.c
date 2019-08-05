@@ -32,15 +32,9 @@ OpBase *NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreate
 
 	uint node_blueprint_count = array_len(nodes);
 	uint edge_blueprint_count = array_len(edges);
-	// Construct the array of IDs this operation modifies
-	op_create->op.modifies = array_new(uint, node_blueprint_count + edge_blueprint_count);
-	for(uint i = 0; i < node_blueprint_count; i ++) {
-		op_create->op.modifies = array_append(op_create->op.modifies, nodes[i].node_idx);
-	}
-	for(uint i = 0; i < edge_blueprint_count; i ++) {
-		// TODO should this also add the src and dest IDs?
-		op_create->op.modifies = array_append(op_create->op.modifies, edges[i].edge_idx);
-	}
+
+	for(uint i = 0; i < node_blueprint_count; i ++) OpBase_Modifies(op_create, nodes[i]->alias);
+	for(uint i = 0; i < edge_blueprint_count; i ++) OpBase_Modifies(op_create, edges[i]->alias);
 
 	return (OpBase *)op_create;
 }
@@ -258,7 +252,8 @@ Record OpCreateConsume(OpBase *opBase) {
 	// No child operation to call.
 	OpBase *child = NULL;
 	if(!op->op.childCount) {
-		r = Record_New(opBase->record_map->record_len);
+		// r = Record_New(opBase->record_map->record_len);
+		r = OpBase_CreateRecord((OpBase *)op);
 		/* Create entities. */
 		_CreateNodes(op, r);
 		_CreateEdges(op, r);
@@ -269,11 +264,6 @@ Record OpCreateConsume(OpBase *opBase) {
 		// Pull data until child is depleted.
 		child = op->op.children[0];
 		while((r = OpBase_Consume(child))) {
-			if(Record_length(r) < opBase->record_map->record_len) {
-				// If the child record was created in a different segment, it may not be
-				// large enough to accommodate the new entities.
-				Record_Extend(&r, opBase->record_map->record_len);
-			}
 			/* Create entities. */
 			_CreateNodes(op, r);
 			_CreateEdges(op, r);

@@ -30,13 +30,11 @@ typedef struct {
 	ResultSetStatistics *stats;
 
 	uint update_expressions_count;
-	EntityUpdateEvalCtx
-	*update_expressions;    /* List of entities to update and their arithmetic expressions. */
+	EntityUpdateEvalCtx *update_expressions;    /* List of entities to update and their arithmetic expressions. */
 
 	uint pending_updates_cap;
 	uint pending_updates_count;
-	EntityUpdateCtx
-	*pending_updates;           /* List of entities to update and their actual new value. */
+	EntityUpdateCtx *pending_updates;           /* List of entities to update and their actual new value. */
 	Record *records;                            /* Updated records, used only when query inspects updated entities. */
 	bool updates_commited;                      /* Updates performed? */
 } OpUpdate;

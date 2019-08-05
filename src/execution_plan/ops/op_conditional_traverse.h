@@ -34,7 +34,7 @@ typedef struct {
 } CondTraverse;
 
 /* Creates a new Traverse operation */
-OpBase *NewCondTraverseOp(Graph *g, RecordMap *record_map, AlgebraicExpression *ae,
+OpBase *NewCondTraverseOp(Graph *g, AlgebraicExpression *ae,
 						  uint records_cap);
 
 /* One-time setup of Traverse operation. */

@@ -15,19 +15,15 @@ static inline bool _outOfBounds(OpNodeByIdSeek *op) {
 	return false;
 }
 
-OpBase *NewOpNodeByIdSeekOp
-(
-	unsigned int nodeRecIdx,
-	NodeID minId,
-	NodeID maxId,
-	bool minInclusive,
-	bool maxInclusive
-) {
+OpBase *NewOpNodeByIdSeekOp(QGNode *node, NodeID minId, NodeID maxId, bool minInclusive,
+							bool maxInclusive) {
 	// Can't include unspecified bound.
+	assert(node);
 	assert(!(minId == ID_RANGE_UNBOUND && minInclusive));
 	assert(!(maxId == ID_RANGE_UNBOUND && maxInclusive));
 
 	OpNodeByIdSeek *op_nodeByIdSeek = malloc(sizeof(OpNodeByIdSeek));
+	op_nodeByIdSeek->node = node;
 	op_nodeByIdSeek->g = GraphContext_GetFromTLS()->g;
 
 	op_nodeByIdSeek->minInclusive = minInclusive;
@@ -46,7 +42,7 @@ OpBase *NewOpNodeByIdSeekOp
 	 * minimum range is specified. */
 	if(!minInclusive && minId != ID_RANGE_UNBOUND) op_nodeByIdSeek->currentId++;
 
-	op_nodeByIdSeek->nodeRecIdx = nodeRecIdx;
+	op_nodeByIdSeek->nodeRecIdx = -1;
 
 	OpBase_Init(&op_nodeByIdSeek->op);
 	op_nodeByIdSeek->op.name = "NodeByIdSeek";
@@ -84,7 +80,11 @@ Record OpNodeByIdSeekConsume(OpBase *opBase) {
 	// TODO If we're replacing a label scan, the correct label can be populated now.
 	n.label = NULL;
 
-	Record r = Record_New(opBase->record_map->record_len);
+	Record r = OpBase_CreateRecord((OpBase *)op);
+	if(op->nodeRecIdx == -1) {
+		op->nodeRecIdx = Record_GetEntryIdx(r, op->node->alias);
+	}
+
 	Record_AddNode(r, op->nodeRecIdx, n);
 	return r;
 }

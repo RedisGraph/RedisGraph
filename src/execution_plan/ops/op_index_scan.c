@@ -13,13 +13,13 @@ int IndexScanToString(const OpBase *ctx, char *buff, uint buff_len) {
 	return offset;
 }
 
-OpBase *NewIndexScanOp(Graph *g, QGNode *n, uint node_idx, RSIndex *idx, RSResultsIterator *iter) {
+OpBase *NewIndexScanOp(Graph *g, QGNode *n, RSIndex *idx, RSResultsIterator *iter) {
 	IndexScan *indexScan = malloc(sizeof(IndexScan));
 	indexScan->g = g;
 	indexScan->n = n;
 	indexScan->idx = idx;
 	indexScan->iter = iter;
-	indexScan->nodeRecIdx = node_idx;
+	indexScan->nodeRecIdx = -1;
 
 	// Set our Op operations
 	OpBase_Init(&indexScan->op);
@@ -30,8 +30,7 @@ OpBase *NewIndexScanOp(Graph *g, QGNode *n, uint node_idx, RSIndex *idx, RSResul
 	indexScan->op.toString = IndexScanToString;
 	indexScan->op.free = IndexScanFree;
 
-	indexScan->op.modifies = array_new(uint, 1);
-	indexScan->op.modifies = array_append(indexScan->op.modifies, indexScan->nodeRecIdx);
+	OpBase_Modifies(indexScan, n->alias);
 
 	return (OpBase *)indexScan;
 }

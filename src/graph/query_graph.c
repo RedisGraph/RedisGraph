@@ -201,7 +201,7 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 	return qg;
 }
 
-QGNode *QueryGraph_GetNodeByID(const QueryGraph *qg, uint id) {
+QGNode *QueryGraph_GetNodeByAlias(const QueryGraph *qg, const char *alias) {
 	uint node_count = QueryGraph_NodeCount(qg);
 	for(uint i = 0; i < node_count; i ++) {
 		if(id == qg->nodes[i]->id) return qg->nodes[i];
@@ -209,7 +209,7 @@ QGNode *QueryGraph_GetNodeByID(const QueryGraph *qg, uint id) {
 	return NULL;
 }
 
-QGEdge *QueryGraph_GetEdgeByID(const QueryGraph *qg, uint id) {
+QGEdge *QueryGraph_GetEdgeByAlias(const QueryGraph *qg, const char *alias) {
 	uint edge_count = QueryGraph_EdgeCount(qg);
 	for(uint i = 0; i < edge_count; i ++) {
 		if(id == qg->edges[i]->id) return qg->edges[i];

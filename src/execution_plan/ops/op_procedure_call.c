@@ -49,8 +49,7 @@ static void _yield(OpProcCall *op, SIValue *proc_output, Record r) {
 	}
 }
 
-OpBase *NewProcCallOp(const char *procedure, const char **args, const char **output,
-					  uint *modifies) {
+OpBase *NewProcCallOp(const char *procedure, const char **args, const char **output) {
 	assert(procedure);
 	OpProcCall *op = malloc(sizeof(OpProcCall));
 	op->args = args;
@@ -68,9 +67,6 @@ OpBase *NewProcCallOp(const char *procedure, const char **args, const char **out
 	op->op.consume = OpProcCallConsume;
 	op->op.reset = OpProcCallReset;
 	op->op.free = OpProcCallFree;
-
-	int outputs_count = array_len(output);
-	op->op.modifies = modifies;
 
 	return (OpBase *)op;
 }

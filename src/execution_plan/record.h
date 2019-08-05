@@ -8,8 +8,10 @@
 #define __RECORD_H_
 
 #include "../value.h"
+#include "../../deps/rax/rax.h"
 #include "../graph/entities/node.h"
 #include "../graph/entities/edge.h"
+#include <sys/types.h>
 
 typedef enum  {
 	REC_TYPE_UNKNOWN = 0,
@@ -28,13 +30,17 @@ typedef struct {
 	RecordEntryType type;
 } Entry;
 
-typedef Entry *Record;
+// typedef Entry *Record;
+
+typedef struct {
+    rax *mapping;       // Mapping between alias to record entry.
+    Entry entries[];    // Array of entries.
+} _Record;
+
+typedef _Record *Record;
 
 // Create a new record capable of holding N entries.
-Record Record_New(int entries);
-
-// Extands record to given length.
-void Record_Extend(Record *r, int len);
+Record Record_New(rax *mapping);
 
 // Clones record.
 Record Record_Clone(const Record r);
@@ -46,7 +52,13 @@ void Record_Extend(Record *r, int len);
 void Record_Merge(Record *a, const Record b);
 
 // Returns number of entries record can hold.
-unsigned int Record_length(const Record r);
+uint Record_length(const Record r);
+
+// Return alias position within the record.
+int Record_GetEntryIdx(Record r, const char *alias);
+
+// Create an alias for entry, such that both will point to the same entry.
+int Record_AliasEntry(Record r, const char *entry, const char *alias);
 
 // Get entry type.
 RecordEntryType Record_GetType(const Record r, int idx);

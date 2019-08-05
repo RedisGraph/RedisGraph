@@ -7,13 +7,12 @@
 #pragma once
 
 #include "../record.h"
-#include "../record_map.h"
+#include "../../util/arr.h"
 #include "../../redismodule.h"
+#include "../../schema/schema.h"
 #include "../../graph/query_graph.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
-#include "../../schema/schema.h"
-#include "../../util/arr.h"
 
 #define OP_REQUIRE_NEW_DATA(opRes) (opRes & (OP_DEPLETED | OP_REFRESH)) > 0
 
@@ -71,6 +70,8 @@ typedef struct {
 	double profileExecTime;     // Operation total execution time in ms.
 }  OpStats;
 
+struct ExecutionPlanSegment;
+
 struct OpBase {
 	OPType type;                // Type of operation
 	fpInit init;                // Called once before execution.
@@ -80,12 +81,14 @@ struct OpBase {
 	fpFree free;                // Free operation.
 	fpToString toString;        // operation string representation.
 	char *name;                 // Operation name.
-	uint *modifies;             // List of Record indices this op modifies.
-	RecordMap *record_map;      // Mapping of entities into Record IDs in the scope of this ExecutionPlanSegment.
+	char **modifies;            // List of entities this op modifies.
+    rax *record_map;            // Mapping of entities into Record IDs in the scope of this ExecutionPlanSegment.
 	struct OpBase **children;   // Child operations.
 	int childCount;             // Number of children.
 	OpStats *stats;             // Profiling statistics.
 	struct OpBase *parent;      // Parent operations.
+
+    // struct ExecutionPlanSegment *exec_plan_seg; // ExecutionPlan this operation is part of.
 };
 typedef struct OpBase OpBase;
 
@@ -93,7 +96,14 @@ void OpBase_Init(OpBase *op);       // Initialize op.
 void OpBase_Free(OpBase *op);       // Free op.
 Record OpBase_Consume(OpBase *op);  // Consume op.
 Record OpBase_Profile(OpBase *op);  // Profile op.
+
 int OpBase_ToString(const OpBase *op, char *buff, uint buff_len);
+
+// Mark alias as been modified by operation.
+void OpBase_Modifies(OpBase *op, const char *alias);
 
 void OpBase_PropagateFree(OpBase *op); // Sends free request to each operation up the chain.
 void OpBase_PropagateReset(OpBase *op); // Sends reset request to each operation up the chain.
+
+// Creates a new record.
+Record OpBase_CreateRecord(const OpBase *op);

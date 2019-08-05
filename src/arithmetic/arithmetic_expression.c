@@ -138,17 +138,12 @@ static int _AR_EXP_ReduceToScalar(AR_ExpNode **root) {
 	}
 }
 
-AR_ExpNode *AR_EXP_NewVariableOperandNode(RecordMap *record_map, const char *alias,
-										  const char *prop) {
+AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias, const char *prop) {
 	AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
 	node->type = AR_EXP_OPERAND;
 	node->operand.type = AR_EXP_VARIADIC;
 	node->operand.variadic.entity_alias = alias;
-	if(alias) {
-		node->operand.variadic.entity_alias_idx = RecordMap_FindOrAddAlias(record_map, alias);
-	} else {
-		node->operand.variadic.entity_alias_idx = IDENTIFIER_NOT_FOUND;
-	}
+	node->operand.variadic.entity_alias_idx = IDENTIFIER_NOT_FOUND;
 	node->operand.variadic.entity_prop = prop;
 	node->operand.variadic.entity_prop_idx = ATTRIBUTE_NOTFOUND;
 
@@ -163,7 +158,7 @@ AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant) {
 	return node;
 }
 
-AR_ExpNode *_AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
+AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 	const cypher_astnode_type_t type = cypher_astnode_type(expr);
 
 	/* Function invocations */
@@ -178,15 +173,15 @@ AR_ExpNode *_AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t
 		for(unsigned int i = 0; i < arg_count; i ++) {
 			const cypher_astnode_t *arg = cypher_ast_apply_operator_get_argument(expr, i);
 			// Recursively convert arguments
-			op->op.children[i] = _AR_EXP_FromExpression(record_map, arg);
+			op->op.children[i] = _AR_EXP_FromExpression(arg);
 		}
 		return op;
 
 		/* Variables (full nodes and edges, UNWIND artifacts */
 	} else if(type == CYPHER_AST_IDENTIFIER) {
-		// Identifier referencing another record_map entity
+		// Identifier referencing another entity
 		const char *alias = cypher_ast_identifier_get_name(expr);
-		return AR_EXP_NewVariableOperandNode(record_map, alias, NULL);
+		return AR_EXP_NewVariableOperandNode(alias, NULL);
 
 		/* Entity-property pair */
 	} else if(type == CYPHER_AST_PROPERTY_OPERATOR) {
@@ -201,7 +196,7 @@ AR_ExpNode *_AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t
 		const cypher_astnode_t *prop_name_node = cypher_ast_property_operator_get_prop_name(expr);
 		const char *prop_name = cypher_ast_prop_name_get_value(prop_name_node);
 
-		return AR_EXP_NewVariableOperandNode(record_map, alias, prop_name);
+		return AR_EXP_NewVariableOperandNode(alias, prop_name);
 
 		/* SIValue constant types */
 	} else if(type == CYPHER_AST_INTEGER) {
@@ -239,15 +234,15 @@ AR_ExpNode *_AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t
 		if(operator == CYPHER_OP_UNARY_MINUS) {
 			// This expression can be something like -3 or -a.val
 			// TODO In the former case, we can construct a much simpler tree than this.
-			AR_ExpNode *ar_exp = _AR_EXP_FromExpression(record_map, arg);
+			AR_ExpNode *ar_exp = _AR_EXP_FromExpression(arg);
 			AR_ExpNode *op = _AR_EXP_NewOpNodeFromAST(OP_MULT, 2);
 			op->op.children[0] = AR_EXP_NewConstOperandNode(SI_LongVal(-1));
-			op->op.children[1] = _AR_EXP_FromExpression(record_map, arg);
+			op->op.children[1] = _AR_EXP_FromExpression(arg);
 			return op;
 		} else if(operator == CYPHER_OP_UNARY_PLUS) {
 			// This expression is something like +3 or +a.val.
 			// I think the + can always be safely ignored.
-			return _AR_EXP_FromExpression(record_map, arg);
+			return _AR_EXP_FromExpression(arg);
 		} else if(operator == CYPHER_OP_NOT) {
 			assert(false); // This should be handled in the FilterTree code
 		}
@@ -257,9 +252,9 @@ AR_ExpNode *_AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t
 		// Arguments are of type CYPHER_AST_EXPRESSION
 		AR_ExpNode *op = _AR_EXP_NewOpNodeFromAST(operator_enum, 2);
 		const cypher_astnode_t *lhs_node = cypher_ast_binary_operator_get_argument1(expr);
-		op->op.children[0] = _AR_EXP_FromExpression(record_map, lhs_node);
+		op->op.children[0] = _AR_EXP_FromExpression(lhs_node);
 		const cypher_astnode_t *rhs_node = cypher_ast_binary_operator_get_argument2(expr);
-		op->op.children[1] = _AR_EXP_FromExpression(record_map, rhs_node);
+		op->op.children[1] = _AR_EXP_FromExpression(rhs_node);
 		return op;
 
 	} else {
@@ -285,8 +280,8 @@ AR_ExpNode *_AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t
 	return NULL;
 }
 
-AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
-	AR_ExpNode *root = _AR_EXP_FromExpression(record_map, expr);
+AR_ExpNode *AR_EXP_FromExpression(const cypher_astnode_t *expr) {
+	AR_ExpNode *root = _AR_EXP_FromExpression(expr);
 	_AR_EXP_ReduceToScalar(&root);
 	return root;
 }
@@ -396,16 +391,15 @@ void AR_EXP_Reduce(const AR_ExpNode *root) {
 	}
 }
 
-void AR_EXP_CollectEntityIDs(AR_ExpNode *root, rax *record_ids) {
+void AR_EXP_CollectEntities(AR_ExpNode *root, rax *entities) {
 	if(root->type == AR_EXP_OP) {
 		for(int i = 0; i < root->op.child_count; i ++) {
-			AR_EXP_CollectEntityIDs(root->op.children[i], record_ids);
+			AR_EXP_CollectEntities(root->op.children[i], entities);
 		}
 	} else { // type == AR_EXP_OPERAND
 		if(root->operand.type == AR_EXP_VARIADIC) {
-			int record_idx = root->operand.variadic.entity_alias_idx;
-			assert(record_idx != IDENTIFIER_NOT_FOUND);
-			raxInsert(record_ids, (unsigned char *)&record_idx, sizeof(record_idx), NULL, NULL);
+			const char *alias = root->operand.variadic.entity_alias;
+			raxInsert(entities, (unsigned char *)alias, strlen(alias), NULL, NULL);
 		}
 	}
 }

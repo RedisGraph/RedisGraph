@@ -46,14 +46,11 @@ void QueryGraph_AddPath(const GraphContext *gc, const AST *ast, QueryGraph *qg,
  * nodes and relationships in a query. */
 QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast);
 
-/* Retrieve a graph entity from an AST pointer */
-void *QueryGraph_GetEntityByASTRef(const QueryGraph *qg, const cypher_astnode_t *ref);
+/* Retrieve node by alias */
+QGNode *QueryGraph_GetNodeByAlias(const QueryGraph *qg, const char *alias);
 
-/* Retrieve a node by AST ID. */
-QGNode *QueryGraph_GetNodeByID(const QueryGraph *qg, uint id);
-
-/* Retrieve an edge by AST ID. */
-QGEdge *QueryGraph_GetEdgeByID(const QueryGraph *qg, uint id);
+/* Retrieve edge by alias */
+QGEdge *QueryGraph_GetEdgeByAlias(const QueryGraph *qg, const char *alias);
 
 /* Determine whether a given alias refers to a node or relation. */
 EntityType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *alias);

@@ -50,7 +50,7 @@ void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {
 	op->op.name = "Conditional Variable Length Traverse (Expand Into)";
 }
 
-OpBase *NewCondVarLenTraverseOp(Graph *g, RecordMap *record_map, AlgebraicExpression *ae) {
+OpBase *NewCondVarLenTraverseOp(Graph *g, AlgebraicExpression *ae) {
 	assert(ae && ae->edge->minHops <= ae->edge->maxHops && g && ae->operand_count == 1);
 
 	CondVarLenTraverse *condVarLenTraverse = malloc(sizeof(CondVarLenTraverse));
@@ -59,8 +59,8 @@ OpBase *NewCondVarLenTraverseOp(Graph *g, RecordMap *record_map, AlgebraicExpres
 	condVarLenTraverse->expandInto = false;
 	condVarLenTraverse->edgeRelationTypes = NULL;
 
-	condVarLenTraverse->srcNodeIdx = RecordMap_FindOrAddID(record_map, ae->src_node->id);
-	condVarLenTraverse->destNodeIdx = RecordMap_FindOrAddID(record_map, ae->dest_node->id);
+	condVarLenTraverse->srcNodeIdx = -1;
+	condVarLenTraverse->destNodeIdx = -1;
 
 	condVarLenTraverse->minHops = ae->edge->minHops;
 	condVarLenTraverse->maxHops = ae->edge->maxHops;
@@ -80,9 +80,7 @@ OpBase *NewCondVarLenTraverseOp(Graph *g, RecordMap *record_map, AlgebraicExpres
 	condVarLenTraverse->op.toString = CondVarLenTraverseToString;
 	condVarLenTraverse->op.free = CondVarLenTraverseFree;
 
-	condVarLenTraverse->op.modifies = array_new(uint, 1);
-	condVarLenTraverse->op.modifies = array_append(condVarLenTraverse->op.modifies,
-												   condVarLenTraverse->destNodeIdx);
+	OpBase_Modifies(condVarLenTraverse, ae->dest_node->alias);
 
 	return (OpBase *)condVarLenTraverse;
 }

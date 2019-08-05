@@ -24,7 +24,7 @@ typedef struct {
 } NodeByLabelScan;
 
 /* Creates a new NodeByLabelScan operation */
-OpBase *NewNodeByLabelScanOp(QGNode *node, uint node_idx);
+OpBase *NewNodeByLabelScanOp(QGNode *node);
 
 OpResult NodeByLabelScanInit(OpBase *ctx);
 
