@@ -323,27 +323,51 @@ SIValue SIValue_Divide(const SIValue a, const SIValue b) {
 
 int SIArray_Compare(SIValue *arrayA, SIValue *arrayB) {
 
-	// check for the common range of indices
 	uint arrayALen = array_len(arrayA);
 	uint arrayBLen = array_len(arrayB);
+	// check empty list
+	if(arrayALen == 0 && arrayBLen == 0) return 0;
+	int lenDiff = arrayALen - arrayBLen;
+	// check for the common range of indices
 	uint minLengh = arrayALen < arrayBLen ? arrayALen : arrayBLen;
+
+	bool allDisjoint = true;
+	bool nullCompare = false;
 
 	// go over the common range for both arrays
 	for(uint i = 0; i < minLengh; i++) {
 		SIValue aValue = arrayA[i];
 		SIValue bValue = arrayB[i];
 		int compareResult = SIValue_Compare(aValue, bValue);
-		// if comparison is not 0 (a != b), return it.
-		if(compareResult) return compareResult;
+		switch(compareResult) {
+		case 0:
+			// we have a matching value
+			allDisjoint = false;
+			break;
+		case COMPARED_NULL:
+			// there was a null comparison
+			allDisjoint = false;
+			nullCompare = true;
+			break;
+		default:
+			// if comparison is not 0 (a != b), return it.
+			return compareResult;
+		}
 	}
+	// if all the elements in the shared range are from disjoint types return DISJOINT array
+	if(allDisjoint) return DISJOINT;
+	// if all elemnts are equal and length are equal so arrays are equal
+	if(lenDiff) return lenDiff;
 
-	// if both arrays are identical for the range checked, compare length
-	return arrayALen - arrayBLen;
+	// both arrays are in same length, we need to check if one  of them contains null,
+	// if so then it null compared, other wise they are equal
+	return nullCompare ? COMPARED_NULL : 0;
 }
 
 int SIValue_Compare(const SIValue a, const SIValue b) {
 	/* In order to be comparable, both SIValues must be strings,
 	 * booleans, or numerics. */
+	if(a.type == T_NULL || b.type == T_NULL) return COMPARED_NULL;
 	if(a.type == b.type) {
 		switch(a.type) {
 		case T_INT64:
@@ -379,7 +403,7 @@ int SIValue_Compare(const SIValue a, const SIValue b) {
 int SIValue_Order(const SIValue a, const SIValue b) {
 	// If the values are directly comparable, return the comparison result
 	int cmp = SIValue_Compare(a, b);
-	if(cmp != DISJOINT) return cmp;
+	if(cmp != DISJOINT && cmp != COMPARED_NULL) return cmp;
 
 	// Cypher's orderability property defines string < boolean < numeric < NULL.
 	if(a.type == T_STRING) {

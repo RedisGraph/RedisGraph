@@ -66,6 +66,7 @@ typedef enum
 #define SIGN(a) ((a) > 0) - ((a) < 0)
 
 #define DISJOINT INT_MAX
+#define COMPARED_NULL INT_MIN
 
 typedef struct SIValue
 {

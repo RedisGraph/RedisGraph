@@ -264,7 +264,7 @@ Feature: ListOperations
 
     # IN operator - null
 
-    @skip
+
     Scenario: IN should return null if LHS and RHS are null
         Given any graph
         When executing query:
@@ -276,7 +276,7 @@ Feature: ListOperations
             | null |
         And no side effects
 
-    @skip
+
     Scenario: IN should return null if LHS and RHS are null - list version
         Given any graph
         When executing query:
@@ -288,7 +288,7 @@ Feature: ListOperations
             | null |
         And no side effects
 
-    @skip
+
     Scenario: IN should return null when LHS and RHS both ultimately contain null, even if LHS and RHS are of different types (nested list and flat list)
         Given any graph
         When executing query:
@@ -324,7 +324,7 @@ Feature: ListOperations
             | true |
         And no side effects
 
-    @skip
+
     Scenario: IN should return null if comparison with null is required
         Given any graph
         When executing query:
@@ -372,7 +372,7 @@ Feature: ListOperations
             | false |
         And no side effects
 
-    @skip
+
     Scenario: IN should return null if comparison with null is required, list version
         Given any graph
         When executing query:
@@ -396,7 +396,7 @@ Feature: ListOperations
             | false |
         And no side effects
 
-    @skip
+
     Scenario: IN should return null when comparing two so-called identical lists where one element is null
         Given any graph
         When executing query:
@@ -432,7 +432,7 @@ Feature: ListOperations
             | false |
         And no side effects
 
-    @skip
+
     Scenario: IN should return null if comparison with null is required, list version 2
         Given any graph
         When executing query:
@@ -506,7 +506,7 @@ Feature: ListOperations
             | true |
         And no side effects
 
-    @skip
+
     Scenario: IN should return null if comparison with null is required for empty list
         Given any graph
         When executing query:
