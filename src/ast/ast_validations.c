@@ -86,18 +86,19 @@ static void _AST_GetProcCallAliases(const cypher_astnode_t *node, TrieMap *ident
 
 	uint projection_count = cypher_ast_call_nprojections(node);
 	for(uint i = 0; i < projection_count; i++) {
+		const char *identifier = NULL;
 		const cypher_astnode_t *proj_node = cypher_ast_call_get_projection(node, i);
 		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(proj_node);
 		if(alias_node) {
 			// Alias is given: YIELD label AS l.
-			const char *alias = cypher_ast_identifier_get_name(alias_node);
-			TrieMap_Add(identifiers, (char *)alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+			identifier = cypher_ast_identifier_get_name(alias_node);
 		} else {
 			// No alias, use identifier: YIELD label
-			_CollectIdentifiers(proj_node, identifiers);
-			// const char *identifier = cypher_ast_identifier_get_name(proj_node);
-			// TrieMap_Add(identifiers, (char *)identifier, strlen(identifier), NULL, TrieMap_DONT_CARE_REPLACE);
+			const cypher_astnode_t *exp_node = cypher_ast_projection_get_expression(proj_node);
+			identifier = cypher_ast_identifier_get_name(exp_node);
 		}
+		assert(identifiers);
+		TrieMap_Add(identifiers, (char *)identifier, strlen(identifier), NULL, TrieMap_DONT_CARE_REPLACE);
 	}
 }
 
