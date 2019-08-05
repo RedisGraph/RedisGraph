@@ -61,6 +61,8 @@ RSQNode *_StringRangeToQueryNode(RSIndex *idx, const char *field, const StringRa
 /* Creates a RediSearch query node out of given filter tree. */
 RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 	RSQNode *node = NULL;
+	RSQNode *parent = NULL;
+
 	if(filter->t == FT_N_COND) {
 		RSQNode *left = NULL;
 		RSQNode *right = NULL;
@@ -91,6 +93,7 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 		switch(SI_TYPE(v)) {
 		case T_STRING:
 		case T_CONSTSTRING:
+			parent = RediSearch_CreateTagNode(sp, field);
 			switch(filter->pred.op) {
 			case OP_LT:    // <
 				node = RediSearch_CreateLexRangeNode(sp, field, RSLEXRANGE_NEG_INF, v.stringval, 0, 0);
@@ -113,6 +116,9 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 			default:
 				assert("unexpected operation");
 			}
+
+			RediSearch_QueryNodeAddChild(parent, node);
+			node = parent;
 			break;
 
 		case T_DOUBLE:
