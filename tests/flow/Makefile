@@ -1,7 +1,7 @@
 .PHONY: test
 # find the OS
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
-TEST_ARGS = 
+TEST_ARGS = --clear-logs
 # check verbose flag
 ifneq ($(V),)
 	TEST_ARGS += --verbose

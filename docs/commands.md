@@ -118,6 +118,7 @@ Supported operations:
 - `<=`
 - `>`
 - `>=`
+- `CONTAINS`
 
 Predicates can be combined using AND / OR.
 

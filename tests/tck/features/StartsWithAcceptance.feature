@@ -297,7 +297,6 @@ Feature: StartsWithAcceptance
       | a |
     And no side effects
 
-@skip
   Scenario: No string contains null
     When executing query:
       """

@@ -55,6 +55,7 @@ FT_FilterNode *_CreateFilterSubtree(RecordMap *record_map, AST_Operator op,
 	case OP_LE:
 	case OP_GT:
 	case OP_GE:
+	case OP_CONTAINS:
 		return _CreatePredicateFilterNode(record_map, op, lhs, rhs);
 	default:
 		assert("attempted to convert unhandled type into filter" && false);

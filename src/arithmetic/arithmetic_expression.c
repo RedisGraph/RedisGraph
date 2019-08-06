@@ -44,6 +44,10 @@ static bool _AR_SetFunction(AR_ExpNode *exp, AST_Operator op) {
 		exp->op.f = AR_DIV;
 		exp->op.func_name = "DIV";
 		return true;
+	case OP_CONTAINS:
+		exp->op.f = AR_CONTAINS;
+		exp->op.func_name = "CONTAINS";
+		return true;
 	case OP_MOD: // TODO implement
 	case OP_POW: // TODO implement
 	// Includes operators like <, AND, etc
@@ -847,6 +851,23 @@ SIValue AR_TRIM(SIValue *argv, int argc) {
 	return trimmed;
 }
 
+SIValue AR_CONTAINS(SIValue *argv, int argc) {
+	assert(argc == 2);
+
+	// No string contains null.
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_BoolVal(false);
+
+	// TODO: remove once we have runtime error handling.
+	assert((SI_TYPE(argv[0]) & SI_STRING) && (SI_TYPE(argv[1]) & SI_STRING));
+
+	const char *hay = argv[0].stringval;
+	const char *needle = argv[1].stringval;
+
+	// See if needle is in hay.
+	bool found = (strstr(hay, needle) != NULL);
+	return SI_BoolVal(found);
+}
+
 SIValue AR_ID(SIValue *argv, int argc) {
 	assert(argc == 1);
 	assert(SI_TYPE(argv[0]) & (T_NODE | T_EDGE));
@@ -1008,6 +1029,10 @@ void AR_RegisterFuncs() {
 
 	_toLower("trim", &lower_func_name[0], &lower_func_name_len);
 	AR_RegFunc(lower_func_name, lower_func_name_len, AR_TRIM);
+	lower_func_name_len = 32;
+
+	_toLower("contains", &lower_func_name[0], &lower_func_name_len);
+	AR_RegFunc(lower_func_name, lower_func_name_len, AR_CONTAINS);
 	lower_func_name_len = 32;
 
 	_toLower("id", &lower_func_name[0], &lower_func_name_len);
