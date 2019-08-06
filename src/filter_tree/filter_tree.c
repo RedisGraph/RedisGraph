@@ -133,6 +133,18 @@ int _applyFilter(SIValue *aVal, SIValue *bVal, AST_Operator op) {
 		argv[1] = *bVal;
 		contains = AR_CONTAINS(argv, 2);
 		return contains.longval == true;
+	case OP_STARTSWITH:
+		// String matching.
+		argv[0] = *aVal;
+		argv[1] = *bVal;
+		contains = AR_STARTSWITH(argv, 2);
+		return contains.longval == true;
+	case OP_ENDSWITH:
+		// String matching.
+		argv[0] = *aVal;
+		argv[1] = *bVal;
+		contains = AR_ENDSWITH(argv, 2);
+		return contains.longval == true;
 	default:
 		break;
 	}

@@ -29,7 +29,9 @@ typedef enum {
 	OP_DIV,
 	OP_MOD,
 	OP_POW,
-    OP_CONTAINS
+    OP_CONTAINS,
+    OP_STARTSWITH,
+    OP_ENDSWITH
 } AST_Operator;
 
 typedef struct {

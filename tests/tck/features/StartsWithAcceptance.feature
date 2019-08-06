@@ -39,7 +39,6 @@ Feature: StartsWithAcceptance
              (:TheLabel {name: ''}), (:TheLabel)
       """
 
-@skip
   Scenario: Finding exact matches
     When executing query:
       """
@@ -52,7 +51,6 @@ Feature: StartsWithAcceptance
       | (:TheLabel {name: 'ABCDEF'}) |
     And no side effects
 
-@skip
   Scenario: Finding beginning of string
     When executing query:
       """
@@ -65,7 +63,6 @@ Feature: StartsWithAcceptance
       | (:TheLabel {name: 'ABCDEF'}) |
     And no side effects
 
-@skip
   Scenario: Finding end of string 1
     When executing query:
       """
@@ -78,7 +75,6 @@ Feature: StartsWithAcceptance
       | (:TheLabel {name: 'ABCDEF'}) |
     And no side effects
 
-@skip
   Scenario: Finding end of string 2
     When executing query:
       """
@@ -91,7 +87,6 @@ Feature: StartsWithAcceptance
       | (:TheLabel {name: 'AB'}) |
     And no side effects
 
-@skip
   Scenario: Finding middle of string
     When executing query:
       """
@@ -105,7 +100,6 @@ Feature: StartsWithAcceptance
       | (:TheLabel {name: 'abcdef'}) |
     And no side effects
 
-@skip
   Scenario: Finding the empty string
     When executing query:
       """
@@ -122,7 +116,6 @@ Feature: StartsWithAcceptance
       | (:TheLabel {name: ''})       |
     And no side effects
 
-@skip
   Scenario: Finding when the middle is known
     When executing query:
       """
@@ -135,7 +128,6 @@ Feature: StartsWithAcceptance
       | (:TheLabel {name: 'ABCDEF'}) |
     And no side effects
 
-@skip
   Scenario: Finding strings starting with whitespace
     And having executed:
       """
@@ -154,7 +146,6 @@ Feature: StartsWithAcceptance
       | ' Foo ' |
     And no side effects
 
-@skip
   Scenario: Finding strings starting with newline
     And having executed:
       """
@@ -173,7 +164,6 @@ Feature: StartsWithAcceptance
       | '\nFoo\n' |
     And no side effects
 
-@skip
   Scenario: Finding strings ending with newline
     And having executed:
       """
@@ -192,7 +182,6 @@ Feature: StartsWithAcceptance
       | '\nFoo\n' |
     And no side effects
 
-@skip
   Scenario: Finding strings ending with whitespace
     And having executed:
       """
@@ -211,7 +200,6 @@ Feature: StartsWithAcceptance
       | ' Foo ' |
     And no side effects
 
-@skip
   Scenario: Finding strings containing whitespace
     And having executed:
       """
@@ -230,7 +218,6 @@ Feature: StartsWithAcceptance
       | ' Foo ' |
     And no side effects
 
-@skip
   Scenario: Finding strings containing newline
     And having executed:
       """
@@ -249,7 +236,6 @@ Feature: StartsWithAcceptance
       | '\nFoo\n' |
     And no side effects
 
-@skip
   Scenario: No string starts with null
     When executing query:
       """
@@ -261,7 +247,6 @@ Feature: StartsWithAcceptance
       | a |
     And no side effects
 
-@skip
   Scenario: No string does not start with null
     When executing query:
       """
@@ -273,7 +258,6 @@ Feature: StartsWithAcceptance
       | a |
     And no side effects
 
-@skip
   Scenario: No string ends with null
     When executing query:
       """
@@ -285,7 +269,6 @@ Feature: StartsWithAcceptance
       | a |
     And no side effects
 
-@skip
   Scenario: No string does not end with null
     When executing query:
       """
@@ -308,7 +291,6 @@ Feature: StartsWithAcceptance
       | a |
     And no side effects
 
-@skip
   Scenario: No string does not contain null
     When executing query:
       """
@@ -320,7 +302,6 @@ Feature: StartsWithAcceptance
       | a |
     And no side effects
 
-@skip
   Scenario: Combining string operators
     When executing query:
       """
@@ -335,7 +316,6 @@ Feature: StartsWithAcceptance
       | (:TheLabel {name: 'ABCDEF'}) |
     And no side effects
 
-@skip
   Scenario: NOT with CONTAINS
     When executing query:
       """

@@ -48,6 +48,14 @@ static bool _AR_SetFunction(AR_ExpNode *exp, AST_Operator op) {
 		exp->op.f = AR_CONTAINS;
 		exp->op.func_name = "CONTAINS";
 		return true;
+	case OP_STARTSWITH:
+		exp->op.f = AR_STARTSWITH;
+		exp->op.func_name = "STARTS WITH";
+		return true;
+	case OP_ENDSWITH:
+		exp->op.f = AR_ENDSWITH;
+		exp->op.func_name = "ENDS WITH";
+		return true;
 	case OP_MOD: // TODO implement
 	case OP_POW: // TODO implement
 	// Includes operators like <, AND, etc
@@ -866,6 +874,52 @@ SIValue AR_CONTAINS(SIValue *argv, int argc) {
 	// See if needle is in hay.
 	bool found = (strstr(hay, needle) != NULL);
 	return SI_BoolVal(found);
+}
+
+SIValue AR_STARTSWITH(SIValue *argv, int argc) {
+	assert(argc == 2);
+
+	// No string contains null.
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_BoolVal(false);
+
+	const char *str = argv[0].stringval;
+	const char *sub_string = argv[1].stringval;
+	size_t str_len = strlen(str);
+	size_t sub_string_len = strlen(sub_string);
+
+	// If sub-string is longer then string return quickly.
+	if(sub_string_len > str_len) return SI_BoolVal(false);
+
+	// Compare character by character, see if there's a match.
+	for(int i = 0; i < sub_string_len; i++) {
+		if(str[i] != sub_string[i]) return SI_BoolVal(false);
+	}
+
+	return SI_BoolVal(true);
+}
+
+SIValue AR_ENDSWITH(SIValue *argv, int argc) {
+	assert(argc == 2);
+
+	// No string contains null.
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_BoolVal(false);
+
+	const char *str = argv[0].stringval;
+	const char *sub_string = argv[1].stringval;
+	size_t str_len = strlen(str);
+	size_t sub_string_len = strlen(sub_string);
+
+	// If sub-string is longer then string return quickly.
+	if(sub_string_len > str_len) return SI_BoolVal(false);
+
+	// Advance str to the "end"
+	str += (str_len - sub_string_len);
+	// Compare character by character, see if there's a match.
+	for(int i = 0; i < sub_string_len; i++) {
+		if(str[i] != sub_string[i]) return SI_BoolVal(false);
+	}
+
+	return SI_BoolVal(true);
 }
 
 SIValue AR_ID(SIValue *argv, int argc) {
