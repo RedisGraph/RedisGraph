@@ -25,7 +25,6 @@ else
 	OS = Mac
 endif
 
-
 test:
 # if host is linux
 ifeq ($(OS), Linux)

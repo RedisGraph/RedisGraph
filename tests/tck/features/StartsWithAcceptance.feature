@@ -146,6 +146,7 @@ Feature: StartsWithAcceptance
       | ' Foo ' |
     And no side effects
 
+  @skip
   Scenario: Finding strings starting with newline
     And having executed:
       """
@@ -164,6 +165,7 @@ Feature: StartsWithAcceptance
       | '\nFoo\n' |
     And no side effects
 
+  @skip
   Scenario: Finding strings ending with newline
     And having executed:
       """
@@ -218,6 +220,7 @@ Feature: StartsWithAcceptance
       | ' Foo ' |
     And no side effects
 
+  @skip
   Scenario: Finding strings containing newline
     And having executed:
       """
@@ -247,6 +250,7 @@ Feature: StartsWithAcceptance
       | a |
     And no side effects
 
+  @skip
   Scenario: No string does not start with null
     When executing query:
       """
@@ -269,6 +273,7 @@ Feature: StartsWithAcceptance
       | a |
     And no side effects
 
+  @skip
   Scenario: No string does not end with null
     When executing query:
       """
@@ -291,6 +296,7 @@ Feature: StartsWithAcceptance
       | a |
     And no side effects
 
+  @skip
   Scenario: No string does not contain null
     When executing query:
       """
@@ -316,6 +322,7 @@ Feature: StartsWithAcceptance
       | (:TheLabel {name: 'ABCDEF'}) |
     And no side effects
 
+  @skip
   Scenario: NOT with CONTAINS
     When executing query:
       """
