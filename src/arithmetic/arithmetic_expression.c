@@ -1089,6 +1089,14 @@ void AR_RegisterFuncs() {
 	AR_RegFunc(lower_func_name, lower_func_name_len, AR_CONTAINS);
 	lower_func_name_len = 32;
 
+	_toLower("starts with", &lower_func_name[0], &lower_func_name_len);
+	AR_RegFunc(lower_func_name, lower_func_name_len, AR_STARTSWITH);
+	lower_func_name_len = 32;
+
+	_toLower("ends with", &lower_func_name[0], &lower_func_name_len);
+	AR_RegFunc(lower_func_name, lower_func_name_len, AR_ENDSWITH);
+	lower_func_name_len = 32;
+
 	_toLower("id", &lower_func_name[0], &lower_func_name_len);
 	AR_RegFunc(lower_func_name, lower_func_name_len, AR_ID);
 	lower_func_name_len = 32;

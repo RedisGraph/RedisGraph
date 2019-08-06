@@ -119,6 +119,8 @@ Supported operations:
 - `>`
 - `>=`
 - `CONTAINS`
+- `STARTS WITH`
+- `ENDS WITH`
 
 Predicates can be combined using AND / OR.
 
