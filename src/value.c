@@ -388,8 +388,9 @@ int SIArray_Compare(SIValue *arrayA, SIValue *arrayB) {
 	// check for the common range of indices
 	uint minLengh = arrayALen < arrayBLen ? arrayALen : arrayBLen;
 
-	bool allDisjoint = true;
-	bool nullCompare = false;
+	uint allDisjoint = 0;
+	uint nullCompare = 0;
+	int notEqual = 0;
 
 	// go over the common range for both arrays
 	for(uint i = 0; i < minLengh; i++) {
@@ -399,26 +400,30 @@ int SIArray_Compare(SIValue *arrayA, SIValue *arrayB) {
 		switch(compareResult) {
 		case 0:
 			// we have a matching value
-			allDisjoint = false;
 			break;
 		case COMPARED_NULL:
 			// there was a null comparison
-			allDisjoint = false;
-			nullCompare = true;
+			nullCompare++;
+			allDisjoint++;
+			break;
+		case DISJOINT:
+			allDisjoint++;
+			notEqual = !notEqual ? compareResult : notEqual;
 			break;
 		default:
-			// if comparison is not 0 (a != b), return it.
-			return compareResult;
+			// if comparison is not 0 (a != b), set the first value
+			notEqual = !notEqual ? compareResult : notEqual;
+			break;
 		}
 	}
 	// if all the elements in the shared range are from disjoint types return DISJOINT array
-	if(allDisjoint) return DISJOINT;
-	// if all elemnts are equal and length are equal so arrays are equal
-	if(lenDiff) return lenDiff;
-
-	// both arrays are in same length, we need to check if one  of them contains null,
-	// if so then it null compared, other wise they are equal
-	return nullCompare ? COMPARED_NULL : 0;
+	if(allDisjoint == minLengh && allDisjoint != nullCompare) return DISJOINT;
+	// if there was a null comperison on non disjoint arrays
+	if(nullCompare) return COMPARED_NULL;
+	// if there was a diffrence in some member
+	if(notEqual) return notEqual;
+	// if all elemnts are equal and length are equal so arrays are equal, otherwise return lengh diff
+	return lenDiff;
 }
 
 int SIValue_Compare(const SIValue a, const SIValue b) {
