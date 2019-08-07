@@ -7,6 +7,12 @@
 #include "resultset_formatters.h"
 #include "../../util/arr.h"
 
+// forward declarations
+static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n);
+static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e);
+static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext *gc,
+											   SIValue *array) ;
+
 static inline ValueType _mapValueType(const SIValue v) {
 	switch(SI_TYPE(v)) {
 	case T_NULL:
@@ -29,11 +35,6 @@ static inline ValueType _mapValueType(const SIValue v) {
 		return VALUE_UNKNOWN;
 	}
 }
-
-static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n);
-static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e);
-static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext *gc,
-											   SIValue *array) ;
 
 static inline void _ResultSet_ReplyWithValueType(RedisModuleCtx *ctx, const SIValue v) {
 	RedisModule_ReplyWithLongLong(ctx, _mapValueType(v));

@@ -7,10 +7,10 @@
 #include "resultset_formatters.h"
 #include "../../util/arr.h"
 
-
+// forward declarations
 static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n);
 static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e);
-static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, GraphContext *gc, SIValue *array);
+static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, GraphContext *gc, SIValue array);
 /* This function has handling for all SIValue scalar types.
  * The current RESP protocol only has unique support for strings, 8-byte integers,
  * and NULL values. */
@@ -41,7 +41,7 @@ static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 		_ResultSet_VerboseReplyWithEdge(ctx, gc, v.ptrval);
 		return;
 	case T_ARRAY:
-		_ResultSet_VerboseReplyWithArray(ctx, gc, v.array);
+		_ResultSet_VerboseReplyWithArray(ctx, gc, v);
 		return;
 	default:
 		assert("Unhandled value type" && false);
@@ -145,12 +145,10 @@ static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
 }
 
 static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, GraphContext *gc,
-											 SIValue *array) {
-	uint arrayLen = array_len(array);
-	RedisModule_ReplyWithArray(ctx, arrayLen);
-	for(uint i = 0; i < arrayLen; i++) {
-		_ResultSet_VerboseReplyWithSIValue(ctx, gc, array[i]);
-	}
+											 SIValue array) {
+	char *str = rm_calloc(512, sizeof(char));
+	int bytesWrriten = SIValue_ToString(array, str, 512);
+	RedisModule_ReplyWithStringBuffer(ctx, str, bytesWrriten);
 }
 
 void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,

@@ -12,7 +12,7 @@
 
 #define ATTRIBUTE_NOTFOUND USHRT_MAX
 
-#define ENTITY_ID_ISLT(a,b) ((*a)<(*b))
+#define ENTITY_ID_ISLT(a, b) ((*a) < (*b))
 #define INVALID_ENTITY_ID -1l
 
 #define ENTITY_GET_ID(graphEntity) ((graphEntity)->entity ? (graphEntity)->entity->id : INVALID_ENTITY_ID)
@@ -27,28 +27,39 @@ typedef GrB_Index EntityID;
 typedef GrB_Index NodeID;
 typedef GrB_Index EdgeID;
 
-typedef enum GraphEntityType {
-	GETYPE_UNKNOWN,
-	GETYPE_NODE,
-	GETYPE_EDGE
+typedef enum
+{
+    ENTITY_ID = 1,
+    ENTITY_LABELS_OR_RELATIONS = 1 << 1,
+    ENTITY_PROPERTIES = 1 << 2
+} GraphEntityStringFromat;
+
+typedef enum GraphEntityType
+{
+    GETYPE_UNKOWN,
+    GETYPE_NODE,
+    GETYPE_EDGE
 } GraphEntityType;
 
-typedef struct {
-	Attribute_ID id;
-	SIValue value;
+typedef struct
+{
+    Attribute_ID id;
+    SIValue value;
 } EntityProperty;
 
 // Essence of a graph entity.
 // TODO: see if pragma pack 0 will cause memory access violation on ARM.
-typedef struct {
-	EntityID id;                    // Unique id
-	int prop_count;                 // Number of properties.
-	EntityProperty *properties;     // Key value pair of attributes.
+typedef struct
+{
+    EntityID id;                // Unique id
+    int prop_count;             // Number of properties.
+    EntityProperty *properties; // Key value pair of attributes.
 } Entity;
 
 // Common denominator between nodes and edges.
-typedef struct {
-	Entity *entity;
+typedef struct
+{
+    Entity *entity;
 } GraphEntity;
 
 /* Adds property to entity
@@ -62,6 +73,12 @@ SIValue *GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id);
 
 /* Updates existing attribute value. */
 void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue value);
+
+/* prints the id into a buffer, returns what is the string length */
+int GraphEntity_IdToString(const GraphEntity *e, char *buffer, int bufferLen);
+
+/* prints the properties into a buffer, returns what is the string length */
+int GraphEntity_PropertiesToString(const GraphEntity *e, char *buffer, int bufferLen);
 
 /* Release all memory allocated by entity */
 void FreeEntity(Entity *e);

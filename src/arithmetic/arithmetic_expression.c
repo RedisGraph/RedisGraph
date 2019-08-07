@@ -19,7 +19,6 @@
 #include "assert.h"
 #include <math.h>
 #include <ctype.h>
-#include "../util/common.h"
 
 /* Arithmetic function repository. */
 static rax *__aeRegisteredFuncs = NULL;
@@ -194,7 +193,17 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 			}
 			/* Evaluate self. */
 			result = root->op.f(sub_trees, root->op.child_count);
-			/* Free any SIValues that were allocated while evaluating this tree. */
+
+			// release memory if needed
+			/* for example 'a'+'b'+'c'+'d' will evalute to
+			          +(abcd)
+			         /       \
+			     +(ab)      +(cd)
+			    /   \       /   \
+			   a     b     c     d
+			   the expressions 'ab', 'cd' which are calculated temporaty values
+			   will be released once the calculation of 'abcd' is done
+			*/
 			for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
 				SIValue_Free(&sub_trees[child_idx]);
 			}
@@ -335,7 +344,7 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 		*str = rm_realloc(*str, sizeof(char) * *str_size);
 	}
 	/* Concat Op. */
-	else if(root->type == AR_EXP_OP) {
+	if(root->type == AR_EXP_OP) {
 		/* Binary operation? */
 		char binary_op = 0;
 
@@ -631,19 +640,31 @@ SIValue AR_RTRIM(SIValue *argv, int argc) {
 }
 
 SIValue AR_REVERSE(SIValue *argv, int argc) {
-	if(SIValue_IsNull(argv[0])) return SI_NullVal();
-	assert(SI_TYPE(argv[0]) == T_STRING);
-	char *str = argv[0].stringval;
-	size_t str_len = strlen(str);
-	char *reverse = rm_malloc((str_len + 1) * sizeof(char));
+	SIValue value = argv[0];
+	if(SIValue_IsNull(value)) return SI_NullVal();
+	if(SI_TYPE(value) == T_STRING) {
+		char *str = value.stringval;
+		size_t str_len = strlen(str);
+		char *reverse = rm_malloc((str_len + 1) * sizeof(char));
 
-	int i = str_len - 1;
-	int j = 0;
-	while(i >= 0) {
-		reverse[j++] = str[i--];
+		int i = str_len - 1;
+		int j = 0;
+		while(i >= 0) {
+			reverse[j++] = str[i--];
+		}
+		reverse[j] = '\0';
+		return SI_TransferStringVal(reverse);
 	}
-	reverse[j] = '\0';
-	return SI_TransferStringVal(reverse);
+	// in case of array
+	assert(SI_TYPE(value) == T_ARRAY);
+	uint arrayLen = array_len(value.array);
+	SIValue *array = array_new(SIValue, arrayLen);
+	for(uint i = arrayLen - 1; i >= 0; i--) {
+		array = array_append(array, value.array[i]);
+	}
+	SIValue result = SI_Array(array);
+	SIValue_Persist(&result);
+	return result;
 }
 
 SIValue AR_SUBSTRING(SIValue *argv, int argc) {
@@ -686,6 +707,19 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc) {
 	substring[length] = '\0';
 
 	return SI_TransferStringVal(substring);
+}
+
+void _toLower(const char *str, char *lower, size_t *lower_len) {
+	size_t str_len = strlen(str);
+	/* Avoid overflow. */
+	assert(*lower_len > str_len);
+
+	/* Update lower len*/
+	*lower_len = str_len;
+
+	int i = 0;
+	for(; i < str_len; i++) lower[i] = tolower(str[i]);
+	lower[i] = 0;
 }
 
 SIValue AR_TOLOWER(SIValue *argv, int argc) {

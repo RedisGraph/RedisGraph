@@ -66,10 +66,7 @@ def edgeToString(value):
 
 def listToString(listToConvert):
     strValue = '['
-    for i in range(len(listToConvert)):
-        strValue += toString(listToConvert[i])
-        if i != len(listToConvert)-1:
-            strValue += ", "
+    strValue += ", ".join(map(lambda value: toString(value), listToConvert))
     strValue += ']'
     return strValue
 

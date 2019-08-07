@@ -8,6 +8,7 @@
 #include <assert.h>
 #include "graph_entity.h"
 #include "../../util/rmalloc.h"
+#include "../graphcontext.h"
 
 SIValue *PROPERTY_NOTFOUND = &(SIValue) {
 	.longval = 0, .type = T_NULL
@@ -85,6 +86,48 @@ void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue
 	assert(prop != PROPERTY_NOTFOUND);
 	SIValue_Free(prop);
 	*prop = SI_CloneValue(value);
+}
+
+int GraphEntity_IdToString(const GraphEntity *e, char *buffer, int bufferLen) {
+	return snprintf(buffer, bufferLen, "%llu", ENTITY_GET_ID(e));
+}
+
+int GraphEntity_PropertiesToString(const GraphEntity *e, char *buffer, int bufferLen) {
+	if(bufferLen <= 1) return 0;
+	int bytesWritten = snprintf(buffer, bufferLen, "{");
+	bufferLen -= bytesWritten;
+	int currentWriteLength = 0;
+	GraphContext *gc = GraphContext_GetFromTLS();
+	int propCount = ENTITY_PROP_COUNT(e);
+	EntityProperty *properties = ENTITY_PROPS(e);
+	for(int i = 0; i < propCount; i++) {
+		// check if write is possible
+		if(bufferLen < 2) break;
+		// print key
+		const char *key = GraphContext_GetAttributeString(gc, properties[i].id);
+		currentWriteLength = snprintf(buffer + bytesWritten, bufferLen, "%s:", key);
+		bytesWritten += currentWriteLength;
+		bufferLen -= currentWriteLength;
+
+		if(bufferLen < 2) break;
+		// print value
+		currentWriteLength = SIValue_ToString(properties[i].value, buffer + bytesWritten, bufferLen);
+		bytesWritten += currentWriteLength;
+		bufferLen -= currentWriteLength;
+
+		if(bufferLen < 2 || i == propCount - 1) break;
+		// print ", "
+		currentWriteLength = snprintf(buffer + bytesWritten, bufferLen, ", ");
+		bytesWritten += currentWriteLength;
+		bufferLen -= currentWriteLength;
+	}
+	if(bufferLen >= 2) {
+		bytesWritten += snprintf(buffer + bytesWritten, bufferLen, "}");
+		return bytesWritten;
+	}
+	// if there is no space left
+	snprintf(buffer + strlen(buffer) - 5, 5, "...}");
+	return strlen(buffer);
 }
 
 void FreeEntity(Entity *e) {

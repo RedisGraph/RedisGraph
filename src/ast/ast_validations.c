@@ -12,8 +12,6 @@
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
 #include <assert.h>
-#include <ctype.h>
-#include "../util/common.h"
 
 inline static void _prepareIterateAll(rax *map, raxIterator *iter) {
 	raxStart(iter, map);
@@ -845,10 +843,8 @@ static AST_Validation _Validate_UNWIND_Clauses(const AST *ast, char **reason) {
 		if(type == CYPHER_AST_APPLY_OPERATOR) {
 			const cypher_astnode_t *funcNode =  cypher_ast_apply_operator_get_func_name(expression);
 			const char *funcName = cypher_ast_function_name_get_value(funcNode);
-			size_t lower_func_name_len = 32;
-			char lowerFuncName[lower_func_name_len];
-			_toLower(funcName, lowerFuncName, &lower_func_name_len);
-			if(strcmp(lowerFuncName, "range")) {
+			// function name is NOT range
+			if(strcasecmp(funcName, "range")) {
 				asprintf(reason, "UNWIND expects range funcition; encountered '%s'", funcName);
 				res = AST_INVALID;
 				goto cleanup;

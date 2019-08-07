@@ -87,6 +87,45 @@ void Edge_SetRelationID(Edge *e, int relationID) {
 	e->relationID = relationID;
 }
 
+int Edge_ToString(const Edge *e, char *buffer, int bufferLen, GraphEntityStringFromat format) {
+	if(bufferLen <= 1) return 0;
+	int bytes_written = snprintf(buffer, bufferLen, "[");
+	bufferLen -= bytes_written;
+	int currentWriteLength = 0;
+
+	// write id
+	if(format & ENTITY_ID) {
+		currentWriteLength = snprintf(buffer + bytes_written, bufferLen, "%llu", ENTITY_GET_ID(e));
+		bytes_written += currentWriteLength;
+		bufferLen -= currentWriteLength;
+	}
+
+	// write relationship
+	if(bufferLen > 2 && format & ENTITY_LABELS_OR_RELATIONS) {
+		if(e->relationship) {
+			currentWriteLength = snprintf(buffer + bytes_written, bufferLen, ":%s", e->relationship);
+			bytes_written += currentWriteLength;
+			bufferLen -= currentWriteLength;
+		}
+	}
+
+	// write properies
+	if(bufferLen > 2 && format & ENTITY_PROPERTIES) {
+		currentWriteLength = GraphEntity_PropertiesToString((GraphEntity *)e, buffer + bytes_written,
+															bufferLen);
+		bytes_written += currentWriteLength;
+		bufferLen -= currentWriteLength;
+	}
+
+	if(bufferLen >= 2) {
+		bytes_written += snprintf(buffer + bytes_written, bufferLen, "]");
+		return bytes_written;
+	}
+	// if there is no space left
+	snprintf(buffer + strlen(buffer) - 5, 5, "...]");
+	return strlen(buffer);
+}
+
 void Edge_Free(Edge *edge) {
 	if(!edge) return;
 

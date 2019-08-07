@@ -64,6 +64,10 @@ SIValue SI_Array(SIValue *array) {
 	};
 }
 
+SIValue SI_EmptyArray() {
+	return SI_Array(array_new(SIValue, 0));
+}
+
 SIValue SI_DuplicateStringVal(const char *s) {
 	return (SIValue) {
 		.stringval = rm_strdup(s), .type = T_STRING, .allocation = M_SELF
@@ -183,15 +187,30 @@ const char *SIType_ToString(SIType t) {
 int SIArray_ToString(SIValue *array, char *buf, size_t len) {
 	int bytes_written = snprintf(buf, len, "[");
 	len -= bytes_written;
-	uint arrayLen = array_len(array);
+	uint arrayLen = array_len(list.array);
 	for(uint i = 0; i < arrayLen; i ++) {
-		int b = SIValue_ToString(array[i], buf + bytes_written, len);
-		b += snprintf(buf + b, len - b, ", ");
-		bytes_written += b;
-		len -= b;
+		if(len < 2) break;
+
+		// write the next value
+		int currentWriteLength = SIValue_ToString(list.array[i], buf + bytes_written, len);
+		bytes_written += currentWriteLength;
+		len -= currentWriteLength;
+
+		// if there no more space in the buffer of the end of the array
+		if(len < 2 || i == arrayLen - 1) break;
+
+		currentWriteLength = snprintf(buf + bytes_written, len, ", ");
+		bytes_written += currentWriteLength;
+		len -= currentWriteLength;
 	}
-	bytes_written += snprintf(buf, len,  "]");
-	return bytes_written;
+	// you can close the array
+	if(len >= 2) {
+		bytes_written += snprintf(buf + bytes_written, len, "]");
+		return bytes_written;
+	}
+	// if there is no space left
+	snprintf(buf + strlen(buf) - 5, 5, "...]");
+	return strlen(buf);
 }
 
 int SIValue_ToString(SIValue v, char *buf, size_t len) {
@@ -212,11 +231,13 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
 		bytes_written = snprintf(buf, len, "%f", v.doubleval);
 		break;
 	case T_NODE:
+		bytes_written = Node_ToString(v.ptrval, buf, len, ENTITY_ID);
+		break;
 	case T_EDGE:
-		bytes_written = snprintf(buf, len, "%llu", ENTITY_GET_ID((GraphEntity *)v.ptrval));
+		bytes_written = Edge_ToString(v.ptrval, buf, len, ENTITY_ID);
 		break;
 	case T_ARRAY:
-		bytes_written = SIArray_ToString(v.array, buf, len);
+		bytes_written = SIArray_ToString(v, buf, len);
 		break;
 	case T_NULL:
 	default:
@@ -289,6 +310,7 @@ size_t SIValue_StringConcat(SIValue *strings, unsigned int string_count, char *b
 	return offset;
 }
 
+// assumption: either a or b is a string
 SIValue SIValue_ConcatString(const SIValue a, const SIValue b) {
 	SIValue result;
 	char buffer[512];
@@ -319,11 +341,12 @@ SIValue SIValue_ConcatString(const SIValue a, const SIValue b) {
 	return result;
 }
 
+// assumption: either a or b is a list
 SIValue SIValue_ConcatList(const SIValue a, const SIValue b) {
 	SIValue resultArray;
 	// scalar + array
 	if(a.type != T_ARRAY) {
-		SIValue *array = array_new(SIValue, 1);
+		SIValue *array = array_new(SIValue, 1 + array_len(b.array));
 		array = array_append(array, a);
 		resultArray = SI_Array(array);
 	}

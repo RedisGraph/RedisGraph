@@ -12,19 +12,20 @@
 #include "graph_entity.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
-#define EDGE_LENGTH_INF UINT_MAX-2
+#define EDGE_LENGTH_INF UINT_MAX - 2
 
 /* TODO: note it is possible to get into an inconsistency
  * if we set src and srcNodeID to different nodes. */
-struct Edge {
-	Entity *entity;         /* MUST be the first property of Edge. */
-	const char *relationship;     /* Label attached to edge. */
-	int relationID;         /* Relation ID. */
-	Node *src;              /* Pointer to source node. */
-	Node *dest;             /* Pointer to destination node. */
-	NodeID srcNodeID;       /* Source node ID. */
-	NodeID destNodeID;      /* Destination node ID. */
-	GrB_Matrix mat;         /* Adjacency matrix, associated with edge. */
+struct Edge
+{
+    Entity *entity;           /* MUST be the first property of Edge. */
+    const char *relationship; /* Label attached to edge. */
+    int relationID;           /* Relation ID. */
+    Node *src;                /* Pointer to source node. */
+    Node *dest;               /* Pointer to destination node. */
+    NodeID srcNodeID;         /* Source node ID. */
+    NodeID destNodeID;        /* Destination node ID. */
+    GrB_Matrix mat;           /* Adjacency matrix, associated with edge. */
 };
 
 typedef struct Edge Edge;
@@ -58,6 +59,9 @@ void Edge_SetDestNode(Edge *e, Node *dest); // QG
 
 // Sets edge relation type.
 void Edge_SetRelationID(Edge *e, int relationID); // QG, graph.c
+
+/* prints a string representation of the edge to buffer, return the string length*/
+int Edge_ToString(const Edge *e, char *buffer, int bufferLen, GraphEntityStringFromat format);
 
 // Frees allocated space by given edge
 void Edge_Free(Edge *edge);

@@ -419,34 +419,36 @@ AggCtx *Agg_StdevPFunc() {
 //------------------------------------------------------------------------
 
 typedef struct {
-	SIValue *array;
+	SIValue list;
 } __agg_collectCtx;
 
 int __agg_collectStep(AggCtx *ctx, SIValue *argv, int argc) {
-	// convert the value of the input sequence to a double if possible
+	// convert multiple values to array
+
+	assert(argc >= 0);
 	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
 
 	for(int i = 0; i < argc; i ++) {
 		SIValue value = argv[i];
-		if(value.type != T_NULL) {
-			ac->array = array_append(ac->array, argv[i]);
-			SIValue_Persist(ac->array + array_len(ac->array) - 1);
-		}
+		if(value.type == T_NULL) continue;
+		// persist new collected values
+		SIValue_Persist(&value);
+		ac->list.array = array_append(ac->list.array, value);
 	}
-
 	return AGG_OK;
 }
 
 int __agg_collectReduceNext(AggCtx *ctx) {
 	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
 
-	Agg_SetResult(ctx, SI_Array(ac->array));
+	Agg_SetResult(ctx, ac->list);
 	return AGG_OK;
 }
 
 AggCtx *Agg_CollectFunc() {
 	__agg_collectCtx *ac = malloc(sizeof(__agg_collectCtx));
-	ac->array = array_new(SIValue, 0);
+	ac->list = SI_Array(array_new(SIValue, 0));
+	// ac->list.allocation = M_SELF;
 
 	return Agg_Reduce(ac, __agg_collectStep, __agg_collectReduceNext);
 }
