@@ -40,6 +40,7 @@ typedef enum {
 } SIAllocation;
 
 #define SI_NUMERIC (T_INT64 | T_DOUBLE)
+#define SI_STRING (T_STRING | T_CONSTSTRING)
 #define SI_TYPE(value) (value).type
 
 /* Retrieve the numeric associated with an SIValue without explicitly
@@ -77,14 +78,12 @@ SIValue SI_PtrVal(void *v);
 SIValue SI_Node(void *n);
 SIValue SI_Edge(void *e);
 SIValue SI_DuplicateStringVal(const char *s); // Duplicate and ultimately free the input string
-SIValue SI_ConstStringVal(char
-						  *s);           // Neither duplicate nor assume ownership of input string
-SIValue SI_TransferStringVal(char *s);        // Don't duplicate input string, but assume ownership
+SIValue SI_ConstStringVal(char *s); // Neither duplicate nor assume ownership of input string
+SIValue SI_TransferStringVal(char *s);  // Don't duplicate input string, but assume ownership
 
 /* Functions to copy an SIValue. */
-SIValue SI_Clone(SIValue
-				 v);               // If input is a string type, duplicate and assume ownership
-SIValue SI_ShallowCopy(SIValue v);         // Don't duplicate any inputs
+SIValue SI_Clone(SIValue v);    // If input is a string type, duplicate and assume ownership
+SIValue SI_ShallowCopy(SIValue v);  // Don't duplicate any inputs
 
 int SIValue_IsNull(SIValue v);
 int SIValue_IsNullPtr(SIValue *v);

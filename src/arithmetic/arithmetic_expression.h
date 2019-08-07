@@ -137,6 +137,12 @@ SIValue AR_TOUPPER(SIValue *argv, int argc);
 SIValue AR_TRIM(SIValue *argv, int argc);
 /* returns a string concatenation of given values. */
 SIValue AR_CONCAT(SIValue *argv, int argc);
+/* returns true if argv[1] is a substring of argv[0]. */
+SIValue AR_CONTAINS(SIValue *argv, int argc);
+/* returns true if argv[0] starts with argv[1]. */
+SIValue AR_STARTSWITH(SIValue *argv, int argc);
+/* returns true if argv[0] ends with argv[1]. */
+SIValue AR_ENDSWITH(SIValue *argv, int argc);
 /* returns the id of a relationship or node. */
 SIValue AR_ID(SIValue *argv, int argc);
 /* returns a string representations the label of a node. */

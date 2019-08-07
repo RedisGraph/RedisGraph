@@ -37,6 +37,12 @@ AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op) {
 		return OP_MOD;
 	} else if(op == CYPHER_OP_POW) {
 		return OP_POW;
+	} else if(op == CYPHER_OP_CONTAINS) {
+		return OP_CONTAINS;
+	} else if(op == CYPHER_OP_STARTS_WITH) {
+		return OP_STARTSWITH;
+	} else if(op == CYPHER_OP_ENDS_WITH) {
+		return OP_ENDSWITH;
 	}
 
 	return -1;

@@ -85,36 +85,70 @@ Vector *FilterTree_SubTrees(const FT_FilterNode *root) {
 /* Applies a single filter to a single result.
  * Compares given values, tests if values maintain desired relation (op) */
 int _applyFilter(SIValue *aVal, SIValue *bVal, AST_Operator op) {
-	int rel = SIValue_Compare(*aVal, *bVal);
-	/* Values are of disjoint types */
-	if(rel == DISJOINT) {
-		/* The filter passes if we're testing for inequality, and fails otherwise. */
-		return (op == OP_NEQUAL);
-	}
+	int rel;
+	SIValue argv[2];
+	SIValue contains;
 
 	switch(op) {
 	case OP_EQUAL:
-		return rel == 0;
-
 	case OP_GT:
-		return rel > 0;
-
 	case OP_GE:
-		return rel >= 0;
-
 	case OP_LT:
-		return rel < 0;
-
 	case OP_LE:
-		return rel <= 0;
-
 	case OP_NEQUAL:
-		return rel != 0;
+		rel = SIValue_Compare(*aVal, *bVal);
+		/* Values are of disjoint types */
+		if(rel == DISJOINT) {
+			/* The filter passes if we're testing for inequality, and fails otherwise. */
+			return (op == OP_NEQUAL);
+		}
 
+		switch(op) {
+		case OP_EQUAL:
+			return rel == 0;
+
+		case OP_GT:
+			return rel > 0;
+
+		case OP_GE:
+			return rel >= 0;
+
+		case OP_LT:
+			return rel < 0;
+
+		case OP_LE:
+			return rel <= 0;
+
+		case OP_NEQUAL:
+			return rel != 0;
+
+		default:
+			/* Op should be enforced by AST. */
+			assert(0);
+		}
+		break;
+	case OP_CONTAINS:
+		// String matching.
+		argv[0] = *aVal;
+		argv[1] = *bVal;
+		contains = AR_CONTAINS(argv, 2);
+		return contains.longval == true;
+	case OP_STARTSWITH:
+		// String matching.
+		argv[0] = *aVal;
+		argv[1] = *bVal;
+		contains = AR_STARTSWITH(argv, 2);
+		return contains.longval == true;
+	case OP_ENDSWITH:
+		// String matching.
+		argv[0] = *aVal;
+		argv[1] = *bVal;
+		contains = AR_ENDSWITH(argv, 2);
+		return contains.longval == true;
 	default:
-		/* Op should be enforced by AST. */
-		assert(0);
+		break;
 	}
+
 	/* We shouldn't reach this point. */
 	return 0;
 }
