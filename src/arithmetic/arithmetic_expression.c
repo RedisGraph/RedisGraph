@@ -881,7 +881,10 @@ SIValue AR_STARTSWITH(SIValue *argv, int argc) {
 
 	// No string contains null.
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_BoolVal(false);
-
+	
+	// TODO: remove once we have runtime error handling.
+	assert((SI_TYPE(argv[0]) & SI_STRING) && (SI_TYPE(argv[1]) & SI_STRING));
+	
 	const char *str = argv[0].stringval;
 	const char *sub_string = argv[1].stringval;
 	size_t str_len = strlen(str);
@@ -903,7 +906,10 @@ SIValue AR_ENDSWITH(SIValue *argv, int argc) {
 
 	// No string contains null.
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_BoolVal(false);
-
+	
+	// TODO: remove once we have runtime error handling.
+	assert((SI_TYPE(argv[0]) & SI_STRING) && (SI_TYPE(argv[1]) & SI_STRING));
+	
 	const char *str = argv[0].stringval;
 	const char *sub_string = argv[1].stringval;
 	size_t str_len = strlen(str);
