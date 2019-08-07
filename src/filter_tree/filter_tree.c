@@ -16,6 +16,43 @@ static inline FT_FilterNode *RightChild(const FT_FilterNode *node) {
 	return node->cond.right;
 }
 
+/* Return the negated operator of given op.
+ * for example NOT(a > b) === a <= b */
+static AST_Operator _NegateOperator(AST_Operator op) {
+	switch(op) {
+	case OP_AND:
+		return OP_OR;
+	case OP_OR:
+		return OP_AND;
+	case OP_EQUAL:
+		return OP_NEQUAL;
+	case OP_NEQUAL:
+		return OP_EQUAL;
+	case OP_LT:
+		return OP_GE;
+	case OP_GT:
+		return OP_LE;
+	case OP_LE:
+		return OP_GT;
+	case OP_GE:
+		return OP_LT;
+	case OP_CONTAINS:
+		return OP_NOT_CONTAINS;
+	case OP_NOT_CONTAINS:
+		return OP_CONTAINS;
+	case OP_STARTSWITH:
+		return OP_NOT_STARTSWITH;
+	case OP_NOT_STARTSWITH:
+		return OP_STARTSWITH;
+	case OP_ENDSWITH:
+		return OP_NOT_ENDSWITH;
+	case OP_NOT_ENDSWITH:
+		return OP_ENDSWITH;
+	default:
+		assert(false);
+	}
+}
+
 int IsNodePredicate(const FT_FilterNode *node) {
 	return node->t == FT_N_PRED;
 }
@@ -86,8 +123,9 @@ Vector *FilterTree_SubTrees(const FT_FilterNode *root) {
  * Compares given values, tests if values maintain desired relation (op) */
 int _applyFilter(SIValue *aVal, SIValue *bVal, AST_Operator op) {
 	int rel;
+	bool negate = false;
 	SIValue argv[2];
-	SIValue contains;
+	SIValue res;
 
 	switch(op) {
 	case OP_EQUAL:
@@ -127,24 +165,37 @@ int _applyFilter(SIValue *aVal, SIValue *bVal, AST_Operator op) {
 			assert(0);
 		}
 		break;
+
+	case OP_NOT_CONTAINS:
+		negate = true;
 	case OP_CONTAINS:
 		// String matching.
 		argv[0] = *aVal;
 		argv[1] = *bVal;
-		contains = AR_CONTAINS(argv, 2);
-		return contains.longval == true;
+		res = AR_CONTAINS(argv, 2);
+		if(SI_TYPE(res) == T_NULL) return false;
+		if(negate) return !res.longval;
+		else return res.longval;
+	case OP_NOT_STARTSWITH:
+		negate = true;
 	case OP_STARTSWITH:
 		// String matching.
 		argv[0] = *aVal;
 		argv[1] = *bVal;
-		contains = AR_STARTSWITH(argv, 2);
-		return contains.longval == true;
+		res = AR_STARTSWITH(argv, 2);
+		if(SI_TYPE(res) == T_NULL) return false;
+		if(negate) return !res.longval;
+		else return res.longval;
+	case OP_NOT_ENDSWITH:
+		negate = true;
 	case OP_ENDSWITH:
 		// String matching.
 		argv[0] = *aVal;
 		argv[1] = *bVal;
-		contains = AR_ENDSWITH(argv, 2);
-		return contains.longval == true;
+		res = AR_ENDSWITH(argv, 2);
+		if(SI_TYPE(res) == T_NULL) return false;
+		if(negate) return !res.longval;
+		else return res.longval;
 	default:
 		break;
 	}
@@ -222,7 +273,44 @@ rax *FilterTree_CollectModified(const FT_FilterNode *root) {
 	return modified;
 }
 
+void _FilterTree_ApplyNegate(FT_FilterNode **root) {
+	if((*root)->t == FT_N_COND) {
+		if((*root)->cond.op == OP_NOT) {
+			FilterTree_DeMorgan(root);
+		} else {
+			(*root)->cond.op = _NegateOperator((*root)->cond.op);
+			_FilterTree_ApplyNegate(&(*root)->cond.left);
+			_FilterTree_ApplyNegate(&(*root)->cond.right);
+		}
+	}
+
+	if((*root)->t == FT_N_PRED) {
+		(*root)->pred.op = _NegateOperator((*root)->cond.op);
+		// TODO: should we negate arithmetic expressions?
+	}
+}
+
+void FilterTree_DeMorgan(FT_FilterNode **root) {
+	/* Search for NOT nodes and reduce using DeMorgan. */
+	if(*root == NULL || (*root)->t == FT_N_PRED) return;
+
+	// Node is of type condition.
+	if((*root)->cond.op == OP_NOT) {
+		assert((*root)->cond.right == NULL);
+		_FilterTree_ApplyNegate(&(*root)->cond.left);
+		// Replace NOT node with only child
+		FT_FilterNode *child = (*root)->cond.left;
+		(*root)->cond.left = NULL;
+		FilterTree_Free(*root);
+		*root = child;
+	} else {
+		FilterTree_DeMorgan(&((*root)->cond.left));
+		FilterTree_DeMorgan(&((*root)->cond.right));
+	}
+}
+
 void _FilterTree_Print(const FT_FilterNode *root, int ident) {
+	if(root == NULL) return;
 	// Ident
 	printf("%*s", ident, "");
 

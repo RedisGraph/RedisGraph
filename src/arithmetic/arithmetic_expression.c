@@ -1043,7 +1043,7 @@ SIValue AR_CONTAINS(SIValue *argv, int argc) {
 	assert(argc == 2);
 
 	// No string contains null.
-	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_BoolVal(false);
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
 
 	// TODO: remove once we have runtime error handling.
 	assert((SI_TYPE(argv[0]) & SI_STRING) && (SI_TYPE(argv[1]) & SI_STRING));
@@ -1060,7 +1060,11 @@ SIValue AR_STARTSWITH(SIValue *argv, int argc) {
 	assert(argc == 2);
 
 	// No string contains null.
+<<<<<<< HEAD
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_BoolVal(false);
+=======
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
+>>>>>>> Introduce NOT operator
 
 	// TODO: remove once we have runtime error handling.
 	assert((SI_TYPE(argv[0]) & SI_STRING) && (SI_TYPE(argv[1]) & SI_STRING));
@@ -1085,7 +1089,11 @@ SIValue AR_ENDSWITH(SIValue *argv, int argc) {
 	assert(argc == 2);
 
 	// No string contains null.
+<<<<<<< HEAD
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_BoolVal(false);
+=======
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
+>>>>>>> Introduce NOT operator
 
 	// TODO: remove once we have runtime error handling.
 	assert((SI_TYPE(argv[0]) & SI_STRING) && (SI_TYPE(argv[1]) & SI_STRING));

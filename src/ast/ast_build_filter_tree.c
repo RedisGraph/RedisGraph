@@ -49,6 +49,11 @@ FT_FilterNode *_CreateFilterSubtree(RecordMap *record_map, AST_Operator op,
 		AppendLeftChild(filter, _FilterNode_FromAST(record_map, lhs));
 		AppendRightChild(filter, _FilterNode_FromAST(record_map, rhs));
 		return filter;
+	case OP_NOT:
+		filter = FilterTree_CreateConditionFilter(op);
+		AppendLeftChild(filter, _FilterNode_FromAST(record_map, lhs));
+		AppendRightChild(filter, NULL);
+		return filter;
 	case OP_EQUAL:
 	case OP_NEQUAL:
 	case OP_LT:
@@ -76,6 +81,15 @@ FT_FilterNode *_convertBinaryOperator(RecordMap *record_map, const cypher_astnod
 	AST_Operator op = AST_ConvertOperatorNode(operator);
 
 	return _CreateFilterSubtree(record_map, op, lhs, rhs);
+}
+
+FT_FilterNode *_convertUnaryOperator(RecordMap *record_map, const cypher_astnode_t *op_node) {
+	const cypher_operator_t *operator = cypher_ast_unary_operator_get_operator(op_node);
+	// Argument is of type CYPHER_AST_EXPRESSION
+	const cypher_astnode_t *arg = cypher_ast_unary_operator_get_argument(op_node);
+	AST_Operator op = AST_ConvertOperatorNode(operator);
+
+	return _CreateFilterSubtree(record_map, op, arg, NULL);
 }
 
 /* A comparison node contains two arrays - one of operators, and one of expressions.
@@ -161,10 +175,12 @@ FT_FilterNode *_FilterNode_FromAST(RecordMap *record_map, const cypher_astnode_t
 	cypher_astnode_type_t type = cypher_astnode_type(expr);
 	if(type == CYPHER_AST_BINARY_OPERATOR) {
 		return _convertBinaryOperator(record_map, expr);
+	} else if(type == CYPHER_AST_UNARY_OPERATOR) {
+		return _convertUnaryOperator(record_map, expr);
 	} else if(type == CYPHER_AST_COMPARISON) {
 		return _convertComparison(record_map, expr);
 	} else if(type == CYPHER_AST_APPLY_OPERATOR) {
-		assert(false && "Unary APPLY operators are not currently supported in filters.");
+		return _convertUnaryOperator(record_map, expr);
 	}
 	assert(false);
 	return NULL;
@@ -187,8 +203,7 @@ void _AST_ConvertFilters(RecordMap *record_map, const AST *ast,
 	} else if(type == CYPHER_AST_BINARY_OPERATOR) {
 		node = _convertBinaryOperator(record_map, entity);
 	} else if(type == CYPHER_AST_UNARY_OPERATOR) {
-		// TODO, also n-ary maybe
-		assert(false && "unary filters are not currently supported.");
+		node = _convertUnaryOperator(record_map, entity);
 	} else if(type == CYPHER_AST_APPLY_OPERATOR) {
 		assert(false && "APPLY operators are not currently supported in filters.");
 	} else {
@@ -221,6 +236,9 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast, RecordMap *record_map) {
 		}
 		array_free(merge_clauses);
 	}
+
+	// Apply De Morgan's laws
+	FilterTree_DeMorgan(&filter_tree);
 
 	return filter_tree;
 }
