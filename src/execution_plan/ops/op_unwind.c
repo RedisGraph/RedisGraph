@@ -86,7 +86,7 @@ Record UnwindConsume(OpBase *opBase) {
 		OpBase *child = op->op.children[0];
 		// if there are new lists to unwind
 		if((r = OpBase_Consume(child))) {
-			Record_Free(op->currentRecord);
+			if(op->listIdx != UNDEFIND) Record_Free(op->currentRecord);
 			op->currentRecord = r;
 
 			// TODO: if expression is static or not

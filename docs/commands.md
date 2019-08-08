@@ -121,6 +121,7 @@ Supported operations:
 - `CONTAINS`
 - `STARTS WITH`
 - `ENDS WITH`
+- `IN`
 
 Predicates can be combined using AND / OR / NOT.
 
@@ -195,6 +196,7 @@ Supported aggregation functions include:
 - `percentileCont`
 - `percentileDisc`
 - `stDev`
+- `collect`
 
 #### ORDER BY
 
@@ -392,6 +394,21 @@ GRAPH.QUERY DEMO_GRAPH
 
 Extended `WITH` functionality is currently in development, see [known limitations](known_limitations.md).
 
+#### UNWIND
+The UNWIND cluase breaks down a given list into a squence of records, each contains a single element in the list.
+
+The order of the records preserve the original list order.
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"CREATE (p {array:[1,2,3]})"
+```
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (p) UNWIND p.array AS y RETURN y"
+```
+
 ### Functions
 
 This section contains information on all supported functions from the Cypher query language.
@@ -414,6 +431,7 @@ This section contains information on all supported functions from the Cypher que
 |percentileDisc() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0|
 |percentileCont() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0|
 |stDev() | Returns the standard deviation for the given value over a group|
+|collect() | Returns a list contaning all elements in a given sequence of elements|
 
 ## Mathematical functions
 

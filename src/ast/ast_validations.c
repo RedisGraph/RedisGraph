@@ -849,7 +849,8 @@ static AST_Validation _Validate_UNWIND_Clauses(const AST *ast, char **reason) {
 				res = AST_INVALID;
 				goto cleanup;
 			}
-		} else if(!(type == CYPHER_AST_COLLECTION || type == CYPHER_AST_IDENTIFIER)) {
+		} else if(!(type == CYPHER_AST_COLLECTION || type == CYPHER_AST_IDENTIFIER ||
+					type == CYPHER_AST_PROPERTY_OPERATOR)) {
 			asprintf(reason, "UNWIND expects a list argument or an list identifier; encountered ''%s'",
 					 cypher_astnode_typestr(type));
 			res = AST_INVALID;
