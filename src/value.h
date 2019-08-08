@@ -120,7 +120,6 @@ SIValue SI_ConstValue(const SIValue v);
 void SIValue_MakeVolatile(SIValue *v);
 /* Functions to copy an SIValue. */
 SIValue SI_Clone(SIValue v); // If input is a string type, duplicate and assume ownership
-
 SIValue SI_ConstStringVal(char
                               *s);     // Neither duplicate nor assume ownership of input string
 SIValue SI_TransferStringVal(char *s); // Don't duplicate input string, but assume ownership
