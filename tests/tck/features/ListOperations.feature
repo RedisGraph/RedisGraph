@@ -32,7 +32,7 @@ Feature: ListOperations
 
     # IN operator - general
 
-    @skip
+
     Scenario: IN should work with nested list subscripting
         Given any graph
         When executing query:
@@ -45,7 +45,6 @@ Feature: ListOperations
             | true |
         And no side effects
 
-    @skip
     Scenario: IN should work with nested literal list subscripting
         Given any graph
         When executing query:
@@ -57,7 +56,7 @@ Feature: ListOperations
             | true |
         And no side effects
 
-    @skip
+
     Scenario: IN should work with list slices
         Given any graph
         When executing query:
@@ -70,7 +69,7 @@ Feature: ListOperations
             | false |
         And no side effects
 
-    @skip
+
     Scenario: IN should work with literal list slices
         Given any graph
         When executing query:
@@ -661,7 +660,7 @@ Feature: ListOperations
             | 3 |
         And no side effects
 
-    @skip
+
     Scenario: Returning nested expressions based on list property
         Given an empty graph
         And having executed:

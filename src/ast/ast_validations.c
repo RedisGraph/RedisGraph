@@ -1179,6 +1179,81 @@ static AST_Validation _ValidateMaps(const cypher_astnode_t *root, char **reason)
 	return AST_VALID;
 }
 
+static AST_Validation _validateList(const cypher_astnode_t *root, char **reason) {
+	const cypher_astnode_type_t type = cypher_astnode_type(root);
+	if(type == CYPHER_AST_APPLY_OPERATOR) {
+		const cypher_astnode_t *funcNode =  cypher_ast_apply_operator_get_func_name(root);
+		const char *funcName = cypher_ast_function_name_get_value(funcNode);
+		// function name is NOT range
+		if(strcasecmp(funcName, "range")) {
+			asprintf(reason, "subscript index access expects range funcition; encountered '%s'", funcName);
+			return AST_INVALID;
+		}
+		uint narguments = cypher_ast_apply_operator_narguments(root);
+		if(narguments < 2 || narguments > 3) {
+			asprintf(reason, "range function expects 2 or 3 argumetns; encountered %d", narguments);
+			return AST_INVALID;
+		}
+		for(uint i = 0; i < narguments; i ++) {
+			const cypher_astnode_t *argument = cypher_ast_apply_operator_get_argument(root, i);
+			const cypher_astnode_type_t argument_type = cypher_astnode_type(argument);
+			if(argument_type != CYPHER_AST_INTEGER || argument_type != CYPHER_AST_IDENTIFIER) {
+				asprintf(reason, "expected interger or identifier; encountered %s",
+						 cypher_astnode_typestr(argument_type));
+				return AST_INVALID;
+			}
+		}
+	} else if(type != CYPHER_AST_COLLECTION && type != CYPHER_AST_IDENTIFIER) {
+		asprintf(reason, "subscript index access expects a list or an identifier; encountered %s",
+				 cypher_astnode_typestr(type));
+		return AST_INVALID;
+	}
+	return AST_VALID;
+}
+
+static AST_Validation _validateIndex(const cypher_astnode_t *root, char **reason) {
+	const cypher_astnode_type_t type = cypher_astnode_type(root);
+	if(type != CYPHER_AST_INTEGER || type != CYPHER_AST_IDENTIFIER) {
+		asprintf(reason, "subscript index must be an interger or an identifier");
+		return AST_INVALID;
+	}
+	return AST_VALID;
+}
+
+static AST_Validation _validateSubscriptOps(const cypher_astnode_t *root, char **reason) {
+	if(!root) return AST_VALID;
+
+	const cypher_astnode_type_t type = cypher_astnode_type(root);
+	if(type == CYPHER_AST_SUBSCRIPT_OPERATOR) {
+		const cypher_astnode_t *exp_node = cypher_ast_subscript_operator_get_expression(root);
+		if(_validateList(exp_node, reason) != AST_VALID) return AST_INVALID;
+
+		const cypher_astnode_t *subscript_node = cypher_ast_subscript_operator_get_subscript(root);
+		if(_validateIndex(subscript_node, reason) != AST_VALID) return AST_INVALID;
+	}
+
+	if(type == CYPHER_AST_SLICE_OPERATOR) {
+		const cypher_astnode_t *exp_node = cypher_ast_slice_operator_get_expression(root);
+		if(_validateList(exp_node, reason) != AST_VALID) return AST_INVALID;
+
+		const cypher_astnode_t *start_node = cypher_ast_slice_operator_get_start(root);
+		if(start_node)
+			if(_validateIndex(start_node, reason) != AST_VALID) return AST_INVALID;
+
+		const cypher_astnode_t *end_node = cypher_ast_slice_operator_get_end(root);
+		if(end_node)
+			if(_validateIndex(end_node, reason) != AST_VALID) return AST_INVALID;
+	}
+
+	uint child_count = cypher_astnode_nchildren(root);
+	for(uint i = 0; i < child_count; i++) {
+		if(_validateSubscriptOps(cypher_astnode_get_child(root, i),
+								 reason) != AST_VALID) return AST_INVALID;
+	}
+
+	return AST_VALID;
+}
+
 static AST_Validation _ValidateClauses(const AST *ast, char **reason) {
 	if(_Validate_CALL_Clauses(ast, reason) == AST_INVALID) {
 		return AST_INVALID;
