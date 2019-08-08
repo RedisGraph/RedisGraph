@@ -107,6 +107,9 @@ static void _AST_MapExpression(AST *ast, const cypher_astnode_t *expr) {
 		for(uint i = 0; i < nchildren; i ++) {
 			_AST_MapExpression(ast, cypher_ast_comparison_get_argument(expr, i));
 		}
+	} else if(type == CYPHER_AST_CASE) {
+		// TODO: implement...
+		return;
 	} else if(type == CYPHER_AST_PROC_NAME) {
 		return;
 	} else if(type == CYPHER_AST_INTEGER ||

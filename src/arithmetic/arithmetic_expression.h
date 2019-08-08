@@ -156,6 +156,11 @@ SIValue AR_EXISTS(SIValue *argv, int argc);
 /* returns a timestamp - millis from epoch */
 SIValue AR_TIMESTAMP(SIValue *argv, int argc);
 
+/* Conditional flow functions */
+/* Case When 
+ * Case Value [When Option i Then Result i] Else Default end */
+SIValue AR_CASEWHEN(SIValue *argv, int argc);
+
 void AR_RegisterFuncs();             /* Registers all arithmetic functions. */
 AR_Func AR_GetFunc(char *func_name); /* Get arithmetic function. */
 bool AR_FuncExists(const char

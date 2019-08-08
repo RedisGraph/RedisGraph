@@ -232,7 +232,32 @@ AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t 
 		const cypher_astnode_t *rhs_node = cypher_ast_binary_operator_get_argument2(expr);
 		op->op.children[1] = AR_EXP_FromExpression(record_map, rhs_node);
 		return op;
+	} else if(type == CYPHER_AST_CASE) {
+		/* Determin number of children expressions:
+		 * arg_count = value + 2*alternatives + default. */
+		unsigned int alternatives = cypher_ast_case_nalternatives(expr);
+		unsigned int arg_count = 1 + 2 * alternatives + 1;
 
+		// Create Expression and child expressions
+		AR_ExpNode *op = _AR_EXP_NewOpNode("casewhen", arg_count);
+
+		// Value to compare against
+		const cypher_astnode_t *expression = cypher_ast_case_get_expression(expr);
+		op->op.children[0] = AR_EXP_FromExpression(record_map, expression);
+
+		// Alternatives
+		for(uint i = 0; i < alternatives; i++) {
+			const cypher_astnode_t *predicate = cypher_ast_case_get_predicate(expr, i);
+			op->op.children[1 + i * 2] = AR_EXP_FromExpression(record_map, predicate);
+			const cypher_astnode_t *value = cypher_ast_case_get_value(expr, i);
+			op->op.children[2 + i * 2] = AR_EXP_FromExpression(record_map, value);
+		}
+
+		// Default value.
+		const cypher_astnode_t *deflt = cypher_ast_case_get_default(expr);
+		op->op.children[1 + alternatives * 2] = AR_EXP_FromExpression(record_map, deflt);
+
+		return op;
 	} else {
 		/*
 		   Unhandled types:
@@ -393,7 +418,8 @@ int AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node) {
 	return 0;
 }
 
-void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size, size_t *bytes_written) {
+void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
+					  size_t *bytes_written) {
 	/* Make sure there are at least 64 bytes in str. */
 	if(*str == NULL) {
 		*bytes_written = 0;
@@ -881,10 +907,10 @@ SIValue AR_STARTSWITH(SIValue *argv, int argc) {
 
 	// No string contains null.
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_BoolVal(false);
-	
+
 	// TODO: remove once we have runtime error handling.
 	assert((SI_TYPE(argv[0]) & SI_STRING) && (SI_TYPE(argv[1]) & SI_STRING));
-	
+
 	const char *str = argv[0].stringval;
 	const char *sub_string = argv[1].stringval;
 	size_t str_len = strlen(str);
@@ -906,10 +932,10 @@ SIValue AR_ENDSWITH(SIValue *argv, int argc) {
 
 	// No string contains null.
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_BoolVal(false);
-	
+
 	// TODO: remove once we have runtime error handling.
 	assert((SI_TYPE(argv[0]) & SI_STRING) && (SI_TYPE(argv[1]) & SI_STRING));
-	
+
 	const char *str = argv[0].stringval;
 	const char *sub_string = argv[1].stringval;
 	size_t str_len = strlen(str);
@@ -976,6 +1002,35 @@ SIValue AR_EXISTS(SIValue *argv, int argc) {
 
 SIValue AR_TIMESTAMP(SIValue *argv, int argc) {
 	return SI_LongVal(TemporalValue_NewTimestamp());
+}
+
+/* Conditional flow functions */
+/* Case When
+ * Case Value [When Option i Then Result i] Else Default end */
+SIValue AR_CASEWHEN(SIValue *argv, int argc) {
+	/* Expecting Value and Default.
+	 * Assuming values maintain original specified order. */
+	assert(argc > 1);
+
+	/* argv[0] - Value
+	 * argv[i] - Option i
+	 * argv[i+1] - Result i
+	 * argv[argc-1] - Default */
+	SIValue v = argv[0];
+	SIValue d = argv[argc - 1];
+
+	int alternatives = argc - 1;
+	for(int i = 1; i < alternatives; i += 2) {
+		SIValue a = argv[i];
+		if(SIValue_Compare(v, a) == 0) {
+			// Return Result i.
+			return argv[i + 1];
+		}
+	}
+
+	/* Did not match against any Option
+	 * Return default. */
+	return d;
 }
 
 void AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func) {
@@ -1121,5 +1176,11 @@ void AR_RegisterFuncs() {
 
 	_toLower("timestamp", &lower_func_name[0], &lower_func_name_len);
 	AR_RegFunc(lower_func_name, lower_func_name_len, AR_TIMESTAMP);
+	lower_func_name_len = 32;
+
+
+	/* Conditional flow functions */
+	_toLower("casewhen", &lower_func_name[0], &lower_func_name_len);
+	AR_RegFunc(lower_func_name, lower_func_name_len, AR_CASEWHEN);
 	lower_func_name_len = 32;
 }
