@@ -12,12 +12,15 @@
 
 /* OP Unwind */
 
-typedef struct {
-	OpBase op;
-	AR_ExpNode *expressions; // Array of expressions
-	uint listIdx;            // Current list index
-	int unwindRecIdx;        // Update record at this index.
-	SIValue list;
+typedef struct
+{
+    OpBase op;
+    AR_ExpNode *expressions; // Array of expressions
+    uint listIdx;            // Current list index
+    int unwindRecIdx;        // Update record at this index.
+    SIValue list;            // list which the unwind operation is performed on
+    Record currentRecord;    // record to clone and add a value extracted from the list
+    bool isStatic;           // indicates if the unwind list is static or not
 } OpUnwind;
 
 /* Creates a new Unwind operation */
