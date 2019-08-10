@@ -849,3 +849,54 @@ TEST_F(ArithmeticTest, TimestampTest)
 
     ASSERT_LE(abs((1000 * ts.tv_sec + ts.tv_nsec / 1000000) - result.longval), 5);
 }
+
+TEST_F(ArithmeticTest, CaseTest)
+{
+    SIValue result;
+    SIValue expected = SI_LongVal(2);
+    const char *query;
+    AR_ExpNode *arExp;
+
+    /* Test "Simple form"
+     * Match one of the alternatives. */
+    query = "RETURN CASE 'brown' WHEN 'blue' THEN 1+0 WHEN 'brown' THEN 2-0 ELSE 3*1 END";
+    arExp = _exp_from_query(query);
+    result = AR_EXP_Evaluate(arExp, NULL);
+    AR_EXP_Free(arExp);
+    ASSERT_EQ(result.longval, expected.longval);
+
+    /* Do not match any of the alternatives, return default. */
+    query = "RETURN CASE 'green' WHEN 'blue' THEN 1+0 WHEN 'brown' THEN 2-0 ELSE 3*1 END";
+    expected = SI_LongVal(3);
+    arExp = _exp_from_query(query);
+    result = AR_EXP_Evaluate(arExp, NULL);
+    AR_EXP_Free(arExp);
+    ASSERT_EQ(result.longval, expected.longval);
+
+     /* Test "Generic form"
+     * One of the alternatives evaluates to a none null value. 
+     * Default not specified. */
+    query = "RETURN CASE WHEN NULL THEN 1+0 WHEN true THEN 2-0 END";
+    expected = SI_LongVal(2);
+    arExp = _exp_from_query(query);
+    result = AR_EXP_Evaluate(arExp, NULL);
+    AR_EXP_Free(arExp);    
+    ASSERT_EQ(result.longval, expected.longval);
+
+    /* None of the alternatives evaluates to a none null value. 
+     * Default specified, expecting default. */
+    query = "RETURN CASE WHEN NULL THEN 1+0 WHEN NULL THEN 2-0 ELSE 3*1 END";
+    expected = SI_LongVal(3);
+    arExp = _exp_from_query(query);
+    result = AR_EXP_Evaluate(arExp, NULL);
+    AR_EXP_Free(arExp);    
+    ASSERT_EQ(result.longval, expected.longval);
+
+    /* None of the alternatives evaluates to a none null value. 
+     * Default not specified, expecting NULL */
+    query = "RETURN CASE WHEN NULL THEN 1+0 WHEN NULL THEN 2-0 END";
+    arExp = _exp_from_query(query);
+    result = AR_EXP_Evaluate(arExp, NULL);
+    AR_EXP_Free(arExp);    
+    ASSERT_TRUE(SIValue_IsNull(result));
+}

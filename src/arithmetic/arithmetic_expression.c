@@ -233,29 +233,41 @@ AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t 
 		op->op.children[1] = AR_EXP_FromExpression(record_map, rhs_node);
 		return op;
 	} else if(type == CYPHER_AST_CASE) {
-		/* Determin number of children expressions:
-		 * arg_count = value + 2*alternatives + default. */
+		//Determin number of child expressions:
+		unsigned int arg_count;
+		const cypher_astnode_t *expression = cypher_ast_case_get_expression(expr);
 		unsigned int alternatives = cypher_ast_case_nalternatives(expr);
-		unsigned int arg_count = 1 + 2 * alternatives + 1;
+
+		/* Simple form: 2 * alternatives + default
+		 * Generic form: 2 * alternatives + default */
+		if(expression) arg_count = 1 + 2 * alternatives + 1;
+		else arg_count = 2 * alternatives + 1;
 
 		// Create Expression and child expressions
 		AR_ExpNode *op = _AR_EXP_NewOpNode("casewhen", arg_count);
 
 		// Value to compare against
-		const cypher_astnode_t *expression = cypher_ast_case_get_expression(expr);
-		op->op.children[0] = AR_EXP_FromExpression(record_map, expression);
+		int offset = 0;
+		if(expression != NULL) {
+			op->op.children[offset++] = AR_EXP_FromExpression(record_map, expression);
+		}
 
 		// Alternatives
 		for(uint i = 0; i < alternatives; i++) {
 			const cypher_astnode_t *predicate = cypher_ast_case_get_predicate(expr, i);
-			op->op.children[1 + i * 2] = AR_EXP_FromExpression(record_map, predicate);
+			op->op.children[offset++] = AR_EXP_FromExpression(record_map, predicate);
 			const cypher_astnode_t *value = cypher_ast_case_get_value(expr, i);
-			op->op.children[2 + i * 2] = AR_EXP_FromExpression(record_map, value);
+			op->op.children[offset++] = AR_EXP_FromExpression(record_map, value);
 		}
 
 		// Default value.
 		const cypher_astnode_t *deflt = cypher_ast_case_get_default(expr);
-		op->op.children[1 + alternatives * 2] = AR_EXP_FromExpression(record_map, deflt);
+		if(deflt == NULL) {
+			// Default not specified, use NULL.
+			op->op.children[offset] = AR_EXP_NewConstOperandNode(SI_NullVal());
+		} else {
+			op->op.children[offset] = AR_EXP_FromExpression(record_map, deflt);
+		}
 
 		return op;
 	} else {
@@ -1012,24 +1024,44 @@ SIValue AR_CASEWHEN(SIValue *argv, int argc) {
 	 * Assuming values maintain original specified order. */
 	assert(argc > 1);
 
-	/* argv[0] - Value
-	 * argv[i] - Option i
-	 * argv[i+1] - Result i
-	 * argv[argc-1] - Default */
-	SIValue v = argv[0];
+	int alternatives = argc - 1;
 	SIValue d = argv[argc - 1];
 
-	int alternatives = argc - 1;
-	for(int i = 1; i < alternatives; i += 2) {
-		SIValue a = argv[i];
-		if(SIValue_Compare(v, a) == 0) {
-			// Return Result i.
-			return argv[i + 1];
+	if((argc % 2) == 0) {
+		/* Simple form:
+		 * argv[0] - Value
+		 * argv[i] - Option i
+		 * argv[i+1] - Result i
+		 * argv[argc-1] - Default
+		 *
+		 * Evaluate alternatives in order, return first alternatives which
+		 * is equals to Value. */
+		SIValue v = argv[0];
+		for(int i = 1; i < alternatives; i += 2) {
+			SIValue a = argv[i];
+			if(SIValue_Compare(v, a) == 0) {
+				// Return Result i.
+				return argv[i + 1];
+			}
+		}
+	} else {
+		/* Generic form:
+		 * argv[i] - Option i
+		 * argv[i+1] - Result i
+		 * arg[argc-1] - Default
+		 *
+		 * Evaluate alternatives in order, return first alternatives which
+		 * is not NULL. */
+		for(int i = 0; i < alternatives; i += 2) {
+			SIValue a = argv[i];
+			if(!SIValue_IsNull(a)) {
+				// Return Result i.
+				return argv[i + 1];
+			}
 		}
 	}
 
-	/* Did not match against any Option
-	 * Return default. */
+	//Did not match against any Option return default.
 	return d;
 }
 
