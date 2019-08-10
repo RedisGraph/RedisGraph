@@ -70,6 +70,7 @@ static void _AST_MapPattern(AST *ast, const cypher_astnode_t *pattern) {
 }
 
 static void _AST_MapExpression(AST *ast, const cypher_astnode_t *expr) {
+	if(expr == NULL) return;
 	// A CYPHER_AST_EXPRESSION is a generic type, including function calls,
 	// scalars, and identifiers.
 	// Any identifiers described within the expression or its children must
@@ -108,7 +109,16 @@ static void _AST_MapExpression(AST *ast, const cypher_astnode_t *expr) {
 			_AST_MapExpression(ast, cypher_ast_comparison_get_argument(expr, i));
 		}
 	} else if(type == CYPHER_AST_CASE) {
-		// TODO: implement...
+		// Value
+		_AST_MapExpression(ast, cypher_ast_case_get_expression(expr));
+		unsigned int alternatives = cypher_ast_case_nalternatives(expr);
+		// Alternatives
+		for(uint i = 0; i < alternatives; i++) {
+			_AST_MapExpression(ast, cypher_ast_case_get_predicate(expr, i));
+			_AST_MapExpression(ast, cypher_ast_case_get_value(expr, i));
+		}
+		// Default value.
+		_AST_MapExpression(ast, cypher_ast_case_get_default(expr));
 		return;
 	} else if(type == CYPHER_AST_PROC_NAME) {
 		return;
