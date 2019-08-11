@@ -44,8 +44,8 @@ FT_FilterNode *_CreateFilterSubtree(AST_Operator op, const cypher_astnode_t *lhs
 	case OP_OR:
 	case OP_AND:
 		filter = FilterTree_CreateConditionFilter(op);
-		AppendLeftChild(filter, _FilterNode_FromAST(record_map, lhs));
-		AppendRightChild(filter, _FilterNode_FromAST(record_map, rhs));
+		AppendLeftChild(filter, _FilterNode_FromAST(lhs));
+		AppendRightChild(filter, _FilterNode_FromAST(rhs));
 		return filter;
 	case OP_EQUAL:
 	case OP_NEQUAL:
@@ -53,7 +53,7 @@ FT_FilterNode *_CreateFilterSubtree(AST_Operator op, const cypher_astnode_t *lhs
 	case OP_LE:
 	case OP_GT:
 	case OP_GE:
-		return _CreatePredicateFilterNode(record_map, op, lhs, rhs);
+		return _CreatePredicateFilterNode(op, lhs, rhs);
 	default:
 		assert("attempted to convert unhandled type into filter" && false);
 	}
@@ -94,13 +94,18 @@ FT_FilterNode *_convertComparison(const cypher_astnode_t *comparison_node) {
 static FT_FilterNode *_convertInlinedProperties(const AST *ast, const cypher_astnode_t *entity,
 												EntityType type) {
 	const cypher_astnode_t *props = NULL;
+	const cypher_astnode_t *identifier = NULL;
 
 	if(type == ENTITY_NODE) {
+		identifier = cypher_ast_node_pattern_get_identifier(entity);
 		props = cypher_ast_node_pattern_get_properties(entity);
 	} else { // relation
+		identifier = cypher_ast_rel_pattern_get_identifier(entity);
 		props = cypher_ast_rel_pattern_get_properties(entity);
 	}
 
+	const char *alias = cypher_ast_identifier_get_name(identifier);
+	assert(alias);
 	if(!props) return NULL;
 
 	FT_FilterNode *root = NULL;
@@ -108,13 +113,12 @@ static FT_FilterNode *_convertInlinedProperties(const AST *ast, const cypher_ast
 	for(uint i = 0; i < nelems; i ++) {
 		// key is of type CYPHER_AST_PROP_NAME
 		const cypher_astnode_t *prop_node = cypher_ast_map_get_key(props, i);
-		const char *var = cypher_ast_property_operator_get_prop_name(prop_node);
 		const char *prop = cypher_ast_prop_name_get_value(prop_node);
-		AR_ExpNode *lhs = AR_EXP_NewVariableOperandNode(var, prop);
+		AR_ExpNode *lhs = AR_EXP_NewVariableOperandNode(alias, prop);
 
 		// val is of type CYPHER_AST_EXPRESSION
 		const cypher_astnode_t *val = cypher_ast_map_get_value(props, i);
-		AR_ExpNode *rhs = AR_EXP_FromExpression(record_map, val);
+		AR_ExpNode *rhs = AR_EXP_FromExpression(val);
 		/* TODO In a query like:
 		 * "MATCH (r:person {name:"Roi"}) RETURN r"
 		 * (note the repeated double quotes) - this creates a variable rather than a scalar.

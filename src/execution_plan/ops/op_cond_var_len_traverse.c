@@ -80,7 +80,7 @@ OpBase *NewCondVarLenTraverseOp(Graph *g, AlgebraicExpression *ae) {
 	condVarLenTraverse->op.toString = CondVarLenTraverseToString;
 	condVarLenTraverse->op.free = CondVarLenTraverseFree;
 
-	OpBase_Modifies(condVarLenTraverse, ae->dest_node->alias);
+	OpBase_Modifies((OpBase *)condVarLenTraverse, ae->dest_node->alias);
 
 	return (OpBase *)condVarLenTraverse;
 }

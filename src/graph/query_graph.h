@@ -17,6 +17,7 @@
 typedef struct {
 	QGNode **nodes;             // Nodes contained in QueryGraph
 	QGEdge **edges;             // Edges contained in QueryGraph
+    uint anonymouse_count;      // Number of anonymouse entities.
 } QueryGraph;
 
 typedef enum {
@@ -38,8 +39,7 @@ void QueryGraph_ConnectNodes(QueryGraph *qg, QGNode *src, QGNode *dest, QGEdge *
 /* Add all nodes and relationships from a single path
  * (from part of a MATCH or CREATE pattern, or a MERGE clause)
  * to the QueryGraph. */
-void QueryGraph_AddPath(const GraphContext *gc, const AST *ast, QueryGraph *qg,
-						const cypher_astnode_t *path);
+void QueryGraph_AddPath(const GraphContext *gc, QueryGraph *qg, const cypher_astnode_t *path);
 
 /* Adds all paths described in an AST pattern node (from a
  * MATCH or MERGE clause) to a meta-graph that describes all

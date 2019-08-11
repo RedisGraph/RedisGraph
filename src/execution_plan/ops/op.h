@@ -99,8 +99,14 @@ Record OpBase_Profile(OpBase *op);  // Profile op.
 
 int OpBase_ToString(const OpBase *op, char *buff, uint buff_len);
 
-// Mark alias as been modified by operation.
-void OpBase_Modifies(OpBase *op, const char *alias);
+/* Mark alias as been modified by operation.
+ * Returns the ID associated with alias. */
+int OpBase_Modifies(OpBase *op, const char *alias);
+
+/* Returns true if op is aware of alias.
+ * an operation is aware of all aliases it modifies and all aliases 
+ * modified by prior operation within its segment. */
+bool OpBase_Aware(OpBase *op, const char *alias, int *idx);
 
 void OpBase_PropagateFree(OpBase *op); // Sends free request to each operation up the chain.
 void OpBase_PropagateReset(OpBase *op); // Sends reset request to each operation up the chain.

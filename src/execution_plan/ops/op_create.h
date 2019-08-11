@@ -31,8 +31,7 @@ typedef struct {
 	ResultSetStatistics *stats;
 } OpCreate;
 
-OpBase *NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreateCtx *edges);
-
+OpBase *NewCreateOp(ResultSetStatistics *stats, const AST *ast);
 OpResult OpCreateInit(OpBase *opBase);
 Record OpCreateConsume(OpBase *opBase);
 OpResult OpCreateReset(OpBase *ctx);

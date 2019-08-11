@@ -8,6 +8,7 @@
 #include "cmd_context.h"
 #include "../index/index.h"
 #include "../util/rmalloc.h"
+#include "../parser/parser.h"
 #include "../execution_plan/execution_plan.h"
 
 extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
@@ -44,7 +45,7 @@ void _MGraph_Explain(void *args) {
 	const char *query = qctx->query;
 
 	// Parse the query to construct an AST
-	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+	cypher_parse_result_t *parse_result = parse(query);
 	if(parse_result == NULL) goto cleanup;
 
 	// Perform query validations

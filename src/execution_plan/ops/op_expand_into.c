@@ -83,7 +83,7 @@ static void _traverse(OpExpandInto *op) {
 	GrB_Matrix_clear(op->F);
 }
 
-OpBase *NewExpandIntoOp(AlgebraicExpression *ae, uint records_cap) {
+OpBase *NewExpandIntoOp(AlgebraicExpression *ae) {
 	OpExpandInto *expandInto = calloc(1, sizeof(OpExpandInto));
 	GraphContext *gc = GraphContext_GetFromTLS();
 	expandInto->ae = ae;
@@ -114,7 +114,7 @@ OpBase *NewExpandIntoOp(AlgebraicExpression *ae, uint records_cap) {
 	expandInto->op.modifies = NULL;
 
 	if(ae->edge) {
-		OpBase_Modifies(expandInto, ae->edge);
+		OpBase_Modifies((OpBase *)expandInto, ae->edge->alias);
 		_setupTraversedRelations(expandInto, ae->edge);
 		expandInto->edges = array_new(Edge, 32);
 	}

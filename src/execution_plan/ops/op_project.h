@@ -20,7 +20,7 @@ typedef struct {
 	unsigned short order_exp_count; // Number of order by expressions.
 } OpProject;
 
-OpBase *NewProjectOp(AR_ExpNode **exps, uint *modifies);
+OpBase *NewProjectOp(AR_ExpNode **exps);
 
 OpResult ProjectInit(OpBase *opBase);
 

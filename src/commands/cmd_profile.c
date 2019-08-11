@@ -7,6 +7,7 @@
 #include "cmd_profile.h"
 #include "cmd_context.h"
 #include "../graph/graph.h"
+#include "../parser/parser.h"
 #include "../util/simple_timer.h"
 #include "../execution_plan/execution_plan.h"
 #include "../util/arr.h"
@@ -20,8 +21,7 @@ void _MGraph_Profile(void *args) {
 	AST *ast = NULL;
 
 	// Parse the query to construct an AST
-	cypher_parse_result_t *parse_result = cypher_parse(qctx->query, NULL, NULL,
-													   CYPHER_PARSE_ONLY_STATEMENTS);
+	cypher_parse_result_t *parse_result = parse(qctx->query);
 	if(parse_result == NULL) goto cleanup;
 
 	bool readonly = AST_ReadOnly(parse_result);

@@ -245,9 +245,6 @@ static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segmen
 			AlgebraicExpression *exp = exps[0];
 			selectEntryPoint(exp, ft);
 
-			// Retrieve the AST ID for the source node
-			uint ast_id = exp->src_node->id;
-
 			// Create SCAN operation.
 			if(exp->src_node->label) {
 				/* Resolve source node by performing label scan,
@@ -331,29 +328,13 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 	const cypher_astnode_t *with_clause = AST_GetClause(ast, CYPHER_AST_WITH);
 	// We cannot have both a RETURN and WITH clause
 	assert(!(ret_clause && with_clause));
-	segment->projections = NULL;
 
 	const cypher_astnode_t *order_clause = NULL;
 	if(ret_clause) {
-		segment->projections = _BuildReturnExpressions(ret_clause, ast);
-		// If we have a RETURN * and previous WITH projections, include those projections.
-		if(cypher_ast_return_has_include_existing(ret_clause) && prev_projections) {
-			uint prev_projection_count = array_len(prev_projections);
-			for(uint i = 0; i < prev_projection_count; i++) {
-				// Build a new projection that's just the WITH identifier
-				AR_ExpNode *projection = AR_EXP_NewVariableOperandNode(prev_projections[i]->resolved_name, NULL);
-				projection->resolved_name = prev_projections[i]->resolved_name;
-				segment->projections = array_append(segment->projections, projection);
-			}
-		}
 		order_clause = cypher_ast_return_get_order_by(ret_clause);
 	} else if(with_clause) {
-		segment->projections = _BuildWithExpressions(with_clause);
 		order_clause = cypher_ast_with_get_order_by(with_clause);
 	}
-
-	AR_ExpNode **order_expressions = NULL;
-	if(order_clause) order_expressions = _BuildOrderExpressions(order_clause);
 
 	Vector *ops = NewVector(OpBase *, 1);
 
@@ -381,16 +362,6 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 			// Track which variables are modified by this operation.
 		}
 		array_free(yield_exps);
-
-		if(segment->projections == NULL) {
-			segment->projections = array_new(AR_ExpNode *, yield_count);
-			for(uint i = 0; i < yield_count; i ++) {
-				// TODO revisit this logic, room for improvement
-				// Add yielded expressions to segment projections.
-				segment->projections = array_append(segment->projections, yield_exps[i]);
-			}
-		}
-
 		OpBase *opProcCall = NewProcCallOp(proc_name, arguments, yields);
 		Vector_Push(ops, opProcCall);
 	}
@@ -415,10 +386,7 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 
 	bool create_clause = AST_ContainsClause(ast, CYPHER_AST_CREATE);
 	if(create_clause) {
-		AST_CreateContext create_ast_ctx = AST_PrepareCreateOp(gc, ast, qg);
-		OpBase *opCreate = NewCreateOp(stats,
-									   create_ast_ctx.nodes_to_create,
-									   create_ast_ctx.edges_to_create);
+		OpBase *opCreate = NewCreateOp(stats, ast);
 		Vector_Push(ops, opCreate);
 	}
 
@@ -427,21 +395,19 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 		// A merge clause provides a single path that must exist or be created.
 		// As with paths in a MATCH query, build the appropriate traversal operations
 		// and append them to the set of ops.
-		AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(ast, merge_clause, qg);
+
+		// AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(ast, merge_clause, qg);
 
 		// Append a merge operation
-		OpBase *opMerge = NewMergeOp(stats,
-									 merge_ast_ctx.nodes_to_merge,
-									 merge_ast_ctx.edges_to_merge);
+		OpBase *opMerge = NewMergeOp(stats, ast);
 		Vector_Push(ops, opMerge);
 	}
 
 	const cypher_astnode_t *delete_clause = AST_GetClause(ast, CYPHER_AST_DELETE);
 	if(delete_clause) {
-		uint *nodes_ref;
-		uint *edges_ref;
-		AST_PrepareDeleteOp(delete_clause, qg, &nodes_ref, &edges_ref);
-		OpBase *opDelete = NewDeleteOp(nodes_ref, edges_ref, stats);
+		char **deleted_entities = AST_PrepareDeleteOp(delete_clause);
+		OpBase *opDelete = NewDeleteOp(qg, deleted_entities, stats);
+		array_free(deleted_entities);
 		Vector_Push(ops, opDelete);
 	}
 
@@ -456,39 +422,14 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 
 	assert(!(with_clause && ret_clause));
 
-	uint *modifies = NULL;
-
-	// WITH/RETURN projections have already been constructed from the AST
-	AR_ExpNode **projections = segment->projections;
-
-	if(with_clause || ret_clause || call_clause) {
-		// TODO improve interface, maybe CollectEntityIDs variant that builds an array
-		rax *modifies_ids = raxNew();
-		uint exp_count = array_len(projections);
-		for(uint i = 0; i < exp_count; i ++) {
-			AR_ExpNode *exp = projections[i];
-			AR_EXP_CollectEntities(exp, modifies_ids);
-		}
-
-		modifies = array_new(uint, raxSize(modifies_ids));
-		raxIterator iter;
-		raxStart(&iter, modifies_ids);
-		raxSeek(&iter, ">=", (unsigned char *)"", 0);
-		while(raxNext(&iter)) {
-			modifies = array_append(modifies, *(uint *)iter.key);
-		}
-		raxStop(&iter);
-		raxFree(modifies_ids);
-	}
-
 	OpBase *op;
 
 	if(with_clause) {
 		// uint *with_projections = AST_WithClauseModifies(ast, with_clause);
 		if(AST_ClauseContainsAggregation(with_clause)) {
-			op = NewAggregateOp(projections, modifies);
+			op = NewAggregateOp(_BuildWithExpressions(with_clause));
 		} else {
-			op = NewProjectOp(projections, modifies);
+			op = NewProjectOp(_BuildWithExpressions(with_clause));
 		}
 		Vector_Push(ops, op);
 
@@ -505,12 +446,12 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 		if(skip_clause) skip = AST_ParseIntegerNode(skip_clause);
 		if(limit_clause) limit = AST_ParseIntegerNode(limit_clause);
 
-		if(order_expressions) {
+		if(order_clause) {
 			const cypher_astnode_t *order_clause = cypher_ast_with_get_order_by(with_clause);
 			int direction = AST_PrepareSortOp(order_clause);
 			// The sort operation will obey a specified limit, but must account for skipped records
 			uint sort_limit = (limit > 0) ? limit + skip : 0;
-			op = NewSortOp(order_expressions, direction, sort_limit);
+			op = NewSortOp(_BuildOrderExpressions(order_clause), direction, sort_limit);
 			Vector_Push(ops, op);
 		}
 
@@ -528,10 +469,11 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 		// MATCH (a) WITH a.val AS val RETURN val
 		// Though we would still need a new projection (barring later optimizations) for:
 		// MATCH (a) WITH a.val AS val RETURN val AS e
+		bool return_all = cypher_ast_return_has_include_existing(ret_clause);
 		if(AST_ClauseContainsAggregation(ret_clause)) {
-			op = NewAggregateOp(projections, modifies);
+			op = NewAggregateOp(_BuildReturnExpressions(ret_clause, ast));
 		} else {
-			op = NewProjectOp(projections, modifies);
+			op = NewProjectOp(_BuildReturnExpressions(ret_clause, ast));
 		}
 		Vector_Push(ops, op);
 
@@ -549,11 +491,11 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 		if(skip_clause) skip = AST_ParseIntegerNode(skip_clause);
 		if(limit_clause) limit = AST_ParseIntegerNode(limit_clause);
 
-		if(order_expressions) {
+		if(order_clause) {
 			int direction = AST_PrepareSortOp(order_clause);
 			// The sort operation will obey a specified limit, but must account for skipped records
 			uint sort_limit = (limit > 0) ? limit + skip : 0;
-			op = NewSortOp(order_expressions, direction, sort_limit);
+			op = NewSortOp(_BuildOrderExpressions(order_clause), direction, sort_limit);
 			Vector_Push(ops, op);
 		}
 
@@ -587,20 +529,14 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 	Vector_Free(ops);
 
 	if(prev_op) {
+		// TODO: migrate projection operation from one execution-plan segment to another
+		// this will need to remove and introduce identifiers to record.
+
 		// Need to connect this segment to the previous one.
 		// If the last operation of this segment is a potential data producer, join them
 		// under a Cartesian Product operation. (This could be an Apply op if preferred.)
 		if(parent_op->type & OP_TAPS) {
 			OpBase *op_cp = NewCartesianProductOp();
-			uint prev_projection_count = array_len(prev_projections);
-			// The Apply op must be associated with the IDs projected from the previous segment
-			// in case we're placing filter operations.
-			// (although this is a rather ugly way to accomplish that.)
-			op_cp->modifies = array_new(uint, prev_projection_count);
-			for(uint i = 0; i < prev_projection_count; i ++) {
-				op_cp->modifies = array_append(op_cp->modifies, i);
-			}
-
 			ExecutionPlan_PushBelow(parent_op, op_cp);
 			ExecutionPlan_AddOp(op_cp, prev_op);
 		} else {

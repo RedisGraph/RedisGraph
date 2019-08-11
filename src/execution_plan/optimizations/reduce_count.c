@@ -101,21 +101,13 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 		nodeCount = SI_LongVal(Graph_NodeCount(gc->g));
 	}
 
-	// Incase alias is specified: RETURN count(n) as X
-	uint *modifies = NULL;
-	if(opAggregate->op.modifies) {
-		assert(array_len(opAggregate->op.modifies) == 1);
-		modifies = array_new(uint, 1);
-		modifies = array_append(modifies, opAggregate->op.modifies[0]);
-	}
-
 	/* Construct a constant expression, used by a new
 	 * projection operation. */
 	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(nodeCount);
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 	exps = array_append(exps, exp);
 
-	OpBase *opProject = NewProjectOp(exps, modifies);
+	OpBase *opProject = NewProjectOp(exps);
 
 	// TODO this shouldn't need to be an explicit step.
 	// See _associateRecordMap and ExecutionPlanInit to come up with solution.
@@ -221,7 +213,7 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1); // TODO memory leak!
 	exps = array_append(exps, exp);
 
-	OpBase *opProject = NewProjectOp(exps, NULL);
+	OpBase *opProject = NewProjectOp(exps);
 
 	// TODO this shouldn't need to be an explicit step.
 	// See _associateRecordMap and ExecutionPlanInit to come up with solution.

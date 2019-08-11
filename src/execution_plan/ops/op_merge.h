@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OP_MERGE_H
-#define __OP_MERGE_H
+#pragma once
 
 #include "op.h"
 #include "../../graph/entities/node.h"
@@ -29,11 +28,8 @@ typedef struct {
 	bool created;                     // Has the entire pattern been created?
 } OpMerge;
 
-OpBase *NewMergeOp(ResultSetStatistics *stats, NodeCreateCtx *nodes_to_merge,
-				   EdgeCreateCtx *edges_to_merge);
+OpBase *NewMergeOp(ResultSetStatistics *stats, const AST *ast);
 OpResult OpMergeInit(OpBase *opBase);
 Record OpMergeConsume(OpBase *opBase);
 OpResult OpMergeReset(OpBase *ctx);
 void OpMergeFree(OpBase *ctx);
-
-#endif

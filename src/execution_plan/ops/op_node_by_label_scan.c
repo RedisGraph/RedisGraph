@@ -42,7 +42,7 @@ OpBase *NewNodeByLabelScanOp(QGNode *node) {
 	nodeByLabelScan->op.toString = NodeByLabelScanToString;
 	nodeByLabelScan->op.free = NodeByLabelScanFree;
 
-	OpBase_Modifies(nodeByLabelScan, node->alias);
+	OpBase_Modifies((OpBase *)nodeByLabelScan, node->alias);
 
 	return (OpBase *)nodeByLabelScan;
 }

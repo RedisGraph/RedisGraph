@@ -19,7 +19,6 @@ OpBase *NewIndexScanOp(Graph *g, QGNode *n, RSIndex *idx, RSResultsIterator *ite
 	indexScan->n = n;
 	indexScan->idx = idx;
 	indexScan->iter = iter;
-	indexScan->nodeRecIdx = -1;
 
 	// Set our Op operations
 	OpBase_Init(&indexScan->op);
@@ -30,7 +29,7 @@ OpBase *NewIndexScanOp(Graph *g, QGNode *n, RSIndex *idx, RSResultsIterator *ite
 	indexScan->op.toString = IndexScanToString;
 	indexScan->op.free = IndexScanFree;
 
-	OpBase_Modifies(indexScan, n->alias);
+	indexScan->nodeRecIdx = OpBase_Modifies((OpBase *)indexScan, n->alias);
 
 	return (OpBase *)indexScan;
 }
@@ -40,7 +39,7 @@ Record IndexScanConsume(OpBase *opBase) {
 	const EntityID *nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL);
 	if(!nodeId) return NULL;
 
-	Record r = Record_New(opBase->record_map->record_len);
+	Record r = OpBase_CreateRecord(opBase);
 	// Get a pointer to a heap allocated node.
 	Node *n = Record_GetNode(r, op->nodeRecIdx);
 	// Update node's internal entity pointer.

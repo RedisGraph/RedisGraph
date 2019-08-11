@@ -17,7 +17,8 @@ static void _yield(OpProcCall *op, SIValue *proc_output, Record r) {
 			for(uint j = 0; j < array_len(proc_output); j += 2) {
 				char *key = (proc_output + j)->stringval;
 				if(strcmp(yield, key) == 0) {
-					int idx = op->op.modifies[i];
+					int idx;
+					OpBase_Aware((OpBase *)op, op->op.modifies[i], &idx);
 					op->yield_map[i].proc_out_idx = j + 1;
 					op->yield_map[i].rec_idx = idx;
 					break;
@@ -82,8 +83,7 @@ Record OpProcCallConsume(OpBase *opBase) {
 	Record r = NULL;
 
 	if(op->op.childCount == 0) {
-		/* Make record large enough to accommodate all alias entities. */
-		r = Record_New(opBase->record_map->record_len);
+		r = OpBase_CreateRecord((OpBase *)op);
 	} else {
 		OpBase *child = op->op.children[0];
 		r = OpBase_Consume(child);

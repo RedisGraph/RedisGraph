@@ -5002,6 +5002,18 @@ const cypher_astnode_t *cypher_ast_node_pattern_get_identifier(
         const cypher_astnode_t *node);
 
 /**
+ * Set the identifier of a `CYPHER_AST_NODE_PATTERN` node.
+ *
+ * If the node is not an instance of `CYPHER_AST_NODE_PATTERN` then the result
+ * will be undefined.
+ *
+ * @param [node] The AST node.
+ * @param [identifier] The identifer to set.
+ */
+void cypher_ast_node_pattern_set_identifier(const cypher_astnode_t *node,
+        const cypher_astnode_t *identifier);
+
+/**
  * Get the number of labels in a `CYPHER_AST_NODE_PATTERN` node.
  *
  * If the node is not an instance of `CYPHER_AST_NODE_PATTERN` then the result
@@ -5090,6 +5102,19 @@ enum cypher_rel_direction cypher_ast_rel_pattern_get_direction(
 __cypherlang_pure
 const cypher_astnode_t *cypher_ast_rel_pattern_get_identifier(
         const cypher_astnode_t *node);
+
+/**
+ * Set the identifier of a `CYPHER_AST_REL_PATTERN` node.
+ *
+ * If the node is not an instance of `CYPHER_AST_REL_PATTERN` then the result
+ * will be undefined.
+ *
+ * @param [node] The AST node.
+ * @param [identifier] The identifer node to set.
+
+ */
+void cypher_ast_rel_pattern_set_identifier(
+	const cypher_astnode_t *node, const cypher_astnode_t *identifier);
 
 /**
  * Get the number of reltypes in a `CYPHER_AST_REL_PATTERN` node.

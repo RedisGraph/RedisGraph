@@ -45,11 +45,9 @@ AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op) {
 void PropertyMap_Free(PropertyMap *map) {
 	if(map == NULL) return;
 
-	for(uint i = 0; i < map->property_count; i++) {
-		SIValue_Free(&map->values[i]);
-	}
-	free(map->keys);
-	free(map->values);
+	for(uint i = 0; i < map->property_count; i++) SIValue_Free(&map->values[i]);
+	if(map->keys) free(map->keys);
+	if(map->values) free(map->values);
+	if(map->attr_ids) free(map->attr_ids);
 	free(map);
 }
-

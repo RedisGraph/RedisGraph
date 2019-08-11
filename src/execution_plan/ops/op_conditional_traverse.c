@@ -110,10 +110,10 @@ OpBase *NewCondTraverseOp(Graph *g, AlgebraicExpression *ae, uint records_cap) {
 	traverse->op.toString = CondTraverseToString;
 	traverse->op.free = CondTraverseFree;
 
-	OpBase_Modifies(traverse, ae->dest_node->alias);
+	OpBase_Modifies((OpBase *)traverse, ae->dest_node->alias);
 
 	if(ae->edge) {
-		OpBase_Modifies(traverse, ae->edge->alias);
+		OpBase_Modifies((OpBase *)traverse, ae->edge->alias);
 		_setupTraversedRelations(traverse, ae->edge);
 		traverse->edges = array_new(Edge, 32);
 	}

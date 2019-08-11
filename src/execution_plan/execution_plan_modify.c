@@ -2,10 +2,10 @@
 #include "../util/qsort.h"
 
 // Sort an array and remove duplicate entries.
-static void _uniqueArray(uint *arr) {
-#define MODIFIES_ISLT(a,b) ((*a)<(*b))
+static void _uniqueArray(char **arr) {
+#define MODIFIES_ISLT(a,b) (strcmp((*a),(*b)) > 0)
 	int count = array_len(arr);
-	QSORT(uint, arr, count, MODIFIES_ISLT);
+	QSORT(char *, arr, count, MODIFIES_ISLT);
 	uint unique_idx = 0;
 	for(int i = 0; i < count - 1; i ++) {
 		if(arr[i] != arr[i + 1]) {
@@ -68,11 +68,11 @@ void _OpBase_RemoveNode(OpBase *parent, OpBase *child) {
 	child->parent = NULL;
 }
 
-uint *_ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, rax *references) {
+char **_ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, rax *references) {
 	/* List of entities which had their ID resolved
 	 * at this point of execution, should include all
 	 * previously modified entities (up the execution plan). */
-	uint *seen = array_new(uint, 0);
+	char **seen = array_new(char *, 0);
 
 	/* If this operation is already associated with a record map, it is from
 	 * an earlier ExecutionPlanSegment and its IDs are not comparable. */
@@ -87,7 +87,7 @@ uint *_ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, rax *references
 
 	/* Traverse execution plan, upwards. */
 	for(int i = 0; i < root->childCount; i++) {
-		uint *saw = _ExecutionPlan_LocateReferences(root->children[i], op, references);
+		char **saw = _ExecutionPlan_LocateReferences(root->children[i], op, references);
 
 		/* Quick return if op was located. */
 		if(*op) {
@@ -115,9 +115,9 @@ uint *_ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, rax *references
 	for(uint i = 0; i < seen_count; i++) {
 		// Too many unmatched references.
 		if(match > (seen_count - i)) break;
-		uint seen_id = seen[i];
+		char *seen_id = seen[i];
 
-		if(raxFind(references, (unsigned char *)&seen_id, sizeof(seen_id)) != raxNotFound) {
+		if(raxFind(references, (unsigned char *)&seen_id, strlen(seen_id)) != raxNotFound) {
 			match--;
 			// All references have been resolved.
 			if(match == 0) {
@@ -237,7 +237,7 @@ void ExecutionPlan_Taps(OpBase *root, OpBase ***taps) {
 
 OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references) {
 	OpBase *op = NULL;
-	uint *temp = _ExecutionPlan_LocateReferences(root, &op, references);
+	char **temp = _ExecutionPlan_LocateReferences(root, &op, references);
 	array_free(temp);
 	return op;
 }

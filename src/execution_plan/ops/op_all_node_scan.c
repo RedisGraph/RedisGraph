@@ -30,7 +30,7 @@ OpBase *NewAllNodeScanOp(const Graph *g, QGNode *n) {
 	allNodeScan->op.toString = AllNodeScanToString;
 	allNodeScan->op.free = AllNodeScanFree;
 
-	OpBase_Modifies(allNodeScan, n->alias);
+	OpBase_Modifies((OpBase *)allNodeScan, n->alias);
 
 	return (OpBase *)allNodeScan;
 }
@@ -45,7 +45,7 @@ Record AllNodeScanConsume(OpBase *opBase) {
 	Entity *en = (Entity *)DataBlockIterator_Next(op->iter);
 	if(en == NULL) return NULL;
 
-	Record r = OpBase_CreateRecord(op);
+	Record r = OpBase_CreateRecord((OpBase *)op);
 	if(op->nodeRecIdx == -1) {
 		op->nodeRecIdx = Record_GetEntryIdx(r, op->n->alias);
 	}

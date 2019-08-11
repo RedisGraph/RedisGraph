@@ -34,8 +34,7 @@ void Arrangement_Print(Arrangement arrangement, uint size) {
 	printf("Arrangement_Print\n");
 	for(uint i = 0; i < size; i++) {
 		AlgebraicExpression *exp = arrangement[i];
-		/* printf("%d, src: %s, dest: %s\n", i, exp->src_node->alias, exp->dest_node->alias); */
-		printf("%d, src: %u, dest: %u\n", i, exp->src_node->id, exp->dest_node->id);
+		printf("%d, src: %s, dest: %s\n", i, exp->src_node->alias, exp->dest_node->alias);
 	}
 }
 

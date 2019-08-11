@@ -12,8 +12,8 @@ void selectEntryPoint(AlgebraicExpression *ae, const FT_FilterNode *tree) {
 	if(ae->operand_count == 1 && ae->src_node == ae->dest_node) return;
 
 	rax *modifies = FilterTree_CollectModified(tree);
-	const char *src_alias = ae->src_node->alias);
-	const char *dest_alias = ae->dest_node->alias);
+	const char *src_alias = ae->src_node->alias;
+	const char *dest_alias = ae->dest_node->alias;
 
 	bool destFiltered = false;
 	bool srcLabeled = ae->src_node->label != NULL;
@@ -36,11 +36,11 @@ void selectEntryPoint(AlgebraicExpression *ae, const FT_FilterNode *tree) {
 	 * (N)-[relation]->(T) N is of the same type T, and type of
 	 * either source or destination node is T. */
 	if(destFiltered) {
-	AlgebraicExpression_Transpose(ae);
+		AlgebraicExpression_Transpose(ae);
 	} else if(srcLabeled) {
-	goto cleanup;
-} else if(destLabeled) {
-	AlgebraicExpression_Transpose(ae);
+		goto cleanup;
+	} else if(destLabeled) {
+		AlgebraicExpression_Transpose(ae);
 	}
 
 cleanup:

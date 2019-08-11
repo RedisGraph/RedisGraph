@@ -196,7 +196,7 @@ static Record _handoff(OpAggregate *op) {
 
 	uint exp_count = array_len(op->exps);
 	uint order_exp_count = array_len(op->order_exps);
-	Record r = Record_New(exp_count + order_exp_count);
+	Record r = OpBase_CreateRecord((OpBase *)op);
 
 	// Populate record.
 	uint aggIdx = 0; // Index into group aggregated exps.
@@ -235,7 +235,7 @@ static Record _handoff(OpAggregate *op) {
 	return r;
 }
 
-OpBase *NewAggregateOp(AR_ExpNode **exps, uint *modifies) {
+OpBase *NewAggregateOp(AR_ExpNode **exps) {
 	OpAggregate *aggregate = malloc(sizeof(OpAggregate));
 	AST *ast = AST_GetFromTLS();
 	aggregate->ast = ast;
@@ -256,7 +256,7 @@ OpBase *NewAggregateOp(AR_ExpNode **exps, uint *modifies) {
 	aggregate->op.reset = AggregateReset;
 	aggregate->op.free = AggregateFree;
 
-	aggregate->op.modifies = modifies;
+	assert("Introduce modified entities");
 
 	return (OpBase *)aggregate;
 }

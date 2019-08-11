@@ -48,7 +48,7 @@ int Record_GetEntryIdx(Record r, const char *alias) {
 	void *idx = raxFind(r->mapping, (unsigned char *)alias, strlen(alias));
 	if(idx == raxNotFound) {
 		// Introduce new entry.
-		idx = (void*)Record_length(r);
+		idx = (void *)Record_length(r);
 		raxInsert(r->mapping, (unsigned char *)alias, strlen(alias), idx, NULL);
 
 		// Make sure record has enough space to accommodate entry.
@@ -77,11 +77,11 @@ int Record_AliasEntry(Record r, const char *entry, const char *alias) {
 Record Record_Clone(const Record r) {
 	// Determin record size.
 	Record clone = Record_New(r->mapping);
-	
-    int entry_count = Record_length(r);
+
+	int entry_count = Record_length(r);
 	size_t required_record_size = sizeof(Entry) * entry_count;
 
-    memcpy(clone->entries, r->entries, required_record_size);
+	memcpy(clone->entries, r->entries, required_record_size);
 	return clone;
 }
 

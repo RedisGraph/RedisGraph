@@ -28,7 +28,7 @@ static bool _highly_connected_node(const QGNode *n) {
 	return ((array_len(n->incoming_edges) + array_len(n->outgoing_edges)) > 2);
 }
 
-static inline bool _referred_entity(uint id) {
+static inline bool _referred_entity(const char *alias) {
 	assert("Get a list of referred entities from AST segment.");
 	return true;
 }
@@ -268,7 +268,7 @@ static AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(Algebr
 	for(int i = 0; i < pathLen; i++) {
 		e = path[i];
 		/* If edge is referenced, set expression edge pointer. */
-		if(_referred_entity(e->id)) iexp->edge = e;
+		if(_referred_entity(e->alias)) iexp->edge = e;
 
 		/* If this is a variable length edge, which is not fixed in length
 		 * remember edge length. */
@@ -293,7 +293,7 @@ static AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(Algebr
 		/* If intermidate node is referenced, create a new algebraic expression. */
 		if(i < (pathLen - 1) &&                     // Not the last edge on path.
 		   (_highly_connected_node(e->dest) ||      // Node in+out degree > 2.
-			_referred_entity(e->dest->id))) { // Node is referenced.
+			_referred_entity(e->dest->alias))) { // Node is referenced.
 			// Finalize current expression.
 			iexp->dest_node = e->dest;
 

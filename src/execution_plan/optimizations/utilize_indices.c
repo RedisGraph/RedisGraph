@@ -433,7 +433,7 @@ cleanup:
 	if(root) {
 		// Pass ownership of root to iterator.
 		RSResultsIterator *iter = RediSearch_GetResultsIterator(root, rs_idx);
-		OpBase *indexOp = NewIndexScanOp(scan->g, scan->node, scan->nodeRecIdx, rs_idx, iter);
+		OpBase *indexOp = NewIndexScanOp(scan->g, scan->node, rs_idx, iter);
 		ExecutionPlan_ReplaceOp(plan, (OpBase *)scan, indexOp);
 		OpBase_Free((OpBase *)scan);
 	}

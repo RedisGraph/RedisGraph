@@ -12,17 +12,16 @@
 #include "../ops/op_conditional_traverse.h"
 #include "../ops/op_cond_var_len_traverse.h"
 
-static bool _entity_resolved(OpBase *root, uint entity_record_idx) {
+static bool _entity_resolved(OpBase *root, const char *alias) {
 	uint count = (root->modifies) ? array_len(root->modifies) : 0;
 
 	for(uint i = 0; i < count; i++) {
-		uint modifies_id = root->modifies[i];
-		if(modifies_id == entity_record_idx) return true;
+		if(strcmp(alias, root->modifies[i]) == 0) return true;
 	}
 
 	for(int i = 0; i < root->childCount; i++) {
 		OpBase *child = root->children[i];
-		if(_entity_resolved(child, entity_record_idx)) return true;
+		if(_entity_resolved(child, alias)) return true;
 	}
 
 	return false;
@@ -76,15 +75,13 @@ void reduceTraversal(ExecutionPlan *plan) {
 		   ae->operands[0].diagonal) continue;
 
 		/* Search to see if dest is already resolved */
-		uint dest_id = ae->dest_node->alias;
-		assert(entity_record_idx != IDENTIFIER_NOT_FOUND);
-		if(!_entity_resolved(op->children[0], entity_record_idx)) continue;
+		if(!_entity_resolved(op->children[0], ae->dest_node->alias)) continue;
 
 		/* Both src and dest are already known
 		 * perform expand into instaed of traverse. */
 		if(op->type == OPType_CONDITIONAL_TRAVERSE) {
 			CondTraverse *traverse = (CondTraverse *)op;
-			OpBase *expand_into = NewExpandIntoOp(traverse->ae, op->record_map, traverse->recordsCap);
+			OpBase *expand_into = NewExpandIntoOp(traverse->ae);
 
 			// Set traverse algebraic_expression to NULL to avoid early free.
 			traverse->ae = NULL;

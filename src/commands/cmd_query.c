@@ -11,9 +11,9 @@
 #include "../graph/graph.h"
 #include "../index/index.h"
 #include "../util/rmalloc.h"
+#include "../parser/parser.h"
 #include "../util/simple_timer.h"
 #include "../execution_plan/execution_plan.h"
-#include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
 
 extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
 
@@ -72,8 +72,7 @@ void _MGraph_Query(void *args) {
 	AST *ast = NULL;
 
 	// Parse the query to construct an AST
-	cypher_parse_result_t *parse_result = cypher_parse(qctx->query, NULL, NULL,
-													   CYPHER_PARSE_ONLY_STATEMENTS);
+	cypher_parse_result_t *parse_result = parse(qctx->query);
 	if(parse_result == NULL) goto cleanup;
 
 	bool readonly = AST_ReadOnly(parse_result);

@@ -153,10 +153,9 @@ OpBase *NewUpdateOp(GraphContext *gc, EntityUpdateEvalCtx *update_exps, uint upd
 	op_update->op.init = OpUpdateInit;
 
 	// Construct the array of IDs this operation modifies
-	op_update->op.modifies = array_new(uint, update_exp_count);
 	for(uint i = 0; i < update_exp_count; i ++) {
 		// TODO does 'modifies' need to be unique?
-		OpBase_Modifies(op_update, update_exps[i].alias);
+		update_exps[i].entityRecIdx = OpBase_Modifies((OpBase *)op_update, update_exps[i].alias);
 	}
 	return (OpBase *)op_update;
 }
@@ -176,8 +175,7 @@ Record OpUpdateConsume(OpBase *opBase) {
 	if(op->updates_commited) return _handoff(op);
 
 	while((r = OpBase_Consume(child))) {
-		/* Evaluate each update expression and store result
-		 * for later execution. */
+		// Evaluate each update expression and store result for later execution.
 		EntityUpdateEvalCtx *update_expression = op->update_expressions;
 		for(uint i = 0; i < op->update_expressions_count; i++, update_expression++) {
 			SIValue new_value = AR_EXP_Evaluate(update_expression->exp, r);

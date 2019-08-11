@@ -22,7 +22,7 @@ static AR_ExpNode **_getOrderExpressions(OpBase *op) {
 	return _getOrderExpressions(op->parent);
 }
 
-OpBase *NewProjectOp(AR_ExpNode **exps, uint *modifies) {
+OpBase *NewProjectOp(AR_ExpNode **exps) {
 	AST *ast = AST_GetFromTLS();
 	OpProject *project = malloc(sizeof(OpProject));
 	project->ast = ast;
@@ -41,7 +41,7 @@ OpBase *NewProjectOp(AR_ExpNode **exps, uint *modifies) {
 	project->op.reset = ProjectReset;
 	project->op.free = ProjectFree;
 
-	project->op.modifies = modifies;
+	assert("Set modifiers");
 
 	return (OpBase *)project;
 }
@@ -72,10 +72,11 @@ Record ProjectConsume(OpBase *opBase) {
 
 		if(op->singleResponse) return NULL;
 		op->singleResponse = true;
-		r = Record_New(opBase->record_map->record_len);  // Fake empty record.
+		// Fake empty record.
+		r = OpBase_CreateRecord((OpBase *)op);
 	}
 
-	Record projection = Record_New(op->exp_count + op->order_exp_count);
+	Record projection = OpBase_CreateRecord((OpBase *)op);
 	int rec_idx = 0;
 	for(unsigned short i = 0; i < op->exp_count; i++) {
 		SIValue v = AR_EXP_Evaluate(op->exps[i], r);

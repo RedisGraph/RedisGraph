@@ -30,16 +30,25 @@ inline Record OpBase_Consume(OpBase *op) {
 	return op->consume(op);
 }
 
-void OpBase_Modifies(OpBase *op, const char *alias) {
-	if(!op->modifies) op->modifies = array_new(uint, 1);
+int OpBase_Modifies(OpBase *op, const char *alias) {
+	if(!op->modifies) op->modifies = array_new(char *, 1);
 	op->modifies = array_append(op->modifies, alias);
 
 	/* Make sure alias has an entry associated with it
 	 * within the record mapping. */
-	if(raxFind(op->record_map, (unsigned char *)alias, strlen(alias)) == raxNotFound) {
-		uint alias_count = raxSize(op->record_map);
-		raxInsert(op->record_map, (unsigned char *)alias, strlen(alias), (void *)alias_count, NULL);
+	void *id = raxFind(op->record_map, (unsigned char *)alias, strlen(alias));
+	if(id == raxNotFound) {
+		id = (void *)raxSize(op->record_map);
+		raxInsert(op->record_map, (unsigned char *)alias, strlen(alias), id, NULL);
 	}
+
+	return (int)id;
+}
+
+bool OpBase_Aware(OpBase *op, const char *alias, int *idx) {
+	void *rec_idx = raxFind(op->record_map, (unsigned char *)alias, strlen(alias));
+	if(idx) *idx = (int)rec_idx;
+	return (rec_idx != raxNotFound);
 }
 
 void OpBase_PropagateFree(OpBase *op) {

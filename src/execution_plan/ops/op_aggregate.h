@@ -37,7 +37,7 @@ typedef struct {
 	Record last_record;
 } OpAggregate;
 
-OpBase *NewAggregateOp(AR_ExpNode **expressions, uint *modifies);
+OpBase *NewAggregateOp(AR_ExpNode **expressions);
 OpResult AggregateInit(OpBase *opBase);
 Record AggregateConsume(OpBase *opBase);
 OpResult AggregateReset(OpBase *opBase);

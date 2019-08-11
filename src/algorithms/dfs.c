@@ -14,7 +14,7 @@ bool _DFS(QGNode *n, int level, int current_level, rax *visited, QGEdge ***path)
 	if(current_level >= level) return true;
 
 	// Mark n as visited, return if node already marked.
-	if(!raxInsert(visited, (unsigned char *)&n->id, sizeof(n->id), NULL, NULL)) {
+	if(!raxInsert(visited, (unsigned char *)n->alias, strlen(n->alias), NULL, NULL)) {
 		// We've already processed n.
 		return false;
 	}
@@ -24,9 +24,9 @@ bool _DFS(QGNode *n, int level, int current_level, rax *visited, QGEdge ***path)
 	bool self_pointing_edge;
 	for(uint i = 0; i < array_len(n->outgoing_edges); i++) {
 		QGEdge *e = n->outgoing_edges[i];
-		uint dest_id = e->dest->id;
-		self_pointing_edge = (dest_id == n->id);
-		not_seen = raxFind(visited, (unsigned char *)&dest_id, sizeof(dest_id)) == raxNotFound;
+		const char *dest = e->dest->alias;
+		self_pointing_edge = (strcmp(dest, n->alias) == 0);
+		not_seen = raxFind(visited, (unsigned char *)dest, strlen(dest)) == raxNotFound;
 		if(self_pointing_edge || not_seen) {
 			*path = array_append(*path, e);
 			if(_DFS(e->dest, level, ++current_level, visited, path)) return true;
@@ -36,9 +36,9 @@ bool _DFS(QGNode *n, int level, int current_level, rax *visited, QGEdge ***path)
 
 	for(uint i = 0; i < array_len(n->incoming_edges); i++) {
 		QGEdge *e = n->incoming_edges[i];
-		uint src_id = e->src->id;
-		self_pointing_edge = (src_id == n->id);
-		not_seen = raxFind(visited, (unsigned char *)&src_id, sizeof(src_id)) == raxNotFound;
+		const char *src = e->src->alias;
+		self_pointing_edge = (strcmp(src, n->alias) == 0);
+		not_seen = raxFind(visited, (unsigned char *)src, strlen(src)) == raxNotFound;
 		if(self_pointing_edge || not_seen) {
 			*path = array_append(*path, e);
 			if(_DFS(e->src, level, ++current_level, visited, path)) return true;
@@ -46,7 +46,7 @@ bool _DFS(QGNode *n, int level, int current_level, rax *visited, QGEdge ***path)
 		}
 	}
 
-	raxRemove(visited, (unsigned char *)&n->id, sizeof(n->id), NULL);
+	raxRemove(visited, (unsigned char *)n->alias, strlen(n->alias), NULL);
 	return false;
 }
 

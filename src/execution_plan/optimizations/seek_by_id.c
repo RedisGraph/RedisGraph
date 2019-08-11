@@ -107,30 +107,28 @@ void _reduceTap(ExecutionPlan *plan, OpBase *tap) {
 			EntityID id;
 			bool reverse;
 			if(_idFilter(f, &rel, &id, &reverse)) {
-				int nodeRecIdx = -1;
 				NodeID minId = ID_RANGE_UNBOUND;
 				NodeID maxId = ID_RANGE_UNBOUND;
 				bool inclusiveMin = false;
 				bool inclusiveMax = false;
 				OpBase *opNodeByIdSeek;
-
+				QGNode *n;
 				switch(tap->type) {
 				case OPType_ALL_NODE_SCAN:
-					nodeRecIdx = ((AllNodeScan *)tap)->nodeRecIdx;
+					n = ((AllNodeScan *)tap)->n;
 					break;
 				case OPType_NODE_BY_LABEL_SCAN:
-					nodeRecIdx = ((NodeByLabelScan *)tap)->nodeRecIdx;
+					n = ((NodeByLabelScan *)tap)->node;
 					break;
 				case OPType_INDEX_SCAN:
-					nodeRecIdx = ((IndexScan *)tap)->nodeRecIdx;
+					n = ((IndexScan *)tap)->n;
 					break;
 				default:
 					assert(false);
 				}
 
 				_setupIdRange(rel, id, reverse, &minId, &maxId, &inclusiveMin, &inclusiveMax);
-				opNodeByIdSeek = NewOpNodeByIdSeekOp(nodeRecIdx, minId, maxId,
-													 inclusiveMin, inclusiveMax);
+				opNodeByIdSeek = NewOpNodeByIdSeekOp(n, minId, maxId, inclusiveMin, inclusiveMax);
 
 				// Managed to reduce!
 				ExecutionPlan_ReplaceOp(plan, tap, opNodeByIdSeek);

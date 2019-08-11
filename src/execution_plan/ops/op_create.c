@@ -7,93 +7,19 @@
 #include "op_create.h"
 #include "../../util/arr.h"
 #include "../../schema/schema.h"
+#include "../../ast/ast_build_op_contexts.h"
 #include <assert.h>
-
-OpBase *NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
-	OpCreate *op_create = calloc(1, sizeof(OpCreate));
-	op_create->gc = GraphContext_GetFromTLS();
-	op_create->records = NULL;
-	op_create->nodes_to_create = nodes;
-	op_create->edges_to_create = edges;
-	op_create->created_nodes = array_new(Node *, 0);
-	op_create->created_edges = array_new(Edge *, 0);
-	op_create->node_properties = array_new(PropertyMap *, 0);
-	op_create->edge_properties = array_new(PropertyMap *, 0);
-	op_create->stats = stats;
-
-	// Set our Op operations
-	OpBase_Init(&op_create->op);
-	op_create->op.name = "Create";
-	op_create->op.type = OPType_CREATE;
-	op_create->op.consume = OpCreateConsume;
-	op_create->op.init = OpCreateInit;
-	op_create->op.reset = OpCreateReset;
-	op_create->op.free = OpCreateFree;
-
-	uint node_blueprint_count = array_len(nodes);
-	uint edge_blueprint_count = array_len(edges);
-
-	for(uint i = 0; i < node_blueprint_count; i ++) OpBase_Modifies(op_create, nodes[i]->alias);
-	for(uint i = 0; i < edge_blueprint_count; i ++) OpBase_Modifies(op_create, edges[i]->alias);
-
-	return (OpBase *)op_create;
-}
 
 // TODO: improve, consolidate, etc
 static void _AddProperties(OpCreate *op, GraphEntity *ge, PropertyMap *props) {
 	if(props == NULL) return;
 
 	for(int i = 0; i < props->property_count; i++) {
-		// We're guarantee to find attribute ID.
-		Attribute_ID prop_id = GraphContext_GetAttributeID(op->gc, props->keys[i]);
-		GraphEntity_AddProperty(ge, prop_id, props->values[i]);
+		Attribute_ID attr_id = props->attr_ids[i];
+		GraphEntity_AddProperty(ge, attr_id, props->values[i]);
 	}
 
 	op->stats->properties_set += props->property_count;
-}
-
-void _CreateNodes(OpCreate *op, Record r) {
-	uint nodes_to_create_count = array_len(op->nodes_to_create);
-	for(uint i = 0; i < nodes_to_create_count; i++) {
-		/* Get specified node to create. */
-		QGNode *n = op->nodes_to_create[i].node;
-
-		/* Create a new node. */
-		Node *newNode = Record_GetNode(r, op->nodes_to_create[i].node_idx);
-		newNode->entity = NULL;
-		newNode->label = n->label;
-		newNode->labelID = n->labelID;
-
-		/* Save node for later insertion. */
-		op->created_nodes = array_append(op->created_nodes, newNode);
-
-		/* Save reference to property map */
-		op->node_properties = array_append(op->node_properties, op->nodes_to_create[i].properties);
-	}
-}
-
-void _CreateEdges(OpCreate *op, Record r) {
-	uint edges_to_create_count = array_len(op->edges_to_create);
-	for(uint i = 0; i < edges_to_create_count; i++) {
-		/* Get specified edge to create. */
-		QGEdge *e = op->edges_to_create[i].edge;
-
-		/* Retrieve source and dest nodes. */
-		Node *src_node = Record_GetNode(r, op->edges_to_create[i].src_idx);
-		Node *dest_node = Record_GetNode(r, op->edges_to_create[i].dest_idx);
-
-		/* Create the actual edge. */
-		Edge *newEdge = Record_GetEdge(r, op->edges_to_create[i].edge_idx);
-		if(array_len(e->reltypes) > 0) newEdge->relationship = e->reltypes[0];
-		Edge_SetSrcNode(newEdge, src_node);
-		Edge_SetDestNode(newEdge, dest_node);
-
-		/* Save edge for later insertion. */
-		op->created_edges = array_append(op->created_edges, newEdge);
-
-		/* Save reference to property map */
-		op->edge_properties = array_append(op->edge_properties, op->edges_to_create[i].properties);
-	}
 }
 
 /* Commit insertions. */
@@ -218,21 +144,220 @@ static void _CommitNewEntities(OpCreate *op) {
 
 	// Lock everything.
 	Graph_AcquireWriteLock(g);
+
 	Graph_SetMatrixPolicy(g, RESIZE_TO_CAPACITY);
 	uint node_count = array_len(op->created_nodes);
 	if(node_count > 0) _CommitNodes(op);
 	if(array_len(op->created_edges) > 0) _CommitEdges(op);
 	Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
+
 	// Release lock.
 	Graph_ReleaseLock(g);
 
 	op->stats->nodes_created += node_count;
 }
 
+static void _CreateNodes(OpCreate *op, Record r) {
+	uint nodes_to_create_count = array_len(op->nodes_to_create);
+	for(uint i = 0; i < nodes_to_create_count; i++) {
+		/* Get specified node to create. */
+		QGNode *n = op->nodes_to_create[i].node;
+
+		/* Create a new node. */
+		Node *newNode = Record_GetNode(r, op->nodes_to_create[i].rec_idx);
+		newNode->entity = NULL;
+		newNode->label = n->label;
+		newNode->labelID = n->labelID;
+
+		/* Save node for later insertion. */
+		op->created_nodes = array_append(op->created_nodes, newNode);
+
+		/* Save reference to property map
+		 * TODO: properties should be AR, as such we should extend QGNode and QGEdge
+		 * to hold properties */
+		op->node_properties = array_append(op->node_properties, op->nodes_to_create[i].properties);
+	}
+}
+
+static void _CreateEdges(OpCreate *op, Record r) {
+	uint edges_to_create_count = array_len(op->edges_to_create);
+	for(uint i = 0; i < edges_to_create_count; i++) {
+		/* Get specified edge to create. */
+		QGEdge *e = op->edges_to_create[i].edge;
+
+		/* Retrieve source and dest nodes. */
+		Node *src_node = Record_GetNode(r, op->edges_to_create[i].src_rec_idx);
+		Node *dest_node = Record_GetNode(r, op->edges_to_create[i].dest_rec_idx);
+		assert(src_node && dest_node);
+
+		/* Create the actual edge. */
+		Edge *newEdge = Record_GetEdge(r, op->edges_to_create[i].rec_idx);
+		if(array_len(e->reltypes) > 0) newEdge->relationship = e->reltypes[0];
+		Edge_SetSrcNode(newEdge, src_node);
+		Edge_SetDestNode(newEdge, dest_node);
+
+		/* Save edge for later insertion. */
+		op->created_edges = array_append(op->created_edges, newEdge);
+
+		/* Save reference to property map */
+		op->edge_properties = array_append(op->edge_properties, op->edges_to_create[i].properties);
+	}
+}
+
 static Record _handoff(OpCreate *op) {
 	Record r = NULL;
 	if(array_len(op->records)) r = array_pop(op->records);
 	return r;
+}
+
+//------------------------------------------------------------------------------
+//=== Op create context initialization -----------------------------------------
+//------------------------------------------------------------------------------
+static inline EdgeCreateCtx _NewEdgeCreateCtx(GraphContext *gc, QGEdge *e,
+											  const cypher_astnode_t *ast_edge,
+											  int rec_idx, int src_rec_idx, int dest_rec_idx) {
+	// Get properties.
+	const cypher_astnode_t *ast_props = cypher_ast_rel_pattern_get_properties(ast_edge);
+	PropertyMap *properties = AST_ConvertPropertiesMap(ast_props);
+
+	// Introduce properties.
+	properties->attr_ids = malloc(sizeof(Attribute_ID) * properties->property_count);
+	for(int i = 0; i < properties->property_count; i++) {
+		properties->attr_ids[i] = GraphContext_GetAttributeID(gc, properties->keys[i]);
+	}
+
+	EdgeCreateCtx new_edge_ctx = { rec_idx, src_rec_idx, dest_rec_idx, e, properties };
+	return new_edge_ctx;
+}
+
+static inline NodeCreateCtx _NewNodeCreateCtx(const GraphContext *gc, QGNode *n,
+											  const cypher_astnode_t *ast_node, int rec_idx) {
+	// Get properties.
+	const cypher_astnode_t *ast_props = cypher_ast_node_pattern_get_properties(ast_node);
+	PropertyMap *properties = AST_ConvertPropertiesMap(ast_props);
+
+	// Introduce properties.
+	properties->attr_ids = malloc(sizeof(Attribute_ID) * properties->property_count);
+	for(int i = 0; i < properties->property_count; i++) {
+		properties->attr_ids[i] = GraphContext_GetAttributeID(gc, properties->keys[i]);
+	}
+
+	NodeCreateCtx new_node_ctx = { rec_idx, n, properties };
+	return new_node_ctx;
+}
+
+static void _PrepareCreateContext(OpCreate *op, const AST *ast) {
+	GraphContext *gc = op->gc;
+	const cypher_astnode_t **create_clauses = AST_GetClauses(ast, CYPHER_AST_CREATE);
+	assert(create_clauses);
+	uint create_count = array_len(create_clauses);
+
+	// Roughly estimate query graph size.
+	uint entity_count = 0;
+	for(uint i = 0; i < create_count; i++) {
+		const cypher_astnode_t *clause = create_clauses[i];
+		const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clause);
+		entity_count += cypher_ast_pattern_npaths(pattern);
+	}
+
+	QueryGraph *qg = QueryGraph_New(entity_count, entity_count);
+	op->qg = qg;
+	op->nodes_to_create = array_new(NodeCreateCtx, entity_count);
+	op->edges_to_create = array_new(EdgeCreateCtx, entity_count);
+
+	for(uint i = 0; i < create_count; i++) {
+		const cypher_astnode_t *clause = create_clauses[i];
+		const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clause);
+		uint npaths = cypher_ast_pattern_npaths(pattern);
+		for(uint j = 0; j < npaths; j++) {
+			const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
+			// Add creation path to query graph.
+			QueryGraph_AddPath(gc, qg, path);
+
+			uint path_elem_count = cypher_ast_pattern_path_nelements(path);
+			/* See if current entity needs to be created:
+			* 1. We've yet to account for this entity.
+			* 2. Previouse operations do not set this entity. */
+			for(uint j = 0; j < path_elem_count; j += 2) {
+				const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, j);
+				const cypher_astnode_t *identifier;
+				identifier = cypher_ast_node_pattern_get_identifier(elem);
+
+				// Verify that it is not defined in a MATCH clause or a previous CREATE pattern
+				const char *alias = cypher_ast_identifier_get_name(identifier);
+
+				/* Skip if entity is being set by some previous operation.
+				 * or we've encountered this entity before*/
+				if(OpBase_Aware((OpBase *)op, alias, NULL)) continue;
+
+				/* Mark entity as being modified by operation.
+				 * TODO: do not count for anonymouse entities. */
+				int rec_idx = OpBase_Modifies((OpBase *)op, alias);
+				QGNode *n = QueryGraph_GetNodeByAlias(qg, alias);
+				NodeCreateCtx new_node = _NewNodeCreateCtx(gc, n, elem, rec_idx);
+				op->nodes_to_create = array_append(op->nodes_to_create, new_node);
+			}
+
+			for(uint j = 1; j < path_elem_count; j += 2) {
+				const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, j);
+				const cypher_astnode_t *identifier;
+				identifier = cypher_ast_rel_pattern_get_identifier(elem);
+
+				// Verify that it is not defined in a MATCH clause or a previous CREATE pattern
+				const char *alias = cypher_ast_identifier_get_name(identifier);
+
+				/* Skip if entity is being set by some previous operation.
+				 * or we've encountered this entity before*/
+				if(OpBase_Aware((OpBase *)op, alias, NULL)) continue;
+
+				/* Mark entity as being modified by operation.
+				 * TODO: do not count for anonymouse entities. */
+				int rec_idx = OpBase_Modifies((OpBase *)op, alias);
+
+				QGEdge *e = QueryGraph_GetEdgeByAlias(qg, alias);
+				QGNode *src = e->src;
+				QGNode *dest = e->dest;
+				int src_rec_idx;
+				int dest_rec_idx;
+				assert(OpBase_Aware((OpBase *)op, src->alias, &src_rec_idx));
+				assert(OpBase_Aware((OpBase *)op, dest->alias, &dest_rec_idx));
+				EdgeCreateCtx new_edge = _NewEdgeCreateCtx(gc, e, elem, rec_idx, src_rec_idx, dest_rec_idx);
+				op->edges_to_create = array_append(op->edges_to_create, new_edge);
+			}
+		}
+	}
+	array_free(create_clauses);
+}
+
+OpBase *NewCreateOp(ResultSetStatistics *stats, const AST *ast) {
+	OpCreate *op_create = calloc(1, sizeof(OpCreate));
+	op_create->stats = stats;
+	op_create->records = NULL;
+	op_create->nodes_to_create = NULL;
+	op_create->edges_to_create = NULL;
+	op_create->gc = GraphContext_GetFromTLS();
+	op_create->created_nodes = array_new(Node *, 0);
+	op_create->created_edges = array_new(Edge *, 0);
+
+	// op_create->node_properties = array_new(PropertyMap *, 0);
+	// op_create->edge_properties = array_new(PropertyMap *, 0);
+
+	// Set's operation modified entities.
+	_PrepareCreateContext(op_create, ast);
+
+	// Set our Op operations
+	OpBase_Init(&op_create->op);
+	op_create->op.name = "Create";
+	op_create->op.type = OPType_CREATE;
+	op_create->op.consume = OpCreateConsume;
+	op_create->op.init = OpCreateInit;
+	op_create->op.reset = OpCreateReset;
+	op_create->op.free = OpCreateFree;
+
+	uint node_blueprint_count = array_len(op_create->nodes_to_create);
+	uint edge_blueprint_count = array_len(op_create->edges_to_create);
+
+	return (OpBase *)op_create;
 }
 
 OpResult OpCreateInit(OpBase *opBase) {
@@ -324,4 +449,6 @@ void OpCreateFree(OpBase *ctx) {
 		array_free(op->created_edges);
 		array_free(op->edge_properties);
 	}
+
+	if(op->qg) QueryGraph_Free(op->qg);
 }

@@ -39,16 +39,12 @@ void _DeleteEntities(OpDelete *op) {
 	if(op->stats) op->stats->relationships_deleted += relationships_deleted;
 }
 
-OpBase *NewDeleteOp(uint *nodes_ref, uint *edges_ref, ResultSetStatistics *stats) {
+OpBase *NewDeleteOp(QueryGraph *qg, char **deleted_entities, ResultSetStatistics *stats) {
 	OpDelete *op_delete = malloc(sizeof(OpDelete));
 
 	op_delete->gc = GraphContext_GetFromTLS();
-
-	op_delete->nodes_to_delete = nodes_ref;
-	op_delete->edges_to_delete = edges_ref;
-	op_delete->node_count = array_len(op_delete->nodes_to_delete);
-	op_delete->edge_count = array_len(op_delete->edges_to_delete);
-
+	op_delete->node_count = 0;
+	op_delete->edge_count = 0;
 	op_delete->deleted_nodes = array_new(Node, 32);
 	op_delete->deleted_edges = array_new(Edge, 32);
 	op_delete->stats = stats;
@@ -62,14 +58,14 @@ OpBase *NewDeleteOp(uint *nodes_ref, uint *edges_ref, ResultSetStatistics *stats
 	op_delete->op.reset = OpDeleteReset;
 	op_delete->op.free = OpDeleteFree;
 
-	op_delete->op.modifies = array_new(uint, op_delete->node_count + op_delete->edge_count);
 	// Update modifies array to include all deleted nodes
 	for(uint i = 0; i < op_delete->node_count; i ++) {
-		op_delete->op.modifies = array_append(op_delete->op.modifies, nodes_ref[i]);
-	}
-	// Update modifies array to include all deleted edges
-	for(uint i = 0; i < op_delete->edge_count; i ++) {
-		op_delete->op.modifies = array_append(op_delete->op.modifies, edges_ref[i]);
+		const char *alias = deleted_entities[i];
+		if(QueryGraph_GetEntityTypeByAlias(qg, alias) == ENTITY_NODE) {
+			op_delete->nodes_to_delete[op_delete->node_count++] = OpBase_Modifies((OpBase *)op_delete, alias);
+		} else {
+			op_delete->edges_to_delete[op_delete->edge_count++] = OpBase_Modifies((OpBase *)op_delete, alias);
+		}
 	}
 
 	return (OpBase *)op_delete;

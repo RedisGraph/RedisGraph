@@ -24,7 +24,7 @@ OpBase *NewUnwindOp(const char *alias, AR_ExpNode **exps) {
 	unwind->op.free = UnwindFree;
 
 	// Handle introduced entity
-	OpBase_Modifies(unwind, alias);
+	OpBase_Modifies((OpBase *)unwind, alias);
 	unwind->unwindRecIdx = -1;
 
 	return (OpBase *)unwind;
@@ -41,7 +41,7 @@ Record UnwindConsume(OpBase *opBase) {
 	if(op->expIdx == array_len(op->expressions)) return NULL;
 
 	AR_ExpNode *exp = op->expressions[op->expIdx];
-	Record r = Record_New(opBase->record_map->record_len);
+	Record r = OpBase_CreateRecord((OpBase *)op);
 	SIValue v = AR_EXP_Evaluate(exp, r);
 	Record_AddScalar(r, op->unwindRecIdx, v);
 	op->expIdx++;

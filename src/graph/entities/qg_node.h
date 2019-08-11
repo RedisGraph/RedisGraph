@@ -14,16 +14,15 @@
 struct QGEdge;
 
 typedef struct {
-	uint id;                   /* Unique QueryGraph ID for Record mapping */
-	int labelID;               /* Label ID */
-	const char *label;         /* Label string */
-	const char *alias;         /* User-provided alias associated with this node */
-	struct QGEdge **outgoing_edges;   /* Array of incoming edges (ME)<-(SRC) */
-	struct QGEdge **incoming_edges;   /* Array of outgoing edges (ME)->(DEST) */
+	int labelID;                    /* Label ID */
+	const char *label;              /* Label string */
+	const char *alias;              /* User-provided alias associated with this node */
+	struct QGEdge **outgoing_edges; /* Array of incoming edges (ME)<-(SRC) */
+	struct QGEdge **incoming_edges; /* Array of outgoing edges (ME)->(DEST) */
 } QGNode;
 
 /* Creates a new node. */
-QGNode *QGNode_New(const char *label, const char *alias, uint id);
+QGNode *QGNode_New(const char *label, const char *alias);
 
 /* Returns number of edges pointing into node. */
 int QGNode_IncomeDegree(const QGNode *n);
@@ -51,4 +50,3 @@ int QGNode_ToString(const QGNode *n, char *buff, int buff_len);
 
 /* Frees allocated space by given node. */
 void QGNode_Free(QGNode *node);
-

@@ -10,34 +10,33 @@
 #include "../arithmetic/arithmetic_expression.h"
 #include <assert.h>
 
-static inline EdgeCreateCtx _NewEdgeCreateCtx(AST *ast, const QueryGraph *qg,
-											  const cypher_astnode_t *path, uint edge_path_offset) {
-	const cypher_astnode_t *ast_edge = cypher_ast_pattern_path_get_element(path, edge_path_offset);
-	const cypher_astnode_t *ast_props = cypher_ast_rel_pattern_get_properties(ast_edge);
-
+static inline EdgeCreateCtx _NewEdgeCreateCtx(const QueryGraph *qg,
+											  const cypher_astnode_t *ast_edge) {
 	// Get QueryGraph entity
-	QGEdge *e = QueryGraph_GetEdgeByAlias(qg,);
+	const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(ast_edge);
+	const char *alias = cypher_ast_identifier_get_name(identifier);
+	QGEdge *e = QueryGraph_GetEdgeByAlias(qg, alias);
 
-	const cypher_astnode_t *left = cypher_ast_pattern_path_get_element(path, edge_path_offset - 1);
-	const cypher_astnode_t *right = cypher_ast_pattern_path_get_element(path, edge_path_offset + 1);
+	// Get properties.
+	const cypher_astnode_t *ast_props = cypher_ast_rel_pattern_get_properties(ast_edge);
+	PropertyMap *properties = AST_ConvertPropertiesMap(ast_props);
 
-	EdgeCreateCtx new_edge = { .edge = e,
-							   .properties = AST_ConvertPropertiesMap(ast_props),
-							   .src_idx = src_idx
-							 };
+	EdgeCreateCtx new_edge = { .edge = e, .properties = properties };
 	return new_edge;
 }
 
-static inline NodeCreateCtx _NewNodeCreateCtx(AST *ast, const QueryGraph *qg,
+static inline NodeCreateCtx _NewNodeCreateCtx(const QueryGraph *qg,
 											  const cypher_astnode_t *ast_node) {
 	// Get QueryGraph entity
-	QGNode *n = QueryGraph_GetNodeByAlias(qg);
+	const cypher_astnode_t *identifier = cypher_ast_node_pattern_get_identifier(ast_node);
+	const char *alias = cypher_ast_identifier_get_name(identifier);
+	QGNode *n = QueryGraph_GetNodeByAlias(qg, alias);
 
+	// Get properties.
 	const cypher_astnode_t *ast_props = cypher_ast_node_pattern_get_properties(ast_node);
-	PropertyMap *properties = AST_ConvertPropertiesMap(ast_props, record_map);
+	PropertyMap *properties = AST_ConvertPropertiesMap(ast_props);
 
 	NodeCreateCtx new_node = { .node = n, .properties = properties };
-
 	return new_node;
 }
 
@@ -46,18 +45,20 @@ static void _buildAliasTrieMap(TrieMap *map, const cypher_astnode_t *entity) {
 
 	cypher_astnode_type_t type = cypher_astnode_type(entity);
 
-	char *alias = NULL;
+	const char *alias = NULL;
+	const cypher_astnode_t *identifier = NULL;
+
 	if(type == CYPHER_AST_NODE_PATTERN) {
-		const cypher_astnode_t *alias_node = cypher_ast_node_pattern_get_identifier(entity);
-		if(alias_node) alias = (char *)cypher_ast_identifier_get_name(alias_node);
+		identifier = cypher_ast_node_pattern_get_identifier(entity);
+		alias = cypher_ast_identifier_get_name(identifier);
 	} else if(type == CYPHER_AST_REL_PATTERN) {
-		const cypher_astnode_t *alias_node = cypher_ast_rel_pattern_get_identifier(entity);
-		if(alias_node) alias = (char *)cypher_ast_identifier_get_name(alias_node);
+		identifier = cypher_ast_rel_pattern_get_identifier(entity);
+		alias = cypher_ast_identifier_get_name(identifier);
 	} else if(type == CYPHER_AST_UNWIND) {
 		// The UNWIND clause aliases an expression
-		const cypher_astnode_t *alias_node = cypher_ast_unwind_get_alias(entity);
-		assert(alias_node);
-		alias = (char *)cypher_ast_identifier_get_name(alias_node);
+		identifier = cypher_ast_unwind_get_alias(entity);
+		assert(identifier);
+		alias = (char *)cypher_ast_identifier_get_name(identifier);
 	} else {
 		unsigned int child_count = cypher_astnode_nchildren(entity);
 		for(unsigned int i = 0; i < child_count; i++) {
@@ -68,7 +69,7 @@ static void _buildAliasTrieMap(TrieMap *map, const cypher_astnode_t *entity) {
 		return;
 	}
 
-	if(alias) TrieMap_Add(map, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+	if(alias) TrieMap_Add(map, (char *)alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
 }
 
 static TrieMap *_MatchMerge_DefinedEntities(const AST *ast) {
@@ -79,22 +80,15 @@ static TrieMap *_MatchMerge_DefinedEntities(const AST *ast) {
 	uint merge_count = (merge_clauses) ? array_len(merge_clauses) : 0;
 
 	TrieMap *map = NewTrieMap();
-
-	for(uint i = 0; i < match_count; i ++) {
-		_buildAliasTrieMap(map, match_clauses[i]);
-	}
-
-	for(uint i = 0; i < merge_count; i ++) {
-		_buildAliasTrieMap(map, merge_clauses[i]);
-	}
-
+	for(uint i = 0; i < match_count; i ++) _buildAliasTrieMap(map, match_clauses[i]);
+	for(uint i = 0; i < merge_count; i ++) _buildAliasTrieMap(map, merge_clauses[i]);
 	if(match_clauses) array_free(match_clauses);
 	if(merge_clauses) array_free(merge_clauses);
 
 	return map;
 }
 
-PropertyMap *AST_ConvertPropertiesMap(const cypher_astnode_t *props, RecordMap *record_map) {
+PropertyMap *AST_ConvertPropertiesMap(const cypher_astnode_t *props) {
 	if(props == NULL) return NULL;
 	assert(cypher_astnode_type(props) == CYPHER_AST_MAP); // TODO add parameter support
 
@@ -110,7 +104,7 @@ PropertyMap *AST_ConvertPropertiesMap(const cypher_astnode_t *props, RecordMap *
 		map->keys[prop_idx] = cypher_ast_prop_name_get_value(ast_key);
 
 		const cypher_astnode_t *ast_value = cypher_ast_map_get_value(props, prop_idx);
-		AR_ExpNode *value_exp = AR_EXP_FromExpression(record_map, ast_value);
+		AR_ExpNode *value_exp = AR_EXP_FromExpression(ast_value);
 		// TODO It will be really nice to store AR_ExpNodes rather than resolved SIValues;
 		// allowing things like "CREATE (:b {prop: a.name})"
 		SIValue value = AR_EXP_Evaluate(value_exp, NULL);
@@ -120,7 +114,7 @@ PropertyMap *AST_ConvertPropertiesMap(const cypher_astnode_t *props, RecordMap *
 	return map;
 }
 
-AR_ExpNode **_AST_ConvertCollection(const cypher_astnode_t *collection, RecordMap *record_map) {
+AR_ExpNode **_AST_ConvertCollection(const cypher_astnode_t *collection) {
 	assert(cypher_astnode_type(collection) == CYPHER_AST_COLLECTION);
 
 	uint expCount = cypher_ast_collection_length(collection);
@@ -128,7 +122,7 @@ AR_ExpNode **_AST_ConvertCollection(const cypher_astnode_t *collection, RecordMa
 
 	for(uint i = 0; i < expCount; i ++) {
 		const cypher_astnode_t *exp_node = cypher_ast_collection_get(collection, i);
-		AR_ExpNode *exp = AR_EXP_FromExpression(record_map, exp_node);
+		AR_ExpNode *exp = AR_EXP_FromExpression(exp_node);
 		expressions = array_append(expressions, exp);
 	}
 
@@ -160,7 +154,7 @@ EntityUpdateEvalCtx *AST_PrepareUpdateOp(const cypher_astnode_t *set_clause, uin
 
 		// Property name.
 		const cypher_astnode_t *prop_node = cypher_ast_property_operator_get_prop_name(key_to_set);
-		const char *prop = cypher_ast_prop_name_get_value(prop);
+		const char *prop = cypher_ast_prop_name_get_value(prop_node);
 
 		// Updated value.
 		const cypher_astnode_t *val_to_set_node = cypher_ast_set_property_get_expression(set_item);
@@ -180,35 +174,17 @@ EntityUpdateEvalCtx *AST_PrepareUpdateOp(const cypher_astnode_t *set_clause, uin
 // DELETE operations
 //------------------------------------------------------------------------------
 
-void AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause, const QueryGraph *qg,
-						 RecordMap *record_map, uint **nodes_ref, uint **edges_ref) {
+char **AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause) {
 	uint delete_count = cypher_ast_delete_nexpressions(delete_clause);
-	uint *nodes_to_delete = array_new(uint, delete_count);
-	uint *edges_to_delete = array_new(uint, delete_count);
+	char **deleted_entities = array_new(char *, delete_count);
 
 	for(uint i = 0; i < delete_count; i ++) {
 		const cypher_astnode_t *ast_expr = cypher_ast_delete_get_expression(delete_clause, i);
 		assert(cypher_astnode_type(ast_expr) == CYPHER_AST_IDENTIFIER);
 		const char *alias = cypher_ast_identifier_get_name(ast_expr);
-
-		// Ensure the entity is mapped in the Record
-		uint id = RecordMap_FindOrAddAlias(record_map, alias);
-
-		/* We need to determine whether each alias refers to a node or edge.
-		 * Currently, we'll do this by consulting with the QueryGraph. */
-		EntityType type = QueryGraph_GetEntityTypeByAlias(qg, alias);
-		if(type == ENTITY_NODE) {
-			nodes_to_delete = array_append(nodes_to_delete, id);
-		} else if(type == ENTITY_EDGE) {
-			edges_to_delete = array_append(edges_to_delete, id);
-		} else {
-			assert(false);
-		}
+		deleted_entities = array_append(deleted_entities, (char *)alias);
 	}
-
-	*nodes_ref = nodes_to_delete;
-	*edges_ref = edges_to_delete;
-
+	return deleted_entities;
 }
 
 //------------------------------------------------------------------------------
@@ -236,7 +212,7 @@ int AST_PrepareSortOp(const cypher_astnode_t *order_clause) {
 //------------------------------------------------------------------------------
 AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause) {
 	const cypher_astnode_t *collection = cypher_ast_unwind_get_expression(unwind_clause);
-	AR_ExpNode **exps = _AST_ConvertCollection(collection, record_map);
+	AR_ExpNode **exps = _AST_ConvertCollection(collection);
 	const char *alias = cypher_ast_identifier_get_name(cypher_ast_unwind_get_alias(unwind_clause));
 
 	AST_UnwindContext ctx = { .exps = exps, .alias = alias };
@@ -246,8 +222,8 @@ AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause) {
 //------------------------------------------------------------------------------
 // MERGE operations
 //------------------------------------------------------------------------------
-AST_MergeContext AST_PrepareMergeOp(RecordMap *record_map, AST *ast,
-									const cypher_astnode_t *merge_clause, QueryGraph *qg) {
+AST_MergeContext AST_PrepareMergeOp(AST *ast, const cypher_astnode_t *merge_clause,
+									QueryGraph *qg) {
 	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clause);
 
 	uint entity_count = cypher_ast_pattern_path_nelements(path);
@@ -257,16 +233,12 @@ AST_MergeContext AST_PrepareMergeOp(RecordMap *record_map, AST *ast,
 
 	for(uint i = 0; i < entity_count; i ++) {
 		const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, i);
-		// Register entity for Record if necessary
-		uint ast_id = AST_GetEntityIDFromReference(ast, elem);
-		RecordMap_FindOrAddID(record_map, ast_id);
-
 		if(i % 2) {  // Entity is a relationship
-			EdgeCreateCtx new_edge = _NewEdgeCreateCtx(record_map, ast, qg, path, i);
+			EdgeCreateCtx new_edge = _NewEdgeCreateCtx(qg, path);
 			edges_to_merge = array_append(edges_to_merge, new_edge);
-		} else { // Entity is a node
-			NodeCreateCtx new_node = _NewNodeCreateCtx(record_map, ast, qg,
-													   cypher_ast_pattern_path_get_element(path, i));
+		} else {
+			// Entity is a node
+			NodeCreateCtx new_node = _NewNodeCreateCtx(qg, elem);
 			nodes_to_merge = array_append(nodes_to_merge, new_node);
 		}
 	}
@@ -297,7 +269,7 @@ AST_CreateContext AST_PrepareCreateOp(GraphContext *gc, AST *ast, QueryGraph *qg
 		for(uint j = 0; j < npaths; j++) {
 			const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
 			// Add the path to the QueryGraph
-			QueryGraph_AddPath(gc, ast, qg, path);
+			QueryGraph_AddPath(gc, qg, path);
 
 			uint path_elem_count = cypher_ast_pattern_path_nelements(path);
 			for(uint j = 0; j < path_elem_count; j ++) {
@@ -309,21 +281,18 @@ AST_CreateContext AST_PrepareCreateOp(GraphContext *gc, AST *ast, QueryGraph *qg
 				ast_alias = (j % 2) ? cypher_ast_rel_pattern_get_identifier(elem) :
 							cypher_ast_node_pattern_get_identifier(elem);
 
-				if(ast_alias) {
-					// Encountered an aliased entity - verify that it is not defined
-					// in a MATCH clause or a previous CREATE pattern
-					const char *alias = cypher_ast_identifier_get_name(ast_alias);
+				// Verify that it is not defined in a MATCH clause or a previous CREATE pattern
+				const char *alias = cypher_ast_identifier_get_name(ast_alias);
 
-					// Skip entities defined in MATCH clauses or previously appearing in CREATE patterns
-					int rc = TrieMap_Add(match_entities, (char *)alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
-					if(rc == 0) continue;
-				}
+				// Skip entities defined in MATCH clauses or previously appearing in CREATE patterns
+				int rc = TrieMap_Add(match_entities, (char *)alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+				if(rc == 0) continue;
 
 				if(j % 2) {  // Relation
-					EdgeCreateCtx new_edge = _NewEdgeCreateCtx(ast, qg, path, j);
+					EdgeCreateCtx new_edge = _NewEdgeCreateCtx(qg, elem);
 					edges_to_create = array_append(edges_to_create, new_edge);
 				} else { // Node
-					NodeCreateCtx new_node = _NewNodeCreateCtx(ast, qg, elem);
+					NodeCreateCtx new_node = _NewNodeCreateCtx(qg, elem);
 					nodes_to_create = array_append(nodes_to_create, new_node);
 				}
 			}

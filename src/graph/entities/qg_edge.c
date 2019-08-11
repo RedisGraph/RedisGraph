@@ -10,32 +10,28 @@
 #include "../../util/arr.h"
 #include <assert.h>
 
-QGEdge *QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const char *alias,
-				   uint id) {
+QGEdge *QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const char *alias) {
 	QGEdge *e = rm_malloc(sizeof(QGEdge));
-	e->id = id;
-	e->alias = alias;
-	e->reltypes = array_new(const char *, 1);
-	e->reltypeIDs = array_new(int, 1);
 	e->src = NULL;
 	e->dest = NULL;
 	e->minHops = 1;
 	e->maxHops = 1;
+	e->alias = alias;
+	e->reltypeIDs = array_new(int, 1);
+	e->reltypes = array_new(const char *, 1);
 
 	return e;
 }
 
 QGEdge *QGEdge_Clone(const QGEdge *orig) {
 	QGEdge *e = rm_malloc(sizeof(QGEdge));
-	e->alias = orig->alias;
-	array_clone(e->reltypes, orig->reltypes);
-	array_clone(e->reltypeIDs, orig->reltypeIDs);
-	e->minHops = orig->minHops;
-	e->maxHops = orig->maxHops;
-	e->id = orig->id;
 	e->src = NULL;
 	e->dest = NULL;
-
+	e->alias = orig->alias;
+	e->minHops = orig->minHops;
+	e->maxHops = orig->maxHops;
+	array_clone(e->reltypes, orig->reltypes);
+	array_clone(e->reltypeIDs, orig->reltypeIDs);
 	return e;
 }
 
