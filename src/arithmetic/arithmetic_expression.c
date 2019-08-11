@@ -56,6 +56,57 @@ static bool _AR_SetFunction(AR_ExpNode *exp, AST_Operator op) {
 		exp->op.f = AR_ENDSWITH;
 		exp->op.func_name = "ENDS WITH";
 		return true;
+
+	case OP_AND:
+		exp->op.f = AR_AND;
+		exp->op.func_name = "AND";
+		return true;
+
+	case OP_OR:
+		exp->op.f = AR_OR;
+		exp->op.func_name = "OR";
+		return true;
+
+	case OP_XOR:
+		exp->op.f = AR_XOR;
+		exp->op.func_name = "XOR";
+		return true;
+
+	case OP_NOT:
+		exp->op.f = AR_NOT;
+		exp->op.func_name = "NOT";
+		return true;
+
+	case OP_GT:
+		exp->op.f = AR_GT;
+		exp->op.func_name = "GT";
+		return true;
+
+	case OP_GE:
+		exp->op.f = AR_GE;
+		exp->op.func_name = "GE";
+		return true;
+
+	case OP_LT:
+		exp->op.f = AR_LT;
+		exp->op.func_name = "LT";
+		return true;
+
+	case OP_LE:
+		exp->op.f = AR_LE;
+		exp->op.func_name = "LE";
+		return true;
+
+	case OP_EQUAL:
+		exp->op.f = AR_EQ;
+		exp->op.func_name = "EQUAL";
+		return true;
+
+	case OP_NEQUAL:
+		exp->op.f = AR_NE;
+		exp->op.func_name = "NEQUAL";
+		return true;
+
 	case OP_MOD: // TODO implement
 	case OP_POW: // TODO implement
 	// Includes operators like <, AND, etc
@@ -220,7 +271,9 @@ AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t 
 			// I think the + can always be safely ignored.
 			return AR_EXP_FromExpression(record_map, arg);
 		} else if(operator == CYPHER_OP_NOT) {
-			assert(false); // This should be handled in the FilterTree code
+			AR_ExpNode *op = _AR_EXP_NewOpNodeFromAST(OP_NOT, 1);
+			op->op.children[0] = AR_EXP_FromExpression(record_map, arg);
+			return op;
 		}
 	} else if(type == CYPHER_AST_BINARY_OPERATOR) {
 		const cypher_operator_t *operator = cypher_ast_binary_operator_get_operator(expr);
@@ -260,6 +313,7 @@ AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t 
 			op->op.children[offset++] = AR_EXP_FromExpression(record_map, value);
 		}
 
+		<<< <<< < HEAD
 		// Default value.
 		const cypher_astnode_t *deflt = cypher_ast_case_get_default(expr);
 		if(deflt == NULL) {
@@ -269,6 +323,34 @@ AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t 
 			op->op.children[offset] = AR_EXP_FromExpression(record_map, deflt);
 		}
 
+		== == == =
+	} else if(type == CYPHER_AST_COMPARISON) {
+		// 1 < 2 = 2 <= 4
+		AR_ExpNode *op;
+		uint length = cypher_ast_comparison_get_length(expr);
+		if(length > 1) {
+			op = _AR_EXP_NewOpNodeFromAST(OP_AND, length);
+			for(uint i = 0; i < length; i++) {
+				const cypher_operator_t *operator = cypher_ast_comparison_get_operator(expr, i);
+				AST_Operator operator_enum = AST_ConvertOperatorNode(operator);
+				const cypher_astnode_t *lhs_node = cypher_ast_comparison_get_argument(expr, i);
+				const cypher_astnode_t *rhs_node = cypher_ast_comparison_get_argument(expr, i + 1);
+
+				AR_ExpNode *inner_op = _AR_EXP_NewOpNodeFromAST(operator_enum, 2);
+				inner_op->op.children[0] = AR_EXP_FromExpression(record_map, lhs_node);
+				inner_op->op.children[1] = AR_EXP_FromExpression(record_map, rhs_node);
+				op->op.children[i] = inner_op;
+			}
+		} else {
+			const cypher_operator_t *operator = cypher_ast_comparison_get_operator(expr, 0);
+			AST_Operator operator_enum = AST_ConvertOperatorNode(operator);
+			op = _AR_EXP_NewOpNodeFromAST(operator_enum, 2);
+			const cypher_astnode_t *lhs_node = cypher_ast_comparison_get_argument(expr, 0);
+			const cypher_astnode_t *rhs_node = cypher_ast_comparison_get_argument(expr, 1);
+			op->op.children[0] = AR_EXP_FromExpression(record_map, lhs_node);
+			op->op.children[1] = AR_EXP_FromExpression(record_map, rhs_node);
+		}
+		>>> >>> > ternary operators
 		return op;
 	} else {
 		/*
@@ -1012,10 +1094,6 @@ SIValue AR_EXISTS(SIValue *argv, int argc) {
 	return SI_BoolVal(1);
 }
 
-SIValue AR_TIMESTAMP(SIValue *argv, int argc) {
-	return SI_LongVal(TemporalValue_NewTimestamp());
-}
-
 /* Conditional flow functions */
 /* Case When
  * Case Value [When Option i Then Result i] Else Default end */
@@ -1065,12 +1143,219 @@ SIValue AR_CASEWHEN(SIValue *argv, int argc) {
 	return d;
 }
 
-void AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func) {
+SIValue AR_AND(SIValue *argv, int argc) {
+	assert(argc > 1);
+	bool res = true;
+
 	if(__aeRegisteredFuncs == NULL) {
 		__aeRegisteredFuncs = NewTrieMap();
 	}
+	SIValue a = argv[0];
+	if(SIValue_IsNull(a)) return SI_NullVal();
+	assert((SI_TYPE(a) & T_BOOL));
 
-	TrieMap_Add(__aeRegisteredFuncs, func_name, func_name_len, func, NULL);
+	for(int i = 1; i < argc; i++) {
+		SIValue b = argv[i];
+		if(SIValue_IsNull(b)) return SI_NullVal();
+		assert((SI_TYPE(b) & T_BOOL));
+
+		res = a.longval && b.longval;
+		if(!res) break;
+		a = b;
+	}
+
+	return SI_BoolVal(res);
+}
+
+SIValue AR_OR(SIValue *argv, int argc) {
+	assert(argc > 1);
+	bool res = true;
+
+	SIValue a = argv[0];
+	if(SIValue_IsNull(a)) return SI_NullVal();
+	assert((SI_TYPE(a) & T_BOOL));
+
+	for(int i = 1; i < argc; i++) {
+		SIValue b = argv[i];
+		if(SIValue_IsNull(b)) return SI_NullVal();
+		assert((SI_TYPE(b) & T_BOOL));
+
+		res = a.longval || b.longval;
+		if(!res) break;
+		a = b;
+	}
+
+	return SI_BoolVal(res);
+}
+
+SIValue AR_XOR(SIValue *argv, int argc) {
+	assert(argc > 1);
+	bool res = true;
+
+	SIValue a = argv[0];
+	if(SIValue_IsNull(a)) return SI_NullVal();
+	assert((SI_TYPE(a) & T_BOOL));
+
+	for(int i = 1; i < argc; i++) {
+		SIValue b = argv[i];
+		if(SIValue_IsNull(b)) return SI_NullVal();
+		assert((SI_TYPE(b) & T_BOOL));
+
+		res = a.longval != b.longval;
+		if(!res) break;
+		a = b;
+	}
+
+	return SI_BoolVal(res);
+}
+
+SIValue AR_NOT(SIValue *argv, int argc) {
+	assert(argc == 1);
+	SIValue a = argv[0];
+	if(SIValue_IsNull(a)) return SI_NullVal();
+
+	assert(SI_TYPE(a) & T_BOOL);
+	return SI_BoolVal(!a.longval);
+}
+
+SIValue AR_GT(SIValue *argv, int argc) {
+	assert(argc == 2);
+	SIValue a = argv[0];
+	SIValue b = argv[1];
+
+	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
+
+	assert(SI_TYPE(a) == SI_TYPE(b));
+
+	switch(SI_TYPE(a)) {
+	case T_STRING:
+	case T_CONSTSTRING:
+		return SI_BoolVal(SIValue_Compare(a, b) > 0);
+	case T_INT64:
+	case T_DOUBLE:
+		return SI_BoolVal(SI_GET_NUMERIC(a) > SI_GET_NUMERIC(b));
+	default:
+		assert(false);
+	}
+}
+
+SIValue AR_GE(SIValue *argv, int argc) {
+	assert(argc == 2);
+	SIValue a = argv[0];
+	SIValue b = argv[1];
+
+	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
+
+	assert(SI_TYPE(a) == SI_TYPE(b));
+	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
+	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
+
+	switch(SI_TYPE(a)) {
+	case T_STRING:
+	case T_CONSTSTRING:
+		return SI_BoolVal(SIValue_Compare(a, b) >= 0);
+	case T_INT64:
+	case T_DOUBLE:
+		return SI_BoolVal(SI_GET_NUMERIC(a) >= SI_GET_NUMERIC(b));
+	default:
+		assert(false);
+	}
+}
+
+SIValue AR_LT(SIValue *argv, int argc) {
+	assert(argc == 2);
+	SIValue a = argv[0];
+	SIValue b = argv[1];
+
+	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
+
+	assert(SI_TYPE(a) == SI_TYPE(b));
+	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
+	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
+
+	switch(SI_TYPE(a)) {
+	case T_STRING:
+	case T_CONSTSTRING:
+		return SI_BoolVal(SIValue_Compare(a, b) < 0);
+	case T_INT64:
+	case T_DOUBLE:
+		return SI_BoolVal(SI_GET_NUMERIC(a) < SI_GET_NUMERIC(b));
+	default:
+		assert(false);
+	}
+}
+
+SIValue AR_LE(SIValue *argv, int argc) {
+	assert(argc == 2);
+	SIValue a = argv[0];
+	SIValue b = argv[1];
+
+	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
+
+	assert(SI_TYPE(a) == SI_TYPE(b));
+	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
+	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
+
+	switch(SI_TYPE(a)) {
+	case T_STRING:
+	case T_CONSTSTRING:
+		return SI_BoolVal(SIValue_Compare(a, b) <= 0);
+	case T_INT64:
+	case T_DOUBLE:
+		return SI_BoolVal(SI_GET_NUMERIC(a) <= SI_GET_NUMERIC(b));
+	default:
+		assert(false);
+	}
+}
+
+SIValue AR_EQ(SIValue *argv, int argc) {
+	assert(argc == 2);
+	SIValue a = argv[0];
+	SIValue b = argv[1];
+
+	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
+
+	assert(SI_TYPE(a) == SI_TYPE(b));
+	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
+	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
+
+	switch(SI_TYPE(a)) {
+	case T_STRING:
+	case T_CONSTSTRING:
+		return SI_BoolVal(SIValue_Compare(a, b) == 0);
+	case T_INT64:
+	case T_DOUBLE:
+		return SI_BoolVal(SI_GET_NUMERIC(a) == SI_GET_NUMERIC(b));
+	default:
+		assert(false);
+	}
+}
+
+SIValue AR_NE(SIValue *argv, int argc) {
+	assert(argc == 2);
+	SIValue a = argv[0];
+	SIValue b = argv[1];
+
+	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
+
+	assert(SI_TYPE(a) == SI_TYPE(b));
+	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
+	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
+
+	switch(SI_TYPE(a)) {
+	case T_STRING:
+	case T_CONSTSTRING:
+		return SI_BoolVal(SIValue_Compare(a, b) != 0);
+	case T_INT64:
+	case T_DOUBLE:
+		return SI_BoolVal(SI_GET_NUMERIC(a) != SI_GET_NUMERIC(b));
+	default:
+		assert(false);
+	}
+}
+
+SIValue AR_TIMESTAMP(SIValue *argv, int argc) {
+	return SI_LongVal(TemporalValue_NewTimestamp());
 }
 
 AR_Func AR_GetFunc(char *func_name) {
@@ -1092,127 +1377,36 @@ bool AR_FuncExists(const char *func_name) {
 	return (f != TRIEMAP_NOTFOUND);
 }
 
+static void _AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func) {
+	if(__aeRegisteredFuncs == NULL) {
+		__aeRegisteredFuncs = NewTrieMap();
+	}
+
+	TrieMap_Add(__aeRegisteredFuncs, func_name, func_name_len, func, NULL);
+}
+
 void AR_RegisterFuncs() {
+	struct RegFunc {
+		const char *func_name;
+		AR_Func func_ptr;
+	};
+
+	struct RegFunc functions[39] = {
+		{"add", AR_ADD}, {"sub", AR_SUB}, {"mul", AR_MUL}, {"div", AR_DIV}, {"abs", AR_ABS}, {"ceil", AR_CEIL},
+		{"floor", AR_FLOOR}, {"rand", AR_RAND}, {"round", AR_ROUND}, {"sign", AR_SIGN}, {"left", AR_LEFT},
+		{"reverse", AR_REVERSE}, {"right", AR_RIGHT}, {"ltrim", AR_LTRIM}, {"rtrim", AR_RTRIM}, {"substring", AR_SUBSTRING},
+		{"tolower", AR_TOLOWER}, {"toupper", AR_TOUPPER}, {"tostring", AR_TOSTRING}, {"trim", AR_TRIM}, {"contains", AR_CONTAINS},
+		{"starts with", AR_STARTSWITH}, {"ends with", AR_ENDSWITH}, {"id", AR_ID}, {"labels", AR_LABELS}, {"type", AR_TYPE}, {"exists", AR_EXISTS},
+		{"timestamp", AR_TIMESTAMP}, {"and", AR_AND}, {"or", AR_OR}, {"xor", AR_XOR}, {"not", AR_NOT}, {"gt", AR_GT}, {"ge", AR_GE},
+		{"lt", AR_LT}, {"le", AR_LE}, {"eq", AR_EQ}, {"neq", AR_NE}, {"case", AR_CASEWHEN}
+	};
+
 	char lower_func_name[32] = {0};
 	size_t lower_func_name_len = 32;
 
-	_toLower("add", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_ADD);
-	lower_func_name_len = 32;
-
-	_toLower("sub", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_SUB);
-	lower_func_name_len = 32;
-
-	_toLower("mul", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_MUL);
-	lower_func_name_len = 32;
-
-	_toLower("div", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_DIV);
-	lower_func_name_len = 32;
-
-	_toLower("abs", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_ABS);
-	lower_func_name_len = 32;
-
-	_toLower("ceil", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_CEIL);
-	lower_func_name_len = 32;
-
-	_toLower("floor", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_FLOOR);
-	lower_func_name_len = 32;
-
-	_toLower("rand", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_RAND);
-	lower_func_name_len = 32;
-
-	_toLower("round", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_ROUND);
-	lower_func_name_len = 32;
-
-	_toLower("sign", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_SIGN);
-	lower_func_name_len = 32;
-
-
-	/* String operations. */
-	_toLower("left", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_LEFT);
-	lower_func_name_len = 32;
-
-	_toLower("reverse", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_REVERSE);
-	lower_func_name_len = 32;
-
-	_toLower("right", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_RIGHT);
-	lower_func_name_len = 32;
-
-	_toLower("ltrim", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_LTRIM);
-	lower_func_name_len = 32;
-
-	_toLower("rtrim", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_RTRIM);
-	lower_func_name_len = 32;
-
-	_toLower("substring", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_SUBSTRING);
-	lower_func_name_len = 32;
-
-	_toLower("tolower", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_TOLOWER);
-	lower_func_name_len = 32;
-
-	_toLower("toupper", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_TOUPPER);
-	lower_func_name_len = 32;
-
-	_toLower("tostring", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_TOSTRING);
-	lower_func_name_len = 32;
-
-	_toLower("trim", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_TRIM);
-	lower_func_name_len = 32;
-
-	_toLower("contains", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_CONTAINS);
-	lower_func_name_len = 32;
-
-	_toLower("starts with", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_STARTSWITH);
-	lower_func_name_len = 32;
-
-	_toLower("ends with", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_ENDSWITH);
-	lower_func_name_len = 32;
-
-	_toLower("id", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_ID);
-	lower_func_name_len = 32;
-
-	_toLower("labels", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_LABELS);
-	lower_func_name_len = 32;
-
-	_toLower("type", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_TYPE);
-	lower_func_name_len = 32;
-
-	_toLower("exists", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_EXISTS);
-	lower_func_name_len = 32;
-
-	_toLower("timestamp", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_TIMESTAMP);
-	lower_func_name_len = 32;
-
-
-	/* Conditional flow functions */
-	_toLower("casewhen", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_CASEWHEN);
-	lower_func_name_len = 32;
+	for(int i = 0; i < 39; i++) {
+		_toLower(functions[i].func_name, &lower_func_name[0], &lower_func_name_len);
+		AR_RegFunc(lower_func_name, lower_func_name_len, functions[i].func_ptr);
+		lower_func_name_len = 32;
+	}
 }

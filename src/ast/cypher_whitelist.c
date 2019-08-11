@@ -158,7 +158,7 @@ static void _buildOperatorsWhitelist(void) {
 	// When we introduce support for one of these, simply remove it from the list.
 	const cypher_operator_t *supported_operators[] = {
 		CYPHER_OP_OR,
-		// CYPHER_OP_XOR,
+		CYPHER_OP_XOR,
 		CYPHER_OP_AND,
 		CYPHER_OP_NOT,
 		CYPHER_OP_EQUAL,
