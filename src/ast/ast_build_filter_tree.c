@@ -165,10 +165,10 @@ static FT_FilterNode *_convertComparison(RecordMap *record_map,
 }
 
 static FT_FilterNode *_convertInlinedProperties(RecordMap *record_map, const AST *ast,
-												const cypher_astnode_t *entity, EntityType type) {
+												const cypher_astnode_t *entity, GraphEntityType type) {
 	const cypher_astnode_t *props = NULL;
 
-	if(type == ENTITY_NODE) {
+	if(type == GETYPE_NODE) {
 		props = cypher_ast_node_pattern_get_properties(entity);
 	} else { // relation
 		props = cypher_ast_rel_pattern_get_properties(entity);
@@ -238,9 +238,9 @@ void _AST_ConvertFilters(RecordMap *record_map, const AST *ast,
 	FT_FilterNode *node = NULL;
 	// If the current entity is a node or edge pattern, capture its properties map (if any)
 	if(type == CYPHER_AST_NODE_PATTERN) {
-		node = _convertInlinedProperties(record_map, ast, entity, ENTITY_NODE);
+		node = _convertInlinedProperties(record_map, ast, entity, GETYPE_NODE);
 	} else if(type == CYPHER_AST_REL_PATTERN) {
-		node = _convertInlinedProperties(record_map, ast, entity, ENTITY_EDGE);
+		node = _convertInlinedProperties(record_map, ast, entity, GETYPE_EDGE);
 	} else if(type == CYPHER_AST_COMPARISON) {
 		node = _convertComparison(record_map, entity);
 	} else if(type == CYPHER_AST_BINARY_OPERATOR) {
