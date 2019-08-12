@@ -1067,27 +1067,6 @@ TEST_F(ArithmeticTest, GT)
     }
 }
 
-SI_ConstStringVal("2"), SI_ConstStringVal("1"), SI_BoolVal(true),
-    for (int i = 0; i < 27; i += 3)
-{
-    SIValue a = truth_table[i];
-    SIValue b = truth_table[i + 1];
-    SIValue expected = truth_table[i + 2];
-
-    char *query;
-    asprintf(&query, "RETURN %s >= %s", a.stringval, b.stringval);
-    AR_ExpNode *arExp = _exp_from_query(query);
-    SIValue result = AR_EXP_Evaluate(arExp, NULL);
-    AR_EXP_Free(arExp);
-
-    ASSERT_EQ(SI_TYPE(result), SI_TYPE(expected));
-    if (SI_TYPE(result) != T_NULL)
-    {
-        ASSERT_EQ(result.longval, expected.longval);
-    }
-}
-}
-
 TEST_F(ArithmeticTest, LT)
 {
     SIValue truth_table[27] = {
@@ -1244,6 +1223,13 @@ TEST_F(ArithmeticTest, ListTest)
     ASSERT_EQ(T_DOUBLE, doubleVal.type);
     ASSERT_EQ(2.3, doubleVal.doubleval);
 
+    ASSERT_EQ(T_STRING, stringVal.type);
+    ASSERT_EQ(0, strcmp("4", stringVal.stringval));
+
+    ASSERT_EQ(T_BOOL, trueVal.type);
+    ASSERT_EQ(true, trueVal.longval);
+
+    ASSERT_EQ(T_BOOL, falseVal.type);
     ASSERT_EQ(false, falseVal.longval);
 
     ASSERT_TRUE(SIValue_IsNull(nullVal));
@@ -1329,7 +1315,6 @@ TEST_F(ArithmeticTest, ListSliceTest)
         ASSERT_EQ(T_INT64, value.type);
         ASSERT_EQ(i, value.longval);
     }
-}
 }
 
 TEST_F(ArithmeticTest, RangeTest)
