@@ -267,6 +267,21 @@ static AST_Validation _ValidateRelation(TrieMap *projections, const cypher_astno
 	return res;
 }
 
+static AST_Validation _ValidateNode(const cypher_astnode_t *node, TrieMap *identifiers,
+									char **reason) {
+	const cypher_astnode_t *ast_alias = cypher_ast_node_pattern_get_identifier(node);
+	if(ast_alias == NULL) return AST_VALID;
+
+	// Verify that the node's alias is not in the map of edge aliases.
+	const char *alias = cypher_ast_identifier_get_name(ast_alias);
+	if(TrieMap_Find(identifiers, (char *)alias, strlen(alias)) != TRIEMAP_NOTFOUND) {
+		asprintf(reason, "The alias '%s' was specified for both a node and a relationship.", alias);
+		return AST_INVALID;
+	}
+
+	return AST_VALID;
+}
+
 static AST_Validation _ValidatePath(const cypher_astnode_t *path,
 									TrieMap *projections,
 									TrieMap *identifiers,
@@ -274,10 +289,17 @@ static AST_Validation _ValidatePath(const cypher_astnode_t *path,
 	AST_Validation res = AST_VALID;
 	uint path_len = cypher_ast_pattern_path_nelements(path);
 
-	// Check all relations on the path (every odd offset)
+	// Check all relations on the path (every odd offset) and collect aliases
 	for(uint i = 1; i < path_len; i += 2) {
 		const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
 		res = _ValidateRelation(projections, edge, identifiers, reason);
+		if(res != AST_VALID) return res;
+	}
+
+	// Verify that no relation alias is also used to denote a node
+	for(uint i = 0; i < path_len; i += 2) {
+		const cypher_astnode_t *node = cypher_ast_pattern_path_get_element(path, i);
+		res = _ValidateNode(node, identifiers, reason);
 		if(res != AST_VALID) return res;
 	}
 
