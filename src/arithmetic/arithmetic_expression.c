@@ -56,6 +56,57 @@ static bool _AR_SetFunction(AR_ExpNode *exp, AST_Operator op) {
 		exp->op.f = AR_ENDSWITH;
 		exp->op.func_name = "ENDS WITH";
 		return true;
+
+	case OP_AND:
+		exp->op.f = AR_AND;
+		exp->op.func_name = "AND";
+		return true;
+
+	case OP_OR:
+		exp->op.f = AR_OR;
+		exp->op.func_name = "OR";
+		return true;
+
+	case OP_XOR:
+		exp->op.f = AR_XOR;
+		exp->op.func_name = "XOR";
+		return true;
+
+	case OP_NOT:
+		exp->op.f = AR_NOT;
+		exp->op.func_name = "NOT";
+		return true;
+
+	case OP_GT:
+		exp->op.f = AR_GT;
+		exp->op.func_name = "GT";
+		return true;
+
+	case OP_GE:
+		exp->op.f = AR_GE;
+		exp->op.func_name = "GE";
+		return true;
+
+	case OP_LT:
+		exp->op.f = AR_LT;
+		exp->op.func_name = "LT";
+		return true;
+
+	case OP_LE:
+		exp->op.f = AR_LE;
+		exp->op.func_name = "LE";
+		return true;
+
+	case OP_EQUAL:
+		exp->op.f = AR_EQ;
+		exp->op.func_name = "EQUAL";
+		return true;
+
+	case OP_NEQUAL:
+		exp->op.f = AR_NE;
+		exp->op.func_name = "NEQUAL";
+		return true;
+
 	case OP_MOD: // TODO implement
 	case OP_POW: // TODO implement
 	// Includes operators like <, AND, etc
@@ -134,142 +185,233 @@ AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant) {
 	return node;
 }
 
+static AR_ExpNode *_AR_EXP_FromApplyExpression(RecordMap *record_map,
+											   const cypher_astnode_t *expr) {
+	// TODO handle CYPHER_AST_APPLY_ALL_OPERATOR
+	const cypher_astnode_t *func_node = cypher_ast_apply_operator_get_func_name(expr);
+	const char *func_name = cypher_ast_function_name_get_value(func_node);
+	// TODO When implementing calls like COUNT(DISTINCT), use cypher_ast_apply_operator_get_distinct()
+	unsigned int arg_count = cypher_ast_apply_operator_narguments(expr);
+	AR_ExpNode *op = _AR_EXP_NewOpNode((char *)func_name, arg_count);
+
+	for(unsigned int i = 0; i < arg_count; i ++) {
+		const cypher_astnode_t *arg = cypher_ast_apply_operator_get_argument(expr, i);
+		// Recursively convert arguments
+		op->op.children[i] = AR_EXP_FromExpression(record_map, arg);
+	}
+	return op;
+}
+
+static AR_ExpNode *_AR_EXP_FromIdentifierExpression(RecordMap *record_map,
+													const cypher_astnode_t *expr) {
+	// Identifier referencing another record_map entity
+	const char *alias = cypher_ast_identifier_get_name(expr);
+	return AR_EXP_NewVariableOperandNode(record_map, alias, NULL);
+}
+
+static AR_ExpNode *_AR_EXP_FromPropertyExpression(RecordMap *record_map,
+												  const cypher_astnode_t *expr) {
+	// Identifier and property pair
+	// Extract the entity alias from the property. Currently, the embedded
+	// expression should only refer to the IDENTIFIER type.
+	const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(expr);
+	assert(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
+	const char *alias = cypher_ast_identifier_get_name(prop_expr);
+
+	// Extract the property name
+	const cypher_astnode_t *prop_name_node = cypher_ast_property_operator_get_prop_name(expr);
+	const char *prop_name = cypher_ast_prop_name_get_value(prop_name_node);
+
+	return AR_EXP_NewVariableOperandNode(record_map, alias, prop_name);
+}
+
+static AR_ExpNode *_AR_EXP_FromIntegerExpression(RecordMap *record_map,
+												 const cypher_astnode_t *expr) {
+	const char *value_str = cypher_ast_integer_get_valuestr(expr);
+	char *endptr = NULL;
+	int64_t l = strtol(value_str, &endptr, 0);
+	assert(endptr[0] == 0);
+	SIValue converted = SI_LongVal(l);
+	return AR_EXP_NewConstOperandNode(converted);
+
+}
+
+static AR_ExpNode *_AR_EXP_FromFloatExpression(RecordMap *record_map,
+											   const cypher_astnode_t *expr) {
+	const char *value_str = cypher_ast_float_get_valuestr(expr);
+	char *endptr = NULL;
+	double d = strtod(value_str, &endptr);
+	assert(endptr[0] == 0);
+	SIValue converted = SI_DoubleVal(d);
+	return AR_EXP_NewConstOperandNode(converted);
+}
+
+static AR_ExpNode *_AR_EXP_FromStringExpression(RecordMap *record_map,
+												const cypher_astnode_t *expr) {
+	const char *value_str = cypher_ast_string_get_value(expr);
+	SIValue converted = SI_ConstStringVal((char *)value_str);
+	return AR_EXP_NewConstOperandNode(converted);
+}
+
+static AR_ExpNode *_AR_EXP_FromTruExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
+	SIValue converted = SI_BoolVal(true);
+	return AR_EXP_NewConstOperandNode(converted);
+}
+
+static AR_ExpNode *_AR_EXP_FromFalseExpression(RecordMap *record_map,
+											   const cypher_astnode_t *expr) {
+	SIValue converted = SI_BoolVal(false);
+	return AR_EXP_NewConstOperandNode(converted);
+}
+
+static AR_ExpNode *_AR_EXP_FromNullExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
+	SIValue converted = SI_NullVal();
+	return AR_EXP_NewConstOperandNode(converted);
+}
+
+static AR_ExpNode *_AR_EXP_FromUnaryOpExpression(RecordMap *record_map,
+												 const cypher_astnode_t *expr) {
+	const cypher_astnode_t *arg = cypher_ast_unary_operator_get_argument(expr); // CYPHER_AST_EXPRESSION
+	const cypher_operator_t *operator = cypher_ast_unary_operator_get_operator(expr);
+	if(operator == CYPHER_OP_UNARY_MINUS) {
+		// This expression can be something like -3 or -a.val
+		// TODO In the former case, we can construct a much simpler tree than this.
+		AR_ExpNode *ar_exp = AR_EXP_FromExpression(record_map, arg);
+		AR_ExpNode *op = _AR_EXP_NewOpNodeFromAST(OP_MULT, 2);
+		op->op.children[0] = AR_EXP_NewConstOperandNode(SI_LongVal(-1));
+		op->op.children[1] = AR_EXP_FromExpression(record_map, arg);
+		return op;
+	} else if(operator == CYPHER_OP_UNARY_PLUS) {
+		// This expression is something like +3 or +a.val.
+		// I think the + can always be safely ignored.
+		return AR_EXP_FromExpression(record_map, arg);
+	} else if(operator == CYPHER_OP_NOT) {
+		AR_ExpNode *op = _AR_EXP_NewOpNodeFromAST(OP_NOT, 1);
+		op->op.children[0] = AR_EXP_FromExpression(record_map, arg);
+		return op;
+	}
+	assert(false);
+	return NULL;
+}
+
+static AR_ExpNode *_AR_EXP_FromBinaryOpExpression(RecordMap *record_map,
+												  const cypher_astnode_t *expr) {
+	const cypher_operator_t *operator = cypher_ast_binary_operator_get_operator(expr);
+	AST_Operator operator_enum = AST_ConvertOperatorNode(operator);
+	// Arguments are of type CYPHER_AST_EXPRESSION
+	AR_ExpNode *op = _AR_EXP_NewOpNodeFromAST(operator_enum, 2);
+	const cypher_astnode_t *lhs_node = cypher_ast_binary_operator_get_argument1(expr);
+	op->op.children[0] = AR_EXP_FromExpression(record_map, lhs_node);
+	const cypher_astnode_t *rhs_node = cypher_ast_binary_operator_get_argument2(expr);
+	op->op.children[1] = AR_EXP_FromExpression(record_map, rhs_node);
+	return op;
+}
+
+static AR_ExpNode *_AR_EXP_FromComparisonExpression(RecordMap *record_map,
+													const cypher_astnode_t *expr) {
+	// 1 < 2 = 2 <= 4
+	AR_ExpNode *op;
+	uint length = cypher_ast_comparison_get_length(expr);
+	if(length > 1) {
+		op = _AR_EXP_NewOpNodeFromAST(OP_AND, length);
+		for(uint i = 0; i < length; i++) {
+			const cypher_operator_t *operator = cypher_ast_comparison_get_operator(expr, i);
+			AST_Operator operator_enum = AST_ConvertOperatorNode(operator);
+			const cypher_astnode_t *lhs_node = cypher_ast_comparison_get_argument(expr, i);
+			const cypher_astnode_t *rhs_node = cypher_ast_comparison_get_argument(expr, i + 1);
+
+			AR_ExpNode *inner_op = _AR_EXP_NewOpNodeFromAST(operator_enum, 2);
+			inner_op->op.children[0] = AR_EXP_FromExpression(record_map, lhs_node);
+			inner_op->op.children[1] = AR_EXP_FromExpression(record_map, rhs_node);
+			op->op.children[i] = inner_op;
+		}
+	} else {
+		const cypher_operator_t *operator = cypher_ast_comparison_get_operator(expr, 0);
+		AST_Operator operator_enum = AST_ConvertOperatorNode(operator);
+		op = _AR_EXP_NewOpNodeFromAST(operator_enum, 2);
+		const cypher_astnode_t *lhs_node = cypher_ast_comparison_get_argument(expr, 0);
+		const cypher_astnode_t *rhs_node = cypher_ast_comparison_get_argument(expr, 1);
+		op->op.children[0] = AR_EXP_FromExpression(record_map, lhs_node);
+		op->op.children[1] = AR_EXP_FromExpression(record_map, rhs_node);
+	}
+	return op;
+}
+
+static AR_ExpNode *_AR_EXP_FromCaseExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
+	//Determin number of child expressions:
+	unsigned int arg_count;
+	const cypher_astnode_t *expression = cypher_ast_case_get_expression(expr);
+	unsigned int alternatives = cypher_ast_case_nalternatives(expr);
+
+	/* Simple form: 2 * alternatives + default
+	 * Generic form: 2 * alternatives + default */
+	if(expression) arg_count = 1 + 2 * alternatives + 1;
+	else arg_count = 2 * alternatives + 1;
+
+	// Create Expression and child expressions
+	AR_ExpNode *op = _AR_EXP_NewOpNode("case", arg_count);
+
+	// Value to compare against
+	int offset = 0;
+	if(expression != NULL) {
+		op->op.children[offset++] = AR_EXP_FromExpression(record_map, expression);
+	}
+
+	// Alternatives
+	for(uint i = 0; i < alternatives; i++) {
+		const cypher_astnode_t *predicate = cypher_ast_case_get_predicate(expr, i);
+		op->op.children[offset++] = AR_EXP_FromExpression(record_map, predicate);
+		const cypher_astnode_t *value = cypher_ast_case_get_value(expr, i);
+		op->op.children[offset++] = AR_EXP_FromExpression(record_map, value);
+	}
+
+	// Default value.
+	const cypher_astnode_t *deflt = cypher_ast_case_get_default(expr);
+	if(deflt == NULL) {
+		// Default not specified, use NULL.
+		op->op.children[offset] = AR_EXP_NewConstOperandNode(SI_NullVal());
+	} else {
+		op->op.children[offset] = AR_EXP_FromExpression(record_map, deflt);
+	}
+
+	return op;
+}
+
 AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
 	const cypher_astnode_type_t type = cypher_astnode_type(expr);
 
 	/* Function invocations */
 	if(type == CYPHER_AST_APPLY_OPERATOR || type == CYPHER_AST_APPLY_ALL_OPERATOR) {
-		// TODO handle CYPHER_AST_APPLY_ALL_OPERATOR
-		const cypher_astnode_t *func_node = cypher_ast_apply_operator_get_func_name(expr);
-		const char *func_name = cypher_ast_function_name_get_value(func_node);
-		// TODO When implementing calls like COUNT(DISTINCT), use cypher_ast_apply_operator_get_distinct()
-		unsigned int arg_count = cypher_ast_apply_operator_narguments(expr);
-		AR_ExpNode *op = _AR_EXP_NewOpNode((char *)func_name, arg_count);
-
-		for(unsigned int i = 0; i < arg_count; i ++) {
-			const cypher_astnode_t *arg = cypher_ast_apply_operator_get_argument(expr, i);
-			// Recursively convert arguments
-			op->op.children[i] = AR_EXP_FromExpression(record_map, arg);
-		}
-		return op;
-
+		return _AR_EXP_FromApplyExpression(record_map, expr);
 		/* Variables (full nodes and edges, UNWIND artifacts */
 	} else if(type == CYPHER_AST_IDENTIFIER) {
-		// Identifier referencing another record_map entity
-		const char *alias = cypher_ast_identifier_get_name(expr);
-		return AR_EXP_NewVariableOperandNode(record_map, alias, NULL);
-
+		return _AR_EXP_FromIdentifierExpression(record_map, expr);
 		/* Entity-property pair */
 	} else if(type == CYPHER_AST_PROPERTY_OPERATOR) {
-		// Identifier and property pair
-		// Extract the entity alias from the property. Currently, the embedded
-		// expression should only refer to the IDENTIFIER type.
-		const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(expr);
-		assert(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
-		const char *alias = cypher_ast_identifier_get_name(prop_expr);
-
-		// Extract the property name
-		const cypher_astnode_t *prop_name_node = cypher_ast_property_operator_get_prop_name(expr);
-		const char *prop_name = cypher_ast_prop_name_get_value(prop_name_node);
-
-		return AR_EXP_NewVariableOperandNode(record_map, alias, prop_name);
-
+		return _AR_EXP_FromPropertyExpression(record_map, expr);
 		/* SIValue constant types */
 	} else if(type == CYPHER_AST_INTEGER) {
-		const char *value_str = cypher_ast_integer_get_valuestr(expr);
-		char *endptr = NULL;
-		int64_t l = strtol(value_str, &endptr, 0);
-		assert(endptr[0] == 0);
-		SIValue converted = SI_LongVal(l);
-		return AR_EXP_NewConstOperandNode(converted);
-	} else if(type == CYPHER_AST_FLOAT) {
-		const char *value_str = cypher_ast_float_get_valuestr(expr);
-		char *endptr = NULL;
-		double d = strtod(value_str, &endptr);
-		assert(endptr[0] == 0);
-		SIValue converted = SI_DoubleVal(d);
-		return AR_EXP_NewConstOperandNode(converted);
-	} else if(type == CYPHER_AST_STRING) {
-		const char *value_str = cypher_ast_string_get_value(expr);
-		SIValue converted = SI_ConstStringVal((char *)value_str);
-		return AR_EXP_NewConstOperandNode(converted);
-	} else if(type == CYPHER_AST_TRUE) {
-		SIValue converted = SI_BoolVal(true);
-		return AR_EXP_NewConstOperandNode(converted);
-	} else if(type == CYPHER_AST_FALSE) {
-		SIValue converted = SI_BoolVal(false);
-		return AR_EXP_NewConstOperandNode(converted);
-	} else if(type == CYPHER_AST_NULL) {
-		SIValue converted = SI_NullVal();
-		return AR_EXP_NewConstOperandNode(converted);
+		return _AR_EXP_FromIntegerExpression(record_map, expr);
 
+	} else if(type == CYPHER_AST_FLOAT) {
+		return _AR_EXP_FromFloatExpression(record_map, expr);
+	} else if(type == CYPHER_AST_STRING) {
+		return _AR_EXP_FromStringExpression(record_map, expr);
+	} else if(type == CYPHER_AST_TRUE) {
+		return _AR_EXP_FromTruExpression(record_map, expr);
+	} else if(type == CYPHER_AST_FALSE) {
+		return _AR_EXP_FromFalseExpression(record_map, expr);
+	} else if(type == CYPHER_AST_NULL) {
+		return _AR_EXP_FromNullExpression(record_map, expr);
 		/* Handling for unary operators (-5, +a.val) */
 	} else if(type == CYPHER_AST_UNARY_OPERATOR) {
-		const cypher_astnode_t *arg = cypher_ast_unary_operator_get_argument(expr); // CYPHER_AST_EXPRESSION
-		const cypher_operator_t *operator = cypher_ast_unary_operator_get_operator(expr);
-		if(operator == CYPHER_OP_UNARY_MINUS) {
-			// This expression can be something like -3 or -a.val
-			// TODO In the former case, we can construct a much simpler tree than this.
-			AR_ExpNode *ar_exp = AR_EXP_FromExpression(record_map, arg);
-			AR_ExpNode *op = _AR_EXP_NewOpNodeFromAST(OP_MULT, 2);
-			op->op.children[0] = AR_EXP_NewConstOperandNode(SI_LongVal(-1));
-			op->op.children[1] = AR_EXP_FromExpression(record_map, arg);
-			return op;
-		} else if(operator == CYPHER_OP_UNARY_PLUS) {
-			// This expression is something like +3 or +a.val.
-			// I think the + can always be safely ignored.
-			return AR_EXP_FromExpression(record_map, arg);
-		} else if(operator == CYPHER_OP_NOT) {
-			assert(false); // This should be handled in the FilterTree code
-		}
+		return _AR_EXP_FromUnaryOpExpression(record_map, expr);
 	} else if(type == CYPHER_AST_BINARY_OPERATOR) {
-		const cypher_operator_t *operator = cypher_ast_binary_operator_get_operator(expr);
-		AST_Operator operator_enum = AST_ConvertOperatorNode(operator);
-		// Arguments are of type CYPHER_AST_EXPRESSION
-		AR_ExpNode *op = _AR_EXP_NewOpNodeFromAST(operator_enum, 2);
-		const cypher_astnode_t *lhs_node = cypher_ast_binary_operator_get_argument1(expr);
-		op->op.children[0] = AR_EXP_FromExpression(record_map, lhs_node);
-		const cypher_astnode_t *rhs_node = cypher_ast_binary_operator_get_argument2(expr);
-		op->op.children[1] = AR_EXP_FromExpression(record_map, rhs_node);
-		return op;
+		return _AR_EXP_FromBinaryOpExpression(record_map, expr);
+	} else if(type == CYPHER_AST_COMPARISON) {
+		return _AR_EXP_FromComparisonExpression(record_map, expr);
 	} else if(type == CYPHER_AST_CASE) {
-		//Determin number of child expressions:
-		unsigned int arg_count;
-		const cypher_astnode_t *expression = cypher_ast_case_get_expression(expr);
-		unsigned int alternatives = cypher_ast_case_nalternatives(expr);
-
-		/* Simple form: 2 * alternatives + default
-		 * Generic form: 2 * alternatives + default */
-		if(expression) arg_count = 1 + 2 * alternatives + 1;
-		else arg_count = 2 * alternatives + 1;
-
-		// Create Expression and child expressions
-		AR_ExpNode *op = _AR_EXP_NewOpNode("casewhen", arg_count);
-
-		// Value to compare against
-		int offset = 0;
-		if(expression != NULL) {
-			op->op.children[offset++] = AR_EXP_FromExpression(record_map, expression);
-		}
-
-		// Alternatives
-		for(uint i = 0; i < alternatives; i++) {
-			const cypher_astnode_t *predicate = cypher_ast_case_get_predicate(expr, i);
-			op->op.children[offset++] = AR_EXP_FromExpression(record_map, predicate);
-			const cypher_astnode_t *value = cypher_ast_case_get_value(expr, i);
-			op->op.children[offset++] = AR_EXP_FromExpression(record_map, value);
-		}
-
-		// Default value.
-		const cypher_astnode_t *deflt = cypher_ast_case_get_default(expr);
-		if(deflt == NULL) {
-			// Default not specified, use NULL.
-			op->op.children[offset] = AR_EXP_NewConstOperandNode(SI_NullVal());
-		} else {
-			op->op.children[offset] = AR_EXP_FromExpression(record_map, deflt);
-		}
-
-		return op;
+		return _AR_EXP_FromCaseExpression(record_map, expr);
 	} else {
 		/*
 		   Unhandled types:
@@ -1012,10 +1154,6 @@ SIValue AR_EXISTS(SIValue *argv, int argc) {
 	return SI_BoolVal(1);
 }
 
-SIValue AR_TIMESTAMP(SIValue *argv, int argc) {
-	return SI_LongVal(TemporalValue_NewTimestamp());
-}
-
 /* Conditional flow functions */
 /* Case When
  * Case Value [When Option i Then Result i] Else Default end */
@@ -1065,12 +1203,200 @@ SIValue AR_CASEWHEN(SIValue *argv, int argc) {
 	return d;
 }
 
-void AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func) {
-	if(__aeRegisteredFuncs == NULL) {
-		__aeRegisteredFuncs = NewTrieMap();
+SIValue AR_AND(SIValue *argv, int argc) {
+	assert(argc > 1);
+	bool res = true;
+
+	for(int i = 0; i < argc; i++) {
+		SIValue v = argv[i];
+
+		if(SIValue_IsNull(v)) return SI_NullVal();
+		assert((SI_TYPE(v) & T_BOOL));
+
+		res &= v.longval;
 	}
 
-	TrieMap_Add(__aeRegisteredFuncs, func_name, func_name_len, func, NULL);
+	return SI_BoolVal(res);
+}
+
+SIValue AR_OR(SIValue *argv, int argc) {
+	assert(argc > 1);
+	bool res = false;
+
+	for(int i = 0; i < argc; i++) {
+		SIValue v = argv[i];
+
+		if(SIValue_IsNull(v)) return SI_NullVal();
+		assert((SI_TYPE(v) & T_BOOL));
+
+		res |= v.longval;
+	}
+
+	return SI_BoolVal(res);
+}
+
+SIValue AR_XOR(SIValue *argv, int argc) {
+	assert(argc == 2);
+
+	SIValue a = argv[0];
+	SIValue b = argv[1];
+
+	if(SIValue_IsNull(a)) return SI_NullVal();
+	assert((SI_TYPE(a) & T_BOOL));
+	if(SIValue_IsNull(b)) return SI_NullVal();
+	assert((SI_TYPE(b) & T_BOOL));
+
+	bool res = a.longval != b.longval;
+	return SI_BoolVal(res);
+}
+
+SIValue AR_NOT(SIValue *argv, int argc) {
+	assert(argc == 1);
+	SIValue a = argv[0];
+	if(SIValue_IsNull(a)) return SI_NullVal();
+
+	assert(SI_TYPE(a) & T_BOOL);
+	return SI_BoolVal(!a.longval);
+}
+
+SIValue AR_GT(SIValue *argv, int argc) {
+	assert(argc == 2);
+	SIValue a = argv[0];
+	SIValue b = argv[1];
+
+	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
+
+	assert(SI_TYPE(a) == SI_TYPE(b));
+
+	switch(SI_TYPE(a)) {
+	case T_STRING:
+	case T_CONSTSTRING:
+		return SI_BoolVal(SIValue_Compare(a, b) > 0);
+	case T_INT64:
+	case T_DOUBLE:
+		return SI_BoolVal(SI_GET_NUMERIC(a) > SI_GET_NUMERIC(b));
+	default:
+		assert(false);
+	}
+}
+
+SIValue AR_GE(SIValue *argv, int argc) {
+	assert(argc == 2);
+	SIValue a = argv[0];
+	SIValue b = argv[1];
+
+	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
+
+	assert(SI_TYPE(a) == SI_TYPE(b));
+	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
+	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
+
+	switch(SI_TYPE(a)) {
+	case T_STRING:
+	case T_CONSTSTRING:
+		return SI_BoolVal(SIValue_Compare(a, b) >= 0);
+	case T_INT64:
+	case T_DOUBLE:
+		return SI_BoolVal(SI_GET_NUMERIC(a) >= SI_GET_NUMERIC(b));
+	default:
+		assert(false);
+	}
+}
+
+SIValue AR_LT(SIValue *argv, int argc) {
+	assert(argc == 2);
+	SIValue a = argv[0];
+	SIValue b = argv[1];
+
+	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
+
+	assert(SI_TYPE(a) == SI_TYPE(b));
+	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
+	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
+
+	switch(SI_TYPE(a)) {
+	case T_STRING:
+	case T_CONSTSTRING:
+		return SI_BoolVal(SIValue_Compare(a, b) < 0);
+	case T_INT64:
+	case T_DOUBLE:
+		return SI_BoolVal(SI_GET_NUMERIC(a) < SI_GET_NUMERIC(b));
+	default:
+		assert(false);
+	}
+}
+
+SIValue AR_LE(SIValue *argv, int argc) {
+	assert(argc == 2);
+	SIValue a = argv[0];
+	SIValue b = argv[1];
+
+	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
+
+	assert(SI_TYPE(a) == SI_TYPE(b));
+	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
+	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
+
+	switch(SI_TYPE(a)) {
+	case T_STRING:
+	case T_CONSTSTRING:
+		return SI_BoolVal(SIValue_Compare(a, b) <= 0);
+	case T_INT64:
+	case T_DOUBLE:
+		return SI_BoolVal(SI_GET_NUMERIC(a) <= SI_GET_NUMERIC(b));
+	default:
+		assert(false);
+	}
+}
+
+SIValue AR_EQ(SIValue *argv, int argc) {
+	assert(argc == 2);
+	SIValue a = argv[0];
+	SIValue b = argv[1];
+
+	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
+
+	assert(SI_TYPE(a) == SI_TYPE(b));
+	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
+	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
+
+	switch(SI_TYPE(a)) {
+	case T_STRING:
+	case T_CONSTSTRING:
+		return SI_BoolVal(SIValue_Compare(a, b) == 0);
+	case T_INT64:
+	case T_DOUBLE:
+		return SI_BoolVal(SI_GET_NUMERIC(a) == SI_GET_NUMERIC(b));
+	default:
+		assert(false);
+	}
+}
+
+SIValue AR_NE(SIValue *argv, int argc) {
+	assert(argc == 2);
+	SIValue a = argv[0];
+	SIValue b = argv[1];
+
+	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
+
+	assert(SI_TYPE(a) == SI_TYPE(b));
+	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
+	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
+
+	switch(SI_TYPE(a)) {
+	case T_STRING:
+	case T_CONSTSTRING:
+		return SI_BoolVal(SIValue_Compare(a, b) != 0);
+	case T_INT64:
+	case T_DOUBLE:
+		return SI_BoolVal(SI_GET_NUMERIC(a) != SI_GET_NUMERIC(b));
+	default:
+		assert(false);
+	}
+}
+
+SIValue AR_TIMESTAMP(SIValue *argv, int argc) {
+	return SI_LongVal(TemporalValue_NewTimestamp());
 }
 
 AR_Func AR_GetFunc(char *func_name) {
@@ -1092,127 +1418,36 @@ bool AR_FuncExists(const char *func_name) {
 	return (f != TRIEMAP_NOTFOUND);
 }
 
+static void _AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func) {
+	if(__aeRegisteredFuncs == NULL) {
+		__aeRegisteredFuncs = NewTrieMap();
+	}
+
+	TrieMap_Add(__aeRegisteredFuncs, func_name, func_name_len, func, NULL);
+}
+
 void AR_RegisterFuncs() {
+	struct RegFunc {
+		const char *func_name;
+		AR_Func func_ptr;
+	};
+
+	struct RegFunc functions[39] = {
+		{"add", AR_ADD}, {"sub", AR_SUB}, {"mul", AR_MUL}, {"div", AR_DIV}, {"abs", AR_ABS}, {"ceil", AR_CEIL},
+		{"floor", AR_FLOOR}, {"rand", AR_RAND}, {"round", AR_ROUND}, {"sign", AR_SIGN}, {"left", AR_LEFT},
+		{"reverse", AR_REVERSE}, {"right", AR_RIGHT}, {"ltrim", AR_LTRIM}, {"rtrim", AR_RTRIM}, {"substring", AR_SUBSTRING},
+		{"tolower", AR_TOLOWER}, {"toupper", AR_TOUPPER}, {"tostring", AR_TOSTRING}, {"trim", AR_TRIM}, {"contains", AR_CONTAINS},
+		{"starts with", AR_STARTSWITH}, {"ends with", AR_ENDSWITH}, {"id", AR_ID}, {"labels", AR_LABELS}, {"type", AR_TYPE}, {"exists", AR_EXISTS},
+		{"timestamp", AR_TIMESTAMP}, {"and", AR_AND}, {"or", AR_OR}, {"xor", AR_XOR}, {"not", AR_NOT}, {"gt", AR_GT}, {"ge", AR_GE},
+		{"lt", AR_LT}, {"le", AR_LE}, {"eq", AR_EQ}, {"neq", AR_NE}, {"case", AR_CASEWHEN}
+	};
+
 	char lower_func_name[32] = {0};
 	size_t lower_func_name_len = 32;
 
-	_toLower("add", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_ADD);
-	lower_func_name_len = 32;
-
-	_toLower("sub", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_SUB);
-	lower_func_name_len = 32;
-
-	_toLower("mul", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_MUL);
-	lower_func_name_len = 32;
-
-	_toLower("div", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_DIV);
-	lower_func_name_len = 32;
-
-	_toLower("abs", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_ABS);
-	lower_func_name_len = 32;
-
-	_toLower("ceil", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_CEIL);
-	lower_func_name_len = 32;
-
-	_toLower("floor", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_FLOOR);
-	lower_func_name_len = 32;
-
-	_toLower("rand", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_RAND);
-	lower_func_name_len = 32;
-
-	_toLower("round", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_ROUND);
-	lower_func_name_len = 32;
-
-	_toLower("sign", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_SIGN);
-	lower_func_name_len = 32;
-
-
-	/* String operations. */
-	_toLower("left", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_LEFT);
-	lower_func_name_len = 32;
-
-	_toLower("reverse", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_REVERSE);
-	lower_func_name_len = 32;
-
-	_toLower("right", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_RIGHT);
-	lower_func_name_len = 32;
-
-	_toLower("ltrim", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_LTRIM);
-	lower_func_name_len = 32;
-
-	_toLower("rtrim", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_RTRIM);
-	lower_func_name_len = 32;
-
-	_toLower("substring", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_SUBSTRING);
-	lower_func_name_len = 32;
-
-	_toLower("tolower", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_TOLOWER);
-	lower_func_name_len = 32;
-
-	_toLower("toupper", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_TOUPPER);
-	lower_func_name_len = 32;
-
-	_toLower("tostring", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_TOSTRING);
-	lower_func_name_len = 32;
-
-	_toLower("trim", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_TRIM);
-	lower_func_name_len = 32;
-
-	_toLower("contains", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_CONTAINS);
-	lower_func_name_len = 32;
-
-	_toLower("starts with", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_STARTSWITH);
-	lower_func_name_len = 32;
-
-	_toLower("ends with", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_ENDSWITH);
-	lower_func_name_len = 32;
-
-	_toLower("id", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_ID);
-	lower_func_name_len = 32;
-
-	_toLower("labels", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_LABELS);
-	lower_func_name_len = 32;
-
-	_toLower("type", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_TYPE);
-	lower_func_name_len = 32;
-
-	_toLower("exists", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_EXISTS);
-	lower_func_name_len = 32;
-
-	_toLower("timestamp", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_TIMESTAMP);
-	lower_func_name_len = 32;
-
-
-	/* Conditional flow functions */
-	_toLower("casewhen", &lower_func_name[0], &lower_func_name_len);
-	AR_RegFunc(lower_func_name, lower_func_name_len, AR_CASEWHEN);
-	lower_func_name_len = 32;
+	for(int i = 0; i < 39; i++) {
+		_toLower(functions[i].func_name, &lower_func_name[0], &lower_func_name_len);
+		_AR_RegFunc(lower_func_name, lower_func_name_len, functions[i].func_ptr);
+		lower_func_name_len = 32;
+	}
 }

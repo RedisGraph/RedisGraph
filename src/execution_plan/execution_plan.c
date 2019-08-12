@@ -111,7 +111,6 @@ AR_ExpNode **_BuildReturnExpressions(RecordMap *record_map, const cypher_astnode
 		// Construction an AR_ExpNode to represent this return entity.
 		AR_ExpNode *exp = AR_EXP_FromExpression(record_map, ast_exp);
 
-
 		// Find the resolved name of the entity - its alias, its identifier if referring to a full entity,
 		// the entity.prop combination ("a.val"), or the function call ("MAX(a.val)")
 		const char *identifier = NULL;
@@ -128,7 +127,6 @@ AR_ExpNode **_BuildReturnExpressions(RecordMap *record_map, const cypher_astnode
 		}
 
 		exp->resolved_name = identifier;
-
 		return_expressions = array_append(return_expressions, exp);
 	}
 

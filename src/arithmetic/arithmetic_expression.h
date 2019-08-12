@@ -152,6 +152,28 @@ SIValue AR_TYPE(SIValue *argv, int argc);
 /* returns true if the specified property exists in the node, or relationship. */
 SIValue AR_EXISTS(SIValue *argv, int argc);
 
+/* Boolean functions */
+/* returns true if AND(arg[i]) is true. */
+SIValue AR_AND(SIValue *argv, int argc);
+/* returns true if OR(arg[i]) is true. */
+SIValue AR_OR(SIValue *argv, int argc);
+/* returns true if (arg[i] != arg[i+1]) is true. */
+SIValue AR_XOR(SIValue *argv, int argc);
+/* returns true if !argv[0] */
+SIValue AR_NOT(SIValue *argv, int argc);
+/* returns true if argv[0] > argv[1] */
+SIValue AR_GT(SIValue *argv, int argc);
+/* returns true if argv[0] >= argv[1] */
+SIValue AR_GE(SIValue *argv, int argc);
+/* returns true if argv[0] < argv[1] */
+SIValue AR_LT(SIValue *argv, int argc);
+/* returns true if argv[0] <= argv[1] */
+SIValue AR_LE(SIValue *argv, int argc);
+/* returns true if argv[0] = argv[1] */
+SIValue AR_EQ(SIValue *argv, int argc);
+/* returns true if argv[0] != argv[1] */
+SIValue AR_NE(SIValue *argv, int argc);
+
 /* Temporal functions */
 /* returns a timestamp - millis from epoch */
 SIValue AR_TIMESTAMP(SIValue *argv, int argc);

@@ -120,7 +120,7 @@ static TrieMap *_AST_GetReturnProjections(const cypher_astnode_t *return_clause)
 
 /* Compares a triemap of user-specified functions with the registered functions we provide. */
 static AST_Validation _ValidateReferredFunctions(TrieMap *referred_functions, char **reason,
-													 bool include_aggregates) {
+												 bool include_aggregates) {
 	AST_Validation res = AST_VALID;
 	void *value;
 	tm_len_t len;
@@ -398,12 +398,10 @@ static AST_Validation _ValidateFilterPredicates(const cypher_astnode_t *predicat
 			// comparison function. Failing expressions include:
 			// WHERE EXISTS(a.age) AND a.age > 30
 			if(_ValidateFilterPredicates(left, reason) != AST_VALID) return AST_INVALID;
-
 			if(_ValidateFilterPredicates(right, reason) != AST_VALID) return AST_INVALID;
-
 		} else {
 			// Check for chains of form:
-			// WHERE n.prop1 < m.prop1 = n.prop2 <> m.prop2
+			// WHERE n.prop1 < m.prop2 = n.prop3 <> m.prop4
 			cypher_astnode_type_t left_type = cypher_astnode_type(left);
 			cypher_astnode_type_t right_type = cypher_astnode_type(right);
 
@@ -412,13 +410,6 @@ static AST_Validation _ValidateFilterPredicates(const cypher_astnode_t *predicat
 				asprintf(reason, "Comparison chains of length > 1 are not currently supported.");
 				return AST_INVALID;
 			}
-		}
-	} else if(type == CYPHER_AST_COMPARISON) {
-		// WHERE 10 < n.value <= 3
-		if(cypher_ast_comparison_get_length(predicate) > 1) {
-			asprintf(reason, "Comparison chains of length > 1 are not currently supported.");
-			return AST_INVALID;
-
 		}
 	} else if(type == CYPHER_AST_UNARY_OPERATOR) {
 		// WHERE exists(a.name)
@@ -686,32 +677,13 @@ static AST_Validation _Validate_ReturnedTypes(const cypher_astnode_t *return_cla
 		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
 		const cypher_astnode_t *expr = cypher_ast_projection_get_expression(projection);
 		cypher_astnode_type_t type = cypher_astnode_type(expr);
-		if(type == CYPHER_AST_COMPARISON) {
-			asprintf(reason, "RedisGraph does not currently support returning '%s'",
-					 cypher_astnode_typestr(type));
-			return AST_INVALID;
-		} else if(type == CYPHER_AST_UNARY_OPERATOR) {
+		if(type == CYPHER_AST_UNARY_OPERATOR) {
 			const cypher_operator_t *oper = cypher_ast_unary_operator_get_operator(expr);
-			if(oper == CYPHER_OP_NOT ||
-			   oper == CYPHER_OP_IS_NULL ||
+			if(oper == CYPHER_OP_IS_NULL ||
 			   oper == CYPHER_OP_IS_NOT_NULL
 			  ) {
 				// TODO weird that we can't print operator strings?
 				asprintf(reason, "RedisGraph does not currently support returning this unary operator.");
-				return AST_INVALID;
-			}
-		} else if(type == CYPHER_AST_BINARY_OPERATOR) {
-			const cypher_operator_t *oper = cypher_ast_binary_operator_get_operator(expr);
-			if(oper == CYPHER_OP_OR ||
-			   oper == CYPHER_OP_AND ||
-			   oper == CYPHER_OP_EQUAL ||
-			   oper == CYPHER_OP_NEQUAL ||
-			   oper == CYPHER_OP_LT ||
-			   oper == CYPHER_OP_GT ||
-			   oper == CYPHER_OP_LTE ||
-			   oper == CYPHER_OP_GTE) {
-				// TODO weird that we can't print operator strings?
-				asprintf(reason, "RedisGraph does not currently support returning this binary operator.");
 				return AST_INVALID;
 			}
 		}

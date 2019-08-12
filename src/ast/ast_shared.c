@@ -6,8 +6,7 @@ AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op) {
 	if(op == CYPHER_OP_OR) {
 		return OP_OR;
 	} else if(op == CYPHER_OP_XOR) {
-		// TODO implement
-		assert(false);
+		return OP_XOR;
 	} else if(op == CYPHER_OP_AND) {
 		return OP_AND;
 	} else if(op == CYPHER_OP_NOT) {

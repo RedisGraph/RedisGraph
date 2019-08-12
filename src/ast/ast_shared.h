@@ -15,6 +15,7 @@ struct AR_ExpNode;
 typedef enum {
 	OP_NULL,
 	OP_OR,
+	OP_XOR,
 	OP_AND,
 	OP_NOT,
 	OP_EQUAL,

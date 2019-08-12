@@ -30,13 +30,11 @@
 
 Feature: ComparisonOperatorAcceptance
 
-@skip
   Scenario: Handling numerical ranges 1
     Given an empty graph
     And having executed:
       """
-      UNWIND [1, 2, 3] AS i
-      CREATE ({num: i})
+      CREATE ({num: 1}), ({num: 2}), ({num: 3})
       """
     When executing query:
       """
@@ -49,13 +47,11 @@ Feature: ComparisonOperatorAcceptance
       | 2     |
     And no side effects
 
-@skip
   Scenario: Handling numerical ranges 2
     Given an empty graph
     And having executed:
       """
-      UNWIND [1, 2, 3] AS i
-      CREATE ({num: i})
+      CREATE ({num: 1}), ({num: 2}), ({num: 3})
       """
     When executing query:
       """
@@ -69,13 +65,11 @@ Feature: ComparisonOperatorAcceptance
       | 3     |
     And no side effects
 
-@skip
   Scenario: Handling numerical ranges 3
     Given an empty graph
     And having executed:
       """
-      UNWIND [1, 2, 3] AS i
-      CREATE ({num: i})
+      CREATE ({num: 1}), ({num: 2}), ({num: 3})
       """
     When executing query:
       """
@@ -89,13 +83,11 @@ Feature: ComparisonOperatorAcceptance
       | 2     |
     And no side effects
 
-@skip
   Scenario: Handling numerical ranges 4
     Given an empty graph
     And having executed:
       """
-      UNWIND [1, 2, 3] AS i
-      CREATE ({num: i})
+      CREATE ({num: 1}), ({num: 2}), ({num: 3})
       """
     When executing query:
       """
@@ -110,13 +102,11 @@ Feature: ComparisonOperatorAcceptance
       | 3     |
     And no side effects
 
-@skip
   Scenario: Handling string ranges 1
     Given an empty graph
     And having executed:
       """
-      UNWIND ['a', 'b', 'c'] AS c
-      CREATE ({name: c})
+      CREATE ({name: 'a'}), ({name: 'b'}), ({name: 'c'})
       """
     When executing query:
       """
@@ -129,13 +119,11 @@ Feature: ComparisonOperatorAcceptance
       | 'b'    |
     And no side effects
 
-@skip
   Scenario: Handling string ranges 2
     Given an empty graph
     And having executed:
       """
-      UNWIND ['a', 'b', 'c'] AS c
-      CREATE ({name: c})
+      CREATE ({name: 'a'}), ({name: 'b'}), ({name: 'c'})
       """
     When executing query:
       """
@@ -149,13 +137,11 @@ Feature: ComparisonOperatorAcceptance
       | 'c'    |
     And no side effects
 
-@skip
   Scenario: Handling string ranges 3
     Given an empty graph
     And having executed:
       """
-      UNWIND ['a', 'b', 'c'] AS c
-      CREATE ({name: c})
+      CREATE ({name: 'a'}), ({name: 'b'}), ({name: 'c'})
       """
     When executing query:
       """
@@ -169,13 +155,11 @@ Feature: ComparisonOperatorAcceptance
       | 'b'    |
     And no side effects
 
-@skip
   Scenario: Handling string ranges 4
     Given an empty graph
     And having executed:
       """
-      UNWIND ['a', 'b', 'c'] AS c
-      CREATE ({name: c})
+      CREATE ({name: 'a'}), ({name: 'b'}), ({name: 'c'})
       """
     When executing query:
       """
@@ -190,7 +174,6 @@ Feature: ComparisonOperatorAcceptance
       | 'c'    |
     And no side effects
 
-@skip
   Scenario: Handling empty range
     Given an empty graph
     And having executed:
@@ -207,7 +190,7 @@ Feature: ComparisonOperatorAcceptance
       | n.num |
     And no side effects
 
-@skip
+  @skip
   Scenario: Handling long chains of operators
     Given an empty graph
     And having executed:

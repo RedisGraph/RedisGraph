@@ -33,7 +33,6 @@ Feature: TernaryLogicAcceptanceTest
   Background:
     Given any graph
 
-@skip
   Scenario: The inverse of a null is a null
     When executing query:
       """
@@ -66,7 +65,6 @@ Feature: TernaryLogicAcceptanceTest
       | false |
     And no side effects
 
-@skip
   Scenario: It is unknown - i.e. null - if a null is equal to a null
     When executing query:
       """
@@ -77,7 +75,6 @@ Feature: TernaryLogicAcceptanceTest
       | null  |
     And no side effects
 
-@skip
   Scenario: It is unknown - i.e. null - if a null is not equal to a null
     When executing query:
       """
