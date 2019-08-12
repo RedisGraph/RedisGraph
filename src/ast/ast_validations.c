@@ -398,12 +398,10 @@ static AST_Validation _ValidateFilterPredicates(const cypher_astnode_t *predicat
 			// comparison function. Failing expressions include:
 			// WHERE EXISTS(a.age) AND a.age > 30
 			if(_ValidateFilterPredicates(left, reason) != AST_VALID) return AST_INVALID;
-
 			if(_ValidateFilterPredicates(right, reason) != AST_VALID) return AST_INVALID;
-
 		} else {
 			// Check for chains of form:
-			// WHERE n.prop1 < m.prop1 = n.prop2 <> m.prop2
+			// WHERE n.prop1 < m.prop2 = n.prop3 <> m.prop4
 			cypher_astnode_type_t left_type = cypher_astnode_type(left);
 			cypher_astnode_type_t right_type = cypher_astnode_type(right);
 
@@ -412,13 +410,6 @@ static AST_Validation _ValidateFilterPredicates(const cypher_astnode_t *predicat
 				asprintf(reason, "Comparison chains of length > 1 are not currently supported.");
 				return AST_INVALID;
 			}
-		}
-	} else if(type == CYPHER_AST_COMPARISON) {
-		// WHERE 10 < n.value <= 3
-		if(cypher_ast_comparison_get_length(predicate) > 1) {
-			asprintf(reason, "Comparison chains of length > 1 are not currently supported.");
-			return AST_INVALID;
-
 		}
 	} else if(type == CYPHER_AST_UNARY_OPERATOR) {
 		// WHERE exists(a.name)
@@ -695,7 +686,7 @@ static AST_Validation _Validate_ReturnedTypes(const cypher_astnode_t *return_cla
 				asprintf(reason, "RedisGraph does not currently support returning this unary operator.");
 				return AST_INVALID;
 			}
-        }
+		}
 	}
 	return AST_VALID;
 }

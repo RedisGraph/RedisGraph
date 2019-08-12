@@ -83,17 +83,36 @@ FT_FilterNode *_convertBinaryOperator(RecordMap *record_map, const cypher_astnod
  * allows more complex formulations like "x < y <= z".
  * A comparison takes a form such as "WHERE a.val < y.val". */
 FT_FilterNode *_convertComparison(RecordMap *record_map, const cypher_astnode_t *comparison_node) {
+	// "x < y <= z"
 	uint nelems = cypher_ast_comparison_get_length(comparison_node);
-	assert(nelems == 1); // TODO Cypher comparisons are allowed to be longer, as in "x < y <= z"
+	FT_FilterNode **filters = array_new(FT_FilterNode *, nelems);
 
-	const cypher_operator_t *operator = cypher_ast_comparison_get_operator(comparison_node, 0);
-	AST_Operator op = AST_ConvertOperatorNode(operator);
+	// Create and accumulate simple predicates x < y.
+	for(int i = 0; i < nelems; i++) {
+		const cypher_operator_t *operator = cypher_ast_comparison_get_operator(comparison_node, i);
+		const cypher_astnode_t *lhs = cypher_ast_comparison_get_argument(comparison_node, i);
+		const cypher_astnode_t *rhs = cypher_ast_comparison_get_argument(comparison_node, i + 1);
 
-	// All arguments are of type CYPHER_AST_EXPRESSION
-	const cypher_astnode_t *lhs = cypher_ast_comparison_get_argument(comparison_node, 0);
-	const cypher_astnode_t *rhs = cypher_ast_comparison_get_argument(comparison_node, 1);
+		AST_Operator op = AST_ConvertOperatorNode(operator);
+		FT_FilterNode *filter = _CreatePredicateFilterNode(record_map, op, lhs, rhs);
+		filters = array_append(filters, filter);
+	}
 
-	return _CreatePredicateFilterNode(record_map, op, lhs, rhs);
+	// Reduce by anding.
+	while(array_len(filters) > 1) {
+		FT_FilterNode *a = array_pop(filters);
+		FT_FilterNode *b = array_pop(filters);
+		FT_FilterNode *intersec = FilterTree_CreateConditionFilter(OP_AND);
+
+		AppendLeftChild(intersec, a);
+		AppendRightChild(intersec, b);
+
+		filters = array_append(filters, intersec);
+	}
+
+	FT_FilterNode *root = array_pop(filters);
+	array_free(filters);
+	return root;
 }
 
 static FT_FilterNode *_convertInlinedProperties(RecordMap *record_map, const AST *ast,
