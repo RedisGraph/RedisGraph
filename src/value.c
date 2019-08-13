@@ -186,9 +186,11 @@ const char *SIType_ToString(SIType t) {
 }
 int SIArray_ToString(SIValue *array, char *buf, size_t len) {
 	int bytes_written = snprintf(buf, len, "[");
+	// len now holds the actual amount of bytes allowed to be wrriten
 	len -= bytes_written;
 	uint arrayLen = array_len(list.array);
 	for(uint i = 0; i < arrayLen; i ++) {
+		// if there no more space left in the buffer
 		if(len < 2) break;
 
 		// write the next value
@@ -196,21 +198,23 @@ int SIArray_ToString(SIValue *array, char *buf, size_t len) {
 		bytes_written += currentWriteLength;
 		len -= currentWriteLength;
 
-		// if there no more space in the buffer of the end of the array
+		// if there no more space left in the buffer or it is the last element
 		if(len < 2 || i == arrayLen - 1) break;
 
 		currentWriteLength = snprintf(buf + bytes_written, len, ", ");
 		bytes_written += currentWriteLength;
 		len -= currentWriteLength;
 	}
-	// you can close the array
+
+	// if there is still room in the buffer, close the array
 	if(len >= 2) {
 		bytes_written += snprintf(buf + bytes_written, len, "]");
 		return bytes_written;
+	} else {
+		// last write exeeded buffer length, replace with "...]\0"
+		snprintf(buf + strlen(buf) - 5, 5, "...]");
+		return strlen(buf);
 	}
-	// if there is no space left
-	snprintf(buf + strlen(buf) - 5, 5, "...]");
-	return strlen(buf);
 }
 
 int SIValue_ToString(SIValue v, char *buf, size_t len) {
@@ -315,18 +319,18 @@ SIValue SIValue_ConcatString(const SIValue a, const SIValue b) {
 	SIValue result;
 	char buffer[512];
 	char *string_arg = NULL;
-	// a is not a string - scalar + string
+	// in case a is not a string - concat scalar + string
 	if(a.type != T_STRING) {
 		/* a is numeric, convert to string. */
 		SIValue_ToString(a, buffer, 512);
 		result = SI_DuplicateStringVal(buffer);
 	}
-	// string + value
+	// a is a string - concat string + value
 	else result = SI_Clone(a);
 
 	unsigned int argument_len = 0;
 	if(b.type != T_STRING) {
-		/* b is not a numeric, get a string representation. */
+		/* b is not a string, get a string representation. */
 		argument_len = SIValue_ToString(b, buffer, 512);
 		string_arg = buffer;
 	} else {
@@ -351,8 +355,9 @@ SIValue SIValue_ConcatList(const SIValue a, const SIValue b) {
 		resultArray = SI_Array(array);
 	}
 	// array + value
-	else resultArray = SI_Clone(a);
-
+	else {
+		resultArray = SI_Clone(a);
+	}
 	// b is scalar
 	if(b.type != T_ARRAY) {
 		resultArray.array = array_append(resultArray.array, b);
@@ -411,9 +416,10 @@ int SIArray_Compare(SIValue *arrayA, SIValue *arrayB) {
 	// check for the common range of indices
 	uint minLengh = arrayALen < arrayBLen ? arrayALen : arrayBLen;
 
-	uint allDisjoint = 0;
-	uint nullCompare = 0;
-	int notEqual = 0;
+	uint allDisjoint = 0;   // counter for the amount of disjoint comparisons
+	uint nullCompare = 0;   // counter for the amount of null comparison
+	int notEqual =
+		0;       // will hold the first false (result != 0) comparison result between two values from the same type, which are not equal
 
 	// go over the common range for both arrays
 	for(uint i = 0; i < minLengh; i++) {
@@ -426,12 +432,13 @@ int SIArray_Compare(SIValue *arrayA, SIValue *arrayB) {
 			break;
 		case COMPARED_NULL:
 			// there was a null comparison
-			nullCompare++;
-			allDisjoint++;
+			nullCompare++;  // update null comparison counter
+			allDisjoint++;  // null comparison is also a disjoint comparison
 			break;
 		case DISJOINT:
-			allDisjoint++;
-			notEqual = !notEqual ? compareResult : notEqual;
+			allDisjoint++;  // there was a disjoint comparison
+			notEqual = !notEqual ? compareResult :
+					   notEqual;    // if there wasn't any false comparison, update the false comparison to disjoint value
 			break;
 		default:
 			// if comparison is not 0 (a != b), set the first value
@@ -450,8 +457,7 @@ int SIArray_Compare(SIValue *arrayA, SIValue *arrayB) {
 }
 
 int SIValue_Compare(const SIValue a, const SIValue b) {
-	/* In order to be comparable, both SIValues must be strings,
-	 * booleans, or numerics. */
+	/* In order to be comparable, both SIValues must be from the same type */
 	if(a.type == T_NULL || b.type == T_NULL) return COMPARED_NULL;
 	if(a.type == b.type) {
 		switch(a.type) {

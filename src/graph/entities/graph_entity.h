@@ -27,11 +27,14 @@ typedef GrB_Index EntityID;
 typedef GrB_Index NodeID;
 typedef GrB_Index EdgeID;
 
+// format a graph entity string according to the enum
+// one can sum the enum values in order to print multiple value
+// ENTITY_ID + ENTITY_LABELS_OR_RELATIONS will print both id and label
 typedef enum
 {
-    ENTITY_ID = 1,
-    ENTITY_LABELS_OR_RELATIONS = 1 << 1,
-    ENTITY_PROPERTIES = 1 << 2
+    ENTITY_ID = 1,                       // print id only
+    ENTITY_LABELS_OR_RELATIONS = 1 << 1, // print label or relationship type
+    ENTITY_PROPERTIES = 1 << 2           // print properties
 } GraphEntityStringFromat;
 
 typedef enum GraphEntityType
@@ -74,11 +77,9 @@ SIValue *GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id);
 /* Updates existing attribute value. */
 void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue value);
 
-/* prints the id into a buffer, returns what is the string length */
-int GraphEntity_IdToString(const GraphEntity *e, char *buffer, int bufferLen);
-
-/* prints the properties into a buffer, returns what is the string length */
-int GraphEntity_PropertiesToString(const GraphEntity *e, char *buffer, int bufferLen);
+/* prints the graph entity into a buffer, returns what is the string length */
+int GraphEntity_ToString(const GraphEntity *e, char *buffer, int bufferLen,
+                         GraphEntityStringFromat format, GraphEntityType entityType);
 
 /* Release all memory allocated by entity */
 void FreeEntity(Entity *e);

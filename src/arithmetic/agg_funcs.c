@@ -448,7 +448,6 @@ int __agg_collectReduceNext(AggCtx *ctx) {
 AggCtx *Agg_CollectFunc() {
 	__agg_collectCtx *ac = malloc(sizeof(__agg_collectCtx));
 	ac->list = SI_Array(array_new(SIValue, 0));
-	// ac->list.allocation = M_SELF;
 
 	return Agg_Reduce(ac, __agg_collectStep, __agg_collectReduceNext);
 }

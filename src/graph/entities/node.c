@@ -54,42 +54,7 @@ Node *Node_Clone(const Node *n) {
 }
 
 int Node_ToString(const Node *n, char *buffer, int bufferLen, GraphEntityStringFromat format) {
-	if(bufferLen <= 1) return 0;
-	int bytes_written = snprintf(buffer, bufferLen, "(");
-	bufferLen -= bytes_written;
-	int currentWriteLength = 0;
-
-	// write id
-	if(format & ENTITY_ID) {
-		currentWriteLength = snprintf(buffer + bytes_written, bufferLen, "%llu", ENTITY_GET_ID(n));
-		bytes_written += currentWriteLength;
-		bufferLen -= currentWriteLength;
-	}
-
-	// write label
-	if(bufferLen > 2 && format & ENTITY_LABELS_OR_RELATIONS) {
-		if(n->label) {
-			currentWriteLength = snprintf(buffer + bytes_written, bufferLen, ":%s", n->label);
-			bytes_written += currentWriteLength;
-			bufferLen -= currentWriteLength;
-		}
-	}
-
-	// write properies
-	if(bufferLen > 2 && format & ENTITY_PROPERTIES) {
-		currentWriteLength = GraphEntity_PropertiesToString((GraphEntity *)n, buffer + bytes_written,
-															bufferLen);
-		bytes_written += currentWriteLength;
-		bufferLen -= currentWriteLength;
-	}
-
-	if(bufferLen >= 2) {
-		bytes_written += snprintf(buffer + bytes_written, bufferLen, ")");
-		return bytes_written;
-	}
-	// if there is no space left
-	snprintf(buffer + strlen(buffer) - 5, 5, "...)");
-	return strlen(buffer);
+	return GraphEntity_ToString((const GraphEntity *)n, buffer, bufferLen, format, GETYPE_NODE);
 }
 
 void Node_Free(Node *node) {

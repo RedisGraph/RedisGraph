@@ -39,22 +39,24 @@ OpBase *NewUnwindOp(uint record_idx, AR_ExpNode *exps) {
 OpResult UnwindInit(OpBase *opBase) {
 	OpUnwind *unwind = (OpUnwind *)opBase;
 
-	// check if there are children - if not, add static record
-	if(!unwind->op.childCount)
-		unwind->currentRecord = Record_New(opBase->record_map->record_len);
-
 	// check for modifiers in the AR_EXP for static or dynamic list
-	rax *modifies = raxNew();
-	AR_EXP_CollectEntityIDs(unwind->expressions, modifies);
+	rax *modifiers = raxNew();
+	AR_EXP_CollectEntityIDs(unwind->expressions, modifiers);
 	// if there aren't any modifiers - list is static
-	if(!raxSize(modifies)) {
+	if(!raxSize(modifiers)) {
 		// set the list
 		unwind->list = AR_EXP_Evaluate(unwind->expressions, NULL);
 		assert(unwind->list.type == T_ARRAY);
 		unwind->isStatic = true;
+	}
+	// check if there are children - if not, add static record and reset the list index
+	if(!unwind->op.childCount) {
+		unwind->currentRecord = Record_New(opBase->record_map->record_len);
+		// the list index is set to 0 only when there are no children to the op
+		// if the list is static, but the op has children, we first need to get a record from them
+		// MATCH(n) UNWIND [0,1,2] as y return n, y
 		unwind->listIdx = 0;
 	}
-
 	return OP_OK;
 }
 
@@ -99,17 +101,14 @@ Record UnwindConsume(OpBase *opBase) {
 			// resed index
 			op->listIdx = 0;
 		}
-		// no more new lists
-		else return NULL;
-	} // op has no children, static list returned fully
-	else return NULL;
-
+	}
+	// in case of no more lists from the op's children, or p has no children and static list returned fully, _handoff(op) will return NULL
 	return _handoff(op);
 }
 
 OpResult UnwindReset(OpBase *ctx) {
 	OpUnwind *unwind = (OpUnwind *)ctx;
-	unwind->listIdx = 0;
+	unwind->listIdx = UNDEFIND;
 	return OP_OK;
 }
 

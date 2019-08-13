@@ -9,6 +9,8 @@
 #include "graph_entity.h"
 #include "../../util/rmalloc.h"
 #include "../graphcontext.h"
+#include "node.h"
+#include "edge.h"
 
 SIValue *PROPERTY_NOTFOUND = &(SIValue) {
 	.longval = 0, .type = T_NULL
@@ -128,6 +130,70 @@ int GraphEntity_PropertiesToString(const GraphEntity *e, char *buffer, int buffe
 	// if there is no space left
 	snprintf(buffer + strlen(buffer) - 5, 5, "...}");
 	return strlen(buffer);
+}
+
+
+int GraphEntity_ToString(const GraphEntity *e, char *buffer, int bufferLen,
+						 GraphEntityStringFromat format, GraphEntityType entityType) {
+	// minimum length buffer for "(...)\0" or "[...]\0"
+	if(bufferLen < 6) return 0;
+	char *openSymbole = entityType == GETYPE_NODE ? "(" : "[";
+	char *closeSymbole = entityType == GETYPE_NODE ? ")" : "]";
+	int bytes_written = snprintf(buffer, bufferLen, "%s", openSymbole);
+	bufferLen -= bytes_written;
+	int currentWriteLength = 0;
+
+	// write id
+	if(format & ENTITY_ID) {
+		currentWriteLength = snprintf(buffer + bytes_written, bufferLen, "%llu", ENTITY_GET_ID(e));
+		bytes_written += currentWriteLength;
+		bufferLen -= currentWriteLength;
+	}
+
+	// write label
+	if(bufferLen > 2 && format & ENTITY_LABELS_OR_RELATIONS) {
+		switch(entityType) {
+		case GETYPE_NODE: {
+			Node *n = (Node *)e;
+			if(n->label) {
+				currentWriteLength = snprintf(buffer + bytes_written, bufferLen, ":%s", n->label);
+				bytes_written += currentWriteLength;
+				bufferLen -= currentWriteLength;
+			}
+			break;
+		}
+
+		case GETYPE_EDGE: {
+			Edge *edge = (Edge *)e;
+			if(edge->relationship) {
+				currentWriteLength = snprintf(buffer + bytes_written, bufferLen, ":%s", edge->relationship);
+				bytes_written += currentWriteLength;
+				bufferLen -= currentWriteLength;
+			}
+			break;
+		}
+
+		default:
+			break;
+		}
+	}
+
+	// write properies
+	if(bufferLen > 2 && format & ENTITY_PROPERTIES) {
+		currentWriteLength = GraphEntity_PropertiesToString(e, buffer + bytes_written,
+															bufferLen);
+		bytes_written += currentWriteLength;
+		bufferLen -= currentWriteLength;
+	}
+	// if there is still room in the buffer, close the node/edge
+	if(bufferLen >= 2) {
+		bytes_written += snprintf(buffer + bytes_written, bufferLen, "%s", closeSymbole);
+		return bytes_written;
+	} else {
+		// last write exeeded buffer length, replace with "...)\0" or "...]\0"
+		snprintf(buffer + strlen(buffer) - 5, 5, "...%s", closeSymbole);
+		return strlen(buffer);
+	}
 }
 
 void FreeEntity(Entity *e) {
