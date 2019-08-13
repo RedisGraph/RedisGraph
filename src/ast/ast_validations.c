@@ -433,6 +433,7 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast, char **reason) {
 	res = _ValidateReferredFunctions(referred_funcs, reason, include_aggregates);
 
 cleanup:
+	if(projections) TrieMap_Free(projections, TrieMap_NOP_CB);
 	TrieMap_Free(referred_funcs, TrieMap_NOP_CB);
 	TrieMap_Free(identifiers, TrieMap_NOP_CB);
 	TrieMap_Free(reused_entities, TrieMap_NOP_CB);

@@ -16,6 +16,7 @@ static void _AddProperties(OpMerge *op, Record r, GraphEntity *ge,
 		Attribute_ID prop_id = GraphContext_FindOrAddAttribute(op->gc, props->keys[i]);
 		SIValue val = AR_EXP_Evaluate(props->values[i], r);
 		GraphEntity_AddProperty(ge, prop_id, val);
+		SIValue_Free(&val);
 	}
 
 	if(op->stats) op->stats->properties_set += props->property_count;
@@ -171,4 +172,15 @@ OpResult OpMergeReset(OpBase *ctx) {
 }
 
 void OpMergeFree(OpBase *ctx) {
+	OpMerge *op = (OpMerge *)ctx;
+
+	uint node_count = array_len(op->nodes_to_merge);
+	for(uint i = 0; i < node_count; i ++) {
+		PropertyMap_Free(op->nodes_to_merge[i].properties);
+	}
+
+	uint edge_count = array_len(op->edges_to_merge);
+	for(uint i = 0; i < edge_count; i ++) {
+		PropertyMap_Free(op->edges_to_merge[i].properties);
+	}
 }
