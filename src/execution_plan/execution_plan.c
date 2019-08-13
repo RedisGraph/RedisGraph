@@ -377,16 +377,6 @@ static void _ExecutionPlanSegment_MapAliasesInPattern(ExecutionPlanSegment *segm
 		uint path_elem_count = cypher_ast_pattern_path_nelements(path);
 		for(uint j = 0; j < path_elem_count; j ++) {
 			const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, j);
-			// const cypher_astnode_t *ast_alias;
-			// ast_alias = (j % 2) ? cypher_ast_rel_pattern_get_identifier(elem) :
-			// cypher_ast_node_pattern_get_identifier(elem);
-
-			// if(ast_alias) {
-			// // Encountered an aliased entity - verify that it is represented in the RecordMap.
-			// const char *alias = cypher_ast_identifier_get_name(ast_alias);
-			// RecordMap_FindOrAddAlias(segment->record_map, alias);
-			// }
-
 			const cypher_astnode_t *ast_props = (j % 2) ? cypher_ast_rel_pattern_get_properties(elem) :
 												cypher_ast_node_pattern_get_properties(elem);
 
