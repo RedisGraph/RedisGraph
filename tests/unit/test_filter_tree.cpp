@@ -249,10 +249,10 @@ TEST_F(FilterTreeTest, NOTReduction) {
         "MATCH (n) WHERE n.v = 2 AND n.x <= 4 RETURN n",
     };
 
-    for(int i = 0; i < 5; i++) {
+    for(int i = 0; i < 6; i++) {
         const char *actual = filters[i];
         const char *expected_q = expected[i];
-        
+
         FT_FilterNode *actual_tree = build_tree_from_query(actual);
         FT_FilterNode *expected_tree = build_tree_from_query(expected_q);
 

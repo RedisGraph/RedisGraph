@@ -16,6 +16,7 @@
 #include "./optimizations/optimizer.h"
 #include "./optimizations/optimizations.h"
 #include "../arithmetic/algebraic_expression.h"
+#include "../ast/ast_build_ar_exp.h"
 #include "../ast/ast_build_op_contexts.h"
 #include "../ast/ast_build_filter_tree.h"
 

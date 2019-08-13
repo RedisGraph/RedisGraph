@@ -411,20 +411,6 @@ static AST_Validation _ValidateFilterPredicates(const cypher_astnode_t *predicat
 				return AST_INVALID;
 			}
 		}
-<<<<<<< HEAD
-	} else if(type == CYPHER_AST_UNARY_OPERATOR) {
-		// WHERE exists(a.name)
-		asprintf(reason, "Unary APPLY operators are not currently supported in filters.");
-		return AST_INVALID;
-=======
-	} else if(type == CYPHER_AST_COMPARISON) {
-		// WHERE 10 < n.value <= 3
-		if(cypher_ast_comparison_get_length(predicate) > 1) {
-			asprintf(reason, "Comparison chains of length > 1 are not currently supported.");
-			return AST_INVALID;
-
-		}
->>>>>>> Introduce NOT operator
 	} else if(type == CYPHER_AST_PATTERN_PATH) {
 		// Comparisons of form:
 		// MATCH (a), (b) WHERE a.id = 0 AND (a)-[:T]->(b:TheLabel)
