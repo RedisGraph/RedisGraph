@@ -135,11 +135,7 @@ PropertyMap *AST_ConvertPropertiesMap(const cypher_astnode_t *props, RecordMap *
 		map->keys[prop_idx] = cypher_ast_prop_name_get_value(ast_key);
 
 		const cypher_astnode_t *ast_value = cypher_ast_map_get_value(props, prop_idx);
-		AR_ExpNode *value_exp = AR_EXP_FromExpression(record_map, ast_value);
-		// TODO It will be really nice to store AR_ExpNodes rather than resolved SIValues;
-		// allowing things like "CREATE (:b {prop: a.name})"
-		SIValue value = AR_EXP_Evaluate(value_exp, NULL);
-		AR_EXP_Free(value_exp);
+		AR_ExpNode *value = AR_EXP_FromExpression(record_map, ast_value);
 		map->values[prop_idx] = value;
 	}
 	return map;
@@ -317,13 +313,13 @@ AST_CreateContext AST_PrepareCreateOp(GraphContext *gc, RecordMap *record_map, A
 			QueryGraph_AddPath(gc, ast, qg, path);
 
 			uint path_elem_count = cypher_ast_pattern_path_nelements(path);
-			for(uint j = 0; j < path_elem_count; j ++) {
+			for(uint k = 0; k < path_elem_count; k ++) {
 				/* See if current entity needs to be created:
 				 * 1. current entity is NOT in MATCH clause.
 				 * 2. We've yet to account for this entity. */
-				const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, j);
+				const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, k);
 				const cypher_astnode_t *ast_alias;
-				ast_alias = (j % 2) ? cypher_ast_rel_pattern_get_identifier(elem) :
+				ast_alias = (k % 2) ? cypher_ast_rel_pattern_get_identifier(elem) :
 							cypher_ast_node_pattern_get_identifier(elem);
 
 				if(ast_alias) {
@@ -336,8 +332,8 @@ AST_CreateContext AST_PrepareCreateOp(GraphContext *gc, RecordMap *record_map, A
 					if(rc == 0) continue;
 				}
 
-				if(j % 2) {  // Relation
-					EdgeCreateCtx new_edge = _NewEdgeCreateCtx(record_map, ast, qg, path, j);
+				if(k % 2) {  // Relation
+					EdgeCreateCtx new_edge = _NewEdgeCreateCtx(record_map, ast, qg, path, k);
 					edges_to_create = array_append(edges_to_create, new_edge);
 				} else { // Node
 					NodeCreateCtx new_node = _NewNodeCreateCtx(record_map, ast, qg, elem);

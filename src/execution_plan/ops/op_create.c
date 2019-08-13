@@ -9,6 +9,29 @@
 #include "../../schema/schema.h"
 #include <assert.h>
 
+// Resolve the properties specified in the query into constant values.
+PendingProperties *_ConvertPropertyMap(Record r, const PropertyMap *map) {
+	PendingProperties *converted = rm_malloc(sizeof(PendingProperties));
+	converted->property_count = map->property_count;
+	converted->keys = map->keys;
+	converted->values = rm_malloc(sizeof(SIValue) * map->property_count);
+	for(int i = 0; i < map->property_count; i++) {
+		converted->values[i] = AR_EXP_Evaluate(map->values[i], r);
+	}
+
+	return converted;
+}
+
+// Commit properties to the GraphEntity.
+static void _AddProperties(OpCreate *op, GraphEntity *ge, PendingProperties *props) {
+	for(int i = 0; i < props->property_count; i++) {
+		Attribute_ID prop_id = GraphContext_FindOrAddAttribute(op->gc, props->keys[i]);
+		GraphEntity_AddProperty(ge, prop_id, props->values[i]);
+	}
+
+	if(op->stats) op->stats->properties_set += props->property_count;
+}
+
 OpBase *NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
 	OpCreate *op_create = calloc(1, sizeof(OpCreate));
 	op_create->gc = GraphContext_GetFromTLS();
@@ -17,8 +40,8 @@ OpBase *NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreate
 	op_create->edges_to_create = edges;
 	op_create->created_nodes = array_new(Node *, 0);
 	op_create->created_edges = array_new(Edge *, 0);
-	op_create->node_properties = array_new(PropertyMap *, 0);
-	op_create->edge_properties = array_new(PropertyMap *, 0);
+	op_create->node_properties = array_new(PendingProperties *, 0);
+	op_create->edge_properties = array_new(PendingProperties *, 0);
 	op_create->stats = stats;
 
 	// Set our Op operations
@@ -45,18 +68,6 @@ OpBase *NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreate
 	return (OpBase *)op_create;
 }
 
-// TODO improve, consolidate, etc
-static void _AddProperties(OpCreate *op, GraphEntity *ge, PropertyMap *props) {
-	if(props == NULL) return;
-
-	for(int i = 0; i < props->property_count; i++) {
-		Attribute_ID prop_id = GraphContext_FindOrAddAttribute(op->gc, props->keys[i]);
-		GraphEntity_AddProperty(ge, prop_id, props->values[i]);
-	}
-
-	op->stats->properties_set += props->property_count;
-}
-
 void _CreateNodes(OpCreate *op, Record r) {
 	uint nodes_to_create_count = array_len(op->nodes_to_create);
 	for(uint i = 0; i < nodes_to_create_count; i++) {
@@ -69,11 +80,19 @@ void _CreateNodes(OpCreate *op, Record r) {
 		newNode->label = n->label;
 		newNode->labelID = n->labelID;
 
+		/* Convert query-level properties. */
+		PropertyMap *map = op->nodes_to_create[i].properties;
+		PendingProperties *converted_properties = NULL;
+		if(map) {
+			converted_properties = _ConvertPropertyMap(r, map);
+		}
+
 		/* Save node for later insertion. */
 		op->created_nodes = array_append(op->created_nodes, newNode);
 
-		/* Save reference to property map */
-		op->node_properties = array_append(op->node_properties, op->nodes_to_create[i].properties);
+		/* Save properties to insert with node. */
+		op->node_properties = array_append(op->node_properties, converted_properties);
+
 	}
 }
 
@@ -93,11 +112,18 @@ void _CreateEdges(OpCreate *op, Record r) {
 		Edge_SetSrcNode(newEdge, src_node);
 		Edge_SetDestNode(newEdge, dest_node);
 
+		/* Convert query-level properties. */
+		PropertyMap *map = op->edges_to_create[i].properties;
+		PendingProperties *converted_properties = NULL;
+		if(map) {
+			converted_properties = _ConvertPropertyMap(r, map);
+		}
+
 		/* Save edge for later insertion. */
 		op->created_edges = array_append(op->created_edges, newEdge);
 
-		/* Save reference to property map */
-		op->edge_properties = array_append(op->edge_properties, op->edges_to_create[i].properties);
+		/* Save properties to insert with node. */
+		op->edge_properties = array_append(op->edge_properties, converted_properties);
 	}
 }
 
@@ -129,7 +155,7 @@ static void _CommitNodes(OpCreate *op) {
 		// Introduce node into graph.
 		Graph_CreateNode(g, labelID, n);
 
-		_AddProperties(op, (GraphEntity *)n, op->node_properties[i]);
+		if(op->node_properties[i]) _AddProperties(op, (GraphEntity *)n, op->node_properties[i]);
 
 		if(n->label) GraphContext_AddNodeToIndices(op->gc, schema, n);
 	}
@@ -163,8 +189,7 @@ static void _CommitEdges(OpCreate *op) {
 		if(!Graph_ConnectNodes(g, srcNodeID, destNodeID, relation_id, e)) continue;
 		relationships_created++;
 
-		// Set edge properties.
-		_AddProperties(op, (GraphEntity *)e, op->edge_properties[i]);
+		if(op->edge_properties[i]) _AddProperties(op, (GraphEntity *)e, op->edge_properties[i]);
 	}
 
 	op->stats->relationships_created += relationships_created;
@@ -270,13 +295,33 @@ void OpCreateFree(OpBase *ctx) {
 		array_free(op->edges_to_create);
 	}
 
-	if(op->created_nodes) {
-		array_free(op->created_nodes);
-		array_free(op->node_properties);
-	}
+	array_free(op->created_nodes);
+	array_free(op->created_edges);
 
-	if(op->created_edges) {
-		array_free(op->created_edges);
-		array_free(op->edge_properties);
+	// Free all graph-committed properties associated with nodes
+	uint prop_count = array_len(op->node_properties);
+	for(uint i = 0; i < prop_count; i ++) {
+		PendingProperties *props = op->node_properties[i];
+		if(props == NULL) continue;
+		for(uint j = 0; j < props->property_count; j ++) {
+			SIValue_Free(&props->values[j]);
+		}
+		rm_free(props->values);
+		rm_free(props);
 	}
+	array_free(op->node_properties);
+
+	// Free all graph-committed properties associated withedges
+	prop_count = array_len(op->edge_properties);
+	for(uint i = 0; i < prop_count; i ++) {
+		// Free the properties that have been committed to the graph
+		PendingProperties *props = op->edge_properties[i];
+		if(props == NULL) continue;
+		for(uint j = 0; j < props->property_count; j ++) {
+			SIValue_Free(&props->values[j]);
+		}
+		rm_free(props->values);
+		rm_free(props);
+	}
+	array_free(op->edge_properties);
 }

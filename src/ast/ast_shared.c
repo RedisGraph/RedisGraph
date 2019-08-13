@@ -51,10 +51,9 @@ void PropertyMap_Free(PropertyMap *map) {
 	if(map == NULL) return;
 
 	for(uint i = 0; i < map->property_count; i++) {
-		SIValue_Free(&map->values[i]);
+		AR_EXP_Free(map->values[i]);
 	}
 	free(map->keys);
 	free(map->values);
 	free(map);
 }
-

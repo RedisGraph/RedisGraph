@@ -196,9 +196,6 @@ static FT_FilterNode *_convertInlinedProperties(RecordMap *record_map, const AST
 		 * "MATCH (r:person {name:"Roi"}) RETURN r"
 		 * (note the repeated double quotes) - this creates a variable rather than a scalar.
 		 * Can we use this to handle escape characters or something? How does it work? */
-		// Inlined properties can only be scalars right now
-		assert(rhs->operand.type == AR_EXP_CONSTANT &&
-			   "non-scalar inlined property are not currently supported.");
 		FT_FilterNode *t = FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, rhs);
 		_FT_Append(&root, t);
 	}

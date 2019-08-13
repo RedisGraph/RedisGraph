@@ -37,7 +37,7 @@ typedef enum {
 
 typedef struct {
 	const char **keys;
-	SIValue *values; // TODO Replace with AR_ExpNodes
+	struct AR_ExpNode **values;
 	int property_count;
 } PropertyMap;
 
