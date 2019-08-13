@@ -15,6 +15,7 @@
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
 #include "../datatypes/temporal_value.h"
+#include "../datatypes/array.h"
 
 #include "assert.h"
 #include <math.h>
@@ -657,13 +658,11 @@ SIValue AR_REVERSE(SIValue *argv, int argc) {
 	}
 	// in case of array
 	assert(SI_TYPE(value) == T_ARRAY);
-	uint arrayLen = array_len(value.array);
-	SIValue *array = array_new(SIValue, arrayLen);
+	uint arrayLen = Array_Length(value);
+	SIValue result = SI_Array(arrayLen);
 	for(uint i = arrayLen - 1; i >= 0; i--) {
-		array = array_append(array, value.array[i]);
+		result = Array_Append(result, Array_Get(value, i));
 	}
-	SIValue result = SI_Array(array);
-	SIValue_Persist(&result);
 	return result;
 }
 

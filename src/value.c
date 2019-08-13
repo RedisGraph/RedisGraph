@@ -16,6 +16,7 @@
 #include <assert.h>
 #include "util/rmalloc.h"
 #include "util/arr.h"
+#include "datatypes/array.h"
 
 SIValue SI_LongVal(int64_t i) {
 	return (SIValue) {
@@ -58,14 +59,12 @@ SIValue SI_Edge(void *e) {
 		.ptrval = e, .type = T_EDGE, .allocation = M_VOLATILE
 	};
 }
-SIValue SI_Array(SIValue *array) {
-	return (SIValue) {
-		.array = array, .type = T_ARRAY, .allocation = M_VOLATILE
-	};
+SIValue SI_Array(u_int64_t initialCapacity) {
+	return Array_New(initialCapacity);
 }
 
 SIValue SI_EmptyArray() {
-	return SI_Array(array_new(SIValue, 0));
+	return Array_New(0);
 }
 
 SIValue SI_DuplicateStringVal(const char *s) {
@@ -96,6 +95,12 @@ SIValue SI_ShareValue(const SIValue v) {
 	return dup;
 }
 
+// deep clone an array of SIValues
+SIValue SI_CloneArrayVal(SIValue array) {
+
+	return Array_Clone(array);
+}
+
 /* Make an SIValue that creates its own copies of the original's allocations, if any.
  * This is not a deep clone: if the inner value holds its own references,
  * such as the Entity pointer to the properties of a Node or Edge, those are unmodified. */
@@ -105,6 +110,10 @@ SIValue SI_CloneValue(const SIValue v) {
 	if(v.type == T_STRING) {
 		// Allocate a new copy of the input's string value.
 		return SI_DuplicateStringVal(v.stringval);
+	}
+
+	if(v.type == T_ARRAY) {
+		return SI_CloneArrayVal(v);
 	}
 
 	// Copy the memory region for Node and Edge values. This does not modify the
@@ -121,6 +130,7 @@ SIValue SI_CloneValue(const SIValue v) {
 	} else {
 		assert(false && "Encountered heap-allocated SIValue of unhandled type");
 	}
+
 	clone.ptrval = rm_malloc(size);
 	memcpy(clone.ptrval, v.ptrval, size);
 	return clone;
@@ -350,9 +360,8 @@ SIValue SIValue_ConcatList(const SIValue a, const SIValue b) {
 	SIValue resultArray;
 	// scalar + array
 	if(a.type != T_ARRAY) {
-		SIValue *array = array_new(SIValue, 1 + array_len(b.array));
-		array = array_append(array, a);
-		resultArray = SI_Array(array);
+		SIValue resultArray = SI_Array(1 + Array_Length(b));
+		resultArray = Array_Append(resultArray, a);
 	}
 	// array + value
 	else {
@@ -360,14 +369,13 @@ SIValue SIValue_ConcatList(const SIValue a, const SIValue b) {
 	}
 	// b is scalar
 	if(b.type != T_ARRAY) {
-		resultArray.array = array_append(resultArray.array, b);
+		resultArray = Array_Append(resultArray, b);
 	} else {
-		uint bArrayLen = array_len(b.array);
+		uint bArrayLen = Array_Length(b);
 		for(uint i = 0; i < bArrayLen; i++) {
-			resultArray.array = array_append(resultArray.array, b.array[i]);
+			resultArray = Array_Append(resultArray, Array_Get(b, i));
 		}
 	}
-	SIValue_Persist(&resultArray);
 	return resultArray;
 }
 

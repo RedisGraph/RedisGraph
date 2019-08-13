@@ -12,7 +12,8 @@
 #include "../util/qsort.h"
 #include <assert.h>
 #include <math.h>
-#include "../util/arr.h"
+#include "../datatypes/array.h"
+
 
 #define ISLT(a,b) ((*a) < (*b))
 
@@ -431,9 +432,7 @@ int __agg_collectStep(AggCtx *ctx, SIValue *argv, int argc) {
 	for(int i = 0; i < argc; i ++) {
 		SIValue value = argv[i];
 		if(value.type == T_NULL) continue;
-		// persist new collected values
-		SIValue_Persist(&value);
-		ac->list.array = array_append(ac->list.array, value);
+		ac->list = Array_Append(ac->list, value);
 	}
 	return AGG_OK;
 }
@@ -441,13 +440,13 @@ int __agg_collectStep(AggCtx *ctx, SIValue *argv, int argc) {
 int __agg_collectReduceNext(AggCtx *ctx) {
 	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
 
-	Agg_SetResult(ctx, ac->list);
+	Agg_SetResult(ctx, SI_Clone(ac->list));
 	return AGG_OK;
 }
 
 AggCtx *Agg_CollectFunc() {
 	__agg_collectCtx *ac = malloc(sizeof(__agg_collectCtx));
-	ac->list = SI_Array(array_new(SIValue, 0));
+	ac->list = SI_Array(0);
 
 	return Agg_Reduce(ac, __agg_collectStep, __agg_collectReduceNext);
 }

@@ -6,7 +6,7 @@
 
 #include <assert.h>
 #include "op_unwind.h"
-#include "../../util/arr.h"
+#include "../../datatypes/array.h"
 #include "../../arithmetic/arithmetic_expression.h"
 #include "limits.h"
 
@@ -65,9 +65,9 @@ OpResult UnwindInit(OpBase *opBase) {
 // or in case of the current list fully returned its memebers
 Record _handoff(OpUnwind *op) {
 	// if there is a new value ready, return it
-	if(op->listIdx < array_len(op->list.array)) {
+	if(op->listIdx < Array_Length(op->list)) {
 		Record r = Record_Clone(op->currentRecord);
-		Record_AddScalar(r, op->unwindRecIdx, op->list.array[op->listIdx]);
+		Record_AddScalar(r, op->unwindRecIdx, Array_Get(op->list, op->listIdx));
 		op->listIdx++;
 		return r;
 	}
