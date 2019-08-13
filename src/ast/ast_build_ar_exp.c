@@ -10,64 +10,46 @@
 #include <assert.h>
 
 static const char *_ASTOpToString(AST_Operator op) {
+	// TODO: switch to a table, tbl[op] = string.
 	switch(op) {
 	case OP_PLUS:
 		return "ADD";
-		break;
 	case OP_MINUS:
 		return "SUB";
-		break;
 	case OP_MULT:
 		return "MUL";
-		break;
 	case OP_DIV:
 		return "DIV";
-		break;
 	case OP_CONTAINS:
 		return "CONTAINS";
-		break;
 	case OP_STARTSWITH:
 		return "STARTS WITH";
-		break;
 	case OP_ENDSWITH:
 		return "ENDS WITH";
-		break;
 	case OP_AND:
 		return "AND";
-		break;
 	case OP_OR:
 		return "OR";
-		break;
 	case OP_XOR:
 		return "XOR";
-		break;
 	case OP_NOT:
 		return "NOT";
-		break;
 	case OP_GT:
 		return "GT";
-		break;
 	case OP_GE:
 		return "GE";
-		break;
 	case OP_LT:
 		return "LT";
-		break;
 	case OP_LE:
 		return "LE";
-		break;
 	case OP_EQUAL:
 		return "EQ";
-		break;
 	case OP_NEQUAL:
 		return "NEQ";
-		break;
 	case OP_MOD:
 		return "MOD";
-		break;
 	case OP_POW:
 		return "POW";
-		break;
 	default:
 		assert(false && "Unhandled operator was specified in query");
 		return NULL;
@@ -119,8 +101,7 @@ static AR_ExpNode *_AR_EXP_FromPropertyExpression(RecordMap *record_map,
 	return AR_EXP_NewVariableOperandNode(record_map, alias, prop_name);
 }
 
-static AR_ExpNode *_AR_EXP_FromIntegerExpression(RecordMap *record_map,
-												 const cypher_astnode_t *expr) {
+static AR_ExpNode *_AR_EXP_FromIntegerExpression(const cypher_astnode_t *expr) {
 	const char *value_str = cypher_ast_integer_get_valuestr(expr);
 	char *endptr = NULL;
 	int64_t l = strtol(value_str, &endptr, 0);
@@ -129,8 +110,7 @@ static AR_ExpNode *_AR_EXP_FromIntegerExpression(RecordMap *record_map,
 	return AR_EXP_NewConstOperandNode(converted);
 }
 
-static AR_ExpNode *_AR_EXP_FromFloatExpression(RecordMap *record_map,
-											   const cypher_astnode_t *expr) {
+static AR_ExpNode *_AR_EXP_FromFloatExpression(const cypher_astnode_t *expr) {
 	const char *value_str = cypher_ast_float_get_valuestr(expr);
 	char *endptr = NULL;
 	double d = strtod(value_str, &endptr);
@@ -139,25 +119,23 @@ static AR_ExpNode *_AR_EXP_FromFloatExpression(RecordMap *record_map,
 	return AR_EXP_NewConstOperandNode(converted);
 }
 
-static AR_ExpNode *_AR_EXP_FromStringExpression(RecordMap *record_map,
-												const cypher_astnode_t *expr) {
+static AR_ExpNode *_AR_EXP_FromStringExpression(const cypher_astnode_t *expr) {
 	const char *value_str = cypher_ast_string_get_value(expr);
 	SIValue converted = SI_ConstStringVal((char *)value_str);
 	return AR_EXP_NewConstOperandNode(converted);
 }
 
-static AR_ExpNode *_AR_EXP_FromTruExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
+static AR_ExpNode *_AR_EXP_FromTrueExpression() {
 	SIValue converted = SI_BoolVal(true);
 	return AR_EXP_NewConstOperandNode(converted);
 }
 
-static AR_ExpNode *_AR_EXP_FromFalseExpression(RecordMap *record_map,
-											   const cypher_astnode_t *expr) {
+static AR_ExpNode *_AR_EXP_FromFalseExpression() {
 	SIValue converted = SI_BoolVal(false);
 	return AR_EXP_NewConstOperandNode(converted);
 }
 
-static AR_ExpNode *_AR_EXP_FromNullExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
+static AR_ExpNode *_AR_EXP_FromNullExpression() {
 	SIValue converted = SI_NullVal();
 	return AR_EXP_NewConstOperandNode(converted);
 }
@@ -284,17 +262,17 @@ AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t 
 		return _AR_EXP_FromPropertyExpression(record_map, expr);
 		/* SIValue constant types */
 	} else if(type == CYPHER_AST_INTEGER) {
-		return _AR_EXP_FromIntegerExpression(record_map, expr);
+		return _AR_EXP_FromIntegerExpression(expr);
 	} else if(type == CYPHER_AST_FLOAT) {
-		return _AR_EXP_FromFloatExpression(record_map, expr);
+		return _AR_EXP_FromFloatExpression(expr);
 	} else if(type == CYPHER_AST_STRING) {
-		return _AR_EXP_FromStringExpression(record_map, expr);
+		return _AR_EXP_FromStringExpression(expr);
 	} else if(type == CYPHER_AST_TRUE) {
-		return _AR_EXP_FromTruExpression(record_map, expr);
+		return _AR_EXP_FromTrueExpression();
 	} else if(type == CYPHER_AST_FALSE) {
-		return _AR_EXP_FromFalseExpression(record_map, expr);
+		return _AR_EXP_FromFalseExpression();
 	} else if(type == CYPHER_AST_NULL) {
-		return _AR_EXP_FromNullExpression(record_map, expr);
+		return _AR_EXP_FromNullExpression();
 		/* Handling for unary operators (-5, +a.val) */
 	} else if(type == CYPHER_AST_UNARY_OPERATOR) {
 		return _AR_EXP_FromUnaryOpExpression(record_map, expr);
@@ -308,7 +286,6 @@ AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t 
 		/*
 		   Unhandled types:
 		   CYPHER_AST_COLLECTION
-		   CYPHER_AST_CASE
 		   CYPHER_AST_LABELS_OPERATOR
 		   CYPHER_AST_LIST_COMPREHENSION
 		   CYPHER_AST_MAP

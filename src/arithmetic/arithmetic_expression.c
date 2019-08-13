@@ -22,7 +22,7 @@
 /* Arithmetic function repository. */
 static TrieMap *__aeRegisteredFuncs = NULL;
 
-void _toLower(const char *str, char *lower, size_t *lower_len) {
+static void inline _toLower(const char *str, char *lower, short *lower_len) {
 	size_t str_len = strlen(str);
 	/* Avoid overflow. */
 	assert(*lower_len > str_len);
@@ -42,7 +42,7 @@ static inline int _validate_numeric(const SIValue v) {
 }
 
 /* Register an arithmetic function. */
-static void _AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func) {
+static void _AR_RegFunc(char *func_name, short func_name_len, AR_Func func) {
 	if(__aeRegisteredFuncs == NULL) {
 		__aeRegisteredFuncs = NewTrieMap();
 	}
@@ -53,7 +53,7 @@ static void _AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func) {
 /* Get arithmetic function. */
 static AR_Func _AR_GetFunc(const char *func_name) {
 	char lower_func_name[32] = {0};
-	size_t lower_func_name_len = 32;
+	short lower_func_name_len = 32;
 	_toLower(func_name, &lower_func_name[0], &lower_func_name_len);
 	void *f = TrieMap_Find(__aeRegisteredFuncs, lower_func_name, lower_func_name_len);
 	if(f != TRIEMAP_NOTFOUND) {
@@ -398,7 +398,7 @@ void AR_EXP_Free(AR_ExpNode *root) {
 
 bool AR_FuncExists(const char *func_name) {
 	char lower_func_name[32] = {0};
-	size_t lower_func_name_len = 32;
+	short lower_func_name_len = 32;
 	_toLower(func_name, &lower_func_name[0], &lower_func_name_len);
 	void *f = TrieMap_Find(__aeRegisteredFuncs, lower_func_name, lower_func_name_len);
 	return (f != TRIEMAP_NOTFOUND);
@@ -421,7 +421,7 @@ void AR_RegisterFuncs() {
 	};
 
 	char lower_func_name[32] = {0};
-	size_t lower_func_name_len = 32;
+	short lower_func_name_len = 32;
 
 	for(int i = 0; i < 39; i++) {
 		_toLower(functions[i].func_name, &lower_func_name[0], &lower_func_name_len);
@@ -698,7 +698,7 @@ SIValue AR_TOLOWER(SIValue *argv, int argc) {
 
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *original = argv[0].stringval;
-	size_t lower_len = strlen(original) + 1;
+	short lower_len = strlen(original) + 1;
 	char *lower = rm_malloc((lower_len + 1) * sizeof(char));
 	_toLower(original, lower, &lower_len);
 	return SI_TransferStringVal(lower);
@@ -964,7 +964,7 @@ SIValue AR_NOT(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	if(SIValue_IsNull(a)) return SI_NullVal();
 
-	if((SI_NUMERIC & SI_TYPE(a)) || (SI_TYPE(a) == T_BOOL)) return SI_BoolVal(!SI_GET_NUMERIC(a));
+	if(SI_TYPE(a) & (SI_NUMERIC | T_BOOL)) return SI_BoolVal(!SI_GET_NUMERIC(a));
 	// String, Node, Edge, Ptr all evaluate to true.
 	return SI_BoolVal(false);
 }

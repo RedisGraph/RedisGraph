@@ -70,7 +70,8 @@ FT_FilterNode *_CreateFilterSubtree(RecordMap *record_map, AST_Operator op,
 // AND, OR, XOR (others?)
 /* WHERE (condition) AND (condition),
  * WHERE a.val = b.val */
-FT_FilterNode *_convertBinaryOperator(RecordMap *record_map, const cypher_astnode_t *op_node) {
+static FT_FilterNode *_convertBinaryOperator(RecordMap *record_map,
+											 const cypher_astnode_t *op_node) {
 	const cypher_operator_t *operator = cypher_ast_binary_operator_get_operator(op_node);
 	AST_Operator op = AST_ConvertOperatorNode(operator);
 	const cypher_astnode_t *lhs;
@@ -95,7 +96,8 @@ FT_FilterNode *_convertBinaryOperator(RecordMap *record_map, const cypher_astnod
 	}
 }
 
-FT_FilterNode *_convertUnaryOperator(RecordMap *record_map, const cypher_astnode_t *op_node) {
+static FT_FilterNode *_convertUnaryOperator(RecordMap *record_map,
+											const cypher_astnode_t *op_node) {
 	const cypher_operator_t *operator = cypher_ast_unary_operator_get_operator(op_node);
 	// Argument is of type CYPHER_AST_EXPRESSION
 	const cypher_astnode_t *arg = cypher_ast_unary_operator_get_argument(op_node);
@@ -104,17 +106,22 @@ FT_FilterNode *_convertUnaryOperator(RecordMap *record_map, const cypher_astnode
 	return _CreateFilterSubtree(record_map, op, arg, NULL);
 }
 
-FT_FilterNode *_convertTrueOperator() {
+static FT_FilterNode *_convertApplyOperator(RecordMap *record_map,
+											const cypher_astnode_t *op_node) {
+	return FilterTree_CreateExpressionFilter(AR_EXP_FromExpression(record_map, op_node));
+}
+
+static FT_FilterNode *_convertTrueOperator() {
 	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(SI_BoolVal(true));
 	return FilterTree_CreateExpressionFilter(exp);
 }
 
-FT_FilterNode *_convertFalseOperator() {
+static FT_FilterNode *_convertFalseOperator() {
 	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(SI_BoolVal(false));
 	return FilterTree_CreateExpressionFilter(exp);
 }
 
-FT_FilterNode *_convertIntegerOperator(RecordMap *record_map, const cypher_astnode_t *expr) {
+static FT_FilterNode *_convertIntegerOperator(RecordMap *record_map, const cypher_astnode_t *expr) {
 	AR_ExpNode *exp = AR_EXP_FromExpression(record_map, expr);
 	return FilterTree_CreateExpressionFilter(exp);
 }
@@ -123,7 +130,8 @@ FT_FilterNode *_convertIntegerOperator(RecordMap *record_map, const cypher_astno
  * Most comparisons will only have one operator and two expressions, but Cypher
  * allows more complex formulations like "x < y <= z".
  * A comparison takes a form such as "WHERE a.val < y.val". */
-FT_FilterNode *_convertComparison(RecordMap *record_map, const cypher_astnode_t *comparison_node) {
+static FT_FilterNode *_convertComparison(RecordMap *record_map,
+										 const cypher_astnode_t *comparison_node) {
 	// "x < y <= z"
 	uint nelems = cypher_ast_comparison_get_length(comparison_node);
 	FT_FilterNode **filters = array_new(FT_FilterNode *, nelems);
@@ -201,20 +209,14 @@ FT_FilterNode *_FilterNode_FromAST(RecordMap *record_map, const cypher_astnode_t
 	assert(expr);
 	cypher_astnode_type_t type = cypher_astnode_type(expr);
 
-	if(type == CYPHER_AST_NODE_PATTERN) {
-		assert(false);
-		// return _convertInlinedProperties(record_map, ast, expr, expr_NODE);
-	} else if(type == CYPHER_AST_REL_PATTERN) {
-		assert(false);
-		// return _convertInlinedProperties(record_map, ast, expr, expr_EDGE);
-	} else if(type == CYPHER_AST_COMPARISON) {
+	if(type == CYPHER_AST_COMPARISON) {
 		return _convertComparison(record_map, expr);
 	} else if(type == CYPHER_AST_BINARY_OPERATOR) {
 		return _convertBinaryOperator(record_map, expr);
 	} else if(type == CYPHER_AST_UNARY_OPERATOR) {
 		return _convertUnaryOperator(record_map, expr);
 	} else if(type == CYPHER_AST_APPLY_OPERATOR) {
-		return _convertUnaryOperator(record_map, expr);
+		return _convertApplyOperator(record_map, expr);
 	} else if(type == CYPHER_AST_TRUE) {
 		return _convertTrueOperator();
 	} else if(type == CYPHER_AST_FALSE) {
@@ -246,7 +248,7 @@ void _AST_ConvertFilters(RecordMap *record_map, const AST *ast,
 	} else if(type == CYPHER_AST_UNARY_OPERATOR) {
 		node = _convertUnaryOperator(record_map, entity);
 	} else if(type == CYPHER_AST_APPLY_OPERATOR) {
-		assert(false && "APPLY operators are not currently supported in filters.");
+		node = _convertApplyOperator(record_map, entity);
 	} else if(type == CYPHER_AST_TRUE) {
 		node = _convertTrueOperator();
 	} else if(type == CYPHER_AST_FALSE) {

@@ -67,9 +67,6 @@ typedef struct FT_FilterNode FT_FilterNode;
 /* Determines if node is a predicate node. */
 int IsNodePredicate(const FT_FilterNode *node);
 
-/* Determines if node is an expression node. */
-int IsNodeExpression(const FT_FilterNode *node);
-
 /* Appends a left hand-side node to root. */
 FT_FilterNode *AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child);
 

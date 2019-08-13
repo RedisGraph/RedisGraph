@@ -45,6 +45,7 @@ static AST_Operator _NegateOperator(AST_Operator op) {
 	}
 }
 
+/* Negate expression by wrapping it with a NOT function, NOT(exp) */
 static void _NegateExpression(AR_ExpNode **exp) {
 	AR_ExpNode *root = AR_EXP_NewOpNode("not", 1);
 	root->op.children[0] = *exp;
@@ -53,10 +54,6 @@ static void _NegateExpression(AR_ExpNode **exp) {
 
 int IsNodePredicate(const FT_FilterNode *node) {
 	return node->t == FT_N_PRED;
-}
-
-int IsNodeExpression(const FT_FilterNode *node) {
-	return node->t == FT_N_EXP;
 }
 
 FT_FilterNode *AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child) {
@@ -188,9 +185,7 @@ int FilterTree_applyFilters(const FT_FilterNode *root, const Record r) {
 		if(root->cond.op == OP_AND && pass == 1) {
 			/* Visit right subtree. */
 			pass *= FilterTree_applyFilters(RightChild(root), r);
-		}
-
-		if(root->cond.op == OP_OR && pass == 0) {
+		} else if(root->cond.op == OP_OR && pass == 0) {
 			/* Visit right subtree. */
 			pass = FilterTree_applyFilters(RightChild(root), r);
 		}
@@ -202,11 +197,16 @@ int FilterTree_applyFilters(const FT_FilterNode *root, const Record r) {
 	}
 	case FT_N_EXP: {
 		SIValue res = AR_EXP_Evaluate(root->exp.exp, r);
-		if(SIValue_IsNull(res)) return FILTER_FAIL;
-		if((SI_NUMERIC & SI_TYPE(res)) || (SI_TYPE(res) == T_BOOL)) {
+		if(SIValue_IsNull(res)) {
+			/* Expression evaluated to NULL should return false. */
+			return FILTER_FAIL;
+		} else if(SI_TYPE(res) & (SI_NUMERIC | T_BOOL)) {
+			/* Numeric or Boolean evaluated to anuthing but 0
+			* should return true. */
 			if(SI_GET_NUMERIC(res) == 0) return FILTER_FAIL;
 		}
-		// String, Node, Edge, Ptr all evaluate to true.
+
+		/* Boolean or Numeric != 0, String, Node, Edge, Ptr all evaluate to true. */
 		return FILTER_PASS;
 	}
 	default:
