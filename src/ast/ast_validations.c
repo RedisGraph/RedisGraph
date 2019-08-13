@@ -376,46 +376,8 @@ static AST_Validation _ValidateInlinedPropertiesOnPath(const cypher_astnode_t *p
 
 static AST_Validation _ValidateFilterPredicates(const cypher_astnode_t *predicate, char **reason) {
 	cypher_astnode_type_t type = cypher_astnode_type(predicate);
-
 	// TODO These should all be supported in filter trees
-	if(type == CYPHER_AST_APPLY_OPERATOR) {
-		const cypher_astnode_t *ast_name = cypher_ast_apply_operator_get_func_name(predicate);
-		const char *func_name = cypher_ast_function_name_get_value(ast_name);
-		asprintf(reason, "Unary APPLY operators ('%s') are not currently supported in filters", func_name);
-		return AST_INVALID;
-	} else if(type == CYPHER_AST_BINARY_OPERATOR) {
-		const cypher_operator_t *op = cypher_ast_binary_operator_get_operator(predicate);
-		const cypher_astnode_t *left = cypher_ast_binary_operator_get_argument1(predicate);
-		const cypher_astnode_t *right = cypher_ast_binary_operator_get_argument2(predicate);
-
-		if(op != CYPHER_OP_EQUAL  &&
-		   op != CYPHER_OP_NEQUAL &&
-		   op != CYPHER_OP_LT     &&
-		   op != CYPHER_OP_LTE    &&
-		   op != CYPHER_OP_GT     &&
-		   op != CYPHER_OP_GTE) {
-			// Currently, unary functions are only valid in filter trees as arguments to a direct
-			// comparison function. Failing expressions include:
-			// WHERE EXISTS(a.age) AND a.age > 30
-			if(_ValidateFilterPredicates(left, reason) != AST_VALID) return AST_INVALID;
-			if(_ValidateFilterPredicates(right, reason) != AST_VALID) return AST_INVALID;
-		} else {
-			// Check for chains of form:
-			// WHERE n.prop1 < m.prop2 = n.prop3 <> m.prop4
-			cypher_astnode_type_t left_type = cypher_astnode_type(left);
-			cypher_astnode_type_t right_type = cypher_astnode_type(right);
-
-			if(cypher_astnode_type(left) == CYPHER_AST_BINARY_OPERATOR ||
-			   cypher_astnode_type(right) == CYPHER_AST_BINARY_OPERATOR) {
-				asprintf(reason, "Comparison chains of length > 1 are not currently supported.");
-				return AST_INVALID;
-			}
-		}
-	} else if(type == CYPHER_AST_UNARY_OPERATOR) {
-		// WHERE exists(a.name)
-		asprintf(reason, "Unary APPLY operators are not currently supported in filters.");
-		return AST_INVALID;
-	} else if(type == CYPHER_AST_PATTERN_PATH) {
+	if(type == CYPHER_AST_PATTERN_PATH) {
 		// Comparisons of form:
 		// MATCH (a), (b) WHERE a.id = 0 AND (a)-[:T]->(b:TheLabel)
 		asprintf(reason, "Paths cannot currently be specified in filters.");

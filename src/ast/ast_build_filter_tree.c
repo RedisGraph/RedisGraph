@@ -1,4 +1,5 @@
 #include "ast_build_filter_tree.h"
+#include "ast_build_ar_exp.h"
 #include "ast_shared.h"
 #include "../execution_plan/record_map.h"
 #include "../util/arr.h"
@@ -49,15 +50,17 @@ FT_FilterNode *_CreateFilterSubtree(RecordMap *record_map, AST_Operator op,
 		AppendLeftChild(filter, _FilterNode_FromAST(record_map, lhs));
 		AppendRightChild(filter, _FilterNode_FromAST(record_map, rhs));
 		return filter;
+	case OP_NOT:
+		filter = FilterTree_CreateConditionFilter(op);
+		AppendLeftChild(filter, _FilterNode_FromAST(record_map, lhs));
+		AppendRightChild(filter, NULL);
+		return filter;
 	case OP_EQUAL:
 	case OP_NEQUAL:
 	case OP_LT:
 	case OP_LE:
 	case OP_GT:
 	case OP_GE:
-	case OP_CONTAINS:
-	case OP_ENDSWITH:
-	case OP_STARTSWITH:
 		return _CreatePredicateFilterNode(record_map, op, lhs, rhs);
 	default:
 		assert("attempted to convert unhandled type into filter" && false);
@@ -67,22 +70,68 @@ FT_FilterNode *_CreateFilterSubtree(RecordMap *record_map, AST_Operator op,
 // AND, OR, XOR (others?)
 /* WHERE (condition) AND (condition),
  * WHERE a.val = b.val */
-FT_FilterNode *_convertBinaryOperator(RecordMap *record_map, const cypher_astnode_t *op_node) {
+static FT_FilterNode *_convertBinaryOperator(RecordMap *record_map,
+											 const cypher_astnode_t *op_node) {
 	const cypher_operator_t *operator = cypher_ast_binary_operator_get_operator(op_node);
-	// Arguments are of type CYPHER_AST_EXPRESSION
-	const cypher_astnode_t *lhs = cypher_ast_binary_operator_get_argument1(op_node);
-	const cypher_astnode_t *rhs = cypher_ast_binary_operator_get_argument2(op_node);
+	AST_Operator op = AST_ConvertOperatorNode(operator);
+	const cypher_astnode_t *lhs;
+	const cypher_astnode_t *rhs;
 
+	switch(op) {
+	case OP_OR:
+	case OP_AND:
+	case OP_NOT:
+	case OP_EQUAL:
+	case OP_NEQUAL:
+	case OP_LT:
+	case OP_LE:
+	case OP_GT:
+	case OP_GE:
+		// Arguments are of type CYPHER_AST_EXPRESSION
+		lhs = cypher_ast_binary_operator_get_argument1(op_node);
+		rhs = cypher_ast_binary_operator_get_argument2(op_node);
+		return _CreateFilterSubtree(record_map, op, lhs, rhs);
+	default:
+		return FilterTree_CreateExpressionFilter(AR_EXP_FromExpression(record_map, op_node));
+	}
+}
+
+static FT_FilterNode *_convertUnaryOperator(RecordMap *record_map,
+											const cypher_astnode_t *op_node) {
+	const cypher_operator_t *operator = cypher_ast_unary_operator_get_operator(op_node);
+	// Argument is of type CYPHER_AST_EXPRESSION
+	const cypher_astnode_t *arg = cypher_ast_unary_operator_get_argument(op_node);
 	AST_Operator op = AST_ConvertOperatorNode(operator);
 
-	return _CreateFilterSubtree(record_map, op, lhs, rhs);
+	return _CreateFilterSubtree(record_map, op, arg, NULL);
+}
+
+static FT_FilterNode *_convertApplyOperator(RecordMap *record_map,
+											const cypher_astnode_t *op_node) {
+	return FilterTree_CreateExpressionFilter(AR_EXP_FromExpression(record_map, op_node));
+}
+
+static FT_FilterNode *_convertTrueOperator() {
+	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(SI_BoolVal(true));
+	return FilterTree_CreateExpressionFilter(exp);
+}
+
+static FT_FilterNode *_convertFalseOperator() {
+	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(SI_BoolVal(false));
+	return FilterTree_CreateExpressionFilter(exp);
+}
+
+static FT_FilterNode *_convertIntegerOperator(RecordMap *record_map, const cypher_astnode_t *expr) {
+	AR_ExpNode *exp = AR_EXP_FromExpression(record_map, expr);
+	return FilterTree_CreateExpressionFilter(exp);
 }
 
 /* A comparison node contains two arrays - one of operators, and one of expressions.
  * Most comparisons will only have one operator and two expressions, but Cypher
  * allows more complex formulations like "x < y <= z".
  * A comparison takes a form such as "WHERE a.val < y.val". */
-FT_FilterNode *_convertComparison(RecordMap *record_map, const cypher_astnode_t *comparison_node) {
+static FT_FilterNode *_convertComparison(RecordMap *record_map,
+										 const cypher_astnode_t *comparison_node) {
 	// "x < y <= z"
 	uint nelems = cypher_ast_comparison_get_length(comparison_node);
 	FT_FilterNode **filters = array_new(FT_FilterNode *, nelems);
@@ -159,15 +208,25 @@ static FT_FilterNode *_convertInlinedProperties(RecordMap *record_map, const AST
 FT_FilterNode *_FilterNode_FromAST(RecordMap *record_map, const cypher_astnode_t *expr) {
 	assert(expr);
 	cypher_astnode_type_t type = cypher_astnode_type(expr);
-	if(type == CYPHER_AST_BINARY_OPERATOR) {
-		return _convertBinaryOperator(record_map, expr);
-	} else if(type == CYPHER_AST_COMPARISON) {
+
+	if(type == CYPHER_AST_COMPARISON) {
 		return _convertComparison(record_map, expr);
+	} else if(type == CYPHER_AST_BINARY_OPERATOR) {
+		return _convertBinaryOperator(record_map, expr);
+	} else if(type == CYPHER_AST_UNARY_OPERATOR) {
+		return _convertUnaryOperator(record_map, expr);
 	} else if(type == CYPHER_AST_APPLY_OPERATOR) {
-		assert(false && "Unary APPLY operators are not currently supported in filters.");
+		return _convertApplyOperator(record_map, expr);
+	} else if(type == CYPHER_AST_TRUE) {
+		return _convertTrueOperator();
+	} else if(type == CYPHER_AST_FALSE) {
+		return _convertFalseOperator();
+	} else if(type == CYPHER_AST_INTEGER) {
+		return _convertIntegerOperator(record_map, expr);
+	} else {
+		assert(false);
+		return NULL;
 	}
-	assert(false);
-	return NULL;
 }
 
 void _AST_ConvertFilters(RecordMap *record_map, const AST *ast,
@@ -187,10 +246,15 @@ void _AST_ConvertFilters(RecordMap *record_map, const AST *ast,
 	} else if(type == CYPHER_AST_BINARY_OPERATOR) {
 		node = _convertBinaryOperator(record_map, entity);
 	} else if(type == CYPHER_AST_UNARY_OPERATOR) {
-		// TODO, also n-ary maybe
-		assert(false && "unary filters are not currently supported.");
+		node = _convertUnaryOperator(record_map, entity);
 	} else if(type == CYPHER_AST_APPLY_OPERATOR) {
-		assert(false && "APPLY operators are not currently supported in filters.");
+		node = _convertApplyOperator(record_map, entity);
+	} else if(type == CYPHER_AST_TRUE) {
+		node = _convertTrueOperator();
+	} else if(type == CYPHER_AST_FALSE) {
+		node = _convertFalseOperator();
+	} else if(type == CYPHER_AST_INTEGER) {
+		node = _convertIntegerOperator(record_map, entity);
 	} else {
 		uint child_count = cypher_astnode_nchildren(entity);
 		for(uint i = 0; i < child_count; i++) {
@@ -221,6 +285,9 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast, RecordMap *record_map) {
 		}
 		array_free(merge_clauses);
 	}
+
+	// Apply De Morgan's laws
+	FilterTree_DeMorgan(&filter_tree);
 
 	return filter_tree;
 }

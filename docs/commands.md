@@ -122,7 +122,7 @@ Supported operations:
 - `STARTS WITH`
 - `ENDS WITH`
 
-Predicates can be combined using AND / OR.
+Predicates can be combined using AND / OR / NOT.
 
 Be sure to wrap predicates within parentheses to control precedence.
 

@@ -5,6 +5,8 @@
 */
 
 #include "./arithmetic_expression.h"
+
+#include "funcs.h"
 #include "./aggregate.h"
 #include "./repository.h"
 #include "../graph/graph.h"
@@ -20,120 +22,62 @@
 /* Arithmetic function repository. */
 static TrieMap *__aeRegisteredFuncs = NULL;
 
+static void inline _toLower(const char *str, char *lower, short *lower_len) {
+	size_t str_len = strlen(str);
+	/* Avoid overflow. */
+	assert(*lower_len > str_len);
+
+	/* Update lower len*/
+	*lower_len = str_len;
+
+	int i = 0;
+	for(; i < str_len; i++) lower[i] = tolower(str[i]);
+	lower[i] = 0;
+}
+
 /* Returns 1 if the operand is a numeric type, and 0 otherwise.
  * This also rejects NULL values. */
 static inline int _validate_numeric(const SIValue v) {
 	return SI_TYPE(v) & SI_NUMERIC;
 }
 
-static bool _AR_SetFunction(AR_ExpNode *exp, AST_Operator op) {
-	switch(op) {
-	case OP_PLUS:
-		exp->op.f = AR_ADD;
-		exp->op.func_name = "ADD";
-		return true;
-	case OP_MINUS:
-		exp->op.f = AR_SUB;
-		exp->op.func_name = "SUB";
-		return true;
-	case OP_MULT:
-		exp->op.f = AR_MUL;
-		exp->op.func_name = "MUL";
-		return true;
-	case OP_DIV:
-		exp->op.f = AR_DIV;
-		exp->op.func_name = "DIV";
-		return true;
-	case OP_CONTAINS:
-		exp->op.f = AR_CONTAINS;
-		exp->op.func_name = "CONTAINS";
-		return true;
-	case OP_STARTSWITH:
-		exp->op.f = AR_STARTSWITH;
-		exp->op.func_name = "STARTS WITH";
-		return true;
-	case OP_ENDSWITH:
-		exp->op.f = AR_ENDSWITH;
-		exp->op.func_name = "ENDS WITH";
-		return true;
-
-	case OP_AND:
-		exp->op.f = AR_AND;
-		exp->op.func_name = "AND";
-		return true;
-
-	case OP_OR:
-		exp->op.f = AR_OR;
-		exp->op.func_name = "OR";
-		return true;
-
-	case OP_XOR:
-		exp->op.f = AR_XOR;
-		exp->op.func_name = "XOR";
-		return true;
-
-	case OP_NOT:
-		exp->op.f = AR_NOT;
-		exp->op.func_name = "NOT";
-		return true;
-
-	case OP_GT:
-		exp->op.f = AR_GT;
-		exp->op.func_name = "GT";
-		return true;
-
-	case OP_GE:
-		exp->op.f = AR_GE;
-		exp->op.func_name = "GE";
-		return true;
-
-	case OP_LT:
-		exp->op.f = AR_LT;
-		exp->op.func_name = "LT";
-		return true;
-
-	case OP_LE:
-		exp->op.f = AR_LE;
-		exp->op.func_name = "LE";
-		return true;
-
-	case OP_EQUAL:
-		exp->op.f = AR_EQ;
-		exp->op.func_name = "EQUAL";
-		return true;
-
-	case OP_NEQUAL:
-		exp->op.f = AR_NE;
-		exp->op.func_name = "NEQUAL";
-		return true;
-
-	case OP_MOD: // TODO implement
-	case OP_POW: // TODO implement
-	// Includes operators like <, AND, etc
-	default:
-		assert(false && "Unhandled operator was specified in query");
-		return NULL;
+/* Register an arithmetic function. */
+static void _AR_RegFunc(char *func_name, short func_name_len, AR_Func func) {
+	if(__aeRegisteredFuncs == NULL) {
+		__aeRegisteredFuncs = NewTrieMap();
 	}
+
+	TrieMap_Add(__aeRegisteredFuncs, func_name, func_name_len, func, NULL);
 }
 
-static AR_ExpNode *_AR_EXP_NewOpNodeFromAST(AST_Operator op, int child_count) {
-	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
-	node->type = AR_EXP_OP;
-	node->op.func_name = NULL;
-	node->op.child_count = child_count;
-	node->op.children = rm_malloc(child_count * sizeof(AR_ExpNode *));
-
-	/* Determine function type. */
-	node->op.type = AR_OP_FUNC;
-	_AR_SetFunction(node, op);
-
-	return node;
-
+/* Get arithmetic function. */
+static AR_Func _AR_GetFunc(const char *func_name) {
+	char lower_func_name[32] = {0};
+	short lower_func_name_len = 32;
+	_toLower(func_name, &lower_func_name[0], &lower_func_name_len);
+	void *f = TrieMap_Find(__aeRegisteredFuncs, lower_func_name, lower_func_name_len);
+	if(f != TRIEMAP_NOTFOUND) {
+		return f;
+	}
+	return NULL;
 }
 
-// TODO we don't really have as many func_name strings as before (they were generated in grammar.y).
-// It should be possible to combine this function with _AR_EXP_NewOpNodeFromAST
-AR_ExpNode *_AR_EXP_NewOpNode(char *func_name, int child_count) {
+/* Update arithmetic expression variable node by setting node's property index.
+ * when constructing an arithmetic expression we'll delay setting graph entity
+ * attribute index to the first execution of the expression, this is due to
+ * entity aliasing where we lose track over which entity is aliased, consider
+ * MATCH (n:User) WITH n AS x RETURN x.name
+ * When constructing the arithmetic expression x.name, we don't know
+ * who X is referring to. */
+static void _AR_EXP_UpdatePropIdx(AR_ExpNode *root, const Record r) {
+	GraphContext *gc = GraphContext_GetFromTLS();
+	root->operand.variadic.entity_prop_idx = GraphContext_GetAttributeID(gc,
+																		 root->operand.variadic.entity_prop);
+}
+
+AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count) {
+	assert(func_name);
+
 	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
 	node->type = AR_EXP_OP;
 	node->op.func_name = func_name;
@@ -141,7 +85,7 @@ AR_ExpNode *_AR_EXP_NewOpNode(char *func_name, int child_count) {
 	node->op.children = rm_malloc(child_count * sizeof(AR_ExpNode *));
 
 	/* Determine function type. */
-	AR_Func func = AR_GetFunc(func_name);
+	AR_Func func = _AR_GetFunc(func_name);
 	if(func != NULL) {
 		node->op.f = func;
 		node->op.type = AR_OP_FUNC;
@@ -185,272 +129,9 @@ AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant) {
 	return node;
 }
 
-static AR_ExpNode *_AR_EXP_FromApplyExpression(RecordMap *record_map,
-											   const cypher_astnode_t *expr) {
-	// TODO handle CYPHER_AST_APPLY_ALL_OPERATOR
-	const cypher_astnode_t *func_node = cypher_ast_apply_operator_get_func_name(expr);
-	const char *func_name = cypher_ast_function_name_get_value(func_node);
-	// TODO When implementing calls like COUNT(DISTINCT), use cypher_ast_apply_operator_get_distinct()
-	unsigned int arg_count = cypher_ast_apply_operator_narguments(expr);
-	AR_ExpNode *op = _AR_EXP_NewOpNode((char *)func_name, arg_count);
-
-	for(unsigned int i = 0; i < arg_count; i ++) {
-		const cypher_astnode_t *arg = cypher_ast_apply_operator_get_argument(expr, i);
-		// Recursively convert arguments
-		op->op.children[i] = AR_EXP_FromExpression(record_map, arg);
-	}
-	return op;
-}
-
-static AR_ExpNode *_AR_EXP_FromIdentifierExpression(RecordMap *record_map,
-													const cypher_astnode_t *expr) {
-	// Identifier referencing another record_map entity
-	const char *alias = cypher_ast_identifier_get_name(expr);
-	return AR_EXP_NewVariableOperandNode(record_map, alias, NULL);
-}
-
-static AR_ExpNode *_AR_EXP_FromPropertyExpression(RecordMap *record_map,
-												  const cypher_astnode_t *expr) {
-	// Identifier and property pair
-	// Extract the entity alias from the property. Currently, the embedded
-	// expression should only refer to the IDENTIFIER type.
-	const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(expr);
-	assert(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
-	const char *alias = cypher_ast_identifier_get_name(prop_expr);
-
-	// Extract the property name
-	const cypher_astnode_t *prop_name_node = cypher_ast_property_operator_get_prop_name(expr);
-	const char *prop_name = cypher_ast_prop_name_get_value(prop_name_node);
-
-	return AR_EXP_NewVariableOperandNode(record_map, alias, prop_name);
-}
-
-static AR_ExpNode *_AR_EXP_FromIntegerExpression(RecordMap *record_map,
-												 const cypher_astnode_t *expr) {
-	const char *value_str = cypher_ast_integer_get_valuestr(expr);
-	char *endptr = NULL;
-	int64_t l = strtol(value_str, &endptr, 0);
-	assert(endptr[0] == 0);
-	SIValue converted = SI_LongVal(l);
-	return AR_EXP_NewConstOperandNode(converted);
-
-}
-
-static AR_ExpNode *_AR_EXP_FromFloatExpression(RecordMap *record_map,
-											   const cypher_astnode_t *expr) {
-	const char *value_str = cypher_ast_float_get_valuestr(expr);
-	char *endptr = NULL;
-	double d = strtod(value_str, &endptr);
-	assert(endptr[0] == 0);
-	SIValue converted = SI_DoubleVal(d);
-	return AR_EXP_NewConstOperandNode(converted);
-}
-
-static AR_ExpNode *_AR_EXP_FromStringExpression(RecordMap *record_map,
-												const cypher_astnode_t *expr) {
-	const char *value_str = cypher_ast_string_get_value(expr);
-	SIValue converted = SI_ConstStringVal((char *)value_str);
-	return AR_EXP_NewConstOperandNode(converted);
-}
-
-static AR_ExpNode *_AR_EXP_FromTruExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
-	SIValue converted = SI_BoolVal(true);
-	return AR_EXP_NewConstOperandNode(converted);
-}
-
-static AR_ExpNode *_AR_EXP_FromFalseExpression(RecordMap *record_map,
-											   const cypher_astnode_t *expr) {
-	SIValue converted = SI_BoolVal(false);
-	return AR_EXP_NewConstOperandNode(converted);
-}
-
-static AR_ExpNode *_AR_EXP_FromNullExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
-	SIValue converted = SI_NullVal();
-	return AR_EXP_NewConstOperandNode(converted);
-}
-
-static AR_ExpNode *_AR_EXP_FromUnaryOpExpression(RecordMap *record_map,
-												 const cypher_astnode_t *expr) {
-	const cypher_astnode_t *arg = cypher_ast_unary_operator_get_argument(expr); // CYPHER_AST_EXPRESSION
-	const cypher_operator_t *operator = cypher_ast_unary_operator_get_operator(expr);
-	if(operator == CYPHER_OP_UNARY_MINUS) {
-		// This expression can be something like -3 or -a.val
-		// TODO In the former case, we can construct a much simpler tree than this.
-		AR_ExpNode *ar_exp = AR_EXP_FromExpression(record_map, arg);
-		AR_ExpNode *op = _AR_EXP_NewOpNodeFromAST(OP_MULT, 2);
-		op->op.children[0] = AR_EXP_NewConstOperandNode(SI_LongVal(-1));
-		op->op.children[1] = AR_EXP_FromExpression(record_map, arg);
-		return op;
-	} else if(operator == CYPHER_OP_UNARY_PLUS) {
-		// This expression is something like +3 or +a.val.
-		// I think the + can always be safely ignored.
-		return AR_EXP_FromExpression(record_map, arg);
-	} else if(operator == CYPHER_OP_NOT) {
-		AR_ExpNode *op = _AR_EXP_NewOpNodeFromAST(OP_NOT, 1);
-		op->op.children[0] = AR_EXP_FromExpression(record_map, arg);
-		return op;
-	}
-	assert(false);
-	return NULL;
-}
-
-static AR_ExpNode *_AR_EXP_FromBinaryOpExpression(RecordMap *record_map,
-												  const cypher_astnode_t *expr) {
-	const cypher_operator_t *operator = cypher_ast_binary_operator_get_operator(expr);
-	AST_Operator operator_enum = AST_ConvertOperatorNode(operator);
-	// Arguments are of type CYPHER_AST_EXPRESSION
-	AR_ExpNode *op = _AR_EXP_NewOpNodeFromAST(operator_enum, 2);
-	const cypher_astnode_t *lhs_node = cypher_ast_binary_operator_get_argument1(expr);
-	op->op.children[0] = AR_EXP_FromExpression(record_map, lhs_node);
-	const cypher_astnode_t *rhs_node = cypher_ast_binary_operator_get_argument2(expr);
-	op->op.children[1] = AR_EXP_FromExpression(record_map, rhs_node);
-	return op;
-}
-
-static AR_ExpNode *_AR_EXP_FromComparisonExpression(RecordMap *record_map,
-													const cypher_astnode_t *expr) {
-	// 1 < 2 = 2 <= 4
-	AR_ExpNode *op;
-	uint length = cypher_ast_comparison_get_length(expr);
-	if(length > 1) {
-		op = _AR_EXP_NewOpNodeFromAST(OP_AND, length);
-		for(uint i = 0; i < length; i++) {
-			const cypher_operator_t *operator = cypher_ast_comparison_get_operator(expr, i);
-			AST_Operator operator_enum = AST_ConvertOperatorNode(operator);
-			const cypher_astnode_t *lhs_node = cypher_ast_comparison_get_argument(expr, i);
-			const cypher_astnode_t *rhs_node = cypher_ast_comparison_get_argument(expr, i + 1);
-
-			AR_ExpNode *inner_op = _AR_EXP_NewOpNodeFromAST(operator_enum, 2);
-			inner_op->op.children[0] = AR_EXP_FromExpression(record_map, lhs_node);
-			inner_op->op.children[1] = AR_EXP_FromExpression(record_map, rhs_node);
-			op->op.children[i] = inner_op;
-		}
-	} else {
-		const cypher_operator_t *operator = cypher_ast_comparison_get_operator(expr, 0);
-		AST_Operator operator_enum = AST_ConvertOperatorNode(operator);
-		op = _AR_EXP_NewOpNodeFromAST(operator_enum, 2);
-		const cypher_astnode_t *lhs_node = cypher_ast_comparison_get_argument(expr, 0);
-		const cypher_astnode_t *rhs_node = cypher_ast_comparison_get_argument(expr, 1);
-		op->op.children[0] = AR_EXP_FromExpression(record_map, lhs_node);
-		op->op.children[1] = AR_EXP_FromExpression(record_map, rhs_node);
-	}
-	return op;
-}
-
-static AR_ExpNode *_AR_EXP_FromCaseExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
-	//Determin number of child expressions:
-	unsigned int arg_count;
-	const cypher_astnode_t *expression = cypher_ast_case_get_expression(expr);
-	unsigned int alternatives = cypher_ast_case_nalternatives(expr);
-
-	/* Simple form: 2 * alternatives + default
-	 * Generic form: 2 * alternatives + default */
-	if(expression) arg_count = 1 + 2 * alternatives + 1;
-	else arg_count = 2 * alternatives + 1;
-
-	// Create Expression and child expressions
-	AR_ExpNode *op = _AR_EXP_NewOpNode("case", arg_count);
-
-	// Value to compare against
-	int offset = 0;
-	if(expression != NULL) {
-		op->op.children[offset++] = AR_EXP_FromExpression(record_map, expression);
-	}
-
-	// Alternatives
-	for(uint i = 0; i < alternatives; i++) {
-		const cypher_astnode_t *predicate = cypher_ast_case_get_predicate(expr, i);
-		op->op.children[offset++] = AR_EXP_FromExpression(record_map, predicate);
-		const cypher_astnode_t *value = cypher_ast_case_get_value(expr, i);
-		op->op.children[offset++] = AR_EXP_FromExpression(record_map, value);
-	}
-
-	// Default value.
-	const cypher_astnode_t *deflt = cypher_ast_case_get_default(expr);
-	if(deflt == NULL) {
-		// Default not specified, use NULL.
-		op->op.children[offset] = AR_EXP_NewConstOperandNode(SI_NullVal());
-	} else {
-		op->op.children[offset] = AR_EXP_FromExpression(record_map, deflt);
-	}
-
-	return op;
-}
-
-AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
-	const cypher_astnode_type_t type = cypher_astnode_type(expr);
-
-	/* Function invocations */
-	if(type == CYPHER_AST_APPLY_OPERATOR || type == CYPHER_AST_APPLY_ALL_OPERATOR) {
-		return _AR_EXP_FromApplyExpression(record_map, expr);
-		/* Variables (full nodes and edges, UNWIND artifacts */
-	} else if(type == CYPHER_AST_IDENTIFIER) {
-		return _AR_EXP_FromIdentifierExpression(record_map, expr);
-		/* Entity-property pair */
-	} else if(type == CYPHER_AST_PROPERTY_OPERATOR) {
-		return _AR_EXP_FromPropertyExpression(record_map, expr);
-		/* SIValue constant types */
-	} else if(type == CYPHER_AST_INTEGER) {
-		return _AR_EXP_FromIntegerExpression(record_map, expr);
-
-	} else if(type == CYPHER_AST_FLOAT) {
-		return _AR_EXP_FromFloatExpression(record_map, expr);
-	} else if(type == CYPHER_AST_STRING) {
-		return _AR_EXP_FromStringExpression(record_map, expr);
-	} else if(type == CYPHER_AST_TRUE) {
-		return _AR_EXP_FromTruExpression(record_map, expr);
-	} else if(type == CYPHER_AST_FALSE) {
-		return _AR_EXP_FromFalseExpression(record_map, expr);
-	} else if(type == CYPHER_AST_NULL) {
-		return _AR_EXP_FromNullExpression(record_map, expr);
-		/* Handling for unary operators (-5, +a.val) */
-	} else if(type == CYPHER_AST_UNARY_OPERATOR) {
-		return _AR_EXP_FromUnaryOpExpression(record_map, expr);
-	} else if(type == CYPHER_AST_BINARY_OPERATOR) {
-		return _AR_EXP_FromBinaryOpExpression(record_map, expr);
-	} else if(type == CYPHER_AST_COMPARISON) {
-		return _AR_EXP_FromComparisonExpression(record_map, expr);
-	} else if(type == CYPHER_AST_CASE) {
-		return _AR_EXP_FromCaseExpression(record_map, expr);
-	} else {
-		/*
-		   Unhandled types:
-		   CYPHER_AST_COLLECTION
-		   CYPHER_AST_CASE
-		   CYPHER_AST_LABELS_OPERATOR
-		   CYPHER_AST_LIST_COMPREHENSION
-		   CYPHER_AST_MAP
-		   CYPHER_AST_MAP_PROJECTION
-		   CYPHER_AST_PARAMETER
-		   CYPHER_AST_PATTERN_COMPREHENSION
-		   CYPHER_AST_SLICE_OPERATOR
-		   CYPHER_AST_REDUCE
-		   CYPHER_AST_SUBSCRIPT_OPERATOR
-		*/
-		printf("Encountered unhandled type '%s'\n", cypher_astnode_typestr(type));
-		assert(false);
-	}
-
-	assert(false);
-	return NULL;
-}
-
 int AR_EXP_GetOperandType(AR_ExpNode *exp) {
 	if(exp->type == AR_EXP_OPERAND) return exp->operand.type;
 	return -1;
-}
-
-/* Update arithmetic expression variable node by setting node's property index.
- * when constructing an arithmetic expression we'll delay setting graph entity
- * attribute index to the first execution of the expression, this is due to
- * entity aliasing where we lose track over which entity is aliased, consider
- * MATCH (n:User) WITH n AS x RETURN x.name
- * When constructing the arithmetic expression x.name, we don't know
- * who X is referring to. */
-void _AR_EXP_UpdatePropIdx(AR_ExpNode *root, const Record r) {
-	GraphContext *gc = GraphContext_GetFromTLS();
-	root->operand.variadic.entity_prop_idx = GraphContext_GetAttributeID(gc,
-																		 root->operand.variadic.entity_prop);
 }
 
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
@@ -554,22 +235,22 @@ void AR_EXP_CollectEntityIDs(AR_ExpNode *root, rax *record_ids) {
 	}
 }
 
-int AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node) {
+bool AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node) {
 	if(root->type == AR_EXP_OP && root->op.type == AR_OP_AGGREGATE) {
 		if(agg_node != NULL) *agg_node = root;
-		return 1;
+		return true;
 	}
 
 	if(root->type == AR_EXP_OP) {
 		for(int i = 0; i < root->op.child_count; i++) {
 			AR_ExpNode *child = root->op.children[i];
 			if(AR_EXP_ContainsAggregation(child, agg_node)) {
-				return 1;
+				return true;
 			}
 		}
 	}
 
-	return 0;
+	return false;
 }
 
 void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
@@ -675,7 +356,7 @@ static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 }
 
 static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
-	AR_ExpNode *clone = _AR_EXP_NewOpNode(exp->op.func_name, exp->op.child_count);
+	AR_ExpNode *clone = AR_EXP_NewOpNode(exp->op.func_name, exp->op.child_count);
 	for(uint i = 0; i < exp->op.child_count; i++) {
 		AR_ExpNode *child = AR_EXP_Clone(exp->op.children[i]);
 		clone->op.children[i] = child;
@@ -715,7 +396,43 @@ void AR_EXP_Free(AR_ExpNode *root) {
 	rm_free(root);
 }
 
-/* Mathematical functions - numeric */
+bool AR_FuncExists(const char *func_name) {
+	char lower_func_name[32] = {0};
+	short lower_func_name_len = 32;
+	_toLower(func_name, &lower_func_name[0], &lower_func_name_len);
+	void *f = TrieMap_Find(__aeRegisteredFuncs, lower_func_name, lower_func_name_len);
+	return (f != TRIEMAP_NOTFOUND);
+}
+
+void AR_RegisterFuncs() {
+	struct RegFunc {
+		const char *func_name;
+		AR_Func func_ptr;
+	};
+
+	struct RegFunc functions[39] = {
+		{"add", AR_ADD}, {"sub", AR_SUB}, {"mul", AR_MUL}, {"div", AR_DIV}, {"abs", AR_ABS}, {"ceil", AR_CEIL},
+		{"floor", AR_FLOOR}, {"rand", AR_RAND}, {"round", AR_ROUND}, {"sign", AR_SIGN}, {"left", AR_LEFT},
+		{"reverse", AR_REVERSE}, {"right", AR_RIGHT}, {"ltrim", AR_LTRIM}, {"rtrim", AR_RTRIM}, {"substring", AR_SUBSTRING},
+		{"tolower", AR_TOLOWER}, {"toupper", AR_TOUPPER}, {"tostring", AR_TOSTRING}, {"trim", AR_TRIM}, {"contains", AR_CONTAINS},
+		{"starts with", AR_STARTSWITH}, {"ends with", AR_ENDSWITH}, {"id", AR_ID}, {"labels", AR_LABELS}, {"type", AR_TYPE}, {"exists", AR_EXISTS},
+		{"timestamp", AR_TIMESTAMP}, {"and", AR_AND}, {"or", AR_OR}, {"xor", AR_XOR}, {"not", AR_NOT}, {"gt", AR_GT}, {"ge", AR_GE},
+		{"lt", AR_LT}, {"le", AR_LE}, {"eq", AR_EQ}, {"neq", AR_NE}, {"case", AR_CASEWHEN}
+	};
+
+	char lower_func_name[32] = {0};
+	short lower_func_name_len = 32;
+
+	for(int i = 0; i < 39; i++) {
+		_toLower(functions[i].func_name, &lower_func_name[0], &lower_func_name_len);
+		_AR_RegFunc(lower_func_name, lower_func_name_len, functions[i].func_ptr);
+		lower_func_name_len = 32;
+	}
+}
+
+//==============================================================================
+//=== Mathematical functions - numeric =========================================
+//==============================================================================
 
 /* The '+' operator is overloaded to perform string concatenation
  * as well as arithmetic addition. */
@@ -848,7 +565,9 @@ SIValue AR_SIGN(SIValue *argv, int argc) {
 	return SI_LongVal(sign);
 }
 
-/* String functions */
+//==============================================================================
+//=== String functions =========================================================
+//==============================================================================
 
 SIValue AR_LEFT(SIValue *argv, int argc) {
 	assert(argc == 2);
@@ -974,25 +693,12 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc) {
 	return SI_TransferStringVal(substring);
 }
 
-void _toLower(const char *str, char *lower, size_t *lower_len) {
-	size_t str_len = strlen(str);
-	/* Avoid overflow. */
-	assert(*lower_len > str_len);
-
-	/* Update lower len*/
-	*lower_len = str_len;
-
-	int i = 0;
-	for(; i < str_len; i++) lower[i] = tolower(str[i]);
-	lower[i] = 0;
-}
-
 SIValue AR_TOLOWER(SIValue *argv, int argc) {
 	assert(argc == 1);
 
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *original = argv[0].stringval;
-	size_t lower_len = strlen(original) + 1;
+	short lower_len = strlen(original) + 1;
 	char *lower = rm_malloc((lower_len + 1) * sizeof(char));
 	_toLower(original, lower, &lower_len);
 	return SI_TransferStringVal(lower);
@@ -1043,7 +749,7 @@ SIValue AR_CONTAINS(SIValue *argv, int argc) {
 	assert(argc == 2);
 
 	// No string contains null.
-	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_BoolVal(false);
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
 
 	// TODO: remove once we have runtime error handling.
 	assert((SI_TYPE(argv[0]) & SI_STRING) && (SI_TYPE(argv[1]) & SI_STRING));
@@ -1060,7 +766,7 @@ SIValue AR_STARTSWITH(SIValue *argv, int argc) {
 	assert(argc == 2);
 
 	// No string contains null.
-	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_BoolVal(false);
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
 
 	// TODO: remove once we have runtime error handling.
 	assert((SI_TYPE(argv[0]) & SI_STRING) && (SI_TYPE(argv[1]) & SI_STRING));
@@ -1085,7 +791,7 @@ SIValue AR_ENDSWITH(SIValue *argv, int argc) {
 	assert(argc == 2);
 
 	// No string contains null.
-	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_BoolVal(false);
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
 
 	// TODO: remove once we have runtime error handling.
 	assert((SI_TYPE(argv[0]) & SI_STRING) && (SI_TYPE(argv[1]) & SI_STRING));
@@ -1154,7 +860,10 @@ SIValue AR_EXISTS(SIValue *argv, int argc) {
 	return SI_BoolVal(1);
 }
 
-/* Conditional flow functions */
+//==============================================================================
+//=== Conditional flow functions ===============================================
+//==============================================================================
+
 /* Case When
  * Case Value [When Option i Then Result i] Else Default end */
 SIValue AR_CASEWHEN(SIValue *argv, int argc) {
@@ -1255,8 +964,9 @@ SIValue AR_NOT(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	if(SIValue_IsNull(a)) return SI_NullVal();
 
-	assert(SI_TYPE(a) & T_BOOL);
-	return SI_BoolVal(!a.longval);
+	if(SI_TYPE(a) & (SI_NUMERIC | T_BOOL)) return SI_BoolVal(!SI_GET_NUMERIC(a));
+	// String, Node, Edge, Ptr all evaluate to true.
+	return SI_BoolVal(false);
 }
 
 SIValue AR_GT(SIValue *argv, int argc) {
@@ -1397,57 +1107,4 @@ SIValue AR_NE(SIValue *argv, int argc) {
 
 SIValue AR_TIMESTAMP(SIValue *argv, int argc) {
 	return SI_LongVal(TemporalValue_NewTimestamp());
-}
-
-AR_Func AR_GetFunc(char *func_name) {
-	char lower_func_name[32] = {0};
-	size_t lower_func_name_len = 32;
-	_toLower(func_name, &lower_func_name[0], &lower_func_name_len);
-	void *f = TrieMap_Find(__aeRegisteredFuncs, lower_func_name, lower_func_name_len);
-	if(f != TRIEMAP_NOTFOUND) {
-		return f;
-	}
-	return NULL;
-}
-
-bool AR_FuncExists(const char *func_name) {
-	char lower_func_name[32] = {0};
-	size_t lower_func_name_len = 32;
-	_toLower(func_name, &lower_func_name[0], &lower_func_name_len);
-	void *f = TrieMap_Find(__aeRegisteredFuncs, lower_func_name, lower_func_name_len);
-	return (f != TRIEMAP_NOTFOUND);
-}
-
-static void _AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func) {
-	if(__aeRegisteredFuncs == NULL) {
-		__aeRegisteredFuncs = NewTrieMap();
-	}
-
-	TrieMap_Add(__aeRegisteredFuncs, func_name, func_name_len, func, NULL);
-}
-
-void AR_RegisterFuncs() {
-	struct RegFunc {
-		const char *func_name;
-		AR_Func func_ptr;
-	};
-
-	struct RegFunc functions[39] = {
-		{"add", AR_ADD}, {"sub", AR_SUB}, {"mul", AR_MUL}, {"div", AR_DIV}, {"abs", AR_ABS}, {"ceil", AR_CEIL},
-		{"floor", AR_FLOOR}, {"rand", AR_RAND}, {"round", AR_ROUND}, {"sign", AR_SIGN}, {"left", AR_LEFT},
-		{"reverse", AR_REVERSE}, {"right", AR_RIGHT}, {"ltrim", AR_LTRIM}, {"rtrim", AR_RTRIM}, {"substring", AR_SUBSTRING},
-		{"tolower", AR_TOLOWER}, {"toupper", AR_TOUPPER}, {"tostring", AR_TOSTRING}, {"trim", AR_TRIM}, {"contains", AR_CONTAINS},
-		{"starts with", AR_STARTSWITH}, {"ends with", AR_ENDSWITH}, {"id", AR_ID}, {"labels", AR_LABELS}, {"type", AR_TYPE}, {"exists", AR_EXISTS},
-		{"timestamp", AR_TIMESTAMP}, {"and", AR_AND}, {"or", AR_OR}, {"xor", AR_XOR}, {"not", AR_NOT}, {"gt", AR_GT}, {"ge", AR_GE},
-		{"lt", AR_LT}, {"le", AR_LE}, {"eq", AR_EQ}, {"neq", AR_NE}, {"case", AR_CASEWHEN}
-	};
-
-	char lower_func_name[32] = {0};
-	size_t lower_func_name_len = 32;
-
-	for(int i = 0; i < 39; i++) {
-		_toLower(functions[i].func_name, &lower_func_name[0], &lower_func_name_len);
-		_AR_RegFunc(lower_func_name, lower_func_name_len, functions[i].func_ptr);
-		lower_func_name_len = 32;
-	}
 }

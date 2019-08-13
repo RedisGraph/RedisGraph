@@ -13,7 +13,7 @@
 #include "../ops/op_node_by_label_scan.h"
 
 static bool _idFilter(FT_FilterNode *f, int *rel, EntityID *id, bool *reverse) {
-	if(f->t == FT_N_COND) return false;
+	if(f->t != FT_N_PRED) return false;
 	if(f->pred.op == OP_NEQUAL) return false;
 
 	AR_OpNode *op;

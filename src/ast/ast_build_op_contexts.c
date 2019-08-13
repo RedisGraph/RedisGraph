@@ -5,6 +5,7 @@
  */
 
 #include "ast_build_op_contexts.h"
+#include "ast_build_ar_exp.h"
 #include "../util/arr.h"
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"

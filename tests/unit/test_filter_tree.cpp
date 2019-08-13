@@ -66,31 +66,28 @@ class FilterTreeTest: public ::testing::Test {
         return ast;
     }
 
-    FT_FilterNode* _build_simple_const_tree() {
-        const char *query = "MATCH (me) WHERE me.age = 34 RETURN me";
-        AST *ast = _build_ast(query);
+    FT_FilterNode* build_tree_from_query(const char *q) {
+        AST *ast = _build_ast(q);
         RecordMap *map = RecordMap_New();
         FT_FilterNode *tree = AST_BuildFilterTree(ast, map);
         return tree;
+    }
+
+    FT_FilterNode* _build_simple_const_tree() {
+        const char *q = "MATCH (me) WHERE me.age = 34 RETURN me";
+        return build_tree_from_query(q);
     }
 
     FT_FilterNode* _build_simple_varying_tree() {
-        const char *query = "MATCH (me),(him) WHERE me.age > him.age RETURN me, him";
-        AST *ast = _build_ast(query);
-        RecordMap *map = RecordMap_New();
-        FT_FilterNode *tree = AST_BuildFilterTree(ast, map);
-        return tree;
+        const char *q = "MATCH (me),(him) WHERE me.age > him.age RETURN me, him";
+        return build_tree_from_query(q);
     }
 
     FT_FilterNode* _build_cond_tree(int cond) {
-        const char *query;
-        if(cond == OP_AND) query = "MATCH (me) WHERE me.age > 34 AND me.height <= 188 RETURN me";
-        else  query = "MATCH (me) WHERE me.age > 34 OR me.height <= 188 RETURN me";
-
-        AST *ast = _build_ast(query);
-        RecordMap *map = RecordMap_New();
-        FT_FilterNode *tree = AST_BuildFilterTree(ast, map);
-        return tree;
+        const char *q;
+        if(cond == OP_AND) q = "MATCH (me) WHERE me.age > 34 AND me.height <= 188 RETURN me";
+        else q = "MATCH (me) WHERE me.age > 34 OR me.height <= 188 RETURN me";
+        return build_tree_from_query(q);
     }
 
     FT_FilterNode* _build_AND_cond_tree() {
@@ -105,11 +102,8 @@ class FilterTreeTest: public ::testing::Test {
         /* Build a tree with an OP_AND at the root
         * OP_AND as a left child
         * OP_OR as a right child */
-        const char *query = "MATCH (me),(he),(she),(theirs) WHERE (me.age > 34 AND he.height <= 188) AND (she.age > 34 OR theirs.height <= 188) RETURN me, he, she, theirs";
-        AST *ast = _build_ast(query);
-        RecordMap *map = RecordMap_New();
-        FT_FilterNode *tree = AST_BuildFilterTree(ast, map);
-        return tree;
+        const char *q = "MATCH (me),(he),(she),(theirs) WHERE (me.age > 34 AND he.height <= 188) AND (she.age > 34 OR theirs.height <= 188) RETURN me, he, she, theirs";
+        return build_tree_from_query(q);
     }
 
     void _compareFilterTreePredicateNode(const FT_FilterNode *a, const FT_FilterNode *b) {
@@ -146,7 +140,6 @@ class FilterTreeTest: public ::testing::Test {
         }
     }
 };
-
 
 TEST_F(FilterTreeTest, SubTrees) {
     FT_FilterNode *tree = _build_simple_const_tree();
@@ -235,4 +228,37 @@ TEST_F(FilterTreeTest, CollectModified) {
     /* Clean up. */    
     raxFree(aliases);
     FilterTree_Free(tree);
+}
+
+TEST_F(FilterTreeTest, NOTReduction) {
+    const char *filters[6] {
+        "MATCH (n) WHERE NOT n.v = 1 RETURN n",
+        "MATCH (n) WHERE NOT NOT n.v = 1 RETURN n",
+        "MATCH (n) WHERE NOT (n.v > 5 AND n.v < 20) RETURN n",
+        "MATCH (n) WHERE NOT (n.v <= 5 OR n.v <> 20) RETURN n",        
+        "MATCH (n) WHERE NOT( NOT( NOT( n.v >= 1 AND (n.v < 5 OR n.v <> 3) ) ) ) RETURN n",
+        "MATCH (n) WHERE n.v = 2 AND NOT n.x > 4 RETURN n",
+    };
+
+    const char *expected[6] {
+        "MATCH (n) WHERE n.v <> 1 RETURN n",
+        "MATCH (n) WHERE n.v = 1 RETURN n",
+        "MATCH (n) WHERE n.v <= 5 OR n.v >= 20 RETURN n",
+        "MATCH (n) WHERE n.v > 5 AND n.v = 20 RETURN n",
+        "MATCH (n) WHERE (n.v < 1 OR (n.v >= 5 AND n.v = 3)) RETURN n",
+        "MATCH (n) WHERE n.v = 2 AND n.x <= 4 RETURN n",
+    };
+
+    for(int i = 0; i < 6; i++) {
+        const char *actual = filters[i];
+        const char *expected_q = expected[i];
+
+        FT_FilterNode *actual_tree = build_tree_from_query(actual);
+        FT_FilterNode *expected_tree = build_tree_from_query(expected_q);
+
+        compareFilterTrees(actual_tree, expected_tree);
+
+        FilterTree_Free(actual_tree);
+        FilterTree_Free(expected_tree);
+    }
 }
