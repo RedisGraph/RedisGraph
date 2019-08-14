@@ -5,9 +5,9 @@ from base import FlowTestsBase
 redis_graph = None
 
 
-class testGraphMergeFlow(FlowTestsBase):
+class testList(FlowTestsBase):
     def __init__(self):
-        super(testGraphMergeFlow, self).__init__()
+        super(testList, self).__init__()
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph("G", redis_con)

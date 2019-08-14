@@ -119,10 +119,16 @@ SIValue SI_ConstValue(const SIValue v);
 // SIValue_MakeVolatile updates an SIValue to mark that its allocations are shared rather than self-owned.
 void SIValue_MakeVolatile(SIValue *v);
 /* Functions to copy an SIValue. */
-SIValue SI_Clone(SIValue v); // If input is a string type, duplicate and assume ownership
+SIValue SI_Clone(SIValue v); // Safe clone an SIValue
 SIValue SI_ConstStringVal(char
                               *s);     // Neither duplicate nor assume ownership of input string
 SIValue SI_TransferStringVal(char *s); // Don't duplicate input string, but assume ownership
+<<<<<<< HEAD
+=======
+SIValue SI_CopyValue(SIValue
+                         v);       // If input is a string type, duplicate and assume ownership, otherwise clone
+SIValue SI_ShallowCopy(SIValue v); // Don't duplicate any inputs
+>>>>>>> introduced array interface
 
 // SIValue_Persist updates an SIValue to duplicate any allocations that may go out of scope in the lifetime of this query.
 void SIValue_Persist(SIValue *v);

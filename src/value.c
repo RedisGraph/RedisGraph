@@ -15,7 +15,6 @@
 #include <sys/param.h>
 #include <assert.h>
 #include "util/rmalloc.h"
-#include "util/arr.h"
 #include "datatypes/array.h"
 
 SIValue SI_LongVal(int64_t i) {
@@ -113,7 +112,7 @@ SIValue SI_CloneValue(const SIValue v) {
 	}
 
 	if(v.type == T_ARRAY) {
-		return SI_CloneArrayVal(v);
+		return Array_Clone(v);
 	}
 
 	// Copy the memory region for Node and Edge values. This does not modify the
@@ -251,7 +250,7 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
 		bytes_written = Edge_ToString(v.ptrval, buf, len, ENTITY_ID);
 		break;
 	case T_ARRAY:
-		bytes_written = SIArray_ToString(v, buf, len);
+		bytes_written = Array_ToString(v, buf, len);
 		break;
 	case T_NULL:
 	default:
@@ -336,7 +335,7 @@ SIValue SIValue_ConcatString(const SIValue a, const SIValue b) {
 		result = SI_DuplicateStringVal(buffer);
 	}
 	// a is a string - concat string + value
-	else result = SI_Clone(a);
+	else result = SI_DuplicateStringVal(a.stringval);
 
 	unsigned int argument_len = 0;
 	if(b.type != T_STRING) {
@@ -414,10 +413,10 @@ SIValue SIValue_Divide(const SIValue a, const SIValue b) {
 	return SI_DoubleVal(SI_GET_NUMERIC(a) / (double)SI_GET_NUMERIC(b));
 }
 
-int SIArray_Compare(SIValue *arrayA, SIValue *arrayB) {
+int SIArray_Compare(SIValue arrayA, SIValue arrayB) {
 
-	uint arrayALen = array_len(arrayA);
-	uint arrayBLen = array_len(arrayB);
+	uint arrayALen = Array_Length(arrayA);
+	uint arrayBLen = Array_Length(arrayB);
 	// check empty list
 	if(arrayALen == 0 && arrayBLen == 0) return 0;
 	int lenDiff = arrayALen - arrayBLen;
@@ -431,8 +430,8 @@ int SIArray_Compare(SIValue *arrayA, SIValue *arrayB) {
 
 	// go over the common range for both arrays
 	for(uint i = 0; i < minLengh; i++) {
-		SIValue aValue = arrayA[i];
-		SIValue bValue = arrayB[i];
+		SIValue aValue = Array_Get(arrayA, i);
+		SIValue bValue = Array_Get(arrayB, i);
 		int compareResult = SIValue_Compare(aValue, bValue);
 		switch(compareResult) {
 		case 0:
@@ -480,7 +479,7 @@ int SIValue_Compare(const SIValue a, const SIValue b) {
 		case T_EDGE:
 			return ENTITY_GET_ID((GraphEntity *)a.ptrval) - ENTITY_GET_ID((GraphEntity *)b.ptrval);
 		case T_ARRAY:
-			return SIArray_Compare(a.array, b.array);
+			return SIArray_Compare(a, b);
 		default:
 			// Both inputs were of an incomparable type, like a pointer or NULL
 			return DISJOINT;

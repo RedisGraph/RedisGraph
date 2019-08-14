@@ -6,12 +6,13 @@
 
 #include "resultset_formatters.h"
 #include "../../util/arr.h"
+#include "../../datatypes/array.h"
 
 // forward declarations
 static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n);
 static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e);
 static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext *gc,
-											   SIValue *array) ;
+											   SIValue array) ;
 
 static inline ValueType _mapValueType(const SIValue v) {
 	switch(SI_TYPE(v)) {
@@ -59,7 +60,7 @@ static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 		else RedisModule_ReplyWithStringBuffer(ctx, "false", 5);
 		return;
 	case T_ARRAY:
-		_ResultSet_CompactReplyWithSIArray(ctx, gc, v.array);
+		_ResultSet_CompactReplyWithSIArray(ctx, gc, v);
 		break;
 	case T_NULL:
 		RedisModule_ReplyWithNull(ctx);
@@ -155,12 +156,12 @@ static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
 }
 
 static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext *gc,
-											   SIValue *array) {
-	uint arrayLen = array_len(array);
+											   SIValue array) {
+	uint arrayLen = Array_Length(array);
 	RedisModule_ReplyWithArray(ctx, arrayLen);
 	for(uint i = 0; i < arrayLen; i++) {
 		RedisModule_ReplyWithArray(ctx, 2); // Reply with array with space for type and value
-		_ResultSet_CompactReplyWithSIValue(ctx, gc, array[i]);
+		_ResultSet_CompactReplyWithSIValue(ctx, gc, Array_Get(array, i));
 	}
 }
 

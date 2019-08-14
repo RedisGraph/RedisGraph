@@ -11,6 +11,7 @@
 #include "../../../util/arr.h"
 #include "../../../util/qsort.h"
 #include "../../../../deps/GraphBLAS/Include/GraphBLAS.h"
+#include "../../../datatypes/array.h"
 
 // forward declerations
 SIValue _RdbLoadSIArray(RedisModuleIO *rdb);
@@ -88,12 +89,10 @@ SIValue _RdbLoadSIArray(RedisModuleIO *rdb) {
 	   array[array length -1]
 	 */
 	uint arrayLen = RedisModule_LoadUnsigned(rdb);
-	SIValue *array = array_new(SIValue, arrayLen);
+	SIValue list = SI_Array(arrayLen);
 	for(uint i = 0; i < arrayLen; i++) {
-		array = array_append(array, _RdbLoadSIValue(rdb));
+		list = Array_Append(list, _RdbLoadSIValue(rdb));
 	}
-	SIValue list = SI_Array(array);
-	SIValue_Persist(&list);
 	return list;
 }
 
@@ -208,10 +207,11 @@ void _RdbSaveSIArray(RedisModuleIO *rdb, const SIValue list) {
 	   .
 	   array[array length -1]
 	 */
-	uint arrayLen = array_len(list.array);
+	uint arrayLen = Array_Length(list);
 	RedisModule_SaveUnsigned(rdb, arrayLen);
 	for(uint i = 0; i < arrayLen; i ++) {
-		_RdbSaveSIValue(rdb, list.array + i);
+		SIValue value = Array_Get(list, i);
+		_RdbSaveSIValue(rdb, &value);
 	}
 
 }

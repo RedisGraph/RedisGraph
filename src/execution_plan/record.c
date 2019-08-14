@@ -78,7 +78,8 @@ RecordEntryType Record_GetType(const Record r, int idx) {
 
 SIValue Record_GetScalar(Record r,  int idx) {
 	r[idx].type = REC_TYPE_SCALAR;
-	return r[idx].value.s;
+	// return a safe copy
+	return SI_Clone(r[idx].value.s);
 }
 
 Node *Record_GetNode(const Record r,  int idx) {
