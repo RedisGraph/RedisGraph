@@ -23,6 +23,7 @@ typedef enum {
 typedef struct {
 	const cypher_astnode_t *root;     // Root element of libcypher-parser AST
 	TrieMap *entity_map;              // Mapping of aliases and AST node pointers to AST IDs
+	bool free_root;                   // The root should only be freed if this is a sub-AST we constructed
 } AST;
 
 // Checks to see if libcypher-parser reported any errors.

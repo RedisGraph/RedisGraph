@@ -829,9 +829,6 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 											   prev_op);
 			plan->segments[i] = segment;
 
-			// Free the AST segment (the AST tree is freed separately,
-			// since this does not need to be performed the master AST)
-			cypher_ast_free((cypher_astnode_t *)ast_segment->root);
 			AST_Free(ast_segment); // Free all AST constructions scoped to this segment
 
 			// Store the root op and the expressions constructed by this segment's

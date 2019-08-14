@@ -189,6 +189,7 @@ const char **AST_CollectElementNames(AST *ast) {
 AST *AST_Build(cypher_parse_result_t *parse_result) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->entity_map = NULL;
+	ast->free_root = false;
 
 	// Retrieve the AST root node from a parsed query.
 	const cypher_astnode_t *statement = cypher_parse_result_get_root(parse_result, 0);
@@ -210,6 +211,7 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 
 AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	AST *ast = rm_malloc(sizeof(AST));
+	ast->free_root = true;
 
 	uint n = end_offset - start_offset;
 
@@ -292,5 +294,6 @@ AST *AST_GetFromTLS(void) {
 void AST_Free(AST *ast) {
 	if(ast == NULL) return;
 	if(ast->entity_map) TrieMap_Free(ast->entity_map, TrieMap_NOP_CB);
+	if(ast->free_root) free((cypher_astnode_t *)ast->root);
 	rm_free(ast);
 }
