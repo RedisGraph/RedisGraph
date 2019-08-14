@@ -29,7 +29,9 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/types.h>
+#ifndef WIN32
 #include <sys/uio.h>
+#endif
 
 #if __GNUC__ > 3
 #define __cypherlang_pure __attribute__((pure))
@@ -2876,6 +2878,7 @@ const cypher_astnode_t *cypher_ast_unwind_get_alias(
  * @param [projections] Projections for with, all of type
  *         `CYPHER_AST_PROJECTION`.
  * @param [nprojections] The number of projections.
+ * @param [predicate] A `CYPHER_AST_EXPRESSION` node, or null.
  * @param [children] The children of the node.
  * @param [nchildren] The number of children.
  * @param [range] The input range.
@@ -2885,8 +2888,8 @@ __cypherlang_must_check
 cypher_astnode_t *cypher_ast_call(const cypher_astnode_t *proc_name,
         cypher_astnode_t * const *args, unsigned int nargs,
         cypher_astnode_t * const *projections, unsigned int nprojections,
-        cypher_astnode_t **children, unsigned int nchildren,
-        struct cypher_input_range range);
+        const cypher_astnode_t *predicate, cypher_astnode_t **children,
+        unsigned int nchildren, struct cypher_input_range range);
 
 /**
  * Get the proc name of a `CYPHER_AST_CALL` node.
@@ -2952,6 +2955,20 @@ unsigned int cypher_ast_call_nprojections(const cypher_astnode_t *node);
 __cypherlang_pure
 const cypher_astnode_t *cypher_ast_call_get_projection(
         const cypher_astnode_t *node, unsigned int index);
+
+
+/**
+ * Get the predicate of a `CYPHER_AST_CALL` node.
+ *
+ * If the node is not an instance of `CYPHER_AST_CALL` then the result will
+ * be undefined.
+ *
+ * @param [node] The AST node.
+ * @return A `CYPHER_AST_EXPRESSION` node, or null.
+ */
+__cypherlang_pure
+const cypher_astnode_t *cypher_ast_call_get_predicate(
+        const cypher_astnode_t *node);
 
 
 /**

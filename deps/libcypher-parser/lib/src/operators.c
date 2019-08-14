@@ -102,14 +102,6 @@ static const cypher_operator_t _CYPHER_OP_UNARY_MINUS =
     { .precedence = 10, .associativity = UNARY, .str = "-" };
 const cypher_operator_t *CYPHER_OP_UNARY_MINUS = &_CYPHER_OP_UNARY_MINUS;
 
-// `l[r]`, `l[s..e]`
-static const cypher_operator_t _CYPHER_OP_SUBSCRIPT =
-    { .precedence = 11, .associativity = LEFT_ASSOC, .str = "[" };
-const cypher_operator_t *CYPHER_OP_SUBSCRIPT = &_CYPHER_OP_SUBSCRIPT;
-// `l{e}`
-static const cypher_operator_t _CYPHER_OP_MAP_PROJECTION =
-    { .precedence = 11, .associativity = LEFT_ASSOC, .str = "{" };
-const cypher_operator_t *CYPHER_OP_MAP_PROJECTION = &_CYPHER_OP_MAP_PROJECTION;
 // `l =~ r`
 static const cypher_operator_t _CYPHER_OP_REGEX =
     { .precedence = 11, .associativity = LEFT_ASSOC, .str = "=~" };
@@ -139,11 +131,20 @@ static const cypher_operator_t _CYPHER_OP_IS_NOT_NULL =
     { .precedence = 11, .associativity = UNARY, .str = "IS NOT NULL" };
 const cypher_operator_t *CYPHER_OP_IS_NOT_NULL = &_CYPHER_OP_IS_NOT_NULL;
 
+// `l{e}`
+static const cypher_operator_t _CYPHER_OP_MAP_PROJECTION =
+    { .precedence = 12, .associativity = LEFT_ASSOC, .str = "{" };
+const cypher_operator_t *CYPHER_OP_MAP_PROJECTION = &_CYPHER_OP_MAP_PROJECTION;
+// `l[r]`, `l[s..e]`
+static const cypher_operator_t _CYPHER_OP_SUBSCRIPT =
+    { .precedence = 12, .associativity = LEFT_ASSOC, .str = "[" };
+const cypher_operator_t *CYPHER_OP_SUBSCRIPT = &_CYPHER_OP_SUBSCRIPT;
+
 // `l.r`
 static const cypher_operator_t _CYPHER_OP_PROPERTY =
-    { .precedence = 12, .associativity = LEFT_ASSOC, .str = "." };
+    { .precedence = 13, .associativity = LEFT_ASSOC, .str = "." };
 const cypher_operator_t *CYPHER_OP_PROPERTY = &_CYPHER_OP_PROPERTY;
 // `l:r`
 static const cypher_operator_t _CYPHER_OP_LABEL =
-    { .precedence = 12, .associativity = LEFT_ASSOC, .str = ":" };
+    { .precedence = 13, .associativity = LEFT_ASSOC, .str = ":" };
 const cypher_operator_t *CYPHER_OP_LABEL = &_CYPHER_OP_LABEL;

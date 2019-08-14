@@ -49,6 +49,10 @@
         name = &_##name; \
     }
 
+#ifdef WIN32
+#undef min
+#undef max
+#endif
 
 /**
  * Determine the minimum of two integers.

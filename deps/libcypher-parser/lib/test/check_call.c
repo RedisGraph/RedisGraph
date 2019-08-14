@@ -215,6 +215,58 @@ START_TEST (parse_call_with_blank_projection)
 END_TEST
 
 
+START_TEST (parse_call_with_predicate)
+{
+    struct cypher_input_position last = cypher_input_position_zero;
+    result = cypher_parse(
+            "CALL foo.bar.baz(1, 2) YIELD a WHERE a = 5;",
+            &last, NULL, 0);
+    ck_assert_ptr_ne(result, NULL);
+    ck_assert_int_eq(last.offset, 43);
+
+    ck_assert(cypher_parse_result_fprint_ast(result, memstream, 0, NULL, 0) == 0);
+    fflush(memstream);
+    const char *expected = "\n"
+" @0   0..43  statement              body=@1\n"
+" @1   0..43  > query                clauses=[@2]\n"
+" @2   0..42  > > CALL               name=@3, args=[@4, @5], YIELD=[@6], WHERE=@8\n"
+" @3   5..16  > > > proc name        `foo.bar.baz`\n"
+" @4  17..18  > > > integer          1\n"
+" @5  20..21  > > > integer          2\n"
+" @6  29..31  > > > projection       expression=@7\n"
+" @7  29..30  > > > > identifier     `a`\n"
+" @8  37..42  > > > binary operator  @9 = @10\n"
+" @9  37..38  > > > > identifier     `a`\n"
+"@10  41..42  > > > > integer        5\n";
+    ck_assert_str_eq(memstream_buffer, expected);
+
+    const cypher_astnode_t *ast = cypher_parse_result_get_directive(result, 0);
+    const cypher_astnode_t *query = cypher_ast_statement_get_body(ast);
+    const cypher_astnode_t *clause = cypher_ast_query_get_clause(query, 0);
+    ck_assert_int_eq(cypher_astnode_type(clause), CYPHER_AST_CALL);
+
+    const cypher_astnode_t *proc = cypher_ast_call_get_proc_name(clause);
+    ck_assert_int_eq(cypher_astnode_type(proc), CYPHER_AST_PROC_NAME);
+    ck_assert_str_eq(cypher_ast_proc_name_get_value(proc), "foo.bar.baz");
+
+    ck_assert_int_eq(cypher_ast_call_narguments(clause), 2);
+    ck_assert_ptr_eq(cypher_ast_call_get_argument(clause, 2), NULL);
+
+    ck_assert_int_eq(cypher_ast_call_nprojections(clause), 1);
+    ck_assert_ptr_eq(cypher_ast_call_get_projection(clause, 1), NULL);
+
+    const cypher_astnode_t *proj = cypher_ast_call_get_projection(clause, 0);
+    ck_assert_int_eq(cypher_astnode_type(proj), CYPHER_AST_PROJECTION);
+    const cypher_astnode_t *id = cypher_ast_projection_get_expression(proj);
+    ck_assert_int_eq(cypher_astnode_type(id), CYPHER_AST_IDENTIFIER);
+    ck_assert_str_eq(cypher_ast_identifier_get_name(id), "a");
+
+    const cypher_astnode_t *pred = cypher_ast_call_get_predicate(clause);
+    ck_assert_int_eq(cypher_astnode_type(pred), CYPHER_AST_BINARY_OPERATOR);
+}
+END_TEST
+
+
 TCase* call_tcase(void)
 {
     TCase *tc = tcase_create("call");
@@ -223,5 +275,6 @@ TCase* call_tcase(void)
     tcase_add_test(tc, parse_call_with_args);
     tcase_add_test(tc, parse_call_with_projections);
     tcase_add_test(tc, parse_call_with_blank_projection);
+    tcase_add_test(tc, parse_call_with_predicate);
     return tc;
 }
