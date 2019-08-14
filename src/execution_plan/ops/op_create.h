@@ -17,7 +17,7 @@
 
 // Container struct for properties to be added to a new graph entity
 typedef struct {
-	const char **keys;
+	Attribute_ID *attr_keys;
 	SIValue *values;
 	int property_count;
 } PendingProperties;
