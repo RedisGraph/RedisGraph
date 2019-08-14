@@ -854,6 +854,24 @@ static AST_Validation _ValidateQueryTermination(const AST *ast, char **reason) {
 
 }
 
+// Perform validations not constrained to a specific scope
+static AST_Validation _ValidateQuerySequence(const AST *ast, char **reason) {
+	// Validate the final clause
+	if(_ValidateQueryTermination(ast, reason) != AST_VALID) return AST_INVALID;
+
+	// Verify that no intermediate clause is a RETURN
+	uint clause_count = cypher_ast_query_nclauses(ast->root);
+	for(uint i = 0; i < clause_count - 1; i ++) {
+		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
+		if(cypher_astnode_type(clause) == CYPHER_AST_RETURN) {
+			asprintf(reason, "RETURN must be the final clause in a query.");
+			return AST_INVALID;
+		}
+	}
+
+	return AST_VALID;
+}
+
 static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, TrieMap *identifiers) {
 	if(!node) return;
 	cypher_astnode_type_t type = cypher_astnode_type(node);
@@ -1039,19 +1057,79 @@ static AST_Validation _ValidateClauses(const AST *ast, char **reason) {
 		return AST_INVALID;
 	}
 
-	if(_ValidateQueryTermination(ast, reason) == AST_INVALID) {
-		return AST_INVALID;
-	}
-
-	if(_Validate_Aliases_Defined(ast, reason) == AST_INVALID) {
-		return AST_INVALID;
-	}
-
 	if(_ValidateMaps(ast->root, reason) == AST_INVALID) {
 		return AST_INVALID;
 	}
 
 	return AST_VALID;
+}
+
+static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, uint end_offset) {
+	AST *ast = rm_malloc(sizeof(AST));
+	ast->free_root = true;
+	ast->entity_map = NULL;
+
+	uint n = end_offset - start_offset;
+
+	cypher_astnode_t *clauses[n];
+	for(uint i = 0; i < n; i ++) {
+		clauses[i] = (cypher_astnode_t *)cypher_ast_query_get_clause(root, i + start_offset);
+	}
+	struct cypher_input_range range = {};
+	ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n, NULL, 0, range);
+
+	return ast;
+}
+
+static AST_Validation _ValidateScopes(const cypher_astnode_t *root, char **reason) {
+	AST_Validation res = AST_VALID;
+
+	AST mock_ast; // Build a fake AST with the correct AST root
+	mock_ast.root = root;
+
+	// Verify that the RETURN clause and terminating clause do not violate scoping rules.
+	if(_ValidateQuerySequence(&mock_ast, reason) != AST_VALID) return AST_INVALID;
+
+	// Validate identifiers, which may be passed between scopes
+	if(_Validate_Aliases_Defined(&mock_ast, reason) == AST_INVALID) return AST_INVALID;
+
+	// Aliases are scoped by the WITH clauses within the query.
+	// If we have one or more WITH clauses, MATCH validations should be performed one scope at a time.
+	uint *query_scopes = AST_GetClauseIndices(&mock_ast, CYPHER_AST_WITH);
+	uint with_clause_count = array_len(query_scopes);
+
+	// Query has only one scope, no need to create sub-ASTs
+	if(with_clause_count == 0) {
+		res = _ValidateClauses(&mock_ast, reason);
+		goto cleanup;
+	}
+
+	AST *scoped_ast;
+	uint scope_end;
+	uint scope_start = 0;
+	for(uint i = 0; i < with_clause_count; i ++) {
+		scope_end = query_scopes[i] + 1; // Switching from index to bound, so add 1
+		// Make a sub-AST containing only the clauses in this scope
+		scoped_ast = _NewMockASTSegment(root, scope_start, scope_end);
+
+		// Perform validations
+		res = _ValidateClauses(scoped_ast, reason);
+		AST_Free(scoped_ast);
+		if(res != AST_VALID) goto cleanup;
+		// Update the starting indices of the scope for the next iteration.
+		scope_start = scope_end;
+	}
+
+	// Build and test the final scope (from the last WITH to the last clause)
+	scope_end = cypher_ast_query_nclauses(root);
+	scoped_ast = _NewMockASTSegment(root, scope_start, scope_end);
+	res = _ValidateClauses(scoped_ast, reason);
+	AST_Free(scoped_ast);
+	if(res != AST_VALID) goto cleanup;
+
+cleanup:
+	array_free(query_scopes);
+	return res;
 }
 
 // Checks to see if libcypher-parser reported any errors.
@@ -1103,18 +1181,12 @@ AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *re
 		return AST_VALID;
 	}
 
-	AST_Validation res = AST_VALID;
-	// TODO either merge this all with AST_Build
-	// or modify these calls to accept a cypher_astnode
-	AST *ast = rm_malloc(sizeof(AST));
-	ast->root = body;
 	// Check for invalid queries not captured by libcypher-parser
-	res = _ValidateClauses(ast, &reason);
+	AST_Validation res = _ValidateScopes(body, &reason);
 	if(res != AST_VALID) {
 		RedisModule_ReplyWithError(ctx, reason);
 		free(reason);
 	}
-	rm_free(ast);
 
 	return res;
 }
