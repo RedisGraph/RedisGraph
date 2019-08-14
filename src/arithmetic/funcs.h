@@ -102,3 +102,10 @@ SIValue AR_TIMESTAMP(SIValue *argv, int argc);
 /* Case When 
  * Case Value [When Option i Then Result i] Else Default end */
 SIValue AR_CASEWHEN(SIValue *argv, int argc);
+
+/* Node functions */
+
+/* Returns the number of incoming edges for given node. */
+SIValue AR_INCOMEDEGREE(SIValue *argv, int argc);
+/* Returns the number of outgoing edges for given node. */
+SIValue AR_OUTGOINGDEGREE(SIValue *argv, int argc);

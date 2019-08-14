@@ -456,6 +456,12 @@ This section contains information on all supported functions from the Cypher que
 | ------- |:-----------|
 |exists() | Returns true if the specified property exists in the node or relationship. |
 
+## Node functions
+|Function | Description|
+| ------- |:-----------|
+|indegree() | Returns the number of node's incoming edges. |
+|outdegree() | Returns the number of node's outgoing edges. |
+
 ## Procedures
 Procedures are invoked using the syntax:
 ```sh
