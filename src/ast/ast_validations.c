@@ -1009,6 +1009,18 @@ static AST_Validation _ValidateQueryTermination(const AST *ast, char **reason) {
 
 }
 
+static void _AST_RegisterCallOutputs(const cypher_astnode_t *call_clause, TrieMap *identifiers) {
+	const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
+	ProcedureCtx *proc = Proc_Get(proc_name);
+	assert(proc);
+
+	unsigned int output_count = array_len(proc->output);
+	for(uint i = 0; i < output_count; i++) {
+		const char *name = proc->output[i]->name;
+		TrieMap_Add(identifiers, (char *)name, strlen(name), NULL, TrieMap_DONT_CARE_REPLACE);
+	}
+}
+
 static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, TrieMap *identifiers) {
 	if(!node) return;
 	cypher_astnode_type_t type = cypher_astnode_type(node);
@@ -1028,6 +1040,8 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, TrieMap *id
 			  type == CYPHER_AST_MATCH ||
 			  type == CYPHER_AST_CREATE) {
 		_AST_GetIdentifiers(node, identifiers);
+	} else if(type == CYPHER_AST_CALL) {
+		_AST_RegisterCallOutputs(node, identifiers);
 	} else {
 		uint child_count = cypher_astnode_nchildren(node);
 		for(uint c = 0; c < child_count; c ++) {

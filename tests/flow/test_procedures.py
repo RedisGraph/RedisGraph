@@ -141,43 +141,43 @@ class testProcedures(FlowTestsBase):
 
 
         # The combination of CALL and WHERE currently creates a syntax error in libcypher-parser.
-        # CALL + WHERE + RETURN.
-        #  query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
-                    #  WHERE node.value > 2
-                    #  RETURN node
-                    #  """
-        #  expected_results = [node3, node4]
-        #  self.queryAndValidate(query, expected_results)
+        # CALL + WHERE + RETURN + ORDER.
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+                    WHERE node.value > 2
+                    RETURN node
+                    """
+        expected_results = [node3, node4]
+        self.queryAndValidate(query, expected_results)
 
 
-        # CALL + WHERE + RETURN + SKIP.        
-        #  query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
-                    #  WHERE node.value > 2
-                    #  RETURN node
-                    #  SKIP 1"""
-        #  expected_results = [node3]
-        # not deterministic!
-        # self.queryAndValidate(query, expected_results)
+        # CALL + WHERE + RETURN + SKIP.
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+                    WHERE node.value > 2
+                    RETURN node
+                    SKIP 1"""
+        expected_results = [node4]
+        #  not deterministic!
+        self.queryAndValidate(query, expected_results)
 
 
         # CALL + WHERE + RETURN + LIMIT.
-        #  query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
-                    #  WHERE node.value > 2
-                    #  RETURN node
-                    #  LIMIT 2"""
-        #  expected_results = [node3, node4]
-        #  self.queryAndValidate(query, expected_results)
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+                    WHERE node.value > 2
+                    RETURN node
+                    LIMIT 2"""
+        expected_results = [node3, node4]
+        self.queryAndValidate(query, expected_results)
 
 
         # CALL + WHERE + RETURN + SKIP + LIMIT.
-        #  query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
-                    #  WHERE node.value > 2
-                    #  RETURN node
-                    #  SKIP 1
-                    #  LIMIT 1"""
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+                    WHERE node.value > 2
+                    RETURN node
+                    SKIP 1
+                    LIMIT 1"""
         # not deterministic!
-        # self.queryAndValidate(query, expected_results)
-
+        expected_results = [node4]
+        self.queryAndValidate(query, expected_results)
 
         # CALL + RETURN + ORDER.
         query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
@@ -220,43 +220,43 @@ class testProcedures(FlowTestsBase):
 
 
         # CALL + WHERE + RETURN + ORDER.
-        #  query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
-                    #  WHERE node.value > 2
-                    #  RETURN node
-                    #  ORDER BY node.value"""
-        #  expected_results = [node3, node4]
-        #  self.queryAndValidate(query, expected_results)
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+                    WHERE node.value > 2
+                    RETURN node
+                    ORDER BY node.value"""
+        expected_results = [node3, node4]
+        self.queryAndValidate(query, expected_results)
 
 
         # CALL + WHERE + RETURN + ORDER + SKIP.
-        #  query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
-                    #  WHERE node.value > 2
-                    #  RETURN node
-                    #  ORDER BY node.value
-                    #  SKIP 1"""
-        #  expected_results = [node4]
-        #  self.queryAndValidate(query, expected_results)
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+                    WHERE node.value > 2
+                    RETURN node
+                    ORDER BY node.value
+                    SKIP 1"""
+        expected_results = [node4]
+        self.queryAndValidate(query, expected_results)
 
 
         # CALL + WHERE + RETURN + ORDER + LIMIT.
-        #  query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
-                    #  WHERE node.value > 2
-                    #  RETURN node
-                    #  ORDER BY node.value
-                    #  LIMIT 1"""
-        #  expected_results = [node3]
-        #  self.queryAndValidate(query, expected_results)
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+                    WHERE node.value > 2
+                    RETURN node
+                    ORDER BY node.value
+                    LIMIT 1"""
+        expected_results = [node3]
+        self.queryAndValidate(query, expected_results)
 
 
         # CALL + WHERE + RETURN + ORDER + SKIP + LIMIT.
-        #  query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
-                    #  WHERE node.value > 2
-                    #  RETURN node
-                    #  ORDER BY node.value
-                    #  SKIP 1
-                    #  LIMIT 1"""
-        #  expected_results = [node4]
-        #  self.queryAndValidate(query, expected_results)
+        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+                    WHERE node.value > 2
+                    RETURN node
+                    ORDER BY node.value
+                    SKIP 1
+                    LIMIT 1"""
+        expected_results = [node4]
+        self.queryAndValidate(query, expected_results)
 
         # CALL + MATCH + RETURN.
         query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node

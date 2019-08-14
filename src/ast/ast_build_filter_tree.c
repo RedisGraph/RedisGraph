@@ -200,5 +200,15 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast, RecordMap *record_map) {
 		array_free(merge_clauses);
 	}
 
+	const cypher_astnode_t **call_clauses = AST_GetClauses(ast, CYPHER_AST_CALL);
+	if(call_clauses) {
+		uint call_count = array_len(call_clauses);
+		for(uint i = 0; i < call_count; i ++) {
+			const cypher_astnode_t *where_predicate = cypher_ast_call_get_predicate(call_clauses[i]);
+			if(where_predicate) _AST_ConvertFilters(record_map, ast, &filter_tree, where_predicate);
+		}
+		array_free(call_clauses);
+	}
+
 	return filter_tree;
 }
