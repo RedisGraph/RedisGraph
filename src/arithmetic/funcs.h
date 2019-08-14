@@ -94,6 +94,24 @@ SIValue AR_EQ(SIValue *argv, int argc);
 /* returns true if argv[0] != argv[1] */
 SIValue AR_NE(SIValue *argv, int argc);
 
+/* List operations */
+/* returns an array */
+SIValue AR_TOLIST(SIValue *argv, int argc);
+/* returns a member and array, in a given index */
+SIValue AR_SUBSCRIPT(SIValue *argv, int argc);
+/* returns a sub-array from a given array, with given start and end indices*/
+SIValue AR_SLICE(SIValue *argv, int argc);
+/* creates an array from a range of integers, with optional skip */
+SIValue AR_RANGE(SIValue *argv, int argc);
+/* returns if a value is a memeber in an array */
+SIValue AR_IN(SIValue *argv, int argc);
+/* returns the size of an array */
+SIValue AR_SIZE(SIValue *argv, int argc);
+/* returns the first member of an array */
+SIValue AR_HEAD(SIValue *argv, int argc);
+/* returns a sub array from an array containing all the members without the first array memeber */
+SIValue AR_TAIL(SIValue *argv, int argc);
+
 /* Temporal functions */
 /* returns a timestamp - millis from epoch */
 SIValue AR_TIMESTAMP(SIValue *argv, int argc);

@@ -708,19 +708,6 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc) {
 	return SI_TransferStringVal(substring);
 }
 
-void _toLower(const char *str, char *lower, size_t *lower_len) {
-	size_t str_len = strlen(str);
-	/* Avoid overflow. */
-	assert(*lower_len > str_len);
-
-	/* Update lower len*/
-	*lower_len = str_len;
-
-	int i = 0;
-	for(; i < str_len; i++) lower[i] = tolower(str[i]);
-	lower[i] = 0;
-}
-
 SIValue AR_TOLOWER(SIValue *argv, int argc) {
 	assert(argc == 1);
 
@@ -1165,6 +1152,157 @@ SIValue AR_NE(SIValue *argv, int argc) {
 		assert(false);
 	}
 }
+
+//==============================================================================
+//=== List functions ===========================================================
+//==============================================================================
+
+SIValue AR_TOLIST(SIValue *argv, int argc) {
+	SIValue array = SI_Array(argc);
+	for(int i = 0; i < argc; i++) {
+		array = Array_Append(array, argv[i]);
+	}
+	return array;
+}
+
+// returns a value in a specific index in an array
+// valid index range is [-arrayLen, arrayLen)
+// invalid index will return null
+SIValue AR_SUBSCRIPT(SIValue *argv, int argc) {
+	assert(argc == 2 && argv[0].type == T_ARRAY && argv[1].type == T_INT64);
+	SIValue list = argv[0];
+	int64_t index = argv[1].longval;
+	uint arrayLen = Array_Length(list);
+	// given a negativ index, the accses is calculated as arrayLen+index
+	int64_t absIndex = index < 0 ? index * -1 : index;
+	// index range can be [-arrayLen, arrayLen) (lower bound inclusive, upper exclusive)
+	// this is because 0 = arrayLen+(-arrayLen)
+	if((index < 0 && absIndex > arrayLen) || (index >= arrayLen))
+		return SI_NullVal();
+	return index >= 0 ? Array_Get(list, absIndex) : Array_Get(list, arrayLen - absIndex);
+}
+
+// return a sub array from an array given a range of indices
+// valid indices ragne is [-arrayLen, arrayLen)
+// if range start value is bigger then range end value an empty list will be returnd
+// if indices are still integers but note in the valid range, only values within the valid range
+// will be returned
+// if one of the indices is null, null will be returnd
+SIValue AR_SLICE(SIValue *argv, int argc) {
+	assert(argc == 3 && argv[0].type == T_ARRAY);
+	if(argv[1].type == T_NULL || argv[2].type == T_NULL) return SI_NullVal();
+	assert(argv[1].type == T_INT64 && argv[2].type == T_INT64);
+	SIValue array = argv[0];
+
+	// get array length
+	uint arrayLen = Array_Length(array);
+
+	// get start and end index
+	SIValue start = argv[1];
+	int64_t startIndex = start.longval;
+	SIValue end = argv[2];
+	int64_t endIndex = end.longval;
+
+	int64_t absStartIndex = startIndex >= 0 ? startIndex : startIndex * -1 ;
+	// if negative index, calculate offset from end
+	startIndex = startIndex >= 0 ? startIndex : arrayLen - absStartIndex;
+	// if offset from the end is out of bound, start at 0
+	startIndex = startIndex < 0 ? 0 : startIndex;
+
+	int64_t absEndIndex = endIndex >= 0 ? endIndex : endIndex * -1 ;
+	// if negative index, calculate offset from end
+	endIndex = endIndex >= 0 ? endIndex : arrayLen - absEndIndex;
+	// if index out of bound, end at arrayLen
+	endIndex = arrayLen < endIndex ? arrayLen : endIndex;
+	// cant go in reverse
+	if(endIndex <= startIndex) {
+		return SI_EmptyArray();
+	}
+	SIValue subArray = SI_Array(endIndex - startIndex);
+	for(uint i = startIndex; i < endIndex; i++) {
+		subArray = Array_Append(subArray, Array_Get(array, i));
+	}
+	return subArray;
+}
+
+// create a new list of integers an the range of (start, end). If an interval was given
+// the interval between two consecutive list members will be this interval.
+// If interval was not suppllied, it will be default as 1
+SIValue AR_RANGE(SIValue *argv, int argc) {
+	assert(argc > 1 && argc <= 3 && argv[0].type == T_INT64 && argv[1].type == T_INT64);
+	int64_t start = argv[0].longval;
+	int64_t end = argv[1].longval;
+	int64_t interval = 1;
+	if(argc == 3) {
+		assert(argv[2].type == T_INT64);
+		interval = argv[2].longval;
+	}
+	SIValue array = SI_Array((end - start) / interval);
+	for(; start <= end; start += interval) {
+		array = Array_Append(array, SI_LongVal(start));
+	}
+	return array;
+}
+
+// checks if a value is in a given list
+SIValue AR_IN(SIValue *argv, int argc) {
+	assert(argc == 2 && argv[1].type == T_ARRAY);
+	SIValue lookupValue = argv[0];
+	SIValue lookupList = argv[1];
+	bool comparedNull = false;
+	uint arrayLen = Array_Length(lookupList);
+	for(uint i = 0; i < arrayLen; i++) {
+		int compareValue = SIValue_Compare(lookupValue, Array_Get(lookupList, i));
+		if(compareValue == 0) return SI_BoolVal(true);
+		if(compareValue == COMPARED_NULL) comparedNull = true;
+	}
+	return comparedNull ? SI_NullVal() : SI_BoolVal(false);
+}
+
+// return a list/string/map/path size
+// TODO: when map and path are implemented, add their functonality
+SIValue AR_SIZE(SIValue *argv, int argc) {
+	assert(argc == 1);
+	SIValue value = argv[0];
+	switch(value.type) {
+	case T_ARRAY:
+		return SI_LongVal(Array_Length(value));
+	case T_STRING:
+		return SI_LongVal(strlen(value.stringval));
+	default:
+		assert(false);
+	}
+}
+
+// return the first member of a list
+SIValue AR_HEAD(SIValue *argv, int argc) {
+	assert(argc == 1);
+	SIValue value = argv[0];
+	if(value.type == T_NULL) return SI_NullVal();
+	assert(value.type == T_ARRAY);
+	uint arrayLen = Array_Length(value);
+	if(arrayLen == 0) return SI_NullVal();
+	return Array_Get(value, 0);
+}
+
+// return a sublist of a list, which contains all the values withiout the first value
+SIValue AR_TAIL(SIValue *argv, int argc) {
+	assert(argc == 1);
+	SIValue value = argv[0];
+	if(value.type == T_NULL) return SI_NullVal();
+	assert(value.type == T_ARRAY);
+	uint arrayLen = Array_Length(value);
+	SIValue array = SI_Array(arrayLen);
+	if(arrayLen < 2) return array;
+	for(uint i = 1; i < arrayLen; i++) {
+		array = Array_Append(array, Array_Get(value, i));
+	}
+	return array;
+}
+
+//==============================================================================
+//=== Temporal functions =======================================================
+//==============================================================================
 
 SIValue AR_TIMESTAMP(SIValue *argv, int argc) {
 	return SI_LongVal(TemporalValue_NewTimestamp());

@@ -53,6 +53,8 @@ static const char *_ASTOpToString(AST_Operator op) {
 		return "MOD";
 	case OP_POW:
 		return "POW";
+	case OP_IN:
+		return "IN";
 	default:
 		assert(false && "Unhandled operator was specified in query");
 		return NULL;
@@ -250,7 +252,43 @@ static AR_ExpNode *_AR_EXP_FromCaseExpression(RecordMap *record_map, const cyphe
 	return op;
 }
 
-static AR_ExpNode *_AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
+AR_ExpNode *_AR_ExpFromCollectionExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
+	uint expCount = cypher_ast_collection_length(expr);
+	AR_ExpNode *op = AR_EXP_NewOpNode("tolist", expCount);
+	for(uint i = 0; i < expCount; i ++) {
+		const cypher_astnode_t *exp_node = cypher_ast_collection_get(expr, i);
+		op->op.children[i] = AR_EXP_FromExpression(record_map, exp_node);
+	}
+	return op;
+}
+
+AR_ExpNode *_AR_ExpFromSubscriptExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
+	AR_ExpNode *op = AR_EXP_NewOpNode("subscript", 2);
+	const cypher_astnode_t *exp_node = cypher_ast_subscript_operator_get_expression(expr);
+	op->op.children[0] = AR_EXP_FromExpression(record_map, exp_node);
+	const cypher_astnode_t *subscript_node = cypher_ast_subscript_operator_get_subscript(expr);
+	op->op.children[1] = AR_EXP_FromExpression(record_map, subscript_node);
+	return op;
+}
+
+AR_ExpNode *_AR_ExpFromSliceExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
+	AR_ExpNode *op = AR_EXP_NewOpNode("slice", 3);
+	const cypher_astnode_t *exp_node = cypher_ast_slice_operator_get_expression(expr);
+	const cypher_astnode_t *start_node = cypher_ast_slice_operator_get_start(expr);
+	const cypher_astnode_t *end_node = cypher_ast_slice_operator_get_end(expr);
+
+	op->op.children[0] = AR_EXP_FromExpression(record_map, exp_node);
+
+	if(start_node) op->op.children[1] = AR_EXP_FromExpression(record_map, start_node);
+	else op->op.children[1] = AR_EXP_NewConstOperandNode(SI_LongVal(0));
+
+	if(end_node) op->op.children[2] = AR_EXP_FromExpression(record_map, end_node);
+	else op->op.children[2] = AR_EXP_NewConstOperandNode(SI_LongVal(INT64_MAX));
+
+	return op;
+}
+
+static AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
 	const cypher_astnode_type_t type = cypher_astnode_type(expr);
 
 	/* Function invocations */
@@ -284,19 +322,22 @@ static AR_ExpNode *_AR_EXP_FromExpression(RecordMap *record_map, const cypher_as
 		return _AR_EXP_FromComparisonExpression(record_map, expr);
 	} else if(type == CYPHER_AST_CASE) {
 		return _AR_EXP_FromCaseExpression(record_map, expr);
+	} else if(type == CYPHER_AST_COLLECTION) {
+		return _AR_ExpFromCollectionExpression(record_map, expr);
+	} else if(type == CYPHER_AST_SUBSCRIPT_OPERATOR) {
+		return _AR_ExpFromSubscriptExpression(record_map, expr);
+	} else if(type == CYPHER_AST_SLICE_OPERATOR) {
+		return _AR_ExpFromSliceExpression(record_map, expr);
 	} else {
 		/*
 		   Unhandled types:
-		   CYPHER_AST_COLLECTION
 		   CYPHER_AST_LABELS_OPERATOR
 		   CYPHER_AST_LIST_COMPREHENSION
 		   CYPHER_AST_MAP
 		   CYPHER_AST_MAP_PROJECTION
 		   CYPHER_AST_PARAMETER
 		   CYPHER_AST_PATTERN_COMPREHENSION
-		   CYPHER_AST_SLICE_OPERATOR
 		   CYPHER_AST_REDUCE
-		   CYPHER_AST_SUBSCRIPT_OPERATOR
 		*/
 		printf("Encountered unhandled type '%s'\n", cypher_astnode_typestr(type));
 		assert(false);
