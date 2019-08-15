@@ -17,9 +17,9 @@
 
 // Container struct for properties to be added to a new graph entity
 typedef struct {
-	Attribute_ID *attr_keys;
-	SIValue *values;
-	int property_count;
+	const Attribute_ID *attr_keys; // IDs of property keys to be added.
+	SIValue *values;               // Property values associated with each ID.
+	int property_count;            // Number of properties to be added.
 } PendingProperties;
 
 typedef struct {

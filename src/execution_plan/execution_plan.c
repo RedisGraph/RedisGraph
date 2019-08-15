@@ -568,7 +568,7 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 		// A merge clause provides a single path that must exist or be created.
 		// As with paths in a MATCH query, build the appropriate traversal operations
 		// and append them to the set of ops.
-		AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(record_map, ast, merge_clause, qg);
+		AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(gc, record_map, ast, merge_clause, qg);
 
 		// Append a merge operation
 		OpBase *opMerge = NewMergeOp(stats,

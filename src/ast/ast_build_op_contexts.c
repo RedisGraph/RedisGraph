@@ -11,8 +11,8 @@
 #include "../arithmetic/arithmetic_expression.h"
 #include <assert.h>
 
-static inline EdgeCreateCtx _NewEdgeCreateCtx(RecordMap *record_map, AST *ast, const QueryGraph *qg,
-											  const cypher_astnode_t *path, uint edge_path_offset) {
+static inline EdgeCreateCtx _NewEdgeCreateCtx(GraphContext *gc, RecordMap *record_map, AST *ast,
+											  const QueryGraph *qg, const cypher_astnode_t *path, uint edge_path_offset) {
 	const cypher_astnode_t *ast_edge = cypher_ast_pattern_path_get_element(path, edge_path_offset);
 	const cypher_astnode_t *ast_props = cypher_ast_rel_pattern_get_properties(ast_edge);
 
@@ -40,7 +40,7 @@ static inline EdgeCreateCtx _NewEdgeCreateCtx(RecordMap *record_map, AST *ast, c
 	}
 
 	EdgeCreateCtx new_edge = { .edge = e,
-							   .properties = AST_ConvertPropertiesMap(ast_props, record_map),
+							   .properties = PropertyMap_New(gc, ast_props, record_map),
 							   .src_idx = src_idx,
 							   .dest_idx = dest_idx,
 							   .edge_idx = record_id
@@ -48,8 +48,8 @@ static inline EdgeCreateCtx _NewEdgeCreateCtx(RecordMap *record_map, AST *ast, c
 	return new_edge;
 }
 
-static inline NodeCreateCtx _NewNodeCreateCtx(RecordMap *record_map, AST *ast, const QueryGraph *qg,
-											  const cypher_astnode_t *ast_node) {
+static inline NodeCreateCtx _NewNodeCreateCtx(GraphContext *gc, RecordMap *record_map, AST *ast,
+											  const QueryGraph *qg, const cypher_astnode_t *ast_node) {
 	// Get QueryGraph entity
 	uint ast_id = AST_GetEntityIDFromReference(ast, ast_node);
 	QGNode *n = QueryGraph_GetNodeByID(qg, ast_id);
@@ -58,9 +58,11 @@ static inline NodeCreateCtx _NewNodeCreateCtx(RecordMap *record_map, AST *ast, c
 	uint id = RecordMap_FindOrAddID(record_map, ast_id);
 
 	const cypher_astnode_t *ast_props = cypher_ast_node_pattern_get_properties(ast_node);
-	PropertyMap *properties = AST_ConvertPropertiesMap(ast_props, record_map);
 
-	NodeCreateCtx new_node = { .node = n, .properties = properties, .node_idx = id };
+	NodeCreateCtx new_node = { .node = n,
+							   .properties = PropertyMap_New(gc, ast_props, record_map),
+							   .node_idx = id
+							 };
 
 	return new_node;
 }
@@ -116,28 +118,6 @@ static TrieMap *_MatchMerge_DefinedEntities(const AST *ast) {
 	if(match_clauses) array_free(match_clauses);
 	if(merge_clauses) array_free(merge_clauses);
 
-	return map;
-}
-
-PropertyMap *AST_ConvertPropertiesMap(const cypher_astnode_t *props, RecordMap *record_map) {
-	if(props == NULL) return NULL;
-	assert(cypher_astnode_type(props) == CYPHER_AST_MAP); // TODO add parameter support
-
-	uint prop_count = cypher_ast_map_nentries(props);
-
-	PropertyMap *map = malloc(sizeof(PropertyMap));
-	map->keys = malloc(prop_count * sizeof(char *));
-	map->values = malloc(prop_count * sizeof(SIValue));
-	map->property_count = prop_count;
-
-	for(uint prop_idx = 0; prop_idx < prop_count; prop_idx++) {
-		const cypher_astnode_t *ast_key = cypher_ast_map_get_key(props, prop_idx);
-		map->keys[prop_idx] = cypher_ast_prop_name_get_value(ast_key);
-
-		const cypher_astnode_t *ast_value = cypher_ast_map_get_value(props, prop_idx);
-		AR_ExpNode *value = AR_EXP_FromExpression(record_map, ast_value);
-		map->values[prop_idx] = value;
-	}
 	return map;
 }
 
@@ -257,7 +237,7 @@ AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause,
 	return ctx;
 }
 
-AST_MergeContext AST_PrepareMergeOp(RecordMap *record_map, AST *ast,
+AST_MergeContext AST_PrepareMergeOp(GraphContext *gc, RecordMap *record_map, AST *ast,
 									const cypher_astnode_t *merge_clause, QueryGraph *qg) {
 	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clause);
 
@@ -273,10 +253,10 @@ AST_MergeContext AST_PrepareMergeOp(RecordMap *record_map, AST *ast,
 		RecordMap_FindOrAddID(record_map, ast_id);
 
 		if(i % 2) {  // Entity is a relationship
-			EdgeCreateCtx new_edge = _NewEdgeCreateCtx(record_map, ast, qg, path, i);
+			EdgeCreateCtx new_edge = _NewEdgeCreateCtx(gc, record_map, ast, qg, path, i);
 			edges_to_merge = array_append(edges_to_merge, new_edge);
 		} else { // Entity is a node
-			NodeCreateCtx new_node = _NewNodeCreateCtx(record_map, ast, qg,
+			NodeCreateCtx new_node = _NewNodeCreateCtx(gc, record_map, ast, qg,
 													   cypher_ast_pattern_path_get_element(path, i));
 			nodes_to_merge = array_append(nodes_to_merge, new_node);
 		}
@@ -333,10 +313,10 @@ AST_CreateContext AST_PrepareCreateOp(GraphContext *gc, RecordMap *record_map, A
 				}
 
 				if(k % 2) {  // Relation
-					EdgeCreateCtx new_edge = _NewEdgeCreateCtx(record_map, ast, qg, path, k);
+					EdgeCreateCtx new_edge = _NewEdgeCreateCtx(gc, record_map, ast, qg, path, k);
 					edges_to_create = array_append(edges_to_create, new_edge);
 				} else { // Node
-					NodeCreateCtx new_node = _NewNodeCreateCtx(record_map, ast, qg, elem);
+					NodeCreateCtx new_node = _NewNodeCreateCtx(gc, record_map, ast, qg, elem);
 					nodes_to_create = array_append(nodes_to_create, new_node);
 				}
 			}

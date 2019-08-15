@@ -13,10 +13,9 @@
 PendingProperties *_ConvertPropertyMap(GraphContext *gc, Record r, const PropertyMap *map) {
 	PendingProperties *converted = rm_malloc(sizeof(PendingProperties));
 	converted->property_count = map->property_count;
-	converted->attr_keys = rm_malloc(sizeof(Attribute_ID) * map->property_count);
+	converted->attr_keys = map->keys; // This pointer can be copied directly.
 	converted->values = rm_malloc(sizeof(SIValue) * map->property_count);
 	for(int i = 0; i < map->property_count; i++) {
-		converted->attr_keys[i] = GraphContext_FindOrAddAttribute(gc, map->keys[i]);
 		converted->values[i] = AR_EXP_Evaluate(map->values[i], r);
 	}
 
@@ -35,10 +34,10 @@ static void _AddProperties(OpCreate *op, GraphEntity *ge, PendingProperties *pro
 // Free the properties that have been committed to the graph
 static void _PendingPropertiesFree(PendingProperties *props) {
 	if(props == NULL) return;
+	// The 'keys' array belongs to the original PropertyMap, so so shouldn't be freed here.
 	for(uint j = 0; j < props->property_count; j ++) {
 		SIValue_Free(&props->values[j]);
 	}
-	rm_free(props->attr_keys);
 	rm_free(props->values);
 	rm_free(props);
 }
