@@ -124,18 +124,22 @@ static AST_Validation _ValidateReferredFunctions(TrieMap *referred_functions, ch
 	AST_Validation res = AST_VALID;
 	void *value;
 	tm_len_t len;
-	char *funcName;
+	char *ptr;
+	char funcName[32];
 	TrieMapIterator *it = TrieMap_Iterate(referred_functions, "", 0);
 	*reason = NULL;
 
 	// TODO: return RAX.
-	while(TrieMapIterator_Next(it, &funcName, &len, &value)) {
-		funcName[len] = 0;
+	while(TrieMapIterator_Next(it, &ptr, &len, &value)) {
 		// No functions have a name longer than 32 characters
 		if(len >= 32) {
 			res = AST_INVALID;
 			break;
 		}
+
+		// Copy the triemap key so that we can safely add a terinator character
+		memcpy(funcName, ptr, len);
+		funcName[len] = 0;
 
 		if(AR_FuncExists(funcName)) continue;
 
