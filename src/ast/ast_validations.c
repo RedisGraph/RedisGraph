@@ -220,19 +220,19 @@ static AST_Validation _ValidateMultiHopTraversal(TrieMap *projections, const cyp
 }
 
 static AST_Validation _Validate_ReusedEdges(const cypher_astnode_t *node,
-											TrieMap *identifiers, char **reason) {
+											TrieMap *edge_aliases, char **reason) {
 	uint child_count = cypher_astnode_nchildren(node);
 	for(uint i = 0; i < child_count; i++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
 		cypher_astnode_type_t type = cypher_astnode_type(child);
 
 		if(type == CYPHER_AST_IDENTIFIER) {
-			const char *identifier = cypher_ast_identifier_get_name(child);
-			int new = TrieMap_Add(identifiers, (char *)identifier, strlen(identifier), NULL,
+			const char *alias = cypher_ast_identifier_get_name(child);
+			int new = TrieMap_Add(edge_aliases, (char *)alias, strlen(alias), NULL,
 								  TrieMap_DONT_CARE_REPLACE);
 			if(!new) {
 				asprintf(reason, "Cannot use the same relationship variable '%s' for multiple patterns.",
-						 identifier);
+						 alias);
 				return AST_INVALID;
 			}
 		}
@@ -242,12 +242,12 @@ static AST_Validation _Validate_ReusedEdges(const cypher_astnode_t *node,
 }
 
 static AST_Validation _ValidateRelation(TrieMap *projections, const cypher_astnode_t *edge,
-										TrieMap *identifiers,
+										TrieMap *edge_aliases,
 										char **reason) {
 	AST_Validation res = AST_VALID;
 
-	// Make sure relation identifier is unique
-	res = _Validate_ReusedEdges(edge, identifiers, reason);
+	// Make sure edge alias is unique
+	res = _Validate_ReusedEdges(edge, edge_aliases, reason);
 	if(res != AST_VALID) return res;
 
 	// If this is a multi-hop traversal, validate it
@@ -269,7 +269,7 @@ static AST_Validation _ValidateRelation(TrieMap *projections, const cypher_astno
 
 static AST_Validation _ValidatePath(const cypher_astnode_t *path,
 									TrieMap *projections,
-									TrieMap *identifiers,
+									TrieMap *edge_aliases,
 									char **reason) {
 	AST_Validation res = AST_VALID;
 	uint path_len = cypher_ast_pattern_path_nelements(path);
@@ -277,7 +277,7 @@ static AST_Validation _ValidatePath(const cypher_astnode_t *path,
 	// Check all relations on the path (every odd offset) and collect aliases.
 	for(uint i = 1; i < path_len; i += 2) {
 		const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
-		res = _ValidateRelation(projections, edge, identifiers, reason);
+		res = _ValidateRelation(projections, edge, edge_aliases, reason);
 		if(res != AST_VALID) return res;
 	}
 
@@ -285,11 +285,11 @@ static AST_Validation _ValidatePath(const cypher_astnode_t *path,
 }
 
 static AST_Validation _ValidatePattern(TrieMap *projections, const cypher_astnode_t *pattern,
-									   TrieMap *identifiers, char **reason) {
+									   TrieMap *edge_aliases, char **reason) {
 	AST_Validation res = AST_VALID;
 	uint path_count = cypher_ast_pattern_npaths(pattern);
 	for(uint i = 0; i < path_count; i ++) {
-		res = _ValidatePath(cypher_ast_pattern_get_path(pattern, i), projections, identifiers, reason);
+		res = _ValidatePath(cypher_ast_pattern_get_path(pattern, i), projections, edge_aliases, reason);
 		if(res != AST_VALID) break;
 	}
 
@@ -396,14 +396,14 @@ static AST_Validation _Validate_MATCH_Clause_Filters(const cypher_astnode_t *cla
 	return AST_VALID;
 }
 
-static AST_Validation _ValidateNodeAlias(const cypher_astnode_t *node, TrieMap *identifiers,
+static AST_Validation _ValidateNodeAlias(const cypher_astnode_t *node, TrieMap *edge_aliases,
 										 char **reason) {
 	const cypher_astnode_t *ast_alias = cypher_ast_node_pattern_get_identifier(node);
 	if(ast_alias == NULL) return AST_VALID;
 
 	// Verify that the node's alias is not in the map of edge aliases.
 	const char *alias = cypher_ast_identifier_get_name(ast_alias);
-	if(TrieMap_Find(identifiers, (char *)alias, strlen(alias)) != TRIEMAP_NOTFOUND) {
+	if(TrieMap_Find(edge_aliases, (char *)alias, strlen(alias)) != TRIEMAP_NOTFOUND) {
 		asprintf(reason, "The alias '%s' was specified for both a node and a relationship.", alias);
 		return AST_INVALID;
 	}
@@ -411,9 +411,9 @@ static AST_Validation _ValidateNodeAlias(const cypher_astnode_t *node, TrieMap *
 	return AST_VALID;
 }
 
-static AST_Validation _ValidateReusedIdentifiers(TrieMap *identifiers,
-												 const cypher_astnode_t *pattern,
-												 char **reason) {
+static AST_Validation _ValidateReusedAliases(TrieMap *edge_aliases,
+											 const cypher_astnode_t *pattern,
+											 char **reason) {
 	AST_Validation res = AST_VALID;
 	uint path_count = cypher_ast_pattern_npaths(pattern);
 	for(uint i = 0; i < path_count; i ++) {
@@ -421,7 +421,7 @@ static AST_Validation _ValidateReusedIdentifiers(TrieMap *identifiers,
 		uint path_len = cypher_ast_pattern_path_nelements(path);
 		for(uint j = 0; j < path_len; j += 2) {
 			const cypher_astnode_t *node = cypher_ast_pattern_path_get_element(path, j);
-			res = _ValidateNodeAlias(node, identifiers, reason);
+			res = _ValidateNodeAlias(node, edge_aliases, reason);
 			if(res != AST_VALID) return res;
 		}
 	}
@@ -439,7 +439,7 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast, char **reason) {
 	if(match_clauses == NULL) return AST_VALID;
 
 	TrieMap *referred_funcs = NewTrieMap();
-	TrieMap *identifiers = NewTrieMap();
+	TrieMap *edge_aliases = NewTrieMap();
 	TrieMap *reused_entities = NewTrieMap();
 	AST_Validation res;
 
@@ -449,7 +449,7 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast, char **reason) {
 	for(uint i = 0; i < match_count; i ++) {
 		const cypher_astnode_t *match_clause = match_clauses[i];
 		// Validate the pattern described by the MATCH clause
-		res = _ValidatePattern(projections, cypher_ast_match_get_pattern(match_clause), identifiers,
+		res = _ValidatePattern(projections, cypher_ast_match_get_pattern(match_clause), edge_aliases,
 							   reason);
 		if(res == AST_INVALID) goto cleanup;
 
@@ -464,7 +464,7 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast, char **reason) {
 	// Verify that no relation alias is also used to denote a node
 	for(uint i = 0; i < match_count; i ++) {
 		const cypher_astnode_t *match_clause = match_clauses[i];
-		res = _ValidateReusedIdentifiers(identifiers, cypher_ast_match_get_pattern(match_clause), reason);
+		res = _ValidateReusedAliases(edge_aliases, cypher_ast_match_get_pattern(match_clause), reason);
 		if(res == AST_INVALID) goto cleanup;
 	}
 
@@ -475,7 +475,7 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast, char **reason) {
 cleanup:
 	if(projections) TrieMap_Free(projections, TrieMap_NOP_CB);
 	TrieMap_Free(referred_funcs, TrieMap_NOP_CB);
-	TrieMap_Free(identifiers, TrieMap_NOP_CB);
+	TrieMap_Free(edge_aliases, TrieMap_NOP_CB);
 	TrieMap_Free(reused_entities, TrieMap_NOP_CB);
 	array_free(match_clauses);
 
