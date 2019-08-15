@@ -165,10 +165,10 @@ static FT_FilterNode *_convertComparison(RecordMap *record_map,
 }
 
 static FT_FilterNode *_convertInlinedProperties(RecordMap *record_map, const AST *ast,
-												const cypher_astnode_t *entity, EntityType type) {
+												const cypher_astnode_t *entity, GraphEntityType type) {
 	const cypher_astnode_t *props = NULL;
 
-	if(type == ENTITY_NODE) {
+	if(type == GETYPE_NODE) {
 		props = cypher_ast_node_pattern_get_properties(entity);
 	} else { // relation
 		props = cypher_ast_rel_pattern_get_properties(entity);
@@ -196,9 +196,6 @@ static FT_FilterNode *_convertInlinedProperties(RecordMap *record_map, const AST
 		 * "MATCH (r:person {name:"Roi"}) RETURN r"
 		 * (note the repeated double quotes) - this creates a variable rather than a scalar.
 		 * Can we use this to handle escape characters or something? How does it work? */
-		// Inlined properties can only be scalars right now
-		assert(rhs->operand.type == AR_EXP_CONSTANT &&
-			   "non-scalar inlined property are not currently supported.");
 		FT_FilterNode *t = FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, rhs);
 		_FT_Append(&root, t);
 	}
@@ -238,9 +235,9 @@ void _AST_ConvertFilters(RecordMap *record_map, const AST *ast,
 	FT_FilterNode *node = NULL;
 	// If the current entity is a node or edge pattern, capture its properties map (if any)
 	if(type == CYPHER_AST_NODE_PATTERN) {
-		node = _convertInlinedProperties(record_map, ast, entity, ENTITY_NODE);
+		node = _convertInlinedProperties(record_map, ast, entity, GETYPE_NODE);
 	} else if(type == CYPHER_AST_REL_PATTERN) {
-		node = _convertInlinedProperties(record_map, ast, entity, ENTITY_EDGE);
+		node = _convertInlinedProperties(record_map, ast, entity, GETYPE_EDGE);
 	} else if(type == CYPHER_AST_COMPARISON) {
 		node = _convertComparison(record_map, entity);
 	} else if(type == CYPHER_AST_BINARY_OPERATOR) {

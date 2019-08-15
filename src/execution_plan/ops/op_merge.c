@@ -10,25 +10,12 @@
 #include "../../arithmetic/arithmetic_expression.h"
 #include <assert.h>
 
-// TODO These two functions are duplicates of op_create functions
-// TODO don't need two functions
-static void _AddNodeProperties(OpMerge *op, Schema *schema, Node *n, PropertyMap *props) {
-	if(props == NULL) return;
-
+static void _AddProperties(OpMerge *op, Record r, GraphEntity *ge,
+						   PropertyMap *props) {
 	for(int i = 0; i < props->property_count; i++) {
-		Attribute_ID prop_id = GraphContext_FindOrAddAttribute(op->gc, props->keys[i]);
-		GraphEntity_AddProperty((GraphEntity *)n, prop_id, props->values[i]);
-	}
-
-	if(op->stats) op->stats->properties_set += props->property_count;
-}
-
-static void _AddEdgeProperties(OpMerge *op, Schema *schema, Edge *e, PropertyMap *props) {
-	if(props == NULL) return;
-
-	for(int i = 0; i < props->property_count; i++) {
-		Attribute_ID prop_id = GraphContext_FindOrAddAttribute(op->gc, props->keys[i]);
-		GraphEntity_AddProperty((GraphEntity *)e, prop_id, props->values[i]);
+		SIValue val = AR_EXP_Evaluate(props->values[i], r);
+		GraphEntity_AddProperty(ge, props->keys[i], val);
+		SIValue_Free(&val);
 	}
 
 	if(op->stats) op->stats->properties_set += props->property_count;
@@ -70,7 +57,9 @@ static void _CommitNodes(OpMerge *op, Record r) {
 
 		Graph_CreateNode(g, labelID, created_node);
 
-		_AddNodeProperties(op, schema, created_node, node_ctx->properties);
+		// Convert properties and add to newly-created node.
+		PropertyMap *map = node_ctx->properties;
+		if(map) _AddProperties(op, r, (GraphEntity *)created_node, map);
 
 		if(schema) GraphContext_AddNodeToIndices(op->gc, schema, created_node);
 	}
@@ -101,7 +90,9 @@ static void _CommitEdges(OpMerge *op, Record r) {
 
 		assert(Graph_ConnectNodes(op->gc->g, srcId, destId, schema->id, created_edge));
 
-		_AddEdgeProperties(op, schema, created_edge, edge_ctx->properties);
+		// Convert properties and add to newly-created node.
+		PropertyMap *map = edge_ctx->properties;
+		if(map) _AddProperties(op, r, (GraphEntity *)created_edge, map);
 	}
 
 	if(op->stats) op->stats->relationships_created += edge_count;
@@ -180,4 +171,15 @@ OpResult OpMergeReset(OpBase *ctx) {
 }
 
 void OpMergeFree(OpBase *ctx) {
+	OpMerge *op = (OpMerge *)ctx;
+
+	uint node_count = array_len(op->nodes_to_merge);
+	for(uint i = 0; i < node_count; i ++) {
+		PropertyMap_Free(op->nodes_to_merge[i].properties);
+	}
+
+	uint edge_count = array_len(op->edges_to_merge);
+	for(uint i = 0; i < edge_count; i ++) {
+		PropertyMap_Free(op->edges_to_merge[i].properties);
+	}
 }

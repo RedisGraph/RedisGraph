@@ -215,3 +215,31 @@ class testGraphMergeFlow(FlowTestsBase):
         result = redis_graph.query(count_query)
         updated_count = result.result_set[0][0]
         self.env.assertEquals(updated_count, original_count+1)
+
+    # Update nodes based on non-constant inlined properties
+    def test16_merge_dynamic_properties(self):
+        global redis_graph
+        # Create and verify a new node
+        query = """MERGE (q:dyn {name: toUpper('abcde')}) RETURN q.name"""
+        expected = [['ABCDE']]
+
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.labels_added, 1)
+        self.env.assertEquals(result.nodes_created, 1)
+        self.env.assertEquals(result.properties_set, 1)
+
+        self.env.assertEquals(result.result_set, expected)
+
+        # Repeat the query and verify that no changes were introduced
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.labels_added, 0)
+        self.env.assertEquals(result.nodes_created, 0)
+        self.env.assertEquals(result.properties_set, 0)
+
+        # Verify that MATCH...MERGE on the same entity does not introduce changes
+        query = """MATCH (q {name: 'ABCDE'}) MERGE (r {name: q.name}) RETURN r.name"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.labels_added, 0)
+        self.env.assertEquals(result.nodes_created, 0)
+        self.env.assertEquals(result.properties_set, 0)
+        self.env.assertEquals(result.result_set, expected)

@@ -333,26 +333,14 @@ static AST_Validation _ValidateInlinedProperties(const cypher_astnode_t *props, 
 		const cypher_astnode_t *value = cypher_ast_map_get_value(props, i);
 		cypher_astnode_type_t value_type = cypher_astnode_type(value);
 		if(value_type == CYPHER_AST_IDENTIFIER) {
+			// TODO if the identifier resolves to a scalar WITH projection, it should be usable,
+			// but we can't currently differentiate.
 			res = AST_INVALID;
 			break;
-		} else if(value_type == CYPHER_AST_PROPERTY_OPERATOR) {
-			res = AST_INVALID;
-			break;
-		} else if(value_type == CYPHER_AST_BINARY_OPERATOR) {
-			const cypher_astnode_t *lhs = cypher_ast_binary_operator_get_argument1(value);
-			if(!(_ValueIsConstant(lhs))) {
-				res = AST_INVALID;
-				break;
-			}
-			const cypher_astnode_t *rhs = cypher_ast_binary_operator_get_argument1(value);
-			if(!(_ValueIsConstant(rhs))) {
-				res = AST_INVALID;
-				break;
-			}
 		}
 	}
 	if(res == AST_INVALID) {
-		asprintf(reason, "Non-constant values cannot currently be used as inlined props in RedisGraph.");
+		asprintf(reason, "Identifiers cannot currently be used to set inlined properties in RedisGraph.");
 	}
 	return res;
 }
@@ -445,6 +433,7 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast, char **reason) {
 	res = _ValidateReferredFunctions(referred_funcs, reason, include_aggregates);
 
 cleanup:
+	if(projections) TrieMap_Free(projections, TrieMap_NOP_CB);
 	TrieMap_Free(referred_funcs, TrieMap_NOP_CB);
 	TrieMap_Free(identifiers, TrieMap_NOP_CB);
 	TrieMap_Free(reused_entities, TrieMap_NOP_CB);

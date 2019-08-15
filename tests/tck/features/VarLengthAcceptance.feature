@@ -487,7 +487,6 @@ Feature: VarLengthAcceptance
       | 'n0111' |
     And no side effects
 
-@skip
   Scenario: Handling a variable length relationship and a standard relationship in chain, longer 3
     And having executed:
       """
@@ -523,7 +522,6 @@ Feature: VarLengthAcceptance
       | 'n01111' |
     And no side effects
 
-@skip
   Scenario: Handling mixed relationship patterns and directions 1
     And having executed:
       """
@@ -609,7 +607,6 @@ Feature: VarLengthAcceptance
       | 'n01111' |
     And no side effects
 
-@skip
   Scenario: Handling mixed relationship patterns 1
     And having executed:
       """
@@ -645,7 +642,6 @@ Feature: VarLengthAcceptance
       | 'n01111' |
     And no side effects
 
-@skip
   Scenario: Handling mixed relationship patterns 2
     And having executed:
       """
