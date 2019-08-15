@@ -446,7 +446,28 @@ class testSocialFlow(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.number_of_paths_to_places_visited)
 
-    def test26_delete_friendships(self):
+    def test26_edge_counting(self):
+        global redis_graph
+        aggregations = [
+            "match (a:person)-[e]->(b) return a.name, count(e) ORDER BY a.name",    # Number of outgoing edges.
+            "match (a)-[e]->(b:person) return b.name, count(e) ORDER BY b.name",    # Number of incoming edges.
+            "match (a)-[e:friend]->(b) return a.name, count(e) ORDER BY a.name",    # Number of typed outgoing edges.
+            "match (a)-[e:friend]->(b) return b.name, count(e) ORDER BY b.name"     # Number of typed incoming edges.
+        ]
+
+        none_aggregation = [
+            "match (a:person) WHERE outdegree(a) > 0 RETURN a.name, outdegree(a) ORDER BY a.name",  # Number of outgoing edges.
+            "match (a:person) WHERE indegree(a) > 0 RETURN a.name, indegree(a) ORDER BY a.name",    # Number of incoming edges.
+            "match (a:person) WHERE outdegree(a, 'friend') > 0 RETURN a.name, outdegree(a, 'friend') ORDER BY a.name",  # Number of typed outgoing edges.
+            "match (a:person) WHERE indegree(a, 'friend') > 0 RETURN a.name, indegree(a, 'friend') ORDER BY a.name"     # Number of typed incoming edges.
+        ]
+
+        for i in range(len(aggregations)):
+            result_agg = redis_graph.query(aggregations[i]).result_set
+            result_none_agg = redis_graph.query(none_aggregation[i]).result_set
+            self.env.assertTrue(result_agg == result_none_agg)
+
+    def test27_delete_friendships(self):
         global redis_graph
         q = queries.delete_friendships_query.query
         actual_result = redis_graph.query(q)
@@ -454,7 +475,7 @@ class testSocialFlow(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.delete_friendships_query)
 
-    def test27_delete_person(self):
+    def test28_delete_person(self):
         global redis_graph
         q = queries.delete_person_query.query
         actual_result = redis_graph.query(q)
@@ -462,7 +483,7 @@ class testSocialFlow(FlowTestsBase):
         # assert query run time
         self._assert_run_time(actual_result, queries.delete_person_query)
 
-    def test28_post_delete_label(self):
+    def test29_post_delete_label(self):
         global redis_graph
         q = queries.post_delete_label_query.query
         actual_result = redis_graph.query(q)

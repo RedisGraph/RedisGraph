@@ -8,6 +8,7 @@
 
 #include "funcs.h"
 #include "./aggregate.h"
+#include "../util/arr.h"
 #include "./repository.h"
 #include "../graph/graph.h"
 #include "../util/rmalloc.h"
@@ -394,40 +395,6 @@ void AR_EXP_Free(AR_ExpNode *root) {
 		SIValue_Free(&root->operand.constant);
 	}
 	rm_free(root);
-}
-
-bool AR_FuncExists(const char *func_name) {
-	char lower_func_name[32] = {0};
-	short lower_func_name_len = 32;
-	_toLower(func_name, &lower_func_name[0], &lower_func_name_len);
-	void *f = TrieMap_Find(__aeRegisteredFuncs, lower_func_name, lower_func_name_len);
-	return (f != TRIEMAP_NOTFOUND);
-}
-
-void AR_RegisterFuncs() {
-	struct RegFunc {
-		const char *func_name;
-		AR_Func func_ptr;
-	};
-
-	struct RegFunc functions[39] = {
-		{"add", AR_ADD}, {"sub", AR_SUB}, {"mul", AR_MUL}, {"div", AR_DIV}, {"abs", AR_ABS}, {"ceil", AR_CEIL},
-		{"floor", AR_FLOOR}, {"rand", AR_RAND}, {"round", AR_ROUND}, {"sign", AR_SIGN}, {"left", AR_LEFT},
-		{"reverse", AR_REVERSE}, {"right", AR_RIGHT}, {"ltrim", AR_LTRIM}, {"rtrim", AR_RTRIM}, {"substring", AR_SUBSTRING},
-		{"tolower", AR_TOLOWER}, {"toupper", AR_TOUPPER}, {"tostring", AR_TOSTRING}, {"trim", AR_TRIM}, {"contains", AR_CONTAINS},
-		{"starts with", AR_STARTSWITH}, {"ends with", AR_ENDSWITH}, {"id", AR_ID}, {"labels", AR_LABELS}, {"type", AR_TYPE}, {"exists", AR_EXISTS},
-		{"timestamp", AR_TIMESTAMP}, {"and", AR_AND}, {"or", AR_OR}, {"xor", AR_XOR}, {"not", AR_NOT}, {"gt", AR_GT}, {"ge", AR_GE},
-		{"lt", AR_LT}, {"le", AR_LE}, {"eq", AR_EQ}, {"neq", AR_NE}, {"case", AR_CASEWHEN}
-	};
-
-	char lower_func_name[32] = {0};
-	short lower_func_name_len = 32;
-
-	for(int i = 0; i < 39; i++) {
-		_toLower(functions[i].func_name, &lower_func_name[0], &lower_func_name_len);
-		_AR_RegFunc(lower_func_name, lower_func_name_len, functions[i].func_ptr);
-		lower_func_name_len = 32;
-	}
 }
 
 //==============================================================================
@@ -912,6 +879,45 @@ SIValue AR_CASEWHEN(SIValue *argv, int argc) {
 	return d;
 }
 
+SIValue _AR_NodeDegree(SIValue *argv, int argc, GRAPH_EDGE_DIR dir) {
+	assert(argc >= 1 && SI_TYPE(argv[0]) == T_NODE);
+
+	Node *n = (Node *)argv[0].ptrval;
+	Edge *edges = array_new(Edge, 0);
+	GraphContext *gc = GraphContext_GetFromTLS();
+
+	if(argc > 1) {
+		// We're interested in specific relationship type(s).
+		for(int i = 1; i < argc; i++) {
+			// relationship type should be specified as a string.
+			assert(SI_TYPE(argv[i]) & SI_STRING);
+			const char *label = argv[i].stringval;
+
+			// Make sure relationship exists.
+			Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
+			if(!s) continue;
+
+			// Accumulate edges.
+			Graph_GetNodeEdges(gc->g, n, dir, s->id, &edges);
+		}
+	} else {
+		// Get all relations, regardless of their type.
+		Graph_GetNodeEdges(gc->g, n, dir, GRAPH_NO_RELATION, &edges);
+	}
+
+	SIValue res = SI_LongVal(array_len(edges));
+	array_free(edges);
+	return res;
+}
+
+SIValue AR_INCOMEDEGREE(SIValue *argv, int argc) {
+	return _AR_NodeDegree(argv, argc, GRAPH_EDGE_DIR_INCOMING);
+}
+
+SIValue AR_OUTGOINGDEGREE(SIValue *argv, int argc) {
+	return _AR_NodeDegree(argv, argc, GRAPH_EDGE_DIR_OUTGOING);
+}
+
 SIValue AR_AND(SIValue *argv, int argc) {
 	assert(argc > 1);
 	bool res = true;
@@ -1107,4 +1113,50 @@ SIValue AR_NE(SIValue *argv, int argc) {
 
 SIValue AR_TIMESTAMP(SIValue *argv, int argc) {
 	return SI_LongVal(TemporalValue_NewTimestamp());
+}
+
+AR_Func AR_GetFunc(char *func_name) {
+	char lower_func_name[32] = {0};
+	short lower_func_name_len = 32;
+	_toLower(func_name, &lower_func_name[0], &lower_func_name_len);
+	void *f = TrieMap_Find(__aeRegisteredFuncs, lower_func_name, lower_func_name_len);
+	if(f != TRIEMAP_NOTFOUND) {
+		return f;
+	}
+	return NULL;
+}
+
+bool AR_FuncExists(const char *func_name) {
+	char lower_func_name[32] = {0};
+	short lower_func_name_len = 32;
+	_toLower(func_name, &lower_func_name[0], &lower_func_name_len);
+	void *f = TrieMap_Find(__aeRegisteredFuncs, lower_func_name, lower_func_name_len);
+	return (f != TRIEMAP_NOTFOUND);
+}
+
+void AR_RegisterFuncs() {
+	struct RegFunc {
+		const char *func_name;
+		AR_Func func_ptr;
+	};
+
+	struct RegFunc functions[41] = {
+		{"add", AR_ADD}, {"sub", AR_SUB}, {"mul", AR_MUL}, {"div", AR_DIV}, {"abs", AR_ABS}, {"ceil", AR_CEIL},
+		{"floor", AR_FLOOR}, {"rand", AR_RAND}, {"round", AR_ROUND}, {"sign", AR_SIGN}, {"left", AR_LEFT},
+		{"reverse", AR_REVERSE}, {"right", AR_RIGHT}, {"ltrim", AR_LTRIM}, {"rtrim", AR_RTRIM}, {"substring", AR_SUBSTRING},
+		{"tolower", AR_TOLOWER}, {"toupper", AR_TOUPPER}, {"tostring", AR_TOSTRING}, {"trim", AR_TRIM}, {"contains", AR_CONTAINS},
+		{"starts with", AR_STARTSWITH}, {"ends with", AR_ENDSWITH}, {"id", AR_ID}, {"labels", AR_LABELS}, {"type", AR_TYPE}, {"exists", AR_EXISTS},
+		{"timestamp", AR_TIMESTAMP}, {"and", AR_AND}, {"or", AR_OR}, {"xor", AR_XOR}, {"not", AR_NOT}, {"gt", AR_GT}, {"ge", AR_GE},
+		{"lt", AR_LT}, {"le", AR_LE}, {"eq", AR_EQ}, {"neq", AR_NE}, {"case", AR_CASEWHEN}, {"indegree", AR_INCOMEDEGREE},
+		{"outdegree", AR_OUTGOINGDEGREE}
+	};
+
+	char lower_func_name[32] = {0};
+	short lower_func_name_len = 32;
+
+	for(int i = 0; i < 41; i++) {
+		_toLower(functions[i].func_name, &lower_func_name[0], &lower_func_name_len);
+		_AR_RegFunc(lower_func_name, lower_func_name_len, functions[i].func_ptr);
+		lower_func_name_len = 32;
+	}
 }
