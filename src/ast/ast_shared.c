@@ -58,7 +58,7 @@ PropertyMap *PropertyMap_New(GraphContext *gc, const cypher_astnode_t *props,
 
 	PropertyMap *map = rm_malloc(sizeof(PropertyMap));
 	map->keys = rm_malloc(prop_count * sizeof(Attribute_ID));
-	map->values = rm_malloc(prop_count * sizeof(SIValue));
+	map->values = rm_malloc(prop_count * sizeof(AR_ExpNode *));
 	map->property_count = prop_count;
 
 	for(uint prop_idx = 0; prop_idx < prop_count; prop_idx++) {
