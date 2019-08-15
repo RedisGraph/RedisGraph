@@ -118,8 +118,11 @@ Supported operations:
 - `<=`
 - `>`
 - `>=`
+- `CONTAINS`
+- `STARTS WITH`
+- `ENDS WITH`
 
-Predicates can be combined using AND / OR.
+Predicates can be combined using AND / OR / NOT.
 
 Be sure to wrap predicates within parentheses to control precedence.
 
@@ -452,6 +455,12 @@ This section contains information on all supported functions from the Cypher que
 |Function | Description|
 | ------- |:-----------|
 |exists() | Returns true if the specified property exists in the node or relationship. |
+
+## Node functions
+|Function | Description|
+| ------- |:-----------|
+|indegree() | Returns the number of node's incoming edges. |
+|outdegree() | Returns the number of node's outgoing edges. |
 
 ## Procedures
 Procedures are invoked using the syntax:

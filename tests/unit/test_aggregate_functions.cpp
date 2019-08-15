@@ -19,7 +19,7 @@ extern "C" {
 
 // Declaration of used functions not in header files
 extern AR_ExpNode** _BuildReturnExpressions(RecordMap *record_map, const cypher_astnode_t *ret_clause);
-extern AR_ExpNode* _AR_EXP_NewOpNode(char *func_name, int child_count);
+extern AR_ExpNode* AR_EXP_NewOpNode(const char *func_name, uint child_count);
 
 pthread_key_t _tlsASTKey;
 
@@ -148,7 +148,7 @@ TEST_F(AggregateTest, PercentileContTest) {
   AR_ExpNode *perc;
   SIValue result;
   for (int i = 0; i < 5; i ++) {
-    perc = _AR_EXP_NewOpNode("percentileCont", 6);
+    perc = AR_EXP_NewOpNode("percentileCont", 6);
     for (int j = 1; j <= 5; j ++) {
       perc->op.children[j - 1] = AR_EXP_NewConstOperandNode(SI_DoubleVal(j * 2));
     }
@@ -178,7 +178,7 @@ TEST_F(AggregateTest, PercentileDiscTest) {
   SIValue expected_outcome;
   AR_ExpNode *perc;
   for (int i = 0; i < 5; i ++) {
-    perc = _AR_EXP_NewOpNode("percentileDisc", 6);
+    perc = AR_EXP_NewOpNode("percentileDisc", 6);
     for (int j = 1; j <= 5; j ++) {
       perc->op.children[j - 1] = AR_EXP_NewConstOperandNode(SI_DoubleVal(j * 2));
     }
@@ -197,7 +197,7 @@ TEST_F(AggregateTest, PercentileDiscTest) {
 // Tests both stDev and stDevP
 TEST_F(AggregateTest, StDevTest) {
   // Edge case - operation called on < 2 values
-  AR_ExpNode *stdev = _AR_EXP_NewOpNode("stDev", 1);
+  AR_ExpNode *stdev = AR_EXP_NewOpNode("stDev", 1);
   stdev->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(5.1));
   AR_EXP_Aggregate(stdev, r);
   AR_EXP_Reduce(stdev);
@@ -206,7 +206,7 @@ TEST_F(AggregateTest, StDevTest) {
   AR_EXP_Free(stdev);
 
   // Stdev of squares of first 10 positive integers
-  stdev = _AR_EXP_NewOpNode("stDev", 10);
+  stdev = AR_EXP_NewOpNode("stDev", 10);
   double sum = 0;
   for (int i = 1; i <= 10; i ++) {
     stdev->op.children[i - 1] = AR_EXP_NewConstOperandNode(SI_DoubleVal(i));
@@ -228,7 +228,7 @@ TEST_F(AggregateTest, StDevTest) {
   AR_EXP_Free(stdev);
 
   // Perform last test with stDevP
-  AR_ExpNode *stdevp = _AR_EXP_NewOpNode("stDevP", 10);
+  AR_ExpNode *stdevp = AR_EXP_NewOpNode("stDevP", 10);
   for (int i = 1; i <= 10; i ++) {
     stdevp->op.children[i - 1] = AR_EXP_NewConstOperandNode(SI_DoubleVal(i));
   }

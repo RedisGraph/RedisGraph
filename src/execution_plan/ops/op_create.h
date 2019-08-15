@@ -15,6 +15,13 @@
 
 /* Creates new entities according to the CREATE clause. */
 
+// Container struct for properties to be added to a new graph entity
+typedef struct {
+	const Attribute_ID *attr_keys; // IDs of property keys to be added.
+	SIValue *values;               // Property values associated with each ID.
+	int property_count;            // Number of properties to be added.
+} PendingProperties;
+
 typedef struct {
 	OpBase op;
 	QueryGraph *qg;
@@ -23,8 +30,8 @@ typedef struct {
 
 	NodeCreateCtx *nodes_to_create;
 	EdgeCreateCtx *edges_to_create;
-	PropertyMap **node_properties;
-	PropertyMap **edge_properties;
+	PendingProperties **node_properties;
+	PendingProperties **edge_properties;
 
 	Node **created_nodes;
 	Edge **created_edges;

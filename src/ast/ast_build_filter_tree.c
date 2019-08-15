@@ -1,4 +1,5 @@
 #include "ast_build_filter_tree.h"
+#include "ast_build_ar_exp.h"
 #include "ast_shared.h"
 #include "../execution_plan/record_map.h"
 #include "../util/arr.h"
@@ -49,6 +50,11 @@ FT_FilterNode *_CreateFilterSubtree(RecordMap *record_map, AST_Operator op,
 		AppendLeftChild(filter, _FilterNode_FromAST(record_map, lhs));
 		AppendRightChild(filter, _FilterNode_FromAST(record_map, rhs));
 		return filter;
+	case OP_NOT:
+		filter = FilterTree_CreateConditionFilter(op);
+		AppendLeftChild(filter, _FilterNode_FromAST(record_map, lhs));
+		AppendRightChild(filter, NULL);
+		return filter;
 	case OP_EQUAL:
 	case OP_NEQUAL:
 	case OP_LT:
@@ -64,40 +70,105 @@ FT_FilterNode *_CreateFilterSubtree(RecordMap *record_map, AST_Operator op,
 // AND, OR, XOR (others?)
 /* WHERE (condition) AND (condition),
  * WHERE a.val = b.val */
-FT_FilterNode *_convertBinaryOperator(RecordMap *record_map, const cypher_astnode_t *op_node) {
+static FT_FilterNode *_convertBinaryOperator(RecordMap *record_map,
+											 const cypher_astnode_t *op_node) {
 	const cypher_operator_t *operator = cypher_ast_binary_operator_get_operator(op_node);
-	// Arguments are of type CYPHER_AST_EXPRESSION
-	const cypher_astnode_t *lhs = cypher_ast_binary_operator_get_argument1(op_node);
-	const cypher_astnode_t *rhs = cypher_ast_binary_operator_get_argument2(op_node);
+	AST_Operator op = AST_ConvertOperatorNode(operator);
+	const cypher_astnode_t *lhs;
+	const cypher_astnode_t *rhs;
 
+	switch(op) {
+	case OP_OR:
+	case OP_AND:
+	case OP_NOT:
+	case OP_EQUAL:
+	case OP_NEQUAL:
+	case OP_LT:
+	case OP_LE:
+	case OP_GT:
+	case OP_GE:
+		// Arguments are of type CYPHER_AST_EXPRESSION
+		lhs = cypher_ast_binary_operator_get_argument1(op_node);
+		rhs = cypher_ast_binary_operator_get_argument2(op_node);
+		return _CreateFilterSubtree(record_map, op, lhs, rhs);
+	default:
+		return FilterTree_CreateExpressionFilter(AR_EXP_FromExpression(record_map, op_node));
+	}
+}
+
+static FT_FilterNode *_convertUnaryOperator(RecordMap *record_map,
+											const cypher_astnode_t *op_node) {
+	const cypher_operator_t *operator = cypher_ast_unary_operator_get_operator(op_node);
+	// Argument is of type CYPHER_AST_EXPRESSION
+	const cypher_astnode_t *arg = cypher_ast_unary_operator_get_argument(op_node);
 	AST_Operator op = AST_ConvertOperatorNode(operator);
 
-	return _CreateFilterSubtree(record_map, op, lhs, rhs);
+	return _CreateFilterSubtree(record_map, op, arg, NULL);
+}
+
+static FT_FilterNode *_convertApplyOperator(RecordMap *record_map,
+											const cypher_astnode_t *op_node) {
+	return FilterTree_CreateExpressionFilter(AR_EXP_FromExpression(record_map, op_node));
+}
+
+static FT_FilterNode *_convertTrueOperator() {
+	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(SI_BoolVal(true));
+	return FilterTree_CreateExpressionFilter(exp);
+}
+
+static FT_FilterNode *_convertFalseOperator() {
+	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(SI_BoolVal(false));
+	return FilterTree_CreateExpressionFilter(exp);
+}
+
+static FT_FilterNode *_convertIntegerOperator(RecordMap *record_map, const cypher_astnode_t *expr) {
+	AR_ExpNode *exp = AR_EXP_FromExpression(record_map, expr);
+	return FilterTree_CreateExpressionFilter(exp);
 }
 
 /* A comparison node contains two arrays - one of operators, and one of expressions.
  * Most comparisons will only have one operator and two expressions, but Cypher
  * allows more complex formulations like "x < y <= z".
  * A comparison takes a form such as "WHERE a.val < y.val". */
-FT_FilterNode *_convertComparison(RecordMap *record_map, const cypher_astnode_t *comparison_node) {
+static FT_FilterNode *_convertComparison(RecordMap *record_map,
+										 const cypher_astnode_t *comparison_node) {
+	// "x < y <= z"
 	uint nelems = cypher_ast_comparison_get_length(comparison_node);
-	assert(nelems == 1); // TODO Cypher comparisons are allowed to be longer, as in "x < y <= z"
+	FT_FilterNode **filters = array_new(FT_FilterNode *, nelems);
 
-	const cypher_operator_t *operator = cypher_ast_comparison_get_operator(comparison_node, 0);
-	AST_Operator op = AST_ConvertOperatorNode(operator);
+	// Create and accumulate simple predicates x < y.
+	for(int i = 0; i < nelems; i++) {
+		const cypher_operator_t *operator = cypher_ast_comparison_get_operator(comparison_node, i);
+		const cypher_astnode_t *lhs = cypher_ast_comparison_get_argument(comparison_node, i);
+		const cypher_astnode_t *rhs = cypher_ast_comparison_get_argument(comparison_node, i + 1);
 
-	// All arguments are of type CYPHER_AST_EXPRESSION
-	const cypher_astnode_t *lhs = cypher_ast_comparison_get_argument(comparison_node, 0);
-	const cypher_astnode_t *rhs = cypher_ast_comparison_get_argument(comparison_node, 1);
+		AST_Operator op = AST_ConvertOperatorNode(operator);
+		FT_FilterNode *filter = _CreatePredicateFilterNode(record_map, op, lhs, rhs);
+		filters = array_append(filters, filter);
+	}
 
-	return _CreatePredicateFilterNode(record_map, op, lhs, rhs);
+	// Reduce by anding.
+	while(array_len(filters) > 1) {
+		FT_FilterNode *a = array_pop(filters);
+		FT_FilterNode *b = array_pop(filters);
+		FT_FilterNode *intersec = FilterTree_CreateConditionFilter(OP_AND);
+
+		AppendLeftChild(intersec, a);
+		AppendRightChild(intersec, b);
+
+		filters = array_append(filters, intersec);
+	}
+
+	FT_FilterNode *root = array_pop(filters);
+	array_free(filters);
+	return root;
 }
 
 static FT_FilterNode *_convertInlinedProperties(RecordMap *record_map, const AST *ast,
-												const cypher_astnode_t *entity, EntityType type) {
+												const cypher_astnode_t *entity, GraphEntityType type) {
 	const cypher_astnode_t *props = NULL;
 
-	if(type == ENTITY_NODE) {
+	if(type == GETYPE_NODE) {
 		props = cypher_ast_node_pattern_get_properties(entity);
 	} else { // relation
 		props = cypher_ast_rel_pattern_get_properties(entity);
@@ -125,9 +196,6 @@ static FT_FilterNode *_convertInlinedProperties(RecordMap *record_map, const AST
 		 * "MATCH (r:person {name:"Roi"}) RETURN r"
 		 * (note the repeated double quotes) - this creates a variable rather than a scalar.
 		 * Can we use this to handle escape characters or something? How does it work? */
-		// Inlined properties can only be scalars right now
-		assert(rhs->operand.type == AR_EXP_CONSTANT &&
-			   "non-scalar inlined property are not currently supported.");
 		FT_FilterNode *t = FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, rhs);
 		_FT_Append(&root, t);
 	}
@@ -137,15 +205,25 @@ static FT_FilterNode *_convertInlinedProperties(RecordMap *record_map, const AST
 FT_FilterNode *_FilterNode_FromAST(RecordMap *record_map, const cypher_astnode_t *expr) {
 	assert(expr);
 	cypher_astnode_type_t type = cypher_astnode_type(expr);
-	if(type == CYPHER_AST_BINARY_OPERATOR) {
-		return _convertBinaryOperator(record_map, expr);
-	} else if(type == CYPHER_AST_COMPARISON) {
+
+	if(type == CYPHER_AST_COMPARISON) {
 		return _convertComparison(record_map, expr);
+	} else if(type == CYPHER_AST_BINARY_OPERATOR) {
+		return _convertBinaryOperator(record_map, expr);
+	} else if(type == CYPHER_AST_UNARY_OPERATOR) {
+		return _convertUnaryOperator(record_map, expr);
 	} else if(type == CYPHER_AST_APPLY_OPERATOR) {
-		assert(false && "Unary APPLY operators are not currently supported in filters.");
+		return _convertApplyOperator(record_map, expr);
+	} else if(type == CYPHER_AST_TRUE) {
+		return _convertTrueOperator();
+	} else if(type == CYPHER_AST_FALSE) {
+		return _convertFalseOperator();
+	} else if(type == CYPHER_AST_INTEGER) {
+		return _convertIntegerOperator(record_map, expr);
+	} else {
+		assert(false);
+		return NULL;
 	}
-	assert(false);
-	return NULL;
 }
 
 void _AST_ConvertFilters(RecordMap *record_map, const AST *ast,
@@ -157,18 +235,23 @@ void _AST_ConvertFilters(RecordMap *record_map, const AST *ast,
 	FT_FilterNode *node = NULL;
 	// If the current entity is a node or edge pattern, capture its properties map (if any)
 	if(type == CYPHER_AST_NODE_PATTERN) {
-		node = _convertInlinedProperties(record_map, ast, entity, ENTITY_NODE);
+		node = _convertInlinedProperties(record_map, ast, entity, GETYPE_NODE);
 	} else if(type == CYPHER_AST_REL_PATTERN) {
-		node = _convertInlinedProperties(record_map, ast, entity, ENTITY_EDGE);
+		node = _convertInlinedProperties(record_map, ast, entity, GETYPE_EDGE);
 	} else if(type == CYPHER_AST_COMPARISON) {
 		node = _convertComparison(record_map, entity);
 	} else if(type == CYPHER_AST_BINARY_OPERATOR) {
 		node = _convertBinaryOperator(record_map, entity);
 	} else if(type == CYPHER_AST_UNARY_OPERATOR) {
-		// TODO, also n-ary maybe
-		assert(false && "unary filters are not currently supported.");
+		node = _convertUnaryOperator(record_map, entity);
 	} else if(type == CYPHER_AST_APPLY_OPERATOR) {
-		assert(false && "APPLY operators are not currently supported in filters.");
+		node = _convertApplyOperator(record_map, entity);
+	} else if(type == CYPHER_AST_TRUE) {
+		node = _convertTrueOperator();
+	} else if(type == CYPHER_AST_FALSE) {
+		node = _convertFalseOperator();
+	} else if(type == CYPHER_AST_INTEGER) {
+		node = _convertIntegerOperator(record_map, entity);
 	} else {
 		uint child_count = cypher_astnode_nchildren(entity);
 		for(uint i = 0; i < child_count; i++) {
@@ -209,6 +292,9 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast, RecordMap *record_map) {
 		}
 		array_free(call_clauses);
 	}
+
+	// Apply De Morgan's laws
+	FilterTree_DeMorgan(&filter_tree);
 
 	return filter_tree;
 }

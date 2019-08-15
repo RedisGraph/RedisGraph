@@ -153,18 +153,22 @@ static AST_Validation _ValidateReferredFunctions(TrieMap *referred_functions, ch
 	AST_Validation res = AST_VALID;
 	void *value;
 	tm_len_t len;
-	char *funcName;
+	char *ptr;
+	char funcName[32];
 	TrieMapIterator *it = TrieMap_Iterate(referred_functions, "", 0);
 	*reason = NULL;
 
 	// TODO: return RAX.
-	while(TrieMapIterator_Next(it, &funcName, &len, &value)) {
-		funcName[len] = 0;
+	while(TrieMapIterator_Next(it, &ptr, &len, &value)) {
 		// No functions have a name longer than 32 characters
 		if(len >= 32) {
 			res = AST_INVALID;
 			break;
 		}
+
+		// Copy the triemap key so that we can safely add a terinator character
+		memcpy(funcName, ptr, len);
+		funcName[len] = 0;
 
 		if(AR_FuncExists(funcName)) continue;
 
@@ -358,26 +362,14 @@ static AST_Validation _ValidateInlinedProperties(const cypher_astnode_t *props, 
 		const cypher_astnode_t *value = cypher_ast_map_get_value(props, i);
 		cypher_astnode_type_t value_type = cypher_astnode_type(value);
 		if(value_type == CYPHER_AST_IDENTIFIER) {
+			// TODO if the identifier resolves to a scalar WITH projection, it should be usable,
+			// but we can't currently differentiate.
 			res = AST_INVALID;
 			break;
-		} else if(value_type == CYPHER_AST_PROPERTY_OPERATOR) {
-			res = AST_INVALID;
-			break;
-		} else if(value_type == CYPHER_AST_BINARY_OPERATOR) {
-			const cypher_astnode_t *lhs = cypher_ast_binary_operator_get_argument1(value);
-			if(!(_ValueIsConstant(lhs))) {
-				res = AST_INVALID;
-				break;
-			}
-			const cypher_astnode_t *rhs = cypher_ast_binary_operator_get_argument1(value);
-			if(!(_ValueIsConstant(rhs))) {
-				res = AST_INVALID;
-				break;
-			}
 		}
 	}
 	if(res == AST_INVALID) {
-		asprintf(reason, "Non-constant values cannot currently be used as inlined props in RedisGraph.");
+		asprintf(reason, "Identifiers cannot currently be used to set inlined properties in RedisGraph.");
 	}
 	return res;
 }
@@ -405,53 +397,8 @@ static AST_Validation _ValidateInlinedPropertiesOnPath(const cypher_astnode_t *p
 
 static AST_Validation _ValidateFilterPredicates(const cypher_astnode_t *predicate, char **reason) {
 	cypher_astnode_type_t type = cypher_astnode_type(predicate);
-
 	// TODO These should all be supported in filter trees
-	if(type == CYPHER_AST_APPLY_OPERATOR) {
-		const cypher_astnode_t *ast_name = cypher_ast_apply_operator_get_func_name(predicate);
-		const char *func_name = cypher_ast_function_name_get_value(ast_name);
-		asprintf(reason, "Unary APPLY operators ('%s') are not currently supported in filters", func_name);
-		return AST_INVALID;
-	} else if(type == CYPHER_AST_BINARY_OPERATOR) {
-		const cypher_operator_t *op = cypher_ast_binary_operator_get_operator(predicate);
-		const cypher_astnode_t *left = cypher_ast_binary_operator_get_argument1(predicate);
-		const cypher_astnode_t *right = cypher_ast_binary_operator_get_argument2(predicate);
-
-		if(op != CYPHER_OP_EQUAL  &&
-		   op != CYPHER_OP_NEQUAL &&
-		   op != CYPHER_OP_LT     &&
-		   op != CYPHER_OP_LTE    &&
-		   op != CYPHER_OP_GT     &&
-		   op != CYPHER_OP_GTE) {
-			// Currently, unary functions are only valid in filter trees as arguments to a direct
-			// comparison function. Failing expressions include:
-			// WHERE EXISTS(a.age) AND a.age > 30
-			if(_ValidateFilterPredicates(left, reason) != AST_VALID) return AST_INVALID;
-			if(_ValidateFilterPredicates(right, reason) != AST_VALID) return AST_INVALID;
-		} else {
-			// Check for chains of form:
-			// WHERE n.prop1 < m.prop1 = n.prop2 <> m.prop2
-			cypher_astnode_type_t left_type = cypher_astnode_type(left);
-			cypher_astnode_type_t right_type = cypher_astnode_type(right);
-
-			if(cypher_astnode_type(left) == CYPHER_AST_BINARY_OPERATOR ||
-			   cypher_astnode_type(right) == CYPHER_AST_BINARY_OPERATOR) {
-				asprintf(reason, "Comparison chains of length > 1 are not currently supported.");
-				return AST_INVALID;
-			}
-		}
-	} else if(type == CYPHER_AST_COMPARISON) {
-		// WHERE 10 < n.value <= 3
-		if(cypher_ast_comparison_get_length(predicate) > 1) {
-			asprintf(reason, "Comparison chains of length > 1 are not currently supported.");
-			return AST_INVALID;
-
-		}
-	} else if(type == CYPHER_AST_UNARY_OPERATOR) {
-		// WHERE exists(a.name)
-		asprintf(reason, "Unary APPLY operators are not currently supported in filters.");
-		return AST_INVALID;
-	} else if(type == CYPHER_AST_PATTERN_PATH) {
+	if(type == CYPHER_AST_PATTERN_PATH) {
 		// Comparisons of form:
 		// MATCH (a), (b) WHERE a.id = 0 AND (a)-[:T]->(b:TheLabel)
 		asprintf(reason, "Paths cannot currently be specified in filters.");
@@ -610,6 +557,7 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast, char **reason) {
 	res = _ValidateReferredFunctions(referred_funcs, reason, include_aggregates);
 
 cleanup:
+	if(projections) TrieMap_Free(projections, TrieMap_NOP_CB);
 	TrieMap_Free(referred_funcs, TrieMap_NOP_CB);
 	TrieMap_Free(identifiers, TrieMap_NOP_CB);
 	TrieMap_Free(reused_entities, TrieMap_NOP_CB);
@@ -808,32 +756,13 @@ static AST_Validation _Validate_ReturnedTypes(const cypher_astnode_t *return_cla
 		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
 		const cypher_astnode_t *expr = cypher_ast_projection_get_expression(projection);
 		cypher_astnode_type_t type = cypher_astnode_type(expr);
-		if(type == CYPHER_AST_COMPARISON) {
-			asprintf(reason, "RedisGraph does not currently support returning '%s'",
-					 cypher_astnode_typestr(type));
-			return AST_INVALID;
-		} else if(type == CYPHER_AST_UNARY_OPERATOR) {
+		if(type == CYPHER_AST_UNARY_OPERATOR) {
 			const cypher_operator_t *oper = cypher_ast_unary_operator_get_operator(expr);
-			if(oper == CYPHER_OP_NOT ||
-			   oper == CYPHER_OP_IS_NULL ||
+			if(oper == CYPHER_OP_IS_NULL ||
 			   oper == CYPHER_OP_IS_NOT_NULL
 			  ) {
 				// TODO weird that we can't print operator strings?
 				asprintf(reason, "RedisGraph does not currently support returning this unary operator.");
-				return AST_INVALID;
-			}
-		} else if(type == CYPHER_AST_BINARY_OPERATOR) {
-			const cypher_operator_t *oper = cypher_ast_binary_operator_get_operator(expr);
-			if(oper == CYPHER_OP_OR ||
-			   oper == CYPHER_OP_AND ||
-			   oper == CYPHER_OP_EQUAL ||
-			   oper == CYPHER_OP_NEQUAL ||
-			   oper == CYPHER_OP_LT ||
-			   oper == CYPHER_OP_GT ||
-			   oper == CYPHER_OP_LTE ||
-			   oper == CYPHER_OP_GTE) {
-				// TODO weird that we can't print operator strings?
-				asprintf(reason, "RedisGraph does not currently support returning this binary operator.");
 				return AST_INVALID;
 			}
 		}

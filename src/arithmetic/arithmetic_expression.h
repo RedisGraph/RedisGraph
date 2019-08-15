@@ -4,18 +4,14 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __ARITHMETIC_EXPRESSION_H
-#define __ARITHMETIC_EXPRESSION_H
+#pragma once
 
 #include "./agg_ctx.h"
 #include "../../deps/rax/rax.h"
-// #include "../graph/query_graph.h"
 #include "../execution_plan/record.h"
 #include "../execution_plan/record_map.h"
 #include "../graph/entities/graph_entity.h"
-#include "../ast/ast_shared.h"
-#include "../ast/ast.h"
-#include "./agg_ctx.h"
+#include <sys/types.h>
 
 /* AR_ExpNodeType lists the type of nodes within
  * an arithmetic expression tree. */
@@ -51,7 +47,7 @@ typedef struct {
 		AR_Func f;
 		AggCtx *agg_func;
 	};                              /* Operation to perform on children. */
-	char *func_name;                /* Name of function. */
+	const char *func_name;          /* Name of function. */
 	int child_count;                /* Number of children. */
 	struct AR_ExpNode **children;   /* Child nodes. */
 	AR_OPType type;
@@ -88,82 +84,23 @@ struct AR_ExpNode {
 
 typedef struct AR_ExpNode AR_ExpNode;
 
-/* Mathematical functions - numeric */
-/* returns the summation of given values. */
-SIValue AR_ADD(SIValue *argv, int argc);
-/* returns the subtracting given values. */
-SIValue AR_SUB(SIValue *argv, int argc);
-/* returns the multiplication of given values. */
-SIValue AR_MUL(SIValue *argv, int argc);
-/* returns the divition of given values. */
-SIValue AR_DIV(SIValue *argv, int argc);
-/* returns the absolute value of the given number. */
-SIValue AR_ABS(SIValue *argv, int argc);
-/* returns the smallest floating point number that is greater than or equal to the given number and equal to a mathematical integer. */
-SIValue AR_CEIL(SIValue *argv, int argc);
-/* returns the largest floating point number that is less than or equal to the given number and equal to a mathematical integer. */
-SIValue AR_FLOOR(SIValue *argv, int argc);
-/* returns a random floating point number in the range from 0 to 1; i.e. [0,1]. The numbers returned follow an approximate uniform distribution. */
-SIValue AR_RAND(SIValue *argv, int argc);
-/* returns the value of the given number rounded to the nearest integer. */
-SIValue AR_ROUND(SIValue *argv, int argc);
-/* returns the signum of the given number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number. */
-SIValue AR_SIGN(SIValue *argv, int argc);
+/* Creates a new Arithmetic expression operation node */
+AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count);
 
-/* String functions */
-/* returns a string containing the specified number of leftmost characters of the original string. */
-SIValue AR_LEFT(SIValue *argv, int argc);
-/* returns the original string with leading whitespace removed. */
-SIValue AR_LTRIM(SIValue *argv, int argc);
-/* returns a string in which all occurrences of a specified string in the original string have been replaced by ANOTHER (specified) string. */
-SIValue AR_REPLACE(SIValue *argv, int argc);
-/* returns a string in which the order of all characters in the original string have been reversed. */
-SIValue AR_REVERSE(SIValue *argv, int argc);
-/* returns a string containing the specified number of rightmost characters of the original string. */
-SIValue AR_RIGHT(SIValue *argv, int argc);
-/* returns the original string with trailing whitespace removed. */
-SIValue AR_RTRIM(SIValue *argv, int argc);
-/* returns a list of strings resulting from the splitting of the original string around matches of the given delimiter. */
-SIValue AR_SPLIT(SIValue *argv, int argc);
-/* returns a substring of the original string, beginning with a 0-based index start and length. */
-SIValue AR_SUBSTRING(SIValue *argv, int argc);
-/* returns the original string in lowercase. */
-SIValue AR_TOLOWER(SIValue *argv, int argc);
-/* converts an integer, float or boolean value to a string. */
-SIValue AR_TOSTRING(SIValue *argv, int argc);
-/* returns the original string in uppercase. */
-SIValue AR_TOUPPER(SIValue *argv, int argc);
-/* returns the original string with leading and trailing whitespace removed. */
-SIValue AR_TRIM(SIValue *argv, int argc);
-/* returns a string concatenation of given values. */
-SIValue AR_CONCAT(SIValue *argv, int argc);
-/* returns the id of a relationship or node. */
-SIValue AR_ID(SIValue *argv, int argc);
-/* returns a string representations the label of a node. */
-SIValue AR_LABELS(SIValue *argv, int argc);
-/* returns a string representation of the type of a relation. */
-SIValue AR_TYPE(SIValue *argv, int argc);
-/* returns true if the specified property exists in the node, or relationship. */
-SIValue AR_EXISTS(SIValue *argv, int argc);
+/* Creates a new Arithmetic expression variable operand node */
+AR_ExpNode *AR_EXP_NewVariableOperandNode(RecordMap *record_map, const char *alias, const char *prop);
 
-/* Temporal functions */
-/* returns a timestamp - millis from epoch */
-SIValue AR_TIMESTAMP(SIValue *argv, int argc);
-
-void AR_RegisterFuncs();             /* Registers all arithmetic functions. */
-AR_Func AR_GetFunc(char *func_name); /* Get arithmetic function. */
-bool AR_FuncExists(const char
-				   *func_name); /* Check to see if function exists. */
-
-/* Register an arithmetic function. */
-void AR_RegFunc(char *func_name, size_t func_name_len, AR_Func func);
+/* Creates a new Arithmetic expression constant operand node */
+AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant);
 
 /* Return AR_OperandNodeType for operands and -1 for operations. */
 int AR_EXP_GetOperandType(AR_ExpNode *exp);
 
 /* Evaluate arithmetic expression tree. */
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r);
+
 void AR_EXP_Aggregate(const AR_ExpNode *root, const Record r);
+
 void AR_EXP_Reduce(const AR_ExpNode *root);
 
 /* Utility functions */
@@ -178,22 +115,19 @@ void AR_EXP_CollectAttributes(AR_ExpNode *root, rax *attributes);
 /* Search for an aggregation node within the expression tree.
  * Return 1 and sets agg_node to the aggregation node if exists,
  * Please note an expression tree can only contain a single aggregation node. */
-int AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node);
-
-/* Constructs string representation of arithmetic expression tree. */
-void AR_EXP_ToString(const AR_ExpNode *root, char **str);
-
-AR_ExpNode *AR_EXP_NewVariableOperandNode(RecordMap *record_map, const char *alias,
-										  const char *prop);
-AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant);
-
-/* Construct an arithmetic expression tree from a CYPHER_AST_EXPRESSION node. */
-AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t *expr);
+bool AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node);
 
 /* Clones given expression. */
 AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp);
 
+/* Constructs string representation of arithmetic expression tree. */
+void AR_EXP_ToString(const AR_ExpNode *root, char **str);
+
+/* Registers all arithmetic functions. */
+void AR_RegisterFuncs();
+
+/* Check to see if function exists. */
+bool AR_FuncExists(const char *func_name);
+
 /* Free arithmetic expression tree. */
 void AR_EXP_Free(AR_ExpNode *root);
-
-#endif

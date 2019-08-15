@@ -689,8 +689,8 @@ void Graph_DeleteNode(Graph *g, Node *n) {
 	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
 }
 
-void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
-					  uint *node_deleted, uint *edge_deleted) {
+void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count, uint *node_deleted,
+					  uint *edge_deleted) {
 	assert(g && g->_writelocked && nodes && node_count > 0);
 
 	/* Create a matrix M where M[j,i] = 1 where:
@@ -788,8 +788,10 @@ void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 	GrB_Descriptor_set(desc, GrB_MASK, GrB_SCMP);
 
 	// Update Adjacency and transposed adjacency matrices.
-	GrB_Matrix_apply(adj, Mask, NULL, GrB_IDENTITY_UINT64, adj, desc);
-	GrB_Matrix_apply(tadj, Mask, NULL, GrB_IDENTITY_UINT64, tadj, desc);
+	GrB_Matrix_apply(adj, Mask, NULL, GrB_IDENTITY_BOOL, adj, desc);
+	// Transpose mask, to clear transposed adjacency matrix.
+	GrB_transpose(Mask, GrB_NULL, GrB_NULL, Mask, GrB_NULL);
+	GrB_Matrix_apply(tadj, Mask, NULL, GrB_IDENTITY_BOOL, tadj, desc);
 
 	/* Delete nodes
 	 * All nodes marked for deleteion are detected, no incoming / outgoing edges. */

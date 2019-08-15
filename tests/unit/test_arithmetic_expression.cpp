@@ -856,3 +856,367 @@ TEST_F(ArithmeticTest, TimestampTest)
 
     ASSERT_LE(abs((1000 * ts.tv_sec + ts.tv_nsec / 1000000) - result.longval), 5);
 }
+
+TEST_F(ArithmeticTest, CaseTest)
+{
+    SIValue result;
+    SIValue expected = SI_LongVal(2);
+    const char *query;
+    AR_ExpNode *arExp;
+
+    /* Test "Simple form"
+     * Match one of the alternatives. */
+    query = "RETURN CASE 'brown' WHEN 'blue' THEN 1+0 WHEN 'brown' THEN 2-0 ELSE 3*1 END";
+    arExp = _exp_from_query(query);
+    result = AR_EXP_Evaluate(arExp, NULL);
+    AR_EXP_Free(arExp);
+    ASSERT_EQ(result.longval, expected.longval);
+
+    /* Do not match any of the alternatives, return default. */
+    query = "RETURN CASE 'green' WHEN 'blue' THEN 1+0 WHEN 'brown' THEN 2-0 ELSE 3*1 END";
+    expected = SI_LongVal(3);
+    arExp = _exp_from_query(query);
+    result = AR_EXP_Evaluate(arExp, NULL);
+    AR_EXP_Free(arExp);
+    ASSERT_EQ(result.longval, expected.longval);
+
+     /* Test "Generic form"
+     * One of the alternatives evaluates to a none null value. 
+     * Default not specified. */
+    query = "RETURN CASE WHEN NULL THEN 1+0 WHEN true THEN 2-0 END";
+    expected = SI_LongVal(2);
+    arExp = _exp_from_query(query);
+    result = AR_EXP_Evaluate(arExp, NULL);
+    AR_EXP_Free(arExp);    
+    ASSERT_EQ(result.longval, expected.longval);
+
+    /* None of the alternatives evaluates to a none null value. 
+     * Default specified, expecting default. */
+    query = "RETURN CASE WHEN NULL THEN 1+0 WHEN NULL THEN 2-0 ELSE 3*1 END";
+    expected = SI_LongVal(3);
+    arExp = _exp_from_query(query);
+    result = AR_EXP_Evaluate(arExp, NULL);
+    AR_EXP_Free(arExp);    
+    ASSERT_EQ(result.longval, expected.longval);
+
+    /* None of the alternatives evaluates to a none null value. 
+     * Default not specified, expecting NULL */
+    query = "RETURN CASE WHEN NULL THEN 1+0 WHEN NULL THEN 2-0 END";
+    arExp = _exp_from_query(query);
+    result = AR_EXP_Evaluate(arExp, NULL);
+    AR_EXP_Free(arExp);    
+    ASSERT_TRUE(SIValue_IsNull(result));
+}
+
+TEST_F(ArithmeticTest, AND)
+{
+    SIValue truth_table [27] = {
+        SI_ConstStringVal("false"), SI_ConstStringVal("false"), SI_BoolVal(false),
+        SI_ConstStringVal("false"), SI_ConstStringVal("true"), SI_BoolVal(false),
+        SI_ConstStringVal("false"), SI_NullVal(), SI_NullVal(),
+        SI_ConstStringVal("true"), SI_ConstStringVal("false"), SI_BoolVal(false),
+        SI_ConstStringVal("true"), SI_ConstStringVal("true"), SI_BoolVal(true),
+        SI_ConstStringVal("true"), SI_NullVal(), SI_NullVal(),
+        SI_NullVal(), SI_ConstStringVal("false"), SI_NullVal(),
+        SI_NullVal(), SI_ConstStringVal("true"), SI_NullVal(),
+        SI_NullVal(), SI_NullVal(), SI_NullVal()
+    };
+
+    for(int i = 0; i < 27; i += 3) {
+        SIValue a = truth_table[i];
+        SIValue b = truth_table[i + 1];
+        SIValue expected = truth_table[i + 2];
+
+        char *query;
+        asprintf(&query, "RETURN %s AND %s", a.stringval, b.stringval);
+        AR_ExpNode *arExp = _exp_from_query(query);
+        SIValue result = AR_EXP_Evaluate(arExp, NULL);
+        AR_EXP_Free(arExp);
+
+        ASSERT_EQ(SI_TYPE(result), SI_TYPE(expected));
+        if(SI_TYPE(result) != T_NULL) {
+            ASSERT_EQ(result.longval, expected.longval);
+        }
+    }
+}
+
+TEST_F(ArithmeticTest, OR)
+{
+    SIValue truth_table [27] = {
+        SI_ConstStringVal("false"), SI_ConstStringVal("false"), SI_BoolVal(false),
+        SI_ConstStringVal("false"), SI_ConstStringVal("true"), SI_BoolVal(true),
+        SI_ConstStringVal("false"), SI_NullVal(), SI_NullVal(),
+        SI_ConstStringVal("true"), SI_ConstStringVal("false"), SI_BoolVal(true),
+        SI_ConstStringVal("true"), SI_ConstStringVal("true"), SI_BoolVal(true),
+        SI_ConstStringVal("true"), SI_NullVal(), SI_NullVal(),
+        SI_NullVal(), SI_ConstStringVal("false"), SI_NullVal(),
+        SI_NullVal(), SI_ConstStringVal("true"), SI_NullVal(),
+        SI_NullVal(), SI_NullVal(), SI_NullVal()
+    };
+
+    for(int i = 0; i < 27; i += 3) {
+        SIValue a = truth_table[i];
+        SIValue b = truth_table[i + 1];
+        SIValue expected = truth_table[i + 2];
+
+        char *query;
+        asprintf(&query, "RETURN %s OR %s", a.stringval, b.stringval);
+        AR_ExpNode *arExp = _exp_from_query(query);
+        SIValue result = AR_EXP_Evaluate(arExp, NULL);
+        AR_EXP_Free(arExp);
+
+        ASSERT_EQ(SI_TYPE(result), SI_TYPE(expected));
+        if(SI_TYPE(result) != T_NULL) {
+            ASSERT_EQ(result.longval, expected.longval);
+        }
+    }
+}
+
+TEST_F(ArithmeticTest, XOR)
+{
+    SIValue truth_table [27] = {
+        SI_ConstStringVal("false"), SI_ConstStringVal("false"), SI_BoolVal(false),
+        SI_ConstStringVal("false"), SI_ConstStringVal("true"), SI_BoolVal(true),
+        SI_ConstStringVal("false"), SI_NullVal(), SI_NullVal(),
+        SI_ConstStringVal("true"), SI_ConstStringVal("false"), SI_BoolVal(true),
+        SI_ConstStringVal("true"), SI_ConstStringVal("true"), SI_BoolVal(false),
+        SI_ConstStringVal("true"), SI_NullVal(), SI_NullVal(),
+        SI_NullVal(), SI_ConstStringVal("false"), SI_NullVal(),
+        SI_NullVal(), SI_ConstStringVal("true"), SI_NullVal(),
+        SI_NullVal(), SI_NullVal(), SI_NullVal()
+    };
+
+    for(int i = 0; i < 27; i += 3) {
+        SIValue a = truth_table[i];
+        SIValue b = truth_table[i + 1];
+        SIValue expected = truth_table[i + 2];
+
+        char *query;
+        asprintf(&query, "RETURN %s XOR %s", a.stringval, b.stringval);
+        AR_ExpNode *arExp = _exp_from_query(query);
+        SIValue result = AR_EXP_Evaluate(arExp, NULL);
+        AR_EXP_Free(arExp);
+
+        ASSERT_EQ(SI_TYPE(result), SI_TYPE(expected));
+        if(SI_TYPE(result) != T_NULL) {
+            ASSERT_EQ(result.longval, expected.longval);
+        }
+    }
+}
+
+TEST_F(ArithmeticTest, NOT)
+{
+SIValue truth_table [6] = {
+        SI_ConstStringVal("false"), SI_BoolVal(true),
+        SI_ConstStringVal("true"), SI_BoolVal(false),
+        SI_NullVal(),  SI_NullVal()
+    };
+
+    for(int i = 0; i < 6; i += 2) {
+        SIValue a = truth_table[i];
+        SIValue expected = truth_table[i + 1];
+
+        char *query;
+        asprintf(&query, "RETURN NOT %s", a.stringval);
+        AR_ExpNode *arExp = _exp_from_query(query);
+        SIValue result = AR_EXP_Evaluate(arExp, NULL);
+        AR_EXP_Free(arExp);
+
+        ASSERT_EQ(SI_TYPE(result), SI_TYPE(expected));
+        if(SI_TYPE(result) != T_NULL) {
+            ASSERT_EQ(result.longval, expected.longval);
+        }
+    }
+}
+
+TEST_F(ArithmeticTest, GT)
+{
+    SIValue truth_table [27] = {
+        SI_ConstStringVal("1"), SI_ConstStringVal("1"), SI_BoolVal(false),
+        SI_ConstStringVal("1"), SI_ConstStringVal("2"), SI_BoolVal(false),
+        SI_ConstStringVal("1"), SI_NullVal(), SI_NullVal(),
+        SI_ConstStringVal("2"), SI_ConstStringVal("1"), SI_BoolVal(true),
+        SI_ConstStringVal("2"), SI_ConstStringVal("2"), SI_BoolVal(false),
+        SI_ConstStringVal("2"), SI_NullVal(), SI_NullVal(),
+        SI_NullVal(), SI_ConstStringVal("1"), SI_NullVal(),
+        SI_NullVal(), SI_ConstStringVal("2"), SI_NullVal(),
+        SI_NullVal(), SI_NullVal(), SI_NullVal()
+    };
+
+    for(int i = 0; i < 27; i += 3) {
+        SIValue a = truth_table[i];
+        SIValue b = truth_table[i + 1];
+        SIValue expected = truth_table[i + 2];
+
+        char *query;
+        asprintf(&query, "RETURN %s > %s", a.stringval, b.stringval);
+        AR_ExpNode *arExp = _exp_from_query(query);
+        SIValue result = AR_EXP_Evaluate(arExp, NULL);
+        AR_EXP_Free(arExp);
+
+        ASSERT_EQ(SI_TYPE(result), SI_TYPE(expected));
+        if(SI_TYPE(result) != T_NULL) {
+            ASSERT_EQ(result.longval, expected.longval);
+        }
+    }
+}
+
+TEST_F(ArithmeticTest, GE)
+{
+    SIValue truth_table [27] = {
+        SI_ConstStringVal("1"), SI_ConstStringVal("1"), SI_BoolVal(true),
+        SI_ConstStringVal("1"), SI_ConstStringVal("2"), SI_BoolVal(false),
+        SI_ConstStringVal("1"), SI_NullVal(), SI_NullVal(),
+        SI_ConstStringVal("2"), SI_ConstStringVal("1"), SI_BoolVal(true),
+        SI_ConstStringVal("2"), SI_ConstStringVal("2"), SI_BoolVal(true),
+        SI_ConstStringVal("2"), SI_NullVal(), SI_NullVal(),
+        SI_NullVal(), SI_ConstStringVal("1"), SI_NullVal(),
+        SI_NullVal(), SI_ConstStringVal("2"), SI_NullVal(),
+        SI_NullVal(), SI_NullVal(), SI_NullVal()
+    };
+
+    for(int i = 0; i < 27; i += 3) {
+        SIValue a = truth_table[i];
+        SIValue b = truth_table[i + 1];
+        SIValue expected = truth_table[i + 2];
+
+        char *query;
+        asprintf(&query, "RETURN %s >= %s", a.stringval, b.stringval);
+        AR_ExpNode *arExp = _exp_from_query(query);
+        SIValue result = AR_EXP_Evaluate(arExp, NULL);
+        AR_EXP_Free(arExp);
+
+        ASSERT_EQ(SI_TYPE(result), SI_TYPE(expected));
+        if(SI_TYPE(result) != T_NULL) {
+            ASSERT_EQ(result.longval, expected.longval);
+        }
+    }
+}
+
+TEST_F(ArithmeticTest, LT)
+{
+    SIValue truth_table [27] = {
+        SI_ConstStringVal("1"), SI_ConstStringVal("1"), SI_BoolVal(false),
+        SI_ConstStringVal("1"), SI_ConstStringVal("2"), SI_BoolVal(true),
+        SI_ConstStringVal("1"), SI_NullVal(), SI_NullVal(),
+        SI_ConstStringVal("2"), SI_ConstStringVal("1"), SI_BoolVal(false),
+        SI_ConstStringVal("2"), SI_ConstStringVal("2"), SI_BoolVal(false),
+        SI_ConstStringVal("2"), SI_NullVal(), SI_NullVal(),
+        SI_NullVal(), SI_ConstStringVal("1"), SI_NullVal(),
+        SI_NullVal(), SI_ConstStringVal("2"), SI_NullVal(),
+        SI_NullVal(), SI_NullVal(), SI_NullVal()
+    };
+
+    for(int i = 0; i < 27; i += 3) {
+        SIValue a = truth_table[i];
+        SIValue b = truth_table[i + 1];
+        SIValue expected = truth_table[i + 2];
+
+        char *query;
+        asprintf(&query, "RETURN %s < %s", a.stringval, b.stringval);
+        AR_ExpNode *arExp = _exp_from_query(query);
+        SIValue result = AR_EXP_Evaluate(arExp, NULL);
+        AR_EXP_Free(arExp);
+
+        ASSERT_EQ(SI_TYPE(result), SI_TYPE(expected));
+        if(SI_TYPE(result) != T_NULL) {
+            ASSERT_EQ(result.longval, expected.longval);
+        }
+    }
+}
+
+TEST_F(ArithmeticTest, LE)
+{
+    SIValue truth_table [27] = {
+        SI_ConstStringVal("1"), SI_ConstStringVal("1"), SI_BoolVal(true),
+        SI_ConstStringVal("1"), SI_ConstStringVal("2"), SI_BoolVal(true),
+        SI_ConstStringVal("1"), SI_NullVal(), SI_NullVal(),
+        SI_ConstStringVal("2"), SI_ConstStringVal("1"), SI_BoolVal(false),
+        SI_ConstStringVal("2"), SI_ConstStringVal("2"), SI_BoolVal(true),
+        SI_ConstStringVal("2"), SI_NullVal(), SI_NullVal(),
+        SI_NullVal(), SI_ConstStringVal("1"), SI_NullVal(),
+        SI_NullVal(), SI_ConstStringVal("2"), SI_NullVal(),
+        SI_NullVal(), SI_NullVal(), SI_NullVal()
+    };
+
+    for(int i = 0; i < 27; i += 3) {
+        SIValue a = truth_table[i];
+        SIValue b = truth_table[i + 1];
+        SIValue expected = truth_table[i + 2];
+
+        char *query;
+        asprintf(&query, "RETURN %s <= %s", a.stringval, b.stringval);
+        AR_ExpNode *arExp = _exp_from_query(query);
+        SIValue result = AR_EXP_Evaluate(arExp, NULL);
+        AR_EXP_Free(arExp);
+
+        ASSERT_EQ(SI_TYPE(result), SI_TYPE(expected));
+        if(SI_TYPE(result) != T_NULL) {
+            ASSERT_EQ(result.longval, expected.longval);
+        }
+    }
+}
+
+TEST_F(ArithmeticTest, EQ)
+{
+    SIValue truth_table [27] = {
+        SI_ConstStringVal("1"), SI_ConstStringVal("1"), SI_BoolVal(true),
+        SI_ConstStringVal("1"), SI_ConstStringVal("2"), SI_BoolVal(false),
+        SI_ConstStringVal("1"), SI_NullVal(), SI_NullVal(),
+        SI_ConstStringVal("2"), SI_ConstStringVal("1"), SI_BoolVal(false),
+        SI_ConstStringVal("2"), SI_ConstStringVal("2"), SI_BoolVal(true),
+        SI_ConstStringVal("2"), SI_NullVal(), SI_NullVal(),
+        SI_NullVal(), SI_ConstStringVal("1"), SI_NullVal(),
+        SI_NullVal(), SI_ConstStringVal("2"), SI_NullVal(),
+        SI_NullVal(), SI_NullVal(), SI_NullVal()
+    };
+
+    for(int i = 0; i < 27; i += 3) {
+        SIValue a = truth_table[i];
+        SIValue b = truth_table[i + 1];
+        SIValue expected = truth_table[i + 2];
+
+        char *query;
+        asprintf(&query, "RETURN %s = %s", a.stringval, b.stringval);
+        AR_ExpNode *arExp = _exp_from_query(query);
+        SIValue result = AR_EXP_Evaluate(arExp, NULL);
+        AR_EXP_Free(arExp);
+
+        ASSERT_EQ(SI_TYPE(result), SI_TYPE(expected));
+        if(SI_TYPE(result) != T_NULL) {
+            ASSERT_EQ(result.longval, expected.longval);
+        }
+    }
+}
+
+TEST_F(ArithmeticTest, NE)
+{
+    SIValue truth_table [27] = {
+        SI_ConstStringVal("1"), SI_ConstStringVal("1"), SI_BoolVal(false),
+        SI_ConstStringVal("1"), SI_ConstStringVal("2"), SI_BoolVal(true),
+        SI_ConstStringVal("1"), SI_NullVal(), SI_NullVal(),
+        SI_ConstStringVal("2"), SI_ConstStringVal("1"), SI_BoolVal(true),
+        SI_ConstStringVal("2"), SI_ConstStringVal("2"), SI_BoolVal(false),
+        SI_ConstStringVal("2"), SI_NullVal(), SI_NullVal(),
+        SI_NullVal(), SI_ConstStringVal("1"), SI_NullVal(),
+        SI_NullVal(), SI_ConstStringVal("2"), SI_NullVal(),
+        SI_NullVal(), SI_NullVal(), SI_NullVal()
+    };
+
+    for(int i = 0; i < 27; i += 3) {
+        SIValue a = truth_table[i];
+        SIValue b = truth_table[i + 1];
+        SIValue expected = truth_table[i + 2];
+
+        char *query;
+        asprintf(&query, "RETURN %s <> %s", a.stringval, b.stringval);
+        AR_ExpNode *arExp = _exp_from_query(query);
+        SIValue result = AR_EXP_Evaluate(arExp, NULL);
+        AR_EXP_Free(arExp);
+
+        ASSERT_EQ(SI_TYPE(result), SI_TYPE(expected));
+        if(SI_TYPE(result) != T_NULL) {
+            ASSERT_EQ(result.longval, expected.longval);
+        }
+    }
+}

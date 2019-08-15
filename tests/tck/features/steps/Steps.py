@@ -8,11 +8,9 @@ import graphs
 
 resultset = None
 
-
 @given(u'the binary-tree-1 graph')
 def step_impl(context):
     graphs.binary_tree_graph1()
-
 
 @given(u'the binary-tree-2 graph')
 def step_impl(context):
@@ -37,7 +35,6 @@ def step_impl(context):
     global resultset
     query = context.text
     resultset = graphs.query(query)
-
 
 @then(u'having executed')
 def step_impl(context):

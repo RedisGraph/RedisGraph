@@ -248,9 +248,15 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 
 	void *value;
 	tm_len_t len;
-	char *funcName;
+	char *ptr;
+	char funcName[32];
 	TrieMapIterator *it = TrieMap_Iterate(referred_funcs, "", 0);
-	while(TrieMapIterator_Next(it, &funcName, &len, &value)) {
+	while(TrieMapIterator_Next(it, &ptr, &len, &value)) {
+		assert(len < 32);
+		// Copy the triemap key so that we can safely add a terinator character
+		memcpy(funcName, ptr, len);
+		funcName[len] = 0;
+
 		if(Agg_FuncExists(funcName)) {
 			aggregated = true;
 			break;

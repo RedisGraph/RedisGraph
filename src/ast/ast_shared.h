@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../graph/graphcontext.h"
 #include "../graph/entities/qg_node.h"
 #include "../graph/entities/qg_edge.h"
 #include "../arithmetic/arithmetic_expression.h"
@@ -15,6 +16,7 @@ struct AR_ExpNode;
 typedef enum {
 	OP_NULL,
 	OP_OR,
+	OP_XOR,
 	OP_AND,
 	OP_NOT,
 	OP_EQUAL,
@@ -28,12 +30,15 @@ typedef enum {
 	OP_MULT,
 	OP_DIV,
 	OP_MOD,
-	OP_POW
+	OP_POW,
+    OP_CONTAINS,
+    OP_STARTSWITH,
+    OP_ENDSWITH
 } AST_Operator;
 
 typedef struct {
-	const char **keys;
-	SIValue *values; // TODO Replace with AR_ExpNodes
+	Attribute_ID *keys;
+	struct AR_ExpNode **values;
 	int property_count;
 } PropertyMap;
 
@@ -62,5 +67,9 @@ typedef struct {
 } NodeCreateCtx;
 
 AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op);
+
+// Convert a map of properties from the AST into a set of attribute ID keys and AR_ExpNode values.
+PropertyMap *PropertyMap_New(GraphContext *gc, const cypher_astnode_t *props,
+							 RecordMap *record_map);
 
 void PropertyMap_Free(PropertyMap *map);

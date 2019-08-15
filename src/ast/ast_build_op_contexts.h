@@ -49,7 +49,7 @@ int AST_PrepareSortOp(const cypher_astnode_t *order_clause);
 AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause, RecordMap *record_map);
 
 // Extract the necessary information to populate a merge operation from a MERGE clause.
-AST_MergeContext AST_PrepareMergeOp(RecordMap *record_map, AST *ast,
+AST_MergeContext AST_PrepareMergeOp(GraphContext *gc, RecordMap *record_map, AST *ast,
 									const cypher_astnode_t *merge_clause, QueryGraph *qg);
 
 // Extract the necessary information to populate a create operation from a CREATE clause.

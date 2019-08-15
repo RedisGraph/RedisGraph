@@ -7,13 +7,49 @@
 #include "../value.h"
 #include "filter_tree.h"
 #include "../util/arr.h"
+#include "../ast/ast_shared.h"
 #include <assert.h>
+
+/* forward declarations */
+void _FilterTree_DeMorgan(FT_FilterNode **root, uint negate_count);
 
 static inline FT_FilterNode *LeftChild(const FT_FilterNode *node) {
 	return node->cond.left;
 }
 static inline FT_FilterNode *RightChild(const FT_FilterNode *node) {
 	return node->cond.right;
+}
+
+/* Returns the negated operator of given op.
+ * for example NOT(a > b) === a <= b */
+static AST_Operator _NegateOperator(AST_Operator op) {
+	switch(op) {
+	case OP_AND:
+		return OP_OR;
+	case OP_OR:
+		return OP_AND;
+	case OP_EQUAL:
+		return OP_NEQUAL;
+	case OP_NEQUAL:
+		return OP_EQUAL;
+	case OP_LT:
+		return OP_GE;
+	case OP_GT:
+		return OP_LE;
+	case OP_LE:
+		return OP_GT;
+	case OP_GE:
+		return OP_LT;
+	default:
+		assert(false);
+	}
+}
+
+/* Negate expression by wrapping it with a NOT function, NOT(exp) */
+static void _NegateExpression(AR_ExpNode **exp) {
+	AR_ExpNode *root = AR_EXP_NewOpNode("not", 1);
+	root->op.children[0] = *exp;
+	*exp = root;
 }
 
 int IsNodePredicate(const FT_FilterNode *node) {
@@ -28,6 +64,16 @@ FT_FilterNode *AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child) {
 FT_FilterNode *AppendRightChild(FT_FilterNode *root, FT_FilterNode *child) {
 	root->cond.right = child;
 	return root->cond.right;
+}
+
+FT_FilterNode *FilterTree_CreateExpressionFilter(AR_ExpNode *exp) {
+	// TODO: make sure exp return boolean.
+	assert(exp);
+
+	FT_FilterNode *node = malloc(sizeof(FT_FilterNode));
+	node->t = FT_N_EXP;
+	node->exp.exp = exp;
+	return node;
 }
 
 FT_FilterNode *FilterTree_CreatePredicateFilter(AST_Operator op, AR_ExpNode *lhs, AR_ExpNode *rhs) {
@@ -50,6 +96,7 @@ void _FilterTree_SubTrees(const FT_FilterNode *root, Vector *sub_trees) {
 	if(root == NULL) return;
 
 	switch(root->t) {
+	case FT_N_EXP:
 	case FT_N_PRED:
 		/* This is a simple predicate tree, can not traverse further. */
 		Vector_Push(sub_trees, root);
@@ -95,26 +142,21 @@ int _applyFilter(SIValue *aVal, SIValue *bVal, AST_Operator op) {
 	switch(op) {
 	case OP_EQUAL:
 		return rel == 0;
-
-	case OP_GT:
-		return rel > 0;
-
-	case OP_GE:
-		return rel >= 0;
-
-	case OP_LT:
-		return rel < 0;
-
-	case OP_LE:
-		return rel <= 0;
-
 	case OP_NEQUAL:
 		return rel != 0;
-
+	case OP_GT:
+		return rel > 0;
+	case OP_GE:
+		return rel >= 0;
+	case OP_LT:
+		return rel < 0;
+	case OP_LE:
+		return rel <= 0;
 	default:
 		/* Op should be enforced by AST. */
 		assert(0);
 	}
+
 	/* We shouldn't reach this point. */
 	return 0;
 }
@@ -135,25 +177,44 @@ int _applyPredicateFilters(const FT_FilterNode *root, const Record r) {
 }
 
 int FilterTree_applyFilters(const FT_FilterNode *root, const Record r) {
-	/* Handle predicate node. */
-	if(IsNodePredicate(root)) {
+	switch(root->t) {
+	case FT_N_COND: {
+		/* root->t == FT_N_COND, visit left subtree. */
+		int pass = FilterTree_applyFilters(LeftChild(root), r);
+
+		if(root->cond.op == OP_AND && pass == 1) {
+			/* Visit right subtree. */
+			pass *= FilterTree_applyFilters(RightChild(root), r);
+		} else if(root->cond.op == OP_OR && pass == 0) {
+			/* Visit right subtree. */
+			pass = FilterTree_applyFilters(RightChild(root), r);
+		}
+
+		return pass;
+	}
+	case FT_N_PRED: {
 		return _applyPredicateFilters(root, r);
 	}
+	case FT_N_EXP: {
+		SIValue res = AR_EXP_Evaluate(root->exp.exp, r);
+		if(SIValue_IsNull(res)) {
+			/* Expression evaluated to NULL should return false. */
+			return FILTER_FAIL;
+		} else if(SI_TYPE(res) & (SI_NUMERIC | T_BOOL)) {
+			/* Numeric or Boolean evaluated to anuthing but 0
+			* should return true. */
+			if(SI_GET_NUMERIC(res) == 0) return FILTER_FAIL;
+		}
 
-	/* root->t == FT_N_COND, visit left subtree. */
-	int pass = FilterTree_applyFilters(LeftChild(root), r);
-
-	if(root->cond.op == OP_AND && pass == 1) {
-		/* Visit right subtree. */
-		pass *= FilterTree_applyFilters(RightChild(root), r);
+		/* Boolean or Numeric != 0, String, Node, Edge, Ptr all evaluate to true. */
+		return FILTER_PASS;
+	}
+	default:
+		assert(false);
 	}
 
-	if(root->cond.op == OP_OR && pass == 0) {
-		/* Visit right subtree. */
-		pass = FilterTree_applyFilters(RightChild(root), r);
-	}
-
-	return pass;
+	// We shouldn't be here.
+	return 0;
 }
 
 void _FilterTree_CollectModified(const FT_FilterNode *root, rax *modified) {
@@ -172,6 +233,11 @@ void _FilterTree_CollectModified(const FT_FilterNode *root, rax *modified) {
 		 * but there are multi-argument exceptions. */
 		AR_EXP_CollectEntityIDs(root->pred.lhs, modified);
 		AR_EXP_CollectEntityIDs(root->pred.rhs, modified);
+		break;
+	}
+	case FT_N_EXP: {
+		/* Traverse expression, adding all encountered modified to the triemap. */
+		AR_EXP_CollectEntityIDs(root->exp.exp, modified);
 		break;
 	}
 	default: {
@@ -227,22 +293,86 @@ bool FilterTree_containsOp(const FT_FilterNode *root, AST_Operator op) {
 	return (root->pred.op == op);
 }
 
+void _FilterTree_ApplyNegate(FT_FilterNode **root, uint negate_count) {
+	switch((*root)->t) {
+	case FT_N_EXP:
+		if(negate_count % 2 == 1) {
+			_NegateExpression(&((*root)->exp.exp));
+		}
+		break;
+	case FT_N_PRED:
+		if(negate_count % 2 == 1) {
+			(*root)->pred.op = _NegateOperator((*root)->cond.op);
+		}
+		break;
+	case FT_N_COND:
+		if((*root)->cond.op == OP_NOT) {
+			// _FilterTree_DeMorgan will increase negate_count by 1.
+			_FilterTree_DeMorgan(root, negate_count);
+		} else {
+			if(negate_count % 2 == 1) {
+				(*root)->cond.op = _NegateOperator((*root)->cond.op);
+			}
+			_FilterTree_ApplyNegate(&(*root)->cond.left, negate_count);
+			_FilterTree_ApplyNegate(&(*root)->cond.right, negate_count);
+		}
+		break;
+	default:
+		assert(false);
+	}
+}
+
+void _FilterTree_DeMorgan(FT_FilterNode **root, uint negate_count) {
+	/* Search for NOT nodes and reduce using DeMorgan. */
+	if(*root == NULL || (*root)->t == FT_N_PRED || (*root)->t == FT_N_EXP) return;
+
+	// Node is of type condition.
+	if((*root)->cond.op == OP_NOT) {
+		assert((*root)->cond.right == NULL);
+		_FilterTree_ApplyNegate(&(*root)->cond.left, negate_count + 1);
+		// Replace NOT node with only child
+		FT_FilterNode *child = (*root)->cond.left;
+		(*root)->cond.left = NULL;
+		FilterTree_Free(*root);
+		*root = child;
+	} else {
+		FilterTree_DeMorgan(&((*root)->cond.left));
+		FilterTree_DeMorgan(&((*root)->cond.right));
+	}
+}
+void FilterTree_DeMorgan(FT_FilterNode **root) {
+	_FilterTree_DeMorgan(root, 0);
+}
+
 void _FilterTree_Print(const FT_FilterNode *root, int ident) {
+	char *exp = NULL;
+	char *left = NULL;
+	char *right = NULL;
+
+	if(root == NULL) return;
 	// Ident
 	printf("%*s", ident, "");
 
-	if(IsNodePredicate(root)) {
-		char *left;
+	switch(root->t) {
+	case FT_N_EXP:
+		AR_EXP_ToString(root->exp.exp, &exp);
+		printf("%s\n",  exp);
+		free(exp);
+		break;
+	case FT_N_PRED:
 		AR_EXP_ToString(root->pred.lhs, &left);
-		char *right;
 		AR_EXP_ToString(root->pred.rhs, &right);
 		printf("%s %d %s\n",  left, root->pred.op, right);
 		free(left);
 		free(right);
-	} else {
+		break;
+	case FT_N_COND:
 		printf("%d\n", root->cond.op);
 		_FilterTree_Print(LeftChild(root), ident + 4);
 		_FilterTree_Print(RightChild(root), ident + 4);
+		break;
+	default:
+		assert(false);
 	}
 }
 
@@ -256,12 +386,20 @@ void FilterTree_Print(const FT_FilterNode *root) {
 
 void FilterTree_Free(FT_FilterNode *root) {
 	if(root == NULL) return;
-	if(IsNodePredicate(root)) {
+	switch(root->t) {
+	case FT_N_EXP:
+		AR_EXP_Free(root->exp.exp);
+		break;
+	case FT_N_PRED:
 		AR_EXP_Free(root->pred.lhs);
 		AR_EXP_Free(root->pred.rhs);
-	} else {
+		break;
+	case FT_N_COND:
 		FilterTree_Free(root->cond.left);
 		FilterTree_Free(root->cond.right);
+		break;
+	default:
+		assert(false);
 	}
 
 	free(root);

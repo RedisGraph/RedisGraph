@@ -16,6 +16,7 @@
 #include "./optimizations/optimizer.h"
 #include "./optimizations/optimizations.h"
 #include "../arithmetic/algebraic_expression.h"
+#include "../ast/ast_build_ar_exp.h"
 #include "../ast/ast_build_op_contexts.h"
 #include "../ast/ast_build_filter_tree.h"
 
@@ -126,7 +127,6 @@ AR_ExpNode **_BuildReturnExpressions(RecordMap *record_map, const cypher_astnode
 		}
 
 		exp->resolved_name = identifier;
-
 		return_expressions = array_append(return_expressions, exp);
 	}
 
@@ -355,32 +355,95 @@ static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segmen
 	Vector_Free(traversals);
 }
 
-// Map the AST entities described in SET and DELETE clauses.
-// This is necessary so that edge references will be constructed prior to forming AlgebraicExpressions.
-static void _ExecutionPlanSegment_MapReferences(ExecutionPlanSegment *segment, AST *ast) {
-	const cypher_astnode_t *set_clause = AST_GetClause(ast, CYPHER_AST_SET);
-	if(set_clause) {
-		uint nitems = cypher_ast_set_nitems(set_clause);
-		for(uint i = 0; i < nitems; i++) {
-			const cypher_astnode_t *set_item = cypher_ast_set_get_item(set_clause, i);
-			const cypher_astnode_t *key_to_set = cypher_ast_set_property_get_property(
-													 set_item); // type == CYPHER_AST_PROPERTY_OPERATOR
-			const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(key_to_set);
-			assert(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
-			const char *alias = cypher_ast_identifier_get_name(prop_expr);
-			RecordMap_FindOrAddAlias(segment->record_map, alias);
-		}
+static void _ExecutionPlanSegment_MapAliasesInExpression(ExecutionPlanSegment *segment,
+														 const cypher_astnode_t *expr) {
+	if(!expr) return;
+
+	if(cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER) {
+		// Encountered an alias - verify that it is represented in the RecordMap.
+		const char *alias = cypher_ast_identifier_get_name(expr);
+		RecordMap_FindOrAddAlias(segment->record_map, alias);
 	}
 
-	const cypher_astnode_t *delete_clause = AST_GetClause(ast, CYPHER_AST_DELETE);
-	if(delete_clause) {
-		uint nitems = cypher_ast_delete_nexpressions(delete_clause);
-		for(uint i = 0; i < nitems; i++) {
-			const cypher_astnode_t *ast_expr = cypher_ast_delete_get_expression(delete_clause, i);
-			assert(cypher_astnode_type(ast_expr) == CYPHER_AST_IDENTIFIER);
-			const char *alias = cypher_ast_identifier_get_name(ast_expr);
-			RecordMap_FindOrAddAlias(segment->record_map, alias);
+	uint child_count = cypher_astnode_nchildren(expr);
+	for(uint i = 0; i < child_count; i ++) {
+		_ExecutionPlanSegment_MapAliasesInExpression(segment, cypher_astnode_get_child(expr, i));
+	}
+}
+
+// Ensure that aliases that are referred to in a pattern but not projected still get added to the Record.
+static void _ExecutionPlanSegment_MapAliasesInPattern(ExecutionPlanSegment *segment,
+													  const cypher_astnode_t *pattern) {
+	uint npaths = cypher_ast_pattern_npaths(pattern);
+
+	for(uint i = 0; i < npaths; i++) {
+		const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
+		uint path_elem_count = cypher_ast_pattern_path_nelements(path);
+		for(uint j = 0; j < path_elem_count; j ++) {
+			const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, j);
+			const cypher_astnode_t *ast_props = (j % 2) ? cypher_ast_rel_pattern_get_properties(elem) :
+												cypher_ast_node_pattern_get_properties(elem);
+
+			if(ast_props) {
+				assert(cypher_astnode_type(ast_props) == CYPHER_AST_MAP &&
+					   "parameters are not currently supported");
+				uint value_count = cypher_ast_map_nentries(ast_props);
+				for(uint k = 0; k < value_count; k ++) {
+					const cypher_astnode_t *value = cypher_ast_map_get_value(ast_props, k);
+					_ExecutionPlanSegment_MapAliasesInExpression(segment, value);
+				}
+			}
+
 		}
+	}
+}
+
+// Map the AST entities referred to in SET, CREATE, and DELETE clauses.
+// This is necessary so that edge references will be constructed prior to forming AlgebraicExpressions.
+static void _ExecutionPlanSegment_MapReferences(ExecutionPlanSegment *segment, AST *ast) {
+	const cypher_astnode_t **set_clauses = AST_GetClauses(ast, CYPHER_AST_SET);
+	if(set_clauses) {
+		uint set_count = array_len(set_clauses);
+		for(uint i = 0; i < set_count; i ++) {
+			const cypher_astnode_t *set_clause = set_clauses[i];
+			uint nitems = cypher_ast_set_nitems(set_clause);
+			for(uint j = 0; j < nitems; j++) {
+				const cypher_astnode_t *set_item = cypher_ast_set_get_item(set_clause, j);
+				const cypher_astnode_t *key_to_set = cypher_ast_set_property_get_property(
+														 set_item); // type == CYPHER_AST_PROPERTY_OPERATOR
+				const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(key_to_set);
+				assert(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
+				const char *alias = cypher_ast_identifier_get_name(prop_expr);
+				RecordMap_FindOrAddAlias(segment->record_map, alias);
+			}
+		}
+		array_free(set_clauses);
+	}
+
+	const cypher_astnode_t **create_clauses = AST_GetClauses(ast, CYPHER_AST_CREATE);
+	if(create_clauses) {
+		uint create_count = array_len(create_clauses);
+		for(uint i = 0; i < create_count; i ++) {
+			const cypher_astnode_t *create_pattern = cypher_ast_create_get_pattern(create_clauses[i]);
+			_ExecutionPlanSegment_MapAliasesInPattern(segment, create_pattern);
+		}
+		array_free(create_clauses);
+	}
+
+	const cypher_astnode_t **delete_clauses = AST_GetClauses(ast, CYPHER_AST_DELETE);
+	if(delete_clauses) {
+		uint delete_count = array_len(delete_clauses);
+		for(uint i = 0; i < delete_count; i ++) {
+			const cypher_astnode_t *delete_clause = delete_clauses[i];
+			uint nitems = cypher_ast_delete_nexpressions(delete_clause);
+			for(uint j = 0; j < nitems; j++) {
+				const cypher_astnode_t *ast_expr = cypher_ast_delete_get_expression(delete_clause, j);
+				assert(cypher_astnode_type(ast_expr) == CYPHER_AST_IDENTIFIER);
+				const char *alias = cypher_ast_identifier_get_name(ast_expr);
+				RecordMap_FindOrAddAlias(segment->record_map, alias);
+			}
+		}
+		array_free(delete_clauses);
 	}
 }
 
@@ -438,7 +501,7 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 																	segment->projections, order_clause);
 
 	// Extend the RecordMap to include references from clauses that do not form projections
-	// (SET, DELETE)
+	// (SET, CREATE, DELETE)
 	_ExecutionPlanSegment_MapReferences(segment, ast);
 
 	Vector *ops = NewVector(OpBase *, 1);
@@ -516,7 +579,7 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 		// A merge clause provides a single path that must exist or be created.
 		// As with paths in a MATCH query, build the appropriate traversal operations
 		// and append them to the set of ops.
-		AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(record_map, ast, merge_clause, qg);
+		AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(gc, record_map, ast, merge_clause, qg);
 
 		// Append a merge operation
 		OpBase *opMerge = NewMergeOp(stats,
