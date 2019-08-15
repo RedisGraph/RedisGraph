@@ -28,16 +28,32 @@ void PrevRdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 
 	size_t len = 0;
 	uint64_t attrCount = RedisModule_LoadUnsigned(rdb);
+	if(attrCount == 0) return;
+
+	// Heap-allocate the attribute buffer to allow dynamic resizing
+	uint buflen = 256;
+	char *attr_buf = rm_malloc(buflen * sizeof(char));
 
 	for(uint64_t i = 0; i < attrCount; i++) {
 		// Load attribute string from RDB file.
-		char *attr = RedisModule_LoadStringBuffer(rdb, &len);
+		char *rm_attr = RedisModule_LoadStringBuffer(rdb, &len);
+
+		if(len >= buflen) {
+			// Double the attribute buffer length when encountering strings that would exceed it.
+			buflen *= 2;
+			attr_buf = rm_realloc(attr_buf, buflen);
+		}
+
+		// The RDB string is not null-terminated, so we need to work on a safe copy.
+		memcpy(attr_buf, rm_attr, len);
+		attr_buf[len] = 0;
 
 		// Free and skip the RDB string if it's already been mapped
 		// (this logic is only necessary if the node and edge schemas are separate)
-		GraphContext_FindOrAddAttribute(gc, attr);
-		RedisModule_Free(attr);
+		GraphContext_FindOrAddAttribute(gc, attr_buf);
+		RedisModule_Free(rm_attr);
 	}
+	rm_free(attr_buf);
 }
 
 GraphContext *PrevRdbLoadGraphContext(RedisModuleIO *rdb) {

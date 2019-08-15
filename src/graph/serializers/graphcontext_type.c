@@ -28,7 +28,7 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
 			   REDISGRAPH_MODULE_VERSION);
 	} else if(encver >= DECODER_SUPPORT_MIN_V && encver <= DECODER_SUPPORT_MAX_V) {
 		gc = RdbLoadGraphContext(rdb);
-	} else if(encver >= PREV_DECODER_SUPPORT_MAX_V && encver <= PREV_DECODER_SUPPORT_MAX_V) {
+	} else if(encver >= PREV_DECODER_SUPPORT_MIN_V && encver <= PREV_DECODER_SUPPORT_MAX_V) {
 		gc = PrevRdbLoadGraphContext(rdb);
 	} else {
 		printf("Failed loading Graph, RedisGraph version (%d) is not backward compatible with encoder version %d.\n",
