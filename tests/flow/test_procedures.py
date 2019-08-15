@@ -150,13 +150,13 @@ class testProcedures(FlowTestsBase):
         self.queryAndValidate(query, expected_results)
 
 
-        # CALL + WHERE + RETURN + SKIP.
+        # CALL + WHERE + RETURN + ORDER + SKIP.
         query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
                     WHERE node.value > 2
                     RETURN node
+                    ORDER BY node.value
                     SKIP 1"""
         expected_results = [node4]
-        #  not deterministic!
         self.queryAndValidate(query, expected_results)
 
 
@@ -169,13 +169,13 @@ class testProcedures(FlowTestsBase):
         self.queryAndValidate(query, expected_results)
 
 
-        # CALL + WHERE + RETURN + SKIP + LIMIT.
+        # CALL + WHERE + RETURN + ORDER + SKIP + LIMIT.
         query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
                     WHERE node.value > 2
                     RETURN node
+                    ORDER BY node.value
                     SKIP 1
                     LIMIT 1"""
-        # not deterministic!
         expected_results = [node4]
         self.queryAndValidate(query, expected_results)
 
