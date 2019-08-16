@@ -532,7 +532,6 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 			call_modifies = array_append(call_modifies, RecordMap_LookupAlias(record_map,
 																			  yield_exps[i]->resolved_name));
 		}
-		array_free(yield_exps);
 
 		if(segment->projections == NULL) {
 			segment->projections = array_new(AR_ExpNode *, yield_count);
@@ -542,6 +541,8 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 				segment->projections = array_append(segment->projections, yield_exps[i]);
 			}
 		}
+
+		array_free(yield_exps);
 
 		OpBase *opProcCall = NewProcCallOp(proc_name, arguments, yields, call_modifies);
 		Vector_Push(ops, opProcCall);

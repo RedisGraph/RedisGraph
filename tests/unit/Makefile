@@ -49,12 +49,11 @@ gtest_main.a : gtest-all.o gtest_main.o
 CC_OBJECTS:=$(CC_OBJECTS)
 RAX=../../deps/rax/rax.o
 LIBXXHASH=$(ROOT)/deps/xxhash/libxxhash.a
-LIBTRIEMAP=../../src/util/triemap/libtriemap.a
 REDISEARCH=../../deps/RediSearch/build/libredisearch.a
 LIBGRAPHBLAS=../../deps/GraphBLAS/build/libgraphblas.a
 LIBCYPHER-PARSER=../../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
-LIBS=$(LIBTRIEMAP) $(LIBGRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER-PARSER)
+LIBS=$(LIBGRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER-PARSER)
 DEPS=$(CC_OBJECTS) $(RAX) $(LIBS)
 
 # Build and run a test for each cpp file in directory

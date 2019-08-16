@@ -87,7 +87,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
         gc->g = Graph_New(16, 16);
         gc->index_count = 0;
         gc->graph_name = strdup("G");
-        gc->attributes = NewTrieMap();
+        gc->attributes = raxNew();
         gc->string_mapping = (char**)array_new(char*, 64);
         gc->node_schemas = (Schema**)array_new(Schema*, GRAPH_DEFAULT_LABEL_CAP);
         gc->relation_schemas = (Schema**)array_new(Schema*, GRAPH_DEFAULT_RELATION_TYPE_CAP);

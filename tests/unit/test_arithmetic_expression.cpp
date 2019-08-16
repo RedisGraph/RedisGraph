@@ -78,7 +78,7 @@ void _test_ar_func(AR_ExpNode *root, SIValue expected, const Record r)
 AR_ExpNode* _exp_from_query(const char *query) {
   cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
   AST *ast = AST_Build(parse_result);
-  ast->entity_map = NewTrieMap();
+  ast->entity_map = raxNew();
 
   const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
   AR_ExpNode **return_elems = _BuildReturnExpressions(NULL, ret_clause);

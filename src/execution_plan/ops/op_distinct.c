@@ -31,7 +31,7 @@ Record DistinctConsume(OpBase *opBase) {
 		if(!r) return NULL;
 
 		unsigned long long const hash = Record_Hash64(r);
-		int is_new = raxInsert(self->found, (char *) &hash, sizeof(hash), NULL, NULL);
+		int is_new = raxInsert(self->found, (unsigned char *) &hash, sizeof(hash), NULL, NULL);
 		if(is_new) return r;
 		Record_Free(r);
 	}

@@ -50,7 +50,7 @@ GraphContext *RdbLoadGraphContext(RedisModuleIO *rdb) {
 	assert(pthread_setspecific(_tlsGCKey, gc) == 0);
 
 	// Graph name
-	gc->graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
+	gc->graph_name = rm_strdup(RedisModule_LoadStringBuffer(rdb, NULL));
 
 	// Attributes, Load the full attribute mapping.
 	_RdbLoadAttributeKeys(rdb, gc);
@@ -61,7 +61,7 @@ GraphContext *RdbLoadGraphContext(RedisModuleIO *rdb) {
 	// Load each node schema
 	gc->node_schemas = array_new(Schema *, schema_count);
 	for(uint i = 0; i < schema_count; i ++) {
-		array_append(gc->node_schemas, RdbLoadSchema(rdb, SCHEMA_NODE));
+		gc->node_schemas = array_append(gc->node_schemas, RdbLoadSchema(rdb, SCHEMA_NODE));
 		Graph_AddLabel(gc->g);
 	}
 
@@ -71,7 +71,7 @@ GraphContext *RdbLoadGraphContext(RedisModuleIO *rdb) {
 	// Load each edge schema
 	gc->relation_schemas = array_new(Schema *, schema_count);
 	for(uint i = 0; i < schema_count; i ++) {
-		array_append(gc->relation_schemas, RdbLoadSchema(rdb, SCHEMA_EDGE));
+		gc->relation_schemas = array_append(gc->relation_schemas, RdbLoadSchema(rdb, SCHEMA_EDGE));
 		Graph_AddRelationType(gc->g);
 	}
 

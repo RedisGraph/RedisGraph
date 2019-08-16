@@ -76,7 +76,7 @@ GraphContext *PrevRdbLoadGraphContext(RedisModuleIO *rdb) {
 	pthread_setspecific(_tlsGCKey, gc);
 
 	// Graph name.
-	gc->graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
+	gc->graph_name = rm_strdup(RedisModule_LoadStringBuffer(rdb, NULL));
 	gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 
 	// Initialize property mappings.
