@@ -7,40 +7,42 @@
 #include "group_cache.h"
 
 CacheGroup *CacheGroupNew() {
-	return NewTrieMap();
+	return raxNew();
 }
 
 void CacheGroupAdd(CacheGroup *groups, char *key, Group *group) {
-	TrieMap_Add(groups, key, strlen(key), group, NULL);
+	raxInsert(groups, (unsigned char *)key, strlen(key), group, NULL);
 }
 
 // Retrives a group,
 // Sets group to NULL if key is missing.
 Group *CacheGroupGet(CacheGroup *groups, char *key) {
-	Group *g = TrieMap_Find(groups, key, strlen(key));
-	if(g == TRIEMAP_NOTFOUND) return NULL;
+	Group *g = raxFind(groups, (unsigned char *)key, strlen(key));
+	if(g == raxNotFound) return NULL;
 	return g;
 }
 
 void FreeGroupCache(CacheGroup *groups) {
-	TrieMap_Free(groups, (void (*)(void *))FreeGroup);
+	raxFreeWithCallback(groups, (void (*)(void *))FreeGroup);
 }
 
-// Returns an iterator to scan entire group cache
-CacheGroupIterator *CacheGroupIter(CacheGroup *groups) {
-	return TrieMap_Iterate(groups, "", 0);
+// Populates an iterator to scan entire group cache
+void CacheGroupIter(CacheGroup *groups, CacheGroupIterator *iter) {
+	raxStart(iter, groups);
+	raxSeek(iter, ">=", (unsigned char *)"", 0);
 }
 
 // Advance iterator and returns key & value in current position.
 int CacheGroupIterNext(CacheGroupIterator *iter, char **key, Group **group) {
-	tm_len_t len = 0;
-	int res = TrieMapIterator_Next(iter, key, &len, (void **)group);
+	int res = raxNext(iter);
 	if(res == 0) {
 		*group = NULL;
+	} else {
+		*group = iter->data; // TODO revisit this to fix up
 	}
 	return res;
 }
 
 void CacheGroupIterator_Free(CacheGroupIterator *iter) {
-	if(iter) TrieMapIterator_Free(iter);
+	if(iter) raxStop(iter);
 }

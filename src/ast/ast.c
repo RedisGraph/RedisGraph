@@ -15,15 +15,21 @@
 
 extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
 
+// TODO duplicated logic, find shared place for it
+static void _prepareIterator(rax *map, raxIterator *iter) {
+	raxStart(iter, map);
+	raxSeek(iter, ">=", (unsigned char *)"", 0);
+}
+
 // Note each function call within given expression
 // Example: given the expression: "abs(max(min(a), abs(k)))"
 // referred_funcs will include: "abs", "max" and "min".
 static void _consume_function_call_expression(const cypher_astnode_t *expression,
-											  TrieMap *referred_funcs) {
+											  rax *referred_funcs) {
 	// Value is an apply operator
 	const cypher_astnode_t *func = cypher_ast_apply_operator_get_func_name(expression);
 	const char *func_name = cypher_ast_function_name_get_value(func);
-	TrieMap_Add(referred_funcs, (char *)func_name, strlen(func_name), NULL, TrieMap_DONT_CARE_REPLACE);
+	raxInsert(referred_funcs, (unsigned char *)func_name, strlen(func_name), NULL, NULL);
 
 	uint narguments = cypher_ast_apply_operator_narguments(expression);
 	for(int i = 0; i < narguments; i++) {
@@ -71,7 +77,7 @@ bool AST_ContainsClause(const AST *ast, cypher_astnode_type_t clause) {
 }
 
 // Recursively collect the names of all function calls beneath a node
-void AST_ReferredFunctions(const cypher_astnode_t *root, TrieMap *referred_funcs) {
+void AST_ReferredFunctions(const cypher_astnode_t *root, rax *referred_funcs) {
 	cypher_astnode_type_t root_type = cypher_astnode_type(root);
 	if(root_type == CYPHER_AST_APPLY_OPERATOR) {
 		_consume_function_call_expression(root, referred_funcs);
@@ -245,18 +251,17 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 	bool aggregated = false;
 
 	// Retrieve all user-specified functions in clause.
-	TrieMap *referred_funcs = NewTrieMap();
+	rax *referred_funcs = raxNew();
 	AST_ReferredFunctions(clause, referred_funcs);
 
-	void *value;
-	tm_len_t len;
-	char *ptr;
 	char funcName[32];
-	TrieMapIterator *it = TrieMap_Iterate(referred_funcs, "", 0);
-	while(TrieMapIterator_Next(it, &ptr, &len, &value)) {
+	raxIterator it;
+	_prepareIterator(referred_funcs, &it);
+	while(raxNext(&it)) {
+		size_t len = it.key_len;
 		assert(len < 32);
 		// Copy the triemap key so that we can safely add a terinator character
-		memcpy(funcName, ptr, len);
+		memcpy(funcName, it.key, len);
 		funcName[len] = 0;
 
 		if(Agg_FuncExists(funcName)) {
@@ -264,8 +269,8 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 			break;
 		}
 	}
-	TrieMapIterator_Free(it);
-	TrieMap_Free(referred_funcs, TrieMap_NOP_CB);
+	raxStop(&it);
+	raxFree(referred_funcs);
 
 	return aggregated;
 }
@@ -293,7 +298,7 @@ AST *AST_GetFromTLS(void) {
 
 void AST_Free(AST *ast) {
 	if(ast == NULL) return;
-	if(ast->entity_map) TrieMap_Free(ast->entity_map, TrieMap_NOP_CB);
+	if(ast->entity_map) raxFree(ast->entity_map);
 	if(ast->free_root) free((cypher_astnode_t *)ast->root);
 	rm_free(ast);
 }

@@ -7,11 +7,11 @@
 #pragma once
 
 #include "op.h"
-#include "../../util/triemap/triemap.h"
+#include "../../../deps/rax/rax.h"
 
 typedef struct {
 	OpBase op;
-	TrieMap *trie;
+	rax *found;
 } OpDistinct;
 
 OpBase *NewDistinctOp(void);

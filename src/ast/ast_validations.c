@@ -14,7 +14,12 @@
 #include <assert.h>
 
 /* Forward declarations */
-static void _CollectIdentifiers(const cypher_astnode_t *root, TrieMap *projections);
+static void _CollectIdentifiers(const cypher_astnode_t *root, rax *projections);
+
+static void _prepareIterator(rax *map, raxIterator *iter) {
+	raxStart(iter, map);
+	raxSeek(iter, ">=", (unsigned char *)"", 0);
+}
 
 // Validate that an input string can be completely converted to a positive integer in range.
 static inline AST_Validation _ValidatePositiveInteger(const char *input) {
@@ -29,13 +34,13 @@ static inline AST_Validation _ValidatePositiveInteger(const char *input) {
 	return AST_VALID;
 }
 
-static void _AST_GetIdentifiers(const cypher_astnode_t *node, TrieMap *identifiers) {
+static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) {
 	if(!node) return;
 	assert(identifiers);
 
 	if(cypher_astnode_type(node) == CYPHER_AST_IDENTIFIER) {
 		const char *identifier = cypher_ast_identifier_get_name(node);
-		TrieMap_Add(identifiers, (char *)identifier, strlen(identifier), NULL, TrieMap_DONT_CARE_REPLACE);
+		raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
 	}
 
 	uint child_count = cypher_astnode_nchildren(node);
@@ -55,7 +60,7 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, TrieMap *identifie
 	}
 }
 
-static void _AST_GetWithAliases(const cypher_astnode_t *node, TrieMap *aliases) {
+static void _AST_GetWithAliases(const cypher_astnode_t *node, rax *aliases) {
 	if(!node) return;
 	if(cypher_astnode_type(node) != CYPHER_AST_WITH) return;
 	assert(aliases);
@@ -73,12 +78,12 @@ static void _AST_GetWithAliases(const cypher_astnode_t *node, TrieMap *aliases) 
 			// Retrieve "a" from "WITH a"
 			alias = cypher_ast_identifier_get_name(expr);
 		}
-		TrieMap_Add(aliases, (char *)alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+		raxInsert(aliases, (unsigned char *)alias, strlen(alias), NULL, NULL);
 	}
 }
 
 // Extract identifiers / aliases from a procedure call.
-static void _AST_GetProcCallAliases(const cypher_astnode_t *node, TrieMap *identifiers) {
+static void _AST_GetProcCallAliases(const cypher_astnode_t *node, rax *identifiers) {
 	// CALL db.labels() yield label
 	// CALL db.labels() yield label as l
 	assert(node && identifiers);
@@ -98,12 +103,12 @@ static void _AST_GetProcCallAliases(const cypher_astnode_t *node, TrieMap *ident
 			identifier = cypher_ast_identifier_get_name(exp_node);
 		}
 		assert(identifiers);
-		TrieMap_Add(identifiers, (char *)identifier, strlen(identifier), NULL, TrieMap_DONT_CARE_REPLACE);
+		raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
 	}
 }
 
 // UNWIND and WITH also form aliases, but don't need special handling for us yet.
-static void _AST_GetReturnAliases(const cypher_astnode_t *node, TrieMap *aliases) {
+static void _AST_GetReturnAliases(const cypher_astnode_t *node, rax *aliases) {
 	assert(node && aliases && cypher_astnode_type(node) == CYPHER_AST_RETURN);
 
 	uint num_return_projections = cypher_ast_return_nprojections(node);
@@ -114,15 +119,15 @@ static void _AST_GetReturnAliases(const cypher_astnode_t *node, TrieMap *aliases
 		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(child);
 		if(alias_node == NULL) continue;
 		const char *alias = cypher_ast_identifier_get_name(alias_node);
-		TrieMap_Add(aliases, (char *)alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+		raxInsert(aliases, (unsigned char *)alias, strlen(alias), NULL, NULL);
 	}
 }
 
-static void _CollectIdentifiers(const cypher_astnode_t *root, TrieMap *projections) {
+static void _CollectIdentifiers(const cypher_astnode_t *root, rax *projections) {
 	if(cypher_astnode_type(root) == CYPHER_AST_IDENTIFIER) {
 		// Identifier found, add to triemap
 		const char *identifier = cypher_ast_identifier_get_name(root);
-		TrieMap_Add(projections, (char *)identifier, strlen(identifier), NULL, TrieMap_DONT_CARE_REPLACE);
+		raxInsert(projections, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
 	} else {
 		uint child_count = cypher_astnode_nchildren(root);
 		for(uint i = 0; i < child_count; i ++) {
@@ -132,13 +137,13 @@ static void _CollectIdentifiers(const cypher_astnode_t *root, TrieMap *projectio
 }
 
 /* Collect all identifiers used in the RETURN clause (but not aliases defined there) */
-static TrieMap *_AST_GetReturnProjections(const cypher_astnode_t *return_clause) {
+static rax *_AST_GetReturnProjections(const cypher_astnode_t *return_clause) {
 	if(!return_clause) return NULL;
 
 	uint projection_count = cypher_ast_return_nprojections(return_clause);
 	if(projection_count == 0) return NULL;
 
-	TrieMap *projections = NewTrieMap();
+	rax *projections = raxNew();
 	for(uint i = 0; i < projection_count; i ++) {
 		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
 		_CollectIdentifiers(projection, projections);
@@ -148,18 +153,17 @@ static TrieMap *_AST_GetReturnProjections(const cypher_astnode_t *return_clause)
 }
 
 /* Compares a triemap of user-specified functions with the registered functions we provide. */
-static AST_Validation _ValidateReferredFunctions(TrieMap *referred_functions, char **reason,
+static AST_Validation _ValidateReferredFunctions(rax *referred_functions, char **reason,
 												 bool include_aggregates) {
 	AST_Validation res = AST_VALID;
-	void *value;
-	tm_len_t len;
-	char *ptr;
 	char funcName[32];
-	TrieMapIterator *it = TrieMap_Iterate(referred_functions, "", 0);
+	raxIterator it;
+	_prepareIterator(referred_functions, &it);
 	*reason = NULL;
 
 	// TODO: return RAX.
-	while(TrieMapIterator_Next(it, &ptr, &len, &value)) {
+	while(raxNext(&it)) {
+		size_t len = it.key_len;
 		// No functions have a name longer than 32 characters
 		if(len >= 32) {
 			res = AST_INVALID;
@@ -167,7 +171,7 @@ static AST_Validation _ValidateReferredFunctions(TrieMap *referred_functions, ch
 		}
 
 		// Copy the triemap key so that we can safely add a terinator character
-		memcpy(funcName, ptr, len);
+		memcpy(funcName, it.key, len);
 		funcName[len] = 0;
 
 		if(AR_FuncExists(funcName)) continue;
@@ -191,19 +195,19 @@ static AST_Validation _ValidateReferredFunctions(TrieMap *referred_functions, ch
 	// If the function was not found, provide a reason if one is not set
 	if(res == AST_INVALID && *reason == NULL) asprintf(reason, "Unknown function '%s'", funcName);
 
-	TrieMapIterator_Free(it);
+	raxStop(&it);
 	return res;
 }
 
-static inline bool _AliasIsReturned(TrieMap *projections, const char *identifier) {
-	if(TrieMap_Find(projections, (char *)identifier, strlen(identifier)) != TRIEMAP_NOTFOUND) {
+static inline bool _AliasIsReturned(rax *projections, const char *identifier) {
+	if(raxFind(projections, (unsigned char *)identifier, strlen(identifier)) != raxNotFound) {
 		return true;
 	}
 	return false;
 }
 
 // If we have a multi-hop traversal (fixed or variable length), we cannot currently return that entity.
-static AST_Validation _ValidateMultiHopTraversal(TrieMap *projections, const cypher_astnode_t *edge,
+static AST_Validation _ValidateMultiHopTraversal(rax *projections, const cypher_astnode_t *edge,
 												 const cypher_astnode_t *range,
 												 char **reason) {
 	int start = 1;
@@ -249,7 +253,7 @@ static AST_Validation _ValidateMultiHopTraversal(TrieMap *projections, const cyp
 }
 
 static AST_Validation _Validate_ReusedEdges(const cypher_astnode_t *node,
-											TrieMap *edge_aliases, char **reason) {
+											rax *edge_aliases, char **reason) {
 	uint child_count = cypher_astnode_nchildren(node);
 	for(uint i = 0; i < child_count; i++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
@@ -257,8 +261,8 @@ static AST_Validation _Validate_ReusedEdges(const cypher_astnode_t *node,
 
 		if(type == CYPHER_AST_IDENTIFIER) {
 			const char *alias = cypher_ast_identifier_get_name(child);
-			int new = TrieMap_Add(edge_aliases, (char *)alias, strlen(alias), NULL,
-								  TrieMap_DONT_CARE_REPLACE);
+			int new = raxInsert(edge_aliases, (unsigned char *)alias, strlen(alias), NULL,
+								NULL);
 			if(!new) {
 				asprintf(reason, "Cannot use the same relationship variable '%s' for multiple patterns.",
 						 alias);
@@ -270,8 +274,8 @@ static AST_Validation _Validate_ReusedEdges(const cypher_astnode_t *node,
 	return AST_VALID;
 }
 
-static AST_Validation _ValidateRelation(TrieMap *projections, const cypher_astnode_t *edge,
-										TrieMap *edge_aliases,
+static AST_Validation _ValidateRelation(rax *projections, const cypher_astnode_t *edge,
+										rax *edge_aliases,
 										char **reason) {
 	AST_Validation res = AST_VALID;
 
@@ -297,8 +301,8 @@ static AST_Validation _ValidateRelation(TrieMap *projections, const cypher_astno
 }
 
 static AST_Validation _ValidatePath(const cypher_astnode_t *path,
-									TrieMap *projections,
-									TrieMap *edge_aliases,
+									rax *projections,
+									rax *edge_aliases,
 									char **reason) {
 	AST_Validation res = AST_VALID;
 	uint path_len = cypher_ast_pattern_path_nelements(path);
@@ -313,8 +317,8 @@ static AST_Validation _ValidatePath(const cypher_astnode_t *path,
 	return res;
 }
 
-static AST_Validation _ValidatePattern(TrieMap *projections, const cypher_astnode_t *pattern,
-									   TrieMap *edge_aliases, char **reason) {
+static AST_Validation _ValidatePattern(rax *projections, const cypher_astnode_t *pattern,
+									   rax *edge_aliases, char **reason) {
 	AST_Validation res = AST_VALID;
 	uint path_count = cypher_ast_pattern_npaths(pattern);
 	for(uint i = 0; i < path_count; i ++) {
@@ -432,7 +436,7 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast, char **reason) {
 	 * 3. yield refers to procedure output */
 	AST_Validation res = AST_VALID;
 	ProcedureCtx *proc = NULL;
-	TrieMap *identifiers = NewTrieMap();
+	rax *identifiers = raxNew();
 
 	const cypher_astnode_t **call_clauses = AST_GetClauses(ast, CYPHER_AST_CALL);
 	if(call_clauses == NULL) return AST_VALID;
@@ -472,8 +476,8 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast, char **reason) {
 				assert(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
 				const char *identifier = cypher_ast_identifier_get_name(ast_exp);
 				// Make sure each yield output is mentioned only once.
-				if(!TrieMap_Add(identifiers, (char *)identifier, strlen(identifier), NULL,
-								TrieMap_DONT_CARE_REPLACE)) {
+				if(!raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL,
+							  NULL)) {
 					asprintf(reason, "Variable `%s` already declared", identifier);
 					res = AST_INVALID;
 					goto cleanup;
@@ -482,12 +486,12 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast, char **reason) {
 
 			// Make sure procedure is aware of each output.
 			char output[256];
-			void *value;
-			tm_len_t len;
-			char *identifier;
-			TrieMapIterator *it = TrieMap_Iterate(identifiers, "", 0);
+			raxIterator it;
+			_prepareIterator(identifiers, &it);
 
-			while(TrieMapIterator_Next(it, &identifier, &len, &value)) {
+			while(raxNext(&it)) {
+				size_t len = it.key_len;
+				unsigned char *identifier = it.key;
 				if(len >= 256) {
 					asprintf(reason, "Output name `%s` too long", identifier);
 					res = AST_INVALID;
@@ -497,15 +501,15 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast, char **reason) {
 				memcpy(output, identifier, len);
 				output[len] = 0;
 				if(!Procedure_ContainsOutput(proc, output)) {
-					TrieMapIterator_Free(it);
+					raxStop(&it);
 					asprintf(reason, "Procedure `%s` does not yield output `%s`", proc_name, output);
 					res = AST_INVALID;
 					goto cleanup;
 				}
 			}
 
-			TrieMapIterator_Free(it);
-			TrieMap_Free(identifiers, TrieMap_NOP_CB);
+			raxStop(&it);
+			raxFree(identifiers);
 			identifiers = NULL;
 		}
 
@@ -516,18 +520,18 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast, char **reason) {
 cleanup:
 	if(proc) Proc_Free(proc);
 	array_free(call_clauses);
-	if(identifiers) TrieMap_Free(identifiers, TrieMap_NOP_CB);
+	if(identifiers) raxFree(identifiers);
 	return res;
 }
 
-static AST_Validation _ValidateNodeAlias(const cypher_astnode_t *node, TrieMap *edge_aliases,
+static AST_Validation _ValidateNodeAlias(const cypher_astnode_t *node, rax *edge_aliases,
 										 char **reason) {
 	const cypher_astnode_t *ast_alias = cypher_ast_node_pattern_get_identifier(node);
 	if(ast_alias == NULL) return AST_VALID;
 
 	// Verify that the node's alias is not in the map of edge aliases.
 	const char *alias = cypher_ast_identifier_get_name(ast_alias);
-	if(TrieMap_Find(edge_aliases, (char *)alias, strlen(alias)) != TRIEMAP_NOTFOUND) {
+	if(raxFind(edge_aliases, (unsigned char *)alias, strlen(alias)) != raxNotFound) {
 		asprintf(reason, "The alias '%s' was specified for both a node and a relationship.", alias);
 		return AST_INVALID;
 	}
@@ -535,7 +539,7 @@ static AST_Validation _ValidateNodeAlias(const cypher_astnode_t *node, TrieMap *
 	return AST_VALID;
 }
 
-static AST_Validation _ValidateReusedAliases(TrieMap *edge_aliases,
+static AST_Validation _ValidateReusedAliases(rax *edge_aliases,
 											 const cypher_astnode_t *pattern,
 											 char **reason) {
 	AST_Validation res = AST_VALID;
@@ -562,13 +566,13 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast, char **reason) {
 	const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
 	if(match_clauses == NULL) return AST_VALID;
 
-	TrieMap *referred_funcs = NewTrieMap();
-	TrieMap *edge_aliases = NewTrieMap();
-	TrieMap *reused_entities = NewTrieMap();
+	rax *referred_funcs = raxNew();
+	rax *edge_aliases = raxNew();
+	rax *reused_entities = raxNew();
 	AST_Validation res;
 
 	const cypher_astnode_t *return_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
-	TrieMap *projections = _AST_GetReturnProjections(return_clause);
+	rax *projections = _AST_GetReturnProjections(return_clause);
 	uint match_count = array_len(match_clauses);
 	for(uint i = 0; i < match_count; i ++) {
 		const cypher_astnode_t *match_clause = match_clauses[i];
@@ -597,17 +601,17 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast, char **reason) {
 	res = _ValidateReferredFunctions(referred_funcs, reason, include_aggregates);
 
 cleanup:
-	if(projections) TrieMap_Free(projections, TrieMap_NOP_CB);
-	TrieMap_Free(referred_funcs, TrieMap_NOP_CB);
-	TrieMap_Free(edge_aliases, TrieMap_NOP_CB);
-	TrieMap_Free(reused_entities, TrieMap_NOP_CB);
+	if(projections) raxFree(projections);
+	raxFree(referred_funcs);
+	raxFree(edge_aliases);
+	raxFree(reused_entities);
 	array_free(match_clauses);
 
 	return res;
 }
 
 static AST_Validation _ValidateWithEntitiesOnPath(const cypher_astnode_t *path,
-												  TrieMap *projections, char **reason) {
+												  rax *projections, char **reason) {
 	uint path_len = cypher_ast_pattern_path_nelements(path);
 	// Check all entities on the path
 	for(uint i = 0; i < path_len; i ++) {
@@ -623,7 +627,7 @@ static AST_Validation _ValidateWithEntitiesOnPath(const cypher_astnode_t *path,
 		// If this entity was labeled, ensure that it has not been projected from a WITH clause
 		if(ast_identifier) {
 			const char *identifier = cypher_ast_identifier_get_name(ast_identifier);
-			if(TrieMap_Find(projections, (char *)identifier, strlen(identifier)) != TRIEMAP_NOTFOUND) {
+			if(raxFind(projections, (unsigned char *)identifier, strlen(identifier)) != raxNotFound) {
 				asprintf(reason, "Reusing the WITH projection '%s' in another pattern is currently not supported",
 						 identifier);
 				return AST_INVALID;
@@ -646,7 +650,7 @@ static AST_Validation _Validate_WITH_Clauses(const AST *ast, char **reason) {
 	uint with_clause_count = AST_GetClauseCount(ast, CYPHER_AST_WITH);
 	if(with_clause_count == 0) return AST_VALID;
 
-	TrieMap *with_projections = NewTrieMap();
+	rax *with_projections = raxNew();
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	AST_Validation res = AST_VALID;
 
@@ -684,7 +688,7 @@ static AST_Validation _Validate_WITH_Clauses(const AST *ast, char **reason) {
 		}
 	}
 
-	TrieMap_Free(with_projections, TrieMap_NOP_CB);
+	raxFree(with_projections);
 	return res;
 }
 
@@ -818,13 +822,13 @@ static AST_Validation _Validate_RETURN_Clause(const AST *ast, char **reason) {
 	if(_Validate_ReturnedTypes(return_clause, reason) != AST_VALID) return AST_INVALID;
 
 	// Retrieve all user-specified functions in RETURN clause.
-	TrieMap *referred_funcs = NewTrieMap();
+	rax *referred_funcs = raxNew();
 	AST_ReferredFunctions(return_clause, referred_funcs);
 
 	// Verify that referred functions exist.
 	bool include_aggregates = true;
 	AST_Validation res = _ValidateReferredFunctions(referred_funcs, reason, include_aggregates);
-	TrieMap_Free(referred_funcs, TrieMap_NOP_CB);
+	raxFree(referred_funcs);
 
 	return res;
 }
@@ -978,7 +982,7 @@ static AST_Validation _ValidateQueryTermination(const AST *ast, char **reason) {
 
 }
 
-static void _AST_RegisterCallOutputs(const cypher_astnode_t *call_clause, TrieMap *identifiers) {
+static void _AST_RegisterCallOutputs(const cypher_astnode_t *call_clause, rax *identifiers) {
 	const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
 	ProcedureCtx *proc = Proc_Get(proc_name);
 	assert(proc);
@@ -986,7 +990,7 @@ static void _AST_RegisterCallOutputs(const cypher_astnode_t *call_clause, TrieMa
 	unsigned int output_count = array_len(proc->output);
 	for(uint i = 0; i < output_count; i++) {
 		const char *name = proc->output[i]->name;
-		TrieMap_Add(identifiers, (char *)name, strlen(name), NULL, TrieMap_DONT_CARE_REPLACE);
+		raxInsert(identifiers, (unsigned char *)name, strlen(name), NULL, NULL);
 	}
 }
 
@@ -1008,7 +1012,7 @@ static AST_Validation _ValidateQuerySequence(const AST *ast, char **reason) {
 	return AST_VALID;
 }
 
-static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, TrieMap *identifiers) {
+static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identifiers) {
 	if(!node) return;
 	cypher_astnode_type_t type = cypher_astnode_type(node);
 
@@ -1038,7 +1042,7 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, TrieMap *id
 	}
 }
 
-static void _AST_GetReferredIdentifiers(const cypher_astnode_t *node, TrieMap *identifiers) {
+static void _AST_GetReferredIdentifiers(const cypher_astnode_t *node, rax *identifiers) {
 	if(!node) return;
 	cypher_astnode_type_t type = cypher_astnode_type(node);
 	if(type == CYPHER_AST_SET || type == CYPHER_AST_RETURN || type == CYPHER_AST_DELETE ||
@@ -1057,26 +1061,26 @@ static void _AST_GetReferredIdentifiers(const cypher_astnode_t *node, TrieMap *i
 static AST_Validation _Validate_Aliases_DefinedInScope(const AST *ast, uint start_offset,
 													   uint end_offset, char **undefined_alias) {
 	AST_Validation res = AST_VALID;
-	TrieMap *defined_aliases = NewTrieMap();
-	TrieMap *referred_identifiers = NewTrieMap();
+	rax *defined_aliases = raxNew();
+	rax *referred_identifiers = raxNew();
 
 	for(uint i = start_offset; i < end_offset; i ++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
 		// Get defined identifiers.
 		_AST_GetDefinedIdentifiers(clause, defined_aliases);
 		// Get referred identifiers except from the first clause in the scope,
-		// which cannot introduce aliases but not contain references.
+		// which can introduce aliases but not contain references.
 		if(i != start_offset) _AST_GetReferredIdentifiers(clause, referred_identifiers);
 	}
 
-	char *alias;
-	tm_len_t len;
-	void *value;
-	TrieMapIterator *it = TrieMap_Iterate(referred_identifiers, "", 0);
+	raxIterator it;
+	_prepareIterator(referred_identifiers, &it);
 
 	// See that each referred identifier is defined.
-	while(TrieMapIterator_Next(it, &alias, &len, &value)) {
-		if(TrieMap_Find(defined_aliases, alias, len) == TRIEMAP_NOTFOUND) {
+	while(raxNext(&it)) {
+		size_t len = it.key_len;
+		unsigned char *alias = it.key;
+		if(raxFind(defined_aliases, alias, len) == raxNotFound) {
 			asprintf(undefined_alias, "%s not defined", alias);
 			res = AST_INVALID;
 			break;
@@ -1084,9 +1088,9 @@ static AST_Validation _Validate_Aliases_DefinedInScope(const AST *ast, uint star
 	}
 
 	// Clean up:
-	TrieMapIterator_Free(it);
-	TrieMap_Free(defined_aliases, TrieMap_NOP_CB);
-	TrieMap_Free(referred_identifiers, TrieMap_NOP_CB);
+	raxStop(&it);
+	raxFree(defined_aliases);
+	raxFree(referred_identifiers);
 	return res;
 }
 

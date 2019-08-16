@@ -14,23 +14,23 @@ static void *_BuildMapValue(uint64_t id) {
 
 // TODO unused except in op_procedure_call
 uint RecordMap_LookupAlias(const RecordMap *record_map, const char *alias) {
-	void *id_ptr = TrieMap_Find(record_map->map, (char *)alias, strlen(alias));
-	if(id_ptr == TRIEMAP_NOTFOUND) return IDENTIFIER_NOT_FOUND;
+	void *id_ptr = raxFind(record_map->map, (unsigned char *)alias, strlen(alias));
+	if(id_ptr == raxNotFound) return IDENTIFIER_NOT_FOUND;
 
 	return (uint64_t)id_ptr;
 }
 
 uint RecordMap_LookupID(const RecordMap *record_map, uint id) {
-	void *id_ptr = TrieMap_Find(record_map->map, (char *)&id, sizeof(id));
-	if(id_ptr == TRIEMAP_NOTFOUND) return IDENTIFIER_NOT_FOUND;
+	void *id_ptr = raxFind(record_map->map, (unsigned char *)&id, sizeof(id));
+	if(id_ptr == raxNotFound) return IDENTIFIER_NOT_FOUND;
 
 	return (uint64_t)id_ptr;
 }
 
 uint RecordMap_FindOrAddAlias(RecordMap *record_map, const char *alias) {
 	// This alias may already be represented in the Record map
-	void *id_ptr = TrieMap_Find(record_map->map, (char *)alias, strlen(alias));
-	if(id_ptr != TRIEMAP_NOTFOUND) return (uint64_t)id_ptr;
+	void *id_ptr = raxFind(record_map->map, (unsigned char *)alias, strlen(alias));
+	if(id_ptr != raxNotFound) return (uint64_t)id_ptr;
 
 	// TODO this logic could be improved.
 	AST *ast = AST_GetFromTLS();
@@ -50,41 +50,40 @@ uint RecordMap_FindOrAddAlias(RecordMap *record_map, const char *alias) {
 
 	// Map alias to Record ID
 	id_ptr = _BuildMapValue(id);
-	TrieMap_Add(record_map->map, (char *)alias, strlen(alias), id_ptr, TrieMap_DONT_CARE_REPLACE);
+	raxInsert(record_map->map, (unsigned char *)alias, strlen(alias), id_ptr, NULL);
 
 	// Map AST ID to Record ID
 	if(ast_id != IDENTIFIER_NOT_FOUND) {
 		id_ptr = _BuildMapValue(id);
-		TrieMap_Add(record_map->map, (char *)&ast_id, sizeof(ast_id), id_ptr, TrieMap_DONT_CARE_REPLACE);
+		raxInsert(record_map->map, (unsigned char *)&ast_id, sizeof(ast_id), id_ptr, NULL);
 	}
 
 	return id;
 }
 
 uint RecordMap_FindOrAddID(RecordMap *record_map, uint entity_id) {
-	void *id_ptr = TrieMap_Find(record_map->map, (char *)&entity_id, sizeof(entity_id));
-	if(id_ptr != TRIEMAP_NOTFOUND) return (uint64_t)id_ptr;
+	void *id_ptr = raxFind(record_map->map, (unsigned char *)&entity_id, sizeof(entity_id));
+	if(id_ptr != raxNotFound) return (uint64_t)id_ptr;
 
 	uint id = record_map->record_len++;
 
 	// Map ID value
 	id_ptr = _BuildMapValue(id);
-	TrieMap_Add(record_map->map, (char *)&entity_id, sizeof(entity_id), id_ptr,
-				TrieMap_DONT_CARE_REPLACE);
+	raxInsert(record_map->map, (unsigned char *)&entity_id, sizeof(entity_id), id_ptr,
+			  NULL);
 
 	return id;
 }
 
 RecordMap *RecordMap_New() {
 	RecordMap *record_map = rm_malloc(sizeof(RecordMap));
-	record_map->map = NewTrieMap();
+	record_map->map = raxNew();
 	record_map->record_len = 0;
 
 	return record_map;
 }
 
 void RecordMap_Free(RecordMap *record_map) {
-	TrieMap_Free(record_map->map, TrieMap_NOP_CB);
+	raxFree(record_map->map);
 	rm_free(record_map);
 }
-

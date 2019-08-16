@@ -9,17 +9,17 @@
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
-#include "../util/triemap/triemap.h"
+#include "../../deps/rax/rax.h"
 
-static TrieMap *__procedures = NULL;
+static rax *__procedures = NULL;
 
 static void _procRegister(const char *procedure, ProcGenerator gen) {
-	TrieMap_Add(__procedures, (char *)procedure, strlen(procedure), gen, NULL);
+	raxInsert(__procedures, (unsigned char *)procedure, strlen(procedure), gen, NULL);
 }
 
 // Register procedures.
 void Proc_Register() {
-	__procedures = NewTrieMap();
+	__procedures = raxNew();
 	_procRegister("db.labels", Proc_LabelsCtx);
 	_procRegister("db.propertyKeys", Proc_PropKeysCtx);
 	_procRegister("db.relationshipTypes", Proc_RelationsCtx);
@@ -51,8 +51,8 @@ ProcedureCtx *ProcCtxNew(const char *name,
 
 ProcedureCtx *Proc_Get(const char *proc_name) {
 	if(!__procedures) return NULL;
-	ProcGenerator gen = TrieMap_Find(__procedures, (char *)proc_name, strlen(proc_name));
-	if(gen == TRIEMAP_NOTFOUND) return NULL;
+	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name, strlen(proc_name));
+	if(gen == raxNotFound) return NULL;
 	ProcedureCtx *ctx = gen();
 	return ctx;
 }

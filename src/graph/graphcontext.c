@@ -41,7 +41,7 @@ GraphContext *GraphContext_New(RedisModuleCtx *ctx, const char *graphname,
 	gc->relation_schemas = array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 
 	gc->string_mapping = array_new(char *, 64);
-	gc->attributes = NewTrieMap();
+	gc->attributes = raxNew();
 
 	assert(pthread_setspecific(_tlsGCKey, gc) == 0);
 
@@ -143,7 +143,7 @@ const char *GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e) {
 }
 
 uint GraphContext_AttributeCount(GraphContext *gc) {
-	return gc->attributes->cardinality;
+	return raxSize(gc->attributes);
 }
 
 Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attribute) {
@@ -152,15 +152,15 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, attribute);
 
 	if(attribute_id == ATTRIBUTE_NOTFOUND) {
-		attribute_id = gc->attributes->cardinality;
+		attribute_id = raxSize(gc->attributes);
 		pAttribute_id = rm_malloc(sizeof(Attribute_ID));
 		*pAttribute_id = attribute_id;
 
-		TrieMap_Add(gc->attributes,
-					(char *)attribute,
-					strlen(attribute),
-					pAttribute_id,
-					TrieMap_DONT_CARE_REPLACE);
+		raxInsert(gc->attributes,
+				  (unsigned char *)attribute,
+				  strlen(attribute),
+				  pAttribute_id,
+				  NULL);
 		gc->string_mapping = array_append(gc->string_mapping, rm_strdup(attribute));
 	}
 
@@ -173,8 +173,8 @@ const char *GraphContext_GetAttributeString(const GraphContext *gc, Attribute_ID
 }
 
 Attribute_ID GraphContext_GetAttributeID(const GraphContext *gc, const char *attribute) {
-	Attribute_ID *id = TrieMap_Find(gc->attributes, (char *)attribute, strlen(attribute));
-	if(id == TRIEMAP_NOTFOUND) return ATTRIBUTE_NOTFOUND;
+	Attribute_ID *id = raxFind(gc->attributes, (unsigned char *)attribute, strlen(attribute));
+	if(id == raxNotFound) return ATTRIBUTE_NOTFOUND;
 	return *id;
 }
 
@@ -269,7 +269,7 @@ void GraphContext_Free(GraphContext *gc) {
 	}
 
 	// Free attribute mappings
-	if(gc->attributes) TrieMap_Free(gc->attributes, rm_free);
+	if(gc->attributes) raxFreeWithCallback(gc->attributes, rm_free);
 	if(gc->string_mapping) {
 		len = array_len(gc->string_mapping);
 		for(uint32_t i = 0; i < len; i ++) {

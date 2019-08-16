@@ -70,14 +70,13 @@ CC_DEPS = $(patsubst %.c, %.d, $(CC_SOURCES) )
 RAX=../deps/rax/rax.o
 
 # Library dependencies
-LIBTRIEMAP=util/triemap/libtriemap.a
 LIBXXHASH=../deps/xxhash/libxxhash.a
 GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
 REDISEARCH=../deps/RediSearch/build/libredisearch.a
 LIBCYPHER-PARSER=../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
 # Compilation deps for the module
-LIBS=$(LIBTRIEMAP) $(GRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER-PARSER)
+LIBS=$(GRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER-PARSER)
 MODULE=$(CC_OBJECTS) $(RAX) $(LIBS)
 
 REDISGRAPH_CC=$(QUIET_CC)$(CC)
@@ -107,9 +106,6 @@ $(RAX):
 
 $(LIBXXHASH):
 	@$(MAKE) -C ../deps/xxhash lib
-
-$(LIBTRIEMAP):
-	@$(MAKE) -C util/triemap
 
 BLAS_CFLAGS = -fPIC -I $(abs_path)/util -include rmalloc.h -DREDIS_MODULE_TARGET -DGB_MALLOC=rm_malloc -DGB_CALLOC=rm_calloc -DGB_REALLOC=rm_realloc -DGB_FREE=rm_free -DGBCOMPACT
 

@@ -80,7 +80,7 @@ GraphContext *PrevRdbLoadGraphContext(RedisModuleIO *rdb) {
 	gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 
 	// Initialize property mappings.
-	gc->attributes = NewTrieMap();
+	gc->attributes = raxNew();
 	gc->string_mapping = array_new(char *, 64);
 
 	// #Node schemas

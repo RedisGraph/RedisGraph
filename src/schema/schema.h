@@ -8,7 +8,7 @@
 
 #include "../redismodule.h"
 #include "../index/index.h"
-#include "../util/triemap/triemap.h"
+#include "../../deps/rax/rax.h"
 #include "../graph/entities/graph_entity.h"
 #include "../../deps/RediSearch/src/redisearch_api.h"
 

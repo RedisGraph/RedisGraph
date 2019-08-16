@@ -10,7 +10,7 @@
 
 OpBase *NewDistinctOp(void) {
 	OpDistinct *self = malloc(sizeof(OpDistinct));
-	self->trie = NewTrieMap();
+	self->found = raxNew();
 
 	OpBase_Init(&self->op);
 	self->op.name = "Distinct";
@@ -31,9 +31,8 @@ Record DistinctConsume(OpBase *opBase) {
 		if(!r) return NULL;
 
 		unsigned long long const hash = Record_Hash64(r);
-		int is_new = TrieMap_Add(self->trie, (char *) &hash, sizeof(hash), NULL, TrieMap_DONT_CARE_REPLACE);
-		if(is_new)
-			return r;
+		int is_new = raxInsert(self->found, (char *) &hash, sizeof(hash), NULL, NULL);
+		if(is_new) return r;
 		Record_Free(r);
 	}
 }
@@ -44,8 +43,8 @@ OpResult DistinctReset(OpBase *ctx) {
 
 void DistinctFree(OpBase *ctx) {
 	OpDistinct *op = (OpDistinct *)ctx;
-	if(op->trie) {
-		TrieMap_Free(op->trie, TrieMap_NOP_CB);
-		op->trie = NULL;
+	if(op->found) {
+		raxFree(op->found);
+		op->found = NULL;
 	}
 }

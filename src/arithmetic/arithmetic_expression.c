@@ -13,7 +13,7 @@
 #include "../graph/graph.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
-#include "../util/triemap/triemap.h"
+#include "../../deps/rax/rax.h"
 #include "../datatypes/temporal_value.h"
 
 #include "assert.h"
@@ -21,7 +21,7 @@
 #include <ctype.h>
 
 /* Arithmetic function repository. */
-static TrieMap *__aeRegisteredFuncs = NULL;
+static rax *__aeRegisteredFuncs = NULL;
 
 static void inline _toLower(const char *str, char *lower, short *lower_len) {
 	size_t str_len = strlen(str);
@@ -45,10 +45,10 @@ static inline int _validate_numeric(const SIValue v) {
 /* Register an arithmetic function. */
 static void _AR_RegFunc(char *func_name, short func_name_len, AR_Func func) {
 	if(__aeRegisteredFuncs == NULL) {
-		__aeRegisteredFuncs = NewTrieMap();
+		__aeRegisteredFuncs = raxNew();
 	}
 
-	TrieMap_Add(__aeRegisteredFuncs, func_name, func_name_len, func, NULL);
+	raxInsert(__aeRegisteredFuncs, (unsigned char *)func_name, func_name_len, func, NULL);
 }
 
 /* Get arithmetic function. */
@@ -56,8 +56,8 @@ static AR_Func _AR_GetFunc(const char *func_name) {
 	char lower_func_name[32] = {0};
 	short lower_func_name_len = 32;
 	_toLower(func_name, &lower_func_name[0], &lower_func_name_len);
-	void *f = TrieMap_Find(__aeRegisteredFuncs, lower_func_name, lower_func_name_len);
-	if(f != TRIEMAP_NOTFOUND) {
+	void *f = raxFind(__aeRegisteredFuncs, (unsigned char *)lower_func_name, lower_func_name_len);
+	if(f != raxNotFound) {
 		return f;
 	}
 	return NULL;
@@ -1129,23 +1129,12 @@ SIValue AR_TIMESTAMP(SIValue *argv, int argc) {
 	return SI_LongVal(TemporalValue_NewTimestamp());
 }
 
-AR_Func AR_GetFunc(char *func_name) {
-	char lower_func_name[32] = {0};
-	short lower_func_name_len = 32;
-	_toLower(func_name, &lower_func_name[0], &lower_func_name_len);
-	void *f = TrieMap_Find(__aeRegisteredFuncs, lower_func_name, lower_func_name_len);
-	if(f != TRIEMAP_NOTFOUND) {
-		return f;
-	}
-	return NULL;
-}
-
 bool AR_FuncExists(const char *func_name) {
 	char lower_func_name[32] = {0};
 	short lower_func_name_len = 32;
 	_toLower(func_name, &lower_func_name[0], &lower_func_name_len);
-	void *f = TrieMap_Find(__aeRegisteredFuncs, lower_func_name, lower_func_name_len);
-	return (f != TRIEMAP_NOTFOUND);
+	void *f = raxFind(__aeRegisteredFuncs, (unsigned char *)lower_func_name, lower_func_name_len);
+	return (f != raxNotFound);
 }
 
 void AR_RegisterFuncs() {

@@ -42,7 +42,7 @@ GraphContext *RdbLoadGraphContext(RedisModuleIO *rdb) {
 	GraphContext *gc = rm_calloc(1, sizeof(GraphContext));
 	// Graph context defaults
 	gc->index_count = 0;
-	gc->attributes = NewTrieMap();
+	gc->attributes = raxNew();
 	gc->string_mapping = array_new(char *, 64);
 	gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 
