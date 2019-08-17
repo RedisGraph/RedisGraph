@@ -8,17 +8,18 @@
 
 #include "execution_plan.h"
 #include "./ops/ops.h"
-#include "../util/rmalloc.h"
 #include "../util/arr.h"
-#include "../util/vector.h"
+#include "../query_ctx.h"
 #include "../util/qsort.h"
+#include "../util/vector.h"
+#include "../util/rmalloc.h"
 #include "../graph/entities/edge.h"
-#include "./optimizations/optimizer.h"
-#include "./optimizations/optimizations.h"
-#include "../arithmetic/algebraic_expression.h"
 #include "../ast/ast_build_ar_exp.h"
+#include "./optimizations/optimizer.h"
 #include "../ast/ast_build_op_contexts.h"
 #include "../ast/ast_build_filter_tree.h"
+#include "./optimizations/optimizations.h"
+#include "../arithmetic/algebraic_expression.h"
 
 // Associate each operation in the chain with the provided RecordMap.
 static void _associateRecordMap(OpBase *root, RecordMap *record_map) {
@@ -255,7 +256,7 @@ static const char **_BuildCallArguments(RecordMap *record_map,
 
 static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segment, QueryGraph *qg,
 													AST *ast, FT_FilterNode *ft, Vector *ops) {
-	GraphContext *gc = GraphContext_GetFromTLS();
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 
 	QueryGraph **connectedComponents = QueryGraph_ConnectedComponents(qg);
 	uint connectedComponentsCount = array_len(connectedComponents);
@@ -802,7 +803,7 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 }
 
 ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet *result_set) {
-	AST *ast = AST_GetFromTLS();
+	AST *ast = QueryCtx_GetAST();
 
 	ExecutionPlan *plan = rm_malloc(sizeof(ExecutionPlan));
 

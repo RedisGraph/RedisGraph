@@ -6,6 +6,7 @@
 
 #include "op_merge.h"
 
+#include "../../query_ctx.h"
 #include "../../schema/schema.h"
 #include "../../arithmetic/arithmetic_expression.h"
 #include <assert.h>
@@ -114,7 +115,7 @@ OpBase *NewMergeOp(ResultSetStatistics *stats, NodeCreateCtx *nodes_to_merge,
 				   EdgeCreateCtx *edges_to_merge) {
 	OpMerge *op_merge = malloc(sizeof(OpMerge));
 	op_merge->stats = stats;
-	op_merge->gc = GraphContext_GetFromTLS();
+	op_merge->gc = QueryCtx_GetGraphCtx();
 	op_merge->matched = false;
 	op_merge->created = false;
 

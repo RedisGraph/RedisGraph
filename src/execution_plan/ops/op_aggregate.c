@@ -7,6 +7,7 @@
 #include "op_aggregate.h"
 #include "op_sort.h"
 #include "../../util/arr.h"
+#include "../../query_ctx.h"
 #include "../../util/rmalloc.h"
 #include "../../grouping/group.h"
 #include "../../arithmetic/aggregate.h"
@@ -240,16 +241,15 @@ static Record _handoff(OpAggregate *op) {
 
 OpBase *NewAggregateOp(AR_ExpNode **exps, uint *modifies) {
 	OpAggregate *aggregate = malloc(sizeof(OpAggregate));
-	AST *ast = AST_GetFromTLS();
-	aggregate->ast = ast;
 	aggregate->exps = exps;
-	aggregate->expression_classification = NULL;
-	aggregate->non_aggregated_expressions = NULL;
 	aggregate->order_exps = NULL;
 	aggregate->group = NULL;
 	aggregate->group_iter = NULL;
 	aggregate->group_keys = NULL;
+	aggregate->ast = QueryCtx_GetAST();
 	aggregate->groups = CacheGroupNew();
+	aggregate->expression_classification = NULL;
+	aggregate->non_aggregated_expressions = NULL;
 
 	OpBase_Init(&aggregate->op);
 	aggregate->op.name = "Aggregate";

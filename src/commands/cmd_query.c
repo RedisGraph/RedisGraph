@@ -6,16 +6,14 @@
 
 #include "cmd_query.h"
 #include "../ast/ast.h"
-#include "cmd_context.h"
 #include "../util/arr.h"
+#include "cmd_context.h"
+#include "../query_ctx.h"
 #include "../graph/graph.h"
-#include "../index/index.h"
 #include "../util/rmalloc.h"
 #include "../util/simple_timer.h"
 #include "../execution_plan/execution_plan.h"
 #include "cypher-parser.h"
-
-extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
 
 void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, const cypher_astnode_t *index_op) {
 	/* Set up nested array response for index creation and deletion,
@@ -70,6 +68,8 @@ void _MGraph_Query(void *args) {
 	ResultSet *result_set = NULL;
 	bool lockAcquired = false;
 	AST *ast = NULL;
+
+	QueryCtx_SetRedisModuleCtx(ctx);
 
 	// Parse the query to construct an AST
 	cypher_parse_result_t *parse_result = cypher_parse(qctx->query, NULL, NULL,

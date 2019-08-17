@@ -6,6 +6,7 @@
 
 #include "op_create.h"
 #include "../../util/arr.h"
+#include "../../query_ctx.h"
 #include "../../schema/schema.h"
 #include <assert.h>
 
@@ -44,10 +45,10 @@ static void _PendingPropertiesFree(PendingProperties *props) {
 
 OpBase *NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
 	OpCreate *op_create = calloc(1, sizeof(OpCreate));
-	op_create->gc = GraphContext_GetFromTLS();
 	op_create->records = NULL;
 	op_create->nodes_to_create = nodes;
 	op_create->edges_to_create = edges;
+	op_create->gc = QueryCtx_GetGraphCtx();
 	op_create->created_nodes = array_new(Node *, 0);
 	op_create->created_edges = array_new(Edge *, 0);
 	op_create->node_properties = array_new(PendingProperties *, 0);

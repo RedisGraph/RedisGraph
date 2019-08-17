@@ -58,6 +58,12 @@ SIValue SI_Edge(void *e) {
 	};
 }
 
+SIValue SI_Error(char *e) {
+	return (SIValue) {
+		.stringval = e, .type = T_ERROR, .allocation = M_CONST
+	};
+}
+
 SIValue SI_DuplicateStringVal(const char *s) {
 	return (SIValue) {
 		.stringval = rm_strdup(s), .type = T_STRING, .allocation = M_SELF
@@ -151,28 +157,8 @@ inline bool SIValue_IsNullPtr(SIValue *v) {
 	return v == NULL || v->type == T_NULL;
 }
 
-const char *SIType_ToString(SIType t) {
-	if(t & T_NULL) {
-		return "Null";
-	} else if(t & T_STRING) {
-		return "String";
-	} else if(t & T_INT64) {
-		return "Integer";
-	} else if(t & T_BOOL) {
-		return "Boolean";
-	} else if(t & T_DOUBLE) {
-		return "Float";
-	} else if(t & T_PTR) {
-		return "Pointer";
-	} else if(t & T_NODE) {
-		return "Node";
-	} else if(t & T_EDGE) {
-		return "Edge";
-	} else if(t & T_ERROR) {
-		return "Error";
-	} else {
-		return "Unknown";
-	}
+inline bool SIValue_IsError(SIValue v) {
+	return v.type == T_ERROR;
 }
 
 int SIValue_ToString(SIValue v, char *buf, size_t len) {

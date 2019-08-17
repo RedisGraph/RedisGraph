@@ -7,6 +7,7 @@
 #include "proc_fulltext_query.h"
 #include "../value.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "../index/index.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
@@ -29,7 +30,7 @@ ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const char **arg
 	if(array_len(args) < 2) return PROCEDURE_ERR;
 
 	ctx->privateData = NULL;
-	GraphContext *gc = GraphContext_GetFromTLS();
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 
 	// See if there's a full-text index for given label.
 	char *err = NULL;

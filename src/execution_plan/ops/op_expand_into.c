@@ -8,6 +8,8 @@
 #include "../../ast/ast.h"
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
+#include "../../query_ctx.h"
+#include "../../util/vector.h"
 #include "../../GraphBLASExt/GxB_Delete.h"
 
 // String representation of operation.

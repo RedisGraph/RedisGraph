@@ -7,6 +7,7 @@
 #include "proc_fulltext_create_index.h"
 #include "../value.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
 #include "../index/index.h"
@@ -25,7 +26,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx, const char *
 	uint fields_count = array_len(args) - 1;
 	const char **fields = args + 1; // Skip index name.
 
-	GraphContext *gc = GraphContext_GetFromTLS();
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Index *idx = GraphContext_GetIndex(gc, label, NULL, IDX_FULLTEXT);
 
 	// Index doesn't exists, create.

@@ -8,6 +8,7 @@
 
 #include "./agg_ctx.h"
 #include "rax.h"
+#include "./func_desc.h"
 #include "../execution_plan/record.h"
 #include "../execution_plan/record_map.h"
 #include "../graph/entities/graph_entity.h"
@@ -38,13 +39,10 @@ typedef enum {
 	AR_EXP_VARIADIC,
 } AR_OperandNodeType;
 
-/* AR_Func - Function pointer to an operation with an arithmetic expression */
-typedef SIValue(*AR_Func)(SIValue *argv, int argc);
-
 /* Op represents an operation applied to child args. */
 typedef struct {
 	union {
-		AR_Func f;
+		AR_FuncDesc *f;
 		AggCtx *agg_func;
 	};                              /* Operation to perform on children. */
 	const char *func_name;          /* Name of function. */
@@ -126,12 +124,6 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp);
 
 /* Constructs string representation of arithmetic expression tree. */
 void AR_EXP_ToString(const AR_ExpNode *root, char **str);
-
-/* Registers all arithmetic functions. */
-void AR_RegisterFuncs();
-
-/* Check to see if function exists. */
-bool AR_FuncExists(const char *func_name);
 
 /* Free arithmetic expression tree. */
 void AR_EXP_Free(AR_ExpNode *root);

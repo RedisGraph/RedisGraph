@@ -13,12 +13,13 @@ extern "C" {
 #include "assert.h"
 #include "../../src/value.h"
 #include "../../src/util/arr.h"
+#include "../../src/query_ctx.h"
 #include "../../src/graph/graph.h"
+#include "../../src/util/rmalloc.h"
 #include "../../src/graph/query_graph.h"
 #include "../../src/graph/graphcontext.h"
 #include "../../src/util/simple_timer.h"
 #include "../../src/arithmetic/algebraic_expression.h"
-#include "../../src/util/rmalloc.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 extern AR_ExpNode **_BuildReturnExpressions(RecordMap *record_map,
@@ -27,9 +28,6 @@ extern AR_ExpNode **_BuildReturnExpressions(RecordMap *record_map,
 #ifdef __cplusplus
 }
 #endif
-
-extern pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
-extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
 
 QueryGraph *qg;
 
@@ -71,8 +69,6 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		_fake_graph_context();
 		_build_graph();
 		_bind_matrices();
-		int error = pthread_key_create(&_tlsASTKey, NULL);
-		ASSERT_EQ(error, 0);
 	}
 
 	static void TearDownTestCase() {
@@ -104,16 +100,15 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		GraphContext_AddSchema(gc, "visit", SCHEMA_EDGE);
 		GraphContext_AddSchema(gc, "war", SCHEMA_EDGE);
 
-		int error = pthread_key_create(&_tlsGCKey, NULL);
-		ASSERT_EQ(error, 0);
-		pthread_setspecific(_tlsGCKey, gc);
+		ASSERT_TRUE(QueryCtx_Init());
+		QueryCtx_SetGraphCtx(gc);
 	}
 
 	/* Create a graph containing:
 	 * Entities: 'people' and 'countries'.
 	 * Relations: 'friend', 'visit' and 'war'. */
 	static void _build_graph() {
-		GraphContext *gc = GraphContext_GetFromTLS();
+		GraphContext *gc = QueryCtx_GetGraphCtx();
 
 		Node n;
 		Graph *g = gc->g;
@@ -158,7 +153,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
 
 	static void _bind_matrices() {
 		int mat_id;
-		GraphContext *gc = GraphContext_GetFromTLS();
+		GraphContext *gc = QueryCtx_GetGraphCtx();
 		Graph *g = gc->g;
 
 		mat_id = GraphContext_GetSchema(gc, "Person", SCHEMA_NODE)->id;
@@ -179,8 +174,13 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		mat_ew = Graph_GetRelationMatrix(g, mat_id);
 	}
 
+	static void _free_fake_graph_context() {
+		GraphContext *gc = QueryCtx_GetGraphCtx();
+		GraphContext_Free(gc);
+	}
+
 	AlgebraicExpression **build_algebraic_expression(const char *query, size_t *exp_count) {
-		GraphContext *gc = GraphContext_GetFromTLS();
+		GraphContext *gc = QueryCtx_GetGraphCtx();
 		cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 		AST *ast = AST_Build(parse_result);
 		QueryGraph *qg = BuildQueryGraph(gc, ast);
@@ -1194,7 +1194,7 @@ TEST_F(AlgebraicExpressionTest, VariableLength) {
 
 TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
 	size_t exp_count = 0;
-	GraphContext *gc = GraphContext_GetFromTLS();
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Graph *g = gc->g;
 
 	const char *q = query_no_intermidate_return_nodes;

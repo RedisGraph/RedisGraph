@@ -7,6 +7,7 @@
 #include "algebraic_expression.h"
 #include "arithmetic_expression.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../algorithms/algorithms.h"
 
@@ -334,7 +335,7 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromNode(QGNode *n
 	op.free = false;
 	op.diagonal = true;
 	op.transpose = false;
-	GraphContext *gc = GraphContext_GetFromTLS();
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	if(n->labelID == GRAPH_UNKNOWN_LABEL) {
 		op.operand = Graph_GetZeroMatrix(gc->g);
 	} else {
@@ -347,7 +348,7 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge(
 	QGEdge *e,
 	bool transpose
 ) {
-	GraphContext *gc = GraphContext_GetFromTLS();
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	AlgebraicExpressionOperand op;
 	bool freeMatrix = false;
 	GrB_Matrix mat;

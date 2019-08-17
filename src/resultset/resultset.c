@@ -7,6 +7,7 @@
 #include "resultset.h"
 #include "../value.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../grouping/group_cache.h"
 #include "../arithmetic/aggregate.h"
@@ -75,7 +76,7 @@ static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
 ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact) {
 	ResultSet *set = rm_malloc(sizeof(ResultSet));
 	set->ctx = ctx;
-	set->gc = GraphContext_GetFromTLS();
+	set->gc = QueryCtx_GetGraphCtx();
 	set->compact = compact;
 	set->formatter = (compact) ? &ResultSetFormatterCompact : &ResultSetFormatterVerbose;
 	set->recordCount = 0;

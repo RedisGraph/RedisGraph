@@ -11,6 +11,7 @@
 #include "assert.h"
 #include "graph_entity.h"
 #include "../graphcontext.h"
+#include "../../query_ctx.h"
 
 Node *Node_New(const char *label) {
 	Node *n = calloc(1, sizeof(Node));
@@ -27,7 +28,7 @@ GrB_Matrix Node_GetMatrix(Node *n) {
 
 	// Retrieve matrix from graph if edge matrix isn't set.
 	if(!n->mat) {
-		GraphContext *gc = GraphContext_GetFromTLS();
+		GraphContext *gc = QueryCtx_GetGraphCtx();
 		Graph *g = gc->g;
 
 		/* Get label matrix:

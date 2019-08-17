@@ -6,6 +6,7 @@
 
 #include "op_node_by_label_scan.h"
 #include "../../ast/ast.h"
+#include "../../query_ctx.h"
 
 int NodeByLabelScanToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const NodeByLabelScan *op = (const NodeByLabelScan *)ctx;
@@ -16,7 +17,7 @@ int NodeByLabelScanToString(const OpBase *ctx, char *buff, uint buff_len) {
 
 OpBase *NewNodeByLabelScanOp(QGNode *node, unsigned int node_idx) {
 	NodeByLabelScan *nodeByLabelScan = malloc(sizeof(NodeByLabelScan));
-	GraphContext *gc = GraphContext_GetFromTLS();
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	nodeByLabelScan->g = gc->g;
 	nodeByLabelScan->node = node;
 	nodeByLabelScan->_zero_matrix = NULL;

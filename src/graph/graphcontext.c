@@ -6,12 +6,12 @@
 
 #include <sys/param.h>
 #include "graphcontext.h"
-#include "serializers/graphcontext_type.h"
 #include "../util/arr.h"
-#include "../util/rmalloc.h"
+#include "../query_ctx.h"
 #include "../redismodule.h"
+#include "../util/rmalloc.h"
+#include "serializers/graphcontext_type.h"
 
-extern pthread_key_t _tlsGCKey;             // Thread local storage graph context key.
 extern pthread_mutex_t _module_mutex;       // Module-level lock (defined in module.c)
 // Global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
@@ -46,7 +46,7 @@ GraphContext *GraphContext_New(RedisModuleCtx *ctx, const char *graphname,
 	gc->string_mapping = array_new(char *, 64);
 	gc->attributes = raxNew();
 
-	assert(pthread_setspecific(_tlsGCKey, gc) == 0);
+	QueryCtx_SetGraphCtx(gc);
 
 	// Set and close GraphContext key in Redis keyspace
 	RedisModule_ModuleTypeSetValue(key, GraphContextRedisModuleType, gc);
@@ -71,17 +71,11 @@ GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname, 
 	// Force GraphBLAS updates and resize matrices to node count by default
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 
-	assert(pthread_setspecific(_tlsGCKey, gc) == 0);
+	QueryCtx_SetGraphCtx(gc);
 
 cleanup:
 	RedisModule_FreeString(ctx, rs_name);
 	RedisModule_CloseKey(key);
-	return gc;
-}
-
-GraphContext *GraphContext_GetFromTLS() {
-	GraphContext *gc = pthread_getspecific(_tlsGCKey);
-	assert(gc);
 	return gc;
 }
 

@@ -7,6 +7,7 @@
 #include "op_project.h"
 #include "op_sort.h"
 #include "../../util/arr.h"
+#include "../../query_ctx.h"
 #include "../../util/rmalloc.h"
 
 static AR_ExpNode **_getOrderExpressions(OpBase *op) {
@@ -23,7 +24,7 @@ static AR_ExpNode **_getOrderExpressions(OpBase *op) {
 }
 
 OpBase *NewProjectOp(AR_ExpNode **exps, uint *modifies) {
-	AST *ast = AST_GetFromTLS();
+	AST *ast = QueryCtx_GetAST();
 	OpProject *project = malloc(sizeof(OpProject));
 	project->ast = ast;
 	project->exps = exps;

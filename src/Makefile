@@ -15,6 +15,7 @@ DEBUGFLAGS = -g -ggdb -O3
 ifeq ($(DEBUG), 1)
 	DEBUGFLAGS = -g -ggdb -O0
 endif
+DEBUGFLAGS = -g -ggdb -O0
 
 # Default CFLAGS
 CFLAGS = \
@@ -39,6 +40,12 @@ SOURCEDIR=$(shell pwd -P)
 CC_SOURCES = $(wildcard $(SOURCEDIR)/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/algorithms/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/time_funcs/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/entity_funcs/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/string_funcs/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/boolean_funcs/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/numeric_funcs/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/conditional_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/bulk_insert/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/commands/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/datatypes/*.c)
