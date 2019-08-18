@@ -36,7 +36,7 @@ SIValue Array_Clone(SIValue siarray) {
 	uint arrayLen = Array_Length(siarray);
 	SIValue newArray = Array_New(arrayLen);
 	for(uint i = 0; i < arrayLen; i++) {
-		Array_Append(newArray, Array_Get(siarray, i));
+		newArray = Array_Append(newArray, Array_Get(siarray, i));
 	}
 	return newArray;
 }
