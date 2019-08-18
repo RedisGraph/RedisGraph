@@ -26,8 +26,9 @@ static void inline _toLower(const char *str, char *lower, short *lower_len) {
 	lower[i] = 0;
 }
 
-AR_FuncDesc *AR_FuncDescNew(AR_Func func, uint argc, SIType *types) {
+AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint argc, SIType *types) {
 	AR_FuncDesc *desc = rm_malloc(sizeof(AR_FuncDesc));
+	desc->name = name;
 	desc->func = func;
 	desc->argc = argc;
 	desc->types = types;
@@ -35,10 +36,10 @@ AR_FuncDesc *AR_FuncDescNew(AR_Func func, uint argc, SIType *types) {
 }
 
 /* Register an arithmetic function. */
-void AR_RegFunc(char *func_name, AR_FuncDesc *func) {
+void AR_RegFunc(AR_FuncDesc *func) {
 	char lower_func_name[32] = {0};
 	short lower_func_name_len = 32;
-	_toLower(func_name, &lower_func_name[0], &lower_func_name_len);
+	_toLower(func->name, &lower_func_name[0], &lower_func_name_len);
 	assert(raxInsert(__aeRegisteredFuncs, (unsigned char *)lower_func_name, lower_func_name_len, func,
 					 NULL) == 1);
 }

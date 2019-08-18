@@ -35,6 +35,8 @@ void ResultSet_BuildColumns(ResultSet *set, AR_ExpNode **projections);
 
 int ResultSet_AddRecord(ResultSet *set, Record r);
 
+void ResultSet_ReportError(ResultSet *set, char *error);
+
 void ResultSet_Replay(ResultSet *set);
 
 void ResultSet_Free(ResultSet *set);

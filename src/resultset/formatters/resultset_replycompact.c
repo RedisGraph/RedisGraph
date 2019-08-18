@@ -19,6 +19,8 @@ static inline PropertyTypeUser _mapValueType(const SIValue v) {
 		return PROPERTY_BOOLEAN;
 	case T_DOUBLE:
 		return PROPERTY_DOUBLE;
+	case T_ERROR:
+		return PROPERTY_ERROR;
 	default:
 		return PROPERTY_UNKNOWN;
 	}
@@ -47,6 +49,9 @@ static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, const SIValu
 		return;
 	case T_NULL:
 		RedisModule_ReplyWithNull(ctx);
+		return;
+	case T_ERROR:
+		RedisModule_ReplyWithError(ctx, v.stringval);
 		return;
 	case T_NODE: // Nodes and edges should always be Record entries at this point
 	case T_EDGE:
@@ -134,9 +139,9 @@ static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
 	_ResultSet_CompactReplyWithProperties(ctx, gc, (GraphEntity *)e);
 }
 
-void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
-								 unsigned int numcols) {
+void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r) {
 	// Prepare return array sized to the number of RETURN entities
+	uint numcols = Record_length(r);
 	RedisModule_ReplyWithArray(ctx, numcols);
 
 	for(uint i = 0; i < numcols; i++) {
@@ -175,6 +180,7 @@ void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns,
 				t = COLUMN_RELATION;
 				break;
 			case REC_TYPE_SCALAR:
+			case REC_TYPE_UNKNOWN:  // Treat unknown as scalar.
 				t = COLUMN_SCALAR;
 				break;
 			default:

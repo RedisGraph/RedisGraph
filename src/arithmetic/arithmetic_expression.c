@@ -166,9 +166,46 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode **root) {
 	}
 }
 
-static bool _AR_EXP_ValidateInvocation(SIValue *argv, uint argc, char **error) {
-	// *error = "Oh No!";
-	// return false;
+static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint argc, char **error) {
+	SIType actual_type;
+	SIType expected_type;
+
+	// Make sure number of arguments is as expected.
+	if(fdesc->argc != VAR_ARG_LEN) {
+		if(fdesc->argc != argc) {
+			asprintf(error, "Too many parameters for function '%s'", fdesc->name);
+			return false;
+		}
+		// Make sure each argument is of the expected type.
+		for(int i = 0; i < argc; i++) {
+			actual_type = SI_TYPE(argv[i]);
+			expected_type = fdesc->types[i];
+
+			if(!(SI_TYPE(argv[i]) & fdesc->types[i])) {
+				const char *actual_type_str = SIType_ToString(actual_type);
+				const char *expected_type_str = SIType_ToString(expected_type);
+				asprintf(error, "Type mismatch: expected %s but was %s ", expected_type_str, actual_type_str);
+				return false;
+			}
+		}
+	} else {
+		/* Function accepts a variable number of arguments.
+		 * the last specified type in fdesc->types is repeatable. */
+		uint expected_types_count = array_len(fdesc->types);
+		for(int i = 0; i < argc; i++) {
+			actual_type = SI_TYPE(argv[i]);
+			if(i < expected_types_count) {
+				expected_type = fdesc->types[i];
+			}
+			if(!(actual_type & expected_type)) {
+				const char *actual_type_str = SIType_ToString(actual_type);
+				const char *expected_type_str = SIType_ToString(expected_type);
+				asprintf(error, "Type mismatch: expected %s but was %s ", expected_type_str, actual_type_str);
+				return false;
+			}
+		}
+	}
+
 	return true;
 }
 
@@ -192,10 +229,13 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 
 			/* Validate before evaluation. */
 			char *error;
-			if(!_AR_EXP_ValidateInvocation(sub_trees, root->op.child_count, &error)) {
-				return SI_Error(error);
+			if(!_AR_EXP_ValidateInvocation(root->op.f, sub_trees, root->op.child_count, &error)) {
+				// Clean up.
+				for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
+					SIValue_Free(sub_trees + child_idx);
+				}
+				pthread_exit(error);
 			}
-
 			/* Evaluate self. */
 			result = root->op.f->func(sub_trees, root->op.child_count);
 			/* Free any SIValues that were allocated while evaluating this tree. */
@@ -213,8 +253,12 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 			if(root->operand.variadic.entity_prop != NULL) {
 				RecordEntryType t = Record_GetType(r, root->operand.variadic.entity_alias_idx);
 				// Property requested on a scalar value.
-				// TODO this should issue a TypeError
-				if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) return SI_NullVal();
+				if(!(t && (REC_TYPE_NODE | REC_TYPE_EDGE))) {
+					char *error;
+					SIValue v = Record_GetScalar(r, root->operand.variadic.entity_alias_idx);
+					asprintf(&error, "Type mismatch: expected a map but was %s", SIType_ToString(SI_TYPE(v)));
+					pthread_exit(error);
+				}
 
 				GraphEntity *ge = Record_GetGraphEntity(r, root->operand.variadic.entity_alias_idx);
 				if(root->operand.variadic.entity_prop_idx == ATTRIBUTE_NOTFOUND) {

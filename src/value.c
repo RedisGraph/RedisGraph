@@ -161,6 +161,30 @@ inline bool SIValue_IsError(SIValue v) {
 	return v.type == T_ERROR;
 }
 
+const char *SIType_ToString(SIType t) {
+	if(t & T_NULL) {
+		return "Null";
+	} else if(t & T_STRING) {
+		return "String";
+	} else if(t & T_INT64) {
+		return "Integer";
+	} else if(t & T_BOOL) {
+		return "Boolean";
+	} else if(t & T_DOUBLE) {
+		return "Float";
+	} else if(t & T_PTR) {
+		return "Pointer";
+	} else if(t & T_NODE) {
+		return "Node";
+	} else if(t & T_EDGE) {
+		return "Edge";
+	} else if(t & T_ERROR) {
+		return "Error";
+	} else {
+		return "Unknown";
+	}
+}
+
 int SIValue_ToString(SIValue v, char *buf, size_t len) {
 	int bytes_written = 0;
 

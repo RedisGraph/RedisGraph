@@ -11,8 +11,7 @@
 #include "../../arithmetic/arithmetic_expression.h"
 #include <assert.h>
 
-static void _AddProperties(OpMerge *op, Record r, GraphEntity *ge,
-						   PropertyMap *props) {
+static void _AddProperties(OpMerge *op, Record r, GraphEntity *ge, PropertyMap *props) {
 	for(int i = 0; i < props->property_count; i++) {
 		SIValue val = AR_EXP_Evaluate(props->values[i], r);
 		GraphEntity_AddProperty(ge, props->keys[i], val);

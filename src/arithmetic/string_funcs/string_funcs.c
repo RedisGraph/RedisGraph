@@ -252,74 +252,74 @@ void Register_StringFuncs() {
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 2);
-	types = array_append(types, (SI_STRING | T_NULL));
+	types = array_append(types, (T_STRING | T_NULL));
 	types = array_append(types, (SI_NUMERIC));
-	func_desc = AR_FuncDescNew(AR_LEFT, 2, types);
-	AR_RegFunc("left", func_desc);
+	func_desc = AR_FuncDescNew("left", AR_LEFT, 2, types);
+	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	types = array_append(types, (SI_STRING | T_NULL));
-	func_desc = AR_FuncDescNew(AR_LTRIM, 1, types);
-	AR_RegFunc("ltrim", func_desc);
+	types = array_append(types, (T_STRING | T_NULL));
+	func_desc = AR_FuncDescNew("ltrim", AR_LTRIM, 1, types);
+	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
-	types = array_append(types, (SI_STRING | T_NULL));
+	types = array_append(types, (T_STRING | T_NULL));
 	types = array_append(types, (SI_NUMERIC));
-	func_desc = AR_FuncDescNew(AR_RIGHT, 2, types);
-	AR_RegFunc("right", func_desc);
+	func_desc = AR_FuncDescNew("right", AR_RIGHT, 2, types);
+	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	types = array_append(types, (SI_STRING | T_NULL));
-	func_desc = AR_FuncDescNew(AR_RTRIM, 1, types);
-	AR_RegFunc("rtrim", func_desc);
+	types = array_append(types, (T_STRING | T_NULL));
+	func_desc = AR_FuncDescNew("rtrim", AR_RTRIM, 1, types);
+	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	types = array_append(types, (SI_STRING | T_NULL));
-	func_desc = AR_FuncDescNew(AR_REVERSE, 1, types);
-	AR_RegFunc("reverse", func_desc);
+	types = array_append(types, (T_STRING | T_NULL));
+	func_desc = AR_FuncDescNew("reverse", AR_REVERSE, 1, types);
+	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
-	types = array_append(types, (SI_STRING | T_NULL));
+	types = array_append(types, (T_STRING | T_NULL));
 	types = array_append(types, T_INT64);
 	types = array_append(types, T_INT64);
-	func_desc = AR_FuncDescNew(AR_SUBSTRING, VAR_ARG_LEN, types);
-	AR_RegFunc("substring", func_desc);
+	func_desc = AR_FuncDescNew("substring", AR_SUBSTRING, VAR_ARG_LEN, types);
+	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	types = array_append(types, (SI_STRING | T_NULL));
-	func_desc = AR_FuncDescNew(AR_TOLOWER, 1, types);
-	AR_RegFunc("tolower", func_desc);
+	types = array_append(types, (T_STRING | T_NULL));
+	func_desc = AR_FuncDescNew("tolower", AR_TOLOWER, 1, types);
+	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	types = array_append(types, (SI_STRING | T_NULL));
-	func_desc = AR_FuncDescNew(AR_TOUPPER, 1, types);
-	AR_RegFunc("toupper", func_desc);
+	types = array_append(types, (T_STRING | T_NULL));
+	func_desc = AR_FuncDescNew("toupper", AR_TOUPPER, 1, types);
+	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	types = array_append(types, (SI_STRING | T_NULL));
-	func_desc = AR_FuncDescNew(AR_TOSTRING, 1, types);
-	AR_RegFunc("tostring", func_desc);
+	types = array_append(types, SI_ALL);
+	func_desc = AR_FuncDescNew("tostring", AR_TOSTRING, 1, types);
+	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	types = array_append(types, (SI_STRING | T_NULL));
-	func_desc = AR_FuncDescNew(AR_TRIM, 2, types);
-	AR_RegFunc("trim", func_desc);
+	types = array_append(types, (T_STRING | T_NULL));
+	func_desc = AR_FuncDescNew("trim", AR_TRIM, 2, types);
+	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
-	types = array_append(types, (SI_STRING | T_NULL));
-	types = array_append(types, SI_STRING);
-	func_desc = AR_FuncDescNew(AR_CONTAINS, 2, types);
-	AR_RegFunc("contains", func_desc);
+	types = array_append(types, (T_STRING | T_NULL));
+	types = array_append(types, (T_STRING | T_NULL));
+	func_desc = AR_FuncDescNew("contains", AR_CONTAINS, 2, types);
+	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
-	types = array_append(types, (SI_STRING | T_NULL));
-	types = array_append(types, SI_STRING);
-	func_desc = AR_FuncDescNew(AR_STARTSWITH, 2, types);
-	AR_RegFunc("starts with", func_desc);
+	types = array_append(types, (T_STRING | T_NULL));
+	types = array_append(types, (T_STRING | T_NULL));
+	func_desc = AR_FuncDescNew("starts with", AR_STARTSWITH, 2, types);
+	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
-	types = array_append(types, (SI_STRING | T_NULL));
-	types = array_append(types, SI_STRING);
-	func_desc = AR_FuncDescNew(AR_ENDSWITH, 2, types);
-	AR_RegFunc("ends with", func_desc);
+	types = array_append(types, (T_STRING | T_NULL));
+	types = array_append(types, (T_STRING | T_NULL));
+	func_desc = AR_FuncDescNew("ends with", AR_ENDSWITH, 2, types);
+	AR_RegFunc(func_desc);
 }

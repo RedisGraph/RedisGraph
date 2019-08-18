@@ -25,14 +25,14 @@ typedef enum {
 	PROPERTY_INTEGER = 3,
 	PROPERTY_BOOLEAN = 4,
 	PROPERTY_DOUBLE = 5,
+    PROPERTY_ERROR = 6,
 } PropertyTypeUser;
 
 // Typedef for header formatters.
 typedef void (*EmitHeaderFunc)(RedisModuleCtx *ctx, const char **columns, const Record r);
 
 // Typedef for record formatters.
-typedef void (*EmitRecordFunc)(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
-							   unsigned int numcols);
+typedef void (*EmitRecordFunc)(RedisModuleCtx *ctx, GraphContext *gc, const Record r);
 
 typedef struct {
 	EmitRecordFunc EmitRecord;

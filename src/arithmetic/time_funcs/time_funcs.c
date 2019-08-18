@@ -20,6 +20,6 @@ void Register_TimeFuncs() {
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 0);
-	func_desc = AR_FuncDescNew(AR_TIMESTAMP, 0, types);
-	AR_RegFunc("timestamp", func_desc);
+	func_desc = AR_FuncDescNew("timestamp", AR_TIMESTAMP, 0, types);
+	AR_RegFunc(func_desc);
 }

@@ -31,6 +31,9 @@ static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, const SIValu
 		return;
 	case T_NODE: // Nodes and edges should always be Record entries at this point
 	case T_EDGE:
+	case T_ERROR:
+		RedisModule_ReplyWithError(ctx, v.stringval);
+		return;
 	default:
 		assert("Unhandled value type" && false);
 	}
@@ -132,9 +135,9 @@ static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
 	_ResultSet_VerboseReplyWithProperties(ctx, gc, (GraphEntity *)e);
 }
 
-void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
-								 unsigned int numcols) {
+void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r) {
 	// Prepare return array sized to the number of RETURN entities
+	uint numcols = Record_length(r);
 	RedisModule_ReplyWithArray(ctx, numcols);
 
 	for(int i = 0; i < numcols; i++) {

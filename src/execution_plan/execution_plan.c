@@ -929,13 +929,46 @@ void ExecutionPlanInit(ExecutionPlan *plan) {
 	}
 }
 
+typedef struct {
+	AST *ast;
+	GraphContext *gc;
+	ExecutionPlan *plan;
+	RedisModuleCtx *redis_ctx;
+} ExecPlanInvokeCtx;
+
+void *_ExecutionPlan_ExecuteInBG(void *arg) {
+	Record r;
+
+	// Setup thread local storage.
+	ExecPlanInvokeCtx *ctx = (ExecPlanInvokeCtx *)arg;
+	AST *ast = ctx->ast;
+	GraphContext *gc = ctx->gc;
+	ExecutionPlan *plan = ctx->plan;
+	RedisModuleCtx *redis_ctx = ctx->redis_ctx;
+
+	QueryCtx_SetAST(ast);
+	QueryCtx_SetGraphCtx(gc);
+	QueryCtx_SetRedisModuleCtx(redis_ctx);
+
+	while((r = OpBase_Consume(plan->root)) != NULL) Record_Free(r);
+
+	return NULL;
+}
 
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
-	Record r;
-	OpBase *op = plan->root;
+	char *err = NULL;
+	pthread_t pthread;
+
+	AST *ast = QueryCtx_GetAST();
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	RedisModuleCtx *redis_ctx = QueryCtx_GetRedisModuleCtx();
+	ExecPlanInvokeCtx ctx = {ast, gc, plan, redis_ctx};
 
 	ExecutionPlanInit(plan);
-	while((r = OpBase_Consume(op)) != NULL) Record_Free(r);
+	pthread_create(&pthread, NULL, _ExecutionPlan_ExecuteInBG, &ctx);
+	pthread_join(pthread, (void **)&err);
+
+	if(err) ResultSet_ReportError(plan->result_set, err);
 	return plan->result_set;
 }
 

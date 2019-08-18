@@ -101,7 +101,6 @@ void _CreateNodes(OpCreate *op, Record r) {
 
 		/* Save properties to insert with node. */
 		op->node_properties = array_append(op->node_properties, converted_properties);
-
 	}
 }
 

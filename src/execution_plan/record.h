@@ -11,6 +11,8 @@
 #include "../graph/entities/node.h"
 #include "../graph/entities/edge.h"
 
+#include <sys/types.h>
+
 typedef enum  {
 	REC_TYPE_UNKNOWN = 0,
 	REC_TYPE_SCALAR,
@@ -41,6 +43,10 @@ Record Record_Clone(const Record r);
 
 // Extends record to accommodate 'len' entries.
 void Record_Extend(Record *r, int len);
+
+// Removes last `count` elements from record.
+// TODO: Remove this functions once hash like records are introduced.
+void Record_Truncate(Record r, uint count);
 
 // Merge record b into a, sharing any nested references in b with a.
 void Record_Merge(Record *a, const Record b);

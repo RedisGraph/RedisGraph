@@ -67,7 +67,6 @@ SIValue AR_GT(SIValue *argv, int argc) {
 
 	switch(SI_TYPE(a)) {
 	case T_STRING:
-	case T_CONSTSTRING:
 		return SI_BoolVal(SIValue_Compare(a, b) > 0);
 	case T_INT64:
 	case T_DOUBLE:
@@ -89,7 +88,6 @@ SIValue AR_GE(SIValue *argv, int argc) {
 
 	switch(SI_TYPE(a)) {
 	case T_STRING:
-	case T_CONSTSTRING:
 		return SI_BoolVal(SIValue_Compare(a, b) >= 0);
 	case T_INT64:
 	case T_DOUBLE:
@@ -111,7 +109,6 @@ SIValue AR_LT(SIValue *argv, int argc) {
 
 	switch(SI_TYPE(a)) {
 	case T_STRING:
-	case T_CONSTSTRING:
 		return SI_BoolVal(SIValue_Compare(a, b) < 0);
 	case T_INT64:
 	case T_DOUBLE:
@@ -133,7 +130,6 @@ SIValue AR_LE(SIValue *argv, int argc) {
 
 	switch(SI_TYPE(a)) {
 	case T_STRING:
-	case T_CONSTSTRING:
 		return SI_BoolVal(SIValue_Compare(a, b) <= 0);
 	case T_INT64:
 	case T_DOUBLE:
@@ -155,7 +151,6 @@ SIValue AR_EQ(SIValue *argv, int argc) {
 
 	switch(SI_TYPE(a)) {
 	case T_STRING:
-	case T_CONSTSTRING:
 		return SI_BoolVal(SIValue_Compare(a, b) == 0);
 	case T_INT64:
 	case T_DOUBLE:
@@ -177,7 +172,6 @@ SIValue AR_NE(SIValue *argv, int argc) {
 
 	switch(SI_TYPE(a)) {
 	case T_STRING:
-	case T_CONSTSTRING:
 		return SI_BoolVal(SIValue_Compare(a, b) != 0);
 	case T_INT64:
 	case T_DOUBLE:
@@ -193,51 +187,57 @@ void Register_BooleanFuncs() {
 
 	types = array_new(SIType, 1);
 	types = array_append(types, T_BOOL);
-	func_desc = AR_FuncDescNew(AR_AND, VAR_ARG_LEN, types);
-	AR_RegFunc("and", func_desc);
+	func_desc = AR_FuncDescNew("and", AR_AND, VAR_ARG_LEN, types);
+	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, T_BOOL);
-	func_desc = AR_FuncDescNew(AR_OR, VAR_ARG_LEN, types);
-	AR_RegFunc("or", func_desc);
+	func_desc = AR_FuncDescNew("or", AR_OR, VAR_ARG_LEN, types);
+	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, T_BOOL);
-	func_desc = AR_FuncDescNew(AR_XOR, VAR_ARG_LEN, types);
-	AR_RegFunc("xor", func_desc);
+	func_desc = AR_FuncDescNew("xor", AR_XOR, VAR_ARG_LEN, types);
+	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	types = array_append(types, T_BOOL);
-	func_desc = AR_FuncDescNew(AR_NOT, VAR_ARG_LEN, types);
-	AR_RegFunc("not", func_desc);
+	types = array_append(types, T_BOOL | T_NULL);
+	func_desc = AR_FuncDescNew("not", AR_NOT, VAR_ARG_LEN, types);
+	AR_RegFunc(func_desc);
 
-	types = array_new(SIType, 1);
-	types = array_append(types, T_BOOL);
-	func_desc = AR_FuncDescNew(AR_GT, VAR_ARG_LEN, types);
-	AR_RegFunc("gt", func_desc);
+	types = array_new(SIType, 2);
+	types = array_append(types, SI_ALL);
+	types = array_append(types, SI_ALL);
+	func_desc = AR_FuncDescNew("gt", AR_GT, 2, types);
+	AR_RegFunc(func_desc);
 
-	types = array_new(SIType, 1);
-	types = array_append(types, T_BOOL);
-	func_desc = AR_FuncDescNew(AR_GE, VAR_ARG_LEN, types);
-	AR_RegFunc("ge", func_desc);
+	types = array_new(SIType, 2);
+	types = array_append(types, SI_ALL);
+	types = array_append(types, SI_ALL);
+	func_desc = AR_FuncDescNew("ge", AR_GE, 2, types);
+	AR_RegFunc(func_desc);
 
-	types = array_new(SIType, 1);
-	types = array_append(types, T_BOOL);
-	func_desc = AR_FuncDescNew(AR_LT, VAR_ARG_LEN, types);
-	AR_RegFunc("lt", func_desc);
+	types = array_new(SIType, 2);
+	types = array_append(types, SI_ALL);
+	types = array_append(types, SI_ALL);
+	func_desc = AR_FuncDescNew("lt", AR_LT, 2, types);
+	AR_RegFunc(func_desc);
 
-	types = array_new(SIType, 1);
-	types = array_append(types, T_BOOL);
-	func_desc = AR_FuncDescNew(AR_LE, VAR_ARG_LEN, types);
-	AR_RegFunc("le", func_desc);
+	types = array_new(SIType, 2);
+	types = array_append(types, SI_ALL);
+	types = array_append(types, SI_ALL);
+	func_desc = AR_FuncDescNew("le", AR_LE, 2, types);
+	AR_RegFunc(func_desc);
 
-	types = array_new(SIType, 1);
-	types = array_append(types, T_BOOL);
-	func_desc = AR_FuncDescNew(AR_EQ, VAR_ARG_LEN, types);
-	AR_RegFunc("eq", func_desc);
+	types = array_new(SIType, 2);
+	types = array_append(types, SI_ALL);
+	types = array_append(types, SI_ALL);
+	func_desc = AR_FuncDescNew("eq", AR_EQ, 2, types);
+	AR_RegFunc(func_desc);
 
-	types = array_new(SIType, 1);
-	types = array_append(types, T_BOOL);
-	func_desc = AR_FuncDescNew(AR_NE, VAR_ARG_LEN, types);
-	AR_RegFunc("neq", func_desc);
+	types = array_new(SIType, 2);
+	types = array_append(types, SI_ALL);
+	types = array_append(types, SI_ALL);
+	func_desc = AR_FuncDescNew("neq", AR_NE, 2, types);
+	AR_RegFunc(func_desc);
 }

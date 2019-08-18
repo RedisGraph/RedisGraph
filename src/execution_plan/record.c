@@ -45,6 +45,21 @@ void Record_Extend(Record *r, int len) {
 	*r = header + 1;
 }
 
+void Record_Truncate(Record r, uint count) {
+	int original_len = Record_length(r);
+	if(count > original_len) count = original_len;
+	if(count == 0) return;
+
+	for(unsigned int i = 0; i < count; i++) {
+		if(r[original_len - 1 - i].type == REC_TYPE_SCALAR) {
+			SIValue_Free(&r[i].value.s);
+		}
+	}
+
+	Record header = RECORD_HEADER(r);
+	header->value.s.longval = original_len - count;
+}
+
 unsigned int Record_length(const Record r) {
 	Entry header = RECORD_HEADER_ENTRY(r);
 	int recordLength = header.value.s.longval;

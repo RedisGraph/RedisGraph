@@ -57,7 +57,7 @@ void Register_ConditionalFuncs() {
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 1);
-	types = array_append(types, T_NULL | SI_NUMERIC | SI_STRING | T_BOOL | T_NODE | T_EDGE);
-	func_desc = AR_FuncDescNew(AR_CASEWHEN, VAR_ARG_LEN, types);
-	AR_RegFunc("case", func_desc);
+	types = array_append(types, SI_ALL);
+	func_desc = AR_FuncDescNew("case", AR_CASEWHEN, VAR_ARG_LEN, types);
+	AR_RegFunc(func_desc);
 }

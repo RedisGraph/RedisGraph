@@ -15,15 +15,16 @@
 typedef SIValue(*AR_Func)(SIValue *argv, int argc);
 
 typedef struct {
-    AR_Func func;
-    uint argc;      // Number of arguments function expects
-    SIType *types;  // Types of arguments.
+    uint argc;          // Number of arguments function expects
+    AR_Func func;       // Function pointer.
+    SIType *types;      // Types of arguments.
+    const char* name;   // Function name.
 } AR_FuncDesc;
 
-AR_FuncDesc *AR_FuncDescNew(AR_Func func, uint argc, SIType *types);
+AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint argc, SIType *types);
 
 /* Register arithmetic function to repository. */
-void AR_RegFunc(char *func_name, AR_FuncDesc *func);
+void AR_RegFunc(AR_FuncDesc *func);
 
 /* Retrieves an arithmetic function by its name. */
 AR_FuncDesc *AR_GetFunc(const char *func_name);

@@ -7,6 +7,5 @@
 #pragma once
 
 // Formatter for compact (client-parsed) replies
-void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
-								 unsigned int numcols);
+void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r);
 void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns, const Record r);

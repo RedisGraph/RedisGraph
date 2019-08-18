@@ -7,6 +7,7 @@ import assertions
 import graphs
 
 resultset = None
+exception = None
 
 @given(u'the binary-tree-1 graph')
 def step_impl(context):
@@ -27,32 +28,67 @@ def step_impl(context):
 @given(u'having executed')
 def step_impl(context):
     global resultset
+    global exception
+
     query = context.text
-    resultset = graphs.query(query)
+    try:
+        exception = None
+        resultset = graphs.query(query)
+    except Exception as error:
+        resultset = None
+        exception = error
 
 @when(u'having executed')
 def step_impl(context):
     global resultset
+    global exception
+
     query = context.text
-    resultset = graphs.query(query)
+    try:
+        exception = None
+        resultset = graphs.query(query)
+    except Exception as error:
+        resultset = None
+        exception = error
 
 @then(u'having executed')
 def step_impl(context):
     global resultset
+    global exception
+
     query = context.text
-    resultset = graphs.query(query)
+    try:
+        exception = None
+        resultset = graphs.query(query)
+    except Exception as error:
+        resultset = None
+        exception = error
 
 @when(u'executing control query')
 def step_impl(context):
     global resultset
+    global exception
+
     query = context.text
-    resultset = graphs.query(query)
+    try:
+        exception = None
+        resultset = graphs.query(query)
+    except Exception as error:
+        resultset = None
+        exception = error
 
 @when(u'executing query')
 def step_impl(context):
     global resultset
+    global exception
+
     query = context.text
-    resultset = graphs.query(query)
+    try:
+        exception = None
+        resultset = graphs.query(query)
+    except Exception as error:
+        resultset = None
+        exception = error
 
 @then(u'the result should be empty')
 def step_impl(context):
@@ -84,3 +120,8 @@ def step_impl(context):
     expected_length = len(context.table.rows)
     assertions.assert_resultset_length(resultset, expected_length)
     assertions.assert_resultsets_equals_in_order(resultset, context.table)
+
+@then(u'a TypeError should be raised at runtime: PropertyAccessOnNonMap')
+def step_impl(context):
+    global exception
+    assert exception != None
