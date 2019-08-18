@@ -60,6 +60,45 @@ int _RegisterDataTypes(RedisModuleCtx *ctx) {
 	return REDISMODULE_OK;
 }
 
+static void RG_ForkPrepare() {
+	/* Assuming BGSave called, Acquire write lock
+	 * make sure we're not in the middel of writing,
+	 * this is accomplished by acquiring the write-lock:
+	 * 1. write-lock is already taken, we'll wait until writer finishes and releases the lock
+	 * 2. no write in progress, we'll simply acquire an unlocked lock and release it soon enough. */
+
+	// Acquire write lock on each graph object.
+	// TODO: Need to get a hold of each graph object.
+	/* for(int i = 0; i < graphs; i++) {
+	    Graph_AcquireWriteLock(gc->g);
+	} */
+}
+
+static void RG_AfterForkParent() {
+	/* Release write lock on Redis parent process. */
+	// Release write lock on each graph object.
+	// TODO: Need to get a hold of each graph object.
+	/* for(int i = 0; i < graphs; i++) {
+	    Graph_ReleaseLock(gc->g);
+	} */
+}
+
+static void RG_AfterForkChild() {
+	/* In child process
+	 * Release lock inherited from parent, we're not required to hold any locks
+	 * in the child process. */
+
+	// Release write lock on each graph object.
+	// TODO: Need to get a hold of each graph object.
+	/* for(int i = 0; i < graphs; i++) {
+	    Graph_ReleaseLock(gc->g);
+	} */
+}
+
+static void RegisterForkHooks() {
+	assert(pthread_atfork(RG_ForkPrepare, RG_AfterForkParent, RG_AfterForkChild) == 0);
+}
+
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	/* TODO: when module unloads call GrB_finalize. */
 	assert(GrB_init(GrB_NONBLOCKING) == GrB_SUCCESS);
@@ -83,10 +122,11 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	Proc_Register();            // Register procedures.
-	AR_RegisterFuncs();         // Register arithmetic functions.
-	Agg_RegisterFuncs();        // Register aggregation functions.
-	CypherWhitelist_Build();    // Build whitelist of supported Cypher elements.
+	Proc_Register();
+	AR_RegisterFuncs();      // Register arithmetic functions.
+	Agg_RegisterFuncs();     // Register aggregation functions.
+	RegisterForkHooks();
+	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
 
 	if(!_Setup_ThreadLocalStorage()) return REDISMODULE_ERR;
 
