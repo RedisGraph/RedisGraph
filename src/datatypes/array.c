@@ -1,14 +1,12 @@
 #include "array.h"
 #include "../util/arr.h"
+#include <limits.h>
 
-SIValue Array_New(u_int64_t initialCapacity) {
-
+SIValue Array_New(u_int32_t initialCapacity) {
 	SIValue siarray;
 	siarray.array = array_new(SIValue, initialCapacity);
 	siarray.type = T_ARRAY;
 	siarray.allocation = M_SELF;
-	// add a ref counter hidden from the user
-	siarray = Array_Append(siarray, SI_LongVal(1));
 	return siarray;
 }
 
@@ -21,24 +19,26 @@ SIValue Array_Append(SIValue siarray, SIValue value) {
 	return siarray;
 }
 
-SIValue Array_Get(SIValue siarray, u_int64_t index) {
+SIValue Array_Get(SIValue siarray, u_int32_t index) {
 	// check index
 	if(index < 0 || index >= Array_Length(siarray))
 		return SI_NullVal();
 	// return value, offset from the ref counter
-	return SI_Clone(siarray.array[index + 1]);
+	return SI_MakeVolatile(siarray.array[index]);
 }
 
 u_int32_t Array_Length(SIValue siarray) {
 	// return the length without the ref counter
-	return array_len(siarray.array) - 1 ;
+	return array_len(siarray.array);
 }
 
 SIValue Array_Clone(SIValue siarray) {
-	// increase ref counter
-	SIValue refCounter = siarray.array[0];
-	siarray.array[0] = SI_LongVal(refCounter.longval + 1);
-	return siarray;
+	uint arrayLen = Array_Length(siarray);
+	SIValue newArray = Array_New(arrayLen);
+	for(uint i = 0; i < arrayLen; i++) {
+		Array_Append(newArray, Array_Get(siarray, i));
+	}
+	return newArray;
 }
 
 int Array_ToString(SIValue list, char *buf, size_t len) {
@@ -78,16 +78,10 @@ int Array_ToString(SIValue list, char *buf, size_t len) {
 }
 
 void Array_Free(SIValue siarray) {
-	// decrease ref counter
-	SIValue refCounter = siarray.array[0];
-	siarray.array[0] = SI_LongVal(refCounter.longval - 1);
-	// if last one - free all members and underlying array
-	if(siarray.array[0].longval == 0) {
-		uint arrayLen = Array_Length(siarray);
-		for(uint i = 0; i < arrayLen; i++) {
-			SIValue value = Array_Get(siarray, i);
-			SIValue_Free(&value);
-		}
-		array_free(siarray.array);
+	uint arrayLen = Array_Length(siarray);
+	for(uint i = 0; i < arrayLen; i++) {
+		SIValue value = Array_Get(siarray, i);
+		SIValue_Free(&value);
 	}
+	array_free(siarray.array);
 }

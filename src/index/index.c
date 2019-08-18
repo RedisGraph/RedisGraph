@@ -64,7 +64,7 @@ static void _populateIndex
 
 SIValue *cloneKey(SIValue *property) {
 	SIValue *clone = rm_malloc(sizeof(SIValue));
-	*clone = SI_CopyValue(*property);
+	*clone = SI_Clone(*property);
 	return clone;
 }
 

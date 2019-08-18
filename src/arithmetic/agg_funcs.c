@@ -440,7 +440,7 @@ int __agg_collectStep(AggCtx *ctx, SIValue *argv, int argc) {
 int __agg_collectReduceNext(AggCtx *ctx) {
 	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
 
-	Agg_SetResult(ctx, ac->list);
+	Agg_SetResult(ctx, SI_MakeVolatile(ac->list));
 	return AGG_OK;
 }
 
