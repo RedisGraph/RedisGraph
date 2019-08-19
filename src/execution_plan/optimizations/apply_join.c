@@ -13,7 +13,10 @@
 
 // Tests to see if given filter can act as a join condition.
 static bool _applicableFilter(const FT_FilterNode *f) {
-	return (f->t == FT_N_PRED && f->pred.op == OP_EQUAL);
+	return (f->t == FT_N_PRED && f->pred.op == OP_EQUAL &&
+			// TODO allowing AR_ExpNodes containing graph entities currently causes memory errors
+			f->pred.lhs->type == AR_EXP_OPERAND &&
+			f->pred.lhs->operand.type == AR_EXP_CONSTANT);
 }
 
 // Collects all consecutive filters beneath given op.

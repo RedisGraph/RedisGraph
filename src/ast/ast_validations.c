@@ -1078,10 +1078,10 @@ static AST_Validation _Validate_Aliases_DefinedInScope(const AST *ast, uint star
 
 	// See that each referred identifier is defined.
 	while(raxNext(&it)) {
-		size_t len = it.key_len;
+		int len = it.key_len;
 		unsigned char *alias = it.key;
 		if(raxFind(defined_aliases, alias, len) == raxNotFound) {
-			asprintf(undefined_alias, "%s not defined", alias);
+			asprintf(undefined_alias, "%.*s not defined", len, alias);
 			res = AST_INVALID;
 			break;
 		}
