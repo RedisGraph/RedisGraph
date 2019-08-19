@@ -40,7 +40,7 @@ ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const char **arg
 	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(s == NULL) return PROCEDURE_OK;
 	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
-	if(!idx) return PROCEDURE_OK;
+	if(!idx) return PROCEDURE_ERR; // TODO this should cause an error to be emitted.
 
 	QueryNodeContext *pdata = rm_malloc(sizeof(QueryNodeContext));
 	pdata->idx = idx;
@@ -60,7 +60,7 @@ ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const char **arg
 }
 
 SIValue *Proc_FulltextQueryNodeStep(ProcedureCtx *ctx) {
-	assert(ctx->privateData);
+	if(!ctx->privateData) return NULL; // No index was attached to this procedure.
 
 	QueryNodeContext *pdata = (QueryNodeContext *)ctx->privateData;
 	if(!pdata || !pdata->iter) return NULL;

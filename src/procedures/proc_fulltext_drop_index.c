@@ -11,11 +11,11 @@
 #include "../graph/graphcontext.h"
 
 //------------------------------------------------------------------------------
-// fulltext createNodeIndex
+// fulltext dropNodeIndex
 //------------------------------------------------------------------------------
 
-// CALL db.index.fulltext.drop(label)
-// CALL db.index.fulltext.drop('books')
+// CALL db.idx.fulltext.drop(label)
+// CALL db.idx.fulltext.drop('books')
 
 ProcedureResult Proc_FulltextDropIndexInvoke(ProcedureCtx *ctx, const char **args) {
 	if(array_len(args) != 1) return PROCEDURE_ERR;
@@ -43,7 +43,7 @@ ProcedureResult Proc_FulltextDropIndexFree(ProcedureCtx *ctx) {
 ProcedureCtx *Proc_FulltextDropIdxGen() {
 	void *privateData = NULL;
 	ProcedureOutput **output = array_new(ProcedureOutput *, 0);
-	ProcedureCtx *ctx = ProcCtxNew("db.index.fulltext.drop",
+	ProcedureCtx *ctx = ProcCtxNew("db.idx.fulltext.drop",
 								   1,
 								   output,
 								   Proc_FulltextDropIndexStep,
