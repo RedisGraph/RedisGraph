@@ -10,24 +10,31 @@
 #include "../../../util/rmalloc.h"
 
 void RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
-    /* Format:
-     * id
-     * name
-     * #indicies M
-     * (indicies) X M */
+	/* Format:
+	 * id
+	 * name
+	 * exact-match index exists (boolean)
+	 *   exact-match index
+	 * fulltext index exists (boolean)
+	 *   fulltext index */
 
-    // Schema ID.
-    RedisModule_SaveUnsigned(rdb, s->id);
+	// Schema ID.
+	RedisModule_SaveUnsigned(rdb, s->id);
 
-    // Schema name.
-    RedisModule_SaveStringBuffer(rdb, s->name, strlen(s->name) + 1);
+	// Schema name.
+	RedisModule_SaveStringBuffer(rdb, s->name, strlen(s->name) + 1);
 
-    // Number of indicies.
-    RedisModule_SaveUnsigned(rdb, Schema_IndexCount(s));
+	// Boolean marking presence of an exact-match index.
+	bool exact_index_exists = s->index != NULL;
+	RedisModule_SaveUnsigned(rdb, exact_index_exists);
 
-    // Exact match index.
-    if(s->index) RdbSaveIndex(rdb, s->index);
-    
-    // Fulltext index.
-    if(s->fulltextIdx) RdbSaveIndex(rdb, s->fulltextIdx);
+	// Exact match index.
+	if(exact_index_exists) RdbSaveIndex(rdb, s->index);
+
+	// Boolean marking presence of a full-text index.
+	bool ft_index_exists = s->fulltextIdx != NULL;
+	RedisModule_SaveUnsigned(rdb, ft_index_exists);
+
+	// Fulltext index.
+	if(ft_index_exists) RdbSaveIndex(rdb, s->fulltextIdx);
 }

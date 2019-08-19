@@ -23,7 +23,7 @@ typedef struct {
 	char **fields;              // Indexed fields.
 	Attribute_ID *fields_ids;   // Indexed field IDs.
 	uint fields_count;          // Number of fields.
-	RSIndex *idx;               // RediSearch full-text index.
+	RSIndex *idx;               // RediSearch index.
 	IndexType type;             // Index type exact-match / fulltext.
 } Index;
 

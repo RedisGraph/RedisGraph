@@ -35,9 +35,6 @@ const char *Schema_GetName(const Schema *s);
 /* Returns true if schema has either a full-text or exact-match index. */
 bool Schema_HasIndices(const Schema *s);
 
-/* Returns number of indices in schema. */
-unsigned short Schema_IndexCount(const Schema *s);
-
 /* Retrieves index from attribute. 
  * Returns NULL if index wasn't found. */
 Index* Schema_GetIndex(const Schema *s, const char *field, IndexType type);
