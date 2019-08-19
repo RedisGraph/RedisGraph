@@ -233,7 +233,7 @@ GRAPH.QUERY DEMO_GRAPH "MATCH (p:person) RETURN p ORDER BY p.name SKIP 100 LIMIT
 
 #### LIMIT
 
-Although not mandatory, you can use the limit clause 
+Although not mandatory, you can use the limit clause
 to limit the number of records returned by a query:
 
 ```sh
@@ -475,12 +475,14 @@ GRAPH.QUERY social "CALL db.labels() YIELD label"
 
 YIELD modifiers are only required if explicitly specified; by default the value in the 'Yields' column will be emitted automatically.
 
-|Procedure | Yields | Description|
-| -------  |:-------|:-----------|
-|db.labels() | `label` | Yields all node labels in the graph. |
-|db.relationshipTypes() | `relationshipType` | Yields all relationship types in the graph. |
-|db.propertyKeys() | `propertyKey` | Yields all property keys in the graph. |
-
+|Procedure | Arguments | Yields | Description|
+| -------  |:-------|:-------|:-----------|
+|db.labels() | none | `label` | Yields all node labels in the graph. |
+|db.relationshipTypes() | none | `relationshipType` | Yields all relationship types in the graph. |
+|db.propertyKeys() | none | `propertyKey` | Yields all property keys in the graph. |
+|db.idx.fulltext.createNodeIndex | `label`, `property` [, `property` ...] | none | Builds a full-text searchable index on a label and the 1 or more specified properties. |
+|db.idx.fulltext.drop | `label` | none | Deletes the full-text index associated with the given label. |
+|db.idx.fulltext.queryNodes | `label`, `string` | `node` | Retrieve all nodes that contain the specified string in the full-text indexes on the given label. |
 
 ## Indexing
 RedisGraph supports single-property indexes for node labels.
@@ -490,12 +492,13 @@ The creation syntax is:
 GRAPH.QUERY DEMO_GRAPH "CREATE INDEX ON :person(age)"
 ```
 
-After an index is explicitly created, it will automatically be used by queries that explicitly reference that label and property in a filter.
+After an index is explicitly created, it will automatically be used by queries that reference that label and any indexed property in a filter.
 
 ```sh
 GRAPH.EXPLAIN G "MATCH (p:person) WHERE p.age > 80 RETURN p"
-Produce Results
-    Index Scan
+1) "Results"
+2) "    Project"
+3) "        Index Scan | (p:person)"
 ```
 
 This can significantly improve the runtime of queries with very specific filters. An index on `:employer(name)`, for example, will dramatically benefit the query:
@@ -505,10 +508,63 @@ GRAPH.QUERY DEMO_GRAPH
 "MATCH (:employer {name: 'Dunder Mifflin'})-[:employs]->(p:person) RETURN p"
 ```
 
+RedisGraph can use multiple indexes as ad-hoc composite indexes at query time. For example, if `age` and `years_employed` are both indexed, then both indexes will be utilized in the query:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (p:person) WHERE p.age < 30 OR p.years_employed < 3 RETURN p"
+```
+
 Individual indexes can be deleted using the matching syntax:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH "DROP INDEX ON :person(age)"
+```
+
+## Full-text indexes
+
+RedisGraph leverages the indexing capabilities of RediSearch to provide full-text indexes through procedure calls. To construct a full-text index on the `title` property of all nodes with label `movie`, use the syntax:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('movie', 'title')"
+```
+
+(More properties can be added to this index by adding their names to the above set of arguments, or using this syntax again with the additional names.)
+
+Now this index can be invoked to match any whole words contained within:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"CALL db.idx.fulltext.queryNodes('movie', 'Book') YIELD node RETURN node.title"
+1) 1) "node.title"
+2) 1) 1) "The Jungle Book"
+   2) 1) "The Book of Life"
+3) 1) "Query internal execution time: 0.927409 milliseconds"
+```
+
+This CALL clause can be interleaved with other Cypher clauses to perform more elaborate manipulations:
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"CALL db.idx.fulltext.queryNodes('movie', 'Book') YIELD node AS m
+WHERE m.genre = 'Adventure'
+RETURN m ORDER BY m.rating"
+1) 1) "m"
+2) 1) 1) 1) 1) "id"
+            2) (integer) 1168
+         2) 1) "labels"
+            2) 1) "movie"
+         3) 1) "properties"
+            2) 1) 1) "genre"
+                  2) "Adventure"
+               2) 1) "rating"
+                  2) "7.6"
+               3) 1) "votes"
+                  2) (integer) 151342
+               4) 1) "year"
+                  2) (integer) 2016
+               5) 1) "title"
+                  2) "The Jungle Book"
+3) 1) "Query internal execution time: 0.226914 milliseconds"
 ```
 
 ## GRAPH.DELETE

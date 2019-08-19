@@ -58,12 +58,14 @@ UNWIND [1,2,3] AS value WITH value MATCH (b) WHERE b.val = value RETURN b
 
 One way in which RedisGraph will optimize queries is by introducing index scans when a filter is specified on an indexed label-property pair.
 
-The current index implementation, however, does not handle `<>` (NOT) and `OR` filters.
+The current index implementation, however, does not handle not-equal (`<>`) filters.
 
 To profile a query and see whether index optimizations have been introduced, use the `GRAPH.EXPLAIN` endpoint:
 
 ```sh
 $ redis-cli GRAPH.EXPLAIN social "MATCH (p:person) WHERE p.id < 5 RETURN p"
-"Results\n    Project\n        Index Scan\n"
+1) "Results"
+2) "    Project"
+3) "        Index Scan | (p:person)"
 ```
 
