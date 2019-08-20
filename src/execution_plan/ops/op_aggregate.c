@@ -191,8 +191,7 @@ static void _aggregateRecord(OpAggregate *op, Record r) {
 static Record _handoff(OpAggregate *op) {
 	char *key;
 	Group *group;
-	if(!op->iter_initialized) return NULL;
-	if(!CacheGroupIterNext(&op->groupIter, &key, &group)) return NULL;
+	if(!CacheGroupIterNext(op->group_iter, &key, &group)) return NULL;
 
 	uint exp_count = array_len(op->exps);
 	uint order_exp_count = array_len(op->order_exps);
@@ -244,7 +243,7 @@ OpBase *NewAggregateOp(AR_ExpNode **exps, uint *modifies) {
 	aggregate->non_aggregated_expressions = NULL;
 	aggregate->order_exps = NULL;
 	aggregate->group = NULL;
-	aggregate->iter_initialized = false;
+	aggregate->group_iter = NULL;
 	aggregate->group_keys = NULL;
 	aggregate->groups = CacheGroupNew();
 
@@ -280,13 +279,12 @@ Record AggregateConsume(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
 	OpBase *child = op->op.children[0];
 
-	if(op->iter_initialized) return _handoff(op);
+	if(op->group_iter) return _handoff(op);
 
 	Record r;
 	while((r = OpBase_Consume(child))) _aggregateRecord(op, r);
 
-	CacheGroupIter(op->groups, &op->groupIter);
-	op->iter_initialized = true;
+	op->group_iter = CacheGroupIter(op->groups);
 	return _handoff(op);
 }
 
@@ -296,9 +294,9 @@ OpResult AggregateReset(OpBase *opBase) {
 	FreeGroupCache(op->groups);
 	op->groups = CacheGroupNew();
 
-	if(op->iter_initialized) {
-		CacheGroupIterator_Free(&op->groupIter);
-		op->iter_initialized = false;
+	if(op->group_iter) {
+		CacheGroupIterator_Free(op->group_iter);
+		op->group_iter = NULL;
 	}
 
 	return OP_OK;
@@ -313,9 +311,9 @@ void AggregateFree(OpBase *opBase) {
 		op->group_keys = NULL;
 	}
 
-	if(op->iter_initialized) {
-		CacheGroupIterator_Free(&op->groupIter);
-		op->iter_initialized = false;
+	if(op->group_iter) {
+		CacheGroupIterator_Free(op->group_iter);
+		op->group_iter = NULL;
 	}
 
 	if(op->expression_classification) {

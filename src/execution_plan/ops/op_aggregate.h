@@ -33,8 +33,7 @@ typedef struct {
 	Group *group;                                  /* Last accessed group. */
 	rax *groups;
 	SIValue *group_keys;                           /* Array of values composing an aggregated group. */
-	CacheGroupIterator groupIter;
-	bool iter_initialized;
+	CacheGroupIterator *group_iter;
 	Record last_record;
 } OpAggregate;
 

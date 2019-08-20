@@ -24,7 +24,7 @@ Group *CacheGroupGet(CacheGroup *groups, char *key);
 void FreeGroupCache(CacheGroup *groups);
 
 // Populates an iterator to scan group cache
-void CacheGroupIter(CacheGroup *groups, CacheGroupIterator *iter);
+CacheGroupIterator *CacheGroupIter(CacheGroup *groups);
 
 // Advance iterator and returns key & value in current position.
 int CacheGroupIterNext(CacheGroupIterator *iter, char **key, Group **group);

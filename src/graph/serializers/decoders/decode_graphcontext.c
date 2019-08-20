@@ -50,7 +50,7 @@ GraphContext *RdbLoadGraphContext(RedisModuleIO *rdb) {
 	assert(pthread_setspecific(_tlsGCKey, gc) == 0);
 
 	// Graph name
-	gc->graph_name = rm_strdup(RedisModule_LoadStringBuffer(rdb, NULL));
+	gc->graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
 
 	// Attributes, Load the full attribute mapping.
 	_RdbLoadAttributeKeys(rdb, gc);

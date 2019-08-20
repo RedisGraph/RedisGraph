@@ -5,6 +5,7 @@
 */
 
 #include "group_cache.h"
+#include "../util/rmalloc.h"
 
 CacheGroup *CacheGroupNew() {
 	return raxNew();
@@ -27,9 +28,13 @@ void FreeGroupCache(CacheGroup *groups) {
 }
 
 // Populates an iterator to scan entire group cache
-void CacheGroupIter(CacheGroup *groups, CacheGroupIterator *iter) {
+CacheGroupIterator *CacheGroupIter(CacheGroup *groups) {
+	CacheGroupIterator *iter = rm_malloc(sizeof(CacheGroupIterator));
+
 	raxStart(iter, groups);
-	raxSeek(iter, ">=", (unsigned char *)"", 0);
+	raxSeek(iter, "^", NULL, 0);
+
+	return iter;
 }
 
 // Advance iterator and returns key & value in current position.
@@ -44,5 +49,7 @@ int CacheGroupIterNext(CacheGroupIterator *iter, char **key, Group **group) {
 }
 
 void CacheGroupIterator_Free(CacheGroupIterator *iter) {
-	if(iter) raxStop(iter);
+	if(iter == NULL) return;
+	raxStop(iter);
+	rm_free(iter);
 }
