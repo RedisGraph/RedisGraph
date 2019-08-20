@@ -13,12 +13,9 @@
 #include "../arithmetic/arithmetic_expression.h"
 #include <assert.h>
 
-/* Forward declarations */
-static void _CollectIdentifiers(const cypher_astnode_t *root, rax *projections);
-
-static void _prepareIterator(rax *map, raxIterator *iter) {
+inline static void _prepareIterateAll(rax *map, raxIterator *iter) {
 	raxStart(iter, map);
-	raxSeek(iter, ">=", (unsigned char *)"", 0);
+	raxSeek(iter, "^", NULL, 0);
 }
 
 // Validate that an input string can be completely converted to a positive integer in range.
@@ -158,7 +155,7 @@ static AST_Validation _ValidateReferredFunctions(rax *referred_functions, char *
 	AST_Validation res = AST_VALID;
 	char funcName[32];
 	raxIterator it;
-	_prepareIterator(referred_functions, &it);
+	_prepareIterateAll(referred_functions, &it);
 	*reason = NULL;
 
 	// TODO: return RAX.
@@ -487,7 +484,7 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast, char **reason) {
 			// Make sure procedure is aware of each output.
 			char output[256];
 			raxIterator it;
-			_prepareIterator(identifiers, &it);
+			_prepareIterateAll(identifiers, &it);
 
 			while(raxNext(&it)) {
 				size_t len = it.key_len;
@@ -1074,7 +1071,7 @@ static AST_Validation _Validate_Aliases_DefinedInScope(const AST *ast, uint star
 	}
 
 	raxIterator it;
-	_prepareIterator(referred_identifiers, &it);
+	_prepareIterateAll(referred_identifiers, &it);
 
 	// See that each referred identifier is defined.
 	while(raxNext(&it)) {
