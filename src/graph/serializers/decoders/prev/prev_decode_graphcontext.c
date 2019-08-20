@@ -39,8 +39,8 @@ void PrevRdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 		char *rm_attr = RedisModule_LoadStringBuffer(rdb, &len);
 
 		if(len >= buflen) {
-			// Double the attribute buffer length when encountering strings that would exceed it.
-			buflen *= 2;
+			// Extend the attribute buffer length when encountering strings that would exceed it.
+			buflen = len + 1;
 			attr_buf = rm_realloc(attr_buf, buflen);
 		}
 

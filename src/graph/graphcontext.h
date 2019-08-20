@@ -17,7 +17,7 @@ typedef struct {
 	char *graph_name;                 // String associated with graph
 	Graph *g;                         // Container for all matrices and entity properties
 
-	rax *attributes;              // From strings to attribute IDs
+	rax *attributes;                  // From strings to attribute IDs
 	char **string_mapping;            // From attribute IDs to strings
 
 	Schema **node_schemas;            // Array of schemas for each node label

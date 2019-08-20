@@ -135,6 +135,47 @@ int AR_EXP_GetOperandType(AR_ExpNode *exp) {
 	return -1;
 }
 
+/* Compact tree by evaluating constant expressions
+ * e.g. MINUS(X) where X is a constant number will be reduced to
+ * a single node with the value -X
+ * PLUS(MINUS(A), B) will be reduced to a single constant: B-A. */
+int AR_EXP_ReduceToScalar(AR_ExpNode **root) {
+	if((*root)->type == AR_EXP_OPERAND) {
+		if((*root)->operand.type == AR_EXP_CONSTANT) {
+			// Root is already a constant
+			return 1;
+		}
+		// Root is variadic, no way to reduce.
+		return 0;
+	} else {
+		// root represents an operation.
+		assert((*root)->type == AR_EXP_OP);
+
+		if((*root)->op.type == AR_OP_FUNC) {
+			/* See if we're able to reduce each child of root
+			 * if so we'll be able to reduce root. */
+			bool reduce_children = true;
+			for(int i = 0; i < (*root)->op.child_count; i++) {
+				if(!AR_EXP_ReduceToScalar((*root)->op.children + i)) {
+					reduce_children = false;
+					break;
+				}
+			}
+			// Can't reduce root as one of its children is not a constant.
+			if(!reduce_children) return 0;
+
+			// All child nodes are constants, reduce.
+			SIValue v = AR_EXP_Evaluate(*root, NULL);
+			AR_EXP_Free(*root);
+			*root = AR_EXP_NewConstOperandNode(v);
+			return 1;
+		}
+
+		// Root is an aggregation function, can't reduce.
+		return 0;
+	}
+}
+
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 	SIValue result;
 	if(root->type == AR_EXP_OP) {

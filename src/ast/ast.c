@@ -16,9 +16,9 @@
 extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
 
 // TODO duplicated logic, find shared place for it
-static void _prepareIterator(rax *map, raxIterator *iter) {
+static inline void _prepareIterateAll(rax *map, raxIterator *iter) {
 	raxStart(iter, map);
-	raxSeek(iter, ">=", (unsigned char *)"", 0);
+	raxSeek(iter, "^", NULL, 0);
 }
 
 // Note each function call within given expression
@@ -256,7 +256,7 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 
 	char funcName[32];
 	raxIterator it;
-	_prepareIterator(referred_funcs, &it);
+	_prepareIterateAll(referred_funcs, &it);
 	while(raxNext(&it)) {
 		size_t len = it.key_len;
 		assert(len < 32);
