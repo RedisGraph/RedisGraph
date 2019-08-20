@@ -5,24 +5,25 @@
 */
 
 #include "decode_schema.h"
-#include "decode_index.h"
 
 Schema *RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 	/* Format:
 	 * id
 	 * name
-	 * #index types
-	 * (indices) X M */
+	 * #indices
+	 * (index type, indexed property) X M */
 
 	int id = RedisModule_LoadUnsigned(rdb);
 	char *name = RedisModule_LoadStringBuffer(rdb, NULL);
 	Schema *s = Schema_New(name, id);
 
-	uint index_type_count = RedisModule_LoadUnsigned(rdb);
-	for(uint i = 0; i < index_type_count; i++) {
-		Index *idx = RdbLoadIndex(rdb);
-		if(idx->type == IDX_EXACT_MATCH) s->index = idx;
-		else s->fulltextIdx = idx;
+	Index *idx = NULL;
+	uint index_count = RedisModule_LoadUnsigned(rdb);
+	for(uint i = 0; i < index_count; i++) {
+		IndexType type = RedisModule_LoadUnsigned(rdb);
+		char *field = RedisModule_LoadStringBuffer(rdb, NULL);
+
+		Schema_AddIndex(&idx, s, field, type);
 	}
 
 	return s;

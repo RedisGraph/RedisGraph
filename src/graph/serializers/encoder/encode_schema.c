@@ -5,16 +5,26 @@
 */
 
 #include "encode_schema.h"
-#include "encode_index.h"
 #include "../../../util/arr.h"
 #include "../../../util/rmalloc.h"
+
+static inline void _RdbSaveIndexData(RedisModuleIO *rdb, Index *idx) {
+	if(!idx) return;
+
+	for(uint i = 0; i < idx->fields_count; i++) {
+		// Index type
+		RedisModule_SaveUnsigned(rdb, idx->type);
+		// Indexed property
+		RedisModule_SaveStringBuffer(rdb, idx->fields[i], strlen(idx->fields[i]) + 1);
+	}
+}
 
 void RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
 	/* Format:
 	 * id
 	 * name
-	 * #index types
-	 * (indices) X M */
+	 * #indices
+	 * (index type, indexed property) X M */
 
 	// Schema ID.
 	RedisModule_SaveUnsigned(rdb, s->id);
@@ -22,13 +32,12 @@ void RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
 	// Schema name.
 	RedisModule_SaveStringBuffer(rdb, s->name, strlen(s->name) + 1);
 
-	// We have at most 2 index types, if the schema includes both exact-match and full-text indices.
-	uint index_type_count = (s->index != NULL) + (s->fulltextIdx != NULL);
-	RedisModule_SaveUnsigned(rdb, index_type_count);
+	// Number of indices.
+	RedisModule_SaveUnsigned(rdb, Schema_IndexCount(s));
 
-	// Exact match index.
-	if(s->index) RdbSaveIndex(rdb, s->index);
+	// Exact match indices.
+	_RdbSaveIndexData(rdb, s->index);
 
-	// Fulltext index.
-	if(s->fulltextIdx) RdbSaveIndex(rdb, s->fulltextIdx);
+	// Fulltext indices.
+	_RdbSaveIndexData(rdb, s->fulltextIdx);
 }

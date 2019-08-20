@@ -29,6 +29,16 @@ bool Schema_HasIndices(const Schema *s) {
 	return (s->fulltextIdx || s->index);
 }
 
+unsigned short Schema_IndexCount(const Schema *s) {
+	assert(s);
+	unsigned short n = 0;
+
+	if(s->index) n += Index_FieldsCount(s->index);
+	if(s->fulltextIdx) n += Index_FieldsCount(s->fulltextIdx);
+
+	return n;
+}
+
 Index *Schema_GetIndex(const Schema *s, const char *field, IndexType type) {
 	Index *idx = NULL;
 
