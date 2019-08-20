@@ -81,9 +81,13 @@ SIValue SI_DuplicateStringVal(const char *s); // Duplicate and ultimately free t
 SIValue SI_ConstStringVal(char *s); // Neither duplicate nor assume ownership of input string
 SIValue SI_TransferStringVal(char *s);  // Don't duplicate input string, but assume ownership
 
-/* Functions to copy an SIValue. */
-SIValue SI_Clone(SIValue v);    // If input is a string type, duplicate and assume ownership
-SIValue SI_ShallowCopy(SIValue v);  // Don't duplicate any inputs
+/* Functions for copying and guaranteeing memory safety for SIValues. */
+// SI_ShareValue creates an SIValue that shares all of the original's allocations.
+SIValue SI_ShareValue(const SIValue v);
+// SI_CloneValue creates an SIValue that duplicates all of the original's allocations.
+SIValue SI_CloneValue(const SIValue v);
+// SIValue_Persist updates an SIValue to duplicate any allocations that may go out of scope in the lifetime of this query.
+void SIValue_Persist(SIValue *v);
 
 int SIValue_IsNull(SIValue v);
 int SIValue_IsNullPtr(SIValue *v);
@@ -122,10 +126,6 @@ int SIValue_Compare(const SIValue a, const SIValue b);
  * to Cypher's comparability property if applicable, and its orderability property if not.
  * Under Cypher's orderability, where string < boolean < numeric < NULL. */
 int SIValue_Order(const SIValue a, const SIValue b);
-
-/* If an SIValue holds a pointer to a volatile memory region, copy that memory
- * so that it is held by the SIValue. */
-void SIValue_Persist(SIValue *v);
 
 /* Free an SIValue's internal property if that property is a heap allocation owned
  * by this object. */

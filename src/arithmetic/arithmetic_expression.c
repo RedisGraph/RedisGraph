@@ -183,7 +183,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 		 * TODO: verify above statement. */
 		if(root->op.type == AR_OP_AGGREGATE) {
 			AggCtx *agg = root->op.agg_func;
-			result = agg->result;
+			result = SI_ShareValue(agg->result);
 		} else {
 			/* Evaluate each child before evaluating current node. */
 			SIValue sub_trees[root->op.child_count];
@@ -196,7 +196,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 	} else {
 		/* Deal with a constant node. */
 		if(root->operand.type == AR_EXP_CONSTANT) {
-			result = root->operand.constant;
+			result = SI_ShareValue(root->operand.constant);
 		} else {
 			// Fetch entity property value.
 			if(root->operand.variadic.entity_prop != NULL) {
@@ -211,7 +211,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 				}
 				SIValue *property = GraphEntity_GetProperty(ge, root->operand.variadic.entity_prop_idx);
 				if(property == PROPERTY_NOTFOUND) result = SI_NullVal();
-				else result = SI_ShallowCopy(*property);
+				else result = SI_ShareValue(*property);
 			} else {
 				// Alias doesn't necessarily refers to a graph entity,
 				// it could also be a constant.
