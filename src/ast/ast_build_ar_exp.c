@@ -248,7 +248,7 @@ static AR_ExpNode *_AR_EXP_FromCaseExpression(RecordMap *record_map, const cyphe
 	return op;
 }
 
-AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
+AR_ExpNode *_AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
 	const cypher_astnode_type_t type = cypher_astnode_type(expr);
 
 	/* Function invocations */
@@ -302,4 +302,10 @@ AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t 
 
 	assert(false);
 	return NULL;
+}
+
+AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
+	AR_ExpNode *root = _AR_EXP_FromExpression(record_map, expr);
+	AR_EXP_ReduceToScalar(&root);
+	return root;
 }
