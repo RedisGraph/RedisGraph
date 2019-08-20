@@ -127,7 +127,7 @@ void Record_Add(Record r, int idx, SIValue v) {
 }
 
 void Record_AddScalar(Record r, int idx, SIValue v) {
-	r[idx].value.s = SI_ShareValue(v);
+	r[idx].value.s = v;
 	r[idx].type = REC_TYPE_SCALAR;
 }
 

@@ -79,6 +79,8 @@ Record ProjectConsume(OpBase *opBase) {
 	int rec_idx = 0;
 	for(unsigned short i = 0; i < op->exp_count; i++) {
 		SIValue v = AR_EXP_Evaluate(op->exps[i], r);
+		// Persisting a value is only necessary here if it belongs to the Record 'r'; can be improved.
+		SIValue_Persist(&v);
 		Record_Add(projection, rec_idx, v);
 		rec_idx++;
 	}
@@ -86,6 +88,8 @@ Record ProjectConsume(OpBase *opBase) {
 	// Project Order expressions.
 	for(unsigned short i = 0; i < op->order_exp_count; i++) {
 		SIValue v = AR_EXP_Evaluate(op->order_exps[i], r);
+		// Persisting a value is only necessary here if it belongs to the Record 'r'; can be improved.
+		SIValue_Persist(&v);
 		Record_Add(projection, rec_idx, v);
 		rec_idx++;
 	}

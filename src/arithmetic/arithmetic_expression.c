@@ -183,6 +183,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 		 * TODO: verify above statement. */
 		if(root->op.type == AR_OP_AGGREGATE) {
 			AggCtx *agg = root->op.agg_func;
+			// The AggCtx will ultimately free its result.
 			result = SI_ShareValue(agg->result);
 		} else {
 			/* Evaluate each child before evaluating current node. */
@@ -196,6 +197,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 	} else {
 		/* Deal with a constant node. */
 		if(root->operand.type == AR_EXP_CONSTANT) {
+			// The value is constant or has been computed elsewhere, and is shared with the caller.
 			result = SI_ShareValue(root->operand.constant);
 		} else {
 			// Fetch entity property value.
@@ -210,13 +212,18 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 					_AR_EXP_UpdatePropIdx(root, r);
 				}
 				SIValue *property = GraphEntity_GetProperty(ge, root->operand.variadic.entity_prop_idx);
-				if(property == PROPERTY_NOTFOUND) result = SI_NullVal();
-				else result = SI_ShareValue(*property);
+				if(property == PROPERTY_NOTFOUND) {
+					result = SI_NullVal();
+				} else {
+					// The value belongs to a graph property and is shared with the caller.
+					result = SI_ShareValue(*property);
+				}
 			} else {
 				// Alias doesn't necessarily refers to a graph entity,
 				// it could also be a constant.
 				int aliasIdx = root->operand.variadic.entity_alias_idx;
-				result = Record_Get(r, aliasIdx);
+				// The value was not created here; share with the caller.
+				result = SI_ShareValue(Record_Get(r, aliasIdx));
 			}
 		}
 	}

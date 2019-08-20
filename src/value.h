@@ -84,8 +84,10 @@ SIValue SI_TransferStringVal(char *s);  // Don't duplicate input string, but ass
 /* Functions for copying and guaranteeing memory safety for SIValues. */
 // SI_ShareValue creates an SIValue that shares all of the original's allocations.
 SIValue SI_ShareValue(const SIValue v);
+
 // SI_CloneValue creates an SIValue that duplicates all of the original's allocations.
 SIValue SI_CloneValue(const SIValue v);
+
 // SIValue_Persist updates an SIValue to duplicate any allocations that may go out of scope in the lifetime of this query.
 void SIValue_Persist(SIValue *v);
 
