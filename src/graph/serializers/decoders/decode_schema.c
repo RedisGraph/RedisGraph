@@ -11,20 +11,19 @@ Schema *RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 	/* Format:
 	 * id
 	 * name
-	 * exact-match index exists (boolean)
-	 *   exact-match index
-	 * fulltext index exists (boolean)
-	 *   fulltext index */
+	 * #index types
+	 * (indices) X M */
 
 	int id = RedisModule_LoadUnsigned(rdb);
 	char *name = RedisModule_LoadStringBuffer(rdb, NULL);
 	Schema *s = Schema_New(name, id);
 
-	bool exact_index_exists = RedisModule_LoadUnsigned(rdb);
-	if(exact_index_exists) s->index = RdbLoadIndex(rdb);
-
-	bool ft_index_exists = RedisModule_LoadUnsigned(rdb);
-	if(ft_index_exists) s->fulltextIdx = RdbLoadIndex(rdb);
+	uint index_type_count = RedisModule_LoadUnsigned(rdb);
+	for(uint i = 0; i < index_type_count; i++) {
+		Index *idx = RdbLoadIndex(rdb);
+		if(idx->type == IDX_EXACT_MATCH) s->index = idx;
+		else s->fulltextIdx = idx;
+	}
 
 	return s;
 }

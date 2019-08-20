@@ -13,10 +13,8 @@ void RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
 	/* Format:
 	 * id
 	 * name
-	 * exact-match index exists (boolean)
-	 *   exact-match index
-	 * fulltext index exists (boolean)
-	 *   fulltext index */
+	 * #index types
+	 * (indices) X M */
 
 	// Schema ID.
 	RedisModule_SaveUnsigned(rdb, s->id);
@@ -24,17 +22,13 @@ void RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
 	// Schema name.
 	RedisModule_SaveStringBuffer(rdb, s->name, strlen(s->name) + 1);
 
-	// Boolean marking presence of an exact-match index.
-	bool exact_index_exists = s->index != NULL;
-	RedisModule_SaveUnsigned(rdb, exact_index_exists);
+	// We have at most 2 index types, if the schema includes both exact-match and full-text indices.
+	uint index_type_count = (s->index != NULL) + (s->fulltextIdx != NULL);
+	RedisModule_SaveUnsigned(rdb, index_type_count);
 
 	// Exact match index.
-	if(exact_index_exists) RdbSaveIndex(rdb, s->index);
-
-	// Boolean marking presence of a full-text index.
-	bool ft_index_exists = s->fulltextIdx != NULL;
-	RedisModule_SaveUnsigned(rdb, ft_index_exists);
+	if(s->index) RdbSaveIndex(rdb, s->index);
 
 	// Fulltext index.
-	if(ft_index_exists) RdbSaveIndex(rdb, s->fulltextIdx);
+	if(s->fulltextIdx) RdbSaveIndex(rdb, s->fulltextIdx);
 }
