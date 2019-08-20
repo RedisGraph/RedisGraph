@@ -78,7 +78,6 @@ GraphContext *RdbLoadGraphContext(RedisModuleIO *rdb) {
 	// Graph object.
 	RdbLoadGraph(rdb, gc);
 
-	// TODO: Populate indicies.
 	uint node_schemas_count = array_len(gc->node_schemas);
 	for(uint i = 0; i < node_schemas_count; i++) {
 		Schema *s = gc->node_schemas[i];

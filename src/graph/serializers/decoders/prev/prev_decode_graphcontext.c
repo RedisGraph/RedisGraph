@@ -123,8 +123,8 @@ GraphContext *PrevRdbLoadGraphContext(RedisModuleIO *rdb) {
 
 	/* Build indices
 	 * only node schemas have indices. */
-	unsigned short indices_count = GraphContext_SchemaCount(gc, SCHEMA_NODE);
-	for(unsigned short i = 0; i < indices_count; i++) {
+	schema_count = GraphContext_SchemaCount(gc, SCHEMA_NODE);
+	for(unsigned short i = 0; i < schema_count; i++) {
 		Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
 		assert(s);
 		Index *idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
