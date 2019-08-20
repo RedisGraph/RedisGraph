@@ -2,6 +2,7 @@
 #define SRC_REDISEARCH_API_H_
 
 #include "redismodule.h"
+#include <limits.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -16,7 +17,9 @@ extern "C" {
 #endif
 
 typedef struct IndexSpec RSIndex;
-typedef struct FieldSpec RSField;
+typedef size_t RSFieldID;
+#define RSFIELD_INVALID SIZE_MAX
+
 typedef struct Document RSDoc;
 typedef struct RSQueryNode RSQNode;
 typedef struct RS_ApiIter RSResultsIterator;
@@ -64,7 +67,7 @@ MODULE_API_FUNC(int, RediSearch_GetCApiVersion)();
 #define RSIDXOPT_DOCTBLSIZE_UNLIMITED 0x01
 
 #define GC_POLICY_NONE -1
-#define GC_POLICY_FORK 1
+#define GC_POLICY_FORK 0
 
 struct RSIdxOptions {
   RSGetValueCallback gvcb;
@@ -103,7 +106,7 @@ MODULE_API_FUNC(void, RediSearch_DropIndex)(RSIndex*);
  *  This also indicates the default indexing settings if not otherwise specified
  * @param fopt a mask of RSFieldOptions
  */
-MODULE_API_FUNC(RSField*, RediSearch_CreateField)
+MODULE_API_FUNC(RSFieldID, RediSearch_CreateField)
 (RSIndex* idx, const char* name, unsigned ftype, unsigned fopt);
 
 #define RediSearch_CreateNumericField(idx, name) \
@@ -115,12 +118,13 @@ MODULE_API_FUNC(RSField*, RediSearch_CreateField)
 #define RediSearch_CreateGeoField(idx, name) \
   RediSearch_CreateField(idx, name, RSFLDTYPE_GEO, RSFLDOPT_NONE)
 
-MODULE_API_FUNC(void, RediSearch_TextFieldSetWeight)(RSIndex* sp, RSField* fs, double w);
-MODULE_API_FUNC(void, RediSearch_TagSetSeparator)(RSField* fs, char sep);
-MODULE_API_FUNC(void, RediSearch_TagCaseSensitive)(RSField* fs, int enable);
+MODULE_API_FUNC(void, RediSearch_TextFieldSetWeight)(RSIndex* sp, RSFieldID fs, double w);
+MODULE_API_FUNC(void, RediSearch_TagFieldSetSeparator)(RSIndex* sp, RSFieldID fs, char sep);
+MODULE_API_FUNC(void, RediSearch_TagFieldSetCaseSensitive)(RSIndex* sp, RSFieldID fs, int enable);
 
 MODULE_API_FUNC(RSDoc*, RediSearch_CreateDocument)
 (const void* docKey, size_t len, double score, const char* lang);
+MODULE_API_FUNC(void, RediSearch_FreeDocument)(RSDoc* doc);
 #define RediSearch_CreateDocumentSimple(s) RediSearch_CreateDocument(s, strlen(s), 1.0, NULL)
 
 MODULE_API_FUNC(int, RediSearch_DeleteDocument)(RSIndex* sp, const void* docKey, size_t len);
@@ -131,10 +135,10 @@ MODULE_API_FUNC(int, RediSearch_DeleteDocument)(RSIndex* sp, const void* docKey,
  * @param fieldName the name of the field
  * @param s the contents of the field to be added (if numeric, the string representation)
  * @param indexAsTypes the types the field should be indexed as. Should be a
- *  bitmask of RSFieldType
+ *  bitmask of RSFieldType.
  */
 MODULE_API_FUNC(void, RediSearch_DocumentAddField)
-(RSDoc* d, const char* fieldName, RedisModuleString* s, unsigned indexAsTypes);
+(RSDoc* d, const char* fieldName, RedisModuleString* s, RedisModuleCtx* ctx, unsigned indexAsTypes);
 
 MODULE_API_FUNC(void, RediSearch_DocumentAddFieldString)
 (RSDoc* d, const char* fieldName, const char* s, size_t n, unsigned indexAsTypes);

@@ -14,6 +14,7 @@
 #include "redis_index.h"
 #include "indexer.h"
 #include "alias.h"
+#include "module.h"
 
 void (*IndexSpec_OnCreate)(const IndexSpec *) = NULL;
 const char *(*IndexAlias_GetUserTableName)(RedisModuleCtx *, const char *) = NULL;
@@ -483,10 +484,11 @@ IndexSpec *IndexSpec_Parse(const char *name, const char **argv, int argc, QueryE
   spec->timeout = timeout;
 
   if (AC_IsInitialized(&acStopwords)) {
+    if (spec->stopwords) {
+      StopWordList_Unref(spec->stopwords);
+    }
     spec->stopwords = NewStopWordListCStr((const char **)acStopwords.objs, acStopwords.argc);
     spec->flags |= Index_HasCustomStopwords;
-  } else {
-    spec->stopwords = DefaultStopWordList();
   }
 
   if (!AC_AdvanceIfMatch(&ac, SPEC_SCHEMA_STR)) {
@@ -669,16 +671,12 @@ static void IndexSpec_FreeInternals(IndexSpec *spec) {
       IndexSpecFmtStrings *fmts = spec->indexStrs + ii;
       for (size_t jj = 0; jj < INDEXFLD_NUM_TYPES; ++jj) {
         if (fmts->types[jj]) {
-          RedisModule_FreeString(spec->strCtx, fmts->types[jj]);
+          RedisModule_FreeString(RSDummyContext, fmts->types[jj]);
         }
       }
     }
     rm_free(spec->indexStrs);
   }
-  if (spec->strCtx) {
-    RedisModule_FreeThreadSafeContext(spec->strCtx);
-  }
-
   if (spec->fields != NULL) {
     for (size_t i = 0; i < spec->numFields; i++) {
       rm_free(spec->fields[i].name);
@@ -829,14 +827,13 @@ RedisModuleString *IndexSpec_GetFormattedKey(IndexSpec *sp, const FieldSpec *fs,
                                              FieldType forType) {
   if (!sp->indexStrs) {
     sp->indexStrs = rm_calloc(SPEC_MAX_FIELDS, sizeof(*sp->indexStrs));
-    sp->strCtx = RedisModule_GetThreadSafeContext(NULL);
   }
 
   size_t typeix = INDEXTYPE_TO_POS(forType);
 
   RedisModuleString *ret = sp->indexStrs[fs->index].types[typeix];
   if (!ret) {
-    RedisSearchCtx sctx = {.redisCtx = sp->strCtx, .spec = sp};
+    RedisSearchCtx sctx = {.redisCtx = RSDummyContext, .spec = sp};
     switch (forType) {
       case INDEXFLD_T_NUMERIC:
         ret = fmtRedisNumericIndexKey(&sctx, fs->name);
@@ -845,7 +842,7 @@ RedisModuleString *IndexSpec_GetFormattedKey(IndexSpec *sp, const FieldSpec *fs,
         ret = TagIndex_FormatName(&sctx, fs->name);
         break;
       case INDEXFLD_T_GEO:
-        ret = RedisModule_CreateStringPrintf(sp->strCtx, GEOINDEX_KEY_FMT, sp->name, fs->name);
+        ret = RedisModule_CreateStringPrintf(RSDummyContext, GEOINDEX_KEY_FMT, sp->name, fs->name);
         break;
       case INDEXFLD_T_FULLTEXT:  // Text fields don't get a per-field index
       default:
@@ -978,7 +975,6 @@ void IndexSpec_StartGC(RedisModuleCtx *ctx, IndexSpec *sp, float initialHZ) {
   // we will not create a gc thread on temporary index
   if (RSGlobalConfig.enableGC && !(sp->flags & Index_Temporary)) {
     RedisModuleString *keyName = RedisModule_CreateString(ctx, sp->name, strlen(sp->name));
-    RedisModule_RetainString(ctx, keyName);
     sp->gc = GCContext_CreateGC(keyName, initialHZ, sp->uniqueId);
     GCContext_Start(sp->gc);
     RedisModule_Log(ctx, "verbose", "Starting GC for index %s", sp->name);
@@ -1174,6 +1170,7 @@ void *IndexSpec_RdbLoad(RedisModuleIO *rdb, int encver) {
       size_t dummy;
       char *s = RedisModule_LoadStringBuffer(rdb, &dummy);
       int rc = IndexAlias_Add(s, sp, 0, &status);
+      rm_free(s);
       assert(rc == REDISMODULE_OK);
     }
   }

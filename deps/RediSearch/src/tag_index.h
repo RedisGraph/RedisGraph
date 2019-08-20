@@ -7,6 +7,8 @@
 #include "value.h"
 #include "geo_index.h"
 
+struct InvertedIndex;
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -104,6 +106,8 @@ TagIndex *NewTagIndex();
 
 void TagIndex_Free(void *p);
 
+char *TagIndex_SepString(char sep, char **s, size_t *toklen);
+
 /* Preprocess a document tag field, returning a vector of all tags split from the content */
 char **TagIndex_Preprocess(char sep, TagFieldFlags flags, const DocumentField *data);
 
@@ -126,6 +130,8 @@ void TagIndex_RegisterConcurrentIterators(TagIndex *idx, ConcurrentSearchCtx *co
 /* Open the tag index key in redis */
 TagIndex *TagIndex_Open(RedisSearchCtx *sctx, RedisModuleString *formattedKey, int openWrite,
                         RedisModuleKey **keyp);
+
+struct InvertedIndex *TagIndex_OpenIndex(TagIndex *idx, const char *value, size_t len, int create);
 
 /* Serialize all the tags in the index to the redis client */
 void TagIndex_SerializeValues(TagIndex *idx, RedisModuleCtx *ctx);

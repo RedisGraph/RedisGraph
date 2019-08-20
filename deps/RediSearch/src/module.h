@@ -13,6 +13,10 @@ void RediSearch_CleanupModule(void);
 
 /** Indicates that RediSearch_Init was called */
 extern int RS_Initialized;
+/** Module-level dummy context for certain dummy RM_XXX operations */
+extern RedisModuleCtx *RSDummyContext;
+/** Indicates that RediSearch_Init was called */
+extern int RS_Initialized;
 
 #ifdef __cplusplus
 }

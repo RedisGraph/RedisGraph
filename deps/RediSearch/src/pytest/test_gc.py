@@ -28,6 +28,25 @@ def testBasicGC(env):
     env.assertEqual(env.cmd('ft.debug', 'DUMP_NUMIDX', 'idx', 'id'), [[long(i) for i in range(2, 102)]])
     env.assertEqual(env.cmd('ft.debug', 'DUMP_TAGIDX', 'idx', 't'), [['tag1', [long(i) for i in range(2, 102)]]])
 
+def testBasicGCWithEmptyInvIdx(env):
+    if env.isCluster():
+        raise unittest.SkipTest()
+    if env.moduleArgs is not None and 'GC_POLICY LEGACY' in env.moduleArgs:
+        # this test is not relevent for legacy gc cause its not squeshing inverted index
+        raise unittest.SkipTest()
+    env.assertOk(env.cmd('ft.create', 'idx', 'schema', 'title', 'text'))
+    env.assertOk(env.cmd('ft.add', 'idx', 'doc1', 1.0, 'fields',
+                         'title', 'hello world'))
+
+    env.assertEqual(env.cmd('ft.debug', 'DUMP_INVIDX', 'idx', 'world'), [1])
+
+    env.assertEqual(env.cmd('ft.del', 'idx', 'doc1'), 1)
+
+    env.cmd('ft.debug', 'GC_FORCEINVOKE', 'idx')
+
+    # check that the gc collected the deleted docs
+    env.assertEqual(env.cmd('ft.debug', 'DUMP_INVIDX', 'idx', 'world'), [])
+
 
 def testNumerciGCIntensive(env):
     if env.isCluster():
@@ -102,10 +121,13 @@ def testDeleteDocWithGoeField(env):
     env.expect('FT.ADD', 'idx', 'doc1', '1.0', 'FIELDS', 'test', 'checking', 'test2', '1,1').ok()
     env.expect('zrange', 'geo:idx/test2', '0', '-1').equal(['1'])
     env.expect('FT.DEL', 'idx', 'doc1').equal(1)
-    env.expect('zrange', 'geo:idx/test2', '0', '-1').equal([])
-
+    rv = env.cmd('zrange', 'geo:idx/test2', '0', '-1')
+    # On newer redis versions, this is a NULL instead of an empty array
+    env.assertFalse(bool(rv))
 
 def testGCIntegrationWithRedisFork(env):
+    if env.env == 'existing-env':
+        env.skip()
     if env.isCluster():
         raise unittest.SkipTest()
     env = Env(moduleArgs='GC_POLICY FORK')
@@ -115,3 +137,4 @@ def testGCIntegrationWithRedisFork(env):
     env.expect('bgsave').equal('Background saving started')
     env.cmd('FT.DEBUG', 'GC_FORCEINVOKE', 'idx')
     env.expect('bgsave').equal('Background saving started')
+    env.cmd('FT.CONFIG', 'SET', 'FORKGC_SLEEP_BEFORE_EXIT', '0')

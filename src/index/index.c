@@ -200,9 +200,9 @@ void Index_Construct
 	} else {
 		for(uint i = 0; i < idx->fields_count; i++) {
 			// Introduce both text and numeric fields.
-			RSField *fs = RediSearch_CreateField(rsIdx, idx->fields[i], RSFLDTYPE_NUMERIC | RSFLDTYPE_TAG,
-												 RSFLDOPT_NONE);
-			RediSearch_TagCaseSensitive(fs, 1);
+			RSFieldID fieldID = RediSearch_CreateField(rsIdx, idx->fields[i], RSFLDTYPE_NUMERIC | RSFLDTYPE_TAG,
+													   RSFLDOPT_NONE);
+			RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
 		}
 	}
 

@@ -2096,6 +2096,10 @@ def testIssue621(env):
 
 # Server crash on doc names that conflict with index keys #666
 def testIssue666(env):
+    # We cannot reliably determine that any error will occur in cluster mode
+    # because of the key name
+    env.skipOnCluster()
+
     env.cmd('ft.create', 'foo', 'schema', 'bar', 'text')
     env.cmd('ft.add', 'foo', 'mydoc', 1, 'fields', 'bar', 'one two three')
 
@@ -2128,11 +2132,6 @@ def testIssue666(env):
 # Could not connect to Redis at 127.0.0.1:6379: Connection refused
 
 def testPrefixDeletedExpansions(env):
-    env.skipOnCluster()
-    if env.moduleArgs is not None and 'FORK' in env.moduleArgs:
-        # This doesn't work on forkgc currently
-        env.skip()
-
     env.cmd('ft.create', 'idx', 'schema', 'txt1', 'text', 'tag1', 'tag')
     # get the number of maximum expansions
     maxexpansions = int(env.cmd('ft.config', 'get', 'MAXEXPANSIONS')[0][1])
@@ -2197,6 +2196,17 @@ def testCriteriaTesterDeactivated():
     env.cmd('ft.add', 'idx', 'doc2', 1, 'fields', 't1', 'hello2 hey')
     env.cmd('ft.add', 'idx', 'doc3', 1, 'fields', 't1', 'hey')
     env.expect('ft.search', 'idx', '(hey hello1)|(hello2 hey)').equal([2L, 'doc1', ['t1', 'hello1 hey hello2'], 'doc2', ['t1', 'hello2 hey']])
+
+def testIssue828(env):
+    env.cmd('ft.create', 'beers', 'SCHEMA',
+        'name', 'TEXT', 'PHONETIC', 'dm:en',
+        'style', 'TAG', 'SORTABLE',
+        'abv', 'NUMERIC', 'SORTABLE')
+    rv = env.cmd("FT.ADD", "beers", "802", "1.0",
+        "FIELDS", "index", "25", "abv", "0.049",
+        "name", "Hell or High Watermelon Wheat (2009)",
+        "style", "Fruit / Vegetable Beer")
+    env.assertEqual('OK', rv)
 
 def grouper(iterable, n, fillvalue=None):
     "Collect data into fixed-length chunks or blocks"

@@ -8,40 +8,22 @@
 #include <assert.h>
 
 static void BlockClients_push(BlockClients* ctx, RedisModuleBlockedClient* bClient) {
-  pthread_mutex_lock(&ctx->lock);
   BlockClient* bc = rm_calloc(1, sizeof(BlockClient));
   bc->bClient = bClient;
-
-  if (ctx->head == NULL) {
-    ctx->head = ctx->tail = bc;
-    pthread_mutex_unlock(&ctx->lock);
-    return;
-  }
-
-  bc->next = ctx->head;
-  ctx->head->prev = bc;
-  ctx->head = bc;
+  pthread_mutex_lock(&ctx->lock);
+  dllist_prepend(&ctx->clients, &bc->llnode);
   pthread_mutex_unlock(&ctx->lock);
 }
 
 static RedisModuleBlockedClient* BlockClients_pop(BlockClients* ctx) {
   pthread_mutex_lock(&ctx->lock);
-  BlockClient* bc = ctx->tail;
-  if (!bc) {
-    pthread_mutex_unlock(&ctx->lock);
-    return NULL;
+  RedisModuleBlockedClient* ret = NULL;
+  DLLIST_node* nn = dllist_pop_tail(&ctx->clients);
+  if (nn) {
+    BlockClient* bc = DLLIST_ITEM(nn, BlockClient, llnode);
+    ret = bc->bClient;
+    rm_free(bc);
   }
-
-  ctx->tail = bc->prev;
-  if (ctx->tail) {
-    ctx->tail->next = NULL;
-  } else {
-    ctx->head = NULL;
-  }
-
-  RedisModuleBlockedClient* ret = bc->bClient;
-  rm_free(bc);
-
   pthread_mutex_unlock(&ctx->lock);
   return ret;
 }
@@ -50,11 +32,12 @@ GCContext* GCContext_CreateGCFromSpec(IndexSpec* sp, float initialHZ, uint64_t u
                                       uint32_t gcPolicy) {
   GCContext* ret = rm_calloc(1, sizeof(GCContext));
   pthread_mutex_init(&ret->bClients.lock, NULL);
+  dllist_init(&ret->bClients.clients);
   switch (gcPolicy) {
     case GCPolicy_Fork:
-      ret->gcCtx = NewForkGCFromSpec(sp, uniqueId, &ret->callbacks);
+      ret->gcCtx = FGC_NewFromSpec(sp, uniqueId, &ret->callbacks);
       break;
-    case GCPolicy_Default:
+    case GCPolicy_Sync:
     default:
       // currently LLAPI only support FORK_GC, in the future we might allow default GC as well.
       // This is why we pass the GC_POLICY to the function.
@@ -65,12 +48,13 @@ GCContext* GCContext_CreateGCFromSpec(IndexSpec* sp, float initialHZ, uint64_t u
 
 GCContext* GCContext_CreateGC(RedisModuleString* keyName, float initialHZ, uint64_t uniqueId) {
   GCContext* ret = rm_calloc(1, sizeof(GCContext));
+  dllist_init(&ret->bClients.clients);
   pthread_mutex_init(&ret->bClients.lock, NULL);
   switch (RSGlobalConfig.gcPolicy) {
     case GCPolicy_Fork:
-      ret->gcCtx = NewForkGC(keyName, uniqueId, &ret->callbacks);
+      ret->gcCtx = FGC_New(keyName, uniqueId, &ret->callbacks);
       break;
-    case GCPolicy_Default:
+    case GCPolicy_Sync:
     default:
       ret->gcCtx = NewGarbageCollector(keyName, initialHZ, uniqueId, &ret->callbacks);
       break;
@@ -79,6 +63,13 @@ GCContext* GCContext_CreateGC(RedisModuleString* keyName, float initialHZ, uint6
 }
 
 static int GCContext_PeriodicCallback(RedisModuleCtx* ctx, void* privdata) {
+  if (RedisModule_AvoidReplicaTraffic && RedisModule_AvoidReplicaTraffic()) {
+    // If slave trafic is not allow it means that there is a state machine running
+    // we do not want to run any GC w(hich might cause a FORK process to start for example).
+    // Its better to just avoid it.
+    return 1;
+  }
+
   GCContext* gc = privdata;
   int ret = gc->callbacks.periodicCallback(ctx, gc->gcCtx);
 
@@ -86,9 +77,10 @@ static int GCContext_PeriodicCallback(RedisModuleCtx* ctx, void* privdata) {
   if (bClient) {
     RedisModule_UnblockClient(bClient, NULL);
   }
-
-  RMUtilTimer_SetInterval(gc->timer, gc->callbacks.getInterval(gc->gcCtx));
-
+  if (gc->timer) {
+    // Timer could've been deleted..
+    RMUtilTimer_SetInterval(gc->timer, gc->callbacks.getInterval(gc->gcCtx));
+  }
   return ret;
 }
 
@@ -104,9 +96,10 @@ void GCContext_Start(GCContext* gc) {
 }
 
 void GCContext_Stop(GCContext* gc) {
-  if (gc->timer) {
-    RMUtilTimer_Terminate(gc->timer);
+  if (gc->callbacks.kill) {
+    gc->callbacks.kill(gc->gcCtx);
   }
+  RMUtilTimer_Terminate(gc->timer);
 }
 
 void GCContext_RenderStats(GCContext* gc, RedisModuleCtx* ctx) {
@@ -114,7 +107,9 @@ void GCContext_RenderStats(GCContext* gc, RedisModuleCtx* ctx) {
 }
 
 void GCContext_OnDelete(GCContext* gc) {
-  gc->callbacks.onDelete(gc->gcCtx);
+  if (gc->callbacks.onDelete) {
+    gc->callbacks.onDelete(gc->gcCtx);
+  }
 }
 
 void GCContext_ForceInvoke(GCContext* gc, RedisModuleBlockedClient* bc) {

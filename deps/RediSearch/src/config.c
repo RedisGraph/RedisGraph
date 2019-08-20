@@ -98,7 +98,7 @@ CONFIG_GETTER(getMinPrefix) {
 
 CONFIG_SETTER(setForkGCSleep) {
   long long arg;
-  if (readLongLongLimit(argv, argc, offset, &arg, 1, LLONG_MAX) != REDISMODULE_OK) {
+  if (readLongLongLimit(argv, argc, offset, &arg, 0, LLONG_MAX) != REDISMODULE_OK) {
     return REDISMODULE_ERR;
   }
   config->forkGcSleepBeforeExit = arg;
@@ -257,7 +257,7 @@ CONFIG_GETTER(getForkGcInterval) {
 
 CONFIG_GETTER(getMaxResultsToUnsortedMode) {
   sds ss = sdsempty();
-  return sdscatprintf(ss, "%u", config->maxResultsToUnsortedMode);
+  return sdscatprintf(ss, "%lld", config->maxResultsToUnsortedMode);
 }
 
 CONFIG_SETTER(setMinPhoneticTermLen) {
@@ -279,10 +279,10 @@ CONFIG_SETTER(setGcPolicy) {
     RETURN_ERROR("Missing argument");
   }
   const char *policy = RedisModule_StringPtrLen(argv[(*offset)++], NULL);
-  if (!strcasecmp(policy, "DEFAULT")) {
-    config->gcPolicy = GCPolicy_Default;
-  } else if (!strcasecmp(policy, "FORK")) {
+  if (!strcasecmp(policy, "DEFAULT") || !strcasecmp(policy, "FORK")) {
     config->gcPolicy = GCPolicy_Fork;
+  } else if (!strcasecmp(policy, "LEGACY")) {
+    config->gcPolicy = GCPolicy_Sync;
   } else {
     RETURN_ERROR("Invalid GC Policy value");
     return REDISMODULE_ERR;
@@ -413,7 +413,7 @@ RSConfigOptions RSGlobalConfigOptions = {
          .setValue = setMinPhoneticTermLen,
          .getValue = getMinPhoneticTermLen},
         {.name = "GC_POLICY",
-         .helpText = "gc policy to use (DEFAULT/FORK)",
+         .helpText = "gc policy to use (DEFAULT/LEGACY)",
          .setValue = setGcPolicy,
          .getValue = getGcPolicy,
          .flags = RSCONFIGVAR_F_IMMUTABLE},

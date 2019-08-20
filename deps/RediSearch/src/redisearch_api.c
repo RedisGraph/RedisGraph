@@ -14,6 +14,7 @@
 #include <float.h>
 #include "rwlock.h"
 #include "fork_gc.h"
+#include "module.h"
 
 int RediSearch_GetCApiVersion() {
   return REDISEARCH_CAPI_VERSION;
@@ -46,20 +47,19 @@ IndexSpec* RediSearch_CreateIndex(const char* name, const RSIndexOptions* option
 
 void RediSearch_DropIndex(IndexSpec* sp) {
   RWLOCK_ACQUIRE_WRITE();
-
-  if (sp->gc) {
-    // for now this is good enough, we should add another api to GC called before its freed.
-    ((ForkGCCtx*)(sp->gc->gcCtx))->type = ForkGCCtxType_FREED;
-  }
+  dict* d = sp->keysDict;
+  dictRelease(d);
+  sp->keysDict = NULL;
   IndexSpec_FreeSync(sp);
   RWLOCK_RELEASE();
 }
 
-RSField* RediSearch_CreateField(IndexSpec* sp, const char* name, unsigned types, unsigned options) {
+RSFieldID RediSearch_CreateField(IndexSpec* sp, const char* name, unsigned types,
+                                 unsigned options) {
   assert(types);
   RWLOCK_ACQUIRE_WRITE();
 
-  RSField* fs = IndexSpec_CreateField(sp, name);
+  FieldSpec* fs = IndexSpec_CreateField(sp, name);
   int numTypes = 0;
 
   if (types & RSFLDTYPE_FULLTEXT) {
@@ -67,7 +67,7 @@ RSField* RediSearch_CreateField(IndexSpec* sp, const char* name, unsigned types,
     int txtId = IndexSpec_CreateTextId(sp);
     if (txtId < 0) {
       RWLOCK_RELEASE();
-      return NULL;
+      return RSFIELD_INVALID;
     }
     fs->ftId = txtId;
     FieldSpec_Initialize(fs, INDEXFLD_T_FULLTEXT);
@@ -106,21 +106,23 @@ RSField* RediSearch_CreateField(IndexSpec* sp, const char* name, unsigned types,
   }
 
   RWLOCK_RELEASE();
-
-  return fs;
+  return fs->index;
 }
 
-void RediSearch_TextFieldSetWeight(IndexSpec* sp, FieldSpec* fs, double w) {
+void RediSearch_TextFieldSetWeight(IndexSpec* sp, RSFieldID id, double w) {
+  FieldSpec* fs = sp->fields + id;
   assert(FIELD_IS(fs, INDEXFLD_T_FULLTEXT));
   fs->ftWeight = w;
 }
 
-void RediSearch_TagSetSeparator(FieldSpec* fs, char sep) {
+void RediSearch_TagSetSeparator(IndexSpec* sp, RSFieldID id, char sep) {
+  FieldSpec* fs = sp->fields + id;
   assert(FIELD_IS(fs, INDEXFLD_T_TAG));
   fs->tagSep = sep;
 }
 
-void RediSearch_TagCaseSensitive(FieldSpec* fs, int enable) {
+void RediSearch_TagFieldSetCaseSensitive(IndexSpec* sp, RSFieldID id, int enable) {
+  FieldSpec* fs = sp->fields + id;
   assert(FIELD_IS(fs, INDEXFLD_T_TAG));
   if (enable) {
     fs->tagFlags |= TagField_CaseSensitive;
@@ -133,49 +135,50 @@ RSDoc* RediSearch_CreateDocument(const void* docKey, size_t len, double score, c
   RedisModuleString* docKeyStr = RedisModule_CreateString(NULL, docKey, len);
   const char* language = lang ? lang : "english";
   Document* ret = rm_calloc(1, sizeof(*ret));
-  Document_Init(ret, docKeyStr, score, 0, language, NULL, 0);
-  ret->language = strdup(ret->language);
+  Document_Init(ret, docKeyStr, score, language);
+  Document_MakeStringsOwner(ret);
+  RedisModule_FreeString(RSDummyContext, docKeyStr);
   return ret;
+}
+
+void RediSearch_FreeDocument(RSDoc* doc) {
+  Document_Free(doc);
+  rm_free(doc);
 }
 
 int RediSearch_DeleteDocument(IndexSpec* sp, const void* docKey, size_t len) {
   RWLOCK_ACQUIRE_WRITE();
-
-  RedisModuleString* docId = RedisModule_CreateString(NULL, docKey, len);
   int rc = REDISMODULE_OK;
-  t_docId id = DocTable_GetIdR(&sp->docs, docId);
+  t_docId id = DocTable_GetId(&sp->docs, docKey, len);
   if (id == 0) {
     rc = REDISMODULE_ERR;
   } else {
-    rc = DocTable_DeleteR(&sp->docs, docId);
-    if (rc) {
+    if (DocTable_Delete(&sp->docs, docKey, len)) {
+      // Delete returns true/false, not RM_{OK,ERR}
       sp->stats.numDocuments--;
     } else {
-      // is this possible?
       rc = REDISMODULE_ERR;
     }
   }
-  RedisModule_FreeString(NULL, docId);
 
   RWLOCK_RELEASE();
   return rc;
 }
 
 void RediSearch_DocumentAddField(Document* d, const char* fieldName, RedisModuleString* value,
-                                 unsigned as) {
+                                 RedisModuleCtx* ctx, unsigned as) {
   Document_AddField(d, fieldName, value, as);
-  RedisModule_RetainString(NULL, value);
 }
 
 void RediSearch_DocumentAddFieldString(Document* d, const char* fieldname, const char* s, size_t n,
                                        unsigned as) {
-  RedisModuleString* r = RedisModule_CreateString(NULL, s, n);
-  Document_AddField(d, fieldname, r, as);
+  Document_AddFieldC(d, fieldname, s, n, as);
 }
 
 void RediSearch_DocumentAddFieldNumber(Document* d, const char* fieldname, double n, unsigned as) {
-  RedisModuleString* r = RedisModule_CreateStringPrintf(NULL, "%lf", n);
-  Document_AddField(d, fieldname, r, as);
+  char buf[512];
+  size_t len = sprintf(buf, "%lf", n);
+  Document_AddFieldC(d, fieldname, buf, len, as);
 }
 
 typedef struct {

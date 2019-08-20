@@ -442,7 +442,7 @@ Array Response. A nested array of keys and values.
 ```
 FT.SEARCH {index} {query} [NOCONTENT] [VERBATIM] [NOSTOPWORDS] [WITHSCORES] [WITHPAYLOADS] [WITHSORTKEYS]
   [FILTER {numeric_field} {min} {max}] ...
-  [GEOFILTER {geo_field} {lon} {lat} {raius} m|km|mi|ft]
+  [GEOFILTER {geo_field} {lon} {lat} {radius} m|km|mi|ft]
   [INKEYS {num} {key} ... ]
   [INFIELDS {num} {field} ... ]
   [RETURN {num} {field} ... ]
@@ -584,7 +584,7 @@ FT.AGGREGATE idx "@url:\"about.html\""
 
 * **LOAD {nargs} {property} …**: Load document fields from the document HASH objects. This should be 
   avoided as a general rule of thumb. Fields needed for aggregations should be stored as **SORTABLE**, 
-  where they are available to the aggregation pipeline with very load latency. LOAD hurts the 
+  where they are available to the aggregation pipeline with very low latency. LOAD hurts the 
   performance of aggregate queries considerably, since every processed record needs to execute the 
   equivalent of HMGET against a Redis key, which when executed over millions of keys, amounts to very 
   high processing times. 

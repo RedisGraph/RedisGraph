@@ -120,7 +120,7 @@ ifeq (,$(wildcard $(REDISEARCH)))
 	cd ../deps/RediSearch; \
 	mkdir build; \
 	cd build; \
-	cmake -DRS_BUILD_STATIC=ON ..; \
+	cmake -DRS_FORCE_NO_GITVERSION=ON -DRS_BUILD_STATIC=ON ..; \
 	make;
 endif
 

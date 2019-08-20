@@ -1,8 +1,8 @@
 #include "ast_build_filter_tree.h"
-#include "ast_build_ar_exp.h"
 #include "ast_shared.h"
-#include "../execution_plan/record_map.h"
 #include "../util/arr.h"
+#include "ast_build_ar_exp.h"
+#include "../execution_plan/record_map.h"
 
 // Forward declaration
 FT_FilterNode *_FilterNode_FromAST(RecordMap *record_map, const cypher_astnode_t *expr);

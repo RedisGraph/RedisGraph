@@ -235,7 +235,6 @@ int GetDocumentsCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
     return RedisModule_WrongArity(ctx);
   }
 
-  RedisModule_AutoMemory(ctx);
   RedisSearchCtx *sctx = NewSearchCtx(ctx, argv[1], true);
   if (sctx == NULL) {
     return RedisModule_ReplyWithError(ctx, "Unknown Index name");
@@ -251,8 +250,9 @@ int GetDocumentsCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc)
       continue;
     }
 
-    Document doc;
-    if (Redis_LoadDocument(sctx, argv[i], &doc) == REDISMODULE_ERR) {
+    Document doc = {0};
+    Document_Init(&doc, argv[i], 0, NULL);
+    if (Document_LoadAllFields(&doc, ctx) == REDISMODULE_ERR) {
       RedisModule_ReplyWithNull(ctx);
     } else {
       Document_ReplyFields(ctx, &doc);
@@ -277,16 +277,16 @@ int GetSingleDocumentCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int 
     return RedisModule_WrongArity(ctx);
   }
 
-  RedisModule_AutoMemory(ctx);
   RedisSearchCtx *sctx = NewSearchCtx(ctx, argv[1], true);
   if (sctx == NULL) {
     return RedisModule_ReplyWithError(ctx, "Unknown Index name");
   }
 
-  Document doc;
+  Document doc = {0};
+  Document_Init(&doc, argv[2], 0, NULL);
 
   if (DocTable_GetIdR(&sctx->spec->docs, argv[2]) == 0 ||
-      Redis_LoadDocument(sctx, argv[2], &doc) == REDISMODULE_ERR) {
+      Document_LoadAllFields(&doc, ctx) == REDISMODULE_ERR) {
     RedisModule_ReplyWithNull(ctx);
   } else {
     Document_ReplyFields(ctx, &doc);
@@ -375,6 +375,7 @@ int SpellCheckCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
   SpellCheck_Reply(&scCtx, &qast);
 
 end:
+  QueryError_ClearError(&status);
   if (includeDict != NULL) {
     array_free(includeDict);
   }
@@ -568,7 +569,6 @@ int CreateIndexCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
     return RedisModule_ReplyWithError(ctx, "Cannot create index on db != 0");
   }
 
-  RedisModule_AutoMemory(ctx);
   RedisModule_ReplicateVerbatim(ctx);
   QueryError status = {0};
 
@@ -815,30 +815,6 @@ int AlterIndexCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
       return RedisModule_ReplyWithError(ctx, "No fields provided");
     }
     IndexSpec_AddFields(sp, &ac, &status);
-  } else if (AC_AdvanceIfMatch(&ac, "ALIAS")) {
-    // Before doing anything, ensure that the index name we've received
-    // is in fact a real index, and not an alias itself:
-    IndexLoadOptions loadOpts = {.name = {.cstring = ixname}, .flags = INDEXSPEC_LOAD_NOALIAS};
-    IndexSpec *sptmp = IndexSpec_LoadEx(ctx, &loadOpts);
-    if (!sptmp) {
-      return RedisModule_ReplyWithError(ctx, "Unknown index name (or name is an alias itself");
-    } else {
-      RedisModule_CloseKey(loadOpts.keyp);
-    }
-
-    if (AC_AdvanceIfMatch(&ac, "ADD")) {
-      // Adding an alias
-      if (!AC_NumRemaining(&ac)) {
-        return RedisModule_ReplyWithError(ctx, "Missing alias!");
-      }
-      const char *alias = AC_GetStringNC(&ac, NULL);
-      IndexAlias_Add(alias, sp, 0, &status);
-    } else if (AC_AdvanceIfMatch(&ac, "DEL")) {
-      const char *alias = AC_GetStringNC(&ac, NULL);
-      IndexAlias_Del(alias, sp, 0, &status);
-    } else {
-      return RedisModule_ReplyWithError(ctx, "Unknown ALTER ALIAS subcommand");
-    }
   }
 
   if (QueryError_HasError(&status)) {
@@ -930,7 +906,7 @@ static int AliasUpdateCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int
 int ConfigCommand(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
   // Not bound to a specific index, so...
   RedisModule_AutoMemory(ctx);
-  QueryError status;
+  QueryError status = {0};
 
   // CONFIG <GET|SET> <NAME> [value]
   if (argc < 3) {
@@ -1095,4 +1071,5 @@ void __attribute__((destructor)) RediSearch_CleanupModule(void) {
   mempool_free_global();
   ConcurrentSearch_ThreadPoolDestroy();
   IndexAlias_DestroyGlobal();
+  RedisModule_FreeThreadSafeContext(RSDummyContext);
 }
