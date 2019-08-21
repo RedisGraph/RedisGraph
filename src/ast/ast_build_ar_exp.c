@@ -147,7 +147,6 @@ static AR_ExpNode *_AR_EXP_FromUnaryOpExpression(RecordMap *record_map,
 	if(operator == CYPHER_OP_UNARY_MINUS) {
 		// This expression can be something like -3 or -a.val
 		// TODO In the former case, we can construct a much simpler tree than this.
-		AR_ExpNode *ar_exp = AR_EXP_FromExpression(record_map, arg);
 		AR_ExpNode *op = AR_EXP_NewOpNodeFromAST(OP_MULT, 2);
 		op->op.children[0] = AR_EXP_NewConstOperandNode(SI_LongVal(-1));
 		op->op.children[1] = AR_EXP_FromExpression(record_map, arg);
