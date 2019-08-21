@@ -193,6 +193,11 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 			}
 			/* Evaluate self. */
 			result = root->op.f(sub_trees, root->op.child_count);
+			/* Free any SIValues that were allocated while evaluating this tree. */
+			for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
+				SIValue_Free(&sub_trees[child_idx]);
+			}
+
 		}
 	} else {
 		/* Deal with a constant node. */
