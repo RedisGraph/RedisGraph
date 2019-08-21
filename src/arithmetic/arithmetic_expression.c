@@ -139,14 +139,14 @@ int AR_EXP_GetOperandType(AR_ExpNode *exp) {
  * e.g. MINUS(X) where X is a constant number will be reduced to
  * a single node with the value -X
  * PLUS(MINUS(A), B) will be reduced to a single constant: B-A. */
-int AR_EXP_ReduceToScalar(AR_ExpNode **root) {
+bool AR_EXP_ReduceToScalar(AR_ExpNode **root) {
 	if((*root)->type == AR_EXP_OPERAND) {
 		if((*root)->operand.type == AR_EXP_CONSTANT) {
 			// Root is already a constant
-			return 1;
+			return true;
 		}
 		// Root is variadic, no way to reduce.
-		return 0;
+		return false;
 	} else {
 		// root represents an operation.
 		assert((*root)->type == AR_EXP_OP);
@@ -162,17 +162,17 @@ int AR_EXP_ReduceToScalar(AR_ExpNode **root) {
 				}
 			}
 			// Can't reduce root as one of its children is not a constant.
-			if(!reduce_children) return 0;
+			if(!reduce_children) return false;
 
 			// All child nodes are constants, reduce.
 			SIValue v = AR_EXP_Evaluate(*root, NULL);
 			AR_EXP_Free(*root);
 			*root = AR_EXP_NewConstOperandNode(v);
-			return 1;
+			return true;
 		}
 
 		// Root is an aggregation function, can't reduce.
-		return 0;
+		return false;
 	}
 }
 
