@@ -15,7 +15,7 @@
 static inline void _Record_ShareEntry(Record a, const Entry e, uint idx) {
 	a[idx] = e;
 	// If the entry is a scalar, make sure both Records don't believe they own the allocation.
-	if(e.type == REC_TYPE_SCALAR) a[idx].value.s = SI_VolatileValue(e.value.s);
+	if(e.type == REC_TYPE_SCALAR) SIValue_MakeVolatile(&a[idx].value.s);
 }
 
 Record Record_New(int entries) {

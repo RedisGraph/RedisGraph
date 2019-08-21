@@ -124,13 +124,11 @@ SIValue SI_ConstValue(const SIValue v) {
 	return dup;
 }
 
-/* Make an SIValue that shares the original's allocations but, if the original
- * owns the allocations, has no guarantee regarding the scope.
+/* Update an SIValue marked as owning its internal allocations so that it instead is sharing them,
+ * with no responsibility for freeing or guarantee regarding scope.
  * This is used in cases like performing shallow copies of scalars in Record entries. */
-SIValue SI_VolatileValue(const SIValue v) {
-	SIValue dup = v;
-	if(v.allocation == M_SELF) dup.allocation = M_VOLATILE;
-	return dup;
+void SIValue_MakeVolatile(SIValue *v) {
+	if(v->allocation == M_SELF) v->allocation = M_VOLATILE;
 }
 
 /* Ensure that any allocation held by the given SIValue is guaranteed to not go out

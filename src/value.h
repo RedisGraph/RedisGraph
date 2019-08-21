@@ -92,8 +92,8 @@ SIValue SI_CloneValue(const SIValue v);
 // SI_ConstValue creates an SIValue that shares the original's allocations, but does not need to persist them.
 SIValue SI_ConstValue(const SIValue v);
 
-// SI_VolatileValue creates an SIValue that shares the original's allocations and can make no assumptions regarding their scope.
-SIValue SI_VolatileValue(const SIValue v);
+// SIValue_MakeVolatile updates an SIValue to mark that its allocations are shared rather than self-owned.
+void SIValue_MakeVolatile(SIValue *v);
 
 // SIValue_Persist updates an SIValue to duplicate any allocations that may go out of scope in the lifetime of this query.
 void SIValue_Persist(SIValue *v);
