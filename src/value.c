@@ -124,6 +124,15 @@ SIValue SI_ConstValue(const SIValue v) {
 	return dup;
 }
 
+/* Make an SIValue that shares the original's allocations but, if the original
+ * owns the allocations, has no guarantee regarding the scope.
+ * This is used in cases like performing shallow copies of scalars in Record entries. */
+SIValue SI_VolatileValue(const SIValue v) {
+	SIValue dup = v;
+	if(v.allocation == M_SELF) dup.allocation = M_VOLATILE;
+	return dup;
+}
+
 /* Ensure that any allocation held by the given SIValue is guaranteed to not go out
  * of scope during the lifetime of this query by copying references to volatile memory.
  * Heap allocations that are not scoped to the input SIValue, such as strings from the AST

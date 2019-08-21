@@ -12,11 +12,10 @@
 #define RECORD_HEADER(r) (r-1)
 #define RECORD_HEADER_ENTRY(r) *(RECORD_HEADER((r)))
 
-static inline void _Record_ShareEntry(Record *a, const Entry e, uint idx) {
-	(*a)[idx] = e;
-	if(e.type == REC_TYPE_SCALAR && e.value.s.allocation == M_SELF) {
-		(*a)[idx].value.s.allocation = M_VOLATILE;
-	}
+static inline void _Record_ShareEntry(Record a, const Entry e, uint idx) {
+	a[idx] = e;
+	// If the entry is a scalar, make sure both Records don't believe they own the allocation.
+	if(e.type == REC_TYPE_SCALAR) a[idx].value.s = SI_VolatileValue(e.value.s);
 }
 
 Record Record_New(int entries) {
@@ -56,7 +55,7 @@ Record Record_Clone(const Record r) {
 	int recordLength = Record_length(r);
 	Record clone = Record_New(recordLength);
 	for(uint i = 0; i < recordLength; i++) {
-		_Record_ShareEntry(&clone, r[i], i);
+		_Record_ShareEntry(clone, r[i], i);
 	}
 	return clone;
 }
@@ -68,7 +67,7 @@ void Record_Merge(Record *a, const Record b) {
 
 	for(int i = 0; i < bLength; i++) {
 		if(b[i].type != REC_TYPE_UNKNOWN) {
-			_Record_ShareEntry(a, b[i], i);
+			_Record_ShareEntry(*a, b[i], i);
 		}
 	}
 }
