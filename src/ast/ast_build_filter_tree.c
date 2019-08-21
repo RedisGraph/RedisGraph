@@ -1,8 +1,8 @@
 #include "ast_build_filter_tree.h"
-#include "ast_build_ar_exp.h"
 #include "ast_shared.h"
-#include "../execution_plan/record_map.h"
 #include "../util/arr.h"
+#include "ast_build_ar_exp.h"
+#include "../execution_plan/record_map.h"
 
 // Forward declaration
 FT_FilterNode *_FilterNode_FromAST(RecordMap *record_map, const cypher_astnode_t *expr);
@@ -281,6 +281,16 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast, RecordMap *record_map) {
 			_AST_ConvertFilters(record_map, ast, &filter_tree, merge_clauses[i]);
 		}
 		array_free(merge_clauses);
+	}
+
+	const cypher_astnode_t **call_clauses = AST_GetClauses(ast, CYPHER_AST_CALL);
+	if(call_clauses) {
+		uint call_count = array_len(call_clauses);
+		for(uint i = 0; i < call_count; i ++) {
+			const cypher_astnode_t *where_predicate = cypher_ast_call_get_predicate(call_clauses[i]);
+			if(where_predicate) _AST_ConvertFilters(record_map, ast, &filter_tree, where_predicate);
+		}
+		array_free(call_clauses);
 	}
 
 	// Apply De Morgan's laws

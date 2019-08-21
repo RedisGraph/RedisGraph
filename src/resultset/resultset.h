@@ -10,7 +10,7 @@
 #include "resultset_statistics.h"
 #include "../redismodule.h"
 #include "../execution_plan/record.h"
-#include "../util/triemap/triemap.h"
+#include "../../deps/rax/rax.h"
 #include "./formatters/resultset_formatters.h"
 
 #define RESULTSET_UNLIMITED 0

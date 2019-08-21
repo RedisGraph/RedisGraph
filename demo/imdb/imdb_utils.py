@@ -11,7 +11,6 @@ def populate_graph(redis_con, redis_graph):
 		return
 
 	# Load movies entities
-	print("Loading movies")
 	movies = {}
 
 	with open(os.path.dirname(os.path.abspath(__file__)) + '/resources/movies.csv', 'r') as f:
@@ -31,10 +30,7 @@ def populate_graph(redis_con, redis_graph):
 			movies[title] = node
 			redis_graph.add_node(node)
 
-	print("Loaded %d movies" % len(movies))
-
 	# Load actors entities
-	print("Loading actors")
 	actors = {}
 	today = date.today()
 
@@ -55,7 +51,7 @@ def populate_graph(redis_con, redis_graph):
 				edge = Edge(actors[name], "act", movies[movie])
 				redis_graph.add_edge(edge)
 
-	print("Loaded %d actors" % len(actors))
 	redis_graph.commit()
+	redis_graph.call_procedure("db.idx.fulltext.createNodeIndex", "actor", "name")
 
 	return (actors, movies)

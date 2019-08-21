@@ -72,7 +72,7 @@ uint *_ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, rax *references
 	/* List of entities which had their ID resolved
 	 * at this point of execution, should include all
 	 * previously modified entities (up the execution plan). */
-	uint *seen = array_new(uint *, 0);
+	uint *seen = array_new(uint, 0);
 
 	/* If this operation is already associated with a record map, it is from
 	 * an earlier ExecutionPlanSegment and its IDs are not comparable. */

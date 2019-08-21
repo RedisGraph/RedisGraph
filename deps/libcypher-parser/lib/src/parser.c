@@ -314,9 +314,9 @@ static cypher_astnode_t *_with_clause(yycontext *yy, bool distinct,
 #define unwind_clause(e, i) _unwind_clause(yy, e, i)
 static cypher_astnode_t *_unwind_clause(yycontext *yy,
         cypher_astnode_t *expression, cypher_astnode_t *identifier);
-#define call_clause(p) _call_clause(yy, p)
+#define call_clause(p, w) _call_clause(yy, p, w)
 static cypher_astnode_t *_call_clause(yycontext *yy,
-        cypher_astnode_t *proc_name);
+        cypher_astnode_t *proc_name, cypher_astnode_t *predicate);
 #define return_clause(d, a, o, s, l) _return_clause(yy, d, a, o, s, l)
 static cypher_astnode_t *_return_clause(yycontext *yy, bool distinct,
         bool include_existing, cypher_astnode_t *order_by,
@@ -440,7 +440,7 @@ static cypher_astnode_t *_strbuf_function_name(yycontext *yy);
 static cypher_astnode_t *_strbuf_index_name(yycontext *yy);
 #define strbuf_proc_name() _strbuf_proc_name(yy)
 static cypher_astnode_t *_strbuf_proc_name(yycontext *yy);
-#define pattern(i) _pattern(yy)
+#define pattern() _pattern(yy)
 static cypher_astnode_t *_pattern(yycontext *yy);
 #define named_path(s, p) _named_path(yy, s, p)
 static cypher_astnode_t *_named_path(yycontext *yy,
@@ -448,7 +448,7 @@ static cypher_astnode_t *_named_path(yycontext *yy,
 #define shortest_path(s, p) _shortest_path(yy, s, p)
 static cypher_astnode_t *_shortest_path(yycontext *yy, bool single,
         cypher_astnode_t *path);
-#define pattern_path(i) _pattern_path(yy)
+#define pattern_path() _pattern_path(yy)
 static cypher_astnode_t *_pattern_path(yycontext *yy);
 #define node_pattern(i, p) _node_pattern(yy, i, p)
 static cypher_astnode_t *_node_pattern(yycontext *yy,
@@ -2021,7 +2021,8 @@ cypher_astnode_t *_unwind_clause(yycontext *yy, cypher_astnode_t *expression,
 }
 
 
-cypher_astnode_t *_call_clause(yycontext *yy, cypher_astnode_t *proc_name)
+cypher_astnode_t *_call_clause(yycontext *yy, cypher_astnode_t *proc_name,
+        cypher_astnode_t *predicate)
 {
     assert(yy->prev_block != NULL &&
             "An AST node can only be created immediately after a `>` in the grammar");
@@ -2037,7 +2038,7 @@ cypher_astnode_t *_call_clause(yycontext *yy, cypher_astnode_t *proc_name)
     }
 
     cypher_astnode_t *node = cypher_ast_call(proc_name,
-            seq, nargs, seq + nargs, nseq - nargs,
+            seq, nargs, seq + nargs, nseq - nargs, predicate,
             astnodes_elements(&(yy->prev_block->children)),
             astnodes_size(&(yy->prev_block->children)),
             yy->prev_block->range);

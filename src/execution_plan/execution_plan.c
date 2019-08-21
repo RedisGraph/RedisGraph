@@ -121,7 +121,6 @@ AR_ExpNode **_BuildReturnExpressions(RecordMap *record_map, const cypher_astnode
 			identifier = cypher_ast_identifier_get_name(alias_node);
 		} else {
 			// This expression did not have an alias, so it must be an identifier
-			const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
 			assert(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
 			// Retrieve "a" from "RETURN a" or "RETURN a AS e" (theoretically; the latter case is already handled)
 			identifier = cypher_ast_identifier_get_name(ast_exp);
@@ -194,14 +193,12 @@ static AR_ExpNode **_BuildCallProjections(RecordMap *record_map,
 			identifier = cypher_ast_identifier_get_name(alias_node);
 		} else {
 			// This expression did not have an alias, so it must be an identifier
-			const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
 			assert(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
 			// Retrieve "a" from "RETURN a" or "RETURN a AS e" (theoretically; the latter case is already handled)
 			identifier = cypher_ast_identifier_get_name(ast_exp);
 		}
 
 		exp->resolved_name = identifier;
-
 		expressions = array_append(expressions, exp);
 	}
 
@@ -211,9 +208,9 @@ static AR_ExpNode **_BuildCallProjections(RecordMap *record_map,
 		ProcedureCtx *proc = Proc_Get(proc_name);
 		assert(proc);
 
-		unsigned int output_count = array_len(proc->output);
+		unsigned int output_count = Procedure_OutputCount(proc);
 		for(uint i = 0; i < output_count; i++) {
-			const char *name = proc->output[i]->name;
+			const char *name = Procedure_GetOutput(proc, i);
 
 			// TODO the 'name' variable doesn't have an AST ID, so an assertion in
 			// AR_EXP_NewVariableOperandNode() fails without this call.
@@ -237,13 +234,20 @@ static const char **_BuildCallArguments(RecordMap *record_map,
 	uint arg_count = cypher_ast_call_narguments(call_clause);
 	const char **arguments = array_new(const char *, arg_count);
 	for(uint i = 0; i < arg_count; i ++) {
+		/* For the timebeing we're only supporting procedures that accept
+		 * string argument, as such we can quickly transfer AST procedure
+		 * call arguments to strings.
+		 * TODO: create an arithmetic expression for each argument
+		 * evaluate it and pass SIValues as arguments to procedure. */
+		const cypher_astnode_t *exp = cypher_ast_call_get_argument(call_clause, i);
+		const cypher_astnode_type_t type = cypher_astnode_type(exp);
 
-		const cypher_astnode_t *ast_exp = cypher_ast_call_get_argument(call_clause, i);
+		if(type != CYPHER_AST_STRING) continue;
 
-		const cypher_astnode_t *identifier_node = cypher_ast_projection_get_alias(ast_exp);
-		const char *identifier = cypher_ast_identifier_get_name(identifier_node);
-
-		arguments = array_append(arguments, identifier);
+		const char *arg = cypher_ast_string_get_value(exp);
+		arguments = array_append(arguments, arg);
+		// AR_ExpNode *arg = AR_EXP_FromExpression(record_map, ast_exp);
+		// SIValue si_arg = AR_EXP_Evaluate(arg, NULL);
 	}
 
 	return arguments;
@@ -397,7 +401,6 @@ static void _ExecutionPlanSegment_MapAliasesInPattern(ExecutionPlanSegment *segm
 // Map the AST entities referred to in SET, CREATE, and DELETE clauses.
 // This is necessary so that edge references will be constructed prior to forming AlgebraicExpressions.
 static void _ExecutionPlanSegment_MapReferences(ExecutionPlanSegment *segment, AST *ast) {
-
 	const cypher_astnode_t **set_clauses = AST_GetClauses(ast, CYPHER_AST_SET);
 	if(set_clauses) {
 		uint set_count = array_len(set_clauses);
@@ -519,17 +522,26 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 		AR_ExpNode **yield_exps = _BuildCallProjections(record_map, call_clause, ast);
 		uint yield_count = array_len(yield_exps);
 		const char **yields = array_new(const char *, yield_count);
-		if(segment->projections == NULL) segment->projections = array_new(AR_ExpNode *, yield_count);
+
 		uint *call_modifies = array_new(uint, yield_count);
 		for(uint i = 0; i < yield_count; i ++) {
-			// TODO revisit this logic, room for improvement
-			// Add yielded expressions to segment projections.
-			segment->projections = array_append(segment->projections, yield_exps[i]);
 			// Track the names of yielded variables.
-			yields = array_append(yields, yield_exps[i]->resolved_name);
+			// yields = array_append(yields, yield_exps[i]->resolved_name);
+			yields = array_append(yields, yield_exps[i]->operand.variadic.entity_alias);
 			// Track which variables are modified by this operation.
-			call_modifies = array_append(call_modifies, yield_exps[i]->operand.variadic.entity_alias_idx);
+			call_modifies = array_append(call_modifies, RecordMap_LookupAlias(record_map,
+																			  yield_exps[i]->resolved_name));
 		}
+
+		if(segment->projections == NULL) {
+			segment->projections = array_new(AR_ExpNode *, yield_count);
+			for(uint i = 0; i < yield_count; i ++) {
+				// TODO revisit this logic, room for improvement
+				// Add yielded expressions to segment projections.
+				segment->projections = array_append(segment->projections, yield_exps[i]);
+			}
+		}
+
 		array_free(yield_exps);
 
 		OpBase *opProcCall = NewProcCallOp(proc_name, arguments, yields, call_modifies);
@@ -891,6 +903,7 @@ void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx) {
 	// No idea how many operation are in execution plan.
 	RedisModule_ReplyWithArray(ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
 	_ExecutionPlan_Print(plan->root, ctx, buffer, 1024, 0, &op_count);
+
 	RedisModule_ReplySetArrayLength(ctx, op_count);
 }
 

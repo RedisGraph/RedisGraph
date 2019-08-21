@@ -31,9 +31,9 @@ typedef struct {
 	ExpClassification
 	*expression_classification;  /* classifies expression as aggregated/non-aggregated. */
 	Group *group;                                  /* Last accessed group. */
-	TrieMap *groups;
+	rax *groups;
 	SIValue *group_keys;                           /* Array of values composing an aggregated group. */
-	CacheGroupIterator *groupIter;
+	CacheGroupIterator *group_iter;
 	Record last_record;
 } OpAggregate;
 

@@ -9,23 +9,25 @@
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
-#include "../util/triemap/triemap.h"
+#include "../../deps/rax/rax.h"
 
-static TrieMap *__procedures = NULL;
+static rax *__procedures = NULL;
 
 static void _procRegister(const char *procedure, ProcGenerator gen) {
-	TrieMap_Add(__procedures, (char *)procedure, strlen(procedure), gen, NULL);
+	raxInsert(__procedures, (unsigned char *)procedure, strlen(procedure), gen, NULL);
 }
 
 // Register procedures.
 void Proc_Register() {
-	__procedures = NewTrieMap();
+	__procedures = raxNew();
 	_procRegister("db.labels", Proc_LabelsCtx);
 	_procRegister("db.propertyKeys", Proc_PropKeysCtx);
 	_procRegister("db.relationshipTypes", Proc_RelationsCtx);
+
 	// Register FullText Search generator.
-	// _procRegister("db.idx.fulltext.queryNodes", Proc_FulltextQueryNodeGen);
-	// _procRegister("db.idx.fulltext.createNodeIndex", Proc_FulltextCreateNodeIdxGen);
+	_procRegister("db.idx.fulltext.drop", Proc_FulltextDropIdxGen);
+	_procRegister("db.idx.fulltext.queryNodes", Proc_FulltextQueryNodeGen);
+	_procRegister("db.idx.fulltext.createNodeIndex", Proc_FulltextCreateNodeIdxGen);
 }
 
 ProcedureCtx *ProcCtxNew(const char *name,
@@ -49,8 +51,8 @@ ProcedureCtx *ProcCtxNew(const char *name,
 
 ProcedureCtx *Proc_Get(const char *proc_name) {
 	if(!__procedures) return NULL;
-	ProcGenerator gen = TrieMap_Find(__procedures, (char *)proc_name, strlen(proc_name));
-	if(gen == TRIEMAP_NOTFOUND) return NULL;
+	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name, strlen(proc_name));
+	if(gen == raxNotFound) return NULL;
 	ProcedureCtx *ctx = gen();
 	return ctx;
 }
@@ -70,6 +72,30 @@ SIValue *Proc_Step(ProcedureCtx *proc) {
 ProcedureResult ProcedureReset(ProcedureCtx *proc) {
 	// return proc->restart(proc);
 	return PROCEDURE_OK;
+}
+
+uint Procedure_Argc(const ProcedureCtx *proc) {
+	assert(proc);
+	return proc->argc;
+}
+
+uint Procedure_OutputCount(const ProcedureCtx *proc) {
+	assert(proc);
+	return array_len(proc->output);
+}
+
+const char *Procedure_GetOutput(const ProcedureCtx *proc, uint output_idx) {
+	assert(proc && output_idx < Procedure_OutputCount(proc));
+	return proc->output[output_idx]->name;
+}
+
+bool Procedure_ContainsOutput(const ProcedureCtx *proc, const char *output) {
+	assert(proc && output);
+	uint output_count = array_len(proc->output);
+	for(uint i = 0; i < output_count; i++) {
+		if(strcmp(proc->output[i]->name, output) == 0) return true;
+	}
+	return false;
 }
 
 void Proc_Free(ProcedureCtx *proc) {

@@ -42,7 +42,6 @@ class AggregateTest: public ::testing::Test {
 AR_ExpNode* _exp_from_query(const char *query) {
   cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
   AST *ast = AST_Build(parse_result);
-  // ast->entity_map = NewTrieMap();
 
   const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
   AR_ExpNode **return_elems = _BuildReturnExpressions(NULL, ret_clause);

@@ -343,7 +343,9 @@ call-clause =
           )*
         | '-'
         ) -
-      )? >                             { $$ = call_clause(p); }
+      )?
+      (WHERE w:expression | w:_null_) >
+                                       { $$ = call_clause(p, w); }
 
 proc-projection = < r:identifier (
       AS i:identifier >                { $$ = projection(r, i); }

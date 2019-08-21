@@ -23,11 +23,11 @@ static inline void *_BuildMapValue(uint64_t id) {
 static uint _ASTMap_AddEntity(const AST *ast, AST_IDENTIFIER identifier, uint id) {
 	// Assign a new ID if one is not provided
 	if(id == IDENTIFIER_NOT_FOUND) {
-		id = ast->entity_map->cardinality;
+		id = raxSize(ast->entity_map);
 	}
 	void *id_ptr = _BuildMapValue(id);
-	TrieMap_Add(ast->entity_map, (char *)&identifier, sizeof(identifier), id_ptr,
-				TrieMap_DONT_CARE_REPLACE);
+	raxInsert(ast->entity_map, (unsigned char *)&identifier, sizeof(identifier), id_ptr,
+			  NULL);
 
 	return id;
 }
@@ -165,11 +165,11 @@ static void _ASTMap_CollectAliases(AST *ast, const cypher_astnode_t *entity) {
 
 	if(cypher_astnode_type(entity) == CYPHER_AST_IDENTIFIER) {
 		const char *identifier = cypher_ast_identifier_get_name(entity);
-		uint *v = TrieMap_Find(ast->entity_map, (char *)identifier, strlen(identifier));
-		if(v == TRIEMAP_NOTFOUND) {
-			void *id_ptr = _BuildMapValue(ast->entity_map->cardinality);
-			TrieMap_Add(ast->entity_map, (char *)identifier, strlen(identifier), id_ptr,
-						TrieMap_DONT_CARE_REPLACE);
+		uint *v = raxFind(ast->entity_map, (unsigned char *)identifier, strlen(identifier));
+		if(v == raxNotFound) {
+			void *id_ptr = _BuildMapValue(raxSize(ast->entity_map));
+			raxInsert(ast->entity_map, (unsigned char *)identifier, strlen(identifier), id_ptr,
+					  NULL);
 		}
 		return;
 	}
@@ -187,7 +187,7 @@ void AST_BuildEntityMap(AST *ast) {
 	 * entity (as will aliases).
 	 * The ExecutionPlanSegment will contain a mapping that converts these IDs
 	 * as well as other keys to Record IDs. */
-	ast->entity_map = NewTrieMap();
+	ast->entity_map = raxNew();
 
 	// Recursively map every identifier in this AST.
 	_ASTMap_CollectAliases(ast, ast->root);
@@ -252,28 +252,28 @@ void AST_BuildEntityMap(AST *ast) {
 // AST Map Retrieval
 //------------------------------------------------------------------------------
 uint AST_GetEntityIDFromReference(const AST *ast, AST_IDENTIFIER entity) {
-	void *id = TrieMap_Find(ast->entity_map, (char *)&entity, sizeof(entity));
-	if(id == TRIEMAP_NOTFOUND) return IDENTIFIER_NOT_FOUND;
+	void *id = raxFind(ast->entity_map, (unsigned char *)&entity, sizeof(entity));
+	if(id == raxNotFound) return IDENTIFIER_NOT_FOUND;
 	return (uint64_t)id;
 }
 
 uint AST_GetEntityIDFromAlias(const AST *ast, const char *alias) {
-	void *id = TrieMap_Find(ast->entity_map, (char *)alias, strlen(alias));
-	if(id == TRIEMAP_NOTFOUND) return IDENTIFIER_NOT_FOUND;
+	void *id = raxFind(ast->entity_map, (unsigned char *)alias, strlen(alias));
+	if(id == raxNotFound) return IDENTIFIER_NOT_FOUND;
 	return (uint64_t)id;
 }
 
 // Add alias if it has not already been mapped and return ID
 uint ASTMap_FindOrAddAlias(const AST *ast, const char *alias, uint id) {
-	uint *v = TrieMap_Find(ast->entity_map, (char *)alias, strlen(alias));
-	if(v != TRIEMAP_NOTFOUND) return (uint64_t)v;
+	uint *v = raxFind(ast->entity_map, (unsigned char *)alias, strlen(alias));
+	if(v != raxNotFound) return (uint64_t)v;
 
 	// Assign a new ID if one is not provided
 	if(id == IDENTIFIER_NOT_FOUND) {
-		id = ast->entity_map->cardinality;
+		id = raxSize(ast->entity_map);
 	}
 	void *id_ptr = _BuildMapValue(id);
-	TrieMap_Add(ast->entity_map, (char *)alias, strlen(alias), id_ptr, TrieMap_DONT_CARE_REPLACE);
+	raxInsert(ast->entity_map, (unsigned char *)alias, strlen(alias), id_ptr, NULL);
 
 	return id;
 }

@@ -1,4 +1,6 @@
-DEBUG?= -g -ggdb
+ifeq ($(DEBUG), 1)
+	DEBUGFLAGS = -g -ggdb -O0
+endif
 CFLAGS?= -O2 -Wall -W -std=c99
 LDFLAGS= -lm
 
@@ -14,13 +16,13 @@ rax-test.o: rax.h
 rax-oom-test.o: rax.h
 
 rax-test: rax-test.o rax.o rc4rand.o crc16.o
-	$(CC) -o $@ $^ $(LDFLAGS) $(DEBUG)
+	$(CC) -o $@ $^ $(LDFLAGS) $(DEBUGFLAGS)
 
 rax-oom-test: rax-oom-test.o rax.o
-	$(CC) -o $@ $^ $(LDFLAGS) $(DEBUG)
+	$(CC) -o $@ $^ $(LDFLAGS) $(DEBUGFLAGS)
 
 .c.o:
-	$(CC) -c $(CFLAGS) $(DEBUG) $<
+	$(CC) -c $(CFLAGS) $(DEBUGFLAGS) $<
 
 clean:
 	rm -f rax-test rax-oom-test *.gcda *.gcov *.gcno *.o

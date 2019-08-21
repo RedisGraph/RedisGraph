@@ -16,6 +16,9 @@ void _DeleteEntities(OpDelete *op) {
 	uint node_count = array_len(op->deleted_nodes);
 	uint edge_count = array_len(op->deleted_edges);
 
+	/* Nothing to delete, quickly return. */
+	if((node_count + edge_count) == 0) return;
+
 	/* Lock everything. */
 	Graph_AcquireWriteLock(g);
 
@@ -104,10 +107,25 @@ OpResult OpDeleteReset(OpBase *ctx) {
 void OpDeleteFree(OpBase *ctx) {
 	OpDelete *op = (OpDelete *)ctx;
 
-	_DeleteEntities(op);
+	if(op->deleted_nodes || op->deleted_edges) _DeleteEntities(op);
 
-	array_free(op->nodes_to_delete);
-	array_free(op->edges_to_delete);
-	array_free(op->deleted_nodes);
-	array_free(op->deleted_edges);
+	if(op->nodes_to_delete) {
+		array_free(op->nodes_to_delete);
+		op->nodes_to_delete = NULL;
+	}
+
+	if(op->edges_to_delete) {
+		array_free(op->edges_to_delete);
+		op->edges_to_delete = NULL;
+	}
+
+	if(op->deleted_nodes) {
+		array_free(op->deleted_nodes);
+		op->deleted_nodes = NULL;
+	}
+
+	if(op->deleted_edges) {
+		array_free(op->deleted_edges);
+		op->deleted_edges = NULL;
+	}
 }

@@ -6,6 +6,7 @@
 
 #include "op_procedure_call.h"
 #include "../../util/arr.h"
+#include "../../util/rmalloc.h"
 
 static void _yield(OpProcCall *op, SIValue *proc_output, Record r) {
 	if(!op->yield_map) {
@@ -15,10 +16,8 @@ static void _yield(OpProcCall *op, SIValue *proc_output, Record r) {
 			const char *yield = op->output[i];
 			for(uint j = 0; j < array_len(proc_output); j += 2) {
 				char *key = (proc_output + j)->stringval;
-				SIValue *val = &proc_output[j + 1];
 				if(strcmp(yield, key) == 0) {
-					OpBase *base = (OpBase *)op;
-					int idx = RecordMap_LookupAlias(base->record_map, key);
+					int idx = op->op.modifies[i];
 					op->yield_map[i].proc_out_idx = j + 1;
 					op->yield_map[i].rec_idx = idx;
 					break;
@@ -117,8 +116,12 @@ OpResult OpProcCallReset(OpBase *ctx) {
 
 void OpProcCallFree(OpBase *ctx) {
 	OpProcCall *op = (OpProcCall *)ctx;
-	if(op->args) array_free(op->args);
-	if(op->output) array_free(op->output);
-	if(op->procedure) Proc_Free(op->procedure);
-	if(op->yield_map) rm_free(op->yield_map);
+	if(op->procedure) {
+		Proc_Free(op->procedure);
+		op->procedure = NULL;
+	}
+	if(op->yield_map) {
+		rm_free(op->yield_map);
+		op->yield_map = NULL;
+	}
 }

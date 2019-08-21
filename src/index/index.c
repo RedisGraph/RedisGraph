@@ -1,173 +1,284 @@
-/*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
-
 #include "index.h"
+#include "../value.h"
+#include "../util/arr.h"
 #include "../util/rmalloc.h"
+#include "../graph/graphcontext.h"
+#include "../graph/entities/node.h"
 
-// Given a value type, return the matching skiplist from an index.
-static inline skiplist *_select_skiplist(const Index *idx, const SIType t) {
-	if(t == T_STRING) {
-		return idx->string_sl;
-	} else if(t & SI_NUMERIC) {
-		return idx->numeric_sl;
+static int _getNodeAttribute(void *ctx, const char *fieldName, const void *id, char **strVal,
+							 double *doubleVal) {
+	Node n;
+	NodeID nId = *(NodeID *)id;
+	GraphContext *gc = (GraphContext *)ctx;
+	Graph *g = gc->g;
+
+	assert(Graph_GetNode(g, nId, &n));
+	Attribute_ID attrId = GraphContext_GetAttributeID(gc, fieldName);
+	SIValue *v = GraphEntity_GetProperty((GraphEntity *)&n, attrId);
+	int ret;
+	if(v == PROPERTY_NOTFOUND) {
+		ret = RSVALTYPE_NOTFOUND;
+	} else if(v->type & T_STRING) {
+		*strVal = v->stringval;
+		ret = RSVALTYPE_STRING;
+	} else if(v->type & SI_NUMERIC) {
+		*doubleVal = SI_GET_NUMERIC(*v);
+		ret = RSVALTYPE_DOUBLE;
+	} else {
+		// Skiping booleans.
+		ret = RSVALTYPE_NOTFOUND;
 	}
-	return NULL;
+	return ret;
 }
 
-//------------------------------------------------------------------------------
-// Function pointers for skiplist routines
-//------------------------------------------------------------------------------
-int compareNodes(NodeID a, NodeID b) {
-	return a - b;
-}
+static void _populateIndex
+(
+	Index *idx
+) {
+	GraphContext *gc = GraphContext_GetFromTLS();
+	Schema *s = GraphContext_GetSchema(gc, idx->label, SCHEMA_NODE);
 
-int compareStrings(SIValue *a, SIValue *b) {
-	return strcmp(a->stringval, b->stringval);
-}
-
-int compareNumerics(SIValue *a, SIValue *b) {
-	if(a->type & b->type & T_INT64) {
-		return a->longval - b->longval;
-	}
-	double diff = SI_GET_NUMERIC(*a) - SI_GET_NUMERIC(*b);
-	return SAFE_COMPARISON_RESULT(diff);
-}
-
-/* The index must maintain its own copy of the indexed SIValue
- * so that it becomes outdated but not broken by updates to the property. */
-SIValue *cloneKey(SIValue *property) {
-	SIValue *clone = rm_malloc(sizeof(SIValue));
-	*clone = SI_CloneValue(*property);
-	return clone;
-}
-
-void freeKey(SIValue *key) {
-	SIValue_Free(key);
-	rm_free(key);
-}
-
-//------------------------------------------------------------------------------
-// Index creation functions
-//------------------------------------------------------------------------------
-void initializeSkiplists(Index *index) {
-	index->string_sl = skiplistCreate(compareStrings, compareNodes, cloneKey, freeKey);
-	index->numeric_sl = skiplistCreate(compareNumerics, compareNodes, cloneKey, freeKey);
-}
-
-/* Index_Create allocates an Index object and populates it with all unique IDs and values
- * that possess the provided label and property. */
-Index *Index_Create(Graph *g, const char *label, int label_id, const char *attr_str,
-					Attribute_ID attr_id) {
-	const GrB_Matrix label_matrix = Graph_GetLabelMatrix(g, label_id);
-	GxB_MatrixTupleIter *it;
-	GxB_MatrixTupleIter_new(&it, label_matrix);
-
-	Index *index = rm_malloc(sizeof(Index));
-
-	index->label = rm_strdup(label);
-	index->attribute = rm_strdup(attr_str);
-	index->attr_id = attr_id;
-
-	initializeSkiplists(index);
+	// Label doesn't exists.
+	if(s == NULL) return;
 
 	Node node;
-	EntityProperty *prop;
-
-	skiplist *sl;
 	NodeID node_id;
+	Graph *g = gc->g;
+	int label_id = s->id;
+	GxB_MatrixTupleIter *it;
+	const GrB_Matrix label_matrix = Graph_GetLabelMatrix(g, label_id);
+	GxB_MatrixTupleIter_new(&it, label_matrix);
 
-	int found;
-	int prop_index = 0;
-
+	// Iterate over each labeled node.
 	while(true) {
 		bool depleted = false;
 		GxB_MatrixTupleIter_next(it, NULL, &node_id, &depleted);
 		if(depleted) break;
+
 		Graph_GetNode(g, node_id, &node);
-		// If the sought property is at a different offset than it occupied in the previous node,
-		// then seek and update
-		if(attr_id != ENTITY_PROPS(&node)[prop_index].id) {
-			found = 0;
-			for(int i = 0; i < ENTITY_PROP_COUNT(&node); i ++) {
-				prop = ENTITY_PROPS(&node) + i;
-				if(attr_id == prop->id) {
-					prop_index = i;
-					found = 1;
-					break;
-				}
+		Index_IndexNode(idx, &node);
+	}
+	GxB_MatrixTupleIter_free(it);
+}
+
+// Create a new index.
+Index *Index_New
+(
+	const char *label,  // Indexed label
+	IndexType type    // Index type exact-match / fulltext.
+) {
+	Index *idx = rm_malloc(sizeof(Index));
+	idx->idx = NULL;
+	idx->fields_count = 0;
+	idx->type = type;
+	idx->label = rm_strdup(label);
+	idx->fields = array_new(char *, 0);
+	idx->fields_ids = array_new(Attribute_ID, 0);
+	return idx;
+}
+
+// Adds field to index.
+void Index_AddField
+(
+	Index *idx,
+	const char *field
+) {
+	assert(idx);
+	if(Index_ContainsField(idx, field)) return;
+
+	idx->fields_count++;
+	idx->fields = array_append(idx->fields, rm_strdup(field));
+
+	GraphContext *gc = GraphContext_GetFromTLS();
+	Attribute_ID fieldID = GraphContext_FindOrAddAttribute(gc, field);
+	idx->fields_ids = array_append(idx->fields_ids, fieldID);
+}
+
+// Removes fields from index.
+void Index_RemoveField
+(
+	Index *idx,
+	const char *field
+) {
+	assert(idx);
+	if(!Index_ContainsField(idx, field)) return;
+
+	for(uint i = 0; i < idx->fields_count; i++) {
+		if(strcmp(idx->fields[i], field) == 0) {
+			idx->fields_count--;
+			rm_free(idx->fields[i]);
+			array_del_fast(idx->fields, i);
+			array_del_fast(idx->fields_ids, i);
+			break;
+		}
+	}
+}
+
+void Index_IndexNode
+(
+	Index *idx,
+	const Node *n
+) {
+	double score = 0;           // Default score.
+	const char *lang = NULL;    // Default language.
+	RSIndex *rsIdx = idx->idx;
+	NodeID node_id = ENTITY_GET_ID(n);
+	uint doc_field_count = 0;
+
+	// Create a document out of node.
+	RSDoc *doc = RediSearch_CreateDocument(&node_id, sizeof(EntityID), score, lang);
+
+	// Add document field for each indexed property.
+	for(uint i = 0; i < idx->fields_count; i++) {
+		SIValue *v = GraphEntity_GetProperty((GraphEntity *)n, idx->fields_ids[i]);
+		if(v == PROPERTY_NOTFOUND) continue;
+
+		doc_field_count++;
+		if(idx->type == IDX_FULLTEXT) {
+			// Value must be of type string.
+			if(SI_TYPE(*v) & SI_STRING) {
+				RediSearch_DocumentAddFieldString(doc,
+												  idx->fields[i],
+												  v->stringval,
+												  strlen(v->stringval),
+												  RSFLDTYPE_FULLTEXT);
 			}
 		} else {
-			found = 1;
+			if(SI_TYPE(*v) & SI_STRING) {
+				RediSearch_DocumentAddFieldString(doc, idx->fields[i], v->stringval, strlen(v->stringval),
+												  RSFLDTYPE_TAG);
+			} else if(SI_TYPE(*v) & (SI_NUMERIC | T_BOOL)) {
+				double d = SI_GET_NUMERIC(*v);
+				RediSearch_DocumentAddFieldNumber(doc, idx->fields[i], d, RSFLDTYPE_NUMERIC);
+			} else {
+				continue;
+			}
 		}
-		// The targeted property does not exist on this node
-		if(!found) continue;
-
-		prop = ENTITY_PROPS(&node) + prop_index;
-		// This value will be cloned within the skiplistInsert routine if necessary
-		SIValue *key = &prop->value;
-
-		sl = _select_skiplist(index, key->type);
-		if(!sl) continue;  // Value was of a type not supported by indices.
-		skiplistInsert(sl, key, node_id);
 	}
 
-	GxB_MatrixTupleIter_free(it);
-
-	return index;
+	if(doc_field_count > 0) RediSearch_SpecAddDocument(rsIdx, doc);
+	// TODO: if doc_field_count == 0, need to free document.
 }
 
-//------------------------------------------------------------------------------
-// Index updates
-//------------------------------------------------------------------------------
-
-void Index_DeleteNode(Index *idx, NodeID node, SIValue *val) {
-	skiplist *sl = _select_skiplist(idx, val->type);
-	if(!sl) return;  // Value was of a type not supported by indices.
-	skiplistDelete(sl, val, &node);
-}
-void Index_InsertNode(Index *idx, NodeID node, SIValue *val) {
-	skiplist *sl = _select_skiplist(idx, val->type);
-	if(!sl) return;  // Value was of a type not supported by indices.
-	skiplistInsert(sl, val, node);
+void Index_RemoveNode
+(
+	Index *idx,     // Index to use
+	const Node *n   // Node to remove
+) {
+	assert(idx && n);
+	NodeID node_id = ENTITY_GET_ID(n);
+	RediSearch_DeleteDocument(idx->idx, &node_id, sizeof(EntityID));
 }
 
-//------------------------------------------------------------------------------
-// Index iterator functions
-//------------------------------------------------------------------------------
+// Constructs index.
+void Index_Construct
+(
+	Index *idx
+) {
+	assert(idx);
 
-/* Generate an iterator with no lower or upper bound. */
-IndexIter *IndexIter_Create(Index *idx, SIType type) {
-	skiplist *sl = (type == T_STRING) ? idx->string_sl : idx->numeric_sl;
-	return skiplistIterateAll(sl);
+	/* RediSearch index already exists
+	 * re-construct */
+	if(idx->idx) {
+		RediSearch_DropIndex(idx->idx);
+		idx->idx = NULL;
+	}
+
+	RSIndex *rsIdx = NULL;
+	GraphContext *gc = GraphContext_GetFromTLS();
+	RSIndexOptions *idx_options = RediSearch_CreateIndexOptions();
+	RediSearch_IndexOptionsSetGetValueCallback(idx_options, _getNodeAttribute, gc);
+	rsIdx = RediSearch_CreateIndex(idx->label, idx_options);
+	RediSearch_FreeIndexOptions(idx_options);
+
+	// Create indexed fields
+	if(idx->type == IDX_FULLTEXT) {
+		for(uint i = 0; i < idx->fields_count; i++) {
+			// Introduce text field.
+			RediSearch_CreateTextField(rsIdx, idx->fields[i]);
+		}
+	} else {
+		for(uint i = 0; i < idx->fields_count; i++) {
+			// Introduce both text and numeric fields.
+			RSFieldID fieldID = RediSearch_CreateField(rsIdx, idx->fields[i], RSFLDTYPE_NUMERIC | RSFLDTYPE_TAG,
+													   RSFLDOPT_NONE);
+			RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
+		}
+	}
+
+	idx->idx = rsIdx;
+	_populateIndex(idx);
 }
 
-/* Apply a filter to an iterator, modifying the appropriate bound if
- * it narrows the iterator range.
- * Returns 1 if the filter was a comparison type that can be translated into a bound
- * (effectively, any type but '!='), which indicates that it is now redundant. */
-bool IndexIter_ApplyBound(IndexIter *iter, SIValue *bound, int op) {
-	return skiplistIter_UpdateBound(iter, bound, op);
+// Query index.
+RSResultsIterator *Index_Query
+(
+	const Index *idx,
+	const char *query,           // Query to execute
+	char **err
+) {
+	assert(idx && query);
+	return RediSearch_IterateQuery(idx->idx, query, strlen(query), err);
 }
 
-NodeID *IndexIter_Next(IndexIter *iter) {
-	return skiplistIterator_Next(iter);
+// Return indexed label.
+const char *Index_GetLabel
+(
+	const Index *idx
+) {
+	assert(idx);
+	return (const char *)idx->label;
 }
 
-void IndexIter_Reset(IndexIter *iter) {
-	skiplistIterate_Reset(iter);
+// Returns number of fields indexed.
+uint Index_FieldsCount
+(
+	const Index *idx
+) {
+	assert(idx);
+	return idx->fields_count;
 }
 
-void IndexIter_Free(IndexIter *iter) {
-	skiplistIterate_Free(iter);
+// Returns indexed fields.
+const char **Index_GetFields
+(
+	const Index *idx
+) {
+	assert(idx);
+	return (const char **)idx->fields;
 }
 
-void Index_Free(Index *idx) {
-	skiplistFree(idx->string_sl);
-	skiplistFree(idx->numeric_sl);
+// Checks if given field is indexed.
+bool Index_ContainsField
+(
+	const Index *idx,
+	const char *field
+) {
+	assert(idx && field);
+
+	for(uint i = 0; i < idx->fields_count; i++) {
+		if(strcmp(idx->fields[i], field) == 0) return true;
+	}
+
+	return false;
+}
+
+// Free index.
+void Index_Free
+(
+	Index *idx
+) {
+	assert(idx);
+	if(idx->idx) RediSearch_DropIndex(idx->idx);
+
 	rm_free(idx->label);
-	rm_free(idx->attribute);
+
+	for(uint i = 0; i < idx->fields_count; i++) {
+		rm_free(idx->fields[i]);
+	}
+
+	array_free(idx->fields);
+	array_free(idx->fields_ids);
+
 	rm_free(idx);
 }

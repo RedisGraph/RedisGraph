@@ -37,25 +37,11 @@ static void _QueueUpdate(OpUpdate *op, GraphEntity *entity, GraphEntityType type
 /* Introduce updated entity to index. */
 static void _UpdateIndex(EntityUpdateCtx *ctx, GraphContext *gc, Schema *s, SIValue *old_value,
 						 SIValue *new_value) {
-	if(s == NULL) return;
 	Node *n = &ctx->n;
 	EntityID node_id = ENTITY_GET_ID(n);
 
-	// See if there's an index on label/property pair.
-	Index *idx = Schema_GetIndex(s, ctx->attr_id);
-	if(!idx) return;
-
-	if(old_value != PROPERTY_NOTFOUND) {
-		/* Updating an existing property.
-		 * remove entity from index using old value. */
-		Index_DeleteNode(idx, node_id, old_value);
-	}
-
-	// Setting an attribute value to NULL remove that attribute.
-	if(SIValue_IsNull(*new_value)) return;
-
-	// Add node to index.
-	Index_InsertNode(idx, node_id, new_value);
+	// Reindex.
+	Schema_AddNodeToIndices(s, n, true);
 }
 
 static void _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
@@ -73,10 +59,7 @@ static void _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
 	}
 
 	// Try to get current property value.
-	SIValue *old_value  = GraphEntity_GetProperty((GraphEntity *)node, ctx->attr_id);
-
-	// Update index for node entities.
-	_UpdateIndex(ctx, op->gc, s, old_value, &ctx->new_value);
+	SIValue *old_value = GraphEntity_GetProperty((GraphEntity *)node, ctx->attr_id);
 
 	if(old_value == PROPERTY_NOTFOUND) {
 		// Add new property.
@@ -85,6 +68,9 @@ static void _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
 		// Update property.
 		GraphEntity_SetProperty((GraphEntity *)node, ctx->attr_id, ctx->new_value);
 	}
+
+	// Update index for node entities.
+	_UpdateIndex(ctx, op->gc, s, old_value, &ctx->new_value);
 }
 
 static void _UpdateEdge(OpUpdate *op, EntityUpdateCtx *ctx) {
@@ -192,8 +178,8 @@ Record OpUpdateConsume(OpBase *opBase) {
 	while((r = OpBase_Consume(child))) {
 		/* Evaluate each update expression and store result
 		 * for later execution. */
-		for(uint i = 0; i < op->update_expressions_count; i++) {
-			EntityUpdateEvalCtx *update_expression = op->update_expressions + i;
+		EntityUpdateEvalCtx *update_expression = op->update_expressions;
+		for(uint i = 0; i < op->update_expressions_count; i++, update_expression++) {
 			SIValue new_value = AR_EXP_Evaluate(update_expression->exp, r);
 
 			// Make sure we're updating either a node or an edge.
@@ -212,6 +198,11 @@ Record OpUpdateConsume(OpBase *opBase) {
 			Record_Free(r);
 		}
 	}
+
+	/* Done reading, we're not going to call consume any longer
+	 * there might be operations e.g. index scan that need to free
+	 * index R/W lock, as such free all execution plan operation up the chain. */
+	OpBase_PropagateFree(child);
 
 	/* Lock everything. */
 	Graph_AcquireWriteLock(op->gc->g);
@@ -236,16 +227,27 @@ OpResult OpUpdateReset(OpBase *ctx) {
 void OpUpdateFree(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 	/* Free each update context. */
-	for(uint i = 0; i < op->update_expressions_count; i++) {
-		AR_EXP_Free(op->update_expressions[i].exp);
+	if(op->update_expressions_count) {
+		for(uint i = 0; i < op->update_expressions_count; i++) {
+			AR_EXP_Free(op->update_expressions[i].exp);
+		}
+		op->update_expressions_count = 0;
 	}
 
 	if(op->records) {
 		uint records_count = array_len(op->records);
 		for(uint i = 0; i < records_count; i++) Record_Free(op->records[i]);
 		array_free(op->records);
+		op->records = NULL;
 	}
 
-	rm_free(op->update_expressions);
-	rm_free(op->pending_updates);
+	if(op->update_expressions) {
+		rm_free(op->update_expressions);
+		op->update_expressions = NULL;
+	}
+
+	if(op->pending_updates) {
+		rm_free(op->pending_updates);
+		op->pending_updates = NULL;
+	}
 }

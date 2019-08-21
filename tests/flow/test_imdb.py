@@ -10,18 +10,26 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/imdb/'
 import imdb_queries
 import imdb_utils
 
+imdb = None
 queries = None
 redis_graph = None
 
 class testImdbFlow(FlowTestsBase):
     def __init__(self):
-        super(testImdbFlow, self).__init__()
-        global redis_graph
+        super(testImdbFlow, self).__init__()        
+
+    def setUp(self):
+        global imdb
         global queries
+        global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph(imdb_utils.graph_name, redis_con)
         actors, movies = imdb_utils.populate_graph(redis_con, redis_graph)
-        queries = imdb_queries.IMDBQueries(actors, movies)
+        imdb = imdb_queries.IMDBQueries(actors, movies)
+        queries = imdb.queries()
+
+    def tearDown(self):
+        self.env.cmd('flushall')
 
     def assert_reversed_pattern(self, query, resultset):
         # Test reversed pattern query.
@@ -35,221 +43,44 @@ class testImdbFlow(FlowTestsBase):
         # assert query run time
         self._assert_equalish(resultset.run_time_ms, actual_result.run_time_ms)
 
-    def test_number_of_actors(self):
-        global redis_graph
-        q = queries.number_of_actors_query.query
-        actual_result = redis_graph.query(q)
+    def test_imdb(self):
+        for q in queries:
+            query = q.query
+            actual_result = redis_graph.query(query)
 
-        # assert result set
-        self._assert_only_expected_results_are_in_actual_results(
-            actual_result,
-            queries.number_of_actors_query)
+            # assert result set
+            self._assert_only_expected_results_are_in_actual_results(actual_result, q)
 
-        # assert query run time
-        self._assert_run_time(actual_result, queries.number_of_actors_query)
+            # assert query run time
+            self._assert_run_time(actual_result, q)
 
-        # assert execution plan
-        execution_plan = redis_graph.execution_plan(q)
-        self.env.assertNotIn("Aggregate", execution_plan)
-        self.env.assertNotIn("Node By Label Scan", execution_plan)
+            if q.reversible:
+                # assert reversed pattern.
+                self.assert_reversed_pattern(query, actual_result)
     
-    def test_actors_played_with_nicolas_cage(self):
-        global redis_graph
-        q = queries.actors_played_with_nicolas_cage_query.query
-        actual_result = redis_graph.query(q)
-
-        # assert result set
-        self._assert_only_expected_results_are_in_actual_results(
-            actual_result,
-            queries.actors_played_with_nicolas_cage_query)
-
-        # assert query run time
-        self._assert_run_time(actual_result, queries.actors_played_with_nicolas_cage_query)
-
-        # assert reversed pattern.
-        self.assert_reversed_pattern(q, actual_result)
-
-    def test_find_three_actors_played_with_nicolas_cage(self):
-        global redis_graph
-        NUM_EXPECTED_RESULTS = 3
-
-        q = queries.find_three_actors_played_with_nicolas_cage_query.query
-        actual_result = redis_graph.query(q)
-
-        # assert result set
-        self._assert_actual_results_contained_in_expected_results(
-            actual_result,
-            queries.find_three_actors_played_with_nicolas_cage_query,
-            NUM_EXPECTED_RESULTS)
-
-        # assert query run time
-        self._assert_run_time(actual_result, queries.find_three_actors_played_with_nicolas_cage_query)
-        
-        # assert reversed pattern.
-        self.assert_reversed_pattern(q, actual_result)
-
-    def test_actors_played_in_movie_straight_outta_compton(self):
-        global redis_graph
-        q = queries.actors_played_in_movie_straight_outta_compton_query.query
-        actual_result = redis_graph.query(q)
-
-        # assert result set
-        self._assert_only_expected_results_are_in_actual_results(
-            actual_result,
-            queries.actors_played_in_movie_straight_outta_compton_query)
-
-        # assert query run time
-        self._assert_run_time(actual_result, queries.actors_played_in_movie_straight_outta_compton_query)
-
-        # assert reversed pattern.
-        self.assert_reversed_pattern(q, actual_result)
-
-    def test_actors_over_50_that_played_in_blockbusters(self):
-        global redis_graph
-        q = queries.actors_over_50_that_played_in_blockbusters_query.query
-        actual_result = redis_graph.query(q)
-
-        # assert result set
-        self._assert_only_expected_results_are_in_actual_results(
-            actual_result,
-            queries.actors_over_50_that_played_in_blockbusters_query)
-
-        # assert query run time
-        self._assert_run_time(actual_result, queries.actors_over_50_that_played_in_blockbusters_query)
-
-        # assert reversed pattern.
-        self.assert_reversed_pattern(q, actual_result)
-
-    def test_actors_played_in_bad_drama_or_comedy(self):
-        global redis_graph
-        q = queries.actors_played_in_bad_drama_or_comedy_query.query
-        actual_result = redis_graph.query(q)
-
-        # assert result set
-        self._assert_only_expected_results_are_in_actual_results(
-            actual_result,
-            queries.actors_played_in_bad_drama_or_comedy_query)
-
-        # assert query run time
-        self._assert_run_time(actual_result, queries.actors_played_in_bad_drama_or_comedy_query)
-
-        # assert reversed pattern.
-        self.assert_reversed_pattern(q, actual_result)
-    
-    def test_actors_played_in_drama_action_comedy(self):
-        global redis_graph
-        q = queries.actors_played_in_drama_action_comedy_query.query
-        actual_result = redis_graph.query(q)
-
-        # assert result set
-        self._assert_only_expected_results_are_in_actual_results(
-            actual_result,
-            queries.actors_played_in_drama_action_comedy_query)
-
-        # assert query run time
-        self._assert_run_time(actual_result, queries.actors_played_in_drama_action_comedy_query)
-
-    def test_young_actors_played_with_cameron_diaz(self):
-        global redis_graph
-        q = queries.young_actors_played_with_cameron_diaz_query.query
-        actual_result = redis_graph.query(q)
-
-        # assert result set
-        self._assert_only_expected_results_are_in_actual_results(
-            actual_result,
-            queries.young_actors_played_with_cameron_diaz_query)
-
-        # assert query run time
-        self._assert_run_time(actual_result, queries.young_actors_played_with_cameron_diaz_query)
-
-        # assert reversed pattern.
-        self.assert_reversed_pattern(q, actual_result)
-
-    def test_actors_played_with_cameron_diaz_and_younger_than_her(self):
-        global redis_graph
-        q = queries.actors_played_with_cameron_diaz_and_younger_than_her_query.query
-        actual_result = redis_graph.query(q)
-
-        # assert result set
-        self._assert_only_expected_results_are_in_actual_results(
-            actual_result,
-            queries.actors_played_with_cameron_diaz_and_younger_than_her_query)
-
-        # assert query run time
-        self._assert_run_time(actual_result, queries.actors_played_with_cameron_diaz_and_younger_than_her_query)
-
-        # assert reversed pattern.
-        self.assert_reversed_pattern(q, actual_result)
-
-    def test_sum_and_average_age_of_straight_outta_compton_cast(self):
-        global redis_graph
-        q = queries.sum_and_average_age_of_straight_outta_compton_cast_query.query
-        actual_result = redis_graph.query(q)
-
-        # assert result set
-        self._assert_only_expected_results_are_in_actual_results(
-            actual_result,
-            queries.sum_and_average_age_of_straight_outta_compton_cast_query)
-
-        # assert query run time
-        self._assert_run_time(actual_result, queries.sum_and_average_age_of_straight_outta_compton_cast_query)
-
-        # assert reversed pattern.
-        self.assert_reversed_pattern(q, actual_result)
-
-    def test_how_many_movies_cameron_diaz_played(self):
-        global redis_graph
-        q = queries.how_many_movies_cameron_diaz_played_query.query
-        actual_result = redis_graph.query(q)
-
-        # assert result set
-        self._assert_only_expected_results_are_in_actual_results(
-            actual_result,
-            queries.how_many_movies_cameron_diaz_played_query)
-
-        # assert query run time
-        self._assert_run_time(actual_result, queries.how_many_movies_cameron_diaz_played_query)
-
-        # assert reversed pattern.
-        self.assert_reversed_pattern(q, actual_result)
-
-    def test_find_ten_oldest_actors(self):
-        global redis_graph
-        q = queries.find_ten_oldest_actors_query.query
-        actual_result = redis_graph.query(q)
-
-        # assert result set
-        self._assert_only_expected_results_are_in_actual_results(
-            actual_result,
-            queries.find_ten_oldest_actors_query)
-
-        # assert query run time
-        self._assert_run_time(actual_result, queries.find_ten_oldest_actors_query)
-
-        # assert reversed pattern.
-        self.assert_reversed_pattern(q, actual_result)
-
     def test_index_scan_actors_over_85(self):
         global redis_graph
 
         # Execute this command directly, as its response does not contain the result set that
         # 'redis_graph.query()' expects
-        redis_graph.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "CREATE INDEX ON :actor(age)")
-        q = queries.actors_over_85_index_scan.query
+        redis_con = self.env.getConnection()
+        res = redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "CREATE INDEX ON :actor(age)")
+
+        q = imdb.actors_over_85_index_scan.query
         execution_plan = redis_graph.execution_plan(q)
         self.env.assertIn('Index Scan', execution_plan)
 
         actual_result = redis_graph.query(q)
 
-        redis_graph.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "DROP INDEX ON :actor(age)")
+        redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "DROP INDEX ON :actor(age)")
 
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
             actual_result,
-            queries.actors_over_85_index_scan)
+            imdb.actors_over_85_index_scan)
 
         # assert query run time
-        self._assert_run_time(actual_result, queries.actors_over_85_index_scan)
+        self._assert_run_time(actual_result, imdb.actors_over_85_index_scan)
 
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
@@ -260,7 +91,7 @@ class testImdbFlow(FlowTestsBase):
         # Execute this command directly, as its response does not contain the result set that
         # 'redis_graph.query()' expects
         redis_graph.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "CREATE INDEX ON :movie(year)")
-        q = queries.eighties_movies_index_scan.query
+        q = imdb.eighties_movies_index_scan.query
         execution_plan = redis_graph.execution_plan(q)
         self.env.assertIn('Index Scan', execution_plan)
 
@@ -271,58 +102,10 @@ class testImdbFlow(FlowTestsBase):
         # assert result set
         self._assert_only_expected_results_are_in_actual_results(
             actual_result,
-            queries.eighties_movies_index_scan)
+            imdb.eighties_movies_index_scan)
 
         # assert query run time
-        self._assert_run_time(actual_result, queries.eighties_movies_index_scan)
+        self._assert_run_time(actual_result, imdb.eighties_movies_index_scan)
 
         # assert reversed pattern.
         self.assert_reversed_pattern(q, actual_result)
-
-    def test_find_titles_starting_with_american(self):
-        global redis_graph
-        q = queries.find_titles_starting_with_american_query.query
-        actual_result = redis_graph.query(q)
-
-        # assert result set
-        self._assert_only_expected_results_are_in_actual_results(
-            actual_result,
-            queries.find_titles_starting_with_american_query)
-
-        # assert query run time
-        self._assert_run_time(actual_result, queries.find_titles_starting_with_american_query)
-
-        # assert reversed pattern.
-        self.assert_reversed_pattern(q, actual_result)
-    
-    def test_same_year_higher_rating_than_huntforthewilderpeople(self):
-        global redis_graph
-        q = queries.same_year_higher_rating_than_huntforthewilderpeople_query.query
-        actual_result = redis_graph.query(q)
-
-        # assert result set
-        self._assert_only_expected_results_are_in_actual_results(
-            actual_result,
-            queries.same_year_higher_rating_than_huntforthewilderpeople_query)
-
-        # assert query run time
-        self._assert_run_time(actual_result, queries.same_year_higher_rating_than_huntforthewilderpeople_query)
-
-    # def test_all_actors_named_tim(self):
-    #     global redis_graph
-
-    #     # Create full-text index over actor's name.
-    #     redis_graph.redis_con.execute_command("GRAPH.QUERY", redis_graph.name, "CALL db.idx.fulltext.createNodeIndex('actor', 'name')")
-    #     q = queries.all_actors_named_tim
-    #     execution_plan = redis_graph.execution_plan(q)
-    #     self.evn.assertIn('ProcedureCall', execution_plan)
-
-    #     actual_result = redis_graph.query(q)
-
-    #     # assert result set
-    #     self._assert_only_expected_results_are_in_actual_results(
-    #         actual_result,
-    #         queries.all_actors_named_tim)
-
-    #     # assert query run time
-    #     self._assert_run_time(actual_result, queries.all_actors_named_tim)

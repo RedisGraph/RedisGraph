@@ -39,10 +39,10 @@ typedef enum {
 	M_CONST = 0x4      // SIValue does not own its allocation, but its access is safe
 } SIAllocation;
 
+#define SI_TYPE(value) (value).type
 #define SI_NUMERIC (T_INT64 | T_DOUBLE)
 #define SI_STRING (T_STRING | T_CONSTSTRING)
 #define SI_GRAPHENTITY (T_NODE | T_EDGE)
-#define SI_TYPE(value) (value).type
 
 /* Retrieve the numeric associated with an SIValue without explicitly
  * assigning it a type. */
@@ -79,8 +79,18 @@ SIValue SI_PtrVal(void *v);
 SIValue SI_Node(void *n);
 SIValue SI_Edge(void *e);
 SIValue SI_DuplicateStringVal(const char *s); // Duplicate and ultimately free the input string
-SIValue SI_ConstStringVal(char *s); // Neither duplicate nor assume ownership of input string
-SIValue SI_TransferStringVal(char *s);  // Don't duplicate input string, but assume ownership
+SIValue SI_ConstStringVal(char *s);           // Neither duplicate nor assume ownership of input string
+SIValue SI_TransferStringVal(char *s);        // Don't duplicate input string, but assume ownership
+
+/* Functions for copying and guaranteeing memory safety for SIValues. */
+// SI_ShareValue creates an SIValue that shares all of the original's allocations.
+SIValue SI_ShareValue(const SIValue v);
+
+// SI_CloneValue creates an SIValue that duplicates all of the original's allocations.
+SIValue SI_CloneValue(const SIValue v);
+
+// SI_ConstValue creates an SIValue that shares the original's allocations, but does not need to persist them.
+SIValue SI_ConstValue(const SIValue v);
 
 /* Functions for copying and guaranteeing memory safety for SIValues. */
 // SI_ShareValue creates an SIValue that shares all of the original's allocations.

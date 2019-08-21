@@ -67,7 +67,7 @@ static inline NodeCreateCtx _NewNodeCreateCtx(GraphContext *gc, RecordMap *recor
 	return new_node;
 }
 
-static void _buildAliasTrieMap(TrieMap *map, const cypher_astnode_t *entity) {
+static void _buildAliasrax(rax *map, const cypher_astnode_t *entity) {
 	if(!entity) return;
 
 	cypher_astnode_type_t type = cypher_astnode_type(entity);
@@ -89,30 +89,30 @@ static void _buildAliasTrieMap(TrieMap *map, const cypher_astnode_t *entity) {
 		for(unsigned int i = 0; i < child_count; i++) {
 			const cypher_astnode_t *child = cypher_astnode_get_child(entity, i);
 			// Recursively continue searching
-			_buildAliasTrieMap(map, child);
+			_buildAliasrax(map, child);
 		}
 		return;
 	}
 
-	if(alias) TrieMap_Add(map, alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+	if(alias) raxInsert(map, (unsigned char *)alias, strlen(alias), NULL, NULL);
 }
 
 
-static TrieMap *_MatchMerge_DefinedEntities(const AST *ast) {
+static rax *_MatchMerge_DefinedEntities(const AST *ast) {
 	const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
 	uint match_count = (match_clauses) ? array_len(match_clauses) : 0;
 
 	const cypher_astnode_t **merge_clauses = AST_GetClauses(ast, CYPHER_AST_MERGE);
 	uint merge_count = (merge_clauses) ? array_len(merge_clauses) : 0;
 
-	TrieMap *map = NewTrieMap();
+	rax *map = raxNew();
 
 	for(uint i = 0; i < match_count; i ++) {
-		_buildAliasTrieMap(map, match_clauses[i]);
+		_buildAliasrax(map, match_clauses[i]);
 	}
 
 	for(uint i = 0; i < merge_count; i ++) {
-		_buildAliasTrieMap(map, merge_clauses[i]);
+		_buildAliasrax(map, merge_clauses[i]);
 	}
 
 	if(match_clauses) array_free(match_clauses);
@@ -277,7 +277,7 @@ AST_CreateContext AST_PrepareCreateOp(GraphContext *gc, RecordMap *record_map, A
 
 	/* For every entity within the CREATE clause see if it's also mentioned
 	 * within the MATCH clause. */
-	TrieMap *match_entities = _MatchMerge_DefinedEntities(ast);
+	rax *match_entities = _MatchMerge_DefinedEntities(ast);
 
 	NodeCreateCtx *nodes_to_create = array_new(NodeCreateCtx, 1);
 	EdgeCreateCtx *edges_to_create = array_new(EdgeCreateCtx, 1);
@@ -308,7 +308,7 @@ AST_CreateContext AST_PrepareCreateOp(GraphContext *gc, RecordMap *record_map, A
 					const char *alias = cypher_ast_identifier_get_name(ast_alias);
 
 					// Skip entities defined in MATCH clauses or previously appearing in CREATE patterns
-					int rc = TrieMap_Add(match_entities, (char *)alias, strlen(alias), NULL, TrieMap_DONT_CARE_REPLACE);
+					int rc = raxInsert(match_entities, (unsigned char *)alias, strlen(alias), NULL, NULL);
 					if(rc == 0) continue;
 				}
 
@@ -323,7 +323,7 @@ AST_CreateContext AST_PrepareCreateOp(GraphContext *gc, RecordMap *record_map, A
 		}
 	}
 
-	TrieMap_Free(match_entities, TrieMap_NOP_CB);
+	raxFree(match_entities);
 	array_free(create_clauses);
 
 	AST_CreateContext ctx = { .nodes_to_create = nodes_to_create, .edges_to_create = edges_to_create };

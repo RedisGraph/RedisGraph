@@ -12,8 +12,15 @@
 #include "../ops/op_cartesian_product.h"
 
 // Tests to see if given filter can act as a join condition.
-static bool _applicableFilter(const FT_FilterNode *f) {
-	return (f->t == FT_N_PRED && f->pred.op == OP_EQUAL);
+static inline bool _applicableFilter(const FT_FilterNode *f) {
+	// Can only convert filters that test equality
+	bool equality_check = (f->t == FT_N_PRED && f->pred.op == OP_EQUAL);
+	// TODO allowing AR_ExpNodes that refer directly to graph entities currently causes memory errors.
+	// This restriction should be lifted later.
+	bool comparing_graph_entities = (f->pred.lhs->type == AR_EXP_OPERAND &&
+									 f->pred.lhs->operand.type == AR_EXP_VARIADIC &&
+									 f->pred.lhs->operand.variadic.entity_prop == NULL);
+	return equality_check && !comparing_graph_entities;
 }
 
 // Collects all consecutive filters beneath given op.

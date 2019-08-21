@@ -8,7 +8,7 @@
 
 #include "../value.h"
 #include "../redismodule.h"
-#include "../util/triemap/triemap.h"
+#include "../../deps/rax/rax.h"
 #include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
 
 typedef const void *AST_IDENTIFIER;
@@ -22,7 +22,7 @@ typedef enum {
 
 typedef struct {
 	const cypher_astnode_t *root;     // Root element of libcypher-parser AST
-	TrieMap *entity_map;              // Mapping of aliases and AST node pointers to AST IDs
+	rax *entity_map;                  // Mapping of aliases and AST node pointers to AST IDs
 	bool free_root;                   // The root should only be freed if this is a sub-AST we constructed
 } AST;
 
@@ -39,7 +39,7 @@ bool AST_ReadOnly(const cypher_parse_result_t *result);
 bool AST_ContainsClause(const AST *ast, cypher_astnode_type_t clause);
 
 // Returns all function (aggregated & none aggregated) mentioned in query.
-void AST_ReferredFunctions(const cypher_astnode_t *root, TrieMap *referred_funcs);
+void AST_ReferredFunctions(const cypher_astnode_t *root, rax *referred_funcs);
 
 // Returns specified clause or NULL.
 const cypher_astnode_t *AST_GetClause(const AST *ast, cypher_astnode_type_t clause_type);

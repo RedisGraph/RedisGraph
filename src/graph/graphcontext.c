@@ -41,9 +41,9 @@ GraphContext *GraphContext_New(RedisModuleCtx *ctx, const char *graphname,
 	gc->relation_schemas = array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 
 	gc->string_mapping = array_new(char *, 64);
-	gc->attributes = NewTrieMap();
+	gc->attributes = raxNew();
 
-	pthread_setspecific(_tlsGCKey, gc);
+	assert(pthread_setspecific(_tlsGCKey, gc) == 0);
 
 	// Set and close GraphContext key in Redis keyspace
 	RedisModule_ModuleTypeSetValue(key, GraphContextRedisModuleType, gc);
@@ -67,7 +67,7 @@ GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname, 
 	// Force GraphBLAS updates and resize matrices to node count by default
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 
-	pthread_setspecific(_tlsGCKey, gc);
+	assert(pthread_setspecific(_tlsGCKey, gc) == 0);
 
 cleanup:
 	RedisModule_FreeString(ctx, rs_name);
@@ -143,7 +143,7 @@ const char *GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e) {
 }
 
 uint GraphContext_AttributeCount(GraphContext *gc) {
-	return gc->attributes->cardinality;
+	return raxSize(gc->attributes);
 }
 
 Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attribute) {
@@ -152,15 +152,15 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, attribute);
 
 	if(attribute_id == ATTRIBUTE_NOTFOUND) {
-		attribute_id = gc->attributes->cardinality;
+		attribute_id = raxSize(gc->attributes);
 		pAttribute_id = rm_malloc(sizeof(Attribute_ID));
 		*pAttribute_id = attribute_id;
 
-		TrieMap_Add(gc->attributes,
-					(char *)attribute,
-					strlen(attribute),
-					pAttribute_id,
-					TrieMap_DONT_CARE_REPLACE);
+		raxInsert(gc->attributes,
+				  (unsigned char *)attribute,
+				  strlen(attribute),
+				  pAttribute_id,
+				  NULL);
 		gc->string_mapping = array_append(gc->string_mapping, rm_strdup(attribute));
 	}
 
@@ -173,8 +173,8 @@ const char *GraphContext_GetAttributeString(const GraphContext *gc, Attribute_ID
 }
 
 Attribute_ID GraphContext_GetAttributeID(const GraphContext *gc, const char *attribute) {
-	Attribute_ID *id = TrieMap_Find(gc->attributes, (char *)attribute, strlen(attribute));
-	if(id == TRIEMAP_NOTFOUND) return ATTRIBUTE_NOTFOUND;
+	Attribute_ID *id = raxFind(gc->attributes, (unsigned char *)attribute, strlen(attribute));
+	if(id == raxNotFound) return ATTRIBUTE_NOTFOUND;
 	return *id;
 }
 
@@ -182,79 +182,49 @@ Attribute_ID GraphContext_GetAttributeID(const GraphContext *gc, const char *att
 // Index API
 //------------------------------------------------------------------------------
 bool GraphContext_HasIndices(GraphContext *gc) {
-	return (gc->index_count > 0);
+	uint schema_count = array_len(gc->node_schemas);
+	for(uint i = 0; i < schema_count; i++) {
+		if(Schema_HasIndices(gc->node_schemas[i])) return true;
+	}
+	return false;
 }
 
-Index *GraphContext_GetIndex(const GraphContext *gc, const char *label, const char *attribute) {
+Index *GraphContext_GetIndex(const GraphContext *gc, const char *label, const char *field,
+							 IndexType type) {
 	// Retrieve the schema for this label
 	Schema *schema = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(schema == NULL) return NULL;
 
-	Attribute_ID attr_id = GraphContext_GetAttributeID(gc, attribute);
-	if(attr_id == ATTRIBUTE_NOTFOUND) return NULL;
-
-	return Schema_GetIndex(schema, attr_id);
+	return Schema_GetIndex(schema, field, type);
 }
 
-int GraphContext_AddIndex(GraphContext *gc, const char *label, const char *attribute) {
+int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label, const char *field,
+						  IndexType type) {
+	assert(idx && gc && label && field);
+
+	// Retrieve the schema for this label
+	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+	if(s == NULL) s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+	return Schema_AddIndex(idx, s, field, type);
+}
+
+int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *field,
+							 IndexType type) {
 	// Retrieve the schema for this label
 	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(s == NULL) return INDEX_FAIL;
-
-	Attribute_ID attr_id = GraphContext_GetAttributeID(gc, attribute);
-	if(attr_id == ATTRIBUTE_NOTFOUND) return INDEX_FAIL;
-
-	// Associate the new index with the attribute in the schema.
-	if(Schema_AddIndex(s, attr_id) == INDEX_OK) {
-		gc->index_count++;
-		return INDEX_OK;
-	}
-
-	return INDEX_FAIL;
-}
-
-int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *attribute) {
-	// Retrieve the schema for this label
-	Schema *schema = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-	if(schema == NULL) return INDEX_FAIL;
-
-	Attribute_ID attr_id = GraphContext_GetAttributeID(gc, attribute);
-	if(attr_id == ATTRIBUTE_NOTFOUND) return INDEX_FAIL;
-	// Remove the index association from the label schema
-	if(Schema_RemoveIndex(schema, attr_id) == INDEX_OK) {
-		gc->index_count--;
-		return INDEX_OK;
-	}
-
-	return INDEX_FAIL;
-}
-
-// Add references to a node to all indices built upon its properties
-void GraphContext_AddNodeToIndices(GraphContext *gc, Schema *s, Node *n) {
-	if(!s || !GraphContext_HasIndices(gc)) return;
-
-	/* For each index in schema, see if node
-	 * contains indexed attribute. */
-	unsigned int index_count = Schema_IndexCount(s);
-	for(unsigned int i = 0; i < index_count; i++) {
-		Index *idx = s->indices[i];
-		Attribute_ID attr_id = GraphContext_GetAttributeID(gc, idx->attribute);
-		// See if node contains current property.
-		SIValue *v = GraphEntity_GetProperty((GraphEntity *)n, attr_id);
-		if(v == PROPERTY_NOTFOUND) continue;
-
-		Index_InsertNode(idx, n->entity->id, v);
-	}
+	return Schema_RemoveIndex(s, field, type);
 }
 
 // Delete all references to a node from any indices built upon its properties
 void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
 	Schema *s = NULL;
-	EntityID node_id = ENTITY_GET_ID(n);
+
 	if(n->label) {
 		// Node will have a label string if one was specified in the query MATCH clause
 		s = GraphContext_GetSchema(gc, n->label, SCHEMA_NODE);
 	} else {
+		EntityID node_id = ENTITY_GET_ID(n);
 		// Otherwise, look up the offset of the matching label (if any)
 		int schema_id = Graph_GetNodeLabel(gc->g, node_id);
 		// Do nothing if node had no label
@@ -263,14 +233,10 @@ void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
 	}
 
 	// Update any indices this entity is represented in
-	unsigned short idx_count = Schema_IndexCount(s);
-	for(unsigned short i = 0; i < idx_count; i++) {
-		Index *idx = s->indices[i];
-		// See if node contains current property.
-		SIValue *v = GraphEntity_GetProperty((GraphEntity *)n, idx->attr_id);
-		if(v == PROPERTY_NOTFOUND) continue;
-		Index_DeleteNode(idx, node_id, v);
-	}
+	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+	if(idx) Index_RemoveNode(idx, n);
+	idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
+	if(idx) Index_RemoveNode(idx, n);
 }
 
 //------------------------------------------------------------------------------
@@ -303,7 +269,7 @@ void GraphContext_Free(GraphContext *gc) {
 	}
 
 	// Free attribute mappings
-	if(gc->attributes) TrieMap_Free(gc->attributes, rm_free);
+	if(gc->attributes) raxFreeWithCallback(gc->attributes, rm_free);
 	if(gc->string_mapping) {
 		len = array_len(gc->string_mapping);
 		for(uint32_t i = 0; i < len; i ++) {

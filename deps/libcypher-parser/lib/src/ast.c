@@ -625,7 +625,12 @@ static int _cypher_ast_fprint(const cypher_astnode_t *ast, FILE *stream,
         return -1;
     }
 
-    if (fprintf(stream, "%s%*zu..%-*zu%s  %s",
+#ifdef WIN32
+	const char* format = "%s%*Iu..%-*Iu%s  %s";
+#else
+	const char* format = "%s%*zu..%-*zu%s  %s";
+#endif
+    if (fprintf(stream, format,
                 colorization->ast_range[0],
                 start_width, ast->range.start.offset,
                 end_width, ast->range.end.offset,

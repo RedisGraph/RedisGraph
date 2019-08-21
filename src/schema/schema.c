@@ -13,9 +13,9 @@
 Schema *Schema_New(const char *name, int id) {
 	Schema *schema = rm_malloc(sizeof(Schema));
 	schema->id = id;
-	schema->name = rm_strdup(name);
-	schema->indices = array_new(Index *, 4);
+	schema->index = NULL;
 	schema->fulltextIdx = NULL;
+	schema->name = rm_strdup(name);
 	return schema;
 }
 
@@ -24,79 +24,115 @@ const char *Schema_GetName(const Schema *s) {
 	return s->name;
 }
 
+bool Schema_HasIndices(const Schema *s) {
+	assert(s);
+	return (s->fulltextIdx || s->index);
+}
+
 unsigned short Schema_IndexCount(const Schema *s) {
 	assert(s);
-	return (unsigned short)array_len(s->indices);
+	unsigned short n = 0;
+
+	if(s->index) n += Index_FieldsCount(s->index);
+	if(s->fulltextIdx) n += Index_FieldsCount(s->fulltextIdx);
+
+	return n;
 }
 
-Index *Schema_GetIndex(Schema *s, Attribute_ID id) {
-	// Search for index.
-	unsigned short index_count = (unsigned short)array_len(s->indices);
-	for(unsigned short i = 0; i < index_count; i++) {
-		Index *idx = s->indices[i];
-		if(idx->attr_id == id) return idx;
+Index *Schema_GetIndex(const Schema *s, const char *field, IndexType type) {
+	Index *idx = NULL;
+
+	if(type == IDX_EXACT_MATCH) idx = s->index;
+	else idx = s->fulltextIdx;
+
+	if(!idx) return NULL;
+
+	// Make sure field is indexed.
+	if(field) {
+		if(!Index_ContainsField(idx, field)) return NULL;
 	}
 
-	// Couldn't locate index.
-	return NULL;
+	return idx;
 }
 
-void Schema_SetFullTextIndex(Schema *s, RSIndex *idx) {
-	assert(s && idx);
-	// Overriding previouse index.
-	if(s->fulltextIdx && idx != s->fulltextIdx) {
-		RediSearch_DropIndex(s->fulltextIdx);
+int Schema_AddIndex(Index **idx, Schema *s, const char *field, IndexType type) {
+	assert(field);
+
+	*idx = NULL;
+	Index *_idx = Schema_GetIndex(s, NULL, type);
+
+	// Index exists, make sure attribute isn't already indexed.
+	if(_idx != NULL) {
+		if(Index_ContainsField(_idx, field)) return INDEX_FAIL;
 	}
-	s->fulltextIdx = idx;
+
+	// Index doesn't exists, create it.
+	if(!_idx) {
+		_idx = Index_New(s->name, type);
+		if(type == IDX_FULLTEXT) s->fulltextIdx = _idx;
+		else s->index = _idx;
+	}
+
+	Index_AddField(_idx, field);
+
+	*idx = _idx;
+	return INDEX_OK;
 }
 
-RSIndex *Schema_GetFullTextIndex(const Schema *s) {
-	assert(s);
-	return s->fulltextIdx;
-}
+int Schema_RemoveIndex(Schema *s, const char *field, IndexType type) {
+	Index *idx = Schema_GetIndex(s, field, type);
+	if(idx == NULL) return INDEX_FAIL;
 
-int Schema_AddIndex(Schema *s, Attribute_ID attr_id) {
-	// Make sure attribute isn't already indexed.
-	if(Schema_GetIndex(s, attr_id) != NULL) return INDEX_FAIL;
+	/* Currently dropping a full-text index
+	 * doesn't take into account fields. */
+	if(type == IDX_FULLTEXT) {
+		assert(field == NULL);
+		Index_Free(idx);
+		s->fulltextIdx = NULL;
+		return INDEX_OK;
+	}
 
-	// Populate an index for the label-attribute pair using the Graph interfaces.
-	GraphContext *gc = GraphContext_GetFromTLS();
-	const char *attribute = GraphContext_GetAttributeString(gc, attr_id);
-	Index *idx = Index_Create(gc->g, s->name, s->id, attribute, attr_id);
+	Index_RemoveField(idx, field);
 
-	// Add index to schema.
-	s->indices = array_append(s->indices, idx);
+	/* If index field count dropped to 0
+	 * remove index from schema. */
+	if(Index_FieldsCount(idx) == 0) {
+		Index_Free(idx);
+		switch(type) {
+		case IDX_EXACT_MATCH:
+			s->index = NULL;
+			break;
+		case IDX_FULLTEXT:
+			s->fulltextIdx = NULL;
+			break;
+		}
+	}
 
 	return INDEX_OK;
 }
 
-int Schema_RemoveIndex(Schema *s, Attribute_ID attr_id) {
-	// Search for index.
-	unsigned short index_count = (unsigned short)array_len(s->indices);
-	for(int i = 0; i < index_count; i++) {
-		Index *idx = s->indices[i];
-		if(idx->attr_id == attr_id) {
-			// Pop the last stored index
-			Index *last_idx = array_pop(s->indices);
-			if(idx != last_idx) {
-				// If the index being deleted is not the last, swap the last into the newly-emptied position
-				s->indices[i] = last_idx;
-			}
-			// Remove index.
-			Index_Free(idx);
-			return INDEX_OK;
-		}
+// Index node under all shcema indicies.
+void Schema_AddNodeToIndices(const Schema *s, const Node *n, bool update) {
+	if(!s) return;
+
+	Index *idx = s->fulltextIdx;
+	if(idx) {
+		if(update) Index_RemoveNode(idx, n);
+		Index_IndexNode(idx, n);
 	}
-	return INDEX_FAIL;
+
+	idx = s->index;
+	if(!idx) return;
+
+	if(update) Index_RemoveNode(idx, n);
+	Index_IndexNode(idx, n);
 }
 
 void Schema_Free(Schema *schema) {
 	if(schema->name) rm_free(schema->name);
 
 	// Free indicies.
-	uint32_t index_count = array_len(schema->indices);
-	for(int i = 0; i < index_count; i++) Index_Free(schema->indices[i]);
-	array_free(schema->indices);
-	if(schema->fulltextIdx) RediSearch_DropIndex(schema->fulltextIdx);
+	if(schema->index) Index_Free(schema->index);
+	if(schema->fulltextIdx) Index_Free(schema->fulltextIdx);
 	rm_free(schema);
 }

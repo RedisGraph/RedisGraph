@@ -28,7 +28,7 @@ jobs:
       # Load libcypher-parser from cache if possible.
       - restore_cache:
           keys:
-          - libcypher-parser-{{checksum "./deps/libcypher-parser/README.md"}}
+          - libcypher-parser-{{checksum "./deps/libcypher-parser/lib/src/parser.leg"}}
 
       - run:
           name: Build

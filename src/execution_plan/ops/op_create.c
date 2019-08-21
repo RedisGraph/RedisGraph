@@ -136,26 +136,39 @@ void _CreateEdges(OpCreate *op, Record r) {
 /* Commit insertions. */
 static void _CommitNodes(OpCreate *op) {
 	Node *n;
-	int labelID;
-	Graph *g = op->gc->g;
+	GraphContext *gc = op->gc;
+	Graph *g = gc->g;
+
+	/* Create missing schemas.
+	 * this loop iterates over the CREATE pattern, e.g.
+	 * CREATE (p:Person)
+	 * As such we're not expecting a large number of iterations. */
+	uint blueprint_node_count = array_len(op->nodes_to_create);
+	for(uint i = 0; i < blueprint_node_count; i++) {
+		NodeCreateCtx *node_ctx = op->nodes_to_create + i;
+
+		const char *label = node_ctx->node->label;
+		if(label) {
+			if(GraphContext_GetSchema(gc, label, SCHEMA_NODE) == NULL) {
+				Schema *s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+				op->stats->labels_added++;
+			}
+		}
+	}
 
 	uint node_count = array_len(op->created_nodes);
-	Graph_AllocateNodes(op->gc->g, node_count);
+	Graph_AllocateNodes(g, node_count);
 
 	for(uint i = 0; i < node_count; i++) {
 		n = op->created_nodes[i];
-		Schema *schema = NULL;
+		Schema *s = NULL;
 
 		// Get label ID.
-		if(n->label == NULL) {
-			labelID = GRAPH_NO_LABEL;
-		} else {
-			schema = GraphContext_GetSchema(op->gc, n->label, SCHEMA_NODE);
-			if(schema == NULL) {
-				schema = GraphContext_AddSchema(op->gc, n->label, SCHEMA_NODE);
-				op->stats->labels_added++;
-			}
-			labelID = schema->id;
+		int labelID = GRAPH_NO_LABEL;
+		if(n->label != NULL) {
+			s = GraphContext_GetSchema(op->gc, n->label, SCHEMA_NODE);
+			assert(s);
+			labelID = s->id;
 		}
 
 		// Introduce node into graph.
@@ -163,14 +176,35 @@ static void _CommitNodes(OpCreate *op) {
 
 		if(op->node_properties[i]) _AddProperties(op, (GraphEntity *)n, op->node_properties[i]);
 
-		if(n->label) GraphContext_AddNodeToIndices(op->gc, schema, n);
+		if(s && Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n, false);
 	}
-
 }
 
 static void _CommitEdges(OpCreate *op) {
 	Edge *e;
+	GraphContext *gc = op->gc;
 	Graph *g = op->gc->g;
+
+	/* Create missing schemas.
+	 * this loop iterates over the CREATE pattern, e.g.
+	 * CREATE (p:Person)-[e:VISITED]->(q)
+	 * As such we're not expecting a large number of iterations. */
+	uint blueprint_edge_count = array_len(op->edges_to_create);
+	for(uint i = 0; i < blueprint_edge_count; i++) {
+		EdgeCreateCtx *edge_ctx = op->edges_to_create + i;
+
+		const char **reltypes = edge_ctx->edge->reltypes;
+		if(reltypes) {
+			uint reltype_count = array_len(reltypes);
+			for(uint j = 0; j < reltype_count; j ++) {
+				const char *reltype = reltypes[j];
+				if(GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE) == NULL) {
+					Schema *s = GraphContext_AddSchema(gc, reltype, SCHEMA_EDGE);
+				}
+			}
+		}
+	}
+
 	int relationships_created = 0;
 
 	uint edge_count = array_len(op->created_edges);
@@ -238,6 +272,7 @@ Record OpCreateConsume(OpBase *opBase) {
 	op->records = array_new(Record, 32);
 
 	// No child operation to call.
+	OpBase *child = NULL;
 	if(!op->op.childCount) {
 		r = Record_New(opBase->record_map->record_len);
 		/* Create entities. */
@@ -248,7 +283,7 @@ Record OpCreateConsume(OpBase *opBase) {
 		op->records = array_append(op->records, r);
 	} else {
 		// Pull data until child is depleted.
-		OpBase *child = op->op.children[0];
+		child = op->op.children[0];
 		while((r = OpBase_Consume(child))) {
 			if(Record_length(r) < opBase->record_map->record_len) {
 				// If the child record was created in a different segment, it may not be
@@ -263,6 +298,11 @@ Record OpCreateConsume(OpBase *opBase) {
 			op->records = array_append(op->records, r);
 		}
 	}
+
+	/* Done reading, we're not going to call consume any longer
+	 * there might be operations e.g. index scan that need to free
+	 * index R/W lock, as such free all execution plan operation up the chain. */
+	if(child) OpBase_PropagateFree(child);
 
 	// Create entities.
 	_CommitNewEntities(op);
@@ -283,6 +323,7 @@ void OpCreateFree(OpBase *ctx) {
 		uint rec_count = array_len(op->records);
 		for(uint i = 0; i < rec_count; i++) Record_Free(op->records[i]);
 		array_free(op->records);
+		op->records = NULL;
 	}
 
 	if(op->nodes_to_create) {
@@ -291,6 +332,7 @@ void OpCreateFree(OpBase *ctx) {
 			PropertyMap_Free(op->nodes_to_create[i].properties);
 		}
 		array_free(op->nodes_to_create);
+		op->nodes_to_create = NULL;
 	}
 
 	if(op->edges_to_create) {
@@ -299,10 +341,13 @@ void OpCreateFree(OpBase *ctx) {
 			PropertyMap_Free(op->edges_to_create[i].properties);
 		}
 		array_free(op->edges_to_create);
+		op->edges_to_create = NULL;
 	}
 
 	array_free(op->created_nodes);
 	array_free(op->created_edges);
+	op->created_nodes = NULL;
+	op->created_edges = NULL;
 
 	// Free all graph-committed properties associated with nodes
 	uint prop_count = array_len(op->node_properties);
@@ -310,6 +355,7 @@ void OpCreateFree(OpBase *ctx) {
 		_PendingPropertiesFree(op->node_properties[i]);
 	}
 	array_free(op->node_properties);
+	op->node_properties = NULL;
 
 	// Free all graph-committed properties associated withedges
 	prop_count = array_len(op->edge_properties);
@@ -317,4 +363,5 @@ void OpCreateFree(OpBase *ctx) {
 		_PendingPropertiesFree(op->edge_properties[i]);
 	}
 	array_free(op->edge_properties);
+	op->edge_properties = NULL;
 }

@@ -191,8 +191,7 @@ static void _aggregateRecord(OpAggregate *op, Record r) {
 static Record _handoff(OpAggregate *op) {
 	char *key;
 	Group *group;
-	if(!op->groupIter) return NULL;
-	if(!CacheGroupIterNext(op->groupIter, &key, &group)) return NULL;
+	if(!CacheGroupIterNext(op->group_iter, &key, &group)) return NULL;
 
 	uint exp_count = array_len(op->exps);
 	uint order_exp_count = array_len(op->order_exps);
@@ -248,7 +247,7 @@ OpBase *NewAggregateOp(AR_ExpNode **exps, uint *modifies) {
 	aggregate->non_aggregated_expressions = NULL;
 	aggregate->order_exps = NULL;
 	aggregate->group = NULL;
-	aggregate->groupIter = NULL;
+	aggregate->group_iter = NULL;
 	aggregate->group_keys = NULL;
 	aggregate->groups = CacheGroupNew();
 
@@ -284,12 +283,12 @@ Record AggregateConsume(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
 	OpBase *child = op->op.children[0];
 
-	if(op->groupIter) return _handoff(op);
+	if(op->group_iter) return _handoff(op);
 
 	Record r;
 	while((r = OpBase_Consume(child))) _aggregateRecord(op, r);
 
-	op->groupIter = CacheGroupIter(op->groups);
+	op->group_iter = CacheGroupIter(op->groups);
 	return _handoff(op);
 }
 
@@ -299,9 +298,9 @@ OpResult AggregateReset(OpBase *opBase) {
 	FreeGroupCache(op->groups);
 	op->groups = CacheGroupNew();
 
-	if(op->groupIter) {
-		CacheGroupIterator_Free(op->groupIter);
-		op->groupIter = NULL;
+	if(op->group_iter) {
+		CacheGroupIterator_Free(op->group_iter);
+		op->group_iter = NULL;
 	}
 
 	return OP_OK;
@@ -311,10 +310,28 @@ void AggregateFree(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
 	if(!op) return;
 
-	if(op->group_keys) rm_free(op->group_keys);
-	if(op->groupIter) CacheGroupIterator_Free(op->groupIter);
-	if(op->expression_classification) rm_free(op->expression_classification);
-	if(op->non_aggregated_expressions) array_free(op->non_aggregated_expressions);
+	if(op->group_keys) {
+		rm_free(op->group_keys);
+		op->group_keys = NULL;
+	}
 
-	FreeGroupCache(op->groups);
+	if(op->group_iter) {
+		CacheGroupIterator_Free(op->group_iter);
+		op->group_iter = NULL;
+	}
+
+	if(op->expression_classification) {
+		rm_free(op->expression_classification);
+		op->expression_classification = NULL;
+	}
+
+	if(op->non_aggregated_expressions) {
+		array_free(op->non_aggregated_expressions);
+		op->non_aggregated_expressions = NULL;
+	}
+
+	if(op->groups) {
+		FreeGroupCache(op->groups);
+		op->groups = NULL;
+	}
 }

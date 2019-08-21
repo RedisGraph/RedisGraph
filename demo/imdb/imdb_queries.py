@@ -46,17 +46,13 @@ class IMDBQueries(object):
         self.find_three_actors_played_with_nicolas_cage_query = QueryInfo(
             query="""MATCH (nicolas:actor {name:"Nicolas Cage"})-[:act]->(m:movie)<-[:act]-(a:actor)
                     RETURN a.name, m.title
+                    ORDER BY a.name, m.title
                     LIMIT 3""",
             description='Get 3 actors who have played along side Nicolas Cage?',
             max_run_time_ms=4,
             expected_result=[['Cassi Thomson', 'Left Behind'],
-                            ['Gary Grubbs', 'Left Behind'],
-                            ['Quinton Aaron', 'Left Behind'],
-                            ['Martin Klebba', 'Left Behind'],
-                            ['Lea Thompson', 'Left Behind'],
-                            ['Nicolas Cage', 'Left Behind'],
                             ['Chad Michael Murray', 'Left Behind'],
-                            ['Jordin Sparks', 'Left Behind']]
+                            ['Gary Grubbs', 'Left Behind']]
         )
 
 
@@ -157,6 +153,7 @@ class IMDBQueries(object):
                            (a)-[:act]->(m2:movie {genre:'Comedy'})
                     RETURN DISTINCT a.name""",
             description='Which actors played in Action, Drama and Comedy movies?',
+            reversible=False,
             max_run_time_ms=1.5,
             expected_result = expected_result            
         )
@@ -338,6 +335,7 @@ class IMDBQueries(object):
                      ORDER BY option.rating, option.title desc
                      LIMIT 10""",
             description='List 10 movies released on the same year as "Hunt for the Wilderpeople" that got higher rating than it',
+            reversible=False,
             max_run_time_ms=0.8,
             expected_result=[["Hacksaw Ridge", 8.8],
                              ["Moonlight", 8.7],
@@ -355,16 +353,19 @@ class IMDBQueries(object):
         ### all_actors_named_tim
         ##################################################################
 
-        # self.all_actors_named_tim = QueryInfo(
-        #     query="""CALL db.idx.fulltext.queryNodes('actor', 'tim')""",
-        #     description='All actors named Tim',
-        #     max_run_time_ms=4,
-        #     expected_result=[['Tim Roth', 0],
-        #                     ['Tim Reid', 0],
-        #                     ['Tim McGraw', 0],
-        #                     ['Tim Griffin', 0],
-        #                     ['Tim Blake Nelson', 0]]
-        # )
+        self.all_actors_named_tim = QueryInfo(
+            query="""CALL db.idx.fulltext.queryNodes('actor', 'tim') YIELD node
+                     RETURN node.name
+                     ORDER BY node.name""",
+            description='All actors named Tim',
+            reversible=False,
+            max_run_time_ms=4,
+            expected_result=[['Tim Roth'],
+                            ['Tim Reid'],
+                            ['Tim McGraw'],
+                            ['Tim Griffin'],
+                            ['Tim Blake Nelson']]
+        )
 
         self.queries_info = [
             self.number_of_actors_query,
@@ -382,8 +383,8 @@ class IMDBQueries(object):
             self.actors_over_85_index_scan,
             self.eighties_movies_index_scan,
             self.find_titles_starting_with_american_query,
-            self.same_year_higher_rating_than_huntforthewilderpeople_query
-            # self.all_actors_named_tim
+            self.same_year_higher_rating_than_huntforthewilderpeople_query,
+            self.all_actors_named_tim
         ]
 
     def queries(self):

@@ -17,6 +17,20 @@
 #include "../../config.h"
 #include "memstream.h"
 
+#ifdef WIN32
+
+#include <fmem.h>
+
+fmem fm;
+
+FILE* open_memstream(char** mem, size_t* size)
+{
+	fmem_init(&fm);
+	return fmem_open(&fm, "w+");
+}
+
+#else
+
 #ifndef HAVE_OPEN_MEMSTREAM
 
 #define MEMSTREAM_INITIAL_CAPACITY 4096
@@ -204,4 +218,5 @@ int memstream_ensure_capacity(memstream_t *ms, size_t size)
 }
 
 
+#endif
 #endif

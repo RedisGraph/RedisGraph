@@ -17,7 +17,7 @@ typedef struct {
 	char *graph_name;                 // String associated with graph
 	Graph *g;                         // Container for all matrices and entity properties
 
-	TrieMap *attributes;              // From strings to attribute IDs
+	rax *attributes;                  // From strings to attribute IDs
 	char **string_mapping;            // From attribute IDs to strings
 
 	Schema **node_schemas;            // Array of schemas for each node label
@@ -67,14 +67,11 @@ Attribute_ID GraphContext_GetAttributeID(const GraphContext *gc, const char *str
 /* Index API */
 bool GraphContext_HasIndices(GraphContext *gc);
 // Attempt to retrieve an index on the given label and attribute
-Index *GraphContext_GetIndex(const GraphContext *gc, const char *label, const char *attribute);
-// Create and populate an index for the given label and attribute
-int GraphContext_AddIndex(GraphContext *gc, const char *label, const char *attribute);
+Index* GraphContext_GetIndex(const GraphContext *gc, const char *label, const char *field, IndexType type);
+// Create an index for the given label and attribute
+int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label, const char *field, IndexType type);
 // Remove and free an index
-int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *attribute);
-
-// Add a single node to all indices its properties match
-void GraphContext_AddNodeToIndices(GraphContext *gc, Schema *s, Node *n);
+int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *field, IndexType type);
 // Remove a single node from all indices that refer to it
 void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n);
 

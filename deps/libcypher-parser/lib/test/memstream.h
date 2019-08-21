@@ -17,10 +17,23 @@
 #ifndef MEMSTREAM_H
 #define MEMSTREAM_H
 
+#ifdef WIN32
+
+#include <fmem.h>
+
+extern fmem fm;
+extern FILE* open_memstream(char** mem, size_t* size);
+#define fclose(f) fclose(memstream);memstream_buffer = NULL;
+#define fflush(a) fflush(memstream);fmem_mem(&fm, &memstream_buffer, &memstream_size);
+
+#else
+
 #include <stdio.h>
 
 #ifndef HAVE_OPEN_MEMSTREAM
 FILE *open_memstream(char **ptr, size_t *sizeloc);
 #endif
+
+#endif//WIN32
 
 #endif/*MEMSTREAM_H*/

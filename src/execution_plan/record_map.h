@@ -6,14 +6,14 @@
 
 #pragma once
 
-#include "../util/triemap/triemap.h"
+#include "../../deps/rax/rax.h"
 #include "../ast/ast.h"
 #include <limits.h>
 
 #define IDENTIFIER_NOT_FOUND UINT_MAX
 
 typedef struct {
-	TrieMap *map;       // Mapping of AST IDs and aliases to Record IDs
+	rax *map;       // Mapping of AST IDs and aliases to Record IDs
 	uint record_len;    // Length of Record being modified by this segment.
 } RecordMap;
 

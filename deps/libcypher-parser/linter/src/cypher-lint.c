@@ -19,12 +19,13 @@
 #include <assert.h>
 #include <errno.h>
 #include <getopt.h>
-#include <libgen.h>
 #include <stdio.h>
 #include <string.h>
+#ifndef WIN32
+#include <libgen.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-
+#endif
 
 const char *shortopts = "1ahv";
 
@@ -98,9 +99,51 @@ static int parse_callback(void *data, cypher_parse_segment_t *segment);
 static void print_error(const cypher_parse_error_t *error, const char *filename,
         const struct cypher_parser_colorization *colorization);
 
+#ifdef WIN32
+#define DEFINE_CONSOLEV2_PROPERTIES
+
+// System headers
+#include <windows.h>
+// Standard library C-style
+bool EnableVTMode()
+{
+	// Set output mode to handle virtual terminal sequences
+	HANDLE hOut = GetStdHandle(STD_OUTPUT_HANDLE);
+	if (hOut == INVALID_HANDLE_VALUE)
+	{
+		return false;
+	}
+
+	DWORD dwMode = 0;
+	if (!GetConsoleMode(hOut, &dwMode))
+	{
+		return false;
+	}
+
+	dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
+	if (!SetConsoleMode(hOut, dwMode))
+	{
+		return false;
+	}
+	return true;
+}
+
+char* basename(char* arg)
+{
+	char *prog_name = strrchr(arg, '\\');
+	if (!prog_name) prog_name = arg;
+	else if (*prog_name == '\\') prog_name++;
+	if (!prog_name) prog_name = arg;
+	return prog_name;
+}
+
+#endif//WIN32
 
 int main(int argc, char *argv[])
 {
+#ifdef WIN32
+	EnableVTMode();
+#endif
     char *prog_name = basename(argv[0]);
     if (prog_name == NULL)
     {

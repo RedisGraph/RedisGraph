@@ -4,62 +4,105 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __INDEX_H__
-#define __INDEX_H__
+#pragma once
 
-#include <assert.h>
-#include "../redismodule.h"
-#include "../graph/graph.h"
+#include "../graph/entities/node.h"
 #include "../graph/entities/graph_entity.h"
-#include "../util/skiplist.h"
-#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
+#include "../../deps/RediSearch/src/redisearch_api.h"
 
 #define INDEX_OK 1
 #define INDEX_FAIL 0
 
-typedef skiplistIterator IndexIter;
+typedef enum {
+	IDX_EXACT_MATCH,
+	IDX_FULLTEXT,
+} IndexType;
 
-/* Properties are not required to be of a consistent type, and index construction
- * will store values in separate string and numeric skiplists with different comparator
- * functions if necessary.
- * When building Index Scan operations, the types of values described by filters will
- * specify which skiplist should be traversed. */
 typedef struct {
-	char *label;
-	char *attribute;
-	Attribute_ID attr_id;
-	skiplist *string_sl;
-	skiplist *numeric_sl;
+	char *label;                // Indexed label.
+	char **fields;              // Indexed fields.
+	Attribute_ID *fields_ids;   // Indexed field IDs.
+	uint fields_count;          // Number of fields.
+	RSIndex *idx;               // RediSearch index.
+	IndexType type;             // Index type exact-match / fulltext.
 } Index;
 
-/* Index_Create builds an index for a label-property pair so that queries reliant
- * on these entities can use expedited scan logic. */
-Index *Index_Create(Graph *g, const char *label, int label_id, const char *attr_str,
-					Attribute_ID attr_id);
+// Create a new FullText index.
+Index *Index_New
+(
+	const char *label,  // Indexed label
+	IndexType type      // Index is a fulltext index
+);
 
-/* Delete a single entity from an index if it is present. */
-void Index_DeleteNode(Index *idx, NodeID node, SIValue *val);
+// Adds field to index.
+void Index_AddField
+(
+	Index *idx,
+	const char *field
+);
 
-/* Insert a single entity into an index. */
-void Index_InsertNode(Index *idx, NodeID node, SIValue *val);
+// Removes fields from index.
+void Index_RemoveField
+(
+	Index *idx,
+	const char *field
+);
 
-/* Build a new iterator to traverse all indexed values of the specified type. */
-IndexIter *IndexIter_Create(Index *idx, SIType type);
+// Index node.
+void Index_IndexNode
+(
+	Index *idx,     // Index to use
+	const Node *n   // Node to index
+);
 
-/* Update the lower or upper bound of an index iterator based on a constant predicate filter
- * (if that filter represents a narrower bound than the current one). */
-bool IndexIter_ApplyBound(IndexIter *iter, SIValue *bound, int op);
+// Remove node from index.
+void Index_RemoveNode
+(
+	Index *idx,     // Index to use
+	const Node *n   // Node to remove
+);
 
-/* Returns a pointer to the next Node ID in the index, or NULL if the iterator has been depleted. */
-GrB_Index *IndexIter_Next(IndexIter *iter);
+// Constructs index.
+void Index_Construct
+(
+	Index *idx
+);
 
-/* Reset an iterator to its original position. */
-void IndexIter_Reset(IndexIter *iter);
+// Query index.
+RSResultsIterator *Index_Query
+(
+	const Index *idx,
+	const char *query,          // Query to execute
+	char **err                  // Optional, report back error
+);
 
-/* Free an index iterator. */
-void IndexIter_Free(IndexIter *iter);
+// Return indexed label.
+const char *Index_GetLabel
+(
+	const Index *idx
+);
 
-/* Free an index object and all its members (skiplists and strings) */
-void Index_Free(Index *idx);
+// Returns number of fields indexed.
+uint Index_FieldsCount
+(
+	const Index *idx
+);
 
-#endif
+// Returns indexed fields.
+const char **Index_GetFields
+(
+	const Index *idx
+);
+
+// Checks if given field is indexed.
+bool Index_ContainsField
+(
+	const Index *idx,
+	const char *field
+);
+
+// Free fulltext index.
+void Index_Free
+(
+	Index *idx
+);

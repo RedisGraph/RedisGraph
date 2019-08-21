@@ -85,7 +85,7 @@ class testGraphPersistency(FlowTestsBase):
         for i in range(2):
             if i == 1:
                 # Save RDB & Load from RDB
-                redis_con.execute_command("DEBUG", "RELOAD")
+                self.env.dumpAndReload()
 
             # Verify
             # Expecting 5 person entities.

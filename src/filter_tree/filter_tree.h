@@ -89,6 +89,16 @@ int FilterTree_applyFilters(const FT_FilterNode *root, const Record r);
  * without duplications. */
 rax *FilterTree_CollectModified(const FT_FilterNode *root);
 
+/* Extract every attribute mentioned in the tree
+ * without duplications. */
+rax* FilterTree_CollectAttributes(const FT_FilterNode *root);
+
+/* Checks to see if tree contains given operation. */
+bool FilterTree_containsOp(const FT_FilterNode *root, AST_Operator op);
+
+/* Prints tree. */
+void FilterTree_Print(const FT_FilterNode *root);
+
 /* Break filter tree into sub filter trees as follows:
  * sub trees under an OR operator are returned,
  * sub trees under an AND operator are broken down to the smallest

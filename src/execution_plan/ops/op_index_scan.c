@@ -13,20 +13,20 @@ int IndexScanToString(const OpBase *ctx, char *buff, uint buff_len) {
 	return offset;
 }
 
-OpBase *NewIndexScanOp(Graph *g, QGNode *n, uint node_idx, IndexIter *iter) {
+OpBase *NewIndexScanOp(Graph *g, QGNode *n, uint node_idx, RSIndex *idx, RSResultsIterator *iter) {
 	IndexScan *indexScan = malloc(sizeof(IndexScan));
 	indexScan->g = g;
 	indexScan->n = n;
+	indexScan->idx = idx;
 	indexScan->iter = iter;
-
 	indexScan->nodeRecIdx = node_idx;
 
 	// Set our Op operations
 	OpBase_Init(&indexScan->op);
 	indexScan->op.name = "Index Scan";
 	indexScan->op.type = OPType_INDEX_SCAN;
-	indexScan->op.consume = IndexScanConsume;
 	indexScan->op.reset = IndexScanReset;
+	indexScan->op.consume = IndexScanConsume;
 	indexScan->op.toString = IndexScanToString;
 	indexScan->op.free = IndexScanFree;
 
@@ -38,8 +38,7 @@ OpBase *NewIndexScanOp(Graph *g, QGNode *n, uint node_idx, IndexIter *iter) {
 
 Record IndexScanConsume(OpBase *opBase) {
 	IndexScan *op = (IndexScan *)opBase;
-
-	EntityID *nodeId = IndexIter_Next(op->iter);
+	const EntityID *nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL);
 	if(!nodeId) return NULL;
 
 	Record r = Record_New(opBase->record_map->record_len);
@@ -52,12 +51,19 @@ Record IndexScanConsume(OpBase *opBase) {
 }
 
 OpResult IndexScanReset(OpBase *ctx) {
-	IndexScan *indexScan = (IndexScan *)ctx;
-	IndexIter_Reset(indexScan->iter);
+	IndexScan *op = (IndexScan *)ctx;
+	RediSearch_ResultsIteratorReset(op->iter);
 	return OP_OK;
 }
 
-void IndexScanFree(OpBase *op) {
-	IndexScan *indexScan = (IndexScan *)op;
-	IndexIter_Free(indexScan->iter);
+void IndexScanFree(OpBase *ctx) {
+	IndexScan *op = (IndexScan *)ctx;
+	/* As long as this Index iterator is alive the index is
+	 * read locked, if this index scan operation is part of
+	 * a query which will modified this index we'll be stuck in
+	 * a dead lock, as we're unable to acquire index write lock. */
+	if(op->iter) {
+		RediSearch_ResultsIteratorFree(op->iter);
+		op->iter = NULL;
+	}
 }

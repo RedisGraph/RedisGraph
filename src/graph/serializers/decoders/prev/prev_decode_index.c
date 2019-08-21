@@ -1,0 +1,21 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Redis Labs Source Available License Agreement
+*/
+
+#include "prev_decode_index.h"
+
+Index *PrevRdbLoadIndex(RedisModuleIO *rdb, GraphContext *gc) {
+	Index *idx = NULL;
+	char *label = RedisModule_LoadStringBuffer(rdb, NULL);
+	char *field = RedisModule_LoadStringBuffer(rdb, NULL);
+
+	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+	Schema_AddIndex(&idx, s, field, IDX_EXACT_MATCH);
+
+	RedisModule_Free(label);
+	RedisModule_Free(field);
+
+	return idx;
+}

@@ -26,6 +26,7 @@ struct call_clause
     const cypher_astnode_t *proc_name;
     const cypher_astnode_t **args;
     unsigned int nargs;
+    const cypher_astnode_t *predicate;
     const cypher_astnode_t **projections;
     unsigned int nprojections;
 };
@@ -49,8 +50,8 @@ const struct cypher_astnode_vt cypher_call_astnode_vt =
 cypher_astnode_t *cypher_ast_call(const cypher_astnode_t *proc_name,
         cypher_astnode_t * const *args, unsigned int nargs,
         cypher_astnode_t * const *projections, unsigned int nprojections,
-        cypher_astnode_t **children, unsigned int nchildren,
-        struct cypher_input_range range)
+        const cypher_astnode_t *predicate, cypher_astnode_t **children,
+        unsigned int nchildren, struct cypher_input_range range)
 {
     REQUIRE_TYPE(proc_name, CYPHER_AST_PROC_NAME, NULL);
     REQUIRE_TYPE_ALL(args, nargs, CYPHER_AST_EXPRESSION, NULL);
@@ -76,6 +77,7 @@ cypher_astnode_t *cypher_ast_call(const cypher_astnode_t *proc_name,
         }
         node->nargs = nargs;
     }
+    node->predicate = predicate;
     if (nprojections > 0)
     {
         node->projections = mdup(projections,
@@ -157,6 +159,16 @@ const cypher_astnode_t *cypher_ast_call_get_projection(
 }
 
 
+const cypher_astnode_t *cypher_ast_call_get_predicate(
+        const cypher_astnode_t *astnode)
+{
+    REQUIRE_TYPE(astnode, CYPHER_AST_CALL, NULL);
+    struct call_clause *node =
+            container_of(astnode, struct call_clause, _astnode);
+    return node->predicate;
+}
+
+
 ssize_t detailstr(const cypher_astnode_t *self, char *str, size_t size)
 {
     REQUIRE_TYPE(self, CYPHER_AST_CALL, -1);
@@ -199,6 +211,17 @@ ssize_t detailstr(const cypher_astnode_t *self, char *str, size_t size)
 
         r = snprint_sequence(str + n, (n < size)? size-n : 0,
                 node->projections, node->nprojections);
+        if (r < 0)
+        {
+            return -1;
+        }
+        n += r;
+    }
+
+    if (node->predicate != NULL)
+    {
+        r = snprintf(str + n, (n < size)? size-n : 0, ", WHERE=@%u",
+                node->predicate->ordinal);
         if (r < 0)
         {
             return -1;

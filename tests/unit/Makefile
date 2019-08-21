@@ -8,6 +8,7 @@ GTEST_DIR = ../../deps/googletest
 # Set Google Test's header directory as a system directory, such that
 # the compiler doesn't generate warnings in Google Test headers.
 CPPFLAGS += -isystem $(GTEST_DIR)/include
+LDFLAGS += -ldl
 
 # Flags passed to the C++ compiler.
 CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11
@@ -47,12 +48,12 @@ gtest_main.a : gtest-all.o gtest_main.o
 # RedisGraph flags and libraries
 CC_OBJECTS:=$(CC_OBJECTS)
 RAX=../../deps/rax/rax.o
-LIBTRIEMAP=../../src/util/triemap/libtriemap.a
-LIBGRAPHBLAS=../../deps/GraphBLAS/build/libgraphblas.a
 LIBXXHASH=$(ROOT)/deps/xxhash/libxxhash.a
-
+REDISEARCH=../../deps/RediSearch/build/libredisearch.a
+LIBGRAPHBLAS=../../deps/GraphBLAS/build/libgraphblas.a
 LIBCYPHER-PARSER=../../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
-LIBS=$(LIBTRIEMAP) $(LIBGRAPHBLAS) $(LIBXXHASH) $(LIBCYPHER-PARSER)
+
+LIBS=$(LIBGRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER-PARSER)
 DEPS=$(CC_OBJECTS) $(RAX) $(LIBS)
 
 # Build and run a test for each cpp file in directory
@@ -66,7 +67,7 @@ TEST_EXECUTABLES = $(patsubst %.cpp, %.run, $(TEST_SOURCES))
 
 # Build '*.run' binaries for each source
 %.run: %.o gtest_main.a $(DEPS)
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) $(LDFLAGS) $^ -o $@
+	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) $^ $(LDFLAGS) -o $@
 
 
 .PHONY: all build test test_valgrind clean

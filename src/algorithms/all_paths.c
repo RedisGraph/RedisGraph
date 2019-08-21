@@ -6,6 +6,7 @@
 
 #include "all_paths.h"
 #include "../util/arr.h"
+#include "../util/rmalloc.h"
 
 // Make sure context levels array have atleast 'level' entries,
 // Append given 'node' to given 'level' array.

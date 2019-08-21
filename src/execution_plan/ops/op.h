@@ -80,8 +80,8 @@ struct OpBase {
 	fpFree free;                // Free operation.
 	fpToString toString;        // operation string representation.
 	char *name;                 // Operation name.
-	uint *modifies;                // List of Record indices this op modifies.
-	RecordMap *record_map;         // Mapping of entities into Record IDs in the scope of this ExecutionPlanSegment.
+	uint *modifies;             // List of Record indices this op modifies.
+	RecordMap *record_map;      // Mapping of entities into Record IDs in the scope of this ExecutionPlanSegment.
 	struct OpBase **children;   // Child operations.
 	int childCount;             // Number of children.
 	OpStats *stats;             // Profiling statistics.
@@ -91,7 +91,9 @@ typedef struct OpBase OpBase;
 
 void OpBase_Init(OpBase *op);       // Initialize op.
 void OpBase_Free(OpBase *op);       // Free op.
-void OpBase_Reset(OpBase *op);      // Reset op.
 Record OpBase_Consume(OpBase *op);  // Consume op.
 Record OpBase_Profile(OpBase *op);  // Profile op.
 int OpBase_ToString(const OpBase *op, char *buff, uint buff_len);
+
+void OpBase_PropagateFree(OpBase *op); // Sends free request to each operation up the chain.
+void OpBase_PropagateReset(OpBase *op); // Sends reset request to each operation up the chain.

@@ -43,6 +43,9 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/filter_tree/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/entities/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/serializers/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/serializers/encoder/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/serializers/decoders/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/serializers/decoders/prev/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/GraphBLASExt/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/grouping/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/index/*.c)
@@ -54,6 +57,7 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/procedures/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/datablock/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/thpool/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/util/range/*.c)
 
 # Convert all sources to .o files
 CC_OBJECTS = $(patsubst %.c, %.o, $(CC_SOURCES) )
@@ -66,14 +70,14 @@ CC_DEPS = $(patsubst %.c, %.d, $(CC_SOURCES) )
 RAX=../deps/rax/rax.o
 
 # Library dependencies
-LIBTRIEMAP=util/triemap/libtriemap.a
-GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
 LIBXXHASH=../deps/xxhash/libxxhash.a
+GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
+REDISEARCH=../deps/RediSearch/build/libredisearch.a
 LIBCYPHER-PARSER=../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
 # Compilation deps for the module
-LIBS=$(LIBTRIEMAP) $(GRAPHBLAS) $(LIBXXHASH) $(LIBCYPHER-PARSER)
-MODULE=$(LIBS) $(RAX) $(CC_OBJECTS)
+LIBS=$(GRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER-PARSER)
+MODULE=$(CC_OBJECTS) $(RAX) $(LIBS)
 
 REDISGRAPH_CC=$(QUIET_CC)$(CC)
 
@@ -103,17 +107,21 @@ $(RAX):
 $(LIBXXHASH):
 	@$(MAKE) -C ../deps/xxhash lib
 
-$(LIBTRIEMAP):
-	@$(MAKE) -C util/triemap
-
 BLAS_CFLAGS = -fPIC -I $(abs_path)/util -include rmalloc.h -DREDIS_MODULE_TARGET -DGB_MALLOC=rm_malloc -DGB_CALLOC=rm_calloc -DGB_REALLOC=rm_realloc -DGB_FREE=rm_free -DGBCOMPACT
 
 # Build GraphBLAS only if library does not already exists.
 $(GRAPHBLAS):
 ifeq (,$(wildcard $(GRAPHBLAS)))
 	@$(MAKE) -C ../deps/GraphBLAS CMAKE_OPTIONS="-DUSER_POSIX=1 -DCMAKE_CXX_FLAGS=-std=c++11 -DCMAKE_C_FLAGS='$(BLAS_CFLAGS)'" static_only
-else
+endif
 
+$(REDISEARCH):
+ifeq (,$(wildcard $(REDISEARCH)))
+	cd ../deps/RediSearch; \
+	mkdir build; \
+	cd build; \
+	cmake -DRS_FORCE_NO_GITVERSION=ON -DRS_BUILD_STATIC=ON ..; \
+	make;
 endif
 
 # Build libcypher-parser only if library does not already exists.
@@ -140,10 +148,11 @@ clean:
 	@find . -name '*.[oad]' -type f -delete
 	@-rm -f redisgraph.so
 ifeq ($(ALL),1)
-	@$(MAKE) -C ../deps/GraphBLAS clean
-	@$(MAKE) -C ../deps/libcypher-parser clean
-	@$(MAKE) -C ../deps/xxhash clean
 	@$(MAKE) -C ../deps/rax clean
+	@$(MAKE) -C ../deps/xxhash clean
+	@$(MAKE) -C ../deps/GraphBLAS clean
+	@$(MAKE) -C ../deps/RediSearch clean
+	@$(MAKE) -C ../deps/libcypher-parser clean
 endif
 	@$(MAKE) -C ../tests clean
 

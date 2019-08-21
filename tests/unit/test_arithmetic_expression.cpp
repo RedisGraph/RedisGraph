@@ -78,7 +78,7 @@ void _test_ar_func(AR_ExpNode *root, SIValue expected, const Record r)
 AR_ExpNode* _exp_from_query(const char *query) {
   cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
   AST *ast = AST_Build(parse_result);
-  ast->entity_map = NewTrieMap();
+  ast->entity_map = raxNew();
 
   const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
   AR_ExpNode **return_elems = _BuildReturnExpressions(NULL, ret_clause);
@@ -104,33 +104,39 @@ TEST_F(ArithmeticTest, ExpressionTest)
     query = "RETURN 1";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     ASSERT_EQ(result.longval, 1);
+    AR_EXP_Free(arExp);
 
     /* 1+2*3 */
     query = "RETURN 1+2*3";
     arExp = _exp_from_query(query);
+    // Entire expression should be reduce to a single constant.
+    ASSERT_EQ(arExp->type, AR_EXP_OPERAND);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     ASSERT_EQ(result.longval, 7);
+    AR_EXP_Free(arExp);
 
     /* 1 + 1 + 1 + 1 + 1 + 1 */
     query = "RETURN 1 + 1 + 1 + 1 + 1 + 1";
     arExp = _exp_from_query(query);
+    ASSERT_EQ(arExp->type, AR_EXP_OPERAND);
+
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     ASSERT_EQ(result.longval, 6);
+    AR_EXP_Free(arExp);
 
     /* ABS(-5 + 2 * 1) */
     query = "RETURN ABS(-5 + 2 * 1)";
     arExp = _exp_from_query(query);
+    ASSERT_EQ(arExp->type, AR_EXP_OPERAND);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     ASSERT_EQ(result.longval, 3);
+    AR_EXP_Free(arExp);
 
     /* 'a' + 'b' */
     query = "RETURN 'a' + 'b'";
     arExp = _exp_from_query(query);
+    ASSERT_EQ(arExp->type, AR_EXP_OPERAND);
     result = AR_EXP_Evaluate(arExp, r);
     ASSERT_TRUE(strcmp(result.stringval, "ab") == 0);
     AR_EXP_Free(arExp);
@@ -138,6 +144,7 @@ TEST_F(ArithmeticTest, ExpressionTest)
     /* 1 + 2 + 'a' + 2 + 1 */
     query = "RETURN 1 + 2 + 'a' + 2 + 1";
     arExp = _exp_from_query(query);
+    ASSERT_EQ(arExp->type, AR_EXP_OPERAND);
     result = AR_EXP_Evaluate(arExp, r);
     ASSERT_TRUE(strcmp(result.stringval, "3a21") == 0);
     AR_EXP_Free(arExp);
@@ -145,6 +152,7 @@ TEST_F(ArithmeticTest, ExpressionTest)
     /* 2 * 2 + 'a' + 3 * 3 */
     query = "RETURN 2 * 2 + 'a' + 3 * 3";
     arExp = _exp_from_query(query);
+    ASSERT_EQ(arExp->type, AR_EXP_OPERAND);
     result = AR_EXP_Evaluate(arExp, r);
     ASSERT_TRUE(strcmp(result.stringval, "4a9") == 0);
     AR_EXP_Free(arExp);
@@ -230,8 +238,8 @@ TEST_F(ArithmeticTest, AggregateTest)
     AR_EXP_Aggregate(arExp, r);
     AR_EXP_Reduce(arExp);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     ASSERT_EQ(result.doubleval, 3);
+    AR_EXP_Free(arExp);
 
     /* 2+SUM(1) */
     query = "RETURN 2+SUM(1)";
@@ -244,9 +252,8 @@ TEST_F(ArithmeticTest, AggregateTest)
     AR_EXP_Reduce(arExp);
 
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
-
     ASSERT_EQ(result.doubleval, 5);
+    AR_EXP_Free(arExp);
 }
 
 TEST_F(ArithmeticTest, AbsTest)

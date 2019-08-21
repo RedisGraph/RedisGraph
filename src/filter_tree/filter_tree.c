@@ -254,6 +254,45 @@ rax *FilterTree_CollectModified(const FT_FilterNode *root) {
 	return modified;
 }
 
+void _FilterTree_CollectAttributes(const FT_FilterNode *root, rax *attributes) {
+	if(root == NULL) return;
+
+	switch(root->t) {
+	case FT_N_COND: {
+		_FilterTree_CollectAttributes(root->cond.left, attributes);
+		_FilterTree_CollectAttributes(root->cond.right, attributes);
+		break;
+	}
+	case FT_N_PRED: {
+		/* Traverse left and right-hand expressions, adding all encountered attributes
+		* to the triemap. */
+		AR_EXP_CollectAttributes(root->pred.lhs, attributes);
+		AR_EXP_CollectAttributes(root->pred.rhs, attributes);
+		break;
+	}
+	default: {
+		assert(0);
+		break;
+	}
+	}
+}
+
+rax *FilterTree_CollectAttributes(const FT_FilterNode *root) {
+	rax *attributes = raxNew();
+	_FilterTree_CollectAttributes(root, attributes);
+	return attributes;
+}
+
+bool FilterTree_containsOp(const FT_FilterNode *root, AST_Operator op) {
+	if(root->t == FT_N_COND) {
+		bool contains_op = false;
+		if(FilterTree_containsOp(root->cond.left, op)) return true;
+		if(FilterTree_containsOp(root->cond.right, op)) return true;
+		return false;
+	}
+	return (root->pred.op == op);
+}
+
 void _FilterTree_ApplyNegate(FT_FilterNode **root, uint negate_count) {
 	switch((*root)->t) {
 	case FT_N_EXP:

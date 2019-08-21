@@ -61,7 +61,7 @@ static void _CommitNodes(OpMerge *op, Record r) {
 		PropertyMap *map = node_ctx->properties;
 		if(map) _AddProperties(op, r, (GraphEntity *)created_node, map);
 
-		if(schema) GraphContext_AddNodeToIndices(op->gc, schema, created_node);
+		if(schema) Schema_AddNodeToIndices(schema, created_node, false);
 	}
 
 	op->stats->nodes_created += node_count;
@@ -157,6 +157,15 @@ Record OpMergeConsume(OpBase *opBase) {
 		if(op->matched) return r;
 
 		// No previous match, create MERGE pattern.
+
+		/* TODO: once MATCH and MERGE will be mixed
+		 * we'll need to apply a similar strategy applied by op_create. */
+
+		/* Done reading, we're not going to call consume any longer
+		 * there might be operations e.g. index scan that need to free
+		 * index R/W lock, as such free all execution plan operation up the chain. */
+		OpBase_PropagateFree(child);
+
 		r = Record_New(opBase->record_map->record_len);
 		_CreateEntities(op, r);
 		op->created = true;
@@ -177,9 +186,11 @@ void OpMergeFree(OpBase *ctx) {
 	for(uint i = 0; i < node_count; i ++) {
 		PropertyMap_Free(op->nodes_to_merge[i].properties);
 	}
+	op->nodes_to_merge = NULL;
 
 	uint edge_count = array_len(op->edges_to_merge);
 	for(uint i = 0; i < edge_count; i ++) {
 		PropertyMap_Free(op->edges_to_merge[i].properties);
 	}
+	op->edges_to_merge = NULL;
 }

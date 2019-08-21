@@ -569,6 +569,80 @@ START_TEST (parse_slice)
 }
 END_TEST
 
+START_TEST (parse_subscript_list_with_in_operator)
+{
+    struct cypher_input_position last = cypher_input_position_zero;
+    result = cypher_parse("RETURN 3 IN [[1,2,3]][0] AS r",
+            &last, NULL, 0);
+    ck_assert_ptr_ne(result, NULL);
+    ck_assert_int_eq(last.offset, 29);
+
+    ck_assert(cypher_parse_result_fprint_ast(result, memstream, 0, NULL, 0) == 0);
+    fflush(memstream);
+    const char *expected = "\n"
+" @0   0..29  statement                 body=@1\n"
+" @1   0..29  > query                   clauses=[@2]\n"
+" @2   0..29  > > RETURN                projections=[@3]\n"
+" @3   7..29  > > > projection          expression=@4, alias=@13\n"
+" @4   7..25  > > > > binary operator   @5 IN @6\n"
+" @5   7..8   > > > > > integer         3\n"
+" @6  12..25  > > > > > subscript       @7[@12]\n"
+" @7  12..21  > > > > > > collection    [@8]\n"
+" @8  13..20  > > > > > > > collection  [@9, @10, @11]\n"
+" @9  14..15  > > > > > > > > integer   1\n"
+"@10  16..17  > > > > > > > > integer   2\n"
+"@11  18..19  > > > > > > > > integer   3\n"
+"@12  22..23  > > > > > > integer       0\n"
+"@13  28..29  > > > > identifier        `r`\n";
+    ck_assert_str_eq(memstream_buffer, expected);
+
+    const cypher_astnode_t *ast = cypher_parse_result_get_directive(result, 0);
+    const cypher_astnode_t *query = cypher_ast_statement_get_body(ast);
+    const cypher_astnode_t *clause = cypher_ast_query_get_clause(query, 0);
+    ck_assert_int_eq(cypher_astnode_type(clause), CYPHER_AST_RETURN);
+    ck_assert_int_eq(cypher_ast_return_nprojections(clause), 1);
+
+    const cypher_astnode_t *proj = cypher_ast_return_get_projection(clause, 0);
+    ck_assert_int_eq(cypher_astnode_type(proj), CYPHER_AST_PROJECTION);
+
+    const cypher_astnode_t *identifier = cypher_ast_projection_get_alias(proj);
+    ck_assert_int_eq(cypher_astnode_type(identifier), CYPHER_AST_IDENTIFIER);
+    ck_assert_str_eq(cypher_ast_identifier_get_name(identifier), "r");
+
+    const cypher_astnode_t *exp = cypher_ast_projection_get_expression(proj);
+    ck_assert_int_eq(cypher_astnode_type(exp), CYPHER_AST_BINARY_OPERATOR);
+
+    const cypher_operator_t *op = cypher_ast_binary_operator_get_operator(exp);
+    ck_assert_ptr_eq(op, CYPHER_OP_IN);
+
+    const cypher_astnode_t *arg1 = cypher_ast_binary_operator_get_argument1(exp);
+    ck_assert_int_eq(cypher_astnode_type(arg1), CYPHER_AST_INTEGER);
+    ck_assert_str_eq(cypher_ast_integer_get_valuestr(arg1), "3");
+
+    const cypher_astnode_t *arg2 = cypher_ast_binary_operator_get_argument2(exp);
+    ck_assert_int_eq(cypher_astnode_type(arg2), CYPHER_AST_SUBSCRIPT_OPERATOR);
+
+    const cypher_astnode_t *subscript = cypher_ast_subscript_operator_get_subscript(arg2);
+    ck_assert_int_eq(cypher_astnode_type(subscript), CYPHER_AST_INTEGER);
+    ck_assert_str_eq(cypher_ast_integer_get_valuestr(subscript), "0");
+
+    exp = cypher_ast_subscript_operator_get_expression(arg2);
+    ck_assert_int_eq(cypher_astnode_type(exp), CYPHER_AST_COLLECTION);
+    ck_assert_int_eq(cypher_ast_collection_length(exp), 1);
+
+    exp = cypher_ast_collection_get(exp, 0);
+    ck_assert_int_eq(cypher_astnode_type(exp), CYPHER_AST_COLLECTION);
+    ck_assert_int_eq(cypher_ast_collection_length(exp), 3);
+
+    for(uint i = 0; i < 3; i++) {
+        char snum[2];
+        sprintf(snum, "%d", i+1);
+        const cypher_astnode_t *constant = cypher_ast_collection_get(exp, i);
+        ck_assert_int_eq(cypher_astnode_type(constant), CYPHER_AST_INTEGER);
+        ck_assert_str_eq(cypher_ast_integer_get_valuestr(constant), snum);
+    }
+}
+END_TEST
 
 TCase* expression_tcase(void)
 {
@@ -581,5 +655,6 @@ TCase* expression_tcase(void)
     tcase_add_test(tc, parse_apply);
     tcase_add_test(tc, parse_subscript);
     tcase_add_test(tc, parse_slice);
+    tcase_add_test(tc, parse_subscript_list_with_in_operator);
     return tc;
 }

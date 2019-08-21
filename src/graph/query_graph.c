@@ -31,7 +31,6 @@ static void _BuildQueryGraphAddNode(const GraphContext *gc,
 		n = QGNode_New(NULL, alias, id);
 
 		QueryGraph_AddNode(qg, n);
-
 	}
 
 	// Retrieve node labels from the AST entity.
@@ -168,7 +167,7 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 	uint edge_count;
 	// The initial node and edge arrays will be large enough to accommodate all AST entities
 	// (which is overkill, consider reducing)
-	node_count = edge_count = ast->entity_map->cardinality;
+	node_count = edge_count = raxSize(ast->entity_map);
 	QueryGraph *qg = QueryGraph_New(node_count, edge_count);
 
 	// We are interested in every path held in a MATCH pattern,
