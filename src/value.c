@@ -86,7 +86,6 @@ SIValue SI_ShareValue(const SIValue v) {
 	return dup;
 }
 
-
 /* Make an SIValue that creates its own copies of the original's allocations, if any.
  * This is not a deep clone: if the inner value holds its own references,
  * such as the Entity pointer to the properties of a Node or Edge, those are unmodified. */
@@ -100,7 +99,6 @@ SIValue SI_CloneValue(const SIValue v) {
 
 	// Copy the memory region for Node and Edge values. This does not modify the
 	// inner Entity pointer to the value's properties.
-	// TODO None of this logic should be accessible right now
 	SIValue clone;
 	clone.type = v.type;
 	clone.allocation = M_SELF;
@@ -118,6 +116,14 @@ SIValue SI_CloneValue(const SIValue v) {
 	return clone;
 }
 
+/* Make an SIValue that shares the original's allocations but can safely expect those allocations
+ *  to remain in scope. This is most frequently the case for GraphEntity properties. */
+SIValue SI_ConstValue(const SIValue v) {
+	SIValue dup = v;
+	if(v.allocation != M_NONE) dup.allocation = M_CONST;
+	return dup;
+}
+
 /* Ensure that any allocation held by the given SIValue is guaranteed to not go out
  * of scope during the lifetime of this query by copying references to volatile memory.
  * Heap allocations that are not scoped to the input SIValue, such as strings from the AST
@@ -126,26 +132,8 @@ void SIValue_Persist(SIValue *v) {
 	// Do nothing for non-volatile values.
 	if(v->allocation != M_VOLATILE) return;
 
-	// Copy volatile string values.
-	if(v->type == T_STRING) {
-		*v = SI_DuplicateStringVal(v->stringval);
-		return;
-	}
-
-	// Copy the memory region for Node and Edge values. This does not modify the
-	// inner Entity pointer to the value's properties.
-	size_t size;
-	if(v->type == T_NODE) {
-		size = sizeof(Node);
-	} else if(v->type == T_EDGE) {
-		size = sizeof(Edge);
-	} else {
-		assert(false && "Encountered heap-allocated SIValue of unhandled type");
-	}
-	void *clone = rm_malloc(size);
-	clone = memcpy(clone, v->ptrval, size);
-	v->ptrval = clone;
-	v->allocation = M_SELF;
+	// For volatile values, persisting uses the same logic as cloning.
+	*v = SI_CloneValue(*v);
 }
 
 inline int SIValue_IsNull(SIValue v) {

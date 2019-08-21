@@ -41,6 +41,7 @@ typedef enum {
 
 #define SI_NUMERIC (T_INT64 | T_DOUBLE)
 #define SI_STRING (T_STRING | T_CONSTSTRING)
+#define SI_GRAPHENTITY (T_NODE | T_EDGE)
 #define SI_TYPE(value) (value).type
 
 /* Retrieve the numeric associated with an SIValue without explicitly
@@ -87,6 +88,9 @@ SIValue SI_ShareValue(const SIValue v);
 
 // SI_CloneValue creates an SIValue that duplicates all of the original's allocations.
 SIValue SI_CloneValue(const SIValue v);
+
+// SI_ConstValue creates an SIValue that shares the original's allocations, but does not need to persist them.
+SIValue SI_ConstValue(const SIValue v);
 
 // SIValue_Persist updates an SIValue to duplicate any allocations that may go out of scope in the lifetime of this query.
 void SIValue_Persist(SIValue *v);

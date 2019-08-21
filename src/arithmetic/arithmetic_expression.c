@@ -215,8 +215,8 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 				if(property == PROPERTY_NOTFOUND) {
 					result = SI_NullVal();
 				} else {
-					// The value belongs to a graph property and is shared with the caller.
-					result = SI_ShareValue(*property);
+					// The value belongs to a graph property, and can be accessed safely during the query lifetime.
+					result = SI_ConstValue(*property);
 				}
 			} else {
 				// Alias doesn't necessarily refers to a graph entity,
