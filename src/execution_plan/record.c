@@ -78,7 +78,7 @@ RecordEntryType Record_GetType(const Record r, int idx) {
 
 SIValue Record_GetScalar(Record r,  int idx) {
 	r[idx].type = REC_TYPE_SCALAR;
-	return SI_MakeVolatile(r[idx].value.s);
+	return r[idx].value.s;
 }
 
 Node *Record_GetNode(const Record r,  int idx) {

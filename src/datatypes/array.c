@@ -80,7 +80,7 @@ int Array_ToString(SIValue list, char *buf, size_t len) {
 void Array_Free(SIValue siarray) {
 	uint arrayLen = Array_Length(siarray);
 	for(uint i = 0; i < arrayLen; i++) {
-		SIValue value = Array_Get(siarray, i);
+		SIValue value = siarray.array[i];
 		SIValue_Free(&value);
 	}
 	array_free(siarray.array);
