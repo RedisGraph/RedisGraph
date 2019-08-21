@@ -132,22 +132,22 @@ TEST_F(ArithmeticTest, ExpressionTest)
     query = "RETURN 'a' + 'b'";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     ASSERT_TRUE(strcmp(result.stringval, "ab") == 0);
+    AR_EXP_Free(arExp);
 
     /* 1 + 2 + 'a' + 2 + 1 */
     query = "RETURN 1 + 2 + 'a' + 2 + 1";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     ASSERT_TRUE(strcmp(result.stringval, "3a21") == 0);
+    AR_EXP_Free(arExp);
 
     /* 2 * 2 + 'a' + 3 * 3 */
     query = "RETURN 2 * 2 + 'a' + 3 * 3";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     ASSERT_TRUE(strcmp(result.stringval, "4a9") == 0);
+    AR_EXP_Free(arExp);
 }
 
 TEST_F(ArithmeticTest, NullArithmetic)
@@ -447,24 +447,24 @@ TEST_F(ArithmeticTest, ReverseTest)
     query = "RETURN REVERSE('muchacho')";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "ohcahcum";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* REVERSE("") */
     query = "RETURN REVERSE('')";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* REVERSE() */
     query = "RETURN REVERSE(NULL)";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     ASSERT_EQ(result.type, T_NULL);
+    AR_EXP_Free(arExp);
 }
 
 TEST_F(ArithmeticTest, LeftTest)
@@ -479,24 +479,24 @@ TEST_F(ArithmeticTest, LeftTest)
     query = "RETURN LEFT('muchacho', 4)";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "much";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* LEFT("muchacho", 100) */
     query = "RETURN LEFT('muchacho', 100)";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "muchacho";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* LEFT(NULL, 100) */
     query = "RETURN LEFT(NULL, 100)";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     ASSERT_EQ(result.type, T_NULL);
+    AR_EXP_Free(arExp);
 }
 
 TEST_F(ArithmeticTest, RightTest)
@@ -511,24 +511,24 @@ TEST_F(ArithmeticTest, RightTest)
     query = "RETURN RIGHT('muchacho', 4)";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "acho";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* RIGHT("muchacho", 100) */
     query = "RETURN RIGHT('muchacho', 100)";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "muchacho";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* RIGHT(NULL, 100) */
     query = "RETURN RIGHT(NULL, 100)";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     ASSERT_EQ(result.type, T_NULL);
+    AR_EXP_Free(arExp);
 }
 
 TEST_F(ArithmeticTest, LTrimTest)
@@ -543,40 +543,40 @@ TEST_F(ArithmeticTest, LTrimTest)
     query = "RETURN lTrim('   muchacho')";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "muchacho";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* lTrim("muchacho   ") */
     query = "RETURN lTrim('muchacho   ')";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "muchacho   ";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* lTrim("   much   acho   ") */
     query = "RETURN lTrim('   much   acho   ')";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "much   acho   ";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* lTrim("muchacho") */
     query = "RETURN lTrim('muchacho')";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "muchacho";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* lTrim() */
     query = "RETURN lTrim(NULL)";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     ASSERT_EQ(result.type, T_NULL);
+    AR_EXP_Free(arExp);
 }
 
 TEST_F(ArithmeticTest, RTrimTest)
@@ -591,40 +591,40 @@ TEST_F(ArithmeticTest, RTrimTest)
     query = "RETURN rTrim('   muchacho')";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "   muchacho";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* rTrim("muchacho   ") */
     query = "RETURN rTrim('muchacho   ')";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "muchacho";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* rTrim("   much   acho   ") */
     query = "RETURN rTrim('   much   acho   ')";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "   much   acho";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* rTrim("muchacho") */
     query = "RETURN rTrim('muchacho')";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "muchacho";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* rTrim() */
     query = "RETURN rTrim(NULL)";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     ASSERT_EQ(result.type, T_NULL);
+    AR_EXP_Free(arExp);
 }
 
 TEST_F(ArithmeticTest, TrimTest)
@@ -639,40 +639,40 @@ TEST_F(ArithmeticTest, TrimTest)
     query = "RETURN trim('   muchacho')";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "muchacho";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* trim("muchacho   ") */
     query = "RETURN trim('muchacho   ')";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "muchacho";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* trim("   much   acho   ") */
     query = "RETURN trim('   much   acho   ')";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "much   acho";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* trim("muchacho") */
     query = "RETURN trim('muchacho')";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "muchacho";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* trim() */
     query = "RETURN trim(NULL)";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     ASSERT_EQ(result.type, T_NULL);
+    AR_EXP_Free(arExp);
 }
 
 TEST_F(ArithmeticTest, SubstringTest)
@@ -687,24 +687,24 @@ TEST_F(ArithmeticTest, SubstringTest)
     query = "RETURN SUBSTRING('muchacho', 0, 4)";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "much";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* SUBSTRING("muchacho", 3, 20) */
     query = "RETURN SUBSTRING('muchacho', 3, 20)";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "hacho";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* SUBSTRING(NULL, 3, 20) */
     query = "RETURN SUBSTRING(NULL, 3, 20)";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     ASSERT_EQ(result.type, T_NULL);
+    AR_EXP_Free(arExp);
 }
 
 TEST_F(ArithmeticTest, ToLowerTest)
@@ -719,24 +719,24 @@ TEST_F(ArithmeticTest, ToLowerTest)
     query = "RETURN toLower('MuChAcHo')";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "muchacho";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* toLower("mUcHaChO") */
     query = "RETURN toLower('mUcHaChO')";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "muchacho";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* toLower("mUcHaChO") */
     query = "RETURN toLower(NULL)";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     ASSERT_EQ(result.type, T_NULL);
+    AR_EXP_Free(arExp);
 }
 
 TEST_F(ArithmeticTest, ToUpperTest)
@@ -751,24 +751,24 @@ TEST_F(ArithmeticTest, ToUpperTest)
     query = "RETURN toUpper('MuChAcHo')";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "MUCHACHO";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* toUpper("mUcHaChO") */
     query = "RETURN toUpper('mUcHaChO')";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "MUCHACHO";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* toUpper("mUcHaChO") */
     query = "RETURN toUpper(NULL)";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     ASSERT_EQ(result.type, T_NULL);
+    AR_EXP_Free(arExp);
 }
 
 TEST_F(ArithmeticTest, ToStringTest)
@@ -783,24 +783,24 @@ TEST_F(ArithmeticTest, ToStringTest)
     query = "RETURN toString('muchacho')";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "muchacho";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* toString("3.14") */
     query = "RETURN toString(3.14)";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     expected = "3.140000";
     ASSERT_STREQ(result.stringval, expected);
+    AR_EXP_Free(arExp);
 
     /* toString() */
     query = "RETURN toString(NULL)";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-    AR_EXP_Free(arExp);
     ASSERT_EQ(result.type, T_NULL);
+    AR_EXP_Free(arExp);
 }
 
 TEST_F(ArithmeticTest, ExistsTest)

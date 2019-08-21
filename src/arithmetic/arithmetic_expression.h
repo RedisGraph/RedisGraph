@@ -96,6 +96,9 @@ AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant);
 /* Return AR_OperandNodeType for operands and -1 for operations. */
 int AR_EXP_GetOperandType(AR_ExpNode *exp);
 
+/* Compact tree by evaluating all contained functions that can be resolved right now. */
+bool AR_EXP_ReduceToScalar(AR_ExpNode **root);
+
 /* Evaluate arithmetic expression tree. */
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r);
 

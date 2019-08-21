@@ -40,7 +40,7 @@ int compareNumerics(SIValue *a, SIValue *b) {
  * so that it becomes outdated but not broken by updates to the property. */
 SIValue *cloneKey(SIValue *property) {
 	SIValue *clone = rm_malloc(sizeof(SIValue));
-	*clone = SI_Clone(*property);
+	*clone = SI_CloneValue(*property);
 	return clone;
 }
 

@@ -213,6 +213,8 @@ static Record _handoff(OpAggregate *op) {
 		} else {
 			// Non-aggregated expression.
 			res = group->keys[keyIdx++];
+			// Key values are shared with the Record, as they'll be freed with the group cache.
+			res = SI_ShareValue(res);
 			Record_Add(r, i, res);
 		}
 	}
@@ -228,6 +230,8 @@ static Record _handoff(OpAggregate *op) {
 		} else {
 			// Non-aggregated expression.
 			res = group->keys[keyIdx++];
+			// Key values are shared with the Record, as they'll be freed with the group cache.
+			res = SI_ShareValue(res);
 			Record_AddScalar(r, exp_count + i, res);
 		}
 	}

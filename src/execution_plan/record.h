@@ -36,13 +36,13 @@ Record Record_New(int entries);
 // Extands record to given length.
 void Record_Extend(Record *r, int len);
 
-// Clones record.
+// Clones record, sharing any nested references with the original.
 Record Record_Clone(const Record r);
 
 // Extends record to accommodate 'len' entries.
 void Record_Extend(Record *r, int len);
 
-// Merge record b into a.
+// Merge record b into a, sharing any nested references in b with a.
 void Record_Merge(Record *a, const Record b);
 
 // Returns number of entries record can hold.
