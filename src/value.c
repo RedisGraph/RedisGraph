@@ -76,28 +76,77 @@ SIValue SI_TransferStringVal(char *s) {
 	};
 }
 
-SIValue SI_Clone(SIValue v) {
-	if(v.type == T_STRING) {
-		// Allocate a new copy of the input's string value
-		return SI_DuplicateStringVal(v.stringval);
-	}
-	// SIValue dup;
-	// memcpy(&dup, &v, sizeof(SIValue));
-	// return dup;
-	// Note, v is not a pointer.
-	return v;
+/* Make an SIValue that reuses the original's allocations, if any.
+ * The returned value is not responsible for freeing any allocations,
+ * and is not guaranteed that these allocations will remain in scope. */
+SIValue SI_ShareValue(const SIValue v) {
+	SIValue dup = v;
+	// If the original value owns an allocation, mark that the duplicate shares it.
+	if(v.allocation == M_SELF) dup.allocation = M_VOLATILE;
+	return dup;
 }
 
-SIValue SI_ShallowCopy(SIValue v) {
+/* Make an SIValue that creates its own copies of the original's allocations, if any.
+ * This is not a deep clone: if the inner value holds its own references,
+ * such as the Entity pointer to the properties of a Node or Edge, those are unmodified. */
+SIValue SI_CloneValue(const SIValue v) {
+	if(v.allocation == M_NONE) return v; // Stack value; no allocation necessary.
+
+	if(v.type & SI_STRING) {
+		// Allocate a new copy of the input's string value.
+		return SI_DuplicateStringVal(v.stringval);
+	}
+
+	// Copy the memory region for Node and Edge values. This does not modify the
+	// inner Entity pointer to the value's properties.
+	SIValue clone;
+	clone.type = v.type;
+	clone.allocation = M_SELF;
+
+	size_t size;
+	if(v.type == T_NODE) {
+		size = sizeof(Node);
+	} else if(v.type == T_EDGE) {
+		size = sizeof(Edge);
+	} else {
+		assert(false && "Encountered heap-allocated SIValue of unhandled type");
+	}
+	clone.ptrval = rm_malloc(size);
+	memcpy(clone.ptrval, v.ptrval, size);
+	return clone;
+}
+
+/* Make an SIValue that shares the original's allocations but can safely expect those allocations
+ *  to remain in scope. This is most frequently the case for GraphEntity properties. */
+SIValue SI_ConstValue(const SIValue v) {
 	SIValue dup = v;
-	// If the original value owns an allocation, mark that the duplicate shares it
-	if(v.allocation == M_SELF) dup.allocation = M_CONST;
+	if(v.allocation != M_NONE) dup.allocation = M_CONST;
 	return dup;
+}
+
+/* Update an SIValue marked as owning its internal allocations so that it instead is sharing them,
+ * with no responsibility for freeing or guarantee regarding scope.
+ * This is used in cases like performing shallow copies of scalars in Record entries. */
+void SIValue_MakeVolatile(SIValue *v) {
+	if(v->allocation == M_SELF) v->allocation = M_VOLATILE;
+}
+
+/* Ensure that any allocation held by the given SIValue is guaranteed to not go out
+ * of scope during the lifetime of this query by copying references to volatile memory.
+ * Heap allocations that are not scoped to the input SIValue, such as strings from the AST
+ * or a GraphEntity property, are not modified. */
+void SIValue_Persist(SIValue *v) {
+	// Do nothing for non-volatile values.
+	if(v->allocation != M_VOLATILE) return;
+
+	// For volatile values, persisting uses the same logic as cloning.
+	*v = SI_CloneValue(*v);
 }
 
 inline int SIValue_IsNull(SIValue v) {
 	return v.type == T_NULL;
 }
+
 inline int SIValue_IsNullPtr(SIValue *v) {
 	return v == NULL || v->type == T_NULL;
 }
@@ -283,38 +332,20 @@ int SIValue_Order(const SIValue a, const SIValue b) {
 	return 0;
 }
 
-void SIValue_Persist(SIValue *v) {
-	if(v->allocation == M_VOLATILE) {
-		size_t size;
-		if(v->type == T_NODE) {
-			size = sizeof(Node);
-		} else if(v->type == T_EDGE) {
-			size = sizeof(Edge);
-		} else {
-			return;
-		}
-		void *clone = rm_malloc(size);
-		clone = memcpy(clone, v->ptrval, size);
-		v->ptrval = clone;
-		v->allocation = M_SELF;
-	}
-}
-
 void SIValue_Free(SIValue *v) {
 	// The free routine only performs work if it owns a heap allocation.
-	if(v->allocation == M_SELF) {
-		switch(v->type) {
-		case T_STRING:
-			rm_free(v->stringval);
-			v->stringval = NULL;
-			return;
-		case T_NODE:
-		case T_EDGE:
-			rm_free(v->ptrval);
-			return;
-		default:
-			return;
-		}
+	if(v->allocation != M_SELF) return;
+
+	switch(v->type) {
+	case T_STRING:
+		rm_free(v->stringval);
+		v->stringval = NULL;
+		return;
+	case T_NODE:
+	case T_EDGE:
+		rm_free(v->ptrval);
+		return;
+	default:
+		return;
 	}
 }
-

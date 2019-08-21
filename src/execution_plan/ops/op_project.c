@@ -79,6 +79,12 @@ Record ProjectConsume(OpBase *opBase) {
 	int rec_idx = 0;
 	for(unsigned short i = 0; i < op->exp_count; i++) {
 		SIValue v = AR_EXP_Evaluate(op->exps[i], r);
+		/* Persisting a value is only necessary here if 'v' refers to a scalar held in Record 'r'.
+		 * Graph entities don't need to be persisted here as Record_Add will copy them internally.
+		 * The RETURN projection here requires persistence:
+		 * MATCH (a) WITH toUpper(a.name) AS e RETURN e
+		 * TODO This is a rare case; the logic of when to persist can be improved.  */
+		if(!(v.type & SI_GRAPHENTITY)) SIValue_Persist(&v);
 		Record_Add(projection, rec_idx, v);
 		rec_idx++;
 	}
@@ -86,6 +92,8 @@ Record ProjectConsume(OpBase *opBase) {
 	// Project Order expressions.
 	for(unsigned short i = 0; i < op->order_exp_count; i++) {
 		SIValue v = AR_EXP_Evaluate(op->order_exps[i], r);
+		// TODO persisting here can be improved as described above.
+		if(!(v.type & SI_GRAPHENTITY)) SIValue_Persist(&v);
 		Record_Add(projection, rec_idx, v);
 		rec_idx++;
 	}
