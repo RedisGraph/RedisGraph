@@ -431,7 +431,7 @@ This section contains information on all supported functions from the Cypher que
 |percentileDisc() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0|
 |percentileCont() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0|
 |stDev() | Returns the standard deviation for the given value over a group|
-|collect() | Returns a list contaning all elements in a given sequence of elements|
+|collect() | Returns a list contaning all elements which evaluated from a given expression|
 
 ## Mathematical functions
 
@@ -479,6 +479,14 @@ This section contains information on all supported functions from the Cypher que
 | ------- |:-----------|
 |indegree() | Returns the number of node's incoming edges. |
 |outdegree() | Returns the number of node's outgoing edges. |
+
+## List functions
+|Function| Description|
+| ------- |:-----------|
+| range() | create a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval.|
+| size()  | return a list size |
+| head()  | return the first member of a list |
+| tail()  | return a sublist of a list, which contains all the values withiout the first value |
 
 ## Procedures
 Procedures are invoked using the syntax:

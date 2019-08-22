@@ -285,7 +285,7 @@ static AR_ExpNode *_AR_ExpFromSliceExpression(RecordMap *record_map, const cyphe
 	else op->op.children[1] = AR_EXP_NewConstOperandNode(SI_LongVal(0));
 
 	if(end_node) op->op.children[2] = AR_EXP_FromExpression(record_map, end_node);
-	else op->op.children[2] = AR_EXP_NewConstOperandNode(SI_LongVal(INT64_MAX));
+	else op->op.children[2] = AR_EXP_NewConstOperandNode(SI_LongVal(INT32_MAX));
 
 	return op;
 }

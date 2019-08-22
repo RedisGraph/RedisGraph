@@ -95,7 +95,8 @@ int GraphEntity_IdToString(const GraphEntity *e, char *buffer, int bufferLen) {
 }
 
 int GraphEntity_PropertiesToString(const GraphEntity *e, char *buffer, int bufferLen) {
-	if(bufferLen <= 1) return 0;
+	// make sure there is enough space for "{...}\0"
+	if(bufferLen < 6) return 0;
 	int bytesWritten = snprintf(buffer, bufferLen, "{");
 	bufferLen -= bytesWritten;
 	int currentWriteLength = 0;
@@ -132,13 +133,19 @@ int GraphEntity_PropertiesToString(const GraphEntity *e, char *buffer, int buffe
 	return strlen(buffer);
 }
 
-
 int GraphEntity_ToString(const GraphEntity *e, char *buffer, int bufferLen,
 						 GraphEntityStringFromat format, GraphEntityType entityType) {
 	// minimum length buffer for "(...)\0" or "[...]\0"
 	if(bufferLen < 6) return 0;
-	char *openSymbole = entityType == GETYPE_NODE ? "(" : "[";
-	char *closeSymbole = entityType == GETYPE_NODE ? ")" : "]";
+	char *openSymbole;
+	char *closeSymbole;
+	if(entityType == GETYPE_NODE) {
+		openSymbole = "(";
+		closeSymbole = ")";
+	} else {
+		openSymbole = "[";
+		closeSymbole = "]";
+	}
 	int bytes_written = snprintf(buffer, bufferLen, "%s", openSymbole);
 	bufferLen -= bytes_written;
 	int currentWriteLength = 0;
@@ -174,7 +181,7 @@ int GraphEntity_ToString(const GraphEntity *e, char *buffer, int bufferLen,
 		}
 
 		default:
-			break;
+			assert(false);
 		}
 	}
 

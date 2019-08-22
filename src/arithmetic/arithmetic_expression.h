@@ -19,8 +19,7 @@ typedef enum
 {
     AR_EXP_UNKNOWN,
     AR_EXP_OP,
-    AR_EXP_OPERAND,
-    AR_EXP_ARRAY
+    AR_EXP_OPERAND
 } AR_ExpNodeType;
 
 /* AR_OPType type of operation

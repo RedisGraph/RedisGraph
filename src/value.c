@@ -354,7 +354,7 @@ SIValue SIValue_ConcatList(const SIValue a, const SIValue b) {
 	// scalar + array
 	if(a.type != T_ARRAY) {
 		SIValue resultArray = SI_Array(1 + SIArray_Length(b));
-		resultArray = SIArray_Append(resultArray, a);
+		SIArray_Append(&resultArray, a);
 	}
 	// array + value
 	else {
@@ -362,11 +362,11 @@ SIValue SIValue_ConcatList(const SIValue a, const SIValue b) {
 	}
 	// b is scalar
 	if(b.type != T_ARRAY) {
-		resultArray = SIArray_Append(resultArray, b);
+		SIArray_Append(&resultArray, b);
 	} else {
 		uint bArrayLen = SIArray_Length(b);
 		for(uint i = 0; i < bArrayLen; i++) {
-			resultArray = SIArray_Append(resultArray, SIArray_Get(b, i));
+			SIArray_Append(&resultArray, SIArray_Get(b, i));
 		}
 	}
 	return resultArray;
@@ -408,7 +408,6 @@ SIValue SIValue_Divide(const SIValue a, const SIValue b) {
 }
 
 int SIArray_Compare(SIValue arrayA, SIValue arrayB) {
-
 	uint arrayALen = SIArray_Length(arrayA);
 	uint arrayBLen = SIArray_Length(arrayB);
 	// check empty list
@@ -438,17 +437,17 @@ int SIArray_Compare(SIValue arrayA, SIValue arrayB) {
 			break;
 		case DISJOINT:
 			allDisjoint++;  // there was a disjoint comparison
-			notEqual = !notEqual ? compareResult :
-					   notEqual;    // if there wasn't any false comparison, update the false comparison to disjoint value
+			if(notEqual == 0) notEqual =
+					compareResult; // if there wasn't any false comparison, update the false comparison to disjoint value
 			break;
 		default:
 			// if comparison is not 0 (a != b), set the first value
-			notEqual = !notEqual ? compareResult : notEqual;
+			if(notEqual == 0) notEqual = compareResult;
 			break;
 		}
 	}
 	// if all the elements in the shared range are from disjoint types return DISJOINT array
-	if(allDisjoint == minLengh && allDisjoint != nullCompare) return DISJOINT;
+	if(allDisjoint == minLengh && allDisjoint > nullCompare) return DISJOINT;
 	// if there was a null comperison on non disjoint arrays
 	if(nullCompare) return COMPARED_NULL;
 	// if there was a diffrence in some member

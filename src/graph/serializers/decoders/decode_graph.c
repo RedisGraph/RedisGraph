@@ -49,7 +49,7 @@ SIValue _RdbLoadSIArray(RedisModuleIO *rdb) {
 	uint arrayLen = RedisModule_LoadUnsigned(rdb);
 	SIValue list = SI_Array(arrayLen);
 	for(uint i = 0; i < arrayLen; i++) {
-		list = SIArray_Append(list, _RdbLoadSIValue(rdb));
+		SIArray_Append(&list, _RdbLoadSIValue(rdb));
 	}
 	return list;
 }

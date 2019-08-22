@@ -122,31 +122,15 @@ static void _AST_MapExpression(AST *ast, const cypher_astnode_t *expr) {
 		return;
 	} else if(type == CYPHER_AST_PROC_NAME) {
 		return;
-	} else if(type == CYPHER_AST_INTEGER ||
-			  type == CYPHER_AST_FLOAT   ||
-			  type == CYPHER_AST_STRING  ||
-			  type == CYPHER_AST_TRUE    ||
-			  type == CYPHER_AST_FALSE   ||
-			  type == CYPHER_AST_NULL) {
-		return;
-	} else if(type == CYPHER_AST_COLLECTION) {
-		uint collectionLength = cypher_ast_collection_length(expr);
-		for(uint i = 0; i < collectionLength; i++) {
-			_AST_MapExpression(ast, cypher_ast_collection_get(expr, i));
-		}
-	} else if(type == CYPHER_AST_SUBSCRIPT_OPERATOR) {
-		_AST_MapExpression(ast, cypher_ast_subscript_operator_get_expression(expr));
-		_AST_MapExpression(ast, cypher_ast_subscript_operator_get_subscript(expr));
-		return;
-	} else if(type == CYPHER_AST_SLICE_OPERATOR) {
-		const cypher_astnode_t *val = cypher_ast_slice_operator_get_expression(expr);
-		if(val) _AST_MapExpression(ast, val);
-
-		const cypher_astnode_t *start = cypher_ast_slice_operator_get_start(expr);
-		if(start) _AST_MapExpression(ast, start);
-
-		const cypher_astnode_t *end = cypher_ast_slice_operator_get_end(expr);
-		if(end) _AST_MapExpression(ast, end);
+	} else if(type == CYPHER_AST_INTEGER            ||
+			  type == CYPHER_AST_FLOAT              ||
+			  type == CYPHER_AST_STRING             ||
+			  type == CYPHER_AST_TRUE               ||
+			  type == CYPHER_AST_FALSE              ||
+			  type == CYPHER_AST_NULL               ||
+			  type == CYPHER_AST_COLLECTION         ||
+			  type == CYPHER_AST_SUBSCRIPT_OPERATOR ||
+			  type == CYPHER_AST_SLICE_OPERATOR) {
 		return;
 	} else {
 		printf("Encountered unhandled type '%s'\n", cypher_astnode_typestr(type));

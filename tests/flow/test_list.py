@@ -21,8 +21,8 @@ class testList(FlowTestsBase):
         result = redis_graph.query(query)
         result_set = result.result_set
         self.env.assertEquals(len(result_set), 1)
-        for i in range(10):
-            self.env.assertTrue(isinstance(result_set[0][0][i-1], Node))
+        for i in range(0, 9):
+            self.env.assertTrue(isinstance(result_set[0][0][i], Node))
 
     def test02_unwind(self):
         query = """CREATE ()"""

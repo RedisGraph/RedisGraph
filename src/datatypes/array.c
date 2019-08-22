@@ -2,7 +2,7 @@
 #include "../util/arr.h"
 #include <limits.h>
 
-SIValue SIArray_New(u_int32_t initialCapacity) {
+SIValue SIArray_New(uint32_t initialCapacity) {
 	SIValue siarray;
 	siarray.array = array_new(SIValue, initialCapacity);
 	siarray.type = T_ARRAY;
@@ -10,24 +10,21 @@ SIValue SIArray_New(u_int32_t initialCapacity) {
 	return siarray;
 }
 
-SIValue SIArray_Append(SIValue siarray, SIValue value) {
+void SIArray_Append(SIValue *siarray, SIValue value) {
 	// clone and persist incase of pointer values
 	SIValue clone = SI_CloneValue(value);
 	// append
-	siarray.array = array_append(siarray.array, clone);
-	return siarray;
+	siarray->array = array_append(siarray->array, clone);
+
 }
 
-SIValue SIArray_Get(SIValue siarray, u_int32_t index) {
+SIValue SIArray_Get(SIValue siarray, uint32_t index) {
 	// check index
-	if(index < 0 || index >= SIArray_Length(siarray))
-		return SI_NullVal();
-	// return value, offset from the ref counter
+	if(index < 0 || index >= SIArray_Length(siarray)) return SI_NullVal();
 	return SI_ShareValue(siarray.array[index]);
 }
 
-u_int32_t SIArray_Length(SIValue siarray) {
-	// return the length without the ref counter
+uint32_t SIArray_Length(SIValue siarray) {
 	return array_len(siarray.array);
 }
 
@@ -35,7 +32,7 @@ SIValue SIArray_Clone(SIValue siarray) {
 	uint arrayLen = SIArray_Length(siarray);
 	SIValue newArray = SIArray_New(arrayLen);
 	for(uint i = 0; i < arrayLen; i++) {
-		newArray = SIArray_Append(newArray, SIArray_Get(siarray, i));
+		SIArray_Append(&newArray, SIArray_Get(siarray, i));
 	}
 	return newArray;
 }

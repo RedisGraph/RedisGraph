@@ -11,11 +11,11 @@ SIValue SIArray_New(u_int32_t initialCapacity);
 
 /**
   * @brief  Appends a new SIValue to a given array  
-  * @param  siarray: array
+  * @param  siarray: pointer to array
   * @param  value: new value
   * @retval array with the appended value
   */
-SIValue SIArray_Append(SIValue siarray, SIValue value);
+void SIArray_Append(SIValue *siarray, SIValue value);
 
 /**
   * @brief  Returns a volatile copy of the SIValue from an array in a given index
