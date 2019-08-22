@@ -54,12 +54,12 @@ The node representation contains 3 top-level elements:
 ]
 ```
 
-### Relations
+#### Relations
 
 The relation representation contains 5 top-level elements:
 
 1. The relation's internal ID.
-2. Any types associated with the relation.
+2. The type associated with the relation.
 3. The source node's internal ID.
 4. The destination node's internal ID.
 5. The key-value pairs of all properties the relation possesses.
