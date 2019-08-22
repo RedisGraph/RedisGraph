@@ -264,5 +264,5 @@ In the case of an IndexError, it issues a procedure call to fully refresh its la
 
 ## Reference clients
 
-All the logic described in this document has been implemented in most of the clients listed in [Client Libraries](index.md#client-libraries). Among these, `redisgraph-py` and `JRedisGraph` are currently the most sophisticated.
+All the logic described in this document has been implemented in most of the clients listed in [Client Libraries](clients.md#currently-available-libraries). Among these, `redisgraph-py` and `JRedisGraph` are currently the most sophisticated.
 
