@@ -658,10 +658,10 @@ SIValue AR_REVERSE(SIValue *argv, int argc) {
 	}
 	// in case of array
 	assert(SI_TYPE(value) == T_ARRAY);
-	uint arrayLen = Array_Length(value);
+	uint arrayLen = SIArray_Length(value);
 	SIValue result = SI_Array(arrayLen);
 	for(uint i = arrayLen - 1; i >= 0; i--) {
-		result = Array_Append(result, Array_Get(value, i));
+		result = SIArray_Append(result, SIArray_Get(value, i));
 	}
 	return result;
 }
@@ -1114,21 +1114,12 @@ SIValue AR_EQ(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
+	int res = SIValue_Compare(a, b);
 
-	assert(SI_TYPE(a) == SI_TYPE(b));
-	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
-	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
+	// if res == DISJOINT => type mismatch
 
-	switch(SI_TYPE(a)) {
-	case T_STRING:
-		return SI_BoolVal(SIValue_Compare(a, b) == 0);
-	case T_INT64:
-	case T_DOUBLE:
-		return SI_BoolVal(SI_GET_NUMERIC(a) == SI_GET_NUMERIC(b));
-	default:
-		assert(false);
-	}
+	if(res == COMPARED_NULL) return SI_NullVal();
+	return SI_BoolVal(res == 0);
 }
 
 SIValue AR_NE(SIValue *argv, int argc) {
@@ -1160,7 +1151,7 @@ SIValue AR_NE(SIValue *argv, int argc) {
 SIValue AR_TOLIST(SIValue *argv, int argc) {
 	SIValue array = SI_Array(argc);
 	for(int i = 0; i < argc; i++) {
-		array = Array_Append(array, argv[i]);
+		array = SIArray_Append(array, argv[i]);
 	}
 	return array;
 }
@@ -1172,14 +1163,14 @@ SIValue AR_SUBSCRIPT(SIValue *argv, int argc) {
 	assert(argc == 2 && argv[0].type == T_ARRAY && argv[1].type == T_INT64);
 	SIValue list = argv[0];
 	int64_t index = argv[1].longval;
-	uint arrayLen = Array_Length(list);
+	uint arrayLen = SIArray_Length(list);
 	// given a negativ index, the accses is calculated as arrayLen+index
 	int64_t absIndex = index < 0 ? index * -1 : index;
 	// index range can be [-arrayLen, arrayLen) (lower bound inclusive, upper exclusive)
 	// this is because 0 = arrayLen+(-arrayLen)
 	if((index < 0 && absIndex > arrayLen) || (index >= arrayLen))
 		return SI_NullVal();
-	return index >= 0 ? Array_Get(list, absIndex) : Array_Get(list, arrayLen - absIndex);
+	return index >= 0 ? SIArray_Get(list, absIndex) : SIArray_Get(list, arrayLen - absIndex);
 }
 
 // return a sub array from an array given a range of indices
@@ -1195,7 +1186,7 @@ SIValue AR_SLICE(SIValue *argv, int argc) {
 	SIValue array = argv[0];
 
 	// get array length
-	uint arrayLen = Array_Length(array);
+	uint arrayLen = SIArray_Length(array);
 
 	// get start and end index
 	SIValue start = argv[1];
@@ -1220,7 +1211,7 @@ SIValue AR_SLICE(SIValue *argv, int argc) {
 	}
 	SIValue subArray = SI_Array(endIndex - startIndex);
 	for(uint i = startIndex; i < endIndex; i++) {
-		subArray = Array_Append(subArray, Array_Get(array, i));
+		subArray = SIArray_Append(subArray, SIArray_Get(array, i));
 	}
 	return subArray;
 }
@@ -1239,7 +1230,7 @@ SIValue AR_RANGE(SIValue *argv, int argc) {
 	}
 	SIValue array = SI_Array((end - start) / interval);
 	for(; start <= end; start += interval) {
-		array = Array_Append(array, SI_LongVal(start));
+		array = SIArray_Append(array, SI_LongVal(start));
 	}
 	return array;
 }
@@ -1250,9 +1241,9 @@ SIValue AR_IN(SIValue *argv, int argc) {
 	SIValue lookupValue = argv[0];
 	SIValue lookupList = argv[1];
 	bool comparedNull = false;
-	uint arrayLen = Array_Length(lookupList);
+	uint arrayLen = SIArray_Length(lookupList);
 	for(uint i = 0; i < arrayLen; i++) {
-		int compareValue = SIValue_Compare(lookupValue, Array_Get(lookupList, i));
+		int compareValue = SIValue_Compare(lookupValue, SIArray_Get(lookupList, i));
 		if(compareValue == 0) return SI_BoolVal(true);
 		if(compareValue == COMPARED_NULL) comparedNull = true;
 	}
@@ -1266,7 +1257,7 @@ SIValue AR_SIZE(SIValue *argv, int argc) {
 	SIValue value = argv[0];
 	switch(value.type) {
 	case T_ARRAY:
-		return SI_LongVal(Array_Length(value));
+		return SI_LongVal(SIArray_Length(value));
 	case T_STRING:
 		return SI_LongVal(strlen(value.stringval));
 	default:
@@ -1280,9 +1271,9 @@ SIValue AR_HEAD(SIValue *argv, int argc) {
 	SIValue value = argv[0];
 	if(value.type == T_NULL) return SI_NullVal();
 	assert(value.type == T_ARRAY);
-	uint arrayLen = Array_Length(value);
+	uint arrayLen = SIArray_Length(value);
 	if(arrayLen == 0) return SI_NullVal();
-	return Array_Get(value, 0);
+	return SIArray_Get(value, 0);
 }
 
 // return a sublist of a list, which contains all the values withiout the first value
@@ -1291,11 +1282,11 @@ SIValue AR_TAIL(SIValue *argv, int argc) {
 	SIValue value = argv[0];
 	if(value.type == T_NULL) return SI_NullVal();
 	assert(value.type == T_ARRAY);
-	uint arrayLen = Array_Length(value);
+	uint arrayLen = SIArray_Length(value);
 	SIValue array = SI_Array(arrayLen);
 	if(arrayLen < 2) return array;
 	for(uint i = 1; i < arrayLen; i++) {
-		array = Array_Append(array, Array_Get(value, i));
+		array = SIArray_Append(array, SIArray_Get(value, i));
 	}
 	return array;
 }
@@ -1322,7 +1313,7 @@ void AR_RegisterFuncs() {
 		AR_Func func_ptr;
 	};
 
-	struct RegFunc functions[41] = {
+	struct RegFunc functions[49] = {
 		{"add", AR_ADD}, {"sub", AR_SUB}, {"mul", AR_MUL}, {"div", AR_DIV}, {"abs", AR_ABS}, {"ceil", AR_CEIL},
 		{"floor", AR_FLOOR}, {"rand", AR_RAND}, {"round", AR_ROUND}, {"sign", AR_SIGN}, {"left", AR_LEFT},
 		{"reverse", AR_REVERSE}, {"right", AR_RIGHT}, {"ltrim", AR_LTRIM}, {"rtrim", AR_RTRIM}, {"substring", AR_SUBSTRING},
@@ -1330,13 +1321,15 @@ void AR_RegisterFuncs() {
 		{"starts with", AR_STARTSWITH}, {"ends with", AR_ENDSWITH}, {"id", AR_ID}, {"labels", AR_LABELS}, {"type", AR_TYPE}, {"exists", AR_EXISTS},
 		{"timestamp", AR_TIMESTAMP}, {"and", AR_AND}, {"or", AR_OR}, {"xor", AR_XOR}, {"not", AR_NOT}, {"gt", AR_GT}, {"ge", AR_GE},
 		{"lt", AR_LT}, {"le", AR_LE}, {"eq", AR_EQ}, {"neq", AR_NE}, {"case", AR_CASEWHEN}, {"indegree", AR_INCOMEDEGREE},
-		{"outdegree", AR_OUTGOINGDEGREE}
+		{"outdegree", AR_OUTGOINGDEGREE},
+		{"tolist", AR_TOLIST}, {"subscript", AR_SUBSCRIPT}, {"slice", AR_SLICE}, {"range", AR_RANGE}, {"in", AR_IN},
+		{"size", AR_SIZE}, {"head", AR_HEAD}, {"tail", AR_TAIL}
 	};
 
 	char lower_func_name[32] = {0};
 	short lower_func_name_len = 32;
 
-	for(int i = 0; i < 41; i++) {
+	for(int i = 0; i < 49; i++) {
 		_toLower(functions[i].func_name, &lower_func_name[0], &lower_func_name_len);
 		_AR_RegFunc(lower_func_name, lower_func_name_len, functions[i].func_ptr);
 		lower_func_name_len = 32;

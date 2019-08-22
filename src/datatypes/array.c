@@ -2,7 +2,7 @@
 #include "../util/arr.h"
 #include <limits.h>
 
-SIValue Array_New(u_int32_t initialCapacity) {
+SIValue SIArray_New(u_int32_t initialCapacity) {
 	SIValue siarray;
 	siarray.array = array_new(SIValue, initialCapacity);
 	siarray.type = T_ARRAY;
@@ -10,51 +10,50 @@ SIValue Array_New(u_int32_t initialCapacity) {
 	return siarray;
 }
 
-SIValue Array_Append(SIValue siarray, SIValue value) {
+SIValue SIArray_Append(SIValue siarray, SIValue value) {
 	// clone and persist incase of pointer values
-	SIValue clone = SI_Clone(value);
-	SIValue_Persist(&clone);
+	SIValue clone = SI_CloneValue(value);
 	// append
 	siarray.array = array_append(siarray.array, clone);
 	return siarray;
 }
 
-SIValue Array_Get(SIValue siarray, u_int32_t index) {
+SIValue SIArray_Get(SIValue siarray, u_int32_t index) {
 	// check index
-	if(index < 0 || index >= Array_Length(siarray))
+	if(index < 0 || index >= SIArray_Length(siarray))
 		return SI_NullVal();
 	// return value, offset from the ref counter
-	return SI_MakeVolatile(siarray.array[index]);
+	return SI_ShareValue(siarray.array[index]);
 }
 
-u_int32_t Array_Length(SIValue siarray) {
+u_int32_t SIArray_Length(SIValue siarray) {
 	// return the length without the ref counter
 	return array_len(siarray.array);
 }
 
-SIValue Array_Clone(SIValue siarray) {
-	uint arrayLen = Array_Length(siarray);
-	SIValue newArray = Array_New(arrayLen);
+SIValue SIArray_Clone(SIValue siarray) {
+	uint arrayLen = SIArray_Length(siarray);
+	SIValue newArray = SIArray_New(arrayLen);
 	for(uint i = 0; i < arrayLen; i++) {
-		newArray = Array_Append(newArray, Array_Get(siarray, i));
+		newArray = SIArray_Append(newArray, SIArray_Get(siarray, i));
 	}
 	return newArray;
 }
 
-int Array_ToString(SIValue list, char *buf, size_t len) {
+int SIArray_ToString(SIValue list, char *buf, size_t len) {
 	// minimum length buffer for "[...]\0"
 	if(len < 6) return 0;
 	// open array with "["
 	int bytes_written = snprintf(buf, len, "[");
 	// len now holds the actual amount of bytes allowed to be wrriten
 	len -= bytes_written;
-	uint arrayLen = Array_Length(list);
+	uint arrayLen = SIArray_Length(list);
 	for(uint i = 0; i < arrayLen; i ++) {
 		// if there no more space left in the buffer
 		if(len < 2) break;
 
 		// write the next value
-		int currentWriteLength = SIValue_ToString(Array_Get(list, i), buf + bytes_written, len);
+		int currentWriteLength = SIValue_ToString(SIArray_Get(list, i), buf + bytes_written, len);
 		bytes_written += currentWriteLength;
 		len -= currentWriteLength;
 
@@ -77,8 +76,8 @@ int Array_ToString(SIValue list, char *buf, size_t len) {
 	}
 }
 
-void Array_Free(SIValue siarray) {
-	uint arrayLen = Array_Length(siarray);
+void SIArray_Free(SIValue siarray) {
+	uint arrayLen = SIArray_Length(siarray);
 	for(uint i = 0; i < arrayLen; i++) {
 		SIValue value = siarray.array[i];
 		SIValue_Free(&value);

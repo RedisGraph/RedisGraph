@@ -432,7 +432,7 @@ int __agg_collectStep(AggCtx *ctx, SIValue *argv, int argc) {
 	for(int i = 0; i < argc; i ++) {
 		SIValue value = argv[i];
 		if(value.type == T_NULL) continue;
-		ac->list = Array_Append(ac->list, value);
+		ac->list = SIArray_Append(ac->list, value);
 	}
 	return AGG_OK;
 }

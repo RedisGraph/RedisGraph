@@ -1211,12 +1211,12 @@ TEST_F(ArithmeticTest, ListTest)
     result = AR_EXP_Evaluate(arExp, r);
     ASSERT_EQ(T_ARRAY, result.type);
 
-    SIValue longVal = Array_Get(result, 0);
-    SIValue doubleVal = Array_Get(result, 1);
-    SIValue stringVal = Array_Get(result, 2);
-    SIValue trueVal = Array_Get(result, 3);
-    SIValue falseVal = Array_Get(result, 4);
-    SIValue nullVal = Array_Get(result, 5);
+    SIValue longVal = SIArray_Get(result, 0);
+    SIValue doubleVal = SIArray_Get(result, 1);
+    SIValue stringVal = SIArray_Get(result, 2);
+    SIValue trueVal = SIArray_Get(result, 3);
+    SIValue falseVal = SIArray_Get(result, 4);
+    SIValue nullVal = SIArray_Get(result, 5);
 
     ASSERT_EQ(T_INT64, longVal.type);
     ASSERT_EQ(1, longVal.longval);
@@ -1262,11 +1262,11 @@ TEST_F(ArithmeticTest, ListSliceTest)
     result = AR_EXP_Evaluate(arExp, r);
 
     ASSERT_EQ(T_ARRAY, result.type);
-    ASSERT_EQ(3, Array_Length(result));
+    ASSERT_EQ(3, SIArray_Length(result));
 
     for (int i = 0; i < 3; i++)
     {
-        SIValue value = Array_Get(result, i);
+        SIValue value = SIArray_Get(result, i);
         ASSERT_EQ(T_INT64, value.type);
         ASSERT_EQ(i, value.longval);
     }
@@ -1276,11 +1276,11 @@ TEST_F(ArithmeticTest, ListSliceTest)
     result = AR_EXP_Evaluate(arExp, r);
 
     ASSERT_EQ(T_ARRAY, result.type);
-    ASSERT_EQ(6, Array_Length(result));
+    ASSERT_EQ(6, SIArray_Length(result));
 
     for (int i = 0; i < 6; i++)
     {
-        SIValue value = Array_Get(result, i);
+        SIValue value = SIArray_Get(result, i);
         ASSERT_EQ(T_INT64, value.type);
         ASSERT_EQ(i, value.longval);
     }
@@ -1290,11 +1290,11 @@ TEST_F(ArithmeticTest, ListSliceTest)
     result = AR_EXP_Evaluate(arExp, r);
 
     ASSERT_EQ(T_ARRAY, result.type);
-    ASSERT_EQ(5, Array_Length(result));
+    ASSERT_EQ(5, SIArray_Length(result));
 
     for (int i = 0; i < 5; i++)
     {
-        SIValue value = Array_Get(result, i);
+        SIValue value = SIArray_Get(result, i);
         ASSERT_EQ(T_INT64, value.type);
         ASSERT_EQ(i + 6, value.longval);
     }
@@ -1304,11 +1304,11 @@ TEST_F(ArithmeticTest, ListSliceTest)
     result = AR_EXP_Evaluate(arExp, r);
 
     ASSERT_EQ(T_ARRAY, result.type);
-    ASSERT_EQ(4, Array_Length(result));
+    ASSERT_EQ(4, SIArray_Length(result));
 
     for (int i = 0; i < 4; i++)
     {
-        SIValue value = Array_Get(result, i);
+        SIValue value = SIArray_Get(result, i);
         ASSERT_EQ(T_INT64, value.type);
         ASSERT_EQ(i, value.longval);
     }
@@ -1327,11 +1327,11 @@ TEST_F(ArithmeticTest, RangeTest)
     result = AR_EXP_Evaluate(arExp, r);
 
     ASSERT_EQ(T_ARRAY, result.type);
-    ASSERT_EQ(11, Array_Length(result));
+    ASSERT_EQ(11, SIArray_Length(result));
 
     for (int i = 0; i < 11; i++)
     {
-        SIValue value = Array_Get(result, i);
+        SIValue value = SIArray_Get(result, i);
         ASSERT_EQ(T_INT64, value.type);
         ASSERT_EQ(i, value.longval);
     }
@@ -1342,11 +1342,11 @@ TEST_F(ArithmeticTest, RangeTest)
     result = AR_EXP_Evaluate(arExp, r);
 
     ASSERT_EQ(T_ARRAY, result.type);
-    ASSERT_EQ(6, Array_Length(result));
+    ASSERT_EQ(6, SIArray_Length(result));
 
     for (int i = 0; i < 6; i++)
     {
-        SIValue value = Array_Get(result, i);
+        SIValue value = SIArray_Get(result, i);
         ASSERT_EQ(T_INT64, value.type);
         ASSERT_EQ(i * 3 + 2, value.longval);
     }

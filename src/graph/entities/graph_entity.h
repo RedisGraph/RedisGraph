@@ -39,7 +39,7 @@ typedef enum
 
 typedef enum GraphEntityType
 {
-    GETYPE_UNKOWN,
+    GETYPE_UNKNOWN,
     GETYPE_NODE,
     GETYPE_EDGE
 } GraphEntityType;

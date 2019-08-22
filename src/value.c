@@ -59,11 +59,11 @@ SIValue SI_Edge(void *e) {
 	};
 }
 SIValue SI_Array(u_int64_t initialCapacity) {
-	return Array_New(initialCapacity);
+	return SIArray_New(initialCapacity);
 }
 
 SIValue SI_EmptyArray() {
-	return Array_New(0);
+	return SIArray_New(0);
 }
 
 SIValue SI_DuplicateStringVal(const char *s) {
@@ -94,12 +94,6 @@ SIValue SI_ShareValue(const SIValue v) {
 	return dup;
 }
 
-// deep clone an array of SIValues
-SIValue SI_CloneArrayVal(SIValue array) {
-
-	return Array_Clone(array);
-}
-
 /* Make an SIValue that creates its own copies of the original's allocations, if any.
  * This is not a deep clone: if the inner value holds its own references,
  * such as the Entity pointer to the properties of a Node or Edge, those are unmodified. */
@@ -112,7 +106,7 @@ SIValue SI_CloneValue(const SIValue v) {
 	}
 
 	if(v.type == T_ARRAY) {
-		return Array_Clone(v);
+		return SIArray_Clone(v);
 	}
 
 	// Copy the memory region for Node and Edge values. This does not modify the
@@ -250,7 +244,7 @@ int SIValue_ToString(SIValue v, char *buf, size_t len) {
 		bytes_written = Edge_ToString(v.ptrval, buf, len, ENTITY_ID);
 		break;
 	case T_ARRAY:
-		bytes_written = Array_ToString(v, buf, len);
+		bytes_written = SIArray_ToString(v, buf, len);
 		break;
 	case T_NULL:
 	default:
@@ -359,20 +353,20 @@ SIValue SIValue_ConcatList(const SIValue a, const SIValue b) {
 	SIValue resultArray;
 	// scalar + array
 	if(a.type != T_ARRAY) {
-		SIValue resultArray = SI_Array(1 + Array_Length(b));
-		resultArray = Array_Append(resultArray, a);
+		SIValue resultArray = SI_Array(1 + SIArray_Length(b));
+		resultArray = SIArray_Append(resultArray, a);
 	}
 	// array + value
 	else {
-		resultArray = SI_Clone(a);
+		resultArray = SI_CloneValue(a);
 	}
 	// b is scalar
 	if(b.type != T_ARRAY) {
-		resultArray = Array_Append(resultArray, b);
+		resultArray = SIArray_Append(resultArray, b);
 	} else {
-		uint bArrayLen = Array_Length(b);
+		uint bArrayLen = SIArray_Length(b);
 		for(uint i = 0; i < bArrayLen; i++) {
-			resultArray = Array_Append(resultArray, Array_Get(b, i));
+			resultArray = SIArray_Append(resultArray, SIArray_Get(b, i));
 		}
 	}
 	return resultArray;
@@ -415,8 +409,8 @@ SIValue SIValue_Divide(const SIValue a, const SIValue b) {
 
 int SIArray_Compare(SIValue arrayA, SIValue arrayB) {
 
-	uint arrayALen = Array_Length(arrayA);
-	uint arrayBLen = Array_Length(arrayB);
+	uint arrayALen = SIArray_Length(arrayA);
+	uint arrayBLen = SIArray_Length(arrayB);
 	// check empty list
 	if(arrayALen == 0 && arrayBLen == 0) return 0;
 	int lenDiff = arrayALen - arrayBLen;
@@ -430,8 +424,8 @@ int SIArray_Compare(SIValue arrayA, SIValue arrayB) {
 
 	// go over the common range for both arrays
 	for(uint i = 0; i < minLengh; i++) {
-		SIValue aValue = Array_Get(arrayA, i);
-		SIValue bValue = Array_Get(arrayB, i);
+		SIValue aValue = SIArray_Get(arrayA, i);
+		SIValue bValue = SIArray_Get(arrayB, i);
 		int compareResult = SIValue_Compare(aValue, bValue);
 		switch(compareResult) {
 		case 0:
@@ -535,6 +529,8 @@ void SIValue_Free(SIValue *v) {
 	case T_EDGE:
 		rm_free(v->ptrval);
 		return;
+	case T_ARRAY:
+		SIArray_Free(*v);
 	default:
 		return;
 	}

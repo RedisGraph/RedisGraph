@@ -531,7 +531,7 @@ Feature: ListOperations
 
     # Equality
 
-    @skip
+
     Scenario: Equality between list and literal should return false
         Given any graph
         When executing query:
@@ -543,7 +543,7 @@ Feature: ListOperations
             | false |
         And no side effects
 
-    @skip
+
     Scenario: Equality of lists of different length should return false despite nulls
         Given any graph
         When executing query:
@@ -555,7 +555,7 @@ Feature: ListOperations
             | false |
         And no side effects
 
-    @skip
+
     Scenario: Equality between different lists with null should return false
         Given any graph
         When executing query:
@@ -567,7 +567,7 @@ Feature: ListOperations
             | false |
         And no side effects
 
-    @skip
+
     Scenario: Equality between almost equal lists with null should return null
         Given any graph
         When executing query:
@@ -579,7 +579,7 @@ Feature: ListOperations
             | null |
         And no side effects
 
-    @skip
+
     Scenario: Equality of nested lists of different length should return false despite nulls
         Given any graph
         When executing query:
@@ -591,7 +591,7 @@ Feature: ListOperations
             | false |
         And no side effects
 
-    @skip
+
     Scenario: Equality between different nested lists with null should return false
         Given any graph
         When executing query:
@@ -603,7 +603,7 @@ Feature: ListOperations
             | false |
         And no side effects
 
-    @skip
+
     Scenario: Equality between almost equal nested lists with null should return null
         Given any graph
         When executing query:

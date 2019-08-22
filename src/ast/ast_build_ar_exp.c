@@ -252,7 +252,8 @@ static AR_ExpNode *_AR_EXP_FromCaseExpression(RecordMap *record_map, const cyphe
 	return op;
 }
 
-AR_ExpNode *_AR_ExpFromCollectionExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
+static AR_ExpNode *_AR_ExpFromCollectionExpression(RecordMap *record_map,
+												   const cypher_astnode_t *expr) {
 	uint expCount = cypher_ast_collection_length(expr);
 	AR_ExpNode *op = AR_EXP_NewOpNode("tolist", expCount);
 	for(uint i = 0; i < expCount; i ++) {
@@ -262,7 +263,8 @@ AR_ExpNode *_AR_ExpFromCollectionExpression(RecordMap *record_map, const cypher_
 	return op;
 }
 
-AR_ExpNode *_AR_ExpFromSubscriptExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
+static AR_ExpNode *_AR_ExpFromSubscriptExpression(RecordMap *record_map,
+												  const cypher_astnode_t *expr) {
 	AR_ExpNode *op = AR_EXP_NewOpNode("subscript", 2);
 	const cypher_astnode_t *exp_node = cypher_ast_subscript_operator_get_expression(expr);
 	op->op.children[0] = AR_EXP_FromExpression(record_map, exp_node);
@@ -271,7 +273,7 @@ AR_ExpNode *_AR_ExpFromSubscriptExpression(RecordMap *record_map, const cypher_a
 	return op;
 }
 
-AR_ExpNode *_AR_ExpFromSliceExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
+static AR_ExpNode *_AR_ExpFromSliceExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
 	AR_ExpNode *op = AR_EXP_NewOpNode("slice", 3);
 	const cypher_astnode_t *exp_node = cypher_ast_slice_operator_get_expression(expr);
 	const cypher_astnode_t *start_node = cypher_ast_slice_operator_get_start(expr);
@@ -288,7 +290,7 @@ AR_ExpNode *_AR_ExpFromSliceExpression(RecordMap *record_map, const cypher_astno
 	return op;
 }
 
-static AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
+static AR_ExpNode *_AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t *expr) {
 	const cypher_astnode_type_t type = cypher_astnode_type(expr);
 
 	/* Function invocations */

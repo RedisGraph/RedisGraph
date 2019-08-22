@@ -157,11 +157,11 @@ static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
 
 static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext *gc,
 											   SIValue array) {
-	uint arrayLen = Array_Length(array);
+	uint arrayLen = SIArray_Length(array);
 	RedisModule_ReplyWithArray(ctx, arrayLen);
 	for(uint i = 0; i < arrayLen; i++) {
 		RedisModule_ReplyWithArray(ctx, 2); // Reply with array with space for type and value
-		_ResultSet_CompactReplyWithSIValue(ctx, gc, Array_Get(array, i));
+		_ResultSet_CompactReplyWithSIValue(ctx, gc, SIArray_Get(array, i));
 	}
 }
 

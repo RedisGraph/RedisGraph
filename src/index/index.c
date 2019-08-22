@@ -62,12 +62,6 @@ static void _populateIndex
 	GxB_MatrixTupleIter_free(it);
 }
 
-SIValue *cloneKey(SIValue *property) {
-	SIValue *clone = rm_malloc(sizeof(SIValue));
-	*clone = SI_Clone(*property);
-	return clone;
-}
-
 // Create a new index.
 Index *Index_New
 (
