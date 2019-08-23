@@ -769,7 +769,6 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 		for(int i = 0; i < Vector_Size(sub_trees); i++) {
 			FT_FilterNode *tree;
 			Vector_Get(sub_trees, i, &tree);
-
 			rax *references = FilterTree_CollectModified(tree);
 
 			if(raxSize(references) > 0) {

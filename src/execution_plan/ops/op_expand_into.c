@@ -56,14 +56,6 @@ static bool _setEdge(OpExpandInto *op) {
 	return true;
 }
 
-/* Determin the maximum number of records
- * which will be considered when evaluating an algebraic expression. */
-static uint _determinRecordCap(const AST *ast) {
-	uint recordsCap = 16;    // Default.
-	// if(ast->limitNode) recordsCap = MIN(recordsCap, ast->limitNode->limit); // TODO
-	return recordsCap;
-}
-
 /* Evaluate algebraic expression:
  * appends filter matrix as the left most operand
  * perform multiplications.
@@ -83,23 +75,23 @@ static void _traverse(OpExpandInto *op) {
 	GrB_Matrix_clear(op->F);
 }
 
-OpBase *NewExpandIntoOp(AlgebraicExpression *ae, RecordMap *record_map, uint records_cap) {
+OpBase *NewExpandIntoOp(Graph *g, RecordMap *record_map, AlgebraicExpression *ae,
+						uint records_cap) {
 	OpExpandInto *expandInto = calloc(1, sizeof(OpExpandInto));
-	GraphContext *gc = GraphContext_GetFromTLS();
+	expandInto->graph = g;
 	expandInto->ae = ae;
-	expandInto->F = NULL;
-	expandInto->r = NULL;
-	AST *ast = AST_GetFromTLS();
-	expandInto->ast = ast;
-	expandInto->edges = NULL;
-	expandInto->graph = gc->g;
-	expandInto->recordCount = 0;
 	expandInto->edgeRelationTypes = NULL;
-	expandInto->recordsCap = _determinRecordCap(ast);
+	expandInto->F = NULL;
+	expandInto->edges = NULL;
+	expandInto->r = NULL;
+
 	// Make sure that all entities are represented in Record
 	expandInto->srcNodeIdx = RecordMap_FindOrAddID(record_map, ae->src_node->id);
 	expandInto->destNodeIdx = RecordMap_FindOrAddID(record_map, ae->dest_node->id);
 	expandInto->edgeIdx = IDENTIFIER_NOT_FOUND;
+
+	expandInto->recordCount = 0;
+	expandInto->recordsCap = records_cap;
 	expandInto->records = rm_calloc(expandInto->recordsCap, sizeof(Record));
 
 	// Set our Op operations
@@ -114,7 +106,7 @@ OpBase *NewExpandIntoOp(AlgebraicExpression *ae, RecordMap *record_map, uint rec
 	expandInto->op.modifies = NULL;
 
 	if(ae->edge) {
-		expandInto->edgeIdx = ae->edge->id;
+		expandInto->edgeIdx = RecordMap_FindOrAddID(record_map, ae->edge->id);
 		_setupTraversedRelations(expandInto, ae->edge);
 		expandInto->op.modifies = array_new(uint, 1);
 		expandInto->op.modifies = array_append(expandInto->op.modifies, expandInto->edgeIdx);
