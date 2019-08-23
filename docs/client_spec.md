@@ -27,7 +27,7 @@ Additionally, two enums are exposed:
 
 [ColumnType](https://github.com/RedisGraph/RedisGraph/blob/ff108d7e21061025166a35d29be1a1cb5bac6d55/src/resultset/formatters/resultset_formatter.h#L14-L19) indicates what type of value is held in each column (more formally, that offset into each row of the result set). Each entry in the header row will be a 2-array, with this enum in the first position and the column name string in the second.
 
-[PropertyType](https://github.com/RedisGraph/RedisGraph/blob/ff108d7e21061025166a35d29be1a1cb5bac6d55/src/resultset/formatters/resultset_formatter.h#L21-L28) indicates the data type (such as integer or string) of each returned scalar value. Each scalar values is emitted as a 2-array, with this enum in the first position and the actual value in th second. A column can consist exclusively of scalar values, such as both of the columns created by `RETURN a.value, 'this literal string'`. Each property on a graph entity also has a scalar as its value, so this construction is nested in each value of the properties array when a column contains a node or relationship.
+[PropertyType](https://github.com/RedisGraph/RedisGraph/blob/ff108d7e21061025166a35d29be1a1cb5bac6d55/src/resultset/formatters/resultset_formatter.h#L21-L28) indicates the data type (such as integer or string) of each returned scalar value. Each scalar values is emitted as a 2-array, with this enum in the first position and the actual value in the second. A column can consist exclusively of scalar values, such as both of the columns created by `RETURN a.value, 'this literal string'`. Each property on a graph entity also has a scalar as its value, so this construction is nested in each value of the properties array when a column contains a node or relationship.
 
 ## Decoding the result set
 
@@ -171,7 +171,7 @@ We know the first column to contain nodes. The node representation contains 3 to
 [	
     Node ID (integer),
     [label ID (integer) X label count]
-	[[property key ID (integer), PropertyType (enum), value (scalar)] X property count]
+    [[property key ID (integer), PropertyType (enum), value (scalar)] X property count]
 ]
 ```
 
@@ -190,11 +190,11 @@ As such, the complete representation is as follows:
 
 ```sh
 [	
-	Relation ID (integer),
+    Relation ID (integer),
     type ID (integer),
     source node ID (integer),
     destination node ID (integer),
-	[[property key ID (integer), PropertyType (enum), value (scalar)] X property count]
+    [[property key ID (integer), PropertyType (enum), value (scalar)] X property count]
 ]
 ```
 
@@ -222,7 +222,7 @@ Property keys, node labels, and relationship types are all returned as IDs rathe
 
 As such, the client should store an string array for each of these 3 mappings, and print the appropriate string for the user by checking an array at position _ID_. If an ID greater than the array length is encountered, the local array should be updated with a procedure call.
 
-These calls are described generally in the [Procedures documentaiton](commands.md#procedures).
+These calls are described generally in the [Procedures documentation](commands.md#procedures).
 
 To retrieve each full mapping, the appropriate calls are:
 
