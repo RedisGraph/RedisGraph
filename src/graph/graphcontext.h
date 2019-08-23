@@ -78,6 +78,11 @@ int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *fi
 // Remove a single node from all indices that refer to it
 void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n);
 
+// Add GraphContext to global array
+void GraphContext_RegisterWithModule(GraphContext *gc);
+// Remove GraphContext from global array
+void GraphContext_RemoveFromRegistry(GraphContext *gc);
+
 // Free the GraphContext and all associated graph data
 void GraphContext_Free(GraphContext *gc);
 

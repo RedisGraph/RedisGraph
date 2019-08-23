@@ -10,14 +10,22 @@
 #include "redismodule.h"
 #include "config.h"
 #include "version.h"
+#include "util/arr.h"
 #include "commands/commands.h"
 #include "util/thpool/thpool.h"
+#include "graph/graphcontext.h"
 #include "ast/cypher_whitelist.h"
 #include "arithmetic/agg_funcs.h"
 #include "procedures/procedure.h"
 #include "arithmetic/arithmetic_expression.h"
 #include "graph/serializers/graphcontext_type.h"
 #include "../deps/RediSearch/src/redisearch_api.h"
+
+/* Module-level lock. */
+pthread_mutex_t _module_mutex;
+
+/* Global array tracking all extant GraphContexts. */
+GraphContext **graphs_in_keyspace;
 
 /* Thread pool. */
 threadpool _thpool = NULL;
@@ -28,7 +36,7 @@ pthread_key_t _tlsASTKey;   // Thread local storage AST key.
  * number of threads within pool should be
  * the number of available hyperthreads.
  * Returns 1 if thread pool initialized, 0 otherwise. */
-int _Setup_ThreadPOOL(int threadCount) {
+static int _Setup_ThreadPOOL(int threadCount) {
 	// Create thread pool.
 	_thpool = thpool_init(threadCount);
 	if(_thpool == NULL) return 0;
@@ -37,7 +45,7 @@ int _Setup_ThreadPOOL(int threadCount) {
 }
 
 /* Create thread local storage keys. */
-int _Setup_ThreadLocalStorage() {
+static int _Setup_ThreadLocalStorage() {
 	int error = pthread_key_create(&_tlsGCKey, NULL);
 	if(error) {
 		printf("Failed to create thread local storage key.\n");
@@ -51,7 +59,7 @@ int _Setup_ThreadLocalStorage() {
 	return 1;
 }
 
-int _RegisterDataTypes(RedisModuleCtx *ctx) {
+static int _RegisterDataTypes(RedisModuleCtx *ctx) {
 	if(GraphContextType_Register(ctx) == REDISMODULE_ERR) {
 		printf("Failed to register GraphContext type\n");
 		return REDISMODULE_ERR;
@@ -60,27 +68,39 @@ int _RegisterDataTypes(RedisModuleCtx *ctx) {
 	return REDISMODULE_OK;
 }
 
+static void _PrepareModuleGlobals() {
+	assert(pthread_mutex_init(&_module_mutex, NULL) == 0);
+	graphs_in_keyspace = array_new(GraphContext *, 1);
+}
+
 static void RG_ForkPrepare() {
-	/* Assuming BGSave called, Acquire write lock
-	 * make sure we're not in the middel of writing,
+	/* Assuming BGSave called, Acquire write lock to
+	 * make sure we're not in the middle of writing,
 	 * this is accomplished by acquiring the write-lock:
 	 * 1. write-lock is already taken, we'll wait until writer finishes and releases the lock
 	 * 2. no write in progress, we'll simply acquire an unlocked lock and release it soon enough. */
 
 	// Acquire write lock on each graph object.
-	// TODO: Need to get a hold of each graph object.
-	/* for(int i = 0; i < graphs; i++) {
-	    Graph_AcquireWriteLock(gc->g);
-	} */
+	assert(pthread_mutex_lock(&_module_mutex) == 0);
+	uint graph_count = array_len(graphs_in_keyspace);
+	for(uint i = 0; i < graph_count; i++) {
+		// Graph_AcquireWriteLock(graphs_in_keyspace[i]->g);
+		// TODO this makes bgsave calls blocking; rethink approach
+		Graph_WriterEnter(graphs_in_keyspace[i]->g);
+	}
+	assert(pthread_mutex_unlock(&_module_mutex) == 0);
 }
 
 static void RG_AfterForkParent() {
 	/* Release write lock on Redis parent process. */
 	// Release write lock on each graph object.
-	// TODO: Need to get a hold of each graph object.
-	/* for(int i = 0; i < graphs; i++) {
-	    Graph_ReleaseLock(gc->g);
-	} */
+	assert(pthread_mutex_lock(&_module_mutex) == 0);
+	uint graph_count = array_len(graphs_in_keyspace);
+	for(uint i = 0; i < graph_count; i++) {
+		// Graph_ReleaseLock(graphs_in_keyspace[i]->g);
+		Graph_WriterLeave(graphs_in_keyspace[i]->g);
+	}
+	assert(pthread_mutex_unlock(&_module_mutex) == 0);
 }
 
 static void RG_AfterForkChild() {
@@ -89,10 +109,13 @@ static void RG_AfterForkChild() {
 	 * in the child process. */
 
 	// Release write lock on each graph object.
-	// TODO: Need to get a hold of each graph object.
-	/* for(int i = 0; i < graphs; i++) {
-	    Graph_ReleaseLock(gc->g);
-	} */
+	assert(pthread_mutex_lock(&_module_mutex) == 0);
+	uint graph_count = array_len(graphs_in_keyspace);
+	for(uint i = 0; i < graph_count; i++) {
+		// Graph_ReleaseLock(graphs_in_keyspace[i]->g);
+		Graph_WriterLeave(graphs_in_keyspace[i]->g);
+	}
+	assert(pthread_mutex_unlock(&_module_mutex) == 0);
 }
 
 static void RegisterForkHooks() {
@@ -125,7 +148,8 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	Proc_Register();
 	AR_RegisterFuncs();      // Register arithmetic functions.
 	Agg_RegisterFuncs();     // Register aggregation functions.
-	RegisterForkHooks();
+	_PrepareModuleGlobals(); // Set up global lock and variables scoped to the entire module.
+	RegisterForkHooks();     // Set up forking logic to prevent bgsave deadlocks.
 	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
 
 	if(!_Setup_ThreadLocalStorage()) return REDISMODULE_ERR;

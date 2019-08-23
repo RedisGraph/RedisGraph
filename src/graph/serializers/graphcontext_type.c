@@ -34,6 +34,10 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
 		printf("Failed loading Graph, RedisGraph version (%d) is not backward compatible with encoder version %d.\n",
 			   REDISGRAPH_MODULE_VERSION, encver);
 	}
+
+	// Add GraphContext to global array of Graphs
+	GraphContext_RegisterWithModule(gc);
+
 	return gc;
 }
 
