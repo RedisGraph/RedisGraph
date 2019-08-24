@@ -845,7 +845,7 @@ static AST_Validation _Validate_UNWIND_Clauses(const AST *ast, char **reason) {
 			const char *funcName = cypher_ast_function_name_get_value(funcNode);
 			// function name is NOT range
 			if(strcasecmp(funcName, "range")) {
-				asprintf(reason, "UNWIND expects range funcition; encountered '%s'", funcName);
+				asprintf(reason, "UNWIND expects range function; encountered '%s'", funcName);
 				res = AST_INVALID;
 				goto cleanup;
 			}
@@ -1189,13 +1189,13 @@ static AST_Validation _validateList(const cypher_astnode_t *root, char **reason)
 		const char *funcName = cypher_ast_function_name_get_value(funcNode);
 		// function name is NOT range
 		if(strcasecmp(funcName, "range")) {
-			asprintf(reason, "subscript index access expects range funcition; encountered '%s'", funcName);
+			asprintf(reason, "subscript index access expects range function; encountered '%s'", funcName);
 			return AST_INVALID;
 		}
 		// validate the number of arguments in range function 2-3
 		uint narguments = cypher_ast_apply_operator_narguments(root);
 		if(narguments < 2 || narguments > 3) {
-			asprintf(reason, "range function expects 2 or 3 argumetns; encountered %d", narguments);
+			asprintf(reason, "range function expects 2 or 3 arguments; encountered %d", narguments);
 			return AST_INVALID;
 		}
 		// validate that all the arguments are integers
@@ -1203,7 +1203,7 @@ static AST_Validation _validateList(const cypher_astnode_t *root, char **reason)
 			const cypher_astnode_t *argument = cypher_ast_apply_operator_get_argument(root, i);
 			const cypher_astnode_type_t argument_type = cypher_astnode_type(argument);
 			if(argument_type != CYPHER_AST_INTEGER || argument_type != CYPHER_AST_IDENTIFIER) {
-				asprintf(reason, "expected interger or identifier; encountered %s",
+				asprintf(reason, "expected integer or identifier; encountered %s",
 						 cypher_astnode_typestr(argument_type));
 				return AST_INVALID;
 			}
@@ -1226,7 +1226,7 @@ static AST_Validation _validateIndex(const cypher_astnode_t *root, char **reason
 		// the type of the subscript value should be an integer or identifier
 		// TODO: in current state, the identifier type is evluated in query runtime
 		// check if possible to evluate during ast validation
-		asprintf(reason, "subscript index must be an interger or an identifier");
+		asprintf(reason, "subscript index must be an integer or an identifier");
 		return AST_INVALID;
 	}
 	return AST_VALID;

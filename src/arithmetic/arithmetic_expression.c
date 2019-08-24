@@ -1202,15 +1202,15 @@ SIValue AR_SLICE(SIValue *argv, int argc) {
 
 	uint32_t absStartIndex = abs(startIndex);
 	// if negative index, calculate offset from end
-	startIndex = startIndex >= 0 ? startIndex : arrayLen - absStartIndex;
+	if(startIndex < 0) startIndex = arrayLen - absStartIndex;
 	// if offset from the end is out of bound, start at 0
-	startIndex = startIndex < 0 ? 0 : startIndex;
+	if(startIndex < 0) startIndex = 0;
 
 	uint32_t absEndIndex = abs(endIndex);
 	// if negative index, calculate offset from end
-	endIndex = endIndex >= 0 ? endIndex : arrayLen - absEndIndex;
+	if(endIndex < 0) endIndex = arrayLen - absEndIndex;
 	// if index out of bound, end at arrayLen
-	endIndex = ((int32_t)arrayLen) < endIndex ? arrayLen : endIndex;
+	if(((int32_t)arrayLen) < endIndex) endIndex = arrayLen;
 	// cant go in reverse
 	if(endIndex <= startIndex) {
 		return SI_EmptyArray();
@@ -1223,9 +1223,9 @@ SIValue AR_SLICE(SIValue *argv, int argc) {
 	return subArray;
 }
 
-// create a new list of integers in the range of [start, end]. If an interval was given
-// the interval between two consecutive list members will be this interval.
-// If interval was not suppllied, it will be default as 1
+// create a new list of integers in the range of [start, end]. If a step was given
+// the step between two consecutive list members will be this step.
+// If step was not suppllied, it will be default as 1
 // "RETURN range(3,8,2)" will yield [3, 5, 7]
 SIValue AR_RANGE(SIValue *argv, int argc) {
 	assert(argc > 1 && argc <= 3 && argv[0].type == T_INT64 && argv[1].type == T_INT64);
@@ -1249,6 +1249,7 @@ SIValue AR_IN(SIValue *argv, int argc) {
 	assert(argc == 2 && argv[1].type == T_ARRAY);
 	SIValue lookupValue = argv[0];
 	SIValue lookupList = argv[1];
+	// indicate if there was a null comparison during the array scan
 	bool comparedNull = false;
 	uint arrayLen = SIArray_Length(lookupList);
 	for(uint i = 0; i < arrayLen; i++) {
@@ -1256,6 +1257,7 @@ SIValue AR_IN(SIValue *argv, int argc) {
 		if(compareValue == 0) return SI_BoolVal(true);
 		if(compareValue == COMPARED_NULL) comparedNull = true;
 	}
+	// if there was a null comparison return null, other wise return false as the lookup item did not found
 	return comparedNull ? SI_NullVal() : SI_BoolVal(false);
 }
 
@@ -1268,6 +1270,7 @@ SIValue AR_SIZE(SIValue *argv, int argc) {
 	switch(value.type) {
 	case T_ARRAY:
 		return SI_LongVal(SIArray_Length(value));
+	case T_CONSTSTRING:
 	case T_STRING:
 		return SI_LongVal(strlen(value.stringval));
 	default:

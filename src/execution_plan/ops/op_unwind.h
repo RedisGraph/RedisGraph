@@ -15,7 +15,7 @@
 typedef struct
 {
     OpBase op;
-    AR_ExpNode *expressions; // Array of expressions
+    AR_ExpNode *expressions; // Atirhmetic expression (evaluated as an SIArray)
     uint listIdx;            // Current list index
     int unwindRecIdx;        // Update record at this index.
     SIValue list;            // list which the unwind operation is performed on

@@ -65,7 +65,7 @@ static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 	case T_NULL:
 		RedisModule_ReplyWithNull(ctx);
 		return;
-	case T_NODE: // Nodes and edges should always be Record entries at this point
+	case T_NODE:
 		_ResultSet_CompactReplyWithNode(ctx, gc, v.ptrval);
 		return;
 	case T_EDGE:

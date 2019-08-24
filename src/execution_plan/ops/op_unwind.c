@@ -10,11 +10,11 @@
 #include "../../arithmetic/arithmetic_expression.h"
 #include "limits.h"
 
-#define NOT_SET UINT_MAX
+#define INDEX_NOT_SET UINT_MAX
 
 OpBase *NewUnwindOp(uint record_idx, AR_ExpNode *exps) {
 	OpUnwind *unwind = malloc(sizeof(OpUnwind));
-	unwind->listIdx = NOT_SET;
+	unwind->listIdx = INDEX_NOT_SET;
 	unwind->expressions = exps;
 	unwind->isStatic = false;
 	unwind->currentRecord = NULL;
@@ -88,7 +88,7 @@ Record UnwindConsume(OpBase *opBase) {
 		OpBase *child = op->op.children[0];
 		// if there are new lists to unwind
 		if((r = OpBase_Consume(child))) {
-			if(op->listIdx != NOT_SET) Record_Free(op->currentRecord);
+			if(op->listIdx != INDEX_NOT_SET) Record_Free(op->currentRecord);
 			op->currentRecord = r;
 
 			// TODO: if expression is static or not
@@ -108,7 +108,7 @@ Record UnwindConsume(OpBase *opBase) {
 
 OpResult UnwindReset(OpBase *ctx) {
 	OpUnwind *unwind = (OpUnwind *)ctx;
-	unwind->listIdx = NOT_SET;
+	unwind->listIdx = INDEX_NOT_SET;
 	return OP_OK;
 }
 

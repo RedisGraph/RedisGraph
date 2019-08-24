@@ -121,32 +121,6 @@ static rax *_MatchMerge_DefinedEntities(const AST *ast) {
 	return map;
 }
 
-// PropertyMap *AST_ConvertPropertiesMap(const cypher_astnode_t *props, RecordMap *record_map) {
-// 	if(props == NULL) return NULL;
-// 	assert(cypher_astnode_type(props) == CYPHER_AST_MAP); // TODO add parameter support
-
-// 	uint prop_count = cypher_ast_map_nentries(props);
-
-// 	PropertyMap *map = malloc(sizeof(PropertyMap));
-// 	map->keys = malloc(prop_count * sizeof(char *));
-// 	map->values = malloc(prop_count * sizeof(SIValue));
-// 	map->property_count = prop_count;
-
-// 	for(uint prop_idx = 0; prop_idx < prop_count; prop_idx++) {
-// 		const cypher_astnode_t *ast_key = cypher_ast_map_get_key(props, prop_idx);
-// 		map->keys[prop_idx] = cypher_ast_prop_name_get_value(ast_key);
-
-// 		const cypher_astnode_t *ast_value = cypher_ast_map_get_value(props, prop_idx);
-// 		AR_ExpNode *value_exp = AR_EXP_FromExpression(record_map, ast_value);
-// 		// TODO It will be really nice to store AR_ExpNodes rather than resolved SIValues;
-// 		// allowing things like "CREATE (:b {prop: a.name})"
-// 		SIValue value = AR_EXP_Evaluate(value_exp, NULL);
-// 		AR_EXP_Free(value_exp);
-// 		map->values[prop_idx] = value;
-// 	}
-// 	return map;
-// }
-
 EntityUpdateEvalCtx *AST_PrepareUpdateOp(const cypher_astnode_t *set_clause, RecordMap *record_map,
 										 uint *nitems_ref) {
 	uint nitems = cypher_ast_set_nitems(set_clause);
