@@ -74,51 +74,54 @@ static void _PrepareModuleGlobals() {
 }
 
 static void RG_ForkPrepare() {
-	/* Assuming BGSave called, Acquire write lock to
-	 * make sure we're not in the middle of writing,
-	 * this is accomplished by acquiring the write-lock:
-	 * 1. write-lock is already taken, we'll wait until writer finishes and releases the lock
-	 * 2. no write in progress, we'll simply acquire an unlocked lock and release it soon enough. */
+	/* At this point, a fork call has been issued. (We assume that this is because BGSave was called.)
+	 * Acquire the writer mutex of each graph to ensure that no locks are held, or else
+	 * the child process will deadlock when attempting to acquire that lock.
+	 * 1. If a writer thread is active, we'll wait until the writer finishes and releases the lock.
+	 * 2. Otherwise, no write in progress. We'll acquire the lock and release it immediately after forking. */
 
-	// Acquire write lock on each graph object.
-	assert(pthread_mutex_lock(&_module_mutex) == 0);
+	assert(pthread_mutex_lock(&_module_mutex) == 0); // Acquire the module-scoped lock.
+
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
-		// Graph_AcquireWriteLock(graphs_in_keyspace[i]->g);
-		// TODO this makes bgsave calls blocking; rethink approach
+		// Acquire each writer mutex to guarantee that no graph is being modified.
 		Graph_WriterEnter(graphs_in_keyspace[i]->g);
 	}
-	assert(pthread_mutex_unlock(&_module_mutex) == 0);
+
+	assert(pthread_mutex_unlock(&_module_mutex) == 0); // Release the module-scoped lock.
 }
 
 static void RG_AfterForkParent() {
-	/* Release write lock on Redis parent process. */
-	// Release write lock on each graph object.
-	assert(pthread_mutex_lock(&_module_mutex) == 0);
+	/* The process has forked, and the parent process is continuing.
+	 * Release all locks. */
+
+	assert(pthread_mutex_lock(&_module_mutex) == 0); // Acquire the module-scoped lock.
+
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
-		// Graph_ReleaseLock(graphs_in_keyspace[i]->g);
+		// Release each writer mutex.
 		Graph_WriterLeave(graphs_in_keyspace[i]->g);
 	}
-	assert(pthread_mutex_unlock(&_module_mutex) == 0);
+
+	assert(pthread_mutex_unlock(&_module_mutex) == 0); // Release the module-scoped lock.
 }
 
 static void RG_AfterForkChild() {
-	/* In child process
-	 * Release lock inherited from parent, we're not required to hold any locks
-	 * in the child process. */
+	/* The process has forked, and the child process (bgsave) is continuing.
+	 * Release all locks. */
+	assert(pthread_mutex_lock(&_module_mutex) == 0); // Acquire the module-scoped lock.
 
-	// Release write lock on each graph object.
-	assert(pthread_mutex_lock(&_module_mutex) == 0);
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
-		// Graph_ReleaseLock(graphs_in_keyspace[i]->g);
+		// Release each writer mutex.
 		Graph_WriterLeave(graphs_in_keyspace[i]->g);
 	}
-	assert(pthread_mutex_unlock(&_module_mutex) == 0);
+
+	assert(pthread_mutex_unlock(&_module_mutex) == 0); // Release the module-scoped lock.
 }
 
 static void RegisterForkHooks() {
+	/* Register handlers to control the behavior of fork calls. */
 	assert(pthread_atfork(RG_ForkPrepare, RG_AfterForkParent, RG_AfterForkChild) == 0);
 }
 
@@ -145,7 +148,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	Proc_Register();
+	Proc_Register();         // Register procedures.
 	AR_RegisterFuncs();      // Register arithmetic functions.
 	Agg_RegisterFuncs();     // Register aggregation functions.
 	_PrepareModuleGlobals(); // Set up global lock and variables scoped to the entire module.
