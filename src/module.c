@@ -78,24 +78,21 @@ static void RG_ForkPrepare() {
 	 * Acquire the writer mutex of each graph to ensure that no locks are held, or else
 	 * the child process will deadlock when attempting to acquire that lock.
 	 * 1. If a writer thread is active, we'll wait until the writer finishes and releases the lock.
-	 * 2. Otherwise, no write in progress. We'll acquire the lock and release it immediately after forking. */
+	 * 2. Otherwise, no write in progress. Acquire the lock and release it immediately after forking. */
 
-	assert(pthread_mutex_lock(&_module_mutex) == 0); // Acquire the module-scoped lock.
+	// Acquire the module-scoped lock; it will be released after forking.
+	assert(pthread_mutex_lock(&_module_mutex) == 0);
 
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
 		// Acquire each writer mutex to guarantee that no graph is being modified.
 		Graph_WriterEnter(graphs_in_keyspace[i]->g);
 	}
-
-	assert(pthread_mutex_unlock(&_module_mutex) == 0); // Release the module-scoped lock.
 }
 
 static void RG_AfterForkParent() {
 	/* The process has forked, and the parent process is continuing.
 	 * Release all locks. */
-
-	assert(pthread_mutex_lock(&_module_mutex) == 0); // Acquire the module-scoped lock.
 
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
@@ -109,7 +106,6 @@ static void RG_AfterForkParent() {
 static void RG_AfterForkChild() {
 	/* The process has forked, and the child process (bgsave) is continuing.
 	 * Release all locks. */
-	assert(pthread_mutex_lock(&_module_mutex) == 0); // Acquire the module-scoped lock.
 
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
