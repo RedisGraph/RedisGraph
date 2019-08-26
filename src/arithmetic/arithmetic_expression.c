@@ -234,7 +234,10 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 				for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
 					SIValue_Free(sub_trees + child_idx);
 				}
-				pthread_exit(error);
+				// pthread_exit(error);
+				QueryCtx_SetError(error);
+				jmp_buf *env = QueryCtx_GetEnv();
+				longjmp(*env, 1);
 			}
 			/* Evaluate self. */
 			result = root->op.f->func(sub_trees, root->op.child_count);

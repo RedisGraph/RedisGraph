@@ -36,6 +36,16 @@ void QueryCtx_SetAST(AST *ast) {
 	ctx->ast = ast;
 }
 
+void QueryCtx_SetEnv(jmp_buf *env) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	ctx->env = env;
+}
+
+void QueryCtx_SetError(char *error) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	ctx->error = error;
+}
+
 void QueryCtx_SetGraphCtx(GraphContext *gc) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ctx->gc = gc;
@@ -50,6 +60,18 @@ AST *QueryCtx_GetAST(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	assert(ctx->ast);
 	return ctx->ast;
+}
+
+jmp_buf *QueryCtx_GetEnv(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	assert(ctx->env);
+	return ctx->env;
+}
+
+char *QueryCtx_GetError() {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	assert(ctx->error);
+	return ctx->error;
 }
 
 Graph *QueryCtx_GetGraph(void) {
@@ -71,5 +93,15 @@ RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void) {
 
 void QueryCtx_Free(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
+
+	if(ctx->error) {
+		rm_free(ctx->error);
+		ctx->error = NULL;
+	}
+	if(ctx->env) {
+		rm_free(ctx->env);
+		ctx->env = NULL;
+	}
+
 	rm_free(ctx);
 }

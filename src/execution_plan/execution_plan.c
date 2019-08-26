@@ -4,8 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include <assert.h>
-
 #include "execution_plan.h"
 #include "./ops/ops.h"
 #include "../util/arr.h"
@@ -20,6 +18,9 @@
 #include "../ast/ast_build_filter_tree.h"
 #include "./optimizations/optimizations.h"
 #include "../arithmetic/algebraic_expression.h"
+
+#include <assert.h>
+#include <setjmp.h>
 
 // Associate each operation in the chain with the provided RecordMap.
 static void _associateRecordMap(OpBase *root, RecordMap *record_map) {
@@ -936,39 +937,59 @@ typedef struct {
 	RedisModuleCtx *redis_ctx;
 } ExecPlanInvokeCtx;
 
-void *_ExecutionPlan_ExecuteInBG(void *arg) {
-	Record r;
+// void *_ExecutionPlan_ExecuteInBG(void *arg) {
+// 	Record r;
 
-	// Setup thread local storage.
-	ExecPlanInvokeCtx *ctx = (ExecPlanInvokeCtx *)arg;
-	AST *ast = ctx->ast;
-	GraphContext *gc = ctx->gc;
-	ExecutionPlan *plan = ctx->plan;
-	RedisModuleCtx *redis_ctx = ctx->redis_ctx;
+// 	// Setup thread local storage.
+// 	ExecPlanInvokeCtx *ctx = (ExecPlanInvokeCtx *)arg;
+// 	AST *ast = ctx->ast;
+// 	GraphContext *gc = ctx->gc;
+// 	ExecutionPlan *plan = ctx->plan;
+// 	RedisModuleCtx *redis_ctx = ctx->redis_ctx;
 
-	QueryCtx_SetAST(ast);
-	QueryCtx_SetGraphCtx(gc);
-	QueryCtx_SetRedisModuleCtx(redis_ctx);
+// 	QueryCtx_SetAST(ast);
+// 	QueryCtx_SetGraphCtx(gc);
+// 	QueryCtx_SetRedisModuleCtx(redis_ctx);
 
-	while((r = OpBase_Consume(plan->root)) != NULL) Record_Free(r);
+// 	while((r = OpBase_Consume(plan->root)) != NULL) Record_Free(r);
 
-	return NULL;
-}
+// 	return NULL;
+// }
+
+// ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
+// 	char *err = NULL;
+// 	pthread_t pthread;
+
+// 	AST *ast = QueryCtx_GetAST();
+// 	GraphContext *gc = QueryCtx_GetGraphCtx();
+// 	RedisModuleCtx *redis_ctx = QueryCtx_GetRedisModuleCtx();
+// 	ExecPlanInvokeCtx ctx = {ast, gc, plan, redis_ctx};
+
+// 	ExecutionPlanInit(plan);
+// 	pthread_create(&pthread, NULL, _ExecutionPlan_ExecuteInBG, &ctx);
+// 	pthread_join(pthread, (void **)&err);
+
+// 	if(err) ResultSet_ReportError(plan->result_set, err);
+// 	return plan->result_set;
+// }
 
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
+	Record r;
 	char *err = NULL;
-	pthread_t pthread;
-
-	AST *ast = QueryCtx_GetAST();
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	RedisModuleCtx *redis_ctx = QueryCtx_GetRedisModuleCtx();
-	ExecPlanInvokeCtx ctx = {ast, gc, plan, redis_ctx};
 
 	ExecutionPlanInit(plan);
-	pthread_create(&pthread, NULL, _ExecutionPlan_ExecuteInBG, &ctx);
-	pthread_join(pthread, (void **)&err);
 
-	if(err) ResultSet_ReportError(plan->result_set, err);
+	jmp_buf *env = rm_malloc(sizeof(jmp_buf));
+	int res = setjmp(*env);
+	if(res != 0) {
+		// Jumped
+		char *err = QueryCtx_GetError();
+		ResultSet_ReportError(plan->result_set, err);
+		return plan->result_set;
+	}
+	QueryCtx_SetEnv(env);
+
+	while((r = OpBase_Consume(plan->root)) != NULL) Record_Free(r);
 	return plan->result_set;
 }
 
