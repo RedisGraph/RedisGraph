@@ -1,6 +1,7 @@
 #include "index.h"
 #include "../value.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
 #include "../graph/entities/node.h"
@@ -35,7 +36,7 @@ static void _populateIndex
 (
 	Index *idx
 ) {
-	GraphContext *gc = GraphContext_GetFromTLS();
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Schema *s = GraphContext_GetSchema(gc, idx->label, SCHEMA_NODE);
 
 	// Label doesn't exists.
@@ -89,7 +90,7 @@ void Index_AddField
 	idx->fields_count++;
 	idx->fields = array_append(idx->fields, rm_strdup(field));
 
-	GraphContext *gc = GraphContext_GetFromTLS();
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Attribute_ID fieldID = GraphContext_FindOrAddAttribute(gc, field);
 	idx->fields_ids = array_append(idx->fields_ids, fieldID);
 }
@@ -185,7 +186,7 @@ void Index_Construct
 	}
 
 	RSIndex *rsIdx = NULL;
-	GraphContext *gc = GraphContext_GetFromTLS();
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	RSIndexOptions *idx_options = RediSearch_CreateIndexOptions();
 	RediSearch_IndexOptionsSetGetValueCallback(idx_options, _getNodeAttribute, gc);
 	rsIdx = RediSearch_CreateIndex(idx->label, idx_options);

@@ -1,6 +1,7 @@
 #include "utilize_indices.h"
 #include "../../value.h"
 #include "../../util/arr.h"
+#include "../../query_ctx.h"
 #include "../ops/op_index_scan.h"
 #include "../../ast/ast_shared.h"
 #include "../../util/range/string_range.h"
@@ -315,7 +316,7 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 
 	// Make sure there's an index for scanned label.
 	const char *label = scan->node->label;
-	GraphContext *gc = GraphContext_GetFromTLS();
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Index *idx = GraphContext_GetIndex(gc, label, NULL, IDX_EXACT_MATCH);
 	if(idx == NULL) return;
 

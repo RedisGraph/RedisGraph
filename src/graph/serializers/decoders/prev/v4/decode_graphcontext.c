@@ -5,10 +5,9 @@
 */
 
 #include "decode_v4.h"
+#include "../../../../query_ctx.h"
 #include "../../../../../util/arr.h"
 #include "../../../../../util/rmalloc.h"
-
-extern pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
 
 /* Deserialize unified schema */
 static void _RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
@@ -69,8 +68,8 @@ GraphContext *RdbLoadGraphContext_v4(RedisModuleIO *rdb) {
 
 	GraphContext *gc = rm_calloc(1, sizeof(GraphContext));
 
-	// _tlsGCKey was created as part of module load.
-	pthread_setspecific(_tlsGCKey, gc);
+	// Set the thread-local GraphContext, as it will be accessed if we're decoding indexes.
+	QueryCtx_SetGraphCtx(gc);
 
 	// Graph name.
 	gc->graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
