@@ -21,16 +21,11 @@ extern "C" {
 }
 #endif
 
-pthread_key_t _tlsASTKey;  // Thread local storage AST key.
-
 class TraversalOrderingTest: public ::testing::Test {
   protected:
 	static void SetUpTestCase() {
 		// Use the malloc family for allocations
 		Alloc_Reset();
-
-		int error = pthread_key_create(&_tlsASTKey, NULL);
-		ASSERT_EQ(error, 0);
 	}
 
 	static void TearDownTestCase() {

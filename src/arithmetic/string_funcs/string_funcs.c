@@ -302,7 +302,7 @@ void Register_StringFuncs() {
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (T_STRING | T_NULL));
-	func_desc = AR_FuncDescNew("trim", AR_TRIM, 2, types);
+	func_desc = AR_FuncDescNew("trim", AR_TRIM, 1, types);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);

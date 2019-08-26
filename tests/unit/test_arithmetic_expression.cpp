@@ -29,8 +29,6 @@ AR_ExpNode **_BuildReturnExpressions(RecordMap *record_map, const cypher_astnode
 }
 #endif
 
-pthread_key_t _tlsASTKey;  // Thread local storage AST key.
-
 class ArithmeticTest: public ::testing::Test {
   protected:
 	static void SetUpTestCase() {
@@ -39,9 +37,6 @@ class ArithmeticTest: public ::testing::Test {
 
 		AR_RegisterFuncs();
 		Agg_RegisterFuncs();
-
-		int error = pthread_key_create(&_tlsASTKey, NULL);
-		ASSERT_EQ(error, 0);
 	}
 
 	static void TearDownTestCase() {
