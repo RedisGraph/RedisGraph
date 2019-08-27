@@ -143,6 +143,12 @@ parser:
 # Build the module...
 redisgraph.so: $(MODULE)
 	$(REDISGRAPH_CC) -o $@ $(CC_OBJECTS) $(LIBS) $(SHOBJ_LDFLAGS) -lc -lm
+ifneq ($(DEBUG),1)
+ifeq ($(uname_S),Linux)
+	@echo stripping symbols from module file
+	@strip $@
+endif
+endif
 
 clean:
 	@find . -name '*.[oad]' -type f -delete
