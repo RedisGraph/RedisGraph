@@ -149,6 +149,7 @@ static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, GraphContext *
 	char *str = rm_calloc(512, sizeof(char));
 	int bytesWrriten = SIValue_ToString(array, str, 512);
 	RedisModule_ReplyWithStringBuffer(ctx, str, bytesWrriten);
+	rm_free(str);
 }
 
 void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,

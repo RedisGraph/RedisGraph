@@ -429,6 +429,7 @@ int __agg_collectStep(AggCtx *ctx, SIValue *argv, int argc) {
 	assert(argc >= 0);
 	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
 
+	if(ac->list.type == T_NULL) ac->list = SI_Array(argc);
 	for(int i = 0; i < argc; i ++) {
 		SIValue value = argv[i];
 		if(value.type == T_NULL) continue;
@@ -446,7 +447,7 @@ int __agg_collectReduceNext(AggCtx *ctx) {
 
 AggCtx *Agg_CollectFunc() {
 	__agg_collectCtx *ac = malloc(sizeof(__agg_collectCtx));
-	ac->list = SI_Array(0);
+	ac->list = SI_NullVal();
 
 	return Agg_Reduce(ac, __agg_collectStep, __agg_collectReduceNext);
 }
