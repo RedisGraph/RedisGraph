@@ -357,14 +357,14 @@ void _FilterTree_Print(const FT_FilterNode *root, int ident) {
 	case FT_N_EXP:
 		AR_EXP_ToString(root->exp.exp, &exp);
 		printf("%s\n",  exp);
-		free(exp);
+		rm_free(exp);
 		break;
 	case FT_N_PRED:
 		AR_EXP_ToString(root->pred.lhs, &left);
 		AR_EXP_ToString(root->pred.rhs, &right);
 		printf("%s %d %s\n",  left, root->pred.op, right);
-		free(left);
-		free(right);
+		rm_free(left);
+		rm_free(right);
 		break;
 	case FT_N_COND:
 		printf("%d\n", root->cond.op);

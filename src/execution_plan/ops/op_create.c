@@ -344,10 +344,15 @@ void OpCreateFree(OpBase *ctx) {
 		op->edges_to_create = NULL;
 	}
 
-	array_free(op->created_nodes);
-	array_free(op->created_edges);
-	op->created_nodes = NULL;
-	op->created_edges = NULL;
+	if(op->created_nodes) {
+		array_free(op->created_nodes);
+		op->created_nodes = NULL;
+	}
+
+	if(op->created_edges) {
+		array_free(op->created_edges);
+		op->created_edges = NULL;
+	}
 
 	// Free all graph-committed properties associated with nodes
 	uint prop_count = array_len(op->node_properties);

@@ -14,7 +14,6 @@
 
 typedef struct {
 	OpBase op;
-	AST *ast;
 	Graph *graph;
 	AlgebraicExpression *ae;
 	GrB_Matrix F;               // Filter matrix.
@@ -32,7 +31,7 @@ typedef struct {
 	Record r;                   // Current selected record.
 } OpExpandInto;
 
-OpBase *NewExpandIntoOp(AlgebraicExpression *ae, RecordMap *record_map, uint records_cap);
+OpBase *NewExpandIntoOp(Graph *g, RecordMap *record_map, AlgebraicExpression *ae, uint records_cap);
 OpResult ExpandIntoInit(OpBase *opBase);
 Record ExpandIntoConsume(OpBase *opBase);
 OpResult ExpandIntoReset(OpBase *ctx);
