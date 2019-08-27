@@ -395,9 +395,9 @@ GRAPH.QUERY DEMO_GRAPH
 Extended `WITH` functionality is currently in development, see [known limitations](known_limitations.md).
 
 #### UNWIND
-The UNWIND cluase breaks down a given list into a squence of records, each contains a single element in the list.
+The UNWIND clause breaks down a given list into a sequence of records; each contains a single element in the list.
 
-The order of the records preserve the original list order.
+The order of the records preserves the original list order.
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
@@ -431,7 +431,7 @@ This section contains information on all supported functions from the Cypher que
 |percentileDisc() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0|
 |percentileCont() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0|
 |stDev() | Returns the standard deviation for the given value over a group|
-|collect() | Returns a list contaning all elements which evaluated from a given expression|
+|collect() | Returns a list containing all elements which evaluated from a given expression|
 
 ## Mathematical functions
 
