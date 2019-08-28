@@ -71,6 +71,24 @@ void Record_Merge(Record *a, const Record b) {
 		}
 	}
 }
+void _RecordPropagateEntry(Record *to, Record *from, uint idx) {
+	Entry e = (*from)[idx];
+	(*to)[idx] = e;
+	// If the entry is a scalar, make sure both Records don't believe they own the allocation.
+	if(e.type == REC_TYPE_SCALAR) SIValue_MakeVolatile(&(*from)[idx].value.s);
+}
+
+void Record_PropagateMerge(Record *to, Record *from) {
+	int aLength = Record_length(*to);
+	int bLength = Record_length(*from);
+	if(aLength < bLength) Record_Extend(to, bLength);
+
+	for(int i = 0; i < bLength; i++) {
+		if((*from)[i].type != REC_TYPE_UNKNOWN) {
+			_RecordPropagateEntry(to, from, i);
+		}
+	}
+}
 
 RecordEntryType Record_GetType(const Record r, int idx) {
 	return r[idx].type;
