@@ -167,7 +167,9 @@ size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {
 		*buf_cap = required_len;
 	}
 
-	return SIValue_StringConcat(values, rLen, *buf, *buf_cap);
+	size_t bytesWritten = 0;
+	SIValue_StringConcat(values, rLen, buf, buf_cap, &bytesWritten);
+	return bytesWritten;
 }
 
 unsigned long long Record_Hash64(const Record r) {

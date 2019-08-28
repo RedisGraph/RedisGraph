@@ -32,7 +32,8 @@ GrB_Matrix Node_GetMatrix(Node *n); // AE
 Node *Node_Clone(const Node *n); // QG
 
 /* prints a string representation of the node to buffer, return the string length*/
-int Node_ToString(const Node *n, char *buffer, int bufferLen, GraphEntityStringFromat format);
+size_t Node_ToString(const Node *n, char **buffer, size_t *bufferLen, size_t *bytesWritten,
+                     GraphEntityStringFromat format);
 
 /* Frees allocated space by given node. */
 void Node_Free(Node *node);

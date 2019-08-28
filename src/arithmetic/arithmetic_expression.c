@@ -387,8 +387,7 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 	} else {
 		// Concat Operand node.
 		if(root->operand.type == AR_EXP_CONSTANT) {
-			size_t len = SIValue_ToString(root->operand.constant, (*str + *bytes_written), 64);
-			*bytes_written += len;
+			SIValue_ToString(root->operand.constant, str, str_size, bytes_written);
 		} else {
 			if(root->operand.variadic.entity_prop != NULL) {
 				*bytes_written += sprintf(
@@ -749,7 +748,8 @@ SIValue AR_TOSTRING(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	size_t len = SIValue_StringConcatLen(argv, 1);
 	char *str = rm_malloc(len * sizeof(char));
-	SIValue_ToString(argv[0], str, len);
+	size_t bytesWritten = 0;
+	SIValue_ToString(argv[0], &str, &len, &bytesWritten);
 	return SI_TransferStringVal(str);
 }
 

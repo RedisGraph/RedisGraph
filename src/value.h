@@ -131,7 +131,11 @@ bool SIValue_IsNull(SIValue v);
 bool SIValue_IsNullPtr(SIValue *v);
 
 const char *SIType_ToString(SIType t);
-int SIValue_ToString(SIValue v, char *buf, size_t len);
+
+// prints an SIValue to a given buffer, in a given length (bufferLen), with actual written values (bytesWritten)
+// if there is not enough space for the value to be printed, the buffer will be re allocated with
+// more space, and bufferLen will change accordingly
+void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWritten);
 
 /* Try to read a value as a double.
  * TODO Only used by agg_funcs, consider refactoring. */
@@ -144,7 +148,8 @@ SIValue SIValue_FromString(const char *s);
 size_t SIValue_StringConcatLen(SIValue *strings, unsigned int string_count);
 
 /* Concats strings as a comma separated string. */
-size_t SIValue_StringConcat(SIValue *strings, unsigned int string_count, char *buf, size_t buf_len);
+size_t SIValue_StringConcat(SIValue *strings, unsigned int string_count, char **buf,
+                            size_t *buf_len, size_t *bytesWritten);
 
 /* Arithmetic operators for numeric SIValues.
  * The caller is responsible for ensuring that the arguments

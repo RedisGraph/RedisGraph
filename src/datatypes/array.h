@@ -45,15 +45,13 @@ SIValue SIArray_Clone(SIValue siarray);
 
 /**
   * @brief  Prints an array into a given buffer
-  * @note   If the buffer length is smaller then 6 (for "[...]\0" string) nothing will be printed
-  *         If the buffer lenfth is smaller then the overall string length, the string will be truncated and will be 
-  *         finished with "...]\0"
   * @param  list: array to print
-  * @param  *buf: print buffer
+  * @param  buf: print buffer (pointer to pointer to allow re allocation)
   * @param  len: print buffer length
+  * @param  bytesWritten: the actual number of bytes written to the buffer
   * @retval The printed string length
   */
-int SIArray_ToString(SIValue list, char *buf, size_t len);
+size_t SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytesWritten);
 
 /**
   * @brief  delete an array  

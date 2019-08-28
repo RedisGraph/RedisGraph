@@ -37,40 +37,27 @@ SIValue SIArray_Clone(SIValue siarray) {
 	return newArray;
 }
 
-int SIArray_ToString(SIValue list, char *buf, size_t len) {
-	// minimum length buffer for "[...]\0"
-	if(len < 6) return 0;
+size_t SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytesWritten) {
+	if(*bufferLen - *bytesWritten < 64) {
+		*bufferLen += 64;
+		*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
+	}
 	// open array with "["
-	int bytes_written = snprintf(buf, len, "[");
-	// len now holds the actual amount of bytes allowed to be wrriten
-	len -= bytes_written;
+	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "[");
 	uint arrayLen = SIArray_Length(list);
 	for(uint i = 0; i < arrayLen; i ++) {
-		// if there no more space left in the buffer
-		if(len < 2) break;
-
 		// write the next value
-		int currentWriteLength = SIValue_ToString(SIArray_Get(list, i), buf + bytes_written, len);
-		bytes_written += currentWriteLength;
-		len -= currentWriteLength;
-
-		// if there no more space left in the buffer or it is the last element
-		if(len < 2 || i == arrayLen - 1) break;
-
-		currentWriteLength = snprintf(buf + bytes_written, len, ", ");
-		bytes_written += currentWriteLength;
-		len -= currentWriteLength;
+		SIValue_ToString(SIArray_Get(list, i), buf, bufferLen, bytesWritten);
+		// if it is the last element, add ", "
+		if(i != arrayLen - 1) *bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, ", ");
 	}
-
-	// if there is still room in the buffer, close the array
-	if(len >= 2) {
-		bytes_written += snprintf(buf + bytes_written, len, "]");
-		return bytes_written;
-	} else {
-		// last write exeeded buffer length, replace with "...]\0"
-		snprintf(buf + strlen(buf) - 5, 5, "...]");
-		return strlen(buf);
+	if(*bufferLen - *bytesWritten < 2) {
+		*bufferLen += 2;
+		*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
 	}
+	// close array with "]"
+	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "]");
+	return *bytesWritten;
 }
 
 void SIArray_Free(SIValue siarray) {

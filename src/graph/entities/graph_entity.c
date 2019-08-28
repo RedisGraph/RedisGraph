@@ -90,53 +90,54 @@ void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue
 	*prop = SI_CloneValue(value);
 }
 
-int GraphEntity_IdToString(const GraphEntity *e, char *buffer, int bufferLen) {
-	return snprintf(buffer, bufferLen, "%llu", ENTITY_GET_ID(e));
-}
-
-int GraphEntity_PropertiesToString(const GraphEntity *e, char *buffer, int bufferLen) {
+size_t GraphEntity_PropertiesToString(const GraphEntity *e, char **buffer, size_t *bufferLen,
+									  size_t *bytesWritten) {
 	// make sure there is enough space for "{...}\0"
-	if(bufferLen < 6) return 0;
-	int bytesWritten = snprintf(buffer, bufferLen, "{");
-	bufferLen -= bytesWritten;
-	int currentWriteLength = 0;
+	if(*bufferLen - *bytesWritten < 64) {
+		*bufferLen += 64;
+		*buffer = rm_realloc(*buffer, *bufferLen);
+	}
+	*bytesWritten += snprintf(*buffer, *bufferLen, "{");
 	GraphContext *gc = GraphContext_GetFromTLS();
 	int propCount = ENTITY_PROP_COUNT(e);
 	EntityProperty *properties = ENTITY_PROPS(e);
 	for(int i = 0; i < propCount; i++) {
-		// check if write is possible
-		if(bufferLen < 2) break;
 		// print key
 		const char *key = GraphContext_GetAttributeString(gc, properties[i].id);
-		currentWriteLength = snprintf(buffer + bytesWritten, bufferLen, "%s:", key);
-		bytesWritten += currentWriteLength;
-		bufferLen -= currentWriteLength;
+		// check for enough space
+		size_t keyLen = strlen(key);
+		if(*bufferLen - *bytesWritten < keyLen) {
+			*bufferLen += keyLen;
+			*buffer = rm_realloc(*buffer, *bufferLen);
+		}
+		*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "%s:", key);
 
-		if(bufferLen < 2) break;
 		// print value
-		currentWriteLength = SIValue_ToString(properties[i].value, buffer + bytesWritten, bufferLen);
-		bytesWritten += currentWriteLength;
-		bufferLen -= currentWriteLength;
+		SIValue_ToString(properties[i].value, buffer, bufferLen, bytesWritten);
 
-		if(bufferLen < 2 || i == propCount - 1) break;
-		// print ", "
-		currentWriteLength = snprintf(buffer + bytesWritten, bufferLen, ", ");
-		bytesWritten += currentWriteLength;
-		bufferLen -= currentWriteLength;
+		// if not the last element print ", "
+		if(i != propCount - 1) *bytesWritten = snprintf(*buffer + *bytesWritten, *bufferLen, ", ");
+
 	}
-	if(bufferLen >= 2) {
-		bytesWritten += snprintf(buffer + bytesWritten, bufferLen, "}");
-		return bytesWritten;
+	// check for enough space for close with "}\0"
+	if(*bufferLen - *bytesWritten < 2) {
+		*bufferLen += 2;
+		*buffer = rm_realloc(*buffer, *bufferLen);
 	}
-	// if there is no space left
-	snprintf(buffer + strlen(buffer) - 5, 5, "...}");
-	return strlen(buffer);
+	*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "}");
+	return *bytesWritten;
 }
 
-int GraphEntity_ToString(const GraphEntity *e, char *buffer, int bufferLen,
-						 GraphEntityStringFromat format, GraphEntityType entityType) {
-	// minimum length buffer for "(...)\0" or "[...]\0"
-	if(bufferLen < 6) return 0;
+size_t GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen,
+							size_t *bytesWritten,
+							GraphEntityStringFromat format, GraphEntityType entityType) {
+	// space allocation
+	if(*bufferLen - *bytesWritten < 64)  {
+		*bufferLen += 64;
+		*buffer = rm_realloc(*buffer, sizeof(char) * *bufferLen);
+	}
+
+	// get open an close symbols
 	char *openSymbole;
 	char *closeSymbole;
 	if(entityType == GETYPE_NODE) {
@@ -146,26 +147,26 @@ int GraphEntity_ToString(const GraphEntity *e, char *buffer, int bufferLen,
 		openSymbole = "[";
 		closeSymbole = "]";
 	}
-	int bytes_written = snprintf(buffer, bufferLen, "%s", openSymbole);
-	bufferLen -= bytes_written;
-	int currentWriteLength = 0;
+	*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "%s", openSymbole);
 
 	// write id
 	if(format & ENTITY_ID) {
-		currentWriteLength = snprintf(buffer + bytes_written, bufferLen, "%llu", ENTITY_GET_ID(e));
-		bytes_written += currentWriteLength;
-		bufferLen -= currentWriteLength;
+		*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "%llu", ENTITY_GET_ID(e));
 	}
 
 	// write label
-	if(bufferLen > 2 && format & ENTITY_LABELS_OR_RELATIONS) {
+	if(format & ENTITY_LABELS_OR_RELATIONS) {
 		switch(entityType) {
 		case GETYPE_NODE: {
 			Node *n = (Node *)e;
 			if(n->label) {
-				currentWriteLength = snprintf(buffer + bytes_written, bufferLen, ":%s", n->label);
-				bytes_written += currentWriteLength;
-				bufferLen -= currentWriteLength;
+				// allocate space if needed
+				size_t labelLen = strlen(n->label);
+				if(*bufferLen - *bytesWritten < labelLen) {
+					*bufferLen += labelLen;
+					*buffer = rm_realloc(*buffer, sizeof(char) * *bufferLen);
+				}
+				*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, ":%s", n->label);
 			}
 			break;
 		}
@@ -173,9 +174,12 @@ int GraphEntity_ToString(const GraphEntity *e, char *buffer, int bufferLen,
 		case GETYPE_EDGE: {
 			Edge *edge = (Edge *)e;
 			if(edge->relationship) {
-				currentWriteLength = snprintf(buffer + bytes_written, bufferLen, ":%s", edge->relationship);
-				bytes_written += currentWriteLength;
-				bufferLen -= currentWriteLength;
+				size_t relationshipLen = strlen(edge->relationship);
+				if(*bufferLen - *bytesWritten < relationshipLen) {
+					*bufferLen += relationshipLen;
+					*buffer = rm_realloc(*buffer, sizeof(char) * *bufferLen);
+				}
+				*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, ":%s", edge->relationship);
 			}
 			break;
 		}
@@ -186,21 +190,17 @@ int GraphEntity_ToString(const GraphEntity *e, char *buffer, int bufferLen,
 	}
 
 	// write properies
-	if(bufferLen > 2 && format & ENTITY_PROPERTIES) {
-		currentWriteLength = GraphEntity_PropertiesToString(e, buffer + bytes_written,
-															bufferLen);
-		bytes_written += currentWriteLength;
-		bufferLen -= currentWriteLength;
+	if(format & ENTITY_PROPERTIES) {
+		GraphEntity_PropertiesToString(e, buffer, bufferLen, bytesWritten);
 	}
-	// if there is still room in the buffer, close the node/edge
-	if(bufferLen >= 2) {
-		bytes_written += snprintf(buffer + bytes_written, bufferLen, "%s", closeSymbole);
-		return bytes_written;
-	} else {
-		// last write exeeded buffer length, replace with "...)\0" or "...]\0"
-		snprintf(buffer + strlen(buffer) - 5, 5, "...%s", closeSymbole);
-		return strlen(buffer);
+
+	// check for enough space for close with closing symbol
+	if(*bufferLen - *bytesWritten < 2) {
+		*bufferLen += 2;
+		*buffer = rm_realloc(*buffer, sizeof(char) * *bufferLen);
 	}
+	*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "%s", closeSymbole);
+	return *bytesWritten;
 }
 
 void FreeEntity(Entity *e) {

@@ -187,71 +187,51 @@ const char *SIType_ToString(SIType t) {
 		return "Unknown";
 	}
 }
-int SIArray_ToString(SIValue *array, char *buf, size_t len) {
-	int bytes_written = snprintf(buf, len, "[");
-	// len now holds the actual amount of bytes allowed to be wrriten
-	len -= bytes_written;
-	uint arrayLen = array_len(list.array);
-	for(uint i = 0; i < arrayLen; i ++) {
-		// if there no more space left in the buffer
-		if(len < 2) break;
 
-		// write the next value
-		int currentWriteLength = SIValue_ToString(list.array[i], buf + bytes_written, len);
-		bytes_written += currentWriteLength;
-		len -= currentWriteLength;
-
-		// if there no more space left in the buffer or it is the last element
-		if(len < 2 || i == arrayLen - 1) break;
-
-		currentWriteLength = snprintf(buf + bytes_written, len, ", ");
-		bytes_written += currentWriteLength;
-		len -= currentWriteLength;
+void SIString_ToString(SIValue str, char **buf, size_t *bufferLen, size_t *bytesWritten) {
+	size_t strLen = strlen(str.stringval);
+	if(*bufferLen - *bytesWritten < strLen) {
+		*bufferLen += strLen;
+		*buf = rm_realloc(*buf, *bufferLen);
 	}
-
-	// if there is still room in the buffer, close the array
-	if(len >= 2) {
-		bytes_written += snprintf(buf + bytes_written, len, "]");
-		return bytes_written;
-	} else {
-		// last write exeeded buffer length, replace with "...]\0"
-		snprintf(buf + strlen(buf) - 5, 5, "...]");
-		return strlen(buf);
-	}
+	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%s", str.stringval);
 }
 
-int SIValue_ToString(SIValue v, char *buf, size_t len) {
-	int bytes_written = 0;
+void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWritten) {
+	// uint64 max and int64 min are 21 bytes long
+	// float defaults to print 6 digit after the decimal-point
+	// checkt for enough space
+	if(*bufferLen - *bytesWritten < 64) {
+		*bufferLen += 64;
+		*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
+	}
 
 	switch(v.type) {
 	case T_STRING:
-		strncpy(buf, v.stringval, len);
-		bytes_written = strlen(buf);
+		SIString_ToString(v, buf, bufferLen, bytesWritten);
 		break;
 	case T_INT64:
-		bytes_written = snprintf(buf, len, "%lld", (long long)v.longval);
+		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%lld", (long long)v.longval);
 		break;
 	case T_BOOL:
-		bytes_written = snprintf(buf, len, "%s", v.longval ? "true" : "false");
+		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%s", v.longval ? "true" : "false");
 		break;
 	case T_DOUBLE:
-		bytes_written = snprintf(buf, len, "%f", v.doubleval);
+		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%f", v.doubleval);
 		break;
 	case T_NODE:
-		bytes_written = Node_ToString(v.ptrval, buf, len, ENTITY_ID);
+		Node_ToString(v.ptrval, buf, bufferLen, bytesWritten, ENTITY_ID);
 		break;
 	case T_EDGE:
-		bytes_written = Edge_ToString(v.ptrval, buf, len, ENTITY_ID);
+		Edge_ToString(v.ptrval, buf, bufferLen, bytesWritten, ENTITY_ID);
 		break;
 	case T_ARRAY:
-		bytes_written = SIArray_ToString(v, buf, len);
+		SIArray_ToString(v, buf, bufferLen, bytesWritten);
 		break;
 	case T_NULL:
 	default:
-		bytes_written = snprintf(buf, len, "NULL");
+		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "NULL");
 	}
-
-	return bytes_written;
 }
 
 int SIValue_ToDouble(const SIValue *v, double *d) {
@@ -303,38 +283,35 @@ size_t SIValue_StringConcatLen(SIValue *strings, unsigned int string_count) {
 	return length;
 }
 
-size_t SIValue_StringConcat(SIValue *strings, unsigned int string_count, char *buf,
-							size_t buf_len) {
-	size_t offset = 0;
+size_t SIValue_StringConcat(SIValue *strings, unsigned int string_count, char **buf,
+							size_t *buf_len, size_t *bytesWritten) {
 
 	for(int i = 0; i < string_count; i ++) {
-		offset += SIValue_ToString(strings[i], buf + offset, buf_len - offset - 1);
-		buf[offset++] = ',';
+		SIValue_ToString(strings[i], buf, buf_len, bytesWritten);
+		if(i < string_count - 1) *bytesWritten += snprintf(*buf + *bytesWritten, *buf_len, ",");
 	}
-	/* Backtrack once and discard last delimiter. */
-	buf[--offset] = '\0';
-
-	return offset;
+	return *bytesWritten;
 }
 
 // assumption: either a or b is a string
 SIValue SIValue_ConcatString(const SIValue a, const SIValue b) {
 	SIValue result;
-	char buffer[512];
+	size_t bufferLen = 512;
+	size_t argument_len = 0;
+	char *buffer = rm_calloc(bufferLen, sizeof(char));
 	char *string_arg = NULL;
 	// in case a is not a string - concat scalar + string
-	if(a.type != T_STRING) {
+	if(a.type != T_STRING && a.type != T_CONSTSTRING) {
 		/* a is numeric, convert to string. */
-		SIValue_ToString(a, buffer, 512);
+		SIValue_ToString(a, &buffer, &bufferLen, &argument_len);
 		result = SI_DuplicateStringVal(buffer);
 	}
 	// a is a string - concat string + value
 	else result = SI_DuplicateStringVal(a.stringval);
 
-	unsigned int argument_len = 0;
-	if(b.type != T_STRING) {
+	if(b.type != T_STRING && b.type != T_CONSTSTRING) {
 		/* b is not a string, get a string representation. */
-		argument_len = SIValue_ToString(b, buffer, 512);
+		SIValue_ToString(b, &buffer, &bufferLen, &argument_len);
 		string_arg = buffer;
 	} else {
 		string_arg = b.stringval;
@@ -345,6 +322,7 @@ SIValue SIValue_ConcatString(const SIValue a, const SIValue b) {
 	unsigned int required_size = strlen(result.stringval) + argument_len + 1;
 	result.stringval = rm_realloc(result.stringval, required_size);
 	strcat(result.stringval, string_arg);
+	rm_free(buffer);
 	return result;
 }
 
@@ -375,7 +353,8 @@ SIValue SIValue_ConcatList(const SIValue a, const SIValue b) {
 SIValue SIValue_Add(const SIValue a, const SIValue b) {
 	if(a.type == T_NULL || b.type == T_NULL) return SI_NullVal();
 	if(a.type == T_ARRAY || b.type == T_ARRAY) return SIValue_ConcatList(a, b);
-	if(a.type == T_STRING || b.type == T_STRING) return SIValue_ConcatString(a, b);
+	if((a.type == T_STRING || a.type == T_CONSTSTRING) || (b.type == T_STRING ||
+														   b.type == T_CONSTSTRING)) return SIValue_ConcatString(a, b);
 	/* Only construct an integer return if both operands are integers. */
 	if(a.type & b.type & T_INT64) {
 		return SI_LongVal(a.longval + b.longval);

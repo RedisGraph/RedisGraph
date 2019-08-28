@@ -77,9 +77,10 @@ SIValue *GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id);
 /* Updates existing attribute value. */
 void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue value);
 
-/* prints the graph entity into a buffer, returns what is the string length */
-int GraphEntity_ToString(const GraphEntity *e, char *buffer, int bufferLen,
-                         GraphEntityStringFromat format, GraphEntityType entityType);
+/* prints the graph entity into a buffer, returns what is the string length, buffer can be re-allocated at need */
+size_t GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen,
+                            size_t *bytesWritten,
+                            GraphEntityStringFromat format, GraphEntityType entityType);
 
 /* Release all memory allocated by entity */
 void FreeEntity(Entity *e);
