@@ -108,6 +108,7 @@ static void _CommitUpdates(OpUpdate *op) {
 		} else {
 			_UpdateEdge(op, ctx);
 		}
+		SIValue_Free(&ctx->new_value);
 	}
 
 	if(op->stats) op->stats->properties_set += op->pending_updates_count;
@@ -180,7 +181,7 @@ Record OpUpdateConsume(OpBase *opBase) {
 		 * for later execution. */
 		EntityUpdateEvalCtx *update_expression = op->update_expressions;
 		for(uint i = 0; i < op->update_expressions_count; i++, update_expression++) {
-			SIValue new_value = AR_EXP_Evaluate(update_expression->exp, r);
+			SIValue new_value = SI_CloneValue(AR_EXP_Evaluate(update_expression->exp, r));
 
 			// Make sure we're updating either a node or an edge.
 			RecordEntryType t = Record_GetType(r, update_expression->entityRecIdx);
