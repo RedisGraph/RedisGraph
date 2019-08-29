@@ -234,7 +234,6 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 				for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
 					SIValue_Free(sub_trees + child_idx);
 				}
-				// pthread_exit(error);
 				QueryCtx_SetError(error);
 				jmp_buf *env = QueryCtx_GetEnv();
 				longjmp(*env, 1);
@@ -260,7 +259,9 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 					char *error;
 					SIValue v = Record_GetScalar(r, root->operand.variadic.entity_alias_idx);
 					asprintf(&error, "Type mismatch: expected a map but was %s", SIType_ToString(SI_TYPE(v)));
-					pthread_exit(error);
+					QueryCtx_SetError(error);
+					jmp_buf *env = QueryCtx_GetEnv();
+					longjmp(*env, 1);
 				}
 
 				GraphEntity *ge = Record_GetGraphEntity(r, root->operand.variadic.entity_alias_idx);

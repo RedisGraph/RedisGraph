@@ -139,6 +139,8 @@ void _MGraph_Query(void *args) {
 cleanup:
 	// Release the read-write lock
 	if(lockAcquired) {
+		// TODO In the case of a failing writing query, we may hold both locks:
+		// "CREATE (a {num: 1}) MERGE ({v: a.num})"
 		if(readonly)Graph_ReleaseLock(gc->g);
 		else Graph_WriterLeave(gc->g);
 	}
