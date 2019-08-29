@@ -48,7 +48,7 @@ void Record_Extend(Record *r, int len);
 void Record_Merge(Record *a, const Record b);
 
 // Merge record b into a, transfer value ownership from b to a.
-void Record_PropagateMerge(Record *to, Record *from);
+void Record_TransferEntries(Record *to, Record from);
 
 // Returns number of entries record can hold.
 unsigned int Record_length(const Record r);

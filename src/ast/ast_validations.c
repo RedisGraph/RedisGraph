@@ -1275,46 +1275,17 @@ static AST_Validation _validateSubscriptOps(const cypher_astnode_t *root, char *
 	return AST_VALID;
 }
 
-// checks for improper usage of aggregation function
-static AST_Validation _containsAggregation(const cypher_astnode_t *root, char **reason) {
-	if(!root) return AST_VALID;
-	const cypher_astnode_type_t type = cypher_astnode_type(root);
-	if(type == CYPHER_AST_APPLY_OPERATOR) {
-		const cypher_astnode_t *funcNode =  cypher_ast_apply_operator_get_func_name(root);
-		const char *funcName = cypher_ast_function_name_get_value(funcNode);
-		if(!strcasecmp(funcName, "COLLECT")        ||
-		   !strcasecmp(funcName, "AVG")            ||
-		   !strcasecmp(funcName, "COUNT")          ||
-		   !strcasecmp(funcName, "MAX")            ||
-		   !strcasecmp(funcName, "MIN")            ||
-		   !strcasecmp(funcName, "PERCENTILECONT") ||
-		   !strcasecmp(funcName, "PERCENTILEDISC") ||
-		   !strcasecmp(funcName, "STDEV")          ||
-		   !strcasecmp(funcName, "STDEVP")         ||
-		   !strcasecmp(funcName, "SUM")) {
-			asprintf(reason, "Cannot use aggregation function %s", funcName);
-			return AST_INVALID;
-		}
-	}
-
-// validate children
-	uint child_count = cypher_astnode_nchildren(root);
-	for(uint i = 0; i < child_count; i++) {
-		if(_containsAggregation(cypher_astnode_get_child(root, i), reason) != AST_VALID) return AST_INVALID;
-	}
-	return AST_VALID;
-}
-
 // checks if SET cluase contains aggregation function
 static AST_Validation _ValidateSET_Clauses(const cypher_astnode_t *root, char **reason) {
 	if(!root) return AST_VALID;
 	const cypher_astnode_type_t type = cypher_astnode_type(root);
 	if(type == CYPHER_AST_SET) {
-		uint nitems = cypher_ast_set_nitems(root);
-		for(uint i = 0; i < nitems; i++) {
-			const cypher_astnode_t *item = cypher_ast_set_get_item(root, i);
-			if(_containsAggregation(item, reason) != AST_VALID) return AST_INVALID;
-		}
+		rax *referred_funcs = raxNew();
+		// Collect function references
+		AST_ReferredFunctions(root, referred_funcs);
+		AST_Validation res =  _ValidateReferredFunctions(referred_funcs, reason, false);
+		raxFree(referred_funcs);
+		if(res != AST_VALID) return AST_INVALID;
 	}
 
 	// validate children
