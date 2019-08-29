@@ -52,8 +52,9 @@ jobs:
       
       - run:
           name: Persist Artifacts
-          command: >-
-            mkdir -p /workspace/build && cp src/$MODULE_ARTIFACT /workspace/ &&
+          command: |
+            strip src/$MODULE_ARTIFACT
+            mkdir -p /workspace/build && cp src/$MODULE_ARTIFACT /workspace
             cp ramp.yml /workspace/
       
       - persist_to_workspace:
