@@ -19,14 +19,9 @@ extern "C" {
 #include "../../src/util/arr.h"
 
 // Declaration of used functions not in header files
-<<<<<<< HEAD
 extern AR_ExpNode **_BuildReturnExpressions(RecordMap *record_map,
-											const cypher_astnode_t *ret_clause);
+											const cypher_astnode_t *ret_clause, AST *ast);
 extern AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count);
-=======
-extern AR_ExpNode** _BuildReturnExpressions(RecordMap *record_map, const cypher_astnode_t *ret_clause, AST *ast);
-extern AR_ExpNode* AR_EXP_NewOpNode(const char *func_name, uint child_count);
->>>>>>> WIP updates
 
 
 #ifdef __cplusplus
@@ -35,37 +30,21 @@ extern AR_ExpNode* AR_EXP_NewOpNode(const char *func_name, uint child_count);
 
 class AggregateTest: public ::testing::Test {
   protected:
-<<<<<<< HEAD
 	Record r = NULL;
 	static void SetUpTestCase() {
 		// Use the malloc family for allocations
 		Alloc_Reset();
 		AR_RegisterFuncs();
 		Agg_RegisterFuncs();
-		pthread_key_create(&_tlsASTKey, NULL);
 	}
-=======
-    Record r = NULL;
-    static void SetUpTestCase() {
-      // Use the malloc family for allocations
-      Alloc_Reset();
-      AR_RegisterFuncs();
-      Agg_RegisterFuncs();
-    }
->>>>>>> WIP updates
 };
 
 AR_ExpNode *_exp_from_query(const char *query) {
 	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 	AST *ast = AST_Build(parse_result);
 
-<<<<<<< HEAD
 	const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
-	AR_ExpNode **return_elems = _BuildReturnExpressions(NULL, ret_clause);
-=======
-  const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
-  AR_ExpNode **return_elems = _BuildReturnExpressions(NULL, ret_clause, NULL);
->>>>>>> WIP updates
+	AR_ExpNode **return_elems = _BuildReturnExpressions(NULL, ret_clause, NULL);
 
 	return return_elems[0];
 }

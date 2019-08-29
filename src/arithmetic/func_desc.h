@@ -15,10 +15,10 @@
 typedef SIValue(*AR_Func)(SIValue *argv, int argc);
 
 typedef struct {
-    uint argc;          // Number of arguments function expects
-    AR_Func func;       // Function pointer.
-    SIType *types;      // Types of arguments.
-    const char* name;   // Function name.
+	uint argc;          // Number of arguments function expects
+	AR_Func func;       // Function pointer.
+	SIType *types;      // Types of arguments.
+	const char *name;   // Function name.
 } AR_FuncDesc;
 
 AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint argc, SIType *types);
@@ -29,6 +29,6 @@ void AR_RegFunc(AR_FuncDesc *func);
 /* Retrieves an arithmetic function by its name. */
 AR_FuncDesc *AR_GetFunc(const char *func_name);
 
-/* Check to see if function exists. 
+/* Check to see if function exists.
  * TODO: move this function to more appropriate place. */
 bool AR_FuncExists(const char *func_name);

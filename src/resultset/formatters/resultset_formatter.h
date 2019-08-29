@@ -25,7 +25,7 @@ typedef enum {
 	PROPERTY_INTEGER = 3,
 	PROPERTY_BOOLEAN = 4,
 	PROPERTY_DOUBLE = 5,
-    PROPERTY_ERROR = 6,
+	PROPERTY_ERROR = 6,
 } PropertyTypeUser;
 
 // Typedef for header formatters.
