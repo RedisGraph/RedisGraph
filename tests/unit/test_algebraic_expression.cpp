@@ -22,8 +22,9 @@ extern "C" {
 #include "../../src/arithmetic/algebraic_expression.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
+// Declaration of function in execution_plan.h
 extern AR_ExpNode **_BuildReturnExpressions(RecordMap *record_map,
-											const cypher_astnode_t *ret_clause);
+											const cypher_astnode_t *ret_clause, AST *ast);
 
 #ifdef __cplusplus
 }
@@ -185,7 +186,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		AST *ast = AST_Build(parse_result);
 		QueryGraph *qg = BuildQueryGraph(gc, ast);
 		RecordMap *map = RecordMap_New();
-		_BuildReturnExpressions(map, AST_GetClause(ast, CYPHER_AST_RETURN));
+		_BuildReturnExpressions(map, AST_GetClause(ast, CYPHER_AST_RETURN), ast);
 		AlgebraicExpression **ae = AlgebraicExpression_FromQueryGraph(qg, map, exp_count);
 
 		return ae;

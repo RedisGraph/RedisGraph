@@ -12,6 +12,7 @@ extern "C"
 #endif
 
 #include "../../src/value.h"
+#include "../../src/query_ctx.h"
 #include "../../src/arithmetic/funcs.h"
 #include "../../src/arithmetic/arithmetic_expression.h"
 #include "../../src/graph/entities/node.h"
@@ -23,7 +24,8 @@ extern "C"
 #include <time.h>
 
 // Declaration of function in execution_plan.h
-AR_ExpNode **_BuildReturnExpressions(RecordMap *record_map, const cypher_astnode_t *ret_clause);
+AR_ExpNode **_BuildReturnExpressions(RecordMap *record_map, const cypher_astnode_t *ret_clause,
+									 AST *ast);
 
 #ifdef __cplusplus
 }
@@ -35,6 +37,10 @@ class ArithmeticTest: public ::testing::Test {
 		// Use the malloc family for allocations
 		Alloc_Reset();
 
+		// Prepare thread-local variables
+		QueryCtx_Init();
+
+		// Register functions
 		AR_RegisterFuncs();
 		Agg_RegisterFuncs();
 	}
@@ -69,7 +75,7 @@ AR_ExpNode *_exp_from_query(const char *query) {
 	ast->entity_map = raxNew();
 
 	const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
-	AR_ExpNode **return_elems = _BuildReturnExpressions(NULL, ret_clause);
+	AR_ExpNode **return_elems = _BuildReturnExpressions(NULL, ret_clause, NULL);
 
 	return return_elems[0];
 }

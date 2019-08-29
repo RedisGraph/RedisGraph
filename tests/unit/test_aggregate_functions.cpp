@@ -10,6 +10,7 @@
 extern "C" {
 #endif
 
+#include "../../src/query_ctx.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/arithmetic/funcs.h"
 #include "../../src/arithmetic/agg_funcs.h"
@@ -34,6 +35,11 @@ class AggregateTest: public ::testing::Test {
 	static void SetUpTestCase() {
 		// Use the malloc family for allocations
 		Alloc_Reset();
+
+		// Prepare thread-local variables
+		QueryCtx_Init();
+
+		// Register functions
 		AR_RegisterFuncs();
 		Agg_RegisterFuncs();
 	}

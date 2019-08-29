@@ -9,8 +9,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "../../src/util/rmalloc.h"
 
+#include "../../src/util/rmalloc.h"
+#include "../../src/query_ctx.h"
 #include "../../src/graph/query_graph.h"
 #include "../../src/filter_tree/filter_tree.h"
 #include "../../src/ast/ast_build_filter_tree.h"
@@ -26,6 +27,9 @@ class TraversalOrderingTest: public ::testing::Test {
 	static void SetUpTestCase() {
 		// Use the malloc family for allocations
 		Alloc_Reset();
+
+		// Prepare thread-local variables
+		QueryCtx_Init();
 	}
 
 	static void TearDownTestCase() {
