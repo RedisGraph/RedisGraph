@@ -73,3 +73,93 @@ class testValueComparison(FlowTestsBase):
         node_count = len(redis_graph.nodes)
         expected_result_count = node_count * (node_count - 1)
         self.env.assertEquals(len(actual_result.result_set), expected_result_count)
+
+    # Verify that AND conditions on true, false, and NULL values evaluate appropriately
+    def test_AND_truth_tables(self):
+        # Test two non-NULL values
+        vals = [True, False]
+        for a_val in vals:
+            for b_val in vals:
+                query = "RETURN %s AND %s" % (str(a_val), str(b_val))
+                actual_result = redis_graph.query(query)
+                expected_val = a_val and b_val
+                self.env.assertEquals(actual_result.result_set[0][0], expected_val)
+
+        # Test one NULL value
+        for a_val in vals:
+            query = "RETURN %s AND NULL" % (str(a_val))
+            actual_result = redis_graph.query(query)
+            # AND comparisons with one NULL value always evaluate to false
+            expected_val = False
+            self.env.assertEquals(actual_result.result_set[0][0], expected_val)
+
+        # Test two NULL values
+        query = "RETURN NULL AND NULL"
+        actual_result = redis_graph.query(query)
+        # AND comparisons with two NULL values evaluate to NULL
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+    # Verify that OR conditions on true, false, and NULL values evaluate appropriately
+    def test_OR_truth_tables(self):
+        # Test two non-NULL values
+        vals = [True, False]
+        for a_val in vals:
+            for b_val in vals:
+                query = "RETURN %s OR %s" % (str(a_val), str(b_val))
+                actual_result = redis_graph.query(query)
+                expected_val = a_val or b_val
+                self.env.assertEquals(actual_result.result_set[0][0], expected_val)
+
+        # false OR null == null
+        query = "RETURN false OR NULL"
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+        # true OR null == true
+        query = "RETURN true OR NULL"
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], True)
+        # null OR null == null
+        query = "RETURN NULL OR NULL"
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+    # Verify that XOR conditions on true, false, and NULL values evaluate appropriately
+    def test_XOR_truth_tables(self):
+        # Test two non-NULL values
+        vals = [True, False]
+        for a_val in vals:
+            for b_val in vals:
+                query = "RETURN %s XOR %s" % (str(a_val), str(b_val))
+                actual_result = redis_graph.query(query)
+                expected_val = a_val != b_val
+                self.env.assertEquals(actual_result.result_set[0][0], expected_val)
+
+        # one NULL value
+        for a_val in vals:
+            query = "RETURN %s XOR NULL" % (str(a_val))
+            actual_result = redis_graph.query(query)
+            # XOR comparisons with one NULL value always evaluate to null
+            expected_val = None
+            self.env.assertEquals(actual_result.result_set[0][0], expected_val)
+
+        # Test two NULL values
+        query = "RETURN NULL XOR NULL"
+        actual_result = redis_graph.query(query)
+        # XOR comparisons with two NULL values evaluate to NULL
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+    # Verify that NOT conditions on true, false, and NULL values evaluate appropriately
+    def test_NOT_truth_tables(self):
+        # Test non-NULL values
+        vals = [True, False]
+        for a_val in vals:
+            query = "RETURN NOT %s" % (str(a_val))
+            actual_result = redis_graph.query(query)
+            expected_val = not a_val
+            self.env.assertEquals(actual_result.result_set[0][0], expected_val)
+
+        # NOT null == null
+        query = "RETURN NOT NULL"
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)

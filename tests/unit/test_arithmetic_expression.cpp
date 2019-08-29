@@ -879,12 +879,12 @@ TEST_F(ArithmeticTest, AND) {
 	SIValue truth_table [27] = {
 		SI_ConstStringVal("false"), SI_ConstStringVal("false"), SI_BoolVal(false),
 		SI_ConstStringVal("false"), SI_ConstStringVal("true"), SI_BoolVal(false),
-		SI_ConstStringVal("false"), SI_NullVal(), SI_NullVal(),
+		SI_ConstStringVal("false"), SI_NullVal(), SI_BoolVal(false),
 		SI_ConstStringVal("true"), SI_ConstStringVal("false"), SI_BoolVal(false),
 		SI_ConstStringVal("true"), SI_ConstStringVal("true"), SI_BoolVal(true),
-		SI_ConstStringVal("true"), SI_NullVal(), SI_NullVal(),
-		SI_NullVal(), SI_ConstStringVal("false"), SI_NullVal(),
-		SI_NullVal(), SI_ConstStringVal("true"), SI_NullVal(),
+		SI_ConstStringVal("true"), SI_NullVal(), SI_BoolVal(false),
+		SI_NullVal(), SI_ConstStringVal("false"), SI_BoolVal(false),
+		SI_NullVal(), SI_ConstStringVal("true"), SI_BoolVal(false),
 		SI_NullVal(), SI_NullVal(), SI_NullVal()
 	};
 
@@ -913,9 +913,9 @@ TEST_F(ArithmeticTest, OR) {
 		SI_ConstStringVal("false"), SI_NullVal(), SI_NullVal(),
 		SI_ConstStringVal("true"), SI_ConstStringVal("false"), SI_BoolVal(true),
 		SI_ConstStringVal("true"), SI_ConstStringVal("true"), SI_BoolVal(true),
-		SI_ConstStringVal("true"), SI_NullVal(), SI_NullVal(),
+		SI_ConstStringVal("true"), SI_NullVal(), SI_BoolVal(true),
 		SI_NullVal(), SI_ConstStringVal("false"), SI_NullVal(),
-		SI_NullVal(), SI_ConstStringVal("true"), SI_NullVal(),
+		SI_NullVal(), SI_ConstStringVal("true"), SI_BoolVal(true),
 		SI_NullVal(), SI_NullVal(), SI_NullVal()
 	};
 

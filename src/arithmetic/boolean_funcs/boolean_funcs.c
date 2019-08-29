@@ -10,29 +10,55 @@
 #include <assert.h>
 
 SIValue AR_AND(SIValue *argv, int argc) {
+	// false AND null evaluates to jalse ; all other null comparisons evaluate to null
 	bool res = true;
+	int null_count = 0;
 
 	for(int i = 0; i < argc; i++) {
 		SIValue v = argv[i];
-
-		if(SIValue_IsNull(v)) return SI_NullVal();
-
-		res &= v.longval;
+		switch(SI_TYPE(v)) {
+		case T_NULL:
+			res &= false;
+			null_count ++;
+			break;
+		case T_BOOL:
+		case T_INT64:
+			res &= v.longval;
+			break;
+		default:
+			assert(false);
+		}
 	}
+
+	if(null_count == 2) return SI_NullVal();
 
 	return SI_BoolVal(res);
 }
 
 SIValue AR_OR(SIValue *argv, int argc) {
+	// true OR null evaluates to true; all other null comparisons evaluate to null
 	bool res = false;
+	int null_count = 0;
 
 	for(int i = 0; i < argc; i++) {
 		SIValue v = argv[i];
-
-		if(SIValue_IsNull(v)) return SI_NullVal();
-
-		res |= v.longval;
+		switch(SI_TYPE(v)) {
+		case T_NULL:
+			res |= false;
+			null_count ++;
+			break;
+		case T_BOOL:
+		case T_INT64:
+			res |= v.longval;
+			break;
+		default:
+			assert(false);
+		}
 	}
+
+	// If both arguments are NULL or one argument is NULL and the other is false,
+	// OR evaluates to NULL.
+	if(null_count == 2 || (null_count == 1 && res == false)) return SI_NullVal();
 
 	return SI_BoolVal(res);
 }
@@ -185,18 +211,18 @@ void Register_BooleanFuncs() {
 	SIType *types;
 	AR_FuncDesc *func_desc;
 
-	types = array_new(SIType, 1);
-	types = array_append(types, T_BOOL);
+	types = array_new(SIType, 2);
+	types = array_append(types, T_BOOL | T_NULL);
 	func_desc = AR_FuncDescNew("and", AR_AND, VAR_ARG_LEN, types);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	types = array_append(types, T_BOOL);
+	types = array_append(types, T_BOOL | T_NULL);
 	func_desc = AR_FuncDescNew("or", AR_OR, VAR_ARG_LEN, types);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	types = array_append(types, T_BOOL);
+	types = array_append(types, T_BOOL | T_NULL);
 	func_desc = AR_FuncDescNew("xor", AR_XOR, VAR_ARG_LEN, types);
 	AR_RegFunc(func_desc);
 
