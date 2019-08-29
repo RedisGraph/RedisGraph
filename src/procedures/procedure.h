@@ -36,7 +36,7 @@ uint Procedure_Argc(const ProcedureCtx *proc);
 uint Procedure_OutputCount(const ProcedureCtx *proc);
 
 /* Retrieves procedure ith output */
-const char* Procedure_GetOutput(const ProcedureCtx *proc, uint output_idx);
+const char *Procedure_GetOutput(const ProcedureCtx *proc, uint output_idx);
 
 /* Returns true if given output can be yield by procedure */
 bool Procedure_ContainsOutput(const ProcedureCtx *proc, const char *output);

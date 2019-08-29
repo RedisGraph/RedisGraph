@@ -8,4 +8,4 @@
 
 #include "proc_ctx.h"
 
-ProcedureCtx* Proc_FulltextDropIdxGen();
+ProcedureCtx *Proc_FulltextDropIdxGen();

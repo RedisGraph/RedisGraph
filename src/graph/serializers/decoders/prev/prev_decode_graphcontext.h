@@ -9,4 +9,4 @@
 #include "../../../graphcontext.h"
 #include "../../../../redismodule.h"
 
-GraphContext* PrevRdbLoadGraphContext(RedisModuleIO *rdb);
+GraphContext *PrevRdbLoadGraphContext(RedisModuleIO *rdb);
