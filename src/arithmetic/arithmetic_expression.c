@@ -786,7 +786,7 @@ SIValue AR_CONTAINS(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
 
 	// TODO: remove once we have runtime error handling.
-	assert((SI_TYPE(argv[0]) & SI_STRING) && (SI_TYPE(argv[1]) & SI_STRING));
+	assert(SI_TYPE(argv[0]) == T_STRING && SI_TYPE(argv[1]) == T_STRING);
 
 	const char *hay = argv[0].stringval;
 	const char *needle = argv[1].stringval;
@@ -803,7 +803,7 @@ SIValue AR_STARTSWITH(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
 
 	// TODO: remove once we have runtime error handling.
-	assert((SI_TYPE(argv[0]) & SI_STRING) && (SI_TYPE(argv[1]) & SI_STRING));
+	assert(SI_TYPE(argv[0]) == T_STRING && SI_TYPE(argv[1]) == T_STRING);
 
 	const char *str = argv[0].stringval;
 	const char *sub_string = argv[1].stringval;
@@ -828,7 +828,7 @@ SIValue AR_ENDSWITH(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
 
 	// TODO: remove once we have runtime error handling.
-	assert((SI_TYPE(argv[0]) & SI_STRING) && (SI_TYPE(argv[1]) & SI_STRING));
+	assert(SI_TYPE(argv[0]) == T_STRING && SI_TYPE(argv[1]) == T_STRING);
 
 	const char *str = argv[0].stringval;
 	const char *sub_string = argv[1].stringval;
@@ -957,7 +957,7 @@ SIValue _AR_NodeDegree(SIValue *argv, int argc, GRAPH_EDGE_DIR dir) {
 		// We're interested in specific relationship type(s).
 		for(int i = 1; i < argc; i++) {
 			// relationship type should be specified as a string.
-			assert(SI_TYPE(argv[i]) & SI_STRING);
+			assert(SI_TYPE(argv[i]) == T_STRING);
 			const char *label = argv[i].stringval;
 
 			// Make sure relationship exists.
@@ -1053,7 +1053,6 @@ SIValue AR_GT(SIValue *argv, int argc) {
 
 	switch(SI_TYPE(a)) {
 	case T_STRING:
-	case T_CONSTSTRING:
 		return SI_BoolVal(SIValue_Compare(a, b) > 0);
 	case T_INT64:
 	case T_DOUBLE:
@@ -1076,7 +1075,6 @@ SIValue AR_GE(SIValue *argv, int argc) {
 
 	switch(SI_TYPE(a)) {
 	case T_STRING:
-	case T_CONSTSTRING:
 		return SI_BoolVal(SIValue_Compare(a, b) >= 0);
 	case T_INT64:
 	case T_DOUBLE:
@@ -1099,7 +1097,6 @@ SIValue AR_LT(SIValue *argv, int argc) {
 
 	switch(SI_TYPE(a)) {
 	case T_STRING:
-	case T_CONSTSTRING:
 		return SI_BoolVal(SIValue_Compare(a, b) < 0);
 	case T_INT64:
 	case T_DOUBLE:
@@ -1122,7 +1119,6 @@ SIValue AR_LE(SIValue *argv, int argc) {
 
 	switch(SI_TYPE(a)) {
 	case T_STRING:
-	case T_CONSTSTRING:
 		return SI_BoolVal(SIValue_Compare(a, b) <= 0);
 	case T_INT64:
 	case T_DOUBLE:
@@ -1145,7 +1141,6 @@ SIValue AR_EQ(SIValue *argv, int argc) {
 
 	switch(SI_TYPE(a)) {
 	case T_STRING:
-	case T_CONSTSTRING:
 		return SI_BoolVal(SIValue_Compare(a, b) == 0);
 	case T_INT64:
 	case T_DOUBLE:
@@ -1168,7 +1163,6 @@ SIValue AR_NE(SIValue *argv, int argc) {
 
 	switch(SI_TYPE(a)) {
 	case T_STRING:
-	case T_CONSTSTRING:
 		return SI_BoolVal(SIValue_Compare(a, b) != 0);
 	case T_INT64:
 	case T_DOUBLE:

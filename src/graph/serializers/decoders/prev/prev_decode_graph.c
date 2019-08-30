@@ -19,7 +19,6 @@ SIValue _PrevRdbLoadSIValue(RedisModuleIO *rdb) {
 	case T_DOUBLE:
 		return SI_DoubleVal(RedisModule_LoadDouble(rdb));
 	case T_STRING:
-	case T_CONSTSTRING:
 		// Transfer ownership of the heap-allocated string to the
 		// newly-created SIValue
 		return SI_TransferStringVal(RedisModule_LoadStringBuffer(rdb, NULL));

@@ -64,7 +64,7 @@ ProcedureCtx *Proc_LabelsCtx() {
 	ProcedureOutput **outputs = array_new(ProcedureOutput *, 1);
 	ProcedureOutput *output = rm_malloc(sizeof(ProcedureOutput));
 	output->name = "label";
-	output->type = T_CONSTSTRING;
+	output->type = T_STRING;
 
 	outputs = array_append(outputs, output);
 	ProcedureCtx *ctx = ProcCtxNew("db.labels",

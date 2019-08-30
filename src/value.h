@@ -4,12 +4,12 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __SECONDARY_VALUE_H__
-#define __SECONDARY_VALUE_H__
+#pragma once
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <stdbool.h>
 
 /* Type defines the supported types by the indexing system. The types are powers
  * of 2 so they can be used in bitmasks of matching types.
@@ -18,18 +18,24 @@
  * differing types is used to maintain the Cypher-defined global sort order
  * in the SIValue_Order routine. */
 typedef enum {
-	T_NULL = 0,
-	T_STRING = 0x001,
-	// T_INT32 = 0x002, // unused
-	T_INT64 = 0x004,
-	// T_UINT = 0x008, // unused
-	T_BOOL = 0x010, // shares 'longval' representation in SIValue union
-	// T_FLOAT = 0x020, // unused
-	T_DOUBLE = 0x040,
-	T_PTR = 0x080,
-	T_CONSTSTRING = 0x100, // only used in deserialization routine
-	T_NODE = 0x200,
-	T_EDGE = 0x400,
+	T_MAP = (1 << 0),
+	T_NODE = (1 << 1),
+	T_EDGE = (1 << 2),
+	T_ARRAY = (1 << 3),
+	T_PATH = (1 << 4),
+	T_DATETIME = (1 << 5),
+	T_LOCALDATETIME = (1 << 6),
+	T_DATE = (1 << 7),
+	T_TIME = (1 << 8),
+	T_LOCALTIME = (1 << 9),
+	T_DURATION = (1 << 10),
+	T_STRING = (1 << 11),
+	T_BOOL = (1 << 12), // shares 'longval' representation in SIValue union
+	T_INT64 = (1 << 13),
+	T_DOUBLE = (1 << 14),
+	T_NULL = (1 << 15),
+	T_PTR = (1 << 16),
+	T_ERROR = (1 << 17),    // Represents an error, error message is held inside .stringval
 } SIType;
 
 typedef enum {
@@ -41,8 +47,8 @@ typedef enum {
 
 #define SI_TYPE(value) (value).type
 #define SI_NUMERIC (T_INT64 | T_DOUBLE)
-#define SI_STRING (T_STRING | T_CONSTSTRING)
 #define SI_GRAPHENTITY (T_NODE | T_EDGE)
+#define SI_ALL (T_MAP | T_NODE |T_EDGE | T_ARRAY | T_PATH | T_DATETIME | T_LOCALDATETIME | T_DATE | T_TIME | T_LOCALTIME | T_DURATION | T_STRING | T_BOOL | T_INT64 | T_DOUBLE | T_NULL | T_PTR)
 
 /* Retrieve the numeric associated with an SIValue without explicitly
  * assigning it a type. */
@@ -109,9 +115,10 @@ void SIValue_MakeVolatile(SIValue *v);
 // SIValue_Persist updates an SIValue to duplicate any allocations that may go out of scope in the lifetime of this query.
 void SIValue_Persist(SIValue *v);
 
-int SIValue_IsNull(SIValue v);
-int SIValue_IsNullPtr(SIValue *v);
+bool SIValue_IsNull(SIValue v);
+bool SIValue_IsNullPtr(SIValue *v);
 
+const char *SIType_ToString(SIType t);
 int SIValue_ToString(SIValue v, char *buf, size_t len);
 
 /* Try to read a value as a double.
@@ -150,6 +157,3 @@ int SIValue_Order(const SIValue a, const SIValue b);
 /* Free an SIValue's internal property if that property is a heap allocation owned
  * by this object. */
 void SIValue_Free(SIValue *v);
-
-#endif // __SECONDARY_VALUE_H__
-

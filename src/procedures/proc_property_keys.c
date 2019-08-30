@@ -63,7 +63,7 @@ ProcedureCtx *Proc_PropKeysCtx() {
 	ProcedureOutput **outputs = array_new(ProcedureOutput *, 1);
 	ProcedureOutput *output = rm_malloc(sizeof(ProcedureOutput));
 	output->name = "propertyKey";
-	output->type = T_CONSTSTRING;
+	output->type = T_STRING;
 
 	outputs = array_append(outputs, output);
 	ProcedureCtx *ctx = ProcCtxNew("db.propertyKeys",
