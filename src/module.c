@@ -79,12 +79,13 @@ static void _PrepareModuleGlobals() {
 
 static void RG_ForkPrepare() {
 	/* At this point, a fork call has been issued. (We assume that this is because BGSave was called.)
-	 * Acquire the writer mutex of each graph to ensure that no locks are held, or else
+	 * Acquire the read-write lock of each graph to ensure that no graph is being modified, or else
 	 * the child process will deadlock when attempting to acquire that lock.
 	 * 1. If a writer thread is active, we'll wait until the writer finishes and releases the lock.
 	 * 2. Otherwise, no write in progress. Acquire the lock and release it immediately after forking. */
 
-	// Acquire the module-scoped lock; it will be released after forking.
+	/* Acquire the module-scoped lock to ensure that no graphs are created or deleted during the
+	 * lock acquisition process. It will be released after forking. */
 	assert(pthread_mutex_lock(&_module_mutex) == 0);
 
 	uint graph_count = array_len(graphs_in_keyspace);

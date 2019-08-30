@@ -12,8 +12,9 @@
 #include "../redismodule.h"
 
 extern pthread_key_t _tlsGCKey;             // Thread local storage graph context key.
-extern pthread_mutex_t _module_mutex;       // Module-level lock
-extern GraphContext **graphs_in_keyspace;   // Global array tracking all extant GraphContexts
+extern pthread_mutex_t _module_mutex;       // Module-level lock (defined in module.c)
+// Global array tracking all extant GraphContexts (defined in module.c)
+extern GraphContext **graphs_in_keyspace;
 
 //------------------------------------------------------------------------------
 // GraphContext API
