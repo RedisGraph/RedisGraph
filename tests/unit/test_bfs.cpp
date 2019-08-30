@@ -20,130 +20,128 @@ extern "C" {
 #endif
 
 class BFSTest: public ::testing::Test {
-    public:
-    static QGNode *A;
-    static QGNode *B;
-    static QGNode *C;
-    static QGNode *D;
-    static QGEdge *AB;
-    static QGEdge *BC;
-    static QGEdge *BD;
+  public:
+	static QGNode *A;
+	static QGNode *B;
+	static QGNode *C;
+	static QGNode *D;
+	static QGEdge *AB;
+	static QGEdge *BC;
+	static QGEdge *BD;
 
-    protected:
-    static void SetUpTestCase()
-    {
-        // Use the malloc family for allocations
-        Alloc_Reset();
-    }
+  protected:
+	static void SetUpTestCase() {
+		// Use the malloc family for allocations
+		Alloc_Reset();
+	}
 
-    static QueryGraph* BuildGraph()
-    {
-        // (A)->(B)
-        // (B)->(C)
-        // (B)->(D)
-        size_t node_cap = 4;
-        size_t edge_cap = 3;
+	static QueryGraph *BuildGraph() {
+		// (A)->(B)
+		// (B)->(C)
+		// (B)->(D)
+		size_t node_cap = 4;
+		size_t edge_cap = 3;
 
-        // Create nodes.
-        const char *label = "L";
-        const char *relation = "R";
+		// Create nodes.
+		const char *label = "L";
+		const char *relation = "R";
 
-        uint id = 0;
-        A = QGNode_New(label, "A", id++);
-        B = QGNode_New(label, "B", id++);
-        C = QGNode_New(label, "C", id++);
-        D = QGNode_New(label, "D", id++);
+		uint id = 0;
+		A = QGNode_New(label, "A", id++);
+		B = QGNode_New(label, "B", id++);
+		C = QGNode_New(label, "C", id++);
+		D = QGNode_New(label, "D", id++);
 
-        AB = QGEdge_New(A, B, relation, "AB", id++);
-        BC = QGEdge_New(B, C, relation, "BC", id++);
-        BD = QGEdge_New(B, D, relation, "BD", id++);
+		AB = QGEdge_New(A, B, relation, "AB", id++);
+		BC = QGEdge_New(B, C, relation, "BC", id++);
+		BD = QGEdge_New(B, D, relation, "BD", id++);
 
-        QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
-        QueryGraph_AddNode(g, A);
-        QueryGraph_AddNode(g, B);
-        QueryGraph_AddNode(g, C);
-        QueryGraph_AddNode(g, D);
+		QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
+		QueryGraph_AddNode(g, A);
+		QueryGraph_AddNode(g, B);
+		QueryGraph_AddNode(g, C);
+		QueryGraph_AddNode(g, D);
 
-        QueryGraph_ConnectNodes(g, A, B, AB);
-        QueryGraph_ConnectNodes(g, B, C, BC);
-        QueryGraph_ConnectNodes(g, B, D, BD);
+		QueryGraph_ConnectNodes(g, A, B, AB);
+		QueryGraph_ConnectNodes(g, B, C, BC);
+		QueryGraph_ConnectNodes(g, B, D, BD);
 
-        return g;
-    }
+		return g;
+	}
 };
 
 TEST_F(BFSTest, BFSLevels) {
-    QGNode *S;                  // BFS starts here.
-    QGNode **nodes;             // Nodes reached by BFS.
-    QueryGraph *g;              // Graph traversed.
-    int level = 0;              // BFS stops when reach level depth.
+	QGNode *S;                  // BFS starts here.
+	QGNode **nodes;             // Nodes reached by BFS.
+	QueryGraph *g;              // Graph traversed.
+	int level = 0;              // BFS stops when reach level depth.
 
-    g = BuildGraph();
-    // S = QueryGraph_GetNodeByID(g, A->id);
-    S = A;
+	g = BuildGraph();
+	// S = QueryGraph_GetNodeByID(g, A->id);
+	S = A;
 
-    QGNode *expected_level_0[1] = {A};
-    QGNode *expected_level_1[1] = {B};
-    QGNode *expected_level_2[2] = {C, D};
-    QGNode *expected_level_3[0];
-    QGNode *expected_level_deepest[2] = {C, D};
-    
-    QGNode **expected[4] = {
-        expected_level_0,
-        expected_level_1,
-        expected_level_2,
-        expected_level_3
-    };
+	QGNode *expected_level_0[1] = {A};
+	QGNode *expected_level_1[1] = {B};
+	QGNode *expected_level_2[2] = {C, D};
+	QGNode *expected_level_3[0];
+	QGNode *expected_level_deepest[2] = {C, D};
 
-    //------------------------------------------------------------------------------
-    // BFS depth 0 - 3
-    //------------------------------------------------------------------------------
-    
+	QGNode **expected[4] = {
+		expected_level_0,
+		expected_level_1,
+		expected_level_2,
+		expected_level_3
+	};
 
-    for(; level < 4; level++) {
-        nodes = BFS(S, &level);
-        QGNode **expectation = expected[level];
+	//------------------------------------------------------------------------------
+	// BFS depth 0 - 3
+	//------------------------------------------------------------------------------
 
-        int node_count = array_len(nodes);
-        for(int i = 0; i < node_count; i++) {
-            bool found = false;
-            for(int j = 0; j < node_count; j++) {
-                if(nodes[i] == expectation[j]) {
-                    found = true;
-                    break;
-                }
-            }
-            ASSERT_TRUE(found);
-        }
 
-        array_free(nodes); 
-    }
-   
-    //------------------------------------------------------------------------------
-    // BFS depth BFS_LOWEST_LEVEL
-    //------------------------------------------------------------------------------
+	for(; level < 4; level++) {
+		nodes = BFS(S, &level);
+		QGNode **expectation = expected[level];
 
-    level = BFS_LOWEST_LEVEL;
-    nodes = BFS(S, &level);
+		int node_count = array_len(nodes);
+		for(int i = 0; i < node_count; i++) {
+			bool found = false;
+			for(int j = 0; j < node_count; j++) {
+				if(nodes[i] == expectation[j]) {
+					found = true;
+					break;
+				}
+			}
+			ASSERT_TRUE(found);
+		}
 
-    // Determine number of expected nodes.
-    int expected_node_count = sizeof(expected_level_deepest) / sizeof(expected_level_deepest[0]);
-    ASSERT_EQ(expected_node_count, array_len(nodes));
+		array_free(nodes);
+	}
 
-    for(int i = 0; i < expected_node_count; i++) {
-        bool found = false;
-        for(int j = 0; j < expected_node_count; j++) {
-            if(nodes[i] == expected_level_deepest[j]) {
-                found = true;
-                break;
-            }
-        }
-        ASSERT_TRUE(found);
-    }
+	//------------------------------------------------------------------------------
+	// BFS depth BFS_LOWEST_LEVEL
+	//------------------------------------------------------------------------------
 
-    // Clean up.
-    array_free(nodes);    
-    QueryGraph_Free(g);
+	level = BFS_LOWEST_LEVEL;
+	nodes = BFS(S, &level);
+
+	// Determine number of expected nodes.
+	int expected_node_count = sizeof(expected_level_deepest) / sizeof(expected_level_deepest[0]);
+	ASSERT_EQ(expected_node_count, array_len(nodes));
+
+	for(int i = 0; i < expected_node_count; i++) {
+		bool found = false;
+		for(int j = 0; j < expected_node_count; j++) {
+			if(nodes[i] == expected_level_deepest[j]) {
+				found = true;
+				break;
+			}
+		}
+		ASSERT_TRUE(found);
+	}
+
+	// Clean up.
+	array_free(nodes);
+	QueryGraph_Free(g);
 }
 
 // Static function declarations
