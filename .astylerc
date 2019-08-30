@@ -16,7 +16,6 @@
 --exclude=demo
 --exclude=deps
 --exclude=docs
---exclude=tests
 --exclude=src/util
 --exclude=src/redismodule.h
 --exclude=src/redisearch_api.h
