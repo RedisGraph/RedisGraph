@@ -92,9 +92,6 @@ static void RG_ForkPrepare() {
 		// Acquire each read-write lock as a reader to guarantee that no graph is being modified.
 		Graph_AcquireReadLock(graphs_in_keyspace[i]->g);
 	}
-
-	// Signal to the child that it is a forked process
-	process_is_child = true;
 }
 
 static void RG_AfterForkParent() {
@@ -107,14 +104,19 @@ static void RG_AfterForkParent() {
 		Graph_ReleaseLock(graphs_in_keyspace[i]->g);
 	}
 
-	process_is_child = false; // The parent is the redis-server process.
 	assert(pthread_mutex_unlock(&_module_mutex) == 0); // Release the module-scoped lock.
+}
+
+static void RG_AfterForkChild() {
+	/* Mark that the child is a forked process so that it doesn't attempt invalid
+	 * accesses of POSIX primitives it doesn't own. */
+	process_is_child = true;
 }
 
 static void RegisterForkHooks() {
 	/* Register handlers to control the behavior of fork calls.
 	 * The child process does not require a handler. */
-	assert(pthread_atfork(RG_ForkPrepare, RG_AfterForkParent, NULL) == 0);
+	assert(pthread_atfork(RG_ForkPrepare, RG_AfterForkParent, RG_AfterForkChild) == 0);
 }
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
