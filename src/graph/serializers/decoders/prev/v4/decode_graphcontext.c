@@ -4,17 +4,14 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "prev_decode_graphcontext.h"
-#include "prev_decode_graph.h"
-#include "prev_decode_index.h"
-#include "prev_decode_schema.h"
-#include "../../../../util/arr.h"
-#include "../../../../util/rmalloc.h"
+#include "decode_v4.h"
+#include "../../../../../util/arr.h"
+#include "../../../../../util/rmalloc.h"
 
 extern pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
 
 /* Deserialize unified schema */
-void PrevRdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
+static void _RdbLoadAttributeKeys_v4(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * id // (fake)
 	 * name // (fake)
@@ -56,7 +53,7 @@ void PrevRdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	rm_free(attr_buf);
 }
 
-GraphContext *PrevRdbLoadGraphContext(RedisModuleIO *rdb) {
+GraphContext *RdbLoadGraphContext_v4(RedisModuleIO *rdb) {
 	/* Format:
 	 * graph name
 	 * #node schemas
@@ -88,12 +85,12 @@ GraphContext *PrevRdbLoadGraphContext(RedisModuleIO *rdb) {
 
 	// Load the full attribute mapping (or the attributes from
 	// the unified node schema, if encoding version is < 4)
-	PrevRdbLoadAttributeKeys(rdb, gc);
+	_RdbLoadAttributeKeys_v4(rdb, gc);
 
 	// Load each node schema
 	gc->node_schemas = array_new(Schema *, schema_count);
 	for(uint32_t i = 0; i < schema_count; i ++) {
-		array_append(gc->node_schemas, PrevRdbLoadSchema(rdb));
+		gc->node_schemas = array_append(gc->node_schemas, RdbLoadSchema_v4(rdb));
 		Graph_AddLabel(gc->g);
 	}
 
@@ -102,23 +99,23 @@ GraphContext *PrevRdbLoadGraphContext(RedisModuleIO *rdb) {
 
 	// If encoding version is < 4, load the attributes from the
 	// unified edge schema, otherwise skip filler bytes.
-	PrevRdbLoadAttributeKeys(rdb, gc);
+	_RdbLoadAttributeKeys_v4(rdb, gc);
 
 	// Load each edge schema
 	gc->relation_schemas = array_new(Schema *, schema_count);
 	for(uint32_t i = 0; i < schema_count; i ++) {
-		array_append(gc->relation_schemas, PrevRdbLoadSchema(rdb));
+		array_append(gc->relation_schemas, RdbLoadSchema_v4(rdb));
 		Graph_AddRelationType(gc->g);
 	}
 
 	// Graph object.
-	PrevRdbLoadGraph(rdb, gc);
+	RdbLoadGraph_v4(rdb, gc);
 
 	// #Indices
 	// (index label, index property) X #indices
 	uint32_t index_count = RedisModule_LoadUnsigned(rdb);
 	for(uint32_t i = 0; i < index_count; i ++) {
-		PrevRdbLoadIndex(rdb, gc);
+		RdbLoadIndex_v4(rdb, gc);
 	}
 
 	/* Build indices

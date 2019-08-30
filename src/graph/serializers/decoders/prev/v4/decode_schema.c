@@ -4,12 +4,12 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "prev_decode_schema.h"
+#include "decode_v4.h"
 
-#include "../../../../util/arr.h"
-#include "../../../../util/rmalloc.h"
+#include "../../../../../util/arr.h"
+#include "../../../../../util/rmalloc.h"
 
-Schema *PrevRdbLoadSchema(RedisModuleIO *rdb) {
+Schema *RdbLoadSchema_v4(RedisModuleIO *rdb) {
 	/* Format:
 	 * id
 	 * name

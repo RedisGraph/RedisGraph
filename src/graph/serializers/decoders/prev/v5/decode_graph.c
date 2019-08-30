@@ -5,14 +5,45 @@
 */
 
 #include <assert.h>
-#include "prev_decode_graph.h"
-#include "../../../graph.h"
+#include "decode_v5.h"
 
-SIValue _PrevRdbLoadSIValue(RedisModuleIO *rdb) {
+typedef enum {
+	V5_T_NULL = 0,
+	V5_T_STRING = 0x001,
+	V5_T_INT64 = 0x004,
+	V5_T_BOOL = 0x010, // shares 'longval' representation in SIValue union
+	V5_T_DOUBLE = 0x040,
+	V5_T_PTR = 0x080,
+	V5_T_CONSTSTRING = 0x100, // only used in deserialization routine
+	V5_T_NODE = 0x200,
+	V5_T_EDGE = 0x400,
+} PrevSIType;
+
+static SIType _ConvertSIType(PrevSIType prev_type) {
+	switch(prev_type) {
+	case V5_T_INT64:
+		return T_INT64;
+	case V5_T_DOUBLE:
+		return T_DOUBLE;
+	case V5_T_STRING:
+	case V5_T_CONSTSTRING:
+		return T_STRING;
+	case V5_T_BOOL:
+		return T_BOOL;
+	case V5_T_NULL:
+		return T_NULL;
+	default: // should not occur
+		assert(false);
+	}
+}
+
+static SIValue _RdbLoadSIValue_v5(RedisModuleIO *rdb) {
 	/* Format:
 	 * SIType
 	 * Value */
-	SIType t = RedisModule_LoadUnsigned(rdb);
+	PrevSIType prev_type = RedisModule_LoadUnsigned(rdb);
+	SIType t = _ConvertSIType(prev_type); // Convert SIType to latest enum value
+
 	switch(t) {
 	case T_INT64:
 		return SI_LongVal(RedisModule_LoadSigned(rdb));
@@ -30,7 +61,7 @@ SIValue _PrevRdbLoadSIValue(RedisModuleIO *rdb) {
 	}
 }
 
-void _PrevRdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e) {
+static void _RdbLoadEntity_v5(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e) {
 	/* Format:
 	 * #properties N
 	 * (name, value type, value) X N
@@ -40,7 +71,7 @@ void _PrevRdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e) {
 
 	for(int i = 0; i < propCount; i++) {
 		char *attr_name = RedisModule_LoadStringBuffer(rdb, NULL);
-		SIValue attr_value = _PrevRdbLoadSIValue(rdb);
+		SIValue attr_value = _RdbLoadSIValue_v5(rdb);
 		Attribute_ID attr_id = GraphContext_GetAttributeID(gc, attr_name);
 		assert(attr_id != ATTRIBUTE_NOTFOUND);
 		GraphEntity_AddProperty(e, attr_id, attr_value);
@@ -48,26 +79,24 @@ void _PrevRdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e) {
 	}
 }
 
-void _PrevRdbLoadNodes(RedisModuleIO *rdb, GraphContext *gc) {
+static void _RdbLoadNodes_v5(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * #nodes
-	 *      ID
 	 *      #labels M
 	 *      (labels) X M
 	 *      #properties N
 	 *      (name, value type, value) X N
 	*/
+
 	uint64_t nodeCount = RedisModule_LoadUnsigned(rdb);
 	if(nodeCount == 0) return;
 
 	Graph_AllocateNodes(gc->g, nodeCount);
 	for(uint64_t i = 0; i < nodeCount; i++) {
 		Node n;
-		// * ID
-		NodeID id = RedisModule_LoadUnsigned(rdb);
 
 		// Extend this logic when multi-label support is added.
-		// * #labels M
+		// #labels M
 		uint64_t nodeLabelCount = RedisModule_LoadUnsigned(rdb);
 
 		// * (labels) x M
@@ -75,15 +104,14 @@ void _PrevRdbLoadNodes(RedisModuleIO *rdb, GraphContext *gc) {
 		uint64_t l = (nodeLabelCount) ? RedisModule_LoadUnsigned(rdb) : GRAPH_NO_LABEL;
 		Graph_CreateNode(gc->g, l, &n);
 
-		_PrevRdbLoadEntity(rdb, gc, (GraphEntity *)&n);
+		_RdbLoadEntity_v5(rdb, gc, (GraphEntity *)&n);
 	}
 }
 
-void _PrevRdbLoadEdges(RedisModuleIO *rdb, GraphContext *gc) {
+static void _RdbLoadEdges_v5(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * #edges (N)
 	 * {
-	 *  edge ID, currently not in use.
 	 *  source node ID
 	 *  destination node ID
 	 *  relation type
@@ -97,39 +125,38 @@ void _PrevRdbLoadEdges(RedisModuleIO *rdb, GraphContext *gc) {
 	// Construct connections.
 	for(int i = 0; i < edgeCount; i++) {
 		Edge e;
-		EdgeID edgeId = RedisModule_LoadUnsigned(rdb);
 		NodeID srcId = RedisModule_LoadUnsigned(rdb);
 		NodeID destId = RedisModule_LoadUnsigned(rdb);
 		uint64_t relation = RedisModule_LoadUnsigned(rdb);
 		assert(Graph_ConnectNodes(gc->g, srcId, destId, relation, &e));
-		_PrevRdbLoadEntity(rdb, gc, (GraphEntity *)&e);
+		_RdbLoadEntity_v5(rdb, gc, (GraphEntity *)&e);
 	}
 }
 
-void PrevRdbLoadGraph(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbLoadGraph_v5(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
-	* #nodes
-	*      #labels M
-	*      (labels) X M
-	*      #properties N
-	*      (name, value type, value) X N
-	*
-	* #edges
-	*      relation type
-	*      source node ID
-	*      destination node ID
-	*      #properties N
-	*      (name, value type, value) X N
-	*/
+	 * #nodes
+	 *      #labels M
+	 *      (labels) X M
+	 *      #properties N
+	 *      (name, value type, value) X N
+	 *
+	 * #edges
+	 *      relation type
+	 *      source node ID
+	 *      destination node ID
+	 *      #properties N
+	 *      (name, value type, value) X N
+	 */
 
 	// While loading the graph, minimize matrix realloc and synchronization calls.
 	Graph_SetMatrixPolicy(gc->g, RESIZE_TO_CAPACITY);
 
 	// Load nodes.
-	_PrevRdbLoadNodes(rdb, gc);
+	_RdbLoadNodes_v5(rdb, gc);
 
 	// Load edges.
-	_PrevRdbLoadEdges(rdb, gc);
+	_RdbLoadEdges_v5(rdb, gc);
 
 	// Revert to default synchronization behavior
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
