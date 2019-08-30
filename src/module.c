@@ -21,13 +21,16 @@
 #include "graph/serializers/graphcontext_type.h"
 #include "../deps/RediSearch/src/redisearch_api.h"
 
-/* Module-level lock. */
-pthread_mutex_t _module_mutex;
+//------------------------------------------------------------------------------
+// Module-level global variables
+//------------------------------------------------------------------------------
+pthread_mutex_t _module_mutex;     // Module-level lock.
+GraphContext **graphs_in_keyspace; // Global array tracking all extant GraphContexts.
+bool process_is_child;             // Flag indicating whether the running process is a child.
 
-/* Global array tracking all extant GraphContexts. */
-GraphContext **graphs_in_keyspace;
-
-/* Thread pool. */
+//------------------------------------------------------------------------------
+// Thread pool variables
+//------------------------------------------------------------------------------
 threadpool _thpool = NULL;
 pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
 pthread_key_t _tlsASTKey;   // Thread local storage AST key.
@@ -71,6 +74,7 @@ static int _RegisterDataTypes(RedisModuleCtx *ctx) {
 static void _PrepareModuleGlobals() {
 	assert(pthread_mutex_init(&_module_mutex, NULL) == 0);
 	graphs_in_keyspace = array_new(GraphContext *, 1);
+	process_is_child = false;
 }
 
 static void RG_ForkPrepare() {
@@ -85,9 +89,12 @@ static void RG_ForkPrepare() {
 
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
-		// Acquire each writer mutex to guarantee that no graph is being modified.
-		Graph_WriterEnter(graphs_in_keyspace[i]->g);
+		// Acquire each read-write lock as a reader to guarantee that no graph is being modified.
+		Graph_AcquireReadLock(graphs_in_keyspace[i]->g);
 	}
+
+	// Signal to the child that it is a forked process
+	process_is_child = true;
 }
 
 static void RG_AfterForkParent() {
@@ -96,29 +103,18 @@ static void RG_AfterForkParent() {
 
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i++) {
-		// Release each writer mutex.
-		Graph_WriterLeave(graphs_in_keyspace[i]->g);
+		// Release each read-write lock.
+		Graph_ReleaseLock(graphs_in_keyspace[i]->g);
 	}
 
-	assert(pthread_mutex_unlock(&_module_mutex) == 0); // Release the module-scoped lock.
-}
-
-static void RG_AfterForkChild() {
-	/* The process has forked, and the child process (bgsave) is continuing.
-	 * Release all locks. */
-
-	uint graph_count = array_len(graphs_in_keyspace);
-	for(uint i = 0; i < graph_count; i++) {
-		// Release each writer mutex.
-		Graph_WriterLeave(graphs_in_keyspace[i]->g);
-	}
-
+	process_is_child = false; // The parent is the redis-server process.
 	assert(pthread_mutex_unlock(&_module_mutex) == 0); // Release the module-scoped lock.
 }
 
 static void RegisterForkHooks() {
-	/* Register handlers to control the behavior of fork calls. */
-	assert(pthread_atfork(RG_ForkPrepare, RG_AfterForkParent, RG_AfterForkChild) == 0);
+	/* Register handlers to control the behavior of fork calls.
+	 * The child process does not require a handler. */
+	assert(pthread_atfork(RG_ForkPrepare, RG_AfterForkParent, NULL) == 0);
 }
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
