@@ -26,7 +26,10 @@ theme:
 pages:
     - 'Quickstart': index.md
     - 'Commands': commands.md
-    - 'Result Set structure': result_structure.md
+    - 'Clients': clients.md
+    - 'Design Documents':
+        - 'Result Set structure': result_structure.md
+        - 'Client Specification': client_spec.md
     - 'Design': design.md
     - 'Contributor agreement': contrib.md
     - 'Cypher coverage': cypher_support.md
