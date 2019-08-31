@@ -93,12 +93,16 @@ OpResult ApplyReset(OpBase *opBase) {
 
 void ApplyFree(OpBase *opBase) {
 	Apply *op = (Apply *)opBase;
-	if(op->lhs_record) Record_Free(op->lhs_record);
+	if(op->lhs_record) {
+		Record_Free(op->lhs_record);
+		op->lhs_record = NULL;
+	}
 	if(op->rhs_records) {
 		uint len = array_len(op->rhs_records);
 		for(uint i = 0; i < len; i ++) {
 			Record_Free(op->rhs_records[i]);
 		}
 		array_free(op->rhs_records);
+		op->rhs_records = NULL;
 	}
 }

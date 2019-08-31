@@ -182,15 +182,19 @@ OpResult OpMergeReset(OpBase *ctx) {
 void OpMergeFree(OpBase *ctx) {
 	OpMerge *op = (OpMerge *)ctx;
 
-	uint node_count = array_len(op->nodes_to_merge);
-	for(uint i = 0; i < node_count; i ++) {
-		PropertyMap_Free(op->nodes_to_merge[i].properties);
+	if(op->nodes_to_merge) {
+		uint node_count = array_len(op->nodes_to_merge);
+		for(uint i = 0; i < node_count; i ++) {
+			PropertyMap_Free(op->nodes_to_merge[i].properties);
+		}
+		op->nodes_to_merge = NULL;
 	}
-	op->nodes_to_merge = NULL;
 
-	uint edge_count = array_len(op->edges_to_merge);
-	for(uint i = 0; i < edge_count; i ++) {
-		PropertyMap_Free(op->edges_to_merge[i].properties);
+	if(op->edges_to_merge) {
+		uint edge_count = array_len(op->edges_to_merge);
+		for(uint i = 0; i < edge_count; i ++) {
+			PropertyMap_Free(op->edges_to_merge[i].properties);
+		}
+		op->edges_to_merge = NULL;
 	}
-	op->edges_to_merge = NULL;
 }

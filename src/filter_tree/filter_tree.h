@@ -19,7 +19,7 @@
 /* Nodes within the filter tree are one of two types
  * Either a predicate node or a condition node. */
 typedef enum {
-    FT_N_EXP,   // Expression node.
+	FT_N_EXP,   // Expression node.
 	FT_N_PRED,  // Predicate node.
 	FT_N_COND,  // Conditional node.
 } FT_FilterNodeType;
@@ -27,14 +27,14 @@ typedef enum {
 struct FT_FilterNode;
 
 /* The FT_ExpressionNode represent a leaf node within the filter tree
- * it holds a single boolean arithmetic expression to evaluate 
+ * it holds a single boolean arithmetic expression to evaluate
  * e.g. `WHERE false` in which case `false` is the expression. */
 typedef struct {
-    AR_ExpNode *exp;    /* Boolean expression to evaluate. */
+	AR_ExpNode *exp;    /* Boolean expression to evaluate. */
 } FT_ExpressionNode;
 
-/* The FT_PredicateNode represents a leaf node within the filter tree 
- * it holds an operator: [<. <=, =, >, >=] 
+/* The FT_PredicateNode represents a leaf node within the filter tree
+ * it holds an operator: [<. <=, =, >, >=]
  * a left and right hand-side arithmetic expressions
  * which are evaluated and compared to one another using the operator. */
 typedef struct {
@@ -43,8 +43,8 @@ typedef struct {
 	AST_Operator op;	/* Can validly be an operation (<, <=, =, =>, >, <>, maybe NOT). */
 } FT_PredicateNode;
 
-/* The FT_ConditionNode is a top level node in the filter tree 
- * it holds a conditional operator: [OR, AND] 
+/* The FT_ConditionNode is a top level node in the filter tree
+ * it holds a conditional operator: [OR, AND]
  * a left and right hand-side filter nodes which can be further extended */
 typedef struct {
 	struct FT_FilterNode *left;
@@ -55,7 +55,7 @@ typedef struct {
 /* All nodes within the filter tree are of type FT_FilterNode. */
 struct FT_FilterNode {
 	union {
-        FT_ExpressionNode exp;
+		FT_ExpressionNode exp;
 		FT_PredicateNode pred;
 		FT_ConditionNode cond;
 	};
@@ -91,7 +91,7 @@ rax *FilterTree_CollectModified(const FT_FilterNode *root);
 
 /* Extract every attribute mentioned in the tree
  * without duplications. */
-rax* FilterTree_CollectAttributes(const FT_FilterNode *root);
+rax *FilterTree_CollectAttributes(const FT_FilterNode *root);
 
 /* Checks to see if tree contains given operation. */
 bool FilterTree_containsOp(const FT_FilterNode *root, AST_Operator op);

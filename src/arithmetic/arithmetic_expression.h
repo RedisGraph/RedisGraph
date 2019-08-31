@@ -88,7 +88,8 @@ typedef struct AR_ExpNode AR_ExpNode;
 AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count);
 
 /* Creates a new Arithmetic expression variable operand node */
-AR_ExpNode *AR_EXP_NewVariableOperandNode(RecordMap *record_map, const char *alias, const char *prop);
+AR_ExpNode *AR_EXP_NewVariableOperandNode(RecordMap *record_map, const char *alias,
+										  const char *prop);
 
 /* Creates a new Arithmetic expression constant operand node */
 AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant);

@@ -86,7 +86,8 @@ void reduceTraversal(ExecutionPlan *plan) {
 		 * perform expand into instaed of traverse. */
 		if(op->type == OPType_CONDITIONAL_TRAVERSE) {
 			CondTraverse *traverse = (CondTraverse *)op;
-			OpBase *expand_into = NewExpandIntoOp(traverse->ae, op->record_map, traverse->recordsCap);
+			OpBase *expand_into = NewExpandIntoOp(traverse->graph, op->record_map, traverse->ae,
+												  traverse->recordsCap);
 
 			// Set traverse algebraic_expression to NULL to avoid early free.
 			traverse->ae = NULL;

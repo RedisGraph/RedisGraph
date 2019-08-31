@@ -99,7 +99,7 @@ SIValue AR_NE(SIValue *argv, int argc);
 SIValue AR_TIMESTAMP(SIValue *argv, int argc);
 
 /* Conditional flow functions */
-/* Case When 
+/* Case When
  * Case Value [When Option i Then Result i] Else Default end */
 SIValue AR_CASEWHEN(SIValue *argv, int argc);
 

@@ -79,7 +79,8 @@ SIValue SI_PtrVal(void *v);
 SIValue SI_Node(void *n);
 SIValue SI_Edge(void *e);
 SIValue SI_DuplicateStringVal(const char *s); // Duplicate and ultimately free the input string
-SIValue SI_ConstStringVal(char *s);           // Neither duplicate nor assume ownership of input string
+SIValue SI_ConstStringVal(char
+						  *s);           // Neither duplicate nor assume ownership of input string
 SIValue SI_TransferStringVal(char *s);        // Don't duplicate input string, but assume ownership
 
 /* Functions for copying and guaranteeing memory safety for SIValues. */
