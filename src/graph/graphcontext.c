@@ -11,7 +11,10 @@
 #include "../util/rmalloc.h"
 #include "../redismodule.h"
 
-extern pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
+extern pthread_key_t _tlsGCKey;             // Thread local storage graph context key.
+extern pthread_mutex_t _module_mutex;       // Module-level lock (defined in module.c)
+// Global array tracking all extant GraphContexts (defined in module.c)
+extern GraphContext **graphs_in_keyspace;
 
 //------------------------------------------------------------------------------
 // GraphContext API
@@ -48,6 +51,7 @@ GraphContext *GraphContext_New(RedisModuleCtx *ctx, const char *graphname,
 	// Set and close GraphContext key in Redis keyspace
 	RedisModule_ModuleTypeSetValue(key, GraphContextRedisModuleType, gc);
 
+	GraphContext_RegisterWithModule(gc);
 cleanup:
 	RedisModule_CloseKey(key);
 	RedisModule_FreeString(ctx, rs_name);
@@ -240,6 +244,30 @@ void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
 }
 
 //------------------------------------------------------------------------------
+// Functions for globally tracking GraphContexts
+//------------------------------------------------------------------------------
+
+// Register a new GraphContext for module-level tracking
+void GraphContext_RegisterWithModule(GraphContext *gc) {
+	assert(pthread_mutex_lock(&_module_mutex) == 0);
+	graphs_in_keyspace = array_append(graphs_in_keyspace, gc);
+	assert(pthread_mutex_unlock(&_module_mutex) == 0);
+}
+
+// Delete a GraphContext reference from the global array
+void GraphContext_RemoveFromRegistry(GraphContext *gc) {
+	assert(pthread_mutex_lock(&_module_mutex) == 0);
+	uint graph_count = array_len(graphs_in_keyspace);
+	for(uint i = 0; i < graph_count; i ++) {
+		if(graphs_in_keyspace[i] == gc) {
+			graphs_in_keyspace = array_del_fast(graphs_in_keyspace, i);
+			break;
+		}
+	}
+	assert(pthread_mutex_unlock(&_module_mutex) == 0);
+}
+
+//------------------------------------------------------------------------------
 // Free routine
 //------------------------------------------------------------------------------
 
@@ -277,6 +305,9 @@ void GraphContext_Free(GraphContext *gc) {
 		}
 		array_free(gc->string_mapping);
 	}
+
+	// Remove GraphContext from global array of graphs
+	GraphContext_RemoveFromRegistry(gc);
 
 	rm_free(gc);
 }

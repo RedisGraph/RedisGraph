@@ -8,6 +8,14 @@
 #include "encode_graph.h"
 #include "encode_schema.h"
 
+extern bool process_is_child; // Global variable declared in module.c
+
+// Determine whether we are in the context of a bgsave, in which case
+// the process is independent and should not acquire locks.
+static inline bool _shouldAcquireLocks(void) {
+	return !process_is_child;
+}
+
 static void _RdbSaveAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * #attribute keys
@@ -36,8 +44,8 @@ void RdbSaveGraphContext(RedisModuleIO *rdb, void *value) {
 
 	GraphContext *gc = value;
 
-	// Lock.
-	Graph_AcquireReadLock(gc->g);
+	// Acquire a read lock if we're not in a thread-safe context.
+	if(_shouldAcquireLocks()) Graph_AcquireReadLock(gc->g);
 
 	// Graph name.
 	RedisModule_SaveStringBuffer(rdb, gc->graph_name, strlen(gc->graph_name) + 1);
@@ -68,6 +76,6 @@ void RdbSaveGraphContext(RedisModuleIO *rdb, void *value) {
 	// Serialize graph object
 	RdbSaveGraph(rdb, gc);
 
-	// Unlock.
-	Graph_ReleaseLock(gc->g);
+	// If a lock was acquired, release it.
+	if(_shouldAcquireLocks()) Graph_ReleaseLock(gc->g);
 }
