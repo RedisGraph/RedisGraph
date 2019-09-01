@@ -1,0 +1,8 @@
+[server]
+; Module to actually test
+module = /home/laptop-linux/dev/redis/search/redisearch.so
+
+[testvars]
+; for the test_ext.py script
+EXT_TEST_PATH = RMTEST_EXT_PATH-NOTFOUND
+

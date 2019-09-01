@@ -64,7 +64,7 @@ def testUnionIdList(env):
     env.assertOk(r.execute_command(
         "ft.add", "test", "2", "1", "FIELDS", "tags", "ontario", "waypoint", "-79.395,43.661667"))
     
-    print r.cmd('ft.search', 'test', '@tags:{ontario}')
+    r.cmd('ft.search', 'test', '@tags:{ontario}')
 
     res = r.execute_command(
         'ft.search', 'test', "@waypoint:[-113.52 53.52 20 mi]|@tags:{ontario}", 'nocontent')
@@ -2132,6 +2132,8 @@ def testIssue666(env):
 # Could not connect to Redis at 127.0.0.1:6379: Connection refused
 
 def testPrefixDeletedExpansions(env):
+    env.skipOnCluster()
+
     env.cmd('ft.create', 'idx', 'schema', 'txt1', 'text', 'tag1', 'tag')
     # get the number of maximum expansions
     maxexpansions = int(env.cmd('ft.config', 'get', 'MAXEXPANSIONS')[0][1])
@@ -2207,6 +2209,19 @@ def testIssue828(env):
         "name", "Hell or High Watermelon Wheat (2009)",
         "style", "Fruit / Vegetable Beer")
     env.assertEqual('OK', rv)
+
+def testIssue862(env):
+    env.cmd('ft.create', 'idx', 'SCHEMA', 'test', 'TEXT', 'SORTABLE')
+    rv = env.cmd("FT.ADD", "idx", "doc1", "1.0", "FIELDS", "test", "foo")
+    env.assertEqual('OK', rv)
+    rv = env.cmd("FT.SEARCH", "idx", "foo", 'WITHSORTKEYS')
+    env.assertEqual([1L, 'doc1', None, ['test', 'foo']], rv)
+
+def testIssue_866(env):
+    env.expect('ft.sugadd', 'sug', 'test123', '1').equal(1)
+    env.expect('ft.sugadd', 'sug', 'test456', '1').equal(2)
+    env.expect('ft.sugdel', 'sug', 'test').equal(0)
+    env.expect('ft.sugget', 'sug', '').equal(['test123', 'test456'])
 
 def grouper(iterable, n, fillvalue=None):
     "Collect data into fixed-length chunks or blocks"
