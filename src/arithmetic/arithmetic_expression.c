@@ -7,13 +7,13 @@
 #include "./arithmetic_expression.h"
 
 #include "funcs.h"
+#include "rax.h"
 #include "./aggregate.h"
 #include "../util/arr.h"
 #include "./repository.h"
 #include "../graph/graph.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
-#include "../../deps/rax/rax.h"
 #include "../datatypes/temporal_value.h"
 
 #include "assert.h"

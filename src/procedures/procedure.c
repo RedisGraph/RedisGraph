@@ -9,7 +9,7 @@
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
-#include "../../deps/rax/rax.h"
+#include "rax.h"
 
 static rax *__procedures = NULL;
 

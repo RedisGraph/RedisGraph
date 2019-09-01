@@ -67,17 +67,16 @@ export CC_OBJECTS
 # will also change the dependent .c files of it
 CC_DEPS = $(patsubst %.c, %.d, $(CC_SOURCES) )
 
-RAX=../deps/rax/rax.o
-
 # Library dependencies
+RAX=../deps/rax/rax.o
 LIBXXHASH=../deps/xxhash/libxxhash.a
 GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
 REDISEARCH=../deps/RediSearch/build/libredisearch.a
 LIBCYPHER-PARSER=../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
 
 # Compilation deps for the module
-LIBS=$(GRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER-PARSER)
-MODULE=$(RAX) $(LIBS) $(CC_OBJECTS)
+LIBS=$(RAX) $(GRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER-PARSER)
+MODULE= $(LIBS) $(CC_OBJECTS)
 
 REDISGRAPH_CC=$(QUIET_CC)$(CC)
 
@@ -94,7 +93,7 @@ endif
 # Compile C file while generating a .d file for it
 %.o: %.c
 %.o: %.c
-	$(REDISGRAPH_CC) $(CFLAGS) -c $< -o $@ -MMD -MF $(@:.o=.d)
+	$(REDISGRAPH_CC) $(CFLAGS) -I../deps/rax -c $< -o $@ -MMD -MF $(@:.o=.d)
 
 all: redisgraph.so
 
@@ -102,18 +101,20 @@ all: redisgraph.so
 -include $(CC_DEPS)
 
 $(RAX):
-	@$(MAKE) -C ../deps/rax/ rax.o
+	@$(MAKE) -C ../deps/rax
+.PHONY: $(RAX)
 
 $(LIBXXHASH):
 	@$(MAKE) -C ../deps/xxhash lib
-
-BLAS_CFLAGS = -fPIC -I $(abs_path)/util -include rmalloc.h -DREDIS_MODULE_TARGET -DGB_MALLOC=rm_malloc -DGB_CALLOC=rm_calloc -DGB_REALLOC=rm_realloc -DGB_FREE=rm_free -DGBCOMPACT
+.PHONY: $(LIBXXHASH)
 
 # Build GraphBLAS only if library does not already exists.
+BLAS_CFLAGS = -fPIC -I $(abs_path)/util -include rmalloc.h -DREDIS_MODULE_TARGET -DGB_MALLOC=rm_malloc -DGB_CALLOC=rm_calloc -DGB_REALLOC=rm_realloc -DGB_FREE=rm_free -DGBCOMPACT
 $(GRAPHBLAS):
 ifeq (,$(wildcard $(GRAPHBLAS)))
 	@$(MAKE) -C ../deps/GraphBLAS CMAKE_OPTIONS="-DUSER_POSIX=1 -DCMAKE_CXX_FLAGS=-std=c++11 -DCMAKE_C_FLAGS='$(BLAS_CFLAGS)'" static_only
 endif
+.PHONY: $(GRAPHBLAS)
 
 $(REDISEARCH):
 ifeq (,$(wildcard $(REDISEARCH)))
@@ -123,6 +124,7 @@ ifeq (,$(wildcard $(REDISEARCH)))
 	cmake -DRS_FORCE_NO_GITVERSION=ON -DRS_BUILD_STATIC=ON ..; \
 	make;
 endif
+.PHONY: $(REDISEARCH)
 
 # Build libcypher-parser only if library does not already exists.
 $(LIBCYPHER-PARSER):

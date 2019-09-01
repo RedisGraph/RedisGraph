@@ -7,7 +7,7 @@
 #pragma once
 
 #include "op.h"
-#include "../../../deps/rax/rax.h"
+#include "rax.h"
 
 typedef struct {
 	OpBase op;

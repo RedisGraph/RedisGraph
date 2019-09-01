@@ -8,7 +8,7 @@
 
 #include "../value.h"
 #include "../redismodule.h"
-#include "../../deps/rax/rax.h"
+#include "rax.h"
 #include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
 
 typedef const void *AST_IDENTIFIER;

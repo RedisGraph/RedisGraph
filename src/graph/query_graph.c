@@ -7,7 +7,7 @@
 #include "query_graph.h"
 #include "../util/arr.h"
 #include "../schema/schema.h"
-#include "../../deps/rax/rax.h"
+#include "rax.h"
 #include <assert.h>
 
 static void _BuildQueryGraphAddNode(const GraphContext *gc,

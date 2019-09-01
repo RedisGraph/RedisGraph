@@ -6,7 +6,7 @@
 
 #include "cypher_whitelist.h"
 #include "../../deps/libcypher-parser/lib/src/operators.h" // TODO safe?
-#include "../../deps/rax/rax.h"
+#include "rax.h"
 #include <assert.h>
 
 /* Whitelist of all accepted cypher_astnode types:
