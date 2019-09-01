@@ -84,6 +84,8 @@ Requirements:
 
 * The RedisGraph repository: `git clone https://github.com/RedisGraph/RedisGraph.git`
 
+* RedisGraph dependencies: `git submodule init && git submodule update`
+
 * On Ubuntu Linux, run: `apt-get install build-essential cmake m4 automake peg libtool autoconf`
 
 * On OS X, verify that `homebrew` is installed and run: `brew install cmake m4 automake peg libtool autoconf`
