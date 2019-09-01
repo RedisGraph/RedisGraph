@@ -28,12 +28,12 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, const cypher_astnod
 	RedisModule_ReplyWithArray(ctx, 2); // Statistics.
 	Index *idx = NULL;
 
-	if(cypher_astnode_type(index_op) == CYPHER_AST_CREATE_NODE_PROP_INDEX) {
+	if(cypher_astnode_type(index_op) == CYPHER_AST_CREATE_NODE_PROPS_INDEX) {
 		// Retrieve strings from AST node
-		const char *label = cypher_ast_label_get_name(cypher_ast_create_node_prop_index_get_label(
+		const char *label = cypher_ast_label_get_name(cypher_ast_create_node_props_index_get_label(
 														  index_op));
-		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_create_node_prop_index_get_prop_name(
-															  index_op));
+		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_create_node_props_index_get_prop_name(
+															  index_op, 0));
 		if(GraphContext_AddIndex(&idx, gc, label, prop, IDX_EXACT_MATCH) != INDEX_OK) {
 			// Index creation may have failed if the label or property was invalid, or the index already exists.
 			RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
@@ -43,9 +43,9 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, const cypher_astnod
 		RedisModule_ReplyWithSimpleString(ctx, "Indices added: 1");
 	} else {
 		// Retrieve strings from AST node
-		const char *label = cypher_ast_label_get_name(cypher_ast_drop_node_prop_index_get_label(index_op));
-		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_drop_node_prop_index_get_prop_name(
-															  index_op));
+		const char *label = cypher_ast_label_get_name(cypher_ast_drop_node_props_index_get_label(index_op));
+		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_drop_node_props_index_get_prop_name(
+															  index_op, 0));
 		if(GraphContext_DeleteIndex(gc, label, prop, IDX_EXACT_MATCH) == INDEX_OK) {
 			RedisModule_ReplyWithSimpleString(ctx, "Indices removed: 1");
 		} else {
@@ -121,8 +121,8 @@ void _MGraph_Query(void *args) {
 		result_set = ExecutionPlan_Execute(plan);
 		ExecutionPlan_Free(plan);
 		ResultSet_Replay(result_set);    // Send result-set back to client.
-	} else if(root_type == CYPHER_AST_CREATE_NODE_PROP_INDEX ||
-			  root_type == CYPHER_AST_DROP_NODE_PROP_INDEX) {
+	} else if(root_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
+			  root_type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {
 		_index_operation(ctx, gc, ast->root);
 	} else {
 		assert("Unhandled query type" && false);

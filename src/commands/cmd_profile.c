@@ -62,7 +62,8 @@ void _MGraph_Profile(void *args) {
 	lockAcquired = true;
 
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
-	if(root_type == CYPHER_AST_CREATE_NODE_PROP_INDEX || root_type == CYPHER_AST_DROP_NODE_PROP_INDEX) {
+	if(root_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
+	   root_type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {
 		RedisModule_ReplyWithError(ctx, "Can't profile index operations.");
 		goto cleanup;
 	} else if(root_type != CYPHER_AST_QUERY) {

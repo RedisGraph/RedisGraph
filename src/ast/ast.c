@@ -63,8 +63,8 @@ bool AST_ReadOnly(const cypher_parse_result_t *result) {
 		   type == CYPHER_AST_MERGE                  ||
 		   type == CYPHER_AST_DELETE                 ||
 		   type == CYPHER_AST_SET                    ||
-		   type == CYPHER_AST_CREATE_NODE_PROP_INDEX ||
-		   type == CYPHER_AST_DROP_NODE_PROP_INDEX) {
+		   type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
+		   type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {
 			return false;
 		}
 	}
