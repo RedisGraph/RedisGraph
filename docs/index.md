@@ -77,9 +77,7 @@ How many riders represent team Ducati?
 
 Requirements:
 
-* The RedisGraph repository: `git clone https://github.com/RedisGraph/RedisGraph.git`
-
-* RedisGraph dependencies: `git submodule init && git submodule update`
+* The RedisGraph repository: `git clone --recurse-submodules -j8 https://github.com/RedisGraph/RedisGraph.git`
 
 * On Ubuntu Linux, run: `apt-get install build-essential cmake m4 automake peg libtool autoconf`
 

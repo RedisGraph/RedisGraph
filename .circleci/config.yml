@@ -8,8 +8,7 @@ jobs:
       - run:
           name: Fetch submodules
           command: >-
-            git submodule init &&
-            git submodule update
+            git submodule update --init --recursive
 
       - run:
           name: Install prerequisite
