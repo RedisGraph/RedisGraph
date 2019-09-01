@@ -17,8 +17,8 @@ typedef struct
 } Path;
 
 Path Path_new(size_t len);
-Path Path_appendNode(Path p, Node n);
-Path Path_appendEdge(Path p, Edge e);
+void Path_appendNode(Path *p, Node n);
+void Path_appendEdge(Path *p, Edge e);
 Node Path_popNode(Path p);
 Edge Path_popEdge(Path p);
 Node Path_head(Path p);

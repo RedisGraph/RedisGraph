@@ -18,7 +18,7 @@
 #ifndef _ALL_PATHS_H_
 #define _ALL_PATHS_H_
 
-#include "./path.h"
+#include "../datatypes/path.h"
 #include "../graph/graph.h"
 #include "../graph/entities/node.h"
 

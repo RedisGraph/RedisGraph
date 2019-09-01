@@ -14,14 +14,12 @@ Path Path_new(size_t len) {
 	return path;
 }
 
-Path Path_appendNode(Path p, Node n) {
-	p.nodes = array_append(p.nodes, n);
-	return p;
+void Path_appendNode(Path *p, Node n) {
+	p->nodes = array_append(p->nodes, n);
 }
 
-Path Path_appendEdge(Path p, Edge e) {
-	p.edges = array_append(p.edges, e);
-	return p;
+void Path_appendEdge(Path *p, Edge e) {
+	p->edges = array_append(p->edges, e);
 }
 
 Node Path_popNode(Path p) {
@@ -52,8 +50,8 @@ bool Path_empty(const Path p) {
 }
 
 bool Path_containsNode(const Path p, Node *n) {
-	uint32_t pathLen = Path_len(p);
-	for(int i = 0; i < pathLen; i++) {
+	uint32_t pathDepth = Path_nodeCount(p);
+	for(int i = 0; i < pathDepth; i++) {
 		if(ENTITY_GET_ID(p.nodes + i) == ENTITY_GET_ID(n)) return true;
 	}
 	return false;
@@ -64,7 +62,7 @@ Path Path_clone(const Path p) {
 	Path clone = Path_new(pathLen + 1);
 
 	for(int i = 0; i < pathLen; i++) {
-		Path_appendNode(clone, p.nodes[i]);
+		Path_appendNode(&clone, p.nodes[i]);
 	}
 
 	return clone;
