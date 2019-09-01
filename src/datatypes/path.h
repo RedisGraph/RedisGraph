@@ -29,7 +29,7 @@ bool Path_empty(const Path p);
 bool Path_containsNode(const Path p, Node *n);
 bool Path_containsEdge(const Path p, Edge *e);
 Path Path_clone(const Path p);
-void Path_free(Path p);
 void Path_print(Path p);
+void Path_free(Path p);
 
 #endif

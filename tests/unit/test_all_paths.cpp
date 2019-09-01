@@ -265,3 +265,66 @@ TEST_F(AllPathsTest, TwoLegPaths)
     AllPathsCtx_Free(ctx);
     Graph_Free(g);
 }
+
+bool pathArrayContainsPath(NodeID **array, int arrayLen, Path *path)
+{
+    for (int i = 0; i < arrayLen; i++)
+    {
+        NodeID *expectedPath = array[i];
+        int expectedPathLen = expectedPath[0];
+        if (expectedPathLen != Path_nodeCount(*path))
+        {
+            continue;
+        }
+        bool flag = true;
+        for (int j = 1; j <= expectedPathLen; j++)
+        {
+            Node n = path->nodes[j - 1];
+            if (ENTITY_GET_ID(&n) != expectedPath[j])
+            {
+                flag = false;
+                break;
+            }
+        }
+        if (flag)
+            return true;
+    }
+
+    return false;
+}
+
+TEST_F(AllPathsTest, DestinationSpecificPaths)
+{
+    NodeID p00_0[2] = {1, 0};
+    NodeID p00_1[4] = {3, 0, 1, 0};
+    NodeID p00_2[6] = {5, 0, 1, 2, 1, 0};
+    NodeID p00_4[6] = {5, 0, 1, 2, 3, 0};
+    NodeID p00_3[5] = {4, 0, 2, 1, 0};
+    NodeID p00_5[5] = {4, 0, 2, 3, 0};
+
+    NodeID *p00[6] = {p00_0, p00_1, p00_2, p00_3, p00_4, p00_5};
+
+    Graph *g = BuildGraph();
+
+    NodeID srcNodeID = 0;
+    Node src;
+    Path *path = NULL;
+    Graph_GetNode(g, srcNodeID, &src);
+    unsigned int minLen = 0;
+    unsigned int maxLen = UINT_MAX - 2;
+    unsigned int pathsCount = 0;
+    int relationships[] = {GRAPH_NO_RELATION};
+    AllPathsCtx *ctx = AllPathsToDstCtx_New(&src, &src, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen, maxLen);
+
+    while ((path = AllPathsCtx_NextPath(ctx)))
+    {
+        ASSERT_LT(pathsCount, 5);
+        ASSERT_TRUE(pathArrayContainsPath(p00, 6, path));
+        pathsCount++;
+    }
+
+    ASSERT_EQ(pathsCount, 5);
+
+    AllPathsCtx_Free(ctx);
+    Graph_Free(g);
+}

@@ -33,11 +33,24 @@ typedef struct
     GRAPH_EDGE_DIR dir;  // traverse direction.
     unsigned int minLen; // Path minimum length.
     unsigned int maxLen; // Path max length.
+    Node *dst;           // Destination node, defualts to NULL in case of general all paths execution.
 } AllPathsCtx;
 
 // Create a new All paths context object.
 AllPathsCtx *AllPathsCtx_New(
     Node *src,           // Source node to traverse.
+    Graph *g,            // Graph to traverse.
+    int *relationIDs,    // Edge type(s) on which we'll traverse.
+    int relationCount,   // Length of relationIDs.
+    GRAPH_EDGE_DIR dir,  // Traversal direction.
+    unsigned int minLen, // Path length must contain be at least minLen + 1 nodes.
+    unsigned int maxLen  // Path length must not exceed maxLen + 1 nodes.
+);
+
+// Create a new All paths context object.
+AllPathsCtx *AllPathsToDstCtx_New(
+    Node *src,           // Source node to traverse.
+    Node *dst,           // Destination node of the paths
     Graph *g,            // Graph to traverse.
     int *relationIDs,    // Edge type(s) on which we'll traverse.
     int relationCount,   // Length of relationIDs.

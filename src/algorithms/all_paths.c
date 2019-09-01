@@ -34,6 +34,12 @@ static bool _AllPathsCtx_LevelNotEmpty(const AllPathsCtx *ctx, uint level) {
 
 AllPathsCtx *AllPathsCtx_New(Node *src, Graph *g, int *relationIDs, int relationCount,
 							 GRAPH_EDGE_DIR dir, unsigned int minLen, unsigned int maxLen) {
+	return AllPathsToDstCtx_New(src, NULL, g, relationIDs, relationCount, dir, minLen, maxLen);
+}
+
+AllPathsCtx *AllPathsToDstCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs,
+								  int relationCount,
+								  GRAPH_EDGE_DIR dir, unsigned int minLen, unsigned int maxLen) {
 	assert(src);
 
 	AllPathsCtx *ctx = rm_malloc(sizeof(AllPathsCtx));
@@ -51,7 +57,9 @@ AllPathsCtx *AllPathsCtx_New(Node *src, Graph *g, int *relationIDs, int relation
 	ctx->path = Path_new(1);
 	ctx->neighbors = array_new(Edge, 32);
 	__AllPathsCtx_AddConnectionToLevel(ctx, 0, src, NULL);
+	ctx->dst = dst;
 	return ctx;
+
 }
 
 Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
@@ -64,7 +72,6 @@ Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 		if(_AllPathsCtx_LevelNotEmpty(ctx, depth)) {
 			// Get a new frontier.
 			Node frontierNode = Path_popNode(ctx->levels[depth]);
-			printf("frontier node is %llu", ENTITY_GET_ID(&frontierNode));
 
 			/* See if frontier is already on path,
 			 * it is OK for a path to contain an entity twice,
@@ -113,7 +120,13 @@ Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 			 * a copy beforehand). If future features like an algorithm API use this routine,
 			 * they should either be responsible for memory safety or a memory-safe boolean/routine
 			 * should be offered. */
-			if(depth >= ctx->minLen && depth <= ctx->maxLen) return &ctx->path;
+			if(depth >= ctx->minLen && depth <= ctx->maxLen) {
+				if(ctx->dst != NULL) {
+					Node dst = Path_head(ctx->path);
+					if(ENTITY_GET_ID(ctx->dst) != ENTITY_GET_ID(&dst)) continue;
+				}
+				return &ctx->path;
+			}
 		} else {
 			// No way to advance, backtrack.
 			Path_popNode(ctx->path);
