@@ -10,7 +10,7 @@
 #include "op.h"
 #include "../../graph/graph.h"
 #include "../../index/index.h"
-#include "../../../deps/RediSearch/src/redisearch_api.h"
+#include "redisearch_api.h"
 
 typedef struct {
 	OpBase op;

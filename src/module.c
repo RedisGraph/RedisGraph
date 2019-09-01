@@ -19,7 +19,7 @@
 #include "procedures/procedure.h"
 #include "arithmetic/arithmetic_expression.h"
 #include "graph/serializers/graphcontext_type.h"
-#include "../deps/RediSearch/src/redisearch_api.h"
+#include "redisearch_api.h"
 
 //------------------------------------------------------------------------------
 // Module-level global variables

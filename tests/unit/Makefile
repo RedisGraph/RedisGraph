@@ -4,6 +4,7 @@ ROOT=../..
 # Path to Google Test source
 GTEST_DIR = ../../deps/googletest
 RAX_DIR = ../../deps/rax
+REDISEARCH_DIR = ../../deps/RediSearch/src
 LIBCYPHER-PARSER_DIR = ../../deps/libcypher-parser/lib/src
 
 # Flags passed to the preprocessor.
@@ -65,7 +66,7 @@ TEST_EXECUTABLES = $(patsubst %.cpp, %.run, $(TEST_SOURCES))
 
 # Compile object files from unit test sources
 %.o: %.cpp
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -c -o $@ $<
+	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -I$(REDISEARCH_DIR) -c -o $@ $<
 
 # Build '*.run' binaries for each source
 %.run: %.o gtest_main.a $(DEPS)

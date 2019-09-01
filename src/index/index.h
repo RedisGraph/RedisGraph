@@ -8,7 +8,7 @@
 
 #include "../graph/entities/node.h"
 #include "../graph/entities/graph_entity.h"
-#include "../../deps/RediSearch/src/redisearch_api.h"
+#include "redisearch_api.h"
 
 #define INDEX_OK 1
 #define INDEX_FAIL 0

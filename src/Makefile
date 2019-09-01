@@ -7,6 +7,7 @@ abs_path = $(shell pwd)
 # Paths to deps.
 RAX_DIR = ../deps/rax
 XXHASH_DIR = ../deps/xxhash
+REDISEARCH_DIR = ../deps/RediSearch/src
 LIBCYPHER-PARSER_DIR = ../deps/libcypher-parser/lib/src
 
 # if DEBUG env var is set, we compile with "debug" cflags
@@ -98,7 +99,7 @@ endif
 # Compile C file while generating a .d file for it
 %.o: %.c
 %.o: %.c
-	$(REDISGRAPH_CC) $(CFLAGS) -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -I$(XXHASH_DIR) -c $< -o $@ -MMD -MF $(@:.o=.d)
+	$(REDISGRAPH_CC) $(CFLAGS) -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR) -c $< -o $@ -MMD -MF $(@:.o=.d)
 
 all: redisgraph.so
 
