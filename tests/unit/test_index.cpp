@@ -35,7 +35,6 @@ class IndexTest: public ::testing::Test {
 	}
 
 	static void TearDownTestCase() {
-		_free_fake_graph_context();
 		GrB_finalize();
 	}
 
@@ -55,11 +54,6 @@ class IndexTest: public ::testing::Test {
 		int error = pthread_key_create(&_tlsGCKey, NULL);
 		ASSERT_EQ(error, 0);
 		pthread_setspecific(_tlsGCKey, gc);
-	}
-
-	static void _free_fake_graph_context() {
-		GraphContext *gc = GraphContext_GetFromTLS();
-		GraphContext_Free(gc);
 	}
 
 	static Graph *_build_test_graph() {
