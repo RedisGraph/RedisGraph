@@ -13,7 +13,7 @@
 #include "../util/rmalloc.h"
 #include "../util/simple_timer.h"
 #include "../execution_plan/execution_plan.h"
-#include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
+#include "cypher-parser.h"
 
 extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
 

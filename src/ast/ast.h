@@ -7,9 +7,9 @@
 #pragma once
 
 #include "../value.h"
+#include "cypher-parser.h"
 #include "../redismodule.h"
 #include "rax.h"
-#include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
 
 typedef const void *AST_IDENTIFIER;
 
