@@ -6,7 +6,7 @@ abs_path = $(shell pwd)
 
 # Paths to deps.
 RAX_DIR = ../deps/rax
-XXHASH_DIR = ../deps/xxhash
+XXHASH_DIR = ../deps/xxHash
 REDISEARCH_DIR = ../deps/RediSearch/src
 LIBCYPHER-PARSER_DIR = ../deps/libcypher-parser/lib/src
 
@@ -75,7 +75,7 @@ CC_DEPS = $(patsubst %.c, %.d, $(CC_SOURCES) )
 
 # Library dependencies
 RAX=../deps/rax/rax.o
-LIBXXHASH=../deps/xxhash/libxxhash.a
+LIBXXHASH=../deps/xxHash/libxxhash.a
 GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
 REDISEARCH=../deps/RediSearch/build/libredisearch.a
 LIBCYPHER-PARSER=../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
@@ -111,7 +111,7 @@ $(RAX):
 .PHONY: $(RAX)
 
 $(LIBXXHASH):
-	@$(MAKE) -C ../deps/xxhash lib
+	@$(MAKE) -C ../deps/xxHash lib
 .PHONY: $(LIBXXHASH)
 
 # Build GraphBLAS only if library does not already exists.
@@ -157,7 +157,7 @@ clean:
 	@-rm -f redisgraph.so
 ifeq ($(ALL),1)
 	@$(MAKE) -C ../deps/rax clean
-	@$(MAKE) -C ../deps/xxhash clean
+	@$(MAKE) -C ../deps/xxHash clean
 	@$(MAKE) -C ../deps/GraphBLAS clean
 	@$(MAKE) -C ../deps/RediSearch clean
 	@$(MAKE) -C ../deps/libcypher-parser clean
