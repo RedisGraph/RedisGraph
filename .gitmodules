@@ -4,3 +4,6 @@
 [submodule "deps/rax"]
 	path = deps/rax
 	url = https://github.com/antirez/rax.git
+[submodule "deps/xxHash"]
+	path = deps/xxHash
+	url = https://github.com/Cyan4973/xxHash.git
