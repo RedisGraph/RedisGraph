@@ -2,7 +2,7 @@
 ROOT=../..
 
 # Path to Google Test source
-GTEST_DIR = ../../deps/googletest
+GTEST_DIR = ../../deps/googletest/googletest
 RAX_DIR = ../../deps/rax
 REDISEARCH_DIR = ../../deps/RediSearch/src
 LIBCYPHER-PARSER_DIR = ../../deps/libcypher-parser/lib/src
@@ -10,7 +10,7 @@ LIBCYPHER-PARSER_DIR = ../../deps/libcypher-parser/lib/src
 # Flags passed to the preprocessor.
 # Set Google Test's header directory as a system directory, such that
 # the compiler doesn't generate warnings in Google Test headers.
-CPPFLAGS += -isystem $(GTEST_DIR)/include
+CPPFLAGS += -isystem $(GTEST_DIR)/include -I$(GTEST_DIR)/include/gtest/
 LDFLAGS += -ldl
 
 # Flags passed to the C++ compiler.

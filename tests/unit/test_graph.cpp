@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "../../deps/googletest/include/gtest/gtest.h"
+#include "gtest.h"
 
 #ifdef __cplusplus
 extern "C"
