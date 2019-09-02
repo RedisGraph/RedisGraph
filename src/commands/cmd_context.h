@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../redismodule.h"
-#include "../../deps/libcypher-parser/lib/src/cypher-parser.h"
+#include "cypher-parser.h"
 
 /* Query context, used for concurent query processing. */
 typedef struct {

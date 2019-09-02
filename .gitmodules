@@ -1,0 +1,15 @@
+[submodule "deps/libcypher-parser"]
+	path = deps/libcypher-parser
+	url = https://github.com/cleishm/libcypher-parser.git
+[submodule "deps/rax"]
+	path = deps/rax
+	url = https://github.com/antirez/rax.git
+[submodule "deps/xxHash"]
+	path = deps/xxHash
+	url = https://github.com/Cyan4973/xxHash.git
+[submodule "deps/RediSearch"]
+	path = deps/RediSearch
+	url = https://github.com/RediSearch/RediSearch.git
+[submodule "deps/googletest"]
+	path = deps/googletest
+	url = https://github.com/google/googletest.git

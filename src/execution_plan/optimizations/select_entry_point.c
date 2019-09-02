@@ -6,7 +6,7 @@
 
 #include "./select_entry_point.h"
 #include "../../util/arr.h"
-#include "../../../deps/rax/rax.h"
+#include "rax.h"
 
 void selectEntryPoint(AlgebraicExpression *ae, const RecordMap *record_map,
 					  const FT_FilterNode *tree) {

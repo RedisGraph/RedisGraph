@@ -6,7 +6,7 @@
 
 #include "./bfs.h"
 #include "../util/arr.h"
-#include "../../deps/rax/rax.h"
+#include "rax.h"
 #include "../graph/entities/qg_edge.h"
 
 bool _DFS(QGNode *n, int level, int current_level, rax *visited, QGEdge ***path) {

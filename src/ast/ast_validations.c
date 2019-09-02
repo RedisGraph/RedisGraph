@@ -1324,8 +1324,8 @@ AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *re
 
 	const cypher_astnode_t *body = cypher_ast_statement_get_body(root);
 	cypher_astnode_type_t body_type = cypher_astnode_type(body);
-	if(body_type == CYPHER_AST_CREATE_NODE_PROP_INDEX ||
-	   body_type == CYPHER_AST_DROP_NODE_PROP_INDEX) {
+	if(body_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
+	   body_type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {
 		// Index operation; validations are handled elsewhere.
 		return AST_VALID;
 	}

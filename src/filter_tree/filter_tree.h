@@ -9,7 +9,7 @@
 #include "../redismodule.h"
 #include "../util/vector.h"
 #include "../ast/ast_shared.h"
-#include "../../deps/rax/rax.h"
+#include "rax.h"
 #include "../execution_plan/record.h"
 #include "../arithmetic/arithmetic_expression.h"
 

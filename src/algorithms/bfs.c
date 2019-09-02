@@ -6,8 +6,10 @@
 
 #include "./bfs.h"
 #include "../util/arr.h"
-#include "../../deps/rax/rax.h"
 #include "../graph/entities/qg_edge.h"
+
+#include <stddef.h>
+#include "rax.h"
 
 // Returns a set of nodes reached at given level from S.
 QGNode **BFS(QGNode *s, int *level) {

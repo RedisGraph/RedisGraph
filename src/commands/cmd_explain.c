@@ -55,10 +55,10 @@ void _MGraph_Explain(void *args) {
 
 	// Handle replies for index creation/deletion
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
-	if(root_type == CYPHER_AST_CREATE_NODE_PROP_INDEX) {
+	if(root_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX) {
 		RedisModule_ReplyWithSimpleString(ctx, "Create Index");
 		goto cleanup;
-	} else if(root_type == CYPHER_AST_DROP_NODE_PROP_INDEX) {
+	} else if(root_type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {
 		RedisModule_ReplyWithSimpleString(ctx, "Drop Index");
 		goto cleanup;
 	}
