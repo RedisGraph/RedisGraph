@@ -1270,7 +1270,6 @@ SIValue AR_SIZE(SIValue *argv, int argc) {
 	switch(value.type) {
 	case T_ARRAY:
 		return SI_LongVal(SIArray_Length(value));
-	case T_CONSTSTRING:
 	case T_STRING:
 		return SI_LongVal(strlen(value.stringval));
 	default:

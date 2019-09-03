@@ -1037,6 +1037,39 @@ TEST_F(ArithmeticTest, NOT)
     }
 }
 
+TEST_F(ArithmeticTest, GT)
+{
+    SIValue truth_table[27] = {
+        SI_ConstStringVal("1"), SI_ConstStringVal("1"), SI_BoolVal(false),
+        SI_ConstStringVal("1"), SI_ConstStringVal("2"), SI_BoolVal(false),
+        SI_ConstStringVal("1"), SI_NullVal(), SI_NullVal(),
+        SI_ConstStringVal("2"), SI_ConstStringVal("1"), SI_BoolVal(true),
+        SI_ConstStringVal("2"), SI_ConstStringVal("2"), SI_BoolVal(false),
+        SI_ConstStringVal("2"), SI_NullVal(), SI_NullVal(),
+        SI_NullVal(), SI_ConstStringVal("1"), SI_NullVal(),
+        SI_NullVal(), SI_ConstStringVal("2"), SI_NullVal(),
+        SI_NullVal(), SI_NullVal(), SI_NullVal()};
+
+    for (int i = 0; i < 27; i += 3)
+    {
+        SIValue a = truth_table[i];
+        SIValue b = truth_table[i + 1];
+        SIValue expected = truth_table[i + 2];
+
+        char *query;
+        asprintf(&query, "RETURN %s > %s", a.stringval, b.stringval);
+        AR_ExpNode *arExp = _exp_from_query(query);
+        SIValue result = AR_EXP_Evaluate(arExp, NULL);
+        AR_EXP_Free(arExp);
+
+        ASSERT_EQ(SI_TYPE(result), SI_TYPE(expected));
+        if (SI_TYPE(result) != T_NULL)
+        {
+            ASSERT_EQ(result.longval, expected.longval);
+        }
+    }
+}
+
 TEST_F(ArithmeticTest, GE)
 {
     SIValue truth_table[27] = {
@@ -1058,40 +1091,6 @@ TEST_F(ArithmeticTest, GE)
 
         char *query;
         asprintf(&query, "RETURN %s >= %s", a.stringval, b.stringval);
-        AR_ExpNode *arExp = _exp_from_query(query);
-        SIValue result = AR_EXP_Evaluate(arExp, NULL);
-        AR_EXP_Free(arExp);
-
-        ASSERT_EQ(SI_TYPE(result), SI_TYPE(expected));
-        if (SI_TYPE(result) != T_NULL)
-        {
-            if (SI_TYPE(result) != T_NULL)
-            {
-                ASSERT_EQ(result.longval, expected.longval);
-            }
-        }
-    }
-}
-
-TEST_F(ArithmeticTest, GT)
-{
-    SIValue truth_table[27] = {
-        SI_ConstStringVal("1"), SI_ConstStringVal("1"), SI_BoolVal(false),
-        SI_ConstStringVal("1"), SI_ConstStringVal("2"), SI_BoolVal(false),
-        SI_ConstStringVal("1"), SI_NullVal(), SI_NullVal(),
-        SI_ConstStringVal("2"), SI_NullVal(), SI_NullVal(),
-        SI_NullVal(), SI_ConstStringVal("1"), SI_NullVal(),
-        SI_NullVal(), SI_ConstStringVal("2"), SI_NullVal(),
-        SI_NullVal(), SI_NullVal(), SI_NullVal()};
-
-    for (int i = 0; i < 27; i += 3)
-    {
-        SIValue a = truth_table[i];
-        SIValue b = truth_table[i + 1];
-        SIValue expected = truth_table[i + 2];
-
-        char *query;
-        asprintf(&query, "RETURN %s > %s", a.stringval, b.stringval);
         AR_ExpNode *arExp = _exp_from_query(query);
         SIValue result = AR_EXP_Evaluate(arExp, NULL);
         AR_EXP_Free(arExp);

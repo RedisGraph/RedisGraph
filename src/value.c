@@ -301,7 +301,7 @@ SIValue SIValue_ConcatString(const SIValue a, const SIValue b) {
 	char *buffer = rm_calloc(bufferLen, sizeof(char));
 	char *string_arg = NULL;
 	// in case a is not a string - concat scalar + string
-	if(a.type != T_STRING && a.type != T_CONSTSTRING) {
+	if(a.type != T_STRING) {
 		/* a is numeric, convert to string. */
 		SIValue_ToString(a, &buffer, &bufferLen, &argument_len);
 		result = SI_DuplicateStringVal(buffer);
@@ -309,7 +309,7 @@ SIValue SIValue_ConcatString(const SIValue a, const SIValue b) {
 	// a is a string - concat string + value
 	else result = SI_DuplicateStringVal(a.stringval);
 
-	if(b.type != T_STRING && b.type != T_CONSTSTRING) {
+	if(b.type != T_STRING) {
 		/* b is not a string, get a string representation. */
 		SIValue_ToString(b, &buffer, &bufferLen, &argument_len);
 		string_arg = buffer;
@@ -353,8 +353,7 @@ SIValue SIValue_ConcatList(const SIValue a, const SIValue b) {
 SIValue SIValue_Add(const SIValue a, const SIValue b) {
 	if(a.type == T_NULL || b.type == T_NULL) return SI_NullVal();
 	if(a.type == T_ARRAY || b.type == T_ARRAY) return SIValue_ConcatList(a, b);
-	if((a.type == T_STRING || a.type == T_CONSTSTRING) || (b.type == T_STRING ||
-														   b.type == T_CONSTSTRING)) return SIValue_ConcatString(a, b);
+	if(a.type == T_STRING || b.type == T_STRING) return SIValue_ConcatString(a, b);
 	/* Only construct an integer return if both operands are integers. */
 	if(a.type & b.type & T_INT64) {
 		return SI_LongVal(a.longval + b.longval);
