@@ -11,6 +11,12 @@
 #include "../../grouping/group.h"
 #include "../../arithmetic/aggregate.h"
 
+/* Forward declarations */
+static OpResult Init(OpBase *opBase);
+static Record Consume(OpBase *opBase);
+static OpResult Reset(OpBase *opBase);
+static void Free(OpBase *opBase);
+
 static AR_ExpNode **_getOrderExpressions(OpBase *op) {
 	if(op == NULL) return NULL;
 	// No need to look further if we haven't encountered a sort operation
@@ -235,33 +241,26 @@ static Record _handoff(OpAggregate *op) {
 	return r;
 }
 
-OpBase *NewAggregateOp(AR_ExpNode **exps) {
-	OpAggregate *aggregate = malloc(sizeof(OpAggregate));
+OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
+	OpAggregate *op = malloc(sizeof(OpAggregate));
 	AST *ast = AST_GetFromTLS();
-	aggregate->ast = ast;
-	aggregate->exps = exps;
-	aggregate->expression_classification = NULL;
-	aggregate->non_aggregated_expressions = NULL;
-	aggregate->order_exps = NULL;
-	aggregate->group = NULL;
-	aggregate->groupIter = NULL;
-	aggregate->group_keys = NULL;
-	aggregate->groups = CacheGroupNew();
+	op->ast = ast;
+	op->exps = exps;
+	op->expression_classification = NULL;
+	op->non_aggregated_expressions = NULL;
+	op->order_exps = NULL;
+	op->group = NULL;
+	op->groupIter = NULL;
+	op->group_keys = NULL;
+	op->groups = CacheGroupNew();
 
-	OpBase_Init(&aggregate->op);
-	aggregate->op.name = "Aggregate";
-	aggregate->op.type = OPType_AGGREGATE;
-	aggregate->op.consume = AggregateConsume;
-	aggregate->op.init = AggregateInit;
-	aggregate->op.reset = AggregateReset;
-	aggregate->op.free = AggregateFree;
+	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", Init, Consume, Reset, NULL, Free, plan);
 
 	assert("Introduce modified entities");
-
-	return (OpBase *)aggregate;
+	return (OpBase *)op;
 }
 
-OpResult AggregateInit(OpBase *opBase) {
+static OpResult Init(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
 	AR_ExpNode **order_exps = _getOrderExpressions(opBase->parent);
 	if(order_exps) {
@@ -276,7 +275,7 @@ OpResult AggregateInit(OpBase *opBase) {
 	return OP_OK;
 }
 
-Record AggregateConsume(OpBase *opBase) {
+static Record Consume(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
 	OpBase *child = op->op.children[0];
 
@@ -289,7 +288,7 @@ Record AggregateConsume(OpBase *opBase) {
 	return _handoff(op);
 }
 
-OpResult AggregateReset(OpBase *opBase) {
+static OpResult Reset(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
 
 	FreeGroupCache(op->groups);
@@ -303,7 +302,7 @@ OpResult AggregateReset(OpBase *opBase) {
 	return OP_OK;
 }
 
-void AggregateFree(OpBase *opBase) {
+static void Free(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
 	if(!op) return;
 

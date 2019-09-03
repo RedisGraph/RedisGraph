@@ -8,6 +8,7 @@
 #define __OP_CREATE_H
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
 #include "../../resultset/resultset_statistics.h"
@@ -31,7 +32,7 @@ typedef struct {
 	ResultSetStatistics *stats;
 } OpCreate;
 
-OpBase *NewCreateOp(ResultSetStatistics *stats, const AST *ast);
+OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, const AST *ast);
 OpResult OpCreateInit(OpBase *opBase);
 Record OpCreateConsume(OpBase *opBase);
 OpResult OpCreateReset(OpBase *ctx);

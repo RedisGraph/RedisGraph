@@ -7,39 +7,40 @@
 #include "op_all_node_scan.h"
 #include "../../ast/ast.h"
 
-int AllNodeScanToString(const OpBase *ctx, char *buff, uint buff_len) {
+/* Forward declarations */
+static OpResult Init(OpBase *opBase);
+static Record Consume(OpBase *opBase);
+static OpResult Reset(OpBase *op);
+static int ToString(const OpBase *ctx, char *buff, uint buff_len);
+static void Free(OpBase *ctx);
+
+static int ToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const AllNodeScan *op = (const AllNodeScan *)ctx;
 	int offset = snprintf(buff, buff_len, "%s | ", op->op.name);
 	offset += QGNode_ToString(op->n, buff + offset, buff_len - offset);
 	return offset;
 }
 
-OpBase *NewAllNodeScanOp(const Graph *g, QGNode *n) {
-	AllNodeScan *allNodeScan = malloc(sizeof(AllNodeScan));
-	allNodeScan->n = n;
-	allNodeScan->iter = Graph_ScanNodes(g);
-	allNodeScan->nodeRecIdx = -1;
+OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const Graph *g, QGNode *n) {
+	AllNodeScan *op = malloc(sizeof(AllNodeScan));
+	op->n = n;
+	op->iter = Graph_ScanNodes(g);
+	op->nodeRecIdx = -1;
 
 	// Set our Op operations
-	OpBase_Init(&allNodeScan->op);
-	allNodeScan->op.name = "All Node Scan";
-	allNodeScan->op.type = OPType_ALL_NODE_SCAN;
-	allNodeScan->op.consume = AllNodeScanConsume;
-	allNodeScan->op.init = AllNodeScanInit;
-	allNodeScan->op.reset = AllNodeScanReset;
-	allNodeScan->op.toString = AllNodeScanToString;
-	allNodeScan->op.free = AllNodeScanFree;
+	OpBase_Init((OpBase *)op, OPType_ALL_NODE_SCAN, "All Node Scan", Init, Consume, Reset, ToString,
+				Free, plan);
 
-	OpBase_Modifies((OpBase *)allNodeScan, n->alias);
+	OpBase_Modifies((OpBase *)op, n->alias);
 
-	return (OpBase *)allNodeScan;
+	return (OpBase *)op;
 }
 
-OpResult AllNodeScanInit(OpBase *opBase) {
+static OpResult Init(OpBase *opBase) {
 	return OP_OK;
 }
 
-Record AllNodeScanConsume(OpBase *opBase) {
+static Record Consume(OpBase *opBase) {
 	AllNodeScan *op = (AllNodeScan *)opBase;
 
 	Entity *en = (Entity *)DataBlockIterator_Next(op->iter);
@@ -55,13 +56,13 @@ Record AllNodeScanConsume(OpBase *opBase) {
 	return r;
 }
 
-OpResult AllNodeScanReset(OpBase *op) {
+static OpResult Reset(OpBase *op) {
 	AllNodeScan *allNodeScan = (AllNodeScan *)op;
 	DataBlockIterator_Reset(allNodeScan->iter);
 	return OP_OK;
 }
 
-void AllNodeScanFree(OpBase *ctx) {
+static void Free(OpBase *ctx) {
 	AllNodeScan *op = (AllNodeScan *)ctx;
 	if(op->iter) {
 		DataBlockIterator_Free(op->iter);

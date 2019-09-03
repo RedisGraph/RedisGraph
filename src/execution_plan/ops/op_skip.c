@@ -6,23 +6,22 @@
 
 #include "op_skip.h"
 
-OpBase *NewSkipOp(unsigned int rec_to_skip) {
-	OpSkip *skip = malloc(sizeof(OpSkip));
-	skip->rec_to_skip = rec_to_skip;
-	skip->skipped = 0;
+/* Forward declarations */
+static void Free(OpBase *ctx);
+static OpResult Reset(OpBase *ctx);
+static Record Consume(OpBase *opBase);
+
+OpBase *NewSkipOp(const ExecutionPlan *plan, unsigned int rec_to_skip) {
+	OpSkip *op = malloc(sizeof(OpSkip));
+	op->rec_to_skip = rec_to_skip;
+	op->skipped = 0;
 
 	// Set our Op operations
-	OpBase_Init(&skip->op);
-	skip->op.name = "Skip";
-	skip->op.type = OPType_SKIP;
-	skip->op.consume = SkipConsume;
-	skip->op.reset = SkipReset;
-	skip->op.free = SkipFree;
-
-	return (OpBase *)skip;
+	OpBase_Init((OpBase *)op, OPType_SKIP, "Skip", NULL, Consume, Reset, NULL, Free, plan);
+	return (OpBase *)op;
 }
 
-Record SkipConsume(OpBase *op) {
+static Record Consume(OpBase *op) {
 	OpSkip *skip = (OpSkip *)op;
 	OpBase *child = skip->op.children[0];
 
@@ -43,12 +42,11 @@ Record SkipConsume(OpBase *op) {
 	return OpBase_Consume(child);
 }
 
-OpResult SkipReset(OpBase *ctx) {
+static OpResult Reset(OpBase *ctx) {
 	OpSkip *skip = (OpSkip *)ctx;
 	skip->skipped = 0;
 	return OP_OK;
 }
 
-void SkipFree(OpBase *ctx) {
-
+static void Free(OpBase *ctx) {
 }

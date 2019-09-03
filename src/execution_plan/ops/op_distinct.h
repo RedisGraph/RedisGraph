@@ -7,6 +7,7 @@
 #pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../util/triemap/triemap.h"
 
 typedef struct {
@@ -14,7 +15,7 @@ typedef struct {
 	TrieMap *trie;
 } OpDistinct;
 
-OpBase *NewDistinctOp(void);
+OpBase *NewDistinctOp(const ExecutionPlan *plan);
 Record DistinctConsume(OpBase *opBase);
 OpResult DistinctReset(OpBase *ctx);
 void DistinctFree(OpBase *ctx);

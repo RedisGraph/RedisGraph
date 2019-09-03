@@ -8,6 +8,7 @@
 
 #include "op.h"
 #include "../../ast/ast.h"
+#include "../execution_plan.h"
 #include "../../procedures/procedure.h"
 
 /* Maps procedure outout to record index.
@@ -29,6 +30,7 @@ typedef struct {
 } OpProcCall;
 
 OpBase *NewProcCallOp(
+    const ExecutionPlan *plan,
 	const char *procedure,  // Procedure name.
 	const char **args,      // Arguments passed to procedure invocation.
 	const char **output     // Procedure output.

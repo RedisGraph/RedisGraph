@@ -10,6 +10,12 @@
 #include "../../ast/ast_build_op_contexts.h"
 #include <assert.h>
 
+/* Forward declarations */
+static OpResult Init(OpBase *opBase);
+static Record Consume(OpBase *opBase);
+static OpResult Reset(OpBase *ctx);
+static void Free(OpBase *ctx);
+
 // TODO: improve, consolidate, etc
 static void _AddProperties(OpCreate *op, GraphEntity *ge, PropertyMap *props) {
 	if(props == NULL) return;
@@ -221,9 +227,11 @@ static inline EdgeCreateCtx _NewEdgeCreateCtx(GraphContext *gc, QGEdge *e,
 	PropertyMap *properties = AST_ConvertPropertiesMap(ast_props);
 
 	// Introduce properties.
-	properties->attr_ids = malloc(sizeof(Attribute_ID) * properties->property_count);
-	for(int i = 0; i < properties->property_count; i++) {
-		properties->attr_ids[i] = GraphContext_GetAttributeID(gc, properties->keys[i]);
+	if(properties) {
+		properties->attr_ids = malloc(sizeof(Attribute_ID) * properties->property_count);
+		for(int i = 0; i < properties->property_count; i++) {
+			properties->attr_ids[i] = GraphContext_GetAttributeID(gc, properties->keys[i]);
+		}
 	}
 
 	EdgeCreateCtx new_edge_ctx = { rec_idx, src_rec_idx, dest_rec_idx, e, properties };
@@ -237,9 +245,11 @@ static inline NodeCreateCtx _NewNodeCreateCtx(const GraphContext *gc, QGNode *n,
 	PropertyMap *properties = AST_ConvertPropertiesMap(ast_props);
 
 	// Introduce properties.
-	properties->attr_ids = malloc(sizeof(Attribute_ID) * properties->property_count);
-	for(int i = 0; i < properties->property_count; i++) {
-		properties->attr_ids[i] = GraphContext_GetAttributeID(gc, properties->keys[i]);
+	if(properties) {
+		properties->attr_ids = malloc(sizeof(Attribute_ID) * properties->property_count);
+		for(int i = 0; i < properties->property_count; i++) {
+			properties->attr_ids[i] = GraphContext_GetAttributeID(gc, properties->keys[i]);
+		}
 	}
 
 	NodeCreateCtx new_node_ctx = { rec_idx, n, properties };
@@ -329,42 +339,35 @@ static void _PrepareCreateContext(OpCreate *op, const AST *ast) {
 	array_free(create_clauses);
 }
 
-OpBase *NewCreateOp(ResultSetStatistics *stats, const AST *ast) {
-	OpCreate *op_create = calloc(1, sizeof(OpCreate));
-	op_create->stats = stats;
-	op_create->records = NULL;
-	op_create->nodes_to_create = NULL;
-	op_create->edges_to_create = NULL;
-	op_create->gc = GraphContext_GetFromTLS();
-	op_create->created_nodes = array_new(Node *, 0);
-	op_create->created_edges = array_new(Edge *, 0);
+OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, const AST *ast) {
+	OpCreate *op = calloc(1, sizeof(OpCreate));
+	op->stats = stats;
+	op->records = NULL;
+	op->nodes_to_create = NULL;
+	op->edges_to_create = NULL;
+	op->gc = GraphContext_GetFromTLS();
+	op->created_nodes = array_new(Node *, 0);
+	op->created_edges = array_new(Edge *, 0);
+	// Set our Op operations
+	OpBase_Init((OpBase *)op, OPType_CREATE, "Create", Init, Consume, Reset, NULL, Free, plan);
 
-	// op_create->node_properties = array_new(PropertyMap *, 0);
-	// op_create->edge_properties = array_new(PropertyMap *, 0);
+	op->node_properties = array_new(PropertyMap *, 0);
+	op->edge_properties = array_new(PropertyMap *, 0);
 
 	// Set's operation modified entities.
-	_PrepareCreateContext(op_create, ast);
+	_PrepareCreateContext(op, ast);
 
-	// Set our Op operations
-	OpBase_Init(&op_create->op);
-	op_create->op.name = "Create";
-	op_create->op.type = OPType_CREATE;
-	op_create->op.consume = OpCreateConsume;
-	op_create->op.init = OpCreateInit;
-	op_create->op.reset = OpCreateReset;
-	op_create->op.free = OpCreateFree;
+	uint node_blueprint_count = array_len(op->nodes_to_create);
+	uint edge_blueprint_count = array_len(op->edges_to_create);
 
-	uint node_blueprint_count = array_len(op_create->nodes_to_create);
-	uint edge_blueprint_count = array_len(op_create->edges_to_create);
-
-	return (OpBase *)op_create;
+	return (OpBase *)op;
 }
 
-OpResult OpCreateInit(OpBase *opBase) {
+static OpResult Init(OpBase *opBase) {
 	return OP_OK;
 }
 
-Record OpCreateConsume(OpBase *opBase) {
+static Record Consume(OpBase *opBase) {
 	OpCreate *op = (OpCreate *)opBase;
 	Record r;
 
@@ -410,12 +413,12 @@ Record OpCreateConsume(OpBase *opBase) {
 	return _handoff(op);
 }
 
-OpResult OpCreateReset(OpBase *ctx) {
+static OpResult Reset(OpBase *ctx) {
 	OpCreate *op = (OpCreate *)ctx;
 	return OP_OK;
 }
 
-void OpCreateFree(OpBase *ctx) {
+static void Free(OpBase *ctx) {
 	OpCreate *op = (OpCreate *)ctx;
 
 	if(op->records) {

@@ -9,6 +9,7 @@
 
 #include "op.h"
 #include "../../util/heap.h"
+#include "../execution_plan.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
 typedef struct {
@@ -22,7 +23,7 @@ typedef struct {
 } OpSort;
 
 /* Creates a new Sort operation */
-OpBase *NewSortOp(AR_ExpNode **expressions, int direction, unsigned int limit);
+OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **expressions, int direction, unsigned int limit);
 
 Record SortConsume(OpBase *opBase);
 

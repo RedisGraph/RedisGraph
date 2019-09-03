@@ -9,6 +9,7 @@
 
 #include "op.h"
 #include "../../redismodule.h"
+#include "../execution_plan.h"
 #include "../../graph/query_graph.h"
 #include "../../grouping/group_cache.h"
 #include "../../arithmetic/arithmetic_expression.h"
@@ -37,7 +38,7 @@ typedef struct {
 	Record last_record;
 } OpAggregate;
 
-OpBase *NewAggregateOp(AR_ExpNode **expressions);
+OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **expressions);
 OpResult AggregateInit(OpBase *opBase);
 Record AggregateConsume(OpBase *opBase);
 OpResult AggregateReset(OpBase *opBase);

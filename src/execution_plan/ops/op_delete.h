@@ -7,6 +7,7 @@
 #pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../graph/entities/node.h"
 #include "../../resultset/resultset_statistics.h"
 #include "../../util/triemap/triemap.h"
@@ -26,7 +27,7 @@ typedef struct {
 	ResultSetStatistics *stats;
 } OpDelete;
 
-OpBase *NewDeleteOp(QueryGraph *qg, char **deleted_entities, ResultSetStatistics *stats);
+OpBase *NewDeleteOp(const ExecutionPlan *plan, QueryGraph *qg, char **deleted_entities, ResultSetStatistics *stats);
 Record OpDeleteConsume(OpBase *opBase);
 OpResult OpDeleteInit(OpBase *opBase);
 OpResult OpDeleteReset(OpBase *ctx);

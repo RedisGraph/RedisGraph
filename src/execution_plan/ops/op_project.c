@@ -9,6 +9,12 @@
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
 
+/* Forward declarations */
+static Record Consume(OpBase *opBase);
+static void Free(OpBase *ctx);
+static OpResult Reset(OpBase *ctx);
+static OpResult Init(OpBase *opBase);
+
 static AR_ExpNode **_getOrderExpressions(OpBase *op) {
 	if(op == NULL) return NULL;
 	// No need to look further if we haven't encountered a sort operation
@@ -22,31 +28,32 @@ static AR_ExpNode **_getOrderExpressions(OpBase *op) {
 	return _getOrderExpressions(op->parent);
 }
 
-OpBase *NewProjectOp(AR_ExpNode **exps) {
+OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	AST *ast = AST_GetFromTLS();
-	OpProject *project = malloc(sizeof(OpProject));
-	project->ast = ast;
-	project->exps = exps;
-	project->exp_count = array_len(exps);
-	project->order_exps = NULL;
-	project->order_exp_count = 0;
-	project->singleResponse = false;
+	OpProject *op = malloc(sizeof(OpProject));
+	op->ast = ast;
+	op->exps = exps;
+	op->exp_count = array_len(exps);
+	op->order_exps = NULL;
+	op->order_exp_count = 0;
+	op->singleResponse = false;
 
 	// Set our Op operations
-	OpBase_Init(&project->op);
-	project->op.name = "Project";
-	project->op.type = OPType_PROJECT;
-	project->op.consume = ProjectConsume;
-	project->op.init = ProjectInit;
-	project->op.reset = ProjectReset;
-	project->op.free = ProjectFree;
+	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", Init, Consume, Reset, NULL, Free, plan);
 
 	assert("Set modifiers");
+	for(int i = 0; i < op->exp_count; i++) {
+		char *str = NULL;
+		AR_EXP_ToString(exps[i], &str);
+		int rec_idx = OpBase_Modifies(op, str);
 
-	return (OpBase *)project;
+
+	}
+
+	return (OpBase *)op;
 }
 
-OpResult ProjectInit(OpBase *opBase) {
+static OpResult Init(OpBase *opBase) {
 	OpProject *op = (OpProject *)opBase;
 	AR_ExpNode **order_exps = _getOrderExpressions(opBase->parent);
 	if(order_exps) {
@@ -57,7 +64,7 @@ OpResult ProjectInit(OpBase *opBase) {
 	return OP_OK;
 }
 
-Record ProjectConsume(OpBase *opBase) {
+static Record Consume(OpBase *opBase) {
 	OpProject *op = (OpProject *)opBase;
 	Record r = NULL;
 
@@ -95,11 +102,11 @@ Record ProjectConsume(OpBase *opBase) {
 	return projection;
 }
 
-OpResult ProjectReset(OpBase *ctx) {
+static OpResult Reset(OpBase *ctx) {
 	return OP_OK;
 }
 
-void ProjectFree(OpBase *ctx) {
+static void Free(OpBase *ctx) {
 	OpProject *op = (OpProject *)ctx;
 	// TODO These expressions are typically freed as part of
 	// _ExecutionPlanSegment_Free, but this forms a leak in scenarios

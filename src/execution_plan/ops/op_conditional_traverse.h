@@ -8,6 +8,7 @@
 #define __OP_COND_TRAVERSE_H
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../arithmetic/algebraic_expression.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "../../util/vector.h"
@@ -34,8 +35,7 @@ typedef struct {
 } CondTraverse;
 
 /* Creates a new Traverse operation */
-OpBase *NewCondTraverseOp(Graph *g, AlgebraicExpression *ae,
-						  uint records_cap);
+OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae, uint records_cap);
 
 /* One-time setup of Traverse operation. */
 OpResult CondTraverseInit(OpBase *opBase);

@@ -9,6 +9,13 @@
 #include "../../GraphBLASExt/GxB_Delete.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
+/* Forward declarations */
+static void Free(OpBase *ctx);
+static OpResult Reset(OpBase *ctx);
+static OpResult Init(OpBase *opBase);
+static Record Consume(OpBase *opBase);
+static int ToString(const OpBase *ctx, char *buff, uint buff_len);
+
 static void _setupTraversedRelations(CondTraverse *op, QGEdge *e) {
 	uint reltype_count = array_len(e->reltypeIDs);
 	if(reltype_count > 0) {
@@ -54,7 +61,7 @@ void _traverse(CondTraverse *op) {
 	GrB_Matrix_clear(op->F);
 }
 
-int CondTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
+static int ToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const CondTraverse *op = (const CondTraverse *)ctx;
 
 	int offset = 0;
@@ -77,51 +84,45 @@ int CondTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
 	return offset;
 }
 
-OpBase *NewCondTraverseOp(Graph *g, AlgebraicExpression *ae, uint records_cap) {
-	CondTraverse *traverse = calloc(1, sizeof(CondTraverse));
-	traverse->graph = g;
-	traverse->ae = ae;
-	traverse->edgeRelationTypes = NULL;
-	traverse->F = NULL;
-	traverse->iter = NULL;
-	traverse->edges = NULL;
-	traverse->r = NULL;
+OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
+						  uint records_cap) {
+	CondTraverse *op = calloc(1, sizeof(CondTraverse));
+	op->ae = ae;
+	op->r = NULL;
+	op->F = NULL;
+	op->graph = g;
+	op->iter = NULL;
+	op->edges = NULL;
+	op->edgeRelationTypes = NULL;
 
 	// Make sure that all entities are represented in Record
-	traverse->srcNodeIdx = -1;
-	traverse->destNodeIdx = -1;
-	traverse->edgeRecIdx = IDENTIFIER_NOT_FOUND;
+	op->srcNodeIdx = -1;
+	op->destNodeIdx = -1;
+	op->edgeRecIdx = IDENTIFIER_NOT_FOUND;
 
-	traverse->recordsLen = 0;
-	traverse->transposed_edge = false;
-	traverse->recordsCap = records_cap;
-	traverse->records = rm_calloc(traverse->recordsCap, sizeof(Record));
+	op->recordsLen = 0;
+	op->transposed_edge = false;
+	op->recordsCap = records_cap;
+	op->records = rm_calloc(op->recordsCap, sizeof(Record));
 	size_t required_dim = Graph_RequiredMatrixDim(g);
-	GrB_Matrix_new(&traverse->M, GrB_BOOL, traverse->recordsCap, required_dim);
-	GrB_Matrix_new(&traverse->F, GrB_BOOL, traverse->recordsCap, required_dim);
+	GrB_Matrix_new(&op->M, GrB_BOOL, op->recordsCap, required_dim);
+	GrB_Matrix_new(&op->F, GrB_BOOL, op->recordsCap, required_dim);
 
 	// Set our Op operations
-	OpBase_Init(&traverse->op);
-	traverse->op.name = "Conditional Traverse";
-	traverse->op.type = OPType_CONDITIONAL_TRAVERSE;
-	traverse->op.consume = CondTraverseConsume;
-	traverse->op.init = CondTraverseInit;
-	traverse->op.reset = CondTraverseReset;
-	traverse->op.toString = CondTraverseToString;
-	traverse->op.free = CondTraverseFree;
-
-	OpBase_Modifies((OpBase *)traverse, ae->dest_node->alias);
+	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", Init, Consume, Reset,
+				ToString, Free, plan);
+	OpBase_Modifies((OpBase *)op, ae->dest_node->alias);
 
 	if(ae->edge) {
-		OpBase_Modifies((OpBase *)traverse, ae->edge->alias);
-		_setupTraversedRelations(traverse, ae->edge);
-		traverse->edges = array_new(Edge, 32);
+		OpBase_Modifies((OpBase *)op, ae->edge->alias);
+		_setupTraversedRelations(op, ae->edge);
+		op->edges = array_new(Edge, 32);
 	}
 
-	return (OpBase *)traverse;
+	return (OpBase *)op;
 }
 
-OpResult CondTraverseInit(OpBase *opBase) {
+static OpResult Init(OpBase *opBase) {
 	CondTraverse *op = (CondTraverse *)opBase;
 	size_t op_idx = 0;
 	AlgebraicExpression *exp = op->ae;
@@ -135,7 +136,7 @@ OpResult CondTraverseInit(OpBase *opBase) {
 /* CondTraverseConsume next operation
  * each call will update the graph
  * returns OP_DEPLETED when no additional updates are available */
-Record CondTraverseConsume(OpBase *opBase) {
+static Record Consume(OpBase *opBase) {
 	CondTraverse *op = (CondTraverse *)opBase;
 	OpBase *child = op->op.children[0];
 
@@ -215,7 +216,7 @@ Record CondTraverseConsume(OpBase *opBase) {
 	return Record_Clone(op->r);
 }
 
-OpResult CondTraverseReset(OpBase *ctx) {
+static OpResult Reset(OpBase *ctx) {
 	CondTraverse *op = (CondTraverse *)ctx;
 	if(op->r) Record_Free(op->r);
 	if(op->edges) array_clear(op->edges);
@@ -228,7 +229,7 @@ OpResult CondTraverseReset(OpBase *ctx) {
 }
 
 /* Frees CondTraverse */
-void CondTraverseFree(OpBase *ctx) {
+static void Free(OpBase *ctx) {
 	CondTraverse *op = (CondTraverse *)ctx;
 	if(op->iter) {
 		GxB_MatrixTupleIter_free(op->iter);

@@ -8,6 +8,7 @@
 #define __OP_COND_VAR_LEN_TRAVERSE_H
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../graph/graph.h"
 #include "../../algorithms/algorithms.h"
 #include "../../arithmetic/algebraic_expression.h"
@@ -29,7 +30,7 @@ typedef struct {
 	Record r;
 } CondVarLenTraverse;
 
-OpBase *NewCondVarLenTraverseOp(Graph *g, AlgebraicExpression *ae);
+OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae);
 Record CondVarLenTraverseConsume(OpBase *opBase);
 OpResult CondVarLenTraverseReset(OpBase *ctx);
 

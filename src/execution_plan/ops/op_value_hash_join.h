@@ -7,6 +7,7 @@
 #pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
 typedef struct {
@@ -21,7 +22,7 @@ typedef struct {
 } OpValueHashJoin;
 
 /* Creates a new ValueHashJoin operation */
-OpBase *NewValueHashJoin(AR_ExpNode *lhs_exp, AR_ExpNode *rhs_exp);
+OpBase *NewValueHashJoin(const ExecutionPlan *plan, AR_ExpNode *lhs_exp, AR_ExpNode *rhs_exp);
 
 /* Try to produce a record combining data from both streams */
 Record ValueHashJoinConsume(OpBase *opBase);

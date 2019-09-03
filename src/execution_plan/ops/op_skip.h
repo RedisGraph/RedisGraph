@@ -8,6 +8,7 @@
 #define __OP_SKIP_H
 
 #include "op.h"
+#include "../execution_plan.h"
 
 typedef struct {
 	OpBase op;
@@ -15,7 +16,7 @@ typedef struct {
 	unsigned int skipped;
 } OpSkip;
 
-OpBase *NewSkipOp(unsigned int rec_to_skip);
+OpBase *NewSkipOp(const ExecutionPlan *plan, unsigned int rec_to_skip);
 
 Record SkipConsume(OpBase *op);
 

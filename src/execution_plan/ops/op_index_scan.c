@@ -6,35 +6,37 @@
 
 #include "op_index_scan.h"
 
-int IndexScanToString(const OpBase *ctx, char *buff, uint buff_len) {
+/* Forward declarations */
+static void Free(OpBase *ctx);
+static OpResult Reset(OpBase *ctx);
+static Record Consume(OpBase *opBase);
+static int ToString(const OpBase *ctx, char *buff, uint buff_len);
+
+static int ToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const IndexScan *op = (const IndexScan *)ctx;
 	int offset = snprintf(buff, buff_len, "%s | ", op->op.name);
 	offset += QGNode_ToString(op->n, buff + offset, buff_len - offset);
 	return offset;
 }
 
-OpBase *NewIndexScanOp(Graph *g, QGNode *n, RSIndex *idx, RSResultsIterator *iter) {
-	IndexScan *indexScan = malloc(sizeof(IndexScan));
-	indexScan->g = g;
-	indexScan->n = n;
-	indexScan->idx = idx;
-	indexScan->iter = iter;
+OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, QGNode *n, RSIndex *idx,
+					   RSResultsIterator *iter) {
+	IndexScan *op = malloc(sizeof(IndexScan));
+	op->g = g;
+	op->n = n;
+	op->idx = idx;
+	op->iter = iter;
 
 	// Set our Op operations
-	OpBase_Init(&indexScan->op);
-	indexScan->op.name = "Index Scan";
-	indexScan->op.type = OPType_INDEX_SCAN;
-	indexScan->op.reset = IndexScanReset;
-	indexScan->op.consume = IndexScanConsume;
-	indexScan->op.toString = IndexScanToString;
-	indexScan->op.free = IndexScanFree;
+	OpBase_Init((OpBase *)op, OPType_INDEX_SCAN, "Index Scan", NULL, Consume, Reset, ToString, Free,
+				plan);
 
-	indexScan->nodeRecIdx = OpBase_Modifies((OpBase *)indexScan, n->alias);
+	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 
-	return (OpBase *)indexScan;
+	return (OpBase *)op;
 }
 
-Record IndexScanConsume(OpBase *opBase) {
+static Record Consume(OpBase *opBase) {
 	IndexScan *op = (IndexScan *)opBase;
 	const EntityID *nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL);
 	if(!nodeId) return NULL;
@@ -48,13 +50,13 @@ Record IndexScanConsume(OpBase *opBase) {
 	return r;
 }
 
-OpResult IndexScanReset(OpBase *ctx) {
+static OpResult Reset(OpBase *ctx) {
 	IndexScan *op = (IndexScan *)ctx;
 	RediSearch_ResultsIteratorReset(op->iter);
 	return OP_OK;
 }
 
-void IndexScanFree(OpBase *ctx) {
+static void Free(OpBase *ctx) {
 	IndexScan *op = (IndexScan *)ctx;
 	/* As long as this Index iterator is alive the index is
 	 * read locked, if this index scan operation is part of

@@ -10,8 +10,15 @@
 #include "../../util/rmalloc.h"
 #include "../../GraphBLASExt/GxB_Delete.h"
 
+/* Forward declarations */
+static void Free(OpBase *ctx);
+static OpResult Reset(OpBase *ctx);
+static OpResult Init(OpBase *opBase);
+static Record Consume(OpBase *opBase);
+static int ToString(const OpBase *ctx, char *buff, uint buff_len);
+
 // String representation of operation.
-static int ExpandIntoToString(const OpBase *ctx, char *buff, uint buff_len) {
+static int ToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const OpExpandInto *op = (const OpExpandInto *)ctx;
 
 	int offset = 0;
@@ -83,46 +90,39 @@ static void _traverse(OpExpandInto *op) {
 	GrB_Matrix_clear(op->F);
 }
 
-OpBase *NewExpandIntoOp(AlgebraicExpression *ae) {
-	OpExpandInto *expandInto = calloc(1, sizeof(OpExpandInto));
+OpBase *NewExpandIntoOp(const ExecutionPlan *plan, AlgebraicExpression *ae) {
+	OpExpandInto *op = calloc(1, sizeof(OpExpandInto));
 	GraphContext *gc = GraphContext_GetFromTLS();
-	expandInto->ae = ae;
-	expandInto->F = NULL;
-	expandInto->r = NULL;
+	op->ae = ae;
+	op->F = NULL;
+	op->r = NULL;
 	AST *ast = AST_GetFromTLS();
-	expandInto->ast = ast;
-	expandInto->edges = NULL;
-	expandInto->graph = gc->g;
-	expandInto->recordCount = 0;
-	expandInto->edgeRelationTypes = NULL;
-	expandInto->recordsCap = _determinRecordCap(ast);
+	op->ast = ast;
+	op->edges = NULL;
+	op->graph = gc->g;
+	op->recordCount = 0;
+	op->edgeRelationTypes = NULL;
+	op->recordsCap = _determinRecordCap(ast);
 	// Make sure that all entities are represented in Record
-	expandInto->srcNodeIdx = -1;
-	expandInto->destNodeIdx = -1;
-	expandInto->edgeIdx = IDENTIFIER_NOT_FOUND;
-	expandInto->records = rm_calloc(expandInto->recordsCap, sizeof(Record));
+	op->srcNodeIdx = -1;
+	op->destNodeIdx = -1;
+	op->edgeIdx = IDENTIFIER_NOT_FOUND;
+	op->records = rm_calloc(op->recordsCap, sizeof(Record));
 
 	// Set our Op operations
-	OpBase_Init(&expandInto->op);
-	expandInto->op.name = "Expand Into";
-	expandInto->op.type = OPType_EXPAND_INTO;
-	expandInto->op.init = ExpandIntoInit;
-	expandInto->op.free = ExpandIntoFree;
-	expandInto->op.reset = ExpandIntoReset;
-	expandInto->op.consume = ExpandIntoConsume;
-	expandInto->op.toString = ExpandIntoToString;
-	expandInto->op.modifies = NULL;
+	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", Init, Consume, Reset, ToString, Free,
+				plan);
 
 	if(ae->edge) {
-		OpBase_Modifies((OpBase *)expandInto, ae->edge->alias);
-		_setupTraversedRelations(expandInto, ae->edge);
-		expandInto->edges = array_new(Edge, 32);
+		OpBase_Modifies((OpBase *)op, ae->edge->alias);
+		_setupTraversedRelations(op, ae->edge);
+		op->edges = array_new(Edge, 32);
 	}
 
-	return (OpBase *)expandInto;
+	return (OpBase *)op;
 }
 
-OpResult ExpandIntoInit(OpBase *opBase) {
+static OpResult Init(OpBase *opBase) {
 	OpExpandInto *op = (OpExpandInto *)opBase;
 
 	size_t required_dim = Graph_RequiredMatrixDim(op->graph);
@@ -187,7 +187,7 @@ static Record _handoff(OpExpandInto *op) {
 
 /* ExpandIntoConsume next operation
  * returns OP_DEPLETED when no additional updates are available */
-Record ExpandIntoConsume(OpBase *opBase) {
+static Record Consume(OpBase *opBase) {
 	Node *n;
 	Record r;
 	OpExpandInto *op = (OpExpandInto *)opBase;
@@ -229,7 +229,7 @@ Record ExpandIntoConsume(OpBase *opBase) {
 	return r;
 }
 
-OpResult ExpandIntoReset(OpBase *ctx) {
+static OpResult Reset(OpBase *ctx) {
 	OpExpandInto *op = (OpExpandInto *)ctx;
 	for(int i = 0; i < op->recordCount; i++) {
 		if(op->records[i]) Record_Free(op->records[i]);
@@ -243,7 +243,7 @@ OpResult ExpandIntoReset(OpBase *ctx) {
 }
 
 /* Frees ExpandInto */
-void ExpandIntoFree(OpBase *ctx) {
+static void Free(OpBase *ctx) {
 	OpExpandInto *op = (OpExpandInto *)ctx;
 	if(op->F) {
 		GrB_Matrix_free(&op->F);

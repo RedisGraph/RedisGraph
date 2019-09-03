@@ -8,6 +8,7 @@
 #define __OP_PROJECT_H
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
 typedef struct {
@@ -20,7 +21,7 @@ typedef struct {
 	unsigned short order_exp_count; // Number of order by expressions.
 } OpProject;
 
-OpBase *NewProjectOp(AR_ExpNode **exps);
+OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps);
 
 OpResult ProjectInit(OpBase *opBase);
 

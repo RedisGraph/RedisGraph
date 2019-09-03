@@ -8,6 +8,7 @@
 #define __OP_INDEX_SCAN_H
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../graph/graph.h"
 #include "../../index/index.h"
 #include "../../../deps/RediSearch/src/redisearch_api.h"
@@ -22,7 +23,7 @@ typedef struct {
 } IndexScan;
 
 /* Creates a new IndexScan operation */
-OpBase *NewIndexScanOp(Graph *g, QGNode *n, RSIndex *idx, RSResultsIterator *iter);
+OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, QGNode *n, RSIndex *idx, RSResultsIterator *iter);
 
 /* IndexScan next operation
  * called each time a new node is required */

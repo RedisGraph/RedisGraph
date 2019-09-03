@@ -7,6 +7,7 @@
 #pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../graph/graph.h"
 
 #define ID_RANGE_UNBOUND -1
@@ -26,6 +27,7 @@ typedef struct {
 
 OpBase *NewOpNodeByIdSeekOp
 (
+    const ExecutionPlan *plan,
     QGNode *node,
 	NodeID minId,
 	NodeID maxId,

@@ -8,6 +8,7 @@
 #define __OP_RESULTS_H
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../redismodule.h"
 #include "../../graph/query_graph.h"
 #include "../../graph/graphcontext.h"
@@ -22,7 +23,7 @@ typedef struct {
 
 
 /* Creates a new NodeByLabelScan operation */
-OpBase *NewResultsOp(ResultSet *result_set, QueryGraph *graph);
+OpBase *NewResultsOp(const ExecutionPlan *plan, ResultSet *result_set, QueryGraph *graph);
 
 /* Results next operation
  * called each time a new result record is required */

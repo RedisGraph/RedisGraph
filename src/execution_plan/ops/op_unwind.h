@@ -8,6 +8,7 @@
 #define __OP_UNWIND_H
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
 /* OP Unwind */
@@ -20,7 +21,7 @@ typedef struct {
 } OpUnwind;
 
 /* Creates a new Unwind operation */
-OpBase *NewUnwindOp(const char *alias, AR_ExpNode **exprs);
+OpBase *NewUnwindOp(const ExecutionPlan *plan, const char *alias, AR_ExpNode **exprs);
 
 OpResult UnwindInit(OpBase *opBase);
 

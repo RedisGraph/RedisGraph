@@ -8,24 +8,24 @@
 #include "../../util/arr.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-OpBase *NewResultsOp(ResultSet *result_set, QueryGraph *graph) {
-	Results *results = malloc(sizeof(Results));
-	results->result_set = result_set;
+/* Forward declarations */
+static void Free(OpBase *opBase);
+static OpResult Reset(OpBase *op);
+static Record Consume(OpBase *opBase);
+
+OpBase *NewResultsOp(const ExecutionPlan *plan, ResultSet *result_set, QueryGraph *graph) {
+	Results *op = malloc(sizeof(Results));
+	op->result_set = result_set;
 
 	// Set our Op operations
-	OpBase_Init(&results->op);
-	results->op.name = "Results";
-	results->op.type = OPType_RESULTS;
-	results->op.consume = ResultsConsume;
-	results->op.reset = ResultsReset;
-	results->op.free = ResultsFree;
-
-	return (OpBase *)results;
+	OpBase_Init((OpBase *)op, OPType_VALUE_HASH_JOIN, "Results", NULL, Consume, Reset, NULL, Free,
+				plan);
+	return (OpBase *)op;
 }
 
 /* Results consume operation
  * called each time a new result record is required */
-Record ResultsConsume(OpBase *opBase) {
+static Record Consume(OpBase *opBase) {
 	Record r = NULL;
 	Results *op = (Results *)opBase;
 
@@ -41,10 +41,10 @@ Record ResultsConsume(OpBase *opBase) {
 }
 
 /* Restart */
-OpResult ResultsReset(OpBase *op) {
+static OpResult Reset(OpBase *op) {
 	return OP_OK;
 }
 
 /* Frees Results */
-void ResultsFree(OpBase *opBase) {
+static void Free(OpBase *opBase) {
 }

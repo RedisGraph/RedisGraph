@@ -10,20 +10,27 @@
 
 #include <assert.h>
 
-void OpBase_Init(OpBase *op) {
-	op->modifies = NULL;
+/* Forward declarations */
+rax *ExecutionPlan_GetMappings(const struct ExecutionPlan *plan);
+
+void OpBase_Init(OpBase *op, OPType type, char *name, fpInit init, fpConsume consume, fpReset reset,
+				 fpToString toString, fpFree free, const struct ExecutionPlan *plan) {
+
+	op->type = type;
+	op->name = name;
+	op->plan = plan;
+	op->stats = NULL;
+	op->parent = NULL;
 	op->childCount = 0;
 	op->children = NULL;
-	op->parent = NULL;
-	op->stats = NULL;
-	op->record_map = NULL;
+	op->modifies = NULL;
 
 	// Function pointers.
-	op->init = NULL;
-	op->free = NULL;
-	op->reset = NULL;
-	op->consume = NULL;
-	op->toString = NULL;
+	op->init = init;
+	op->free = free;
+	op->reset = reset;
+	op->consume = consume;
+	op->toString = toString;
 }
 
 inline Record OpBase_Consume(OpBase *op) {
@@ -31,22 +38,25 @@ inline Record OpBase_Consume(OpBase *op) {
 }
 
 int OpBase_Modifies(OpBase *op, const char *alias) {
-	if(!op->modifies) op->modifies = array_new(char *, 1);
+	if(!op->modifies) op->modifies = array_new(const char *, 1);
 	op->modifies = array_append(op->modifies, alias);
 
 	/* Make sure alias has an entry associated with it
 	 * within the record mapping. */
-	void *id = raxFind(op->record_map, (unsigned char *)alias, strlen(alias));
+	rax *mapping = ExecutionPlan_GetMappings(op->plan);
+
+	void *id = raxFind(mapping, (unsigned char *)alias, strlen(alias));
 	if(id == raxNotFound) {
-		id = (void *)raxSize(op->record_map);
-		raxInsert(op->record_map, (unsigned char *)alias, strlen(alias), id, NULL);
+		id = (void *)raxSize(mapping);
+		raxInsert(mapping, (unsigned char *)alias, strlen(alias), id, NULL);
 	}
 
 	return (int)id;
 }
 
 bool OpBase_Aware(OpBase *op, const char *alias, int *idx) {
-	void *rec_idx = raxFind(op->record_map, (unsigned char *)alias, strlen(alias));
+	rax *mapping = ExecutionPlan_GetMappings(op->plan);
+	void *rec_idx = raxFind(mapping, (unsigned char *)alias, strlen(alias));
 	if(idx) *idx = (int)rec_idx;
 	return (rec_idx != raxNotFound);
 }
@@ -98,7 +108,8 @@ Record OpBase_Profile(OpBase *op) {
 }
 
 Record OpBase_CreateRecord(const OpBase *op) {
-	return Record_New(op->record_map);
+	rax *mapping = ExecutionPlan_GetMappings(op->plan);
+	return Record_New(mapping);
 }
 
 void OpBase_Free(OpBase *op) {

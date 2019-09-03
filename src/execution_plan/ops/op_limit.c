@@ -6,23 +6,22 @@
 
 #include "op_limit.h"
 
-OpBase *NewLimitOp(unsigned int l) {
-	OpLimit *limit = malloc(sizeof(OpLimit));
-	limit->limit = l;
-	limit->consumed = 0;
+/* Forward declarations */
+static void Free(OpBase *ctx);
+static OpResult Reset(OpBase *ctx);
+static Record Consume(OpBase *opBase);
+
+OpBase *NewLimitOp(const ExecutionPlan *plan, unsigned int l) {
+	OpLimit *op = malloc(sizeof(OpLimit));
+	op->limit = l;
+	op->consumed = 0;
 
 	// Set our Op operations
-	OpBase_Init(&limit->op);
-	limit->op.name = "Limit";
-	limit->op.type = OPType_LIMIT;
-	limit->op.consume = LimitConsume;
-	limit->op.reset = LimitReset;
-	limit->op.free = LimitFree;
-
-	return (OpBase *)limit;
+	OpBase_Init((OpBase *)op, OPType_LIMIT, "Limit", NULL, Consume, Reset, NULL, Free, plan);
+	return (OpBase *)op;
 }
 
-Record LimitConsume(OpBase *op) {
+static Record Consume(OpBase *op) {
 	OpLimit *limit = (OpLimit *)op;
 
 	// Have we reached our limit?
@@ -34,11 +33,11 @@ Record LimitConsume(OpBase *op) {
 	return OpBase_Consume(child);
 }
 
-OpResult LimitReset(OpBase *ctx) {
+static OpResult Reset(OpBase *ctx) {
 	OpLimit *limit = (OpLimit *)ctx;
 	limit->consumed = 0;
 	return OP_OK;
 }
 
-void LimitFree(OpBase *ctx) {
+static void Free(OpBase *ctx) {
 }

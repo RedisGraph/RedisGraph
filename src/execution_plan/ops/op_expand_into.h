@@ -8,6 +8,7 @@
 #define __OP_EXPAND_INTO_H
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../graph/graph.h"
 #include "../../graph/entities/edge.h"
 #include "../../arithmetic/algebraic_expression.h"
@@ -32,7 +33,7 @@ typedef struct {
 	Record r;                   // Current selected record.
 } OpExpandInto;
 
-OpBase *NewExpandIntoOp(AlgebraicExpression *ae);
+OpBase *NewExpandIntoOp(const ExecutionPlan *plan, AlgebraicExpression *ae);
 OpResult ExpandIntoInit(OpBase *opBase);
 Record ExpandIntoConsume(OpBase *opBase);
 OpResult ExpandIntoReset(OpBase *ctx);

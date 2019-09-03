@@ -6,21 +6,22 @@
 
 #include "op_cartesian_product.h"
 
-OpBase *NewCartesianProductOp(void) {
-	CartesianProduct *cp = malloc(sizeof(CartesianProduct));
-	cp->init = true;
-	cp->r = NULL;
+/* Forward declarations */
+static OpResult Init(OpBase *opBase);
+static Record Consume(OpBase *opBase);
+static OpResult Reset(OpBase *opBase);
+static void Free(OpBase *opBase);
+
+OpBase *NewCartesianProductOp(const ExecutionPlan *plan) {
+	CartesianProduct *op = malloc(sizeof(CartesianProduct));
+	op->init = true;
+	op->r = NULL;
 
 	// Set our Op operations
-	OpBase_Init(&cp->op);
-	cp->op.name = "Cartesian Product";
-	cp->op.type = OPType_CARTESIAN_PRODUCT;
-	cp->op.consume = CartesianProductConsume;
-	cp->op.init = CartesianProductInit;
-	cp->op.reset = CartesianProductReset;
-	cp->op.free = CartesianProductFree;
+	OpBase_Init((OpBase *)op, OPType_CARTESIAN_PRODUCT, "Cartesian Product", Init, Consume, Reset, NULL,
+				Free, plan);
 
-	return (OpBase *)cp;
+	return (OpBase *)op;
 }
 
 static void _ResetStreams(CartesianProduct *cp, int streamIdx) {
@@ -61,14 +62,14 @@ static int _PullFromStreams(CartesianProduct *op) {
 	return 0;
 }
 
-OpResult CartesianProductInit(OpBase *opBase) {
+static OpResult Init(OpBase *opBase) {
 	CartesianProduct *op = (CartesianProduct *)opBase;
 	// op->r = Record_New(opBase->record_map->record_len);
 	op->r = OpBase_CreateRecord((OpBase *)op);
 	return OP_OK;
 }
 
-Record CartesianProductConsume(OpBase *opBase) {
+static Record Consume(OpBase *opBase) {
 	CartesianProduct *op = (CartesianProduct *)opBase;
 	OpBase *child;
 	Record childRecord;
@@ -107,13 +108,13 @@ Record CartesianProductConsume(OpBase *opBase) {
 	return Record_Clone(op->r);
 }
 
-OpResult CartesianProductReset(OpBase *opBase) {
+static OpResult Reset(OpBase *opBase) {
 	CartesianProduct *op = (CartesianProduct *)opBase;
 	op->init = true;
 	return OP_OK;
 }
 
-void CartesianProductFree(OpBase *opBase) {
+static void Free(OpBase *opBase) {
 	CartesianProduct *op = (CartesianProduct *)opBase;
 	if(op->r) {
 		Record_Free(op->r);

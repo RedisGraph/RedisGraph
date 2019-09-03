@@ -8,6 +8,7 @@
 #define _OP_LIMIT_H_
 
 #include "op.h"
+#include "../execution_plan.h"
 
 typedef struct {
 	OpBase op;
@@ -15,7 +16,7 @@ typedef struct {
 	unsigned int consumed;  // Number of records consumed so far.
 } OpLimit;
 
-OpBase *NewLimitOp(unsigned int limit);
+OpBase *NewLimitOp(const ExecutionPlan *plan, unsigned int limit);
 
 Record LimitConsume(OpBase *op);
 

@@ -10,6 +10,12 @@
 #include "../../arithmetic/arithmetic_expression.h"
 #include <assert.h>
 
+/* Forward declarations */
+static void Free(OpBase *ctx);
+static OpResult Reset(OpBase *ctx);
+static OpResult Init(OpBase *opBase);
+static Record Consume(OpBase *opBase);
+
 // TODO These two functions are duplicates of op_create functions
 // TODO don't need two functions
 static void _AddNodeProperties(OpMerge *op, Schema *schema, Node *n, PropertyMap *props) {
@@ -143,30 +149,23 @@ static void _PrepareMergeContext(OpMerge *op, const AST *ast, QueryGraph *qg) {
 	// return ctx;
 }
 
-OpBase *NewMergeOp(ResultSetStatistics *stats, const AST *ast) {
-	OpMerge *op_merge = malloc(sizeof(OpMerge));
-	op_merge->stats = stats;
-	op_merge->gc = GraphContext_GetFromTLS();
-	op_merge->matched = false;
-	op_merge->created = false;
+OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats, const AST *ast) {
+	OpMerge *op = malloc(sizeof(OpMerge));
+	op->stats = stats;
+	op->gc = GraphContext_GetFromTLS();
+	op->matched = false;
+	op->created = false;
 
 	// Set our Op operations
-	OpBase_Init(&op_merge->op);
-	op_merge->op.name = "Merge";
-	op_merge->op.type = OPType_MERGE;
-	op_merge->op.consume = OpMergeConsume;
-	op_merge->op.init = OpMergeInit;
-	op_merge->op.reset = OpMergeReset;
-	op_merge->op.free = OpMergeFree;
-
-	return (OpBase *)op_merge;
+	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", Init, Consume, Reset, NULL, Free, plan);
+	return (OpBase *)op;
 }
 
-OpResult OpMergeInit(OpBase *opBase) {
+static OpResult Init(OpBase *opBase) {
 	return OP_OK;
 }
 
-Record OpMergeConsume(OpBase *opBase) {
+static Record Consume(OpBase *opBase) {
 	// OpMerge *op = (OpMerge *)opBase;
 
 	// /* Pattern was created in the previous call
@@ -204,10 +203,10 @@ Record OpMergeConsume(OpBase *opBase) {
 	return NULL;
 }
 
-OpResult OpMergeReset(OpBase *ctx) {
+static OpResult Reset(OpBase *ctx) {
 	// Merge doesn't modify anything.
 	return OP_OK;
 }
 
-void OpMergeFree(OpBase *ctx) {
+static void Free(OpBase *ctx) {
 }

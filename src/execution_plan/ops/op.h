@@ -19,31 +19,30 @@
 typedef enum {
 	OPType_AGGREGATE = 0,
 	OPType_ALL_NODE_SCAN = (1 << 0),
-	OPType_TRAVERSE = (1 << 1),
-	OPType_CONDITIONAL_TRAVERSE = (1 << 2),
-	OPType_CONDITIONAL_VAR_LEN_TRAVERSE = (1 << 3),
-	OPType_FILTER = (1 << 4),
-	OPType_NODE_BY_LABEL_SCAN = (1 << 5),
-	OPType_INDEX_SCAN = (1 << 6),
-	OPType_ProduceResults = (1 << 7),
-	OPType_RESULTS = (1 << 8),
-	OPType_CREATE = (1 << 9),
-	OPType_UPDATE = (1 << 10),
-	OPType_DELETE = (1 << 11),
-	OPType_CARTESIAN_PRODUCT = (1 << 12),
-	OPType_MERGE = (1 << 13),
-	OPType_UNWIND = (1 << 14),
-	OPType_SORT = (1 << 15),
-	OPType_PROJECT = (1 << 16),
-	OPType_SKIP = (1 << 17),
-	OPType_LIMIT = (1 << 18),
-	OPType_DISTINCT = (1 << 19),
-	OPType_EXPAND_INTO = (1 << 20),
-	OPType_NODE_BY_ID_SEEK = (1 << 21),
-	OPType_PROC_CALL = (1 << 22),
-	OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO = (1 << 23),
-	OPType_VALUE_HASH_JOIN = (1 << 24),
-	OPType_APPLY = (1 << 25),
+	OPType_CONDITIONAL_TRAVERSE = (1 << 1),
+	OPType_CONDITIONAL_VAR_LEN_TRAVERSE = (1 << 2),
+	OPType_FILTER = (1 << 3),
+	OPType_NODE_BY_LABEL_SCAN = (1 << 4),
+	OPType_INDEX_SCAN = (1 << 5),
+	OPType_ProduceResults = (1 << 6),
+	OPType_RESULTS = (1 << 7),
+	OPType_CREATE = (1 << 8),
+	OPType_UPDATE = (1 << 9),
+	OPType_DELETE = (1 << 10),
+	OPType_CARTESIAN_PRODUCT = (1 << 11),
+	OPType_MERGE = (1 << 12),
+	OPType_UNWIND = (1 << 13),
+	OPType_SORT = (1 << 14),
+	OPType_PROJECT = (1 << 15),
+	OPType_SKIP = (1 << 16),
+	OPType_LIMIT = (1 << 17),
+	OPType_DISTINCT = (1 << 18),
+	OPType_EXPAND_INTO = (1 << 19),
+	OPType_NODE_BY_ID_SEEK = (1 << 20),
+	OPType_PROC_CALL = (1 << 21),
+	OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO = (1 << 22),
+	OPType_VALUE_HASH_JOIN = (1 << 23),
+	OPType_APPLY = (1 << 24),
 } OPType;
 
 #define OP_SCAN (OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN | OPType_INDEX_SCAN | OPType_NODE_BY_ID_SEEK)
@@ -70,29 +69,28 @@ typedef struct {
 	double profileExecTime;     // Operation total execution time in ms.
 }  OpStats;
 
-struct ExecutionPlanSegment;
+struct ExecutionPlan;
 
 struct OpBase {
-	OPType type;                // Type of operation
+	OPType type;                // Type of operation.
 	fpInit init;                // Called once before execution.
+	fpFree free;                // Free operation.
+	fpReset reset;              // Reset operation state.
 	fpConsume consume;          // Produce next record.
 	fpConsume profile;          // Profiled version of consume.
-	fpReset reset;              // Reset operation state.
-	fpFree free;                // Free operation.
 	fpToString toString;        // operation string representation.
 	char *name;                 // Operation name.
-	char **modifies;            // List of entities this op modifies.
-    rax *record_map;            // Mapping of entities into Record IDs in the scope of this ExecutionPlanSegment.
-	struct OpBase **children;   // Child operations.
 	int childCount;             // Number of children.
+	struct OpBase **children;   // Child operations.
+	const char **modifies;      // List of entities this op modifies.
 	OpStats *stats;             // Profiling statistics.
 	struct OpBase *parent;      // Parent operations.
-
-    // struct ExecutionPlanSegment *exec_plan_seg; // ExecutionPlan this operation is part of.
+    const struct ExecutionPlan *plan; // ExecutionPlan this operation is part of.
 };
 typedef struct OpBase OpBase;
 
-void OpBase_Init(OpBase *op);       // Initialize op.
+// Initialize op.
+void OpBase_Init(OpBase *op, OPType type, char *name, fpInit init, fpConsume consume, fpReset reset, fpToString toString, fpFree free, const struct ExecutionPlan *plan);
 void OpBase_Free(OpBase *op);       // Free op.
 Record OpBase_Consume(OpBase *op);  // Consume op.
 Record OpBase_Profile(OpBase *op);  // Profile op.

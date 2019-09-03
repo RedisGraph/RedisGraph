@@ -8,6 +8,7 @@
 #define __OP_NODE_BY_LABEL_SCAN_H
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../graph/graph.h"
 #include "../../graph/entities/node.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
@@ -24,7 +25,7 @@ typedef struct {
 } NodeByLabelScan;
 
 /* Creates a new NodeByLabelScan operation */
-OpBase *NewNodeByLabelScanOp(QGNode *node);
+OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, QGNode *node);
 
 OpResult NodeByLabelScanInit(OpBase *ctx);
 

@@ -9,32 +9,32 @@
 #include "../../util/arr.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-OpBase *NewUnwindOp(const char *alias, AR_ExpNode **exps) {
-	OpUnwind *unwind = malloc(sizeof(OpUnwind));
-	unwind->expIdx = 0;
-	unwind->expressions = exps;
+/* Forward declarations */
+static void Free(OpBase *ctx);
+static OpResult Reset(OpBase *ctx);
+static OpResult Init(OpBase *opBase);
+static Record Consume(OpBase *opBase);
+
+OpBase *NewUnwindOp(const ExecutionPlan *plan, const char *alias, AR_ExpNode **exps) {
+	OpUnwind *op = malloc(sizeof(OpUnwind));
+	op->expIdx = 0;
+	op->expressions = exps;
 
 	// Set our Op operations
-	OpBase_Init(&unwind->op);
-	unwind->op.name = "Unwind";
-	unwind->op.type = OPType_UNWIND;
-	unwind->op.consume = UnwindConsume;
-	unwind->op.init = UnwindInit;
-	unwind->op.reset = UnwindReset;
-	unwind->op.free = UnwindFree;
+	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", Init, Consume, Reset, NULL, Free, plan);
 
 	// Handle introduced entity
-	OpBase_Modifies((OpBase *)unwind, alias);
-	unwind->unwindRecIdx = -1;
+	OpBase_Modifies((OpBase *)op, alias);
+	op->unwindRecIdx = -1;
 
-	return (OpBase *)unwind;
+	return (OpBase *)op;
 }
 
-OpResult UnwindInit(OpBase *opBase) {
+static OpResult Init(OpBase *opBase) {
 	return OP_OK;
 }
 
-Record UnwindConsume(OpBase *opBase) {
+static Record Consume(OpBase *opBase) {
 	OpUnwind *op = (OpUnwind *)opBase;
 
 	// Evaluated and returned all expressions.
@@ -49,13 +49,13 @@ Record UnwindConsume(OpBase *opBase) {
 	return r;
 }
 
-OpResult UnwindReset(OpBase *ctx) {
+static OpResult Reset(OpBase *ctx) {
 	OpUnwind *unwind = (OpUnwind *)ctx;
 	unwind->expIdx = 0;
 	return OP_OK;
 }
 
-void UnwindFree(OpBase *ctx) {
+static void Free(OpBase *ctx) {
 	OpUnwind *unwind = (OpUnwind *)ctx;
 
 	if(unwind->expressions) {

@@ -7,6 +7,7 @@
 #pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
 #include "../../ast/ast_shared.h"
@@ -28,7 +29,7 @@ typedef struct {
 	bool created;                     // Has the entire pattern been created?
 } OpMerge;
 
-OpBase *NewMergeOp(ResultSetStatistics *stats, const AST *ast);
+OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats, const AST *ast);
 OpResult OpMergeInit(OpBase *opBase);
 Record OpMergeConsume(OpBase *opBase);
 OpResult OpMergeReset(OpBase *ctx);

@@ -8,6 +8,7 @@
 #define __OP_ALL_NODE_SCAN_H__
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../graph/graph.h"
 #include "../../graph/query_graph.h"
 #include "../../graph/entities/node.h"
@@ -22,7 +23,7 @@ typedef struct {
 	uint nodeRecIdx;
 } AllNodeScan;
 
-OpBase *NewAllNodeScanOp(const Graph *g, QGNode *n);
+OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const Graph *g, QGNode *n);
 Record AllNodeScanConsume(OpBase *opBase);
 OpResult AllNodeScanInit(OpBase *opBase);
 OpResult AllNodeScanReset(OpBase *op);

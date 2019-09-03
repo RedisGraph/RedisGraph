@@ -8,6 +8,7 @@
 #define _FILTER_H_
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../filter_tree/filter_tree.h"
 
 /* Filter
@@ -18,7 +19,7 @@ typedef struct {
 } Filter;
 
 /* Creates a new Filter operation */
-OpBase *NewFilterOp(FT_FilterNode *filterTree);
+OpBase *NewFilterOp(const ExecutionPlan *plan, FT_FilterNode *filterTree);
 
 /* FilterConsume next operation
  * returns NULL when depleted. */
