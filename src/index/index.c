@@ -136,7 +136,7 @@ void Index_IndexNode
 		doc_field_count++;
 		if(idx->type == IDX_FULLTEXT) {
 			// Value must be of type string.
-			if(SI_TYPE(*v) & SI_STRING) {
+			if(SI_TYPE(*v) == T_STRING) {
 				RediSearch_DocumentAddFieldString(doc,
 												  idx->fields[i],
 												  v->stringval,
@@ -144,7 +144,7 @@ void Index_IndexNode
 												  RSFLDTYPE_FULLTEXT);
 			}
 		} else {
-			if(SI_TYPE(*v) & SI_STRING) {
+			if(SI_TYPE(*v) == T_STRING) {
 				RediSearch_DocumentAddFieldString(doc, idx->fields[i], v->stringval, strlen(v->stringval),
 												  RSFLDTYPE_TAG);
 			} else if(SI_TYPE(*v) & (SI_NUMERIC | T_BOOL)) {

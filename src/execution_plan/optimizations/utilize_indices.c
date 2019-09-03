@@ -92,7 +92,6 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 		SIValue v = filter->pred.rhs->operand.constant;
 		switch(SI_TYPE(v)) {
 		case T_STRING:
-		case T_CONSTSTRING:
 			parent = RediSearch_CreateTagNode(sp, field);
 			switch(filter->pred.op) {
 			case OP_LT:    // <
@@ -186,7 +185,7 @@ bool _simple_predicates(const FT_FilterNode *filter) {
 		if(filter->pred.rhs->operand.type == AR_EXP_CONSTANT) c = filter->pred.rhs->operand.constant;
 		SIType t = SI_TYPE(c);
 
-		return(t & (SI_NUMERIC | SI_STRING | T_BOOL));
+		return(t & (SI_NUMERIC | T_STRING | T_BOOL));
 	}
 
 	// FT_N_COND.
@@ -296,7 +295,7 @@ void _predicateTreeToRange(const FT_FilterNode *tree, rax *string_ranges, rax *n
 			raxTryInsert(numeric_ranges, (unsigned char *)prop, strlen(prop), nr, NULL);
 		}
 		NumericRange_TightenRange(nr, op, SI_GET_NUMERIC(c));
-	} else if(SI_TYPE(c) & SI_STRING) {
+	} else if(SI_TYPE(c) == T_STRING) {
 		// Create if doesn't exists.
 		if(sr == raxNotFound) {
 			sr = StringRange_New();

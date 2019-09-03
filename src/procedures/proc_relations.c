@@ -64,7 +64,7 @@ ProcedureCtx *Proc_RelationsCtx() {
 	ProcedureOutput **outputs = array_new(ProcedureOutput *, 1);
 	ProcedureOutput *output = rm_malloc(sizeof(ProcedureOutput));
 	output->name = "relationshipType";
-	output->type = T_CONSTSTRING;
+	output->type = T_STRING;
 
 	outputs = array_append(outputs, output);
 	ProcedureCtx *ctx = ProcCtxNew("db.relationshipTypes",

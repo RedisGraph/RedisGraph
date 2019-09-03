@@ -5,14 +5,45 @@
 */
 
 #include <assert.h>
-#include "decode_graph.h"
-#include "../../graph.h"
+#include "decode_v5.h"
 
-SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
+typedef enum {
+	V5_T_NULL = 0,
+	V5_T_STRING = 0x001,
+	V5_T_INT64 = 0x004,
+	V5_T_BOOL = 0x010, // shares 'longval' representation in SIValue union
+	V5_T_DOUBLE = 0x040,
+	V5_T_PTR = 0x080,
+	V5_T_CONSTSTRING = 0x100, // only used in deserialization routine
+	V5_T_NODE = 0x200,
+	V5_T_EDGE = 0x400,
+} PrevSIType;
+
+static SIType _ConvertSIType(PrevSIType prev_type) {
+	switch(prev_type) {
+	case V5_T_INT64:
+		return T_INT64;
+	case V5_T_DOUBLE:
+		return T_DOUBLE;
+	case V5_T_STRING:
+	case V5_T_CONSTSTRING:
+		return T_STRING;
+	case V5_T_BOOL:
+		return T_BOOL;
+	case V5_T_NULL:
+		return T_NULL;
+	default: // should not occur
+		assert(false);
+	}
+}
+
+static SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
 	/* Format:
 	 * SIType
 	 * Value */
-	SIType t = RedisModule_LoadUnsigned(rdb);
+	PrevSIType prev_type = RedisModule_LoadUnsigned(rdb);
+	SIType t = _ConvertSIType(prev_type); // Convert SIType to latest enum value
+
 	switch(t) {
 	case T_INT64:
 		return SI_LongVal(RedisModule_LoadSigned(rdb));
@@ -30,7 +61,7 @@ SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
 	}
 }
 
-void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e) {
+static void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e) {
 	/* Format:
 	 * #properties N
 	 * (name, value type, value) X N
@@ -48,7 +79,7 @@ void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e) {
 	}
 }
 
-void _RdbLoadNodes(RedisModuleIO *rdb, GraphContext *gc) {
+static void _RdbLoadNodes(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * #nodes
 	 *      #labels M
@@ -77,7 +108,7 @@ void _RdbLoadNodes(RedisModuleIO *rdb, GraphContext *gc) {
 	}
 }
 
-void _RdbLoadEdges(RedisModuleIO *rdb, GraphContext *gc) {
+static void _RdbLoadEdges(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * #edges (N)
 	 * {
@@ -102,7 +133,7 @@ void _RdbLoadEdges(RedisModuleIO *rdb, GraphContext *gc) {
 	}
 }
 
-void RdbLoadGraph(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbLoadGraph_v5(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * #nodes
 	 *      #labels M

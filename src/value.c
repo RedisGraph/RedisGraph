@@ -92,7 +92,7 @@ SIValue SI_ShareValue(const SIValue v) {
 SIValue SI_CloneValue(const SIValue v) {
 	if(v.allocation == M_NONE) return v; // Stack value; no allocation necessary.
 
-	if(v.type & SI_STRING) {
+	if(v.type == T_STRING) {
 		// Allocate a new copy of the input's string value.
 		return SI_DuplicateStringVal(v.stringval);
 	}
@@ -143,12 +143,36 @@ void SIValue_Persist(SIValue *v) {
 	*v = SI_CloneValue(*v);
 }
 
-inline int SIValue_IsNull(SIValue v) {
+inline bool SIValue_IsNull(SIValue v) {
 	return v.type == T_NULL;
 }
 
-inline int SIValue_IsNullPtr(SIValue *v) {
+inline bool SIValue_IsNullPtr(SIValue *v) {
 	return v == NULL || v->type == T_NULL;
+}
+
+const char *SIType_ToString(SIType t) {
+	if(t & T_NULL) {
+		return "Null";
+	} else if(t & T_STRING) {
+		return "String";
+	} else if(t & T_INT64) {
+		return "Integer";
+	} else if(t & T_BOOL) {
+		return "Boolean";
+	} else if(t & T_DOUBLE) {
+		return "Float";
+	} else if(t & T_PTR) {
+		return "Pointer";
+	} else if(t & T_NODE) {
+		return "Node";
+	} else if(t & T_EDGE) {
+		return "Edge";
+	} else if(t & T_ERROR) {
+		return "Error";
+	} else {
+		return "Unknown";
+	}
 }
 
 int SIValue_ToString(SIValue v, char *buf, size_t len) {

@@ -4,9 +4,9 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "prev_decode_index.h"
+#include "decode_v4.h"
 
-Index *PrevRdbLoadIndex(RedisModuleIO *rdb, GraphContext *gc) {
+Index *RdbLoadIndex_v4(RedisModuleIO *rdb, GraphContext *gc) {
 	Index *idx = NULL;
 	char *label = RedisModule_LoadStringBuffer(rdb, NULL);
 	char *field = RedisModule_LoadStringBuffer(rdb, NULL);
