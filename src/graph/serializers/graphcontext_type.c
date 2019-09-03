@@ -27,6 +27,7 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
 		// Not forward compatible.
 		printf("Failed loading Graph, RedisGraph version (%d) is not forward compatible.\n",
 			   REDISGRAPH_MODULE_VERSION);
+		return NULL;
 	} else if(encver >= DECODER_SUPPORT_MIN_V && encver <= DECODER_SUPPORT_MAX_V) {
 		gc = RdbLoadGraphContext(rdb);
 	} else if(encver >= PREV_DECODER_SUPPORT_MIN_V) {
@@ -34,7 +35,12 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
 	} else {
 		printf("Failed loading Graph, RedisGraph version (%d) is not backward compatible with encoder version %d.\n",
 			   REDISGRAPH_MODULE_VERSION, encver);
+		return NULL;
 	}
+
+	// Add GraphContext to global array of graphs.
+	GraphContext_RegisterWithModule(gc);
+
 	return gc;
 }
 

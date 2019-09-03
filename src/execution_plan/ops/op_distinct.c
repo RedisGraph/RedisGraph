@@ -5,7 +5,7 @@
 */
 
 #include "op_distinct.h"
-#include "../../../deps/xxhash/xxhash.h"
+#include "xxhash.h"
 #include "../../util/arr.h"
 
 OpBase *NewDistinctOp(void) {

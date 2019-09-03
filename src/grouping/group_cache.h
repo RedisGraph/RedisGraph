@@ -8,7 +8,7 @@
 #define GROUP_CACHE_H_
 
 #include "group.h"
-#include "../../deps/rax/rax.h"
+#include "rax.h"
 
 typedef raxIterator CacheGroupIterator;
 typedef rax CacheGroup;

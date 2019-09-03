@@ -2,12 +2,15 @@
 ROOT=../..
 
 # Path to Google Test source
-GTEST_DIR = ../../deps/googletest
+GTEST_DIR = ../../deps/googletest/googletest
+RAX_DIR = ../../deps/rax
+REDISEARCH_DIR = ../../deps/RediSearch/src
+LIBCYPHER-PARSER_DIR = ../../deps/libcypher-parser/lib/src
 
 # Flags passed to the preprocessor.
 # Set Google Test's header directory as a system directory, such that
 # the compiler doesn't generate warnings in Google Test headers.
-CPPFLAGS += -isystem $(GTEST_DIR)/include
+CPPFLAGS += -isystem $(GTEST_DIR)/include -I$(GTEST_DIR)/include/gtest/
 LDFLAGS += -ldl
 
 # Flags passed to the C++ compiler.
@@ -48,7 +51,7 @@ gtest_main.a : gtest-all.o gtest_main.o
 # RedisGraph flags and libraries
 CC_OBJECTS:=$(CC_OBJECTS)
 RAX=../../deps/rax/rax.o
-LIBXXHASH=$(ROOT)/deps/xxhash/libxxhash.a
+LIBXXHASH=$(ROOT)/deps/xxHash/libxxhash.a
 REDISEARCH=../../deps/RediSearch/build/libredisearch.a
 LIBGRAPHBLAS=../../deps/GraphBLAS/build/libgraphblas.a
 LIBCYPHER-PARSER=../../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
@@ -63,7 +66,7 @@ TEST_EXECUTABLES = $(patsubst %.cpp, %.run, $(TEST_SOURCES))
 
 # Compile object files from unit test sources
 %.o: %.cpp
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) -c -o $@ $<
+	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -I$(REDISEARCH_DIR) -c -o $@ $<
 
 # Build '*.run' binaries for each source
 %.run: %.o gtest_main.a $(DEPS)

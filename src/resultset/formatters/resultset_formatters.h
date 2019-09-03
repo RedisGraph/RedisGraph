@@ -19,19 +19,19 @@ typedef enum {
 
 /* Reply formater which does absolutely nothing.
  * used when profiling a query */
-static ResultSetFormatter ResultSetNOP = {
+static ResultSetFormatter ResultSetNOP __attribute__((used)) = {
 	.EmitRecord = ResultSet_EmitNOPRecord,
 	.EmitHeader = ResultSet_EmitNOPHeader
 };
 
 /* Compact reply formatter, this is the default formatter. */
-static ResultSetFormatter ResultSetFormatterCompact = {
+static ResultSetFormatter ResultSetFormatterCompact __attribute__((used)) = {
 	.EmitRecord = ResultSet_EmitCompactRecord,
 	.EmitHeader = ResultSet_ReplyWithCompactHeader
 };
 
 /* Verbose reply formatter, used when querying via CLI. */
-static ResultSetFormatter ResultSetFormatterVerbose = {
+static ResultSetFormatter ResultSetFormatterVerbose __attribute__((used)) = {
 	.EmitRecord = ResultSet_EmitVerboseRecord,
 	.EmitHeader = ResultSet_ReplyWithVerboseHeader
 };

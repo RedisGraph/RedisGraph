@@ -6,7 +6,7 @@
 
 #include "cypher_whitelist.h"
 #include "../../deps/libcypher-parser/lib/src/operators.h" // TODO safe?
-#include "../../deps/rax/rax.h"
+#include "rax.h"
 #include <assert.h>
 
 /* Whitelist of all accepted cypher_astnode types:
@@ -33,8 +33,8 @@ static void _buildTypesWhitelist(void) {
 		// CYPHER_AST_EXPLAIN_OPTION,
 		// CYPHER_AST_PROFILE_OPTION,
 		// CYPHER_AST_SCHEMA_COMMAND,
-		CYPHER_AST_CREATE_NODE_PROP_INDEX,
-		CYPHER_AST_DROP_NODE_PROP_INDEX,
+		CYPHER_AST_CREATE_NODE_PROPS_INDEX,
+		CYPHER_AST_DROP_NODE_PROPS_INDEX,
 		// CYPHER_AST_CREATE_NODE_PROP_CONSTRAINT,
 		// CYPHER_AST_DROP_NODE_PROP_CONSTRAINT,
 		// CYPHER_AST_CREATE_REL_PROP_CONSTRAINT,

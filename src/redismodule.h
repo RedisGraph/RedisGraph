@@ -176,6 +176,7 @@ typedef void (*RedisModuleTypeAuxSaveFunc)(RedisModuleIO *rdb, int when);
 typedef void (*RedisModuleTypeRewriteFunc)(RedisModuleIO *aof, RedisModuleString *key, void *value);
 typedef size_t (*RedisModuleTypeMemUsageFunc)(const void *value);
 typedef void (*RedisModuleTypeDigestFunc)(RedisModuleDigest *digest, void *value);
+typedef void (*RedisModuleForkDoneHandler) (int exitcode, int bysignal, void *user_data);
 typedef void (*RedisModuleTypeFreeFunc)(void *value);
 typedef void (*RedisModuleClusterMessageReceiver)(RedisModuleCtx *ctx, const char *sender_id,
 												  uint8_t type, const unsigned char *payload, uint32_t len);
@@ -443,6 +444,11 @@ int REDISMODULE_API_FUNC(RedisModule_CommandFilterArgReplace)(RedisModuleCommand
 int REDISMODULE_API_FUNC(RedisModule_CommandFilterArgDelete)(RedisModuleCommandFilterCtx *fctx,
 															 int pos);
 #endif
+
+/* Enterprise Only API */
+int REDISMODULE_API_FUNC(RedisModule_Fork)(RedisModuleForkDoneHandler cb, void *user_data);
+int REDISMODULE_API_FUNC(RedisModule_ExitFromChild)(int retcode);
+int REDISMODULE_API_FUNC(RedisModule_KillForkChild)(int child_pid);
 
 /* This is included inline inside each Redis module. */
 static int RedisModule_Init(RedisModuleCtx *ctx, const char *name, int ver,

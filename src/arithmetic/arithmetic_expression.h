@@ -7,7 +7,7 @@
 #pragma once
 
 #include "./agg_ctx.h"
-#include "../../deps/rax/rax.h"
+#include "rax.h"
 #include "../execution_plan/record.h"
 #include "../execution_plan/record_map.h"
 #include "../graph/entities/graph_entity.h"

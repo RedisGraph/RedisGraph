@@ -5,7 +5,11 @@ jobs:
       - image: 'redislabsmodules/rmbuilder:latest'
     steps:
       - checkout
-      
+      - run:
+          name: Fetch submodules
+          command: >-
+            git submodule update --init --recursive
+
       - run:
           name: Install prerequisite
           command: >-
@@ -14,7 +18,7 @@ jobs:
             pip install redis-py-cluster &&
             pip install git+https://github.com/RedisLabsModules/RLTest.git@master &&
             apt-get update; apt-get install -y automake peg libtool autoconf cmake valgrind astyle
-      
+
       # Validate source complies with formatting
       #- run:
           # name: Formatting

@@ -8,9 +8,9 @@
 
 #include "../redismodule.h"
 #include "../index/index.h"
-#include "../../deps/rax/rax.h"
+#include "rax.h"
+#include "redisearch_api.h"
 #include "../graph/entities/graph_entity.h"
-#include "../../deps/RediSearch/src/redisearch_api.h"
 
 typedef enum {
 	SCHEMA_NODE,

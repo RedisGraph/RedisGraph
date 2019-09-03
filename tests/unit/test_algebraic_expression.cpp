@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "../../deps/googletest/include/gtest/gtest.h"
+#include "gtest.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -76,7 +76,6 @@ class AlgebraicExpressionTest: public ::testing::Test {
 	}
 
 	static void TearDownTestCase() {
-		_free_fake_graph_context();
 		GrB_finalize();
 	}
 
@@ -178,11 +177,6 @@ class AlgebraicExpressionTest: public ::testing::Test {
 
 		mat_id = GraphContext_GetSchema(gc, "war", SCHEMA_EDGE)->id;
 		mat_ew = Graph_GetRelationMatrix(g, mat_id);
-	}
-
-	static void _free_fake_graph_context() {
-		GraphContext *gc = GraphContext_GetFromTLS();
-		GraphContext_Free(gc);
 	}
 
 	AlgebraicExpression **build_algebraic_expression(const char *query, size_t *exp_count) {

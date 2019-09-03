@@ -10,7 +10,7 @@
 #include "op.h"
 #include "../../graph/entities/node.h"
 #include "../../resultset/resultset_statistics.h"
-#include "../../../deps/rax/rax.h"
+#include "rax.h"
 /* Deletes entities specified within the DELETE clause. */
 
 

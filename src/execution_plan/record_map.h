@@ -6,9 +6,10 @@
 
 #pragma once
 
-#include "../../deps/rax/rax.h"
 #include "../ast/ast.h"
 #include <limits.h>
+#include <stddef.h>
+#include "rax.h"
 
 #define IDENTIFIER_NOT_FOUND UINT_MAX
 
