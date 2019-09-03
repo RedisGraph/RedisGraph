@@ -11,7 +11,7 @@
 extern pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
 
 /* Deserialize unified schema */
-static void _RdbLoadAttributeKeys_v4(RedisModuleIO *rdb, GraphContext *gc) {
+static void _RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * id // (fake)
 	 * name // (fake)
@@ -85,7 +85,7 @@ GraphContext *RdbLoadGraphContext_v4(RedisModuleIO *rdb) {
 
 	// Load the full attribute mapping (or the attributes from
 	// the unified node schema, if encoding version is < 4)
-	_RdbLoadAttributeKeys_v4(rdb, gc);
+	_RdbLoadAttributeKeys(rdb, gc);
 
 	// Load each node schema
 	gc->node_schemas = array_new(Schema *, schema_count);
@@ -99,7 +99,7 @@ GraphContext *RdbLoadGraphContext_v4(RedisModuleIO *rdb) {
 
 	// If encoding version is < 4, load the attributes from the
 	// unified edge schema, otherwise skip filler bytes.
-	_RdbLoadAttributeKeys_v4(rdb, gc);
+	_RdbLoadAttributeKeys(rdb, gc);
 
 	// Load each edge schema
 	gc->relation_schemas = array_new(Schema *, schema_count);

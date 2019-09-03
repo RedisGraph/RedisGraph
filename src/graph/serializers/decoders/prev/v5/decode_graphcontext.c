@@ -11,7 +11,7 @@
 /* Thread local storage graph context key. */
 extern pthread_key_t _tlsGCKey;
 
-static void _RdbLoadAttributeKeys_v5(RedisModuleIO *rdb, GraphContext *gc) {
+static void _RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * #attribute keys
 	 * attribute keys
@@ -50,7 +50,7 @@ GraphContext *RdbLoadGraphContext_v5(RedisModuleIO *rdb) {
 	gc->graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
 
 	// Attributes, Load the full attribute mapping.
-	_RdbLoadAttributeKeys_v5(rdb, gc);
+	_RdbLoadAttributeKeys(rdb, gc);
 
 	// #Node schemas
 	uint schema_count = RedisModule_LoadUnsigned(rdb);

@@ -37,7 +37,7 @@ static SIType _ConvertSIType(PrevSIType prev_type) {
 	}
 }
 
-static SIValue _RdbLoadSIValue_v4(RedisModuleIO *rdb) {
+static SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
 	/* Format:
 	 * SIType
 	 * Value */
@@ -61,7 +61,7 @@ static SIValue _RdbLoadSIValue_v4(RedisModuleIO *rdb) {
 	}
 }
 
-static void _RdbLoadEntity_v4(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e) {
+static void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e) {
 	/* Format:
 	 * #properties N
 	 * (name, value type, value) X N
@@ -71,7 +71,7 @@ static void _RdbLoadEntity_v4(RedisModuleIO *rdb, GraphContext *gc, GraphEntity 
 
 	for(int i = 0; i < propCount; i++) {
 		char *attr_name = RedisModule_LoadStringBuffer(rdb, NULL);
-		SIValue attr_value = _RdbLoadSIValue_v4(rdb);
+		SIValue attr_value = _RdbLoadSIValue(rdb);
 		Attribute_ID attr_id = GraphContext_GetAttributeID(gc, attr_name);
 		assert(attr_id != ATTRIBUTE_NOTFOUND);
 		GraphEntity_AddProperty(e, attr_id, attr_value);
@@ -79,7 +79,7 @@ static void _RdbLoadEntity_v4(RedisModuleIO *rdb, GraphContext *gc, GraphEntity 
 	}
 }
 
-static void _RdbLoadNodes_v4(RedisModuleIO *rdb, GraphContext *gc) {
+static void _RdbLoadNodes(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * #nodes
 	 *      ID
@@ -106,11 +106,11 @@ static void _RdbLoadNodes_v4(RedisModuleIO *rdb, GraphContext *gc) {
 		uint64_t l = (nodeLabelCount) ? RedisModule_LoadUnsigned(rdb) : GRAPH_NO_LABEL;
 		Graph_CreateNode(gc->g, l, &n);
 
-		_RdbLoadEntity_v4(rdb, gc, (GraphEntity *)&n);
+		_RdbLoadEntity(rdb, gc, (GraphEntity *)&n);
 	}
 }
 
-static void _RdbLoadEdges_v4(RedisModuleIO *rdb, GraphContext *gc) {
+static void _RdbLoadEdges(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * #edges (N)
 	 * {
@@ -133,7 +133,7 @@ static void _RdbLoadEdges_v4(RedisModuleIO *rdb, GraphContext *gc) {
 		NodeID destId = RedisModule_LoadUnsigned(rdb);
 		uint64_t relation = RedisModule_LoadUnsigned(rdb);
 		assert(Graph_ConnectNodes(gc->g, srcId, destId, relation, &e));
-		_RdbLoadEntity_v4(rdb, gc, (GraphEntity *)&e);
+		_RdbLoadEntity(rdb, gc, (GraphEntity *)&e);
 	}
 }
 
@@ -157,10 +157,10 @@ void RdbLoadGraph_v4(RedisModuleIO *rdb, GraphContext *gc) {
 	Graph_SetMatrixPolicy(gc->g, RESIZE_TO_CAPACITY);
 
 	// Load nodes.
-	_RdbLoadNodes_v4(rdb, gc);
+	_RdbLoadNodes(rdb, gc);
 
 	// Load edges.
-	_RdbLoadEdges_v4(rdb, gc);
+	_RdbLoadEdges(rdb, gc);
 
 	// Revert to default synchronization behavior
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
