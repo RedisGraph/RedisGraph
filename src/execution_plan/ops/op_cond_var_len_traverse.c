@@ -71,13 +71,10 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	// The AlgebraicExpression populating a variable-length traversal only contains one operand.
 	op->traverseDir = (ae->operands[0].transpose) ? GRAPH_EDGE_DIR_INCOMING : GRAPH_EDGE_DIR_OUTGOING;
 
-	_setupTraversedRelations(op, ae->edge);
 
-	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
 				"Conditional Variable Length Traverse", NULL, CondVarLenTraverseConsume, CondVarLenTraverseReset,
 				CondVarLenTraverseToString, CondVarLenTraverseFree, plan);
-
 	assert(OpBase_Aware((OpBase *)op, ae->src_node->alias, &op->srcNodeIdx));
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, ae->dest_node->alias);
 
@@ -127,6 +124,11 @@ compute_path:
 		if(ENTITY_GET_ID(&n) != ENTITY_GET_ID(destNode)) goto compute_path;
 	} else {
 		Record_AddNode(op->r, op->destNodeIdx, n);
+	}
+
+	if(op->edgesIdx != IDENTIFIER_NOT_FOUND) {
+		// todo
+		// Record_AddScalar(op->r, op->edgesIdx, p->nodes);
 	}
 
 	return Record_Clone(op->r);
