@@ -104,4 +104,6 @@ void QueryCtx_Free(void) {
 	}
 
 	rm_free(ctx);
+	// NULL-set the context for reuse the next time this thread receives a query
+	pthread_setspecific(_tlsQueryCtxKey, NULL);
 }

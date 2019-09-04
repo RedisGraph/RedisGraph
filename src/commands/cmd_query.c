@@ -150,6 +150,7 @@ cleanup:
 	AST_Free(ast);
 	if(parse_result) cypher_parse_result_free(parse_result);
 	CommandCtx_Free(qctx);
+	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 }
 
 /* Queries graph
