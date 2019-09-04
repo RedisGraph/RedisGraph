@@ -821,6 +821,19 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 	uint *segment_indices = NULL;
 	if(with_clause_count > 0) segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
 
+	// We might evaluate an ArithmeticExpression while building an ExecutionPlan, specifically
+	// when attempting to reduce expression trees to scalars.
+	jmp_buf *env = rm_malloc(sizeof(jmp_buf));
+	int res = setjmp(*env);
+	if(res != 0) {
+		// Jumped
+		char *err = QueryCtx_GetError();
+		// The reply arrays have not been instantiated at this point, so we'll return a Redis-level error.
+		RedisModule_ReplyWithError(ctx, err);
+		return NULL;
+	}
+	QueryCtx_SetEnv(env);
+
 	uint i = 0;
 	uint end_offset;
 	uint start_offset = 0;
@@ -943,7 +956,8 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 
 	ExecutionPlanInit(plan);
 
-	jmp_buf *env = rm_malloc(sizeof(jmp_buf));
+	// Replace the jump context used in ExecutionPlan construction with one for actual execution.
+	jmp_buf *env = QueryCtx_GetEnv();
 	int res = setjmp(*env);
 	if(res != 0) {
 		// Jumped

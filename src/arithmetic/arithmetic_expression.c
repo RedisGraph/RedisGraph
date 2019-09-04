@@ -183,6 +183,9 @@ static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint a
 
 			if(!(SI_TYPE(argv[i]) & fdesc->types[i])) {
 				const char *actual_type_str = SIType_ToString(actual_type);
+				/* TODO extend string-building logic to better express multiple acceptable types, like:
+				 * RETURN 'a' * 2
+				 * "Type mismatch: expected Float, Integer or Duration but was String" */
 				const char *expected_type_str = SIType_ToString(expected_type);
 				asprintf(error, "Type mismatch: expected %s but was %s ", expected_type_str, actual_type_str);
 				return false;

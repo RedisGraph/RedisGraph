@@ -118,6 +118,7 @@ void _MGraph_Query(void *args) {
 	if(root_type == CYPHER_AST_QUERY) {  // query operation
 		result_set = NewResultSet(ctx, compact);
 		ExecutionPlan *plan = NewExecutionPlan(ctx, gc, result_set);
+		if(!plan) goto cleanup;
 		result_set = ExecutionPlan_Execute(plan);
 		ExecutionPlan_Free(plan);
 		ResultSet_Replay(result_set);    // Send result-set back to client.
