@@ -143,12 +143,12 @@ int SIValue_ToDouble(const SIValue *v, double *d);
 /* Try to parse a value by string. */
 SIValue SIValue_FromString(const char *s);
 
-/* Determines number of bytes required to concat strings. */
-size_t SIValue_StringConcatLen(SIValue *strings, unsigned int string_count);
+/* Determines number of bytes required to join strings, with delimiter */
+size_t SIValue_StringJoinLen(SIValue *strings, unsigned int string_count, const char *delimiter);
 
-/* Concats strings as a comma separated string. */
-void SIValue_StringConcat(SIValue *strings, unsigned int string_count, char **buf,
-                          size_t *buf_len, size_t *bytesWritten);
+/* Concats strings as a delimiter. */
+void SIValue_StringJoin(SIValue *strings, unsigned int string_count, const char *delimiter, char **buf,
+                        size_t *buf_len, size_t *bytesWritten);
 
 /* Arithmetic operators for numeric SIValues.
  * The caller is responsible for ensuring that the arguments

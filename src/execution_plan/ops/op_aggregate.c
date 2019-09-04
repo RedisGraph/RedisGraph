@@ -118,10 +118,10 @@ static void _ComputeGroupKeyStr(OpAggregate *op, char **key) {
 	}
 
 	// Determine required size for group key string representation.
-	size_t key_len = SIValue_StringConcatLen(op->group_keys, non_agg_exp_count);
+	size_t key_len = SIValue_StringJoinLen(op->group_keys, non_agg_exp_count, ",");
 	*key = rm_malloc(sizeof(char) * key_len);
 	size_t bytesWritten = 0;
-	SIValue_StringConcat(op->group_keys, non_agg_exp_count, key, &key_len, &bytesWritten);
+	SIValue_StringJoin(op->group_keys, non_agg_exp_count, ",", key, &key_len, &bytesWritten);
 }
 
 /* Retrieves group under which given record belongs to,

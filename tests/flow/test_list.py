@@ -3,7 +3,7 @@ from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
 
 redis_graph = None
-graph_id = "G"
+GRAPH_ID = "G"
 
 
 class testList(FlowTestsBase):
@@ -11,7 +11,7 @@ class testList(FlowTestsBase):
         super(testList, self).__init__()
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph(graph_id, redis_con)
+        redis_graph = Graph(GRAPH_ID, redis_con)
 
     def test01_collect(self):
         for i in range(10):

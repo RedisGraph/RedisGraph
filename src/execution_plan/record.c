@@ -179,7 +179,7 @@ size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {
 		}
 	}
 
-	size_t required_len = SIValue_StringConcatLen(values, rLen);
+	size_t required_len = SIValue_StringJoinLen(values, rLen, ",");
 
 	if(*buf_cap < required_len) {
 		*buf = rm_realloc(*buf, sizeof(char) * required_len);
@@ -187,7 +187,7 @@ size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {
 	}
 
 	size_t bytesWritten = 0;
-	SIValue_StringConcat(values, rLen, buf, buf_cap, &bytesWritten);
+	SIValue_StringJoin(values, rLen, ",", buf, buf_cap, &bytesWritten);
 	return bytesWritten;
 }
 

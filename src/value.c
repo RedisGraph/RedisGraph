@@ -270,15 +270,15 @@ SIValue SIValue_FromString(const char *s) {
 	return SI_DoubleVal(parsedval);
 }
 
-size_t SIValue_StringConcatLen(SIValue *strings, unsigned int string_count) {
+size_t SIValue_StringJoinLen(SIValue *strings, unsigned int string_count, const char *delimiter) {
 	size_t length = 0;
 	size_t elem_len;
-
+	size_t delimiter_len = strlen(delimiter);
 	/* Compute length. */
 	for(int i = 0; i < string_count; i ++) {
 		/* String elements representing bytes size strings,
 		 * for all other SIValue types 32 bytes should be enough. */
-		elem_len = (strings[i].type == T_STRING) ? strlen(strings[i].stringval) + 1 : 32;
+		elem_len = (strings[i].type == T_STRING) ? strlen(strings[i].stringval) + delimiter_len : 32;
 		length += elem_len;
 	}
 
@@ -287,51 +287,29 @@ size_t SIValue_StringConcatLen(SIValue *strings, unsigned int string_count) {
 	return length;
 }
 
-void SIValue_StringConcat(SIValue *strings, unsigned int string_count, char **buf,
-						  size_t *buf_len, size_t *bytesWritten) {
+void SIValue_StringJoin(SIValue *strings, unsigned int string_count, const char *delimiter,
+						char **buf, size_t *buf_len, size_t *bytesWritten) {
 
 	for(int i = 0; i < string_count; i ++) {
 		SIValue_ToString(strings[i], buf, buf_len, bytesWritten);
-		if(i < string_count - 1) *bytesWritten += snprintf(*buf + *bytesWritten, *buf_len, ",");
+		if(i < string_count - 1) *bytesWritten += snprintf(*buf + *bytesWritten, *buf_len, "%s", delimiter);
 	}
 }
 
 // assumption: either a or b is a string
 static SIValue SIValue_ConcatString(const SIValue a, const SIValue b) {
-	SIValue result;
 	size_t bufferLen = 512;
 	size_t argument_len = 0;
 	char *buffer = rm_calloc(bufferLen, sizeof(char));
-	char *string_arg = NULL;
-	// in case a is not a string - concat scalar + string
-	if(a.type != T_STRING) {
-		/* a is numeric, convert to string. */
-		SIValue_ToString(a, &buffer, &bufferLen, &argument_len);
-		result = SI_DuplicateStringVal(buffer);
-	}
-	// a is a string - concat string + value
-	else result = SI_DuplicateStringVal(a.stringval);
-
-	if(b.type != T_STRING) {
-		/* b is not a string, get a string representation. */
-		SIValue_ToString(b, &buffer, &bufferLen, &argument_len);
-		string_arg = buffer;
-	} else {
-		string_arg = b.stringval;
-		argument_len = strlen(string_arg);
-	}
-
-	/* Concat, make sure result has enough space to hold new string. */
-	unsigned int required_size = strlen(result.stringval) + argument_len + 1;
-	result.stringval = rm_realloc(result.stringval, required_size);
-	strcat(result.stringval, string_arg);
+	SIValue args[2] = {a, b};
+	SIValue_StringJoin(args, 2, "", &buffer, &bufferLen, &argument_len);
+	SIValue result = SI_DuplicateStringVal(buffer);
 	rm_free(buffer);
 	return result;
 }
 
 // assumption: either a or b is a list - static function, the caller validate types
 static SIValue SIValue_ConcatList(const SIValue a, const SIValue b) {
-
 	uint a_len = (a.type == T_ARRAY) ? SIArray_Length(a) : 1;
 	uint b_len = (b.type == T_ARRAY) ? SIArray_Length(b) : 1;
 	SIValue resultArray = SI_Array(a_len + b_len);

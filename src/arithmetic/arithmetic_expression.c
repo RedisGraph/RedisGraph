@@ -755,7 +755,7 @@ SIValue AR_TOSTRING(SIValue *argv, int argc) {
 	assert(argc == 1);
 
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
-	size_t len = SIValue_StringConcatLen(argv, 1);
+	size_t len = SIValue_StringJoinLen(argv, 1, "");
 	char *str = rm_malloc(len * sizeof(char));
 	size_t bytesWritten = 0;
 	SIValue_ToString(argv[0], &str, &len, &bytesWritten);
