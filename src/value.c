@@ -162,9 +162,7 @@ inline bool SIValue_IsError(SIValue v) {
 }
 
 const char *SIType_ToString(SIType t) {
-	if(t & T_NULL) {
-		return "Null";
-	} else if(t & T_STRING) {
+	if(t & T_STRING) {
 		return "String";
 	} else if(t & T_INT64) {
 		return "Integer";
@@ -180,6 +178,8 @@ const char *SIType_ToString(SIType t) {
 		return "Edge";
 	} else if(t & T_ERROR) {
 		return "Error";
+	} else if(t & T_NULL) {
+		return "Null";
 	} else {
 		return "Unknown";
 	}
