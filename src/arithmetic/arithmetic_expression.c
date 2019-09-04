@@ -1038,18 +1038,7 @@ SIValue AR_GT(SIValue *argv, int argc) {
 	SIValue b = argv[1];
 
 	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
-
-	assert(SI_TYPE(a) == SI_TYPE(b));
-
-	switch(SI_TYPE(a)) {
-	case T_STRING:
-		return SI_BoolVal(SIValue_Compare(a, b) > 0);
-	case T_INT64:
-	case T_DOUBLE:
-		return SI_BoolVal(SI_GET_NUMERIC(a) > SI_GET_NUMERIC(b));
-	default:
-		assert(false);
-	}
+	return SI_BoolVal(SIValue_Compare(a, b) > 0);
 }
 
 SIValue AR_GE(SIValue *argv, int argc) {
@@ -1058,6 +1047,7 @@ SIValue AR_GE(SIValue *argv, int argc) {
 	SIValue b = argv[1];
 
 	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
+	return SI_BoolVal(SIValue_Compare(a, b) >= 0);
 
 	assert(SI_TYPE(a) == SI_TYPE(b));
 	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
@@ -1065,7 +1055,7 @@ SIValue AR_GE(SIValue *argv, int argc) {
 
 	switch(SI_TYPE(a)) {
 	case T_STRING:
-		return SI_BoolVal(SIValue_Compare(a, b) >= 0);
+
 	case T_INT64:
 	case T_DOUBLE:
 		return SI_BoolVal(SI_GET_NUMERIC(a) >= SI_GET_NUMERIC(b));
