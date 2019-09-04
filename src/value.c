@@ -294,7 +294,7 @@ size_t SIValue_StringConcat(SIValue *strings, unsigned int string_count, char **
 }
 
 // assumption: either a or b is a string
-SIValue SIValue_ConcatString(const SIValue a, const SIValue b) {
+static SIValue SIValue_ConcatString(const SIValue a, const SIValue b) {
 	SIValue result;
 	size_t bufferLen = 512;
 	size_t argument_len = 0;
@@ -326,26 +326,32 @@ SIValue SIValue_ConcatString(const SIValue a, const SIValue b) {
 	return result;
 }
 
-// assumption: either a or b is a list
-SIValue SIValue_ConcatList(const SIValue a, const SIValue b) {
-	SIValue resultArray;
-	// scalar + array
-	if(a.type != T_ARRAY) {
-		SIValue resultArray = SI_Array(1 + SIArray_Length(b));
+// assumption: either a or b is a list - static function, the caller validate types
+static SIValue SIValue_ConcatList(const SIValue a, const SIValue b) {
+
+	uint a_len = (a.type == T_ARRAY) ? SIArray_Length(a) : 1;
+	uint b_len = (b.type == T_ARRAY) ? SIArray_Length(b) : 1;
+	SIValue resultArray = SI_Array(a_len + b_len);
+
+	// Append a to resultArray
+	if(a.type == T_ARRAY) {
+		// in thae case of a is an array
+		for(uint i = 0; i < a_len; i++) SIArray_Append(&resultArray, SIArray_Get(a, i));
+	} else {
+		// in thae case of a is not an array
 		SIArray_Append(&resultArray, a);
 	}
-	// array + value
-	else {
-		resultArray = SI_CloneValue(a);
-	}
-	// b is scalar
-	if(b.type != T_ARRAY) {
-		SIArray_Append(&resultArray, b);
-	} else {
+
+
+	if(b.type == T_ARRAY) {
+		// b is an array
 		uint bArrayLen = SIArray_Length(b);
 		for(uint i = 0; i < bArrayLen; i++) {
 			SIArray_Append(&resultArray, SIArray_Get(b, i));
 		}
+	} else {
+		// b is not an array
+		SIArray_Append(&resultArray, b);
 	}
 	return resultArray;
 }
