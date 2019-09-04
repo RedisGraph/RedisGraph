@@ -168,7 +168,7 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode **root) {
 
 static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint argc, char **error) {
 	SIType actual_type;
-	SIType expected_type;
+	SIType expected_type = T_NULL;
 
 	// Make sure number of arguments is as expected.
 	if(fdesc->argc != VAR_ARG_LEN) {
