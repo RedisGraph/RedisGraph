@@ -158,7 +158,6 @@ static AST_Validation _ValidateReferredFunctions(rax *referred_functions, char *
 	_prepareIterateAll(referred_functions, &it);
 	*reason = NULL;
 
-	// TODO: return RAX.
 	while(raxNext(&it)) {
 		size_t len = it.key_len;
 		// No functions have a name longer than 32 characters

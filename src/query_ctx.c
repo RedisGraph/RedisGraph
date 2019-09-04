@@ -95,7 +95,7 @@ void QueryCtx_Free(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 
 	if(ctx->error) {
-		rm_free(ctx->error);
+		free(ctx->error);
 		ctx->error = NULL;
 	}
 	if(ctx->env) {

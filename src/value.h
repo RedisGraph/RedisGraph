@@ -17,22 +17,6 @@
  * The order of these values is significant, as the delta between values of
  * differing types is used to maintain the Cypher-defined global sort order
  * in the SIValue_Order routine. */
-// typedef enum {
-// 	T_NULL = 0x001,
-// 	T_STRING = 0x002,
-// 	// T_INT32 = 0x004, // unused
-// 	T_INT64 = 0x008,
-// 	// T_UINT = 0x010, // unused
-// 	T_BOOL = 0x020, // shares 'longval' representation in SIValue union
-// 	// T_FLOAT = 0x040, // unused
-// 	T_DOUBLE = 0x080,
-// 	T_PTR = 0x100,
-// 	T_CONSTSTRING = 0x200, // only used in deserialization routine
-// 	T_NODE = 0x400,
-// 	T_EDGE = 0x800,
-// 	T_ERROR = 0x1000,    // Represents an error, error message is held inside .stringval
-// } SIType;
-
 typedef enum {
 	T_MAP = (1 << 0),
 	T_NODE = (1 << 1),

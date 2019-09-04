@@ -111,12 +111,16 @@ def step_impl(context):
 
 @then(u'the result should be')
 def step_impl(context):
+    if exception:
+        raise exception
     expected_length = len(context.table.rows)
     assertions.assert_resultset_length(resultset, expected_length)
     assertions.assert_resultsets_equals(resultset, context.table)
 
 @then(u'the result should be, in order')
 def step_impl(context):
+    if exception:
+        raise exception
     expected_length = len(context.table.rows)
     assertions.assert_resultset_length(resultset, expected_length)
     assertions.assert_resultsets_equals_in_order(resultset, context.table)
@@ -125,3 +129,13 @@ def step_impl(context):
 def step_impl(context):
     global exception
     assert exception != None
+
+@then(u'a SyntaxError should be raised at compile time: InvalidAggregation')
+def step_impl(context):
+    assert exception != None
+    assert "Invalid use of aggregating function" in exception.message
+
+@then(u'a SyntaxError should be raised at compile time: UndefinedVariable')
+def step_impl(context):
+    assert exception != None
+    assert "not defined" in exception.message
