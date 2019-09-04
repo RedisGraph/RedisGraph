@@ -1200,15 +1200,13 @@ SIValue AR_SLICE(SIValue *argv, int argc) {
 	SIValue end = argv[2];
 	int32_t endIndex = (int32_t)end.longval;
 
-	uint32_t absStartIndex = abs(startIndex);
 	// if negative index, calculate offset from end
-	if(startIndex < 0) startIndex = arrayLen - absStartIndex;
+	if(startIndex < 0) startIndex = arrayLen - abs(startIndex);
 	// if offset from the end is out of bound, start at 0
 	if(startIndex < 0) startIndex = 0;
 
-	uint32_t absEndIndex = abs(endIndex);
 	// if negative index, calculate offset from end
-	if(endIndex < 0) endIndex = arrayLen - absEndIndex;
+	if(endIndex < 0) endIndex = arrayLen - abs(endIndex);
 	// if index out of bound, end at arrayLen
 	if(((int32_t)arrayLen) < endIndex) endIndex = arrayLen;
 	// cant go in reverse
