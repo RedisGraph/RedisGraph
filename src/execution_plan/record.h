@@ -15,10 +15,10 @@
 
 typedef enum  {
 	REC_TYPE_UNKNOWN = 0,
-	REC_TYPE_SCALAR,
-	REC_TYPE_NODE,
-	REC_TYPE_EDGE,
-	REC_TYPE_HEADER,
+	REC_TYPE_SCALAR = 1 << 0,
+	REC_TYPE_NODE = 1 << 2,
+	REC_TYPE_EDGE = 1 << 3,
+	REC_TYPE_HEADER = 1 << 4,
 } RecordEntryType;
 
 typedef struct {

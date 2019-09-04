@@ -255,7 +255,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 			if(root->operand.variadic.entity_prop != NULL) {
 				RecordEntryType t = Record_GetType(r, root->operand.variadic.entity_alias_idx);
 				// Property requested on a scalar value.
-				if(!(t && (REC_TYPE_NODE | REC_TYPE_EDGE))) {
+				if(!(t & (REC_TYPE_NODE | REC_TYPE_EDGE))) {
 					char *error;
 					SIValue v = Record_GetScalar(r, root->operand.variadic.entity_alias_idx);
 					asprintf(&error, "Type mismatch: expected a map but was %s", SIType_ToString(SI_TYPE(v)));

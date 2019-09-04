@@ -129,6 +129,7 @@ def step_impl(context):
 def step_impl(context):
     global exception
     assert exception != None
+    assert "expected a map" in exception.message
 
 @then(u'a SyntaxError should be raised at compile time: InvalidAggregation')
 def step_impl(context):
