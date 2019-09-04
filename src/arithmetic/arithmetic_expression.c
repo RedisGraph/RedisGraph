@@ -639,30 +639,39 @@ SIValue AR_RTRIM(SIValue *argv, int argc) {
 	return SI_TransferStringVal(trimmed);
 }
 
-SIValue AR_REVERSE(SIValue *argv, int argc) {
-	SIValue value = argv[0];
-	if(SIValue_IsNull(value)) return SI_NullVal();
-	if(SI_TYPE(value) == T_STRING) {
-		char *str = value.stringval;
-		size_t str_len = strlen(str);
-		char *reverse = rm_malloc((str_len + 1) * sizeof(char));
+SIValue _reverseString(SIValue value) {
+	char *str = value.stringval;
+	size_t str_len = strlen(str);
+	char *reverse = rm_malloc((str_len + 1) * sizeof(char));
 
-		int i = str_len - 1;
-		int j = 0;
-		while(i >= 0) {
-			reverse[j++] = str[i--];
-		}
-		reverse[j] = '\0';
-		return SI_TransferStringVal(reverse);
+	int i = str_len - 1;
+	int j = 0;
+	while(i >= 0) {
+		reverse[j++] = str[i--];
 	}
-	// in case of array
-	assert(SI_TYPE(value) == T_ARRAY);
+	reverse[j] = '\0';
+	return SI_TransferStringVal(reverse);
+}
+
+SIValue _reverseArray(SIValue value) {
 	uint arrayLen = SIArray_Length(value);
 	SIValue result = SI_Array(arrayLen);
 	for(uint i = arrayLen - 1; i >= 0; i--) {
 		SIArray_Append(&result, SIArray_Get(value, i));
 	}
 	return result;
+}
+
+SIValue AR_REVERSE(SIValue *argv, int argc) {
+	SIValue value = argv[0];
+	if(SIValue_IsNull(value)) return SI_NullVal();
+	// In case of string.
+	if(SI_TYPE(value) == T_STRING) return _reverseString(value);
+	// In case of array.
+	if(SI_TYPE(value) == T_ARRAY) return _reverseArray(value);
+
+	// TODO: Runtime error - unsupported type.
+	assert(false);
 }
 
 SIValue AR_SUBSTRING(SIValue *argv, int argc) {
@@ -1148,8 +1157,8 @@ SIValue AR_NE(SIValue *argv, int argc) {
 //=== List functions ===========================================================
 //==============================================================================
 
-// create a list from a given squence of values
-// "RETURN [1, '2', True, null]"
+/* Create a list from a given squence of values.
+   "RETURN [1, '2', True, null]" */
 SIValue AR_TOLIST(SIValue *argv, int argc) {
 	SIValue array = SI_Array(argc);
 	for(int i = 0; i < argc; i++) {
@@ -1158,10 +1167,10 @@ SIValue AR_TOLIST(SIValue *argv, int argc) {
 	return array;
 }
 
-// returns a value in a specific index in an array
-// valid index range is [-arrayLen, arrayLen)
-// invalid index will return null
-// "RETURN [1, 2, 3][0]" will yeild 1
+/* Returns a value in a specific index in an array.
+   Valid index range is [-arrayLen, arrayLen).
+   Invalid index will return null.
+   "RETURN [1, 2, 3][0]" will yeild 1 */
 SIValue AR_SUBSCRIPT(SIValue *argv, int argc) {
 	assert(argc == 2 && argv[0].type == T_ARRAY && argv[1].type == T_INT64);
 	SIValue list = argv[0];
@@ -1172,19 +1181,19 @@ SIValue AR_SUBSCRIPT(SIValue *argv, int argc) {
 	// index range can be [-arrayLen, arrayLen) (lower bound inclusive, upper exclusive)
 	// this is because 0 = arrayLen+(-arrayLen)
 	if((index < 0 && absIndex > arrayLen) || (index > 0 && absIndex >= arrayLen)) return SI_NullVal();
-	SIValue res = index >= 0 ? SIArray_Get(list, index) : SIArray_Get(list,
-																	  arrayLen - absIndex);
+	index = index >= 0 ? index : arrayLen - absIndex;
+	SIValue res = SIArray_Get(list, index);
 	// clone is in case for nested heap allocated values returned from the array
 	return SI_CloneValue(res);
 }
 
-// return a sub array from an array given a range of indices
-// valid indices ragne is [-arrayLen, arrayLen)
-// if range start value is bigger then range end value an empty list will be returnd
-// if indices are still integers but not in the valid range, only values within the valid range
-// will be returned
-// if one of the indices is null, null will be returnd
-// "RETURN [1, 2, 3][0..1]" will yield [1, 2]
+/* Return a sub array from an array given a range of indices.
+   Valid indices ragne is [-arrayLen, arrayLen).
+   If range start value is bigger then range end value an empty list will be returnd.
+   If indices are still integers but not in the valid range, only values within the valid range
+   will be returned.
+   If one of the indices is null, null will be returnd.
+   "RETURN [1, 2, 3][0..1]" will yield [1, 2] */
 SIValue AR_SLICE(SIValue *argv, int argc) {
 	assert(argc == 3 && argv[0].type == T_ARRAY);
 	if(argv[0].type == T_NULL || argv[1].type == T_NULL || argv[2].type == T_NULL) return SI_NullVal();
@@ -1221,10 +1230,10 @@ SIValue AR_SLICE(SIValue *argv, int argc) {
 	return subArray;
 }
 
-// create a new list of integers in the range of [start, end]. If a step was given
-// the step between two consecutive list members will be this step.
-// If step was not suppllied, it will be default as 1
-// "RETURN range(3,8,2)" will yield [3, 5, 7]
+/* Create a new list of integers in the range of [start, end]. If a step was given
+   the step between two consecutive list members will be this step.
+   If step was not suppllied, it will be default as 1
+   "RETURN range(3,8,2)" will yield [3, 5, 7] */
 SIValue AR_RANGE(SIValue *argv, int argc) {
 	assert(argc > 1 && argc <= 3 && argv[0].type == T_INT64 && argv[1].type == T_INT64);
 	int64_t start = argv[0].longval;
@@ -1241,8 +1250,8 @@ SIValue AR_RANGE(SIValue *argv, int argc) {
 	return array;
 }
 
-// checks if a value is in a given list
-// "RETURN 3 IN [1, 2, 3]" will return true
+/* Checks if a value is in a given list.
+   "RETURN 3 IN [1, 2, 3]" will return true */
 SIValue AR_IN(SIValue *argv, int argc) {
 	assert(argc == 2 && argv[1].type == T_ARRAY);
 	SIValue lookupValue = argv[0];
@@ -1259,9 +1268,9 @@ SIValue AR_IN(SIValue *argv, int argc) {
 	return comparedNull ? SI_NullVal() : SI_BoolVal(false);
 }
 
-// return a list/string/map/path size
-// "RETURN size([1, 2, 3])" will return 3
-// TODO: when map and path are implemented, add their functonality
+/* Return a list/string/map/path size.
+   "RETURN size([1, 2, 3])" will return 3
+   TODO: when map and path are implemented, add their functonality */
 SIValue AR_SIZE(SIValue *argv, int argc) {
 	assert(argc == 1);
 	SIValue value = argv[0];
@@ -1275,8 +1284,8 @@ SIValue AR_SIZE(SIValue *argv, int argc) {
 	}
 }
 
-// return the first member of a list
-// "RETURN head([1, 2, 3])" will return 1
+/* Return the first member of a list.
+   "RETURN head([1, 2, 3])" will return 1 */
 SIValue AR_HEAD(SIValue *argv, int argc) {
 	assert(argc == 1);
 	SIValue value = argv[0];
@@ -1287,8 +1296,8 @@ SIValue AR_HEAD(SIValue *argv, int argc) {
 	return SIArray_Get(value, 0);
 }
 
-// return a sublist of a list, which contains all the values withiout the first value
-// "RETURN tail([1, 2, 3])" will return [2, 3]
+/* Return a sublist of a list, which contains all the values withiout the first value.
+   "RETURN tail([1, 2, 3])" will return [2, 3] */
 SIValue AR_TAIL(SIValue *argv, int argc) {
 	assert(argc == 1);
 	SIValue value = argv[0];

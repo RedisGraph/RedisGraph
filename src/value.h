@@ -92,9 +92,8 @@ SIValue SI_Edge(void *e);
 SIValue SI_Array(u_int64_t initialCapacity);
 SIValue SI_EmptyArray();
 SIValue SI_DuplicateStringVal(const char *s); // Duplicate and ultimately free the input string
-SIValue SI_ConstStringVal(char
-                              *s);     // Neither duplicate nor assume ownership of input string
-SIValue SI_TransferStringVal(char *s); // Don't duplicate input string, but assume ownership
+SIValue SI_ConstStringVal(char *s);           // Neither duplicate nor assume ownership of input string
+SIValue SI_TransferStringVal(char *s);        // Don't duplicate input string, but assume ownership
 
 /* Functions for copying and guaranteeing memory safety for SIValues. */
 // SI_ShareValue creates an SIValue that shares all of the original's allocations.
@@ -119,9 +118,8 @@ SIValue SI_ConstValue(const SIValue v);
 // SIValue_MakeVolatile updates an SIValue to mark that its allocations are shared rather than self-owned.
 void SIValue_MakeVolatile(SIValue *v);
 /* Functions to copy an SIValue. */
-SIValue SI_Clone(SIValue v); // Safe clone an SIValue
-SIValue SI_ConstStringVal(char
-                              *s);     // Neither duplicate nor assume ownership of input string
+SIValue SI_Clone(SIValue v);           // Safe clone an SIValue
+SIValue SI_ConstStringVal(char *s);    // Neither duplicate nor assume ownership of input string
 SIValue SI_TransferStringVal(char *s); // Don't duplicate input string, but assume ownership
 
 // SIValue_Persist updates an SIValue to duplicate any allocations that may go out of scope in the lifetime of this query.
@@ -132,7 +130,8 @@ bool SIValue_IsNullPtr(SIValue *v);
 
 const char *SIType_ToString(SIType t);
 
-// prints an SIValue to a given buffer, in a given length (bufferLen), with actual written values (bytesWritten)
+// Prints an SIValue to a given buffer, with length (bufferLen), sets bytesWritten to the actuall length
+// of string representation
 // if there is not enough space for the value to be printed, the buffer will be re allocated with
 // more space, and bufferLen will change accordingly
 void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWritten);
@@ -148,8 +147,8 @@ SIValue SIValue_FromString(const char *s);
 size_t SIValue_StringConcatLen(SIValue *strings, unsigned int string_count);
 
 /* Concats strings as a comma separated string. */
-size_t SIValue_StringConcat(SIValue *strings, unsigned int string_count, char **buf,
-                            size_t *buf_len, size_t *bytesWritten);
+void SIValue_StringConcat(SIValue *strings, unsigned int string_count, char **buf,
+                          size_t *buf_len, size_t *bytesWritten);
 
 /* Arithmetic operators for numeric SIValues.
  * The caller is responsible for ensuring that the arguments

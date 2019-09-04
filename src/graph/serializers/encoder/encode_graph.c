@@ -13,7 +13,7 @@
 #include "../../../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "../../../datatypes/array.h"
 
-// forward declerations
+// Forward declerations.
 void _RdbSaveSIArray(RedisModuleIO *rdb, const SIValue array);
 
 // Use a modified binary search to find the number of elements in

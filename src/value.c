@@ -198,7 +198,7 @@ void SIString_ToString(SIValue str, char **buf, size_t *bufferLen, size_t *bytes
 }
 
 void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWritten) {
-	// uint64 max and int64 min are 21 bytes long
+	// uint64 max and int64 min string representation requires 21 bytes
 	// float defaults to print 6 digit after the decimal-point
 	// checkt for enough space
 	if(*bufferLen - *bytesWritten < 64) {
@@ -229,8 +229,12 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 		SIArray_ToString(v, buf, bufferLen, bytesWritten);
 		break;
 	case T_NULL:
-	default:
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "NULL");
+		break;
+	default:
+		// unrecognized type
+		assert(false);
+
 	}
 }
 
@@ -283,14 +287,13 @@ size_t SIValue_StringConcatLen(SIValue *strings, unsigned int string_count) {
 	return length;
 }
 
-size_t SIValue_StringConcat(SIValue *strings, unsigned int string_count, char **buf,
-							size_t *buf_len, size_t *bytesWritten) {
+void SIValue_StringConcat(SIValue *strings, unsigned int string_count, char **buf,
+						  size_t *buf_len, size_t *bytesWritten) {
 
 	for(int i = 0; i < string_count; i ++) {
 		SIValue_ToString(strings[i], buf, buf_len, bytesWritten);
 		if(i < string_count - 1) *bytesWritten += snprintf(*buf + *bytesWritten, *buf_len, ",");
 	}
-	return *bytesWritten;
 }
 
 // assumption: either a or b is a string
@@ -341,7 +344,6 @@ static SIValue SIValue_ConcatList(const SIValue a, const SIValue b) {
 		// in thae case of a is not an array
 		SIArray_Append(&resultArray, a);
 	}
-
 
 	if(b.type == T_ARRAY) {
 		// b is an array
@@ -398,14 +400,14 @@ int SIArray_Compare(SIValue arrayA, SIValue arrayB) {
 	if(arrayALen == 0 && arrayBLen == 0) return 0;
 	int lenDiff = arrayALen - arrayBLen;
 	// check for the common range of indices
-	uint minLengh = arrayALen < arrayBLen ? arrayALen : arrayBLen;
+	uint minLengh = arrayALen <= arrayBLen ? arrayALen : arrayBLen;
 
 	uint allDisjoint = 0;   // counter for the amount of disjoint comparisons
 	uint nullCompare = 0;   // counter for the amount of null comparison
-	int notEqual =
-		0;       // will hold the first false (result != 0) comparison result between two values from the same type, which are not equal
+	// notEqual holds the first false (result != 0) comparison result between two values from the same type, which are not equal
+	int notEqual = 0;
 
-	// go over the common range for both arrays
+	// Go over the common range for both arrays.
 	for(uint i = 0; i < minLengh; i++) {
 		SIValue aValue = SIArray_Get(arrayA, i);
 		SIValue bValue = SIArray_Get(arrayB, i);

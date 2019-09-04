@@ -87,10 +87,10 @@ void Edge_SetRelationID(Edge *e, int relationID) {
 	e->relationID = relationID;
 }
 
-size_t Edge_ToString(const Edge *e, char **buffer, size_t *bufferLen, size_t *bytesWritten,
-					 GraphEntityStringFromat format) {
-	return GraphEntity_ToString((const GraphEntity *)e, buffer, bufferLen, bytesWritten, format,
-								GETYPE_EDGE);
+void Edge_ToString(const Edge *e, char **buffer, size_t *bufferLen, size_t *bytesWritten,
+				   GraphEntityStringFromat format) {
+	GraphEntity_ToString((const GraphEntity *)e, buffer, bufferLen, bytesWritten, format,
+						 GETYPE_EDGE);
 }
 
 void Edge_Free(Edge *edge) {

@@ -8,7 +8,7 @@
 #include "../../util/arr.h"
 #include "../../datatypes/array.h"
 
-// forward declarations
+// Forward declarations.
 static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n);
 static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e);
 static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext *gc,
@@ -157,6 +157,17 @@ static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
 
 static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext *gc,
 											   SIValue array) {
+
+	/*  Compact array reply format:
+	 *  [
+	 *      [type, value] // every member is returned at its compact representation
+	 *      [type, value]
+	 *      .
+	 *      .
+	 *      .
+	 *      [type, value]
+	 *  ]
+	 */
 	uint arrayLen = SIArray_Length(array);
 	RedisModule_ReplyWithArray(ctx, arrayLen);
 	for(uint i = 0; i < arrayLen; i++) {

@@ -53,10 +53,10 @@ Node *Node_Clone(const Node *n) {
 	return clone;
 }
 
-size_t Node_ToString(const Node *n, char **buffer, size_t *bufferLen, size_t *bytesWritten,
-					 GraphEntityStringFromat format) {
-	return GraphEntity_ToString((const GraphEntity *)n, buffer, bufferLen, bytesWritten, format,
-								GETYPE_NODE);
+void Node_ToString(const Node *n, char **buffer, size_t *bufferLen, size_t *bytesWritten,
+				   GraphEntityStringFromat format) {
+	GraphEntity_ToString((const GraphEntity *)n, buffer, bufferLen, bytesWritten, format,
+						 GETYPE_NODE);
 }
 
 void Node_Free(Node *node) {

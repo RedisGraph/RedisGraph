@@ -12,11 +12,10 @@
 
 #define INDEX_NOT_SET UINT_MAX
 
-OpBase *NewUnwindOp(uint record_idx, AR_ExpNode *exps) {
+OpBase *NewUnwindOp(uint record_idx, AR_ExpNode *exp) {
 	OpUnwind *unwind = malloc(sizeof(OpUnwind));
 	unwind->listIdx = INDEX_NOT_SET;
-	unwind->expressions = exps;
-	unwind->isStatic = false;
+	unwind->exp = exp;
 	unwind->currentRecord = NULL;
 
 	// Set our Op operations
@@ -41,27 +40,28 @@ OpResult UnwindInit(OpBase *opBase) {
 
 	// check for modifiers in the AR_EXP for static or dynamic list
 	rax *modifiers = raxNew();
-	AR_EXP_CollectEntityIDs(unwind->expressions, modifiers);
+	AR_EXP_CollectEntityIDs(unwind->exp, modifiers);
 	// if there aren't any modifiers - list is static
 	if(!raxSize(modifiers)) {
 		// set the list
-		unwind->list = AR_EXP_Evaluate(unwind->expressions, NULL);
+		unwind->list = AR_EXP_Evaluate(unwind->exp, NULL);
 		assert(unwind->list.type == T_ARRAY);
-		unwind->isStatic = true;
 	}
+	raxFree(modifiers);
 	// check if there are children - if not, add static record and reset the list index
 	if(!unwind->op.childCount) {
+
+		/* the list index is set to 0 only when there are no children to the op
+		if the list is static, but the op has children, we first need to generate a fake record for them
+		MATCH(n) UNWIND [0,1,2] as y return n, y */
 		unwind->currentRecord = Record_New(opBase->record_map->record_len);
-		// the list index is set to 0 only when there are no children to the op
-		// if the list is static, but the op has children, we first need to get a record from them
-		// MATCH(n) UNWIND [0,1,2] as y return n, y
 		unwind->listIdx = 0;
 	}
 	return OP_OK;
 }
 
 // try to generate new value to return
-// NULL will be returned if dynamic list is not evaluted (listIdx = UNDEFIND)
+// NULL will be returned if dynamic list is not evaluted (listIdx = INDEX_NOT_SET)
 // or in case of the current list fully returned its memebers
 Record _handoff(OpUnwind *op) {
 	// if there is a new value ready, return it
@@ -82,7 +82,6 @@ Record UnwindConsume(OpBase *opBase) {
 	if(res) return res;
 
 	// no new value - check if there are new lists to unwind
-	// check if dynamic or static unwind
 	if(op->op.childCount) {
 		Record r;
 		OpBase *child = op->op.children[0];
@@ -91,13 +90,10 @@ Record UnwindConsume(OpBase *opBase) {
 			if(op->listIdx != INDEX_NOT_SET) Record_Free(op->currentRecord);
 			op->currentRecord = r;
 
-			// TODO: if expression is static or not
-			if(!op->isStatic) {
-				SIValue_Free(&op->list);
-				// set the list
-				op->list = AR_EXP_Evaluate(op->expressions, r);
-				assert(op->list.type == T_ARRAY);
-			}
+			SIValue_Free(&op->list);
+			// set the list
+			op->list = AR_EXP_Evaluate(op->exp, r);
+			assert(op->list.type == T_ARRAY);
 			// resed index
 			op->listIdx = 0;
 		}
@@ -115,8 +111,8 @@ OpResult UnwindReset(OpBase *ctx) {
 void UnwindFree(OpBase *ctx) {
 	OpUnwind *unwind = (OpUnwind *)ctx;
 
-	if(unwind->expressions) {
-		AR_EXP_Free(unwind->expressions);
+	if(unwind->exp) {
+		AR_EXP_Free(unwind->exp);
 	}
 	Record_Free(unwind->currentRecord);
 	SIValue_Free(&unwind->list);

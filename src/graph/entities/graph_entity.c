@@ -128,9 +128,9 @@ size_t GraphEntity_PropertiesToString(const GraphEntity *e, char **buffer, size_
 	return *bytesWritten;
 }
 
-size_t GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen,
-							size_t *bytesWritten,
-							GraphEntityStringFromat format, GraphEntityType entityType) {
+void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen,
+						  size_t *bytesWritten,
+						  GraphEntityStringFromat format, GraphEntityType entityType) {
 	// space allocation
 	if(*bufferLen - *bytesWritten < 64)  {
 		*bufferLen += 64;
@@ -200,7 +200,6 @@ size_t GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferL
 		*buffer = rm_realloc(*buffer, sizeof(char) * *bufferLen);
 	}
 	*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "%s", closeSymbole);
-	return *bytesWritten;
 }
 
 void FreeEntity(Entity *e) {

@@ -20,7 +20,7 @@ void SIArray_Append(SIValue *siarray, SIValue value) {
 
 SIValue SIArray_Get(SIValue siarray, uint32_t index) {
 	// check index
-	if(index < 0 || index >= SIArray_Length(siarray)) return SI_NullVal();
+	if(index >= SIArray_Length(siarray)) return SI_NullVal();
 	return SI_ShareValue(siarray.array[index]);
 }
 
@@ -37,7 +37,7 @@ SIValue SIArray_Clone(SIValue siarray) {
 	return newArray;
 }
 
-size_t SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytesWritten) {
+void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytesWritten) {
 	if(*bufferLen - *bytesWritten < 64) {
 		*bufferLen += 64;
 		*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
@@ -57,7 +57,6 @@ size_t SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *byt
 	}
 	// close array with "]"
 	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "]");
-	return *bytesWritten;
 }
 
 void SIArray_Free(SIValue siarray) {

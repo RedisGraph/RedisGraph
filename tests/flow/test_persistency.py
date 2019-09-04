@@ -145,7 +145,7 @@ class testGraphPersistency(FlowTestsBase):
         self.env.assertEquals(first_result.result_set,
                               second_result.result_set)
 
-    # Strings, numerics, booleans, and NULL properties should be properly serialized and reloaded
+    # Strings, numerics, booleans, arrays and NULL properties should be properly serialized and reloaded
     def test03_restore_properties(self):
         graphname = "simple_props"
         graph = Graph(graphname, redis_con)

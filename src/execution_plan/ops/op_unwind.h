@@ -15,16 +15,15 @@
 typedef struct
 {
     OpBase op;
-    AR_ExpNode *expressions; // Atirhmetic expression (evaluated as an SIArray)
-    uint listIdx;            // Current list index
-    int unwindRecIdx;        // Update record at this index.
-    SIValue list;            // list which the unwind operation is performed on
-    Record currentRecord;    // record to clone and add a value extracted from the list
-    bool isStatic;           // indicates if the unwind list is static or not
+    AR_ExpNode *exp;      // Atirhmetic expression (evaluated as an SIArray)
+    uint listIdx;         // Current list index
+    int unwindRecIdx;     // Update record at this index.
+    SIValue list;         // list which the unwind operation is performed on
+    Record currentRecord; // record to clone and add a value extracted from the list
 } OpUnwind;
 
 /* Creates a new Unwind operation */
-OpBase *NewUnwindOp(uint record_idx, AR_ExpNode *exprs);
+OpBase *NewUnwindOp(uint record_idx, AR_ExpNode *exp);
 
 OpResult UnwindInit(OpBase *opBase);
 

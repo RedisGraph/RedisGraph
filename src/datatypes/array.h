@@ -13,7 +13,6 @@ SIValue SIArray_New(u_int32_t initialCapacity);
   * @brief  Appends a new SIValue to a given array  
   * @param  siarray: pointer to array
   * @param  value: new value
-  * @retval array with the appended value
   */
 void SIArray_Append(SIValue *siarray, SIValue value);
 
@@ -39,7 +38,7 @@ u_int32_t SIArray_Length(SIValue siarray);
   * @brief  Returns a copy of the array  
   * @note   The caller needs to free the array
   * @param  siarray: 
-  * @retval 
+  * @retval A clone of the given array
   */
 SIValue SIArray_Clone(SIValue siarray);
 
@@ -49,9 +48,8 @@ SIValue SIArray_Clone(SIValue siarray);
   * @param  buf: print buffer (pointer to pointer to allow re allocation)
   * @param  len: print buffer length
   * @param  bytesWritten: the actual number of bytes written to the buffer
-  * @retval The printed string length
   */
-size_t SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytesWritten);
+void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytesWritten);
 
 /**
   * @brief  delete an array  

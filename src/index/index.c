@@ -54,8 +54,7 @@ static void _populateIndex
 		bool depleted = false;
 		GxB_MatrixTupleIter_next(it, NULL, &node_id, &depleted);
 		if(depleted) break;
-		/* The index must maintain its own copy of the indexed SIValue
-		 * so that it becomes outdated but not broken by updates to the property. */
+
 		Graph_GetNode(g, node_id, &node);
 		Index_IndexNode(idx, &node);
 	}

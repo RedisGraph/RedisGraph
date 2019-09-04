@@ -9,7 +9,7 @@
 #include "../../graph.h"
 #include "../../../datatypes/array.h"
 
-// forward declerations
+// Forward declerations.
 SIValue _RdbLoadSIArray(RedisModuleIO *rdb);
 
 

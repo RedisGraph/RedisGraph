@@ -60,9 +60,9 @@ void Edge_SetDestNode(Edge *e, Node *dest); // QG
 // Sets edge relation type.
 void Edge_SetRelationID(Edge *e, int relationID); // QG, graph.c
 
-/* prints a string representation of the edge to buffer, return the string length*/
-size_t Edge_ToString(const Edge *e, char **buffer, size_t *bufferLen, size_t *bytesWritten,
-                     GraphEntityStringFromat format);
+/* Prints a string representation of the edge to buffer, return the string length. */
+void Edge_ToString(const Edge *e, char **buffer, size_t *bufferLen, size_t *bytesWritten,
+                   GraphEntityStringFromat format);
 
 // Frees allocated space by given edge
 void Edge_Free(Edge *edge);
