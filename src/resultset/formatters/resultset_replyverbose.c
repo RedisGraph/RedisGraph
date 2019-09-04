@@ -29,11 +29,11 @@ static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, const SIValu
 	case T_NULL:
 		RedisModule_ReplyWithNull(ctx);
 		return;
-	case T_NODE: // Nodes and edges should always be Record entries at this point
-	case T_EDGE:
 	case T_ERROR:
 		RedisModule_ReplyWithError(ctx, v.stringval);
 		return;
+	case T_NODE: // Nodes and edges should always be Record entries at this point
+	case T_EDGE:
 	default:
 		assert("Unhandled value type" && false);
 	}

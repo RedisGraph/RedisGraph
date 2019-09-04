@@ -76,7 +76,7 @@ void _MGraph_Explain(void *args) {
 
 	Graph_AcquireReadLock(gc->g);
 	plan = NewExecutionPlan(ctx, gc, NULL);
-	ExecutionPlan_Print(plan, ctx);
+	if(plan) ExecutionPlan_Print(plan, ctx);
 
 cleanup:
 	if(plan) {

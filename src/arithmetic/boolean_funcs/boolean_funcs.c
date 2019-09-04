@@ -9,58 +9,38 @@
 #include "../../util/arr.h"
 #include <assert.h>
 
+#define CONTAINS_NULL 2 // Macro used for efficiently evaluating 3-valued truth table
+
 SIValue AR_AND(SIValue *argv, int argc) {
 	// false AND null evaluates to false ; all other null comparisons evaluate to null
-	bool res = true;
-	int null_count = 0;
 
-	for(int i = 0; i < argc; i++) {
-		SIValue v = argv[i];
-		switch(SI_TYPE(v)) {
-		case T_NULL:
-			res &= false;
-			null_count ++;
-			break;
-		case T_BOOL:
-		case T_INT64:
-			res &= v.longval;
-			break;
-		default:
-			assert(false);
-		}
-	}
+	SIValue a = argv[0];
+	SIValue b = argv[1];
 
-	if(null_count == 2) return SI_NullVal();
+	int a_val = SIValue_IsNull(a) ? CONTAINS_NULL : a.longval;
+	int b_val = SIValue_IsNull(b) ? CONTAINS_NULL : b.longval;
+	bool has_nulls = (a_val | b_val) & CONTAINS_NULL;
+	int val = a_val & b_val;
 
-	return SI_BoolVal(res);
+	// If one argument is null and the other is false, returns false.
+	if(has_nulls && !val) return SI_BoolVal(false);
+	if(has_nulls) return SI_NullVal(); // Else if an argument is null, returns null.
+	return SI_BoolVal(val); // Else return the logical AND.
 }
 
 SIValue AR_OR(SIValue *argv, int argc) {
 	// true OR null evaluates to true; all other null comparisons evaluate to null
-	bool res = false;
-	int null_count = 0;
 
-	for(int i = 0; i < argc; i++) {
-		SIValue v = argv[i];
-		switch(SI_TYPE(v)) {
-		case T_NULL:
-			res |= false;
-			null_count ++;
-			break;
-		case T_BOOL:
-		case T_INT64:
-			res |= v.longval;
-			break;
-		default:
-			assert(false);
-		}
-	}
+	SIValue a = argv[0];
+	SIValue b = argv[1];
 
-	// If both arguments are NULL or one argument is NULL and the other is false,
-	// OR evaluates to NULL.
-	if(null_count == 2 || (null_count == 1 && res == false)) return SI_NullVal();
+	int a_val = SIValue_IsNull(a) ? CONTAINS_NULL : a.longval;
+	int b_val = SIValue_IsNull(b) ? CONTAINS_NULL : b.longval;
+	int val = a_val | b_val;
 
-	return SI_BoolVal(res);
+	if(val & 1) return SI_BoolVal(true);         // If at least one argument is true, returns true.
+	if(val & CONTAINS_NULL) return SI_NullVal(); // Else if an argument is null, returns null.
+	return SI_BoolVal(false);                    // If both arguments are false, returns false
 }
 
 SIValue AR_XOR(SIValue *argv, int argc) {
@@ -87,15 +67,23 @@ SIValue AR_GT(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
+	// Comparisons with NULL values always return NULL.
 	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
 
-	assert(SI_TYPE(a) == SI_TYPE(b));
+	// Emit error when attempting to compare invalid types
+	if(!SI_VALUES_ARE_COMPARABLE(a, b)) {
+		char *error;
+		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
+				 SIType_ToString(SI_TYPE(b)));
+		return SI_Error(error);
+	}
 
 	switch(SI_TYPE(a)) {
 	case T_STRING:
 		return SI_BoolVal(SIValue_Compare(a, b) > 0);
 	case T_INT64:
 	case T_DOUBLE:
+	case T_BOOL:
 		return SI_BoolVal(SI_GET_NUMERIC(a) > SI_GET_NUMERIC(b));
 	default:
 		assert(false);
@@ -106,17 +94,23 @@ SIValue AR_GE(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
+	// Comparisons with NULL values always return NULL.
 	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
 
-	assert(SI_TYPE(a) == SI_TYPE(b));
-	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
-	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
+	// Emit error when attempting to compare invalid types
+	if(!SI_VALUES_ARE_COMPARABLE(a, b)) {
+		char *error;
+		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
+				 SIType_ToString(SI_TYPE(b)));
+		return SI_Error(error);
+	}
 
 	switch(SI_TYPE(a)) {
 	case T_STRING:
 		return SI_BoolVal(SIValue_Compare(a, b) >= 0);
 	case T_INT64:
 	case T_DOUBLE:
+	case T_BOOL:
 		return SI_BoolVal(SI_GET_NUMERIC(a) >= SI_GET_NUMERIC(b));
 	default:
 		assert(false);
@@ -127,17 +121,23 @@ SIValue AR_LT(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
+	// Comparisons with NULL values always return NULL.
 	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
 
-	assert(SI_TYPE(a) == SI_TYPE(b));
-	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
-	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
+	// Emit error when attempting to compare invalid types
+	if(!SI_VALUES_ARE_COMPARABLE(a, b)) {
+		char *error;
+		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
+				 SIType_ToString(SI_TYPE(b)));
+		return SI_Error(error);
+	}
 
 	switch(SI_TYPE(a)) {
 	case T_STRING:
 		return SI_BoolVal(SIValue_Compare(a, b) < 0);
 	case T_INT64:
 	case T_DOUBLE:
+	case T_BOOL:
 		return SI_BoolVal(SI_GET_NUMERIC(a) < SI_GET_NUMERIC(b));
 	default:
 		assert(false);
@@ -148,17 +148,23 @@ SIValue AR_LE(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
+	// Comparisons with NULL values always return NULL.
 	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
 
-	assert(SI_TYPE(a) == SI_TYPE(b));
-	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
-	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
+	// Emit error when attempting to compare invalid types
+	if(!SI_VALUES_ARE_COMPARABLE(a, b)) {
+		char *error;
+		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
+				 SIType_ToString(SI_TYPE(b)));
+		return SI_Error(error);
+	}
 
 	switch(SI_TYPE(a)) {
 	case T_STRING:
 		return SI_BoolVal(SIValue_Compare(a, b) <= 0);
 	case T_INT64:
 	case T_DOUBLE:
+	case T_BOOL:
 		return SI_BoolVal(SI_GET_NUMERIC(a) <= SI_GET_NUMERIC(b));
 	default:
 		assert(false);
@@ -169,17 +175,18 @@ SIValue AR_EQ(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
+	// Comparisons with NULL values always return NULL.
 	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
 
-	assert(SI_TYPE(a) == SI_TYPE(b));
-	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
-	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
+	// Non-comparable types cannot equal each other.
+	if(!SI_VALUES_ARE_COMPARABLE(a, b)) return SI_BoolVal(false);
 
 	switch(SI_TYPE(a)) {
 	case T_STRING:
 		return SI_BoolVal(SIValue_Compare(a, b) == 0);
 	case T_INT64:
 	case T_DOUBLE:
+	case T_BOOL:
 		return SI_BoolVal(SI_GET_NUMERIC(a) == SI_GET_NUMERIC(b));
 	default:
 		assert(false);
@@ -190,17 +197,18 @@ SIValue AR_NE(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
+	// Comparisons with NULL values always return NULL.
 	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
 
-	assert(SI_TYPE(a) == SI_TYPE(b));
-	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
-	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
+	// Non-comparable types cannot equal each other.
+	if(!SI_VALUES_ARE_COMPARABLE(a, b)) return SI_BoolVal(true);
 
 	switch(SI_TYPE(a)) {
 	case T_STRING:
 		return SI_BoolVal(SIValue_Compare(a, b) != 0);
 	case T_INT64:
 	case T_DOUBLE:
+	case T_BOOL:
 		return SI_BoolVal(SI_GET_NUMERIC(a) != SI_GET_NUMERIC(b));
 	default:
 		assert(false);
@@ -213,45 +221,48 @@ void Register_BooleanFuncs() {
 
 	types = array_new(SIType, 2);
 	types = array_append(types, T_BOOL | T_NULL);
-	func_desc = AR_FuncDescNew("and", AR_AND, VAR_ARG_LEN, types);
-	AR_RegFunc(func_desc);
-
-	types = array_new(SIType, 1);
 	types = array_append(types, T_BOOL | T_NULL);
-	func_desc = AR_FuncDescNew("or", AR_OR, VAR_ARG_LEN, types);
-	AR_RegFunc(func_desc);
-
-	types = array_new(SIType, 1);
-	types = array_append(types, T_BOOL | T_NULL);
-	func_desc = AR_FuncDescNew("xor", AR_XOR, VAR_ARG_LEN, types);
-	AR_RegFunc(func_desc);
-
-	types = array_new(SIType, 1);
-	types = array_append(types, T_BOOL | T_NULL);
-	func_desc = AR_FuncDescNew("not", AR_NOT, VAR_ARG_LEN, types);
+	func_desc = AR_FuncDescNew("and", AR_AND, 2, types);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
-	types = array_append(types, SI_ALL);
-	types = array_append(types, SI_ALL);
+	types = array_append(types, T_BOOL | T_NULL);
+	types = array_append(types, T_BOOL | T_NULL);
+	func_desc = AR_FuncDescNew("or", AR_OR, 2, types);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 2);
+	types = array_append(types, T_BOOL | T_NULL);
+	types = array_append(types, T_BOOL | T_NULL);
+	func_desc = AR_FuncDescNew("xor", AR_XOR, 2, types);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	types = array_append(types, T_BOOL | T_NULL);
+	func_desc = AR_FuncDescNew("not", AR_NOT, 1, types);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 2);
+	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_NULL));
+	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_NULL));
 	func_desc = AR_FuncDescNew("gt", AR_GT, 2, types);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
-	types = array_append(types, SI_ALL);
-	types = array_append(types, SI_ALL);
+	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_NULL));
+	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_NULL));
 	func_desc = AR_FuncDescNew("ge", AR_GE, 2, types);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
-	types = array_append(types, SI_ALL);
-	types = array_append(types, SI_ALL);
+	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_NULL));
+	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_NULL));
 	func_desc = AR_FuncDescNew("lt", AR_LT, 2, types);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
-	types = array_append(types, SI_ALL);
-	types = array_append(types, SI_ALL);
+	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_NULL));
+	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_NULL));
 	func_desc = AR_FuncDescNew("le", AR_LE, 2, types);
 	AR_RegFunc(func_desc);
 

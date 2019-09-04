@@ -253,7 +253,7 @@ void Register_StringFuncs() {
 
 	types = array_new(SIType, 2);
 	types = array_append(types, (T_STRING | T_NULL));
-	types = array_append(types, (SI_NUMERIC));
+	types = array_append(types, T_INT64);
 	func_desc = AR_FuncDescNew("left", AR_LEFT, 2, types);
 	AR_RegFunc(func_desc);
 
@@ -264,7 +264,7 @@ void Register_StringFuncs() {
 
 	types = array_new(SIType, 2);
 	types = array_append(types, (T_STRING | T_NULL));
-	types = array_append(types, (SI_NUMERIC));
+	types = array_append(types, T_INT64);
 	func_desc = AR_FuncDescNew("right", AR_RIGHT, 2, types);
 	AR_RegFunc(func_desc);
 

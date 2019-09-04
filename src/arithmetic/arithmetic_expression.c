@@ -187,7 +187,7 @@ static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint a
 				 * RETURN 'a' * 2
 				 * "Type mismatch: expected Float, Integer or Duration but was String" */
 				const char *expected_type_str = SIType_ToString(expected_type);
-				asprintf(error, "Type mismatch: expected %s but was %s ", expected_type_str, actual_type_str);
+				asprintf(error, "Type mismatch: expected %s but was %s", expected_type_str, actual_type_str);
 				return false;
 			}
 		}
@@ -203,7 +203,7 @@ static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint a
 			if(!(actual_type & expected_type)) {
 				const char *actual_type_str = SIType_ToString(actual_type);
 				const char *expected_type_str = SIType_ToString(expected_type);
-				asprintf(error, "Type mismatch: expected %s but was %s ", expected_type_str, actual_type_str);
+				asprintf(error, "Type mismatch: expected %s but was %s", expected_type_str, actual_type_str);
 				return false;
 			}
 		}
@@ -246,6 +246,11 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 			/* Free any SIValues that were allocated while evaluating this tree. */
 			for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
 				SIValue_Free(&sub_trees[child_idx]);
+			}
+			if(SIValue_IsError(result)) {
+				QueryCtx_SetError(result.stringval);
+				jmp_buf *env = QueryCtx_GetEnv();
+				longjmp(*env, 1);
 			}
 		}
 	} else {
