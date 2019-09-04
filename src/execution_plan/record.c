@@ -46,12 +46,11 @@ void Record_Extend(Record *r, int len) {
 }
 
 void Record_Truncate(Record r, uint count) {
-	int original_len = Record_length(r);
-	if(count > original_len) count = original_len;
-	if(count == 0) return;
+	uint original_len = Record_length(r);
+	if(count >= original_len) return;
 
-	for(unsigned int i = 0; i < count; i++) {
-		if(r[original_len - 1 - i].type == REC_TYPE_SCALAR) {
+	for(uint i = count + 1; i < original_len; i++) {
+		if(r[i].type == REC_TYPE_SCALAR) {
 			SIValue_Free(&r[i].value.s);
 		}
 	}
