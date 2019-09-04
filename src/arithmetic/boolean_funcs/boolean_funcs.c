@@ -10,7 +10,7 @@
 #include <assert.h>
 
 SIValue AR_AND(SIValue *argv, int argc) {
-	// false AND null evaluates to jalse ; all other null comparisons evaluate to null
+	// false AND null evaluates to false ; all other null comparisons evaluate to null
 	bool res = true;
 	int null_count = 0;
 

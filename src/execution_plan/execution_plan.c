@@ -943,13 +943,6 @@ void ExecutionPlanInit(ExecutionPlan *plan) {
 	}
 }
 
-typedef struct {
-	AST *ast;
-	GraphContext *gc;
-	ExecutionPlan *plan;
-	RedisModuleCtx *redis_ctx;
-} ExecPlanInvokeCtx;
-
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 	Record r;
 	char *err = NULL;

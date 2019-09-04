@@ -28,8 +28,7 @@ GrB_Matrix Node_GetMatrix(Node *n) {
 
 	// Retrieve matrix from graph if edge matrix isn't set.
 	if(!n->mat) {
-		GraphContext *gc = QueryCtx_GetGraphCtx();
-		Graph *g = gc->g;
+		Graph *g = QueryCtx_GetGraph();
 
 		/* Get label matrix:
 		 * There's no sense in calling Node_GetMatrix

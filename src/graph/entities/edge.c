@@ -57,8 +57,7 @@ GrB_Matrix Edge_GetMatrix(Edge *e) {
 
 	// Retrieve matrix from graph if edge matrix isn't set.
 	if(!e->mat) {
-		GraphContext *gc = QueryCtx_GetGraphCtx();
-		Graph *g = gc->g;
+		Graph *g = QueryCtx_GetGraph();
 
 		// Get relation matrix.
 		if(e->relationID == GRAPH_UNKNOWN_RELATION) {

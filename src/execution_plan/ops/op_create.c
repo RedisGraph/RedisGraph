@@ -11,7 +11,7 @@
 #include <assert.h>
 
 // Resolve the properties specified in the query into constant values.
-PendingProperties *_ConvertPropertyMap(GraphContext *gc, Record r, const PropertyMap *map) {
+PendingProperties *_ConvertPropertyMap(Record r, const PropertyMap *map) {
 	PendingProperties *converted = rm_malloc(sizeof(PendingProperties));
 	converted->property_count = map->property_count;
 	converted->attr_keys = map->keys; // This pointer can be copied directly.
@@ -94,7 +94,7 @@ void _CreateNodes(OpCreate *op, Record r) {
 		/* Convert query-level properties. */
 		PropertyMap *map = op->nodes_to_create[i].properties;
 		PendingProperties *converted_properties = NULL;
-		if(map) converted_properties = _ConvertPropertyMap(op->gc, r, map);
+		if(map) converted_properties = _ConvertPropertyMap(r, map);
 
 		/* Save node for later insertion. */
 		op->created_nodes = array_append(op->created_nodes, newNode);
@@ -123,7 +123,7 @@ void _CreateEdges(OpCreate *op, Record r) {
 		/* Convert query-level properties. */
 		PropertyMap *map = op->edges_to_create[i].properties;
 		PendingProperties *converted_properties = NULL;
-		if(map) converted_properties = _ConvertPropertyMap(op->gc, r, map);
+		if(map) converted_properties = _ConvertPropertyMap(r, map);
 
 		/* Save edge for later insertion. */
 		op->created_edges = array_append(op->created_edges, newEdge);
@@ -166,7 +166,7 @@ static void _CommitNodes(OpCreate *op) {
 		// Get label ID.
 		int labelID = GRAPH_NO_LABEL;
 		if(n->label != NULL) {
-			s = GraphContext_GetSchema(op->gc, n->label, SCHEMA_NODE);
+			s = GraphContext_GetSchema(gc, n->label, SCHEMA_NODE);
 			assert(s);
 			labelID = s->id;
 		}
@@ -183,7 +183,7 @@ static void _CommitNodes(OpCreate *op) {
 static void _CommitEdges(OpCreate *op) {
 	Edge *e;
 	GraphContext *gc = op->gc;
-	Graph *g = op->gc->g;
+	Graph *g = gc->g;
 
 	/* Create missing schemas.
 	 * this loop iterates over the CREATE pattern, e.g.
@@ -222,8 +222,8 @@ static void _CommitEdges(OpCreate *op) {
 		if(e->destNodeID != INVALID_ENTITY_ID) destNodeID = e->destNodeID;
 		else destNodeID = ENTITY_GET_ID(Edge_GetDestNode(e));
 
-		Schema *schema = GraphContext_GetSchema(op->gc, e->relationship, SCHEMA_EDGE);
-		if(!schema) schema = GraphContext_AddSchema(op->gc, e->relationship, SCHEMA_EDGE);
+		Schema *schema = GraphContext_GetSchema(gc, e->relationship, SCHEMA_EDGE);
+		if(!schema) schema = GraphContext_AddSchema(gc, e->relationship, SCHEMA_EDGE);
 		int relation_id = schema->id;
 
 		if(!Graph_ConnectNodes(g, srcNodeID, destNodeID, relation_id, e)) continue;

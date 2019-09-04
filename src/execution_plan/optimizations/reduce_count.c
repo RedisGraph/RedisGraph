@@ -201,7 +201,7 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	/* User is trying to get total number of edges in the graph
 	 * optimize by skiping SCAN, Traverse and AGGREGATE. */
 	SIValue edgeCount = SI_LongVal(0);
-	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Graph *g = QueryCtx_GetGraph();
 
 	// If type is specified, count only labeled entities.
 	CondTraverse *condTraverse = (CondTraverse *) opTraverse;
@@ -209,11 +209,11 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	if(condTraverse->edgeRelationTypes[0] != GRAPH_NO_RELATION) {
 		uint64_t edges = 0;
 		for(int i = 0; i < edgeRelationCount; i++) {
-			edges += _countRelationshipEdges(Graph_GetRelationMap(gc->g, condTraverse->edgeRelationTypes[i]));
+			edges += _countRelationshipEdges(Graph_GetRelationMap(g, condTraverse->edgeRelationTypes[i]));
 		}
 		edgeCount = SI_LongVal(edges);
 	} else {
-		edgeCount = SI_LongVal(Graph_EdgeCount(gc->g));
+		edgeCount = SI_LongVal(Graph_EdgeCount(g));
 	}
 
 	/* Construct a constant expression, used by a new
