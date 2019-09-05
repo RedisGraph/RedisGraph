@@ -460,23 +460,7 @@ int SIValue_Order(const SIValue a, const SIValue b) {
 	int cmp = SIValue_Compare(a, b);
 	if(cmp != DISJOINT && cmp != COMPARED_NULL) return cmp;
 
-	// Cypher's orderability property defines string < boolean < numeric < NULL.
-	if(a.type == T_STRING) {
-		return -1;
-	} else if(b.type == T_STRING) {
-		return 1;
-	} else if(a.type == T_BOOL) {
-		return -1;
-	} else if(b.type == T_BOOL) {
-		return 1;
-	} else if(a.type & SI_NUMERIC) {
-		return -1;
-	} else if(b.type & SI_NUMERIC) {
-		return 1;
-	}
-
-	// We can reach here if both values are NULL, in which case no order is imposed.
-	return 0;
+	return a.type - b.type;
 }
 
 void SIValue_Free(SIValue *v) {
