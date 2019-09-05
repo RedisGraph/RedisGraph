@@ -132,12 +132,7 @@ Vector *FilterTree_SubTrees(const FT_FilterNode *root) {
 /* Applies a single filter to a single result.
  * Compares given values, tests if values maintain desired relation (op) */
 int _applyFilter(SIValue *aVal, SIValue *bVal, AST_Operator op) {
-	int rel = SIValue_Compare(*aVal, *bVal);
-	/* Values are of disjoint types */
-	if(rel == DISJOINT) {
-		/* The filter passes if we're testing for inequality, and fails otherwise. */
-		return (op == OP_NEQUAL);
-	}
+	int rel = SIValue_Order(*aVal, *bVal);
 
 	switch(op) {
 	case OP_EQUAL:

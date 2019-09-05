@@ -50,7 +50,10 @@ typedef enum
 #define SI_TYPE(value) (value).type
 #define SI_NUMERIC (T_INT64 | T_DOUBLE)
 #define SI_GRAPHENTITY (T_NODE | T_EDGE)
+#define COMPERABLE (T_ARRAY | T_PATH | T_DATETIME | T_LOCALDATETIME | T_DATE | T_TIME | T_LOCALTIME | T_DURATION | T_STRING | T_BOOL | T_INT64 | T_DOUBLE | T_NULL)
 #define SI_ALL (T_MAP | T_NODE | T_EDGE | T_ARRAY | T_PATH | T_DATETIME | T_LOCALDATETIME | T_DATE | T_TIME | T_LOCALTIME | T_DURATION | T_STRING | T_BOOL | T_INT64 | T_DOUBLE | T_NULL | T_PTR)
+
+#define IS_COMPERABLE(a) (a.type & COMPERABLE)
 
 /* Retrieve the numeric associated with an SIValue without explicitly
  * assigning it a type. */

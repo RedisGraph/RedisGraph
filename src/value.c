@@ -453,13 +453,13 @@ int SIValue_Compare(const SIValue a, const SIValue b) {
 	return DISJOINT;
 }
 
-// Return a strcmp-like value wherein -1 indicates that the value
-// on the left-hand side is lesser, and 1 indicates that is greater.
+/* Return a strcmp-like value wherein negative result indicates that the value
+ * on the left-hand side is lesser, and 1 indicates that is greater. */
 int SIValue_Order(const SIValue a, const SIValue b) {
-	// If the values are directly comparable, return the comparison result
+	// If the values are directly comparable, return the comparison result.
 	int cmp = SIValue_Compare(a, b);
-	if(cmp != DISJOINT && cmp != COMPARED_NULL) return cmp;
-
+	if(cmp != DISJOINT && cmp != COMPARED_NULL)  return cmp;
+	// Else, return the type diff
 	return a.type - b.type;
 }
 

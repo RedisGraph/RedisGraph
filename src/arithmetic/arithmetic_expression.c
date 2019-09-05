@@ -1037,8 +1037,11 @@ SIValue AR_GT(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
-	return SI_BoolVal(SIValue_Compare(a, b) > 0);
+	// TODO: Return type mismatch error.
+	if(!IS_COMPERABLE(a) || !IS_COMPERABLE(b)) assert(false);
+	if(a.type == T_NULL || b.type == T_NULL) return SI_NullVal();
+	int res = SIValue_Order(a, b);
+	return SI_BoolVal(res > 0);
 }
 
 SIValue AR_GE(SIValue *argv, int argc) {
@@ -1046,22 +1049,11 @@ SIValue AR_GE(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
-	return SI_BoolVal(SIValue_Compare(a, b) >= 0);
-
-	assert(SI_TYPE(a) == SI_TYPE(b));
-	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
-	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
-
-	switch(SI_TYPE(a)) {
-	case T_STRING:
-
-	case T_INT64:
-	case T_DOUBLE:
-		return SI_BoolVal(SI_GET_NUMERIC(a) >= SI_GET_NUMERIC(b));
-	default:
-		assert(false);
-	}
+	// TODO: Return type mismatch error.
+	if(!IS_COMPERABLE(a) || !IS_COMPERABLE(b)) assert(false);
+	if(a.type == T_NULL || b.type == T_NULL) return SI_NullVal();
+	int res = SIValue_Order(a, b);
+	return SI_BoolVal(res >= 0);
 }
 
 SIValue AR_LT(SIValue *argv, int argc) {
@@ -1069,21 +1061,11 @@ SIValue AR_LT(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
-
-	assert(SI_TYPE(a) == SI_TYPE(b));
-	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
-	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
-
-	switch(SI_TYPE(a)) {
-	case T_STRING:
-		return SI_BoolVal(SIValue_Compare(a, b) < 0);
-	case T_INT64:
-	case T_DOUBLE:
-		return SI_BoolVal(SI_GET_NUMERIC(a) < SI_GET_NUMERIC(b));
-	default:
-		assert(false);
-	}
+	// TODO: Return type mismatch error.
+	if(!IS_COMPERABLE(a) || !IS_COMPERABLE(b)) assert(false);
+	if(a.type == T_NULL || b.type == T_NULL) return SI_NullVal();
+	int res = SIValue_Order(a, b);
+	return SI_BoolVal(res < 0);
 }
 
 SIValue AR_LE(SIValue *argv, int argc) {
@@ -1091,21 +1073,11 @@ SIValue AR_LE(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
-
-	assert(SI_TYPE(a) == SI_TYPE(b));
-	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
-	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
-
-	switch(SI_TYPE(a)) {
-	case T_STRING:
-		return SI_BoolVal(SIValue_Compare(a, b) <= 0);
-	case T_INT64:
-	case T_DOUBLE:
-		return SI_BoolVal(SI_GET_NUMERIC(a) <= SI_GET_NUMERIC(b));
-	default:
-		assert(false);
-	}
+	// TODO: Return type mismatch error.
+	if(!IS_COMPERABLE(a) || !IS_COMPERABLE(b)) assert(false);
+	if(a.type == T_NULL || b.type == T_NULL) return SI_NullVal();
+	int res = SIValue_Order(a, b);
+	return SI_BoolVal(res <= 0);
 }
 
 SIValue AR_EQ(SIValue *argv, int argc) {
@@ -1113,10 +1085,9 @@ SIValue AR_EQ(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
+	// TODO: Return type mismatch error.
+	if(!IS_COMPERABLE(a) || !IS_COMPERABLE(b)) assert(false);
 	int res = SIValue_Compare(a, b);
-
-	// if res == DISJOINT => type mismatch
-
 	if(res == COMPARED_NULL) return SI_NullVal();
 	return SI_BoolVal(res == 0);
 }
@@ -1126,21 +1097,11 @@ SIValue AR_NE(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
-
-	assert(SI_TYPE(a) == SI_TYPE(b));
-	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
-	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
-
-	switch(SI_TYPE(a)) {
-	case T_STRING:
-		return SI_BoolVal(SIValue_Compare(a, b) != 0);
-	case T_INT64:
-	case T_DOUBLE:
-		return SI_BoolVal(SI_GET_NUMERIC(a) != SI_GET_NUMERIC(b));
-	default:
-		assert(false);
-	}
+	// TODO: Return type mismatch error.
+	if(!IS_COMPERABLE(a) || !IS_COMPERABLE(b)) assert(false);
+	int res = SIValue_Compare(a, b);
+	if(res == COMPARED_NULL) return SI_NullVal();
+	return SI_BoolVal(res != 0);
 }
 
 //==============================================================================
