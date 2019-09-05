@@ -14,9 +14,12 @@
 
 OpBase *NewUnwindOp(uint record_idx, AR_ExpNode *exp) {
 	OpUnwind *unwind = malloc(sizeof(OpUnwind));
-	unwind->listIdx = INDEX_NOT_SET;
+
 	unwind->exp = exp;
+	unwind->list = SI_NullVal();
 	unwind->currentRecord = NULL;
+	unwind->listIdx = INDEX_NOT_SET;
+	unwind->unwindRecIdx = record_idx;
 
 	// Set our Op operations
 	OpBase_Init(&unwind->op);
@@ -30,41 +33,32 @@ OpBase *NewUnwindOp(uint record_idx, AR_ExpNode *exp) {
 	// Handle introduced entity
 	unwind->op.modifies = array_new(uint, 1);
 	unwind->op.modifies = array_append(unwind->op.modifies, record_idx);
-	unwind->unwindRecIdx = record_idx;
 
 	return (OpBase *)unwind;
 }
 
 OpResult UnwindInit(OpBase *opBase) {
-	OpUnwind *unwind = (OpUnwind *)opBase;
+	OpUnwind *op = (OpUnwind *) opBase;
+	op->currentRecord = Record_New(1);
 
-	// check for modifiers in the AR_EXP for static or dynamic list
-	rax *modifiers = raxNew();
-	AR_EXP_CollectEntityIDs(unwind->exp, modifiers);
-	// if there aren't any modifiers - list is static
-	if(!raxSize(modifiers)) {
-		// set the list
-		unwind->list = AR_EXP_Evaluate(unwind->exp, NULL);
-		assert(unwind->list.type == T_ARRAY);
+	if(op->op.childCount == 0) {
+		// No child operation, list must be static.
+		op->listIdx = 0;
+		op->list = AR_EXP_Evaluate(op->exp, op->currentRecord);
+	} else {
+		// List might depend on data provided by child operation.
+		op->list = SI_EmptyArray();
+		op->listIdx = INDEX_NOT_SET;
 	}
-	raxFree(modifiers);
-	// check if there are children - if not, add static record and reset the list index
-	if(!unwind->op.childCount) {
 
-		/* the list index is set to 0 only when there are no children to the op
-		if the list is static, but the op has children, we first need to generate a fake record for them
-		MATCH(n) UNWIND [0,1,2] as y return n, y */
-		unwind->currentRecord = Record_New(opBase->record_map->record_len);
-		unwind->listIdx = 0;
-	}
 	return OP_OK;
 }
 
-// try to generate new value to return
-// NULL will be returned if dynamic list is not evaluted (listIdx = INDEX_NOT_SET)
-// or in case of the current list fully returned its memebers
+/* Try to generate a new value to return
+ * NULL will be returned if dynamic list is not evaluted (listIdx = INDEX_NOT_SET)
+ * or in case where the current list is fully consumed. */
 Record _handoff(OpUnwind *op) {
-	// if there is a new value ready, return it
+	// If there is a new value ready, return it.
 	if(op->listIdx < SIArray_Length(op->list)) {
 		Record r = Record_Clone(op->currentRecord);
 		Record_AddScalar(r, op->unwindRecIdx, SIArray_Get(op->list, op->listIdx));
@@ -77,43 +71,45 @@ Record _handoff(OpUnwind *op) {
 Record UnwindConsume(OpBase *opBase) {
 	OpUnwind *op = (OpUnwind *)opBase;
 
-	// check for new value
-	Record res = _handoff(op);
-	if(res) return res;
+	// Try to produce data.
+	Record r = _handoff(op);
+	if(r) return r;
 
-	// no new value - check if there are new lists to unwind
-	if(op->op.childCount) {
-		Record r;
-		OpBase *child = op->op.children[0];
-		// if there are new lists to unwind
-		if((r = OpBase_Consume(child))) {
-			if(op->listIdx != INDEX_NOT_SET) Record_Free(op->currentRecord);
-			op->currentRecord = r;
+	// Done consuming current list, clean-up.	
+	Record_Free(op->currentRecord);
+	op->currentRecord = NULL;
 
-			SIValue_Free(&op->list);
-			// set the list
-			op->list = AR_EXP_Evaluate(op->exp, r);
-			assert(op->list.type == T_ARRAY);
-			// resed index
-			op->listIdx = 0;
-		}
+	// No child operation to pull data from, we're done.
+	if(op->op.childCount == 0) return NULL;
+
+	OpBase *child = op->op.children[0];
+	// Did we managed to get new data?
+	if((r = OpBase_Consume(child))) {
+		op->currentRecord = r;
+		// Free old list.
+		SIValue_Free(&op->list);
+
+		// Reset index and set list.
+		op->listIdx = 0;
+		op->list = AR_EXP_Evaluate(op->exp, r);
+		assert(op->list.type == T_ARRAY);
 	}
-	// in case of no more lists from the op's children, or p has no children and static list returned fully, _handoff(op) will return NULL
+
 	return _handoff(op);
 }
 
 OpResult UnwindReset(OpBase *ctx) {
-	OpUnwind *unwind = (OpUnwind *)ctx;
-	unwind->listIdx = INDEX_NOT_SET;
+	OpUnwind *op = (OpUnwind *)ctx;
+	// Static should reset index to 0.
+	if(op->op.childCount == 0) op->listIdx = 0;
+	// Dynamic should set index to UINT_MAX, to force refetching of data.
+	else op->listIdx = INDEX_NOT_SET;
 	return OP_OK;
 }
 
 void UnwindFree(OpBase *ctx) {
-	OpUnwind *unwind = (OpUnwind *)ctx;
-
-	if(unwind->exp) {
-		AR_EXP_Free(unwind->exp);
-	}
-	Record_Free(unwind->currentRecord);
-	SIValue_Free(&unwind->list);
+	OpUnwind *op = (OpUnwind *)ctx;
+	SIValue_Free(&op->list);
+	if(op->exp) AR_EXP_Free(op->exp);
+	if(op->currentRecord) Record_Free(op->currentRecord);
 }
