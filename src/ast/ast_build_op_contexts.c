@@ -121,21 +121,6 @@ static rax *_MatchMerge_DefinedEntities(const AST *ast) {
 	return map;
 }
 
-AR_ExpNode **_AST_ConvertCollection(const cypher_astnode_t *collection, RecordMap *record_map) {
-	assert(cypher_astnode_type(collection) == CYPHER_AST_COLLECTION);
-
-	uint expCount = cypher_ast_collection_length(collection);
-	AR_ExpNode **expressions = array_new(AR_ExpNode *, expCount);
-
-	for(uint i = 0; i < expCount; i ++) {
-		const cypher_astnode_t *exp_node = cypher_ast_collection_get(collection, i);
-		AR_ExpNode *exp = AR_EXP_FromExpression(record_map, exp_node);
-		expressions = array_append(expressions, exp);
-	}
-
-	return expressions;
-}
-
 EntityUpdateEvalCtx *AST_PrepareUpdateOp(const cypher_astnode_t *set_clause, RecordMap *record_map,
 										 uint *nitems_ref) {
 	uint nitems = cypher_ast_set_nitems(set_clause);
@@ -229,11 +214,11 @@ int AST_PrepareSortOp(const cypher_astnode_t *order_clause) {
 AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause,
 									  RecordMap *record_map) {
 	const cypher_astnode_t *collection = cypher_ast_unwind_get_expression(unwind_clause);
-	AR_ExpNode **exps = _AST_ConvertCollection(collection, record_map);
+	AR_ExpNode *exp = AR_EXP_FromExpression(record_map, collection);
 	const char *alias = cypher_ast_identifier_get_name(cypher_ast_unwind_get_alias(unwind_clause));
 	uint record_idx = RecordMap_FindOrAddAlias(record_map, alias);
 
-	AST_UnwindContext ctx = { .exps = exps, .record_idx = record_idx };
+	AST_UnwindContext ctx = { .exp = exp, .record_idx = record_idx };
 	return ctx;
 }
 

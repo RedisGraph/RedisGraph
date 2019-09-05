@@ -7,10 +7,15 @@
 #include "resultset_formatters.h"
 #include "../../util/arr.h"
 
+// Forward declarations.
+static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n);
+static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e);
+static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, SIValue array);
 /* This function has handling for all SIValue scalar types.
  * The current RESP protocol only has unique support for strings, 8-byte integers,
  * and NULL values. */
-static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, const SIValue v) {
+static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext *gc,
+											   const SIValue v) {
 	// Emit the actual value, then the value type (to facilitate client-side parsing)
 	switch(SI_TYPE(v)) {
 	case T_STRING:
@@ -29,8 +34,15 @@ static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, const SIValu
 	case T_NULL:
 		RedisModule_ReplyWithNull(ctx);
 		return;
-	case T_NODE: // Nodes and edges should always be Record entries at this point
+	case T_NODE:
+		_ResultSet_VerboseReplyWithNode(ctx, gc, v.ptrval);
+		return;
 	case T_EDGE:
+		_ResultSet_VerboseReplyWithEdge(ctx, gc, v.ptrval);
+		return;
+	case T_ARRAY:
+		_ResultSet_VerboseReplyWithArray(ctx, v);
+		return;
 	default:
 		assert("Unhandled value type" && false);
 	}
@@ -48,7 +60,7 @@ static void _ResultSet_VerboseReplyWithProperties(RedisModuleCtx *ctx, GraphCont
 		const char *prop_str = GraphContext_GetAttributeString(gc, prop.id);
 		RedisModule_ReplyWithStringBuffer(ctx, prop_str, strlen(prop_str));
 		// Emit the value
-		_ResultSet_VerboseReplyWithSIValue(ctx, prop.value);
+		_ResultSet_VerboseReplyWithSIValue(ctx, gc, prop.value);
 	}
 }
 
@@ -132,6 +144,15 @@ static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
 	_ResultSet_VerboseReplyWithProperties(ctx, gc, (GraphEntity *)e);
 }
 
+static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, SIValue array) {
+	size_t bufferLen = 512;
+	char *str = rm_calloc(bufferLen, sizeof(char));
+	size_t bytesWrriten = 0;
+	SIValue_ToString(array, &str, &bufferLen, &bytesWrriten);
+	RedisModule_ReplyWithStringBuffer(ctx, str, bytesWrriten);
+	rm_free(str);
+}
+
 void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
 								 unsigned int numcols) {
 	// Prepare return array sized to the number of RETURN entities
@@ -146,7 +167,7 @@ void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Re
 			_ResultSet_VerboseReplyWithEdge(ctx, gc, Record_GetEdge(r, i));
 			break;
 		default:
-			_ResultSet_VerboseReplyWithSIValue(ctx, Record_GetScalar(r, i));
+			_ResultSet_VerboseReplyWithSIValue(ctx, gc, Record_GetScalar(r, i));
 		}
 	}
 }

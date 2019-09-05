@@ -15,6 +15,7 @@
 #include <sys/param.h>
 #include <assert.h>
 #include "util/rmalloc.h"
+#include "datatypes/array.h"
 
 SIValue SI_LongVal(int64_t i) {
 	return (SIValue) {
@@ -57,6 +58,13 @@ SIValue SI_Edge(void *e) {
 		.ptrval = e, .type = T_EDGE, .allocation = M_VOLATILE
 	};
 }
+SIValue SI_Array(u_int64_t initialCapacity) {
+	return SIArray_New(initialCapacity);
+}
+
+SIValue SI_EmptyArray() {
+	return SIArray_New(0);
+}
 
 SIValue SI_DuplicateStringVal(const char *s) {
 	return (SIValue) {
@@ -97,6 +105,10 @@ SIValue SI_CloneValue(const SIValue v) {
 		return SI_DuplicateStringVal(v.stringval);
 	}
 
+	if(v.type == T_ARRAY) {
+		return SIArray_Clone(v);
+	}
+
 	// Copy the memory region for Node and Edge values. This does not modify the
 	// inner Entity pointer to the value's properties.
 	SIValue clone;
@@ -111,6 +123,7 @@ SIValue SI_CloneValue(const SIValue v) {
 	} else {
 		assert(false && "Encountered heap-allocated SIValue of unhandled type");
 	}
+
 	clone.ptrval = rm_malloc(size);
 	memcpy(clone.ptrval, v.ptrval, size);
 	return clone;
@@ -175,33 +188,54 @@ const char *SIType_ToString(SIType t) {
 	}
 }
 
-int SIValue_ToString(SIValue v, char *buf, size_t len) {
-	int bytes_written = 0;
+void SIString_ToString(SIValue str, char **buf, size_t *bufferLen, size_t *bytesWritten) {
+	size_t strLen = strlen(str.stringval);
+	if(*bufferLen - *bytesWritten < strLen) {
+		*bufferLen += strLen;
+		*buf = rm_realloc(*buf, *bufferLen);
+	}
+	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%s", str.stringval);
+}
+
+void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWritten) {
+	// uint64 max and int64 min string representation requires 21 bytes
+	// float defaults to print 6 digit after the decimal-point
+	// checkt for enough space
+	if(*bufferLen - *bytesWritten < 64) {
+		*bufferLen += 64;
+		*buf = rm_realloc(*buf, sizeof(char) * *bufferLen);
+	}
 
 	switch(v.type) {
 	case T_STRING:
-		strncpy(buf, v.stringval, len);
-		bytes_written = strlen(buf);
+		SIString_ToString(v, buf, bufferLen, bytesWritten);
 		break;
 	case T_INT64:
-		bytes_written = snprintf(buf, len, "%lld", (long long)v.longval);
+		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%lld", (long long)v.longval);
 		break;
 	case T_BOOL:
-		bytes_written = snprintf(buf, len, "%s", v.longval ? "true" : "false");
+		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%s", v.longval ? "true" : "false");
 		break;
 	case T_DOUBLE:
-		bytes_written = snprintf(buf, len, "%f", v.doubleval);
+		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%f", v.doubleval);
 		break;
 	case T_NODE:
+		Node_ToString(v.ptrval, buf, bufferLen, bytesWritten, ENTITY_ID);
+		break;
 	case T_EDGE:
-		bytes_written = snprintf(buf, len, "%llu", ENTITY_GET_ID((GraphEntity *)v.ptrval));
+		Edge_ToString(v.ptrval, buf, bufferLen, bytesWritten, ENTITY_ID);
+		break;
+	case T_ARRAY:
+		SIArray_ToString(v, buf, bufferLen, bytesWritten);
 		break;
 	case T_NULL:
+		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "NULL");
+		break;
 	default:
-		bytes_written = snprintf(buf, len, "NULL");
-	}
+		// unrecognized type
+		assert(false);
 
-	return bytes_written;
+	}
 }
 
 int SIValue_ToDouble(const SIValue *v, double *d) {
@@ -236,15 +270,15 @@ SIValue SIValue_FromString(const char *s) {
 	return SI_DoubleVal(parsedval);
 }
 
-size_t SIValue_StringConcatLen(SIValue *strings, unsigned int string_count) {
+size_t SIValue_StringJoinLen(SIValue *strings, unsigned int string_count, const char *delimiter) {
 	size_t length = 0;
 	size_t elem_len;
-
+	size_t delimiter_len = strlen(delimiter);
 	/* Compute length. */
 	for(int i = 0; i < string_count; i ++) {
 		/* String elements representing bytes size strings,
 		 * for all other SIValue types 32 bytes should be enough. */
-		elem_len = (strings[i].type == T_STRING) ? strlen(strings[i].stringval) + 1 : 32;
+		elem_len = (strings[i].type == T_STRING) ? strlen(strings[i].stringval) + delimiter_len : 32;
 		length += elem_len;
 	}
 
@@ -253,21 +287,59 @@ size_t SIValue_StringConcatLen(SIValue *strings, unsigned int string_count) {
 	return length;
 }
 
-size_t SIValue_StringConcat(SIValue *strings, unsigned int string_count, char *buf,
-							size_t buf_len) {
-	size_t offset = 0;
+void SIValue_StringJoin(SIValue *strings, unsigned int string_count, const char *delimiter,
+						char **buf, size_t *buf_len, size_t *bytesWritten) {
 
 	for(int i = 0; i < string_count; i ++) {
-		offset += SIValue_ToString(strings[i], buf + offset, buf_len - offset - 1);
-		buf[offset++] = ',';
+		SIValue_ToString(strings[i], buf, buf_len, bytesWritten);
+		if(i < string_count - 1) *bytesWritten += snprintf(*buf + *bytesWritten, *buf_len, "%s", delimiter);
 	}
-	/* Backtrack once and discard last delimiter. */
-	buf[--offset] = '\0';
+}
 
-	return offset;
+// assumption: either a or b is a string
+static SIValue SIValue_ConcatString(const SIValue a, const SIValue b) {
+	size_t bufferLen = 512;
+	size_t argument_len = 0;
+	char *buffer = rm_calloc(bufferLen, sizeof(char));
+	SIValue args[2] = {a, b};
+	SIValue_StringJoin(args, 2, "", &buffer, &bufferLen, &argument_len);
+	SIValue result = SI_DuplicateStringVal(buffer);
+	rm_free(buffer);
+	return result;
+}
+
+// assumption: either a or b is a list - static function, the caller validate types
+static SIValue SIValue_ConcatList(const SIValue a, const SIValue b) {
+	uint a_len = (a.type == T_ARRAY) ? SIArray_Length(a) : 1;
+	uint b_len = (b.type == T_ARRAY) ? SIArray_Length(b) : 1;
+	SIValue resultArray = SI_Array(a_len + b_len);
+
+	// Append a to resultArray
+	if(a.type == T_ARRAY) {
+		// in thae case of a is an array
+		for(uint i = 0; i < a_len; i++) SIArray_Append(&resultArray, SIArray_Get(a, i));
+	} else {
+		// in thae case of a is not an array
+		SIArray_Append(&resultArray, a);
+	}
+
+	if(b.type == T_ARRAY) {
+		// b is an array
+		uint bArrayLen = SIArray_Length(b);
+		for(uint i = 0; i < bArrayLen; i++) {
+			SIArray_Append(&resultArray, SIArray_Get(b, i));
+		}
+	} else {
+		// b is not an array
+		SIArray_Append(&resultArray, b);
+	}
+	return resultArray;
 }
 
 SIValue SIValue_Add(const SIValue a, const SIValue b) {
+	if(a.type == T_NULL || b.type == T_NULL) return SI_NullVal();
+	if(a.type == T_ARRAY || b.type == T_ARRAY) return SIValue_ConcatList(a, b);
+	if(a.type == T_STRING || b.type == T_STRING) return SIValue_ConcatString(a, b);
 	/* Only construct an integer return if both operands are integers. */
 	if(a.type & b.type & T_INT64) {
 		return SI_LongVal(a.longval + b.longval);
@@ -299,9 +371,58 @@ SIValue SIValue_Divide(const SIValue a, const SIValue b) {
 	return SI_DoubleVal(SI_GET_NUMERIC(a) / (double)SI_GET_NUMERIC(b));
 }
 
+int SIArray_Compare(SIValue arrayA, SIValue arrayB) {
+	uint arrayALen = SIArray_Length(arrayA);
+	uint arrayBLen = SIArray_Length(arrayB);
+	// check empty list
+	if(arrayALen == 0 && arrayBLen == 0) return 0;
+	int lenDiff = arrayALen - arrayBLen;
+	// check for the common range of indices
+	uint minLengh = arrayALen <= arrayBLen ? arrayALen : arrayBLen;
+
+	uint allDisjoint = 0;   // counter for the amount of disjoint comparisons
+	uint nullCompare = 0;   // counter for the amount of null comparison
+	// notEqual holds the first false (result != 0) comparison result between two values from the same type, which are not equal
+	int notEqual = 0;
+
+	// Go over the common range for both arrays.
+	for(uint i = 0; i < minLengh; i++) {
+		SIValue aValue = SIArray_Get(arrayA, i);
+		SIValue bValue = SIArray_Get(arrayB, i);
+		int compareResult = SIValue_Compare(aValue, bValue);
+		switch(compareResult) {
+		case 0:
+			// we have a matching value
+			break;
+		case COMPARED_NULL:
+			// there was a null comparison
+			nullCompare++;  // update null comparison counter
+			allDisjoint++;  // null comparison is also a disjoint comparison
+			break;
+		case DISJOINT:
+			allDisjoint++;  // there was a disjoint comparison
+			if(notEqual == 0) notEqual =
+					compareResult; // if there wasn't any false comparison, update the false comparison to disjoint value
+			break;
+		default:
+			// if comparison is not 0 (a != b), set the first value
+			if(notEqual == 0) notEqual = compareResult;
+			break;
+		}
+	}
+	// if all the elements in the shared range are from disjoint types return DISJOINT array
+	if(allDisjoint == minLengh && allDisjoint > nullCompare) return DISJOINT;
+	// if there was a null comperison on non disjoint arrays
+	if(nullCompare) return COMPARED_NULL;
+	// if there was a diffrence in some member
+	if(notEqual) return notEqual;
+	// if all elemnts are equal and length are equal so arrays are equal, otherwise return lengh diff
+	return lenDiff;
+}
+
 int SIValue_Compare(const SIValue a, const SIValue b) {
-	/* In order to be comparable, both SIValues must be strings,
-	 * booleans, or numerics. */
+	/* In order to be comparable, both SIValues must be from the same type */
+	if(a.type == T_NULL || b.type == T_NULL) return COMPARED_NULL;
 	if(a.type == b.type) {
 		switch(a.type) {
 		case T_INT64:
@@ -314,6 +435,8 @@ int SIValue_Compare(const SIValue a, const SIValue b) {
 		case T_NODE:
 		case T_EDGE:
 			return ENTITY_GET_ID((GraphEntity *)a.ptrval) - ENTITY_GET_ID((GraphEntity *)b.ptrval);
+		case T_ARRAY:
+			return SIArray_Compare(a, b);
 		default:
 			// Both inputs were of an incomparable type, like a pointer or NULL
 			return DISJOINT;
@@ -335,7 +458,7 @@ int SIValue_Compare(const SIValue a, const SIValue b) {
 int SIValue_Order(const SIValue a, const SIValue b) {
 	// If the values are directly comparable, return the comparison result
 	int cmp = SIValue_Compare(a, b);
-	if(cmp != DISJOINT) return cmp;
+	if(cmp != DISJOINT && cmp != COMPARED_NULL) return cmp;
 
 	// Cypher's orderability property defines string < boolean < numeric < NULL.
 	if(a.type == T_STRING) {
@@ -369,6 +492,8 @@ void SIValue_Free(SIValue *v) {
 	case T_EDGE:
 		rm_free(v->ptrval);
 		return;
+	case T_ARRAY:
+		SIArray_Free(*v);
 	default:
 		return;
 	}

@@ -16,16 +16,19 @@ typedef enum {
 	COLUMN_SCALAR = 1,
 	COLUMN_NODE = 2,
 	COLUMN_RELATION = 3,
-} ColumnTypeUser;
+} ColumnType;
 
 typedef enum {
-	PROPERTY_UNKNOWN = 0,
-	PROPERTY_NULL = 1,
-	PROPERTY_STRING = 2,
-	PROPERTY_INTEGER = 3,
-	PROPERTY_BOOLEAN = 4,
-	PROPERTY_DOUBLE = 5,
-} PropertyTypeUser;
+	VALUE_UNKNOWN = 0,
+	VALUE_NULL = 1,
+	VALUE_STRING = 2,
+	VALUE_INTEGER = 3,
+	VALUE_BOOLEAN = 4,
+	VALUE_DOUBLE = 5,
+	VALUE_ARRAY = 6,
+	VALUE_EDGE = 7,
+	VALUE_NODE = 8
+} ValueType;
 
 // Typedef for header formatters.
 typedef void (*EmitHeaderFunc)(RedisModuleCtx *ctx, const char **columns, const Record r);

@@ -11,6 +11,10 @@
 #include "../../../util/arr.h"
 #include "../../../util/qsort.h"
 #include "../../../../deps/GraphBLAS/Include/GraphBLAS.h"
+#include "../../../datatypes/array.h"
+
+// Forward declerations.
+void _RdbSaveSIArray(RedisModuleIO *rdb, const SIValue array);
 
 // Use a modified binary search to find the number of elements in
 // the array less than the input ID.
@@ -64,11 +68,32 @@ void _RdbSaveSIValue(RedisModuleIO *rdb, const SIValue *v) {
 	case T_STRING:
 		RedisModule_SaveStringBuffer(rdb, v->stringval, strlen(v->stringval) + 1);
 		return;
+	case T_ARRAY:
+		_RdbSaveSIArray(rdb, *v);
+		return;
 	case T_NULL:
 		return; // No data beyond the type needs to be encoded for a NULL value.
 	default:
 		assert(0 && "Attempted to serialize value of invalid type.");
 	}
+}
+
+void _RdbSaveSIArray(RedisModuleIO *rdb, const SIValue list) {
+	/* saves array as
+	   unsinged : array legnth
+	   array[0]
+	   .
+	   .
+	   .
+	   array[array length -1]
+	 */
+	uint arrayLen = SIArray_Length(list);
+	RedisModule_SaveUnsigned(rdb, arrayLen);
+	for(uint i = 0; i < arrayLen; i ++) {
+		SIValue value = SIArray_Get(list, i);
+		_RdbSaveSIValue(rdb, &value);
+	}
+
 }
 
 void _RdbSaveEntity(RedisModuleIO *rdb, const Entity *e,  char **attr_map) {

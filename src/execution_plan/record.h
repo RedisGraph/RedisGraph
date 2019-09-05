@@ -11,21 +11,23 @@
 #include "../graph/entities/node.h"
 #include "../graph/entities/edge.h"
 
-typedef enum  {
-	REC_TYPE_UNKNOWN = 0,
-	REC_TYPE_SCALAR,
-	REC_TYPE_NODE,
-	REC_TYPE_EDGE,
-	REC_TYPE_HEADER,
+typedef enum
+{
+    REC_TYPE_UNKNOWN = 0,
+    REC_TYPE_SCALAR,
+    REC_TYPE_NODE,
+    REC_TYPE_EDGE,
+    REC_TYPE_HEADER,
 } RecordEntryType;
 
-typedef struct {
-	union {
-		SIValue s;
-		Node n;
-		Edge e;
-	} value;
-	RecordEntryType type;
+typedef struct
+{
+    union {
+        SIValue s;
+        Node n;
+        Edge e;
+    } value;
+    RecordEntryType type;
 } Entry;
 
 typedef Entry *Record;
@@ -44,6 +46,9 @@ void Record_Extend(Record *r, int len);
 
 // Merge record b into a, sharing any nested references in b with a.
 void Record_Merge(Record *a, const Record b);
+
+// Merge record b into a, transfer value ownership from b to a.
+void Record_TransferEntries(Record *to, Record from);
 
 // Returns number of entries record can hold.
 unsigned int Record_length(const Record r);

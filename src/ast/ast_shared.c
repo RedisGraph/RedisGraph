@@ -44,6 +44,8 @@ AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op) {
 		return OP_STARTSWITH;
 	} else if(op == CYPHER_OP_ENDS_WITH) {
 		return OP_ENDSWITH;
+	} else if(op == CYPHER_OP_IN) {
+		return OP_IN;
 	}
 
 	return -1;

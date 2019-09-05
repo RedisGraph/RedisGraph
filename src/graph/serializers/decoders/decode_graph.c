@@ -7,6 +7,11 @@
 #include <assert.h>
 #include "decode_graph.h"
 #include "../../graph.h"
+#include "../../../datatypes/array.h"
+
+// Forward declerations.
+SIValue _RdbLoadSIArray(RedisModuleIO *rdb);
+
 
 SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
 	/* Format:
@@ -24,10 +29,29 @@ SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
 		return SI_TransferStringVal(RedisModule_LoadStringBuffer(rdb, NULL));
 	case T_BOOL:
 		return SI_BoolVal(RedisModule_LoadSigned(rdb));
+	case T_ARRAY:
+		return _RdbLoadSIArray(rdb);
 	case T_NULL:
 	default: // currently impossible
 		return SI_NullVal();
 	}
+}
+
+SIValue _RdbLoadSIArray(RedisModuleIO *rdb) {
+	/* loads array as
+	   unsinged : array legnth
+	   array[0]
+	   .
+	   .
+	   .
+	   array[array length -1]
+	 */
+	uint arrayLen = RedisModule_LoadUnsigned(rdb);
+	SIValue list = SI_Array(arrayLen);
+	for(uint i = 0; i < arrayLen; i++) {
+		SIArray_Append(&list, _RdbLoadSIValue(rdb));
+	}
+	return list;
 }
 
 void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e) {

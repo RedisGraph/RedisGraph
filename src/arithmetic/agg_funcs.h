@@ -19,6 +19,7 @@ AggCtx *Agg_CountFunc();
 AggCtx *Agg_PercContFunc();
 AggCtx *Agg_PercDiscFunc();
 AggCtx *Agg_stDev();
+AggCtx *Agg_CollectFunc();
 
 void Agg_RegisterFuncs();
 

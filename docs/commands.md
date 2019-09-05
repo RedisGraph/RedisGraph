@@ -119,8 +119,9 @@ Supported operations:
 - `>`
 - `>=`
 - `CONTAINS`
-- `STARTS WITH`
 - `ENDS WITH`
+- `IN`
+- `STARTS WITH`
 
 Predicates can be combined using AND / OR / NOT.
 
@@ -187,14 +188,15 @@ Here we group data by movie title and for each movie, and we find its youngest a
 
 Supported aggregation functions include:
 
-- `sum`
 - `avg`
-- `min`
-- `max`
+- `collect`
 - `count`
+- `max`
+- `min`
 - `percentileCont`
 - `percentileDisc`
 - `stDev`
+- `sum`
 
 #### ORDER BY
 
@@ -392,21 +394,54 @@ GRAPH.QUERY DEMO_GRAPH
 
 Extended `WITH` functionality is currently in development, see [known limitations](known_limitations.md).
 
+#### UNWIND
+The UNWIND clause breaks down a given list into a sequence of records; each contains a single element in the list.
+
+The order of the records preserves the original list order.
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"CREATE (p {array:[1,2,3]})"
+```
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (p) UNWIND p.array AS y RETURN y"
+```
+
 ### Functions
 
 This section contains information on all supported functions from the Cypher query language.
 
+* [Predicate functions](#predicate-functions)
+* [Scalar functions](#scalar-functions)
 * [Aggregating functions](#aggregating-functions)
+* [List functions](#list-functions)
 * [Mathematical functions](#mathematical-functions)
 * [String functions](#string-functions)
-* [Scalar functions](#scalar-functions)
-* [Predicate functions](#predicate-functions)
+* [Node functions](#node-functions)
+
+## Predicate functions
+
+|Function | Description|
+| ------- |:-----------|
+|exists() | Returns true if the specified property exists in the node or relationship. |
+
+## Scalar functions
+
+|Function | Description|
+| ------- |:-----------|
+|id() | Returns the internal ID of a relationship or node (which is not immutable.) |
+|labels() | Returns a string representation of the label of a node. |
+|timestamp() | Returns the the amount of milliseconds since epoch. |
+|type() | Returns a string representation of the type of a relation. |
 
 ## Aggregating functions
 
 |Function | Description|
 | ------- |:-----------|
 |avg() | Returns the average of a set of numeric values|
+|collect() | Returns a list containing all elements which evaluated from a given expression|
 |count() | Returns the number of values or rows|
 |max() | Returns the maximum value in a set of values|
 |min() | Returns the minimum value in a set of values|
@@ -414,6 +449,14 @@ This section contains information on all supported functions from the Cypher que
 |percentileDisc() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0|
 |percentileCont() | Returns the percentile of the given value over a group, with a percentile from 0.0 to 1.0|
 |stDev() | Returns the standard deviation for the given value over a group|
+
+## List functions
+|Function| Description|
+| ------- |:-----------|
+| head()  | return the first member of a list |
+| range() | create a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval.|
+| size()  | return a list size |
+| tail()  | return a sublist of a list, which contains all the values withiout the first value |
 
 ## Mathematical functions
 
@@ -440,21 +483,6 @@ This section contains information on all supported functions from the Cypher que
 |toString() | Converts an integer, float or boolean value to a string |
 |toUpper() | Returns the original string in uppercase |
 |trim() | Returns the original string with leading and trailing whitespace removed |
-
-## Scalar functions
-
-|Function | Description|
-| ------- |:-----------|
-|id() | Returns the internal ID of a relationship or node (which is not immutable.) |
-|labels() | Returns a string representation of the label of a node. |
-|type() | Returns a string representation of the type of a relation. |
-|timestamp() | Returns the the amount of milliseconds since epoch. |
-
-## Predicate functions
-
-|Function | Description|
-| ------- |:-----------|
-|exists() | Returns true if the specified property exists in the node or relationship. |
 
 ## Node functions
 |Function | Description|

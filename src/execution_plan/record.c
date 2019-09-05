@@ -18,6 +18,13 @@ static inline void _Record_ShareEntry(Record a, const Entry e, uint idx) {
 	if(e.type == REC_TYPE_SCALAR) SIValue_MakeVolatile(&a[idx].value.s);
 }
 
+static void _RecordPropagateEntry(Record to, Record from, uint idx) {
+	Entry e = from[idx];
+	to[idx] = e;
+	// If the entry is a scalar, make sure both Records don't believe they own the allocation.
+	if(e.type == REC_TYPE_SCALAR) SIValue_MakeVolatile(&from[idx].value.s);
+}
+
 Record Record_New(int entries) {
 	Record r = rm_calloc((entries + 1), sizeof(Entry));
 
@@ -68,6 +75,18 @@ void Record_Merge(Record *a, const Record b) {
 	for(int i = 0; i < bLength; i++) {
 		if(b[i].type != REC_TYPE_UNKNOWN) {
 			_Record_ShareEntry(*a, b[i], i);
+		}
+	}
+}
+
+void Record_TransferEntries(Record *to, Record from) {
+	int aLength = Record_length(*to);
+	int bLength = Record_length(from);
+	if(aLength < bLength) Record_Extend(to, bLength);
+
+	for(int i = 0; i < bLength; i++) {
+		if(from[i].type != REC_TYPE_UNKNOWN) {
+			_RecordPropagateEntry(*to, from, i);
 		}
 	}
 }
@@ -160,14 +179,16 @@ size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {
 		}
 	}
 
-	size_t required_len = SIValue_StringConcatLen(values, rLen);
+	size_t required_len = SIValue_StringJoinLen(values, rLen, ",");
 
 	if(*buf_cap < required_len) {
 		*buf = rm_realloc(*buf, sizeof(char) * required_len);
 		*buf_cap = required_len;
 	}
 
-	return SIValue_StringConcat(values, rLen, *buf, *buf_cap);
+	size_t bytesWritten = 0;
+	SIValue_StringJoin(values, rLen, ",", buf, buf_cap, &bytesWritten);
+	return bytesWritten;
 }
 
 unsigned long long Record_Hash64(const Record r) {

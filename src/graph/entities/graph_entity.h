@@ -12,7 +12,7 @@
 
 #define ATTRIBUTE_NOTFOUND USHRT_MAX
 
-#define ENTITY_ID_ISLT(a,b) ((*a)<(*b))
+#define ENTITY_ID_ISLT(a, b) ((*a) < (*b))
 #define INVALID_ENTITY_ID -1l
 
 #define ENTITY_GET_ID(graphEntity) ((graphEntity)->entity ? (graphEntity)->entity->id : INVALID_ENTITY_ID)
@@ -27,28 +27,43 @@ typedef GrB_Index EntityID;
 typedef GrB_Index NodeID;
 typedef GrB_Index EdgeID;
 
-typedef enum GraphEntityType {
-	GETYPE_UNKNOWN,
-	GETYPE_NODE,
-	GETYPE_EDGE
+/*  Format a graph entity string according to the enum.
+    One can sum the enum values in order to print multiple value:
+    ENTITY_ID + ENTITY_LABELS_OR_RELATIONS will print both id and label. */
+
+typedef enum
+{
+    ENTITY_ID = 1,                       // print id only
+    ENTITY_LABELS_OR_RELATIONS = 1 << 1, // print label or relationship type
+    ENTITY_PROPERTIES = 1 << 2           // print properties
+} GraphEntityStringFromat;
+
+typedef enum GraphEntityType
+{
+    GETYPE_UNKNOWN,
+    GETYPE_NODE,
+    GETYPE_EDGE
 } GraphEntityType;
 
-typedef struct {
-	Attribute_ID id;
-	SIValue value;
+typedef struct
+{
+    Attribute_ID id;
+    SIValue value;
 } EntityProperty;
 
 // Essence of a graph entity.
 // TODO: see if pragma pack 0 will cause memory access violation on ARM.
-typedef struct {
-	EntityID id;                    // Unique id
-	int prop_count;                 // Number of properties.
-	EntityProperty *properties;     // Key value pair of attributes.
+typedef struct
+{
+    EntityID id;                // Unique id
+    int prop_count;             // Number of properties.
+    EntityProperty *properties; // Key value pair of attributes.
 } Entity;
 
 // Common denominator between nodes and edges.
-typedef struct {
-	Entity *entity;
+typedef struct
+{
+    Entity *entity;
 } GraphEntity;
 
 /* Adds property to entity
@@ -62,6 +77,11 @@ SIValue *GraphEntity_GetProperty(const GraphEntity *e, Attribute_ID attr_id);
 
 /* Updates existing attribute value. */
 void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue value);
+
+/* Prints the graph entity into a buffer, returns what is the string length, buffer can be re-allocated at need. */
+void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen,
+                          size_t *bytesWritten,
+                          GraphEntityStringFromat format, GraphEntityType entityType);
 
 /* Release all memory allocated by entity */
 void FreeEntity(Entity *e);

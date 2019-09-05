@@ -17,10 +17,12 @@ Patterns are fully supported.
 - Path variables (alternating sequence of nodes and relationships)
 
 ### Composite types
++ Lists
+
   **Unsupported:**
 
-- Lists
 - Maps
+- Temporal types (Date, DateTime, LocalDateTime, Time, LocalTime, Duration)
 
 ### Literal types
 + Numeric types (64-bit doubles and 64-bit signed integer representations)
@@ -87,18 +89,19 @@ We do not support any of these properties at the type level, meaning nodes and r
 ### Scalar functions
 + id
 + labels
++ timestamp
 + type
 
   **Unsupported:**
 
 - coalesce
-- timestamp
 - Casting functions (toBoolean, toFloat, toInteger)
 - Relationship functions (startNode, endNode, type)
-- List functions (head, last, length, size)
+- Temporal arithmetics 
 
 ### Aggregating functions
 + avg
++ collect
 + count
 + max
 + min
@@ -108,9 +111,12 @@ We do not support any of these properties at the type level, meaning nodes and r
 + stDevP
 + sum
 
-  **Unsupported:**
-
-- collect
+### List functions
++ head 
++ range
++ reverse
++ size
++ tail 
 
 ### Math functions - numeric
 + abs
@@ -139,9 +145,8 @@ We do not support any of these properties at the type level, meaning nodes and r
 
 ### Unsupported function classes
 
-- Logarithmetic math functions
+- Logarithmic math functions
 - Trigonometric math functions
-- List functions
 - User-defined functions
 - Predicate functions (the only function in this class is EXISTS)
 
@@ -156,19 +161,16 @@ We do not support any of these properties at the type level, meaning nodes and r
 - Modulo, exponentiation
 
 ### String operators
-String operators (STARTS WITH, ENDS WITH, CONTAINS) are not supported, though equivalent results can be obtained using string functions.
+String operators (STARTS WITH, ENDS WITH, CONTAINS) are supported.
 
 ### Boolean operators
 + AND
 + OR
-+ NOT (currently implemented with the syntax `<>`)
-
-  **Unsupported:**
-
-- XOR
++ NOT
++ XOR
 
 ### Other
-CASE operators are not supported.
+CASE expressions.
 
 ## Non-Cypher queries
 + RedisGraph provides the `GRAPH.EXPLAIN` command to print the execution plan of a provided query.

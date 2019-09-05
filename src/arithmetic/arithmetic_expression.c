@@ -15,6 +15,7 @@
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
 #include "../datatypes/temporal_value.h"
+#include "../datatypes/array.h"
 
 #include "assert.h"
 #include <math.h>
@@ -193,7 +194,17 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 			}
 			/* Evaluate self. */
 			result = root->op.f(sub_trees, root->op.child_count);
-			/* Free any SIValues that were allocated while evaluating this tree. */
+
+			// release memory if needed
+			/* for example 'a'+'b'+'c'+'d' will evalute to
+			          +(abcd)
+			         /       \
+			     +(ab)      +(cd)
+			    /   \       /   \
+			   a     b     c     d
+			   the expressions 'ab', 'cd' which are calculated temporaty values
+			   will be released once the calculation of 'abcd' is done
+			*/
 			for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
 				SIValue_Free(&sub_trees[child_idx]);
 			}
@@ -333,7 +344,6 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 		*str_size += 128;
 		*str = rm_realloc(*str, sizeof(char) * *str_size);
 	}
-
 	/* Concat Op. */
 	if(root->type == AR_EXP_OP) {
 		/* Binary operation? */
@@ -377,8 +387,7 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 	} else {
 		// Concat Operand node.
 		if(root->operand.type == AR_EXP_CONSTANT) {
-			size_t len = SIValue_ToString(root->operand.constant, (*str + *bytes_written), 64);
-			*bytes_written += len;
+			SIValue_ToString(root->operand.constant, str, str_size, bytes_written);
 		} else {
 			if(root->operand.variadic.entity_prop != NULL) {
 				*bytes_written += sprintf(
@@ -467,8 +476,6 @@ void AR_EXP_Free(AR_ExpNode *root) {
 //=== Mathematical functions - numeric =========================================
 //==============================================================================
 
-/* The '+' operator is overloaded to perform string concatenation
- * as well as arithmetic addition. */
 SIValue AR_ADD(SIValue *argv, int argc) {
 	// Don't modify input.
 	SIValue result = SI_CloneValue(argv[0]);
@@ -477,45 +484,8 @@ SIValue AR_ADD(SIValue *argv, int argc) {
 
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	for(int i = 1; i < argc; i++) {
-		if(SIValue_IsNull(argv[i])) return SI_NullVal();
-
-		/* Perform numeric addition only if both result and current argument
-		 * are numeric. */
-		if(_validate_numeric(result) && _validate_numeric(argv[i])) {
-			result = SIValue_Add(result, argv[i]);
-		} else {
-			/* String concatenation.
-			 * Make sure result is a String. */
-			if(SI_TYPE(result) & SI_NUMERIC) {
-				/* Result is numeric, convert to string. */
-				SIValue_ToString(result, buffer, 512);
-				result = SI_DuplicateStringVal(buffer);
-			} else {
-				/* Result is already a string,
-				 * Make sure result owns the string. */
-				if(result.allocation != M_SELF) {
-					result = SI_DuplicateStringVal(result.stringval);
-				}
-			}
-
-			/* Get a string representation of argument. */
-			unsigned int argument_len = 0;
-			if(SI_TYPE(argv[i]) != T_STRING) {
-				/* Argument is not a string, get a string representation. */
-				argument_len = SIValue_ToString(argv[i], buffer, 512);
-				string_arg = buffer;
-			} else {
-				string_arg = argv[i].stringval;
-				argument_len = strlen(string_arg);
-			}
-
-			/* Concat, make sure result has enough space to hold new string. */
-			unsigned int required_size = strlen(result.stringval) + argument_len + 1;
-			result.stringval = rm_realloc(result.stringval, required_size);
-			strcat(result.stringval, string_arg);
-		}
+		result = SIValue_Add(result, argv[i]);
 	}
-
 	return result;
 }
 
@@ -669,10 +639,8 @@ SIValue AR_RTRIM(SIValue *argv, int argc) {
 	return SI_TransferStringVal(trimmed);
 }
 
-SIValue AR_REVERSE(SIValue *argv, int argc) {
-	if(SIValue_IsNull(argv[0])) return SI_NullVal();
-	assert(SI_TYPE(argv[0]) == T_STRING);
-	char *str = argv[0].stringval;
+SIValue _reverseString(SIValue value) {
+	char *str = value.stringval;
 	size_t str_len = strlen(str);
 	char *reverse = rm_malloc((str_len + 1) * sizeof(char));
 
@@ -683,6 +651,27 @@ SIValue AR_REVERSE(SIValue *argv, int argc) {
 	}
 	reverse[j] = '\0';
 	return SI_TransferStringVal(reverse);
+}
+
+SIValue _reverseArray(SIValue value) {
+	uint arrayLen = SIArray_Length(value);
+	SIValue result = SI_Array(arrayLen);
+	for(uint i = arrayLen - 1; i >= 0; i--) {
+		SIArray_Append(&result, SIArray_Get(value, i));
+	}
+	return result;
+}
+
+SIValue AR_REVERSE(SIValue *argv, int argc) {
+	SIValue value = argv[0];
+	if(SIValue_IsNull(value)) return SI_NullVal();
+	// In case of string.
+	if(SI_TYPE(value) == T_STRING) return _reverseString(value);
+	// In case of array.
+	if(SI_TYPE(value) == T_ARRAY) return _reverseArray(value);
+
+	// TODO: Runtime error - unsupported type.
+	assert(false);
 }
 
 SIValue AR_SUBSTRING(SIValue *argv, int argc) {
@@ -766,9 +755,10 @@ SIValue AR_TOSTRING(SIValue *argv, int argc) {
 	assert(argc == 1);
 
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
-	size_t len = SIValue_StringConcatLen(argv, 1);
+	size_t len = SIValue_StringJoinLen(argv, 1, "");
 	char *str = rm_malloc(len * sizeof(char));
-	SIValue_ToString(argv[0], str, len);
+	size_t bytesWritten = 0;
+	SIValue_ToString(argv[0], &str, &len, &bytesWritten);
 	return SI_TransferStringVal(str);
 }
 
@@ -1133,21 +1123,12 @@ SIValue AR_EQ(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
+	int res = SIValue_Compare(a, b);
 
-	assert(SI_TYPE(a) == SI_TYPE(b));
-	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
-	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
+	// if res == DISJOINT => type mismatch
 
-	switch(SI_TYPE(a)) {
-	case T_STRING:
-		return SI_BoolVal(SIValue_Compare(a, b) == 0);
-	case T_INT64:
-	case T_DOUBLE:
-		return SI_BoolVal(SI_GET_NUMERIC(a) == SI_GET_NUMERIC(b));
-	default:
-		assert(false);
-	}
+	if(res == COMPARED_NULL) return SI_NullVal();
+	return SI_BoolVal(res == 0);
 }
 
 SIValue AR_NE(SIValue *argv, int argc) {
@@ -1172,6 +1153,169 @@ SIValue AR_NE(SIValue *argv, int argc) {
 	}
 }
 
+//==============================================================================
+//=== List functions ===========================================================
+//==============================================================================
+
+/* Create a list from a given squence of values.
+   "RETURN [1, '2', True, null]" */
+SIValue AR_TOLIST(SIValue *argv, int argc) {
+	SIValue array = SI_Array(argc);
+	for(int i = 0; i < argc; i++) {
+		SIArray_Append(&array, argv[i]);
+	}
+	return array;
+}
+
+/* Returns a value in a specific index in an array.
+   Valid index range is [-arrayLen, arrayLen).
+   Invalid index will return null.
+   "RETURN [1, 2, 3][0]" will yeild 1 */
+SIValue AR_SUBSCRIPT(SIValue *argv, int argc) {
+	assert(argc == 2 && argv[0].type == T_ARRAY && argv[1].type == T_INT64);
+	SIValue list = argv[0];
+	int32_t index = (int32_t)argv[1].longval;
+	uint32_t arrayLen = SIArray_Length(list);
+	// given a negativ index, the accses is calculated as arrayLen+index
+	uint32_t absIndex = abs(index);
+	// index range can be [-arrayLen, arrayLen) (lower bound inclusive, upper exclusive)
+	// this is because 0 = arrayLen+(-arrayLen)
+	if((index < 0 && absIndex > arrayLen) || (index > 0 && absIndex >= arrayLen)) return SI_NullVal();
+	index = index >= 0 ? index : arrayLen - absIndex;
+	SIValue res = SIArray_Get(list, index);
+	// clone is in case for nested heap allocated values returned from the array
+	return SI_CloneValue(res);
+}
+
+/* Return a sub array from an array given a range of indices.
+   Valid indices ragne is [-arrayLen, arrayLen).
+   If range start value is bigger then range end value an empty list will be returnd.
+   If indices are still integers but not in the valid range, only values within the valid range
+   will be returned.
+   If one of the indices is null, null will be returnd.
+   "RETURN [1, 2, 3][0..1]" will yield [1, 2] */
+SIValue AR_SLICE(SIValue *argv, int argc) {
+	assert(argc == 3 && argv[0].type == T_ARRAY);
+	if(argv[0].type == T_NULL || argv[1].type == T_NULL || argv[2].type == T_NULL) return SI_NullVal();
+	assert(argv[1].type == T_INT64 && argv[2].type == T_INT64);
+	SIValue array = argv[0];
+
+	// get array length
+	uint32_t arrayLen = SIArray_Length(array);
+
+	// get start and end index
+	SIValue start = argv[1];
+	int32_t startIndex = (int32_t)start.longval;
+	SIValue end = argv[2];
+	int32_t endIndex = (int32_t)end.longval;
+
+	// if negative index, calculate offset from end
+	if(startIndex < 0) startIndex = arrayLen - abs(startIndex);
+	// if offset from the end is out of bound, start at 0
+	if(startIndex < 0) startIndex = 0;
+
+	// if negative index, calculate offset from end
+	if(endIndex < 0) endIndex = arrayLen - abs(endIndex);
+	// if index out of bound, end at arrayLen
+	if(((int32_t)arrayLen) < endIndex) endIndex = arrayLen;
+	// cant go in reverse
+	if(endIndex <= startIndex) {
+		return SI_EmptyArray();
+	}
+
+	SIValue subArray = SI_Array(endIndex - startIndex);
+	for(uint i = startIndex; i < endIndex; i++) {
+		SIArray_Append(&subArray, SIArray_Get(array, i));
+	}
+	return subArray;
+}
+
+/* Create a new list of integers in the range of [start, end]. If a step was given
+   the step between two consecutive list members will be this step.
+   If step was not suppllied, it will be default as 1
+   "RETURN range(3,8,2)" will yield [3, 5, 7] */
+SIValue AR_RANGE(SIValue *argv, int argc) {
+	assert(argc > 1 && argc <= 3 && argv[0].type == T_INT64 && argv[1].type == T_INT64);
+	int64_t start = argv[0].longval;
+	int64_t end = argv[1].longval;
+	int64_t interval = 1;
+	if(argc == 3) {
+		assert(argv[2].type == T_INT64);
+		interval = argv[2].longval;
+	}
+	SIValue array = SI_Array(1 + (end - start) / interval);
+	for(; start <= end; start += interval) {
+		SIArray_Append(&array, SI_LongVal(start));
+	}
+	return array;
+}
+
+/* Checks if a value is in a given list.
+   "RETURN 3 IN [1, 2, 3]" will return true */
+SIValue AR_IN(SIValue *argv, int argc) {
+	assert(argc == 2 && argv[1].type == T_ARRAY);
+	SIValue lookupValue = argv[0];
+	SIValue lookupList = argv[1];
+	// indicate if there was a null comparison during the array scan
+	bool comparedNull = false;
+	uint arrayLen = SIArray_Length(lookupList);
+	for(uint i = 0; i < arrayLen; i++) {
+		int compareValue = SIValue_Compare(lookupValue, SIArray_Get(lookupList, i));
+		if(compareValue == 0) return SI_BoolVal(true);
+		if(compareValue == COMPARED_NULL) comparedNull = true;
+	}
+	// if there was a null comparison return null, other wise return false as the lookup item did not found
+	return comparedNull ? SI_NullVal() : SI_BoolVal(false);
+}
+
+/* Return a list/string/map/path size.
+   "RETURN size([1, 2, 3])" will return 3
+   TODO: when map and path are implemented, add their functonality */
+SIValue AR_SIZE(SIValue *argv, int argc) {
+	assert(argc == 1);
+	SIValue value = argv[0];
+	switch(value.type) {
+	case T_ARRAY:
+		return SI_LongVal(SIArray_Length(value));
+	case T_STRING:
+		return SI_LongVal(strlen(value.stringval));
+	default:
+		assert(false);
+	}
+}
+
+/* Return the first member of a list.
+   "RETURN head([1, 2, 3])" will return 1 */
+SIValue AR_HEAD(SIValue *argv, int argc) {
+	assert(argc == 1);
+	SIValue value = argv[0];
+	if(value.type == T_NULL) return SI_NullVal();
+	assert(value.type == T_ARRAY);
+	uint arrayLen = SIArray_Length(value);
+	if(arrayLen == 0) return SI_NullVal();
+	return SIArray_Get(value, 0);
+}
+
+/* Return a sublist of a list, which contains all the values withiout the first value.
+   "RETURN tail([1, 2, 3])" will return [2, 3] */
+SIValue AR_TAIL(SIValue *argv, int argc) {
+	assert(argc == 1);
+	SIValue value = argv[0];
+	if(value.type == T_NULL) return SI_NullVal();
+	assert(value.type == T_ARRAY);
+	uint arrayLen = SIArray_Length(value);
+	SIValue array = SI_Array(arrayLen);
+	if(arrayLen < 2) return array;
+	for(uint i = 1; i < arrayLen; i++) {
+		SIArray_Append(&array, SIArray_Get(value, i));
+	}
+	return array;
+}
+
+//==============================================================================
+//=== Temporal functions =======================================================
+//==============================================================================
+
 SIValue AR_TIMESTAMP(SIValue *argv, int argc) {
 	return SI_LongVal(TemporalValue_NewTimestamp());
 }
@@ -1190,7 +1334,7 @@ void AR_RegisterFuncs() {
 		AR_Func func_ptr;
 	};
 
-	struct RegFunc functions[41] = {
+	struct RegFunc functions[49] = {
 		{"add", AR_ADD}, {"sub", AR_SUB}, {"mul", AR_MUL}, {"div", AR_DIV}, {"abs", AR_ABS}, {"ceil", AR_CEIL},
 		{"floor", AR_FLOOR}, {"rand", AR_RAND}, {"round", AR_ROUND}, {"sign", AR_SIGN}, {"left", AR_LEFT},
 		{"reverse", AR_REVERSE}, {"right", AR_RIGHT}, {"ltrim", AR_LTRIM}, {"rtrim", AR_RTRIM}, {"substring", AR_SUBSTRING},
@@ -1198,13 +1342,15 @@ void AR_RegisterFuncs() {
 		{"starts with", AR_STARTSWITH}, {"ends with", AR_ENDSWITH}, {"id", AR_ID}, {"labels", AR_LABELS}, {"type", AR_TYPE}, {"exists", AR_EXISTS},
 		{"timestamp", AR_TIMESTAMP}, {"and", AR_AND}, {"or", AR_OR}, {"xor", AR_XOR}, {"not", AR_NOT}, {"gt", AR_GT}, {"ge", AR_GE},
 		{"lt", AR_LT}, {"le", AR_LE}, {"eq", AR_EQ}, {"neq", AR_NE}, {"case", AR_CASEWHEN}, {"indegree", AR_INCOMEDEGREE},
-		{"outdegree", AR_OUTGOINGDEGREE}
+		{"outdegree", AR_OUTGOINGDEGREE},
+		{"tolist", AR_TOLIST}, {"subscript", AR_SUBSCRIPT}, {"slice", AR_SLICE}, {"range", AR_RANGE}, {"in", AR_IN},
+		{"size", AR_SIZE}, {"head", AR_HEAD}, {"tail", AR_TAIL}
 	};
 
 	char lower_func_name[32] = {0};
 	short lower_func_name_len = 32;
 
-	for(int i = 0; i < 41; i++) {
+	for(int i = 0; i < 49; i++) {
 		_toLower(functions[i].func_name, &lower_func_name[0], &lower_func_name_len);
 		_AR_RegFunc(lower_func_name, lower_func_name_len, functions[i].func_ptr);
 		lower_func_name_len = 32;
