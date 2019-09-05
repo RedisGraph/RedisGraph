@@ -75,16 +75,14 @@ Record UnwindConsume(OpBase *opBase) {
 	Record r = _handoff(op);
 	if(r) return r;
 
-	// Done consuming current list, clean-up.	
-	Record_Free(op->currentRecord);
-	op->currentRecord = NULL;
-
 	// No child operation to pull data from, we're done.
 	if(op->op.childCount == 0) return NULL;
 
 	OpBase *child = op->op.children[0];
 	// Did we managed to get new data?
 	if((r = OpBase_Consume(child))) {
+		// Free current record to accommodate new record.
+		Record_Free(op->currentRecord);
 		op->currentRecord = r;
 		// Free old list.
 		SIValue_Free(&op->list);
