@@ -101,17 +101,17 @@ RecordEntryType Record_GetType(const Record r, int idx) {
 	return r->entries[idx].type;
 }
 
-SIValue Record_GetScalar(Record r,  int idx) {
+SIValue Record_GetScalar(Record r, int idx) {
 	r->entries[idx].type = REC_TYPE_SCALAR;
 	return r->entries[idx].value.s;
 }
 
-Node *Record_GetNode(const Record r,  int idx) {
+Node *Record_GetNode(const Record r, int idx) {
 	r->entries[idx].type = REC_TYPE_NODE;
 	return &(r->entries[idx].value.n);
 }
 
-Edge *Record_GetEdge(const Record r,  int idx) {
+Edge *Record_GetEdge(const Record r, int idx) {
 	r->entries[idx].type = REC_TYPE_EDGE;
 	return &(r->entries[idx].value.e);
 }

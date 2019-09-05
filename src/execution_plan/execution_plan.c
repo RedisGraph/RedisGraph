@@ -21,17 +21,23 @@
 
 /* In a query with a RETURN *, build projections for all explicit aliases
  * in previous clauses. */
-static AR_ExpNode **_ReturnExpandAll(AST *ast) {
+// static AR_ExpNode **_ReturnExpandAll(AST *ast) {
+static ProjectedExpression *_ReturnExpandAll(AST *ast) {
 	// Collect all unique aliases
 	const char **aliases = AST_CollectElementNames(ast);
 	uint count = array_len(aliases);
 
 	// Build an expression for each alias
-	AR_ExpNode **return_expressions = array_new(AR_ExpNode *, count);
+	ProjectedExpression *return_expressions = array_new(ProjectedExpression, count);
 	for(int i = 0; i < count; i ++) {
 		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(aliases[i], NULL);
 		exp->resolved_name = aliases[i];
-		return_expressions = array_append(return_expressions, exp);
+
+		ProjectedExpression proj_exp;
+		proj_exp.exp = exp;
+		proj_exp.alias = NULL;
+		proj_exp.exp_str = aliases[i];
+		return_expressions = array_append(return_expressions, proj_exp);
 	}
 
 	array_free(aliases);
@@ -56,20 +62,28 @@ static AR_ExpNode **_BuildOrderExpressions(const cypher_astnode_t *order_clause)
 
 // Handle RETURN entities
 // (This function is not static because it is relied upon by unit tests)
-AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause, AST *ast) {
+// AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause, AST *ast) {
+ProjectedExpression *_BuildReturnExpressions(const cypher_astnode_t *ret_clause, AST *ast) {
 	// Query is of type "RETURN *",
 	// collect all defined identifiers and create return elements for them
 	if(cypher_ast_return_has_include_existing(ret_clause)) return _ReturnExpandAll(ast);
 
 	uint count = cypher_ast_return_nprojections(ret_clause);
-	AR_ExpNode **return_expressions = array_new(AR_ExpNode *, count);
+	ProjectedExpression *return_expressions = array_new(ProjectedExpression, count);
+
 	for(uint i = 0; i < count; i++) {
+		ProjectedExpression proj_exp;
+		proj_exp.exp = NULL;
+		proj_exp.alias = NULL;
+		proj_exp.exp_str = NULL;
+
 		const cypher_astnode_t *projection = cypher_ast_return_get_projection(ret_clause, i);
 		// The AST expression can be an identifier, function call, or constant
 		const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
 
 		// Construction an AR_ExpNode to represent this return entity.
 		AR_ExpNode *exp = AR_EXP_FromExpression(ast_exp);
+		proj_exp.exp = exp;
 
 		// Find the resolved name of the entity - its alias, its identifier if referring to a full entity,
 		// the entity.prop combination ("a.val"), or the function call ("MAX(a.val)")
@@ -78,57 +92,51 @@ AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause, AST *as
 		if(alias_node) {
 			// The projection either has an alias (AS), is a function call, or is a property specification (e.name).
 			identifier = cypher_ast_identifier_get_name(alias_node);
+			proj_exp.alias = identifier;
 		} else {
 			// This expression did not have an alias, so it must be an identifier
 			assert(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
 			// Retrieve "a" from "RETURN a" or "RETURN a AS e" (theoretically; the latter case is already handled)
 			identifier = cypher_ast_identifier_get_name(ast_exp);
 		}
-
-		// TODO AR_EXP_FromExpression should set resolved_name!
-		assert("see TODO above!");
 		exp->resolved_name = identifier;
-
-		return_expressions = array_append(return_expressions, exp);
+		proj_exp.exp_str = identifier;
+		return_expressions = array_append(return_expressions, proj_exp);
 	}
 
 	return return_expressions;
 }
 
-static AR_ExpNode **_BuildWithExpressions(const cypher_astnode_t *with_clause) {
+static ProjectedExpression *_BuildWithExpressions(const cypher_astnode_t *with_clause) {
 	uint count = cypher_ast_with_nprojections(with_clause);
-	AR_ExpNode **with_expressions = array_new(AR_ExpNode *, count);
+	ProjectedExpression *with_expressions = array_new(ProjectedExpression, count);
+
 	for(uint i = 0; i < count; i++) {
 		const cypher_astnode_t *projection = cypher_ast_with_get_projection(with_clause, i);
 		const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
 
 		// Construction an AR_ExpNode to represent this entity.
 		AR_ExpNode *exp = AR_EXP_FromExpression(ast_exp);
+		const char *identifier = cypher_ast_identifier_get_name(ast_exp);
 
-		// Find the resolved name of the entity - its alias, its identifier if referring to a full entity,
-		// the entity.prop combination ("a.val"), or the function call ("MAX(a.val)").
-		// The WITH clause requires that the resolved name be an alias or identifier.
-		const char *identifier = NULL;
+		ProjectedExpression proj_exp;
+		proj_exp.exp = exp;
+		proj_exp.alias = NULL;
+		proj_exp.exp_str = identifier;
+
 		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(projection);
 		if(alias_node) {
 			// The projection either has an alias (AS), is a function call, or is a property specification (e.name).
 			/// TODO should issue syntax failure in the latter 2 cases
 			identifier = cypher_ast_identifier_get_name(alias_node);
-		} else {
-			// This expression did not have an alias, so it must be an identifier
-			const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
-			assert(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
-			// Retrieve "a" from "RETURN a" or "RETURN a AS e" (theoretically; the latter case is already handled)
-			identifier = cypher_ast_identifier_get_name(ast_exp);
+			proj_exp.alias = identifier;
 		}
-
 		exp->resolved_name = identifier;
 
-		with_expressions = array_append(with_expressions, exp);
+		with_expressions = array_append(with_expressions, proj_exp);
 	}
 
 	return with_expressions;
-
 }
 
 /* _BuildCallProjections creates an array of expression nodes to populate a Project operation with.
@@ -205,20 +213,20 @@ static const char **_BuildCallArguments(const cypher_astnode_t *call_clause) {
 	return arguments;
 }
 
-static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segment, QueryGraph *qg,
-													AST *ast, FT_FilterNode *ft, Vector *ops) {
+static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg,
+											 AST *ast, FT_FilterNode *ft, Vector *ops) {
 	GraphContext *gc = GraphContext_GetFromTLS();
 
 	QueryGraph **connectedComponents = QueryGraph_ConnectedComponents(qg);
 	uint connectedComponentsCount = array_len(connectedComponents);
-	segment->connected_components = connectedComponents;
+	plan->connected_components = connectedComponents;
 
 	/* For every connected component.
 	 * Incase we're dealing with multiple components
 	 * we'll simply join them all together with a join operation. */
 	OpBase *cartesianProduct = NULL;
 	if(connectedComponentsCount > 1) {
-		cartesianProduct = NewCartesianProductOp();
+		cartesianProduct = NewCartesianProductOp(plan);
 		Vector_Push(ops, cartesianProduct);
 	}
 
@@ -232,8 +240,8 @@ static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segmen
 		if(edge_count == 0) {
 			/* Node scan. */
 			QGNode *n = cc->nodes[0];
-			if(n->labelID != GRAPH_NO_LABEL) op = NewNodeByLabelScanOp(n);
-			else op = NewAllNodeScanOp(gc->g, n);
+			if(n->labelID != GRAPH_NO_LABEL) op = NewNodeByLabelScanOp(plan, n);
+			else op = NewAllNodeScanOp(plan, gc->g, n);
 			Vector_Push(traversals, op);
 		} else {
 			size_t expCount = 0;
@@ -255,9 +263,9 @@ static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segmen
 				 * try to locate and remove it, there's no real harm except some performace hit
 				 * in keeping that label matrix. */
 				if(exp->operands[0].diagonal) AlgebraicExpression_RemoveTerm(exp, 0, NULL);
-				op = NewNodeByLabelScanOp(exp->src_node);
+				op = NewNodeByLabelScanOp(plan, exp->src_node);
 			} else {
-				op = NewAllNodeScanOp(gc->g, exp->src_node);
+				op = NewAllNodeScanOp(plan, gc->g, exp->src_node);
 			}
 			Vector_Push(traversals, op);
 
@@ -266,9 +274,9 @@ static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segmen
 				if(exp->operand_count == 0) continue;
 
 				if(exp->edge && QGEdge_VariableLength(exp->edge)) {
-					op = NewCondVarLenTraverseOp(gc->g, exp);
+					op = NewCondVarLenTraverseOp(plan, gc->g, exp);
 				} else {
-					op = NewCondTraverseOp(gc->g, exp, TraverseRecordCap(ast));
+					op = NewCondTraverseOp(plan, gc->g, exp, TraverseRecordCap(ast));
 				}
 
 				Vector_Push(traversals, op);
@@ -301,25 +309,13 @@ static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segmen
 	Vector_Free(traversals);
 }
 
-static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
-													  AST *ast, ResultSet *result_set, AR_ExpNode **prev_projections, OpBase *prev_op) {
-	// Allocate a new segment
-	ExecutionPlanSegment *segment = rm_malloc(sizeof(ExecutionPlanSegment));
-	segment->connected_components = NULL;
+static ExecutionPlan *_NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
+										ResultSet *result_set) {
 
-	// Initialize map of Record IDs
-	rax *record_map = raxNew();
-	segment->record_map = record_map;
-
-	// if(prev_projections) {
-	// 	// We have an array of identifiers provided by a prior WITH clause -
-	// 	// these will correspond to our first Record entities
-	// 	uint projection_count = array_len(prev_projections);
-	// 	for(uint i = 0; i < projection_count; i++) {
-	// 		AR_ExpNode *projection = prev_projections[i];
-	// 		RecordMap_FindOrAddAlias(record_map, projection->resolved_name);
-	// 	}
-	// }
+	ExecutionPlan *plan = rm_calloc(1, sizeof(ExecutionPlan));
+	plan->record_map = raxNew();
+	plan->result_set = result_set;
+	plan->connected_components = NULL;
 
 	/* Build projections from this AST's WITH, RETURN, and ORDER clauses. */
 	// Retrieve a RETURN clause if one is specified in this AST's range
@@ -340,11 +336,11 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 
 	// Build query graph
 	QueryGraph *qg = BuildQueryGraph(gc, ast);
-	segment->query_graph = qg;
+	plan->query_graph = qg;
 
 	// Build filter tree
 	FT_FilterNode *filter_tree = AST_BuildFilterTree(ast);
-	segment->filter_tree = filter_tree;
+	plan->filter_tree = filter_tree;
 
 	const cypher_astnode_t *call_clause = AST_GetClause(ast, CYPHER_AST_CALL);
 	if(call_clause) {
@@ -357,18 +353,16 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 
 		for(uint i = 0; i < yield_count; i ++) {
 			// Track the names of yielded variables.
-			// yields = array_append(yields, yield_exps[i]->resolved_name);
 			yields = array_append(yields, yield_exps[i]->operand.variadic.entity_alias);
-			// Track which variables are modified by this operation.
 		}
 		array_free(yield_exps);
-		OpBase *opProcCall = NewProcCallOp(proc_name, arguments, yields);
+		OpBase *opProcCall = NewProcCallOp(plan, proc_name, arguments, yields);
 		Vector_Push(ops, opProcCall);
 	}
 
 	// Build traversal operations for every connected component in the QueryGraph
 	if(AST_ContainsClause(ast, CYPHER_AST_MATCH) || AST_ContainsClause(ast, CYPHER_AST_MERGE)) {
-		_ExecutionPlanSegment_ProcessQueryGraph(segment, qg, ast, filter_tree, ops);
+		_ExecutionPlan_ProcessQueryGraph(plan, qg, ast, filter_tree, ops);
 	}
 
 	// If we are in a querying context, retrieve a pointer to the statistics for operations
@@ -379,34 +373,30 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 	const cypher_astnode_t *unwind_clause = AST_GetClause(ast, CYPHER_AST_UNWIND);
 	if(unwind_clause) {
 		AST_UnwindContext unwind_ast_ctx = AST_PrepareUnwindOp(unwind_clause);
-
-		OpBase *opUnwind = NewUnwindOp(unwind_ast_ctx.alias, unwind_ast_ctx.exps);
+		OpBase *opUnwind = NewUnwindOp(plan, unwind_ast_ctx.alias, unwind_ast_ctx.exps);
 		Vector_Push(ops, opUnwind);
 	}
 
 	bool create_clause = AST_ContainsClause(ast, CYPHER_AST_CREATE);
 	if(create_clause) {
-		OpBase *opCreate = NewCreateOp(stats, ast);
+		OpBase *opCreate = NewCreateOp(plan, stats, ast);
 		Vector_Push(ops, opCreate);
 	}
 
 	const cypher_astnode_t *merge_clause = AST_GetClause(ast, CYPHER_AST_MERGE);
 	if(merge_clause) {
-		// A merge clause provides a single path that must exist or be created.
-		// As with paths in a MATCH query, build the appropriate traversal operations
-		// and append them to the set of ops.
-
-		// AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(ast, merge_clause, qg);
-
-		// Append a merge operation
-		OpBase *opMerge = NewMergeOp(stats, ast);
+		/* A merge clause provides a single path that must exist or be created.
+		 * As with paths in a MATCH query, build the appropriate traversal operations
+		 * and append them to the set of ops.
+		 * Append a merge operation */
+		OpBase *opMerge = NewMergeOp(plan, stats, ast);
 		Vector_Push(ops, opMerge);
 	}
 
 	const cypher_astnode_t *delete_clause = AST_GetClause(ast, CYPHER_AST_DELETE);
 	if(delete_clause) {
 		char **deleted_entities = AST_PrepareDeleteOp(delete_clause);
-		OpBase *opDelete = NewDeleteOp(qg, deleted_entities, stats);
+		OpBase *opDelete = NewDeleteOp(plan, qg, deleted_entities, stats);
 		array_free(deleted_entities);
 		Vector_Push(ops, opDelete);
 	}
@@ -416,25 +406,22 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 		// Create a context for each update expression.
 		uint nitems;
 		EntityUpdateEvalCtx *update_exps = AST_PrepareUpdateOp(set_clause, &nitems);
-		OpBase *op_update = NewUpdateOp(gc, update_exps, nitems, stats);
+		OpBase *op_update = NewUpdateOp(plan, gc, update_exps, nitems, stats);
 		Vector_Push(ops, op_update);
 	}
-
-	assert(!(with_clause && ret_clause));
 
 	OpBase *op;
 
 	if(with_clause) {
-		// uint *with_projections = AST_WithClauseModifies(ast, with_clause);
 		if(AST_ClauseContainsAggregation(with_clause)) {
-			op = NewAggregateOp(_BuildWithExpressions(with_clause));
+			op = NewAggregateOp(plan, _BuildWithExpressions(with_clause));
 		} else {
-			op = NewProjectOp(_BuildWithExpressions(with_clause));
+			op = NewProjectOp(plan, _BuildWithExpressions(with_clause));
 		}
 		Vector_Push(ops, op);
 
 		if(cypher_ast_with_is_distinct(with_clause)) {
-			op = NewDistinctOp();
+			op = NewDistinctOp(plan);
 			Vector_Push(ops, op);
 		}
 
@@ -451,34 +438,33 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 			int direction = AST_PrepareSortOp(order_clause);
 			// The sort operation will obey a specified limit, but must account for skipped records
 			uint sort_limit = (limit > 0) ? limit + skip : 0;
-			op = NewSortOp(_BuildOrderExpressions(order_clause), direction, sort_limit);
+			op = NewSortOp(plan, _BuildOrderExpressions(order_clause), direction, sort_limit);
 			Vector_Push(ops, op);
 		}
 
 		if(skip_clause) {
-			OpBase *op_skip = NewSkipOp(skip);
+			OpBase *op_skip = NewSkipOp(plan, skip);
 			Vector_Push(ops, op_skip);
 		}
 
 		if(limit_clause) {
-			OpBase *op_limit = NewLimitOp(limit);
+			OpBase *op_limit = NewLimitOp(plan, limit);
 			Vector_Push(ops, op_limit);
 		}
 	} else if(ret_clause) {
-		// TODO we may not need a new project op if the query is something like:
-		// MATCH (a) WITH a.val AS val RETURN val
-		// Though we would still need a new projection (barring later optimizations) for:
-		// MATCH (a) WITH a.val AS val RETURN val AS e
-		bool return_all = cypher_ast_return_has_include_existing(ret_clause);
+		/* TODO we may not need a new project op if the query is something like:
+		 * MATCH (a) WITH a.val AS val RETURN val
+		 * Though we would still need a new projection (barring later optimizations) for:
+		 * MATCH (a) WITH a.val AS val RETURN val AS e */
 		if(AST_ClauseContainsAggregation(ret_clause)) {
-			op = NewAggregateOp(_BuildReturnExpressions(ret_clause, ast));
+			op = NewAggregateOp(plan, _BuildReturnExpressions(ret_clause, ast));
 		} else {
-			op = NewProjectOp(_BuildReturnExpressions(ret_clause, ast));
+			op = NewProjectOp(plan, _BuildReturnExpressions(ret_clause, ast));
 		}
 		Vector_Push(ops, op);
 
 		if(cypher_ast_return_is_distinct(ret_clause)) {
-			op = NewDistinctOp();
+			op = NewDistinctOp(plan);
 			Vector_Push(ops, op);
 		}
 
@@ -495,31 +481,31 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 			int direction = AST_PrepareSortOp(order_clause);
 			// The sort operation will obey a specified limit, but must account for skipped records
 			uint sort_limit = (limit > 0) ? limit + skip : 0;
-			op = NewSortOp(_BuildOrderExpressions(order_clause), direction, sort_limit);
+			op = NewSortOp(plan, _BuildOrderExpressions(order_clause), direction, sort_limit);
 			Vector_Push(ops, op);
 		}
 
 		if(skip_clause) {
-			OpBase *op_skip = NewSkipOp(skip);
+			OpBase *op_skip = NewSkipOp(plan, skip);
 			Vector_Push(ops, op_skip);
 		}
 
 		if(limit_clause) {
-			OpBase *op_limit = NewLimitOp(limit);
+			OpBase *op_limit = NewLimitOp(plan, limit);
 			Vector_Push(ops, op_limit);
 		}
 
-		op = NewResultsOp(result_set, qg);
+		op = NewResultsOp(plan, result_set, qg);
 		Vector_Push(ops, op);
 	} else if(call_clause) {
-		op = NewResultsOp(result_set, qg);
+		op = NewResultsOp(plan, result_set, qg);
 		Vector_Push(ops, op);
 	}
 
 	OpBase *parent_op;
 	OpBase *child_op;
 	Vector_Pop(ops, &parent_op);
-	segment->root = parent_op;
+	plan->root = parent_op;
 
 	while(Vector_Pop(ops, &child_op)) {
 		ExecutionPlan_AddOp(parent_op, child_op);
@@ -528,25 +514,8 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 
 	Vector_Free(ops);
 
-	if(prev_op) {
-		// TODO: migrate projection operation from one execution-plan segment to another
-		// this will need to remove and introduce identifiers to record.
-
-		// Need to connect this segment to the previous one.
-		// If the last operation of this segment is a potential data producer, join them
-		// under a Cartesian Product operation. (This could be an Apply op if preferred.)
-		if(parent_op->type & OP_TAPS) {
-			OpBase *op_cp = NewCartesianProductOp();
-			ExecutionPlan_PushBelow(parent_op, op_cp);
-			ExecutionPlan_AddOp(op_cp, prev_op);
-		} else {
-			// All operations can be connected in a single chain.
-			ExecutionPlan_AddOp(parent_op, prev_op);
-		}
-	}
-
-	if(segment->filter_tree) {
-		Vector *sub_trees = FilterTree_SubTrees(segment->filter_tree);
+	if(plan->filter_tree) {
+		Vector *sub_trees = FilterTree_SubTrees(plan->filter_tree);
 
 		/* For each filter tree find the earliest position along the execution
 		 * after which the filter tree can be applied. */
@@ -555,109 +524,103 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 			Vector_Get(sub_trees, i, &tree);
 
 			rax *references = FilterTree_CollectModified(tree);
-
 			if(raxSize(references) > 0) {
 				/* Scan execution segment, locate the earliest position where all
 				 * references been resolved. */
-				op = ExecutionPlan_LocateReferences(segment->root, references);
+				op = ExecutionPlan_LocateReferences(plan->root, references);
 				assert(op);
+				/* Create filter node.
+				* Introduce filter op right below located op. */
+				OpBase *filter_op = NewFilterOp(plan, tree);
+				ExecutionPlan_PushBelow(op, filter_op);
 			} else {
 				/* The filter tree does not contain references, like:
-				 * WHERE 1=1
-				 * TODO This logic is inadequate. For now, we'll place the op
-				 * directly below the first projection (hopefully there is one!). */
-				op = segment->root;
-				while(op->childCount > 0 && op->type != OPType_PROJECT && op->type != OPType_AGGREGATE) {
-					op = op->children[0];
-				}
+				 * WHERE 1=1, Ignore filter. */
 			}
-
-			/* Create filter node.
-			 * Introduce filter op right below located op. */
-			OpBase *filter_op = NewFilterOp(tree);
-			ExecutionPlan_PushBelow(op, filter_op);
 			raxFree(references);
 		}
 		Vector_Free(sub_trees);
 	}
 
-	return segment;
+	return plan;
 }
 
 ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet *result_set) {
 	AST *ast = AST_GetFromTLS();
 
-	ExecutionPlan *plan = rm_malloc(sizeof(ExecutionPlan));
-
-	plan->result_set = result_set;
-
 	/* Execution plans are created in 1 or more segments. Every WITH clause demarcates the end of
 	 * a segment, and the next clause begins a new one. */
 	uint with_clause_count = AST_GetClauseCount(ast, CYPHER_AST_WITH);
-	plan->segment_count = with_clause_count + 1;
-
-	plan->segments = rm_malloc(plan->segment_count * sizeof(ExecutionPlanSegment));
+	uint return_clause_count = AST_GetClauseCount(ast, CYPHER_AST_RETURN);
+	uint segment_count = with_clause_count + return_clause_count + 1;
 
 	// Retrieve the indices of each WITH clause to properly set the bounds of each segment.
-	uint *segment_indices = NULL;
-	if(with_clause_count > 0) segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
+	uint *segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
+	if(return_clause_count) {
+		uint *return_indices = AST_GetClauseIndices(ast, CYPHER_AST_RETURN);
+		segment_indices = array_append(segment_indices, return_indices[0]);
+		array_free(return_indices);
+	}
+	segment_indices = array_append(segment_indices, cypher_astnode_nchildren(ast->root));
 
-	uint i = 0;
-	uint end_offset;
 	uint start_offset = 0;
-	OpBase *prev_op = NULL;
-	ExecutionPlanSegment *segment = NULL;
-	AR_ExpNode **input_projections = NULL;
+	ExecutionPlan *segments[segment_count];
 
-	// The original AST does not need to be modified if our query only has one segment
-	AST *ast_segment = ast;
-	if(with_clause_count > 0) {
-		// Construct all segments except the final one in a loop.
-		for(i = 0; i < with_clause_count; i++) {
-			end_offset = segment_indices[i] + 1; // Switching from index to bound, so add 1
-			// Slice the AST to only include the clauses in the current segment.
-			ast_segment = AST_NewSegment(ast, start_offset, end_offset);
+	for(int i = 0; i < segment_count; i++) {
+		uint end_offset = segment_indices[i];
+		// Slice the AST to only include the clauses in the current segment.
+		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
 
-			// Construct a new ExecutionPlanSegment.
-			segment = _NewExecutionPlanSegment(ctx, gc, ast_segment, plan->result_set, input_projections,
-											   prev_op);
-			plan->segments[i] = segment;
+		// Construct a new ExecutionPlanSegment.
+		ExecutionPlan *segment = _NewExecutionPlan(ctx, gc, ast_segment, result_set);
 
-			// Free the AST segment (the AST tree is freed separately,
-			// since this does not need to be performed the master AST)
-			cypher_ast_free((cypher_astnode_t *)ast_segment->root);
-			AST_Free(ast_segment); // Free all AST constructions scoped to this segment
+		// Free the AST segment (the AST tree is freed separately,
+		// since this does not need to be performed the master AST)
+		cypher_ast_free((cypher_astnode_t *)ast_segment->root);
+		AST_Free(ast_segment); // Free all AST constructions scoped to this segment
 
-			// Store the root op and the expressions constructed by this segment's
-			// WITH projection to pass into the *next* segment
-			prev_op = segment->root;
-			input_projections = segment->projections;
-			start_offset = end_offset;
-		}
-		// Prepare the last AST segment
-		end_offset = cypher_astnode_nchildren(ast->root);
-		ast_segment = AST_NewSegment(ast, start_offset, end_offset);
+		segments[i] = segment;
+		start_offset = end_offset;
 	}
 
-	if(segment_indices) array_free(segment_indices);
+	array_free(segment_indices);
 
-	segment = _NewExecutionPlanSegment(ctx, gc, ast_segment, plan->result_set, input_projections,
-									   prev_op);
-	plan->segments[i] = segment;
+	// Merge segments.
+	for(int i = 1; i < segment_count; i++) {
+		ExecutionPlan *prev_segment = segments[i - 1];
+		ExecutionPlan *current_segment = segments[i];
 
-	plan->root = plan->segments[i]->root;
+		OpBase *prev_root = prev_segment->root;
+		OpBase **taps = array_new(OpBase *, 1);
+		ExecutionPlan_Taps(current_segment->root, &taps);
+		bool has_taps = (array_len(taps) > 0);
+		array_free(taps);
+
+		// Does current execution plan contains taps?
+		if(has_taps) {
+			OpBase *op_cp = NewCartesianProductOp(current_segment);
+			ExecutionPlan_PushBelow(taps[0], op_cp);
+			ExecutionPlan_AddOp(op_cp, prev_root);
+		} else {
+			OpBase *leaf = ExecutionPlan_LocateLeaf(current_segment->root);
+			ExecutionPlan_AddOp(leaf, prev_root);
+		}
+	}
+
+	ExecutionPlan *plan = segments[segment_count - 1];
 
 	// Optimize the operations in the ExecutionPlan.
 	optimizePlan(gc, plan);
 
 	// Prepare column names for the ResultSet if this query contains data in addition to statistics.
-	if(result_set) ResultSet_BuildColumns(result_set, segment->projections);
-
-
-	// Free current AST segment if it has been constructed here.
-	if(ast_segment != ast) AST_Free(ast_segment);
+	// if(result_set) ResultSet_BuildColumns(result_set, plan->projections);
 
 	return plan;
+}
+
+rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan) {
+	assert(plan && plan->record_map);
+	return plan->record_map;
 }
 
 void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx, char *buffer, int buffer_len,
@@ -704,7 +667,6 @@ void ExecutionPlanInit(ExecutionPlan *plan) {
 	if(!plan) return;
 	for(int i = 0; i < plan->segment_count; i ++) _ExecutionPlanInit(plan->segments[i]->root);
 }
-
 
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 	Record r;
@@ -755,36 +717,23 @@ void _ExecutionPlan_FreeOperations(OpBase *op) {
 	OpBase_Free(op);
 }
 
-void _ExecutionPlanSegment_Free(ExecutionPlanSegment *segment) {
-	if(segment->connected_components) {
-		uint connected_component_count = array_len(segment->connected_components);
-		for(uint i = 0; i < connected_component_count; i ++) {
-			QueryGraph_Free(segment->connected_components[i]);
-		}
-		array_free(segment->connected_components);
-	}
-
-	QueryGraph_Free(segment->query_graph);
-
-	if(segment->projections) {
-		uint projection_count = array_len(segment->projections);
-		for(uint i = 0; i < projection_count; i ++) {
-			AR_EXP_Free(segment->projections[i]);
-		}
-		array_free(segment->projections);
-	}
-
-	rm_free(segment);
-}
-
 void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) return;
-	_ExecutionPlan_FreeOperations(plan->root);
 
-	for(uint i = 0; i < plan->segment_count; i ++) {
-		_ExecutionPlanSegment_Free(plan->segments[i]);
+	for(uint i = 0; i < plan->segment_count; i++) {
+		ExecutionPlan_Free(plan->segments[i]);
 	}
 	rm_free(plan->segments);
 
+	if(plan->connected_components) {
+		uint connected_component_count = array_len(plan->connected_components);
+		for(uint i = 0; i < connected_component_count; i ++) {
+			QueryGraph_Free(plan->connected_components[i]);
+		}
+		array_free(plan->connected_components);
+	}
+
+	QueryGraph_Free(plan->query_graph);
+	_ExecutionPlan_FreeOperations(plan->root);
 	rm_free(plan);
 }

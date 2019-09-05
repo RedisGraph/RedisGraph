@@ -4,7 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-
 #include "parser.h"
 #include <assert.h>
 
@@ -24,9 +23,9 @@ static void _name_anonymouse_entities(const cypher_astnode_t *root) {
 		if(clause_type == CYPHER_AST_MATCH) {
 			pattern = cypher_ast_match_get_pattern(clause);
 		} else if(clause_type == CYPHER_AST_CREATE) {
-			pattern = cypher_ast_match_get_pattern(clause);
+			pattern = cypher_ast_create_get_pattern(clause);
 		} else if(clause_type == CYPHER_AST_MERGE) {
-			pattern = cypher_ast_match_get_pattern(clause);
+			pattern = cypher_ast_merge_get_pattern_path(clause);
 		}
 		if(!pattern) continue;
 
@@ -70,6 +69,7 @@ static void _enrich_ast(const cypher_astnode_t *root) {
 
 cypher_parse_result_t *parse(const char *query) {
 	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+	if(!parse_result) return NULL;
 
 	/* Retrieve the AST root node from a parsed query.
 	 * We are parsing with the CYPHER_PARSE_ONLY_STATEMENTS flag. */

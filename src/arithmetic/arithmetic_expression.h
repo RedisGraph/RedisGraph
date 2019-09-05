@@ -80,8 +80,7 @@ struct AR_ExpNode {
 		AR_OpNode op;
 	};
 	AR_ExpNodeType type;
-	const char
-	*resolved_name; // The string representation of the node, such as the literal string "ID(a) + 5"
+	const char *resolved_name; // The string representation of the node, such as the literal string "ID(a) + 5"
 };
 
 typedef struct AR_ExpNode AR_ExpNode;
