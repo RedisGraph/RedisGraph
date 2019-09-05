@@ -30,94 +30,94 @@
 
 Feature: Comparability
 
-@skip
-  Scenario: Comparing strings and integers using > in an AND'd predicate
-    Given an empty graph
-    And having executed:
-      """
-      CREATE (root:Root)-[:T]->(:Child {var: 0}),
-             (root)-[:T]->(:Child {var: 'xx'}),
-             (root)-[:T]->(:Child)
-      """
-    When executing query:
-      """
-      MATCH (:Root)-->(i:Child)
-      WHERE exists(i.var) AND i.var > 'x'
-      RETURN i.var
-      """
-    Then the result should be:
-      | i.var |
-      | 'xx'  |
-    And no side effects
+    @skip
+    Scenario: Comparing strings and integers using > in an AND'd predicate
+        Given an empty graph
+        And having executed:
+            """
+            CREATE (root:Root)-[:T]->(:Child {var: 0}),
+            (root)-[:T]->(:Child {var: 'xx'}),
+            (root)-[:T]->(:Child)
+            """
+        When executing query:
+            """
+            MATCH (:Root)-->(i:Child)
+            WHERE exists(i.var) AND i.var > 'x'
+            RETURN i.var
+            """
+        Then the result should be:
+            | i.var |
+            | 'xx'  |
+        And no side effects
 
-@skip
-  Scenario: Comparing strings and integers using > in a OR'd predicate
-    Given an empty graph
-    And having executed:
-      """
-      CREATE (root:Root)-[:T]->(:Child {var: 0}),
-             (root)-[:T]->(:Child {var: 'xx'}),
-             (root)-[:T]->(:Child)
-      """
-    When executing query:
-      """
-      MATCH (:Root)-->(i:Child)
-      WHERE NOT exists(i.var) OR i.var > 'x'
-      RETURN i.var
-      """
-    Then the result should be:
-      | i.var |
-      | 'xx'  |
-      | null  |
-    And no side effects
+    @skip
+    Scenario: Comparing strings and integers using > in a OR'd predicate
+        Given an empty graph
+        And having executed:
+            """
+            CREATE (root:Root)-[:T]->(:Child {var: 0}),
+            (root)-[:T]->(:Child {var: 'xx'}),
+            (root)-[:T]->(:Child)
+            """
+        When executing query:
+            """
+            MATCH (:Root)-->(i:Child)
+            WHERE NOT exists(i.var) OR i.var > 'x'
+            RETURN i.var
+            """
+        Then the result should be:
+            | i.var |
+            | 'xx'  |
+            | null  |
+        And no side effects
 
-@skip
-  Scenario Outline: Comparing across types yields null, except numbers
-    Given an empty graph
-    And having executed:
-      """
-      CREATE ()-[:T]->()
-      """
-    When executing query:
-      """
-      MATCH p = (n)-[r]->()
-      WITH [n, r, p, '', 1, 3.14, true, null, [], {}] AS types
-      UNWIND range(0, size(types) - 1) AS i
-      UNWIND range(0, size(types) - 1) AS j
-      WITH types[i] AS lhs, types[j] AS rhs
-      WHERE i <> j
-      WITH lhs, rhs, lhs <operator> rhs AS result
-      WHERE result
-      RETURN lhs, rhs
-      """
-    Then the result should be:
-      | lhs   | rhs   |
-      | <lhs> | <rhs> |
-    And no side effects
+    @skip
+    Scenario Outline: Comparing across types yields null, except numbers
+        Given an empty graph
+        And having executed:
+            """
+            CREATE ()-[:T]->()
+            """
+        When executing query:
+            """
+            MATCH p = (n)-[r]->()
+            WITH [n, r, p, '', 1, 3.14, true, null, [], {}] AS types
+            UNWIND range(0, size(types) - 1) AS i
+            UNWIND range(0, size(types) - 1) AS j
+            WITH types[i] AS lhs, types[j] AS rhs
+            WHERE i <> j
+            WITH lhs, rhs, lhs <operator> rhs AS result
+            WHERE result
+            RETURN lhs, rhs
+            """
+        Then the result should be:
+            | lhs   | rhs   |
+            | <lhs> | <rhs> |
+        And no side effects
 
-    Examples:
-      | operator | lhs  | rhs  |
-      | <        | 1    | 3.14 |
-      | <=       | 1    | 3.14 |
-      | >=       | 3.14 | 1    |
-      | >        | 3.14 | 1    |
+        Examples:
+            | operator | lhs  | rhs  |
+            | <        | 1    | 3.14 |
+            | <=       | 1    | 3.14 |
+            | >=       | 3.14 | 1    |
+            | >        | 3.14 | 1    |
 
-@skip
-  Scenario Outline: Comparing lists
-    Given an empty graph
-    When executing query:
-      """
-      RETURN <lhs> >= <rhs> AS result
-      """
-    Then the result should be:
-      | result   |
-      | <result> |
-    And no side effects
 
-    Examples:
-      | lhs       | rhs       | result |
-      | [1, 0]    | [1]       | true   |
-      | [1, null] | [1]       | true   |
-      | [1, 2]    | [1, null] | null   |
-      | [1, 'a']  | [1, null] | null   |
-      | [1, 2]    | [3, null] | false  |
+    Scenario Outline: Comparing lists
+        Given an empty graph
+        When executing query:
+            """
+            RETURN <lhs> >= <rhs> AS result
+            """
+        Then the result should be:
+            | result   |
+            | <result> |
+        And no side effects
+
+        Examples:
+            | lhs       | rhs       | result |
+            | [1, 0]    | [1]       | true   |
+            | [1, null] | [1]       | true   |
+            | [1, 2]    | [1, null] | null   |
+            | [1, 'a']  | [1, null] | null   |
+            | [1, 2]    | [3, null] | false  |

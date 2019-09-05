@@ -1039,8 +1039,8 @@ SIValue AR_GT(SIValue *argv, int argc) {
 
 	// TODO: Return type mismatch error.
 	if(!IS_COMPERABLE(a) || !IS_COMPERABLE(b)) assert(false);
-	if(a.type == T_NULL || b.type == T_NULL) return SI_NullVal();
-	int res = SIValue_Order(a, b);
+	int res = SIValue_Compare(a, b);
+	if(res == COMPARED_NULL) return SI_NullVal();
 	return SI_BoolVal(res > 0);
 }
 
@@ -1051,8 +1051,8 @@ SIValue AR_GE(SIValue *argv, int argc) {
 
 	// TODO: Return type mismatch error.
 	if(!IS_COMPERABLE(a) || !IS_COMPERABLE(b)) assert(false);
-	if(a.type == T_NULL || b.type == T_NULL) return SI_NullVal();
-	int res = SIValue_Order(a, b);
+	int res = SIValue_Compare(a, b);
+	if(res == COMPARED_NULL) return SI_NullVal();
 	return SI_BoolVal(res >= 0);
 }
 
@@ -1063,8 +1063,8 @@ SIValue AR_LT(SIValue *argv, int argc) {
 
 	// TODO: Return type mismatch error.
 	if(!IS_COMPERABLE(a) || !IS_COMPERABLE(b)) assert(false);
-	if(a.type == T_NULL || b.type == T_NULL) return SI_NullVal();
-	int res = SIValue_Order(a, b);
+	int res = SIValue_Compare(a, b);
+	if(res == COMPARED_NULL) return SI_NullVal();
 	return SI_BoolVal(res < 0);
 }
 
@@ -1075,8 +1075,8 @@ SIValue AR_LE(SIValue *argv, int argc) {
 
 	// TODO: Return type mismatch error.
 	if(!IS_COMPERABLE(a) || !IS_COMPERABLE(b)) assert(false);
-	if(a.type == T_NULL || b.type == T_NULL) return SI_NullVal();
-	int res = SIValue_Order(a, b);
+	int res = SIValue_Compare(a, b);
+	if(res == COMPARED_NULL) return SI_NullVal();
 	return SI_BoolVal(res <= 0);
 }
 

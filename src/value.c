@@ -374,15 +374,15 @@ SIValue SIValue_Divide(const SIValue a, const SIValue b) {
 int SIArray_Compare(SIValue arrayA, SIValue arrayB) {
 	uint arrayALen = SIArray_Length(arrayA);
 	uint arrayBLen = SIArray_Length(arrayB);
-	// check empty list
+	// Check empty list.
 	if(arrayALen == 0 && arrayBLen == 0) return 0;
 	int lenDiff = arrayALen - arrayBLen;
-	// check for the common range of indices
+	// Check for the common range of indices.
 	uint minLengh = arrayALen <= arrayBLen ? arrayALen : arrayBLen;
 
-	uint allDisjoint = 0;   // counter for the amount of disjoint comparisons
-	uint nullCompare = 0;   // counter for the amount of null comparison
-	// notEqual holds the first false (result != 0) comparison result between two values from the same type, which are not equal
+	uint notEqualCounter = 0;   // Counter for the amount of false (not equal) comparisons.
+	uint nullCompare = 0;       // Counter for the amount of null comparison.
+	// notEqual holds the first false (result != 0) comparison result between two values from the same type, which are not equal.
 	int notEqual = 0;
 
 	// Go over the common range for both arrays.
@@ -392,31 +392,27 @@ int SIArray_Compare(SIValue arrayA, SIValue arrayB) {
 		int compareResult = SIValue_Compare(aValue, bValue);
 		switch(compareResult) {
 		case 0:
-			// we have a matching value
+			// We have a matching value.
 			break;
 		case COMPARED_NULL:
-			// there was a null comparison
-			nullCompare++;  // update null comparison counter
-			allDisjoint++;  // null comparison is also a disjoint comparison
-			break;
-		case DISJOINT:
-			allDisjoint++;  // there was a disjoint comparison
-			if(notEqual == 0) notEqual =
-					compareResult; // if there wasn't any false comparison, update the false comparison to disjoint value
+			// There was a null comparison.
+			nullCompare++;  // Update null comparison counter.
+			notEqualCounter++;  // Null comparison is also a false comparison.
 			break;
 		default:
-			// if comparison is not 0 (a != b), set the first value
+			// If comparison is not 0 (a != b), set the first value.
+			notEqualCounter++;
 			if(notEqual == 0) notEqual = compareResult;
 			break;
 		}
 	}
-	// if all the elements in the shared range are from disjoint types return DISJOINT array
-	if(allDisjoint == minLengh && allDisjoint > nullCompare) return DISJOINT;
-	// if there was a null comperison on non disjoint arrays
+	// If all the elements in the shared range yielded false comparisons.
+	if(notEqualCounter == minLengh && notEqualCounter > nullCompare) return -1;
+	// If there was a null comperison on non disjoint arrays.
 	if(nullCompare) return COMPARED_NULL;
-	// if there was a diffrence in some member
+	// If there was a diffrence in some member.
 	if(notEqual) return notEqual;
-	// if all elemnts are equal and length are equal so arrays are equal, otherwise return lengh diff
+	// If all elemnts are equal and length are equal so arrays are equal, otherwise return length diff.
 	return lenDiff;
 }
 
@@ -439,7 +435,7 @@ int SIValue_Compare(const SIValue a, const SIValue b) {
 			return SIArray_Compare(a, b);
 		default:
 			// Both inputs were of an incomparable type, like a pointer or NULL
-			return DISJOINT;
+			assert(false);
 		}
 	}
 
@@ -450,7 +446,7 @@ int SIValue_Compare(const SIValue a, const SIValue b) {
 		return SAFE_COMPARISON_RESULT(diff);
 	}
 
-	return DISJOINT;
+	return a.type - b.type;
 }
 
 /* Return a strcmp-like value wherein negative result indicates that the value
@@ -458,7 +454,7 @@ int SIValue_Compare(const SIValue a, const SIValue b) {
 int SIValue_Order(const SIValue a, const SIValue b) {
 	// If the values are directly comparable, return the comparison result.
 	int cmp = SIValue_Compare(a, b);
-	if(cmp != DISJOINT && cmp != COMPARED_NULL)  return cmp;
+	if(cmp != COMPARED_NULL)  return cmp;
 	// Else, return the type diff
 	return a.type - b.type;
 }

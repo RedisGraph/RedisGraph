@@ -68,8 +68,7 @@ typedef enum
  * and 0 if argument is zero.*/
 #define SIGN(a) ((a) > 0) - ((a) < 0)
 
-#define DISJOINT INT_MAX
-#define COMPARED_NULL INT_MIN
+#define COMPARED_NULL INT_MAX
 
 typedef struct SIValue
 {
@@ -164,8 +163,8 @@ SIValue SIValue_Multiply(const SIValue a, const SIValue b);
 /* SIValue_Divide always returns a double value. */
 SIValue SIValue_Divide(const SIValue a, const SIValue b);
 
-/* Compares two SIValues and returns a value similar to strcmp, or
- * the macro DISJOINT if the values were not of comparable types. */
+/* Compares two SIValues and returns a value similar to strcmp.
+ * If one of the values is null, the macro COMPARED_NULL is returned. */
 int SIValue_Compare(const SIValue a, const SIValue b);
 
 /* Return a strcmp-style integer value indicating which value is greater according
