@@ -130,5 +130,5 @@ SIValue AR_OUTGOINGDEGREE(SIValue *argv, int argc);
 
 /* Scalar functions */
 
-/* returns a randomly-generated Universally Unique Identifier (UUID) */
+/* Returns a randomly-generated Universally Unique Identifier (UUID) */
 SIValue AR_RANDOMUUID(SIValue *argv, int argc);
