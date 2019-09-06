@@ -60,7 +60,7 @@ class ArithmeticTest: public ::testing::Test {
 			FAIL() << err;
 		}
 		// Set the jump handler in thread-local storage.
-		QueryCtx_SetEnv(env);
+		QueryCtx_SetExceptionHandler(env);
 	}
 };
 

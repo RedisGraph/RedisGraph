@@ -24,16 +24,16 @@ bool QueryCtx_Init(void);
 void QueryCtx_Finalize(void);
 
 void QueryCtx_SetAST(AST *ast);
-void QueryCtx_SetEnv(jmp_buf *env);
+void QueryCtx_SetExceptionHandler(jmp_buf *env);
 void QueryCtx_SetError(char *error);
 void QueryCtx_SetGraphCtx(GraphContext *gc);
 void QueryCtx_SetRedisModuleCtx(RedisModuleCtx *ctx);
 
 AST *QueryCtx_GetAST(void);
-jmp_buf *QueryCtx_GetEnv(void);
-Graph *QueryCtx_GetGraph(void);
+jmp_buf *QueryCtx_GetExceptionHandler(void);
 char *QueryCtx_GetError(void);
 GraphContext *QueryCtx_GetGraphCtx(void);
+Graph *QueryCtx_GetGraph(void);
 RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void);
 
 void QueryCtx_Free(void);

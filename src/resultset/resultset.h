@@ -36,7 +36,8 @@ int ResultSet_AddRecord(ResultSet *set, Record r);
 
 void ResultSet_ReportError(ResultSet *set, char *error);
 
-void ResultSet_Replay(ResultSet *set);
+/* Finish emitting the Redis-level response to the user. Returns true if an error was emitted. */
+bool ResultSet_Replay(ResultSet *set);
 
 void ResultSet_Free(ResultSet *set);
 

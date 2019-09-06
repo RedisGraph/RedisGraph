@@ -121,7 +121,8 @@ void _MGraph_Query(void *args) {
 		if(!plan) goto cleanup;
 		result_set = ExecutionPlan_Execute(plan);
 		ExecutionPlan_Free(plan);
-		ResultSet_Replay(result_set);    // Send result-set back to client.
+		bool query_errored = ResultSet_Replay(result_set);    // Send result-set back to client.
+		if(query_errored) goto cleanup;
 	} else if(root_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
 			  root_type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {
 		_index_operation(ctx, gc, ast->root);

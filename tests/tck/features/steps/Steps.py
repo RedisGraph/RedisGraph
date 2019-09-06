@@ -30,9 +30,9 @@ def step_impl(context):
     global resultset
     global exception
 
+    exception = None
     query = context.text
     try:
-        exception = None
         resultset = graphs.query(query)
     except Exception as error:
         resultset = None
@@ -43,9 +43,9 @@ def step_impl(context):
     global resultset
     global exception
 
+    exception = None
     query = context.text
     try:
-        exception = None
         resultset = graphs.query(query)
     except Exception as error:
         resultset = None
@@ -56,9 +56,9 @@ def step_impl(context):
     global resultset
     global exception
 
+    exception = None
     query = context.text
     try:
-        exception = None
         resultset = graphs.query(query)
     except Exception as error:
         resultset = None
@@ -69,9 +69,9 @@ def step_impl(context):
     global resultset
     global exception
 
+    exception = None
     query = context.text
     try:
-        exception = None
         resultset = graphs.query(query)
     except Exception as error:
         resultset = None
@@ -82,9 +82,9 @@ def step_impl(context):
     global resultset
     global exception
 
+    exception = None
     query = context.text
     try:
-        exception = None
         resultset = graphs.query(query)
     except Exception as error:
         resultset = None

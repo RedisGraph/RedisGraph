@@ -173,7 +173,8 @@ static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint a
 	// Make sure number of arguments is as expected.
 	if(fdesc->argc != VAR_ARG_LEN) {
 		if(fdesc->argc != argc) {
-			asprintf(error, "Too many parameters for function '%s'", fdesc->name);
+			asprintf(error, "Received %d arguments to function '%s', expected %d", argc, fdesc->name,
+					 fdesc->argc);
 			return false;
 		}
 		// Make sure each argument is of the expected type.
@@ -238,7 +239,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 					SIValue_Free(sub_trees + child_idx);
 				}
 				QueryCtx_SetError(error);
-				jmp_buf *env = QueryCtx_GetEnv();
+				jmp_buf *env = QueryCtx_GetExceptionHandler();
 				longjmp(*env, 1);
 			}
 			/* Evaluate self. */
@@ -249,7 +250,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 			}
 			if(SIValue_IsError(result)) {
 				QueryCtx_SetError(result.stringval);
-				jmp_buf *env = QueryCtx_GetEnv();
+				jmp_buf *env = QueryCtx_GetExceptionHandler();
 				longjmp(*env, 1);
 			}
 		}
@@ -268,7 +269,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 					SIValue v = Record_GetScalar(r, root->operand.variadic.entity_alias_idx);
 					asprintf(&error, "Type mismatch: expected a map but was %s", SIType_ToString(SI_TYPE(v)));
 					QueryCtx_SetError(error);
-					jmp_buf *env = QueryCtx_GetEnv();
+					jmp_buf *env = QueryCtx_GetExceptionHandler();
 					longjmp(*env, 1);
 				}
 
@@ -489,3 +490,4 @@ void AR_EXP_Free(AR_ExpNode *root) {
 	}
 	rm_free(root);
 }
+

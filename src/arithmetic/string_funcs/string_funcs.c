@@ -11,29 +11,15 @@
 #include <ctype.h>
 #include <assert.h>
 
-static void inline _toLower(const char *str, char *lower, short *lower_len) {
-	size_t str_len = strlen(str);
-	/* Avoid overflow. */
-	assert(*lower_len > str_len);
-
-	/* Update lower len*/
-	*lower_len = str_len;
-
-	int i = 0;
-	for(; i < str_len; i++) lower[i] = tolower(str[i]);
+static inline void _toLower(const char *str, char *lower, size_t lower_len) {
+	size_t i = 0;
+	for(; i < lower_len; i++) lower[i] = tolower(str[i]);
 	lower[i] = 0;
 }
 
-void _toUpper(const char *str, char *upper, size_t *upper_len) {
-	size_t str_len = strlen(str);
-	/* Avoid overflow. */
-	assert(*upper_len > str_len);
-
-	/* Update upper len*/
-	*upper_len = str_len;
-
-	int i = 0;
-	for(; i < str_len; i++) upper[i] = toupper(str[i]);
+static inline void _toUpper(const char *str, char *upper, size_t upper_len) {
+	size_t i = 0;
+	for(; i < upper_len; i++) upper[i] = toupper(str[i]);
 	upper[i] = 0;
 }
 
@@ -157,9 +143,9 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc) {
 SIValue AR_TOLOWER(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *original = argv[0].stringval;
-	short lower_len = strlen(original) + 1;
+	short lower_len = strlen(original);
 	char *lower = rm_malloc((lower_len + 1) * sizeof(char));
-	_toLower(original, lower, &lower_len);
+	_toLower(original, lower, lower_len);
 	return SI_TransferStringVal(lower);
 }
 
@@ -167,9 +153,9 @@ SIValue AR_TOLOWER(SIValue *argv, int argc) {
 SIValue AR_TOUPPER(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *original = argv[0].stringval;
-	size_t upper_len = strlen(original) + 1;
+	size_t upper_len = strlen(original);
 	char *upper = rm_malloc((upper_len + 1) * sizeof(char));
-	_toUpper(original, upper, &upper_len);
+	_toUpper(original, upper, upper_len);
 	return SI_TransferStringVal(upper);
 }
 

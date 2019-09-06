@@ -832,7 +832,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		RedisModule_ReplyWithError(ctx, err);
 		return NULL;
 	}
-	QueryCtx_SetEnv(env);
+	QueryCtx_SetExceptionHandler(env);
 
 	uint i = 0;
 	uint end_offset;
@@ -950,15 +950,15 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 	ExecutionPlanInit(plan);
 
 	// Replace the jump context used in ExecutionPlan construction with one for actual execution.
-	jmp_buf *env = QueryCtx_GetEnv();
+	jmp_buf *env = QueryCtx_GetExceptionHandler();
 	int res = setjmp(*env);
 	if(res != 0) {
 		// Jumped
-		char *err = QueryCtx_GetError();
-		ResultSet_ReportError(plan->result_set, err);
+		// char *err = QueryCtx_GetError();
+		// ResultSet_ReportError(plan->result_set, err);
 		return plan->result_set;
 	}
-	QueryCtx_SetEnv(env);
+	QueryCtx_SetExceptionHandler(env);
 
 	while((r = OpBase_Consume(plan->root)) != NULL) Record_Free(r);
 	return plan->result_set;

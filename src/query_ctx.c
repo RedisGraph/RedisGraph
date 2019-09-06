@@ -5,7 +5,6 @@
 */
 
 #include "query_ctx.h"
-
 #include "util/rmalloc.h"
 #include <assert.h>
 #include <pthread.h>
@@ -36,7 +35,7 @@ void QueryCtx_SetAST(AST *ast) {
 	ctx->ast = ast;
 }
 
-void QueryCtx_SetEnv(jmp_buf *env) {
+void QueryCtx_SetExceptionHandler(jmp_buf *env) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ctx->env = env;
 }
@@ -62,7 +61,7 @@ AST *QueryCtx_GetAST(void) {
 	return ctx->ast;
 }
 
-jmp_buf *QueryCtx_GetEnv(void) {
+jmp_buf *QueryCtx_GetExceptionHandler(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	assert(ctx->env);
 	return ctx->env;
@@ -70,19 +69,18 @@ jmp_buf *QueryCtx_GetEnv(void) {
 
 char *QueryCtx_GetError() {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	assert(ctx->error);
 	return ctx->error;
-}
-
-Graph *QueryCtx_GetGraph(void) {
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	return gc->g;
 }
 
 GraphContext *QueryCtx_GetGraphCtx(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	assert(ctx->gc);
 	return ctx->gc;
+}
+
+Graph *QueryCtx_GetGraph(void) {
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	return gc->g;
 }
 
 RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void) {

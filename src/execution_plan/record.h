@@ -15,9 +15,9 @@
 typedef enum  {
 	REC_TYPE_UNKNOWN = 0,
 	REC_TYPE_SCALAR = 1 << 0,
-	REC_TYPE_NODE = 1 << 2,
-	REC_TYPE_EDGE = 1 << 3,
-	REC_TYPE_HEADER = 1 << 4,
+	REC_TYPE_NODE = 1 << 1,
+	REC_TYPE_EDGE = 1 << 2,
+	REC_TYPE_HEADER = 1 << 3,
 } RecordEntryType;
 
 typedef struct {
@@ -43,7 +43,7 @@ Record Record_Clone(const Record r);
 // Extends record to accommodate 'len' entries.
 void Record_Extend(Record *r, int len);
 
-// Removes last `count` elements from record.
+// Shrink record to size `count`; freeing any further elements.
 // TODO: Remove this functions once hash like records are introduced.
 void Record_Truncate(Record r, uint count);
 

@@ -126,22 +126,25 @@ void ResultSet_ReportError(ResultSet *set, char *error) {
 	Record_Free(r);
 }
 
-void ResultSet_Replay(ResultSet *set) {
+bool ResultSet_Replay(ResultSet *set) {
 	if(set->header_emitted) {
-		// If we have emitted a header, set the number of elements in the
-		// preceding array
+		// If we have emitted a header, set the number of elements in the preceding array.
 		RedisModule_ReplySetArrayLength(set->ctx, set->recordCount);
 	} else if(set->header_emitted == false && set->columns != NULL) {
 		assert(set->recordCount == 0);
-		// Handle the edge case in which the query was intended to return results,
-		// but none were created.
+		// Handle the edge case in which the query was intended to return results, but none were created.
 		_ResultSet_ReplyWithPreamble(set, NULL);
 		RedisModule_ReplySetArrayLength(set->ctx, 0);
 	} else {
 		// Queries that don't emit data will only emit statistics
 		RedisModule_ReplyWithArray(set->ctx, 1);
 	}
-	_ResultSet_ReplayStats(set->ctx, set);
+
+	char *err = QueryCtx_GetError(); // Check to see if we've encountered a run-time error.
+	if(err) RedisModule_ReplyWithError(set->ctx, err); // If so, emit it as the last top-level response.
+	else _ResultSet_ReplayStats(set->ctx, set); // Otherwise, the last response is query statistics.
+
+	return err != NULL;
 }
 
 void ResultSet_Free(ResultSet *set) {
