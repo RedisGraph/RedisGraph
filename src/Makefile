@@ -137,10 +137,10 @@ endif
 
 $(UUID4):
 ifeq (,$(wildcard $(UUID4)))
-	cd ../deps/uuid4/src; \
+	cd $(UUID4_DIR); \
 	$(CC) -c uuid4.c -o uuid4.a
 endif
-.PHONY: $(REDISEARCH)
+.PHONY: $(UUID4)
 
 # Build libcypher-parser only if library does not already exists.
 $(LIBCYPHER-PARSER):

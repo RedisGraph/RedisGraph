@@ -16,7 +16,7 @@
 #include "../graph/graphcontext.h"
 #include "../datatypes/temporal_value.h"
 #include "../datatypes/array.h"
-#include "../../../../deps/uuid4/src/uuid4.h"
+#include "uuid4.h"
 
 #include "assert.h"
 #include <math.h>

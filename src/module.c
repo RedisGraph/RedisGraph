@@ -20,7 +20,7 @@
 #include "arithmetic/arithmetic_expression.h"
 #include "graph/serializers/graphcontext_type.h"
 #include "redisearch_api.h"
-#include "../../../../deps/uuid4/src/uuid4.h"
+#include "uuid4.h"
 
 //------------------------------------------------------------------------------
 // Module-level global variables
