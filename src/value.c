@@ -58,9 +58,9 @@ SIValue SI_Edge(void *e) {
 	};
 }
 
-SIValue SI_Error(char *e) {
+SIValue SI_Error(void) {
 	return (SIValue) {
-		.stringval = e, .type = T_ERROR, .allocation = M_CONST
+		.type = T_ERROR
 	};
 }
 

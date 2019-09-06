@@ -118,14 +118,6 @@ int ResultSet_AddRecord(ResultSet *set, Record r) {
 	return RESULTSET_OK;
 }
 
-void ResultSet_ReportError(ResultSet *set, char *error) {
-	Record r = Record_New(1);
-	SIValue v = SI_Error(error);
-	Record_AddScalar(r, 0, v);
-	ResultSet_AddRecord(set, r);
-	Record_Free(r);
-}
-
 bool ResultSet_Replay(ResultSet *set) {
 	if(set->header_emitted) {
 		// If we have emitted a header, set the number of elements in the preceding array.

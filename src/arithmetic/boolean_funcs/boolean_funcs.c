@@ -7,6 +7,7 @@
 #include "boolean_funcs.h"
 #include "../func_desc.h"
 #include "../../util/arr.h"
+#include "../../query_ctx.h"
 #include <assert.h>
 
 #define CONTAINS_NULL 2 // Macro used for efficiently evaluating 3-valued truth table
@@ -75,7 +76,8 @@ SIValue AR_GT(SIValue *argv, int argc) {
 		char *error;
 		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
 				 SIType_ToString(SI_TYPE(b)));
-		return SI_Error(error);
+		QueryCtx_SetError(error);
+		return SI_Error();
 	}
 
 	switch(SI_TYPE(a)) {
@@ -102,7 +104,8 @@ SIValue AR_GE(SIValue *argv, int argc) {
 		char *error;
 		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
 				 SIType_ToString(SI_TYPE(b)));
-		return SI_Error(error);
+		QueryCtx_SetError(error);
+		return SI_Error();
 	}
 
 	switch(SI_TYPE(a)) {
@@ -129,7 +132,8 @@ SIValue AR_LT(SIValue *argv, int argc) {
 		char *error;
 		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
 				 SIType_ToString(SI_TYPE(b)));
-		return SI_Error(error);
+		QueryCtx_SetError(error);
+		return SI_Error();
 	}
 
 	switch(SI_TYPE(a)) {
@@ -156,7 +160,8 @@ SIValue AR_LE(SIValue *argv, int argc) {
 		char *error;
 		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
 				 SIType_ToString(SI_TYPE(b)));
-		return SI_Error(error);
+		QueryCtx_SetError(error);
+		return SI_Error();
 	}
 
 	switch(SI_TYPE(a)) {

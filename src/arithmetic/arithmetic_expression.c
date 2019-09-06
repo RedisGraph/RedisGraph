@@ -234,11 +234,15 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 			/* Validate before evaluation. */
 			char *error;
 			if(!_AR_EXP_ValidateInvocation(root->op.f, sub_trees, root->op.child_count, &error)) {
-				// Clean up.
+				// The expression tree failed its validations and prepared an error message.
+				// Free all associated memory.
 				for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
 					SIValue_Free(sub_trees + child_idx);
 				}
-				QueryCtx_SetError(error);
+				QueryCtx_SetError(error); // Set the query-level error.
+
+				// Invoke the exception handler, exiting this routine and returning to
+				// the point on the stack where the handler was instantiated.
 				jmp_buf *env = QueryCtx_GetExceptionHandler();
 				longjmp(*env, 1);
 			}
@@ -249,7 +253,9 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 				SIValue_Free(&sub_trees[child_idx]);
 			}
 			if(SIValue_IsError(result)) {
-				QueryCtx_SetError(result.stringval);
+				/* An error was encountered during evaluation, and has already been set in the QueryCtx.
+				 * Invoke the exception handler, exiting this routine and returning to
+				 * the point on the stack where the handler was instantiated. */
 				jmp_buf *env = QueryCtx_GetExceptionHandler();
 				longjmp(*env, 1);
 			}
@@ -268,7 +274,10 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 					char *error;
 					SIValue v = Record_GetScalar(r, root->operand.variadic.entity_alias_idx);
 					asprintf(&error, "Type mismatch: expected a map but was %s", SIType_ToString(SI_TYPE(v)));
-					QueryCtx_SetError(error);
+					/* Attempted to access a scalar value as a map.
+					 * Invoke the exception handler, exiting this routine and returning to
+					 * the point on the stack where the handler was instantiated. */
+					QueryCtx_SetError(error); // Set the query-level error.
 					jmp_buf *env = QueryCtx_GetExceptionHandler();
 					longjmp(*env, 1);
 				}

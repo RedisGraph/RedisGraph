@@ -821,18 +821,22 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 	uint *segment_indices = NULL;
 	if(with_clause_count > 0) segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
 
-	// We might evaluate an ArithmeticExpression while building an ExecutionPlan, specifically
-	// when attempting to reduce expression trees to scalars.
+	/* Set an exception-handling breakpoint (jump buffer) to capture compile-time errors.
+	 * We might encounter a compile-time error while attempting to reduce expression trees to scalars. */
 	jmp_buf *env = rm_malloc(sizeof(jmp_buf));
-	int res = setjmp(*env);
-	if(res != 0) {
-		// Jumped
+
+	/* encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
+	 * a downstream exception returns us to this breakpoint. */
+	int encountered_error = setjmp(*env);
+	QueryCtx_SetExceptionHandler(env);
+
+	if(encountered_error) {
+		// Encountered a compile-time error.
 		char *err = QueryCtx_GetError();
 		// The reply arrays have not been instantiated at this point, so we'll return a Redis-level error.
 		RedisModule_ReplyWithError(ctx, err);
 		return NULL;
 	}
-	QueryCtx_SetExceptionHandler(env);
 
 	uint i = 0;
 	uint end_offset;
@@ -944,23 +948,28 @@ void ExecutionPlanInit(ExecutionPlan *plan) {
 }
 
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
-	Record r;
-	char *err = NULL;
-
+	Record r = NULL;
 	ExecutionPlanInit(plan);
 
-	// Replace the jump context used in ExecutionPlan construction with one for actual execution.
+	/* Replace the exception-handling breakpoint set in ExecutionPlan construction with
+	 * a new breakpoint to capture run-time errors. */
 	jmp_buf *env = QueryCtx_GetExceptionHandler();
-	int res = setjmp(*env);
-	if(res != 0) {
-		// Jumped
-		// char *err = QueryCtx_GetError();
-		// ResultSet_ReportError(plan->result_set, err);
-		return plan->result_set;
-	}
 	QueryCtx_SetExceptionHandler(env);
 
+	/* encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
+	 * a downstream exception returns us to this breakpoint. */
+	int encountered_error = setjmp(*env);
+
+	if(encountered_error) {
+		// Encountered a run-time error; return immediately.
+		if(r) Record_Free(r);
+		return plan->result_set;
+	}
+
+	// Execute the root operation and free the processed Record until the data stream is depleted.
 	while((r = OpBase_Consume(plan->root)) != NULL) Record_Free(r);
+
+	// Return the result set.
 	return plan->result_set;
 }
 
