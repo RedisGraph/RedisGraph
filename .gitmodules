@@ -13,3 +13,6 @@
 [submodule "deps/googletest"]
 	path = deps/googletest
 	url = https://github.com/google/googletest.git
+[submodule "deps/uuid4"]
+	path = deps/uuid4
+	url = https://github.com/rxi/uuid4.git

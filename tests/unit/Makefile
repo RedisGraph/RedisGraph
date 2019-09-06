@@ -6,6 +6,7 @@ GTEST_DIR = ../../deps/googletest/googletest
 RAX_DIR = ../../deps/rax
 REDISEARCH_DIR = ../../deps/RediSearch/src
 LIBCYPHER-PARSER_DIR = ../../deps/libcypher-parser/lib/src
+UUID4_DIR = ../../deps/uuid4/src
 
 # Flags passed to the preprocessor.
 # Set Google Test's header directory as a system directory, such that
@@ -55,8 +56,9 @@ LIBXXHASH=$(ROOT)/deps/xxHash/libxxhash.a
 REDISEARCH=../../deps/RediSearch/build/libredisearch.a
 LIBGRAPHBLAS=../../deps/GraphBLAS/build/libgraphblas.a
 LIBCYPHER-PARSER=../../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
+LIBUUID4=../../deps/uuid4/src/uuid4.a
 
-LIBS=$(LIBGRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER-PARSER)
+LIBS=$(LIBGRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER-PARSER) $(LIBUUID4)
 DEPS=$(CC_OBJECTS) $(RAX) $(LIBS)
 
 # Build and run a test for each cpp file in directory
@@ -66,7 +68,7 @@ TEST_EXECUTABLES = $(patsubst %.cpp, %.run, $(TEST_SOURCES))
 
 # Compile object files from unit test sources
 %.o: %.cpp
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -I$(REDISEARCH_DIR) -c -o $@ $<
+	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -I$(REDISEARCH_DIR) -I$(UUID4_DIR) -c -o $@ $<
 
 # Build '*.run' binaries for each source
 %.run: %.o gtest_main.a $(DEPS)

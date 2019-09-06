@@ -20,6 +20,7 @@
 #include "arithmetic/arithmetic_expression.h"
 #include "graph/serializers/graphcontext_type.h"
 #include "redisearch_api.h"
+#include "../../../../deps/uuid4/src/uuid4.h"
 
 //------------------------------------------------------------------------------
 // Module-level global variables
@@ -143,6 +144,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
+	uuid4_init();
 	Proc_Register();         // Register procedures.
 	AR_RegisterFuncs();      // Register arithmetic functions.
 	Agg_RegisterFuncs();     // Register aggregation functions.

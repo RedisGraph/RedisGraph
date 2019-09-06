@@ -16,6 +16,7 @@
 #include "../graph/graphcontext.h"
 #include "../datatypes/temporal_value.h"
 #include "../datatypes/array.h"
+#include "../../../../deps/uuid4/src/uuid4.h"
 
 #include "assert.h"
 #include <math.h>
@@ -1320,6 +1321,16 @@ SIValue AR_TIMESTAMP(SIValue *argv, int argc) {
 	return SI_LongVal(TemporalValue_NewTimestamp());
 }
 
+//==============================================================================
+//=== Scalar functions =========================================================
+//==============================================================================
+
+SIValue AR_RANDOMUUID(SIValue *argv, int argc) {
+	char *buf = rm_malloc(UUID4_LEN * sizeof(char));
+	uuid4_generate(buf);
+	return SI_TransferStringVal(buf);
+}
+
 bool AR_FuncExists(const char *func_name) {
 	char lower_func_name[32] = {0};
 	short lower_func_name_len = 32;
@@ -1334,7 +1345,7 @@ void AR_RegisterFuncs() {
 		AR_Func func_ptr;
 	};
 
-	struct RegFunc functions[49] = {
+	struct RegFunc functions[50] = {
 		{"add", AR_ADD}, {"sub", AR_SUB}, {"mul", AR_MUL}, {"div", AR_DIV}, {"abs", AR_ABS}, {"ceil", AR_CEIL},
 		{"floor", AR_FLOOR}, {"rand", AR_RAND}, {"round", AR_ROUND}, {"sign", AR_SIGN}, {"left", AR_LEFT},
 		{"reverse", AR_REVERSE}, {"right", AR_RIGHT}, {"ltrim", AR_LTRIM}, {"rtrim", AR_RTRIM}, {"substring", AR_SUBSTRING},
@@ -1344,13 +1355,14 @@ void AR_RegisterFuncs() {
 		{"lt", AR_LT}, {"le", AR_LE}, {"eq", AR_EQ}, {"neq", AR_NE}, {"case", AR_CASEWHEN}, {"indegree", AR_INCOMEDEGREE},
 		{"outdegree", AR_OUTGOINGDEGREE},
 		{"tolist", AR_TOLIST}, {"subscript", AR_SUBSCRIPT}, {"slice", AR_SLICE}, {"range", AR_RANGE}, {"in", AR_IN},
-		{"size", AR_SIZE}, {"head", AR_HEAD}, {"tail", AR_TAIL}
+		{"size", AR_SIZE}, {"head", AR_HEAD}, {"tail", AR_TAIL},
+		{"randomuuid", AR_RANDOMUUID}
 	};
 
 	char lower_func_name[32] = {0};
 	short lower_func_name_len = 32;
 
-	for(int i = 0; i < 49; i++) {
+	for(int i = 0; i < 50; i++) {
 		_toLower(functions[i].func_name, &lower_func_name[0], &lower_func_name_len);
 		_AR_RegFunc(lower_func_name, lower_func_name_len, functions[i].func_ptr);
 		lower_func_name_len = 32;
