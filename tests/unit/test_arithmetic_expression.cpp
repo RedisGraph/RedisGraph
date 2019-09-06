@@ -651,11 +651,11 @@ TEST_F(ArithmeticTest, RandomUUID)
     query = "RETURN randomUUID()";
     arExp = _exp_from_query(query);
     result = AR_EXP_Evaluate(arExp, r);
-	ASSERT_EQ(36, strlen(result.stringval));
-	ASSERT_EQ('-', result.stringval[8]);
-	ASSERT_EQ('-', result.stringval[13]);
-	ASSERT_EQ('-', result.stringval[18]);
-	ASSERT_EQ('-', result.stringval[23]);
+    ASSERT_EQ(36, strlen(result.stringval));
+    ASSERT_EQ('-', result.stringval[8]);
+    ASSERT_EQ('-', result.stringval[13]);
+    ASSERT_EQ('-', result.stringval[18]);
+    ASSERT_EQ('-', result.stringval[23]);
     AR_EXP_Free(arExp);
 }
 
