@@ -323,3 +323,4 @@ void Register_StringFuncs() {
 	func_desc = AR_FuncDescNew("ends with", AR_ENDSWITH, 2, types);
 	AR_RegFunc(func_desc);
 }
+

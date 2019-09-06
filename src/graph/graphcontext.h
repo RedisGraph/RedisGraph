@@ -84,3 +84,4 @@ void GraphContext_RemoveFromRegistry(GraphContext *gc);
 void GraphContext_Free(GraphContext *gc);
 
 #endif
+

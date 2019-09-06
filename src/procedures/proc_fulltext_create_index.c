@@ -69,3 +69,4 @@ ProcedureCtx *Proc_FulltextCreateNodeIdxGen() {
 
 	return ctx;
 }
+

@@ -1338,3 +1338,4 @@ AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *re
 
 	return res;
 }
+

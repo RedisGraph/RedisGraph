@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __GRAPH_RESULTSET_H__
-#define __GRAPH_RESULTSET_H__
+#pragma once
 
 #include "resultset_statistics.h"
 #include "../redismodule.h"
@@ -41,4 +40,3 @@ void ResultSet_Replay(ResultSet *set);
 
 void ResultSet_Free(ResultSet *set);
 
-#endif

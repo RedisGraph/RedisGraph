@@ -15,3 +15,4 @@
 
 /* Registers all arithmetic functions. */
 void AR_RegisterFuncs();
+

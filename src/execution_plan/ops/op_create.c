@@ -370,3 +370,4 @@ void OpCreateFree(OpBase *ctx) {
 	array_free(op->edge_properties);
 	op->edge_properties = NULL;
 }
+

@@ -137,3 +137,4 @@ void Schema_Free(Schema *schema) {
 	if(schema->fulltextIdx) Index_Free(schema->fulltextIdx);
 	rm_free(schema);
 }
+

@@ -37,3 +37,4 @@ GraphContext *QueryCtx_GetGraphCtx(void);
 RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void);
 
 void QueryCtx_Free(void);
+

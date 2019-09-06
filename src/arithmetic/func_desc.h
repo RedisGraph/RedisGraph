@@ -32,3 +32,4 @@ AR_FuncDesc *AR_GetFunc(const char *func_name);
 /* Check to see if function exists.
  * TODO: move this function to more appropriate place. */
 bool AR_FuncExists(const char *func_name);
+

@@ -88,3 +88,4 @@ void RecordMap_Free(RecordMap *record_map) {
 	raxFree(record_map->map);
 	rm_free(record_map);
 }
+

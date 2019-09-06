@@ -305,3 +305,4 @@ void GraphContext_Free(GraphContext *gc) {
 
 	rm_free(gc);
 }
+

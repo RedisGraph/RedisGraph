@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __RECORD_H_
-#define __RECORD_H_
+#pragma once
 
 #include "../value.h"
 #include "../graph/entities/node.h"
@@ -93,4 +92,3 @@ unsigned long long Record_Hash64(const Record r);
 // Free record.
 void Record_Free(Record r);
 
-#endif

@@ -198,3 +198,4 @@ void OpMergeFree(OpBase *ctx) {
 		op->edges_to_merge = NULL;
 	}
 }
+

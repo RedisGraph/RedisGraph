@@ -455,3 +455,4 @@ void utilizeIndices(GraphContext *gc, ExecutionPlan *plan) {
 	// Cleanup
 	array_free(scanOps);
 }
+

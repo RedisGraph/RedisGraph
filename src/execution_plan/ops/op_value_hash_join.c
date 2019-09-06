@@ -303,3 +303,4 @@ void ValueHashJoinFree(OpBase *ctx) {
 		op->rhs_exp = NULL;
 	}
 }
+

@@ -9,8 +9,6 @@ graph = None
 redis_con = None
 people = ["Roi", "Alon", "Ailon", "Boaz"]
 
-
-
 class testFunctionCallsFlow(FlowTestsBase):
     def __init__(self):
         super(testFunctionCallsFlow, self).__init__()
@@ -45,7 +43,6 @@ class testFunctionCallsFlow(FlowTestsBase):
         graph.commit()
         query = """MATCH (a)-[:know]->(b) CREATE (a)-[:know]->(b)"""
         graph.query(query)
-
 
     def expect_type_error(self, query):
         try:

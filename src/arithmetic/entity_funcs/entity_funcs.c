@@ -123,3 +123,4 @@ void Register_EntityFuncs() {
 	func_desc = AR_FuncDescNew("outdegree", AR_OUTGOINGDEGREE, VAR_ARG_LEN, types);
 	AR_RegFunc(func_desc);
 }
+

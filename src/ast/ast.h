@@ -88,3 +88,4 @@ uint ASTMap_FindOrAddAlias(const AST *ast, const char *alias, uint id);
 void AST_BuildEntityMap(AST *ast);
 
 void AST_Free(AST *ast);
+

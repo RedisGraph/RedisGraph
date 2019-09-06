@@ -85,3 +85,4 @@ GraphContext *RdbLoadGraphContext(RedisModuleIO *rdb) {
 
 	return gc;
 }
+

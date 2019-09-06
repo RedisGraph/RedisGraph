@@ -335,3 +335,4 @@ void AggregateFree(OpBase *opBase) {
 		op->groups = NULL;
 	}
 }
+

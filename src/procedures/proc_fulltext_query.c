@@ -111,3 +111,4 @@ ProcedureCtx *Proc_FulltextQueryNodeGen() {
 								   privateData);
 	return ctx;
 }
+

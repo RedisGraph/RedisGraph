@@ -151,3 +151,4 @@ void ResultSet_Free(ResultSet *set) {
 
 	rm_free(set);
 }
+

@@ -295,3 +295,4 @@ void AST_Free(AST *ast) {
 	if(ast->free_root) free((cypher_astnode_t *)ast->root);
 	rm_free(ast);
 }
+

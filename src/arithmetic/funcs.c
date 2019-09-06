@@ -22,3 +22,4 @@ void AR_RegisterFuncs() {
 	Register_BooleanFuncs();
 	Register_ConditionalFuncs();
 }
+

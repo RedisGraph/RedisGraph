@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ *
+ * This file is available under the Redis Labs Source Available License Agreement
+ */
 
 #include "time_funcs.h"
 #include "../func_desc.h"
@@ -23,3 +23,4 @@ void Register_TimeFuncs() {
 	func_desc = AR_FuncDescNew("timestamp", AR_TIMESTAMP, 0, types);
 	AR_RegFunc(func_desc);
 }
+

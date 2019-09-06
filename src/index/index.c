@@ -283,3 +283,4 @@ void Index_Free
 
 	rm_free(idx);
 }
+

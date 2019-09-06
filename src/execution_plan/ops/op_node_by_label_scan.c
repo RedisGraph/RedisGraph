@@ -89,3 +89,4 @@ void NodeByLabelScanFree(OpBase *op) {
 		nodeByLabelScan->_zero_matrix = NULL;
 	}
 }
+

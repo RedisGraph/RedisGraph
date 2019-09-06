@@ -250,3 +250,4 @@ void reduceCount(ExecutionPlan *plan) {
 	bool reduceNodeCountSucsses = _reduceNodeCount(plan);
 	if(!reduceNodeCountSucsses) _reduceEdgeCount(plan);
 }
+

@@ -114,3 +114,4 @@ void ProjectFree(OpBase *ctx) {
 	// like the ReduceCount optimization.
 	// if (op->exps) array_free(op->exps);
 }
+

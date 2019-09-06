@@ -955,3 +955,4 @@ void AlgebraicExpressionNode_Free(AlgebraicExpressionNode *root) {
 	}
 	array_free(uniqueNodes);
 }
+

@@ -130,3 +130,4 @@ void OpDeleteFree(OpBase *ctx) {
 		op->deleted_edges = NULL;
 	}
 }
+

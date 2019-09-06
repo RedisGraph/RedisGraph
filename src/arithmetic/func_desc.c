@@ -58,3 +58,4 @@ AR_FuncDesc *AR_GetFunc(const char *func_name) {
 bool AR_FuncExists(const char *func_name) {
 	return (AR_GetFunc(func_name) != NULL);
 }
+

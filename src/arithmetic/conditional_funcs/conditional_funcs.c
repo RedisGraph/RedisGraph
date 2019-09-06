@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ *
+ * This file is available under the Redis Labs Source Available License Agreement
+ */
 
 #include "conditional_funcs.h"
 #include "../func_desc.h"
@@ -61,3 +61,4 @@ void Register_ConditionalFuncs() {
 	func_desc = AR_FuncDescNew("case", AR_CASEWHEN, VAR_ARG_LEN, types);
 	AR_RegFunc(func_desc);
 }
+
