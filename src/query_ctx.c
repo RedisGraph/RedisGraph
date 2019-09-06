@@ -67,9 +67,14 @@ jmp_buf *QueryCtx_GetExceptionHandler(void) {
 	return ctx->env;
 }
 
-char *QueryCtx_GetError() {
+char *QueryCtx_GetError(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	return ctx->error;
+}
+
+inline bool QueryCtx_EncounteredError(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	return ctx->error != NULL;
 }
 
 GraphContext *QueryCtx_GetGraphCtx(void) {

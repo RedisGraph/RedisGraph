@@ -19,8 +19,6 @@ static inline PropertyTypeUser _mapValueType(const SIValue v) {
 		return PROPERTY_BOOLEAN;
 	case T_DOUBLE:
 		return PROPERTY_DOUBLE;
-	case T_ERROR:
-		return PROPERTY_ERROR;
 	default:
 		return PROPERTY_UNKNOWN;
 	}
@@ -49,9 +47,6 @@ static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, const SIValu
 		return;
 	case T_NULL:
 		RedisModule_ReplyWithNull(ctx);
-		return;
-	case T_ERROR:
-		RedisModule_ReplyWithError(ctx, v.stringval);
 		return;
 	case T_NODE: // Nodes and edges should always be Record entries at this point
 	case T_EDGE:

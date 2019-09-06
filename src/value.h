@@ -35,7 +35,6 @@ typedef enum {
 	T_DOUBLE = (1 << 14),
 	T_NULL = (1 << 15),
 	T_PTR = (1 << 16),
-	T_ERROR = (1 << 17),    // Represents that an error was encountered, holds no data.
 } SIType;
 
 typedef enum {
@@ -88,7 +87,6 @@ SIValue SI_BoolVal(int b);
 SIValue SI_PtrVal(void *v);
 SIValue SI_Node(void *n);
 SIValue SI_Edge(void *e);
-SIValue SI_Error(void);
 SIValue SI_DuplicateStringVal(const char *s); // Duplicate and ultimately free the input string
 SIValue SI_ConstStringVal(char
 						  *s);           // Neither duplicate nor assume ownership of input string
@@ -122,7 +120,6 @@ void SIValue_Persist(SIValue *v);
 
 bool SIValue_IsNull(SIValue v);
 bool SIValue_IsNullPtr(SIValue *v);
-bool SIValue_IsError(SIValue v);
 
 const char *SIType_ToString(SIType t);
 int SIValue_ToString(SIValue v, char *buf, size_t len);

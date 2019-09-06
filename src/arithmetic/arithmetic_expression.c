@@ -227,7 +227,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 			SIValue sub_trees[root->op.child_count];
 			for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
 				SIValue v = AR_EXP_Evaluate(root->op.children[child_idx], r);
-				if(SIValue_IsError(v)) return v;
+				if(QueryCtx_EncounteredError()) return v;
 				sub_trees[child_idx] = v;
 			}
 
@@ -252,7 +252,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 			for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
 				SIValue_Free(&sub_trees[child_idx]);
 			}
-			if(SIValue_IsError(result)) {
+			if(QueryCtx_EncounteredError()) {
 				/* An error was encountered during evaluation, and has already been set in the QueryCtx.
 				 * Invoke the exception handler, exiting this routine and returning to
 				 * the point on the stack where the handler was instantiated. */

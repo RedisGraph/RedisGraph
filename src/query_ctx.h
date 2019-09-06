@@ -32,6 +32,7 @@ void QueryCtx_SetRedisModuleCtx(RedisModuleCtx *ctx);
 AST *QueryCtx_GetAST(void);
 jmp_buf *QueryCtx_GetExceptionHandler(void);
 char *QueryCtx_GetError(void);
+bool QueryCtx_EncounteredError(void);
 GraphContext *QueryCtx_GetGraphCtx(void);
 Graph *QueryCtx_GetGraph(void);
 RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void);

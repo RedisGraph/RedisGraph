@@ -77,7 +77,7 @@ SIValue AR_GT(SIValue *argv, int argc) {
 		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
 				 SIType_ToString(SI_TYPE(b)));
 		QueryCtx_SetError(error);
-		return SI_Error();
+		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
 
 	switch(SI_TYPE(a)) {
@@ -105,7 +105,7 @@ SIValue AR_GE(SIValue *argv, int argc) {
 		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
 				 SIType_ToString(SI_TYPE(b)));
 		QueryCtx_SetError(error);
-		return SI_Error();
+		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
 
 	switch(SI_TYPE(a)) {
@@ -133,7 +133,7 @@ SIValue AR_LT(SIValue *argv, int argc) {
 		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
 				 SIType_ToString(SI_TYPE(b)));
 		QueryCtx_SetError(error);
-		return SI_Error();
+		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
 
 	switch(SI_TYPE(a)) {
@@ -161,7 +161,7 @@ SIValue AR_LE(SIValue *argv, int argc) {
 		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
 				 SIType_ToString(SI_TYPE(b)));
 		QueryCtx_SetError(error);
-		return SI_Error();
+		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
 
 	switch(SI_TYPE(a)) {
