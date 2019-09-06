@@ -643,7 +643,6 @@ TEST_F(ArithmeticTest, RTrimTest)
 TEST_F(ArithmeticTest, RandomUUID)
 {
     SIValue result;
-    const char *expected;
     const char *query;
     AR_ExpNode *arExp;
     Record r = Record_New(0);
