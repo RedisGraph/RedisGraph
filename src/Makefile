@@ -9,7 +9,6 @@ RAX_DIR = ../deps/rax
 XXHASH_DIR = ../deps/xxHash
 REDISEARCH_DIR = ../deps/RediSearch/src
 LIBCYPHER-PARSER_DIR = ../deps/libcypher-parser/lib/src
-UUID4_DIR = ../deps/uuid4/src
 
 # if DEBUG env var is set, we compile with "debug" cflags
 DEBUGFLAGS = -g -ggdb -O3 
@@ -81,10 +80,9 @@ LIBXXHASH=../deps/xxHash/libxxhash.a
 GRAPHBLAS=../deps/GraphBLAS/build/libgraphblas.a
 REDISEARCH=../deps/RediSearch/build/libredisearch.a
 LIBCYPHER-PARSER=../deps/libcypher-parser/lib/src/.libs/libcypher-parser.a
-UUID4=../deps/uuid4/src/uuid4.a
 
 # Compilation deps for the module
-LIBS=$(RAX) $(GRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER-PARSER) $(UUID4)
+LIBS=$(RAX) $(GRAPHBLAS) $(REDISEARCH) $(LIBXXHASH) $(LIBCYPHER-PARSER)
 MODULE= $(LIBS) $(CC_OBJECTS)
 
 REDISGRAPH_CC=$(QUIET_CC)$(CC)
@@ -102,7 +100,7 @@ endif
 # Compile C file while generating a .d file for it
 %.o: %.c
 %.o: %.c
-	$(REDISGRAPH_CC) $(CFLAGS) -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR) -I$(UUID4_DIR) -c $< -o $@ -MMD -MF $(@:.o=.d)
+	$(REDISGRAPH_CC) $(CFLAGS) -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR) -c $< -o $@ -MMD -MF $(@:.o=.d)
 
 all: redisgraph.so
 
@@ -134,13 +132,6 @@ ifeq (,$(wildcard $(REDISEARCH)))
 	make;
 endif
 .PHONY: $(REDISEARCH)
-
-$(UUID4):
-ifeq (,$(wildcard $(UUID4)))
-	cd $(UUID4_DIR); \
-	$(CC) -c uuid4.c -o uuid4.a
-endif
-.PHONY: $(UUID4)
 
 # Build libcypher-parser only if library does not already exists.
 $(LIBCYPHER-PARSER):

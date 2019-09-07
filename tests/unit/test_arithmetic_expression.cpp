@@ -20,7 +20,6 @@ extern "C"
 #include "../../src/util/rmalloc.h"
 #include "../../src/util/arr.h"
 #include "../../src/datatypes/array.h"
-#include "../../deps/uuid4/src/uuid4.h"
 #include <time.h>
 
     // Declaration of function in execution_plan.h
@@ -40,7 +39,6 @@ protected:
         // Use the malloc family for allocations
         Alloc_Reset();
 
-        uuid4_init();
         AR_RegisterFuncs();
         Agg_RegisterFuncs();
 
@@ -645,6 +643,7 @@ TEST_F(ArithmeticTest, RandomUUID)
     SIValue result;
     const char *query;
     AR_ExpNode *arExp;
+    char v;
     Record r = Record_New(0);
 
     query = "RETURN randomUUID()";
@@ -653,7 +652,10 @@ TEST_F(ArithmeticTest, RandomUUID)
     ASSERT_EQ(36, strlen(result.stringval));
     ASSERT_EQ('-', result.stringval[8]);
     ASSERT_EQ('-', result.stringval[13]);
+    ASSERT_EQ('4', result.stringval[14]);
     ASSERT_EQ('-', result.stringval[18]);
+    v = result.stringval[19];
+    ASSERT_TRUE(v == '8' || v == '9' || v == 'a' || v == 'b');
     ASSERT_EQ('-', result.stringval[23]);
     AR_EXP_Free(arExp);
 }

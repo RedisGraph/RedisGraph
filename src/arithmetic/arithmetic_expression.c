@@ -16,7 +16,6 @@
 #include "../graph/graphcontext.h"
 #include "../datatypes/temporal_value.h"
 #include "../datatypes/array.h"
-#include "uuid4.h"
 
 #include "assert.h"
 #include <math.h>
@@ -1326,8 +1325,29 @@ SIValue AR_TIMESTAMP(SIValue *argv, int argc) {
 //==============================================================================
 
 SIValue AR_RANDOMUUID(SIValue *argv, int argc) {
-	char *buf = rm_malloc(UUID4_LEN * sizeof(char));
-	uuid4_generate(buf);
+	/* Implementation is based on https://www.cryptosys.net/pki/uuid-rfc4122.html */
+
+	char *buf = rm_malloc(37 * sizeof(char));
+	unsigned char b[16];
+	int i;
+
+	for (i=0; i<16; i++) {
+		b[i] = rand() % 0xff;
+	}
+
+	b[6] = (b[6] & 0b00001111) | 0b01000000;
+	b[8] = (b[8] & 0b00111111) | 0b10000000;
+
+	char *p = buf;
+	for (i=0; i<16; i++) {
+		sprintf(p, "%02x", b[i]);
+		p += 2;
+		if (i == 3 || i == 5 || i == 7 || i == 9) {
+			*p++ = '-';
+		}
+	}
+	*p = '\0';
+
 	return SI_TransferStringVal(buf);
 }
 
