@@ -129,7 +129,7 @@ int __agg_maxStep(AggCtx *ctx, SIValue *argv, int argc) {
 		return AGG_OK;
 	}
 
-	if(SIValue_Order(ac->max, argv[0]) < 0) {
+	if(SIValue_Compare(ac->max, argv[0], NULL) < 0) {
 		ac->max = argv[0];
 	}
 
@@ -170,7 +170,7 @@ int __agg_minStep(AggCtx *ctx, SIValue *argv, int argc) {
 		return AGG_OK;
 	}
 
-	if(SIValue_Order(ac->min, argv[0]) > 0) {
+	if(SIValue_Compare(ac->min, argv[0], NULL) > 0) {
 		ac->min = argv[0];
 	}
 
