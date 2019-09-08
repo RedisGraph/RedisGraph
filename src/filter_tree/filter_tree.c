@@ -132,7 +132,7 @@ Vector *FilterTree_SubTrees(const FT_FilterNode *root) {
 /* Applies a single filter to a single result.
  * Compares given values, tests if values maintain desired relation (op) */
 int _applyFilter(SIValue *aVal, SIValue *bVal, AST_Operator op) {
-	int disjointOrNull;
+	int disjointOrNull = 0;
 	int rel = SIValue_Compare(*aVal, *bVal, &disjointOrNull);
 	// If there was null comparison, return false.
 	if(disjointOrNull == COMPARED_NULL) return false;

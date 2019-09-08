@@ -379,18 +379,17 @@ int SIArray_Compare(SIValue arrayA, SIValue arrayB, int *disjointOrNull) {
 	int lenDiff = arrayALen - arrayBLen;
 	// Check for the common range of indices.
 	uint minLength = arrayALen <= arrayBLen ? arrayALen : arrayBLen;
-
-	uint notEqualCounter = 0;   // Counter for the amount of false (compare(a,b) !=0) comparisons.
-	uint nullCounter = 0;       // Counter for the amount of null comparison.
 	// notEqual holds the first false (result != 0) comparison result between two values from the same type, which are not equal.
 	int notEqual = 0;
+	uint nullCounter = 0;       // Counter for the amount of null comparison.
+	uint notEqualCounter = 0;   // Counter for the amount of false (compare(a,b) !=0) comparisons.
 
 	// Go over the common range for both arrays.
 	for(uint i = 0; i < minLength; i++) {
 		SIValue aValue = SIArray_Get(arrayA, i);
 		SIValue bValue = SIArray_Get(arrayB, i);
 		// Current comparison special cases indication variable.
-		int currentDisjointOrNull;
+		int currentDisjointOrNull = 0;
 		int compareResult = SIValue_Compare(aValue, bValue, &currentDisjointOrNull);
 		// In case of special case such null or disjoint comparison.
 		if(currentDisjointOrNull) {
@@ -414,13 +413,14 @@ int SIArray_Compare(SIValue arrayA, SIValue arrayB, int *disjointOrNull) {
 	}
 	// If there was a difference in some member, without any null compare.
 	if(notEqual) return notEqual;
-	// If all elemnts are equal and length are equal so arrays are equal, otherwise return length diff.
+	// In this state, the common range is equal. We return lenDiff, which is 0 in case the lists are equal, and not 0 otherwise.
 	return lenDiff;
 }
 
 int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull) {
 
-	// No special case happened yet. If indication is required set its value to zero.
+	/* No special case (null or disjoint comparison) happened yet.
+	 * If indication for such cases is required, first set the indication value to zero (not happen). */
 	if(disjointOrNull) *disjointOrNull = 0;
 
 	/* In order to be comparable, both SIValues must be from the same type. */

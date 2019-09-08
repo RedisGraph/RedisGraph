@@ -1037,7 +1037,7 @@ SIValue AR_GT(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	int disjointOrNull;
+	int disjointOrNull = 0;
 	int res = SIValue_Compare(a, b, &disjointOrNull);
 	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
 	if(disjointOrNull == DISJOINT) {
@@ -1052,7 +1052,7 @@ SIValue AR_GE(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	int disjointOrNull;
+	int disjointOrNull = 0;
 	int res = SIValue_Compare(a, b, &disjointOrNull);
 	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
 	if(disjointOrNull == DISJOINT) {
@@ -1067,7 +1067,7 @@ SIValue AR_LT(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	int disjointOrNull;
+	int disjointOrNull = 0;
 	int res = SIValue_Compare(a, b, &disjointOrNull);
 	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
 	if(disjointOrNull == DISJOINT) {
@@ -1082,7 +1082,7 @@ SIValue AR_LE(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	int disjointOrNull;
+	int disjointOrNull = 0;
 	int res = SIValue_Compare(a, b, &disjointOrNull);
 	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
 	if(disjointOrNull == DISJOINT) {
@@ -1097,7 +1097,7 @@ SIValue AR_EQ(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	int disjointOrNull;
+	int disjointOrNull = 0;
 	int res = SIValue_Compare(a, b, &disjointOrNull);
 	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
 	// Disjoint comparison is allowed on EQ and NE operators, since they impose no order.
@@ -1109,7 +1109,7 @@ SIValue AR_NE(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	int disjointOrNull;
+	int disjointOrNull = 0;
 	int res = SIValue_Compare(a, b, &disjointOrNull);
 	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
 	// Disjoint comparison is allowed on EQ and NE operators, since they impose no order.
@@ -1223,7 +1223,7 @@ SIValue AR_IN(SIValue *argv, int argc) {
 	bool comparedNull = false;
 	uint arrayLen = SIArray_Length(lookupList);
 	for(uint i = 0; i < arrayLen; i++) {
-		int disjointOrNull;
+		int disjointOrNull = 0;
 		int compareValue = SIValue_Compare(lookupValue, SIArray_Get(lookupList, i), &disjointOrNull);
 		if(disjointOrNull == COMPARED_NULL) {
 			comparedNull = true;
