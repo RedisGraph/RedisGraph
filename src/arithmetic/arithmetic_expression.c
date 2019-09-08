@@ -910,7 +910,7 @@ SIValue AR_CASEWHEN(SIValue *argv, int argc) {
 		SIValue v = argv[0];
 		for(int i = 1; i < alternatives; i += 2) {
 			SIValue a = argv[i];
-			if(SIValue_Compare(v, a) == 0) {
+			if(SIValue_Compare(v, a, NULL) == 0) {
 				// Return Result i.
 				return argv[i + 1];
 			}
@@ -1037,19 +1037,14 @@ SIValue AR_GT(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
-
-	assert(SI_TYPE(a) == SI_TYPE(b));
-
-	switch(SI_TYPE(a)) {
-	case T_STRING:
-		return SI_BoolVal(SIValue_Compare(a, b) > 0);
-	case T_INT64:
-	case T_DOUBLE:
-		return SI_BoolVal(SI_GET_NUMERIC(a) > SI_GET_NUMERIC(b));
-	default:
+	int disjointOrNull = 0;
+	int res = SIValue_Compare(a, b, &disjointOrNull);
+	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
+	if(disjointOrNull == DISJOINT) {
+		// TODO: Return type mismatch error.
 		assert(false);
 	}
+	return SI_BoolVal(res > 0);
 }
 
 SIValue AR_GE(SIValue *argv, int argc) {
@@ -1057,21 +1052,14 @@ SIValue AR_GE(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
-
-	assert(SI_TYPE(a) == SI_TYPE(b));
-	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
-	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
-
-	switch(SI_TYPE(a)) {
-	case T_STRING:
-		return SI_BoolVal(SIValue_Compare(a, b) >= 0);
-	case T_INT64:
-	case T_DOUBLE:
-		return SI_BoolVal(SI_GET_NUMERIC(a) >= SI_GET_NUMERIC(b));
-	default:
+	int disjointOrNull = 0;
+	int res = SIValue_Compare(a, b, &disjointOrNull);
+	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
+	if(disjointOrNull == DISJOINT) {
+		// TODO: Return type mismatch error.
 		assert(false);
 	}
+	return SI_BoolVal(res >= 0);
 }
 
 SIValue AR_LT(SIValue *argv, int argc) {
@@ -1079,21 +1067,14 @@ SIValue AR_LT(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
-
-	assert(SI_TYPE(a) == SI_TYPE(b));
-	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
-	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
-
-	switch(SI_TYPE(a)) {
-	case T_STRING:
-		return SI_BoolVal(SIValue_Compare(a, b) < 0);
-	case T_INT64:
-	case T_DOUBLE:
-		return SI_BoolVal(SI_GET_NUMERIC(a) < SI_GET_NUMERIC(b));
-	default:
+	int disjointOrNull = 0;
+	int res = SIValue_Compare(a, b, &disjointOrNull);
+	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
+	if(disjointOrNull == DISJOINT) {
+		// TODO: Return type mismatch error.
 		assert(false);
 	}
+	return SI_BoolVal(res < 0);
 }
 
 SIValue AR_LE(SIValue *argv, int argc) {
@@ -1101,21 +1082,14 @@ SIValue AR_LE(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
-
-	assert(SI_TYPE(a) == SI_TYPE(b));
-	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
-	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
-
-	switch(SI_TYPE(a)) {
-	case T_STRING:
-		return SI_BoolVal(SIValue_Compare(a, b) <= 0);
-	case T_INT64:
-	case T_DOUBLE:
-		return SI_BoolVal(SI_GET_NUMERIC(a) <= SI_GET_NUMERIC(b));
-	default:
+	int disjointOrNull = 0;
+	int res = SIValue_Compare(a, b, &disjointOrNull);
+	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
+	if(disjointOrNull == DISJOINT) {
+		// TODO: Return type mismatch error.
 		assert(false);
 	}
+	return SI_BoolVal(res <= 0);
 }
 
 SIValue AR_EQ(SIValue *argv, int argc) {
@@ -1123,11 +1097,10 @@ SIValue AR_EQ(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	int res = SIValue_Compare(a, b);
-
-	// if res == DISJOINT => type mismatch
-
-	if(res == COMPARED_NULL) return SI_NullVal();
+	int disjointOrNull = 0;
+	int res = SIValue_Compare(a, b, &disjointOrNull);
+	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
+	// Disjoint comparison is allowed on EQ and NE operators, since they impose no order.
 	return SI_BoolVal(res == 0);
 }
 
@@ -1136,21 +1109,11 @@ SIValue AR_NE(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
-
-	assert(SI_TYPE(a) == SI_TYPE(b));
-	//Type mismatch: expected Float, Integer, Point, String, Date, Time, LocalTime, LocalDateTime or DateTime
-	// but was Node (line 1, column 22 (offset: 21)) "match (n),(m) return n > m" ^
-
-	switch(SI_TYPE(a)) {
-	case T_STRING:
-		return SI_BoolVal(SIValue_Compare(a, b) != 0);
-	case T_INT64:
-	case T_DOUBLE:
-		return SI_BoolVal(SI_GET_NUMERIC(a) != SI_GET_NUMERIC(b));
-	default:
-		assert(false);
-	}
+	int disjointOrNull = 0;
+	int res = SIValue_Compare(a, b, &disjointOrNull);
+	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
+	// Disjoint comparison is allowed on EQ and NE operators, since they impose no order.
+	return SI_BoolVal(res != 0);
 }
 
 //==============================================================================
@@ -1260,9 +1223,13 @@ SIValue AR_IN(SIValue *argv, int argc) {
 	bool comparedNull = false;
 	uint arrayLen = SIArray_Length(lookupList);
 	for(uint i = 0; i < arrayLen; i++) {
-		int compareValue = SIValue_Compare(lookupValue, SIArray_Get(lookupList, i));
+		int disjointOrNull = 0;
+		int compareValue = SIValue_Compare(lookupValue, SIArray_Get(lookupList, i), &disjointOrNull);
+		if(disjointOrNull == COMPARED_NULL) {
+			comparedNull = true;
+			continue;
+		}
 		if(compareValue == 0) return SI_BoolVal(true);
-		if(compareValue == COMPARED_NULL) comparedNull = true;
 	}
 	// if there was a null comparison return null, other wise return false as the lookup item did not found
 	return comparedNull ? SI_NullVal() : SI_BoolVal(false);
@@ -1270,7 +1237,7 @@ SIValue AR_IN(SIValue *argv, int argc) {
 
 /* Return a list/string/map/path size.
    "RETURN size([1, 2, 3])" will return 3
-   TODO: when map and path are implemented, add their functonality */
+   TODO: when map and path are implemented, add their functionality */
 SIValue AR_SIZE(SIValue *argv, int argc) {
 	assert(argc == 1);
 	SIValue value = argv[0];

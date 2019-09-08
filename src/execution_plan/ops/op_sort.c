@@ -31,7 +31,7 @@ static bool _record_islt(Record a, Record b, const OpSort *op) {
 	for(uint i = 0; i < comparables; i++) {
 		SIValue aVal = Record_Get(a, offset + i);
 		SIValue bVal = Record_Get(b, offset + i);
-		int rel = SIValue_Order(aVal, bVal);
+		int rel = SIValue_Compare(aVal, bVal, NULL);
 		if(rel == 0) continue;  // Elements are equal; try next ORDER BY element
 		rel *= op->direction;   // Flip value for descending order.
 		return rel > 0;         // Return true if the current left element is less than the right.
@@ -60,7 +60,7 @@ static int _record_compare(Record a, Record b, const OpSort *op) {
 	for(uint i = 0; i < comparables; i++) {
 		SIValue aVal = Record_Get(a, offset + i);
 		SIValue bVal = Record_Get(b, offset + i);
-		int rel = SIValue_Order(aVal, bVal);
+		int rel = SIValue_Compare(aVal, bVal, NULL);
 		if(rel) return rel;
 	}
 	return 0;
