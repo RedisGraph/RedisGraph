@@ -15,6 +15,3 @@ typedef struct {
 } OpDistinct;
 
 OpBase *NewDistinctOp(void);
-Record DistinctConsume(OpBase *opBase);
-OpResult DistinctReset(OpBase *ctx);
-void DistinctFree(OpBase *ctx);

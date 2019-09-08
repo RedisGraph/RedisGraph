@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OP_AGGREGATE_H__
-#define __OP_AGGREGATE_H__
+#pragma once
 
 #include "op.h"
 #include "../../redismodule.h"
@@ -38,9 +37,3 @@ typedef struct {
 } OpAggregate;
 
 OpBase *NewAggregateOp(AR_ExpNode **expressions, uint *modifies);
-OpResult AggregateInit(OpBase *opBase);
-Record AggregateConsume(OpBase *opBase);
-OpResult AggregateReset(OpBase *opBase);
-void AggregateFree(OpBase *opBase);
-
-#endif

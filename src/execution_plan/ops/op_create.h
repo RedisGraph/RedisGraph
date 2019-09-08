@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OP_CREATE_H
-#define __OP_CREATE_H
+#pragma once
 
 #include "op.h"
 #include "../../graph/entities/node.h"
@@ -39,10 +38,3 @@ typedef struct {
 } OpCreate;
 
 OpBase *NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreateCtx *edges);
-
-OpResult OpCreateInit(OpBase *opBase);
-Record OpCreateConsume(OpBase *opBase);
-OpResult OpCreateReset(OpBase *ctx);
-void OpCreateFree(OpBase *ctx);
-
-#endif

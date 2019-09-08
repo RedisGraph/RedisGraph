@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OP_DELETE_H
-#define __OP_DELETE_H
+#pragma once
 
 #include "op.h"
 #include "../../graph/entities/node.h"
@@ -28,9 +27,3 @@ typedef struct {
 } OpDelete;
 
 OpBase *NewDeleteOp(uint *nodes_ref, uint *edges_ref, ResultSetStatistics *stats);
-Record OpDeleteConsume(OpBase *opBase);
-OpResult OpDeleteInit(OpBase *opBase);
-OpResult OpDeleteReset(OpBase *ctx);
-void OpDeleteFree(OpBase *ctx);
-
-#endif

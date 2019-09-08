@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OP_EXPAND_INTO_H
-#define __OP_EXPAND_INTO_H
+#pragma once
 
 #include "op.h"
 #include "../../graph/graph.h"
@@ -32,9 +31,3 @@ typedef struct {
 } OpExpandInto;
 
 OpBase *NewExpandIntoOp(Graph *g, RecordMap *record_map, AlgebraicExpression *ae, uint records_cap);
-OpResult ExpandIntoInit(OpBase *opBase);
-Record ExpandIntoConsume(OpBase *opBase);
-OpResult ExpandIntoReset(OpBase *ctx);
-void ExpandIntoFree(OpBase *ctx);
-
-#endif

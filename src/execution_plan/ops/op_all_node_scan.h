@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OP_ALL_NODE_SCAN_H__
-#define __OP_ALL_NODE_SCAN_H__
+#pragma once
 
 #include "op.h"
 #include "../../graph/graph.h"
@@ -23,9 +22,3 @@ typedef struct {
 } AllNodeScan;
 
 OpBase *NewAllNodeScanOp(const Graph *g, QGNode *n, uint rec_idx);
-Record AllNodeScanConsume(OpBase *opBase);
-OpResult AllNodeScanInit(OpBase *opBase);
-OpResult AllNodeScanReset(OpBase *op);
-void AllNodeScanFree(OpBase *ctx);
-
-#endif

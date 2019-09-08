@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OP_SORT_H
-#define __OP_SORT_H
+#pragma once
 
 #include "op.h"
 #include "../../util/heap.h"
@@ -23,15 +22,3 @@ typedef struct {
 
 /* Creates a new Sort operation */
 OpBase *NewSortOp(AR_ExpNode **expressions, int direction, unsigned int limit);
-
-Record SortConsume(OpBase *opBase);
-
-OpResult SortInit(OpBase *opBase);
-
-/* Restart iterator */
-OpResult SortReset(OpBase *ctx);
-
-/* Frees Sort */
-void SortFree(OpBase *ctx);
-
-#endif

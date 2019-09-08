@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef _FILTER_H_
-#define _FILTER_H_
+#pragma once
 
 #include "op.h"
 #include "../../filter_tree/filter_tree.h"
@@ -19,15 +18,3 @@ typedef struct {
 
 /* Creates a new Filter operation */
 OpBase *NewFilterOp(FT_FilterNode *filterTree);
-
-/* FilterConsume next operation
- * returns NULL when depleted. */
-Record FilterConsume(OpBase *opBase);
-
-/* Restart iterator */
-OpResult FilterReset(OpBase *ctx);
-
-/* Frees Filter*/
-void FilterFree(OpBase *ctx);
-
-#endif //_FILTER_H_

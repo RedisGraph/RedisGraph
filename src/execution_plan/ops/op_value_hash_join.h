@@ -22,15 +22,3 @@ typedef struct {
 
 /* Creates a new ValueHashJoin operation */
 OpBase *NewValueHashJoin(AR_ExpNode *lhs_exp, AR_ExpNode *rhs_exp);
-
-/* Try to produce a record combining data from both streams */
-Record ValueHashJoinConsume(OpBase *opBase);
-
-/* Resets operation */
-OpResult ValueHashJoinReset(OpBase *ctx);
-
-/* Initialize operation */
-OpResult ValueHashJoinInit(OpBase *ctx);
-
-/* Frees ValueHashJoin */
-void ValueHashJoinFree(OpBase *ctx);

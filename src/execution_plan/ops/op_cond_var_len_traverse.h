@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OP_COND_VAR_LEN_TRAVERSE_H
-#define __OP_COND_VAR_LEN_TRAVERSE_H
+#pragma once
 
 #include "op.h"
 #include "../../graph/graph.h"
@@ -30,11 +29,7 @@ typedef struct {
 } CondVarLenTraverse;
 
 OpBase *NewCondVarLenTraverseOp(Graph *g, RecordMap *record_map, AlgebraicExpression *ae);
-Record CondVarLenTraverseConsume(OpBase *opBase);
-OpResult CondVarLenTraverseReset(OpBase *ctx);
 
 /* Transform operation from Conditional Variable Length Traverse
  * to Expand Into Conditional Variable Length Traverse */
 void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op);
-void CondVarLenTraverseFree(OpBase *ctx);
-#endif

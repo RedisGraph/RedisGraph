@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OP_UNWIND_H
-#define __OP_UNWIND_H
+#pragma once
 
 #include "op.h"
 #include "../../arithmetic/arithmetic_expression.h"
@@ -24,16 +23,3 @@ typedef struct
 
 /* Creates a new Unwind operation */
 OpBase *NewUnwindOp(uint record_idx, AR_ExpNode *exp);
-
-OpResult UnwindInit(OpBase *opBase);
-
-/* UnwindConsume next operation */
-Record UnwindConsume(OpBase *opBase);
-
-/* Restart */
-OpResult UnwindReset(OpBase *ctx);
-
-/* Frees Unwind*/
-void UnwindFree(OpBase *ctx);
-
-#endif

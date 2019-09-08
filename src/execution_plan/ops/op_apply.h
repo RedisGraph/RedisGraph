@@ -18,7 +18,3 @@ typedef struct {
 
 // OpBase* NewApplyOp(uint *modifies);
 OpBase *NewApplyOp(void);
-OpResult ApplyInit(OpBase *opBase);
-Record ApplyConsume(OpBase *opBase);
-OpResult ApplyReset(OpBase *opBase);
-void ApplyFree(OpBase *opBase);

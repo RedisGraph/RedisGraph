@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OP_NODE_BY_LABEL_SCAN_H
-#define __OP_NODE_BY_LABEL_SCAN_H
+#pragma once
 
 #include "op.h"
 #include "../../graph/graph.h"
@@ -25,17 +24,3 @@ typedef struct {
 
 /* Creates a new NodeByLabelScan operation */
 OpBase *NewNodeByLabelScanOp(QGNode *node, uint node_idx);
-
-OpResult NodeByLabelScanInit(OpBase *ctx);
-
-/* NodeByLabelScan next operation
- * called each time a new ID is required */
-Record NodeByLabelScanConsume(OpBase *opBase);
-
-/* Restart iterator */
-OpResult NodeByLabelScanReset(OpBase *ctx);
-
-/* Frees NodeByLabelScan */
-void NodeByLabelScanFree(OpBase *ctx);
-
-#endif
