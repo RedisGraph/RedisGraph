@@ -161,14 +161,10 @@ SIValue SIValue_Multiply(const SIValue a, const SIValue b);
 /* SIValue_Divide always returns a double value. */
 SIValue SIValue_Divide(const SIValue a, const SIValue b);
 
-/* Compares two SIValues and returns a value similar to strcmp, or
- * the macro DISJOINT if the values were not of comparable types. */
-int SIValue_Compare(const SIValue a, const SIValue b);
-
-/* Return a strcmp-style integer value indicating which value is greater according
- * to Cypher's comparability property if applicable, and its orderability property if not.
- * Under Cypher's orderability, where string < boolean < numeric < NULL. */
-int SIValue_Order(const SIValue a, const SIValue b);
+/* Compares two SIValues and returns a value similar to strcmp.
+ * If one of the values is null, the macro COMPARED_NULL is returned in disjointOrNull value.
+ * If the the values are not of the same type, the macro DISJOINT is returned in disjointOrNull value. */
+int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull);
 
 /* Free an SIValue's internal property if that property is a heap allocation owned
  * by this object. */

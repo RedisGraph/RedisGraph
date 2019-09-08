@@ -638,6 +638,28 @@ TEST_F(ArithmeticTest, RTrimTest)
     AR_EXP_Free(arExp);
 }
 
+TEST_F(ArithmeticTest, RandomUUID)
+{
+    SIValue result;
+    const char *query;
+    AR_ExpNode *arExp;
+    char v;
+    Record r = Record_New(0);
+
+    query = "RETURN randomUUID()";
+    arExp = _exp_from_query(query);
+    result = AR_EXP_Evaluate(arExp, r);
+    ASSERT_EQ(36, strlen(result.stringval));
+    ASSERT_EQ('-', result.stringval[8]);
+    ASSERT_EQ('-', result.stringval[13]);
+    ASSERT_EQ('4', result.stringval[14]);
+    ASSERT_EQ('-', result.stringval[18]);
+    v = result.stringval[19];
+    ASSERT_TRUE(v == '8' || v == '9' || v == 'a' || v == 'b');
+    ASSERT_EQ('-', result.stringval[23]);
+    AR_EXP_Free(arExp);
+}
+
 TEST_F(ArithmeticTest, TrimTest)
 {
     SIValue result;
