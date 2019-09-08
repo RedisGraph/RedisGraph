@@ -1287,6 +1287,37 @@ SIValue AR_TIMESTAMP(SIValue *argv, int argc) {
 	return SI_LongVal(TemporalValue_NewTimestamp());
 }
 
+//==============================================================================
+//=== Scalar functions =========================================================
+//==============================================================================
+
+SIValue AR_RANDOMUUID(SIValue *argv, int argc) {
+	/* Implementation is based on https://www.cryptosys.net/pki/uuid-rfc4122.html */
+
+	// Generate 16 random bytes.
+	unsigned char r[16];
+	int i;
+
+	for (i=0; i<16; i++) {
+		r[i] = rand() % 0xff;
+	}
+
+	char *uuid = rm_malloc(37 * sizeof(char));
+	sprintf(uuid, "%08x-%04x-%04x-%04x-%04x%08x",
+		*((uint32_t*)r),
+		*((uint16_t*)(r + 4)),
+		// Set the four most significant bits of the 7th byte to 0100'B, so the high nibble is "4".
+		(*((uint16_t*)(r + 6)) & 0b0000111111111111) | 0b0100000000000000,
+		// Set the two most significant bits of the 9th byte to 10'B, so the high nibble will be one of "8", "9", "A", or "B" (see Note 1).
+		(*((uint16_t*)(r + 8)) & 0b0011111111111111) | 0b1000000000000000,
+		*((uint16_t*)(r + 10)),
+		*((uint32_t*)(r + 12)));
+
+	uuid[36] = '\0';
+
+	return SI_TransferStringVal(uuid);
+}
+
 bool AR_FuncExists(const char *func_name) {
 	char lower_func_name[32] = {0};
 	short lower_func_name_len = 32;
@@ -1301,7 +1332,7 @@ void AR_RegisterFuncs() {
 		AR_Func func_ptr;
 	};
 
-	struct RegFunc functions[49] = {
+	struct RegFunc functions[50] = {
 		{"add", AR_ADD}, {"sub", AR_SUB}, {"mul", AR_MUL}, {"div", AR_DIV}, {"abs", AR_ABS}, {"ceil", AR_CEIL},
 		{"floor", AR_FLOOR}, {"rand", AR_RAND}, {"round", AR_ROUND}, {"sign", AR_SIGN}, {"left", AR_LEFT},
 		{"reverse", AR_REVERSE}, {"right", AR_RIGHT}, {"ltrim", AR_LTRIM}, {"rtrim", AR_RTRIM}, {"substring", AR_SUBSTRING},
@@ -1311,13 +1342,14 @@ void AR_RegisterFuncs() {
 		{"lt", AR_LT}, {"le", AR_LE}, {"eq", AR_EQ}, {"neq", AR_NE}, {"case", AR_CASEWHEN}, {"indegree", AR_INCOMEDEGREE},
 		{"outdegree", AR_OUTGOINGDEGREE},
 		{"tolist", AR_TOLIST}, {"subscript", AR_SUBSCRIPT}, {"slice", AR_SLICE}, {"range", AR_RANGE}, {"in", AR_IN},
-		{"size", AR_SIZE}, {"head", AR_HEAD}, {"tail", AR_TAIL}
+		{"size", AR_SIZE}, {"head", AR_HEAD}, {"tail", AR_TAIL},
+		{"randomuuid", AR_RANDOMUUID}
 	};
 
 	char lower_func_name[32] = {0};
 	short lower_func_name_len = 32;
 
-	for(int i = 0; i < 49; i++) {
+	for(int i = 0; i < 50; i++) {
 		_toLower(functions[i].func_name, &lower_func_name[0], &lower_func_name_len);
 		_AR_RegFunc(lower_func_name, lower_func_name_len, functions[i].func_ptr);
 		lower_func_name_len = 32;

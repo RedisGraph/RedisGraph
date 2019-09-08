@@ -127,3 +127,8 @@ SIValue AR_CASEWHEN(SIValue *argv, int argc);
 SIValue AR_INCOMEDEGREE(SIValue *argv, int argc);
 /* Returns the number of outgoing edges for given node. */
 SIValue AR_OUTGOINGDEGREE(SIValue *argv, int argc);
+
+/* Scalar functions */
+
+/* Returns a randomly-generated Universally Unique Identifier (UUID) */
+SIValue AR_RANDOMUUID(SIValue *argv, int argc);
