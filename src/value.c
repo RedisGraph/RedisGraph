@@ -396,6 +396,8 @@ int SIArray_Compare(SIValue arrayA, SIValue arrayB, int *disjointOrNull) {
 			if(currentDisjointOrNull == COMPARED_NULL) nullCounter++;   // Update null comparison counter.
 			// Null or disjoint comparison is also a false comparison, so increase the number of false comparisons in one.
 			notEqualCounter++;
+			// Set the first difference value, if not set before.
+			if(notEqual == 0) notEqual = compareResult;
 		} else if(compareResult != 0) {
 			// In the normal false comparison case, update false comparison counter.
 			notEqualCounter++;
