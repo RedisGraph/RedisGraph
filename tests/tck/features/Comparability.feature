@@ -50,7 +50,7 @@ Feature: Comparability
             | 'xx'  |
         And no side effects
 
-    @skip
+
     Scenario: Comparing strings and integers using > in a OR'd predicate
         Given an empty graph
         And having executed:

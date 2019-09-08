@@ -50,10 +50,7 @@ typedef enum
 #define SI_TYPE(value) (value).type
 #define SI_NUMERIC (T_INT64 | T_DOUBLE)
 #define SI_GRAPHENTITY (T_NODE | T_EDGE)
-#define COMPERABLE (T_ARRAY | T_PATH | T_DATETIME | T_LOCALDATETIME | T_DATE | T_TIME | T_LOCALTIME | T_DURATION | T_STRING | T_BOOL | T_INT64 | T_DOUBLE | T_NULL)
 #define SI_ALL (T_MAP | T_NODE | T_EDGE | T_ARRAY | T_PATH | T_DATETIME | T_LOCALDATETIME | T_DATE | T_TIME | T_LOCALTIME | T_DURATION | T_STRING | T_BOOL | T_INT64 | T_DOUBLE | T_NULL | T_PTR)
-
-#define IS_COMPERABLE(a) (a.type & COMPERABLE)
 
 /* Retrieve the numeric associated with an SIValue without explicitly
  * assigning it a type. */
@@ -68,7 +65,8 @@ typedef enum
  * and 0 if argument is zero.*/
 #define SIGN(a) ((a) > 0) - ((a) < 0)
 
-#define COMPARED_NULL INT_MAX
+#define DISJOINT INT_MAX
+#define COMPARED_NULL INT_MIN
 
 typedef struct SIValue
 {
@@ -164,13 +162,9 @@ SIValue SIValue_Multiply(const SIValue a, const SIValue b);
 SIValue SIValue_Divide(const SIValue a, const SIValue b);
 
 /* Compares two SIValues and returns a value similar to strcmp.
- * If one of the values is null, the macro COMPARED_NULL is returned. */
-int SIValue_Compare(const SIValue a, const SIValue b);
-
-/* Return a strcmp-style integer value indicating which value is greater according
- * to Cypher's comparability property if applicable, and its orderability property if not.
- * Under Cypher's orderability, where string < boolean < numeric < NULL. */
-int SIValue_Order(const SIValue a, const SIValue b);
+ * If one of the values is null, the macro COMPARED_NULL is returned in disjointOrNull value.
+ * If the the values are not of the same type, the macro DISJOINT is returned in disjointOrNull value. */
+int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull);
 
 /* Free an SIValue's internal property if that property is a heap allocation owned
  * by this object. */
