@@ -72,19 +72,19 @@ SIValue AR_GT(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	// Emit error when attempting to compare invalid types
-	if(!SI_VALUES_ARE_COMPARABLE(a, b)) {
+	int disjointOrNull = 0;
+	int res = SIValue_Compare(a, b, &disjointOrNull);
+	if(disjointOrNull == COMPARED_NULL) {
+		// Comparisons with NULL values always return NULL.
+		return SI_NullVal();
+	} else if(disjointOrNull == DISJOINT) {
+		// Emit error when attempting to compare invalid types
 		char *error;
 		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
 				 SIType_ToString(SI_TYPE(b)));
 		QueryCtx_SetError(error);
 		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
-
-	int disjointOrNull = 0;
-	int res = SIValue_Compare(a, b, &disjointOrNull);
-	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
-	assert(disjointOrNull != DISJOINT);
 
 	return SI_BoolVal(res > 0);
 }
@@ -114,19 +114,19 @@ SIValue AR_LT(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	// Emit error when attempting to compare invalid types
-	if(!SI_VALUES_ARE_COMPARABLE(a, b)) {
+	int disjointOrNull = 0;
+	int res = SIValue_Compare(a, b, &disjointOrNull);
+	if(disjointOrNull == COMPARED_NULL) {
+		// Comparisons with NULL values always return NULL.
+		return SI_NullVal();
+	} else if(disjointOrNull == DISJOINT) {
+		// Emit error when attempting to compare invalid types
 		char *error;
 		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
 				 SIType_ToString(SI_TYPE(b)));
 		QueryCtx_SetError(error);
 		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
-
-	int disjointOrNull = 0;
-	int res = SIValue_Compare(a, b, &disjointOrNull);
-	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
-	assert(disjointOrNull != DISJOINT);
 
 	return SI_BoolVal(res < 0);
 }
@@ -135,19 +135,19 @@ SIValue AR_LE(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	// Emit error when attempting to compare invalid types
-	if(!SI_VALUES_ARE_COMPARABLE(a, b)) {
+	int disjointOrNull = 0;
+	int res = SIValue_Compare(a, b, &disjointOrNull);
+	if(disjointOrNull == COMPARED_NULL) {
+		// Comparisons with NULL values always return NULL.
+		return SI_NullVal();
+	} else if(disjointOrNull == DISJOINT) {
+		// Emit error when attempting to compare invalid types
 		char *error;
 		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
 				 SIType_ToString(SI_TYPE(b)));
 		QueryCtx_SetError(error);
 		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
-
-	int disjointOrNull = 0;
-	int res = SIValue_Compare(a, b, &disjointOrNull);
-	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
-	assert(disjointOrNull != DISJOINT);
 
 	return SI_BoolVal(res <= 0);
 }
