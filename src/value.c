@@ -179,6 +179,8 @@ const char *SIType_ToString(SIType t) {
 		return "Node";
 	} else if(t & T_EDGE) {
 		return "Edge";
+	} else if(t & T_ARRAY) {
+		return "List";
 	} else if(t & T_NULL) {
 		return "Null";
 	} else {

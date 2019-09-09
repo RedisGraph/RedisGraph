@@ -22,7 +22,7 @@ SIValue AR_TOLIST(SIValue *argv, int argc) {
 /* Returns a value in a specific index in an array.
    Valid index range is [-arrayLen, arrayLen).
    Invalid index will return null.
-   "RETURN [1, 2, 3][0]" will yeild 1 */
+   "RETURN [1, 2, 3][0]" will yield 1. */
 SIValue AR_SUBSCRIPT(SIValue *argv, int argc) {
 	assert(argc == 2 && argv[0].type == T_ARRAY && argv[1].type == T_INT64);
 	SIValue list = argv[0];
@@ -178,13 +178,13 @@ void Register_ListFuncs() {
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
-	types = array_append(types, T_ARRAY | T_NULL);
+	types = array_append(types, T_ARRAY);
 	types = array_append(types, T_INT64 | T_NULL);
 	func_desc = AR_FuncDescNew("subscript", AR_SUBSCRIPT, 2, types);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
-	types = array_append(types, T_ARRAY | T_NULL);
+	types = array_append(types, T_ARRAY);
 	types = array_append(types, T_INT64 | T_NULL);
 	types = array_append(types, T_INT64 | T_NULL);
 	func_desc = AR_FuncDescNew("slice", AR_SLICE, VAR_ARG_LEN, types);
@@ -199,22 +199,22 @@ void Register_ListFuncs() {
 
 	types = array_new(SIType, 2);
 	types = array_append(types, SI_ALL);
-	types = array_append(types, T_ARRAY | T_NULL);
+	types = array_append(types, T_ARRAY);
 	func_desc = AR_FuncDescNew("in", AR_IN, 2, types);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	types = array_append(types, T_ARRAY | T_NULL);
+	types = array_append(types, T_ARRAY);
 	func_desc = AR_FuncDescNew("size", AR_SIZE, 1, types);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	types = array_append(types, T_ARRAY | T_NULL);
+	types = array_append(types, T_ARRAY);
 	func_desc = AR_FuncDescNew("head", AR_HEAD, 1, types);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	types = array_append(types, T_ARRAY | T_NULL);
+	types = array_append(types, T_ARRAY);
 	func_desc = AR_FuncDescNew("tail", AR_TAIL, 1, types);
 	AR_RegFunc(func_desc);
 }
