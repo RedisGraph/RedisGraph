@@ -146,7 +146,7 @@ static Group *_GetGroup(OpAggregate *op, Record r) {
 	uint exp_count = array_len(op->non_aggregated_expressions);
 	for(uint i = 0; i < exp_count; i++) {
 		if(reuseLastAccessedGroup &&
-		   SIValue_Compare(op->group->keys[i], op->group_keys[i]) == 0) {
+		   SIValue_Compare(op->group->keys[i], op->group_keys[i], NULL) == 0) {
 			reuseLastAccessedGroup = true;
 		} else {
 			reuseLastAccessedGroup = false;
