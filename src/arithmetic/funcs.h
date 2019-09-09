@@ -93,6 +93,10 @@ SIValue AR_LE(SIValue *argv, int argc);
 SIValue AR_EQ(SIValue *argv, int argc);
 /* returns true if argv[0] != argv[1] */
 SIValue AR_NE(SIValue *argv, int argc);
+/* returns true if argv[0] is null */
+SIValue AR_IS_NULL(SIValue *argv, int argc);
+/* returns true if argv[0] is not null */
+SIValue AR_IS_NOT_NULL(SIValue *argv, int argc);
 
 /* List operations */
 /* returns an array */

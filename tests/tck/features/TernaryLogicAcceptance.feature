@@ -30,147 +30,145 @@
 
 Feature: TernaryLogicAcceptanceTest
 
-  Background:
-    Given any graph
+    Background:
+        Given any graph
 
-  Scenario: The inverse of a null is a null
-    When executing query:
-      """
-      RETURN NOT null AS value
-      """
-    Then the result should be:
-      | value |
-      | null  |
-    And no side effects
+    Scenario: The inverse of a null is a null
+        When executing query:
+            """
+            RETURN NOT null AS value
+            """
+        Then the result should be:
+            | value |
+            | null  |
+        And no side effects
 
-@skip
-  Scenario: A literal null IS null
-    When executing query:
-      """
-      RETURN null IS NULL AS value
-      """
-    Then the result should be:
-      | value |
-      | true  |
-    And no side effects
+    Scenario: A literal null IS null
+        When executing query:
+            """
+            RETURN null IS NULL AS value
+            """
+        Then the result should be:
+            | value |
+            | true  |
+        And no side effects
 
-@skip
-  Scenario: A literal null is not IS NOT null
-    When executing query:
-      """
-      RETURN null IS NOT NULL AS value
-      """
-    Then the result should be:
-      | value |
-      | false |
-    And no side effects
+    Scenario: A literal null is not IS NOT null
+        When executing query:
+            """
+            RETURN null IS NOT NULL AS value
+            """
+        Then the result should be:
+            | value |
+            | false |
+        And no side effects
 
-  Scenario: It is unknown - i.e. null - if a null is equal to a null
-    When executing query:
-      """
-      RETURN null = null AS value
-      """
-    Then the result should be:
-      | value |
-      | null  |
-    And no side effects
+    Scenario: It is unknown - i.e. null - if a null is equal to a null
+        When executing query:
+            """
+            RETURN null = null AS value
+            """
+        Then the result should be:
+            | value |
+            | null  |
+        And no side effects
 
-  Scenario: It is unknown - i.e. null - if a null is not equal to a null
-    When executing query:
-      """
-      RETURN null <> null AS value
-      """
-    Then the result should be:
-      | value |
-      | null  |
-    And no side effects
+    Scenario: It is unknown - i.e. null - if a null is not equal to a null
+        When executing query:
+            """
+            RETURN null <> null AS value
+            """
+        Then the result should be:
+            | value |
+            | null  |
+        And no side effects
 
-@skip
-  Scenario Outline: Using null in AND
-    And parameters are:
-      | lhs | <lhs> |
-      | rhs | <rhs> |
-    When executing query:
-      """
-      RETURN $lhs AND $rhs AS result
-      """
-    Then the result should be:
-      | result   |
-      | <result> |
-    And no side effects
+    @skip
+    Scenario Outline: Using null in AND
+        And parameters are:
+            | lhs | <lhs> |
+            | rhs | <rhs> |
+        When executing query:
+            """
+            RETURN $lhs AND $rhs AS result
+            """
+        Then the result should be:
+            | result   |
+            | <result> |
+        And no side effects
 
-    Examples:
-      | lhs   | rhs   | result |
-      | null  | null  | null   |
-      | null  | true  | null   |
-      | true  | null  | null   |
-      | null  | false | false  |
-      | false | null  | false  |
+        Examples:
+            | lhs   | rhs   | result |
+            | null  | null  | null   |
+            | null  | true  | null   |
+            | true  | null  | null   |
+            | null  | false | false  |
+            | false | null  | false  |
 
-@skip
-  Scenario Outline: Using null in OR
-    And parameters are:
-      | lhs | <lhs> |
-      | rhs | <rhs> |
-    When executing query:
-      """
-      RETURN $lhs OR $rhs AS result
-      """
-    Then the result should be:
-      | result   |
-      | <result> |
-    And no side effects
+    @skip
+    Scenario Outline: Using null in OR
+        And parameters are:
+            | lhs | <lhs> |
+            | rhs | <rhs> |
+        When executing query:
+            """
+            RETURN $lhs OR $rhs AS result
+            """
+        Then the result should be:
+            | result   |
+            | <result> |
+        And no side effects
 
-    Examples:
-      | lhs   | rhs   | result |
-      | null  | null  | null   |
-      | null  | true  | true   |
-      | true  | null  | true   |
-      | null  | false | null   |
-      | false | null  | null   |
+        Examples:
+            | lhs   | rhs   | result |
+            | null  | null  | null   |
+            | null  | true  | true   |
+            | true  | null  | true   |
+            | null  | false | null   |
+            | false | null  | null   |
 
-@skip
-  Scenario Outline: Using null in XOR
-    And parameters are:
-      | lhs    | <lhs>    |
-      | rhs    | <rhs>    |
-    When executing query:
-      """
-      RETURN $lhs XOR $rhs AS result
-      """
-    Then the result should be:
-      | result   |
-      | <result> |
-    And no side effects
+    @skip
+    Scenario Outline: Using null in XOR
+        And parameters are:
+            | lhs | <lhs> |
+            | rhs | <rhs> |
+        When executing query:
+            """
+            RETURN $lhs XOR $rhs AS result
+            """
+        Then the result should be:
+            | result   |
+            | <result> |
+        And no side effects
 
-    Examples:
-      | lhs   | rhs   | result |
-      | null  | null  | null   |
-      | null  | true  | null   |
-      | true  | null  | null   |
-      | null  | false | null   |
-      | false | null  | null   |
+        Examples:
+            | lhs   | rhs   | result |
+            | null  | null  | null   |
+            | null  | true  | null   |
+            | true  | null  | null   |
+            | null  | false | null   |
+            | false | null  | null   |
 
-@skip
-  Scenario Outline: Using null in IN
-    And parameters are:
-      | elt    | <elt>    |
-      | coll   | <coll>   |
-    When executing query:
-      """
-      RETURN $elt IN $coll AS result
-      """
-    Then the result should be:
-      | result   |
-      | <result> |
-    And no side effects
+    @skip
+    Scenario Outline: Using null in IN
+        And parameters are:
+            | elt  | <elt>  |
+            | coll | <coll> |
+        When executing query:
+            """
+            RETURN $elt IN $coll AS result
+            """
+        Then the result should be:
+            | result   |
+            | <result> |
+        And no side effects
 
-    Examples:
-      | elt  | coll            | result |
-      | null | null            | null   |
-      | null | [1, 2, 3]       | null   |
-      | null | [1, 2, 3, null] | null   |
-      | null | []              | false  |
-      | 1    | [1, 2, 3, null] | true   |
-      | 1    | [null, 1]       | true   |
-      | 5    | [1, 2, 3, null] | null   |
+        Examples:
+            | elt  | coll            | result |
+            | null | null            | null   |
+            | null | [1, 2, 3]       | null   |
+            | null | [1, 2, 3, null] | null   |
+            | null | []              | false  |
+            | 1    | [1, 2, 3, null] | true   |
+            | 1    | [null, 1]       | true   |
+            | 5    | [1, 2, 3, null] | null   |

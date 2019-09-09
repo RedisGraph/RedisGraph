@@ -55,6 +55,10 @@ static const char *_ASTOpToString(AST_Operator op) {
 		return "POW";
 	case OP_IN:
 		return "IN";
+	case OP_IS_NULL:
+		return "IS NULL";
+	case OP_IS_NOT_NULL:
+		return "IS NOT NULL";
 	default:
 		assert(false && "Unhandled operator was specified in query");
 		return NULL;
@@ -162,6 +166,14 @@ static AR_ExpNode *_AR_EXP_FromUnaryOpExpression(RecordMap *record_map,
 		return _AR_EXP_FromExpression(record_map, arg);
 	} else if(operator == CYPHER_OP_NOT) {
 		AR_ExpNode *op = AR_EXP_NewOpNodeFromAST(OP_NOT, 1);
+		op->op.children[0] = _AR_EXP_FromExpression(record_map, arg);
+		return op;
+	} else if(operator == CYPHER_OP_IS_NULL) {
+		AR_ExpNode *op = AR_EXP_NewOpNodeFromAST(OP_IS_NULL, 1);
+		op->op.children[0] = _AR_EXP_FromExpression(record_map, arg);
+		return op;
+	} else if(operator == CYPHER_OP_IS_NOT_NULL) {
+		AR_ExpNode *op = AR_EXP_NewOpNodeFromAST(OP_IS_NOT_NULL, 1);
 		op->op.children[0] = _AR_EXP_FromExpression(record_map, arg);
 		return op;
 	}

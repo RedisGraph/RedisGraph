@@ -35,7 +35,9 @@ typedef enum
     OP_CONTAINS,
     OP_STARTSWITH,
     OP_ENDSWITH,
-    OP_IN
+    OP_IN,
+    OP_IS_NULL,
+    OP_IS_NOT_NULL
 } AST_Operator;
 
 typedef struct

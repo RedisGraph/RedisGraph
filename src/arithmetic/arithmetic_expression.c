@@ -1116,6 +1116,18 @@ SIValue AR_NE(SIValue *argv, int argc) {
 	return SI_BoolVal(res != 0);
 }
 
+SIValue AR_IS_NULL(SIValue *argv, int argc) {
+	assert(argc == 1);
+	SIValue v = argv[0];
+	return SI_BoolVal(v.type == T_NULL);
+}
+
+SIValue AR_IS_NOT_NULL(SIValue *argv, int argc) {
+	assert(argc == 1);
+	SIValue v = argv[0];
+	return SI_BoolVal(v.type != T_NULL);
+}
+
 //==============================================================================
 //=== List functions ===========================================================
 //==============================================================================
@@ -1298,20 +1310,20 @@ SIValue AR_RANDOMUUID(SIValue *argv, int argc) {
 	unsigned char r[16];
 	int i;
 
-	for (i=0; i<16; i++) {
+	for(i = 0; i < 16; i++) {
 		r[i] = rand() % 0xff;
 	}
 
 	char *uuid = rm_malloc(37 * sizeof(char));
 	sprintf(uuid, "%08x-%04x-%04x-%04x-%04x%08x",
-		*((uint32_t*)r),
-		*((uint16_t*)(r + 4)),
-		// Set the four most significant bits of the 7th byte to 0100'B, so the high nibble is "4".
-		(*((uint16_t*)(r + 6)) & 0b0000111111111111) | 0b0100000000000000,
-		// Set the two most significant bits of the 9th byte to 10'B, so the high nibble will be one of "8", "9", "A", or "B" (see Note 1).
-		(*((uint16_t*)(r + 8)) & 0b0011111111111111) | 0b1000000000000000,
-		*((uint16_t*)(r + 10)),
-		*((uint32_t*)(r + 12)));
+			*((uint32_t *)r),
+			*((uint16_t *)(r + 4)),
+			// Set the four most significant bits of the 7th byte to 0100'B, so the high nibble is "4".
+			(*((uint16_t *)(r + 6)) & 0b0000111111111111) | 0b0100000000000000,
+			// Set the two most significant bits of the 9th byte to 10'B, so the high nibble will be one of "8", "9", "A", or "B" (see Note 1).
+			(*((uint16_t *)(r + 8)) & 0b0011111111111111) | 0b1000000000000000,
+			*((uint16_t *)(r + 10)),
+			*((uint32_t *)(r + 12)));
 
 	uuid[36] = '\0';
 
@@ -1332,15 +1344,15 @@ void AR_RegisterFuncs() {
 		AR_Func func_ptr;
 	};
 
-	struct RegFunc functions[50] = {
+	struct RegFunc functions[52] = {
 		{"add", AR_ADD}, {"sub", AR_SUB}, {"mul", AR_MUL}, {"div", AR_DIV}, {"abs", AR_ABS}, {"ceil", AR_CEIL},
 		{"floor", AR_FLOOR}, {"rand", AR_RAND}, {"round", AR_ROUND}, {"sign", AR_SIGN}, {"left", AR_LEFT},
 		{"reverse", AR_REVERSE}, {"right", AR_RIGHT}, {"ltrim", AR_LTRIM}, {"rtrim", AR_RTRIM}, {"substring", AR_SUBSTRING},
 		{"tolower", AR_TOLOWER}, {"toupper", AR_TOUPPER}, {"tostring", AR_TOSTRING}, {"trim", AR_TRIM}, {"contains", AR_CONTAINS},
 		{"starts with", AR_STARTSWITH}, {"ends with", AR_ENDSWITH}, {"id", AR_ID}, {"labels", AR_LABELS}, {"type", AR_TYPE}, {"exists", AR_EXISTS},
 		{"timestamp", AR_TIMESTAMP}, {"and", AR_AND}, {"or", AR_OR}, {"xor", AR_XOR}, {"not", AR_NOT}, {"gt", AR_GT}, {"ge", AR_GE},
-		{"lt", AR_LT}, {"le", AR_LE}, {"eq", AR_EQ}, {"neq", AR_NE}, {"case", AR_CASEWHEN}, {"indegree", AR_INCOMEDEGREE},
-		{"outdegree", AR_OUTGOINGDEGREE},
+		{"lt", AR_LT}, {"le", AR_LE}, {"eq", AR_EQ}, {"neq", AR_NE}, {"is null", AR_IS_NULL}, {"is not null", AR_IS_NOT_NULL},
+		{"case", AR_CASEWHEN}, {"indegree", AR_INCOMEDEGREE}, {"outdegree", AR_OUTGOINGDEGREE},
 		{"tolist", AR_TOLIST}, {"subscript", AR_SUBSCRIPT}, {"slice", AR_SLICE}, {"range", AR_RANGE}, {"in", AR_IN},
 		{"size", AR_SIZE}, {"head", AR_HEAD}, {"tail", AR_TAIL},
 		{"randomuuid", AR_RANDOMUUID}
@@ -1349,7 +1361,7 @@ void AR_RegisterFuncs() {
 	char lower_func_name[32] = {0};
 	short lower_func_name_len = 32;
 
-	for(int i = 0; i < 50; i++) {
+	for(int i = 0; i < 52; i++) {
 		_toLower(functions[i].func_name, &lower_func_name[0], &lower_func_name_len);
 		_AR_RegFunc(lower_func_name, lower_func_name_len, functions[i].func_ptr);
 		lower_func_name_len = 32;
