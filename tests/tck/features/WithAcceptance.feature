@@ -110,8 +110,8 @@ Feature: WithAcceptance
             RETURN b
             """
         Then the result should be:
-            | b                 |
-            | (:End {num: 423}) |
+            | b                |
+            | (:End {num: 42}) |
         And no side effects
 
     @skip

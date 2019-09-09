@@ -10,13 +10,11 @@ from behave.__main__ import main as behave_main
 # 'behave' step is preformed against RLTest environment
 
 
-class testTCK():
-    def test_tck(self):
-        env = Env()
-        cmd = ["./features/", '--tags=-skip']
-        if not env.verbose:
-            cmd.append('--format=progress')
-        res = behave_main(cmd)
-        print(res)
-        res = 'pass' if res == 0 else 'fail'
-        env.assertEquals(res, 'pass')
+def test_tck():
+    env = Env()
+    cmd = ["./features/", '--tags=-skip']
+    if not env.verbose:
+        cmd.append('--format=progress')
+    res = behave_main(cmd)
+    res = 'pass' if res == 0 else 'fail'
+    env.assertEquals(res, 'pass')
