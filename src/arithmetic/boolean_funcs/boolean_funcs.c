@@ -198,26 +198,26 @@ void Register_BooleanFuncs() {
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
-	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_NULL));
-	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_NULL));
+	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_NULL));
+	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_NULL));
 	func_desc = AR_FuncDescNew("gt", AR_GT, 2, types);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
-	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_NULL));
-	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_NULL));
+	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_NULL));
+	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_NULL));
 	func_desc = AR_FuncDescNew("ge", AR_GE, 2, types);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
-	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_NULL));
-	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_NULL));
+	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_NULL));
+	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_NULL));
 	func_desc = AR_FuncDescNew("lt", AR_LT, 2, types);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
-	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_NULL));
-	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_NULL));
+	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_NULL));
+	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_NULL));
 	func_desc = AR_FuncDescNew("le", AR_LE, 2, types);
 	AR_RegFunc(func_desc);
 

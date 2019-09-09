@@ -125,7 +125,7 @@ void Register_NumericFuncs() {
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 1);
-	types = array_append(types, (SI_NUMERIC | T_STRING | T_NULL));
+	types = array_append(types, (SI_NUMERIC | T_STRING | T_ARRAY | T_BOOL | T_NULL));
 	func_desc = AR_FuncDescNew("add", AR_ADD, VAR_ARG_LEN, types);
 	AR_RegFunc(func_desc);
 
