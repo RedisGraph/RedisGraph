@@ -1,6 +1,6 @@
 import os
 import sys
-from RLTest import Env 
+from RLTest import Env
 
 from redisgraph import Graph, Node, Edge
 
@@ -8,20 +8,23 @@ r = None
 graph_name = "G"
 redis_graph = None
 
+
 def redis():
-   return Env()
+    return Env.RTestInstance.currEnv
+
 
 def _brand_new_redis():
     global r
     if r is not None:
-        r.stop()
+        r.flush()
 
     r = redis()
     return r.getConnection()
 
+
 def empty_graph():
     global redis_graph
-    
+
     redis_con = _brand_new_redis()
     redis_graph = Graph("G", redis_con)
 
@@ -32,8 +35,10 @@ def empty_graph():
     # Delete node to have an empty graph.
     redis_graph.query("MATCH (n) DELETE n")
 
+
 def any_graph():
     return empty_graph()
+
 
 def binary_tree_graph1():
     global redis_graph
@@ -107,6 +112,7 @@ def binary_tree_graph2():
                       (b3)-[:FRIEND] -> (b4),       \
                       (b4)-[:FRIEND] -> (b1)        \
                       ")
+
 
 def query(q):
     return redis_graph.query(q)
