@@ -21,6 +21,14 @@
 #include <ctype.h>
 #include <assert.h>
 
+/* An error was encountered during evaluation, and has already been set in the QueryCtx.
+ * Invoke the exception handler, exiting this routine and returning to
+ * the point on the stack where the handler was instantiated. */
+static inline void _RaiseException(void) {
+	jmp_buf *env = QueryCtx_GetExceptionHandler();
+	longjmp(*env, 1);
+}
+
 /* Update arithmetic expression variable node by setting node's property index.
  * when constructing an arithmetic expression we'll delay setting graph entity
  * attribute index to the first execution of the expression, this is due to
@@ -167,15 +175,17 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode **root) {
 	}
 }
 
-static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint argc, char **error) {
+static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint argc) {
 	SIType actual_type;
 	SIType expected_type = T_NULL;
 
 	// Make sure number of arguments is as expected.
 	if(fdesc->argc != VAR_ARG_LEN) {
 		if(fdesc->argc != argc) {
-			asprintf(error, "Received %d arguments to function '%s', expected %d", argc, fdesc->name,
+			char *error;
+			asprintf(&error, "Received %d arguments to function '%s', expected %d", argc, fdesc->name,
 					 fdesc->argc);
+			QueryCtx_SetError(error); // Set the query-level error.
 			return false;
 		}
 		// Make sure each argument is of the expected type.
@@ -189,7 +199,9 @@ static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint a
 				 * RETURN 'a' * 2
 				 * "Type mismatch: expected Float, Integer or Duration but was String" */
 				const char *expected_type_str = SIType_ToString(expected_type);
-				asprintf(error, "Type mismatch: expected %s but was %s", expected_type_str, actual_type_str);
+				char *error;
+				asprintf(&error, "Type mismatch: expected %s but was %s", expected_type_str, actual_type_str);
+				QueryCtx_SetError(error); // Set the query-level error.
 				return false;
 			}
 		}
@@ -205,7 +217,9 @@ static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint a
 			if(!(actual_type & expected_type)) {
 				const char *actual_type_str = SIType_ToString(actual_type);
 				const char *expected_type_str = SIType_ToString(expected_type);
-				asprintf(error, "Type mismatch: expected %s but was %s", expected_type_str, actual_type_str);
+				char *error;
+				asprintf(&error, "Type mismatch: expected %s but was %s", expected_type_str, actual_type_str);
+				QueryCtx_SetError(error); // Set the query-level error.
 				return false;
 			}
 		}
@@ -233,19 +247,13 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 			}
 
 			/* Validate before evaluation. */
-			char *error;
-			if(!_AR_EXP_ValidateInvocation(root->op.f, sub_trees, root->op.child_count, &error)) {
-				// The expression tree failed its validations and prepared an error message.
+			if(!_AR_EXP_ValidateInvocation(root->op.f, sub_trees, root->op.child_count)) {
+				// The expression tree failed its validations and set an error message.
 				// Free all associated memory.
 				for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
-					SIValue_Free(sub_trees + child_idx);
+					SIValue_Free(&sub_trees[child_idx]);
 				}
-				QueryCtx_SetError(error); // Set the query-level error.
-
-				// Invoke the exception handler, exiting this routine and returning to
-				// the point on the stack where the handler was instantiated.
-				jmp_buf *env = QueryCtx_GetExceptionHandler();
-				longjmp(*env, 1);
+				_RaiseException(); // Raise an exception.
 			}
 			/* Evaluate self. */
 			result = root->op.f->func(sub_trees, root->op.child_count);
@@ -266,8 +274,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 				/* An error was encountered during evaluation, and has already been set in the QueryCtx.
 				 * Invoke the exception handler, exiting this routine and returning to
 				 * the point on the stack where the handler was instantiated. */
-				jmp_buf *env = QueryCtx_GetExceptionHandler();
-				longjmp(*env, 1);
+				_RaiseException(); // Raise an exception.
 			}
 		}
 	} else {
@@ -281,15 +288,13 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 				RecordEntryType t = Record_GetType(r, root->operand.variadic.entity_alias_idx);
 				// Property requested on a scalar value.
 				if(!(t & (REC_TYPE_NODE | REC_TYPE_EDGE))) {
+					/* Attempted to access a scalar value as a map.
+					 * Set an error and invoke the exception handler. */
 					char *error;
 					SIValue v = Record_GetScalar(r, root->operand.variadic.entity_alias_idx);
 					asprintf(&error, "Type mismatch: expected a map but was %s", SIType_ToString(SI_TYPE(v)));
-					/* Attempted to access a scalar value as a map.
-					 * Invoke the exception handler, exiting this routine and returning to
-					 * the point on the stack where the handler was instantiated. */
 					QueryCtx_SetError(error); // Set the query-level error.
-					jmp_buf *env = QueryCtx_GetExceptionHandler();
-					longjmp(*env, 1);
+					_RaiseException();  // Raise an exception.
 				}
 
 				GraphEntity *ge = Record_GetGraphEntity(r, root->operand.variadic.entity_alias_idx);

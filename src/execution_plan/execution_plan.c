@@ -954,7 +954,6 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 	/* Replace the exception-handling breakpoint set in ExecutionPlan construction with
 	 * a new breakpoint to capture run-time errors. */
 	jmp_buf *env = QueryCtx_GetExceptionHandler();
-	QueryCtx_SetExceptionHandler(env);
 
 	/* encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
 	 * a downstream exception returns us to this breakpoint. */
