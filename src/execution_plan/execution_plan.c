@@ -449,11 +449,9 @@ static void _ExecutionPlanSegment_MapReferences(ExecutionPlanSegment *segment, A
 	}
 }
 
-static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
-													  AST *ast, ResultSet *result_set, AR_ExpNode **prev_projections, OpBase *prev_op) {
-	// Allocate a new segment
-	ExecutionPlanSegment *segment = rm_malloc(sizeof(ExecutionPlanSegment));
-	segment->connected_components = NULL;
+static void _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
+									 ExecutionPlanSegment *segment, AST *ast, ResultSet *result_set,
+									 AR_ExpNode **prev_projections, OpBase *prev_op) {
 
 	// Initialize map of Record IDs
 	RecordMap *record_map = RecordMap_New();
@@ -799,14 +797,12 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 	}
 
 	_associateRecordMap(segment->root, record_map);
-
-	return segment;
 }
 
 ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet *result_set) {
 	AST *ast = QueryCtx_GetAST();
 
-	ExecutionPlan *plan = rm_malloc(sizeof(ExecutionPlan));
+	ExecutionPlan *plan = rm_calloc(1, sizeof(ExecutionPlan));
 
 	plan->result_set = result_set;
 
@@ -835,6 +831,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		char *err = QueryCtx_GetError();
 		// The reply arrays have not been instantiated at this point, so we'll return a Redis-level error.
 		RedisModule_ReplyWithError(ctx, err);
+		ExecutionPlan_Free(plan); // Free the partial execution plan.
 		return NULL;
 	}
 
@@ -855,9 +852,10 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 			ast_segment = AST_NewSegment(ast, start_offset, end_offset);
 
 			// Construct a new ExecutionPlanSegment.
-			segment = _NewExecutionPlanSegment(ctx, gc, ast_segment, plan->result_set, input_projections,
-											   prev_op);
-			plan->segments[i] = segment;
+			segment = rm_calloc(1, sizeof(ExecutionPlanSegment));
+			plan->segments[i] = segment; // Add the segment now in case of an exception during construction.
+			_NewExecutionPlanSegment(ctx, gc, segment, ast_segment, plan->result_set, input_projections,
+									 prev_op);
 
 			AST_Free(ast_segment); // Free all AST constructions scoped to this segment
 
@@ -874,9 +872,11 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 
 	if(segment_indices) array_free(segment_indices);
 
-	segment = _NewExecutionPlanSegment(ctx, gc, ast_segment, plan->result_set, input_projections,
-									   prev_op);
-	plan->segments[i] = segment;
+	// Construct a new ExecutionPlanSegment.
+	segment = rm_calloc(1, sizeof(ExecutionPlanSegment));
+	plan->segments[i] = segment; // Add the segment now in case of an exception during construction.
+	_NewExecutionPlanSegment(ctx, gc, segment, ast_segment, plan->result_set, input_projections,
+							 prev_op);
 
 	plan->root = plan->segments[i]->root;
 
@@ -1013,7 +1013,7 @@ void _ExecutionPlan_FreeOperations(OpBase *op) {
 }
 
 void _ExecutionPlanSegment_Free(ExecutionPlanSegment *segment) {
-	RecordMap_Free(segment->record_map);
+	if(segment->record_map) RecordMap_Free(segment->record_map);
 
 	if(segment->connected_components) {
 		uint connected_component_count = array_len(segment->connected_components);
@@ -1023,7 +1023,7 @@ void _ExecutionPlanSegment_Free(ExecutionPlanSegment *segment) {
 		array_free(segment->connected_components);
 	}
 
-	QueryGraph_Free(segment->query_graph);
+	if(segment->query_graph) QueryGraph_Free(segment->query_graph);
 
 	if(segment->projections) {
 		uint projection_count = array_len(segment->projections);
@@ -1038,12 +1038,14 @@ void _ExecutionPlanSegment_Free(ExecutionPlanSegment *segment) {
 
 void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) return;
-	_ExecutionPlan_FreeOperations(plan->root);
+	if(plan->root) _ExecutionPlan_FreeOperations(plan->root);
 
-	for(uint i = 0; i < plan->segment_count; i ++) {
-		_ExecutionPlanSegment_Free(plan->segments[i]);
+	if(plan->segments) {
+		for(uint i = 0; i < plan->segment_count; i ++) {
+			if(plan->segments[i]) _ExecutionPlanSegment_Free(plan->segments[i]);
+		}
+		rm_free(plan->segments);
 	}
-	rm_free(plan->segments);
 
 	rm_free(plan);
 }
