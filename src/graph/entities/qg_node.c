@@ -21,9 +21,8 @@ static void _QGNode_RemoveEdge(QGEdge **edges, QGEdge *e) {
 	}
 }
 
-QGNode *QGNode_New(const char *label, const char *alias, uint id) {
+QGNode *QGNode_New(const char *label, const char *alias) {
 	QGNode *n = rm_malloc(sizeof(QGNode));
-	n->id = id;
 	n->labelID = GRAPH_NO_LABEL;
 	n->label = label;
 	n->alias = alias;
@@ -59,7 +58,6 @@ void QGNode_RemoveOutgoingEdge(QGNode *n, QGEdge *e) {
 
 QGNode *QGNode_Clone(const QGNode *orig) {
 	QGNode *n = rm_malloc(sizeof(QGNode));
-	n->id = orig->id;
 	n->label = orig->label;
 	n->labelID = orig->labelID;
 	n->alias = orig->alias;

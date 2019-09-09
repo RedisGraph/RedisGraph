@@ -10,6 +10,12 @@
 #include "../../schema/schema.h"
 #include <assert.h>
 
+/* Forward declarations. */
+static OpResult Init(OpBase *opBase);
+static Record Consume(OpBase *opBase);
+static OpResult Reset(OpBase *opBase);
+static void Free(OpBase *opBase);
+
 // Resolve the properties specified in the query into constant values.
 PendingProperties *_ConvertPropertyMap(Record r, const PropertyMap *map) {
 	PendingProperties *converted = rm_malloc(sizeof(PendingProperties));
@@ -44,40 +50,35 @@ static void _PendingPropertiesFree(PendingProperties *props) {
 	rm_free(props);
 }
 
-OpBase *NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
-	OpCreate *op_create = calloc(1, sizeof(OpCreate));
-	op_create->records = NULL;
-	op_create->nodes_to_create = nodes;
-	op_create->edges_to_create = edges;
-	op_create->gc = QueryCtx_GetGraphCtx();
-	op_create->created_nodes = array_new(Node *, 0);
-	op_create->created_edges = array_new(Edge *, 0);
-	op_create->node_properties = array_new(PendingProperties *, 0);
-	op_create->edge_properties = array_new(PendingProperties *, 0);
-	op_create->stats = stats;
+OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeCreateCtx *nodes,
+					EdgeCreateCtx *edges) {
+	OpCreate *op = calloc(1, sizeof(OpCreate));
+	op->records = NULL;
+	op->nodes_to_create = nodes;
+	op->edges_to_create = edges;
+	op->gc = GraphContext_GetFromTLS();
+	op->created_nodes = array_new(Node *, 0);
+	op->created_edges = array_new(Edge *, 0);
+	op->node_properties = array_new(PendingProperties *, 0);
+	op->edge_properties = array_new(PendingProperties *, 0);
+	op->stats = stats;
 
 	// Set our Op operations
-	OpBase_Init(&op_create->op);
-	op_create->op.name = "Create";
-	op_create->op.type = OPType_CREATE;
-	op_create->op.consume = OpCreateConsume;
-	op_create->op.init = OpCreateInit;
-	op_create->op.reset = OpCreateReset;
-	op_create->op.free = OpCreateFree;
+	OpBase_Init((OpBase *)op, OPType_CREATE, "Create", Init, Consume, Reset, NULL, Free, plan);
 
 	uint node_blueprint_count = array_len(nodes);
 	uint edge_blueprint_count = array_len(edges);
+
 	// Construct the array of IDs this operation modifies
-	op_create->op.modifies = array_new(uint, node_blueprint_count + edge_blueprint_count);
 	for(uint i = 0; i < node_blueprint_count; i ++) {
-		op_create->op.modifies = array_append(op_create->op.modifies, nodes[i].node_idx);
+		nodes[i].node_idx = OpBase_Modifies((OpBase *)op, nodes[i].node->alias);
 	}
 	for(uint i = 0; i < edge_blueprint_count; i ++) {
 		// TODO should this also add the src and dest IDs?
-		op_create->op.modifies = array_append(op_create->op.modifies, edges[i].edge_idx);
+		edges[i].edge_idx = OpBase_Modifies((OpBase *)op, edges[i].edge->alias);
 	}
 
-	return (OpBase *)op_create;
+	return (OpBase *)op;
 }
 
 void _CreateNodes(OpCreate *op, Record r) {
@@ -258,11 +259,11 @@ static Record _handoff(OpCreate *op) {
 	return r;
 }
 
-OpResult OpCreateInit(OpBase *opBase) {
+static OpResult Init(OpBase *opBase) {
 	return OP_OK;
 }
 
-Record OpCreateConsume(OpBase *opBase) {
+static Record Consume(OpBase *opBase) {
 	OpCreate *op = (OpCreate *)opBase;
 	Record r;
 
@@ -275,10 +276,9 @@ Record OpCreateConsume(OpBase *opBase) {
 	// No child operation to call.
 	OpBase *child = NULL;
 	if(!op->op.childCount) {
-		r = Record_New(opBase->record_map->record_len);
+		r = OpBase_CreateRecord((OpBase *)op);
 		// Track the newly-allocated Record so that it may be freed if execution fails.
 		OpBase_AddVolatileRecord(opBase, r);
-
 		/* Create entities. */
 		_CreateNodes(op, r);
 		_CreateEdges(op, r);
@@ -319,12 +319,12 @@ Record OpCreateConsume(OpBase *opBase) {
 	return _handoff(op);
 }
 
-OpResult OpCreateReset(OpBase *ctx) {
+static OpResult Reset(OpBase *ctx) {
 	OpCreate *op = (OpCreate *)ctx;
 	return OP_OK;
 }
 
-void OpCreateFree(OpBase *ctx) {
+static void Free(OpBase *ctx) {
 	OpCreate *op = (OpCreate *)ctx;
 
 	if(op->records) {

@@ -7,12 +7,13 @@
 #pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 
 /* Cartesian product AKA Join. */
 typedef struct {
 	OpBase op;
-	bool init;
 	Record r;
+	bool init;
 } CartesianProduct;
 
-OpBase *NewCartesianProductOp(void);
+OpBase *NewCartesianProductOp(const ExecutionPlan *plan);

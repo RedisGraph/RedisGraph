@@ -6,24 +6,24 @@
 
 #include "op_filter.h"
 
-OpBase *NewFilterOp(FT_FilterNode *filterTree) {
-	OpFilter *filter = malloc(sizeof(OpFilter));
-	filter->filterTree = filterTree;
+/* Forward declarations. */
+static Record Consume(OpBase *opBase);
+static OpResult Reset(OpBase *opBase);
+static void Free(OpBase *opBase);
+
+OpBase *NewFilterOp(const ExecutionPlan *plan, FT_FilterNode *filterTree) {
+	OpFilter *op = malloc(sizeof(OpFilter));
+	op->filterTree = filterTree;
 
 	// Set our Op operations
-	OpBase_Init(&filter->op);
-	filter->op.name = "Filter";
-	filter->op.type = OPType_FILTER;
-	filter->op.consume = FilterConsume;
-	filter->op.reset = FilterReset;
-	filter->op.free = FilterFree;
+	OpBase_Init((OpBase *)op, OPType_FILTER, "OpFilter", NULL, Consume, Reset, NULL, Free, plan);
 
-	return (OpBase *)filter;
+	return (OpBase *)op;
 }
 
 /* FilterConsume next operation
  * returns OP_OK when graph passes filter tree. */
-Record FilterConsume(OpBase *opBase) {
+static Record Consume(OpBase *opBase) {
 	Record r;
 	OpFilter *filter = (OpFilter *)opBase;
 	OpBase *child = filter->op.children[0];
@@ -41,15 +41,16 @@ Record FilterConsume(OpBase *opBase) {
 }
 
 /* Restart iterator */
-OpResult FilterReset(OpBase *ctx) {
+static OpResult Reset(OpBase *ctx) {
 	return OP_OK;
 }
 
-/* Frees Filter*/
-void FilterFree(OpBase *ctx) {
+/* Frees OpFilter*/
+static void Free(OpBase *ctx) {
 	OpFilter *filter = (OpFilter *)ctx;
 	if(filter->filterTree) {
 		FilterTree_Free(filter->filterTree);
 		filter->filterTree = NULL;
 	}
 }
+

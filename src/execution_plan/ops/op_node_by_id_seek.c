@@ -7,6 +7,12 @@
 #include "op_node_by_id_seek.h"
 #include "../../query_ctx.h"
 
+/* Forward declarations. */
+static OpResult Init(OpBase *opBase);
+static Record Consume(OpBase *opBase);
+static OpResult Reset(OpBase *opBase);
+static void Free(OpBase *opBase);
+
 // Checks to see if operation index is within its bounds.
 static inline bool _outOfBounds(OpNodeByIdSeek *op) {
 	/* Because currentId starts at minimum and only increases
@@ -18,7 +24,8 @@ static inline bool _outOfBounds(OpNodeByIdSeek *op) {
 
 OpBase *NewOpNodeByIdSeekOp
 (
-	unsigned int nodeRecIdx,
+	const ExecutionPlan *plan,
+	const QGNode *node,
 	NodeID minId,
 	NodeID maxId,
 	bool minInclusive,
@@ -28,43 +35,39 @@ OpBase *NewOpNodeByIdSeekOp
 	assert(!(minId == ID_RANGE_UNBOUND && minInclusive));
 	assert(!(maxId == ID_RANGE_UNBOUND && maxInclusive));
 
-	OpNodeByIdSeek *op_nodeByIdSeek = malloc(sizeof(OpNodeByIdSeek));
-	op_nodeByIdSeek->g = QueryCtx_GetGraph();
+	OpNodeByIdSeek *op = malloc(sizeof(OpNodeByIdSeek));
+	op->g = QueryCtx_GetGraph();
 
-	op_nodeByIdSeek->minInclusive = minInclusive;
-	op_nodeByIdSeek->maxInclusive = maxInclusive;
+	op->minInclusive = minInclusive;
+	op->maxInclusive = maxInclusive;
 
 	// The smallest possible entity ID is 0.
-	op_nodeByIdSeek->minId = minId;
-	if(minId == ID_RANGE_UNBOUND) op_nodeByIdSeek->minId = 0;
+	op->minId = minId;
+	if(minId == ID_RANGE_UNBOUND) op->minId = 0;
 
 	// The largest possible entity ID is the same as Graph_RequiredMatrixDim.
-	if(maxId == ID_RANGE_UNBOUND) maxId = Graph_RequiredMatrixDim(op_nodeByIdSeek->g);
-	op_nodeByIdSeek->maxId = MIN(Graph_RequiredMatrixDim(op_nodeByIdSeek->g), maxId);
+	if(maxId == ID_RANGE_UNBOUND) maxId = Graph_RequiredMatrixDim(op->g);
+	op->maxId = MIN(Graph_RequiredMatrixDim(op->g), maxId);
 
-	op_nodeByIdSeek->currentId = op_nodeByIdSeek->minId;
+	op->currentId = op->minId;
 	/* Advance current ID when min is not inclusive and
 	 * minimum range is specified. */
-	if(!minInclusive && minId != ID_RANGE_UNBOUND) op_nodeByIdSeek->currentId++;
+	if(!minInclusive && minId != ID_RANGE_UNBOUND) op->currentId++;
 
-	op_nodeByIdSeek->nodeRecIdx = nodeRecIdx;
 
-	OpBase_Init(&op_nodeByIdSeek->op);
-	op_nodeByIdSeek->op.name = "NodeByIdSeek";
-	op_nodeByIdSeek->op.type = OPType_NODE_BY_ID_SEEK;
-	op_nodeByIdSeek->op.consume = OpNodeByIdSeekConsume;
-	op_nodeByIdSeek->op.init = OpNodeByIdSeekInit;
-	op_nodeByIdSeek->op.reset = OpNodeByIdSeekReset;
-	op_nodeByIdSeek->op.free = OpNodeByIdSeekFree;
+	OpBase_Init((OpBase *)op, OPType_NODE_BY_ID_SEEK, "NodeByIdSeek", Init, Consume, Reset, NULL, Free,
+				plan);
 
-	return (OpBase *)op_nodeByIdSeek;
+	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, node->alias);
+
+	return (OpBase *)op;
 }
 
-OpResult OpNodeByIdSeekInit(OpBase *opBase) {
+static OpResult Init(OpBase *opBase) {
 	return OP_OK;
 }
 
-Record OpNodeByIdSeekConsume(OpBase *opBase) {
+static Record Consume(OpBase *opBase) {
 	OpNodeByIdSeek *op = (OpNodeByIdSeek *)opBase;
 	Node n;
 	n.entity = NULL;
@@ -85,19 +88,19 @@ Record OpNodeByIdSeekConsume(OpBase *opBase) {
 	// TODO If we're replacing a label scan, the correct label can be populated now.
 	n.label = NULL;
 
-	Record r = Record_New(opBase->record_map->record_len);
+	Record r = OpBase_CreateRecord((OpBase *)op);
 	Record_AddNode(r, op->nodeRecIdx, n);
 	return r;
 }
 
-OpResult OpNodeByIdSeekReset(OpBase *ctx) {
+static OpResult Reset(OpBase *ctx) {
 	OpNodeByIdSeek *op = (OpNodeByIdSeek *)ctx;
 	op->currentId = op->minId;
 	if(!op->minInclusive) op->currentId++;
 	return OP_OK;
 }
 
-void OpNodeByIdSeekFree(OpBase *ctx) {
+static void Free(OpBase *ctx) {
 
 }
 

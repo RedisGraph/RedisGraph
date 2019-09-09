@@ -7,6 +7,7 @@
 #pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../graph/entities/node.h"
 #include "../../resultset/resultset_statistics.h"
 #include "rax.h"
@@ -26,4 +27,4 @@ typedef struct {
 	ResultSetStatistics *stats;
 } OpDelete;
 
-OpBase *NewDeleteOp(uint *nodes_ref, uint *edges_ref, ResultSetStatistics *stats);
+OpBase *NewDeleteOp(const ExecutionPlan *plan, uint *nodes_ref, uint *edges_ref, ResultSetStatistics *stats);

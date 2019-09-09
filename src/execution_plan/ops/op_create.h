@@ -7,10 +7,11 @@
 #pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
+#include "../../ast/ast_shared.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
 #include "../../resultset/resultset_statistics.h"
-#include "../../ast/ast_shared.h"
 
 /* Creates new entities according to the CREATE clause. */
 
@@ -37,4 +38,4 @@ typedef struct {
 	ResultSetStatistics *stats;
 } OpCreate;
 
-OpBase *NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreateCtx *edges);
+OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreateCtx *edges);

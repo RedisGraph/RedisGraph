@@ -7,6 +7,7 @@
 #pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../graph/graph.h"
 
 #define ID_RANGE_UNBOUND -1
@@ -25,30 +26,10 @@ typedef struct {
 
 OpBase *NewOpNodeByIdSeekOp
 (
-	unsigned int nodeRecIdx,
+    const ExecutionPlan *plan,
+    const QGNode *node,
 	NodeID minId,
 	NodeID maxId,
 	bool includeMin,
 	bool includeMax
 );
-
-OpResult OpNodeByIdSeekInit
-(
-	OpBase *opBase
-);
-
-Record OpNodeByIdSeekConsume
-(
-	OpBase *opBase
-);
-
-OpResult OpNodeByIdSeekReset
-(
-	OpBase *ctx
-);
-
-void OpNodeByIdSeekFree
-(
-	OpBase *ctx
-);
-

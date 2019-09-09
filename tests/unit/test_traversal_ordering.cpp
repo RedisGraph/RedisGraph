@@ -41,14 +41,13 @@ class TraversalOrderingTest: public ::testing::Test {
 		return ast;
 	}
 
-	FT_FilterNode *build_filter_tree_from_query(RecordMap *map, const char *query) {
+	FT_FilterNode *build_filter_tree_from_query(const char *query) {
 		AST *ast = _build_ast(query);
-		return AST_BuildFilterTree(ast, map);
+		return AST_BuildFilterTree(ast);
 	}
 };
 
 TEST_F(TraversalOrderingTest, TransposeFree) {
-	RecordMap *map = RecordMap_New();
 	/* Given the ordered (left to right) set of algebraic expression:
 	 * { [CD], [BC], [AB] }
 	 * Which represents the traversal:
@@ -115,7 +114,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
 	set[1] = ExpBC;
 	set[2] = ExpAB;
 
-	orderExpressions(set, 3, map, NULL);
+	orderExpressions(set, 3, NULL);
 	ASSERT_EQ(set[0], ExpAB);
 	ASSERT_EQ(set[1], ExpBC);
 	ASSERT_EQ(set[2], ExpCD);
@@ -124,7 +123,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
 	set[0] = ExpAB;
 	set[1] = ExpBC;
 	set[2] = ExpCD;
-	orderExpressions(set, 3, map, NULL);
+	orderExpressions(set, 3, NULL);
 	ASSERT_EQ(set[0], ExpAB);
 	ASSERT_EQ(set[1], ExpBC);
 	ASSERT_EQ(set[2], ExpCD);
@@ -133,7 +132,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
 	set[0] = ExpAB;
 	set[1] = ExpCD;
 	set[2] = ExpBC;
-	orderExpressions(set, 3, map, NULL);
+	orderExpressions(set, 3, NULL);
 	ASSERT_EQ(set[0], ExpAB);
 	ASSERT_EQ(set[1], ExpBC);
 	ASSERT_EQ(set[2], ExpCD);
@@ -142,7 +141,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
 	set[0] = ExpBC;
 	set[1] = ExpAB;
 	set[2] = ExpCD;
-	orderExpressions(set, 3, map, NULL);
+	orderExpressions(set, 3, NULL);
 	ASSERT_EQ(set[0], ExpAB);
 	ASSERT_EQ(set[1], ExpBC);
 	ASSERT_EQ(set[2], ExpCD);
@@ -151,7 +150,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
 	set[0] = ExpBC;
 	set[1] = ExpCD;
 	set[2] = ExpAB;
-	orderExpressions(set, 3, map, NULL);
+	orderExpressions(set, 3, NULL);
 	ASSERT_EQ(set[0], ExpAB);
 	ASSERT_EQ(set[1], ExpBC);
 	ASSERT_EQ(set[2], ExpCD);
@@ -160,7 +159,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
 	set[0] = ExpCD;
 	set[1] = ExpAB;
 	set[2] = ExpBC;
-	orderExpressions(set, 3, map, NULL);
+	orderExpressions(set, 3, NULL);
 	ASSERT_EQ(set[0], ExpAB);
 	ASSERT_EQ(set[1], ExpBC);
 	ASSERT_EQ(set[2], ExpCD);
@@ -173,7 +172,6 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
 }
 
 TEST_F(TraversalOrderingTest, FilterFirst) {
-	RecordMap *map = RecordMap_New();
 	/* Given the ordered (left to right) set of algebraic expression:
 	 * { [AB], [BC], [CD] }
 	 * Which represents the traversal:
@@ -235,7 +233,7 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	filters = build_filter_tree_from_query(map,
 										   "MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE A.val = 1 RETURN *");
 
-	orderExpressions(set, 3, map, filters);
+	orderExpressions(set, 3, filters);
 	ASSERT_EQ(set[0], ExpAB);
 	ASSERT_EQ(set[1], ExpBC);
 	ASSERT_EQ(set[2], ExpCD);
@@ -247,10 +245,9 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	set[1] = ExpBC;
 	set[2] = ExpCD;
 
-	filters = build_filter_tree_from_query(map,
-										   "MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE B.val = 1 RETURN *");
+	filters = build_filter_tree_from_query("MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE B.val = 1 RETURN *");
 
-	orderExpressions(set, 3, map, filters);
+	orderExpressions(set, 3, filters);
 	ASSERT_TRUE(set[0] == ExpAB || set[0] == ExpBC);
 
 	FilterTree_Free(filters);
@@ -260,10 +257,9 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	set[1] = ExpBC;
 	set[2] = ExpCD;
 
-	filters = build_filter_tree_from_query(map,
-										   "MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE C.val = 1 RETURN *");
+	filters = build_filter_tree_from_query("MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE C.val = 1 RETURN *");
 
-	orderExpressions(set, 3, map, filters);
+	orderExpressions(set, 3, filters);
 	ASSERT_TRUE(set[0] == ExpBC || set[0] == ExpCD);
 
 	FilterTree_Free(filters);
@@ -273,18 +269,16 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	set[1] = ExpBC;
 	set[2] = ExpCD;
 
-	filters = build_filter_tree_from_query(map,
-										   "MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE D.val = 1 RETURN *");
+	filters = build_filter_tree_from_query("MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE D.val = 1 RETURN *");
 
-	orderExpressions(set, 3, map, filters);
+	orderExpressions(set, 3, filters);
 
 	ASSERT_EQ(set[0], ExpCD);
 	ASSERT_EQ(set[1], ExpBC);
 	ASSERT_EQ(set[2], ExpAB);
 
 	// Clean up.
-	FilterTree_Free(filters);
-	RecordMap_Free(map);
+	FilterTree_Free(filters);	
 	AlgebraicExpression_Free(ExpAB);
 	AlgebraicExpression_Free(ExpBC);
 	AlgebraicExpression_Free(ExpCD);

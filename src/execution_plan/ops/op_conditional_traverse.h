@@ -7,9 +7,9 @@
 #pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../arithmetic/algebraic_expression.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
-#include "../../util/vector.h"
 
 /* OP Traverse */
 typedef struct {
@@ -33,4 +33,4 @@ typedef struct {
 } CondTraverse;
 
 /* Creates a new Traverse operation */
-OpBase *NewCondTraverseOp(Graph *g, RecordMap *record_map, AlgebraicExpression *ae, uint records_cap);
+OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae, uint records_cap);

@@ -7,6 +7,7 @@
 #pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
 #include "../../resultset/resultset_statistics.h"
@@ -40,4 +41,4 @@ typedef struct {
 	bool updates_commited;                      /* Updates performed? */
 } OpUpdate;
 
-OpBase *NewUpdateOp(GraphContext *gc, EntityUpdateEvalCtx *update_exps, uint update_exp_count, ResultSetStatistics *stats);
+OpBase *NewUpdateOp(const ExecutionPlan *plan, GraphContext *gc, EntityUpdateEvalCtx *update_exps, uint update_exp_count, ResultSetStatistics *stats);

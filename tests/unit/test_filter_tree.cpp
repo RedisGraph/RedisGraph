@@ -60,8 +60,7 @@ class FilterTreeTest: public ::testing::Test {
 
 	FT_FilterNode *build_tree_from_query(const char *q) {
 		AST *ast = _build_ast(q);
-		RecordMap *map = RecordMap_New();
-		FT_FilterNode *tree = AST_BuildFilterTree(ast, map);
+		FT_FilterNode *tree = AST_BuildFilterTree(ast);
 		return tree;
 	}
 

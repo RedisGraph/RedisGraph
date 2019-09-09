@@ -7,10 +7,15 @@
 #include "op_sort.h"
 #include "op_project.h"
 #include "op_aggregate.h"
-
 #include "../../util/arr.h"
 #include "../../util/qsort.h"
 #include "../../util/rmalloc.h"
+
+/* Forward declarations. */
+static OpResult Init(OpBase *opBase);
+static Record Consume(OpBase *opBase);
+static OpResult Reset(OpBase *opBase);
+static void Free(OpBase *opBase);
 
 static bool _record_islt(Record a, Record b, const OpSort *op) {
 	// First N values in record correspond to RETURN expressions
@@ -120,29 +125,23 @@ uint _determineOffset(OpBase *op) {
 	return _determineOffset(op->children[0]);
 }
 
-OpBase *NewSortOp(AR_ExpNode **expressions, int direction, unsigned int limit) {
-	OpSort *sort = malloc(sizeof(OpSort));
-	sort->offset = 0;
-	sort->expressions = expressions;
-	sort->direction = direction;
-	sort->heap = NULL;
-	sort->buffer = NULL;
+OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **expressions, int direction,
+				  unsigned int limit) {
+	OpSort *op = malloc(sizeof(OpSort));
+	op->offset = 0;
+	op->heap = NULL;
+	op->buffer = NULL;
+	op->limit = limit;
+	op->direction = direction;
+	op->expressions = expressions;
 
-	sort->limit = limit;
-
-	if(sort->limit) sort->heap = heap_new(_heap_elem_compare, sort);
-	else sort->buffer = array_new(Record, 32);
+	if(op->limit) op->heap = heap_new(_heap_elem_compare, op);
+	else op->buffer = array_new(Record, 32);
 
 	// Set our Op operations
-	OpBase_Init(&sort->op);
-	sort->op.name = "Sort";
-	sort->op.type = OPType_SORT;
-	sort->op.consume = SortConsume;
-	sort->op.reset = SortReset;
-	sort->op.init = SortInit;
-	sort->op.free = SortFree;
+	OpBase_Init((OpBase *)op, OPType_SORT, "Sort", Init, Consume, Reset, NULL, Free, plan);
 
-	return (OpBase *)sort;
+	return (OpBase *)op;
 }
 
 /* `op` is an actual variable in the caller function. Using it in a
@@ -150,15 +149,14 @@ OpBase *NewSortOp(AR_ExpNode **expressions, int direction, unsigned int limit) {
  * accept only 2 arguments. */
 #define RECORD_SORT(a, b) (_record_islt((*a), (*b), op))
 
-OpResult SortInit(OpBase *opBase) {
-	OpSort *op = (OpSort *) opBase;
+static OpResult Init(OpBase *opBase) {
+	OpSort *op = (OpSort *)opBase;
 	op->offset = _determineOffset(opBase->children[0]);
 	return OP_OK;
 }
 
-Record SortConsume(OpBase *opBase) {
-	OpSort *op = (OpSort *) opBase;
-
+static Record Consume(OpBase *opBase) {
+	OpSort *op = (OpSort *)opBase;
 	Record r = _handoff(op);
 	if(r) return r;
 
@@ -192,7 +190,7 @@ Record SortConsume(OpBase *opBase) {
 }
 
 /* Restart iterator */
-OpResult SortReset(OpBase *ctx) {
+static OpResult Reset(OpBase *ctx) {
 	OpSort *op = (OpSort *)ctx;
 	uint recordCount;
 
@@ -216,7 +214,7 @@ OpResult SortReset(OpBase *ctx) {
 }
 
 /* Frees Sort */
-void SortFree(OpBase *ctx) {
+static void Free(OpBase *ctx) {
 	OpSort *op = (OpSort *)ctx;
 
 	if(op->heap) {

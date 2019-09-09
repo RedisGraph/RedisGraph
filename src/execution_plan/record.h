@@ -54,6 +54,9 @@ void Record_Truncate(Record r, uint count);
 // Merge record b into a, sharing any nested references in b with a.
 void Record_Merge(Record *a, const Record b);
 
+// Merge record b into a, transfer value ownership from b to a.
+void Record_TransferEntries(Record *to, Record from);
+
 // Returns number of entries record can hold.
 uint Record_length(const Record r);
 

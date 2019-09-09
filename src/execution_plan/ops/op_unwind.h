@@ -7,19 +7,20 @@
 #pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
 /* OP Unwind */
 
-typedef struct
-{
-    OpBase op;
-    AR_ExpNode *exp;      // Arithmetic expression (evaluated as an SIArray)
-    uint listIdx;         // Current list index
-    int unwindRecIdx;     // Update record at this index.
-    SIValue list;         // list which the unwind operation is performed on
-    Record currentRecord; // record to clone and add a value extracted from the list
+typedef struct {
+	OpBase op;
+	uint listIdx;         // Current list index
+	SIValue list;         // list which the unwind operation is performed on
+	AR_ExpNode *exp;      // Arithmetic expression (evaluated as an SIArray)
+	int unwindRecIdx;     // Update record at this index.
+	Record currentRecord; // record to clone and add a value extracted from the list
 } OpUnwind;
 
 /* Creates a new Unwind operation */
-OpBase *NewUnwindOp(uint record_idx, AR_ExpNode *exp);
+OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp);
+

@@ -19,6 +19,12 @@ typedef struct {
 	QGEdge **edges;             // Edges contained in QueryGraph
 } QueryGraph;
 
+typedef enum {
+	ENTITY_UNKNOWN,
+	ENTITY_NODE,
+	ENTITY_EDGE,
+} EntityType;
+
 /* Prepare a new query graph with initial allocations for
  * the provided node and edge counts. */
 QueryGraph *QueryGraph_New(uint node_cap, uint edge_cap);
@@ -32,25 +38,21 @@ void QueryGraph_ConnectNodes(QueryGraph *qg, QGNode *src, QGNode *dest, QGEdge *
 /* Add all nodes and relationships from a single path
  * (from part of a MATCH or CREATE pattern, or a MERGE clause)
  * to the QueryGraph. */
-void QueryGraph_AddPath(const GraphContext *gc, const AST *ast, QueryGraph *qg,
-						const cypher_astnode_t *path);
+void QueryGraph_AddPath(const GraphContext *gc, QueryGraph *qg, const cypher_astnode_t *path);
 
 /* Adds all paths described in an AST pattern node (from a
  * MATCH or MERGE clause) to a meta-graph that describes all
  * nodes and relationships in a query. */
 QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast);
 
-/* Retrieve a graph entity from an AST pointer */
-void *QueryGraph_GetEntityByASTRef(const QueryGraph *qg, const cypher_astnode_t *ref);
+/* Retrieve node by alias */
+QGNode *QueryGraph_GetNodeByAlias(const QueryGraph *qg, const char *alias);
 
-/* Retrieve a node by AST ID. */
-QGNode *QueryGraph_GetNodeByID(const QueryGraph *qg, uint id);
-
-/* Retrieve an edge by AST ID. */
-QGEdge *QueryGraph_GetEdgeByID(const QueryGraph *qg, uint id);
+/* Retrieve edge by alias */
+QGEdge *QueryGraph_GetEdgeByAlias(const QueryGraph *qg, const char *alias);
 
 /* Determine whether a given alias refers to a node or relation. */
-GraphEntityType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *alias);
+EntityType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *alias);
 
 /* Performs deep copy of input query graph. */
 QueryGraph *QueryGraph_Clone(const QueryGraph *g);

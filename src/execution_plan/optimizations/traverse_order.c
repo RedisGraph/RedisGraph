@@ -34,8 +34,7 @@ void Arrangement_Print(Arrangement arrangement, uint size) {
 	printf("Arrangement_Print\n");
 	for(uint i = 0; i < size; i++) {
 		AlgebraicExpression *exp = arrangement[i];
-		/* printf("%d, src: %s, dest: %s\n", i, exp->src_node->alias, exp->dest_node->alias); */
-		printf("%d, src: %u, dest: %u\n", i, exp->src_node->id, exp->dest_node->id);
+		printf("%d, src: %s, dest: %s\n", i, exp->src_node->alias, exp->dest_node->alias);
 	}
 }
 
@@ -173,7 +172,7 @@ static int penalty_arrangement(Arrangement arrangement, uint exp_count) {
 	return penalty;
 }
 
-static int reward_arrangement(Arrangement arrangement, uint exp_count, const RecordMap *record_map,
+static int reward_arrangement(Arrangement arrangement, uint exp_count,
 							  const FT_FilterNode *filters) {
 	// Arrangement_Print(arrangement, exp_count);
 	int reward = 0;
@@ -182,16 +181,17 @@ static int reward_arrangement(Arrangement arrangement, uint exp_count, const Rec
 	// A bit naive at the moment.
 	for(uint i = 0; i < exp_count; i++) {
 		AlgebraicExpression *exp = arrangement[i];
-		uint src_id = RecordMap_LookupID(record_map, exp->src_node->id);
-		uint dest_id = RecordMap_LookupID(record_map, exp->dest_node->id);
-
-		if(raxFind(filtered_entities, (unsigned char *)&src_id, sizeof(src_id)) != raxNotFound) {
+		if(raxFind(filtered_entities, (unsigned char *)exp->src_node->alias,
+				   strlen(exp->src_node->alias)) != raxNotFound) {
 			reward += F * (exp_count - i);
-			raxRemove(filtered_entities, (unsigned char *)&src_id, sizeof(src_id), NULL);
+			raxRemove(filtered_entities, (unsigned char *)exp->src_node->alias, strlen(exp->src_node->alias),
+					  NULL);
 		}
-		if(raxFind(filtered_entities, (unsigned char *)&dest_id, sizeof(dest_id)) != raxNotFound) {
+		if(raxFind(filtered_entities, (unsigned char *)exp->dest_node->alias,
+				   strlen(exp->dest_node->alias)) != raxNotFound) {
 			reward += F * (exp_count - i);
-			raxRemove(filtered_entities, (unsigned char *)&dest_id, sizeof(dest_id), NULL);
+			raxRemove(filtered_entities, (unsigned char *)exp->dest_node->alias, strlen(exp->dest_node->alias),
+					  NULL);
 		}
 		if(exp->src_node->label) reward += L * (exp_count - i);
 	}
@@ -201,11 +201,11 @@ static int reward_arrangement(Arrangement arrangement, uint exp_count, const Rec
 	return reward;
 }
 
-static int score_arrangement(Arrangement arrangement, uint exp_count, const RecordMap *record_map,
+static int score_arrangement(Arrangement arrangement, uint exp_count,
 							 const FT_FilterNode *filters) {
 	int score = 0;
 	int penalty = penalty_arrangement(arrangement, exp_count);
-	int reward = reward_arrangement(arrangement, exp_count, record_map, filters);
+	int reward = reward_arrangement(arrangement, exp_count, filters);
 	score -= penalty;
 	score += reward;
 	return score;
@@ -235,8 +235,7 @@ static void resolve_winning_sequence(AlgebraicExpression **exps, uint exp_count)
  * we pick the order in which the expressions will be evaluated
  * taking into account filters and transposes.
  * exps will reordered. */
-void orderExpressions(AlgebraicExpression **exps, uint exps_count, const RecordMap *record_map,
-					  const FT_FilterNode *filters) {
+void orderExpressions(AlgebraicExpression **exps, uint exps_count, const FT_FilterNode *filters) {
 	assert(exps && exps_count > 0);
 
 	// Single expression, return quickly.
@@ -264,7 +263,7 @@ void orderExpressions(AlgebraicExpression **exps, uint exps_count, const RecordM
 
 	for(uint i = 0; i < valid_arrangement_count; i++) {
 		Arrangement arrangement = valid_arrangements[i];
-		int score = score_arrangement(arrangement, exps_count, record_map, filters);
+		int score = score_arrangement(arrangement, exps_count, filters);
 		// printf("score: %d\n", score);
 		// Arrangement_Print(arrangement, exps_count);
 		if(max_score < score) {

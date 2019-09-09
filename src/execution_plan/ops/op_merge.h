@@ -7,6 +7,7 @@
 #pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
 #include "../../ast/ast_shared.h"
@@ -21,11 +22,11 @@
 typedef struct {
 	OpBase op;                        // Base op.
 	GraphContext *gc;                 // Graph data.
-	NodeCreateCtx *nodes_to_merge;
-	EdgeCreateCtx *edges_to_merge;
-	ResultSetStatistics *stats;       // Required for statistics updates.
 	bool matched;                     // Has the entire pattern been matched?
 	bool created;                     // Has the entire pattern been created?
+	ResultSetStatistics *stats;       // Required for statistics updates.
+	NodeCreateCtx *nodes_to_merge;
+	EdgeCreateCtx *edges_to_merge;
 } OpMerge;
 
-OpBase *NewMergeOp(ResultSetStatistics *stats, NodeCreateCtx *nodes_to_merge, EdgeCreateCtx *edges_to_merge);
+OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeCreateCtx *nodes_to_merge, EdgeCreateCtx *edges_to_merge);

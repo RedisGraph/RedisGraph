@@ -1,8 +1,8 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ *
+ * This file is available under the Redis Labs Source Available License Agreement
+ */
 
 #include "execution_plan.h"
 #include "./ops/ops.h"
@@ -27,40 +27,27 @@ static inline OpBase *_ExecutionPlan_LocateLeaf(OpBase *root) {
 	return _ExecutionPlan_LocateLeaf(root->children[0]);
 }
 
-// Associate each operation in the chain with the provided RecordMap.
-static void _associateRecordMap(OpBase *root, RecordMap *record_map) {
-	// If this op has already been initialized,
-	// we don't need to recurse further.
-	if(root->record_map != NULL) return;
-
-	// Share this ExecutionPlanSegment's record map with the operation.
-	root->record_map = record_map;
-
-	for(int i = 0; i < root->childCount; i++) {
-		_associateRecordMap(root->children[i], record_map);
-	}
-}
-
 /* In a query with a RETURN *, build projections for all explicit aliases
  * in previous clauses. */
-static void _ReturnExpandAll(ExecutionPlanSegment *segment, AST *ast) {
+static AR_ExpNode **_ReturnExpandAll(AST *ast) {
 	// Collect all unique aliases
 	const char **aliases = AST_CollectElementNames(ast);
 	uint count = array_len(aliases);
 
 	// Build an expression for each alias
-	segment->projections = array_new(AR_ExpNode *, count);
+	AR_ExpNode **return_expressions = array_new(AR_ExpNode *, count);
 	for(int i = 0; i < count; i ++) {
-		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(segment->record_map, aliases[i], NULL);
+		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(aliases[i], NULL);
 		exp->resolved_name = aliases[i];
-		segment->projections = array_append(segment->projections, exp);
+		return_expressions = array_append(return_expressions, exp);
 	}
 
 	array_free(aliases);
+	return return_expressions;
 }
 
 // Handle ORDER entities
-static AR_ExpNode **_BuildOrderExpressions(RecordMap *record_map, AR_ExpNode **projections,
+static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 										   const cypher_astnode_t *order_clause) {
 	uint projection_count = array_len(projections);
 	uint count = cypher_ast_order_by_nitems(order_clause);
@@ -84,12 +71,12 @@ static AR_ExpNode **_BuildOrderExpressions(RecordMap *record_map, AR_ExpNode **p
 			if(exp == NULL) {
 				// We didn't match any previous projections. This can occur when we're
 				// ordering by a projected WITH entity that is not also being returned.
-				exp = AR_EXP_FromExpression(record_map, ast_exp);
+				exp = AR_EXP_FromExpression(ast_exp);
 			}
 		} else {
 			// Independent operator like:
 			// ORDER BY COUNT(a)
-			exp = AR_EXP_FromExpression(record_map, ast_exp);
+			exp = AR_EXP_FromExpression(ast_exp);
 		}
 
 		order_exps = array_append(order_exps, exp);
@@ -102,25 +89,20 @@ static AR_ExpNode **_BuildOrderExpressions(RecordMap *record_map, AR_ExpNode **p
 
 // Handle RETURN entities
 // (This function is not static because it is relied upon by unit tests)
-void _BuildReturnExpressions(ExecutionPlanSegment *segment, const cypher_astnode_t *ret_clause,
-							 AST *ast) {
-	RecordMap *record_map = segment->record_map;
+AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause, AST *ast) {
 	// Query is of type "RETURN *",
 	// collect all defined identifiers and create return elements for them
-	if(cypher_ast_return_has_include_existing(ret_clause)) {
-		_ReturnExpandAll(segment, ast);
-		return;
-	}
+	if(cypher_ast_return_has_include_existing(ret_clause)) return _ReturnExpandAll(ast);
 
 	uint count = cypher_ast_return_nprojections(ret_clause);
-	segment->projections = array_new(AR_ExpNode *, count);
+	AR_ExpNode **return_expressions = array_new(AR_ExpNode *, count);
 	for(uint i = 0; i < count; i++) {
 		const cypher_astnode_t *projection = cypher_ast_return_get_projection(ret_clause, i);
 		// The AST expression can be an identifier, function call, or constant
 		const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
 
 		// Construction an AR_ExpNode to represent this return entity.
-		AR_ExpNode *exp = AR_EXP_FromExpression(record_map, ast_exp);
+		AR_ExpNode *exp = AR_EXP_FromExpression(ast_exp);
 
 		// Find the resolved name of the entity - its alias, its identifier if referring to a full entity,
 		// the entity.prop combination ("a.val"), or the function call ("MAX(a.val)")
@@ -137,12 +119,13 @@ void _BuildReturnExpressions(ExecutionPlanSegment *segment, const cypher_astnode
 		}
 
 		exp->resolved_name = identifier;
-		segment->projections = array_append(segment->projections, exp);
+		return_expressions = array_append(return_expressions, exp);
 	}
+
+	return return_expressions;
 }
 
-static AR_ExpNode **_BuildWithExpressions(RecordMap *record_map,
-										  const cypher_astnode_t *with_clause) {
+static AR_ExpNode **_BuildWithExpressions(const cypher_astnode_t *with_clause) {
 	uint count = cypher_ast_with_nprojections(with_clause);
 	AR_ExpNode **with_expressions = array_new(AR_ExpNode *, count);
 	for(uint i = 0; i < count; i++) {
@@ -150,7 +133,7 @@ static AR_ExpNode **_BuildWithExpressions(RecordMap *record_map,
 		const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
 
 		// Construction an AR_ExpNode to represent this entity.
-		AR_ExpNode *exp = AR_EXP_FromExpression(record_map, ast_exp);
+		AR_ExpNode *exp = AR_EXP_FromExpression(ast_exp);
 
 		// Find the resolved name of the entity - its alias, its identifier if referring to a full entity,
 		// the entity.prop combination ("a.val"), or the function call ("MAX(a.val)").
@@ -181,8 +164,7 @@ static AR_ExpNode **_BuildWithExpressions(RecordMap *record_map,
 /* _BuildCallProjections creates an array of expression nodes to populate a Project operation with.
  * All Strings in the YIELD block of a CALL clause are represented, or the procedure-registered
  * outputs if the YIELD block is missing. */
-static AR_ExpNode **_BuildCallProjections(RecordMap *record_map,
-										  const cypher_astnode_t *call_clause, AST *ast) {
+static AR_ExpNode **_BuildCallProjections(const cypher_astnode_t *call_clause, AST *ast) {
 	// Handle yield entities
 	uint yield_count = cypher_ast_call_nprojections(call_clause);
 	AR_ExpNode **expressions = array_new(AR_ExpNode *, yield_count);
@@ -192,7 +174,7 @@ static AR_ExpNode **_BuildCallProjections(RecordMap *record_map,
 		const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
 
 		// Construction an AR_ExpNode to represent this entity.
-		AR_ExpNode *exp = AR_EXP_FromExpression(record_map, ast_exp);
+		AR_ExpNode *exp = AR_EXP_FromExpression(ast_exp);
 
 		const char *identifier = NULL;
 		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(projection);
@@ -224,7 +206,7 @@ static AR_ExpNode **_BuildCallProjections(RecordMap *record_map,
 			// AR_EXP_NewVariableOperandNode() fails without this call.
 			// Consider alternatives, because this is an annoying kludge.
 			ASTMap_FindOrAddAlias(ast, name, IDENTIFIER_NOT_FOUND);
-			AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(record_map, name, NULL);
+			AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(name, NULL);
 			exp->resolved_name = name;
 			expressions = array_append(expressions, exp);
 		}
@@ -236,8 +218,7 @@ static AR_ExpNode **_BuildCallProjections(RecordMap *record_map,
 
 /* Strings enclosed in the parentheses of a CALL clause represent the arguments to the procedure.
  * _BuildCallArguments creates a string array holding all of these arguments. */
-static const char **_BuildCallArguments(RecordMap *record_map,
-										const cypher_astnode_t *call_clause) {
+static const char **_BuildCallArguments(const cypher_astnode_t *call_clause) {
 	// Handle argument entities
 	uint arg_count = cypher_ast_call_narguments(call_clause);
 	const char **arguments = array_new(const char *, arg_count);
@@ -261,25 +242,25 @@ static const char **_BuildCallArguments(RecordMap *record_map,
 	return arguments;
 }
 
-static inline void _ExecutionPlan_UpdateRoot(ExecutionPlanSegment *segment, OpBase *new_root) {
-	if(segment->root) ExecutionPlan_NewRoot(segment->root, new_root);
-	segment->root = new_root;
+static inline void _ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_root) {
+	if(plan->root) ExecutionPlan_NewRoot(plan->root, new_root);
+	plan->root = new_root;
 }
 
-static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segment, QueryGraph *qg,
-													AST *ast, FT_FilterNode *ft) {
+static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg, AST *ast,
+											 FT_FilterNode *ft) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
 	QueryGraph **connectedComponents = QueryGraph_ConnectedComponents(qg);
 	uint connectedComponentsCount = array_len(connectedComponents);
-	segment->connected_components = connectedComponents;
+	plan->connected_components = connectedComponents;
 
 	/* If we have multiple graph components, we'll join each chain of traversals
 	 * under a Cartesian Product root operation. */
 	OpBase *cartesianProduct = NULL;
 	if(connectedComponentsCount > 1) {
-		cartesianProduct = NewCartesianProductOp();
-		_ExecutionPlan_UpdateRoot(segment, cartesianProduct);
+		cartesianProduct = NewCartesianProductOp(plan);
+		_ExecutionPlan_UpdateRoot(plan, cartesianProduct);
 	}
 
 	// Keep track after all traversal operations along a pattern.
@@ -290,24 +271,18 @@ static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segmen
 		if(edge_count == 0) {
 			/* If there are no edges in the component, we only need a node scan. */
 			QGNode *n = cc->nodes[0];
-			uint rec_idx = RecordMap_FindOrAddID(segment->record_map, n->id);
-			if(n->labelID != GRAPH_NO_LABEL) root = NewNodeByLabelScanOp(n, rec_idx);
-			else root = NewAllNodeScanOp(gc->g, n, rec_idx);
+			if(n->labelID != GRAPH_NO_LABEL) root = NewNodeByLabelScanOp(plan, n);
+			else root = NewAllNodeScanOp(plan, gc->g, n);
 		} else {
 			/* The component has edges, so we'll build a node scan and a chain of traversals. */
 			uint expCount = 0;
-			AlgebraicExpression **exps = AlgebraicExpression_FromQueryGraph(cc, segment->record_map, &expCount);
+			AlgebraicExpression **exps = AlgebraicExpression_FromQueryGraph(cc, &expCount);
 
 			// Reorder exps, to the most performant arrangement of evaluation.
-			orderExpressions(exps, expCount, segment->record_map, ft);
+			orderExpressions(expCount, exps, ft);
 
 			AlgebraicExpression *exp = exps[0];
-			selectEntryPoint(exp, segment->record_map, ft);
-
-			// Retrieve the AST ID for the source node
-			uint ast_id = exp->src_node->id;
-			// Convert to a Record ID
-			uint record_id = RecordMap_FindOrAddID(segment->record_map, ast_id);
+			selectEntryPoint(exp, ft);
 
 			OpBase *tail = NULL;
 			/* Create the SCAN operation that will be the tail of the traversal chain. */
@@ -320,9 +295,9 @@ static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segmen
 				 * try to locate and remove it, there's no real harm except some performace hit
 				 * in keeping that label matrix. */
 				if(exp->operands[0].diagonal) AlgebraicExpression_RemoveTerm(exp, 0, NULL);
-				tail = NewNodeByLabelScanOp(exp->src_node, record_id);
+				tail = NewNodeByLabelScanOp(plan, exp->src_node);
 			} else {
-				tail = NewAllNodeScanOp(gc->g, exp->src_node, record_id);
+				tail = NewAllNodeScanOp(plan, gc->g, exp->src_node);
 			}
 
 			/* For each expression, build the appropriate traversal operation. */
@@ -331,9 +306,9 @@ static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segmen
 				if(exp->operand_count == 0) continue;
 
 				if(exp->edge && QGEdge_VariableLength(exp->edge)) {
-					root = NewCondVarLenTraverseOp(gc->g, segment->record_map, exp);
+					root = NewCondVarLenTraverseOp(plan, gc->g, exp);
 				} else {
-					root = NewCondTraverseOp(gc->g, segment->record_map, exp, TraverseRecordCap(ast));
+					root = NewCondTraverseOp(plan, gc->g, exp, TraverseRecordCap(ast));
 				}
 				// Insert the new traversal op at the root of the chain.
 				ExecutionPlan_AddOp(root, tail);
@@ -349,207 +324,73 @@ static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segmen
 			ExecutionPlan_AddOp(cartesianProduct, root);
 		} else {
 			// We've built the only necessary traversal chain; add it directly to the ExecutionPlan.
-			if(segment->root) ExecutionPlan_AddOp(segment->root, root);
-			else _ExecutionPlan_UpdateRoot(segment, root);
+			if(plan->root) ExecutionPlan_AddOp(plan->root, root);
+			else _ExecutionPlan_UpdateRoot(plan, root);
 		}
 	}
 }
 
-static void _ExecutionPlanSegment_MapAliasesInExpression(ExecutionPlanSegment *segment,
-														 const cypher_astnode_t *expr) {
-	if(!expr) return;
+static ExecutionPlan *_NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
+										ResultSet *result_set) {
+	// Allocate a new segment
+	ExecutionPlan *plan = rm_calloc(1, sizeof(ExecutionPlan));
+	plan->record_map = raxNew();
+	plan->result_set = result_set;
+	plan->connected_components = NULL;
 
-	if(cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER) {
-		// Encountered an alias - verify that it is represented in the RecordMap.
-		const char *alias = cypher_ast_identifier_get_name(expr);
-		RecordMap_FindOrAddAlias(segment->record_map, alias);
-	}
-
-	uint child_count = cypher_astnode_nchildren(expr);
-	for(uint i = 0; i < child_count; i ++) {
-		_ExecutionPlanSegment_MapAliasesInExpression(segment, cypher_astnode_get_child(expr, i));
-	}
-}
-
-// Ensure that aliases that are referred to in a pattern but not projected still get added to the Record.
-static void _ExecutionPlanSegment_MapAliasesInPattern(ExecutionPlanSegment *segment,
-													  const cypher_astnode_t *pattern) {
-	uint npaths = cypher_ast_pattern_npaths(pattern);
-
-	for(uint i = 0; i < npaths; i++) {
-		const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
-		uint path_elem_count = cypher_ast_pattern_path_nelements(path);
-		for(uint j = 0; j < path_elem_count; j ++) {
-			const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, j);
-			const cypher_astnode_t *ast_props = (j % 2) ? cypher_ast_rel_pattern_get_properties(elem) :
-												cypher_ast_node_pattern_get_properties(elem);
-
-			if(ast_props) {
-				assert(cypher_astnode_type(ast_props) == CYPHER_AST_MAP &&
-					   "parameters are not currently supported");
-				uint value_count = cypher_ast_map_nentries(ast_props);
-				for(uint k = 0; k < value_count; k ++) {
-					const cypher_astnode_t *value = cypher_ast_map_get_value(ast_props, k);
-					_ExecutionPlanSegment_MapAliasesInExpression(segment, value);
-				}
-			}
-
-		}
-	}
-}
-
-// Map the AST entities referred to in SET, CREATE, and DELETE clauses.
-// This is necessary so that edge references will be constructed prior to forming AlgebraicExpressions.
-static void _ExecutionPlanSegment_MapReferences(ExecutionPlanSegment *segment, AST *ast) {
-	const cypher_astnode_t **set_clauses = AST_GetClauses(ast, CYPHER_AST_SET);
-	if(set_clauses) {
-		uint set_count = array_len(set_clauses);
-		for(uint i = 0; i < set_count; i ++) {
-			const cypher_astnode_t *set_clause = set_clauses[i];
-			uint nitems = cypher_ast_set_nitems(set_clause);
-			for(uint j = 0; j < nitems; j++) {
-				const cypher_astnode_t *set_item = cypher_ast_set_get_item(set_clause, j);
-				const cypher_astnode_t *key_to_set = cypher_ast_set_property_get_property(
-														 set_item); // type == CYPHER_AST_PROPERTY_OPERATOR
-				const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(key_to_set);
-				assert(cypher_astnode_type(prop_expr) == CYPHER_AST_IDENTIFIER);
-				const char *alias = cypher_ast_identifier_get_name(prop_expr);
-				RecordMap_FindOrAddAlias(segment->record_map, alias);
-			}
-		}
-		array_free(set_clauses);
-	}
-
-	const cypher_astnode_t **create_clauses = AST_GetClauses(ast, CYPHER_AST_CREATE);
-	if(create_clauses) {
-		uint create_count = array_len(create_clauses);
-		for(uint i = 0; i < create_count; i ++) {
-			const cypher_astnode_t *create_pattern = cypher_ast_create_get_pattern(create_clauses[i]);
-			_ExecutionPlanSegment_MapAliasesInPattern(segment, create_pattern);
-		}
-		array_free(create_clauses);
-	}
-
-	const cypher_astnode_t **delete_clauses = AST_GetClauses(ast, CYPHER_AST_DELETE);
-	if(delete_clauses) {
-		uint delete_count = array_len(delete_clauses);
-		for(uint i = 0; i < delete_count; i ++) {
-			const cypher_astnode_t *delete_clause = delete_clauses[i];
-			uint nitems = cypher_ast_delete_nexpressions(delete_clause);
-			for(uint j = 0; j < nitems; j++) {
-				const cypher_astnode_t *ast_expr = cypher_ast_delete_get_expression(delete_clause, j);
-				assert(cypher_astnode_type(ast_expr) == CYPHER_AST_IDENTIFIER);
-				const char *alias = cypher_ast_identifier_get_name(ast_expr);
-				RecordMap_FindOrAddAlias(segment->record_map, alias);
-			}
-		}
-		array_free(delete_clauses);
-	}
-}
-
-/* Build projections from this AST's WITH, RETURN, and ORDER clauses. */
-static void _ExecutionPlanSegment_BuildProjections(AST *ast, ExecutionPlanSegment *segment,
-												   AR_ExpNode **prev_projections) {
-	// Retrieve a RETURN clause if one is specified in this AST
+	/* Build projections from this AST's WITH, RETURN, and ORDER clauses. */
+	// Retrieve a RETURN clause if one is specified in this AST's range
 	const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
 	// Retrieve a WITH clause if one is specified in this AST
 	const cypher_astnode_t *with_clause = AST_GetClause(ast, CYPHER_AST_WITH);
 	// We cannot have both a RETURN and WITH clause
 	assert(!(ret_clause && with_clause));
-	segment->projections = NULL;
+
+	AR_ExpNode **projections = NULL;
+	const cypher_astnode_t *order_clause = NULL;
 	if(ret_clause) {
-		_BuildReturnExpressions(segment, ret_clause, ast);
-		// If we have a RETURN * and previous WITH projections, include those projections.
-		if(cypher_ast_return_has_include_existing(ret_clause) && prev_projections) {
-			uint prev_projection_count = array_len(prev_projections);
-			for(uint i = 0; i < prev_projection_count; i++) {
-				// Build a new projection that's just the WITH identifier
-				AR_ExpNode *projection = AR_EXP_NewVariableOperandNode(segment->record_map,
-																	   prev_projections[i]->resolved_name, NULL);
-				projection->resolved_name = prev_projections[i]->resolved_name;
-				segment->projections = array_append(segment->projections, projection);
-			}
-		}
+		projections = _BuildReturnExpressions(ret_clause, ast);
+		order_clause = cypher_ast_return_get_order_by(ret_clause);
 	} else if(with_clause) {
-		segment->projections = _BuildWithExpressions(segment->record_map, with_clause);
+		projections = _BuildWithExpressions(with_clause);
+		order_clause = cypher_ast_with_get_order_by(with_clause);
 	}
-}
 
-static void _ExecutionPlanSegment_PlaceFilterOps(ExecutionPlanSegment *segment) {
-	Vector *sub_trees = FilterTree_SubTrees(segment->filter_tree);
+	AR_ExpNode **order_expressions = NULL;
+	if(order_clause) order_expressions = _BuildOrderExpressions(projections, order_clause);
 
-	/* For each filter tree find the earliest position along the execution
-	 * after which the filter tree can be applied. */
-	for(int i = 0; i < Vector_Size(sub_trees); i++) {
-		OpBase *op;
-		FT_FilterNode *tree;
-		Vector_Get(sub_trees, i, &tree);
-		rax *references = FilterTree_CollectModified(tree);
+	Vector *ops = NewVector(OpBase *, 1);
 
-		if(raxSize(references) > 0) {
-			/* Scan execution segment, locate the earliest position where all
-			 * references been resolved. */
-			op = ExecutionPlan_LocateReferences(segment->root, references);
-			assert(op);
-		} else {
-			/* The filter tree does not contain references, like:
-			 * WHERE 1=1
-			 * TODO This logic is inadequate. For now, we'll place the op
-			 * directly below the first projection (hopefully there is one!). */
-			op = segment->root;
-			while(op->childCount > 0 && op->type != OPType_PROJECT && op->type != OPType_AGGREGATE) {
-				op = op->children[0];
-			}
+	// Build query graph
+	QueryGraph *qg = BuildQueryGraph(gc, ast);
+	plan->query_graph = qg;
+
+	// Build filter tree
+	FT_FilterNode *filter_tree = AST_BuildFilterTree(ast);
+	plan->filter_tree = filter_tree;
+
+	const cypher_astnode_t *call_clause = AST_GetClause(ast, CYPHER_AST_CALL);
+	if(call_clause) {
+		// A call clause has a procedure name, 0+ arguments (parenthesized expressions), and a projection if YIELD is included
+		const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
+		const char **arguments = _BuildCallArguments(call_clause);
+		AR_ExpNode **yield_exps = _BuildCallProjections(call_clause, ast);
+		uint yield_count = array_len(yield_exps);
+		const char **yields = array_new(const char *, yield_count);
+
+		for(uint i = 0; i < yield_count; i ++) {
+			// Track the names of yielded variables.
+			// yields = array_append(yields, yield_exps[i]->resolved_name);
+			yields = array_append(yields, yield_exps[i]->operand.variadic.entity_alias);
 		}
-
-		/* Create filter node.
-		 * Introduce filter op right below located op. */
-		OpBase *filter_op = NewFilterOp(tree);
-		ExecutionPlan_PushBelow(op, filter_op);
-		raxFree(references);
-	}
-	Vector_Free(sub_trees);
-}
-
-static void _ExecutionPlan_ConnectSegmentOps(OpBase *current_tail, OpBase *prev_head,
-											 AR_ExpNode **prev_projections) {
-	// Need to connect this segment to the previous one.
-	// If the last operation of this segment is a potential data producer, join them
-	// under a Cartesian Product operation. (This could be an Apply op if preferred.)
-	if(current_tail->type & OP_TAPS) {
-		OpBase *op_cp = NewCartesianProductOp();
-		uint prev_projection_count = array_len(prev_projections);
-		// The Apply op must be associated with the IDs projected from the previous segment
-		// in case we're placing filter operations.
-		// (although this is a rather ugly way to accomplish that.)
-		op_cp->modifies = array_new(uint, prev_projection_count);
-		for(uint i = 0; i < prev_projection_count; i ++) {
-			op_cp->modifies = array_append(op_cp->modifies, i);
-		}
-
-		ExecutionPlan_PushBelow(current_tail, op_cp);
-		ExecutionPlan_AddOp(op_cp, prev_head);
-	} else {
-		// All operations can be connected in a single chain.
-		ExecutionPlan_AddOp(current_tail, prev_head);
-	}
-}
-
-static inline uint *_buildModifiesArray(AR_ExpNode **projections) {
-	// TODO improve interface, maybe CollectEntityIDs variant that builds an array
-	rax *modifies_ids = raxNew();
-	uint exp_count = array_len(projections);
-	for(uint i = 0; i < exp_count; i ++) {
-		AR_ExpNode *exp = projections[i];
-		AR_EXP_CollectEntityIDs(exp, modifies_ids);
+		array_free(yield_exps);
+		OpBase *opProcCall = NewProcCallOp(plan, proc_name, arguments, yields);
+		Vector_Push(ops, opProcCall);
 	}
 
-	uint *modifies = array_new(uint, raxSize(modifies_ids));
-	raxIterator iter;
-	raxStart(&iter, modifies_ids);
-	raxSeek(&iter, ">=", (unsigned char *)"", 0);
-	while(raxNext(&iter)) {
-		modifies = array_append(modifies, *(uint *)iter.key);
+	// Build traversal operations for every connected component in the QueryGraph
+	if(AST_ContainsClause(ast, CYPHER_AST_MATCH) || AST_ContainsClause(ast, CYPHER_AST_MERGE)) {
+		_ExecutionPlan_ProcessQueryGraph(plan, qg, ast, filter_tree);
 	}
 	raxFree(modifies_ids);
 
@@ -749,6 +590,41 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 	}
 }
 
+static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan) {
+	Vector *sub_trees = FilterTree_SubTrees(plan->filter_tree);
+
+	/* For each filter tree find the earliest position along the execution
+	 * after which the filter tree can be applied. */
+	for(int i = 0; i < Vector_Size(sub_trees); i++) {
+		FT_FilterNode *tree;
+		Vector_Get(sub_trees, i, &tree);
+		rax *references = FilterTree_CollectModified(tree);
+
+		if(raxSize(references) > 0) {
+			/* Scan execution segment, locate the earliest position where all
+			 * references been resolved. */
+			op = ExecutionPlan_LocateReferences(plan->root, references);
+			assert(op);
+		} else {
+			/* The filter tree does not contain references, like:
+			 * WHERE 1=1
+			 * TODO This logic is inadequate. For now, we'll place the op
+			 * directly below the first projection (hopefully there is one!). */
+			op = plan->root;
+			while(op->childCount > 0 && op->type != OPType_PROJECT && op->type != OPType_AGGREGATE) {
+				op = op->children[0];
+			}
+		}
+
+		/* Create filter node.
+		 * Introduce filter op right below located op. */
+		OpBase *filter_op = NewFilterOp(plan, tree);
+		ExecutionPlan_PushBelow(op, filter_op);
+		raxFree(references);
+	}
+	Vector_Free(sub_trees);
+}
+
 static void _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
 									 ExecutionPlanSegment *segment, AST *ast, ResultSet *result_set,
 									 AR_ExpNode **prev_projections, OpBase *prev_op) {
@@ -822,73 +698,75 @@ static void _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
 		_ExecutionPlan_ConnectSegmentOps(leaf, prev_op, prev_projections);
 	}
 
-	if(segment->filter_tree) _ExecutionPlanSegment_PlaceFilterOps(segment);
+	if(plan->filter_tree) _ExecutionPlanSegment_PlaceFilterOps(plan);
 
-	_associateRecordMap(segment->root, record_map);
+
+	return plan;
 }
 
 ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet *result_set) {
 	AST *ast = QueryCtx_GetAST();
 
-	ExecutionPlan *plan = rm_calloc(1, sizeof(ExecutionPlan));
-
-	plan->result_set = result_set;
-
 	/* Execution plans are created in 1 or more segments. Every WITH clause demarcates the end of
 	 * a segment, and the next clause begins a new one. */
 	uint with_clause_count = AST_GetClauseCount(ast, CYPHER_AST_WITH);
-	plan->segment_count = with_clause_count + 1;
-
-	plan->segments = rm_malloc(plan->segment_count * sizeof(ExecutionPlanSegment));
+	uint return_clause_count = AST_GetClauseCount(ast, CYPHER_AST_RETURN);
+	uint segment_count = with_clause_count + return_clause_count + 1;
 
 	// Retrieve the indices of each WITH clause to properly set the bounds of each segment.
-	uint *segment_indices = NULL;
-	if(with_clause_count > 0) segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
+	uint *segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
+	if(return_clause_count) {
+		uint *return_indices = AST_GetClauseIndices(ast, CYPHER_AST_RETURN);
+		segment_indices = array_append(segment_indices, return_indices[0]);
+		array_free(return_indices);
+	}
+	segment_indices = array_append(segment_indices, cypher_astnode_nchildren(ast->root));
 
-	uint i = 0;
-	uint end_offset;
 	uint start_offset = 0;
-	OpBase *prev_op = NULL;
-	ExecutionPlanSegment *segment = NULL;
-	AR_ExpNode **input_projections = NULL;
+	ExecutionPlan *segments[segment_count];
 
-	// The original AST does not need to be modified if our query only has one segment
-	AST *ast_segment = ast;
-	if(with_clause_count > 0) {
-		// Construct all segments except the final one in a loop.
-		for(i = 0; i < with_clause_count; i++) {
-			end_offset = segment_indices[i] + 1; // Switching from index to bound, so add 1
-			// Slice the AST to only include the clauses in the current segment.
-			ast_segment = AST_NewSegment(ast, start_offset, end_offset);
+	for(int i = 0; i < segment_count; i++) {
+		uint end_offset = segment_indices[i];
+		// Slice the AST to only include the clauses in the current segment.
+		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
 
-			// Construct a new ExecutionPlanSegment.
-			segment = rm_calloc(1, sizeof(ExecutionPlanSegment));
-			plan->segments[i] = segment; // Add the segment now in case of an exception during construction.
-			_NewExecutionPlanSegment(ctx, gc, segment, ast_segment, plan->result_set, input_projections,
-									 prev_op);
+		// Construct a new ExecutionPlanSegment.
+		ExecutionPlan *segment = _NewExecutionPlan(ctx, gc, ast_segment, result_set);
 
-			AST_Free(ast_segment); // Free all AST constructions scoped to this segment
+		// Free the AST segment (the AST tree is freed separately,
+		// since this does not need to be performed the master AST)
+		cypher_ast_free((cypher_astnode_t *)ast_segment->root);
+		AST_Free(ast_segment); // Free all AST constructions scoped to this segment
 
-			// Store the root op and the expressions constructed by this segment's
-			// WITH projection to pass into the *next* segment
-			prev_op = segment->root;
-			input_projections = segment->projections;
-			start_offset = end_offset;
-		}
-		// Prepare the last AST segment
-		end_offset = cypher_astnode_nchildren(ast->root);
-		ast_segment = AST_NewSegment(ast, start_offset, end_offset);
+		segments[i] = segment;
+		start_offset = end_offset;
 	}
 
-	if(segment_indices) array_free(segment_indices);
+	array_free(segment_indices);
 
-	// Construct a new ExecutionPlanSegment.
-	segment = rm_calloc(1, sizeof(ExecutionPlanSegment));
-	plan->segments[i] = segment; // Add the segment now in case of an exception during construction.
-	_NewExecutionPlanSegment(ctx, gc, segment, ast_segment, plan->result_set, input_projections,
-							 prev_op);
+	// Merge segments.
+	for(int i = 1; i < segment_count; i++) {
+		ExecutionPlan *prev_segment = segments[i - 1];
+		ExecutionPlan *current_segment = segments[i];
 
-	plan->root = plan->segments[i]->root;
+		OpBase *prev_root = prev_segment->root;
+		OpBase **taps = array_new(OpBase *, 1);
+		ExecutionPlan_Taps(current_segment->root, &taps);
+		bool has_taps = (array_len(taps) > 0);
+		array_free(taps);
+
+		// Does current execution plan contains taps?
+		if(has_taps) {
+			OpBase *op_cp = NewCartesianProductOp(current_segment);
+			ExecutionPlan_PushBelow(taps[0], op_cp);
+			ExecutionPlan_AddOp(op_cp, prev_root);
+		} else {
+			OpBase *leaf = ExecutionPlan_LocateLeaf(current_segment->root);
+			ExecutionPlan_AddOp(leaf, prev_root);
+		}
+	}
+
+	ExecutionPlan *plan = segments[segment_count - 1];
 
 	// Free current AST segment if it has been constructed here.
 	if(ast_segment != ast) AST_Free(ast_segment);
@@ -905,9 +783,14 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 	optimizePlan(gc, plan);
 
 	// Prepare column names for the ResultSet if this query contains data in addition to statistics.
-	if(result_set) ResultSet_BuildColumns(result_set, segment->projections);
+	// if(result_set) ResultSet_BuildColumns(result_set, plan->projections);
 
 	return plan;
+}
+
+rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan) {
+	assert(plan && plan->record_map);
+	return plan->record_map;
 }
 
 void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx, char *buffer, int buffer_len,
@@ -942,28 +825,20 @@ void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx) {
 	RedisModule_ReplySetArrayLength(ctx, op_count);
 }
 
-void _ExecutionPlanInit(OpBase *root, RecordMap *record_map) {
-	// Share this ExecutionPlanSegment's record map with the operation.
-	// This will already have been set unless the operation was introduced by an optimization.
-	if(root->record_map == NULL) root->record_map = record_map;
-
-	// Initialize the operation if necesary.
-	if(!root->op_initialized && root->init) {
-		root->init(root);
-		root->op_initialized = true;
-	}
+void _ExecutionPlanInit(OpBase *root) {
+	// Initialize the operation if necessary.
+	if(root->init) root->init(root);
 
 	// Continue initializing downstream operations.
 	for(int i = 0; i < root->childCount; i++) {
-		_ExecutionPlanInit(root->children[i], record_map);
+		_ExecutionPlanInit(root->children[i]);
 	}
 }
 
 void ExecutionPlanInit(ExecutionPlan *plan) {
 	if(!plan) return;
 	for(int i = 0; i < plan->segment_count; i ++) {
-		RecordMap *segment_map = plan->segments[i]->record_map;
-		_ExecutionPlanInit(plan->segments[i]->root, segment_map);
+		_ExecutionPlanInit(plan->segments[i]->root);
 	}
 }
 
@@ -1029,41 +904,24 @@ void _ExecutionPlan_FreeOperations(OpBase *op) {
 	OpBase_Free(op);
 }
 
-void _ExecutionPlanSegment_Free(ExecutionPlanSegment *segment) {
-	if(segment->record_map) RecordMap_Free(segment->record_map);
-
-	if(segment->connected_components) {
-		uint connected_component_count = array_len(segment->connected_components);
-		for(uint i = 0; i < connected_component_count; i ++) {
-			QueryGraph_Free(segment->connected_components[i]);
-		}
-		array_free(segment->connected_components);
-	}
-
-	if(segment->query_graph) QueryGraph_Free(segment->query_graph);
-
-	if(segment->projections) {
-		uint projection_count = array_len(segment->projections);
-		for(uint i = 0; i < projection_count; i ++) {
-			AR_EXP_Free(segment->projections[i]);
-		}
-		array_free(segment->projections);
-	}
-
-	rm_free(segment);
-}
-
 void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) return;
-	if(plan->root) _ExecutionPlan_FreeOperations(plan->root);
 
-	if(plan->segments) {
-		for(uint i = 0; i < plan->segment_count; i ++) {
-			if(plan->segments[i]) _ExecutionPlanSegment_Free(plan->segments[i]);
+	for(uint i = 0; i < plan->segment_count; i++) {
+		ExecutionPlan_Free(plan->segments[i]);
+	}
+	rm_free(plan->segments);
+
+	if(plan->connected_components) {
+		uint connected_component_count = array_len(plan->connected_components);
+		for(uint i = 0; i < connected_component_count; i ++) {
+			QueryGraph_Free(plan->connected_components[i]);
 		}
-		rm_free(plan->segments);
+		array_free(plan->connected_components);
 	}
 
+	QueryGraph_Free(plan->query_graph);
+	_ExecutionPlan_FreeOperations(plan->root);
 	rm_free(plan);
 }
 

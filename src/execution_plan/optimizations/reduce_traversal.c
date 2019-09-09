@@ -12,17 +12,17 @@
 #include "../ops/op_conditional_traverse.h"
 #include "../ops/op_cond_var_len_traverse.h"
 
-static bool _entity_resolved(OpBase *root, uint entity_record_idx) {
+static bool _entity_resolved(OpBase *root, const char *alias) {
 	uint count = (root->modifies) ? array_len(root->modifies) : 0;
 
 	for(uint i = 0; i < count; i++) {
-		uint modifies_id = root->modifies[i];
-		if(modifies_id == entity_record_idx) return true;
+		const char *resolved_alias = root->modifies[i];
+		if(strcmp(resolved_alias, alias) == 0) return true;
 	}
 
 	for(int i = 0; i < root->childCount; i++) {
 		OpBase *child = root->children[i];
-		if(_entity_resolved(child, entity_record_idx)) return true;
+		if(_entity_resolved(child, alias)) return true;
 	}
 
 	return false;
@@ -76,17 +76,13 @@ void reduceTraversal(ExecutionPlan *plan) {
 		   ae->operands[0].diagonal) continue;
 
 		/* Search to see if dest is already resolved */
-		uint dest_id = ae->dest_node->id;
-		// Convert the entity ID to a Record ID
-		uint entity_record_idx = RecordMap_LookupID(op->record_map, dest_id);
-		assert(entity_record_idx != IDENTIFIER_NOT_FOUND);
-		if(!_entity_resolved(op->children[0], entity_record_idx)) continue;
+		if(!_entity_resolved(op->children[0], ae->dest_node->alias)) continue;
 
 		/* Both src and dest are already known
 		 * perform expand into instaed of traverse. */
 		if(op->type == OPType_CONDITIONAL_TRAVERSE) {
 			CondTraverse *traverse = (CondTraverse *)op;
-			OpBase *expand_into = NewExpandIntoOp(traverse->graph, op->record_map, traverse->ae,
+			OpBase *expand_into = NewExpandIntoOp(traverse->op.plan, traverse->graph, traverse->ae,
 												  traverse->recordsCap);
 
 			// Set traverse algebraic_expression to NULL to avoid early free.

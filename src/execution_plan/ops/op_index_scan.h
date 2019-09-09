@@ -7,6 +7,7 @@
 #pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../graph/graph.h"
 #include "../../index/index.h"
 #include "redisearch_api.h"
@@ -21,4 +22,4 @@ typedef struct {
 } IndexScan;
 
 /* Creates a new IndexScan operation */
-OpBase *NewIndexScanOp(Graph *g, QGNode *n, uint node_idx, RSIndex *idx, RSResultsIterator *iter);
+OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, QGNode *n, RSIndex *idx, RSResultsIterator *iter);

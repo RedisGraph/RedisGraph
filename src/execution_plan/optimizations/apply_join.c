@@ -175,7 +175,7 @@ void applyJoin(ExecutionPlan *plan) {
 					rhs = t;
 				}
 
-				OpBase *value_hash_join = NewValueHashJoin(lhs, rhs);
+				OpBase *value_hash_join = NewValueHashJoin(cp->plan, lhs, rhs);
 
 				/* Remove filter which is now part of the join operation
 				 * replace cartesian product with join. */

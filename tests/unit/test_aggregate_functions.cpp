@@ -21,8 +21,7 @@ extern "C"
 #include "../../src/util/arr.h"
 
 // Declaration of used functions not in header files
-extern void _BuildReturnExpressions(ExecutionPlanSegment *segment,
-									const cypher_astnode_t *ret_clause, AST *ast);
+extern AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause, AST *ast);
 extern AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count);
 
 

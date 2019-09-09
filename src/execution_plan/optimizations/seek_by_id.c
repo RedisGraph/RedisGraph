@@ -129,7 +129,7 @@ void _reduceTap(ExecutionPlan *plan, OpBase *tap) {
 				}
 
 				_setupIdRange(rel, id, reverse, &minId, &maxId, &inclusiveMin, &inclusiveMax);
-				opNodeByIdSeek = NewOpNodeByIdSeekOp(nodeRecIdx, minId, maxId,
+				opNodeByIdSeek = NewOpNodeByIdSeekOp(tap->plan, nodeRecIdx, minId, maxId,
 													 inclusiveMin, inclusiveMax);
 
 				// Managed to reduce!

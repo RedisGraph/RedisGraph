@@ -8,6 +8,12 @@
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
 
+/* Forward declarations. */
+static OpResult Init(OpBase *opBase);
+static Record Consume(OpBase *opBase);
+static OpResult Reset(OpBase *opBase);
+static void Free(OpBase *opBase);
+
 static void _yield(OpProcCall *op, SIValue *proc_output, Record r) {
 	if(!op->yield_map) {
 		op->yield_map = rm_malloc(sizeof(OutputMap) * array_len(op->output));
@@ -17,7 +23,8 @@ static void _yield(OpProcCall *op, SIValue *proc_output, Record r) {
 			for(uint j = 0; j < array_len(proc_output); j += 2) {
 				char *key = (proc_output + j)->stringval;
 				if(strcmp(yield, key) == 0) {
-					int idx = op->op.modifies[i];
+					int idx;
+					assert(OpBase_Aware((OpBase *)op, key, &idx));
 					op->yield_map[i].proc_out_idx = j + 1;
 					op->yield_map[i].rec_idx = idx;
 					break;
@@ -49,8 +56,8 @@ static void _yield(OpProcCall *op, SIValue *proc_output, Record r) {
 	}
 }
 
-OpBase *NewProcCallOp(const char *procedure, const char **args, const char **output,
-					  uint *modifies) {
+OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *procedure, const char **args,
+					  const char **output) {
 	assert(procedure);
 	OpProcCall *op = malloc(sizeof(OpProcCall));
 	op->args = args;
@@ -61,33 +68,30 @@ OpBase *NewProcCallOp(const char *procedure, const char **args, const char **out
 	assert(op->procedure);
 
 	// Set our Op operations
-	OpBase_Init(&op->op);
-	op->op.name = "ProcedureCall";
-	op->op.type = OPType_PROC_CALL;
-	op->op.init = OpProcCallInit;
-	op->op.consume = OpProcCallConsume;
-	op->op.reset = OpProcCallReset;
-	op->op.free = OpProcCallFree;
+	OpBase_Init((OpBase *)op, OPType_PROC_CALL, "ProcedureCall", Init, Consume, Reset, NULL, Free,
+				plan);
 
 	int outputs_count = array_len(output);
-	op->op.modifies = modifies;
+	for(int i = 0; i < outputs_count; i++) {
+		OpBase_Modifies((OpBase *)op, output[i]);
+	}
 
 	return (OpBase *)op;
 }
 
-OpResult OpProcCallInit(OpBase *opBase) {
+static OpResult Init(OpBase *opBase) {
 	OpProcCall *op = (OpProcCall *)opBase;
 	ProcedureResult res = Proc_Invoke(op->procedure, op->args);
 	return (res == PROCEDURE_OK) ? OP_OK : OP_ERR;
 }
 
-Record OpProcCallConsume(OpBase *opBase) {
+static Record Consume(OpBase *opBase) {
 	OpProcCall *op = (OpProcCall *)opBase;
 	Record r = NULL;
 
 	if(op->op.childCount == 0) {
 		/* Make record large enough to accommodate all alias entities. */
-		r = Record_New(opBase->record_map->record_len);
+		r = OpBase_CreateRecord((OpBase *)op);
 	} else {
 		OpBase *child = op->op.children[0];
 		r = OpBase_Consume(child);
@@ -105,7 +109,7 @@ Record OpProcCallConsume(OpBase *opBase) {
 	return r;
 }
 
-OpResult OpProcCallReset(OpBase *ctx) {
+static OpResult Reset(OpBase *ctx) {
 	OpProcCall *op = (OpProcCall *)ctx;
 	if(op->procedure) {
 		ProcedureResult res = ProcedureReset(op->procedure);
@@ -114,7 +118,7 @@ OpResult OpProcCallReset(OpBase *ctx) {
 	return OP_OK;
 }
 
-void OpProcCallFree(OpBase *ctx) {
+static void Free(OpBase *ctx) {
 	OpProcCall *op = (OpProcCall *)ctx;
 	if(op->procedure) {
 		Proc_Free(op->procedure);

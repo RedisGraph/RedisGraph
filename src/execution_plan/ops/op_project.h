@@ -4,10 +4,10 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OP_PROJECT_H
-#define __OP_PROJECT_H
+#pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
 typedef struct {
@@ -20,14 +20,4 @@ typedef struct {
 	unsigned short order_exp_count; // Number of order by expressions.
 } OpProject;
 
-OpBase *NewProjectOp(AR_ExpNode **exps, uint *modifies);
-
-OpResult ProjectInit(OpBase *opBase);
-
-Record ProjectConsume(OpBase *op);
-
-OpResult ProjectReset(OpBase *ctx);
-
-void ProjectFree(OpBase *ctx);
-
-#endif
+OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps);

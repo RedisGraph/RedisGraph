@@ -7,6 +7,7 @@
 #pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../graph/graph.h"
 #include "../../graph/query_graph.h"
 #include "../../graph/entities/node.h"
@@ -17,8 +18,8 @@
 typedef struct {
 	OpBase op;
 	QGNode *n;
+    uint nodeRecIdx;
 	DataBlockIterator *iter;
-	uint nodeRecIdx;
 } AllNodeScan;
 
-OpBase *NewAllNodeScanOp(const Graph *g, QGNode *n, uint rec_idx);
+OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const Graph *g, QGNode *n);

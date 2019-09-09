@@ -12,34 +12,30 @@
 
 #define INDEX_NOT_SET UINT_MAX
 
-OpBase *NewUnwindOp(uint record_idx, AR_ExpNode *exp) {
-	OpUnwind *unwind = malloc(sizeof(OpUnwind));
+/* Forward declarations. */
+static OpResult Init(OpBase *opBase);
+static Record Consume(OpBase *opBase);
+static OpResult Reset(OpBase *opBase);
+static void Free(OpBase *opBase);
 
-	unwind->exp = exp;
-	unwind->list = SI_NullVal();
-	unwind->currentRecord = NULL;
-	unwind->listIdx = INDEX_NOT_SET;
-	unwind->unwindRecIdx = record_idx;
+OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
+	OpUnwind *op = malloc(sizeof(OpUnwind));
+
+	op->exp = exp;
+	op->list = SI_NullVal();
+	op->currentRecord = NULL;
+	op->listIdx = INDEX_NOT_SET;
 
 	// Set our Op operations
-	OpBase_Init(&unwind->op);
-	unwind->op.name = "Unwind";
-	unwind->op.type = OPType_UNWIND;
-	unwind->op.consume = UnwindConsume;
-	unwind->op.init = UnwindInit;
-	unwind->op.reset = UnwindReset;
-	unwind->op.free = UnwindFree;
+	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", Init, Consume, Reset, NULL, Free, plan);
 
-	// Handle introduced entity
-	unwind->op.modifies = array_new(uint, 1);
-	unwind->op.modifies = array_append(unwind->op.modifies, record_idx);
-
-	return (OpBase *)unwind;
+	op->unwindRecIdx = OpBase_Modifies((OpBase *)op, exp->resolved_name);
+	return (OpBase *)op;
 }
 
-OpResult UnwindInit(OpBase *opBase) {
+static OpResult Init(OpBase *opBase) {
 	OpUnwind *op = (OpUnwind *) opBase;
-	op->currentRecord = Record_New(1);
+	op->currentRecord = OpBase_CreateRecord((OpBase *)op);
 
 	if(op->op.childCount == 0) {
 		// No child operation, list must be static.
@@ -68,7 +64,7 @@ Record _handoff(OpUnwind *op) {
 	return NULL;
 }
 
-Record UnwindConsume(OpBase *opBase) {
+static Record Consume(OpBase *opBase) {
 	OpUnwind *op = (OpUnwind *)opBase;
 
 	// Try to produce data.
@@ -96,7 +92,7 @@ Record UnwindConsume(OpBase *opBase) {
 	return _handoff(op);
 }
 
-OpResult UnwindReset(OpBase *ctx) {
+static OpResult Reset(OpBase *ctx) {
 	OpUnwind *op = (OpUnwind *)ctx;
 	// Static should reset index to 0.
 	if(op->op.childCount == 0) op->listIdx = 0;
@@ -105,7 +101,7 @@ OpResult UnwindReset(OpBase *ctx) {
 	return OP_OK;
 }
 
-void UnwindFree(OpBase *ctx) {
+static void Free(OpBase *ctx) {
 	OpUnwind *op = (OpUnwind *)ctx;
 	SIValue_Free(&op->list);
 	if(op->exp) AR_EXP_Free(op->exp);

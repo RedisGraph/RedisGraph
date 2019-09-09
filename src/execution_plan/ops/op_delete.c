@@ -10,6 +10,12 @@
 #include "../../arithmetic/arithmetic_expression.h"
 #include <assert.h>
 
+/* Forward declarations. */
+static OpResult Init(OpBase *opBase);
+static Record Consume(OpBase *opBase);
+static OpResult Reset(OpBase *opBase);
+static void Free(OpBase *opBase);
+
 void _DeleteEntities(OpDelete *op) {
 	Graph *g = op->gc->g;
 	uint node_deleted = 0;
@@ -40,47 +46,32 @@ void _DeleteEntities(OpDelete *op) {
 	if(op->stats) op->stats->relationships_deleted += relationships_deleted;
 }
 
-OpBase *NewDeleteOp(uint *nodes_ref, uint *edges_ref, ResultSetStatistics *stats) {
-	OpDelete *op_delete = malloc(sizeof(OpDelete));
+OpBase *NewDeleteOp(const ExecutionPlan *plan, uint *nodes_ref, uint *edges_ref,
+					ResultSetStatistics *stats) {
+	OpDelete *op = malloc(sizeof(OpDelete));
 
-	op_delete->gc = QueryCtx_GetGraphCtx();
+	op->gc = QueryCtx_GetGraphCtx();
 
-	op_delete->nodes_to_delete = nodes_ref;
-	op_delete->edges_to_delete = edges_ref;
-	op_delete->node_count = array_len(op_delete->nodes_to_delete);
-	op_delete->edge_count = array_len(op_delete->edges_to_delete);
+	op->nodes_to_delete = nodes_ref;
+	op->edges_to_delete = edges_ref;
+	op->node_count = array_len(op->nodes_to_delete);
+	op->edge_count = array_len(op->edges_to_delete);
 
-	op_delete->deleted_nodes = array_new(Node, 32);
-	op_delete->deleted_edges = array_new(Edge, 32);
-	op_delete->stats = stats;
+	op->deleted_nodes = array_new(Node, 32);
+	op->deleted_edges = array_new(Edge, 32);
+	op->stats = stats;
 
 	// Set our Op operations
-	OpBase_Init(&op_delete->op);
-	op_delete->op.name = "Delete";
-	op_delete->op.type = OPType_DELETE;
-	op_delete->op.consume = OpDeleteConsume;
-	op_delete->op.init = OpDeleteInit;
-	op_delete->op.reset = OpDeleteReset;
-	op_delete->op.free = OpDeleteFree;
+	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", Init, Consume, Reset, NULL, Free, plan);
 
-	op_delete->op.modifies = array_new(uint, op_delete->node_count + op_delete->edge_count);
-	// Update modifies array to include all deleted nodes
-	for(uint i = 0; i < op_delete->node_count; i ++) {
-		op_delete->op.modifies = array_append(op_delete->op.modifies, nodes_ref[i]);
-	}
-	// Update modifies array to include all deleted edges
-	for(uint i = 0; i < op_delete->edge_count; i ++) {
-		op_delete->op.modifies = array_append(op_delete->op.modifies, edges_ref[i]);
-	}
-
-	return (OpBase *)op_delete;
+	return (OpBase *)op;
 }
 
-OpResult OpDeleteInit(OpBase *opBase) {
+static OpResult Init(OpBase *opBase) {
 	return OP_OK;
 }
 
-Record OpDeleteConsume(OpBase *opBase) {
+static Record Consume(OpBase *opBase) {
 	OpDelete *op = (OpDelete *)opBase;
 	OpBase *child = op->op.children[0];
 
@@ -101,11 +92,11 @@ Record OpDeleteConsume(OpBase *opBase) {
 	return r;
 }
 
-OpResult OpDeleteReset(OpBase *ctx) {
+static OpResult Reset(OpBase *ctx) {
 	return OP_OK;
 }
 
-void OpDeleteFree(OpBase *ctx) {
+static void Free(OpBase *ctx) {
 	OpDelete *op = (OpDelete *)ctx;
 
 	if(op->deleted_nodes || op->deleted_edges) _DeleteEntities(op);

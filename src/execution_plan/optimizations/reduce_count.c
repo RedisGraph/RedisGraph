@@ -119,10 +119,6 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 
 	OpBase *opProject = NewProjectOp(exps, modifies);
 
-	// TODO this shouldn't need to be an explicit step.
-	// See _associateRecordMap and ExecutionPlanInit to come up with solution.
-	opProject->record_map = opScan->record_map;
-
 	// New execution plan: "Project -> Results"
 	ExecutionPlan_RemoveOp(plan, (OpBase *)opScan);
 	OpBase_Free(opScan);
@@ -243,10 +239,6 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	exps = array_append(exps, exp);
 
 	OpBase *opProject = NewProjectOp(exps, NULL);
-
-	// TODO this shouldn't need to be an explicit step.
-	// See _associateRecordMap and ExecutionPlanInit to come up with solution.
-	opProject->record_map = opScan->record_map;
 
 	// New execution plan: "Project -> Results"
 	ExecutionPlan_RemoveOp(plan, (OpBase *)opScan);

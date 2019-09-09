@@ -7,6 +7,7 @@
 #pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../graph/graph.h"
 #include "../../graph/entities/edge.h"
 #include "../../arithmetic/algebraic_expression.h"
@@ -21,13 +22,13 @@ typedef struct {
 	int edgeRelationCount;      // length of edgeRelationTypes.
 	Edge *edges;                // Discovered edges.
 	GxB_MatrixTupleIter *iter;  // Iterator over M.
-	uint srcNodeIdx;            // Index into record.
-	uint destNodeIdx;           // Index into record.
-	uint edgeIdx;               // Index into record.
+	int srcNodeIdx;             // Index into record.
+	int destNodeIdx;            // Index into record.
+	int edgeIdx;                // Index into record.
 	uint recordsCap;            // Max number of records to process.
 	uint recordCount;           // Number of records to process.
 	Record *records;            // Array of records.
 	Record r;                   // Current selected record.
 } OpExpandInto;
 
-OpBase *NewExpandIntoOp(Graph *g, RecordMap *record_map, AlgebraicExpression *ae, uint records_cap);
+OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae, uint records_cap);

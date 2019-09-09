@@ -25,8 +25,7 @@ extern "C"
 #include <time.h>
 
 // Declaration of function in execution_plan.h
-extern void _BuildReturnExpressions(ExecutionPlanSegment *segment,
-									const cypher_astnode_t *ret_clause, AST *ast);
+AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause, AST *ast);
 
 #ifdef __cplusplus
 }
@@ -1369,3 +1368,4 @@ TEST_F(ArithmeticTest, IsNullTest) {
 		ASSERT_EQ(false, result.longval);
 	}
 }
+

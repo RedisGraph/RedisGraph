@@ -8,24 +8,22 @@
 #include "../../util/arr.h"
 #include "rax.h"
 
-void selectEntryPoint(AlgebraicExpression *ae, const RecordMap *record_map,
-					  const FT_FilterNode *tree) {
+void selectEntryPoint(AlgebraicExpression *ae, const FT_FilterNode *tree) {
 	if(ae->operand_count == 1 && ae->src_node == ae->dest_node) return;
 
 	rax *modifies = FilterTree_CollectModified(tree);
-	uint src_id = RecordMap_LookupID(record_map, ae->src_node->id);
-	uint dest_id = RecordMap_LookupID(record_map, ae->dest_node->id);
-
 	bool destFiltered = false;
 	bool srcLabeled = ae->src_node->label != NULL;
 	bool destLabeled = ae->dest_node->label != NULL;
 
 	// See if either source or destination nodes are filtered.
-	if(raxFind(modifies, (unsigned char *)&src_id, sizeof(src_id)) != raxNotFound) {
+	if(raxFind(modifies, (unsigned char *)ae->src_node->alias,
+			   strlen(ae->src_node->alias)) != raxNotFound) {
 		goto cleanup;
 	}
 
-	if(raxFind(modifies, (unsigned char *)&dest_id, sizeof(dest_id)) != raxNotFound) {
+	if(raxFind(modifies, (unsigned char *)ae->dest_node->alias,
+			   strlen(ae->dest_node->alias)) != raxNotFound) {
 		destFiltered = true;
 	}
 
