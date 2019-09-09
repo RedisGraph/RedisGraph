@@ -24,8 +24,6 @@ void OpBase_Init(OpBase *op) {
 	op->reset = NULL;
 	op->consume = NULL;
 	op->toString = NULL;
-
-	op->record_map = NULL;
 }
 
 inline Record OpBase_Consume(OpBase *op) {

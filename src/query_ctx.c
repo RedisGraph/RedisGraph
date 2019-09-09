@@ -35,9 +35,9 @@ void QueryCtx_SetAST(AST *ast) {
 	ctx->ast = ast;
 }
 
-bool QueryCtx_ShouldFreeExceptionCause(void) {
+void QueryCtx_SetGraphCtx(GraphContext *gc) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	return ctx->free_cause;
+	ctx->gc = gc;
 }
 
 void QueryCtx_SetExceptionHandler(jmp_buf *breakpoint, bool free_cause) {
@@ -51,36 +51,10 @@ void QueryCtx_SetError(char *error) {
 	ctx->error = error;
 }
 
-void QueryCtx_SetGraphCtx(GraphContext *gc) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	ctx->gc = gc;
-}
-
-void QueryCtx_SetRedisModuleCtx(RedisModuleCtx *redis_module_ctx) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	ctx->redis_module_ctx = redis_module_ctx;
-}
-
 AST *QueryCtx_GetAST(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	assert(ctx->ast);
 	return ctx->ast;
-}
-
-jmp_buf *QueryCtx_GetExceptionHandler(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	assert(ctx->breakpoint);
-	return ctx->breakpoint;
-}
-
-char *QueryCtx_GetError(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	return ctx->error;
-}
-
-inline bool QueryCtx_EncounteredError(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	return ctx->error != NULL;
 }
 
 GraphContext *QueryCtx_GetGraphCtx(void) {
@@ -94,10 +68,25 @@ Graph *QueryCtx_GetGraph(void) {
 	return gc->g;
 }
 
-RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void) {
+jmp_buf *QueryCtx_GetExceptionHandler(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	assert(ctx->redis_module_ctx);
-	return ctx->redis_module_ctx;
+	assert(ctx->breakpoint);
+	return ctx->breakpoint;
+}
+
+char *QueryCtx_GetError(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	return ctx->error;
+}
+
+inline bool QueryCtx_ShouldFreeExceptionCause(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	return ctx->free_cause;
+}
+
+inline bool QueryCtx_EncounteredError(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	return ctx->error != NULL;
 }
 
 void QueryCtx_Free(void) {

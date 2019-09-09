@@ -40,7 +40,6 @@ void _MGraph_Explain(void *args) {
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
 	const char *query = qctx->query;
 	const char *graphname = qctx->graphName;
-	QueryCtx_SetRedisModuleCtx(ctx);
 
 	// Parse the query to construct an AST
 	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
