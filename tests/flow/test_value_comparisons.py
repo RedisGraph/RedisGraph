@@ -7,6 +7,7 @@ dis_redis = None
 redis_con = None
 values = ["str1", "str2", False, True, 5, 10.5]
 
+
 class testValueComparison(FlowTestsBase):
     def __init__(self):
         super(testValueComparison, self).__init__()
@@ -65,14 +66,17 @@ class testValueComparison(FlowTestsBase):
         actual_result = redis_graph.query(query)
         # No nodes have the same property, so there should be 0 equal results
         expected_result_count = 0
-        self.env.assertEquals(len(actual_result.result_set), expected_result_count)
+        self.env.assertEquals(
+            len(actual_result.result_set), expected_result_count)
 
         query = """MATCH (v:value), (w:value) WHERE ID(v) <> ID(w) AND v.val <> w.val RETURN v"""
         actual_result = redis_graph.query(query)
         # Every comparison should produce an inequal result
         node_count = len(redis_graph.nodes)
-        expected_result_count = node_count * (node_count - 1)
-        self.env.assertEquals(len(actual_result.result_set), expected_result_count)
+        # The node with value set as "null" should not be returned or be part of evaluation.
+        expected_result_count = (node_count - 1) * (node_count - 2)
+        self.env.assertEquals(
+            len(actual_result.result_set), expected_result_count)
 
     # Verify that AND conditions on true, false, and NULL values evaluate appropriately
     def test_AND_truth_tables(self):

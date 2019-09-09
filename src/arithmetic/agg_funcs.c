@@ -12,6 +12,8 @@
 #include "../util/qsort.h"
 #include <assert.h>
 #include <math.h>
+#include "../datatypes/array.h"
+
 
 #define ISLT(a,b) ((*a) < (*b))
 
@@ -127,7 +129,7 @@ int __agg_maxStep(AggCtx *ctx, SIValue *argv, int argc) {
 		return AGG_OK;
 	}
 
-	if(SIValue_Order(ac->max, argv[0]) < 0) {
+	if(SIValue_Compare(ac->max, argv[0], NULL) < 0) {
 		ac->max = argv[0];
 	}
 
@@ -168,7 +170,7 @@ int __agg_minStep(AggCtx *ctx, SIValue *argv, int argc) {
 		return AGG_OK;
 	}
 
-	if(SIValue_Order(ac->min, argv[0]) > 0) {
+	if(SIValue_Compare(ac->min, argv[0], NULL) > 0) {
 		ac->min = argv[0];
 	}
 
@@ -417,6 +419,41 @@ AggCtx *Agg_StdevPFunc() {
 
 //------------------------------------------------------------------------
 
+typedef struct {
+	SIValue list;
+} __agg_collectCtx;
+
+int __agg_collectStep(AggCtx *ctx, SIValue *argv, int argc) {
+	// convert multiple values to array
+
+	assert(argc >= 0);
+	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
+
+	if(ac->list.type == T_NULL) ac->list = SI_Array(argc);
+	for(int i = 0; i < argc; i ++) {
+		SIValue value = argv[i];
+		if(value.type == T_NULL) continue;
+		SIArray_Append(&ac->list, value);
+	}
+	return AGG_OK;
+}
+
+int __agg_collectReduceNext(AggCtx *ctx) {
+	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
+
+	Agg_SetResult(ctx, ac->list);
+	return AGG_OK;
+}
+
+AggCtx *Agg_CollectFunc() {
+	__agg_collectCtx *ac = malloc(sizeof(__agg_collectCtx));
+	ac->list = SI_NullVal();
+
+	return Agg_Reduce(ac, __agg_collectStep, __agg_collectReduceNext);
+}
+
+//------------------------------------------------------------------------
+
 void Agg_RegisterFuncs() {
 	Agg_RegisterFunc("sum", Agg_SumFunc);
 	Agg_RegisterFunc("avg", Agg_AvgFunc);
@@ -427,4 +464,5 @@ void Agg_RegisterFuncs() {
 	Agg_RegisterFunc("percentileCont", Agg_PercContFunc);
 	Agg_RegisterFunc("stDev", Agg_StdevFunc);
 	Agg_RegisterFunc("stDevP", Agg_StdevPFunc);
+	Agg_RegisterFunc("collect", Agg_CollectFunc);
 }

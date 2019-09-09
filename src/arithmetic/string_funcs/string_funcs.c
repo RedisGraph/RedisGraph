@@ -162,9 +162,10 @@ SIValue AR_TOUPPER(SIValue *argv, int argc) {
 /* converts an integer, float or boolean value to a string. */
 SIValue AR_TOSTRING(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
-	size_t len = SIValue_StringConcatLen(argv, 1);
+	size_t len = SIValue_StringJoinLen(argv, 1, "");
 	char *str = rm_malloc(len * sizeof(char));
-	SIValue_ToString(argv[0], str, len);
+	size_t bytesWritten = 0;
+	SIValue_ToString(argv[0], &str, &len, &bytesWritten);
 	return SI_TransferStringVal(str);
 }
 

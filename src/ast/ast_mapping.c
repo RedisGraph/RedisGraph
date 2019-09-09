@@ -122,12 +122,15 @@ static void _AST_MapExpression(AST *ast, const cypher_astnode_t *expr) {
 		return;
 	} else if(type == CYPHER_AST_PROC_NAME) {
 		return;
-	} else if(type == CYPHER_AST_INTEGER ||
-			  type == CYPHER_AST_FLOAT   ||
-			  type == CYPHER_AST_STRING  ||
-			  type == CYPHER_AST_TRUE    ||
-			  type == CYPHER_AST_FALSE   ||
-			  type == CYPHER_AST_NULL) {
+	} else if(type == CYPHER_AST_INTEGER            ||
+			  type == CYPHER_AST_FLOAT              ||
+			  type == CYPHER_AST_STRING             ||
+			  type == CYPHER_AST_TRUE               ||
+			  type == CYPHER_AST_FALSE              ||
+			  type == CYPHER_AST_NULL               ||
+			  type == CYPHER_AST_COLLECTION         ||
+			  type == CYPHER_AST_SUBSCRIPT_OPERATOR ||
+			  type == CYPHER_AST_SLICE_OPERATOR) {
 		return;
 	} else {
 		printf("Encountered unhandled type '%s'\n", cypher_astnode_typestr(type));

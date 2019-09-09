@@ -17,7 +17,7 @@
 
 // Unwind operations hold a collection of arithmetic expressions and populates a single Record index.
 typedef struct {
-	AR_ExpNode **exps;
+	AR_ExpNode *exp;
 	uint record_idx;
 } AST_UnwindContext;
 

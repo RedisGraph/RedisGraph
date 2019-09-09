@@ -30,119 +30,119 @@
 
 Feature: Literals
 
-  Background:
-    Given any graph
+    Background:
+        Given any graph
 
-  Scenario: Return an integer
-    When executing query:
-      """
-      RETURN 1 AS literal
-      """
-    Then the result should be:
-      | literal |
-      | 1       |
-    And no side effects
+    Scenario: Return an integer
+        When executing query:
+            """
+            RETURN 1 AS literal
+            """
+        Then the result should be:
+            | literal |
+            | 1       |
+        And no side effects
 
-  Scenario: Return a float
-    When executing query:
-      """
-      RETURN 1.0 AS literal
-      """
-    Then the result should be:
-      | literal |
-      | 1.0     |
-    And no side effects
+    Scenario: Return a float
+        When executing query:
+            """
+            RETURN 1.0 AS literal
+            """
+        Then the result should be:
+            | literal |
+            | 1.0     |
+        And no side effects
 
-  Scenario: Return a float in exponent form
-    When executing query:
-      """
-      RETURN -1e-9 AS literal
-      """
-    Then the result should be:
-      | literal     |
-      | -.000000001 |
-    And no side effects
+    Scenario: Return a float in exponent form
+        When executing query:
+            """
+            RETURN -1e-9 AS literal
+            """
+        Then the result should be:
+            | literal     |
+            | -.000000001 |
+        And no side effects
 
-  Scenario: Return a boolean
-    When executing query:
-      """
-      RETURN true AS literal
-      """
-    Then the result should be:
-      | literal |
-      | true    |
-    And no side effects
+    Scenario: Return a boolean
+        When executing query:
+            """
+            RETURN true AS literal
+            """
+        Then the result should be:
+            | literal |
+            | true    |
+        And no side effects
 
-  Scenario: Return a single-quoted string
-    When executing query:
-      """
-      RETURN '' AS literal
-      """
-    Then the result should be:
-      | literal |
-      | ''      |
-    And no side effects
+    Scenario: Return a single-quoted string
+        When executing query:
+            """
+            RETURN '' AS literal
+            """
+        Then the result should be:
+            | literal |
+            | ''      |
+        And no side effects
 
-  Scenario: Return a double-quoted string
-    When executing query:
-      """
-      RETURN "" AS literal
-      """
-    Then the result should be:
-      | literal |
-      | ''      |
-    And no side effects
+    Scenario: Return a double-quoted string
+        When executing query:
+            """
+            RETURN "" AS literal
+            """
+        Then the result should be:
+            | literal |
+            | ''      |
+        And no side effects
 
-  Scenario: Return null
-    When executing query:
-      """
-      RETURN null AS literal
-      """
-    Then the result should be:
-      | literal |
-      | null    |
-    And no side effects
+    Scenario: Return null
+        When executing query:
+            """
+            RETURN null AS literal
+            """
+        Then the result should be:
+            | literal |
+            | null    |
+        And no side effects
 
-@skip
-  Scenario: Return an empty list
-    When executing query:
-      """
-      RETURN [] AS literal
-      """
-    Then the result should be:
-      | literal |
-      | []      |
-    And no side effects
 
-@skip
-  Scenario: Return a nonempty list
-    When executing query:
-      """
-      RETURN [0, 1, 2] AS literal
-      """
-    Then the result should be:
-      | literal   |
-      | [0, 1, 2] |
-    And no side effects
+    Scenario: Return an empty list
+        When executing query:
+            """
+            RETURN [] AS literal
+            """
+        Then the result should be:
+            | literal |
+            | []      |
+        And no side effects
 
-@skip
-  Scenario: Return an empty map
-    When executing query:
-      """
-      RETURN {} AS literal
-      """
-    Then the result should be:
-      | literal |
-      | {}      |
-    And no side effects
 
-@skip
-  Scenario: Return a nonempty map
-    When executing query:
-      """
-      RETURN {k1: 0, k2: 'string'} AS literal
-      """
-    Then the result should be:
-      | literal               |
-      | {k1: 0, k2: 'string'} |
-    And no side effects
+    Scenario: Return a nonempty list
+        When executing query:
+            """
+            RETURN [0, 1, 2] AS literal
+            """
+        Then the result should be:
+            | literal   |
+            | [0, 1, 2] |
+        And no side effects
+
+    @skip
+    Scenario: Return an empty map
+        When executing query:
+            """
+            RETURN {} AS literal
+            """
+        Then the result should be:
+            | literal |
+            | {}      |
+        And no side effects
+
+    @skip
+    Scenario: Return a nonempty map
+        When executing query:
+            """
+            RETURN {k1: 0, k2: 'string'} AS literal
+            """
+        Then the result should be:
+            | literal               |
+            | {k1: 0, k2: 'string'} |
+        And no side effects

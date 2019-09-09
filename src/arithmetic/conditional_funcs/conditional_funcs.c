@@ -26,7 +26,7 @@ SIValue AR_CASEWHEN(SIValue *argv, int argc) {
 		SIValue v = argv[0];
 		for(int i = 1; i < alternatives; i += 2) {
 			SIValue a = argv[i];
-			if(SIValue_Compare(v, a) == 0) {
+			if(SIValue_Compare(v, a, NULL) == 0) {
 				// Return Result i.
 				return argv[i + 1];
 			}

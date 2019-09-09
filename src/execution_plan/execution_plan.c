@@ -564,7 +564,7 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 	if(unwind_clause) {
 		AST_UnwindContext unwind_ast_ctx = AST_PrepareUnwindOp(unwind_clause, record_map);
 
-		OpBase *opUnwind = NewUnwindOp(unwind_ast_ctx.record_idx, unwind_ast_ctx.exps);
+		OpBase *opUnwind = NewUnwindOp(unwind_ast_ctx.record_idx, unwind_ast_ctx.exp);
 		Vector_Push(ops, opUnwind);
 	}
 

@@ -119,9 +119,10 @@ static void _ComputeGroupKeyStr(OpAggregate *op, char **key) {
 	}
 
 	// Determine required size for group key string representation.
-	size_t key_len = SIValue_StringConcatLen(op->group_keys, non_agg_exp_count);
+	size_t key_len = SIValue_StringJoinLen(op->group_keys, non_agg_exp_count, ",");
 	*key = rm_malloc(sizeof(char) * key_len);
-	SIValue_StringConcat(op->group_keys, non_agg_exp_count, *key, key_len);
+	size_t bytesWritten = 0;
+	SIValue_StringJoin(op->group_keys, non_agg_exp_count, ",", key, &key_len, &bytesWritten);
 }
 
 /* Retrieves group under which given record belongs to,
@@ -146,7 +147,7 @@ static Group *_GetGroup(OpAggregate *op, Record r) {
 	uint exp_count = array_len(op->non_aggregated_expressions);
 	for(uint i = 0; i < exp_count; i++) {
 		if(reuseLastAccessedGroup &&
-		   SIValue_Compare(op->group->keys[i], op->group_keys[i]) == 0) {
+		   SIValue_Compare(op->group->keys[i], op->group_keys[i], NULL) == 0) {
 			reuseLastAccessedGroup = true;
 		} else {
 			reuseLastAccessedGroup = false;

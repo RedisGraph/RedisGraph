@@ -16,6 +16,7 @@
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
 #include "../datatypes/temporal_value.h"
+#include "../datatypes/array.h"
 
 #include <ctype.h>
 #include <assert.h>
@@ -248,7 +249,16 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 			}
 			/* Evaluate self. */
 			result = root->op.f->func(sub_trees, root->op.child_count);
-			/* Free any SIValues that were allocated while evaluating this tree. */
+			/* Free any SIValues that were allocated while evaluating this tree.
+			 * for example 'a'+'b'+'c'+'d' will evalute to
+			          +(abcd)
+			         /       \
+			     +(ab)      +(cd)
+			    /   \       /   \
+			   a     b     c     d
+			   the expressions 'ab', 'cd' which are calculated temporaty values
+			   will be released once the calculation of 'abcd' is done
+			*/
 			for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
 				SIValue_Free(&sub_trees[child_idx]);
 			}
@@ -403,7 +413,6 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 		*str_size += 128;
 		*str = rm_realloc(*str, sizeof(char) * *str_size);
 	}
-
 	/* Concat Op. */
 	if(root->type == AR_EXP_OP) {
 		/* Binary operation? */
@@ -447,8 +456,7 @@ void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 	} else {
 		// Concat Operand node.
 		if(root->operand.type == AR_EXP_CONSTANT) {
-			size_t len = SIValue_ToString(root->operand.constant, (*str + *bytes_written), 64);
-			*bytes_written += len;
+			SIValue_ToString(root->operand.constant, str, str_size, bytes_written);
 		} else {
 			if(root->operand.variadic.entity_prop != NULL) {
 				*bytes_written += sprintf(

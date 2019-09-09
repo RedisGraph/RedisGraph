@@ -68,9 +68,6 @@ SIValue AR_GT(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	// Comparisons with NULL values always return NULL.
-	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
-
 	// Emit error when attempting to compare invalid types
 	if(!SI_VALUES_ARE_COMPARABLE(a, b)) {
 		char *error;
@@ -80,25 +77,18 @@ SIValue AR_GT(SIValue *argv, int argc) {
 		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
 
-	switch(SI_TYPE(a)) {
-	case T_STRING:
-		return SI_BoolVal(SIValue_Compare(a, b) > 0);
-	case T_INT64:
-	case T_DOUBLE:
-	case T_BOOL:
-		return SI_BoolVal(SI_GET_NUMERIC(a) > SI_GET_NUMERIC(b));
-	default:
-		assert(false);
-	}
+	int disjointOrNull = 0;
+	int res = SIValue_Compare(a, b, &disjointOrNull);
+	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
+	assert(disjointOrNull != DISJOINT);
+
+	return SI_BoolVal(res > 0);
 }
 
 SIValue AR_GE(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	// Comparisons with NULL values always return NULL.
-	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
-
 	// Emit error when attempting to compare invalid types
 	if(!SI_VALUES_ARE_COMPARABLE(a, b)) {
 		char *error;
@@ -108,25 +98,18 @@ SIValue AR_GE(SIValue *argv, int argc) {
 		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
 
-	switch(SI_TYPE(a)) {
-	case T_STRING:
-		return SI_BoolVal(SIValue_Compare(a, b) >= 0);
-	case T_INT64:
-	case T_DOUBLE:
-	case T_BOOL:
-		return SI_BoolVal(SI_GET_NUMERIC(a) >= SI_GET_NUMERIC(b));
-	default:
-		assert(false);
-	}
+	int disjointOrNull = 0;
+	int res = SIValue_Compare(a, b, &disjointOrNull);
+	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
+	assert(disjointOrNull != DISJOINT);
+
+	return SI_BoolVal(res >= 0);
 }
 
 SIValue AR_LT(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	// Comparisons with NULL values always return NULL.
-	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
-
 	// Emit error when attempting to compare invalid types
 	if(!SI_VALUES_ARE_COMPARABLE(a, b)) {
 		char *error;
@@ -136,25 +119,18 @@ SIValue AR_LT(SIValue *argv, int argc) {
 		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
 
-	switch(SI_TYPE(a)) {
-	case T_STRING:
-		return SI_BoolVal(SIValue_Compare(a, b) < 0);
-	case T_INT64:
-	case T_DOUBLE:
-	case T_BOOL:
-		return SI_BoolVal(SI_GET_NUMERIC(a) < SI_GET_NUMERIC(b));
-	default:
-		assert(false);
-	}
+	int disjointOrNull = 0;
+	int res = SIValue_Compare(a, b, &disjointOrNull);
+	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
+	assert(disjointOrNull != DISJOINT);
+
+	return SI_BoolVal(res < 0);
 }
 
 SIValue AR_LE(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	// Comparisons with NULL values always return NULL.
-	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
-
 	// Emit error when attempting to compare invalid types
 	if(!SI_VALUES_ARE_COMPARABLE(a, b)) {
 		char *error;
@@ -164,60 +140,34 @@ SIValue AR_LE(SIValue *argv, int argc) {
 		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
 
-	switch(SI_TYPE(a)) {
-	case T_STRING:
-		return SI_BoolVal(SIValue_Compare(a, b) <= 0);
-	case T_INT64:
-	case T_DOUBLE:
-	case T_BOOL:
-		return SI_BoolVal(SI_GET_NUMERIC(a) <= SI_GET_NUMERIC(b));
-	default:
-		assert(false);
-	}
+	int disjointOrNull = 0;
+	int res = SIValue_Compare(a, b, &disjointOrNull);
+	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
+	assert(disjointOrNull != DISJOINT);
+
+	return SI_BoolVal(res <= 0);
 }
 
 SIValue AR_EQ(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	// Comparisons with NULL values always return NULL.
-	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
-
-	// Non-comparable types cannot equal each other.
-	if(!SI_VALUES_ARE_COMPARABLE(a, b)) return SI_BoolVal(false);
-
-	switch(SI_TYPE(a)) {
-	case T_STRING:
-		return SI_BoolVal(SIValue_Compare(a, b) == 0);
-	case T_INT64:
-	case T_DOUBLE:
-	case T_BOOL:
-		return SI_BoolVal(SI_GET_NUMERIC(a) == SI_GET_NUMERIC(b));
-	default:
-		assert(false);
-	}
+	int disjointOrNull = 0;
+	int res = SIValue_Compare(a, b, &disjointOrNull);
+	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
+	// Disjoint comparison is allowed on EQ and NE operators, since they impose no order.
+	return SI_BoolVal(res == 0);
 }
 
 SIValue AR_NE(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	// Comparisons with NULL values always return NULL.
-	if(SIValue_IsNull(a) || SIValue_IsNull(b)) return SI_NullVal();
-
-	// Non-comparable types cannot equal each other.
-	if(!SI_VALUES_ARE_COMPARABLE(a, b)) return SI_BoolVal(true);
-
-	switch(SI_TYPE(a)) {
-	case T_STRING:
-		return SI_BoolVal(SIValue_Compare(a, b) != 0);
-	case T_INT64:
-	case T_DOUBLE:
-	case T_BOOL:
-		return SI_BoolVal(SI_GET_NUMERIC(a) != SI_GET_NUMERIC(b));
-	default:
-		assert(false);
-	}
+	int disjointOrNull = 0;
+	int res = SIValue_Compare(a, b, &disjointOrNull);
+	if(disjointOrNull == COMPARED_NULL) return SI_NullVal();
+	// Disjoint comparison is allowed on EQ and NE operators, since they impose no order.
+	return SI_BoolVal(res != 0);
 }
 
 void Register_BooleanFuncs() {

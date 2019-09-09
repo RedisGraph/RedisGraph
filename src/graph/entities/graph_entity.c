@@ -7,7 +7,11 @@
 #include <stdio.h>
 #include <assert.h>
 #include "graph_entity.h"
+#include "../../query_ctx.h"
 #include "../../util/rmalloc.h"
+#include "../graphcontext.h"
+#include "node.h"
+#include "edge.h"
 
 SIValue *PROPERTY_NOTFOUND = &(SIValue) {
 	.longval = 0, .type = T_NULL
@@ -87,6 +91,118 @@ void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue
 	*prop = SI_CloneValue(value);
 }
 
+size_t GraphEntity_PropertiesToString(const GraphEntity *e, char **buffer, size_t *bufferLen,
+									  size_t *bytesWritten) {
+	// make sure there is enough space for "{...}\0"
+	if(*bufferLen - *bytesWritten < 64) {
+		*bufferLen += 64;
+		*buffer = rm_realloc(*buffer, *bufferLen);
+	}
+	*bytesWritten += snprintf(*buffer, *bufferLen, "{");
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	int propCount = ENTITY_PROP_COUNT(e);
+	EntityProperty *properties = ENTITY_PROPS(e);
+	for(int i = 0; i < propCount; i++) {
+		// print key
+		const char *key = GraphContext_GetAttributeString(gc, properties[i].id);
+		// check for enough space
+		size_t keyLen = strlen(key);
+		if(*bufferLen - *bytesWritten < keyLen) {
+			*bufferLen += keyLen;
+			*buffer = rm_realloc(*buffer, *bufferLen);
+		}
+		*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "%s:", key);
+
+		// print value
+		SIValue_ToString(properties[i].value, buffer, bufferLen, bytesWritten);
+
+		// if not the last element print ", "
+		if(i != propCount - 1) *bytesWritten = snprintf(*buffer + *bytesWritten, *bufferLen, ", ");
+
+	}
+	// check for enough space for close with "}\0"
+	if(*bufferLen - *bytesWritten < 2) {
+		*bufferLen += 2;
+		*buffer = rm_realloc(*buffer, *bufferLen);
+	}
+	*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "}");
+	return *bytesWritten;
+}
+
+void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen,
+						  size_t *bytesWritten,
+						  GraphEntityStringFromat format, GraphEntityType entityType) {
+	// space allocation
+	if(*bufferLen - *bytesWritten < 64)  {
+		*bufferLen += 64;
+		*buffer = rm_realloc(*buffer, sizeof(char) * *bufferLen);
+	}
+
+	// get open an close symbols
+	char *openSymbole;
+	char *closeSymbole;
+	if(entityType == GETYPE_NODE) {
+		openSymbole = "(";
+		closeSymbole = ")";
+	} else {
+		openSymbole = "[";
+		closeSymbole = "]";
+	}
+	*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "%s", openSymbole);
+
+	// write id
+	if(format & ENTITY_ID) {
+		*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "%llu", ENTITY_GET_ID(e));
+	}
+
+	// write label
+	if(format & ENTITY_LABELS_OR_RELATIONS) {
+		switch(entityType) {
+		case GETYPE_NODE: {
+			Node *n = (Node *)e;
+			if(n->label) {
+				// allocate space if needed
+				size_t labelLen = strlen(n->label);
+				if(*bufferLen - *bytesWritten < labelLen) {
+					*bufferLen += labelLen;
+					*buffer = rm_realloc(*buffer, sizeof(char) * *bufferLen);
+				}
+				*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, ":%s", n->label);
+			}
+			break;
+		}
+
+		case GETYPE_EDGE: {
+			Edge *edge = (Edge *)e;
+			if(edge->relationship) {
+				size_t relationshipLen = strlen(edge->relationship);
+				if(*bufferLen - *bytesWritten < relationshipLen) {
+					*bufferLen += relationshipLen;
+					*buffer = rm_realloc(*buffer, sizeof(char) * *bufferLen);
+				}
+				*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, ":%s", edge->relationship);
+			}
+			break;
+		}
+
+		default:
+			assert(false);
+		}
+	}
+
+	// write properies
+	if(format & ENTITY_PROPERTIES) {
+		GraphEntity_PropertiesToString(e, buffer, bufferLen, bytesWritten);
+	}
+
+	// check for enough space for close with closing symbol
+	if(*bufferLen - *bytesWritten < 2) {
+		*bufferLen += 2;
+		*buffer = rm_realloc(*buffer, sizeof(char) * *bufferLen);
+	}
+	*bytesWritten += snprintf(*buffer + *bytesWritten, *bufferLen, "%s", closeSymbole);
+}
+
 void FreeEntity(Entity *e) {
 	assert(e);
 	if(e->properties != NULL) {
@@ -95,3 +211,4 @@ void FreeEntity(Entity *e) {
 		e->properties = NULL;
 	}
 }
+

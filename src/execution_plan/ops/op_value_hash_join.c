@@ -16,7 +16,7 @@
 static bool _record_islt(Record l, Record r, uint idx) {
 	SIValue lv = Record_GetScalar(l, idx);
 	SIValue rv = Record_GetScalar(r, idx);
-	return SIValue_Order(lv, rv) < 0;
+	return SIValue_Compare(lv, rv, NULL) < 0;
 }
 
 /* `idx` is an actual variable in the caller function.
@@ -33,7 +33,7 @@ static int64_t _binarySearchLeftmost(Record *array, int join_key_idx, SIValue v)
 	while(left < right) {
 		pos = (right + left) / 2;
 		SIValue x = Record_GetScalar(array[pos], join_key_idx);
-		if(SIValue_Order(x, v) < 0) left = pos + 1;
+		if(SIValue_Compare(x, v, NULL) < 0) left = pos + 1;
 		else right = pos;
 	}
 	return left;
@@ -48,7 +48,7 @@ static int64_t _binarySearchRightmost(Record *array, int64_t array_len, int join
 	while(left < right) {
 		pos = (right + left) / 2;
 		SIValue x = Record_GetScalar(array[pos], join_key_idx);
-		if(SIValue_Order(v, x) < 0) right = pos;
+		if(SIValue_Compare(v, x, NULL) < 0) right = pos;
 		else left = pos + 1;
 	}
 	return right - 1;
@@ -83,7 +83,7 @@ static bool _set_intersection_idx(OpValueHashJoin *op, SIValue v) {
 	// Make sure value was found.
 	Record r = op->cached_records[leftmost_idx];
 	SIValue x = Record_GetScalar(r, op->join_value_rec_idx);
-	if(SIValue_Compare(x, v) != 0) return false; // Value wasn't found.
+	if(SIValue_Compare(x, v, NULL) != 0) return false; // Value wasn't found.
 
 	/* Value was found
 	 * idx points to the first intersecting record.

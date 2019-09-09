@@ -19,7 +19,7 @@
 typedef enum {
 	AR_EXP_UNKNOWN,
 	AR_EXP_OP,
-	AR_EXP_OPERAND,
+	AR_EXP_OPERAND
 } AR_ExpNodeType;
 
 /* AR_OPType type of operation
@@ -39,15 +39,18 @@ typedef enum {
 	AR_EXP_VARIADIC,
 } AR_OperandNodeType;
 
+/* AR_Func - Function pointer to an operation with an arithmetic expression */
+typedef SIValue(*AR_Func)(SIValue *argv, int argc);
+
 /* Op represents an operation applied to child args. */
 typedef struct {
 	union {
 		AR_FuncDesc *f;
 		AggCtx *agg_func;
-	};                              /* Operation to perform on children. */
-	const char *func_name;          /* Name of function. */
-	int child_count;                /* Number of children. */
-	struct AR_ExpNode **children;   /* Child nodes. */
+	};                            /* Operation to perform on children. */
+	const char *func_name;        /* Name of function. */
+	int child_count;              /* Number of children. */
+	struct AR_ExpNode **children; /* Child nodes. */
 	AR_OPType type;
 } AR_OpNode;
 
@@ -70,17 +73,16 @@ typedef struct {
  * This node can take one of two forms:
  * 1. OpNode
  * 2. OperandNode */
-struct AR_ExpNode {
+typedef struct AR_ExpNode {
 	union {
 		AR_OperandNode operand;
 		AR_OpNode op;
+		struct AR_ExpNode **expressions;
 	};
 	AR_ExpNodeType type;
 	const char
 	*resolved_name; // The string representation of the node, such as the literal string "ID(a) + 5"
-};
-
-typedef struct AR_ExpNode AR_ExpNode;
+} AR_ExpNode;
 
 /* Creates a new Arithmetic expression operation node */
 AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count);

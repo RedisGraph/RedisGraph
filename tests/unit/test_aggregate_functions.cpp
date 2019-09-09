@@ -7,7 +7,8 @@
 #include "gtest.h"
 
 #ifdef __cplusplus
-extern "C" {
+extern "C"
+{
 #endif
 
 #include "../../src/query_ctx.h"
@@ -67,7 +68,8 @@ TEST_F(AggregateTest, CountTest) {
 	arExp = _exp_from_query(query);
 
 	int num_values = 5;
-	for(int i = 0; i < num_values; i ++) AR_EXP_Aggregate(arExp, r);
+	for(int i = 0; i < num_values; i++)
+		AR_EXP_Aggregate(arExp, r);
 	AR_EXP_Reduce(arExp);
 	result = AR_EXP_Evaluate(arExp, r);
 	ASSERT_EQ(result.longval, num_values);
@@ -93,11 +95,13 @@ TEST_F(AggregateTest, PartialCountTest) {
 	arExp = _exp_from_query(query);
 
 	int num_values = 10;
-	for(int i = 0; i < num_values; i ++) {
+	for(int i = 0; i < num_values; i++) {
 		// Every odd entity will be a valid numeric,
 		// and every even entity will be a null value
-		if(i % 2) arExp->op.children[0] = arExpOne;
-		else arExp->op.children[0] = arExpNULL;
+		if(i % 2)
+			arExp->op.children[0] = arExpOne;
+		else
+			arExp->op.children[0] = arExpNULL;
 		AR_EXP_Aggregate(arExp, r);
 	}
 	AR_EXP_Reduce(arExp);
@@ -134,7 +138,7 @@ TEST_F(AggregateTest, PercentileContTest) {
 	int lower_idx, upper_idx;
 	double lower, upper;
 
-	for(int i = 0; i < 5; i ++) {
+	for(int i = 0; i < 5; i++) {
 		x = percentile_doubles[i] * (count - 1);
 		lower_idx = floor(x);
 		upper_idx = ceil(x);
@@ -152,9 +156,9 @@ TEST_F(AggregateTest, PercentileContTest) {
 
 	AR_ExpNode *perc;
 	SIValue result;
-	for(int i = 0; i < 5; i ++) {
+	for(int i = 0; i < 5; i++) {
 		perc = AR_EXP_NewOpNode("percentileCont", 6);
-		for(int j = 1; j <= 5; j ++) {
+		for(int j = 1; j <= 5; j++) {
 			perc->op.children[j - 1] = AR_EXP_NewConstOperandNode(SI_DoubleVal(j * 2));
 		}
 		// The last child of this node will be the requested percentile
@@ -182,9 +186,9 @@ TEST_F(AggregateTest, PercentileDiscTest) {
 
 	SIValue expected_outcome;
 	AR_ExpNode *perc;
-	for(int i = 0; i < 5; i ++) {
+	for(int i = 0; i < 5; i++) {
 		perc = AR_EXP_NewOpNode("percentileDisc", 6);
-		for(int j = 1; j <= 5; j ++) {
+		for(int j = 1; j <= 5; j++) {
 			perc->op.children[j - 1] = AR_EXP_NewConstOperandNode(SI_DoubleVal(j * 2));
 		}
 		// The last child of this node will be the requested percentile
@@ -213,13 +217,13 @@ TEST_F(AggregateTest, StDevTest) {
 	// Stdev of squares of first 10 positive integers
 	stdev = AR_EXP_NewOpNode("stDev", 10);
 	double sum = 0;
-	for(int i = 1; i <= 10; i ++) {
+	for(int i = 1; i <= 10; i++) {
 		stdev->op.children[i - 1] = AR_EXP_NewConstOperandNode(SI_DoubleVal(i));
 		sum += i;
 	}
 	double mean = sum / 10;
 	double tmp_variance = 0;
-	for(int i = 1; i <= 10; i ++)  {
+	for(int i = 1; i <= 10; i++) {
 		tmp_variance += pow(i - mean, 2);
 	}
 	double sample_variance = tmp_variance / 9;
@@ -234,7 +238,7 @@ TEST_F(AggregateTest, StDevTest) {
 
 	// Perform last test with stDevP
 	AR_ExpNode *stdevp = AR_EXP_NewOpNode("stDevP", 10);
-	for(int i = 1; i <= 10; i ++) {
+	for(int i = 1; i <= 10; i++) {
 		stdevp->op.children[i - 1] = AR_EXP_NewConstOperandNode(SI_DoubleVal(i));
 	}
 
@@ -248,3 +252,4 @@ TEST_F(AggregateTest, StDevTest) {
 	ASSERT_EQ(result.doubleval, pop_result);
 	AR_EXP_Free(stdevp);
 }
+

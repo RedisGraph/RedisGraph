@@ -6,21 +6,34 @@
 
 #include "resultset_formatters.h"
 #include "../../util/arr.h"
+#include "../../datatypes/array.h"
 
-static inline PropertyTypeUser _mapValueType(const SIValue v) {
+// Forward declarations.
+static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n);
+static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e);
+static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext *gc,
+											   SIValue array) ;
+
+static inline ValueType _mapValueType(const SIValue v) {
 	switch(SI_TYPE(v)) {
 	case T_NULL:
-		return PROPERTY_NULL;
+		return VALUE_NULL;
 	case T_STRING:
-		return PROPERTY_STRING;
+		return VALUE_STRING;
 	case T_INT64:
-		return PROPERTY_INTEGER;
+		return VALUE_INTEGER;
 	case T_BOOL:
-		return PROPERTY_BOOLEAN;
+		return VALUE_BOOLEAN;
 	case T_DOUBLE:
-		return PROPERTY_DOUBLE;
+		return VALUE_DOUBLE;
+	case T_ARRAY:
+		return VALUE_ARRAY;
+	case T_NODE:
+		return VALUE_NODE;
+	case T_EDGE:
+		return VALUE_EDGE;
 	default:
-		return PROPERTY_UNKNOWN;
+		return VALUE_UNKNOWN;
 	}
 }
 
@@ -28,7 +41,8 @@ static inline void _ResultSet_ReplyWithValueType(RedisModuleCtx *ctx, const SIVa
 	RedisModule_ReplyWithLongLong(ctx, _mapValueType(v));
 }
 
-static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, const SIValue v) {
+static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, GraphContext *gc,
+											   const SIValue v) {
 	_ResultSet_ReplyWithValueType(ctx, v);
 	// Emit the actual value, then the value type (to facilitate client-side parsing)
 	switch(SI_TYPE(v)) {
@@ -45,11 +59,18 @@ static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, const SIValu
 		if(v.longval != 0) RedisModule_ReplyWithStringBuffer(ctx, "true", 4);
 		else RedisModule_ReplyWithStringBuffer(ctx, "false", 5);
 		return;
+	case T_ARRAY:
+		_ResultSet_CompactReplyWithSIArray(ctx, gc, v);
+		break;
 	case T_NULL:
 		RedisModule_ReplyWithNull(ctx);
 		return;
-	case T_NODE: // Nodes and edges should always be Record entries at this point
+	case T_NODE:
+		_ResultSet_CompactReplyWithNode(ctx, gc, v.ptrval);
+		return;
 	case T_EDGE:
+		_ResultSet_CompactReplyWithEdge(ctx, gc, v.ptrval);
+		return;
 	default:
 		assert("Unhandled value type" && false);
 	}
@@ -67,7 +88,7 @@ static void _ResultSet_CompactReplyWithProperties(RedisModuleCtx *ctx, GraphCont
 		// Emit the string index
 		RedisModule_ReplyWithLongLong(ctx, prop.id);
 		// Emit the value
-		_ResultSet_CompactReplyWithSIValue(ctx, prop.value);
+		_ResultSet_CompactReplyWithSIValue(ctx, gc, prop.value);
 	}
 }
 
@@ -134,6 +155,27 @@ static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *g
 	_ResultSet_CompactReplyWithProperties(ctx, gc, (GraphEntity *)e);
 }
 
+static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext *gc,
+											   SIValue array) {
+
+	/*  Compact array reply format:
+	 *  [
+	 *      [type, value] // every member is returned at its compact representation
+	 *      [type, value]
+	 *      .
+	 *      .
+	 *      .
+	 *      [type, value]
+	 *  ]
+	 */
+	uint arrayLen = SIArray_Length(array);
+	RedisModule_ReplyWithArray(ctx, arrayLen);
+	for(uint i = 0; i < arrayLen; i++) {
+		RedisModule_ReplyWithArray(ctx, 2); // Reply with array with space for type and value
+		_ResultSet_CompactReplyWithSIValue(ctx, gc, SIArray_Get(array, i));
+	}
+}
+
 void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r) {
 	// Prepare return array sized to the number of RETURN entities
 	uint numcols = Record_length(r);
@@ -149,7 +191,7 @@ void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Re
 			break;
 		default:
 			RedisModule_ReplyWithArray(ctx, 2); // Reply with array with space for type and value
-			_ResultSet_CompactReplyWithSIValue(ctx, Record_GetScalar(r, i));
+			_ResultSet_CompactReplyWithSIValue(ctx, gc, Record_GetScalar(r, i));
 		}
 	}
 }
@@ -163,7 +205,7 @@ void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns,
 	RedisModule_ReplyWithArray(ctx, columns_len);
 	for(uint i = 0; i < columns_len; i++) {
 		RedisModule_ReplyWithArray(ctx, 2);
-		ColumnTypeUser t;
+		ColumnType t;
 		// First, emit the column type enum
 		if(r) {
 			RecordEntryType entry_type = Record_GetType(r, i);

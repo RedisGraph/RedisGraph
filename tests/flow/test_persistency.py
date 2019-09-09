@@ -1,10 +1,10 @@
+from base import FlowTestsBase
 import os
 import sys
 from redisgraph import Graph, Node, Edge
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
-from base import FlowTestsBase
 
 redis_con = None
 GRAPH_NAME = "G"
@@ -13,7 +13,9 @@ redis_graph = None
 dense_graph = None
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
 countries = ["Israel", "USA", "Japan", "United Kingdom"]
-visits = [("Roi", "USA"), ("Alon", "Israel"), ("Ailon", "Japan"), ("Boaz", "United Kingdom")]
+visits = [("Roi", "USA"), ("Alon", "Israel"),
+          ("Ailon", "Japan"), ("Boaz", "United Kingdom")]
+
 
 class testGraphPersistency(FlowTestsBase):
     def __init__(self):
@@ -48,7 +50,8 @@ class testGraphPersistency(FlowTestsBase):
             for v in visits:
                 person = v[0]
                 country = v[1]
-                edge = Edge(personNodes[person], 'visit', countryNodes[country], properties={'purpose': 'pleasure'})
+                edge = Edge(personNodes[person], 'visit', countryNodes[country], properties={
+                            'purpose': 'pleasure'})
                 redis_graph.add_edge(edge)
 
             redis_graph.commit()
@@ -61,8 +64,10 @@ class testGraphPersistency(FlowTestsBase):
             redis_graph.query(query)
 
             # Create index.
-            actual_result = redis_con.execute_command("GRAPH.QUERY", GRAPH_NAME, "CREATE INDEX ON :person(name)")
-            actual_result = redis_con.execute_command("GRAPH.QUERY", GRAPH_NAME, "CREATE INDEX ON :country(name)")
+            actual_result = redis_con.execute_command(
+                "GRAPH.QUERY", GRAPH_NAME, "CREATE INDEX ON :person(name)")
+            actual_result = redis_con.execute_command(
+                "GRAPH.QUERY", GRAPH_NAME, "CREATE INDEX ON :country(name)")
 
     def populate_dense_graph(self):
         global dense_graph
@@ -70,7 +75,7 @@ class testGraphPersistency(FlowTestsBase):
         if not redis_con.exists(DENSE_GRAPH_NAME):
             nodes = []
             for i in range(10):
-                node = Node(label="n", properties={"val":i})
+                node = Node(label="n", properties={"val": i})
                 dense_graph.add_node(node)
                 nodes.append(node)
 
@@ -117,10 +122,12 @@ class testGraphPersistency(FlowTestsBase):
             self.env.assertEquals(edgeCount, 2)
 
             # Verify indices exists.
-            plan = redis_graph.execution_plan("MATCH (n:person) WHERE n.name = 'Roi' RETURN n")
+            plan = redis_graph.execution_plan(
+                "MATCH (n:person) WHERE n.name = 'Roi' RETURN n")
             self.env.assertIn("Index Scan", plan)
 
-            plan = redis_graph.execution_plan("MATCH (n:country) WHERE n.name = 'Israel' RETURN n")
+            plan = redis_graph.execution_plan(
+                "MATCH (n:country) WHERE n.name = 'Israel' RETURN n")
             self.env.assertIn("Index Scan", plan)
 
     # Verify that edges are not modified after entity deletion
@@ -135,28 +142,29 @@ class testGraphPersistency(FlowTestsBase):
         redis_con.execute_command("DEBUG", "RELOAD")
 
         second_result = dense_graph.query(query)
-        self.env.assertEquals(first_result.result_set, second_result.result_set)
+        self.env.assertEquals(first_result.result_set,
+                              second_result.result_set)
 
-    # Strings, numerics, booleans, and NULL properties should be properly serialized and reloaded
+    # Strings, numerics, booleans, arrays and NULL properties should be properly serialized and reloaded
     def test03_restore_properties(self):
         graphname = "simple_props"
         graph = Graph(graphname, redis_con)
-        query = """CREATE (:p {strval: 'str', numval: 5.5, nullval: NULL, boolval: true})"""
+        query = """CREATE (:p {strval: 'str', numval: 5.5, nullval: NULL, boolval: true, array: [1,2,3]})"""
         actual_result = graph.query(query)
         # Verify that node was created correctly
         self.env.assertEquals(actual_result.nodes_created, 1)
-        self.env.assertEquals(actual_result.properties_set, 4)
+        self.env.assertEquals(actual_result.properties_set, 5)
 
         # Save RDB & Load from RDB
         redis_con.execute_command("DEBUG", "RELOAD")
 
-        query = """MATCH (p) RETURN p.boolval, p.nullval, p.numval, p.strval"""
+        query = """MATCH (p) RETURN p.boolval, p.nullval, p.numval, p.strval, p.array"""
         actual_result = graph.query(query)
 
         # Verify that the properties are loaded correctly.
         # Note that the order of results is not guaranteed (currently managed by the Schema),
         # so this may need to be updated in the future.
-        expected_result = [[True, None, 5.5, 'str']]
+        expected_result = [[True, None, 5.5, 'str', [1, 2, 3]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
     # Verify multiple edges of the same relation between nodes A and B
@@ -178,7 +186,7 @@ class testGraphPersistency(FlowTestsBase):
         q = """MATCH (a)-[e]->(b) RETURN e.val, a.name, b.name ORDER BY e.val"""
         actual_result = g.query(q)
 
-        expected_result = [[edge1.properties['val'], src.properties['name'], dest.properties['name']], 
+        expected_result = [[edge1.properties['val'], src.properties['name'], dest.properties['name']],
                            [edge2.properties['val'], src.properties['name'], dest.properties['name']]]
 
         self.env.assertEquals(actual_result.result_set, expected_result)
