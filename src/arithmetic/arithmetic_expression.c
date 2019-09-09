@@ -253,6 +253,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 				for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
 					SIValue_Free(&sub_trees[child_idx]);
 				}
+				if(QueryCtx_ShouldFreeExceptionCause()) AR_EXP_Free(root);
 				_RaiseException(); // Raise an exception.
 			}
 			/* Evaluate self. */
@@ -274,6 +275,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 				/* An error was encountered during evaluation, and has already been set in the QueryCtx.
 				 * Invoke the exception handler, exiting this routine and returning to
 				 * the point on the stack where the handler was instantiated. */
+				if(QueryCtx_ShouldFreeExceptionCause()) AR_EXP_Free(root);
 				_RaiseException(); // Raise an exception.
 			}
 		}
@@ -294,6 +296,8 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 					SIValue v = Record_GetScalar(r, root->operand.variadic.entity_alias_idx);
 					asprintf(&error, "Type mismatch: expected a map but was %s", SIType_ToString(SI_TYPE(v)));
 					QueryCtx_SetError(error); // Set the query-level error.
+					if(QueryCtx_ShouldFreeExceptionCause()) AR_EXP_Free(root);
+					root = NULL;
 					_RaiseException();  // Raise an exception.
 				}
 
