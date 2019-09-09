@@ -17,6 +17,7 @@ void OpBase_Init(OpBase *op) {
 	op->parent = NULL;
 	op->stats = NULL;
 	op->record_map = NULL;
+	op->op_initialized = false;
 
 	// Function pointers.
 	op->init = NULL;

@@ -933,7 +933,10 @@ void _ExecutionPlanInit(OpBase *root, RecordMap *record_map) {
 	if(root->record_map == NULL) root->record_map = record_map;
 
 	// Initialize the operation if necesary.
-	if(root->init) root->init(root);
+	if(!root->op_initialized && root->init) {
+		root->init(root);
+		root->op_initialized = true;
+	}
 
 	// Continue initializing downstream operations.
 	for(int i = 0; i < root->childCount; i++) {

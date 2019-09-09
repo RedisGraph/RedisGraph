@@ -84,6 +84,7 @@ struct OpBase {
 	RecordMap *record_map;      // Mapping of entities into Record IDs in the scope of this ExecutionPlanSegment.
 	struct OpBase **children;   // Child operations.
 	int childCount;             // Number of children.
+	bool op_initialized;        // True if the operation has already been initialized.
 	OpStats *stats;             // Profiling statistics.
 	struct OpBase *parent;      // Parent operations.
 };
