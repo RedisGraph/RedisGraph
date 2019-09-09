@@ -140,3 +140,23 @@ def step_impl(context):
 def step_impl(context):
     assert exception != None
     assert "not defined" in exception.message
+
+@then(u'a TypeError should be raised at runtime: ListElementAccessByNonInteger')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "expected Integer" in exception.message
+
+
+@then(u'a SyntaxError should be raised at compile time: InvalidArgumentType')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Type mismatch" in exception.message
+
+
+@then(u'a TypeError should be raised at runtime: InvalidArgumentValue')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Type mismatch" in exception.message
