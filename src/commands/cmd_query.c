@@ -15,7 +15,8 @@
 #include "../execution_plan/execution_plan.h"
 #include "cypher-parser.h"
 
-void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, const cypher_astnode_t *index_op) {
+static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, double timings[2],
+							 const cypher_astnode_t *index_op) {
 	/* Set up nested array response for index creation and deletion,
 	 * Following the response struture of other queries:
 	 * First element is an empty result-set followed by statistics.
@@ -35,10 +36,10 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, const cypher_astnod
 		if(GraphContext_AddIndex(&idx, gc, label, prop, IDX_EXACT_MATCH) != INDEX_OK) {
 			// Index creation may have failed if the label or property was invalid, or the index already exists.
 			RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
-			return;
+		} else {
+			Index_Construct(idx);
+			RedisModule_ReplyWithSimpleString(ctx, "Indices added: 1");
 		}
-		Index_Construct(idx);
-		RedisModule_ReplyWithSimpleString(ctx, "Indices added: 1");
 	} else {
 		// Retrieve strings from AST node
 		const char *label = cypher_ast_label_get_name(cypher_ast_drop_node_props_index_get_label(index_op));
@@ -53,6 +54,13 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, const cypher_astnod
 			free(reply);
 		}
 	}
+
+	/* Report execution timing (in standard queries, this is handled within the ResultSet code). */
+	char *strElapsed;
+	double t = simple_toc(timings) * 1000;
+	asprintf(&strElapsed, "Query internal execution time: %.6f milliseconds", t);
+	RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
+	free(strElapsed);
 }
 
 static inline bool _check_compact_flag(CommandCtx *qctx) {
@@ -116,26 +124,18 @@ void _MGraph_Query(void *args) {
 
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
 	if(root_type == CYPHER_AST_QUERY) {  // query operation
-		result_set = NewResultSet(ctx, compact);
+		result_set = NewResultSet(ctx, qctx->timer, compact);
 		ExecutionPlan *plan = NewExecutionPlan(ctx, gc, result_set);
 		if(!plan) goto cleanup;
 		result_set = ExecutionPlan_Execute(plan);
 		ExecutionPlan_Free(plan);
 		ResultSet_Replay(result_set);    // Send result-set back to client.
-		if(QueryCtx_EncounteredError()) goto cleanup;
 	} else if(root_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
 			  root_type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {
-		_index_operation(ctx, gc, ast->root);
+		_index_operation(ctx, gc, qctx->timer, ast->root);
 	} else {
 		assert("Unhandled query type" && false);
 	}
-
-	/* Report execution timing. */
-	char *strElapsed;
-	double t = simple_toc(qctx->tic) * 1000;
-	asprintf(&strElapsed, "Query internal execution time: %.6f milliseconds", t);
-	RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
-	free(strElapsed);
 
 	// Clean up.
 cleanup:
@@ -159,10 +159,7 @@ cleanup:
  * argv[1] graph name
  * argv[2] query to execute */
 int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-	double tic[2];
 	if(argc < 3) return RedisModule_WrongArity(ctx);
-
-	simple_tic(tic);
 
 	/* Determin query execution context
 	 * queries issued within a LUA script or multi exec block must
@@ -173,15 +170,11 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(flags & (REDISMODULE_CTX_FLAGS_MULTI | REDISMODULE_CTX_FLAGS_LUA)) {
 		// Run query on Redis main thread.
 		context = CommandCtx_New(ctx, NULL, argv[1], argv[2], argv, argc, is_replicated);
-		context->tic[0] = tic[0];
-		context->tic[1] = tic[1];
 		_MGraph_Query(context);
 	} else {
 		// Run query on a dedicated thread.
 		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
 		context = CommandCtx_New(NULL, bc, argv[1], argv[2], argv, argc, is_replicated);
-		context->tic[0] = tic[0];
-		context->tic[1] = tic[1];
 		thpool_add_work(_thpool, _MGraph_Query, context);
 	}
 

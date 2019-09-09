@@ -17,18 +17,19 @@
 #define RESULTSET_FULL 0
 
 typedef struct {
-	RedisModuleCtx *ctx;
-	GraphContext *gc;           /* Context used for mapping attribute strings and IDs */
-	uint column_count;          /* Number of columns in result set. */
-	bool compact;               /* Whether records should be returned in compact form. */
-	bool header_emitted;        /* Whether a header row has been issued to the user. */
-	const char **columns;       /* Field names for each column of results. */
-	size_t recordCount;         /* Number of records introduced. */
-	ResultSetStatistics stats;  /* ResultSet statistics. */
+	RedisModuleCtx *ctx;            /* Redis context. */
+	GraphContext *gc;               /* Context used for mapping attribute strings and IDs */
+	uint column_count;              /* Number of columns in result set. */
+	bool compact;                   /* Whether records should be returned in compact form. */
+	bool header_emitted;            /* Whether a header row has been issued to the user. */
+	const char **columns;           /* Field names for each column of results. */
+	size_t recordCount;             /* Number of records introduced. */
+	double timer[2];                /* Query runtime tracker. */
+	ResultSetStatistics stats;      /* ResultSet statistics. */
 	ResultSetFormatter *formatter;  /* ResultSet data formatter. */
 } ResultSet;
 
-ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact);
+ResultSet *NewResultSet(RedisModuleCtx *ctx, double timer[2], bool compact);
 
 void ResultSet_BuildColumns(ResultSet *set, AR_ExpNode **projections);
 

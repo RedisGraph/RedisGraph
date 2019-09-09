@@ -70,7 +70,7 @@ void _MGraph_Profile(void *args) {
 		assert("Unhandled query type" && false);
 	}
 
-	result_set = NewResultSet(ctx, false);
+	result_set = NewResultSet(ctx, false, qctx->timer);
 	ExecutionPlan *plan = NewExecutionPlan(ctx, gc, result_set);
 	ExecutionPlan_Profile(plan);
 	ExecutionPlan_Print(plan, ctx);
@@ -119,3 +119,4 @@ int MGraph_Profile(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
+

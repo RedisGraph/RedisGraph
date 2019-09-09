@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef GRAPH_BULK_INSERT_H
-#define GRAPH_BULK_INSERT_H
+#pragma once
 
 #include "../redismodule.h"
 #include "../util/thpool/thpool.h"
@@ -15,7 +14,6 @@ extern threadpool _thpool;
 /* Multi threaded bulk insert context. */
 typedef struct {
 	RedisModuleBlockedClient *bc;   // Blocked client.
-	double tic[2];                  // timings.
 	RedisModuleString **argv;
 	int argc;
 } BulkInsertContext;
@@ -35,4 +33,3 @@ void BulkInsertContext_Free
 
 int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 
-#endif

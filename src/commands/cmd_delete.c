@@ -17,8 +17,6 @@ extern RedisModuleType *GraphContextRedisModuleType;
 /* Delete graph, removing the key from Redis and
  * freeing every resource allocated by the graph. */
 void _MGraph_Delete(void *args) {
-	double tic[2];
-	simple_tic(tic);
 	CommandCtx *dCtx = (CommandCtx *)args;
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(dCtx);
 	RedisModuleString *graph_name = RedisModule_CreateString(ctx, dCtx->graphName,
@@ -47,7 +45,7 @@ void _MGraph_Delete(void *args) {
 	// Remove GraphContext from keyspace.
 	if(RedisModule_DeleteKey(key) == REDISMODULE_OK) {
 		char *strElapsed;
-		double t = simple_toc(tic) * 1000;
+		double t = simple_toc(dCtx->timer) * 1000;
 		asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
 		RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
 		free(strElapsed);
@@ -86,3 +84,4 @@ int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
+
