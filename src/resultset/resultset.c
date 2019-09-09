@@ -118,7 +118,7 @@ int ResultSet_AddRecord(ResultSet *set, Record r) {
 	return RESULTSET_OK;
 }
 
-bool ResultSet_Replay(ResultSet *set) {
+void ResultSet_Replay(ResultSet *set) {
 	if(set->header_emitted) {
 		// If we have emitted a header, set the number of elements in the preceding array.
 		RedisModule_ReplySetArrayLength(set->ctx, set->recordCount);
@@ -135,8 +135,6 @@ bool ResultSet_Replay(ResultSet *set) {
 	char *err = QueryCtx_GetError(); // Check to see if we've encountered a run-time error.
 	if(err) RedisModule_ReplyWithError(set->ctx, err); // If so, emit it as the last top-level response.
 	else _ResultSet_ReplayStats(set->ctx, set); // Otherwise, the last response is query statistics.
-
-	return err != NULL;
 }
 
 void ResultSet_Free(ResultSet *set) {

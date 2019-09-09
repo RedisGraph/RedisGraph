@@ -34,8 +34,7 @@ void ResultSet_BuildColumns(ResultSet *set, AR_ExpNode **projections);
 
 int ResultSet_AddRecord(ResultSet *set, Record r);
 
-/* Finish emitting the Redis-level response to the user. Returns true if an error was emitted. */
-bool ResultSet_Replay(ResultSet *set);
+void ResultSet_Replay(ResultSet *set);
 
 void ResultSet_Free(ResultSet *set);
 
