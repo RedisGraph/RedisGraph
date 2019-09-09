@@ -18,15 +18,19 @@ SIValue AR_AND(SIValue *argv, int argc) {
 	SIValue a = argv[0];
 	SIValue b = argv[1];
 
-	int a_val = SIValue_IsNull(a) ? CONTAINS_NULL : a.longval;
-	int b_val = SIValue_IsNull(b) ? CONTAINS_NULL : b.longval;
-	bool has_nulls = (a_val | b_val) & CONTAINS_NULL;
-	int val = a_val & b_val;
+	if(SIValue_IsNull(a)) {
+		// If one argument is null and the other is false, returns false.
+		if(SI_TYPE(b) == T_BOOL && b.longval == false) return SI_BoolVal(false);
+		// Else if an argument is null, returns null.
+		return SI_NullVal();
+	} else if(SIValue_IsNull(b)) {
+		// If one argument is null and the other is false, returns false.
+		if(SI_TYPE(a) == T_BOOL && a.longval == false) return SI_BoolVal(false);
+		// Else if an argument is null, returns null.
+		return SI_NullVal();
+	}
 
-	// If one argument is null and the other is false, returns false.
-	if(has_nulls && !val) return SI_BoolVal(false);
-	if(has_nulls) return SI_NullVal(); // Else if an argument is null, returns null.
-	return SI_BoolVal(val); // Else return the logical AND.
+	return SI_BoolVal(a.longval & b.longval); // Return the logical AND.
 }
 
 SIValue AR_OR(SIValue *argv, int argc) {

@@ -86,11 +86,15 @@ class testValueComparison(FlowTestsBase):
         expected_val = [True, False, False, False] # Truth table for AND
         self.env.assertEquals(actual_result.result_set[0], expected_val)
 
-        # AND comparisons with one NULL value always evaluate to false
-        query = "RETURN true AND null, false AND null"
+        # false AND null == false 
+        query = """RETURN false AND NULL"""
         actual_result = redis_graph.query(query)
-        expected_val = [False, False]
-        self.env.assertEquals(actual_result.result_set[0], expected_val)
+        self.env.assertEquals(actual_result.result_set[0][0], False)
+
+        # true AND null == null 
+        query = """RETURN true AND NULL"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
 
         # Test two NULL values
         query = """RETURN NULL AND NULL"""
