@@ -198,6 +198,8 @@ static Record _handoff(OpAggregate *op) {
 	uint exp_count = array_len(op->exps);
 	uint order_exp_count = array_len(op->order_exps);
 	Record r = Record_New(exp_count + order_exp_count);
+	// Track the newly-allocated Record so that they may be freed if execution fails.
+	OpBase_AddVolatileRecord((OpBase *)op, r);
 
 	// Populate record.
 	uint aggIdx = 0; // Index into group aggregated exps.
@@ -237,6 +239,7 @@ static Record _handoff(OpAggregate *op) {
 		}
 	}
 
+	OpBase_RemoveVolatileRecords((OpBase *)op);
 	return r;
 }
 

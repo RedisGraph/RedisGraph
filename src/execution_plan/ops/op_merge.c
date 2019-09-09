@@ -99,6 +99,9 @@ static void _CommitEdges(OpMerge *op, Record r) {
 }
 
 static void _CreateEntities(OpMerge *op, Record r) {
+	// Track the inherited Record and the newly-allocated Record so that they may be freed if execution fails.
+	OpBase_AddVolatileRecord((OpBase *)op, r);
+
 	// Lock everything.
 	Graph_AcquireWriteLock(op->gc->g);
 
@@ -108,6 +111,9 @@ static void _CreateEntities(OpMerge *op, Record r) {
 
 	// Release lock.
 	Graph_ReleaseLock(op->gc->g);
+
+	OpBase_RemoveVolatileRecords((OpBase *)op); // No exceptions encountered, Records are not dangling.
+
 }
 
 OpBase *NewMergeOp(ResultSetStatistics *stats, NodeCreateCtx *nodes_to_merge,

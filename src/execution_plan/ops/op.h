@@ -86,6 +86,7 @@ struct OpBase {
 	int childCount;             // Number of children.
 	bool op_initialized;        // True if the operation has already been initialized.
 	OpStats *stats;             // Profiling statistics.
+	Record *dangling_records;   // Records allocated by this operation that must be freed.
 	struct OpBase *parent;      // Parent operations.
 };
 typedef struct OpBase OpBase;
@@ -96,5 +97,13 @@ Record OpBase_Consume(OpBase *op);  // Consume op.
 Record OpBase_Profile(OpBase *op);  // Profile op.
 int OpBase_ToString(const OpBase *op, char *buff, uint buff_len);
 
+/* If an operation holds the sole reference to a Record it is evaluating,
+ * that reference should be tracked so that it may be freed in the event of a run-time error. */
+void OpBase_AddVolatileRecord(OpBase *op, const Record r);
+/* No errors were encountered while processing these Records; the references
+ * may be released. */
+void OpBase_RemoveVolatileRecords(OpBase *op);
+
 void OpBase_PropagateFree(OpBase *op); // Sends free request to each operation up the chain.
 void OpBase_PropagateReset(OpBase *op); // Sends reset request to each operation up the chain.
+

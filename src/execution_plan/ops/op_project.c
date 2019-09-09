@@ -77,6 +77,11 @@ Record ProjectConsume(OpBase *opBase) {
 	}
 
 	Record projection = Record_New(op->exp_count + op->order_exp_count);
+
+	// Track the inherited Record and the newly-allocated Record so that they may be freed if execution fails.
+	OpBase_AddVolatileRecord(opBase, r);
+	OpBase_AddVolatileRecord(opBase, projection);
+
 	int rec_idx = 0;
 	for(unsigned short i = 0; i < op->exp_count; i++) {
 		SIValue v = AR_EXP_Evaluate(op->exps[i], r);
@@ -100,6 +105,7 @@ Record ProjectConsume(OpBase *opBase) {
 	}
 
 	Record_Free(r);
+	OpBase_RemoveVolatileRecords(opBase); // No exceptions encountered, Records are not dangling.
 	return projection;
 }
 

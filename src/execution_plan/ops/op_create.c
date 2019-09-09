@@ -17,6 +17,7 @@ PendingProperties *_ConvertPropertyMap(Record r, const PropertyMap *map) {
 	converted->attr_keys = map->keys; // This pointer can be copied directly.
 	converted->values = rm_malloc(sizeof(SIValue) * map->property_count);
 	for(int i = 0; i < map->property_count; i++) {
+		// TODO potential memory leak on evaluation failure
 		converted->values[i] = AR_EXP_Evaluate(map->values[i], r);
 	}
 
@@ -275,6 +276,9 @@ Record OpCreateConsume(OpBase *opBase) {
 	OpBase *child = NULL;
 	if(!op->op.childCount) {
 		r = Record_New(opBase->record_map->record_len);
+		// Track the newly-allocated Record so that it may be freed if execution fails.
+		OpBase_AddVolatileRecord(opBase, r);
+
 		/* Create entities. */
 		_CreateNodes(op, r);
 		_CreateEdges(op, r);
@@ -284,7 +288,10 @@ Record OpCreateConsume(OpBase *opBase) {
 	} else {
 		// Pull data until child is depleted.
 		child = op->op.children[0];
+		// TODO here?
 		while((r = OpBase_Consume(child))) {
+			// Track inherited Record so that it may be freed if execution fails.
+			OpBase_AddVolatileRecord(opBase, r);
 			if(Record_length(r) < opBase->record_map->record_len) {
 				// If the child record was created in a different segment, it may not be
 				// large enough to accommodate the new entities.
@@ -298,6 +305,8 @@ Record OpCreateConsume(OpBase *opBase) {
 			op->records = array_append(op->records, r);
 		}
 	}
+
+	OpBase_RemoveVolatileRecords(opBase); // No exceptions encountered, Records are not dangling.
 
 	/* Done reading, we're not going to call consume any longer
 	 * there might be operations e.g. index scan that need to free

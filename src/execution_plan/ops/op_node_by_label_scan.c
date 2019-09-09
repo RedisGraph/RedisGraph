@@ -63,6 +63,7 @@ Record NodeByLabelScanConsume(OpBase *opBase) {
 	if(depleted) return NULL;
 
 	Record r = Record_New(opBase->record_map->record_len);
+	// opBase->allocated_record = &r;
 	// Get a pointer to a heap allocated node.
 	Node *n = Record_GetNode(r, op->nodeRecIdx);
 	// Update node's internal entity pointer.
