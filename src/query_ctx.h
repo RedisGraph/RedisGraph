@@ -15,16 +15,17 @@
 typedef struct {
 	AST *ast;
 	char *error;
-	jmp_buf *env;
+	jmp_buf *breakpoint;
 	GraphContext *gc;
 	RedisModuleCtx *redis_module_ctx;
+	bool free_cause;
 } QueryCtx;
 
 bool QueryCtx_Init(void);
 void QueryCtx_Finalize(void);
 
 void QueryCtx_SetAST(AST *ast);
-void QueryCtx_SetExceptionHandler(jmp_buf *env);
+void QueryCtx_SetExceptionHandler(jmp_buf *breakpoint, bool free_cause);
 void QueryCtx_SetError(char *error);
 void QueryCtx_SetGraphCtx(GraphContext *gc);
 void QueryCtx_SetRedisModuleCtx(RedisModuleCtx *ctx);
@@ -32,6 +33,7 @@ void QueryCtx_SetRedisModuleCtx(RedisModuleCtx *ctx);
 AST *QueryCtx_GetAST(void);
 jmp_buf *QueryCtx_GetExceptionHandler(void);
 char *QueryCtx_GetError(void);
+bool QueryCtx_ShouldFreeExceptionCause(void);
 bool QueryCtx_EncounteredError(void);
 GraphContext *QueryCtx_GetGraphCtx(void);
 Graph *QueryCtx_GetGraph(void);

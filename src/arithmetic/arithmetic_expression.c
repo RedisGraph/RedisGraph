@@ -228,21 +228,39 @@ static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint a
 	return true;
 }
 
-SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
-	SIValue result;
+/* Evaluating an expression tree constructs an array of SIValues.
+ * Free all of these values, in case an intermediate node on the tree caused a heap allocation.
+ * For example, in the expression:
+ * a.first_name + toUpper(a.last_name)
+ * the result of toUpper() is allocated within this tree, and will leak if not freed here. */
+static inline void _AR_EXP_FreeResultsArray(SIValue *results, int count) {
+	for(int i = 0; i < count; i ++) {
+		SIValue_Free(&results[i]);
+	}
+}
+
+/* Evaluate an expression tree, placing the calculated value in 'result' and returning
+ * whether an error occurred during evaluation. */
+static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue *result) {
+	AR_EXP_Result res = EVAL_OK;
 	if(root->type == AR_EXP_OP) {
 		/* Aggregation function should be reduced by now.
 		 * TODO: verify above statement. */
 		if(root->op.type == AR_OP_AGGREGATE) {
 			AggCtx *agg = root->op.agg_func;
 			// The AggCtx will ultimately free its result.
-			result = SI_ShareValue(agg->result);
+			*result = SI_ShareValue(agg->result);
 		} else {
 			/* Evaluate each child before evaluating current node. */
 			SIValue sub_trees[root->op.child_count];
 			for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
-				SIValue v = AR_EXP_Evaluate(root->op.children[child_idx], r);
-				if(SIValue_IsNull(v) && QueryCtx_EncounteredError()) return v;
+				SIValue v;
+				AR_EXP_Result res = _AR_EXP_Evaluate(root->op.children[child_idx], r, &v);
+				if(res != EVAL_OK) {
+					// Encountered an error while evaluating a subtree.
+					_AR_EXP_FreeResultsArray(sub_trees, child_idx);
+					return res;
+				}
 				sub_trees[child_idx] = v;
 			}
 
@@ -250,40 +268,24 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 			if(!_AR_EXP_ValidateInvocation(root->op.f, sub_trees, root->op.child_count)) {
 				// The expression tree failed its validations and set an error message.
 				// Free all associated memory.
-				for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
-					SIValue_Free(&sub_trees[child_idx]);
-				}
-				if(QueryCtx_ShouldFreeExceptionCause()) AR_EXP_Free(root);
-				_RaiseException(); // Raise an exception.
+				_AR_EXP_FreeResultsArray(sub_trees, root->op.child_count);
+				return EVAL_ERR;
 			}
 			/* Evaluate self. */
-			result = root->op.f->func(sub_trees, root->op.child_count);
-			/* Free any SIValues that were allocated while evaluating this tree.
-			 * for example 'a'+'b'+'c'+'d' will evalute to
-			          +(abcd)
-			         /       \
-			     +(ab)      +(cd)
-			    /   \       /   \
-			   a     b     c     d
-			   the expressions 'ab', 'cd' which are calculated temporaty values
-			   will be released once the calculation of 'abcd' is done
-			*/
-			for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
-				SIValue_Free(&sub_trees[child_idx]);
-			}
-			if(SIValue_IsNull(result) && QueryCtx_EncounteredError()) {
-				/* An error was encountered during evaluation, and has already been set in the QueryCtx.
-				 * Invoke the exception handler, exiting this routine and returning to
-				 * the point on the stack where the handler was instantiated. */
-				if(QueryCtx_ShouldFreeExceptionCause()) AR_EXP_Free(root);
-				_RaiseException(); // Raise an exception.
+			*result = root->op.f->func(sub_trees, root->op.child_count);
+			_AR_EXP_FreeResultsArray(sub_trees, root->op.child_count);
+
+			if(SIValue_IsNull(*result) && QueryCtx_EncounteredError()) {
+				/* An error was encountered while evaluating this function, and has already been set in
+				 * the QueryCtx. Exit with an error. */
+				return EVAL_ERR;
 			}
 		}
 	} else {
 		/* Deal with a constant node. */
 		if(root->operand.type == AR_EXP_CONSTANT) {
 			// The value is constant or has been computed elsewhere, and is shared with the caller.
-			result = SI_ShareValue(root->operand.constant);
+			*result = SI_ShareValue(root->operand.constant);
 		} else {
 			// Fetch entity property value.
 			if(root->operand.variadic.entity_prop != NULL) {
@@ -296,9 +298,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 					SIValue v = Record_GetScalar(r, root->operand.variadic.entity_alias_idx);
 					asprintf(&error, "Type mismatch: expected a map but was %s", SIType_ToString(SI_TYPE(v)));
 					QueryCtx_SetError(error); // Set the query-level error.
-					if(QueryCtx_ShouldFreeExceptionCause()) AR_EXP_Free(root);
-					root = NULL;
-					_RaiseException();  // Raise an exception.
+					return EVAL_ERR;
 				}
 
 				GraphEntity *ge = Record_GetGraphEntity(r, root->operand.variadic.entity_alias_idx);
@@ -307,19 +307,29 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 				}
 				SIValue *property = GraphEntity_GetProperty(ge, root->operand.variadic.entity_prop_idx);
 				if(property == PROPERTY_NOTFOUND) {
-					result = SI_NullVal();
+					*result = SI_NullVal();
 				} else {
 					// The value belongs to a graph property, and can be accessed safely during the query lifetime.
-					result = SI_ConstValue(*property);
+					*result = SI_ConstValue(*property);
 				}
 			} else {
 				// Alias doesn't necessarily refers to a graph entity,
 				// it could also be a constant.
 				int aliasIdx = root->operand.variadic.entity_alias_idx;
 				// The value was not created here; share with the caller.
-				result = SI_ShareValue(Record_Get(r, aliasIdx));
+				*result = SI_ShareValue(Record_Get(r, aliasIdx));
 			}
 		}
+	}
+	return res;
+}
+
+SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
+	SIValue result;
+	AR_EXP_Result res = _AR_EXP_Evaluate(root, r, &result);
+	if(res != EVAL_OK) {
+		if(QueryCtx_ShouldFreeExceptionCause()) AR_EXP_Free(root);
+		_RaiseException();  // Raise an exception.
 	}
 	return result;
 }

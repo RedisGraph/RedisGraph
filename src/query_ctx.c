@@ -35,9 +35,15 @@ void QueryCtx_SetAST(AST *ast) {
 	ctx->ast = ast;
 }
 
-void QueryCtx_SetExceptionHandler(jmp_buf *env) {
+bool QueryCtx_ShouldFreeExceptionCause(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	ctx->env = env;
+	return ctx->free_cause;
+}
+
+void QueryCtx_SetExceptionHandler(jmp_buf *breakpoint, bool free_cause) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	ctx->breakpoint = breakpoint;
+	ctx->free_cause = free_cause;
 }
 
 void QueryCtx_SetError(char *error) {
@@ -63,8 +69,8 @@ AST *QueryCtx_GetAST(void) {
 
 jmp_buf *QueryCtx_GetExceptionHandler(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	assert(ctx->env);
-	return ctx->env;
+	assert(ctx->breakpoint);
+	return ctx->breakpoint;
 }
 
 char *QueryCtx_GetError(void) {
@@ -101,9 +107,9 @@ void QueryCtx_Free(void) {
 		free(ctx->error);
 		ctx->error = NULL;
 	}
-	if(ctx->env) {
-		rm_free(ctx->env);
-		ctx->env = NULL;
+	if(ctx->breakpoint) {
+		rm_free(ctx->breakpoint);
+		ctx->breakpoint = NULL;
 	}
 
 	rm_free(ctx);

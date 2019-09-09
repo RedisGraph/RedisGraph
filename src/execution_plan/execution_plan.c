@@ -38,21 +38,20 @@ static void _associateRecordMap(OpBase *root, RecordMap *record_map) {
 
 /* In a query with a RETURN *, build projections for all explicit aliases
  * in previous clauses. */
-static AR_ExpNode **_ReturnExpandAll(RecordMap *record_map, AST *ast) {
+static void _ReturnExpandAll(ExecutionPlanSegment *segment, AST *ast) {
 	// Collect all unique aliases
 	const char **aliases = AST_CollectElementNames(ast);
 	uint count = array_len(aliases);
 
 	// Build an expression for each alias
-	AR_ExpNode **return_expressions = array_new(AR_ExpNode *, count);
+	segment->projections = array_new(AR_ExpNode *, count);
 	for(int i = 0; i < count; i ++) {
-		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(record_map, aliases[i], NULL);
+		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(segment->record_map, aliases[i], NULL);
 		exp->resolved_name = aliases[i];
-		return_expressions = array_append(return_expressions, exp);
+		segment->projections = array_append(segment->projections, exp);
 	}
 
 	array_free(aliases);
-	return return_expressions;
 }
 
 // Handle ORDER entities
@@ -98,14 +97,18 @@ static AR_ExpNode **_BuildOrderExpressions(RecordMap *record_map, AR_ExpNode **p
 
 // Handle RETURN entities
 // (This function is not static because it is relied upon by unit tests)
-AR_ExpNode **_BuildReturnExpressions(RecordMap *record_map, const cypher_astnode_t *ret_clause,
-									 AST *ast) {
+void _BuildReturnExpressions(ExecutionPlanSegment *segment, const cypher_astnode_t *ret_clause,
+							 AST *ast) {
+	RecordMap *record_map = segment->record_map;
 	// Query is of type "RETURN *",
 	// collect all defined identifiers and create return elements for them
-	if(cypher_ast_return_has_include_existing(ret_clause)) return _ReturnExpandAll(record_map, ast);
+	if(cypher_ast_return_has_include_existing(ret_clause)) {
+		_ReturnExpandAll(segment, ast);
+		return;
+	}
 
 	uint count = cypher_ast_return_nprojections(ret_clause);
-	AR_ExpNode **return_expressions = array_new(AR_ExpNode *, count);
+	segment->projections = array_new(AR_ExpNode *, count);
 	for(uint i = 0; i < count; i++) {
 		const cypher_astnode_t *projection = cypher_ast_return_get_projection(ret_clause, i);
 		// The AST expression can be an identifier, function call, or constant
@@ -129,10 +132,8 @@ AR_ExpNode **_BuildReturnExpressions(RecordMap *record_map, const cypher_astnode
 		}
 
 		exp->resolved_name = identifier;
-		return_expressions = array_append(return_expressions, exp);
+		segment->projections = array_append(segment->projections, exp);
 	}
-
-	return return_expressions;
 }
 
 static AR_ExpNode **_BuildWithExpressions(RecordMap *record_map,
@@ -478,7 +479,7 @@ static void _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
 
 	const cypher_astnode_t *order_clause = NULL;
 	if(ret_clause) {
-		segment->projections = _BuildReturnExpressions(segment->record_map, ret_clause, ast);
+		_BuildReturnExpressions(segment, ret_clause, ast);
 		// If we have a RETURN * and previous WITH projections, include those projections.
 		if(cypher_ast_return_has_include_existing(ret_clause) && prev_projections) {
 			uint prev_projection_count = array_len(prev_projections);
@@ -819,12 +820,13 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 
 	/* Set an exception-handling breakpoint (jump buffer) to capture compile-time errors.
 	 * We might encounter a compile-time error while attempting to reduce expression trees to scalars. */
-	jmp_buf *env = rm_malloc(sizeof(jmp_buf));
+	jmp_buf *breakpoint = rm_malloc(sizeof(jmp_buf));
 
 	/* encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
 	 * a downstream exception returns us to this breakpoint. */
-	int encountered_error = setjmp(*env);
-	QueryCtx_SetExceptionHandler(env);
+	int encountered_error = setjmp(*breakpoint);
+	bool free_exception_cause = true; // The cause of a compile-time error will be freed on occurrence.
+	QueryCtx_SetExceptionHandler(breakpoint, free_exception_cause);
 
 	if(encountered_error) {
 		// Encountered a compile-time error.
@@ -953,11 +955,13 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 
 	/* Replace the exception-handling breakpoint set in ExecutionPlan construction with
 	 * a new breakpoint to capture run-time errors. */
-	jmp_buf *env = QueryCtx_GetExceptionHandler();
+	jmp_buf *breakpoint = QueryCtx_GetExceptionHandler();
+	bool free_exception_cause = false; // The causes of run-time errors will be freed in cleanup.
 
 	/* encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
 	 * a downstream exception returns us to this breakpoint. */
-	int encountered_error = setjmp(*env);
+	int encountered_error = setjmp(*breakpoint);
+	QueryCtx_SetExceptionHandler(breakpoint, free_exception_cause);
 
 	if(encountered_error) {
 		// Encountered a run-time error; return immediately.

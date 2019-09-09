@@ -39,6 +39,12 @@ typedef enum {
 	AR_EXP_VARIADIC,
 } AR_OperandNodeType;
 
+/* Success of an evaluation. */
+typedef enum {
+	EVAL_OK = 0,
+	EVAL_ERR = (1 << 0),
+} AR_EXP_Result;
+
 /* AR_Func - Function pointer to an operation with an arithmetic expression */
 typedef SIValue(*AR_Func)(SIValue *argv, int argc);
 
