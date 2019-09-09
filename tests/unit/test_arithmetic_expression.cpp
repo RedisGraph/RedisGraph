@@ -25,8 +25,8 @@ extern "C"
 #include <time.h>
 
 // Declaration of function in execution_plan.h
-AR_ExpNode **_BuildReturnExpressions(RecordMap *record_map, const cypher_astnode_t *ret_clause,
-									 AST *ast);
+extern void _BuildReturnExpressions(ExecutionPlanSegment *segment,
+									const cypher_astnode_t *ret_clause, AST *ast);
 
 #ifdef __cplusplus
 }
@@ -61,7 +61,7 @@ class ArithmeticTest: public ::testing::Test {
 			FAIL() << err;
 		}
 		// Set the jump handler in thread-local storage.
-		QueryCtx_SetExceptionHandler(env);
+		QueryCtx_SetExceptionHandler(env, true);
 	}
 };
 
@@ -91,9 +91,10 @@ AR_ExpNode *_exp_from_query(const char *query) {
 	ast->entity_map = raxNew();
 
 	const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
-	AR_ExpNode **return_elems = _BuildReturnExpressions(NULL, ret_clause, NULL);
+	ExecutionPlanSegment *segment = (ExecutionPlanSegment *)rm_malloc(sizeof(ExecutionPlanSegment));
+	_BuildReturnExpressions(segment, ret_clause, NULL);
 
-	return return_elems[0];
+	return segment->projections[0];
 }
 
 TEST_F(ArithmeticTest, ExpressionTest) {

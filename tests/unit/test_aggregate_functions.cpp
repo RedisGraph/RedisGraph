@@ -21,8 +21,8 @@ extern "C"
 #include "../../src/util/arr.h"
 
 // Declaration of used functions not in header files
-extern AR_ExpNode **_BuildReturnExpressions(RecordMap *record_map,
-											const cypher_astnode_t *ret_clause, AST *ast);
+extern void _BuildReturnExpressions(ExecutionPlanSegment *segment,
+									const cypher_astnode_t *ret_clause, AST *ast);
 extern AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count);
 
 
@@ -51,9 +51,10 @@ AR_ExpNode *_exp_from_query(const char *query) {
 	AST *ast = AST_Build(parse_result);
 
 	const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
-	AR_ExpNode **return_elems = _BuildReturnExpressions(NULL, ret_clause, NULL);
+	ExecutionPlanSegment *segment = (ExecutionPlanSegment *)rm_malloc(sizeof(ExecutionPlanSegment));
+	_BuildReturnExpressions(segment, ret_clause, NULL);
 
-	return return_elems[0];
+	return segment->projections[0];
 }
 
 // Count valid entities

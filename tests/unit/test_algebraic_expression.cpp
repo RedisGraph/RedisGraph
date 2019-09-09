@@ -19,12 +19,13 @@ extern "C" {
 #include "../../src/graph/query_graph.h"
 #include "../../src/graph/graphcontext.h"
 #include "../../src/util/simple_timer.h"
+#include "../../src/execution_plan/execution_plan.h"
 #include "../../src/arithmetic/algebraic_expression.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 // Declaration of function in execution_plan.h
-extern AR_ExpNode **_BuildReturnExpressions(RecordMap *record_map,
-											const cypher_astnode_t *ret_clause, AST *ast);
+extern void _BuildReturnExpressions(ExecutionPlanSegment *segment,
+									const cypher_astnode_t *ret_clause, AST *ast);
 
 #ifdef __cplusplus
 }
@@ -185,9 +186,10 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 		AST *ast = AST_Build(parse_result);
 		QueryGraph *qg = BuildQueryGraph(gc, ast);
-		RecordMap *map = RecordMap_New();
-		_BuildReturnExpressions(map, AST_GetClause(ast, CYPHER_AST_RETURN), ast);
-		AlgebraicExpression **ae = AlgebraicExpression_FromQueryGraph(qg, map, exp_count);
+		ExecutionPlanSegment *segment = (ExecutionPlanSegment *)rm_malloc(sizeof(ExecutionPlanSegment));
+		segment->record_map = RecordMap_New();
+		_BuildReturnExpressions(segment, AST_GetClause(ast, CYPHER_AST_RETURN), ast);
+		AlgebraicExpression **ae = AlgebraicExpression_FromQueryGraph(qg, segment->record_map, exp_count);
 
 		return ae;
 	}
@@ -1234,3 +1236,4 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
 	GrB_Matrix_free(&expected);
 	GrB_Matrix_free(&res);
 }
+
