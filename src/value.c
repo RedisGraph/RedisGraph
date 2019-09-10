@@ -17,6 +17,16 @@
 #include "util/rmalloc.h"
 #include "datatypes/array.h"
 
+static inline void _SIString_ToString(SIValue str, char **buf, size_t *bufferLen,
+									  size_t *bytesWritten) {
+	size_t strLen = strlen(str.stringval);
+	if(*bufferLen - *bytesWritten < strLen) {
+		*bufferLen += strLen;
+		*buf = rm_realloc(*buf, *bufferLen);
+	}
+	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%s", str.stringval);
+}
+
 SIValue SI_LongVal(int64_t i) {
 	return (SIValue) {
 		.longval = i, .type = T_INT64
@@ -188,15 +198,6 @@ const char *SIType_ToString(SIType t) {
 	}
 }
 
-void SIString_ToString(SIValue str, char **buf, size_t *bufferLen, size_t *bytesWritten) {
-	size_t strLen = strlen(str.stringval);
-	if(*bufferLen - *bytesWritten < strLen) {
-		*bufferLen += strLen;
-		*buf = rm_realloc(*buf, *bufferLen);
-	}
-	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%s", str.stringval);
-}
-
 void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWritten) {
 	// uint64 max and int64 min string representation requires 21 bytes
 	// float defaults to print 6 digit after the decimal-point
@@ -208,7 +209,7 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 
 	switch(v.type) {
 	case T_STRING:
-		SIString_ToString(v, buf, bufferLen, bytesWritten);
+		_SIString_ToString(v, buf, bufferLen, bytesWritten);
 		break;
 	case T_INT64:
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%lld", (long long)v.longval);

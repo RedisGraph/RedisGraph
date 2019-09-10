@@ -91,20 +91,13 @@ SIValue SI_Node(void *n);
 SIValue SI_Edge(void *e);
 SIValue SI_Array(u_int64_t initialCapacity);
 SIValue SI_EmptyArray();
-SIValue SI_DuplicateStringVal(const char *s); // Duplicate and ultimately free the input string
-SIValue SI_ConstStringVal(char
-						  *s);           // Neither duplicate nor assume ownership of input string
-SIValue SI_TransferStringVal(char *s);        // Don't duplicate input string, but assume ownership
 
-/* Functions for copying and guaranteeing memory safety for SIValues. */
-// SI_ShareValue creates an SIValue that shares all of the original's allocations.
-SIValue SI_ShareValue(const SIValue v);
-
-// SI_CloneValue creates an SIValue that duplicates all of the original's allocations.
-SIValue SI_CloneValue(const SIValue v);
-
-// SI_ConstValue creates an SIValue that shares the original's allocations, but does not need to persist them.
-SIValue SI_ConstValue(const SIValue v);
+// Duplicate and ultimately free the input string.
+SIValue SI_DuplicateStringVal(const char *s);
+// Neither duplicate nor assume ownership of input string.
+SIValue SI_ConstStringVal(char *s);
+// Don't duplicate input string, but assume ownership.
+SIValue SI_TransferStringVal(char *s);
 
 /* Functions for copying and guaranteeing memory safety for SIValues. */
 // SI_ShareValue creates an SIValue that shares all of the original's allocations.
@@ -118,10 +111,6 @@ SIValue SI_ConstValue(const SIValue v);
 
 // SIValue_MakeVolatile updates an SIValue to mark that its allocations are shared rather than self-owned.
 void SIValue_MakeVolatile(SIValue *v);
-/* Functions to copy an SIValue. */
-SIValue SI_Clone(SIValue v);           // Safe clone an SIValue
-SIValue SI_ConstStringVal(char *s);    // Neither duplicate nor assume ownership of input string
-SIValue SI_TransferStringVal(char *s); // Don't duplicate input string, but assume ownership
 
 // SIValue_Persist updates an SIValue to duplicate any allocations that may go out of scope in the lifetime of this query.
 void SIValue_Persist(SIValue *v);
@@ -149,8 +138,7 @@ size_t SIValue_StringJoinLen(SIValue *strings, unsigned int string_count, const 
 
 /* Concats strings as a delimiter. */
 void SIValue_StringJoin(SIValue *strings, unsigned int string_count, const char *delimiter,
-						char **buf,
-						size_t *buf_len, size_t *bytesWritten);
+						char **buf, size_t *buf_len, size_t *bytesWritten);
 
 /* Arithmetic operators for numeric SIValues.
  * The caller is responsible for ensuring that the arguments
