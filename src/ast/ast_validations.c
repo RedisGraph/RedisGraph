@@ -788,35 +788,9 @@ static AST_Validation _Validate_DELETE_Clauses(const AST *ast, char **reason) {
 	return AST_VALID;
 }
 
-// Verify that we handle the projected types. An example of an unsupported projection is:
-// RETURN count(a) > 0
-static AST_Validation _Validate_ReturnedTypes(const cypher_astnode_t *return_clause,
-											  char **reason) {
-	uint projection_count = cypher_ast_return_nprojections(return_clause);
-	for(uint i = 0; i < projection_count; i ++) {
-		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
-		const cypher_astnode_t *expr = cypher_ast_projection_get_expression(projection);
-		cypher_astnode_type_t type = cypher_astnode_type(expr);
-		if(type == CYPHER_AST_UNARY_OPERATOR) {
-			const cypher_operator_t *oper = cypher_ast_unary_operator_get_operator(expr);
-			if(oper == CYPHER_OP_IS_NULL ||
-			   oper == CYPHER_OP_IS_NOT_NULL
-			  ) {
-				// TODO weird that we can't print operator strings?
-				asprintf(reason, "RedisGraph does not currently support returning this unary operator.");
-				return AST_INVALID;
-			}
-		}
-	}
-	return AST_VALID;
-}
-
 static AST_Validation _Validate_RETURN_Clause(const AST *ast, char **reason) {
 	const cypher_astnode_t *return_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
 	if(!return_clause) return AST_VALID;
-
-	// Verify the types of RETURN projections
-	if(_Validate_ReturnedTypes(return_clause, reason) != AST_VALID) return AST_INVALID;
 
 	// Retrieve all user-specified functions in RETURN clause.
 	rax *referred_funcs = raxNew();
