@@ -6,6 +6,7 @@
 
 #include "query_ctx.h"
 #include "util/rmalloc.h"
+#include "util/simple_timer.h"
 #include <assert.h>
 #include <pthread.h>
 
@@ -87,6 +88,17 @@ inline bool QueryCtx_ShouldFreeExceptionCause(void) {
 inline bool QueryCtx_EncounteredError(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	return ctx->error != NULL;
+}
+
+
+void QueryCtx_StartTimer(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	simple_tic(ctx->timer); // Start the execution timer.
+}
+
+double QueryCtx_GetExecutionTime(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	return simple_toc(ctx->timer) * 1000;
 }
 
 void QueryCtx_Free(void) {

@@ -10,7 +10,8 @@
 #include "./cmd_context.h"
 #include "../graph/graph.h"
 #include "../graph/graphcontext.h"
-#include "../util/simple_timer.h"
+#include "../query_ctx.h"
+#include "../resultset/resultset.h"
 
 extern RedisModuleType *GraphContextRedisModuleType;
 
@@ -19,6 +20,9 @@ extern RedisModuleType *GraphContextRedisModuleType;
 void _MGraph_Delete(void *args) {
 	CommandCtx *dCtx = (CommandCtx *)args;
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(dCtx);
+
+	QueryCtx_StartTimer(); // Start query timing.
+
 	RedisModuleString *graph_name = RedisModule_CreateString(ctx, dCtx->graphName,
 															 strlen(dCtx->graphName));
 	CommandCtx_ThreadSafeContextLock(dCtx);
@@ -44,11 +48,8 @@ void _MGraph_Delete(void *args) {
 
 	// Remove GraphContext from keyspace.
 	if(RedisModule_DeleteKey(key) == REDISMODULE_OK) {
-		char *strElapsed;
-		double t = simple_toc(dCtx->timer) * 1000;
-		asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
-		RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
-		free(strElapsed);
+		// Report query runtime.
+		ResultSet_ReportQueryRuntime(ctx);
 	} else {
 		Graph_ReleaseLock(gc->g);
 		RedisModule_ReplyWithError(ctx, "Graph deletion failed!");

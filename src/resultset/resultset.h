@@ -29,13 +29,15 @@ typedef struct {
 	ResultSetFormatter *formatter;  /* ResultSet data formatter. */
 } ResultSet;
 
-ResultSet *NewResultSet(RedisModuleCtx *ctx, double timer[2], bool compact);
+ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact);
 
 void ResultSet_BuildColumns(ResultSet *set, AR_ExpNode **projections);
 
 int ResultSet_AddRecord(ResultSet *set, Record r);
 
 void ResultSet_Replay(ResultSet *set);
+
+void ResultSet_ReportQueryRuntime(RedisModuleCtx *ctx);
 
 void ResultSet_Free(ResultSet *set);
 

@@ -11,11 +11,10 @@
 #include "../query_ctx.h"
 #include "../graph/graph.h"
 #include "../util/rmalloc.h"
-#include "../util/simple_timer.h"
 #include "../execution_plan/execution_plan.h"
 #include "cypher-parser.h"
 
-static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, double timings[2],
+static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc,
 							 const cypher_astnode_t *index_op) {
 	/* Set up nested array response for index creation and deletion,
 	 * Following the response struture of other queries:
@@ -55,12 +54,8 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, double timin
 		}
 	}
 
-	/* Report execution timing (in standard queries, this is handled within the ResultSet code). */
-	char *strElapsed;
-	double t = simple_toc(timings) * 1000;
-	asprintf(&strElapsed, "Query internal execution time: %.6f milliseconds", t);
-	RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
-	free(strElapsed);
+	/* Report execution timing. */
+	ResultSet_ReportQueryRuntime(ctx);
 }
 
 static inline bool _check_compact_flag(CommandCtx *qctx) {
@@ -76,6 +71,8 @@ void _MGraph_Query(void *args) {
 	ResultSet *result_set = NULL;
 	bool lockAcquired = false;
 	AST *ast = NULL;
+
+	QueryCtx_StartTimer(); // Start query timing.
 
 	// Parse the query to construct an AST
 	cypher_parse_result_t *parse_result = cypher_parse(qctx->query, NULL, NULL,
@@ -122,7 +119,7 @@ void _MGraph_Query(void *args) {
 
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
 	if(root_type == CYPHER_AST_QUERY) {  // query operation
-		result_set = NewResultSet(ctx, qctx->timer, compact);
+		result_set = NewResultSet(ctx, compact);
 		ExecutionPlan *plan = NewExecutionPlan(ctx, gc, result_set);
 		if(!plan) goto cleanup;
 		result_set = ExecutionPlan_Execute(plan);
@@ -130,7 +127,7 @@ void _MGraph_Query(void *args) {
 		ResultSet_Replay(result_set);    // Send result-set back to client.
 	} else if(root_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
 			  root_type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {
-		_index_operation(ctx, gc, qctx->timer, ast->root);
+		_index_operation(ctx, gc, ast->root);
 	} else {
 		assert("Unhandled query type" && false);
 	}

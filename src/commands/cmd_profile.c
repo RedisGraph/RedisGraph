@@ -6,8 +6,8 @@
 
 #include "cmd_profile.h"
 #include "cmd_context.h"
+#include "../query_ctx.h"
 #include "../graph/graph.h"
-#include "../util/simple_timer.h"
 #include "../execution_plan/execution_plan.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
@@ -18,6 +18,8 @@ void _MGraph_Profile(void *args) {
 	ResultSet *result_set = NULL;
 	bool lockAcquired = false;
 	AST *ast = NULL;
+
+	QueryCtx_StartTimer(); // Start query timing.
 
 	// Parse the query to construct an AST
 	cypher_parse_result_t *parse_result = cypher_parse(qctx->query, NULL, NULL,
@@ -70,7 +72,7 @@ void _MGraph_Profile(void *args) {
 		assert("Unhandled query type" && false);
 	}
 
-	result_set = NewResultSet(ctx, false, qctx->timer);
+	result_set = NewResultSet(ctx, false);
 	ExecutionPlan *plan = NewExecutionPlan(ctx, gc, result_set);
 	ExecutionPlan_Profile(plan);
 	ExecutionPlan_Print(plan, ctx);

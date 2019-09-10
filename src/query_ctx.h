@@ -15,6 +15,7 @@
 typedef struct {
 	AST *ast;             // The scoped AST associated with this query.
 	GraphContext *gc;     // The GraphContext associated with this query's graph.
+	double timer[2];      // Query execution time tracking.
 	char *error;          // The error message produced by this query, if any.
 	jmp_buf *breakpoint;  // The breakpoint to return to if the query causes an exception.
 	bool free_cause;      // Whether the code that causes an exception must free memory.
@@ -49,6 +50,12 @@ char *QueryCtx_GetError(void);
 bool QueryCtx_ShouldFreeExceptionCause(void);
 /* Returns true if this query has caused an error. */
 bool QueryCtx_EncounteredError(void);
+
+/* Begin timing query execution. */
+void QueryCtx_StartTimer();
+
+/* Compute and return elapsed query execution time. */
+double QueryCtx_GetExecutionTime(void);
 
 /* Free the allocations within the QueryCtx and reset it for the next query. */
 void QueryCtx_Free(void);

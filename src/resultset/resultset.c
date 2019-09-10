@@ -9,7 +9,6 @@
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
-#include "../util/simple_timer.h"
 #include "../grouping/group_cache.h"
 #include "../arithmetic/aggregate.h"
 
@@ -57,12 +56,8 @@ static void _ResultSet_ReplayStats(RedisModuleCtx *ctx, ResultSet *set) {
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
 
-	/* Report execution timing. */
-	char *strElapsed;
-	double t = simple_toc(set->timer) * 1000;
-	asprintf(&strElapsed, "Query internal execution time: %.6f milliseconds", t);
-	RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
-	free(strElapsed);
+	// Emit query execution time.
+	ResultSet_ReportQueryRuntime(ctx);
 }
 
 static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
@@ -80,8 +75,7 @@ static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
 	RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
 }
 
-
-ResultSet *NewResultSet(RedisModuleCtx *ctx, double timer[2], bool compact) {
+ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact) {
 	ResultSet *set = rm_malloc(sizeof(ResultSet));
 	set->ctx = ctx;
 	set->gc = QueryCtx_GetGraphCtx();
@@ -91,8 +85,6 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, double timer[2], bool compact) {
 	set->column_count = 0;
 	set->header_emitted = false;
 	set->columns = NULL;
-	set->timer[0] = timer[0];
-	set->timer[1] = timer[1];
 
 	set->stats.labels_added = 0;
 	set->stats.nodes_created = 0;
@@ -145,6 +137,15 @@ void ResultSet_Replay(ResultSet *set) {
 	char *err = QueryCtx_GetError(); // Check to see if we've encountered a run-time error.
 	if(err) RedisModule_ReplyWithError(set->ctx, err); // If so, emit it as the last top-level response.
 	else _ResultSet_ReplayStats(set->ctx, set); // Otherwise, the last response is query statistics.
+}
+
+/* Report execution timing. */
+void ResultSet_ReportQueryRuntime(RedisModuleCtx *ctx) {
+	char *strElapsed;
+	double t = QueryCtx_GetExecutionTime();
+	asprintf(&strElapsed, "Query internal execution time: %.6f milliseconds", t);
+	RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
+	free(strElapsed);
 }
 
 void ResultSet_Free(ResultSet *set) {
