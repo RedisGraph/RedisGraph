@@ -15,17 +15,11 @@ static inline EdgeCreateCtx _NewEdgeCreateCtx(GraphContext *gc, AST *ast, const 
 											  const cypher_astnode_t *path, uint edge_path_offset) {
 	const cypher_astnode_t *ast_edge = cypher_ast_pattern_path_get_element(path, edge_path_offset);
 	const cypher_astnode_t *ast_props = cypher_ast_rel_pattern_get_properties(ast_edge);
-
-	uint ast_id;
-	// Retrieve the AST ID of this edge.
-	ast_id = AST_GetEntityIDFromReference(ast, ast_edge);
+	const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(ast_edge);
+	const char *alias = cypher_ast_identifier_get_name(identifier);
 
 	// Get QueryGraph entity
-	QGEdge *e = QueryGraph_GetEdgeByID(qg, ast_id);
-
-	const cypher_astnode_t *left = cypher_ast_pattern_path_get_element(path, edge_path_offset - 1);
-	const cypher_astnode_t *right = cypher_ast_pattern_path_get_element(path, edge_path_offset + 1);
-
+	QGEdge *e = QueryGraph_GetEdgeByAlias(qg, alias);
 	EdgeCreateCtx new_edge = { .edge = e,
 							   .properties = PropertyMap_New(gc, ast_props)
 							 };
@@ -35,8 +29,9 @@ static inline EdgeCreateCtx _NewEdgeCreateCtx(GraphContext *gc, AST *ast, const 
 static inline NodeCreateCtx _NewNodeCreateCtx(GraphContext *gc, AST *ast, const QueryGraph *qg,
 											  const cypher_astnode_t *ast_node) {
 	// Get QueryGraph entity
-	uint ast_id = AST_GetEntityIDFromReference(ast, ast_node);
-	QGNode *n = QueryGraph_GetNodeByID(qg, ast_id);
+	const cypher_astnode_t *identifier = cypher_ast_node_pattern_get_identifier(ast_node);
+	const char *alias = cypher_ast_identifier_get_name(identifier);
+	QGNode *n = QueryGraph_GetNodeByAlias(qg, alias);
 
 	const cypher_astnode_t *ast_props = cypher_ast_node_pattern_get_properties(ast_node);
 
@@ -141,7 +136,7 @@ EntityUpdateEvalCtx *AST_PrepareUpdateOp(const cypher_astnode_t *set_clause, uin
 }
 
 void AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause, const QueryGraph *qg,
-						 uint ***nodes_ref, uint ***edges_ref) {
+						 char ***nodes_ref, char ***edges_ref) {
 	uint delete_count = cypher_ast_delete_nexpressions(delete_clause);
 	const char **nodes_to_delete = array_new(const char *, delete_count);
 	const char **edges_to_delete = array_new(const char *, delete_count);
