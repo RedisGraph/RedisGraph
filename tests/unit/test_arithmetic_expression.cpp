@@ -40,7 +40,7 @@ class ArithmeticTest: public ::testing::Test {
 
 		// Prepare thread-local variables
 		QueryCtx_Init();
-		_runtime_error_handler();
+		QueryCtx_Begin();
 
 		// Register functions
 		AR_RegisterFuncs();
@@ -48,20 +48,6 @@ class ArithmeticTest: public ::testing::Test {
 	}
 
 	static void TearDownTestCase() {
-	}
-
-	static void _runtime_error_handler() {
-		// Build a jump handler in the event of failures during
-		// ArithmeticExpression_Evaluate calls.
-		jmp_buf *env = (jmp_buf *)rm_malloc(sizeof(jmp_buf));
-		int res = setjmp(*env);
-		if(res != 0) {
-			// Jumped; fail with the provided error.
-			char *err = QueryCtx_GetError();
-			FAIL() << err;
-		}
-		// Set the jump handler in thread-local storage.
-		QueryCtx_SetExceptionHandler(env, true);
 	}
 };
 

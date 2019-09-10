@@ -41,6 +41,8 @@ void _MGraph_Explain(void *args) {
 	const char *query = qctx->query;
 	const char *graphname = qctx->graphName;
 
+	QueryCtx_Begin(); // Instantiate QueryCtx variables.
+
 	// Parse the query to construct an AST
 	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 	if(parse_result == NULL) goto cleanup;

@@ -30,6 +30,7 @@ class TraversalOrderingTest: public ::testing::Test {
 
 		// Prepare thread-local variables
 		QueryCtx_Init();
+		QueryCtx_Begin();
 	}
 
 	static void TearDownTestCase() {
@@ -290,3 +291,4 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	AlgebraicExpression_Free(ExpCD);
 	QueryGraph_Free(qg);
 }
+

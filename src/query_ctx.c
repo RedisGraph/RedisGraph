@@ -5,22 +5,13 @@
 */
 
 #include "query_ctx.h"
-#include "util/rmalloc.h"
 #include "util/simple_timer.h"
 #include <assert.h>
-#include <pthread.h>
 
 pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
 
-static inline QueryCtx *_QueryCtx_GetCtx() {
-	QueryCtx *ctx = pthread_getspecific(_tlsQueryCtxKey);
-
-	if(!ctx) {
-		ctx = rm_calloc(1, sizeof(QueryCtx));
-		pthread_setspecific(_tlsQueryCtxKey, ctx);
-	}
-
-	return ctx;
+static inline QueryCtx *_QueryCtx_GetCtx(void) {
+	return pthread_getspecific(_tlsQueryCtxKey);
 }
 
 bool QueryCtx_Init(void) {
@@ -31,6 +22,18 @@ void QueryCtx_Finalize(void) {
 	assert(pthread_key_delete(_tlsQueryCtxKey));
 }
 
+void QueryCtx_Begin(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx(); // Attempt to retrieve the QueryCtx.
+	if(!ctx) {
+		// Set a new thread-local QueryCtx if one has not been created.
+		ctx = rm_calloc(1, sizeof(QueryCtx));
+		pthread_setspecific(_tlsQueryCtxKey, ctx);
+	}
+	// Allocate space for an exception-handling breakpoint if necessary.
+	if(ctx->breakpoint == NULL) ctx->breakpoint = rm_malloc(sizeof(jmp_buf));
+	simple_tic(ctx->timer); // Start the execution timer.
+}
+
 void QueryCtx_SetAST(AST *ast) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ctx->ast = ast;
@@ -39,12 +42,6 @@ void QueryCtx_SetAST(AST *ast) {
 void QueryCtx_SetGraphCtx(GraphContext *gc) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ctx->gc = gc;
-}
-
-void QueryCtx_SetExceptionHandler(jmp_buf *breakpoint, bool free_cause) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	ctx->breakpoint = breakpoint;
-	ctx->free_cause = free_cause;
 }
 
 void QueryCtx_SetError(char *error) {
@@ -88,12 +85,6 @@ inline bool QueryCtx_ShouldFreeExceptionCause(void) {
 inline bool QueryCtx_EncounteredError(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	return ctx->error != NULL;
-}
-
-
-void QueryCtx_StartTimer(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	simple_tic(ctx->timer); // Start the execution timer.
 }
 
 double QueryCtx_GetExecutionTime(void) {

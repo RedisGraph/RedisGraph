@@ -45,6 +45,7 @@ GraphContext *RdbLoadGraphContext(RedisModuleIO *rdb) {
 	gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 
 	// Set the thread-local GraphContext, as it will be accessed if we're decoding indexes.
+	QueryCtx_Begin();
 	QueryCtx_SetGraphCtx(gc);
 
 	// Graph name
@@ -82,6 +83,8 @@ GraphContext *RdbLoadGraphContext(RedisModuleIO *rdb) {
 		if(s->index) Index_Construct(s->index);
 		if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
 	}
+
+	QueryCtx_Free(); // Release thread-local varaibles.
 
 	return gc;
 }

@@ -8,9 +8,10 @@
 
 #include"ast/ast.h"
 #include "redismodule.h"
+#include "util/rmalloc.h"
 #include "graph/graphcontext.h"
-
 #include <setjmp.h>
+#include <pthread.h>
 
 typedef struct {
 	AST *ast;             // The scoped AST associated with this query.
@@ -21,17 +22,29 @@ typedef struct {
 	bool free_cause;      // Whether the code that causes an exception must free memory.
 } QueryCtx;
 
+extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
+
+/* On invocation, set an exception handler and a freeing policy, returning 0 from this macro.
+ * Upon encountering an exception, execution will resume at this point and return nonzero. */
+#define SET_EXCEPTION_HANDLER(free_exception_cause)              \
+   ({                                                            \
+	QueryCtx *ctx = pthread_getspecific(_tlsQueryCtxKey);        \
+	ctx->free_cause = free_exception_cause;                      \
+	setjmp(*ctx->breakpoint);                                    \
+})
+
 /* Instantiate the thread-local QueryCtx on module load. */
 bool QueryCtx_Init(void);
 /* Free the thread-local QueryCtx variable (unused). */
 void QueryCtx_Finalize(void);
 
+/* Instantiate thread-local variables and start timing query execution. */
+void QueryCtx_Begin(void);
+
 /* Set the provided AST for access through the QueryCtx. */
 void QueryCtx_SetAST(AST *ast);
 /* Set the provided GraphCtx for access through the QueryCtx. */
 void QueryCtx_SetGraphCtx(GraphContext *gc);
-/* Set an ExceptionHandler and the freeing policy for the QueryCtx. */
-void QueryCtx_SetExceptionHandler(jmp_buf *breakpoint, bool free_cause);
 /* Set the error message for this query. */
 void QueryCtx_SetError(char *error);
 
@@ -50,9 +63,6 @@ char *QueryCtx_GetError(void);
 bool QueryCtx_ShouldFreeExceptionCause(void);
 /* Returns true if this query has caused an error. */
 bool QueryCtx_EncounteredError(void);
-
-/* Begin timing query execution. */
-void QueryCtx_StartTimer();
 
 /* Compute and return elapsed query execution time. */
 double QueryCtx_GetExecutionTime(void);

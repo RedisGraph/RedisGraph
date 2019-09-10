@@ -103,6 +103,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		GraphContext_AddSchema(gc, "war", SCHEMA_EDGE);
 
 		ASSERT_TRUE(QueryCtx_Init());
+		QueryCtx_Begin();
 		QueryCtx_SetGraphCtx(gc);
 	}
 

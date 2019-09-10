@@ -51,12 +51,14 @@ class IndexTest: public ::testing::Test {
 		GraphContext_AddSchema(gc, "Person", SCHEMA_NODE);
 
 		QueryCtx_Init();
+		QueryCtx_Begin();
 		QueryCtx_SetGraphCtx(gc);
 	}
 
 	static void _free_fake_graph_context() {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		GraphContext_Free(gc);
+		QueryCtx_Free();
 	}
 
 	static Graph *_build_test_graph() {
@@ -115,3 +117,4 @@ TEST_F(IndexTest, Index_New) {
 
 	Index_Free(idx);
 }
+

@@ -72,7 +72,7 @@ void _MGraph_Query(void *args) {
 	bool lockAcquired = false;
 	AST *ast = NULL;
 
-	QueryCtx_StartTimer(); // Start query timing.
+	QueryCtx_Begin(); // Start query timing and instantiate variables.
 
 	// Parse the query to construct an AST
 	cypher_parse_result_t *parse_result = cypher_parse(qctx->query, NULL, NULL,

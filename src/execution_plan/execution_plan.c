@@ -818,15 +818,13 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 	uint *segment_indices = NULL;
 	if(with_clause_count > 0) segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
 
-	/* Set an exception-handling breakpoint (jump buffer) to capture compile-time errors.
-	 * We might encounter a compile-time error while attempting to reduce expression trees to scalars. */
-	jmp_buf *breakpoint = rm_malloc(sizeof(jmp_buf));
-
-	/* encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
+	/* Set an exception-handling breakpoint to capture compile-time errors.
+	 * We might encounter a compile-time error while attempting to reduce expression trees to scalars.
+	 *
+	 * encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
 	 * a downstream exception returns us to this breakpoint. */
-	int encountered_error = setjmp(*breakpoint);
 	bool free_exception_cause = true; // The cause of a compile-time error will be freed on occurrence.
-	QueryCtx_SetExceptionHandler(breakpoint, free_exception_cause);
+	int encountered_error = SET_EXCEPTION_HANDLER(free_exception_cause);
 
 	if(encountered_error) {
 		// Encountered a compile-time error.
@@ -956,15 +954,12 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 	Record r = NULL;
 	ExecutionPlanInit(plan);
 
-	/* Replace the exception-handling breakpoint set in ExecutionPlan construction with
-	 * a new breakpoint to capture run-time errors. */
-	jmp_buf *breakpoint = QueryCtx_GetExceptionHandler();
 	bool free_exception_cause = false; // The causes of run-time errors will be freed in cleanup.
 
-	/* encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
+	/* Set an exception-handling breakpoint to capture run-time errors.
+	 * encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
 	 * a downstream exception returns us to this breakpoint. */
-	int encountered_error = setjmp(*breakpoint);
-	QueryCtx_SetExceptionHandler(breakpoint, free_exception_cause);
+	int encountered_error = SET_EXCEPTION_HANDLER(false);
 
 	if(encountered_error) {
 		// Encountered a run-time error; return immediately.
