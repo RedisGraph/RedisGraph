@@ -46,6 +46,10 @@ AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op) {
 		return OP_ENDSWITH;
 	} else if(op == CYPHER_OP_IN) {
 		return OP_IN;
+	} else if(op == CYPHER_OP_IS_NULL) {
+		return OP_IS_NULL;
+	} else if(op == CYPHER_OP_IS_NOT_NULL) {
+		return OP_IS_NOT_NULL;
 	}
 
 	return -1;

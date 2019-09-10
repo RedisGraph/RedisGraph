@@ -174,6 +174,18 @@ SIValue AR_NE(SIValue *argv, int argc) {
 	return SI_BoolVal(res != 0);
 }
 
+// Returns true if argv[0] is null.
+SIValue AR_IS_NULL(SIValue *argv, int argc) {
+	SIValue v = argv[0];
+	return SI_BoolVal(v.type == T_NULL);
+}
+
+// Returns true if argv[0] is not null.
+SIValue AR_IS_NOT_NULL(SIValue *argv, int argc) {
+	SIValue v = argv[0];
+	return SI_BoolVal(v.type != T_NULL);
+}
+
 void Register_BooleanFuncs() {
 	SIType *types;
 	AR_FuncDesc *func_desc;
@@ -235,6 +247,16 @@ void Register_BooleanFuncs() {
 	types = array_append(types, SI_ALL);
 	types = array_append(types, SI_ALL);
 	func_desc = AR_FuncDescNew("neq", AR_NE, 2, types);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	types = array_append(types, SI_ALL);
+	func_desc = AR_FuncDescNew("is null", AR_IS_NULL, 1, types);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	types = array_append(types, SI_ALL);
+	func_desc = AR_FuncDescNew("is not null", AR_IS_NOT_NULL, 1, types);
 	AR_RegFunc(func_desc);
 }
 

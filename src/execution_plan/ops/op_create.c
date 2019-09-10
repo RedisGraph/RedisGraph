@@ -288,7 +288,6 @@ Record OpCreateConsume(OpBase *opBase) {
 	} else {
 		// Pull data until child is depleted.
 		child = op->op.children[0];
-		// TODO here?
 		while((r = OpBase_Consume(child))) {
 			// Track inherited Record so that it may be freed if execution fails.
 			OpBase_AddVolatileRecord(opBase, r);

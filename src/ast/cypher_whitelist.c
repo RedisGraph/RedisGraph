@@ -182,8 +182,8 @@ static void _buildOperatorsWhitelist(void) {
 		CYPHER_OP_STARTS_WITH,
 		CYPHER_OP_ENDS_WITH,
 		CYPHER_OP_CONTAINS,
-		// CYPHER_OP_IS_NULL,
-		// CYPHER_OP_IS_NOT_NULL,
+		CYPHER_OP_IS_NULL,
+		CYPHER_OP_IS_NOT_NULL,
 		CYPHER_OP_PROPERTY,
 		CYPHER_OP_LABEL,
 		end_of_operator_list

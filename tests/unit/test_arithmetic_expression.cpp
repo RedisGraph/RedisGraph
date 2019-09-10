@@ -1328,3 +1328,46 @@ TEST_F(ArithmeticTest, InTest) {
 	ASSERT_EQ(true, result.longval);
 }
 
+TEST_F(ArithmeticTest, IsNullTest) {
+	SIValue result;
+	const char *query;
+	AR_ExpNode *arExp;
+	Record r = Record_New(0);
+
+	// Check if null is null.
+	query = "RETURN null IS NULL";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, r);
+
+	ASSERT_EQ(T_BOOL, result.type);
+	ASSERT_EQ(true, result.longval);
+
+	// Check if null is not "not null".
+	query = "RETURN null IS NOT NULL";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, r);
+
+	ASSERT_EQ(T_BOOL, result.type);
+	ASSERT_EQ(false, result.longval);
+
+	// Check for different types values.
+	char *values[6] = {"1", "1.2", "true", "false", "'string'", "[1,2,3]"};
+	for(int i = 0; i < 6; i++) {
+		char buff[128];
+		// Check if value is not null.
+		sprintf(buff, "RETURN %s IS NOT NULL", values[i]);
+		arExp = _exp_from_query(buff);
+		result = AR_EXP_Evaluate(arExp, r);
+
+		ASSERT_EQ(T_BOOL, result.type);
+		ASSERT_EQ(true, result.longval);
+
+		sprintf(buff, "RETURN %s IS NULL", values[i]);
+		arExp = _exp_from_query(buff);
+		result = AR_EXP_Evaluate(arExp, r);
+
+		ASSERT_EQ(T_BOOL, result.type);
+		ASSERT_EQ(false, result.longval);
+	}
+}
+
