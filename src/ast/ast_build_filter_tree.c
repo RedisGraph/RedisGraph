@@ -126,8 +126,7 @@ static FT_FilterNode *_convertFalseOperator() {
 	return FilterTree_CreateExpressionFilter(exp);
 }
 
-static FT_FilterNode *_convertIntegerOperator(RecordMap *record_map,
-											  const cypher_astnode_t *expr) {
+static FT_FilterNode *_convertIntegerOperator(RecordMap *record_map, const cypher_astnode_t *expr) {
 	AR_ExpNode *exp = AR_EXP_FromExpression(record_map, expr);
 	return FilterTree_CreateExpressionFilter(exp);
 }

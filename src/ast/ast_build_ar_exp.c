@@ -153,32 +153,31 @@ static AR_ExpNode *_AR_EXP_FromUnaryOpExpression(RecordMap *record_map,
 												 const cypher_astnode_t *expr) {
 	const cypher_astnode_t *arg = cypher_ast_unary_operator_get_argument(expr); // CYPHER_AST_EXPRESSION
 	const cypher_operator_t *operator = cypher_ast_unary_operator_get_operator(expr);
+	AR_ExpNode *op = NULL;
 	if(operator == CYPHER_OP_UNARY_MINUS) {
 		// This expression can be something like -3 or -a.val
 		// In the former case, we'll reduce the tree to a constant after building it fully.
-		AR_ExpNode *op = AR_EXP_NewOpNodeFromAST(OP_MULT, 2);
+		op = AR_EXP_NewOpNodeFromAST(OP_MULT, 2);
 		op->op.children[0] = AR_EXP_NewConstOperandNode(SI_LongVal(-1));
 		op->op.children[1] = _AR_EXP_FromExpression(record_map, arg);
-		return op;
 	} else if(operator == CYPHER_OP_UNARY_PLUS) {
 		// This expression is something like +3 or +a.val.
 		// I think the + can always be safely ignored.
-		return _AR_EXP_FromExpression(record_map, arg);
+		op = _AR_EXP_FromExpression(record_map, arg);
 	} else if(operator == CYPHER_OP_NOT) {
-		AR_ExpNode *op = AR_EXP_NewOpNodeFromAST(OP_NOT, 1);
+		op = AR_EXP_NewOpNodeFromAST(OP_NOT, 1);
 		op->op.children[0] = _AR_EXP_FromExpression(record_map, arg);
-		return op;
 	} else if(operator == CYPHER_OP_IS_NULL) {
-		AR_ExpNode *op = AR_EXP_NewOpNodeFromAST(OP_IS_NULL, 1);
+		op = AR_EXP_NewOpNodeFromAST(OP_IS_NULL, 1);
 		op->op.children[0] = _AR_EXP_FromExpression(record_map, arg);
-		return op;
 	} else if(operator == CYPHER_OP_IS_NOT_NULL) {
-		AR_ExpNode *op = AR_EXP_NewOpNodeFromAST(OP_IS_NOT_NULL, 1);
+		op = AR_EXP_NewOpNodeFromAST(OP_IS_NOT_NULL, 1);
 		op->op.children[0] = _AR_EXP_FromExpression(record_map, arg);
-		return op;
+	} else {
+		// No supported operator found.
+		assert(false);
 	}
-	assert(false);
-	return NULL;
+	return op;
 }
 
 static AR_ExpNode *_AR_EXP_FromBinaryOpExpression(RecordMap *record_map,

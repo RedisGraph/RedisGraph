@@ -1476,7 +1476,7 @@ TEST_F(ArithmeticTest, IsNullTest)
     char *values[6] = {"1", "1.2", "true", "false", "'string'", "[1,2,3]"};
     for (int i = 0; i < 6; i++)
     {
-        char buff[100];
+        char buff[128];
         // Check if value is not null.
         sprintf(buff, "RETURN %s IS NOT NULL", values[i]);
         arExp = _exp_from_query(buff);
