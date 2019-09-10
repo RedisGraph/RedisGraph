@@ -69,8 +69,8 @@ static int _identifyNodeCountPattern(OpBase *root, OpResult **opResult, OpAggreg
 	*opScan = op;
 	if(op->type == OPType_NODE_BY_LABEL_SCAN) {
 		NodeByLabelScan *labelScan = (NodeByLabelScan *)op;
-		assert(labelScan->node->label);
-		*label = labelScan->node->label;
+		assert(labelScan->n->label);
+		*label = labelScan->n->label;
 	}
 
 	return 1;
@@ -103,21 +103,13 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 		nodeCount = SI_LongVal(Graph_NodeCount(gc->g));
 	}
 
-	// Incase alias is specified: RETURN count(n) as X
-	uint *modifies = NULL;
-	if(opAggregate->op.modifies) {
-		assert(array_len(opAggregate->op.modifies) == 1);
-		modifies = array_new(uint, 1);
-		modifies = array_append(modifies, opAggregate->op.modifies[0]);
-	}
-
 	/* Construct a constant expression, used by a new
 	 * projection operation. */
 	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(nodeCount);
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 	exps = array_append(exps, exp);
 
-	OpBase *opProject = NewProjectOp(exps, modifies);
+	OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps);
 
 	// New execution plan: "Project -> Results"
 	ExecutionPlan_RemoveOp(plan, (OpBase *)opScan);
@@ -238,7 +230,7 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1); // TODO memory leak!
 	exps = array_append(exps, exp);
 
-	OpBase *opProject = NewProjectOp(exps, NULL);
+	OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps);
 
 	// New execution plan: "Project -> Results"
 	ExecutionPlan_RemoveOp(plan, (OpBase *)opScan);

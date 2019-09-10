@@ -52,7 +52,7 @@ typedef struct
 {
     const char *attribute;      /* Attribute name to update. */
     Attribute_ID attribute_idx; /* Attribute internal ID. */
-    uint entityRecIdx;          /* Position of entity within record. */
+    int entityRecIdx;           /* Position of entity within record. */
     struct AR_ExpNode *exp;     /* Expression to evaluate. */
 } EntityUpdateEvalCtx;
 
@@ -61,17 +61,17 @@ typedef struct
 {
     QGEdge *edge;
     PropertyMap *properties;
-    uint src_idx;
-    uint dest_idx;
-    uint edge_idx;
+    int src_idx;
+    int dest_idx;
+    int edge_idx;
 } EdgeCreateCtx;
 
 // Context describing a relationship in a CREATE or MERGE clause
 typedef struct
 {
     QGNode *node;
+    int node_idx;
     PropertyMap *properties;
-    uint node_idx;
 } NodeCreateCtx;
 
 AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op);

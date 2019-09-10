@@ -495,16 +495,15 @@ void AR_EXP_Reduce(const AR_ExpNode *root) {
 	}
 }
 
-void AR_EXP_CollectEntityIDs(AR_ExpNode *root, rax *record_ids) {
+void AR_EXP_CollectEntities(AR_ExpNode *root, rax *entities) {
 	if(root->type == AR_EXP_OP) {
 		for(int i = 0; i < root->op.child_count; i ++) {
-			AR_EXP_CollectEntityIDs(root->op.children[i], record_ids);
+			AR_EXP_CollectEntities(root->op.children[i], entities);
 		}
 	} else { // type == AR_EXP_OPERAND
 		if(root->operand.type == AR_EXP_VARIADIC) {
-			int record_idx = root->operand.variadic.entity_alias_idx;
-			assert(record_idx != IDENTIFIER_NOT_FOUND);
-			raxInsert(record_ids, (unsigned char *)&record_idx, sizeof(record_idx), NULL, NULL);
+			const char *entity = root->operand.variadic.entity_alias;
+			raxInsert(entities, (unsigned char *)entity, strlen(entity), NULL, NULL);
 		}
 	}
 }

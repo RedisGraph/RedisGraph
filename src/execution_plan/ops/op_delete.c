@@ -46,14 +46,12 @@ void _DeleteEntities(OpDelete *op) {
 	if(op->stats) op->stats->relationships_deleted += relationships_deleted;
 }
 
-OpBase *NewDeleteOp(const ExecutionPlan *plan, uint *nodes_ref, uint *edges_ref,
+OpBase *NewDeleteOp(const ExecutionPlan *plan, const char **nodes_ref, const char **edges_ref,
 					ResultSetStatistics *stats) {
 	OpDelete *op = malloc(sizeof(OpDelete));
 
 	op->gc = QueryCtx_GetGraphCtx();
 
-	op->nodes_to_delete = nodes_ref;
-	op->edges_to_delete = edges_ref;
 	op->node_count = array_len(op->nodes_to_delete);
 	op->edge_count = array_len(op->edges_to_delete);
 
@@ -63,6 +61,20 @@ OpBase *NewDeleteOp(const ExecutionPlan *plan, uint *nodes_ref, uint *edges_ref,
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", Init, Consume, Reset, NULL, Free, plan);
+
+	// Set nodes/edges to be deleted record indices.
+	int idx;
+	int node_count = array_len(nodes_ref);
+	for(int i = 0; i < node_count; i++) {
+		assert(OpBase_Aware((OpBase *)op, nodes_ref[i], &idx));
+		op->nodes_to_delete = array_append(op->nodes_to_delete, idx);
+	}
+
+	int edge_count = array_len(edges_ref);
+	for(int i = 0; i < edge_count; i++) {
+		assert(OpBase_Aware((OpBase *)op, edges_ref[i], &idx));
+		op->nodes_to_delete = array_append(op->edges_to_delete, idx);
+	}
 
 	return (OpBase *)op;
 }

@@ -20,7 +20,7 @@ static int ToString(const OpBase *ctx, char *buff, uint buff_len) {
 	return offset;
 }
 
-OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const Graph *g, QGNode *n) {
+OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const Graph *g, const QGNode *n) {
 	AllNodeScan *op = malloc(sizeof(AllNodeScan));
 	op->n = n;
 	op->iter = Graph_ScanNodes(g);

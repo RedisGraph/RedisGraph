@@ -14,12 +14,12 @@
 
 typedef struct {
 	OpBase op;
-	QGNode *n;
 	Graph *g;
 	RSIndex *idx;
+	const QGNode *n;
 	uint nodeRecIdx;
 	RSResultsIterator *iter;
 } IndexScan;
 
 /* Creates a new IndexScan operation */
-OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, QGNode *n, RSIndex *idx, RSResultsIterator *iter);
+OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, const QGNode *n, RSIndex *idx, RSResultsIterator *iter);

@@ -279,7 +279,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			AlgebraicExpression **exps = AlgebraicExpression_FromQueryGraph(cc, &expCount);
 
 			// Reorder exps, to the most performant arrangement of evaluation.
-			orderExpressions(expCount, exps, ft);
+			orderExpressions(exps, expCount, ft);
 
 			AlgebraicExpression *exp = exps[0];
 			selectEntryPoint(exp, ft);

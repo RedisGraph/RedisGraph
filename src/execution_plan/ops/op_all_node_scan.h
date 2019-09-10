@@ -17,9 +17,9 @@
  * Scans entire graph */
 typedef struct {
 	OpBase op;
-	QGNode *n;
+	const QGNode *n;
     uint nodeRecIdx;
 	DataBlockIterator *iter;
 } AllNodeScan;
 
-OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const Graph *g, QGNode *n);
+OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const Graph *g, const QGNode *n);

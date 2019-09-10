@@ -30,7 +30,7 @@ static bool _highly_connected_node(const QGNode *n) {
 }
 
 static inline bool _referred_entity(const char *alias) {
-	assert("Implement");
+	assert(false);
 	return false;
 }
 

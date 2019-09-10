@@ -136,7 +136,7 @@ EntityUpdateEvalCtx *AST_PrepareUpdateOp(const cypher_astnode_t *set_clause, uin
 }
 
 void AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause, const QueryGraph *qg,
-						 char ***nodes_ref, char ***edges_ref) {
+						 const char ***nodes_ref, const char ***edges_ref) {
 	uint delete_count = cypher_ast_delete_nexpressions(delete_clause);
 	const char **nodes_to_delete = array_new(const char *, delete_count);
 	const char **edges_to_delete = array_new(const char *, delete_count);

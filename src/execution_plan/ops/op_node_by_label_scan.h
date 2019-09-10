@@ -17,7 +17,7 @@
 typedef struct {
 	OpBase op;
 	Graph *g;
-	const QGNode *node;         /* Node being scanned. */
+	const QGNode *n;         /* Node being scanned. */
 	GrB_Matrix _zero_matrix;    /* Fake matrix, in-case label does not exists. */
 	unsigned int nodeRecIdx;    /* Node position within record. */
 	GxB_MatrixTupleIter *iter;

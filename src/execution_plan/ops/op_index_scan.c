@@ -18,7 +18,7 @@ static int ToString(const OpBase *ctx, char *buff, uint buff_len) {
 	return offset;
 }
 
-OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, QGNode *n, RSIndex *idx,
+OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, const QGNode *n, RSIndex *idx,
 					   RSResultsIterator *iter) {
 	IndexScan *op = malloc(sizeof(IndexScan));
 	op->g = g;

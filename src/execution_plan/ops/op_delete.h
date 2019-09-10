@@ -19,12 +19,12 @@ typedef struct {
 	GraphContext *gc;
 	uint node_count;
 	uint edge_count;
-	uint *nodes_to_delete;
-	uint *edges_to_delete;
+	int *nodes_to_delete;
+	int *edges_to_delete;
 	Node *deleted_nodes;    // Array of nodes to be removed.
 	Edge *deleted_edges;    // Array of edges to be removed.
 
 	ResultSetStatistics *stats;
 } OpDelete;
 
-OpBase *NewDeleteOp(const ExecutionPlan *plan, uint *nodes_ref, uint *edges_ref, ResultSetStatistics *stats);
+OpBase *NewDeleteOp(const ExecutionPlan *plan, const char **nodes_ref, const char **edges_ref, ResultSetStatistics *stats);

@@ -17,7 +17,7 @@ static void Free(OpBase *opBase);
 static int ToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const NodeByLabelScan *op = (const NodeByLabelScan *)ctx;
 	int offset = snprintf(buff, buff_len, "%s | ", op->op.name);
-	offset += QGNode_ToString(op->node, buff + offset, buff_len - offset);
+	offset += QGNode_ToString(op->n, buff + offset, buff_len - offset);
 	return offset;
 }
 
@@ -25,7 +25,7 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *node) {
 	NodeByLabelScan *op = malloc(sizeof(NodeByLabelScan));
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	op->g = gc->g;
-	op->node = node;
+	op->n = node;
 	op->_zero_matrix = NULL;
 
 	/* Find out label matrix ID. */

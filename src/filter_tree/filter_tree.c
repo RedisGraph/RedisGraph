@@ -231,16 +231,16 @@ void _FilterTree_CollectModified(const FT_FilterNode *root, rax *modified) {
 	}
 	case FT_N_PRED: {
 		/* Traverse left and right-hand expressions, adding all encountered modified
-		 * to the triemap.
-		 * We'll typically encounter 0 or 1 modified in each expression,
-		 * but there are multi-argument exceptions. */
-		AR_EXP_CollectEntityIDs(root->pred.lhs, modified);
-		AR_EXP_CollectEntityIDs(root->pred.rhs, modified);
+		* to the triemap.
+		* We'll typically encounter 0 or 1 modified in each expression,
+		* but there are multi-argument exceptions. */
+		AR_EXP_CollectEntities(root->pred.lhs, modified);
+		AR_EXP_CollectEntities(root->pred.rhs, modified);
 		break;
 	}
 	case FT_N_EXP: {
 		/* Traverse expression, adding all encountered modified to the triemap. */
-		AR_EXP_CollectEntityIDs(root->exp.exp, modified);
+		AR_EXP_CollectEntities(root->exp.exp, modified);
 		break;
 	}
 	default: {
