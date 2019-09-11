@@ -1320,6 +1320,40 @@ static AST_Validation _ValidateClauses(const AST *ast, char **reason) {
 	return AST_VALID;
 }
 
+static AST_Validation _BlockUnsupportedMerges(AST *ast, char **reason) {
+	/* The current merge implementation does not work properly when the query is
+	 * intended to operate on multiple data streams, as in:
+	 * CREATE (a:A), (b:B)
+	 * MATCH (a:A), (b:B) MERGE (a)-[:TYPE]->(b)
+	 * This currently creates two new nodes. TODO fix */
+	uint *merge_clause_indices = AST_GetClauseIndices(ast, CYPHER_AST_MERGE);
+	uint merge_count = array_len(merge_clause_indices);
+	if(merge_count == 0) return AST_VALID;
+
+	if(merge_count > 1) {
+		asprintf(reason, "RedisGraph does not currently support multiple MERGE clauses in a single query.");
+		return AST_INVALID;
+	}
+
+	AST_Validation res = AST_VALID;
+
+	uint merge_idx = merge_clause_indices[0];
+	for(uint i = 0; i < merge_idx; i ++) {
+		const cypher_astnode_t *prev_clause = cypher_ast_query_get_clause(ast->root, i);
+		cypher_astnode_type_t prev_clause_type = cypher_astnode_type(prev_clause);
+		if(prev_clause_type == CYPHER_AST_MATCH || prev_clause_type == CYPHER_AST_CREATE) {
+			asprintf(reason,
+					 "RedisGraph does not currently support MERGE clauses after MATCH or CREATE clauses.");
+			res = AST_INVALID;
+			break;
+		}
+	}
+
+	array_free(merge_clause_indices);
+
+	return res;
+}
+
 static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, uint end_offset) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->free_root = true;
@@ -1348,6 +1382,8 @@ static AST_Validation _ValidateScopes(const cypher_astnode_t *root, char **reaso
 
 	// Validate identifiers, which may be passed between scopes
 	if(_Validate_Aliases_Defined(&mock_ast, reason) == AST_INVALID) return AST_INVALID;
+
+	if(_BlockUnsupportedMerges(&mock_ast, reason) == AST_INVALID) return AST_INVALID;
 
 	// Aliases are scoped by the WITH clauses within the query.
 	// If we have one or more WITH clauses, MATCH validations should be performed one scope at a time.
@@ -1446,3 +1482,4 @@ AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *re
 
 	return res;
 }
+
