@@ -955,8 +955,6 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 		return plan->result_set;
 	}
 
-	// TODO: throw if an error is set.
-
 	// Execute the root operation and free the processed Record until the data stream is depleted.
 	while((r = OpBase_Consume(plan->root)) != NULL) Record_Free(r);
 

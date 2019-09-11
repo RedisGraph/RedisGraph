@@ -21,7 +21,7 @@ void _MGraph_Delete(void *args) {
 	CommandCtx *dCtx = (CommandCtx *)args;
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(dCtx);
 
-	QueryCtx_Begin(); // Start query timing and instantiate variables.
+	QueryCtx_BeginTimer(); // Start deletion timing.
 
 	RedisModuleString *graph_name = RedisModule_CreateString(ctx, dCtx->graphName,
 															 strlen(dCtx->graphName));
@@ -59,6 +59,7 @@ cleanup:
 	RedisModule_Free(graph_name);
 	CommandCtx_ThreadSafeContextUnlock(dCtx);
 	CommandCtx_Free(dCtx);
+	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 }
 
 int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {

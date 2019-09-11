@@ -6,7 +6,6 @@
 
 #include "cmd_bulk_insert.h"
 #include "./cmd_context.h"
-#include "../query_ctx.h"
 #include "../graph/graph.h"
 #include "../bulk_insert/bulk_insert.h"
 #include "../util/rmalloc.h"
@@ -15,7 +14,6 @@ void _MGraph_BulkInsert(void *args) {
 	// Establish thread-safe environment for batch insertion
 	CommandCtx *context = (CommandCtx *)args;
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(context);
-	QueryCtx_Begin();  // Initialize thread-local variables.
 	CommandCtx_ThreadSafeContextLock(context);
 
 	RedisModuleString **argv = context->argv + 1; // skip "GRAPH.BULK"

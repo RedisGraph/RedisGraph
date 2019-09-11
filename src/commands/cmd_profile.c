@@ -19,7 +19,7 @@ void _MGraph_Profile(void *args) {
 	bool lockAcquired = false;
 	AST *ast = NULL;
 
-	QueryCtx_Begin(); // Start query timing and instantiate variables.
+	QueryCtx_BeginTimer(); // Start query timing.
 	QueryCtx_SetRedisModuleCtx(ctx);
 
 	// Parse the query to construct an AST
@@ -92,6 +92,7 @@ cleanup:
 	AST_Free(ast);
 	if(parse_result) cypher_parse_result_free(parse_result);
 	CommandCtx_Free(qctx);
+	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 }
 
 /* Profiles query

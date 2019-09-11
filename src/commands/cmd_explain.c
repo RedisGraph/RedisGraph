@@ -42,7 +42,6 @@ void _MGraph_Explain(void *args) {
 	const char *query = qctx->query;
 	const char *graphname = qctx->graphName;
 
-	QueryCtx_Begin(); // Instantiate QueryCtx variables.
 	QueryCtx_SetRedisModuleCtx(ctx);
 
 	// Parse the query to construct an AST

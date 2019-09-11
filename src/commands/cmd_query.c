@@ -72,7 +72,7 @@ void _MGraph_Query(void *args) {
 	CommandCtx *qctx = (CommandCtx *)args;
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
 
-	QueryCtx_Begin(); // Start query timing and instantiate variables.
+	QueryCtx_BeginTimer(); // Start query timing.
 	QueryCtx_SetRedisModuleCtx(ctx);
 
 	// Parse the query to construct an AST

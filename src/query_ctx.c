@@ -40,16 +40,18 @@ void QueryCtx_Finalize(void) {
 	assert(pthread_key_delete(_tlsQueryCtxKey));
 }
 
-void QueryCtx_Begin(void) {
+void QueryCtx_BeginTimer(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx(); // Attempt to retrieve the QueryCtx.
 	simple_tic(ctx->timer); // Start the execution timer.
 }
 
 /* An error was encountered during evaluation, and has already been set in the QueryCtx.
- * Invoke the exception handler, exiting this routine and returning to
- * the point on the stack where the handler was instantiated. */
-void QueryCtx_RaiseException(void) {
+ * If an exception handler has been set, exit this routine and return to
+ * the point on the stack where the handler was instantiated.  */
+void QueryCtx_RaiseRuntimeException(void) {
 	jmp_buf *env = _QueryCtx_GetExceptionHandler();
+	// If the exception handler hasn't been set, this function returns to the caller,
+	// which will manage its own freeing and error reporting.
 	if(env) longjmp(*env, 1);
 }
 
@@ -130,3 +132,4 @@ void QueryCtx_Free(void) {
 	// NULL-set the context for reuse the next time this thread receives a query
 	pthread_setspecific(_tlsQueryCtxKey, NULL);
 }
+

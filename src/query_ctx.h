@@ -21,7 +21,7 @@ typedef struct {
 	double timer[2];            // Query execution time tracking.
 	GraphContext *gc;           // The GraphContext associated with this query's graph.
 	jmp_buf *breakpoint;        // The breakpoint to return to if the query causes an exception.
-    RedisModuleCtx *redisctx;   // The Redis module context.
+	RedisModuleCtx *redisctx;   // The Redis module context.
 } QueryCtx;
 
 /* On invocation, set an exception handler, returning 0 from this macro.
@@ -29,7 +29,7 @@ typedef struct {
 #define SET_EXCEPTION_HANDLER()                                         \
    ({                                                                   \
 	QueryCtx *ctx = pthread_getspecific(_tlsQueryCtxKey);               \
-    if(!ctx->breakpoint) ctx->breakpoint = rm_malloc(sizeof(jmp_buf));  \
+	if(!ctx->breakpoint) ctx->breakpoint = rm_malloc(sizeof(jmp_buf));  \
 	setjmp(*ctx->breakpoint);                                           \
 })
 
@@ -37,11 +37,11 @@ typedef struct {
 bool QueryCtx_Init(void);
 /* Free the thread-local QueryCtx variable (unused). */
 void QueryCtx_Finalize(void);
-/* Instantiate thread-local variables and start timing query execution. */
-void QueryCtx_Begin(void);
+/* Start timing query execution. */
+void QueryCtx_BeginTimer(void);
 
-/* Jumps to breakpoint if set. */
-void QueryCtx_RaiseException(void);
+/* Jump to a runtime exception breakpoint if one has been set. */
+void QueryCtx_RaiseRuntimeException(void);
 /* Reply back to the user with error. */
 void QueryCtx_EmitException(void);
 
@@ -71,3 +71,4 @@ double QueryCtx_GetExecutionTime(void);
 bool QueryCtx_EncounteredError(void);
 /* Free the allocations within the QueryCtx and reset it for the next query. */
 void QueryCtx_Free(void);
+
