@@ -49,6 +49,7 @@ Feature: MergeRelationshipAcceptance
     And the side effects should be:
       | +relationships | 1 |
 
+@skip
   Scenario: Matching a relationship
     Given an empty graph
     And having executed:
@@ -67,6 +68,7 @@ Feature: MergeRelationshipAcceptance
       | 1        |
     And no side effects
 
+@skip
   Scenario: Matching two relationships
     Given an empty graph
     And having executed:
@@ -86,6 +88,7 @@ Feature: MergeRelationshipAcceptance
       | 2        |
     And no side effects
 
+@skip
   Scenario: Filtering relationships
     Given an empty graph
     And having executed:
@@ -105,6 +108,7 @@ Feature: MergeRelationshipAcceptance
       | 1        |
     And no side effects
 
+@skip
   Scenario: Creating relationship when all matches filtered out
     Given an empty graph
     And having executed:
@@ -125,6 +129,7 @@ Feature: MergeRelationshipAcceptance
       | +relationships | 1 |
       | +properties    | 1 |
 
+@skip
   Scenario: Matching incoming relationship
     Given an empty graph
     And having executed:
@@ -144,6 +149,7 @@ Feature: MergeRelationshipAcceptance
       | 1        |
     And no side effects
 
+@skip
   Scenario: Creating relationship with property
     Given an empty graph
     And having executed:
@@ -456,6 +462,7 @@ Feature: MergeRelationshipAcceptance
       | 1        |
     And no side effects
 
+@skip
   Scenario: Using bound variables from other updating clause
     Given an empty graph
     When executing query:
