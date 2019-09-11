@@ -11,7 +11,25 @@
 pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
 
 static inline QueryCtx *_QueryCtx_GetCtx(void) {
-	return pthread_getspecific(_tlsQueryCtxKey);
+	QueryCtx *ctx = pthread_getspecific(_tlsQueryCtxKey);
+	if(!ctx) {
+		// Set a new thread-local QueryCtx if one has not been created.
+		ctx = rm_calloc(1, sizeof(QueryCtx));
+		pthread_setspecific(_tlsQueryCtxKey, ctx);
+	}
+	return ctx;
+}
+
+/* Retrieve the exception handler. */
+static jmp_buf *_QueryCtx_GetExceptionHandler(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	return ctx->breakpoint;
+}
+
+/* Retrieve the error message if the query generated one. */
+static char *_QueryCtx_GetError(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	return ctx->error;
 }
 
 bool QueryCtx_Init(void) {
@@ -24,14 +42,23 @@ void QueryCtx_Finalize(void) {
 
 void QueryCtx_Begin(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx(); // Attempt to retrieve the QueryCtx.
-	if(!ctx) {
-		// Set a new thread-local QueryCtx if one has not been created.
-		ctx = rm_calloc(1, sizeof(QueryCtx));
-		pthread_setspecific(_tlsQueryCtxKey, ctx);
-	}
-	// Allocate space for an exception-handling breakpoint if necessary.
-	if(ctx->breakpoint == NULL) ctx->breakpoint = rm_malloc(sizeof(jmp_buf));
 	simple_tic(ctx->timer); // Start the execution timer.
+}
+
+/* An error was encountered during evaluation, and has already been set in the QueryCtx.
+ * Invoke the exception handler, exiting this routine and returning to
+ * the point on the stack where the handler was instantiated. */
+void QueryCtx_RaiseException(void) {
+	jmp_buf *env = _QueryCtx_GetExceptionHandler();
+	if(env) longjmp(*env, 1);
+}
+
+void QueryCtx_EmitException(void) {
+	char *error = _QueryCtx_GetError();
+	if(error) {
+		RedisModuleCtx *ctx = QueryCtx_GetRedisModuleCtx();
+		RedisModule_ReplyWithError(ctx, error);
+	}
 }
 
 void QueryCtx_SetAST(AST *ast) {
@@ -47,6 +74,11 @@ void QueryCtx_SetGraphCtx(GraphContext *gc) {
 void QueryCtx_SetError(char *error) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ctx->error = error;
+}
+
+void QueryCtx_SetRedisModuleCtx(RedisModuleCtx *redisctx) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	ctx->redisctx = redisctx;
 }
 
 AST *QueryCtx_GetAST(void) {
@@ -66,20 +98,9 @@ Graph *QueryCtx_GetGraph(void) {
 	return gc->g;
 }
 
-jmp_buf *QueryCtx_GetExceptionHandler(void) {
+RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	assert(ctx->breakpoint);
-	return ctx->breakpoint;
-}
-
-char *QueryCtx_GetError(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	return ctx->error;
-}
-
-inline bool QueryCtx_ShouldFreeExceptionCause(void) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	return ctx->free_cause;
+	return ctx->redisctx;
 }
 
 inline bool QueryCtx_EncounteredError(void) {
@@ -99,6 +120,7 @@ void QueryCtx_Free(void) {
 		free(ctx->error);
 		ctx->error = NULL;
 	}
+
 	if(ctx->breakpoint) {
 		rm_free(ctx->breakpoint);
 		ctx->breakpoint = NULL;
@@ -108,4 +130,3 @@ void QueryCtx_Free(void) {
 	// NULL-set the context for reuse the next time this thread receives a query
 	pthread_setspecific(_tlsQueryCtxKey, NULL);
 }
-

@@ -134,8 +134,9 @@ void ResultSet_Replay(ResultSet *set) {
 		RedisModule_ReplyWithArray(set->ctx, 1);
 	}
 
-	char *err = QueryCtx_GetError(); // Check to see if we've encountered a run-time error.
-	if(err) RedisModule_ReplyWithError(set->ctx, err); // If so, emit it as the last top-level response.
+	/* Check to see if we've encountered a run-time error.
+	 * If so, emit it as the last top-level response. */
+	if(QueryCtx_EncounteredError()) QueryCtx_EmitException();
 	else _ResultSet_ReplayStats(set->ctx, set); // Otherwise, the last response is query statistics.
 }
 

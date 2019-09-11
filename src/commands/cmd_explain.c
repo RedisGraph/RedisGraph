@@ -34,6 +34,7 @@ GraphContext *_empty_graph_context() {
 void _MGraph_Explain(void *args) {
 	AST *ast = NULL;
 	GraphContext *gc = NULL;
+	bool lock_acquired = false;
 	ExecutionPlan *plan = NULL;
 	bool free_graph_ctx = false;
 	CommandCtx *qctx = (CommandCtx *)args;
@@ -42,6 +43,7 @@ void _MGraph_Explain(void *args) {
 	const char *graphname = qctx->graphName;
 
 	QueryCtx_Begin(); // Instantiate QueryCtx variables.
+	QueryCtx_SetRedisModuleCtx(ctx);
 
 	// Parse the query to construct an AST
 	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
@@ -76,20 +78,20 @@ void _MGraph_Explain(void *args) {
 	}
 
 	Graph_AcquireReadLock(gc->g);
+	lock_acquired = true;
+
 	plan = NewExecutionPlan(ctx, gc, NULL);
 	if(plan) ExecutionPlan_Print(plan, ctx);
 
 cleanup:
-	if(plan) {
-		Graph_ReleaseLock(gc->g);
-		ExecutionPlan_Free(plan);
-	}
+	if(lock_acquired) Graph_ReleaseLock(gc->g);
+	if(plan) ExecutionPlan_Free(plan);
 
 	AST_Free(ast);
-	if(parse_result) cypher_parse_result_free(parse_result);
-	CommandCtx_Free(qctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
+	CommandCtx_Free(qctx);
 	if(free_graph_ctx) GraphContext_Free(gc);
+	if(parse_result) cypher_parse_result_free(parse_result);
 }
 
 int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {

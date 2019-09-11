@@ -343,6 +343,7 @@ void _FilterTree_DeMorgan(FT_FilterNode **root, uint negate_count) {
 		FilterTree_DeMorgan(&((*root)->cond.right));
 	}
 }
+
 void FilterTree_DeMorgan(FT_FilterNode **root) {
 	_FilterTree_DeMorgan(root, 0);
 }

@@ -49,7 +49,6 @@ class FilterTreeTest: public ::testing::Test {
 		gc->index_count = 0;
 
 		ASSERT_TRUE(QueryCtx_Init());
-		QueryCtx_Begin();
 		QueryCtx_SetGraphCtx(gc);
 	}
 

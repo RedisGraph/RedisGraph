@@ -69,7 +69,6 @@ GraphContext *RdbLoadGraphContext_v4(RedisModuleIO *rdb) {
 	GraphContext *gc = rm_calloc(1, sizeof(GraphContext));
 
 	// Set the thread-local GraphContext, as it will be accessed if we're decoding indexes.
-	QueryCtx_Begin();
 	QueryCtx_SetGraphCtx(gc);
 
 	// Graph name.

@@ -38,8 +38,7 @@ class AggregateTest: public ::testing::Test {
 		Alloc_Reset();
 
 		// Prepare thread-local variables
-		QueryCtx_Init();
-		QueryCtx_Begin();
+		ASSERT_TRUE(QueryCtx_Init());
 
 		// Register functions
 		AR_RegisterFuncs();

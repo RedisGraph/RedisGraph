@@ -66,13 +66,14 @@ static inline bool _check_compact_flag(CommandCtx *qctx) {
 }
 
 void _MGraph_Query(void *args) {
+	AST *ast = NULL;
+	bool lockAcquired = false;
+	ResultSet *result_set = NULL;
 	CommandCtx *qctx = (CommandCtx *)args;
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
-	ResultSet *result_set = NULL;
-	bool lockAcquired = false;
-	AST *ast = NULL;
 
 	QueryCtx_Begin(); // Start query timing and instantiate variables.
+	QueryCtx_SetRedisModuleCtx(ctx);
 
 	// Parse the query to construct an AST
 	cypher_parse_result_t *parse_result = cypher_parse(qctx->query, NULL, NULL,

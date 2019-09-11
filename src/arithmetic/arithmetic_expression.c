@@ -21,14 +21,6 @@
 #include <ctype.h>
 #include <assert.h>
 
-/* An error was encountered during evaluation, and has already been set in the QueryCtx.
- * Invoke the exception handler, exiting this routine and returning to
- * the point on the stack where the handler was instantiated. */
-static inline void _RaiseException(void) {
-	jmp_buf *env = QueryCtx_GetExceptionHandler();
-	longjmp(*env, 1);
-}
-
 /* Update arithmetic expression variable node by setting node's property index.
  * when constructing an arithmetic expression we'll delay setting graph entity
  * attribute index to the first execution of the expression, this is due to
@@ -165,11 +157,12 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode **root) {
 
 			// All child nodes are constants, reduce.
 			SIValue v = AR_EXP_Evaluate(*root, NULL);
+			if(SIValue_IsNull(v)) return false;
+
 			AR_EXP_Free(*root);
 			*root = AR_EXP_NewConstOperandNode(v);
 			return true;
 		}
-
 		// Root is an aggregation function, can't reduce.
 		return false;
 	}
@@ -328,8 +321,8 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 	SIValue result;
 	AR_EXP_Result res = _AR_EXP_Evaluate(root, r, &result);
 	if(res != EVAL_OK) {
-		if(QueryCtx_ShouldFreeExceptionCause()) AR_EXP_Free(root);
-		_RaiseException();  // Raise an exception.
+		QueryCtx_RaiseException();  // Raise an exception.
+		return SI_NullVal();
 	}
 	return result;
 }

@@ -818,23 +818,6 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 	uint *segment_indices = NULL;
 	if(with_clause_count > 0) segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
 
-	/* Set an exception-handling breakpoint to capture compile-time errors.
-	 * We might encounter a compile-time error while attempting to reduce expression trees to scalars.
-	 *
-	 * encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
-	 * a downstream exception returns us to this breakpoint. */
-	bool free_exception_cause = true; // The cause of a compile-time error will be freed on occurrence.
-	int encountered_error = SET_EXCEPTION_HANDLER(free_exception_cause);
-
-	if(encountered_error) {
-		// Encountered a compile-time error.
-		char *err = QueryCtx_GetError();
-		// The reply arrays have not been instantiated at this point, so we'll return a Redis-level error.
-		RedisModule_ReplyWithError(ctx, err);
-		ExecutionPlan_Free(plan); // Free the partial execution plan.
-		return NULL;
-	}
-
 	uint i = 0;
 	uint end_offset;
 	uint start_offset = 0;
@@ -880,15 +863,22 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 
 	plan->root = plan->segments[i]->root;
 
+	// Free current AST segment if it has been constructed here.
+	if(ast_segment != ast) AST_Free(ast_segment);
+
+	// Check to see if we've encountered an error while constructing the execution-plan.
+	if(QueryCtx_EncounteredError()) {
+		// A compile time error was encountered.
+		ExecutionPlan_Free(plan);
+		QueryCtx_EmitException();
+		return NULL;
+	}
+
 	// Optimize the operations in the ExecutionPlan.
 	optimizePlan(gc, plan);
 
 	// Prepare column names for the ResultSet if this query contains data in addition to statistics.
 	if(result_set) ResultSet_BuildColumns(result_set, segment->projections);
-
-
-	// Free current AST segment if it has been constructed here.
-	if(ast_segment != ast) AST_Free(ast_segment);
 
 	return plan;
 }
@@ -954,18 +944,18 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 	Record r = NULL;
 	ExecutionPlanInit(plan);
 
-	bool free_exception_cause = false; // The causes of run-time errors will be freed in cleanup.
-
 	/* Set an exception-handling breakpoint to capture run-time errors.
 	 * encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
 	 * a downstream exception returns us to this breakpoint. */
-	int encountered_error = SET_EXCEPTION_HANDLER(false);
+	int encountered_error = SET_EXCEPTION_HANDLER();
 
 	if(encountered_error) {
 		// Encountered a run-time error; return immediately.
 		if(r) Record_Free(r);
 		return plan->result_set;
 	}
+
+	// TODO: throw if an error is set.
 
 	// Execute the root operation and free the processed Record until the data stream is depleted.
 	while((r = OpBase_Consume(plan->root)) != NULL) Record_Free(r);

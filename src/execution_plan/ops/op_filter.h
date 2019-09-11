@@ -15,7 +15,7 @@
 typedef struct {
 	OpBase op;
 	FT_FilterNode *filterTree;
-} Filter;
+} OpFilter;
 
 /* Creates a new Filter operation */
 OpBase *NewFilterOp(FT_FilterNode *filterTree);

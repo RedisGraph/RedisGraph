@@ -54,4 +54,3 @@ static inline void _ResultSet_ReplyWithRoundedDouble(RedisModuleCtx *ctx, double
 	// Output string-formatted number
 	RedisModule_ReplyWithStringBuffer(ctx, str, len);
 }
-

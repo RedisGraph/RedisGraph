@@ -50,8 +50,7 @@ class IndexTest: public ::testing::Test {
 
 		GraphContext_AddSchema(gc, "Person", SCHEMA_NODE);
 
-		QueryCtx_Init();
-		QueryCtx_Begin();
+		ASSERT_TRUE(QueryCtx_Init());
 		QueryCtx_SetGraphCtx(gc);
 	}
 

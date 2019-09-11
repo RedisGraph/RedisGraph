@@ -20,6 +20,7 @@ void _MGraph_Profile(void *args) {
 	AST *ast = NULL;
 
 	QueryCtx_Begin(); // Start query timing and instantiate variables.
+	QueryCtx_SetRedisModuleCtx(ctx);
 
 	// Parse the query to construct an AST
 	cypher_parse_result_t *parse_result = cypher_parse(qctx->query, NULL, NULL,
@@ -74,9 +75,11 @@ void _MGraph_Profile(void *args) {
 
 	result_set = NewResultSet(ctx, false);
 	ExecutionPlan *plan = NewExecutionPlan(ctx, gc, result_set);
-	ExecutionPlan_Profile(plan);
-	ExecutionPlan_Print(plan, ctx);
-	ExecutionPlan_Free(plan);
+	if(plan) {
+		ExecutionPlan_Profile(plan);
+		ExecutionPlan_Print(plan, ctx);
+		ExecutionPlan_Free(plan);
+	}
 
 cleanup:
 	// Release the read-write lock
