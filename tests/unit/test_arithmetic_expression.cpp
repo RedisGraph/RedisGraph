@@ -1369,4 +1369,3 @@ TEST_F(ArithmeticTest, IsNullTest) {
 		ASSERT_EQ(false, result.longval);
 	}
 }
-
