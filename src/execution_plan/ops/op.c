@@ -30,11 +30,11 @@ void OpBase_Init(OpBase *op, OPType type, char *name, fpInit init, fpConsume con
 	op->modifies = NULL;
 
 	// Function pointers.
-	op->init = NULL;
-	op->free = NULL;
-	op->reset = NULL;
-	op->consume = NULL;
-	op->toString = NULL;
+	op->init = init;
+	op->consume = consume;
+	op->reset = reset;
+	op->toString = toString;
+	op->free = free;
 }
 
 inline Record OpBase_Consume(OpBase *op) {

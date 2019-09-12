@@ -710,17 +710,15 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 	/* Execution plans are created in 1 or more segments. Every WITH clause demarcates the end of
 	 * a segment, and the next clause begins a new one. */
 	uint with_clause_count = AST_GetClauseCount(ast, CYPHER_AST_WITH);
-	uint return_clause_count = AST_GetClauseCount(ast, CYPHER_AST_RETURN);
-	uint segment_count = with_clause_count + return_clause_count + 1;
+	bool query_has_return = AST_ContainsClause(ast, CYPHER_AST_RETURN);
+	uint segment_count = with_clause_count + query_has_return + 1;
 
 	// Retrieve the indices of each WITH clause to properly set the bounds of each segment.
 	uint *segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
-	if(return_clause_count) {
-		uint *return_indices = AST_GetClauseIndices(ast, CYPHER_AST_RETURN);
-		segment_indices = array_append(segment_indices, return_indices[0]);
-		array_free(return_indices);
+	if(query_has_return) {
+		segment_indices = array_append(segment_indices, cypher_ast_query_nclauses(ast->root) - 1);
 	}
-	segment_indices = array_append(segment_indices, cypher_astnode_nchildren(ast->root));
+	segment_indices = array_append(segment_indices, cypher_astnode_nchildren(ast->root)); // TODO ?
 
 	uint start_offset = 0;
 	ExecutionPlan *segments[segment_count];
@@ -733,9 +731,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		// Construct a new ExecutionPlanSegment.
 		ExecutionPlan *segment = _NewExecutionPlan(ctx, gc, ast_segment, result_set);
 
-		// Free the AST segment (the AST tree is freed separately,
-		// since this does not need to be performed the master AST)
-		cypher_ast_free((cypher_astnode_t *)ast_segment->root);
+		// Free the AST segment.
 		AST_Free(ast_segment); // Free all AST constructions scoped to this segment
 
 		segments[i] = segment;
@@ -761,8 +757,8 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 			ExecutionPlan_PushBelow(taps[0], op_cp);
 			ExecutionPlan_AddOp(op_cp, prev_root);
 		} else {
-			// OpBase *leaf = ExecutionPlan_LocateLeaf(current_segment->root);
-			// ExecutionPlan_AddOp(leaf, prev_root);
+			OpBase *leaf = ExecutionPlan_LocateLeaf(current_segment->root);
+			ExecutionPlan_AddOp(leaf, prev_root);
 		}
 	}
 
@@ -782,10 +778,16 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 	// Optimize the operations in the ExecutionPlan.
 	optimizePlan(gc, plan);
 
+	// plan->segment_count = segment_count;
 	// Prepare column names for the ResultSet if this query contains data in addition to statistics.
 	// if(result_set) ResultSet_BuildColumns(result_set, plan->projections);
 
 	return plan;
+}
+
+OpBase *ExecutionPlan_LocateLeaf(OpBase *root) {
+	if(root->childCount == 0) return root;
+	return ExecutionPlan_LocateLeaf(root->children[0]);
 }
 
 rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan) {
@@ -837,9 +839,10 @@ void _ExecutionPlanInit(OpBase *root) {
 
 void ExecutionPlanInit(ExecutionPlan *plan) {
 	if(!plan) return;
-	for(int i = 0; i < plan->segment_count; i ++) {
-		_ExecutionPlanInit(plan->segments[i]->root);
-	}
+	_ExecutionPlanInit(plan->root);
+	// for(int i = 0; i < plan->segment_count; i ++) {
+	// _ExecutionPlanInit(plan->segments[i]->root);
+	// }
 }
 
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {

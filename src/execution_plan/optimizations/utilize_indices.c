@@ -83,7 +83,7 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 			RediSearch_QueryNodeAddChild(node, right);
 			break;
 		default:
-			assert("unexpected conditional operation");
+			assert(false && "unexpected conditional operation");
 		}
 	} else if(filter->t == FT_N_PRED) {
 		// Make sure left hand side is variadic and right hand side is constant.
@@ -111,10 +111,10 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 				node = RediSearch_CreateTokenNode(sp, field, v.stringval);
 				break;
 			case OP_NEQUAL: // !=
-				assert("Index can't utilize the 'not equals' operation.");
+				assert(false && "Index can't utilize the 'not equals' operation.");
 				break;
 			default:
-				assert("unexpected operation");
+				assert(false && "unexpected operation");
 			}
 
 			RediSearch_QueryNodeAddChild(parent, node);
@@ -142,17 +142,17 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 				node = RediSearch_CreateNumericNode(sp, field, d, d, true, true);
 				break;
 			case OP_NEQUAL: // !=
-				assert("Index can't utilize the 'not equals' operation.");
+				assert(false && "Index can't utilize the 'not equals' operation.");
 				break;
 			default:
-				assert("unexpected operation");
+				assert(false && "unexpected operation");
 			}
 			break;
 		default:
-			assert("unexpected value type");
+			assert(false && "unexpected value type");
 		}
 	} else {
-		assert("unknow filter tree node type");
+		assert(false && "unknow filter tree node type");
 	}
 	return node;
 }
