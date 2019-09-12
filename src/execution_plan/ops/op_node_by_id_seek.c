@@ -5,6 +5,7 @@
 */
 
 #include "op_node_by_id_seek.h"
+#include "../../query_ctx.h"
 
 // Checks to see if operation index is within its bounds.
 static inline bool _outOfBounds(OpNodeByIdSeek *op) {
@@ -28,7 +29,7 @@ OpBase *NewOpNodeByIdSeekOp
 	assert(!(maxId == ID_RANGE_UNBOUND && maxInclusive));
 
 	OpNodeByIdSeek *op_nodeByIdSeek = malloc(sizeof(OpNodeByIdSeek));
-	op_nodeByIdSeek->g = GraphContext_GetFromTLS()->g;
+	op_nodeByIdSeek->g = QueryCtx_GetGraph();
 
 	op_nodeByIdSeek->minInclusive = minInclusive;
 	op_nodeByIdSeek->maxInclusive = maxInclusive;
@@ -99,3 +100,4 @@ OpResult OpNodeByIdSeekReset(OpBase *ctx) {
 void OpNodeByIdSeekFree(OpBase *ctx) {
 
 }
+

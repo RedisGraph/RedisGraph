@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __GRAPH_RESULTSET_H__
-#define __GRAPH_RESULTSET_H__
+#pragma once
 
 #include "resultset_statistics.h"
 #include "../redismodule.h"
@@ -18,14 +17,15 @@
 #define RESULTSET_FULL 0
 
 typedef struct {
-	RedisModuleCtx *ctx;
-	GraphContext *gc;           /* Context used for mapping attribute strings and IDs */
-	uint column_count;          /* Number of columns in result set. */
-	bool compact;               /* Whether records should be returned in compact form. */
-	bool header_emitted;        /* Whether a header row has been issued to the user. */
-	const char **columns;       /* Field names for each column of results. */
-	size_t recordCount;         /* Number of records introduced. */
-	ResultSetStatistics stats;  /* ResultSet statistics. */
+	RedisModuleCtx *ctx;            /* Redis context. */
+	GraphContext *gc;               /* Context used for mapping attribute strings and IDs */
+	uint column_count;              /* Number of columns in result set. */
+	bool compact;                   /* Whether records should be returned in compact form. */
+	bool header_emitted;            /* Whether a header row has been issued to the user. */
+	const char **columns;           /* Field names for each column of results. */
+	size_t recordCount;             /* Number of records introduced. */
+	double timer[2];                /* Query runtime tracker. */
+	ResultSetStatistics stats;      /* ResultSet statistics. */
 	ResultSetFormatter *formatter;  /* ResultSet data formatter. */
 } ResultSet;
 
@@ -37,6 +37,7 @@ int ResultSet_AddRecord(ResultSet *set, Record r);
 
 void ResultSet_Replay(ResultSet *set);
 
+void ResultSet_ReportQueryRuntime(RedisModuleCtx *ctx);
+
 void ResultSet_Free(ResultSet *set);
 
-#endif

@@ -5,8 +5,9 @@
 */
 
 #include "./op_delete.h"
-#include "../../arithmetic/arithmetic_expression.h"
 #include "../../util/arr.h"
+#include "../../query_ctx.h"
+#include "../../arithmetic/arithmetic_expression.h"
 #include <assert.h>
 
 void _DeleteEntities(OpDelete *op) {
@@ -42,7 +43,7 @@ void _DeleteEntities(OpDelete *op) {
 OpBase *NewDeleteOp(uint *nodes_ref, uint *edges_ref, ResultSetStatistics *stats) {
 	OpDelete *op_delete = malloc(sizeof(OpDelete));
 
-	op_delete->gc = GraphContext_GetFromTLS();
+	op_delete->gc = QueryCtx_GetGraphCtx();
 
 	op_delete->nodes_to_delete = nodes_ref;
 	op_delete->edges_to_delete = edges_ref;
@@ -129,3 +130,4 @@ void OpDeleteFree(OpBase *ctx) {
 		op->deleted_edges = NULL;
 	}
 }
+

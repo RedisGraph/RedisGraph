@@ -8,19 +8,19 @@
 #ifdef REDIS_MODULE_TARGET /* Set this when compiling your code as a module */
 
 static inline void *rm_malloc(size_t n) {
-  return RedisModule_Alloc(n);
+	return RedisModule_Alloc(n);
 }
 static inline void *rm_calloc(size_t nelem, size_t elemsz) {
-  return RedisModule_Calloc(nelem, elemsz);
+	return RedisModule_Calloc(nelem, elemsz);
 }
 static inline void *rm_realloc(void *p, size_t n) {
-  return RedisModule_Realloc(p, n);
+	return RedisModule_Realloc(p, n);
 }
 static inline void rm_free(void *p) {
-  RedisModule_Free(p);
+	RedisModule_Free(p);
 }
 static inline char *rm_strdup(const char *s) {
-  return RedisModule_Strdup(s);
+	return RedisModule_Strdup(s);
 }
 
 #endif

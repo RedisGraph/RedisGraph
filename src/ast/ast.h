@@ -87,7 +87,5 @@ uint ASTMap_FindOrAddAlias(const AST *ast, const char *alias, uint id);
 // Construct the AST map.
 void AST_BuildEntityMap(AST *ast);
 
-// Retrieve
-AST *AST_GetFromTLS(void);
-
 void AST_Free(AST *ast);
+

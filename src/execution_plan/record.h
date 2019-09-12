@@ -4,30 +4,29 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __RECORD_H_
-#define __RECORD_H_
+#pragma once
 
 #include "../value.h"
 #include "../graph/entities/node.h"
 #include "../graph/entities/edge.h"
 
-typedef enum
-{
-    REC_TYPE_UNKNOWN = 0,
-    REC_TYPE_SCALAR,
-    REC_TYPE_NODE,
-    REC_TYPE_EDGE,
-    REC_TYPE_HEADER,
+#include <sys/types.h>
+
+typedef enum  {
+	REC_TYPE_UNKNOWN = 0,
+	REC_TYPE_SCALAR = 1 << 0,
+	REC_TYPE_NODE = 1 << 1,
+	REC_TYPE_EDGE = 1 << 2,
+	REC_TYPE_HEADER = 1 << 3,
 } RecordEntryType;
 
-typedef struct
-{
-    union {
-        SIValue s;
-        Node n;
-        Edge e;
-    } value;
-    RecordEntryType type;
+typedef struct {
+	union {
+		SIValue s;
+		Node n;
+		Edge e;
+	} value;
+	RecordEntryType type;
 } Entry;
 
 typedef Entry *Record;
@@ -43,6 +42,10 @@ Record Record_Clone(const Record r);
 
 // Extends record to accommodate 'len' entries.
 void Record_Extend(Record *r, int len);
+
+// Shrink record to size `count`; freeing any further elements.
+// TODO: Remove this functions once hash like records are introduced.
+void Record_Truncate(Record r, uint count);
 
 // Merge record b into a, sharing any nested references in b with a.
 void Record_Merge(Record *a, const Record b);
@@ -92,4 +95,3 @@ unsigned long long Record_Hash64(const Record r);
 // Free record.
 void Record_Free(Record r);
 
-#endif

@@ -26,25 +26,24 @@ typedef enum {
 	OPType_FILTER = (1 << 4),
 	OPType_NODE_BY_LABEL_SCAN = (1 << 5),
 	OPType_INDEX_SCAN = (1 << 6),
-	OPType_ProduceResults = (1 << 7),
-	OPType_RESULTS = (1 << 8),
-	OPType_CREATE = (1 << 9),
-	OPType_UPDATE = (1 << 10),
-	OPType_DELETE = (1 << 11),
-	OPType_CARTESIAN_PRODUCT = (1 << 12),
-	OPType_MERGE = (1 << 13),
-	OPType_UNWIND = (1 << 14),
-	OPType_SORT = (1 << 15),
-	OPType_PROJECT = (1 << 16),
-	OPType_SKIP = (1 << 17),
-	OPType_LIMIT = (1 << 18),
-	OPType_DISTINCT = (1 << 19),
-	OPType_EXPAND_INTO = (1 << 20),
-	OPType_NODE_BY_ID_SEEK = (1 << 21),
-	OPType_PROC_CALL = (1 << 22),
-	OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO = (1 << 23),
-	OPType_VALUE_HASH_JOIN = (1 << 24),
-	OPType_APPLY = (1 << 25),
+	OPType_RESULTS = (1 << 7),
+	OPType_CREATE = (1 << 8),
+	OPType_UPDATE = (1 << 9),
+	OPType_DELETE = (1 << 10),
+	OPType_CARTESIAN_PRODUCT = (1 << 11),
+	OPType_MERGE = (1 << 12),
+	OPType_UNWIND = (1 << 13),
+	OPType_SORT = (1 << 14),
+	OPType_PROJECT = (1 << 15),
+	OPType_SKIP = (1 << 16),
+	OPType_LIMIT = (1 << 17),
+	OPType_DISTINCT = (1 << 18),
+	OPType_EXPAND_INTO = (1 << 19),
+	OPType_NODE_BY_ID_SEEK = (1 << 20),
+	OPType_PROC_CALL = (1 << 21),
+	OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO = (1 << 22),
+	OPType_VALUE_HASH_JOIN = (1 << 23),
+	OPType_APPLY = (1 << 24),
 } OPType;
 
 #define OP_SCAN (OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN | OPType_INDEX_SCAN | OPType_NODE_BY_ID_SEEK)
@@ -84,7 +83,9 @@ struct OpBase {
 	RecordMap *record_map;      // Mapping of entities into Record IDs in the scope of this ExecutionPlanSegment.
 	struct OpBase **children;   // Child operations.
 	int childCount;             // Number of children.
+	bool op_initialized;        // True if the operation has already been initialized.
 	OpStats *stats;             // Profiling statistics.
+	Record *dangling_records;   // Records allocated by this operation that must be freed.
 	struct OpBase *parent;      // Parent operations.
 };
 typedef struct OpBase OpBase;
@@ -95,5 +96,13 @@ Record OpBase_Consume(OpBase *op);  // Consume op.
 Record OpBase_Profile(OpBase *op);  // Profile op.
 int OpBase_ToString(const OpBase *op, char *buff, uint buff_len);
 
+/* If an operation holds the sole reference to a Record it is evaluating,
+ * that reference should be tracked so that it may be freed in the event of a run-time error. */
+void OpBase_AddVolatileRecord(OpBase *op, const Record r);
+/* No errors were encountered while processing these Records; the references
+ * may be released. */
+void OpBase_RemoveVolatileRecords(OpBase *op);
+
 void OpBase_PropagateFree(OpBase *op); // Sends free request to each operation up the chain.
 void OpBase_PropagateReset(OpBase *op); // Sends reset request to each operation up the chain.
+

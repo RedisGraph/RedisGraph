@@ -7,6 +7,7 @@
 #include "algebraic_expression.h"
 #include "arithmetic_expression.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../algorithms/algorithms.h"
 
@@ -334,11 +335,11 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromNode(QGNode *n
 	op.free = false;
 	op.diagonal = true;
 	op.transpose = false;
-	GraphContext *gc = GraphContext_GetFromTLS();
+	Graph *g = QueryCtx_GetGraph();
 	if(n->labelID == GRAPH_UNKNOWN_LABEL) {
-		op.operand = Graph_GetZeroMatrix(gc->g);
+		op.operand = Graph_GetZeroMatrix(g);
 	} else {
-		op.operand = Graph_GetLabelMatrix(gc->g, n->labelID);
+		op.operand = Graph_GetLabelMatrix(g, n->labelID);
 	}
 	return op;
 }
@@ -347,7 +348,7 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge(
 	QGEdge *e,
 	bool transpose
 ) {
-	GraphContext *gc = GraphContext_GetFromTLS();
+	Graph *g = QueryCtx_GetGraph();
 	AlgebraicExpressionOperand op;
 	bool freeMatrix = false;
 	GrB_Matrix mat;
@@ -356,20 +357,19 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge(
 	uint reltype_count = array_len(e->reltypeIDs);
 	if(reltype_count == 0) {
 		// No relationship types specified; use the full adjacency matrix
-		mat = Graph_GetAdjacencyMatrix(gc->g);
+		mat = Graph_GetAdjacencyMatrix(g);
 	} else if(reltype_count == 1) {
 		// One relationship type
 		uint reltype_id = e->reltypeIDs[0];
 		if(reltype_id == GRAPH_UNKNOWN_RELATION) {
-			mat = Graph_GetZeroMatrix(gc->g);
+			mat = Graph_GetZeroMatrix(g);
 		} else {
-			mat = Graph_GetRelationMatrix(gc->g, e->reltypeIDs[0]);
+			mat = Graph_GetRelationMatrix(g, e->reltypeIDs[0]);
 		}
 	} else {
 		// [:A|:B]
 		// Create matrix M = A+B.
 		freeMatrix = true; // A temporary matrix is being built, and must later be freed.
-		Graph *g = gc->g;
 
 		GrB_Matrix m;
 		GrB_Matrix_new(&m, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
@@ -381,7 +381,7 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge(
 				// No matrix to add
 				continue;
 			}
-			l = Graph_GetRelationMatrix(gc->g, reltype_id);
+			l = Graph_GetRelationMatrix(g, reltype_id);
 			GrB_Info info = GrB_eWiseAdd_Matrix_Semiring(m, NULL, NULL, Rg_structured_bool, m, l, NULL);
 		}
 		mat = m;
@@ -955,3 +955,4 @@ void AlgebraicExpressionNode_Free(AlgebraicExpressionNode *root) {
 	}
 	array_free(uniqueNodes);
 }
+

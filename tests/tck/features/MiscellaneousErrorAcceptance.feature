@@ -58,7 +58,6 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SemanticError should be raised at compile time: MergeReadOwnWrites
 
-@skip
   Scenario: Failing on aggregation in WHERE
     When executing query:
       """

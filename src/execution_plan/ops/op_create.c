@@ -6,16 +6,18 @@
 
 #include "op_create.h"
 #include "../../util/arr.h"
+#include "../../query_ctx.h"
 #include "../../schema/schema.h"
 #include <assert.h>
 
 // Resolve the properties specified in the query into constant values.
-PendingProperties *_ConvertPropertyMap(GraphContext *gc, Record r, const PropertyMap *map) {
+PendingProperties *_ConvertPropertyMap(Record r, const PropertyMap *map) {
 	PendingProperties *converted = rm_malloc(sizeof(PendingProperties));
 	converted->property_count = map->property_count;
 	converted->attr_keys = map->keys; // This pointer can be copied directly.
 	converted->values = rm_malloc(sizeof(SIValue) * map->property_count);
 	for(int i = 0; i < map->property_count; i++) {
+		// TODO potential memory leak on evaluation failure
 		converted->values[i] = AR_EXP_Evaluate(map->values[i], r);
 	}
 
@@ -44,10 +46,10 @@ static void _PendingPropertiesFree(PendingProperties *props) {
 
 OpBase *NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
 	OpCreate *op_create = calloc(1, sizeof(OpCreate));
-	op_create->gc = GraphContext_GetFromTLS();
 	op_create->records = NULL;
 	op_create->nodes_to_create = nodes;
 	op_create->edges_to_create = edges;
+	op_create->gc = QueryCtx_GetGraphCtx();
 	op_create->created_nodes = array_new(Node *, 0);
 	op_create->created_edges = array_new(Edge *, 0);
 	op_create->node_properties = array_new(PendingProperties *, 0);
@@ -93,14 +95,13 @@ void _CreateNodes(OpCreate *op, Record r) {
 		/* Convert query-level properties. */
 		PropertyMap *map = op->nodes_to_create[i].properties;
 		PendingProperties *converted_properties = NULL;
-		if(map) converted_properties = _ConvertPropertyMap(op->gc, r, map);
+		if(map) converted_properties = _ConvertPropertyMap(r, map);
 
 		/* Save node for later insertion. */
 		op->created_nodes = array_append(op->created_nodes, newNode);
 
 		/* Save properties to insert with node. */
 		op->node_properties = array_append(op->node_properties, converted_properties);
-
 	}
 }
 
@@ -123,7 +124,7 @@ void _CreateEdges(OpCreate *op, Record r) {
 		/* Convert query-level properties. */
 		PropertyMap *map = op->edges_to_create[i].properties;
 		PendingProperties *converted_properties = NULL;
-		if(map) converted_properties = _ConvertPropertyMap(op->gc, r, map);
+		if(map) converted_properties = _ConvertPropertyMap(r, map);
 
 		/* Save edge for later insertion. */
 		op->created_edges = array_append(op->created_edges, newEdge);
@@ -166,7 +167,7 @@ static void _CommitNodes(OpCreate *op) {
 		// Get label ID.
 		int labelID = GRAPH_NO_LABEL;
 		if(n->label != NULL) {
-			s = GraphContext_GetSchema(op->gc, n->label, SCHEMA_NODE);
+			s = GraphContext_GetSchema(gc, n->label, SCHEMA_NODE);
 			assert(s);
 			labelID = s->id;
 		}
@@ -183,7 +184,7 @@ static void _CommitNodes(OpCreate *op) {
 static void _CommitEdges(OpCreate *op) {
 	Edge *e;
 	GraphContext *gc = op->gc;
-	Graph *g = op->gc->g;
+	Graph *g = gc->g;
 
 	/* Create missing schemas.
 	 * this loop iterates over the CREATE pattern, e.g.
@@ -222,8 +223,8 @@ static void _CommitEdges(OpCreate *op) {
 		if(e->destNodeID != INVALID_ENTITY_ID) destNodeID = e->destNodeID;
 		else destNodeID = ENTITY_GET_ID(Edge_GetDestNode(e));
 
-		Schema *schema = GraphContext_GetSchema(op->gc, e->relationship, SCHEMA_EDGE);
-		if(!schema) schema = GraphContext_AddSchema(op->gc, e->relationship, SCHEMA_EDGE);
+		Schema *schema = GraphContext_GetSchema(gc, e->relationship, SCHEMA_EDGE);
+		if(!schema) schema = GraphContext_AddSchema(gc, e->relationship, SCHEMA_EDGE);
 		int relation_id = schema->id;
 
 		if(!Graph_ConnectNodes(g, srcNodeID, destNodeID, relation_id, e)) continue;
@@ -275,6 +276,9 @@ Record OpCreateConsume(OpBase *opBase) {
 	OpBase *child = NULL;
 	if(!op->op.childCount) {
 		r = Record_New(opBase->record_map->record_len);
+		// Track the newly-allocated Record so that it may be freed if execution fails.
+		OpBase_AddVolatileRecord(opBase, r);
+
 		/* Create entities. */
 		_CreateNodes(op, r);
 		_CreateEdges(op, r);
@@ -285,6 +289,8 @@ Record OpCreateConsume(OpBase *opBase) {
 		// Pull data until child is depleted.
 		child = op->op.children[0];
 		while((r = OpBase_Consume(child))) {
+			// Track inherited Record so that it may be freed if execution fails.
+			OpBase_AddVolatileRecord(opBase, r);
 			if(Record_length(r) < opBase->record_map->record_len) {
 				// If the child record was created in a different segment, it may not be
 				// large enough to accommodate the new entities.
@@ -298,6 +304,8 @@ Record OpCreateConsume(OpBase *opBase) {
 			op->records = array_append(op->records, r);
 		}
 	}
+
+	OpBase_RemoveVolatileRecords(opBase); // No exceptions encountered, Records are not dangling.
 
 	/* Done reading, we're not going to call consume any longer
 	 * there might be operations e.g. index scan that need to free
@@ -370,3 +378,4 @@ void OpCreateFree(OpBase *ctx) {
 	array_free(op->edge_properties);
 	op->edge_properties = NULL;
 }
+

@@ -7,6 +7,7 @@
 #include "proc_labels.h"
 #include "../value.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
 
@@ -23,7 +24,7 @@ ProcedureResult Proc_RelationsInvoke(ProcedureCtx *ctx, const char **args) {
 
 	RelationsContext *pdata = rm_malloc(sizeof(RelationsContext));
 	pdata->schema_id = 0;
-	pdata->gc = GraphContext_GetFromTLS();
+	pdata->gc = QueryCtx_GetGraphCtx();
 	pdata->output = array_new(SIValue, 2);
 	pdata->output = array_append(pdata->output, SI_ConstStringVal("relationshipType"));
 	pdata->output = array_append(pdata->output, SI_ConstStringVal("")); // Place holder.
@@ -76,3 +77,4 @@ ProcedureCtx *Proc_RelationsCtx() {
 								   privateData);
 	return ctx;
 }
+

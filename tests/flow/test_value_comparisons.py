@@ -77,3 +77,84 @@ class testValueComparison(FlowTestsBase):
         expected_result_count = (node_count - 1) * (node_count - 2)
         self.env.assertEquals(
             len(actual_result.result_set), expected_result_count)
+
+    # Verify that AND conditions on true, false, and NULL values evaluate appropriately
+    def test_AND_truth_tables(self):
+        # Test two non-NULL values
+        query = """RETURN true AND true, true AND false, false AND true, false AND false"""
+        actual_result = redis_graph.query(query)
+        expected_val = [True, False, False, False] # Truth table for AND
+        self.env.assertEquals(actual_result.result_set[0], expected_val)
+
+        # false AND null == false 
+        query = """RETURN false AND NULL"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], False)
+
+        # true AND null == null 
+        query = """RETURN true AND NULL"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+        # Test two NULL values
+        query = """RETURN NULL AND NULL"""
+        actual_result = redis_graph.query(query)
+        # AND comparisons with two NULL values evaluate to NULL
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+    # Verify that OR conditions on true, false, and NULL values evaluate appropriately
+    def test_OR_truth_tables(self):
+        # Test two non-NULL values
+        query = """RETURN true OR true, true OR false, false OR true, false OR false"""
+        actual_result = redis_graph.query(query)
+        expected_val = [True, True, True, False] # Truth table for OR
+        self.env.assertEquals(actual_result.result_set[0], expected_val)
+
+        # false OR null == null
+        query = """RETURN false OR NULL"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+        # true OR null == true
+        query = """RETURN true OR NULL"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], True)
+
+        # null OR null == null
+        query = """RETURN NULL OR NULL"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+    # Verify that XOR conditions on true, false, and NULL values evaluate appropriately
+    def test_XOR_truth_tables(self):
+        # Test two non-NULL values
+        query = """RETURN true XOR true, true XOR false, false XOR true, false XOR false"""
+        actual_result = redis_graph.query(query)
+        expected_val = [False, True, True, False] # Truth table for XOR
+        self.env.assertEquals(actual_result.result_set[0], expected_val)
+
+        # Test one NULL value
+        query = """RETURN true XOR null, false XOR null"""
+        actual_result = redis_graph.query(query)
+            # XOR comparisons with one NULL value always evaluate to null
+        expected_val = [None, None]
+        self.env.assertEquals(actual_result.result_set[0], expected_val)
+
+        # Test two NULL values
+        query = """RETURN NULL XOR NULL"""
+        actual_result = redis_graph.query(query)
+        # XOR comparisons with two NULL values evaluate to NULL
+        self.env.assertEquals(actual_result.result_set[0][0], None)
+
+    # Verify that NOT conditions on true, false, and NULL values evaluate appropriately
+    def test_NOT_truth_tables(self):
+        # Test non-NULL values
+        query = """RETURN NOT true, NOT false"""
+        actual_result = redis_graph.query(query)
+        expected_val = [False, True] # Truth table (single-valued) for NOT
+        self.env.assertEquals(actual_result.result_set[0], expected_val)
+
+        # NOT null == null
+        query = """RETURN NOT NULL"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set[0][0], None)

@@ -1,6 +1,7 @@
 #include "utilize_indices.h"
 #include "../../value.h"
 #include "../../util/arr.h"
+#include "../../query_ctx.h"
 #include "../ops/op_index_scan.h"
 #include "../../ast/ast_shared.h"
 #include "../../util/range/string_range.h"
@@ -195,7 +196,7 @@ bool _simple_predicates(const FT_FilterNode *filter) {
 }
 
 /* Checks to see if given filter can be resolved by index. */
-bool _applicableFilter(Index *idx, Filter *filter) {
+bool _applicableFilter(Index *idx, OpFilter *filter) {
 	bool res = true;
 	rax *attr = NULL;
 	rax *entities = NULL;
@@ -249,14 +250,14 @@ cleanup:
 
 /* Returns an array of filter operation which can be
  * reduced into a single index scan operation. */
-Filter **_applicableFilters(NodeByLabelScan *scanOp, Index *idx) {
-	Filter **filters = array_new(Filter *, 0);
+OpFilter **_applicableFilters(NodeByLabelScan *scanOp, Index *idx) {
+	OpFilter **filters = array_new(OpFilter *, 0);
 
 	/* We begin with a LabelScan, and want to find predicate filters that modify
 	 * the active entity. */
 	OpBase *current = scanOp->op.parent;
 	while(current->type == OPType_FILTER) {
-		Filter *filter = (Filter *)current;
+		OpFilter *filter = (OpFilter *)current;
 
 		if(_applicableFilter(idx, filter)) {
 			// Make sure all predicates are of type n.v = CONST.
@@ -315,7 +316,7 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 
 	// Make sure there's an index for scanned label.
 	const char *label = scan->node->label;
-	GraphContext *gc = GraphContext_GetFromTLS();
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Index *idx = GraphContext_GetIndex(gc, label, NULL, IDX_EXACT_MATCH);
 	if(idx == NULL) return;
 
@@ -328,7 +329,7 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 
 	// Get all applicable filter for index.
 	RSIndex *rs_idx = idx->idx;
-	Filter **filters = _applicableFilters(scan, idx);
+	OpFilter **filters = _applicableFilters(scan, idx);
 
 	// No filters, return.
 	uint filters_count = array_len(filters);
@@ -338,7 +339,7 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 	numeric_ranges = raxNew();
 
 	for(uint i = 0; i < filters_count; i++) {
-		Filter *filter = filters[i];
+		OpFilter *filter = filters[i];
 		FT_FilterNode *filter_tree = filter->filterTree;
 
 		if(filter_tree->t == FT_N_PRED) {
@@ -422,7 +423,7 @@ cleanup:
 
 	if(filters) {
 		for(uint i = 0; i < filters_count; i++) {
-			Filter *filter = filters[i];
+			OpFilter *filter = filters[i];
 			ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
 			OpBase_Free((OpBase *)filter);
 		}
@@ -454,3 +455,4 @@ void utilizeIndices(GraphContext *gc, ExecutionPlan *plan) {
 	// Cleanup
 	array_free(scanOps);
 }
+

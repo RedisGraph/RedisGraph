@@ -7,6 +7,7 @@
 #include "op_aggregate.h"
 #include "op_sort.h"
 #include "../../util/arr.h"
+#include "../../query_ctx.h"
 #include "../../util/rmalloc.h"
 #include "../../grouping/group.h"
 #include "../../arithmetic/aggregate.h"
@@ -197,6 +198,8 @@ static Record _handoff(OpAggregate *op) {
 	uint exp_count = array_len(op->exps);
 	uint order_exp_count = array_len(op->order_exps);
 	Record r = Record_New(exp_count + order_exp_count);
+	// Track the newly-allocated Record so that they may be freed if execution fails.
+	OpBase_AddVolatileRecord((OpBase *)op, r);
 
 	// Populate record.
 	uint aggIdx = 0; // Index into group aggregated exps.
@@ -236,21 +239,21 @@ static Record _handoff(OpAggregate *op) {
 		}
 	}
 
+	OpBase_RemoveVolatileRecords((OpBase *)op);
 	return r;
 }
 
 OpBase *NewAggregateOp(AR_ExpNode **exps, uint *modifies) {
 	OpAggregate *aggregate = malloc(sizeof(OpAggregate));
-	AST *ast = AST_GetFromTLS();
-	aggregate->ast = ast;
 	aggregate->exps = exps;
-	aggregate->expression_classification = NULL;
-	aggregate->non_aggregated_expressions = NULL;
 	aggregate->order_exps = NULL;
 	aggregate->group = NULL;
 	aggregate->group_iter = NULL;
 	aggregate->group_keys = NULL;
+	aggregate->ast = QueryCtx_GetAST();
 	aggregate->groups = CacheGroupNew();
+	aggregate->expression_classification = NULL;
+	aggregate->non_aggregated_expressions = NULL;
 
 	OpBase_Init(&aggregate->op);
 	aggregate->op.name = "Aggregate";
@@ -336,3 +339,4 @@ void AggregateFree(OpBase *opBase) {
 		op->groups = NULL;
 	}
 }
+

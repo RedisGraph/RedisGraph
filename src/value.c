@@ -17,6 +17,16 @@
 #include "util/rmalloc.h"
 #include "datatypes/array.h"
 
+static inline void _SIString_ToString(SIValue str, char **buf, size_t *bufferLen,
+									  size_t *bytesWritten) {
+	size_t strLen = strlen(str.stringval);
+	if(*bufferLen - *bytesWritten < strLen) {
+		*bufferLen += strLen;
+		*buf = rm_realloc(*buf, *bufferLen);
+	}
+	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%s", str.stringval);
+}
+
 SIValue SI_LongVal(int64_t i) {
 	return (SIValue) {
 		.longval = i, .type = T_INT64
@@ -165,9 +175,7 @@ inline bool SIValue_IsNullPtr(SIValue *v) {
 }
 
 const char *SIType_ToString(SIType t) {
-	if(t & T_NULL) {
-		return "Null";
-	} else if(t & T_STRING) {
+	if(t & T_STRING) {
 		return "String";
 	} else if(t & T_INT64) {
 		return "Integer";
@@ -181,20 +189,13 @@ const char *SIType_ToString(SIType t) {
 		return "Node";
 	} else if(t & T_EDGE) {
 		return "Edge";
-	} else if(t & T_ERROR) {
-		return "Error";
+	} else if(t & T_ARRAY) {
+		return "List";
+	} else if(t & T_NULL) {
+		return "Null";
 	} else {
 		return "Unknown";
 	}
-}
-
-void SIString_ToString(SIValue str, char **buf, size_t *bufferLen, size_t *bytesWritten) {
-	size_t strLen = strlen(str.stringval);
-	if(*bufferLen - *bytesWritten < strLen) {
-		*bufferLen += strLen;
-		*buf = rm_realloc(*buf, *bufferLen);
-	}
-	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%s", str.stringval);
 }
 
 void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWritten) {
@@ -208,7 +209,7 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 
 	switch(v.type) {
 	case T_STRING:
-		SIString_ToString(v, buf, bufferLen, bytesWritten);
+		_SIString_ToString(v, buf, bufferLen, bytesWritten);
 		break;
 	case T_INT64:
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "%lld", (long long)v.longval);
@@ -487,3 +488,4 @@ void SIValue_Free(SIValue *v) {
 		return;
 	}
 }
+

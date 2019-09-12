@@ -128,15 +128,13 @@ void _cache_records(OpValueHashJoin *op) {
 
 	// As long as there's data coming in from left branch.
 	do {
+		// Add joined value to record.
+		Record_Extend(&r, extended_rec_len); // Cache record.
+		op->cached_records = array_append(op->cached_records, r);
+
 		// Evaluate joined expression.
 		SIValue v = AR_EXP_Evaluate(op->lhs_exp, r);
-
-		// Add joined value to record.
-		Record_Extend(&r, extended_rec_len);
 		Record_AddScalar(r, op->join_value_rec_idx, v);
-
-		// Cache record.
-		op->cached_records = array_append(op->cached_records, r);
 	} while((r = left_child->consume(left_child)));
 }
 
@@ -305,3 +303,4 @@ void ValueHashJoinFree(OpBase *ctx) {
 		op->rhs_exp = NULL;
 	}
 }
+

@@ -5,6 +5,7 @@
 */
 
 #include "proc_fulltext_drop_index.h"
+#include "../query_ctx.h"
 #include "../value.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
@@ -21,7 +22,7 @@ ProcedureResult Proc_FulltextDropIndexInvoke(ProcedureCtx *ctx, const char **arg
 	if(array_len(args) != 1) return PROCEDURE_ERR;
 
 	const char *label = args[0];
-	GraphContext *gc = GraphContext_GetFromTLS();
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	// Schema doesn't exists, TODO: report error.
 	if(!s) return PROCEDURE_ERR;

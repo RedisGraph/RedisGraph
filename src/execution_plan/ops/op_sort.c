@@ -97,7 +97,12 @@ static void _accumulate(OpSort *op, Record r) {
 }
 
 static Record _handoff(OpSort *op) {
-	if(array_len(op->buffer) > 0) return array_pop(op->buffer);
+	if(array_len(op->buffer) > 0) {
+		Record r = array_pop(op->buffer);
+		// Remove sortable values.
+		Record_Truncate(r, Record_length(r) - op->offset);
+		return r;
+	}
 	return NULL;
 }
 
@@ -240,3 +245,4 @@ void SortFree(OpBase *ctx) {
 		op->expressions = NULL;
 	}
 }
+

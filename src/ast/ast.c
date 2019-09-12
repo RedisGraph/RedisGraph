@@ -9,11 +9,10 @@
 #include <pthread.h>
 
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "../util/qsort.h"
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
-
-extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
 
 // TODO duplicated logic, find shared place for it
 static inline void _prepareIterateAll(rax *map, raxIterator *iter) {
@@ -210,7 +209,7 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	if(cypher_astnode_type(ast->root) == CYPHER_AST_QUERY) AST_BuildEntityMap(ast);
 
 	// Set thread-local AST
-	assert(pthread_setspecific(_tlsASTKey, ast) == 0);
+	QueryCtx_SetAST(ast);
 
 	return ast;
 }
@@ -230,7 +229,7 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 
 	// TODO This overwrites the previously-held AST pointer, which could lead to inconsistencies
 	// in the future if we expect the variable to hold a different AST.
-	assert(pthread_setspecific(_tlsASTKey, ast) == 0);
+	QueryCtx_SetAST(ast);
 	AST_BuildEntityMap(ast);
 
 	return ast;
@@ -290,15 +289,10 @@ int TraverseRecordCap(const AST *ast) {
 	return recordsCap;
 }
 
-AST *AST_GetFromTLS(void) {
-	AST *ast = pthread_getspecific(_tlsASTKey);
-	assert(ast);
-	return ast;
-}
-
 void AST_Free(AST *ast) {
 	if(ast == NULL) return;
 	if(ast->entity_map) raxFree(ast->entity_map);
 	if(ast->free_root) free((cypher_astnode_t *)ast->root);
 	rm_free(ast);
 }
+

@@ -5,6 +5,7 @@
  */
 
 #include "record_map.h"
+#include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include <assert.h>
 
@@ -33,7 +34,7 @@ uint RecordMap_FindOrAddAlias(RecordMap *record_map, const char *alias) {
 	if(id_ptr != raxNotFound) return (uint64_t)id_ptr;
 
 	// TODO this logic could be improved.
-	AST *ast = AST_GetFromTLS();
+	AST *ast = QueryCtx_GetAST();
 	uint record_id;
 
 	// Retrieve the AST ID
@@ -87,3 +88,4 @@ void RecordMap_Free(RecordMap *record_map) {
 	raxFree(record_map->map);
 	rm_free(record_map);
 }
+

@@ -9,8 +9,9 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
-#include "../../src/util/rmalloc.h"
 
+#include "../../src/util/rmalloc.h"
+#include "../../src/query_ctx.h"
 #include "../../src/graph/query_graph.h"
 #include "../../src/filter_tree/filter_tree.h"
 #include "../../src/ast/ast_build_filter_tree.h"
@@ -21,16 +22,14 @@ extern "C" {
 }
 #endif
 
-pthread_key_t _tlsASTKey;  // Thread local storage AST key.
-
 class TraversalOrderingTest: public ::testing::Test {
   protected:
 	static void SetUpTestCase() {
 		// Use the malloc family for allocations
 		Alloc_Reset();
 
-		int error = pthread_key_create(&_tlsASTKey, NULL);
-		ASSERT_EQ(error, 0);
+		// Prepare thread-local variables
+		ASSERT_TRUE(QueryCtx_Init());
 	}
 
 	static void TearDownTestCase() {
@@ -291,3 +290,4 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	AlgebraicExpression_Free(ExpCD);
 	QueryGraph_Free(qg);
 }
+

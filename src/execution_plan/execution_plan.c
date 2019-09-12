@@ -4,21 +4,23 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include <assert.h>
-
 #include "execution_plan.h"
 #include "./ops/ops.h"
-#include "../util/rmalloc.h"
 #include "../util/arr.h"
-#include "../util/vector.h"
+#include "../query_ctx.h"
 #include "../util/qsort.h"
+#include "../util/vector.h"
+#include "../util/rmalloc.h"
 #include "../graph/entities/edge.h"
-#include "./optimizations/optimizer.h"
-#include "./optimizations/optimizations.h"
-#include "../arithmetic/algebraic_expression.h"
 #include "../ast/ast_build_ar_exp.h"
+#include "./optimizations/optimizer.h"
 #include "../ast/ast_build_op_contexts.h"
 #include "../ast/ast_build_filter_tree.h"
+#include "./optimizations/optimizations.h"
+#include "../arithmetic/algebraic_expression.h"
+
+#include <assert.h>
+#include <setjmp.h>
 
 // Associate each operation in the chain with the provided RecordMap.
 static void _associateRecordMap(OpBase *root, RecordMap *record_map) {
@@ -36,21 +38,20 @@ static void _associateRecordMap(OpBase *root, RecordMap *record_map) {
 
 /* In a query with a RETURN *, build projections for all explicit aliases
  * in previous clauses. */
-static AR_ExpNode **_ReturnExpandAll(RecordMap *record_map, AST *ast) {
+static void _ReturnExpandAll(ExecutionPlanSegment *segment, AST *ast) {
 	// Collect all unique aliases
 	const char **aliases = AST_CollectElementNames(ast);
 	uint count = array_len(aliases);
 
 	// Build an expression for each alias
-	AR_ExpNode **return_expressions = array_new(AR_ExpNode *, count);
+	segment->projections = array_new(AR_ExpNode *, count);
 	for(int i = 0; i < count; i ++) {
-		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(record_map, aliases[i], NULL);
+		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(segment->record_map, aliases[i], NULL);
 		exp->resolved_name = aliases[i];
-		return_expressions = array_append(return_expressions, exp);
+		segment->projections = array_append(segment->projections, exp);
 	}
 
 	array_free(aliases);
-	return return_expressions;
 }
 
 // Handle ORDER entities
@@ -96,14 +97,18 @@ static AR_ExpNode **_BuildOrderExpressions(RecordMap *record_map, AR_ExpNode **p
 
 // Handle RETURN entities
 // (This function is not static because it is relied upon by unit tests)
-AR_ExpNode **_BuildReturnExpressions(RecordMap *record_map, const cypher_astnode_t *ret_clause,
-									 AST *ast) {
+void _BuildReturnExpressions(ExecutionPlanSegment *segment, const cypher_astnode_t *ret_clause,
+							 AST *ast) {
+	RecordMap *record_map = segment->record_map;
 	// Query is of type "RETURN *",
 	// collect all defined identifiers and create return elements for them
-	if(cypher_ast_return_has_include_existing(ret_clause)) return _ReturnExpandAll(record_map, ast);
+	if(cypher_ast_return_has_include_existing(ret_clause)) {
+		_ReturnExpandAll(segment, ast);
+		return;
+	}
 
 	uint count = cypher_ast_return_nprojections(ret_clause);
-	AR_ExpNode **return_expressions = array_new(AR_ExpNode *, count);
+	segment->projections = array_new(AR_ExpNode *, count);
 	for(uint i = 0; i < count; i++) {
 		const cypher_astnode_t *projection = cypher_ast_return_get_projection(ret_clause, i);
 		// The AST expression can be an identifier, function call, or constant
@@ -127,10 +132,8 @@ AR_ExpNode **_BuildReturnExpressions(RecordMap *record_map, const cypher_astnode
 		}
 
 		exp->resolved_name = identifier;
-		return_expressions = array_append(return_expressions, exp);
+		segment->projections = array_append(segment->projections, exp);
 	}
-
-	return return_expressions;
 }
 
 static AR_ExpNode **_BuildWithExpressions(RecordMap *record_map,
@@ -255,7 +258,7 @@ static const char **_BuildCallArguments(RecordMap *record_map,
 
 static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segment, QueryGraph *qg,
 													AST *ast, FT_FilterNode *ft, Vector *ops) {
-	GraphContext *gc = GraphContext_GetFromTLS();
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 
 	QueryGraph **connectedComponents = QueryGraph_ConnectedComponents(qg);
 	uint connectedComponentsCount = array_len(connectedComponents);
@@ -447,11 +450,9 @@ static void _ExecutionPlanSegment_MapReferences(ExecutionPlanSegment *segment, A
 	}
 }
 
-static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
-													  AST *ast, ResultSet *result_set, AR_ExpNode **prev_projections, OpBase *prev_op) {
-	// Allocate a new segment
-	ExecutionPlanSegment *segment = rm_malloc(sizeof(ExecutionPlanSegment));
-	segment->connected_components = NULL;
+static void _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
+									 ExecutionPlanSegment *segment, AST *ast, ResultSet *result_set,
+									 AR_ExpNode **prev_projections, OpBase *prev_op) {
 
 	// Initialize map of Record IDs
 	RecordMap *record_map = RecordMap_New();
@@ -478,7 +479,7 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 
 	const cypher_astnode_t *order_clause = NULL;
 	if(ret_clause) {
-		segment->projections = _BuildReturnExpressions(segment->record_map, ret_clause, ast);
+		_BuildReturnExpressions(segment, ret_clause, ast);
 		// If we have a RETURN * and previous WITH projections, include those projections.
 		if(cypher_ast_return_has_include_existing(ret_clause) && prev_projections) {
 			uint prev_projection_count = array_len(prev_projections);
@@ -797,14 +798,12 @@ static ExecutionPlanSegment *_NewExecutionPlanSegment(RedisModuleCtx *ctx, Graph
 	}
 
 	_associateRecordMap(segment->root, record_map);
-
-	return segment;
 }
 
 ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet *result_set) {
-	AST *ast = AST_GetFromTLS();
+	AST *ast = QueryCtx_GetAST();
 
-	ExecutionPlan *plan = rm_malloc(sizeof(ExecutionPlan));
+	ExecutionPlan *plan = rm_calloc(1, sizeof(ExecutionPlan));
 
 	plan->result_set = result_set;
 
@@ -836,9 +835,10 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 			ast_segment = AST_NewSegment(ast, start_offset, end_offset);
 
 			// Construct a new ExecutionPlanSegment.
-			segment = _NewExecutionPlanSegment(ctx, gc, ast_segment, plan->result_set, input_projections,
-											   prev_op);
-			plan->segments[i] = segment;
+			segment = rm_calloc(1, sizeof(ExecutionPlanSegment));
+			plan->segments[i] = segment; // Add the segment now in case of an exception during construction.
+			_NewExecutionPlanSegment(ctx, gc, segment, ast_segment, plan->result_set, input_projections,
+									 prev_op);
 
 			AST_Free(ast_segment); // Free all AST constructions scoped to this segment
 
@@ -855,21 +855,30 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 
 	if(segment_indices) array_free(segment_indices);
 
-	segment = _NewExecutionPlanSegment(ctx, gc, ast_segment, plan->result_set, input_projections,
-									   prev_op);
-	plan->segments[i] = segment;
+	// Construct a new ExecutionPlanSegment.
+	segment = rm_calloc(1, sizeof(ExecutionPlanSegment));
+	plan->segments[i] = segment; // Add the segment now in case of an exception during construction.
+	_NewExecutionPlanSegment(ctx, gc, segment, ast_segment, plan->result_set, input_projections,
+							 prev_op);
 
 	plan->root = plan->segments[i]->root;
+
+	// Free current AST segment if it has been constructed here.
+	if(ast_segment != ast) AST_Free(ast_segment);
+
+	// Check to see if we've encountered an error while constructing the execution-plan.
+	if(QueryCtx_EncounteredError()) {
+		// A compile time error was encountered.
+		ExecutionPlan_Free(plan);
+		QueryCtx_EmitException();
+		return NULL;
+	}
 
 	// Optimize the operations in the ExecutionPlan.
 	optimizePlan(gc, plan);
 
 	// Prepare column names for the ResultSet if this query contains data in addition to statistics.
 	if(result_set) ResultSet_BuildColumns(result_set, segment->projections);
-
-
-	// Free current AST segment if it has been constructed here.
-	if(ast_segment != ast) AST_Free(ast_segment);
 
 	return plan;
 }
@@ -912,7 +921,10 @@ void _ExecutionPlanInit(OpBase *root, RecordMap *record_map) {
 	if(root->record_map == NULL) root->record_map = record_map;
 
 	// Initialize the operation if necesary.
-	if(root->init) root->init(root);
+	if(!root->op_initialized && root->init) {
+		root->init(root);
+		root->op_initialized = true;
+	}
 
 	// Continue initializing downstream operations.
 	for(int i = 0; i < root->childCount; i++) {
@@ -928,13 +940,25 @@ void ExecutionPlanInit(ExecutionPlan *plan) {
 	}
 }
 
-
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
-	Record r;
-	OpBase *op = plan->root;
-
+	Record r = NULL;
 	ExecutionPlanInit(plan);
-	while((r = OpBase_Consume(op)) != NULL) Record_Free(r);
+
+	/* Set an exception-handling breakpoint to capture run-time errors.
+	 * encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
+	 * a downstream exception returns us to this breakpoint. */
+	int encountered_error = SET_EXCEPTION_HANDLER();
+
+	if(encountered_error) {
+		// Encountered a run-time error; return immediately.
+		if(r) Record_Free(r);
+		return plan->result_set;
+	}
+
+	// Execute the root operation and free the processed Record until the data stream is depleted.
+	while((r = OpBase_Consume(plan->root)) != NULL) Record_Free(r);
+
+	// Return the result set.
 	return plan->result_set;
 }
 
@@ -979,7 +1003,7 @@ void _ExecutionPlan_FreeOperations(OpBase *op) {
 }
 
 void _ExecutionPlanSegment_Free(ExecutionPlanSegment *segment) {
-	RecordMap_Free(segment->record_map);
+	if(segment->record_map) RecordMap_Free(segment->record_map);
 
 	if(segment->connected_components) {
 		uint connected_component_count = array_len(segment->connected_components);
@@ -989,7 +1013,7 @@ void _ExecutionPlanSegment_Free(ExecutionPlanSegment *segment) {
 		array_free(segment->connected_components);
 	}
 
-	QueryGraph_Free(segment->query_graph);
+	if(segment->query_graph) QueryGraph_Free(segment->query_graph);
 
 	if(segment->projections) {
 		uint projection_count = array_len(segment->projections);
@@ -1004,12 +1028,15 @@ void _ExecutionPlanSegment_Free(ExecutionPlanSegment *segment) {
 
 void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) return;
-	_ExecutionPlan_FreeOperations(plan->root);
+	if(plan->root) _ExecutionPlan_FreeOperations(plan->root);
 
-	for(uint i = 0; i < plan->segment_count; i ++) {
-		_ExecutionPlanSegment_Free(plan->segments[i]);
+	if(plan->segments) {
+		for(uint i = 0; i < plan->segment_count; i ++) {
+			if(plan->segments[i]) _ExecutionPlanSegment_Free(plan->segments[i]);
+		}
+		rm_free(plan->segments);
 	}
-	rm_free(plan->segments);
 
 	rm_free(plan);
 }
+

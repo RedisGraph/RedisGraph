@@ -24,12 +24,12 @@ static inline bool _applicableFilter(const FT_FilterNode *f) {
 }
 
 // Collects all consecutive filters beneath given op.
-static Filter **_locate_filters(OpBase *cp) {
+static OpFilter **_locate_filters(OpBase *cp) {
 	OpBase *parent = cp->parent;
-	Filter **filters = array_new(Filter *, 0);
+	OpFilter **filters = array_new(OpFilter *, 0);
 
 	while(parent && parent->type == OPType_FILTER) {
-		filters = array_append(filters, (Filter *)parent);
+		filters = array_append(filters, (OpFilter *)parent);
 		parent = parent->parent;
 	}
 
@@ -133,11 +133,11 @@ void applyJoin(ExecutionPlan *plan) {
 		 * where each pulls from exactly 2 streams
 		 * consider: MATCH a,b,c WHERE a.v = b.v. */
 		if(cp->childCount != 2) continue;
-		Filter **filters = _locate_filters(cp);
+		OpFilter **filters = _locate_filters(cp);
 
 		int filter_count = array_len(filters);
 		for(int j = 0; j < filter_count; j++) {
-			Filter *filter = filters[j];
+			OpFilter *filter = filters[j];
 			if(_applicableFilter(filter->filterTree)) {
 				// Reduce cartesian product to value hash join
 				AR_ExpNode *lhs = NULL;

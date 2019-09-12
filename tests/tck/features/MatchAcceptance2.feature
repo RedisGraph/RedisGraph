@@ -1331,7 +1331,6 @@ Feature: MatchAcceptance2
       | (:A) | [:T] | null | null |
     And no side effects
 
-@skip
   Scenario: Fail when using property access on primitive type
     Given an empty graph
     And having executed:

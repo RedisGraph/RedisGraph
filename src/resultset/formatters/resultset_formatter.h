@@ -34,8 +34,7 @@ typedef enum {
 typedef void (*EmitHeaderFunc)(RedisModuleCtx *ctx, const char **columns, const Record r);
 
 // Typedef for record formatters.
-typedef void (*EmitRecordFunc)(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
-							   unsigned int numcols);
+typedef void (*EmitRecordFunc)(RedisModuleCtx *ctx, GraphContext *gc, const Record r);
 
 typedef struct {
 	EmitRecordFunc EmitRecord;

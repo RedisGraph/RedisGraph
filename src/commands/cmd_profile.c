@@ -6,8 +6,8 @@
 
 #include "cmd_profile.h"
 #include "cmd_context.h"
+#include "../query_ctx.h"
 #include "../graph/graph.h"
-#include "../util/simple_timer.h"
 #include "../execution_plan/execution_plan.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
@@ -18,6 +18,9 @@ void _MGraph_Profile(void *args) {
 	ResultSet *result_set = NULL;
 	bool lockAcquired = false;
 	AST *ast = NULL;
+
+	QueryCtx_BeginTimer(); // Start query timing.
+	QueryCtx_SetRedisModuleCtx(ctx);
 
 	// Parse the query to construct an AST
 	cypher_parse_result_t *parse_result = cypher_parse(qctx->query, NULL, NULL,
@@ -72,9 +75,11 @@ void _MGraph_Profile(void *args) {
 
 	result_set = NewResultSet(ctx, false);
 	ExecutionPlan *plan = NewExecutionPlan(ctx, gc, result_set);
-	ExecutionPlan_Profile(plan);
-	ExecutionPlan_Print(plan, ctx);
-	ExecutionPlan_Free(plan);
+	if(plan) {
+		ExecutionPlan_Profile(plan);
+		ExecutionPlan_Print(plan, ctx);
+		ExecutionPlan_Free(plan);
+	}
 
 cleanup:
 	// Release the read-write lock
@@ -87,6 +92,7 @@ cleanup:
 	AST_Free(ast);
 	if(parse_result) cypher_parse_result_free(parse_result);
 	CommandCtx_Free(qctx);
+	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 }
 
 /* Profiles query
@@ -119,3 +125,4 @@ int MGraph_Profile(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
+
