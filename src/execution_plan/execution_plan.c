@@ -761,8 +761,8 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 			ExecutionPlan_PushBelow(taps[0], op_cp);
 			ExecutionPlan_AddOp(op_cp, prev_root);
 		} else {
-			OpBase *leaf = ExecutionPlan_LocateLeaf(current_segment->root);
-			ExecutionPlan_AddOp(leaf, prev_root);
+			// OpBase *leaf = ExecutionPlan_LocateLeaf(current_segment->root);
+			// ExecutionPlan_AddOp(leaf, prev_root);
 		}
 	}
 

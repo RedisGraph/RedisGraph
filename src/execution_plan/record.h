@@ -47,10 +47,6 @@ Record Record_Clone(const Record r);
 // Extends record to accommodate 'len' entries.
 void Record_Extend(Record *r, int len);
 
-// Shrink record to size `count`; freeing any further elements.
-// TODO: Remove this functions once hash like records are introduced.
-void Record_Truncate(Record r, uint count);
-
 // Merge record b into a, sharing any nested references in b with a.
 void Record_Merge(Record *a, const Record b);
 

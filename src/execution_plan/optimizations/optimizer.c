@@ -19,7 +19,7 @@ void optimizePlan(GraphContext *gc, ExecutionPlan *plan) {
 	reduceScans(plan);
 
 	/* Try to match disjoint entities by applying a join */
-	applyJoin(plan);
+	// applyJoin(plan);
 
 	/* Try to reduce a number of filters into a single filter op. */
 	reduceFilters(plan);

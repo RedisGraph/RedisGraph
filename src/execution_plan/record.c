@@ -65,22 +65,6 @@ int Record_GetEntryIdx(Record r, const char *alias) {
 	return (int)idx;
 }
 
-/*
-void Record_Truncate(Record r, uint count) {
-	uint original_len = Record_length(r);
-	if(count >= original_len) return;
-
-	for(uint i = count + 1; i < original_len; i++) {
-		if(r[i].type == REC_TYPE_SCALAR) {
-			SIValue_Free(&r[i].value.s);
-		}
-	}
-
-	Record header = RECORD_HEADER(r);
-	header->value.s.longval = original_len - count;
-}
-*/
-
 int Record_AliasEntry(Record r, const char *entry, const char *alias) {
 	assert(r && entry && alias);
 
