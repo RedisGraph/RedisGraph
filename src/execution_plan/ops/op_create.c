@@ -56,7 +56,7 @@ OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeC
 	op->records = NULL;
 	op->nodes_to_create = nodes;
 	op->edges_to_create = edges;
-	op->gc = GraphContext_GetFromTLS();
+	op->gc = QueryCtx_GetGraphCtx();
 	op->created_nodes = array_new(Node *, 0);
 	op->created_edges = array_new(Edge *, 0);
 	op->node_properties = array_new(PendingProperties *, 0);
@@ -291,11 +291,7 @@ static Record Consume(OpBase *opBase) {
 		while((r = OpBase_Consume(child))) {
 			// Track inherited Record so that it may be freed if execution fails.
 			OpBase_AddVolatileRecord(opBase, r);
-			if(Record_length(r) < opBase->record_map->record_len) {
-				// If the child record was created in a different segment, it may not be
-				// large enough to accommodate the new entities.
-				Record_Extend(&r, opBase->record_map->record_len);
-			}
+
 			/* Create entities. */
 			_CreateNodes(op, r);
 			_CreateEdges(op, r);

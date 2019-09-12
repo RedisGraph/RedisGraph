@@ -769,7 +769,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 	ExecutionPlan *plan = segments[segment_count - 1];
 
 	// Free current AST segment if it has been constructed here.
-	if(ast_segment != ast) AST_Free(ast_segment);
+	// if(ast_segment != ast) AST_Free(ast_segment); // TODO leak?
 
 	// Check to see if we've encountered an error while constructing the execution-plan.
 	if(QueryCtx_EncounteredError()) {

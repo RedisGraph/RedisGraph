@@ -388,7 +388,7 @@ static SIValue _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node, const Record r) {
 		sub_trees[child_idx] = AR_EXP_Evaluate(node->op.children[child_idx], r);
 	}
 	/* Evaluate self. */
-	result = node->op.f(sub_trees, node->op.child_count);
+	result = node->op.f->func(sub_trees, node->op.child_count);
 	return result;
 }
 

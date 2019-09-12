@@ -126,7 +126,7 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
 				   NodeCreateCtx *nodes_to_merge, EdgeCreateCtx *edges_to_merge) {
 	OpMerge *op = malloc(sizeof(OpMerge));
 	op->stats = stats;
-	op->gc = GraphContext_GetFromTLS();
+	op->gc = QueryCtx_GetGraphCtx();
 	op->matched = false;
 	op->created = false;
 	op->nodes_to_merge = nodes_to_merge;

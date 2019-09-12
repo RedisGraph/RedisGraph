@@ -4,9 +4,9 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include "xxhash.h"
 #include "./record.h"
 #include "../util/rmalloc.h"
-#include "../../deps/xxhash/xxhash.h"
 #include <assert.h>
 
 static void _RecordPropagateEntry(Record to, Record from, uint idx) {
@@ -65,6 +65,7 @@ int Record_GetEntryIdx(Record r, const char *alias) {
 	return (int)idx;
 }
 
+/*
 void Record_Truncate(Record r, uint count) {
 	uint original_len = Record_length(r);
 	if(count >= original_len) return;
@@ -78,12 +79,7 @@ void Record_Truncate(Record r, uint count) {
 	Record header = RECORD_HEADER(r);
 	header->value.s.longval = original_len - count;
 }
-
-unsigned int Record_length(const Record r) {
-	Entry header = RECORD_HEADER_ENTRY(r);
-	int recordLength = header.value.s.longval;
-	return recordLength;
-}
+*/
 
 int Record_AliasEntry(Record r, const char *entry, const char *alias) {
 	assert(r && entry && alias);
