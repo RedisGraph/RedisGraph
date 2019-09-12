@@ -1,6 +1,4 @@
 redis==2.10.5
 redisgraph>=1.5
-rmtest>=0.7.0
 click>=6.7
-backports-csv>=1.0
 behave>=1.2

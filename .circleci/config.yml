@@ -14,7 +14,7 @@ jobs:
           name: Install prerequisite
           command: >-
             pip install git+https://github.com/RedisGraph/redisgraph-py.git@master &&
-            pip install psutil behave backports.csv && 
+            pip install requests psutil behave &&
             pip install redis-py-cluster &&
             pip install git+https://github.com/RedisLabsModules/RLTest.git@master &&
             apt-get update; apt-get install -y automake peg libtool autoconf cmake valgrind astyle
