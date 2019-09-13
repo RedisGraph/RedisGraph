@@ -47,10 +47,20 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 
 static OpResult Init(OpBase *opBase) {
 	OpProject *op = (OpProject *)opBase;
+	for(uint i = 0; i < op->exp_count; i ++) {
+		// The projected record will associate values with their resolved name
+		// to ensure that space is allocated for each entry.
+		OpBase_Projects(opBase, op->exps[i]->resolved_name);
+	}
 	AR_ExpNode **order_exps = _getOrderExpressions(opBase->parent);
 	if(order_exps) {
 		op->order_exps = order_exps;
 		op->order_exp_count = array_len(order_exps);
+
+		for(uint i = 0; i < op->order_exp_count; i ++) {
+			AR_ExpNode *exp = op->order_exps[i];
+			OpBase_Projects(opBase, exp->resolved_name);
+		}
 	}
 
 	return OP_OK;
@@ -71,17 +81,18 @@ static Record Consume(OpBase *opBase) {
 
 		if(op->singleResponse) return NULL;
 		op->singleResponse = true;
-		r = OpBase_CreateRecord((OpBase *)op);
+		r = OpBase_CreateProjectedRecord(opBase);
 	}
 
-	Record projection = OpBase_CreateRecord((OpBase *)op);
+	Record projection = OpBase_CreateProjectedRecord(opBase);
 	// Track the inherited Record and the newly-allocated Record so that they may be freed if execution fails.
 	OpBase_AddVolatileRecord(opBase, r);
 	OpBase_AddVolatileRecord(opBase, projection);
 
-	int rec_idx = 0;
 	for(unsigned short i = 0; i < op->exp_count; i++) {
-		SIValue v = AR_EXP_Evaluate(op->exps[i], r);
+		AR_ExpNode *exp = op->exps[i];
+		SIValue v = AR_EXP_Evaluate(exp, r);
+		int rec_idx = Record_GetEntryIdx(projection, exp->resolved_name);
 		/* Persisting a value is only necessary here if 'v' refers to a scalar held in Record 'r'.
 		 * Graph entities don't need to be persisted here as Record_Add will copy them internally.
 		 * The RETURN projection here requires persistence:
@@ -89,16 +100,16 @@ static Record Consume(OpBase *opBase) {
 		 * TODO This is a rare case; the logic of when to persist can be improved.  */
 		if(!(v.type & SI_GRAPHENTITY)) SIValue_Persist(&v);
 		Record_Add(projection, rec_idx, v);
-		rec_idx++;
 	}
 
 	// Project Order expressions.
 	for(unsigned short i = 0; i < op->order_exp_count; i++) {
-		SIValue v = AR_EXP_Evaluate(op->order_exps[i], r);
+		AR_ExpNode *order_exp = op->order_exps[i];
+		SIValue v = AR_EXP_Evaluate(order_exp, r);
+		int rec_idx = Record_GetEntryIdx(projection, order_exp->resolved_name);
 		// TODO persisting here can be improved as described above.
 		if(!(v.type & SI_GRAPHENTITY)) SIValue_Persist(&v);
 		Record_Add(projection, rec_idx, v);
-		rec_idx++;
 	}
 
 	Record_Free(r);

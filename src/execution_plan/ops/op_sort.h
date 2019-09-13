@@ -16,7 +16,6 @@ typedef struct {
 	AR_ExpNode **exps;          // exp to sort by.
 	heap_t *heap;               // Holds top n records.
 	Record *buffer;             // Holds all records.
-	unsigned int offset;        // Offset into projected order expressions within a record.
 	unsigned int limit;         // Total number of records to produce, 0 no limit.
 	int direction;              // Ascending / desending.
 } OpSort;

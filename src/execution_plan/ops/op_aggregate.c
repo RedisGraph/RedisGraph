@@ -203,7 +203,7 @@ static Record _handoff(OpAggregate *op) {
 
 	uint exp_count = array_len(op->exps);
 	uint order_exp_count = array_len(op->order_exps);
-	Record r = OpBase_CreateRecord((OpBase *)op);
+	Record r = OpBase_CreateProjectedRecord((OpBase *)op);
 	// Track the newly-allocated Record so that they may be freed if execution fails.
 	OpBase_AddVolatileRecord((OpBase *)op, r);
 
@@ -218,13 +218,15 @@ static Record _handoff(OpAggregate *op) {
 			AR_ExpNode *exp = group->aggregationFunctions[aggIdx++];
 			AR_EXP_Reduce(exp);
 			res = AR_EXP_Evaluate(exp, NULL);
-			Record_AddScalar(r, i, res);
+			int rec_idx = Record_GetEntryIdx(r, exp->resolved_name);
+			Record_AddScalar(r, rec_idx, res);
 		} else {
 			// Non-aggregated expression.
 			res = group->keys[keyIdx++];
 			// Key values are shared with the Record, as they'll be freed with the group cache.
 			res = SI_ShareValue(res);
-			Record_Add(r, i, res);
+			int rec_idx = Record_GetEntryIdx(r, op->exps[i]->resolved_name);
+			Record_Add(r, rec_idx, res);
 		}
 	}
 
@@ -235,13 +237,15 @@ static Record _handoff(OpAggregate *op) {
 			AR_ExpNode *exp = group->aggregationFunctions[aggIdx++];
 			AR_EXP_Reduce(exp);
 			res = AR_EXP_Evaluate(exp, NULL);
-			Record_AddScalar(r, exp_count + i, res);
+			int rec_idx = Record_GetEntryIdx(r, exp->resolved_name);
+			Record_AddScalar(r, rec_idx, res);
 		} else {
 			// Non-aggregated expression.
 			res = group->keys[keyIdx++];
 			// Key values are shared with the Record, as they'll be freed with the group cache.
 			res = SI_ShareValue(res);
-			Record_AddScalar(r, exp_count + i, res);
+			int rec_idx = Record_GetEntryIdx(r, op->exps[i]->resolved_name);
+			Record_AddScalar(r, rec_idx, res);
 		}
 	}
 
@@ -268,9 +272,22 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 
 static OpResult Init(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
+	uint exp_count = array_len(op->exps);
+	for(uint i = 0; i < exp_count; i ++) {
+		// The projected record will associate values with their resolved name
+		// to ensure that space is allocated for each entry.
+		OpBase_Projects(opBase, op->exps[i]->resolved_name);
+	}
+
 	AR_ExpNode **order_exps = _getOrderExpressions(opBase->parent);
 	if(order_exps) {
 		op->order_exps = order_exps;
+
+		uint order_exp_count = array_len(order_exps);
+		for(uint i = 0; i < order_exp_count; i ++) {
+			AR_ExpNode *exp = op->order_exps[i];
+			OpBase_Projects(opBase, exp->resolved_name);
+		}
 	}
 
 	_classify_expressions(op);

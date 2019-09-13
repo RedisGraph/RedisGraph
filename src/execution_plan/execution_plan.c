@@ -57,7 +57,8 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 		const cypher_astnode_t *item = cypher_ast_order_by_get_item(order_clause, i);
 		const cypher_astnode_t *ast_exp = cypher_ast_sort_item_get_expression(item);
 		AR_ExpNode *exp = NULL;
-		if(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER) {
+		cypher_astnode_type_t type = cypher_astnode_type(ast_exp);
+		if(type == CYPHER_AST_IDENTIFIER) {
 			// Order expression is a reference to an alias in the query
 			const char *alias = cypher_ast_identifier_get_name(ast_exp);
 			for(uint j = 0; j < projection_count; j ++) {
@@ -72,11 +73,20 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 				// We didn't match any previous projections. This can occur when we're
 				// ordering by a projected WITH entity that is not also being returned.
 				exp = AR_EXP_FromExpression(ast_exp);
+				AR_EXP_BuildResolvedName(exp);
 			}
+			// } else if(type == CYPHER_AST_PROPERTY_OPERATOR) {
+			// TODO can capture things like RETURN e.name ORDER by e.name here
+			// const cypher_astnode_t *entity = cypher_ast_property_operator_get_expression(ast_exp);
+			// if(cypher_astnode_type(entity) == CYPHER_AST_IDENTIFIER) {
+			// // Order expression is a reference to an alias in the query
+			// const char *alias = cypher_ast_identifier_get_name(ast_exp);
+			// }
 		} else {
 			// Independent operator like:
 			// ORDER BY COUNT(a)
 			exp = AR_EXP_FromExpression(ast_exp);
+			AR_EXP_BuildResolvedName(exp);
 		}
 
 		order_exps = array_append(order_exps, exp);
@@ -335,6 +345,7 @@ static ExecutionPlan *_NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, A
 	// Allocate a new segment
 	ExecutionPlan *plan = rm_calloc(1, sizeof(ExecutionPlan));
 	plan->record_map = raxNew();
+	plan->projection_map = raxNew(); // TODO not always a necessary alloc
 	plan->result_set = result_set;
 	plan->connected_components = NULL;
 
@@ -795,6 +806,11 @@ rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan) {
 	return plan->record_map;
 }
 
+rax *ExecutionPlan_GetProjectionMap(const ExecutionPlan *plan) {
+	assert(plan && plan->projection_map); // TODO could allocate here if plan weren't const
+	return plan->projection_map;
+}
+
 void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx, char *buffer, int buffer_len,
 						  int ident, int *op_count) {
 	if(!op) return;
@@ -925,6 +941,8 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 
 	QueryGraph_Free(plan->query_graph);
 	_ExecutionPlan_FreeOperations(plan->root);
+	raxFree(plan->record_map);
+	raxFree(plan->projection_map);
 	rm_free(plan);
 }
 

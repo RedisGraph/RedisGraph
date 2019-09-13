@@ -12,6 +12,7 @@
 
 /* Forward declarations */
 rax *ExecutionPlan_GetMappings(const struct ExecutionPlan *plan);
+rax *ExecutionPlan_GetProjectionMap(const struct ExecutionPlan *plan);
 
 void OpBase_Init(OpBase *op, OPType type, char *name, fpInit init, fpConsume consume, fpReset reset,
 				 fpToString toString, fpFree free, const struct ExecutionPlan *plan) {
@@ -48,6 +49,20 @@ int OpBase_Modifies(OpBase *op, const char *alias) {
 	/* Make sure alias has an entry associated with it
 	 * within the record mapping. */
 	rax *mapping = ExecutionPlan_GetMappings(op->plan);
+
+	void *id = raxFind(mapping, (unsigned char *)alias, strlen(alias));
+	if(id == raxNotFound) {
+		id = (void *)raxSize(mapping);
+		raxInsert(mapping, (unsigned char *)alias, strlen(alias), id, NULL);
+	}
+
+	return (int)id;
+}
+
+int OpBase_Projects(OpBase *op, const char *alias) {
+	/* Make sure alias has an entry associated with it
+	 * within the record mapping. */
+	rax *mapping = ExecutionPlan_GetProjectionMap(op->plan);
 
 	void *id = raxFind(mapping, (unsigned char *)alias, strlen(alias));
 	if(id == raxNotFound) {
@@ -124,6 +139,11 @@ void OpBase_RemoveVolatileRecords(OpBase *op) {
 
 Record OpBase_CreateRecord(const OpBase *op) {
 	rax *mapping = ExecutionPlan_GetMappings(op->plan);
+	return Record_New(mapping);
+}
+
+Record OpBase_CreateProjectedRecord(const OpBase *op) {
+	rax *mapping = ExecutionPlan_GetProjectionMap(op->plan);
 	return Record_New(mapping);
 }
 

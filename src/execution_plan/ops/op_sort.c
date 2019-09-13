@@ -30,12 +30,13 @@ static bool _record_islt(Record a, Record b, const OpSort *op) {
 	// V2 - C.V
 	// V3 - B.W
 	// V4 - C.V*A.
-	uint offset = op->offset;
+	// uint offset = op->offset;
 	uint comparables = array_len(op->exps);
 
 	for(uint i = 0; i < comparables; i++) {
-		SIValue aVal = Record_Get(a, offset + i);
-		SIValue bVal = Record_Get(b, offset + i);
+		int idx = Record_GetEntryIdx(a, op->exps[i]->resolved_name);
+		SIValue aVal = Record_Get(a, idx);
+		SIValue bVal = Record_Get(b, idx);
 		int rel = SIValue_Compare(aVal, bVal, NULL);
 		if(rel == 0) continue;  // Elements are equal; try next ORDER BY element
 		rel *= op->direction;   // Flip value for descending order.
@@ -59,12 +60,12 @@ static int _record_compare(Record a, Record b, const OpSort *op) {
 	// V2 - C.V
 	// V3 - B.W
 	// V4 - C.V*A.
-	uint offset = op->offset;
 	uint comparables = array_len(op->exps);
 
 	for(uint i = 0; i < comparables; i++) {
-		SIValue aVal = Record_Get(a, offset + i);
-		SIValue bVal = Record_Get(b, offset + i);
+		int idx = Record_GetEntryIdx(a, op->exps[i]->resolved_name);
+		SIValue aVal = Record_Get(a, idx);
+		SIValue bVal = Record_Get(b, idx);
 		int rel = SIValue_Compare(aVal, bVal, NULL);
 		if(rel) return rel;
 	}
@@ -109,24 +110,9 @@ static Record _handoff(OpSort *op) {
 	return NULL;
 }
 
-uint _determineOffset(OpBase *op) {
-	assert(op);
-
-	if(op->type == OPType_AGGREGATE) {
-		OpAggregate *aggregate = (OpAggregate *)op;
-		return array_len(aggregate->exps);
-	} else if(op->type == OPType_PROJECT) {
-		OpProject *project = (OpProject *)op;
-		return project->exp_count;
-	}
-
-	return _determineOffset(op->children[0]);
-}
-
 OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int direction,
 				  unsigned int limit) {
 	OpSort *op = malloc(sizeof(OpSort));
-	op->offset = 0;
 	op->heap = NULL;
 	op->buffer = NULL;
 	op->limit = limit;
@@ -149,7 +135,6 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int direction,
 
 static OpResult Init(OpBase *opBase) {
 	OpSort *op = (OpSort *)opBase;
-	op->offset = _determineOffset(opBase->children[0]);
 	return OP_OK;
 }
 

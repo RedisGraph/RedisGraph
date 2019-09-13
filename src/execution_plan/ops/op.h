@@ -107,9 +107,13 @@ void OpBase_AddVolatileRecord(OpBase *op, const Record r);
  * may be released. */
 void OpBase_RemoveVolatileRecords(OpBase *op);
 
-/* Mark alias as been modified by operation.
+/* Mark alias as being modified by operation.
  * Returns the ID associated with alias. */
 int OpBase_Modifies(OpBase *op, const char *alias);
+
+/* Mark alias as being projected by operation.
+ * Returns the ID associated with alias. */
+int OpBase_Projects(OpBase *op, const char *alias);
 
 /* Returns true if op is aware of alias.
  * an operation is aware of all aliases it modifies and all aliases
@@ -119,6 +123,8 @@ bool OpBase_Aware(OpBase *op, const char *alias, int *idx);
 void OpBase_PropagateFree(OpBase *op); // Sends free request to each operation up the chain.
 void OpBase_PropagateReset(OpBase *op); // Sends reset request to each operation up the chain.
 
-// Creates a new record.
+// Creates a new record that will be populated during execution.
 Record OpBase_CreateRecord(const OpBase *op);
+// Creates a new record that will be emitted by this operation.
+Record OpBase_CreateProjectedRecord(const OpBase *op);
 

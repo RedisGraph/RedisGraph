@@ -16,6 +16,7 @@ typedef struct ExecutionPlan ExecutionPlan;
 struct ExecutionPlan {
 	OpBase *root;                       // Root operation of overall ExecutionPlan.
 	rax *record_map;                    // Mapping between identifiers and record indices.
+	rax *projection_map;                // Mapping between projections and projected record indices.
 	uint segment_count;                 // Number of segments in query.
 	ResultSet *result_set;              // ResultSet populated by this query.
 	QueryGraph *query_graph;            // QueryGraph representing all graph entities in this segment.
@@ -71,6 +72,7 @@ ExecutionPlan *NewExecutionPlan(
 );
 
 rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan);
+rax *ExecutionPlan_GetProjectionMap(const ExecutionPlan *plan);
 
 /* Prints execution plan. */
 void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx);
