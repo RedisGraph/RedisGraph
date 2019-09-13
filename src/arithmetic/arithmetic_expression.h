@@ -134,9 +134,6 @@ bool AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node);
 /* Constructs string representation of arithmetic expression tree. */
 void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 
-AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias, const char *prop);
-AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant);
-
 /* Construct an arithmetic expression tree from a CYPHER_AST_EXPRESSION node. */
 AR_ExpNode *AR_EXP_FromExpression(const cypher_astnode_t *expr);
 

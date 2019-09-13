@@ -26,7 +26,7 @@ static AR_ExpNode **_getOrderExpressions(OpBase *op) {
 
 	if(op->type == OPType_SORT) {
 		OpSort *sort = (OpSort *)op;
-		return sort->expressions;
+		return sort->exps;
 	}
 
 	// We are only interested in a SORT operation if it is a direct parent of the aggregate op

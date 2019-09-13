@@ -31,7 +31,7 @@ static bool _record_islt(Record a, Record b, const OpSort *op) {
 	// V3 - B.W
 	// V4 - C.V*A.
 	uint offset = op->offset;
-	uint comparables = array_len(op->expressions);
+	uint comparables = array_len(op->exps);
 
 	for(uint i = 0; i < comparables; i++) {
 		SIValue aVal = Record_Get(a, offset + i);
@@ -60,7 +60,7 @@ static int _record_compare(Record a, Record b, const OpSort *op) {
 	// V3 - B.W
 	// V4 - C.V*A.
 	uint offset = op->offset;
-	uint comparables = array_len(op->expressions);
+	uint comparables = array_len(op->exps);
 
 	for(uint i = 0; i < comparables; i++) {
 		SIValue aVal = Record_Get(a, offset + i);
@@ -123,7 +123,7 @@ uint _determineOffset(OpBase *op) {
 	return _determineOffset(op->children[0]);
 }
 
-OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **expressions, int direction,
+OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int direction,
 				  unsigned int limit) {
 	OpSort *op = malloc(sizeof(OpSort));
 	op->offset = 0;
@@ -131,7 +131,7 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **expressions, int direc
 	op->buffer = NULL;
 	op->limit = limit;
 	op->direction = direction;
-	op->expressions = expressions;
+	op->exps = exps;
 
 	if(op->limit) op->heap = heap_new(_heap_elem_compare, op);
 	else op->buffer = array_new(Record, 32);
@@ -235,10 +235,10 @@ static void Free(OpBase *ctx) {
 		op->buffer = NULL;
 	}
 
-	if(op->expressions) {
-		for(int i = 0; i < array_len(op->expressions); i++) AR_EXP_Free(op->expressions[i]);
-		array_free(op->expressions);
-		op->expressions = NULL;
+	if(op->exps) {
+		for(int i = 0; i < array_len(op->exps); i++) AR_EXP_Free(op->exps[i]);
+		array_free(op->exps);
+		op->exps = NULL;
 	}
 }
 

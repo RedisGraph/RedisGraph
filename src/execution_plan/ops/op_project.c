@@ -24,7 +24,7 @@ static AR_ExpNode **_getOrderExpressions(OpBase *op) {
 
 	if(op->type == OPType_SORT) {
 		OpSort *sort = (OpSort *)op;
-		return sort->expressions;
+		return sort->exps;
 	}
 	return _getOrderExpressions(op->parent);
 }

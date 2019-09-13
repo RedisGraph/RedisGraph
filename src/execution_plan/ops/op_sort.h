@@ -13,7 +13,7 @@
 
 typedef struct {
 	OpBase op;
-	AR_ExpNode **expressions;   // Expression to sort by.
+	AR_ExpNode **exps;          // exp to sort by.
 	heap_t *heap;               // Holds top n records.
 	Record *buffer;             // Holds all records.
 	unsigned int offset;        // Offset into projected order expressions within a record.
@@ -22,4 +22,5 @@ typedef struct {
 } OpSort;
 
 /* Creates a new Sort operation */
-OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **expressions, int direction, unsigned int limit);
+OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int direction, unsigned int limit);
+
