@@ -65,6 +65,7 @@ int Record_GetEntryIdx(Record r, const char *alias) {
 	return (int)idx;
 }
 
+// TODO unused
 int Record_AliasEntry(Record r, const char *entry, const char *alias) {
 	assert(r && entry && alias);
 
@@ -165,6 +166,7 @@ GraphEntity *Record_GetGraphEntity(const Record r, int idx) {
 }
 
 void Record_Add(Record r, int idx, SIValue v) {
+	assert(idx < Record_length(r));
 	switch(SI_TYPE(v)) {
 	case T_NODE:
 		Record_AddNode(r, idx, *(Node *)v.ptrval);
