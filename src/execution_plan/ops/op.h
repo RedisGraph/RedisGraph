@@ -107,6 +107,9 @@ void OpBase_AddVolatileRecord(OpBase *op, const Record r);
  * may be released. */
 void OpBase_RemoveVolatileRecords(OpBase *op);
 
+/* Mark all aliases stored within an expression tree as being modified by an operation.  */
+void OpBase_ModifiesExpression(OpBase *op, AR_ExpNode *exp);
+
 /* Mark alias as being modified by operation.
  * Returns the ID associated with alias. */
 int OpBase_Modifies(OpBase *op, const char *alias);

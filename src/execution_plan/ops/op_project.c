@@ -42,6 +42,10 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", Init, Consume, Reset, NULL, Free, plan);
 
+	// Populate the modifies array with all affected aliases.
+	for(uint i = 0; i < array_len(exps); i ++) {
+		OpBase_ModifiesExpression((OpBase *)op, exps[i]);
+	}
 	return (OpBase *)op;
 }
 
@@ -51,6 +55,7 @@ static OpResult Init(OpBase *opBase) {
 		// The projected record will associate values with their resolved name
 		// to ensure that space is allocated for each entry.
 		OpBase_Projects(opBase, op->exps[i]->resolved_name);
+		OpBase_Modifies(opBase, op->exps[i]->resolved_name);
 	}
 	AR_ExpNode **order_exps = _getOrderExpressions(opBase->parent);
 	if(order_exps) {

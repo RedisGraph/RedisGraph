@@ -112,6 +112,7 @@ int AR_EXP_GetOperandType(AR_ExpNode *exp);
 /* Compact tree by evaluating all contained functions that can be resolved right now. */
 bool AR_EXP_ReduceToScalar(AR_ExpNode **root);
 
+
 /* Evaluate arithmetic expression tree. */
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r);
 void AR_EXP_Aggregate(const AR_ExpNode *root, const Record r);
@@ -121,6 +122,10 @@ void AR_EXP_Reduce(const AR_ExpNode *root);
 /* Traverse an expression tree and add all graph entities
  * (from variadic) to a triemap. */
 void AR_EXP_CollectEntities(AR_ExpNode *root, rax *record_ids);
+
+/* Traverse an expression tree and add all graph entities
+ * (from variadic) to a triemap, giving each a unique ID. */
+void AR_EXP_UpdateEntityMap(AR_ExpNode *root, rax *entities, const char ***modifies);
 
 /* Traverse an expression tree and add all mentioned attributes:
  * n.attr > 3 to a prefix tree. */

@@ -42,6 +42,15 @@ inline Record OpBase_Consume(OpBase *op) {
 	return op->consume(op);
 }
 
+void OpBase_ModifiesExpression(OpBase *op, AR_ExpNode *exp) {
+	if(!op->modifies) op->modifies = array_new(const char *, 1);
+
+	/* Make sure alias has an entry associated with it
+	 * within the record mapping. */
+	rax *mapping = ExecutionPlan_GetMappings(op->plan);
+	AR_EXP_UpdateEntityMap(exp, mapping, &op->modifies);
+}
+
 int OpBase_Modifies(OpBase *op, const char *alias) {
 	if(!op->modifies) op->modifies = array_new(const char *, 1);
 	op->modifies = array_append(op->modifies, alias);

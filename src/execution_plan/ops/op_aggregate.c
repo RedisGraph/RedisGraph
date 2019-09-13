@@ -267,6 +267,11 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 
 	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", Init, Consume, Reset, NULL, Free, plan);
 
+	// Populate the modifies array with all affected aliases.
+	for(uint i = 0; i < array_len(exps); i ++) {
+		OpBase_ModifiesExpression((OpBase *)op, exps[i]);
+	}
+
 	return (OpBase *)op;
 }
 
