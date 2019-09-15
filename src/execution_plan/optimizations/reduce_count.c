@@ -195,7 +195,6 @@ uint64_t _countRelationshipEdges(GrB_Matrix M) {
 					 countMultipleEdges, M, GrB_NULL);
 
 	uint64_t edges = 0;
-	GrB_reduce(&edges, GrB_NULL, edgeCountMonoid, M, GrB_NULL);
 	// Sum(A)
 	GrB_Matrix_reduce_UINT64(&edges, GrB_NULL,
 							 GxB_PLUS_UINT64_MONOID, A, GrB_NULL);

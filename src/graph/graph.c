@@ -42,9 +42,9 @@ void _edge_accum(void *_z, const void *_x, const void *_y) {
 }
 
 bool _select_op_free_edge(GrB_Index i, GrB_Index j, GrB_Index nrows, GrB_Index ncols, const void *x,
-						  const void *k) {
+						  const void *thunk) {
 	// K is a uint64_t pointer which points to the address of our graph.
-	const Graph *g = (const Graph *) * ((uint64_t *)k);
+	const Graph *g = (const Graph *) * ((uint64_t *)thunk);
 	const EdgeID *id = (const EdgeID *)x;
 	if((SINGLE_EDGE(*id))) {
 		DataBlock_DeleteItem(g->edges, SINGLE_EDGE_ID(*id));
@@ -734,7 +734,7 @@ void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 	tadj = _Graph_Get_Transposed_AdjacencyMatrix(g);
 	GxB_MatrixTupleIter_new(&adj_iter, adj);
 	GxB_MatrixTupleIter_new(&tadj_iter, tadj);
-	GxB_SelectOp_new(&selectop, _select_op_free_edge, GrB_UINT64);
+	GxB_SelectOp_new(&selectop, _select_op_free_edge, GrB_UINT64, GrB_UINT64);
 	GrB_Matrix_new(&A, GrB_UINT64, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
 	GrB_Matrix_new(&Mask, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
 	GrB_Matrix_new(&Nodes, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
@@ -797,11 +797,12 @@ void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 		 * with exactly one entry.
 		 * The value of this entry is passed to the user-defined select operator,
 		 * with no typecasting. */
-		GrB_Vector thunk;
-		GrB_Vector_new(&thunk, GrB_UINT64, 1);
-		GrB_Vector_setElement_UINT64(thunk, (uint64_t)g, 0);
+
+		GxB_Scalar thunk;
+		GxB_Scalar_new(&thunk, GrB_UINT64);
+		GxB_Scalar_setElement_UINT64(thunk, (uint64_t)g);
 		GxB_select(A, GrB_NULL, GrB_NULL, selectop, A, thunk, GrB_NULL);
-		GrB_Vector_free(&thunk);
+		GrB_free(&thunk);
 
 		// Clear both relation matrix and its coresponding relation mapping matrix.
 		GrB_Descriptor_set(desc, GrB_MASK, GrB_SCMP);
