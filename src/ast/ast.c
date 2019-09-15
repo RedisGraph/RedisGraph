@@ -193,7 +193,7 @@ const char **AST_CollectElementNames(AST *ast) {
 
 AST *AST_Build(cypher_parse_result_t *parse_result) {
 	AST *ast = rm_malloc(sizeof(AST));
-	ast->entity_map = NULL;
+	ast->referenced_entities = NULL;
 	ast->free_root = false;
 
 	// Retrieve the AST root node from a parsed query.
@@ -206,12 +206,88 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	// Empty queries should be captured by AST validations
 	assert(ast->root);
 
-	if(cypher_astnode_type(ast->root) == CYPHER_AST_QUERY) AST_BuildEntityMap(ast);
-
 	// Set thread-local AST
 	QueryCtx_SetAST(ast);
 
 	return ast;
+}
+
+/*=============================================================================
+ * ================== AST segment referenced entities mapping =================
+ * ==========================================================================*/
+
+
+void _AST_MapProjectionReference(AST *ast, const cypher_astnode_t *projectClause) {
+	uint projectionCount = cypher_ast_return_nprojections(projectClause);
+	for(uint i = 0 ; i < projectionCount; i ++) {
+		const cypher_astnode_t *projection = cypher_ast_return_get_projection(projectClause, i);
+
+		const cypher_astnode_t *identifier = cypher_ast_projection_get_alias(projection);
+		// TODO: project property?
+		const char *identifierName = cypher_ast_identifier_get_name(identifier);
+		raxInsert(ast->referenced_entities, identifierName, strlen(identifierName), NULL, NULL);
+	}
+}
+
+void _AST_MapUnwindReferences(AST *ast, const cypher_astnode_t *unwindClause) {
+	const cypher_astnode_t *alias = cypher_ast_unwind_get_alias(unwindClause);
+	const char *aliasName = cypher_ast_identifier_get_name(alias);
+	raxInsert(ast->referenced_entities, aliasName, strlen(aliasName), NULL, NULL);
+}
+
+void _AST_MapOrderByReferences(AST *ast, const cypher_astnode_t *orderByClause) {
+	uint orderByItemsCount = cypher_ast_order_by_nitems(orderByClause);
+	for(uint i = 0; i < orderByItemsCount; i++) {
+		const cypher_astnode_t *item = cypher_ast_order_by_get_item(orderByClause, i);
+	}
+}
+
+void _AST_MapMatchClauseReferences(AST *ast, const cypher_astnode_t *matchClause) {
+
+}
+
+void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *clause) {
+	if(!clause) return;
+	cypher_astnode_type_t type = cypher_astnode_type(clause);
+	// Add referenced aliases for projection operations - WITH, RETURN.
+	if(type == CYPHER_AST_RETURN || type == CYPHER_AST_WITH) _AST_MapProjectionReference(ast, clause);
+	// Add referenced aliases for UNWIND clause.
+	else if(type == CYPHER_AST_UNWIND) _AST_MapUnwindReferences(ast, clause);
+	// Add referenced aliases for ORDER BY clause.
+	else if(type == CYPHER_AST_ORDER_BY) _AST_MapOrderByReferences(ast, clause);
+	// Add referenced aliases for MATCH clause - inline properties and explicit WHERE filter.
+	else if(type == CYPHER_AST_MATCH) _AST_MapMatchClauseReferences(ast, clause);
+	//_Validate_MATCH_Clause_Filters
+	uint numberOfChildren = cypher_astnode_nchildren(clause);
+	for(uint i = 0; i < numberOfChildren; i++) {
+		_ASTClause_BuildReferenceMap(ast, cypher_astnode_get_child(clause, i));
+	}
+}
+
+void AST_BuildReferenceMap(AST *ast) {
+	ast->referenced_entities = raxNew();
+	// Check every clause in this AST.
+	uint clause_count = cypher_ast_query_nclauses(ast->root);
+	if(!clause_count) return;
+	uint i = 0;
+	/* Since ast segments are range inclusive: The segment of the caluse indices [i,j]
+	 * holds all the ast clauses from i to j. The next segment with the caluse indices [j, k]
+	 * holds all the clauses from j to k, so j is an intersection clause of both segments.
+	 * The AST segments are built with respect only to the WITH or RETURN caluses as intersection clauses.
+	 * If both first and last clauses are either WITH or RETURN, skip the first clause
+	 * since it is an intersection clause and handeld in the previous segment.*/
+	if(clause_count > 1) {
+		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, 0);
+		cypher_astnode_type_t firstType = cypher_astnode_type(clause);
+		clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
+		cypher_astnode_type_t lastType = cypher_astnode_type(clause);
+		if((firstType == CYPHER_AST_RETURN || firstType == CYPHER_AST_WITH) &&
+		   (lastType == CYPHER_AST_RETURN || lastType == CYPHER_AST_WITH)) i++;
+	}
+	for(; i < clause_count; i++) {
+		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
+		_ASTClause_BuildReferenceMap(ast, clause);
+	}
 }
 
 AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
@@ -230,7 +306,7 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	// TODO This overwrites the previously-held AST pointer, which could lead to inconsistencies
 	// in the future if we expect the variable to hold a different AST.
 	QueryCtx_SetAST(ast);
-	AST_BuildEntityMap(ast);
+	AST_BuildReferenceMap(ast);
 
 	return ast;
 }
@@ -291,7 +367,7 @@ int TraverseRecordCap(const AST *ast) {
 
 void AST_Free(AST *ast) {
 	if(ast == NULL) return;
-	if(ast->entity_map) raxFree(ast->entity_map);
+	if(ast->referenced_entities) raxFree(ast->referenced_entities);
 	if(ast->free_root) free((cypher_astnode_t *)ast->root);
 	rm_free(ast);
 }

@@ -211,11 +211,6 @@ static AR_ExpNode **_BuildCallProjections(const cypher_astnode_t *call_clause, A
 		unsigned int output_count = Procedure_OutputCount(proc);
 		for(uint i = 0; i < output_count; i++) {
 			const char *name = Procedure_GetOutput(proc, i);
-
-			// TODO the 'name' variable doesn't have an AST ID, so an assertion in
-			// AR_EXP_NewVariableOperandNode() fails without this call.
-			// Consider alternatives, because this is an annoying kludge.
-			ASTMap_FindOrAddAlias(ast, name, IDENTIFIER_NOT_FOUND);
 			AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(name, NULL);
 			exp->resolved_name = name;
 			expressions = array_append(expressions, exp);
@@ -729,13 +724,21 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 	if(query_has_return) {
 		segment_indices = array_append(segment_indices, cypher_ast_query_nclauses(ast->root) - 1);
 	}
-	segment_indices = array_append(segment_indices, cypher_astnode_nchildren(ast->root)); // TODO ?
+	segment_indices = array_append(segment_indices, cypher_ast_query_nclauses(ast->root)); // TODO ?
 
 	uint start_offset = 0;
 	ExecutionPlan *segments[segment_count];
 
 	for(int i = 0; i < segment_count; i++) {
-		uint end_offset = segment_indices[i];
+		/* A segment needs to know about it referenced entities. Those entities are known only when projection
+		 * operation executes over the records of the current segment. For example:
+		 * "Match (a)-[b]->(c) return a,b" only references a and b.
+		 * Since project operation is a tap it cannot be built as the closing operation of a current segment,
+		 * but in order for the information about the segment to be complete, the current segment AST will
+		 * hold its projection information, if valid.
+		 * This is relevant for all non-last segments. */
+		uint end_offset = i == segment_count - 1 ? segment_indices[i] : segment_indices[i] + 1;
+
 		// Slice the AST to only include the clauses in the current segment.
 		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
 

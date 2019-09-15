@@ -1394,7 +1394,7 @@ static AST_Validation _BlockUnsupportedMerges(AST *ast, char **reason) {
 static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, uint end_offset) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->free_root = true;
-	ast->entity_map = NULL;
+	ast->referenced_entities = NULL;
 
 	uint n = end_offset - start_offset;
 
