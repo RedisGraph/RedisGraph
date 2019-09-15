@@ -73,7 +73,6 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
 	 * Arrangement { [AB], [BC], [CD] }
 	 * Is the only one that doesn't requires any transposes. */
 
-	uint id = 0;
 	QGNode *A = QGNode_New(NULL, "A");
 	QGNode *B = QGNode_New(NULL, "B");
 	QGNode *C = QGNode_New(NULL, "C");

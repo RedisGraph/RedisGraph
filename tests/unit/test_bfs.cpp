@@ -48,7 +48,6 @@ class BFSTest: public ::testing::Test {
 		const char *label = "L";
 		const char *relation = "R";
 
-		uint id = 0;
 		A = QGNode_New(label, "A");
 		B = QGNode_New(label, "B");
 		C = QGNode_New(label, "C");

@@ -116,7 +116,6 @@ class QueryGraphTest: public ::testing::Test {
 		const char *label = "L";
 		const char *relation = "R";
 
-		uint id = 0;
 		QGNode *A = QGNode_New(label, "A");
 		QGNode *B = QGNode_New(label, "B");
 		QGNode *C = QGNode_New(label, "C");
@@ -143,7 +142,6 @@ class QueryGraphTest: public ::testing::Test {
 		const char *label = "L";
 		const char *relation = "R";
 
-		uint id = 0;
 		QGNode *A = QGNode_New(label, "A");
 		QGEdge *AA = QGEdge_New(A, A, relation, "AA");
 
@@ -166,7 +164,6 @@ TEST_F(QueryGraphTest, QueryGraphClone) {
 	const char *label = "L";
 	const char *relation = "R";
 
-	uint id = 0;
 	QGNode *A = QGNode_New(label, "A");
 	QGNode *B = QGNode_New(label, "B");
 	QGNode *C = QGNode_New(label, "C");
@@ -220,7 +217,6 @@ TEST_F(QueryGraphTest, QueryGraphRemoveEntities) {
 	const char *label = "L";
 	const char *relation = "R";
 
-	uint id = 0;
 	QGNode *A = QGNode_New(label, "A");
 	QGNode *B = QGNode_New(label, "B");
 	QGNode *C = QGNode_New(label, "C");
