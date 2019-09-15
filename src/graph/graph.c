@@ -43,17 +43,39 @@ void _edge_accum(void *_z, const void *_x, const void *_y) {
 
 bool _select_op_free_edge(GrB_Index i, GrB_Index j, GrB_Index nrows, GrB_Index ncols, const void *x,
 						  const void *k) {
-	const Graph *g = (const Graph *)k;
+	// K is a uint64_t pointer which points to the address of our graph.
+	const Graph *g = (const Graph *) * ((uint64_t *)k);
 	const EdgeID *id = (const EdgeID *)x;
 	if((SINGLE_EDGE(*id))) {
 		DataBlock_DeleteItem(g->edges, SINGLE_EDGE_ID(*id));
 	} else {
+		/* Due to GraphBLAS V3.0+ parallelism
+		 * _select_op_free_edge will be called twice
+		 * Tim: "In my draft parallel GraphBLAS,
+		 * most of my codes take 2 passes over the data.
+		 * It's what Intel calls the Inspector / Executor model of computing.
+		 * Both passes are fully parallel.
+		 * The first pass is purely symbolic,
+		 * and it figures out where all the output data needs to go.
+		 * The 2nd pass fills in the data in the output."
+		 *
+		 * To avoid double freeing we'll place a marker on the first pass:
+		 * ids[0] = INVALID_ENTITY_ID
+		 * to be picked up by the second pass, on which the array will be freed. */
 		EdgeID *ids = (EdgeID *)(*id);
-		uint id_count = array_len(ids);
-		for(uint i = 0; i < id_count; i++) {
-			DataBlock_DeleteItem(g->edges, ids[i]);
+
+		// Check for first pass marker.
+		if(ids[0] != INVALID_ENTITY_ID) {
+			uint id_count = array_len(ids);
+			for(uint i = 0; i < id_count; i++) {
+				DataBlock_DeleteItem(g->edges, ids[i]);
+			}
+			// Place first pass marker for second pass to pick up on.
+			ids[0] = INVALID_ENTITY_ID;
+		} else {
+			// Second pass, simply free the array.
+			array_free(ids);
 		}
-		array_free(ids);
 	}
 
 	return false;
@@ -689,12 +711,12 @@ void Graph_DeleteNode(Graph *g, Node *n) {
 	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
 }
 
-void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count, uint *node_deleted,
-					  uint *edge_deleted) {
+void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
+					  uint *node_deleted, uint *edge_deleted) {
 	assert(g && g->_writelocked && nodes && node_count > 0);
 
 	/* Create a matrix M where M[j,i] = 1 where:
-	 * Node i in is connected to node j. */
+	 * Node i is connected to node j. */
 
 	GrB_Matrix A;                       // A = R(M) masked relation matrix.
 	GrB_Index nvals;                    // Number of elements in mask.
@@ -769,7 +791,17 @@ void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count, uint *node_deleted
 
 		/* Free each multi edge array entry in A
 		 * Call _select_op_free_edge on each entry of A. */
-		GxB_select(A, GrB_NULL, GrB_NULL, selectop, A, g, GrB_NULL);
+
+		/* For user-defined select operators,
+		 * if Thunk is not NULL, then it must be a vector of length 1,
+		 * with exactly one entry.
+		 * The value of this entry is passed to the user-defined select operator,
+		 * with no typecasting. */
+		GrB_Vector thunk;
+		GrB_Vector_new(&thunk, GrB_UINT64, 1);
+		GrB_Vector_setElement_UINT64(thunk, (uint64_t)g, 0);
+		GxB_select(A, GrB_NULL, GrB_NULL, selectop, A, thunk, GrB_NULL);
+		GrB_Vector_free(&thunk);
 
 		// Clear both relation matrix and its coresponding relation mapping matrix.
 		GrB_Descriptor_set(desc, GrB_MASK, GrB_SCMP);
@@ -788,10 +820,8 @@ void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count, uint *node_deleted
 	GrB_Descriptor_set(desc, GrB_MASK, GrB_SCMP);
 
 	// Update Adjacency and transposed adjacency matrices.
-	GrB_Matrix_apply(adj, Mask, NULL, GrB_IDENTITY_BOOL, adj, desc);
-	// Transpose mask, to clear transposed adjacency matrix.
-	GrB_transpose(Mask, GrB_NULL, GrB_NULL, Mask, GrB_NULL);
-	GrB_Matrix_apply(tadj, Mask, NULL, GrB_IDENTITY_BOOL, tadj, desc);
+	GrB_Matrix_apply(adj, Mask, NULL, GrB_IDENTITY_UINT64, adj, desc);
+	GrB_Matrix_apply(tadj, Mask, NULL, GrB_IDENTITY_UINT64, tadj, desc);
 
 	/* Delete nodes
 	 * All nodes marked for deleteion are detected, no incoming / outgoing edges. */

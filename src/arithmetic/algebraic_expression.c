@@ -129,16 +129,15 @@ static AlgebraicExpression **_AlgebraicExpression_IsolateVariableLenExps(
 
 static inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, GrB_Matrix B,
 													GrB_Descriptor desc) {
-	// Using our own compile-time, user defined semiring see rg_structured_bool.m4
 	// A,B,C must be boolean matrices.
 	GrB_Info res = GrB_mxm(
-					   C,                  // Output
-					   GrB_NULL,           // Mask
-					   GrB_NULL,           // Accumulator
-					   Rg_structured_bool, // Semiring
-					   A,                  // First matrix
-					   B,                  // Second matrix
-					   desc                // Descriptor
+					   C,                   // Output
+					   GrB_NULL,            // Mask
+					   GrB_NULL,            // Accumulator
+					   GxB_LAND_LOR_BOOL,   // Semiring
+					   A,                   // First matrix
+					   B,                   // Second matrix
+					   desc                 // Descriptor
 				   );
 	assert(res == GrB_SUCCESS);
 }
@@ -382,7 +381,7 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge(
 				continue;
 			}
 			l = Graph_GetRelationMatrix(g, reltype_id);
-			GrB_Info info = GrB_eWiseAdd_Matrix_Semiring(m, NULL, NULL, Rg_structured_bool, m, l, NULL);
+			GrB_Info info = GrB_eWiseAdd_Matrix_Semiring(m, NULL, NULL, GxB_LAND_LOR_BOOL, m, l, NULL);
 		}
 		mat = m;
 	}
@@ -835,7 +834,7 @@ static GrB_Matrix _AlgebraicExpression_Eval_ADD(AlgebraicExpressionNode *exp, Gr
 	}
 
 	// Perform addition.
-	assert(GrB_eWiseAdd_Matrix_Semiring(res, NULL, NULL, Rg_structured_bool, l, r,
+	assert(GrB_eWiseAdd_Matrix_Semiring(res, NULL, NULL, GxB_LAND_LOR_BOOL, l, r,
 										desc) == GrB_SUCCESS);
 	if(inter) GrB_Matrix_free(&inter);
 
@@ -874,7 +873,7 @@ static GrB_Matrix _AlgebraicExpression_Eval_MUL(AlgebraicExpressionNode *exp, Gr
 	GrB_Matrix l = _AlgebraicExpression_Eval(exp->operation.l, res);
 
 	// Perform multiplication.
-	assert(GrB_mxm(res, NULL, NULL, Rg_structured_bool, l, r, desc) == GrB_SUCCESS);
+	assert(GrB_mxm(res, NULL, NULL, GxB_LAND_LOR_BOOL, l, r, desc) == GrB_SUCCESS);
 
 	// Store intermidate if expression is marked for reuse.
 	if(exp->operation.reusable) {
