@@ -1,0 +1,6 @@
+#!/bin/csh
+./krun \
+	~/GraphChallenge/snap/soc-Slashdot0902/soc-Slashdot0902_adj.tsv.gz \
+	~/GraphChallenge/snap/roadNet-TX/roadNet-TX_adj.tsv.gz \
+	~/GraphChallenge/synthetic/image-grid/g-4188162-1048576_adj.tsv.gz \
+

@@ -1,0 +1,4 @@
+#!/bin/csh
+./tri_run \
+	~/GraphChallenge/ssget/Mallya/lhr71_adj.tsv.gz \
+	~/GraphChallenge/snap/email-EuAll/email-EuAll_adj.tsv.gz

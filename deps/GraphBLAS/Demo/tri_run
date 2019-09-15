@@ -1,0 +1,8 @@
+#!/bin/bash
+# usage: tri_run files
+# foreach file ($argv[1-])
+        echo ''
+        echo '--------------------------------------------------------------------------------'
+	echo $1
+	gunzip -c $1 | ../build/tri_demo 1
+# end

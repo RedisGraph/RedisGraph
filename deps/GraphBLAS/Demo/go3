@@ -1,0 +1,6 @@
+#!/bin/bash
+
+./tri_run /raid/research/davisgroup/GraphChallenge/2018/snap/roadNet-CA/roadNet-CA_adj.tsv.gz
+./tri_run /raid/research/davisgroup/GraphChallenge/2018/snap/roadNet-TX/roadNet-TX_adj.tsv.gz
+./tri_run /raid/research/davisgroup/GraphChallenge/2018/ssget/DIMACS10/hugebubbles-00020_adj.tsv.gz
+./tri_run /raid/research/davisgroup/GraphChallenge/2018/ssget/Freescale/circuit5M_adj.tsv.gz

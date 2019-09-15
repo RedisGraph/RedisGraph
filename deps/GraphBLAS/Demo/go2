@@ -1,0 +1,4 @@
+#!/bin/bash
+
+./tri_run /raid/research/davisgroup/GraphChallenge/2018/ssget/Mallya/lhr71_adj.tsv.gz
+./tri_run /raid/research/davisgroup/GraphChallenge/2018/ssget/Freescale/Freescale2_adj.tsv.gz

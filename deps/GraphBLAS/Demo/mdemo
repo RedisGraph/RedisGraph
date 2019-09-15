@@ -1,0 +1,26 @@
+#!/bin/sh
+
+../build/mis_demo 1 4 4                        > mis_demo.out
+../build/mis_demo 0 5 5 30 1                  >> mis_demo.out
+../build/mis_demo < Matrix/eye3               >> mis_demo.out
+../build/mis_demo < Matrix/2blocks            >> mis_demo.out
+../build/mis_demo < Matrix/t1                 >> mis_demo.out
+../build/mis_demo < Matrix/t2                 >> mis_demo.out
+../build/mis_demo < Matrix/ash219             >> mis_demo.out
+../build/mis_demo < Matrix/bcsstk01           >> mis_demo.out
+../build/mis_demo < Matrix/bcsstk16           >> mis_demo.out
+../build/mis_demo < Matrix/fs_183_1           >> mis_demo.out
+../build/mis_demo < Matrix/ibm32a             >> mis_demo.out
+../build/mis_demo < Matrix/ibm32b             >> mis_demo.out
+../build/mis_demo < Matrix/lp_afiro           >> mis_demo.out
+../build/mis_demo < Matrix/mbeacxc            >> mis_demo.out
+../build/mis_demo < Matrix/west0067           >> mis_demo.out
+../build/mis_demo 1 200 200 0                 >> mis_demo.out
+../build/mis_demo 0 10000 10000 100000 0      >> mis_demo.out
+../build/mis_demo 0 10000 10000 100000 1      >> mis_demo.out
+../build/mis_demo 0 100000 100000 10000000 0  >> mis_demo.out
+../build/mis_demo 0 100000 100000 10000000 1  >> mis_demo.out
+
+diff -I time Output/mis_demo.out          mis_demo.out
+
+exit 0

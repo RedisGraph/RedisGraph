@@ -1,0 +1,4 @@
+#!/bin/csh
+./krun \
+	~/GraphChallenge/ssget/Mallya/lhr71_withz_adj.tsv.gz \
+	~/GraphChallenge/snap/email-EuAll/email-EuAll_adj.tsv.gz
