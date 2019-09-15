@@ -1,7 +1,0 @@
-# Ignore these files:
-*.o
-tri_main
-
-# Do not ignore this file
-!.gitignore
-

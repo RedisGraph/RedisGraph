@@ -1,7 +1,0 @@
-#!/bin/sh
-
-V="valgrind --error-limit=no --tool=memcheck -v --log-file=valgrind_%p.log --leak-check=full --show-leak-kinds=all"
-
-$V ../build/pthread_demo                          > pthread_demo.out
-$V ../build/openmp_demo                           > openmp_demo.out
-
