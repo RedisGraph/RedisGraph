@@ -50,10 +50,7 @@ AR_ExpNode *_exp_from_query(const char *query) {
 	AST *ast = AST_Build(parse_result);
 
 	const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
-	ExecutionPlanSegment *segment = (ExecutionPlanSegment *)rm_malloc(sizeof(ExecutionPlanSegment));
-	_BuildReturnExpressions(segment, ret_clause, NULL);
-
-	return segment->projections[0];
+	return _BuildReturnExpressions(ret_clause, ast)[0];
 }
 
 // Count valid entities

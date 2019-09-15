@@ -72,13 +72,10 @@ void _test_ar_func(AR_ExpNode *root, SIValue expected, const Record r) {
 AR_ExpNode *_exp_from_query(const char *query) {
 	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 	AST *ast = AST_Build(parse_result);
-	ast->entity_map = raxNew();
+	ast->referenced_entities = raxNew();
 
 	const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
-	ExecutionPlanSegment *segment = (ExecutionPlanSegment *)rm_malloc(sizeof(ExecutionPlanSegment));
-	_BuildReturnExpressions(segment, ret_clause, NULL);
-
-	return segment->projections[0];
+	return _BuildReturnExpressions(ret_clause, ast)[0];
 }
 
 TEST_F(ArithmeticTest, ExpressionTest) {

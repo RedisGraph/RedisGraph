@@ -13,6 +13,8 @@ extern "C" {
 #include "../../src/util/arr.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/graph/query_graph.h"
+#include "../../src/graph/entities/qg_node.h"
+#include "../../src/graph/entities/qg_edge.h"
 #include "../../src/algorithms/algorithms.h"
 
 #ifdef __cplusplus
@@ -47,14 +49,14 @@ class BFSTest: public ::testing::Test {
 		const char *relation = "R";
 
 		uint id = 0;
-		A = QGNode_New(label, "A", id++);
-		B = QGNode_New(label, "B", id++);
-		C = QGNode_New(label, "C", id++);
-		D = QGNode_New(label, "D", id++);
+		A = QGNode_New(label, "A");
+		B = QGNode_New(label, "B");
+		C = QGNode_New(label, "C");
+		D = QGNode_New(label, "D");
 
-		AB = QGEdge_New(A, B, relation, "AB", id++);
-		BC = QGEdge_New(B, C, relation, "BC", id++);
-		BD = QGEdge_New(B, D, relation, "BD", id++);
+		AB = QGEdge_New(A, B, relation, "AB");
+		BC = QGEdge_New(B, C, relation, "BC");
+		BD = QGEdge_New(B, D, relation, "BD");
 
 		QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
 		QueryGraph_AddNode(g, A);

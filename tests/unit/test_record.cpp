@@ -27,7 +27,13 @@ class RecordTest: public ::testing::Test {
 };
 
 TEST_F(RecordTest, RecordToString) {
-	Record r = Record_New(6);
+	rax *_rax = raxNew();
+	for(int i = 0; i < 6; i++) {
+		char buf[2] = {(char)i, '\0'};
+		raxInsert(_rax, (unsigned char *)buf, 2, NULL, NULL);
+	}
+
+	Record r = Record_New(_rax);
 	SIValue v_string = SI_ConstStringVal("Hello");
 	SIValue v_int = SI_LongVal(-24);
 	SIValue v_uint = SI_LongVal(24);

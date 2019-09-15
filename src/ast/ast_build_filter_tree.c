@@ -175,9 +175,6 @@ static FT_FilterNode *_convertInlinedProperties(const AST *ast, const cypher_ast
 
 	if(!props) return NULL;
 
-	// Retrieve the AST ID of the entity.
-	uint ast_id = AST_GetEntityIDFromReference(ast, entity);
-
 	FT_FilterNode *root = NULL;
 	uint nelems = cypher_ast_map_nentries(props);
 	for(uint i = 0; i < nelems; i ++) {

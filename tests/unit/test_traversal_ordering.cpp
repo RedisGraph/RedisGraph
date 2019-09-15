@@ -74,14 +74,14 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
 	 * Is the only one that doesn't requires any transposes. */
 
 	uint id = 0;
-	QGNode *A = QGNode_New(NULL, "A", id++);
-	QGNode *B = QGNode_New(NULL, "B", id++);
-	QGNode *C = QGNode_New(NULL, "C", id++);
-	QGNode *D = QGNode_New(NULL, "D", id++);
+	QGNode *A = QGNode_New(NULL, "A");
+	QGNode *B = QGNode_New(NULL, "B");
+	QGNode *C = QGNode_New(NULL, "C");
+	QGNode *D = QGNode_New(NULL, "D");
 
-	QGEdge *AB = QGEdge_New(A, B, "E", "AB", id++);
-	QGEdge *BC = QGEdge_New(B, C, "E", "BC", id++);
-	QGEdge *CD = QGEdge_New(C, D, "E", "CD", id++);
+	QGEdge *AB = QGEdge_New(A, B, "E", "AB");
+	QGEdge *BC = QGEdge_New(B, C, "E", "BC");
+	QGEdge *CD = QGEdge_New(C, D, "E", "CD");
 
 	QueryGraph *qg = QueryGraph_New(4, 3);
 
@@ -188,16 +188,15 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	 * { [CB], [CD], [BA] } (D)<-(C)->(B)->(A) (2 transposes)
 	 * { [CD], [CB], [BA] } (A)<-(B)<-(C)->(D) (2 transposes) */
 
-	uint id = 0;
 	FT_FilterNode *filters;
-	QGNode *A = QGNode_New(NULL, "A", id++);
-	QGNode *B = QGNode_New(NULL, "B", id++);
-	QGNode *C = QGNode_New(NULL, "C", id++);
-	QGNode *D = QGNode_New(NULL, "D", id++);
+	QGNode *A = QGNode_New(NULL, "A");
+	QGNode *B = QGNode_New(NULL, "B");
+	QGNode *C = QGNode_New(NULL, "C");
+	QGNode *D = QGNode_New(NULL, "D");
 
-	QGEdge *AB = QGEdge_New(A, B, "E", "AB", id++);
-	QGEdge *BC = QGEdge_New(B, C, "E", "BC", id++);
-	QGEdge *CD = QGEdge_New(C, D, "E", "CD", id++);
+	QGEdge *AB = QGEdge_New(A, B, "E", "AB");
+	QGEdge *BC = QGEdge_New(B, C, "E", "BC");
+	QGEdge *CD = QGEdge_New(C, D, "E", "CD");
 
 	QueryGraph *qg = QueryGraph_New(4, 3);
 
@@ -230,8 +229,8 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	set[1] = ExpBC;
 	set[2] = ExpCD;
 
-	filters = build_filter_tree_from_query(map,
-										   "MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE A.val = 1 RETURN *");
+	filters = build_filter_tree_from_query(
+				  "MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE A.val = 1 RETURN *");
 
 	orderExpressions(set, 3, filters);
 	ASSERT_EQ(set[0], ExpAB);
@@ -278,7 +277,7 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	ASSERT_EQ(set[2], ExpAB);
 
 	// Clean up.
-	FilterTree_Free(filters);	
+	FilterTree_Free(filters);
 	AlgebraicExpression_Free(ExpAB);
 	AlgebraicExpression_Free(ExpBC);
 	AlgebraicExpression_Free(ExpCD);
