@@ -223,16 +223,16 @@ void _AST_MapProjectionReference(AST *ast, const cypher_astnode_t *projectClause
 		const cypher_astnode_t *projection = cypher_ast_return_get_projection(projectClause, i);
 
 		const cypher_astnode_t *identifier = cypher_ast_projection_get_alias(projection);
-		// TODO: project property?
+		// TODO: project property
 		const char *identifierName = cypher_ast_identifier_get_name(identifier);
-		raxInsert(ast->referenced_entities, identifierName, strlen(identifierName), NULL, NULL);
+		raxInsert(ast->referenced_entities, identifierName, strlen(identifierName), true, NULL);
 	}
 }
 
 void _AST_MapUnwindReferences(AST *ast, const cypher_astnode_t *unwindClause) {
 	const cypher_astnode_t *alias = cypher_ast_unwind_get_alias(unwindClause);
 	const char *aliasName = cypher_ast_identifier_get_name(alias);
-	raxInsert(ast->referenced_entities, aliasName, strlen(aliasName), NULL, NULL);
+	raxInsert(ast->referenced_entities, aliasName, strlen(aliasName), true, NULL);
 }
 
 void _AST_MapOrderByReferences(AST *ast, const cypher_astnode_t *orderByClause) {
@@ -242,8 +242,51 @@ void _AST_MapOrderByReferences(AST *ast, const cypher_astnode_t *orderByClause) 
 	}
 }
 
-void _AST_MapMatchClauseReferences(AST *ast, const cypher_astnode_t *matchClause) {
+// Adds a node to the referenced entities rax, in case it has labels or properties (inline filter).
+void _AST_MapReferencedNode(AST *ast, const cypher_astnode_t *node) {
+	uint nodeLablesCount = cypher_ast_node_pattern_nlabels(node);
+	const cypher_astnode_t *properties = cypher_ast_node_pattern_get_properties(node);
+	// If a node has more then one label, or has properties, it contains inline filter.
+	if(nodeLablesCount > 0 || properties != NULL) {
+		const cypher_astnode_t *identifier = cypher_ast_node_pattern_get_identifier(node);
+		const char *nodeName = cypher_ast_identifier_get_name(identifier);
+		raxInsert(ast->referenced_entities, nodeName, strlen(nodeName), true, NULL);
+	}
+}
 
+// Adds an edge to the referenced entities rax, in case it has type or properties (inline filter).
+void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge) {
+	uint edgeTypesCount = cypher_ast_rel_pattern_nreltypes(edge);
+	const cypher_astnode_t *properties = cypher_ast_rel_pattern_get_properties(edge);
+	// If an edge has more then one type, or has properties, it contains inline filter.
+	if(edgeTypesCount > 0 || properties != NULL) {
+		const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(edge);
+		const char *edgeName = cypher_ast_identifier_get_name(identifier);
+		raxInsert(ast->referenced_entities, edgeName, strlen(edgeName), true, NULL);
+	}
+}
+
+void _AST_MapReferencedEntitiesInPath(AST *ast, const cypher_astnode_t *path) {
+	uint pathLen = cypher_ast_pattern_path_nelements(path);
+	// Node are in even positions.
+	for(uint i = 0; i < pathLen; i += 2)
+		_AST_MapReferencedNode(ast, cypher_ast_pattern_path_get_element(path, i));
+	// Edges are in odd poisitions.
+	for(uint i = 1; i < pathLen; i += 2)
+		_AST_MapReferencedEdge(ast, cypher_ast_pattern_path_get_element(path, i));
+}
+
+void _AST_MapMatchClauseReferences(AST *ast, const cypher_astnode_t *matchClause) {
+	// Inline filters.
+	const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(matchClause);
+	uint path_count = cypher_ast_pattern_npaths(pattern);
+	for(uint i = 0; i < path_count; i++) {
+		const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
+		_AST_MapReferencedEntitiesInPath(ast, path);
+	}
+
+	// Where clause.
+	const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(matchClause);
 }
 
 void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *clause) {
