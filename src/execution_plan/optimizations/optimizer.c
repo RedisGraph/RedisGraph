@@ -28,9 +28,6 @@ void optimizePlan(GraphContext *gc, ExecutionPlan *plan) {
 	 * into an expand into operation. */
 	reduceTraversal(plan);
 
-	/* Relocate sort, skip, limit operations. */
-	relocateOperations(plan);
-
 	/* Try to reduce distinct if it follows aggregation. */
 	reduceDistinct(plan);
 
@@ -38,3 +35,4 @@ void optimizePlan(GraphContext *gc, ExecutionPlan *plan) {
 	reduceCount(plan);
 
 }
+
