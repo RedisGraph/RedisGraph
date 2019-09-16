@@ -28,6 +28,7 @@ typedef struct {
 	QueryGraph *query_graph;           // QueryGraph representing all graph entities in this segment.
 	FT_FilterNode *filter_tree;        // FilterTree containing filters to be applied to this segment.
 	AR_ExpNode **projections;          // Expressions to be constructed for a WITH or RETURN clause.
+	AR_ExpNode **order_expressions;    // Expressions to be constructed for an ORDER clause.
 } ExecutionPlanSegment;
 
 typedef struct {
@@ -93,3 +94,4 @@ ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan);
 
 /* Free execution plan */
 void ExecutionPlan_Free(ExecutionPlan *plan);
+
