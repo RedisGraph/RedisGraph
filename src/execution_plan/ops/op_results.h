@@ -9,7 +9,6 @@
 
 #include "op.h"
 #include "../../redismodule.h"
-#include "../../graph/query_graph.h"
 #include "../../graph/graphcontext.h"
 #include "../../resultset/resultset.h"
 
@@ -22,7 +21,7 @@ typedef struct {
 
 
 /* Creates a new NodeByLabelScan operation */
-OpBase *NewResultsOp(ResultSet *result_set, QueryGraph *graph);
+OpBase *NewResultsOp(ResultSet *result_set);
 
 /* Results next operation
  * called each time a new result record is required */
@@ -35,3 +34,4 @@ OpResult ResultsReset(OpBase *ctx);
 void ResultsFree(OpBase *ctx);
 
 #endif
+

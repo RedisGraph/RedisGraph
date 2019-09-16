@@ -450,9 +450,8 @@ static void _ExecutionPlanSegment_MapReferences(ExecutionPlanSegment *segment, A
 	}
 }
 
-static OpBase *_buildCallOp(AST *ast, ExecutionPlanSegment *segment) {
-	const cypher_astnode_t *call_clause = AST_GetClause(ast, CYPHER_AST_CALL);
-	if(call_clause == NULL) return NULL;
+static OpBase *_buildCallOp(AST *ast, ExecutionPlanSegment *segment,
+							const cypher_astnode_t *call_clause) {
 	// A call clause has a procedure name, 0+ arguments (parenthesized expressions), and a projection if YIELD is included
 	const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
 	const char **arguments = _BuildCallArguments(segment->record_map, call_clause);
@@ -520,53 +519,26 @@ static void _ExecutionPlanSegment_BuildProjections(AST *ast, ExecutionPlanSegmen
 	AR_ExpNode **order_expressions = NULL;
 	if(order_clause) segment->order_expressions = _BuildOrderExpressions(segment->record_map,
 																			 segment->projections, order_clause);
-}
 
-/*
-static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
-												ExecutionPlanSegment *segment,
-												ResultSetStatistics *stats,
-												const cypher_astnode_t *clause) {
-	cypher_astnode_type_t t = cypher_astnode_type(clause);
-	OpBase *op = NULL;
-	if(t == CYPHER_AST_UNWIND) {
-		AST_UnwindContext unwind_ast_ctx = AST_PrepareUnwindOp(clause, segment->record_map);
-		op = NewUnwindOp(unwind_ast_ctx.record_idx, unwind_ast_ctx.exps);
-	} else if(t == CYPHER_AST_CREATE) {
-		AST_CreateContext create_ast_ctx = AST_PrepareCreateOp(gc, segment->record_map, ast,
-															   segment->query_graph);
-		op = NewCreateOp(stats, create_ast_ctx.nodes_to_create, create_ast_ctx.edges_to_create);
-	} else if(t == CYPHER_AST_MERGE) {
-		// A merge clause provides a single path that must exist or be created.
-		// As with paths in a MATCH query, build the appropriate traversal operations
-		// and append them to the set of ops.
-		AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(segment->record_map, ast, clause,
-															segment->query_graph);
-		op = NewMergeOp(stats, merge_ast_ctx.nodes_to_merge, merge_ast_ctx.edges_to_merge);
-	} else if(t == CYPHER_AST_DELETE) {
-		uint *nodes_ref;
-		uint *edges_ref;
-		AST_PrepareDeleteOp(clause, segment->query_graph, segment->record_map, &nodes_ref, &edges_ref);
-		op = NewDeleteOp(nodes_ref, edges_ref, stats);
-	} else if(t == CYPHER_AST_SET) {
-		uint nitems;
-		EntityUpdateEvalCtx *update_exps = AST_PrepareUpdateOp(clause, segment->record_map, &nitems);
-		op = NewUpdateOp(gc, update_exps, nitems, stats);
-	} else if(t == CYPHER_AST_CALL) {
-		op = _buildCallOp(segment, ast, clause);
-	} else if(t == CYPHER_AST_RETURN) {
-		_buildReturnOps(segment, clause);
-		return;
-	} else if(t == CYPHER_AST_WITH) {
-		_buildWithOps(segment, clause);
-		return;
-	} else if(t == CYPHER_AST_MATCH) {
-		return; // handled elsewhere
+	// TODO tmp
+	const cypher_astnode_t *call_clause = AST_GetClause(ast, CYPHER_AST_CALL);
+	if(call_clause) {
+		// _buildCallOp(ast, segment, call_clause);
+		/*
+		if(segment->projections == NULL) {
+			AR_ExpNode **yield_exps = _BuildCallProjections(segment->record_map, call_clause, ast);
+			uint yield_count = array_len(yield_exps);
+			segment->projections = array_new(AR_ExpNode *, yield_count);
+			for(uint i = 0; i < yield_count; i ++) {
+				// TODO revisit this logic, room for improvement
+				// Add yielded expressions to segment projections.
+				segment->projections = array_append(segment->projections, yield_exps[i]);
+			}
+		}
+		*/
 	}
-	_AppendOperation(segment, op);
-	if(segment->root == NULL) segment->root = segment->tail;
+
 }
-*/
 
 static void _ExecutionPlanSegment_PlaceFilterOps(ExecutionPlanSegment *segment) {
 	Vector *sub_trees = FilterTree_SubTrees(segment->filter_tree);
@@ -628,6 +600,169 @@ static void _ExecutionPlan_ConnectSegmentOps(OpBase *current_tail, OpBase *prev_
 	}
 }
 
+uint *_buildModifiesArray(AR_ExpNode **projections) {
+	// TODO improve interface, maybe CollectEntityIDs variant that builds an array
+	rax *modifies_ids = raxNew();
+	uint exp_count = array_len(projections);
+	for(uint i = 0; i < exp_count; i ++) {
+		AR_ExpNode *exp = projections[i];
+		AR_EXP_CollectEntityIDs(exp, modifies_ids);
+	}
+
+	uint *modifies = array_new(uint, raxSize(modifies_ids));
+	raxIterator iter;
+	raxStart(&iter, modifies_ids);
+	raxSeek(&iter, ">=", (unsigned char *)"", 0);
+	while(raxNext(&iter)) {
+		modifies = array_append(modifies, *(uint *)iter.key);
+	}
+	raxFree(modifies_ids);
+
+	return modifies;
+}
+
+static void _buildProjectionOps(ExecutionPlanSegment *segment, uint skip, uint limit, uint sort,
+								bool aggregate, bool distinct, Vector *ops) {
+
+	uint *modifies = _buildModifiesArray(segment->projections);
+
+	// TODO first or last?
+	OpBase *op_project;
+	// Our fundamental operation will be a projection/aggregation
+	if(aggregate) {
+		op_project = NewAggregateOp(segment->projections, modifies);
+	} else {
+		op_project = NewProjectOp(segment->projections, modifies);
+	}
+	Vector_Push(ops, op_project);
+
+
+
+	if(distinct) {
+		OpBase *op_distinct = NewDistinctOp();
+		Vector_Push(ops, op_distinct);
+	}
+
+	if(sort) {
+		// The sort operation will obey a specified limit, but must account for skipped records
+		uint sort_limit = (limit > 0) ? limit + skip : 0;
+		OpBase *op_sort = NewSortOp(segment->order_expressions, sort, sort_limit);
+		Vector_Push(ops, op_sort);
+	}
+
+	// Skip next
+	if(skip) {
+		OpBase *op_skip = NewSkipOp(skip);
+		Vector_Push(ops, op_skip);
+	}
+
+	// Limit first
+	if(limit) { // TODO LIMIT 0 unhandled
+		OpBase *op_limit = NewLimitOp(limit);
+		Vector_Push(ops, op_limit);
+	}
+
+}
+
+static void _buildReturnOps(ExecutionPlanSegment *segment, const cypher_astnode_t *clause,
+							Vector *ops) {
+	// The RETURN logic is nearly identical to WITH-culminating segments,
+	// though a different function API must be used.
+	// assert(segment->root);
+
+	bool aggregate = AST_ClauseContainsAggregation(clause);
+	bool distinct = cypher_ast_return_is_distinct(clause);
+
+	const cypher_astnode_t *skip_clause = cypher_ast_return_get_skip(clause);
+	const cypher_astnode_t *limit_clause = cypher_ast_return_get_limit(clause);
+
+	uint skip = 0;
+	uint limit = 0;
+	if(skip_clause) skip = AST_ParseIntegerNode(skip_clause);
+	if(limit_clause) limit = AST_ParseIntegerNode(limit_clause);
+
+	int sort_direction = 0;
+	if(segment->order_expressions) {
+		const cypher_astnode_t *order_clause = cypher_ast_return_get_order_by(clause);
+		sort_direction = AST_PrepareSortOp(order_clause);
+	}
+
+	_buildProjectionOps(segment, skip, limit, sort_direction, aggregate, distinct, ops);
+}
+
+static void _buildWithOps(ExecutionPlanSegment *segment, const cypher_astnode_t *clause,
+						  Vector *ops) {
+	// assert(segment->root == NULL);
+
+	bool aggregate = AST_ClauseContainsAggregation(clause);
+	bool distinct = cypher_ast_with_is_distinct(clause);
+
+	const cypher_astnode_t *skip_clause = cypher_ast_with_get_skip(clause);
+	const cypher_astnode_t *limit_clause = cypher_ast_with_get_limit(clause);
+
+	uint skip = 0;
+	uint limit = 0;
+	if(skip_clause) skip = AST_ParseIntegerNode(skip_clause);
+	if(limit_clause) limit = AST_ParseIntegerNode(limit_clause);
+
+	int sort_direction = 0;
+	if(segment->order_expressions) {
+		const cypher_astnode_t *order_clause = cypher_ast_with_get_order_by(clause);
+		sort_direction = AST_PrepareSortOp(order_clause);
+	}
+
+	_buildProjectionOps(segment, skip, limit, sort_direction, aggregate, distinct, ops);
+}
+
+
+bool _create_clauses_processed; // TODO tmp
+
+static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
+												ExecutionPlanSegment *segment, ResultSetStatistics *stats, const cypher_astnode_t *clause,
+												Vector *ops) {
+	cypher_astnode_type_t t = cypher_astnode_type(clause);
+	OpBase *op = NULL;
+	if(t == CYPHER_AST_UNWIND) {
+		AST_UnwindContext unwind_ast_ctx = AST_PrepareUnwindOp(clause, segment->record_map);
+		op = NewUnwindOp(unwind_ast_ctx.record_idx, unwind_ast_ctx.exp);
+	} else if(t == CYPHER_AST_CREATE) {
+		if(_create_clauses_processed) return;
+		_create_clauses_processed = true;
+		AST_CreateContext create_ast_ctx = AST_PrepareCreateOp(gc, segment->record_map, ast,
+															   segment->query_graph);
+		op = NewCreateOp(stats, create_ast_ctx.nodes_to_create, create_ast_ctx.edges_to_create);
+	} else if(t == CYPHER_AST_MERGE) {
+		// A merge clause provides a single path that must exist or be created.
+		// As with paths in a MATCH query, build the appropriate traversal operations
+		// and append them to the set of ops.
+		AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(gc, segment->record_map, ast, clause,
+															segment->query_graph);
+		op = NewMergeOp(stats, merge_ast_ctx.nodes_to_merge, merge_ast_ctx.edges_to_merge);
+	} else if(t == CYPHER_AST_DELETE) {
+		uint *nodes_ref;
+		uint *edges_ref;
+		AST_PrepareDeleteOp(clause, segment->query_graph, segment->record_map, &nodes_ref, &edges_ref);
+		op = NewDeleteOp(nodes_ref, edges_ref, stats);
+	} else if(t == CYPHER_AST_SET) {
+		uint nitems;
+		EntityUpdateEvalCtx *update_exps = AST_PrepareUpdateOp(clause, segment->record_map, &nitems);
+		op = NewUpdateOp(gc, update_exps, nitems, stats);
+	} else if(t == CYPHER_AST_CALL) {
+		// op = _buildCallOp(ast, segment, clause);
+		return; // TODO hm
+	} else if(t == CYPHER_AST_RETURN) {
+		_buildReturnOps(segment, clause, ops);
+		return;
+	} else if(t == CYPHER_AST_WITH) {
+		_buildWithOps(segment, clause, ops);
+		return;
+	} else if(t == CYPHER_AST_MATCH) {
+		return; // handled elsewhere
+	}
+	assert(op);
+	Vector_Push(ops, op);
+}
+
 static void _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
 									 ExecutionPlanSegment *segment, AST *ast, ResultSet *result_set,
 									 AR_ExpNode **prev_projections, OpBase *prev_op) {
@@ -662,8 +797,11 @@ static void _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
 	FT_FilterNode *filter_tree = AST_BuildFilterTree(ast, record_map);
 	segment->filter_tree = filter_tree;
 
-	OpBase *opProcCall = _buildCallOp(ast, segment);
-	if(opProcCall) Vector_Push(ops, opProcCall);
+	const cypher_astnode_t *call_clause = AST_GetClause(ast, CYPHER_AST_CALL);
+	if(call_clause) {
+		OpBase *opProcCall = _buildCallOp(ast, segment, call_clause);
+		Vector_Push(ops, opProcCall);
+	}
 
 	// Build traversal operations for every connected component in the QueryGraph
 	if(AST_ContainsClause(ast, CYPHER_AST_MATCH) || AST_ContainsClause(ast, CYPHER_AST_MERGE)) {
@@ -674,6 +812,22 @@ static void _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
 	// like DELETE that only produce metadata.
 	ResultSetStatistics *stats = (result_set) ? &result_set->stats : NULL;
 
+	_create_clauses_processed = false;
+	uint clause_count = cypher_ast_query_nclauses(ast->root);
+	for(uint i = 0; i < clause_count; i ++) {
+		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
+		_ExecutionPlanSegment_ConvertClause(gc, ast, segment, stats, clause, ops);
+	}
+
+	// The root operation is OpResults only if the query culminates in a RETURN or CALL clause.
+	cypher_astnode_type_t last_clause_type = cypher_astnode_type(cypher_ast_query_get_clause(ast->root,
+																 clause_count - 1));
+	if(last_clause_type == CYPHER_AST_RETURN || last_clause_type == CYPHER_AST_CALL) {
+		OpBase *results_op = NewResultsOp(result_set);
+		Vector_Push(ops, results_op);
+	}
+
+	/*
 	// Set root operation
 	const cypher_astnode_t *unwind_clause = AST_GetClause(ast, CYPHER_AST_UNWIND);
 	if(unwind_clause) {
@@ -846,6 +1000,7 @@ static void _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
 		op = NewResultsOp(result_set, qg);
 		Vector_Push(ops, op);
 	}
+	*/
 
 	OpBase *parent_op;
 	OpBase *child_op;
