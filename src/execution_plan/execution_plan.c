@@ -450,41 +450,6 @@ static void _ExecutionPlanSegment_MapReferences(ExecutionPlanSegment *segment, A
 	}
 }
 
-static OpBase *_buildCallOp(AST *ast, ExecutionPlanSegment *segment,
-							const cypher_astnode_t *call_clause) {
-	// A call clause has a procedure name, 0+ arguments (parenthesized expressions), and a projection if YIELD is included
-	const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
-	const char **arguments = _BuildCallArguments(segment->record_map, call_clause);
-	AR_ExpNode **yield_exps = _BuildCallProjections(segment->record_map, call_clause, ast);
-	uint yield_count = array_len(yield_exps);
-	const char **yields = array_new(const char *, yield_count);
-
-	uint *call_modifies = array_new(uint, yield_count);
-	for(uint i = 0; i < yield_count; i ++) {
-		// Track the names of yielded variables.
-		// yields = array_append(yields, yield_exps[i]->resolved_name);
-		yields = array_append(yields, yield_exps[i]->operand.variadic.entity_alias);
-		// Track which variables are modified by this operation.
-		call_modifies = array_append(call_modifies, RecordMap_LookupAlias(segment->record_map,
-																		  yield_exps[i]->resolved_name));
-	}
-
-	if(segment->projections == NULL) {
-		segment->projections = array_new(AR_ExpNode *, yield_count);
-		for(uint i = 0; i < yield_count; i ++) {
-			// TODO revisit this logic, room for improvement
-			// Add yielded expressions to segment projections.
-			segment->projections = array_append(segment->projections, yield_exps[i]);
-		}
-	}
-
-	array_free(yield_exps);
-
-	OpBase *opProcCall = NewProcCallOp(proc_name, arguments, yields, call_modifies);
-	// Vector_Push(ops, opProcCall); // TODO
-	return opProcCall;
-}
-
 /* Build projections from this AST's WITH, RETURN, and ORDER clauses. */
 static void _ExecutionPlanSegment_BuildProjections(AST *ast, ExecutionPlanSegment *segment,
 												   AR_ExpNode **prev_projections) {
@@ -602,14 +567,59 @@ uint *_buildModifiesArray(AR_ExpNode **projections) {
 	return modifies;
 }
 
+// Check whether a Vector of operations contains a Create op.
+static inline bool _ExecutionPlan_ContainsCreateOp(Vector *ops) {
+	int op_count = Vector_Size(ops);
+	OpBase *op;
+	for(int i = 0; i < op_count; i ++) {
+		Vector_Get(ops, i, &op);
+		if(op->type == OPType_CREATE) return true;
+	}
+	return false;
+}
+
+// Convert a CALL clause into a procedure call oepration.
+static OpBase *_buildCallOp(AST *ast, ExecutionPlanSegment *segment,
+							const cypher_astnode_t *call_clause) {
+	// A call clause has a procedure name, 0+ arguments (parenthesized expressions), and a projection if YIELD is included
+	const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
+	const char **arguments = _BuildCallArguments(segment->record_map, call_clause);
+	AR_ExpNode **yield_exps = _BuildCallProjections(segment->record_map, call_clause, ast);
+	uint yield_count = array_len(yield_exps);
+	const char **yields = array_new(const char *, yield_count);
+
+	uint *call_modifies = array_new(uint, yield_count);
+	for(uint i = 0; i < yield_count; i ++) {
+		// Track the names of yielded variables.
+		// yields = array_append(yields, yield_exps[i]->resolved_name);
+		yields = array_append(yields, yield_exps[i]->operand.variadic.entity_alias);
+		// Track which variables are modified by this operation.
+		call_modifies = array_append(call_modifies, RecordMap_LookupAlias(segment->record_map,
+																		  yield_exps[i]->resolved_name));
+	}
+
+	if(segment->projections == NULL) {
+		segment->projections = array_new(AR_ExpNode *, yield_count);
+		for(uint i = 0; i < yield_count; i ++) {
+			// TODO revisit this logic, room for improvement
+			// Add yielded expressions to segment projections.
+			segment->projections = array_append(segment->projections, yield_exps[i]);
+		}
+	}
+
+	array_free(yield_exps);
+
+	return NewProcCallOp(proc_name, arguments, yields, call_modifies);
+}
+
+// Build an aggregate or project operation and any required modifying operations.
+// This logic applies for both WITH and RETURN projections.
 static void _buildProjectionOps(ExecutionPlanSegment *segment, uint skip, uint limit, uint sort,
 								bool aggregate, bool distinct, Vector *ops) {
-
 	uint *modifies = _buildModifiesArray(segment->projections);
 
-	// TODO first or last?
+	// Our fundamental operation will be a projection or aggregation.
 	OpBase *op_project;
-	// Our fundamental operation will be a projection/aggregation
 	if(aggregate) {
 		op_project = NewAggregateOp(segment->projections, modifies);
 	} else {
@@ -617,8 +627,8 @@ static void _buildProjectionOps(ExecutionPlanSegment *segment, uint skip, uint l
 	}
 	Vector_Push(ops, op_project);
 
-
-
+	/* Add modifier operations in order such that the final execution plan will follow the sequence:
+	 * Limit -> Skip -> Sort -> Distinct -> Project/Aggregate */
 	if(distinct) {
 		OpBase *op_distinct = NewDistinctOp();
 		Vector_Push(ops, op_distinct);
@@ -631,24 +641,21 @@ static void _buildProjectionOps(ExecutionPlanSegment *segment, uint skip, uint l
 		Vector_Push(ops, op_sort);
 	}
 
-	// Skip next
 	if(skip) {
 		OpBase *op_skip = NewSkipOp(skip);
 		Vector_Push(ops, op_skip);
 	}
 
-	// Limit first
 	if(limit != RESULTSET_UNLIMITED) {
 		OpBase *op_limit = NewLimitOp(limit);
 		Vector_Push(ops, op_limit);
 	}
-
 }
 
+// The RETURN logic is identical to WITH-culminating segments,
+// though a different set of API endpoints must be used for each.
 static void _buildReturnOps(ExecutionPlanSegment *segment, const cypher_astnode_t *clause,
 							Vector *ops) {
-	// The RETURN logic is nearly identical to WITH-culminating segments,
-	// though a different function API must be used.
 	bool aggregate = AST_ClauseContainsAggregation(clause);
 	bool distinct = cypher_ast_return_is_distinct(clause);
 
@@ -691,24 +698,25 @@ static void _buildWithOps(ExecutionPlanSegment *segment, const cypher_astnode_t 
 	_buildProjectionOps(segment, skip, limit, sort_direction, aggregate, distinct, ops);
 }
 
-
-bool _create_clauses_processed; // TODO tmp
-
 static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 												ExecutionPlanSegment *segment, ResultSetStatistics *stats, const cypher_astnode_t *clause,
 												Vector *ops) {
-	cypher_astnode_type_t t = cypher_astnode_type(clause);
 	OpBase *op = NULL;
+	cypher_astnode_type_t t = cypher_astnode_type(clause);
 	// Because 't' is set using the offsetof() call, it cannot be used in switch statements.
-	if(t == CYPHER_AST_UNWIND) {
-		AST_UnwindContext unwind_ast_ctx = AST_PrepareUnwindOp(clause, segment->record_map);
-		op = NewUnwindOp(unwind_ast_ctx.record_idx, unwind_ast_ctx.exp);
+	if(t == CYPHER_AST_MATCH || t == CYPHER_AST_CALL) {
+		// MATCH and CALL clauses are processed before looping over all clauses.
+		// TODO This should be changed later
+		return;
 	} else if(t == CYPHER_AST_CREATE) {
-		if(_create_clauses_processed) return;
-		_create_clauses_processed = true;
+		// Only add at most one Create op per segment. TODO Revisit and improve this logic.
+		if(_ExecutionPlan_ContainsCreateOp(ops)) return;
 		AST_CreateContext create_ast_ctx = AST_PrepareCreateOp(gc, segment->record_map, ast,
 															   segment->query_graph);
 		op = NewCreateOp(stats, create_ast_ctx.nodes_to_create, create_ast_ctx.edges_to_create);
+	} else if(t == CYPHER_AST_UNWIND) {
+		AST_UnwindContext unwind_ast_ctx = AST_PrepareUnwindOp(clause, segment->record_map);
+		op = NewUnwindOp(unwind_ast_ctx.record_idx, unwind_ast_ctx.exp);
 	} else if(t == CYPHER_AST_MERGE) {
 		// A merge clause provides a single path that must exist or be created.
 		// As with paths in a MATCH query, build the appropriate traversal operations
@@ -716,24 +724,22 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 		AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(gc, segment->record_map, ast, clause,
 															segment->query_graph);
 		op = NewMergeOp(stats, merge_ast_ctx.nodes_to_merge, merge_ast_ctx.edges_to_merge);
+	} else if(t == CYPHER_AST_SET) {
+		uint nitems;
+		EntityUpdateEvalCtx *update_exps = AST_PrepareUpdateOp(clause, segment->record_map, &nitems);
+		op = NewUpdateOp(gc, update_exps, nitems, stats);
 	} else if(t == CYPHER_AST_DELETE) {
 		uint *nodes_ref;
 		uint *edges_ref;
 		AST_PrepareDeleteOp(clause, segment->query_graph, segment->record_map, &nodes_ref, &edges_ref);
 		op = NewDeleteOp(nodes_ref, edges_ref, stats);
-	} else if(t == CYPHER_AST_SET) {
-		uint nitems;
-		EntityUpdateEvalCtx *update_exps = AST_PrepareUpdateOp(clause, segment->record_map, &nitems);
-		op = NewUpdateOp(gc, update_exps, nitems, stats);
 	} else if(t == CYPHER_AST_RETURN) {
+		// Converting a RETURN clause can create multiple operations.
 		_buildReturnOps(segment, clause, ops);
 		return;
 	} else if(t == CYPHER_AST_WITH) {
+		// Converting a WITH clause can create multiple operations.
 		_buildWithOps(segment, clause, ops);
-		return;
-	} else if(t == CYPHER_AST_MATCH || t == CYPHER_AST_CALL) {
-		// MATCH and CALL clauses are processed before looping over all clauses.
-		// TODO This should be changed later
 		return;
 	}
 	assert(op);
@@ -764,8 +770,6 @@ static void _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
 	// (SET, CREATE, DELETE)
 	_ExecutionPlanSegment_MapReferences(segment, ast);
 
-	Vector *ops = NewVector(OpBase *, 1);
-
 	// Build query graph
 	QueryGraph *qg = BuildQueryGraph(gc, ast);
 	segment->query_graph = qg;
@@ -774,9 +778,15 @@ static void _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
 	FT_FilterNode *filter_tree = AST_BuildFilterTree(ast, record_map);
 	segment->filter_tree = filter_tree;
 
+	// Instantiate the Vector that will hold all constructed operations.
+	// TODO This vector could be removed with some logical changes.
+	uint clause_count = cypher_ast_query_nclauses(ast->root);
+	Vector *ops = NewVector(OpBase *, clause_count);
+
 	/* If we have a procedure call, build an op for it first.
 	 * This is currently necessary to extend the segment's projections if necesary
-	 * and in order to build the plan for queries of forms like CALL..MATCH properly. */
+	 * and in order to build the plan for queries of forms like CALL..MATCH properly.
+	 * TODO Fix this so that CALL clauses are handled in the ConvertClause loop. */
 	const cypher_astnode_t *call_clause = AST_GetClause(ast, CYPHER_AST_CALL);
 	if(call_clause) {
 		OpBase *opProcCall = _buildCallOp(ast, segment, call_clause);
@@ -792,9 +802,8 @@ static void _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
 	// like DELETE that only produce metadata.
 	ResultSetStatistics *stats = (result_set) ? &result_set->stats : NULL;
 
-	_create_clauses_processed = false;
-	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	for(uint i = 0; i < clause_count; i ++) {
+		// Build the appropriate operation(s) for each clause in the query.
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
 		_ExecutionPlanSegment_ConvertClause(gc, ast, segment, stats, clause, ops);
 	}
@@ -809,9 +818,12 @@ static void _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
 
 	OpBase *parent_op;
 	OpBase *child_op;
+
+	// Set the root operation.
 	Vector_Pop(ops, &parent_op);
 	segment->root = parent_op;
 
+	// Pop each operation and make it the child of the last.
 	while(Vector_Pop(ops, &child_op)) {
 		ExecutionPlan_AddOp(parent_op, child_op);
 		parent_op = child_op;
