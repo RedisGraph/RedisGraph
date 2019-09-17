@@ -42,10 +42,6 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", Init, Consume, Reset, NULL, Free, plan);
 
-	// Populate the modifies array with all affected aliases.
-	for(uint i = 0; i < array_len(exps); i ++) {
-		OpBase_ModifiesExpression((OpBase *)op, exps[i]);
-	}
 	return (OpBase *)op;
 }
 
@@ -54,7 +50,6 @@ static OpResult Init(OpBase *opBase) {
 	for(uint i = 0; i < op->exp_count; i ++) {
 		// The projected record will associate values with their resolved name
 		// to ensure that space is allocated for each entry.
-		OpBase_Projects(opBase, op->exps[i]->resolved_name);
 		OpBase_Modifies(opBase, op->exps[i]->resolved_name);
 	}
 	AR_ExpNode **order_exps = _getOrderExpressions(opBase->parent);
@@ -63,8 +58,7 @@ static OpResult Init(OpBase *opBase) {
 		op->order_exp_count = array_len(order_exps);
 
 		for(uint i = 0; i < op->order_exp_count; i ++) {
-			AR_ExpNode *exp = op->order_exps[i];
-			OpBase_Projects(opBase, exp->resolved_name);
+			OpBase_Modifies(opBase, op->order_exps[i]->resolved_name);
 		}
 	}
 
@@ -86,10 +80,10 @@ static Record Consume(OpBase *opBase) {
 
 		if(op->singleResponse) return NULL;
 		op->singleResponse = true;
-		r = OpBase_CreateProjectedRecord(opBase);
+		r = OpBase_CreateRecord(opBase);
 	}
 
-	Record projection = OpBase_CreateProjectedRecord(opBase);
+	Record projection = OpBase_CreateRecord(opBase);
 	// Track the inherited Record and the newly-allocated Record so that they may be freed if execution fails.
 	OpBase_AddVolatileRecord(opBase, r);
 	OpBase_AddVolatileRecord(opBase, projection);

@@ -113,7 +113,7 @@ const char **_ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, rax *ref
 		if(match > (seen_count - i)) break;
 		const char *seen_id = seen[i];
 
-		if(raxFind(references, (unsigned char *)&seen_id, strlen(seen_id)) != raxNotFound) {
+		if(raxFind(references, (unsigned char *)seen_id, strlen(seen_id)) != raxNotFound) {
 			match--;
 			// All references have been resolved.
 			if(match == 0) {

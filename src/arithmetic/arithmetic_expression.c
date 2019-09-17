@@ -451,26 +451,6 @@ void AR_EXP_CollectEntities(AR_ExpNode *root, rax *entities) {
 	}
 }
 
-// Combination of AR_EXP_CollectEntities and OpBase_Modifies logic
-// TODO find good place
-void AR_EXP_UpdateEntityMap(AR_ExpNode *root, rax *entities, const char ***modifies) {
-	if(root->type == AR_EXP_OP) {
-		for(int i = 0; i < root->op.child_count; i ++) {
-			AR_EXP_CollectEntities(root->op.children[i], entities);
-		}
-	} else { // type == AR_EXP_OPERAND
-		if(root->operand.type == AR_EXP_VARIADIC) {
-			const char *entity = root->operand.variadic.entity_alias;
-			void *id = raxFind(entities, (unsigned char *)entity, strlen(entity));
-			if(id == raxNotFound) {
-				id = (void *)raxSize(entities);
-				raxInsert(entities, (unsigned char *)entity, strlen(entity), id, NULL);
-			}
-			*modifies = array_append(*modifies, entity);
-		}
-	}
-}
-
 void AR_EXP_CollectAttributes(AR_ExpNode *root, rax *attributes) {
 	if(root->type == AR_EXP_OP) {
 		for(int i = 0; i < root->op.child_count; i ++) {

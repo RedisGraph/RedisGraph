@@ -737,8 +737,8 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		 * but in order for the information about the segment to be complete, the current segment AST will
 		 * hold its projection information, if valid.
 		 * This is relevant for all non-last segments. */
-		uint end_offset = i == segment_count - 1 ? segment_indices[i] : segment_indices[i] + 1;
-
+		// uint end_offset = (i == segment_count - 1) ? segment_indices[i] : segment_indices[i] + 1;
+		uint end_offset = segment_indices[i];
 		// Slice the AST to only include the clauses in the current segment.
 		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
 

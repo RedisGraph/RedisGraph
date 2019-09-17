@@ -217,16 +217,17 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
  * ==========================================================================*/
 
 
-void _AST_MapProjectionReference(AST *ast, const cypher_astnode_t *projectClause) {
-	uint projectionCount = cypher_ast_return_nprojections(projectClause);
-	for(uint i = 0 ; i < projectionCount; i ++) {
-		const cypher_astnode_t *projection = cypher_ast_return_get_projection(projectClause, i);
-
-		const cypher_astnode_t *identifier = cypher_ast_projection_get_alias(projection);
-		// TODO: project property
-		const char *identifierName = cypher_ast_identifier_get_name(identifier);
-		raxInsert(ast->referenced_entities, identifierName, strlen(identifierName), true, NULL);
+void _AST_MapProjectionReference(AST *ast, const cypher_astnode_t *projection) {
+	const cypher_astnode_t *ast_identifier = cypher_ast_projection_get_alias(projection);
+	const char *identifierName = NULL;
+	if(ast_identifier == NULL) {
+		// The projection was not aliased
+		ast_identifier = cypher_ast_projection_get_expression(projection);
+		assert(cypher_astnode_type(ast_identifier) == CYPHER_AST_IDENTIFIER);
 	}
+	identifierName = cypher_ast_identifier_get_name(ast_identifier);
+	// TODO: project property
+	raxInsert(ast->referenced_entities, identifierName, strlen(identifierName), true, NULL);
 }
 
 void _AST_MapUnwindReferences(AST *ast, const cypher_astnode_t *unwindClause) {
@@ -293,17 +294,31 @@ void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *clause) {
 	if(!clause) return;
 	cypher_astnode_type_t type = cypher_astnode_type(clause);
 	// Add referenced aliases for projection operations - WITH, RETURN.
-	if(type == CYPHER_AST_RETURN || type == CYPHER_AST_WITH) _AST_MapProjectionReference(ast, clause);
+	if(type == CYPHER_AST_RETURN) {
+		uint projectionCount = cypher_ast_return_nprojections(clause);
+		for(uint i = 0 ; i < projectionCount; i ++) {
+			_AST_MapProjectionReference(ast, cypher_ast_return_get_projection(clause, i));
+		}
+	} else if(type == CYPHER_AST_WITH) {
+		uint projectionCount = cypher_ast_with_nprojections(clause);
+		for(uint i = 0 ; i < projectionCount; i ++) {
+			_AST_MapProjectionReference(ast, cypher_ast_with_get_projection(clause, i));
+		}
+	}
 	// Add referenced aliases for UNWIND clause.
-	else if(type == CYPHER_AST_UNWIND) _AST_MapUnwindReferences(ast, clause);
-	// Add referenced aliases for ORDER BY clause.
-	else if(type == CYPHER_AST_ORDER_BY) _AST_MapOrderByReferences(ast, clause);
-	// Add referenced aliases for MATCH clause - inline properties and explicit WHERE filter.
-	else if(type == CYPHER_AST_MATCH) _AST_MapMatchClauseReferences(ast, clause);
-	//_Validate_MATCH_Clause_Filters
-	uint numberOfChildren = cypher_astnode_nchildren(clause);
-	for(uint i = 0; i < numberOfChildren; i++) {
-		_ASTClause_BuildReferenceMap(ast, cypher_astnode_get_child(clause, i));
+	else if(type == CYPHER_AST_UNWIND) {
+		_AST_MapUnwindReferences(ast, clause);
+		// Add referenced aliases for ORDER BY clause.
+	} else if(type == CYPHER_AST_ORDER_BY) {
+		_AST_MapOrderByReferences(ast, clause);
+		// Add referenced aliases for MATCH clause - inline properties and explicit WHERE filter.
+	} else if(type == CYPHER_AST_MATCH) {
+		_AST_MapMatchClauseReferences(ast, clause);
+		//_Validate_MATCH_Clause_Filters
+		uint numberOfChildren = cypher_astnode_nchildren(clause);
+		for(uint i = 0; i < numberOfChildren; i++) {
+			_ASTClause_BuildReferenceMap(ast, cypher_astnode_get_child(clause, i));
+		}
 	}
 }
 

@@ -106,6 +106,7 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 	/* Construct a constant expression, used by a new
 	 * projection operation. */
 	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(nodeCount);
+	AR_EXP_BuildResolvedName(exp); // The new expression must be aliased to populate the Record.
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 	exps = array_append(exps, exp);
 
@@ -227,6 +228,7 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	/* Construct a constant expression, used by a new
 	 * projection operation. */
 	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(edgeCount);
+	AR_EXP_BuildResolvedName(exp); // The new expression must be aliased to populate the Record.
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1); // TODO memory leak!
 	exps = array_append(exps, exp);
 
@@ -251,7 +253,7 @@ void reduceCount(ExecutionPlan *plan) {
 	 * If node count optimization was unable to execute,
 	 * meaning that the execution plan does not hold any node count pattern,
 	 * then edge count will be tried to be executed upon the same execution plan */
-	bool reduceNodeCountSucsses = _reduceNodeCount(plan);
-	if(!reduceNodeCountSucsses) _reduceEdgeCount(plan);
+	bool reduceNodeCountSuccess = _reduceNodeCount(plan);
+	if(!reduceNodeCountSuccess) _reduceEdgeCount(plan);
 }
 

@@ -123,10 +123,6 @@ void AR_EXP_Reduce(const AR_ExpNode *root);
  * (from variadic) to a triemap. */
 void AR_EXP_CollectEntities(AR_ExpNode *root, rax *record_ids);
 
-/* Traverse an expression tree and add all graph entities
- * (from variadic) to a triemap, giving each a unique ID. */
-void AR_EXP_UpdateEntityMap(AR_ExpNode *root, rax *entities, const char ***modifies);
-
 /* Traverse an expression tree and add all mentioned attributes:
  * n.attr > 3 to a prefix tree. */
 void AR_EXP_CollectAttributes(AR_ExpNode *root, rax *attributes);
