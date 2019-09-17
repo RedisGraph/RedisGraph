@@ -18,7 +18,7 @@ static void _RecordPropagateEntry(Record to, Record from, uint idx) {
 
 Record Record_New(rax *mapping) {
 	assert(mapping);
-	// Determin record size.
+	// Determine record size.
 	uint entries_count = raxSize(mapping);
 	uint rec_size = sizeof(Record);
 	rec_size += sizeof(Entry) * entries_count;
@@ -37,6 +37,7 @@ uint Record_length(const Record r) {
 
 // Make sure record is able to hold len entries.
 void Record_Extend(Record *r, int len) {
+	assert(false); // TODO invalid logic
 	int original_len = Record_length(*r);
 	if(original_len >= len) return;
 
@@ -83,7 +84,6 @@ int Record_AliasEntry(Record r, const char *entry, const char *alias) {
 }
 
 Record Record_Clone(const Record r) {
-	// Determin record size.
 	Record clone = Record_New(r->mapping);
 
 	int entry_count = Record_length(r);

@@ -340,7 +340,6 @@ static ExecutionPlan *_NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, A
 	// Allocate a new segment
 	ExecutionPlan *plan = rm_calloc(1, sizeof(ExecutionPlan));
 	plan->record_map = raxNew();
-	plan->projection_map = raxNew(); // TODO not always a necessary alloc
 	plan->result_set = result_set;
 	plan->connected_components = NULL;
 
@@ -695,6 +694,9 @@ static void _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
 	if(last_clause_type == CYPHER_AST_RETURN || last_clause_type == CYPHER_AST_CALL) {
 		OpBase *results_op = NewResultsOp(result_set);
 		_ExecutionPlan_UpdateRoot(segment, results_op);
+
+		// Prepare column names for the ResultSet.
+		if(result_set) ResultSet_BuildColumns(result_set, projections);
 	}
 
 	// If this is not the first segment to be constructed, connect this segment's
@@ -712,24 +714,31 @@ static void _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
 
 ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet *result_set) {
 	AST *ast = QueryCtx_GetAST();
+	uint clause_count = cypher_ast_query_nclauses(ast->root);
 
-	/* Execution plans are created in 1 or more segments. Every WITH clause demarcates the end of
-	 * a segment, and the next clause begins a new one. */
-	uint with_clause_count = AST_GetClauseCount(ast, CYPHER_AST_WITH);
-	bool query_has_return = AST_ContainsClause(ast, CYPHER_AST_RETURN);
-	uint segment_count = with_clause_count + query_has_return + 1;
+	/* Execution plans are created in 1 or more segments. Every WITH clause demarcates
+	 * the beginning of a new segment, and a RETURN clause (if present) forms its own segment. */
+	bool query_has_return = AST_ContainsReturn(ast);
 
 	// Retrieve the indices of each WITH clause to properly set the bounds of each segment.
 	uint *segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
-	if(query_has_return) {
-		segment_indices = array_append(segment_indices, cypher_ast_query_nclauses(ast->root) - 1);
+
+	/* The RETURN clause is converted into an independent final segment.
+	 * If the query is exclusively composed of a RETURN clause, only one segment is constructed
+	 * so this step is skipped. */
+	if(query_has_return && clause_count > 1) {
+		segment_indices = array_append(segment_indices, clause_count - 1);
 	}
-	segment_indices = array_append(segment_indices, cypher_ast_query_nclauses(ast->root)); // TODO ?
 
-	uint start_offset = 0;
+	// Add the clause count as a final value so that the last segment will read to the end of the query.
+	segment_indices = array_append(segment_indices, clause_count);
+
+	uint segment_count = array_len(segment_indices);
 	ExecutionPlan *segments[segment_count];
-
+	uint start_offset = 0;
 	for(int i = 0; i < segment_count; i++) {
+		// TODO discuss this approach - I think it's safer to collect references from the project operation
+		// (segment_indices[i]+1) separately rather than messing with the end_offset logic.
 		/* A segment needs to know about it referenced entities. Those entities are known only when projection
 		 * operation executes over the records of the current segment. For example:
 		 * "Match (a)-[b]->(c) return a,b" only references a and b.
@@ -793,8 +802,6 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 	optimizePlan(gc, plan);
 
 	// plan->segment_count = segment_count;
-	// Prepare column names for the ResultSet if this query contains data in addition to statistics.
-	// if(result_set) ResultSet_BuildColumns(result_set, plan->projections);
 
 	return plan;
 }
@@ -807,11 +814,6 @@ OpBase *ExecutionPlan_LocateLeaf(OpBase *root) {
 rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan) {
 	assert(plan && plan->record_map);
 	return plan->record_map;
-}
-
-rax *ExecutionPlan_GetProjectionMap(const ExecutionPlan *plan) {
-	assert(plan && plan->projection_map); // TODO could allocate here if plan weren't const
-	return plan->projection_map;
 }
 
 void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx, char *buffer, int buffer_len,
@@ -929,10 +931,10 @@ void _ExecutionPlan_FreeOperations(OpBase *op) {
 void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) return;
 
-	for(uint i = 0; i < plan->segment_count; i++) {
-		ExecutionPlan_Free(plan->segments[i]);
-	}
-	rm_free(plan->segments);
+	// for(uint i = 0; i < plan->segment_count; i++) {
+	// ExecutionPlan_Free(plan->segments[i]);
+	// }
+	// rm_free(plan->segments);
 
 	if(plan->connected_components) {
 		uint connected_component_count = array_len(plan->connected_components);
@@ -945,7 +947,6 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 	QueryGraph_Free(plan->query_graph);
 	_ExecutionPlan_FreeOperations(plan->root);
 	raxFree(plan->record_map);
-	raxFree(plan->projection_map);
 	rm_free(plan);
 }
 

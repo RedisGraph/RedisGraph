@@ -166,21 +166,27 @@ static FT_FilterNode *_convertComparison(const cypher_astnode_t *comparison_node
 static FT_FilterNode *_convertInlinedProperties(const AST *ast, const cypher_astnode_t *entity,
 												GraphEntityType type) {
 	const cypher_astnode_t *props = NULL;
-
+	const cypher_astnode_t *ast_identifer;
 	if(type == GETYPE_NODE) {
 		props = cypher_ast_node_pattern_get_properties(entity);
+		ast_identifer = cypher_ast_node_pattern_get_identifier(entity);
 	} else { // relation
 		props = cypher_ast_rel_pattern_get_properties(entity);
+		ast_identifer = cypher_ast_rel_pattern_get_identifier(entity);
 	}
 
 	if(!props) return NULL;
+
+	// Retrieve the entity's alias.
+	assert(ast_identifer);
+	const char *alias = cypher_ast_identifier_get_name(ast_identifer);
 
 	FT_FilterNode *root = NULL;
 	uint nelems = cypher_ast_map_nentries(props);
 	for(uint i = 0; i < nelems; i ++) {
 		// key is of type CYPHER_AST_PROP_NAME
 		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_map_get_key(props, i));
-		AR_ExpNode *lhs = AR_EXP_NewVariableOperandNode(NULL, prop);
+		AR_ExpNode *lhs = AR_EXP_NewVariableOperandNode(alias, prop);
 		lhs->operand.variadic.entity_alias_idx = IDENTIFIER_NOT_FOUND;
 		// val is of type CYPHER_AST_EXPRESSION
 		const cypher_astnode_t *val = cypher_ast_map_get_value(props, i);
@@ -290,3 +296,4 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 
 	return filter_tree;
 }
+

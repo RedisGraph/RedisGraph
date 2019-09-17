@@ -38,6 +38,9 @@ bool AST_ReadOnly(const cypher_parse_result_t *result);
 // Checks to see if AST contains specified clause.
 bool AST_ContainsClause(const AST *ast, cypher_astnode_type_t clause);
 
+// Checks if the AST contains a RETURN clause.
+bool AST_ContainsReturn(const AST *ast);
+
 // Returns all function (aggregated & none aggregated) mentioned in query.
 void AST_ReferredFunctions(const cypher_astnode_t *root, rax *referred_funcs);
 

@@ -71,6 +71,8 @@ static void _name_anonymous_entities_in_pattern(const cypher_astnode_t *root) {
 }
 
 static void _enrich_ast(const cypher_astnode_t *root) {
+	/* Directives like CREATE INDEX are not queries. */
+	if(cypher_astnode_type(root) != CYPHER_AST_QUERY) return;
 	_name_anonymous_entities_in_pattern(root);
 }
 
@@ -81,9 +83,11 @@ cypher_parse_result_t *parse(const char *query) {
 	/* Retrieve the AST root node from a parsed query.
 	 * We are parsing with the CYPHER_PARSE_ONLY_STATEMENTS flag. */
 	const cypher_astnode_t *root = cypher_parse_result_get_root(parse_result, 0);
-	assert(cypher_astnode_type(root) == CYPHER_AST_STATEMENT);
 
-	if(parse_result) _enrich_ast(cypher_ast_statement_get_body(root));
+	// Return if the query root was an unexpected type such as an error.
+	if(cypher_astnode_type(root) != CYPHER_AST_STATEMENT) return parse_result;
+
+	_enrich_ast(cypher_ast_statement_get_body(root));
 	return parse_result;
 }
 

@@ -48,7 +48,7 @@ QGNode **BFS(QGNode *s, int *level) {
 			}
 
 			// Mark n as visited.
-			raxInsert(visited, (unsigned char *)&n->alias, sizeof(n->alias), NULL, NULL);
+			raxInsert(visited, (unsigned char *)n->alias, strlen(n->alias), NULL, NULL);
 		}
 
 		/* No way to progress and we're interested in the lowest level leafs
@@ -70,3 +70,4 @@ QGNode **BFS(QGNode *s, int *level) {
 	array_free(next);
 	return current;
 }
+
