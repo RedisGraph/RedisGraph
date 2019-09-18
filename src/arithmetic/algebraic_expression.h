@@ -79,7 +79,7 @@ AlgebraicExpression *AlgebraicExpression_Empty(void);
 AlgebraicExpression **AlgebraicExpression_FromQueryGraph(
 	const QueryGraph *g,    // Graph to construct expression from.
 	RecordMap *record_map,  // Map of Record IDs of referenced entities
-	size_t *exp_count       // Number of expression created.
+	uint *exp_count         // Number of expressions created.
 );
 
 /* Executes given expression. */
@@ -104,3 +104,4 @@ void AlgebraicExpression_Transpose(AlgebraicExpression *ae);
 void AlgebraicExpression_Free(AlgebraicExpression *ae);
 
 #endif
+

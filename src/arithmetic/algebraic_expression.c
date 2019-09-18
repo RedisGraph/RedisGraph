@@ -518,7 +518,7 @@ static AlgebraicExpression *_AlgebraicExpression_FromPath(QGEdge **path, uint pa
 }
 
 AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg,
-														 RecordMap *record_map, size_t *exp_count) {
+														 RecordMap *record_map, uint *exp_count) {
 	assert(qg);
 	/* Construct algebraic expression(s) from query graph
 	 * trying to take advantage of long multiplications with as few
