@@ -178,6 +178,12 @@ void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
 	_OpBase_AddChild(b, a);
 }
 
+void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root) {
+	/* child is the current root operation and parent is a new operation. */
+	assert(!old_root->parent && !new_root->parent && !new_root->children);
+	_OpBase_AddChild(new_root, old_root);
+}
+
 void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b) {
 	// Insert the new operation between the original and its parent.
 	ExecutionPlan_PushBelow(a, b);
@@ -241,3 +247,4 @@ OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references) {
 	array_free(temp);
 	return op;
 }
+
