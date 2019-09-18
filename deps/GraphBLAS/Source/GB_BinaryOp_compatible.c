@@ -11,8 +11,6 @@
 // op->xtype, B is cast to op->ytype, the operator is computed, and then the
 // result of op->ztype is cast to C->type.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GB_BinaryOp_compatible     // check for domain mismatch
@@ -24,7 +22,7 @@ GrB_Info GB_BinaryOp_compatible     // check for domain mismatch
     const GB_Type_code bcode,       // B may not have a type, just a code
     GB_Context Context
 )
-{ 
+{
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -39,7 +37,12 @@ GrB_Info GB_BinaryOp_compatible     // check for domain mismatch
     // first input A is cast into the type of op->xtype
     //--------------------------------------------------------------------------
 
-    if (!GB_Type_compatible (atype, op->xtype))
+    if (op->opcode == GB_SECOND_opcode)
+    { 
+        // first input is unused, so A is always compatible
+        ;
+    }
+    else if (!GB_Type_compatible (atype, op->xtype))
     { 
         return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
             "incompatible type for z=%s(x,y):\n"
@@ -52,8 +55,14 @@ GrB_Info GB_BinaryOp_compatible     // check for domain mismatch
     // second input B is cast into the type of op->ytype
     //--------------------------------------------------------------------------
 
-    if (btype != NULL)
+    if (op->opcode == GB_FIRST_opcode)
+    { 
+        // second input is unused, so B is always compatible
+        ;
+    }
+    else if (btype != NULL)
     {
+        // B has a type
         if (!GB_Type_compatible (btype, op->ytype))
         { 
             return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
@@ -65,6 +74,7 @@ GrB_Info GB_BinaryOp_compatible     // check for domain mismatch
     }
     else
     {
+        // B has a just a type code, not a type
         if (!GB_code_compatible (bcode, op->ytype->code))
         { 
             return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,

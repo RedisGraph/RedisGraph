@@ -25,9 +25,7 @@
 
 // Compare this function with GB_extractElement.
 
-// not parallel: this function does O(log(..)) work and is already thread-safe.
-
-#include "GB.h"
+#include "GB_Pending.h"
 
 GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
 (
@@ -74,11 +72,8 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
             GB_code_string (scalar_code), ctype->name))) ;
     }
 
-    // pending tuples are expected
-    ASSERT (GB_PENDING_OK (C)) ;
-
-    // zombies are expected
-    ASSERT (GB_ZOMBIES_OK (C)) ;
+    // pending tuples and zombies are expected
+    ASSERT (GB_PENDING_OK (C)) ; ASSERT (GB_ZOMBIES_OK (C)) ;
 
     //--------------------------------------------------------------------------
     // handle the CSR/CSC format
@@ -157,10 +152,10 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
             ASSERT (C->enqueued) ;
             C->i [pleft] = i ;
             C->nzombies-- ;
-            if (C->nzombies == 0 && C->n_pending == 0)
+            if (C->nzombies == 0 && C->Pending == NULL)
             { 
-                // remove from queue if zombies goes to 0 and n_pending is zero
-                // FUTURE:: may thrash.  See FUTURE: in GB_subassign_kernel.
+                // remove from queue if no zombies or pending tuples
+                // FUTURE:: may thrash; see GrB_wait.
                 GB_CRITICAL (GB_queue_remove (C)) ;
             }
         }
@@ -179,14 +174,14 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
 
         // No typecasting can be done.  The new pending tuple must either be
         // the first pending tuple, or its type must match the prior pending
-        // tuples.  See GB_subassign_kernel for a complete description.
+        // tuples.  See GB_subassigner for a complete description.
 
         // stype is the type of this scalar
         GrB_Type stype = GB_code_type (scalar_code, ctype) ;
 
         bool wait = false ;
 
-        if (C->n_pending == 0)
+        if (C->Pending == NULL)
         { 
             // the new pending tuple is the first one, so it will define
             // C->type-pending = stype.  No need to wait.
@@ -194,19 +189,19 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
         }
         else
         {
-            if (stype != C->type_pending)
+            if (stype != C->Pending->type)
             { 
                 // the scalar type (stype) must match the type of the
                 // prior pending tuples.  If the type is different, prior
                 // pending tuples must be assembled first.
                 wait = true ;
             }
-            else if (!GB_op_is_second (C->operator_pending, ctype))
+            else if (!GB_op_is_second (C->Pending->op, ctype))
             { 
-                // setElement uses an implicit SECOND_Ctype operator, which
-                // must match the operator of the prior pending tuples.
-                // If it doesn't match, prior pending tuples must be
-                // assembled first.
+                // prior op is not SECOND: setElement uses an implicit
+                // SECOND_Ctype operator, which must match the operator of the
+                // prior pending tuples.  If it doesn't match, prior pending
+                // tuples must be assembled first.
                 wait = true ;
             }
         }
@@ -221,7 +216,7 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
 
             // delete any lingering zombies and assemble the pending tuples
             GB_WAIT (C) ;
-            ASSERT (C->n_pending == 0) ;
+            ASSERT (C->Pending == NULL) ;
 
             // repeat the search since the C(i,j) entry may have been in
             // the list of pending tuples.  There are no longer any pending
@@ -240,19 +235,26 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
         // becomes the type of this scalar, and the pending operator becomes
         // NULL, which is the implicit SECOND_ctype operator.
 
-        GrB_Info info ;
-        info = GB_pending_add (C, scalar, stype, NULL, i, j, Context) ;
-        if (info != GrB_SUCCESS)
+        if (!GB_Pending_add (&(C->Pending), scalar, stype, NULL, i, j,
+            C->vdim > 1))
         { 
-            // out of memory; C has been cleared
-            return (info) ;
+            // out of memory
+            GB_PHIX_FREE (C) ;
+            return (GB_OUT_OF_MEMORY) ;
+        }
+
+        // insert C in the queue if it isn't already queued
+        ASSERT (GB_PENDING (C)) ;
+        if (!(C->enqueued))
+        { 
+            GB_CRITICAL (GB_queue_insert (C)) ;
         }
 
         // if this was the first tuple, then the pending operator and
         // pending type have been defined
-        ASSERT (GB_op_is_second (C->operator_pending, ctype)) ;
-        ASSERT (C->type_pending == stype) ;
-        ASSERT (C->type_pending_size == stype->size) ;
+        ASSERT (GB_op_is_second (C->Pending->op, ctype)) ;
+        ASSERT (C->Pending->type == stype) ;
+        ASSERT (C->Pending->size == stype->size) ;
 
         // this assert is fine, just costly even when debugging
         // ASSERT_OK (GB_check (C, "did C for setElement (not found)", GB0)) ;

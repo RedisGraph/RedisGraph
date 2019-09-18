@@ -15,10 +15,6 @@
 // the mask is not passed to the heap method if the total flop count is less
 // than nnz(M).
 
-// parallel: this could be done in parallel, but the parallelism will be
-// handled outside this code, in GB_AxB_parallel.  This work is done by a
-// single thread.
-
 #ifndef GB_HEAP_FREE_WORK
 #define GB_HEAP_FREE_WORK
 #endif
@@ -261,28 +257,16 @@
                     Ci = C->i ;
                     Cx = C->x ;
                     // reacquire the pointer cij since C->x has moved
-                    GB_CIJ_REACQUIRE ;
+                    GB_CIJ_REACQUIRE (cij, cnz) ;
                 }
             }
             #endif
 
             //------------------------------------------------------------------
-            // cij = 0
-            //------------------------------------------------------------------
-
-            #ifdef GB_MASK_CASE
-            if (mij)
-            #endif
-            {
-                // cij = 0
-                GB_CIJ_CLEAR ;
-            }
-
-            //------------------------------------------------------------------
             // cij = A (i,List)' * B (List,j), in topological order
             //------------------------------------------------------------------
 
-            for (int64_t t = nlist-1 ; t >= 0 ; t--)
+            for (int64_t klist = nlist-1 ; klist >= 0 ; klist--)
             {
 
                 //--------------------------------------------------------------
@@ -292,7 +276,7 @@
                 // the index k is implicit; it has been renamed as kk if
                 // B(k,j) is the kk-th nonzero in B(:,j).
                 // get k from the list and the position of A(i,k)
-                int64_t p = List [t] ;          ASSERT (p >= 1 && p <= nheap) ;
+                int64_t p = List [klist] ;      ASSERT (p >= 1 && p <= nheap) ;
                 int64_t kk = Heap [p].name ;    ASSERT (kk >= 0 && kk < bjnz) ;
                 int64_t pA     = pA_pair [kk].start ;
                 int64_t pA_end = pA_pair [kk].end ;
@@ -314,8 +298,18 @@
                 if (mij)
                 #endif
                 {
-                    // cij += A(i,k) * B(k,j)
-                    GB_CIJ_MULTADD (pA, pB_start + kk) ;
+                    GB_GETA (aik, Ax, pA) ;
+                    GB_GETB (bkj, Bx, pB_start + kk) ;
+                    if (klist == nlist-1)
+                    { 
+                        // first entry: cij = A(i,k) * B(k,j)
+                        GB_MULT (cij, aik, bkj) ;
+                    }
+                    else
+                    { 
+                        // cij += A(i,k) * B(k,j)
+                        GB_MULTADD (cij, aik, bkj) ;
+                    }
                 }
 
                 //--------------------------------------------------------------
@@ -343,13 +337,13 @@
                 //--------------------------------------------------------------
 
                 pA_pair [kk].start = pA ;
+                bool do_heapify = true ;
                 if (pA < pA_end)
                 { 
                     // advance p to the next entry in A(:,k) or M(:,j).
                     // kk < bjnz refers to A(:,k), and kk=bjnz is M(:,j).
                     Heap [p].key = Ai [pA] ;
                     ASSERT (Heap [p].key > i && Heap [p].key < cvlen) ;
-                    GB_heapify (p, Heap, nheap) ;
                 }
                 else
                 {
@@ -360,6 +354,7 @@
                     { 
                         // safe to delete p from the Heap
                         GB_heap_delete (p, Heap, &nheap) ;
+                        do_heapify = false ;
                     }
                     else
                     { 
@@ -369,10 +364,13 @@
                         // is not safe to delete.  Give node p a maximal
                         // key so and heapify it is no longer considered.
                         Heap [p].key = cvlen ;
-                        GB_heapify (p, Heap, nheap) ;
                     }
                     // one less live node in the Heap
                     --nlive ;
+                }
+                if (do_heapify)
+                { 
+                    GB_heapify (p, Heap, nheap) ;
                 }
             }
 
@@ -420,7 +418,7 @@
             { 
                 Ci [cnz] = i ;
                 // Cx [cnz] = cij ;
-                GB_CIJ_SAVE ;
+                GB_CIJ_SAVE (cij, cnz) ;
                 cnz++ ;
             }
         }
@@ -437,7 +435,9 @@
         if (nheap == 1)
         {
             // get the last A(:,k)
+            #ifdef GB_DEBUG
             int64_t ilast = Heap [1].key ;
+            #endif
             ASSERT (ilast >= 0 && ilast < cvlen) ;
             int64_t kk = Heap [1].name ;
             ASSERT (kk >= 0 && kk < bjnz) ;
@@ -464,11 +464,11 @@
                 Ci = C->i ;
                 Cx = C->x ;
                 // reacquire cij since C->x has moved
-                GB_CIJ_REACQUIRE ;
+                GB_CIJ_REACQUIRE (cij, cnz) ;
             }
 
-            // bkj = Bx [] ;
-            GB_CIJ_GETB (pB_start + kk) ;
+            // bkj = Bx [ ] ;
+            GB_GETB (bkj, Bx, pB_start + kk) ;
 
             // C(ilast:end,j) = A (ilast:end,k) * B (k,j)
             for ( ; pA < pA_end ; pA++)
@@ -477,11 +477,12 @@
                 int64_t i = Ai [pA] ;
 
                 // cij = A(i,k) * B(k,j)
-                GB_CIJ_MULT (pA) ;
+                GB_GETA (aik, Ax, pA) ;
+                GB_MULT (cij, aik, bkj) ;
 
                 Ci [cnz] = i ;
                 // Cx [cnz] = cij ;
-                GB_CIJ_SAVE ;
+                GB_CIJ_SAVE (cij, cnz) ;
                 cnz++ ;
             }
         }

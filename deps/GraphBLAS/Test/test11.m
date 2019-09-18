@@ -1,13 +1,12 @@
 function test11
 %TEST11 test GrB_*_extractTuples
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
+[~, ~, ~, classes, ~, ~] = GB_spec_opsall ;
+
 fprintf ('\n ------------ testing GrB_extractTuples\n') ;
-
-[accum_ops unary_ops add_ops classes] = GB_spec_opsall ;
-
 
 % class of the output X
 for k1 = 1:length (classes)

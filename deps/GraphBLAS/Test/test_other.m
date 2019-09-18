@@ -25,7 +25,7 @@ end
 cd (here) ;
 
 fprintf ('\n------------------installing SSMULT:\n') ;
-cd ../../MATLAB_Tools/SSMULT
+cd ../../SuiteSparse/MATLAB_Tools/SSMULT
 addpath (pwd) ;
 try
     L = sparse (1) ;
@@ -36,7 +36,7 @@ end
 cd (here) ;
 
 fprintf ('\n------------------installing CXSparse:\n') ;
-cd ../../CXSparse/MATLAB/Csparse
+cd ../../SuiteSparse/CXSparse/MATLAB/Csparse
 addpath (pwd) ;
 try
     cs_sparse (1, 1, 1) ;
@@ -46,7 +46,7 @@ end
 cd (here) ;
 
 fprintf ('\n------------------installing CHOLMOD:\n') ;
-cd ../../CHOLMOD/MATLAB
+cd ../../SuiteSparse/CHOLMOD/MATLAB
 addpath (pwd) ;
 try
     sparse2 (1, 1, 1) ;

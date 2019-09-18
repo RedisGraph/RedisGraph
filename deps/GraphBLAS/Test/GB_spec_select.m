@@ -1,10 +1,10 @@
-function C = GB_spec_select (C, Mask, accum, opname, A, k, descriptor)
+function C = GB_spec_select (C, Mask, accum, opname, A, thunk, descriptor)
 %GB_SPEC_SELECT a MATLAB mimic of GxB_select
 %
 % Usage:
-% C = GB_spec_select (C, Mask, accum, opname, A, k, descriptor)
+% C = GB_spec_select (C, Mask, accum, opname, A, thunk, descriptor)
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 %-------------------------------------------------------------------------------
@@ -12,7 +12,7 @@ function C = GB_spec_select (C, Mask, accum, opname, A, k, descriptor)
 %-------------------------------------------------------------------------------
 
 if (nargout > 1 || nargin ~= 7)
-    error ('usage: C = GB_spec_select (C, Mask, accum, opname, A, k, desc)');
+    error ('usage: C = GB_spec_select (C, Mask, accum, opname, A, thunk, desc)');
 end
 
 C = GB_spec_matrix (C) ;
@@ -32,18 +32,42 @@ end
 
 [m n] = size (A.matrix) ;
 T.matrix = zeros (m, n, A.class) ;
+thunk = full (thunk) ;
+xthunk = GB_mex_cast (thunk, A.class) ;
 
 switch (opname)
     case 'tril'
-        p = tril (A.pattern, k) ;
+        p = tril (A.pattern, thunk) ;
     case 'triu'
-        p = triu (A.pattern, k) ;
+        p = triu (A.pattern, thunk) ;
     case 'diag'
-        p = tril (triu (A.pattern, k), k) ;
+        p = tril (triu (A.pattern, thunk), thunk) ;
     case 'offdiag'
-        p = tril (A.pattern, k-1) | triu (A.pattern, k+1) ;
+        p = tril (A.pattern, thunk-1) | triu (A.pattern, thunk+1) ;
     case 'nonzero'
         p = A.pattern & (A.matrix ~= 0) ;
+    case 'eq_zero'
+        p = A.pattern & (A.matrix == 0) ;
+    case 'gt_zero'
+        p = A.pattern & (A.matrix > 0) ;
+    case 'ge_zero'
+        p = A.pattern & (A.matrix >= 0) ;
+    case 'lt_zero'
+        p = A.pattern & (A.matrix < 0) ;
+    case 'le_zero'
+        p = A.pattern & (A.matrix <= 0) ;
+    case 'ne_thunk'
+        p = A.pattern & (A.matrix ~= xthunk) ;
+    case 'eq_thunk'
+        p = A.pattern & (A.matrix == xthunk) ;
+    case 'gt_thunk'
+        p = A.pattern & (A.matrix > xthunk) ;
+    case 'ge_thunk'
+        p = A.pattern & (A.matrix >= xthunk) ;
+    case 'lt_thunk'
+        p = A.pattern & (A.matrix < xthunk) ;
+    case 'le_thunk'
+        p = A.pattern & (A.matrix <= xthunk) ;
     otherwise
         error ('invalid op') ;
 end

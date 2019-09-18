@@ -13,9 +13,7 @@
 
 // The actual work is done in GB_subassign_scalar.c.
 
-// parallel: not here; see GB_subassign_kernel
-
-#include "GB.h"
+#include "GB_subassign.h"
 
 #define GB_ASSIGN(type,T,ampersand)                                            \
 GrB_Info GxB_Vector_subassign_ ## T /* w(Rows)<M> = accum (w(Rows),x)       */ \
@@ -23,7 +21,7 @@ GrB_Info GxB_Vector_subassign_ ## T /* w(Rows)<M> = accum (w(Rows),x)       */ \
     GrB_Vector w,                   /* input/output vector for results      */ \
     const GrB_Vector M,             /* optional mask for w(Rows)            */ \
     const GrB_BinaryOp accum,       /* optional accum for Z=accum(w(Rows),x)*/ \
-    const type x,                   /* scalar to assign to w(Rows)          */ \
+    type x,                         /* scalar to assign to w(Rows)          */ \
     const GrB_Index *Rows,          /* row indices                          */ \
     GrB_Index nRows,                /* number of row indices                */ \
     const GrB_Descriptor desc       /* descriptor for w(Rows) and M         */ \

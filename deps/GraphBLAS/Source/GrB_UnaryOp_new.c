@@ -11,8 +11,6 @@
 // user-callable.  The macro is used by default since it can capture the name
 // of the unary function.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 // the macro version of this function must first be #undefined
@@ -22,8 +20,8 @@ GrB_Info GrB_UnaryOp_new            // create a new user-defined unary operator
 (
     GrB_UnaryOp *unaryop,           // handle for the new unary operator
     GxB_unary_function function,    // pointer to the unary function
-    const GrB_Type ztype,           // type of output z
-    const GrB_Type xtype            // type of input x
+    GrB_Type ztype,                 // type of output z
+    GrB_Type xtype                  // type of input x
 )
 { 
     return (GB_UnaryOp_new (unaryop, function, ztype, xtype, "f")) ;

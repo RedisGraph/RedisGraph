@@ -25,7 +25,11 @@
 
 // Compare this function with the MATLAB equivalent, ktruss.m.
 
+// Modified for SuiteSparse:GraphBLAS V3.0:  support changed to a
+// GrB_Vector, for input to GxB_select.
+
 #define FREE_ALL                        \
+    GrB_free (Support) ;                \
     GrB_free (&supportop) ;             \
     GrB_free (&C) ;
 
@@ -70,6 +74,7 @@ GrB_Info ktruss_graphblas       // compute the k-truss of a graph
 
     GrB_Info info ;
     GxB_SelectOp supportop = NULL ;
+    GrB_Vector Support = NULL ;
 
     GrB_Index n ;
     GrB_Matrix C = NULL ;
@@ -78,7 +83,9 @@ GrB_Info ktruss_graphblas       // compute the k-truss of a graph
 
     // select operator
     int64_t support = (k-2) ;
-    OK (GxB_SelectOp_new (&supportop, support_function, GrB_INT64)) ;
+    OK (GxB_SelectOp_new (&supportop, support_function, GrB_INT64, GrB_INT64)) ;
+    OK (GrB_Vector_new (&Support, GrB_INT64, 1)) ;
+    OK (GrB_Vector_setElement (Support, support, 0)) ;
 
     // last_cnz = nnz (A)
     GrB_Index cnz, last_cnz ;
@@ -109,7 +116,7 @@ GrB_Info ktruss_graphblas       // compute the k-truss of a graph
         // C = C .* (C >= support)
         //----------------------------------------------------------------------
 
-        OK (GxB_select (C, NULL, NULL, supportop, C, &support, NULL)) ;
+        OK (GxB_select (C, NULL, NULL, supportop, C, Support, NULL)) ;
 
         double t3 = omp_get_wtime ( ) ;
         printf ("select time: %g\n", t3-t2) ;
@@ -126,6 +133,7 @@ GrB_Info ktruss_graphblas       // compute the k-truss of a graph
             (*p_C) = C ;                        // return the output matrix C
             (*p_nsteps) = nsteps ;              // return # of steps
             OK (GrB_free (&supportop)) ;        // free the select operator
+            OK (GrB_free (Support)) ;           // free the select Thunk
             return (GrB_SUCCESS) ;
         }
         last_cnz = cnz ;

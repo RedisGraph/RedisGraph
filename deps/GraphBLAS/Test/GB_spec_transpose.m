@@ -32,8 +32,8 @@ function C = GB_spec_transpose (C, Mask, accum, A, descriptor)
 % a few exceptions.
 %
 % (1) Internally it only works on dense matrices, since MATLAB supports logical
-% and double sparse matrices only.  As a result, the MATLAB GB_spec_* mimic
-% functions will be slow on large problems.
+% and double sparse matrices only.  As a result, the MATLAB GB_spec_* mimics
+% will be slow on large problems.
 %
 % (2) MATLAB does not allow explicit zeros in its sparse matrices. As a result,
 % the structural pattern of an input matrix A, sparse or dense, is assumed to
@@ -53,7 +53,7 @@ function C = GB_spec_transpose (C, Mask, accum, A, descriptor)
 % Use an empty value ([ ] or '') to obtain the default value for optional
 % parameters.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 %-------------------------------------------------------------------------------

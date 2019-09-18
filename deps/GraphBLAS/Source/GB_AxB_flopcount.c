@@ -50,7 +50,7 @@
 
 /*
     [m n] = size (B) ;
-    Bflops = zeros (1,n+1) ;
+    Bflops = zeros (1,n+1) ;        % (set to zero in the caller)
     for each column j in B:
         if (B (:,j) is empty) continue ;
         if (M is present and M (:,j) is empty) continue ;
@@ -67,24 +67,23 @@
             % numerical phase will compute: C(:,j)<M(:,j)> += A(:,k)*B(k,j),
             % which takes aknz flops, so:
             Bflops (j) += aknz
+            Bflops_per_entry (k,j) = aknz
         end
     end
 */ 
 
-// If Bflops is NULL, then this function is being called by a single thread.
-// Bflops is not computed.  Instead, the total_flops are computed, and the
-// function returns just the result of the test (total_flops <= floplimit).
-// total_flops is not returned, just the true/false result of the test.  This
-// allows the function to return early, once the total_flops exceeds the
-// threshold.
+// If Bflops and Bflops_per_entry are both NULL, then only the true/false
+// result of the test (total_flops <= floplimit) is returned.  This allows the
+// function to return early, once the total_flops exceeds the threshold.
 
-// PARALLEL: easy, one simple for-all loop, no dependencies
-
-#include "GB.h"
+#include "GB_mxm.h"
+#include "GB_ek_slice.h"
+#include "GB_bracket.h"
 
 bool GB_AxB_flopcount           // compute flops for C<M>=A*B or C=A*B
 (
-    int64_t *Bflops,            // size B->nvec+1, if present
+    int64_t *Bflops,            // size B->nvec+1 and all zero, if present
+    int64_t *Bflops_per_entry,  // size nnz(B)+1 and all zero, if present
     const GrB_Matrix M,         // optional mask matrix
     const GrB_Matrix A,
     const GrB_Matrix B,
@@ -109,13 +108,36 @@ bool GB_AxB_flopcount           // compute flops for C<M>=A*B or C=A*B
     // determine the number of threads to use
     //--------------------------------------------------------------------------
 
-    GB_GET_NTHREADS (nthreads, Context) ;
-    if (Bflops == NULL)
+    int64_t bnz = GB_NNZ (B) ;
+    int64_t bnvec = B->nvec ;
+
+    GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
+    int nthreads = GB_nthreads (bnz + bnvec, chunk, nthreads_max) ;
+
+    //--------------------------------------------------------------------------
+    // determine the kind of result to return
+    //--------------------------------------------------------------------------
+
+    bool check_quick_return = (Bflops == NULL) && (Bflops_per_entry == NULL) ;
+
+    #ifdef GB_DEBUG
+    if (Bflops != NULL)
     {
-        // a single thread is testing if (total_flops <= floplimit)
-        ASSERT (Context == NULL) ;
-        ASSERT (nthreads == 1) ;
+        // Bflops is set to zero in the calller
+        for (int64_t kk = 0 ; kk <= bnvec ; kk++)
+        {
+            ASSERT (Bflops [kk] == 0) ;
+        }
     }
+    if (Bflops_per_entry != NULL)
+    {
+        // Bflops_per_entry is set to zero in the calller
+        for (int64_t pB = 0 ; pB <= bnz ; pB++)
+        {
+            ASSERT (Bflops_per_entry [pB] == 0) ;
+        }
+    }
+    #endif
 
     //--------------------------------------------------------------------------
     // get the mask, if present
@@ -127,14 +149,12 @@ bool GB_AxB_flopcount           // compute flops for C<M>=A*B or C=A*B
     int64_t mnvec = 0 ;
     bool M_is_hyper = GB_IS_HYPER (M) ;
     if (M != NULL)
-    {
+    { 
         Mh = M->h ;
         Mp = M->p ;
         Mi = M->i ;
         mnvec = M->nvec ;
     }
-    int64_t mpleft = 0 ;            // mpleft is modified below
-    int64_t mpright = mnvec - 1 ;
 
     //--------------------------------------------------------------------------
     // get A and B
@@ -149,148 +169,330 @@ bool GB_AxB_flopcount           // compute flops for C<M>=A*B or C=A*B
     const int64_t *restrict Bh = B->h ;
     const int64_t *restrict Bp = B->p ;
     const int64_t *restrict Bi = B->i ;
-    int64_t bnvec = B->nvec ;
     bool B_is_hyper = GB_IS_HYPER (B) ;
+
+    //--------------------------------------------------------------------------
+    // construct the parallel tasks
+    //--------------------------------------------------------------------------
+
+    // Task tid does entries pstart_slice [tid] to pstart_slice [tid+1]-1
+    // and vectors kfirst_slice [tid] to klast_slice [tid].  The first and
+    // last vectors may be shared with prior slices and subsequent slices.
+
+    int ntasks = (nthreads == 1) ? 1 : (64 * nthreads) ;
+    ntasks = GB_IMIN (ntasks, bnz) ;
+    ntasks = GB_IMAX (ntasks, 1) ;
+    int64_t pstart_slice [ntasks+1] ;
+    int64_t kfirst_slice [ntasks] ;
+    int64_t klast_slice  [ntasks] ;
+
+    GB_ek_slice (pstart_slice, kfirst_slice, klast_slice, B, ntasks) ;
 
     //--------------------------------------------------------------------------
     // compute flop counts for C<M> = A*B
     //--------------------------------------------------------------------------
 
-    // for each column of B:
-    // PARALLEL: no dependencies in this loop
-    // mpleft is threadprivate
-
-    // total_flops is only needed if Bflops is NULL, and in that case,
-    // nthreads is 1.
+    int64_t Wfirst [ntasks], Wlast [ntasks], Flops [ntasks+1] ;
     int64_t total_flops = 0 ;
 
-    for (int64_t kk = 0 ; kk < bnvec ; kk++)
+    #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
+    for (int tid = 0 ; tid < ntasks ; tid++)
     {
 
-        // The (kk)th iteration of this loop computes Bflops [kk], if not NULL.
-        // All iterations are completely independent.
-
         //----------------------------------------------------------------------
-        // get B(:,j)
+        // skip this task if limit already reached
         //----------------------------------------------------------------------
 
-        int64_t j = (B_is_hyper) ? Bh [kk] : kk ;
-        int64_t pB     = Bp [kk] ;
-        int64_t pB_end = Bp [kk+1] ;
-
-        // C(:,j) is empty if B(:,j) is empty
-        int64_t bjnz = pB_end - pB ;
-        if (bjnz == 0)
+        bool quick_return = false ;
+        int64_t flops_so_far = 0 ;
+        if (check_quick_return)
         {
-            if (Bflops != NULL)
             { 
-                Bflops [kk] = 0 ;
+                #pragma omp atomic read
+                flops_so_far = total_flops ;
             }
-            continue ;
+            if (flops_so_far > floplimit) continue ;
         }
 
         //----------------------------------------------------------------------
-        // see if M(:,j) is present and non-empty
+        // get the task descriptor
         //----------------------------------------------------------------------
 
-        int64_t im_first = -1, im_last = -1 ;
-        if (M != NULL)
+        int64_t kfirst = kfirst_slice [tid] ;
+        int64_t klast  = klast_slice  [tid] ;
+        int64_t task_flops = 0 ;
+        Wfirst [tid] = 0 ;
+        Wlast  [tid] = 0 ;
+        int64_t mpleft = 0 ;     // for GB_lookup of the mask M
+
+        //----------------------------------------------------------------------
+        // count flops for vectors kfirst to klast of B
+        //----------------------------------------------------------------------
+
+        for (int64_t kk = kfirst ; !quick_return && (kk <= klast) ; kk++)
         {
-            // reuse mpleft from the last binary search of M->h, to speed up
-            // the search.  This is just a heuristic, and resetting mpleft to
-            // zero here would be work too (just more of M->h would be
-            // searched; the results would be the same), as in:
-            // int64_t mpleft = 0 ;     // this works too
-            // To reuse mpleft from its prior iteration, each thread needs its
-            // own private mpleft.
-            int64_t pM, pM_end ;
-            GB_lookup (M_is_hyper, Mh, Mp, &mpleft, mpright, j, &pM, &pM_end) ;
-            int64_t mjnz = pM_end - pM ;
-            if (mjnz == 0)
-            {
-                // C(:,j) is empty if M(:,j) is empty
-                if (Bflops != NULL)
-                { 
-                    Bflops [kk] = 0 ;
-                }
-                continue ;
-            }
-            // M(:,j) has at least one entry; get 1st and last index in M(:,j)
-            im_first = Mi [pM] ;
-            im_last  = Mi [pM_end-1] ;
-        }
 
-        //----------------------------------------------------------------------
-        // trim Ah on right
-        //----------------------------------------------------------------------
+            //------------------------------------------------------------------
+            // find the part of B(:,j) to be computed by this task
+            //------------------------------------------------------------------
 
-        // Ah [0..A->nvec-1] holds the set of non-empty vectors of A, but only
-        // vectors k corresponding to nonzero entries B(k,j) are accessed for
-        // this vector B(:,j).  If nnz (B(:,j)) > 2, prune the search space on
-        // the right, so the remaining calls to GB_lookup will only need to
-        // search Ah [pleft...pright-1].  pright does not change.  pleft is
-        // advanced as B(:,j) is traversed, since the indices in B(:,j) are
-        // sorted in ascending order.
+            int64_t pB, pB_end ;
+            GB_get_pA_and_pC (&pB, &pB_end, NULL,
+                tid, kk, kfirst, klast, pstart_slice, NULL, NULL, Bp) ;
 
-        int64_t pleft = 0 ;
-        int64_t pright = anvec-1 ;
-        if (A_is_hyper && bjnz > 2)
-        { 
-            // trim Ah [0..pright] to remove any entries past the last B(:,j)
-            GB_bracket_right (Bi [pB_end-1], Ah, 0, &pright) ;
-        }
+            int64_t j = (B_is_hyper) ? Bh [kk] : kk ;
 
-        //----------------------------------------------------------------------
-        // count the flops to compute C(:,j)<M(:,j)> = A*B(:,j)
-        //----------------------------------------------------------------------
+            // C(:,j) is empty if B(:,j) is empty
+            int64_t bjnz = pB_end - pB ;
+            if (bjnz == 0) continue ;
 
-        int64_t bjflops = 0 ;
+            //------------------------------------------------------------------
+            // see if M(:,j) is present and non-empty
+            //------------------------------------------------------------------
 
-        for ( ; pB < pB_end ; pB++)
-        {
-            // B(k,j) is nonzero
-            int64_t k = Bi [pB] ;
-
-            // find A(:,k), reusing pleft since Bi [...] is sorted
-            int64_t pA, pA_end ;
-            GB_lookup (A_is_hyper, Ah, Ap, &pleft, pright, k, &pA, &pA_end) ;
-
-            // skip if A(:,k) empty
-            int64_t aknz = pA_end - pA ;
-            if (aknz == 0) continue ;
-
-            // skip if intersection of A(:,k) and M(:,j) is empty
+            int64_t im_first = -1, im_last = -1 ;
             if (M != NULL)
             { 
-                // A(:,k) is non-empty; get the first and last index of A(:,k)
-                int64_t alo = Ai [pA] ;
-                int64_t ahi = Ai [pA_end-1] ;
-                if (ahi < im_first || alo > im_last) continue ;
+                int64_t mpright = mnvec - 1 ;
+                int64_t pM, pM_end ;
+                GB_lookup (M_is_hyper, Mh, Mp, &mpleft, mpright, j,
+                    &pM, &pM_end) ;
+                int64_t mjnz = pM_end - pM ;
+                // C(:,j) is empty if M(:,j) is empty
+                if (mjnz == 0) continue ;
+                // M(:,j) has at least 1 entry; get 1st and last index in M(:,j)
+                im_first = Mi [pM] ;
+                im_last  = Mi [pM_end-1] ;
             }
 
-            // increment by flops to compute the saxpy operation
-            // C(:,j)<M(:,j)> += A(:,k)*B(k,j).
-            bjflops += aknz ;
+            //------------------------------------------------------------------
+            // trim Ah on right
+            //------------------------------------------------------------------
 
-            // check for a quick return
-            if (Bflops == NULL)
+            // Ah [0..A->nvec-1] holds the set of non-empty vectors of A, but
+            // only vectors k corresponding to nonzero entries B(k,j) are
+            // accessed for this vector B(:,j).  If nnz (B(:,j)) > 2, prune the
+            // search space on the right, so the remaining calls to GB_lookup
+            // will only need to search Ah [pleft...pright-1].  pright does not
+            // change.  pleft is advanced as B(:,j) is traversed, since the
+            // indices in B(:,j) are sorted in ascending order.
+
+            int64_t pleft = 0 ;
+            int64_t pright = anvec-1 ;
+            if (A_is_hyper && bjnz > 2)
+            { 
+                // trim Ah [0..pright] to remove any entries past last B(:,j)
+                GB_bracket_right (Bi [pB_end-1], Ah, 0, &pright) ;
+            }
+
+            //------------------------------------------------------------------
+            // count the flops to compute C(:,j)<M(:,j)> = A*B(:,j)
+            //------------------------------------------------------------------
+
+            int64_t bjflops = 0 ;
+
+            for ( ; pB < pB_end ; pB++)
             {
-                // the work is being done by a single thread
-                total_flops += aknz ;
-                if (total_flops > floplimit)
+                // B(k,j) is nonzero
+                int64_t k = Bi [pB] ;
+
+                // find A(:,k), reusing pleft since Bi [...] is sorted
+                int64_t pA, pA_end ;
+                GB_lookup (A_is_hyper, Ah, Ap, &pleft, pright, k, &pA, &pA_end);
+
+                // skip if A(:,k) empty
+                int64_t aknz = pA_end - pA ;
+                if (aknz == 0) continue ;
+
+                // skip if intersection of A(:,k) and M(:,j) is empty
+                if (M != NULL)
                 { 
-                    // quick return:  (total_flops <= floplimit) is false.
-                    // total_flops is not returned since it is only partially
-                    // computed.  However, it does not exceed the floplimit
-                    // threshold, so the result is false.
-                    return (false) ;
+                    // A(:,k) is non-empty; get first and last index of A(:,k)
+                    int64_t alo = Ai [pA] ;
+                    int64_t ahi = Ai [pA_end-1] ;
+                    if (ahi < im_first || alo > im_last) continue ;
+                }
+
+                // increment by flops for the single entry B(k,j)
+                // C(:,j)<M(:,j)> += A(:,k)*B(k,j).
+                bjflops += aknz ;
+
+                if (Bflops_per_entry != NULL)
+                { 
+                    // flops for the single entry, B(k,j)
+                    Bflops_per_entry [pB] = aknz ;
+                }
+
+                // check for a quick return
+                if (check_quick_return)
+                {
+                    flops_so_far += aknz ;
+                    if (flops_so_far > floplimit)
+                    { 
+                        // flop limit has been reached; terminate this and all
+                        // other tasks
+                        quick_return = true ;
+                        break ;
+                    }
+                }
+            }
+
+            //------------------------------------------------------------------
+            // sum up the flops for this task
+            //------------------------------------------------------------------
+
+            task_flops += bjflops ;
+
+            //------------------------------------------------------------------
+            // log the flops for B(:,j)
+            //------------------------------------------------------------------
+
+            if (Bflops != NULL)
+            { 
+                if (kk == kfirst)
+                { 
+                    Wfirst [tid] = bjflops ;
+                }
+                else if (kk == klast)
+                { 
+                    Wlast [tid] = bjflops ;
+                }
+                else
+                { 
+                    Bflops [kk] = bjflops ;
                 }
             }
         }
 
-        if (Bflops != NULL)
+        //----------------------------------------------------------------------
+        // log the flops for this task
+        //----------------------------------------------------------------------
+
+        Flops [tid] = task_flops ;
+        if (check_quick_return)
         { 
-            Bflops [kk] = bjflops ;
+            #pragma omp atomic update
+            total_flops += task_flops ;
+        }
+    }
+
+    //--------------------------------------------------------------------------
+    // finalize the results
+    //--------------------------------------------------------------------------
+
+    bool result ;
+
+    if (check_quick_return)
+    { 
+
+        // The only output of this function is the result of this test:
+        result = (total_flops <= floplimit) ;
+
+    }
+    else
+    {
+
+        //----------------------------------------------------------------------
+        // cumulative sum of Bflops and Bflops_per_entry
+        //----------------------------------------------------------------------
+
+        GB_cumsum (Flops, ntasks, NULL, 1) ;
+        int64_t total_flops = Flops [ntasks] ;
+        result = (total_flops <= floplimit) ;
+
+        if (Bflops != NULL)
+        {
+
+            //------------------------------------------------------------------
+            // reduce the first and last vector of each slice
+            //------------------------------------------------------------------
+
+            // See also Template/GB_reduce_each_vector.c
+
+            int64_t kprior = -1 ;
+
+            for (int tid = 0 ; tid < ntasks ; tid++)
+            {
+
+                //--------------------------------------------------------------
+                // sum up the partial flops that task tid computed for kfirst
+                //--------------------------------------------------------------
+
+                int64_t kfirst = kfirst_slice [tid] ;
+                int64_t klast  = klast_slice  [tid] ;
+
+                if (kfirst <= klast)
+                {
+                    int64_t pB = pstart_slice [tid] ;
+                    int64_t pB_end =
+                        GB_IMIN (Bp [kfirst+1], pstart_slice [tid+1]) ;
+                    if (pB < pB_end)
+                    {
+                        if (kprior < kfirst)
+                        { 
+                            // This task is the first one that did work on
+                            // B(:,kfirst), so use it to start the reduction.
+                            Bflops [kfirst] = Wfirst [tid] ;
+                        }
+                        else
+                        { 
+                            // subsequent task for B(:,kfirst)
+                            Bflops [kfirst] += Wfirst [tid] ;
+                        }
+                        kprior = kfirst ;
+                    }
+                }
+
+                //--------------------------------------------------------------
+                // sum up the partial flops that task tid computed for klast
+                //--------------------------------------------------------------
+
+                if (kfirst < klast)
+                {
+                    int64_t pB = Bp [klast] ;
+                    int64_t pB_end   = pstart_slice [tid+1] ;
+                    if (pB < pB_end)
+                    {
+                        /* if */ ASSERT (kprior < klast) ;
+                        { 
+                            // This task is the first one that did work on
+                            // B(:,klast), so use it to start the reduction.
+                            Bflops [klast] = Wlast [tid] ;
+                        }
+                        /*
+                        else
+                        {
+                            // If kfirst < klast and B(:,klast) is not empty,
+                            // then this task is always the first one to do
+                            // work on B(:,klast), so this case is never used.
+                            ASSERT (GB_DEAD_CODE) ;
+                            // subsequent task to work on B(:,klast)
+                            Bflops [klast] += Wlast [tid] ;
+                        }
+                        */
+                        kprior = klast ;
+                    }
+                }
+            }
+
+            //------------------------------------------------------------------
+            // cumulative sum of Bflops
+            //------------------------------------------------------------------
+
+            // Bflops = cumsum ([0 Bflops]) ;
+            ASSERT (Bflops [bnvec] == 0) ;
+            GB_cumsum (Bflops, bnvec, NULL, nthreads) ;
+            // Bflops [bnvec] is now the total flop count
+            ASSERT (total_flops == Bflops [bnvec]) ;
+        }
+
+        if (Bflops_per_entry != NULL)
+        { 
+            // Bflops_per_entry = cumsum ([0 Bflops_per_entry]) ;
+            ASSERT (Bflops_per_entry [bnz] == 0) ;
+            GB_cumsum (Bflops_per_entry, bnz, NULL, nthreads) ;
+            // Bflops_per_entry [bnz] is now the total flop count
+            ASSERT (total_flops == Bflops_per_entry [bnz]) ;
         }
     }
 
@@ -298,19 +500,6 @@ bool GB_AxB_flopcount           // compute flops for C<M>=A*B or C=A*B
     // return result
     //--------------------------------------------------------------------------
 
-    if (Bflops == NULL)
-    { 
-        // total_flops has been fullly computed, but Bflops has not.  Just
-        // return the result of the test with the floplimit.
-        return (total_flops <= floplimit) ;
-    }
-    else
-    {
-        // Bflops = cumsum ([0 Bflops]) ;
-        Bflops [bnvec] = 0 ;
-        GB_cumsum (Bflops, bnvec, NULL, Context) ;
-        // Bflops [bnvec] is now the total flop count
-        return (Bflops [bnvec] <= floplimit) ;
-    }
+    return (result) ;
 }
 

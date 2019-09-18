@@ -17,8 +17,6 @@
 // So to extract just the row and col indices, pass I and J as non-NULL,
 // and X as NULL.  This is like [I,J,~] = find (A).
 
-// parallel: not here, but in see GB_extractTuples.
-
 #include "GB.h"
 
 #define GB_EXTRACT(type,T)                                                    \
@@ -34,7 +32,6 @@ GrB_Info GrB_Matrix_extractTuples_ ## T     /* [I,J,X] = find (A) */          \
     GB_WHERE ("GrB_Matrix_extractTuples_" GB_STR(T) " (I, J, X, nvals, A)") ; \
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;                                         \
     GB_RETURN_IF_NULL (p_nvals) ;                                             \
-    Context->nthreads = GxB_DEFAULT ;   /* no descriptor, so use default rule*/\
     return (GB_extractTuples (I, J, X, p_nvals, GB_ ## T ## _code, A,         \
         Context)) ;                                                           \
 }

@@ -7,9 +7,7 @@
 
 //------------------------------------------------------------------------------
 
-// parallel: not here; see GB_kron_kernel
-
-#include "GB.h"
+#include "GB_kron.h"
 
 GrB_Info GxB_kron                   // C<M> = accum (C, kron(A,B))
 (

@@ -2,7 +2,7 @@
 // GB_mex_band: C = tril (triu (A,lo), hi), or with A'
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -15,8 +15,10 @@
 
 #define FREE_ALL                        \
 {                                       \
+    GB_SCALAR_FREE (&Thunk) ;           \
     GB_MATRIX_FREE (&C) ;               \
     GB_MATRIX_FREE (&A) ;               \
+    GrB_free (&Thunk_type) ;            \
     GrB_free (&op) ;                    \
     GrB_free (&desc) ;                  \
     GB_mx_put_global (true, 0) ;        \
@@ -33,15 +35,23 @@
     }                                                   \
 }
 
-bool band (GrB_Index i, GrB_Index j, GrB_Index nrows,
-    GrB_Index ncols, const void *x, const void *k)
+typedef struct
 {
-    int64_t *lohi = (int64_t *) k ;
+    int64_t lo ;
+    int64_t hi ;
+} LoHi_type ; 
+
+bool band (GrB_Index i, GrB_Index j, GrB_Index nrows,
+    GrB_Index ncols, /* x is unused: */ const void *x, const LoHi_type *thunk) ;
+
+bool band (GrB_Index i, GrB_Index j, GrB_Index nrows,
+    GrB_Index ncols, /* x is unused: */ const void *x, const LoHi_type *thunk)
+{
     int64_t i2 = (int64_t) i ;
     int64_t j2 = (int64_t) j ;
-//  printf ("i %lld j %lld lo %lld hi %lld\n", i2, j2, lohi [0], lohi [1]) ;
+//  printf ("i %lld j %lld lo %lld hi %lld\n", i2, j2, thunk->lo, thunk->hi) ;
 //  printf ("   j-i %lld\n", j2-i2) ;
-    return ((lohi [0] <= (j2-i2)) && ((j2-i2) <= lohi [1])) ;
+    return ((thunk->lo <= (j2-i2)) && ((j2-i2) <= thunk->hi)) ;
 }
 
 void mexFunction
@@ -59,6 +69,8 @@ void mexFunction
     GxB_SelectOp op = NULL ;
     GrB_Info info ;
     GrB_Descriptor desc = NULL ;
+    GxB_Scalar Thunk = NULL ;
+    GrB_Type Thunk_type = NULL ;
 
     #define GET_DEEP_COPY ;
     #define FREE_DEEP_COPY ;
@@ -78,10 +90,24 @@ void mexFunction
         mexErrMsgTxt ("A failed") ;
     }
 
-    // get ho and hi
-    int64_t lohi [2] ;
-    lohi [0] = (int64_t) mxGetScalar (pargin [1]) ;
-    lohi [1] = (int64_t) mxGetScalar (pargin [2]) ;
+    // create the Thunk
+    #ifdef MY_BAND
+    Thunk_type = My_bandwidth_type ;
+    my_bandwidth_type bandwidth ;
+    #else
+    LoHi_type bandwidth  ;
+    OK (GrB_Type_new (&Thunk_type, sizeof (LoHi_type))) ;
+    #endif
+
+    // get lo and hi
+    bandwidth.lo = (int64_t) mxGetScalar (pargin [1]) ;
+    bandwidth.hi = (int64_t) mxGetScalar (pargin [2]) ;
+
+    OK (GxB_Scalar_new (&Thunk, Thunk_type)) ;
+    OK (GxB_Scalar_setElement_UDT (Thunk, (void *) &bandwidth)) ;
+    GrB_Index ignore ;
+    OK (GxB_Scalar_nvals (&ignore, Thunk)) ;
+    // GxB_print (Thunk, 3) ;
 
     // get atranspose
     bool atranspose = false ;
@@ -95,6 +121,8 @@ void mexFunction
     // get the pre/run-time option
     int GET_SCALAR (4, int, pre, 0) ;
 
+    GB_MEX_TIC ;
+
     // create operator
     op = NULL ;
     if (pre)
@@ -107,7 +135,7 @@ void mexFunction
     if (op == NULL)
     {
         // use the run-time defined operator, from the band function
-        METHOD (GxB_SelectOp_new (&op, band, NULL)) ;
+        METHOD (GxB_SelectOp_new (&op, band, NULL, Thunk_type)) ;
     }
 
     // create result matrix C
@@ -125,12 +153,14 @@ void mexFunction
     {
         // this is just to test the Vector version
         OK (GxB_select ((GrB_Vector) C, NULL, NULL, op, (GrB_Vector) A,
-            lohi, NULL)) ;
+            Thunk, NULL)) ;
     }
     else
     {
-        OK (GxB_select (C, NULL, NULL, op, A, lohi, desc)) ;
+        OK (GxB_select (C, NULL, NULL, op, A, Thunk, desc)) ;
     }
+
+    GB_MEX_TOC ;
 
     // return C to MATLAB as a sparse matrix and free the GraphBLAS C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C output", false) ;

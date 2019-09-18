@@ -18,8 +18,6 @@
 // ANSI C.  The function version does not allow the name of the ctype to be
 // saved in the new GraphBLAS type, however.  It is given the generic name.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 // the macro version of this function must first be #undefined

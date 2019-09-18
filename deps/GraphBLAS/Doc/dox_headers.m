@@ -25,9 +25,28 @@ for k = 1:length(d)
     fin = file ((len-1):len) ;
 
     if (isequal (file, 'GB_AxB.h'))
-
         fprintf (ff,'\n\n/** \\file %s\n', file) ;
-        fprintf (ff,'\\brief Source/Generator/GB_AxB.h: used to create GB_AxB__semirings.h\n') ;
+        fprintf (ff,'\\brief Source/Generator/GB_AxB.h: used to create GB_AxB__include.h\n') ;
+        fprintf (ff,'*/\n') ;
+
+    elseif (isequal (file, 'GB_binop.h'))
+        fprintf (ff,'\n\n/** \\file %s\n', file) ;
+        fprintf (ff,'\\brief Source/Generator/GB_binop.h: used to create GB_binop__include.h\n') ;
+        fprintf (ff,'*/\n') ;
+
+    elseif (isequal (file, 'GB_red.h'))
+        fprintf (ff,'\n\n/** \\file %s\n', file) ;
+        fprintf (ff,'\\brief Source/Generator/GB_red.h: used to create GB_red__include.h\n') ;
+        fprintf (ff,'*/\n') ;
+
+    elseif (isequal (file, 'GB_sel.h'))
+        fprintf (ff,'\n\n/** \\file %s\n', file) ;
+        fprintf (ff,'\\brief Source/Generator/GB_sel.h: used to create GB_sel__include.h\n') ;
+        fprintf (ff,'*/\n') ;
+
+    elseif (isequal (file, 'GB_unaryop.h'))
+        fprintf (ff,'\n\n/** \\file %s\n', file) ;
+        fprintf (ff,'\\brief Source/Generator/GB_unaryop.h: used to create GB_unaryop__include.h\n') ;
         fprintf (ff,'*/\n') ;
 
     elseif (isequal (fin, '.c') || isequal (fin, '.h'))

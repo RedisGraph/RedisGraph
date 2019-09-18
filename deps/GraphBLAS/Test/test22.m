@@ -1,7 +1,7 @@
 function test22(fulltest)
 %TEST22 test GrB_transpose
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin < 1)
@@ -9,7 +9,7 @@ if (nargin < 1)
     fulltest = 0 ;
 end
 
-[ops unary_ops add_ops classes] = GB_spec_opsall ;
+[mult_ops, ~, ~, classes, ~, ~] = GB_spec_opsall ;
 
 if (fulltest)
     fprintf ('\n==== exhaustive test for GB_mex_transpose:\n') ;
@@ -131,12 +131,12 @@ for k0 = 1:size (problems,1) ;
             Cin.class = cinclass ;
 
             % try every operator
-            for k3 = 0:size (ops,1)
+            for k3 = 0:size (mult_ops,1)
                 if (k3 == 0)
                     op = '' ;
                     nclasses = 1 ;
                 else
-                    op = ops {k3,1} ;
+                    op = mult_ops {k3,1} ;
                     nclasses = length (classes) ;
                 end
 

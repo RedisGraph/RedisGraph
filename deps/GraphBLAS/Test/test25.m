@@ -1,14 +1,12 @@
 function test25
 %TEST25 test GxB_select
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-fprintf ('\nquick GxB_select tests\n') ;
+fprintf ('\ntest25: GxB_select tests\n') ;
 
-[mult_ops unary_ops add_ops classes semirings] = GB_spec_opsall ;
-
-select_ops = { 'tril', 'triu', 'diag', 'offdiag', 'nonzero' } ;
+[~, ~, ~, classes, ~, select_ops] = GB_spec_opsall ;
 
 rng ('default') ;
 
@@ -16,7 +14,7 @@ m = 10 ;
 n = 6 ;
 dt = struct ('inp0', 'tran') ;
 
-for k1 = 11 % Was: 1:length(classes)
+for k1 = 1:length(classes)
     aclass = classes {k1} ;
     fprintf ('%s: ', aclass) ;
 
@@ -55,10 +53,11 @@ for k1 = 11 % Was: 1:length(classes)
     Mask = GB_random_mask (m, n, 0.5, M_is_csc, M_is_hyper) ;
     Mask.hyper_ratio = hm ;
 
+    fprintf ('.') ;
+
     for k2 = 1:length(select_ops)
         op = select_ops {k2} ;
         % fprintf ('%s ', op) ;
-        fprintf ('.') ;
 
         for k = -m:3:n % Was: [-m:n]
 

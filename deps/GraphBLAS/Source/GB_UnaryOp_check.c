@@ -7,7 +7,8 @@
 
 //------------------------------------------------------------------------------
 
-// not parallel: this function does O(1) work and is already thread-safe.
+// for additional diagnostics, use:
+// #define GB_DEVELOPER 1
 
 #include "GB.h"
 
@@ -20,18 +21,18 @@ GrB_Info GB_UnaryOp_check   // check a GraphBLAS unary operator
     FILE *f,                // file for output
     GB_Context Context
 )
-{ 
+{
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
-    if (pr > 0) GBPR ("\nGraphBLAS UnaryOp: %s: ", GB_NAME) ;
+    GBPR0 ("\nGraphBLAS UnaryOp: %s: ", GB_NAME) ;
 
     if (op == NULL)
     { 
         // GrB_error status not modified since this may be an optional argument
-        if (pr > 0) GBPR ("NULL\n") ;
+        GBPR0 ("NULL\n") ;
         return (GrB_NULL_POINTER) ;
     }
 
@@ -44,24 +45,24 @@ GrB_Info GB_UnaryOp_check   // check a GraphBLAS unary operator
     if (pr > 0)
     { 
         if (op->opcode == GB_USER_C_opcode)
-        {
+        { 
             GBPR ("(compile-time user-defined) ") ;
         }
         else if (op->opcode == GB_USER_R_opcode)
-        {
+        { 
             GBPR ("(run-time user-defined) ") ;
         }
         else
-        {
+        { 
             GBPR ("(built-in) ") ;
         }
     }
 
-    if (pr > 0) GBPR ("z=%s(x)\n", op->name) ;
+    GBPR0 ("z=%s(x)\n", op->name) ;
 
     if (op->function == NULL)
     { 
-        if (pr > 0) GBPR ("function pointer is NULL\n") ;
+        GBPR0 ("function pointer is NULL\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "UnaryOp has a NULL function pointer: %s [%s]",
             GB_NAME, op->name))) ;
@@ -76,7 +77,7 @@ GrB_Info GB_UnaryOp_check   // check a GraphBLAS unary operator
           op->opcode == GB_USER_C_opcode ||       // unary or binary
           op->opcode == GB_USER_R_opcode))        // unary or binary
     { 
-        if (pr > 0) GBPR ("invalid opcode\n") ;
+        GBPR0 ("invalid opcode\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "UnaryOp has an invalid opcode: %s [%s]", GB_NAME, op->name))) ;
     }
@@ -86,7 +87,7 @@ GrB_Info GB_UnaryOp_check   // check a GraphBLAS unary operator
     info = GB_Type_check (op->ztype, "ztype", pr, f, Context) ;
     if (info != GrB_SUCCESS)
     { 
-        if (pr > 0) GBPR ("UnaryOP has an invalid ztype\n") ;
+        GBPR0 ("UnaryOP has an invalid ztype\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "UnaryOp has an invalid ztype: %s [%s]", GB_NAME, op->name))) ;
     }
@@ -94,7 +95,7 @@ GrB_Info GB_UnaryOp_check   // check a GraphBLAS unary operator
     info = GB_Type_check (op->xtype, "xtype", pr, f, Context) ;
     if (info != GrB_SUCCESS)
     { 
-        if (pr > 0) GBPR ("UnaryOP has an invalid xtype\n") ;
+        GBPR0 ("UnaryOP has an invalid xtype\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "UnaryOp has an invalid xtype: %s [%s]", GB_NAME, op->name))) ;
     }

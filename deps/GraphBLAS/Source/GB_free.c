@@ -12,8 +12,6 @@
 // This function is called via the GB_MATRIX_FREE(A) and GB_VECTOR_FREE(v)
 // macros.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GB_free                // free a matrix

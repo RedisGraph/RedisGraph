@@ -10,8 +10,9 @@
 // The input matrix can have shallow A->p and/or A->h components.  If the
 // hypersparsity is changed, these components are no longer shallow.  If the
 // method fails and the matrix is shallow, all content is removed or freed.
-
-// parallel: not here
+// The input matrix may be jumbled; this is not an error condition.  Zombies
+// are OK, but A never has pending tuples.  However, this function is agnostic
+// about pending tuples so they could be OK.
 
 #include "GB.h"
 
@@ -26,14 +27,8 @@ GrB_Info GB_to_hyper_conform    // conform a matrix to its desired format
     // check inputs
     //--------------------------------------------------------------------------
 
-    // GB_subref_numeric can return a matrix with jumbled columns, since it
-    // soon be transposed (and sorted) in GB_accum_mask.  However, it passes
-    // the jumbled matrix to GB_to_hyper_conform.  This function does not
-    // access the row indices at all, so it works fine if the columns have
-    // jumbled row indices.
-
     ASSERT_OK_OR_JUMBLED (GB_check (A, "A to conform", GB0)) ;
-    ASSERT (!GB_ZOMBIES (A)) ;
+    ASSERT (GB_ZOMBIES_OK (A)) ;
     ASSERT (!GB_PENDING (A)) ;
 
     //--------------------------------------------------------------------------

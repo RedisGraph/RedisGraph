@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GxB_SelectOp_xtype: return the type of x for z=f(x)
+// GxB_SelectOp_xtype: return the type of x for z=f(x,thunk)
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
@@ -7,14 +7,12 @@
 
 //------------------------------------------------------------------------------
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GxB_SelectOp_xtype         // return the type of x or NULL if generic
 (
     GrB_Type *xtype,                // return type of input x
-    const GxB_SelectOp selectop     // select operator
+    GxB_SelectOp selectop           // select operator
 )
 { 
 

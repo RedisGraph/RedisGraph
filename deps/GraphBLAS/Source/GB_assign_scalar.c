@@ -17,9 +17,7 @@
 
 // Compare with GB_subassign_scalar, which uses M and C_replace differently
 
-// parallel: not here; see GB_assign
-
-#include "GB.h"
+#include "GB_assign.h"
 
 GrB_Info GB_assign_scalar           // C<M>(Rows,Cols) += x
 (
@@ -41,7 +39,7 @@ GrB_Info GB_assign_scalar           // C<M>(Rows,Cols) += x
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (GB_ALIAS_OK (C, M)) ;
+    // C may be aliased with M
 
     GB_RETURN_IF_NULL (scalar) ;
     ASSERT (scalar_code <= GB_UDT_code) ;

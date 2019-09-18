@@ -1,6 +1,11 @@
 function test87
 %TEST87 performance test of GrB_mxm
 
+[save save_chunk] = nthreads_get ;
+chunk = 4096 ;
+nthreads = feature ('numcores') ;
+nthreads_set (nthreads, chunk) ;
+
 rng ('default') ;
 
 %-------------------------------------------------------------------------------
@@ -29,14 +34,14 @@ C3 = GB_mex_AxB (A',B) ;
 toc
 
 fprintf ('GrB A''*B native:\n') ;
-tic
+% tic
 C4 = GB_mex_AxB (A,B, true) ;
-toc
+% toc
 [tg method] = gbresults ;
 
-assert (isequal (C, C2)) ;
-assert (isequal (C, C3)) ;
-assert (isequal (C, C4)) ;
+assert (norm (C-C2,1) / norm (C,1) < 1e-12)
+assert (norm (C-C3,1) / norm (C,1) < 1e-12)
+assert (norm (C-C4,1) / norm (C,1) < 1e-12)
 
 fprintf ('MATLAB: %10.4f  GB:auto: %10.4f(%s) speedup %10.4f\n', ...
     tm, tg, method (1), tm/tg) ;
@@ -81,9 +86,9 @@ toc
 fprintf ('MATLAB: %10.4f  GB:auto: %10.4f(%s) speedup %10.4f\n', ...
     tm, tg, method (1), tm/tg) ;
 
-assert (isequal (C, C2)) ;
-assert (isequal (C, C3)) ;
-assert (isequal (C, C4)) ;
+assert (norm (C-C2,1) / norm (C,1) < 1e-12)
+assert (norm (C-C3,1) / norm (C,1) < 1e-12)
+assert (norm (C-C4,1) / norm (C,1) < 1e-12)
 
 %-------------------------------------------------------------------------------
 fprintf ('\n--------------------------------------------------\n') ;
@@ -146,6 +151,7 @@ tic
 y3 = GB_mex_AxB (A,x, true) ;
 toc
 [tg method] = gbresults ;
+fprintf ('GrB time is %g\n', tg) ;
 
 fprintf ('GrB (A'')xB outer:\n') ;
 tic
@@ -154,7 +160,8 @@ toc
 
 assert (isequal (y1, sparse (y0))) ;
 assert (isequal (y1, y2)) ;
-assert (isequal (y1, y3)) ;
+% assert (isequal (y1, y3)) ;
+assert (norm (y1-y3,1) / norm (y1,1) < eps)
 
 fprintf ('MATLAB: %10.4f  GB:auto: %10.4f(%s) speedup %10.4f\n', ...
     tm, tg, method (1), tm/tg) ;
@@ -193,7 +200,8 @@ toc
 
 assert (isequal (y1, sparse (y0))) ;
 assert (isequal (y1, y2)) ;
-assert (isequal (y1, y3)) ;
+% assert (isequal (y1, y3)) ;
+assert (norm (y1-y2,1) / norm (y2,1) < eps)
 
 fprintf ('MATLAB: %10.4f  GB:auto: %10.4f(%s) speedup %10.4f\n', ...
     tm, tg, method (1), tm/tg) ;
@@ -220,7 +228,8 @@ toc
 [tg method] = gbresults ;
 
 assert (isequal (y1, sparse (y0))) ;
-assert (isequal (y1, y3)) ;
+% assert (isequal (y1, y3)) ;
+assert (norm (y1-y3,1) / norm (y1,1) < eps)
 
 fprintf ('MATLAB: %10.4f  GB:auto: %10.4f(%s) speedup %10.4f\n', ...
     tm, tg, method (1), tm/tg) ;
@@ -254,10 +263,12 @@ y3 = GB_mex_AxB (A',x) ;
 toc
 
 assert (isequal (y1, y2)) ;
-assert (isequal (y1, y3)) ;
+% assert (isequal (y1, y3)) ;
+assert (norm (y1-y3,1) / norm (y1,1) < eps)
 
 fprintf ('MATLAB: %10.4f  GB:auto: %10.4f(%s) speedup %10.4f\n', ...
     tm, tg, method (1), tm/tg) ;
 
 fprintf ('\ntest87: all tests passed\n') ;
 
+nthreads_set (save, save_chunk) ;

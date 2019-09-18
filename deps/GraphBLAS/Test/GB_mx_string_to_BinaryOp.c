@@ -2,18 +2,18 @@
 // GB_mx_string_to_BinaryOp.c: get a GraphBLAS operator from MATLAB strings
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 #include "GB_mex.h"
 
-// opname_mx: a MATLAB string defining the operator name (23 kinds):
-//  8: 'first', 'second', 'min', 'max', 'plus', 'minus', 'times', 'div',
-//  6: 'iseq', 'isne', 'isgt', 'islt', 'isge', 'isle',
-//  6: 'eq', 'ne', 'gt', 'lt', 'ge', 'le',
-//  3: 'or', 'and' 'xor'
+// opname_mx: a MATLAB string defining the operator name (25 kinds):
+// 10: first, second, min, max, plus, minus, rminus, times, div, rdiv
+//  6: iseq, isne, isgt, islt, isge, isle,
+//  6: eq, ne, gt, lt, ge, le,
+//  3: or, and, xor
 
 // default_opcode: default if opname_mx is NULL
 
@@ -81,15 +81,17 @@ bool GB_mx_string_to_BinaryOp          // true if successful, false otherwise
             op = NULL ;                 // no default Complex operator
         }
 
-        // 8 binary operators z=f(x,y), all x,y,z are Complex
+        // 10 binary operators z=f(x,y), all x,y,z are Complex
         else if (MATCH (opname, "first"   )) { op = Complex_first  ; }
         else if (MATCH (opname, "second"  )) { op = Complex_second ; }
         else if (MATCH (opname, "min"     )) { op = Complex_min    ; }
         else if (MATCH (opname, "max"     )) { op = Complex_max    ; }
         else if (MATCH (opname, "plus"    )) { op = Complex_plus   ; }
         else if (MATCH (opname, "minus"   )) { op = Complex_minus  ; }
+        else if (MATCH (opname, "rminus"  )) { op = Complex_rminus ; }
         else if (MATCH (opname, "times"   )) { op = Complex_times  ; }
         else if (MATCH (opname, "div"     )) { op = Complex_div    ; }
+        else if (MATCH (opname, "rdiv"    )) { op = Complex_rdiv   ; }
 
         // 6 ops z=f(x,y), where x,y are Complex, z = (1,0) or (0,0)
         else if (MATCH (opname, "iseq"    )) { op = Complex_iseq   ; }
@@ -134,15 +136,17 @@ bool GB_mx_string_to_BinaryOp          // true if successful, false otherwise
             opcode = default_opcode ;
         }
 
-        // 8 binary operators z=f(x,y), all x,y,z of the same type
+        // 10 binary operators z=f(x,y), all x,y,z of the same type
         else if (MATCH (opname, "first"   )) { opcode = GB_FIRST_opcode ; }
         else if (MATCH (opname, "second"  )) { opcode = GB_SECOND_opcode ; }
         else if (MATCH (opname, "min"     )) { opcode = GB_MIN_opcode ; }
         else if (MATCH (opname, "max"     )) { opcode = GB_MAX_opcode ; }
         else if (MATCH (opname, "plus"    )) { opcode = GB_PLUS_opcode ; }
         else if (MATCH (opname, "minus"   )) { opcode = GB_MINUS_opcode ; }
+        else if (MATCH (opname, "rminus"  )) { opcode = GB_RMINUS_opcode ; }
         else if (MATCH (opname, "times"   )) { opcode = GB_TIMES_opcode ; }
         else if (MATCH (opname, "div"     )) { opcode = GB_DIV_opcode ; }
+        else if (MATCH (opname, "rdiv"    )) { opcode = GB_RDIV_opcode ; }
 
         // 6 ops z=f(x,y), all x,y,z the same type
         else if (MATCH (opname, "iseq"    )) { opcode = GB_ISEQ_opcode ; }
@@ -320,6 +324,27 @@ bool GB_mx_string_to_BinaryOp          // true if successful, false otherwise
                 }
                 break ;
 
+            case GB_RMINUS_opcode :
+
+                switch (opclass)
+                {
+                    case mxLOGICAL_CLASS : op = GxB_RMINUS_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GxB_RMINUS_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GxB_RMINUS_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GxB_RMINUS_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GxB_RMINUS_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GxB_RMINUS_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GxB_RMINUS_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GxB_RMINUS_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GxB_RMINUS_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GxB_RMINUS_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GxB_RMINUS_FP64   ; break ;
+                    default              : 
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
+                        return (false) ;
+                }
+                break ;
+
             case GB_TIMES_opcode :
 
                 switch (opclass)
@@ -362,6 +387,26 @@ bool GB_mx_string_to_BinaryOp          // true if successful, false otherwise
                 }
                 break ;
 
+            case GB_RDIV_opcode   :
+
+                switch (opclass)
+                {
+                    case mxLOGICAL_CLASS : op = GxB_RDIV_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GxB_RDIV_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GxB_RDIV_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GxB_RDIV_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GxB_RDIV_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GxB_RDIV_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GxB_RDIV_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GxB_RDIV_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GxB_RDIV_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GxB_RDIV_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GxB_RDIV_FP64   ; break ;
+                    default              : 
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
+                        return (false) ;
+                }
+                break ;
 
             case GB_ISEQ_opcode :
 

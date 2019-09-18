@@ -9,9 +9,7 @@
 
 // w<M> = accum (w,u.*v)
 
-// parallel: not here but in GB_emult
-
-#include "GB.h"
+#include "GB_ewise.h"
 
 #define GB_EWISE(op)                                                        \
 {                                                                           \
@@ -27,14 +25,14 @@
     /* get the descriptor */                                                \
     GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;   \
     /* C<M> = accum (C,T) where T = A.*B, A'.*B, A.*B', or A'.*B' */        \
-    return (GB_eWise (                                                      \
-        (GrB_Matrix) w,    C_replace,   /* w and its descriptor         */  \
-        (GrB_Matrix) M,    Mask_comp,   /* mask and its descriptor      */  \
-        accum,                          /* for accum (w,t)              */  \
-        op,                             /* operator that defines t=u.*v */  \
-        (GrB_Matrix) u,    false,       /* u, never transposed          */  \
-        (GrB_Matrix) v,    false,       /* v, never transposed          */  \
-        false,                          /* do eWiseMult                 */  \
+    return (GB_ewise (                                                      \
+        (GrB_Matrix) w, C_replace,  /* w and its descriptor        */       \
+        (GrB_Matrix) M, Mask_comp,  /* mask and its descriptor     */       \
+        accum,                      /* accumulate operator         */       \
+        op,                         /* operator that defines '.*'  */       \
+        (GrB_Matrix) u, false,      /* u, never transposed         */       \
+        (GrB_Matrix) v, false,      /* v, never transposed         */       \
+        false,                      /* eWiseMult                   */       \
         Context)) ;                                                         \
 }
 
@@ -123,7 +121,7 @@ GrB_Info GrB_eWiseMult_Vector_Semiring       // w<M> = accum (w, u.*v)
     GB_RETURN_IF_NULL_OR_FAULTY (semiring) ;
 
     //--------------------------------------------------------------------------
-    // eWise multiply using the semiring's multiply operator
+    // eWise multiply using the semiring multiply operator
     //--------------------------------------------------------------------------
 
     GB_EWISE (semiring->multiply) ;

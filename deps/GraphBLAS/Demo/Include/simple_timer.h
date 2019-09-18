@@ -2,7 +2,7 @@
 /* GraphBLAS/Demo/Include/simple_timer.h: a timer for performance measurements*/
 /* -------------------------------------------------------------------------- */
 
-/* SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved*/
+/* SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved*/
 /* http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.        */
 
 /* -------------------------------------------------------------------------- */
@@ -34,7 +34,6 @@
         r = simple_toc (tic) ;      // r is time for work C, in seconds
 */
 
-#define _POSIX_C_SOURCE 200809L
 #include <time.h>
 
 #if defined ( __linux__ )

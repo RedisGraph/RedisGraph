@@ -2,7 +2,7 @@
 // GB_mex_setElement: MATLAB interface for A(i,j) = x
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -14,7 +14,9 @@
 
 #include "GB_mex.h"
 
-#define USAGE "A = GB_mex_setElement (A, I, J, X)"
+#define USAGE "A = GB_mex_setElement (A, I, J, X, debug_wait)"
+
+bool debug_wait = false ;
 
 #define FREE_ALL                        \
 {                                       \
@@ -23,6 +25,9 @@
     GB_mx_put_global (true, 0) ;        \
 }
 
+#if defined ( __GNUC__ )
+#pragma GCC diagnostic ignored "-Wmissing-prototypes"
+#endif
 
 // set all elements of a matrix and return if an error is encountered
 #define setEl(name,type)                                                    \
@@ -34,6 +39,10 @@ GrB_Info set_ ## name                                                       \
         GrB_Info info = GrB_Matrix_setElement_ ## name                      \
             (A, AMPERSAND (X [k]), I [k], J [k]) ;                          \
         if (info != GrB_SUCCESS) return (info) ;                            \
+    }                                                                       \
+    if (debug_wait)                                                         \
+    {                                                                       \
+        return (GB_wait (A, NULL)) ;                                        \
     }                                                                       \
     return (GrB_SUCCESS) ;                                                  \
 }
@@ -69,6 +78,10 @@ GrB_Info vset_ ## name                                                      \
             (w, AMPERSAND (X [k]), I [k]) ;                                 \
         if (info != GrB_SUCCESS) return (info) ;                            \
     }                                                                       \
+    if (debug_wait)                                                         \
+    {                                                                       \
+        return (GB_wait (A, NULL)) ;                                        \
+    }                                                                       \
     return (GrB_SUCCESS) ;                                                  \
 }
 
@@ -100,6 +113,7 @@ void mexFunction
 {
 
     bool malloc_debug = GB_mx_get_global (true) ;
+
     GrB_Matrix A = NULL ;
     void *Y ;
     GrB_Type xtype ;
@@ -110,7 +124,7 @@ void mexFunction
 
     // check inputs
     GB_WHERE (USAGE) ;
-    if (nargout > 1 || nargin != 4)
+    if (nargout > 1 || nargin < 4 || nargin > 5)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
     }
@@ -171,6 +185,9 @@ void mexFunction
         FREE_ALL ;
         mexErrMsgTxt ("X cannot be sparse") ;
     }
+
+    // get debug_wait (if true, to GB_wait after setElements)
+    GET_SCALAR (4, bool, debug_wait, false) ;
 
     if (mxIsComplex (pargin [3]))
     {
@@ -252,9 +269,6 @@ void mexFunction
 
     // only do debug checks after adding lots of tuples
     if (ni > 1000) ASSERT_OK (GB_check (A, "A added pending tuples", GB0)) ;
-
-    // GB_wait (A) ;
-    // if (ni > 1000) ASSERT_OK (GB_check (A, "A wiated", GB0)) ;
 
     // return A to MATLAB as a struct and free the GraphBLAS A
     pargout [0] = GB_mx_Matrix_to_mxArray (&A, "A output", true) ;

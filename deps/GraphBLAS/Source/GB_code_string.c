@@ -9,8 +9,6 @@
 
 // Given GB_Type_code, return a string with the name of the type
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 char *GB_code_string            // return a static string for a type name

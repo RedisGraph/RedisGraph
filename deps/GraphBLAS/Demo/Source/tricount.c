@@ -10,9 +10,10 @@
 //  0:  minitri:    ntri = nnz (A*E == 2) / 3
 //  1:  Burkhardt:  ntri = sum (sum ((A^2) .* A)) / 6
 //  2:  Cohen:      ntri = sum (sum ((L * U) .* A)) / 2
-//  3:  Sandia:     ntri = sum (sum ((U * U) .* U))
-//  4:  Sandia2:    ntri = sum (sum ((L * L) .* L))
+//  3:  Sandia:     ntri = sum (sum ((L * L) .* L))
+//  4:  Sandia2:    ntri = sum (sum ((U * U) .* U))
 //  5:  SandiaDot:  ntri = sum (sum ((L * U') .* L)).  Note that L=U'.
+//  6:  SandiaDot2: ntri = sum (sum ((U * L') .* U))
 
 // All matrices are assumed to be in CSR format (GxB_BY_ROW).
 
@@ -73,11 +74,11 @@ void two (uint32_t *z, const uint32_t *x)
 GrB_Info tricount           // count # of triangles
 (
     int64_t *p_ntri,        // # of trianagles
-    const int method,       // 0 to 5, see above
+    const int method,       // 0 to 6, see above
     const GrB_Matrix A,     // adjacency matrix for methods 0, 1, and 2
     const GrB_Matrix E,     // edge incidence matrix for method 0
-    const GrB_Matrix L,     // L=tril(A) for methods 2, 4, and 4
-    const GrB_Matrix U,     // U=triu(A) for methods 2, 3, and 5
+    const GrB_Matrix L,     // L=tril(A) for methods 2, 3, 5, and 6
+    const GrB_Matrix U,     // U=triu(A) for methods 2, 4, 5, and 6
     double t [2]            // t [0]: multiply time, t [1]: reduce time
 )
 {
@@ -94,6 +95,7 @@ GrB_Info tricount           // count # of triangles
     GrB_UnaryOp Two = NULL ;
     GrB_Matrix S = NULL, C = NULL ;
     GrB_Descriptor d = NULL ;
+    OK (GrB_Descriptor_new (&d)) ;
 
     switch (method)
     {
@@ -103,9 +105,9 @@ GrB_Info tricount           // count # of triangles
             OK (GrB_Matrix_ncols (&ne, E)) ;
             OK (GrB_Matrix_new (&C, GrB_UINT32, n, ne)) ;
             // mxm:  outer product method, no mask
-            OK (GrB_mxm (C, NULL, NULL, GxB_PLUS_TIMES_UINT32, A, E, NULL));
+            OK (GxB_set (d, GxB_AxB_METHOD, GxB_AxB_GUSTAVSON)) ;
+            OK (GrB_mxm (C, NULL, NULL, GxB_PLUS_TIMES_UINT32, A, E, d)) ;
             t [0] = simple_toc (tic) ;
-
             simple_tic (tic) ;
             OK (GrB_UnaryOp_new (&Two, two, GrB_UINT32, GrB_UINT32)) ;
             OK (GrB_Matrix_new (&S, GrB_UINT32, n, ne)) ;
@@ -119,9 +121,9 @@ GrB_Info tricount           // count # of triangles
             OK (GrB_Matrix_nrows (&n, A)) ;
             OK (GrB_Matrix_new (&C, GrB_UINT32, n, n)) ;
             // mxm:  outer product method, with mask
-            OK (GrB_mxm (C, A, NULL, GxB_PLUS_TIMES_UINT32, A, A, NULL)) ;
+            OK (GxB_set (d, GxB_AxB_METHOD, GxB_AxB_GUSTAVSON)) ;
+            OK (GrB_mxm (C, A, NULL, GxB_PLUS_TIMES_UINT32, A, A, d)) ;
             t [0] = simple_toc (tic) ;
-
             simple_tic (tic) ;
             OK (GrB_reduce (&ntri, NULL, GxB_PLUS_INT64_MONOID, C, NULL)) ;
             ntri /= 6 ;
@@ -132,9 +134,9 @@ GrB_Info tricount           // count # of triangles
             OK (GrB_Matrix_nrows (&n, A)) ;
             OK (GrB_Matrix_new (&C, GrB_UINT32, n, n)) ;
             // mxm:  outer product method, with mask
-            OK (GrB_mxm (C, A, NULL, GxB_PLUS_TIMES_UINT32, L, U, NULL)) ;
+            OK (GxB_set (d, GxB_AxB_METHOD, GxB_AxB_GUSTAVSON)) ;
+            OK (GrB_mxm (C, A, NULL, GxB_PLUS_TIMES_UINT32, L, U, d)) ;
             t [0] = simple_toc (tic) ;
-
             simple_tic (tic) ;
             OK (GrB_reduce (&ntri, NULL, GxB_PLUS_INT64_MONOID, C, NULL)) ;
             ntri /= 2 ;
@@ -144,9 +146,9 @@ GrB_Info tricount           // count # of triangles
 
             OK (GrB_Matrix_nrows (&n, L)) ;
             OK (GrB_Matrix_new (&C, GrB_UINT32, n, n)) ;
+            OK (GxB_set (d, GxB_AxB_METHOD, GxB_AxB_GUSTAVSON)) ;
             OK (GrB_mxm (C, L, NULL, GxB_PLUS_TIMES_UINT32, L, L, d)) ;
             t [0] = simple_toc (tic) ;
-
             simple_tic (tic) ;
             OK (GrB_reduce (&ntri, NULL, GxB_PLUS_INT64_MONOID, C, NULL)) ;
             break ;
@@ -156,9 +158,9 @@ GrB_Info tricount           // count # of triangles
             OK (GrB_Matrix_nrows (&n, U)) ;
             OK (GrB_Matrix_new (&C, GrB_UINT32, n, n)) ;
             // mxm:  outer product method, with mask
-            OK (GrB_mxm (C, U, NULL, GxB_PLUS_TIMES_UINT32, U, U, NULL)) ;
+            OK (GxB_set (d, GxB_AxB_METHOD, GxB_AxB_GUSTAVSON)) ;
+            OK (GrB_mxm (C, U, NULL, GxB_PLUS_TIMES_UINT32, U, U, d)) ;
             t [0] = simple_toc (tic) ;
-
             simple_tic (tic) ;
             OK (GrB_reduce (&ntri, NULL, GxB_PLUS_INT64_MONOID, C, NULL)) ;
             break ;
@@ -170,9 +172,23 @@ GrB_Info tricount           // count # of triangles
             OK (GrB_Descriptor_new (&d)) ;
             OK (GxB_set (d, GrB_INP1, GrB_TRAN)) ;
             // mxm:  dot product method, with mask
+            OK (GxB_set (d, GxB_AxB_METHOD, GxB_AxB_DOT)) ;
             OK (GrB_mxm (C, L, NULL, GxB_PLUS_TIMES_UINT32, L, U, d)) ;
             t [0] = simple_toc (tic) ;
+            simple_tic (tic) ;
+            OK (GrB_reduce (&ntri, NULL, GxB_PLUS_INT64_MONOID, C, NULL)) ;
+            break ;
 
+        case 6:  // SandiaDot2: ntri = sum (sum ((U * L') .* U))
+
+            OK (GrB_Matrix_nrows (&n, U)) ;
+            OK (GrB_Matrix_new (&C, GrB_UINT32, n, n)) ;
+            OK (GrB_Descriptor_new (&d)) ;
+            OK (GxB_set (d, GrB_INP1, GrB_TRAN)) ;
+            // mxm:  dot product method, with mask
+            OK (GxB_set (d, GxB_AxB_METHOD, GxB_AxB_DOT)) ;
+            OK (GrB_mxm (C, U, NULL, GxB_PLUS_TIMES_UINT32, U, L, d)) ;
+            t [0] = simple_toc (tic) ;
             simple_tic (tic) ;
             OK (GrB_reduce (&ntri, NULL, GxB_PLUS_INT64_MONOID, C, NULL)) ;
             break ;

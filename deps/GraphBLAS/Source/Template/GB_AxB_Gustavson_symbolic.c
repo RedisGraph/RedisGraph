@@ -7,17 +7,13 @@
 
 //------------------------------------------------------------------------------
 
-// parallel: this could be done in parallel, but the parallelism will be
-// handled outside this code, in GB_AxB_parallel.  This work is done by a
-// single thread.
-
 {
 
     //--------------------------------------------------------------------------
     // get A and B
     //--------------------------------------------------------------------------
 
-    const int64_t *Bp = B->p ;
+    // const int64_t *Bp = B->p ;
     const int64_t *Bi = B->i ;
     const int64_t *Ap = A->p ;
     const int64_t *Ai = A->i ;
@@ -32,7 +28,9 @@
     //--------------------------------------------------------------------------
 
     int64_t *restrict Ci = C->i ;
+    #ifndef GB_HYPER_CASE
     int64_t *restrict Cp = C->p ;
+    #endif
 
     int64_t jlast, cnz, cnz_last ;
     GB_jstartup (C, &jlast, &cnz, &cnz_last) ;
@@ -105,11 +103,11 @@
             pA_end = Ap [k+1] ;
             #endif
 
-            for ( ; pA < pA_end ; pA++)
+            for ( ; pA < pA_end ; pA++, cnz++)
             { 
                 int64_t i = Ai [pA] ;
                 // C(i,j) is nonzero
-                Ci [cnz++] = i ;
+                Ci [cnz] = i ;
             }
 
         }
@@ -230,7 +228,7 @@
             else
             { 
                 // sort the nonzero indices in C(:,j)
-                GB_qsort_1 (Ci + cnz_last, len, NULL) ;
+                GB_qsort_1a (Ci + cnz_last, len) ;
             }
         }
 

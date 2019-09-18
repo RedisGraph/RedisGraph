@@ -20,10 +20,10 @@ constructed by dox_headers.m
  This method is agnostic to the CSR/CSC format.  The format of C is set
  to CSC but this is a placeholder that will be changed in GB_AxB_meta.
 \par
- parallel: this work is done by a single thread.  parallelism will be done in
- GB_AxB_parallel.
-\par
  Does not log an error; returns GrB_SUCCESS, GrB_OUT_OF_MEMORY, or GrB_PANIC.
+\par
+ This work is done by a single thread, which is computing a submatrix of the
+ final result.  Parallelism is handled in GB_AxB_saxpy_parallel.
 */
 
 
@@ -31,55 +31,119 @@ constructed by dox_headers.m
 \brief  GB_AxB_Gustavson_builtin:  hard-coded C=A*B for built-in types
 
 \par
- This function computes C=A*B with hard-coded versions for all 960 unique
+ This function computes C=A*B with hard-coded versions for all 1040 unique
  built-in semirings that can be constructed with built-in operators.  It also
  handles all non-unique built-in semirings, by renaming operators to
  equivalent ones; if these are included, this function computes C=A*B for all
- 1712 valid semirings that can be constructed from built-in operators.
-\par
- parallel: this work is done by a single thread; parallelism will be done in
- GB_AxB_parallel.
+ possible valid semirings that can be constructed from built-in operators.
 */
 
 
 /** \file GB_AxB_alloc.c
-\brief  GB_AxB_alloc: estimate nnz(C) and allocate C for C=A*B or C=A'*B
+\brief  GB_AxB_alloc: estimate nnz(C) and allocate C for C=A*B or C\<M\>=A*B
 
 \par
- parallel: this function will remain sequential.
- parallelism will be done in GB_AxB_parallel.
-\par
  Does not log an error; returns GrB_SUCCESS, GrB_OUT_OF_MEMORY, or GrB_PANIC.
+ This used for Gustavon's method and the heap-based method, not the dot
+ product method.
 */
 
 
-/** \file GB_AxB_dot.c
-\brief  GB_AxB_dot: compute C\<M\> = A'*B without forming A' via dot products
+/** \file GB_AxB_colscale.c
+\brief  GB_AxB_colscale: C = A*D, column scale with diagonal matrix D
+
+*/
+
+
+/** \file GB_AxB_dot2.c
+\brief  GB_AxB_dot2: compute C=A'*B or C\<!M\>=A'*B in parallel, in place
 
 \par
- GB_AxB_dot computes the matrix multiplication C\<M\>=A'*B without forming
- A' explicitly.  It is useful when A is very tall and thin (n-by-1 in
- particular).  In that case A' is costly to transpose, but A'*B is very
- easy if B is also tall and thin (say also n-by-1).
+ GB_AxB_dot2 does its computation in two phases.  The first phase counts the
+ number of entries in each column of C.  The second phase can then construct
+ the result C in place, and thus this method can be done in parallel for the
+ single matrix computation C=A'*B.
 \par
- If M is NULL, the method computes C=A'*B by considering each entry C(i,j),
- taking O(m*n) time if C is m-by-n.  This is suitable only when C is small
- (such as a scalar, a small matrix, or a vector).  If M is present, the upper
- bound on the number of entries in C is the same as nnz(M), so that space is
- allocated for C, and C(i,j) is computed only where M(i,j)=1.  This function
- assumes the mask M is not complemented.
+ Two variants are handled: C=A'*B and C\<!M\>=A'*B.
+ The C\<M\>=A'*B computation is computed by GB_AxB_dot3.
+*/
+
+
+/** \file GB_AxB_dot3.c
+\brief  GB_AxB_dot3: compute C\<M\> = A'*B in parallel
+
 \par
- Compare this function with GB_AxB_Gustavson, which computes C=A*B and
- C\<M\>=A*B.  The computation of C=A*B requires C-\>p and C-\>i to be constructed
- first, in a symbolic phase.  Otherwise they are very similar.  The dot
- product in this algorithm is very much like the merge-add in GB_add,
- except that the merge in GB_add produces a column (a(:,j)+b(:,j)),
- whereas the merge in this function produces a scalar (a(:,j)'*b(:,j)).
+ This function only computes C\<M\>=A'*B.  The mask must be present, and not
+ complemented.  The mask is always applied.
+*/
+
+
+/** \file GB_AxB_dot3_one_slice.c
+\brief  GB_AxB_dot3_one_slice: slice the entries and vectors of a single matrix
+
 \par
- parallel: this function will remain sequential.
- parallelism will be done in GB_AxB_parallel.
+ Constructs a set of tasks that slice a single input matrix M.  This function
+ is currently only used by GB_AxB_dot3, to slice the mask matrix M, which has
+ the same pattern as the output matrix C.  However, this function is a very
+ simple general-purpose method for slicing a single matrix.  It could be
+ called GB_one_slice, and used for other methods as well.
+*/
+
+
+/** \file GB_AxB_dot3_slice.c
+\brief  GB_AxB_dot3_slice: slice the entries and vectors for C\<M\>=A'*B
+
 \par
- Does not log an error; returns GrB_SUCCESS, GrB_OUT_OF_MEMORY, or GrB_PANIC.
+ Constructs a set of tasks that slice the matrix C for C\<M\>=A'*B.  The matrix
+ C has been allocated, and its pattern will be a copy of M, but with some
+ entries possibly turned into zombies.  However, on input, the pattern C-\>i
+ does yet not contain the indices, but the work required to compute each
+ entry in the dot product C(i,j)\<M(i,j)\> = A(:,i)'*B(:,j).
+\par
+ The strategy for slicing of C and M is like GB_ek_slice, for coarse tasks.
+ These coarse tasks differ from the tasks generated by GB_ewise_slice,
+ since they may start in the middle of a vector.  If a single entry C(i,j)
+ is costly to compute, it is possible that it is placed by itself in a
+ single coarse task.
+\par
+ FUTURE:: Ultra-fine tasks could also be constructed, so that the computation
+ of a single entry C(i,j) can be broken into multiple tasks.  The slice of
+ A(:,i) and B(:,j) would use GB_slice_vector, where no mask would be used.
+*/
+
+
+/** \file GB_AxB_dot_parallel.c
+\brief  GB_AxB_dot_parallel: C\<M\>=A'*B, or C=A'*B using dot products
+
+\par
+ Parallel matrix-matrix multiply, A'*B, with optional mask M.  This
+ method is used by GrB_mxm, GrB_vxm, and GrB_mxv.  For both of the latter two
+ methods, B on input will be an nrows-by-1 column vxector.
+\par
+ This function, and the matrices C, M, A, and B are all CSR/CSC agnostic.
+ For this discussion, suppose they are CSC, with vlen = \# of rows, and vdim =
+ \# of columns.
+\par
+ C=A'*B, C\<M\>=A'*B or C\<!M\>=A'*B is being computed.  A has not been
+ transposed yet (and will not be).  A and B must have the same vector length,
+ vlen (as if both A and B are CSC matrices with the same number of rows, for
+ example).  GB_AxB_dot2 and GB_AxB_dot3 operate on A' without forming it.
+ GB_AxB_dot2 computes C=A'*B and C\<!M\>=A'*B, and it takes Omega(m*n) time,
+ if C is m-by-n.  It is thus only suitable for cases when A and B are large,
+ and C is small.  GB_AxB_dot3 computes C\<M\>=A'*B, and it only needs to
+ examine entries in M, taking Omega(nnz(M)) time.  It can thus be used for
+ very large matrices C.
+\par
+ The output matrix C = *Chandle has not been allocated, so C is NULL on
+ input.  The mask M is optional.
+\par
+ The semiring defines C=A*B.  flipxy modifies how the semiring multiply
+ operator is applied.  If false, then fmult(aik,bkj) is computed.  If true,
+ then the operands are swapped, and fmult(bkj,aij) is done instead.
+\par
+ Context: the GB_Context containing the \# of threads to use, a string of the
+ user-callable function that is calling this function (GrB_mxm, GrB_mxv, or
+ GxB_vxm) and detailed error reports.
 */
 
 
@@ -134,12 +198,6 @@ constructed by dox_headers.m
 \brief  GB_AxB_heap: compute C\<M\> = A*B using a heap-based method
 
 \par
- parallel: this function will remain sequential.
- parallelism will be done in GB_AxB_parallel.
-\par
- FUTURE: reduce compiled code size by changing GB_heap.h to GB_heap.c;
- check any performance impact
-\par
  Does not log an error; returns GrB_SUCCESS, GrB_OUT_OF_MEMORY, or GrB_PANIC.
 */
 
@@ -158,68 +216,89 @@ constructed by dox_headers.m
  The method is chosen automatically:  a gather/scatter saxpy method
  (Gustavson), a heap-based saxpy method, or a dot product method.
 \par
- FUTURE: an outer-product method for C=A*B'
- FUTURE: a hash-based method for C=A*B
+ FUTURE:: an outer-product method for C=A*B'
 \par
- parallel: this function will remain sequential.
- parallelism will be done in GB_AxB_parallel and GB_transpose.
+ FUTURE:: a hash-based method for C=A*B
 */
 
 
-/** \file GB_AxB_parallel.c
-\brief  GB_AxB_parallel: C\<M\>=A*B, C\<M\>=A'*B, C=A*B, or C=A'*B
+/** \file GB_AxB_rowscale.c
+\brief  GB_AxB_rowscale: C = D*B, row scale with diagonal matrix D
+
+*/
+
+
+/** \file GB_AxB_saxpy_parallel.c
+\brief  GB_AxB_saxpy_parallel: C\<M\>=A*B, C=A*B
 
 \par
- Parallel matrix-matrix multiply, A*B or A'*B, with optional mask M.  This
- method is used by GrB_mxm, GrB_vxm, and GrB_mxv.  For both of the latter two
- methods, B on input will be an nrows-by-1 column vxector.
-
- If do_adotb is true, then A'*B is being computed.  In this case, A has
- not been transposed yet (and will not be).  A and B must have the same
- vector length, vlen (as if both A and B are CSC matrices with the same
- number of rows, for example).  The GB_AxB_sequential method when applied
- to A and B (or a slice of B) will operate on A' without forming it.
-
- If do_adotb is false, then A*B is being computed, and the vector dimension
- of A must be identical to the vector length of B (as if both A and B are
- CSC matrices, and the number of columns of A is the same as the number of
- rows of B).
-
+ Parallel matrix-matrix multiply, A*B with optional mask M, using the saxpy
+ method.  This method is used by GrB_mxm, GrB_vxm, and GrB_mxv.  For both of
+ the latter two methods, B on input will be an nrows-by-1 column vxector.
+\par
+ The strategy is to \"slice\" (or partition) B, as B = [B0 B1 ... B(t-1)] if
+ there are t threads.  Then each thread k computes C(k) = A*B(k), and then
+ the result is concatenated, as C = [C0 C1 ... C(t-1)].
+\par
+ Each thread k computes an independent output matrix C(k), doing both its
+ analysis and numeric phases.
+\par
+ This strategy works well for OpenMP, but it could also be written in a
+ purely inspector+executor style, like the GB_AxB_dot* methods.  Those
+ methods do the analysis in parallel, and first determine the size of the
+ output matrix C.  Then a parallel cumulative sum is computed, and the entire
+ output matrix is allocated.  Then each task of the the numeric phase
+ computes its part of the result C, without the need for any memory
+ allocation by individual threads.
+\par
+ This function, and the matrices C, M, A, and B are all CSR/CSC agnostic.
+ For this discussion, suppose they are CSC, with vlen = \# of rows, and vdim =
+ \# of columns.
+\par
+ A*B is being computed, and the vector dimension of A must be identical to
+ the vector length of B (as if both A and B are CSC matrices, and the number
+ of columns of A is the same as the number of rows of B).
+\par
  The output matrix C = *Chandle has not been allocated, so C is NULL on
- input.  The mask M is optional.  If present, it is not complemented.
-
- The semiring defines C=A*B, and must be valid.  flipxy modifies how the
- semiring multiply operator is applied.  If false, then fmult(aik,bkj)
- is computed.  If true, then the operands are swapped, and fmult(bkj,aij)
- is done instead.
-
+ input.  The mask M is optional.
+\par
+ The semiring defines C=A*B.  flipxy modifies how the semiring multiply
+ operator is applied.  If false, then fmult(aik,bkj) is computed.  If true,
+ then the operands are swapped, and fmult(bkj,aij) is done instead.
+\par
  AxB_method selects the method to use:
+\par
       GxB_DEFAULT:        the method is selected automatically
+\par
       GxB_AxB_GUSTAVSON:  Gustavson's method for A*B
+\par
       GxB_AxB_HEAP:       heap method for A*B
-      GxB_AxB_DOT:        dot method for A'*B
+\par
       GxB_AxB_HASH:       hash method for A*B (FUTURE)
-
+\par
+ The dot product method does not use this function.
+\par
  AxB_method_used reports the method actually chosen.  This is for
  informational purposes only, so if a parallel C=A*B splits the work into
  multiple submatrix multiplications, and uses different methods on each
  submatrix, then AxB_method_used is the method chosen by thread zero.
-
- Context: the GB_Context containing the \# of threads to use, a string of the
- user-callable function that is calling this function (GrB_mxm, GrB_mxv, or
- GxB_vxm) and detailed error reports.
-
- C, M, A, and B are CSR/CSC agnostic.  For this discussion, suppose they
- are CSC, with vlen = \# of rows, and vdim = \# of columns.
 \par
- PARALLEL: A' or B is sliced, and the slices of C are concatenated.
+ FUTURE:: hash-based method, and multi-phase Gustavson and Heap methods,
+ which do not do any memory allocations in parallel, but instead use an
+ inspector+executur style (like GB_AxB_dot*).  This should work better on the
+ GPU.
+*/
+
+
+/** \file GB_AxB_saxpy_sequential.c
+\brief  GB_AxB_saxpy_sequential: C\<M\>=A*B using a single thread
+
 \par
- FUTURE: The result of this function is the T matrix in GB_mxm.  It may be
- transplanted directly into the user's matrix, or it may be passed through
- GB_accum_mask.  See GB_mxm.  For the latter case, it would be better to
- delay the contatenation of the output matrix T = [C0 ... C(t-t)].
- GB_accum_mask could do the accum/mask using the sliced T matrix, to
- update the user's C matrix (which is not sliced), and then T is freed.
+ Sequential matrix-matrix multiply using a saxpy-based method.  See
+ GB_AxB_parallel for a description of the arguments.  Only a single thread
+ does this work.
+\par
+ Does not log an error; returns GrB_SUCCESS, GrB_OUT_OF_MEMORY, or GrB_PANIC.
 */
 
 
@@ -227,24 +306,17 @@ constructed by dox_headers.m
 \brief  GB_AxB_select: select method for C\<M\>=A*B or C=A*B
 
 \par
- Select a saxpy method for each thread: gather/scatter or heap
-\par
- parallel: this function can be called in parallel for each thread.
- parallelism will be done in GB_AxB_parallel.
+ Select a saxpy method for each thread: Gustavon's or heap-based method.
+ This method is called by GB_AxB_saxpy_parallel.
 */
 
 
-/** \file GB_AxB_sequential.c
-\brief  GB_AxB_sequential: C\<M\>=A*B, C\<M\>=A'*B, C=A*B, or C=A'*B
+/** \file GB_AxB_semiring_builtin.c
+\brief  GB_AxB_semiring_builtin:  determine if semiring is built-in
 
 \par
- sequential matrix-matrix multiply.  See GB_AxB_parallel for a description
- of the arguments.
-\par
- Does not log an error; returns GrB_SUCCESS, GrB_OUT_OF_MEMORY, or GrB_PANIC.
-\par
- parallel: this function will remain sequential.
- parallelism will be done in GB_AxB_parallel.
+ Determine if A*B uses a built-in semiring, and if so, determine the
+ opcodes and type codes of the semiring.
 */
 
 
@@ -252,7 +324,8 @@ constructed by dox_headers.m
 \brief  GB_BinaryOp_check: check and print a binary operator
 
 \par
- not parallel: this function does O(1) work and is already thread-safe.
+ for additional diagnostics, use:
+ \#define GB_DEVELOPER 1
 */
 
 
@@ -263,8 +336,6 @@ constructed by dox_headers.m
  check type compatibilty for C = op (A,B).  With typecasting: A is cast to
  op-\>xtype, B is cast to op-\>ytype, the operator is computed, and then the
  result of op-\>ztype is cast to C-\>type.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -277,8 +348,6 @@ constructed by dox_headers.m
  recast its input and output arguments internally as needed.
 \par
  This function is not directly user-callable.  Use GrB_BinaryOp_new instead.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -286,7 +355,8 @@ constructed by dox_headers.m
 \brief  GB_Descriptor_check: check and print a Descriptor
 
 \par
- not parallel: this function does O(1) work and is already thread-safe.
+ for additional diagnostics, use:
+ \#define GB_DEVELOPER 1
 */
 
 
@@ -341,7 +411,7 @@ constructed by dox_headers.m
       as-is.  Otherwise, it is transposed first.  That is, the results are
       the same as if the transpose of the matrix was passed to the method.
 \par
-  desc-\>axb                   see GraphBLAS.h; can be:
+  desc-\>axb                   can be:
 \par
       GxB_DEFAULT = 0         automatic selection
 \par
@@ -351,17 +421,33 @@ constructed by dox_headers.m
 \par
       GxB_AxB_DOT             dot product
 \par
-  desc-\>nthreads              number of threads to use (auto select if \<= 0)
+  desc-\>nthreads_max          max \# number of threads to use (auto if \<= 0)
 \par
       This is copied from the GrB_Descriptor into the Context.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GB_Global.c
 \brief  GB_Global: global values in GraphBLAS
 
+\par
+ All Global storage is declared, initialized, and accessed here.  The
+ contents of the GB_Global are only accessible to functions in this file.
+ Global storage is used to record a list of matrices with pending operations
+ (for GrB_wait), to keep track of the GraphBLAS mode (blocking or
+ non-blocking), to hold persistent Sauna workspace, for pointers to
+ malloc/calloc/realloc/free functions, global matrix options, and other
+ settings.
+*/
+
+
+/** \file GB_Global.h
+\brief  GB_Global.h: definitions for global variables
+
+\par
+ These defintions are not visible to the user.  They are used only inside
+ GraphBLAS itself.  Note that the GB_Global struct does not appear here.
+ It is accessible only by the functions in GB_Global.c.
 */
 
 
@@ -373,10 +459,11 @@ constructed by dox_headers.m
  contiguous.  Scatter I into the I inverse buckets (Mark and Inext) for quick
  lookup.
 \par
- PARALLEL: constructing the I inverse buckets in parallel would require
- synchronization (a critical section for each bucket).  A more parallel
- approach would use qsort first, to find duplicates in I, and then construct
- the buckets in parallel after the qsort.
+ FUTURE:: this code is sequential.  Constructing the I inverse buckets in
+ parallel would require synchronization (a critical section for each bucket,
+ or atomics).  A more parallel approach might use qsort first, to find
+ duplicates in I, and then construct the buckets in parallel after the qsort.
+ But the time complexity would be higher.
 */
 
 
@@ -386,8 +473,6 @@ constructed by dox_headers.m
 \par
  c = a*b where c is GrB_Index (uint64_t), and a and b are int64_t.
  Check for overflow.  Requires a \>= 0 and b \>= 0.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -395,17 +480,13 @@ constructed by dox_headers.m
 \brief  GB_Mask_compatible: check input and operators for type compatibility
 
 \par
- check the type and dimenions of the mask
-\par
- not parallel: this function does O(1) work and is already thread-safe.
+ check the type and dimensions of the mask
 */
 
 
 /** \file GB_Matrix_check.c
 \brief  GB_Matrix_check: print a GraphBLAS matrix and check if it is valid
 
-\par
- parallel: this function does O(nnz(A)) work in GB_matvec_check, not here.
 */
 
 
@@ -413,7 +494,8 @@ constructed by dox_headers.m
 \brief  GB_Monoid_check: check and print a monoid
 
 \par
- not parallel: this function does O(1) work and is already thread-safe.
+ for additional diagnostics, use:
+ \#define GB_DEVELOPER 1
 */
 
 
@@ -428,8 +510,38 @@ constructed by dox_headers.m
  value and terminal value provided on input are ignored, and the known values
  are used instead.  This is to allow the use of the hard-coded functions for
  built-in monoids.
+*/
+
+
+/** \file GB_Pending.h
+\brief  GB_Pending.h: data structure and operations for pending tuples
+
+*/
+
+
+/** \file GB_Pending_alloc.c
+\brief  GB_Pending_alloc: allocate a list of pending tuples
+
+*/
+
+
+/** \file GB_Pending_n.c
+\brief  GB_Pending_n: return the \# of pending tuples in a matrix
+
+*/
+
+
+/** \file GB_Pending_realloc.c
+\brief  GB_Pending_realloc: reallocate a list of pending tuples
+
 \par
- not parallel: this function does O(1) work and is already thread-safe.
+ Reallocate a list of pending tuples.  If it fails, the list is freed.
+*/
+
+
+/** \file GB_Sauna.h
+\brief  GB_Sauna.h: definitions for the Sauna, the sparse accumulator
+
 */
 
 
@@ -438,13 +550,9 @@ constructed by dox_headers.m
 
 \par
  If the user only calls GraphBLAS from a single user thread, then all
- internal threads will always find their native Sauna.
-\par
- FUTURE: time spent in the critical section is typically O(nthreads) or
- O(GB_Global.nthreads_max), unless the user calls GraphBLAS simultaneously
- from multiple user threads.  In that case, the time could be
- O(GxB_NTHREADS_MAX), which is 2048 by default.  If it becomes a performance
- bottleneck, doubly-linked list of available Sauna ids could be kept,
+ internal threads will always find their native Sauna: tid == Sauna_id [tid].
+ The native Sauna is best since a thread should use workspace that it
+ allocated itself, for best performance in a NUMA memory system.
 */
 
 
@@ -459,14 +567,28 @@ constructed by dox_headers.m
 /** \file GB_Sauna_free.c
 \brief  GB_Sauna_free: free a Sauna
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GB_Sauna_release.c
 \brief  GB_Sauna_release: release a set of Saunas
 
+\par
+ A set of threads has finished computing C=A*B, and can now release their
+ thread-specific Sauna workspaces.  This does not need to be done in a
+ critical section, but doing so keeps the Sauna acquire/release in a single
+ batch, for each group of threads.  Another user thread can start C=A*B just
+ as these Saunas are being released, which would lead to an intermingled set
+ of Saunas.  It would work just fine, but might not be optimal.  The critical
+ section is very short.
+*/
+
+
+/** \file GB_Scalar_check.c
+\brief  GB_Scalar_check: print a GraphBLAS GxB_Scalar and check if it is valid
+
+\par
+ GxB_Scalar: same as a GrB_Vector of length 1
 */
 
 
@@ -474,7 +596,8 @@ constructed by dox_headers.m
 \brief  GB_SelectOp_check: check and print a select operator
 
 \par
- not parallel: this function does O(1) work and is already thread-safe.
+ for additional diagnostics, use:
+ \#define GB_DEVELOPER 1
 */
 
 
@@ -485,11 +608,7 @@ constructed by dox_headers.m
  The select function signature must be:
 \par
       bool f (GrB_Index i, GrB_Index j, GrB_Index nrows, GrB_Index ncols,
-              const void *x, const void *k) ;
-\par
- This function is not directly user-callable.  Use GxB_SelectOp_new instead.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
+              const void *x, const void *thunk) ;
 */
 
 
@@ -497,7 +616,8 @@ constructed by dox_headers.m
 \brief  GB_Semiring_check: check and print a semiring
 
 \par
- not parallel: this function does O(1) work and is already thread-safe.
+ for additional diagnostics, use:
+ \#define GB_DEVELOPER 1
 */
 
 
@@ -510,7 +630,8 @@ constructed by dox_headers.m
  matrix A:\", for example.  The internal name is the C typedef with which the
  GraphBLAS GrB_Type was created.
 \par
- not parallel: this function does O(1) work and is already thread-safe.
+ for additional diagnostics, use:
+ \#define GB_DEVELOPER 1
 */
 
 
@@ -520,8 +641,6 @@ constructed by dox_headers.m
 \par
  Two domains are compatible for typecasting between them if both are built-in
  types (of any kind) or if both are the same user-defined type.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -531,8 +650,6 @@ constructed by dox_headers.m
 \par
  This is not used for built-in types.  Those are created statically.
  Users should not call this function directly; use GrB_Type_new instead.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -540,7 +657,8 @@ constructed by dox_headers.m
 \brief  GB_UnaryOp_check: check and print a unary operator
 
 \par
- not parallel: this function does O(1) work and is already thread-safe.
+ for additional diagnostics, use:
+ \#define GB_DEVELOPER 1
 */
 
 
@@ -553,8 +671,6 @@ constructed by dox_headers.m
  output arguments internally as needed.
 \par
  This function is not directly user-callable.  Use GrB_UnaryOp_new instead.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -563,16 +679,12 @@ constructed by dox_headers.m
 
 \par
  GrB_Vector: same as GrB_Matrix, except it has exactly one column
-\par
- parallel: this function does O(nnz(A)) work in GB_matvec_check, not here.
 */
 
 
 /** \file GB_accum_mask.c
 \brief  GB_accum_mask: accumulate results via the mask and accum operator
 
-\par
- parallel: not here, but in GB_mask, GB_add, GB_transpose
 \par
  C\<M\> = accum (C,T)
 \par
@@ -599,7 +711,7 @@ constructed by dox_headers.m
  The next step is C\<M\> = Z.
 \par
  This denotes how the matrix Z is written into C, under the control of the
- mask (or ~M if Mask_complement is true), and the C_replace flag (which
+ mask (or !M if Mask_comp is true), and the C_replace flag (which
  indicates that C should be set to zero first.  This is C\<M\>=Z in
  GraphBLAS notation.  See GB_mask.c, or GB_spec_mask.m for a MATLAB script
  that describes this step.
@@ -621,13 +733,39 @@ constructed by dox_headers.m
 */
 
 
-/** \file GB_add.c
-\brief  GB_add: 'add' two matrices using an operator
+/** \file GB_accum_mask.h
+\brief  GB_accum_mask.h: definitions for GB_accum_mask
 
 \par
- GB_add (C, A, B, op), 'adds' C = op (A,B), using the given operator
- element-wise on the matrices A and B.  The result is typecasted as needed.
- The pattern of C is the union of the pattern of A and B.
+ The sole purpose of the GB_ACCUM_MASK macro is to simplify the doxygen call
+ graph drawings, so that the details of the GB_accum_mask function do not
+ appear in the call graphs of its callers:
+\par
+      GB_mxm
+      GB_extract
+      GrB_transpose
+      GB_ewise
+      GB_reduce_to_vector
+      GB_kron
+      GB_select
+      GB_apply
+\par
+ The call graph of GB_accum_mask does appear.  It is complex, since it call
+ GB_subassigner, which can then call the entire body of code for the many
+ subassign methods.  It also calls GB_add, GB_transpose, and GB_mask, and
+ all their dependent functions.
+*/
+
+
+/** \file GB_add.c
+\brief  GB_add: C = A+B or C\<M\>=A+B, but not C\<!M\>=A+B
+
+\par
+ GB_add computes C=A+B or C\<M\>=A+B, using the given operator element-wise on
+ the matrices A and B.  The result is typecasted as needed.  The pattern of C
+ is the union of the pattern of A and B, intersection with the mask M, if
+ present.  The C\<!M\>=A+B case is not handled; the complemented mask is
+ handled in GB_mask.
 \par
  Let the op be z=f(x,y) where x, y, and z have type xtype, ytype, and ztype.
  If both A(i,j) and B(i,j) are present, then:
@@ -644,32 +782,115 @@ constructed by dox_headers.m
 \par
  ctype is the type of matrix C.  The pattern of C is the union of A and B.
 \par
- This function should not be called by the end user.  It is a helper function
- for user-callable routines.  No error checking is performed except for
- out-of-memory conditions.
+ op may be NULL.  In this case, the intersection of A and B must be empty.
+ This is used by GB_wait only, for merging the pending tuple matrix T into A.
+ Any duplicate pending tuples have already been summed in T, so the
+ intersection of T and A is always empty.
+*/
+
+
+/** \file GB_add.h
+\brief  GB_add.h: definitiions for GB_add and related functions
+
+*/
+
+
+/** \file GB_add_phase0.c
+\brief  GB_add_phase0: find vectors of C to compute for C=A+B or C\<M\>=A+B
+
 \par
- This function does not transpose or reformat its inputs or outputs.  C, A,
- and B must have the same number of vectors and vector lengths.  However,
- suppose A is CSR, and B and C are CSC, but the caller wants to compute C =
- A'+B.  Then no transpose of A is needed; just interpret the CSR of A' as a
- CSC format.  The work is the same with C=A'+B if B and C are CSR and A is
- CSC.  Then the output C is CSR, and the CSC of A' is already effectively in
- CSR format.
+ The eWise add of two matrices, C=A+B, C\<M\>=A+B, or C\<!M\>=A+B starts with
+ this phase, which determines which vectors of C need to be computed.
+ This phase is also used for GB_masker.
 \par
- As a result, the input formats of A and B are not relevant, and neither is
- the output format of C.  This function can be completely agnostic as to the
- CSR / CSC formats of A, B, and C.  The format of C is determined by the
- caller and assigned to C-\>is_csc, but is otherwise unused here.
+ On input, A and B are the two matrices being added, and M is the optional
+ mask matrix (not complemented).  The complemented mask is handed in GB_mask,
+ not here.
 \par
- The output C is hypersparse if both A and B are hypersparse; otherwise
- C is not hypersparse.
+ The A matrix can be sparse, hypersparse, slice, or hyperslice.  The B matrix
+ can only be sparse or hypersparse.  See GB_wait, which can pass in A as any
+ of the four formats.  In this case, no mask is present.
 \par
- FUTURE: this could be faster with built-in operators and types.
+ On output, an integer (Cnvec) a boolean (Ch_to_Mh) and up to 3 arrays are
+ returned, either NULL or of size Cnvec.  Let n = A-\>vdim be the vector
+ dimension of A, B, M and C.
 \par
- PARALLEL: use 1D parallelism here.  Either do the work in symbolic/numeric
- phases (one to compute nnz in each column, one to fill the output), or
- compute submatrices and then concatenate them.  Probably do the former.
- See also GB_emult.
+      Ch:  the list of vectors to compute.  If not NULL, Ch [k] = j is the
+      kth vector in C to compute, which will become the hyperlist C-\>h of C.
+      Note that some of these vectors may turn out to be empty, because of
+      the mask, or because the vector j appeared in A or B, but is empty.
+      It is pruned at the end of GB_add_phase2.  If Ch is NULL then it is an
+      implicit list of size n, and Ch [k] == k for all k = 0:n-1.  In this
+      case, C will be a standard matrix, not hypersparse.  Thus, the kth
+      vector is j = (Ch == NULL) ? k : Ch [k].
+\par
+      Ch is freed by GB_add if phase1 fails.  phase2 either frees it or
+      transplants it into C.
+\par
+      Ch_is_Mh:  true if the mask M is present, hypersparse, and not
+      complemented, false otherwise.  In this case Ch is a deep copy of Mh.
+      Only GB_add uses this option; it is not used by GB_masker (Ch_is_Mh
+      is always false for GB_masker).  This is determined by passing in
+      p_Ch_is_Mh as a NULL or non-NULL pointer.
+\par
+      C_to_A:  if A is hypersparse, then C_to_A [k] = kA if the kth vector, j
+      = (Ch == NULL) ? k : Ch [k] appears in A, as j = Ah [kA].  If j does
+      not appear in A, then C_to_A [k] = -1.  If A is not hypersparse, then
+      C_to_A is returned as NULL.
+\par
+      C_to_B:  if B is hypersparse, then C_to_B [k] = kB if the kth vector, j
+      = (Ch == NULL) ? k : Ch [k] appears in B, as j = Bh [kB].  If j does
+      not appear in B, then C_to_B [k] = -1.  If B is not hypersparse, then
+      C_to_B is returned as NULL.
+\par
+      C_to_M:  if M is hypersparse, and Ch_is_Mh is false, then C_to_M [k] =
+      kM if the kth vector, j = (Ch == NULL) ? k : Ch [k] appears in M, as j
+      = Mh [kM].  If j does not appear in M, then C_to_M [k] = -1.  If M is
+      not hypersparse, then C_to_M is returned as NULL.
+*/
+
+
+/** \file GB_add_phase1.c
+\brief  GB_add_phase1: find \# of entries in C=A+B or C\<M\>=A+B
+
+\par
+ GB_add_phase1 counts the number of entries in each vector of C, for C=A+B or
+ C\<M\>=A+B  and then does a cumulative sum to find Cp.  GB_add_phase1 is
+ preceded by GB_add_phase0, which finds the non-empty vectors of C.  This
+ phase is done entirely in parallel.
+\par
+ C, M, A, and B can be standard sparse or hypersparse, as determined by
+ GB_add_phase0.  The mask M may be present, but it is not complemented.
+\par
+ GB_wait computes A=A+T where T is the matrix of the assembled pending
+ tuples.  A and T are disjoint, so this function does not need to examine
+ the pattern of A and T at all.  No mask is used in this case.
+\par
+ Cp is either freed by phase2, or transplanted into C.
+*/
+
+
+/** \file GB_add_phase2.c
+\brief  GB_add_phase2: C=A+B, C\<M\>=A+B, or C\<!M\>=A+B
+
+\par
+ GB_add_phase2 computes C=A+B, C\<M\>=A+B, or C\<!M\>=A+B.  It is preceded first
+ by GB_add_phase0, which computes the list of vectors of C to compute (Ch)
+ and their location in A and B (C_to_[AB]).  Next, GB_add_phase1 counts the
+ entries in each vector C(:,j) and computes Cp.
+\par
+ GB_add_phase2 computes the pattern and values of each vector of C(:,j),
+ fully in parallel.
+\par
+ C, M, A, and B can be standard sparse or hypersparse, as determined by
+ GB_add_phase0.  All cases of the mask M are handled: not present, present
+ and not complemented, and present and complemented.
+\par
+ This function either frees Cp and Ch, or transplants then into C, as C-\>p
+ and C-\>h.  Either way, the caller must not free them.
+\par
+ op may be NULL.  In this case, the intersection of A and B must be empty.
+ This is used by GB_wait only, for merging the pending tuple matrix T into A.
 */
 
 
@@ -681,8 +902,6 @@ constructed by dox_headers.m
  aliased to each other.  In the latter case, that component of A and B will
  always be shallow, in either A or B, or both.  NULL pointers are not
  aliased.
-\par
- not parallel: takes O(1) time
 */
 
 
@@ -693,21 +912,22 @@ constructed by dox_headers.m
  C\<M\> = accum (C, op(A)) or accum (C, op(A)')
 \par
  GB_apply does the work for GrB_*_apply.  Compare this with GrB_transpose.
-\par
- parallel: not here, but in GB_transpose and GB_shallow_op
+*/
+
+
+/** \file GB_apply.h
+\brief  GB_apply.h: definitions for GB_apply
+
 */
 
 
 /** \file GB_apply_op.c
-\brief  GB_apply_op:  apply a unary operator to an array
+\brief  GB_apply_op: typecast and apply a unary operator to an array
 
 \par
  Cx = op ((xtype) Ax)
 \par
  Compare with GB_transpose_op.c
-\par
- PARALLEL: do it here, but it is easy.  Might want to split into separate
- files like Generated/GB_AxB*, so worker is not in a macro but in a function.
 */
 
 
@@ -731,9 +951,12 @@ constructed by dox_headers.m
  If row_assign is true, this function does the work for GrB_Row_assign.
 \par
  Compare with GB_subassign, which uses M and C_replace differently
-\par
- PARALLEL: some C_replace_phase here, mainly in GB_subassign_kernel and
- GB_subref_numeric.
+*/
+
+
+/** \file GB_assign.h
+\brief  GB_assign.h: definitions for GB_assign and related functions
+
 */
 
 
@@ -750,16 +973,80 @@ constructed by dox_headers.m
  type-generic macro suffix, \"_UDT\".
 \par
  Compare with GB_subassign_scalar, which uses M and C_replace differently
+*/
+
+
+/** \file GB_assign_zombie1.c
+\brief  GB_assign_zombie1: delete all entries in C(:,j) for GB_assign
+
 \par
- parallel: not here; see GB_assign
+ C(:,j)\<!\> = anything: GrB_Row_assign or GrB_Col_assign with an empty
+ complemented mask requires all entries in the C(:,j) vector to be deleted.
+*/
+
+
+/** \file GB_assign_zombie2.c
+\brief  GB_assign_zombie2: delete all entries in C(i,:) for GB_assign
+
+\par
+ C(i,:)\<!\> = anything: GrB_Row_assign or GrB_Col_assign with an empty
+ complemented mask requires all entries in C(i,:) to be deleted.
+*/
+
+
+/** \file GB_assign_zombie3.c
+\brief  GB_assign_zombie3: delete entries in C(:,j) for C_replace_phase
+
+\par
+ For GrB_Row_assign or GrB_Col_assign, C(I,j)\<\#M,repl\>=any must delete all
+ entries C(i,j) outside of C(I,j), if the mask M(i,0) (or its complement) is
+ zero.  This step is not done for GxB_*_subassign, since that method does not
+ modify anything outside IxJ.
+\par
+ GB_assign_zombie3 and GB_assign_zombie4 are transposes of each other.
+*/
+
+
+/** \file GB_assign_zombie4.c
+\brief  GB_assign_zombie4: delete entries in C(i,:) for C_replace_phase
+
+\par
+ For GrB_Row_assign or GrB_Col_assign, C(i,J)\<M,repl\>=..., if C_replace is
+ true, and mask M is present, then any entry C(i,j) outside the list J must
+ be deleted, if M(0,j)=0.
+\par
+ GB_assign_zombie3 and GB_assign_zombie4 are transposes of each other.
+*/
+
+
+/** \file GB_assign_zombie5.c
+\brief  GB_assign_zombie5: delete entries in C for C_replace_phase
+
+\par
+ For GrB_Matrix_assign, C(I,J)\<M,repl\>=..., if C_replace is true, and mask M
+ is present, then any entry C(i,j) outside IxJ must be be deleted, if
+ M(i,j)=0.
+\par
+ See also GB_assign_zombie3 and GB_assign_zombie4.
+*/
+
+
+/** \file GB_binop_builtin.c
+\brief  GB_binop_builtin:  determine if a binary operator is built-in
+
+\par
+ Determine if A*B uses a built-in semiring, and if so, determine the
+ opcodes and type codes of the semiring.
+\par
+ If the op is NULL, then it is the implicit GrB_SECOND_[A-\>type] operator.
+ This is a built-in operator for built-in types.  This feature is only used
+ by GB_wait.
 */
 
 
 /** \file GB_block.c
 \brief  GB_block: apply all pending computations if blocking mode enabled
 
-\par
- parallel: not here.  See GB_wait instead.
 */
 
 
@@ -768,7 +1055,7 @@ constructed by dox_headers.m
 
 \par
  Returns the equivalent opcode when an operator's x and y arguments are
- boolean.  13 of the 23 binary opcodes are redundant when applied to
+ boolean.  15 of the 25 binary opcodes are redundant when applied to
  boolean inputs, leaving 10 unique binary opcodes z=f(x,y) when all three
  operands x,y,z are boolean.
 \par
@@ -782,8 +1069,12 @@ constructed by dox_headers.m
  Those 6 names are in GraphBLAS but the pairs of names are equivalent.
 \par
  See discussion on Source/GB.h on boolean and integer division
-\par
- not parallel: this function does O(1) work and is already thread-safe.
+*/
+
+
+/** \file GB_bracket.h
+\brief  GB_bracket.h: definitions for GB_bracket
+
 */
 
 
@@ -791,9 +1082,21 @@ constructed by dox_headers.m
 \brief  GB_build: build a matrix
 
 \par
- Construct a matrix C from a list of indices and values.  Any duplicate
- entries with identical indices are assembled using the binary dup operator
- provided on input.  All three types (x,y,z for z=dup(x,y)) must be
+ CALLED BY: GB_matvec_build and GB_reduce_to_vector
+ CALLS:     GB_builder
+\par
+ GB_matvec_build constructs a GrB_Matrix or GrB_Vector from the tuples
+ provided by the user.  In that case, the tuples must be checked for
+ duplicates.  They might be sorted on input, so this condition is checked and
+ exploited if found.  GB_reduce_to_vector constructs a GrB_Vector froma
+ GrB_Matrix, by discarding the vector index.  As a result, duplicates are
+ likely to appear, and the input is likely to be unsorted.  But for
+ GB_reduce_to_vector, the validity of the tuples need not be checked.  All of
+ these conditions are checked in GB_builder.
+\par
+ GB_build constructs a matrix C from a list of indices and values.  Any
+ duplicate entries with identical indices are assembled using the binary dup
+ operator provided on input.  All three types (x,y,z for z=dup(x,y)) must be
  identical.  The types of dup, S, and C must all be compatible.
 \par
  Duplicates are assembled using T(i,j) = dup (T (i,j), S (k)) into a
@@ -806,12 +1109,12 @@ constructed by dox_headers.m
  the results are not defined.
 \par
  SuiteSparse:GraphBLAS provides a well-defined order of assembly, however.
- Entries in [I,J,S] are first sorted in increasing order of row and column
- index via a stable sort, with ties broken by the position of the tuple in
- the [I,J,S] list.  If duplicates appear, they are assembled in the order
- they appear in the [I,J,S] input.  That is, if the same indices i and j
- appear in positions k1, k2, k3, and k4 in [I,J,S], where k1 \< k2 \< k3 \< k4,
- then the following operations will occur in order:
+ For a CSC format, entries in [I,J,S] are first sorted in increasing order of
+ row and column index via a stable sort, with ties broken by the position of
+ the tuple in the [I,J,S] list.  If duplicates appear, they are assembled in
+ the order they appear in the [I,J,S] input.  That is, if the same indices i
+ and j appear in positions k1, k2, k3, and k4 in [I,J,S], where k1 \< k2 \< k3
+ \< k4, then the following operations will occur in order:
 \par
       T (i,j) = S (k1) ;
 \par
@@ -856,63 +1159,14 @@ constructed by dox_headers.m
  time taken by this function is just O(nvals*log(nvals)), regardless of what
  format C is returned in.
 \par
- If nvals == 0, I_in, J_in, and S may be NULL.
-\par
- PARALLEL: this function passes over the tuples to see if they are sorted,
- which could be done as a parallel reduction.  The copy into jwork is fully
- parallel.  The check for indices out-of-bounds is also like a parallel
- reduction, but it could stop as soon as a single thread finds one index
- out of bounds.  This function then calls GB_builder, which does the sort
- of the tuples and constructs the hypersparse CSR/CSC matrix C.
+ The input arrays I_input, J_input, and S_input are not modified.
+ If nvals == 0, I_input, J_input, and S_input may be NULL.
 */
 
 
-/** \file GB_build_factory.c
-\brief  GB_build_factory: build a matrix from sorted tuples
+/** \file GB_build.h
+\brief  GB_build.h: definitions for GB_build
 
-\par
- The tuples have been sorted and duplicates marked by GB_builder.  Assemble
- them with a switch factory of built-in workers, or two generic workers.  The
- vector pointers T-\>p and hyperlist T-\>h (if hypersparse) have already been
- computed.  This function is agnostic regarding the CSR/CSR format, and even
- hypersparsity.  The rest of the build process here needs to know nothing at
- all about the vectors.  kwork is NULL on input if the original input tuples
- did not need sorting; in this case, kwork [k] == k is implicitly true.
-\par
- iwork holds the row indices of the tuple, and kwork holds the positions in
- the array S.  The tuples are sorted so that duplicates are adjacent to each
- other and they appear in the order they appeared in the original tuples.
- This method assembles the duplicates and creates T-\>x from iwork, kwork, and
- S.  iwork is then transplanted into T, becoming T-\>i.
-\par
- On input, the (i,k,S[k]) tuples are held in two integer arrays, iwork and
- kwork, and an array S of numerical values.  S has not been sorted, nor even
- accessed yet.  It is identical to the original unsorted tuples.  The
- (i,k,S[k]) tuple holds the row index i, the position k, and the value S [k].
- This entry becomes T(i,j) = S [k] in the matrix T, and duplicates are
- assembled via the dup operator.
-\par
- The row indices on input are in iwork, and after duplicates are removed,
- iwork is compacted (duplicates removed) and then transplanted directly in
- the T, becoming the row indices T-\>i.  The symbolic analysis is thus
- consumed by this function, and incorporated into the output matrix T, in
- place.  If this method is split into user-callable symbolic analysis and
- numerical phases, then a copy of iwork should be made, which would then be
- consumed and transplanted into T-\>i.  Also, kwork (which is read-only by
- thus function) should not be freed.  If these changes were made, then iwork
- and kwork could be used for subsequent builds of T with the same pattern and
- ordering of tuples but with different numerical values.
-\par
- On output, kwork is freed and iwork becomes T-\>i.   Thus iwork_handle and
- kwork_handle in the caller are both set to NULL.
-\par
- The time and memory taken by this function is O(t) if t=len is the number
- of tuples.
-\par
- PARALLEL: the tuples have already been sorted, and duplicates tagged.  need
- to parallelize the summation of duplicate tuples.  Each unique tuple could
- be done only by the thread the owns it.  It is unlikely that there will be
- many duplicates, but possible.  So consider a parallel reduction.
 */
 
 
@@ -920,38 +1174,100 @@ constructed by dox_headers.m
 \brief  GB_builder: build a matrix from tuples
 
 \par
- The input arguments \&iwork and \&jwork are always freed by this function.
- This function is agnostic regarding the CSR/CSC format.  It decides whether
- T is standard sparse or hypersparse, as determined by the default rules
- for GrB_Matrix_new.
+ CALLED BY: GB_build, GB_wait, and GB_transpose
+ CALLS:     Generated/GB_red_build__* workers
 \par
  This function is called by GB_build to build a matrix T for GrB_Matrix_build
- or GrB_Vector_build, and by GB_wait to build a matrix T from the list of
- pending tuples.
+ or GrB_Vector_build, by GB_wait to build a matrix T from the list of pending
+ tuples, and by GB_transpose to transpose a matrix or vector.  Duplicates can
+ appear if called by GB_build or GB_wait, but not GB_transpose.
 \par
- PARALLEL: first does qsort, so need to parallelize GB_qsort_*.  Then passes
- over the tuples to find duplicates, which has some dependencies but could be
- done in bulk parallel.  After sorting, a thread owns a chunk of tuples.  It
- can mark all its own duplicates, fully in parallel, but not across to tuples
- owned by another thread.  When done with this first phase, a 2nd pass could
- find any duplicates across the thread boundaries.
+ The indices are provided either as (I_input,J_input) or (I_work,J_work), not
+ both.  The values are provided as S_input or S_work, not both.  On return,
+ the *work arrays are either transplanted into T, or freed, since they are
+ temporary workspaces.
+\par
+ The work is done in major 5 Steps, some of which can be skipped, depending
+ on how the tuples are provided (*_work or *_input), and whether or not they
+ are sorted, or have duplicates.  If vdim \<= 1, some work is skipped (for
+ GrB_Vectors, and single-vector GrB_Matrices).  Let e be the of tuples on
+ input.  Let p be the \# of threads used.
+\par
+ STEP 1: copy user input.  O(e/p) read/write per thread, or skipped.
+\par
+ STEP 2: sort the tuples.  Time: O((e log e)/p), read/write, or skipped if
+         the tuples are already sorted.
+\par
+ STEP 3: count vectors and duplicates.  O(e/p) reads, per thread, if no
+         duplicates, or skipped if already done.  O(e/p) read/writes
+         per thread if duplicates appear.
+\par
+ STEP 4: construct T-\>h and T-\>p.  O(e/p) reads per thread, or skipped if
+         T is a vector.
+\par
+ STEP 5: assemble the tuples.  O(e/p) read/writes per thread, or O(1) if the
+         values can be transplanted into T as-is.
+\par
+ For GrB_Matrix_build:  If the input (I_input, J_input, S_input) is already
+ sorted with no duplicates, and no typecasting needs to be done, then Step 1
+ still must be done (each thread does O(e/p) reads of (I_input,J_input) and
+ writes to I_work), but Step 1 also does the work for Step 3.  Step 2 and 3
+ are skipped.  Step 4 does O(e/p) reads per thread (J_input only).  Then
+ I_work is transplanted into T-\>i.  Step 5 does O(e/p) read/writes per thread
+ to copy S into T-\>x.
+\par
+ For GrB_Vector_build: as GrB_Matrix_build, Step 1 does O(e/p) read/writes
+ per thread.  The input is always a vector, so vdim == 1 always holds.  Step
+ 2 is skipped if the indices are already sorted, and Step 3 does no work at
+ all unless duplicates appear.  Step 4 takes no time, for any vector. Step 5
+ does O(e/p) reads/writes per thread.
+\par
+ For GrB_reduce_to_vector: like GrB_Vector_build, but many duplicates are
+ likely, and the indices will not be sorted.  The input is always a single
+ vector (vdim == 1).  Step 1 only does a parallel memcpy, from I_input to
+ I_work.  Step 2 takes O((e log e)/p) time to sort the (i,k) tuples.  Step 3
+ does O(e/p) read/writes.  Step 4 takes no time.  Step 5 does O(e/p)
+ read/writes per thread.
+\par
+ For GB_wait:  the pending tuples are provided as I_work, J_work, and S_work,
+ so Step 1 is skipped (no need to check for invalid indices).  The input
+ J_work may be null (vdim can be anything, since GB_wait is used for both
+ vectors and matrices).  The tuples might be in sorted order already, which
+ is known precisely known from A-\>Pending-\>sorted.  Step 2 does O((e log e)/p)
+ work to sort the tuples.  Duplicates may appear, and out-of-order tuples are
+ likely.  Step 3 does O(e/p) read/writes.  Step 4 does O(e/p) reads per
+ thread of (I_work,J_work), or just I_work.  Step 5 does O(e/p) read/writes
+ per thread, or O(1) time if S_work can be transplanted into T-\>x.
+\par
+ For GB_transpose: uses I_work, J_work, and either S_input (if no op applied
+ to the values) or S_work (if an op was applied to the A-\>x values).  This is
+ only done for matrices, not vectors, so vdim \> 1 will always hold.  The
+ indices are valid so Step 1 is skipped.  The tuples are not sorted, so Step
+ 2 takes O((e log e)/p) time to do the sort.  There are no duplicates, so
+ Step 3 only does O(e/p) reads of J_work to count the vectors in each slice.
+ Step 4 only does O(e/p) reads of J_work to compute T-\>h and T-\>p.  Step 5
+ does O(e/p) read/writes per thread, but it uses the simpler case in
+ GB_reduce_build_template since no duplicates can appear.  It is unlikely
+ able to transplant S_work into T-\>x since the input will almost always be
+ unsorted.
 */
 
 
 /** \file GB_calloc_memory.c
-\brief  GB_calloc_memory: wrapper for calloc (used via the GB_CALLOC_MEMORY macro)
+\brief  GB_calloc_memory: wrapper for calloc_function
 
 \par
- A wrapper for calloc.  Space is set to zero.
+ A wrapper for calloc_function.  Space is set to zero.
 \par
- This function is called via the GB_CALLOC_MEMORY(p,n,s,Context) macro.
+ This function is called via the GB_CALLOC_MEMORY(p,n,s) macro.
 \par
  Parameters are the same as the POSIX calloc, except that asking to allocate
  a block of zero size causes a block of size 1 to be allocated instead.  This
  allows the return pointer p to be checked for the out-of-memory condition,
  even when allocating an object of size zero.
 \par
- PARALLEL: clear the array in parallel?
+ to turn on memory usage debug printing, uncomment this line:
+ \#define GB_PRINT_MALLOC 1
 */
 
 
@@ -959,11 +1275,8 @@ constructed by dox_headers.m
 \brief  GB_cast_array: typecast an array
 
 \par
- Casts an input array A to an output array C with a different built-in type.
- Does not handle user-defined types.
-\par
- PARALLEL: easy.  May want to put the workers in functions, like
- Generated/GB_AxB*, instead of in a macro.
+ Casts an input array Ax to an output array Cx with a different built-in
+ type.  Does not handle user-defined types.
 */
 
 
@@ -974,8 +1287,6 @@ constructed by dox_headers.m
  Returns a pointer to a function f(z,x,s) that copies its input x into its
  output z, casting as needed.  That is, it computes z = (type of z) x.
  s is the size for user-defined types, which can only be copied.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -995,8 +1306,6 @@ constructed by dox_headers.m
  cannot be recreated, then all content of the matrix is freed or removed, and
  the matrix A is left in an invalid state (A-\>magic == GB_MAGIC2).  Only the
  header is left.
-\par
- parallel: not here, but perhaps in GB_calloc_memory.
 */
 
 
@@ -1005,8 +1314,6 @@ constructed by dox_headers.m
 
 \par
  Only prints entries of built-in types; user-defined types can't be printed.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -1018,8 +1325,6 @@ constructed by dox_headers.m
  types (of any kind) or if both are the same user-defined type.  This
  function does not have the type itself, but just the code.  If the types are
  available, GB_Type_compatible should be called instead.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -1028,8 +1333,6 @@ constructed by dox_headers.m
 
 \par
  The user-defined type has no known size, so this must be provided on input.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -1038,8 +1341,6 @@ constructed by dox_headers.m
 
 \par
  Given GB_Type_code, return a string with the name of the type
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -1053,8 +1354,6 @@ constructed by dox_headers.m
  as the matrix being operated on.  This cannot be checked; results are
  undefined if the user passes in a void * pointer to a different user-defined
  type.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -1064,8 +1363,59 @@ constructed by dox_headers.m
 \par
  Check if the types for C\<M\> = accum (C,T) are all compatible,
  and (if present) make sure the size of C and M match.
+*/
+
+
+/** \file GB_control.h
+\brief  GB_control.h:  disable hard-coded functions to reduce code size
+
 \par
- not parallel: this function does O(1) work and is already thread-safe.
+ The installer of SuiteSparse:GraphBLAS can edit this file to reduce the code
+ size of the compiled library, by disabling the corresonding hard-coded
+ functions in Source/Generated.  For example, if SuiteSparse:GraphBLAS is
+ integrated into an application that makes no use of the GrB_INT16 data type,
+ or just occassional use where performance is not a concern, then uncomment
+ the line \"\#define GxB_NO_INT16 1\".  Alternatively, SuiteSparse:GraphBLAS can
+ be compiled with a list of options, such as -DGxB_NO_INT16=1, which does the
+ same thing.
+\par
+ GraphBLAS will still work as expected.  It will simply use a generic method
+ in place of the type- or operator-specific code.  It will be slower, by
+ about 2x or 3x, depending on the operation. but its results will be the
+ same.  A few operations will be 10x slower, such as GrB_reduce to scalar
+ using the GrB_MAX_FP64 operator.
+\par
+ Enabling the \"\#define GBCOMPACT\" option is the same as uncommenting this
+ entire file.  This file provides a more concise control over which
+ types, operators, and semirings are given fast hard-coded versions in
+ Source/Generated, and which use the slower generic methods.
+\par
+ However, the code size can be reduced significantly.  Uncommenting all of
+ the options below cuts the code from 55MB to under 2.7MB, on a MacBook Pro
+ using gcc 8.2.0 (as of the draft V3.0.0 version, June 18, 2019).  Disabling
+ all types except GxB_NO_FP64 results in a code size of 7.8MB.
+\par
+ Note that some semirings are renamed.  For example, C=A*B when all matrices
+ are in CSC format, uses the semiring as-is.  If all matrices are in CSR
+ format instead, then C'=B'*A' is computed, treating the internal matrices
+ as if they are in CSC format.  To accomplish this, the semiring may be
+ \"flipped\", if the multiply operator is not commutative.  That is,
+ the GxB_PLUS_FIRST_* semiring is replaced with GxB_PLUS_SECOND_*.  Below
+ is a list of all multiplicative operators and their \"flipped\" pair.
+\par
+ As a result of the \"flip\", if the FIRST operator is disabled, it may disable
+ some uses of the GxB_*_SECOND_* semirings, and visa versa, depending on the
+ matrix formats.  I recommend that if you want to use the FIRST operator with
+ fast hard-coded semirings, then do not disable FIRST or SECOND.  The
+ following is a complete list of all pairs of operators that may be replaced
+ with the other.  I recommend either keeping both of each pair, or disabling
+ both.
+*/
+
+
+/** \file GB_copy_user_user.c
+\brief  GB_copy_user_user.c: copy user a type
+
 */
 
 
@@ -1098,8 +1448,6 @@ constructed by dox_headers.m
  To see where these options are used in SuiteSparse:GraphBLAS:
  grep \"allocate a new header\"
  which shows all uses of GB_new and GB_create
-\par
- parallel: not here but perhaps in GB_new
 */
 
 
@@ -1110,26 +1458,13 @@ constructed by dox_headers.m
  Compute the cumulative sum of an array count[0:n], of size n+1
  in pseudo-MATLAB notation:
 \par
-      k = sum (count [0:n] != 0) ;
+      k = sum (count [0:n-1] != 0) ;
 \par
       count = cumsum ([0 count[0:n-1]]) ;
 \par
  That is, count [j] on input is overwritten with the value of
- sum (count [0..j-1]).
-\par
- GB_transpose_bucket uses this function to compute row and column pointers.
- On input, count [j] is the number of nonzeros in column j of a matrix, and
- count [n] should be zero (it only affects the result k, however).  On
- output, count [0..n] contains the column pointers of the matrix, and kresult
- is the number of nonzeros in count [0:n], which becomes nvec_nonempty for
- the resulting matrix.
-\par
- GB_AxB_flopcount uses this to compute the cumulative sum of the flop
- counts for C\<M\>=A*B, for each column of B.  In this case, n is the
- number of vectors in B.  It does not need the value k, so it is not
- computed.
-\par
- PARALLEL: a parallel cumsum
+ sum (count [0..j-1]).  count [n] is implicitly zero on input.
+ On output, count [n] is the total sum.
 */
 
 
@@ -1139,6 +1474,8 @@ constructed by dox_headers.m
 \par
  C = A, making a deep copy.  Not user-callable; this function does the work
  for user-callable functions GrB_*_dup.
+\par
+ if numeric is false, C-\>x is allocated but not initialized.
 \par
  There is little use for the following feature, but (*Chandle) and A might be
  identical, with GrB_dup (\&A, A).  The input matrix A will be lost, and will
@@ -1154,69 +1491,143 @@ constructed by dox_headers.m
   GrB_free (\&B) ;
 \par
  A is the new copy and B is the old copy.  Each should be freed when done.
-\par
- PARALLEL: a few large memcpy's, can be done in parallel.
 */
 
 
-/** \file GB_eWise.c
-\brief  GB_eWise: C\<M\> = accum (C, A+B) or A.*B
+/** \file GB_ek_slice.c
+\brief  GB_ek_slice: slice the entries and vectors of a matrix
 
 \par
- C\<M\> = accum (C,A+B), A.*B and variations.
+ Slice the entries of a matrix or vector into ntasks slices.
 \par
- The input matrices A and B are optionally transposed.
+ Task t does entries pstart_slice [t] to pstart_slice [t+1]-1 and
+ vectors kfirst_slice [t] to klast_slice [t].  The first and last vectors
+ may be shared with prior slices and subsequent slices.
 \par
- Not user-callable.  Does the work for all user-callable functions of
- the form GrB_eWiseAdd_* and GrB_eWiseMult_*
+ On input, ntasks must be \<= nnz (A), unless nnz (A) is zero.  In that
+ case, ntasks must be 1.
+*/
+
+
+/** \file GB_ek_slice.h
+\brief  GB_ek_slice.h: slice the entries and vectors of a matrix
+
 \par
- parallel: not here, but in GB_add, GB_emult, GB_transpose, ...
+ Slice the entries of a matrix or vector into ntasks slices.
+\par
+ Task t does entries pstart_slice [t] to pstart_slice [t+1]-1 and
+ vectors kfirst_slice [t] to klast_slice [t].  The first and last vectors
+ may be shared with prior slices and subsequent slices.
+\par
+ On input, ntasks must be \<= nnz (A), unless nnz (A) is zero.  In that
+ case, ntasks must be 1.
 */
 
 
 /** \file GB_emult.c
-\brief  GB_emult: element-wise \"multiplication\" of two matrices
+\brief  GB_emult: C = A.*B or C\<M\>=A.*B
 
 \par
- GB_emult (C, A, B, op), applies an operator C = op (A,B)
- element-wise on the matrices A and B.  The result is typecasted as needed.
+ GB_emult, does C=A.*B or C\<M\>=A.*B, using the given operator element-wise on
+ the matrices A and B.  The result is typecasted as needed.  The pattern of C
+ is the intersection of the pattern of A and B, intersection with the mask M,
+ if present and not complemented.  The complemented mask is not handled here,
+ but in GB_mask.
 \par
  Let the op be z=f(x,y) where x, y, and z have type xtype, ytype, and ztype.
  If both A(i,j) and B(i,j) are present, then:
 \par
       C(i,j) = (ctype) op ((xtype) A(i,j), (ytype) B(i,j))
 \par
- If just A(i,j) is present but not B(i,j), then:
+ If just A(i,j) is present but not B(i,j), or
+ if just B(i,j) is present but not A(i,j), then C(i,j) is not present.
 \par
-      C(i,j) is not present, and is implicitly 'zero'
+ ctype is the type of matrix C.  The pattern of C is the intersection of A
+ and B, and also intersection with M if present.
+*/
+
+
+/** \file GB_emult.h
+\brief  GB_emult.h: definitions for GB_emult
+
+*/
+
+
+/** \file GB_emult_phase0.c
+\brief  GB_emult_phase0: find vectors of C to compute for C=A.*B or C\<M\>=A.*B
+
 \par
- If just B(i,j) is present but not A(i,j), then:
+ The eWise multiply of two matrices, C=A.*B, C\<M\>=A.*B, or C\<!M\>=A.*B starts
+ with this phase, which determines which vectors of C need to be computed.
 \par
-      C(i,j) is not present, and is implicitly 'zero'
+ On input, A and B are the two matrices being ewise multiplied, and M is the
+ optional mask matrix.  If present, it is not complemented.
 \par
- ctype is the type of matrix C.  Its pattern is the intersection of A and B.
+ The M, A, and B matrices are sparse or hypersparse (not a slice or
+ hyperslice).  C will be standard (if Ch is returned NULL) or hypersparse
+ (if Ch is returned non-NULL).
 \par
- This function should not be called by the end user.  It is a helper function
- for user-callable routines.  No error checking is performed except for
- out-of-memory conditions.
+      Ch: the vectors to compute in C.  Not allocated, but equal to either
+      A-\>h, B-\>h, or M-\>h, or NULL if C is not hypersparse.
 \par
- FUTURE: this could be faster with built-in operators and types.
+      C_to_A:  if A is hypersparse, and Ch is not A-\>h, then C_to_A [k] = kA
+      if the kth vector j = Ch [k] is equal to Ah [kA].  If j does not appear
+      in A, then C_to_A [k] = -1.  Otherwise, C_to_A is returned as NULL.
+      C is always hypersparse in this case.
 \par
- PARALLEL: use 1D parallelism.  Either do the work in symbolic/numeric phases
- (one to compute nnz in each column, one to fill the output), or compute
- submatrices and then concatenate them.  See also GB_add.
+      C_to_B:  if B is hypersparse, and Ch is not B-\>h, then C_to_B [k] = kB
+      if the kth vector j = Ch [k] is equal to Bh [kB].  If j does not appear
+      in B, then C_to_B [k] = -1.  Otherwise, C_to_B is returned as NULL.
+      C is always hypersparse in this case.
+\par
+      C_to_M:  if M is hypersparse, and Ch is not M-\>h, then C_to_M [k] = kM
+      if the kth vector j = (Ch == NULL) ? k : Ch [k] is equal to Mh [kM].
+      If j does not appear in M, then C_to_M [k] = -1.  Otherwise, C_to_M is
+      returned as NULL.  C is always hypersparse in this case.
+\par
+ FUTURE:: exploit A==M, B==M, and A==B aliases
+*/
+
+
+/** \file GB_emult_phase1.c
+\brief  GB_emult_phase1: find \# of entries in C=A.*B or C\<M\>=A.*B
+
+\par
+ GB_emult_phase1 counts the number of entries in each vector of C, for
+ C=A.*B or C\<M\>=A.*B and then does a cumulative sum to find Cp.
+ GB_emult_phase1 is preceded by GB_emult_phase0, which finds the non-empty
+ vectors of C.  This phase is done entirely in parallel.
+\par
+ C, M, A, and B can be standard sparse or hypersparse, as determined by
+ GB_emult_phase0.  If present, the mask M is not complemented.
+\par
+ Cp is either freed by GB_emult_phase2, or transplanted into C.
+*/
+
+
+/** \file GB_emult_phase2.c
+\brief  GB_emult_phase2: C=A.*B or C\<M\>=A.*+B
+
+\par
+ GB_emult_phase2 computes C=A.*B or C\<M\>=A.*B.  It is preceded first by
+ GB_emult_phase0, which computes the list of vectors of C to compute (Ch) and
+ their location in M, A, and B (C_to_[MAB]).  Next, GB_emult_phase1 counts
+ the entries in each vector C(:,j) and computes Cp.
+\par
+ GB_emult_phase2 computes the pattern and values of each vector of C(:,j),
+ fully in parallel.
+\par
+ C, M, A, and B can be standard sparse or hypersparse, as determined by
+ GB_emult_phase0.  If present, the mask M is not complemented.
+\par
+ This function either frees Cp or transplants it into C, as C-\>p.  Either
+ way, the caller must not free it.
 */
 
 
 /** \file GB_entry_check.c
 \brief  GB_entry_check: print a single entry for a built-in type
 
-\par
- not parallel: This function does O(1) work, but can be called for every
- entry in a matrix, to print it out in GxB_Matrix_fprint or
- GxB_Vector_fprint.  The printing to a file is fundamentally sequential, and
- also only needed for diagnostics.  For Matrix Market I/O, however, printing
- of the entire matrix could perhaps be done in parallel.
 */
 
 
@@ -1239,11 +1650,51 @@ constructed by dox_headers.m
       Template/GB_critical_section).
 \par
   (3) a failure to allocate thread-local storage for GrB_error
-      (see GB_thread_local_access).
+      (see GB_thread_local_get).
 \par
   (4) a failure to destroy the critical section in GrB_finalize.
+*/
+
+
+/** \file GB_eslice.c
+\brief  GB_eslice: uniform partition of e items to each task 
+
 \par
- not parallel: this function does O(1) work and is already thread-safe.
+ There are e items to split between ntasks.  Task tid will own items
+ Slice [tid] to Slice [tid+1]-1.
+*/
+
+
+/** \file GB_ewise.c
+\brief  GB_ewise: C\<M\> = accum (C, A+B) or A.*B
+
+\par
+ C\<M\> = accum (C,A+B), A.*B and variations.  The input matrices A and B are
+ optionally transposed.  Does the work for GrB_eWiseAdd_* and
+ GrB_eWiseMult_*.  Handles all cases of the mask.
+*/
+
+
+/** \file GB_ewise.h
+\brief  GB_ewise.h: definitions for GB_ewise
+
+*/
+
+
+/** \file GB_ewise_slice.c
+\brief  GB_ewise_slice: slice the entries and vectors for an ewise operation
+
+\par
+ Constructs a set of tasks to compute C, for an element-wise operation
+ (GB_add, GB_emult, and GB_mask) that operates on two input matrices,
+ C=op(A,B).  The mask is ignored for computing where to slice the work, but
+ it is sliced once the location has been found.
+*/
+
+
+/** \file GB_export.h
+\brief  GB_export.h: definitions for import/export
+
 */
 
 
@@ -1262,8 +1713,12 @@ constructed by dox_headers.m
  C\<M\> = accum (C, A(Rows,Cols) )
 \par
  C\<M\> = accum (C, A(Cols,Rows)')
-\par
- parallel: not here, but in GB_subref_numeric.
+*/
+
+
+/** \file GB_extract.h
+\brief  GB_extract.h: definitions for GB_extract
+
 */
 
 
@@ -1277,8 +1732,6 @@ constructed by dox_headers.m
 \par
  Returns GrB_SUCCESS if A(row,col) is present, and sets x to its value.
  Returns GrB_NO_VALUE if A(row,col) is not present, and x is unmodified.
-\par
- not parallel: this function does O(log(..)) work and is already thread-safe.
 */
 
 
@@ -1297,8 +1750,48 @@ constructed by dox_headers.m
 \par
  This function is not user-callable.  It does the work for the user-callable
  GrB_*_extractTuples functions.
+*/
+
+
+/** \file GB_extract_vector_list.c
+\brief  GB_extract_vector_list: extract vector indices for all entries in a matrix
+
 \par
- PARALLEL: easy.  Does large memcpy's and fully parallel loops.
+ Constructs a list of vector indices for each entry in a matrix.  Creates
+ the output J for GB_extractTuples, and I for GB_transpose when the qsort
+ method is used.
+*/
+
+
+/** \file GB_fine_slice.c
+\brief  GB_fine_slice: create fine hyperslices of B
+
+\par
+ For each thread tid, create Bslice [tid] as a fine hyperslice of B.  The i
+ and x arrays are the same as B.  When this function returns, the rest of
+ GraphBLAS will view Bslice [tid] as a hyperslice, but with non-shallow
+ Bslice [tid]-\>p and either shallow Bslice [tid]-\>h (if B is hypersparse) or
+ non-shallow Bslice [tid]-\>h (if B is sparse).
+\par
+ For each fine hyperslice, Bslice [tid]-\>p is allocated and created here; it
+ is not shallow (unlike the coarse slices computed by GB_slice).
+\par
+ Bslice [tid]-\>i and Bslice [tid]-\>x are offset pointers into B, so that
+ Bslice [tid]-\>p [0] == 0 for all slices tid.
+\par
+ if B is hypersparse, then Bslice [tid]-\>h is a shallow pointer into B-\>h,
+ where Bslice [tid]-\>h [0] is the same as B-\>h [k] if the kth vector of B is
+ the first vector of Bslice [tid].
+\par
+ The matrix dimensions of each slice are the same as B.  All slices have
+ vector length B-\>vlen and vector dimension B-\>vdim.   The slices are subsets
+ of the entries of B, as defined by the Slice array.  The Bslice [tid]
+ consists of the entries Slice [tid] to Slice [tid+1]-1 of B.
+\par
+ This function does O(nthreads+B-\>nvec) work and allocates up to
+ O(nthreads+B-\>nvec) space, so it could be parallel, but it will tend to be
+ used when B-\>nvec is small (even 1, for GrB_mxv and GrB_vxm).  So it does
+ not need to be parallel.
 */
 
 
@@ -1310,8 +1803,6 @@ constructed by dox_headers.m
 \par
  This function is called via the GB_MATRIX_FREE(A) and GB_VECTOR_FREE(v)
  macros.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -1323,7 +1814,74 @@ constructed by dox_headers.m
 \par
  This function is called via the GB_FREE_MEMORY(p,n,s) macro.
 \par
- not parallel: this function does O(1) work and is already thread-safe.
+ to turn on memory usage debug printing, uncomment this line:
+ \#define GB_PRINT_MALLOC 1
+*/
+
+
+/** \file GB_hcat_fine_slice.c
+\brief  GB_hcat_fine_slice: horizontal concatenation and summation of slices of C
+
+\par
+ Horizontal concatenation and summation of fine slices into the matrix C.
+*/
+
+
+/** \file GB_hcat_slice.c
+\brief  GB_hcat_slice: horizontal concatenation of the slices of C
+
+\par
+ Horizontal concatenation of slices into the matrix C.
+*/
+
+
+/** \file GB_heap.h
+\brief  GB_heap: a Heap data structure and its operations
+
+\par
+ The Heap is an array of GB_Elements: Heap [1..nheap].  Each entry in the
+ Heap is a GB_Element, with a key and name.
+\par
+ These functions are only used by the heap method for C=A*B.
+ See Source/Template/GB_AxB_heap_mask.c.
+*/
+
+
+/** \file GB_heap_build.c
+\brief  GB_heap_build: construct a Heap
+
+\par
+ On input, the Heap [1..nheap] may not satisfy the min-heap property.
+ On output, the elements have been rearranged so that it does.
+*/
+
+
+/** \file GB_heap_delete.c
+\brief  GB_heap_delete: delete an element in the middle of a Heap
+
+*/
+
+
+/** \file GB_heap_getminlist.c
+\brief  GB_heap_getminlist: get a list of all nodes with minimum key
+
+\par
+ Constructs a list of all nodes in the Heap with a key equal to Heap [1].key.
+ The Heap is not modified.  The list is returned in topological order: If
+ node p appears as p = List [k], and if its left child pleft = 2*p is in the
+ list at pleft = List [kleft], then k \< kleft.  Likewise for its right child,
+ pright = 2*p+1.
+*/
+
+
+/** \file GB_hyper_prune.c
+\brief  GB_hyper_prune: remove empty vectors from a hypersparse Ap, Ah list
+
+\par
+ Removes empty vectors from a hypersparse list.  On input, *Ap and *Ah are
+ assumed to be NULL.  The input arrays Ap_old and Ah_old are not modified,
+ and thus can be shallow content from another matrix.  New hyperlists Ap and
+ Ah are allocated, for nvec vectors, all nonempty.
 */
 
 
@@ -1333,8 +1891,12 @@ constructed by dox_headers.m
 \par
  Change the size of the A-\>h and A-\>p hyperlist.
  No change is made if A is not hypersparse.
-\par
- parallel: not here, but perhaps in GB_realloc_memory
+*/
+
+
+/** \file GB_ij.h
+\brief  GB_ij.h: definitions for I and J index lists
+
 */
 
 
@@ -1344,8 +1906,6 @@ constructed by dox_headers.m
 \par
  Determine the length of I, and process the colon notation I = begin:inc:end.
  No error checking is done.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -1354,10 +1914,6 @@ constructed by dox_headers.m
 
 \par
  check a list of indices I and determine its properties
-\par
- PARALLEL: checks the entire set of indices in the array I, if it is a list,
- to see if any entry is out of bounds, and to determine if it is sorted
- order.  Similar to the the check of I and J in GB_build.
 */
 
 
@@ -1365,9 +1921,7 @@ constructed by dox_headers.m
 \brief  GB_ijsort:  sort an index array I and remove duplicates
 
 \par
- PARALLEL: deletes duplicates, see also GB_builder.  This is only used in
- GB_assign, for scalar expansion and for the C_replace_phase, and only when I
- and/or J are lists (not GrB_ALL, nor lo:inc:hi).
+ Sort an index array and remove duplicates.  In MATLAB notation:
 */
 
 
@@ -1391,8 +1945,21 @@ constructed by dox_headers.m
 \par
  GxB_init is the same as GrB_init except that it also defines the
  malloc/calloc/realloc/free functions to use.
+*/
+
+
+/** \file GB_is_diagonal.c
+\brief  GB_is_diagonal: check if A is a diagonal matrix
+
 \par
- not parallel: this function does O(1) work.
+ Returns true if A is a square diagonal matrix, with all diagonal entries
+ present.  All pending tuples are ignored.  Zombies are treated as entries.
+*/
+
+
+/** \file GB_iterator.h
+\brief  GB_iterator.h: definitions for the GrB_Matrix iterator
+
 */
 
 
@@ -1410,8 +1977,6 @@ constructed by dox_headers.m
  GB_ix_alloc is only called by GB_create, so the matrix is not in the queue.
  The function never accessed the global matrix queue, and thus it
  cannot return GrB_PANIC.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -1421,8 +1986,6 @@ constructed by dox_headers.m
 \par
  Since A-\>p and A-\>h are unchanged, the matrix is still valid (unless it was
  invalid on input).  nnz(A) would report zero, and so would GrB_Matrix_nvals.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -1433,9 +1996,6 @@ constructed by dox_headers.m
  Does not modify A-\>p.  Reallocates A-\>x and A-\>i to the requested size,
  preserving the existing content of A-\>x and A-\>i.  Preserves pending tuples
  and zombies, if any.  If numeric is false, then A-\>x is freed instead.
-\par
- parallel: not here; see GB_realloc_memory instead, which might be done in
- parallel to copy from the old to new space.
 */
 
 
@@ -1446,8 +2006,12 @@ constructed by dox_headers.m
  nnz(A) has, or will, change.  The \# of nonzeros may decrease significantly,
  in which case the extra space is trimmed.  If the existing space is not
  sufficient, the matrix is doubled in size to accomodate the new entries.
-\par
- parallel: not here, but perhaps in GB_ix_realloc.
+*/
+
+
+/** \file GB_jappend.h
+\brief  GB_jappend.h: definitions of GB_jstartup, GB_jappend, and GB_jwrapup
+
 */
 
 
@@ -1458,15 +2022,17 @@ constructed by dox_headers.m
  C\<M\> = accum (C, kron(A,B))
 \par
  The input matrices A and B are optionally transposed.
-\par
- Not user-callable.  Does the work for GxB_kron
-\par
- parallel: not here, but in GB_kron_kernel.
 */
 
 
-/** \file GB_kron_kernel.c
-\brief  GB_kron_kernel: Kronecker product, C = kron (A,B)
+/** \file GB_kron.h
+\brief  GB_kron.h: definitions for GB_kron
+
+*/
+
+
+/** \file GB_kroner.c
+\brief  GB_kroner: Kronecker product, C = kron (A,B)
 
 \par
  C = kron(A,B) where op determines the binary multiplier to use.  The type of
@@ -1474,8 +2040,15 @@ constructed by dox_headers.m
  different.  The type of C is the type of z.  C is hypersparse if either A
  or B are hypersparse.
 \par
- PARALLEL: simple parallelism, but need to handle combinations of
- hyper/non-hyper cases in doubly-nested loops.
+ FUTURE: GB_kron would be faster with built-in types and operators.
+\par
+ FUTURE: at most one thread is used for each vector of C=kron(A,B).  The
+ matrix C is normally very large, but if both A and B are n-by-1, then C is
+ n^2-by-1 and only a single thread is used.  A better method for this case
+ would construct vectors of C in parallel.
+\par
+ FUTURE: each vector C(:,k) takes O(nnz(C(:,k))) work, but this is not
+ accounted for in the parallel load-balancing.
 */
 
 
@@ -1487,11 +2060,13 @@ constructed by dox_headers.m
 \par
  This function is called via the GB_MALLOC_MEMORY(p,n,s) macro.
 \par
- Asking to allocate a block of zero size causes a block of size 1 to be
- allocated instead.  This allows the return pointer p to be checked for the
- out-of-memory condition, even when allocating an object of size zero.
+ Parameters are the same as the POSIX calloc, except that asking to allocate
+ a block of zero size causes a block of size 1 to be allocated instead.  This
+ allows the return pointer p to be checked for the out-of-memory condition,
+ even when allocating an object of size zero.
 \par
- not parallel: this function does O(1) work and is already thread-safe.
+ to turn on memory usage debug printing, uncomment this line:
+ \#define GB_PRINT_MALLOC 1
 */
 
 
@@ -1513,8 +2088,107 @@ constructed by dox_headers.m
  i in the jth vector, and likewise for M, Z, and R.  If the matrices are all
  CSC, then this is row i and column j.  If the matrices are all CSR, then it
  is row j and column i.
+*/
+
+
+/** \file GB_mask.h
+\brief  GB_mask: definitions for GB_mask and related functions
+
+*/
+
+
+/** \file GB_mask_phase1.c
+\brief  GB_mask_phase1: find \# of entries in R = masker (M,C,Z)
+
 \par
- PARALLEL: similar method as GB_add
+ GB_mask_phase1 counts the number of entries in each vector of R, for R =
+ masker (M,C,Z), and then does a cumulative sum to find Cp.  GB_mask_phase1
+ is preceded by GB_add_phase0, which finds the non-empty vectors of R.  This
+ phase is done entirely in parallel.
+\par
+ R, M, C, and Z can be standard sparse or hypersparse, as determined by
+ GB_add_phase0.  All cases of the mask M are handled: present and not
+ complemented, and present and complemented.  The mask is always present for
+ R=masker(M,C,Z).
+\par
+ Rp is either freed by phase2, or transplanted into R.
+*/
+
+
+/** \file GB_mask_phase2.c
+\brief  GB_mask_phase2: phase2 for R = masker (M,C,Z)
+
+\par
+ GB_mask_phase2 computes R = masker (M,C,Z).  It is preceded first by
+ GB_add_phase0, which computes the list of vectors of R to compute (Rh) and
+ their location in C and Z (R_to_[CZ]).  Next, GB_mask_phase1 counts the
+ entries in each vector R(:,j) and computes Rp.
+\par
+ GB_mask_phase2 computes the pattern and values of each vector of R(:,j),
+ fully in parallel.
+\par
+ R, M, C, and Z can be standard sparse or hypersparse, as determined by
+ GB_add_phase0.  All cases of the mask M are handled: present and not
+ complemented, and present and complemented.  The mask is always present.
+\par
+ This function either frees Rp and Rh, or transplants then into R, as R-\>p
+ and R-\>h.  Either way, the caller must not free them.
+*/
+
+
+/** \file GB_masker.c
+\brief  GB_masker: R = masker (M, C, Z)
+
+\par
+ GB_masker (R, M, C, Z), does R=C ; R\<M\>=Z.  No typecasting is performed.
+ The operation is similar to both R=C+Z via GB_add and R=C.*Z via GB_emult,
+ depending on the value of the mask.
+\par
+ Let R be the result of the mask.  In the caller, R is written back into the
+ final C matrix, but in GB_masker, C is a read-only matrix.  Consider the
+ following table, where \"add\" is the result of C+Z, an \"emult\" is the result
+ of C.*Z.
+\par
+                                      R = masker (M,C,Z)
+\par
+ C(i,j)   Z(i,j)  add     emult       M(i,j)=1    M(i,j)=0
+\par
+ ------   ------  ------  ------      --------    --------
+\par
+  cij     zij     cij+zij cij*zij     zij         cij
+\par
+   -      zij     zij     -           zij         -
+\par
+  cij     -       cij     -           -           cij
+\par
+   -      -       -       -           -           -
+\par
+ Half of the results are like C.*Z using the FIRST operator, and the
+ other are the same as C+Z using the SECOND operator:
+\par
+  cij     zij     cij+zij cij*zij     2nd(C+Z)    1st(C.*Z)
+\par
+   -      zij     zij     -           2nd(C+Z)    1st(C.*Z)
+\par
+  cij     -       cij     -           1st(C.*Z)   2nd(C+Z)
+\par
+   -      -       -       -           1st(C.*Z)   2nd(C+Z)
+\par
+ As a result, GB_masker is very similar to GB_add and GB_emult.  The
+ vectors that appear in R are bounded by the set union of C and Z, just
+ like GB_add when the mask is *not* present.  The pattern of R is bounded
+ by the pattern of C+Z, also ignoring the mask.
+*/
+
+
+/** \file GB_matvec_build.c
+\brief  GB_matvec_build: check inputs and build a matrix or vector
+
+\par
+ CALLED BY: GrB_Matrix_build_* and GrB_Vector_build_*
+ CALLS:     GB_build
+\par
+ This function implements GrB_Matrix_build_* and GrB_Vector_build_*.
 */
 
 
@@ -1522,8 +2196,34 @@ constructed by dox_headers.m
 \brief  GB_matvec_check: print a GraphBLAS matrix and check if it is valid
 
 \par
- parallel: could be parallelized, but this is meant primarily for testing
- and debugging, so performance is not critical.
+ for additional diagnostics, use:
+ \#define GB_DEVELOPER 1
+*/
+
+
+/** \file GB_memcpy.c
+\brief  GB_memcpy: parallel memcpy
+
+\par
+ Note that this function uses its own hard-coded chunk size.
+*/
+
+
+/** \file GB_msort_2.c
+\brief  GB_msort_2: sort a 2-by-n list of integers, using A[0:1][ ] as the key
+
+\par
+ A parallel mergesort of an array of 2-by-n integers.  Each key consists
+ of two integers.
+*/
+
+
+/** \file GB_msort_3.c
+\brief  GB_msort_3: sort a 3-by-n list of integers, using A[0:2][ ] as the key
+
+\par
+ A parallel mergesort of an array of 3-by-n integers.  Each key consists
+ of three integers.
 */
 
 
@@ -1535,8 +2235,12 @@ constructed by dox_headers.m
 \par
  This function is not user-callable.  It does the work for user-callable
  functions GrB_mxm, GrB_mxv, and GrB_vxm.
-\par
- parallel: not here; see GB_AxB_parallel instead.
+*/
+
+
+/** \file GB_mxm.h
+\brief  GB_mxm.h: definitions for C=A*B
+
 */
 
 
@@ -1571,16 +2275,12 @@ constructed by dox_headers.m
  To see where these options are used in SuiteSparse:GraphBLAS:
  grep \"allocate a new header\"
  which shows all uses of GB_new and GB_create
-\par
- parallel: not here; see GB_calloc_memory
 */
 
 
 /** \file GB_nvals.c
 \brief  GB_nvals: number of entries in a sparse matrix
 
-\par
- parallel: not here; see GB_wait
 */
 
 
@@ -1588,18 +2288,14 @@ constructed by dox_headers.m
 \brief  GB_nvec_nonempty: count the number of non-empty vectors
 
 \par
- Pending tuples are ignored.  If a vector has all zombies it is still
+ All pending tuples are ignored.  If a vector has all zombies it is still
  counted as non-empty.
-\par
- PARALLEL: simple parallel reduction
 */
 
 
 /** \file GB_op_is_second.c
 \brief  GB_op_is_second: return true if op is the SECOND operator of the right type
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -1609,60 +2305,12 @@ constructed by dox_headers.m
 \par
  This file defines the predefined built-in objects: 11 types, 45 unary
  operators, 256 binary operators, 44 monoids, and 960 semirings.
-\par
- not parallel: this function has no executable code, just definitions.
-*/
-
-
-/** \file GB_pending_add.c
-\brief  GB_pending_add:  add an entry A(i,j) to the list of pending tuples
-
-\par
- Compare this function with the CSparse function cs_entry, the essence of
- which is copied below.  A CSparse matrix can be held in either compressed
- sparse column format, or as a list of tuples, but never both.  A GraphBLAS
- matrix can have both components.
-\par
- The cs_entry function appends a single entry to the end of the tuple list,
- and it doubles the space if no space is available.  It also augments the
- matrix dimension as needed, which GB_pending_add does not do.
-\par
- This function starts with an initial list that is larger than cs_entry
- (which starts with a list of size 1), and it quadruples the size as needed
- instead of doubling it.  If A has a single column then the column index is
- not kept.  Finally, this function supports any data type whereas CSparse
- only allows for double.
-\par
- Otherwise the two methods are essentially the same.  The reader is
- encouraged the compare/contrast the unique coding styles used in CSparse and
- this implementation of GraphBLAS.  CSparse is concise; the book provides the
- SIAM, Philadelphia, Sept. 2006, http://bookstore.siam.org/fa02 .  Csparse is
- at http://faculty.cse.tamu.edu/davis/publications_files/CSparse.zip .
-\par
- If the function succeeds, the matrix is added to the queue if it is not
- already there.
-\par
- If the function fails to add the pending tuple, the entire matrix is
- cleared of all entries, all pending tuples, and all zombies; and it is
- removed from the queue if it is already there.
-\par
- This function is agnostic about the CSR/CSC format of A.  Regardless of the
- format, i refers to an index into the vectors, and j is a vector.  So for
- CSC, i is a row index and j is a column index.  For CSR, i is a column index
- and j is a row index.  This function also does not need to know if A is
- hypersparse or not.
-\par
- parallel: unless reallocation occurs, this function does O(1) work and is
- already thread-safe.  The reallocation could be parallel; see
- GB_realloc_memory.
 */
 
 
 /** \file GB_pending_free.c
-\brief  GB_pending_free: free all pending tuples
+\brief  GB_Pending_free: free a list of pending tuples
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -1674,8 +2322,6 @@ constructed by dox_headers.m
  the header of A is just like GB_new with GB_Ap_null.  No content is left
  except the header.  The matrix becomes invalid, and would generate a
  GrB_INVALID_OBJECT error if passed to a user-callable GraphBLAS function.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -1687,8 +2333,6 @@ constructed by dox_headers.m
  A-\>magic becomes GB_MAGIC2.  If this matrix is given to a user-callable
  GraphBLAS function, it will generate a GrB_INVALID_OBJECT error.
 \par
- not parallel: this function does O(1) work and is already thread-safe.
-\par
  This function normally returns GrB_SUCCESS. 
 \par
  If A is in the queue, it is removed, which requires access to the critical
@@ -1697,54 +2341,39 @@ constructed by dox_headers.m
 */
 
 
-/** \file GB_qsort_1.c
-\brief  GB_qsort_1: sort an n-by-1 list of integers
+/** \file GB_pslice.c
+\brief  GB_pslice: partition Ap for a parallel loop
 
 \par
- This sort is not stable, but it is used in GraphBLAS only on lists with
- unique integers.  So it does not need to be stable.
-\par
- parallel: not here, see Template/GB_qsort_template.c
+ Ap [0..n] is an array with monotonically increasing entries.  This function
+ slices Ap so that each chunk has the same number of total values of its
+ entries.  Ap can be A-\>p for a matrix and then n = A-\>nvec.  Or it can be
+ the work needed for computing each vector of a matrix (see GB_ewise_slice
+ and GB_subref_slice, for example).
 */
 
 
-/** \file GB_qsort_2a.c
-\brief  GB_qsort_2a: sort a 2-by-n list of integers, using A [0][ ] as the sort key
+/** \file GB_qsort_1a.c
+\brief  GB_qsort_1a: sort an 1-by-n list of integers
 
-\par
- This sort is not stable, but it is used in GraphBLAS only on lists with
- unique tuples (i,k).  So it does not need to be stable.  Just the first
- entry i in each tuple (i,k) is used as the sort key.  The second item k in
- each tuple happens to be unique in itself, but this is not part of the
- sort key.
-\par
- parallel: not here, see Template/GB_qsort_template.c
 */
 
 
-/** \file GB_qsort_2b.c
-\brief  GB_qsort_2b: sort a 2-by-n list of integers, using A[0:1][ ] as the key
+/** \file GB_qsort_1b.c
+\brief  GB_qsort_1b: sort a 2-by-n list, using A [0][ ] as the sort key
 
-\par
- This sort is not stable, but it is used in GraphBLAS only on lists with
- unique tuples (i,k).  So it does not need to be stable.  Both entries i
- and k in the tuples (i,k) are used as the sort key.  The value i may
- appear in multiple tuples, but the value k is unique across all tuples.
-\par
- parallel: not here, see Template/GB_qsort_template.c
+*/
+
+
+/** \file GB_qsort_2.c
+\brief  GB_qsort_2: sort a 2-by-n list of integers, using A[0:1][ ] as the key
+
 */
 
 
 /** \file GB_qsort_3.c
 \brief  GB_qsort_3: sort a 3-by-n list of integers, using A[0:2][] as the key
 
-\par
- This sort is not stable, but it is used in GraphBLAS only on lists with
- unique tuples (j,i,k).  So it does not need to be stable.  All entries j, i
- and k in the tuples (j,i,k) are used as the sort key.  The values i and j
- may appear in multiple tuples, but the value k is unique across all tuples.
-\par
- parallel: not here, see Template/GB_qsort_template.c
 */
 
 
@@ -1755,32 +2384,24 @@ constructed by dox_headers.m
  check if the matrix has pending computations (either pending tuples or
  zombies, or both).  If it has any, and if it is not already in the queue,
  then insert it into the queue.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GB_queue_remove.c
 \brief  GB_queue_remove: remove a matrix from the matrix queue
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GB_queue_remove_head.c
 \brief  GB_queue_remove_head: remove the matrix at the head of the matrix queue
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GB_queue_status.c
 \brief  GB_queue_status:  check the status of the queue for a particular matrix
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -1801,7 +2422,7 @@ constructed by dox_headers.m
 \par
  Usage:
 \par
-      p = GB_realloc_memory (nnew, nold, size, p, \&ok, Context)
+      p = GB_realloc_memory (nnew, nold, size, p, \&ok)
 \par
       if (ok)
 \par
@@ -1814,17 +2435,14 @@ constructed by dox_headers.m
           p points to the old space of size nold*size, which is left
           unchanged.  This case never occurs if nnew \< nold.
 \par
- PARALLEL: move the data in parallel?
+ to turn on memory usage debug printing, uncomment this line:
+ \#define GB_PRINT_MALLOC 1
 */
 
 
-/** \file GB_reduce_to_column.c
-\brief  GB_reduce_to_column: reduce a matrix to a column using a binary op
+/** \file GB_reduce.h
+\brief  GB_reduce.h: definitions for GB_reduce
 
-\par
- C\<M\> = accum (C,reduce(A)) where C is n-by-1
-\par
- PARALLEL: use a parallel reduction method
 */
 
 
@@ -1832,49 +2450,57 @@ constructed by dox_headers.m
 \brief  GB_reduce_to_scalar: reduce a matrix to a scalar
 
 \par
- c = accum (c, reduce_to_scalar(A)), reduce entries in a matrix
- to a scalar.  Not user-callable.  Does the work for GrB_*_reduce_TYPE,
- both matrix and vector.  This funciton tolerates zombies and does not
- delete them.  It does not tolerate pending tuples, so if they are present,
- all zombies are deleted and all pending tuples are assembled.
+ c = accum (c, reduce_to_scalar(A)), reduce entries in a matrix to a scalar.
+ Does the work for GrB_*_reduce_TYPE, both matrix and vector.
 \par
  This function does not need to know if A is hypersparse or not, and its
  result is the same if A is in CSR or CSC format.
+*/
+
+
+/** \file GB_reduce_to_vector.c
+\brief  GB_reduce_to_vector: reduce a matrix to a vector using a binary op
+
 \par
- PARALLEL: a parallel reduction method.  All entries of the matrix
- must be reduce to a single scalar.
+ CALLS:     GB_build
+\par
+ C\<M\> = accum (C,reduce(A)) where C is n-by-1.  Reduces a matrix A or A'
+ to a vector.
 */
 
 
 /** \file GB_resize.c
 \brief  GB_resize: change the size of a matrix
 
+*/
+
+
+/** \file GB_search_for_vector.c
+\brief  GB_search_for_vector: find the vector k that contains p
+
 \par
- PARALLEL: simple parallelism; not a lot of work to unless the vector
- length is decreasing.  See Template/GB_prune_inplace.c
+ Given an index p, find k so that Ap [k] \<= p \&\& p \< Ap [k+1].  The search is
+ limited to k in the range Ap [kleft ... anvec].
 */
 
 
 /** \file GB_select.c
-\brief  GB_select: apply a select operator; optionally transpose a matrix
+\brief  GB_select: apply a select operator
 
 \par
- C\<M\> = accum (C, select(A,k)) or select(A,k)').  This function is not
- user-callable.  It does the work for GxB_*_select.
- Compare this function with GrB_apply.
-\par
- PARALLEL: do in parallel, but using an extra move of the data.
+ C\<M\> = accum (C, select(A,Thunk)) or select(A,Thunk)').
 */
 
 
-/** \file GB_semiring_builtin.c
-\brief  GB_semiring_builtin:  determine if semiring is built-in
+/** \file GB_select.h
+\brief  GB_select.h: definitions for GrB_select and related functions
 
-\par
- Determine if A*B uses a built-in semiring, and if so, determine the
- opcodes and type codes of the semiring.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
+*/
+
+
+/** \file GB_selector.c
+\brief  GB_selector:  select entries from a matrix
+
 */
 
 
@@ -1899,32 +2525,23 @@ constructed by dox_headers.m
  effectively false (since transposing a scalar has no effect).
 \par
  Compare this function with GB_extractElement.
-\par
- not parallel: this function does O(log(..)) work and is already thread-safe.
 */
 
 
-/** \file GB_shallow_cast.c
-\brief  GB_shallow_cast: create a shallow copy of a matrix, optionally typecasted
+/** \file GB_shallow_copy.c
+\brief  GB_shallow_copy: create a shallow copy of a matrix
 
 \par
- C = (ctype) A.
-\par
- Create a shallow copy of a matrix, possibly typecasted.
+ Create a purely shallow copy of a matrix.  No typecasting is done.
 \par
  The CSR/CSC format of C and A can differ, but they have they same vlen and
  vdim.  This function is CSR/CSC agnostic, except that C_is_csc is used to
  set the C-\>is_csc state in C.
 \par
- The values are a shallow copy unless they need to be typecasted.
-\par
- The pattern is always a shallow copy.  No errors are checked except for
- out-of-memory conditions.  This function is not user-callable.  Shallow
- matrices are never passed back to the user.
+ No errors are checked except for out-of-memory conditions.  This function is
+ not user-callable.  Shallow matrices are never passed back to the user.
 \par
  Compare this function with GB_shallow_op.c
-\par
- parallel: not here, but in GB_cast_array
 */
 
 
@@ -1947,9 +2564,7 @@ constructed by dox_headers.m
  out-of-memory conditions.  This function is not user-callable.  Shallow
  matrices are never passed back to the user.
 \par
- Compare this function with GB_shallow_cast.c
-\par
- parallel: not here, but in GB_apply_op.
+ Compare this function with GB_shallow_copy.c
 */
 
 
@@ -1958,8 +2573,75 @@ constructed by dox_headers.m
 
 \par
  c = a*b but check for overflow
+*/
+
+
+/** \file GB_slice.c
+\brief  GB_slice: create hypersparse shallow slices of a matrix B
+
 \par
- not parallel: this function does O(1) work and is already thread-safe.
+ For each slice s, create Bslice [s] as a slice or hyperslice of B.  The i
+ and x arrays are the same as B.
+\par
+ The p array is an offset into Bp (that is, Bp + Slice [s]), which means that
+ p [0] will not be zero (except for Bslice [0]).  If B is hypersparse, the h
+ array is also an offset into B-\>h.  If B is standard, then Bslice [s]
+ becomes an implicit hypersparse matrix.  Its h array is NULL, and the h list
+ is implicit: h[0..nvec-1] is implicitly [hfirst, hfirst+1, ...
+ hfirst+nvec-1], where nvec = Slice [s+1] - Slice [s].
+\par
+ The matrix dimensions of each slice are the same as B.  All slices have
+ vector length B-\>vlen and vector dimension B-\>vdim.   The slices are subsets
+ of the vectors of B, as defined by the Slice array.  The Bslice [s] consists
+ of the vectors Slice [s] to Slice [s+1]-1.
+\par
+ This function does only O(nslices) work and allocates O(nslices) space, so
+ it does not need to be parallel.
+*/
+
+
+/** \file GB_slice_vector.c
+\brief  GB_slice_vector:  slice a vector for GB_add, GB_emult, and GB_mask
+
+\par
+ A(:,kA) and B(:,kB) are two long vectors that will be added with GB_add,
+ GB_emult, or GB_mask, and the work to compute them needs to be split into
+ multiple tasks.  They represent the same vector index j, for:
+\par
+      C(:,j) = A(:,j) +  B(:,j) in GB_add
+      C(:,j) = A(:,j) .* B(:,j) in GB_emult
+      C(:,j)\<M(:,j)\> = B(:,j) in GB_mask (A is passed in as the input C)
+      union (A-\>h, B-\>h) in GB_add_phase0.
+\par
+ The vector index j is not needed here.  The vectors kA and kB are not
+ required, either; just the positions where the vectors appear in A and B
+ (pA_start, pA_end, pB_start, and pB_end).
+\par
+ This method finds i so that nnz (A (i:end,kA)) + nnz (B (i:end,kB)) is
+ roughly equal to target_work.  The entries in A(i:end,kA) start at position
+ pA in Ai and Ax, and the entries in B(i:end,kB) start at position pB in Bi
+ and Bx.  Once the work is split, pM is found for M(i:end,kM), if the mask M
+ is present.
+\par
+ The lists Ai and Bi can also be any sorted integer array.  This is used by
+ GB_add_phase0 to construct the set union of A-\>h and B-\>h.  In this case,
+ pA_start and pB_start are both zero, and pA_end and pB_end are A-\>nvec and
+ B-\>nvec, respectively.  A can be a non-hypersparse slice, so that A-\>h is
+ NULL.  In this case, Ai is NULL, and represents the implicit list
+ A_hfirst:A_hfirst+pA_end-1, inclusive.
+\par
+ This macro defines the kth entry in the Ai list, for k = 0 to pA_end-1:
+*/
+
+
+/** \file GB_sort.h
+\brief  GB_sort.h: definitions for sorting functions
+
+\par
+ All of the GB_qsort_* functions are single-threaded, by design.  Both
+ GB_msort_* functions are parallel.  None of these sorting methods are
+ guaranteed to be stable, but they are always used in GraphBLAS with unique
+ keys.
 */
 
 
@@ -1968,8 +2650,6 @@ constructed by dox_headers.m
 
 \par
  GB_status_code: convert GrB_Info enum into a string
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -1989,13 +2669,416 @@ constructed by dox_headers.m
  instead.
 \par
  Compare with GB_assign, which uses M and C_replace differently
-\par
- parallel: not here, but in GB_subassign_kernel
 */
 
 
-/** \file GB_subassign_kernel.c
-\brief  GB_subassign_kernel: C(I,J)\<M\> = accum (C(I,J), A)
+/** \file GB_subassign.h
+\brief  GB_subassign.h: definitions for GB_subassign
+
+*/
+
+
+/** \file GB_subassign_00.c
+\brief  GB_subassign_00: C(I,J)\<!,repl\> = empty ; using S
+
+\par
+ Method 00: C(I,J)\<!,repl\> = empty ; using S
+\par
+ M:           NULL
+ Mask_comp:   true
+ C_replace:   true
+ accum:       any (present or not; result is the same)
+ A:           any (scalar or matrix; result is the same)
+ S:           constructed
+*/
+
+
+/** \file GB_subassign_01.c
+\brief  GB_subassign_01: C(I,J) = scalar ; using S
+
+\par
+ Method 01: C(I,J) = scalar ; using S
+\par
+ M:           NULL
+ Mask_comp:   false
+ C_replace:   false
+ accum:       NULL
+ A:           scalar
+ S:           constructed
+*/
+
+
+/** \file GB_subassign_02.c
+\brief  GB_subassign_02: C(I,J) = A ; using S
+
+\par
+ Method 02: C(I,J) = A ; using S
+\par
+ M:           NULL
+ Mask_comp:   false
+ C_replace:   false
+ accum:       NULL
+ A:           matrix
+ S:           constructed
+*/
+
+
+/** \file GB_subassign_03.c
+\brief  GB_subassign_03: C(I,J) += scalar ; using S
+
+\par
+ Method 03: C(I,J) += scalar ; using S
+\par
+ M:           NULL
+ Mask_comp:   false
+ C_replace:   false
+ accum:       present
+ A:           scalar
+ S:           constructed
+*/
+
+
+/** \file GB_subassign_04.c
+\brief  GB_subassign_04: C(I,J) += A ; using S
+
+\par
+ Method 04: C(I,J) += A ; using S
+\par
+ M:           NULL
+ Mask_comp:   false
+ C_replace:   false
+ accum:       present
+ A:           matrix
+ S:           constructed
+*/
+
+
+/** \file GB_subassign_05.c
+\brief  GB_subassign_05: C(I,J)\<M\> = scalar ; no S
+
+\par
+ Method 05: C(I,J)\<M\> = scalar ; no S
+\par
+ M:           present
+ Mask_comp:   false
+ C_replace:   false
+ accum:       NULL
+ A:           scalar
+ S:           none
+*/
+
+
+/** \file GB_subassign_06n.c
+\brief  GB_subassign_06n: C(I,J)\<M\> = A ; no S
+
+\par
+ Method 06n: C(I,J)\<M\> = A ; no S
+\par
+ M:           present
+ Mask_comp:   false
+ C_replace:   false
+ accum:       NULL
+ A:           matrix
+ S:           none (see also GB_subassign_06s)
+*/
+
+
+/** \file GB_subassign_06s.c
+\brief  GB_subassign_06s: C(I,J)\<M\> = A ; using S
+
+\par
+ Method 06s: C(I,J)\<M\> = A ; using S
+\par
+ M:           present
+ Mask_comp:   false
+ C_replace:   false
+ accum:       NULL
+ A:           matrix
+ S:           constructed (see also Method 06n)
+*/
+
+
+/** \file GB_subassign_07.c
+\brief  GB_subassign_07: C(I,J)\<M\> += scalar ; no S
+
+\par
+ Method 07: C(I,J)\<M\> += scalar ; no S
+\par
+ M:           present
+ Mask_comp:   false
+ C_replace:   false
+ accum:       present
+ A:           scalar
+ S:           none
+*/
+
+
+/** \file GB_subassign_08.c
+\brief  GB_subassign_08: C(I,J)\<M\> += A ; no S
+
+\par
+ Method 08: C(I,J)\<M\> += A ; no S
+\par
+ M:           present
+ Mask_comp:   false
+ C_replace:   false
+ accum:       present
+ A:           matrix
+ S:           none
+*/
+
+
+/** \file GB_subassign_09.c
+\brief  GB_subassign_09: C(I,J)\<M,repl\> = scalar ; using S
+
+\par
+ Method 09: C(I,J)\<M,repl\> = scalar ; using S
+\par
+ M:           present
+ Mask_comp:   false
+ C_replace:   true
+ accum:       NULL
+ A:           scalar
+ S:           constructed
+*/
+
+
+/** \file GB_subassign_10.c
+\brief  GB_subassign_10: C(I,J)\<M,repl\> = A ; using S
+
+\par
+ Method 10: C(I,J)\<M,repl\> = A ; using S
+\par
+ M:           present
+ Mask_comp:   false
+ C_replace:   true
+ accum:       NULL
+ A:           matrix
+ S:           constructed
+*/
+
+
+/** \file GB_subassign_11.c
+\brief  GB_subassign_11: C(I,J)\<M,repl\> += scalar ; using S
+
+\par
+ Method 11: C(I,J)\<M,repl\> += scalar ; using S
+\par
+ M:           present
+ Mask_comp:   false
+ C_replace:   true
+ accum:       present
+ A:           scalar
+ S:           constructed
+*/
+
+
+/** \file GB_subassign_12.c
+\brief  GB_subassign_12: C(I,J)\<M,repl\> += A ; using S
+
+\par
+ Method 12: C(I,J)\<M,repl\> += A ; using S
+\par
+ M:           present
+ Mask_comp:   false
+ C_replace:   true
+ accum:       present
+ A:           matrix
+ S:           constructed
+*/
+
+
+/** \file GB_subassign_13.c
+\brief  GB_subassign_13: C(I,J)\<!M\> = scalar ; using S
+
+\par
+ Method 13: C(I,J)\<!M\> = scalar ; using S
+\par
+ M:           present
+ Mask_comp:   true
+ C_replace:   false
+ accum:       NULL
+ A:           scalar
+ S:           constructed
+*/
+
+
+/** \file GB_subassign_14.c
+\brief  GB_subassign_14: C(I,J)\<!M\> = A ; using S
+
+\par
+ Method 14: C(I,J)\<!M\> = A ; using S
+\par
+ M:           present
+ Mask_comp:   true
+ C_replace:   false
+ accum:       NULL
+ A:           matrix
+ S:           constructed
+*/
+
+
+/** \file GB_subassign_15.c
+\brief  GB_subassign_15: C(I,J)\<!M\> += scalar ; using S
+
+\par
+ Method 15: C(I,J)\<!M\> += scalar ; using S
+\par
+ M:           present
+ Mask_comp:   true
+ C_replace:   false
+ accum:       present
+ A:           scalar
+ S:           constructed
+*/
+
+
+/** \file GB_subassign_16.c
+\brief  GB_subassign_16: C(I,J)\<!M\> += A ; using S
+
+\par
+ Method 16: C(I,J)\<!M\> += A ; using S
+\par
+ M:           present
+ Mask_comp:   true
+ C_replace:   false
+ accum:       present
+ A:           matrix
+ S:           constructed
+*/
+
+
+/** \file GB_subassign_17.c
+\brief  GB_subassign_17: C(I,J)\<!M,repl\> = scalar ; using S
+
+\par
+ Method 17: C(I,J)\<!M,repl\> = scalar ; using S
+\par
+ M:           present
+ Mask_comp:   true
+ C_replace:   true
+ accum:       NULL
+ A:           scalar
+ S:           constructed
+*/
+
+
+/** \file GB_subassign_18.c
+\brief  GB_subassign_18: C(I,J)\<!M,repl\> = A ; using S
+
+\par
+ Method 18: C(I,J)\<!M,repl\> = A ; using S
+\par
+ M:           present
+ Mask_comp:   true
+ C_replace:   true
+ accum:       NULL
+ A:           matrix
+ S:           constructed
+*/
+
+
+/** \file GB_subassign_19.c
+\brief  GB_subassign_19: C(I,J)\<!M,repl\> += scalar ; using S
+
+\par
+ Method 19: C(I,J)\<!M,repl\> += scalar ; using S
+\par
+ M:           present
+ Mask_comp:   true
+ C_replace:   true
+ accum:       present
+ A:           scalar
+ S:           constructed
+*/
+
+
+/** \file GB_subassign_20.c
+\brief  GB_subassign_20: C(I,J)\<!M,repl\> += A ; using S
+
+\par
+ Method 20: C(I,J)\<!M,repl\> += A ; using S
+\par
+ M:           present
+ Mask_comp:   true
+ C_replace:   true
+ accum:       present
+ A:           matrix
+ S:           constructed
+*/
+
+
+/** \file GB_subassign_IxJ_slice.c
+\brief  GB_subassign_IxJ_slice: slice IxJ for subassign
+
+\par
+ Construct a set of tasks to compute C(I,J)\<...\> = x or += x, for a subassign
+ method that performs scalar assignment, based on slicing the Cartesian
+ product IxJ.  If enough tasks can be constructed by just slicing J, then all
+ tasks are coarse.  Each coarse tasks computes all of C(I,J(kfirst:klast-1)),
+ for its range of indices kfirst:klast-1, inclusive.
+\par
+ Otherwise, if not enough coarse tasks can be constructed, then all tasks are
+ fine.  Each fine task computes a slice of C(I(iA_start:iA_end-1), jC) for a
+ single index jC = J(kfirst).
+\par
+ This method is used by methods 01, 03, 13, 15, 17, 19, which are the 6
+ scalar assignment methods that must iterate over all IxJ.
+*/
+
+
+/** \file GB_subassign_emult_slice.c
+\brief  GB_subassign_emult_slice: slice the entries and vectors for GB_subassign_08
+
+\par
+ Constructs a set of tasks to compute C for GB_subassign_80, based on
+ slicing a two input matrix (A and M).  Fine tasks must also find their
+ location in their vector C(:,jC).
+\par
+ This method is used only by GB_subassign_08.  New zombies cannot be created,
+ since no entries are deleted.  Old zombies can be brought back to life,
+ however.
+*/
+
+
+/** \file GB_subassign_methods.h
+\brief  GB_subassign_methods.h: definitions for GB_subassign methods
+
+\par
+ macros for the construction of the GB_subassign methods
+*/
+
+
+/** \file GB_subassign_one_slice.c
+\brief  GB_subassign_one_slice: slice the entries and vectors for subassign
+
+\par
+ Constructs a set of tasks to compute C for a subassign method, based on
+ slicing a single input matrix (M or A).  Fine tasks must also find their
+ location in their vector C(:,jC).
+\par
+ This method is used by GB_subassign_05, 06n, and 07
+*/
+
+
+/** \file GB_subassign_scalar.c
+\brief  GB_subassign_scalar: C(Rows,Cols)\<M\> = accum (C(Rows,Cols),x)
+
+\par
+ Assigns a single scalar to a submatrix:
+\par
+ C(Rows,Cols)\<M\> = accum (C(Rows,Cols),x)
+\par
+ This function does the work for GxB_Matrix_subassign_TYPE and
+ GxB_Vector_subassign_[type], where [type] is one of the 11 types, or the
+ type-generic macro suffix, \"_UDT\".
+\par
+ Compare with GB_assign_scalar, which uses M and C_replace differently
+*/
+
+
+/** \file GB_subassigner.c
+\brief  GB_subassigner: C(I,J)\<\#M\> = accum (C(I,J), A)
 
 \par
  Submatrix assignment: C(I,J)\<M\> = A, or accum (C (I,J), A), no transpose
@@ -2039,50 +3122,175 @@ constructed by dox_headers.m
  entry at a time.  No entries are shifted.  C-\>x can be modified, and C-\>i
  can be changed by turning an entry into a zombie, or by bringing a zombie
  back to life, but no entry in C-\>i moves in position.
-\par
- PARALLEL: the pattern of C is not changing, except that zombies are
- introduced.  Pending tuples are added, but they could be added in any order.
- Each thread could keep its own list of pending tuples.  To parallelize this
- function, partition the list J, and call this function for each partition.
- Assuming that pending tuples are first added to a thread's private list, and
- then merged into C when done, C can be modified safely in parallel.  Also
- relies on GB_subref_symbolic, which can be done in parallel (but if J is
- partitioned, GB_subref_symbolic would be called independently for each
- partition).
 */
 
 
-/** \file GB_subassign_scalar.c
-\brief  GB_subassign_scalar: C(Rows,Cols)\<M\> = accum (C(Rows,Cols),x)
+/** \file GB_subref.c
+\brief  GB_subref: C = A(I,J)
 
 \par
- Assigns a single scalar to a submatrix:
+ C=A(I,J), either symbolic or numeric.  In a symbolic extraction, Cx [p] is
+ not the value of A(i,j), but its position in Ai,Ax.  That is, pA = Cx [p]
+ means that the entry at position p in C is the same as the entry in A at
+ position pA.  In this case, Cx has a type of int64_t.
 \par
- C(Rows,Cols)\<M\> = accum (C(Rows,Cols),x)
+ Numeric extraction:
 \par
- This function does the work for GxB_Matrix_subassign_TYPE and
- GxB_Vector_subassign_[type], where [type] is one of the 11 types, or the
- type-generic macro suffix, \"_UDT\".
+      Sparse submatrix reference, C = A(I,J), extracting the values.  This is
+      an internal function called by GB_extract with symbolic==false, which
+      does the work of the user-callable GrB_*_extract methods.  It is also
+      called by GB_assign to extract the submask.  No pending tuples or
+      zombies appear in A.
 \par
- Compare with GB_assign_scalar, which uses M and C_replace differently
+ Symbolic extraction:
 \par
- parallel: not here; see GB_subassign
+      Sparse submatrix reference, C = A(I,J), extracting the pattern, not the
+      values.  For the symbolic case, this function is called only by
+      GB_subassigner.  Symbolic extraction creates a matrix C with the same
+      pattern (C-\>p and C-\>i) as numeric extraction, but with different
+      values, C-\>x.  For numeric extracion if C(inew,jnew) = A(i,j), the
+      value of A(i,j) is copied into C(i,j).  For symbolic extraction, its
+      *pointer* is copied into C(i,j).  Suppose an entry A(i,j) is held in Ai
+      [pa] and Ax [pa], and it appears in the output matrix C in Ci [pc] and
+      Cx [pc].  Then the two methods differ as follows:
+\par
+          this is the same:
+\par
+          i = Ai [pa] ;           // index i of entry A(i,j)
+\par
+          aij = Ax [pa] ;         // value of the entry A(i,j)
+\par
+          Ci [pc] = inew ;        // index inew of C(inew,jnew)
+\par
+          this is different:
+\par
+          Cx [pc] = aij ;         // for numeric extraction
+\par
+          Cx [pc] = pa ;          // for symbolic extraction
+\par
+      This function is called with symbolic==true by only by GB_subassigner,
+      which uses it to extract the pattern of C(I,J), for the submatrix
+      assignment C(I,J)=A.  In this case, this function needs to deal with
+      zombie entries.  GB_subassigner uses this function on its C matrix,
+      which is called A here because it is not modified here.
+\par
+      Reading a zombie entry:  A zombie entry A(i,j) has been marked by
+      flipping its index.  The value of a zombie is not important, just its
+      presence in the pattern.  All zombies have been flipped (i \< 0), and
+      all regular entries are not flipped (i \>= 0).  Zombies are entries that
+      have been marked for deletion but have not been removed from the matrix
+      yet, since it's more efficient to delete zombies all at once rather
+      than one at a time.
+\par
+      The symbolic case is zombie-agnostic, in the sense that it does not
+      delete them.  It treats them like regular entries.  However, their
+      normal index must be used, not their flipped indices.  The output
+      matrix C contains all unflipped indices, and its references to zombies
+      and regular entries are identical.  Zombies in A are dealt with later.
+      They cannot be detected in the output C matrix, but they can be
+      detected in A.  Since pa = Cx [pc] holds the position of the entry in
+      A, the entry is a zombie if Ai [pa] has been flipped.
 */
 
 
-/** \file GB_subref_numeric.c
-\brief  GB_subref_numeric: C = A(I,J) or C = (A(J,I))', extract the values
+/** \file GB_subref.h
+\brief  GB_subref.h: definitions for GB_subref_* functions
 
-\par
- parallel: not here; see Template/GB_subref_template.c
 */
 
 
-/** \file GB_subref_symbolic.c
-\brief  GB_subref_symbolic: C = A(I,J), extract the pattern
+/** \file GB_subref_phase0.c
+\brief  GB_subref_phase0: find vectors of C = A(I,J) and determine I,J properties
+
+*/
+
+
+/** \file GB_subref_phase1.c
+\brief  GB_subref_phase1: find \# of entries in C=A(I,J)
 
 \par
- parallel: not here; see Template/GB_subref_template.c
+ GB_subref_phase1 counts the number of entries in each vector of C, for
+ C=A(I,J) and then does a cumulative sum to find Cp.
+\par
+ Cp is either freed by phase2, or transplanted into C.
+*/
+
+
+/** \file GB_subref_phase2.c
+\brief  GB_subref_phase2: C=A(I,J)
+
+\par
+ This function either frees Cp and Ch, or transplants then into C, as C-\>p
+ and C-\>h.  Either way, the caller must not free them.
+*/
+
+
+/** \file GB_subref_slice.c
+\brief  GB_subref_slice: construct coarse/fine tasks for C = A(I,J)
+
+\par
+ Determine the tasks for computing C=A(I,J).  The matrix C has Cnvec vectors,
+ and these are divided into coarse and fine tasks.  A coarse task will
+ compute one or more whole vectors of C.  A fine task operates on a slice of
+ a single vector of C.  The slice can be done by the \# of entries in the
+ corresponding vector of A, or by the list of indices I, depending on how the
+ work is done for that method.
+\par
+ The (kC)th vector will access A(imin:imax,kA) in Ai,Ax [pA:pA_end-1], where
+ pA = Ap_start [kC] and pA_end = Ap_end [kC].
+\par
+ The computation of each vector C(:,kC) = A(I,kA) is by done using one of 12
+ different cases, depending on the vector, as determined by GB_subref_method.
+ Not all vectors in C are computed using the same method.
+\par
+ Note that J can have duplicates.  kC is unique (0:Cnvec-1) but the
+ corresponding vector kA in A may repeat, if J has duplicates.  Duplicates in
+ J are not exploited, since the coarse/fine tasks are constructed by slicing
+ slicing the list of vectors Ch of size Cnvec, not the vectors of A.
+\par
+ Compare this function with GB_ewise_slice, which constructs coarse/fine
+ tasks for the eWise operations (C=A+B, C=A.*B, and C\<M\>=Z).
+*/
+
+
+/** \file GB_task_cumsum.c
+\brief  GB_task_cumsum: cumulative sum of Cp and fine tasks in TaskList
+
+*/
+
+
+/** \file GB_thread_local.c
+\brief  GB_thread_local: manage thread-local storage
+
+\par
+ This implementation is complete for user threading with POSIX threads,
+ OpenMP, and no user threads.  Windows and ANSI C11 threads are not yet
+ supported.
+\par
+ Thread local storage is used to to record the details of the last error
+ encountered for GrB_error.  If the user application is multi-threaded, each
+ thread that calls GraphBLAS needs its own private copy of this report.
+\par
+ These two functions are defined here:
+\par
+      GB_thread_local_init:       initialize thread-local storage
+      GB_thread_local_get:        get pointer to thread-local storage
+\par
+ They access the following global or thread-local variables, which are
+ defined and accessible only in this file:
+\par
+      GB_thread_local_key:        for POSIX threads only
+      GB_thread_local_report:     for OpenMP and ANSI C11 threads only
+*/
+
+
+/** \file GB_thread_local.h
+\brief  GB_thread_local.h: definitions for thread local storage
+
+\par
+ Thread local storage is created by GrB_init or GxB_init (via GB_init),
+ and then accessed by the error logging mechanism (GB_error), and the
+ error reporting function GrB_error.
 */
 
 
@@ -2100,7 +3308,7 @@ constructed by dox_headers.m
 \par
  If an out-of-memory condition occurs, all content of the matrix is cleared.
 \par
- PARALLEL: a reduction loop
+ The input matrix may be jumbled; this is not an error condition.
 */
 
 
@@ -2111,8 +3319,9 @@ constructed by dox_headers.m
  The input matrix can have shallow A-\>p and/or A-\>h components.  If the
  hypersparsity is changed, these components are no longer shallow.  If the
  method fails and the matrix is shallow, all content is removed or freed.
-\par
- parallel: not here
+ The input matrix may be jumbled; this is not an error condition.  Zombies
+ are OK, but A never has pending tuples.  However, this function is agnostic
+ about pending tuples so they could be OK.
 */
 
 
@@ -2122,8 +3331,6 @@ constructed by dox_headers.m
 \par
  Returns true if a non-hypersparse matrix should be converted to hypersparse.
  Returns false if the matrix is already hypersparse.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -2141,7 +3348,7 @@ constructed by dox_headers.m
 \par
  If an out-of-memory condition occurs, all content of the matrix is cleared.
 \par
- PARALLEL: a few simple loops, no synchronization or reduction needed
+ The input matrix may be jumbled; this is not an error condition.
 */
 
 
@@ -2151,8 +3358,6 @@ constructed by dox_headers.m
 \par
  Returns true if a hypersparse matrix should be converted to non-hypersparse.
  Returns false if the matrix is already non-hypersparse.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -2168,9 +3373,6 @@ constructed by dox_headers.m
  must be compatible with A-\>type.
 \par
  Only GrB_SUCCESS and GrB_OUT_OF_MEMORY are returned by this function.
-\par
- PARALLEL: several large memcpy's of the whole matrix, and GB_cast_array,
- if a deep copy needs to be made.
 */
 
 
@@ -2178,15 +3380,17 @@ constructed by dox_headers.m
 \brief  GB_transplant_conform: transplant T into C, then conform C
 
 \par
- C = (type) T, then conform C to its desired hypersparsity.  T is freed
-\par
- parallel: not here
+ C = (type) T, then conform C to its desired hypersparsity.  T is freed.
+ All prior content of C is cleared; zombies and pending tuples are abandoned
+ in C.
 */
 
 
 /** \file GB_transpose.c
 \brief  GB_transpose:  C=A' or C=op(A'), with typecasting
 
+\par
+ CALLS:     GB_builder
 \par
  Transpose a matrix, C=A', and optionally apply a unary operator and/or
  typecast the values.  The transpose may be done in place, in which case C or
@@ -2207,12 +3411,16 @@ constructed by dox_headers.m
  If A_in is not NULL and Chandle is NULL, then A is modified in place, and
  the A_in matrix is not freed when done.
 \par
- PARALLEL: two methods are used: a bucket sort, and a qsort.  For the
- parallel case, it might be hard to parallelize the bucket sort.  The qsort
- is likely better, and the bucket sort could remain mostly sequential.  Most
- of the work is done in other functions (GB_transpose_bucket, GB_builder,
- etc), not here.  There are a few large loops here, and a large memcpy, that
- should be done in parallel.
+ The bucket sort is parallel, but not highly scalable.  If e=nnz(A) and A is
+ m-by-n, then at most O(e/n) threads are used.  For many matrices, e is O(n),
+ although the constant can be high.  The qsort method is more scalable, but
+ not as fast with a modest number of threads.
+*/
+
+
+/** \file GB_transpose.h
+\brief  GB_transpose.h:  definitions for GB_transpose
+
 */
 
 
@@ -2220,11 +3428,8 @@ constructed by dox_headers.m
 \brief  GB_transpose_bucket: transpose and optionally typecast and/or apply operator
 
 \par
- C = A' or op(A').  Optionally typecasts from A-\>type to the new type
- ctype, and/or optionally applies a unary operator.  No error checking is
- done by this function except for out-of-memory conditions.  Returns true if
- successful, or false if out of memory.  This function is not user-callable;
- use GrB_transpose or GrB_apply instead.
+ C = A' or op(A').  Optionally typecasts from A-\>type to the new type ctype,
+ and/or optionally applies a unary operator.
 \par
  If an operator z=op(x) is provided, the type of z must be the same as the
  type of C.  The type of A must be compatible with the type of of x (A is
@@ -2238,22 +3443,19 @@ constructed by dox_headers.m
  defined by the caller and assigned to C-\>is_csc, but otherwise unused.
  A-\>is_csc is ignored.
 \par
- The input can be hypersparse or non-hypersparse.  The output is
- always non-hypersparse.
+ The input can be hypersparse or non-hypersparse.  The output C is always
+ non-hypersparse, and never shallow.
 \par
- The result is never shallow.
-\par
- If A is m-by-n in CSC format, with k nonzeros, the time and memory taken is
- O(m+n+k) if A is non-hypersparse, or O(m+k) if hypersparse.  This is fine if
+ If A is m-by-n in CSC format, with e nonzeros, the time and memory taken is
+ O(m+n+e) if A is non-hypersparse, or O(m+e) if hypersparse.  This is fine if
  most rows and columns of A are non-empty, but can be very costly if A or A'
  is hypersparse.  In particular, if A is a non-hypersparse column vector with
- m \>\> k, the time and memory is O(m), which can be huge.  Thus, for
+ m \>\> e, the time and memory is O(m), which can be huge.  Thus, for
  hypersparse matrices, or for very sparse matrices, the qsort method should
  be used instead (see GB_transpose).
 \par
- PARALLEL: the bucket transpose will not be simple to parallelize.  The qsort
- method of transpose would be more parallel.  This method might remain mostly
- sequential.  There
+ This method is parallel, but not highly scalable.  At most O(e/m) threads
+ are used.
 */
 
 
@@ -2261,72 +3463,58 @@ constructed by dox_headers.m
 \brief  GB_transpose_ix: transpose the values and pattern of a matrix
 
 \par
- The values of A are typecasted to R_type, the type of the R matrix.
- A can be sparse or hypersparse, but R is not hypersparse.
+ The values of A are typecasted to C-\>type, the type of the C matrix.
+ A can be sparse or hypersparse, but C is not hypersparse.
 \par
- The row pointers of the output matrix have already been computed, in Rp.
- Row i will appear in Ri, in the positions Rp [i] .. Rp [i+1], for the
- version of Rp on *input*.  On output, however, Rp has been shifted down
- by one.  Rp [0:m-1] has been over written with Rp [1:m].  They can be
- shifted back, if needed, but GraphBLAS treats this array Rp, on input
- to this function, as a throw-away copy of Rp.
-\par
- Compare with GB_transpose_op.c
-\par
- PARALLEL: the bucket transpose will not be simple to parallelize.  The qsort
- method of transpose would be more parallel.  This method might remain mostly
- sequential.
+ This method is parallel, but not highly scalable.  It uses only naslice =
+ nnz(A)/(A-\>vlen) threads.
 */
 
 
 /** \file GB_transpose_op.c
-\brief  GB_transpose_op: transpose and apply an operator to a matrix
+\brief  GB_transpose_op: transpose, typecast, and apply an operator to a matrix
 
 \par
- R = op ((xtype) A')
+ C = op ((xtype) A')
 \par
  The values of A are typecasted to op-\>xtype and then passed to the unary
  operator.  The output is assigned to R, which must be of type op-\>ztype; no
  output typecasting done with the output of the operator.
 \par
- The row pointers of the output matrix have already been computed, in Rp.
- Row i will appear in Ri, in the positions Rp [i] .. Rp [i+1], for the
- version of Rp on *input*.  On output, however, Rp has been shifted down
- by one.  Rp [0:m-1] has been over written with Rp [1:m].  They can be
- shifted back, if needed, but GraphBLAS treats this array Rp, on input
- to this function, as a throw-away copy of Rp.
-\par
- Compare with GB_transpose_ix.c and GB_apply_op.c
-\par
- PARALLEL: the bucket transpose will not be simple to parallelize.  The qsort
- method of transpose would be more parallel.  This method might remain mostly
- sequential.
+ This method is parallel, but not highly scalable.  It uses only naslice =
+ nnz(A)/(A-\>vlen) threads.
 */
 
 
 /** \file GB_type.c
 \brief  GB_type: return the type of a matrix
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
-/** \file GB_user_build.c
-\brief  GB_user_build: check inputs and build a matrix
+/** \file GB_unused.h
+\brief  GB_unused.h: pragmas to disable compiler warnings
 
 \par
- This function implements GrB_Matrix_build_* and GrB_Vector_build_*.  It is
- not used by GrB_wait or GB_wait (see GB_builder instead).  For details on
- the algorithm, see GB_build.
+ Because of the code generation mechanisms used, these compiler warnings are
+ not avoidable, so disable them.
+*/
+
+
+/** \file GB_user.h
+\brief  GB_user.h: definitions for compile-time user-defined objects
+
 \par
- parallel: not here, but in GB_build.
+ Definitions of built-in types and functions, which can be referenced
+ by user-defined objects constructed at compile-time.
 */
 
 
 /** \file GB_wait.c
 \brief  GB_wait:  finish all pending computations on a single matrix
 
+\par
+ CALLS:     GB_builder
 \par
  This function is typically called via the GB_WAIT(A) macro, except for
  GB_assign and GB_subassign.
@@ -2353,19 +3541,12 @@ constructed by dox_headers.m
 \par
  If A is non-hypersparse, then O(n) is added in the worst case, to prune
  zombies and to update the vector pointers for A.
-\par
- PARALLEL: this moves lots of data inside the matrix, but it is like a single
- merge of a mergesort.  Hard to do in parallel as currently written.  A
- better approach in parallel would be to do it like a matrix add (see
- GB_add).  Some work is done in GB_builder, which can be done in parallel.
 */
 
 
 /** \file GrB_BinaryOp_free.c
 \brief  GrB_BinaryOp_free: free a binary operator
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -2376,8 +3557,6 @@ constructed by dox_headers.m
  GrB_BinaryOp_new is implemented both as a macro and a function.  Both are
  user-callable.  The macro is used by default since it can capture the name
  of the binary function.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -2386,8 +3565,6 @@ constructed by dox_headers.m
 
 \par
  Compare with GxB_Col_subassign, which uses the M and C_replace differently
-\par
- parallel: not here; see GB_assign
 */
 
 
@@ -2399,16 +3576,12 @@ constructed by dox_headers.m
  GraphBLAS spec, row and column vectors are indistinguishable.  In this
  implementation, both are the same as an n-by-1 GrB_Matrix, except with
  restrictions on the matrix operations that can be performed on them.
-\par
- parallel: not here; see GB_extract.
 */
 
 
 /** \file GrB_Descriptor_free.c
 \brief  GrB_Descriptor_free: free a descriptor
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -2417,16 +3590,12 @@ constructed by dox_headers.m
 
 \par
  Default values are set to GxB_DEFAULT
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GrB_Descriptor_set.c
 \brief  GrB_Descriptor_set: set a field in a descriptor
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -2435,16 +3604,12 @@ constructed by dox_headers.m
 
 \par
  C\<M\> = accum(C,op(A)) or accum(C,op(A'))
-\par
- parallel: not here; see GB_apply
 */
 
 
 /** \file GrB_Matrix_assign.c
 \brief  GrB_Matrix_assign:    C\<M\>(Rows,Cols) = accum (C(Rows,Cols),A) or A'
 
-\par
- parallel: not here; see GB_assign
 */
 
 
@@ -2463,16 +3628,12 @@ constructed by dox_headers.m
  which uses M and C_Replace differently.
 \par
  The actual work is done in GB_assign_scalar.c.
-\par
- parallel: not here; see GB_assign
 */
 
 
 /** \file GrB_Matrix_build.c
 \brief  GrB_Matrix_build: build a sparse GraphBLAS matrix
 
-\par
- parallel: not here, but in GB_build.
 */
 
 
@@ -2483,8 +3644,6 @@ constructed by dox_headers.m
  The A-\>x and A-\>i content is freed and the vector pointers A-\>p are set to
  zero.  This puts the matrix A in the same state it had after GrB_Matrix_new
  (\&A, ...).  The dimensions and type of A are not changed.
-\par
- parallel: not here but in GB_clear.  
 */
 
 
@@ -2493,16 +3652,12 @@ constructed by dox_headers.m
 
 \par
  C = A, making a deep copy
-\par
- parallel: not here, but in GB_dup. 
 */
 
 
 /** \file GrB_Matrix_extract.c
 \brief  GrB_Matrix_extract: C\<M\> = accum (C, A(I,J)) or A(J,I)'
 
-\par
- parallel: not here, but in GB_subref_numeric.
 */
 
 
@@ -2515,8 +3670,6 @@ constructed by dox_headers.m
 \par
  Returns GrB_SUCCESS if A(row,col) is present, and sets x to its value.
  Returns GrB_NO_VALUE if A(row,col) is not present, and x is unmodified.
-\par
- not parallel: this function does O(log(..)) work and is already thread-safe.
 */
 
 
@@ -2533,8 +3686,6 @@ constructed by dox_headers.m
  If any parameter I, J, and/or X is NULL, that component is not extracted.
  So to extract just the row and col indices, pass I and J as non-NULL,
  and X as NULL.  This is like [I,J,~] = find (A).
-\par
- parallel: not here, but in see GB_extractTuples.
 */
 
 
@@ -2544,16 +3695,12 @@ constructed by dox_headers.m
 \par
  free all the content of a matrix.  After GrB_Matrix_free (\&A), A is set
  to NULL
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GrB_Matrix_ncols.c
 \brief  GrB_Matrix_ncols: number of columns of a sparse matrix
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -2565,24 +3712,18 @@ constructed by dox_headers.m
  an empty matrix is hypersparse CSC: A-\>p is size 2 and all zero, A-\>h is
  size 1, A-\>plen is 1, and contents A-\>x and A-\>i are NULL.  If this method
  fails, *A is set to NULL.
-\par
- parallel: not here; see GB_new.
 */
 
 
 /** \file GrB_Matrix_nrows.c
 \brief  GrB_Matrix_nrows: number of rows of a sparse matrix
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GrB_Matrix_nvals.c
 \brief  GrB_Matrix_nvals: number of entries in a sparse matrix
 
-\par
- parallel: not here, but in GB_nvals (which forces completeion).
 */
 
 
@@ -2598,10 +3739,6 @@ constructed by dox_headers.m
  it accumulated in the result c via c = accum(c,t).  If A has no entries, the
  result t is the identity value of the monoid.  Unlike most other GraphBLAS
  operations, this operation uses an accum operator but no mask.
-\par
- The actual work is done in GB_reduce_to_scalar.c.
-\par
- parallel: not here but in GB_reduce_to_scalar
 */
 
 
@@ -2611,16 +3748,12 @@ constructed by dox_headers.m
 \par
  Set a single entry in a matrix, C(row,col) = x in MATLAB notation,
  typecasting from the type of x to the type of C, as needed.
-\par
- not parallel: this function does O(log(..)) work and is already thread-safe.
 */
 
 
 /** \file GrB_Monoid_free.c
 \brief  GrB_Monoid_free:  free a monoid
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -2631,8 +3764,6 @@ constructed by dox_headers.m
  Create a new monoid with binary operator, z=op(x.y).  The three types of x,
  y, and z must all be the same, and the identity value must also have the
  same type.  No typecasting is done for the identity value.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -2641,16 +3772,12 @@ constructed by dox_headers.m
 
 \par
  Compare with GxB_Row_subassign, which uses M and C_replace differently
-\par
- parallel: not here, but in GB_assign
 */
 
 
 /** \file GrB_Semiring_free.c
 \brief  GrB_Semiring_free: free a semiring
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -2677,16 +3804,12 @@ constructed by dox_headers.m
  multiply operator is always applied as z = multiply (A(i,j),B(i,j)).  The
  two input operands always appear in that order.  That is, the multiply
  operator is not assumed to be commutative.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GrB_Type_free.c
 \brief  GrB_Type_free:  free a user-defined type
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -2704,16 +3827,12 @@ constructed by dox_headers.m
  that it is visible for linking with applications in languages other than
  ANSI C.  The function version does not allow the name of the ctype to be
  saved in the new GraphBLAS type, however.  It is given the generic name.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GrB_UnaryOp_free.c
 \brief  GrB_UnaryOp_free: free a unary operator
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -2724,16 +3843,12 @@ constructed by dox_headers.m
  GrB_UnaryOp_new is implemented both as a macro and a function.  Both are
  user-callable.  The macro is used by default since it can capture the name
  of the unary function.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GrB_Vector_apply.c
 \brief  GrB_Vector_apply: apply a unary operator to a vector
 
-\par
- parallel: not here; see GB_apply
 */
 
 
@@ -2742,8 +3857,6 @@ constructed by dox_headers.m
 
 \par
  Compare with GxB_Vector_subassign, which uses M and C_replace differently
-\par
- parallel: not here; see GB_assign
 */
 
 
@@ -2754,26 +3867,18 @@ constructed by dox_headers.m
  Assigns a single scalar to a vector, w\<M\>(Rows) = accum(w(Rows),x)
  The scalar x is implicitly expanded into a vector u of size nRows-by-1,
  with each entry in u equal to x.
-\par
- The actual work is done in GB_assign_scalar.c.
-\par
- parallel: not here; see GB_assign
 */
 
 
 /** \file GrB_Vector_build.c
 \brief  GrB_Vector_build: build a sparse GraphBLAS vector
 
-\par
- parallel: not here, but in GB_build.
 */
 
 
 /** \file GrB_Vector_clear.c
 \brief  GrB_Vector_clear: clears the content of a vector
 
-\par
- parallel: not here but in GB_clear.
 */
 
 
@@ -2782,16 +3887,12 @@ constructed by dox_headers.m
 
 \par
  w = u, making a deep copy
-\par
- parallel: not here, but in GB_dup.
 */
 
 
 /** \file GrB_Vector_extract.c
 \brief  GrB_Vector_extract: w\<M\> = accum (w, u(I))
 
-\par
- parallel: not here, but in GB_subref_numeric.
 */
 
 
@@ -2804,8 +3905,6 @@ constructed by dox_headers.m
 \par
  Returns GrB_SUCCESS if v(row) is present, and sets x to its value.
  Returns GrB_NO_VALUE if v(row) is not present, and x is unmodified.
-\par
- not parallel: this function does O(log(..)) work and is already thread-safe.
 */
 
 
@@ -2822,8 +3921,6 @@ constructed by dox_headers.m
  If any parameter I and/or X is NULL, that component is not extracted.  So to
  extract just the row indices, pass I as non-NULL, and X as NULL.  This is
  like [I,~,~] = find (v) in MATLAB.
-\par
- parallel: not here, but in see GB_extractTuples.
 */
 
 
@@ -2833,8 +3930,6 @@ constructed by dox_headers.m
 \par
  free all the content of a vector.  After GrB_Vector_free (\&v), v is set
  to NULL
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -2846,16 +3941,12 @@ constructed by dox_headers.m
  A-\>p is size 2 and all zero.  Contents A-\>x and A-\>i are NULL.
  If this method fails, *v is set to NULL.  Vectors are not hypersparse,
  so format is standard CSC, and A-\>h is NULL.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GrB_Vector_nvals.c
-\brief  GrB_Vector_nvals: number of nonzeros in a sparse vector
+\brief  GrB_Vector_nvals: number of entries in a sparse vector
 
-\par
- parallel: not here, but in GB_nvals (which forces completeion).
 */
 
 
@@ -2871,10 +3962,6 @@ constructed by dox_headers.m
  it accumulated in the result c via c = accum(c,t).  If the u has no entries,
  the result t is the identity value of the monoid.  Unlike most other
  GraphBLAS operations, this operation uses an accum operator but no mask.
-\par
- The actual work is done in GB_reduce_to_scalar.c.
-\par
- parallel: not here but in GB_reduce_to_scalar
 */
 
 
@@ -2884,16 +3971,12 @@ constructed by dox_headers.m
 \par
  Set a single scalar, w(row) = x, typecasting from the type of x to
  the type of w as needed.
-\par
- not parallel: this function does O(log(..)) work and is already thread-safe.
 */
 
 
 /** \file GrB_Vector_size.c
 \brief  GrB_Vector_size: dimension of a sparse vector
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -2902,8 +3985,6 @@ constructed by dox_headers.m
 
 \par
  C\<M\> = accum (C,A+B) and variations.
-\par
- parallel: not here but in GB_add
 */
 
 
@@ -2912,8 +3993,6 @@ constructed by dox_headers.m
 
 \par
  w\<M\> = accum (w,u+v)
-\par
- parallel: not here but in GB_add
 */
 
 
@@ -2922,8 +4001,6 @@ constructed by dox_headers.m
 
 \par
  C\<M\> = accum (C,A.*B) and variations.
-\par
- parallel: not here but in GB_emult
 */
 
 
@@ -2932,16 +4009,12 @@ constructed by dox_headers.m
 
 \par
  w\<M\> = accum (w,u.*v)
-\par
- parallel: not here but in GB_emult
 */
 
 
 /** \file GrB_error.c
 \brief  GrB_error: return an error string describing the last error
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -2953,8 +4026,6 @@ constructed by dox_headers.m
  GraphBLAS C API Specification.  Only one user thread can call this
  function.  Results are undefined if more than one thread calls this
  function at the same time.
-\par
- not parallel: this function does O(1) work
 */
 
 
@@ -2964,8 +4035,6 @@ constructed by dox_headers.m
 \par
  GrB_init (or GxB_init) must called before any other GraphBLAS operation.
  GrB_finalize must be called as the last GraphBLAS operation.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -2977,8 +4046,6 @@ constructed by dox_headers.m
 \par
  The input matrices A and B are optionally transposed, as determined by the
  Descriptor desc.
-\par
- parallel: not here, see GB_AxB_parallel
 */
 
 
@@ -2990,16 +4057,12 @@ constructed by dox_headers.m
 \par
  The input matrix A is optionally transposed, as determined by the
  Descriptor desc.
-\par
- parallel: not here, see GB_AxB_parallel
 */
 
 
-/** \file GrB_reduce_to_column.c
-\brief  GrB_reduce_to_column: reduce a matrix to a column
+/** \file GrB_reduce_to_vector.c
+\brief  GrB_reduce_to_vector: reduce a matrix to a vector
 
-\par
- parallel: not here, see GB_reduce_to_column
 */
 
 
@@ -3008,8 +4071,6 @@ constructed by dox_headers.m
 
 \par
  C\<M\> = accum (C,A') or accum (C,A)
-\par
- parallel: not here; see GB_transpose and GB_shallow_cast
 */
 
 
@@ -3022,8 +4083,6 @@ constructed by dox_headers.m
  Rows w', u', and M' are simply columns w, u, and M.  Thus:
  w\<M\> = accum (w,t) where t = A'*u or A*u, but with the multiply operator
  flipped.  The input descriptor for A, inp1, is also negated.
-\par
- parallel: not here, see GB_AxB_parallel
 */
 
 
@@ -3048,9 +4107,6 @@ constructed by dox_headers.m
  any global variables relied upon by user-defined operators, or before
  freeing any user-defined types, operators, monoids, or semirings.
 \par
- parallel: not here; see GB_wait.  Or can also do all matrices in
- the queue in parallel.
-\par
  No other user threads should call any GraphBLAS function while GrB_wait is
  executing, except for parallel calls to GrB_wait.  Results are undefined
  otherwise, since GrB_wait could modify a matrix that another user thread is
@@ -3063,32 +4119,24 @@ constructed by dox_headers.m
 /** \file GxB_BinaryOp_fprint.c
 \brief  GxB_BinaryOp_fprint: print and check a GrB_BinaryOp object
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GxB_BinaryOp_xtype.c
 \brief  GxB_BinaryOp_xtype: return the type of x for z=f(x,y)
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GxB_BinaryOp_ytype.c
 \brief  GxB_BinaryOp_ytype: return the type of y for z=f(x,y)
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GxB_BinaryOp_ztype.c
 \brief  GxB_BinaryOp_ztype: return the type of z for z=f(x,y)
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -3097,20 +4145,12 @@ constructed by dox_headers.m
 
 \par
  Compare with GrB_Col_assign, which uses M and C_replace differently
-\par
- parallel: not here; see GB_subassign_kernel
 */
 
 
 /** \file GxB_Desc_get.c
 \brief  GxB_Desc_get: get a field in a descriptor
 
-\par
- This is identical to GxB_Descriptor_get, just with a different order of the
- parameters.  The last argument is a pointer whose type depends on the
- field.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -3122,16 +4162,12 @@ constructed by dox_headers.m
  pointer whose type depends on the field.  For the four descriptor fields
  in the spec, the type is the same as GrB_Descriptor_set (a scalar of
  type GrB_Desc_Value).
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GxB_Descriptor_fprint.c
 \brief  GxB_Descriptor_fprint: print and check a GrB_Descriptor object
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -3140,120 +4176,90 @@ constructed by dox_headers.m
 
 \par
  Use GxB_Desc_get instead; this is kept for backward compatibility.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GxB_Global_Option_get.c
 \brief  GxB_Global_Option_get: get a global default option for all future matrices
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GxB_Global_Option_set.c
 \brief  GxB_Global_Option_set: set a global default option for all future matrices
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GxB_Matrix_Option_get.c
 \brief  GxB_Matrix_Option_get: get an option in a matrix
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GxB_Matrix_Option_set.c
-\brief  GxB_Matrix_option_set: set an option in a matrix
+\brief  GxB_Matrix_Option_set: set an option in a matrix
 
-\par
- parallel: not here, but in GB_transpose.
 */
 
 
 /** \file GxB_Matrix_export_CSC.c
 \brief  GxB_Matrix_export_CSC: export a matrix in CSC format
 
-\par
- parallel: not here
 */
 
 
 /** \file GxB_Matrix_export_CSR.c
 \brief  GxB_Matrix_export_CSR: export a matrix in CSR format
 
-\par
- parallel: not here
 */
 
 
 /** \file GxB_Matrix_export_HyperCSC.c
 \brief  GxB_Matrix_export_HyperCSC: export a matrix in hypersparse CSC format
 
-\par
- parallel: not here
 */
 
 
 /** \file GxB_Matrix_export_HyperCSR.c
 \brief  GxB_Matrix_export_HyperCSR: export a matrix in hypersparse CSR format
 
-\par
- parallel: not here
 */
 
 
 /** \file GxB_Matrix_fprint.c
 \brief  GxB_Matrix_fprint: print and check a GrB_Matrix object
 
-\par
- parallel: not needed; used only for testing and debugging.
 */
 
 
 /** \file GxB_Matrix_import_CSC.c
 \brief  GxB_Matrix_import_CSC: import a matrix in CSC format
 
-\par
- not parallel: O(1) time
 */
 
 
 /** \file GxB_Matrix_import_CSR.c
 \brief  GxB_Matrix_import_CSR: import a matrix in CSR format
 
-\par
- not parallel: O(1) time
 */
 
 
 /** \file GxB_Matrix_import_HyperCSC.c
 \brief  GxB_Matrix_import_HyperCSC: import a matrix in hypersparse CSC format
 
-\par
- not parallel: O(1) time
 */
 
 
 /** \file GxB_Matrix_import_HyperCSR.c
 \brief  GxB_Matrix_import_HyperCSR: import a matrix in hypersparse CSR format
 
-\par
- not parallel: O(1) time
 */
 
 
 /** \file GxB_Matrix_resize.c
 \brief  GxB_Matrix_resize: change the size of a matrix
 
-\par
- parallel: see GB_resize
 */
 
 
@@ -3262,8 +4268,6 @@ constructed by dox_headers.m
 
 \par
  C\<M\> = accum(C,select(A,k)) or accum(C,select(A',))
-\par
- parallel: not here; see GB_select
 */
 
 
@@ -3272,8 +4276,6 @@ constructed by dox_headers.m
 
 \par
  Compare with GrB_Matrix_assign, which uses M and C_replace differently
-\par
- parallel: not here; see GB_subassign_kernel
 */
 
 
@@ -3290,50 +4292,36 @@ constructed by dox_headers.m
 \par
  Compare with GrB_Matrix_assign_scalar,
  which uses M and C_Replace differently.
-\par
- The actual work is done in GB_subassign_scalar.c.
-\par
- parallel: not here; see GB_subassign_kernel
 */
 
 
 /** \file GxB_Matrix_type.c
 \brief  GxB_Matrix_type: return the type of a matrix
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GxB_Monoid_fprint.c
 \brief  GxB_Monoid_fprint: print and check a GrB_Monoid object
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GxB_Monoid_identity.c
 \brief  GxB_Monoid_identity: return the identity of a monoid
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GxB_Monoid_operator.c
 \brief  GxB_Monoid_operator: return the op of a monoid
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GxB_Monoid_terminal.c
 \brief  GxB_Monoid_terminal: return the terminal of a monoid (if any)
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -3344,8 +4332,6 @@ constructed by dox_headers.m
  Identical to GrB_Monoid_new, except that a terminal value is specified.  No
  typecasting is done for the terminal value.  Its type must match the
  identity value.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -3354,24 +4340,89 @@ constructed by dox_headers.m
 
 \par
  Compare with GrB_Row_assign, which uses the M and C_replace differently
+*/
+
+
+/** \file GxB_Scalar_clear.c
+\brief  GxB_Scalar_clear: clears the content of a GxB_Scalar
+
+*/
+
+
+/** \file GxB_Scalar_dup.c
+\brief  GxB_Scalar_dup: make a deep copy of a sparse GxB_Scalar
+
 \par
- parallel: not here, see GB_subassign_kernel
+ s = t, making a deep copy
+*/
+
+
+/** \file GxB_Scalar_extractElement.c
+\brief  GxB_Scalar_extractElement: extract a single entry from a GxB_Scalar
+
+\par
+ Extract a single entry, x = s, typecasting from the type
+ of s to the type of x, as needed.
+\par
+ Returns GrB_SUCCESS if s is present, and sets x to its value.
+ Returns GrB_NO_VALUE if s does not have an entry, and x is unmodified.
+*/
+
+
+/** \file GxB_Scalar_fprint.c
+\brief  GxB_Scalar_fprint: print and check a GxB_Scalar object
+
+*/
+
+
+/** \file GxB_Scalar_free.c
+\brief  GxB_Scalar_free: free a sparse GxB_Scalar
+
+\par
+ free all the content of a GxB_Scalar.  After GxB_Scalar_free (\&s), s is set
+ to NULL
+*/
+
+
+/** \file GxB_Scalar_new.c
+\brief  GxB_Scalar_new: create a new GxB_Scalar
+
+\par
+ The new GxB_Scalar has no entry.  Internally, it is identical to a
+ GrB_Vector of length 1.  If this method fails, *s is set to NULL.
+*/
+
+
+/** \file GxB_Scalar_nvals.c
+\brief  GxB_Scalar_nvals: number of entries in a sparse GxB_Scalar
+
+*/
+
+
+/** \file GxB_Scalar_setElement.c
+\brief  GxB_Scalar_setElement: set an entry in a GxB_Scalar
+
+\par
+ Set a single scalar, s = x, typecasting from the type of x to
+ the type of s as needed.
+*/
+
+
+/** \file GxB_Scalar_type.c
+\brief  GxB_Scalar_type: return the type of a GxB_Scalar
+
 */
 
 
 /** \file GxB_SelectOp_fprint.c
 \brief  GxB_SelectOp_fprint: print and check a GrB_SelectOp object
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GxB_SelectOp_free.c
 \brief  GxB_SelectOp_free: free a select operator
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -3382,80 +4433,66 @@ constructed by dox_headers.m
  GxB_SelectOp_new is implemented both as a macro and a function.  Both are
  user-callable.  The macro is used by default since it can capture the name
  of the select function.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
+*/
+
+
+/** \file GxB_SelectOp_ttype.c
+\brief  GxB_SelectOp_ttype: return the type of thunk for z=f(x,thunk)
+
 */
 
 
 /** \file GxB_SelectOp_xtype.c
-\brief  GxB_SelectOp_xtype: return the type of x for z=f(x)
+\brief  GxB_SelectOp_xtype: return the type of x for z=f(x,thunk)
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GxB_Semiring_add.c
 \brief  GxB_Semiring_add: return the additive monoid of a semiring
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GxB_Semiring_fprint.c
 \brief  GxB_Semiring_fprint: print and check a GrB_Semiring object
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GxB_Semiring_multiply.c
 \brief  GxB_Semiring_multiply: return the multiply operator of a semiring
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GxB_Type_fprint.c
 \brief  GxB_Type_fprint: print and check a GrB_Type object
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GxB_Type_size.c
 \brief  GxB_Type_size: return the size of a type
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GxB_UnaryOp_fprint.c
 \brief  GxB_UnaryOp_fprint: print and check a GrB_UnaryOp object
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GxB_UnaryOp_xtype.c
 \brief  GxB_UnaryOp_xtype: return the type of x for z=f(x)
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
 /** \file GxB_UnaryOp_ztype.c
 \brief  GxB_UnaryOp_ztype: return the type of z for z=f(x)
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -3464,16 +4501,12 @@ constructed by dox_headers.m
 
 \par
  The indices are returned in sorted order.
-\par
- not parallel: O(1) time
 */
 
 
 /** \file GxB_Vector_fprint.c
 \brief  GxB_Vector_fprint: print and check a GrB_Vector object
 
-\par
- parallel: not needed; used only for testing and debugging.
 */
 
 
@@ -3482,24 +4515,18 @@ constructed by dox_headers.m
 
 \par
  The indices must appear in sorted order.
-\par
- not parallel: O(1) time
 */
 
 
 /** \file GxB_Vector_resize.c
 \brief  GxB_Vector_resize: change the size of a vector
 
-\par
- parallel: not here; see GB_resize
 */
 
 
 /** \file GxB_Vector_select.c
 \brief  GxB_Vector_select: select entries from a vector
 
-\par
- parallel: not here; see GB_select
 */
 
 
@@ -3508,8 +4535,6 @@ constructed by dox_headers.m
 
 \par
  Compare with GrB_Vector_assign, which uses M and C_replace differently
-\par
- parallel: not here; see GB_subassign_kernel
 */
 
 
@@ -3522,16 +4547,12 @@ constructed by dox_headers.m
  with each entry in u equal to x.
 \par
  The actual work is done in GB_subassign_scalar.c.
-\par
- parallel: not here; see GB_subassign_kernel
 */
 
 
 /** \file GxB_Vector_type.c
 \brief  GxB_Vector_type: return the type of a vector
 
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
@@ -3545,8 +4566,6 @@ constructed by dox_headers.m
  the malloc/calloc/realloc/free functions that SuiteSparse:GraphBLAS will
  use.  The functions cannot be modified once GraphBLAS starts.
 \par
- not parallel: this function does O(1) work and is already thread-safe.
-\par
  Examples:
 */
 
@@ -3554,8 +4573,6 @@ constructed by dox_headers.m
 /** \file GxB_kron.c
 \brief  GxB_kron: Kronecker product
 
-\par
- parallel: not here; see GB_kron_kernel
 */
 
 
@@ -3607,33 +4624,19 @@ constructed by dox_headers.m
 */
 
 
-/** \file GB_2type_template.c
-\brief  GB_2type_template.c: 2-type switch factory
+/** \file GB_2type_factory.c
+\brief  GB_2type_factory.c: 2-type switch factory
 
 \par
  This is a generic switch factory for creating 121 workers that operate on
  two built-in data types (11 types each), to be \#include'd in another file.
- GB_WORKER(type1,type2) is a macro defined in the \#including file, where
- type1 and type2 are the built-in types corresponding to code1 and code2,
- respectively or (void *) for a user-defined type.  The last statement of
- GB_WORKER should be a break or return since it doesn't appear here.
+ GB_WORKER(op,zname,ztype,xname,xtype) is a macro defined in the \#including
+ file, where ztype and xtype are the built-in types corresponding to code1
+ and code2, respectively or (void *) for a user-defined type.  The last
+ statement of GB_WORKER should be a break or return since it does not appear
+ here.
 \par
  User-defined types are not handled.
-\par
- GB_shallow_op and GB_transpose_op use this template to create workers that
- apply unary operators.  Those functions \#define GB_BOP(x) for the boolean
- unary operator, GB_IOP(x) for integers, and GB_FOP(x) for floating-point.
- The selection of these operators is controlled by code1.
-\par
- parallel: not here.
-*/
-
-
-/** \file GB_AxB_Gustavson_flipxy.c
-\brief  GB_AxB_Gustavson_flipxy: C=A*B and C\<M\>=A*B
-
-\par
- parallel: not here.
 */
 
 
@@ -3654,18 +4657,12 @@ constructed by dox_headers.m
  dense mask can be costly to exploit.  Thus, this method is not used, and
  GB_AxB_Gustavson_nomask is used instead, if the total flop count is less
  than nnz(M).
-\par
- parallel: this could be done in parallel, but the parallelism will be
- handled outside this code, in GB_AxB_parallel.  This work is done by a
- single thread.
 */
 
 
 /** \file GB_AxB_Gustavson_meta.c
 \brief  GB_AxB_Gustavson_meta: C=A*B and C\<M\>=A*B
 
-\par
- parallel: not here
 */
 
 
@@ -3679,25 +4676,26 @@ constructed by dox_headers.m
  The pattern of C has already been computed in the symbolic phase of
  GB_AxB_Gustavson.  This is Gustavson's method, extended to handle
  hypersparse matrices and arbitrary semirings.
-\par
- parallel: this could be done in parallel, but the parallelism will be
- handled outside this code, in GB_AxB_parallel.  This work is done by a
- single thread.
 */
 
 
 /** \file GB_AxB_Gustavson_symbolic.c
 \brief  GB_AxB_Gustavson_symbolic: C=A*B symbolic analysis
 
-\par
- parallel: this could be done in parallel, but the parallelism will be
- handled outside this code, in GB_AxB_parallel.  This work is done by a
- single thread.
 */
 
 
-/** \file GB_AxB_compare_template.c
-\brief  GB_AxB_compare_template.c: switch factory for C=A*B with comparator ops
+/** \file GB_AxB_colscale_meta.c
+\brief  GB_AxB_colscale_meta: C=A*D where D is a square diagonal matrix
+
+\par
+ All entries in C=A*D are computed fully in parallel, using the same kind of
+ parallelism as Template/GB_reduce_each_vector.c.
+*/
+
+
+/** \file GB_AxB_compare_factory.c
+\brief  GB_AxB_compare_factory.c: switch factory for C=A*B with comparator ops
 
 \par
  A template file \#include'd in GB_AxB_factory.c
@@ -3715,8 +4713,30 @@ constructed by dox_headers.m
  operator NE has already been renamed XOR by GB_AxB_semiring_builtin, and
  thus NE will never use the boolean case, below.  Thus it is removed with the
  \#ifndef GB_NO_BOOLEAN.
-\par
- parallel: not here
+*/
+
+
+/** \file GB_AxB_dot2_compmask.c
+\brief  GB_AxB_dot2_compmask:  C\<!M\>=A'*B via dot products
+
+*/
+
+
+/** \file GB_AxB_dot2_meta.c
+\brief  GB_AxB_dot2_meta: C=A'*B or C\<!M\>=A'*B via dot productes
+
+*/
+
+
+/** \file GB_AxB_dot2_nomask.c
+\brief  GB_AxB_dot2_nomask:  C=A'*B via dot products
+
+*/
+
+
+/** \file GB_AxB_dot3_template.c
+\brief  GB_AxB_dot3_template: C\<M\>=A'*B via dot productes
+
 */
 
 
@@ -3724,82 +4744,39 @@ constructed by dox_headers.m
 \brief  GB_AxB_dot_cij: compute C(i,j) = A(:,i)'*B(:,j)
 
 \par
- computes C(i,j) = A (:,i)'*B(:,j) via sparse dot product.
+ computes C(i,j) = A (:,i)'*B(:,j) via sparse dot product.  This template is
+ used for all three cases: C=A'*B and C\<!M\>=A'*B in dot2, and C\<M\>=A'*B in
+ dot3.
 \par
- parallel: the parallelism will be handled outside this code, in
- GB_AxB_parallel.  This work is done by a single thread.
-*/
-
-
-/** \file GB_AxB_dot_compmask.c
-\brief  GB_AxB_dot_compmask:  C\<!M\>=A'*B via dot products
-
+ GB_AxB_dot2 defines either one of these, and uses this template twice:
 \par
- parallel: this could be done in parallel, but the parallelism will be
- handled outside this code, in GB_AxB_parallel.  This work is done by a
- single thread.
-*/
-
-
-/** \file GB_AxB_dot_flipxy.c
-\brief  GB_AxB_dot_flipxy: C=A'*B or C\<M\>=A'*B via dot products
-
+      GB_PHASE_1_OF_2 ; determine if cij exists, and increment C_count
+      GB_PHASE_2_OF_2 : 2nd phase, compute cij, no realloc of C
 \par
- parallel: not here
-*/
-
-
-/** \file GB_AxB_dot_mask.c
-\brief  GB_AxB_dot_mask:  C\<M\>=A'*B via dot products
-
+ GB_AxB_dot3 defines GB_DOT3, and uses this template just once.
 \par
- parallel: this could be done in parallel, but the parallelism will be
- handled outside this code, in GB_AxB_parallel.  This work is done by a
- single thread.
-*/
-
-
-/** \file GB_AxB_dot_meta.c
-\brief  GB_AxB_dot_meta: C=A'*B or C\<M\>=A'*B via dot productes
-
-\par
- This file is \#include'd into GB_AxB_dot.c for the generic case, and in the
- hard-coded semirings, Generated/GB_AxB__*_*_.c.  It constructs the
- dot-product variant of sparse matrix multiplication, C=A'*B, without
- transposing A.
-\par
- parallel: not here.
-*/
-
-
-/** \file GB_AxB_dot_nomask.c
-\brief  GB_AxB_dot_nomask:  C=A'*B via dot products
-
-\par
- parallel: this could be done in parallel, but the parallelism will be
- handled outside this code, in GB_AxB_parallel.  This work is done by a
- single thread.
+ Only one of the three are \#defined: either GB_PHASE_1_OF_2, GB_PHASE_2_OF_2,
+ or GB_DOT3.
 */
 
 
 /** \file GB_AxB_factory.c
-\brief  GB_AxB_factory: switch factory for built-in methods for C=A*B
+\brief  GB_AxB_factory: switch factory for C=A*B
 
 \par
  This is used by GB_AxB_Gustavson_builtin.c, GB_AxB_dot.c and GB_AxB_heap.c
  to create built-in versions of sparse matrix-matrix multiplication.  The
  \#include'ing file defines the GB_AxB_WORKER macro, and mult_opcode,
- add_opcode, xycode, and zcode
+ add_opcode, xycode, and zcode.
 \par
- parallel: not here
-*/
-
-
-/** \file GB_AxB_heap_flipxy.c
-\brief  GB_AxB_heap_flipxy: compute C\<M\>=A*B or C=A*B using a heap-based method
-
+ Two 2nd level switch factories are used:
 \par
- parallel: not here
+      GB_AxB_type_factory: handles all semirings where the multiply operator
+          is TxT-\>T (as is the monoid).
+\par
+      GB_AxB_compare_factory: handles all semirings where the multiply
+          operator is TxT-\>bool (for the comparison operators, LT, GT, etc),
+          and where the monoid is bool x bool -\> bool.
 */
 
 
@@ -3814,66 +4791,92 @@ constructed by dox_headers.m
  exploiting the mask, so a very dense mask can be costly to exploit.  Thus,
  the mask is not passed to the heap method if the total flop count is less
  than nnz(M).
-\par
- parallel: this could be done in parallel, but the parallelism will be
- handled outside this code, in GB_AxB_parallel.  This work is done by a
- single thread.
 */
 
 
 /** \file GB_AxB_heap_meta.c
 \brief  GB_AxB_heap_meta: compute C\<M\>=A*B or C=A*B using a heap-based method
 
-\par
- parallel: not here
 */
 
 
-/** \file GB_AxB_template.c
-\brief  GB_AxB_template.c: switch factory for each built-in monoid for C=A*B
+/** \file GB_AxB_rowscale_meta.c
+\brief  GB_AxB_rowscale_meta: C=D*B where D is a square diagonal matrix
+
+\par
+ All entries in C=D*B are computed fully in parallel. 
+*/
+
+
+/** \file GB_AxB_type_factory.c
+\brief  GB_AxB_type_factory.c: switch factory for C=A*B
 
 \par
  A template file \#include'd in GB_AxB_factory.c
 \par
- This file is used for 17 operators.  The multiply operator is combined here
+ This file is used for 19 operators.  The multiply operator is combined here
  with 40 or 44 monoids to create 40 or 44 unique semiring workers.
 \par
-      FIRST, SECOND, MIN, MAX, PLUS, MINUS, TIMES, DIV,
+      FIRST, SECOND, MIN, MAX, PLUS, MINUS, RMINUS, TIMES, DIV, RDIV,
       ISEQ, ISNE, ISGT, ISLT, ISGE, ISLE,
       LAND, LOR, LXOR.
 \par
  For all of them, the types of x, y, and z are the same.
- There are 40 non-boolean monoids and 4 boolean monoids defined here.
+ There are 40 non-boolean monoids and 0 or 4 boolean monoids defined here.
 \par
- GB_NO_BOOLEAN is defined for 12 of these multiply operators in the
- \#include'ing file (min, max, plus, minus, times, div, is*) since those 12
- multiply operators are redundant and have been renamed.  For these 12, the
- boolean monoids are not needed.
-\par
- parallel: not here
+ GB_NO_BOOLEAN is defined for 15 of these multiply operators in the
+ \#include'ing file (min, max, plus, minus, rminus, times, div, rdiv, is*)
+ since those multiply operators are redundant and have been renamed.  For
+ these, the boolean monoids are not needed.
 */
 
 
-/** \file GB_assoc_template.c
-\brief  GB_assoc_template.c: switch factory for associative operators
+/** \file GB_add_template.c
+\brief  GB_add_template:  phase1 and phase2 for C=A+B, C\<M\>=A+B
 
 \par
- FUTURE:: write Generator/GB_assoc.c, and use it to create 66 files:
- Generator/GB_assoc__[operator]_[type].  Each file has 4 functions for the
- kernels for GB_reduce_to_scalar, GB_build_factory, and GB_reduce_to_column
- (2 kernels).  (but 22 files with FIRST and SECOND just have one kernel for
- GB_build_factory).
+ Computes C=A+B (no mask) or C\<M\>=A+B (mask present and not complemented).
+ Does not handle the case C\<!M\>=A+B.  The complemented mask is handled in
+ GB_mask instead.  If present, the mask M is assumed to be very sparse
+ compared with A and B.
 \par
- This is a generic body of code for creating hard-coded versions of code for
- 44 combinations of associative operators and built-in types: 10 types (all
- but boolean) with min, max, plus, and times, and one type (boolean) with
- \"or\", \"and\" \"xor\" and \"eq\"
+ phase1: does not compute C itself, but just counts the \# of entries in each
+ vector of C.  Fine tasks compute the \# of entries in their slice of a
+ single vector of C, and the results are cumsum'd in GB_task_cumsum.
 \par
- If GB_INCLUDE_SECOND_OPERATOR is defined then an additional 11 built-in
- workers for the SECOND operator are also created, and 11 for FIRST, for
- GB_build_factory.
+ phase2: computes C, using the counts computed by phase1.
+*/
+
+
+/** \file GB_binop_factory.c
+\brief  GB_binop_factory: switch factory for built-in methods for C=binop(A,B)
+
 \par
- parallel: not here
+ The \#include'ing file defines the GB_BINOP_WORKER macro, and opcode, xycode,
+ and zcode
+*/
+
+
+/** \file GB_binop_type_factory.c
+\brief  GB_binop_type_factory.c: switch factory for binary operators
+
+\par
+ A template file \#include'd in GB_binop_factory.c
+\par
+ This file is used for 19 operators.  The operator is combined here
+ with 10 or 11 types to create 10 or 11 unique workers.
+\par
+      FIRST, SECOND, MIN, MAX, PLUS, MINUS, RMINUS, TIMES, DIV, RDIV,
+      ISEQ, ISNE, ISGT, ISLT, ISGE, ISLE,
+      LAND, LOR, LXOR.
+\par
+ For all of them, the types of x, y, and z are the same.  There are 10
+ non-boolean operators and 0 or 1 boolean operators defined here.
+\par
+ GB_NO_BOOLEAN is defined for 15 of these multiply operators in the
+ \#include'ing file (min, max, plus, minus, rminus, times, div, rdiv, is*)
+ since those multiply operators are redundant and have been renamed.  For
+ these, the boolean operators are not needed.
 */
 
 
@@ -3890,23 +4893,44 @@ constructed by dox_headers.m
 \par
  Critical sections for Windows threads and ANSI C11 threads are listed below
  as drafts, but these threading models are not yet supported.
-\par
- not parallel: this function does O(1) work and is already thread-safe.
 */
 
 
-/** \file GB_heap.h
-\brief  GB_heap: a Heap data structure and its operations
+/** \file GB_emult_template.c
+\brief  GB_emult_template:  phase1 and phase2 for C=A.*B, C\<M\>=A.*B
 
 \par
- The Heap is an array of GB_Elements: Heap [1..nheap].  Each entry in the
- Heap is a GB_Element, with a key and name.
+ Computes C=A.*B (no mask) or C\<M\>=A.*B (mask present and not complemented).
+ Does not handle the case C\<!M\>=A.*B.  The complemented mask is handled in
+ GB_mask instead.  If present, the mask M is assumed to be very sparse
+ compared with A and B.
 \par
- These functions are only used by the heap method for C=A*B.
- See Source/Template/GB_AxB_heap_mask.c.
+ phase1: does not compute C itself, but just counts the \# of entries in each
+ vector of C.  Fine tasks compute the \# of entries in their slice of a
+ single vector of C, and the results are cumsum'd in GB_task_cumsum.
 \par
- parallel: the parallelism will be handled outside this code, in
- GB_AxB_parallel.  This work is done by a single thread.
+ phase2: computes C, using the counts computed by phase1.
+*/
+
+
+/** \file GB_mask_template.c
+\brief  GB_mask_template:  phase1 and phase2 for R = masker (M, C, Z)
+
+\par
+ Computes C\<M\>=Z or C\<!M\>=Z, returning the result in R.  The input matrix C
+ is not modified.  Effectively, this computes R=C and then R\<M\>=Z or R\<!M\>=Z.
+ If the C_replace descriptor is enabled, then C has already been cleared, and
+ is an empty (but non-NULL) matrix.
+\par
+ phase1: does not compute R itself, but just counts the \# of entries in each
+ vector of R.  Fine tasks compute the \# of entries in their slice of a
+ single vector of R, and the results are cumsum'd in GB_task_cumsum.
+\par
+ phase2: computes R, using the counts computed by phase1.
+\par
+ FUTURE:: add special cases for C==Z, C==M, and Z==M aliases
+\par
+ R(i,j) = Z(i,j)
 */
 
 
@@ -3920,6 +4944,17 @@ constructed by dox_headers.m
  GB_Vector_opaque structs.  It would be cleaner to define just one opaque
  struct, and then GrB_Matrix and GrB_Vector would be typedef'd as pointers to
  the same struct, but then the compiler gets confused with Generic(x).
+\par
+ For a GrB_Vector object, as an m-by-1 non-hypersparse CSC matrix:
+      bool is_hyper ;         // always false
+      bool is_csc ;           // always true
+      int64_t plen ;          // always 1, so A-\>p always has length 2, and
+                              // contains [0 k] if the vector has k entries
+      int64_t vdim ;          // always 1
+      int64_t nvec ;          // always 1
+      int64_t *h ;            // always NULL
+\par
+ basic information: magic and type
 */
 
 
@@ -3931,8 +4966,6 @@ constructed by dox_headers.m
  and binary operators.  In that file, GB_TYPE is a built-in C type (bool,
  int8_t, uint64_t, double, etc), and GB(x) is the corresponding macro that
  creates the function name (GB_*_BOOL, GB_*_INT8, etc).
-\par
- parallel: not here; no executable code
 */
 
 
@@ -3946,34 +4979,114 @@ constructed by dox_headers.m
 */
 
 
-/** \file GB_prune_inplace.c
-\brief  GB_prune_inplace: prune a matrix in place
+/** \file GB_qsort_template.c
+\brief  GB_qsort_template: quicksort of a K-by-n array
 
 \par
- The function that \#include's this file defines a GB_PRUNE macro that defines
- how entries are pruned in place from the matrix.  This task is similar to
- GB_select, except that here the pruning is done in place, whereas GB_select
- constructs a new matrix T with the pruned version of A.
+ This file is \#include'd in GB_qsort*.c to create specific versions for
+ different kinds of sort keys and auxiliary arrays.  Requires an inline or
+ macro definition of the GB_lt function.  The GB_lt function has the form
+ GB_lt (A,i,B,j) and returns true if A[i] \< B[j].
 \par
- This code is used by GB_wait to delete zombies, and by GB_resize to delete
- entries outside the resized dimensions, if A-\>vlen decreases.
+ All of these functions are static; there will be versions of them in each
+ variant of GB_qsort*, and given unique names via \#define's in the
+ \#include'ing file.
 \par
- PARALLEL: requires a reduction-style parallelism
+ GB_partition: use a pivot to partition an array
+\par
+ C.A.R Hoare partition method, partitions an array in place via a pivot.
+ k = partition (A, n) partitions A [0:n-1] such that all entries in
+ A [0:k] are \<= all entries in A [k+1:n-1].
 */
 
 
-/** \file GB_qsort_template.c
-\brief  GB_qsort_template: sort an n-by-GB_K list of integers
+/** \file GB_red_factory.c
+\brief  GB_red_factory.c: switch factory for reduction operators
 
 \par
- This file is \#include'd in GB_qsort*.c to create specific versions for GB_K
- = 1, 2, and 3.  Requires an inline or macro definition of the GB_lt
- function.  The GB_lt function has the form GB_lt (A,i,B,j) and returns true
- if A[i]\<B[j].
+ This is a generic body of code for creating hard-coded versions of code for
+ 44 combinations of associative operators and built-in types: 10 types (all
+ but boolean) with MIN, MAX, PLUS, and TIMES, and one type (boolean) with
+ OR, AND, XOR, and EQ
 \par
- All of these functions are static; there will be versions of them in each
- variant of GB_qsort*, with the same names.  They are called only by the
- GB_qsort* function in the \#include'ing file.
+ If GB_INCLUDE_SECOND_OPERATOR is defined then an additional 11 built-in
+ workers for the SECOND operator are also created, and 11 for FIRST, for
+ GB_builder.
+*/
+
+
+/** \file GB_reduce_build_template.c
+\brief  GB_build_template: T=build(S), and assemble any duplicate tuples
+
+\par
+ This template is used in GB_builder and the Generated/GB_red_build__*
+ workers.  This is the same for both vectors and matrices, since this step is
+ agnostic about which vectors the entries appear.
+*/
+
+
+/** \file GB_reduce_each_index.c
+\brief  GB_reduce_each_index: T(i)=reduce(A(i,:)), reduce a matrix to a vector
+
+\par
+ Reduce a matrix to a vector.  All entries in A(i,:) are reduced to T(i).
+ First, all threads reduce their slice to their own workspace, operating on
+ roughly the same number of entries each.  The vectors in A are ignored; the
+ reduction only depends on the indices.  Next, the threads cooperate to
+ reduce all workspaces to the workspace of thread 0.  Finally, this last
+ workspace is collected into T.
+*/
+
+
+/** \file GB_reduce_each_vector.c
+\brief  GB_reduce_each_vector: Tx(j)=reduce(A(:,j)), reduce a matrix to a vector
+
+\par
+ Reduce a matrix to a vector.  The kth vector A(:,k) is reduced to the kth
+ scalar Tx(k).  Each thread computes the reductions on roughly the same number
+ of entries, which means that a vector A(:,k) may be reduced by more than one
+ thread.  The first vector A(:,kfirst) reduced by thread tid may be partial,
+ where the prior thread tid-1 (and other prior threads) may also do some of
+ the reductions for this same vector A(:,kfirst).  The thread tid fully
+ reduces all vectors A(:,k) for k in the range kfirst+1 to klast-1.  The last
+ vector A(:,klast) reduced by thread tid may also be partial.  Thread tid+1,
+ and following threads, may also do some of the reduces for A(:,klast).
+*/
+
+
+/** \file GB_reduce_panel.c
+\brief  GB_reduce_panel: s=reduce(A), reduce a matrix to a scalar
+
+\par
+ Reduce a matrix to a scalar using a panel-based method for built-in
+ operators.  No typecasting is performed.
+*/
+
+
+/** \file GB_reduce_to_scalar_template.c
+\brief  GB_reduce_to_scalar_template: s=reduce(A), reduce a matrix to a scalar
+
+\par
+ Reduce a matrix to a scalar, with typecasting and generic operators.
+ No panel is used.
+*/
+
+
+/** \file GB_select_factory.c
+\brief  GB_select_factory: switch factory for C=select(A,thunk)
+
+*/
+
+
+/** \file GB_select_phase1.c
+\brief  GB_select_count: count entries in eacn vector for C=select(A,thunk)
+
+*/
+
+
+/** \file GB_select_phase2.c
+\brief  GB_select_phase2: C=select(A,thunk)
+
 */
 
 
@@ -3985,22 +5098,22 @@ constructed by dox_headers.m
  semirings.  That file has defined either GB_BOOLEAN, or GB_TYPE as one of
  the 10 non-boolean types.
 \par
- Using built-in types and operators, 960 unique semirings can be built.  This
- count excludes redundant Boolean operators (for example GrB_TIMES_BOOL and
- GrB_LAND are different operators but they are redundant since they always
- return the same result):
+ Using built-in types and operators, 1040 unique semirings can be built.
+ This count excludes redundant Boolean operators (for example GrB_TIMES_BOOL
+ and GrB_LAND are different operators but they are redundant since they
+ always return the same result):
 \par
- 680 semirings with a multiply operator TxT -\> T where T is non-Boolean, from
+ 760 semirings with a multiply operator TxT -\> T where T is non-Boolean, from
  the complete cross product of:
 \par
       4 add monoids (MIN, MAX, PLUS, TIMES)
-      17 multiply operators:
-          (FIRST, SECOND, MIN, MAX, PLUS, MINUS, TIMES, DIV,
+      19 multiply operators:
+          (FIRST, SECOND, MIN, MAX, PLUS, MINUS, RMINUS, TIMES, DIV, RDIV
            ISEQ, ISNE, ISGT, ISLT, ISGE, ISLE,
            LOR, LAND, LXOR)
       10 non-Boolean types, T
 \par
-      a single instance of this file creates 4*17 = 68 semirings of this
+      a single instance of this file creates 4*19 = 76 semirings of this
       form, of one type T, when T is not BOOL
 \par
  240 semirings with a comparison operator TxT -\> bool, where T is
@@ -4022,96 +5135,95 @@ constructed by dox_headers.m
 \par
       a single instance of this file creates all 4*10 = 40 purely Boolean
       semirings, when T is BOOL and GB_BOOLEAN is defined
-\par
- parallel: not here; no executable code
 */
 
 
 /** \file GB_subref_template.c
-\brief  GB_subref_template: C = A(I,J), C = (A(J,I))', or C = pattern (A(I,J))
+\brief  GB_subref_template: C = A(I,J), or C = pattern (A(I,J))
+
+*/
+
+
+/** \file GB_unaryop_factory.c
+\brief  GB_unaryop_factory.c:  switch factory for unary operators and 2 types
 
 \par
- This template creates two functions:
+ Switch factory for applying a unary operator, where the input and output
+ types differ (the worker does the typecasting as well).  This file is
+ \#include'd into GB_apply_op.c and GB_transpose_op.c, which must define
+ the GrB_UnaryOp op and the GrB_Type Atype.
+*/
+
+
+/** \file GB_unaryop_transpose.c
+\brief  GB_unaryop_transpose: C=op(cast(A')), transpose, typecast, and apply op
+
 \par
- GB_subref_numeric: numeric extraction
-\par
-      Sparse submatrix reference, C = A(I,J), extracting the values.  This is
-      an internal function called by GB_extract that does the work of the
-      user-callable GrB_*_extract methods.  It is also called by GB_assign to
-      extract the submask.  No pending tuples or zombies appear in A.
-\par
- GB_subref_symbolic: symbolic extraction
-\par
-      Sparse submatrix reference, C = A(I,J), extracting the pattern, not the
-      values.  This function is called only by GB_subassign_kernel.  Symbolic
-      extraction creates a matrix C with the same pattern (C-\>p and C-\>i) as
-      numeric extraction, but with different values, C-\>x.  For numeric
-      extracion if C(inew,jnew) = A(i,j), the value of A(i,j) is copied into
-      C(i,j).  For symbolic extraction, its *pointer* is copied into C(i,j).
-      Suppose an entry A(i,j) is held in Ai [pa] and Ax [pa], and it appears
-      in the output matrix C in Ci [pc] and Cx [pc].  Then the two methods
-      differ as follows:
-\par
-          this is the same:
-\par
-          i = Ai [pa] ;           // index i of entry A(i,j)
-\par
-          aij = Ax [pa] ;         // value of the entry A(i,j)
-\par
-          Ci [pc] = inew ;        // index inew of C(inew,jnew)
-\par
-          this is different:
-\par
-          Cx [pc] = aij ;         // for numeric extraction
-\par
-          Cx [pc] = pa ;          // for symbolic extraction
-\par
-      GB_subref_symolic is created if GB_SYMBOLIC is defined.  The function
-      is used by GB_subassign_kernel, which uses it to extract the pattern of
-      C(I,J), for the submatrix assignment C(I,J)=A.  GB_subref_symbolic
-      needs to deal with zombie entries.  The GB_subassign_kernel caller uses
-      this function on its C matrix, which is called A here because it is not
-      modified here.
-\par
-      Reading a zombie entry:  A zombie entry A(i,j) has been marked by
-      flipping its index.  The value of a zombie is not important, just its
-      presence in the pattern.  All zombies have been flipped (i \< 0), and
-      all regular entries are not flipped (i \>= 0).  Zombies are entries that
-      have been marked for deletion but have not been removed from the matrix
-      yet, since it's more efficient to delete zombies all at once rather
-      than one at a time.
-\par
-      GB_subref_pattern may encounter zombies in A.  It is zombie-agnostic,
-      doing nothing to them and treating them like regular entries.  Their
-      normal index must be used, not their flipped indices.  The output
-      matrix C contains all unflipped indices, and its references to zombies
-      and regular entries are identical.  Zombies in A are dealt with later.
-      They cannot be detected in the output C matrix, but they can be
-      detected in A.  Since pa = Cx [pc] holds the position of the entry in
-      A, the entry is a zombie if Ai [pa] has been flipped.
-\par
- Neither function is user-callable.
-\par
- The output matrix is passed as a handle, and created by this function, just
- like GrB_Matrix_new or GrB_Matrix_dup.
-\par
- This function is agnostic as to the CSR/CSC format, except for C_is_csc
- which is the requested format of the output matrix C (either CSR or CSC).
- It is assigned to C-\>is_csc but otherwise has no effect on this function.
-\par
- PARALLEL: the list J can be partitioned, and the subref can be done in
- parallel and the results concatenated.
+ This method is parallel, but not highly scalable.  It uses only naslice =
+ nnz(A)/(A-\>vlen) threads.  Each thread requires O(vlen) workspace.
 */
 
 
 /** \file GB_AxB.c
-\brief  GB_AxB:  hard-coded C=A*B and C\<M\>=A*B
+\brief  GB_AxB:  hard-coded functions for semiring: C\<M\>=A*B or A'*B
 
 \par
- Unless this file is Generator/GB_AxB.c, do not edit it (auto-generated)
+ If this file is in the Generated/ folder, do not edit it (auto-generated).
 */
 
 
 /** \file GB_AxB.h
-\brief Source/Generator/GB_AxB.h: used to create GB_AxB__semirings.h
+\brief Source/Generator/GB_AxB.h: used to create GB_AxB__include.h
+*/
+
+
+/** \file GB_binop.c
+\brief  GB_binop:  hard-coded functions for each built-in binary operator
+
+\par
+ If this file is in the Generated/ folder, do not edit it (auto-generated).
+*/
+
+
+/** \file GB_binop.h
+\brief Source/Generator/GB_binop.h: used to create GB_binop__include.h
+*/
+
+
+/** \file GB_red.c
+\brief  GB_red:  hard-coded functions for reductions
+
+\par
+ If this file is in the Generated/ folder, do not edit it (auto-generated).
+*/
+
+
+/** \file GB_red.h
+\brief Source/Generator/GB_red.h: used to create GB_red__include.h
+*/
+
+
+/** \file GB_sel.c
+\brief  GB_sel:  hard-coded functions for selection operators
+
+\par
+ If this file is in the Generated/ folder, do not edit it (auto-generated).
+*/
+
+
+/** \file GB_sel.h
+\brief Source/Generator/GB_sel.h: used to create GB_sel__include.h
+*/
+
+
+/** \file GB_unaryop.c
+\brief  GB_unaryop:  hard-coded functions for each built-in unary operator
+
+\par
+ If this file is in the Generated/ folder, do not edit it (auto-generated).
+*/
+
+
+/** \file GB_unaryop.h
+\brief Source/Generator/GB_unaryop.h: used to create GB_unaryop__include.h
 */

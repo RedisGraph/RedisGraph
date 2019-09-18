@@ -27,15 +27,13 @@
 // two input operands always appear in that order.  That is, the multiply
 // operator is not assumed to be commutative.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GrB_Semiring_new           // create a semiring
 (
     GrB_Semiring *semiring,         // handle of semiring to create
-    const GrB_Monoid add,           // additive monoid of the semiring
-    const GrB_BinaryOp multiply     // multiply operator of the semiring
+    GrB_Monoid add,                 // additive monoid of the semiring
+    GrB_BinaryOp multiply           // multiply operator of the semiring
 )
 {
 
@@ -64,7 +62,7 @@ GrB_Info GrB_Semiring_new           // create a semiring
     //--------------------------------------------------------------------------
 
     // allocate the semiring
-    GB_CALLOC_MEMORY (*semiring, 1, sizeof (struct GB_Semiring_opaque), NULL) ;
+    GB_CALLOC_MEMORY (*semiring, 1, sizeof (struct GB_Semiring_opaque)) ;
     if (*semiring == NULL)
     { 
         // out of memory

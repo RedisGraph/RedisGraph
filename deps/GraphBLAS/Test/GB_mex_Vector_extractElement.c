@@ -2,7 +2,7 @@
 // GB_mex_Vector_extractElement: MATLAB interface for x = v(i)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -73,7 +73,7 @@ void mexFunction
         xtype = Complex ;
         xclass = mxDOUBLE_CLASS ;
         // create X
-        GB_CALLOC_MEMORY (Xtemp, ni, sizeof (double complex), Context) ;
+        GB_CALLOC_MEMORY (Xtemp, ni, sizeof (double complex)) ;
     }
     else
     {

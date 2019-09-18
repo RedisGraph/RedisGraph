@@ -14,20 +14,19 @@
 // GB_AxB_Gustavson.  This is Gustavson's method, extended to handle
 // hypersparse matrices and arbitrary semirings.
 
-// parallel: this could be done in parallel, but the parallelism will be
-// handled outside this code, in GB_AxB_parallel.  This work is done by a
-// single thread.
-
 {
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (GB_NOT_ALIASED_3 (C, M, A, B)) ;
+    ASSERT (!GB_aliased (C, M)) ;
+    ASSERT (!GB_aliased (C, A)) ;
+    ASSERT (!GB_aliased (C, B)) ;
     ASSERT (C->vdim == B->vdim) ;
     ASSERT (C->vlen == A->vlen) ;
     ASSERT (A->vdim == B->vlen) ;
+    ASSERT (Sauna->Sauna_n >= C->vlen) ;
 
     //--------------------------------------------------------------------------
     // get A and B
@@ -47,42 +46,69 @@
     //--------------------------------------------------------------------------
 
     const int64_t *restrict Ci = C->i ;
+    const int64_t *restrict Cp = C->p ;
     ASSERT (C->nvec <= B->nvec) ;
 
+    #ifdef GB_HYPER_CASE
+    const int64_t *restrict Ch = C->h ;
+    int64_t cnvec = C->nvec ;
+    int64_t kc = 0 ;
+    #endif
+
     // C->p and C->h have already been computed in the symbolic phase
-    ASSERT (C->magic = GB_MAGIC) ;
+    ASSERT (C->magic == GB_MAGIC) ;
 
     //--------------------------------------------------------------------------
     // C=A*B using the Gustavson's saxpy-based method; precomputed pattern of C
     //--------------------------------------------------------------------------
 
-    // FUTURE:: use GBI_for_each_vector (B) here
-    #ifdef GB_HYPER_CASE
-    GBI2_for_each_vector (B, C)
-    #else
-    const int64_t *restrict Bp = B->p ;
-    const int64_t *restrict Cp = C->p ;
-    int64_t n = C->vdim ;
-    for (int64_t j = 0 ; j < n ; j++)
-    #endif
+    GBI_for_each_vector (B)
     {
 
         //----------------------------------------------------------------------
-        // get C(:,j) and skip if empty
+        // get B(:,j)
         //----------------------------------------------------------------------
 
-        #ifdef GB_HYPER_CASE
-        GBI2_jth_iteration (Iter, j, pB, pB_end, pC_start, pC_end) ;
-        #else
-        int64_t pB       = Bp [j] ;
-        int64_t pB_end   = Bp [j+1] ;
-        int64_t pC_start = Cp [j] ;
-        int64_t pC_end   = Cp [j+1] ;
-        #endif
-
-        if (pC_end == pC_start) continue ;
+        GBI_jth_iteration (j, pB, pB_end) ;
         int64_t bjnz = pB_end - pB ;
-        ASSERT (bjnz > 0) ;
+        // no work to do if B(:,j) is empty
+        if (bjnz == 0) continue ;
+
+        //----------------------------------------------------------------------
+        // get C(:,j)
+        //----------------------------------------------------------------------
+
+        int64_t pC_start, pC_end ;
+        #ifdef GB_HYPER_CASE
+        if (C_is_hyper)
+        {
+            // C will have a subset of the columns of B, so do a linear-time
+            // search for j in Ch.  The total time for this search is just
+            // O(cnvec), for the entire matrix multiply.  No need for a binary
+            // search using GB_lookup.
+            bool found = false ;
+            for ( ; kc < cnvec && Ch [kc] <= j ; kc++)
+            {
+                found = (Ch [kc] == j) ;
+                if (found)
+                { 
+                    pC_start = Cp [kc] ;
+                    pC_end   = Cp [kc+1] ;
+                    break ;
+                }
+            }
+            // skip if C (:,j) is empty
+            if (!found) continue ;
+        }
+        else
+        #endif
+        { 
+            pC_start = Cp [j] ;
+            pC_end   = Cp [j+1] ;
+        }
+
+        // skip if C(:,j) is empty
+        if (pC_end == pC_start) continue ;
 
         //----------------------------------------------------------------------
         // clear Sauna_Work
@@ -91,7 +117,7 @@
         for (int64_t pC = pC_start ; pC < pC_end ; pC++)
         { 
             // Sauna_Work [Ci [pC]] = identity ;
-            GB_COPY_SCALAR_TO_ARRAY (Sauna_Work, Ci [pC], GB_IDENTITY, zsize) ;
+            GB_COPY_C (GB_SAUNA_WORK (Ci [pC]), GB_IDENTITY) ;
         }
 
         #ifdef GB_HYPER_CASE
@@ -133,7 +159,7 @@
 
             // get the value of B(k,j)
             // bkj = Bx [pB]
-            GB_COPY_ARRAY_TO_SCALAR (bkj, Bx, pB, bsize) ;
+            GB_GETB (bkj, Bx, pB) ;
 
             //------------------------------------------------------------------
             // Sauna_Work += A(:,k) * B(k,j)
@@ -143,7 +169,8 @@
             { 
                 // Sauna_Work [i] += A(i,k) * B(k,j)
                 int64_t i = Ai [pA] ;
-                GB_MULTADD_NOMASK ;
+                GB_GETA (aik, Ax, pA) ;
+                GB_MULTADD (GB_SAUNA_WORK (i), aik, bkj) ;
             }
         }
 
@@ -154,10 +181,8 @@
         for (int64_t pC = pC_start ; pC < pC_end ; pC++)
         { 
             // Cx [pC] = Sauna_Work [Ci [pC]] ;
-            GB_COPY_ARRAY_TO_ARRAY (Cx, pC, Sauna_Work, Ci [pC], zsize) ;
+            GB_COPY_C (GB_CX (pC), GB_SAUNA_WORK (Ci [pC])) ;
         }
     }
-
-    ASSERT (info == GrB_SUCCESS) ;
 }
 

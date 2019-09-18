@@ -10,15 +10,13 @@
 // Set a single scalar, w(row) = x, typecasting from the type of x to
 // the type of w as needed.
 
-// not parallel: this function does O(log(..)) work and is already thread-safe.
-
 #include "GB.h"
 
 #define GB_SET(type,T,ampersand)                                            \
 GrB_Info GrB_Vector_setElement_ ## T    /* w(row) = x    */                 \
 (                                                                           \
     GrB_Vector w,                       /* vector to modify           */    \
-    const type x,                       /* scalar to assign to w(row) */    \
+    type x,                             /* scalar to assign to w(row) */    \
     GrB_Index row                       /* row index                  */    \
 )                                                                           \
 {                                                                           \

@@ -9,8 +9,6 @@
 
 // c = a*b but check for overflow
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 bool GB_size_t_multiply     // true if ok, false if overflow

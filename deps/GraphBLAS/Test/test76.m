@@ -1,7 +1,7 @@
 function test76
 %TEST76 test GxB_resize
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 clear
@@ -9,7 +9,7 @@ rng ('default') ;
 
 fprintf ('\n-------------- GrB_resize\n') ;
 
-[mult_ops unary_ops add_ops classes semirings] = GB_spec_opsall ;
+[~, ~, ~, classes, ~, ~] = GB_spec_opsall ;
 
 for k1 = 1:length(classes)
     clas = classes {k1} ;

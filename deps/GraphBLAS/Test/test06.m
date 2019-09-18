@@ -9,8 +9,12 @@ function test06 (A,B,fulltests,method_list)
 % matrix id number from the SuiteSparse collection otherwise A is the sparse
 % matrix to use in the test
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+fprintf ('test06: GrB_mxm on all semirings\n') ;
+
+[mult_ops, ~, add_ops, classes, ~, ~] = GB_spec_opsall ;
 
 if (nargin < 3)
     fprintf ('\n-------------- GrB_mxm on all semirings\n') ;
@@ -24,8 +28,6 @@ end
 if (nargin < 4)
     method_list = 0:3 ;
 end
-
-[mult_ops unary_ops add_ops classes semirings] = GB_spec_opsall ;
 
 rng ('default') ;
 if (nargin < 1 || isempty (A))
@@ -133,7 +135,7 @@ if (fulltests)
     k3_list = 1:length (classes) ;
 else
     % just use plus-times-double semiring
-    k1_list = 7 ;
+    k1_list = 8 ;
     k2_list = 3 ;
     k3_list = 11 ;
 end
@@ -174,21 +176,22 @@ for k1 = k1_list % 1:length(mult_ops)
                 continue
             end
 
-            % there are 1344 semirings that pass this test:
-            % 17 ops: 8:(1st, 2nd, min, max, plus, minus, times, div)
+            % there are 1440 semirings that pass this test:
+            % 19 ops: 10:(1st, 2nd, min, max, plus, minus, rminus, times,
+            %            div, rdiv)
             %         6:(is*)
             %         3:(or,and,xor)
             %       TxT->T
             %       each has 44 monoids: all 11 types: max,min,plus,times
             %       and 4 for boolean or,and,xor,eq
-            %       17*48 = 816
+            %       17*48 = 912
             % 6 ops: eq,ne,gt,lt,ge,le
             %       TxT->bool
             %       each has 11 types
             %       and 8 monoids (max,min,plus,times,or,and,xor,eq)
             %       6*11*8 = 528
-            % 816 + 528 = 1344
-            % but only 960 are unique.
+            % 912 + 528 = 1440
+            % but only 1040 are unique.
             % see GrB_AxB_builtin for details.
 
             n_semirings = n_semirings + 1 ;

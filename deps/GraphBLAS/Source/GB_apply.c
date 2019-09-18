@@ -11,9 +11,9 @@
 
 // GB_apply does the work for GrB_*_apply.  Compare this with GrB_transpose.
 
-// parallel: not here, but in GB_transpose and GB_shallow_op
-
-#include "GB.h"
+#include "GB_apply.h"
+#include "GB_transpose.h"
+#include "GB_accum_mask.h"
 
 GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
 (
@@ -33,7 +33,7 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (GB_ALIAS_OK2 (C, M, A)) ;
+    // C may be aliased with M and/or A
 
     GB_RETURN_IF_FAULTY (accum) ;
     GB_RETURN_IF_NULL_OR_FAULTY (op) ;
@@ -99,7 +99,7 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
 
     if (A_transpose)
     { 
-        // T = op (A'), typecastint to op->ztype
+        // T = op (A'), typecasting to op->ztype
         // transpose: typecast, apply an op, not in place
         info = GB_transpose (&T, T_type, C_is_csc, A, op, Context) ;
     }
@@ -123,7 +123,6 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     // C<M> = accum (C,T): accumulate the results into C via the M
     //--------------------------------------------------------------------------
 
-    return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp,
-        Context)) ;
+    return (GB_ACCUM_MASK (C, M, NULL, accum, &T, C_replace, Mask_comp)) ;
 }
 

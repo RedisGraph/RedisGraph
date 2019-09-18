@@ -11,9 +11,6 @@
 // preserving the existing content of A->x and A->i.  Preserves pending tuples
 // and zombies, if any.  If numeric is false, then A->x is freed instead.
 
-// parallel: not here; see GB_realloc_memory instead, which might be done in
-// parallel to copy from the old to new space.
-
 #include "GB.h"
 
 GrB_Info GB_ix_realloc      // reallocate space in a matrix
@@ -37,8 +34,7 @@ GrB_Info GB_ix_realloc      // reallocate space in a matrix
     ASSERT (!A->i_shallow && !A->x_shallow) ;
 
     // This function tolerates pending tuples and zombies
-    ASSERT (GB_PENDING_OK (A)) ;
-    ASSERT (GB_ZOMBIES_OK (A)) ;
+    ASSERT (GB_PENDING_OK (A)) ; ASSERT (GB_ZOMBIES_OK (A)) ;
 
     if (nzmax > GB_INDEX_MAX)
     { 
@@ -52,12 +48,10 @@ GrB_Info GB_ix_realloc      // reallocate space in a matrix
 
     size_t nzmax1 = GB_IMAX (nzmax, 1) ;
     bool ok1 = true, ok2 = true ;
-    GB_REALLOC_MEMORY (A->i, nzmax1, A->nzmax, sizeof (int64_t), &ok1,
-        Context) ;
+    GB_REALLOC_MEMORY (A->i, nzmax1, A->nzmax, sizeof (int64_t), &ok1) ;
     if (numeric)
     { 
-        GB_REALLOC_MEMORY (A->x, nzmax1, A->nzmax, A->type->size, &ok2,
-            Context) ;
+        GB_REALLOC_MEMORY (A->x, nzmax1, A->nzmax, A->type->size, &ok2) ;
     }
     else
     { 

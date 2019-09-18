@@ -7,7 +7,7 @@ function C = GB_spec_kron (C, Mask, accum, mult, A, B, descriptor)
 % Computes C<Mask> = accum(C,T), in GraphBLAS notation, where T = kron(A,B),
 % kron(A',B), kron(A,B') or kron(A',B')
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 %-------------------------------------------------------------------------------

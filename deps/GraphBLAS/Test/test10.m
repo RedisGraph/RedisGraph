@@ -1,12 +1,12 @@
 function test10
 %TEST10 test GrB_apply
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\nquick GrB_apply tests\n') ;
 
-[mult_ops unary_ops add_ops classes semirings] = GB_spec_opsall ;
+[~, unary_ops, ~, classes, ~, ~] = GB_spec_opsall ;
 
 rng ('default') ;
 

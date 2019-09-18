@@ -17,8 +17,6 @@
 // Critical sections for Windows threads and ANSI C11 threads are listed below
 // as drafts, but these threading models are not yet supported.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 {
 
     //--------------------------------------------------------------------------
@@ -27,17 +25,9 @@
 
     #if defined (USER_POSIX_THREADS)
     {
-        if (GB_Global.user_multithreaded)
-        {
-            ok = (pthread_mutex_lock (&GB_sync) == 0) ;
-        }
-
+        ok = (pthread_mutex_lock (&GB_sync) == 0) ;
         GB_CRITICAL_SECTION ;
-
-        if (GB_Global.user_multithreaded)
-        {
-            ok = ok && (pthread_mutex_unlock (&GB_sync) == 0) ;
-        }
+        ok = ok && (pthread_mutex_unlock (&GB_sync) == 0) ;
     }
 
     //--------------------------------------------------------------------------
@@ -46,18 +36,10 @@
 
     #elif defined (USER_WINDOWS_THREADS)
     {
-        // This is not yet supported.
-        if (GB_Global.user_multithreaded)
-        {
-            EnterCriticalSection (&GB_sync) ;
-        }
-
+        // This should work, per the Windows spec, but is not yet supported.
+        EnterCriticalSection (&GB_sync) ;
         GB_CRITICAL_SECTION ;
-
-        if (GB_Global.user_multithreaded)
-        {
-            LeaveCriticalSection (&GB_sync) ;
-        }
+        LeaveCriticalSection (&GB_sync) ;
     }
 
     //--------------------------------------------------------------------------
@@ -67,17 +49,9 @@
     #elif defined (USER_ANSI_THREADS)
     {
         // This should work per the ANSI C11 Spec, but is not yet supported.
-        if (GB_Global.user_multithreaded)
-        {
-            ok = (mtx_lock (&GB_sync) == thrd_success) ;
-        }
-
+        ok = (mtx_lock (&GB_sync) == thrd_success) ;
         GB_CRITICAL_SECTION ;
-
-        if (GB_Global.user_multithreaded)
-        {
-            ok = ok && (mtx_unlock (&GB_sync) == thrd_success) ;
-        }
+        ok = ok && (mtx_unlock (&GB_sync) == thrd_success) ;
     }
 
     //--------------------------------------------------------------------------
@@ -85,11 +59,11 @@
     //--------------------------------------------------------------------------
 
     #else   // USER_OPENMP_THREADS or USER_NO_THREADS
-    {
+    { 
         // default: use a named OpenMP critical section.  If OpenMP is not
         // available, then the #pragma is ignored and this becomes vanilla,
         // single-threaded code.
-        #pragma omp critical (GB_critical_section)
+        #pragma omp critical(GB_critical_section)
         GB_CRITICAL_SECTION ;
     }
     #endif

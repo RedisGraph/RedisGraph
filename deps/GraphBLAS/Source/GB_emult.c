@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_emult: element-wise "multiplication" of two matrices
+// GB_emult: C = A.*B or C<M>=A.*B
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
@@ -7,65 +7,31 @@
 
 //------------------------------------------------------------------------------
 
-// GB_emult (C, A, B, op), applies an operator C = op (A,B)
-// element-wise on the matrices A and B.  The result is typecasted as needed.
+// GB_emult, does C=A.*B or C<M>=A.*B, using the given operator element-wise on
+// the matrices A and B.  The result is typecasted as needed.  The pattern of C
+// is the intersection of the pattern of A and B, intersection with the mask M,
+// if present and not complemented.  The complemented mask is not handled here,
+// but in GB_mask.
 
 // Let the op be z=f(x,y) where x, y, and z have type xtype, ytype, and ztype.
 // If both A(i,j) and B(i,j) are present, then:
 
 //      C(i,j) = (ctype) op ((xtype) A(i,j), (ytype) B(i,j))
 
-// If just A(i,j) is present but not B(i,j), then:
+// If just A(i,j) is present but not B(i,j), or
+// if just B(i,j) is present but not A(i,j), then C(i,j) is not present.
 
-//      C(i,j) is not present, and is implicitly 'zero'
+// ctype is the type of matrix C.  The pattern of C is the intersection of A
+// and B, and also intersection with M if present.
 
-// If just B(i,j) is present but not A(i,j), then:
+#include "GB_emult.h"
 
-//      C(i,j) is not present, and is implicitly 'zero'
-
-// ctype is the type of matrix C.  Its pattern is the intersection of A and B.
-
-// This function should not be called by the end user.  It is a helper function
-// for user-callable routines.  No error checking is performed except for
-// out-of-memory conditions.
-
-// FUTURE: this could be faster with built-in operators and types.
-
-// PARALLEL: use 1D parallelism.  Either do the work in symbolic/numeric phases
-// (one to compute nnz in each column, one to fill the output), or compute
-// submatrices and then concatenate them.  See also GB_add.
-
-#include "GB.h"
-
-// C (i,j) = fmult (A (i,j), B (i,j))
-#define GB_EMULT                                                    \
-{                                                                   \
-    Ci [cnz] = ib ;                                                 \
-    if (nocasting)                                                  \
-    {                                                               \
-        fmult (Cx +(cnz*csize), Ax +(pa*asize), Bx +(pb*bsize)) ;   \
-    }                                                               \
-    else                                                            \
-    {                                                               \
-        /* xwork = (xtype) Ax [pa] */                               \
-        cast_A_to_X (xwork, Ax +(pa*asize), asize) ;                \
-        /* ywork = (ytype) Bx [pa] */                               \
-        cast_B_to_Y (ywork, Bx +(pb*bsize), bsize) ;                \
-        /* zwork = fmult (xwork, ywork), result is ztype */         \
-        fmult (zwork, xwork, ywork) ;                               \
-        /* Cx [cnz] = (ctype) zwork */                              \
-        cast_Z_to_C (Cx +(cnz*csize), zwork, csize) ;               \
-    }                                                               \
-    pa++ ;                                                          \
-    pb++ ;                                                          \
-    cnz++ ;                                                         \
-}
-
-GrB_Info GB_emult           // C = A.*B
+GrB_Info GB_emult           // C=A.*B or C<M>=A.*B
 (
     GrB_Matrix *Chandle,    // output matrix (unallocated on input)
     const GrB_Type ctype,   // type of output matrix C
     const bool C_is_csc,    // format of output matrix C
+    const GrB_Matrix M,     // optional mask, unused if NULL.  Not complemented
     const GrB_Matrix A,     // input A matrix
     const GrB_Matrix B,     // input B matrix
     const GrB_BinaryOp op,  // op to perform C = op (A,B)
@@ -78,271 +44,131 @@ GrB_Info GB_emult           // C = A.*B
     //--------------------------------------------------------------------------
 
     ASSERT (Chandle != NULL) ;
-    ASSERT_OK (GB_check (A, "A for C=A.*B", GB0)) ;
-    ASSERT_OK (GB_check (B, "B for C=A.*B", GB0)) ;
+    ASSERT_OK (GB_check (A, "A for emult phased", GB0)) ;
+    ASSERT_OK (GB_check (B, "B for emult phased", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (op, "op for emult phased", GB0)) ;
+    ASSERT_OK_OR_NULL (GB_check (M, "M for emult phased", GB0)) ;
     ASSERT (!GB_PENDING (A)) ; ASSERT (!GB_ZOMBIES (A)) ;
     ASSERT (!GB_PENDING (B)) ; ASSERT (!GB_ZOMBIES (B)) ;
-    ASSERT_OK (GB_check (op, "op for C=A.*B", GB0)) ;
-    ASSERT (A->vdim == A->vdim && B->vlen == A->vlen) ;
-
-    ASSERT (GB_Type_compatible (ctype,   op->ztype)) ;
-    ASSERT (GB_Type_compatible (A->type, op->xtype)) ;
-    ASSERT (GB_Type_compatible (B->type, op->ytype)) ;
-
-    //--------------------------------------------------------------------------
-    // determine the number of threads to use
-    //--------------------------------------------------------------------------
-
-    GB_GET_NTHREADS (nthreads, Context) ;
-
-    //--------------------------------------------------------------------------
-    // allocate the output matrix C
-    //--------------------------------------------------------------------------
-
-    (*Chandle) = NULL ;
-
-    // C is hypersparse if A or B are hypersparse (contrast with GB_add)
-    bool C_is_hyper = (A->is_hyper || B->is_hyper) && (A->vdim > 1) ;
-    int64_t cplen = -1 ;
-
-    if (C_is_hyper)
-    {
-        // FUTURE: if one matrix has many fewer non-empty vectors than the
-        // other, then only the sparser one needs to be traversed.  In that
-        // case, computing these values can dominate the time.  Could use
-        // min (A->nvec, B->nvec) instead.
-        if (A->nvec_nonempty < 0)
-        { 
-            A->nvec_nonempty = GB_nvec_nonempty (A, Context) ;
-        }
-        if (B->nvec_nonempty < 0)
-        { 
-            B->nvec_nonempty = GB_nvec_nonempty (B, Context) ;
-        }
-        cplen = GB_IMIN (A->nvec_nonempty, B->nvec_nonempty) ;
+    ASSERT (A->vdim == B->vdim && A->vlen == B->vlen) ;
+    if (M != NULL)
+    { 
+        ASSERT (!GB_PENDING (M)) ; ASSERT (!GB_ZOMBIES (M)) ;
+        ASSERT (A->vdim == M->vdim && A->vlen == M->vlen) ;
     }
 
-    // [ allocate the result C
-    // worst case nnz (C) is min (nnz (A), nnz (B))
-    GrB_Info info ;
-    GrB_Matrix C = NULL ;           // allocate a new header for C
-    GB_CREATE (&C, ctype, A->vlen, A->vdim, GB_Ap_malloc, C_is_csc,
-        GB_SAME_HYPER_AS (C_is_hyper), B->hyper_ratio, cplen,
-        GB_IMIN (GB_NNZ (A), GB_NNZ (B)), true, Context) ;
+    //--------------------------------------------------------------------------
+    // initializations
+    //--------------------------------------------------------------------------
+
+    GrB_Matrix C = NULL ;
+    (*Chandle) = NULL ;
+    int64_t Cnvec, Cnvec_nonempty ;
+    int64_t *restrict Cp = NULL ;
+    const int64_t *restrict Ch = NULL ;
+    int64_t *restrict C_to_M = NULL ;
+    int64_t *restrict C_to_A = NULL ;
+    int64_t *restrict C_to_B = NULL ;
+    int ntasks, max_ntasks, nthreads ;
+    GB_task_struct *TaskList = NULL ;
+
+    //--------------------------------------------------------------------------
+    // phase0: determine the vectors in C(:,j)
+    //--------------------------------------------------------------------------
+
+    GrB_Info info = GB_emult_phase0 (
+        // computed by phase0:
+        &Cnvec, &Ch, &C_to_M, &C_to_A, &C_to_B,
+        // original input:
+        M, A, B, Context) ;
+
     if (info != GrB_SUCCESS)
     { 
+        // out of memory
         return (info) ;
     }
 
     //--------------------------------------------------------------------------
-    // get functions and type sizes
+    // phase0b: split C into tasks for phase1 and phase2
     //--------------------------------------------------------------------------
 
-    GB_cast_function cast_A_to_X, cast_B_to_Y, cast_Z_to_C ;
+    info = GB_ewise_slice (
+        // computed by phase0b:
+        &TaskList, &max_ntasks, &ntasks, &nthreads,
+        // computed by phase0:
+        Cnvec, Ch, C_to_M, C_to_A, C_to_B, false,
+        // original input:
+        M, A, B, Context) ;
 
-    cast_A_to_X = GB_cast_factory (op->xtype->code, A->type->code) ;
-    cast_B_to_Y = GB_cast_factory (op->ytype->code, B->type->code) ;
-    cast_Z_to_C = GB_cast_factory (C->type->code,   op->ztype->code) ;
-
-    // If types are user-defined, the cast* function is just
-    // GB_copy_user_user, which requires the size of the type.  No typecast is
-    // done.
-
-    GxB_binary_function fmult = op->function ;
-
-    size_t xsize = op->xtype->size ;
-    size_t ysize = op->ytype->size ;
-    size_t zsize = op->ztype->size ;
-    size_t asize = A->type->size ;
-    size_t bsize = B->type->size ;
-    size_t csize = C->type->size ;
-
-    // no typecasting needed if all the types match the operator
-    bool nocasting =
-        (A->type->code == op->xtype->code) &&
-        (B->type->code == op->ytype->code) &&
-        (C->type->code == op->ztype->code) ;
-
-    // scalar workspace
-    char xwork [nocasting ? 1 : xsize] ;
-    char ywork [nocasting ? 1 : ysize] ;
-    char zwork [nocasting ? 1 : zsize] ;
-
-    //--------------------------------------------------------------------------
-    // C = A .* B, where .* is defined by z=fmult(x,y)
-    //--------------------------------------------------------------------------
-
-    int64_t *Ci = C->i ;
-    GB_void *Cx = C->x ;
-
-    int64_t jlast, cnz, cnz_last ;
-    GB_jstartup (C, &jlast, &cnz, &cnz_last) ;
-
-    const int64_t *Ai = A->i, *Bi = B->i ;
-    const GB_void *Ax = A->x, *Bx = B->x ;
-
-    // FUTURE: this traverses all vectors in both A and B, but only the
-    // intersection is needed.  If they differ greatly, traverse just the
-    // smaller one, and search for vectors in the other.
-    GBI2_for_each_vector (A, B)
-    {
-
-        //----------------------------------------------------------------------
-        // get the next column, A (:,j) and B (:j)
-        //----------------------------------------------------------------------
-
-        GBI2_jth_iteration (Iter, j, pa, pa_end, pb, pb_end) ;
-        int64_t ajnz = pa_end - pa ;
-        int64_t bjnz = pb_end - pb ;
-
-        //----------------------------------------------------------------------
-        // compute C (:,j): pattern is the set intersection
-        //----------------------------------------------------------------------
-
-        if (ajnz == 0 || bjnz == 0)
-        { 
-
-            // one or both columns are empty; set intersection is empty
-            ;
-
-        }
-        else if (Ai [pa_end-1] < Bi [pb])
-        { 
-
-            // all entries in A are in lower row indices than all the
-            // entries in B; set intersection is empty
-            ;
-
-        }
-        else if (Bi [pb_end-1] < Ai [pa])
-        { 
-            // all entries in B are in lower row indices than all the
-            // entries in A; set intersection is empty
-            ;
-
-        }
-        else if (ajnz > 256 * bjnz)
-        {
-
-            //------------------------------------------------------------------
-            // A (:,j) has many more nonzeros than B (:,j)
-            //------------------------------------------------------------------
-
-            for ( ; pa < pa_end && pb < pb_end ; )
-            {
-                int64_t ia = Ai [pa] ;
-                int64_t ib = Bi [pb] ;
-                if (ia < ib)
-                { 
-                    // A (ia,j) appears before B (ib,j)
-                    // discard all entries A (ia:ib-1,j)
-                    int64_t pleft = pa + 1 ;
-                    int64_t pright = pa_end ;
-                    GB_BINARY_TRIM_SEARCH (ib, Ai, pleft, pright) ;
-                    ASSERT (pleft > pa) ;
-                    pa = pleft ;
-                }
-                else if (ia > ib)
-                { 
-                    // B (ib,j) appears before A (ia,j)
-                    pb++ ;
-                }
-                else // ia == ib
-                { 
-                    // A (i,j) and B (i,j) match
-                    GB_EMULT ;
-                }
-            }
-
-        }
-        else if (bjnz > 256 * ajnz)
-        {
-
-            //------------------------------------------------------------------
-            // B (:,j) has many more nonzeros than A (:,j)
-            //------------------------------------------------------------------
-
-            for ( ; pa < pa_end && pb < pb_end ; )
-            {
-                int64_t ia = Ai [pa] ;
-                int64_t ib = Bi [pb] ;
-                if (ia < ib)
-                { 
-                    // A (ia,j) appears before B (ib,j)
-                    pa++ ;
-                }
-                else if (ia > ib)
-                { 
-                    // B (ib,j) appears before A (ia,j)
-                    // discard all entries B (ib:ia-1,j)
-                    int64_t pleft = pb + 1 ;
-                    int64_t pright = pb_end ;
-                    GB_BINARY_TRIM_SEARCH (ia, Bi, pleft, pright) ;
-                    ASSERT (pleft > pb) ;
-                    pb = pleft ;
-                }
-                else // ia == ib
-                { 
-                    // A (i,j) and B (i,j) match
-                    GB_EMULT ;
-                }
-            }
-
-        }
-        else
-        {
-
-            //------------------------------------------------------------------
-            // A (:,j) and B (:,j) have about the same number of entries
-            //------------------------------------------------------------------
-
-            for ( ; pa < pa_end && pb < pb_end ; )
-            {
-                int64_t ia = Ai [pa] ;
-                int64_t ib = Bi [pb] ;
-                if (ia < ib)
-                { 
-                    // A (ia,j) appears before B (ib,j)
-                    pa++ ;
-                }
-                else if (ia > ib)
-                { 
-                    // B (ib,j) appears before A (ia,j)
-                    pb++ ;
-                }
-                else // ia == ib
-                { 
-                    // A (i,j) and B (i,j) match
-                    GB_EMULT ;
-                }
-            }
-        }
-
-        //----------------------------------------------------------------------
-        // finalize C(:,j)
-        //----------------------------------------------------------------------
-
-        // this cannot fail since C->plen is the upper bound: min of the
-        // non-empty vectors of A and B
-        info = GB_jappend (C, j, &jlast, cnz, &cnz_last, Context) ;
-        ASSERT (info == GrB_SUCCESS) ;
-
-        #if 0
-        // if it could fail, do this:
-        if (info != GrB_SUCCESS) { GB_MATRIX_FREE (&C) ; return (info) ; }
-        #endif
+    if (info != GrB_SUCCESS)
+    { 
+        // out of memory; free everything allocated by GB_emult_phase0
+        GB_FREE_MEMORY (C_to_M, Cnvec, sizeof (int64_t)) ;
+        GB_FREE_MEMORY (C_to_A, Cnvec, sizeof (int64_t)) ;
+        GB_FREE_MEMORY (C_to_B, Cnvec, sizeof (int64_t)) ;
+        return (info) ;
     }
 
-    GB_jwrapup (C, jlast, cnz) ;        // C->p now initialized ]
-
     //--------------------------------------------------------------------------
-    // trim the size of C: this cannot fail
+    // phase1: count the number of entries in each vector of C
     //--------------------------------------------------------------------------
 
-    ASSERT (cnz <= C->nzmax) ;
-    info = GB_ix_realloc (C, cnz, true, Context) ;
-    ASSERT (info == GrB_SUCCESS) ;
-    ASSERT_OK (GB_check (C, "C output for C=A.*B", GB0)) ;
+    info = GB_emult_phase1 (
+        // computed by phase1:
+        &Cp, &Cnvec_nonempty,
+        // from phase0b:
+        TaskList, ntasks, nthreads,
+        // from phase0:
+        Cnvec, Ch, C_to_M, C_to_A, C_to_B,
+        // original input:
+        M, A, B, Context) ;
+
+    if (info != GrB_SUCCESS)
+    { 
+        // out of memory; free everything allocated by phase 0
+        GB_FREE_MEMORY (TaskList, max_ntasks+1, sizeof (GB_task_struct)) ;
+        GB_FREE_MEMORY (C_to_M, Cnvec, sizeof (int64_t)) ;
+        GB_FREE_MEMORY (C_to_A, Cnvec, sizeof (int64_t)) ;
+        GB_FREE_MEMORY (C_to_B, Cnvec, sizeof (int64_t)) ;
+        return (info) ;
+    }
+
+    //--------------------------------------------------------------------------
+    // phase2: compute the entries (indices and values) in each vector of C
+    //--------------------------------------------------------------------------
+
+    // Cp is either freed by phase2, or transplanted into C.
+    // Either way, it is not freed here.
+
+    info = GB_emult_phase2 (
+        // computed or used by phase2:
+        &C, ctype, C_is_csc, op,
+        // from phase1:
+        Cp, Cnvec_nonempty,
+        // from phase0b:
+        TaskList, ntasks, nthreads,
+        // from phase0:
+        Cnvec, Ch, C_to_M, C_to_A, C_to_B,
+        // original input:
+        M, A, B, Context) ;
+
+    // free workspace
+    GB_FREE_MEMORY (TaskList, max_ntasks+1, sizeof (GB_task_struct)) ;
+    GB_FREE_MEMORY (C_to_M, Cnvec, sizeof (int64_t)) ;
+    GB_FREE_MEMORY (C_to_A, Cnvec, sizeof (int64_t)) ;
+    GB_FREE_MEMORY (C_to_B, Cnvec, sizeof (int64_t)) ;
+
+    if (info != GrB_SUCCESS)
+    { 
+        // out of memory; note that Cp is already freed, and Ch is shallow
+        return (info) ;
+    }
+
+    //--------------------------------------------------------------------------
+    // return result
+    //--------------------------------------------------------------------------
+
+    ASSERT_OK (GB_check (C, "C output for emult phased", GB0)) ;
     (*Chandle) = C ;
     return (GrB_SUCCESS) ;
 }

@@ -1,8 +1,8 @@
 //------------------------------------------------------------------------------
-// GB_mex_qsort: sort int64's using GB_qsort_1
+// GB_mex_qsort: sort int64's using GB_qsort_1a
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -21,7 +21,6 @@ void mexFunction
 {
 
     // check inputs
-    GB_WHERE (USAGE) ;
     if (nargin != 1)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -38,11 +37,12 @@ void mexFunction
     int64_t *J = mxGetData (pargout [0]) ;
     memcpy (J, I, n * sizeof (int64_t)) ;
 
-    TIC ;
+    GB_MEX_TIC ;
 
-    GB_qsort_1 (J, n, Context) ;
+    GB_qsort_1a (J, n) ;
 
-    TOC ;
+    GB_MEX_TOC ;
+
     GB_mx_put_time (0) ;
 }
 

@@ -9,9 +9,7 @@
 
 // The indices are returned in sorted order.
 
-// not parallel: O(1) time
-
-#include "GB.h"
+#include "GB_export.h"
 
 GrB_Info GxB_Vector_export  // export and free a vector
 (

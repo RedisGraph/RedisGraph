@@ -7,8 +7,6 @@
 
 //------------------------------------------------------------------------------
 
-// parallel: not here, but in GB_mask, GB_add, GB_transpose
-
 // C<M> = accum (C,T)
 
 // The primary computation of a GraphBLAS operations is done, and the results
@@ -34,7 +32,7 @@
 // The next step is C<M> = Z.
 
 // This denotes how the matrix Z is written into C, under the control of the
-// mask (or ~M if Mask_complement is true), and the C_replace flag (which
+// mask (or !M if Mask_comp is true), and the C_replace flag (which
 // indicates that C should be set to zero first.  This is C<M>=Z in
 // GraphBLAS notation.  See GB_mask.c, or GB_spec_mask.m for a MATLAB script
 // that describes this step.
@@ -54,7 +52,11 @@
 
 // desc [GB_OUTP] = GrB_REPLACE means to clear C before writing Z into C.
 
-#include "GB.h"
+#include "GB_subassign.h"
+#include "GB_add.h"
+#include "GB_mask.h"
+#include "GB_transpose.h"
+#include "GB_accum_mask.h"
 
 /* -----------------------------------------------------------------------------
 
@@ -135,7 +137,7 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
     const GrB_BinaryOp accum,   // optional accum for Z=accum(C,results)
     GrB_Matrix *Thandle,        // results of computation, freed when done
     const bool C_replace,       // if true, clear C first
-    const bool Mask_complement, // if true, complement the mask
+    const bool Mask_comp,       // if true, complement the mask
     GB_Context Context
 )
 {
@@ -144,10 +146,9 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
     // check inputs
     //--------------------------------------------------------------------------
 
-    // C and M may be aliased but nothing else
-    ASSERT (Thandle != NULL) ;
-    ASSERT (GB_ALIAS_OK (C, M_in)) ;       // C can be aliased with M_in
+    // C may be aliased with M_in
 
+    ASSERT (Thandle != NULL) ;
     GrB_Info info ;
     GrB_Matrix T = *Thandle ;
     GrB_Matrix MT = NULL ;
@@ -159,12 +160,28 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
     ASSERT_OK_OR_NULL (GB_check (MT_in, "MT_in for GB_accum_mask", GB0)) ;
     ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_accum_mask", GB0)) ;
 
+    // pending work in C may be abandoned, or it might not need to be
+    // finished if GB_subassigner is used, so it is not finished here.
+    ASSERT (GB_PENDING_OK (C)) ; ASSERT (GB_ZOMBIES_OK (C)) ;
+    ASSERT (GB_PENDING_OK (M)) ; ASSERT (GB_ZOMBIES_OK (M)) ;
+
+    // pending work in T will be finished now
+    ASSERT (GB_PENDING_OK (T)) ; ASSERT (GB_ZOMBIES_OK (T)) ;
+
     // GB_extract can pass in a matrix T that is jumbled, but it does so
     // only if T->is_csc and C->is_csc are different.  In that case, T is
     // transposed, so the sort can be skipped.
     ASSERT_OK_OR_JUMBLED (GB_check (T, "[T = results of computation]", GB0)) ;
-    ASSERT (!GB_PENDING (M)) ; ASSERT (!GB_ZOMBIES (M)) ;
-    ASSERT (!GB_PENDING (T)) ; ASSERT (!GB_ZOMBIES (T)) ;
+
+    //--------------------------------------------------------------------------
+    // remove zombies and pending tuples from T
+    //--------------------------------------------------------------------------
+
+    if (GB_PENDING_OR_ZOMBIES (T))
+    {
+        // if this fails, *Thandle must be freed
+        GB_OK (GB_wait (T, Context)) ;
+    }
 
     //--------------------------------------------------------------------------
     // ensure M and T have the same CSR/CSC format as C
@@ -172,7 +189,8 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
 
     if (C->is_csc != T->is_csc)
     { 
-        // transpose: no typecast, no op, in place of T, jumbled
+        // transpose: no typecast, no op, in place of T, jumbled, but T
+        // cannot have any zombies or pending tuples.
         GB_OK (GB_transpose (Thandle, NULL, C->is_csc, NULL, NULL, Context)) ;
         T = (*Thandle) ;
     }
@@ -188,6 +206,11 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
         // transpose: typecast, no op, not in place
         if (MT_in == NULL)
         { 
+            if (GB_PENDING_OR_ZOMBIES (M))
+            {
+                // remove zombies and pending tuples from M
+                GB_OK (GB_wait (M, Context)) ;
+            }
             GB_OK (GB_transpose (&MT, GrB_BOOL, C->is_csc, M, NULL, Context)) ;
             // use the transpose mask
             M = MT ;
@@ -206,7 +229,6 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
     ASSERT (C->is_csc == T->is_csc) ;
     ASSERT (M == NULL || (C->vlen == M->vlen && C->vdim == M->vdim)) ;
     ASSERT (M == NULL || (C->is_csc == M->is_csc)) ;
-    ASSERT (!GB_PENDING (M)) ; ASSERT (!GB_ZOMBIES (M)) ;
     ASSERT (!GB_PENDING (T)) ; ASSERT (!GB_ZOMBIES (T)) ;
 
     //--------------------------------------------------------------------------
@@ -215,7 +237,7 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
 
     // decide on the method
     int64_t cnz = GB_NNZ (C) ;          // includes live entries and zombies
-    int64_t cnpending = C->n_pending ;  // # pending tuples
+    int64_t cnpending = GB_Pending_n (C) ;  // # pending tuples in C
     int64_t tnz = GB_NNZ (T) ;
 
     // Use subassign for the accum/mask step if either M or accum is present
@@ -225,22 +247,23 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
     // then use subassign.  It will be fast when T is very sparse and C has
     // many nonzeros.  If the # of pending tuples in C is growing, however,
     // then it would be better to finish the work now, and leave C completed.
-    // In this case, GB_transplant (if no accum) or GB_add (with accum),
-    // and GB_mask are used for the accum/mask step.  If there is no mask M,
-    // and no accum, then C=T is fast with GB_accum_mask.
+    // In this case, GB_transplant (if no accum) or GB_add with accum, and
+    // GB_mask are used for the accum/mask step.
 
-    if ((M != NULL || accum != NULL) && (tnz + cnpending <= cnz))
+    // If there is no mask M, and no accum, then C=T is fast (just
+    // GB_transplant for Z=T and GB_transplant_conform in GB_mask for C=Z).
+    // So in this case, GB_subassigner takes more work.
+
+    if ((M != NULL || accum != NULL) && (tnz + cnpending <= cnz)
+        && !GB_aliased (C, M) && !GB_aliased (C, T))
     { 
 
         //----------------------------------------------------------------------
-        // C(:,:)<M> = accum (C(:,:),T) via GB_subassign_kernel
+        // C(:,:)<M> = accum (C(:,:),T) via GB_subassigner
         //----------------------------------------------------------------------
 
-        // Since I == GrB_ALL and J = GrB_ALL, C can be safely aliased with M
-        // or T, or any content of M or T.
-
-        GB_OK (GB_subassign_kernel (C, C_replace, M, Mask_complement, accum,
-            T, GrB_ALL, 0, GrB_ALL, 0, false, NULL, 0, Context)) ;
+        GB_OK (GB_subassigner (C, C_replace, M, Mask_comp, accum,
+            T, GrB_ALL, 0, GrB_ALL, 0, false, NULL, GB_ignore_code, Context)) ;
 
     }
     else
@@ -254,12 +277,10 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
         // apply the accumulator (Z = accum (C,T) or Z=T if accum not present)
         //----------------------------------------------------------------------
 
-        // see GB_spec_accum.m for a description of this step
+        // see GB_spec_accum.m for a description of this step.  If C is empty,
+        // then the accumulator can be ignored.
 
-        // finish pending work on C
-        if (GB_PENDING (C) || GB_ZOMBIES (C)) GB_OK (GB_wait (C, Context)) ;
-
-        if (accum == NULL)
+        if (accum == NULL || (cnz + cnpending) == 0)
         { 
 
             //------------------------------------------------------------------
@@ -290,7 +311,14 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
             // Z = (ctype) accum (C,T) ;
             //------------------------------------------------------------------
 
-            GB_OK (GB_add (&Z, C->type, C->is_csc, C, T, accum, Context)) ;
+            // use the mask if present, not complemented, and very sparse
+            GrB_Matrix M1 = NULL ;
+            if (M != NULL && !Mask_comp && GB_MASK_VERY_SPARSE (M, C, T))
+            {
+                M1 = M ;
+            }
+
+            GB_OK (GB_add (&Z, C->type, C->is_csc, M1, C, T, accum, Context)) ;
             GB_MATRIX_FREE (Thandle) ;
         }
 
@@ -311,7 +339,7 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
 
         // apply the mask, storing the results back into C, and free Z.
         ASSERT_OK (GB_check (C, "C<M>=Z input", GB0)) ;
-        GB_OK (GB_mask (C, M, &Z, C_replace, Mask_complement, Context)) ;
+        GB_OK (GB_mask (C, M, &Z, C_replace, Mask_comp, Context)) ;
         ASSERT (Z == NULL) ;
         ASSERT (!C->p_shallow && !C->h_shallow) ;
         ASSERT (!C->i_shallow && !C->x_shallow) ;

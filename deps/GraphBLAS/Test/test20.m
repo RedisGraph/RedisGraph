@@ -1,8 +1,10 @@
 function test20(fulltest)
 %TEST20 test GrB_mxm, mxv, and vxm
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+[mult_ops, ~, add_ops, classes, ~, ~] = GB_spec_opsall ;
 
 tic
 
@@ -10,11 +12,11 @@ if (nargin < 1)
     fulltest = 0 ;
 end
 
-if (fulltest)
-    fprintf ('lengthy tests of GrB_mxm, mxv, and vxm\n') ;
+if (fulltest == 2)
+    fprintf ('test20: lengthy tests of GrB_mxm, mxv, and vxm\n') ;
     n_semirings_max = inf ;
 else
-    fprintf ('quick test of GrB_mxm, mxv, and vxm\n') ;
+    fprintf ('test20: quick test of GrB_mxm, mxv, and vxm\n') ;
     n_semirings_max = 1 ;
 end
 
@@ -26,16 +28,14 @@ kk = 1 ;
 % accumops = 0 ;                        % test with no accum
 aa = 1 ;
 
-[mult_ops unary_ops add_ops classes] = GB_spec_opsall ;
-
-if (n_semirings_max == 1)
-    k1_list = [ 7 ] ;   % times
-    k2_list = [ 3 ] ;   % plus
-    k3_list = [ 11 ] ;  % double
-else
+if (fulltest > 0)
     k1_list = 1:length(mult_ops) ;
     k2_list = 1:length(add_ops) ;
     k3_list = 1:length(classes) ;
+else
+    k1_list = [ 8 ] ;   % times
+    k2_list = [ 3 ] ;   % plus
+    k3_list = [ 11 ] ;  % double
 end
 
 kk = min (kk, length (classes)) ;

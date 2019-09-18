@@ -7,5 +7,6 @@
 // this file directly.  It contains references to internally-defined functions
 // and objects inside GraphBLAS, which are not user-callable.
 
-#include "GB.h"
+#include "GB_mxm.h"
+#include "GB_user.h"
 

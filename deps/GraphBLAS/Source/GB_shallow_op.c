@@ -22,11 +22,9 @@
 // out-of-memory conditions.  This function is not user-callable.  Shallow
 // matrices are never passed back to the user.
 
-// Compare this function with GB_shallow_cast.c
+// Compare this function with GB_shallow_copy.c
 
-// parallel: not here, but in GB_apply_op.
-
-#include "GB.h"
+#include "GB_apply.h"
 
 GrB_Info GB_shallow_op      // create shallow matrix and apply operator
 (

@@ -15,8 +15,6 @@
 // are used instead.  This is to allow the use of the hard-coded functions for
 // built-in monoids.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GB_Monoid_new          // create a monoid
@@ -25,10 +23,10 @@ GrB_Info GB_Monoid_new          // create a monoid
     GrB_BinaryOp op,            // binary operator of the monoid
     const void *identity,       // identity value
     const void *terminal,       // terminal value, if any (may be NULL)
-    const GB_Type_code idcode,  // identity and terminal type code
+    GB_Type_code idcode,        // identity and terminal type code
     GB_Context Context
 )
-{ 
+{
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -58,6 +56,11 @@ GrB_Info GB_Monoid_new          // create a monoid
         // FIRST and DIV are the same for boolean:
         op = GrB_FIRST_BOOL ;
     }
+    else if (op == GxB_RDIV_BOOL)
+    { 
+        // SECOND and RDIV are the same for boolean:
+        op = GrB_SECOND_BOOL ;
+    }
     else if (op == GrB_MIN_BOOL || op == GrB_TIMES_BOOL)
     { 
         // MIN, TIMES, and LAND are the same for boolean:
@@ -68,9 +71,10 @@ GrB_Info GB_Monoid_new          // create a monoid
         // MAX, PLUS, and OR are the same for boolean:
         op = GrB_LOR ;
     }
-    else if (op == GxB_ISNE_BOOL || op == GrB_NE_BOOL || op == GrB_MINUS_BOOL)
+    else if (op == GxB_ISNE_BOOL || op == GrB_NE_BOOL || op == GrB_MINUS_BOOL
+        || op == GxB_RMINUS_BOOL)
     { 
-        // ISNE, NE, MINUS, and XOR are the same for boolean:
+        // ISNE, NE, MINUS, RMINUS, and XOR are the same for boolean:
         op = GrB_LXOR ;
     }
     else if (op == GxB_ISEQ_BOOL)
@@ -138,7 +142,7 @@ GrB_Info GB_Monoid_new          // create a monoid
     //--------------------------------------------------------------------------
 
     // allocate the monoid
-    GB_CALLOC_MEMORY (*monoid, 1, sizeof (struct GB_Monoid_opaque), NULL) ;
+    GB_CALLOC_MEMORY (*monoid, 1, sizeof (struct GB_Monoid_opaque)) ;
     if (*monoid == NULL)
     { 
         // out of memory
@@ -162,8 +166,8 @@ GrB_Info GB_Monoid_new          // create a monoid
     // allocate both the identity and terminal value
     #define GB_ALLOC_IDENTITY_AND_TERMINAL                                  \
     {                                                                       \
-        GB_CALLOC_MEMORY (mon->identity, 1, zsize, NULL) ;                  \
-        GB_CALLOC_MEMORY (mon->terminal, 1, zsize, NULL) ;                  \
+        GB_CALLOC_MEMORY (mon->identity, 1, zsize) ;                        \
+        GB_CALLOC_MEMORY (mon->terminal, 1, zsize) ;                        \
         if (mon->identity == NULL || mon->terminal == NULL)                 \
         {                                                                   \
             /* out of memory */                                             \
@@ -177,7 +181,7 @@ GrB_Info GB_Monoid_new          // create a monoid
     // allocate just the identity, not the terminal
     #define GB_ALLOC_JUST_IDENTITY                                          \
     {                                                                       \
-        GB_CALLOC_MEMORY (mon->identity, 1, zsize, NULL) ;                  \
+        GB_CALLOC_MEMORY (mon->identity, 1, zsize) ;                        \
         if (mon->identity == NULL)                                          \
         {                                                                   \
             /* out of memory */                                             \
@@ -238,7 +242,8 @@ GrB_Info GB_Monoid_new          // create a monoid
                 case GB_UINT32_code : GB_IT (uint32_t, UINT32_MAX, 0         )
                 case GB_UINT64_code : GB_IT (uint64_t, UINT64_MAX, 0         )
                 case GB_FP32_code   : GB_IT (float   , INFINITY  , -INFINITY )
-                case GB_FP64_code   : GB_IT (double  , INFINITY  , -INFINITY )
+                case GB_FP64_code   : GB_IT (double  , ((double) INFINITY)  ,
+                                                       ((double) -INFINITY) )
                 default: ;
             }
             break ;
@@ -257,7 +262,8 @@ GrB_Info GB_Monoid_new          // create a monoid
                 case GB_UINT32_code : GB_IT (uint32_t, 0         , UINT32_MAX)
                 case GB_UINT64_code : GB_IT (uint64_t, 0         , UINT64_MAX)
                 case GB_FP32_code   : GB_IT (float   , -INFINITY , INFINITY  )
-                case GB_FP64_code   : GB_IT (double  , -INFINITY , INFINITY  )
+                case GB_FP64_code   : GB_IT (double  , ((double) -INFINITY)  ,
+                                                       ((double) INFINITY) )
                 default: ;
             }
             break ;

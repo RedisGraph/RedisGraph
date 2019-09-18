@@ -7,8 +7,6 @@
 
 //------------------------------------------------------------------------------
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 bool GB_queue_remove            // remove matrix from queue
@@ -30,7 +28,7 @@ bool GB_queue_remove            // remove matrix from queue
     bool ok = true ;
 
     if (A->enqueued)
-    {
+    { 
         // remove the matrix from the queue
 
         // define the work to do inside the critical section
@@ -44,7 +42,7 @@ bool GB_queue_remove            // remove matrix from queue
                 if (Prev == NULL)                                           \
                 {                                                           \
                     /* matrix is at head of the queue; update the head */   \
-                    GB_Global.queue_head = Next ;                           \
+                    GB_Global_queue_head_set (Next) ;                       \
                 }                                                           \
                 else                                                        \
                 {                                                           \

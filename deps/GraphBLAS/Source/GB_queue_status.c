@@ -7,8 +7,6 @@
 
 //------------------------------------------------------------------------------
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 bool GB_queue_status            // get the queue status of a matrix
@@ -43,7 +41,7 @@ bool GB_queue_status            // get the queue status of a matrix
     #define GB_CRITICAL_SECTION                                             \
     {                                                                       \
         /* get the status of the queue for this matrix */                   \
-        (*p_head) = (GrB_Matrix) (GB_Global.queue_head) ;                   \
+        (*p_head) = (GrB_Matrix) (GB_Global_queue_head_get ( )) ;           \
         (*p_prev) = (GrB_Matrix) (A->queue_prev) ;                          \
         (*p_next) = (GrB_Matrix) (A->queue_next) ;                          \
         (*p_enqd) = A->enqueued ;                                           \

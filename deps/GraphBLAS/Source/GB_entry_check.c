@@ -7,12 +7,6 @@
 
 //------------------------------------------------------------------------------
 
-// not parallel: This function does O(1) work, but can be called for every
-// entry in a matrix, to print it out in GxB_Matrix_fprint or
-// GxB_Vector_fprint.  The printing to a file is fundamentally sequential, and
-// also only needed for diagnostics.  For Matrix Market I/O, however, printing
-// of the entire matrix could perhaps be done in parallel.
-
 #include "GB.h"
 
 GrB_Info GB_entry_check     // print a single value

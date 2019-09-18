@@ -10,8 +10,6 @@
 // This file defines the predefined built-in objects: 11 types, 45 unary
 // operators, 256 binary operators, 44 monoids, and 960 semirings.
 
-// not parallel: this function has no executable code, just definitions.
-
 #include "GB.h"
 
 //------------------------------------------------------------------------------
@@ -49,6 +47,14 @@ GrB_Type
 //------------------------------------------------------------------------------
 // built-in unary and binary operators
 //------------------------------------------------------------------------------
+
+#if defined __INTEL_COMPILER
+// disable icc warnings
+//  144:  initialize with incompatible pointer
+#pragma warning (disable: 144 )
+#elif defined __GNUC__
+#pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
+#endif
 
 // helper macro to define unary operators; z and x have the same type
 #define GB_UNARY_OP_DEFINE(PREFIX,OPERATOR,OPNAME)                          \
@@ -168,8 +174,6 @@ GrB_BinaryOp GrB_NAME (PREFIX,OPERATOR) = & GB (opaque_ ## PREFIX ## OPERATOR) ;
 // special cases for functions and operators
 //------------------------------------------------------------------------------
 
-extern void GB_copy_user_user (void *z, void *x, size_t s) ;
-
 // 4 special cases:
 // purely boolean operators: these do not have _BOOL in their name
 // They are not created by the templates above.
@@ -184,34 +188,102 @@ GrB_BinaryOp GrB_LXOR = & GB_opaque_GxB_LXOR_BOOL ;
 
 struct GB_SelectOp_opaque GB_opaque_GxB_TRIL =
 {
-    GB_MAGIC, NULL, NULL, "tril", GB_TRIL_opcode
+    GB_MAGIC, NULL, NULL, NULL, "tril", GB_TRIL_opcode
 } ;
 
 struct GB_SelectOp_opaque GB_opaque_GxB_TRIU =
 {
-    GB_MAGIC, NULL, NULL, "triu", GB_TRIU_opcode
+    GB_MAGIC, NULL, NULL, NULL, "triu", GB_TRIU_opcode
 } ;
 
 struct GB_SelectOp_opaque GB_opaque_GxB_DIAG =
 {
-    GB_MAGIC, NULL, NULL, "diag", GB_DIAG_opcode
+    GB_MAGIC, NULL, NULL, NULL, "diag", GB_DIAG_opcode
 } ;
 
 struct GB_SelectOp_opaque GB_opaque_GxB_OFFDIAG =
 {
-    GB_MAGIC, NULL, NULL, "offdiag", GB_OFFDIAG_opcode
+    GB_MAGIC, NULL, NULL, NULL, "offdiag", GB_OFFDIAG_opcode
 } ;
 
 struct GB_SelectOp_opaque GB_opaque_GxB_NONZERO =
 {
-    GB_MAGIC, NULL, NULL, "nonzero", GB_NONZERO_opcode
+    GB_MAGIC, NULL, NULL, NULL, "nonzero", GB_NONZERO_opcode
 } ;
 
-GxB_SelectOp GxB_TRIL    = & GB_opaque_GxB_TRIL ;
-GxB_SelectOp GxB_TRIU    = & GB_opaque_GxB_TRIU ;
-GxB_SelectOp GxB_DIAG    = & GB_opaque_GxB_DIAG ;
-GxB_SelectOp GxB_OFFDIAG = & GB_opaque_GxB_OFFDIAG ;
-GxB_SelectOp GxB_NONZERO = & GB_opaque_GxB_NONZERO ;
+struct GB_SelectOp_opaque GB_opaque_GxB_EQ_ZERO =
+{
+    GB_MAGIC, NULL, NULL, NULL, "eq_zero", GB_EQ_ZERO_opcode
+} ;
+
+struct GB_SelectOp_opaque GB_opaque_GxB_GT_ZERO =
+{
+    GB_MAGIC, NULL, NULL, NULL, "gt_zero", GB_GT_ZERO_opcode
+} ;
+
+struct GB_SelectOp_opaque GB_opaque_GxB_GE_ZERO =
+{
+    GB_MAGIC, NULL, NULL, NULL, "ge_zero", GB_GE_ZERO_opcode
+} ;
+
+struct GB_SelectOp_opaque GB_opaque_GxB_LT_ZERO =
+{
+    GB_MAGIC, NULL, NULL, NULL, "lt_zero", GB_LT_ZERO_opcode
+} ;
+
+struct GB_SelectOp_opaque GB_opaque_GxB_LE_ZERO =
+{
+    GB_MAGIC, NULL, NULL, NULL, "le_zero", GB_LE_ZERO_opcode
+} ;
+
+struct GB_SelectOp_opaque GB_opaque_GxB_NE_THUNK =
+{
+    GB_MAGIC, NULL, NULL, NULL, "ne_thunk", GB_NE_THUNK_opcode
+} ;
+
+struct GB_SelectOp_opaque GB_opaque_GxB_EQ_THUNK =
+{
+    GB_MAGIC, NULL, NULL, NULL, "eq_thunk", GB_EQ_THUNK_opcode
+} ;
+
+struct GB_SelectOp_opaque GB_opaque_GxB_GT_THUNK =
+{
+    GB_MAGIC, NULL, NULL, NULL, "gt_thunk", GB_GT_THUNK_opcode
+} ;
+
+struct GB_SelectOp_opaque GB_opaque_GxB_GE_THUNK =
+{
+    GB_MAGIC, NULL, NULL, NULL, "ge_thunk", GB_GE_THUNK_opcode
+} ;
+
+struct GB_SelectOp_opaque GB_opaque_GxB_LT_THUNK =
+{
+    GB_MAGIC, NULL, NULL, NULL, "lt_thunk", GB_LT_THUNK_opcode
+} ;
+
+struct GB_SelectOp_opaque GB_opaque_GxB_LE_THUNK =
+{
+    GB_MAGIC, NULL, NULL, NULL, "le_thunk", GB_LE_THUNK_opcode
+} ;
+
+GxB_SelectOp GxB_TRIL     = & GB_opaque_GxB_TRIL ;
+GxB_SelectOp GxB_TRIU     = & GB_opaque_GxB_TRIU ;
+GxB_SelectOp GxB_DIAG     = & GB_opaque_GxB_DIAG ;
+GxB_SelectOp GxB_OFFDIAG  = & GB_opaque_GxB_OFFDIAG ;
+
+GxB_SelectOp GxB_NONZERO  = & GB_opaque_GxB_NONZERO ;
+GxB_SelectOp GxB_EQ_ZERO  = & GB_opaque_GxB_EQ_ZERO ;
+GxB_SelectOp GxB_GT_ZERO  = & GB_opaque_GxB_GT_ZERO ;
+GxB_SelectOp GxB_GE_ZERO  = & GB_opaque_GxB_GE_ZERO ;
+GxB_SelectOp GxB_LT_ZERO  = & GB_opaque_GxB_LT_ZERO ;
+GxB_SelectOp GxB_LE_ZERO  = & GB_opaque_GxB_LE_ZERO ;
+
+GxB_SelectOp GxB_NE_THUNK = & GB_opaque_GxB_NE_THUNK ;
+GxB_SelectOp GxB_EQ_THUNK = & GB_opaque_GxB_EQ_THUNK ;
+GxB_SelectOp GxB_GT_THUNK = & GB_opaque_GxB_GT_THUNK ;
+GxB_SelectOp GxB_GE_THUNK = & GB_opaque_GxB_GE_THUNK ;
+GxB_SelectOp GxB_LT_THUNK = & GB_opaque_GxB_LT_THUNK ;
+GxB_SelectOp GxB_LE_THUNK = & GB_opaque_GxB_LE_THUNK ;
 
 //------------------------------------------------------------------------------
 // GrB_ALL
@@ -275,7 +347,8 @@ GB_MONOID_DEFINE_TERM ( GrB_, MIN_UINT16   , uint16_t , UINT16_MAX , 0         )
 GB_MONOID_DEFINE_TERM ( GrB_, MIN_UINT32   , uint32_t , UINT32_MAX , 0         )
 GB_MONOID_DEFINE_TERM ( GrB_, MIN_UINT64   , uint64_t , UINT64_MAX , 0         )
 GB_MONOID_DEFINE_TERM ( GrB_, MIN_FP32     , float    , INFINITY   , -INFINITY )
-GB_MONOID_DEFINE_TERM ( GrB_, MIN_FP64     , double   , INFINITY   , -INFINITY )
+GB_MONOID_DEFINE_TERM ( GrB_, MIN_FP64     , double   ,
+    ((double) INFINITY)   , ((double) -INFINITY) )
 
 // MAX monoids:
 GB_MONOID_DEFINE_TERM ( GrB_, MAX_INT8     , int8_t   , INT8_MIN   , INT8_MAX  )
@@ -287,7 +360,8 @@ GB_MONOID_DEFINE_TERM ( GrB_, MAX_UINT16   , uint16_t , 0          , UINT16_MAX)
 GB_MONOID_DEFINE_TERM ( GrB_, MAX_UINT32   , uint32_t , 0          , UINT32_MAX)
 GB_MONOID_DEFINE_TERM ( GrB_, MAX_UINT64   , uint64_t , 0          , UINT64_MAX)
 GB_MONOID_DEFINE_TERM ( GrB_, MAX_FP32     , float    , -INFINITY  , INFINITY  )
-GB_MONOID_DEFINE_TERM ( GrB_, MAX_FP64     , double   , -INFINITY  , INFINITY  )
+GB_MONOID_DEFINE_TERM ( GrB_, MAX_FP64     , double   , 
+    ((double) -INFINITY)  , ((double) INFINITY)  )
 
 // PLUS monoids:
 GB_MONOID_DEFINE      ( GrB_, PLUS_INT8    , int8_t   , 0          )

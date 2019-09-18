@@ -24,14 +24,23 @@ end
 
 fprintf ('\nCompiling GraphBLAS tests:\n') ;
 
+try
+    spok (sparse (1)) ;
+catch
+    here = pwd ;
+    cd ('spok') ;
+    spok_install ;
+    cd (here) ;
+end
+
 if (nargin < 1)
     what = '' ;
 end
 
 make_all = (isequal (what, 'all')) ;
 
-% flags = '-g' ;
-  flags = '-O' ;
+%  flags = '-g' ;
+   flags = '-O' ;
 
 flags = [flags ' -largeArrayDims'] ;
 
@@ -70,6 +79,7 @@ cfiles = [ dir('GB_mx_*.c') ; ...
            dir('../Demo/Source/wathen.c') ; ...
            dir('../Demo/Source/random_matrix.c') ; ...
            dir('../Demo/Source/simple_rand.c') ; ...
+           dir('../Demo/Source/prand.c') ; ...
            dir('../Demo/Source/simple_timer.c') ; ...
            dir('../Demo/Source/tricount.c') ; ...
            dir('../Demo/Source/usercomplex.c') ] ;
@@ -85,9 +95,9 @@ if (ismac)
 %   flags = [ flags  ' LDFLAGS="$LDFLAGS  -fopenmp"' ] ;
 else
     % Linux
-    libraries = '-L../build -lgraphblas' ;
-    flags = [ flags   ' CFLAGS="$CXXFLAGS -fopenmp -fPIC" '] ;
-    flags = [ flags ' CXXFLAGS="$CXXFLAGS -fopenmp -fPIC" '] ;
+    libraries = '-L../build -L. -lgraphblas' ;
+    flags = [ flags   ' CFLAGS="$CXXFLAGS -fopenmp -fPIC -Wno-pragmas" '] ;
+    flags = [ flags ' CXXFLAGS="$CXXFLAGS -fopenmp -fPIC -Wno-pragmas" '] ;
     flags = [ flags  ' LDFLAGS="$LDFLAGS  -fopenmp -fPIC" '] ;
 end
 

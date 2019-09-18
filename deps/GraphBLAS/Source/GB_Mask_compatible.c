@@ -7,9 +7,7 @@
 
 //------------------------------------------------------------------------------
 
-// check the type and dimenions of the mask
-
-// not parallel: this function does O(1) work and is already thread-safe.
+// check the type and dimensions of the mask
 
 #include "GB.h"
 
@@ -21,13 +19,13 @@ GrB_Info GB_Mask_compatible     // check type and dimensions of mask
     const GrB_Index ncols,
     GB_Context Context
 )
-{ 
+{
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (GB_ALIAS_OK (C, M)) ;
+    // C and M may be aliased
 
     //--------------------------------------------------------------------------
     // check the mask M

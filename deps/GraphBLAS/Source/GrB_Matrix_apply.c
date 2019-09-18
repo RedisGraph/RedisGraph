@@ -9,9 +9,7 @@
 
 // C<M> = accum(C,op(A)) or accum(C,op(A'))
 
-// parallel: not here; see GB_apply
-
-#include "GB.h"
+#include "GB_apply.h"
 
 GrB_Info GrB_Matrix_apply           // C<M> = accum (C, op(A)) or op(A')
 (

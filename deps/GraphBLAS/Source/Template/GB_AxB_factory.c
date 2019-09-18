@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// GB_AxB_factory: switch factory for built-in methods for C=A*B
+// GB_AxB_factory: switch factory for C=A*B
 //------------------------------------------------------------------------------
 
 // SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
@@ -10,9 +10,16 @@
 // This is used by GB_AxB_Gustavson_builtin.c, GB_AxB_dot.c and GB_AxB_heap.c
 // to create built-in versions of sparse matrix-matrix multiplication.  The
 // #include'ing file defines the GB_AxB_WORKER macro, and mult_opcode,
-// add_opcode, xycode, and zcode
+// add_opcode, xycode, and zcode.
 
-// parallel: not here
+// Two 2nd level switch factories are used:
+
+//      GB_AxB_type_factory: handles all semirings where the multiply operator
+//          is TxT->T (as is the monoid).
+
+//      GB_AxB_compare_factory: handles all semirings where the multiply
+//          operator is TxT->bool (for the comparison operators, LT, GT, etc),
+//          and where the monoid is bool x bool -> bool.
 
 {
     //--------------------------------------------------------------------------
@@ -29,7 +36,7 @@
             // 44 semirings: (min,max,plus,times) for non-boolean, and
             // (or,and,xor,eq) for boolean
             #define GB_MULT_NAME _first
-            #include "GB_AxB_template.c"
+            #include "GB_AxB_type_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -39,7 +46,7 @@
             // 44 semirings: (min,max,plus,times) for non-boolean, and
             // (or,and,xor,eq) for boolean
             #define GB_MULT_NAME _second
-            #include "GB_AxB_template.c"
+            #include "GB_AxB_type_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -50,7 +57,7 @@
             // MIN == TIMES == AND for boolean
             #define GB_NO_BOOLEAN
             #define GB_MULT_NAME _min
-            #include "GB_AxB_template.c"
+            #include "GB_AxB_type_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -61,7 +68,7 @@
             // MAX == PLUS == OR for boolean
             #define GB_NO_BOOLEAN
             #define GB_MULT_NAME _max
-            #include "GB_AxB_template.c"
+            #include "GB_AxB_type_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -72,7 +79,7 @@
             // MAX == PLUS == OR for boolean
             #define GB_NO_BOOLEAN
             #define GB_MULT_NAME _plus
-            #include "GB_AxB_template.c"
+            #include "GB_AxB_type_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -80,10 +87,21 @@
         //----------------------------------------------------------------------
 
             // 40 semirings: (min,max,plus,times) for non-boolean
-            // MINUS == NE == ISNE == XOR for boolean
+            // MINUS == RMINUS == NE == ISNE == XOR for boolean
             #define GB_NO_BOOLEAN
             #define GB_MULT_NAME _minus
-            #include "GB_AxB_template.c"
+            #include "GB_AxB_type_factory.c"
+            break ;
+
+        //----------------------------------------------------------------------
+        case GB_RMINUS_opcode   :    // z = y - x (reverse minus)
+        //----------------------------------------------------------------------
+
+            // 40 semirings: (min,max,plus,times) for non-boolean
+            // MINUS == RMINUS == NE == ISNE == XOR for boolean
+            #define GB_NO_BOOLEAN
+            #define GB_MULT_NAME _rminus
+            #include "GB_AxB_type_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -94,7 +112,7 @@
             // MIN == TIMES == AND for boolean
             #define GB_NO_BOOLEAN
             #define GB_MULT_NAME _times
-            #include "GB_AxB_template.c"
+            #include "GB_AxB_type_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -103,10 +121,22 @@
 
             // 40 semirings: (min,max,plus,times) for non-boolean
             // FIRST == DIV for boolean
-            // See Source/GB.h for disscusion on integer division
+            // See Source/GB.h for discusion on integer division
             #define GB_NO_BOOLEAN
             #define GB_MULT_NAME _div
-            #include "GB_AxB_template.c"
+            #include "GB_AxB_type_factory.c"
+            break ;
+
+        //----------------------------------------------------------------------
+        case GB_RDIV_opcode   :     // z = y / x (reverse division)
+        //----------------------------------------------------------------------
+
+            // 40 semirings: (min,max,plus,times) for non-boolean
+            // SECOND == RDIV for boolean
+            // See Source/GB.h for discusion on integer division
+            #define GB_NO_BOOLEAN
+            #define GB_MULT_NAME _rdiv
+            #include "GB_AxB_type_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -117,7 +147,7 @@
             // ISEQ == EQ for boolean
             #define GB_NO_BOOLEAN
             #define GB_MULT_NAME _iseq
-            #include "GB_AxB_template.c"
+            #include "GB_AxB_type_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -125,10 +155,10 @@
         //----------------------------------------------------------------------
 
             // 40 semirings: (min,max,plus,times) for non-boolean
-            // MINUS == NE == ISNE == XOR for boolean
+            // MINUS == RMINUS == NE == ISNE == XOR for boolean
             #define GB_NO_BOOLEAN
             #define GB_MULT_NAME _isne
-            #include "GB_AxB_template.c"
+            #include "GB_AxB_type_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -139,7 +169,7 @@
             // ISGT == GT for boolean
             #define GB_NO_BOOLEAN
             #define GB_MULT_NAME _isgt
-            #include "GB_AxB_template.c"
+            #include "GB_AxB_type_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -150,7 +180,7 @@
             // ISLT == LT for boolean
             #define GB_NO_BOOLEAN
             #define GB_MULT_NAME _islt
-            #include "GB_AxB_template.c"
+            #include "GB_AxB_type_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -161,7 +191,7 @@
             // ISGE == GE for boolean
             #define GB_NO_BOOLEAN
             #define GB_MULT_NAME _isge
-            #include "GB_AxB_template.c"
+            #include "GB_AxB_type_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -172,7 +202,7 @@
             // ISLE == LE for boolean
             #define GB_NO_BOOLEAN
             #define GB_MULT_NAME _isle
-            #include "GB_AxB_template.c"
+            #include "GB_AxB_type_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -181,7 +211,7 @@
 
             // 44 semirings: (and,or,xor,eq) * (11 types)
             #define GB_MULT_NAME _eq
-            #include "GB_AxB_compare_template.c"
+            #include "GB_AxB_compare_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -189,10 +219,10 @@
         //----------------------------------------------------------------------
 
             // 40 semirings: (and,or,xor,eq) * (10 types)
-            // MINUS == NE == ISNE == XOR for boolean
+            // MINUS == RMINUS == NE == ISNE == XOR for boolean
             #define GB_NO_BOOLEAN
             #define GB_MULT_NAME _ne
-            #include "GB_AxB_compare_template.c"
+            #include "GB_AxB_compare_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -201,7 +231,7 @@
 
             // 44 semirings: (and,or,xor,eq) * (11 types)
             #define GB_MULT_NAME _gt
-            #include "GB_AxB_compare_template.c"
+            #include "GB_AxB_compare_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -210,7 +240,7 @@
 
             // 44 semirings: (and,or,xor,eq) * (11 types)
             #define GB_MULT_NAME _lt
-            #include "GB_AxB_compare_template.c"
+            #include "GB_AxB_compare_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -219,7 +249,7 @@
 
             // 44 semirings: (and,or,xor,eq) * (11 types)
             #define GB_MULT_NAME _ge
-            #include "GB_AxB_compare_template.c"
+            #include "GB_AxB_compare_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -228,7 +258,7 @@
 
             // 44 semirings: (and,or,xor,eq) * (11 types)
             #define GB_MULT_NAME _le
-            #include "GB_AxB_compare_template.c"
+            #include "GB_AxB_compare_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -242,7 +272,7 @@
             // 44 semirings: (min,max,plus,times) for non-boolean, and
             // (or,and,xor,eq) for boolean
             #define GB_MULT_NAME _lor
-            #include "GB_AxB_template.c"
+            #include "GB_AxB_type_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -252,7 +282,7 @@
             // 44 semirings: (min,max,plus,times) for non-boolean, and
             // (or,and,xor,eq) for boolean
             #define GB_MULT_NAME _land
-            #include "GB_AxB_template.c"
+            #include "GB_AxB_type_factory.c"
             break ;
 
         //----------------------------------------------------------------------
@@ -262,7 +292,7 @@
             // 44 semirings: (min,max,plus,times) for non-boolean, and
             // (or,and,xor,eq) for boolean
             #define GB_MULT_NAME _lxor
-            #include "GB_AxB_template.c"
+            #include "GB_AxB_type_factory.c"
             break ;
 
         default: ;

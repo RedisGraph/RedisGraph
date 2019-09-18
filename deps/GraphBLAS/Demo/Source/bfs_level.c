@@ -21,7 +21,6 @@
 // on all matrices, and also methods that force completion on individual
 // matries (GrB_Matrix_nvals in particular).
 
-#pragma omp threadprivate(level)
 int32_t level = 0 ;
 
 void bfs_level (int32_t *result, bool *element)

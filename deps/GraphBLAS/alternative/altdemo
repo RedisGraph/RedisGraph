@@ -1,0 +1,103 @@
+#!/bin/sh
+./wildtype_demo                         > wildtype_demo.out
+./simple_demo                           > simple_demo.out
+./complex_demo                          > complex_demo_out.m
+./pthread_demo                          > pthread_demo.out
+./openmp_demo                           > openmp_demo.out
+
+./import_demo   < ../Demo/Matrix/west0067            > import_demo.out
+
+./pagerank_demo < ../Demo/Matrix/eye3                > pagerank_demo.out
+./pagerank_demo < ../Demo/Matrix/2blocks            >> pagerank_demo.out
+./pagerank_demo < ../Demo/Matrix/t1                 >> pagerank_demo.out
+./pagerank_demo < ../Demo/Matrix/bcsstk01           >> pagerank_demo.out
+./pagerank_demo < ../Demo/Matrix/bcsstk16           >> pagerank_demo.out
+./pagerank_demo < ../Demo/Matrix/fs_183_1           >> pagerank_demo.out
+./pagerank_demo < ../Demo/Matrix/west0067           >> pagerank_demo.out
+
+./mis_demo 1 4 4                        > mis_demo.out
+./mis_demo 0 5 5 30 1                  >> mis_demo.out
+./mis_demo < ../Demo/Matrix/eye3               >> mis_demo.out
+./mis_demo < ../Demo/Matrix/2blocks            >> mis_demo.out
+./mis_demo < ../Demo/Matrix/t1                 >> mis_demo.out
+./mis_demo < ../Demo/Matrix/t2                 >> mis_demo.out
+./mis_demo < ../Demo/Matrix/ash219             >> mis_demo.out
+./mis_demo < ../Demo/Matrix/bcsstk01           >> mis_demo.out
+./mis_demo < ../Demo/Matrix/bcsstk16           >> mis_demo.out
+./mis_demo < ../Demo/Matrix/fs_183_1           >> mis_demo.out
+./mis_demo < ../Demo/Matrix/ibm32a             >> mis_demo.out
+./mis_demo < ../Demo/Matrix/ibm32b             >> mis_demo.out
+./mis_demo < ../Demo/Matrix/lp_afiro           >> mis_demo.out
+./mis_demo < ../Demo/Matrix/mbeacxc            >> mis_demo.out
+./mis_demo < ../Demo/Matrix/west0067           >> mis_demo.out
+./mis_demo 1 200 200 0                 >> mis_demo.out
+./mis_demo 0 10000 10000 100000 0      >> mis_demo.out
+./mis_demo 0 10000 10000 100000 1      >> mis_demo.out
+./mis_demo 0 100000 100000 10000000 0  >> mis_demo.out
+./mis_demo 0 100000 100000 10000000 1  >> mis_demo.out
+
+./bfs_demo 1 4 4                        > bfs_demo.out
+./bfs_demo 0 5 5 30 1                  >> bfs_demo.out
+./bfs_demo < ../Demo/Matrix/eye3               >> bfs_demo.out
+./bfs_demo < ../Demo/Matrix/2blocks            >> bfs_demo.out
+./bfs_demo < ../Demo/Matrix/t1                 >> bfs_demo.out
+./bfs_demo < ../Demo/Matrix/t2                 >> bfs_demo.out
+./bfs_demo < ../Demo/Matrix/ash219             >> bfs_demo.out
+./bfs_demo < ../Demo/Matrix/bcsstk01           >> bfs_demo.out
+./bfs_demo < ../Demo/Matrix/bcsstk16           >> bfs_demo.out
+./bfs_demo < ../Demo/Matrix/fs_183_1           >> bfs_demo.out
+./bfs_demo < ../Demo/Matrix/ibm32a             >> bfs_demo.out
+./bfs_demo < ../Demo/Matrix/ibm32b             >> bfs_demo.out
+./bfs_demo < ../Demo/Matrix/lp_afiro           >> bfs_demo.out
+./bfs_demo < ../Demo/Matrix/mbeacxc            >> bfs_demo.out
+./bfs_demo < ../Demo/Matrix/west0067           >> bfs_demo.out
+./bfs_demo 1 200 200 0                 >> bfs_demo.out
+./bfs_demo 0 10000 10000 100000 0      >> bfs_demo.out
+./bfs_demo 0 10000 10000 100000 1      >> bfs_demo.out
+./bfs_demo 0 100000 100000 10000000 0  >> bfs_demo.out
+./bfs_demo 0 100000 100000 10000000 1  >> bfs_demo.out
+
+./tri_demo 1 4 4                        > tri_demo.out
+./tri_demo 0 5 5 30 1                  >> tri_demo.out
+./tri_demo < ../Demo/Matrix/eye3               >> tri_demo.out
+./tri_demo < ../Demo/Matrix/2blocks            >> tri_demo.out
+./tri_demo < ../Demo/Matrix/t1                 >> tri_demo.out
+./tri_demo < ../Demo/Matrix/t2                 >> tri_demo.out
+./tri_demo < ../Demo/Matrix/ash219             >> tri_demo.out
+./tri_demo < ../Demo/Matrix/bcsstk01           >> tri_demo.out
+./tri_demo < ../Demo/Matrix/bcsstk16           >> tri_demo.out
+./tri_demo < ../Demo/Matrix/fs_183_1           >> tri_demo.out
+./tri_demo < ../Demo/Matrix/ibm32a             >> tri_demo.out
+./tri_demo < ../Demo/Matrix/ibm32b             >> tri_demo.out
+./tri_demo < ../Demo/Matrix/lp_afiro           >> tri_demo.out
+./tri_demo < ../Demo/Matrix/mbeacxc            >> tri_demo.out
+./tri_demo < ../Demo/Matrix/west0067           >> tri_demo.out
+./tri_demo 1 200 200 0                 >> tri_demo.out
+./tri_demo 0 10000 10000 100000 0      >> tri_demo.out
+./tri_demo 0 10000 10000 100000 1      >> tri_demo.out
+./tri_demo 0 100000 100000 10000000 0  >> tri_demo.out
+./tri_demo 0 100000 100000 10000000 1  >> tri_demo.out
+
+diff -I time ../Demo/Output/simple_demo.out       simple_demo.out
+diff -I time ../Demo/Output/complex_demo_out.m    complex_demo_out.m
+diff -I time ../Demo/Output/wildtype_demo.out     wildtype_demo.out
+diff -I time ../Demo/Output/bfs_demo.out          bfs_demo.out
+diff -I time ../Demo/Output/mis_demo.out          mis_demo.out
+
+grep -v time ../Demo/Output/tri_demo.out | grep -v rate > t1.out
+grep -v time tri_demo.out        | grep -v rate > t2.out
+diff t1.out t2.out
+
+echo "Comparing PageRank results:"
+diff -I time -I " d:" ../Demo/Output/pagerank_demo.out     pagerank_demo.out
+echo "Some mismatches are expected between dpagerank and ipagerank."
+echo "number of mismatches between dpagerank and ipagerank in your tests: "
+grep mismatch pagerank_demo.out | wc -l
+echo "number of mismatches between dpagerank and ipagerank in Demo/Output: "
+grep mismatch ../Demo/Output/pagerank_demo.out | wc -l
+echo "Compare pthread_demo.out and openmp_demo.out with Output/* manually,"
+echo "since the threads can print their results in random order."
+
+./wildtype_demo                         > wildtype_demo.out
+
+exit 0

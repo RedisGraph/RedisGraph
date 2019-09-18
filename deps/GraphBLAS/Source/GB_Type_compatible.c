@@ -10,8 +10,6 @@
 // Two domains are compatible for typecasting between them if both are built-in
 // types (of any kind) or if both are the same user-defined type.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 bool GB_Type_compatible             // check if two types can be typecast

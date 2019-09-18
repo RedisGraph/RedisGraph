@@ -1,12 +1,12 @@
 function test29
 %TEST29 GrB_reduce with zombies
 
-%  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+%  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 %  http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-fprintf ('\n------------------------- GrB_reduce with zombies\n') ;
+[~, ~, ~, classes, ~, ~] = GB_spec_opsall ;
 
-[accum_ops unary_ops add_ops classes] = GB_spec_opsall ;
+fprintf ('\ntest29: ----------------- GrB_reduce with zombies\n') ;
 
 for m = [1 5 10]
     for n = [1 5 10]
@@ -38,12 +38,26 @@ for m = [1 5 10]
                     [ ], [ ], [ ], ops{kk4}) ;
                 cin = GB_spec_identity (ops {kk4}, aclas) ;
                 c2 = GB_mex_reduce_to_scalar (cin, '', ops{kk4}, C3) ;
-                assert (isequal (c1,c2)) ;
+
+                if (isfloat (c1))
+                    assert (isequal (c1,c2) || ...
+                        (abs (c1-c2) <= 8 * eps (c2)))  ;
+                else
+                    assert (isequal (c1,c2))
+                end
 
                 op.opname = 'plus' ;
                 op.opclass = 'double' ;
                 c4 = GB_mex_reduce_to_scalar (0, '', op, C3) ;
-                assert (isequal (c3,c4)) ;
+
+                if (isfloat (c3))
+                    assert (isequal (c3,c4) || ...
+                        (abs (c3-c4) <= 8 * eps (c4)))  ;
+                else
+                    assert (isequal (c3,c4))
+                end
+
+
             end
             end
             end

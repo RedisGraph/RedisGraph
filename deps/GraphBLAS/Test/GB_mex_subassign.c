@@ -2,7 +2,7 @@
 // GB_mex_subassign: C(I,J)<M> = accum (C (I,J), A)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 // This function is a wrapper for all GxB_*_subassign functions.
@@ -74,6 +74,22 @@ GrB_Info info = GrB_SUCCESS ;
 GrB_Monoid reduce = NULL ;
 GrB_BinaryOp op = NULL ;
 bool reduce_is_complex = false ;
+
+GrB_Info assign (GB_Context Context) ;
+
+GrB_Info many_subassign
+(
+    int nwork,
+    int fA,
+    int fI,
+    int fJ,
+    int faccum,
+    int fM,
+    int fdesc,
+    mxClassID cclass,
+    const mxArray *pargin [ ],
+    GB_Context Context
+) ;
 
 //------------------------------------------------------------------------------
 // assign: perform a single assignment
@@ -639,7 +655,7 @@ void mexFunction
 
     ASSERT_OK (GB_check (C, "Final C before wait", GB0)) ;
     GrB_wait ( ) ;
-    TOC ;
+    GB_MEX_TOC ;
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C assign result", true) ;
     FREE_ALL ;
 }

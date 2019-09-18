@@ -2,7 +2,7 @@
 // GraphBLAS/Demo/Program/mis_demo.c: maximal independent set
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -36,7 +36,7 @@
 #define FREE_ALL                \
     GrB_free (&A) ;             \
     GrB_free (&C) ;             \
-    GrB_free (&iset) ;          \
+    GrB_free (&iset1) ;         \
     GrB_free (&iset2) ;         \
     GrB_free (&e) ;             \
     GrB_free (&dt) ;            \
@@ -48,82 +48,37 @@
     if (I != NULL) free (I) ;   \
     if (X != NULL) free (X) ;
 
-int main (int argc, char **argv)
+int64_t isize1, isize2 ;
+GrB_Index n ;
+GrB_Matrix A = NULL, C = NULL ;
+GrB_Vector iset1 = NULL, iset2 = NULL, e = NULL ;
+GrB_Descriptor dt = NULL ;
+GrB_Index *I = NULL, *I2 = NULL, *J2 = NULL ;
+float *X = NULL ;
+bool *X2 = NULL ;
+GrB_Monoid Lor = NULL ;
+GrB_Semiring Boolean = NULL ;
+GrB_Info info ;
+
+//------------------------------------------------------------------------------
+// mis_check_results: test if iset is a maximal independent set
+//------------------------------------------------------------------------------
+
+GrB_Info mis_check_results
+(
+    int64_t *p_isize,
+    GrB_Vector iset,
+    double t
+)
 {
-    GrB_Matrix A = NULL, C = NULL ;
-    GrB_Vector iset = NULL, iset2 = NULL, e = NULL ;
-    GrB_Descriptor dt = NULL ;
-    GrB_Index *I = NULL, *I2 = NULL, *J2 = NULL ;
-    float *X = NULL ;
-    bool *X2 = NULL ;
-    GrB_Monoid Lor = NULL ;
-    GrB_Semiring Boolean = NULL ;
-    GrB_Info info ;
-    double tic [2], t ;
-    OK (GrB_init (GrB_NONBLOCKING)) ;
-    fprintf (stderr, "mis_demo:\n") ;
-
-    //--------------------------------------------------------------------------
-    // get a symmetric matrix with no self edges
-    //--------------------------------------------------------------------------
-
-    OK (get_matrix (&A, argc, argv, true, true)) ;
-
-    GrB_Index n ;
-    OK (GrB_Matrix_nrows (&n, A)) ;
-
-    //--------------------------------------------------------------------------
-    // convert A to boolean
-    //--------------------------------------------------------------------------
-
-    OK (GrB_Descriptor_new (&dt)) ;
-    OK (GxB_set (dt, GrB_INP0, GrB_TRAN)) ;
-    OK (GrB_Matrix_new (&C, GrB_BOOL, n, n)) ;
-    OK (GrB_transpose (C, NULL, NULL, A, dt)) ;
-    GrB_free (&dt) ;
-    GrB_free (&A) ;
-    A = C ;
-    C = NULL ;
-
-    //--------------------------------------------------------------------------
-    // compute maximal independent set
-    //--------------------------------------------------------------------------
-
-    simple_rand_seed (1) ;
-    simple_tic (tic) ;
-    OK (mis (&iset, A)) ;
-    t = simple_toc (tic) ;
-    printf ("MIS time in seconds: %14.6f\n", t) ;
-
-    // also test the version that checks every error condition
-    simple_rand_seed (1) ;
-    OK (mis_check (&iset2, A)) ;
-
-    // compare the two results
-    OK (GrB_Vector_new (&e, GrB_INT64, n)) ;
-    OK (GrB_eWiseAdd (e, NULL, NULL, GrB_EQ_BOOL, iset, iset2, NULL)) ;
-
-    bool a ;
-    OK (GrB_reduce (&a, NULL, GxB_LAND_BOOL_MONOID, e, NULL)) ;
-    if (!a) { printf ("error! mismatch\n") ; exit (1) ; }
-
-    int64_t isize1 ;
-    OK (GrB_reduce (&isize1, NULL, GxB_PLUS_INT64_MONOID, iset,
-        NULL)) ;
-    printf ("isize: %.16g\n", (double) isize1) ;
-
-    int64_t isize2 ;
-    OK (GrB_reduce (&isize2, NULL, GxB_PLUS_INT64_MONOID, iset2,
-        NULL )) ;
-
-    if (isize1 != isize2) { printf ("error!\n") ; exit (1) ; }
-
-    GrB_free (&e) ;
-    GrB_free (&iset2) ;
 
     //--------------------------------------------------------------------------
     // report the results
     //--------------------------------------------------------------------------
+
+    int64_t isize ;
+    OK (GrB_reduce (&isize, NULL, GxB_PLUS_INT64_MONOID, iset, NULL)) ;
+    (*p_isize) = isize ;
 
     GrB_Index nvals ;
     OK (GrB_Vector_nvals (&nvals, iset)) ;
@@ -140,7 +95,7 @@ int main (int argc, char **argv)
     OK (GrB_Vector_extractTuples (I, X, &nvals, iset)) ;
 
     // I [0..isize-1] is the independent set
-    int64_t isize = 0 ;
+    isize = 0 ;
     for (int64_t k = 0 ; k < nvals ; k++)
     {
         if (X [k]) 
@@ -173,7 +128,9 @@ int main (int argc, char **argv)
         exit (1) ;
     }
 
+    // could do this with a mask instead of extractTuples.
     OK (GrB_Matrix_extractTuples (I2, J2, X2, &nvals, C)) ;
+    GrB_free (&C) ;
 
     for (int64_t k = 0 ; k < nvals ; k++)
     {
@@ -185,24 +142,98 @@ int main (int argc, char **argv)
         }
     }
 
+    free (I2) ; I2 = NULL ;
+    free (J2) ; J2 = NULL ;
+    free (X2) ; X2 = NULL ;
+
     // now check if all other nodes are adjacent to the iset
 
-    // iset2 = iset
-    OK (GrB_Vector_dup (&iset2, iset)) ;
-    // iset2 = iset2 or A*iset, using the Boolean semiring
-    OK (GrB_vxm (iset2, NULL, GrB_LOR, GxB_LOR_LAND_BOOL, iset, A, NULL)) ;
-    OK (GrB_Vector_nvals (&nvals, iset2)) ;
+    // e = iset
+    OK (GrB_Vector_dup (&e, iset)) ;
+    // e = (e || A*iset), using the Boolean semiring
+    OK (GrB_vxm (e, NULL, GrB_LOR, GxB_LOR_LAND_BOOL, iset, A, NULL)) ;
+    OK (GrB_Vector_nvals (&nvals, e)) ;
+    GrB_free (&e) ;
     if (nvals != n)
     {
         fprintf (stderr, "error! A (I,I is not maximal!\n") ;
         exit (1) ;
     }
 
-    fprintf (stderr, 
-    "maximal independent set: %.16g of %.16g nodes, time %12.6f sec\n\n",
-        (double) isize, (double) n, t) ;
+    free (I) ; I = NULL ;
 
-    printf ("maximal independent set status verified\n") ;
+    fprintf (stderr, "maximal independent set OK: %.16g of %.16g nodes"
+        " time: %g\n", (double) isize, (double) n, t) ;
+    return (GrB_SUCCESS) ;
+}
+
+//------------------------------------------------------------------------------
+// mis_demo main
+//------------------------------------------------------------------------------
+
+int main (int argc, char **argv)
+{
+
+    double tic [2], t1, t2 ;
+    OK (GrB_init (GrB_NONBLOCKING)) ;
+    fprintf (stderr, "\nmis_demo:\n") ;
+
+    //--------------------------------------------------------------------------
+    // get a symmetric matrix with no self edges
+    //--------------------------------------------------------------------------
+
+    OK (get_matrix (&A, argc, argv, true, true)) ;
+    OK (GrB_Matrix_nrows (&n, A)) ;
+
+    //--------------------------------------------------------------------------
+    // convert A to boolean
+    //--------------------------------------------------------------------------
+
+    OK (GrB_Descriptor_new (&dt)) ;
+    OK (GxB_set (dt, GrB_INP0, GrB_TRAN)) ;
+    OK (GrB_Matrix_new (&C, GrB_BOOL, n, n)) ;
+    OK (GrB_transpose (C, NULL, NULL, A, dt)) ;
+    GrB_free (&dt) ;
+    GrB_free (&A) ;
+    A = C ;
+    C = NULL ;
+
+    //--------------------------------------------------------------------------
+    // compute maximal independent set
+    //--------------------------------------------------------------------------
+
+    for (int64_t seed = 1 ; seed <= 2 ; seed++)
+    {
+
+        simple_tic (tic) ;
+        OK (mis (&iset1, A, seed)) ;
+        t1 = simple_toc (tic) ;
+        printf ("MIS time in seconds: %14.6f\n", t1) ;
+
+        // also test the version that checks every error condition
+        simple_tic (tic) ;
+        OK (mis_check (&iset2, A, seed)) ;
+        t2 = simple_toc (tic) ;
+        printf ("MIS time in seconds: %14.6f\n", t2) ;
+
+        //----------------------------------------------------------------------
+        // compare results
+        //----------------------------------------------------------------------
+
+        mis_check_results (&isize1, iset1, t1) ;
+        mis_check_results (&isize2, iset2, t2) ;
+
+        printf ("isize: %.16g %.16g\n", (double) isize1, (double) isize2) ;
+
+        if (isize1 != isize2)
+        {
+            fprintf (stderr, "=============================================="
+                "======size differs!\n") ;
+            printf ("size differs!\n") ;
+        }
+        GrB_free (&iset1) ;
+        GrB_free (&iset2) ;
+    }
 
     FREE_ALL ;
     GrB_finalize ( ) ;

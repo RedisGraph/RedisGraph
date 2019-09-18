@@ -18,8 +18,6 @@
     #define MY_SCALE
 
     extern double my_scalar ;
-    // for thread safety if the user application uses OpenMP
-    #pragma omp threadprivate(my_scalar)
 
     static inline void my_scale
     (

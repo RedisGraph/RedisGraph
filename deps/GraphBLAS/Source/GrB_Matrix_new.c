@@ -12,14 +12,12 @@
 // size 1, A->plen is 1, and contents A->x and A->i are NULL.  If this method
 // fails, *A is set to NULL.
 
-// parallel: not here; see GB_new.
-
 #include "GB.h"
 
 GrB_Info GrB_Matrix_new     // create a new matrix with no entries
 (
     GrB_Matrix *A,          // handle of matrix to create
-    const GrB_Type type,    // type of matrix to create
+    GrB_Type type,          // type of matrix to create
     GrB_Index nrows,        // matrix dimension is nrows-by-ncols
     GrB_Index ncols
 )
@@ -60,7 +58,7 @@ GrB_Info GrB_Matrix_new     // create a new matrix with no entries
     // A is created with auto hypersparsity (typically hypersparse unless
     // vdim <= 1 or hyper_ratio < 0) and default CSR/CSC format.
 
-    bool A_is_csc = GB_Global.is_csc ;
+    bool A_is_csc = GB_Global_is_csc_get ( ) ;
 
     if (A_is_csc)
     { 

@@ -12,8 +12,6 @@
 // except the header.  The matrix becomes invalid, and would generate a
 // GrB_INVALID_OBJECT error if passed to a user-callable GraphBLAS function.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 void GB_ph_free                 // free A->p and A->h of a matrix

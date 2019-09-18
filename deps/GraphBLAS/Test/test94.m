@@ -1,9 +1,6 @@
 function test94
 %TEST94 test pagerank
 
-% Prob = ssget (2303) ;
-% Prob = ssget (262) ;   A = Prob.A ;       % west0067
-
 T = load ('../Demo/Matrix/west0067') ;
 n = max (max (T (:, 1:2))) + 1 ;
 A = sparse (1+T(:,1), 1+T(:,2), T(:,3), n, n) ;

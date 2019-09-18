@@ -1,10 +1,15 @@
 function test51b
 %TEST51B test GrB_assign, multiply operations
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\n-----------performance test GB_mex_assign, multiple ops\n') ;
+
+[save save_chunk] = nthreads_get ;
+chunk = 4096 ;
+nthreads = feature ('numcores') ;
+nthreads_set (nthreads, chunk) ;
 
 rng ('default')
 
@@ -161,4 +166,5 @@ end
 
 fprintf ('\ntest51b: all tests passed\n') ;
 
+nthreads_set (save, save_chunk) ;
 
