@@ -57,8 +57,12 @@ GrB_Info GB_resize              // change the size of a matrix
     // delete any lingering zombies and assemble any pending tuples
     //--------------------------------------------------------------------------
 
-    // only do so if either dimension is shrinking
-    if (vdim_new < vdim_old || vlen_new < vlen_old)
+    // only do so if either dimension is shrinking, or if pending tuples exist
+    // and vdim_old <= 1 and vdim_new > 1, since in that case, Pending->j has
+    // not been allocated yet, but would be required in the resized matrix.
+
+    if (vdim_new < vdim_old || vlen_new < vlen_old ||
+        (GB_PENDING (A) && vdim_old <= 1 && vdim_new > 1))
     { 
         GB_WAIT (A) ;
         ASSERT_OK (GB_check (A, "A to resize, wait", GB0)) ;

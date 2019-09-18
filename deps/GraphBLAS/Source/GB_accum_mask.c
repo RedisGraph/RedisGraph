@@ -254,8 +254,6 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
     // GB_transplant for Z=T and GB_transplant_conform in GB_mask for C=Z).
     // So in this case, GB_subassigner takes more work.
 
-    // printf ("tnz "GBd" cnpending "GBd" cnz "GBd"\n", tnz, cnpending, cnz) ;
-
     if ((M != NULL || accum != NULL) && (tnz + cnpending <= cnz)
         && !GB_aliased (C, M) && !GB_aliased (C, T))
     { 
@@ -282,7 +280,7 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
         // see GB_spec_accum.m for a description of this step.  If C is empty,
         // then the accumulator can be ignored.
 
-        if (accum == NULL || cnz == 0)
+        if (accum == NULL || (cnz + cnpending) == 0)
         { 
 
             //------------------------------------------------------------------
@@ -319,6 +317,7 @@ GrB_Info GB_accum_mask          // C<M> = accum (C,T)
             {
                 M1 = M ;
             }
+
             GB_OK (GB_add (&Z, C->type, C->is_csc, M1, C, T, accum, Context)) ;
             GB_MATRIX_FREE (Thandle) ;
         }
