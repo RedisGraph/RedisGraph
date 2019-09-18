@@ -177,13 +177,13 @@ static Record Consume(OpBase *opBase) {
 		EntityUpdateEvalCtx *update_expression = op->update_expressions;
 		for(uint i = 0; i < op->update_expressions_count; i++, update_expression++) {
 			SIValue new_value = SI_CloneValue(AR_EXP_Evaluate(update_expression->exp, r));
-
+			uint rec_idx = Record_GetEntryIdx(r, update_expression->alias);
 			// Make sure we're updating either a node or an edge.
-			RecordEntryType t = Record_GetType(r, update_expression->entityRecIdx);
+			RecordEntryType t = Record_GetType(r, rec_idx);
 			assert(t == REC_TYPE_NODE || t == REC_TYPE_EDGE);
 			GraphEntityType type = (t == REC_TYPE_NODE) ? GETYPE_NODE : GETYPE_EDGE;
 
-			GraphEntity *entity = Record_GetGraphEntity(r, update_expression->entityRecIdx);
+			GraphEntity *entity = Record_GetGraphEntity(r, rec_idx);
 			_QueueUpdate(op, entity, type, update_expression->attribute, new_value);
 		}
 

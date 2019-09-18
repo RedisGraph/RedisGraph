@@ -125,6 +125,7 @@ EntityUpdateEvalCtx *AST_PrepareUpdateOp(const cypher_astnode_t *set_clause, uin
 												 set_item); // type == CYPHER_AST_SET_PROPERTY
 
 		/* Track all required information to perform an update. */
+		update_expressions[i].alias = entity->operand.variadic.entity_alias;
 		update_expressions[i].attribute = cypher_ast_prop_name_get_value(prop);
 		update_expressions[i].exp = AR_EXP_FromExpression(val_to_set);
 
@@ -276,3 +277,4 @@ AST_CreateContext AST_PrepareCreateOp(GraphContext *gc, AST *ast, QueryGraph *qg
 
 	return ctx;
 }
+
