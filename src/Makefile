@@ -26,12 +26,13 @@ CFLAGS += $(DEBUGFLAGS)
 # Compile flags for linux / osx
 ifeq ($(uname_S),Linux)
 	SHOBJ_LDFLAGS ?= -shared -Bsymbolic -Bsymbolic-functions -ldl -lpthread -fopenmp
+	JOBS := $(shell grep -c ^processor /proc/cpuinfo)
 else
 	CFLAGS += -mmacosx-version-min=10.14
 	SHOBJ_LDFLAGS ?= -mmacosx-version-min=10.14 -bundle -undefined dynamic_lookup -ldl -lpthread -fopenmp
+	JOBS := $(shell sysctl -n hw.logicalcpu_max)
 endif
 SHOBJ_LDFLAGS += $(LDFLAGS)
-
 export CFLAGS
 
 # Sources
@@ -125,7 +126,7 @@ $(LIBXXHASH):
 # Build GraphBLAS only if library does not already exists.
 $(GRAPHBLAS):
 ifeq (,$(wildcard $(GRAPHBLAS)))
-	@$(MAKE) -C ../deps/GraphBLAS CMAKE_OPTIONS="-DCMAKE_C_COMPILER='$(CC)' -DCMAKE_CXX_COMPILER='$(CC)'" library
+	@$(MAKE) -C ../deps/GraphBLAS JOBS=$(JOBS) CMAKE_OPTIONS="-DCMAKE_C_COMPILER='$(CC)' -DCMAKE_CXX_COMPILER='$(CC)'" library
 endif
 .PHONY: $(GRAPHBLAS)
 
