@@ -781,9 +781,16 @@ static AST_Validation _Validate_DELETE_Clauses(const AST *ast, char **reason) {
 	const cypher_astnode_t *delete_clause = AST_GetClause(ast, CYPHER_AST_DELETE);
 	if(!delete_clause) return AST_VALID;
 
-	const cypher_astnode_t *match_clause = AST_GetClause(ast, CYPHER_AST_MATCH);
-	if(!match_clause) return AST_INVALID;
-
+	// Validate that every deleted object is an identifier and not property.
+	uint nitems = cypher_ast_delete_nexpressions(delete_clause);
+	for(uint i = 0; i < nitems; i++) {
+		const cypher_astnode_t *ast_expr = cypher_ast_delete_get_expression(delete_clause, i);
+		if(cypher_astnode_type(ast_expr) != CYPHER_AST_IDENTIFIER) {
+			asprintf(reason, "DELETE support the removal of valid graph entities only.");
+			return AST_INVALID;
+		}
+		// TODO: Validated that the deleted entities are indeed matched or projected.
+	}
 	return AST_VALID;
 }
 
