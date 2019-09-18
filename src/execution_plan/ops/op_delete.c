@@ -52,8 +52,8 @@ OpBase *NewDeleteOp(const ExecutionPlan *plan, const char **nodes_ref, const cha
 
 	op->gc = QueryCtx_GetGraphCtx();
 
-	op->node_count = array_len(op->nodes_to_delete);
-	op->edge_count = array_len(op->edges_to_delete);
+	op->nodes_to_delete = array_new(int, array_len(nodes_ref));
+	op->edges_to_delete = array_new(int, array_len(edges_ref));
 
 	op->deleted_nodes = array_new(Node, 32);
 	op->deleted_edges = array_new(Edge, 32);
@@ -75,6 +75,9 @@ OpBase *NewDeleteOp(const ExecutionPlan *plan, const char **nodes_ref, const cha
 		assert(OpBase_Aware((OpBase *)op, edges_ref[i], &idx));
 		op->nodes_to_delete = array_append(op->edges_to_delete, idx);
 	}
+
+	op->node_count = array_len(op->nodes_to_delete);
+	op->edge_count = array_len(op->edges_to_delete);
 
 	return (OpBase *)op;
 }

@@ -27,4 +27,6 @@ typedef struct {
 	ResultSetStatistics *stats;
 } OpDelete;
 
-OpBase *NewDeleteOp(const ExecutionPlan *plan, const char **nodes_ref, const char **edges_ref, ResultSetStatistics *stats);
+OpBase *NewDeleteOp(const ExecutionPlan *plan, const char **nodes_ref, const char **edges_ref,
+					ResultSetStatistics *stats);
+
