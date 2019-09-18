@@ -781,12 +781,6 @@ static AST_Validation _Validate_DELETE_Clauses(const AST *ast, char **reason) {
 	const cypher_astnode_t *delete_clause = AST_GetClause(ast, CYPHER_AST_DELETE);
 	if(!delete_clause) return AST_VALID;
 
-	const cypher_astnode_t *match_clause = AST_GetClause(ast, CYPHER_AST_MATCH);
-	// Check for delete a projected entity such in "MATCH (n) WITH n AS x DELETE x".
-	const cypher_astnode_t *with_clause = AST_GetClause(ast, CYPHER_AST_WITH);
-	assert(!(with_clause && match_clause));
-	if(!match_clause && !with_clause) return AST_INVALID;
-
 	// Validate that every deleted object is an identifier and not property.
 	uint nitems = cypher_ast_delete_nexpressions(delete_clause);
 	for(uint i = 0; i < nitems; i++) {
