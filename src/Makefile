@@ -31,7 +31,6 @@ else
 	SHOBJ_LDFLAGS ?= -mmacosx-version-min=10.14 -bundle -undefined dynamic_lookup -ldl -lpthread -fopenmp
 endif
 SHOBJ_LDFLAGS += $(LDFLAGS)
-
 export CFLAGS
 
 # Sources
