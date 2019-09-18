@@ -42,7 +42,7 @@ static inline NodeCreateCtx _NewNodeCreateCtx(GraphContext *gc, AST *ast, const 
 	return new_node;
 }
 
-static void _buildAliasrax(rax *map, const cypher_astnode_t *entity) {
+static void _buildAliasRax(rax *map, const cypher_astnode_t *entity) {
 	if(!entity) return;
 
 	cypher_astnode_type_t type = cypher_astnode_type(entity);
@@ -64,7 +64,7 @@ static void _buildAliasrax(rax *map, const cypher_astnode_t *entity) {
 		for(unsigned int i = 0; i < child_count; i++) {
 			const cypher_astnode_t *child = cypher_astnode_get_child(entity, i);
 			// Recursively continue searching
-			_buildAliasrax(map, child);
+			_buildAliasRax(map, child);
 		}
 		return;
 	}
@@ -83,11 +83,11 @@ static rax *_MatchMerge_DefinedEntities(const AST *ast) {
 	rax *map = raxNew();
 
 	for(uint i = 0; i < match_count; i ++) {
-		_buildAliasrax(map, match_clauses[i]);
+		_buildAliasRax(map, match_clauses[i]);
 	}
 
 	for(uint i = 0; i < merge_count; i ++) {
-		_buildAliasrax(map, merge_clauses[i]);
+		_buildAliasRax(map, merge_clauses[i]);
 	}
 
 	if(match_clauses) array_free(match_clauses);
@@ -183,7 +183,7 @@ int AST_PrepareSortOp(const cypher_astnode_t *order_clause) {
 AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause) {
 	const cypher_astnode_t *collection = cypher_ast_unwind_get_expression(unwind_clause);
 	AR_ExpNode *exp = AR_EXP_FromExpression(collection);
-	const char *alias = cypher_ast_identifier_get_name(cypher_ast_unwind_get_alias(unwind_clause));
+	exp->resolved_name = cypher_ast_identifier_get_name(cypher_ast_unwind_get_alias(unwind_clause));
 
 	AST_UnwindContext ctx = { .exp = exp };
 	return ctx;

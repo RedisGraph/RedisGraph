@@ -145,6 +145,7 @@ AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias, const char *prop) {
 
 AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant) {
 	AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
+	node->resolved_name = NULL;
 	node->type = AR_EXP_OPERAND;
 	node->operand.type = AR_EXP_CONSTANT;
 	node->operand.constant = constant;

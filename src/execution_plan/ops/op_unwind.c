@@ -104,7 +104,16 @@ static OpResult Reset(OpBase *ctx) {
 static void Free(OpBase *ctx) {
 	OpUnwind *op = (OpUnwind *)ctx;
 	SIValue_Free(&op->list);
-	if(op->exp) AR_EXP_Free(op->exp);
-	if(op->currentRecord) Record_Free(op->currentRecord);
+	op->list = SI_NullVal();
+
+	if(op->exp) {
+		AR_EXP_Free(op->exp);
+		op->exp = NULL;
+	}
+
+	if(op->currentRecord) {
+		Record_Free(op->currentRecord);
+		op->currentRecord = NULL;
+	}
 }
 
