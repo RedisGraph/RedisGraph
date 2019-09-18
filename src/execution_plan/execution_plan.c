@@ -257,7 +257,7 @@ static const char **_BuildCallArguments(RecordMap *record_map,
 }
 
 static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segment, QueryGraph *qg,
-													AST *ast, FT_FilterNode *ft, Vector *ops) {
+													AST *ast, FT_FilterNode *ft, OpBase ***ops) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
 	QueryGraph **connectedComponents = QueryGraph_ConnectedComponents(qg);
@@ -270,11 +270,11 @@ static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segmen
 	OpBase *cartesianProduct = NULL;
 	if(connectedComponentsCount > 1) {
 		cartesianProduct = NewCartesianProductOp();
-		Vector_Push(ops, cartesianProduct);
+		*ops = array_append(*ops, cartesianProduct);
 	}
 
 	// Keep track after all traversal operations along a pattern.
-	Vector *traversals = NewVector(OpBase *, 1);
+	OpBase **traversals = array_new(OpBase *, connectedComponentsCount);
 	OpBase *op;
 
 	for(uint i = 0; i < connectedComponentsCount; i++) {
@@ -286,9 +286,9 @@ static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segmen
 			uint rec_idx = RecordMap_FindOrAddID(segment->record_map, n->id);
 			if(n->labelID != GRAPH_NO_LABEL) op = NewNodeByLabelScanOp(n, rec_idx);
 			else op = NewAllNodeScanOp(gc->g, n, rec_idx);
-			Vector_Push(traversals, op);
+			traversals = array_append(traversals, op);
 		} else {
-			size_t expCount = 0;
+			uint expCount = 0;
 			AlgebraicExpression **exps = AlgebraicExpression_FromQueryGraph(cc, segment->record_map, &expCount);
 
 			// Reorder exps, to the most performant arrangement of evaluation.
@@ -316,10 +316,10 @@ static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segmen
 			} else {
 				op = NewAllNodeScanOp(gc->g, exp->src_node, record_id);
 			}
-			Vector_Push(traversals, op);
+			traversals = array_append(traversals, op);
 
-			for(int i = 0; i < expCount; i++) {
-				exp = exps[i];
+			for(int j = 0; j < expCount; j++) {
+				exp = exps[j];
 				if(exp->operand_count == 0) continue;
 
 				if(exp->edge && QGEdge_VariableLength(exp->edge)) {
@@ -327,8 +327,7 @@ static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segmen
 				} else {
 					op = NewCondTraverseOp(gc->g, segment->record_map, exp, TraverseRecordCap(ast));
 				}
-
-				Vector_Push(traversals, op);
+				traversals = array_append(traversals, op);
 			}
 
 			// Free the expressions array, as its parts have been converted into operations
@@ -337,25 +336,25 @@ static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segmen
 
 		if(connectedComponentsCount > 1) {
 			// Connect traversal operations.
-			OpBase *childOp;
-			OpBase *parentOp;
-			Vector_Pop(traversals, &parentOp);
+			OpBase *parentOp = array_pop(traversals);
 			// Connect cartesian product to the root of traversal.
 			ExecutionPlan_AddOp(cartesianProduct, parentOp);
-			while(Vector_Pop(traversals, &childOp)) {
+			uint count = array_len(traversals);
+			for(uint j = 0; j < count; j ++) {
+				OpBase *childOp = array_pop(traversals);
 				ExecutionPlan_AddOp(parentOp, childOp);
 				parentOp = childOp;
 			}
 		} else {
-			for(int traversalIdx = 0; traversalIdx < Vector_Size(traversals); traversalIdx++) {
-				Vector_Get(traversals, traversalIdx, &op);
-				Vector_Push(ops, op);
+			uint count = array_len(traversals);
+			for(uint j = 0; j < count; j++) {
+				*ops = array_append(*ops, traversals[j]);
 			}
 		}
-		Vector_Clear(traversals);
+		array_clear(traversals);
 	}
 
-	Vector_Free(traversals);
+	array_free(traversals);
 }
 
 static void _ExecutionPlanSegment_MapAliasesInExpression(ExecutionPlanSegment *segment,
@@ -538,7 +537,7 @@ static void _ExecutionPlan_ConnectSegmentOps(OpBase *current_tail, OpBase *prev_
 	}
 }
 
-uint *_buildModifiesArray(AR_ExpNode **projections) {
+static inline uint *_buildModifiesArray(AR_ExpNode **projections) {
 	// TODO improve interface, maybe CollectEntityIDs variant that builds an array
 	rax *modifies_ids = raxNew();
 	uint exp_count = array_len(projections);
@@ -559,13 +558,11 @@ uint *_buildModifiesArray(AR_ExpNode **projections) {
 	return modifies;
 }
 
-// Check whether a Vector of operations contains a Create op.
-static inline bool _ExecutionPlan_ContainsCreateOp(Vector *ops) {
-	int op_count = Vector_Size(ops);
-	OpBase *op;
+// Check whether an array of operations contains a Create op.
+static inline bool _ExecutionPlan_ContainsCreateOp(OpBase **ops) {
+	uint op_count = array_len(ops);
 	for(int i = 0; i < op_count; i ++) {
-		Vector_Get(ops, i, &op);
-		if(op->type == OPType_CREATE) return true;
+		if(ops[i]->type == OPType_CREATE) return true;
 	}
 	return false;
 }
@@ -573,47 +570,47 @@ static inline bool _ExecutionPlan_ContainsCreateOp(Vector *ops) {
 // Build an aggregate or project operation and any required modifying operations.
 // This logic applies for both WITH and RETURN projections.
 static inline void _buildProjectionOps(ExecutionPlanSegment *segment, AR_ExpNode **order_exps,
-									   uint skip, uint limit, uint sort, bool aggregate, bool distinct, Vector *ops) {
+									   uint skip, uint limit, uint sort, bool aggregate, bool distinct, OpBase ***ops) {
 	uint *modifies = _buildModifiesArray(segment->projections);
 
 	// Our fundamental operation will be a projection or aggregation.
-	OpBase *op_project;
+	OpBase *op;
 	if(aggregate) {
-		op_project = NewAggregateOp(segment->projections, modifies);
+		op = NewAggregateOp(segment->projections, modifies);
 	} else {
-		op_project = NewProjectOp(segment->projections, modifies);
+		op = NewProjectOp(segment->projections, modifies);
 	}
-	Vector_Push(ops, op_project);
+	*ops = array_append(*ops, op);
 
 	/* Add modifier operations in order such that the final execution plan will follow the sequence:
 	 * Limit -> Skip -> Sort -> Distinct -> Project/Aggregate */
 	if(distinct) {
-		OpBase *op_distinct = NewDistinctOp();
-		Vector_Push(ops, op_distinct);
+		OpBase *op = NewDistinctOp();
+		*ops = array_append(*ops, op);
 	}
 
 	if(sort) {
 		// The sort operation will obey a specified limit, but must account for skipped records
 		uint sort_limit = (limit != RESULTSET_UNLIMITED) ? limit + skip : 0;
-		OpBase *op_sort = NewSortOp(order_exps, sort, sort_limit);
-		Vector_Push(ops, op_sort);
+		OpBase *op = NewSortOp(order_exps, sort, sort_limit);
+		*ops = array_append(*ops, op);
 	}
 
 	if(skip) {
-		OpBase *op_skip = NewSkipOp(skip);
-		Vector_Push(ops, op_skip);
+		OpBase *op = NewSkipOp(skip);
+		*ops = array_append(*ops, op);
 	}
 
 	if(limit != RESULTSET_UNLIMITED) {
-		OpBase *op_limit = NewLimitOp(limit);
-		Vector_Push(ops, op_limit);
+		OpBase *op = NewLimitOp(limit);
+		*ops = array_append(*ops, op);
 	}
 }
 
 // The RETURN logic is identical to WITH-culminating segments,
 // though a different set of API endpoints must be used for each.
 static inline void _buildReturnOps(ExecutionPlanSegment *segment, const cypher_astnode_t *clause,
-								   Vector *ops) {
+								   OpBase ***ops) {
 	bool aggregate = AST_ClauseContainsAggregation(clause);
 	bool distinct = cypher_ast_return_is_distinct(clause);
 
@@ -636,7 +633,7 @@ static inline void _buildReturnOps(ExecutionPlanSegment *segment, const cypher_a
 }
 
 static inline void _buildWithOps(ExecutionPlanSegment *segment, const cypher_astnode_t *clause,
-								 Vector *ops) {
+								 OpBase ***ops) {
 	bool aggregate = AST_ClauseContainsAggregation(clause);
 	bool distinct = cypher_ast_with_is_distinct(clause);
 
@@ -659,8 +656,8 @@ static inline void _buildWithOps(ExecutionPlanSegment *segment, const cypher_ast
 }
 
 // Convert a CALL clause into a procedure call oepration.
-static inline OpBase *_buildCallOp(AST *ast, ExecutionPlanSegment *segment,
-								   const cypher_astnode_t *call_clause) {
+static inline void _buildCallOp(AST *ast, ExecutionPlanSegment *segment,
+								const cypher_astnode_t *call_clause, OpBase ***ops) {
 	// A call clause has a procedure name, 0+ arguments (parenthesized expressions), and a projection if YIELD is included
 	const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
 	const char **arguments = _BuildCallArguments(segment->record_map, call_clause);
@@ -689,51 +686,57 @@ static inline OpBase *_buildCallOp(AST *ast, ExecutionPlanSegment *segment,
 
 	array_free(yield_exps);
 
-	return NewProcCallOp(proc_name, arguments, yields, call_modifies);
+	OpBase *op =  NewProcCallOp(proc_name, arguments, yields, call_modifies);
+	*ops = array_append(*ops, op);
 }
 
-static inline OpBase *_buildCreateOp(GraphContext *gc, AST *ast, ExecutionPlanSegment *segment,
-									 ResultSetStatistics *stats) {
+static inline void _buildCreateOp(GraphContext *gc, AST *ast, ExecutionPlanSegment *segment,
+								  ResultSetStatistics *stats, OpBase ***ops) {
 	AST_CreateContext create_ast_ctx = AST_PrepareCreateOp(gc, segment->record_map, ast,
 														   segment->query_graph);
-	return NewCreateOp(stats, create_ast_ctx.nodes_to_create, create_ast_ctx.edges_to_create);
+	OpBase *op = NewCreateOp(stats, create_ast_ctx.nodes_to_create, create_ast_ctx.edges_to_create);
+	*ops = array_append(*ops, op);
 
 }
 
-static inline OpBase *_buildUnwindOp(ExecutionPlanSegment *segment,
-									 const cypher_astnode_t *clause) {
+static inline void _buildUnwindOp(ExecutionPlanSegment *segment, const cypher_astnode_t *clause,
+								  OpBase ***ops) {
 	AST_UnwindContext unwind_ast_ctx = AST_PrepareUnwindOp(clause, segment->record_map);
-	return NewUnwindOp(unwind_ast_ctx.record_idx, unwind_ast_ctx.exp);
+	OpBase *op = NewUnwindOp(unwind_ast_ctx.record_idx, unwind_ast_ctx.exp);
+	*ops = array_append(*ops, op);
 }
 
-static inline OpBase *_buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlanSegment *segment,
-									const cypher_astnode_t *clause, ResultSetStatistics *stats) {
+static inline void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlanSegment *segment,
+								 const cypher_astnode_t *clause, ResultSetStatistics *stats, OpBase ***ops) {
 	// A merge clause provides a single path that must exist or be created.
 	// As with paths in a MATCH query, build the appropriate traversal operations
 	// and append them to the set of ops.
 	AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(gc, segment->record_map, ast, clause,
 														segment->query_graph);
-	return NewMergeOp(stats, merge_ast_ctx.nodes_to_merge, merge_ast_ctx.edges_to_merge);
+	OpBase *op = NewMergeOp(stats, merge_ast_ctx.nodes_to_merge, merge_ast_ctx.edges_to_merge);
+	*ops = array_append(*ops, op);
 }
 
-static inline OpBase *_buildUpdateOp(GraphContext *gc, ExecutionPlanSegment *segment,
-									 const cypher_astnode_t *clause, ResultSetStatistics *stats) {
+static inline void _buildUpdateOp(GraphContext *gc, ExecutionPlanSegment *segment,
+								  const cypher_astnode_t *clause, ResultSetStatistics *stats, OpBase ***ops) {
 	uint nitems;
 	EntityUpdateEvalCtx *update_exps = AST_PrepareUpdateOp(clause, segment->record_map, &nitems);
-	return NewUpdateOp(gc, update_exps, nitems, stats);
+	OpBase *op = NewUpdateOp(gc, update_exps, nitems, stats);
+	*ops = array_append(*ops, op);
 }
 
-static inline OpBase *_buildDeleteOp(ExecutionPlanSegment *segment, const cypher_astnode_t *clause,
-									 ResultSetStatistics *stats) {
+static inline void _buildDeleteOp(ExecutionPlanSegment *segment, const cypher_astnode_t *clause,
+								  ResultSetStatistics *stats, OpBase ***ops) {
 	uint *nodes_ref;
 	uint *edges_ref;
 	AST_PrepareDeleteOp(clause, segment->query_graph, segment->record_map, &nodes_ref, &edges_ref);
-	return NewDeleteOp(nodes_ref, edges_ref, stats);
+	OpBase *op = NewDeleteOp(nodes_ref, edges_ref, stats);
+	*ops = array_append(*ops, op);
 }
 
 static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 												ExecutionPlanSegment *segment, ResultSetStatistics *stats, const cypher_astnode_t *clause,
-												Vector *ops) {
+												OpBase ***ops) {
 	OpBase *op = NULL;
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
 	// Because 't' is set using the offsetof() call, it cannot be used in switch statements.
@@ -742,28 +745,24 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 		// TODO This should be changed later
 		return;
 	} else if(t == CYPHER_AST_CREATE) {
-		if(_ExecutionPlan_ContainsCreateOp(ops)) return;
+		if(_ExecutionPlan_ContainsCreateOp(*ops)) return;
 		// Only add at most one Create op per segment. TODO Revisit and improve this logic.
-		op = _buildCreateOp(gc, ast, segment, stats);
+		_buildCreateOp(gc, ast, segment, stats, ops);
 	} else if(t == CYPHER_AST_UNWIND) {
-		op = _buildUnwindOp(segment, clause);
+		_buildUnwindOp(segment, clause, ops);
 	} else if(t == CYPHER_AST_MERGE) {
-		op = _buildMergeOp(gc, ast, segment, clause, stats);
+		_buildMergeOp(gc, ast, segment, clause, stats, ops);
 	} else if(t == CYPHER_AST_SET) {
-		op = _buildUpdateOp(gc, segment, clause, stats);
+		_buildUpdateOp(gc, segment, clause, stats, ops);
 	} else if(t == CYPHER_AST_DELETE) {
-		op = _buildDeleteOp(segment, clause, stats);
+		_buildDeleteOp(segment, clause, stats, ops);
 	} else if(t == CYPHER_AST_RETURN) {
 		// Converting a RETURN clause can create multiple operations.
 		_buildReturnOps(segment, clause, ops);
-		return;
 	} else if(t == CYPHER_AST_WITH) {
 		// Converting a WITH clause can create multiple operations.
 		_buildWithOps(segment, clause, ops);
-		return;
 	}
-	assert(op);
-	Vector_Push(ops, op);
 }
 
 static void _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
@@ -798,24 +797,21 @@ static void _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
 	FT_FilterNode *filter_tree = AST_BuildFilterTree(ast, record_map);
 	segment->filter_tree = filter_tree;
 
-	// Instantiate the Vector that will hold all constructed operations.
-	// TODO This vector could be removed with some logical changes.
+	// Instantiate the array that will hold all constructed operations.
+	// TODO This array could be removed with some logical changes.
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
-	Vector *ops = NewVector(OpBase *, clause_count);
+	OpBase **ops = array_new(OpBase *, clause_count);
 
 	/* If we have a procedure call, build an op for it first.
 	 * This is currently necessary to extend the segment's projections if necesary
 	 * and in order to build the plan for queries of forms like CALL..MATCH properly.
 	 * TODO Fix this so that CALL clauses are handled in the ConvertClause loop. */
 	const cypher_astnode_t *call_clause = AST_GetClause(ast, CYPHER_AST_CALL);
-	if(call_clause) {
-		OpBase *opProcCall = _buildCallOp(ast, segment, call_clause);
-		Vector_Push(ops, opProcCall);
-	}
+	if(call_clause) _buildCallOp(ast, segment, call_clause, &ops);
 
 	// Build traversal operations for every connected component in the QueryGraph
 	if(AST_ContainsClause(ast, CYPHER_AST_MATCH) || AST_ContainsClause(ast, CYPHER_AST_MERGE)) {
-		_ExecutionPlanSegment_ProcessQueryGraph(segment, qg, ast, filter_tree, ops);
+		_ExecutionPlanSegment_ProcessQueryGraph(segment, qg, ast, filter_tree, &ops);
 	}
 
 	// If we are in a querying context, retrieve a pointer to the statistics for operations
@@ -825,7 +821,7 @@ static void _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
 	for(uint i = 0; i < clause_count; i ++) {
 		// Build the appropriate operation(s) for each clause in the query.
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
-		_ExecutionPlanSegment_ConvertClause(gc, ast, segment, stats, clause, ops);
+		_ExecutionPlanSegment_ConvertClause(gc, ast, segment, stats, clause, &ops);
 	}
 
 	// The root operation is OpResults only if the query culminates in a RETURN or CALL clause.
@@ -833,23 +829,25 @@ static void _NewExecutionPlanSegment(RedisModuleCtx *ctx, GraphContext *gc,
 																 clause_count - 1));
 	if(last_clause_type == CYPHER_AST_RETURN || last_clause_type == CYPHER_AST_CALL) {
 		OpBase *results_op = NewResultsOp(result_set);
-		Vector_Push(ops, results_op);
+		ops = array_append(ops, results_op);
 	}
 
 	OpBase *parent_op;
 	OpBase *child_op;
 
 	// Set the root operation.
-	Vector_Pop(ops, &parent_op);
+	parent_op = array_pop(ops);
 	segment->root = parent_op;
 
+	uint count = array_len(ops);
 	// Pop each operation and make it the child of the last.
-	while(Vector_Pop(ops, &child_op)) {
+	for(uint i = 0; i < count; i ++) {
+		child_op = array_pop(ops);
 		ExecutionPlan_AddOp(parent_op, child_op);
 		parent_op = child_op;
 	}
 
-	Vector_Free(ops);
+	array_free(ops);
 
 	// If this is not the first segment to be constructed, connect this segment's
 	// operations tree with the previous one.
