@@ -1,6 +1,6 @@
 FROM redis:latest as builder
 
-ENV DEPS "automake peg libtool autoconf python python-setuptools python-pip wget build-essential cmake m4"
+ENV DEPS "automake peg libtool autoconf python python-setuptools python-pip wget build-essential cmake m4 libomp-dev"
 
 # Set up a build environment
 RUN set -ex;\
