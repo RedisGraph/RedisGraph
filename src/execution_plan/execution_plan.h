@@ -50,6 +50,9 @@ void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp);
 /* Push b right below a. */
 void ExecutionPlan_PushBelow(OpBase *a, OpBase *b);
 
+/* Introduce new_root as the parent of old_root. */
+void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root);
+
 /* Replace a with b. */
 void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b);
 
@@ -93,3 +96,4 @@ ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan);
 
 /* Free execution plan */
 void ExecutionPlan_Free(ExecutionPlan *plan);
+

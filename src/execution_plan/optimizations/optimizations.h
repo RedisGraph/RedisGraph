@@ -9,7 +9,6 @@
 
 #include "./apply_join.h"
 #include "./seek_by_id.h"
-#include "./relocate_op.h"
 #include "./reduce_count.h"
 #include "./reduce_scans.h"
 #include "./reduce_filters.h"
@@ -20,3 +19,4 @@
 #include "./select_entry_point.h"
 
 #endif
+
