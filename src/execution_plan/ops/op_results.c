@@ -8,7 +8,7 @@
 #include "../../util/arr.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-OpBase *NewResultsOp(ResultSet *result_set, QueryGraph *graph) {
+OpBase *NewResultsOp(ResultSet *result_set) {
 	Results *results = malloc(sizeof(Results));
 	results->result_set = result_set;
 
@@ -48,3 +48,4 @@ OpResult ResultsReset(OpBase *op) {
 /* Frees Results */
 void ResultsFree(OpBase *opBase) {
 }
+

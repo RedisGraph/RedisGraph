@@ -12,7 +12,7 @@
 #include "rax.h"
 #include "./formatters/resultset_formatters.h"
 
-#define RESULTSET_UNLIMITED 0
+#define RESULTSET_UNLIMITED UINT_MAX
 #define RESULTSET_OK 1
 #define RESULTSET_FULL 0
 

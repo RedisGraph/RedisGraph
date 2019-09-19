@@ -181,7 +181,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		GraphContext_Free(gc);
 	}
 
-	AlgebraicExpression **build_algebraic_expression(const char *query, size_t *exp_count) {
+	AlgebraicExpression **build_algebraic_expression(const char *query, uint *exp_count) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 		AST *ast = AST_Build(parse_result);
@@ -667,7 +667,7 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_AB_Times_C_Plus_D) {
 }
 
 TEST_F(AlgebraicExpressionTest, MultipleIntermidateReturnNodes) {
-	size_t exp_count = 0;
+	uint exp_count = 0;
 	const char *q = query_multiple_intermidate_return_nodes;
 	AlgebraicExpression **actual = build_algebraic_expression(q, &exp_count);
 	ASSERT_EQ(exp_count, 3);
@@ -699,7 +699,7 @@ TEST_F(AlgebraicExpressionTest, MultipleIntermidateReturnNodes) {
 }
 
 TEST_F(AlgebraicExpressionTest, OneIntermidateReturnNode) {
-	size_t exp_count = 0;
+	uint exp_count = 0;
 	const char *q = query_one_intermidate_return_nodes;
 	AlgebraicExpression **actual = build_algebraic_expression(q, &exp_count);
 	ASSERT_EQ(exp_count, 2);
@@ -728,7 +728,7 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnNode) {
 }
 
 TEST_F(AlgebraicExpressionTest, NoIntermidateReturnNodes) {
-	size_t exp_count = 0;
+	uint exp_count = 0;
 	const char *q = query_no_intermidate_return_nodes;
 	AlgebraicExpression **actual = build_algebraic_expression(q, &exp_count);
 	ASSERT_EQ(exp_count, 1);
@@ -754,7 +754,7 @@ TEST_F(AlgebraicExpressionTest, NoIntermidateReturnNodes) {
 }
 
 TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
-	size_t exp_count;
+	uint exp_count;
 	const char *q;
 	AlgebraicExpression **actual;
 
@@ -851,7 +851,7 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
 }
 
 TEST_F(AlgebraicExpressionTest, BothDirections) {
-	size_t exp_count = 0;
+	uint exp_count = 0;
 	const char *q =
 		"MATCH (p:Person)-[ef:friend]->(f:Person)<-[ev:visit]-(c:City)-[ew:war]->(e:City) RETURN p,e";
 	AlgebraicExpression **actual = build_algebraic_expression(q, &exp_count);
@@ -878,7 +878,7 @@ TEST_F(AlgebraicExpressionTest, BothDirections) {
 }
 
 TEST_F(AlgebraicExpressionTest, SingleNode) {
-	size_t exp_count = 0;
+	uint exp_count = 0;
 	const char *q = "MATCH (p:Person) RETURN p";
 	AlgebraicExpression **actual = build_algebraic_expression(q, &exp_count);
 	ASSERT_EQ(exp_count, 0);
@@ -893,7 +893,7 @@ TEST_F(AlgebraicExpressionTest, SingleNode) {
 }
 
 TEST_F(AlgebraicExpressionTest, ShareableEntity) {
-	size_t exp_count = 0;
+	uint exp_count = 0;
 	const char *q =
 		"MATCH (p:Person)-[ef:friend]->(f:Person) MATCH (f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p,e";
 	AlgebraicExpression **actual = build_algebraic_expression(q, &exp_count);
@@ -1132,7 +1132,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 }
 
 TEST_F(AlgebraicExpressionTest, VariableLength) {
-	size_t exp_count = 0;
+	uint exp_count = 0;
 	const char *q =
 		"MATCH (p:Person)-[ef:friend]->(f:Person)-[:visit*1..3]->(c:City)-[ew:war]->(e:City) RETURN p,e";
 	AlgebraicExpression **actual = build_algebraic_expression(q, &exp_count);
@@ -1196,7 +1196,7 @@ TEST_F(AlgebraicExpressionTest, VariableLength) {
 }
 
 TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
-	size_t exp_count = 0;
+	uint exp_count = 0;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Graph *g = gc->g;
 
