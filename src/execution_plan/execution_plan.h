@@ -55,9 +55,6 @@ OpBase **ExecutionPlan_LocateOps(OpBase *root, OPType type);
  * e.g. SCAN, UNWIND, PROCEDURE_CALL, CREATE. */
 void ExecutionPlan_Taps(OpBase *root, OpBase ***taps);
 
-/* Returns the left most leaf operation. */
-OpBase *ExecutionPlan_LocateLeaf(OpBase *root);
-
 /* Find the earliest operation on the ExecutionPlan at which all
  * references are resolved. */
 OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references);
