@@ -274,9 +274,8 @@ static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segmen
 	uint connectedComponentsCount = array_len(connectedComponents);
 	segment->connected_components = connectedComponents;
 
-	/* For every connected component.
-	 * Incase we're dealing with multiple components
-	 * we'll simply join them all together with a join operation. */
+	/* If we have multiple graph components, we'll join each chain of traversals
+	 * under a Cartesian Product root operation. */
 	OpBase *cartesianProduct = NULL;
 	if(connectedComponentsCount > 1) {
 		cartesianProduct = NewCartesianProductOp();
@@ -284,20 +283,18 @@ static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segmen
 	}
 
 	// Keep track after all traversal operations along a pattern.
-	OpBase **traversals = array_new(OpBase *, connectedComponentsCount);
-	OpBase *op;
-
 	for(uint i = 0; i < connectedComponentsCount; i++) {
 		QueryGraph *cc = connectedComponents[i];
 		uint edge_count = array_len(cc->edges);
+		OpBase *root = NULL; // The root of the traversal chain will be added to the ExecutionPlan.
 		if(edge_count == 0) {
-			/* Node scan. */
+			/* If there are no edges in the component, we only need a node scan. */
 			QGNode *n = cc->nodes[0];
 			uint rec_idx = RecordMap_FindOrAddID(segment->record_map, n->id);
-			if(n->labelID != GRAPH_NO_LABEL) op = NewNodeByLabelScanOp(n, rec_idx);
-			else op = NewAllNodeScanOp(gc->g, n, rec_idx);
-			traversals = array_append(traversals, op);
+			if(n->labelID != GRAPH_NO_LABEL) root = NewNodeByLabelScanOp(n, rec_idx);
+			else root = NewAllNodeScanOp(gc->g, n, rec_idx);
 		} else {
+			/* The component has edges, so we'll build a node scan and a chain of traversals. */
 			uint expCount = 0;
 			AlgebraicExpression **exps = AlgebraicExpression_FromQueryGraph(cc, segment->record_map, &expCount);
 
@@ -312,7 +309,8 @@ static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segmen
 			// Convert to a Record ID
 			uint record_id = RecordMap_FindOrAddID(segment->record_map, ast_id);
 
-			// Create SCAN operation.
+			OpBase *tail = NULL;
+			/* Create the SCAN operation that will be the tail of the traversal chain. */
 			if(exp->src_node->label) {
 				/* Resolve source node by performing label scan,
 				 * in which case if the first algebraic expression operand
@@ -322,22 +320,24 @@ static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segmen
 				 * try to locate and remove it, there's no real harm except some performace hit
 				 * in keeping that label matrix. */
 				if(exp->operands[0].diagonal) AlgebraicExpression_RemoveTerm(exp, 0, NULL);
-				op = NewNodeByLabelScanOp(exp->src_node, record_id);
+				tail = NewNodeByLabelScanOp(exp->src_node, record_id);
 			} else {
-				op = NewAllNodeScanOp(gc->g, exp->src_node, record_id);
+				tail = NewAllNodeScanOp(gc->g, exp->src_node, record_id);
 			}
-			traversals = array_append(traversals, op);
 
+			/* For each expression, build the appropriate traversal operation. */
 			for(int j = 0; j < expCount; j++) {
 				exp = exps[j];
 				if(exp->operand_count == 0) continue;
 
 				if(exp->edge && QGEdge_VariableLength(exp->edge)) {
-					op = NewCondVarLenTraverseOp(gc->g, segment->record_map, exp);
+					root = NewCondVarLenTraverseOp(gc->g, segment->record_map, exp);
 				} else {
-					op = NewCondTraverseOp(gc->g, segment->record_map, exp, TraverseRecordCap(ast));
+					root = NewCondTraverseOp(gc->g, segment->record_map, exp, TraverseRecordCap(ast));
 				}
-				traversals = array_append(traversals, op);
+				// Insert the new traversal op at the root of the chain.
+				ExecutionPlan_AddOp(root, tail);
+				tail = root;
 			}
 
 			// Free the expressions array, as its parts have been converted into operations
@@ -345,26 +345,14 @@ static void _ExecutionPlanSegment_ProcessQueryGraph(ExecutionPlanSegment *segmen
 		}
 
 		if(connectedComponentsCount > 1) {
-			// Connect traversal operations.
-			OpBase *parentOp = array_pop(traversals);
-			// Connect cartesian product to the root of traversal.
-			ExecutionPlan_AddOp(cartesianProduct, parentOp);
-			uint count = array_len(traversals);
-			for(uint j = 0; j < count; j ++) {
-				OpBase *childOp = array_pop(traversals);
-				ExecutionPlan_AddOp(parentOp, childOp);
-				parentOp = childOp;
-			}
+			// Add this traversal chain as a child under the Cartesian Product.
+			ExecutionPlan_AddOp(cartesianProduct, root);
 		} else {
-			uint count = array_len(traversals);
-			for(uint j = 0; j < count; j++) {
-				_ExecutionPlan_UpdateRoot(segment, traversals[j]);
-			}
+			// We've built the only necessary traversal chain; add it directly to the ExecutionPlan.
+			if(segment->root) ExecutionPlan_AddOp(segment->root, root);
+			else _ExecutionPlan_UpdateRoot(segment, root);
 		}
-		array_clear(traversals);
 	}
-
-	array_free(traversals);
 }
 
 static void _ExecutionPlanSegment_MapAliasesInExpression(ExecutionPlanSegment *segment,
@@ -521,18 +509,6 @@ static void _ExecutionPlanSegment_PlaceFilterOps(ExecutionPlanSegment *segment) 
 		raxFree(references);
 	}
 	Vector_Free(sub_trees);
-}
-
-// Check whether an array of operations contains a Create op.
-static inline bool _ExecutionPlan_ContainsCreateOp(OpBase *root) {
-	if(!root) return false;
-
-	if(root->type == OPType_CREATE) return true;
-
-	for(uint i = 0; i < root->childCount; i ++) {
-		if(_ExecutionPlan_ContainsCreateOp(root->children[i])) return true;
-	}
-	return false;
 }
 
 static void _ExecutionPlan_ConnectSegmentOps(OpBase *current_tail, OpBase *prev_head,
@@ -754,7 +730,7 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 		return;
 	} else if(t == CYPHER_AST_CREATE) {
 		// Only add at most one Create op per segment. TODO Revisit and improve this logic.
-		if(_ExecutionPlan_ContainsCreateOp(segment->root)) return;
+		if(ExecutionPlan_LocateOp(segment->root, OPType_CREATE)) return;
 		_buildCreateOp(gc, ast, segment, stats);
 	} else if(t == CYPHER_AST_UNWIND) {
 		_buildUnwindOp(segment, clause);
