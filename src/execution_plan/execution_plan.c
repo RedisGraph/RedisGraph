@@ -737,16 +737,6 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 	ExecutionPlan *segments[segment_count];
 	uint start_offset = 0;
 	for(int i = 0; i < segment_count; i++) {
-		// TODO discuss this approach - I think it's safer to collect references from the project operation
-		// (segment_indices[i]+1) separately rather than messing with the end_offset logic.
-		/* A segment needs to know about it referenced entities. Those entities are known only when projection
-		 * operation executes over the records of the current segment. For example:
-		 * "Match (a)-[b]->(c) return a,b" only references a and b.
-		 * Since project operation is a tap it cannot be built as the closing operation of a current segment,
-		 * but in order for the information about the segment to be complete, the current segment AST will
-		 * hold its projection information, if valid.
-		 * This is relevant for all non-last segments. */
-		// uint end_offset = (i == segment_count - 1) ? segment_indices[i] : segment_indices[i] + 1;
 		uint end_offset = segment_indices[i];
 		// Slice the AST to only include the clauses in the current segment.
 		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);

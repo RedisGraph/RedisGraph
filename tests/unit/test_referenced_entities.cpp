@@ -53,6 +53,7 @@ TEST_F(TestReferencedEntities, TestMatch) {
 
 	AST *astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
 	ASSERT_EQ(0, raxSize(astSegment->referenced_entities));
+	AST_Free(astSegment);
 
 	q = "MATCH (n)-[e]->(m)";
 	ast = buildAST(q);
@@ -60,6 +61,7 @@ TEST_F(TestReferencedEntities, TestMatch) {
 	ASSERT_EQ(1, array_len(segmentIndices));
 	astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
 	ASSERT_EQ(0, raxSize(astSegment->referenced_entities));
+	AST_Free(astSegment);
 
 	// Inline node label filter.
 	q = "MATCH (n:X)-[e]->(m)";
@@ -71,6 +73,7 @@ TEST_F(TestReferencedEntities, TestMatch) {
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
 
 	// Inline node property filter.
 	q = "MATCH (n {val:42})-[e]->(m)";
@@ -82,6 +85,7 @@ TEST_F(TestReferencedEntities, TestMatch) {
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
 
 	// Inline edge relationship type.
 	q = "MATCH (n)-[e:T]->(m)";
@@ -93,6 +97,7 @@ TEST_F(TestReferencedEntities, TestMatch) {
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
 
 	// Inline edge properties.
 	q = "MATCH (n)-[e {val:42}]->(m)";
@@ -104,6 +109,7 @@ TEST_F(TestReferencedEntities, TestMatch) {
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
 
 	// Explicit filters: EQ, NE, GT, LT, IS NULL, IS NOT NULL.
 	q = "MATCH (n)-[e]->(m) WHERE n.v = 1";
@@ -115,6 +121,7 @@ TEST_F(TestReferencedEntities, TestMatch) {
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
 
 	q = "MATCH (n)-[e]->(m) WHERE n.v <> 1";
 	ast = buildAST(q);
@@ -125,6 +132,7 @@ TEST_F(TestReferencedEntities, TestMatch) {
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
 
 	q = "MATCH (n)-[e]->(m) WHERE n.v > 1";
 	ast = buildAST(q);
@@ -135,6 +143,7 @@ TEST_F(TestReferencedEntities, TestMatch) {
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
 
 	q = "MATCH (n)-[e]->(m) WHERE n.v < 1";
 	ast = buildAST(q);
@@ -145,6 +154,7 @@ TEST_F(TestReferencedEntities, TestMatch) {
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
 
 	q = "MATCH (n)-[e]->(m) WHERE n.v IS NULL 1";
 	ast = buildAST(q);
@@ -155,6 +165,7 @@ TEST_F(TestReferencedEntities, TestMatch) {
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
 
 	q = "MATCH (n)-[e]->(m) WHERE n.v IS NOT NULL 1";
 	ast = buildAST(q);
@@ -165,7 +176,7 @@ TEST_F(TestReferencedEntities, TestMatch) {
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
-
+	AST_Free(astSegment);
 }
 
 TEST_F(TestReferencedEntities, TestSet) {
@@ -178,6 +189,7 @@ TEST_F(TestReferencedEntities, TestSet) {
 	AST *astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
 	ASSERT_EQ(1, raxSize(astSegment->referenced_entities));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
+	AST_Free(astSegment);
 
 	// Path match and set property.
 	q = "MATCH (n)-[e]->(m) SET n.v=1";
@@ -189,6 +201,7 @@ TEST_F(TestReferencedEntities, TestSet) {
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
 
 	// Reference from MATCH and SET caluse.
 	q = "MATCH (n)-[e:r]->(m) SET n.v=1";
@@ -200,6 +213,7 @@ TEST_F(TestReferencedEntities, TestSet) {
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
 }
 
 TEST_F(TestReferencedEntities, TestMerge) {
@@ -211,6 +225,7 @@ TEST_F(TestReferencedEntities, TestMerge) {
 
 	AST *astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
 	ASSERT_EQ(0, raxSize(astSegment->referenced_entities));
+	AST_Free(astSegment);
 
 	q = "MERGE (n)-[e]->(m)";
 	ast = buildAST(q);
@@ -218,6 +233,7 @@ TEST_F(TestReferencedEntities, TestMerge) {
 	ASSERT_EQ(1, array_len(segmentIndices));
 	astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
 	ASSERT_EQ(0, raxSize(astSegment->referenced_entities));
+	AST_Free(astSegment);
 
 	// Inline node label filter.
 	q = "MERGE (n:X)-[e]->(m)";
@@ -229,6 +245,7 @@ TEST_F(TestReferencedEntities, TestMerge) {
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
 
 	// Inline node property filter.
 	q = "MERGE (n {val:42})-[e]->(m)";
@@ -240,6 +257,7 @@ TEST_F(TestReferencedEntities, TestMerge) {
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
 
 	// Inline edge relationship type.
 	q = "MERGE (n)-[e:T]->(m)";
@@ -251,6 +269,7 @@ TEST_F(TestReferencedEntities, TestMerge) {
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
 
 	// Inline edge properties.
 	q = "MERGE (n)-[e {val:42}]->(m)";
@@ -262,6 +281,7 @@ TEST_F(TestReferencedEntities, TestMerge) {
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
 
 
 	// On match.
@@ -274,6 +294,7 @@ TEST_F(TestReferencedEntities, TestMerge) {
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
 
 	// On create.
 	q = "MERGE (n)-[e]->(m) ON CREATE SET n.v=1, m.v=2";
@@ -285,6 +306,7 @@ TEST_F(TestReferencedEntities, TestMerge) {
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
 
 	// Mixed.
 	q = "MERGE (n)-[e]->(m) ON CREATE SET n.v=1, m.v=2 ON MATCH SET e.v = 3";
@@ -296,4 +318,108 @@ TEST_F(TestReferencedEntities, TestMerge) {
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
+}
+
+
+TEST_F(TestReferencedEntities, TestUnwind) {
+	char *q = "UNWIND [1,2] as x";
+	AST *ast = buildAST(q);
+	uint *segmentIndices = getASTSegmentIndices(ast);
+	ASSERT_EQ(1, array_len(segmentIndices));
+
+	AST *astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
+	ASSERT_EQ(1, raxSize(astSegment->referenced_entities));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
+	AST_Free(astSegment);
+}
+
+
+TEST_F(TestReferencedEntities, TestWith) {
+	char *q = "MATCH (n),(m) with n as x";
+	AST *ast = buildAST(q);
+	uint *segmentIndices = getASTSegmentIndices(ast);
+	// Two segments: first is the MATCH clause, the second is the WITH clause.
+	ASSERT_EQ(2, array_len(segmentIndices));
+
+	// Only n is projected from the first segment.
+	AST *astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
+	ASSERT_EQ(1, raxSize(astSegment->referenced_entities));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
+	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
+	AST_Free(astSegment);
+
+	// Only x is projected from the second segment.
+	astSegment = AST_NewSegment(ast, segmentIndices[0], segmentIndices[1]);
+	ASSERT_EQ(1, raxSize(astSegment->referenced_entities));
+	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
+	AST_Free(astSegment);
+
+	q = "MATCH (n),(m) with n as x ORDER BY m.value";
+	ast = buildAST(q);
+	segmentIndices = getASTSegmentIndices(ast);
+	// Two segments: first is the MATCH clause, the second is the WITH clause.
+	ASSERT_EQ(2, array_len(segmentIndices));
+
+	// Only n and m projected from the first segment.
+	astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
+	ASSERT_EQ(2, raxSize(astSegment->referenced_entities));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
+	AST_Free(astSegment);
+
+	// Only m and x projected from the second segment.
+	astSegment = AST_NewSegment(ast, segmentIndices[0], segmentIndices[1]);
+	ASSERT_EQ(2, raxSize(astSegment->referenced_entities));
+	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
+	AST_Free(astSegment);
+}
+
+
+TEST_F(TestReferencedEntities, TestReturn) {
+	char *q = "MATCH (n),(m) RETURN n as x";
+	AST *ast = buildAST(q);
+	uint *segmentIndices = getASTSegmentIndices(ast);
+	// Two segments: first is the MATCH clause, the second is the RETURN clause.
+	ASSERT_EQ(2, array_len(segmentIndices));
+
+	// Only n is projected from the first segment.
+	AST *astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
+	ASSERT_EQ(1, raxSize(astSegment->referenced_entities));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
+	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
+	AST_Free(astSegment);
+
+	// Only x is projected from the second segment.
+	astSegment = AST_NewSegment(ast, segmentIndices[0], segmentIndices[1]);
+	ASSERT_EQ(1, raxSize(astSegment->referenced_entities));
+	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
+	AST_Free(astSegment);
+
+	q = "MATCH (n),(m) RETURN n as x ORDER BY m.value";
+	ast = buildAST(q);
+	segmentIndices = getASTSegmentIndices(ast);
+	// Two segments: first is the MATCH clause, the second is the RETURN clause.
+	ASSERT_EQ(2, array_len(segmentIndices));
+
+	// Only n and m projected from the first segment.
+	astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
+	ASSERT_EQ(2, raxSize(astSegment->referenced_entities));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
+	AST_Free(astSegment);
+
+	// Only m and x projected from the second segment.
+	astSegment = AST_NewSegment(ast, segmentIndices[0], segmentIndices[1]);
+	ASSERT_EQ(2, raxSize(astSegment->referenced_entities));
+	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
+	AST_Free(astSegment);
 }

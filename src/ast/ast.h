@@ -74,21 +74,5 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause);
 // which will be considered when evaluating an algebraic expression.
 int TraverseRecordCap(const AST *ast);
 
-/* AST Map API */
-
-// Retrieve an AST ID from an AST pointer
-uint AST_GetEntityIDFromReference(const AST *ast, AST_IDENTIFIER entity);
-
-// Retrieve an AST ID from an alias
-uint AST_GetEntityIDFromAlias(const AST *ast, const char *alias);
-
-// Retrieve an AST ID from an alias, creating a new ID if not previously mapped.
-// (This is only necessary to handle aliases introduced from stored procedures
-// rather than the query).
-uint ASTMap_FindOrAddAlias(const AST *ast, const char *alias, uint id);
-
-// Construct the AST map.
-void AST_BuildEntityMap(AST *ast);
-
 void AST_Free(AST *ast);
 
