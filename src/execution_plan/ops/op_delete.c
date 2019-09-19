@@ -73,7 +73,7 @@ OpBase *NewDeleteOp(const ExecutionPlan *plan, const char **nodes_ref, const cha
 	int edge_count = array_len(edges_ref);
 	for(int i = 0; i < edge_count; i++) {
 		assert(OpBase_Aware((OpBase *)op, edges_ref[i], &idx));
-		op->nodes_to_delete = array_append(op->edges_to_delete, idx);
+		op->edges_to_delete = array_append(op->edges_to_delete, idx);
 	}
 
 	op->node_count = array_len(op->nodes_to_delete);

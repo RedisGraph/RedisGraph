@@ -267,17 +267,18 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 
 	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", Init, Consume, Reset, NULL, Free, plan);
 
+	uint exp_count = array_len(op->exps);
+	for(uint i = 0; i < exp_count; i ++) {
+		// The projected record will associate values with their resolved name
+		// to ensure that space is allocated for each entry.
+		OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
+	}
+
 	return (OpBase *)op;
 }
 
 static OpResult Init(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
-	uint exp_count = array_len(op->exps);
-	for(uint i = 0; i < exp_count; i ++) {
-		// The projected record will associate values with their resolved name
-		// to ensure that space is allocated for each entry.
-		OpBase_Modifies(opBase, op->exps[i]->resolved_name);
-	}
 
 	AR_ExpNode **order_exps = _getOrderExpressions(opBase->parent);
 	if(order_exps) {

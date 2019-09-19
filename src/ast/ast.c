@@ -223,57 +223,53 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 
 // Adds an identifier or an alias to the reference map.
 static void _AST_UpdateRefMap(AST *ast, const char *name) {
-	raxInsert(ast->referenced_entities, (unsigned char *)name, strlen(name),
-			  (void *)true, NULL);
+	raxInsert(ast->referenced_entities, (unsigned char *)name, strlen(name), NULL, NULL);
 }
 
-// Maps WHERE clause entities.
-static void _AST_MapWhereClause(AST *ast, const cypher_astnode_t *predicate) {
-	cypher_astnode_type_t type = cypher_astnode_type(predicate);
+// Map identifiers within an expression.
+static void _AST_MapExpression(AST *ast, const cypher_astnode_t *exp) {
+	cypher_astnode_type_t type = cypher_astnode_type(exp);
 
 	// In case of identifier.
 	if(type == CYPHER_AST_IDENTIFIER) {
-		const char	*identifierName = cypher_ast_identifier_get_name(predicate);
+		const char *identifierName = cypher_ast_identifier_get_name(exp);
 		_AST_UpdateRefMap(ast, identifierName);
 	} else if(type == CYPHER_AST_PROPERTY_OPERATOR) {
 		// In case of property.
-		predicate = cypher_ast_property_operator_get_expression(predicate);
-		assert(cypher_astnode_type(predicate) == CYPHER_AST_IDENTIFIER);
-		const char	*identifierName = cypher_ast_identifier_get_name(predicate);
+		exp = cypher_ast_property_operator_get_expression(exp);
+		assert(cypher_astnode_type(exp) == CYPHER_AST_IDENTIFIER);
+		const char *identifierName = cypher_ast_identifier_get_name(exp);
 		_AST_UpdateRefMap(ast, identifierName);
 	} else {
-		// Recouse over children.
-		uint child_count = cypher_astnode_nchildren(predicate);
+		// Recurse over children.
+		uint child_count = cypher_astnode_nchildren(exp);
 		for(uint i = 0; i < child_count; i++) {
-			const cypher_astnode_t *child = cypher_astnode_get_child(predicate, i);
+			const cypher_astnode_t *child = cypher_astnode_get_child(exp, i);
 			// Recursively continue mapping.
-			_AST_MapWhereClause(ast, child);
+			_AST_MapExpression(ast, child);
 		}
 	}
 }
 
 // Maps the RHS of "AS" projected entities.
 static void _AST_MapProjectionAlias(AST *ast, const cypher_astnode_t *projection) {
-	const cypher_astnode_t *alias = cypher_ast_projection_get_alias(projection);
-	const char *alias_name = NULL;
-	if(alias == NULL) {
-		// The projection was not aliased.
-		alias = cypher_ast_projection_get_expression(projection);
+	const cypher_astnode_t *ast_alias = cypher_ast_projection_get_alias(projection);
+	const char *alias = NULL;
+	if(ast_alias == NULL) {
+		// The projection was not aliased, so the projection itself must be an identifier.
+		ast_alias = cypher_ast_projection_get_expression(projection);
+		assert(cypher_astnode_type(ast_alias) == CYPHER_AST_IDENTIFIER);
 	}
-	cypher_astnode_type_t type = cypher_astnode_type(alias);
-	if(type != CYPHER_AST_IDENTIFIER) {
-		assert(type == CYPHER_AST_PROPERTY_OPERATOR);
-		alias = cypher_ast_property_operator_get_expression(alias);
-	}
-	alias_name = cypher_ast_identifier_get_name(alias);
-	_AST_UpdateRefMap(ast, alias_name);
-}
-
-// Add referenced aliases from UNWIND clause.
-static void _AST_MapUnwindReferences(AST *ast, const cypher_astnode_t *unwindClause) {
-	const cypher_astnode_t *alias = cypher_ast_unwind_get_alias(unwindClause);
-	const char *aliasName = cypher_ast_identifier_get_name(alias);
-	_AST_UpdateRefMap(ast, aliasName);
+	// WITH and RETURN projections are always either aliased or themselves identifiers.
+	assert(ast_alias && "RETURN/WITH projections are always aliased or themselves identifiers");
+	// TODO delete this logic once the above assertion is verified
+	// cypher_astnode_type_t type = cypher_astnode_type(ast_alias);
+	// if(type != CYPHER_AST_IDENTIFIER) {
+	// assert(type == CYPHER_AST_PROPERTY_OPERATOR);
+	// ast_alias = cypher_ast_property_operator_get_expression(ast_alias);
+	// }
+	alias = cypher_ast_identifier_get_name(ast_alias);
+	_AST_UpdateRefMap(ast, alias);
 }
 
 // Adds referenced entities of ORDER BY clause.
@@ -283,14 +279,7 @@ static void _AST_MapOrderByReferences(AST *ast, const cypher_astnode_t *orderByC
 	for(uint i = 0; i < orderByItemsCount; i++) {
 		const cypher_astnode_t *item = cypher_ast_order_by_get_item(orderByClause, i);
 		const cypher_astnode_t *expression = cypher_ast_sort_item_get_expression(item);
-		cypher_astnode_type_t type = cypher_astnode_type(expression);
-		// If the expression is not an identifier, it is a property.
-		if(type != CYPHER_AST_IDENTIFIER) {
-			assert(type == CYPHER_AST_PROPERTY_OPERATOR);
-			expression = cypher_ast_property_operator_get_expression(expression);
-		}
-		const char *name = cypher_ast_identifier_get_name(expression);
-		_AST_UpdateRefMap(ast, name);
+		_AST_MapExpression(ast, expression);
 	}
 }
 
@@ -341,7 +330,7 @@ static void _AST_MapMatchClauseReferences(AST *ast, const cypher_astnode_t *matc
 
 	// Where clause.
 	const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(matchClause);
-	if(predicate) _AST_MapWhereClause(ast, predicate);
+	if(predicate) _AST_MapExpression(ast, predicate);
 }
 
 // Maps entities in SET property clause.
@@ -397,6 +386,46 @@ static void _AST_MapMergeClauseReference(AST *ast, const cypher_astnode_t *merge
 	}
 }
 
+// Map the LHS of "AS" projected entities. "WITH a as x order by x" will just collect a to the map.
+static void _AST_MapWithReferredEntities(AST *ast_segment, const cypher_astnode_t *with_clause) {
+	int projectionCount = cypher_ast_with_nprojections(with_clause);
+	for(uint i = 0 ; i < projectionCount; i ++) {
+		const cypher_astnode_t *projection = cypher_ast_with_get_projection(with_clause, i);
+		// The expression forms the LHS of the projection.
+		const cypher_astnode_t *exp = cypher_ast_projection_get_expression(projection);
+		_AST_MapExpression(ast_segment, exp);
+	}
+	// Add referenced aliases for WITH's ORDER BY entities.
+	const cypher_astnode_t *order_by = cypher_ast_with_get_order_by(with_clause);
+	if(order_by) _AST_MapOrderByReferences(ast_segment, order_by);
+}
+
+// Map the LHS of "AS" projected entities. "RETURN a as x order by x" will just collect a to the map.
+static void _AST_MapReturnReferredEntities(AST *ast_segment,
+										   const cypher_astnode_t *return_clause) {
+// Add referenced aliases for RETURN projections.
+	uint projectionCount = cypher_ast_return_nprojections(return_clause);
+	for(uint i = 0 ; i < projectionCount; i ++) {
+		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
+		// The expression forms the LHS of the projection.
+		const cypher_astnode_t *exp = cypher_ast_projection_get_expression(projection);
+		_AST_MapExpression(ast_segment, exp);
+	}
+	// Add referenced aliases for RETURN's ORDER BY entities.
+	const cypher_astnode_t *order_by = cypher_ast_return_get_order_by(return_clause);
+	if(order_by) _AST_MapOrderByReferences(ast_segment, order_by);
+}
+
+// Map the referred aliases (LHS) in entities projected by a WITH or RETURN clause.
+static void _AST_MapReferredEntities(AST *ast_segment, const cypher_astnode_t *project_clause) {
+	if(!project_clause) return;
+	cypher_astnode_type_t type = cypher_astnode_type(project_clause);
+	assert(type == CYPHER_AST_WITH || type == CYPHER_AST_RETURN);
+
+	if(type == CYPHER_AST_WITH) _AST_MapWithReferredEntities(ast_segment, project_clause);
+	else _AST_MapReturnReferredEntities(ast_segment, project_clause);
+}
+
 static void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *clause) {
 	if(!clause) return;
 
@@ -423,10 +452,6 @@ static void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *claus
 		const cypher_astnode_t *order_by = cypher_ast_with_get_order_by(clause);
 		if(order_by) _AST_MapOrderByReferences(ast, order_by);
 
-	} else if(type == CYPHER_AST_UNWIND) {
-		// Add referenced aliases for UNWIND clause.
-		_AST_MapUnwindReferences(ast, clause);
-
 	} else if(type == CYPHER_AST_MATCH) {
 		// Add referenced aliases from MATCH clause - inline filtered and explicit WHERE filter.
 		_AST_MapMatchClauseReferences(ast, clause);
@@ -442,7 +467,7 @@ static void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *claus
 }
 
 // Adds every reference entity in each clause.
-static void AST_BuildReferenceMap(AST *ast) {
+static void _AST_BuildReferenceMap(AST *ast) {
 	ast->referenced_entities = raxNew();
 	// Check every clause in this AST.
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
@@ -452,58 +477,6 @@ static void AST_BuildReferenceMap(AST *ast) {
 		_ASTClause_BuildReferenceMap(ast, clause);
 	}
 }
-
-// Maps the LHS of "AS" projected entities.
-static void _AST_MapProjectionExpression(AST *ast_segment, const cypher_astnode_t *projection) {
-	const cypher_astnode_t *expression = cypher_ast_projection_get_expression(projection);
-	cypher_astnode_type_t type = cypher_astnode_type(expression);
-	const cypher_astnode_t *identifier;
-	if(type == CYPHER_AST_IDENTIFIER) identifier = expression;
-	else {
-		assert(type == CYPHER_AST_PROPERTY_OPERATOR);
-		identifier = cypher_ast_property_operator_get_expression(expression);
-	}
-	const char *alias = cypher_ast_identifier_get_name(identifier);
-	raxInsert(ast_segment->referenced_entities, (unsigned char *)alias, strlen(alias), (void *)true,
-			  NULL);
-}
-
-// Map the LHS of "AS" projected entities. "WITH a as x order by x" will just collect a to the map.
-static void _AST_MapWithProjectedEntities(AST *ast_segment, const cypher_astnode_t *with_clause) {
-	int projectionCount = cypher_ast_with_nprojections(with_clause);
-	for(uint i = 0 ; i < projectionCount; i ++) {
-		const cypher_astnode_t *projection = cypher_ast_with_get_projection(with_clause, i);
-		_AST_MapProjectionExpression(ast_segment, projection);
-	}
-	// Add referenced aliases for WITH's ORDER BY entities.
-	const cypher_astnode_t *order_by = cypher_ast_with_get_order_by(with_clause);
-	if(order_by) _AST_MapOrderByReferences(ast_segment, order_by);
-}
-
-// Map the LHS of "AS" projected entities. "RETURN a as x order by x" will just collect a to the map.
-static void _AST_MapReturnProjectedEntities(AST *ast_segment,
-											const cypher_astnode_t *return_clause) {
-// Add referenced aliases for RETURN projections.
-	uint projectionCount = cypher_ast_return_nprojections(return_clause);
-	for(uint i = 0 ; i < projectionCount; i ++) {
-		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
-		_AST_MapProjectionExpression(ast_segment, projection);
-	}
-	// Add referenced aliases for RETURN's ORDER BY entities.
-	const cypher_astnode_t *order_by = cypher_ast_return_get_order_by(return_clause);
-	if(order_by) _AST_MapOrderByReferences(ast_segment, order_by);
-}
-
-// Map the LHS of "AS" projected entities from either WITH or RETURN caluse.
-static void _AST_MapProjectedEntities(AST *ast_segment, const cypher_astnode_t *project_clause) {
-	if(!project_clause) return;
-	cypher_astnode_type_t type = cypher_astnode_type(project_clause);
-	assert(type == CYPHER_AST_WITH || type == CYPHER_AST_RETURN);
-
-	if(type == CYPHER_AST_WITH) _AST_MapWithProjectedEntities(ast_segment, project_clause);
-	else _AST_MapReturnProjectedEntities(ast_segment, project_clause);
-}
-
 
 AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	AST *ast = rm_malloc(sizeof(AST));
@@ -521,15 +494,19 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	// TODO This overwrites the previously-held AST pointer, which could lead to inconsistencies
 	// in the future if we expect the variable to hold a different AST.
 	QueryCtx_SetAST(ast);
-	AST_BuildReferenceMap(ast);
+	_AST_BuildReferenceMap(ast);
 
 	// If the segments are split, the next clause is either return or with clause.
 	uint clause_count = cypher_ast_query_nclauses(master_ast->root);
 	if(clause_count > 1 && end_offset < clause_count) {
-		_AST_MapProjectedEntities(ast, cypher_ast_query_get_clause(master_ast->root, end_offset));
+		_AST_MapReferredEntities(ast, cypher_ast_query_get_clause(master_ast->root, end_offset));
 	}
 
 	return ast;
+}
+
+bool AST_AliasIsReferenced(AST *ast, const char *alias) {
+	return (raxFind(ast->referenced_entities, (unsigned char *)alias, strlen(alias)) != raxNotFound);
 }
 
 // TODO Consider augmenting libcypher-parser so that we don't need to perform this

@@ -30,8 +30,8 @@ static bool _highly_connected_node(const QGNode *n) {
 }
 
 static inline bool _referred_entity(const char *alias) {
-	assert(false);
-	return false;
+	AST *ast = QueryCtx_GetAST();
+	return AST_AliasIsReferenced(ast, alias);
 }
 
 /* Checks if given expression contains a variable length edge. */

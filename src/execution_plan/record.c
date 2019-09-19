@@ -37,7 +37,6 @@ uint Record_length(const Record r) {
 
 // Make sure record is able to hold len entries.
 void Record_Extend(Record *r, int len) {
-	assert(false); // TODO invalid logic
 	int original_len = Record_length(*r);
 	if(original_len >= len) return;
 
@@ -59,8 +58,9 @@ int Record_GetEntryIdx(Record r, const char *alias) {
 		idx = (void *)Record_length(r);
 		raxInsert(r->mapping, (unsigned char *)alias, strlen(alias), idx, NULL);
 
+		// TODO TODO should we ever get here?
 		// Make sure record has enough space to accommodate entry.
-		Record_Extend(&r, Record_length(r) + 1);
+		// Record_Extend(&r, Record_length(r) + 1);
 	}
 
 	return (int)idx;

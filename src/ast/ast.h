@@ -64,6 +64,9 @@ AST *AST_Build(cypher_parse_result_t *parse_result);
 
 AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset);
 
+// Returns true if the given alias is referenced within this AST segment.
+bool AST_AliasIsReferenced(AST *ast, const char *alias);
+
 // Convert an AST integer node (which is stored internally as a string) into an integer.
 long AST_ParseIntegerNode(const cypher_astnode_t *int_node);
 

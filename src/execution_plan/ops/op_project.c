@@ -42,16 +42,17 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", Init, Consume, Reset, NULL, Free, plan);
 
+	for(uint i = 0; i < op->exp_count; i ++) {
+		// The projected record will associate values with their resolved name
+		// to ensure that space is allocated for each entry.
+		OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
+	}
+
 	return (OpBase *)op;
 }
 
 static OpResult Init(OpBase *opBase) {
 	OpProject *op = (OpProject *)opBase;
-	for(uint i = 0; i < op->exp_count; i ++) {
-		// The projected record will associate values with their resolved name
-		// to ensure that space is allocated for each entry.
-		OpBase_Modifies(opBase, op->exps[i]->resolved_name);
-	}
 	AR_ExpNode **order_exps = _getOrderExpressions(opBase->parent);
 	if(order_exps) {
 		op->order_exps = order_exps;
