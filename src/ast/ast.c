@@ -222,11 +222,32 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
  * ==========================================================================*/
 
 
+void _AST_MapWhereClause(AST *ast, const cypher_astnode_t *predicate) {
+	cypher_astnode_type_t type = cypher_astnode_type(predicate);
+
+	if(type == CYPHER_AST_IDENTIFIER) {
+		const char	*identifierName = cypher_ast_identifier_get_name(predicate);
+		raxInsert(ast->referenced_entities, identifierName, strlen(identifierName), true, NULL);
+	} else if(type == CYPHER_AST_PROPERTY_OPERATOR) {
+		predicate = cypher_ast_property_operator_get_expression(predicate);
+		assert(cypher_astnode_type(predicate) == CYPHER_AST_IDENTIFIER);
+		const char	*identifierName = cypher_ast_identifier_get_name(predicate);
+		raxInsert(ast->referenced_entities, identifierName, strlen(identifierName), true, NULL);
+	} else {
+		uint child_count = cypher_astnode_nchildren(predicate);
+		for(uint i = 0; i < child_count; i++) {
+			const cypher_astnode_t *child = cypher_astnode_get_child(predicate, i);
+			// Recursively continue mapping.
+			_AST_MapWhereClause(ast, child);
+		}
+	}
+}
+
 void _AST_MapProjectionReference(AST *ast, const cypher_astnode_t *projection) {
 	const cypher_astnode_t *ast_identifier = cypher_ast_projection_get_alias(projection);
 	const char *identifierName = NULL;
 	if(ast_identifier == NULL) {
-		// The projection was not aliased
+		// The projection was not aliased.
 		ast_identifier = cypher_ast_projection_get_expression(projection);
 		assert(cypher_astnode_type(ast_identifier) == CYPHER_AST_IDENTIFIER);
 	}
@@ -293,6 +314,7 @@ static void _AST_MapMatchClauseReferences(AST *ast, const cypher_astnode_t *matc
 
 	// Where clause.
 	const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(matchClause);
+	if(predicate) _AST_MapWhereClause(ast, predicate);
 }
 
 static void _AST_MapSetClauseReferences(AST *ast, const cypher_astnode_t *set_clause) {
