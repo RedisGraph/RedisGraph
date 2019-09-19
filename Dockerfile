@@ -26,7 +26,7 @@ WORKDIR /data
 RUN set -ex;\
     mkdir -p "$LIBDIR";\
     apt-get update;\
-    apt-get install -y --no-install-recommends libgomp1;\
+    apt-get install -y --no-install-recommends libgomp1;
 
 COPY --from=builder /redisgraph/src/redisgraph.so "$LIBDIR"
 
