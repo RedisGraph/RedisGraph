@@ -317,20 +317,49 @@ static void _AST_MapMatchClauseReferences(AST *ast, const cypher_astnode_t *matc
 	if(predicate) _AST_MapWhereClause(ast, predicate);
 }
 
+static void _AST_MapSetPropertyReferences(AST *ast, const cypher_astnode_t *set_item) {
+	// Retrieve the alias being modified from the property descriptor.
+	const cypher_astnode_t *ast_prop = cypher_ast_set_property_get_property(set_item);
+	const cypher_astnode_t *ast_entity = cypher_ast_property_operator_get_expression(ast_prop);
+	assert(cypher_astnode_type(ast_entity) == CYPHER_AST_IDENTIFIER);
+
+	const char *alias = cypher_ast_identifier_get_name(ast_entity);
+	raxInsert(ast->referenced_entities, (unsigned char *)alias, strlen(alias), true, NULL);
+
+}
+
 static void _AST_MapSetClauseReferences(AST *ast, const cypher_astnode_t *set_clause) {
 	uint nitems = cypher_ast_set_nitems(set_clause);
 	for(uint i = 0; i < nitems; i++) {
 		// Get the SET directive at this index.
 		const cypher_astnode_t *set_item = cypher_ast_set_get_item(set_clause, i);
 		assert(cypher_astnode_type(set_item) == CYPHER_AST_SET_PROPERTY);
+		_AST_MapSetPropertyReferences(ast, set_item);
+	}
+}
 
-		// Retrieve the alias being modified from the property descriptor.
-		const cypher_astnode_t *ast_prop = cypher_ast_set_property_get_property(set_item);
-		const cypher_astnode_t *ast_entity = cypher_ast_property_operator_get_expression(ast_prop);
-		assert(cypher_astnode_type(ast_entity) == CYPHER_AST_IDENTIFIER);
-
-		const char *alias = cypher_ast_identifier_get_name(ast_entity);
-		raxInsert(ast->referenced_entities, (unsigned char *)alias, strlen(alias), true, NULL);
+static void _AST_MapMergeClauseReference(AST *ast, const cypher_astnode_t *merge_clause) {
+	const cypher_astnode_t *merge_path = cypher_ast_merge_get_pattern_path(merge_clause);
+	_AST_MapReferencedEntitiesInPath(ast, merge_path);
+	uint merge_actions = cypher_ast_merge_nactions(merge_clause);
+	for(uint i = 0; i < merge_actions; i++) {
+		const cypher_astnode_t *action = cypher_ast_merge_get_action(merge_clause, i);
+		cypher_astnode_type_t type = cypher_astnode_type(action);
+		if(type == CYPHER_AST_ON_CREATE) {
+			uint on_create_items = cypher_ast_on_create_nitems(action);
+			for(uint j = 0; j < on_create_items; j ++) {
+				const cypher_astnode_t *set_item = cypher_ast_on_create_get_item(action, j);
+				assert(cypher_astnode_type(set_item) == CYPHER_AST_SET_PROPERTY);
+				_AST_MapSetPropertyReferences(ast, set_item);
+			}
+		} else if(type == CYPHER_AST_ON_MATCH) {
+			uint on_match_items = cypher_ast_on_match_nitems(action);
+			for(uint j = 0; j < on_match_items; j ++) {
+				const cypher_astnode_t *set_item = cypher_ast_on_match_get_item(action, j);
+				assert(cypher_astnode_type(set_item) == CYPHER_AST_SET_PROPERTY);
+				_AST_MapSetPropertyReferences(ast, set_item);
+			}
+		}
 	}
 }
 
@@ -363,8 +392,7 @@ void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *clause) {
 		_AST_MapMatchClauseReferences(ast, clause);
 		uint numberOfChildren = cypher_astnode_nchildren(clause);
 	} else if(type == CYPHER_AST_MERGE) {
-		const cypher_astnode_t *merge_path = cypher_ast_merge_get_pattern_path(clause);
-		_AST_MapReferencedEntitiesInPath(ast, merge_path);
+		_AST_MapMergeClauseReference(ast, clause);
 	} else if(type == CYPHER_AST_SET) {
 		_AST_MapSetClauseReferences(ast, clause);
 	}
