@@ -80,3 +80,22 @@ class testQueryValidationFlow(FlowTestsBase):
         except redis.exceptions.ResponseError:
             # Expecting an error.
             pass
+
+    def test06_where_references(self):
+        try:
+            query = """MATCH (a) WHERE fake = true RETURN a"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass
+
+    def test07_with_references(self):
+        try:
+            query = """MATCH (a) WITH e RETURN e"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass
+

@@ -79,6 +79,18 @@ static void _AST_GetWithAliases(const cypher_astnode_t *node, rax *aliases) {
 	}
 }
 
+static void _AST_GetWithReferences(const cypher_astnode_t *node, rax *identifiers) {
+	if(!node) return;
+	if(cypher_astnode_type(node) != CYPHER_AST_WITH) return;
+	assert(identifiers);
+
+	uint num_with_projections = cypher_ast_with_nprojections(node);
+	for(uint i = 0; i < num_with_projections; i ++) {
+		const cypher_astnode_t *child = cypher_ast_with_get_projection(node, i);
+		_AST_GetIdentifiers(child, identifiers);
+	}
+}
+
 // Extract identifiers / aliases from a procedure call.
 static void _AST_GetProcCallAliases(const cypher_astnode_t *node, rax *identifiers) {
 	// CALL db.labels() yield label
@@ -1014,9 +1026,13 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identi
 	} else if(type == CYPHER_AST_CALL) {
 		// Get alias if one is provided; otherwise use the expression identifier
 		_AST_GetProcCallAliases(node, identifiers);
+	} else if(type == CYPHER_AST_MATCH) {
+		// Only collect the identifiers from the pattern in the MATCH clause,
+		// as the WHERE predicate refers to identifiers (rather than defining them).
+		const cypher_astnode_t *match_pattern = cypher_ast_match_get_pattern(node);
+		_AST_GetIdentifiers(match_pattern, identifiers);
 	} else if(type == CYPHER_AST_MERGE ||
 			  type == CYPHER_AST_UNWIND ||
-			  type == CYPHER_AST_MATCH ||
 			  type == CYPHER_AST_CREATE) {
 		_AST_GetIdentifiers(node, identifiers);
 	} else if(type == CYPHER_AST_CALL) {
@@ -1033,8 +1049,12 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identi
 static void _AST_GetReferredIdentifiers(const cypher_astnode_t *node, rax *identifiers) {
 	if(!node) return;
 	cypher_astnode_type_t type = cypher_astnode_type(node);
-	if(type == CYPHER_AST_SET || type == CYPHER_AST_RETURN || type == CYPHER_AST_DELETE ||
-	   type == CYPHER_AST_WITH) {
+	if(type == CYPHER_AST_MATCH) {
+		const cypher_astnode_t *where_clause = cypher_ast_match_get_predicate(node);
+		_AST_GetIdentifiers(where_clause, identifiers);
+	} else if(type == CYPHER_AST_WITH) {
+		_AST_GetWithReferences(node, identifiers);
+	} else if(type == CYPHER_AST_SET || type == CYPHER_AST_RETURN || type == CYPHER_AST_DELETE) {
 		_AST_GetIdentifiers(node, identifiers);
 	} else {
 		uint child_count = cypher_astnode_nchildren(node);
@@ -1054,11 +1074,20 @@ static AST_Validation _Validate_Aliases_DefinedInScope(const AST *ast, uint star
 
 	for(uint i = start_offset; i < end_offset; i ++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
+		if(cypher_astnode_type(clause) == CYPHER_AST_WITH) {
+			/* If this is a WITH clause, we only want to collect defined aliases if this is the start
+			 * of the segment, and only want to collect referred aliases if this is the end of the segment.
+			 * Otherwise, queries like "MATCH (a) WITH e RETURN e" would incorrectly register 'e' as a valid reference. */
+			if(i == start_offset) _AST_GetDefinedIdentifiers(clause, defined_aliases);
+			else if(i == end_offset - 1) _AST_GetReferredIdentifiers(clause, referred_identifiers);
+			continue;
+		}
+
 		// Get defined identifiers.
 		_AST_GetDefinedIdentifiers(clause, defined_aliases);
-		// Get referred identifiers except from the first clause in the scope,
-		// which can introduce aliases but not contain references.
-		if(i != start_offset) _AST_GetReferredIdentifiers(clause, referred_identifiers);
+
+		// Get referred identifiers.
+		_AST_GetReferredIdentifiers(clause, referred_identifiers);
 	}
 
 	raxIterator it;
@@ -1094,10 +1123,12 @@ static AST_Validation _Validate_Aliases_Defined(const AST *ast, char **undefined
 	if(with_clause_count > 0) {
 		uint *segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
 		for(uint i = 0; i < with_clause_count; i++) {
-			end_offset = segment_indices[i];
+			end_offset = segment_indices[i] + 1;
 			res = _Validate_Aliases_DefinedInScope(ast, start_offset, end_offset, undefined_alias);
 			if(res != AST_VALID) break;
-			start_offset = end_offset; // Update the start offset for the next scope
+			// Update the start offset for the next scope, decrementing by 1 to get entities introduced
+			// by the WITH clause.
+			start_offset = end_offset - 1;
 		}
 		array_free(segment_indices);
 		if(res != AST_VALID) return res;  // Return early if we've encountered an error
