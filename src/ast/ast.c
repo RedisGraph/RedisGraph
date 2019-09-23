@@ -355,6 +355,19 @@ static void _AST_MapSetClauseReferences(AST *ast, const cypher_astnode_t *set_cl
 	}
 }
 
+// Maps entities in DELETE clause.
+static void _AST_MapDeleteClauseReferences(AST *ast, const cypher_astnode_t *delete_clause) {
+	uint nitems = cypher_ast_delete_nexpressions(delete_clause);
+	for(uint i = 0; i < nitems; i++) {
+		const cypher_astnode_t *delete_exp = cypher_ast_delete_get_expression(delete_clause, i);
+
+		assert(cypher_astnode_type(delete_exp) == CYPHER_AST_IDENTIFIER);
+
+		const char *alias = cypher_ast_identifier_get_name(delete_exp);
+		_AST_UpdateRefMap(ast, alias);
+	}
+}
+
 // Maps entities in MERGE clause. Either by implicit filters, or modified entities by SET clause.
 static void _AST_MapMergeClauseReference(AST *ast, const cypher_astnode_t *merge_clause) {
 	// Collect implicitly filtered entities.
@@ -463,6 +476,9 @@ static void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *claus
 	} else if(type == CYPHER_AST_SET) {
 		// Add referenced aliases for SET clause.
 		_AST_MapSetClauseReferences(ast, clause);
+	} else if(type == CYPHER_AST_DELETE) {
+		// Add referenced aliases for DELETE clause.
+		_AST_MapDeleteClauseReferences(ast, clause);
 	}
 }
 
