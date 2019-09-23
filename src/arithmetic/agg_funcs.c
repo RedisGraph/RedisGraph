@@ -508,6 +508,73 @@ AggCtx *Agg_CollectFunc() {
 
 //------------------------------------------------------------------------
 
+typedef struct {
+	SIValue list;
+} __agg_collectDistinctCtx;
+
+int __agg_collectDistinctStep(AggCtx *ctx, SIValue *argv, int argc) {
+	// convert multiple values to array
+
+	assert(argc >= 0);
+	__agg_collectDistinctCtx *ac = Agg_FuncCtx(ctx);
+
+	// TODO: can this be migrated to Agg_CollectDistinctFunc?
+	if(ac->list.type == T_NULL) ac->list = SI_Array(argc);
+	for(int i = 0; i < argc; i ++) {
+		SIValue value = argv[i];
+		if(value.type == T_NULL) continue;
+		SIArray_Append(&ac->list, value);
+	}
+	return AGG_OK;
+}
+
+int __agg_collectDistinctReduceNext(AggCtx *ctx) {
+	__agg_collectDistinctCtx *ac = Agg_FuncCtx(ctx);
+
+	if(SIValue_IsNull(ac->list)) {
+		Agg_SetResult(ctx, ac->list);
+		return AGG_OK;
+	}
+
+	uint32_t item_count = SIArray_Length(ac->list);
+	if(item_count <= 1) {
+		Agg_SetResult(ctx, ac->list);
+		return AGG_OK;
+	}
+
+	SIValue *items = ac->list.array;
+	SIValue distinct_array = SI_Array(item_count);
+
+	/* Sort array, don't count duplicates */
+	QSORT(SIValue, items, item_count, SI_LT);
+
+	SIValue a = items[0];
+	SIValue b = SI_NullVal();
+
+	// Append first element.
+	SIArray_Append(&distinct_array, SI_CloneValue(a));
+
+	for(uint32_t i = 1; i < item_count; i++) {
+		b = items[i];
+		if(SIValue_Compare(a, b, NULL) != 0)  {
+			SIArray_Append(&distinct_array, SI_CloneValue(b));
+		}
+		a = b;
+	}
+	Agg_SetResult(ctx, distinct_array);
+	SIValue_Free(&ac->list);
+	return AGG_OK;
+}
+
+AggCtx *Agg_CollectDistinctFunc() {
+	__agg_collectDistinctCtx *ac = malloc(sizeof(__agg_collectDistinctCtx));
+	ac->list = SI_NullVal();
+
+	return Agg_Reduce(ac, __agg_collectDistinctStep, __agg_collectDistinctReduceNext);
+}
+
+//------------------------------------------------------------------------
+
 void Agg_RegisterFuncs() {
 	Agg_RegisterFunc("sum", Agg_SumFunc);
 	Agg_RegisterFunc("avg", Agg_AvgFunc);
@@ -520,4 +587,5 @@ void Agg_RegisterFuncs() {
 	Agg_RegisterFunc("stDev", Agg_StdevFunc);
 	Agg_RegisterFunc("stDevP", Agg_StdevPFunc);
 	Agg_RegisterFunc("collect", Agg_CollectFunc);
+	Agg_RegisterFunc("collectDistinct", Agg_CollectDistinctFunc);
 }

@@ -242,8 +242,7 @@ Feature: AggregationAcceptance
             | 0                      |
         And no side effects
 
-
-    @skip
+    
     Scenario: Collect distinct nulls
         Given any graph
         When executing query:
@@ -257,7 +256,6 @@ Feature: AggregationAcceptance
         And no side effects
 
 
-    @skip
     Scenario: Collect distinct values mixed with nulls
         Given any graph
         When executing query:
