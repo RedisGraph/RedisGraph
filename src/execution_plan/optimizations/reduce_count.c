@@ -229,7 +229,8 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	/* Construct a constant expression, used by a new
 	 * projection operation. */
 	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(edgeCount);
-	AR_EXP_BuildResolvedName(exp); // The new expression must be aliased to populate the Record.
+	// The new expression must be aliased to populate the Record.
+	exp->resolved_name = opAggregate->exps[0]->resolved_name;
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1); // TODO memory leak!
 	exps = array_append(exps, exp);
 

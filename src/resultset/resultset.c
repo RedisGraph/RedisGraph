@@ -70,6 +70,7 @@ static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
 	set->formatter->EmitHeader(set->ctx, set->columns, r);
 
 	set->header_emitted = true;
+	set->column_count = array_len(set->columns);
 
 	// We don't know at this point the number of records we're about to return.
 	RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
@@ -103,7 +104,7 @@ int ResultSet_AddRecord(ResultSet *set, Record r) {
 	set->recordCount++;
 
 	// Output the current record using the defined formatter
-	set->formatter->EmitRecord(set->ctx, set->gc, r);
+	set->formatter->EmitRecord(set->ctx, set->gc, r, set->column_count);
 
 	return RESULTSET_OK;
 }

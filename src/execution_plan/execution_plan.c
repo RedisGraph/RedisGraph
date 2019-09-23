@@ -47,6 +47,15 @@ static inline void _ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_ro
 	plan->root = new_root;
 }
 
+static inline const char **_BuildColumnNames(AR_ExpNode **exps) {
+	uint projection_count = array_len(exps);
+	const char **columns = array_new(const char *, projection_count);
+	for(uint i = 0; i < projection_count; i++) {
+		columns = array_append(columns, exps[i]->resolved_name);
+	}
+	return columns;
+}
+
 /* In a query with a RETURN *, build projections for all explicit aliases
  * in previous clauses. */
 static AR_ExpNode **_ReturnExpandAll(AST *ast) {
@@ -729,11 +738,26 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 	const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
 	cypher_astnode_type_t last_clause_type = cypher_astnode_type(last_clause);
 	if(last_clause_type == CYPHER_AST_RETURN) {
+		if(result_set) {
+			// Prepare column names for the ResultSet.
+			/* TODO The AST-based approach doesn't handle RETURN *
+			 * If we don't come up with a better alternate than the projection-seeking logic here,
+			 * standardize and properly abstract it. */
+			/* if(result_set) result_set->columns = AST_BuildReturnColumns(last_clause); */
+
+			OpBase *op = plan->root;
+			while(!(op->type & (OPType_PROJECT | OPType_AGGREGATE))) {
+				op = op->children[0];
+			}
+			if(op->type == OPType_PROJECT) {
+				result_set->columns = _BuildColumnNames(((OpProject *)op)->exps);
+			} else if(op->type == OPType_AGGREGATE) {
+				result_set->columns = _BuildColumnNames(((OpAggregate *)op)->exps);
+			}
+		}
+
 		OpBase *results_op = NewResultsOp(plan, result_set);
 		_ExecutionPlan_UpdateRoot(plan, results_op);
-
-		// Prepare column names for the ResultSet.
-		if(result_set) result_set->columns = AST_BuildReturnColumns(last_clause);
 	} else if(last_clause_type == CYPHER_AST_CALL) {
 		assert(plan->root->type == OPType_PROC_CALL);
 		OpProcCall *last_op = (OpProcCall *)plan->root;
