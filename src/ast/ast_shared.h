@@ -57,8 +57,6 @@ typedef struct {
 typedef struct {
 	QGEdge *edge;
 	PropertyMap *properties;
-	int src_idx;
-	int dest_idx;
 	int edge_idx;
 } EdgeCreateCtx;
 

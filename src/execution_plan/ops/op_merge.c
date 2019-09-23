@@ -91,8 +91,10 @@ static void _CommitEdges(OpMerge *op, Record r) {
 		if(!schema) schema = GraphContext_AddSchema(op->gc, edge_blueprint->reltypes[0], SCHEMA_EDGE);
 
 		// Node are already created, get them from record.
-		EntityID srcId = ENTITY_GET_ID(Record_GetNode(r, edge_ctx->src_idx));
-		EntityID destId = ENTITY_GET_ID(Record_GetNode(r, edge_ctx->dest_idx));
+		int src_idx = Record_GetEntryIdx(r, edge_ctx->edge->src->alias); // TODO tmp
+		int dest_idx = Record_GetEntryIdx(r, edge_ctx->edge->dest->alias); // TODO tmp
+		EntityID srcId = ENTITY_GET_ID(Record_GetNode(r, src_idx));
+		EntityID destId = ENTITY_GET_ID(Record_GetNode(r, dest_idx));
 
 		assert(Graph_ConnectNodes(op->gc->g, srcId, destId, schema->id, created_edge));
 

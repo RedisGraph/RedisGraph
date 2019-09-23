@@ -113,8 +113,10 @@ void _CreateEdges(OpCreate *op, Record r) {
 		QGEdge *e = op->edges_to_create[i].edge;
 
 		/* Retrieve source and dest nodes. */
-		Node *src_node = Record_GetNode(r, op->edges_to_create[i].src_idx);
-		Node *dest_node = Record_GetNode(r, op->edges_to_create[i].dest_idx);
+		int src_idx = Record_GetEntryIdx(r, e->src->alias); // TODO tmp
+		int dest_idx = Record_GetEntryIdx(r, e->dest->alias); // TODO tmp
+		Node *src_node = Record_GetNode(r, src_idx);
+		Node *dest_node = Record_GetNode(r, dest_idx);
 
 		/* Create the actual edge. */
 		Edge *newEdge = Record_GetEdge(r, op->edges_to_create[i].edge_idx);
