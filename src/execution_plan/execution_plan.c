@@ -618,14 +618,6 @@ static ExecutionPlan *_NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, A
 		_ExecutionPlanSegment_ConvertClause(gc, ast, plan, stats, clause);
 	}
 
-	// The root operation is OpResults only if the query culminates in a RETURN or CALL clause.
-	cypher_astnode_type_t last_clause_type = cypher_astnode_type(cypher_ast_query_get_clause(ast->root,
-																 clause_count - 1));
-	if(last_clause_type == CYPHER_AST_RETURN || last_clause_type == CYPHER_AST_CALL) {
-		OpBase *results_op = NewResultsOp(plan, result_set);
-		_ExecutionPlan_UpdateRoot(plan, results_op);
-	}
-
 	if(plan->filter_tree) _ExecutionPlan_PlaceFilterOps(plan);
 
 	return plan;
@@ -681,7 +673,6 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		OpBase **taps = array_new(OpBase *, 1);
 		ExecutionPlan_Taps(current_segment->root, &taps);
 		bool has_taps = (array_len(taps) > 0);
-		array_free(taps);
 
 		// Does current execution plan contains taps?
 		if(has_taps) {
@@ -692,6 +683,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 			OpBase *leaf = _ExecutionPlan_LocateLeaf(current_segment->root);
 			ExecutionPlan_AddOp(leaf, prev_root);
 		}
+		array_free(taps);
 	}
 
 	ExecutionPlan *plan = segments[segment_count - 1];
@@ -706,6 +698,20 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		QueryCtx_EmitException();
 		return NULL;
 	}
+
+	// The root operation is OpResults only if the query culminates in a RETURN or CALL clause.
+	const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
+	cypher_astnode_type_t last_clause_type = cypher_astnode_type(last_clause);
+	if(last_clause_type == CYPHER_AST_RETURN) {
+		OpBase *results_op = NewResultsOp(plan, result_set);
+		_ExecutionPlan_UpdateRoot(plan, results_op);
+
+		// Prepare column names for the ResultSet.
+		if(result_set) result_set->columns = AST_BuildReturnColumns(last_clause);
+	} else if(last_clause_type == CYPHER_AST_CALL) {
+		// TODO
+	}
+
 
 	// Optimize the operations in the ExecutionPlan.
 	optimizePlan(gc, plan);

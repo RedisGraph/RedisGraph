@@ -31,8 +31,6 @@ typedef struct {
 
 ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact);
 
-void ResultSet_BuildColumns(ResultSet *set, AR_ExpNode **projections);
-
 int ResultSet_AddRecord(ResultSet *set, Record r);
 
 void ResultSet_Replay(ResultSet *set);

@@ -96,18 +96,6 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact) {
 	return set;
 }
 
-void ResultSet_BuildColumns(ResultSet *set, AR_ExpNode **projections) {
-	if(projections == NULL) return;
-
-	uint projection_count = array_len(projections);
-	set->column_count = projection_count;
-	set->columns = array_new(const char *, projection_count);
-
-	for(uint i = 0; i < projection_count; i ++) {
-		set->columns = array_append(set->columns, projections[i]->resolved_name);
-	}
-}
-
 int ResultSet_AddRecord(ResultSet *set, Record r) {
 	// Prepare response arrays and emit the header if this is the first Record encountered
 	if(set->header_emitted == false) _ResultSet_ReplyWithPreamble(set, r);

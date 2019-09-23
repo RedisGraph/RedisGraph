@@ -548,6 +548,28 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 	return aggregated;
 }
 
+const char **AST_BuildReturnColumns(const cypher_astnode_t *return_clause) {
+	uint projection_count = cypher_ast_return_nprojections(return_clause);
+	assert(projection_count > 0);
+
+	const char **columns = array_new(const char *, projection_count);
+
+	for(uint i = 0; i < projection_count; i ++) {
+		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
+		// Attempt to retrieve an alias node.
+		const cypher_astnode_t *ast_identifier = cypher_ast_projection_get_alias(projection);
+		// The projection was not aliased, so the projection itself must be an identifier.
+		if(!ast_identifier) ast_identifier = cypher_ast_projection_get_expression(projection);
+		assert(cypher_astnode_type(ast_identifier) == CYPHER_AST_IDENTIFIER);
+
+		// Retrieve the alias string.
+		const char *identifier = cypher_ast_identifier_get_name(ast_identifier);
+		columns = array_append(columns, identifier);
+	}
+
+	return columns;
+}
+
 // Determine the maximum number of records
 // which will be considered when evaluating an algebraic expression.
 int TraverseRecordCap(const AST *ast) {
