@@ -73,11 +73,13 @@ static AR_ExpNode *AR_EXP_NewOpNodeFromAST(AST_Operator op, uint child_count) {
 static AR_ExpNode *_AR_EXP_FromApplyExpression(RecordMap *record_map,
 											   const cypher_astnode_t *expr) {
 	// TODO handle CYPHER_AST_APPLY_ALL_OPERATOR
+	AR_ExpNode *op;
 	const cypher_astnode_t *func_node = cypher_ast_apply_operator_get_func_name(expr);
 	const char *func_name = cypher_ast_function_name_get_value(func_node);
-	// TODO When implementing calls like COUNT(DISTINCT), use cypher_ast_apply_operator_get_distinct()
 	unsigned int arg_count = cypher_ast_apply_operator_narguments(expr);
-	AR_ExpNode *op = AR_EXP_NewOpNode((char *)func_name, arg_count);
+	bool distinct = cypher_ast_apply_operator_get_distinct(expr);
+	if(distinct) op = AR_EXP_NewDistinctOpNode(func_name, arg_count);
+	else op = AR_EXP_NewOpNode(func_name, arg_count);
 
 	for(unsigned int i = 0; i < arg_count; i ++) {
 		const cypher_astnode_t *arg = cypher_ast_apply_operator_get_argument(expr, i);
