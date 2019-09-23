@@ -28,6 +28,20 @@ static inline OpBase *_ExecutionPlan_LocateLeaf(OpBase *root) {
 	return _ExecutionPlan_LocateLeaf(root->children[0]);
 }
 
+static inline OpBase *_ExecutionPlan_LocateParentProjection(OpBase *root) {
+	assert(root);
+	if(root->type & (OPType_PROJECT | OPType_AGGREGATE)) return root;
+	return _ExecutionPlan_LocateParentProjection(root->parent);
+}
+
+static inline OpBase *_ExecutionPlan_FindConnectingOp(OpBase *root) {
+	// Find the leftmost leaf.
+	OpBase *leaf = _ExecutionPlan_LocateLeaf(root);
+
+	// Traverse upwards until an aggregate/project op is found.
+	return _ExecutionPlan_LocateParentProjection(leaf);
+}
+
 static inline void _ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_root) {
 	if(plan->root) ExecutionPlan_NewRoot(plan->root, new_root);
 	plan->root = new_root;
@@ -264,7 +278,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 	/* If we have multiple graph components, we'll join each chain of traversals
 	 * under a Cartesian Product root operation. */
 	OpBase *cartesianProduct = NULL;
-	if(connectedComponentsCount > 1) {
+	if(connectedComponentsCount > 1 || plan->root) {
 		cartesianProduct = NewCartesianProductOp(plan);
 		_ExecutionPlan_UpdateRoot(plan, cartesianProduct);
 	}
@@ -325,7 +339,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			rm_free(exps);
 		}
 
-		if(connectedComponentsCount > 1) {
+		if(cartesianProduct) {
 			// Add this traversal chain as a child under the Cartesian Product.
 			ExecutionPlan_AddOp(cartesianProduct, root);
 		} else {
@@ -394,6 +408,7 @@ static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan) {
 		 * Introduce filter op right below located op. */
 		OpBase *filter_op = NewFilterOp(plan, tree);
 		ExecutionPlan_PushBelow(op, filter_op);
+		if(op == plan->root) plan->root = filter_op; // TODO probably better solutions than this
 		raxFree(references);
 	}
 	Vector_Free(sub_trees);
@@ -553,10 +568,15 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 												ExecutionPlan *plan, ResultSetStatistics *stats, const cypher_astnode_t *clause) {
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
 	// Because 't' is set using the offsetof() call, it cannot be used in switch statements.
-	if(t == CYPHER_AST_MATCH || t == CYPHER_AST_CALL) {
-		// MATCH and CALL clauses are processed before looping over all clauses.
-		// TODO This should be changed later
-		return;
+	if(t == CYPHER_AST_MATCH) {
+		// TODO tmp
+		if(ExecutionPlan_LocateOp(plan->root, OPType_NODE_BY_LABEL_SCAN) ||
+		   ExecutionPlan_LocateOp(plan->root, OPType_ALL_NODE_SCAN)) {
+			return;
+		}
+		_ExecutionPlan_ProcessQueryGraph(plan, plan->query_graph, ast, plan->filter_tree);
+	} else if(t == CYPHER_AST_CALL) {
+		_buildCallOp(ast, plan, clause);
 	} else if(t == CYPHER_AST_CREATE) {
 		// Only add at most one Create op per plan. TODO Revisit and improve this logic.
 		if(ExecutionPlan_LocateOp(plan->root, OPType_CREATE)) return;
@@ -564,6 +584,7 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 	} else if(t == CYPHER_AST_UNWIND) {
 		_buildUnwindOp(plan, clause);
 	} else if(t == CYPHER_AST_MERGE) {
+		_ExecutionPlan_ProcessQueryGraph(plan, plan->query_graph, ast, plan->filter_tree); // TODO tmp
 		_buildMergeOp(gc, ast, plan, clause, stats);
 	} else if(t == CYPHER_AST_SET) {
 		_buildUpdateOp(gc, plan, clause, stats);
@@ -600,13 +621,13 @@ static ExecutionPlan *_NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, A
 	 * This is currently necessary to extend the segment's projections if necesary
 	 * and in order to build the plan for queries of forms like CALL..MATCH properly.
 	 * TODO Fix this so that CALL clauses are handled in the ConvertClause loop. */
-	const cypher_astnode_t *call_clause = AST_GetClause(ast, CYPHER_AST_CALL);
-	if(call_clause) _buildCallOp(ast, plan, call_clause);
+	// const cypher_astnode_t *call_clause = AST_GetClause(ast, CYPHER_AST_CALL);
+	// if(call_clause) _buildCallOp(ast, plan, call_clause);
 
 	// Build traversal operations for every connected component in the QueryGraph
-	if(AST_ContainsClause(ast, CYPHER_AST_MATCH) || AST_ContainsClause(ast, CYPHER_AST_MERGE)) {
-		_ExecutionPlan_ProcessQueryGraph(plan, qg, ast, filter_tree);
-	}
+	// if(AST_ContainsClause(ast, CYPHER_AST_MATCH) || AST_ContainsClause(ast, CYPHER_AST_MERGE)) {
+	// _ExecutionPlan_ProcessQueryGraph(plan, qg, ast, filter_tree);
+	// }
 
 	// If we are in a querying context, retrieve a pointer to the statistics for operations
 	// like DELETE that only produce metadata.
@@ -670,6 +691,10 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		ExecutionPlan *current_segment = segments[i];
 
 		OpBase *prev_root = prev_segment->root;
+		OpBase *connecting_op = _ExecutionPlan_FindConnectingOp(current_segment->root);
+		assert(connecting_op->childCount == 0);
+		ExecutionPlan_AddOp(connecting_op, prev_root);
+		/*
 		OpBase **taps = array_new(OpBase *, 1);
 		ExecutionPlan_Taps(current_segment->root, &taps);
 		bool has_taps = (array_len(taps) > 0);
@@ -684,6 +709,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 			ExecutionPlan_AddOp(leaf, prev_root);
 		}
 		array_free(taps);
+		*/
 	}
 
 	ExecutionPlan *plan = segments[segment_count - 1];
@@ -709,7 +735,13 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		// Prepare column names for the ResultSet.
 		if(result_set) result_set->columns = AST_BuildReturnColumns(last_clause);
 	} else if(last_clause_type == CYPHER_AST_CALL) {
-		// TODO
+		assert(plan->root->type == OPType_PROC_CALL);
+		OpProcCall *last_op = (OpProcCall *)plan->root;
+		// Prepare column names for the ResultSet.
+		if(result_set) result_set->columns = last_op->output;
+
+		OpBase *results_op = NewResultsOp(plan, result_set);
+		_ExecutionPlan_UpdateRoot(plan, results_op);
 	}
 
 

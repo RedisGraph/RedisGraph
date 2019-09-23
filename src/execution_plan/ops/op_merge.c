@@ -139,12 +139,14 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
 
 	int node_count = array_len(op->nodes_to_merge);
 	for(int i = 0; i < node_count; i++) {
+		// TODO unsafe assumption
 		assert(OpBase_Aware((OpBase *)op, op->nodes_to_merge[i].node->alias,
 							&op->nodes_to_merge[i].node_idx));
 	}
 
 	int edge_count = array_len(op->edges_to_merge);
 	for(int i = 0; i < edge_count; i++) {
+		// TODO unsafe assumption
 		assert(OpBase_Aware((OpBase *)op, op->edges_to_merge[i].edge->alias,
 							&op->edges_to_merge[i].edge_idx));
 	}

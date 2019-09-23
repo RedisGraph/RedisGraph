@@ -323,6 +323,8 @@ static OpResult Reset(OpBase *opBase) {
 		op->group_iter = NULL;
 	}
 
+	op->group = NULL;
+
 	return OP_OK;
 }
 
@@ -354,5 +356,7 @@ static void Free(OpBase *opBase) {
 		FreeGroupCache(op->groups);
 		op->groups = NULL;
 	}
+
+	op->group = NULL;
 }
 

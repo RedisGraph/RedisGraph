@@ -16,7 +16,7 @@ OpBase *NewFilterOp(const ExecutionPlan *plan, FT_FilterNode *filterTree) {
 	op->filterTree = filterTree;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_FILTER, "OpFilter", NULL, Consume, Reset, NULL, Free, plan);
+	OpBase_Init((OpBase *)op, OPType_FILTER, "Filter", NULL, Consume, Reset, NULL, Free, plan);
 
 	return (OpBase *)op;
 }
