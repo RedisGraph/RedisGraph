@@ -134,7 +134,7 @@ static inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, 
 					   C,                   // Output
 					   GrB_NULL,            // Mask
 					   GrB_NULL,            // Accumulator
-					   GxB_LAND_LOR_BOOL,   // Semiring
+					   GxB_LOR_LAND_BOOL,   // Semiring
 					   A,                   // First matrix
 					   B,                   // Second matrix
 					   desc                 // Descriptor
