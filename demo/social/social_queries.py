@@ -408,6 +408,28 @@ number_of_paths_to_places_visited = QueryInfo(
                      ['USA', 14]]
 )
 
+pagerank_friends = QueryInfo(
+    query="""CALL algo.pageRank('person', 'friend') YIELD node, score
+             RETURN node.name
+             ORDER BY score DESC""",
+    description='Pagerank friends',
+    max_run_time_ms=1.0,
+    expected_result=[['Valerie Abigail Arad'],
+                     ['Shelly Laslo Rooz'],
+                     ['Jane Chernomorin'],
+                     ['Noam Nativ'],
+                     ['Mor Yesharim'],
+                     ['Lucy Yanfital'],
+                     ['Gal Derriere'],
+                     ['Tal Doron'],
+                     ['Ori Laslo'],
+                     ['Omri Traub'],
+                     ['Alon Fital'],
+                     ['Ailon Velger'],
+                     ['Boaz Arad'],
+                     ['Roi Lipman']]
+)
+
 delete_friendships_query = QueryInfo(
     query="""MATCH (ME:person {name:'Roi Lipman'})-[e:friend]->() DELETE e""",
     description='Delete frienships',
@@ -468,6 +490,7 @@ queries_info = [
     friends_age_statistics_query,
     all_paths_leads_to_greece_query,
     number_of_paths_to_places_visited,
+    pagerank_friends,
     delete_friendships_query,
     delete_person_query,
     post_delete_label_query
