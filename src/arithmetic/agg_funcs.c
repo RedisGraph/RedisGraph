@@ -9,6 +9,7 @@
 #include "aggregate.h"
 #include "repository.h"
 #include "../value.h"
+#include "../util/arr.h"
 #include "../util/qsort.h"
 #include <assert.h>
 #include <math.h>
@@ -16,6 +17,8 @@
 
 
 #define ISLT(a,b) ((*a) < (*b))
+
+#define SI_LT(a,b) (SIValue_Compare((*a), (*b), NULL) > 0)
 
 typedef struct {
 	size_t num;
@@ -217,6 +220,57 @@ AggCtx *Agg_CountFunc() {
 	ac->count = 0;
 
 	return Agg_Reduce(ac, __agg_countStep, __agg_countReduceNext);
+}
+
+//------------------------------------------------------------------------
+
+typedef struct {
+	SIValue *values;
+} __agg_countDistinctCtx;
+
+int __agg_countDistinctStep(AggCtx *ctx, SIValue *argv, int argc) {
+	assert(argc == 1);
+	__agg_countDistinctCtx *ac = Agg_FuncCtx(ctx);
+	if(SIValue_IsNull(argv[0])) return AGG_OK;
+
+	ac->values = array_append(ac->values, SI_CloneValue(argv[0]));
+	return AGG_OK;
+}
+
+int __agg_countDistinctReduceNext(AggCtx *ctx) {
+	__agg_countDistinctCtx *ac = Agg_FuncCtx(ctx);
+
+	uint32_t item_count = array_len(ac->values);
+	if(item_count <= 1) {
+		Agg_SetResult(ctx, SI_LongVal(item_count));
+		return AGG_OK;
+	}
+
+	/* Sort array, don't count duplicates */
+	QSORT(SIValue, ac->values, item_count, SI_LT);
+
+	uint32_t distinct = 1;  // We've got atleast one item.
+	SIValue a = ac->values[0];
+	SIValue b = SI_NullVal();
+	for(uint32_t i = 1; i < item_count; i++) {
+		b = ac->values[i];
+		if(SIValue_Compare(a, b, NULL) != 0) distinct++;
+		SIValue_Free(&a);
+		a = b;
+	}
+	if(!SIValue_IsNull(b)) SIValue_Free(&b);
+
+	Agg_SetResult(ctx, SI_LongVal(distinct));
+
+	array_free(ac->values);
+	return AGG_OK;
+}
+
+AggCtx *Agg_CountDistinctFunc() {
+	__agg_countDistinctCtx *ac = malloc(sizeof(__agg_countCtx));
+	ac->values = array_new(SIValue, 0);
+
+	return Agg_Reduce(ac, __agg_countDistinctStep, __agg_countDistinctReduceNext);
 }
 
 //------------------------------------------------------------------------
@@ -460,6 +514,7 @@ void Agg_RegisterFuncs() {
 	Agg_RegisterFunc("max", Agg_MaxFunc);
 	Agg_RegisterFunc("min", Agg_MinFunc);
 	Agg_RegisterFunc("count", Agg_CountFunc);
+	Agg_RegisterFunc("countDistinct", Agg_CountDistinctFunc);
 	Agg_RegisterFunc("percentileDisc", Agg_PercDiscFunc);
 	Agg_RegisterFunc("percentileCont", Agg_PercContFunc);
 	Agg_RegisterFunc("stDev", Agg_StdevFunc);

@@ -59,7 +59,12 @@ static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 }
 
 static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
-	AR_ExpNode *clone = AR_EXP_NewOpNode(exp->op.func_name, exp->op.child_count);
+	AR_ExpNode *clone;
+	if(exp->op.distinct) {
+		clone = AR_EXP_NewDistinctOpNode(exp->op.func_name, exp->op.child_count);
+	} else {
+		clone = AR_EXP_NewOpNode(exp->op.func_name, exp->op.child_count);
+	}
 	for(uint i = 0; i < exp->op.child_count; i++) {
 		AR_ExpNode *child = AR_EXP_Clone(exp->op.children[i]);
 		clone->op.children[i] = child;
@@ -72,6 +77,7 @@ AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 
 	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
 	node->type = AR_EXP_OP;
+	node->op.distinct = false;
 	node->op.func_name = func_name;
 	node->op.child_count = child_count;
 	node->op.children = rm_malloc(child_count * sizeof(AR_ExpNode *));
@@ -92,6 +98,31 @@ AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 		node->op.agg_func = agg_func;
 		node->op.type = AR_OP_AGGREGATE;
 	}
+
+	return node;
+}
+
+AR_ExpNode *AR_EXP_NewDistinctOpNode(const char *func_name, uint child_count) {
+	assert(func_name);
+
+	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
+	node->type = AR_EXP_OP;
+	node->op.distinct = true;
+	node->op.func_name = func_name;
+	node->op.child_count = child_count;
+	node->op.children = rm_malloc(child_count * sizeof(AR_ExpNode *));
+
+	char *aggregated_func_name;
+	asprintf(&aggregated_func_name, "%sDistinct", func_name);
+
+	AggCtx *agg_func;
+	Agg_GetFunc(aggregated_func_name, &agg_func);
+	free(aggregated_func_name);
+
+	/* TODO: handle Unknown function. */
+	assert(agg_func != NULL);
+	node->op.agg_func = agg_func;
+	node->op.type = AR_OP_AGGREGATE;
 
 	return node;
 }
