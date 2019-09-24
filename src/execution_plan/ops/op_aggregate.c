@@ -244,7 +244,7 @@ static Record _handoff(OpAggregate *op) {
 			res = group->keys[keyIdx++];
 			// Key values are shared with the Record, as they'll be freed with the group cache.
 			res = SI_ShareValue(res);
-			int rec_idx = Record_GetEntryIdx(r, op->exps[i]->resolved_name);
+			int rec_idx = Record_GetEntryIdx(r, op->order_exps[i]->resolved_name);
 			Record_AddScalar(r, rec_idx, res);
 		}
 	}

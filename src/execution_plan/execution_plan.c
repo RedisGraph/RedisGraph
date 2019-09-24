@@ -287,7 +287,10 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 	/* If we have multiple graph components, we'll join each chain of traversals
 	 * under a Cartesian Product root operation. */
 	OpBase *cartesianProduct = NULL;
-	if(connectedComponentsCount > 1 || plan->root) {
+	// TODO TODO clarify and abstract this logic (we're trying to capture the
+	// case when a WITH projection has already been added to this segment)
+	if(connectedComponentsCount > 1 || (plan->root &&
+										(plan->root->type & (OPType_PROJECT | OPType_AGGREGATE)))) {
 		cartesianProduct = NewCartesianProductOp(plan);
 		_ExecutionPlan_UpdateRoot(plan, cartesianProduct);
 	}
@@ -356,33 +359,6 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			if(plan->root) ExecutionPlan_AddOp(plan->root, root);
 			else _ExecutionPlan_UpdateRoot(plan, root);
 		}
-	}
-}
-
-/* Build projections from this AST's WITH, RETURN, and ORDER clauses. */
-static void _ExecutionPlan_BuildProjections(AST *ast, ExecutionPlan *plan,
-											AR_ExpNode **prev_projections) {
-	// Retrieve a RETURN clause if one is specified in this AST
-	const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
-	// Retrieve a WITH clause if one is specified in this AST
-	const cypher_astnode_t *with_clause = AST_GetClause(ast, CYPHER_AST_WITH);
-	// We cannot have both a RETURN and WITH clause
-	assert(!(ret_clause && with_clause));
-	AR_ExpNode **projections = NULL;
-	if(ret_clause) {
-		projections = _BuildReturnExpressions(ret_clause, ast);
-		// If we have a RETURN * and previous WITH projections, include those projections.
-		if(cypher_ast_return_has_include_existing(ret_clause) && prev_projections) {
-			uint prev_projection_count = array_len(prev_projections);
-			for(uint i = 0; i < prev_projection_count; i++) {
-				// Build a new projection that's just the WITH identifier
-				AR_ExpNode *projection = AR_EXP_NewVariableOperandNode(prev_projections[i]->resolved_name, NULL);
-				projection->resolved_name = prev_projections[i]->resolved_name;
-				projections = array_append(projections, projection);
-			}
-		}
-	} else if(with_clause) {
-		projections = _BuildWithExpressions(with_clause);
 	}
 }
 
@@ -659,7 +635,9 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 
 	/* Execution plans are created in 1 or more segments. Every WITH clause demarcates
 	 * the beginning of a new segment, and a RETURN clause (if present) forms its own segment. */
-	bool query_has_return = AST_ContainsReturn(ast);
+	const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
+	cypher_astnode_type_t last_clause_type = cypher_astnode_type(last_clause);
+	bool query_has_return = (last_clause_type == CYPHER_AST_RETURN);
 
 	// Retrieve the indices of each WITH clause to properly set the bounds of each segment.
 	uint *segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
@@ -735,8 +713,6 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 	}
 
 	// The root operation is OpResults only if the query culminates in a RETURN or CALL clause.
-	const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
-	cypher_astnode_type_t last_clause_type = cypher_astnode_type(last_clause);
 	if(last_clause_type == CYPHER_AST_RETURN) {
 		if(result_set) {
 			// Prepare column names for the ResultSet.
