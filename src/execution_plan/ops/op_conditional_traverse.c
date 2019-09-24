@@ -61,7 +61,16 @@ int CondTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
 	offset += snprintf(buff + offset, buff_len - offset, "%s | ", op->op.name);
 	offset += QGNode_ToString(op->ae->src_node, buff + offset, buff_len - offset);
 	if(op->ae->edge) {
-		if(op->ae->operands[0].transpose) {
+		// Determine whether thise edge should be printed left-to-right or right-to-left.
+		bool transpose = false;
+		for(uint i = 0; i < op->ae->operand_count; i ++) {
+			if(op->ae->operands[i].transpose) {
+				transpose = true;
+				break;
+			}
+		}
+
+		if(transpose) {
 			offset += snprintf(buff + offset, buff_len - offset, "<-");
 			offset += QGEdge_ToString(op->ae->edge, buff + offset, buff_len - offset);
 			offset += snprintf(buff + offset, buff_len - offset, "-");
@@ -125,11 +134,21 @@ OpBase *NewCondTraverseOp(Graph *g, RecordMap *record_map, AlgebraicExpression *
 
 OpResult CondTraverseInit(OpBase *opBase) {
 	CondTraverse *op = (CondTraverse *)opBase;
-	size_t op_idx = 0;
 	AlgebraicExpression *exp = op->ae;
-	// If the input is set to be transposed on the first expression evaluation,
-	// the source and destination nodes will be swapped in the record.
-	op->transposed_edge = exp->edge && exp->operands[op_idx].transpose;
+
+	// Nothing needs to be done if we're not populating an edge.
+	if(exp->edge == NULL) return OP_OK;
+
+	/* Determine whether we're traversing a transposed edge matrix,
+	 * in which case the source and destination nodes will be swapped in the record.
+	 * The edge matrix will be either the first or second operand, and is the only
+	 * operand which can be transposed (as the others are label diagonals). */
+	for(uint i = 0; i < exp->operand_count; i ++) {
+		if(exp->operands[i].transpose) {
+			op->transposed_edge = true;
+			break;
+		}
+	}
 
 	return OP_OK;
 }
@@ -268,3 +287,4 @@ void CondTraverseFree(OpBase *ctx) {
 		op->records = NULL;
 	}
 }
+
