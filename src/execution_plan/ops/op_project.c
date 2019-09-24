@@ -11,10 +11,10 @@
 #include "../../util/rmalloc.h"
 
 /* Forward declarations. */
-static OpResult Init(OpBase *opBase);
-static Record Consume(OpBase *opBase);
-static OpResult Reset(OpBase *opBase);
-static void Free(OpBase *opBase);
+static OpResult ProjectInit(OpBase *opBase);
+static Record ProjectConsume(OpBase *opBase);
+static OpResult ProjectReset(OpBase *opBase);
+static void ProjectFree(OpBase *opBase);
 
 static AR_ExpNode **_getOrderExpressions(OpBase *op) {
 	if(op == NULL) return NULL;
@@ -40,7 +40,8 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	op->singleResponse = false;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", Init, Consume, Reset, NULL, Free, plan);
+	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", ProjectInit, ProjectConsume,
+				ProjectReset, NULL, ProjectFree, plan);
 
 	for(uint i = 0; i < op->exp_count; i ++) {
 		// The projected record will associate values with their resolved name
@@ -51,7 +52,7 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	return (OpBase *)op;
 }
 
-static OpResult Init(OpBase *opBase) {
+static OpResult ProjectInit(OpBase *opBase) {
 	OpProject *op = (OpProject *)opBase;
 	AR_ExpNode **order_exps = _getOrderExpressions(opBase->parent);
 	if(order_exps) {
@@ -66,7 +67,7 @@ static OpResult Init(OpBase *opBase) {
 	return OP_OK;
 }
 
-static Record Consume(OpBase *opBase) {
+static Record ProjectConsume(OpBase *opBase) {
 	OpProject *op = (OpProject *)opBase;
 	Record r = NULL;
 
@@ -117,11 +118,11 @@ static Record Consume(OpBase *opBase) {
 	return projection;
 }
 
-static OpResult Reset(OpBase *ctx) {
+static OpResult ProjectReset(OpBase *ctx) {
 	return OP_OK;
 }
 
-static void Free(OpBase *ctx) {
+static void ProjectFree(OpBase *ctx) {
 	OpProject *op = (OpProject *)ctx;
 	// TODO These expressions are typically freed as part of
 	// _ExecutionPlanSegment_Free, but this forms a leak in scenarios

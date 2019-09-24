@@ -13,10 +13,10 @@
 #include "../../arithmetic/aggregate.h"
 
 /* Forward declarations. */
-static OpResult Init(OpBase *opBase);
-static Record Consume(OpBase *opBase);
-static OpResult Reset(OpBase *opBase);
-static void Free(OpBase *opBase);
+static OpResult AggregateInit(OpBase *opBase);
+static Record AggregateConsume(OpBase *opBase);
+static OpResult AggregateReset(OpBase *opBase);
+static void AggregateFree(OpBase *opBase);
 
 static AR_ExpNode **_getOrderExpressions(OpBase *op) {
 	if(op == NULL) return NULL;
@@ -265,8 +265,8 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	op->non_aggregated_expressions = NULL;
 	op->groups = CacheGroupNew();
 
-	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", Init, Consume, Reset, NULL, Free, plan);
-
+	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", AggregateInit, AggregateConsume,
+				AggregateReset, NULL, AggregateFree, plan);
 	uint exp_count = array_len(op->exps);
 	for(uint i = 0; i < exp_count; i ++) {
 		// The projected record will associate values with their resolved name
@@ -277,7 +277,7 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	return (OpBase *)op;
 }
 
-static OpResult Init(OpBase *opBase) {
+static OpResult AggregateInit(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
 
 	AR_ExpNode **order_exps = _getOrderExpressions(opBase->parent);
@@ -299,7 +299,7 @@ static OpResult Init(OpBase *opBase) {
 	return OP_OK;
 }
 
-static Record Consume(OpBase *opBase) {
+static Record AggregateConsume(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
 	OpBase *child = op->op.children[0];
 
@@ -312,7 +312,7 @@ static Record Consume(OpBase *opBase) {
 	return _handoff(op);
 }
 
-static OpResult Reset(OpBase *opBase) {
+static OpResult AggregateReset(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
 
 	FreeGroupCache(op->groups);
@@ -328,7 +328,7 @@ static OpResult Reset(OpBase *opBase) {
 	return OP_OK;
 }
 
-static void Free(OpBase *opBase) {
+static void AggregateFree(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
 	if(!op) return;
 

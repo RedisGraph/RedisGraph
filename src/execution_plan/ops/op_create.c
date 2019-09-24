@@ -11,10 +11,10 @@
 #include <assert.h>
 
 /* Forward declarations. */
-static OpResult Init(OpBase *opBase);
-static Record Consume(OpBase *opBase);
-static OpResult Reset(OpBase *opBase);
-static void Free(OpBase *opBase);
+static OpResult CreateInit(OpBase *opBase);
+static Record CreateConsume(OpBase *opBase);
+static OpResult CreateReset(OpBase *opBase);
+static void CreateFree(OpBase *opBase);
 
 // Resolve the properties specified in the query into constant values.
 PendingProperties *_ConvertPropertyMap(Record r, const PropertyMap *map) {
@@ -64,7 +64,8 @@ OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeC
 	op->stats = stats;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_CREATE, "Create", Init, Consume, Reset, NULL, Free, plan);
+	OpBase_Init((OpBase *)op, OPType_CREATE, "Create", CreateInit, CreateConsume,
+				CreateReset, NULL, CreateFree, plan);
 
 	uint node_blueprint_count = array_len(nodes);
 	uint edge_blueprint_count = array_len(edges);
@@ -261,11 +262,11 @@ static Record _handoff(OpCreate *op) {
 	return r;
 }
 
-static OpResult Init(OpBase *opBase) {
+static OpResult CreateInit(OpBase *opBase) {
 	return OP_OK;
 }
 
-static Record Consume(OpBase *opBase) {
+static Record CreateConsume(OpBase *opBase) {
 	OpCreate *op = (OpCreate *)opBase;
 	Record r;
 
@@ -317,12 +318,12 @@ static Record Consume(OpBase *opBase) {
 	return _handoff(op);
 }
 
-static OpResult Reset(OpBase *ctx) {
+static OpResult CreateReset(OpBase *ctx) {
 	OpCreate *op = (OpCreate *)ctx;
 	return OP_OK;
 }
 
-static void Free(OpBase *ctx) {
+static void CreateFree(OpBase *ctx) {
 	OpCreate *op = (OpCreate *)ctx;
 
 	if(op->records) {

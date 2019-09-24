@@ -7,9 +7,9 @@
 #include "op_limit.h"
 
 /* Forward declarations. */
-static Record Consume(OpBase *opBase);
-static OpResult Reset(OpBase *opBase);
-static void Free(OpBase *opBase);
+static Record LimitConsume(OpBase *opBase);
+static OpResult LimitReset(OpBase *opBase);
+static void LimitFree(OpBase *opBase);
 
 OpBase *NewLimitOp(const ExecutionPlan *plan, unsigned int l) {
 	OpLimit *op = malloc(sizeof(OpLimit));
@@ -17,12 +17,13 @@ OpBase *NewLimitOp(const ExecutionPlan *plan, unsigned int l) {
 	op->consumed = 0;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_LIMIT, "Limit", NULL, Consume, Reset, NULL, Free, plan);
+	OpBase_Init((OpBase *)op, OPType_LIMIT, "Limit", NULL, LimitConsume,
+				LimitReset, NULL, LimitFree, plan);
 
 	return (OpBase *)op;
 }
 
-static Record Consume(OpBase *opBase) {
+static Record LimitConsume(OpBase *opBase) {
 	OpLimit *op = (OpLimit *)opBase;
 
 	// Have we reached our limit?
@@ -34,11 +35,12 @@ static Record Consume(OpBase *opBase) {
 	return OpBase_Consume(child);
 }
 
-static OpResult Reset(OpBase *ctx) {
+static OpResult LimitReset(OpBase *ctx) {
 	OpLimit *limit = (OpLimit *)ctx;
 	limit->consumed = 0;
 	return OP_OK;
 }
 
-static void Free(OpBase *ctx) {
+static void LimitFree(OpBase *ctx) {
 }
+

@@ -9,23 +9,24 @@
 #include "../../arithmetic/arithmetic_expression.h"
 
 /* Forward declarations. */
-static Record Consume(OpBase *opBase);
-static OpResult Reset(OpBase *opBase);
-static void Free(OpBase *opBase);
+static Record ResultsConsume(OpBase *opBase);
+static OpResult ResultsReset(OpBase *opBase);
+static void ResultsFree(OpBase *opBase);
 
 OpBase *NewResultsOp(const ExecutionPlan *plan, ResultSet *result_set) {
 	Results *op = malloc(sizeof(Results));
 	op->result_set = result_set;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_RESULTS, "Results", NULL, Consume, Reset, NULL, Free, plan);
+	OpBase_Init((OpBase *)op, OPType_RESULTS, "Results", NULL, ResultsConsume,
+				ResultsReset, NULL, ResultsFree, plan);
 
 	return (OpBase *)op;
 }
 
 /* Results consume operation
  * called each time a new result record is required */
-static Record Consume(OpBase *opBase) {
+static Record ResultsConsume(OpBase *opBase) {
 	Record r = NULL;
 	Results *op = (Results *)opBase;
 
@@ -41,11 +42,11 @@ static Record Consume(OpBase *opBase) {
 }
 
 /* Restart */
-static OpResult Reset(OpBase *op) {
+static OpResult ResultsReset(OpBase *op) {
 	return OP_OK;
 }
 
 /* Frees Results */
-static void Free(OpBase *opBase) {
+static void ResultsFree(OpBase *opBase) {
 }
 

@@ -12,10 +12,10 @@
 #include "../../util/rmalloc.h"
 
 /* Forward declarations. */
-static OpResult Init(OpBase *opBase);
-static Record Consume(OpBase *opBase);
-static OpResult Reset(OpBase *opBase);
-static void Free(OpBase *opBase);
+static OpResult SortInit(OpBase *opBase);
+static Record SortConsume(OpBase *opBase);
+static OpResult SortReset(OpBase *opBase);
+static void SortFree(OpBase *opBase);
 
 static bool _record_islt(Record a, Record b, const OpSort *op) {
 	// First N values in record correspond to RETURN expressions
@@ -123,7 +123,8 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int direction,
 	else op->buffer = array_new(Record, 32);
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_SORT, "Sort", Init, Consume, Reset, NULL, Free, plan);
+	OpBase_Init((OpBase *)op, OPType_SORT, "Sort", SortInit,
+				SortConsume, SortReset, NULL, SortFree, plan);
 
 	return (OpBase *)op;
 }
@@ -133,12 +134,12 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int direction,
  * accept only 2 arguments. */
 #define RECORD_SORT(a, b) (_record_islt((*a), (*b), op))
 
-static OpResult Init(OpBase *opBase) {
+static OpResult SortInit(OpBase *opBase) {
 	OpSort *op = (OpSort *)opBase;
 	return OP_OK;
 }
 
-static Record Consume(OpBase *opBase) {
+static Record SortConsume(OpBase *opBase) {
 	OpSort *op = (OpSort *)opBase;
 	Record r = _handoff(op);
 	if(r) return r;
@@ -173,7 +174,7 @@ static Record Consume(OpBase *opBase) {
 }
 
 /* Restart iterator */
-static OpResult Reset(OpBase *ctx) {
+static OpResult SortReset(OpBase *ctx) {
 	OpSort *op = (OpSort *)ctx;
 	uint recordCount;
 
@@ -197,7 +198,7 @@ static OpResult Reset(OpBase *ctx) {
 }
 
 /* Frees Sort */
-static void Free(OpBase *ctx) {
+static void SortFree(OpBase *ctx) {
 	OpSort *op = (OpSort *)ctx;
 
 	if(op->heap) {

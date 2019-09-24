@@ -24,7 +24,7 @@ typedef struct {
 	NodeID currentId;       // Current ID fetched.
 } OpNodeByIdSeek;
 
-OpBase *NewOpNodeByIdSeekOp
+OpBase *NewNodeByIdSeekOp
 (
     const ExecutionPlan *plan,
     const QGNode *node,

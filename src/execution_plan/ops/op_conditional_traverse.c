@@ -10,10 +10,10 @@
 #include "../../arithmetic/arithmetic_expression.h"
 
 /* Forward declarations. */
-static OpResult Init(OpBase *opBase);
-static Record Consume(OpBase *opBase);
-static OpResult Reset(OpBase *opBase);
-static void Free(OpBase *opBase);
+static OpResult CondTraverseInit(OpBase *opBase);
+static Record CondTraverseConsume(OpBase *opBase);
+static OpResult CondTraverseReset(OpBase *opBase);
+static void CondTraverseFree(OpBase *opBase);
 
 static void _setupTraversedRelations(CondTraverse *op, QGEdge *e) {
 	uint reltype_count = array_len(e->reltypeIDs);
@@ -117,8 +117,8 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	GrB_Matrix_new(&op->F, GrB_BOOL, op->recordsCap, required_dim);
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", Init, Consume, Reset,
-				ToString, Free, plan);
+	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", CondTraverseInit,
+				CondTraverseConsume, CondTraverseReset, ToString, CondTraverseFree, plan);
 
 	assert(OpBase_Aware((OpBase *)op, ae->src_node->alias, &op->srcNodeIdx));
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, ae->dest_node->alias);
@@ -132,7 +132,7 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	return (OpBase *)op;
 }
 
-static OpResult Init(OpBase *opBase) {
+static OpResult CondTraverseInit(OpBase *opBase) {
 	CondTraverse *op = (CondTraverse *)opBase;
 	AlgebraicExpression *exp = op->ae;
 
@@ -148,7 +148,7 @@ static OpResult Init(OpBase *opBase) {
 /* CondTraverseConsume next operation
  * each call will update the graph
  * returns OP_DEPLETED when no additional updates are available */
-static Record Consume(OpBase *opBase) {
+static Record CondTraverseConsume(OpBase *opBase) {
 	CondTraverse *op = (CondTraverse *)opBase;
 	OpBase *child = op->op.children[0];
 
@@ -228,7 +228,7 @@ static Record Consume(OpBase *opBase) {
 	return Record_Clone(op->r);
 }
 
-static OpResult Reset(OpBase *ctx) {
+static OpResult CondTraverseReset(OpBase *ctx) {
 	CondTraverse *op = (CondTraverse *)ctx;
 	if(op->r) Record_Free(op->r);
 	if(op->edges) array_clear(op->edges);
@@ -241,7 +241,7 @@ static OpResult Reset(OpBase *ctx) {
 }
 
 /* Frees CondTraverse */
-static void Free(OpBase *ctx) {
+static void CondTraverseFree(OpBase *ctx) {
 	CondTraverse *op = (CondTraverse *)ctx;
 	if(op->iter) {
 		GxB_MatrixTupleIter_free(op->iter);
@@ -279,3 +279,4 @@ static void Free(OpBase *ctx) {
 		op->records = NULL;
 	}
 }
+

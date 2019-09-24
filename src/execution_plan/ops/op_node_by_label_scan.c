@@ -9,10 +9,9 @@
 #include "../../query_ctx.h"
 
 /* Forward declarations. */
-static OpResult Init(OpBase *opBase);
-static Record Consume(OpBase *opBase);
-static OpResult Reset(OpBase *opBase);
-static void Free(OpBase *opBase);
+static Record NodeByLabelScanConsume(OpBase *opBase);
+static OpResult NodeByLabelScanReset(OpBase *opBase);
+static void NodeByLabelScanFree(OpBase *opBase);
 
 static int ToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const NodeByLabelScan *op = (const NodeByLabelScan *)ctx;
@@ -39,19 +38,15 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *node) {
 	}
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_NODE_BY_LABEL_SCAN, "Node By Label Scan", Init, Consume, Reset,
-				ToString, Free, plan);
+	OpBase_Init((OpBase *)op, OPType_NODE_BY_LABEL_SCAN, "Node By Label Scan", NULL,
+				NodeByLabelScanConsume, NodeByLabelScanReset, ToString, NodeByLabelScanFree, plan);
 
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, node->alias);
 
 	return (OpBase *)op;
 }
 
-static OpResult Init(OpBase *opBase) {
-	return OP_OK;
-}
-
-static Record Consume(OpBase *opBase) {
+static Record NodeByLabelScanConsume(OpBase *opBase) {
 	NodeByLabelScan *op = (NodeByLabelScan *)opBase;
 
 	GrB_Index nodeId;
@@ -67,13 +62,13 @@ static Record Consume(OpBase *opBase) {
 	return r;
 }
 
-static OpResult Reset(OpBase *ctx) {
+static OpResult NodeByLabelScanReset(OpBase *ctx) {
 	NodeByLabelScan *op = (NodeByLabelScan *)ctx;
 	GxB_MatrixTupleIter_reset(op->iter);
 	return OP_OK;
 }
 
-static void Free(OpBase *op) {
+static void NodeByLabelScanFree(OpBase *op) {
 	NodeByLabelScan *nodeByLabelScan = (NodeByLabelScan *)op;
 
 	if(nodeByLabelScan->iter) {

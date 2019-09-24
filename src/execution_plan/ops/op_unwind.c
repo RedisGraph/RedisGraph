@@ -13,10 +13,10 @@
 #define INDEX_NOT_SET UINT_MAX
 
 /* Forward declarations. */
-static OpResult Init(OpBase *opBase);
-static Record Consume(OpBase *opBase);
-static OpResult Reset(OpBase *opBase);
-static void Free(OpBase *opBase);
+static OpResult UnwindInit(OpBase *opBase);
+static Record UnwindConsume(OpBase *opBase);
+static OpResult UnwindReset(OpBase *opBase);
+static void UnwindFree(OpBase *opBase);
 
 OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 	OpUnwind *op = malloc(sizeof(OpUnwind));
@@ -27,13 +27,14 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 	op->listIdx = INDEX_NOT_SET;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", Init, Consume, Reset, NULL, Free, plan);
+	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", UnwindInit, UnwindConsume,
+				UnwindReset, NULL, UnwindFree, plan);
 
 	op->unwindRecIdx = OpBase_Modifies((OpBase *)op, exp->resolved_name);
 	return (OpBase *)op;
 }
 
-static OpResult Init(OpBase *opBase) {
+static OpResult UnwindInit(OpBase *opBase) {
 	OpUnwind *op = (OpUnwind *) opBase;
 	op->currentRecord = OpBase_CreateRecord((OpBase *)op);
 
@@ -64,7 +65,7 @@ Record _handoff(OpUnwind *op) {
 	return NULL;
 }
 
-static Record Consume(OpBase *opBase) {
+static Record UnwindConsume(OpBase *opBase) {
 	OpUnwind *op = (OpUnwind *)opBase;
 
 	// Try to produce data.
@@ -92,7 +93,7 @@ static Record Consume(OpBase *opBase) {
 	return _handoff(op);
 }
 
-static OpResult Reset(OpBase *ctx) {
+static OpResult UnwindReset(OpBase *ctx) {
 	OpUnwind *op = (OpUnwind *)ctx;
 	// Static should reset index to 0.
 	if(op->op.childCount == 0) op->listIdx = 0;
@@ -101,7 +102,7 @@ static OpResult Reset(OpBase *ctx) {
 	return OP_OK;
 }
 
-static void Free(OpBase *ctx) {
+static void UnwindFree(OpBase *ctx) {
 	OpUnwind *op = (OpUnwind *)ctx;
 	SIValue_Free(&op->list);
 	op->list = SI_NullVal();

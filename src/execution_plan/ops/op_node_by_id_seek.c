@@ -8,10 +8,10 @@
 #include "../../query_ctx.h"
 
 /* Forward declarations. */
-static OpResult Init(OpBase *opBase);
-static Record Consume(OpBase *opBase);
-static OpResult Reset(OpBase *opBase);
-static void Free(OpBase *opBase);
+static OpResult NodeByIdSeekInit(OpBase *opBase);
+static Record NodeByIdSeekConsume(OpBase *opBase);
+static OpResult NodeByIdSeekReset(OpBase *opBase);
+static void NodeByIdSeekFree(OpBase *opBase);
 
 // Checks to see if operation index is within its bounds.
 static inline bool _outOfBounds(OpNodeByIdSeek *op) {
@@ -22,7 +22,7 @@ static inline bool _outOfBounds(OpNodeByIdSeek *op) {
 	return false;
 }
 
-OpBase *NewOpNodeByIdSeekOp
+OpBase *NewNodeByIdSeekOp
 (
 	const ExecutionPlan *plan,
 	const QGNode *node,
@@ -55,19 +55,19 @@ OpBase *NewOpNodeByIdSeekOp
 	if(!minInclusive && minId != ID_RANGE_UNBOUND) op->currentId++;
 
 
-	OpBase_Init((OpBase *)op, OPType_NODE_BY_ID_SEEK, "NodeByIdSeek", Init, Consume, Reset, NULL, Free,
-				plan);
+	OpBase_Init((OpBase *)op, OPType_NODE_BY_ID_SEEK, "NodeByIdSeek", NodeByIdSeekInit,
+				NodeByIdSeekConsume, NodeByIdSeekReset, NULL, NodeByIdSeekFree, plan);
 
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, node->alias);
 
 	return (OpBase *)op;
 }
 
-static OpResult Init(OpBase *opBase) {
+static OpResult NodeByIdSeekInit(OpBase *opBase) {
 	return OP_OK;
 }
 
-static Record Consume(OpBase *opBase) {
+static Record NodeByIdSeekConsume(OpBase *opBase) {
 	OpNodeByIdSeek *op = (OpNodeByIdSeek *)opBase;
 	Node n;
 	n.entity = NULL;
@@ -93,14 +93,14 @@ static Record Consume(OpBase *opBase) {
 	return r;
 }
 
-static OpResult Reset(OpBase *ctx) {
+static OpResult NodeByIdSeekReset(OpBase *ctx) {
 	OpNodeByIdSeek *op = (OpNodeByIdSeek *)ctx;
 	op->currentId = op->minId;
 	if(!op->minInclusive) op->currentId++;
 	return OP_OK;
 }
 
-static void Free(OpBase *ctx) {
+static void NodeByIdSeekFree(OpBase *ctx) {
 
 }
 

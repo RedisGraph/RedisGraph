@@ -9,20 +9,21 @@
 #include "../../util/arr.h"
 
 /* Forward declarations. */
-static Record Consume(OpBase *opBase);
-static OpResult Reset(OpBase *opBase);
-static void Free(OpBase *opBase);
+static Record DistinctConsume(OpBase *opBase);
+static OpResult DistinctReset(OpBase *opBase);
+static void DistinctFree(OpBase *opBase);
 
 OpBase *NewDistinctOp(const ExecutionPlan *plan) {
 	OpDistinct *op = malloc(sizeof(OpDistinct));
 	op->found = raxNew();
 
-	OpBase_Init((OpBase *)op, OPType_DISTINCT, "Distinct", NULL, Consume, Reset, NULL, Free, plan);
+	OpBase_Init((OpBase *)op, OPType_DISTINCT, "Distinct", NULL, DistinctConsume,
+				DistinctReset, NULL, DistinctFree, plan);
 
 	return (OpBase *)op;
 }
 
-static Record Consume(OpBase *opBase) {
+static Record DistinctConsume(OpBase *opBase) {
 	OpDistinct *self = (OpDistinct *)opBase;
 	OpBase *child = self->op.children[0];
 
@@ -37,14 +38,15 @@ static Record Consume(OpBase *opBase) {
 	}
 }
 
-static OpResult Reset(OpBase *ctx) {
+static OpResult DistinctReset(OpBase *ctx) {
 	return OP_OK;
 }
 
-static void Free(OpBase *ctx) {
+static void DistinctFree(OpBase *ctx) {
 	OpDistinct *op = (OpDistinct *)ctx;
 	if(op->found) {
 		raxFree(op->found);
 		op->found = NULL;
 	}
 }
+

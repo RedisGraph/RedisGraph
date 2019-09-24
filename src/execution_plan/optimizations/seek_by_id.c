@@ -129,8 +129,8 @@ void _reduceTap(ExecutionPlan *plan, OpBase *tap) {
 				}
 
 				_setupIdRange(rel, id, reverse, &minId, &maxId, &inclusiveMin, &inclusiveMax);
-				opNodeByIdSeek = NewOpNodeByIdSeekOp(tap->plan, node, minId, maxId,
-													 inclusiveMin, inclusiveMax);
+				opNodeByIdSeek = NewNodeByIdSeekOp(tap->plan, node, minId, maxId,
+												   inclusiveMin, inclusiveMax);
 
 				// Managed to reduce!
 				ExecutionPlan_ReplaceOp(plan, tap, opNodeByIdSeek);
@@ -156,3 +156,4 @@ void seekByID(ExecutionPlan *plan) {
 
 	array_free(taps);
 }
+

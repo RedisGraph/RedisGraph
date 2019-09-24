@@ -12,10 +12,10 @@
 #include <assert.h>
 
 /* Forward declarations. */
-static OpResult Init(OpBase *opBase);
-static Record Consume(OpBase *opBase);
-static OpResult Reset(OpBase *opBase);
-static void Free(OpBase *opBase);
+static OpResult ValueHashJoinInit(OpBase *opBase);
+static Record ValueHashJoinConsume(OpBase *opBase);
+static OpResult ValueHashJoinReset(OpBase *opBase);
+static void ValueHashJoinFree(OpBase *opBase);
 
 /* Determins order between two records by inspecting
  * element stored at postion idx. */
@@ -178,13 +178,14 @@ OpBase *NewValueHashJoin(const ExecutionPlan *plan, AR_ExpNode *lhs_exp, AR_ExpN
 	op->number_of_intersections = 0;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_VALUE_HASH_JOIN, "Value Hash Join", Init, Consume, Reset, ToString,
-				Free, plan);
+	OpBase_Init((OpBase *)op, OPType_VALUE_HASH_JOIN, "Value Hash Join", ValueHashJoinInit,
+				ValueHashJoinConsume, ValueHashJoinReset, ToString,
+				ValueHashJoinFree, plan);
 
 	return (OpBase *)op;
 }
 
-static OpResult Init(OpBase *ctx) {
+static OpResult ValueHashJoinInit(OpBase *ctx) {
 	assert(ctx->childCount == 2);
 	return OP_OK;
 }
@@ -192,7 +193,7 @@ static OpResult Init(OpBase *ctx) {
 /* Produce a record by joining
  * records coming from the left and right hand side
  * of this operation. */
-static Record Consume(OpBase *opBase) {
+static Record ValueHashJoinConsume(OpBase *opBase) {
 	OpValueHashJoin *op = (OpValueHashJoin *)opBase;
 	OpBase *right_child = op->op.children[1];
 
@@ -250,7 +251,7 @@ static Record Consume(OpBase *opBase) {
 	}
 }
 
-static OpResult Reset(OpBase *ctx) {
+static OpResult ValueHashJoinReset(OpBase *ctx) {
 	OpValueHashJoin *op = (OpValueHashJoin *)ctx;
 	op->intersect_idx = -1;
 	op->number_of_intersections = 0;
@@ -274,8 +275,8 @@ static OpResult Reset(OpBase *ctx) {
 	return OP_OK;
 }
 
-/* Frees valueHashJoin */
-static void Free(OpBase *ctx) {
+/* Frees ValueHashJoin */
+static void ValueHashJoinFree(OpBase *ctx) {
 	OpValueHashJoin *op = (OpValueHashJoin *)ctx;
 	// Free cached records.
 	if(op->rhs_rec) {

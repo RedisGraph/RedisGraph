@@ -12,10 +12,10 @@
 #include "../../GraphBLASExt/GxB_Delete.h"
 
 /* Forward declarations. */
-static OpResult Init(OpBase *opBase);
-static Record Consume(OpBase *opBase);
-static OpResult Reset(OpBase *opBase);
-static void Free(OpBase *opBase);
+static OpResult ExpandIntoInit(OpBase *opBase);
+static Record ExpandIntoConsume(OpBase *opBase);
+static OpResult ExpandIntoReset(OpBase *opBase);
+static void ExpandIntoFree(OpBase *opBase);
 
 // String representation of operation.
 static int ToString(const OpBase *ctx, char *buff, uint buff_len) {
@@ -96,8 +96,8 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 	op->records = rm_calloc(op->recordsCap, sizeof(Record));
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", Init, Consume, Reset, ToString, Free,
-				plan);
+	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", ExpandIntoInit, ExpandIntoConsume,
+				ExpandIntoReset, ToString, ExpandIntoFree, plan);
 
 	// Make sure that all entities are represented in Record
 	op->edgeIdx = IDENTIFIER_NOT_FOUND;
@@ -113,7 +113,7 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 	return (OpBase *)op;
 }
 
-static OpResult Init(OpBase *opBase) {
+static OpResult ExpandIntoInit(OpBase *opBase) {
 	OpExpandInto *op = (OpExpandInto *)opBase;
 
 	size_t required_dim = Graph_RequiredMatrixDim(op->graph);
@@ -178,7 +178,7 @@ static Record _handoff(OpExpandInto *op) {
 
 /* ExpandIntoConsume next operation
  * returns OP_DEPLETED when no additional updates are available */
-static Record Consume(OpBase *opBase) {
+static Record ExpandIntoConsume(OpBase *opBase) {
 	Node *n;
 	Record r;
 	OpExpandInto *op = (OpExpandInto *)opBase;
@@ -220,7 +220,7 @@ static Record Consume(OpBase *opBase) {
 	return r;
 }
 
-static OpResult Reset(OpBase *ctx) {
+static OpResult ExpandIntoReset(OpBase *ctx) {
 	OpExpandInto *op = (OpExpandInto *)ctx;
 	for(int i = 0; i < op->recordCount; i++) {
 		if(op->records[i]) Record_Free(op->records[i]);
@@ -234,7 +234,7 @@ static OpResult Reset(OpBase *ctx) {
 }
 
 /* Frees ExpandInto */
-static void Free(OpBase *ctx) {
+static void ExpandIntoFree(OpBase *ctx) {
 	OpExpandInto *op = (OpExpandInto *)ctx;
 	if(op->F) {
 		GrB_Matrix_free(&op->F);

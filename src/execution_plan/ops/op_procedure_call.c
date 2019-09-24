@@ -9,10 +9,10 @@
 #include "../../util/rmalloc.h"
 
 /* Forward declarations. */
-static OpResult Init(OpBase *opBase);
-static Record Consume(OpBase *opBase);
-static OpResult Reset(OpBase *opBase);
-static void Free(OpBase *opBase);
+static OpResult ProcCallInit(OpBase *opBase);
+static Record ProcCallConsume(OpBase *opBase);
+static OpResult ProcCallReset(OpBase *opBase);
+static void ProcCallFree(OpBase *opBase);
 
 static void _yield(OpProcCall *op, SIValue *proc_output, Record r) {
 	if(!op->yield_map) {
@@ -68,8 +68,8 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *procedure, const ch
 	assert(op->procedure);
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_PROC_CALL, "ProcedureCall", Init, Consume, Reset, NULL, Free,
-				plan);
+	OpBase_Init((OpBase *)op, OPType_PROC_CALL, "ProcedureCall", ProcCallInit, ProcCallConsume,
+				ProcCallReset, NULL, ProcCallFree, plan);
 
 	int outputs_count = array_len(output);
 	for(int i = 0; i < outputs_count; i++) {
@@ -79,13 +79,13 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *procedure, const ch
 	return (OpBase *)op;
 }
 
-static OpResult Init(OpBase *opBase) {
+static OpResult ProcCallInit(OpBase *opBase) {
 	OpProcCall *op = (OpProcCall *)opBase;
 	ProcedureResult res = Proc_Invoke(op->procedure, op->args);
 	return (res == PROCEDURE_OK) ? OP_OK : OP_ERR;
 }
 
-static Record Consume(OpBase *opBase) {
+static Record ProcCallConsume(OpBase *opBase) {
 	OpProcCall *op = (OpProcCall *)opBase;
 	Record r = NULL;
 
@@ -109,7 +109,7 @@ static Record Consume(OpBase *opBase) {
 	return r;
 }
 
-static OpResult Reset(OpBase *ctx) {
+static OpResult ProcCallReset(OpBase *ctx) {
 	OpProcCall *op = (OpProcCall *)ctx;
 	if(op->procedure) {
 		ProcedureResult res = ProcedureReset(op->procedure);
@@ -118,7 +118,7 @@ static OpResult Reset(OpBase *ctx) {
 	return OP_OK;
 }
 
-static void Free(OpBase *ctx) {
+static void ProcCallFree(OpBase *ctx) {
 	OpProcCall *op = (OpProcCall *)ctx;
 	if(op->procedure) {
 		Proc_Free(op->procedure);
@@ -129,3 +129,4 @@ static void Free(OpBase *ctx) {
 		op->yield_map = NULL;
 	}
 }
+

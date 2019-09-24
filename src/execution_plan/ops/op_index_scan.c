@@ -7,9 +7,9 @@
 #include "op_index_scan.h"
 
 /* Forward declarations. */
-static Record Consume(OpBase *opBase);
-static OpResult Reset(OpBase *opBase);
-static void Free(OpBase *opBase);
+static Record IndexScanConsume(OpBase *opBase);
+static OpResult IndexScanReset(OpBase *opBase);
+static void IndexScanFree(OpBase *opBase);
 
 static int ToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const IndexScan *op = (const IndexScan *)ctx;
@@ -27,14 +27,15 @@ OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, const QGNode *n, RSI
 	op->iter = iter;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_INDEX_SCAN, "Index Scan", NULL, Consume, Reset, ToString, Free,
+	OpBase_Init((OpBase *)op, OPType_INDEX_SCAN, "Index Scan", NULL, IndexScanConsume, IndexScanReset,
+				ToString, IndexScanFree,
 				plan);
 
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 	return (OpBase *)op;
 }
 
-static Record Consume(OpBase *opBase) {
+static Record IndexScanConsume(OpBase *opBase) {
 	IndexScan *op = (IndexScan *)opBase;
 	const EntityID *nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL);
 	if(!nodeId) return NULL;
@@ -48,13 +49,13 @@ static Record Consume(OpBase *opBase) {
 	return r;
 }
 
-static OpResult Reset(OpBase *ctx) {
+static OpResult IndexScanReset(OpBase *ctx) {
 	IndexScan *op = (IndexScan *)ctx;
 	RediSearch_ResultsIteratorReset(op->iter);
 	return OP_OK;
 }
 
-static void Free(OpBase *ctx) {
+static void IndexScanFree(OpBase *ctx) {
 	IndexScan *op = (IndexScan *)ctx;
 	/* As long as this Index iterator is alive the index is
 	 * read locked, if this index scan operation is part of
@@ -65,3 +66,4 @@ static void Free(OpBase *ctx) {
 		op->iter = NULL;
 	}
 }
+

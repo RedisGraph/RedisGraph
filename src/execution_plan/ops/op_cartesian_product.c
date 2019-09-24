@@ -7,10 +7,10 @@
 #include "op_cartesian_product.h"
 
 /* Forward declarations. */
-static OpResult Init(OpBase *opBase);
-static Record Consume(OpBase *opBase);
-static OpResult Reset(OpBase *opBase);
-static void Free(OpBase *opBase);
+static OpResult CartesianProductInit(OpBase *opBase);
+static Record CartesianProductConsume(OpBase *opBase);
+static OpResult CartesianProductReset(OpBase *opBase);
+static void CartesianProductFree(OpBase *opBase);
 
 OpBase *NewCartesianProductOp(const ExecutionPlan *plan) {
 	CartesianProduct *op = malloc(sizeof(CartesianProduct));
@@ -18,9 +18,8 @@ OpBase *NewCartesianProductOp(const ExecutionPlan *plan) {
 	op->r = NULL;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_CARTESIAN_PRODUCT, "Cartesian Product", Init, Consume, Reset,
-				NULL, Free, plan);
-
+	OpBase_Init((OpBase *)op, OPType_CARTESIAN_PRODUCT, "Cartesian Product", CartesianProductInit,
+				CartesianProductConsume, CartesianProductReset, NULL, CartesianProductFree, plan);
 	return (OpBase *)op;
 }
 
@@ -62,13 +61,13 @@ static int _PullFromStreams(CartesianProduct *op) {
 	return 0;
 }
 
-static OpResult Init(OpBase *opBase) {
+static OpResult CartesianProductInit(OpBase *opBase) {
 	CartesianProduct *op = (CartesianProduct *)opBase;
 	op->r = OpBase_CreateRecord((OpBase *)op);
 	return OP_OK;
 }
 
-static Record Consume(OpBase *opBase) {
+static Record CartesianProductConsume(OpBase *opBase) {
 	CartesianProduct *op = (CartesianProduct *)opBase;
 	OpBase *child;
 	Record childRecord;
@@ -107,16 +106,17 @@ static Record Consume(OpBase *opBase) {
 	return Record_Clone(op->r);
 }
 
-static OpResult Reset(OpBase *opBase) {
+static OpResult CartesianProductReset(OpBase *opBase) {
 	CartesianProduct *op = (CartesianProduct *)opBase;
 	op->init = true;
 	return OP_OK;
 }
 
-static void Free(OpBase *opBase) {
+static void CartesianProductFree(OpBase *opBase) {
 	CartesianProduct *op = (CartesianProduct *)opBase;
 	if(op->r) {
 		Record_Free(op->r);
 		op->r = NULL;
 	}
 }
+

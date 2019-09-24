@@ -12,10 +12,10 @@
 #include <assert.h>
 
 /* Forward declarations. */
-static OpResult Init(OpBase *opBase);
-static Record Consume(OpBase *opBase);
-static OpResult Reset(OpBase *opBase);
-static void Free(OpBase *opBase);
+static OpResult MergeInit(OpBase *opBase);
+static Record MergeConsume(OpBase *opBase);
+static OpResult MergeReset(OpBase *opBase);
+static void MergeFree(OpBase *opBase);
 
 static void _AddProperties(OpMerge *op, Record r, GraphEntity *ge, PropertyMap *props) {
 	for(int i = 0; i < props->property_count; i++) {
@@ -135,7 +135,8 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
 	op->edges_to_merge = edges_to_merge;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", Init, Consume, Reset, NULL, Free, plan);
+	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume,
+				MergeReset, NULL, MergeFree, plan);
 
 	int node_count = array_len(op->nodes_to_merge);
 	for(int i = 0; i < node_count; i++) {
@@ -154,11 +155,11 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
 	return (OpBase *)op;
 }
 
-static OpResult Init(OpBase *opBase) {
+static OpResult MergeInit(OpBase *opBase) {
 	return OP_OK;
 }
 
-static Record Consume(OpBase *opBase) {
+static Record MergeConsume(OpBase *opBase) {
 	OpMerge *op = (OpMerge *)opBase;
 
 	/* Pattern was created in the previous call
@@ -195,12 +196,12 @@ static Record Consume(OpBase *opBase) {
 	return r;
 }
 
-static OpResult Reset(OpBase *ctx) {
+static OpResult MergeReset(OpBase *ctx) {
 	// Merge doesn't modify anything.
 	return OP_OK;
 }
 
-static void Free(OpBase *ctx) {
+static void MergeFree(OpBase *ctx) {
 	OpMerge *op = (OpMerge *)ctx;
 
 	if(op->nodes_to_merge) {

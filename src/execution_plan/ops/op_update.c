@@ -10,10 +10,10 @@
 #include "../../arithmetic/arithmetic_expression.h"
 
 /* Forward declarations. */
-static OpResult Init(OpBase *opBase);
-static Record Consume(OpBase *opBase);
-static OpResult Reset(OpBase *opBase);
-static void Free(OpBase *opBase);
+static OpResult UpdateInit(OpBase *opBase);
+static Record UpdateConsume(OpBase *opBase);
+static OpResult UpdateReset(OpBase *opBase);
+static void UpdateFree(OpBase *opBase);
 
 /* Delay updates until all entities are processed,
  * _QueueUpdate will queue up all information necessary to perform an update. */
@@ -150,18 +150,19 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, GraphContext *gc, EntityUpdateEva
 	op->pending_updates = rm_malloc(sizeof(EntityUpdateCtx) * op->pending_updates_cap);
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", Init, Consume, Reset, NULL, Free, plan);
+	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", UpdateInit, UpdateConsume,
+				UpdateReset, NULL, UpdateFree, plan);
 
 	return (OpBase *)op;
 }
 
-static OpResult Init(OpBase *opBase) {
+static OpResult UpdateInit(OpBase *opBase) {
 	OpUpdate *op = (OpUpdate *)opBase;
 	if(_ShouldCacheRecord(op)) op->records = array_new(Record, 64);
 	return OP_OK;
 }
 
-static Record Consume(OpBase *opBase) {
+static Record UpdateConsume(OpBase *opBase) {
 	OpUpdate *op = (OpUpdate *)opBase;
 	OpBase *child = op->op.children[0];
 	Record r;
@@ -211,7 +212,7 @@ static Record Consume(OpBase *opBase) {
 	return _handoff(op);
 }
 
-static OpResult Reset(OpBase *ctx) {
+static OpResult UpdateReset(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 	// Reset all pending updates.
 	op->pending_updates_count = 0;
@@ -221,7 +222,7 @@ static OpResult Reset(OpBase *ctx) {
 	return OP_OK;
 }
 
-static void Free(OpBase *ctx) {
+static void UpdateFree(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 	/* Free each update context. */
 	if(op->update_expressions_count) {

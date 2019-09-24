@@ -11,10 +11,10 @@
 #include <assert.h>
 
 /* Forward declarations. */
-static OpResult Init(OpBase *opBase);
-static Record Consume(OpBase *opBase);
-static OpResult Reset(OpBase *opBase);
-static void Free(OpBase *opBase);
+static OpResult DeleteInit(OpBase *opBase);
+static Record DeleteConsume(OpBase *opBase);
+static OpResult DeleteReset(OpBase *opBase);
+static void DeleteFree(OpBase *opBase);
 
 void _DeleteEntities(OpDelete *op) {
 	Graph *g = op->gc->g;
@@ -60,7 +60,8 @@ OpBase *NewDeleteOp(const ExecutionPlan *plan, const char **nodes_ref, const cha
 	op->stats = stats;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", Init, Consume, Reset, NULL, Free, plan);
+	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", DeleteInit, DeleteConsume, DeleteReset, NULL,
+				DeleteFree, plan);
 
 	// Set nodes/edges to be deleted record indices.
 	int idx;
@@ -82,11 +83,11 @@ OpBase *NewDeleteOp(const ExecutionPlan *plan, const char **nodes_ref, const cha
 	return (OpBase *)op;
 }
 
-static OpResult Init(OpBase *opBase) {
+static OpResult DeleteInit(OpBase *opBase) {
 	return OP_OK;
 }
 
-static Record Consume(OpBase *opBase) {
+static Record DeleteConsume(OpBase *opBase) {
 	OpDelete *op = (OpDelete *)opBase;
 	OpBase *child = op->op.children[0];
 
@@ -107,11 +108,11 @@ static Record Consume(OpBase *opBase) {
 	return r;
 }
 
-static OpResult Reset(OpBase *ctx) {
+static OpResult DeleteReset(OpBase *ctx) {
 	return OP_OK;
 }
 
-static void Free(OpBase *ctx) {
+static void DeleteFree(OpBase *ctx) {
 	OpDelete *op = (OpDelete *)ctx;
 
 	if(op->deleted_nodes || op->deleted_edges) _DeleteEntities(op);
