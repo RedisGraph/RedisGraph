@@ -108,7 +108,9 @@ int MGraph_Profile(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	CommandCtx *context;
 	int flags = RedisModule_GetContextFlags(ctx);
 	bool is_replicated = RedisModule_GetContextFlags(ctx) & REDISMODULE_CTX_FLAGS_REPLICATED;
-	if(flags & (REDISMODULE_CTX_FLAGS_MULTI | REDISMODULE_CTX_FLAGS_LUA)) {
+	if(flags & (REDISMODULE_CTX_FLAGS_MULTI |
+				REDISMODULE_CTX_FLAGS_LUA |
+				REDISMODULE_CTX_FLAGS_LOADING)) {
 		// Run query on Redis main thread.
 		context = CommandCtx_New(ctx, NULL, argv[1], argv[2], argv, argc, is_replicated);
 		_MGraph_Profile(context);
