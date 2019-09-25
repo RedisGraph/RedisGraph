@@ -12,7 +12,7 @@ function C = GB_spec_subassign (C, Mask, accum, A, I, J, descriptor, scalar)
 % is the same size as A (after optionally being transpose) and the submatrix
 % C(I,J).  Entries outside the C(I,J) submatrix are never modified.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 %-------------------------------------------------------------------------------

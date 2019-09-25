@@ -7,8 +7,6 @@
 
 //------------------------------------------------------------------------------
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GrB_Descriptor_free            // free a descriptor

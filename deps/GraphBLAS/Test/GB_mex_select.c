@@ -2,7 +2,7 @@
 // GB_mex_select: C<M> = accum(C,select(A,k)) or select(A',k)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -11,10 +11,11 @@
 
 #include "GB_mex.h"
 
-#define USAGE "C = GB_mex_select (C, M, accum, op, A, k, desc, test)"
+#define USAGE "C = GB_mex_select (C, M, accum, op, A, Thunk, desc, test)"
 
 #define FREE_ALL                        \
 {                                       \
+    GB_SCALAR_FREE (&Thunk) ;           \
     GB_MATRIX_FREE (&C) ;               \
     GB_MATRIX_FREE (&M) ;               \
     GB_MATRIX_FREE (&A) ;               \
@@ -36,7 +37,7 @@ void mexFunction
     GrB_Matrix M = NULL ;
     GrB_Matrix A = NULL ;
     GrB_Descriptor desc = NULL ;
-    int64_t k = 0 ;
+    GxB_Scalar Thunk = NULL ;
 
     // check inputs
     GB_WHERE (USAGE) ;
@@ -92,8 +93,29 @@ void mexFunction
         mexErrMsgTxt ("SelectOp failed") ;
     }
 
-    // get k
-    k = (int64_t) mxGetScalar (pargin [5]) ;
+    // get Thunk (shallow copy)
+    if (nargin > 5)
+    {
+        if (mxIsSparse (pargin [5]))
+        {
+            Thunk = (GxB_Scalar) GB_mx_mxArray_to_Matrix (pargin [5],
+                "Thunk input", false, false) ;
+            if (Thunk == NULL)
+            {
+                FREE_ALL ;
+                mexErrMsgTxt ("Thunk failed") ;
+            }
+        }
+        else
+        {
+            // get k
+            int64_t k = (int64_t) mxGetScalar (pargin [5]) ;
+            GxB_Scalar_new (&Thunk, GrB_INT64) ;
+            GxB_Scalar_setElement (Thunk, k) ;
+            GrB_Index ignore ;
+            GxB_Scalar_nvals (&ignore, Thunk) ;
+        }
+    }
 
     // get desc
     if (!GB_mx_mxArray_to_Descriptor (&desc, PARGIN (6), "desc"))
@@ -110,16 +132,19 @@ void mexFunction
         C->nvec_nonempty = -1 ;
     }
 
+    // GxB_print (op, 3) ;
+    // GxB_print (Thunk, 3) ;
+
     // C<M> = accum(C,op(A))
     if (C->vdim == 1 && (desc == NULL || desc->in0 == GxB_DEFAULT))
     {
         // this is just to test the Vector version
         METHOD (GxB_select ((GrB_Vector) C, (GrB_Vector) M, accum, op,
-            (GrB_Vector) A, &k, desc)) ;
+            (GrB_Vector) A, Thunk, desc)) ;
     }
     else
     {
-        METHOD (GxB_select (C, M, accum, op, A, &k, desc)) ;
+        METHOD (GxB_select (C, M, accum, op, A, Thunk, desc)) ;
     }
 
     // return C to MATLAB as a struct and free the GraphBLAS C

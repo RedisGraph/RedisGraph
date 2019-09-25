@@ -12,6 +12,7 @@ extern "C" {
 
 #include <stdio.h>
 #include <string.h>
+#include "../../src/query_ctx.h"
 #include "../../src/util/arr.h"
 #include "../../src/util/vector.h"
 #include "../../src/util/rmalloc.h"
@@ -22,9 +23,6 @@ extern "C" {
 }
 #endif
 
-pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
-pthread_key_t _tlsASTKey;  // Thread local storage AST key.
-
 class FilterTreeTest: public ::testing::Test {
   protected:
 
@@ -32,14 +30,11 @@ class FilterTreeTest: public ::testing::Test {
 		// Use the malloc family for allocations
 		Alloc_Reset();
 		_fake_graph_context();
-
-		int error = pthread_key_create(&_tlsASTKey, NULL);
-		ASSERT_EQ(error, 0);
 	}
 
 	static void TearDownTestCase() {
 		// Free fake graph context.
-		GraphContext *gc = GraphContext_GetFromTLS();
+		GraphContext *gc = QueryCtx_GetGraphCtx();
 		free(gc);
 	}
 
@@ -53,10 +48,8 @@ class FilterTreeTest: public ::testing::Test {
 		// No indicies.
 		gc->index_count = 0;
 
-		int error = pthread_key_create(&_tlsGCKey, NULL);
-		ASSERT_EQ(error, 0);
-		pthread_setspecific(_tlsGCKey, gc);
-
+		ASSERT_TRUE(QueryCtx_Init());
+		QueryCtx_SetGraphCtx(gc);
 	}
 
 	AST *_build_ast(const char *query) {
@@ -262,3 +255,4 @@ TEST_F(FilterTreeTest, NOTReduction) {
 		FilterTree_Free(expected_tree);
 	}
 }
+

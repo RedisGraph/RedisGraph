@@ -16,13 +16,9 @@
 // the result t is the identity value of the monoid.  Unlike most other
 // GraphBLAS operations, this operation uses an accum operator but no mask.
 
-// The actual work is done in GB_reduce_to_scalar.c.
+#include "GB_reduce.h"
 
-// parallel: not here but in GB_reduce_to_scalar
-
-#include "GB.h"
-
-#define GB_REDUCE(type,T)                                                      \
+#define GB_VECTOR_TO_SCALAR(type,T)                                            \
 GrB_Info GrB_Vector_reduce_ ## T    /* c = accum (c, reduce_to_scalar (u))  */ \
 (                                                                              \
     type *c,                        /* result scalar                        */ \
@@ -39,17 +35,17 @@ GrB_Info GrB_Vector_reduce_ ## T    /* c = accum (c, reduce_to_scalar (u))  */ \
         Context)) ;                                                     \
 }
 
-GB_REDUCE (bool     , BOOL   )
-GB_REDUCE (int8_t   , INT8   )
-GB_REDUCE (uint8_t  , UINT8  )
-GB_REDUCE (int16_t  , INT16  )
-GB_REDUCE (uint16_t , UINT16 )
-GB_REDUCE (int32_t  , INT32  )
-GB_REDUCE (uint32_t , UINT32 )
-GB_REDUCE (int64_t  , INT64  )
-GB_REDUCE (uint64_t , UINT64 )
-GB_REDUCE (float    , FP32   )
-GB_REDUCE (double   , FP64   )
+GB_VECTOR_TO_SCALAR (bool     , BOOL   )
+GB_VECTOR_TO_SCALAR (int8_t   , INT8   )
+GB_VECTOR_TO_SCALAR (uint8_t  , UINT8  )
+GB_VECTOR_TO_SCALAR (int16_t  , INT16  )
+GB_VECTOR_TO_SCALAR (uint16_t , UINT16 )
+GB_VECTOR_TO_SCALAR (int32_t  , INT32  )
+GB_VECTOR_TO_SCALAR (uint32_t , UINT32 )
+GB_VECTOR_TO_SCALAR (int64_t  , INT64  )
+GB_VECTOR_TO_SCALAR (uint64_t , UINT64 )
+GB_VECTOR_TO_SCALAR (float    , FP32   )
+GB_VECTOR_TO_SCALAR (double   , FP64   )
 
 GrB_Info GrB_Vector_reduce_UDT      // c = accum (c, reduce_to_scalar (u))
 (

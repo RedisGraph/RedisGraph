@@ -11,6 +11,7 @@
 #include "edge.h"
 #include "graph_entity.h"
 #include "../graphcontext.h"
+#include "../../query_ctx.h"
 
 // Edge* Edge_New(Node *src, Node *dest, const char *relationship, const char *alias) {
 // assert(src && dest);
@@ -56,8 +57,7 @@ GrB_Matrix Edge_GetMatrix(Edge *e) {
 
 	// Retrieve matrix from graph if edge matrix isn't set.
 	if(!e->mat) {
-		GraphContext *gc = GraphContext_GetFromTLS();
-		Graph *g = gc->g;
+		Graph *g = QueryCtx_GetGraph();
 
 		// Get relation matrix.
 		if(e->relationID == GRAPH_UNKNOWN_RELATION) {
@@ -98,3 +98,4 @@ void Edge_Free(Edge *edge) {
 
 	free(edge);
 }
+

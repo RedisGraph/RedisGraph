@@ -13,20 +13,18 @@
 
 // This function is not directly user-callable.  Use GrB_BinaryOp_new instead.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GB_BinaryOp_new
 (
     GrB_BinaryOp *binaryop,         // handle for the new binary operator
     GxB_binary_function function,   // pointer to the binary function
-    const GrB_Type ztype,           // type of output z
-    const GrB_Type xtype,           // type of input x
-    const GrB_Type ytype,           // type of input y
+    GrB_Type ztype,                 // type of output z
+    GrB_Type xtype,                 // type of input x
+    GrB_Type ytype,                 // type of input y
     const char *name                // name of the function
 )
-{ 
+{
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -45,7 +43,7 @@ GrB_Info GB_BinaryOp_new
     //--------------------------------------------------------------------------
 
     // allocate the binary operator
-    GB_CALLOC_MEMORY (*binaryop, 1, sizeof (struct GB_BinaryOp_opaque), NULL) ;
+    GB_CALLOC_MEMORY (*binaryop, 1, sizeof (struct GB_BinaryOp_opaque)) ;
     if (*binaryop == NULL)
     { 
         // out of memory

@@ -15,7 +15,6 @@ typedef struct {
 	RedisModuleBlockedClient *bc;         // Blocked client.
 	char *graphName;                      // Graph ID.
 	char *query;                          // Query string.
-	double tic[2];                        // Timings.
 	RedisModuleString **argv;             // Arguments.
 	int argc;                             // Argument count.
 	bool replicated_command;              // Whether this instance was spawned by a replication command.
@@ -56,3 +55,4 @@ void CommandCtx_Free
 (
 	CommandCtx *qctx
 );
+

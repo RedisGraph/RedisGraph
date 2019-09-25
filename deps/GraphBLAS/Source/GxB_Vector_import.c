@@ -9,14 +9,12 @@
 
 // The indices must appear in sorted order.
 
-// not parallel: O(1) time
-
-#include "GB.h"
+#include "GB_export.h"
 
 GrB_Info GxB_Vector_import  // import a vector in CSC format
 (
     GrB_Vector *v,          // handle of vector to create
-    const GrB_Type type,    // type of vector to create
+    GrB_Type type,          // type of vector to create
     GrB_Index n,            // vector length
     GrB_Index nvals,        // number of entries in the vector
     // CSR/CSC format:
@@ -49,7 +47,7 @@ GrB_Info GxB_Vector_import  // import a vector in CSC format
     }
 
     if (nvals > 0)
-    {
+    { 
         GB_RETURN_IF_NULL (vi) ;
         GB_RETURN_IF_NULL (vx) ;
     }

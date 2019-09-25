@@ -7,14 +7,12 @@
 
 //------------------------------------------------------------------------------
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GxB_UnaryOp_ztype          // return the type of z
 (
     GrB_Type *ztype,                // return type of output z
-    const GrB_UnaryOp unaryop       // unary operator
+    GrB_UnaryOp unaryop             // unary operator
 )
 { 
 

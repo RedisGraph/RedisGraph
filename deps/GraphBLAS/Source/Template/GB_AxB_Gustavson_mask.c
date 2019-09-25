@@ -21,21 +21,18 @@
 // GB_AxB_Gustavson_nomask is used instead, if the total flop count is less
 // than nnz(M).
 
-// parallel: this could be done in parallel, but the parallelism will be
-// handled outside this code, in GB_AxB_parallel.  This work is done by a
-// single thread.
-
 {
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (GB_NOT_ALIASED_3 (C, M, A, B)) ;
+    ASSERT (!GB_aliased (C, M)) ;
+    ASSERT (!GB_aliased (C, A)) ;
+    ASSERT (!GB_aliased (C, B)) ;
     ASSERT (C->vdim == B->vdim) ;
     ASSERT (C->vlen == A->vlen) ;
     ASSERT (A->vdim == B->vlen) ;
-
     ASSERT (C->vdim == M->vdim) ;
     ASSERT (C->vlen == M->vlen) ;
 
@@ -52,13 +49,13 @@
     //--------------------------------------------------------------------------
 
     const int64_t *restrict Mp = M->p ;
-    const int64_t *restrict Mh = M->h ;
     const int64_t *restrict Mi = M->i ;
     const GB_void *restrict Mx = M->x ;
     GB_cast_function cast_M = GB_cast_factory (GB_BOOL_code, M->type->code) ;
     size_t msize = M->type->size ;
-    const int64_t mnvec = M->nvec ;
     #ifdef GB_HYPER_CASE
+    const int64_t *restrict Mh = M->h ;
+    const int64_t mnvec = M->nvec ;
     int64_t mpleft = 0 ;
     int64_t mpright = mnvec - 1 ;
     #endif
@@ -82,7 +79,9 @@
     //--------------------------------------------------------------------------
 
     int64_t *restrict Ci = C->i ;
+    #ifndef GB_HYPER_CASE
     int64_t *restrict Cp = C->p ;
+    #endif
 
     int64_t jlast, cnz, cnz_last ;
     GB_jstartup (C, &jlast, &cnz, &cnz_last) ;
@@ -208,20 +207,35 @@
             // get the value of B(k,j)
             //------------------------------------------------------------------
 
-            GB_COPY_ARRAY_TO_SCALAR (bkj, Bx, pB, bsize) ;
+            GB_GETB (bkj, Bx, pB) ;
 
             //------------------------------------------------------------------
             // Sauna += (A(:,k) * B(k,j)) .* M(:,j)
             //------------------------------------------------------------------
 
             for ( ; pA < pA_end ; pA++)
-            { 
+            {
                 // Sauna_Work [i] += (A(i,k) * B(k,j)) .* M(i,j)
                 int64_t i = Ai [pA] ;
                 int64_t mark = Sauna_Mark [i] ;
                 if (mark < hiwater) continue ;
                 // M(i,j) == 1 so do the work
-                GB_MULTADD_WITH_MASK ;
+                GB_GETA (aik, Ax, pA) ;
+
+                // Sauna_Work [i] += A(i,k) * B(k,j)
+                if (mark == hiwater)
+                { 
+                    // first time C(i,j) seen
+                    // Sauna_Work [i] = A(i,k) * B(k,j)
+                    GB_MULT (GB_SAUNA_WORK (i), aik, bkj) ;
+                    Sauna_Mark [i] = hiwater + 1 ;
+                }
+                else
+                { 
+                    // C(i,j) seen before, update it
+                    // Sauna_Work [i] += A(i,k) * B(k,j)
+                    GB_MULTADD (GB_SAUNA_WORK (i), aik, bkj) ;
+                }
             }
 
             //------------------------------------------------------------------
@@ -260,7 +274,8 @@
                 { 
                     // C(i,j) is a live entry, gather its row and value
                     // Cx [cnz] = Sauna_Work [i] ;
-                    GB_COPY_ARRAY_TO_ARRAY (Cx, cnz, Sauna_Work, i, zsize) ;
+                    ASSERT (cnz < C->nzmax) ;
+                    GB_COPY_C (GB_CX (cnz), GB_SAUNA_WORK (i)) ;
                     Ci [cnz++] = i ;
                 }
             }

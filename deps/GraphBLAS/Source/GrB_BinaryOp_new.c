@@ -11,8 +11,6 @@
 // user-callable.  The macro is used by default since it can capture the name
 // of the binary function.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 // the macro version of this function must first be #undefined
@@ -22,9 +20,9 @@ GrB_Info GrB_BinaryOp_new
 (
     GrB_BinaryOp *binaryop,         // handle for the new binary operator
     GxB_binary_function function,   // pointer to the binary function
-    const GrB_Type ztype,           // type of output z
-    const GrB_Type xtype,           // type of input x
-    const GrB_Type ytype            // type of input y
+    GrB_Type ztype,                 // type of output z
+    GrB_Type xtype,                 // type of input x
+    GrB_Type ytype                  // type of input y
 )
 { 
     return (GB_BinaryOp_new (binaryop, function, ztype, xtype, ytype, "f")) ;

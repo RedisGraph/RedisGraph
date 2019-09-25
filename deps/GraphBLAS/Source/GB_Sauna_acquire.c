@@ -8,15 +8,18 @@
 //------------------------------------------------------------------------------
 
 // If the user only calls GraphBLAS from a single user thread, then all
-// internal threads will always find their native Sauna.
+// internal threads will always find their native Sauna: tid == Sauna_id [tid].
+// The native Sauna is best since a thread should use workspace that it
+// allocated itself, for best performance in a NUMA memory system.
 
-// FUTURE: time spent in the critical section is typically O(nthreads) or
-// O(GB_Global.nthreads_max), unless the user calls GraphBLAS simultaneously
-// from multiple user threads.  In that case, the time could be
-// O(GxB_NTHREADS_MAX), which is 2048 by default.  If it becomes a performance
-// bottleneck, doubly-linked list of available Sauna ids could be kept,
+#include "GB_Sauna.h"
 
-#include "GB.h"
+// The time spent in the critical section is typically O(nthreads) or, unless
+// the user calls GraphBLAS simultaneously from multiple user threads.  In that
+// case, (if try_again is true) the time could be O(GxB_NTHREADS_MAX), which is
+// 2048 by default.  If it becomes a performance bottleneck, doubly-linked list
+// of available Sauna ids could be kept.  The downside of a doubly-linked list
+// is that threads would tend not to acquire their native Saunas.
 
 GrB_Info GB_Sauna_acquire
 (
@@ -45,42 +48,43 @@ GrB_Info GB_Sauna_acquire
     #define GB_CRITICAL_SECTION                                             \
     {                                                                       \
         /* try to acquire the native Saunas for each thread */              \
-        for (int t = 0 ; t < nthreads ; t++)                                \
+        for (int tid = 0 ; tid < nthreads ; tid++)                          \
         {                                                                   \
-            if (AxB_methods_used [t] != GxB_AxB_GUSTAVSON)                  \
+            if (AxB_methods_used != NULL &&                                 \
+               (AxB_methods_used [tid] != GxB_AxB_GUSTAVSON))               \
             {                                                               \
                 /* no need for a Sauna for this thread */                   \
-                Sauna_ids [t] = -2 ;                                        \
+                Sauna_ids [tid] = -2 ;                                      \
             }                                                               \
-            else if (GB_Global.Sauna_in_use [t])                            \
+            else if (GB_Global_Sauna_in_use_get (tid))                      \
             {                                                               \
-                /* Saunas [t] is already in use */                          \
+                /* Saunas [tid] is already in use */                        \
                 try_again = true ;                                          \
-                Sauna_ids [t] = -1 ;                                        \
+                Sauna_ids [tid] = -1 ;                                      \
             }                                                               \
             else                                                            \
             {                                                               \
                 /* acquire the native Sauna */                              \
-                GB_Global.Sauna_in_use [t] = true ;                         \
-                Sauna_ids [t] = t ;                                         \
+                GB_Global_Sauna_in_use_set (tid, true) ;                    \
+                Sauna_ids [tid] = tid ;                                     \
             }                                                               \
         }                                                                   \
         if (try_again)                                                      \
         {                                                                   \
             /* look for non-native Saunas for the unsatisfied threads */    \
             int s = 0 ;                                                     \
-            for (int t = 0 ; t < nthreads ; t++)                            \
+            for (int tid = 0 ; tid < nthreads ; tid++)                      \
             {                                                               \
-                if (Sauna_ids [t] == -1)                                    \
+                if (Sauna_ids [tid] == -1)                                  \
                 {                                                           \
-                    /* thread t does not yet have a Sauna */                \
+                    /* thread tid does not yet have a Sauna */              \
                     for ( ; s < GxB_NTHREADS_MAX ; s++)                     \
                     {                                                       \
-                        if (!GB_Global.Sauna_in_use [s])                    \
+                        if (!GB_Global_Sauna_in_use_get (s))                \
                         {                                                   \
                             /* acquire the native Sauna */                  \
-                            GB_Global.Sauna_in_use [s] = true ;             \
-                            Sauna_ids [t] = s ;                             \
+                            GB_Global_Sauna_in_use_set (s, true) ;          \
+                            Sauna_ids [tid] = s ;                           \
                             break ;                                         \
                         }                                                   \
                     }                                                       \
@@ -101,11 +105,12 @@ GrB_Info GB_Sauna_acquire
     // check if all threads got a Sauna that need one
     //--------------------------------------------------------------------------
 
-    for (int t = 0 ; t < nthreads ; t++)
+    for (int tid = 0 ; tid < nthreads ; tid++)
     {
-        if (Sauna_ids [t] == -1)
-        {
-            // release all Sauna ids just acquired
+        if (Sauna_ids [tid] == -1)
+        { 
+            // thread tid needs a Sauna but did not get one.  There are too
+            // many concurrent threads.  release all Sauna ids just acquired
             GrB_Info info = GB_Sauna_release (nthreads, Sauna_ids) ;
             if (info != GrB_SUCCESS) return (info) ;
             return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,

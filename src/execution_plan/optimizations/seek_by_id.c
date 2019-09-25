@@ -100,7 +100,7 @@ void _reduceTap(ExecutionPlan *plan, OpBase *tap) {
 		 * where X is a constant. */
 		OpBase *parent = tap->parent;
 		while(parent && parent->type == OPType_FILTER) {
-			Filter *filter = (Filter *)parent;
+			OpFilter *filter = (OpFilter *)parent;
 			FT_FilterNode *f = filter->filterTree;
 
 			int rel;

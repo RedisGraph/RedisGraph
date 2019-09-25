@@ -6,18 +6,16 @@
 
 #include "cmd_query.h"
 #include "../ast/ast.h"
-#include "cmd_context.h"
 #include "../util/arr.h"
+#include "cmd_context.h"
+#include "../query_ctx.h"
 #include "../graph/graph.h"
-#include "../index/index.h"
 #include "../util/rmalloc.h"
-#include "../util/simple_timer.h"
 #include "../execution_plan/execution_plan.h"
 #include "cypher-parser.h"
 
-extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
-
-void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, const cypher_astnode_t *index_op) {
+static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc,
+							 const cypher_astnode_t *index_op) {
 	/* Set up nested array response for index creation and deletion,
 	 * Following the response struture of other queries:
 	 * First element is an empty result-set followed by statistics.
@@ -37,10 +35,10 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, const cypher_astnod
 		if(GraphContext_AddIndex(&idx, gc, label, prop, IDX_EXACT_MATCH) != INDEX_OK) {
 			// Index creation may have failed if the label or property was invalid, or the index already exists.
 			RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
-			return;
+		} else {
+			Index_Construct(idx);
+			RedisModule_ReplyWithSimpleString(ctx, "Indices added: 1");
 		}
-		Index_Construct(idx);
-		RedisModule_ReplyWithSimpleString(ctx, "Indices added: 1");
 	} else {
 		// Retrieve strings from AST node
 		const char *label = cypher_ast_label_get_name(cypher_ast_drop_node_props_index_get_label(index_op));
@@ -55,6 +53,9 @@ void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, const cypher_astnod
 			free(reply);
 		}
 	}
+
+	/* Report execution timing. */
+	ResultSet_ReportQueryRuntime(ctx);
 }
 
 static inline bool _check_compact_flag(CommandCtx *qctx) {
@@ -65,11 +66,14 @@ static inline bool _check_compact_flag(CommandCtx *qctx) {
 }
 
 void _MGraph_Query(void *args) {
+	AST *ast = NULL;
+	bool lockAcquired = false;
+	ResultSet *result_set = NULL;
 	CommandCtx *qctx = (CommandCtx *)args;
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
-	ResultSet *result_set = NULL;
-	bool lockAcquired = false;
-	AST *ast = NULL;
+
+	QueryCtx_BeginTimer(); // Start query timing.
+	QueryCtx_SetRedisModuleCtx(ctx);
 
 	// Parse the query to construct an AST
 	cypher_parse_result_t *parse_result = cypher_parse(qctx->query, NULL, NULL,
@@ -118,6 +122,7 @@ void _MGraph_Query(void *args) {
 	if(root_type == CYPHER_AST_QUERY) {  // query operation
 		result_set = NewResultSet(ctx, compact);
 		ExecutionPlan *plan = NewExecutionPlan(ctx, gc, result_set);
+		if(!plan) goto cleanup;
 		result_set = ExecutionPlan_Execute(plan);
 		ExecutionPlan_Free(plan);
 		ResultSet_Replay(result_set);    // Send result-set back to client.
@@ -128,17 +133,12 @@ void _MGraph_Query(void *args) {
 		assert("Unhandled query type" && false);
 	}
 
-	/* Report execution timing. */
-	char *strElapsed;
-	double t = simple_toc(qctx->tic) * 1000;
-	asprintf(&strElapsed, "Query internal execution time: %.6f milliseconds", t);
-	RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
-	free(strElapsed);
-
 	// Clean up.
 cleanup:
 	// Release the read-write lock
 	if(lockAcquired) {
+		// TODO In the case of a failing writing query, we may hold both locks:
+		// "CREATE (a {num: 1}) MERGE ({v: a.num})"
 		if(readonly)Graph_ReleaseLock(gc->g);
 		else Graph_WriterLeave(gc->g);
 	}
@@ -147,6 +147,7 @@ cleanup:
 	AST_Free(ast);
 	if(parse_result) cypher_parse_result_free(parse_result);
 	CommandCtx_Free(qctx);
+	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 }
 
 /* Queries graph
@@ -154,10 +155,7 @@ cleanup:
  * argv[1] graph name
  * argv[2] query to execute */
 int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-	double tic[2];
 	if(argc < 3) return RedisModule_WrongArity(ctx);
-
-	simple_tic(tic);
 
 	/* Determin query execution context
 	 * queries issued within a LUA script or multi exec block must
@@ -165,18 +163,16 @@ int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	CommandCtx *context;
 	int flags = RedisModule_GetContextFlags(ctx);
 	bool is_replicated = RedisModule_GetContextFlags(ctx) & REDISMODULE_CTX_FLAGS_REPLICATED;
-	if(flags & (REDISMODULE_CTX_FLAGS_MULTI | REDISMODULE_CTX_FLAGS_LUA)) {
+	if(flags & (REDISMODULE_CTX_FLAGS_MULTI |
+				REDISMODULE_CTX_FLAGS_LUA |
+				REDISMODULE_CTX_FLAGS_LOADING)) {
 		// Run query on Redis main thread.
 		context = CommandCtx_New(ctx, NULL, argv[1], argv[2], argv, argc, is_replicated);
-		context->tic[0] = tic[0];
-		context->tic[1] = tic[1];
 		_MGraph_Query(context);
 	} else {
 		// Run query on a dedicated thread.
 		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
 		context = CommandCtx_New(NULL, bc, argv[1], argv[2], argv, argc, is_replicated);
-		context->tic[0] = tic[0];
-		context->tic[1] = tic[1];
 		thpool_add_work(_thpool, _MGraph_Query, context);
 	}
 

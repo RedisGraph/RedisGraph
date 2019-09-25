@@ -72,11 +72,12 @@ void mexFunction
     int64_t *Bflops = NULL ;
     if (nargout > 1)
     {
-        Bflops = mxMalloc ((bnvec+1) * sizeof (int64_t)) ;
+        // note the calloc of Bflops
+        Bflops = mxCalloc ((bnvec+1), sizeof (int64_t)) ;
     }
 
     // compute the flop count
-    bool result = GB_AxB_flopcount (Bflops, M, A, B, floplimit, NULL) ;
+    bool result = GB_AxB_flopcount (Bflops, NULL, M, A, B, floplimit, Context) ;
 
     // return result to MATLAB
     pargout [0] = mxCreateDoubleScalar ((double) result) ;

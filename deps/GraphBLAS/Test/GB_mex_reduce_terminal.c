@@ -2,7 +2,7 @@
 // GB_mex_reduce_terminal: [c,flag] = sum(A), reduce to scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -22,7 +22,9 @@
     GB_mx_put_global (true, 0) ;        \
 }
 
-void maxdouble (double *z, double *x, double *y)
+void maxdouble (double *z, const double *x, const double *y) ;
+
+void maxdouble (double *z, const double *x, const double *y)
 {
     // this is not safe with NaNs
     (*z) = ((*x) > (*y)) ? (*x) : (*y) ;

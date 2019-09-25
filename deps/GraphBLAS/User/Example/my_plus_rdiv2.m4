@@ -16,7 +16,7 @@
         const float *y
     )
     {
-        (*z) = (*y) / (*x) ;
+        (*z) = ((double) (*y)) / (*x) ;
     }
 
 #endif

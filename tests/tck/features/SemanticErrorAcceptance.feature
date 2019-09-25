@@ -305,7 +305,6 @@ Feature: SemanticErrorAcceptance
       """
     Then a TypeError should be raised at runtime: PropertyAccessOnNonMap
 
-@skip
   Scenario: Failing when performing property access on a non-map 2
     When executing query:
       """

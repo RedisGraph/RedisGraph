@@ -10,4 +10,4 @@
 %   dpagerank    - compute the pagerank of nodes in a graph using a real semiring
 %   ipagerank    - compute the pagerank of nodes in a graph using an integer semiring
 %   rowscale     - row scale an adjacency matrix by out-degree
-
+%   dpagerank2   - compute the pagerank of nodes in a graph using a real semiring

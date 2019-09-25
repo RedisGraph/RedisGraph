@@ -1023,7 +1023,6 @@ Feature: ListOperations
             """
         Then a TypeError should be raised at runtime: ListElementAccessByNonInteger
 
-    @skip
     Scenario: Fail at compile time when attempting to index with a non-integer into a list
         Given any graph
         When executing query:

@@ -7,15 +7,13 @@
 
 //------------------------------------------------------------------------------
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 bool GB_queue_remove_head       // remove matrix at the head of queue
 (
     GrB_Matrix *Ahandle         // return matrix or NULL if queue empty
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -34,7 +32,7 @@ bool GB_queue_remove_head       // remove matrix at the head of queue
     #define GB_CRITICAL_SECTION                                             \
     {                                                                       \
         /* get the matrix at the head of the queue */                       \
-        A = (GrB_Matrix) (GB_Global.queue_head) ;                           \
+        A = (GrB_Matrix) (GB_Global_queue_head_get ( )) ;                   \
         /* remove A from the queue, if it exists */                         \
         if (A != NULL)                                                      \
         {                                                                   \
@@ -42,7 +40,7 @@ bool GB_queue_remove_head       // remove matrix at the head of queue
             ASSERT (A->queue_prev == NULL) ;                                \
             /* shift the head to the next matrix in the queue */            \
             GrB_Matrix Next = (GrB_Matrix) A->queue_next ;                  \
-            GB_Global.queue_head = Next ;                                   \
+            GB_Global_queue_head_set (Next) ;                               \
             if (Next != NULL)                                               \
             {                                                               \
                 Next->queue_prev = NULL ;                                   \

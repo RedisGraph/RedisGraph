@@ -2,7 +2,7 @@
 # GraphBLAS/Makefile
 #-------------------------------------------------------------------------------
 
-# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 # http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 #-------------------------------------------------------------------------------
@@ -10,15 +10,28 @@
 # simple Makefile for GraphBLAS, relies on cmake to do the actual build.  Use
 # the CMAKE_OPTIONS argument to this Makefile to pass options to cmake.
 
-JOBS ?= 1
+# Find the OS.
+uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+# Set number of threads.
+ifeq ($(uname_S),Linux)
+	JOBS ?= $(shell grep -c ^processor /proc/cpuinfo)
+else
+	JOBS ?= $(shell sysctl -n hw.logicalcpu_max)
+endif
 
-# build the GraphBLAS library (static and dynamic) and run a quick test
-default:
-	( cd build ; cmake $(CMAKE_OPTIONS) .. ; $(MAKE) --jobs=$(JOBS) ; cd ../Demo ; ./demo )
+default: library
 
 # just build the static and dynamic libraries; do not run the demo
 library:
 	( cd build ; cmake $(CMAKE_OPTIONS) .. ; $(MAKE) --jobs=$(JOBS) )
+
+# just run the demos: assumes the library is already compiled
+run:
+	( cd Demo ; ./demo )
+
+# just do 'make' in build; do not rerun the cmake script
+remake:
+	( cd build ; $(MAKE) --jobs=$(JOBS) )
 
 # just run cmake; do not compile
 cmake:
@@ -28,7 +41,7 @@ cmake:
 static: library
 
 static_only:
-	( cd build ; cmake $(CMAKE_OPTIONS) .. ; $(MAKE) -j4 graphblas_static )
+	( cd build ; cmake $(CMAKE_OPTIONS) .. ; $(MAKE) --jobs=$(JOBS) graphblas_static )
 
 # installs GraphBLAS to the install location defined by cmake, usually
 # /usr/local/lib and /usr/local/include
@@ -54,7 +67,7 @@ purge: distclean
 
 # remove all files not in the distribution
 distclean:
-	rm -rf build/* Demo/*_demo.out Demo/complex_demo_out.m Tcov/log.txt
+	rm -rf build/* Demo/*.out Demo/complex_demo_out.m Tcov/log.txt
 	rm -rf Config/*.tmp Source/control.m4
 	rm -rf Doc/html/* Doc/*.tmp
 	( cd Test ; $(MAKE) distclean )

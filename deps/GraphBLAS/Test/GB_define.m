@@ -1,7 +1,7 @@
 function GB_define 
 %GB_DEFINE create C source code for GraphBLAS.h
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 ints = {'int8','uint8', 'int16','uint16', 'int32','uint32', 'int64','uint64' } ;

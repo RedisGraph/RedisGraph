@@ -2,7 +2,7 @@
 // GB_mex_Matrix_subref: C=A(I,J)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -67,8 +67,7 @@ void mexFunction
     }
 
     // C = A(I,J)
-    METHOD (GB_subref_numeric (&C, true /* CSC */, A, I, ni, J, nj, true,
-        Context)) ;
+    METHOD (GB_subref (&C, true, A, I, ni, J, nj, false, true, Context)) ;
 
     // return C to MATLAB
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C subref result", false) ;

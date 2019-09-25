@@ -1,3 +1,0 @@
-#!/bin/csh
-
-../build/import_demo   < Matrix/west0067            > import_demo.out

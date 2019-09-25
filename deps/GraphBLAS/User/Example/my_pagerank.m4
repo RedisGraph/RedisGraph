@@ -11,6 +11,9 @@
 // are available at compile-time.
 #define PAGERANK_PREDEFINED
 
+// probability of walking to random neighbor
+#define PAGERANK_DAMPING 0.85
+
 // each node has a rank value, and a constant which is 1/outdegree
 typedef struct
 {
@@ -19,14 +22,8 @@ typedef struct
 }
 pagerank_type ;
 
-// global variable declarations
-extern
-double pagerank_damping, pagerank_teleport, pagerank_rdiff,
-    pagerank_init_rank, pagerank_rsum ;
-
-// for thread safety if the user application uses OpenMP, with parallel calls
-// to dpagerank2 on independent problems.
-#pragma omp threadprivate(pagerank_damping, pagerank_teleport, pagerank_rdiff, pagerank_init_rank, pagerank_rsum)
+// global values shared by all threads in a single pagerank computation:
+extern double pagerank_teleport, pagerank_init_rank, pagerank_rsum ;
 
 // The identity value for the pagerank_add monoid is {0,0}. For the
 // GxB_*_define macro that defines the GrB_Monoid, the identity argument must
@@ -34,7 +31,7 @@ double pagerank_damping, pagerank_teleport, pagerank_rdiff,
 // parsable as an argument to the m4 macro.  If the user-defined type is a
 // struct, the initializer uses curly brackets, but this causes a parsing error
 // for m4.  The solution is to define a C macro with the initialization
-// constant, and to use it in the GxB*define m4 macro.
+// constant, and to use it in the GxB_*define m4 macro.
 #define PAGERANK_ZERO {0,0}
 
 // unary operator to divide a double entry by the scalar pagerank_rsum
@@ -64,7 +61,7 @@ void init_page (pagerank_type *z, const double *x)
 //------------------------------------------------------------------------------
 
 // In MATLAB notation, the new rank is computed with:
-// newrank = pagerank_damping * (rank * D * A) + pagerank_teleport
+// newrank = PAGERANK_DAMPING * (rank * D * A) + pagerank_teleport
 
 // where A is a square binary matrix of the original graph, and A(i,j)=1 if
 // page i has a link to page j.  rank is a row vector of size n.  The matrix D
@@ -114,21 +111,14 @@ void pagerank_add
 
 // The semiring computes the vector newrank = rank*D*A.  To complete the page
 // rank computation, the new rank must be scaled by the
-// pagerank_damping, and the pagerank_teleport must be included, which is
+// PAGERANK_DAMPING, and the pagerank_teleport must be included, which is
 // done in the page rank accumulator:
 
-// newrank = pagerank_damping * newrank + pagerank_teleport
+// newrank = PAGERANK_DAMPING * newrank + pagerank_teleport
 
 // The PageRank_semiring does not construct the entire pagerank_type of
 // rank*D*A, since the vector that holds newrank(i) must also keep the
 // 1/invdegree(i), unchanged.  This is restored in the accumulator operator.
-
-// The PageRank_accum operator can also compute pagerank_rdiff = norm (r-rnew),
-// as a side effect.  This is unsafe but faster (see the comments below);
-// uncomment the following #define to enable the unsafe method, or comment it
-// out to use the safe method:
-//
-    #define PAGERANK_UNSAFE
 
 // binary operator to accumulate the new rank from the old
 static inline
@@ -140,23 +130,8 @@ void pagerank_accum
 )
 {
     // note that this formula does not use the old rank:
-    // new rank = pagerank_damping * (rank*A ) + pagerank_teleport
-    double rnew = pagerank_damping * (y->rank) + pagerank_teleport ;
-
-    #ifdef PAGERANK_UNSAFE
-
-    // This computation of pagerank_rdiff is not guaranteed to work per the
-    // GraphBLAS spec, but it does work with the current implementation of
-    // SuiteSparse:GraphBLAS.  The reason is that there is no guarantee that
-    // the accumulator step of a GraphBLAS operation is computed sequentially.
-    // If computed in parallel, a race condition would occur.
-
-    // This step uses the old rank, to compute the stopping criterion:
-    // pagerank_rdiff = sum (ranknew - rankold)
-    double delta = rnew - (x->rank) ;
-    pagerank_rdiff += delta * delta ;
-
-    #endif
+    // new rank = PAGERANK_DAMPING * (rank*A ) + pagerank_teleport
+    double rnew = PAGERANK_DAMPING * (y->rank) + pagerank_teleport ;
 
     // update the rank, and copy over the inverse degree from the old page info
     z->rank = rnew ;
@@ -166,9 +141,6 @@ void pagerank_accum
 //------------------------------------------------------------------------------
 // pagerank_diff: compute the change in the rank
 //------------------------------------------------------------------------------
-
-// This is safer than computing pagerank_rdiff via pagerank_accum, and is
-// compliant with the GraphBLAS spec.
 
 static inline
 void pagerank_diff
@@ -185,8 +157,7 @@ void pagerank_diff
 #else
 
 // global variable definitions
-double pagerank_damping, pagerank_teleport, pagerank_rdiff,
-    pagerank_init_rank, pagerank_rsum ;
+double pagerank_teleport, pagerank_init_rank, pagerank_rsum ;
 
 #endif
 

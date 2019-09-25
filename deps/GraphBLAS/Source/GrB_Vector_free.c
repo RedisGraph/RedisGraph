@@ -10,8 +10,6 @@
 // free all the content of a vector.  After GrB_Vector_free (&v), v is set
 // to NULL
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GrB_Vector_free    // free a vector

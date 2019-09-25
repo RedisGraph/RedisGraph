@@ -7,14 +7,12 @@
 
 //------------------------------------------------------------------------------
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GxB_BinaryOp_ztype         // return the type of z
 (
     GrB_Type *ztype,                // return type of output z
-    const GrB_BinaryOp binaryop     // binary operator to query
+    GrB_BinaryOp binaryop           // binary operator to query
 )
 { 
 

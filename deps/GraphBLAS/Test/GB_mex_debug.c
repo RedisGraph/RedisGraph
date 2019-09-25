@@ -1,8 +1,8 @@
 //------------------------------------------------------------------------------
-// GB_mex_debug: determine NDEBUG status
+// GB_mex_debug: determine GB_DEBUG status
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -36,12 +36,12 @@ void mexFunction
         printf ("GraphBLAS compilation and run-time options:\n") ;
     }
 
-    #ifndef NDEBUG
-    if (pr) printf ("NDEBUG:       debugging enabled:"
+    #ifdef GB_DEBUG
+    if (pr) printf ("GB_DEBUG:     debugging enabled:"
                                  " GraphBLAS will be slow\n") ;
     pargout [0] = mxCreateDoubleScalar (1) ;
     #else
-    if (pr) printf ("NDEBUG:       normal: debugging not enabled\n") ;
+    if (pr) printf ("GB_DEBUG:     normal: debugging not enabled\n") ;
     pargout [0] = mxCreateDoubleScalar (0) ;
     #endif
 

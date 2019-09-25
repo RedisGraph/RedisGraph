@@ -153,9 +153,9 @@ static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, SIValue array)
 	rm_free(str);
 }
 
-void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
-								 unsigned int numcols) {
+void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r) {
 	// Prepare return array sized to the number of RETURN entities
+	uint numcols = Record_length(r);
 	RedisModule_ReplyWithArray(ctx, numcols);
 
 	for(int i = 0; i < numcols; i++) {
@@ -182,3 +182,4 @@ void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns,
 		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
 	}
 }
+

@@ -52,7 +52,7 @@ GrB_Info bfs5m              // BFS of a graph (using vector assign & reduce)
     GrB_Matrix_nrows (&n, A) ;             // n = # of rows of A
     GrB_Vector_new (&v, GrB_INT32, n) ;    // Vector<int32_t> v(n) = 0
     GrB_assign (v, NULL, NULL, 0, GrB_ALL, n, NULL) ;   // make v dense
-    GrB_Vector_nvals (&n, v) ;              // finish pending work on v
+    GrB_Vector_nvals (&n, v) ;             // finish pending work on v
 
     GrB_Vector_new (&q, GrB_BOOL, n) ;     // Vector<bool> q(n) = false
     GrB_Vector_setElement (q, true, s) ;   // q[s] = true, false elsewhere
@@ -70,6 +70,7 @@ GrB_Info bfs5m              // BFS of a graph (using vector assign & reduce)
     bool successor = true ; // true when some successor found
     for (int32_t level = 1 ; successor && level <= n ; level++)
     {
+
         // v<q> = level, using vector assign with q as the mask
         GrB_assign (v, q, NULL, level, GrB_ALL, n, NULL) ;
 

@@ -7,9 +7,7 @@
 
 //------------------------------------------------------------------------------
 
-// parallel: not here; see GB_select
-
-#include "GB.h"
+#include "GB_select.h"
 
 GrB_Info GxB_Vector_select          // w<M> = accum (w, select(u,k))
 (
@@ -18,7 +16,7 @@ GrB_Info GxB_Vector_select          // w<M> = accum (w, select(u,k))
     const GrB_BinaryOp accum,       // optional accum for z=accum(w,t)
     const GxB_SelectOp op,          // operator to apply to the entries
     const GrB_Vector u,             // first input:  vector u
-    const void *k,                  // optional input for select operator
+    const GxB_Scalar Thunk,         // optional input for select operator
     const GrB_Descriptor desc       // descriptor for w and mask
 )
 { 
@@ -27,7 +25,7 @@ GrB_Info GxB_Vector_select          // w<M> = accum (w, select(u,k))
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_WHERE ("GxB_Vector_select (w, M, accum, op, u, k, desc)") ;
+    GB_WHERE ("GxB_Vector_select (w, M, accum, op, u, Thunk, desc)") ;
     GB_RETURN_IF_NULL_OR_FAULTY (w) ;
     GB_RETURN_IF_FAULTY (M) ;
     GB_RETURN_IF_NULL_OR_FAULTY (u) ;
@@ -45,7 +43,7 @@ GrB_Info GxB_Vector_select          // w<M> = accum (w, select(u,k))
         accum,                              // optional accum for Z=accum(C,T)
         op,                                 // operator to select the entries
         (GrB_Matrix) u,                     // first input: u
-        k,                                  // optional input for select op
+        Thunk,                              // optional input for select op
         false,                              // u, not transposed
         Context)) ;
 }

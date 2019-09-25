@@ -1,14 +1,12 @@
 function test65
 %TEST65 test type casting
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 X = logical (rand (4) > 0.5) ;
 C = GB_mex_cast (X, 'logical', 1) ;
 assert (isequal (X,C)) ;
-
-[~,~,~,c] = GB_spec_opsall ;
 
     A = 100 * randn (4) ;
 

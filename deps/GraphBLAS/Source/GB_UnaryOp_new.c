@@ -13,19 +13,17 @@
 
 // This function is not directly user-callable.  Use GrB_UnaryOp_new instead.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GB_UnaryOp_new             // create a new user-defined unary operator
 (
     GrB_UnaryOp *unaryop,           // handle for the new unary operator
     GxB_unary_function function,    // pointer to the unary function
-    const GrB_Type ztype,           // type of output z
-    const GrB_Type xtype,           // type of input x
+    GrB_Type ztype,                 // type of output z
+    GrB_Type xtype,                 // type of input x
     const char *name                // name of the function
 )
-{ 
+{
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -43,7 +41,7 @@ GrB_Info GB_UnaryOp_new             // create a new user-defined unary operator
     //--------------------------------------------------------------------------
 
     // allocate the unary operator
-    GB_CALLOC_MEMORY (*unaryop, 1, sizeof (struct GB_UnaryOp_opaque), NULL) ;
+    GB_CALLOC_MEMORY (*unaryop, 1, sizeof (struct GB_UnaryOp_opaque)) ;
     if (*unaryop == NULL)
     { 
         // out of memory

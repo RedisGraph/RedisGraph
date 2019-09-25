@@ -237,9 +237,10 @@ class testGraphMergeFlow(FlowTestsBase):
         self.env.assertEquals(result.properties_set, 0)
 
         # Verify that MATCH...MERGE on the same entity does not introduce changes
-        query = """MATCH (q {name: 'ABCDE'}) MERGE (r {name: q.name}) RETURN r.name"""
-        result = redis_graph.query(query)
-        self.env.assertEquals(result.labels_added, 0)
-        self.env.assertEquals(result.nodes_created, 0)
-        self.env.assertEquals(result.properties_set, 0)
-        self.env.assertEquals(result.result_set, expected)
+        # TODO currently unsupported
+        #  query = """MATCH (q {name: 'ABCDE'}) MERGE (r {name: q.name}) RETURN r.name"""
+        #  result = redis_graph.query(query)
+        #  self.env.assertEquals(result.labels_added, 0)
+        #  self.env.assertEquals(result.nodes_created, 0)
+        #  self.env.assertEquals(result.properties_set, 0)
+        #  self.env.assertEquals(result.result_set, expected)

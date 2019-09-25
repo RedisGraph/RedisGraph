@@ -7,8 +7,9 @@
 #include "reduce_count.h"
 #include "../ops/ops.h"
 #include "../../util/arr.h"
+#include "../../query_ctx.h"
 
-static GrB_Monoid edgeCountMonoid = NULL;
+static GrB_UnaryOp countMultipleEdges = NULL;
 
 static int _identifyResultAndAggregateOps(OpBase *root, OpResult **opResult,
 										  OpAggregate **opAggregate) {
@@ -90,7 +91,7 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 	/* User is trying to get total number of nodes in the graph
 	 * optimize by skiping SCAN and AGGREGATE. */
 	SIValue nodeCount;
-	GraphContext *gc = GraphContext_GetFromTLS();
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 
 	// If label is specified, count only labeled entities.
 	if(label) {
@@ -155,31 +156,50 @@ static int _identifyEdgeCountPattern(OpBase *root, OpResult **opResult, OpAggreg
 	return 1;
 }
 
-void _countEdges(void *_z, const void *_x, const void *_y) {
-	uint64_t *sum = (uint64_t *) _z;
-	uint64_t *currentTotal = (uint64_t *) _x;
-	const EdgeID *e = (const EdgeID *)_y;
-
-	EdgeID *ids;
-	// Single edge ID
-	if(SINGLE_EDGE(*e)) {
-		*sum = *currentTotal + 1;
+void _countEdges(void *z, const void *x) {
+	uint64_t *entry = (uint64_t *) x;
+	if(SINGLE_EDGE(*entry)) {
+		*(uint64_t *)z = 1;
 	} else {
 		// Multiple edges
-		ids = (EdgeID *)(*e);
-		*sum = *currentTotal + array_len(ids);
+		EdgeID *ids = (EdgeID *)(*entry);
+		*(uint64_t *)z = array_len(ids);
 	}
 }
 
 uint64_t _countRelationshipEdges(GrB_Matrix M) {
-	if(!edgeCountMonoid) {
-		GrB_BinaryOp edgeCountBinaryOp;
-		GrB_BinaryOp_new(&edgeCountBinaryOp, _countEdges, GrB_UINT64, GrB_UINT64, GrB_UINT64);
-		GrB_Monoid_new(&edgeCountMonoid, edgeCountBinaryOp, (uint64_t) 0);
+	// Create Unary operation only once.
+	if(!countMultipleEdges) {
+		GrB_UnaryOp_new(&countMultipleEdges, _countEdges, GrB_UINT64, GrB_UINT64);
 	}
-	uint64_t edges = 0;
-	GrB_reduce(&edges, GrB_NULL, edgeCountMonoid, M, GrB_NULL);
 
+	/* TODO: to avoid this entire process keep track if
+	 * M contains multiple edges between two given nodes
+	 * if there are no multiple edges,
+	 * i.e. `a` is connected to `b` with multiple edges of type R
+	 * then all we need to do is return M's nnz.
+	 * Otherwise create a new matrix A, where A[i,j] = x
+	 * where x is the number of edges in M[i,j]
+	 * then reduce A using the plus (sum) monoid. */
+
+	GrB_Index nrows;
+	GrB_Index ncols;
+	GrB_Matrix_nrows(&nrows, M);
+	GrB_Matrix_ncols(&ncols, M);
+
+	GrB_Matrix A;
+	GrB_Matrix_new(&A, GrB_UINT64, nrows, ncols);
+
+	// A[i,j] = # of edges in M[i,j].
+	GrB_Matrix_apply(A, GrB_NULL, GrB_NULL,
+					 countMultipleEdges, M, GrB_NULL);
+
+	uint64_t edges = 0;
+	// Sum(A)
+	GrB_Matrix_reduce_UINT64(&edges, GrB_NULL,
+							 GxB_PLUS_UINT64_MONOID, A, GrB_NULL);
+
+	GrB_free(&A);
 	return edges;
 }
 
@@ -200,7 +220,7 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	/* User is trying to get total number of edges in the graph
 	 * optimize by skiping SCAN, Traverse and AGGREGATE. */
 	SIValue edgeCount = SI_LongVal(0);
-	GraphContext *gc = GraphContext_GetFromTLS();
+	Graph *g = QueryCtx_GetGraph();
 
 	// If type is specified, count only labeled entities.
 	CondTraverse *condTraverse = (CondTraverse *) opTraverse;
@@ -208,11 +228,11 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	if(condTraverse->edgeRelationTypes[0] != GRAPH_NO_RELATION) {
 		uint64_t edges = 0;
 		for(int i = 0; i < edgeRelationCount; i++) {
-			edges += _countRelationshipEdges(Graph_GetRelationMap(gc->g, condTraverse->edgeRelationTypes[i]));
+			edges += _countRelationshipEdges(Graph_GetRelationMap(g, condTraverse->edgeRelationTypes[i]));
 		}
 		edgeCount = SI_LongVal(edges);
 	} else {
-		edgeCount = SI_LongVal(Graph_EdgeCount(gc->g));
+		edgeCount = SI_LongVal(Graph_EdgeCount(g));
 	}
 
 	/* Construct a constant expression, used by a new
@@ -249,3 +269,4 @@ void reduceCount(ExecutionPlan *plan) {
 	bool reduceNodeCountSucsses = _reduceNodeCount(plan);
 	if(!reduceNodeCountSucsses) _reduceEdgeCount(plan);
 }
+

@@ -149,11 +149,79 @@ int main (void)
     // start GraphBLAS
     GrB_init (GrB_NONBLOCKING) ;
 
+    /* alternative method via #defines:
     fprintf (stderr, LINE2 "SuiteSparse:GraphBLAS Version %d.%d.%d, %s\n" LINE2
         "%s" LINE "License: %s" LINE "GraphBLAS API Version %d.%d.%d, %s"
         " (http://graphblas.org)\n%s" LINE2, GxB_IMPLEMENTATION_MAJOR,
-        GxB_IMPLEMENTATION_MINOR, GxB_IMPLEMENTATION_SUB, GxB_DATE, GxB_ABOUT,
-        GxB_LICENSE, GxB_MAJOR, GxB_MINOR, GxB_SUB, GxB_SPEC_DATE, GxB_SPEC) ;
+        GxB_IMPLEMENTATION_MINOR, GxB_IMPLEMENTATION_SUB,
+        GxB_IMPLEMENTATION_DATE,  GxB_IMPLEMENTATION_ABOUT,
+        GxB_IMPLEMENTATION_LICENSE, GxB_SPEC_MAJOR, GxB_SPEC_MINOR,
+        GxB_SPEC_SUB, GxB_SPEC_DATE, GxB_SPEC_ABOUT) ;
+    */
+
+    char *library ;     GxB_get (GxB_LIBRARY_NAME,         &library) ;
+    int version [3] ;   GxB_get (GxB_LIBRARY_VERSION,      version) ;
+    char *date ;        GxB_get (GxB_LIBRARY_DATE,         &date) ;
+    char *about ;       GxB_get (GxB_LIBRARY_ABOUT,        &about) ;
+    char *url ;         GxB_get (GxB_LIBRARY_URL,          &url) ;
+    char *license ;     GxB_get (GxB_LIBRARY_LICENSE,      &license) ;
+    char *cdate ;       GxB_get (GxB_LIBRARY_COMPILE_DATE, &cdate) ;
+    char *ctime ;       GxB_get (GxB_LIBRARY_COMPILE_TIME, &ctime) ;
+    int api_ver [3] ;   GxB_get (GxB_API_VERSION,          api_ver) ;
+    char *api_date ;    GxB_get (GxB_API_DATE,             &api_date) ;
+    char *api_about ;   GxB_get (GxB_API_ABOUT,            &api_about) ;
+    char *api_url ;     GxB_get (GxB_API_URL,              &api_url) ;
+
+    fprintf (stderr, LINE2 "%s Version %d.%d.%d, %s\n" LINE2 "%s"
+        "(%s)\n" LINE "License: %s" LINE "GraphBLAS API Version %d.%d.%d, %s"
+        " (%s)\n%s" LINE2,
+        library, version [0], version [1], version [2], date, about, url,
+        license, api_ver [0], api_ver [1], api_ver [2], api_date, api_url,
+        api_about) ;
+    fprintf (stderr, "compiled: %s %s\n", cdate, ctime) ;
+
+    double hyper_ratio ;
+    GxB_get (GxB_HYPER, &hyper_ratio) ;
+    fprintf (stderr, "hyper ratio: %g\n", hyper_ratio) ;
+
+    GxB_Format_Value format ;
+    GxB_get (GxB_FORMAT, &format) ;
+    fprintf (stderr, "format: %s\n", (format == GxB_BY_ROW) ? "CSR" : "CSC") ;
+
+    GrB_Mode mode ;
+    GxB_get (GxB_MODE, &mode) ;
+    fprintf (stderr, "mode: %s\n", (mode == GrB_BLOCKING) ?
+        "blocking" : "non-blocking") ;
+
+    GxB_Thread_Model thread_safety ;
+    GxB_get (GxB_THREAD_SAFETY, &thread_safety) ;
+    fprintf (stderr, "user thread safety via: ") ;
+    switch (thread_safety)
+    {
+        case GxB_THREAD_OPENMP :  fprintf (stderr, "OpenMP\n") ;         break ;
+        case GxB_THREAD_POSIX :   fprintf (stderr, "POSIX threads\n") ;  break ;
+        case GxB_THREAD_WINDOWS : fprintf (stderr, "Windowsthreads\n") ; break ;
+        case GxB_THREAD_ANSI :    fprintf (stderr, "ANSI threads\n") ;   break ;
+        case GxB_THREAD_NONE : 
+        default :                 fprintf (stderr, "none\n") ;
+    }
+
+    GxB_Thread_Model threading ;
+    GxB_get (GxB_THREADING, &threading) ;
+    fprintf (stderr, "GraphBLAS parallelism via: ") ;
+    switch (threading)
+    {
+        case GxB_THREAD_OPENMP :  fprintf (stderr, "OpenMP\n") ; break ;
+        case GxB_THREAD_POSIX :   
+        case GxB_THREAD_WINDOWS : 
+        case GxB_THREAD_ANSI :    
+        case GxB_THREAD_NONE : 
+        default :                 fprintf (stderr, "none\n") ;
+    }
+
+    int nthreads_max ;
+    GxB_get (GxB_NTHREADS, &nthreads_max) ;
+    fprintf (stderr, "max # of threads used internally: %d\n", nthreads_max) ;
 
     // create the WildType
     GrB_Type_new (&WildType, sizeof (wildtype)) ;
@@ -288,7 +356,7 @@ int main (void)
     info = GrB_eWiseAdd (C, NULL, NULL, WildAdd, A, D, NULL) ;
     if (info != GrB_SUCCESS)
     {
-        printf ("\nThis supposed to fail, as a demo of GrB_error:\n%s\n",
+        printf ("\nThis is supposed to fail, as a demo of GrB_error:\n%s\n",
             GrB_error ( )) ;
     }
 

@@ -6,12 +6,12 @@
 
 #include "op_merge.h"
 
+#include "../../query_ctx.h"
 #include "../../schema/schema.h"
 #include "../../arithmetic/arithmetic_expression.h"
 #include <assert.h>
 
-static void _AddProperties(OpMerge *op, Record r, GraphEntity *ge,
-						   PropertyMap *props) {
+static void _AddProperties(OpMerge *op, Record r, GraphEntity *ge, PropertyMap *props) {
 	for(int i = 0; i < props->property_count; i++) {
 		SIValue val = AR_EXP_Evaluate(props->values[i], r);
 		GraphEntity_AddProperty(ge, props->keys[i], val);
@@ -99,6 +99,9 @@ static void _CommitEdges(OpMerge *op, Record r) {
 }
 
 static void _CreateEntities(OpMerge *op, Record r) {
+	// Track the inherited Record and the newly-allocated Record so that they may be freed if execution fails.
+	OpBase_AddVolatileRecord((OpBase *)op, r);
+
 	// Lock everything.
 	Graph_AcquireWriteLock(op->gc->g);
 
@@ -108,13 +111,16 @@ static void _CreateEntities(OpMerge *op, Record r) {
 
 	// Release lock.
 	Graph_ReleaseLock(op->gc->g);
+
+	OpBase_RemoveVolatileRecords((OpBase *)op); // No exceptions encountered, Records are not dangling.
+
 }
 
 OpBase *NewMergeOp(ResultSetStatistics *stats, NodeCreateCtx *nodes_to_merge,
 				   EdgeCreateCtx *edges_to_merge) {
 	OpMerge *op_merge = malloc(sizeof(OpMerge));
 	op_merge->stats = stats;
-	op_merge->gc = GraphContext_GetFromTLS();
+	op_merge->gc = QueryCtx_GetGraphCtx();
 	op_merge->matched = false;
 	op_merge->created = false;
 
@@ -198,3 +204,4 @@ void OpMergeFree(OpBase *ctx) {
 		op->edges_to_merge = NULL;
 	}
 }
+

@@ -24,9 +24,6 @@
 // any global variables relied upon by user-defined operators, or before
 // freeing any user-defined types, operators, monoids, or semirings.
 
-// parallel: not here; see GB_wait.  Or can also do all matrices in
-// the queue in parallel.
-
 // No other user threads should call any GraphBLAS function while GrB_wait is
 // executing, except for parallel calls to GrB_wait.  Results are undefined
 // otherwise, since GrB_wait could modify a matrix that another user thread is
@@ -45,11 +42,6 @@ GrB_Info GrB_wait ( )       // finish all pending computations
 
     GB_WHERE ("GrB_wait ( )") ;
 
-    // GrB_wait takes no input arguments, so there is no mechanism for telling
-    // it how many threads to use.  Thus, the default rule is used (get #
-    // of threads from the global nthreads_max).
-    Context->nthreads = GxB_DEFAULT ;
-
     //--------------------------------------------------------------------------
     // assemble all matrices with lingering zombies and/or pending tuples
     //--------------------------------------------------------------------------
@@ -63,7 +55,7 @@ GrB_Info GrB_wait ( )       // finish all pending computations
         // pending operations.  GB_check expects it to be in the queue.
         // ASSERT_OK (GB_check (A, "to assemble in GrB_wait", GB0)) ;
         // FUTURE:: allow matrices with no pending operations to be in the
-        // queue.  See FUTURE:: in GB_setElement and GB_subassign_kernel.
+        // queue; this may help avoid thrashing the critical section.
         ASSERT (GB_PENDING (A) || GB_ZOMBIES (A)) ;
         // delete any lingering zombies and assemble any pending tuples.
         GB_WAIT (A) ;

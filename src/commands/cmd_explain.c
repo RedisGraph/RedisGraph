@@ -6,12 +6,10 @@
 
 #include "cmd_explain.h"
 #include "cmd_context.h"
+#include "../query_ctx.h"
 #include "../index/index.h"
 #include "../util/rmalloc.h"
 #include "../execution_plan/execution_plan.h"
-
-extern pthread_key_t _tlsASTKey;  // Thread local storage AST key.
-extern pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
 
 GraphContext *_empty_graph_context() {
 	GraphContext *gc = NULL;
@@ -24,7 +22,7 @@ GraphContext *_empty_graph_context() {
 	gc->relation_schemas = NULL;
 	gc->graph_name = rm_strdup("");
 
-	assert(pthread_setspecific(_tlsGCKey, gc) == 0);
+	QueryCtx_SetGraphCtx(gc);
 	return gc;
 }
 
@@ -34,14 +32,17 @@ GraphContext *_empty_graph_context() {
  * argv[1] graph name [optional]
  * argv[2] query */
 void _MGraph_Explain(void *args) {
-	CommandCtx *qctx = (CommandCtx *)args;
-	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
+	AST *ast = NULL;
 	GraphContext *gc = NULL;
+	bool lock_acquired = false;
 	ExecutionPlan *plan = NULL;
 	bool free_graph_ctx = false;
-	AST *ast = NULL;
-	const char *graphname = qctx->graphName;
+	CommandCtx *qctx = (CommandCtx *)args;
+	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
 	const char *query = qctx->query;
+	const char *graphname = qctx->graphName;
+
+	QueryCtx_SetRedisModuleCtx(ctx);
 
 	// Parse the query to construct an AST
 	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
@@ -76,19 +77,20 @@ void _MGraph_Explain(void *args) {
 	}
 
 	Graph_AcquireReadLock(gc->g);
+	lock_acquired = true;
+
 	plan = NewExecutionPlan(ctx, gc, NULL);
-	ExecutionPlan_Print(plan, ctx);
+	if(plan) ExecutionPlan_Print(plan, ctx);
 
 cleanup:
-	if(plan) {
-		Graph_ReleaseLock(gc->g);
-		ExecutionPlan_Free(plan);
-	}
+	if(lock_acquired) Graph_ReleaseLock(gc->g);
+	if(plan) ExecutionPlan_Free(plan);
 
 	AST_Free(ast);
-	if(parse_result) cypher_parse_result_free(parse_result);
+	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 	CommandCtx_Free(qctx);
 	if(free_graph_ctx) GraphContext_Free(gc);
+	if(parse_result) cypher_parse_result_free(parse_result);
 }
 
 int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -122,3 +124,4 @@ int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 	return REDISMODULE_OK;
 }
+

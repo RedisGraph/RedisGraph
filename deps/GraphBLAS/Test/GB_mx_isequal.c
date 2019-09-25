@@ -2,7 +2,7 @@
 // GB_mx_isequal: check if two matrices are equal
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -21,6 +21,9 @@ bool GB_mx_isequal     // true if A and B are exactly the same
     if (A == NULL) return (false) ;
     if (B == NULL) return (false) ;
 
+    GB_Pending AP = A->Pending ;
+    GB_Pending BP = B->Pending ;
+
     if (A->magic != B->magic) return (false) ;
     if (A->type  != B->type ) return (false) ;
     if (A->vlen  != B->vlen ) return (false) ;
@@ -35,7 +38,7 @@ bool GB_mx_isequal     // true if A and B are exactly the same
     // these differences are OK:
     // if (A->plen  != B->plen ) return (false) ;
     // if (A->nzmax != B->nzmax) return (false) ;
-    // if (A->max_n_pending != B->max_n_pending) return (false) ;
+    // if (AP->nmax != BP->nmax) return (false) ;
     // queue_next and queue_prev are expected to differ
     // if (A->enqueued != B->enqueued) return (false) ;
 
@@ -43,20 +46,23 @@ bool GB_mx_isequal     // true if A and B are exactly the same
     if (A->h_shallow        != B->h_shallow        ) return (false) ;
     if (A->i_shallow        != B->i_shallow        ) return (false) ;
     if (A->x_shallow        != B->i_shallow        ) return (false) ;
-    if (A->n_pending        != B->n_pending        ) return (false) ;
-    if (A->sorted_pending   != B->sorted_pending   ) return (false) ;
-    if (A->operator_pending != B->operator_pending ) return (false) ;
-    if (A->type_pending     != B->type_pending     ) return (false) ;
-    if (A->type_pending_size!= B->type_pending_size) return (false) ;
     if (A->nzombies         != B->nzombies         ) return (false) ;
+
+    if ((AP != NULL) != (BP != NULL)) return (false) ;
+
+    if (AP != NULL)
+    {
+        if (AP->n      != BP->n     ) return (false) ;
+        if (AP->sorted != BP->sorted) return (false) ;
+        if (AP->op     != BP->op    ) return (false) ;
+        if (AP->type   != BP->type  ) return (false) ;
+        if (AP->size   != BP->size  ) return (false) ;
+    }
 
     int64_t n = A->nvec ;
     int64_t nnz = GB_NNZ (A) ;
     size_t s = sizeof (int64_t) ;
     size_t asize = A->type->size ;
-    size_t psize = A->type_pending_size ;
-
-    int64_t np = A->n_pending ;
 
     ASSERT (n >= 0 && n <= A->vdim) ;
     // printf ("mx_isequal: nvec "GBd" nnz "GBd", np "GBd"\n", n, nnz, np) ;
@@ -79,15 +85,18 @@ bool GB_mx_isequal     // true if A and B are exactly the same
         // printf ("x same\n") ;
     }
 
-    if (!GB_mx_same  ((char *) A->i_pending, (char *) B->i_pending, np * s))
-        return (false) ;
-    // printf ("ip same\n") ;
-    if (!GB_mx_same  ((char *) A->j_pending, (char *) B->j_pending, np * s))
-        return (false) ;
-    // printf ("jp same\n") ;
-    if (!GB_mx_same (A->s_pending, B->s_pending, np*psize))
-        return (false) ;
-    // printf ("xp same\n") ;
+    if (AP != NULL)
+    {
+        size_t psize = AP->size ;
+        int64_t np = AP->n ;
+        if (!GB_mx_same ((char *) AP->i, (char *) BP->i, np*s)) return (false) ;
+        if (!GB_mx_same ((char *) AP->j, (char *) BP->j, np*s)) return (false) ;
+        if (!GB_mx_same ((char *) AP->x, (char *) BP->x, np*psize))
+        {
+            return (false) ;
+        }
+        // printf ("xp same\n") ;
+    }
 
     return (true) ;
 }

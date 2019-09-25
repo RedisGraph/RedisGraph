@@ -7,7 +7,8 @@
 
 //------------------------------------------------------------------------------
 
-// not parallel: this function does O(1) work and is already thread-safe.
+// for additional diagnostics, use:
+// #define GB_DEVELOPER 1
 
 #include "GB.h"
 
@@ -20,18 +21,18 @@ GrB_Info GB_Monoid_check        // check a GraphBLAS monoid
     FILE *f,                    // file for output
     GB_Context Context
 )
-{ 
+{
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
-    if (pr > 0) GBPR ("\nGraphBLAS Monoid: %s ", GB_NAME) ;
+    GBPR0 ("\nGraphBLAS Monoid: %s ", GB_NAME) ;
 
     if (monoid == NULL)
     { 
         // GrB_error status not modified since this may be an optional argument
-        if (pr > 0) GBPR ("NULL\n") ;
+        GBPR0 ("NULL\n") ;
         return (GrB_NULL_POINTER) ;
     }
 
@@ -44,15 +45,15 @@ GrB_Info GB_Monoid_check        // check a GraphBLAS monoid
     switch (monoid->object_kind)
     {
         case GB_BUILTIN :
-            if (pr > 0) GBPR ("(built-in)") ;
+            GBPR0 ("(built-in)") ;
             break ;
 
         case GB_USER_COMPILED :
-            if (pr > 0) GBPR ("(user-defined at compile-time)") ;
+            GBPR0 ("(user-defined at compile-time)") ;
             break ;
 
         case GB_USER_RUNTIME :
-            if (pr > 0) GBPR ("(user-defined at run-time)") ;
+            GBPR0 ("(user-defined at run-time)") ;
             break ;
 
         default :
@@ -64,7 +65,7 @@ GrB_Info GB_Monoid_check        // check a GraphBLAS monoid
         Context) ;
     if (info != GrB_SUCCESS)
     { 
-        if (pr > 0) GBPR ("Monoid contains an invalid operator\n") ;
+        GBPR0 ("Monoid contains an invalid operator\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "Monoid contains an invalid operator: [%s]", GB_NAME))) ;
     }
@@ -72,7 +73,7 @@ GrB_Info GB_Monoid_check        // check a GraphBLAS monoid
     if (monoid->op->xtype != monoid->op->ztype ||
         monoid->op->ytype != monoid->op->ztype)
     { 
-        if (pr > 0) GBPR ("All domains of operator must be the same\n") ;
+        GBPR0 ("All domains of operator must be the same\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "All domains of monoid operator must be the same: [%s]",
             GB_NAME))) ;

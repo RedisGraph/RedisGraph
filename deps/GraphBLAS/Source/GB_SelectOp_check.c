@@ -7,7 +7,8 @@
 
 //------------------------------------------------------------------------------
 
-// not parallel: this function does O(1) work and is already thread-safe.
+// for additional diagnostics, use:
+// #define GB_DEVELOPER 1
 
 #include "GB.h"
 
@@ -20,18 +21,18 @@ GrB_Info GB_SelectOp_check  // check a GraphBLAS select operator
     FILE *f,                // file for output
     GB_Context Context
 )
-{ 
+{
 
     //--------------------------------------------------------------------------
     // check inputs
     //--------------------------------------------------------------------------
 
-    if (pr > 0) GBPR ("\nGraphBLAS SelectOp: %s: ", GB_NAME) ;
+    GBPR0 ("\nGraphBLAS SelectOp: %s: ", GB_NAME) ;
 
     if (op == NULL)
     { 
         // GrB_error status not modified since this may be an optional argument
-        if (pr > 0) GBPR ("NULL\n") ;
+        GBPR0 ("NULL\n") ;
         return (GrB_NULL_POINTER) ;
     }
 
@@ -42,40 +43,34 @@ GrB_Info GB_SelectOp_check  // check a GraphBLAS select operator
     GB_CHECK_MAGIC (op, "SelectOp") ;
 
     if (pr > 0)
-    { 
+    {
         if (op->opcode == GB_USER_SELECT_C_opcode)
-        {
+        { 
             GBPR ("(compile-time user-defined) ") ;
         }
         else if (op->opcode == GB_USER_SELECT_R_opcode)
-        {
+        { 
             GBPR ("(run-time user-defined) ") ;
         }
         else
-        {
+        { 
             GBPR ("(built-in) ") ;
         }
     }
 
-    if (pr > 0) GBPR ("C=%s(A,k)\n", op->name) ;
+    GBPR0 ("C=%s(A,k)\n", op->name) ;
 
     if (op->function == NULL && op->opcode >= GB_USER_SELECT_C_opcode)
     { 
-        if (pr > 0) GBPR ("function pointer is NULL\n") ;
+        GBPR0 ("function pointer is NULL\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "SelectOp has a NULL function pointer: %s [%s]",
             GB_NAME, op->name))) ;
     }
 
-    if (!(op->opcode == GB_TRIL_opcode ||
-          op->opcode == GB_TRIU_opcode ||
-          op->opcode == GB_DIAG_opcode ||
-          op->opcode == GB_OFFDIAG_opcode ||
-          op->opcode == GB_NONZERO_opcode ||
-          op->opcode == GB_USER_SELECT_C_opcode ||
-          op->opcode == GB_USER_SELECT_R_opcode))
+    if (op->opcode < GB_TRIL_opcode || op->opcode > GB_USER_SELECT_R_opcode)
     { 
-        if (pr > 0) GBPR ("invalid opcode\n") ;
+        GBPR0 ("invalid opcode\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "SelectOp has an invalid opcode: %s [%s]", GB_NAME, op->name))) ;
     }
@@ -85,9 +80,20 @@ GrB_Info GB_SelectOp_check  // check a GraphBLAS select operator
         GrB_Info info = GB_Type_check (op->xtype, "xtype", pr, f, Context) ;
         if (info != GrB_SUCCESS)
         { 
-            if (pr > 0) GBPR ("SelectOP has an invalid xtype\n") ;
+            GBPR0 ("SelectOp has an invalid xtype\n") ;
             return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                 "SelectOp has an invalid xtype: %s [%s]", GB_NAME, op->name))) ;
+        }
+    }
+
+    if (op->ttype != NULL)
+    { 
+        GrB_Info info = GB_Type_check (op->ttype, "ttype", pr, f, Context) ;
+        if (info != GrB_SUCCESS)
+        { 
+            GBPR0 ("SelectOp has an invalid ttype\n") ;
+            return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
+                "SelectOp has an invalid ttype: %s [%s]", GB_NAME, op->name))) ;
         }
     }
 

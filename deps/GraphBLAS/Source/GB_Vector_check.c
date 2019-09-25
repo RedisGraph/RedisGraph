@@ -9,8 +9,6 @@
 
 // GrB_Vector: same as GrB_Matrix, except it has exactly one column
 
-// parallel: this function does O(nnz(A)) work in GB_matvec_check, not here.
-
 #include "GB.h"
 
 GrB_Info GB_Vector_check    // check a GraphBLAS vector
@@ -22,7 +20,7 @@ GrB_Info GB_Vector_check    // check a GraphBLAS vector
     FILE *f,                // file for output
     GB_Context Context
 )
-{ 
+{
 
     //--------------------------------------------------------------------------
     // check GrB_Matrix conditions
@@ -42,7 +40,7 @@ GrB_Info GB_Vector_check    // check a GraphBLAS vector
 
     if (!GB_VECTOR_OK (v))
     { 
-        if (pr > 0) GBPR ("GrB_Vector is invalid [%s]\n", name) ;
+        GBPR0 ("GrB_Vector is invalid [%s]\n", name) ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "GrB_Vector is invalid [%s]", name))) ;
     }

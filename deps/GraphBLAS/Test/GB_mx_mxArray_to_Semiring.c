@@ -2,7 +2,7 @@
 // GB_mx_mxArray_to_Semiring
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -89,15 +89,17 @@ bool GB_mx_mxArray_to_Semiring         // true if successful
     bool zbool ;
     switch (multiply_opcode)
     {
-        // 8 z=f(x,y), all x,y,z the same type
+        // 10 z=f(x,y), all x,y,z the same type
         case GB_FIRST_opcode   : zbool = false ; break ;
         case GB_SECOND_opcode  : zbool = false ; break ;
         case GB_MIN_opcode     : zbool = false ; break ;
         case GB_MAX_opcode     : zbool = false ; break ;
         case GB_PLUS_opcode    : zbool = false ; break ;
         case GB_MINUS_opcode   : zbool = false ; break ;
+        case GB_RMINUS_opcode  : zbool = false ; break ;
         case GB_TIMES_opcode   : zbool = false ; break ;
         case GB_DIV_opcode     : zbool = false ; break ;
+        case GB_RDIV_opcode    : zbool = false ; break ;
 
         // 6 z=f(x,y), all x,y,z the same type
         case GB_ISEQ_opcode    : zbool = false  ; break ;

@@ -1,10 +1,15 @@
 function test36
 %TEST36 performance test of matrix subref
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\ntest36 --------------------- performance of GB_Matrix_subref\n') ;
+
+[save save_chunk] = nthreads_get ;
+chunk = 4096 ;
+nthreads = feature ('numcores') ;
+nthreads_set (nthreads, chunk) ;
 
 rng ('default') ;
 n = 100e6 ;
@@ -102,32 +107,7 @@ V = [V V V V] ;
     assert (isequal (C0, C1)) ;
     fprintf ('MATLAB %0.6f GrB: %0.6f  speedup %g\n', t0, t1, t0/t1) ;
 
-
-fprintf ('many single entries:\n') ;
-V = V (:,1) ;
-p = randperm (n) ;
-x = 0 ;
-tic
-    for k = 1:1e5
-        x = x + V (p(k)) ;
-    end
-t0 = toc ;
-
-global GraphBLAS_results
-
-% don't include the mexFunction overhead
-p = uint64 (p) - 1 ;
-y = 0 ;
-t1 = 0 ;
-tic
-    for k = 1:1e5
-        y = y + GB_mex_Matrix_subref (V, p(k), [ ]) ;
-        t1 = t1 + gbresults ;
-        GraphBLAS_results (1) = 0 ;
-    end
-t1 = toc ;
-fprintf ('MATLAB %0.6f GrB: %0.6f  speedup %g\n', t0, t1, t0/t1) ;
-assert (isequal (x,y))
+nthreads_set (save, save_chunk) ;
 
 fprintf ('\ntest36: all tests passed\n') ;
 

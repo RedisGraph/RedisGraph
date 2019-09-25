@@ -10,17 +10,19 @@
 #include "./cmd_context.h"
 #include "../graph/graph.h"
 #include "../graph/graphcontext.h"
-#include "../util/simple_timer.h"
+#include "../query_ctx.h"
+#include "../resultset/resultset.h"
 
 extern RedisModuleType *GraphContextRedisModuleType;
 
 /* Delete graph, removing the key from Redis and
  * freeing every resource allocated by the graph. */
 void _MGraph_Delete(void *args) {
-	double tic[2];
-	simple_tic(tic);
 	CommandCtx *dCtx = (CommandCtx *)args;
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(dCtx);
+
+	QueryCtx_BeginTimer(); // Start deletion timing.
+
 	RedisModuleString *graph_name = RedisModule_CreateString(ctx, dCtx->graphName,
 															 strlen(dCtx->graphName));
 	CommandCtx_ThreadSafeContextLock(dCtx);
@@ -47,7 +49,7 @@ void _MGraph_Delete(void *args) {
 	// Remove GraphContext from keyspace.
 	if(RedisModule_DeleteKey(key) == REDISMODULE_OK) {
 		char *strElapsed;
-		double t = simple_toc(tic) * 1000;
+		double t = QueryCtx_GetExecutionTime();
 		asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
 		RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
 		free(strElapsed);
@@ -60,6 +62,7 @@ cleanup:
 	RedisModule_Free(graph_name);
 	CommandCtx_ThreadSafeContextUnlock(dCtx);
 	CommandCtx_Free(dCtx);
+	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 }
 
 int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -86,3 +89,4 @@ int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
+

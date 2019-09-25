@@ -35,8 +35,6 @@
 // grep "allocate a new header"
 // which shows all uses of GB_new and GB_create
 
-// parallel: not here; see GB_calloc_memory
-
 #include "GB.h"
 
 GrB_Info GB_new                 // create matrix, except for indices & values
@@ -71,7 +69,7 @@ GrB_Info GB_new                 // create matrix, except for indices & values
     bool allocated_header = false ;
     if ((*Ahandle) == NULL)
     {
-        GB_CALLOC_MEMORY (*Ahandle, 1, sizeof (struct GB_Matrix_opaque), NULL) ;
+        GB_CALLOC_MEMORY (*Ahandle, 1, sizeof (struct GB_Matrix_opaque)) ;
         if (*Ahandle == NULL)
         { 
             // out of memory
@@ -112,7 +110,7 @@ GrB_Info GB_new                 // create matrix, except for indices & values
         // if the global hyper_ratio is negative.  This is only used by
         // GrB_Matrix_new, and in a special case in GB_mask.
         ASSERT (hyper_option == GB_AUTO_HYPER) ;
-        double hyper_ratio = GB_Global.hyper_ratio ;
+        double hyper_ratio = GB_Global_hyper_ratio_get ( ) ;
         A->hyper_ratio = hyper_ratio ;
         is_hyper = !(vdim <= 1 || 0 > hyper_ratio) ;
     }
@@ -136,31 +134,20 @@ GrB_Info GB_new                 // create matrix, except for indices & values
     }
     A->p = NULL ;
     A->h = NULL ;
-    // A->hfirst = 0 ;          // FUTURE:: for slice and hyperslice
-    // A->is_slice = false ;
+    A->hfirst = 0 ;
+    A->is_slice = false ;       // true if A is a slice or hyperslice
     A->p_shallow = false ;
     A->h_shallow = false ;
     A->nvec_nonempty = 0 ;      // all vectors are empty
 
     // content that is freed or reset in GB_ix_free
-    // (GB_ix_free then calls GB_pending_free and GB_queue_remove):
     A->i = NULL ;
     A->x = NULL ;
     A->nzmax = 0 ;              // GB_NNZ(A) checks nzmax==0 before Ap[nvec]
     A->i_shallow = false ;
     A->x_shallow = false ;
     A->nzombies = 0 ;
-
-    // content that is freed or reset by GB_pending_free:
-    A->n_pending = 0 ;
-    A->max_n_pending = 0 ;
-    A->sorted_pending = true ;
-    A->i_pending = NULL ;
-    A->j_pending = NULL ;
-    A->s_pending = NULL ;
-    A->operator_pending = NULL ;
-    A->type_pending = NULL ;
-    A->type_pending_size = 0 ;
+    A->Pending = NULL ;
 
     // content freed or reset by GB_queue_remove:
     A->queue_next = NULL ;
@@ -179,7 +166,7 @@ GrB_Info GB_new                 // create matrix, except for indices & values
     {
         // Sets the vector pointers to zero, which defines all vectors as empty
         A->magic = GB_MAGIC ;
-        GB_CALLOC_MEMORY (A->p, A->plen+1, sizeof (int64_t), Context) ;
+        GB_CALLOC_MEMORY (A->p, A->plen+1, sizeof (int64_t)) ;
         ok = (A->p != NULL) ;
         if (is_hyper)
         { 

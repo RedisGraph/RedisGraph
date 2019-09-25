@@ -2,7 +2,7 @@
 // GraphBLAS/Demo/Source/get_matrix.c: get matrix from file, or create random
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -177,7 +177,7 @@ GrB_Info get_matrix         // get a matrix from stdin, or create random one
     //--------------------------------------------------------------------------
 
     // print a short description of the matrix (about 30 entries)
-    OK (GxB_Matrix_fprint (A, "from get_matrix:", GxB_SHORT, stdout)) ;
+//  OK (GxB_Matrix_fprint (A, "from get_matrix:", GxB_SHORT, stdout)) ;
 
     *A_output = A ;
     A = NULL ;

@@ -26,6 +26,9 @@
 
 // Compare this function with the MATLAB equivalent, allktruss.m.
 
+// Modified for SuiteSparse:GraphBLAS V3.0:  support changed to a
+// GrB_Vector, for input to GxB_select.
+
 #define FREE_ALL                                \
     if (keep_all_ktrusses)                      \
     {                                           \
@@ -34,6 +37,7 @@
             GrB_free (&(Cset [kk])) ;           \
         }                                       \
     }                                           \
+    GrB_free (Support) ;                        \
     GrB_free (&supportop) ;                     \
     GrB_free (&C) ;
 
@@ -103,13 +107,15 @@ GrB_Info allktruss_graphblas    // compute all k-trusses of a graph
 
     // select operator
     GxB_SelectOp supportop = NULL ;
+    GrB_Vector Support = NULL ;
 
     // get the size of A
     GrB_Index n ;
     OK (GrB_Matrix_nrows (&n, A)) ;
 
-    // create a unary operator for GrB_apply
-    OK (GxB_SelectOp_new (&supportop, support_function, GrB_INT64)) ;
+    // create a select operator for GxB_select
+    OK (GxB_SelectOp_new (&supportop, support_function, GrB_INT64, GrB_INT64)) ;
+    OK (GrB_Vector_new (&Support, GrB_INT64, 1)) ;
 
     //--------------------------------------------------------------------------
     // C<A> = A*A
@@ -141,6 +147,7 @@ GrB_Info allktruss_graphblas    // compute all k-trusses of a graph
         //----------------------------------------------------------------------
 
         int64_t support = (k-2) ;
+        OK (GrB_Vector_setElement (Support, support, 0)) ;
 
         while (1)
         {
@@ -151,7 +158,7 @@ GrB_Info allktruss_graphblas    // compute all k-trusses of a graph
 
             double t1 = omp_get_wtime ( ) ;
 
-            OK (GxB_select (C, NULL, NULL, supportop, C, &support, NULL)) ;
+            OK (GxB_select (C, NULL, NULL, supportop, C, Support, NULL)) ;
 
             t2 = omp_get_wtime ( ) ;
             printf ("select time: %g\n", t2-t1) ;
@@ -176,13 +183,15 @@ GrB_Info allktruss_graphblas    // compute all k-trusses of a graph
                 {
                     // this is the last k-truss
                     OK (GrB_free (&supportop)) ;    // free the select operator
+                    OK (GrB_free (Support)) ;       // free the select Thunk
                     OK (GrB_free (&C)) ;            // free last empty k-truss
                     (*kmax) = k ;
                     if (keep_all_ktrusses)
                     {
                         Cset [k] = NULL ;
                     }
-                    printf ("allktruss graphblas done: tmult %g tsel %g\n", tmult, tsel) ;
+                    printf ("allktruss graphblas done: tmult %g tsel %g\n",
+                        tmult, tsel) ;
                     return (GrB_SUCCESS) ;
                 }
                 else if (keep_all_ktrusses)

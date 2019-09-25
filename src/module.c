@@ -11,6 +11,8 @@
 #include "config.h"
 #include "version.h"
 #include "util/arr.h"
+#include "query_ctx.h"
+#include "arithmetic/funcs.h"
 #include "commands/commands.h"
 #include "util/thpool/thpool.h"
 #include "graph/graphcontext.h"
@@ -32,8 +34,6 @@ bool process_is_child;             // Flag indicating whether the running proces
 // Thread pool variables
 //------------------------------------------------------------------------------
 threadpool _thpool = NULL;
-pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
-pthread_key_t _tlsASTKey;   // Thread local storage AST key.
 
 /* Set up thread pool,
  * number of threads within pool should be
@@ -44,21 +44,6 @@ static int _Setup_ThreadPOOL(int threadCount) {
 	_thpool = thpool_init(threadCount);
 	if(_thpool == NULL) return 0;
 
-	return 1;
-}
-
-/* Create thread local storage keys. */
-static int _Setup_ThreadLocalStorage() {
-	int error = pthread_key_create(&_tlsGCKey, NULL);
-	if(error) {
-		printf("Failed to create thread local storage key.\n");
-		return 0;
-	}
-	error = pthread_key_create(&_tlsASTKey, NULL);
-	if(error) {
-		printf("Failed to create thread local storage key.\n");
-		return 0;
-	}
 	return 1;
 }
 
@@ -122,7 +107,7 @@ static void RegisterForkHooks() {
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	/* TODO: when module unloads call GrB_finalize. */
-	assert(GrB_init(GrB_NONBLOCKING) == GrB_SUCCESS);
+	assert(GxB_init(GrB_NONBLOCKING, rm_malloc, rm_calloc, rm_realloc, rm_free, true) == GrB_SUCCESS);
 	GxB_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
 	GxB_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
 
@@ -135,14 +120,6 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	// currently we do not support AOF in graph
-	// TODO: remove when we do.
-	int contextFlags = RedisModule_GetContextFlags(ctx);
-	if(contextFlags & REDISMODULE_CTX_FLAGS_AOF) {
-		RedisModule_Log(ctx, "warning", "RedisGraph does not support AOF");
-		return REDISMODULE_ERR;
-	}
-
 	Proc_Register();         // Register procedures.
 	AR_RegisterFuncs();      // Register arithmetic functions.
 	Agg_RegisterFuncs();     // Register aggregation functions.
@@ -150,7 +127,8 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	RegisterForkHooks();     // Set up forking logic to prevent bgsave deadlocks.
 	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
 
-	if(!_Setup_ThreadLocalStorage()) return REDISMODULE_ERR;
+	// Create thread local storage key.
+	if(!QueryCtx_Init()) return REDISMODULE_ERR;
 
 	long long threadCount = Config_GetThreadCount(ctx, argv, argc);
 	if(!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
@@ -185,3 +163,4 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
 	return REDISMODULE_OK;
 }
+

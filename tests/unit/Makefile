@@ -4,6 +4,7 @@ ROOT=../..
 # Path to Google Test source
 GTEST_DIR = ../../deps/googletest/googletest
 RAX_DIR = ../../deps/rax
+XXHASH_DIR = ../../deps/xxHash
 REDISEARCH_DIR = ../../deps/RediSearch/src
 LIBCYPHER-PARSER_DIR = ../../deps/libcypher-parser/lib/src
 
@@ -14,7 +15,7 @@ CPPFLAGS += -isystem $(GTEST_DIR)/include -I$(GTEST_DIR)/include/gtest/
 LDFLAGS += -ldl
 
 # Flags passed to the C++ compiler.
-CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11
+CXXFLAGS += -g -Wall -Wextra -pthread -std=c++11 -fopenmp
 CXX_SUPPRESS = -Wno-unused-function -Wno-sign-compare -Wno-format -Wno-write-strings
 
 REDISGRAPH_CXX=$(QUIET_CXX)$(CXX)
@@ -66,7 +67,7 @@ TEST_EXECUTABLES = $(patsubst %.cpp, %.run, $(TEST_SOURCES))
 
 # Compile object files from unit test sources
 %.o: %.cpp
-	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -I$(REDISEARCH_DIR) -c -o $@ $<
+	@$(REDISGRAPH_CXX) $(CPPFLAGS) $(CXXFLAGS) $(CXX_SUPPRESS) -I$(RAX_DIR) -I$(LIBCYPHER-PARSER_DIR) -I$(XXHASH_DIR) -I$(REDISEARCH_DIR) -c -o $@ $<
 
 # Build '*.run' binaries for each source
 %.run: %.o gtest_main.a $(DEPS)

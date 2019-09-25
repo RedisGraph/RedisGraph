@@ -11,6 +11,7 @@ extern "C" {
 #endif
 
 #include "../../src/util/arr.h"
+#include "../../src/query_ctx.h"
 #include "../../src/graph/graph.h"
 #include "../../src/index/index.h"
 #include "../../src/util/rmalloc.h"
@@ -19,8 +20,6 @@ extern "C" {
 #ifdef __cplusplus
 }
 #endif
-
-extern pthread_key_t _tlsGCKey;    // Thread local storage graph context key.
 
 class IndexTest: public ::testing::Test {
   protected:
@@ -51,9 +50,14 @@ class IndexTest: public ::testing::Test {
 
 		GraphContext_AddSchema(gc, "Person", SCHEMA_NODE);
 
-		int error = pthread_key_create(&_tlsGCKey, NULL);
-		ASSERT_EQ(error, 0);
-		pthread_setspecific(_tlsGCKey, gc);
+		ASSERT_TRUE(QueryCtx_Init());
+		QueryCtx_SetGraphCtx(gc);
+	}
+
+	static void _free_fake_graph_context() {
+		GraphContext *gc = QueryCtx_GetGraphCtx();
+		GraphContext_Free(gc);
+		QueryCtx_Free();
 	}
 
 	static Graph *_build_test_graph() {
@@ -112,3 +116,4 @@ TEST_F(IndexTest, Index_New) {
 
 	Index_Free(idx);
 }
+

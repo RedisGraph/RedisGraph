@@ -19,7 +19,7 @@ function R = GB_spec_mask (C, Mask, Z, C_replace, Mask_complement, identity)
 % This method operates on both plain matrices and on structs with
 % matrix, pattern, and class components.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin < 6)

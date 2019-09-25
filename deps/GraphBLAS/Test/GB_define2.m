@@ -85,8 +85,10 @@ ops1 = {
 'MAX',
 'PLUS',
 'MINUS',
+'RMINUS',
 'TIMES',
 'DIV',
+'RDIV',
 'ISEQ',     % iseq and following are extensions
 'ISNE',
 'ISGT',
@@ -237,7 +239,4 @@ fprintf ('#define GB_DEF_GxB_LOR_BOOL_MONOID_identity    false\n') ;
 fprintf ('#define GB_DEF_GxB_LAND_BOOL_MONOID_identity   true\n') ;
 fprintf ('#define GB_DEF_GxB_LXOR_BOOL_MONOID_identity   false\n') ;
 fprintf ('#define GB_DEF_GxB_EQ_BOOL_MONOID_identity     true\n') ;
-
-% no need for built-in semirings
-
 

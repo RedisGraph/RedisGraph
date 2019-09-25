@@ -7,6 +7,7 @@ import assertions
 import graphs
 
 resultset = None
+exception = None
 
 @given(u'the binary-tree-1 graph')
 def step_impl(context):
@@ -27,32 +28,67 @@ def step_impl(context):
 @given(u'having executed')
 def step_impl(context):
     global resultset
+    global exception
+
+    exception = None
     query = context.text
-    resultset = graphs.query(query)
+    try:
+        resultset = graphs.query(query)
+    except Exception as error:
+        resultset = None
+        exception = error
 
 @when(u'having executed')
 def step_impl(context):
     global resultset
+    global exception
+
+    exception = None
     query = context.text
-    resultset = graphs.query(query)
+    try:
+        resultset = graphs.query(query)
+    except Exception as error:
+        resultset = None
+        exception = error
 
 @then(u'having executed')
 def step_impl(context):
     global resultset
+    global exception
+
+    exception = None
     query = context.text
-    resultset = graphs.query(query)
+    try:
+        resultset = graphs.query(query)
+    except Exception as error:
+        resultset = None
+        exception = error
 
 @when(u'executing control query')
 def step_impl(context):
     global resultset
+    global exception
+
+    exception = None
     query = context.text
-    resultset = graphs.query(query)
+    try:
+        resultset = graphs.query(query)
+    except Exception as error:
+        resultset = None
+        exception = error
 
 @when(u'executing query')
 def step_impl(context):
     global resultset
+    global exception
+
+    exception = None
     query = context.text
-    resultset = graphs.query(query)
+    try:
+        resultset = graphs.query(query)
+    except Exception as error:
+        resultset = None
+        exception = error
 
 @then(u'the result should be empty')
 def step_impl(context):
@@ -75,12 +111,52 @@ def step_impl(context):
 
 @then(u'the result should be')
 def step_impl(context):
+    if exception:
+        raise exception
     expected_length = len(context.table.rows)
     assertions.assert_resultset_length(resultset, expected_length)
     assertions.assert_resultsets_equals(resultset, context.table)
 
 @then(u'the result should be, in order')
 def step_impl(context):
+    if exception:
+        raise exception
     expected_length = len(context.table.rows)
     assertions.assert_resultset_length(resultset, expected_length)
     assertions.assert_resultsets_equals_in_order(resultset, context.table)
+
+@then(u'a TypeError should be raised at runtime: PropertyAccessOnNonMap')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "expected a map" in exception.message
+
+@then(u'a SyntaxError should be raised at compile time: InvalidAggregation')
+def step_impl(context):
+    assert exception != None
+    assert "Invalid use of aggregating function" in exception.message
+
+@then(u'a SyntaxError should be raised at compile time: UndefinedVariable')
+def step_impl(context):
+    assert exception != None
+    assert "not defined" in exception.message
+
+@then(u'a TypeError should be raised at runtime: ListElementAccessByNonInteger')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "expected Integer" in exception.message
+
+
+@then(u'a SyntaxError should be raised at compile time: InvalidArgumentType')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Type mismatch" in exception.message
+
+
+@then(u'a TypeError should be raised at runtime: InvalidArgumentValue')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Type mismatch" in exception.message

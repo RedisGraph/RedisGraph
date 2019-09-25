@@ -1,5 +1,5 @@
 //------------------------------------------------------------------------------
-// SuiteSparse/GraphBLAS/Demo/Source/dpagerank3: pagerank using a real semiring
+// SuiteSparse/GraphBLAS/Demo/Source/dpagerank2: pagerank using a real semiring
 //------------------------------------------------------------------------------
 
 // PageRank via EXTREME GraphBLAS-ing!
@@ -71,8 +71,14 @@ typedef struct
 }
 pagerank_type ;
 
-double pagerank_damping, pagerank_teleport, pagerank_rdiff,
-    pagerank_init_rank, pagerank_rsum ;
+// probability of walking to random neighbor
+#define PAGERANK_DAMPING 0.85
+
+// NOTE: these operators use global values.  dpagerank2 can be done in
+// parallel, internally, but only one instance of dpagerank can be used.
+
+// global values shared by all threads:
+double pagerank_teleport, pagerank_init_rank, pagerank_rsum ;
 
 // identity value for the pagerank_add monoid
 pagerank_type pagerank_zero = { 0, 0 } ;
@@ -101,7 +107,7 @@ void init_page (pagerank_type *z, const double *x)
 //------------------------------------------------------------------------------
 
 // In MATLAB notation, the new rank is computed with:
-// newrank = pagerank_damping * (rank * D * A) + pagerank_teleport
+// newrank = PAGERANK_DAMPING * (rank * D * A) + pagerank_teleport
 
 // where A is a square binary matrix of the original graph, and A(i,j)=1 if
 // page i has a link to page j.  rank is a row vector of size n.  The matrix D
@@ -149,21 +155,14 @@ void pagerank_add
 
 // The semiring computes the vector newrank = rank*D*A.  To complete the page
 // rank computation, the new rank must be scaled by the
-// pagerank_damping, and the pagerank_teleport must be included, which is
+// PAGERANK_DAMPING, and the pagerank_teleport must be included, which is
 // done in the page rank accumulator:
 
-// newrank = pagerank_damping * newrank + pagerank_teleport
+// newrank = PAGERANK_DAMPING * newrank + pagerank_teleport
 
 // The PageRank_semiring does not construct the entire pagerank_type of
 // rank*D*A, since the vector that holds newrank(i) must also keep the
 // 1/invdegree(i), unchanged.  This is restored in the accumulator operator.
-
-// The PageRank_accum operator can also compute pagerank_rdiff = norm (r-rnew),
-// as a side effect.  This is unsafe but faster (see the comments below);
-// uncomment the following #define to enable the unsafe method, or comment it
-// out to use the safe method:
-//
-//  #define PAGERANK_UNSAFE
 
 // binary operator to accumulate the new rank from the old
 void pagerank_accum
@@ -174,23 +173,8 @@ void pagerank_accum
 )
 {
     // note that this formula does not use the old rank:
-    // new rank = pagerank_damping * (rank*A ) + pagerank_teleport
-    double rnew = pagerank_damping * (y->rank) + pagerank_teleport ;
-
-    #ifdef PAGERANK_UNSAFE
-
-    // This computation of pagerank_rdiff is not guaranteed to work per the
-    // GraphBLAS spec, but it does work with the current implementation of
-    // SuiteSparse:GraphBLAS.  The reason is that there is no guarantee that
-    // the accumulator step of a GraphBLAS operation is computed sequentially.
-    // If computed in parallel, a race condition would occur.
-
-    // This step uses the old rank, to compute the stopping criterion:
-    // pagerank_rdiff = sum (ranknew - rankold)
-    double delta = rnew - (x->rank) ;
-    pagerank_rdiff += delta * delta ;
-
-    #endif
+    // new rank = PAGERANK_DAMPING * (rank*A ) + pagerank_teleport
+    double rnew = PAGERANK_DAMPING * (y->rank) + pagerank_teleport ;
 
     // update the rank, and copy over the inverse degree from the old page info
     z->rank = rnew ;
@@ -200,9 +184,6 @@ void pagerank_accum
 //------------------------------------------------------------------------------
 // pagerank_diff: compute the change in the rank
 //------------------------------------------------------------------------------
-
-// This is safer than computing pagerank_rdiff via pagerank_accum, and is
-// compliant with the GraphBLAS spec.
 
 void pagerank_diff
 (
@@ -327,9 +308,6 @@ GrB_Info dpagerank2         // GrB_SUCCESS or error condition
     // n = size (A,1) ;         // number of nodes
     OK (GrB_Matrix_nrows (&n, A)) ;
 
-    // probability of walking to random neighbor
-    pagerank_damping = 0.85 ;
-
     // dout = sum (A,2) ;       // dout(i) is the out-degree of node i
     OK (GrB_Vector_new (&dout, GrB_FP64, n)) ;
     OK (GrB_reduce (dout, NULL, NULL, GrB_PLUS_FP64, A, NULL)) ;
@@ -345,22 +323,20 @@ GrB_Info dpagerank2         // GrB_SUCCESS or error condition
     OK (GrB_free (&dout)) ;
 
     // to jump to any random node in entire graph:
-    pagerank_teleport = (1-pagerank_damping) / n ;
+    pagerank_teleport = (1-PAGERANK_DAMPING) / n ;
 
-    tol = tol*tol ;             // use tol^2 so sqrt(pagerank_rdiff) not needed
-    pagerank_rdiff = 1 ;        // so first iteration is always done
+    tol = tol*tol ;                 // use tol^2 so sqrt(...) not needed
+    double pagerank_rdiff = 1 ;     // so first iteration is always done
 
     // create rdouble, a double vector of size n
     OK (GrB_Vector_new (&rdouble, GrB_FP64, n)) ;
 
     // GxB_print (A, GxB_SUMMARY) ;
 
-    #ifndef PAGERANK_UNSAFE
-    // the safe version requires another vector, rnew.  Note that dup is
-    // needed, since the invdegree is copied by the PageRank_accum.
+    // Note that dup is needed, since the invdegree is copied by the
+    // PageRank_accum.
     OK (GrB_Vector_dup (&rnew, r)) ;
     OK (GrB_Vector_new (&rdiff, PageRank_type, n)) ;
-    #endif
 
     // select method for GrB_vxm (for testing only; default is fine)
     if (method != GxB_DEFAULT)
@@ -376,57 +352,21 @@ GrB_Info dpagerank2         // GrB_SUCCESS or error condition
     for ((*iters) = 0 ; (*iters) < itermax && pagerank_rdiff > tol ; (*iters)++)
     {
 
-        #ifdef PAGERANK_UNSAFE
+        // rnew = PAGERANK_DAMPING * (r * D * A) + pagerank_teleport
+        OK (GrB_vxm (rnew, NULL, PageRank_accum, PageRank_semiring, r, A,
+            desc)) ;
 
-            //------------------------------------------------------------------
-            // pagerank: dangerous version (works but is not guaranteed to work)
-            //------------------------------------------------------------------
+        // compute pagerank_rdiff = sum ((r - rnew).^2)
+        OK (GrB_eWiseAdd (rdiff, NULL, NULL, PageRank_diff, r, rnew, NULL));
+        pagerank_type rsum ;
+        OK (GrB_reduce (&rsum, NULL, PageRank_monoid, rdiff, NULL)) ;
 
-            // r = pagerank_damping * (r * D * A) + pagerank_teleport,
-            // and compute pagerank_rdiff = sum ((r - rnew).^2)
-            pagerank_rdiff = 0 ;
-            OK (GrB_vxm (r, NULL, PageRank_accum, PageRank_semiring, r, A,
-                desc)) ;
+        pagerank_rdiff = rsum.rank ;
 
-            // SuiteSparse:GraphBLAS does not require this, since there will be
-            // no pending operations from GrB_vxm above in the current version>
-            // However, the PageRank_accum operator computes pagerank_rdiff as
-            // a side effect, and it is needed to terminate the for loop.  So
-            // we must ensure the computations have been done, in case the
-            // GrB_vxm, or part of it, remains pending.
-            OK (GrB_wait ( )) ;
-
-            // The following would be better, since it would just finish the
-            // computations for r, not all other computations:
-            // GrB_Index ignore ;
-            // OK (GrB_Vector_nvals (&ignore, r)) ;
-
-            // Waiting for GrB_vxm to compute is necessary but not sufficient;
-            // the above computation is still unsafe.  It will fail if
-            // SuiteSparse:GraphBLAS computes the accumulator step in parallel.
-
-        #else
-
-            //------------------------------------------------------------------
-            // pagerank: safe version
-            //------------------------------------------------------------------
-
-            // rnew = pagerank_damping * (r * D * A) + pagerank_teleport
-            OK (GrB_vxm (rnew, NULL, PageRank_accum, PageRank_semiring, r, A,
-                desc)) ;
-
-            // compute pagerank_rdiff = sum ((r - rnew).^2)
-            OK (GrB_eWiseAdd (rdiff, NULL, NULL, PageRank_diff, r, rnew, NULL));
-            pagerank_type rsum ;
-            OK (GrB_reduce (&rsum, NULL, PageRank_monoid, rdiff, NULL)) ;
-            pagerank_rdiff = rsum.rank ;
-
-            // r = rnew, using a swap, which is faster than GrB_assign or dup
-            GrB_Vector rtemp = r ;
-            r = rnew ;
-            rnew = rtemp ;
-
-        #endif
+        // r = rnew, using a swap, which is faster than GrB_assign or dup
+        GrB_Vector rtemp = r ;
+        r = rnew ;
+        rnew = rtemp ;
     }
 
     //--------------------------------------------------------------------------
@@ -445,6 +385,7 @@ GrB_Info dpagerank2         // GrB_SUCCESS or error condition
     // pagerank_rsum = sum (rdouble)
     OK (GrB_reduce (&pagerank_rsum, NULL, GxB_PLUS_FP64_MONOID, rdouble, NULL));
 
+    // could also do this with GrB_vxm, with a 1-by-1 matrix
     // r = r / pagerank_rsum
     OK (GrB_apply (rdouble, NULL, NULL, PageRank_div, rdouble, NULL)) ;
 

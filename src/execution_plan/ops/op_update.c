@@ -179,6 +179,8 @@ Record OpUpdateConsume(OpBase *opBase) {
 	while((r = OpBase_Consume(child))) {
 		/* Evaluate each update expression and store result
 		 * for later execution. */
+		// Track the inherited Record and the newly-allocated Record so that they may be freed if execution fails.
+		OpBase_AddVolatileRecord(opBase, r);
 		EntityUpdateEvalCtx *update_expression = op->update_expressions;
 		for(uint i = 0; i < op->update_expressions_count; i++, update_expression++) {
 			SIValue new_value = SI_CloneValue(AR_EXP_Evaluate(update_expression->exp, r));
@@ -198,6 +200,7 @@ Record OpUpdateConsume(OpBase *opBase) {
 			// Record not going to be used, discard.
 			Record_Free(r);
 		}
+		OpBase_RemoveVolatileRecords(opBase); // No exceptions encountered, Records are not dangling.
 	}
 
 	/* Done reading, we're not going to call consume any longer
@@ -252,3 +255,4 @@ void OpUpdateFree(OpBase *ctx) {
 		op->pending_updates = NULL;
 	}
 }
+

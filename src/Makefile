@@ -25,13 +25,12 @@ CFLAGS += $(DEBUGFLAGS)
 
 # Compile flags for linux / osx
 ifeq ($(uname_S),Linux)
-	SHOBJ_LDFLAGS ?= -shared -Bsymbolic -Bsymbolic-functions -ldl -lpthread
+	SHOBJ_LDFLAGS ?= -shared -Bsymbolic -Bsymbolic-functions -ldl -lpthread -fopenmp
 else
 	CFLAGS += -mmacosx-version-min=10.14
-	SHOBJ_LDFLAGS ?= -mmacosx-version-min=10.14 -bundle -undefined dynamic_lookup -ldl -lpthread
+	SHOBJ_LDFLAGS ?= -mmacosx-version-min=10.14 -bundle -undefined dynamic_lookup -ldl -lpthread -fopenmp
 endif
 SHOBJ_LDFLAGS += $(LDFLAGS)
-
 export CFLAGS
 
 # Sources
@@ -39,6 +38,13 @@ SOURCEDIR=$(shell pwd -P)
 CC_SOURCES = $(wildcard $(SOURCEDIR)/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/algorithms/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/list_funcs/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/time_funcs/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/entity_funcs/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/string_funcs/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/boolean_funcs/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/numeric_funcs/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/conditional_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/bulk_insert/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/commands/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/datatypes/*.c)
@@ -116,10 +122,9 @@ $(LIBXXHASH):
 .PHONY: $(LIBXXHASH)
 
 # Build GraphBLAS only if library does not already exists.
-BLAS_CFLAGS = -fPIC -I $(abs_path)/util -include rmalloc.h -DREDIS_MODULE_TARGET -DGB_MALLOC=rm_malloc -DGB_CALLOC=rm_calloc -DGB_REALLOC=rm_realloc -DGB_FREE=rm_free -DGBCOMPACT
 $(GRAPHBLAS):
 ifeq (,$(wildcard $(GRAPHBLAS)))
-	@$(MAKE) -C ../deps/GraphBLAS CMAKE_OPTIONS="-DUSER_POSIX=1 -DCMAKE_CXX_FLAGS=-std=c++11 -DCMAKE_C_FLAGS='$(BLAS_CFLAGS)'" static_only
+	@$(MAKE) -C ../deps/GraphBLAS CMAKE_OPTIONS="-DCMAKE_C_COMPILER='$(CC)' -DCMAKE_CXX_COMPILER='$(CXX)'" static_only
 endif
 .PHONY: $(GRAPHBLAS)
 

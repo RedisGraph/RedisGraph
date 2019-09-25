@@ -1,13 +1,24 @@
-function testc2
+function testc2(quick)
 %TESTC2 test complex A*B, A'*B, A*B', A'*B', A+B
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
+rng ('default') ;
+
+if (nargin < 1)
+    quick = 0 ;
+end
+if (quick)
+    nlist = [1 4] ;
+else
+    nlist = [1 5 10 100] ;
+end
+
 maxerr = 0 ;
-for m = [1 5 10 100]
-    for n = [1 5 10 100]
-        for k = [1 5 10 100]
+for m = nlist
+    for n = nlist
+        for k = nlist
             A = GB_mex_random (k, m, m*5, 1, 1) ;
             B = GB_mex_random (k, n, n*5, 1, 2) ;
             C = GB_mex_AdotB (A, B) ;
@@ -21,8 +32,8 @@ end
 fprintf ('All complex A''*B tests passed, maxerr %g\n', maxerr) ;
 
 maxerr = 0 ;
-for m = [1 5 10 100]
-    for n = [1 5 10 100]
+for m = nlist
+    for n = nlist
             A = GB_mex_random (m, n, m*5, 1, 1) ;
             B = GB_mex_random (m, n, n*5, 1, 2) ;
             C = GB_mex_AplusB (A, B, 'plus') ;
@@ -34,25 +45,34 @@ for m = [1 5 10 100]
 end
 fprintf ('All complex A+B tests passed, maxerr %g\n', maxerr) ;
 
+semiring.multiply = 'times' ;
+semiring.add = 'plus' ;
+semiring.class = 'complex' ;
+dtn.inp0 = 'tran' ;
+
 anum = [0 1001 1002 1003] ;
 algos = {'auto', 'gustavson', 'dot', 'heap'} ;
 
+seed = 1 ;
+
 maxerr = 0 ;
-for m = [1 5 10 100]
-    for n = [1 5 10 100]
-        for k = [1 5 10 100]
+for m = nlist
+    for n = nlist
+        for k = nlist
             for at = 0:1
                 for bt = 0:1
                     if (at)
-                        A = GB_mex_random (k, m, m*5, 1, 1) ;
+                        A = GB_mex_random (k, m, m*5, 1, seed) ;
                     else
-                        A = GB_mex_random (m, k, m*5, 1, 1) ;
+                        A = GB_mex_random (m, k, m*5, 1, seed) ;
                     end
+                    seed = seed + 1 ;
                     if (bt)
-                        B = GB_mex_random (n, k, m*5, 1, 1) ;
+                        B = GB_mex_random (n, k, m*5, 1, seed) ;
                     else
-                        B = GB_mex_random (k, n, m*5, 1, 1) ;
+                        B = GB_mex_random (k, n, m*5, 1, seed) ;
                     end
+                    seed = seed + 1 ;
 
                     if (m == 100 & k > 3 & n > 3)
                         na = size (A,1) ;
@@ -95,6 +115,16 @@ for m = [1 5 10 100]
                         maxerr = max (maxerr, err) ;
                         assert (err < 1e-12)
 
+                    end
+
+                    if (at && ~bt)
+                        M = sparse (m, n) ;
+                        M(1,1) = 1 ;
+                        C2 = GB_mex_AdotB (A, B, M, false) ;
+                        C3 = GB_mex_AdotB (A, B, M, true) ;
+                        C0 = (A'*B) .* M ;
+                        assert (norm (C0-C2,1) < 1e-12) ;
+                        assert (norm (C0-C3,1) < 1e-12) ;
                     end
                 end
             end

@@ -24,7 +24,7 @@ function count = gbcover_edit (infiles, count, outdir)
 %       case stuff :  GB_cov[count]++ ; statement
 %       default :     GB_cov[count]++ ; statement
 %
-%  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+%  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 %  http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 % infiles can be a struct from dir, or a single string with one filename
@@ -32,6 +32,7 @@ if (~isstruct (infiles))
     infiles = dir (infiles) ;
 end
 nfiles = length (infiles) ;
+enabled = true ;
 
 for k = 1:nfiles
 
@@ -39,7 +40,7 @@ for k = 1:nfiles
         continue ;
     end
 
-    infile  = [infiles(k).folder filesep infiles(k).name] ;
+    infile  = [infiles(k).folder '/' infiles(k).name] ;
     outfile = [outdir '/' infiles(k).name] ;
     fprintf ('.') ;
 
@@ -63,8 +64,10 @@ for k = 1:nfiles
             % left curly brackect and space at the end of the line
             % "{ " changes to "{   GB_cov[n]++ ; "
 
-            fprintf (f_output, '%s  GB_cov[%d]++ ;\n', cline, count) ;
-            count = count + 1 ;
+            if (enabled)
+                fprintf (f_output, '%s  GB_cov[%d]++ ;\n', cline, count) ;
+                count = count + 1 ;
+            end
 
         elseif ((~isempty (strfind (cline, ' case ')) || ...
                  ~isempty (strfind (cline, ' default '))) && ...
@@ -72,15 +75,26 @@ for k = 1:nfiles
 
             % a switch case statement, or "default : "
             % "case stuff : statement" => "case stuff : GB_cov[n]++ ; statement"
-            colon = find (cline == ':', 1) ;
-            fprintf (f_output, '%s : GB_cov[%d]++ ; %s\n', ...
-                cline (1:colon-1), count, cline (colon+1:end)) ;
-            count = count+1 ;
+
+            if (enabled)
+                colon = find (cline == ':', 1) ;
+                fprintf (f_output, '%s : GB_cov[%d]++ ; %s\n', ...
+                    cline (1:colon-1), count, cline (colon+1:end)) ;
+                count = count+1 ;
+            end
 
         else
 
             % otherwise the line is copied as-is
             fprintf (f_output, '%s\n', cline) ;
+
+            % determine if the code is commented out
+            if (isequal (cline, '#if 0'))
+                % code coverage disabled
+                enabled = false ;
+            elseif (isequal (cline, '#endif'))
+                enabled = true ;
+            end
 
         end
 

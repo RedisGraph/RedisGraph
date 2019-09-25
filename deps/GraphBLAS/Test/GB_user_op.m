@@ -12,7 +12,7 @@ function [z tol] = GB_user_op (op, x, y)
 % No typecasting is done for user-defined operators.  x,y,z are either
 % double complex or double
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 tol = false ;
@@ -36,6 +36,8 @@ switch op
         z = x+y ;
     case 'minus'
         z = x-y ;
+    case 'rminus'
+        z = y-x ;
     case 'times'
         z = x.*y ;
     case 'div'
@@ -43,6 +45,12 @@ switch op
         % GB_mex_op mexFunction does.  So if z has any of them, replace them
         % with a complex Nan, just to make sure the tests pass...
         z = x./y ;
+        if (any (isnan (z)))
+            z (isnan (z)) = complex (nan,nan) ;
+        end
+        tol = true ;
+    case 'rdiv'
+        z = y./x ;
         if (any (isnan (z)))
             z (isnan (z)) = complex (nan,nan) ;
         end

@@ -7,9 +7,7 @@
 
 //------------------------------------------------------------------------------
 
-// parallel: not here; see GB_assign
-
-#include "GB.h"
+#include "GB_assign.h"
 
 GrB_Info GrB_Matrix_assign          // C<M>(Rows,Cols) += A or A'
 (
@@ -51,7 +49,7 @@ GrB_Info GrB_Matrix_assign          // C<M>(Rows,Cols) += A or A'
         A,          A_transpose,    // A and its descriptor (T=A or A')
         Rows, nRows,                // row indices
         Cols, nCols,                // column indices
-        false, NULL, 0,             // no scalar expansion
+        false, NULL, GB_ignore_code,// no scalar expansion
         false, false,               // not GrB_Col_assign nor GrB_row_assign
         Context)) ;
 }

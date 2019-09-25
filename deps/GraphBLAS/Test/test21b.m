@@ -1,7 +1,7 @@
 function test21b (fulltest)
 %TEST21B test GrB_assign
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin < 1)
@@ -9,16 +9,16 @@ if (nargin < 1)
     fulltest = 0 ;
 end
 
-[accum_ops unary_ops add_ops classes] = GB_spec_opsall ;
+[accum_ops, ~, ~, classes, ~, ~] = GB_spec_opsall ;
 
 dn = struct ;
 dt = struct ( 'inp0', 'tran' ) ;
 
 if (fulltest)
-    fprintf ('\n--------------exhaustive test of GB_mex_subassign\n') ;
+    fprintf ('\ntest21b --------------exhaustive test of GB_mex_subassign\n') ;
     k1test = 0:length(accum_ops) ;
 else
-    fprintf ('\n--------------quick test of GB_mex_subassign\n') ;
+    fprintf ('\ntest21b --------------quick test of GB_mex_subassign\n') ;
     k1test = [0 4] ; % Was [0 2 4] ;
 end
 

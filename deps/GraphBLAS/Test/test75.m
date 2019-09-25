@@ -1,8 +1,10 @@
 function test75
 %TEST75 test GrB_mxm and GrB_vxm on all semirings (A'B dot product)
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+[mult_ops, ~, add_ops, classes, ~, ~] = GB_spec_opsall ;
 
 rng ('default') ;
 
@@ -56,8 +58,6 @@ Y.pattern = logical (spones (y_sparse)) ;
 
 fprintf ('\n-------------- GrB_mxm, vxm (dot product) on all semirings\n') ;
 
-[mult_ops unary_ops add_ops classes semirings] = GB_spec_opsall ;
-
 Cin = sparse (n, n) ;
 Xin = sparse (n, 1) ;
 
@@ -102,21 +102,21 @@ for k1 = 1:length(mult_ops)
                 continue
             end
 
-            % there are 1344 semirings that pass this test:
-            % 17 ops: 8:(1st, 2nd, min, max, plus, minus, times, div)
+            % there are 1440 semirings that pass this test:
+            % 19 ops: 10:(1st, 2nd, min, max, plus, minus, rminus, times, div, rdiv)
             %         6:(is*)
             %         3:(or,and,xor)
             %       TxT->T
             %       each has 44 monoids: all 11 types: max,min,plus,times
             %       and 4 for boolean or,and,xor,eq
-            %       17*48 = 816
+            %       17*48 = 912
             % 6 ops: eq,ne,gt,lt,ge,le
             %       TxT->bool
             %       each has 11 types
             %       and 8 monoids (max,min,plus,times,or,and,xor,eq)
             %       6*11*8 = 528
-            % 816 + 528 = 1344
-            % but only 960 are unique.
+            % 912 + 528 = 1440
+            % but only 1040 are unique.
             % see GrB_AxB_builtin for details.
 
             A.class = clas ;

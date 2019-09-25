@@ -13,8 +13,6 @@
 // Returns GrB_SUCCESS if v(row) is present, and sets x to its value.
 // Returns GrB_NO_VALUE if v(row) is not present, and x is unmodified.
 
-// not parallel: this function does O(log(..)) work and is already thread-safe.
-
 #include "GB.h"
 
 #define GB_EXTRACT(type,T)                                                    \

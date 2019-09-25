@@ -79,6 +79,18 @@ static void _AST_GetWithAliases(const cypher_astnode_t *node, rax *aliases) {
 	}
 }
 
+static void _AST_GetWithReferences(const cypher_astnode_t *node, rax *identifiers) {
+	if(!node) return;
+	if(cypher_astnode_type(node) != CYPHER_AST_WITH) return;
+	assert(identifiers);
+
+	uint num_with_projections = cypher_ast_with_nprojections(node);
+	for(uint i = 0; i < num_with_projections; i ++) {
+		const cypher_astnode_t *child = cypher_ast_with_get_projection(node, i);
+		_AST_GetIdentifiers(child, identifiers);
+	}
+}
+
 // Extract identifiers / aliases from a procedure call.
 static void _AST_GetProcCallAliases(const cypher_astnode_t *node, rax *identifiers) {
 	// CALL db.labels() yield label
@@ -158,7 +170,6 @@ static AST_Validation _ValidateReferredFunctions(rax *referred_functions, char *
 	_prepareIterateAll(referred_functions, &it);
 	*reason = NULL;
 
-	// TODO: return RAX.
 	while(raxNext(&it)) {
 		size_t len = it.key_len;
 		// No functions have a name longer than 32 characters
@@ -782,31 +793,15 @@ static AST_Validation _Validate_DELETE_Clauses(const AST *ast, char **reason) {
 	const cypher_astnode_t *delete_clause = AST_GetClause(ast, CYPHER_AST_DELETE);
 	if(!delete_clause) return AST_VALID;
 
-	const cypher_astnode_t *match_clause = AST_GetClause(ast, CYPHER_AST_MATCH);
-	if(!match_clause) return AST_INVALID;
-
-	return AST_VALID;
-}
-
-// Verify that we handle the projected types. An example of an unsupported projection is:
-// RETURN count(a) > 0
-static AST_Validation _Validate_ReturnedTypes(const cypher_astnode_t *return_clause,
-											  char **reason) {
-	uint projection_count = cypher_ast_return_nprojections(return_clause);
-	for(uint i = 0; i < projection_count; i ++) {
-		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
-		const cypher_astnode_t *expr = cypher_ast_projection_get_expression(projection);
-		cypher_astnode_type_t type = cypher_astnode_type(expr);
-		if(type == CYPHER_AST_UNARY_OPERATOR) {
-			const cypher_operator_t *oper = cypher_ast_unary_operator_get_operator(expr);
-			if(oper == CYPHER_OP_IS_NULL ||
-			   oper == CYPHER_OP_IS_NOT_NULL
-			  ) {
-				// TODO weird that we can't print operator strings?
-				asprintf(reason, "RedisGraph does not currently support returning this unary operator.");
-				return AST_INVALID;
-			}
+	// Validate that every deleted object is an identifier and not property.
+	uint nitems = cypher_ast_delete_nexpressions(delete_clause);
+	for(uint i = 0; i < nitems; i++) {
+		const cypher_astnode_t *ast_expr = cypher_ast_delete_get_expression(delete_clause, i);
+		if(cypher_astnode_type(ast_expr) != CYPHER_AST_IDENTIFIER) {
+			asprintf(reason, "DELETE support the removal of valid graph entities only.");
+			return AST_INVALID;
 		}
+		// TODO: Validated that the deleted entities are indeed matched or projected.
 	}
 	return AST_VALID;
 }
@@ -814,9 +809,6 @@ static AST_Validation _Validate_ReturnedTypes(const cypher_astnode_t *return_cla
 static AST_Validation _Validate_RETURN_Clause(const AST *ast, char **reason) {
 	const cypher_astnode_t *return_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
 	if(!return_clause) return AST_VALID;
-
-	// Verify the types of RETURN projections
-	if(_Validate_ReturnedTypes(return_clause, reason) != AST_VALID) return AST_INVALID;
 
 	// Retrieve all user-specified functions in RETURN clause.
 	rax *referred_funcs = raxNew();
@@ -1034,9 +1026,13 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identi
 	} else if(type == CYPHER_AST_CALL) {
 		// Get alias if one is provided; otherwise use the expression identifier
 		_AST_GetProcCallAliases(node, identifiers);
+	} else if(type == CYPHER_AST_MATCH) {
+		// Only collect the identifiers from the pattern in the MATCH clause,
+		// as the WHERE predicate refers to identifiers (rather than defining them).
+		const cypher_astnode_t *match_pattern = cypher_ast_match_get_pattern(node);
+		_AST_GetIdentifiers(match_pattern, identifiers);
 	} else if(type == CYPHER_AST_MERGE ||
 			  type == CYPHER_AST_UNWIND ||
-			  type == CYPHER_AST_MATCH ||
 			  type == CYPHER_AST_CREATE) {
 		_AST_GetIdentifiers(node, identifiers);
 	} else if(type == CYPHER_AST_CALL) {
@@ -1053,8 +1049,12 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identi
 static void _AST_GetReferredIdentifiers(const cypher_astnode_t *node, rax *identifiers) {
 	if(!node) return;
 	cypher_astnode_type_t type = cypher_astnode_type(node);
-	if(type == CYPHER_AST_SET || type == CYPHER_AST_RETURN || type == CYPHER_AST_DELETE ||
-	   type == CYPHER_AST_WITH) {
+	if(type == CYPHER_AST_MATCH) {
+		const cypher_astnode_t *where_clause = cypher_ast_match_get_predicate(node);
+		_AST_GetIdentifiers(where_clause, identifiers);
+	} else if(type == CYPHER_AST_WITH) {
+		_AST_GetWithReferences(node, identifiers);
+	} else if(type == CYPHER_AST_SET || type == CYPHER_AST_RETURN || type == CYPHER_AST_DELETE) {
 		_AST_GetIdentifiers(node, identifiers);
 	} else {
 		uint child_count = cypher_astnode_nchildren(node);
@@ -1074,11 +1074,20 @@ static AST_Validation _Validate_Aliases_DefinedInScope(const AST *ast, uint star
 
 	for(uint i = start_offset; i < end_offset; i ++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
+		if(cypher_astnode_type(clause) == CYPHER_AST_WITH) {
+			/* If this is a WITH clause, we only want to collect defined aliases if this is the start
+			 * of the segment, and only want to collect referred aliases if this is the end of the segment.
+			 * Otherwise, queries like "MATCH (a) WITH e RETURN e" would incorrectly register 'e' as a valid reference. */
+			if(i == start_offset) _AST_GetDefinedIdentifiers(clause, defined_aliases);
+			else if(i == end_offset - 1) _AST_GetReferredIdentifiers(clause, referred_identifiers);
+			continue;
+		}
+
 		// Get defined identifiers.
 		_AST_GetDefinedIdentifiers(clause, defined_aliases);
-		// Get referred identifiers except from the first clause in the scope,
-		// which can introduce aliases but not contain references.
-		if(i != start_offset) _AST_GetReferredIdentifiers(clause, referred_identifiers);
+
+		// Get referred identifiers.
+		_AST_GetReferredIdentifiers(clause, referred_identifiers);
 	}
 
 	raxIterator it;
@@ -1114,10 +1123,12 @@ static AST_Validation _Validate_Aliases_Defined(const AST *ast, char **undefined
 	if(with_clause_count > 0) {
 		uint *segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
 		for(uint i = 0; i < with_clause_count; i++) {
-			end_offset = segment_indices[i];
+			end_offset = segment_indices[i] + 1;
 			res = _Validate_Aliases_DefinedInScope(ast, start_offset, end_offset, undefined_alias);
 			if(res != AST_VALID) break;
-			start_offset = end_offset; // Update the start offset for the next scope
+			// Update the start offset for the next scope, decrementing by 1 to get entities introduced
+			// by the WITH clause.
+			start_offset = end_offset - 1;
 		}
 		array_free(segment_indices);
 		if(res != AST_VALID) return res;  // Return early if we've encountered an error
@@ -1346,6 +1357,40 @@ static AST_Validation _ValidateClauses(const AST *ast, char **reason) {
 	return AST_VALID;
 }
 
+static AST_Validation _BlockUnsupportedMerges(AST *ast, char **reason) {
+	/* The current merge implementation does not work properly when the query is
+	 * intended to operate on multiple data streams, as in:
+	 * CREATE (a:A), (b:B)
+	 * MATCH (a:A), (b:B) MERGE (a)-[:TYPE]->(b)
+	 * This currently creates two new nodes. TODO fix */
+	uint *merge_clause_indices = AST_GetClauseIndices(ast, CYPHER_AST_MERGE);
+	uint merge_count = array_len(merge_clause_indices);
+	if(merge_count == 0) return AST_VALID;
+
+	if(merge_count > 1) {
+		asprintf(reason, "RedisGraph does not currently support multiple MERGE clauses in a single query.");
+		return AST_INVALID;
+	}
+
+	AST_Validation res = AST_VALID;
+
+	uint merge_idx = merge_clause_indices[0];
+	for(uint i = 0; i < merge_idx; i ++) {
+		const cypher_astnode_t *prev_clause = cypher_ast_query_get_clause(ast->root, i);
+		cypher_astnode_type_t prev_clause_type = cypher_astnode_type(prev_clause);
+		if(prev_clause_type == CYPHER_AST_MATCH || prev_clause_type == CYPHER_AST_CREATE) {
+			asprintf(reason,
+					 "RedisGraph does not currently support MERGE clauses after MATCH or CREATE clauses.");
+			res = AST_INVALID;
+			break;
+		}
+	}
+
+	array_free(merge_clause_indices);
+
+	return res;
+}
+
 static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, uint end_offset) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->free_root = true;
@@ -1374,6 +1419,8 @@ static AST_Validation _ValidateScopes(const cypher_astnode_t *root, char **reaso
 
 	// Validate identifiers, which may be passed between scopes
 	if(_Validate_Aliases_Defined(&mock_ast, reason) == AST_INVALID) return AST_INVALID;
+
+	if(_BlockUnsupportedMerges(&mock_ast, reason) == AST_INVALID) return AST_INVALID;
 
 	// Aliases are scoped by the WITH clauses within the query.
 	// If we have one or more WITH clauses, MATCH validations should be performed one scope at a time.
@@ -1472,3 +1519,4 @@ AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *re
 
 	return res;
 }
+

@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include "graph_entity.h"
+#include "../../query_ctx.h"
 #include "../../util/rmalloc.h"
 #include "../graphcontext.h"
 #include "node.h"
@@ -98,7 +99,7 @@ size_t GraphEntity_PropertiesToString(const GraphEntity *e, char **buffer, size_
 		*buffer = rm_realloc(*buffer, *bufferLen);
 	}
 	*bytesWritten += snprintf(*buffer, *bufferLen, "{");
-	GraphContext *gc = GraphContext_GetFromTLS();
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	int propCount = ENTITY_PROP_COUNT(e);
 	EntityProperty *properties = ENTITY_PROPS(e);
 	for(int i = 0; i < propCount; i++) {
@@ -210,3 +211,4 @@ void FreeEntity(Entity *e) {
 		e->properties = NULL;
 	}
 }
+

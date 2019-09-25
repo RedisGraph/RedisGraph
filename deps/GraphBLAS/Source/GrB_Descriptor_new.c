@@ -9,8 +9,6 @@
 
 // Default values are set to GxB_DEFAULT
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GrB_Descriptor_new     // create a new descriptor
@@ -32,8 +30,7 @@ GrB_Info GrB_Descriptor_new     // create a new descriptor
     //--------------------------------------------------------------------------
 
     // allocate the descriptor
-    GB_CALLOC_MEMORY (*descriptor, 1, sizeof (struct GB_Descriptor_opaque),
-        NULL) ;
+    GB_CALLOC_MEMORY (*descriptor, 1, sizeof (struct GB_Descriptor_opaque)) ;
     if (*descriptor == NULL)
     { 
         // out of memory
@@ -48,6 +45,8 @@ GrB_Info GrB_Descriptor_new     // create a new descriptor
     desc->in0  = GxB_DEFAULT ;     // descriptor for the first input
     desc->in1  = GxB_DEFAULT ;     // descriptor for the second input
     desc->axb  = GxB_DEFAULT ;     // descriptor for C=A*B
+    desc->nthreads_max = GxB_DEFAULT ;
+    desc->chunk = GxB_DEFAULT ;
     return (GrB_SUCCESS) ;
 }
 

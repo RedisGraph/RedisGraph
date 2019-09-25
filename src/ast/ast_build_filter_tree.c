@@ -102,8 +102,13 @@ static FT_FilterNode *_convertUnaryOperator(RecordMap *record_map,
 	// Argument is of type CYPHER_AST_EXPRESSION
 	const cypher_astnode_t *arg = cypher_ast_unary_operator_get_argument(op_node);
 	AST_Operator op = AST_ConvertOperatorNode(operator);
-
-	return _CreateFilterSubtree(record_map, op, arg, NULL);
+	switch(op) {
+	case OP_IS_NULL:
+	case OP_IS_NOT_NULL:
+		return FilterTree_CreateExpressionFilter(AR_EXP_FromExpression(record_map, op_node));
+	default:
+		return _CreateFilterSubtree(record_map, op, arg, NULL);
+	}
 }
 
 static FT_FilterNode *_convertApplyOperator(RecordMap *record_map,

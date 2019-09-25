@@ -20,13 +20,14 @@
 #undef I
 
 //------------------------------------------------------------------------------
-// 8 binary functions, z=f(x,y), where CxC -> C
+// 10 binary functions, z=f(x,y), where CxC -> C
 //------------------------------------------------------------------------------
 
 extern
 GrB_BinaryOp Complex_first , Complex_second , Complex_min ,
              Complex_max   , Complex_plus   , Complex_minus ,
-             Complex_times , Complex_div    ;
+             Complex_times , Complex_div    , Complex_rdiv  ,
+             Complex_rminus ;
 
 //------------------------------------------------------------------------------
 // 6 binary comparison functions, z=f(x,y), where CxC -> C

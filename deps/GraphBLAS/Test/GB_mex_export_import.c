@@ -54,6 +54,8 @@ int64_t nonempty = -1 ;
 GrB_Type type = NULL, atype = NULL;
 GrB_Info info = GrB_SUCCESS ;
 
+GrB_Info export_import ( int format_matrix, int format_export) ;
+
 //------------------------------------------------------------------------------
 
 GrB_Info export_import

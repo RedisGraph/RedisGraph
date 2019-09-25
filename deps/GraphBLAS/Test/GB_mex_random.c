@@ -2,7 +2,7 @@
 // GB_mex_random: construct a random matrix, double or Complex
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -54,8 +54,10 @@ void mexFunction
     }
     else
     {
+        GB_MEX_TIC ;
         GrB_Info info = random_matrix (&A, make_symmetric, no_self_edges,
             nrows, ncols, ntuples, method, A_complex) ;
+        GB_MEX_TOC ;
         if (info != GrB_SUCCESS)
         {
             mexErrMsgTxt ("random_matrix failed") ;

@@ -11,8 +11,6 @@
 // in which case the extra space is trimmed.  If the existing space is not
 // sufficient, the matrix is doubled in size to accomodate the new entries.
 
-// parallel: not here, but perhaps in GB_ix_realloc.
-
 #include "GB.h"
 
 GrB_Info GB_ix_resize           // resize a matrix

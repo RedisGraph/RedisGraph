@@ -7,6 +7,7 @@
 #include "resultset.h"
 #include "../value.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../grouping/group_cache.h"
 #include "../arithmetic/aggregate.h"
@@ -54,6 +55,9 @@ static void _ResultSet_ReplayStats(RedisModuleCtx *ctx, ResultSet *set) {
 		buflen = sprintf(buff, "Relationships deleted: %d", set->stats.relationships_deleted);
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
+
+	// Emit query execution time.
+	ResultSet_ReportQueryRuntime(ctx);
 }
 
 static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
@@ -71,11 +75,10 @@ static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
 	RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
 }
 
-
 ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact) {
 	ResultSet *set = rm_malloc(sizeof(ResultSet));
 	set->ctx = ctx;
-	set->gc = GraphContext_GetFromTLS();
+	set->gc = QueryCtx_GetGraphCtx();
 	set->compact = compact;
 	set->formatter = (compact) ? &ResultSetFormatterCompact : &ResultSetFormatterVerbose;
 	set->recordCount = 0;
@@ -112,27 +115,38 @@ int ResultSet_AddRecord(ResultSet *set, Record r) {
 	set->recordCount++;
 
 	// Output the current record using the defined formatter
-	set->formatter->EmitRecord(set->ctx, set->gc, r, set->column_count);
+	set->formatter->EmitRecord(set->ctx, set->gc, r);
 
 	return RESULTSET_OK;
 }
 
 void ResultSet_Replay(ResultSet *set) {
 	if(set->header_emitted) {
-		// If we have emitted a header, set the number of elements in the
-		// preceding array
+		// If we have emitted a header, set the number of elements in the preceding array.
 		RedisModule_ReplySetArrayLength(set->ctx, set->recordCount);
 	} else if(set->header_emitted == false && set->columns != NULL) {
 		assert(set->recordCount == 0);
-		// Handle the edge case in which the query was intended to return results,
-		// but none were created.
+		// Handle the edge case in which the query was intended to return results, but none were created.
 		_ResultSet_ReplyWithPreamble(set, NULL);
 		RedisModule_ReplySetArrayLength(set->ctx, 0);
 	} else {
 		// Queries that don't emit data will only emit statistics
 		RedisModule_ReplyWithArray(set->ctx, 1);
 	}
-	_ResultSet_ReplayStats(set->ctx, set);
+
+	/* Check to see if we've encountered a run-time error.
+	 * If so, emit it as the last top-level response. */
+	if(QueryCtx_EncounteredError()) QueryCtx_EmitException();
+	else _ResultSet_ReplayStats(set->ctx, set); // Otherwise, the last response is query statistics.
+}
+
+/* Report execution timing. */
+void ResultSet_ReportQueryRuntime(RedisModuleCtx *ctx) {
+	char *strElapsed;
+	double t = QueryCtx_GetExecutionTime();
+	asprintf(&strElapsed, "Query internal execution time: %.6f milliseconds", t);
+	RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
+	free(strElapsed);
 }
 
 void ResultSet_Free(ResultSet *set) {
@@ -142,3 +156,4 @@ void ResultSet_Free(ResultSet *set) {
 
 	rm_free(set);
 }
+

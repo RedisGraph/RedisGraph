@@ -12,8 +12,6 @@
 // function does not have the type itself, but just the code.  If the types are
 // available, GB_Type_compatible should be called instead.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 bool GB_code_compatible         // check if two types can be typecast

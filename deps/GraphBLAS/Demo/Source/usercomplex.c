@@ -5,7 +5,7 @@
 #include "usercomplex.h"
 
 #if defined __INTEL_COMPILER
-#pragma warning (disable: 58 167 144 177 181 186 188 589 593 869 981 1418 1419 1572 1599 2259 2282 2557 2547 3280 )
+#pragma warning (disable: 58 167 144 161 177 181 186 188 589 593 869 981 1418 1419 1572 1599 2259 2282 2557 2547 3280 )
 #elif defined __GNUC__
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 #pragma GCC diagnostic ignored "-Wincompatible-pointer-types"
@@ -30,8 +30,10 @@ void complex_first  (C Z, const C X, const C Y) { Z = X ; }
 void complex_second (C Z, const C X, const C Y) { Z = Y ; }
 void complex_plus   (C Z, const C X, const C Y) { Z = X + Y ; }
 void complex_minus  (C Z, const C X, const C Y) { Z = X - Y ; }
+void complex_rminus (C Z, const C X, const C Y) { Z = Y - X ; }
 void complex_times  (C Z, const C X, const C Y) { Z = X * Y ; }
 void complex_div    (C Z, const C X, const C Y) { Z = X / Y ; }
+void complex_rdiv   (C Z, const C X, const C Y) { Z = Y / X ; }
 
 void complex_min (C Z, const C X, const C Y)
 {
@@ -91,7 +93,8 @@ void complex_max (C Z, const C X, const C Y)
 
 GrB_BinaryOp Complex_first = NULL, Complex_second = NULL, Complex_min = NULL,
              Complex_max   = NULL, Complex_plus   = NULL, Complex_minus = NULL,
-             Complex_times = NULL, Complex_div    = NULL ;
+             Complex_times = NULL, Complex_div    = NULL, Complex_rminus = NULL,
+             Complex_rdiv  = NULL ;
 
 //------------------------------------------------------------------------------
 // 6 binary functions, z=f(x,y), where CxC -> C ; (1,0) = true, (0,0) = false
@@ -247,8 +250,10 @@ GrB_Info Complex_init ( )
     OK (GrB_BinaryOp_new (&Complex_max    , complex_max    , C, C, C)) ;
     OK (GrB_BinaryOp_new (&Complex_plus   , complex_plus   , C, C, C)) ;
     OK (GrB_BinaryOp_new (&Complex_minus  , complex_minus  , C, C, C)) ;
+    OK (GrB_BinaryOp_new (&Complex_rminus , complex_rminus , C, C, C)) ;
     OK (GrB_BinaryOp_new (&Complex_times  , complex_times  , C, C, C)) ;
     OK (GrB_BinaryOp_new (&Complex_div    , complex_div    , C, C, C)) ;
+    OK (GrB_BinaryOp_new (&Complex_rdiv   , complex_rdiv   , C, C, C)) ;
 
     //--------------------------------------------------------------------------
     // create the Complex binary comparison operators, CxC -> C
@@ -363,8 +368,10 @@ GrB_Info Complex_finalize ( )
     GrB_free (&Complex_max   ) ;
     GrB_free (&Complex_plus  ) ;
     GrB_free (&Complex_minus ) ;
+    GrB_free (&Complex_rminus) ;
     GrB_free (&Complex_times ) ;
     GrB_free (&Complex_div   ) ;
+    GrB_free (&Complex_rdiv  ) ;
 
     GrB_free (&Complex_iseq) ;
     GrB_free (&Complex_isne) ;

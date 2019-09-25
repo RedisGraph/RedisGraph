@@ -9,10 +9,8 @@
 #include "decode_graph.h"
 #include "decode_schema.h"
 #include "../../../util/arr.h"
+#include "../../../query_ctx.h"
 #include "../../../util/rmalloc.h"
-
-/* Thread local storage graph context key. */
-extern pthread_key_t _tlsGCKey;
 
 static void _RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
@@ -46,8 +44,8 @@ GraphContext *RdbLoadGraphContext(RedisModuleIO *rdb) {
 	gc->string_mapping = array_new(char *, 64);
 	gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 
-	// _tlsGCKey was created as part of module load.
-	assert(pthread_setspecific(_tlsGCKey, gc) == 0);
+	// Set the thread-local GraphContext, as it will be accessed if we're decoding indexes.
+	QueryCtx_SetGraphCtx(gc);
 
 	// Graph name
 	gc->graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
@@ -85,5 +83,8 @@ GraphContext *RdbLoadGraphContext(RedisModuleIO *rdb) {
 		if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
 	}
 
+	QueryCtx_Free(); // Release thread-local varaibles.
+
 	return gc;
 }
+

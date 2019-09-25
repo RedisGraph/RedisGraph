@@ -6,6 +6,7 @@
 
 #include "schema.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
 #include <assert.h>
@@ -136,3 +137,4 @@ void Schema_Free(Schema *schema) {
 	if(schema->fulltextIdx) Index_Free(schema->fulltextIdx);
 	rm_free(schema);
 }
+

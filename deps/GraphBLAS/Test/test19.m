@@ -1,7 +1,7 @@
 function test19(fulltest)
 %TEST19 test GxB_subassign and GrB_*_setElement with many pending operations
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin < 1)
@@ -10,7 +10,14 @@ end
 if (fulltest)
     nt = 3000 ;
 else
-    nt = 500 ;
+    % check if malloc debugging is enabled
+    debug_status = stat ;
+    if (debug_status)
+        % exhaustive malloc debugging
+        nt = 50 ; % was 500, which takes too long
+    else
+        nt = 500 ;
+    end
 end
 
 fprintf ('\nGxB_subassign and setElement test, many pending computations\n') ;

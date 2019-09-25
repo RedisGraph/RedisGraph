@@ -10,35 +10,22 @@
 // Compute the cumulative sum of an array count[0:n], of size n+1
 // in pseudo-MATLAB notation:
 
-//      k = sum (count [0:n] != 0) ;
+//      k = sum (count [0:n-1] != 0) ;
 
 //      count = cumsum ([0 count[0:n-1]]) ;
 
 // That is, count [j] on input is overwritten with the value of
-// sum (count [0..j-1]).
-
-// GB_transpose_bucket uses this function to compute row and column pointers.
-// On input, count [j] is the number of nonzeros in column j of a matrix, and
-// count [n] should be zero (it only affects the result k, however).  On
-// output, count [0..n] contains the column pointers of the matrix, and kresult
-// is the number of nonzeros in count [0:n], which becomes nvec_nonempty for
-// the resulting matrix.
-
-// GB_AxB_flopcount uses this to compute the cumulative sum of the flop
-// counts for C<M>=A*B, for each column of B.  In this case, n is the
-// number of vectors in B.  It does not need the value k, so it is not
-// computed.
-
-// PARALLEL: a parallel cumsum
+// sum (count [0..j-1]).  count [n] is implicitly zero on input.
+// On output, count [n] is the total sum.
 
 #include "GB.h"
 
 void GB_cumsum                  // compute the cumulative sum of an array
 (
-    int64_t *count,             // size n+1, input/output
+    int64_t *restrict count,    // size n+1, input/output
     const int64_t n,
-    int64_t *kresult,           // return k, if needed by the caller
-    GB_Context Context
+    int64_t *restrict kresult,  // return k, if needed by the caller
+    int nthreads
 )
 {
 
@@ -50,10 +37,18 @@ void GB_cumsum                  // compute the cumulative sum of an array
     ASSERT (n >= 0) ;
 
     //--------------------------------------------------------------------------
-    // determine the number of threads to use
+    // determine # of threads to use
     //--------------------------------------------------------------------------
 
-    GB_GET_NTHREADS (nthreads, Context) ;
+    #if !defined ( _OPENMP )
+    nthreads = 1 ;
+    #endif
+
+    if (nthreads > 1)
+    { 
+        nthreads = GB_IMIN (nthreads, n / 1024) ;
+        nthreads = GB_IMAX (nthreads, 1) ;
+    }
 
     //--------------------------------------------------------------------------
     // count = cumsum ([0 count[0:n-1]]) ;
@@ -61,30 +56,144 @@ void GB_cumsum                  // compute the cumulative sum of an array
 
     if (kresult == NULL)
     { 
-        // do not compute k.  This loop is essential to parallelize.
-        int64_t s = 0 ;
-        for (int64_t i = 0 ; i <= n ; i++)
-        { 
-            int64_t c = count [i] ;
-            count [i] = s ;
-            s += c ;
+
+        if (nthreads <= 2)
+        {
+
+            //------------------------------------------------------------------
+            // cumsum with one thread
+            //------------------------------------------------------------------
+
+            int64_t s = 0 ;
+            for (int64_t i = 0 ; i < n ; i++)
+            { 
+                int64_t c = count [i] ;
+                count [i] = s ;
+                s += c ;
+            }
+            count [n] = s ;
+
         }
+        else
+        {
+
+            //------------------------------------------------------------------
+            // cumsum with multiple threads
+            //------------------------------------------------------------------
+
+            int64_t ws [nthreads+1] ;
+            #pragma omp parallel num_threads(nthreads)
+            {
+                // each thread sums up its own part
+                int tid = GB_OPENMP_THREAD_ID ;
+                int64_t istart, iend ;
+                GB_PARTITION (istart, iend, n, tid, nthreads) ;
+                int64_t s = 0 ;
+                for (int64_t i = istart ; i < iend ; i++)
+                { 
+                    s += count [i] ;
+                }
+                ws [tid] = s ;
+
+                #pragma omp barrier
+
+                // each thread computes the cumsum of its own part
+                s = 0 ;
+                for (int i = 0 ; i < tid ; i++)
+                { 
+                    s += ws [i] ;
+                }
+                for (int64_t i = istart ; i < iend ; i++)
+                { 
+                    int64_t c = count [i] ;
+                    count [i] = s ;
+                    s += c ;
+                }
+                if (iend == n)
+                { 
+                    count [n] = s ;
+                }
+            }
+
+        }
+
     }
     else
     { 
-        // also compute k as the # of nonzeros in count [0:n].  Note that
-        // the bucket transpose need not be parallel, so it is not essential
-        // to parallelize the following code.
-        int64_t k = 0 ;
-        int64_t s = 0 ;
-        for (int64_t i = 0 ; i <= n ; i++)
-        { 
-            int64_t c = count [i] ;
-            if (c != 0) k++ ;
-            count [i] = s ;
-            s += c ;
+
+        if (nthreads <= 2)
+        {
+
+            //------------------------------------------------------------------
+            // cumsum with one thread, also compute k
+            //------------------------------------------------------------------
+
+            int64_t k = 0 ;
+            int64_t s = 0 ;
+            for (int64_t i = 0 ; i < n ; i++)
+            { 
+                int64_t c = count [i] ;
+                if (c != 0) k++ ;
+                count [i] = s ;
+                s += c ;
+            }
+            count [n] = s ;
+            (*kresult) = k ;
+
         }
-        (*kresult) = k ;
+        else
+        {
+
+            //------------------------------------------------------------------
+            // cumsum with multiple threads, also compute k
+            //------------------------------------------------------------------
+
+            int64_t ws [nthreads+1] ;
+            int64_t wk [nthreads+1] ;
+            #pragma omp parallel num_threads(nthreads)
+            {
+                // each thread sums up its own part
+                int tid = GB_OPENMP_THREAD_ID ;
+                int64_t istart, iend ;
+                GB_PARTITION (istart, iend, n, tid, nthreads) ;
+                int64_t k = 0 ;
+                int64_t s = 0 ;
+                for (int64_t i = istart ; i < iend ; i++)
+                { 
+                    int64_t c = count [i] ;
+                    if (c != 0) k++ ;
+                    s += c ;
+                }
+                ws [tid] = s ;
+                wk [tid] = k ;
+
+                #pragma omp barrier
+
+                // each thread computes the cumsum of its own part
+                s = 0 ;
+                for (int i = 0 ; i < tid ; i++)
+                { 
+                    s += ws [i] ;
+                }
+                for (int64_t i = istart ; i < iend ; i++)
+                { 
+                    int64_t c = count [i] ;
+                    count [i] = s ;
+                    s += c ;
+                }
+                if (iend == n)
+                { 
+                    count [n] = s ;
+                }
+            }
+
+            int64_t k = 0 ;
+            for (int tid = 0 ; tid < nthreads ; tid++)
+            { 
+                k += wk [tid] ;
+            }
+            (*kresult) = k ;
+        }
     }
 }
 

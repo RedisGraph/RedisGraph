@@ -1,15 +1,21 @@
 function test81
 %TEST81 test GrB_Matrix_extract with index range, stride, & backwards
 
+fprintf ('test81:  GrB_Matrix_extract with index range, stride, backwards\n') ;
+
 rng ('default') ;
 
-n = 4 ;
+n = 10 ;
 A = sprand (n, n, 0.5) ;
 S = sparse (n, n) ;
 
-for ilo = 1:n
-    for ihi = 1:n
-        fprintf ('.') ;
+Ahyper.matrix = A ;
+Ahyper.is_hyper = true ;
+Ahyper.is_csc = true ;
+
+for ilo = 1:2:n
+    for ihi = 1:2:n
+        fprintf ('#') ;
         for i_inc = [-n:n inf]
             clear I
             I.begin = ilo-1 ;
@@ -21,8 +27,25 @@ for ilo = 1:n
                 iinc = 1 ;
             end
 
-            for jlo = 1:n
-                for jhi = 1:n
+            fprintf (':') ;
+            for jlen = [1:2:n]
+                clear J
+                J = randperm (n) ;
+                J = J (1:jlen) ;
+                J0 = uint64 (J) - 1 ;
+                C1 = A (ilo:iinc:ihi, J) ;
+                [sm sn] = size (C1) ;
+                S = sparse (sm, sn) ;
+                C2 = GB_mex_Matrix_extract (S, [ ], [ ], A, I, J0, [ ]) ;
+                assert (isequal (C1, C2.matrix)) ;
+                C3 = GB_mex_Matrix_extract (S, [ ], [ ], ...
+                    Ahyper, I, J0, [ ]) ;
+                assert (isequal (C1, C3.matrix)) ;
+            end
+
+            fprintf ('.') ;
+            for jlo = 1:2:n
+                for jhi = 1:2:n
                     for j_inc = [-n:n inf]
 
                         clear J
@@ -38,12 +61,18 @@ for ilo = 1:n
                         C1 = A (ilo:iinc:ihi, jlo:jinc:jhi) ;
                         [sm sn] = size (C1) ;
                         S = sparse (sm, sn) ;
+
                         C2 = GB_mex_Matrix_extract (S, [ ], [ ], A, I, J, [ ]) ;
                         assert (isequal (C1, C2.matrix)) ;
+
+                        C3 = GB_mex_Matrix_extract (S, [ ], [ ], ...
+                            Ahyper, I, J, [ ]) ;
+                        assert (isequal (C1, C3.matrix)) ;
 
                     end
                 end
             end
+
         end
     end
 end

@@ -185,6 +185,7 @@ GrB_Info wathen             // construct a random Wathen matrix
 
             // A = sparse (I,J,X,n,n) ;
             OK (GrB_Matrix_build (A, I, J, X, ntriplets, GrB_PLUS_FP64)) ;
+
         }
         break ;
 

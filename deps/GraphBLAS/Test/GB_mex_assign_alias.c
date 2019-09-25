@@ -2,7 +2,7 @@
 // GB_mex_assign_alias: C(I,J) = accum(C(I,J),C)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -89,9 +89,6 @@ void mexFunction
 
     // C(I,J) = accum (C(I,J),C)
     METHOD (GrB_assign (C, NULL, accum, C, I, ni, J, nj, desc)) ;
-
-    GrB_wait ( ) ;
-    TOC ;
 
     // return C to MATLAB as a struct and free the GraphBLAS C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C output", true) ;

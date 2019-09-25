@@ -9,9 +9,8 @@
 
 // C<M> = accum (C,A') or accum (C,A)
 
-// parallel: not here; see GB_transpose and GB_shallow_cast
-
-#include "GB.h"
+#include "GB_transpose.h"
+#include "GB_accum_mask.h"
 
 GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
 (
@@ -27,7 +26,7 @@ GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (GB_ALIAS_OK2 (C, M, A)) ;
+    // C may be aliased with M and/or A
 
     GB_WHERE ("GrB_transpose (C, M, accum, A, desc)") ;
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;
@@ -86,6 +85,7 @@ GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
 
     if (!A_transpose)
     {
+
         // T = A', the default behavior.  This step may seem counter-intuitive,
         // but method computes C<M>=A' by default when A_transpose is false.
 
@@ -112,6 +112,7 @@ GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
     }
     else
     { 
+
         // T = A, a pure shallow copy; nothing at all is allocated.  No
         // typecasting is done since the types of T and A are the same.  If the
         // A_transpose descriptor is true, A is viewed as transposed first.
@@ -120,7 +121,7 @@ GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
         // typecasted eventually, into the type of C if the types of T and C
         // differ.  That can be postponed at no cost since the following step
         // is free.
-        info = GB_shallow_cast (&T, A->type, C_is_csc, A, Context) ;
+        info = GB_shallow_copy (&T, C_is_csc, A, Context) ;
     }
 
     if (info != GrB_SUCCESS)
@@ -137,7 +138,6 @@ GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
     // C<M> = accum (C,T): accumulate the results into C via the mask M
     //--------------------------------------------------------------------------
 
-    return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp,
-        Context)) ;
+    return (GB_ACCUM_MASK (C, M, NULL, accum, &T, C_replace, Mask_comp)) ;
 }
 

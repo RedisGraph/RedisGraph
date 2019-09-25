@@ -9,19 +9,6 @@
 
 #ifndef GRAPHBLAS_DEMOS_H
 #define GRAPHBLAS_DEMOS_H
-#include "GraphBLAS.h"
-#include "simple_rand.h"
-#include "simple_timer.h"
-#include "usercomplex.h"
-
-#ifdef MATLAB_MEX_FILE
-#include "mex.h"
-#include "matrix.h"
-#define malloc  mxMalloc
-#define free    mxFree
-#define calloc  mxCalloc
-#define realloc mxRealloc
-#endif
 
 //------------------------------------------------------------------------------
 // manage compiler warnings
@@ -47,6 +34,20 @@
 #pragma GCC diagnostic error "-Wswitch-default"
 #endif
 
+#include "GraphBLAS.h"
+#include "simple_rand.h"
+#include "simple_timer.h"
+#include "usercomplex.h"
+#include "prand.h"
+
+#ifdef MATLAB_MEX_FILE
+#include "mex.h"
+#include "matrix.h"
+#define malloc  mxMalloc
+#define free    mxFree
+#define calloc  mxCalloc
+#define realloc mxRealloc
+#endif
 
 #undef MIN
 #undef MAX
@@ -95,19 +96,21 @@ GrB_Info read_matrix        // read a double-precision matrix
 GrB_Info mis                    // compute a maximal independent set
 (
     GrB_Vector *iset_output,    // iset(i) = true if i is in the set
-    const GrB_Matrix A          // symmetric Boolean matrix
+    const GrB_Matrix A,         // symmetric Boolean matrix
+    int64_t seed                // random number seed
 ) ;
 
 GrB_Info mis_check              // compute a maximal independent set
 (
     GrB_Vector *iset_output,    // iset(i) = true if i is in the set
-    const GrB_Matrix A          // symmetric Boolean matrix
+    const GrB_Matrix A,         // symmetric Boolean matrix
+    int64_t seed                // random number seed
 ) ;
 
 void mis_score (double *result, uint32_t *degree) ;
+void mis_score2 (double *result, uint32_t *degree, double *xrand) ;
 
 extern int32_t level ;
-#pragma omp threadprivate(level)
 
 void bfs_level (int32_t *result, bool *element) ;
 
@@ -270,7 +273,7 @@ GrB_Info import_test (GrB_Matrix *C_handle, int format, bool dump) ;
 #define OK(method)                                                      \
 {                                                                       \
     info = method ;                                                     \
-    if (info != GrB_SUCCESS)                                            \
+    if (!(info == GrB_SUCCESS || info == GrB_NO_VALUE))                 \
     {                                                                   \
         printf ("GraphBLAS error:\n%s\n", GrB_error ( )) ;              \
         CHECK (false, info) ;                                           \

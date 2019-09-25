@@ -19,7 +19,6 @@ CommandCtx *CommandCtx_New
 	context->argc = argc;
 	context->replicated_command = replicated_command;
 	context->graphName = NULL;
-
 	// Make a copy of graph name.
 	if(graphName) context->graphName = rm_strdup(RedisModule_StringPtrLen(graphName, NULL));
 
@@ -65,3 +64,4 @@ void CommandCtx_Free(CommandCtx *qctx) {
 	if(qctx->graphName) rm_free(qctx->graphName);
 	rm_free(qctx);
 }
+

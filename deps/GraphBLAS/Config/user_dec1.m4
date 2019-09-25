@@ -4,6 +4,12 @@
 
 // Declarations appended to SuiteSparse/GraphBLAS/Include/GraphBLAS.h.
 
+#if defined __INTEL_COMPILER
+#pragma warning (disable: 869 )
+#elif defined __GNUC__
+#pragma GCC diagnostic ignored "-Wunused-parameter"
+#endif
+
 #ifndef GxB_USER_INCLUDE
 #define GxB_USER_INCLUDE
 #endif

@@ -7,8 +7,6 @@
 
 //------------------------------------------------------------------------------
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GxB_SelectOp_free          // free a user-created select operator

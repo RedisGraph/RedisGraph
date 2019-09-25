@@ -490,7 +490,6 @@ Feature: FunctionsAcceptance
             """
         Then a SyntaxError should be raised at compile time: InvalidArgumentType
 
-    @skip
     Scenario: `labels()` failing on invalid arguments
         Given an empty graph
         And having executed:

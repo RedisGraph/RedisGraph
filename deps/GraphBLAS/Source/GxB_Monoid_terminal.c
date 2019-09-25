@@ -7,8 +7,6 @@
 
 //------------------------------------------------------------------------------
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GxB_Monoid_terminal        // return the monoid terminal
@@ -16,9 +14,9 @@ GrB_Info GxB_Monoid_terminal        // return the monoid terminal
     bool *has_terminal,             // true if the monoid has a terminal value
     void *terminal,                 // returns the terminal of the monoid,
                                     // unmodified if has_terminal is false
-    const GrB_Monoid monoid         // monoid to query
+    GrB_Monoid monoid               // monoid to query
 )
-{ 
+{
 
     //--------------------------------------------------------------------------
     // check inputs

@@ -9,9 +9,7 @@
 
 // Compare with GrB_Row_assign, which uses the M and C_replace differently
 
-// parallel: not here, see GB_subassign_kernel
-
-#include "GB.h"
+#include "GB_subassign.h"
 
 GrB_Info GxB_Row_subassign          // C(row,Cols)<M'> += u'
 (
@@ -56,6 +54,6 @@ GrB_Info GxB_Row_subassign          // C(row,Cols)<M'> += u'
         (GrB_Matrix) u,     true,           // u as a matrix; always transposed
         Rows, 1,                            // a single row index
         Cols, nCols,                        // column indices
-        false, NULL, 0,                     // no scalar expansion
+        false, NULL, GB_ignore_code,        // no scalar expansion
         Context)) ;
 }

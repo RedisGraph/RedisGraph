@@ -5,7 +5,6 @@ import struct
 from timeit import default_timer as timer
 import redis
 import click
-from backports import csv
 
 # Global variables
 CONFIGS = None # thresholds for batching Redis queries

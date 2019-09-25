@@ -7,6 +7,7 @@
 #include "algebraic_expression.h"
 #include "arithmetic_expression.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../algorithms/algorithms.h"
 
@@ -128,16 +129,15 @@ static AlgebraicExpression **_AlgebraicExpression_IsolateVariableLenExps(
 
 static inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, GrB_Matrix B,
 													GrB_Descriptor desc) {
-	// Using our own compile-time, user defined semiring see rg_structured_bool.m4
 	// A,B,C must be boolean matrices.
 	GrB_Info res = GrB_mxm(
-					   C,                  // Output
-					   GrB_NULL,           // Mask
-					   GrB_NULL,           // Accumulator
-					   Rg_structured_bool, // Semiring
-					   A,                  // First matrix
-					   B,                  // Second matrix
-					   desc                // Descriptor
+					   C,                   // Output
+					   GrB_NULL,            // Mask
+					   GrB_NULL,            // Accumulator
+					   GxB_LOR_LAND_BOOL,   // Semiring
+					   A,                   // First matrix
+					   B,                   // Second matrix
+					   desc                 // Descriptor
 				   );
 	assert(res == GrB_SUCCESS);
 }
@@ -334,11 +334,11 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromNode(QGNode *n
 	op.free = false;
 	op.diagonal = true;
 	op.transpose = false;
-	GraphContext *gc = GraphContext_GetFromTLS();
+	Graph *g = QueryCtx_GetGraph();
 	if(n->labelID == GRAPH_UNKNOWN_LABEL) {
-		op.operand = Graph_GetZeroMatrix(gc->g);
+		op.operand = Graph_GetZeroMatrix(g);
 	} else {
-		op.operand = Graph_GetLabelMatrix(gc->g, n->labelID);
+		op.operand = Graph_GetLabelMatrix(g, n->labelID);
 	}
 	return op;
 }
@@ -347,7 +347,7 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge(
 	QGEdge *e,
 	bool transpose
 ) {
-	GraphContext *gc = GraphContext_GetFromTLS();
+	Graph *g = QueryCtx_GetGraph();
 	AlgebraicExpressionOperand op;
 	bool freeMatrix = false;
 	GrB_Matrix mat;
@@ -356,20 +356,19 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge(
 	uint reltype_count = array_len(e->reltypeIDs);
 	if(reltype_count == 0) {
 		// No relationship types specified; use the full adjacency matrix
-		mat = Graph_GetAdjacencyMatrix(gc->g);
+		mat = Graph_GetAdjacencyMatrix(g);
 	} else if(reltype_count == 1) {
 		// One relationship type
 		uint reltype_id = e->reltypeIDs[0];
 		if(reltype_id == GRAPH_UNKNOWN_RELATION) {
-			mat = Graph_GetZeroMatrix(gc->g);
+			mat = Graph_GetZeroMatrix(g);
 		} else {
-			mat = Graph_GetRelationMatrix(gc->g, e->reltypeIDs[0]);
+			mat = Graph_GetRelationMatrix(g, e->reltypeIDs[0]);
 		}
 	} else {
 		// [:A|:B]
 		// Create matrix M = A+B.
 		freeMatrix = true; // A temporary matrix is being built, and must later be freed.
-		Graph *g = gc->g;
 
 		GrB_Matrix m;
 		GrB_Matrix_new(&m, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
@@ -381,8 +380,8 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge(
 				// No matrix to add
 				continue;
 			}
-			l = Graph_GetRelationMatrix(gc->g, reltype_id);
-			GrB_Info info = GrB_eWiseAdd_Matrix_Semiring(m, NULL, NULL, Rg_structured_bool, m, l, NULL);
+			l = Graph_GetRelationMatrix(g, reltype_id);
+			GrB_Info info = GrB_eWiseAdd_Matrix_Semiring(m, NULL, NULL, GxB_LAND_LOR_BOOL, m, l, NULL);
 		}
 		mat = m;
 	}
@@ -519,7 +518,7 @@ static AlgebraicExpression *_AlgebraicExpression_FromPath(QGEdge **path, uint pa
 }
 
 AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg,
-														 RecordMap *record_map, size_t *exp_count) {
+														 RecordMap *record_map, uint *exp_count) {
 	assert(qg);
 	/* Construct algebraic expression(s) from query graph
 	 * trying to take advantage of long multiplications with as few
@@ -835,7 +834,7 @@ static GrB_Matrix _AlgebraicExpression_Eval_ADD(AlgebraicExpressionNode *exp, Gr
 	}
 
 	// Perform addition.
-	assert(GrB_eWiseAdd_Matrix_Semiring(res, NULL, NULL, Rg_structured_bool, l, r,
+	assert(GrB_eWiseAdd_Matrix_Semiring(res, NULL, NULL, GxB_LAND_LOR_BOOL, l, r,
 										desc) == GrB_SUCCESS);
 	if(inter) GrB_Matrix_free(&inter);
 
@@ -874,7 +873,7 @@ static GrB_Matrix _AlgebraicExpression_Eval_MUL(AlgebraicExpressionNode *exp, Gr
 	GrB_Matrix l = _AlgebraicExpression_Eval(exp->operation.l, res);
 
 	// Perform multiplication.
-	assert(GrB_mxm(res, NULL, NULL, Rg_structured_bool, l, r, desc) == GrB_SUCCESS);
+	assert(GrB_mxm(res, NULL, NULL, GxB_LAND_LOR_BOOL, l, r, desc) == GrB_SUCCESS);
 
 	// Store intermidate if expression is marked for reuse.
 	if(exp->operation.reusable) {
@@ -955,3 +954,4 @@ void AlgebraicExpressionNode_Free(AlgebraicExpressionNode *root) {
 	}
 	array_free(uniqueNodes);
 }
+

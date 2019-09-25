@@ -14,8 +14,6 @@
 // undefined if the user passes in a void * pointer to a different user-defined
 // type.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Type GB_code_type           // return the GrB_Type corresponding to the code

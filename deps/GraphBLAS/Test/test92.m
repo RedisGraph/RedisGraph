@@ -1,5 +1,7 @@
 function test92
-%TEST92 test GB_subref_symbolic
+%TEST92 test GB_subref (symbolic case)
+
+fprintf ('test92:  test GB_subref (symbolic case)\n') ;
 
 rng ('default') ;
 n = 100 ;

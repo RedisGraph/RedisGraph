@@ -19,8 +19,13 @@ function test71(f)
 %
 % Edit ll_memory_limit and nz_limit to match the memory on your machine.
 
-%  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+%  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 %  http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+[save save_chunk] = nthreads_get ;
+chunk = 4096 ;
+nthreads = feature ('numcores') ;
+nthreads_set (nthreads, chunk) ;
 
 L = sparse (1) ;
 try
@@ -231,3 +236,4 @@ end
 if (nargin == 0)
     test71_plot ;
 end
+nthreads_set (save, save_chunk) ;

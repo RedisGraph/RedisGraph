@@ -9,9 +9,7 @@
 
 // C<M> = accum(C,select(A,k)) or accum(C,select(A',))
 
-// parallel: not here; see GB_select
-
-#include "GB.h"
+#include "GB_select.h"
 
 GrB_Info GxB_Matrix_select  // C<M> = accum (C, select(A,k)) or select(A',k)
 (
@@ -20,7 +18,7 @@ GrB_Info GxB_Matrix_select  // C<M> = accum (C, select(A,k)) or select(A',k)
     const GrB_BinaryOp accum,       // optional accum for Z=accum(C,T)
     const GxB_SelectOp op,          // operator to select the entries
     const GrB_Matrix A,             // first input:  matrix A
-    const void *k,                  // optional input for select operator
+    const GxB_Scalar Thunk,         // optional input for select operator
     const GrB_Descriptor desc       // descriptor for C, M, and A
 )
 { 
@@ -29,7 +27,7 @@ GrB_Info GxB_Matrix_select  // C<M> = accum (C, select(A,k)) or select(A',k)
     // check inputs
     //--------------------------------------------------------------------------
 
-    GB_WHERE ("GxB_Matrix_select (C, M, accum, op, A, k, desc)") ;
+    GB_WHERE ("GxB_Matrix_select (C, M, accum, op, A, Thunk, desc)") ;
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;
     GB_RETURN_IF_FAULTY (M) ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
@@ -47,7 +45,7 @@ GrB_Info GxB_Matrix_select  // C<M> = accum (C, select(A,k)) or select(A',k)
         accum,                      // optional accum for Z=accum(C,T)
         op,                         // operator to select the entries
         A,                          // first input: A
-        k,                          // optional input for select operator
+        Thunk,                      // optional input for select operator
         A_transpose,                // descriptor for A
         Context)) ;
 }

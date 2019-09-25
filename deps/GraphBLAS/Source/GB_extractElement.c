@@ -14,8 +14,6 @@
 // Returns GrB_SUCCESS if A(row,col) is present, and sets x to its value.
 // Returns GrB_NO_VALUE if A(row,col) is not present, and x is unmodified.
 
-// not parallel: this function does O(log(..)) work and is already thread-safe.
-
 #include "GB.h"
 
 GrB_Info GB_extractElement      // extract a single entry, x = A(row,col)

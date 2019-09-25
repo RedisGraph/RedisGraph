@@ -10,14 +10,11 @@
 #include <string.h>
 #include <math.h>
 #include <omp.h>
+
 #ifdef MATLAB_MEX_FILE
 #include "mex.h"
 #include "matrix.h"
 #endif
-
-#undef NDEBUG
-#include <assert.h>
-
 
 #if 0
 // 32-bit version

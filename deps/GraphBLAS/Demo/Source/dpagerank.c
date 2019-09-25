@@ -41,9 +41,9 @@
 // scalar operators
 //------------------------------------------------------------------------------
 
+// NOTE: these operators use global values.  dpagerank can be done in parallel,
+// internally, but only one instance of dpagerank can be used.
 double c, s ;
-#pragma omp threadprivate(c,s)
-
 void fscale (double *z, const double *x) { (*z) = c * (*x) ; }
 void fdiv   (double *z, const double *x) { (*z) = (*x) / s ; }
 

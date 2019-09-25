@@ -7,7 +7,7 @@
 #include "op_filter.h"
 
 OpBase *NewFilterOp(FT_FilterNode *filterTree) {
-	Filter *filter = malloc(sizeof(Filter));
+	OpFilter *filter = malloc(sizeof(OpFilter));
 	filter->filterTree = filterTree;
 
 	// Set our Op operations
@@ -25,7 +25,7 @@ OpBase *NewFilterOp(FT_FilterNode *filterTree) {
  * returns OP_OK when graph passes filter tree. */
 Record FilterConsume(OpBase *opBase) {
 	Record r;
-	Filter *filter = (Filter *)opBase;
+	OpFilter *filter = (OpFilter *)opBase;
 	OpBase *child = filter->op.children[0];
 
 	while(true) {
@@ -47,7 +47,7 @@ OpResult FilterReset(OpBase *ctx) {
 
 /* Frees Filter*/
 void FilterFree(OpBase *ctx) {
-	Filter *filter = (Filter *)ctx;
+	OpFilter *filter = (OpFilter *)ctx;
 	if(filter->filterTree) {
 		FilterTree_Free(filter->filterTree);
 		filter->filterTree = NULL;

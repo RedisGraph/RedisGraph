@@ -9,8 +9,6 @@
 
 // The user-defined type has no known size, so this must be provided on input.
 
-// not parallel: this function does O(1) work and is already thread-safe.
-
 #include "GB.h"
 
 size_t GB_code_size             // return the size of a type, given its code

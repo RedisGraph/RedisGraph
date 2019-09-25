@@ -20,8 +20,6 @@
 // the matrix A is left in an invalid state (A->magic == GB_MAGIC2).  Only the
 // header is left.
 
-// parallel: not here, but perhaps in GB_calloc_memory.
-
 #include "GB.h"
 
 GrB_Info GB_clear           // clear a matrix, type and dimensions unchanged
@@ -39,8 +37,7 @@ GrB_Info GB_clear           // clear a matrix, type and dimensions unchanged
     ASSERT (A->magic == GB_MAGIC || A->magic == GB_MAGIC2) ;
 
     // zombies and pending tuples have no effect; about to delete them anyway
-    ASSERT (GB_PENDING_OK (A)) ;
-    ASSERT (GB_ZOMBIES_OK (A)) ;
+    ASSERT (GB_PENDING_OK (A)) ; ASSERT (GB_ZOMBIES_OK (A)) ;
 
     //--------------------------------------------------------------------------
     // clear the content of A
@@ -83,8 +80,8 @@ GrB_Info GB_clear           // clear a matrix, type and dimensions unchanged
         int64_t plen = GB_IMIN (1, A->vdim) ;
         A->nvec = 0 ;
         A->plen = plen ;
-        GB_CALLOC_MEMORY (A->p, plen+1, sizeof (int64_t), Context) ;
-        GB_CALLOC_MEMORY (A->h, plen  , sizeof (int64_t), Context) ;
+        GB_CALLOC_MEMORY (A->p, plen+1, sizeof (int64_t)) ;
+        GB_CALLOC_MEMORY (A->h, plen  , sizeof (int64_t)) ;
         if (A->p == NULL || A->h == NULL)
         { 
             // out of memory
@@ -103,7 +100,7 @@ GrB_Info GB_clear           // clear a matrix, type and dimensions unchanged
         int64_t plen = A->vdim ;
         A->nvec = plen ;
         A->plen = plen ;
-        GB_CALLOC_MEMORY (A->p, plen+1, sizeof (int64_t), Context) ;
+        GB_CALLOC_MEMORY (A->p, plen+1, sizeof (int64_t)) ;
         ASSERT (A->h == NULL) ;
         if (A->p == NULL)
         { 

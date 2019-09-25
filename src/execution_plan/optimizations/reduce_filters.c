@@ -11,7 +11,7 @@
 
 void _reduceFilter(OpBase *op) {
 	OpBase *parent = op;
-	Filter *filter = (Filter *)parent;
+	OpFilter *filter = (OpFilter *)parent;
 	FT_FilterNode *tree = filter->filterTree;
 	OpBase *child = NULL;
 
@@ -20,7 +20,7 @@ void _reduceFilter(OpBase *op) {
 		child = parent->children[0];
 		if(child->type != OPType_FILTER) break;
 
-		Filter *childFilter = (Filter *)child;
+		OpFilter *childFilter = (OpFilter *)child;
 
 		/* Create a new root for the tree, merge trees using an AND. */
 		FT_FilterNode *root = FilterTree_CreateConditionFilter(OP_AND);
@@ -40,7 +40,7 @@ void _reduceFilter(OpBase *op) {
 		while(intermidateChild != op) {
 			parent = intermidateChild->parent;
 			// Remove the filter tree pointer from the intermediate op, as it should not be freed
-			((Filter *)intermidateChild)->filterTree = NULL;
+			((OpFilter *)intermidateChild)->filterTree = NULL;
 			OpBase_Free(intermidateChild);
 			intermidateChild = parent;
 		}

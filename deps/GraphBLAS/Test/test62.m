@@ -1,14 +1,14 @@
 function test62
 %TEST62 test GrB_apply
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\n ------------ testing GrB_apply\n') ;
 
 rng ('default')
 
-[accum_ops unary_ops add_ops classes] = GB_spec_opsall ;
+[accum_ops, unary_ops, ~, classes, ~, ~] = GB_spec_opsall ;
 
 dt = struct ('inp0', 'tran') ;
 

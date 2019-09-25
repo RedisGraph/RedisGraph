@@ -17,11 +17,9 @@
 // The method is chosen automatically:  a gather/scatter saxpy method
 // (Gustavson), a heap-based saxpy method, or a dot product method.
 
-// FUTURE: an outer-product method for C=A*B'
-// FUTURE: a hash-based method for C=A*B
+// FUTURE:: an outer-product method for C=A*B'
 
-// parallel: this function will remain sequential.
-// parallelism will be done in GB_AxB_parallel and GB_transpose.
+// FUTURE:: a hash-based method for C=A*B
 
 #define GB_FREE_ALL             \
 {                               \
@@ -31,7 +29,8 @@
     GB_MATRIX_FREE (&MT) ;      \
 }
 
-#include "GB.h"
+#include "GB_mxm.h"
+#include "GB_transpose.h"
 
 GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
 (
@@ -39,7 +38,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     const bool C_is_csc,            // desired CSR/CSC format of C
     GrB_Matrix *MT_handle,          // return MT = M' to caller, if computed
     const GrB_Matrix M_in,          // mask for C<M> (not complemented)
-    const bool Mask_comp,           // if true, use ~M
+    const bool Mask_comp,           // if true, use !M
     const GrB_Matrix A_in,          // input matrix
     const GrB_Matrix B_in,          // input matrix
     const GrB_Semiring semiring,    // semiring that defines C=A*B
@@ -146,25 +145,42 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         //      C'<M'> = A' * B'
 
     //--------------------------------------------------------------------------
-    // swap_rule: remove the transpose of C
+    // swap_rule: decide if C or C' should be computed
     //--------------------------------------------------------------------------
 
-    // It is also possible to compute and return C' from this function, and to
-    // set C->is_csc as the negation of the desired format C_is_csc.  This
-    // ensures that GB_accum_mask will transpose C when this function is done.
+    // This function can compute C or C', by setting C->is_csc as the negation
+    // of the desired format C_is_csc.  This ensures that GB_accum_mask will
+    // transpose C when this function is done.
 
-    // FUTURE: give user control over the swap_rule.  Any test here will work,
-    // with no other changes to the code below.  The decision will only affect
-    // the performance, not the result.
+    // For these 4 cases, the swap_rule is true:
 
-    bool swap_rule = (C_transpose) ;
+        // C' = A'*B'       becomes C = B*A
+        // C' = A'*B        becomes C = B'*A
+        // C' = A*B'        becomes C = B*A'
+        // C  = A'*B'       becomes C = (B*A)'
+
+    // For these 4 cases, the swap_rule is false:
+
+        // C' = A*B         C = (A*B)'
+        // C  = A'*B        use as-is
+        // C  = A*B'        use as-is
+        // C  = A*B         use as-is
+
+    // This rule is the same as that used by SuiteSparse/MATLAB_Tools/SSMULT,
+    // which is the built-in sparse matrix multiply function in MATLAB.
+
+    bool swap_rule =
+        ( C_transpose &&  A_transpose &&  B_transpose) ||   // C' = A'*B'
+        ( C_transpose &&  A_transpose && !B_transpose) ||   // C' = A'*B
+        ( C_transpose && !A_transpose &&  B_transpose) ||   // C' = A*B'
+        (!C_transpose &&  A_transpose &&  B_transpose) ;    // C  = A'*B'
 
     GrB_Matrix A, B ;
     bool atrans, btrans ;
 
     if (swap_rule)
     { 
-        // Replace C'=A*B with C=B'*A', and so on.  Swap A and B and transose
+        // Replace C'=(A'*B') with C=B*A, and so on.  Swap A and B and transose
         // them, transpose M, negate flipxy, and transpose M and C.
         A = B_in ; atrans = !B_transpose ;
         B = A_in ; btrans = !A_transpose ;
@@ -215,23 +231,40 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     // typecast A and B when transposing them, if needed
     //--------------------------------------------------------------------------
 
+    bool op_is_first  = semiring->multiply->opcode == GB_FIRST_opcode ;
+    bool op_is_second = semiring->multiply->opcode == GB_SECOND_opcode ;
+    bool A_is_pattern = false ;
+    bool B_is_pattern = false ;
+
     GrB_Type atype_required, btype_required ;
     if (flipxy)
     { 
         // A is passed as y, and B as x, in z = mult(x,y)
-        atype_required = semiring->multiply->ytype ;
-        btype_required = semiring->multiply->xtype ;
+        A_is_pattern = op_is_first  ;
+        B_is_pattern = op_is_second ;
+        atype_required = A_is_pattern ? A->type : semiring->multiply->ytype ;
+        btype_required = B_is_pattern ? B->type : semiring->multiply->xtype ;
     }
     else
     { 
         // A is passed as x, and B as y, in z = mult(x,y)
-        atype_required = semiring->multiply->xtype ;
-        btype_required = semiring->multiply->ytype ;
+        A_is_pattern = op_is_second ;
+        B_is_pattern = op_is_first  ;
+        atype_required = A_is_pattern ? A->type : semiring->multiply->xtype ;
+        btype_required = B_is_pattern ? B->type : semiring->multiply->ytype ;
     }
 
     //--------------------------------------------------------------------------
     // select the algorithm
     //--------------------------------------------------------------------------
+
+    // Four cases remain with the swap_rule above.  M may or may not be
+    // present.
+
+        //      C<M> = A *B
+        //      C<M> = A *B'
+        //      C<M> = A'*B
+        //      C<M> = (A*B)'
 
     if (atrans)
     {
@@ -240,16 +273,21 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         // C<M> = A'*B' or A'*B
         //----------------------------------------------------------------------
 
+        bool B_is_diagonal = GB_is_diagonal (B, Context) ;
+
         // explicitly transpose B
-        if (btrans)
+        if (btrans && !B_is_diagonal)
         {
             // B = B'
+            // with the swap_rule as defined above, this case will never occur.
+            // The code is left here in case swap_rule changes in the future.
+            ASSERT (GB_DEAD_CODE) ;
             GB_OK (GB_transpose (&BT, btype_required, true, B, NULL, Context)) ;
             B = BT ;
         }
 
         //----------------------------------------------------------------------
-        // C<M> = A'*B
+        // select the method for C<M> = A'*B
         //----------------------------------------------------------------------
 
         // A'*B is being computed: use the dot product without computing A'
@@ -263,12 +301,24 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         // is very slow in general, and thus the saxpy method is usually used
         // instead (via Gustavson or heap).
 
-        bool do_adotb ;
+        bool do_rowscale = false ;
+        bool do_colscale = false ;
+        bool do_adotb = false ;
 
-        if (AxB_method == GxB_DEFAULT)
+        if (M == NULL && B_is_diagonal)
+        { 
+            // C = A'*D
+            do_colscale = true ;
+        }
+        else if (M == NULL && GB_is_diagonal (A, Context))
+        { 
+            // C = D*B
+            do_rowscale = true ;
+        }
+        else if (AxB_method == GxB_DEFAULT)
         {
             // auto selection for A'*B
-            if (M != NULL)
+            if (M != NULL && !Mask_comp)
             { 
                 // C<M> = A'*B always uses the dot product method
                 do_adotb = true ;
@@ -298,19 +348,34 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
             do_adotb = (AxB_method == GxB_AxB_DOT) ;
         }
 
-        if (do_adotb)
+        //----------------------------------------------------------------------
+        // C<M> = A'*B
+        //----------------------------------------------------------------------
+
+        if (do_rowscale)
+        { 
+            // C = D*B
+            GB_OK (GB_AxB_rowscale (Chandle, A, B, semiring, flipxy, Context)) ;
+        }
+        else if (do_colscale)
+        { 
+            // C = A'*D
+            GB_OK (GB_transpose (&AT, atype_required, true, A, NULL, Context)) ;
+            GB_OK (GB_AxB_colscale (Chandle, AT, B, semiring, flipxy, Context));
+        }
+        else if (do_adotb)
         { 
             // C<M> = A'*B via dot product method
-            GB_OK (GB_AxB_parallel (Chandle, M, Mask_comp, A, B, semiring,
-                flipxy, true, AxB_method, AxB_method_used, mask_applied,
-                Context)) ;
+            GB_OK (GB_AxB_dot_parallel (Chandle, M, Mask_comp, A, B, semiring,
+                flipxy, mask_applied, Context)) ;
+            (*AxB_method_used) = GxB_AxB_DOT ;
         }
         else
         { 
             // C<M> = A'*B via saxpy: Gustavson or heap method
             GB_OK (GB_transpose (&AT, atype_required, true, A, NULL, Context)) ;
-            GB_OK (GB_AxB_parallel (Chandle, M, Mask_comp, AT, B, semiring,
-                flipxy, false, AxB_method, AxB_method_used, mask_applied,
+            GB_OK (GB_AxB_saxpy_parallel (Chandle, M, Mask_comp, AT, B,
+                semiring, flipxy, AxB_method, AxB_method_used, mask_applied,
                 Context)) ;
         }
 
@@ -322,23 +387,33 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         // C<M> = A*B'
         //----------------------------------------------------------------------
 
-        if (AxB_method == GxB_AxB_DOT)
+        if (M == NULL && GB_is_diagonal (B, Context))
+        { 
+            // C = A*D
+            GB_OK (GB_AxB_colscale (Chandle, A, B, semiring, flipxy, Context)) ;
+        }
+        else if (M == NULL && GB_is_diagonal (A, Context))
+        { 
+            // C = D*B'
+            GB_OK (GB_transpose (&BT, btype_required, true, B, NULL, Context)) ;
+            GB_OK (GB_AxB_rowscale (Chandle, A, BT, semiring, flipxy, Context));
+        }
+        else if (AxB_method == GxB_AxB_DOT)
         { 
             // C<M> = A*B' via dot product
             GB_OK (GB_transpose (&AT, atype_required, true, A, NULL, Context)) ;
             GB_OK (GB_transpose (&BT, btype_required, true, B, NULL, Context)) ;
-            GB_OK (GB_AxB_parallel (Chandle, M, Mask_comp, AT, BT, semiring,
-                flipxy, true, AxB_method, AxB_method_used, mask_applied,
-                Context)) ;
+            GB_OK (GB_AxB_dot_parallel (Chandle, M, Mask_comp, AT, BT, semiring,
+                flipxy, mask_applied, Context)) ;
+            (*AxB_method_used) = GxB_AxB_DOT ;
         }
         else
         { 
             // C<M> = A*B' via saxpy: Gustavson or heap method
             GB_OK (GB_transpose (&BT, btype_required, true, B, NULL, Context)) ;
-            GB_OK (GB_AxB_parallel (Chandle, M, Mask_comp, A, BT, semiring,
-                flipxy, false, AxB_method, AxB_method_used, mask_applied,
+            GB_OK (GB_AxB_saxpy_parallel (Chandle, M, Mask_comp, A, BT,
+                semiring, flipxy, AxB_method, AxB_method_used, mask_applied,
                 Context)) ;
-
         }
 
     }
@@ -349,19 +424,29 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
         // C<M> = A*B
         //----------------------------------------------------------------------
 
-        if (AxB_method == GxB_AxB_DOT)
+        if (M == NULL && GB_is_diagonal (B, Context))
+        { 
+            // C = A*D, column scale
+            GB_OK (GB_AxB_colscale (Chandle, A, B, semiring, flipxy, Context)) ;
+        }
+        else if (M == NULL && GB_is_diagonal (A, Context))
+        { 
+            // C = D*B, row scale
+            GB_OK (GB_AxB_rowscale (Chandle, A, B, semiring, flipxy, Context)) ;
+        }
+        else if (AxB_method == GxB_AxB_DOT)
         { 
             // C<M> = A*B via dot product
             GB_OK (GB_transpose (&AT, atype_required, true, A, NULL, Context)) ;
-            GB_OK (GB_AxB_parallel (Chandle, M, Mask_comp, AT, B, semiring,
-                flipxy, true, AxB_method, AxB_method_used, mask_applied,
-                Context)) ;
+            GB_OK (GB_AxB_dot_parallel (Chandle, M, Mask_comp, AT, B, semiring,
+                flipxy, mask_applied, Context)) ;
+            (*AxB_method_used) = GxB_AxB_DOT ;
         }
         else
         { 
             // C<M> = A*B via saxpy: Gustavson or heap method
-            GB_OK (GB_AxB_parallel (Chandle, M, Mask_comp, A, B, semiring,
-                flipxy, false, AxB_method, AxB_method_used, mask_applied,
+            GB_OK (GB_AxB_saxpy_parallel (Chandle, M, Mask_comp, A, B,
+                semiring, flipxy, AxB_method, AxB_method_used, mask_applied,
                 Context)) ;
         }
     }
@@ -373,9 +458,7 @@ GrB_Info GB_AxB_meta                // C<M>=A*B meta algorithm
     // If C_transpose is true, then C' has been computed.  In this case, negate
     // the desired C_is_csc so that GB_accum_mask transposes the result before
     // applying the accum operator and/or writing the result back to the user's
-    // C.  If swap_rule == C_transpose, then C_transpose is always false here,
-    // but this could change in the future.  The following code will adapt to
-    // any swap_rule, so it does not change if the swap_rule changes.
+    // C.
 
     GrB_Matrix C = (*Chandle) ;
     ASSERT (C != NULL) ;

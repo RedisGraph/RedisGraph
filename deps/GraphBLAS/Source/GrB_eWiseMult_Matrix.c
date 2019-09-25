@@ -9,9 +9,7 @@
 
 // C<M> = accum (C,A.*B) and variations.
 
-// parallel: not here but in GB_emult
-
-#include "GB.h"
+#include "GB_ewise.h"
 
 #define GB_EWISE(op)                                                        \
 {                                                                           \
@@ -22,15 +20,15 @@
     GB_RETURN_IF_FAULTY (M) ;                                               \
     /* get the descriptor */                                                \
     GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_tran, B_tran, xx) ; \
-    /* C<M> = accum (C,T) where T = A.*B, A'.*B, A.*B', or A'.*B' */     \
-    return (GB_eWise (                                                      \
-        C,          C_replace,      /* C matrix and its descriptor      */  \
-        M,          Mask_comp,      /* mask matrix and its descriptor   */  \
-        accum,                      /* for accum (C,T)                  */  \
-        op,                         /* operator that defines T=A.*B     */  \
-        A,          A_tran,         /* A matrix and its descriptor      */  \
-        B,          B_tran,         /* B matrix and its descriptor      */  \
-        false,                      /* do eWiseMult                     */  \
+    /* C<M> = accum (C,T) where T = A.*B, A'.*B, A.*B', or A'.*B' */        \
+    return (GB_ewise (                                                      \
+        C,              C_replace,  /* C and its descriptor        */       \
+        M,              Mask_comp,  /* mask and its descriptor     */       \
+        accum,                      /* accumulate operator         */       \
+        op,                         /* operator that defines '.*'  */       \
+        A,              A_tran,     /* A matrix and its descriptor */       \
+        B,              B_tran,     /* B matrix and its descriptor */       \
+        false,                      /* eWiseMult                   */       \
         Context)) ;                                                         \
 }
 
@@ -124,7 +122,7 @@ GrB_Info GrB_eWiseMult_Matrix_Semiring       // C<M> = accum (C, A.*B)
     GB_RETURN_IF_NULL_OR_FAULTY (semiring) ;
 
     //--------------------------------------------------------------------------
-    // eWise multiply using the semiring's multiply operator
+    // eWise multiply using the semiring multiply operator
     //--------------------------------------------------------------------------
 
     GB_EWISE (semiring->multiply) ;

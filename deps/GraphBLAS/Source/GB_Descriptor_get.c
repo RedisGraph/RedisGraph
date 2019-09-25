@@ -54,7 +54,7 @@
 //      as-is.  Otherwise, it is transposed first.  That is, the results are
 //      the same as if the transpose of the matrix was passed to the method.
 
-//  desc->axb                   see GraphBLAS.h; can be:
+//  desc->axb                   can be:
 
 //      GxB_DEFAULT = 0         automatic selection
 
@@ -64,11 +64,9 @@
 
 //      GxB_AxB_DOT             dot product
 
-//  desc->nthreads              number of threads to use (auto select if <= 0)
+//  desc->nthreads_max          max # number of threads to use (auto if <= 0)
 
 //      This is copied from the GrB_Descriptor into the Context.
-
-// not parallel: this function does O(1) work and is already thread-safe.
 
 #include "GB.h"
 
@@ -82,7 +80,7 @@ GrB_Info GB_Descriptor_get      // get the contents of a descriptor
     GrB_Desc_Value *AxB_method, // method for C=A*B
     GB_Context Context
 )
-{ 
+{
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -103,8 +101,9 @@ GrB_Info GB_Descriptor_get      // get the contents of a descriptor
     GrB_Desc_Value In1_desc  = GxB_DEFAULT ;
     GrB_Desc_Value AxB_desc  = GxB_DEFAULT ;
     int nthreads_desc        = GxB_DEFAULT ;
+    double chunk_desc        = GxB_DEFAULT ;
 
-    // non-defaults descriptors
+    // non-defaults descriptor values
     if (desc != NULL)
     { 
         // get the contents
@@ -114,11 +113,12 @@ GrB_Info GB_Descriptor_get      // get the contents of a descriptor
         In1_desc  = desc->in1 ;   // DEFAULT or TRAN
         AxB_desc  = desc->axb ;   // DEFAULT, GUSTAVSON, HEAP, or DOT
 
-        // default is zero.  if descriptor->nthreads <= 0, GraphBLAS selects
-        // automatically: any value between 1 and GB_Global.nthreads_max.  If
-        // descriptor->nthreads > 0, then that defines the exact number of
+        // default is zero.  if descriptor->nthreads_max <= 0, GraphBLAS selects
+        // automatically: any value between 1 and the global nthreads_max.  If
+        // descriptor->nthreads_max > 0, then that defines the exact number of
         // threads to use in the current GraphBLAS operation.
-        nthreads_desc  = desc->nthreads ;
+        nthreads_desc = desc->nthreads_max ;
+        chunk_desc = desc->chunk ;
     }
 
     // check for valid values of each descriptor field
@@ -155,7 +155,8 @@ GrB_Info GB_Descriptor_get      // get the contents of a descriptor
 
     // The number of threads is copied from the descriptor into the Context, so
     // it is available to any internal function that needs it.
-    Context->nthreads = nthreads_desc ;
+    Context->nthreads_max = nthreads_desc ;
+    Context->chunk = chunk_desc ;
 
     return (GrB_SUCCESS) ;
 }

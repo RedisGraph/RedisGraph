@@ -2,7 +2,7 @@
 // GB_mex_export: test import/export
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -53,6 +53,8 @@ GrB_Descriptor desc = NULL ;
 bool dump = false ;
 GrB_Type type = NULL ;
 size_t asize = 0 ;
+GrB_Info import_export (GB_Context Context) ;
+GrB_Info import_export2 (GB_Context Context) ;
 
 //------------------------------------------------------------------------------
 
@@ -262,6 +264,7 @@ GrB_Info import_export2 (GB_Context Context)
 {
     OK (import_export (Context)) ;
     OK (import_export (Context)) ;
+    return (GrB_SUCCESS) ;
 }
 
 //------------------------------------------------------------------------------

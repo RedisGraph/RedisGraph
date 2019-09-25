@@ -176,9 +176,9 @@ static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext
 	}
 }
 
-void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
-								 unsigned int numcols) {
+void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r) {
 	// Prepare return array sized to the number of RETURN entities
+	uint numcols = Record_length(r);
 	RedisModule_ReplyWithArray(ctx, numcols);
 
 	for(uint i = 0; i < numcols; i++) {
@@ -217,6 +217,7 @@ void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns,
 				t = COLUMN_RELATION;
 				break;
 			case REC_TYPE_SCALAR:
+			case REC_TYPE_UNKNOWN:  // Treat unknown as scalar.
 				t = COLUMN_SCALAR;
 				break;
 			default:
@@ -234,3 +235,4 @@ void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns,
 		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
 	}
 }
+

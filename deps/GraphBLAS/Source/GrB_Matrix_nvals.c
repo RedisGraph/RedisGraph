@@ -7,8 +7,6 @@
 
 //------------------------------------------------------------------------------
 
-// parallel: not here, but in GB_nvals (which forces completeion).
-
 #include "GB.h"
 
 GrB_Info GrB_Matrix_nvals   // get the number of entries in a matrix
@@ -24,7 +22,6 @@ GrB_Info GrB_Matrix_nvals   // get the number of entries in a matrix
 
     GB_WHERE ("GrB_Matrix_nvals (&nvals, A)") ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
-    Context->nthreads = GxB_DEFAULT ;   // no descriptor, so use default rule
 
     // do not check nvals; pending updates must be applied first, in
     // GB_nvals, per Table 2.4 in the spec

@@ -2,7 +2,7 @@
 // GB_mex_mis: s=mis(A), find a maximal independent set
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -11,7 +11,7 @@
 
 #include "GB_mex.h"
 
-#define USAGE "iset = GB_mex_mis (A)"
+#define USAGE "iset = GB_mex_mis (A, seed)"
 
 #define FREE_ALL                        \
 {                                       \
@@ -35,7 +35,7 @@ void mexFunction
 
     // check inputs
     GB_WHERE (USAGE) ;
-    if (nargout > 1 || nargin != 1)
+    if (nargout > 1 || nargin < 1 || nargin > 2)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
     }
@@ -48,8 +48,11 @@ void mexFunction
         mexErrMsgTxt ("A failed") ;
     }
 
+    // get seed; default is 1
+    uint64_t GET_SCALAR (1, uint64_t, seed, 1) ;
+
     // compute the independent set
-    GrB_Info info = mis_check (&iset, A) ;
+    GrB_Info info = mis_check (&iset, A, seed) ;
     if (info != GrB_SUCCESS)
     {
         mexErrMsgTxt ("mis failed") ;

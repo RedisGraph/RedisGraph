@@ -2,14 +2,14 @@
 // GB_mex_qsort_3: sort using GB_qsort_3
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2018, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 #include "GB_mex.h"
 
-#define USAGE "[I,J,K] = qsort (I,J,K)"
+#define USAGE "[I,J,K] = GB_mex_qsort_3 (I,J,K)"
 
 void mexFunction
 (
@@ -21,7 +21,6 @@ void mexFunction
 {
 
     // check inputs
-    GB_WHERE (USAGE) ;
     if (nargin != 3 || nargout != 3)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
@@ -66,11 +65,11 @@ void mexFunction
     int64_t *Kout = mxGetData (pargout [2]) ;
     memcpy (Kout, K, n * sizeof (int64_t)) ;
 
-    TIC ;
+    GB_MEX_TIC ;
 
-    GB_qsort_3 (Iout, Jout, Kout, n, Context) ;
+    GB_qsort_3 (Iout, Jout, Kout, n) ;
 
-    TOC ;
+    GB_MEX_TOC ;
     GB_mx_put_time (0) ;
 }
 

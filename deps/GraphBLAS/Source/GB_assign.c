@@ -24,17 +24,20 @@
 
 // Compare with GB_subassign, which uses M and C_replace differently
 
-// PARALLEL: some C_replace_phase here, mainly in GB_subassign_kernel and
-// GB_subref_numeric.
-
-#include "GB.h"
+#include "GB_assign.h"
+#include "GB_subassign.h"
+#include "GB_subref.h"
+#include "GB_transpose.h"
 
 #define GB_FREE_ALL                                     \
 {                                                       \
+    GB_MATRIX_FREE (&Z2) ;                              \
     GB_MATRIX_FREE (&AT) ;                              \
     GB_MATRIX_FREE (&MT) ;                              \
-    GB_FREE_MEMORY (I2, I2_size, sizeof (GrB_Index)) ;  \
-    GB_FREE_MEMORY (J2, J2_size, sizeof (GrB_Index)) ;  \
+    GB_FREE_MEMORY (I2,  I2_size, sizeof (GrB_Index)) ; \
+    GB_FREE_MEMORY (I2k, I2_size, sizeof (GrB_Index)) ; \
+    GB_FREE_MEMORY (J2,  J2_size, sizeof (GrB_Index)) ; \
+    GB_FREE_MEMORY (J2k, J2_size, sizeof (GrB_Index)) ; \
     GB_MATRIX_FREE (&SubMask) ;                         \
 }
 
@@ -65,13 +68,24 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT (GB_ALIAS_OK2 (C, M_in, A_in)) ;
+    GrB_Info info ;
+    GrB_Matrix AT = NULL ;
+    GrB_Matrix MT = NULL ;
+    GrB_Matrix Z = NULL ;
+    GrB_Matrix Z2 = NULL ;
+    GrB_Index *restrict I2  = NULL ;
+    GrB_Index *restrict I2k = NULL ;
+    GrB_Index *restrict J2  = NULL ;
+    GrB_Index *restrict J2k = NULL ;
+    int64_t I2_size = 0, J2_size = 0 ;
+    GrB_Matrix SubMask = NULL ;
+
+    // C may be aliased with M_in and/or A_in
 
     GB_RETURN_IF_FAULTY (accum) ;
     GB_RETURN_IF_NULL (Rows) ;
     GB_RETURN_IF_NULL (Cols) ;
 
-    GrB_Info info ;
     GrB_Matrix M = M_in ;
     GrB_Matrix A = A_in ;
 
@@ -108,12 +122,6 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     GB_ijlength (Rows, nRows_in, GB_NROWS (C), &nRows, &RowsKind, RowColon) ;
     GB_ijlength (Cols, nCols_in, GB_NCOLS (C), &nCols, &ColsKind, ColColon) ;
 
-    GrB_Matrix AT = NULL ;
-    GrB_Matrix MT = NULL ;
-    GrB_Index *I2 = NULL ;
-    GrB_Index *J2 = NULL ;
-    GrB_Matrix SubMask = NULL ;
-
     bool C_is_csc = C->is_csc ;
 
     //--------------------------------------------------------------------------
@@ -124,14 +132,9 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     if (accum != NULL)
     { 
         // C<M>(Rows,Cols) = accum (C(Rows,Cols),A)
-        info = GB_BinaryOp_compatible (accum, C->type, C->type,
+        GB_OK (GB_BinaryOp_compatible (accum, C->type, C->type,
             (scalar_expansion) ? NULL : A->type,
-            (scalar_expansion) ? scalar_code : 0, Context) ;
-        if (info != GrB_SUCCESS)
-        { 
-            // domain(s) of accum are not compatible
-            return (info) ;
-        }
+            (scalar_expansion) ? scalar_code : GB_ignore_code, Context)) ;
     }
 
     // C<M>(Rows,Cols) = T, so C and T must be compatible.
@@ -228,12 +231,6 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     }
 
     //--------------------------------------------------------------------------
-    // determine the number of threads to use
-    //--------------------------------------------------------------------------
-
-    GB_GET_NTHREADS (nthreads, Context) ;
-
-    //--------------------------------------------------------------------------
     // quick return if an empty mask is complemented
     //--------------------------------------------------------------------------
 
@@ -257,51 +254,22 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
                 // all pending tuples must first be assembled; zombies OK
                 GB_WAIT_PENDING (C) ;
                 ASSERT_OK (GB_check (C, "waited C for quick mask", GB0)) ;
-                int64_t *Ci = C->i ;
                 if ((row_assign && !C_is_csc) || (col_assign && C_is_csc))
-                {
+                { 
                     // delete all entries in vector j
                     int64_t j = (col_assign) ? Cols [0] : Rows [0] ;
-                    int64_t p, pend, pleft = 0, pright = C->nvec-1 ;
-                    GB_lookup (C->is_hyper, C->h, C->p, &pleft, pright, j,
-                        &p, &pend) ;
-                    for ( ; p < pend ; p++)
-                    {
-                        int64_t i = Ci [p] ;
-                        if (i >= 0)
-                        { 
-                            // delete C(i,j) by marking it as a zombie
-                            C->nzombies++ ;
-                            Ci [p] = GB_FLIP (i) ;
-                        }
-                    }
+                    GB_assign_zombie1 (C, j, Context) ;
                 }
                 else
-                {
+                { 
                     // delete all entries in each vector with index i
                     int64_t i = (row_assign) ? Rows [0] : Cols [0] ;
-                    GBI_for_each_vector (C)
-                    {
-                        // get C(:,j)
-                        GBI_jth_iteration (j, p, pend) ;
-                        // find C(i,j) if it exists
-                        int64_t pright = pend-1 ;
-                        bool found, is_zombie ;
-                        GB_BINARY_ZOMBIE (i, Ci, p, pright, found, C->nzombies,
-                            is_zombie) ;
-                        if (found && !is_zombie)
-                        { 
-                            // delete C(i,j) by marking it as a zombie
-                            ASSERT (i == Ci [p]) ;
-                            C->nzombies++ ;
-                            Ci [p] = GB_FLIP (i) ;
-                        }
-                    }
+                    GB_assign_zombie2 (C, i, Context) ;
                 }
             }
             else
             { 
-                // C<~NULL>=NULL since result does not depend on computing Z.
+                // C<!NULL>=NULL since result does not depend on computing Z.
                 // Since C_replace is true, all of C is cleared.  This is the
                 // same as the GB_RETURN_IF_QUICK_MASK macro, except that C may
                 // have zombies and pending tuples.
@@ -394,7 +362,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     // proceeds.
 
     if (!scalar_expansion && C_is_csc != A->is_csc)
-    {
+    { 
         // Flip the sense of A_transpose
         A_transpose = !A_transpose ;
     }
@@ -423,7 +391,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         Icolon  = ColColon ;    Jcolon  = RowColon ;
     }
 
-    // C has C->vdim vectors, each of length C->nvec.
+    // C has cnvec vectors, where cnvec <= C->vdim
     // J is a list of vectors in the range 0:C->vdim-1
     // I is a list of indices in the range 0:C->vlen-1
 
@@ -431,53 +399,34 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     // scalar expansion: sort I and J and remove duplicates
     //--------------------------------------------------------------------------
 
-    // NOTE: gcc with -Wunused-but-set-variable may complain about I2_size and
-    // J2_size, but this is spurious.  The values are used when memory usage
-    // tracking is enabled (see GB_FREE_ALL defined above).  Ignore the
-    // spurious gcc warnings.
-    #pragma GCC diagnostic ignored "-Wunused-but-set-variable"
-    int64_t I2_size = 0, J2_size = 0 ;
-
     if (scalar_expansion)
     {
         // The spec states that scalar expansion is well-defined if I and J
-        // have duplicate entries.  However, GB_subassign_kernel is not defined
-        // in this case.  To ensure that GrB_assign is well-defined, duplicates
-        // in I and J must first be removed.  This reduces the size of I and J,
+        // have duplicate entries.  However, GB_subassigner is not defined in
+        // this case.  To ensure that GrB_assign is well-defined, duplicates in
+        // I and J must first be removed.  This reduces the size of I and J,
         // but has no effect on any other parameters.  This can be done here
         // since the mask M has the same size as C (or the entire row/column
         // for GrB_Row_assign and GrB_Col_assign).  It cannot be done in
-        // GB_subassign_kernel since its mask has the same size as IxJ.
+        // GB_subassigner since its mask has the same size as IxJ.
 
         // no need to sort a list of length 0 or 1; it is already sorted
 
         if (Ikind == GB_LIST && ni > 1)
-        {
+        { 
             // ni and nI are reduced if there are duplicates
             I2_size = ni ;
-            info = GB_ijsort (I, &ni, &I2, Context) ;
-            if (info != GrB_SUCCESS)
-            { 
-                // out of memory
-                GB_FREE_ALL ;
-                return (info) ;
-            }
+            GB_OK (GB_ijsort (I, &ni, &I2, &I2k, Context)) ;
             ASSERT (ni <= I2_size) ;
             nI = ni ;
             I = I2 ;
         }
 
         if (Jkind == GB_LIST && nj > 1)
-        {
+        { 
             // nj and nJ are reduced if there are duplicates
             J2_size = nj ;
-            info = GB_ijsort (J, &nj, &J2, Context) ;
-            if (info != GrB_SUCCESS)
-            { 
-                // out of memory
-                GB_FREE_ALL ;
-                return (info) ;
-            }
+            GB_OK (GB_ijsort (J, &nj, &J2, &J2k, Context)) ;
             ASSERT (nj <= J2_size) ;
             nJ = nj ;
             J = J2 ;
@@ -492,16 +441,10 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     // which is then quickly transposed to a hypersparse matrix.
 
     if (!scalar_expansion && A_transpose)
-    {
+    { 
         // AT = A', with no typecasting
         // transpose: no typecast, no op, not in place
-        info = GB_transpose (&AT, NULL, C_is_csc, A, NULL, Context) ;
-        if (info != GrB_SUCCESS)
-        { 
-            // out of memory
-            GB_FREE_ALL ;
-            return (info) ;
-        }
+        GB_OK (GB_transpose (&AT, NULL, C_is_csc, A, NULL, Context)) ;
         A = AT ;
     }
 
@@ -527,17 +470,19 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             ASSERT (M->is_csc) ;
             if (C_is_csc)
             { 
+                // SubMask = Mask (J,:)
                 ASSERT (J == J2 || J == Cols) ;
-                info = GB_subref_numeric (&SubMask, true, M,
-                    J, nj, GrB_ALL, 1, true, Context) ;
+                GB_OK (GB_subref (&SubMask, true, M,
+                    J, nj, GrB_ALL, 1, false, true, Context)) ;
             }
             else
             { 
+                // SubMask = Mask (I,:)
                 ASSERT (I == I2 || I == Cols) ;
-                info = GB_subref_numeric (&SubMask, true, M,
-                    I, ni, GrB_ALL, 1, true, Context) ;
+                GB_OK (GB_subref (&SubMask, true, M,
+                    I, ni, GrB_ALL, 1, false, true, Context)) ;
             }
-            ASSERT (GB_IMPLIES (info == GrB_SUCCESS, GB_VECTOR_OK (SubMask))) ;
+            ASSERT (GB_VECTOR_OK (SubMask)) ;
         }
         else if (col_assign)
         {
@@ -546,37 +491,33 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             ASSERT (M->is_csc) ;
             if (C_is_csc)
             { 
+                // SubMask = Mask (I,:)
                 ASSERT (I == I2 || I == Rows) ;
-                info = GB_subref_numeric (&SubMask, true, M,
-                    I, ni, GrB_ALL, 1, true, Context) ;
+                GB_OK (GB_subref (&SubMask, true, M,
+                    I, ni, GrB_ALL, 1, false, true, Context)) ;
             }
             else
             { 
+                // SubMask = Mask (J,:)
                 ASSERT (J == J2 || J == Rows) ;
-                info = GB_subref_numeric (&SubMask, true, M,
-                    J, nj, GrB_ALL, 1, true, Context) ;
+                GB_OK (GB_subref (&SubMask, true, M,
+                    J, nj, GrB_ALL, 1, false, true, Context)) ;
             }
-            ASSERT (GB_IMPLIES (info == GrB_SUCCESS, GB_VECTOR_OK (SubMask))) ;
+            ASSERT (GB_VECTOR_OK (SubMask)) ;
         }
         else
         {
             // SubMask = M (I,J)
             if (M->is_csc == C_is_csc)
             { 
-                info = GB_subref_numeric (&SubMask, M->is_csc,
-                    M, I, ni, J, nj, true, Context) ;
+                GB_OK (GB_subref (&SubMask, M->is_csc,
+                    M, I, ni, J, nj, false, true, Context)) ;
             }
             else
             { 
-                info = GB_subref_numeric (&SubMask, M->is_csc,
-                    M, J, nj, I, ni, true, Context) ;
+                GB_OK (GB_subref (&SubMask, M->is_csc,
+                    M, J, nj, I, ni, false, true, Context)) ;
             }
-        }
-        if (info != GrB_SUCCESS)
-        { 
-            // out of memory
-            GB_FREE_ALL ;
-            return (info) ;
         }
         M = SubMask ;
         ASSERT_OK (GB_check (M, "extracted submask M", GB0)) ;
@@ -601,81 +542,47 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             M_transpose = !M_transpose ;
         }
         if (M_transpose)
-        {
+        { 
             // MT = M' to conform M to the same CSR/CSC format as C.
             // typecast to boolean, if a full matrix transpose is done.
             // transpose: typecast, no op, not in place
-            info = GB_transpose (&MT, GrB_BOOL, C_is_csc, M, NULL, Context) ;
-            if (info != GrB_SUCCESS)
-            { 
-                // out of memory
-                GB_FREE_ALL ;
-                return (info) ;
-            }
+            GB_OK (GB_transpose (&MT, GrB_BOOL, C_is_csc, M, NULL, Context)) ;
             M = MT ;
         }
     }
 
     //--------------------------------------------------------------------------
-    // Z = C
+    // make a copy Z = C if C is aliased to A or M
     //--------------------------------------------------------------------------
 
-    // GB_subassign_kernel modifies C efficiently in place, but there are cases
-    // when C is aliased with M or A that require the work to not be done in
-    // place.
-
-    // If both I == GrB_ALL and J == GrB_ALL, then C can be safely aliased with
-    // M or A, or both.  In addition, M and/or A may also have shallow
-    // components that refer back to components of C.
-
-    // Otherwise, if I is not GrB_ALL or J is not GrB_ALL, then C cannot be
-    // aliased with M or A.  Nor can any shallow component of M or A refer to
-    // any component of C.  This is an unsafe alias.
-
-    // If C is unsafely aliased a copy must be made.  GB_subassign_kernel
+    // If C is aliased to A and/or M, a copy must be made.  GB_subassigner
     // operates on the copy, Z, which is then transplanted back into C when
     // done.  This is costly, and can have performance implications, but it is
     // the only reasonable method.  If a copy of C must be made, then it is as
     // large as M or A, so copying the whole matrix will not add much time.
 
-    GrB_Matrix Z ;
-
-    bool unsafely_aliased ;
-    if (I == GrB_ALL && J == GrB_ALL)
-    { 
-        // any alias is OK (unless C_replace_phase is true, below)
-        unsafely_aliased = false ; 
-    }
-    else
-    { 
-        unsafely_aliased = GB_aliased (C, A) || GB_aliased (C, M) ;
-    }
+    bool C_aliased = GB_aliased (C, A) || GB_aliased (C, M) ;
 
     // GB_assign cannot tolerate any alias with the input mask,
     // if the C_replace phase will be performed.
     if (C_replace_phase)
     { 
         // the C_replace_phase requires C and M_in not to be aliased
-        unsafely_aliased = unsafely_aliased || GB_aliased (C, M_in) ;
+        C_aliased = C_aliased || GB_aliased (C, M_in) ;
     }
 
-    if (unsafely_aliased)
-    {
-        // Z = duplicate of C
+    if (C_aliased)
+    { 
+        // Z2 = duplicate of C, which must be freed when done
         ASSERT (!GB_ZOMBIES (C)) ;
         ASSERT (!GB_PENDING (C)) ;
-        info = GB_dup (&Z, C, Context) ;
-        if (info != GrB_SUCCESS)
-        { 
-            // out of memory
-            GB_FREE_ALL ;
-            return (info) ;
-        }
+        GB_OK (GB_dup (&Z2, C, true, NULL, Context)) ;
+        Z = Z2 ;
     }
     else
     { 
-        // GB_subassign_kernel can safely operate on C in place
-        // and so can the C_replace_phase below.
+        // GB_subassigner can safely operate on C in place and so can the
+        // C_replace_phase below.
         Z = C ;
     }
 
@@ -683,7 +590,7 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
     // Z(I,J)<M> = A or accum (Z(I,J),A)
     //--------------------------------------------------------------------------
 
-    info = GB_subassign_kernel (
+    GB_OK (GB_subassigner (
         Z,          C_replace,      // Z matrix and its descriptor
         M,          Mask_comp,      // mask matrix and its descriptor
         accum,                      // for accum (C(I,J),A)
@@ -693,27 +600,19 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         scalar_expansion,           // if true, expand scalar to A
         scalar,                     // scalar to expand, NULL if A not NULL
         scalar_code,                // type code of scalar to expand
-        Context) ;
+        Context)) ;
 
-    // return if GB_subassign_kernel failed
-    if (info != GrB_SUCCESS)
-    { 
-        // out of memory
-        if (unsafely_aliased) GB_MATRIX_FREE (&Z) ;
-        GB_FREE_ALL ;
-        return (info) ;
-    }
+    // free all but Z2, I2, and J2, which are still needed.  MT and SubMask are
+    // freed because the C_replace_phase requires the original mask, not the
+    // submask or its transpose.  Z2 is still needed since Z == Z2, and it will
+    // be modified by the C_replace_phase and then transplanted back into C.
+    GB_MATRIX_FREE (&AT) ;
+    GB_MATRIX_FREE (&MT) ;
+    GB_MATRIX_FREE (&SubMask) ;
 
     //--------------------------------------------------------------------------
     // examine Z outside the Z(I,J) submatrix
     //--------------------------------------------------------------------------
-
-    // free all but I2 and J2, which are still needed.  MT and SubMask are
-    // freed because the C_replace_phase requires the original mask, not the
-    // submask or its transpose.
-    GB_MATRIX_FREE (&AT) ;
-    GB_MATRIX_FREE (&MT) ;
-    GB_MATRIX_FREE (&SubMask) ;
 
     if (C_replace_phase)
     {
@@ -746,15 +645,8 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         //----------------------------------------------------------------------
 
         if (GB_PENDING (Z))
-        {
-            info = GB_wait (Z, Context) ;
-            if (info != GrB_SUCCESS)
-            { 
-                // out of memory
-                if (unsafely_aliased) GB_MATRIX_FREE (&Z) ;
-                GB_FREE_ALL ;
-                return (info) ;
-            }
+        { 
+            GB_OK (GB_wait (Z, Context)) ;
         }
 
         ASSERT_OK (GB_check (Z, "Z cleaned up for C-replace-phase", GB0)) ;
@@ -766,18 +658,11 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         // M is the now all of M_in, not the SubMask, so it must be transposed
 
         if (M_transpose)
-        {
+        { 
             // MT = M' to conform M to the same CSR/CSC format as C.
             // typecast to boolean, if a full matrix transpose is done.
             // transpose: typecast, no op, not in place
-            info = GB_transpose (&MT, GrB_BOOL, C_is_csc, M, NULL, Context) ;
-            if (info != GrB_SUCCESS)
-            { 
-                // out of memory
-                if (unsafely_aliased) GB_MATRIX_FREE (&Z) ;
-                GB_FREE_ALL ;
-                return (info) ;
-            }
+            GB_OK (GB_transpose (&MT, GrB_BOOL, C_is_csc, M, NULL, Context)) ;
             M = MT ;
         }
 
@@ -794,58 +679,31 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
         ASSERT (GB_IMPLIES (J2 != NULL, (J == J2) && (J2_size > 1))) ;
 
         if (Ikind == GB_LIST && ni > 1 && I2 == NULL)
-        {
+        { 
             // ni and nI are reduced if there are duplicates
             I2_size = ni ;
-            info = GB_ijsort (I, &ni, &I2, Context) ;
-            if (info != GrB_SUCCESS)
-            { 
-                // out of memory
-                GB_FREE_ALL ;
-                return (info) ;
-            }
+            GB_OK (GB_ijsort (I, &ni, &I2, &I2k, Context)) ;
             ASSERT (ni <= I2_size) ;
             nI = ni ;
             I = I2 ;
         }
 
         if (Jkind == GB_LIST && nj > 1 && J2 == NULL)
-        {
+        { 
             // nj and nJ are reduced if there are duplicates
             J2_size = nj ;
-            info = GB_ijsort (J, &nj, &J2, Context) ;
-            if (info != GrB_SUCCESS)
-            { 
-                // out of memory
-                GB_FREE_ALL ;
-                return (info) ;
-            }
+            GB_OK (GB_ijsort (J, &nj, &J2, &J2k, Context)) ;
             ASSERT (nj <= J2_size) ;
             nJ = nj ;
             J = J2 ;
         }
 
         //----------------------------------------------------------------------
-        // get Z and M
-        //----------------------------------------------------------------------
-
-        const int64_t *Zh = Z->h ;
-        const int64_t *Zp = Z->p ;
-        int64_t *Zi = Z->i ;
-
-        const int64_t *Mh = M->h ;
-        const int64_t *Mp = M->p ;
-        const int64_t *Mi = M->i ;
-        const GB_void *Mx = M->x ;
-        size_t msize = M->type->size ;
-        GB_cast_function cast_M = GB_cast_factory (GB_BOOL_code, M->type->code);
-
-        //----------------------------------------------------------------------
         // delete entries outside Z(I,J) for which M(i,j) is false
         //----------------------------------------------------------------------
 
         if ((row_assign && !C->is_csc) || (col_assign && C->is_csc))
-        {
+        { 
 
             //------------------------------------------------------------------
             // vector assignment, examine all of M but just Z(:,j)
@@ -854,68 +712,15 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             // M is a single column so it is never hypersparse
             ASSERT (nJ == 1) ;
             ASSERT (M->vlen == Z->vlen && M->vdim == 1 && !M->is_hyper) ;
-            ASSERT (Jkind = GB_LIST) ;
+            ASSERT (Jkind == GB_LIST) ;
             int64_t j = J [0] ;
             ASSERT (j == GB_ijlist (J, 0, Jkind, Jcolon)) ;
 
-            // find Z (:,j)
-            int64_t pZ, pZ_end, pleft = 0, pright = Z->nvec-1 ;
-            GB_lookup (Z->is_hyper, Zh, Zp, &pleft, pright, j, &pZ, &pZ_end) ;
-
-            // find M (:,0)
-            int64_t pM = Mp [0] ;
-            int64_t pM_end = Mp [1] ;
-
-            // iterate over all entries in Z(:,j)
-            for (int64_t p = pZ ; p < pZ_end ; p++)
-            {
-                // Z(i,j) is outside the Z(I,j) subcolumn if i is
-                // not in the list I
-                int64_t i = Zi [p] ;
-                if (i < 0)
-                { 
-                    // Z(i,j) is already a zombie; skip it.
-                    continue ;
-                }
-
-                bool i_outside = !GB_ij_is_in_list (I, nI, i, Ikind, Icolon) ;
-
-                if (i_outside)
-                {
-                    // Z(i,j) is a live entry not in the Z(I,j) subcolumn.
-                    // Check the mask M to see if it should be deleted.
-                    bool mij ;
-                    int64_t pleft  = pM ;
-                    int64_t pright = pM_end - 1 ;
-                    bool found ;
-                    GB_BINARY_SEARCH (i, Mi, pleft, pright, found) ;
-                    if (found)
-                    { 
-                        // found it
-                        cast_M (&mij, Mx +(pleft*msize), 0) ;
-                    }
-                    else
-                    { 
-                        // M(i,j) not present, implicitly false
-                        mij = false ;
-                    }
-                    if (Mask_comp)
-                    { 
-                        // negate the mask if Mask_comp is true
-                        mij = !mij ;
-                    }
-                    if (!mij)
-                    { 
-                        // delete Z(i,j) by marking it as a zombie
-                        Z->nzombies++ ;
-                        Zi [p] = GB_FLIP (i) ;
-                    }
-                }
-            }
-
+            GB_assign_zombie3 (Z, M, Mask_comp, j, I, nI, Ikind, Icolon,
+                Context) ;
         }
         else if ((row_assign && C->is_csc) || (col_assign && !C->is_csc))
-        {
+        { 
 
             //------------------------------------------------------------------
             // index assignment, examine just Z(i,:) and M
@@ -925,54 +730,15 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             // M has vlen == 1 and the same vdim as Z
             ASSERT (nI == 1) ;
             ASSERT (M->vlen == 1 && M->vdim == Z->vdim) ;
-            ASSERT (Ikind = GB_LIST) ;
+            ASSERT (Ikind == GB_LIST) ;
             int64_t i = I [0] ;
             ASSERT (i == GB_ijlist (I, 0, Ikind, Icolon)) ;
 
-            GBI2_for_each_vector (Z, M)
-            {
-                GBI2_jth_iteration (Iter, j, pZ, pZ_end, pM, pM_end) ;
-
-                // j_outside is true if column j is outside the Z(I,J) submatrix
-                bool j_outside = !GB_ij_is_in_list (J, nJ, j, Jkind, Jcolon) ;
-
-                if (j_outside)
-                {
-                    // find Z(i,j) if it exists
-                    int64_t p = pZ ;
-                    int64_t pright = pZ_end - 1 ;
-                    bool found, is_zombie ;
-                    GB_BINARY_ZOMBIE (i, Zi, p, pright, found, Z->nzombies,
-                        is_zombie) ;
-                    if (found && !is_zombie)
-                    {
-                        // Z(i,j) is a live entry not in the Z(I,J) submatrix.
-                        // Check the M(0,j) to see if it should be deleted.
-                        bool mij = false ;
-                        int64_t pmask = pM ;
-                        if (pmask < pM_end)
-                        { 
-                            // found it
-                            cast_M (&mij, Mx +(pmask*msize), 0) ;
-                        }
-                        if (Mask_comp)
-                        { 
-                            // negate the mask M if Mask_comp is true
-                            mij = !mij ;
-                        }
-                        if (!mij)
-                        { 
-                            // delete Z(i,j) by marking it as a zombie
-                            Z->nzombies++ ;
-                            Zi [p] = GB_FLIP (i) ;
-                        }
-                    }
-                }
-            }
-
+            GB_assign_zombie4 (Z, M, Mask_comp, i, J, nJ, Jkind, Jcolon,
+                Context) ;
         }
         else
-        {
+        { 
 
             //------------------------------------------------------------------
             // Matrix/vector assignment: examine all of Z and M
@@ -981,114 +747,49 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             // M has the same size as Z
             ASSERT (M->vlen == Z->vlen && M->vdim == Z->vdim) ;
 
-            GBI2_for_each_vector (Z, M)
-            {
-                GBI2_jth_iteration (Iter, j, pZ, pZ_end, pM, pM_end) ;
-
-                // j_outside is true if column j is outside the Z(I,J) submatrix
-                bool j_outside = !GB_ij_is_in_list (J, nJ, j, Jkind, Jcolon) ;
-
-                // iterate over all entries in Z(:,j)
-                for (int64_t p = pZ ; p < pZ_end ; p++)
-                {
-                    // Z(i,j) is outside the Z(I,J) submatrix if either i is
-                    // not in the list I, or j is not in J, or both.
-                    int64_t i = Zi [p] ;
-                    if (i < 0)
-                    { 
-                        // Z(i,j) is already a zombie; skip it.
-                        continue ;
-                    }
-
-                    // Z(i,j) is outside if either J, or I, or both are outside
-                    if (j_outside ||
-                        !GB_ij_is_in_list (I, nI, i, Ikind, Icolon))
-                    {
-
-                        // Z(i,j) is a live entry not in the Z(I,J) submatrix.
-                        // Check the mask M to see if it should be deleted.
-                        bool mij ;
-                        int64_t pleft  = pM ;
-                        int64_t pright = pM_end - 1 ;
-                        bool found ;
-                        GB_BINARY_SEARCH (i, Mi, pleft, pright, found) ;
-                        if (found)
-                        { 
-                            // found it
-                            cast_M (&mij, Mx +(pleft*msize), 0) ;
-                        }
-                        else
-                        { 
-                            // M(i,j) not present, implicitly false
-                            mij = false ;
-                        }
-                        if (Mask_comp)
-                        { 
-                            // negate the mask if Mask_comp is true
-                            mij = !mij ;
-                        }
-                        if (!mij)
-                        { 
-                            // delete Z(i,j) by marking it as a zombie
-                            Z->nzombies++ ;
-                            Zi [p] = GB_FLIP (i) ;
-                        }
-                    }
-                }
-            }
+            GB_assign_zombie5 (Z, M, Mask_comp,
+                I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon, Context) ;
         }
 
         // Z is valid, but it has zombies and it not in the queue.
         ASSERT_OK (GB_check (Z, "Z for C-replace-phase done", GB_FLIP (GB0))) ;
     }
 
-    // free all workspace, except Z
-    GB_FREE_ALL ;
-
     //--------------------------------------------------------------------------
-    // C = Z
+    // transplant Z2 back into C
     //--------------------------------------------------------------------------
 
-    // Z and C have the same dimensions, CSR/CSC format, and hypersparsity
-
-    if (unsafely_aliased)
+    if (C_aliased)
     {
         // zombies can be transplanted into C but pending tuples cannot
-        if (GB_PENDING (Z))
+        if (GB_PENDING (Z2))
         { 
             // assemble all pending tuples, and delete all zombies too
-            info = GB_wait (Z, Context) ;
+            GB_OK (GB_wait (Z2, Context)) ;
         }
-        if (info == GrB_SUCCESS)
-        { 
-            // transplants the content of Z into C and frees Z
-            info = GB_transplant (C, C->type, &Z, Context) ;
-        }
-        if (info != GrB_SUCCESS)
-        { 
-            // out of memory
-            // Z needs to be freed if C is aliased but info != GrB_SUCCESS.
-            // C remains unchanged.
-            GB_MATRIX_FREE (&Z) ;
-            return (info) ;
-        }
+        // transplants the content of Z into C and frees Z
+        GB_OK (GB_transplant (C, C->type, &Z2, Context)) ;
     }
 
     // The hypersparsity of C is not modified.  This will be done eventually,
     // when all pending operations are completed via GB_wait.
 
     //--------------------------------------------------------------------------
-    // cleanup
+    // free workspace, finalize C, and return result
     //--------------------------------------------------------------------------
 
     if (C->nzombies > 0)
     { 
-        // make sure C is in the queue
+        // make sure C is in the queue.  GB_subassigner can place it in the
+        // queue, but it might not need to if the matrix has no zombies or
+        // pending tuples.  Zombies can be added by the C_replace_phase.
         GB_CRITICAL (GB_queue_insert (C)) ;
     }
 
     // finalize C if blocking mode is enabled, and return result
+
     ASSERT_OK (GB_check (C, "Final C for assign", GB0)) ;
+    GB_FREE_ALL ;
     return (GB_block (C, Context)) ;
 }
 

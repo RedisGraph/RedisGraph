@@ -5,6 +5,7 @@
 */
 
 #include "decode_v5.h"
+#include "../../../../../query_ctx.h"
 #include "../../../../../util/arr.h"
 #include "../../../../../util/rmalloc.h"
 
@@ -43,8 +44,8 @@ GraphContext *RdbLoadGraphContext_v5(RedisModuleIO *rdb) {
 	gc->string_mapping = array_new(char *, 64);
 	gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 
-	// _tlsGCKey was created as part of module load.
-	assert(pthread_setspecific(_tlsGCKey, gc) == 0);
+	// Set the thread-local GraphContext, as it will be accessed if we're decoding indexes.
+	QueryCtx_SetGraphCtx(gc);
 
 	// Graph name
 	gc->graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
@@ -84,3 +85,4 @@ GraphContext *RdbLoadGraphContext_v5(RedisModuleIO *rdb) {
 
 	return gc;
 }
+
