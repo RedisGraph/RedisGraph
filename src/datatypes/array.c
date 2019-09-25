@@ -62,9 +62,9 @@ void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytes
 
 /* This method referenced by Java ArrayList.hashCode() method, which takes
  * into account the hasing of nested values.*/
-uint64_t SIArray_HashCode(SIValue siarray) {
+XXH64_hash_t SIArray_HashCode(SIValue siarray) {
 	SIType t = SI_TYPE(siarray);
-	uint64_t hashCode = XXH64(&t, sizeof(t), 0);
+	XXH64_hash_t hashCode = XXH64(&t, sizeof(t), 0);
 	uint arrayLen = SIArray_Length(siarray);
 	for(uint i = 0; i < arrayLen; i++) {
 		SIValue value = siarray.array[i];

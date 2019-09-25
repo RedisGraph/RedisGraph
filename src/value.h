@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
+#include "xxhash.h"
 
 /* Type defines the supported types by the indexing system. The types are powers
  * of 2 so they can be used in bitmasks of matching types.
@@ -157,7 +158,7 @@ SIValue SIValue_Divide(const SIValue a, const SIValue b);
 int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull);
 
 /* Returns a hash code for a given SIValue */
-uint64_t SIValue_HashCode(SIValue v);
+XXH64_hash_t SIValue_HashCode(SIValue v);
 
 /* Free an SIValue's internal property if that property is a heap allocation owned
  * by this object. */
