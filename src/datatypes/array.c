@@ -1,6 +1,7 @@
 #include "array.h"
 #include "../util/arr.h"
 #include <limits.h>
+#include "xxhash.h"
 
 SIValue SIArray_New(uint32_t initialCapacity) {
 	SIValue siarray;
@@ -57,6 +58,19 @@ void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytes
 	}
 	// close array with "]"
 	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "]");
+}
+
+/* This method referenced by Java ArrayList.hashCode() method, which takes
+ * into account the hasing of nested values.*/
+uint64_t SIArray_HashCode(SIValue siarray) {
+	SIType t = SI_TYPE(siarray);
+	uint64_t hashCode = XXH64(&t, sizeof(t), 0);
+	uint arrayLen = SIArray_Length(siarray);
+	for(uint i = 0; i < arrayLen; i++) {
+		SIValue value = siarray.array[i];
+		hashCode = 31 * hashCode + SIValue_HashCode(value);
+	}
+	return hashCode;
 }
 
 void SIArray_Free(SIValue siarray) {
