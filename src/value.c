@@ -16,7 +16,6 @@
 #include <assert.h>
 #include "util/rmalloc.h"
 #include "datatypes/array.h"
-#include "xxhash.h"
 
 static inline void _SIString_ToString(SIValue str, char **buf, size_t *bufferLen,
 									  size_t *bytesWritten) {

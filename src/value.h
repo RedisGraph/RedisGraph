@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
+#include "xxhash.h"
 
 /* Type defines the supported types by the indexing system. The types are powers
  * of 2 so they can be used in bitmasks of matching types.
