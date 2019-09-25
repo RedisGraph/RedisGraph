@@ -65,6 +65,7 @@ OpBase *NewCondVarLenTraverseOp(Graph *g, RecordMap *record_map, AlgebraicExpres
 	condVarLenTraverse->minHops = ae->edge->minHops;
 	condVarLenTraverse->maxHops = ae->edge->maxHops;
 	condVarLenTraverse->allPathsCtx = NULL;
+	// The AlgebraicExpression populating a variable-length traversal only contains one operand.
 	condVarLenTraverse->traverseDir = (ae->operands[0].transpose) ? GRAPH_EDGE_DIR_INCOMING :
 									  GRAPH_EDGE_DIR_OUTGOING;
 	condVarLenTraverse->r = NULL;
@@ -167,3 +168,4 @@ void CondVarLenTraverseFree(OpBase *ctx) {
 		op->allPathsCtx = NULL;
 	}
 }
+
