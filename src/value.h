@@ -157,7 +157,7 @@ SIValue SIValue_Divide(const SIValue a, const SIValue b);
 int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull);
 
 /* Returns a hash code for a given SIValue */
-uint64_t SIValue_HashCode(const SIValue v);
+uint64_t SIValue_HashCode(SIValue v);
 
 /* Free an SIValue's internal property if that property is a heap allocation owned
  * by this object. */

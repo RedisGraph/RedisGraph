@@ -51,6 +51,11 @@ SIValue SIArray_Clone(SIValue siarray);
   */
 void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytesWritten);
 
+/**
+ * @brief  Returns the array hash code.
+ * @param  siarray: SIArray.
+ * @retval The array hashCode.
+ */
 uint64_t SIArray_HashCode(SIValue siarray);
 
 /**

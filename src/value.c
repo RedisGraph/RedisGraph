@@ -479,9 +479,11 @@ uint64_t SINode_HashCode(const SIValue v) {
 
 	Node *n = (Node *)v.ptrval;
 	int id = ENTITY_GET_ID(n);
+	SIType t = SI_TYPE(v);
+	XXH64_update(&state, &(t), sizeof(t));
 	XXH64_update(&state, &id, sizeof(id));
-	XXH64_update(&state, &(v.type), sizeof(v.type));
-	uint64_t hashCode =  XXH64_digest(&state);
+
+	uint64_t hashCode = XXH64_digest(&state);
 	return hashCode;
 }
 
@@ -495,40 +497,53 @@ uint64_t SIEdge_HashCode(const SIValue v) {
 
 	Edge *e = (Edge *)v.ptrval;
 	int id = ENTITY_GET_ID(e);
+	SIType t = SI_TYPE(v);
+	XXH64_update(&state, &(t), sizeof(t));
 	XXH64_update(&state, &id, sizeof(id));
-	XXH64_update(&state, &(v.type), sizeof(v.type));
 
-	uint64_t hashCode =  XXH64_digest(&state);
+	uint64_t hashCode = XXH64_digest(&state);
 	return hashCode;
 }
 
 /* This method hashes primitive types in place. Compound types have their own
  * hashing method */
-uint64_t SIValue_HashCode(const SIValue v) {
+uint64_t SIValue_HashCode(SIValue v) {
 	XXH_errorcode res;
 	XXH64_state_t state;
 	res = XXH64_reset(&state, 0);
 	assert(res != XXH_ERROR);
-
-	SIType t = SI_NUMERIC & v.type ? SI_NUMERIC : v.type;
-
 	// Handles null value and defaults.
 	int64_t null = 0;
+	/* In case of identical binary representation of the value,
+	* we should hash the type as well. */
+	SIType t = SI_TYPE(v);
+
 	switch(v.type) {
 	case T_NULL:
+		XXH64_update(&state, &t, sizeof(t));
 		XXH64_update(&state, &null, sizeof(null));
 		break;
 	case T_STRING:
+		XXH64_update(&state, &t, sizeof(t));
 		XXH64_update(&state, &v.stringval, strlen(v.stringval));
 		break;
-	case T_BOOL:
 	case T_INT64:
+		// Change type to numeric.
+		t = SI_NUMERIC;
+		XXH64_update(&state, &t, sizeof(t));
+		XXH64_update(&state, &v.longval, sizeof(v.longval));
+		break;
+	case T_BOOL:
+		XXH64_update(&state, &t, sizeof(t));
 		XXH64_update(&state, &v.longval, sizeof(v.longval));
 		break;
 	case T_DOUBLE: {
+		t = SI_NUMERIC;
+		XXH64_update(&state, &t, sizeof(t));
+		// Check if the double value is actually an interger. If so, hash it as Long.
 		int64_t casted = (int64_t) v.doubleval;
 		double diff = v.doubleval - casted;
-		if(SAFE_COMPARISON_RESULT(diff) != 0) XXH64_update(&state, &v.doubleval, sizeof(v.doubleval));
+		if(diff != 0) XXH64_update(&state, &v.doubleval, sizeof(v.doubleval));
 		else XXH64_update(&state, &casted, sizeof(casted));
 		break;
 	}
@@ -542,9 +557,6 @@ uint64_t SIValue_HashCode(const SIValue v) {
 	default:
 		assert(false);
 	}
-	/* In case of identical binary representation of the value,
-	 * we should hash the type as well. */
-	XXH64_update(&state, &t, sizeof(t));
 	uint64_t hashCode =  XXH64_digest(&state);
 	return hashCode;
 }
