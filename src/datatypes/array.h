@@ -56,7 +56,7 @@ void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytes
  * @param  siarray: SIArray.
  * @retval The array hashCode.
  */
-uint64_t SIArray_HashCode(SIValue siarray);
+XXH64_hash_t SIArray_HashCode(SIValue siarray);
 
 /**
   * @brief  delete an array
