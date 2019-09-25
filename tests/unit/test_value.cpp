@@ -12,9 +12,11 @@ extern "C" {
 
 #include "../../src/value.h"
 #include "../../src/util/rmalloc.h"
-#include "../../src/graph/entities/edge.h"
-#include "../../src/graph/entities/node.h"
+#include "../../src/datatypes/set.h"
 #include "../../src/datatypes/array.h"
+#include "../../src/graph/entities/node.h"
+#include "../../src/graph/entities/edge.h"
+
 
 #ifdef __cplusplus
 }
@@ -73,7 +75,6 @@ TEST_F(ValueTest, TestStrings) {
 }
 
 // Idempotence and correctness tests for null, bool, long, double, edge, node, array.
-
 TEST_F(ValueTest, TestNull) {
 	SIValue siNull = SI_NullVal();
 	SIValue siNullOther = SI_NullVal();
@@ -250,4 +251,101 @@ TEST_F(ValueTest, TestEdgeAndNode) {
 	SIValue node = SI_Node(&n0);
 
 	ASSERT_NE(SIValue_HashCode(node), SIValue_HashCode(edge));
+}
+
+TEST(ValueTest, TestSet) {
+    Alloc_Reset();
+    SIValue set = SISet_New();
+    SIValue *pSet = &set;
+
+    // Set should be empty.
+    ASSERT_EQ(SISet_Size(pSet), 0);
+
+    // Populate set.
+    Node n;
+    Edge e;
+    SIValue arr = SI_Array(2);
+
+    SISet_Add(pSet, arr);
+    SISet_Add(pSet, SI_Node(&n));
+    SISet_Add(pSet, SI_Edge(&e));
+    SISet_Add(pSet, SI_NullVal());
+    SISet_Add(pSet, SI_LongVal(0));
+    SISet_Add(pSet, SI_PtrVal(pSet));
+    SISet_Add(pSet, SI_DoubleVal(1));
+    SISet_Add(pSet, SI_BoolVal(true));
+    SISet_Add(pSet, SI_EmptyArray());
+
+    ASSERT_EQ(SISet_Size(pSet), 9);
+
+    // Make sure all items are in set.
+    ASSERT_TRUE(SISet_Contains(pSet, arr));
+    ASSERT_TRUE(SISet_Contains(pSet, SI_Node(&n)));
+    ASSERT_TRUE(SISet_Contains(pSet, SI_Edge(&e)));
+    ASSERT_TRUE(SISet_Contains(pSet, SI_NullVal()));
+    ASSERT_TRUE(SISet_Contains(pSet, SI_LongVal(0)));
+    ASSERT_TRUE(SISet_Contains(pSet, SI_PtrVal(pSet)));
+    ASSERT_TRUE(SISet_Contains(pSet, SI_DoubleVal(1)));
+    ASSERT_TRUE(SISet_Contains(pSet, SI_BoolVal(true)));
+    ASSERT_TRUE(SISet_Contains(pSet, SI_EmptyArray()));
+
+    // Test for none existing items.
+    ASSERT_FALSE(SISet_Contains(pSet, SI_BoolVal(false)));
+    ASSERT_FALSE(SISet_Contains(pSet, SI_LongVal(2)));
+    ASSERT_FALSE(SISet_Contains(pSet, SI_DoubleVal(3)));
+
+    // Try to introduce duplicates.
+    SISet_Add(pSet, arr);
+    SISet_Add(pSet, SI_Node(&n));
+    SISet_Add(pSet, SI_Edge(&e));
+    SISet_Add(pSet, SI_NullVal());
+    SISet_Add(pSet, SI_LongVal(0));
+    SISet_Add(pSet, SI_PtrVal(pSet));
+    SISet_Add(pSet, SI_DoubleVal(1));
+    SISet_Add(pSet, SI_BoolVal(true));
+    SISet_Add(pSet, SI_EmptyArray());
+
+    // Set item count shouldn't change.
+    uint64_t set_size = SISet_Size(pSet);
+    ASSERT_EQ(set_size, 9);
+
+    // Remove items from set.
+    SISet_Remove(pSet, arr);
+    ASSERT_FALSE(SISet_Contains(pSet, arr));
+    ASSERT_EQ(SISet_Size(pSet), --set_size);
+
+    SISet_Remove(pSet, SI_Node(&n));
+    ASSERT_FALSE(SISet_Contains(pSet, SI_Node(&n)));
+    ASSERT_EQ(SISet_Size(pSet), --set_size);
+
+    SISet_Remove(pSet, SI_Edge(&e));
+    ASSERT_FALSE(SISet_Contains(pSet, SI_Edge(&e)));
+    ASSERT_EQ(SISet_Size(pSet), --set_size);
+
+    SISet_Remove(pSet, SI_NullVal());
+    ASSERT_FALSE(SISet_Contains(pSet, SI_NullVal()));
+    ASSERT_EQ(SISet_Size(pSet), --set_size);
+
+    SISet_Remove(pSet, SI_LongVal(0));
+    ASSERT_FALSE(SISet_Contains(pSet, SI_LongVal(0)));
+    ASSERT_EQ(SISet_Size(pSet), --set_size);
+
+    SISet_Remove(pSet, SI_PtrVal(pSet));
+    ASSERT_FALSE(SISet_Contains(pSet, SI_PtrVal(pSet)));
+    ASSERT_EQ(SISet_Size(pSet), --set_size);
+
+    SISet_Remove(pSet, SI_DoubleVal(1));
+    ASSERT_FALSE(SISet_Contains(pSet, SI_DoubleVal(1)));
+    ASSERT_EQ(SISet_Size(pSet), --set_size);
+
+    SISet_Remove(pSet, SI_BoolVal(true));
+    ASSERT_FALSE(SISet_Contains(pSet, SI_BoolVal(true)));
+    ASSERT_EQ(SISet_Size(pSet), --set_size);
+
+    SISet_Remove(pSet, SI_EmptyArray());
+    ASSERT_FALSE(SISet_Contains(pSet, SI_EmptyArray()));
+    ASSERT_EQ(SISet_Size(pSet), --set_size);
+
+    ASSERT_EQ(SISet_Size(pSet), 0);
+    SISet_Free(pSet);
 }

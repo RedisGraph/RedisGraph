@@ -471,7 +471,7 @@ int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull) {
 }
 
 /* Hashes the id and properties of the node*/
-uint64_t SINode_HashCode(const SIValue v) {
+XXH64_hash_t SINode_HashCode(const SIValue v) {
 	XXH_errorcode res;
 	XXH64_state_t state;
 	res = XXH64_reset(&state, 0);
@@ -483,12 +483,12 @@ uint64_t SINode_HashCode(const SIValue v) {
 	XXH64_update(&state, &(t), sizeof(t));
 	XXH64_update(&state, &id, sizeof(id));
 
-	uint64_t hashCode = XXH64_digest(&state);
+	XXH64_hash_t hashCode = XXH64_digest(&state);
 	return hashCode;
 }
 
 /* Hashes the id and properties of the edge. */
-uint64_t SIEdge_HashCode(const SIValue v) {
+XXH64_hash_t SIEdge_HashCode(const SIValue v) {
 
 	XXH_errorcode res;
 	XXH64_state_t state;
@@ -501,13 +501,13 @@ uint64_t SIEdge_HashCode(const SIValue v) {
 	XXH64_update(&state, &(t), sizeof(t));
 	XXH64_update(&state, &id, sizeof(id));
 
-	uint64_t hashCode = XXH64_digest(&state);
+	XXH64_hash_t hashCode = XXH64_digest(&state);
 	return hashCode;
 }
 
 /* This method hashes primitive types in place. Compound types have their own
  * hashing method */
-uint64_t SIValue_HashCode(SIValue v) {
+XXH64_hash_t SIValue_HashCode(SIValue v) {
 	XXH_errorcode res;
 	XXH64_state_t state;
 	res = XXH64_reset(&state, 0);
@@ -557,7 +557,7 @@ uint64_t SIValue_HashCode(SIValue v) {
 	default:
 		assert(false);
 	}
-	uint64_t hashCode =  XXH64_digest(&state);
+	XXH64_hash_t hashCode =  XXH64_digest(&state);
 	return hashCode;
 }
 
