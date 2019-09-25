@@ -21,6 +21,18 @@ static void _setupTraversedRelations(CondTraverse *op, QGEdge *e) {
 	}
 }
 
+/* Given an AlgebraicExpression with a populated edge, determine whether we're traversing a
+ * transposed edge matrix. The edge matrix will be either the first or second operand, and is
+ * the only operand which can be transposed (as the others are label diagonals). */
+static inline bool _expressionContainsTranspose(AlgebraicExpression *exp) {
+	for(uint i = 0; i < exp->operand_count; i ++) {
+		if(exp->operands[i].transpose) {
+			return true;
+		}
+	}
+	return false;
+}
+
 // Updates query graph edge.
 static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
 	// Consumed edges connecting current source and destination nodes.
@@ -61,15 +73,8 @@ int CondTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
 	offset += snprintf(buff + offset, buff_len - offset, "%s | ", op->op.name);
 	offset += QGNode_ToString(op->ae->src_node, buff + offset, buff_len - offset);
 	if(op->ae->edge) {
-		// Determine whether thise edge should be printed left-to-right or right-to-left.
-		bool transpose = false;
-		for(uint i = 0; i < op->ae->operand_count; i ++) {
-			if(op->ae->operands[i].transpose) {
-				transpose = true;
-				break;
-			}
-		}
-
+		// This edge should be printed right-to-left if the edge matrix is transposed.
+		bool transpose = _expressionContainsTranspose(op->ae);
 		if(transpose) {
 			offset += snprintf(buff + offset, buff_len - offset, "<-");
 			offset += QGEdge_ToString(op->ae->edge, buff + offset, buff_len - offset);
@@ -138,17 +143,9 @@ OpResult CondTraverseInit(OpBase *opBase) {
 
 	// Nothing needs to be done if we're not populating an edge.
 	if(exp->edge == NULL) return OP_OK;
-
-	/* Determine whether we're traversing a transposed edge matrix,
-	 * in which case the source and destination nodes will be swapped in the record.
-	 * The edge matrix will be either the first or second operand, and is the only
-	 * operand which can be transposed (as the others are label diagonals). */
-	for(uint i = 0; i < exp->operand_count; i ++) {
-		if(exp->operands[i].transpose) {
-			op->transposed_edge = true;
-			break;
-		}
-	}
+	// If this operation traverses a transposed edge, the source and destination nodes
+	// will be swapped in the Record.
+	op->transposed_edge = _expressionContainsTranspose(exp);
 
 	return OP_OK;
 }
@@ -287,4 +284,3 @@ void CondTraverseFree(OpBase *ctx) {
 		op->records = NULL;
 	}
 }
-
