@@ -407,19 +407,6 @@ static AST_Validation _ValidateInlinedPropertiesOnPath(const cypher_astnode_t *p
 	return AST_VALID;
 }
 
-static AST_Validation _ValidateFilterPredicates(const cypher_astnode_t *predicate, char **reason) {
-	cypher_astnode_type_t type = cypher_astnode_type(predicate);
-	// TODO These should all be supported in filter trees
-	if(type == CYPHER_AST_PATTERN_PATH) {
-		// Comparisons of form:
-		// MATCH (a), (b) WHERE a.id = 0 AND (a)-[:T]->(b:TheLabel)
-		asprintf(reason, "Paths cannot currently be specified in filters.");
-		return AST_INVALID;
-	}
-
-	return AST_VALID;
-}
-
 static AST_Validation _Validate_MATCH_Clause_Filters(const cypher_astnode_t *clause,
 													 char **reason) {
 	const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clause);
@@ -431,8 +418,6 @@ static AST_Validation _Validate_MATCH_Clause_Filters(const cypher_astnode_t *cla
 
 	const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(clause);
 	if(predicate == NULL) return AST_VALID;
-
-	if(_ValidateFilterPredicates(predicate, reason) != AST_VALID) return AST_INVALID;
 
 	return AST_VALID;
 }
