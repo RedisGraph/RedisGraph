@@ -16,6 +16,7 @@
 #include <assert.h>
 #include "util/rmalloc.h"
 #include "datatypes/array.h"
+#include "xxhash.h"
 
 static inline void _SIString_ToString(SIValue str, char **buf, size_t *bufferLen,
 									  size_t *bytesWritten) {
@@ -467,6 +468,85 @@ int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull) {
 
 	// In case of disjoint or null comparison, return value type difference.
 	return a.type - b.type;
+}
+
+/* Hashes the id and properties of the node*/
+uint64_t SINode_HashCode(const SIValue v) {
+	XXH_errorcode res;
+	XXH64_state_t state;
+	res = XXH64_reset(&state, 0);
+	assert(res != XXH_ERROR);
+
+	Node *n = (Node *)v.ptrval;
+	int id = ENTITY_GET_ID(n);
+	XXH64_update(&state, &id, sizeof(id));
+	XXH64_update(&state, &(v.type), sizeof(v.type));
+	uint64_t hashCode =  XXH64_digest(&state);
+	return hashCode;
+}
+
+/* Hashes the id and properties of the edge. */
+uint64_t SIEdge_HashCode(const SIValue v) {
+
+	XXH_errorcode res;
+	XXH64_state_t state;
+	res = XXH64_reset(&state, 0);
+	assert(res != XXH_ERROR);
+
+	Edge *e = (Edge *)v.ptrval;
+	int id = ENTITY_GET_ID(e);
+	XXH64_update(&state, &id, sizeof(id));
+	XXH64_update(&state, &(v.type), sizeof(v.type));
+
+	uint64_t hashCode =  XXH64_digest(&state);
+	return hashCode;
+}
+
+/* This method hashes primitive types in place. Compound types have their own
+ * hashing method */
+uint64_t SIValue_HashCode(const SIValue v) {
+	XXH_errorcode res;
+	XXH64_state_t state;
+	res = XXH64_reset(&state, 0);
+	assert(res != XXH_ERROR);
+
+	SIType t = SI_NUMERIC & v.type ? SI_NUMERIC : v.type;
+
+	// Handles null value and defaults.
+	int64_t null = 0;
+	switch(v.type) {
+	case T_NULL:
+		XXH64_update(&state, &null, sizeof(null));
+		break;
+	case T_STRING:
+		XXH64_update(&state, &v.stringval, strlen(v.stringval));
+		break;
+	case T_BOOL:
+	case T_INT64:
+		XXH64_update(&state, &v.longval, sizeof(v.longval));
+		break;
+	case T_DOUBLE: {
+		int64_t casted = (int64_t) v.doubleval;
+		double diff = v.doubleval - casted;
+		if(SAFE_COMPARISON_RESULT(diff) != 0) XXH64_update(&state, &v.doubleval, sizeof(v.doubleval));
+		else XXH64_update(&state, &casted, sizeof(casted));
+		break;
+	}
+	case T_EDGE:
+		return SIEdge_HashCode(v);
+	case T_NODE:
+		return SINode_HashCode(v);
+	case T_ARRAY:
+		return SIArray_HashCode(v);
+	// TODO: Implement for Map and temporal types once we support them.
+	default:
+		assert(false);
+	}
+	/* In case of identical binary representation of the value,
+	 * we should hash the type as well. */
+	XXH64_update(&state, &t, sizeof(t));
+	uint64_t hashCode =  XXH64_digest(&state);
+	return hashCode;
 }
 
 void SIValue_Free(SIValue *v) {

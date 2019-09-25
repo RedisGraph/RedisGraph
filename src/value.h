@@ -156,6 +156,9 @@ SIValue SIValue_Divide(const SIValue a, const SIValue b);
  * If the the values are not of the same type, the macro DISJOINT is returned in disjointOrNull value. */
 int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull);
 
+/* Returns a hash code for a given SIValue */
+uint64_t SIValue_HashCode(const SIValue v);
+
 /* Free an SIValue's internal property if that property is a heap allocation owned
  * by this object. */
 void SIValue_Free(SIValue *v);
