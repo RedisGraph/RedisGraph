@@ -36,7 +36,6 @@ static void _name_anonymous_entities_in_path(const cypher_astnode_t *path, int *
 			free(alias);
 		}
 	}
-
 }
 
 /* Name each anonymous graph entity */
@@ -53,6 +52,13 @@ static void _name_anonymous_entities_in_pattern(const cypher_astnode_t *root) {
 		const cypher_astnode_t *pattern = NULL;
 		if(clause_type == CYPHER_AST_MATCH) {
 			pattern = cypher_ast_match_get_pattern(clause);
+
+			/* Name anonymous entities presented within a filter:
+			 * WHERE (a)-[]->(z) */
+			const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(clause);
+			if(cypher_astnode_type(predicate) == CYPHER_AST_PATTERN_PATH) {
+				_name_anonymous_entities_in_path(predicate, &anon_count);
+			}
 		} else if(clause_type == CYPHER_AST_CREATE) {
 			pattern = cypher_ast_create_get_pattern(clause);
 		} else if(clause_type == CYPHER_AST_MERGE) {
