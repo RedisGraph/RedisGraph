@@ -469,6 +469,97 @@ int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull) {
 	return a.type - b.type;
 }
 
+/* Hashes the id and properties of the node*/
+XXH64_hash_t SINode_HashCode(const SIValue v) {
+	XXH_errorcode res;
+	XXH64_state_t state;
+	res = XXH64_reset(&state, 0);
+	assert(res != XXH_ERROR);
+
+	Node *n = (Node *)v.ptrval;
+	int id = ENTITY_GET_ID(n);
+	SIType t = SI_TYPE(v);
+	XXH64_update(&state, &(t), sizeof(t));
+	XXH64_update(&state, &id, sizeof(id));
+
+	XXH64_hash_t hashCode = XXH64_digest(&state);
+	return hashCode;
+}
+
+/* Hashes the id and properties of the edge. */
+XXH64_hash_t SIEdge_HashCode(const SIValue v) {
+
+	XXH_errorcode res;
+	XXH64_state_t state;
+	res = XXH64_reset(&state, 0);
+	assert(res != XXH_ERROR);
+
+	Edge *e = (Edge *)v.ptrval;
+	int id = ENTITY_GET_ID(e);
+	SIType t = SI_TYPE(v);
+	XXH64_update(&state, &(t), sizeof(t));
+	XXH64_update(&state, &id, sizeof(id));
+
+	XXH64_hash_t hashCode = XXH64_digest(&state);
+	return hashCode;
+}
+
+/* This method hashes primitive types in place. Compound types have their own
+ * hashing method */
+XXH64_hash_t SIValue_HashCode(SIValue v) {
+	XXH_errorcode res;
+	XXH64_state_t state;
+	res = XXH64_reset(&state, 0);
+	assert(res != XXH_ERROR);
+	// Handles null value and defaults.
+	int64_t null = 0;
+	/* In case of identical binary representation of the value,
+	* we should hash the type as well. */
+	SIType t = SI_TYPE(v);
+
+	switch(v.type) {
+	case T_NULL:
+		XXH64_update(&state, &t, sizeof(t));
+		XXH64_update(&state, &null, sizeof(null));
+		break;
+	case T_STRING:
+		XXH64_update(&state, &t, sizeof(t));
+		XXH64_update(&state, &v.stringval, strlen(v.stringval));
+		break;
+	case T_INT64:
+		// Change type to numeric.
+		t = SI_NUMERIC;
+		XXH64_update(&state, &t, sizeof(t));
+		XXH64_update(&state, &v.longval, sizeof(v.longval));
+		break;
+	case T_BOOL:
+		XXH64_update(&state, &t, sizeof(t));
+		XXH64_update(&state, &v.longval, sizeof(v.longval));
+		break;
+	case T_DOUBLE: {
+		t = SI_NUMERIC;
+		XXH64_update(&state, &t, sizeof(t));
+		// Check if the double value is actually an interger. If so, hash it as Long.
+		int64_t casted = (int64_t) v.doubleval;
+		double diff = v.doubleval - casted;
+		if(diff != 0) XXH64_update(&state, &v.doubleval, sizeof(v.doubleval));
+		else XXH64_update(&state, &casted, sizeof(casted));
+		break;
+	}
+	case T_EDGE:
+		return SIEdge_HashCode(v);
+	case T_NODE:
+		return SINode_HashCode(v);
+	case T_ARRAY:
+		return SIArray_HashCode(v);
+	// TODO: Implement for Map and temporal types once we support them.
+	default:
+		assert(false);
+	}
+	XXH64_hash_t hashCode =  XXH64_digest(&state);
+	return hashCode;
+}
+
 void SIValue_Free(SIValue *v) {
 	// The free routine only performs work if it owns a heap allocation.
 	if(v->allocation != M_SELF) return;
