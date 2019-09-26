@@ -9,19 +9,17 @@
 
 #include "agg_ctx.h"
 
-typedef AggCtx *(*AggFuncInit)(void);
+typedef AggCtx *(*AggFuncInit)(bool);
 
-AggCtx *Agg_SumFunc();
-AggCtx *Agg_AvgFunc();
-AggCtx *Agg_MaxFunc();
-AggCtx *Agg_MinFunc();
-AggCtx *Agg_CountFunc();
-AggCtx *Agg_CountDistinctFunc();
-AggCtx *Agg_PercContFunc();
-AggCtx *Agg_PercDiscFunc();
-AggCtx *Agg_stDev();
-AggCtx *Agg_CollectFunc();
-AggCtx *Agg_CollectDistinctFunc();
+AggCtx *Agg_SumFunc(bool distinct);
+AggCtx *Agg_AvgFunc(bool distinct);
+AggCtx *Agg_MaxFunc(bool distinct);
+AggCtx *Agg_MinFunc(bool distinct);
+AggCtx *Agg_CountFunc(bool distinct);
+AggCtx *Agg_PercContFunc(bool distinct);
+AggCtx *Agg_PercDiscFunc(bool distinct);
+AggCtx *Agg_stDev(bool distinct);
+AggCtx *Agg_CollectFunc(bool distinct);
 
 void Agg_RegisterFuncs();
 

@@ -102,30 +102,30 @@ AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 	return node;
 }
 
-AR_ExpNode *AR_EXP_NewDistinctOpNode(const char *func_name, uint child_count) {
-	assert(func_name);
+// AR_ExpNode *AR_EXP_NewDistinctOpNode(const char *func_name, uint child_count) {
+// 	assert(func_name);
 
-	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
-	node->type = AR_EXP_OP;
-	node->op.distinct = true;
-	node->op.func_name = func_name;
-	node->op.child_count = child_count;
-	node->op.children = rm_malloc(child_count * sizeof(AR_ExpNode *));
+// 	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
+// 	node->type = AR_EXP_OP;
+// 	node->op.distinct = true;
+// 	node->op.func_name = func_name;
+// 	node->op.child_count = child_count;
+// 	node->op.children = rm_malloc(child_count * sizeof(AR_ExpNode *));
 
-	char *aggregated_func_name;
-	asprintf(&aggregated_func_name, "%sDistinct", func_name);
+// 	char *aggregated_func_name;
+// 	asprintf(&aggregated_func_name, "%sDistinct", func_name);
 
-	AggCtx *agg_func;
-	Agg_GetFunc(aggregated_func_name, &agg_func);
-	free(aggregated_func_name);
+// 	AggCtx *agg_func;
+// 	Agg_GetFunc(aggregated_func_name, &agg_func);
+// 	free(aggregated_func_name);
 
-	/* TODO: handle Unknown function. */
-	assert(agg_func != NULL);
-	node->op.agg_func = agg_func;
-	node->op.type = AR_OP_AGGREGATE;
+// 	/* TODO: handle Unknown function. */
+// 	assert(agg_func != NULL);
+// 	node->op.agg_func = agg_func;
+// 	node->op.type = AR_OP_AGGREGATE;
 
-	return node;
-}
+// 	return node;
+// }
 
 AR_ExpNode *AR_EXP_NewVariableOperandNode(RecordMap *record_map, const char *alias,
 										  const char *prop) {

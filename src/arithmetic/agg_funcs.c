@@ -81,12 +81,12 @@ int __agg_sumReduceNext(AggCtx *ctx) {
 	return AGG_OK;
 }
 
-AggCtx *Agg_SumFunc() {
+AggCtx *Agg_SumFunc(bool distinct) {
 	__agg_sumCtx *ac = rm_malloc(sizeof(__agg_sumCtx));
 	ac->total = 0;
 	ac->hashSet = Set_New();
-
-	return Agg_Reduce(ac, __agg_sumStep, __agg_sumReduceNext);
+	if(distinct) return Agg_Reduce(ac, __agg_sumDistinctStep, __agg_sumReduceNext);
+	else return Agg_Reduce(ac, __agg_sumStep, __agg_sumReduceNext);
 }
 
 //------------------------------------------------------------------------
@@ -163,13 +163,13 @@ int __agg_avgReduceNext(AggCtx *ctx) {
 	return AGG_OK;
 }
 
-AggCtx *Agg_AvgFunc() {
+AggCtx *Agg_AvgFunc(bool distinct) {
 	__agg_avgCtx *ac = rm_malloc(sizeof(__agg_avgCtx));
 	ac->count = 0;
 	ac->total = 0;
 	ac->hashSet = Set_New();
-
-	return Agg_Reduce(ac, __agg_avgStep, __agg_avgReduceNext);
+	if(distinct) return Agg_Reduce(ac, __agg_avgDistinctStep, __agg_avgReduceNext);
+	else return Agg_Reduce(ac, __agg_avgStep, __agg_avgReduceNext);
 }
 
 //------------------------------------------------------------------------
@@ -207,11 +207,11 @@ int __agg_maxReduceNext(AggCtx *ctx) {
 	return AGG_OK;
 }
 
-AggCtx *Agg_MaxFunc() {
+AggCtx *Agg_MaxFunc(bool distinct) {
 	__agg_maxCtx *ac = rm_malloc(sizeof(__agg_maxCtx));
 	// ac->max = SI_DoubleVal(DBL_MIN);
 	ac->init = false;
-
+	// No need for distinct in "max" aggregation.
 	return Agg_Reduce(ac, __agg_maxStep, __agg_maxReduceNext);
 }
 
@@ -250,11 +250,11 @@ int __agg_minReduceNext(AggCtx *ctx) {
 	return AGG_OK;
 }
 
-AggCtx *Agg_MinFunc() {
+AggCtx *Agg_MinFunc(bool distinct) {
 	__agg_minCtx *ac = rm_malloc(sizeof(__agg_minCtx));
 	// ac->min = SI_DoubleVal(DBL_MAX);
 	ac->init = false;
-
+	// No need for distinct in "min" aggregation.
 	return Agg_Reduce(ac, __agg_minStep, __agg_minReduceNext);
 }
 
@@ -296,12 +296,12 @@ int __agg_countReduceNext(AggCtx *ctx) {
 	return AGG_OK;
 }
 
-AggCtx *Agg_CountFunc() {
+AggCtx *Agg_CountFunc(bool distinct) {
 	__agg_countCtx *ac = rm_malloc(sizeof(__agg_countCtx));
 	ac->count = 0;
 	ac->hashSet = Set_New();
-
-	return Agg_Reduce(ac, __agg_countStep, __agg_countReduceNext);
+	if(distinct) return Agg_Reduce(ac, __agg_countDistinctStep, __agg_countReduceNext);
+	else return Agg_Reduce(ac, __agg_countStep, __agg_countReduceNext);
 }
 
 //------------------------------------------------------------------------
@@ -460,14 +460,16 @@ __agg_percCtx *__agg_PercBuildCtx() {
 }
 
 // The percentile initializers are identical save for the ReduceNext function they specify
-AggCtx *Agg_PercDiscFunc() {
+AggCtx *Agg_PercDiscFunc(bool distinct) {
 	__agg_percCtx *ac = __agg_PercBuildCtx();
-	return Agg_Reduce(ac, __agg_percStep, __agg_percDiscReduceNext);
+	if(distinct) return Agg_Reduce(ac, __agg_percDistinctStep, __agg_percDiscReduceNext);
+	else return Agg_Reduce(ac, __agg_percStep, __agg_percDiscReduceNext);
 }
 
-AggCtx *Agg_PercContFunc() {
+AggCtx *Agg_PercContFunc(bool distinct) {
 	__agg_percCtx *ac = __agg_PercBuildCtx();
-	return Agg_Reduce(ac, __agg_percStep, __agg_percContReduceNext);
+	if(distinct) return Agg_Reduce(ac, __agg_percDistinctStep, __agg_percContReduceNext);
+	else return Agg_Reduce(ac, __agg_percStep, __agg_percContReduceNext);
 }
 
 //------------------------------------------------------------------------
@@ -566,7 +568,7 @@ int __agg_StdevReduceNext(AggCtx *ctx) {
 	return AGG_OK;
 }
 
-AggCtx *Agg_StdevFunc() {
+AggCtx *Agg_StdevFunc(bool distinct) {
 	__agg_stdevCtx *ac = rm_malloc(sizeof(__agg_stdevCtx));
 	ac->is_sampled = 1;
 	ac->count = 0;
@@ -574,12 +576,13 @@ AggCtx *Agg_StdevFunc() {
 	ac->values = rm_malloc(1024 * sizeof(double));
 	ac->values_allocated = 1024;
 	ac->hashSet = Set_New();
-	return Agg_Reduce(ac, __agg_StdevStep, __agg_StdevReduceNext);
+	if(distinct) return Agg_Reduce(ac, __agg_StdevDistinctStep, __agg_StdevReduceNext);
+	else return Agg_Reduce(ac, __agg_StdevStep, __agg_StdevReduceNext);
 }
 
 // StdevP is identical to Stdev save for an altered value we can check for with a bool
-AggCtx *Agg_StdevPFunc() {
-	AggCtx *func = Agg_StdevFunc();
+AggCtx *Agg_StdevPFunc(bool distinct) {
+	AggCtx *func = Agg_StdevFunc(distinct);
 	__agg_stdevCtx *ac = Agg_FuncCtx(func);
 	ac->is_sampled = 0;
 	return func;
@@ -613,6 +616,21 @@ int __agg_collectStep(AggCtx *ctx, SIValue *argv, int argc) {
 	return AGG_OK;
 }
 
+int __agg_collectDistinctStep(AggCtx *ctx, SIValue *argv, int argc) {
+	// convert multiple values to array
+
+	assert(argc >= 0);
+	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
+
+	if(ac->list.type == T_NULL) ac->list = SI_Array(argc);
+	for(int i = 0; i < argc; i ++) {
+		SIValue value = argv[i];
+		if(value.type == T_NULL) continue;
+		if(Set_Add(ac->hashSet, value)) SIArray_Append(&ac->list, value);
+	}
+	return AGG_OK;
+}
+
 int __agg_collectReduceNext(AggCtx *ctx) {
 	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
 
@@ -621,11 +639,11 @@ int __agg_collectReduceNext(AggCtx *ctx) {
 	return AGG_OK;
 }
 
-AggCtx *Agg_CollectFunc() {
+AggCtx *Agg_CollectFunc(bool distinct) {
 	__agg_collectCtx *ac = rm_malloc(sizeof(__agg_collectCtx));
 	ac->list = SI_NullVal();
 	ac->hashSet = Set_New();
-
+	if(distinct) return Agg_Reduce(ac, __agg_collectDistinctStep, __agg_collectReduceNext);
 	return Agg_Reduce(ac, __agg_collectStep, __agg_collectReduceNext);
 }
 
@@ -637,11 +655,9 @@ void Agg_RegisterFuncs() {
 	Agg_RegisterFunc("max", Agg_MaxFunc);
 	Agg_RegisterFunc("min", Agg_MinFunc);
 	Agg_RegisterFunc("count", Agg_CountFunc);
-	Agg_RegisterFunc("countDistinct", Agg_CountDistinctFunc);
 	Agg_RegisterFunc("percentileDisc", Agg_PercDiscFunc);
 	Agg_RegisterFunc("percentileCont", Agg_PercContFunc);
 	Agg_RegisterFunc("stDev", Agg_StdevFunc);
 	Agg_RegisterFunc("stDevP", Agg_StdevPFunc);
 	Agg_RegisterFunc("collect", Agg_CollectFunc);
-	Agg_RegisterFunc("collectDistinct", Agg_CollectDistinctFunc);
 }
