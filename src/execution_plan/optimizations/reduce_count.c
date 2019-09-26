@@ -34,7 +34,6 @@ static int _identifyResultAndAggregateOps(OpBase *root, OpResult **opResult,
 	// Make sure aggregation performs counting.
 	if(exp->type != AR_EXP_OP ||
 	   exp->op.type != AR_OP_AGGREGATE ||
-	   exp->op.distinct == true ||
 	   strcasecmp(exp->op.func_name, "count")) return 0;
 
 	// Make sure Count acts on an alias.

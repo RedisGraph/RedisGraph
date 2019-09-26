@@ -57,7 +57,6 @@ typedef struct {
 	const char *func_name;          /* Name of function. */
 	int child_count;                /* Number of children. */
 	struct AR_ExpNode **children;   /* Child nodes. */
-    bool distinct;                  /* Rather or not this op performs distinction. */
 	AR_OPType type;
 } AR_OpNode;
 
@@ -86,8 +85,9 @@ typedef struct AR_ExpNode {
 		AR_OpNode op;
 		struct AR_ExpNode **expressions;
 	};
-	AR_ExpNodeType type;    
-	const char *resolved_name; // The string representation of the node, such as the literal string "ID(a) + 5"
+	AR_ExpNodeType type;
+	const char
+	*resolved_name; // The string representation of the node, such as the literal string "ID(a) + 5"
 } AR_ExpNode;
 
 /* Creates a new Arithmetic expression operation node */

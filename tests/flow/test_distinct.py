@@ -223,5 +223,5 @@ class testDistinct(FlowTestsBase):
     def test_collect_distinct(self):
         query = "UNWIND ['a', 'a', null, 1, 2, 2, 3, 3, 3] AS x RETURN collect(distinct x)"
         actual_result = redis_graph.query(query)
-        expected_result = [[[3, 2, 1, 'a']]]
+        expected_result = [[['a', 1, 2, 3]]]
         self.env.assertEquals(actual_result.result_set, expected_result)

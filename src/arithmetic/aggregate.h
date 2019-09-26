@@ -24,9 +24,13 @@
 
 typedef int (*StepFunc)(AggCtx *ctx, SIValue *argv, int argc);
 typedef int (*ReduceFunc)(AggCtx *ctx);
+typedef void (*AggCtx_InnerData_Free)(AggCtx *ctx);
+typedef void *(*InnerData_New)();
 
-AggCtx *Agg_Reduce(void *ctx, StepFunc f, ReduceFunc reduce);
+AggCtx *Agg_Reduce(void *ctx, StepFunc f, ReduceFunc reduce, InnerData_New innerDataNew,
+				   AggCtx_InnerData_Free finalize);
 AggCtx *Agg_NewCtx(void *fctx);
+AggCtx *Agg_CloneCtx(AggCtx *ctx);
 void AggCtx_Free(AggCtx *ctx);
 int Agg_SetError(AggCtx *ctx, AggError *err);
 void *Agg_FuncCtx(AggCtx *ctx);
@@ -34,5 +38,4 @@ void Agg_SetResult(AggCtx *ctx, SIValue v);
 
 int Agg_Step(AggCtx *ctx, SIValue *argv, int argc);
 int Agg_Finalize(AggCtx *ctx);
-
 #endif

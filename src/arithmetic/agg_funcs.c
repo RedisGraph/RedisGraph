@@ -26,11 +26,6 @@ typedef struct {
 	set *hashSet;
 } __agg_sumCtx;
 
-void __agg_sumCtxClean(AggCtx *ctx) {
-	__agg_sumCtx *ac = Agg_FuncCtx(ctx);
-	Set_Free(ac->hashSet);
-}
-
 int __agg_sumStep(AggCtx *ctx, SIValue *argv, int argc) {
 	// convert the value of the input sequence to a double if possible
 	__agg_sumCtx *ac = Agg_FuncCtx(ctx);
@@ -77,16 +72,28 @@ int __agg_sumDistinctStep(AggCtx *ctx, SIValue *argv, int argc) {
 int __agg_sumReduceNext(AggCtx *ctx) {
 	__agg_sumCtx *ac = Agg_FuncCtx(ctx);
 	Agg_SetResult(ctx, SI_DoubleVal(ac->total));
-	__agg_sumCtxClean(ctx);
 	return AGG_OK;
 }
 
-AggCtx *Agg_SumFunc(bool distinct) {
+void *__agg_sumCtxNew() {
 	__agg_sumCtx *ac = rm_malloc(sizeof(__agg_sumCtx));
 	ac->total = 0;
 	ac->hashSet = Set_New();
-	if(distinct) return Agg_Reduce(ac, __agg_sumDistinctStep, __agg_sumReduceNext);
-	else return Agg_Reduce(ac, __agg_sumStep, __agg_sumReduceNext);
+	return ac;
+}
+
+void __agg_sumCtxFree(AggCtx *ctx) {
+	__agg_sumCtx *ac = Agg_FuncCtx(ctx);
+	Set_Free(ac->hashSet);
+	rm_free(ac);
+}
+
+AggCtx *Agg_SumFunc(bool distinct) {
+	__agg_sumCtx *ac = __agg_sumCtxNew();
+	if(distinct) return Agg_Reduce(ac, __agg_sumDistinctStep, __agg_sumReduceNext, __agg_sumCtxNew,
+									   __agg_sumCtxFree);
+	else return Agg_Reduce(ac, __agg_sumStep, __agg_sumReduceNext, __agg_sumCtxNew,
+							   __agg_sumCtxFree);
 }
 
 //------------------------------------------------------------------------
@@ -96,11 +103,6 @@ typedef struct {
 	double total;
 	set *hashSet;
 } __agg_avgCtx;
-
-void __agg_avgCtxClean(AggCtx *ctx) {
-	__agg_avgCtx *ac = Agg_FuncCtx(ctx);
-	Set_Free(ac->hashSet);
-}
 
 int __agg_avgStep(AggCtx *ctx, SIValue *argv, int argc) {
 	// convert the value of the input sequence to a double if possible
@@ -159,17 +161,28 @@ int __agg_avgReduceNext(AggCtx *ctx) {
 	} else {
 		Agg_SetResult(ctx, SI_DoubleVal(0));
 	}
-	__agg_avgCtxClean(ctx);
 	return AGG_OK;
 }
 
-AggCtx *Agg_AvgFunc(bool distinct) {
+void *__agg_avgCtxNew() {
 	__agg_avgCtx *ac = rm_malloc(sizeof(__agg_avgCtx));
 	ac->count = 0;
 	ac->total = 0;
 	ac->hashSet = Set_New();
-	if(distinct) return Agg_Reduce(ac, __agg_avgDistinctStep, __agg_avgReduceNext);
-	else return Agg_Reduce(ac, __agg_avgStep, __agg_avgReduceNext);
+	return ac;
+}
+
+void __agg_avgCtxFree(AggCtx *ctx) {
+	__agg_avgCtx *ac = Agg_FuncCtx(ctx);
+	Set_Free(ac->hashSet);
+	rm_free(ac);
+}
+
+AggCtx *Agg_AvgFunc(bool distinct) {
+	__agg_avgCtx *ac = __agg_avgCtxNew();
+	if(distinct) return Agg_Reduce(ac, __agg_avgDistinctStep, __agg_avgReduceNext, __agg_avgCtxNew,
+									   __agg_avgCtxFree);
+	return Agg_Reduce(ac, __agg_avgStep, __agg_avgReduceNext, __agg_avgCtxNew, __agg_avgCtxFree);
 }
 
 //------------------------------------------------------------------------
@@ -178,8 +191,6 @@ typedef struct {
 	SIValue max;
 	bool init;
 } __agg_maxCtx;
-
-void __agg_maxCtxClean(AggCtx *ctx) {}
 
 int __agg_maxStep(AggCtx *ctx, SIValue *argv, int argc) {
 	assert(argc == 1);
@@ -207,12 +218,21 @@ int __agg_maxReduceNext(AggCtx *ctx) {
 	return AGG_OK;
 }
 
-AggCtx *Agg_MaxFunc(bool distinct) {
+void __agg_maxCtxFree(AggCtx *ctx) {
+	__agg_maxCtx *ac = Agg_FuncCtx(ctx);
+	rm_free(ac);
+}
+
+void *__agg_maxCtxNew() {
 	__agg_maxCtx *ac = rm_malloc(sizeof(__agg_maxCtx));
-	// ac->max = SI_DoubleVal(DBL_MIN);
 	ac->init = false;
-	// No need for distinct in "max" aggregation.
-	return Agg_Reduce(ac, __agg_maxStep, __agg_maxReduceNext);
+	return ac;
+}
+
+AggCtx *Agg_MaxFunc(bool distinct) {
+	__agg_maxCtx *ac = __agg_maxCtxNew();
+	// Max aggregation do not care about distinct.
+	return Agg_Reduce(ac, __agg_maxStep, __agg_maxReduceNext, __agg_maxCtxNew, __agg_maxCtxFree);
 }
 
 //------------------------------------------------------------------------
@@ -221,8 +241,6 @@ typedef struct {
 	SIValue min;
 	bool init;
 } __agg_minCtx;
-
-void __agg_minCtxClean(AggCtx *ctx) {}
 
 int __agg_minStep(AggCtx *ctx, SIValue *argv, int argc) {
 	assert(argc == 1);
@@ -250,12 +268,21 @@ int __agg_minReduceNext(AggCtx *ctx) {
 	return AGG_OK;
 }
 
-AggCtx *Agg_MinFunc(bool distinct) {
+void *__agg_minCtxNew() {
 	__agg_minCtx *ac = rm_malloc(sizeof(__agg_minCtx));
-	// ac->min = SI_DoubleVal(DBL_MAX);
 	ac->init = false;
-	// No need for distinct in "min" aggregation.
-	return Agg_Reduce(ac, __agg_minStep, __agg_minReduceNext);
+	return ac;
+}
+
+void __agg_minCtxFree(AggCtx *ctx) {
+	__agg_minCtx *ac = Agg_FuncCtx(ctx);
+	rm_free(ac);
+}
+
+AggCtx *Agg_MinFunc(bool distinct) {
+	__agg_minCtx *ac = __agg_minCtxNew();
+	// Min aggregation do not care about distinct.
+	return Agg_Reduce(ac, __agg_minStep, __agg_minReduceNext, __agg_minCtxNew, __agg_minCtxFree);
 }
 
 //------------------------------------------------------------------------
@@ -264,11 +291,6 @@ typedef struct {
 	size_t count;
 	set *hashSet;
 } __agg_countCtx;
-
-void __agg_countCtxClean(AggCtx *ctx) {
-	__agg_countCtx *ac = Agg_FuncCtx(ctx);
-	Set_Free(ac->hashSet);
-}
 
 int __agg_countStep(AggCtx *ctx, SIValue *argv, int argc) {
 	__agg_countCtx *ac = Agg_FuncCtx(ctx);
@@ -292,16 +314,28 @@ int __agg_countDistinctStep(AggCtx *ctx, SIValue *argv, int argc) {
 int __agg_countReduceNext(AggCtx *ctx) {
 	__agg_countCtx *ac = Agg_FuncCtx(ctx);
 	Agg_SetResult(ctx, SI_LongVal(ac->count));
-	__agg_countCtxClean(ctx);
 	return AGG_OK;
 }
 
-AggCtx *Agg_CountFunc(bool distinct) {
+void *__agg_countCtxNew() {
 	__agg_countCtx *ac = rm_malloc(sizeof(__agg_countCtx));
 	ac->count = 0;
 	ac->hashSet = Set_New();
-	if(distinct) return Agg_Reduce(ac, __agg_countDistinctStep, __agg_countReduceNext);
-	else return Agg_Reduce(ac, __agg_countStep, __agg_countReduceNext);
+	return ac;
+}
+
+void __agg_countCtxFree(AggCtx *ctx) {
+	__agg_countCtx *ac = Agg_FuncCtx(ctx);
+	Set_Free(ac->hashSet);
+	rm_free(ac);
+}
+
+AggCtx *Agg_CountFunc(bool distinct) {
+	__agg_countCtx *ac = __agg_countCtxNew();
+	if(distinct) return Agg_Reduce(ac, __agg_countDistinctStep, __agg_countReduceNext,
+									   __agg_countCtxNew, __agg_countCtxFree);
+	else return Agg_Reduce(ac, __agg_countStep, __agg_countReduceNext, __agg_countCtxNew,
+							   __agg_countCtxFree);
 }
 
 //------------------------------------------------------------------------
@@ -313,12 +347,6 @@ typedef struct {
 	size_t values_allocated;
 	set *hashSet;
 } __agg_percCtx;
-
-void __agg_PercCtxClean(AggCtx *ctx) {
-	__agg_percCtx *ac = Agg_FuncCtx(ctx);
-	rm_free(ac->values);
-	Set_Free(ac->hashSet);
-}
 
 // This function is agnostic as to percentile method
 int __agg_percStep(AggCtx *ctx, SIValue *argv, int argc) {
@@ -410,7 +438,6 @@ int __agg_percDiscReduceNext(AggCtx *ctx) {
 	double n = ac->values[idx];
 	Agg_SetResult(ctx, SI_DoubleVal(n));
 
-	__agg_PercCtxClean(ctx);
 	return AGG_OK;
 }
 
@@ -421,7 +448,6 @@ int __agg_percContReduceNext(AggCtx *ctx) {
 
 	if(ac->percentile == 1.0 || ac->count == 1) {
 		Agg_SetResult(ctx, SI_DoubleVal(ac->values[ac->count - 1]));
-		__agg_PercCtxClean(ctx);
 		return AGG_OK;
 	}
 
@@ -434,7 +460,6 @@ int __agg_percContReduceNext(AggCtx *ctx) {
 	if(!fraction_val) {
 		// A valid index was requested, so we can directly return a value
 		Agg_SetResult(ctx, SI_DoubleVal(ac->values[index]));
-		__agg_PercCtxClean(ctx);
 		return AGG_OK;
 	}
 
@@ -444,11 +469,10 @@ int __agg_percContReduceNext(AggCtx *ctx) {
 
 	Agg_SetResult(ctx, SI_DoubleVal(lhs + rhs));
 
-	__agg_PercCtxClean(ctx);
 	return AGG_OK;
 }
 
-__agg_percCtx *__agg_PercBuildCtx() {
+void *__agg_PercCtxNew() {
 	__agg_percCtx *ac = rm_malloc(sizeof(__agg_percCtx));
 	ac->count = 0;
 	ac->values = rm_malloc(1024 * sizeof(double));
@@ -459,17 +483,28 @@ __agg_percCtx *__agg_PercBuildCtx() {
 	return ac;
 }
 
+void __agg_PercCtxFree(AggCtx *ctx) {
+	__agg_percCtx *ac = Agg_FuncCtx(ctx);
+	rm_free(ac->values);
+	Set_Free(ac->hashSet);
+	rm_free(ac);
+}
+
 // The percentile initializers are identical save for the ReduceNext function they specify
 AggCtx *Agg_PercDiscFunc(bool distinct) {
-	__agg_percCtx *ac = __agg_PercBuildCtx();
-	if(distinct) return Agg_Reduce(ac, __agg_percDistinctStep, __agg_percDiscReduceNext);
-	else return Agg_Reduce(ac, __agg_percStep, __agg_percDiscReduceNext);
+	__agg_percCtx *ac = __agg_PercCtxNew();
+	if(distinct) return Agg_Reduce(ac, __agg_percDistinctStep, __agg_percDiscReduceNext,
+									   __agg_PercCtxNew, __agg_PercCtxFree);
+	else return Agg_Reduce(ac, __agg_percStep, __agg_percDiscReduceNext, __agg_PercCtxNew,
+							   __agg_PercCtxFree);
 }
 
 AggCtx *Agg_PercContFunc(bool distinct) {
-	__agg_percCtx *ac = __agg_PercBuildCtx();
-	if(distinct) return Agg_Reduce(ac, __agg_percDistinctStep, __agg_percContReduceNext);
-	else return Agg_Reduce(ac, __agg_percStep, __agg_percContReduceNext);
+	__agg_percCtx *ac = __agg_PercCtxNew();
+	if(distinct) return Agg_Reduce(ac, __agg_percDistinctStep, __agg_percContReduceNext,
+									   __agg_PercCtxNew, __agg_PercCtxFree);
+	else return Agg_Reduce(ac, __agg_percStep, __agg_percContReduceNext, __agg_PercCtxNew,
+							   __agg_PercCtxFree);
 }
 
 //------------------------------------------------------------------------
@@ -482,12 +517,6 @@ typedef struct {
 	int is_sampled;
 	set *hashSet;
 } __agg_stdevCtx;
-
-void __agg_StdevCtxClean(AggCtx *ctx) {
-	__agg_stdevCtx *ac = Agg_FuncCtx(ctx);
-	rm_free(ac->values);
-	Set_Free(ac->hashSet);
-}
 
 int __agg_StdevStep(AggCtx *ctx, SIValue *argv, int argc) {
 	__agg_stdevCtx *ac = Agg_FuncCtx(ctx);
@@ -549,7 +578,6 @@ int __agg_StdevReduceNext(AggCtx *ctx) {
 
 	if(ac->count < 2) {
 		Agg_SetResult(ctx, SI_DoubleVal(0));
-		__agg_StdevCtxClean(ctx);
 		return AGG_OK;
 	}
 
@@ -564,11 +592,10 @@ int __agg_StdevReduceNext(AggCtx *ctx) {
 
 	Agg_SetResult(ctx, SI_DoubleVal(stdev));
 
-	__agg_StdevCtxClean(ctx);
 	return AGG_OK;
 }
 
-AggCtx *Agg_StdevFunc(bool distinct) {
+void *__agg_stdevCtxNew() {
 	__agg_stdevCtx *ac = rm_malloc(sizeof(__agg_stdevCtx));
 	ac->is_sampled = 1;
 	ac->count = 0;
@@ -576,8 +603,22 @@ AggCtx *Agg_StdevFunc(bool distinct) {
 	ac->values = rm_malloc(1024 * sizeof(double));
 	ac->values_allocated = 1024;
 	ac->hashSet = Set_New();
-	if(distinct) return Agg_Reduce(ac, __agg_StdevDistinctStep, __agg_StdevReduceNext);
-	else return Agg_Reduce(ac, __agg_StdevStep, __agg_StdevReduceNext);
+	return ac;
+}
+
+void __agg_StdevCtxFree(AggCtx *ctx) {
+	__agg_stdevCtx *ac = Agg_FuncCtx(ctx);
+	rm_free(ac->values);
+	Set_Free(ac->hashSet);
+	rm_free(ac);
+}
+
+AggCtx *Agg_StdevFunc(bool distinct) {
+	__agg_stdevCtx *ac = __agg_stdevCtxNew();
+	if(distinct) return Agg_Reduce(ac, __agg_StdevDistinctStep, __agg_StdevReduceNext,
+									   __agg_stdevCtxNew, __agg_StdevCtxFree);
+	else return Agg_Reduce(ac, __agg_StdevStep, __agg_StdevReduceNext, __agg_stdevCtxNew,
+							   __agg_StdevCtxFree);
 }
 
 // StdevP is identical to Stdev save for an altered value we can check for with a bool
@@ -594,12 +635,6 @@ typedef struct {
 	SIValue list;
 	set *hashSet;
 } __agg_collectCtx;
-
-
-void __agg_collectCtxClean(AggCtx *ctx) {
-	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
-	Set_Free(ac->hashSet);
-}
 
 int __agg_collectStep(AggCtx *ctx, SIValue *argv, int argc) {
 	// convert multiple values to array
@@ -622,7 +657,6 @@ int __agg_collectDistinctStep(AggCtx *ctx, SIValue *argv, int argc) {
 	assert(argc >= 0);
 	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
 
-	if(ac->list.type == T_NULL) ac->list = SI_Array(argc);
 	for(int i = 0; i < argc; i ++) {
 		SIValue value = argv[i];
 		if(value.type == T_NULL) continue;
@@ -633,18 +667,29 @@ int __agg_collectDistinctStep(AggCtx *ctx, SIValue *argv, int argc) {
 
 int __agg_collectReduceNext(AggCtx *ctx) {
 	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
-
 	Agg_SetResult(ctx, ac->list);
-	__agg_collectCtxClean(ctx);
 	return AGG_OK;
 }
 
-AggCtx *Agg_CollectFunc(bool distinct) {
+void *__agg_collectCtxNew() {
 	__agg_collectCtx *ac = rm_malloc(sizeof(__agg_collectCtx));
-	ac->list = SI_NullVal();
+	ac->list = SI_Array(100);
 	ac->hashSet = Set_New();
-	if(distinct) return Agg_Reduce(ac, __agg_collectDistinctStep, __agg_collectReduceNext);
-	return Agg_Reduce(ac, __agg_collectStep, __agg_collectReduceNext);
+	return ac;
+}
+
+void __agg_collectCtxFree(AggCtx *ctx) {
+	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
+	Set_Free(ac->hashSet);
+	rm_free(ac);
+}
+
+AggCtx *Agg_CollectFunc(bool distinct) {
+	__agg_collectCtx *ac = __agg_collectCtxNew();
+	if(distinct) return Agg_Reduce(ac, __agg_collectDistinctStep, __agg_collectReduceNext,
+									   __agg_collectCtxNew, __agg_collectCtxFree);
+	else return Agg_Reduce(ac, __agg_collectStep, __agg_collectReduceNext, __agg_collectCtxNew,
+							   __agg_collectCtxFree);
 }
 
 //------------------------------------------------------------------------

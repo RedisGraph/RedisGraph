@@ -5,11 +5,15 @@
 */
 
 #include "aggregate.h"
+#include "../util/rmalloc.h"
 
-AggCtx *Agg_Reduce(void *ctx, StepFunc f, ReduceFunc reduce) {
+AggCtx *Agg_Reduce(void *ctx, StepFunc f, ReduceFunc reduce, InnerData_New innerDataNew,
+				   AggCtx_InnerData_Free innerDataFree) {
 	AggCtx *ac = Agg_NewCtx(ctx);
 	ac->Step = f;
 	ac->ReduceNext = reduce;
+	ac->InnerData_New = innerDataNew;
+	ac->InnerData_Free = innerDataFree;
 	return ac;
 }
 
@@ -20,13 +24,20 @@ AggCtx *Agg_NewCtx(void *fctx) {
 	ac->result = SI_NullVal();
 	ac->Step = NULL;
 	ac->ReduceNext = NULL;
+	ac->InnerData_New = NULL;
+	ac->InnerData_Free = NULL;
 	return ac;
 }
 
+AggCtx *Agg_CloneCtx(AggCtx *ctx) {
+	void *fctx = ctx->InnerData_New();
+	return Agg_Reduce(fctx, ctx->Step, ctx->ReduceNext, ctx->InnerData_New, ctx->InnerData_Free);
+}
+
 void AggCtx_Free(AggCtx *ctx) {
-	rm_free(ctx->fctx);
+	ctx->InnerData_Free(ctx);
 	SIValue_Free(&ctx->result);
-	free(ctx);
+	rm_free(ctx);
 }
 
 int Agg_SetError(AggCtx *ctx, AggError *err) {
