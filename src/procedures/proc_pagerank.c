@@ -46,24 +46,29 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx, const char **args) {
 
 	// Mappings, array for returning row indices of tuples
 	GrB_Index n;
-	GrB_Index *mappings;
-	assert(GrB_Matrix_nvals(&n, l) == GrB_SUCCESS);
-	mappings = rm_malloc(sizeof(GrB_Index) * n);
-	assert(GrB_Matrix_extractTuples_BOOL(mappings, GrB_NULL, GrB_NULL, &n, l) == GrB_SUCCESS);
-
-	// Filter connections.
-	GrB_Matrix A;
+	GrB_Matrix reduced;
+	GrB_Index *mappings = NULL;
 	GrB_Index rows = Graph_RequiredMatrixDim(g);
 	GrB_Index cols = rows;
-	assert(GrB_Matrix_new(&A, GrB_BOOL, rows, cols) == GrB_SUCCESS);
-	GrB_mxm(A, GrB_NULL, GrB_NULL, GxB_LOR_LAND_BOOL, l, r, GrB_NULL);
+	assert(GrB_Matrix_nvals(&n, l) == GrB_SUCCESS);
+	assert(GrB_Matrix_new(&reduced, GrB_BOOL, n, n) == GrB_SUCCESS);
 
-	GrB_Matrix reduced;
-	if(rows != n) assert(GrB_Matrix_new(&reduced, GrB_BOOL, n, n) == GrB_SUCCESS);
-	else reduced = A;
-
-	assert(GrB_extract(reduced, GrB_NULL, GrB_NULL, A, mappings, n, mappings, n,
-					   GrB_NULL) == GrB_SUCCESS);
+	if(n != rows) {
+		mappings = rm_malloc(sizeof(GrB_Index) * n);
+		assert(GrB_Matrix_extractTuples_BOOL(mappings, GrB_NULL, GrB_NULL, &n, l) == GrB_SUCCESS);
+		assert(GrB_extract(reduced, GrB_NULL, GrB_NULL, r, mappings, n, mappings, n,
+						   GrB_NULL) == GrB_SUCCESS);
+	} else {
+		/* There no need to perform extraction as `r` dimension NxN
+		 * is the same as the number of entries in `l` which means
+		 * all connections described in `r` connect nodes of type `l`
+		 * Unfortunately we still need to type cast `r` into a boolean matrix. */
+		GrB_Descriptor desc;
+		GrB_Descriptor_new(&desc);
+		GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
+		assert(GrB_transpose(reduced, GrB_NULL, GrB_NULL, r, desc) == GrB_SUCCESS);
+		GrB_free(&desc);
+	}
 
 	LAGraph_PageRank *rankings;
 	double tol = 1e-4;
@@ -71,8 +76,7 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx, const char **args) {
 	assert(Pagerank(&rankings, reduced, itermax, tol, &iters) == GrB_SUCCESS);
 
 	// Clean up.
-	if(reduced != A) GrB_free(&reduced);
-	GrB_free(&A);
+	GrB_free(&reduced);
 
 	// Setup context.
 	PagerankContext *pdata = rm_malloc(sizeof(PagerankContext));
@@ -100,7 +104,9 @@ SIValue *Proc_PagerankStep(ProcedureCtx *ctx) {
 	if(pdata->i >= pdata->n) return NULL;
 
 	LAGraph_PageRank rank = pdata->rankings[pdata->i++];
-	Graph_GetNode(pdata->g, pdata->mappings[rank.page], &pdata->node);
+	NodeID node_id = (pdata->mappings) ? pdata->mappings[rank.page] : rank.page;
+
+	Graph_GetNode(pdata->g, node_id, &pdata->node);
 	pdata->output[1] = SI_Node(&pdata->node);
 	pdata->output[3] = SI_DoubleVal(rank.pagerank);
 
@@ -111,9 +117,9 @@ ProcedureResult Proc_PagerankFree(ProcedureCtx *ctx) {
 	// Clean up.
 	if(ctx->privateData) {
 		PagerankContext *pdata = ctx->privateData;
-		rm_free(pdata->mappings);
-		rm_free(pdata->rankings);
-		array_free(pdata->output);
+		if(pdata->output) array_free(pdata->output);
+		if(pdata->mappings) rm_free(pdata->mappings);
+		if(pdata->rankings) rm_free(pdata->rankings);
 		rm_free(ctx->privateData);
 	}
 
