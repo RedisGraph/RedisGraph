@@ -341,57 +341,6 @@ AggCtx *Agg_CountFunc(bool distinct) {
 //------------------------------------------------------------------------
 
 typedef struct {
-	SIValue *values;
-} __agg_countDistinctCtx;
-
-int __agg_countDistinctStep(AggCtx *ctx, SIValue *argv, int argc) {
-	assert(argc == 1);
-	__agg_countDistinctCtx *ac = Agg_FuncCtx(ctx);
-	if(SIValue_IsNull(argv[0])) return AGG_OK;
-
-	ac->values = array_append(ac->values, SI_CloneValue(argv[0]));
-	return AGG_OK;
-}
-
-int __agg_countDistinctReduceNext(AggCtx *ctx) {
-	__agg_countDistinctCtx *ac = Agg_FuncCtx(ctx);
-
-	uint32_t item_count = array_len(ac->values);
-	if(item_count <= 1) {
-		Agg_SetResult(ctx, SI_LongVal(item_count));
-		return AGG_OK;
-	}
-
-	/* Sort array, don't count duplicates */
-	QSORT(SIValue, ac->values, item_count, SI_LT);
-
-	uint32_t distinct = 1;  // We've got atleast one item.
-	SIValue a = ac->values[0];
-	SIValue b = SI_NullVal();
-	for(uint32_t i = 1; i < item_count; i++) {
-		b = ac->values[i];
-		if(SIValue_Compare(a, b, NULL) != 0) distinct++;
-		SIValue_Free(&a);
-		a = b;
-	}
-	if(!SIValue_IsNull(b)) SIValue_Free(&b);
-
-	Agg_SetResult(ctx, SI_LongVal(distinct));
-
-	array_free(ac->values);
-	return AGG_OK;
-}
-
-AggCtx *Agg_CountDistinctFunc() {
-	__agg_countDistinctCtx *ac = malloc(sizeof(__agg_countCtx));
-	ac->values = array_new(SIValue, 0);
-
-	return Agg_Reduce(ac, __agg_countDistinctStep, __agg_countDistinctReduceNext);
-}
-
-//------------------------------------------------------------------------
-
-typedef struct {
 	double percentile;
 	double *values;
 	size_t count;
@@ -745,84 +694,15 @@ AggCtx *Agg_CollectFunc(bool distinct) {
 
 //------------------------------------------------------------------------
 
-typedef struct {
-	SIValue list;
-} __agg_collectDistinctCtx;
-
-int __agg_collectDistinctStep(AggCtx *ctx, SIValue *argv, int argc) {
-	// convert multiple values to array
-
-	assert(argc >= 0);
-	__agg_collectDistinctCtx *ac = Agg_FuncCtx(ctx);
-
-	// TODO: can this be migrated to Agg_CollectDistinctFunc?
-	if(ac->list.type == T_NULL) ac->list = SI_Array(argc);
-	for(int i = 0; i < argc; i ++) {
-		SIValue value = argv[i];
-		if(value.type == T_NULL) continue;
-		SIArray_Append(&ac->list, value);
-	}
-	return AGG_OK;
-}
-
-int __agg_collectDistinctReduceNext(AggCtx *ctx) {
-	__agg_collectDistinctCtx *ac = Agg_FuncCtx(ctx);
-
-	if(SIValue_IsNull(ac->list)) {
-		Agg_SetResult(ctx, ac->list);
-		return AGG_OK;
-	}
-
-	uint32_t item_count = SIArray_Length(ac->list);
-	if(item_count <= 1) {
-		Agg_SetResult(ctx, ac->list);
-		return AGG_OK;
-	}
-
-	SIValue *items = ac->list.array;
-	SIValue distinct_array = SI_Array(item_count);
-
-	/* Sort array, don't count duplicates */
-	QSORT(SIValue, items, item_count, SI_LT);
-
-	SIValue a = items[0];
-	SIValue b = SI_NullVal();
-
-	// Append first element.
-	SIArray_Append(&distinct_array, SI_CloneValue(a));
-
-	for(uint32_t i = 1; i < item_count; i++) {
-		b = items[i];
-		if(SIValue_Compare(a, b, NULL) != 0)  {
-			SIArray_Append(&distinct_array, SI_CloneValue(b));
-		}
-		a = b;
-	}
-	Agg_SetResult(ctx, distinct_array);
-	SIValue_Free(&ac->list);
-	return AGG_OK;
-}
-
-AggCtx *Agg_CollectDistinctFunc() {
-	__agg_collectDistinctCtx *ac = malloc(sizeof(__agg_collectDistinctCtx));
-	ac->list = SI_NullVal();
-
-	return Agg_Reduce(ac, __agg_collectDistinctStep, __agg_collectDistinctReduceNext);
-}
-
-//------------------------------------------------------------------------
-
 void Agg_RegisterFuncs() {
 	Agg_RegisterFunc("sum", Agg_SumFunc);
 	Agg_RegisterFunc("avg", Agg_AvgFunc);
 	Agg_RegisterFunc("max", Agg_MaxFunc);
 	Agg_RegisterFunc("min", Agg_MinFunc);
 	Agg_RegisterFunc("count", Agg_CountFunc);
-	Agg_RegisterFunc("countDistinct", Agg_CountDistinctFunc);
 	Agg_RegisterFunc("percentileDisc", Agg_PercDiscFunc);
 	Agg_RegisterFunc("percentileCont", Agg_PercContFunc);
 	Agg_RegisterFunc("stDev", Agg_StdevFunc);
 	Agg_RegisterFunc("stDevP", Agg_StdevPFunc);
 	Agg_RegisterFunc("collect", Agg_CollectFunc);
-	Agg_RegisterFunc("collectDistinct", Agg_CollectDistinctFunc);
 }
