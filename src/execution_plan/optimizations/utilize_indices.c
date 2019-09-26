@@ -205,6 +205,13 @@ bool _applicableFilter(Index *idx, OpFilter *filter) {
 	const char **idx_fields = Index_GetFields(idx);
 	FT_FilterNode *filter_tree = filter->filterTree;
 
+	// Make sure the filter root is not a function.
+	// TODO: As a result of issue 667, transform "IN" into a sequence of "OR" to use in RedisSearch.
+	if(filter_tree->t == FT_N_EXP) {
+		res = false;
+		goto cleanup;
+	}
+
 	/* filterTree will either be a predicate or a tree with an OR root.
 	 * make sure filter doesn't contains predicates of type: a.v = b.y */
 	entities = FilterTree_CollectModified(filter_tree);
