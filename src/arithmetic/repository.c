@@ -43,7 +43,7 @@ bool Agg_FuncExists(const char *name) {
 	return false;
 }
 
-void Agg_GetFunc(const char *name, AggCtx **ctx) {
+void Agg_GetFunc(const char *name, bool distinct, AggCtx **ctx) {
 	if(!__aggRegisteredFuncs) {
 		*ctx = NULL;
 		return;
@@ -53,7 +53,7 @@ void Agg_GetFunc(const char *name, AggCtx **ctx) {
 		__aggFuncEntry *e = NULL;
 		Vector_Get(__aggRegisteredFuncs, i, &e);
 		if(e != NULL && !strcasecmp(name, e->name)) {
-			*ctx = e->func();
+			*ctx = e->func(distinct);
 			return;
 		}
 	}
