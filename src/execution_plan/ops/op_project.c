@@ -34,7 +34,7 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	OpProject *op = malloc(sizeof(OpProject));
 	op->ast = ast;
 	op->exps = exps;
-	op->exp_count = array_len(exps);
+	op->exp_count = exps ? array_len(exps) : 0;
 	op->order_exps = NULL;
 	op->order_exp_count = 0;
 	op->singleResponse = false;

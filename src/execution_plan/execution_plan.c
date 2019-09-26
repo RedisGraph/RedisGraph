@@ -47,6 +47,7 @@ static inline void _ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_ro
 	plan->root = new_root;
 }
 
+// Build the column strings for a result set.
 static inline const char **_BuildColumnNames(AR_ExpNode **exps) {
 	uint projection_count = array_len(exps);
 	const char **columns = array_new(const char *, projection_count);
@@ -56,23 +57,63 @@ static inline const char **_BuildColumnNames(AR_ExpNode **exps) {
 	return columns;
 }
 
-/* In a query with a RETURN *, build projections for all explicit aliases
- * in previous clauses. */
-static AR_ExpNode **_ReturnExpandAll(AST *ast) {
-	// Collect all unique aliases
-	const char **aliases = AST_CollectElementNames(ast);
+static char **_CollectAliases(rax *map) {
+	char **aliases = array_new(char *, 1);
+	raxIterator it;
+	raxStart(&it, map);
+
+	// Seek all referenced aliases prior to the anonymous identifiers.
+	raxSeek(&it, "<", (unsigned char *)"anon_", 5);
+	while(raxPrev(&it)) { // Scan backwards
+		size_t len = it.key_len;
+		// Copy the key and add a terminator character.
+		char *alias = strndup((char *)it.key, len); // TODO leak
+		aliases = array_append(aliases, alias);
+	}
+
+	// Seek all referenced aliases after the anonymous identifiers.
+	// The ASCII value of the backtick character is 1 greater than the underscore,
+	// so this seek will skip all keys with begining with "anon_".
+	raxSeek(&it, ">", (unsigned char *)"anon`", 5);
+	while(raxNext(&it)) { // Scan forwards
+		size_t len = it.key_len;
+		// Copy the key and add a terminator character.
+		char *alias = strndup((char *)it.key, len); // TODO leak
+		aliases = array_append(aliases, alias);
+	}
+
+	raxStop(&it);
+
+	return aliases;
+}
+
+static void _PopulateReturnAll(ExecutionPlan *previous_segment, OpBase *op) {
+	char **aliases = _CollectAliases(previous_segment->record_map);
 	uint count = array_len(aliases);
 
-	// Build an expression for each alias
-	AR_ExpNode **return_expressions = array_new(AR_ExpNode *, count);
-	for(int i = 0; i < count; i ++) {
-		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(aliases[i], NULL);
+	AR_ExpNode **exps = array_new(AR_ExpNode *, count);
+	for(uint i = 0; i < count; i ++) {
+		// Build an expression for each alias.
+		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(aliases[i], NULL); // TODO probably more leaks
 		exp->resolved_name = aliases[i];
-		return_expressions = array_append(return_expressions, exp);
+		exps = array_append(exps, exp);
+
+		// Map the alias within the ExecutionPlan mapping.
+		OpBase_Modifies(op, aliases[i]);
 	}
 
 	array_free(aliases);
-	return return_expressions;
+
+	// Assign the new expressions to the operation.
+	if(op->type == OPType_PROJECT) {
+		OpProject *project = (OpProject *)op;
+		project->exps = exps;
+		project->exp_count = count;
+	} else {
+		OpAggregate *aggregate = (OpAggregate *)op;
+		aggregate->exps = exps;
+		aggregate->exp_count = count;
+	}
 }
 
 // Handle ORDER entities
@@ -129,9 +170,8 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 // Handle RETURN entities
 // (This function is not static because it is relied upon by unit tests)
 AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause, AST *ast) {
-	// Query is of type "RETURN *",
-	// collect all defined identifiers and create return elements for them
-	if(cypher_ast_return_has_include_existing(ret_clause)) return _ReturnExpandAll(ast);
+	// Query is of type "RETURN *", the expressions will be populated later.
+	if(cypher_ast_return_has_include_existing(ret_clause)) return NULL;
 
 	uint count = cypher_ast_return_nprojections(ret_clause);
 	AR_ExpNode **return_expressions = array_new(AR_ExpNode *, count);
@@ -663,8 +703,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		// Construct a new ExecutionPlanSegment.
 		ExecutionPlan *segment = _NewExecutionPlan(ctx, gc, ast_segment, result_set);
 
-		// Free the AST segment.
-		AST_Free(ast_segment); // Free all AST constructions scoped to this segment
+		AST_Free(ast_segment); // Free the AST segment.
 
 		segments[i] = segment;
 		start_offset = end_offset;
@@ -672,31 +711,16 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 
 	array_free(segment_indices);
 
+	OpBase *connecting_op = NULL;
 	// Merge segments.
 	for(int i = 1; i < segment_count; i++) {
 		ExecutionPlan *prev_segment = segments[i - 1];
 		ExecutionPlan *current_segment = segments[i];
 
 		OpBase *prev_root = prev_segment->root;
-		OpBase *connecting_op = _ExecutionPlan_FindConnectingOp(current_segment->root);
+		connecting_op = _ExecutionPlan_FindConnectingOp(current_segment->root);
 		assert(connecting_op->childCount == 0);
 		ExecutionPlan_AddOp(connecting_op, prev_root);
-		/*
-		OpBase **taps = array_new(OpBase *, 1);
-		ExecutionPlan_Taps(current_segment->root, &taps);
-		bool has_taps = (array_len(taps) > 0);
-
-		// Does current execution plan contains taps?
-		if(has_taps) {
-			OpBase *op_cp = NewCartesianProductOp(current_segment);
-			ExecutionPlan_PushBelow(taps[0], op_cp);
-			ExecutionPlan_AddOp(op_cp, prev_root);
-		} else {
-			OpBase *leaf = _ExecutionPlan_LocateLeaf(current_segment->root);
-			ExecutionPlan_AddOp(leaf, prev_root);
-		}
-		array_free(taps);
-		*/
 	}
 
 	ExecutionPlan *plan = segments[segment_count - 1];
@@ -713,22 +737,22 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 	}
 
 	// The root operation is OpResults only if the query culminates in a RETURN or CALL clause.
-	if(last_clause_type == CYPHER_AST_RETURN) {
+	if(query_has_return) {
+		if(!connecting_op) {
+			// Set the connecting op if our query is just a RETURN.
+			assert(segment_count == 1);
+		}
+		connecting_op = _ExecutionPlan_FindConnectingOp(plan->root);
+		// Check whether the query culminates in a RETURN * clause.
+		bool return_all = cypher_ast_return_has_include_existing(last_clause);
+		if(return_all) _PopulateReturnAll(segments[segment_count - 2], connecting_op);
+
 		if(result_set) {
 			// Prepare column names for the ResultSet.
-			/* TODO The AST-based approach doesn't handle RETURN *
-			 * If we don't come up with a better alternate than the projection-seeking logic here,
-			 * standardize and properly abstract it. */
-			/* if(result_set) result_set->columns = AST_BuildReturnColumns(last_clause); */
-
-			OpBase *op = plan->root;
-			while(!(op->type & (OPType_PROJECT | OPType_AGGREGATE))) {
-				op = op->children[0];
-			}
-			if(op->type == OPType_PROJECT) {
-				result_set->columns = _BuildColumnNames(((OpProject *)op)->exps);
-			} else if(op->type == OPType_AGGREGATE) {
-				result_set->columns = _BuildColumnNames(((OpAggregate *)op)->exps);
+			if(connecting_op->type == OPType_PROJECT) {
+				result_set->columns = _BuildColumnNames(((OpProject *)connecting_op)->exps);
+			} else if(connecting_op->type == OPType_AGGREGATE) {
+				result_set->columns = _BuildColumnNames(((OpAggregate *)connecting_op)->exps);
 			}
 		}
 

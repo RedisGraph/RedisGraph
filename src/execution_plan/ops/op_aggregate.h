@@ -28,12 +28,15 @@ typedef struct {
 	AR_ExpNode **exps;
 	AR_ExpNode **order_exps;
 	AR_ExpNode **non_aggregated_expressions;       /* Array of arithmetic expression. */
-	ExpClassification *expression_classification;  /* classifies expression as aggregated/non-aggregated. */
+	ExpClassification *expression_classification;  /* Classifies each expression as aggregated/not. */
 	rax *groups;
 	Group *group;                                  /* Last accessed group. */
 	SIValue *group_keys;                           /* Array of values composing an aggregated group. */
 	CacheGroupIterator *group_iter;
 	Record last_record;
+	unsigned short exp_count;                      /* Number of projected expressions. */
+	unsigned short order_exp_count;                /* Number of order by expressions. */
 } OpAggregate;
 
 OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **expressions);
+

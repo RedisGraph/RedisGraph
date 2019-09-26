@@ -156,41 +156,6 @@ void _AST_CollectAliases(const char ***aliases, const cypher_astnode_t *entity) 
 	}
 }
 
-// Collect aliases from clauses that introduce entities (MATCH, MERGE, CREATE, UNWIND)
-const char **AST_CollectElementNames(AST *ast) {
-	const char **aliases = array_new(const char *, 1);
-	uint clause_count = cypher_ast_query_nclauses(ast->root);
-	for(uint i = 0; i < clause_count; i ++) {
-		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
-		cypher_astnode_type_t type = cypher_astnode_type(clause);
-		if(type == CYPHER_AST_MATCH  ||
-		   type == CYPHER_AST_MERGE  ||
-		   type == CYPHER_AST_CREATE ||
-		   type == CYPHER_AST_UNWIND
-		  ) {
-			_AST_CollectAliases(&aliases, clause);
-		}
-	}
-
-	// Trim array to only include unique aliases
-#define ALIAS_STRCMP(a,b) (!strcmp(*a,*b))
-
-	uint count = array_len(aliases);
-	if(count == 0) return aliases;
-
-	QSORT(const char *, aliases, count, ALIAS_STRCMP);
-	uint unique_idx = 0;
-	for(int i = 0; i < count - 1; i ++) {
-		if(strcmp(aliases[i], aliases[i + 1])) {
-			aliases[unique_idx++] = aliases[i];
-		}
-	}
-	aliases[unique_idx++] = aliases[count - 1];
-	array_trimm_len(aliases, unique_idx);
-
-	return aliases;
-}
-
 AST *AST_Build(cypher_parse_result_t *parse_result) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->referenced_entities = NULL;
@@ -227,14 +192,14 @@ static void _AST_MapExpression(AST *ast, const cypher_astnode_t *exp) {
 
 	// In case of identifier.
 	if(type == CYPHER_AST_IDENTIFIER) {
-		const char *identifierName = cypher_ast_identifier_get_name(exp);
-		_AST_UpdateRefMap(ast, identifierName);
+		const char *identifier_name = cypher_ast_identifier_get_name(exp);
+		_AST_UpdateRefMap(ast, identifier_name);
 	} else if(type == CYPHER_AST_PROPERTY_OPERATOR) {
 		// In case of property.
 		exp = cypher_ast_property_operator_get_expression(exp);
 		assert(cypher_astnode_type(exp) == CYPHER_AST_IDENTIFIER);
-		const char *identifierName = cypher_ast_identifier_get_name(exp);
-		_AST_UpdateRefMap(ast, identifierName);
+		const char *identifier_name = cypher_ast_identifier_get_name(exp);
+		_AST_UpdateRefMap(ast, identifier_name);
 	} else {
 		// Recurse over children.
 		uint child_count = cypher_astnode_nchildren(exp);
@@ -570,28 +535,6 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 	raxFree(referred_funcs);
 
 	return aggregated;
-}
-
-const char **AST_BuildReturnColumns(const cypher_astnode_t *return_clause) {
-	uint projection_count = cypher_ast_return_nprojections(return_clause);
-	assert(projection_count > 0);
-
-	const char **columns = array_new(const char *, projection_count);
-
-	for(uint i = 0; i < projection_count; i ++) {
-		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
-		// Attempt to retrieve an alias node.
-		const cypher_astnode_t *ast_identifier = cypher_ast_projection_get_alias(projection);
-		// The projection was not aliased, so the projection itself must be an identifier.
-		if(!ast_identifier) ast_identifier = cypher_ast_projection_get_expression(projection);
-		assert(cypher_astnode_type(ast_identifier) == CYPHER_AST_IDENTIFIER);
-
-		// Retrieve the alias string.
-		const char *identifier = cypher_ast_identifier_get_name(ast_identifier);
-		columns = array_append(columns, identifier);
-	}
-
-	return columns;
 }
 
 // Determine the maximum number of records

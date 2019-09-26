@@ -38,13 +38,11 @@ static AR_ExpNode **_getOrderExpressions(OpBase *op) {
  * In addition keeps track of non-aggregated expressions in
  * a separate array.*/
 static void _classify_expressions(OpAggregate *op) {
-	uint exp_count = array_len(op->exps);
-	uint order_exp_count = array_len(op->order_exps);
 	op->non_aggregated_expressions = array_new(AR_ExpNode *, 0);
 	op->expression_classification = rm_malloc(sizeof(ExpClassification) *
-											  (exp_count + order_exp_count));
+											  (op->exp_count + op->order_exp_count));
 
-	for(uint i = 0; i < exp_count; i++) {
+	for(uint i = 0; i < op->exp_count; i++) {
 		AR_ExpNode *exp = op->exps[i];
 		if(!AR_EXP_ContainsAggregation(exp, NULL)) {
 			op->expression_classification[i] = NON_AGGREGATED;
@@ -54,13 +52,13 @@ static void _classify_expressions(OpAggregate *op) {
 		}
 	}
 
-	for(uint i = 0; i < order_exp_count; i++) {
+	for(uint i = 0; i < op->order_exp_count; i++) {
 		AR_ExpNode *exp = op->order_exps[i];
 		if(!AR_EXP_ContainsAggregation(exp, NULL)) {
-			op->expression_classification[exp_count + i] = NON_AGGREGATED;
+			op->expression_classification[op->exp_count + i] = NON_AGGREGATED;
 			op->non_aggregated_expressions = array_append(op->non_aggregated_expressions, exp);
 		} else {
-			op->expression_classification[exp_count + i] = AGGREGATED;
+			op->expression_classification[op->exp_count + i] = AGGREGATED;
 		}
 	}
 }
@@ -68,17 +66,14 @@ static void _classify_expressions(OpAggregate *op) {
 static AR_ExpNode **_build_aggregated_expressions(OpAggregate *op) {
 	AR_ExpNode **agg_exps = array_new(AR_ExpNode *, 1);
 
-	uint exp_count = array_len(op->exps);
-	uint order_exp_count = array_len(op->order_exps);
-
-	for(uint i = 0; i < exp_count; i++) {
+	for(uint i = 0; i < op->exp_count; i++) {
 		if(op->expression_classification[i] == NON_AGGREGATED) continue;
 		AR_ExpNode *exp = AR_EXP_Clone(op->exps[i]);
 		agg_exps = array_append(agg_exps, exp);
 	}
 
-	for(uint i = 0; i < order_exp_count; i++) {
-		if(op->expression_classification[exp_count + i] == NON_AGGREGATED) continue;
+	for(uint i = 0; i < op->order_exp_count; i++) {
+		if(op->expression_classification[op->exp_count + i] == NON_AGGREGATED) continue;
 		AR_ExpNode *exp = AR_EXP_Clone(op->order_exps[i]);
 		agg_exps = array_append(agg_exps, exp);
 	}
@@ -201,8 +196,6 @@ static Record _handoff(OpAggregate *op) {
 	Group *group;
 	if(!CacheGroupIterNext(op->group_iter, &key, &group)) return NULL;
 
-	uint exp_count = array_len(op->exps);
-	uint order_exp_count = array_len(op->order_exps);
 	Record r = OpBase_CreateRecord((OpBase *)op);
 	// Track the newly-allocated Record so that they may be freed if execution fails.
 	OpBase_AddVolatileRecord((OpBase *)op, r);
@@ -212,7 +205,7 @@ static Record _handoff(OpAggregate *op) {
 	uint keyIdx = 0; // Index into group keys.
 	SIValue res;
 
-	for(uint i = 0; i < exp_count; i++) {
+	for(uint i = 0; i < op->exp_count; i++) {
 		if(op->expression_classification[i] == AGGREGATED) {
 			// Aggregated expression, get aggregated value.
 			AR_ExpNode *exp = group->aggregationFunctions[aggIdx++];
@@ -231,8 +224,8 @@ static Record _handoff(OpAggregate *op) {
 	}
 
 	// Tack order by exps for SORT operation to process.
-	for(uint i = 0; i < order_exp_count; i++) {
-		if(op->expression_classification[exp_count + i] == AGGREGATED) {
+	for(uint i = 0; i < op->order_exp_count; i++) {
+		if(op->expression_classification[op->exp_count + i] == AGGREGATED) {
 			// Aggregated expression, get aggregated value.
 			AR_ExpNode *exp = group->aggregationFunctions[aggIdx++];
 			AR_EXP_Reduce(exp);
@@ -257,8 +250,10 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	OpAggregate *op = malloc(sizeof(OpAggregate));
 	op->ast = QueryCtx_GetAST();
 	op->exps = exps;
+	op->exp_count = exps ? array_len(exps) : 0;
 	op->group = NULL;
 	op->order_exps = NULL;
+	op->order_exp_count = 0;
 	op->group_iter = NULL;
 	op->group_keys = NULL;
 	op->expression_classification = NULL;
@@ -267,8 +262,8 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 
 	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", AggregateInit, AggregateConsume,
 				AggregateReset, NULL, AggregateFree, plan);
-	uint exp_count = array_len(op->exps);
-	for(uint i = 0; i < exp_count; i ++) {
+	// TODO Would like to move this loop to Init, but Filter placement relies on it.
+	for(uint i = 0; i < op->exp_count; i ++) {
 		// The projected record will associate values with their resolved name
 		// to ensure that space is allocated for each entry.
 		OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
@@ -283,9 +278,8 @@ static OpResult AggregateInit(OpBase *opBase) {
 	AR_ExpNode **order_exps = _getOrderExpressions(opBase->parent);
 	if(order_exps) {
 		op->order_exps = order_exps;
-
-		uint order_exp_count = array_len(order_exps);
-		for(uint i = 0; i < order_exp_count; i ++) {
+		op->order_exp_count = array_len(order_exps);
+		for(uint i = 0; i < op->order_exp_count; i ++) {
 			AR_ExpNode *exp = op->order_exps[i];
 			OpBase_Modifies(opBase, exp->resolved_name);
 		}

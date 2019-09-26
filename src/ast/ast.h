@@ -11,8 +11,6 @@
 #include "../redismodule.h"
 #include "rax.h"
 
-typedef const void *AST_IDENTIFIER;
-
 #define IDENTIFIER_NOT_FOUND UINT_MAX
 
 typedef enum {
@@ -69,9 +67,6 @@ long AST_ParseIntegerNode(const cypher_astnode_t *int_node);
 
 // Returns true if the given clause contains an aggregate function.
 bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause);
-
-// Build the column strings for a result set.
-const char **AST_BuildReturnColumns(const cypher_astnode_t *return_clause);
 
 // Determine the maximum number of records
 // which will be considered when evaluating an algebraic expression.
