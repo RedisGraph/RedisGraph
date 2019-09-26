@@ -14,7 +14,7 @@ AggCtx *Agg_Reduce(void *ctx, StepFunc f, ReduceFunc reduce) {
 }
 
 AggCtx *Agg_NewCtx(void *fctx) {
-	AggCtx *ac = malloc(sizeof(AggCtx));
+	AggCtx *ac = rm_malloc(sizeof(AggCtx));
 	ac->err = NULL;
 	ac->fctx = fctx;
 	ac->result = SI_NullVal();
@@ -24,7 +24,7 @@ AggCtx *Agg_NewCtx(void *fctx) {
 }
 
 void AggCtx_Free(AggCtx *ctx) {
-	free(ctx->fctx);
+	rm_free(ctx->fctx);
 	SIValue_Free(&ctx->result);
 	free(ctx);
 }
