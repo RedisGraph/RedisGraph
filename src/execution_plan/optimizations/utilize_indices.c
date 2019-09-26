@@ -201,13 +201,17 @@ bool _applicableFilter(Index *idx, OpFilter *filter) {
 	rax *attr = NULL;
 	rax *entities = NULL;
 
-	uint idx_fields_count = Index_FieldsCount(idx);
-	const char **idx_fields = Index_GetFields(idx);
 	FT_FilterNode *filter_tree = filter->filterTree;
 
 	// Make sure the filter root is not a function.
 	// TODO: As a result of issue 667, transform "IN" into a sequence of "OR" to use in RedisSearch.
 	if(filter_tree->t == FT_N_EXP) {
+		res = false;
+		goto cleanup;
+	}
+
+	// Make sure the "not equal, <>" operator isn't used.
+	if(FilterTree_containsOp(filter_tree, OP_NEQUAL)) {
 		res = false;
 		goto cleanup;
 	}
@@ -223,11 +227,8 @@ bool _applicableFilter(Index *idx, OpFilter *filter) {
 		goto cleanup;
 	}
 
-	// Make sure the "not equal, <>" operator isn't used.
-	if(FilterTree_containsOp(filter_tree, OP_NEQUAL)) {
-		res = false;
-		goto cleanup;
-	}
+	uint idx_fields_count = Index_FieldsCount(idx);
+	const char **idx_fields = Index_GetFields(idx);
 
 	// Make sure all filtered attributes are indexed.
 	attr = FilterTree_CollectAttributes(filter_tree);
