@@ -22,10 +22,11 @@
 #include <assert.h>
 #include <setjmp.h>
 
-/* Returns the left most leaf operation. */
-static inline OpBase *_ExecutionPlan_LocateLeaf(OpBase *root) {
+/* Returns the left most leaf operation in the current segment. */
+static inline OpBase *_ExecutionPlan_LocateLeaf(OpBase *root, OpBase *prev_segment_head) {
+	if(root == prev_segment_head) return root->parent; // Don't recurse into the previous segment.
 	if(root->childCount == 0) return root;
-	return _ExecutionPlan_LocateLeaf(root->children[0]);
+	return _ExecutionPlan_LocateLeaf(root->children[0], prev_segment_head);
 }
 
 static inline OpBase *_ExecutionPlan_LocateParentProjection(OpBase *root) {
@@ -34,9 +35,9 @@ static inline OpBase *_ExecutionPlan_LocateParentProjection(OpBase *root) {
 	return _ExecutionPlan_LocateParentProjection(root->parent);
 }
 
-static inline OpBase *_ExecutionPlan_FindConnectingOp(OpBase *root) {
-	// Find the leftmost leaf.
-	OpBase *leaf = _ExecutionPlan_LocateLeaf(root);
+static inline OpBase *_ExecutionPlan_FindConnectingOp(OpBase *root, OpBase *prev_segment_head) {
+	// Find the leftmost leaf in this segment.
+	OpBase *leaf = _ExecutionPlan_LocateLeaf(root, prev_segment_head);
 
 	// Traverse upwards until an aggregate/project op is found.
 	return _ExecutionPlan_LocateParentProjection(leaf);
@@ -718,7 +719,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		ExecutionPlan *current_segment = segments[i];
 
 		OpBase *prev_root = prev_segment->root;
-		connecting_op = _ExecutionPlan_FindConnectingOp(current_segment->root);
+		connecting_op = _ExecutionPlan_FindConnectingOp(current_segment->root, prev_root);
 		assert(connecting_op->childCount == 0);
 		ExecutionPlan_AddOp(connecting_op, prev_root);
 	}
@@ -741,8 +742,8 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		if(!connecting_op) {
 			// Set the connecting op if our query is just a RETURN.
 			assert(segment_count == 1);
+			connecting_op = _ExecutionPlan_FindConnectingOp(plan->root, NULL);
 		}
-		connecting_op = _ExecutionPlan_FindConnectingOp(plan->root);
 		// Check whether the query culminates in a RETURN * clause.
 		bool return_all = cypher_ast_return_has_include_existing(last_clause);
 		if(return_all) _PopulateReturnAll(segments[segment_count - 2], connecting_op);

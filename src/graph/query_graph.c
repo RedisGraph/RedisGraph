@@ -285,7 +285,6 @@ QGEdge *QueryGraph_RemoveEdge(QueryGraph *qg, QGEdge *e) {
 			break;
 		}
 	}
-	assert(i != edge_count && "edge wasn't found in graph");
 	return e;
 }
 
@@ -398,3 +397,4 @@ void QueryGraph_Free(QueryGraph *qg) {
 	array_free(qg->edges);
 	rm_free(qg);
 }
+
