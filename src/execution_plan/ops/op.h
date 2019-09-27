@@ -43,6 +43,7 @@ typedef enum {
 	OPType_VALUE_HASH_JOIN = (1 << 23),
 	OPType_APPLY = (1 << 24),
 	OPType_ARGUMENT = (1 << 25),
+	OPType_SEMI_APPLY = (1 << 26),
 } OPType;
 
 #define OP_SCAN (OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN | OPType_INDEX_SCAN | OPType_NODE_BY_ID_SEEK)

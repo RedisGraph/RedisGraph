@@ -32,3 +32,4 @@
 #include "op_value_hash_join.h"
 #include "op_apply.h"
 #include "op_argument.h"
+#include "op_semi_apply.h"
