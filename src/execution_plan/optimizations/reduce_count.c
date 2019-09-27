@@ -149,7 +149,8 @@ static int _identifyEdgeCountPattern(OpBase *root, OpResult **opResult, OpAggreg
 	*opTraverse = op;
 	op = op->children[0];
 
-	// Full node scan.
+	// Only a full node scan can be converted, as a labeled source acts as a filter
+	// that may invalidate some of the edges.
 	if(op->type != OPType_ALL_NODE_SCAN || op->childCount != 0) return 0;
 	*opScan = op;
 
@@ -214,17 +215,20 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	/* See if execution-plan matches the pattern:
 	 * "Full Scan -> Conditional Traverse -> Aggregate -> Results".
 	 * if that's not the case, simply return without making any modifications. */
-	if(!_identifyEdgeCountPattern(plan->root, &opResult, &opAggregate, &opTraverse, &opScan))
-		return;
+	if(!_identifyEdgeCountPattern(plan->root, &opResult, &opAggregate, &opTraverse, &opScan)) return;
 
-	/* User is trying to get total number of edges in the graph
-	 * optimize by skiping SCAN, Traverse and AGGREGATE. */
+	/* User is trying to count edges (either in total or of specific types) in the graph.
+	 * Optimize by skipping Scan, Traverse and Aggregate. */
 	SIValue edgeCount = SI_LongVal(0);
 	Graph *g = QueryCtx_GetGraph();
 
 	// If type is specified, count only labeled entities.
-	CondTraverse *condTraverse = (CondTraverse *) opTraverse;
+	CondTraverse *condTraverse = (CondTraverse *)opTraverse;
 	int edgeRelationCount = condTraverse->edgeRelationCount;
+
+	// The traversal op doesn't contain information about the traversed edge, cannot apply optimization.
+	if(edgeRelationCount == 0) return;
+
 	if(condTraverse->edgeRelationTypes[0] != GRAPH_NO_RELATION) {
 		uint64_t edges = 0;
 		for(int i = 0; i < edgeRelationCount; i++) {
