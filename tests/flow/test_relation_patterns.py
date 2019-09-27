@@ -211,3 +211,19 @@ class testRelationPattern(FlowTestsBase):
                            ['v3', 'v5'],
                            ['v4', 'v5']]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Test traversals over transposed edge matrices.
+    def test06_transposed_traversals(self):
+        # The intermediate node 'b' will be used to form the scan operation because it is filtered.
+        # As such, one of the traversals must be transposed.
+        query = """MATCH (a)-[e]->(b {val:'v3'})-[]->(c:L) RETURN COUNT(e)"""
+        plan = redis_graph.execution_plan(query)
+
+        # Verify that the execution plan contains two traversals following opposing edge directions.
+        self.env.assertIn("<-", plan)
+        self.env.assertIn("->", plan)
+
+        # Verify results.
+        actual_result = redis_graph.query(query)
+        expected_result = [[1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
