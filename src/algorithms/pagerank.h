@@ -1,14 +1,4 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
-
-#pragma once
-
-#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
-
-/*
     LAGraph:  graph algorithms based on GraphBLAS
     Copyright 2019 LAGraph Contributors.
     (see Contributors.txt for a full list of Contributors; see
@@ -29,6 +19,10 @@
     code, object code, documentation and other files ("Third Party Software").
     See LICENSE file for more details.
 */
+
+#pragma once
+
+#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 typedef struct
 {

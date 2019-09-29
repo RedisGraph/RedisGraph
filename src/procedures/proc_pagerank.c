@@ -30,24 +30,40 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx, const char **args) {
 	const char *label = args[0];
 	const char *relation = args[1];
 
+	GrB_Index n = 0;
 	Schema *s = NULL;
 	GrB_Matrix l = NULL;
 	GrB_Matrix r = NULL;
+	GrB_Index *mappings = NULL; // Mappings, array for returning row indices of tuples.
+	GrB_Matrix reduced = GrB_NULL;
 	Graph *g = QueryCtx_GetGraph();
+	LAGraph_PageRank *rankings = NULL;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
+
+	// Setup context.
+	PagerankContext *pdata = rm_malloc(sizeof(PagerankContext));
+	pdata->n = n;
+	pdata->i = 0;
+	pdata->g = g;
+	pdata->mappings = mappings;
+	pdata->rankings = rankings;
+	pdata->output = array_new(SIValue, 4);
+	pdata->output = array_append(pdata->output, SI_ConstStringVal("node"));
+	pdata->output = array_append(pdata->output, SI_Node(NULL)); // Place holder.
+	pdata->output = array_append(pdata->output, SI_ConstStringVal("score"));
+	pdata->output = array_append(pdata->output, SI_DoubleVal(0.0)); // Place holder.
+	ctx->privateData = pdata;
 
 	// Get label matrix.
 	s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-	l = (s) ? Graph_GetLabelMatrix(g, s->id) : Graph_GetZeroMatrix(g);
+	if(!s) return PROCEDURE_OK;
+	l = Graph_GetLabelMatrix(g, s->id);
 
 	// Get relation matrix.
 	s = GraphContext_GetSchema(gc, relation, SCHEMA_EDGE);
-	r = (s) ? Graph_GetRelationMatrix(g, s->id) : Graph_GetZeroMatrix(g);
+	if(!s) return PROCEDURE_OK;
+	r = Graph_GetRelationMatrix(g, s->id);
 
-	// Mappings, array for returning row indices of tuples
-	GrB_Index n;
-	GrB_Matrix reduced;
-	GrB_Index *mappings = NULL;
 	GrB_Index rows = Graph_RequiredMatrixDim(g);
 	GrB_Index cols = rows;
 	assert(GrB_Matrix_nvals(&n, l) == GrB_SUCCESS);
@@ -70,7 +86,7 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx, const char **args) {
 		GrB_free(&desc);
 	}
 
-	LAGraph_PageRank *rankings;
+
 	double tol = 1e-4;
 	int iters, itermax = 100;
 	assert(Pagerank(&rankings, reduced, itermax, tol, &iters) == GrB_SUCCESS);
@@ -78,20 +94,10 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx, const char **args) {
 	// Clean up.
 	GrB_free(&reduced);
 
-	// Setup context.
-	PagerankContext *pdata = rm_malloc(sizeof(PagerankContext));
+	// Update context.
 	pdata->n = n;
-	pdata->i = 0;
-	pdata->g = g;
 	pdata->mappings = mappings;
 	pdata->rankings = rankings;
-	pdata->output = array_new(SIValue, 4);
-	pdata->output = array_append(pdata->output, SI_ConstStringVal("node"));
-	pdata->output = array_append(pdata->output, SI_Node(NULL)); // Place holder.
-	pdata->output = array_append(pdata->output, SI_ConstStringVal("score"));
-	pdata->output = array_append(pdata->output, SI_DoubleVal(0.0)); // Place holder.
-
-	ctx->privateData = pdata;
 	return PROCEDURE_OK;
 }
 

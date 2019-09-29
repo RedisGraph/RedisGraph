@@ -43,6 +43,6 @@ class testPagerankFlow(FlowTestsBase):
             # 2) "0.22218681871891"        
             self.env.assertEqual(len(resultset), 2)
             self.env.assertEqual(resultset[0][0], 2)
-            self.env.assertEqual(resultset[0][1], 0.777813196182251)
+            self.env.assertAlmostEqual(resultset[0][1], 0.777813196182251, 0.0001)
             self.env.assertEqual(resultset[1][0], 1)
-            self.env.assertEqual(resultset[1][1], 0.22218681871891)
+            self.env.assertAlmostEqual(resultset[1][1], 0.22218681871891, 0.0001)
