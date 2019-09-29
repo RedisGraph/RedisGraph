@@ -12,7 +12,7 @@
 #include "agg_ctx.h"
 #include "agg_funcs.h"
 
-void Agg_GetFunc(const char *name, bool distinct,  AggCtx **ctx);
+void Agg_GetFunc(const char *name, bool distinct, AggCtx **ctx);
 bool Agg_FuncExists(const char *name);
 void Agg_RegisterFunc(const char *name, AggFuncInit f);
 #endif

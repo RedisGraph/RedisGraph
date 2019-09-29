@@ -7,11 +7,11 @@
 #include "aggregate.h"
 #include "../util/rmalloc.h"
 
-AggCtx *Agg_Reduce(void *ctx, StepFunc f, ReduceFunc reduce, InnerData_New innerDataNew,
+AggCtx *Agg_Reduce(void *ctx, StepFunc f, FinalizeFunc finalize, InnerData_New innerDataNew,
 				   AggCtx_InnerData_Free innerDataFree) {
 	AggCtx *ac = Agg_NewCtx(ctx);
 	ac->Step = f;
-	ac->ReduceNext = reduce;
+	ac->Finalize = finalize;
 	ac->InnerData_New = innerDataNew;
 	ac->InnerData_Free = innerDataFree;
 	return ac;
@@ -23,7 +23,7 @@ AggCtx *Agg_NewCtx(void *fctx) {
 	ac->fctx = fctx;
 	ac->result = SI_NullVal();
 	ac->Step = NULL;
-	ac->ReduceNext = NULL;
+	ac->Finalize = NULL;
 	ac->InnerData_New = NULL;
 	ac->InnerData_Free = NULL;
 	return ac;
@@ -31,7 +31,7 @@ AggCtx *Agg_NewCtx(void *fctx) {
 
 AggCtx *Agg_CloneCtx(AggCtx *ctx) {
 	void *fctx = ctx->InnerData_New();
-	return Agg_Reduce(fctx, ctx->Step, ctx->ReduceNext, ctx->InnerData_New, ctx->InnerData_Free);
+	return Agg_Reduce(fctx, ctx->Step, ctx->Finalize, ctx->InnerData_New, ctx->InnerData_Free);
 }
 
 void AggCtx_Free(AggCtx *ctx) {
@@ -50,7 +50,7 @@ int Agg_Step(AggCtx *ctx, SIValue *argv, int argc) {
 }
 
 int Agg_Finalize(AggCtx *ctx) {
-	return ctx->ReduceNext(ctx);
+	return ctx->Finalize(ctx);
 }
 
 inline void *Agg_FuncCtx(AggCtx *ctx) {

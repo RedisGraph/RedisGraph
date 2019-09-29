@@ -19,8 +19,6 @@
 
 #define ISLT(a,b) ((*a) < (*b))
 
-#define SI_LT(a,b) (SIValue_Compare((*a), (*b), NULL) > 0)
-
 typedef struct {
 	double total;
 	set *hashSet;
@@ -90,10 +88,12 @@ void __agg_sumCtxFree(AggCtx *ctx) {
 
 AggCtx *Agg_SumFunc(bool distinct) {
 	__agg_sumCtx *ac = __agg_sumCtxNew();
-	if(distinct) return Agg_Reduce(ac, __agg_sumDistinctStep, __agg_sumReduceNext, __agg_sumCtxNew,
-									   __agg_sumCtxFree);
-	else return Agg_Reduce(ac, __agg_sumStep, __agg_sumReduceNext, __agg_sumCtxNew,
-							   __agg_sumCtxFree);
+	if(distinct) {
+		return Agg_Reduce(ac, __agg_sumDistinctStep, __agg_sumReduceNext, __agg_sumCtxNew,
+						  __agg_sumCtxFree);
+	} else {
+		return Agg_Reduce(ac, __agg_sumStep, __agg_sumReduceNext, __agg_sumCtxNew, __agg_sumCtxFree);
+	}
 }
 
 //------------------------------------------------------------------------
@@ -180,9 +180,12 @@ void __agg_avgCtxFree(AggCtx *ctx) {
 
 AggCtx *Agg_AvgFunc(bool distinct) {
 	__agg_avgCtx *ac = __agg_avgCtxNew();
-	if(distinct) return Agg_Reduce(ac, __agg_avgDistinctStep, __agg_avgReduceNext, __agg_avgCtxNew,
-									   __agg_avgCtxFree);
-	return Agg_Reduce(ac, __agg_avgStep, __agg_avgReduceNext, __agg_avgCtxNew, __agg_avgCtxFree);
+	if(distinct) {
+		return Agg_Reduce(ac, __agg_avgDistinctStep, __agg_avgReduceNext, __agg_avgCtxNew,
+						  __agg_avgCtxFree);
+	} else {
+		return Agg_Reduce(ac, __agg_avgStep, __agg_avgReduceNext, __agg_avgCtxNew, __agg_avgCtxFree);
+	}
 }
 
 //------------------------------------------------------------------------
@@ -332,10 +335,13 @@ void __agg_countCtxFree(AggCtx *ctx) {
 
 AggCtx *Agg_CountFunc(bool distinct) {
 	__agg_countCtx *ac = __agg_countCtxNew();
-	if(distinct) return Agg_Reduce(ac, __agg_countDistinctStep, __agg_countReduceNext,
-									   __agg_countCtxNew, __agg_countCtxFree);
-	else return Agg_Reduce(ac, __agg_countStep, __agg_countReduceNext, __agg_countCtxNew,
-							   __agg_countCtxFree);
+	if(distinct) {
+		return Agg_Reduce(ac, __agg_countDistinctStep, __agg_countReduceNext, __agg_countCtxNew,
+						  __agg_countCtxFree);
+	} else {
+		return Agg_Reduce(ac, __agg_countStep, __agg_countReduceNext, __agg_countCtxNew,
+						  __agg_countCtxFree);
+	}
 }
 
 //------------------------------------------------------------------------
@@ -493,18 +499,24 @@ void __agg_PercCtxFree(AggCtx *ctx) {
 // The percentile initializers are identical save for the ReduceNext function they specify
 AggCtx *Agg_PercDiscFunc(bool distinct) {
 	__agg_percCtx *ac = __agg_PercCtxNew();
-	if(distinct) return Agg_Reduce(ac, __agg_percDistinctStep, __agg_percDiscReduceNext,
-									   __agg_PercCtxNew, __agg_PercCtxFree);
-	else return Agg_Reduce(ac, __agg_percStep, __agg_percDiscReduceNext, __agg_PercCtxNew,
-							   __agg_PercCtxFree);
+	if(distinct) {
+		return Agg_Reduce(ac, __agg_percDistinctStep, __agg_percDiscReduceNext, __agg_PercCtxNew,
+						  __agg_PercCtxFree);
+	} else {
+		return Agg_Reduce(ac, __agg_percStep, __agg_percDiscReduceNext, __agg_PercCtxNew,
+						  __agg_PercCtxFree);
+	}
 }
 
 AggCtx *Agg_PercContFunc(bool distinct) {
 	__agg_percCtx *ac = __agg_PercCtxNew();
-	if(distinct) return Agg_Reduce(ac, __agg_percDistinctStep, __agg_percContReduceNext,
-									   __agg_PercCtxNew, __agg_PercCtxFree);
-	else return Agg_Reduce(ac, __agg_percStep, __agg_percContReduceNext, __agg_PercCtxNew,
-							   __agg_PercCtxFree);
+	if(distinct) {
+		return Agg_Reduce(ac, __agg_percDistinctStep, __agg_percContReduceNext, __agg_PercCtxNew,
+						  __agg_PercCtxFree);
+	} else {
+		return Agg_Reduce(ac, __agg_percStep, __agg_percContReduceNext, __agg_PercCtxNew,
+						  __agg_PercCtxFree);
+	}
 }
 
 //------------------------------------------------------------------------
@@ -615,10 +627,13 @@ void __agg_StdevCtxFree(AggCtx *ctx) {
 
 AggCtx *Agg_StdevFunc(bool distinct) {
 	__agg_stdevCtx *ac = __agg_stdevCtxNew();
-	if(distinct) return Agg_Reduce(ac, __agg_StdevDistinctStep, __agg_StdevReduceNext,
-									   __agg_stdevCtxNew, __agg_StdevCtxFree);
-	else return Agg_Reduce(ac, __agg_StdevStep, __agg_StdevReduceNext, __agg_stdevCtxNew,
-							   __agg_StdevCtxFree);
+	if(distinct) {
+		return Agg_Reduce(ac, __agg_StdevDistinctStep, __agg_StdevReduceNext, __agg_stdevCtxNew,
+						  __agg_StdevCtxFree);
+	} else {
+		return Agg_Reduce(ac, __agg_StdevStep, __agg_StdevReduceNext, __agg_stdevCtxNew,
+						  __agg_StdevCtxFree);
+	}
 }
 
 // StdevP is identical to Stdev save for an altered value we can check for with a bool
@@ -686,10 +701,13 @@ void __agg_collectCtxFree(AggCtx *ctx) {
 
 AggCtx *Agg_CollectFunc(bool distinct) {
 	__agg_collectCtx *ac = __agg_collectCtxNew();
-	if(distinct) return Agg_Reduce(ac, __agg_collectDistinctStep, __agg_collectReduceNext,
-									   __agg_collectCtxNew, __agg_collectCtxFree);
-	else return Agg_Reduce(ac, __agg_collectStep, __agg_collectReduceNext, __agg_collectCtxNew,
-							   __agg_collectCtxFree);
+	if(distinct) {
+		return Agg_Reduce(ac, __agg_collectDistinctStep, __agg_collectReduceNext, __agg_collectCtxNew,
+						  __agg_collectCtxFree);
+	} else {
+		return Agg_Reduce(ac, __agg_collectStep, __agg_collectReduceNext, __agg_collectCtxNew,
+						  __agg_collectCtxFree);
+	}
 }
 
 //------------------------------------------------------------------------

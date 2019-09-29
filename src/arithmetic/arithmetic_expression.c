@@ -58,7 +58,7 @@ static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 	return clone;
 }
 
-static AR_ExpNode *_AR_EXP_AllocateOpNode(const char *func_name, uint child_count) {
+static AR_ExpNode *_AR_EXP_NewFunctionLessOpNode(const char *func_name, uint child_count) {
 	assert(func_name);
 
 	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
@@ -70,14 +70,13 @@ static AR_ExpNode *_AR_EXP_AllocateOpNode(const char *func_name, uint child_coun
 }
 
 static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
-	AR_ExpNode *clone = _AR_EXP_AllocateOpNode(exp->op.func_name, exp->op.child_count);
+	AR_ExpNode *clone = _AR_EXP_NewFunctionLessOpNode(exp->op.func_name, exp->op.child_count);
 	if(exp->op.type == AR_OP_FUNC) {
 		clone->op.f = exp->op.f;
 		clone->op.type = AR_OP_FUNC;
 	} else {
 		clone->op.agg_func = Agg_CloneCtx(exp->op.agg_func);
 		clone->op.type = AR_OP_AGGREGATE;
-
 	}
 	for(uint i = 0; i < exp->op.child_count; i++) {
 		AR_ExpNode *child = AR_EXP_Clone(exp->op.children[i]);
@@ -88,7 +87,7 @@ static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 
 AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 
-	AR_ExpNode *node = _AR_EXP_AllocateOpNode(func_name, child_count);
+	AR_ExpNode *node = _AR_EXP_NewFunctionLessOpNode(func_name, child_count);
 
 	/* Determine function type. */
 	AR_FuncDesc *func = AR_GetFunc(func_name);
@@ -111,7 +110,7 @@ AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 }
 
 AR_ExpNode *AR_EXP_NewDistinctOpNode(const char *func_name, uint child_count) {
-	AR_ExpNode *node = _AR_EXP_AllocateOpNode(func_name, child_count);
+	AR_ExpNode *node = _AR_EXP_NewFunctionLessOpNode(func_name, child_count);
 
 	AggCtx *agg_func;
 	Agg_GetFunc(func_name, true, &agg_func);

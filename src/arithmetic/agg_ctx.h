@@ -16,7 +16,7 @@ struct AggCtx {
 	AggError *err;
 	SIValue result;
 	int (*Step)(struct AggCtx *ctx, SIValue *argv, int argc);
-	int (*ReduceNext)(struct AggCtx *ctx);
+	int (*Finalize)(struct AggCtx *ctx);
 	void *(*InnerData_New)();
 	void (*InnerData_Free)(struct AggCtx *ctx);
 };
