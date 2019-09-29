@@ -120,14 +120,6 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	// currently we do not support AOF in graph
-	// TODO: remove when we do.
-	int contextFlags = RedisModule_GetContextFlags(ctx);
-	if(contextFlags & REDISMODULE_CTX_FLAGS_AOF) {
-		RedisModule_Log(ctx, "warning", "RedisGraph does not support AOF");
-		return REDISMODULE_ERR;
-	}
-
 	Proc_Register();         // Register procedures.
 	AR_RegisterFuncs();      // Register arithmetic functions.
 	Agg_RegisterFuncs();     // Register aggregation functions.

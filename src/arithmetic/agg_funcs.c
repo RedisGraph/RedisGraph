@@ -116,7 +116,7 @@ int __agg_avgStep(AggCtx *ctx, SIValue *argv, int argc) {
 
 int __agg_avgDistinctStep(AggCtx *ctx, SIValue *argv, int argc) {
 	assert(argc == 1);
-	__agg_sumCtx *ac = Agg_FuncCtx(ctx);
+	__agg_avgCtx *ac = Agg_FuncCtx(ctx);
 	SIValue v = argv[0];
 	// If value not yet seen, process it with the original step method.
 	if(Set_Add(ac->hashSet, v)) return __agg_avgStep(ctx, argv, argc);
@@ -503,7 +503,7 @@ int __agg_StdevStep(AggCtx *ctx, SIValue *argv, int argc) {
 
 int __agg_StdevDistinctStep(AggCtx *ctx, SIValue *argv, int argc) {
 	assert(argc == 1);
-	__agg_percCtx *ac = Agg_FuncCtx(ctx);
+	__agg_stdevCtx *ac = Agg_FuncCtx(ctx);
 	SIValue v = argv[0];
 	// If value not yet seen, process it with the original step method.
 	if(Set_Add(ac->hashSet, v)) return __agg_StdevStep(ctx, argv, argc);
