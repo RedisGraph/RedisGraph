@@ -25,45 +25,30 @@ typedef struct {
 } __agg_sumCtx;
 
 int __agg_sumStep(AggCtx *ctx, SIValue *argv, int argc) {
+	assert(argc == 1);
 	// convert the value of the input sequence to a double if possible
 	__agg_sumCtx *ac = Agg_FuncCtx(ctx);
-
+	SIValue v = argv[0];
 	double n;
-	for(int i = 0; i < argc; i ++) {
-		if(!SIValue_ToDouble(&argv[i], &n)) {
-			if(!SIValue_IsNullPtr(&argv[i])) {
-				// not convertible to double!
-				return Agg_SetError(ctx,
-									"SUM Could not convert upstream value to double");
-			} else {
-				return AGG_OK;
-			}
+	if(!SIValue_ToDouble(&v, &n)) {
+		if(!SIValue_IsNullPtr(&v)) {
+			// not convertible to double!
+			return Agg_SetError(ctx, "SUM Could not convert upstream value to double");
+		} else {
+			return AGG_OK;
 		}
-
-		ac->total += n;
 	}
+	ac->total += n;
 
 	return AGG_OK;
 }
 
 int __agg_sumDistinctStep(AggCtx *ctx, SIValue *argv, int argc) {
-	// convert the value of the input sequence to a double if possible
+	assert(argc == 1);
 	__agg_sumCtx *ac = Agg_FuncCtx(ctx);
-
-	double n;
-	for(int i = 0; i < argc; i ++) {
-		if(!SIValue_ToDouble(&argv[i], &n)) {
-			if(!SIValue_IsNullPtr(&argv[i])) {
-				// not convertible to double!
-				return Agg_SetError(ctx,
-									"SUM Could not convert upstream value to double");
-			} else {
-				return AGG_OK;
-			}
-		}
-		if(Set_Add(ac->hashSet, argv[i])) ac->total += n;
-	}
-
+	SIValue v = argv[0];
+	// If value not yet seen, process it with the original step method.
+	if(Set_Add(ac->hashSet, v)) return __agg_sumStep(ctx, argv, argc);
 	return AGG_OK;
 }
 
@@ -106,50 +91,35 @@ typedef struct {
 } __agg_avgCtx;
 
 int __agg_avgStep(AggCtx *ctx, SIValue *argv, int argc) {
+	assert(argc == 1);
 	// convert the value of the input sequence to a double if possible
 	__agg_avgCtx *ac = Agg_FuncCtx(ctx);
 
+	SIValue v = argv[0];
 	double n;
-	for(int i = 0; i < argc; i ++) {
-		if(!SIValue_ToDouble(&argv[i], &n)) {
-			if(!SIValue_IsNullPtr(&argv[i])) {
-				// not convertible to double!
-				return Agg_SetError(ctx,
-									"AVG Could not convert upstream value to double");
-			} else {
-				return AGG_OK;
-			}
+	if(!SIValue_ToDouble(&argv[0], &n)) {
+		if(!SIValue_IsNullPtr(&v)) {
+			// not convertible to double!
+			return Agg_SetError(ctx,
+								"AVG Could not convert upstream value to double");
+		} else {
+			return AGG_OK;
 		}
-
-
-		ac->count++;
-		ac->total += n;
 	}
+
+
+	ac->count++;
+	ac->total += n;
 
 	return AGG_OK;
 }
 
 int __agg_avgDistinctStep(AggCtx *ctx, SIValue *argv, int argc) {
-	// convert the value of the input sequence to a double if possible
-	__agg_avgCtx *ac = Agg_FuncCtx(ctx);
-
-	double n;
-	for(int i = 0; i < argc; i ++) {
-		if(!SIValue_ToDouble(&argv[i], &n)) {
-			if(!SIValue_IsNullPtr(&argv[i])) {
-				// not convertible to double!
-				return Agg_SetError(ctx,
-									"AVG Could not convert upstream value to double");
-			} else {
-				return AGG_OK;
-			}
-		}
-
-		if(Set_Add(ac->hashSet, argv[i])) {
-			ac->count++;
-			ac->total += n;
-		}
-	}
+	assert(argc == 1);
+	__agg_sumCtx *ac = Agg_FuncCtx(ctx);
+	SIValue v = argv[0];
+	// If value not yet seen, process it with the original step method.
+	if(Set_Add(ac->hashSet, v)) return __agg_avgStep(ctx, argv, argc);
 
 	return AGG_OK;
 }
@@ -200,18 +170,18 @@ typedef struct {
 int __agg_maxStep(AggCtx *ctx, SIValue *argv, int argc) {
 	assert(argc == 1);
 	__agg_maxCtx *ac = Agg_FuncCtx(ctx);
-
+	SIValue v = argv[0];
 	// Any null values are excluded from the calculation.
-	if(SIValue_IsNull(argv[0])) return AGG_OK;
+	if(SIValue_IsNull(v)) return AGG_OK;
 
 	if(!ac->init) {
 		ac->init = true;
-		ac->max = argv[0];
+		ac->max = v;
 		return AGG_OK;
 	}
 
-	if(SIValue_Compare(ac->max, argv[0], NULL) < 0) {
-		ac->max = argv[0];
+	if(SIValue_Compare(ac->max, v, NULL) < 0) {
+		ac->max = v;
 	}
 
 	return AGG_OK;
@@ -251,18 +221,18 @@ typedef struct {
 int __agg_minStep(AggCtx *ctx, SIValue *argv, int argc) {
 	assert(argc == 1);
 	__agg_minCtx *ac = Agg_FuncCtx(ctx);
-
+	SIValue v = argv[0];
 	// Any null values are excluded from the calculation.
-	if(SIValue_IsNull(argv[0])) return AGG_OK;
+	if(SIValue_IsNull(v)) return AGG_OK;
 
 	if(!ac->init) {
 		ac->init = true;
-		ac->min = argv[0];
+		ac->min = v;
 		return AGG_OK;
 	}
 
-	if(SIValue_Compare(ac->min, argv[0], NULL) > 0) {
-		ac->min = argv[0];
+	if(SIValue_Compare(ac->min, v, NULL) > 0) {
+		ac->min = v;
 	}
 
 	return AGG_OK;
@@ -300,21 +270,22 @@ typedef struct {
 } __agg_countCtx;
 
 int __agg_countStep(AggCtx *ctx, SIValue *argv, int argc) {
+	assert(argc == 1);
 	__agg_countCtx *ac = Agg_FuncCtx(ctx);
+	SIValue v = argv[0];
 	// Batch size to this function is always one, so
 	// we only need to check the first argument
-	if(!SIValue_IsNullPtr(argv)) ac->count ++;
+	if(!SIValue_IsNullPtr(&v)) ac->count ++;
 
 	return AGG_OK;
 }
 
 int __agg_countDistinctStep(AggCtx *ctx, SIValue *argv, int argc) {
+	assert(argc == 1);
 	__agg_countCtx *ac = Agg_FuncCtx(ctx);
-	// Batch size to this function is always one, so
-	// we only need to check the first argument
-	SIValue value = *argv;
-	if(!SIValue_IsNullPtr(argv) && Set_Add(ac->hashSet, *argv))
-		ac->count ++;
+	SIValue v = argv[0];
+	// If value not yet seen, process it with the original step method.
+	if(Set_Add(ac->hashSet, v)) return __agg_countStep(ctx, argv, argc);
 	return AGG_OK;
 }
 
@@ -360,13 +331,14 @@ typedef struct {
 
 // This function is agnostic as to percentile method
 int __agg_percStep(AggCtx *ctx, SIValue *argv, int argc) {
+	assert(argc == 2);
 	__agg_percCtx *ac = Agg_FuncCtx(ctx);
 
 	// The last argument is the requested percentile, which we only
 	// need to apply on the first function invocation (at which time
 	// _agg_percCtx->percentile will be -1)
 	if(ac->percentile < 0) {
-		if(!SIValue_ToDouble(&argv[argc - 1], &ac->percentile)) {
+		if(!SIValue_ToDouble(&argv[1], &ac->percentile)) {
 			return Agg_SetError(ctx,
 								"PERC_DISC Could not convert percentile argument to double");
 		}
@@ -376,64 +348,33 @@ int __agg_percStep(AggCtx *ctx, SIValue *argv, int argc) {
 		}
 	}
 
-	if(ac->count + argc - 1 > ac->values_allocated) {
+	if(ac->count > ac->values_allocated) {
 		ac->values_allocated *= 2;
 		ac->values = rm_realloc(ac->values, sizeof(double) * ac->values_allocated);
 	}
 
 	double n;
-	for(int i = 0; i < argc - 1; i ++) {
-		if(!SIValue_ToDouble(&argv[i], &n)) {
-			if(!SIValue_IsNullPtr(&argv[i])) {
-				// not convertible to double!
-				return Agg_SetError(ctx,
-									"PERC_DISC Could not convert upstream value to double");
-			} else {
-				return AGG_OK;
-			}
+	SIValue v = argv[0];
+	if(!SIValue_ToDouble(&v, &n)) {
+		if(!SIValue_IsNullPtr(&v)) {
+			// not convertible to double!
+			return Agg_SetError(ctx,
+								"PERC_DISC Could not convert upstream value to double");
+		} else {
+			return AGG_OK;
 		}
-		ac->values[ac->count++] = n;
 	}
+	ac->values[ac->count++] = n;
 
 	return AGG_OK;
 }
 
 int __agg_percDistinctStep(AggCtx *ctx, SIValue *argv, int argc) {
+	assert(argc == 2);
 	__agg_percCtx *ac = Agg_FuncCtx(ctx);
-
-	// The last argument is the requested percentile, which we only
-	// need to apply on the first function invocation (at which time
-	// _agg_percCtx->percentile will be -1)
-	if(ac->percentile < 0) {
-		if(!SIValue_ToDouble(&argv[argc - 1], &ac->percentile)) {
-			return Agg_SetError(ctx,
-								"PERC_DISC Could not convert percentile argument to double");
-		}
-		if(ac->percentile < 0 || ac->percentile > 1) {
-			return Agg_SetError(ctx,
-								"PERC_DISC Invalid input for percentile is not a valid argument, must be a number in the range 0.0 to 1.0");
-		}
-	}
-
-	if(ac->count + argc - 1 > ac->values_allocated) {
-		ac->values_allocated *= 2;
-		ac->values = rm_realloc(ac->values, sizeof(double) * ac->values_allocated);
-	}
-
-	double n;
-	for(int i = 0; i < argc - 1; i ++) {
-		if(!SIValue_ToDouble(&argv[i], &n)) {
-			if(!SIValue_IsNullPtr(&argv[i])) {
-				// not convertible to double!
-				return Agg_SetError(ctx,
-									"PERC_DISC Could not convert upstream value to double");
-			} else {
-				return AGG_OK;
-			}
-		}
-		if(Set_Add(ac->hashSet, argv[i])) ac->values[ac->count++] = n;
-
-	}
+	SIValue v = argv[0];
+	// If value not yet seen, process it with the original step method.
+	if(Set_Add(ac->hashSet, v)) return __agg_percStep(ctx, argv, argc);
 
 	return AGG_OK;
 }
@@ -535,6 +476,7 @@ typedef struct {
 } __agg_stdevCtx;
 
 int __agg_StdevStep(AggCtx *ctx, SIValue *argv, int argc) {
+	assert(argc == 1);
 	__agg_stdevCtx *ac = Agg_FuncCtx(ctx);
 
 	if(ac->count + argc > ac->values_allocated) {
@@ -543,48 +485,28 @@ int __agg_StdevStep(AggCtx *ctx, SIValue *argv, int argc) {
 	}
 
 	double n;
-	for(int i = 0; i < argc; i ++) {
-		if(!SIValue_ToDouble(&argv[i], &n)) {
-			if(!SIValue_IsNullPtr(&argv[i])) {
-				// not convertible to double!
-				return Agg_SetError(ctx,
-									"STDEV Could not convert upstream value to double");
-			} else {
-				return AGG_OK;
-			}
+	SIValue v = argv[0];
+	if(!SIValue_ToDouble(&v, &n)) {
+		if(!SIValue_IsNullPtr(&v)) {
+			// not convertible to double!
+			return Agg_SetError(ctx,
+								"STDEV Could not convert upstream value to double");
+		} else {
+			return AGG_OK;
 		}
-		ac->values[ac->count++] = n;
-		ac->total += n;
 	}
+	ac->values[ac->count++] = n;
+	ac->total += n;
 
 	return AGG_OK;
 }
 
 int __agg_StdevDistinctStep(AggCtx *ctx, SIValue *argv, int argc) {
-	__agg_stdevCtx *ac = Agg_FuncCtx(ctx);
-
-	if(ac->count + argc > ac->values_allocated) {
-		ac->values_allocated *= 2;
-		ac->values = rm_realloc(ac->values, sizeof(double) * ac->values_allocated);
-	}
-
-	double n;
-	for(int i = 0; i < argc; i ++) {
-		if(!SIValue_ToDouble(&argv[i], &n)) {
-			if(!SIValue_IsNullPtr(&argv[i])) {
-				// not convertible to double!
-				return Agg_SetError(ctx,
-									"STDEV Could not convert upstream value to double");
-			} else {
-				return AGG_OK;
-			}
-		}
-		if(Set_Add(ac->hashSet, argv[i])) {
-			ac->values[ac->count++] = n;
-			ac->total += n;
-		}
-
-	}
+	assert(argc == 1);
+	__agg_percCtx *ac = Agg_FuncCtx(ctx);
+	SIValue v = argv[0];
+	// If value not yet seen, process it with the original step method.
+	if(Set_Add(ac->hashSet, v)) return __agg_StdevStep(ctx, argv, argc);
 
 	return AGG_OK;
 }
@@ -658,29 +580,21 @@ typedef struct {
 int __agg_collectStep(AggCtx *ctx, SIValue *argv, int argc) {
 	// convert multiple values to array
 
-	assert(argc >= 0);
+	assert(argc == 1);
 	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
 
-	if(ac->list.type == T_NULL) ac->list = SI_Array(argc);
-	for(int i = 0; i < argc; i ++) {
-		SIValue value = argv[i];
-		if(value.type == T_NULL) continue;
-		SIArray_Append(&ac->list, value);
-	}
+	SIValue value = argv[0];
+	if(value.type == T_NULL) return AGG_OK;
+	SIArray_Append(&ac->list, value);
 	return AGG_OK;
 }
 
 int __agg_collectDistinctStep(AggCtx *ctx, SIValue *argv, int argc) {
-	// convert multiple values to array
-
-	assert(argc >= 0);
+	assert(argc == 1);
 	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
-
-	for(int i = 0; i < argc; i ++) {
-		SIValue value = argv[i];
-		if(value.type == T_NULL) continue;
-		if(Set_Add(ac->hashSet, value)) SIArray_Append(&ac->list, value);
-	}
+	SIValue v = argv[0];
+	// If value not yet seen, process it with the original step method.
+	if(Set_Add(ac->hashSet, v)) return __agg_collectStep(ctx, argv, argc);
 	return AGG_OK;
 }
 

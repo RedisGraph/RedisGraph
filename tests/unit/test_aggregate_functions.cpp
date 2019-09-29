@@ -158,13 +158,13 @@ TEST_F(AggregateTest, PercentileContTest) {
 	AR_ExpNode *perc;
 	SIValue result;
 	for(int i = 0; i < 5; i++) {
-		perc = AR_EXP_NewOpNode("percentileCont", 6);
+		perc = AR_EXP_NewOpNode("percentileCont", 2);
 		for(int j = 1; j <= 5; j++) {
-			perc->op.children[j - 1] = AR_EXP_NewConstOperandNode(SI_DoubleVal(j * 2));
+			perc->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(j * 2));
+			// The last child of this node will be the requested percentile
+			perc->op.children[1] = test_percentiles[i];
+			AR_EXP_Aggregate(perc, r);
 		}
-		// The last child of this node will be the requested percentile
-		perc->op.children[5] = test_percentiles[i];
-		AR_EXP_Aggregate(perc, r);
 		// Reduce sorts the list and applies the percentile formula
 		AR_EXP_Reduce(perc);
 		result = AR_EXP_Evaluate(perc, r);
@@ -184,21 +184,24 @@ TEST_F(AggregateTest, PercentileDiscTest) {
 	AR_ExpNode *test_percentiles[5] = {zero, dot_one, one_third, half, one};
 	// percentileDisc should always return a value actually contained in the set
 	int expected[5] = {0, 0, 1, 2, 4};
-
+	AR_ExpNode *expectedResults[5];
+	for(int i = 1; i <= 5; i ++) {
+		expectedResults[i - 1] = AR_EXP_NewConstOperandNode(SI_DoubleVal(i * 2));
+	}
 	SIValue expected_outcome;
 	AR_ExpNode *perc;
 	for(int i = 0; i < 5; i++) {
-		perc = AR_EXP_NewOpNode("percentileDisc", 6);
+		perc = AR_EXP_NewOpNode("percentileDisc", 2);
 		for(int j = 1; j <= 5; j++) {
-			perc->op.children[j - 1] = AR_EXP_NewConstOperandNode(SI_DoubleVal(j * 2));
+			perc->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(j * 2));
+			// The last child of this node will be the requested percentile
+			perc->op.children[1] = test_percentiles[i];
+			AR_EXP_Aggregate(perc, r);
 		}
-		// The last child of this node will be the requested percentile
-		perc->op.children[5] = test_percentiles[i];
-		AR_EXP_Aggregate(perc, r);
 		// Reduce sorts the list and applies the percentile formula
 		AR_EXP_Reduce(perc);
 		SIValue res = AR_EXP_Evaluate(perc, r);
-		expected_outcome = AR_EXP_Evaluate(perc->op.children[expected[i]], r);
+		expected_outcome = AR_EXP_Evaluate(expectedResults[expected[i]], r);
 		ASSERT_EQ(res.doubleval, expected_outcome.doubleval);
 		AR_EXP_Free(perc);
 	}
@@ -216,10 +219,11 @@ TEST_F(AggregateTest, StDevTest) {
 	AR_EXP_Free(stdev);
 
 	// Stdev of squares of first 10 positive integers
-	stdev = AR_EXP_NewOpNode("stDev", 10);
+	stdev = AR_EXP_NewOpNode("stDev", 1);
 	double sum = 0;
 	for(int i = 1; i <= 10; i++) {
-		stdev->op.children[i - 1] = AR_EXP_NewConstOperandNode(SI_DoubleVal(i));
+		stdev->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(i));
+		AR_EXP_Aggregate(stdev, r);
 		sum += i;
 	}
 	double mean = sum / 10;
@@ -230,7 +234,6 @@ TEST_F(AggregateTest, StDevTest) {
 	double sample_variance = tmp_variance / 9;
 	double sample_result = sqrt(sample_variance);
 
-	AR_EXP_Aggregate(stdev, r);
 	AR_EXP_Reduce(stdev);
 	result = AR_EXP_Evaluate(stdev, r);
 
@@ -238,15 +241,15 @@ TEST_F(AggregateTest, StDevTest) {
 	AR_EXP_Free(stdev);
 
 	// Perform last test with stDevP
-	AR_ExpNode *stdevp = AR_EXP_NewOpNode("stDevP", 10);
+	AR_ExpNode *stdevp = AR_EXP_NewOpNode("stDevP", 1);
 	for(int i = 1; i <= 10; i++) {
-		stdevp->op.children[i - 1] = AR_EXP_NewConstOperandNode(SI_DoubleVal(i));
+		stdevp->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(i));
+		AR_EXP_Aggregate(stdevp, r);
 	}
 
 	double pop_variance = tmp_variance / 10;
 	double pop_result = sqrt(pop_variance);
 
-	AR_EXP_Aggregate(stdevp, r);
 	AR_EXP_Reduce(stdevp);
 	result = AR_EXP_Evaluate(stdevp, r);
 
