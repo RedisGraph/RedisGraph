@@ -48,8 +48,11 @@ void _MGraph_Delete(void *args) {
 
 	// Remove GraphContext from keyspace.
 	if(RedisModule_DeleteKey(key) == REDISMODULE_OK) {
-		// Report query runtime.
-		ResultSet_ReportQueryRuntime(ctx);
+		char *strElapsed;
+		double t = QueryCtx_GetExecutionTime();
+		asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
+		RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
+		free(strElapsed);
 	} else {
 		Graph_ReleaseLock(gc->g);
 		RedisModule_ReplyWithError(ctx, "Graph deletion failed!");
