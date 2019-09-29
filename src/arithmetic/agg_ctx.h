@@ -19,6 +19,7 @@ struct AggCtx {
 	int (*Finalize)(struct AggCtx *ctx);
 	void *(*InnerData_New)();
 	void (*InnerData_Free)(struct AggCtx *ctx);
+	bool isDistinct;
 };
 typedef struct AggCtx AggCtx;
 

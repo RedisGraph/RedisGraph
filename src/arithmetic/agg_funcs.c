@@ -90,9 +90,10 @@ AggCtx *Agg_SumFunc(bool distinct) {
 	__agg_sumCtx *ac = __agg_sumCtxNew();
 	if(distinct) {
 		return Agg_Reduce(ac, __agg_sumDistinctStep, __agg_sumReduceNext, __agg_sumCtxNew,
-						  __agg_sumCtxFree);
+						  __agg_sumCtxFree, distinct);
 	} else {
-		return Agg_Reduce(ac, __agg_sumStep, __agg_sumReduceNext, __agg_sumCtxNew, __agg_sumCtxFree);
+		return Agg_Reduce(ac, __agg_sumStep, __agg_sumReduceNext, __agg_sumCtxNew, __agg_sumCtxFree,
+						  distinct);
 	}
 }
 
@@ -182,9 +183,10 @@ AggCtx *Agg_AvgFunc(bool distinct) {
 	__agg_avgCtx *ac = __agg_avgCtxNew();
 	if(distinct) {
 		return Agg_Reduce(ac, __agg_avgDistinctStep, __agg_avgReduceNext, __agg_avgCtxNew,
-						  __agg_avgCtxFree);
+						  __agg_avgCtxFree, distinct);
 	} else {
-		return Agg_Reduce(ac, __agg_avgStep, __agg_avgReduceNext, __agg_avgCtxNew, __agg_avgCtxFree);
+		return Agg_Reduce(ac, __agg_avgStep, __agg_avgReduceNext, __agg_avgCtxNew, __agg_avgCtxFree,
+						  distinct);
 	}
 }
 
@@ -235,7 +237,8 @@ void *__agg_maxCtxNew() {
 AggCtx *Agg_MaxFunc(bool distinct) {
 	__agg_maxCtx *ac = __agg_maxCtxNew();
 	// Max aggregation do not care about distinct.
-	return Agg_Reduce(ac, __agg_maxStep, __agg_maxReduceNext, __agg_maxCtxNew, __agg_maxCtxFree);
+	return Agg_Reduce(ac, __agg_maxStep, __agg_maxReduceNext, __agg_maxCtxNew, __agg_maxCtxFree,
+					  distinct);
 }
 
 //------------------------------------------------------------------------
@@ -285,7 +288,8 @@ void __agg_minCtxFree(AggCtx *ctx) {
 AggCtx *Agg_MinFunc(bool distinct) {
 	__agg_minCtx *ac = __agg_minCtxNew();
 	// Min aggregation do not care about distinct.
-	return Agg_Reduce(ac, __agg_minStep, __agg_minReduceNext, __agg_minCtxNew, __agg_minCtxFree);
+	return Agg_Reduce(ac, __agg_minStep, __agg_minReduceNext, __agg_minCtxNew, __agg_minCtxFree,
+					  distinct);
 }
 
 //------------------------------------------------------------------------
@@ -337,10 +341,10 @@ AggCtx *Agg_CountFunc(bool distinct) {
 	__agg_countCtx *ac = __agg_countCtxNew();
 	if(distinct) {
 		return Agg_Reduce(ac, __agg_countDistinctStep, __agg_countReduceNext, __agg_countCtxNew,
-						  __agg_countCtxFree);
+						  __agg_countCtxFree, distinct);
 	} else {
 		return Agg_Reduce(ac, __agg_countStep, __agg_countReduceNext, __agg_countCtxNew,
-						  __agg_countCtxFree);
+						  __agg_countCtxFree, distinct);
 	}
 }
 
@@ -501,10 +505,10 @@ AggCtx *Agg_PercDiscFunc(bool distinct) {
 	__agg_percCtx *ac = __agg_PercCtxNew();
 	if(distinct) {
 		return Agg_Reduce(ac, __agg_percDistinctStep, __agg_percDiscReduceNext, __agg_PercCtxNew,
-						  __agg_PercCtxFree);
+						  __agg_PercCtxFree, distinct);
 	} else {
 		return Agg_Reduce(ac, __agg_percStep, __agg_percDiscReduceNext, __agg_PercCtxNew,
-						  __agg_PercCtxFree);
+						  __agg_PercCtxFree, distinct);
 	}
 }
 
@@ -512,10 +516,10 @@ AggCtx *Agg_PercContFunc(bool distinct) {
 	__agg_percCtx *ac = __agg_PercCtxNew();
 	if(distinct) {
 		return Agg_Reduce(ac, __agg_percDistinctStep, __agg_percContReduceNext, __agg_PercCtxNew,
-						  __agg_PercCtxFree);
+						  __agg_PercCtxFree, distinct);
 	} else {
 		return Agg_Reduce(ac, __agg_percStep, __agg_percContReduceNext, __agg_PercCtxNew,
-						  __agg_PercCtxFree);
+						  __agg_PercCtxFree, distinct);
 	}
 }
 
@@ -629,10 +633,10 @@ AggCtx *Agg_StdevFunc(bool distinct) {
 	__agg_stdevCtx *ac = __agg_stdevCtxNew();
 	if(distinct) {
 		return Agg_Reduce(ac, __agg_StdevDistinctStep, __agg_StdevReduceNext, __agg_stdevCtxNew,
-						  __agg_StdevCtxFree);
+						  __agg_StdevCtxFree, distinct);
 	} else {
 		return Agg_Reduce(ac, __agg_StdevStep, __agg_StdevReduceNext, __agg_stdevCtxNew,
-						  __agg_StdevCtxFree);
+						  __agg_StdevCtxFree, distinct);
 	}
 }
 
@@ -703,10 +707,10 @@ AggCtx *Agg_CollectFunc(bool distinct) {
 	__agg_collectCtx *ac = __agg_collectCtxNew();
 	if(distinct) {
 		return Agg_Reduce(ac, __agg_collectDistinctStep, __agg_collectReduceNext, __agg_collectCtxNew,
-						  __agg_collectCtxFree);
+						  __agg_collectCtxFree, distinct);
 	} else {
 		return Agg_Reduce(ac, __agg_collectStep, __agg_collectReduceNext, __agg_collectCtxNew,
-						  __agg_collectCtxFree);
+						  __agg_collectCtxFree, distinct);
 	}
 }
 

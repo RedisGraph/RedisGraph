@@ -28,7 +28,7 @@ typedef void (*AggCtx_InnerData_Free)(AggCtx *ctx);
 typedef void *(*InnerData_New)();
 
 AggCtx *Agg_Reduce(void *ctx, StepFunc f, FinalizeFunc finalize, InnerData_New innerDataNew,
-				   AggCtx_InnerData_Free innerDataFree);
+				   AggCtx_InnerData_Free innerDataFree, bool isDistinct);
 AggCtx *Agg_NewCtx(void *fctx);
 AggCtx *Agg_CloneCtx(AggCtx *ctx);
 void AggCtx_Free(AggCtx *ctx);

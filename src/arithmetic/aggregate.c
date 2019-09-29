@@ -8,12 +8,13 @@
 #include "../util/rmalloc.h"
 
 AggCtx *Agg_Reduce(void *ctx, StepFunc f, FinalizeFunc finalize, InnerData_New innerDataNew,
-				   AggCtx_InnerData_Free innerDataFree) {
+				   AggCtx_InnerData_Free innerDataFree, bool isDistinct) {
 	AggCtx *ac = Agg_NewCtx(ctx);
 	ac->Step = f;
 	ac->Finalize = finalize;
 	ac->InnerData_New = innerDataNew;
 	ac->InnerData_Free = innerDataFree;
+	ac->isDistinct = isDistinct;
 	return ac;
 }
 
@@ -31,7 +32,8 @@ AggCtx *Agg_NewCtx(void *fctx) {
 
 AggCtx *Agg_CloneCtx(AggCtx *ctx) {
 	void *fctx = ctx->InnerData_New();
-	return Agg_Reduce(fctx, ctx->Step, ctx->Finalize, ctx->InnerData_New, ctx->InnerData_Free);
+	return Agg_Reduce(fctx, ctx->Step, ctx->Finalize, ctx->InnerData_New, ctx->InnerData_Free,
+					  ctx->isDistinct);
 }
 
 void AggCtx_Free(AggCtx *ctx) {

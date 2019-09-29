@@ -123,6 +123,10 @@ AR_ExpNode *AR_EXP_NewDistinctOpNode(const char *func_name, uint child_count) {
 	return node;
 }
 
+bool AR_EXP_OpNodeIsDistinctAggregation(AR_ExpNode *op) {
+	return op->op.type == AR_OP_AGGREGATE && op->op.agg_func->isDistinct;
+}
+
 AR_ExpNode *AR_EXP_NewVariableOperandNode(RecordMap *record_map, const char *alias,
 										  const char *prop) {
 	AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
