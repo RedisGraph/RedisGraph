@@ -63,8 +63,8 @@ typedef struct {
 // Context describing a relationship in a CREATE or MERGE clause
 typedef struct {
 	QGNode *node;
-	int node_idx;
 	PropertyMap *properties;
+	int node_idx;
 } NodeCreateCtx;
 
 AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op);

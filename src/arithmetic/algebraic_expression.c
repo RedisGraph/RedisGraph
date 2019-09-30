@@ -290,10 +290,11 @@ static AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(
 			iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
 		}
 
-		/* If intermidate node is referenced, create a new algebraic expression. */
+		/* If edge or intermidate node is referenced, create a new algebraic expression. */
 		if(i < (pathLen - 1) &&                     // Not the last edge on path.
-		   (_highly_connected_node(e->dest) ||      // Node in+out degree > 2.
-			_referred_entity(e->dest->alias))) { // Node is referenced.
+		   (iexp->edge ||                           // Edge is referenced.
+			_highly_connected_node(e->dest) ||      // Node in+out degree > 2.
+			_referred_entity(e->dest->alias))) {    // Node is referenced.
 			// Finalize current expression.
 			iexp->dest_node = e->dest;
 

@@ -11,22 +11,21 @@
 #include "../arithmetic/arithmetic_expression.h"
 #include <assert.h>
 
-static inline EdgeCreateCtx _NewEdgeCreateCtx(GraphContext *gc, AST *ast, const QueryGraph *qg,
-											  const cypher_astnode_t *path, uint edge_path_offset) {
-	const cypher_astnode_t *ast_edge = cypher_ast_pattern_path_get_element(path, edge_path_offset);
-	const cypher_astnode_t *ast_props = cypher_ast_rel_pattern_get_properties(ast_edge);
-	const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(ast_edge);
+static inline EdgeCreateCtx _NewEdgeCreateCtx(GraphContext *gc, const QueryGraph *qg,
+											  const cypher_astnode_t *edge) {
+	const cypher_astnode_t *props = cypher_ast_rel_pattern_get_properties(edge);
+	const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(edge);
 	const char *alias = cypher_ast_identifier_get_name(identifier);
 
 	// Get QueryGraph entity
 	QGEdge *e = QueryGraph_GetEdgeByAlias(qg, alias);
 	EdgeCreateCtx new_edge = { .edge = e,
-							   .properties = PropertyMap_New(gc, ast_props)
+							   .properties = PropertyMap_New(gc, props)
 							 };
 	return new_edge;
 }
 
-static inline NodeCreateCtx _NewNodeCreateCtx(GraphContext *gc, AST *ast, const QueryGraph *qg,
+static inline NodeCreateCtx _NewNodeCreateCtx(GraphContext *gc, const QueryGraph *qg,
 											  const cypher_astnode_t *ast_node) {
 	// Get QueryGraph entity
 	const cypher_astnode_t *identifier = cypher_ast_node_pattern_get_identifier(ast_node);
@@ -189,8 +188,8 @@ AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause) {
 	return ctx;
 }
 
-AST_MergeContext AST_PrepareMergeOp(GraphContext *gc, AST *ast,
-									const cypher_astnode_t *merge_clause, QueryGraph *qg) {
+AST_MergeContext AST_PrepareMergeOp(GraphContext *gc, const cypher_astnode_t *merge_clause,
+									QueryGraph *qg) {
 	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clause);
 
 	uint entity_count = cypher_ast_pattern_path_nelements(path);
@@ -201,11 +200,10 @@ AST_MergeContext AST_PrepareMergeOp(GraphContext *gc, AST *ast,
 	for(uint i = 0; i < entity_count; i ++) {
 		const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, i);
 		if(i % 2) {  // Entity is a relationship
-			EdgeCreateCtx new_edge = _NewEdgeCreateCtx(gc, ast, qg, path, i);
+			EdgeCreateCtx new_edge = _NewEdgeCreateCtx(gc, qg, elem);
 			edges_to_merge = array_append(edges_to_merge, new_edge);
 		} else { // Entity is a node
-			NodeCreateCtx new_node = _NewNodeCreateCtx(gc, ast, qg, cypher_ast_pattern_path_get_element(path,
-													   i));
+			NodeCreateCtx new_node = _NewNodeCreateCtx(gc, qg, elem);
 			nodes_to_merge = array_append(nodes_to_merge, new_node);
 		}
 	}
@@ -249,21 +247,18 @@ AST_CreateContext AST_PrepareCreateOp(GraphContext *gc, AST *ast, QueryGraph *qg
 				ast_alias = (k % 2) ? cypher_ast_rel_pattern_get_identifier(elem) :
 							cypher_ast_node_pattern_get_identifier(elem);
 
-				if(ast_alias) {
-					// Encountered an aliased entity - verify that it is not defined
-					// in a MATCH clause or a previous CREATE pattern
-					const char *alias = cypher_ast_identifier_get_name(ast_alias);
+				assert(ast_alias); // All entities should have defined aliases.
+				const char *alias = cypher_ast_identifier_get_name(ast_alias);
 
-					// Skip entities defined in MATCH clauses or previously appearing in CREATE patterns
-					int rc = raxInsert(match_entities, (unsigned char *)alias, strlen(alias), NULL, NULL);
-					if(rc == 0) continue;
-				}
+				// Skip entities defined in MATCH clauses or previously appearing in CREATE patterns
+				int rc = raxInsert(match_entities, (unsigned char *)alias, strlen(alias), NULL, NULL);
+				if(rc == 0) continue;
 
 				if(k % 2) {  // Relation
-					EdgeCreateCtx new_edge = _NewEdgeCreateCtx(gc, ast, qg, path, k);
+					EdgeCreateCtx new_edge = _NewEdgeCreateCtx(gc, qg, elem);
 					edges_to_create = array_append(edges_to_create, new_edge);
 				} else { // Node
-					NodeCreateCtx new_node = _NewNodeCreateCtx(gc, ast, qg, elem);
+					NodeCreateCtx new_node = _NewNodeCreateCtx(gc, qg, elem);
 					nodes_to_create = array_append(nodes_to_create, new_node);
 				}
 			}

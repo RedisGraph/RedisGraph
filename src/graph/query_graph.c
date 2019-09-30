@@ -265,7 +265,7 @@ QGNode *QueryGraph_RemoveNode(QueryGraph *qg, QGNode *n) {
 			break;
 		}
 	}
-	assert(i != node_count && "node wasn't found in graph");
+
 	return n;
 }
 

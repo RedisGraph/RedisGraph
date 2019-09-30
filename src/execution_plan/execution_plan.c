@@ -568,7 +568,7 @@ static inline void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan
 	// A merge clause provides a single path that must exist or be created.
 	// As with paths in a MATCH query, build the appropriate traversal operations
 	// and append them to the set of ops.
-	AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(gc, ast, clause, plan->query_graph);
+	AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(gc, clause, plan->query_graph);
 	OpBase *op = NewMergeOp(plan, stats, merge_ast_ctx.nodes_to_merge, merge_ast_ctx.edges_to_merge);
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
@@ -682,6 +682,11 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 
 	// Retrieve the indices of each WITH clause to properly set the bounds of each segment.
 	uint *segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
+
+	// If the first clause of the query is WITH, remove its index from the segment list.
+	if(array_len(segment_indices) > 0 && segment_indices[0] == 0) {
+		segment_indices = array_del(segment_indices, 0);
+	}
 
 	/* The RETURN clause is converted into an independent final segment.
 	 * If the query is exclusively composed of a RETURN clause, only one segment is constructed
