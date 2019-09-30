@@ -211,10 +211,10 @@ TEST_F(FilterTreeTest, CollectModified) {
 	rax *aliases = FilterTree_CollectModified(tree);
 	ASSERT_EQ(raxSize(aliases), 4);
 
-	uint expectation[4] = {0, 1, 2, 3};
+	char *expectation[4] = {"me", "he", "she", "theirs"};
 	for(int i = 0; i < 4; i++) {
-		uint expected = expectation[i];
-		ASSERT_NE(raxFind(aliases, (unsigned char *)&expected, sizeof(expected)), raxNotFound);
+		char *expected = expectation[i];
+		ASSERT_NE(raxFind(aliases, (unsigned char *)expected, strlen(expected)), raxNotFound);
 	}
 
 	/* Clean up. */

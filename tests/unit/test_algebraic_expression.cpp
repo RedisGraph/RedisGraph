@@ -16,6 +16,7 @@ extern "C" {
 #include "../../src/query_ctx.h"
 #include "../../src/graph/graph.h"
 #include "../../src/util/rmalloc.h"
+#include "../../src/parser/parser.h"
 #include "../../src/graph/query_graph.h"
 #include "../../src/graph/graphcontext.h"
 #include "../../src/util/simple_timer.h"
@@ -181,10 +182,11 @@ class AlgebraicExpressionTest: public ::testing::Test {
 
 	AlgebraicExpression **build_algebraic_expression(const char *query, uint *exp_count) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
-		cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
-		AST *ast = AST_Build(parse_result);
+		cypher_parse_result_t *parse_result = parse(query);
+		AST *master_ast = AST_Build(parse_result);
+		AST *ast = AST_NewSegment(master_ast, 0, cypher_ast_query_nclauses(master_ast->root));
 		QueryGraph *qg = BuildQueryGraph(gc, ast);
-		_BuildReturnExpressions(AST_GetClause(ast, CYPHER_AST_RETURN), ast);
+		// _BuildReturnExpressions(AST_GetClause(ast, CYPHER_AST_RETURN), ast);
 		AlgebraicExpression **ae = AlgebraicExpression_FromQueryGraph(qg, exp_count);
 
 		return ae;
