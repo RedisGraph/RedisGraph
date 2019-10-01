@@ -230,7 +230,7 @@ static void _RemovePathFromGraph(QueryGraph *g, QGEdge **path) {
 	}
 }
 
-/* Determin the length of the longest path in the graph.
+/* Determine the length of the longest path in the graph.
  * Returns a list residing on the edge of the longest path. */
 static QGNode **_DeepestLevel(const QueryGraph *g, int *level) {
 	int l = BFS_LOWEST_LEVEL;
@@ -243,6 +243,20 @@ static QGNode **_DeepestLevel(const QueryGraph *g, int *level) {
 
 	*level = l;
 	return leafs;
+}
+
+/* If the edge is referenced or of a variable length, it should populate the AlgebraicExpression. */
+static inline bool _should_populate_edge(QGEdge *e) {
+	return (_referred_entity(e->alias) || QGEdge_VariableLength(e));
+}
+
+static inline bool _should_divide_expression(AlgebraicExpression *exp, QGEdge **path, int idx) {
+	QGEdge *e = path[idx];
+
+	return (_should_populate_edge(e)                  ||      // This edge is populated.
+			_should_populate_edge(path[idx + 1])      ||      // The next edge is populated.
+			_highly_connected_node(e->dest)           ||      // Destination node in+out degree > 2.
+			_referred_entity(e->dest->alias));                // Destination node is referenced.
 }
 
 /* Break down expression into sub expressions.
@@ -265,20 +279,19 @@ static AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(
 	expressions = array_append(expressions, iexp);
 	expIdx++;
 
+	bool divide_at[pathLen];
+	divide_at[pathLen - 1] = false; // Only check intermediate edges, not the last.
+	for(int i = 0; i < pathLen - 1; i++) {
+		// Track which points the expression should be subdivided at.
+		divide_at[i] = _should_divide_expression(exp, path,  i);
+	}
+
 	for(int i = 0; i < pathLen; i++) {
 		e = path[i];
-		/* If edge is referenced, set expression edge pointer. */
-		if(_referred_entity(e->alias)) iexp->edge = e;
+		/* Set expression edge pointer. */
+		if(_should_populate_edge(e)) iexp->edge = e; // Set expression edge pointer if necessary.
 
-		/* If this is a variable length edge, which is not fixed in length
-		 * remember edge length. */
-		if(QGEdge_VariableLength(e)) {
-			iexp->edge = e;
-		}
-
-		if(i == 0 && e->src->label) {
-			iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
-		}
+		if(i == 0 && e->src->label) iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
 
 		/* Expand fixed variable length edge */
 		uint hops = (!QGEdge_VariableLength(e)) ? e->minHops : 1;
@@ -286,19 +299,11 @@ static AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(
 			iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
 		}
 
-		if(e->dest->label) {
-			iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
-		}
+		if(e->dest->label) iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
 
-		/* If edge or intermidate node is referenced, create a new algebraic expression. */
-		if(i < (pathLen - 1) &&                     // Not the last edge on path.
-		   (iexp->edge ||                           // Edge is referenced.
-			_highly_connected_node(e->dest) ||      // Node in+out degree > 2.
-			_referred_entity(e->dest->alias))) {    // Node is referenced.
-			// Finalize current expression.
+		/* If required, finalize the current algebraic expression and begin a new one. */
+		if(divide_at[i]) {
 			iexp->dest_node = e->dest;
-
-			/* Create a new algebraic expression. */
 			iexp = _AE_MUL(exp->operand_count - operandIdx);
 			iexp->operand_count = 0;
 			iexp->src_node = expressions[expIdx - 1]->dest_node;

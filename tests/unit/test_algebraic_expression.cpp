@@ -47,7 +47,6 @@ const char *query_one_intermidate_return_nodes =
 	"MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, c, e";
 const char *query_multiple_intermidate_return_nodes =
 	"MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, f, c, e";
-
 const char *query_return_first_edge =
 	"MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ef";
 const char *query_return_intermidate_edge =
