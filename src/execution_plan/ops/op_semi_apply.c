@@ -41,6 +41,7 @@ static inline Record _pullFromStream(OpBase *branch) {
 
 static Record _pullFromRightStream(SemiApply *op) {
 	OpBase *right_handside = op->op.children[1];
+	OpBase_PropagateReset(right_handside);
 	// Propegate record to the top of the right-hand side stream.
 	if(op->op_arg) ArgumentSetRecord(op->op_arg, Record_Clone(op->r));
 	return _pullFromStream(right_handside);
@@ -70,6 +71,7 @@ Record SemiApplyConsume(OpBase *opBase) {
 		}
 		// Did not managed to get a record from right-hand side, loop back and restart.
 		Record_Free(op->r);
+		op->r = NULL;
 	}
 
 	/* Out of "infinity" loop either both left and right streams managed to produce data

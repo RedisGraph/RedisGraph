@@ -56,7 +56,7 @@ static OpResult UnwindInit(OpBase *opBase) {
  * or in case where the current list is fully consumed. */
 Record _handoff(OpUnwind *op) {
 	// If there is a new value ready, return it.
-	if(op->listIdx < SIArray_Length(op->list)) {
+	if(op->currentRecord && op->listIdx < SIArray_Length(op->list)) {
 		Record r = Record_Clone(op->currentRecord);
 		Record_AddScalar(r, op->unwindRecIdx, SIArray_Get(op->list, op->listIdx));
 		op->listIdx++;
@@ -72,21 +72,24 @@ static Record UnwindConsume(OpBase *opBase) {
 	Record r = _handoff(op);
 	if(r) return r;
 
-	// No child operation to pull data from, we're done.
-	if(op->op.childCount == 0) return NULL;
+	if(op->currentRecord) Record_Free(op->currentRecord);
+	op->currentRecord = NULL;
 
-	OpBase *child = op->op.children[0];
-	// Did we managed to get new data?
-	if((r = OpBase_Consume(child))) {
-		// Free current record to accommodate new record.
-		Record_Free(op->currentRecord);
-		op->currentRecord = r;
-		// Free old list.
-		SIValue_Free(&op->list);
+	// Make sure we have a record to work with.
+	if(op->op.childCount > 0) {
+		OpBase *child = op->op.children[0];
+		op->currentRecord = OpBase_Consume(child);
+	} else if(op->firstcall) {
+		op->firstcall = false;
+		// No operations above us, we're a TAP.
+		op->currentRecord = Record_New(1);
+	}
 
-		// Reset index and set list.
-		op->listIdx = 0;
-		op->list = AR_EXP_Evaluate(op->exp, r);
+	// Did we managed to get a record?
+	if(op->currentRecord) {
+		op->listIdx = 0;            // Reset index and set list.
+		SIValue_Free(&op->list);    // Free old list & current record.
+		op->list = AR_EXP_Evaluate(op->exp, op->currentRecord);
 		assert(op->list.type == T_ARRAY);
 	}
 
@@ -96,9 +99,16 @@ static Record UnwindConsume(OpBase *opBase) {
 static OpResult UnwindReset(OpBase *ctx) {
 	OpUnwind *op = (OpUnwind *)ctx;
 	// Static should reset index to 0.
-	if(op->op.childCount == 0) op->listIdx = 0;
-	// Dynamic should set index to UINT_MAX, to force refetching of data.
-	else op->listIdx = INDEX_NOT_SET;
+	op->listIdx = 0;
+	SIValue_Free(&op->list);
+	op->list = SI_EmptyArray();
+
+	op->firstcall = true;
+	if(op->currentRecord) {
+		Record_Free(op->currentRecord);
+		op->currentRecord = NULL;
+	}
+
 	return OP_OK;
 }
 
@@ -117,4 +127,3 @@ static void UnwindFree(OpBase *ctx) {
 		op->currentRecord = NULL;
 	}
 }
-
