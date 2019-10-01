@@ -652,12 +652,6 @@ static AST_Validation _Validate_WITH_Clauses(const AST *ast, char **reason) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
 		cypher_astnode_type_t type = cypher_astnode_type(clause);
 		if(type == CYPHER_AST_WITH) {
-			// TODO support WITH * projections.
-			if(cypher_ast_with_has_include_existing(clause)) {
-				asprintf(reason, "The WITH * construction is not currently supported in RedisGraph.");
-				res = AST_INVALID;
-				break;
-			}
 			// Collect projected aliases from WITH clauses into the same triemap
 			_AST_GetWithAliases(clause, with_projections);
 		} else if(type == CYPHER_AST_MATCH) {

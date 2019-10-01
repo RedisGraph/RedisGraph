@@ -88,7 +88,7 @@ static char **_CollectAliases(rax *map) {
 	return aliases;
 }
 
-static void _PopulateReturnAll(ExecutionPlan *previous_segment, OpBase *op) {
+static void _PopulateProjectAll(ExecutionPlan *previous_segment, OpBase *op) {
 	char **aliases = _CollectAliases(previous_segment->record_map);
 	uint count = array_len(aliases);
 
@@ -715,8 +715,6 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		start_offset = end_offset;
 	}
 
-	array_free(segment_indices);
-
 	OpBase *connecting_op = NULL;
 	// Merge segments.
 	for(int i = 1; i < segment_count; i++) {
@@ -726,8 +724,21 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		OpBase *prev_root = prev_segment->root;
 		connecting_op = _ExecutionPlan_FindConnectingOp(current_segment->root, prev_root);
 		assert(connecting_op->childCount == 0);
+
+		if(i < segment_count - 1) {
+			// Check whether segment ends in a WITH * clause.
+			const cypher_astnode_t *end = cypher_ast_query_get_clause(ast->root, segment_indices[i - 1]);
+			assert(cypher_astnode_type(end) == CYPHER_AST_WITH);
+
+			bool project_all = cypher_ast_with_has_include_existing(end);
+			if(project_all) _PopulateProjectAll(prev_segment, connecting_op);
+		}
+
+
 		ExecutionPlan_AddOp(connecting_op, prev_root);
 	}
+
+	array_free(segment_indices);
 
 	ExecutionPlan *plan = segments[segment_count - 1];
 
@@ -750,8 +761,8 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 			connecting_op = _ExecutionPlan_FindConnectingOp(plan->root, NULL);
 		}
 		// Check whether the query culminates in a RETURN * clause.
-		bool return_all = cypher_ast_return_has_include_existing(last_clause);
-		if(return_all) _PopulateReturnAll(segments[segment_count - 2], connecting_op);
+		bool return_all = cypher_ast_return_has_include_existing(last_clause); // TODO TODO
+		if(return_all) _PopulateProjectAll(segments[segment_count - 2], connecting_op);
 
 		if(result_set) {
 			// Prepare column names for the ResultSet.
