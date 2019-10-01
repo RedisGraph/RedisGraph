@@ -359,7 +359,8 @@ static AR_EXP_Result _AR_EXP_EvaluateVariadic(AR_ExpNode *node, const Record r, 
 		/* Alias doesn't necessarily refers to a graph entity,
 		 * it could also be a constant. */
 		int aliasIdx = node->operand.variadic.entity_alias_idx;
-		*result = Record_Get(r, aliasIdx);
+		// The value was not created here; share with the caller.
+		*result = SI_ShareValue(Record_Get(r, aliasIdx));
 	}
 	return EVAL_OK;
 }
