@@ -44,6 +44,7 @@ typedef enum {
 	OPType_APPLY = (1 << 24),
 	OPType_ARGUMENT = (1 << 25),
 	OPType_SEMI_APPLY = (1 << 26),
+	OPType_ANTI_SEMI_APPLY = (1 << 27),
 } OPType;
 
 #define OP_SCAN (OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN | OPType_INDEX_SCAN | OPType_NODE_BY_ID_SEEK)
