@@ -18,11 +18,12 @@
 typedef struct {
 	OpBase op;
     Record r;                   // Lefthand-side record.
+    bool anti;                  // AntiSelectOrSemiApply.
     Argument *op_arg;           // Righthand-side tap.
-    FT_FilterNode *filter;  // "Cheap" filter to apply.
+    FT_FilterNode *filter;      // "Cheap" filter to apply.
 } SelectOrSemiApply;
 
-OpBase *NewSelectOrSemiApplyOp(FT_FilterNode *filter);
+OpBase *NewSelectOrSemiApplyOp(FT_FilterNode *filter, bool anti);
 OpResult SelectOrSemiApplyInit(OpBase *opBase);
 Record SelectOrSemiApplyConsume(OpBase *opBase);
 OpResult SelectOrSemiApplyReset(OpBase *opBase);

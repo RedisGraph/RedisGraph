@@ -7,16 +7,23 @@
 #include "op_select_or_semi_apply.h"
 #include "../execution_plan.h"
 
-OpBase *NewSelectOrSemiApplyOp(FT_FilterNode *filter) {
+OpBase *NewSelectOrSemiApplyOp(FT_FilterNode *filter, bool anti) {
 	SelectOrSemiApply *selectOrSemiApply = malloc(sizeof(SelectOrSemiApply));
 	selectOrSemiApply->r = NULL;
+	selectOrSemiApply->anti = anti;
 	selectOrSemiApply->op_arg = NULL;
 	selectOrSemiApply->filter = filter;
 
 	// Set our Op operations
 	OpBase_Init(&selectOrSemiApply->op);
-	selectOrSemiApply->op.name = "Select Or Semi Apply";
-	selectOrSemiApply->op.type = OPType_SELECT_OR_SEMI_APPLY;
+	if(anti) {
+		selectOrSemiApply->op.name = "Select Or Semi Apply";
+		selectOrSemiApply->op.type = OPType_SELECT_OR_SEMI_APPLY;
+	} else {
+		selectOrSemiApply->op.name = "Select Or Anti Semi Apply";
+		selectOrSemiApply->op.type = OPType_SELECT_OR_ANTI_SEMI_APPLY;
+	}
+
 	selectOrSemiApply->op.init = SelectOrSemiApplyInit;
 	selectOrSemiApply->op.consume = SelectOrSemiApplyConsume;
 	selectOrSemiApply->op.reset = SelectOrSemiApplyReset;
@@ -62,23 +69,25 @@ Record SelectOrSemiApplyConsume(OpBase *opBase) {
 		if(!op->r) return NULL; // Depleted.
 
 		// See if record passes filter.
-		if(op->filter && FilterTree_applyFilters(op->filter, op->r) != FILTER_PASS) {
-			// Record did not pass filter, try to get a new record.
-			Record_Free(op->r);
-			op->r = NULL;
-			continue;
+		if(op->filter && FilterTree_applyFilters(op->filter, op->r) == FILTER_PASS) {
+			// Passed filter, no need to evaluate right stream.
+			Record r = op->r;
+			op->r = NULL;   // Null to avoid double free.
+			return r;
 		}
 
-		// Try to get a record from right stream.
+		// Filter did not pass, try right stream.
 		Record righthand_record = _pullFromRightStream(op);
-		if(righthand_record) {
+		if((!op->anti && righthand_record) ||
+		   (op->anti && !righthand_record)) {
 			// Don't care for righthand record.
 			Record_Free(righthand_record);
 			Record r = op->r;
 			op->r = NULL;   // Null to avoid double free.
 			return r;
 		}
-		// Did not managed to get a record from right-hand side, loop back and restart.
+
+		// Did not managed to pass filter, loop back and retry.
 		Record_Free(op->r);
 		op->r = NULL;
 	}
