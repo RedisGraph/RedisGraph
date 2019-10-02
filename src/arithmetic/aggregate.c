@@ -7,32 +7,26 @@
 #include "aggregate.h"
 #include "../util/rmalloc.h"
 
-AggCtx *Agg_Reduce(void *ctx, StepFunc f, FinalizeFunc finalize, InnerData_New innerDataNew,
+AggCtx *Agg_NewCtx(StepFunc step, FinalizeFunc finalize, InnerData_New innerDataNew,
 				   AggCtx_InnerData_Free innerDataFree, bool isDistinct) {
-	AggCtx *ac = Agg_NewCtx(ctx);
-	ac->Step = f;
+	// Allocate.
+	AggCtx *ac = rm_malloc(sizeof(AggCtx));
+	// Set methods.
+	ac->Step = step;
 	ac->Finalize = finalize;
 	ac->InnerData_New = innerDataNew;
 	ac->InnerData_Free = innerDataFree;
+	// Initialize members.
 	ac->isDistinct = isDistinct;
-	return ac;
-}
-
-AggCtx *Agg_NewCtx(void *fctx) {
-	AggCtx *ac = rm_malloc(sizeof(AggCtx));
+	// This member initialization depends on isDistinct.
+	ac->fctx = ac->InnerData_New(ac);
 	ac->err = NULL;
-	ac->fctx = fctx;
 	ac->result = SI_NullVal();
-	ac->Step = NULL;
-	ac->Finalize = NULL;
-	ac->InnerData_New = NULL;
-	ac->InnerData_Free = NULL;
 	return ac;
 }
 
 AggCtx *Agg_CloneCtx(AggCtx *ctx) {
-	void *fctx = ctx->InnerData_New();
-	return Agg_Reduce(fctx, ctx->Step, ctx->Finalize, ctx->InnerData_New, ctx->InnerData_Free,
+	return Agg_NewCtx(ctx->Step, ctx->Finalize, ctx->InnerData_New, ctx->InnerData_Free,
 					  ctx->isDistinct);
 }
 

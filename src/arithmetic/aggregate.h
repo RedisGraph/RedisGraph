@@ -25,11 +25,10 @@
 typedef int (*StepFunc)(AggCtx *ctx, SIValue *argv, int argc);
 typedef int (*FinalizeFunc)(AggCtx *ctx);
 typedef void (*AggCtx_InnerData_Free)(AggCtx *ctx);
-typedef void *(*InnerData_New)();
+typedef void *(*InnerData_New)(AggCtx *ctx);
 
-AggCtx *Agg_Reduce(void *ctx, StepFunc f, FinalizeFunc finalize, InnerData_New innerDataNew,
+AggCtx *Agg_NewCtx(StepFunc f, FinalizeFunc finalize, InnerData_New innerDataNew,
 				   AggCtx_InnerData_Free innerDataFree, bool isDistinct);
-AggCtx *Agg_NewCtx(void *fctx);
 AggCtx *Agg_CloneCtx(AggCtx *ctx);
 void AggCtx_Free(AggCtx *ctx);
 int Agg_SetError(AggCtx *ctx, AggError *err);

@@ -58,28 +58,28 @@ int __agg_sumReduceNext(AggCtx *ctx) {
 	return AGG_OK;
 }
 
-void *__agg_sumCtxNew() {
+void *__agg_sumCtxNew(AggCtx *ctx) {
 	__agg_sumCtx *ac = rm_malloc(sizeof(__agg_sumCtx));
 	ac->total = 0;
-	ac->hashSet = Set_New();
+	if(ctx->isDistinct) ac->hashSet = Set_New();
 	return ac;
 }
 
 void __agg_sumCtxFree(AggCtx *ctx) {
 	__agg_sumCtx *ac = Agg_FuncCtx(ctx);
-	Set_Free(ac->hashSet);
+	if(ctx->isDistinct) Set_Free(ac->hashSet);
 	rm_free(ac);
 }
 
 AggCtx *Agg_SumFunc(bool distinct) {
-	__agg_sumCtx *ac = __agg_sumCtxNew();
 	if(distinct) {
-		return Agg_Reduce(ac, __agg_sumDistinctStep, __agg_sumReduceNext, __agg_sumCtxNew,
-						  __agg_sumCtxFree, distinct);
+		return Agg_NewCtx(__agg_sumDistinctStep, __agg_sumReduceNext, __agg_sumCtxNew, __agg_sumCtxFree,
+						  distinct);
 	} else {
-		return Agg_Reduce(ac, __agg_sumStep, __agg_sumReduceNext, __agg_sumCtxNew, __agg_sumCtxFree,
+		return Agg_NewCtx(__agg_sumStep, __agg_sumReduceNext, __agg_sumCtxNew, __agg_sumCtxFree,
 						  distinct);
 	}
+
 }
 
 //------------------------------------------------------------------------
@@ -135,27 +135,26 @@ int __agg_avgReduceNext(AggCtx *ctx) {
 	return AGG_OK;
 }
 
-void *__agg_avgCtxNew() {
+void *__agg_avgCtxNew(AggCtx *ctx) {
 	__agg_avgCtx *ac = rm_malloc(sizeof(__agg_avgCtx));
 	ac->count = 0;
 	ac->total = 0;
-	ac->hashSet = Set_New();
+	if(ctx->isDistinct) ac->hashSet = Set_New();
 	return ac;
 }
 
 void __agg_avgCtxFree(AggCtx *ctx) {
 	__agg_avgCtx *ac = Agg_FuncCtx(ctx);
-	Set_Free(ac->hashSet);
+	if(ctx->isDistinct) Set_Free(ac->hashSet);
 	rm_free(ac);
 }
 
 AggCtx *Agg_AvgFunc(bool distinct) {
-	__agg_avgCtx *ac = __agg_avgCtxNew();
 	if(distinct) {
-		return Agg_Reduce(ac, __agg_avgDistinctStep, __agg_avgReduceNext, __agg_avgCtxNew,
-						  __agg_avgCtxFree, distinct);
+		return Agg_NewCtx(__agg_avgDistinctStep, __agg_avgReduceNext, __agg_avgCtxNew, __agg_avgCtxFree,
+						  distinct);
 	} else {
-		return Agg_Reduce(ac, __agg_avgStep, __agg_avgReduceNext, __agg_avgCtxNew, __agg_avgCtxFree,
+		return Agg_NewCtx(__agg_avgStep, __agg_avgReduceNext, __agg_avgCtxNew, __agg_avgCtxFree,
 						  distinct);
 	}
 }
@@ -205,10 +204,8 @@ void *__agg_maxCtxNew() {
 }
 
 AggCtx *Agg_MaxFunc(bool distinct) {
-	__agg_maxCtx *ac = __agg_maxCtxNew();
 	// Max aggregation do not care about distinct.
-	return Agg_Reduce(ac, __agg_maxStep, __agg_maxReduceNext, __agg_maxCtxNew, __agg_maxCtxFree,
-					  distinct);
+	return Agg_NewCtx(__agg_maxStep, __agg_maxReduceNext, __agg_maxCtxNew, __agg_maxCtxFree, distinct);
 }
 
 //------------------------------------------------------------------------
@@ -256,10 +253,8 @@ void __agg_minCtxFree(AggCtx *ctx) {
 }
 
 AggCtx *Agg_MinFunc(bool distinct) {
-	__agg_minCtx *ac = __agg_minCtxNew();
 	// Min aggregation do not care about distinct.
-	return Agg_Reduce(ac, __agg_minStep, __agg_minReduceNext, __agg_minCtxNew, __agg_minCtxFree,
-					  distinct);
+	return Agg_NewCtx(__agg_minStep, __agg_minReduceNext, __agg_minCtxNew, __agg_minCtxFree, distinct);
 }
 
 //------------------------------------------------------------------------
@@ -295,26 +290,25 @@ int __agg_countReduceNext(AggCtx *ctx) {
 	return AGG_OK;
 }
 
-void *__agg_countCtxNew() {
+void *__agg_countCtxNew(AggCtx *ctx) {
 	__agg_countCtx *ac = rm_malloc(sizeof(__agg_countCtx));
 	ac->count = 0;
-	ac->hashSet = Set_New();
+	if(ctx->isDistinct) ac->hashSet = Set_New();
 	return ac;
 }
 
 void __agg_countCtxFree(AggCtx *ctx) {
 	__agg_countCtx *ac = Agg_FuncCtx(ctx);
-	Set_Free(ac->hashSet);
+	if(ctx->isDistinct) Set_Free(ac->hashSet);
 	rm_free(ac);
 }
 
 AggCtx *Agg_CountFunc(bool distinct) {
-	__agg_countCtx *ac = __agg_countCtxNew();
 	if(distinct) {
-		return Agg_Reduce(ac, __agg_countDistinctStep, __agg_countReduceNext, __agg_countCtxNew,
+		return Agg_NewCtx(__agg_countDistinctStep, __agg_countReduceNext, __agg_countCtxNew,
 						  __agg_countCtxFree, distinct);
 	} else {
-		return Agg_Reduce(ac, __agg_countStep, __agg_countReduceNext, __agg_countCtxNew,
+		return Agg_NewCtx(__agg_countStep, __agg_countReduceNext, __agg_countCtxNew,
 						  __agg_countCtxFree, distinct);
 	}
 }
@@ -423,43 +417,41 @@ int __agg_percContReduceNext(AggCtx *ctx) {
 	return AGG_OK;
 }
 
-void *__agg_PercCtxNew() {
+void *__agg_PercCtxNew(AggCtx *ctx) {
 	__agg_percCtx *ac = rm_malloc(sizeof(__agg_percCtx));
 	ac->count = 0;
 	ac->values = rm_malloc(1024 * sizeof(double));
 	ac->values_allocated = 1024;
 	// Percentile will be updated by the first call to Step
 	ac->percentile = -1;
-	ac->hashSet = Set_New();
+	if(ctx->isDistinct) ac->hashSet = Set_New();
 	return ac;
 }
 
 void __agg_PercCtxFree(AggCtx *ctx) {
 	__agg_percCtx *ac = Agg_FuncCtx(ctx);
 	rm_free(ac->values);
-	Set_Free(ac->hashSet);
+	if(ctx->isDistinct) Set_Free(ac->hashSet);
 	rm_free(ac);
 }
 
 // The percentile initializers are identical save for the ReduceNext function they specify
 AggCtx *Agg_PercDiscFunc(bool distinct) {
-	__agg_percCtx *ac = __agg_PercCtxNew();
 	if(distinct) {
-		return Agg_Reduce(ac, __agg_percDistinctStep, __agg_percDiscReduceNext, __agg_PercCtxNew,
+		return Agg_NewCtx(__agg_percDistinctStep, __agg_percDiscReduceNext, __agg_PercCtxNew,
 						  __agg_PercCtxFree, distinct);
 	} else {
-		return Agg_Reduce(ac, __agg_percStep, __agg_percDiscReduceNext, __agg_PercCtxNew,
+		return Agg_NewCtx(__agg_percStep, __agg_percDiscReduceNext, __agg_PercCtxNew,
 						  __agg_PercCtxFree, distinct);
 	}
 }
 
 AggCtx *Agg_PercContFunc(bool distinct) {
-	__agg_percCtx *ac = __agg_PercCtxNew();
 	if(distinct) {
-		return Agg_Reduce(ac, __agg_percDistinctStep, __agg_percContReduceNext, __agg_PercCtxNew,
+		return Agg_NewCtx(__agg_percDistinctStep, __agg_percContReduceNext, __agg_PercCtxNew,
 						  __agg_PercCtxFree, distinct);
 	} else {
-		return Agg_Reduce(ac, __agg_percStep, __agg_percContReduceNext, __agg_PercCtxNew,
+		return Agg_NewCtx(__agg_percStep, __agg_percContReduceNext, __agg_PercCtxNew,
 						  __agg_PercCtxFree, distinct);
 	}
 }
@@ -533,31 +525,30 @@ int __agg_StdevReduceNext(AggCtx *ctx) {
 	return AGG_OK;
 }
 
-void *__agg_stdevCtxNew() {
+void *__agg_stdevCtxNew(AggCtx *ctx) {
 	__agg_stdevCtx *ac = rm_malloc(sizeof(__agg_stdevCtx));
 	ac->is_sampled = 1;
 	ac->count = 0;
 	ac->total = 0;
 	ac->values = rm_malloc(1024 * sizeof(double));
 	ac->values_allocated = 1024;
-	ac->hashSet = Set_New();
+	if(ctx->isDistinct) ac->hashSet = Set_New();
 	return ac;
 }
 
 void __agg_StdevCtxFree(AggCtx *ctx) {
 	__agg_stdevCtx *ac = Agg_FuncCtx(ctx);
 	rm_free(ac->values);
-	Set_Free(ac->hashSet);
+	if(ctx->isDistinct) Set_Free(ac->hashSet);
 	rm_free(ac);
 }
 
 AggCtx *Agg_StdevFunc(bool distinct) {
-	__agg_stdevCtx *ac = __agg_stdevCtxNew();
 	if(distinct) {
-		return Agg_Reduce(ac, __agg_StdevDistinctStep, __agg_StdevReduceNext, __agg_stdevCtxNew,
+		return Agg_NewCtx(__agg_StdevDistinctStep, __agg_StdevReduceNext, __agg_stdevCtxNew,
 						  __agg_StdevCtxFree, distinct);
 	} else {
-		return Agg_Reduce(ac, __agg_StdevStep, __agg_StdevReduceNext, __agg_stdevCtxNew,
+		return Agg_NewCtx(__agg_StdevStep, __agg_StdevReduceNext, __agg_stdevCtxNew,
 						  __agg_StdevCtxFree, distinct);
 	}
 }
@@ -604,26 +595,25 @@ int __agg_collectReduceNext(AggCtx *ctx) {
 	return AGG_OK;
 }
 
-void *__agg_collectCtxNew() {
+void *__agg_collectCtxNew(AggCtx *ctx) {
 	__agg_collectCtx *ac = rm_malloc(sizeof(__agg_collectCtx));
 	ac->list = SI_Array(100);
-	ac->hashSet = Set_New();
+	if(ctx->isDistinct) ac->hashSet = Set_New();
 	return ac;
 }
 
 void __agg_collectCtxFree(AggCtx *ctx) {
 	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
-	Set_Free(ac->hashSet);
+	if(ctx->isDistinct) Set_Free(ac->hashSet);
 	rm_free(ac);
 }
 
 AggCtx *Agg_CollectFunc(bool distinct) {
-	__agg_collectCtx *ac = __agg_collectCtxNew();
 	if(distinct) {
-		return Agg_Reduce(ac, __agg_collectDistinctStep, __agg_collectReduceNext, __agg_collectCtxNew,
+		return Agg_NewCtx(__agg_collectDistinctStep, __agg_collectReduceNext, __agg_collectCtxNew,
 						  __agg_collectCtxFree, distinct);
 	} else {
-		return Agg_Reduce(ac, __agg_collectStep, __agg_collectReduceNext, __agg_collectCtxNew,
+		return Agg_NewCtx(__agg_collectStep, __agg_collectReduceNext, __agg_collectCtxNew,
 						  __agg_collectCtxFree, distinct);
 	}
 }
