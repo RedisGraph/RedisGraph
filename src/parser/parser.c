@@ -25,14 +25,14 @@ static void __name_anonymous_entities_in_pattern(const cypher_astnode_t *node, u
 		if(!identifier) {
 			// Create  and set identifier.
 			identifier = _create_anon_identifier(node, (*anon_count)++);
-			cypher_ast_node_pattern_set_identifier(node, identifier);
+			cypher_ast_node_pattern_set_identifier((cypher_astnode_t *)node, (cypher_astnode_t *)identifier);
 		}
 	}
 	if(t == CYPHER_AST_REL_PATTERN) {
 		identifier = cypher_ast_rel_pattern_get_identifier(node);
 		if(!identifier) {
 			identifier = _create_anon_identifier(node, (*anon_count)++);
-			cypher_ast_rel_pattern_set_identifier(node, identifier);
+			cypher_ast_rel_pattern_set_identifier((cypher_astnode_t *)node, (cypher_astnode_t *)identifier);
 		}
 	}
 
