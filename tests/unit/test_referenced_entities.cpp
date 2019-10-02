@@ -69,8 +69,8 @@ TEST_F(TestReferencedEntities, TestMatch) {
 	segmentIndices = getASTSegmentIndices(ast);
 	ASSERT_EQ(1, array_len(segmentIndices));
 	astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
-	ASSERT_EQ(1, raxSize(astSegment->referenced_entities));
-	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
+	ASSERT_EQ(0, raxSize(astSegment->referenced_entities));
+	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
 	AST_Free(astSegment);
@@ -93,9 +93,9 @@ TEST_F(TestReferencedEntities, TestMatch) {
 	segmentIndices = getASTSegmentIndices(ast);
 	ASSERT_EQ(1, array_len(segmentIndices));
 	astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
-	ASSERT_EQ(1, raxSize(astSegment->referenced_entities));
+	ASSERT_EQ(0, raxSize(astSegment->referenced_entities));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
-	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
+	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
 	AST_Free(astSegment);
 
@@ -209,9 +209,9 @@ TEST_F(TestReferencedEntities, TestSet) {
 	segmentIndices = getASTSegmentIndices(ast);
 	ASSERT_EQ(1, array_len(segmentIndices));
 	astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
-	ASSERT_EQ(2, raxSize(astSegment->referenced_entities));
+	ASSERT_EQ(1, raxSize(astSegment->referenced_entities));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
-	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
+	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
 	AST_Free(astSegment);
 }
@@ -241,8 +241,8 @@ TEST_F(TestReferencedEntities, TestMerge) {
 	segmentIndices = getASTSegmentIndices(ast);
 	ASSERT_EQ(1, array_len(segmentIndices));
 	astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
-	ASSERT_EQ(1, raxSize(astSegment->referenced_entities));
-	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
+	ASSERT_EQ(0, raxSize(astSegment->referenced_entities));
+	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
 	AST_Free(astSegment);
@@ -265,9 +265,9 @@ TEST_F(TestReferencedEntities, TestMerge) {
 	segmentIndices = getASTSegmentIndices(ast);
 	ASSERT_EQ(1, array_len(segmentIndices));
 	astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
-	ASSERT_EQ(1, raxSize(astSegment->referenced_entities));
+	ASSERT_EQ(0, raxSize(astSegment->referenced_entities));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
-	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
+	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
 	AST_Free(astSegment);
 
@@ -329,8 +329,8 @@ TEST_F(TestReferencedEntities, TestUnwind) {
 	ASSERT_EQ(1, array_len(segmentIndices));
 
 	AST *astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
-	ASSERT_EQ(1, raxSize(astSegment->referenced_entities));
-	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
+	ASSERT_EQ(0, raxSize(astSegment->referenced_entities));
+	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
 	AST_Free(astSegment);
 }
 

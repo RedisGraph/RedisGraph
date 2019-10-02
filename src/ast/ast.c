@@ -253,7 +253,6 @@ static void _AST_MapReferencedNode(AST *ast, const cypher_astnode_t *node) {
 
 // Adds an edge to the referenced entities rax if it has multiple types or any properties (inline filter).
 static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge) {
-	uint edgeTypesCount = cypher_ast_rel_pattern_nreltypes(edge);
 	const cypher_astnode_t *properties = cypher_ast_rel_pattern_get_properties(edge);
 	// An edge with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
