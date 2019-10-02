@@ -18,19 +18,16 @@ static Record AggregateConsume(OpBase *opBase);
 static OpResult AggregateReset(OpBase *opBase);
 static void AggregateFree(OpBase *opBase);
 
-static AR_ExpNode **_getOrderExpressions(OpBase *op) {
+static OpSort *_getSortOp(OpBase *op) {
 	if(op == NULL) return NULL;
 	// No need to look further if we haven't encountered a sort operation
 	// before a project/aggregate op
 	if(op->type == OPType_PROJECT || op->type == OPType_AGGREGATE) return NULL;
 
-	if(op->type == OPType_SORT) {
-		OpSort *sort = (OpSort *)op;
-		return sort->exps;
-	}
+	if(op->type == OPType_SORT) return (OpSort *)op; // Sort operation found.
 
-	// We are only interested in a SORT operation if it is a direct parent of the aggregate op
-	return NULL;
+	// TODO aggregate didn't recurse previously; only checked direct parent. Why?
+	return _getSortOp(op->parent); // Recurse.
 }
 
 /* Initialize expression_classification, which denotes whether each
@@ -206,38 +203,36 @@ static Record _handoff(OpAggregate *op) {
 	SIValue res;
 
 	for(uint i = 0; i < op->exp_count; i++) {
+		int rec_idx = op->record_offsets[i];
 		if(op->expression_classification[i] == AGGREGATED) {
 			// Aggregated expression, get aggregated value.
 			AR_ExpNode *exp = group->aggregationFunctions[aggIdx++];
 			AR_EXP_Reduce(exp);
 			res = AR_EXP_Evaluate(exp, NULL);
-			int rec_idx = Record_GetEntryIdx(r, exp->resolved_name);
 			Record_AddScalar(r, rec_idx, res);
 		} else {
 			// Non-aggregated expression.
 			res = group->keys[keyIdx++];
 			// Key values are shared with the Record, as they'll be freed with the group cache.
 			res = SI_ShareValue(res);
-			int rec_idx = Record_GetEntryIdx(r, op->exps[i]->resolved_name);
 			Record_Add(r, rec_idx, res);
 		}
 	}
 
 	// Tack order by exps for SORT operation to process.
 	for(uint i = 0; i < op->order_exp_count; i++) {
+		int rec_idx = op->record_offsets[i + op->exp_count];
 		if(op->expression_classification[op->exp_count + i] == AGGREGATED) {
 			// Aggregated expression, get aggregated value.
 			AR_ExpNode *exp = group->aggregationFunctions[aggIdx++];
 			AR_EXP_Reduce(exp);
 			res = AR_EXP_Evaluate(exp, NULL);
-			int rec_idx = Record_GetEntryIdx(r, exp->resolved_name);
 			Record_AddScalar(r, rec_idx, res);
 		} else {
 			// Non-aggregated expression.
 			res = group->keys[keyIdx++];
 			// Key values are shared with the Record, as they'll be freed with the group cache.
 			res = SI_ShareValue(res);
-			int rec_idx = Record_GetEntryIdx(r, op->order_exps[i]->resolved_name);
 			Record_AddScalar(r, rec_idx, res);
 		}
 	}
@@ -248,7 +243,6 @@ static Record _handoff(OpAggregate *op) {
 
 OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	OpAggregate *op = malloc(sizeof(OpAggregate));
-	op->ast = QueryCtx_GetAST();
 	op->exps = exps;
 	op->exp_count = exps ? array_len(exps) : 0;
 	op->group = NULL;
@@ -259,14 +253,16 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	op->expression_classification = NULL;
 	op->non_aggregated_expressions = NULL;
 	op->groups = CacheGroupNew();
+	op->record_offsets = array_new(uint, op->exp_count);
 
 	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", AggregateInit, AggregateConsume,
 				AggregateReset, NULL, AggregateFree, plan);
-	// TODO Would like to move this loop to Init, but Filter placement relies on it.
+
 	for(uint i = 0; i < op->exp_count; i ++) {
 		// The projected record will associate values with their resolved name
 		// to ensure that space is allocated for each entry.
-		OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
+		int record_idx = OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
+		op->record_offsets = array_append(op->record_offsets, record_idx);
 	}
 
 	return (OpBase *)op;
@@ -274,17 +270,21 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 
 static OpResult AggregateInit(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
+	// If there is a Sort operation above us, retrieve it so that we can evaluate its expressions.
+	OpSort *sort_op = _getSortOp(opBase->parent);
+	if(sort_op) {
+		// All sort expressions will be evaluated in the Consume stage.
+		op->order_exps = sort_op->exps;
+		op->order_exp_count = array_len(sort_op->exps);
 
-	AR_ExpNode **order_exps = _getOrderExpressions(opBase->parent);
-	if(order_exps) {
-		op->order_exps = order_exps;
-		op->order_exp_count = array_len(order_exps);
 		for(uint i = 0; i < op->order_exp_count; i ++) {
-			AR_ExpNode *exp = op->order_exps[i];
-			OpBase_Modifies(opBase, exp->resolved_name);
+			// Update the 'modifies' and record_offsets arrays to include sort expressions.
+			int record_idx = OpBase_Modifies((OpBase *)op, op->order_exps[i]->resolved_name);
+			op->record_offsets = array_append(op->record_offsets, record_idx);
 		}
 	}
 
+	// Determine whether each expression is an aggregate function or not.
 	_classify_expressions(op);
 
 	/* Allocate memory for group keys. */
@@ -349,6 +349,11 @@ static void AggregateFree(OpBase *opBase) {
 	if(op->groups) {
 		FreeGroupCache(op->groups);
 		op->groups = NULL;
+	}
+
+	if(op->record_offsets) {
+		array_free(op->record_offsets);
+		op->record_offsets = NULL;
 	}
 
 	op->group = NULL;

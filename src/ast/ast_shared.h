@@ -50,6 +50,7 @@ typedef struct {
 	const char *alias;          /* Alias of entity being updated. */
 	const char *attribute;      /* Attribute name to update. */
 	Attribute_ID attribute_idx; /* Attribute internal ID. */
+	int record_idx;             /* Record offset this entity is stored at. */
 	struct AR_ExpNode *exp;     /* Expression to evaluate. */
 } EntityUpdateEvalCtx;
 
@@ -58,6 +59,8 @@ typedef struct {
 	QGEdge *edge;
 	PropertyMap *properties;
 	int edge_idx;
+	int src_idx;
+	int dest_idx;
 } EdgeCreateCtx;
 
 // Context describing a relationship in a CREATE or MERGE clause

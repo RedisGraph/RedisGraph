@@ -153,6 +153,10 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, GraphContext *gc, EntityUpdateEva
 	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", UpdateInit, UpdateConsume,
 				UpdateReset, NULL, UpdateFree, plan);
 
+	for(uint i = 0; i < update_exp_count; i ++) {
+		op->update_expressions[i].record_idx = OpBase_Modifies((OpBase *)op, update_exps[i].alias);
+	}
+
 	return (OpBase *)op;
 }
 
@@ -178,13 +182,12 @@ static Record UpdateConsume(OpBase *opBase) {
 		EntityUpdateEvalCtx *update_expression = op->update_expressions;
 		for(uint i = 0; i < op->update_expressions_count; i++, update_expression++) {
 			SIValue new_value = SI_CloneValue(AR_EXP_Evaluate(update_expression->exp, r));
-			uint rec_idx = Record_GetEntryIdx(r, update_expression->alias);
 			// Make sure we're updating either a node or an edge.
-			RecordEntryType t = Record_GetType(r, rec_idx);
+			RecordEntryType t = Record_GetType(r, update_expression->record_idx);
 			assert(t == REC_TYPE_NODE || t == REC_TYPE_EDGE);
 			GraphEntityType type = (t == REC_TYPE_NODE) ? GETYPE_NODE : GETYPE_EDGE;
 
-			GraphEntity *entity = Record_GetGraphEntity(r, rec_idx);
+			GraphEntity *entity = Record_GetGraphEntity(r, update_expression->record_idx);
 			_QueueUpdate(op, entity, type, update_expression->attribute, new_value);
 		}
 

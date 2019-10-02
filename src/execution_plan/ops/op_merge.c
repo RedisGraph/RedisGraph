@@ -91,10 +91,8 @@ static void _CommitEdges(OpMerge *op, Record r) {
 		if(!schema) schema = GraphContext_AddSchema(op->gc, edge_blueprint->reltypes[0], SCHEMA_EDGE);
 
 		// Node are already created, get them from record.
-		int src_idx = Record_GetEntryIdx(r, edge_ctx->edge->src->alias); // TODO tmp
-		int dest_idx = Record_GetEntryIdx(r, edge_ctx->edge->dest->alias); // TODO tmp
-		EntityID srcId = ENTITY_GET_ID(Record_GetNode(r, src_idx));
-		EntityID destId = ENTITY_GET_ID(Record_GetNode(r, dest_idx));
+		EntityID srcId = ENTITY_GET_ID(Record_GetNode(r, edge_ctx->src_idx));
+		EntityID destId = ENTITY_GET_ID(Record_GetNode(r, edge_ctx->dest_idx));
 
 		assert(Graph_ConnectNodes(op->gc->g, srcId, destId, schema->id, created_edge));
 
@@ -125,27 +123,29 @@ static void _CreateEntities(OpMerge *op, Record r) {
 }
 
 OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
-				   NodeCreateCtx *nodes_to_merge, EdgeCreateCtx *edges_to_merge) {
+				   NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
 	OpMerge *op = malloc(sizeof(OpMerge));
 	op->stats = stats;
 	op->gc = QueryCtx_GetGraphCtx();
 	op->matched = false;
 	op->created = false;
-	op->nodes_to_merge = nodes_to_merge;
-	op->edges_to_merge = edges_to_merge;
+	op->nodes_to_merge = nodes;
+	op->edges_to_merge = edges;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume,
 				MergeReset, NULL, MergeFree, plan);
 
-	int node_count = array_len(op->nodes_to_merge);
+	int node_count = array_len(nodes);
 	for(int i = 0; i < node_count; i++) {
-		op->nodes_to_merge[i].node_idx = OpBase_Modifies((OpBase *)op, op->nodes_to_merge[i].node->alias);
+		op->nodes_to_merge[i].node_idx = OpBase_Modifies((OpBase *)op, nodes[i].node->alias);
 	}
 
-	int edge_count = array_len(op->edges_to_merge);
+	int edge_count = array_len(edges);
 	for(int i = 0; i < edge_count; i++) {
-		op->edges_to_merge[i].edge_idx = OpBase_Modifies((OpBase *)op, op->edges_to_merge[i].edge->alias);
+		op->edges_to_merge[i].edge_idx = OpBase_Modifies((OpBase *)op, edges[i].edge->alias);
+		op->edges_to_merge[i].src_idx = OpBase_Modifies((OpBase *)op, edges[i].edge->src->alias);
+		op->edges_to_merge[i].dest_idx = OpBase_Modifies((OpBase *)op, edges[i].edge->dest->alias);
 	}
 
 	return (OpBase *)op;

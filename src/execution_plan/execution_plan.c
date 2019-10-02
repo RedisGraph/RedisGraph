@@ -93,6 +93,8 @@ static void _PopulateProjectAll(ExecutionPlan *previous_segment, OpBase *op) {
 	uint count = array_len(aliases);
 
 	AR_ExpNode **exps = array_new(AR_ExpNode *, count);
+	uint *record_offsets = array_new(uint, count);
+
 	for(uint i = 0; i < count; i ++) {
 		// Build an expression for each alias.
 		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(aliases[i], NULL); // TODO probably more leaks
@@ -100,7 +102,8 @@ static void _PopulateProjectAll(ExecutionPlan *previous_segment, OpBase *op) {
 		exps = array_append(exps, exp);
 
 		// Map the alias within the ExecutionPlan mapping.
-		OpBase_Modifies(op, aliases[i]);
+		int record_idx = OpBase_Modifies(op, aliases[i]);
+		record_offsets = array_append(record_offsets, record_idx);
 	}
 
 	array_free(aliases);
@@ -110,10 +113,12 @@ static void _PopulateProjectAll(ExecutionPlan *previous_segment, OpBase *op) {
 		OpProject *project = (OpProject *)op;
 		project->exps = exps;
 		project->exp_count = count;
+		project->record_offsets = record_offsets;
 	} else {
 		OpAggregate *aggregate = (OpAggregate *)op;
 		aggregate->exps = exps;
 		aggregate->exp_count = count;
+		aggregate->record_offsets = record_offsets;
 	}
 }
 

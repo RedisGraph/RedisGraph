@@ -13,20 +13,16 @@
 #include "../../grouping/group_cache.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-// Matrix, vector operations.
 typedef enum {
 	AGGREGATED,
 	NON_AGGREGATED,
 } ExpClassification;
 
-/* Aggregate
- * aggregates graph according to
- * return clause */
 typedef struct {
 	OpBase op;
-	AST *ast;
 	AR_ExpNode **exps;
 	AR_ExpNode **order_exps;
+	uint *record_offsets;                          /* Record IDs for exps and order_exps. */
 	AR_ExpNode **non_aggregated_expressions;       /* Array of arithmetic expression. */
 	ExpClassification *expression_classification;  /* Classifies each expression as aggregated/not. */
 	rax *groups;

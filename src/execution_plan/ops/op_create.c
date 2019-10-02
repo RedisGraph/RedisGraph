@@ -75,8 +75,9 @@ OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeC
 		nodes[i].node_idx = OpBase_Modifies((OpBase *)op, nodes[i].node->alias);
 	}
 	for(uint i = 0; i < edge_blueprint_count; i ++) {
-		// TODO should this also add the src and dest IDs?
 		edges[i].edge_idx = OpBase_Modifies((OpBase *)op, edges[i].edge->alias);
+		edges[i].src_idx = OpBase_Modifies((OpBase *)op, edges[i].edge->src->alias);
+		edges[i].dest_idx = OpBase_Modifies((OpBase *)op, edges[i].edge->dest->alias);
 	}
 
 	return (OpBase *)op;
@@ -114,10 +115,8 @@ void _CreateEdges(OpCreate *op, Record r) {
 		QGEdge *e = op->edges_to_create[i].edge;
 
 		/* Retrieve source and dest nodes. */
-		int src_idx = Record_GetEntryIdx(r, e->src->alias); // TODO tmp
-		int dest_idx = Record_GetEntryIdx(r, e->dest->alias); // TODO tmp
-		Node *src_node = Record_GetNode(r, src_idx);
-		Node *dest_node = Record_GetNode(r, dest_idx);
+		Node *src_node = Record_GetNode(r, op->edges_to_create[i].src_idx);
+		Node *dest_node = Record_GetNode(r, op->edges_to_create[i].dest_idx);
 
 		/* Create the actual edge. */
 		Edge *newEdge = Record_GetEdge(r, op->edges_to_create[i].edge_idx);

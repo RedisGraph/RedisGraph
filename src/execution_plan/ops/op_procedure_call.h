@@ -22,7 +22,6 @@ typedef struct {
 /* OpProcCall, */
 typedef struct {
 	OpBase op;                  // Base op.
-	AST *ast;                   // AST.
 	const char **args;          // Arguments passed to procedure.
 	const char **output;        // Procedure output.
 	ProcedureCtx *procedure;    // Procedure to call.

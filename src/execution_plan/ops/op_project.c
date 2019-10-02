@@ -16,28 +16,25 @@ static Record ProjectConsume(OpBase *opBase);
 static OpResult ProjectReset(OpBase *opBase);
 static void ProjectFree(OpBase *opBase);
 
-static AR_ExpNode **_getOrderExpressions(OpBase *op) {
+static OpSort *_getSortOp(OpBase *op) {
 	if(op == NULL) return NULL;
 	// No need to look further if we haven't encountered a sort operation
 	// before a project/aggregate op
 	if(op->type == OPType_PROJECT || op->type == OPType_AGGREGATE) return NULL;
 
-	if(op->type == OPType_SORT) {
-		OpSort *sort = (OpSort *)op;
-		return sort->exps;
-	}
-	return _getOrderExpressions(op->parent);
+	if(op->type == OPType_SORT) return (OpSort *)op; // Sort operation found.
+
+	return _getSortOp(op->parent); // Recurse.
 }
 
 OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
-	AST *ast = QueryCtx_GetAST();
 	OpProject *op = malloc(sizeof(OpProject));
-	op->ast = ast;
 	op->exps = exps;
 	op->exp_count = exps ? array_len(exps) : 0;
 	op->order_exps = NULL;
 	op->order_exp_count = 0;
 	op->singleResponse = false;
+	op->record_offsets = array_new(uint, op->exp_count);
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", ProjectInit, ProjectConsume,
@@ -46,7 +43,8 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	for(uint i = 0; i < op->exp_count; i ++) {
 		// The projected record will associate values with their resolved name
 		// to ensure that space is allocated for each entry.
-		OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
+		int record_idx = OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
+		op->record_offsets = array_append(op->record_offsets, record_idx);
 	}
 
 	return (OpBase *)op;
@@ -54,14 +52,18 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 
 static OpResult ProjectInit(OpBase *opBase) {
 	OpProject *op = (OpProject *)opBase;
-	AR_ExpNode **order_exps = _getOrderExpressions(opBase->parent);
-	if(order_exps) {
-		op->order_exps = order_exps;
-		op->order_exp_count = array_len(order_exps);
+	// If there is a Sort operation above us, retrieve it so that we can evaluate its expressions.
+	OpSort *sort_op = _getSortOp(opBase->parent);
+	if(!sort_op) return OP_OK;
 
-		for(uint i = 0; i < op->order_exp_count; i ++) {
-			OpBase_Modifies(opBase, op->order_exps[i]->resolved_name);
-		}
+	// All sort expressions will be evaluated in the Consume stage.
+	op->order_exps = sort_op->exps;
+	op->order_exp_count = array_len(sort_op->exps);
+
+	for(uint i = 0; i < op->order_exp_count; i ++) {
+		// Update the 'modifies' and record_offsets arrays to include sort expressions.
+		int record_idx = OpBase_Modifies((OpBase *)op, op->order_exps[i]->resolved_name);
+		op->record_offsets = array_append(op->record_offsets, record_idx);
 	}
 
 	return OP_OK;
@@ -93,7 +95,7 @@ static Record ProjectConsume(OpBase *opBase) {
 	for(unsigned short i = 0; i < op->exp_count; i++) {
 		AR_ExpNode *exp = op->exps[i];
 		SIValue v = AR_EXP_Evaluate(exp, r);
-		int rec_idx = Record_GetEntryIdx(projection, exp->resolved_name);
+		int rec_idx = op->record_offsets[i];
 		/* Persisting a value is only necessary here if 'v' refers to a scalar held in Record 'r'.
 		 * Graph entities don't need to be persisted here as Record_Add will copy them internally.
 		 * The RETURN projection here requires persistence:
@@ -107,7 +109,7 @@ static Record ProjectConsume(OpBase *opBase) {
 	for(unsigned short i = 0; i < op->order_exp_count; i++) {
 		AR_ExpNode *order_exp = op->order_exps[i];
 		SIValue v = AR_EXP_Evaluate(order_exp, r);
-		int rec_idx = Record_GetEntryIdx(projection, order_exp->resolved_name);
+		int rec_idx = op->record_offsets[i + op->exp_count];
 		// TODO persisting here can be improved as described above.
 		if(!(v.type & SI_GRAPHENTITY)) SIValue_Persist(&v);
 		Record_Add(projection, rec_idx, v);
@@ -128,5 +130,10 @@ static void ProjectFree(OpBase *ctx) {
 	// _ExecutionPlanSegment_Free, but this forms a leak in scenarios
 	// like the ReduceCount optimization.
 	// if (op->exps) array_free(op->exps);
+
+	if(op->record_offsets) {
+		array_free(op->record_offsets);
+		op->record_offsets = NULL;
+	}
 }
 

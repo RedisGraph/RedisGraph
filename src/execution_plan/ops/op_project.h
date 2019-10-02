@@ -12,9 +12,9 @@
 
 typedef struct {
 	OpBase op;
-	const AST *ast;
 	AR_ExpNode **exps;              // Projected expressions.
 	AR_ExpNode **order_exps;        // Order by expressions.
+	uint *record_offsets;           // Record IDs corresponding to each projection (including order exps).
 	bool singleResponse;            // When no child operations, return NULL after a first response.
 	unsigned short exp_count;       // Number of projected expressions.
 	unsigned short order_exp_count; // Number of order by expressions.

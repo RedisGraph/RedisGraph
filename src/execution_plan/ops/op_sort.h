@@ -14,9 +14,10 @@
 typedef struct {
 	OpBase op;
 	AR_ExpNode **exps;          // Expression to sort by.
+	uint *record_offsets;       // Record IDs corresponding to each sort expression.
 	heap_t *heap;               // Holds top n records.
 	Record *buffer;             // Holds all records.
-	unsigned int limit;         // Total number of records to produce, 0 no limit.
+	uint limit;                 // Total number of records to produce, 0 no limit.
 	int direction;              // Ascending / desending.
 } OpSort;
 
