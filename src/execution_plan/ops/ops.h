@@ -34,3 +34,4 @@
 #include "op_argument.h"
 #include "op_semi_apply.h"
 #include "op_anti_semi_apply.h"
+#include "op_select_or_semi_apply.h"
