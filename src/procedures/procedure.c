@@ -24,6 +24,9 @@ void Proc_Register() {
 	_procRegister("db.propertyKeys", Proc_PropKeysCtx);
 	_procRegister("db.relationshipTypes", Proc_RelationsCtx);
 
+	// Register graph algorithms.
+	_procRegister("algo.pageRank", Proc_PagerankCtx);
+
 	// Register FullText Search generator.
 	_procRegister("db.idx.fulltext.drop", Proc_FulltextDropIdxGen);
 	_procRegister("db.idx.fulltext.queryNodes", Proc_FulltextQueryNodeGen);
