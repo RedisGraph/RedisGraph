@@ -174,48 +174,48 @@ void Register_ListFuncs() {
 
 	types = array_new(SIType, 1);
 	types = array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("tolist", AR_TOLIST, VAR_ARG_LEN, types);
+	func_desc = AR_FuncDescNew("tolist", AR_TOLIST, VAR_ARG_LEN, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	types = array_append(types, T_ARRAY);
 	types = array_append(types, T_INT64 | T_NULL);
-	func_desc = AR_FuncDescNew("subscript", AR_SUBSCRIPT, 2, types);
+	func_desc = AR_FuncDescNew("subscript", AR_SUBSCRIPT, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
 	types = array_append(types, T_ARRAY);
 	types = array_append(types, T_INT64 | T_NULL);
 	types = array_append(types, T_INT64 | T_NULL);
-	func_desc = AR_FuncDescNew("slice", AR_SLICE, VAR_ARG_LEN, types);
+	func_desc = AR_FuncDescNew("slice", AR_SLICE, VAR_ARG_LEN, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
 	types = array_append(types, T_INT64 | T_NULL);
 	types = array_append(types, T_INT64 | T_NULL);
 	types = array_append(types, T_INT64 | T_NULL);
-	func_desc = AR_FuncDescNew("range", AR_RANGE, VAR_ARG_LEN, types);
+	func_desc = AR_FuncDescNew("range", AR_RANGE, VAR_ARG_LEN, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	types = array_append(types, SI_ALL);
 	types = array_append(types, T_ARRAY);
-	func_desc = AR_FuncDescNew("in", AR_IN, 2, types);
+	func_desc = AR_FuncDescNew("in", AR_IN, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, T_ARRAY);
-	func_desc = AR_FuncDescNew("size", AR_SIZE, 1, types);
+	func_desc = AR_FuncDescNew("size", AR_SIZE, 1, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, T_ARRAY);
-	func_desc = AR_FuncDescNew("head", AR_HEAD, 1, types);
+	func_desc = AR_FuncDescNew("head", AR_HEAD, 1, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, T_ARRAY);
-	func_desc = AR_FuncDescNew("tail", AR_TAIL, 1, types);
+	func_desc = AR_FuncDescNew("tail", AR_TAIL, 1, types, true);
 	AR_RegFunc(func_desc);
 }
 

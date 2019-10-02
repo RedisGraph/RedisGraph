@@ -176,10 +176,7 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode **root) {
 		if((*root)->op.type == AR_OP_FUNC) {
 			/* See if we're able to reduce each child of root
 			 * if so we'll be able to reduce root. */
-
-			/* Functions which take no arguments shouldn't be reduced
-			 * consider rand() and uuid() */
-			if((*root)->op.child_count == 0) return false;
+			if(!(*root)->op.f->reducible) return false;
 
 			bool reduce_children = true;
 			for(int i = 0; i < (*root)->op.child_count; i++) {

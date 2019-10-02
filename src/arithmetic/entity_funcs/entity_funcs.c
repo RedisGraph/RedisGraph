@@ -93,34 +93,34 @@ void Register_EntityFuncs() {
 
 	types = array_new(SIType, 1);
 	types = array_append(types, T_NODE | T_EDGE);
-	func_desc = AR_FuncDescNew("id", AR_ID, 1, types);
+	func_desc = AR_FuncDescNew("id", AR_ID, 1, types, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, T_NODE);
-	func_desc = AR_FuncDescNew("labels", AR_LABELS, 1, types);
+	func_desc = AR_FuncDescNew("labels", AR_LABELS, 1, types, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, T_EDGE);
-	func_desc = AR_FuncDescNew("type", AR_TYPE, 1, types);
+	func_desc = AR_FuncDescNew("type", AR_TYPE, 1, types, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("exists", AR_EXISTS, 1, types);
+	func_desc = AR_FuncDescNew("exists", AR_EXISTS, 1, types, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	types = array_append(types, T_NODE);
 	types = array_append(types, T_STRING);
-	func_desc = AR_FuncDescNew("indegree", AR_INCOMEDEGREE, VAR_ARG_LEN, types);
+	func_desc = AR_FuncDescNew("indegree", AR_INCOMEDEGREE, VAR_ARG_LEN, types, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, T_NODE);
 	types = array_append(types, T_STRING);
-	func_desc = AR_FuncDescNew("outdegree", AR_OUTGOINGDEGREE, VAR_ARG_LEN, types);
+	func_desc = AR_FuncDescNew("outdegree", AR_OUTGOINGDEGREE, VAR_ARG_LEN, types, false);
 	AR_RegFunc(func_desc);
 }
 
