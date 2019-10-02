@@ -29,4 +29,5 @@ typedef struct {
 	EdgeCreateCtx *edges_to_merge;
 } OpMerge;
 
-OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeCreateCtx *nodes_to_merge, EdgeCreateCtx *edges_to_merge);
+OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
+				   NodeCreateCtx *nodes_to_merge, EdgeCreateCtx *edges_to_merge);

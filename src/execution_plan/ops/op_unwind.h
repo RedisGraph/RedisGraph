@@ -14,11 +14,11 @@
 
 typedef struct {
 	OpBase op;
-	uint listIdx;         // Current list index
-	SIValue list;         // list which the unwind operation is performed on
-	AR_ExpNode *exp;      // Arithmetic expression (evaluated as an SIArray)
+	SIValue list;         // List which the unwind operation is performed on.
+	AR_ExpNode *exp;      // Arithmetic expression (evaluated as an SIArray).
+	uint listIdx;         // Current list index.
 	int unwindRecIdx;     // Update record at this index.
-	Record currentRecord; // record to clone and add a value extracted from the list
+	Record currentRecord; // record to clone and add a value extracted from the list.
 } OpUnwind;
 
 /* Creates a new Unwind operation */

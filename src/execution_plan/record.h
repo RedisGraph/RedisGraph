@@ -29,8 +29,6 @@ typedef struct {
 	RecordEntryType type;
 } Entry;
 
-// typedef Entry *Record;
-
 typedef struct {
 	rax *mapping;       // Mapping between alias to record entry.
 	Entry entries[];    // Array of entries.

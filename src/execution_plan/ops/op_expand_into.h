@@ -31,4 +31,5 @@ typedef struct {
 	Record r;                   // Current selected record.
 } OpExpandInto;
 
-OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae, uint records_cap);
+OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
+						uint records_cap);

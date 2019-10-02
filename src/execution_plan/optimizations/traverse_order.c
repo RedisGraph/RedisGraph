@@ -17,12 +17,12 @@
 typedef AlgebraicExpression **Arrangement;
 
 // Create a new arrangement.
-Arrangement Arrangement_New(uint size) {
+static inline Arrangement Arrangement_New(uint size) {
 	return rm_malloc(sizeof(AlgebraicExpression *) * size);
 }
 
 // Clone arrangement.
-Arrangement Arrangement_Clone(const Arrangement arrangement, uint size) {
+static inline Arrangement Arrangement_Clone(const Arrangement arrangement, uint size) {
 	assert(arrangement);
 	Arrangement clone = Arrangement_New(size);
 	memcpy(clone, arrangement, sizeof(AlgebraicExpression *) * size);
@@ -30,7 +30,7 @@ Arrangement Arrangement_Clone(const Arrangement arrangement, uint size) {
 }
 
 // Print arrangement.
-void Arrangement_Print(Arrangement arrangement, uint size) {
+static inline void Arrangement_Print(Arrangement arrangement, uint size) {
 	printf("Arrangement_Print\n");
 	for(uint i = 0; i < size; i++) {
 		AlgebraicExpression *exp = arrangement[i];
@@ -39,20 +39,20 @@ void Arrangement_Print(Arrangement arrangement, uint size) {
 }
 
 // Free arrangement.
-void Arrangement_Free(Arrangement arrangement) {
+static inline void Arrangement_Free(Arrangement arrangement) {
 	assert(arrangement);
 	rm_free(arrangement);
 }
 
 // Computes x!
-static unsigned long factorial(uint x) {
+static inline unsigned long factorial(uint x) {
 	unsigned long res = 1;
 	for(int i = 2; i <= x; i++) res *= i;
 	return res;
 }
 
 // Function to swap values at two pointers.
-static void swap(Arrangement exps, uint i, uint  j) {
+static inline void swap(Arrangement exps, uint i, uint  j) {
 	AlgebraicExpression *temp;
 	temp = exps[i];
 	exps[i] = exps[j];
@@ -60,7 +60,7 @@ static void swap(Arrangement exps, uint i, uint  j) {
 }
 
 // Computes all permutations of set exps.
-static void permute(Arrangement set, int l, int r, Arrangement **permutations) {
+static inline void permute(Arrangement set, int l, int r, Arrangement **permutations) {
 	int i;
 	if(l == r) {
 		Arrangement permutation = Arrangement_Clone(set, r + 1);
@@ -285,3 +285,4 @@ cleanup:
 	for(uint i = 0; i < arrangement_count; i++) Arrangement_Free(arrangements[i]);
 	array_free(arrangements);
 }
+

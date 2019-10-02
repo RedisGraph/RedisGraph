@@ -18,8 +18,9 @@
 typedef struct {
 	OpBase op;
 	const QGNode *n;
-    uint nodeRecIdx;
+	uint nodeRecIdx;
 	DataBlockIterator *iter;
 } AllNodeScan;
 
 OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const Graph *g, const QGNode *n);
+

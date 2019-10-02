@@ -11,7 +11,7 @@
 #include "../execution_plan.h"
 #include "../../procedures/procedure.h"
 
-/* Maps procedure outout to record index.
+/* Maps procedure output to record index.
  * yield element I is mapped to procedure output J
  * which will be stored within Record at position K. */
 typedef struct {
@@ -30,8 +30,9 @@ typedef struct {
 } OpProcCall;
 
 OpBase *NewProcCallOp(
-    const ExecutionPlan *plan,
+	const ExecutionPlan *plan,  // Execution plan this operation belongs to.
 	const char *procedure,      // Procedure name.
 	const char **args,          // Arguments passed to procedure invocation.
 	const char **output         // Procedure output.
 );
+

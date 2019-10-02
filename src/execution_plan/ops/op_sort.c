@@ -135,7 +135,6 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int direction,
 #define RECORD_SORT(a, b) (_record_islt((*a), (*b), op))
 
 static OpResult SortInit(OpBase *opBase) {
-	OpSort *op = (OpSort *)opBase;
 	return OP_OK;
 }
 

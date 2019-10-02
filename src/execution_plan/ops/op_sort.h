@@ -13,7 +13,7 @@
 
 typedef struct {
 	OpBase op;
-	AR_ExpNode **exps;          // exp to sort by.
+	AR_ExpNode **exps;          // Expression to sort by.
 	heap_t *heap;               // Holds top n records.
 	Record *buffer;             // Holds all records.
 	unsigned int limit;         // Total number of records to produce, 0 no limit.

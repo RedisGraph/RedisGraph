@@ -38,4 +38,5 @@ typedef struct {
 	ResultSetStatistics *stats;
 } OpCreate;
 
-OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreateCtx *edges);
+OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeCreateCtx *nodes,
+					EdgeCreateCtx *edges);

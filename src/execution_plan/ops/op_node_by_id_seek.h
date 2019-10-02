@@ -16,20 +16,14 @@
 typedef struct {
 	OpBase op;
 	Graph *g;               // Graph object.
-	int nodeRecIdx;         // Position of entity within record.
-	NodeID minId;           // Min ID to fetch.
-	bool minInclusive;      // Include min ID.
-	NodeID maxId;           // Max ID to fetch.
-	bool maxInclusive;      // Include max ID.
 	NodeID currentId;       // Current ID fetched.
+	NodeID minId;           // Min ID to fetch.
+	NodeID maxId;           // Max ID to fetch.
+	bool minInclusive;      // Include min ID.
+	bool maxInclusive;      // Include max ID.
+	int nodeRecIdx;         // Position of entity within record.
 } OpNodeByIdSeek;
 
-OpBase *NewNodeByIdSeekOp
-(
-    const ExecutionPlan *plan,
-    const QGNode *node,
-	NodeID minId,
-	NodeID maxId,
-	bool includeMin,
-	bool includeMax
-);
+OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const QGNode *node, NodeID minId, NodeID maxId,
+						  bool includeMin, bool includeMax);
+

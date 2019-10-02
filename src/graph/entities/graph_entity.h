@@ -31,39 +31,34 @@ typedef GrB_Index EdgeID;
     One can sum the enum values in order to print multiple value:
     ENTITY_ID + ENTITY_LABELS_OR_RELATIONS will print both id and label. */
 
-typedef enum
-{
-    ENTITY_ID = 1,                       // print id only
-    ENTITY_LABELS_OR_RELATIONS = 1 << 1, // print label or relationship type
-    ENTITY_PROPERTIES = 1 << 2           // print properties
+typedef enum {
+	ENTITY_ID = 1,                       // print id only
+	ENTITY_LABELS_OR_RELATIONS = 1 << 1, // print label or relationship type
+	ENTITY_PROPERTIES = 1 << 2           // print properties
 } GraphEntityStringFromat;
 
-typedef enum GraphEntityType
-{
-    GETYPE_UNKNOWN,
-    GETYPE_NODE,
-    GETYPE_EDGE
+typedef enum GraphEntityType {
+	GETYPE_UNKNOWN,
+	GETYPE_NODE,
+	GETYPE_EDGE
 } GraphEntityType;
 
-typedef struct
-{
-    Attribute_ID id;
-    SIValue value;
+typedef struct {
+	Attribute_ID id;
+	SIValue value;
 } EntityProperty;
 
 // Essence of a graph entity.
 // TODO: see if pragma pack 0 will cause memory access violation on ARM.
-typedef struct
-{
-    EntityID id;                // Unique id
-    int prop_count;             // Number of properties.
-    EntityProperty *properties; // Key value pair of attributes.
+typedef struct {
+	EntityID id;                // Unique id
+	int prop_count;             // Number of properties.
+	EntityProperty *properties; // Key value pair of attributes.
 } Entity;
 
 // Common denominator between nodes and edges.
-typedef struct
-{
-    Entity *entity;
+typedef struct {
+	Entity *entity;
 } GraphEntity;
 
 /* Adds property to entity
@@ -80,8 +75,8 @@ void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue
 
 /* Prints the graph entity into a buffer, returns what is the string length, buffer can be re-allocated at need. */
 void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen,
-                          size_t *bytesWritten,
-                          GraphEntityStringFromat format, GraphEntityType entityType);
+						  size_t *bytesWritten,
+						  GraphEntityStringFromat format, GraphEntityType entityType);
 
 /* Release all memory allocated by entity */
 void FreeEntity(Entity *e);

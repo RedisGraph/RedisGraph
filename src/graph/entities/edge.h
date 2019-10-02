@@ -16,16 +16,15 @@
 
 /* TODO: note it is possible to get into an inconsistency
  * if we set src and srcNodeID to different nodes. */
-struct Edge
-{
-    Entity *entity;           /* MUST be the first property of Edge. */
-    const char *relationship; /* Label attached to edge. */
-    int relationID;           /* Relation ID. */
-    Node *src;                /* Pointer to source node. */
-    Node *dest;               /* Pointer to destination node. */
-    NodeID srcNodeID;         /* Source node ID. */
-    NodeID destNodeID;        /* Destination node ID. */
-    GrB_Matrix mat;           /* Adjacency matrix, associated with edge. */
+struct Edge {
+	Entity *entity;           /* MUST be the first property of Edge. */
+	const char *relationship; /* Label attached to edge. */
+	int relationID;           /* Relation ID. */
+	Node *src;                /* Pointer to source node. */
+	Node *dest;               /* Pointer to destination node. */
+	NodeID srcNodeID;         /* Source node ID. */
+	NodeID destNodeID;        /* Destination node ID. */
+	GrB_Matrix mat;           /* Adjacency matrix, associated with edge. */
 };
 
 typedef struct Edge Edge;
@@ -62,7 +61,7 @@ void Edge_SetRelationID(Edge *e, int relationID); // QG, graph.c
 
 /* Prints a string representation of the edge to buffer, return the string length. */
 void Edge_ToString(const Edge *e, char **buffer, size_t *bufferLen, size_t *bytesWritten,
-                   GraphEntityStringFromat format);
+				   GraphEntityStringFromat format);
 
 // Frees allocated space by given edge
 void Edge_Free(Edge *edge);
