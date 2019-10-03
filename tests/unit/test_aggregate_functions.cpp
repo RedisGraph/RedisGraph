@@ -225,6 +225,8 @@ TEST_F(AggregateTest, StDevTest) {
 		stdev->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(i));
 		AR_EXP_Aggregate(stdev, r);
 		sum += i;
+		// Avoide double free on the last value.
+		if(i < 10) AR_EXP_Free(stdev->op.children[0]);
 	}
 	double mean = sum / 10;
 	double tmp_variance = 0;
@@ -245,6 +247,8 @@ TEST_F(AggregateTest, StDevTest) {
 	for(int i = 1; i <= 10; i++) {
 		stdevp->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(i));
 		AR_EXP_Aggregate(stdevp, r);
+		// Avoide double free on the last value.
+		if(i < 10) AR_EXP_Free(stdevp->op.children[0]);
 	}
 
 	double pop_variance = tmp_variance / 10;

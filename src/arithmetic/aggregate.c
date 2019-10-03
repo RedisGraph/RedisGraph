@@ -7,31 +7,31 @@
 #include "aggregate.h"
 #include "../util/rmalloc.h"
 
-AggCtx *Agg_NewCtx(StepFunc step, FinalizeFunc finalize, InnerData_New innerDataNew,
-				   AggCtx_InnerData_Free innerDataFree, bool isDistinct) {
+AggCtx *Agg_NewCtx(StepFunc step, FinalizeFunc finalize, AggCtx_PrivateData_New privateDataNew,
+				   AggCtx_PrivateData_Free privateDataFree, bool isDistinct) {
 	// Allocate.
 	AggCtx *ac = rm_malloc(sizeof(AggCtx));
 	// Set methods.
 	ac->Step = step;
 	ac->Finalize = finalize;
-	ac->InnerData_New = innerDataNew;
-	ac->InnerData_Free = innerDataFree;
+	ac->AggCtx_PrivateData_New = privateDataNew;
+	ac->AggCtx_PrivateData_Free = privateDataFree;
 	// Initialize members.
 	ac->isDistinct = isDistinct;
 	// This member initialization depends on isDistinct.
-	ac->fctx = ac->InnerData_New(ac);
+	ac->fctx = ac->AggCtx_PrivateData_New(ac);
 	ac->err = NULL;
 	ac->result = SI_NullVal();
 	return ac;
 }
 
 AggCtx *Agg_CloneCtx(AggCtx *ctx) {
-	return Agg_NewCtx(ctx->Step, ctx->Finalize, ctx->InnerData_New, ctx->InnerData_Free,
-					  ctx->isDistinct);
+	return Agg_NewCtx(ctx->Step, ctx->Finalize, ctx->AggCtx_PrivateData_New,
+					  ctx->AggCtx_PrivateData_Free, ctx->isDistinct);
 }
 
 void AggCtx_Free(AggCtx *ctx) {
-	ctx->InnerData_Free(ctx);
+	ctx->AggCtx_PrivateData_Free(ctx);
 	SIValue_Free(&ctx->result);
 	rm_free(ctx);
 }

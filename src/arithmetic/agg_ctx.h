@@ -17,8 +17,8 @@ struct AggCtx {
 	SIValue result;
 	int (*Step)(struct AggCtx *ctx, SIValue *argv, int argc);
 	int (*Finalize)(struct AggCtx *ctx);
-	void *(*InnerData_New)();
-	void (*InnerData_Free)(struct AggCtx *ctx);
+	void *(*AggCtx_PrivateData_New)();
+	void (*AggCtx_PrivateData_Free)(struct AggCtx *ctx);
 	bool isDistinct;
 };
 typedef struct AggCtx AggCtx;

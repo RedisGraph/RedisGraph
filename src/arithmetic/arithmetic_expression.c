@@ -58,7 +58,7 @@ static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 	return clone;
 }
 
-static AR_ExpNode *_AR_EXP_NewFunctionLessOpNode(const char *func_name, uint child_count) {
+static AR_ExpNode *_AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 	assert(func_name);
 
 	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
@@ -70,7 +70,7 @@ static AR_ExpNode *_AR_EXP_NewFunctionLessOpNode(const char *func_name, uint chi
 }
 
 static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
-	AR_ExpNode *clone = _AR_EXP_NewFunctionLessOpNode(exp->op.func_name, exp->op.child_count);
+	AR_ExpNode *clone = _AR_EXP_NewOpNode(exp->op.func_name, exp->op.child_count);
 	if(exp->op.type == AR_OP_FUNC) {
 		clone->op.f = exp->op.f;
 		clone->op.type = AR_OP_FUNC;
@@ -87,7 +87,7 @@ static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 
 AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 
-	AR_ExpNode *node = _AR_EXP_NewFunctionLessOpNode(func_name, child_count);
+	AR_ExpNode *node = _AR_EXP_NewOpNode(func_name, child_count);
 
 	/* Determine function type. */
 	AR_FuncDesc *func = AR_GetFunc(func_name);
@@ -110,7 +110,7 @@ AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 }
 
 AR_ExpNode *AR_EXP_NewDistinctOpNode(const char *func_name, uint child_count) {
-	AR_ExpNode *node = _AR_EXP_NewFunctionLessOpNode(func_name, child_count);
+	AR_ExpNode *node = _AR_EXP_NewOpNode(func_name, child_count);
 
 	AggCtx *agg_func;
 	Agg_GetFunc(func_name, true, &agg_func);
@@ -123,8 +123,8 @@ AR_ExpNode *AR_EXP_NewDistinctOpNode(const char *func_name, uint child_count) {
 	return node;
 }
 
-bool AR_EXP_OpNodeIsDistinctAggregation(AR_ExpNode *op) {
-	return op->op.type == AR_OP_AGGREGATE && op->op.agg_func->isDistinct;
+bool AR_EXP_PerformDistinct(AR_ExpNode *op) {
+	return op->type == AR_EXP_OP && op->op.type == AR_OP_AGGREGATE && op->op.agg_func->isDistinct;
 }
 
 AR_ExpNode *AR_EXP_NewVariableOperandNode(RecordMap *record_map, const char *alias,

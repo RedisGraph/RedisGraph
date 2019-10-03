@@ -97,7 +97,7 @@ AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count);
 AR_ExpNode *AR_EXP_NewDistinctOpNode(const char *func_name, uint child_count);
 
 /* Returns if the operation is distinct aggregation" */
-bool AR_EXP_OpNodeIsDistinctAggregation(AR_ExpNode *op);
+bool AR_EXP_PerformDistinct(AR_ExpNode *op);
 
 /* Creates a new Arithmetic expression variable operand node */
 AR_ExpNode *AR_EXP_NewVariableOperandNode(RecordMap *record_map, const char *alias,

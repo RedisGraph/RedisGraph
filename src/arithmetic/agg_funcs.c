@@ -29,15 +29,13 @@ int __agg_sumStep(AggCtx *ctx, SIValue *argv, int argc) {
 	// convert the value of the input sequence to a double if possible
 	__agg_sumCtx *ac = Agg_FuncCtx(ctx);
 	SIValue v = argv[0];
+	SIType t = SI_TYPE(v);
+
+	if(t == T_NULL) return AGG_OK;
+	if(!(t & SI_NUMERIC)) return Agg_SetError(ctx, "SUM Could not convert upstream value to double");
+
 	double n;
-	if(!SIValue_ToDouble(&v, &n)) {
-		if(!SIValue_IsNullPtr(&v)) {
-			// not convertible to double!
-			return Agg_SetError(ctx, "SUM Could not convert upstream value to double");
-		} else {
-			return AGG_OK;
-		}
-	}
+	SIValue_ToDouble(&v, &n);
 	ac->total += n;
 
 	return AGG_OK;
@@ -62,12 +60,13 @@ void *__agg_sumCtxNew(AggCtx *ctx) {
 	__agg_sumCtx *ac = rm_malloc(sizeof(__agg_sumCtx));
 	ac->total = 0;
 	if(ctx->isDistinct) ac->hashSet = Set_New();
+	else ac->hashSet = NULL;
 	return ac;
 }
 
 void __agg_sumCtxFree(AggCtx *ctx) {
 	__agg_sumCtx *ac = Agg_FuncCtx(ctx);
-	if(ctx->isDistinct) Set_Free(ac->hashSet);
+	if(ac->hashSet) Set_Free(ac->hashSet);
 	rm_free(ac);
 }
 
@@ -96,18 +95,13 @@ int __agg_avgStep(AggCtx *ctx, SIValue *argv, int argc) {
 	__agg_avgCtx *ac = Agg_FuncCtx(ctx);
 
 	SIValue v = argv[0];
+	SIType t = SI_TYPE(v);
+
+	if(t == T_NULL) return AGG_OK;
+	if(!(t & SI_NUMERIC)) return Agg_SetError(ctx, "AVG Could not convert upstream value to double");
+
 	double n;
-	if(!SIValue_ToDouble(&argv[0], &n)) {
-		if(!SIValue_IsNullPtr(&v)) {
-			// not convertible to double!
-			return Agg_SetError(ctx,
-								"AVG Could not convert upstream value to double");
-		} else {
-			return AGG_OK;
-		}
-	}
-
-
+	SIValue_ToDouble(&v, &n);
 	ac->count++;
 	ac->total += n;
 
@@ -140,12 +134,13 @@ void *__agg_avgCtxNew(AggCtx *ctx) {
 	ac->count = 0;
 	ac->total = 0;
 	if(ctx->isDistinct) ac->hashSet = Set_New();
+	else ac->hashSet = NULL;
 	return ac;
 }
 
 void __agg_avgCtxFree(AggCtx *ctx) {
 	__agg_avgCtx *ac = Agg_FuncCtx(ctx);
-	if(ctx->isDistinct) Set_Free(ac->hashSet);
+	if(ac->hashSet) Set_Free(ac->hashSet);
 	rm_free(ac);
 }
 
@@ -294,12 +289,13 @@ void *__agg_countCtxNew(AggCtx *ctx) {
 	__agg_countCtx *ac = rm_malloc(sizeof(__agg_countCtx));
 	ac->count = 0;
 	if(ctx->isDistinct) ac->hashSet = Set_New();
+	else ac->hashSet = NULL;
 	return ac;
 }
 
 void __agg_countCtxFree(AggCtx *ctx) {
 	__agg_countCtx *ac = Agg_FuncCtx(ctx);
-	if(ctx->isDistinct) Set_Free(ac->hashSet);
+	if(ac->hashSet) Set_Free(ac->hashSet);
 	rm_free(ac);
 }
 
@@ -347,17 +343,15 @@ int __agg_percStep(AggCtx *ctx, SIValue *argv, int argc) {
 		ac->values = rm_realloc(ac->values, sizeof(double) * ac->values_allocated);
 	}
 
-	double n;
+
 	SIValue v = argv[0];
-	if(!SIValue_ToDouble(&v, &n)) {
-		if(!SIValue_IsNullPtr(&v)) {
-			// not convertible to double!
-			return Agg_SetError(ctx,
-								"PERC_DISC Could not convert upstream value to double");
-		} else {
-			return AGG_OK;
-		}
-	}
+	SIType t = SI_TYPE(v);
+	if(t == T_NULL) return AGG_OK;
+	if(!(t & SI_NUMERIC)) return Agg_SetError(ctx,
+												  "PERC_DISC Could not convert upstream value to double");
+
+	double n;
+	SIValue_ToDouble(&v, &n);
 	ac->values[ac->count++] = n;
 
 	return AGG_OK;
@@ -425,13 +419,14 @@ void *__agg_PercCtxNew(AggCtx *ctx) {
 	// Percentile will be updated by the first call to Step
 	ac->percentile = -1;
 	if(ctx->isDistinct) ac->hashSet = Set_New();
+	else ac->hashSet = NULL;
 	return ac;
 }
 
 void __agg_PercCtxFree(AggCtx *ctx) {
 	__agg_percCtx *ac = Agg_FuncCtx(ctx);
 	rm_free(ac->values);
-	if(ctx->isDistinct) Set_Free(ac->hashSet);
+	if(ac->hashSet) Set_Free(ac->hashSet);
 	rm_free(ac);
 }
 
@@ -476,17 +471,14 @@ int __agg_StdevStep(AggCtx *ctx, SIValue *argv, int argc) {
 		ac->values = rm_realloc(ac->values, sizeof(double) * ac->values_allocated);
 	}
 
-	double n;
+
 	SIValue v = argv[0];
-	if(!SIValue_ToDouble(&v, &n)) {
-		if(!SIValue_IsNullPtr(&v)) {
-			// not convertible to double!
-			return Agg_SetError(ctx,
-								"STDEV Could not convert upstream value to double");
-		} else {
-			return AGG_OK;
-		}
-	}
+	SIType t = SI_TYPE(v);
+	if(t == T_NULL) return AGG_OK;
+	if(!(t & SI_NUMERIC)) return Agg_SetError(ctx, "STDEV Could not convert upstream value to double");
+
+	double n;
+	SIValue_ToDouble(&v, &n);
 	ac->values[ac->count++] = n;
 	ac->total += n;
 
@@ -533,13 +525,14 @@ void *__agg_stdevCtxNew(AggCtx *ctx) {
 	ac->values = rm_malloc(1024 * sizeof(double));
 	ac->values_allocated = 1024;
 	if(ctx->isDistinct) ac->hashSet = Set_New();
+	else ac->hashSet = NULL;
 	return ac;
 }
 
 void __agg_StdevCtxFree(AggCtx *ctx) {
 	__agg_stdevCtx *ac = Agg_FuncCtx(ctx);
 	rm_free(ac->values);
-	if(ctx->isDistinct) Set_Free(ac->hashSet);
+	if(ac->hashSet) Set_Free(ac->hashSet);
 	rm_free(ac);
 }
 
@@ -599,12 +592,13 @@ void *__agg_collectCtxNew(AggCtx *ctx) {
 	__agg_collectCtx *ac = rm_malloc(sizeof(__agg_collectCtx));
 	ac->list = SI_Array(100);
 	if(ctx->isDistinct) ac->hashSet = Set_New();
+	else ac->hashSet = NULL;
 	return ac;
 }
 
 void __agg_collectCtxFree(AggCtx *ctx) {
 	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
-	if(ctx->isDistinct) Set_Free(ac->hashSet);
+	if(ac->hashSet) Set_Free(ac->hashSet);
 	rm_free(ac);
 }
 
