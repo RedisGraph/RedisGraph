@@ -186,3 +186,42 @@ class testReturnDistinctFlow2(RedisGraphTestBase):
         # order+limit+distinct
         q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name DESC LIMIT 2")
         self.env.assertEqual(q, [['Stevie'], ['Mike']])
+
+class testDistinct(FlowTestsBase):
+    def __init__(self):
+        global redis_con
+        global redis_graph
+        super(testDistinct, self).__init__()
+        redis_con = self.env.getConnection()
+        redis_graph = Graph("G", redis_con)
+        self.populate_graph()
+
+    def populate_graph(self):
+        a = Node()
+        b = Node()
+        c = Node()
+        redis_graph.add_node(a)
+        redis_graph.add_node(b)
+        redis_graph.add_node(c)
+        redis_graph.add_edge(Edge(a, "know", b))
+        redis_graph.add_edge(Edge(a, "know", b))
+        redis_graph.add_edge(Edge(a, "know", c))
+        redis_graph.commit()
+
+    def test_unwind_count_distinct(self):
+        query = """UNWIND [1, 2, 2, "a", "a", null] as x RETURN count(distinct x)"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[3]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+    
+    def test_match_count_distinct(self):
+        query = """MATCH (a)-[]->(x) RETURN count(distinct x)"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[2]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test_collect_distinct(self):
+        query = "UNWIND ['a', 'a', null, 1, 2, 2, 3, 3, 3] AS x RETURN collect(distinct x)"
+        actual_result = redis_graph.query(query)
+        expected_result = [[['a', 1, 2, 3]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)

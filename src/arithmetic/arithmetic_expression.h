@@ -53,10 +53,10 @@ typedef struct {
 	union {
 		AR_FuncDesc *f;
 		AggCtx *agg_func;
-	};                            /* Operation to perform on children. */
-	const char *func_name;        /* Name of function. */
-	int child_count;              /* Number of children. */
-	struct AR_ExpNode **children; /* Child nodes. */
+	};                              /* Operation to perform on children. */
+	const char *func_name;          /* Name of function. */
+	int child_count;                /* Number of children. */
+	struct AR_ExpNode **children;   /* Child nodes. */
 	AR_OPType type;
 } AR_OpNode;
 
@@ -92,6 +92,12 @@ typedef struct AR_ExpNode {
 
 /* Creates a new Arithmetic expression operation node */
 AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count);
+
+/* Creates a new distinct arithmetic expression operation node */
+AR_ExpNode *AR_EXP_NewDistinctOpNode(const char *func_name, uint child_count);
+
+/* Returns if the operation is distinct aggregation" */
+bool AR_EXP_PerformDistinct(AR_ExpNode *op);
 
 /* Creates a new Arithmetic expression variable operand node */
 AR_ExpNode *AR_EXP_NewVariableOperandNode(RecordMap *record_map, const char *alias,

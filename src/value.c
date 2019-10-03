@@ -524,7 +524,7 @@ XXH64_hash_t SIValue_HashCode(SIValue v) {
 		break;
 	case T_STRING:
 		XXH64_update(&state, &t, sizeof(t));
-		XXH64_update(&state, &v.stringval, strlen(v.stringval));
+		XXH64_update(&state, v.stringval, strlen(v.stringval));
 		break;
 	case T_INT64:
 		// Change type to numeric.
