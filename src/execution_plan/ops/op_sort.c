@@ -198,7 +198,10 @@ static void SortFree(OpBase *ctx) {
 	}
 
 	if(op->exps) {
-		for(int i = 0; i < array_len(op->exps); i++) AR_EXP_Free(op->exps[i]);
+		uint exp_count = array_len(op->exps);
+		for(uint i = 0; i < exp_count; i ++) {
+			AR_EXP_Free(op->exps[i]);
+		}
 		array_free(op->exps);
 		op->exps = NULL;
 	}

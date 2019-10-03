@@ -540,14 +540,14 @@ static inline void _buildCallOp(AST *ast, ExecutionPlan *plan,
 	// A call clause has a procedure name, 0+ arguments (parenthesized expressions), and a projection if YIELD is included
 	const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
 	const char **arguments = _BuildCallArguments(call_clause);
-	AR_ExpNode **yield_exps = _BuildCallProjections(call_clause, ast);
+	AR_ExpNode **yield_exps = _BuildCallProjections(call_clause, ast); // TODO only need strings
 	uint yield_count = array_len(yield_exps);
 	const char **yields = array_new(const char *, yield_count);
 
 	for(uint i = 0; i < yield_count; i ++) {
 		// Track the names of yielded variables.
-		// yields = array_append(yields, yield_exps[i]->resolved_name);
 		yields = array_append(yields, yield_exps[i]->operand.variadic.entity_alias);
+		AR_EXP_Free(yield_exps[i]);
 	}
 	array_free(yield_exps);
 	OpBase *op = NewProcCallOp(plan, proc_name, arguments, yields);
@@ -600,7 +600,7 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
 	// Because 't' is set using the offsetof() call, it cannot be used in switch statements.
 	if(t == CYPHER_AST_MATCH) {
-		// TODO tmp
+		// Only add at most one set of traversals per plan. TODO Revisit and improve this logic.
 		if(ExecutionPlan_LocateOp(plan->root, OPType_NODE_BY_LABEL_SCAN) ||
 		   ExecutionPlan_LocateOp(plan->root, OPType_ALL_NODE_SCAN)) {
 			return;
@@ -646,24 +646,11 @@ static ExecutionPlan *_NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, A
 	FT_FilterNode *filter_tree = AST_BuildFilterTree(ast);
 	plan->filter_tree = filter_tree;
 
-	uint clause_count = cypher_ast_query_nclauses(ast->root);
-
-	/* If we have a procedure call, build an op for it first.
-	 * This is currently necessary to extend the segment's projections if necesary
-	 * and in order to build the plan for queries of forms like CALL..MATCH properly.
-	 * TODO Fix this so that CALL clauses are handled in the ConvertClause loop. */
-	// const cypher_astnode_t *call_clause = AST_GetClause(ast, CYPHER_AST_CALL);
-	// if(call_clause) _buildCallOp(ast, plan, call_clause);
-
-	// Build traversal operations for every connected component in the QueryGraph
-	// if(AST_ContainsClause(ast, CYPHER_AST_MATCH) || AST_ContainsClause(ast, CYPHER_AST_MERGE)) {
-	// _ExecutionPlan_ProcessQueryGraph(plan, qg, ast, filter_tree);
-	// }
-
 	// If we are in a querying context, retrieve a pointer to the statistics for operations
 	// like DELETE that only produce metadata.
 	ResultSetStatistics *stats = (result_set) ? &result_set->stats : NULL;
 
+	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	for(uint i = 0; i < clause_count; i ++) {
 		// Build the appropriate operation(s) for each clause in the query.
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
@@ -704,7 +691,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 	segment_indices = array_append(segment_indices, clause_count);
 
 	uint segment_count = array_len(segment_indices);
-	ExecutionPlan *segments[segment_count];
+	ExecutionPlan **segments = rm_malloc(segment_count * sizeof(ExecutionPlan *));;
 	uint start_offset = 0;
 	for(int i = 0; i < segment_count; i++) {
 		uint end_offset = segment_indices[i];
@@ -765,8 +752,9 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 			assert(segment_count == 1);
 			connecting_op = _ExecutionPlan_FindConnectingOp(plan->root, NULL);
 		}
+
 		// Check whether the query culminates in a RETURN * clause.
-		bool return_all = cypher_ast_return_has_include_existing(last_clause); // TODO TODO
+		bool return_all = cypher_ast_return_has_include_existing(last_clause);
 		if(return_all) _PopulateProjectAll(segments[segment_count - 2], connecting_op);
 
 		if(result_set) {
@@ -794,7 +782,8 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 	// Optimize the operations in the ExecutionPlan.
 	optimizePlan(gc, plan);
 
-	// plan->segment_count = segment_count;
+	plan->segment_count = segment_count;
+	plan->segments = segments;
 
 	return plan;
 }
@@ -909,20 +898,38 @@ ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan) {
 	return rs;
 }
 
-void _ExecutionPlan_FreeOperations(OpBase *op) {
+static void _ExecutionPlan_FreeOperations(OpBase *op) {
 	for(int i = 0; i < op->childCount; i++) {
 		_ExecutionPlan_FreeOperations(op->children[i]);
 	}
 	OpBase_Free(op);
 }
 
+static void _ExecutionPlan_FreeSegment(ExecutionPlan *plan) {
+	if(plan->connected_components) {
+		uint connected_component_count = array_len(plan->connected_components);
+		for(uint i = 0; i < connected_component_count; i ++) {
+			QueryGraph_Free(plan->connected_components[i]);
+		}
+		array_free(plan->connected_components);
+	}
+
+	QueryGraph_Free(plan->query_graph);
+	raxFree(plan->record_map);
+	rm_free(plan);
+}
+
 void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) return;
 
-	// for(uint i = 0; i < plan->segment_count; i++) {
-	// ExecutionPlan_Free(plan->segments[i]);
-	// }
-	// rm_free(plan->segments);
+	// All segments but the last should have everything but
+	// their operation chain freed.
+	// The last segment is the actual plan passed as an argument to this function.
+	// TODO this logic isn't ideal, try to improve.
+	for(int i = 0; i < plan->segment_count - 1; i++) {
+		_ExecutionPlan_FreeSegment(plan->segments[i]);
+	}
+	rm_free(plan->segments);
 
 	if(plan->connected_components) {
 		uint connected_component_count = array_len(plan->connected_components);

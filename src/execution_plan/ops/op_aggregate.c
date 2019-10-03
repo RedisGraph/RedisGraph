@@ -326,6 +326,15 @@ static void AggregateFree(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
 	if(!op) return;
 
+	if(op->exps) {
+		uint exp_count = array_len(op->exps);
+		for(uint i = 0; i < exp_count; i ++) {
+			AR_EXP_Free(op->exps[i]);
+		}
+		array_free(op->exps);
+		op->exps = NULL;
+	}
+
 	if(op->group_keys) {
 		rm_free(op->group_keys);
 		op->group_keys = NULL;

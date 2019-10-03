@@ -126,10 +126,14 @@ static OpResult ProjectReset(OpBase *ctx) {
 
 static void ProjectFree(OpBase *ctx) {
 	OpProject *op = (OpProject *)ctx;
-	// TODO These expressions are typically freed as part of
-	// _ExecutionPlanSegment_Free, but this forms a leak in scenarios
-	// like the ReduceCount optimization.
-	// if (op->exps) array_free(op->exps);
+	if(op->exps) {
+		uint exp_count = array_len(op->exps);
+		for(uint i = 0; i < exp_count; i ++) {
+			AR_EXP_Free(op->exps[i]);
+		}
+		array_free(op->exps);
+		op->exps = NULL;
+	}
 
 	if(op->record_offsets) {
 		array_free(op->record_offsets);

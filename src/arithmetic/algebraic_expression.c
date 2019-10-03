@@ -339,7 +339,6 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge(
 	bool freeMatrix = false;
 	GrB_Matrix mat;
 
-	// TODO: find a better way for retriving AST graph entity.
 	uint reltype_count = array_len(e->reltypeIDs);
 	if(reltype_count == 0) {
 		// No relationship types specified; use the full adjacency matrix

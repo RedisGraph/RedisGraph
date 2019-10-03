@@ -1348,16 +1348,17 @@ static AST_Validation _BlockUnsupportedMerges(AST *ast, char **reason) {
 	 * CREATE (a:A), (b:B)
 	 * MATCH (a:A), (b:B) MERGE (a)-[:TYPE]->(b)
 	 * This currently creates two new nodes. TODO fix */
+	AST_Validation res = AST_VALID;
 	uint *merge_clause_indices = AST_GetClauseIndices(ast, CYPHER_AST_MERGE);
 	uint merge_count = array_len(merge_clause_indices);
-	if(merge_count == 0) return AST_VALID;
+	if(merge_count == 0) goto cleanup;
 
 	if(merge_count > 1) {
 		asprintf(reason, "RedisGraph does not currently support multiple MERGE clauses in a single query.");
-		return AST_INVALID;
+		res = AST_INVALID;
+		goto cleanup;
 	}
 
-	AST_Validation res = AST_VALID;
 
 	uint merge_idx = merge_clause_indices[0];
 	for(uint i = 0; i < merge_idx; i ++) {
@@ -1367,12 +1368,12 @@ static AST_Validation _BlockUnsupportedMerges(AST *ast, char **reason) {
 			asprintf(reason,
 					 "RedisGraph does not currently support MERGE clauses after MATCH or CREATE clauses.");
 			res = AST_INVALID;
-			break;
+			goto cleanup;
 		}
 	}
 
+cleanup:
 	array_free(merge_clause_indices);
-
 	return res;
 }
 
