@@ -235,7 +235,6 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 	default:
 		// unrecognized type
 		assert(false);
-
 	}
 }
 

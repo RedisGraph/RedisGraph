@@ -201,6 +201,12 @@ static FT_FilterNode *_convertInlinedProperties(const AST *ast, const cypher_ast
 	return root;
 }
 
+static FT_FilterNode *_convertPatternPath(const cypher_astnode_t *entity) {
+	AR_ExpNode *exp = AR_EXP_NewOpNode("traverse", 1);
+	exp->op.children[0] = AR_EXP_NewConstOperandNode(SI_PtrVal((void *)entity));
+	return FilterTree_CreateExpressionFilter(exp);
+}
+
 FT_FilterNode *_FilterNode_FromAST(const cypher_astnode_t *expr) {
 	assert(expr);
 	cypher_astnode_type_t type = cypher_astnode_type(expr);
@@ -219,6 +225,8 @@ FT_FilterNode *_FilterNode_FromAST(const cypher_astnode_t *expr) {
 		return _convertFalseOperator();
 	} else if(type == CYPHER_AST_INTEGER) {
 		return _convertIntegerOperator(expr);
+	} else if(type == CYPHER_AST_PATTERN_PATH) {
+		return _convertPatternPath(expr);
 	} else {
 		assert(false);
 		return NULL;
@@ -228,14 +236,34 @@ FT_FilterNode *_FilterNode_FromAST(const cypher_astnode_t *expr) {
 void _AST_ConvertFilters(const AST *ast, FT_FilterNode **root, const cypher_astnode_t *entity) {
 	if(!entity) return;
 
-	cypher_astnode_type_t type = cypher_astnode_type(entity);
-
 	FT_FilterNode *node = NULL;
+	cypher_astnode_type_t type = cypher_astnode_type(entity);
 	// If the current entity is a node or edge pattern, capture its properties map (if any)
 	if(type == CYPHER_AST_NODE_PATTERN) {
 		node = _convertInlinedProperties(ast, entity, GETYPE_NODE);
 	} else if(type == CYPHER_AST_REL_PATTERN) {
 		node = _convertInlinedProperties(ast, entity, GETYPE_EDGE);
+	} else {
+		uint child_count = cypher_astnode_nchildren(entity);
+		for(uint i = 0; i < child_count; i++) {
+			const cypher_astnode_t *child = cypher_astnode_get_child(entity, i);
+			// Recursively continue searching
+			_AST_ConvertPattern(ast, root, child);
+		}
+	}
+
+	if(node) _FT_Append(root, node);
+}
+
+void _AST_ConvertPredicates(const AST *ast, FT_FilterNode **root, const cypher_astnode_t *entity) {
+	if(!entity) return;
+
+	cypher_astnode_type_t type = cypher_astnode_type(entity);
+
+	FT_FilterNode *node = NULL;
+
+	if(type == CYPHER_AST_PATTERN_PATH) {
+		node = _convertPatternPath(entity);
 	} else if(type == CYPHER_AST_COMPARISON) {
 		node = _convertComparison(entity);
 	} else if(type == CYPHER_AST_BINARY_OPERATOR) {
@@ -258,6 +286,7 @@ void _AST_ConvertFilters(const AST *ast, FT_FilterNode **root, const cypher_astn
 			_AST_ConvertFilters(ast, root, child);
 		}
 	}
+
 	if(node) _FT_Append(root, node);
 }
 
@@ -272,23 +301,34 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 		array_free(match_clauses);
 	}
 
-	const cypher_astnode_t **merge_clauses = AST_GetClauses(ast, CYPHER_AST_MERGE);
-	if(merge_clauses) {
-		uint merge_count = array_len(merge_clauses);
-		for(uint i = 0; i < merge_count; i ++) {
-			_AST_ConvertFilters(ast, &filter_tree, merge_clauses[i]);
+	const cypher_astnode_t **with_clauses = AST_GetClauses(ast, CYPHER_AST_WITH);
+	if(with_clauses) {
+		uint with_count = array_len(with_clauses);
+		for(uint i = 0; i < with_count; i ++) {
+			const cypher_astnode_t *predicate = cypher_ast_with_get_predicate(with_clauses[i]);
+			if(predicate) _AST_ConvertPredicates(ast, &filter_tree, predicate);
 		}
-		array_free(merge_clauses);
+		array_free(with_clauses);
 	}
 
 	const cypher_astnode_t **call_clauses = AST_GetClauses(ast, CYPHER_AST_CALL);
 	if(call_clauses) {
 		uint call_count = array_len(call_clauses);
 		for(uint i = 0; i < call_count; i ++) {
-			const cypher_astnode_t *where_predicate = cypher_ast_call_get_predicate(call_clauses[i]);
-			if(where_predicate) _AST_ConvertFilters(ast, &filter_tree, where_predicate);
+			const cypher_astnode_t *predicate = cypher_ast_call_get_predicate(call_clauses[i]);
+			if(predicate) _AST_ConvertPredicates(ast, &filter_tree, predicate);
 		}
 		array_free(call_clauses);
+	}
+
+	const cypher_astnode_t **merge_clauses = AST_GetClauses(ast, CYPHER_AST_MERGE);
+	if(merge_clauses) {
+		uint merge_count = array_len(merge_clauses);
+		for(uint i = 0; i < merge_count; i ++) {
+			const cypher_astnode_t *pattern = cypher_ast_merge_get_pattern_path(merge_clauses[i]);
+			_AST_ConvertPattern(ast, &filter_tree, pattern);
+		}
+		array_free(merge_clauses);
 	}
 
 	// Apply De Morgan's laws
@@ -296,4 +336,3 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 
 	return filter_tree;
 }
-

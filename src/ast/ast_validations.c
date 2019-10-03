@@ -416,9 +416,6 @@ static AST_Validation _Validate_MATCH_Clause_Filters(const cypher_astnode_t *cla
 		if(_ValidateInlinedPropertiesOnPath(path, reason) != AST_VALID) return AST_INVALID;
 	}
 
-	const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(clause);
-	if(predicate == NULL) return AST_VALID;
-
 	return AST_VALID;
 }
 
