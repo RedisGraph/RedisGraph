@@ -51,10 +51,6 @@ uint AST_GetClauseCount(const AST *ast, cypher_astnode_type_t clause_type);
 // Returns all instances of the given clause in the AST.
 const cypher_astnode_t **AST_GetClauses(const AST *ast, cypher_astnode_type_t type);
 
-// Collect all user-provided aliases in the query.
-// (Only used for populating return expressions when "RETURN *" is specified.)
-const char **AST_CollectElementNames(AST *ast);
-
 AST *AST_Build(cypher_parse_result_t *parse_result);
 
 AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset);
