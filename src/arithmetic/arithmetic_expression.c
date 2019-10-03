@@ -560,10 +560,12 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str) {
 	_AR_EXP_ToString(root, str, &str_size, &bytes_written);
 }
 
+// Generate a heap-allocated name for an arithmetic expression.
+// This routine is only used to name ORDER BY expressions.
 void AR_EXP_BuildResolvedName(AR_ExpNode *root) {
 	if(root->resolved_name) return;
 	char *new_name = (char *)root->resolved_name;
-	AR_EXP_ToString(root, &new_name); // TODO leak
+	AR_EXP_ToString(root, &new_name); // Note that this string must be freed!
 	root->resolved_name = new_name;
 }
 

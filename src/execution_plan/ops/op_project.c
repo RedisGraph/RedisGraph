@@ -30,11 +30,18 @@ static OpSort *_getSortOp(OpBase *op) {
 OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	OpProject *op = malloc(sizeof(OpProject));
 	op->exps = exps;
-	op->exp_count = exps ? array_len(exps) : 0;
 	op->order_exps = NULL;
 	op->order_exp_count = 0;
 	op->singleResponse = false;
-	op->record_offsets = array_new(uint, op->exp_count);
+	if(exps == NULL) {  // WITH/RETURN * projection, expressions will be populated later
+		op->project_all = true;
+		op->exp_count = 0;
+		op->record_offsets = NULL;
+	} else {
+		op->project_all = false;
+		op->exp_count = array_len(exps);
+		op->record_offsets = array_new(uint, op->exp_count);
+	}
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", ProjectInit, ProjectConsume,
@@ -126,6 +133,13 @@ static OpResult ProjectReset(OpBase *ctx) {
 
 static void ProjectFree(OpBase *ctx) {
 	OpProject *op = (OpProject *)ctx;
+	if(op->project_all && op->exps) {
+		// Expression names need to be freed if this was a * projection.
+		uint exp_count = array_len(op->exps);
+		for(uint i = 0; i < exp_count; i ++) {
+			rm_free((char *)op->exps[i]->resolved_name);
+		}
+	}
 	if(op->exps) {
 		uint exp_count = array_len(op->exps);
 		for(uint i = 0; i < exp_count; i ++) {
@@ -139,5 +153,6 @@ static void ProjectFree(OpBase *ctx) {
 		array_free(op->record_offsets);
 		op->record_offsets = NULL;
 	}
+
 }
 

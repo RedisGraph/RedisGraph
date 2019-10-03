@@ -32,6 +32,7 @@ typedef struct {
 	Record last_record;
 	unsigned short exp_count;                      /* Number of projected expressions. */
 	unsigned short order_exp_count;                /* Number of order by expressions. */
+	bool project_all;                              /* Projects all user-defined aliases (tracked for freeing logic). */
 } OpAggregate;
 
 OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **expressions);

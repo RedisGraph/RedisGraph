@@ -244,7 +244,6 @@ static Record _handoff(OpAggregate *op) {
 OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	OpAggregate *op = malloc(sizeof(OpAggregate));
 	op->exps = exps;
-	op->exp_count = exps ? array_len(exps) : 0;
 	op->group = NULL;
 	op->order_exps = NULL;
 	op->order_exp_count = 0;
@@ -253,7 +252,15 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	op->expression_classification = NULL;
 	op->non_aggregated_expressions = NULL;
 	op->groups = CacheGroupNew();
-	op->record_offsets = array_new(uint, op->exp_count);
+	if(exps == NULL) {  // WITH/RETURN * projection, expressions will be populated later
+		op->project_all = true;
+		op->exp_count = 0;
+		op->record_offsets = NULL;
+	} else {
+		op->project_all = false;
+		op->exp_count = array_len(exps);
+		op->record_offsets = array_new(uint, op->exp_count);
+	}
 
 	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", AggregateInit, AggregateConsume,
 				AggregateReset, NULL, AggregateFree, plan);
@@ -325,6 +332,14 @@ static OpResult AggregateReset(OpBase *opBase) {
 static void AggregateFree(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
 	if(!op) return;
+
+	if(op->project_all && op->exps) {
+		// Expression names need to be freed if this was a * projection.
+		uint exp_count = array_len(op->exps);
+		for(uint i = 0; i < exp_count; i ++) {
+			rm_free((char *)op->exps[i]->resolved_name);
+		}
+	}
 
 	if(op->exps) {
 		uint exp_count = array_len(op->exps);

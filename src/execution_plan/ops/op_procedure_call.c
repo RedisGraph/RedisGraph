@@ -124,9 +124,20 @@ static void ProcCallFree(OpBase *ctx) {
 		Proc_Free(op->procedure);
 		op->procedure = NULL;
 	}
+
 	if(op->yield_map) {
 		rm_free(op->yield_map);
 		op->yield_map = NULL;
+	}
+
+	if(op->args) {
+		array_free(op->args);
+		op->args = NULL;
+	}
+
+	if(op->output) {
+		array_free(op->output);
+		op->output = NULL;
 	}
 }
 

@@ -68,7 +68,7 @@ static char **_CollectAliases(rax *map) {
 	while(raxPrev(&it)) { // Scan backwards
 		size_t len = it.key_len;
 		// Copy the key and add a terminator character.
-		char *alias = strndup((char *)it.key, len); // TODO leak
+		char *alias = rm_strndup((char *)it.key, len);
 		aliases = array_append(aliases, alias);
 	}
 
@@ -79,7 +79,7 @@ static char **_CollectAliases(rax *map) {
 	while(raxNext(&it)) { // Scan forwards
 		size_t len = it.key_len;
 		// Copy the key and add a terminator character.
-		char *alias = strndup((char *)it.key, len); // TODO leak
+		char *alias = rm_strndup((char *)it.key, len);
 		aliases = array_append(aliases, alias);
 	}
 
@@ -97,7 +97,7 @@ static void _PopulateProjectAll(ExecutionPlan *previous_segment, OpBase *op) {
 
 	for(uint i = 0; i < count; i ++) {
 		// Build an expression for each alias.
-		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(aliases[i], NULL); // TODO probably more leaks
+		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(aliases[i], NULL);
 		exp->resolved_name = aliases[i];
 		exps = array_append(exps, exp);
 
@@ -140,8 +140,9 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 			for(uint j = 0; j < projection_count; j ++) {
 				AR_ExpNode *projection = projections[j];
 				if(!strcmp(projection->resolved_name, alias)) {
-					// The projection must be cloned to avoid a double free
+					// The projection and its resolved name must be cloned to avoid a double free.
 					exp = AR_EXP_Clone(projection);
+					exp->resolved_name = rm_strdup(projection->resolved_name);
 					break;
 				}
 			}
@@ -315,8 +316,6 @@ static const char **_BuildCallArguments(const cypher_astnode_t *call_clause) {
 
 		const char *arg = cypher_ast_string_get_value(exp);
 		arguments = array_append(arguments, arg);
-		// AR_ExpNode *arg = AR_EXP_FromExpression(record_map, ast_exp);
-		// SIValue si_arg = AR_EXP_Evaluate(arg, NULL);
 	}
 
 	return arguments;
@@ -386,6 +385,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				if(exp->edge && QGEdge_VariableLength(exp->edge)) {
 					root = NewCondVarLenTraverseOp(plan, gc->g, exp);
 				} else {
+					// TODO TraverseRecordCap won't work properly here
 					root = NewCondTraverseOp(plan, gc->g, exp, TraverseRecordCap(ast));
 				}
 				// Insert the new traversal op at the root of the chain.
@@ -592,6 +592,8 @@ static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	const char **edges_ref;
 	AST_PrepareDeleteOp(clause, plan->query_graph, &nodes_ref, &edges_ref);
 	OpBase *op = NewDeleteOp(plan, nodes_ref, edges_ref, stats);
+	array_free(nodes_ref);
+	array_free(edges_ref);
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
@@ -772,7 +774,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		assert(plan->root->type == OPType_PROC_CALL);
 		OpProcCall *last_op = (OpProcCall *)plan->root;
 		// Prepare column names for the ResultSet.
-		if(result_set) result_set->columns = last_op->output;
+		if(result_set) array_clone(result_set->columns, last_op->output);
 
 		OpBase *results_op = NewResultsOp(plan, result_set);
 		_ExecutionPlan_UpdateRoot(plan, results_op);
@@ -844,7 +846,6 @@ void ExecutionPlanInit(ExecutionPlan *plan) {
 }
 
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
-	Record r = NULL;
 	ExecutionPlanInit(plan);
 
 	/* Set an exception-handling breakpoint to capture run-time errors.
@@ -854,10 +855,10 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 
 	if(encountered_error) {
 		// Encountered a run-time error; return immediately.
-		if(r) Record_Free(r);
 		return plan->result_set;
 	}
 
+	Record r = NULL;
 	// Execute the root operation and free the processed Record until the data stream is depleted.
 	while((r = OpBase_Consume(plan->root)) != NULL) Record_Free(r);
 

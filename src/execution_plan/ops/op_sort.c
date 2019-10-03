@@ -200,6 +200,9 @@ static void SortFree(OpBase *ctx) {
 	if(op->exps) {
 		uint exp_count = array_len(op->exps);
 		for(uint i = 0; i < exp_count; i ++) {
+			// The parser does not generate identifiers for ORDER BY expressions,
+			// so the resolved_name is constructed by us and must be freed.
+			rm_free((char *)op->exps[i]->resolved_name);
 			AR_EXP_Free(op->exps[i]);
 		}
 		array_free(op->exps);

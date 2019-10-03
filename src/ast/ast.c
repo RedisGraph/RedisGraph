@@ -477,7 +477,6 @@ static void _AST_BuildReferenceMap(AST *ast, const cypher_astnode_t *project_cla
 		assert(type == CYPHER_AST_WITH || type == CYPHER_AST_RETURN);
 		// If the projection clause is WITH/RETURN *, all user-defined aliases are referenced.
 		// Aliases can be introduced in MATCH, MERGE, CREATE, and UNWIND clauses.
-		// TODO also WITH and RETURN, do those need handling?
 		if(type == CYPHER_AST_WITH) {
 			include_all = cypher_ast_with_has_include_existing(project_clause);
 		} else {
