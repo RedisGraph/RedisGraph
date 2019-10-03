@@ -168,4 +168,4 @@ class testGraphDeletionFlow(FlowTestsBase):
             nodeCount = result.result_set[0][0]
             self.env.assertEquals(nodeCount, 0)
         except:
-             self.env.assertTrue(False)
+            self.env.false()

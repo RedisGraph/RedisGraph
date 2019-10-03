@@ -5,6 +5,7 @@
 */
 
 #include <sys/param.h>
+#include <pthread.h>
 #include "graphcontext.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
@@ -20,18 +21,9 @@ extern GraphContext **graphs_in_keyspace;
 // GraphContext API
 //------------------------------------------------------------------------------
 
-GraphContext *GraphContext_New(RedisModuleCtx *ctx, const char *graphname,
-							   size_t node_cap, size_t edge_cap) {
-	GraphContext *gc = NULL;
-
-	// Create key for GraphContext from the unmodified string provided by the user
-	RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphname, strlen(graphname));
-	RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_WRITE);
-	if(RedisModule_KeyType(key) != REDISMODULE_KEYTYPE_EMPTY) {
-		goto cleanup;
-	}
-
-	gc = rm_malloc(sizeof(GraphContext));
+// Creates and initializes a graph context struct.
+GraphContext *_GraphContext_Create(const char *graphname, size_t node_cap, size_t edge_cap) {
+	GraphContext *gc = rm_malloc(sizeof(GraphContext));
 
 	// No indicies.
 	gc->index_count = 0;
@@ -45,17 +37,56 @@ GraphContext *GraphContext_New(RedisModuleCtx *ctx, const char *graphname,
 
 	gc->string_mapping = array_new(char *, 64);
 	gc->attributes = raxNew();
-
+	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 	QueryCtx_SetGraphCtx(gc);
 
-	// Set and close GraphContext key in Redis keyspace
-	RedisModule_ModuleTypeSetValue(key, GraphContextRedisModuleType, gc);
-
-	GraphContext_RegisterWithModule(gc);
-cleanup:
-	RedisModule_CloseKey(key);
-	RedisModule_FreeString(ctx, rs_name);
 	return gc;
+}
+
+/* This method tries to get a graph context, and if it does not exists, create a new one.
+ * The try-get-create flow is done when module global lock is acquired, to enforce consistency
+ * while BGSave is called. */
+GraphContext *_GraphContext_GetOrCreate(RedisModuleCtx *ctx, const char *graphname,
+										int readWriteFlag, size_t node_cap, size_t edge_cap) {
+	GraphContext *gc = NULL;
+	RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphname, strlen(graphname));
+
+	// Acquire lock.
+	assert(pthread_mutex_lock(&_module_mutex) == 0);
+	// Open key with requested permission.
+	RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, readWriteFlag);
+	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
+		// In case of non existing value, open key for write mode.
+		key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_WRITE);
+		// Create and initialize a graph context.
+		gc = _GraphContext_Create(graphname, node_cap, edge_cap);
+		// Set value in key.
+		RedisModule_ModuleTypeSetValue(key, GraphContextRedisModuleType, gc);
+		// Register graph context for BGSave.
+		GraphContext_RegisterWithModule(gc);
+		// Unlock.
+		assert(pthread_mutex_unlock(&_module_mutex) == 0);
+		goto cleanup;
+	} else {
+		assert(pthread_mutex_unlock(&_module_mutex) == 0);
+		if(RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
+			goto cleanup;
+		}
+		gc = RedisModule_ModuleTypeGetValue(key);
+		// Force GraphBLAS updates and resize matrices to node count by default
+		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+
+		QueryCtx_SetGraphCtx(gc);
+	}
+cleanup:
+	RedisModule_FreeString(ctx, rs_name);
+	RedisModule_CloseKey(key);
+	return gc;
+}
+
+GraphContext *GraphContext_New(RedisModuleCtx *ctx, const char *graphname,
+							   size_t node_cap, size_t edge_cap) {
+	return _GraphContext_GetOrCreate(ctx, graphname, REDISMODULE_WRITE, node_cap, edge_cap);
 }
 
 GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname, bool readOnly) {
@@ -63,15 +94,19 @@ GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname, 
 	RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphname, strlen(graphname));
 	int readWriteFlag = readOnly ? REDISMODULE_READ : REDISMODULE_WRITE;
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, readWriteFlag);
-	if(RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
-		goto cleanup;
+	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
+		gc = _GraphContext_GetOrCreate(ctx, graphname, readWriteFlag, GRAPH_DEFAULT_NODE_CAP,
+									   GRAPH_DEFAULT_EDGE_CAP);
+	} else {
+		if(RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
+			goto cleanup;
+		}
+		gc = RedisModule_ModuleTypeGetValue(key);
+		// Force GraphBLAS updates and resize matrices to node count by default
+		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+
+		QueryCtx_SetGraphCtx(gc);
 	}
-	gc = RedisModule_ModuleTypeGetValue(key);
-
-	// Force GraphBLAS updates and resize matrices to node count by default
-	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
-
-	QueryCtx_SetGraphCtx(gc);
 
 cleanup:
 	RedisModule_FreeString(ctx, rs_name);
@@ -243,9 +278,7 @@ void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
 
 // Register a new GraphContext for module-level tracking
 void GraphContext_RegisterWithModule(GraphContext *gc) {
-	assert(pthread_mutex_lock(&_module_mutex) == 0);
 	graphs_in_keyspace = array_append(graphs_in_keyspace, gc);
-	assert(pthread_mutex_unlock(&_module_mutex) == 0);
 }
 
 // Delete a GraphContext reference from the global array

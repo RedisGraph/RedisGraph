@@ -92,20 +92,7 @@ void _MGraph_Query(void *args) {
 	// Try to access the GraphContext
 	CommandCtx_ThreadSafeContextLock(qctx);
 	GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName, readonly);
-	if(!gc) {
 
-		// Create.
-		gc = GraphContext_New(ctx, qctx->graphName, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
-
-		if(!gc) {
-			CommandCtx_ThreadSafeContextUnlock(qctx);
-			RedisModule_ReplyWithError(ctx, "Graph name already in use as a Redis key.");
-			goto cleanup;
-		}
-		// If in readonly mode, retrive key in read only privileges
-		if(readonly) gc = GraphContext_Retrieve(ctx, qctx->graphName, readonly);
-		/* TODO: free graph if no entities were created. */
-	}
 	CommandCtx_ThreadSafeContextUnlock(qctx);
 
 	bool compact = _check_compact_flag(qctx);
