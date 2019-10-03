@@ -57,9 +57,6 @@ uint Record_length(const Record r);
 // Return alias position within the record.
 int Record_GetEntryIdx(Record r, const char *alias);
 
-// Create an alias for entry, such that both will point to the same entry.
-int Record_AliasEntry(Record r, const char *entry, const char *alias);
-
 // Get entry type.
 RecordEntryType Record_GetType(const Record r, int idx);
 

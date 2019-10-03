@@ -47,40 +47,14 @@ void Record_Extend(Record *r, int len) {
 	*r = rm_realloc(*r, required_record_size);
 }
 
-/* Resolve aliased entry position within record
- * create entry if it does not exists. */
+// Retrieve the offset into the Record of the given alias.
 int Record_GetEntryIdx(Record r, const char *alias) {
 	assert(r && alias);
 
 	void *idx = raxFind(r->mapping, (unsigned char *)alias, strlen(alias));
-	if(idx == raxNotFound) {
-		// Introduce new entry.
-		idx = (void *)Record_length(r);
-		raxInsert(r->mapping, (unsigned char *)alias, strlen(alias), idx, NULL);
+	assert(idx != raxNotFound && "ERR: tried to resolve unexpected alias");
 
-		// TODO TODO should we ever get here?
-		// Make sure record has enough space to accommodate entry.
-		// Record_Extend(&r, Record_length(r) + 1);
-	}
-
-	return (int)idx;
-}
-
-// TODO unused
-int Record_AliasEntry(Record r, const char *entry, const char *alias) {
-	assert(r && entry && alias);
-
-	// Make sure entry is in record
-	void *idx = raxFind(r->mapping, (unsigned char *)entry, strlen(entry));
-	assert(idx != raxNotFound);
-
-	// Make sure alias isn't in record.
-	assert(raxFind(r->mapping, (unsigned char *)alias, strlen(alias)) == raxNotFound);
-
-	// Alias entry.
-	raxInsert(r->mapping, (unsigned char *)alias, strlen(alias), idx, NULL);
-
-	return (int)idx;
+	return (intptr_t)idx;
 }
 
 Record Record_Clone(const Record r) {

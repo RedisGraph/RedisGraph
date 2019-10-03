@@ -55,13 +55,13 @@ int OpBase_Modifies(OpBase *op, const char *alias) {
 		raxInsert(mapping, (unsigned char *)alias, strlen(alias), id, NULL);
 	}
 
-	return (int)id;
+	return (intptr_t)id;
 }
 
 bool OpBase_Aware(OpBase *op, const char *alias, int *idx) {
 	rax *mapping = ExecutionPlan_GetMappings(op->plan);
 	void *rec_idx = raxFind(mapping, (unsigned char *)alias, strlen(alias));
-	if(idx) *idx = (int)rec_idx;
+	if(idx) *idx = (intptr_t)rec_idx;
 	return (rec_idx != raxNotFound);
 }
 
