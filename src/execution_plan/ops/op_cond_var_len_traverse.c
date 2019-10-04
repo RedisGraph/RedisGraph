@@ -31,7 +31,7 @@ static void _setupTraversedRelations(CondVarLenTraverse *op, QGEdge *e) {
 	}
 }
 
-static int ToString(const OpBase *ctx, char *buff, uint buff_len) {
+static int CondVarLenTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const CondVarLenTraverse *op = (const CondVarLenTraverse *)ctx;
 
 	int offset = 0;
@@ -76,7 +76,7 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
 				"Conditional Variable Length Traverse", NULL, CondVarLenTraverseConsume, CondVarLenTraverseReset,
-				ToString, CondVarLenTraverseFree, plan);
+				CondVarLenTraverseToString, CondVarLenTraverseFree, plan);
 
 	assert(OpBase_Aware((OpBase *)op, ae->src_node->alias, &op->srcNodeIdx));
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, ae->dest_node->alias);

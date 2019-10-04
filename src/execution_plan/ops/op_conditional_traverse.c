@@ -72,7 +72,7 @@ void _traverse(CondTraverse *op) {
 	GrB_Matrix_clear(op->F);
 }
 
-static int ToString(const OpBase *ctx, char *buff, uint buff_len) {
+static int CondTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const CondTraverse *op = (const CondTraverse *)ctx;
 
 	int offset = 0;
@@ -118,7 +118,7 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", CondTraverseInit,
-				CondTraverseConsume, CondTraverseReset, ToString, CondTraverseFree, plan);
+				CondTraverseConsume, CondTraverseReset, CondTraverseToString, CondTraverseFree, plan);
 
 	assert(OpBase_Aware((OpBase *)op, ae->src_node->alias, &op->srcNodeIdx));
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, ae->dest_node->alias);

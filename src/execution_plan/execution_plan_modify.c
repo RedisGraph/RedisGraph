@@ -213,6 +213,25 @@ void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
 	op->childCount = 0;
 }
 
+OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
+	if(!root) return NULL;
+
+	uint count = (root->modifies) ? array_len(root->modifies) : 0;
+
+	for(uint i = 0; i < count; i++) {
+		const char *resolved_alias = root->modifies[i];
+		if(strcmp(resolved_alias, alias) == 0) return root;
+	}
+
+	for(int i = 0; i < root->childCount; i++) {
+		OpBase *op = ExecutionPlan_LocateOpResolvingAlias(root->children[i], alias);
+		if(op) return op;
+	}
+
+	return NULL;
+}
+
+
 OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type) {
 	if(!root) return NULL;
 

@@ -145,7 +145,7 @@ void _cache_records(OpValueHashJoin *op) {
 }
 
 /* String representation of operation */
-static int ToString(const OpBase *ctx, char *buff, uint buff_len) {
+static int ValueHashJoinToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const OpValueHashJoin *op = (const OpValueHashJoin *)ctx;
 
 	char *exp_str = NULL;
@@ -179,7 +179,7 @@ OpBase *NewValueHashJoin(const ExecutionPlan *plan, AR_ExpNode *lhs_exp, AR_ExpN
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_VALUE_HASH_JOIN, "Value Hash Join", ValueHashJoinInit,
-				ValueHashJoinConsume, ValueHashJoinReset, ToString,
+				ValueHashJoinConsume, ValueHashJoinReset, ValueHashJoinToString,
 				ValueHashJoinFree, plan);
 
 	return (OpBase *)op;

@@ -43,6 +43,10 @@ void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root);
 /* Replace a with b. */
 void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b);
 
+/* Traverse upwards until an operation that resolves the given alias is found.
+ * Returns NULL if alias is not resolved. */
+OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias);
+
 /* Locate the first operation of a given type within execution plan.
  * Returns NULL if operation wasn't found. */
 OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type);

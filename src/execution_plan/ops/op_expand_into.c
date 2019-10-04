@@ -18,7 +18,7 @@ static OpResult ExpandIntoReset(OpBase *opBase);
 static void ExpandIntoFree(OpBase *opBase);
 
 // String representation of operation.
-static int ToString(const OpBase *ctx, char *buff, uint buff_len) {
+static int ExpandIntoToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const OpExpandInto *op = (const OpExpandInto *)ctx;
 
 	int offset = 0;
@@ -97,7 +97,7 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", ExpandIntoInit, ExpandIntoConsume,
-				ExpandIntoReset, ToString, ExpandIntoFree, plan);
+				ExpandIntoReset, ExpandIntoToString, ExpandIntoFree, plan);
 
 	// Make sure that all entities are represented in Record
 	op->edgeIdx = IDENTIFIER_NOT_FOUND;

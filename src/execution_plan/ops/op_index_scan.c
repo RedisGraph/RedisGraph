@@ -11,7 +11,7 @@ static Record IndexScanConsume(OpBase *opBase);
 static OpResult IndexScanReset(OpBase *opBase);
 static void IndexScanFree(OpBase *opBase);
 
-static int ToString(const OpBase *ctx, char *buff, uint buff_len) {
+static int IndexScanToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const IndexScan *op = (const IndexScan *)ctx;
 	int offset = snprintf(buff, buff_len, "%s | ", op->op.name);
 	offset += QGNode_ToString(op->n, buff + offset, buff_len - offset);
@@ -28,7 +28,7 @@ OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, const QGNode *n, RSI
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_INDEX_SCAN, "Index Scan", NULL, IndexScanConsume, IndexScanReset,
-				ToString, IndexScanFree, plan);
+				IndexScanToString, IndexScanFree, plan);
 
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 	return (OpBase *)op;

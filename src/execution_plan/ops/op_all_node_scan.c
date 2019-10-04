@@ -12,7 +12,7 @@ static Record AllNodeScanConsume(OpBase *opBase);
 static OpResult AllNodeScanReset(OpBase *opBase);
 static void AllNodeScanFree(OpBase *opBase);
 
-static int ToString(const OpBase *ctx, char *buff, uint buff_len) {
+static int AllNodeScanToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const AllNodeScan *op = (const AllNodeScan *)ctx;
 	int offset = snprintf(buff, buff_len, "%s | ", op->op.name);
 	offset += QGNode_ToString(op->n, buff + offset, buff_len - offset);
@@ -26,7 +26,7 @@ OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const Graph *g, const QGNode
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_ALL_NODE_SCAN, "All Node Scan", NULL,
-				AllNodeScanConsume, AllNodeScanReset, ToString, AllNodeScanFree, plan);
+				AllNodeScanConsume, AllNodeScanReset, AllNodeScanToString, AllNodeScanFree, plan);
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 	return (OpBase *)op;
 }

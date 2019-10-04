@@ -12,22 +12,6 @@
 #include "../ops/op_conditional_traverse.h"
 #include "../ops/op_cond_var_len_traverse.h"
 
-static bool _entity_resolved(OpBase *root, const char *alias) {
-	uint count = (root->modifies) ? array_len(root->modifies) : 0;
-
-	for(uint i = 0; i < count; i++) {
-		const char *resolved_alias = root->modifies[i];
-		if(strcmp(resolved_alias, alias) == 0) return true;
-	}
-
-	for(int i = 0; i < root->childCount; i++) {
-		OpBase *child = root->children[i];
-		if(_entity_resolved(child, alias)) return true;
-	}
-
-	return false;
-}
-
 void _removeRedundantTraversal(ExecutionPlan *plan, CondTraverse *traverse) {
 	AlgebraicExpression *ae =  traverse->ae;
 	if(ae->operand_count == 1 && ae->src_node == ae->dest_node) {
@@ -76,7 +60,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 		   ae->operands[0].diagonal) continue;
 
 		/* Search to see if dest is already resolved */
-		if(!_entity_resolved(op->children[0], ae->dest_node->alias)) continue;
+		if(!ExecutionPlan_LocateOpResolvingAlias(op->children[0], ae->dest_node->alias)) continue;
 
 		/* Both src and dest are already known
 		 * perform expand into instaed of traverse. */
@@ -122,3 +106,4 @@ void reduceTraversal(ExecutionPlan *plan) {
 	// Clean up.
 	array_free(traversals);
 }
+
