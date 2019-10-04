@@ -110,10 +110,6 @@ void OpBase_RemoveVolatileRecords(OpBase *op);
  * Returns the ID associated with alias. */
 int OpBase_Modifies(OpBase *op, const char *alias);
 
-/* Mark alias as being projected by operation.
- * Returns the ID associated with alias. */
-int OpBase_Projects(OpBase *op, const char *alias);
-
 /* Returns true if op is aware of alias.
  * an operation is aware of all aliases it modifies and all aliases
  * modified by prior operation within its segment. */

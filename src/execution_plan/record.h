@@ -36,7 +36,7 @@ typedef struct {
 
 typedef _Record *Record;
 
-// Create a new record capable of holding N entries.
+// Create a new record sized to accommodate all entries in the given map.
 Record Record_New(rax *mapping);
 
 // Clones record.

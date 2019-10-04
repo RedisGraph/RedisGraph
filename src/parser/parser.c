@@ -7,12 +7,19 @@
 #include "parser.h"
 #include <assert.h>
 
+// Recursively compute the number of digits in a positive integer.
+static inline int _digit_count(int n) {
+	if(n < 10) return 1;
+	return 1 + _digit_count(n / 10);
+}
+
 static cypher_astnode_t *_create_anon_identifier(const cypher_astnode_t *node, int anon_count) {
-	char *alias;
-	int alias_len = asprintf(&alias, "anon_%d", anon_count);
+	// We need space for "anon_" (5), all digits, and a NULL terminator (1)
+	int alias_len = _digit_count(anon_count) + 6;
+	char alias[alias_len];
+	sprintf(alias, "anon_%d", anon_count);
 	struct cypher_input_range range = cypher_astnode_range(node);
 	cypher_astnode_t *identifier = cypher_ast_identifier(alias, alias_len, range);
-	free(alias);
 	return identifier;
 }
 

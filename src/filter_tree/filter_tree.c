@@ -231,9 +231,9 @@ void _FilterTree_CollectModified(const FT_FilterNode *root, rax *modified) {
 	}
 	case FT_N_PRED: {
 		/* Traverse left and right-hand expressions, adding all encountered modified
-		* to the triemap.
-		* We'll typically encounter 0 or 1 modified in each expression,
-		* but there are multi-argument exceptions. */
+		 * to the triemap.
+		 * We'll typically encounter 0 or 1 modified in each expression,
+		 * but there are multi-argument exceptions. */
 		AR_EXP_CollectEntities(root->pred.lhs, modified);
 		AR_EXP_CollectEntities(root->pred.rhs, modified);
 		break;
@@ -408,3 +408,4 @@ void FilterTree_Free(FT_FilterNode *root) {
 
 	free(root);
 }
+

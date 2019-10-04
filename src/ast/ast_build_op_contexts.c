@@ -235,7 +235,7 @@ AST_CreateContext AST_PrepareCreateOp(GraphContext *gc, AST *ast, QueryGraph *qg
 		for(uint j = 0; j < npaths; j++) {
 			const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
 			// Add the path to the QueryGraph
-			QueryGraph_AddPath(gc, qg, path);
+			QueryGraph_AddPath(qg, gc, path);
 
 			uint path_elem_count = cypher_ast_pattern_path_nelements(path);
 			for(uint k = 0; k < path_elem_count; k ++) {

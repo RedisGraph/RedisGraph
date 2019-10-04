@@ -10,7 +10,6 @@
 
 /* Forward declarations. */
 static Record DistinctConsume(OpBase *opBase);
-static OpResult DistinctReset(OpBase *opBase);
 static void DistinctFree(OpBase *opBase);
 
 OpBase *NewDistinctOp(const ExecutionPlan *plan) {
@@ -18,7 +17,7 @@ OpBase *NewDistinctOp(const ExecutionPlan *plan) {
 	op->found = raxNew();
 
 	OpBase_Init((OpBase *)op, OPType_DISTINCT, "Distinct", NULL, DistinctConsume,
-				DistinctReset, NULL, DistinctFree, plan);
+				NULL, NULL, DistinctFree, plan);
 
 	return (OpBase *)op;
 }
@@ -36,10 +35,6 @@ static Record DistinctConsume(OpBase *opBase) {
 		if(is_new) return r;
 		Record_Free(r);
 	}
-}
-
-static OpResult DistinctReset(OpBase *ctx) {
-	return OP_OK;
 }
 
 static void DistinctFree(OpBase *ctx) {

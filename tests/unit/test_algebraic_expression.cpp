@@ -185,7 +185,6 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		AST *master_ast = AST_Build(parse_result);
 		AST *ast = AST_NewSegment(master_ast, 0, cypher_ast_query_nclauses(master_ast->root));
 		QueryGraph *qg = BuildQueryGraph(gc, ast);
-		// _BuildReturnExpressions(AST_GetClause(ast, CYPHER_AST_RETURN), ast);
 		AlgebraicExpression **ae = AlgebraicExpression_FromQueryGraph(qg, exp_count);
 
 		return ae;

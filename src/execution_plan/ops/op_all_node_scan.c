@@ -8,7 +8,6 @@
 #include "../../ast/ast.h"
 
 /* Forward declarations. */
-static OpResult AllNodeScanInit(OpBase *opBase);
 static Record AllNodeScanConsume(OpBase *opBase);
 static OpResult AllNodeScanReset(OpBase *opBase);
 static void AllNodeScanFree(OpBase *opBase);
@@ -26,14 +25,10 @@ OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const Graph *g, const QGNode
 	op->iter = Graph_ScanNodes(g);
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_ALL_NODE_SCAN, "All Node Scan", AllNodeScanInit,
+	OpBase_Init((OpBase *)op, OPType_ALL_NODE_SCAN, "All Node Scan", NULL,
 				AllNodeScanConsume, AllNodeScanReset, ToString, AllNodeScanFree, plan);
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 	return (OpBase *)op;
-}
-
-static OpResult AllNodeScanInit(OpBase *opBase) {
-	return OP_OK;
 }
 
 static Record AllNodeScanConsume(OpBase *opBase) {

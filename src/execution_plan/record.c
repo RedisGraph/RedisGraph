@@ -9,11 +9,13 @@
 #include "../util/rmalloc.h"
 #include <assert.h>
 
-static void _RecordPropagateEntry(Record to, Record from, uint idx) {
-	Entry e = from->entries[idx];
-	to->entries[idx] = e;
+/* Migrate the entry at the given index in the source Record at the same index in the destination.
+ * The source retains access to but not ownership of the entry if it is a heap allocation. */
+static void _RecordPropagateEntry(Record dest, Record src, uint idx) {
+	Entry e = src->entries[idx];
+	dest->entries[idx] = e;
 	// If the entry is a scalar, make sure both Records don't believe they own the allocation.
-	if(e.type == REC_TYPE_SCALAR) SIValue_MakeVolatile(&from->entries[idx].value.s);
+	if(e.type == REC_TYPE_SCALAR) SIValue_MakeVolatile(&src->entries[idx].value.s);
 }
 
 Record Record_New(rax *mapping) {

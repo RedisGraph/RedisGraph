@@ -11,9 +11,7 @@
 #include <assert.h>
 
 /* Forward declarations. */
-static OpResult DeleteInit(OpBase *opBase);
 static Record DeleteConsume(OpBase *opBase);
-static OpResult DeleteReset(OpBase *opBase);
 static void DeleteFree(OpBase *opBase);
 
 void _DeleteEntities(OpDelete *op) {
@@ -60,8 +58,8 @@ OpBase *NewDeleteOp(const ExecutionPlan *plan, const char **nodes_ref, const cha
 	op->stats = stats;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", DeleteInit, DeleteConsume, DeleteReset, NULL,
-				DeleteFree, plan);
+	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", NULL, DeleteConsume,
+				NULL, NULL, DeleteFree, plan);
 
 	// Set nodes/edges to be deleted record indices.
 	int idx;
@@ -83,10 +81,6 @@ OpBase *NewDeleteOp(const ExecutionPlan *plan, const char **nodes_ref, const cha
 	return (OpBase *)op;
 }
 
-static OpResult DeleteInit(OpBase *opBase) {
-	return OP_OK;
-}
-
 static Record DeleteConsume(OpBase *opBase) {
 	OpDelete *op = (OpDelete *)opBase;
 	OpBase *child = op->op.children[0];
@@ -106,10 +100,6 @@ static Record DeleteConsume(OpBase *opBase) {
 	}
 
 	return r;
-}
-
-static OpResult DeleteReset(OpBase *ctx) {
-	return OP_OK;
 }
 
 static void DeleteFree(OpBase *ctx) {

@@ -7,7 +7,6 @@
 #include "op_apply.h"
 
 /* Forward declarations. */
-static OpResult ApplyInit(OpBase *opBase);
 static Record ApplyConsume(OpBase *opBase);
 static OpResult ApplyReset(OpBase *opBase);
 static void ApplyFree(OpBase *opBase);
@@ -20,14 +19,10 @@ OpBase *NewApplyOp(const ExecutionPlan *plan) {
 	op->rhs_records = array_new(Record, 32);
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_APPLY, "Apply", ApplyInit, ApplyConsume, ApplyReset, NULL,
+	OpBase_Init((OpBase *)op, OPType_APPLY, "Apply", NULL, ApplyConsume, ApplyReset, NULL,
 				ApplyFree, plan);
 
 	return (OpBase *)op;
-}
-
-static OpResult ApplyInit(OpBase *opBase) {
-	return OP_OK;
 }
 
 static Record ApplyConsume(OpBase *opBase) {

@@ -8,7 +8,6 @@
 #include "../../query_ctx.h"
 
 /* Forward declarations. */
-static OpResult NodeByIdSeekInit(OpBase *opBase);
 static Record NodeByIdSeekConsume(OpBase *opBase);
 static OpResult NodeByIdSeekReset(OpBase *opBase);
 static void NodeByIdSeekFree(OpBase *opBase);
@@ -55,16 +54,12 @@ OpBase *NewNodeByIdSeekOp
 	if(!minInclusive && minId != ID_RANGE_UNBOUND) op->currentId++;
 
 
-	OpBase_Init((OpBase *)op, OPType_NODE_BY_ID_SEEK, "NodeByIdSeek", NodeByIdSeekInit,
+	OpBase_Init((OpBase *)op, OPType_NODE_BY_ID_SEEK, "NodeByIdSeek", NULL,
 				NodeByIdSeekConsume, NodeByIdSeekReset, NULL, NodeByIdSeekFree, plan);
 
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, node->alias);
 
 	return (OpBase *)op;
-}
-
-static OpResult NodeByIdSeekInit(OpBase *opBase) {
-	return OP_OK;
 }
 
 static Record NodeByIdSeekConsume(OpBase *opBase) {

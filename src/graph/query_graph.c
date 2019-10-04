@@ -6,12 +6,13 @@
 
 #include "query_graph.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "../schema/schema.h"
 #include "../../deps/rax/rax.h"
 #include <assert.h>
 
-static void _BuildQueryGraphAddNode(const GraphContext *gc, const cypher_astnode_t *ast_entity,
-									QueryGraph *qg) {
+static void _BuildQueryGraphAddNode(QueryGraph *qg, const cypher_astnode_t *ast_entity) {
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	const cypher_astnode_t *identifier = cypher_ast_node_pattern_get_identifier(ast_entity);
 	const char *alias = cypher_ast_identifier_get_name(identifier);
 
@@ -46,12 +47,10 @@ static void _BuildQueryGraphAddNode(const GraphContext *gc, const cypher_astnode
 	}
 }
 
-static void _BuildQueryGraphAddEdge(const GraphContext *gc,
-									const cypher_astnode_t *ast_entity,
-									QGNode *src,
-									QGNode *dest,
-									QueryGraph *qg) {
+static void _BuildQueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_entity,
+									QGNode *src, QGNode *dest) {
 
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(ast_entity);
 	const char *alias = cypher_ast_identifier_get_name(identifier);
 
@@ -118,13 +117,13 @@ void QueryGraph_ConnectNodes(QueryGraph *qg, QGNode *src, QGNode *dest, QGEdge *
 	qg->edges = array_append(qg->edges, e);
 }
 
-void QueryGraph_AddPath(const GraphContext *gc, QueryGraph *qg, const cypher_astnode_t *path) {
+void QueryGraph_AddPath(QueryGraph *qg, const GraphContext *gc, const cypher_astnode_t *path) {
 	uint nelems = cypher_ast_pattern_path_nelements(path);
 	/* Introduce nodes first. Nodes are positioned at every even offset
 	 * into the path (0, 2, ...) */
 	for(uint i = 0; i < nelems; i += 2) {
 		const cypher_astnode_t *ast_node = cypher_ast_pattern_path_get_element(path, i);
-		_BuildQueryGraphAddNode(gc, ast_node, qg);
+		_BuildQueryGraphAddNode(qg, ast_node);
 	}
 
 	/* Every odd offset corresponds to an edge in a path. */
@@ -145,7 +144,7 @@ void QueryGraph_AddPath(const GraphContext *gc, QueryGraph *qg, const cypher_ast
 		const cypher_astnode_t *entity = cypher_ast_pattern_path_get_element(path, i);
 
 		// Build and add a QGEdge representing this entity to the QueryGraph.
-		_BuildQueryGraphAddEdge(gc, entity, left, right, qg);
+		_BuildQueryGraphAddEdge(qg, entity, left, right);
 	}
 }
 
@@ -169,7 +168,7 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 			uint npaths = cypher_ast_pattern_npaths(pattern);
 			for(uint j = 0; j < npaths; j ++) {
 				const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
-				QueryGraph_AddPath(gc, qg, path);
+				QueryGraph_AddPath(qg, gc, path);
 			}
 		}
 		array_free(match_clauses);
@@ -181,7 +180,7 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 		uint merge_count = array_len(merge_clauses);
 		for(uint i = 0; i < merge_count; i ++) {
 			const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clauses[i]);
-			QueryGraph_AddPath(gc, qg, path);
+			QueryGraph_AddPath(qg, gc, path);
 		}
 		array_free(merge_clauses);
 	}

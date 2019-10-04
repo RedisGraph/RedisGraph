@@ -11,9 +11,7 @@
 #include <assert.h>
 
 /* Forward declarations. */
-static OpResult CreateInit(OpBase *opBase);
 static Record CreateConsume(OpBase *opBase);
-static OpResult CreateReset(OpBase *opBase);
 static void CreateFree(OpBase *opBase);
 
 // Resolve the properties specified in the query into constant values.
@@ -64,8 +62,8 @@ OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeC
 	op->stats = stats;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_CREATE, "Create", CreateInit, CreateConsume,
-				CreateReset, NULL, CreateFree, plan);
+	OpBase_Init((OpBase *)op, OPType_CREATE, "Create", NULL, CreateConsume,
+				NULL, NULL, CreateFree, plan);
 
 	uint node_blueprint_count = array_len(nodes);
 	uint edge_blueprint_count = array_len(edges);
@@ -76,8 +74,8 @@ OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeC
 	}
 	for(uint i = 0; i < edge_blueprint_count; i ++) {
 		edges[i].edge_idx = OpBase_Modifies((OpBase *)op, edges[i].edge->alias);
-		edges[i].src_idx = OpBase_Modifies((OpBase *)op, edges[i].edge->src->alias);
-		edges[i].dest_idx = OpBase_Modifies((OpBase *)op, edges[i].edge->dest->alias);
+		assert(OpBase_Aware((OpBase *)op, edges[i].edge->src->alias, &edges[i].src_idx));
+		assert(OpBase_Aware((OpBase *)op, edges[i].edge->dest->alias, &edges[i].dest_idx));
 	}
 
 	return (OpBase *)op;
@@ -261,10 +259,6 @@ static Record _handoff(OpCreate *op) {
 	return r;
 }
 
-static OpResult CreateInit(OpBase *opBase) {
-	return OP_OK;
-}
-
 static Record CreateConsume(OpBase *opBase) {
 	OpCreate *op = (OpCreate *)opBase;
 	Record r;
@@ -315,11 +309,6 @@ static Record CreateConsume(OpBase *opBase) {
 
 	// Return record.
 	return _handoff(op);
-}
-
-static OpResult CreateReset(OpBase *ctx) {
-	OpCreate *op = (OpCreate *)ctx;
-	return OP_OK;
 }
 
 static void CreateFree(OpBase *ctx) {

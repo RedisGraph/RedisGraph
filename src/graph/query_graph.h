@@ -38,7 +38,7 @@ void QueryGraph_ConnectNodes(QueryGraph *qg, QGNode *src, QGNode *dest, QGEdge *
 /* Add all nodes and relationships from a single path
  * (from part of a MATCH or CREATE pattern, or a MERGE clause)
  * to the QueryGraph. */
-void QueryGraph_AddPath(const GraphContext *gc, QueryGraph *qg, const cypher_astnode_t *path);
+void QueryGraph_AddPath(QueryGraph *qg, const GraphContext *gc, const cypher_astnode_t *path);
 
 /* Adds all paths described in an AST pattern node (from a
  * MATCH or MERGE clause) to a meta-graph that describes all
@@ -75,3 +75,4 @@ uint QueryGraph_EdgeCount(const QueryGraph *qg);
 
 /* Frees entire graph */
 void QueryGraph_Free(QueryGraph *qg);
+

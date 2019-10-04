@@ -255,7 +255,6 @@ void reduceCount(ExecutionPlan *plan) {
 	 * If node count optimization was unable to execute,
 	 * meaning that the execution plan does not hold any node count pattern,
 	 * then edge count will be tried to be executed upon the same execution plan */
-	bool reduceNodeCountSuccess = _reduceNodeCount(plan);
-	if(!reduceNodeCountSuccess) _reduceEdgeCount(plan);
+	if(!_reduceNodeCount(plan)) _reduceEdgeCount(plan);
 }
 

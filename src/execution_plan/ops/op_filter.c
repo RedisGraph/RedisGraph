@@ -8,7 +8,6 @@
 
 /* Forward declarations. */
 static Record FilterConsume(OpBase *opBase);
-static OpResult FilterReset(OpBase *opBase);
 static void FilterFree(OpBase *opBase);
 
 OpBase *NewFilterOp(const ExecutionPlan *plan, FT_FilterNode *filterTree) {
@@ -16,8 +15,8 @@ OpBase *NewFilterOp(const ExecutionPlan *plan, FT_FilterNode *filterTree) {
 	op->filterTree = filterTree;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_FILTER, "Filter", NULL, FilterConsume, FilterReset, NULL,
-				FilterFree, plan);
+	OpBase_Init((OpBase *)op, OPType_FILTER, "Filter", NULL, FilterConsume,
+				NULL, NULL, FilterFree, plan);
 
 	return (OpBase *)op;
 }
@@ -39,11 +38,6 @@ static Record FilterConsume(OpBase *opBase) {
 	}
 
 	return r;
-}
-
-/* Restart iterator */
-static OpResult FilterReset(OpBase *ctx) {
-	return OP_OK;
 }
 
 /* Frees OpFilter*/
