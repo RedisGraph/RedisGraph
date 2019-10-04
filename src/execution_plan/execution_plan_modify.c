@@ -235,7 +235,7 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
 OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type) {
 	if(!root) return NULL;
 
-	if(root->type == type) {
+	if(root->type & type) {
 		return root;
 	}
 

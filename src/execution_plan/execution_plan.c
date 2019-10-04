@@ -329,13 +329,12 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 	uint connectedComponentsCount = array_len(connectedComponents);
 	plan->connected_components = connectedComponents;
 
-	/* If we have multiple graph components, we'll join each chain of traversals
-	 * under a Cartesian Product root operation. */
+	/* If we have multiple graph components or have already built projection operations in a
+	 * previous WITH projection, the root operation a Cartesian Product. Each chain of traversals
+	 * (and in the latter case, the previous project operation) will be a child of this op. */
 	OpBase *cartesianProduct = NULL;
-	// TODO TODO clarify and abstract this logic (we're trying to capture the
-	// case when a WITH projection has already been added to this segment)
-	if(connectedComponentsCount > 1 || (plan->root &&
-										(plan->root->type & (OPType_PROJECT | OPType_AGGREGATE)))) {
+	if(connectedComponentsCount > 1 ||
+	   ExecutionPlan_LocateOp(plan->root, OPType_PROJECT | OPType_AGGREGATE)) {
 		cartesianProduct = NewCartesianProductOp(plan);
 		_ExecutionPlan_UpdateRoot(plan, cartesianProduct);
 	}
@@ -439,7 +438,7 @@ static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan) {
 		 * Introduce filter op right below located op. */
 		OpBase *filter_op = NewFilterOp(plan, tree);
 		ExecutionPlan_PushBelow(op, filter_op);
-		if(op == plan->root) plan->root = filter_op; // TODO probably better solutions than this
+		if(op == plan->root) plan->root = filter_op;
 		raxFree(references);
 	}
 	Vector_Free(sub_trees);
@@ -617,7 +616,8 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 	} else if(t == CYPHER_AST_UNWIND) {
 		_buildUnwindOp(plan, clause);
 	} else if(t == CYPHER_AST_MERGE) {
-		_ExecutionPlan_ProcessQueryGraph(plan, plan->query_graph, ast, plan->filter_tree); // TODO tmp
+		// TODO this won't be adequate once MERGE is improved
+		_ExecutionPlan_ProcessQueryGraph(plan, plan->query_graph, ast, plan->filter_tree);
 		_buildMergeOp(gc, ast, plan, clause, stats);
 	} else if(t == CYPHER_AST_SET) {
 		_buildUpdateOp(gc, plan, clause, stats);
@@ -735,9 +735,6 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 	array_free(segment_indices);
 
 	ExecutionPlan *plan = segments[segment_count - 1];
-
-	// Free current AST segment if it has been constructed here.
-	// if(ast_segment != ast) AST_Free(ast_segment); // TODO leak?
 
 	// Check to see if we've encountered an error while constructing the execution-plan.
 	if(QueryCtx_EncounteredError()) {

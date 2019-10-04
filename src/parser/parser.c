@@ -23,42 +23,33 @@ static cypher_astnode_t *_create_anon_identifier(const cypher_astnode_t *node, i
 	return identifier;
 }
 
-static void __name_anonymous_entities_in_pattern(const cypher_astnode_t *node, uint *anon_count) {
-	const cypher_astnode_t *identifier = NULL;
+static void _name_anonymous_entities_in_pattern(const cypher_astnode_t *node, uint *anon_count) {
 	cypher_astnode_type_t t = cypher_astnode_type(node);
 
-	if(t == CYPHER_AST_NODE_PATTERN) {
-		identifier = cypher_ast_node_pattern_get_identifier(node);
-		if(!identifier) {
-			// Create  and set identifier.
-			identifier = _create_anon_identifier(node, (*anon_count)++);
-			cypher_ast_node_pattern_set_identifier((cypher_astnode_t *)node, (cypher_astnode_t *)identifier);
-		}
-	}
-	if(t == CYPHER_AST_REL_PATTERN) {
-		identifier = cypher_ast_rel_pattern_get_identifier(node);
-		if(!identifier) {
-			identifier = _create_anon_identifier(node, (*anon_count)++);
-			cypher_ast_rel_pattern_set_identifier((cypher_astnode_t *)node, (cypher_astnode_t *)identifier);
-		}
+	if(t == CYPHER_AST_NODE_PATTERN && !cypher_ast_node_pattern_get_identifier(node)) {
+		// AST entity is an unaliased node, create and set anonymous identifier.
+		cypher_astnode_t *identifier = _create_anon_identifier(node, (*anon_count)++);
+		cypher_ast_node_pattern_set_identifier((cypher_astnode_t *)node, identifier);
+		return;
+	} else if(t == CYPHER_AST_REL_PATTERN && !cypher_ast_rel_pattern_get_identifier(node)) {
+		// AST entity is an unaliased edge, create and set anonymous identifier.
+		cypher_astnode_t *identifier = _create_anon_identifier(node, (*anon_count)++);
+		cypher_ast_rel_pattern_set_identifier((cypher_astnode_t *)node, identifier);
+		return;
 	}
 
 	uint child_count = cypher_astnode_nchildren(node);
 	for(uint i = 0; i < child_count; i++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
-		__name_anonymous_entities_in_pattern(child, anon_count);
+		_name_anonymous_entities_in_pattern(child, anon_count);
 	}
-}
-
-static void _name_anonymous_entities_in_pattern(const cypher_astnode_t *node) {
-	uint anon_count = 0;
-	__name_anonymous_entities_in_pattern(node, &anon_count);
 }
 
 static void _enrich_ast(const cypher_astnode_t *root) {
 	/* Directives like CREATE INDEX are not queries. */
 	if(cypher_astnode_type(root) != CYPHER_AST_QUERY) return;
-	_name_anonymous_entities_in_pattern(root);
+	uint anon_count = 0;
+	_name_anonymous_entities_in_pattern(root, &anon_count);
 }
 
 cypher_parse_result_t *parse(const char *query) {
