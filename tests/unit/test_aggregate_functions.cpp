@@ -156,7 +156,7 @@ TEST_F(AggregateTest, PercentileContTest) {
 			perc->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(j * 2));
 			// The last child of this node will be the requested percentile
 			perc->op.children[1] = test_percentiles[i];
-			AR_EXP_Aggregate(perc, r);
+			AR_EXP_Aggregate(perc, NULL);
 		}
 		// Reduce sorts the list and applies the percentile formula
 		AR_EXP_Reduce(perc);
@@ -189,12 +189,12 @@ TEST_F(AggregateTest, PercentileDiscTest) {
 			perc->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(j * 2));
 			// The last child of this node will be the requested percentile
 			perc->op.children[1] = test_percentiles[i];
-			AR_EXP_Aggregate(perc, r);
+			AR_EXP_Aggregate(perc, NULL);
 		}
 		// Reduce sorts the list and applies the percentile formula
 		AR_EXP_Reduce(perc);
-		SIValue res = AR_EXP_Evaluate(perc, r);
-		expected_outcome = AR_EXP_Evaluate(expectedResults[expected[i]], r);
+		SIValue res = AR_EXP_Evaluate(perc, NULL);
+		expected_outcome = AR_EXP_Evaluate(expectedResults[expected[i]], NULL);
 		ASSERT_EQ(res.doubleval, expected_outcome.doubleval);
 		AR_EXP_Free(perc);
 	}
@@ -216,7 +216,7 @@ TEST_F(AggregateTest, StDevTest) {
 	double sum = 0;
 	for(int i = 1; i <= 10; i++) {
 		stdev->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(i));
-		AR_EXP_Aggregate(stdev, r);
+		AR_EXP_Aggregate(stdev, NULL);
 		sum += i;
 		// Avoide double free on the last value.
 		if(i < 10) AR_EXP_Free(stdev->op.children[0]);
@@ -239,7 +239,7 @@ TEST_F(AggregateTest, StDevTest) {
 	AR_ExpNode *stdevp = AR_EXP_NewOpNode("stDevP", 1);
 	for(int i = 1; i <= 10; i++) {
 		stdevp->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(i));
-		AR_EXP_Aggregate(stdevp, r);
+		AR_EXP_Aggregate(stdevp, NULL);
 		// Avoide double free on the last value.
 		if(i < 10) AR_EXP_Free(stdevp->op.children[0]);
 	}
