@@ -126,7 +126,6 @@ Feature: Aggregation
             | 0.1    |
         And no side effects
 
-    @skip
     Scenario: `max()` over mixed values
         Given any graph
         When executing query:
@@ -139,7 +138,6 @@ Feature: Aggregation
             | 1      |
         And no side effects
 
-    @skip
     Scenario: `min()` over mixed values
         Given any graph
         When executing query:
