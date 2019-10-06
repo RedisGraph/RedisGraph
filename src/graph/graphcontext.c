@@ -22,7 +22,7 @@ extern GraphContext **graphs_in_keyspace;
 //------------------------------------------------------------------------------
 
 // Creates and initializes a graph context struct.
-GraphContext *_GraphContext_Create(const char *graphname, size_t node_cap, size_t edge_cap) {
+static GraphContext *_GraphContext_New(const char *graphname, size_t node_cap, size_t edge_cap) {
 	GraphContext *gc = rm_malloc(sizeof(GraphContext));
 
 	// No indicies.
@@ -46,10 +46,10 @@ GraphContext *_GraphContext_Create(const char *graphname, size_t node_cap, size_
 /* This method tries to get a graph context, and if it does not exists, create a new one.
  * The try-get-create flow is done when module global lock is acquired, to enforce consistency
  * while BGSave is called. */
-static GraphContext *_GraphContext_GetOrCreate(RedisModuleCtx *ctx, const char *graphname,
-											   int readWriteFlag, size_t node_cap, size_t edge_cap) {
+static GraphContext *_GraphContext_Create(RedisModuleCtx *ctx, const char *graphname,
+										  int readWriteFlag, size_t node_cap, size_t edge_cap) {
 	// Create and initialize a graph context.
-	GraphContext *gc = _GraphContext_Create(graphname, node_cap, edge_cap);
+	GraphContext *gc = _GraphContext_New(graphname, node_cap, edge_cap);
 	RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphname, strlen(graphname));
 
 	// Acquire lock.
@@ -62,7 +62,7 @@ static GraphContext *_GraphContext_GetOrCreate(RedisModuleCtx *ctx, const char *
 		// Set value in key.
 		RedisModule_ModuleTypeSetValue(key, GraphContextRedisModuleType, gc);
 		// Register graph context for BGSave.
-		graphs_in_keyspace = array_append(graphs_in_keyspace, gc);
+		GraphContext_RegisterWithModule(gc);
 		// Unlock.
 		assert(pthread_mutex_unlock(&_module_mutex) == 0);
 		goto cleanup;
@@ -88,7 +88,7 @@ cleanup:
 
 GraphContext *GraphContext_New(RedisModuleCtx *ctx, const char *graphname,
 							   size_t node_cap, size_t edge_cap) {
-	return _GraphContext_GetOrCreate(ctx, graphname, REDISMODULE_WRITE, node_cap, edge_cap);
+	return _GraphContext_Create(ctx, graphname, REDISMODULE_WRITE, node_cap, edge_cap);
 }
 
 GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname, bool readOnly) {
@@ -97,8 +97,8 @@ GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname, 
 	int readWriteFlag = readOnly ? REDISMODULE_READ : REDISMODULE_WRITE;
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, readWriteFlag);
 	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
-		gc = _GraphContext_GetOrCreate(ctx, graphname, readWriteFlag, GRAPH_DEFAULT_NODE_CAP,
-									   GRAPH_DEFAULT_EDGE_CAP);
+		gc = _GraphContext_Create(ctx, graphname, readWriteFlag, GRAPH_DEFAULT_NODE_CAP,
+								  GRAPH_DEFAULT_EDGE_CAP);
 	} else {
 		if(RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
 			goto cleanup;
@@ -127,7 +127,8 @@ void GraphContext_Delete(RedisModuleCtx *ctx, const char *graphname) {
 		assert(pthread_mutex_unlock(&_module_mutex) == 0);
 		RedisModule_ReplyWithError(ctx, "Graph was not found in database.");
 		goto cleanup;
-	} else if(keytype != REDISMODULE_KEYTYPE_MODULE) {
+	} else if(!(keytype == REDISMODULE_KEYTYPE_MODULE &&
+				RedisModule_ModuleTypeGetType(key) == GraphContextRedisModuleType)) {
 		assert(pthread_mutex_unlock(&_module_mutex) == 0);
 		RedisModule_ReplyWithError(ctx, "Specified graph name referred to incorrect key type.");
 		goto cleanup;
@@ -141,20 +142,15 @@ void GraphContext_Delete(RedisModuleCtx *ctx, const char *graphname) {
 	// Disable matrix synchronization for graph deletion.
 	Graph_SetMatrixPolicy(gc->g, DISABLED);
 
-
 	// Remove GraphContext from keyspace.
-	if(RedisModule_DeleteKey(key) == REDISMODULE_OK) {
-		assert(pthread_mutex_unlock(&_module_mutex) == 0);
-		char *strElapsed;
-		double t = QueryCtx_GetExecutionTime();
-		asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
-		RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
-		free(strElapsed);
-	} else {
-		assert(pthread_mutex_unlock(&_module_mutex) == 0);
-		Graph_ReleaseLock(gc->g);
-		RedisModule_ReplyWithError(ctx, "Graph deletion failed!");
-	}
+	assert(RedisModule_DeleteKey(key) == REDISMODULE_OK);
+	assert(pthread_mutex_unlock(&_module_mutex) == 0);
+	char *strElapsed;
+	double t = QueryCtx_GetExecutionTime();
+	asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
+	RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
+	free(strElapsed);
+
 
 cleanup:
 	RedisModule_Free(rs_name);

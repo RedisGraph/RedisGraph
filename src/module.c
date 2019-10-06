@@ -57,7 +57,10 @@ static int _RegisterDataTypes(RedisModuleCtx *ctx) {
 }
 
 static void _PrepareModuleGlobals() {
-	assert(pthread_mutex_init(&_module_mutex, NULL) == 0);
+	pthread_mutexattr_t attr;
+	pthread_mutexattr_init(&attr);
+	pthread_mutexattr_settype(&attr, PTHREAD_MUTEX_RECURSIVE);
+	assert(pthread_mutex_init(&_module_mutex, &attr) == 0);
 	graphs_in_keyspace = array_new(GraphContext *, 1);
 	process_is_child = false;
 }
