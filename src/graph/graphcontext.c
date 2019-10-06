@@ -46,9 +46,10 @@ GraphContext *_GraphContext_Create(const char *graphname, size_t node_cap, size_
 /* This method tries to get a graph context, and if it does not exists, create a new one.
  * The try-get-create flow is done when module global lock is acquired, to enforce consistency
  * while BGSave is called. */
-GraphContext *_GraphContext_GetOrCreate(RedisModuleCtx *ctx, const char *graphname,
-										int readWriteFlag, size_t node_cap, size_t edge_cap) {
-	GraphContext *gc = NULL;
+static GraphContext *_GraphContext_GetOrCreate(RedisModuleCtx *ctx, const char *graphname,
+											   int readWriteFlag, size_t node_cap, size_t edge_cap) {
+	// Create and initialize a graph context.
+	GraphContext *gc = _GraphContext_Create(graphname, node_cap, edge_cap);
 	RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphname, strlen(graphname));
 
 	// Acquire lock.
@@ -58,20 +59,21 @@ GraphContext *_GraphContext_GetOrCreate(RedisModuleCtx *ctx, const char *graphna
 	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
 		// In case of non existing value, open key for write mode.
 		key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_WRITE);
-		// Create and initialize a graph context.
-		gc = _GraphContext_Create(graphname, node_cap, edge_cap);
 		// Set value in key.
 		RedisModule_ModuleTypeSetValue(key, GraphContextRedisModuleType, gc);
 		// Register graph context for BGSave.
-		GraphContext_RegisterWithModule(gc);
+		graphs_in_keyspace = array_append(graphs_in_keyspace, gc);
 		// Unlock.
 		assert(pthread_mutex_unlock(&_module_mutex) == 0);
 		goto cleanup;
 	} else {
+		// Unlock - key found successfully.
 		assert(pthread_mutex_unlock(&_module_mutex) == 0);
 		if(RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
 			goto cleanup;
 		}
+		// Some other call managed to create and set the context, free the local initialized context.
+		GraphContext_Free(gc);
 		gc = RedisModule_ModuleTypeGetValue(key);
 		// Force GraphBLAS updates and resize matrices to node count by default
 		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
@@ -112,6 +114,50 @@ cleanup:
 	RedisModule_FreeString(ctx, rs_name);
 	RedisModule_CloseKey(key);
 	return gc;
+}
+
+void GraphContext_Delete(RedisModuleCtx *ctx, const char *graphname) {
+	QueryCtx_BeginTimer(); // Start deletion timing.
+	RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphname, strlen(graphname));
+	// Acquire lock.
+	assert(pthread_mutex_lock(&_module_mutex) == 0);
+	RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_WRITE);
+	int keytype = RedisModule_KeyType(key);
+	if(keytype == REDISMODULE_KEYTYPE_EMPTY) {
+		assert(pthread_mutex_unlock(&_module_mutex) == 0);
+		RedisModule_ReplyWithError(ctx, "Graph was not found in database.");
+		goto cleanup;
+	} else if(keytype != REDISMODULE_KEYTYPE_MODULE) {
+		assert(pthread_mutex_unlock(&_module_mutex) == 0);
+		RedisModule_ReplyWithError(ctx, "Specified graph name referred to incorrect key type.");
+		goto cleanup;
+	}
+	// Retrieve the GraphContext to disable synchronization.
+	GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
+
+	// Acquire write lock, guarantee we're the only thread executing.
+	Graph_AcquireWriteLock(gc->g);
+
+	// Disable matrix synchronization for graph deletion.
+	Graph_SetMatrixPolicy(gc->g, DISABLED);
+
+
+	// Remove GraphContext from keyspace.
+	if(RedisModule_DeleteKey(key) == REDISMODULE_OK) {
+		assert(pthread_mutex_unlock(&_module_mutex) == 0);
+		char *strElapsed;
+		double t = QueryCtx_GetExecutionTime();
+		asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
+		RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
+		free(strElapsed);
+	} else {
+		assert(pthread_mutex_unlock(&_module_mutex) == 0);
+		Graph_ReleaseLock(gc->g);
+		RedisModule_ReplyWithError(ctx, "Graph deletion failed!");
+	}
+
+cleanup:
+	RedisModule_Free(rs_name);
 }
 
 //------------------------------------------------------------------------------
@@ -278,12 +324,13 @@ void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
 
 // Register a new GraphContext for module-level tracking
 void GraphContext_RegisterWithModule(GraphContext *gc) {
+	assert(pthread_mutex_lock(&_module_mutex) == 0);
 	graphs_in_keyspace = array_append(graphs_in_keyspace, gc);
+	assert(pthread_mutex_unlock(&_module_mutex) == 0);
 }
 
 // Delete a GraphContext reference from the global array
 void GraphContext_RemoveFromRegistry(GraphContext *gc) {
-	assert(pthread_mutex_lock(&_module_mutex) == 0);
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i ++) {
 		if(graphs_in_keyspace[i] == gc) {
@@ -291,7 +338,6 @@ void GraphContext_RemoveFromRegistry(GraphContext *gc) {
 			break;
 		}
 	}
-	assert(pthread_mutex_unlock(&_module_mutex) == 0);
 }
 
 //------------------------------------------------------------------------------

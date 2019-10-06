@@ -34,6 +34,9 @@ GraphContext *GraphContext_New(RedisModuleCtx *ctx, const char *graphname,
 // readOnly is the access mode to the graph key
 GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname, bool readOnly);
 
+// Deletes a graph context from the module, according to the graph name.
+void GraphContext_Delete(RedisModuleCtx *ctx, const char *graphname);
+
 /* Schema API */
 // Retrieve number of schemas created for given type.
 unsigned short GraphContext_SchemaCount(const GraphContext *gc, SchemaType t);
