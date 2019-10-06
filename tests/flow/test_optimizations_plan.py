@@ -104,6 +104,20 @@ class testOptimizationsPlan(FlowTestsBase):
         expected = [[36]]
         self.env.assertEqual(resultset, expected)
 
+    def test_count_unreferenced_edge(self):
+        query = """MATCH ()-[:know]->(b) RETURN COUNT(b)"""
+        # This count in this query cannot be reduced, as the traversal op doesn't store
+        # data about non-referenced edges.
+        resultset = graph.query(query).result_set
+        executionPlan = graph.execution_plan(query)
+        # Verify that the optimization was not applied.
+        self.env.assertNotIn("Project", executionPlan)
+        self.env.assertIn("Aggregate", executionPlan)
+        self.env.assertIn("All Node Scan", executionPlan)
+        self.env.assertIn("Conditional Traverse", executionPlan)
+        expected = [[12]]
+        self.env.assertEqual(resultset, expected)
+
     def test_non_labeled_node_count(self):
         query = """MATCH (n) RETURN COUNT(n)"""
         resultset = graph.query(query).result_set
