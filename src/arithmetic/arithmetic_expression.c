@@ -272,13 +272,10 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node, const Record
 												  SIValue *result) {
 	AR_EXP_Result res = EVAL_OK;
 	// Handle aggregate function.
-	switch(node->op.type) {
-	case AR_OP_AGGREGATE:
+	if(node->op.type == AR_OP_AGGREGATE) {
 		// The AggCtx will ultimately free its result.
 		*result = SI_ShareValue(node->op.agg_func->result);
 		return EVAL_OK;
-	default:
-		break;
 	}
 
 	/* Evaluate each child before evaluating current node. */
