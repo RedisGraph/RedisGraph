@@ -333,17 +333,11 @@ static void AggregateFree(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
 	if(!op) return;
 
-	if(op->project_all && op->exps) {
-		// Expression names need to be freed if this was a * projection.
-		uint exp_count = array_len(op->exps);
-		for(uint i = 0; i < exp_count; i ++) {
-			rm_free((char *)op->exps[i]->resolved_name);
-		}
-	}
-
 	if(op->exps) {
 		uint exp_count = array_len(op->exps);
 		for(uint i = 0; i < exp_count; i ++) {
+			// Expression names need to be freed if this was a * projection.
+			if(op->project_all) rm_free((char *)op->exps[i]->resolved_name);
 			AR_EXP_Free(op->exps[i]);
 		}
 		array_free(op->exps);

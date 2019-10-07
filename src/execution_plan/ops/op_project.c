@@ -13,7 +13,6 @@
 /* Forward declarations. */
 static OpResult ProjectInit(OpBase *opBase);
 static Record ProjectConsume(OpBase *opBase);
-static OpResult ProjectReset(OpBase *opBase);
 static void ProjectFree(OpBase *opBase);
 
 static OpSort *_getSortOp(OpBase *op) {
@@ -45,7 +44,7 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", ProjectInit, ProjectConsume,
-				ProjectReset, NULL, ProjectFree, plan);
+				NULL, NULL, ProjectFree, plan);
 
 	for(uint i = 0; i < op->exp_count; i ++) {
 		// The projected record will associate values with their resolved name
@@ -127,22 +126,14 @@ static Record ProjectConsume(OpBase *opBase) {
 	return projection;
 }
 
-static OpResult ProjectReset(OpBase *ctx) {
-	return OP_OK;
-}
-
 static void ProjectFree(OpBase *ctx) {
 	OpProject *op = (OpProject *)ctx;
-	if(op->project_all && op->exps) {
-		// Expression names need to be freed if this was a * projection.
-		uint exp_count = array_len(op->exps);
-		for(uint i = 0; i < exp_count; i ++) {
-			rm_free((char *)op->exps[i]->resolved_name);
-		}
-	}
+
 	if(op->exps) {
 		uint exp_count = array_len(op->exps);
 		for(uint i = 0; i < exp_count; i ++) {
+			// Expression names need to be freed if this was a * projection.
+			if(op->project_all) rm_free((char *)op->exps[i]->resolved_name);
 			AR_EXP_Free(op->exps[i]);
 		}
 		array_free(op->exps);

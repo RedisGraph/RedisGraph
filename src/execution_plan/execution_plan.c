@@ -23,10 +23,9 @@
 #include <setjmp.h>
 
 /* Returns the left most leaf operation in the current segment. */
-static inline OpBase *_ExecutionPlan_LocateLeaf(OpBase *root, OpBase *prev_segment_head) {
-	if(root == prev_segment_head) return root->parent; // Don't recurse into the previous segment.
+static inline OpBase *_ExecutionPlan_LocateLeaf(OpBase *root) {
 	if(root->childCount == 0) return root;
-	return _ExecutionPlan_LocateLeaf(root->children[0], prev_segment_head);
+	return _ExecutionPlan_LocateLeaf(root->children[0]);
 }
 
 static inline OpBase *_ExecutionPlan_LocateParentProjection(OpBase *root) {
@@ -35,9 +34,9 @@ static inline OpBase *_ExecutionPlan_LocateParentProjection(OpBase *root) {
 	return _ExecutionPlan_LocateParentProjection(root->parent);
 }
 
-static inline OpBase *_ExecutionPlan_FindConnectingOp(OpBase *root, OpBase *prev_segment_head) {
+static inline OpBase *_ExecutionPlan_FindConnectingOp(OpBase *root) {
 	// Find the leftmost leaf in this segment.
-	OpBase *leaf = _ExecutionPlan_LocateLeaf(root, prev_segment_head);
+	OpBase *leaf = _ExecutionPlan_LocateLeaf(root);
 
 	// Traverse upwards until an aggregate/project op is found.
 	return _ExecutionPlan_LocateParentProjection(leaf);
@@ -632,8 +631,10 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 	}
 }
 
-static ExecutionPlan *_NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
-										ResultSet *result_set) {
+static ExecutionPlan *_NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
+	AST *ast = QueryCtx_GetAST();
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+
 	// Allocate a new segment
 	ExecutionPlan *plan = rm_calloc(1, sizeof(ExecutionPlan));
 	plan->record_map = raxNew();
@@ -693,7 +694,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 	segment_indices = array_append(segment_indices, clause_count);
 
 	uint segment_count = array_len(segment_indices);
-	ExecutionPlan **segments = rm_malloc(segment_count * sizeof(ExecutionPlan *));;
+	ExecutionPlan **segments = rm_malloc(segment_count * sizeof(ExecutionPlan *));
 	uint start_offset = 0;
 	for(int i = 0; i < segment_count; i++) {
 		uint end_offset = segment_indices[i];
@@ -701,7 +702,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
 
 		// Construct a new ExecutionPlanSegment.
-		ExecutionPlan *segment = _NewExecutionPlan(ctx, gc, ast_segment, result_set);
+		ExecutionPlan *segment = _NewExecutionPlan(ctx, result_set);
 
 		AST_Free(ast_segment); // Free the AST segment.
 
@@ -716,7 +717,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		ExecutionPlan *current_segment = segments[i];
 
 		OpBase *prev_root = prev_segment->root;
-		connecting_op = _ExecutionPlan_FindConnectingOp(current_segment->root, prev_root);
+		connecting_op = _ExecutionPlan_FindConnectingOp(current_segment->root);
 		assert(connecting_op->childCount == 0);
 
 		if(i < segment_count - 1) {
@@ -727,7 +728,6 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 			bool project_all = cypher_ast_with_has_include_existing(end);
 			if(project_all) _PopulateProjectAll(prev_segment, connecting_op);
 		}
-
 
 		ExecutionPlan_AddOp(connecting_op, prev_root);
 	}
@@ -749,7 +749,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		if(!connecting_op) {
 			// Set the connecting op if our query is just a RETURN.
 			assert(segment_count == 1);
-			connecting_op = _ExecutionPlan_FindConnectingOp(plan->root, NULL);
+			connecting_op = _ExecutionPlan_FindConnectingOp(plan->root);
 		}
 
 		// Check whether the query culminates in a RETURN * clause.

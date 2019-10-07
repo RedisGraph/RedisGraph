@@ -72,6 +72,7 @@ ExecutionPlan *NewExecutionPlan(
 	ResultSet *result_set
 );
 
+/* Retrieve the map of aliases to Record offsets in this ExecutionPlan segment. */
 rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan);
 
 /* Prints execution plan. */
