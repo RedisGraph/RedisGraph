@@ -184,8 +184,8 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode **root) {
 			bool reduce_children = true;
 			for(int i = 0; i < (*root)->op.child_count; i++) {
 				if(!AR_EXP_ReduceToScalar((*root)->op.children + i)) {
+					// Root reduce is not possible, but continue to reduce every reducable child.
 					reduce_children = false;
-					break;
 				}
 			}
 			// Can't reduce root as one of its children is not a constant.
