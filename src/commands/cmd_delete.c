@@ -22,7 +22,6 @@ void _MGraph_Delete(void *args) {
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(dCtx);
 	CommandCtx_ThreadSafeContextLock(dCtx);
 	GraphContext_Delete(ctx, dCtx->graphName);
-
 	CommandCtx_ThreadSafeContextUnlock(dCtx);
 	CommandCtx_Free(dCtx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
