@@ -39,6 +39,33 @@ static void _consume_function_call_expression(const cypher_astnode_t *expression
 	}
 }
 
+static inline int _get_limit(const cypher_astnode_t *project_clause) {
+	const cypher_astnode_t *limit_node = NULL;
+	// Retrieve the AST LIMIT node if one is specified.
+	if(cypher_astnode_type(project_clause) == CYPHER_AST_WITH) {
+		limit_node = cypher_ast_with_get_limit(project_clause);
+	} else {
+		limit_node = cypher_ast_return_get_limit(project_clause);
+	}
+
+	if(limit_node == NULL) return UNLIMITED;
+	// Parse the LIMIT value.
+	return AST_ParseIntegerNode(limit_node);
+}
+
+// If the project clause has a LIMIT modifier, set its value in the constructed AST.
+static void _AST_LimitResults(AST *ast, const cypher_astnode_t *root_clause,
+							  const cypher_astnode_t *project_clause) {
+	cypher_astnode_type_t root_type = cypher_astnode_type(root_clause);
+	if(root_type == CYPHER_AST_RETURN || root_type == CYPHER_AST_WITH) {
+		// Use the root clause of this AST if it is a projection.
+		ast->limit = _get_limit(root_clause);
+	} else if(project_clause) {
+		// Use the subsequent projection clause (if one is provided) otherwise.
+		ast->limit = _get_limit(project_clause);
+	}
+}
+
 bool AST_ReadOnly(const cypher_parse_result_t *result) {
 	// A lot of these steps will be unnecessary once we move
 	// parsing into the subthread (and can thus perform this check
@@ -141,21 +168,6 @@ const cypher_astnode_t **AST_GetClauses(const AST *ast, cypher_astnode_type_t ty
 	return found;
 }
 
-void _AST_CollectAliases(const char ***aliases, const cypher_astnode_t *entity) {
-	if(entity == NULL) return;
-
-	if(cypher_astnode_type(entity) == CYPHER_AST_IDENTIFIER) {
-		const char *identifier = cypher_ast_identifier_get_name(entity);
-		*aliases = array_append(*aliases, identifier);
-		return;
-	}
-
-	uint nchildren = cypher_astnode_nchildren(entity);
-	for(uint i = 0; i < nchildren; i ++) {
-		_AST_CollectAliases(aliases, cypher_astnode_get_child(entity, i));
-	}
-}
-
 AST *AST_Build(cypher_parse_result_t *parse_result) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->referenced_entities = NULL;
@@ -180,7 +192,7 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->free_root = true;
-
+	ast->limit = UNLIMITED;
 	uint n = end_offset - start_offset;
 
 	cypher_astnode_t *clauses[n];
@@ -201,6 +213,9 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	if(clause_count > 1 && end_offset < clause_count) {
 		project_clause = cypher_ast_query_get_clause(master_ast->root, end_offset);
 	}
+
+	// Set the max number of results for this AST if a LIMIT modifier is specified.
+	_AST_LimitResults(ast, clauses[0], project_clause);
 
 	// Build the map of referenced entities in this AST segment.
 	AST_BuildReferenceMap(ast, project_clause);
@@ -254,16 +269,7 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 // Determine the maximum number of records
 // which will be considered when evaluating an algebraic expression.
 int TraverseRecordCap(const AST *ast) {
-	int recordsCap = 16;    // Default.
-	const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
-	if(ret_clause == NULL) return recordsCap;
-	// TODO Consider storing this number somewhere, as this logic is also in ExecutionPlan
-	const cypher_astnode_t *limit_clause = cypher_ast_return_get_limit(ret_clause);
-	if(limit_clause) {
-		int limit = AST_ParseIntegerNode(limit_clause);
-		recordsCap = MIN(recordsCap, limit);
-	}
-	return recordsCap;
+	return MIN(ast->limit, 16);  // Use 16 as the default value.
 }
 
 void AST_Free(AST *ast) {
