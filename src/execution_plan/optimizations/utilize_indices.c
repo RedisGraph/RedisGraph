@@ -195,6 +195,17 @@ bool _simple_predicates(const FT_FilterNode *filter) {
 	return true;
 }
 
+static bool _validateInExpression(AR_ExpNode *exp) {
+	if(!strcasecmp(exp->op.func_name, "in") == 0) return false;
+	AR_ExpNode *operand = exp->op.children[0];
+
+	return true;
+}
+
+static OpFilter *_transformInToOrSequence() {
+
+}
+
 /* Checks to see if given filter can be resolved by index. */
 bool _applicableFilter(Index *idx, OpFilter *filter) {
 	bool res = true;
@@ -206,8 +217,12 @@ bool _applicableFilter(Index *idx, OpFilter *filter) {
 	// Make sure the filter root is not a function.
 	// TODO: As a result of issue 667, transform "IN" into a sequence of "OR" to use in RedisSearch.
 	if(filter_tree->t == FT_N_EXP) {
-		res = false;
-		goto cleanup;
+		if(_validateInExpression(filter_tree->exp.exp)) {
+
+		} else {
+			res = false;
+			goto cleanup;
+		}
 	}
 
 	// Make sure the "not equal, <>" operator isn't used.
