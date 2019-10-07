@@ -55,6 +55,9 @@ AST *AST_Build(cypher_parse_result_t *parse_result);
 
 AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset);
 
+// Populate the AST's map of all referenced aliases.
+void AST_BuildReferenceMap(AST *ast, const cypher_astnode_t *project_clause);
+
 // Returns true if the given alias is referenced within this AST segment.
 bool AST_AliasIsReferenced(AST *ast, const char *alias);
 
