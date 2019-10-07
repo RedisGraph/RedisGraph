@@ -10,4 +10,6 @@
 
 #pragma once
 
+/* Construct an arithmetic expression tree from a CYPHER_AST_EXPRESSION node. */
 AR_ExpNode *AR_EXP_FromExpression(const cypher_astnode_t *expr);
+

@@ -270,46 +270,46 @@ static inline void _AR_EXP_FreeResultsArray(SIValue *results, int count) {
 
 static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node, const Record r,
 												  SIValue *result) {
+	AR_EXP_Result res = EVAL_OK;
 	// Handle aggregate function.
-	if(node->op.type == AR_OP_AGGREGATE) {
-		AggCtx *agg = node->op.agg_func;
+	switch(node->op.type) {
+	case AR_OP_AGGREGATE:
 		// The AggCtx will ultimately free its result.
-		*result = SI_ShareValue(agg->result);
+		*result = SI_ShareValue(node->op.agg_func->result);
 		return EVAL_OK;
+	default:
+		break;
 	}
 
 	/* Evaluate each child before evaluating current node. */
 	SIValue sub_trees[node->op.child_count];
 	for(int child_idx = 0; child_idx < node->op.child_count; child_idx++) {
 		SIValue v;
-		AR_EXP_Result res = _AR_EXP_Evaluate(node->op.children[child_idx], r, &v);
-		if(res != EVAL_OK) {
-			// Encountered an error while evaluating a subtree.
-			_AR_EXP_FreeResultsArray(sub_trees, child_idx);
-			return res;
-		}
+		res = _AR_EXP_Evaluate(node->op.children[child_idx], r, &v);
+		// Encountered an error while evaluating a subtree.
+		if(res != EVAL_OK) goto cleanup;
 		sub_trees[child_idx] = v;
 	}
 
 	/* Validate before evaluation. */
 	if(!_AR_EXP_ValidateInvocation(node->op.f, sub_trees, node->op.child_count)) {
 		// The expression tree failed its validations and set an error message.
-		// Free all associated memory.
-		_AR_EXP_FreeResultsArray(sub_trees, node->op.child_count);
-		return EVAL_ERR;
+		res = EVAL_ERR;
+		goto cleanup;
 	}
 
 	/* Evaluate self. */
 	*result = node->op.f->func(sub_trees, node->op.child_count);
-	_AR_EXP_FreeResultsArray(sub_trees, node->op.child_count);
 
 	if(SIValue_IsNull(*result) && QueryCtx_EncounteredError()) {
 		/* An error was encountered while evaluating this function, and has already been set in
 		 * the QueryCtx. Exit with an error. */
-		return EVAL_ERR;
+		res = EVAL_ERR;
 	}
 
-	return EVAL_OK;
+cleanup:
+	_AR_EXP_FreeResultsArray(sub_trees, node->op.child_count);
+	return res;
 }
 
 static inline void _AR_EXP_UpdateEntityIdx(AR_OperandNode *node, const Record r) {
@@ -318,8 +318,7 @@ static inline void _AR_EXP_UpdateEntityIdx(AR_OperandNode *node, const Record r)
 
 static AR_EXP_Result _AR_EXP_EvaluateProperty(AR_ExpNode *node, const Record r, SIValue *result) {
 	RecordEntryType t = Record_GetType(r, node->operand.variadic.entity_alias_idx);
-	/* Property requested on a scalar value.
-	 * TODO: this should issue a TypeError */
+	// Property requested on a scalar value.
 	if(!(t & (REC_TYPE_NODE | REC_TYPE_EDGE))) {
 		/* Attempted to access a scalar value as a map.
 		 * Set an error and invoke the exception handler. */
@@ -332,7 +331,7 @@ static AR_EXP_Result _AR_EXP_EvaluateProperty(AR_ExpNode *node, const Record r, 
 
 	GraphEntity *ge = Record_GetGraphEntity(r, node->operand.variadic.entity_alias_idx);
 	if(node->operand.variadic.entity_prop_idx == ATTRIBUTE_NOTFOUND) {
-		_AR_EXP_UpdatePropIdx(node, r);
+		_AR_EXP_UpdatePropIdx(node, NULL);
 	}
 
 	SIValue *property = GraphEntity_GetProperty(ge, node->operand.variadic.entity_prop_idx);
@@ -440,15 +439,15 @@ void AR_EXP_Reduce(const AR_ExpNode *root) {
 	}
 }
 
-void AR_EXP_CollectEntities(AR_ExpNode *root, rax *entities) {
+void AR_EXP_CollectEntities(AR_ExpNode *root, rax *aliases) {
 	if(root->type == AR_EXP_OP) {
 		for(int i = 0; i < root->op.child_count; i ++) {
-			AR_EXP_CollectEntities(root->op.children[i], entities);
+			AR_EXP_CollectEntities(root->op.children[i], aliases);
 		}
 	} else { // type == AR_EXP_OPERAND
 		if(root->operand.type == AR_EXP_VARIADIC) {
 			const char *entity = root->operand.variadic.entity_alias;
-			raxInsert(entities, (unsigned char *)entity, strlen(entity), NULL, NULL);
+			raxInsert(aliases, (unsigned char *)entity, strlen(entity), NULL, NULL);
 		}
 	}
 }

@@ -119,9 +119,8 @@ void AR_EXP_Aggregate(const AR_ExpNode *root, const Record r);
 void AR_EXP_Reduce(const AR_ExpNode *root);
 
 /* Utility functions */
-/* Traverse an expression tree and add all graph entities
- * (from variadic) to a triemap. */
-void AR_EXP_CollectEntities(AR_ExpNode *root, rax *record_ids);
+/* Traverse an expression tree and add all entity aliases to a rax. */
+void AR_EXP_CollectEntities(AR_ExpNode *root, rax *aliases);
 
 /* Traverse an expression tree and add all mentioned attributes:
  * n.attr > 3 to a prefix tree. */
@@ -135,10 +134,9 @@ bool AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node);
 /* Constructs string representation of arithmetic expression tree. */
 void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 
+/* Generate a heap-allocated name for an arithmetic expression.
+ * This routine is only used to name ORDER BY expressions. */
 void AR_EXP_BuildResolvedName(AR_ExpNode *root);
-
-/* Construct an arithmetic expression tree from a CYPHER_AST_EXPRESSION node. */
-AR_ExpNode *AR_EXP_FromExpression(const cypher_astnode_t *expr);
 
 /* Clones given expression. */
 AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp);
