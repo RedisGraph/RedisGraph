@@ -9,6 +9,12 @@
 #include "../../util/rmalloc.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
+/* Forward declarations. */
+static OpResult UpdateInit(OpBase *opBase);
+static Record UpdateConsume(OpBase *opBase);
+static OpResult UpdateReset(OpBase *opBase);
+static void UpdateFree(OpBase *opBase);
+
 /* Delay updates until all entities are processed,
  * _QueueUpdate will queue up all information necessary to perform an update. */
 static void _QueueUpdate(OpUpdate *op, GraphEntity *entity, GraphEntityType type,
@@ -130,45 +136,37 @@ static Record _handoff(OpUpdate *op) {
 	return NULL;
 }
 
-OpBase *NewUpdateOp(GraphContext *gc, EntityUpdateEvalCtx *update_exps, uint update_exp_count,
-					ResultSetStatistics *stats) {
-	OpUpdate *op_update = calloc(1, sizeof(OpUpdate));
-	op_update->gc = gc;
-	op_update->stats = stats;
-
-	op_update->update_expressions = update_exps;
-	op_update->update_expressions_count = update_exp_count;
-	op_update->pending_updates_count = 0;
-	op_update->pending_updates_cap = 16; /* 16 seems reasonable number to start with. */
-	op_update->pending_updates = rm_malloc(sizeof(EntityUpdateCtx) * op_update->pending_updates_cap);
-	op_update->records = NULL;
-	op_update->updates_commited = false;
+OpBase *NewUpdateOp(const ExecutionPlan *plan, GraphContext *gc, EntityUpdateEvalCtx *update_exps,
+					uint update_exp_count, ResultSetStatistics *stats) {
+	OpUpdate *op = calloc(1, sizeof(OpUpdate));
+	op->gc = gc;
+	op->stats = stats;
+	op->records = NULL;
+	op->updates_commited = false;
+	op->pending_updates_cap = 16; /* 16 seems reasonable number to start with. */
+	op->pending_updates_count = 0;
+	op->update_expressions = update_exps;
+	op->update_expressions_count = update_exp_count;
+	op->pending_updates = rm_malloc(sizeof(EntityUpdateCtx) * op->pending_updates_cap);
 
 	// Set our Op operations
-	OpBase_Init(&op_update->op);
-	op_update->op.name = "Update";
-	op_update->op.type = OPType_UPDATE;
-	op_update->op.consume = OpUpdateConsume;
-	op_update->op.reset = OpUpdateReset;
-	op_update->op.free = OpUpdateFree;
-	op_update->op.init = OpUpdateInit;
+	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", UpdateInit, UpdateConsume,
+				UpdateReset, NULL, UpdateFree, plan);
 
-	// Construct the array of IDs this operation modifies
-	op_update->op.modifies = array_new(uint, update_exp_count);
 	for(uint i = 0; i < update_exp_count; i ++) {
-		// TODO does 'modifies' need to be unique?
-		op_update->op.modifies = array_append(op_update->op.modifies, update_exps[i].entityRecIdx);
+		op->update_expressions[i].record_idx = OpBase_Modifies((OpBase *)op, update_exps[i].alias);
 	}
-	return (OpBase *)op_update;
+
+	return (OpBase *)op;
 }
 
-OpResult OpUpdateInit(OpBase *opBase) {
+static OpResult UpdateInit(OpBase *opBase) {
 	OpUpdate *op = (OpUpdate *)opBase;
 	if(_ShouldCacheRecord(op)) op->records = array_new(Record, 64);
 	return OP_OK;
 }
 
-Record OpUpdateConsume(OpBase *opBase) {
+static Record UpdateConsume(OpBase *opBase) {
 	OpUpdate *op = (OpUpdate *)opBase;
 	OpBase *child = op->op.children[0];
 	Record r;
@@ -184,13 +182,12 @@ Record OpUpdateConsume(OpBase *opBase) {
 		EntityUpdateEvalCtx *update_expression = op->update_expressions;
 		for(uint i = 0; i < op->update_expressions_count; i++, update_expression++) {
 			SIValue new_value = SI_CloneValue(AR_EXP_Evaluate(update_expression->exp, r));
-
 			// Make sure we're updating either a node or an edge.
-			RecordEntryType t = Record_GetType(r, update_expression->entityRecIdx);
+			RecordEntryType t = Record_GetType(r, update_expression->record_idx);
 			assert(t == REC_TYPE_NODE || t == REC_TYPE_EDGE);
 			GraphEntityType type = (t == REC_TYPE_NODE) ? GETYPE_NODE : GETYPE_EDGE;
 
-			GraphEntity *entity = Record_GetGraphEntity(r, update_expression->entityRecIdx);
+			GraphEntity *entity = Record_GetGraphEntity(r, update_expression->record_idx);
 			_QueueUpdate(op, entity, type, update_expression->attribute, new_value);
 		}
 
@@ -218,7 +215,7 @@ Record OpUpdateConsume(OpBase *opBase) {
 	return _handoff(op);
 }
 
-OpResult OpUpdateReset(OpBase *ctx) {
+static OpResult UpdateReset(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 	// Reset all pending updates.
 	op->pending_updates_count = 0;
@@ -228,7 +225,7 @@ OpResult OpUpdateReset(OpBase *ctx) {
 	return OP_OK;
 }
 
-void OpUpdateFree(OpBase *ctx) {
+static void UpdateFree(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 	/* Free each update context. */
 	if(op->update_expressions_count) {

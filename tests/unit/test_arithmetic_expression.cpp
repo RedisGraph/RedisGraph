@@ -25,8 +25,7 @@ extern "C"
 #include <time.h>
 
 // Declaration of function in execution_plan.h
-extern void _BuildReturnExpressions(ExecutionPlanSegment *segment,
-									const cypher_astnode_t *ret_clause, AST *ast);
+AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause, AST *ast);
 
 #ifdef __cplusplus
 }
@@ -58,7 +57,7 @@ void _test_string(const AR_ExpNode *exp, const char *expected) {
 }
 
 void _test_ar_func(AR_ExpNode *root, SIValue expected, const Record r) {
-	SIValue res = AR_EXP_Evaluate(root, r);
+	SIValue res = AR_EXP_Evaluate(root, NULL);
 	if(SI_TYPE(res) == T_NULL && SI_TYPE(expected) == T_NULL) {
 		// NULLs implicitly match
 		return;
@@ -73,32 +72,28 @@ void _test_ar_func(AR_ExpNode *root, SIValue expected, const Record r) {
 AR_ExpNode *_exp_from_query(const char *query) {
 	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 	AST *ast = AST_Build(parse_result);
-	ast->entity_map = raxNew();
+	ast->referenced_entities = raxNew();
 
 	const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
-	ExecutionPlanSegment *segment = (ExecutionPlanSegment *)rm_malloc(sizeof(ExecutionPlanSegment));
-	_BuildReturnExpressions(segment, ret_clause, NULL);
-
-	return segment->projections[0];
+	return _BuildReturnExpressions(ret_clause, ast)[0];
 }
 
 TEST_F(ArithmeticTest, ExpressionTest) {
 	SIValue result;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	/* muchacho */
 	query = "RETURN 'muchacho'";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_STREQ(result.stringval, "muchacho");
 	AR_EXP_Free(arExp);
 
 	/* 1 */
 	query = "RETURN 1";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.longval, 1);
 	AR_EXP_Free(arExp);
 
@@ -107,7 +102,7 @@ TEST_F(ArithmeticTest, ExpressionTest) {
 	arExp = _exp_from_query(query);
 	// Entire expression should be reduce to a single constant.
 	ASSERT_EQ(arExp->type, AR_EXP_OPERAND);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.longval, 7);
 	AR_EXP_Free(arExp);
 
@@ -116,7 +111,7 @@ TEST_F(ArithmeticTest, ExpressionTest) {
 	arExp = _exp_from_query(query);
 	ASSERT_EQ(arExp->type, AR_EXP_OPERAND);
 
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.longval, 6);
 	AR_EXP_Free(arExp);
 
@@ -124,7 +119,7 @@ TEST_F(ArithmeticTest, ExpressionTest) {
 	query = "RETURN ABS(-5 + 2 * 1)";
 	arExp = _exp_from_query(query);
 	ASSERT_EQ(arExp->type, AR_EXP_OPERAND);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.longval, 3);
 	AR_EXP_Free(arExp);
 
@@ -132,7 +127,7 @@ TEST_F(ArithmeticTest, ExpressionTest) {
 	query = "RETURN 'a' + 'b'";
 	arExp = _exp_from_query(query);
 	ASSERT_EQ(arExp->type, AR_EXP_OPERAND);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_TRUE(strcmp(result.stringval, "ab") == 0);
 	AR_EXP_Free(arExp);
 
@@ -140,7 +135,7 @@ TEST_F(ArithmeticTest, ExpressionTest) {
 	query = "RETURN 1 + 2 + 'a' + 2 + 1";
 	arExp = _exp_from_query(query);
 	ASSERT_EQ(arExp->type, AR_EXP_OPERAND);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_TRUE(strcmp(result.stringval, "3a21") == 0);
 	AR_EXP_Free(arExp);
 
@@ -148,7 +143,7 @@ TEST_F(ArithmeticTest, ExpressionTest) {
 	query = "RETURN 2 * 2 + 'a' + 3 * 3";
 	arExp = _exp_from_query(query);
 	ASSERT_EQ(arExp->type, AR_EXP_OPERAND);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_TRUE(strcmp(result.stringval, "4a9") == 0);
 	AR_EXP_Free(arExp);
 }
@@ -157,61 +152,60 @@ TEST_F(ArithmeticTest, NullArithmetic) {
 	SIValue result;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	/* null + 1 */
 	query = "RETURN null + 1";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_TRUE(SIValue_IsNull(result));
 	AR_EXP_Free(arExp);
 
 	/* 1 + null */
 	query = "RETURN 1 + null";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_TRUE(SIValue_IsNull(result));
 	AR_EXP_Free(arExp);
 
 	/* null - 1 */
 	query = "RETURN null - 1";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_TRUE(SIValue_IsNull(result));
 	AR_EXP_Free(arExp);
 
 	/* 1 - null */
 	query = "RETURN 1 - null";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_TRUE(SIValue_IsNull(result));
 	AR_EXP_Free(arExp);
 
 	/* null * 1 */
 	query = "RETURN null * 1";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_TRUE(SIValue_IsNull(result));
 	AR_EXP_Free(arExp);
 
 	/* 1 * null */
 	query = "RETURN 1 * null";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_TRUE(SIValue_IsNull(result));
 	AR_EXP_Free(arExp);
 
 	/* null / 1 */
 	query = "RETURN null / 1";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_TRUE(SIValue_IsNull(result));
 	AR_EXP_Free(arExp);
 
 	/* 1 / null */
 	query = "RETURN 1 / null";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_TRUE(SIValue_IsNull(result));
 	AR_EXP_Free(arExp);
 }
@@ -220,31 +214,30 @@ TEST_F(ArithmeticTest, AggregateTest) {
 	SIValue result;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	/* SUM(1) */
 	query = "RETURN SUM(1)";
 	arExp = _exp_from_query(query);
 
-	AR_EXP_Aggregate(arExp, r);
-	AR_EXP_Aggregate(arExp, r);
-	AR_EXP_Aggregate(arExp, r);
+	AR_EXP_Aggregate(arExp, NULL);
+	AR_EXP_Aggregate(arExp, NULL);
+	AR_EXP_Aggregate(arExp, NULL);
 	AR_EXP_Reduce(arExp);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.doubleval, 3);
 	AR_EXP_Free(arExp);
 
 	/* 2+SUM(1) */
 	query = "RETURN 2+SUM(1)";
 	arExp = _exp_from_query(query);
-	AR_EXP_Aggregate(arExp, r);
-	AR_EXP_Aggregate(arExp, r);
-	AR_EXP_Aggregate(arExp, r);
+	AR_EXP_Aggregate(arExp, NULL);
+	AR_EXP_Aggregate(arExp, NULL);
+	AR_EXP_Aggregate(arExp, NULL);
 	AR_EXP_Reduce(arExp);
 	/* Just for the kick of it, call reduce more than once.*/
 	AR_EXP_Reduce(arExp);
 
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.doubleval, 5);
 	AR_EXP_Free(arExp);
 }
@@ -252,34 +245,33 @@ TEST_F(ArithmeticTest, AggregateTest) {
 TEST_F(ArithmeticTest, AbsTest) {
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	/* ABS(1) */
 	query = "RETURN ABS(1)";
 	arExp = _exp_from_query(query);
 	SIValue expected = SI_LongVal(1);
-	_test_ar_func(arExp, expected, r);
+	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
 	/* ABS(-1) */
 	query = "RETURN ABS(-1)";
 	arExp = _exp_from_query(query);
 	expected = SI_LongVal(1);
-	_test_ar_func(arExp, expected, r);
+	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
 	/* ABS(0) */
 	query = "RETURN ABS(0)";
 	arExp = _exp_from_query(query);
 	expected = SI_LongVal(0);
-	_test_ar_func(arExp, expected, r);
+	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
 	/* ABS() */
 	query = "RETURN ABS(NULL)";
 	arExp = _exp_from_query(query);
 	expected = SI_NullVal();
-	_test_ar_func(arExp, expected, r);
+	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 }
 
@@ -287,34 +279,33 @@ TEST_F(ArithmeticTest, CeilTest) {
 	SIValue expected;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	/* CEIL(0.5) */
 	query = "RETURN CEIL(0.5)";
 	arExp = _exp_from_query(query);
 	expected = SI_DoubleVal(1);
-	_test_ar_func(arExp, expected, r);
+	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
 	/* CEIL(1) */
 	query = "RETURN CEIL(1)";
 	arExp = _exp_from_query(query);
 	expected = SI_DoubleVal(1);
-	_test_ar_func(arExp, expected, r);
+	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
 	/* CEIL(0.1) */
 	query = "RETURN CEIL(0.1)";
 	arExp = _exp_from_query(query);
 	expected = SI_DoubleVal(1);
-	_test_ar_func(arExp, expected, r);
+	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
 	/* CEIL() */
 	query = "RETURN CEIL(NULL)";
 	arExp = _exp_from_query(query);
 	expected = SI_NullVal();
-	_test_ar_func(arExp, expected, r);
+	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 }
 
@@ -322,34 +313,33 @@ TEST_F(ArithmeticTest, FloorTest) {
 	SIValue expected;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	/* FLOOR(0.5) */
 	query = "RETURN FLOOR(0.5)";
 	arExp = _exp_from_query(query);
 	expected = SI_DoubleVal(0);
-	_test_ar_func(arExp, expected, r);
+	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
 	/* FLOOR(1) */
 	query = "RETURN FLOOR(1)";
 	arExp = _exp_from_query(query);
 	expected = SI_DoubleVal(1);
-	_test_ar_func(arExp, expected, r);
+	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
 	/* FLOOR(0.1) */
 	query = "RETURN FLOOR(0.1)";
 	arExp = _exp_from_query(query);
 	expected = SI_DoubleVal(0);
-	_test_ar_func(arExp, expected, r);
+	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
 	/* FLOOR() */
 	query = "RETURN FLOOR(NULL)";
 	arExp = _exp_from_query(query);
 	expected = SI_NullVal();
-	_test_ar_func(arExp, expected, r);
+	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 }
 
@@ -357,41 +347,40 @@ TEST_F(ArithmeticTest, RoundTest) {
 	SIValue expected;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	/* ROUND(0) */
 	query = "RETURN ROUND(0)";
 	arExp = _exp_from_query(query);
 	expected = SI_DoubleVal(0);
-	_test_ar_func(arExp, expected, r);
+	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
 	/* ROUND(0.49) */
 	query = "RETURN ROUND(0.49)";
 	arExp = _exp_from_query(query);
 	expected = SI_DoubleVal(0);
-	_test_ar_func(arExp, expected, r);
+	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
 	/* ROUND(0.5) */
 	query = "RETURN ROUND(0.5)";
 	arExp = _exp_from_query(query);
 	expected = SI_DoubleVal(1);
-	_test_ar_func(arExp, expected, r);
+	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
 	/* ROUND(1) */
 	query = "RETURN ROUND(1)";
 	arExp = _exp_from_query(query);
 	expected = SI_DoubleVal(1);
-	_test_ar_func(arExp, expected, r);
+	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
 	/* ROUND() */
 	query = "RETURN ROUND(NULL)";
 	arExp = _exp_from_query(query);
 	expected = SI_NullVal();
-	_test_ar_func(arExp, expected, r);
+	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 }
 
@@ -399,34 +388,33 @@ TEST_F(ArithmeticTest, SignTest) {
 	SIValue expected;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	/* SIGN(0) */
 	query = "RETURN SIGN(0)";
 	arExp = _exp_from_query(query);
 	expected = SI_LongVal(0);
-	_test_ar_func(arExp, expected, r);
+	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
 	/* SIGN(-1) */
 	query = "RETURN SIGN(-1)";
 	arExp = _exp_from_query(query);
 	expected = SI_LongVal(-1);
-	_test_ar_func(arExp, expected, r);
+	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
 	/* SIGN(1) */
 	query = "RETURN SIGN(1)";
 	arExp = _exp_from_query(query);
 	expected = SI_LongVal(1);
-	_test_ar_func(arExp, expected, r);
+	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
 	/* SIGN() */
 	query = "RETURN SIGN(NULL)";
 	arExp = _exp_from_query(query);
 	expected = SI_NullVal();
-	_test_ar_func(arExp, expected, r);
+	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 }
 
@@ -435,12 +423,11 @@ TEST_F(ArithmeticTest, ReverseTest) {
 	const char *expected;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	/* REVERSE("muchacho") */
 	query = "RETURN REVERSE('muchacho')";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "ohcahcum";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -448,7 +435,7 @@ TEST_F(ArithmeticTest, ReverseTest) {
 	/* REVERSE("") */
 	query = "RETURN REVERSE('')";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -456,7 +443,7 @@ TEST_F(ArithmeticTest, ReverseTest) {
 	/* REVERSE() */
 	query = "RETURN REVERSE(NULL)";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.type, T_NULL);
 	AR_EXP_Free(arExp);
 }
@@ -466,12 +453,11 @@ TEST_F(ArithmeticTest, LeftTest) {
 	const char *expected;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	/* LEFT("muchacho", 4) */
 	query = "RETURN LEFT('muchacho', 4)";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "much";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -479,7 +465,7 @@ TEST_F(ArithmeticTest, LeftTest) {
 	/* LEFT("muchacho", 100) */
 	query = "RETURN LEFT('muchacho', 100)";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "muchacho";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -487,7 +473,7 @@ TEST_F(ArithmeticTest, LeftTest) {
 	/* LEFT(NULL, 100) */
 	query = "RETURN LEFT(NULL, 100)";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.type, T_NULL);
 	AR_EXP_Free(arExp);
 }
@@ -497,12 +483,11 @@ TEST_F(ArithmeticTest, RightTest) {
 	const char *expected;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	/* RIGHT("muchacho", 4) */
 	query = "RETURN RIGHT('muchacho', 4)";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "acho";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -510,7 +495,7 @@ TEST_F(ArithmeticTest, RightTest) {
 	/* RIGHT("muchacho", 100) */
 	query = "RETURN RIGHT('muchacho', 100)";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "muchacho";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -518,7 +503,7 @@ TEST_F(ArithmeticTest, RightTest) {
 	/* RIGHT(NULL, 100) */
 	query = "RETURN RIGHT(NULL, 100)";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.type, T_NULL);
 	AR_EXP_Free(arExp);
 }
@@ -528,12 +513,11 @@ TEST_F(ArithmeticTest, LTrimTest) {
 	const char *expected;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	/* lTrim("   muchacho") */
 	query = "RETURN lTrim('   muchacho')";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "muchacho";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -541,7 +525,7 @@ TEST_F(ArithmeticTest, LTrimTest) {
 	/* lTrim("muchacho   ") */
 	query = "RETURN lTrim('muchacho   ')";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "muchacho   ";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -549,7 +533,7 @@ TEST_F(ArithmeticTest, LTrimTest) {
 	/* lTrim("   much   acho   ") */
 	query = "RETURN lTrim('   much   acho   ')";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "much   acho   ";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -557,7 +541,7 @@ TEST_F(ArithmeticTest, LTrimTest) {
 	/* lTrim("muchacho") */
 	query = "RETURN lTrim('muchacho')";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "muchacho";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -565,7 +549,7 @@ TEST_F(ArithmeticTest, LTrimTest) {
 	/* lTrim() */
 	query = "RETURN lTrim(NULL)";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.type, T_NULL);
 	AR_EXP_Free(arExp);
 }
@@ -575,12 +559,11 @@ TEST_F(ArithmeticTest, RTrimTest) {
 	const char *expected;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	/* rTrim("   muchacho") */
 	query = "RETURN rTrim('   muchacho')";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "   muchacho";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -588,7 +571,7 @@ TEST_F(ArithmeticTest, RTrimTest) {
 	/* rTrim("muchacho   ") */
 	query = "RETURN rTrim('muchacho   ')";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "muchacho";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -596,7 +579,7 @@ TEST_F(ArithmeticTest, RTrimTest) {
 	/* rTrim("   much   acho   ") */
 	query = "RETURN rTrim('   much   acho   ')";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "   much   acho";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -604,7 +587,7 @@ TEST_F(ArithmeticTest, RTrimTest) {
 	/* rTrim("muchacho") */
 	query = "RETURN rTrim('muchacho')";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "muchacho";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -612,7 +595,7 @@ TEST_F(ArithmeticTest, RTrimTest) {
 	/* rTrim() */
 	query = "RETURN rTrim(NULL)";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.type, T_NULL);
 	AR_EXP_Free(arExp);
 }
@@ -622,11 +605,10 @@ TEST_F(ArithmeticTest, RandomUUID) {
 	const char *query;
 	AR_ExpNode *arExp;
 	char v;
-	Record r = Record_New(0);
 
 	query = "RETURN randomUUID()";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(36, strlen(result.stringval));
 	ASSERT_EQ('-', result.stringval[8]);
 	ASSERT_EQ('-', result.stringval[13]);
@@ -643,12 +625,11 @@ TEST_F(ArithmeticTest, TrimTest) {
 	const char *expected;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	/* trim("   muchacho") */
 	query = "RETURN trim('   muchacho')";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "muchacho";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -656,7 +637,7 @@ TEST_F(ArithmeticTest, TrimTest) {
 	/* trim("muchacho   ") */
 	query = "RETURN trim('muchacho   ')";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "muchacho";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -664,7 +645,7 @@ TEST_F(ArithmeticTest, TrimTest) {
 	/* trim("   much   acho   ") */
 	query = "RETURN trim('   much   acho   ')";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "much   acho";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -672,7 +653,7 @@ TEST_F(ArithmeticTest, TrimTest) {
 	/* trim("muchacho") */
 	query = "RETURN trim('muchacho')";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "muchacho";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -680,7 +661,7 @@ TEST_F(ArithmeticTest, TrimTest) {
 	/* trim() */
 	query = "RETURN trim(NULL)";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.type, T_NULL);
 	AR_EXP_Free(arExp);
 }
@@ -690,12 +671,11 @@ TEST_F(ArithmeticTest, SubstringTest) {
 	const char *expected;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	/* SUBSTRING("muchacho", 0, 4) */
 	query = "RETURN SUBSTRING('muchacho', 0, 4)";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "much";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -703,7 +683,7 @@ TEST_F(ArithmeticTest, SubstringTest) {
 	/* SUBSTRING("muchacho", 3, 20) */
 	query = "RETURN SUBSTRING('muchacho', 3, 20)";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "hacho";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -711,7 +691,7 @@ TEST_F(ArithmeticTest, SubstringTest) {
 	/* SUBSTRING(NULL, 3, 20) */
 	query = "RETURN SUBSTRING(NULL, 3, 20)";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.type, T_NULL);
 	AR_EXP_Free(arExp);
 }
@@ -721,12 +701,11 @@ TEST_F(ArithmeticTest, ToLowerTest) {
 	const char *expected;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	/* toLower("MuChAcHo") */
 	query = "RETURN toLower('MuChAcHo')";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "muchacho";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -734,7 +713,7 @@ TEST_F(ArithmeticTest, ToLowerTest) {
 	/* toLower("mUcHaChO") */
 	query = "RETURN toLower('mUcHaChO')";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "muchacho";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -742,7 +721,7 @@ TEST_F(ArithmeticTest, ToLowerTest) {
 	/* toLower("mUcHaChO") */
 	query = "RETURN toLower(NULL)";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.type, T_NULL);
 	AR_EXP_Free(arExp);
 }
@@ -752,12 +731,11 @@ TEST_F(ArithmeticTest, ToUpperTest) {
 	const char *expected;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	/* toUpper("MuChAcHo") */
 	query = "RETURN toUpper('MuChAcHo')";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "MUCHACHO";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -765,7 +743,7 @@ TEST_F(ArithmeticTest, ToUpperTest) {
 	/* toUpper("mUcHaChO") */
 	query = "RETURN toUpper('mUcHaChO')";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "MUCHACHO";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -773,7 +751,7 @@ TEST_F(ArithmeticTest, ToUpperTest) {
 	/* toUpper("mUcHaChO") */
 	query = "RETURN toUpper(NULL)";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.type, T_NULL);
 	AR_EXP_Free(arExp);
 }
@@ -783,12 +761,11 @@ TEST_F(ArithmeticTest, ToStringTest) {
 	const char *expected;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	/* toString("muchacho") */
 	query = "RETURN toString('muchacho')";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "muchacho";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -796,7 +773,7 @@ TEST_F(ArithmeticTest, ToStringTest) {
 	/* toString("3.14") */
 	query = "RETURN toString(3.14)";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	expected = "3.140000";
 	ASSERT_STREQ(result.stringval, expected);
 	AR_EXP_Free(arExp);
@@ -804,7 +781,7 @@ TEST_F(ArithmeticTest, ToStringTest) {
 	/* toString() */
 	query = "RETURN toString(NULL)";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.type, T_NULL);
 	AR_EXP_Free(arExp);
 }
@@ -819,12 +796,11 @@ TEST_F(ArithmeticTest, ExistsTest) {
 	SIValue result;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	/* Pass NULL indicating n.v doesn't exists. */
 	query = "RETURN EXISTS(null)";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.type, T_BOOL);
 	ASSERT_EQ(result.longval, 0);
 	AR_EXP_Free(arExp);
@@ -832,7 +808,7 @@ TEST_F(ArithmeticTest, ExistsTest) {
 	/* Pass 1, in case n.v exists and evaluates to 1. */
 	query = "RETURN EXISTS(1)";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.type, T_BOOL);
 	ASSERT_EQ(result.longval, 1);
 	AR_EXP_Free(arExp);
@@ -842,14 +818,13 @@ TEST_F(ArithmeticTest, TimestampTest) {
 	SIValue result;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	struct timespec ts;
 	clock_gettime(CLOCK_REALTIME, &ts);
 
 	query = "RETURN timestamp()";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 
 	ASSERT_LE(abs((1000 * ts.tv_sec + ts.tv_nsec / 1000000) - result.longval), 5);
 }
@@ -1148,11 +1123,10 @@ TEST_F(ArithmeticTest, ListTest) {
 	SIValue result;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	query = "RETURN [1,2.3,'4',True,False, null]";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(T_ARRAY, result.type);
 
 	SIValue longVal = SIArray_Get(result, 0);
@@ -1184,25 +1158,24 @@ TEST_F(ArithmeticTest, ListSliceTest) {
 	SIValue result;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	query = "RETURN [0,1,2,3,4,5,6,7,8,9,10][3]";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 
 	ASSERT_EQ(T_INT64, result.type);
 	ASSERT_EQ(3, result.longval);
 
 	query = "RETURN [0,1,2,3,4,5,6,7,8,9,10][-3]";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 
 	ASSERT_EQ(T_INT64, result.type);
 	ASSERT_EQ(8, result.longval);
 
 	query = "RETURN [0,1,2,3,4,5,6,7,8,9,10][0..3]";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 
 	ASSERT_EQ(T_ARRAY, result.type);
 	ASSERT_EQ(3, SIArray_Length(result));
@@ -1215,7 +1188,7 @@ TEST_F(ArithmeticTest, ListSliceTest) {
 
 	query = "RETURN [0,1,2,3,4,5,6,7,8,9,10][0..-5]";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 
 	ASSERT_EQ(T_ARRAY, result.type);
 	ASSERT_EQ(6, SIArray_Length(result));
@@ -1228,7 +1201,7 @@ TEST_F(ArithmeticTest, ListSliceTest) {
 
 	query = "RETURN [0,1,2,3,4,5,6,7,8,9,10][-5..]";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 
 	ASSERT_EQ(T_ARRAY, result.type);
 	ASSERT_EQ(5, SIArray_Length(result));
@@ -1241,7 +1214,7 @@ TEST_F(ArithmeticTest, ListSliceTest) {
 
 	query = "RETURN [0,1,2,3,4,5,6,7,8,9,10][..4]";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 
 	ASSERT_EQ(T_ARRAY, result.type);
 	ASSERT_EQ(4, SIArray_Length(result));
@@ -1257,12 +1230,11 @@ TEST_F(ArithmeticTest, RangeTest) {
 	SIValue result;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	// create range from 0 to 10 [0,1,2,3,4,5,6,7,8,9,10]
 	query = "RETURN range(0,10)";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 
 	ASSERT_EQ(T_ARRAY, result.type);
 	ASSERT_EQ(11, SIArray_Length(result));
@@ -1276,7 +1248,7 @@ TEST_F(ArithmeticTest, RangeTest) {
 	// creae ragne with skips of 3, statring from 2 to 18 [2,5,8,11,14,17]
 	query = "RETURN range(2,18,3)";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 
 	ASSERT_EQ(T_ARRAY, result.type);
 	ASSERT_EQ(6, SIArray_Length(result));
@@ -1292,12 +1264,11 @@ TEST_F(ArithmeticTest, InTest) {
 	SIValue result;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	// check if 3 in [1,2,3]
 	query = "RETURN 3 IN [1,2,3]";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 
 	ASSERT_EQ(T_BOOL, result.type);
 	ASSERT_EQ(true, result.longval);
@@ -1305,7 +1276,7 @@ TEST_F(ArithmeticTest, InTest) {
 	// check if 4 in [1,2,3]
 	query = "RETURN 4 IN [1,2,3]";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 
 	ASSERT_EQ(T_BOOL, result.type);
 	ASSERT_EQ(false, result.longval);
@@ -1313,7 +1284,7 @@ TEST_F(ArithmeticTest, InTest) {
 	// check if [1,2] in [1,2,3]
 	query = "RETURN [1,2] IN [1,2,3]";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 
 	ASSERT_EQ(T_BOOL, result.type);
 	ASSERT_EQ(false, result.longval);
@@ -1321,7 +1292,7 @@ TEST_F(ArithmeticTest, InTest) {
 	// check if [1,2] in [[1,2],3]
 	query = "RETURN [1,2] IN [[1,2],3]";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 
 	ASSERT_EQ(T_BOOL, result.type);
 	ASSERT_EQ(true, result.longval);
@@ -1331,12 +1302,11 @@ TEST_F(ArithmeticTest, IsNullTest) {
 	SIValue result;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	// Check if null is null.
 	query = "RETURN null IS NULL";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 
 	ASSERT_EQ(T_BOOL, result.type);
 	ASSERT_EQ(true, result.longval);
@@ -1344,7 +1314,7 @@ TEST_F(ArithmeticTest, IsNullTest) {
 	// Check if null is not "not null".
 	query = "RETURN null IS NOT NULL";
 	arExp = _exp_from_query(query);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 
 	ASSERT_EQ(T_BOOL, result.type);
 	ASSERT_EQ(false, result.longval);
@@ -1356,20 +1326,19 @@ TEST_F(ArithmeticTest, IsNullTest) {
 		// Check if value is not null.
 		sprintf(buff, "RETURN %s IS NOT NULL", values[i]);
 		arExp = _exp_from_query(buff);
-		result = AR_EXP_Evaluate(arExp, r);
+		result = AR_EXP_Evaluate(arExp, NULL);
 
 		ASSERT_EQ(T_BOOL, result.type);
 		ASSERT_EQ(true, result.longval);
 
 		sprintf(buff, "RETURN %s IS NULL", values[i]);
 		arExp = _exp_from_query(buff);
-		result = AR_EXP_Evaluate(arExp, r);
+		result = AR_EXP_Evaluate(arExp, NULL);
 
 		ASSERT_EQ(T_BOOL, result.type);
 		ASSERT_EQ(false, result.longval);
 	}
 }
-
 
 TEST_F(ArithmeticTest, ReduceTest) {
 	const char *query;
@@ -1398,3 +1367,4 @@ TEST_F(ArithmeticTest, ReduceTest) {
 	ASSERT_EQ(AR_EXP_CONSTANT, rhs->operand.type);
 	ASSERT_EQ(T_ARRAY, rhs->operand.constant.type);
 }
+

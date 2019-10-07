@@ -7,61 +7,40 @@
 #include "op_sort.h"
 #include "op_project.h"
 #include "op_aggregate.h"
-
 #include "../../util/arr.h"
 #include "../../util/qsort.h"
 #include "../../util/rmalloc.h"
 
-static bool _record_islt(Record a, Record b, const OpSort *op) {
-	// First N values in record correspond to RETURN expressions
-	// N .. M values correspond to ORDER-BY expressions
-	// Query: RETURN A.V, B.V, C.V ORDER BY B.W, C.V*A.V
-	// Record
-	// ------------------------------------
-	// |  V0  |  V1  |  V2  |  V3  |  V4  |
-	// ------------------------------------
-	// V0 - A.V
-	// V1 - B.V
-	// V2 - C.V
-	// V3 - B.W
-	// V4 - C.V*A.
-	uint offset = op->offset;
-	uint comparables = array_len(op->expressions);
+/* Forward declarations. */
+static OpResult SortInit(OpBase *opBase);
+static Record SortConsume(OpBase *opBase);
+static OpResult SortReset(OpBase *opBase);
+static void SortFree(OpBase *opBase);
 
-	for(uint i = 0; i < comparables; i++) {
-		SIValue aVal = Record_Get(a, offset + i);
-		SIValue bVal = Record_Get(b, offset + i);
+// Quicksort function to compare two records on a subset of fields.
+// Returns true if a is less than b.
+static bool _record_islt(Record a, Record b, const OpSort *op) {
+	uint comparison_count = array_len(op->record_offsets);
+	for(uint i = 0; i < comparison_count; i++) {
+		SIValue aVal = Record_Get(a, op->record_offsets[i]);
+		SIValue bVal = Record_Get(b, op->record_offsets[i]);
 		int rel = SIValue_Compare(aVal, bVal, NULL);
-		if(rel == 0) continue;  // Elements are equal; try next ORDER BY element
+		if(rel == 0) continue;  // Elements are equal; try next ORDER BY element.
 		rel *= op->direction;   // Flip value for descending order.
 		return rel > 0;         // Return true if the current left element is less than the right.
 	}
 	return false;   // b >= a
 }
 
-// Compares two records on a subset of fields
-// Return value similar to strcmp
+// Heapsort function to compare two records on a subset of fields.
+// Return value similar to strcmp.
 static int _record_compare(Record a, Record b, const OpSort *op) {
-	// First N values in record correspond to RETURN expressions
-	// N .. M values correspond to ORDER-BY expressions
-	// Query: RETURN A.V, B.V, C.V ORDER BY B.W, C.V*A.V
-	// Record
-	// ------------------------------------
-	// |  V0  |  V1  |  V2  |  V3  |  V4  |
-	// ------------------------------------
-	// V0 - A.V
-	// V1 - B.V
-	// V2 - C.V
-	// V3 - B.W
-	// V4 - C.V*A.
-	uint offset = op->offset;
-	uint comparables = array_len(op->expressions);
-
-	for(uint i = 0; i < comparables; i++) {
-		SIValue aVal = Record_Get(a, offset + i);
-		SIValue bVal = Record_Get(b, offset + i);
+	uint comparison_count = array_len(op->record_offsets);
+	for(uint i = 0; i < comparison_count; i++) {
+		SIValue aVal = Record_Get(a, op->record_offsets[i]);
+		SIValue bVal = Record_Get(b, op->record_offsets[i]);
 		int rel = SIValue_Compare(aVal, bVal, NULL);
-		if(rel) return rel;
+		if(rel) return rel; // Return comparison value if elements aren't equal.
 	}
 	return 0;
 }
@@ -96,53 +75,28 @@ static void _accumulate(OpSort *op, Record r) {
 	}
 }
 
-static Record _handoff(OpSort *op) {
-	if(array_len(op->buffer) > 0) {
-		Record r = array_pop(op->buffer);
-		// Remove sortable values.
-		Record_Truncate(r, Record_length(r) - op->offset);
-		return r;
-	}
+static inline Record _handoff(OpSort *op) {
+	if(array_len(op->buffer) > 0) return array_pop(op->buffer);
 	return NULL;
 }
 
-uint _determineOffset(OpBase *op) {
-	assert(op);
+OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int direction, unsigned int limit) {
+	OpSort *op = malloc(sizeof(OpSort));
+	op->heap = NULL;
+	op->buffer = NULL;
+	op->limit = limit;
+	op->direction = direction;
+	op->record_offsets = NULL;
+	op->exps = exps;
 
-	if(op->type == OPType_AGGREGATE) {
-		OpAggregate *aggregate = (OpAggregate *)op;
-		return array_len(aggregate->exps);
-	} else if(op->type == OPType_PROJECT) {
-		OpProject *project = (OpProject *)op;
-		return project->exp_count;
-	}
-
-	return _determineOffset(op->children[0]);
-}
-
-OpBase *NewSortOp(AR_ExpNode **expressions, int direction, unsigned int limit) {
-	OpSort *sort = malloc(sizeof(OpSort));
-	sort->offset = 0;
-	sort->expressions = expressions;
-	sort->direction = direction;
-	sort->heap = NULL;
-	sort->buffer = NULL;
-
-	sort->limit = limit;
-
-	if(sort->limit) sort->heap = heap_new(_heap_elem_compare, sort);
-	else sort->buffer = array_new(Record, 32);
+	if(op->limit) op->heap = heap_new(_heap_elem_compare, op);
+	else op->buffer = array_new(Record, 32);
 
 	// Set our Op operations
-	OpBase_Init(&sort->op);
-	sort->op.name = "Sort";
-	sort->op.type = OPType_SORT;
-	sort->op.consume = SortConsume;
-	sort->op.reset = SortReset;
-	sort->op.init = SortInit;
-	sort->op.free = SortFree;
+	OpBase_Init((OpBase *)op, OPType_SORT, "Sort", SortInit,
+				SortConsume, SortReset, NULL, SortFree, plan);
 
-	return (OpBase *)sort;
+	return (OpBase *)op;
 }
 
 /* `op` is an actual variable in the caller function. Using it in a
@@ -150,15 +104,19 @@ OpBase *NewSortOp(AR_ExpNode **expressions, int direction, unsigned int limit) {
  * accept only 2 arguments. */
 #define RECORD_SORT(a, b) (_record_islt((*a), (*b), op))
 
-OpResult SortInit(OpBase *opBase) {
-	OpSort *op = (OpSort *) opBase;
-	op->offset = _determineOffset(opBase->children[0]);
+static OpResult SortInit(OpBase *opBase) {
+	OpSort *op = (OpSort *)opBase;
+	uint comparison_count = array_len(op->exps);
+	op->record_offsets = array_new(uint, comparison_count);
+	for(uint i = 0; i < comparison_count; i ++) {
+		int record_idx = OpBase_Modifies(opBase, op->exps[i]->resolved_name);
+		op->record_offsets = array_append(op->record_offsets, record_idx);
+	}
 	return OP_OK;
 }
 
-Record SortConsume(OpBase *opBase) {
-	OpSort *op = (OpSort *) opBase;
-
+static Record SortConsume(OpBase *opBase) {
+	OpSort *op = (OpSort *)opBase;
 	Record r = _handoff(op);
 	if(r) return r;
 
@@ -192,7 +150,7 @@ Record SortConsume(OpBase *opBase) {
 }
 
 /* Restart iterator */
-OpResult SortReset(OpBase *ctx) {
+static OpResult SortReset(OpBase *ctx) {
 	OpSort *op = (OpSort *)ctx;
 	uint recordCount;
 
@@ -216,7 +174,7 @@ OpResult SortReset(OpBase *ctx) {
 }
 
 /* Frees Sort */
-void SortFree(OpBase *ctx) {
+static void SortFree(OpBase *ctx) {
 	OpSort *op = (OpSort *)ctx;
 
 	if(op->heap) {
@@ -239,10 +197,21 @@ void SortFree(OpBase *ctx) {
 		op->buffer = NULL;
 	}
 
-	if(op->expressions) {
-		for(int i = 0; i < array_len(op->expressions); i++) AR_EXP_Free(op->expressions[i]);
-		array_free(op->expressions);
-		op->expressions = NULL;
+	if(op->exps) {
+		uint exp_count = array_len(op->exps);
+		for(uint i = 0; i < exp_count; i ++) {
+			// The parser does not generate identifiers for ORDER BY expressions,
+			// so the resolved_name is constructed by us and must be freed.
+			rm_free((char *)op->exps[i]->resolved_name);
+			AR_EXP_Free(op->exps[i]);
+		}
+		array_free(op->exps);
+		op->exps = NULL;
+	}
+
+	if(op->record_offsets) {
+		array_free(op->record_offsets);
+		op->record_offsets = NULL;
 	}
 }
 

@@ -47,15 +47,14 @@ class DFSTest: public ::testing::Test {
 		const char *label = "L";
 		const char *relation = "R";
 
-		uint id = 0;
-		A = QGNode_New(label, "A", id++);
-		B = QGNode_New(label, "B", id++);
-		C = QGNode_New(label, "C", id++);
-		D = QGNode_New(label, "D", id++);
+		A = QGNode_New(label, "A");
+		B = QGNode_New(label, "B");
+		C = QGNode_New(label, "C");
+		D = QGNode_New(label, "D");
 
-		AB = QGEdge_New(A, B, relation, "AB", id++);
-		BC = QGEdge_New(B, C, relation, "BC", id++);
-		CD = QGEdge_New(C, D, relation, "CD", id++);
+		AB = QGEdge_New(A, B, relation, "AB");
+		BC = QGEdge_New(B, C, relation, "BC");
+		CD = QGEdge_New(C, D, relation, "CD");
 
 		QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
 		QueryGraph_AddNode(g, A);
@@ -77,7 +76,7 @@ TEST_F(DFSTest, DFSLevels) {
 	QueryGraph *g;  // Graph traversed.
 
 	g = BuildGraph();
-	S = QueryGraph_GetNodeByID(g, A->id);
+	S = QueryGraph_GetNodeByAlias(g, "A");
 
 	QGEdge *expected_level_0[0] = {};
 	QGEdge *expected_level_1[1] = {AB};

@@ -7,9 +7,9 @@
 #pragma once
 
 #include "../value.h"
+#include "../../deps/rax/rax.h"
 #include "../graph/entities/node.h"
 #include "../graph/entities/edge.h"
-
 #include <sys/types.h>
 
 typedef enum  {
@@ -29,23 +29,21 @@ typedef struct {
 	RecordEntryType type;
 } Entry;
 
-typedef Entry *Record;
+typedef struct {
+	rax *mapping;       // Mapping between alias to record entry.
+	Entry entries[];    // Array of entries.
+} _Record;
 
-// Create a new record capable of holding N entries.
-Record Record_New(int entries);
+typedef _Record *Record;
 
-// Extands record to given length.
-void Record_Extend(Record *r, int len);
+// Create a new record sized to accommodate all entries in the given map.
+Record Record_New(rax *mapping);
 
-// Clones record, sharing any nested references with the original.
+// Clones record.
 Record Record_Clone(const Record r);
 
 // Extends record to accommodate 'len' entries.
 void Record_Extend(Record *r, int len);
-
-// Shrink record to size `count`; freeing any further elements.
-// TODO: Remove this functions once hash like records are introduced.
-void Record_Truncate(Record r, uint count);
 
 // Merge record b into a, sharing any nested references in b with a.
 void Record_Merge(Record *a, const Record b);
@@ -54,7 +52,10 @@ void Record_Merge(Record *a, const Record b);
 void Record_TransferEntries(Record *to, Record from);
 
 // Returns number of entries record can hold.
-unsigned int Record_length(const Record r);
+uint Record_length(const Record r);
+
+// Return alias position within the record.
+int Record_GetEntryIdx(Record r, const char *alias);
 
 // Get entry type.
 RecordEntryType Record_GetType(const Record r, int idx);

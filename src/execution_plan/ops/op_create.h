@@ -4,14 +4,14 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OP_CREATE_H
-#define __OP_CREATE_H
+#pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
+#include "../../ast/ast_shared.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
 #include "../../resultset/resultset_statistics.h"
-#include "../../ast/ast_shared.h"
 
 /* Creates new entities according to the CREATE clause. */
 
@@ -38,11 +38,5 @@ typedef struct {
 	ResultSetStatistics *stats;
 } OpCreate;
 
-OpBase *NewCreateOp(ResultSetStatistics *stats, NodeCreateCtx *nodes, EdgeCreateCtx *edges);
-
-OpResult OpCreateInit(OpBase *opBase);
-Record OpCreateConsume(OpBase *opBase);
-OpResult OpCreateReset(OpBase *ctx);
-void OpCreateFree(OpBase *ctx);
-
-#endif
+OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeCreateCtx *nodes,
+					EdgeCreateCtx *edges);

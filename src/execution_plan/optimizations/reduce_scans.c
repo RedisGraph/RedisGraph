@@ -6,7 +6,6 @@
 
 #include "./reduce_scans.h"
 #include "../../util/arr.h"
-#include "../ops/op_traverse.h"
 #include "../ops/op_conditional_traverse.h"
 #include <assert.h>
 

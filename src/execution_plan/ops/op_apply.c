@@ -6,32 +6,26 @@
 
 #include "op_apply.h"
 
-OpBase *NewApplyOp() {
-	Apply *apply = malloc(sizeof(Apply));
-	apply->init = true;
-	apply->lhs_record = NULL;
-	apply->rhs_records = array_new(Record, 32);
-	apply->rhs_idx = 0;
+/* Forward declarations. */
+static Record ApplyConsume(OpBase *opBase);
+static OpResult ApplyReset(OpBase *opBase);
+static void ApplyFree(OpBase *opBase);
+
+OpBase *NewApplyOp(const ExecutionPlan *plan) {
+	Apply *op = malloc(sizeof(Apply));
+	op->init = true;
+	op->rhs_idx = 0;
+	op->lhs_record = NULL;
+	op->rhs_records = array_new(Record, 32);
 
 	// Set our Op operations
-	OpBase_Init(&apply->op);
-	apply->op.name = "Apply";
-	apply->op.type = OPType_APPLY;
-	apply->op.consume = ApplyConsume;
-	apply->op.init = ApplyInit;
-	apply->op.reset = ApplyReset;
-	apply->op.free = ApplyFree;
+	OpBase_Init((OpBase *)op, OPType_APPLY, "Apply", NULL, ApplyConsume, ApplyReset, NULL,
+				ApplyFree, plan);
 
-	// apply->op.modifies = modifies;
-
-	return (OpBase *)apply;
+	return (OpBase *)op;
 }
 
-OpResult ApplyInit(OpBase *opBase) {
-	return OP_OK;
-}
-
-Record ApplyConsume(OpBase *opBase) {
+static Record ApplyConsume(OpBase *opBase) {
 	Apply *op = (Apply *)opBase;
 
 	assert(op->op.childCount == 2);
@@ -85,13 +79,13 @@ Record ApplyConsume(OpBase *opBase) {
 	return r;
 }
 
-OpResult ApplyReset(OpBase *opBase) {
+static OpResult ApplyReset(OpBase *opBase) {
 	Apply *op = (Apply *)opBase;
 	op->init = true;
 	return OP_OK;
 }
 
-void ApplyFree(OpBase *opBase) {
+static void ApplyFree(OpBase *opBase) {
 	Apply *op = (Apply *)opBase;
 	if(op->lhs_record) {
 		Record_Free(op->lhs_record);
@@ -106,3 +100,4 @@ void ApplyFree(OpBase *opBase) {
 		op->rhs_records = NULL;
 	}
 }
+

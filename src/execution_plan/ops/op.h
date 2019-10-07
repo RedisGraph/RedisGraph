@@ -7,20 +7,18 @@
 #pragma once
 
 #include "../record.h"
-#include "../record_map.h"
+#include "../../util/arr.h"
 #include "../../redismodule.h"
+#include "../../schema/schema.h"
 #include "../../graph/query_graph.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
-#include "../../schema/schema.h"
-#include "../../util/arr.h"
 
 #define OP_REQUIRE_NEW_DATA(opRes) (opRes & (OP_DEPLETED | OP_REFRESH)) > 0
 
 typedef enum {
-	OPType_AGGREGATE = 0,
-	OPType_ALL_NODE_SCAN = (1 << 0),
-	OPType_TRAVERSE = (1 << 1),
+	OPType_AGGREGATE = 1,
+	OPType_ALL_NODE_SCAN = (1 << 1),
 	OPType_CONDITIONAL_TRAVERSE = (1 << 2),
 	OPType_CONDITIONAL_VAR_LEN_TRAVERSE = (1 << 3),
 	OPType_FILTER = (1 << 4),
@@ -70,30 +68,35 @@ typedef struct {
 	double profileExecTime;     // Operation total execution time in ms.
 }  OpStats;
 
+struct ExecutionPlan;
+
 struct OpBase {
-	OPType type;                // Type of operation
+	OPType type;                // Type of operation.
 	fpInit init;                // Called once before execution.
+	fpFree free;                // Free operation.
+	fpReset reset;              // Reset operation state.
 	fpConsume consume;          // Produce next record.
 	fpConsume profile;          // Profiled version of consume.
-	fpReset reset;              // Reset operation state.
-	fpFree free;                // Free operation.
 	fpToString toString;        // operation string representation.
 	char *name;                 // Operation name.
-	uint *modifies;             // List of Record indices this op modifies.
-	RecordMap *record_map;      // Mapping of entities into Record IDs in the scope of this ExecutionPlanSegment.
-	struct OpBase **children;   // Child operations.
 	int childCount;             // Number of children.
 	bool op_initialized;        // True if the operation has already been initialized.
+	struct OpBase **children;   // Child operations.
+	const char **modifies;      // List of entities this op modifies.
 	OpStats *stats;             // Profiling statistics.
 	Record *dangling_records;   // Records allocated by this operation that must be freed.
 	struct OpBase *parent;      // Parent operations.
+	const struct ExecutionPlan *plan; // ExecutionPlan this operation is part of.
 };
 typedef struct OpBase OpBase;
 
-void OpBase_Init(OpBase *op);       // Initialize op.
+// Initialize op.
+void OpBase_Init(OpBase *op, OPType type, char *name, fpInit init, fpConsume consume, fpReset reset,
+				 fpToString toString, fpFree free, const struct ExecutionPlan *plan);
 void OpBase_Free(OpBase *op);       // Free op.
 Record OpBase_Consume(OpBase *op);  // Consume op.
 Record OpBase_Profile(OpBase *op);  // Profile op.
+
 int OpBase_ToString(const OpBase *op, char *buff, uint buff_len);
 
 /* If an operation holds the sole reference to a Record it is evaluating,
@@ -103,6 +106,18 @@ void OpBase_AddVolatileRecord(OpBase *op, const Record r);
  * may be released. */
 void OpBase_RemoveVolatileRecords(OpBase *op);
 
+/* Mark alias as being modified by operation.
+ * Returns the ID associated with alias. */
+int OpBase_Modifies(OpBase *op, const char *alias);
+
+/* Returns true if op is aware of alias.
+ * an operation is aware of all aliases it modifies and all aliases
+ * modified by prior operation within its segment. */
+bool OpBase_Aware(OpBase *op, const char *alias, int *idx);
+
 void OpBase_PropagateFree(OpBase *op); // Sends free request to each operation up the chain.
 void OpBase_PropagateReset(OpBase *op); // Sends reset request to each operation up the chain.
+
+// Creates a new record that will be populated during execution.
+Record OpBase_CreateRecord(const OpBase *op);
 

@@ -11,9 +11,8 @@
 #include "../redismodule.h"
 #include "rax.h"
 
-typedef const void *AST_IDENTIFIER;
-
 #define IDENTIFIER_NOT_FOUND UINT_MAX
+#define UNLIMITED UINT_MAX
 
 typedef enum {
 	AST_VALID,
@@ -22,7 +21,8 @@ typedef enum {
 
 typedef struct {
 	const cypher_astnode_t *root;     // Root element of libcypher-parser AST
-	rax *entity_map;                  // Mapping of aliases and AST node pointers to AST IDs
+	rax *referenced_entities;         // Mapping of the referenced entities.
+	uint limit;                       // The maximum number of results in this segment.
 	bool free_root;                   // The root should only be freed if this is a sub-AST we constructed
 } AST;
 
@@ -53,13 +53,15 @@ uint AST_GetClauseCount(const AST *ast, cypher_astnode_type_t clause_type);
 // Returns all instances of the given clause in the AST.
 const cypher_astnode_t **AST_GetClauses(const AST *ast, cypher_astnode_type_t type);
 
-// Collect all user-provided aliases in the query.
-// (Only used for populating return expressions when "RETURN *" is specified.)
-const char **AST_CollectElementNames(AST *ast);
-
 AST *AST_Build(cypher_parse_result_t *parse_result);
 
 AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset);
+
+// Populate the AST's map of all referenced aliases.
+void AST_BuildReferenceMap(AST *ast, const cypher_astnode_t *project_clause);
+
+// Returns true if the given alias is referenced within this AST segment.
+bool AST_AliasIsReferenced(AST *ast, const char *alias);
 
 // Convert an AST integer node (which is stored internally as a string) into an integer.
 long AST_ParseIntegerNode(const cypher_astnode_t *int_node);
@@ -70,22 +72,6 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause);
 // Determine the maximum number of records
 // which will be considered when evaluating an algebraic expression.
 int TraverseRecordCap(const AST *ast);
-
-/* AST Map API */
-
-// Retrieve an AST ID from an AST pointer
-uint AST_GetEntityIDFromReference(const AST *ast, AST_IDENTIFIER entity);
-
-// Retrieve an AST ID from an alias
-uint AST_GetEntityIDFromAlias(const AST *ast, const char *alias);
-
-// Retrieve an AST ID from an alias, creating a new ID if not previously mapped.
-// (This is only necessary to handle aliases introduced from stored procedures
-// rather than the query).
-uint ASTMap_FindOrAddAlias(const AST *ast, const char *alias, uint id);
-
-// Construct the AST map.
-void AST_BuildEntityMap(AST *ast);
 
 void AST_Free(AST *ast);
 

@@ -11,6 +11,12 @@
 #include "../../query_ctx.h"
 #include "../../GraphBLASExt/GxB_Delete.h"
 
+/* Forward declarations. */
+static OpResult ExpandIntoInit(OpBase *opBase);
+static Record ExpandIntoConsume(OpBase *opBase);
+static OpResult ExpandIntoReset(OpBase *opBase);
+static void ExpandIntoFree(OpBase *opBase);
+
 // String representation of operation.
 static int ExpandIntoToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const OpExpandInto *op = (const OpExpandInto *)ctx;
@@ -76,48 +82,38 @@ static void _traverse(OpExpandInto *op) {
 	GrB_Matrix_clear(op->F);
 }
 
-OpBase *NewExpandIntoOp(Graph *g, RecordMap *record_map, AlgebraicExpression *ae,
+OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
 						uint records_cap) {
-	OpExpandInto *expandInto = calloc(1, sizeof(OpExpandInto));
-	expandInto->graph = g;
-	expandInto->ae = ae;
-	expandInto->edgeRelationTypes = NULL;
-	expandInto->F = NULL;
-	expandInto->edges = NULL;
-	expandInto->r = NULL;
-
-	// Make sure that all entities are represented in Record
-	expandInto->srcNodeIdx = RecordMap_FindOrAddID(record_map, ae->src_node->id);
-	expandInto->destNodeIdx = RecordMap_FindOrAddID(record_map, ae->dest_node->id);
-	expandInto->edgeIdx = IDENTIFIER_NOT_FOUND;
-
-	expandInto->recordCount = 0;
-	expandInto->recordsCap = records_cap;
-	expandInto->records = rm_calloc(expandInto->recordsCap, sizeof(Record));
+	OpExpandInto *op = calloc(1, sizeof(OpExpandInto));
+	op->graph = g;
+	op->ae = ae;
+	op->F = NULL;
+	op->r = NULL;
+	op->edges = NULL;
+	op->recordCount = 0;
+	op->edgeRelationTypes = NULL;
+	op->recordsCap = records_cap;
+	op->records = rm_calloc(op->recordsCap, sizeof(Record));
 
 	// Set our Op operations
-	OpBase_Init(&expandInto->op);
-	expandInto->op.name = "Expand Into";
-	expandInto->op.type = OPType_EXPAND_INTO;
-	expandInto->op.init = ExpandIntoInit;
-	expandInto->op.free = ExpandIntoFree;
-	expandInto->op.reset = ExpandIntoReset;
-	expandInto->op.consume = ExpandIntoConsume;
-	expandInto->op.toString = ExpandIntoToString;
-	expandInto->op.modifies = NULL;
+	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", ExpandIntoInit, ExpandIntoConsume,
+				ExpandIntoReset, ExpandIntoToString, ExpandIntoFree, plan);
+
+	// Make sure that all entities are represented in Record
+	op->edgeIdx = IDENTIFIER_NOT_FOUND;
+	assert(OpBase_Aware((OpBase *)op, ae->src_node->alias, &op->srcNodeIdx));
+	assert(OpBase_Aware((OpBase *)op, ae->dest_node->alias, &op->destNodeIdx));
 
 	if(ae->edge) {
-		expandInto->edgeIdx = RecordMap_FindOrAddID(record_map, ae->edge->id);
-		_setupTraversedRelations(expandInto, ae->edge);
-		expandInto->op.modifies = array_new(uint, 1);
-		expandInto->op.modifies = array_append(expandInto->op.modifies, expandInto->edgeIdx);
-		expandInto->edges = array_new(Edge, 32);
+		op->edges = array_new(Edge, 32);
+		_setupTraversedRelations(op, ae->edge);
+		op->edgeIdx = OpBase_Modifies((OpBase *)op, ae->edge->alias);
 	}
 
-	return (OpBase *)expandInto;
+	return (OpBase *)op;
 }
 
-OpResult ExpandIntoInit(OpBase *opBase) {
+static OpResult ExpandIntoInit(OpBase *opBase) {
 	OpExpandInto *op = (OpExpandInto *)opBase;
 
 	size_t required_dim = Graph_RequiredMatrixDim(op->graph);
@@ -182,7 +178,7 @@ static Record _handoff(OpExpandInto *op) {
 
 /* ExpandIntoConsume next operation
  * returns OP_DEPLETED when no additional updates are available */
-Record ExpandIntoConsume(OpBase *opBase) {
+static Record ExpandIntoConsume(OpBase *opBase) {
 	Node *n;
 	Record r;
 	OpExpandInto *op = (OpExpandInto *)opBase;
@@ -224,7 +220,7 @@ Record ExpandIntoConsume(OpBase *opBase) {
 	return r;
 }
 
-OpResult ExpandIntoReset(OpBase *ctx) {
+static OpResult ExpandIntoReset(OpBase *ctx) {
 	OpExpandInto *op = (OpExpandInto *)ctx;
 	for(int i = 0; i < op->recordCount; i++) {
 		if(op->records[i]) Record_Free(op->records[i]);
@@ -238,7 +234,7 @@ OpResult ExpandIntoReset(OpBase *ctx) {
 }
 
 /* Frees ExpandInto */
-void ExpandIntoFree(OpBase *ctx) {
+static void ExpandIntoFree(OpBase *ctx) {
 	OpExpandInto *op = (OpExpandInto *)ctx;
 	if(op->F) {
 		GrB_Matrix_free(&op->F);

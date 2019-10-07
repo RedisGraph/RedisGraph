@@ -13,6 +13,12 @@
 #include "../../algorithms/all_paths.h"
 #include "./op_cond_var_len_traverse.h"
 
+/* Forward declarations. */
+static OpResult CondVarLenTraverseInit(OpBase *opBase);
+static Record CondVarLenTraverseConsume(OpBase *opBase);
+static OpResult CondVarLenTraverseReset(OpBase *opBase);
+static void CondVarLenTraverseFree(OpBase *opBase);
+
 static void _setupTraversedRelations(CondVarLenTraverse *op, QGEdge *e) {
 	uint reltype_count = array_len(e->reltypeIDs);
 	if(reltype_count > 0) {
@@ -25,7 +31,7 @@ static void _setupTraversedRelations(CondVarLenTraverse *op, QGEdge *e) {
 	}
 }
 
-int CondVarLenTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
+static int CondVarLenTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const CondVarLenTraverse *op = (const CondVarLenTraverse *)ctx;
 
 	int offset = 0;
@@ -50,45 +56,35 @@ void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {
 	op->op.name = "Conditional Variable Length Traverse (Expand Into)";
 }
 
-OpBase *NewCondVarLenTraverseOp(Graph *g, RecordMap *record_map, AlgebraicExpression *ae) {
+OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
 	assert(ae && ae->edge->minHops <= ae->edge->maxHops && g && ae->operand_count == 1);
 
-	CondVarLenTraverse *condVarLenTraverse = malloc(sizeof(CondVarLenTraverse));
-	condVarLenTraverse->g = g;
-	condVarLenTraverse->ae = ae;
-	condVarLenTraverse->expandInto = false;
-	condVarLenTraverse->edgeRelationTypes = NULL;
-
-	condVarLenTraverse->srcNodeIdx = RecordMap_FindOrAddID(record_map, ae->src_node->id);
-	condVarLenTraverse->destNodeIdx = RecordMap_FindOrAddID(record_map, ae->dest_node->id);
-
-	condVarLenTraverse->minHops = ae->edge->minHops;
-	condVarLenTraverse->maxHops = ae->edge->maxHops;
-	condVarLenTraverse->allPathsCtx = NULL;
+	CondVarLenTraverse *op = malloc(sizeof(CondVarLenTraverse));
+	op->g = g;
+	op->ae = ae;
+	op->r = NULL;
+	op->expandInto = false;
+	op->allPathsCtx = NULL;
+	op->edgeRelationTypes = NULL;
+	op->minHops = ae->edge->minHops;
+	op->maxHops = ae->edge->maxHops;
 	// The AlgebraicExpression populating a variable-length traversal only contains one operand.
-	condVarLenTraverse->traverseDir = (ae->operands[0].transpose) ? GRAPH_EDGE_DIR_INCOMING :
-									  GRAPH_EDGE_DIR_OUTGOING;
-	condVarLenTraverse->r = NULL;
+	op->traverseDir = (ae->operands[0].transpose) ? GRAPH_EDGE_DIR_INCOMING : GRAPH_EDGE_DIR_OUTGOING;
 
-	_setupTraversedRelations(condVarLenTraverse, ae->edge);
+	_setupTraversedRelations(op, ae->edge);
 
 	// Set our Op operations
-	OpBase_Init(&condVarLenTraverse->op);
-	condVarLenTraverse->op.name = "Conditional Variable Length Traverse";
-	condVarLenTraverse->op.type = OPType_CONDITIONAL_VAR_LEN_TRAVERSE;
-	condVarLenTraverse->op.consume = CondVarLenTraverseConsume;
-	condVarLenTraverse->op.reset = CondVarLenTraverseReset;
-	condVarLenTraverse->op.toString = CondVarLenTraverseToString;
-	condVarLenTraverse->op.free = CondVarLenTraverseFree;
+	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
+				"Conditional Variable Length Traverse", NULL, CondVarLenTraverseConsume, CondVarLenTraverseReset,
+				CondVarLenTraverseToString, CondVarLenTraverseFree, plan);
 
-	condVarLenTraverse->op.modifies = array_new(uint, 1);
-	condVarLenTraverse->op.modifies = array_append(condVarLenTraverse->op.modifies,
-												   condVarLenTraverse->destNodeIdx);
+	assert(OpBase_Aware((OpBase *)op, ae->src_node->alias, &op->srcNodeIdx));
+	op->destNodeIdx = OpBase_Modifies((OpBase *)op, ae->dest_node->alias);
 
-	return (OpBase *)condVarLenTraverse;
+	return (OpBase *)op;
 }
 
-Record CondVarLenTraverseConsume(OpBase *opBase) {
+static Record CondVarLenTraverseConsume(OpBase *opBase) {
 	CondVarLenTraverse *op = (CondVarLenTraverse *)opBase;
 	OpBase *child = op->op.children[0];
 	Path p = NULL;
@@ -136,7 +132,7 @@ compute_path:
 	return Record_Clone(op->r);
 }
 
-OpResult CondVarLenTraverseReset(OpBase *ctx) {
+static OpResult CondVarLenTraverseReset(OpBase *ctx) {
 	CondVarLenTraverse *op = (CondVarLenTraverse *)ctx;
 	if(op->r) Record_Free(op->r);
 	op->r = NULL;
@@ -145,7 +141,7 @@ OpResult CondVarLenTraverseReset(OpBase *ctx) {
 	return OP_OK;
 }
 
-void CondVarLenTraverseFree(OpBase *ctx) {
+static void CondVarLenTraverseFree(OpBase *ctx) {
 	CondVarLenTraverse *op = (CondVarLenTraverse *)ctx;
 
 	if(op->edgeRelationTypes) {

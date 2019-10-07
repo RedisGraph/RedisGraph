@@ -7,18 +7,15 @@
 #pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 
 typedef struct {
 	OpBase op;
 	bool init;
+	uint rhs_idx;
 	Record lhs_record;
 	Record *rhs_records;
-	uint rhs_idx;
 } Apply;
 
 // OpBase* NewApplyOp(uint *modifies);
-OpBase *NewApplyOp(void);
-OpResult ApplyInit(OpBase *opBase);
-Record ApplyConsume(OpBase *opBase);
-OpResult ApplyReset(OpBase *opBase);
-void ApplyFree(OpBase *opBase);
+OpBase *NewApplyOp(const ExecutionPlan *plan);

@@ -70,6 +70,7 @@ static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
 	set->formatter->EmitHeader(set->ctx, set->columns, r);
 
 	set->header_emitted = true;
+	set->column_count = array_len(set->columns);
 
 	// We don't know at this point the number of records we're about to return.
 	RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
@@ -96,18 +97,6 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact) {
 	return set;
 }
 
-void ResultSet_BuildColumns(ResultSet *set, AR_ExpNode **projections) {
-	if(projections == NULL) return;
-
-	uint projection_count = array_len(projections);
-	set->column_count = projection_count;
-	set->columns = array_new(const char *, projection_count);
-
-	for(uint i = 0; i < projection_count; i ++) {
-		set->columns = array_append(set->columns, projections[i]->resolved_name);
-	}
-}
-
 int ResultSet_AddRecord(ResultSet *set, Record r) {
 	// Prepare response arrays and emit the header if this is the first Record encountered
 	if(set->header_emitted == false) _ResultSet_ReplyWithPreamble(set, r);
@@ -115,7 +104,7 @@ int ResultSet_AddRecord(ResultSet *set, Record r) {
 	set->recordCount++;
 
 	// Output the current record using the defined formatter
-	set->formatter->EmitRecord(set->ctx, set->gc, r);
+	set->formatter->EmitRecord(set->ctx, set->gc, r, set->column_count);
 
 	return RESULTSET_OK;
 }

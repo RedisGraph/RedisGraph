@@ -6,39 +6,37 @@
 
 #include "op_limit.h"
 
-OpBase *NewLimitOp(unsigned int l) {
-	OpLimit *limit = malloc(sizeof(OpLimit));
-	limit->limit = l;
-	limit->consumed = 0;
+/* Forward declarations. */
+static Record LimitConsume(OpBase *opBase);
+static OpResult LimitReset(OpBase *opBase);
+
+OpBase *NewLimitOp(const ExecutionPlan *plan, unsigned int l) {
+	OpLimit *op = malloc(sizeof(OpLimit));
+	op->limit = l;
+	op->consumed = 0;
 
 	// Set our Op operations
-	OpBase_Init(&limit->op);
-	limit->op.name = "Limit";
-	limit->op.type = OPType_LIMIT;
-	limit->op.consume = LimitConsume;
-	limit->op.reset = LimitReset;
-	limit->op.free = LimitFree;
+	OpBase_Init((OpBase *)op, OPType_LIMIT, "Limit", NULL, LimitConsume,
+				LimitReset, NULL, NULL, plan);
 
-	return (OpBase *)limit;
+	return (OpBase *)op;
 }
 
-Record LimitConsume(OpBase *op) {
-	OpLimit *limit = (OpLimit *)op;
+static Record LimitConsume(OpBase *opBase) {
+	OpLimit *op = (OpLimit *)opBase;
 
 	// Have we reached our limit?
-	if(limit->consumed >= limit->limit) return NULL;
+	if(op->consumed >= op->limit) return NULL;
 
 	// Consume a single record.
-	limit->consumed++;
-	OpBase *child = limit->op.children[0];
+	op->consumed++;
+	OpBase *child = op->op.children[0];
 	return OpBase_Consume(child);
 }
 
-OpResult LimitReset(OpBase *ctx) {
+static OpResult LimitReset(OpBase *ctx) {
 	OpLimit *limit = (OpLimit *)ctx;
 	limit->consumed = 0;
 	return OP_OK;
 }
 
-void LimitFree(OpBase *ctx) {
-}

@@ -11,6 +11,10 @@
 #include "../../arithmetic/arithmetic_expression.h"
 #include <assert.h>
 
+/* Forward declarations. */
+static Record MergeConsume(OpBase *opBase);
+static void MergeFree(OpBase *opBase);
+
 static void _AddProperties(OpMerge *op, Record r, GraphEntity *ge, PropertyMap *props) {
 	for(int i = 0; i < props->property_count; i++) {
 		SIValue val = AR_EXP_Evaluate(props->values[i], r);
@@ -116,34 +120,35 @@ static void _CreateEntities(OpMerge *op, Record r) {
 
 }
 
-OpBase *NewMergeOp(ResultSetStatistics *stats, NodeCreateCtx *nodes_to_merge,
-				   EdgeCreateCtx *edges_to_merge) {
-	OpMerge *op_merge = malloc(sizeof(OpMerge));
-	op_merge->stats = stats;
-	op_merge->gc = QueryCtx_GetGraphCtx();
-	op_merge->matched = false;
-	op_merge->created = false;
-
-	op_merge->nodes_to_merge = nodes_to_merge;
-	op_merge->edges_to_merge = edges_to_merge;
+OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
+				   NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
+	OpMerge *op = malloc(sizeof(OpMerge));
+	op->stats = stats;
+	op->gc = QueryCtx_GetGraphCtx();
+	op->matched = false;
+	op->created = false;
+	op->nodes_to_merge = nodes;
+	op->edges_to_merge = edges;
 
 	// Set our Op operations
-	OpBase_Init(&op_merge->op);
-	op_merge->op.name = "Merge";
-	op_merge->op.type = OPType_MERGE;
-	op_merge->op.consume = OpMergeConsume;
-	op_merge->op.init = OpMergeInit;
-	op_merge->op.reset = OpMergeReset;
-	op_merge->op.free = OpMergeFree;
+	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", NULL, MergeConsume, NULL, NULL, MergeFree, plan);
 
-	return (OpBase *)op_merge;
+	int node_count = array_len(nodes);
+	for(int i = 0; i < node_count; i++) {
+		op->nodes_to_merge[i].node_idx = OpBase_Modifies((OpBase *)op, nodes[i].node->alias);
+	}
+
+	int edge_count = array_len(edges);
+	for(int i = 0; i < edge_count; i++) {
+		op->edges_to_merge[i].edge_idx = OpBase_Modifies((OpBase *)op, edges[i].edge->alias);
+		op->edges_to_merge[i].src_idx = OpBase_Modifies((OpBase *)op, edges[i].edge->src->alias);
+		op->edges_to_merge[i].dest_idx = OpBase_Modifies((OpBase *)op, edges[i].edge->dest->alias);
+	}
+
+	return (OpBase *)op;
 }
 
-OpResult OpMergeInit(OpBase *opBase) {
-	return OP_OK;
-}
-
-Record OpMergeConsume(OpBase *opBase) {
+static Record MergeConsume(OpBase *opBase) {
 	OpMerge *op = (OpMerge *)opBase;
 
 	/* Pattern was created in the previous call
@@ -172,7 +177,7 @@ Record OpMergeConsume(OpBase *opBase) {
 		 * index R/W lock, as such free all execution plan operation up the chain. */
 		OpBase_PropagateFree(child);
 
-		r = Record_New(opBase->record_map->record_len);
+		r = OpBase_CreateRecord((OpBase *)op);
 		_CreateEntities(op, r);
 		op->created = true;
 	}
@@ -180,12 +185,7 @@ Record OpMergeConsume(OpBase *opBase) {
 	return r;
 }
 
-OpResult OpMergeReset(OpBase *ctx) {
-	// Merge doesn't modify anything.
-	return OP_OK;
-}
-
-void OpMergeFree(OpBase *ctx) {
+static void MergeFree(OpBase *ctx) {
 	OpMerge *op = (OpMerge *)ctx;
 
 	if(op->nodes_to_merge) {

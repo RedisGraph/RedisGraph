@@ -8,24 +8,23 @@
 #include "../../util/arr.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-OpBase *NewResultsOp(ResultSet *result_set) {
-	Results *results = malloc(sizeof(Results));
-	results->result_set = result_set;
+/* Forward declarations. */
+static Record ResultsConsume(OpBase *opBase);
+
+OpBase *NewResultsOp(const ExecutionPlan *plan, ResultSet *result_set) {
+	Results *op = malloc(sizeof(Results));
+	op->result_set = result_set;
 
 	// Set our Op operations
-	OpBase_Init(&results->op);
-	results->op.name = "Results";
-	results->op.type = OPType_RESULTS;
-	results->op.consume = ResultsConsume;
-	results->op.reset = ResultsReset;
-	results->op.free = ResultsFree;
+	OpBase_Init((OpBase *)op, OPType_RESULTS, "Results", NULL, ResultsConsume,
+				NULL, NULL, NULL, plan);
 
-	return (OpBase *)results;
+	return (OpBase *)op;
 }
 
 /* Results consume operation
  * called each time a new result record is required */
-Record ResultsConsume(OpBase *opBase) {
+static Record ResultsConsume(OpBase *opBase) {
 	Record r = NULL;
 	Results *op = (Results *)opBase;
 
@@ -38,14 +37,5 @@ Record ResultsConsume(OpBase *opBase) {
 	/* Append to final result set. */
 	ResultSet_AddRecord(op->result_set, r);
 	return r;
-}
-
-/* Restart */
-OpResult ResultsReset(OpBase *op) {
-	return OP_OK;
-}
-
-/* Frees Results */
-void ResultsFree(OpBase *opBase) {
 }
 

@@ -10,39 +10,69 @@
 
 #include <assert.h>
 
-void OpBase_Init(OpBase *op) {
-	op->modifies = NULL;
+/* Forward declarations */
+rax *ExecutionPlan_GetMappings(const struct ExecutionPlan *plan);
+
+void OpBase_Init(OpBase *op, OPType type, char *name, fpInit init, fpConsume consume, fpReset reset,
+				 fpToString toString, fpFree free, const struct ExecutionPlan *plan) {
+
+	op->type = type;
+	op->name = name;
+	op->plan = plan;
+	op->stats = NULL;
+	op->parent = NULL;
 	op->childCount = 0;
 	op->children = NULL;
 	op->parent = NULL;
 	op->stats = NULL;
-	op->record_map = NULL;
 	op->op_initialized = false;
 	op->dangling_records = NULL;
+	op->modifies = NULL;
 
 	// Function pointers.
-	op->init = NULL;
-	op->free = NULL;
-	op->reset = NULL;
-	op->consume = NULL;
-	op->toString = NULL;
+	op->init = init;
+	op->consume = consume;
+	op->reset = reset;
+	op->toString = toString;
+	op->free = free;
 }
 
 inline Record OpBase_Consume(OpBase *op) {
 	return op->consume(op);
 }
 
-void OpBase_PropagateReset(OpBase *op) {
-	assert(op->reset(op) == OP_OK);
-	for(int i = 0; i < op->childCount; i++) OpBase_PropagateReset(op->children[i]);
+int OpBase_Modifies(OpBase *op, const char *alias) {
+	if(!op->modifies) op->modifies = array_new(const char *, 1);
+	op->modifies = array_append(op->modifies, alias);
+
+	/* Make sure alias has an entry associated with it
+	 * within the record mapping. */
+	rax *mapping = ExecutionPlan_GetMappings(op->plan);
+
+	void *id = raxFind(mapping, (unsigned char *)alias, strlen(alias));
+	if(id == raxNotFound) {
+		id = (void *)raxSize(mapping);
+		raxInsert(mapping, (unsigned char *)alias, strlen(alias), id, NULL);
+	}
+
+	return (intptr_t)id;
+}
+
+bool OpBase_Aware(OpBase *op, const char *alias, int *idx) {
+	rax *mapping = ExecutionPlan_GetMappings(op->plan);
+	void *rec_idx = raxFind(mapping, (unsigned char *)alias, strlen(alias));
+	if(idx) *idx = (intptr_t)rec_idx;
+	return (rec_idx != raxNotFound);
 }
 
 void OpBase_PropagateFree(OpBase *op) {
-	/* TODO: decide rather or not we want to perform
-	 * op->free or OpBase_Free. */
-	op->free(op);
+	if(op->free) op->free(op);
 	for(int i = 0; i < op->childCount; i++) OpBase_PropagateFree(op->children[i]);
-	// OpBase_Free(op);
+}
+
+void OpBase_PropagateReset(OpBase *op) {
+	if(op->reset) assert(op->reset(op) == OP_OK);
+	for(int i = 0; i < op->childCount; i++) OpBase_PropagateReset(op->children[i]);
 }
 
 static int _OpBase_StatsToString(const OpBase *op, char *buff, uint buff_len) {
@@ -89,9 +119,14 @@ void OpBase_RemoveVolatileRecords(OpBase *op) {
 	array_clear(op->dangling_records);
 }
 
+Record OpBase_CreateRecord(const OpBase *op) {
+	rax *mapping = ExecutionPlan_GetMappings(op->plan);
+	return Record_New(mapping);
+}
+
 void OpBase_Free(OpBase *op) {
 	// Free internal operation
-	op->free(op);
+	if(op->free) op->free(op);
 	if(op->children) rm_free(op->children);
 	if(op->modifies) array_free(op->modifies);
 	if(op->stats) rm_free(op->stats);

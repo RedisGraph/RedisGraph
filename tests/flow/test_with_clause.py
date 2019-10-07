@@ -183,7 +183,8 @@ class testWithClause(FlowTestsBase):
         COLUMN_NODE = 2
         COLUMN_RELATION = 3
         # Validate the header strings and value types
-        expected_header = [[COLUMN_NODE, 'a'], [COLUMN_RELATION, 'e'], [COLUMN_SCALAR, 'b_val']]
+        # NOTE - currently, RETURN * populates values in alphabetical order, but that is subject to later change.
+        expected_header = [[COLUMN_NODE, 'a'], [COLUMN_SCALAR, 'b_val'], [COLUMN_RELATION, 'e']]
         self.env.assertEqual(actual_result.header, expected_header)
         # Verify that 2 rows and 3 columns are returned
         self.env.assertEqual(len(actual_result.result_set), 2)

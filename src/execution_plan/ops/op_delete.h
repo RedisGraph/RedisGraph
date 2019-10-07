@@ -4,10 +4,10 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OP_DELETE_H
-#define __OP_DELETE_H
+#pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../graph/entities/node.h"
 #include "../../resultset/resultset_statistics.h"
 #include "rax.h"
@@ -19,18 +19,14 @@ typedef struct {
 	GraphContext *gc;
 	uint node_count;
 	uint edge_count;
-	uint *nodes_to_delete;
-	uint *edges_to_delete;
+	int *nodes_to_delete;
+	int *edges_to_delete;
 	Node *deleted_nodes;    // Array of nodes to be removed.
 	Edge *deleted_edges;    // Array of edges to be removed.
 
 	ResultSetStatistics *stats;
 } OpDelete;
 
-OpBase *NewDeleteOp(uint *nodes_ref, uint *edges_ref, ResultSetStatistics *stats);
-Record OpDeleteConsume(OpBase *opBase);
-OpResult OpDeleteInit(OpBase *opBase);
-OpResult OpDeleteReset(OpBase *ctx);
-void OpDeleteFree(OpBase *ctx);
+OpBase *NewDeleteOp(const ExecutionPlan *plan, const char **nodes_ref, const char **edges_ref,
+					ResultSetStatistics *stats);
 
-#endif

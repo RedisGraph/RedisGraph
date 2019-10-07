@@ -407,19 +407,6 @@ static AST_Validation _ValidateInlinedPropertiesOnPath(const cypher_astnode_t *p
 	return AST_VALID;
 }
 
-static AST_Validation _ValidateFilterPredicates(const cypher_astnode_t *predicate, char **reason) {
-	cypher_astnode_type_t type = cypher_astnode_type(predicate);
-	// TODO These should all be supported in filter trees
-	if(type == CYPHER_AST_PATTERN_PATH) {
-		// Comparisons of form:
-		// MATCH (a), (b) WHERE a.id = 0 AND (a)-[:T]->(b:TheLabel)
-		asprintf(reason, "Paths cannot currently be specified in filters.");
-		return AST_INVALID;
-	}
-
-	return AST_VALID;
-}
-
 static AST_Validation _Validate_MATCH_Clause_Filters(const cypher_astnode_t *clause,
 													 char **reason) {
 	const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clause);
@@ -431,8 +418,6 @@ static AST_Validation _Validate_MATCH_Clause_Filters(const cypher_astnode_t *cla
 
 	const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(clause);
 	if(predicate == NULL) return AST_VALID;
-
-	if(_ValidateFilterPredicates(predicate, reason) != AST_VALID) return AST_INVALID;
 
 	return AST_VALID;
 }
@@ -1363,16 +1348,17 @@ static AST_Validation _BlockUnsupportedMerges(AST *ast, char **reason) {
 	 * CREATE (a:A), (b:B)
 	 * MATCH (a:A), (b:B) MERGE (a)-[:TYPE]->(b)
 	 * This currently creates two new nodes. TODO fix */
+	AST_Validation res = AST_VALID;
 	uint *merge_clause_indices = AST_GetClauseIndices(ast, CYPHER_AST_MERGE);
 	uint merge_count = array_len(merge_clause_indices);
-	if(merge_count == 0) return AST_VALID;
+	if(merge_count == 0) goto cleanup;
 
 	if(merge_count > 1) {
 		asprintf(reason, "RedisGraph does not currently support multiple MERGE clauses in a single query.");
-		return AST_INVALID;
+		res = AST_INVALID;
+		goto cleanup;
 	}
 
-	AST_Validation res = AST_VALID;
 
 	uint merge_idx = merge_clause_indices[0];
 	for(uint i = 0; i < merge_idx; i ++) {
@@ -1382,19 +1368,19 @@ static AST_Validation _BlockUnsupportedMerges(AST *ast, char **reason) {
 			asprintf(reason,
 					 "RedisGraph does not currently support MERGE clauses after MATCH or CREATE clauses.");
 			res = AST_INVALID;
-			break;
+			goto cleanup;
 		}
 	}
 
+cleanup:
 	array_free(merge_clause_indices);
-
 	return res;
 }
 
 static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, uint end_offset) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->free_root = true;
-	ast->entity_map = NULL;
+	ast->referenced_entities = NULL;
 
 	uint n = end_offset - start_offset;
 

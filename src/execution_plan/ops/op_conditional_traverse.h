@@ -4,13 +4,12 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OP_COND_TRAVERSE_H
-#define __OP_COND_TRAVERSE_H
+#pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../arithmetic/algebraic_expression.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
-#include "../../util/vector.h"
 
 /* OP Traverse */
 typedef struct {
@@ -34,21 +33,5 @@ typedef struct {
 } CondTraverse;
 
 /* Creates a new Traverse operation */
-OpBase *NewCondTraverseOp(Graph *g, RecordMap *record_map, AlgebraicExpression *ae,
+OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
 						  uint records_cap);
-
-/* One-time setup of Traverse operation. */
-OpResult CondTraverseInit(OpBase *opBase);
-
-/* TraverseConsume next operation
- * each call will update the graph
- * returns NULL when no additional updates are available */
-Record CondTraverseConsume(OpBase *opBase);
-
-/* Restart iterator */
-OpResult CondTraverseReset(OpBase *ctx);
-
-/* Frees Traverse*/
-void CondTraverseFree(OpBase *ctx);
-
-#endif

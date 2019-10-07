@@ -8,9 +8,10 @@
 
 #include "op.h"
 #include "../../ast/ast.h"
+#include "../execution_plan.h"
 #include "../../procedures/procedure.h"
 
-/* Maps procedure outout to record index.
+/* Maps procedure output to record index.
  * yield element I is mapped to procedure output J
  * which will be stored within Record at position K. */
 typedef struct {
@@ -21,7 +22,6 @@ typedef struct {
 /* OpProcCall, */
 typedef struct {
 	OpBase op;                  // Base op.
-	AST *ast;                   // AST.
 	const char **args;          // Arguments passed to procedure.
 	const char **output;        // Procedure output.
 	ProcedureCtx *procedure;    // Procedure to call.
@@ -29,24 +29,9 @@ typedef struct {
 } OpProcCall;
 
 OpBase *NewProcCallOp(
-	const char *procedure,    // Procedure name.
-	const char **args,        // Arguments passed to procedure invocation.
-	const char **output,      // Procedure output.
-	uint *modifies            // Record IDs of outputs
+	const ExecutionPlan *plan,  // Execution plan this operation belongs to.
+	const char *procedure,      // Procedure name.
+	const char **args,          // Arguments passed to procedure invocation.
+	const char **output         // Procedure output.
 );
 
-OpResult OpProcCallInit(
-	OpBase *opBase
-);
-
-Record OpProcCallConsume(
-	OpBase *opBase
-);
-
-OpResult OpProcCallReset(
-	OpBase *ctx
-);
-
-void OpProcCallFree(
-	OpBase *ctx
-);
