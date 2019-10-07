@@ -35,5 +35,5 @@ typedef struct {
 	bool project_all;                              /* Projects all user-defined aliases (tracked for freeing logic). */
 } OpAggregate;
 
-OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **expressions);
+OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode **order_exps);
 

@@ -18,18 +18,6 @@ static Record AggregateConsume(OpBase *opBase);
 static OpResult AggregateReset(OpBase *opBase);
 static void AggregateFree(OpBase *opBase);
 
-static OpSort *_getSortOp(OpBase *op) {
-	if(op == NULL) return NULL;
-	// No need to look further if we haven't encountered a sort operation
-	// before a project/aggregate op
-	if(op->type == OPType_PROJECT || op->type == OPType_AGGREGATE) return NULL;
-
-	if(op->type == OPType_SORT) return (OpSort *)op; // Sort operation found.
-
-	// TODO aggregate didn't recurse previously; only checked direct parent. Why?
-	return _getSortOp(op->parent); // Recurse.
-}
-
 /* Initialize expression_classification, which denotes whether each
  * expression in the RETURN or ORDER segment is an aggregate function.
  * In addition keeps track of non-aggregated expressions in
@@ -241,18 +229,18 @@ static Record _handoff(OpAggregate *op) {
 	return r;
 }
 
-OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
+OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode **order_exps) {
 	OpAggregate *op = malloc(sizeof(OpAggregate));
 	op->exps = exps;
 	op->group = NULL;
-	op->order_exps = NULL;
-	op->order_exp_count = 0;
+	op->order_exps = order_exps;
+	op->order_exp_count = (order_exps) ? array_len(order_exps) : 0;
 	op->group_iter = NULL;
 	op->group_keys = NULL;
 	op->expression_classification = NULL;
 	op->non_aggregated_expressions = NULL;
 	op->groups = CacheGroupNew();
-	if(exps == NULL) {  // WITH/RETURN * projection, expressions will be populated later
+	if(exps == NULL) { // WITH/RETURN * projection, expressions will be populated later
 		op->project_all = true;
 		op->exp_count = 0;
 		op->record_offsets = NULL;
@@ -277,18 +265,13 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 
 static OpResult AggregateInit(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
-	// If there is a Sort operation above us, retrieve it so that we can evaluate its expressions.
-	OpSort *sort_op = _getSortOp(opBase->parent);
-	if(sort_op) {
-		// All sort expressions will be evaluated in the Consume stage.
-		op->order_exps = sort_op->exps;
-		op->order_exp_count = array_len(sort_op->exps);
 
-		for(uint i = 0; i < op->order_exp_count; i ++) {
-			// Update the 'modifies' and record_offsets arrays to include sort expressions.
-			int record_idx = OpBase_Modifies((OpBase *)op, op->order_exps[i]->resolved_name);
-			op->record_offsets = array_append(op->record_offsets, record_idx);
-		}
+	for(uint i = 0; i < op->order_exp_count; i ++) {
+		// TODO We could do this in the NewProjectOp routine except for issues with STAR
+		// projections combined with ORDER BY clauses.
+		// Update the 'modifies' and record_offsets arrays to include sort expressions.
+		int record_idx = OpBase_Modifies((OpBase *)op, op->order_exps[i]->resolved_name);
+		op->record_offsets = array_append(op->record_offsets, record_idx);
 	}
 
 	// Determine whether each expression is an aggregate function or not.

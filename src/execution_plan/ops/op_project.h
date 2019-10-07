@@ -21,5 +21,5 @@ typedef struct {
 	unsigned short order_exp_count; // Number of order by expressions.
 } OpProject;
 
-OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps);
+OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode **order_exps);
 

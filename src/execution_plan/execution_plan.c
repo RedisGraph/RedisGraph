@@ -450,9 +450,9 @@ static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **project
 	// Our fundamental operation will be a projection or aggregation.
 	OpBase *op;
 	if(aggregate) {
-		op = NewAggregateOp(plan, projections);
+		op = NewAggregateOp(plan, projections, order_exps);
 	} else {
-		op = NewProjectOp(plan, projections);
+		op = NewProjectOp(plan, projections, order_exps);
 	}
 	_ExecutionPlan_UpdateRoot(plan, op);
 
