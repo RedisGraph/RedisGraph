@@ -417,7 +417,7 @@ static void _AST_MapReturnReferredEntities(AST *ast_segment,
 }
 
 // Map the referred aliases (LHS) in entities projected by a WITH or RETURN clause.
-static void _AST_MapReferredEntities(AST *ast_segment, const cypher_astnode_t *project_clause) {
+static void _AST_MapProjectionClause(AST *ast_segment, const cypher_astnode_t *project_clause) {
 	if(!project_clause) return;
 	cypher_astnode_type_t type = cypher_astnode_type(project_clause);
 	assert(type == CYPHER_AST_WITH || type == CYPHER_AST_RETURN);
@@ -484,7 +484,7 @@ static void _AST_BuildReferenceMap(AST *ast, const cypher_astnode_t *project_cla
 		}
 
 		// If the projection is not a WITH/RETURN *, map its explicit references.
-		if(!include_all) _AST_MapReferredEntities(ast, project_clause);
+		if(!include_all) _AST_MapProjectionClause(ast, project_clause);
 	}
 
 	// Check every clause in this AST.

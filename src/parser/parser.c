@@ -7,10 +7,14 @@
 #include "parser.h"
 #include <assert.h>
 
-// Recursively compute the number of digits in a positive integer.
+// Compute the number of digits in a non-negative integer.
 static inline int _digit_count(int n) {
-	if(n < 10) return 1;
-	return 1 + _digit_count(n / 10);
+	int count = 0;
+	do {
+		n /= 10;
+		count++;
+	} while(n);
+	return count;
 }
 
 static cypher_astnode_t *_create_anon_identifier(const cypher_astnode_t *node, int anon_count) {
@@ -61,7 +65,7 @@ cypher_parse_result_t *parse(const char *query) {
 	const cypher_astnode_t *root = cypher_parse_result_get_root(parse_result, 0);
 
 	// Return if the query root was an unexpected type such as an error.
-	if(cypher_astnode_type(root) != CYPHER_AST_STATEMENT) return parse_result;
+	if(!root || cypher_astnode_type(root) != CYPHER_AST_STATEMENT) return parse_result;
 
 	_enrich_ast(cypher_ast_statement_get_body(root));
 	return parse_result;

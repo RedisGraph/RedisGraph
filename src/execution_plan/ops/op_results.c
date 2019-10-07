@@ -10,8 +10,6 @@
 
 /* Forward declarations. */
 static Record ResultsConsume(OpBase *opBase);
-static OpResult ResultsReset(OpBase *opBase);
-static void ResultsFree(OpBase *opBase);
 
 OpBase *NewResultsOp(const ExecutionPlan *plan, ResultSet *result_set) {
 	Results *op = malloc(sizeof(Results));
@@ -19,7 +17,7 @@ OpBase *NewResultsOp(const ExecutionPlan *plan, ResultSet *result_set) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_RESULTS, "Results", NULL, ResultsConsume,
-				ResultsReset, NULL, ResultsFree, plan);
+				NULL, NULL, NULL, plan);
 
 	return (OpBase *)op;
 }
@@ -39,14 +37,5 @@ static Record ResultsConsume(OpBase *opBase) {
 	/* Append to final result set. */
 	ResultSet_AddRecord(op->result_set, r);
 	return r;
-}
-
-/* Restart */
-static OpResult ResultsReset(OpBase *op) {
-	return OP_OK;
-}
-
-/* Frees Results */
-static void ResultsFree(OpBase *opBase) {
 }
 

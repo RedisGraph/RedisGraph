@@ -10,7 +10,6 @@
 /* Forward declarations. */
 static Record NodeByIdSeekConsume(OpBase *opBase);
 static OpResult NodeByIdSeekReset(OpBase *opBase);
-static void NodeByIdSeekFree(OpBase *opBase);
 
 // Checks to see if operation index is within its bounds.
 static inline bool _outOfBounds(OpNodeByIdSeek *op) {
@@ -55,7 +54,7 @@ OpBase *NewNodeByIdSeekOp
 
 
 	OpBase_Init((OpBase *)op, OPType_NODE_BY_ID_SEEK, "NodeByIdSeek", NULL,
-				NodeByIdSeekConsume, NodeByIdSeekReset, NULL, NodeByIdSeekFree, plan);
+				NodeByIdSeekConsume, NodeByIdSeekReset, NULL, NULL, plan);
 
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, node->alias);
 
@@ -93,9 +92,5 @@ static OpResult NodeByIdSeekReset(OpBase *ctx) {
 	op->currentId = op->minId;
 	if(!op->minInclusive) op->currentId++;
 	return OP_OK;
-}
-
-static void NodeByIdSeekFree(OpBase *ctx) {
-
 }
 

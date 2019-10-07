@@ -66,7 +66,7 @@ bool OpBase_Aware(OpBase *op, const char *alias, int *idx) {
 }
 
 void OpBase_PropagateFree(OpBase *op) {
-	op->free(op);
+	if(op->free) op->free(op);
 	for(int i = 0; i < op->childCount; i++) OpBase_PropagateFree(op->children[i]);
 }
 
@@ -126,7 +126,7 @@ Record OpBase_CreateRecord(const OpBase *op) {
 
 void OpBase_Free(OpBase *op) {
 	// Free internal operation
-	op->free(op);
+	if(op->free) op->free(op);
 	if(op->children) rm_free(op->children);
 	if(op->modifies) array_free(op->modifies);
 	if(op->stats) rm_free(op->stats);

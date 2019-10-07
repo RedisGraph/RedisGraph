@@ -12,9 +12,7 @@
 #include <assert.h>
 
 /* Forward declarations. */
-static OpResult MergeInit(OpBase *opBase);
 static Record MergeConsume(OpBase *opBase);
-static OpResult MergeReset(OpBase *opBase);
 static void MergeFree(OpBase *opBase);
 
 static void _AddProperties(OpMerge *op, Record r, GraphEntity *ge, PropertyMap *props) {
@@ -133,8 +131,7 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
 	op->edges_to_merge = edges;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume,
-				MergeReset, NULL, MergeFree, plan);
+	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", NULL, MergeConsume, NULL, NULL, MergeFree, plan);
 
 	int node_count = array_len(nodes);
 	for(int i = 0; i < node_count; i++) {
@@ -149,10 +146,6 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
 	}
 
 	return (OpBase *)op;
-}
-
-static OpResult MergeInit(OpBase *opBase) {
-	return OP_OK;
 }
 
 static Record MergeConsume(OpBase *opBase) {
@@ -190,11 +183,6 @@ static Record MergeConsume(OpBase *opBase) {
 	}
 
 	return r;
-}
-
-static OpResult MergeReset(OpBase *ctx) {
-	// Merge doesn't modify anything.
-	return OP_OK;
 }
 
 static void MergeFree(OpBase *ctx) {

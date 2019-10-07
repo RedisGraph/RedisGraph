@@ -220,6 +220,8 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
 
 	for(uint i = 0; i < count; i++) {
 		const char *resolved_alias = root->modifies[i];
+		/* NOTE - if this function is later used to modify the returned operation, we should return
+		 * the deepest operation that modifies the alias rather than the shallowest, as done here. */
 		if(strcmp(resolved_alias, alias) == 0) return root;
 	}
 
@@ -235,7 +237,7 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
 OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type) {
 	if(!root) return NULL;
 
-	if(root->type & type) {
+	if(root->type & type) { // NOTE - this will fail if OPType is later changed to not be a bitmask.
 		return root;
 	}
 

@@ -250,7 +250,7 @@ static inline bool _should_populate_edge(QGEdge *e) {
 	return (_referred_entity(e->alias) || QGEdge_VariableLength(e));
 }
 
-static inline bool _should_divide_expression(AlgebraicExpression *exp, QGEdge **path, int idx) {
+static inline bool _should_divide_expression(QGEdge **path, int idx) {
 	QGEdge *e = path[idx];
 
 	return (_should_populate_edge(e)                  ||      // This edge is populated.
@@ -283,7 +283,7 @@ static AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(
 	divide_at[pathLen - 1] = false; // Only check intermediate edges, not the last.
 	for(int i = 0; i < pathLen - 1; i++) {
 		// Track which points the expression should be subdivided at.
-		divide_at[i] = _should_divide_expression(exp, path,  i);
+		divide_at[i] = _should_divide_expression(path, i);
 	}
 
 	for(int i = 0; i < pathLen; i++) {
