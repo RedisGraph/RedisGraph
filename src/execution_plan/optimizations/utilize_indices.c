@@ -6,6 +6,7 @@
 #include "../../ast/ast_shared.h"
 #include "../../util/range/string_range.h"
 #include "../../util/range/numeric_range.h"
+#include "../../datatypes/array.h"
 
 /* Reverse an inequality symbol so that indices can support
  * inequalities with right-hand variables. */
@@ -197,13 +198,40 @@ bool _simple_predicates(const FT_FilterNode *filter) {
 
 static bool _validateInExpression(AR_ExpNode *exp) {
 	if(!strcasecmp(exp->op.func_name, "in") == 0) return false;
-	AR_ExpNode *operand = exp->op.children[0];
-
+	assert(exp->op.child_count == 2);
+	AR_ExpNode *list = exp->op.children[1];
+	if(list->type != AR_EXP_OPERAND || list->operand.type != AR_EXP_CONSTANT) return false;
+	assert(list->operand.constant.type == T_ARRAY);
+	SIValue listValue = list->operand.constant;
+	if(SIArray_Length(listValue) == 0) return false;
+	uint listLen = SIArray_Length(listValue);
+	for(uint i = 0; i < listLen; i++) {
+		SIValue v = SIArray_Get(listValue, i);
+		// Ignore everything other than number and strings.
+		if(!(SI_TYPE(v) & (SI_NUMERIC | T_STRING | T_BOOL))) return false;
+	}
 	return true;
 }
 
-static OpFilter *_transformInToOrSequence() {
-
+static FT_FilterNode *_transformInToOrSequence(OpFilter *filter) {
+	AR_ExpNode *inOp = filter->filterTree->exp.exp;
+	AR_ExpNode *lhs = inOp->op.children[0];
+	AR_ExpNode *list = inOp->op.children[1];
+	SIValue listValue = list->operand.constant;
+	uint listLen = SIArray_Length(listValue);
+	if(listLen == 0) {
+		// TODO
+	}
+	AR_ExpNode *constant = AR_EXP_NewConstOperandNode(SIArray_Get(listValue, 0));
+	FT_FilterNode *root = FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, constant);
+	for(uint i = 1; i < listLen; i ++) {
+		FT_FilterNode *orNode = FilterTree_CreateConditionFilter(OP_OR);
+		AppendLeftChild(orNode, root);
+		constant = AR_EXP_NewConstOperandNode(SIArray_Get(listValue, i));
+		AppendRightChild(orNode, FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, constant));
+		root = orNode;
+	}
+	return root;
 }
 
 /* Checks to see if given filter can be resolved by index. */
@@ -218,7 +246,7 @@ bool _applicableFilter(Index *idx, OpFilter *filter) {
 	// TODO: As a result of issue 667, transform "IN" into a sequence of "OR" to use in RedisSearch.
 	if(filter_tree->t == FT_N_EXP) {
 		if(_validateInExpression(filter_tree->exp.exp)) {
-
+			filter_tree = _transformInToOrSequence(filter);
 		} else {
 			res = false;
 			goto cleanup;
@@ -227,6 +255,11 @@ bool _applicableFilter(Index *idx, OpFilter *filter) {
 
 	// Make sure the "not equal, <>" operator isn't used.
 	if(FilterTree_containsOp(filter_tree, OP_NEQUAL)) {
+		res = false;
+		goto cleanup;
+	}
+
+	if(!_simple_predicates(filter_tree)) {
 		res = false;
 		goto cleanup;
 	}
@@ -263,7 +296,18 @@ bool _applicableFilter(Index *idx, OpFilter *filter) {
 			if(filter_attribute_count == 0) break;
 		}
 	}
-	res = (filter_attribute_count == 0);
+	if(filter_attribute_count != 0) {
+		res = false;
+		goto cleanup;
+	}
+	// Filter is applicable, normelize it.
+	_normalize_filter(filter_tree);
+	// See if the filter tree needed to be modified, if so, replace the original, since the op will be free.
+	if(filter_tree != filter->filterTree) {
+		FilterTree_Free(filter->filterTree);
+		filter->filterTree = filter_tree;
+	}
+
 
 cleanup:
 	if(attr) raxFree(attr);
@@ -284,11 +328,7 @@ OpFilter **_applicableFilters(NodeByLabelScan *scanOp, Index *idx) {
 
 		if(_applicableFilter(idx, filter)) {
 			// Make sure all predicates are of type n.v = CONST.
-			FT_FilterNode *filter_tree = filter->filterTree;
-			if(_simple_predicates(filter_tree)) {
-				_normalize_filter(filter_tree);
-				filters = array_append(filters, filter);
-			}
+			filters = array_append(filters, filter);
 		}
 
 		// Advance to the next operation.
