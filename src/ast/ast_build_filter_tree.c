@@ -202,8 +202,22 @@ static FT_FilterNode *_convertInlinedProperties(const AST *ast, const cypher_ast
 }
 
 static FT_FilterNode *_convertPatternPath(const cypher_astnode_t *entity) {
-	AR_ExpNode *exp = AR_EXP_NewOpNode("traverse", 1);
+	// Collect aliases specified in pattern.
+	const char **aliases = array_new(const char *, 1);
+	AST_CollectAliases(&aliases, entity);
+	uint alias_count = array_len(aliases);
+
+	/* Create a function call expression
+	* First argument is a pointer to the original AST pattern node.
+	* argument 1..alias_count are the referenced aliases,
+	* required for filter positioning when constructing an execution plan. */
+	AR_ExpNode *exp = AR_EXP_NewOpNode("traverse", 1 + alias_count);
 	exp->op.children[0] = AR_EXP_NewConstOperandNode(SI_PtrVal((void *)entity));
+	for(uint i = 0; i < alias_count; i++) {
+		AR_ExpNode *child = AR_EXP_NewVariableOperandNode(aliases[i], NULL);
+		exp->op.children[1 + i] = child;
+	}
+	array_free(aliases);
 	return FilterTree_CreateExpressionFilter(exp);
 }
 

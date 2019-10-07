@@ -131,6 +131,11 @@ void AR_EXP_CollectAttributes(AR_ExpNode *root, rax *attributes);
  * Please note an expression tree can only contain a single aggregation node. */
 bool AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node);
 
+/* Checks to see if expression contains given function.
+ * root - expression root to traverse.
+ * func - function name to lookup. */
+bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func);
+
 /* Constructs string representation of arithmetic expression tree. */
 void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 
@@ -143,4 +148,3 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp);
 
 /* Free arithmetic expression tree. */
 void AR_EXP_Free(AR_ExpNode *root);
-

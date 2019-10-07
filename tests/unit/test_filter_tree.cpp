@@ -16,6 +16,8 @@ extern "C" {
 #include "../../src/util/arr.h"
 #include "../../src/util/vector.h"
 #include "../../src/util/rmalloc.h"
+#include "../../src/arithmetic/funcs.h"
+#include "../../src/arithmetic/agg_funcs.h"
 #include "../../src/filter_tree/filter_tree.h"
 #include "../../src/ast/ast_build_filter_tree.h"
 
@@ -29,6 +31,9 @@ class FilterTreeTest: public ::testing::Test {
 	static void SetUpTestCase() {
 		// Use the malloc family for allocations
 		Alloc_Reset();
+        // Register functions
+		AR_RegisterFuncs();
+		Agg_RegisterFuncs();
 		_fake_graph_context();
 	}
 
@@ -255,3 +260,35 @@ TEST_F(FilterTreeTest, NOTReduction) {
 	}
 }
 
+TEST_F(FilterTreeTest, ContainsFunc) {
+    bool found = false;
+    FT_FilterNode *node = NULL;
+    const char *q = "MATCH (n) WHERE tolower(n.name) = 'alex' RETURN n";
+    FT_FilterNode *tree = build_tree_from_query(q);
+
+    found = FilterTree_containsFunc(tree, "tolower", &node);
+    ASSERT_TRUE(found);
+    ASSERT_TRUE(node != NULL);
+
+    node = NULL;
+    found = FilterTree_containsFunc(tree, "toupper", &node);
+    ASSERT_FALSE(found);
+    ASSERT_TRUE(node == NULL);
+
+    FilterTree_Free(tree);
+    //------------------------------------------------------------------------------
+
+    q = "MATCH (n) WHERE tolower(toupper(n.name)) = 'alex' RETURN n";
+    tree = build_tree_from_query(q);
+
+    found = FilterTree_containsFunc(tree, "tolower", &node);
+    ASSERT_TRUE(found);
+    ASSERT_TRUE(node != NULL);
+
+    node = NULL;
+    found = FilterTree_containsFunc(tree, "toupper", &node);
+    ASSERT_TRUE(found);
+    ASSERT_TRUE(node != NULL);
+
+    FilterTree_Free(tree);
+}

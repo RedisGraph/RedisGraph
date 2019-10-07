@@ -96,6 +96,12 @@ rax *FilterTree_CollectAttributes(const FT_FilterNode *root);
 /* Checks to see if tree contains given operation. */
 bool FilterTree_containsOp(const FT_FilterNode *root, AST_Operator op);
 
+/* Checks to see if tree contains given function. 
+ * root - tree root to traverse.
+ * func - function name to lookup.
+ * node - point to tree node in which func was located, null if func isn't located. */
+bool FilterTree_containsFunc(const FT_FilterNode *root, const char* func, FT_FilterNode **node);
+
 /* Prints tree. */
 void FilterTree_Print(const FT_FilterNode *root);
 
