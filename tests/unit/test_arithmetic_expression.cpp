@@ -1369,3 +1369,32 @@ TEST_F(ArithmeticTest, IsNullTest) {
 		ASSERT_EQ(false, result.longval);
 	}
 }
+
+
+TEST_F(ArithmeticTest, ReduceTest) {
+	const char *query;
+	AR_ExpNode *arExp;
+
+	// Validate reduce to a constant value in applicable case.
+	query = "RETURN 1 IN [1,2,3]";
+	arExp = _exp_from_query(query);
+	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
+	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
+	ASSERT_EQ(0, SIValue_Compare(SI_BoolVal(true), arExp->operand.constant, NULL));
+
+	// Validate partial reduce of the AR_Exp tree. Reduce only applicable nodes.
+	query = "RETURN rand() IN [1,2,3]";
+	arExp = _exp_from_query(query);
+
+	ASSERT_EQ(AR_EXP_OP, arExp->type);
+	ASSERT_EQ(2, arExp->op.child_count);
+
+	AR_ExpNode *lhs = arExp->op.children[0];
+	ASSERT_EQ(AR_EXP_OP, lhs->type);
+	ASSERT_EQ(0, strcasecmp("rand", lhs->op.func_name));
+
+	AR_ExpNode *rhs = arExp->op.children[1];
+	ASSERT_EQ(AR_EXP_OPERAND, rhs->type);
+	ASSERT_EQ(AR_EXP_CONSTANT, rhs->operand.type);
+	ASSERT_EQ(T_ARRAY, rhs->operand.constant.type);
+}
