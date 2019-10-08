@@ -1203,7 +1203,7 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
 	GrB_Matrix_new(&res, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
 
 	AlgebraicExpression *exp = ae[0];
-	AlgebraicExpression_Execute(exp, res);
+	AlgebraicExpression_Evaluate(exp, res);
 
 	ASSERT_STREQ(exp->src_node->alias, "p");
 	ASSERT_STREQ(exp->dest_node->alias, "e");

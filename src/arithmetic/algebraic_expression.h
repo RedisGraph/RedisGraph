@@ -57,6 +57,7 @@ typedef struct  {
 	bool diagonal;          // Diagonal matrix.
 	bool transpose;         // Should the matrix be transposed.
 	bool free;              // Should the matrix be freed?
+    int id;                 // Matrix ID.
 	GrB_Matrix operand;
 } AlgebraicExpressionOperand;
 
@@ -81,7 +82,7 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(
 );
 
 /* Executes given expression. */
-void AlgebraicExpression_Execute(AlgebraicExpression *ae, GrB_Matrix res);
+void AlgebraicExpression_Evaluate(AlgebraicExpression *ae, GrB_Matrix res);
 
 /* Appends m as the last term in the expression ae. */
 void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp,

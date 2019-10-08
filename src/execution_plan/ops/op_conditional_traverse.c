@@ -60,7 +60,7 @@ void _traverse(CondTraverse *op) {
 	// Prepend matrix to algebraic expression, as the left most operand.
 	AlgebraicExpression_PrependTerm(op->ae, op->F, false, false, false);
 	// Evaluate expression.
-	AlgebraicExpression_Execute(op->ae, op->M);
+	AlgebraicExpression_Evaluate(op->ae, op->M);
 
 	// Remove operand.
 	AlgebraicExpression_RemoveTerm(op->ae, 0, NULL);

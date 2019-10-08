@@ -108,8 +108,8 @@ static AlgebraicExpression **_AlgebraicExpression_IsolateVariableLenExps(
 	return res;
 }
 
-static inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, GrB_Matrix B,
-													GrB_Descriptor desc) {
+static inline void _AlgebraicExpression_Evaluate_MUL(GrB_Matrix C, GrB_Matrix A, GrB_Matrix B,
+													 GrB_Descriptor desc) {
 	// A,B,C must be boolean matrices.
 	GrB_Info res = GrB_mxm(
 					   C,                   // Output
@@ -321,6 +321,7 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromNode(QGNode *n
 	op.free = false;
 	op.diagonal = true;
 	op.transpose = false;
+	op.id = n->labelID;
 	Graph *g = QueryCtx_GetGraph();
 	if(n->labelID == GRAPH_UNKNOWN_LABEL) {
 		op.operand = Graph_GetZeroMatrix(g);
@@ -334,18 +335,20 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge(
 	QGEdge *e,
 	bool transpose
 ) {
-	Graph *g = QueryCtx_GetGraph();
-	AlgebraicExpressionOperand op;
-	bool freeMatrix = false;
 	GrB_Matrix mat;
+	bool freeMatrix = false;
+	AlgebraicExpressionOperand op;
+	Graph *g = QueryCtx_GetGraph();
 
 	uint reltype_count = array_len(e->reltypeIDs);
 	if(reltype_count == 0) {
 		// No relationship types specified; use the full adjacency matrix
+		op.id = GRAPH_NO_RELATION;
 		mat = Graph_GetAdjacencyMatrix(g);
 	} else if(reltype_count == 1) {
 		// One relationship type
 		uint reltype_id = e->reltypeIDs[0];
+		op.id = reltype_id;
 		if(reltype_id == GRAPH_UNKNOWN_RELATION) {
 			mat = Graph_GetZeroMatrix(g);
 		} else {
@@ -354,8 +357,8 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge(
 	} else {
 		// [:A|:B]
 		// Create matrix M = A+B.
+		op.id = GRAPH_UNKNOWN_RELATION;
 		freeMatrix = true; // A temporary matrix is being built, and must later be freed.
-
 		GrB_Matrix m;
 		GrB_Matrix_new(&m, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
 
@@ -578,7 +581,7 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, u
  * this allows us to avoid computing multiplications of large matrices.
  * In the case an operand is marked for transpose, we will perform
  * the transpose once and update the expression. */
-void AlgebraicExpression_Execute(AlgebraicExpression *ae, GrB_Matrix res) {
+void AlgebraicExpression_Evaluate(AlgebraicExpression *ae, GrB_Matrix res) {
 	assert(ae && res);
 	size_t operand_count = ae->operand_count;
 	assert(operand_count > 1);
@@ -599,31 +602,37 @@ void AlgebraicExpression_Execute(AlgebraicExpression *ae, GrB_Matrix res) {
 		leftTerm = operands[i - 1];
 		rightTerm = operands[i];
 
-
 		/* Incase we're required to transpose right hand side operand
 		 * perform transpose once and update original expression. */
-
 		if(rightTerm.transpose) {
+			GrB_Matrix t;
 			assert(!rightTerm.diagonal); // Never transpose diagonal matrix.
-			GrB_Matrix t = rightTerm.operand;
-			/* Graph matrices are immutable, create a new matrix
-			 * and transpose. */
-			if(!rightTerm.free) {
-				GrB_Index cols;
-				GrB_Matrix_ncols(&cols, rightTerm.operand);
-				GrB_Matrix_new(&t, GrB_BOOL, cols, cols);
-			}
-			GrB_transpose(t, GrB_NULL, GrB_NULL, rightTerm.operand, GrB_NULL);
 
+			// See if we can simply get the transposed version of the matrix.
+			if(rightTerm.id != GRAPH_UNKNOWN_RELATION) {
+				Graph *g = QueryCtx_GetGraph();
+				t = Graph_GetTransposedRelationMatrix(g, rightTerm.id);
+				rightTerm.free = false;
+			} else {
+				t = rightTerm.operand;
+				/* Graph matrices are immutable, create a new matrix
+				 * and transpose. */
+				if(!rightTerm.free) {
+					GrB_Index cols;
+					GrB_Matrix_ncols(&cols, rightTerm.operand);
+					GrB_Matrix_new(&t, GrB_BOOL, cols, cols);
+				}
+				GrB_transpose(t, GrB_NULL, GrB_NULL, rightTerm.operand, GrB_NULL);
+				rightTerm.free = true;
+			}
 			// Update local and original expressions.
-			rightTerm.free = true;
 			rightTerm.operand = t;
 			rightTerm.transpose = false;
 			ae->operands[i].free = rightTerm.free;
 			ae->operands[i].operand = rightTerm.operand;
 			ae->operands[i].transpose = rightTerm.transpose;
 		}
-		_AlgebraicExpression_Execute_MUL(res, leftTerm.operand, rightTerm.operand, GrB_NULL);
+		_AlgebraicExpression_Evaluate_MUL(res, leftTerm.operand, rightTerm.operand, GrB_NULL);
 
 		// Quick return if C is ZERO, there's no way to make progress.
 		GrB_Index nvals = 0;
