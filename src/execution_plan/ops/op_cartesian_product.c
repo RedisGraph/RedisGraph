@@ -78,10 +78,7 @@ static Record CartesianProductConsume(OpBase *opBase) {
 		for(int i = 0; i < op->op.childCount; i++) {
 			child = op->op.children[i];
 			childRecord = OpBase_Consume(child);
-			if(!childRecord) {
-				// TODO: leak childRecord.
-				return NULL;
-			}
+			if(!childRecord) return NULL;
 			Record_TransferEntries(&op->r, childRecord);
 			Record_Free(childRecord);
 		}

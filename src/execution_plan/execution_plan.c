@@ -914,27 +914,22 @@ static void _ExecutionPlan_FreeSegment(ExecutionPlan *plan) {
 
 void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) return;
+	_ExecutionPlan_FreeOperations(plan->root);
 
-	// All segments but the last should have everything but
-	// their operation chain freed.
-	// The last segment is the actual plan passed as an argument to this function.
-	// TODO this logic isn't ideal, try to improve.
-	for(int i = 0; i < plan->segment_count - 1; i++) {
-		_ExecutionPlan_FreeSegment(plan->segments[i]);
-	}
+	/* All segments but the last should have everything but
+	 * their operation chain freed.
+	 * The last segment is the actual plan passed as an argument to this function.
+	 * TODO this logic isn't ideal, try to improve. */
+	for(int i = 0; i < plan->segment_count - 1; i++) _ExecutionPlan_FreeSegment(plan->segments[i]);
 	rm_free(plan->segments);
 
 	if(plan->connected_components) {
 		uint connected_component_count = array_len(plan->connected_components);
-		for(uint i = 0; i < connected_component_count; i ++) {
-			QueryGraph_Free(plan->connected_components[i]);
-		}
+		for(uint i = 0; i < connected_component_count; i ++) QueryGraph_Free(plan->connected_components[i]);
 		array_free(plan->connected_components);
 	}
 
 	QueryGraph_Free(plan->query_graph);
-	_ExecutionPlan_FreeOperations(plan->root);
 	raxFree(plan->record_map);
 	rm_free(plan);
 }
-
