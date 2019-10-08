@@ -77,6 +77,8 @@ static void RG_ForkPrepare() {
 	for(uint i = 0; i < graph_count; i++) {
 		// Acquire each read-write lock as a reader to guarantee that no graph is being modified.
 		Graph_AcquireReadLock(graphs_in_keyspace[i]->g);
+		// Flush all pending matrix changes, as the child cannot safely use GraphBLAS synchronization routines.
+		Graph_ApplyAllPending(graphs_in_keyspace[i]->g);
 	}
 }
 
