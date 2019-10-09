@@ -7,21 +7,22 @@
 #include "op_anti_semi_apply.h"
 #include "../execution_plan.h"
 
-OpBase *NewAntiSemiApplyOp(void) {
-	AntiSemiApply *antiSemiApply = malloc(sizeof(AntiSemiApply));
-	antiSemiApply->r = NULL;
-	antiSemiApply->op_arg = NULL;
+// Forward declarations.
+OpResult AntiSemiApplyInit(OpBase *opBase);
+Record AntiSemiApplyConsume(OpBase *opBase);
+OpResult AntiSemiApplyReset(OpBase *opBase);
+void AntiSemiApplyFree(OpBase *opBase);
+
+OpBase *NewAntiSemiApplyOp(const ExecutionPlan *plan) {
+	AntiSemiApply *op = malloc(sizeof(AntiSemiApply));
+	op->r = NULL;
+	op->op_arg = NULL;
 
 	// Set our Op operations
-	OpBase_Init(&antiSemiApply->op);
-	antiSemiApply->op.name = "Anti Semi Apply";
-	antiSemiApply->op.type = OPType_ANTI_SEMI_APPLY;
-	antiSemiApply->op.init = AntiSemiApplyInit;
-	antiSemiApply->op.consume = AntiSemiApplyConsume;
-	antiSemiApply->op.reset = AntiSemiApplyReset;
-	antiSemiApply->op.free = AntiSemiApplyFree;
+	OpBase_Init((OpBase *)op, OPType_ANTI_SEMI_APPLY, "Anti Semi Apply", AntiSemiApplyInit,
+				AntiSemiApplyConsume, AntiSemiApplyReset, NULL, AntiSemiApplyFree, plan);
 
-	return (OpBase *) antiSemiApply;
+	return (OpBase *) op;
 }
 
 OpResult AntiSemiApplyInit(OpBase *opBase) {

@@ -8,6 +8,7 @@
 
 #include "op.h"
 #include "op_argument.h"
+#include "../execution_plan.h"
 
 /* SemiApply operation tests for the presence of a pattern
  * It starts by pulling on the left-hand side branch,
@@ -20,8 +21,4 @@ typedef struct {
     Argument *op_arg;   // Righthand-side tap.
 } SemiApply;
 
-OpBase *NewSemiApplyOp(void);
-OpResult SemiApplyInit(OpBase *opBase);
-Record SemiApplyConsume(OpBase *opBase);
-OpResult SemiApplyReset(OpBase *opBase);
-void SemiApplyFree(OpBase *opBase);
+OpBase *NewSemiApplyOp(ExecutionPlan *plan);

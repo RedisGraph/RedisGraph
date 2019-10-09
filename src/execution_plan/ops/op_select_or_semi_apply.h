@@ -8,6 +8,7 @@
 
 #include "op.h"
 #include "op_argument.h"
+#include "../execution_plan.h"
 #include "../../filter_tree/filter_tree.h"
 
 /* The SelectOrSemiApply operator tests for the presence of a pattern predicate and evaluates a predicate,
@@ -23,8 +24,4 @@ typedef struct {
     FT_FilterNode *filter;      // "Cheap" filter to apply.
 } SelectOrSemiApply;
 
-OpBase *NewSelectOrSemiApplyOp(FT_FilterNode *filter, bool anti);
-OpResult SelectOrSemiApplyInit(OpBase *opBase);
-Record SelectOrSemiApplyConsume(OpBase *opBase);
-OpResult SelectOrSemiApplyReset(OpBase *opBase);
-void SelectOrSemiApplyFree(OpBase *opBase);
+OpBase *NewSelectOrSemiApplyOp(ExecutionPlan *plan, FT_FilterNode *filter, bool anti);

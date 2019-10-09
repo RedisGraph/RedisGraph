@@ -7,29 +7,35 @@
 #include "op_select_or_semi_apply.h"
 #include "../execution_plan.h"
 
-OpBase *NewSelectOrSemiApplyOp(FT_FilterNode *filter, bool anti) {
-	SelectOrSemiApply *selectOrSemiApply = malloc(sizeof(SelectOrSemiApply));
-	selectOrSemiApply->r = NULL;
-	selectOrSemiApply->anti = anti;
-	selectOrSemiApply->op_arg = NULL;
-	selectOrSemiApply->filter = filter;
+// Forward declarations.
+void SelectOrSemiApplyFree(OpBase *opBase);
+OpResult SelectOrSemiApplyInit(OpBase *opBase);
+Record SelectOrSemiApplyConsume(OpBase *opBase);
+OpResult SelectOrSemiApplyReset(OpBase *opBase);
 
-	// Set our Op operations
-	OpBase_Init(&selectOrSemiApply->op);
+OpBase *NewSelectOrSemiApplyOp(ExecutionPlan *plan, FT_FilterNode *filter, bool anti) {
+	SelectOrSemiApply *op = malloc(sizeof(SelectOrSemiApply));
+	op->r = NULL;
+	op->anti = anti;
+	op->op_arg = NULL;
+	op->filter = filter;
+
+	OPType op_type;
+	const char *op_name;
+
 	if(anti) {
-		selectOrSemiApply->op.name = "Select Or Semi Apply";
-		selectOrSemiApply->op.type = OPType_SELECT_OR_SEMI_APPLY;
+		op_name = "Select Or Semi Apply";
+		op_type = OPType_SELECT_OR_SEMI_APPLY;
 	} else {
-		selectOrSemiApply->op.name = "Select Or Anti Semi Apply";
-		selectOrSemiApply->op.type = OPType_SELECT_OR_ANTI_SEMI_APPLY;
+		op_name = "Select Or Anti Semi Apply";
+		op_type = OPType_SELECT_OR_ANTI_SEMI_APPLY;
 	}
 
-	selectOrSemiApply->op.init = SelectOrSemiApplyInit;
-	selectOrSemiApply->op.consume = SelectOrSemiApplyConsume;
-	selectOrSemiApply->op.reset = SelectOrSemiApplyReset;
-	selectOrSemiApply->op.free = SelectOrSemiApplyFree;
+	// Set our Op operations
+	OpBase_Init((OpBase *)op, op_type, op_name, SelectOrSemiApplyInit, SelectOrSemiApplyConsume,
+				SelectOrSemiApplyReset, NULL, SelectOrSemiApplyFree, plan);
 
-	return(OpBase *) selectOrSemiApply;
+	return(OpBase *) op;
 }
 
 OpResult SelectOrSemiApplyInit(OpBase *opBase) {

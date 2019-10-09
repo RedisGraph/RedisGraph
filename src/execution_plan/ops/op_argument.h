@@ -7,6 +7,7 @@
 #pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 
 /* The Argument operation simply pass on it's internal record `r` 
  * down the execution stream, once passed the operation sets `r` to NULL.
@@ -17,8 +18,6 @@ typedef struct {
     Record r;
 } Argument;
 
-OpBase *NewArgumentOp(void);
-Record ArgumentConsume(OpBase *opBase);
-OpResult ArgumentReset(OpBase *opBase);
+OpBase *NewArgumentOp(const ExecutionPlan *plan);
+
 void ArgumentSetRecord(Argument *arg, Record r);
-void ArgumentFree(OpBase *opBase);

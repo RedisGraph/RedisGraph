@@ -83,7 +83,7 @@ struct OpBase {
 	fpConsume consume;          // Produce next record.
 	fpConsume profile;          // Profiled version of consume.
 	fpToString toString;        // operation string representation.
-	char *name;                 // Operation name.
+	const char *name;           // Operation name.
 	int childCount;             // Number of children.
 	bool op_initialized;        // True if the operation has already been initialized.
 	struct OpBase **children;   // Child operations.
@@ -96,7 +96,7 @@ struct OpBase {
 typedef struct OpBase OpBase;
 
 // Initialize op.
-void OpBase_Init(OpBase *op, OPType type, char *name, fpInit init, fpConsume consume, fpReset reset,
+void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsume consume, fpReset reset,
 				 fpToString toString, fpFree free, const struct ExecutionPlan *plan);
 void OpBase_Free(OpBase *op);       // Free op.
 Record OpBase_Consume(OpBase *op);  // Consume op.

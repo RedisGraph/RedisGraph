@@ -7,21 +7,22 @@
 #include "op_semi_apply.h"
 #include "../execution_plan.h"
 
-OpBase *NewSemiApplyOp(void) {
-	SemiApply *semiApply = malloc(sizeof(SemiApply));
-	semiApply->r = NULL;
-	semiApply->op_arg = NULL;
+// Forward declarations.
+void SemiApplyFree(OpBase *opBase);
+OpResult SemiApplyInit(OpBase *opBase);
+Record SemiApplyConsume(OpBase *opBase);
+OpResult SemiApplyReset(OpBase *opBase);
+
+OpBase *NewSemiApplyOp(ExecutionPlan *plan) {
+	SemiApply *op = malloc(sizeof(SemiApply));
+	op->r = NULL;
+	op->op_arg = NULL;
 
 	// Set our Op operations
-	OpBase_Init(&semiApply->op);
-	semiApply->op.name = "Semi Apply";
-	semiApply->op.type = OPType_SEMI_APPLY;
-	semiApply->op.init = SemiApplyInit;
-	semiApply->op.consume = SemiApplyConsume;
-	semiApply->op.reset = SemiApplyReset;
-	semiApply->op.free = SemiApplyFree;
+	OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, "Semi Apply", SemiApplyInit, SemiApplyConsume,
+				SemiApplyReset, NULL, SemiApplyFree, plan);
 
-	return (OpBase *) semiApply;
+	return (OpBase *) op;
 }
 
 OpResult SemiApplyInit(OpBase *opBase) {

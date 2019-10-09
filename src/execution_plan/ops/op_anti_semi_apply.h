@@ -8,6 +8,7 @@
 
 #include "op.h"
 #include "op_argument.h"
+#include "../execution_plan.h"
 
 /* AntiSemiApply operation tests for the absence of a pattern
  * It starts by pulling on the left-hand side branch,
@@ -20,8 +21,4 @@ typedef struct {
     Argument *op_arg;   // Righthand-side tap.
 } AntiSemiApply;
 
-OpBase *NewAntiSemiApplyOp(void);
-OpResult AntiSemiApplyInit(OpBase *opBase);
-Record AntiSemiApplyConsume(OpBase *opBase);
-OpResult AntiSemiApplyReset(OpBase *opBase);
-void AntiSemiApplyFree(OpBase *opBase);
+OpBase *NewAntiSemiApplyOp(const ExecutionPlan *plan);

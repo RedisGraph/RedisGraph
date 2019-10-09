@@ -247,7 +247,7 @@ FT_FilterNode *_FilterNode_FromAST(const cypher_astnode_t *expr) {
 	}
 }
 
-void _AST_ConvertFilters(const AST *ast, FT_FilterNode **root, const cypher_astnode_t *entity) {
+void _AST_ConvertPattern(const AST *ast, FT_FilterNode **root, const cypher_astnode_t *entity) {
 	if(!entity) return;
 
 	FT_FilterNode *node = NULL;
@@ -297,7 +297,7 @@ void _AST_ConvertPredicates(const AST *ast, FT_FilterNode **root, const cypher_a
 		for(uint i = 0; i < child_count; i++) {
 			const cypher_astnode_t *child = cypher_astnode_get_child(entity, i);
 			// Recursively continue searching
-			_AST_ConvertFilters(ast, root, child);
+			_AST_ConvertPattern(ast, root, child);
 		}
 	}
 
@@ -310,7 +310,10 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 	if(match_clauses) {
 		uint match_count = array_len(match_clauses);
 		for(uint i = 0; i < match_count; i ++) {
-			_AST_ConvertFilters(ast, &filter_tree, match_clauses[i]);
+			const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match_clauses[i]);
+			_AST_ConvertPattern(ast, &filter_tree, pattern);
+			const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(match_clauses[i]);
+			if(predicate) _AST_ConvertPredicates(ast, &filter_tree, predicate);
 		}
 		array_free(match_clauses);
 	}

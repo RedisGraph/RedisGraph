@@ -22,6 +22,7 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 	OpUnwind *op = malloc(sizeof(OpUnwind));
 
 	op->exp = exp;
+	op->firstcall = true;
 	op->list = SI_NullVal();
 	op->currentRecord = NULL;
 	op->listIdx = INDEX_NOT_SET;
@@ -36,7 +37,6 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 
 static OpResult UnwindInit(OpBase *opBase) {
 	OpUnwind *op = (OpUnwind *) opBase;
-	op->currentRecord = OpBase_CreateRecord((OpBase *)op);
 
 	if(op->op.childCount == 0) {
 		// No child operation, list must be static.
@@ -82,7 +82,7 @@ static Record UnwindConsume(OpBase *opBase) {
 	} else if(op->firstcall) {
 		op->firstcall = false;
 		// No operations above us, we're a TAP.
-		op->currentRecord = Record_New(1);
+		op->currentRecord = OpBase_CreateRecord((OpBase *)op);
 	}
 
 	// Did we managed to get a record?

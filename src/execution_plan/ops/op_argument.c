@@ -6,19 +6,20 @@
 
 #include "op_argument.h"
 
-OpBase *NewArgumentOp(void) {
-	Argument *arg = malloc(sizeof(Argument));
-	arg->r = NULL;
+// Forward declarations
+Record ArgumentConsume(OpBase *opBase);
+OpResult ArgumentReset(OpBase *opBase);
+void ArgumentFree(OpBase *opBase);
+
+OpBase *NewArgumentOp(const ExecutionPlan *plan) {
+	Argument *op = malloc(sizeof(Argument));
+	op->r = NULL;
 
 	// Set our Op operations
-	OpBase_Init(&arg->op);
-	arg->op.name = "Argument";
-	arg->op.type = OPType_ARGUMENT;
-	arg->op.consume = ArgumentConsume;
-	arg->op.reset = ArgumentReset;
-	arg->op.free = ArgumentFree;
+	OpBase_Init((OpBase *)op, OPType_ARGUMENT, "Argument", NULL,
+				ArgumentConsume, ArgumentReset, NULL, ArgumentFree, plan);
 
-	return (OpBase *)arg;
+	return (OpBase *)op;
 }
 
 Record ArgumentConsume(OpBase *opBase) {
