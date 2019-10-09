@@ -42,7 +42,7 @@ static bool _stream_resolves_entities(const OpBase *root, rax *entities) {
 		uint modifies_count = array_len(root->modifies);
 		for(uint i = 0; i < modifies_count; i++) {
 			const char *modified = root->modifies[i];
-			raxRemove(entities, (unsigned char *)&modified, sizeof(modified), NULL);
+			raxRemove(entities, (unsigned char *)modified, strlen(modified), NULL);
 		}
 	}
 
