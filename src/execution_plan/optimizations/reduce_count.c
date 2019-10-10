@@ -69,8 +69,8 @@ static int _identifyNodeCountPattern(OpBase *root, OpResult **opResult, OpAggreg
 	*opScan = op;
 	if(op->type == OPType_NODE_BY_LABEL_SCAN) {
 		NodeByLabelScan *labelScan = (NodeByLabelScan *)op;
-		assert(labelScan->node->label);
-		*label = labelScan->node->label;
+		assert(labelScan->n->label);
+		*label = labelScan->n->label;
 	}
 
 	return 1;
@@ -103,25 +103,15 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 		nodeCount = SI_LongVal(Graph_NodeCount(gc->g));
 	}
 
-	// Incase alias is specified: RETURN count(n) as X
-	uint *modifies = NULL;
-	if(opAggregate->op.modifies) {
-		assert(array_len(opAggregate->op.modifies) == 1);
-		modifies = array_new(uint, 1);
-		modifies = array_append(modifies, opAggregate->op.modifies[0]);
-	}
-
 	/* Construct a constant expression, used by a new
 	 * projection operation. */
 	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(nodeCount);
+	// The new expression must be aliased to populate the Record.
+	exp->resolved_name = opAggregate->exps[0]->resolved_name;
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 	exps = array_append(exps, exp);
 
-	OpBase *opProject = NewProjectOp(exps, modifies);
-
-	// TODO this shouldn't need to be an explicit step.
-	// See _associateRecordMap and ExecutionPlanInit to come up with solution.
-	opProject->record_map = opScan->record_map;
+	OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps, NULL);
 
 	// New execution plan: "Project -> Results"
 	ExecutionPlan_RemoveOp(plan, (OpBase *)opScan);
@@ -243,14 +233,12 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	/* Construct a constant expression, used by a new
 	 * projection operation. */
 	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(edgeCount);
-	AR_ExpNode **exps = array_new(AR_ExpNode *, 1); // TODO memory leak!
+	// The new expression must be aliased to populate the Record.
+	exp->resolved_name = opAggregate->exps[0]->resolved_name;
+	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 	exps = array_append(exps, exp);
 
-	OpBase *opProject = NewProjectOp(exps, NULL);
-
-	// TODO this shouldn't need to be an explicit step.
-	// See _associateRecordMap and ExecutionPlanInit to come up with solution.
-	opProject->record_map = opScan->record_map;
+	OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps, NULL);
 
 	// New execution plan: "Project -> Results"
 	ExecutionPlan_RemoveOp(plan, (OpBase *)opScan);
@@ -271,7 +259,6 @@ void reduceCount(ExecutionPlan *plan) {
 	 * If node count optimization was unable to execute,
 	 * meaning that the execution plan does not hold any node count pattern,
 	 * then edge count will be tried to be executed upon the same execution plan */
-	bool reduceNodeCountSucsses = _reduceNodeCount(plan);
-	if(!reduceNodeCountSucsses) _reduceEdgeCount(plan);
+	if(!_reduceNodeCount(plan)) _reduceEdgeCount(plan);
 }
 

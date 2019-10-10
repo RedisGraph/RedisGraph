@@ -4,36 +4,23 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OP_UNWIND_H
-#define __OP_UNWIND_H
+#pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
 /* OP Unwind */
 
-typedef struct
-{
-    OpBase op;
-    AR_ExpNode *exp;      // Arithmetic expression (evaluated as an SIArray)
-    uint listIdx;         // Current list index
-    int unwindRecIdx;     // Update record at this index.
-    SIValue list;         // list which the unwind operation is performed on
-    Record currentRecord; // record to clone and add a value extracted from the list
+typedef struct {
+	OpBase op;
+	SIValue list;         // List which the unwind operation is performed on.
+	AR_ExpNode *exp;      // Arithmetic expression (evaluated as an SIArray).
+	uint listIdx;         // Current list index.
+	int unwindRecIdx;     // Update record at this index.
+	Record currentRecord; // record to clone and add a value extracted from the list.
 } OpUnwind;
 
 /* Creates a new Unwind operation */
-OpBase *NewUnwindOp(uint record_idx, AR_ExpNode *exp);
+OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp);
 
-OpResult UnwindInit(OpBase *opBase);
-
-/* UnwindConsume next operation */
-Record UnwindConsume(OpBase *opBase);
-
-/* Restart */
-OpResult UnwindReset(OpBase *ctx);
-
-/* Frees Unwind*/
-void UnwindFree(OpBase *ctx);
-
-#endif

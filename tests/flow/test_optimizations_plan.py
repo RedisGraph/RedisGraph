@@ -44,7 +44,7 @@ class testOptimizationsPlan(FlowTestsBase):
         query = """MATCH (a)-[:know]->(b) CREATE (a)-[:know]->(b)"""
         graph.query(query)
 
-    def test_typeless_edge_count(self):
+    def test01_typeless_edge_count(self):
         query = """MATCH ()-[r]->() RETURN COUNT(r)"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
@@ -56,7 +56,7 @@ class testOptimizationsPlan(FlowTestsBase):
         expected = [[36]]
         self.env.assertEqual(resultset, expected)
 
-    def test_typed_edge_count(self):
+    def test02_typed_edge_count(self):
         query = """MATCH ()-[r:know]->() RETURN COUNT(r)"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
@@ -68,7 +68,7 @@ class testOptimizationsPlan(FlowTestsBase):
         expected = [[24]]
         self.env.assertEqual(resultset, expected)
 
-    def test_typeless_edge_count_with_alias(self):
+    def test03_typeless_edge_count_with_alias(self):
         query = """MATCH ()-[r]->() RETURN COUNT(r) as c"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
@@ -80,7 +80,7 @@ class testOptimizationsPlan(FlowTestsBase):
         expected = [[36]]
         self.env.assertEqual(resultset, expected)
 
-    def test_typed_edge_count_with_alias(self):
+    def test04_typed_edge_count_with_alias(self):
         query = """MATCH ()-[r:know]->() RETURN COUNT(r) as c"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
@@ -92,7 +92,7 @@ class testOptimizationsPlan(FlowTestsBase):
         expected = [[24]]
         self.env.assertEqual(resultset, expected)
 
-    def test_multiple_typed_edge_count_with_alias(self):
+    def test05_multiple_typed_edge_count_with_alias(self):
         query = """MATCH ()-[r:know | :works_with]->() RETURN COUNT(r) as c"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
@@ -104,7 +104,7 @@ class testOptimizationsPlan(FlowTestsBase):
         expected = [[36]]
         self.env.assertEqual(resultset, expected)
 
-    def test_count_unreferenced_edge(self):
+    def test06_count_unreferenced_edge(self):
         query = """MATCH ()-[:know]->(b) RETURN COUNT(b)"""
         # This count in this query cannot be reduced, as the traversal op doesn't store
         # data about non-referenced edges.
@@ -118,7 +118,7 @@ class testOptimizationsPlan(FlowTestsBase):
         expected = [[12]]
         self.env.assertEqual(resultset, expected)
 
-    def test_non_labeled_node_count(self):
+    def test07_non_labeled_node_count(self):
         query = """MATCH (n) RETURN COUNT(n)"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
@@ -130,7 +130,7 @@ class testOptimizationsPlan(FlowTestsBase):
         expected = [[4]]
         self.env.assertEqual(resultset, expected)
 
-    def test_non_labeled_node_count_with_alias(self):
+    def test08_non_labeled_node_count_with_alias(self):
         query = """MATCH (n) RETURN COUNT(n) as c"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
@@ -142,7 +142,7 @@ class testOptimizationsPlan(FlowTestsBase):
         expected = [[4]]
         self.env.assertEqual(resultset, expected)
 
-    def test_labled_node_count(self):
+    def test09_labled_node_count(self):
         query = """MATCH (n:person) RETURN COUNT(n)"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
@@ -153,3 +153,33 @@ class testOptimizationsPlan(FlowTestsBase):
         self.env.assertNotIn("Aggregate", executionPlan)
         expected = [[4]]
         self.env.assertEqual(resultset, expected)
+
+    def test10_value_hash_join(self):
+        # Issue a query that joins two streams on a node property.
+        query = """MATCH (p1:person)-[:know]->({name: 'Roi'}), (p2)-[]->(:person {name: 'Alon'}) WHERE p1.name = p2.name RETURN p2.name ORDER BY p2.name"""
+        executionPlan = graph.execution_plan(query)
+        self.env.assertIn("Value Hash Join", executionPlan)
+        self.env.assertNotIn("Cartesian Product", executionPlan)
+
+        resultset = graph.query(query).result_set
+        expected = [['Ailon'], ['Boaz']]
+        self.env.assertEqual(resultset, expected)
+
+        # Issue a query that joins two streams on a function call.
+        query = """MATCH (p1:person)-[:know]->({name: 'Roi'}) MATCH (p2)-[]->(:person {name: 'Alon'}) WHERE ID(p1) = ID(p2) RETURN p2.name ORDER BY p2.name"""
+        executionPlan = graph.execution_plan(query)
+        self.env.assertIn("Value Hash Join", executionPlan)
+        self.env.assertNotIn("Cartesian Product", executionPlan)
+
+        resultset = graph.query(query).result_set
+        self.env.assertEqual(resultset, expected) # same results expected
+
+        # Validate identical results in a query that doesn't leverage this optimization.
+        # TODO this query could in the future be optimized with a "Node Hash Join"
+        query = """MATCH (p1:person)-[:know]->({name: 'Roi'}) MATCH (p2)-[]->(:person {name: 'Alon'}) WHERE p1 = p2 RETURN p2.name ORDER BY p2.name"""
+        executionPlan = graph.execution_plan(query)
+        self.env.assertNotIn("Value Hash Join", executionPlan)
+        self.env.assertIn("Cartesian Product", executionPlan)
+
+        resultset = graph.query(query).result_set
+        self.env.assertEqual(resultset, expected) # same results expected

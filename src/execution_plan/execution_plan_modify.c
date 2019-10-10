@@ -2,10 +2,10 @@
 #include "../util/qsort.h"
 
 // Sort an array and remove duplicate entries.
-static void _uniqueArray(uint *arr) {
-#define MODIFIES_ISLT(a,b) ((*a)<(*b))
+static void _uniqueArray(const char **arr) {
+#define MODIFIES_ISLT(a,b) (strcmp((*a),(*b)) > 0)
 	int count = array_len(arr);
-	QSORT(uint, arr, count, MODIFIES_ISLT);
+	QSORT(const char *, arr, count, MODIFIES_ISLT);
 	uint unique_idx = 0;
 	for(int i = 0; i < count - 1; i ++) {
 		if(arr[i] != arr[i + 1]) {
@@ -68,15 +68,11 @@ void _OpBase_RemoveNode(OpBase *parent, OpBase *child) {
 	child->parent = NULL;
 }
 
-uint *_ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, rax *references) {
+const char **_ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, rax *references) {
 	/* List of entities which had their ID resolved
 	 * at this point of execution, should include all
 	 * previously modified entities (up the execution plan). */
-	uint *seen = array_new(uint, 0);
-
-	/* If this operation is already associated with a record map, it is from
-	 * an earlier ExecutionPlanSegment and its IDs are not comparable. */
-	if(root->record_map) return seen;
+	const char **seen = array_new(const char *, 0);
 
 	uint modifies_count = array_len(root->modifies);
 	/* Append current op modified entities. */
@@ -87,7 +83,7 @@ uint *_ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, rax *references
 
 	/* Traverse execution plan, upwards. */
 	for(int i = 0; i < root->childCount; i++) {
-		uint *saw = _ExecutionPlan_LocateReferences(root->children[i], op, references);
+		const char **saw = _ExecutionPlan_LocateReferences(root->children[i], op, references);
 
 		/* Quick return if op was located. */
 		if(*op) {
@@ -115,9 +111,9 @@ uint *_ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, rax *references
 	for(uint i = 0; i < seen_count; i++) {
 		// Too many unmatched references.
 		if(match > (seen_count - i)) break;
-		uint seen_id = seen[i];
+		const char *seen_id = seen[i];
 
-		if(raxFind(references, (unsigned char *)&seen_id, sizeof(seen_id)) != raxNotFound) {
+		if(raxFind(references, (unsigned char *)seen_id, strlen(seen_id)) != raxNotFound) {
 			match--;
 			// All references have been resolved.
 			if(match == 0) {
@@ -217,10 +213,31 @@ void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
 	op->childCount = 0;
 }
 
+OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
+	if(!root) return NULL;
+
+	uint count = (root->modifies) ? array_len(root->modifies) : 0;
+
+	for(uint i = 0; i < count; i++) {
+		const char *resolved_alias = root->modifies[i];
+		/* NOTE - if this function is later used to modify the returned operation, we should return
+		 * the deepest operation that modifies the alias rather than the shallowest, as done here. */
+		if(strcmp(resolved_alias, alias) == 0) return root;
+	}
+
+	for(int i = 0; i < root->childCount; i++) {
+		OpBase *op = ExecutionPlan_LocateOpResolvingAlias(root->children[i], alias);
+		if(op) return op;
+	}
+
+	return NULL;
+}
+
+
 OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type) {
 	if(!root) return NULL;
 
-	if(root->type == type) {
+	if(root->type & type) { // NOTE - this will fail if OPType is later changed to not be a bitmask.
 		return root;
 	}
 
@@ -243,7 +260,7 @@ void ExecutionPlan_Taps(OpBase *root, OpBase ***taps) {
 
 OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references) {
 	OpBase *op = NULL;
-	uint *temp = _ExecutionPlan_LocateReferences(root, &op, references);
+	const char **temp = _ExecutionPlan_LocateReferences(root, &op, references);
 	array_free(temp);
 	return op;
 }

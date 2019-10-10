@@ -28,29 +28,27 @@ QGNode **BFS(QGNode *s, int *level) {
 			QGNode *n = current[i];
 
 			// Have we already processed n?
-			seen = raxFind(visited, (unsigned char *)&n->id, sizeof(n->id));
+			seen = raxFind(visited, (unsigned char *)n->alias, strlen(n->alias));
 			if(seen != raxNotFound) continue;
 
 			// Expand node N by visiting all of its neighbors
 			for(int j = 0; j < array_len(n->outgoing_edges); j++) {
 				QGEdge *e = n->outgoing_edges[j];
-				uint dest_id = e->dest->id;
-				seen = raxFind(visited, (unsigned char *)&dest_id, sizeof(dest_id));
+				seen = raxFind(visited, (unsigned char *)e->dest->alias, strlen(e->dest->alias));
 				if(seen == raxNotFound) {
 					next = array_append(next, e->dest);
 				}
 			}
 			for(int j = 0; j < array_len(n->incoming_edges); j++) {
 				QGEdge *e = n->incoming_edges[j];
-				uint src_id = e->src->id;
-				seen = raxFind(visited, (unsigned char *)&src_id, sizeof(src_id));
+				seen = raxFind(visited, (unsigned char *)e->src->alias, strlen(e->src->alias));
 				if(seen == raxNotFound) {
 					next = array_append(next, e->src);
 				}
 			}
 
 			// Mark n as visited.
-			raxInsert(visited, (unsigned char *)&n->id, sizeof(n->id), NULL, NULL);
+			raxInsert(visited, (unsigned char *)n->alias, strlen(n->alias), NULL, NULL);
 		}
 
 		/* No way to progress and we're interested in the lowest level leafs
@@ -72,3 +70,4 @@ QGNode **BFS(QGNode *s, int *level) {
 	array_free(next);
 	return current;
 }
+

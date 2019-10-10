@@ -24,18 +24,17 @@
 
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
-typedef struct
-{
-    GrB_Index page ;    // the node number itself
-    double pagerank ;   // the pagerank of a node
+typedef struct {
+	GrB_Index page ;    // the node number itself
+	double pagerank ;   // the pagerank of a node
 }
 LAGraph_PageRank ;
 
 GrB_Info Pagerank               // GrB_SUCCESS or error condition
 (
-    LAGraph_PageRank **Phandle, // output: array of LAGraph_PageRank structs
-    GrB_Matrix A,               // binary input graph, not modified
-    int itermax,                // max number of iterations
-    double tol,                 // stop when norm (r-rnew,2) < tol
-    int *iters                  // number of iterations taken
+	LAGraph_PageRank **Phandle, // output: array of LAGraph_PageRank structs
+	GrB_Matrix A,               // binary input graph, not modified
+	int itermax,                // max number of iterations
+	double tol,                 // stop when norm (r-rnew,2) < tol
+	int *iters                  // number of iterations taken
 );

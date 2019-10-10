@@ -29,8 +29,9 @@ static bool _highly_connected_node(const QGNode *n) {
 	return ((array_len(n->incoming_edges) + array_len(n->outgoing_edges)) > 2);
 }
 
-static inline bool _referred_entity(const RecordMap *record_map, uint id) {
-	return (RecordMap_LookupID(record_map, id) != IDENTIFIER_NOT_FOUND);
+static inline bool _referred_entity(const char *alias) {
+	AST *ast = QueryCtx_GetAST();
+	return AST_AliasIsReferenced(ast, alias);
 }
 
 /* Checks if given expression contains a variable length edge. */
@@ -38,26 +39,6 @@ static bool _AlgebraicExpression_ContainsVariableLengthEdge(const AlgebraicExpre
 	return (exp->edge && QGEdge_VariableLength(exp->edge));
 }
 
-
-/* Every variable-length edge and every edge referenced
- * in another clause (such as RETURN or WHERE) should be
- * recorded in the RecordMap, as well as those edges'
- * source and destination nodes. */
-static void _map_edge_references(const QueryGraph *qg, RecordMap *record_map) {
-	uint edge_count = QueryGraph_EdgeCount(qg);
-	// Add the ends of all referred edges to the Record mapping.
-	for(uint i = 0; i < edge_count; i++) {
-		QGEdge *e = qg->edges[i];
-		// Add all variable-length traversals.
-		if(QGEdge_VariableLength(e)) RecordMap_FindOrAddID(record_map, e->id);
-		if(RecordMap_LookupID(record_map, e->id) != IDENTIFIER_NOT_FOUND) {
-			// The edge is referred; ensure that its source and destination are mapped in the Record.
-			RecordMap_FindOrAddID(record_map, e->src->id);
-			RecordMap_FindOrAddID(record_map, e->dest->id);
-		}
-	}
-
-}
 /* Variable length expression must contain only a single operand, the edge being
  * traversed multiple times, in cases such as (:labelA)-[e*]->(:labelB) both label A and B
  * are applied via a label matrix operand, this function migrates A and B from a
@@ -249,7 +230,7 @@ static void _RemovePathFromGraph(QueryGraph *g, QGEdge **path) {
 	}
 }
 
-/* Determin the length of the longest path in the graph.
+/* Determine the length of the longest path in the graph.
  * Returns a list residing on the edge of the longest path. */
 static QGNode **_DeepestLevel(const QueryGraph *g, int *level) {
 	int l = BFS_LOWEST_LEVEL;
@@ -264,10 +245,24 @@ static QGNode **_DeepestLevel(const QueryGraph *g, int *level) {
 	return leafs;
 }
 
+/* If the edge is referenced or of a variable length, it should populate the AlgebraicExpression. */
+static inline bool _should_populate_edge(QGEdge *e) {
+	return (_referred_entity(e->alias) || QGEdge_VariableLength(e));
+}
+
+static inline bool _should_divide_expression(QGEdge **path, int idx) {
+	QGEdge *e = path[idx];
+
+	return (_should_populate_edge(e)                  ||      // This edge is populated.
+			_should_populate_edge(path[idx + 1])      ||      // The next edge is populated.
+			_highly_connected_node(e->dest)           ||      // Destination node in+out degree > 2.
+			_referred_entity(e->dest->alias));                // Destination node is referenced.
+}
+
 /* Break down expression into sub expressions.
  * considering referenced intermidate nodes and edges. */
 static AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(
-	AlgebraicExpression *exp, QGEdge **path, const QueryGraph *g, RecordMap *record_map) {
+	AlgebraicExpression *exp, QGEdge **path, const QueryGraph *g) {
 
 	/* Allocating maximum number of expression possible. */
 	QGEdge *e = NULL;
@@ -284,20 +279,19 @@ static AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(
 	expressions = array_append(expressions, iexp);
 	expIdx++;
 
+	bool divide_at[pathLen];
+	divide_at[pathLen - 1] = false; // Only check intermediate edges, not the last.
+	for(int i = 0; i < pathLen - 1; i++) {
+		// Track which points the expression should be subdivided at.
+		divide_at[i] = _should_divide_expression(path, i);
+	}
+
 	for(int i = 0; i < pathLen; i++) {
 		e = path[i];
-		/* If edge is referenced, set expression edge pointer. */
-		if(_referred_entity(record_map, e->id)) iexp->edge = e;
+		/* Set expression edge pointer. */
+		if(_should_populate_edge(e)) iexp->edge = e; // Set expression edge pointer if necessary.
 
-		/* If this is a variable length edge, which is not fixed in length
-		 * remember edge length. */
-		if(QGEdge_VariableLength(e)) {
-			iexp->edge = e;
-		}
-
-		if(i == 0 && e->src->label) {
-			iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
-		}
+		if(i == 0 && e->src->label) iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
 
 		/* Expand fixed variable length edge */
 		uint hops = (!QGEdge_VariableLength(e)) ? e->minHops : 1;
@@ -305,18 +299,11 @@ static AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(
 			iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
 		}
 
-		if(e->dest->label) {
-			iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
-		}
+		if(e->dest->label) iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
 
-		/* If intermidate node is referenced, create a new algebraic expression. */
-		if(i < (pathLen - 1) &&                     // Not the last edge on path.
-		   (_highly_connected_node(e->dest) ||      // Node in+out degree > 2.
-			_referred_entity(record_map, e->dest->id))) { // Node is referenced.
-			// Finalize current expression.
+		/* If required, finalize the current algebraic expression and begin a new one. */
+		if(divide_at[i]) {
 			iexp->dest_node = e->dest;
-
-			/* Create a new algebraic expression. */
 			iexp = _AE_MUL(exp->operand_count - operandIdx);
 			iexp->operand_count = 0;
 			iexp->src_node = expressions[expIdx - 1]->dest_node;
@@ -352,7 +339,6 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge(
 	bool freeMatrix = false;
 	GrB_Matrix mat;
 
-	// TODO: find a better way for retriving AST graph entity.
 	uint reltype_count = array_len(e->reltypeIDs);
 	if(reltype_count == 0) {
 		// No relationship types specified; use the full adjacency matrix
@@ -517,8 +503,7 @@ static AlgebraicExpression *_AlgebraicExpression_FromPath(QGEdge **path, uint pa
 	return exp;
 }
 
-AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg,
-														 RecordMap *record_map, uint *exp_count) {
+AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, uint *exp_count) {
 	assert(qg);
 	/* Construct algebraic expression(s) from query graph
 	 * trying to take advantage of long multiplications with as few
@@ -539,9 +524,6 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg,
 		return NULL;
 	}
 
-	// Update the RecordMap with
-	_map_edge_references(qg, record_map);
-
 	QueryGraph *g = QueryGraph_Clone(qg);
 	AlgebraicExpression **exps = array_new(AlgebraicExpression *, 1);
 
@@ -560,8 +542,7 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg,
 		AlgebraicExpression *exp = _AlgebraicExpression_FromPath(path, level);
 
 		// Split constructed expression into sub expressions.
-		AlgebraicExpression **sub_exps = _AlgebraicExpression_Intermidate_Expressions(exp, path, g,
-																					  record_map);
+		AlgebraicExpression **sub_exps = _AlgebraicExpression_Intermidate_Expressions(exp, path, g);
 		sub_exps = _AlgebraicExpression_IsolateVariableLenExps(sub_exps);
 
 		// Remove path from graph.

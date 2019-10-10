@@ -1,0 +1,11 @@
+extraction:
+  cpp:
+     prepare:
+        packages: 
+          - build-essential
+          - cmake
+          - m4
+          - automake
+          - peg
+          - libtool
+          - autoconf

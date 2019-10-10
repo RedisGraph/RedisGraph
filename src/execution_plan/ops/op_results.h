@@ -4,10 +4,10 @@
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
-#ifndef __OP_RESULTS_H
-#define __OP_RESULTS_H
+#pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../redismodule.h"
 #include "../../graph/graphcontext.h"
 #include "../../resultset/resultset.h"
@@ -19,19 +19,6 @@ typedef struct {
 	ResultSet *result_set;
 } Results;
 
-
-/* Creates a new NodeByLabelScan operation */
-OpBase *NewResultsOp(ResultSet *result_set);
-
-/* Results next operation
- * called each time a new result record is required */
-Record ResultsConsume(OpBase *op);
-
-/* Restart iterator */
-OpResult ResultsReset(OpBase *ctx);
-
-/* Frees Results */
-void ResultsFree(OpBase *ctx);
-
-#endif
+/* Creates a new Results operation */
+OpBase *NewResultsOp(const ExecutionPlan *plan, ResultSet *result_set);
 

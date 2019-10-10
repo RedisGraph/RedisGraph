@@ -21,6 +21,9 @@
 #include <ctype.h>
 #include <assert.h>
 
+// Forward declaration
+static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue *result);
+
 /* Update arithmetic expression variable node by setting node's property index.
  * when constructing an arithmetic expression we'll delay setting graph entity
  * attribute index to the first execution of the expression, this is due to
@@ -127,17 +130,13 @@ bool AR_EXP_PerformDistinct(AR_ExpNode *op) {
 	return op->type == AR_EXP_OP && op->op.type == AR_OP_AGGREGATE && op->op.agg_func->isDistinct;
 }
 
-AR_ExpNode *AR_EXP_NewVariableOperandNode(RecordMap *record_map, const char *alias,
-										  const char *prop) {
+AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias, const char *prop) {
 	AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
+	node->resolved_name = NULL;
 	node->type = AR_EXP_OPERAND;
 	node->operand.type = AR_EXP_VARIADIC;
 	node->operand.variadic.entity_alias = alias;
-	if(alias) {
-		node->operand.variadic.entity_alias_idx = RecordMap_FindOrAddAlias(record_map, alias);
-	} else {
-		node->operand.variadic.entity_alias_idx = IDENTIFIER_NOT_FOUND;
-	}
+	node->operand.variadic.entity_alias_idx = IDENTIFIER_NOT_FOUND;
 	node->operand.variadic.entity_prop = prop;
 	node->operand.variadic.entity_prop_idx = ATTRIBUTE_NOTFOUND;
 
@@ -146,6 +145,7 @@ AR_ExpNode *AR_EXP_NewVariableOperandNode(RecordMap *record_map, const char *ali
 
 AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant) {
 	AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
+	node->resolved_name = NULL;
 	node->type = AR_EXP_OPERAND;
 	node->operand.type = AR_EXP_CONSTANT;
 	node->operand.constant = constant;
@@ -276,88 +276,121 @@ static inline void _AR_EXP_FreeResultsArray(SIValue *results, int count) {
 	}
 }
 
+static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node, const Record r,
+												  SIValue *result) {
+	AR_EXP_Result res = EVAL_OK;
+	// Handle aggregate function.
+	if(node->op.type == AR_OP_AGGREGATE) {
+		// The AggCtx will ultimately free its result.
+		*result = SI_ShareValue(node->op.agg_func->result);
+		return EVAL_OK;
+	}
+
+	/* Evaluate each child before evaluating current node. */
+	SIValue sub_trees[node->op.child_count];
+	for(int child_idx = 0; child_idx < node->op.child_count; child_idx++) {
+		SIValue v;
+		res = _AR_EXP_Evaluate(node->op.children[child_idx], r, &v);
+		// Encountered an error while evaluating a subtree.
+		if(res != EVAL_OK) goto cleanup;
+		sub_trees[child_idx] = v;
+	}
+
+	/* Validate before evaluation. */
+	if(!_AR_EXP_ValidateInvocation(node->op.f, sub_trees, node->op.child_count)) {
+		// The expression tree failed its validations and set an error message.
+		res = EVAL_ERR;
+		goto cleanup;
+	}
+
+	/* Evaluate self. */
+	*result = node->op.f->func(sub_trees, node->op.child_count);
+
+	if(SIValue_IsNull(*result) && QueryCtx_EncounteredError()) {
+		/* An error was encountered while evaluating this function, and has already been set in
+		 * the QueryCtx. Exit with an error. */
+		res = EVAL_ERR;
+	}
+
+cleanup:
+	_AR_EXP_FreeResultsArray(sub_trees, node->op.child_count);
+	return res;
+}
+
+static inline void _AR_EXP_UpdateEntityIdx(AR_OperandNode *node, const Record r) {
+	node->variadic.entity_alias_idx = Record_GetEntryIdx(r, node->variadic.entity_alias);
+}
+
+static AR_EXP_Result _AR_EXP_EvaluateProperty(AR_ExpNode *node, const Record r, SIValue *result) {
+	RecordEntryType t = Record_GetType(r, node->operand.variadic.entity_alias_idx);
+	// Property requested on a scalar value.
+	if(!(t & (REC_TYPE_NODE | REC_TYPE_EDGE))) {
+		/* Attempted to access a scalar value as a map.
+		 * Set an error and invoke the exception handler. */
+		char *error;
+		SIValue v = Record_GetScalar(r, node->operand.variadic.entity_alias_idx);
+		asprintf(&error, "Type mismatch: expected a map but was %s", SIType_ToString(SI_TYPE(v)));
+		QueryCtx_SetError(error); // Set the query-level error.
+		return EVAL_ERR;
+	}
+
+	GraphEntity *ge = Record_GetGraphEntity(r, node->operand.variadic.entity_alias_idx);
+	if(node->operand.variadic.entity_prop_idx == ATTRIBUTE_NOTFOUND) {
+		_AR_EXP_UpdatePropIdx(node, NULL);
+	}
+
+	SIValue *property = GraphEntity_GetProperty(ge, node->operand.variadic.entity_prop_idx);
+	if(property == PROPERTY_NOTFOUND) {
+		*result = SI_NullVal();
+	} else {
+		// The value belongs to a graph property, and can be accessed safely during the query lifetime.
+		*result = SI_ConstValue(*property);
+	}
+
+	return EVAL_OK;
+}
+
+static AR_EXP_Result _AR_EXP_EvaluateVariadic(AR_ExpNode *node, const Record r, SIValue *result) {
+	// Make sure entity record index is known.
+	if(node->operand.variadic.entity_alias_idx == IDENTIFIER_NOT_FOUND) {
+		_AR_EXP_UpdateEntityIdx(&node->operand, r);
+	}
+
+	// Fetch entity property value.
+	if(node->operand.variadic.entity_prop != NULL) {
+		return _AR_EXP_EvaluateProperty(node, r, result);
+	} else {
+		/* Alias doesn't necessarily refers to a graph entity,
+		 * it could also be a constant. */
+		int aliasIdx = node->operand.variadic.entity_alias_idx;
+		// The value was not created here; share with the caller.
+		*result = SI_ShareValue(Record_Get(r, aliasIdx));
+	}
+	return EVAL_OK;
+}
+
 /* Evaluate an expression tree, placing the calculated value in 'result' and returning
  * whether an error occurred during evaluation. */
 static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue *result) {
 	AR_EXP_Result res = EVAL_OK;
-	if(root->type == AR_EXP_OP) {
-		/* Aggregation function should be reduced by now.
-		 * TODO: verify above statement. */
-		if(root->op.type == AR_OP_AGGREGATE) {
-			AggCtx *agg = root->op.agg_func;
-			// The AggCtx will ultimately free its result.
-			*result = SI_ShareValue(agg->result);
-		} else {
-			/* Evaluate each child before evaluating current node. */
-			SIValue sub_trees[root->op.child_count];
-			for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
-				SIValue v;
-				AR_EXP_Result res = _AR_EXP_Evaluate(root->op.children[child_idx], r, &v);
-				if(res != EVAL_OK) {
-					// Encountered an error while evaluating a subtree.
-					_AR_EXP_FreeResultsArray(sub_trees, child_idx);
-					return res;
-				}
-				sub_trees[child_idx] = v;
-			}
-
-			/* Validate before evaluation. */
-			if(!_AR_EXP_ValidateInvocation(root->op.f, sub_trees, root->op.child_count)) {
-				// The expression tree failed its validations and set an error message.
-				// Free all associated memory.
-				_AR_EXP_FreeResultsArray(sub_trees, root->op.child_count);
-				return EVAL_ERR;
-			}
-			/* Evaluate self. */
-			*result = root->op.f->func(sub_trees, root->op.child_count);
-			_AR_EXP_FreeResultsArray(sub_trees, root->op.child_count);
-
-			if(SIValue_IsNull(*result) && QueryCtx_EncounteredError()) {
-				/* An error was encountered while evaluating this function, and has already been set in
-				 * the QueryCtx. Exit with an error. */
-				return EVAL_ERR;
-			}
-		}
-	} else {
-		/* Deal with a constant node. */
-		if(root->operand.type == AR_EXP_CONSTANT) {
+	switch(root->type) {
+	case AR_EXP_OP:
+		return _AR_EXP_EvaluateFunctionCall(root, r, result);
+	case AR_EXP_OPERAND:
+		switch(root->operand.type) {
+		case AR_EXP_CONSTANT:
 			// The value is constant or has been computed elsewhere, and is shared with the caller.
 			*result = SI_ShareValue(root->operand.constant);
-		} else {
-			// Fetch entity property value.
-			if(root->operand.variadic.entity_prop != NULL) {
-				RecordEntryType t = Record_GetType(r, root->operand.variadic.entity_alias_idx);
-				// Property requested on a scalar value.
-				if(!(t & (REC_TYPE_NODE | REC_TYPE_EDGE))) {
-					/* Attempted to access a scalar value as a map.
-					 * Set an error and invoke the exception handler. */
-					char *error;
-					SIValue v = Record_GetScalar(r, root->operand.variadic.entity_alias_idx);
-					asprintf(&error, "Type mismatch: expected a map but was %s", SIType_ToString(SI_TYPE(v)));
-					QueryCtx_SetError(error); // Set the query-level error.
-					return EVAL_ERR;
-				}
-
-				GraphEntity *ge = Record_GetGraphEntity(r, root->operand.variadic.entity_alias_idx);
-				if(root->operand.variadic.entity_prop_idx == ATTRIBUTE_NOTFOUND) {
-					_AR_EXP_UpdatePropIdx(root, r);
-				}
-				SIValue *property = GraphEntity_GetProperty(ge, root->operand.variadic.entity_prop_idx);
-				if(property == PROPERTY_NOTFOUND) {
-					*result = SI_NullVal();
-				} else {
-					// The value belongs to a graph property, and can be accessed safely during the query lifetime.
-					*result = SI_ConstValue(*property);
-				}
-			} else {
-				// Alias doesn't necessarily refers to a graph entity,
-				// it could also be a constant.
-				int aliasIdx = root->operand.variadic.entity_alias_idx;
-				// The value was not created here; share with the caller.
-				*result = SI_ShareValue(Record_Get(r, aliasIdx));
-			}
+			return res;
+		case AR_EXP_VARIADIC:
+			return _AR_EXP_EvaluateVariadic(root, r, result);
+		default:
+			assert(false && "Invalid expression type");
 		}
+	default:
+		assert(false && "Unknown expression type");
 	}
+
 	return res;
 }
 
@@ -411,16 +444,15 @@ void AR_EXP_Reduce(const AR_ExpNode *root) {
 	}
 }
 
-void AR_EXP_CollectEntityIDs(AR_ExpNode *root, rax *record_ids) {
+void AR_EXP_CollectEntities(AR_ExpNode *root, rax *aliases) {
 	if(root->type == AR_EXP_OP) {
 		for(int i = 0; i < root->op.child_count; i ++) {
-			AR_EXP_CollectEntityIDs(root->op.children[i], record_ids);
+			AR_EXP_CollectEntities(root->op.children[i], aliases);
 		}
 	} else { // type == AR_EXP_OPERAND
 		if(root->operand.type == AR_EXP_VARIADIC) {
-			int record_idx = root->operand.variadic.entity_alias_idx;
-			assert(record_idx != IDENTIFIER_NOT_FOUND);
-			raxInsert(record_ids, (unsigned char *)&record_idx, sizeof(record_idx), NULL, NULL);
+			const char *entity = root->operand.variadic.entity_alias;
+			raxInsert(aliases, (unsigned char *)entity, strlen(entity), NULL, NULL);
 		}
 	}
 }
@@ -530,6 +562,15 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str) {
 	size_t bytes_written = 0;
 	*str = NULL;
 	_AR_EXP_ToString(root, str, &str_size, &bytes_written);
+}
+
+// Generate a heap-allocated name for an arithmetic expression.
+// This routine is only used to name ORDER BY expressions.
+void AR_EXP_BuildResolvedName(AR_ExpNode *root) {
+	if(root->resolved_name) return;
+	char *new_name = (char *)root->resolved_name;
+	AR_EXP_ToString(root, &new_name); // Note that this string must be freed!
+	root->resolved_name = new_name;
 }
 
 AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {

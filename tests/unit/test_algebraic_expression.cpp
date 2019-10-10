@@ -16,6 +16,7 @@ extern "C" {
 #include "../../src/query_ctx.h"
 #include "../../src/graph/graph.h"
 #include "../../src/util/rmalloc.h"
+#include "../../src/parser/parser.h"
 #include "../../src/graph/query_graph.h"
 #include "../../src/graph/graphcontext.h"
 #include "../../src/util/simple_timer.h"
@@ -23,9 +24,7 @@ extern "C" {
 #include "../../src/arithmetic/algebraic_expression.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
-// Declaration of function in execution_plan.h
-extern void _BuildReturnExpressions(ExecutionPlanSegment *segment,
-									const cypher_astnode_t *ret_clause, AST *ast);
+extern AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause, AST *ast);
 
 #ifdef __cplusplus
 }
@@ -48,7 +47,6 @@ const char *query_one_intermidate_return_nodes =
 	"MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, c, e";
 const char *query_multiple_intermidate_return_nodes =
 	"MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, f, c, e";
-
 const char *query_return_first_edge =
 	"MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ef";
 const char *query_return_intermidate_edge =
@@ -183,13 +181,11 @@ class AlgebraicExpressionTest: public ::testing::Test {
 
 	AlgebraicExpression **build_algebraic_expression(const char *query, uint *exp_count) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
-		cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
-		AST *ast = AST_Build(parse_result);
+		cypher_parse_result_t *parse_result = parse(query);
+		AST *master_ast = AST_Build(parse_result);
+		AST *ast = AST_NewSegment(master_ast, 0, cypher_ast_query_nclauses(master_ast->root));
 		QueryGraph *qg = BuildQueryGraph(gc, ast);
-		ExecutionPlanSegment *segment = (ExecutionPlanSegment *)rm_malloc(sizeof(ExecutionPlanSegment));
-		segment->record_map = RecordMap_New();
-		_BuildReturnExpressions(segment, AST_GetClause(ast, CYPHER_AST_RETURN), ast);
-		AlgebraicExpression **ae = AlgebraicExpression_FromQueryGraph(qg, segment->record_map, exp_count);
+		AlgebraicExpression **ae = AlgebraicExpression_FromQueryGraph(qg, exp_count);
 
 		return ae;
 	}

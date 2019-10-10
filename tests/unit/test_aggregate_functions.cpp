@@ -21,8 +21,7 @@ extern "C"
 #include "../../src/util/arr.h"
 
 // Declaration of used functions not in header files
-extern void _BuildReturnExpressions(ExecutionPlanSegment *segment,
-									const cypher_astnode_t *ret_clause, AST *ast);
+extern AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause, AST *ast);
 extern AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count);
 
 
@@ -32,7 +31,6 @@ extern AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count);
 
 class AggregateTest: public ::testing::Test {
   protected:
-	Record r = NULL;
 	static void SetUpTestCase() {
 		// Use the malloc family for allocations
 		Alloc_Reset();
@@ -51,10 +49,7 @@ AR_ExpNode *_exp_from_query(const char *query) {
 	AST *ast = AST_Build(parse_result);
 
 	const cypher_astnode_t *ret_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
-	ExecutionPlanSegment *segment = (ExecutionPlanSegment *)rm_malloc(sizeof(ExecutionPlanSegment));
-	_BuildReturnExpressions(segment, ret_clause, NULL);
-
-	return segment->projections[0];
+	return _BuildReturnExpressions(ret_clause, ast)[0];
 }
 
 // Count valid entities
@@ -62,7 +57,6 @@ TEST_F(AggregateTest, CountTest) {
 	SIValue result;
 	const char *query;
 	AR_ExpNode *arExp;
-	Record r = Record_New(0);
 
 	/* count(1) */
 	query = "RETURN count(1)";
@@ -70,9 +64,9 @@ TEST_F(AggregateTest, CountTest) {
 
 	int num_values = 5;
 	for(int i = 0; i < num_values; i++)
-		AR_EXP_Aggregate(arExp, r);
+		AR_EXP_Aggregate(arExp, NULL);
 	AR_EXP_Reduce(arExp);
-	result = AR_EXP_Evaluate(arExp, r);
+	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_EQ(result.longval, num_values);
 	AR_EXP_Free(arExp);
 }
@@ -83,7 +77,6 @@ TEST_F(AggregateTest, PartialCountTest) {
 	AR_ExpNode *arExp;
 	AR_ExpNode *arExpOne;
 	AR_ExpNode *arExpNULL;
-	Record r = Record_New(0);
 
 	query = "RETURN 1";
 	arExpOne = _exp_from_query(query);
@@ -103,10 +96,10 @@ TEST_F(AggregateTest, PartialCountTest) {
 			arExp->op.children[0] = arExpOne;
 		else
 			arExp->op.children[0] = arExpNULL;
-		AR_EXP_Aggregate(arExp, r);
+		AR_EXP_Aggregate(arExp, NULL);
 	}
 	AR_EXP_Reduce(arExp);
-	SIValue res = AR_EXP_Evaluate(arExp, r);
+	SIValue res = AR_EXP_Evaluate(arExp, NULL);
 
 	// The counted result should be half the number of inserted entities,
 	// as the null values are ignored.
@@ -163,11 +156,11 @@ TEST_F(AggregateTest, PercentileContTest) {
 			perc->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(j * 2));
 			// The last child of this node will be the requested percentile
 			perc->op.children[1] = test_percentiles[i];
-			AR_EXP_Aggregate(perc, r);
+			AR_EXP_Aggregate(perc, NULL);
 		}
 		// Reduce sorts the list and applies the percentile formula
 		AR_EXP_Reduce(perc);
-		result = AR_EXP_Evaluate(perc, r);
+		result = AR_EXP_Evaluate(perc, NULL);
 		ASSERT_EQ(result.doubleval, expected_values[i]);
 		AR_EXP_Free(perc);
 	}
@@ -196,12 +189,12 @@ TEST_F(AggregateTest, PercentileDiscTest) {
 			perc->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(j * 2));
 			// The last child of this node will be the requested percentile
 			perc->op.children[1] = test_percentiles[i];
-			AR_EXP_Aggregate(perc, r);
+			AR_EXP_Aggregate(perc, NULL);
 		}
 		// Reduce sorts the list and applies the percentile formula
 		AR_EXP_Reduce(perc);
-		SIValue res = AR_EXP_Evaluate(perc, r);
-		expected_outcome = AR_EXP_Evaluate(expectedResults[expected[i]], r);
+		SIValue res = AR_EXP_Evaluate(perc, NULL);
+		expected_outcome = AR_EXP_Evaluate(expectedResults[expected[i]], NULL);
 		ASSERT_EQ(res.doubleval, expected_outcome.doubleval);
 		AR_EXP_Free(perc);
 	}
@@ -212,9 +205,9 @@ TEST_F(AggregateTest, StDevTest) {
 	// Edge case - operation called on < 2 values
 	AR_ExpNode *stdev = AR_EXP_NewOpNode("stDev", 1);
 	stdev->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(5.1));
-	AR_EXP_Aggregate(stdev, r);
+	AR_EXP_Aggregate(stdev, NULL);
 	AR_EXP_Reduce(stdev);
-	SIValue result = AR_EXP_Evaluate(stdev, r);
+	SIValue result = AR_EXP_Evaluate(stdev, NULL);
 	ASSERT_EQ(result.doubleval, 0);
 	AR_EXP_Free(stdev);
 
@@ -223,7 +216,7 @@ TEST_F(AggregateTest, StDevTest) {
 	double sum = 0;
 	for(int i = 1; i <= 10; i++) {
 		stdev->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(i));
-		AR_EXP_Aggregate(stdev, r);
+		AR_EXP_Aggregate(stdev, NULL);
 		sum += i;
 		// Avoide double free on the last value.
 		if(i < 10) AR_EXP_Free(stdev->op.children[0]);
@@ -237,7 +230,7 @@ TEST_F(AggregateTest, StDevTest) {
 	double sample_result = sqrt(sample_variance);
 
 	AR_EXP_Reduce(stdev);
-	result = AR_EXP_Evaluate(stdev, r);
+	result = AR_EXP_Evaluate(stdev, NULL);
 
 	ASSERT_EQ(result.doubleval, sample_result);
 	AR_EXP_Free(stdev);
@@ -246,7 +239,7 @@ TEST_F(AggregateTest, StDevTest) {
 	AR_ExpNode *stdevp = AR_EXP_NewOpNode("stDevP", 1);
 	for(int i = 1; i <= 10; i++) {
 		stdevp->op.children[0] = AR_EXP_NewConstOperandNode(SI_DoubleVal(i));
-		AR_EXP_Aggregate(stdevp, r);
+		AR_EXP_Aggregate(stdevp, NULL);
 		// Avoide double free on the last value.
 		if(i < 10) AR_EXP_Free(stdevp->op.children[0]);
 	}
@@ -255,7 +248,7 @@ TEST_F(AggregateTest, StDevTest) {
 	double pop_result = sqrt(pop_variance);
 
 	AR_EXP_Reduce(stdevp);
-	result = AR_EXP_Evaluate(stdevp, r);
+	result = AR_EXP_Evaluate(stdevp, NULL);
 
 	ASSERT_EQ(result.doubleval, pop_result);
 	AR_EXP_Free(stdevp);

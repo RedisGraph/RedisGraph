@@ -9,6 +9,7 @@
 #include "../query_ctx.h"
 #include "../index/index.h"
 #include "../util/rmalloc.h"
+#include "../parser/parser.h"
 #include "../execution_plan/execution_plan.h"
 
 GraphContext *_empty_graph_context() {
@@ -45,7 +46,7 @@ void _MGraph_Explain(void *args) {
 	QueryCtx_SetRedisModuleCtx(ctx);
 
 	// Parse the query to construct an AST
-	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+	cypher_parse_result_t *parse_result = parse(query);
 	if(parse_result == NULL) goto cleanup;
 
 	// Perform query validations

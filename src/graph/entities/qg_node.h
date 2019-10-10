@@ -14,7 +14,6 @@
 struct QGEdge;
 
 typedef struct {
-	uint id;                   /* Unique QueryGraph ID for Record mapping */
 	int labelID;               /* Label ID */
 	const char *label;         /* Label string */
 	const char *alias;         /* User-provided alias associated with this node */
@@ -23,7 +22,7 @@ typedef struct {
 } QGNode;
 
 /* Creates a new node. */
-QGNode *QGNode_New(const char *label, const char *alias, uint id);
+QGNode *QGNode_New(const char *label, const char *alias);
 
 /* Returns number of edges pointing into node. */
 int QGNode_IncomeDegree(const QGNode *n);

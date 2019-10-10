@@ -23,6 +23,16 @@ static inline char *rm_strdup(const char *s) {
 	return RedisModule_Strdup(s);
 }
 
+static inline char *rm_strndup(const char *s, size_t n) {
+	char *ret = (char *)rm_malloc(n + 1);
+
+	if(ret) {
+		ret[n] = '\0';
+		memcpy(ret, s, n);
+	}
+	return ret;
+}
+
 #endif
 #ifndef REDIS_MODULE_TARGET
 /* for non redis module targets */
@@ -31,6 +41,7 @@ static inline char *rm_strdup(const char *s) {
 #define rm_calloc calloc
 #define rm_realloc realloc
 #define rm_strdup strdup
+#define rm_strndup strndup
 #endif
 
 #define rm_new(x) rm_malloc(sizeof(x))

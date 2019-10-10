@@ -6,30 +6,23 @@
 
 #include "query_graph.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "../schema/schema.h"
-#include "rax.h"
+#include "../../deps/rax/rax.h"
 #include <assert.h>
 
-static void _BuildQueryGraphAddNode(const GraphContext *gc,
-									const AST *ast,
-									const cypher_astnode_t *ast_entity,
-									QueryGraph *qg) {
-	// Retrieve the AST ID of this reference.
-	uint id = AST_GetEntityIDFromReference(ast, ast_entity);
-	assert(id != IDENTIFIER_NOT_FOUND);
+static void _BuildQueryGraphAddNode(QueryGraph *qg, const cypher_astnode_t *ast_entity) {
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	const cypher_astnode_t *identifier = cypher_ast_node_pattern_get_identifier(ast_entity);
+	const char *alias = cypher_ast_identifier_get_name(identifier);
 
-	// Look up this AST ID in the QueryGraph.
-	// This node may already exist if it appears multiple times in query patterns.
-	QGNode *n = QueryGraph_GetNodeByID(qg, id);
+	/* Look up this alias in the QueryGraph.
+	 * This node may already exist if it appears multiple times in query patterns. */
+	QGNode *n = QueryGraph_GetNodeByAlias(qg, alias);
 
 	if(n == NULL) {
 		// Node has not been mapped; create it.
-		const char *alias = NULL;
-		const cypher_astnode_t *ast_alias = cypher_ast_node_pattern_get_identifier(ast_entity);
-		if(ast_alias) alias = cypher_ast_identifier_get_name(ast_alias);
-
-		n = QGNode_New(NULL, alias, id);
-
+		n = QGNode_New(NULL, alias);
 		QueryGraph_AddNode(qg, n);
 	}
 
@@ -54,24 +47,17 @@ static void _BuildQueryGraphAddNode(const GraphContext *gc,
 	}
 }
 
-static void _BuildQueryGraphAddEdge(const GraphContext *gc,
-									const AST *ast,
-									const cypher_astnode_t *ast_entity,
-									QGNode *src,
-									QGNode *dest,
-									QueryGraph *qg) {
-	// Retrieve the AST ID of this reference.
-	uint id = AST_GetEntityIDFromReference(ast, ast_entity);
-	assert(id != IDENTIFIER_NOT_FOUND);
+static void _BuildQueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_entity,
+									QGNode *src, QGNode *dest) {
+
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(ast_entity);
+	const char *alias = cypher_ast_identifier_get_name(identifier);
 
 	// Each edge can only appear once in a QueryGraph.
-	assert(QueryGraph_GetEdgeByID(qg, id) == NULL);
+	assert(QueryGraph_GetEdgeByAlias(qg, alias) == NULL);
 
-	const char *alias = NULL;
-	const cypher_astnode_t *ast_alias = cypher_ast_rel_pattern_get_identifier(ast_entity);
-	if(ast_alias) alias = cypher_ast_identifier_get_name(ast_alias);
-
-	QGEdge *e = QGEdge_New(NULL, NULL, NULL, alias, id);
+	QGEdge *e = QGEdge_New(NULL, NULL, NULL, alias);
 
 	// Swap the source and destination for left-pointing relations
 	if(cypher_ast_rel_pattern_get_direction(ast_entity) == CYPHER_REL_INBOUND) {
@@ -131,33 +117,34 @@ void QueryGraph_ConnectNodes(QueryGraph *qg, QGNode *src, QGNode *dest, QGEdge *
 	qg->edges = array_append(qg->edges, e);
 }
 
-void QueryGraph_AddPath(const GraphContext *gc, const AST *ast, QueryGraph *qg,
-						const cypher_astnode_t *path) {
+void QueryGraph_AddPath(QueryGraph *qg, const GraphContext *gc, const cypher_astnode_t *path) {
 	uint nelems = cypher_ast_pattern_path_nelements(path);
 	/* Introduce nodes first. Nodes are positioned at every even offset
 	 * into the path (0, 2, ...) */
 	for(uint i = 0; i < nelems; i += 2) {
 		const cypher_astnode_t *ast_node = cypher_ast_pattern_path_get_element(path, i);
-		_BuildQueryGraphAddNode(gc, ast, ast_node, qg);
+		_BuildQueryGraphAddNode(qg, ast_node);
 	}
 
 	/* Every odd offset corresponds to an edge in a path. */
 	for(uint i = 1; i < nelems; i += 2) {
 		// Retrieve the QGNode corresponding to the node left of this edge.
-		const cypher_astnode_t *l_entity = cypher_ast_pattern_path_get_element(path, i - 1);
-		uint left_id = AST_GetEntityIDFromReference(ast, l_entity);
-		QGNode *left = QueryGraph_GetNodeByID(qg, left_id);
+		const cypher_astnode_t *l_node = cypher_ast_pattern_path_get_element(path, i - 1);
+		const cypher_astnode_t *l_node_id = cypher_ast_node_pattern_get_identifier(l_node);
+		const char *l_alias = cypher_ast_identifier_get_name(l_node_id);
+		QGNode *left = QueryGraph_GetNodeByAlias(qg, l_alias);
 
 		// Retrieve the QGNode corresponding to the node right of this edge.
-		const cypher_astnode_t *r_entity = cypher_ast_pattern_path_get_element(path, i + 1);
-		uint right_id = AST_GetEntityIDFromReference(ast, r_entity);
-		QGNode *right = QueryGraph_GetNodeByID(qg, right_id);
+		const cypher_astnode_t *r_node = cypher_ast_pattern_path_get_element(path, i + 1);
+		const cypher_astnode_t *r_node_id = cypher_ast_node_pattern_get_identifier(r_node);
+		const char *r_alias = cypher_ast_identifier_get_name(r_node_id);
+		QGNode *right = QueryGraph_GetNodeByAlias(qg, r_alias);
 
 		// Retrieve the AST reference to this edge.
 		const cypher_astnode_t *entity = cypher_ast_pattern_path_get_element(path, i);
 
 		// Build and add a QGEdge representing this entity to the QueryGraph.
-		_BuildQueryGraphAddEdge(gc, ast, entity, left, right, qg);
+		_BuildQueryGraphAddEdge(qg, entity, left, right);
 	}
 }
 
@@ -167,7 +154,7 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 	uint edge_count;
 	// The initial node and edge arrays will be large enough to accommodate all AST entities
 	// (which is overkill, consider reducing)
-	node_count = edge_count = raxSize(ast->entity_map);
+	node_count = edge_count = raxSize(ast->referenced_entities);
 	QueryGraph *qg = QueryGraph_New(node_count, edge_count);
 
 	// We are interested in every path held in a MATCH pattern,
@@ -181,7 +168,7 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 			uint npaths = cypher_ast_pattern_npaths(pattern);
 			for(uint j = 0; j < npaths; j ++) {
 				const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
-				QueryGraph_AddPath(gc, ast, qg, path);
+				QueryGraph_AddPath(qg, gc, path);
 			}
 		}
 		array_free(match_clauses);
@@ -193,7 +180,7 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 		uint merge_count = array_len(merge_clauses);
 		for(uint i = 0; i < merge_count; i ++) {
 			const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clauses[i]);
-			QueryGraph_AddPath(gc, ast, qg, path);
+			QueryGraph_AddPath(qg, gc, path);
 		}
 		array_free(merge_clauses);
 	}
@@ -201,40 +188,26 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 	return qg;
 }
 
-QGNode *QueryGraph_GetNodeByID(const QueryGraph *qg, uint id) {
+QGNode *QueryGraph_GetNodeByAlias(const QueryGraph *qg, const char *alias) {
 	uint node_count = QueryGraph_NodeCount(qg);
 	for(uint i = 0; i < node_count; i ++) {
-		if(id == qg->nodes[i]->id) return qg->nodes[i];
+		if(strcmp(qg->nodes[i]->alias, alias) == 0) return qg->nodes[i];
 	}
 	return NULL;
 }
 
-QGEdge *QueryGraph_GetEdgeByID(const QueryGraph *qg, uint id) {
+QGEdge *QueryGraph_GetEdgeByAlias(const QueryGraph *qg, const char *alias) {
 	uint edge_count = QueryGraph_EdgeCount(qg);
 	for(uint i = 0; i < edge_count; i ++) {
-		if(id == qg->edges[i]->id) return qg->edges[i];
+		if(strcmp(qg->edges[i]->alias, alias) == 0) return qg->edges[i];
 	}
 	return NULL;
 }
 
-GraphEntityType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *alias) {
-	// TODO weak logic
-	uint count = QueryGraph_NodeCount(qg);
-	for(uint i = 0; i < count; i ++) {
-		const char *entity_alias = qg->nodes[i]->alias;
-		if(!entity_alias) continue;
-		if(!strcmp(entity_alias, alias)) return GETYPE_NODE;
-	}
-
-	// Unnecessary if the alias is guaranteed to be in QueryGraph.
-	count = QueryGraph_EdgeCount(qg);
-	for(uint i = 0; i < count; i ++) {
-		const char *entity_alias = qg->edges[i]->alias;
-		if(!entity_alias) continue;
-		if(!strcmp(entity_alias, alias)) return GETYPE_EDGE;
-	}
-
-	return GETYPE_UNKNOWN;
+EntityType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *alias) {
+	if(QueryGraph_GetNodeByAlias(qg, alias) != NULL) return ENTITY_NODE;
+	if(QueryGraph_GetEdgeByAlias(qg, alias) != NULL) return ENTITY_EDGE;
+	return ENTITY_UNKNOWN;
 }
 
 QueryGraph *QueryGraph_Clone(const QueryGraph *qg) {
@@ -252,8 +225,8 @@ QueryGraph *QueryGraph_Clone(const QueryGraph *qg) {
 	// Clone edges.
 	for(uint i = 0; i < edge_count; i++) {
 		QGEdge *e = qg->edges[i];
-		QGNode *src = QueryGraph_GetNodeByID(clone, e->src->id);
-		QGNode *dest = QueryGraph_GetNodeByID(clone, e->dest->id);
+		QGNode *src = QueryGraph_GetNodeByAlias(clone, e->src->alias);
+		QGNode *dest = QueryGraph_GetNodeByAlias(clone, e->dest->alias);
 		assert(src && dest);
 		QGEdge *clone_edge = QGEdge_Clone(e);
 		QueryGraph_ConnectNodes(clone, src, dest, clone_edge);
@@ -284,8 +257,9 @@ QGNode *QueryGraph_RemoveNode(QueryGraph *qg, QGNode *n) {
 
 	// Remove node from graph nodes.
 	uint node_count = QueryGraph_NodeCount(qg);
-	for(uint i = 0; i < node_count; i++) {
-		if(n->id == qg->nodes[i]->id) {
+	uint i = 0;
+	for(; i < node_count; i++) {
+		if(n == qg->nodes[i]) {
 			array_del_fast(qg->nodes, i);
 			break;
 		}
@@ -303,13 +277,13 @@ QGEdge *QueryGraph_RemoveEdge(QueryGraph *qg, QGEdge *e) {
 
 	/* Remove edge from query graph. */
 	uint edge_count = QueryGraph_EdgeCount(qg);
-	for(uint i = 0; i < edge_count; i++) {
-		if(e->id == qg->edges[i]->id) {
+	uint i = 0;
+	for(; i < edge_count; i++) {
+		if(e == qg->edges[i]) {
 			array_del_fast(qg->edges, i);
 			break;
 		}
 	}
-
 	return e;
 }
 
@@ -337,7 +311,7 @@ QueryGraph **QueryGraph_ConnectedComponents(const QueryGraph *qg) {
 			n = array_pop(q);
 
 			// Mark n as visited.
-			if(!raxInsert(visited, (unsigned char *)&n->id, sizeof(n->id), NULL, NULL)) {
+			if(!raxInsert(visited, (unsigned char *)n->alias, strlen(n->alias), NULL, NULL)) {
 				// We've already processed n.
 				continue;
 			}
@@ -345,12 +319,12 @@ QueryGraph **QueryGraph_ConnectedComponents(const QueryGraph *qg) {
 			// Expand node N by visiting all of its neighbors
 			for(int i = 0; i < array_len(n->outgoing_edges); i++) {
 				QGEdge *e = n->outgoing_edges[i];
-				seen = raxFind(visited, (unsigned char *)&e->dest->id, sizeof(e->dest->id));
+				seen = raxFind(visited, (unsigned char *)e->dest->alias, strlen(e->dest->alias));
 				if(seen == raxNotFound) q = array_append(q, e->dest);
 			}
 			for(int i = 0; i < array_len(n->incoming_edges); i++) {
 				QGEdge *e = n->incoming_edges[i];
-				seen = raxFind(visited, (unsigned char *)&e->src->id, sizeof(e->src->id));
+				seen = raxFind(visited, (unsigned char *)e->src->alias, strlen(e->src->alias));
 				if(seen == raxNotFound) q = array_append(q, e->src);
 			}
 		}
@@ -363,7 +337,7 @@ QueryGraph **QueryGraph_ConnectedComponents(const QueryGraph *qg) {
 		for(uint i = 0; i < node_count; i++) {
 			void *reachable;
 			n = g->nodes[i];
-			reachable = raxFind(visited, (unsigned char *)&n->id, sizeof(n->id));
+			reachable = raxFind(visited, (unsigned char *)n->alias, strlen(n->alias));
 
 			/* If node is reachable, which means it is part of the
 			 * connected component, then remove it from the graph,
@@ -373,7 +347,7 @@ QueryGraph **QueryGraph_ConnectedComponents(const QueryGraph *qg) {
 				QGNode *removed = QueryGraph_RemoveNode(g, n);
 				QGNode_Free(removed);
 			} else {
-				n = QueryGraph_GetNodeByID(cc, n->id);
+				n = QueryGraph_GetNodeByAlias(cc, n->alias);
 				QueryGraph_RemoveNode(cc, n);
 			}
 		}
@@ -422,3 +396,4 @@ void QueryGraph_Free(QueryGraph *qg) {
 	array_free(qg->edges);
 	rm_free(qg);
 }
+

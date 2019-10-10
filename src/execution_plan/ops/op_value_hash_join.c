@@ -11,6 +11,12 @@
 #include "../../util/qsort.h"
 #include <assert.h>
 
+/* Forward declarations. */
+static OpResult ValueHashJoinInit(OpBase *opBase);
+static Record ValueHashJoinConsume(OpBase *opBase);
+static OpResult ValueHashJoinReset(OpBase *opBase);
+static void ValueHashJoinFree(OpBase *opBase);
+
 /* Determins order between two records by inspecting
  * element stored at postion idx. */
 static bool _record_islt(Record l, Record r, uint idx) {
@@ -161,30 +167,25 @@ static int ValueHashJoinToString(const OpBase *ctx, char *buff, uint buff_len) {
 }
 
 /* Creates a new valueHashJoin operation */
-OpBase *NewValueHashJoin(AR_ExpNode *lhs_exp, AR_ExpNode *rhs_exp) {
-	OpValueHashJoin *valueHashJoin = malloc(sizeof(OpValueHashJoin));
-	valueHashJoin->rhs_rec = NULL;
-	valueHashJoin->lhs_exp = lhs_exp;
-	valueHashJoin->rhs_exp = rhs_exp;
-	valueHashJoin->intersect_idx = -1;
-	valueHashJoin->cached_records = NULL;
-	valueHashJoin->join_value_rec_idx = -1;
-	valueHashJoin->number_of_intersections = 0;
+OpBase *NewValueHashJoin(const ExecutionPlan *plan, AR_ExpNode *lhs_exp, AR_ExpNode *rhs_exp) {
+	OpValueHashJoin *op = malloc(sizeof(OpValueHashJoin));
+	op->rhs_rec = NULL;
+	op->lhs_exp = lhs_exp;
+	op->rhs_exp = rhs_exp;
+	op->intersect_idx = -1;
+	op->cached_records = NULL;
+	op->join_value_rec_idx = -1;
+	op->number_of_intersections = 0;
 
 	// Set our Op operations
-	OpBase_Init(&valueHashJoin->op);
-	valueHashJoin->op.name = "Value Hash Join";
-	valueHashJoin->op.type = OPType_VALUE_HASH_JOIN;
-	valueHashJoin->op.free = ValueHashJoinFree;
-	valueHashJoin->op.init = ValueHashJoinInit;
-	valueHashJoin->op.reset = ValueHashJoinReset;
-	valueHashJoin->op.consume = ValueHashJoinConsume;
-	valueHashJoin->op.toString = ValueHashJoinToString;
+	OpBase_Init((OpBase *)op, OPType_VALUE_HASH_JOIN, "Value Hash Join", ValueHashJoinInit,
+				ValueHashJoinConsume, ValueHashJoinReset, ValueHashJoinToString,
+				ValueHashJoinFree, plan);
 
-	return (OpBase *)valueHashJoin;
+	return (OpBase *)op;
 }
 
-OpResult ValueHashJoinInit(OpBase *ctx) {
+static OpResult ValueHashJoinInit(OpBase *ctx) {
 	assert(ctx->childCount == 2);
 	return OP_OK;
 }
@@ -192,7 +193,7 @@ OpResult ValueHashJoinInit(OpBase *ctx) {
 /* Produce a record by joining
  * records coming from the left and right hand side
  * of this operation. */
-Record ValueHashJoinConsume(OpBase *opBase) {
+static Record ValueHashJoinConsume(OpBase *opBase) {
 	OpValueHashJoin *op = (OpValueHashJoin *)opBase;
 	OpBase *right_child = op->op.children[1];
 
@@ -250,7 +251,7 @@ Record ValueHashJoinConsume(OpBase *opBase) {
 	}
 }
 
-OpResult ValueHashJoinReset(OpBase *ctx) {
+static OpResult ValueHashJoinReset(OpBase *ctx) {
 	OpValueHashJoin *op = (OpValueHashJoin *)ctx;
 	op->intersect_idx = -1;
 	op->number_of_intersections = 0;
@@ -274,8 +275,8 @@ OpResult ValueHashJoinReset(OpBase *ctx) {
 	return OP_OK;
 }
 
-/* Frees valueHashJoin */
-void ValueHashJoinFree(OpBase *ctx) {
+/* Frees ValueHashJoin */
+static void ValueHashJoinFree(OpBase *ctx) {
 	OpValueHashJoin *op = (OpValueHashJoin *)ctx;
 	// Free cached records.
 	if(op->rhs_rec) {

@@ -10,55 +10,56 @@
 #include "../../query_ctx.h"
 #include "../../util/rmalloc.h"
 
-static AR_ExpNode **_getOrderExpressions(OpBase *op) {
-	if(op == NULL) return NULL;
-	// No need to look further if we haven't encountered a sort operation
-	// before a project/aggregate op
-	if(op->type == OPType_PROJECT || op->type == OPType_AGGREGATE) return NULL;
+/* Forward declarations. */
+static OpResult ProjectInit(OpBase *opBase);
+static Record ProjectConsume(OpBase *opBase);
+static void ProjectFree(OpBase *opBase);
 
-	if(op->type == OPType_SORT) {
-		OpSort *sort = (OpSort *)op;
-		return sort->expressions;
+OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode **order_exps) {
+	OpProject *op = malloc(sizeof(OpProject));
+	op->exps = exps;
+	op->order_exps = order_exps;
+	op->order_exp_count = (order_exps) ? array_len(order_exps) : 0;
+	op->singleResponse = false;
+	if(exps == NULL) { // WITH/RETURN * projection, expressions will be populated later
+		op->project_all = true;
+		op->exp_count = 0;
+		op->record_offsets = NULL;
+	} else {
+		op->project_all = false;
+		op->exp_count = array_len(exps);
+		op->record_offsets = array_new(uint, op->exp_count);
 	}
-	return _getOrderExpressions(op->parent);
-}
-
-OpBase *NewProjectOp(AR_ExpNode **exps, uint *modifies) {
-	AST *ast = QueryCtx_GetAST();
-	OpProject *project = malloc(sizeof(OpProject));
-	project->ast = ast;
-	project->exps = exps;
-	project->exp_count = array_len(exps);
-	project->order_exps = NULL;
-	project->order_exp_count = 0;
-	project->singleResponse = false;
 
 	// Set our Op operations
-	OpBase_Init(&project->op);
-	project->op.name = "Project";
-	project->op.type = OPType_PROJECT;
-	project->op.consume = ProjectConsume;
-	project->op.init = ProjectInit;
-	project->op.reset = ProjectReset;
-	project->op.free = ProjectFree;
+	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", ProjectInit, ProjectConsume,
+				NULL, NULL, ProjectFree, plan);
 
-	project->op.modifies = modifies;
+	for(uint i = 0; i < op->exp_count; i ++) {
+		// The projected record will associate values with their resolved name
+		// to ensure that space is allocated for each entry.
+		int record_idx = OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
+		op->record_offsets = array_append(op->record_offsets, record_idx);
+	}
 
-	return (OpBase *)project;
+	return (OpBase *)op;
 }
 
-OpResult ProjectInit(OpBase *opBase) {
+static OpResult ProjectInit(OpBase *opBase) {
 	OpProject *op = (OpProject *)opBase;
-	AR_ExpNode **order_exps = _getOrderExpressions(opBase->parent);
-	if(order_exps) {
-		op->order_exps = order_exps;
-		op->order_exp_count = array_len(order_exps);
+
+	for(uint i = 0; i < op->order_exp_count; i ++) {
+		// TODO We could do this in the NewProjectOp routine except for issues with STAR
+		// projections combined with ORDER BY clauses.
+		// Update the 'modifies' and record_offsets arrays to include sort expressions.
+		int record_idx = OpBase_Modifies((OpBase *)op, op->order_exps[i]->resolved_name);
+		op->record_offsets = array_append(op->record_offsets, record_idx);
 	}
 
 	return OP_OK;
 }
 
-Record ProjectConsume(OpBase *opBase) {
+static Record ProjectConsume(OpBase *opBase) {
 	OpProject *op = (OpProject *)opBase;
 	Record r = NULL;
 
@@ -73,18 +74,18 @@ Record ProjectConsume(OpBase *opBase) {
 
 		if(op->singleResponse) return NULL;
 		op->singleResponse = true;
-		r = Record_New(opBase->record_map->record_len);  // Fake empty record.
+		r = OpBase_CreateRecord(opBase);
 	}
 
-	Record projection = Record_New(op->exp_count + op->order_exp_count);
-
+	Record projection = OpBase_CreateRecord(opBase);
 	// Track the inherited Record and the newly-allocated Record so that they may be freed if execution fails.
 	OpBase_AddVolatileRecord(opBase, r);
 	OpBase_AddVolatileRecord(opBase, projection);
 
-	int rec_idx = 0;
 	for(unsigned short i = 0; i < op->exp_count; i++) {
-		SIValue v = AR_EXP_Evaluate(op->exps[i], r);
+		AR_ExpNode *exp = op->exps[i];
+		SIValue v = AR_EXP_Evaluate(exp, r);
+		int rec_idx = op->record_offsets[i];
 		/* Persisting a value is only necessary here if 'v' refers to a scalar held in Record 'r'.
 		 * Graph entities don't need to be persisted here as Record_Add will copy them internally.
 		 * The RETURN projection here requires persistence:
@@ -92,16 +93,16 @@ Record ProjectConsume(OpBase *opBase) {
 		 * TODO This is a rare case; the logic of when to persist can be improved.  */
 		if(!(v.type & SI_GRAPHENTITY)) SIValue_Persist(&v);
 		Record_Add(projection, rec_idx, v);
-		rec_idx++;
 	}
 
 	// Project Order expressions.
 	for(unsigned short i = 0; i < op->order_exp_count; i++) {
-		SIValue v = AR_EXP_Evaluate(op->order_exps[i], r);
+		AR_ExpNode *order_exp = op->order_exps[i];
+		SIValue v = AR_EXP_Evaluate(order_exp, r);
+		int rec_idx = op->record_offsets[i + op->exp_count];
 		// TODO persisting here can be improved as described above.
 		if(!(v.type & SI_GRAPHENTITY)) SIValue_Persist(&v);
 		Record_Add(projection, rec_idx, v);
-		rec_idx++;
 	}
 
 	Record_Free(r);
@@ -109,15 +110,24 @@ Record ProjectConsume(OpBase *opBase) {
 	return projection;
 }
 
-OpResult ProjectReset(OpBase *ctx) {
-	return OP_OK;
-}
-
-void ProjectFree(OpBase *ctx) {
+static void ProjectFree(OpBase *ctx) {
 	OpProject *op = (OpProject *)ctx;
-	// TODO These expressions are typically freed as part of
-	// _ExecutionPlanSegment_Free, but this forms a leak in scenarios
-	// like the ReduceCount optimization.
-	// if (op->exps) array_free(op->exps);
+
+	if(op->exps) {
+		uint exp_count = array_len(op->exps);
+		for(uint i = 0; i < exp_count; i ++) {
+			// Expression names need to be freed if this was a * projection.
+			if(op->project_all) rm_free((char *)op->exps[i]->resolved_name);
+			AR_EXP_Free(op->exps[i]);
+		}
+		array_free(op->exps);
+		op->exps = NULL;
+	}
+
+	if(op->record_offsets) {
+		array_free(op->record_offsets);
+		op->record_offsets = NULL;
+	}
+
 }
 

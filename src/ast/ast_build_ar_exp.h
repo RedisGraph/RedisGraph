@@ -6,9 +6,10 @@
 
 #include "ast.h"
 #include "ast_shared.h"
-#include "../execution_plan/record_map.h"
 #include "../arithmetic/arithmetic_expression.h"
 
 #pragma once
 
-AR_ExpNode *AR_EXP_FromExpression(RecordMap *record_map, const cypher_astnode_t *expr);
+/* Construct an arithmetic expression tree from a CYPHER_AST_EXPRESSION node. */
+AR_ExpNode *AR_EXP_FromExpression(const cypher_astnode_t *expr);
+

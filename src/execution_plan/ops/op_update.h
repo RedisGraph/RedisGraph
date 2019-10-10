@@ -4,10 +4,10 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OP_UPDATE_H
-#define __OP_UPDATE_H
+#pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
 #include "../../resultset/resultset_statistics.h"
@@ -41,11 +41,5 @@ typedef struct {
 	bool updates_commited;                      /* Updates performed? */
 } OpUpdate;
 
-OpBase *NewUpdateOp(GraphContext *gc, EntityUpdateEvalCtx *update_exps, uint update_exp_count,
-					ResultSetStatistics *stats);
-OpResult OpUpdateInit(OpBase *opBase);
-Record OpUpdateConsume(OpBase *opBase);
-OpResult OpUpdateReset(OpBase *ctx);
-void OpUpdateFree(OpBase *ctx);
-
-#endif /* __OP_UPDATE_H */
+OpBase *NewUpdateOp(const ExecutionPlan *plan, GraphContext *gc, EntityUpdateEvalCtx *update_exps,
+					uint update_exp_count, ResultSetStatistics *stats);

@@ -10,7 +10,7 @@
 void ResultSet_EmitNOPHeader(RedisModuleCtx *ctx, const char **columns, const Record r) {
 
 }
-void ResultSet_EmitNOPRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r) {
+void ResultSet_EmitNOPRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r, uint numcols) {
 
 }
 

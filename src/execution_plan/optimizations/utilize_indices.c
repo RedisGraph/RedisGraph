@@ -93,7 +93,7 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 			RediSearch_QueryNodeAddChild(node, right);
 			break;
 		default:
-			assert("unexpected conditional operation");
+			assert(false && "unexpected conditional operation");
 		}
 		break;
 	}
@@ -123,10 +123,10 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 				node = RediSearch_CreateTokenNode(sp, field, v.stringval);
 				break;
 			case OP_NEQUAL: // !=
-				assert("Index can't utilize the 'not equals' operation.");
+				assert(false && "Index can't utilize the 'not equals' operation.");
 				break;
 			default:
-				assert("unexpected operation");
+				assert(false && "unexpected operation");
 			}
 
 			RediSearch_QueryNodeAddChild(parent, node);
@@ -154,15 +154,16 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 				node = RediSearch_CreateNumericNode(sp, field, d, d, true, true);
 				break;
 			case OP_NEQUAL: // !=
-				assert("Index can't utilize the 'not equals' operation.");
+				assert(false && "Index can't utilize the 'not equals' operation.");
 				break;
 			default:
-				assert("unexpected operation");
+				assert(false && "unexpected operation");
 			}
 			break;
 		default:
-			assert("unexpected value type");
+			assert(false && "unexpected value type");
 		}
+
 		break;
 	}
 	case FT_N_EXP: {
@@ -408,7 +409,7 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 	uint rsqnode_count = 0;
 
 	// Make sure there's an index for scanned label.
-	const char *label = scan->node->label;
+	const char *label = scan->n->label;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Index *idx = GraphContext_GetIndex(gc, label, NULL, IDX_EXACT_MATCH);
 	if(idx == NULL) return;
@@ -526,7 +527,7 @@ cleanup:
 	if(root) {
 		// Pass ownership of root to iterator.
 		RSResultsIterator *iter = RediSearch_GetResultsIterator(root, rs_idx);
-		OpBase *indexOp = NewIndexScanOp(scan->g, scan->node, scan->nodeRecIdx, rs_idx, iter);
+		OpBase *indexOp = NewIndexScanOp(scan->op.plan, scan->g, scan->n, rs_idx, iter);
 		ExecutionPlan_ReplaceOp(plan, (OpBase *)scan, indexOp);
 		OpBase_Free((OpBase *)scan);
 	}

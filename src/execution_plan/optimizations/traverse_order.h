@@ -19,6 +19,5 @@ typedef enum {
 void orderExpressions(
 	AlgebraicExpression **exps,     // Expressions to order.
 	uint exps_count,                // Number of expressions.
-	const RecordMap *record_map,    // Mapping of entity IDs to Record IDs.
 	const FT_FilterNode *filters    // Filters.
 );

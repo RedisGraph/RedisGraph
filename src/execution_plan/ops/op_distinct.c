@@ -8,21 +8,21 @@
 #include "xxhash.h"
 #include "../../util/arr.h"
 
-OpBase *NewDistinctOp(void) {
-	OpDistinct *self = malloc(sizeof(OpDistinct));
-	self->found = raxNew();
+/* Forward declarations. */
+static Record DistinctConsume(OpBase *opBase);
+static void DistinctFree(OpBase *opBase);
 
-	OpBase_Init(&self->op);
-	self->op.name = "Distinct";
-	self->op.type = OPType_DISTINCT;
-	self->op.consume = DistinctConsume;
-	self->op.reset = DistinctReset;
-	self->op.free = DistinctFree;
+OpBase *NewDistinctOp(const ExecutionPlan *plan) {
+	OpDistinct *op = malloc(sizeof(OpDistinct));
+	op->found = raxNew();
 
-	return (OpBase *)self;
+	OpBase_Init((OpBase *)op, OPType_DISTINCT, "Distinct", NULL, DistinctConsume,
+				NULL, NULL, DistinctFree, plan);
+
+	return (OpBase *)op;
 }
 
-Record DistinctConsume(OpBase *opBase) {
+static Record DistinctConsume(OpBase *opBase) {
 	OpDistinct *self = (OpDistinct *)opBase;
 	OpBase *child = self->op.children[0];
 
@@ -37,14 +37,11 @@ Record DistinctConsume(OpBase *opBase) {
 	}
 }
 
-OpResult DistinctReset(OpBase *ctx) {
-	return OP_OK;
-}
-
-void DistinctFree(OpBase *ctx) {
+static void DistinctFree(OpBase *ctx) {
 	OpDistinct *op = (OpDistinct *)ctx;
 	if(op->found) {
 		raxFree(op->found);
 		op->found = NULL;
 	}
 }
+

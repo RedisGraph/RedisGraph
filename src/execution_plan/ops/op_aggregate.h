@@ -4,43 +4,36 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OP_AGGREGATE_H__
-#define __OP_AGGREGATE_H__
+#pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../redismodule.h"
 #include "../../graph/query_graph.h"
 #include "../../grouping/group_cache.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-// Matrix, vector operations.
 typedef enum {
 	AGGREGATED,
 	NON_AGGREGATED,
 } ExpClassification;
 
-/* Aggregate
- * aggregates graph according to
- * return clause */
 typedef struct {
 	OpBase op;
-	AST *ast;
 	AR_ExpNode **exps;
 	AR_ExpNode **order_exps;
+	uint *record_offsets;                          /* Record IDs for exps and order_exps. */
 	AR_ExpNode **non_aggregated_expressions;       /* Array of arithmetic expression. */
-	ExpClassification
-	*expression_classification;  /* classifies expression as aggregated/non-aggregated. */
-	Group *group;                                  /* Last accessed group. */
+	ExpClassification *expression_classification;  /* Classifies each expression as aggregated/not. */
 	rax *groups;
+	Group *group;                                  /* Last accessed group. */
 	SIValue *group_keys;                           /* Array of values composing an aggregated group. */
 	CacheGroupIterator *group_iter;
 	Record last_record;
+	unsigned short exp_count;                      /* Number of projected expressions. */
+	unsigned short order_exp_count;                /* Number of order by expressions. */
+	bool project_all;                              /* Projects all user-defined aliases (tracked for freeing logic). */
 } OpAggregate;
 
-OpBase *NewAggregateOp(AR_ExpNode **expressions, uint *modifies);
-OpResult AggregateInit(OpBase *opBase);
-Record AggregateConsume(OpBase *opBase);
-OpResult AggregateReset(OpBase *opBase);
-void AggregateFree(OpBase *opBase);
+OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode **order_exps);
 
-#endif

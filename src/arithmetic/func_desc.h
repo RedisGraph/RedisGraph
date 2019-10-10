@@ -11,7 +11,7 @@
 
 #define VAR_ARG_LEN UINT8_MAX
 
-/* AR_Func - Function pointer */
+/* AR_Func - Function pointer to an operation with an arithmetic expression */
 typedef SIValue(*AR_Func)(SIValue *argv, int argc);
 
 typedef struct {

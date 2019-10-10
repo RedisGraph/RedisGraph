@@ -11,8 +11,8 @@
 #include "../query_ctx.h"
 #include "../graph/graph.h"
 #include "../util/rmalloc.h"
+#include "../parser/parser.h"
 #include "../execution_plan/execution_plan.h"
-#include "cypher-parser.h"
 
 static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc,
 							 const cypher_astnode_t *index_op) {
@@ -76,8 +76,7 @@ void _MGraph_Query(void *args) {
 	QueryCtx_SetRedisModuleCtx(ctx);
 
 	// Parse the query to construct an AST
-	cypher_parse_result_t *parse_result = cypher_parse(qctx->query, NULL, NULL,
-													   CYPHER_PARSE_ONLY_STATEMENTS);
+	cypher_parse_result_t *parse_result = parse(qctx->query);
 	if(parse_result == NULL) goto cleanup;
 
 	bool readonly = AST_ReadOnly(parse_result);

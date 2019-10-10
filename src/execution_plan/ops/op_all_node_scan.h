@@ -4,10 +4,10 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __OP_ALL_NODE_SCAN_H__
-#define __OP_ALL_NODE_SCAN_H__
+#pragma once
 
 #include "op.h"
+#include "../execution_plan.h"
 #include "../../graph/graph.h"
 #include "../../graph/query_graph.h"
 #include "../../graph/entities/node.h"
@@ -17,15 +17,10 @@
  * Scans entire graph */
 typedef struct {
 	OpBase op;
-	QGNode *n;
-	DataBlockIterator *iter;
+	const QGNode *n;
 	uint nodeRecIdx;
+	DataBlockIterator *iter;
 } AllNodeScan;
 
-OpBase *NewAllNodeScanOp(const Graph *g, QGNode *n, uint rec_idx);
-Record AllNodeScanConsume(OpBase *opBase);
-OpResult AllNodeScanInit(OpBase *opBase);
-OpResult AllNodeScanReset(OpBase *op);
-void AllNodeScanFree(OpBase *ctx);
+OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const Graph *g, const QGNode *n);
 
-#endif
