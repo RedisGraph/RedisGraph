@@ -75,3 +75,20 @@ class testIndexScanFlow(FlowTestsBase):
         result = redis_graph.query(query)
 
         self.env.assertEquals(result.result_set, expected_result)
+
+    def test04_test_arrays_and_in_operator(self):
+        # Validate the transformation of IN to multiple OR expressions.
+        query = "MATCH (p:person) WHERE p.age IN [1,2,3] RETURN p"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn('Index Scan', plan)
+        
+        # Validate that nested arrayes are not scaned in index.
+        query = "MATCH (p:person) WHERE p.age IN [[1,2],3] RETURN p"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertNotIn('Index Scan', plan)
+        self.env.assertIn('Label Scan', plan)
+
+        # Validate the transformation of IN to multiple OR, over a range.
+        query = "MATCH (p:person) WHERE p.age IN range(0,30) RETURN p"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn('Index Scan', plan)
