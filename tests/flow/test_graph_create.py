@@ -35,3 +35,11 @@ class testGraphCreationFlow(FlowTestsBase):
         self.env.assertEquals(result.nodes_created, 2)
         self.env.assertEquals(result.properties_set, 4)
         self.env.assertEquals(result.result_set, expected_result)
+
+    def test03_create_from_projection(self):
+        query = """UNWIND [10,20,30] AS x CREATE (p:person {age:x}) RETURN p.age ORDER BY p.age"""
+        result = redis_graph.query(query)
+        expected_result = [[10], [20], [30]]
+        self.env.assertEquals(result.nodes_created, 3)
+        self.env.assertEquals(result.properties_set, 3)
+        self.env.assertEquals(result.result_set, expected_result)
