@@ -13,22 +13,17 @@ class testWithClause(FlowTestsBase):
         redis_con = self.env.getConnection()
         redis_graph = Graph("G", redis_con)
         self.populate_graph()
-
-    
+ 
     def populate_graph(self):
         # Populate a graph with two labels, each containing the same property values but different keys.
         # Each node pair is connected by an edge from label_a to label_b
-        a_nodes = []
         for idx, v in enumerate(values):
-            node = Node(label="label_a", properties={"a_val": v, "a_idx": idx})
-            a_nodes.append(node)
-            redis_graph.add_node(node)
-        for idx, v in enumerate(values):
-            node = Node(label="label_b", properties={"b_val": v, "b_idx": idx})
-            redis_graph.add_node(node)
-            edge = Edge(a_nodes[idx], 'connects', node, properties={"edgeval": idx})
+            src = Node(label="label_a", properties={"a_val": v, "a_idx": idx})
+            dest = Node(label="label_b", properties={"b_val": v, "b_idx": idx})
+            redis_graph.add_node(src)
+            redis_graph.add_node(dest)
+            edge = Edge(src, 'connects', dest, properties={"edgeval": idx})
             redis_graph.add_edge(edge)
-
         redis_graph.commit()
     
     # Verify that graph entities specified in a WITH clause are returned properly
@@ -142,7 +137,6 @@ class testWithClause(FlowTestsBase):
         expected = [[4]]
         self.env.assertEqual(actual_result.result_set, expected)
 
-
     def test05_with_create_expressions(self):
         query = """CREATE (c:c_label {c_val: 25}) WITH c AS c RETURN c.c_val AS val"""
         actual_result = redis_graph.query(query)
@@ -189,3 +183,13 @@ class testWithClause(FlowTestsBase):
         # Verify that 2 rows and 3 columns are returned
         self.env.assertEqual(len(actual_result.result_set), 2)
         self.env.assertEqual(len(actual_result.result_set[0]), 3)
+
+    def test08_filter_projected(self):
+        # If x is odd then ceil(x/2) > floor(x/2)
+        # otherwise, x is even and ceil(x/2) == floor(x/2).
+        # ceil(5/2) = 3, floor(5/2) = 2
+        # ceil(6/2) = 3, floor(6/2) = 3.
+        query = """unwind(range(0, 10)) as x with x as x where ceil(x/2) > floor(x/2) return count(x)"""
+        actual_result = redis_graph.query(query)
+        # Expecting count of 5: [1,3,5,7,9].
+        self.env.assertEqual(actual_result.result_set[0], [5])
