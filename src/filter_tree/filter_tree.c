@@ -277,6 +277,9 @@ void _FilterTree_CollectAttributes(const FT_FilterNode *root, rax *attributes) {
 		AR_EXP_CollectAttributes(root->exp.exp, attributes);
 		break;
 	}
+	default: {
+		assert(0)
+	}
 	}
 }
 

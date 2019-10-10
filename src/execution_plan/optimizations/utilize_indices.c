@@ -40,12 +40,7 @@ void _normalize_filter(FT_FilterNode *filter) {
 		}
 		break;
 	}
-	case FT_N_COND: {
-		_normalize_filter(filter->cond.left);
-		_normalize_filter(filter->cond.right);
-		break;
-	}
-	case FT_N_EXP: {
+	default: {
 		break;
 	}
 	}
@@ -209,11 +204,15 @@ bool _simple_predicates(const FT_FilterNode *filter) {
 	return true;
 }
 
+static bool _isInFilter(OpFilter *filter) {
+	return (filter->filterTree->t == FT_N_EXP &&
+			strcasecmp(filter->filterTree->exp.exp->op.func_name, "in") == 0);
+}
+
 static bool _validateInExpression(AR_ExpNode *exp) {
-	if(!strcasecmp(exp->op.func_name, "in") == 0) return false;
 	assert(exp->op.child_count == 2);
 	AR_ExpNode *list = exp->op.children[1];
-	if(list->type != AR_EXP_OPERAND || list->operand.type != AR_EXP_CONSTANT) return false;
+	if(list->operand.type != AR_EXP_CONSTANT) return false;
 	assert(list->operand.constant.type == T_ARRAY);
 	SIValue listValue = list->operand.constant;
 	if(SIArray_Length(listValue) == 0) return false;
@@ -253,9 +252,7 @@ static void _prepareFilterOp(OpFilter *filter) {
 // Filter is applicable, normalize it.
 	_normalize_filter(filter->filterTree);
 	// See if the filter tree needed to be modified, if so, replace the original, since the op will be free.
-	if(filter->filterTree->t == FT_N_EXP &&
-	   strcasecmp(filter->filterTree->exp.exp->op.func_name, "in") == 0)
-		_transformInToOrSequence(filter);
+	if(_isInFilter(filter)) _transformInToOrSequence(filter);
 }
 
 /* Checks to see if given filter can be resolved by index. */
@@ -266,10 +263,9 @@ bool _applicableFilter(Index *idx, OpFilter *filter) {
 
 	FT_FilterNode *filter_tree = filter->filterTree;
 
-	// Make sure the filter root is not a function.
-	// TODO: As a result of issue 667, transform "IN" into a sequence of "OR" to use in RedisSearch.
+	// Make sure the filter root is not a function, other then IN
 	if(filter_tree->t == FT_N_EXP) {
-		if(!_validateInExpression(filter_tree->exp.exp)) {
+		if(!(_isInFilter(filter) && _validateInExpression(filter_tree->exp.exp))) {
 			res = false;
 			goto cleanup;
 		}
