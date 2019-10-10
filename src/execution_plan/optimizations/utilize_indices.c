@@ -29,12 +29,25 @@ int _reverseOp(int op) {
  * is of type variadic and the right-hand side is constant. */
 void _normalize_filter(FT_FilterNode *filter) {
 	// Normalize, left hand side should be variadic, right hand side const.
-	if(filter->pred.rhs->operand.type == AR_EXP_VARIADIC) {
-		// Swap.
-		AR_ExpNode *tmp = filter->pred.rhs;
-		filter->pred.rhs = filter->pred.lhs;
-		filter->pred.lhs = tmp;
-		filter->pred.op = _reverseOp(filter->pred.op);
+	switch(filter->t) {
+	case FT_N_PRED: {
+		if(filter->pred.rhs->operand.type == AR_EXP_VARIADIC) {
+			// Swap.
+			AR_ExpNode *tmp = filter->pred.rhs;
+			filter->pred.rhs = filter->pred.lhs;
+			filter->pred.lhs = tmp;
+			filter->pred.op = _reverseOp(filter->pred.op);
+		}
+		break;
+	}
+	case FT_N_COND: {
+		_normalize_filter(filter->cond.left);
+		_normalize_filter(filter->cond.right);
+		break;
+	}
+	case FT_N_EXP: {
+		break;
+	}
 	}
 }
 
@@ -206,32 +219,43 @@ static bool _validateInExpression(AR_ExpNode *exp) {
 	if(SIArray_Length(listValue) == 0) return false;
 	uint listLen = SIArray_Length(listValue);
 	for(uint i = 0; i < listLen; i++) {
-		SIValue v = SIArray_Get(listValue, i);
+		// Clone value since the array might be free later.
+		SIValue v = SI_CloneValue(SIArray_Get(listValue, i));
 		// Ignore everything other than number and strings.
 		if(!(SI_TYPE(v) & (SI_NUMERIC | T_STRING | T_BOOL))) return false;
 	}
 	return true;
 }
 
-static FT_FilterNode *_transformInToOrSequence(OpFilter *filter) {
+static void _transformInToOrSequence(OpFilter *filter) {
 	AR_ExpNode *inOp = filter->filterTree->exp.exp;
-	AR_ExpNode *lhs = inOp->op.children[0];
+	AR_ExpNode *lhs = rm_malloc(sizeof(AR_ExpNode));
+	memcpy(lhs, inOp->op.children[0], sizeof(AR_ExpNode));
 	AR_ExpNode *list = inOp->op.children[1];
 	SIValue listValue = list->operand.constant;
 	uint listLen = SIArray_Length(listValue);
-	if(listLen == 0) {
-		// TODO
-	}
 	AR_ExpNode *constant = AR_EXP_NewConstOperandNode(SIArray_Get(listValue, 0));
 	FT_FilterNode *root = FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, constant);
 	for(uint i = 1; i < listLen; i ++) {
 		FT_FilterNode *orNode = FilterTree_CreateConditionFilter(OP_OR);
 		AppendLeftChild(orNode, root);
 		constant = AR_EXP_NewConstOperandNode(SIArray_Get(listValue, i));
+		lhs = rm_malloc(sizeof(AR_ExpNode));
+		memcpy(lhs, inOp->op.children[0], sizeof(AR_ExpNode));
 		AppendRightChild(orNode, FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, constant));
 		root = orNode;
 	}
-	return root;
+	FilterTree_Free(filter->filterTree);
+	filter->filterTree = root;
+}
+
+static void _prepareFilterOp(OpFilter *filter) {
+// Filter is applicable, normalize it.
+	_normalize_filter(filter->filterTree);
+	// See if the filter tree needed to be modified, if so, replace the original, since the op will be free.
+	if(filter->filterTree->t == FT_N_EXP &&
+	   strcasecmp(filter->filterTree->exp.exp->op.func_name, "in") == 0)
+		_transformInToOrSequence(filter);
 }
 
 /* Checks to see if given filter can be resolved by index. */
@@ -245,24 +269,24 @@ bool _applicableFilter(Index *idx, OpFilter *filter) {
 	// Make sure the filter root is not a function.
 	// TODO: As a result of issue 667, transform "IN" into a sequence of "OR" to use in RedisSearch.
 	if(filter_tree->t == FT_N_EXP) {
-		if(_validateInExpression(filter_tree->exp.exp)) {
-			filter_tree = _transformInToOrSequence(filter);
-		} else {
+		if(!_validateInExpression(filter_tree->exp.exp)) {
+			res = false;
+			goto cleanup;
+		}
+	} else {
+		// Make sure the "not equal, <>" operator isn't used.
+		if(FilterTree_containsOp(filter_tree, OP_NEQUAL)) {
+			res = false;
+			goto cleanup;
+		}
+
+		if(!_simple_predicates(filter_tree)) {
 			res = false;
 			goto cleanup;
 		}
 	}
 
-	// Make sure the "not equal, <>" operator isn't used.
-	if(FilterTree_containsOp(filter_tree, OP_NEQUAL)) {
-		res = false;
-		goto cleanup;
-	}
 
-	if(!_simple_predicates(filter_tree)) {
-		res = false;
-		goto cleanup;
-	}
 
 	/* filterTree will either be a predicate or a tree with an OR root.
 	 * make sure filter doesn't contains predicates of type: a.v = b.y */
@@ -300,14 +324,9 @@ bool _applicableFilter(Index *idx, OpFilter *filter) {
 		res = false;
 		goto cleanup;
 	}
-	// Filter is applicable, normelize it.
-	_normalize_filter(filter_tree);
-	// See if the filter tree needed to be modified, if so, replace the original, since the op will be free.
-	if(filter_tree != filter->filterTree) {
-		FilterTree_Free(filter->filterTree);
-		filter->filterTree = filter_tree;
-	}
 
+	// Filter is applicable, prepare it to use in index.
+	_prepareFilterOp(filter);
 
 cleanup:
 	if(attr) raxFree(attr);
