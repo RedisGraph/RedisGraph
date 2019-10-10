@@ -368,22 +368,7 @@ static AST_Validation _ValidateInlinedProperties(const cypher_astnode_t *props, 
 		return AST_INVALID;
 	}
 
-	AST_Validation res = AST_VALID;
-	uint prop_count = cypher_ast_map_nentries(props);
-	for(uint i = 0; i < prop_count; i ++) {
-		const cypher_astnode_t *value = cypher_ast_map_get_value(props, i);
-		cypher_astnode_type_t value_type = cypher_astnode_type(value);
-		if(value_type == CYPHER_AST_IDENTIFIER) {
-			// TODO if the identifier resolves to a scalar WITH projection, it should be usable,
-			// but we can't currently differentiate.
-			res = AST_INVALID;
-			break;
-		}
-	}
-	if(res == AST_INVALID) {
-		asprintf(reason, "Identifiers cannot currently be used to set inlined properties in RedisGraph.");
-	}
-	return res;
+	return AST_VALID;
 }
 
 static AST_Validation _ValidateInlinedPropertiesOnPath(const cypher_astnode_t *path,
