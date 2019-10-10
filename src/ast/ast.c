@@ -171,6 +171,7 @@ const cypher_astnode_t **AST_GetClauses(const AST *ast, cypher_astnode_type_t ty
 AST *AST_Build(cypher_parse_result_t *parse_result) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->referenced_entities = NULL;
+	ast->annotation_ctx = NULL;
 	ast->free_root = false;
 
 	// Retrieve the AST root node from a parsed query.
@@ -180,8 +181,12 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	assert(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
 
 	ast->root = cypher_ast_statement_get_body(statement);
+
 	// Empty queries should be captured by AST validations
 	assert(ast->root);
+
+	// Annotate all graph entities with an identifier, user-provided or anonymous.
+	AST_Enrich(ast);
 
 	// Set thread-local AST
 	QueryCtx_SetAST(ast);
@@ -191,16 +196,18 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 
 AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	AST *ast = rm_malloc(sizeof(AST));
+	ast->annotation_ctx = master_ast->annotation_ctx;
 	ast->free_root = true;
 	ast->limit = UNLIMITED;
 	uint n = end_offset - start_offset;
 
-	cypher_astnode_t *clauses[n];
+	const cypher_astnode_t *clauses[n];
 	for(uint i = 0; i < n; i ++) {
-		clauses[i] = (cypher_astnode_t *)cypher_ast_query_get_clause(master_ast->root, i + start_offset);
+		clauses[i] = cypher_ast_query_get_clause(master_ast->root, i + start_offset);
 	}
 	struct cypher_input_range range = {};
-	ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n, NULL, 0, range);
+	ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n,
+								 (cypher_astnode_t **)clauses, n, range);
 
 	// TODO This overwrites the previously-held AST pointer, which could lead to inconsistencies
 	// in the future if we expect the variable to hold a different AST.
@@ -266,6 +273,10 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 	return aggregated;
 }
 
+const char *AST_GetEntityName(const AST *ast, const cypher_astnode_t *entity) {
+	return cypher_astnode_get_annotation(ast->annotation_ctx, entity);
+}
+
 // Determine the maximum number of records
 // which will be considered when evaluating an algebraic expression.
 int TraverseRecordCap(const AST *ast) {
@@ -275,7 +286,13 @@ int TraverseRecordCap(const AST *ast) {
 void AST_Free(AST *ast) {
 	if(ast == NULL) return;
 	if(ast->referenced_entities) raxFree(ast->referenced_entities);
-	if(ast->free_root) free((cypher_astnode_t *)ast->root);
+	if(ast->free_root) {
+		// This is a generated AST, free its root node.
+		cypher_astnode_free((cypher_astnode_t *)ast->root);
+	} else if(ast->annotation_ctx) {
+		// This is the master AST and an annotation context has been constructed.
+		cypher_ast_annotation_context_free(ast->annotation_ctx);
+	}
 	rm_free(ast);
 }
 

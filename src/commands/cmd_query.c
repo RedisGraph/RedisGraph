@@ -11,7 +11,6 @@
 #include "../query_ctx.h"
 #include "../graph/graph.h"
 #include "../util/rmalloc.h"
-#include "../parser/parser.h"
 #include "../execution_plan/execution_plan.h"
 
 static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc,
@@ -78,7 +77,8 @@ void Graph_Query(void *args) {
 	QueryCtx_SetRedisModuleCtx(ctx);
 
 	// Parse the query to construct an AST
-	cypher_parse_result_t *parse_result = parse(qctx->query);
+	cypher_parse_result_t *parse_result = cypher_parse(qctx->query, NULL, NULL,
+													   CYPHER_PARSE_ONLY_STATEMENTS);
 	if(parse_result == NULL) goto cleanup;
 	bool readonly = AST_ReadOnly(parse_result);
 	// If we are a replica and the query is read-only, no work needs to be done.
@@ -137,3 +137,4 @@ cleanup:
 	CommandCtx_Free(qctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 }
+

@@ -13,8 +13,8 @@
 
 static void _BuildQueryGraphAddNode(QueryGraph *qg, const cypher_astnode_t *ast_entity) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	const cypher_astnode_t *identifier = cypher_ast_node_pattern_get_identifier(ast_entity);
-	const char *alias = cypher_ast_identifier_get_name(identifier);
+	AST *ast = QueryCtx_GetAST();
+	const char *alias = AST_GetEntityName(ast, ast_entity);
 
 	/* Look up this alias in the QueryGraph.
 	 * This node may already exist if it appears multiple times in query patterns. */
@@ -51,8 +51,8 @@ static void _BuildQueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_
 									QGNode *src, QGNode *dest) {
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(ast_entity);
-	const char *alias = cypher_ast_identifier_get_name(identifier);
+	AST *ast = QueryCtx_GetAST();
+	const char *alias = AST_GetEntityName(ast, ast_entity);
 
 	// Each edge can only appear once in a QueryGraph.
 	assert(QueryGraph_GetEdgeByAlias(qg, alias) == NULL);
@@ -126,18 +126,18 @@ void QueryGraph_AddPath(QueryGraph *qg, const GraphContext *gc, const cypher_ast
 		_BuildQueryGraphAddNode(qg, ast_node);
 	}
 
+	AST *ast = QueryCtx_GetAST();
+
 	/* Every odd offset corresponds to an edge in a path. */
 	for(uint i = 1; i < nelems; i += 2) {
 		// Retrieve the QGNode corresponding to the node left of this edge.
 		const cypher_astnode_t *l_node = cypher_ast_pattern_path_get_element(path, i - 1);
-		const cypher_astnode_t *l_node_id = cypher_ast_node_pattern_get_identifier(l_node);
-		const char *l_alias = cypher_ast_identifier_get_name(l_node_id);
+		const char *l_alias = AST_GetEntityName(ast, l_node);
 		QGNode *left = QueryGraph_GetNodeByAlias(qg, l_alias);
 
 		// Retrieve the QGNode corresponding to the node right of this edge.
 		const cypher_astnode_t *r_node = cypher_ast_pattern_path_get_element(path, i + 1);
-		const cypher_astnode_t *r_node_id = cypher_ast_node_pattern_get_identifier(r_node);
-		const char *r_alias = cypher_ast_identifier_get_name(r_node_id);
+		const char *r_alias = AST_GetEntityName(ast, r_node);
 		QGNode *right = QueryGraph_GetNodeByAlias(qg, r_alias);
 
 		// Retrieve the AST reference to this edge.

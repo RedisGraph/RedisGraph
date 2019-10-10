@@ -9,13 +9,14 @@
 #include "../util/arr.h"
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
+#include "../query_ctx.h"
 #include <assert.h>
 
 static inline EdgeCreateCtx _NewEdgeCreateCtx(GraphContext *gc, const QueryGraph *qg,
 											  const cypher_astnode_t *edge) {
 	const cypher_astnode_t *props = cypher_ast_rel_pattern_get_properties(edge);
-	const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(edge);
-	const char *alias = cypher_ast_identifier_get_name(identifier);
+	AST *ast = QueryCtx_GetAST();
+	const char *alias = AST_GetEntityName(ast, edge);
 
 	// Get QueryGraph entity
 	QGEdge *e = QueryGraph_GetEdgeByAlias(qg, alias);
@@ -28,8 +29,8 @@ static inline EdgeCreateCtx _NewEdgeCreateCtx(GraphContext *gc, const QueryGraph
 static inline NodeCreateCtx _NewNodeCreateCtx(GraphContext *gc, const QueryGraph *qg,
 											  const cypher_astnode_t *ast_node) {
 	// Get QueryGraph entity
-	const cypher_astnode_t *identifier = cypher_ast_node_pattern_get_identifier(ast_node);
-	const char *alias = cypher_ast_identifier_get_name(identifier);
+	AST *ast = QueryCtx_GetAST();
+	const char *alias = AST_GetEntityName(ast, ast_node);
 	QGNode *n = QueryGraph_GetNodeByAlias(qg, alias);
 
 	const cypher_astnode_t *ast_props = cypher_ast_node_pattern_get_properties(ast_node);
@@ -46,13 +47,10 @@ static void _buildAliasRax(rax *map, const cypher_astnode_t *entity) {
 
 	cypher_astnode_type_t type = cypher_astnode_type(entity);
 
-	char *alias = NULL;
-	if(type == CYPHER_AST_NODE_PATTERN) {
-		const cypher_astnode_t *alias_node = cypher_ast_node_pattern_get_identifier(entity);
-		if(alias_node) alias = (char *)cypher_ast_identifier_get_name(alias_node);
-	} else if(type == CYPHER_AST_REL_PATTERN) {
-		const cypher_astnode_t *alias_node = cypher_ast_rel_pattern_get_identifier(entity);
-		if(alias_node) alias = (char *)cypher_ast_identifier_get_name(alias_node);
+	const char *alias = NULL;
+	if(type == CYPHER_AST_NODE_PATTERN || type == CYPHER_AST_REL_PATTERN) {
+		AST *ast = QueryCtx_GetAST();
+		alias = AST_GetEntityName(ast, entity);
 	} else if(type == CYPHER_AST_UNWIND) {
 		// The UNWIND clause aliases an expression
 		const cypher_astnode_t *alias_node = cypher_ast_unwind_get_alias(entity);
@@ -243,12 +241,7 @@ AST_CreateContext AST_PrepareCreateOp(GraphContext *gc, AST *ast, QueryGraph *qg
 				 * 1. current entity is NOT in MATCH clause.
 				 * 2. We've yet to account for this entity. */
 				const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, k);
-				const cypher_astnode_t *ast_alias;
-				ast_alias = (k % 2) ? cypher_ast_rel_pattern_get_identifier(elem) :
-							cypher_ast_node_pattern_get_identifier(elem);
-
-				assert(ast_alias); // All entities should have defined aliases.
-				const char *alias = cypher_ast_identifier_get_name(ast_alias);
+				const char *alias = AST_GetEntityName(ast, elem);
 
 				// Skip entities defined in MATCH clauses or previously appearing in CREATE patterns
 				int rc = raxInsert(match_entities, (unsigned char *)alias, strlen(alias), NULL, NULL);

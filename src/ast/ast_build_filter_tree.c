@@ -169,17 +169,14 @@ static FT_FilterNode *_convertInlinedProperties(const AST *ast, const cypher_ast
 	const cypher_astnode_t *ast_identifer;
 	if(type == GETYPE_NODE) {
 		props = cypher_ast_node_pattern_get_properties(entity);
-		ast_identifer = cypher_ast_node_pattern_get_identifier(entity);
 	} else { // relation
 		props = cypher_ast_rel_pattern_get_properties(entity);
-		ast_identifer = cypher_ast_rel_pattern_get_identifier(entity);
 	}
 
 	if(!props) return NULL;
 
 	// Retrieve the entity's alias.
-	assert(ast_identifer);
-	const char *alias = cypher_ast_identifier_get_name(ast_identifer);
+	const char *alias = AST_GetEntityName(ast, entity);
 
 	FT_FilterNode *root = NULL;
 	uint nelems = cypher_ast_map_nentries(props);

@@ -14,6 +14,8 @@
 #define IDENTIFIER_NOT_FOUND UINT_MAX
 #define UNLIMITED UINT_MAX
 
+typedef cypher_ast_annotation_context_t AnnotationCtx;
+
 typedef enum {
 	AST_VALID,
 	AST_INVALID
@@ -22,6 +24,7 @@ typedef enum {
 typedef struct {
 	const cypher_astnode_t *root;     // Root element of libcypher-parser AST
 	rax *referenced_entities;         // Mapping of the referenced entities.
+	AnnotationCtx *annotation_ctx;    // Annotation context for aliasing AST graph entities.
 	uint limit;                       // The maximum number of results in this segment.
 	bool free_root;                   // The root should only be freed if this is a sub-AST we constructed
 } AST;
@@ -60,6 +63,9 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset);
 // Populate the AST's map of all referenced aliases.
 void AST_BuildReferenceMap(AST *ast, const cypher_astnode_t *project_clause);
 
+// Annotate AST, naming all anonymous graph entities.
+void AST_Enrich(AST *ast);
+
 // Returns true if the given alias is referenced within this AST segment.
 bool AST_AliasIsReferenced(AST *ast, const char *alias);
 
@@ -68,6 +74,10 @@ long AST_ParseIntegerNode(const cypher_astnode_t *int_node);
 
 // Returns true if the given clause contains an aggregate function.
 bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause);
+
+// Retrieve the name of a given AST entity. This interface is valid for
+// AST node and edge patterns as well as any ORDER BY item.
+const char *AST_GetEntityName(const AST *ast, const cypher_astnode_t *entity);
 
 // Determine the maximum number of records
 // which will be considered when evaluating an algebraic expression.

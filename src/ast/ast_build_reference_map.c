@@ -59,17 +59,17 @@ static void _AST_MapOrderByReferences(AST *ast, const cypher_astnode_t *order_by
 static void _AST_MapReferencedNode(AST *ast, const cypher_astnode_t *node, bool include_all) {
 	if(include_all) { // WITH/RETURN * projection, include all user-defined aliases.
 		const cypher_astnode_t *identifier = cypher_ast_node_pattern_get_identifier(node);
-		const char *alias = cypher_ast_identifier_get_name(identifier);
-		// Include this alias if it is user-defined.
-		if(strncmp(alias, "anon_", 5)) _AST_UpdateRefMap(ast, alias);
+		if(identifier) {  // Alias is user-defined, include it.
+			const char *alias = cypher_ast_identifier_get_name(identifier);
+			_AST_UpdateRefMap(ast, alias);
+		}
 	}
 
 	const cypher_astnode_t *properties = cypher_ast_node_pattern_get_properties(node);
 	// A node with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
 	if(properties) {
-		const cypher_astnode_t *identifier = cypher_ast_node_pattern_get_identifier(node);
-		const char *alias = cypher_ast_identifier_get_name(identifier);
+		const char *alias = AST_GetEntityName(ast, node);
 		_AST_UpdateRefMap(ast, alias);
 
 		// Map any references within the properties map, such as 'b' in:
@@ -82,16 +82,17 @@ static void _AST_MapReferencedNode(AST *ast, const cypher_astnode_t *node, bool 
 static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge, bool include_all) {
 	if(include_all) { // WITH/RETURN * projection, include all user-defined aliases.
 		const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(edge);
-		const char *alias = cypher_ast_identifier_get_name(identifier);
-		if(strncmp(alias, "anon_", 5)) _AST_UpdateRefMap(ast, alias);
+		if(identifier) {  // Alias is user-defined, include it.
+			const char *alias = cypher_ast_identifier_get_name(identifier);
+			_AST_UpdateRefMap(ast, alias);
+		}
 	}
 
 	const cypher_astnode_t *properties = cypher_ast_rel_pattern_get_properties(edge);
 	// An edge with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
 	if(properties) {
-		const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(edge);
-		const char *alias = cypher_ast_identifier_get_name(identifier);
+		const char *alias = AST_GetEntityName(ast, edge);
 		_AST_UpdateRefMap(ast, alias);
 
 		// Map any references within the properties map, such as 'b' in:

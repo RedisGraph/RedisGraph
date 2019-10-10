@@ -1366,6 +1366,7 @@ static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, 
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->free_root = true;
 	ast->referenced_entities = NULL;
+	ast->annotation_ctx = NULL;
 
 	uint n = end_offset - start_offset;
 
@@ -1374,7 +1375,7 @@ static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, 
 		clauses[i] = (cypher_astnode_t *)cypher_ast_query_get_clause(root, i + start_offset);
 	}
 	struct cypher_input_range range = {};
-	ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n, NULL, 0, range);
+	ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n, clauses, n, range);
 
 	return ast;
 }

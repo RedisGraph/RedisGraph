@@ -8,9 +8,9 @@
 #include "cmd_context.h"
 #include "../query_ctx.h"
 #include "../graph/graph.h"
-#include "../execution_plan/execution_plan.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
+#include "../execution_plan/execution_plan.h"
 
 void Graph_Profile(void *args) {
 	AST *ast = NULL;
