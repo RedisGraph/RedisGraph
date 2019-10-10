@@ -157,6 +157,16 @@ int AR_EXP_GetOperandType(AR_ExpNode *exp) {
 	return -1;
 }
 
+/* Checks if a function needs to be evaluated in runtime or not.
+ * If the function receives 0 parameters it is a candidate.
+ * Runtime evaluated functions: Rand, UUID.
+ * Reducable functions: toList with 0 parameters.
+ */
+static bool _mustEvaluateOnRuntime(AR_ExpNode **root) {
+	// List functo
+	return ((*root)->op.child_count == 0 && strcasecmp((*root)->op.func_name, "tolist") != 0);
+}
+
 /* Compact tree by evaluating constant expressions
  * e.g. MINUS(X) where X is a constant number will be reduced to
  * a single node with the value -X
@@ -177,9 +187,7 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode **root) {
 			/* See if we're able to reduce each child of root
 			 * if so we'll be able to reduce root. */
 
-			/* Functions which take no arguments shouldn't be reduced
-			 * consider rand() and uuid() */
-			if((*root)->op.child_count == 0) return false;
+			if(_mustEvaluateOnRuntime(root)) return false;
 
 			bool reduce_children = true;
 			for(int i = 0; i < (*root)->op.child_count; i++) {

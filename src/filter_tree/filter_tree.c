@@ -278,7 +278,7 @@ void _FilterTree_CollectAttributes(const FT_FilterNode *root, rax *attributes) {
 		break;
 	}
 	default: {
-		assert(0)
+		assert(0);
 	}
 	}
 }

@@ -73,7 +73,8 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 	RSQNode *node = NULL;
 	RSQNode *parent = NULL;
 
-	if(filter->t == FT_N_COND) {
+	switch(filter->t) {
+	case FT_N_COND: {
 		RSQNode *left = NULL;
 		RSQNode *right = NULL;
 		switch(filter->cond.op) {
@@ -94,7 +95,9 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 		default:
 			assert("unexpected conditional operation");
 		}
-	} else if(filter->t == FT_N_PRED) {
+		break;
+	}
+	case FT_N_PRED: {
 		// Make sure left hand side is variadic and right hand side is constant.
 		_normalize_filter(filter);
 		double d;
@@ -160,8 +163,17 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 		default:
 			assert("unexpected value type");
 		}
-	} else {
-		assert("unknow filter tree node type");
+		break;
+	}
+	case FT_N_EXP: {
+		SIValue value = filter->exp.exp->operand.constant;
+		assert(value.longval == false);
+		node = RediSearch_CreateEmptyNode(sp);
+		break;
+	}
+	default: {
+		assert("unknown filter tree node type");
+	}
 	}
 	return node;
 }
@@ -215,11 +227,9 @@ static bool _validateInExpression(AR_ExpNode *exp) {
 	if(list->operand.type != AR_EXP_CONSTANT) return false;
 	assert(list->operand.constant.type == T_ARRAY);
 	SIValue listValue = list->operand.constant;
-	if(SIArray_Length(listValue) == 0) return false;
 	uint listLen = SIArray_Length(listValue);
 	for(uint i = 0; i < listLen; i++) {
-		// Clone value since the array might be free later.
-		SIValue v = SI_CloneValue(SIArray_Get(listValue, i));
+		SIValue v = SIArray_Get(listValue, i);
 		// Ignore everything other than number and strings.
 		if(!(SI_TYPE(v) & (SI_NUMERIC | T_STRING | T_BOOL))) return false;
 	}
@@ -228,19 +238,24 @@ static bool _validateInExpression(AR_ExpNode *exp) {
 
 static void _transformInToOrSequence(OpFilter *filter) {
 	AR_ExpNode *inOp = filter->filterTree->exp.exp;
-	AR_ExpNode *lhs = rm_malloc(sizeof(AR_ExpNode));
-	memcpy(lhs, inOp->op.children[0], sizeof(AR_ExpNode));
+	AR_ExpNode *lhs = AR_EXP_Clone(inOp->op.children[0]);
 	AR_ExpNode *list = inOp->op.children[1];
 	SIValue listValue = list->operand.constant;
 	uint listLen = SIArray_Length(listValue);
-	AR_ExpNode *constant = AR_EXP_NewConstOperandNode(SIArray_Get(listValue, 0));
-	FT_FilterNode *root = FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, constant);
+	AR_ExpNode *constant;
+	FT_FilterNode *root;
+	if(listLen == 0) {
+		constant = AR_EXP_NewConstOperandNode(SI_BoolVal(false));
+		root = FilterTree_CreateExpressionFilter(constant);
+	} else {
+		constant = AR_EXP_NewConstOperandNode(SIArray_Get(listValue, 0));
+		root = FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, constant);
+	}
 	for(uint i = 1; i < listLen; i ++) {
 		FT_FilterNode *orNode = FilterTree_CreateConditionFilter(OP_OR);
 		AppendLeftChild(orNode, root);
 		constant = AR_EXP_NewConstOperandNode(SIArray_Get(listValue, i));
-		lhs = rm_malloc(sizeof(AR_ExpNode));
-		memcpy(lhs, inOp->op.children[0], sizeof(AR_ExpNode));
+		lhs = AR_EXP_Clone(inOp->op.children[0]);
 		AppendRightChild(orNode, FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, constant));
 		root = orNode;
 	}
@@ -249,7 +264,7 @@ static void _transformInToOrSequence(OpFilter *filter) {
 }
 
 static void _prepareFilterOp(OpFilter *filter) {
-// Filter is applicable, normalize it.
+	// Filter is applicable, normalize it.
 	_normalize_filter(filter->filterTree);
 	// See if the filter tree needed to be modified, if so, replace the original, since the op will be free.
 	if(_isInFilter(filter)) _transformInToOrSequence(filter);
