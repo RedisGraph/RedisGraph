@@ -89,6 +89,22 @@ class testIndexScanFlow(FlowTestsBase):
         self.env.assertIn('Label Scan', plan)
 
         # Validate the transformation of IN to multiple OR, over a range.
-        query = "MATCH (p:person) WHERE p.age IN range(0,30) RETURN p"
+        query = "MATCH (p:person) WHERE p.age IN range(0,30) RETURN p.name ORDER BY p.name"
         plan = redis_graph.execution_plan(query)
         self.env.assertIn('Index Scan', plan)
+
+        expected_result = [['Gal Derriere'],
+                           ['Lucy Yanfital']]
+        result = redis_graph.query(query)
+
+        self.env.assertEquals(result.result_set, expected_result)
+
+         # Validate the transformation of IN to multiple OR, over a range.
+        query = "MATCH (p:person) WHERE p.age IN [] RETURN p.name"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn('Index Scan', plan)
+
+        expected_result = []
+        result = redis_graph.query(query)
+
+        self.env.assertEquals(result.result_set, expected_result)
