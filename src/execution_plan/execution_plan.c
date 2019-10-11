@@ -48,8 +48,22 @@ static inline void _ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_ro
 }
 
 // Build the column strings for a result set.
-static inline const char **_BuildColumnNames(AR_ExpNode **exps) {
-	uint projection_count = array_len(exps);
+static inline const char **_BuildColumnNames(OpBase *op) {
+	AR_ExpNode **exps;
+	uint projection_count;
+	switch(op->type) {
+	case OPType_PROJECT:
+		exps = ((OpProject *)op)->exps;
+		projection_count = ((OpProject *)op)->exp_count;
+		break;
+	case OPType_AGGREGATE:
+		exps = ((OpAggregate *)op)->exps;
+		projection_count = ((OpAggregate *)op)->exp_count;
+		break;
+	default:
+		assert(false && "encountered impossible operation type");
+	}
+
 	const char **columns = array_new(const char *, projection_count);
 	for(uint i = 0; i < projection_count; i++) {
 		columns = array_append(columns, exps[i]->resolved_name);
@@ -87,43 +101,50 @@ static char **_CollectAliases(rax *map) {
 	return aliases;
 }
 
-static void _PopulateProjectAll(ExecutionPlan *previous_segment, OpBase *op) {
+static void _PopulateProjectAll(ExecutionPlan *previous_segment, OpBase *op_base) {
 	char **aliases = _CollectAliases(previous_segment->record_map);
 	uint count = array_len(aliases);
 
-	AR_ExpNode **exps = array_new(AR_ExpNode *, count);
-	uint *record_offsets = array_new(uint, count);
+	AR_ExpNode *exps[count];
+	uint offsets[count];
 
+	uint actual_count = 0;
 	for(uint i = 0; i < count; i ++) {
+		// Skip aliases that already have projections from ORDER BY expressions
+		if(OpBase_Aware(op_base, aliases[i], NULL)) continue;
+
 		// Build an expression for each alias.
 		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(aliases[i], NULL);
 		exp->resolved_name = aliases[i];
-		exps = array_append(exps, exp);
+		exps[actual_count] = exp;
 
 		// Map the alias within the ExecutionPlan mapping.
-		int record_idx = OpBase_Modifies(op, aliases[i]);
-		record_offsets = array_append(record_offsets, record_idx);
+		int record_idx = OpBase_Modifies(op_base, aliases[i]);
+		offsets[actual_count] = record_idx;
+
+		actual_count ++;
 	}
 
 	array_free(aliases);
 
 	// Assign the new expressions to the operation.
-	if(op->type == OPType_PROJECT) {
-		OpProject *project = (OpProject *)op;
-		project->exps = exps;
-		project->exp_count = count;
-		project->record_offsets = record_offsets;
+	if(op_base->type == OPType_PROJECT) {
+		OpProject *op = (OpProject *)op_base;
+		op->exps = array_ensure_prepend(op->exps, exps, actual_count, AR_ExpNode *);
+		op->exp_count = actual_count;
+		op->record_offsets = array_ensure_prepend(op->record_offsets, offsets, actual_count, uint);
 	} else {
-		OpAggregate *aggregate = (OpAggregate *)op;
-		aggregate->exps = exps;
-		aggregate->exp_count = count;
-		aggregate->record_offsets = record_offsets;
+		OpAggregate *op = (OpAggregate *)op_base;
+		op->exps = array_ensure_prepend(op->exps, exps, actual_count, AR_ExpNode *);
+		op->exp_count = actual_count;
+		op->record_offsets = array_ensure_prepend(op->record_offsets, offsets, actual_count, uint);
 	}
 }
 
 // Handle ORDER entities
 static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 										   const cypher_astnode_t *order_clause) {
+	AST *ast = QueryCtx_GetAST();
 	uint projection_count = array_len(projections);
 	uint count = cypher_ast_order_by_nitems(order_clause);
 	AR_ExpNode **order_exps = array_new(AR_ExpNode *, count);
@@ -131,43 +152,11 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 	for(uint i = 0; i < count; i++) {
 		const cypher_astnode_t *item = cypher_ast_order_by_get_item(order_clause, i);
 		const cypher_astnode_t *ast_exp = cypher_ast_sort_item_get_expression(item);
-		AR_ExpNode *exp = NULL;
-		cypher_astnode_type_t type = cypher_astnode_type(ast_exp);
-		if(type == CYPHER_AST_IDENTIFIER) {
-			// Order expression is a reference to an alias in the query
-			const char *alias = cypher_ast_identifier_get_name(ast_exp);
-			for(uint j = 0; j < projection_count; j ++) {
-				AR_ExpNode *projection = projections[j];
-				if(!strcmp(projection->resolved_name, alias)) {
-					// The projection and its resolved name must be cloned to avoid a double free.
-					exp = AR_EXP_Clone(projection);
-					exp->resolved_name = rm_strdup(projection->resolved_name);
-					break;
-				}
-			}
-			if(exp == NULL) {
-				// We didn't match any previous projections. This can occur when we're
-				// ordering by a projected WITH entity that is not also being returned.
-				exp = AR_EXP_FromExpression(ast_exp);
-				AR_EXP_BuildResolvedName(exp);
-			}
-			// } else if(type == CYPHER_AST_PROPERTY_OPERATOR) {
-			// TODO can capture things like RETURN e.name ORDER by e.name here
-			// const cypher_astnode_t *entity = cypher_ast_property_operator_get_expression(ast_exp);
-			// if(cypher_astnode_type(entity) == CYPHER_AST_IDENTIFIER) {
-			// // Order expression is a reference to an alias in the query
-			// const char *alias = cypher_ast_identifier_get_name(ast_exp);
-			// }
-		} else {
-			// Independent operator like:
-			// ORDER BY COUNT(a)
-			exp = AR_EXP_FromExpression(ast_exp);
-			AR_EXP_BuildResolvedName(exp);
-		}
+		AR_ExpNode *exp = AR_EXP_FromExpression(ast_exp);
+		AR_EXP_BuildResolvedName(exp);
+		AST_AttachName(ast, item, exp->resolved_name);
 
 		order_exps = array_append(order_exps, exp);
-		// TODO direction should be specifiable per order entity
-		// ascending = cypher_ast_sort_item_is_ascending(item);
 	}
 
 	return order_exps;
@@ -176,8 +165,8 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 // Handle RETURN entities
 // (This function is not static because it is relied upon by unit tests)
 AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause, AST *ast) {
-	// Query is of type "RETURN *", the expressions will be populated later.
-	if(cypher_ast_return_has_include_existing(ret_clause)) return NULL;
+	// Query is of type "RETURN *"
+	if(cypher_ast_return_has_include_existing(ret_clause)) return NULL; // TODO hm
 
 	uint count = cypher_ast_return_nprojections(ret_clause);
 	AR_ExpNode **return_expressions = array_new(AR_ExpNode *, count);
@@ -751,14 +740,8 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		bool return_all = cypher_ast_return_has_include_existing(last_clause);
 		if(return_all) _PopulateProjectAll(segments[segment_count - 2], connecting_op);
 
-		if(result_set) {
-			// Prepare column names for the ResultSet.
-			if(connecting_op->type == OPType_PROJECT) {
-				result_set->columns = _BuildColumnNames(((OpProject *)connecting_op)->exps);
-			} else if(connecting_op->type == OPType_AGGREGATE) {
-				result_set->columns = _BuildColumnNames(((OpAggregate *)connecting_op)->exps);
-			}
-		}
+		// Prepare column names for the ResultSet.
+		if(result_set) result_set->columns = _BuildColumnNames(connecting_op);
 
 		OpBase *results_op = NewResultsOp(plan, result_set);
 		_ExecutionPlan_UpdateRoot(plan, results_op);
@@ -933,3 +916,4 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 	raxFree(plan->record_map);
 	rm_free(plan);
 }
+

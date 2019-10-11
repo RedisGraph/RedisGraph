@@ -6,8 +6,8 @@ static char *_create_anon_alias(int anon_count) {
 	return alias;
 }
 
-static void _name_anonymous_entities_in_pattern(const cypher_astnode_t *node,
-												AnnotationCtx *annotation_ctx, uint *anon_count) {
+static void _name_anonymous_entities_in_pattern(AST *ast, const cypher_astnode_t *node,
+												uint *anon_count) {
 	cypher_astnode_type_t t = cypher_astnode_type(node);
 	const cypher_astnode_t *ast_identifier = NULL;
 	if(t == CYPHER_AST_NODE_PATTERN) {
@@ -18,7 +18,7 @@ static void _name_anonymous_entities_in_pattern(const cypher_astnode_t *node,
 		uint child_count = cypher_astnode_nchildren(node);
 		for(uint i = 0; i < child_count; i++) {
 			const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
-			_name_anonymous_entities_in_pattern(child, annotation_ctx, anon_count);
+			_name_anonymous_entities_in_pattern(ast, child, anon_count);
 		}
 	}
 
@@ -31,8 +31,7 @@ static void _name_anonymous_entities_in_pattern(const cypher_astnode_t *node,
 		alias = _create_anon_alias((*anon_count)++);
 	}
 
-// Annotate AST entity with identifier string.
-	cypher_astnode_attach_annotation(annotation_ctx, node, (void *)alias, NULL);
+	AST_AttachName(ast, node, alias);
 }
 
 // AST annotation callback routine for freeing generated entity names only.
@@ -50,6 +49,11 @@ static AnnotationCtx *_AST_NewAnnotationCtx() {
 	return annotation_ctx;
 }
 
+void AST_AttachName(AST *ast, const cypher_astnode_t *node, const char *name) {
+	// Annotate AST entity with identifier string.
+	cypher_astnode_attach_annotation(ast->annotation_ctx, node, (void *)name, NULL);
+}
+
 void AST_Enrich(AST *ast) {
 	/* Directives like CREATE INDEX are not queries. */
 	if(cypher_astnode_type(ast->root) != CYPHER_AST_QUERY) return;
@@ -57,6 +61,6 @@ void AST_Enrich(AST *ast) {
 	ast->annotation_ctx = _AST_NewAnnotationCtx();
 
 	uint anon_count = 0;
-	_name_anonymous_entities_in_pattern(ast->root, ast->annotation_ctx, &anon_count);
+	_name_anonymous_entities_in_pattern(ast, ast->root, &anon_count);
 }
 

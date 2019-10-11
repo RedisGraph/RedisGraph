@@ -26,8 +26,7 @@ static int _identifyResultAndAggregateOps(OpBase *root, OpResult **opResult,
 	// Expecting a single aggregation, without ordering.
 	*opAggregate = (OpAggregate *)op;
 	uint exp_count = array_len((*opAggregate)->exps);
-	uint order_exp_count = array_len((*opAggregate)->order_exps);
-	if(exp_count != 1 || order_exp_count != 0) return 0;
+	if(exp_count != 1) return 0;
 
 	AR_ExpNode *exp = (*opAggregate)->exps[0];
 
