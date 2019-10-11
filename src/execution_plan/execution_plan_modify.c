@@ -151,6 +151,7 @@ OpBase **ExecutionPlan_LocateOps(OpBase *root, OPType type) {
 	return ops;
 }
 
+// Introduce the new operation B between A and A's parent op.
 void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
 	/* B is a new operation. */
 	assert(!(b->parent || b->children));
@@ -211,6 +212,17 @@ void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
 	rm_free(op->children);
 	op->children = NULL;
 	op->childCount = 0;
+}
+
+void ExecutionPlan_DetachOp(OpBase *op) {
+	// Operation has no parent.
+	if(op->parent == NULL) return;
+
+	// Remove op from its parent.
+	OpBase *parent = op->parent;
+	_OpBase_RemoveChild(op->parent, op);
+
+	op->parent = NULL;
 }
 
 OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
