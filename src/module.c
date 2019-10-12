@@ -87,6 +87,11 @@ static void RG_AfterForkParent() {
 }
 
 static void RG_AfterForkChild() {
+	/* Restrict GraphBLAS to use a single thread this is done for 2 reasons:
+	 * 1. save resources.
+	 * 2. avoid a bug in GNU OpenMP which hangs when performing parallel loop in forked process. */
+	GxB_set(GxB_NTHREADS, 1);
+
 	/* Mark that the child is a forked process so that it doesn't attempt invalid
 	 * accesses of POSIX primitives it doesn't own. */
 	process_is_child = true;

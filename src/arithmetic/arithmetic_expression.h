@@ -47,9 +47,6 @@ typedef enum {
 	EVAL_ERR = (1 << 0),
 } AR_EXP_Result;
 
-/* AR_Func - Function pointer to an operation with an arithmetic expression */
-typedef SIValue(*AR_Func)(SIValue *argv, int argc);
-
 /* Op represents an operation applied to child args. */
 typedef struct {
 	union {
