@@ -20,46 +20,8 @@ extern RedisModuleType *GraphContextRedisModuleType;
 void _MGraph_Delete(void *args) {
 	CommandCtx *dCtx = (CommandCtx *)args;
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(dCtx);
-
-	QueryCtx_BeginTimer(); // Start deletion timing.
-
-	RedisModuleString *graph_name = RedisModule_CreateString(ctx, dCtx->graphName,
-															 strlen(dCtx->graphName));
 	CommandCtx_ThreadSafeContextLock(dCtx);
-
-	RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_WRITE);
-	int keytype = RedisModule_KeyType(key);
-	if(keytype == REDISMODULE_KEYTYPE_EMPTY) {
-		RedisModule_ReplyWithError(ctx, "Graph was not found in database.");
-		goto cleanup;
-	} else if(keytype != REDISMODULE_KEYTYPE_MODULE) {
-		RedisModule_ReplyWithError(ctx, "Specified graph name referred to incorrect key type.");
-		goto cleanup;
-	}
-
-	// Retrieve the GraphContext to disable synchronization.
-	GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
-
-	// Acquire write lock, guarantee we're the only thread executing.
-	Graph_AcquireWriteLock(gc->g);
-
-	// Disable matrix synchronization for graph deletion.
-	Graph_SetMatrixPolicy(gc->g, DISABLED);
-
-	// Remove GraphContext from keyspace.
-	if(RedisModule_DeleteKey(key) == REDISMODULE_OK) {
-		char *strElapsed;
-		double t = QueryCtx_GetExecutionTime();
-		asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
-		RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
-		free(strElapsed);
-	} else {
-		Graph_ReleaseLock(gc->g);
-		RedisModule_ReplyWithError(ctx, "Graph deletion failed!");
-	}
-
-cleanup:
-	RedisModule_Free(graph_name);
+	GraphContext_Delete(ctx, dCtx->graphName);
 	CommandCtx_ThreadSafeContextUnlock(dCtx);
 	CommandCtx_Free(dCtx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
