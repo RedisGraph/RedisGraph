@@ -38,26 +38,7 @@ void _MGraph_Profile(void *args) {
 	ast = AST_Build(parse_result);
 
 	// Try to access the GraphContext
-	CommandCtx_ThreadSafeContextLock(qctx);
-	GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName, readonly);
-	if(!gc) {
-		if(!AST_ContainsClause(ast, CYPHER_AST_CREATE) &&
-		   !AST_ContainsClause(ast, CYPHER_AST_MERGE)) {
-			CommandCtx_ThreadSafeContextUnlock(qctx);
-			RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
-			goto cleanup;
-		}
-		assert(!readonly);
-		gc = GraphContext_New(ctx, qctx->graphName, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
-		if(!gc) {
-			CommandCtx_ThreadSafeContextUnlock(qctx);
-			RedisModule_ReplyWithError(ctx, "Graph name already in use as a Redis key.");
-			goto cleanup;
-		}
-		// TODO: free graph if no entities were created.
-	}
-
-	CommandCtx_ThreadSafeContextUnlock(qctx);
+	GraphContext *gc = GraphContext_Retrieve(qctx, qctx->graphName, readonly);
 
 	// Acquire the appropriate lock.
 	if(readonly) Graph_AcquireReadLock(gc->g);
