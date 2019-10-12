@@ -12,14 +12,13 @@
 
 void _MGraph_BulkInsert(void *args) {
 	// Establish thread-safe environment for batch insertion
-	CommandCtx *context = (CommandCtx *)args;
-	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(context);
-	CommandCtx_ThreadSafeContextLock(context);
+	CommandCtx *cmd_ctx = (CommandCtx *)args;
+	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(cmd_ctx);
 
-	RedisModuleString **argv = context->argv + 1; // skip "GRAPH.BULK"
+	RedisModuleString **argv = cmd_ctx->argv + 1; // skip "GRAPH.BULK"
 	RedisModuleString *rs_graph_name = *argv++;
 	const char *graphname = RedisModule_StringPtrLen(rs_graph_name, NULL);
-	int argc = context->argc - 2; // skip "GRAPH.BULK [GRAPHNAME]"
+	int argc = cmd_ctx->argc - 2; // skip "GRAPH.BULK [GRAPHNAME]"
 	RedisModuleKey *key;
 
 	char reply[1024] = {0}; // Prepare the Redis string response
@@ -35,14 +34,12 @@ void _MGraph_BulkInsert(void *args) {
 	long long nodes_in_query;
 	long long relations_in_query;
 
-	// Check the next to see if this is a starting query
-	bool initial_query = false;
 	if(!strcmp(RedisModule_StringPtrLen(*argv, 0), "BEGIN")) {
 		argv ++;
 		argc --;
-		initial_query = true;
 		// Verify that graph does not already exist.
 		key = RedisModule_OpenKey(ctx, rs_graph_name, REDISMODULE_READ);
+		RedisModule_CloseKey(key);
 		if(key) {
 			char *err;
 			asprintf(&err, "Graph with name '%s' cannot be created, as Redis key '%s' already exists.",
@@ -65,20 +62,8 @@ void _MGraph_BulkInsert(void *args) {
 	}
 	argc -= 2; // already read node count and edge count
 
-	if(initial_query) {
-		// Create graph and initialize its schemas.
-		gc = GraphContext_New(ctx, graphname, nodes_in_query, relations_in_query);
-		assert(gc);
-	} else {
-		// Query did not start with a "BEGIN" token
-		gc = GraphContext_Retrieve(ctx, graphname, false);
-		if(gc == NULL) {
-			RedisModule_ReplyWithError(ctx,
-									   "Bulk insert query did not include a BEGIN token and graph was not found.");
-			goto cleanup;
-		}
-		initial_node_count = Graph_NodeCount(gc->g);
-	}
+	gc = GraphContext_Retrieve(cmd_ctx, graphname, false);
+	initial_node_count = Graph_NodeCount(gc->g);
 
 	// Lock the graph for writing.
 	Graph_AcquireWriteLock(gc->g);
@@ -106,34 +91,17 @@ void _MGraph_BulkInsert(void *args) {
 
 cleanup:
 	if(gc) Graph_ReleaseLock(gc->g);
-	CommandCtx_ThreadSafeContextUnlock(context);
-	CommandCtx_Free(context);
+	CommandCtx_ThreadSafeContextUnlock(cmd_ctx);
+	CommandCtx_Free(cmd_ctx);
 }
 
 int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(argc < 3) return RedisModule_WrongArity(ctx);
-
-	/* Determin query execution context
-	 * queries issued within a LUA script or multi exec block must
-	 * run on Redis main thread, others can run on different threads. */
 	CommandCtx *context;
-	int flags = RedisModule_GetContextFlags(ctx);
 	// Bulk commands should always modify slaves.
 	bool is_replicated = false;
-	if(flags & (REDISMODULE_CTX_FLAGS_MULTI | REDISMODULE_CTX_FLAGS_LUA)) {
-		// Construct concurent query context.
-		context = CommandCtx_New(ctx, NULL, NULL, NULL, argv, argc, is_replicated);
-		// Execute bulk on redis main thread.
-		_MGraph_BulkInsert(context);
-	} else {
-		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
-		// Construct concurent query context.
-		context = CommandCtx_New(NULL, bc, NULL, NULL, argv, argc, is_replicated);
-		// Execute bulk insert on a dedicated thread.
-		thpool_add_work(_thpool, _MGraph_BulkInsert, context);
-	}
-
+	context = CommandCtx_New(ctx, NULL, NULL, NULL, argv, argc, is_replicated);
+	_MGraph_BulkInsert(context);
 	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
-

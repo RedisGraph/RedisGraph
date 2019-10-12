@@ -38,10 +38,7 @@ void _MGraph_Profile(void *args) {
 	ast = AST_Build(parse_result);
 
 	// Try to access the GraphContext
-	CommandCtx_ThreadSafeContextLock(qctx);
-	GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName, readonly);
-
-	CommandCtx_ThreadSafeContextUnlock(qctx);
+	GraphContext *gc = GraphContext_Retrieve(qctx, qctx->graphName, readonly);
 
 	// Acquire the appropriate lock.
 	if(readonly) Graph_AcquireReadLock(gc->g);

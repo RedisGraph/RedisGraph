@@ -21,7 +21,7 @@ extern GraphContext **graphs_in_keyspace;
 //------------------------------------------------------------------------------
 
 // Creates and initializes a graph context struct.
-static GraphContext *_GraphContext_New(const char *graphname, size_t node_cap, size_t edge_cap) {
+static GraphContext *_GraphContext_New(const char *graph_name, size_t node_cap, size_t edge_cap) {
 	GraphContext *gc = rm_malloc(sizeof(GraphContext));
 
 	// No indicies.
@@ -29,7 +29,7 @@ static GraphContext *_GraphContext_New(const char *graphname, size_t node_cap, s
 
 	// Initialize the graph's matrices and datablock storage
 	gc->g = Graph_New(node_cap, edge_cap);
-	gc->graph_name = rm_strdup(graphname);
+	gc->graph_name = rm_strdup(graph_name);
 	// Allocate the default space for schemas and indices
 	gc->node_schemas = array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
 	gc->relation_schemas = array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
@@ -42,76 +42,62 @@ static GraphContext *_GraphContext_New(const char *graphname, size_t node_cap, s
 	return gc;
 }
 
-/* This method tries to get a graph context, and if it does not exists, create a new one.
+/* _GraphContext_Create tries to get a graph context, and if it does not exists, create a new one.
  * The try-get-create flow is done when module global lock is acquired, to enforce consistency
  * while BGSave is called. */
-static GraphContext *_GraphContext_Create(RedisModuleCtx *ctx, const char *graphname,
-										  int readWriteFlag, size_t node_cap, size_t edge_cap) {
+static GraphContext *_GraphContext_Create(RedisModuleCtx *ctx, const char *graph_name,
+										  size_t node_cap, size_t edge_cap) {
 	// Create and initialize a graph context.
-	GraphContext *gc = _GraphContext_New(graphname, node_cap, edge_cap);
-	RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphname, strlen(graphname));
+	GraphContext *gc = _GraphContext_New(graph_name, node_cap, edge_cap);
+	RedisModuleString *graphID = RedisModule_CreateString(ctx, graph_name, strlen(graph_name));
 
-	// Open key with requested permission.
-	RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, readWriteFlag);
-	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
-		// In case of non existing value, open key for write mode.
-		key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_WRITE);
-		// Set value in key.
-		RedisModule_ModuleTypeSetValue(key, GraphContextRedisModuleType, gc);
-		// Register graph context for BGSave.
-		GraphContext_RegisterWithModule(gc);
-		goto cleanup;
-	} else {
-		if(RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
-			goto cleanup;
-		}
-		// Some other call managed to create and set the context, free the local initialized context.
-		GraphContext_Free(gc);
-		gc = RedisModule_ModuleTypeGetValue(key);
-		// Force GraphBLAS updates and resize matrices to node count by default
-		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+	RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_WRITE);
+	// Set value in key.
+	RedisModule_ModuleTypeSetValue(key, GraphContextRedisModuleType, gc);
+	// Register graph context for BGSave.
+	GraphContext_RegisterWithModule(gc);
 
-		QueryCtx_SetGraphCtx(gc);
-	}
-cleanup:
-	RedisModule_FreeString(ctx, rs_name);
+	RedisModule_FreeString(ctx, graphID);
 	RedisModule_CloseKey(key);
 	return gc;
 }
 
-GraphContext *GraphContext_New(RedisModuleCtx *ctx, const char *graphname,
-							   size_t node_cap, size_t edge_cap) {
-	return _GraphContext_Create(ctx, graphname, REDISMODULE_WRITE, node_cap, edge_cap);
-}
+GraphContext *GraphContext_Retrieve(CommandCtx *cmdCtx, const char *graphName, bool readOnly) {
+	assert(cmdCtx && graphName);
 
-GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname, bool readOnly) {
 	GraphContext *gc = NULL;
-	RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphname, strlen(graphname));
-	int readWriteFlag = readOnly ? REDISMODULE_READ : REDISMODULE_WRITE;
-	RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, readWriteFlag);
-	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
-		gc = _GraphContext_Create(ctx, graphname, readWriteFlag, GRAPH_DEFAULT_NODE_CAP,
-								  GRAPH_DEFAULT_EDGE_CAP);
-	} else {
-		if(RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
-			goto cleanup;
+	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(cmdCtx);
+	RedisModuleString *graphID = RedisModule_CreateString(ctx, graphName, strlen(graphName));
+	int rwFlag = readOnly ? REDISMODULE_READ : REDISMODULE_WRITE;
+
+	// Acquire GIL if needed.
+	CommandCtx_ThreadSafeContextLock(cmdCtx);
+	{
+		RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, rwFlag);
+		if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
+			// Key doesn't exists, create it.
+			gc = _GraphContext_Create(ctx, graphName, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
+		} else if(RedisModule_ModuleTypeGetType(key) == GraphContextRedisModuleType) {
+			gc = RedisModule_ModuleTypeGetValue(key);
 		}
-		gc = RedisModule_ModuleTypeGetValue(key);
-		// Force GraphBLAS updates and resize matrices to node count by default
-		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
-
-		QueryCtx_SetGraphCtx(gc);
+		RedisModule_CloseKey(key);
 	}
+	// Release GIL if acquired.
+	CommandCtx_ThreadSafeContextUnlock(cmdCtx);
 
-cleanup:
-	RedisModule_FreeString(ctx, rs_name);
-	RedisModule_CloseKey(key);
+	RedisModule_FreeString(ctx, graphID);
+	if(gc) {
+		QueryCtx_SetGraphCtx(gc);
+		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+	}
 	return gc;
 }
 
-void GraphContext_Delete(RedisModuleCtx *ctx, const char *graphname) {
+void GraphContext_Delete(RedisModuleCtx *ctx, const char *graphName) {
+	assert(ctx && graphName);
+
 	QueryCtx_BeginTimer(); // Start deletion timing.
-	RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphname, strlen(graphname));
+	RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphName, strlen(graphName));
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_WRITE);
 	int keytype = RedisModule_KeyType(key);
 	if(keytype == REDISMODULE_KEYTYPE_EMPTY) {

@@ -89,11 +89,7 @@ void _MGraph_Query(void *args) {
 	// Prepare the constructed AST for accesses from the module
 	ast = AST_Build(parse_result);
 
-	// Try to access the GraphContext
-	CommandCtx_ThreadSafeContextLock(qctx);
-	GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName, readonly);
-
-	CommandCtx_ThreadSafeContextUnlock(qctx);
+	GraphContext *gc = GraphContext_Retrieve(qctx, qctx->graphName, readonly);
 
 	bool compact = _check_compact_flag(qctx);
 

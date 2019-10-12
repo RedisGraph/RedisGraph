@@ -67,7 +67,7 @@ void _MGraph_Explain(void *args) {
 
 	// Retrieve the GraphContext and acquire a read lock.
 	if(graphname) {
-		gc = GraphContext_Retrieve(ctx, graphname, true);
+		gc = GraphContext_Retrieve(qctx, graphname, true);
 	} else {
 		free_graph_ctx = true;
 		gc = _empty_graph_context();
