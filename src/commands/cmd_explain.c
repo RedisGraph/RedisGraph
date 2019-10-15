@@ -61,6 +61,7 @@ cleanup:
 
 	AST_Free(ast);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
+	GraphContext_Release(gc);
 	CommandCtx_Free(qctx);
 	if(parse_result) cypher_parse_result_free(parse_result);
 }

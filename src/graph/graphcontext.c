@@ -11,10 +11,25 @@
 #include "../query_ctx.h"
 #include "../redismodule.h"
 #include "../util/rmalloc.h"
+#include "../util/thpool/thpool.h"
 #include "serializers/graphcontext_type.h"
 
 // Global array tracking all extant GraphContexts (defined in module.c)
+extern threadpool _thpool;
 extern GraphContext **graphs_in_keyspace;
+
+// Forward declarations.
+static void _GraphContext_Free(void *arg);
+
+static inline void _GraphContext_IncreaseRefCount(GraphContext *gc) {
+	__atomic_fetch_add(&gc->ref_count, 1, __ATOMIC_RELAXED);
+}
+
+static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
+	// If the reference count is less than 0, the graph has been marked for deletion and no queries are active - free the graph.
+	if(__atomic_sub_fetch(&gc->ref_count, 1, __ATOMIC_RELAXED) < 0)
+		thpool_add_work(_thpool, _GraphContext_Free, gc);
+}
 
 //------------------------------------------------------------------------------
 // GraphContext API
@@ -24,8 +39,8 @@ extern GraphContext **graphs_in_keyspace;
 static GraphContext *_GraphContext_New(const char *graph_name, size_t node_cap, size_t edge_cap) {
 	GraphContext *gc = rm_malloc(sizeof(GraphContext));
 
-	// No indicies.
-	gc->index_count = 0;
+	gc->ref_count = 0;      // No refences.
+	gc->index_count = 0;    // No indicies.
 
 	// Initialize the graph's matrices and datablock storage
 	gc->g = Graph_New(node_cap, edge_cap);
@@ -62,18 +77,16 @@ static GraphContext *_GraphContext_Create(RedisModuleCtx *ctx, const char *graph
 	return gc;
 }
 
-GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphName, bool readOnly,
+GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *graphID, bool readOnly,
 									bool shouldCreate) {
-	assert(graphName);
-
 	GraphContext *gc = NULL;
 	int rwFlag = readOnly ? REDISMODULE_READ : REDISMODULE_WRITE;
-	RedisModuleString *graphID = RedisModule_CreateString(ctx, graphName, strlen(graphName));
 
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, rwFlag);
 	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
 		// Key doesn't exists, create it.
 		if(shouldCreate) {
+			const char *graphName = RedisModule_StringPtrLen(graphID, NULL);
 			gc = _GraphContext_Create(ctx, graphName, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 		}
 	} else if(RedisModule_ModuleTypeGetType(key) == GraphContextRedisModuleType) {
@@ -81,28 +94,43 @@ GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphName, 
 	}
 	RedisModule_CloseKey(key);
 
-	RedisModule_FreeString(ctx, graphID);
-	if(gc) Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+	if(gc) {
+		_GraphContext_IncreaseRefCount(gc);
+		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+	}
 	return gc;
 }
 
-void GraphContext_Delete(GraphContext *gc, RedisModuleCtx *ctx) {
-	assert(gc && ctx);
+void GraphContext_Release(GraphContext *gc) {
+	assert(gc);
+	_GraphContext_DecreaseRefCount(gc);
+}
 
-	const char *graph_name = gc->graph_name;
+void GraphContext_MarkWriter(RedisModuleCtx *ctx, GraphContext *gc) {
+	RedisModuleString *graphID = RedisModule_CreateString(ctx, gc->graph_name, strlen(gc->graph_name));
 
-	RedisModuleString *rs_name = RedisModule_CreateString(ctx, graph_name, strlen(graph_name));
-	RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_WRITE);
-	assert(RedisModule_ModuleTypeGetType(key) == GraphContextRedisModuleType);
+	// Reopen only if key exists (do not re-create) make sure key still exists.
+	RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_READ);
+	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) goto cleanup;
 
-	// Acquire write lock, guarantee we're the only thread executing.
-	Graph_AcquireWriteLock(gc->g);
-	// Disable matrix synchronization for graph deletion.
-	Graph_SetMatrixPolicy(gc->g, DISABLED);
+	// Mark as writer.
+	key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_WRITE);
+	RedisModule_CloseKey(key);
 
-	// Remove GraphContext from keyspace.
-	assert(RedisModule_DeleteKey(key) == REDISMODULE_OK);
-	RedisModule_Free(rs_name);
+cleanup:
+	RedisModule_FreeString(ctx, graphID);
+}
+
+void GraphContext_Delete(GraphContext *gc) {
+	/* We're here as a result of a call to:
+	 * GRAPH.DELETE
+	 * FLUSHALL
+	 * DEL <graph_key>
+	 * Redis decided to remove keys to save some space. */
+
+	// Unregister graph object from global list.
+	GraphContext_RemoveFromRegistry(gc);
+	_GraphContext_DecreaseRefCount(gc);
 }
 
 //------------------------------------------------------------------------------
@@ -288,11 +316,14 @@ void GraphContext_RemoveFromRegistry(GraphContext *gc) {
 //------------------------------------------------------------------------------
 
 // Free all data associated with graph
-void GraphContext_Free(GraphContext *gc) {
-	Graph_Free(gc->g);
+static void _GraphContext_Free(void *arg) {
+	GraphContext *gc = (GraphContext *)arg;
+	uint len;
 	rm_free(gc->graph_name);
 
-	uint len;
+	// Disable matrix synchronization for graph deletion.
+	Graph_SetMatrixPolicy(gc->g, DISABLED);
+	Graph_Free(gc->g);
 
 	// Free all node schemas
 	if(gc->node_schemas) {
@@ -322,9 +353,5 @@ void GraphContext_Free(GraphContext *gc) {
 		array_free(gc->string_mapping);
 	}
 
-	// Remove GraphContext from global array of graphs
-	GraphContext_RemoveFromRegistry(gc);
-
 	rm_free(gc);
 }
-

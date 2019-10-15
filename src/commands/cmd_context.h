@@ -6,19 +6,19 @@
 
 #pragma once
 
+#include "cypher-parser.h"
 #include "../redismodule.h"
 #include "../graph/graphcontext.h"
-#include "cypher-parser.h"
 
 /* Query context, used for concurent query processing. */
 typedef struct {
-	int argc;                       // Argument count.
 	char *query;                    // Query string.
 	RedisModuleCtx *ctx;            // Redis module context.
-	bool replicated_command;        // Whether this instance was spawned by a replication command.
 	GraphContext *graph_ctx;        // Graph context.
 	RedisModuleString **argv;       // Arguments.
 	RedisModuleBlockedClient *bc;   // Blocked client.
+	int argc;                       // Argument count.
+	bool replicated_command;        // Whether this instance was spawned by a replication command.
 } CommandCtx;
 
 // Create a new command context.

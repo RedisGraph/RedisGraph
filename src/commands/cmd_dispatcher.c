@@ -41,8 +41,8 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	CommandCtx *context;
 	if(argc < 3) return RedisModule_WrongArity(ctx);
 
+	RedisModuleString *graph_name = argv[1];
 	const char *command_name = RedisModule_StringPtrLen(argv[0], NULL);
-	const char *graph_name = RedisModule_StringPtrLen(argv[1], NULL);
 	GRAPH_Commands cmd = determine_command(command_name);
 	Command_Handler handler = get_command_handler(cmd);
 	GraphContext *gc = GraphContext_Retrieve(ctx, graph_name, true, true);

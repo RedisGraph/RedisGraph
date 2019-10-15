@@ -45,6 +45,10 @@ def query_write(graph, query, threadID):
             assertions[threadID] = False
             break
 
+def thread_run_query(graph, query, threadID):
+    global assertions
+    assertions[threadID] = graph.query(query)
+
 def delete_graph(graph, threadID):
     global assertions
     assertions[threadID] = True
@@ -153,3 +157,82 @@ class testConcurrentQueryFlow(FlowTestsBase):
 
         # Exactly one thread should have successfully deleted the graph.
         self.env.assertEquals(assertions.count(True), 1)
+
+    # Try to delete a graph while multiple queries are executing.
+    def test_05_concurrent_read_delete(self):
+        redis_con = self.env.getConnection()
+        
+        ##############################################################################################
+        # Delete graph via Redis DEL key.
+        ##############################################################################################
+        self.populate_graph()
+        q = """UNWIND (range(0, 10000)) AS x WITH x AS x WHERE (x / 900) = 1 RETURN x"""
+        threads = []
+        for i in range(CLIENT_COUNT):
+            graph = graphs[i]
+            t = threading.Thread(target=thread_run_query, args=(graph, q, i))
+            t.setDaemon(True)
+            threads.append(t)
+            t.start()
+
+        redis_con.delete(GRAPH_ID)
+
+        # Wait for threads to return.
+        for i in range(CLIENT_COUNT):
+            t = threads[i]
+            t.join()            
+            self.env.assertEquals(assertions[i].result_set[0][0], 900)
+
+        # Make sure Graph is empty, e.g. graph was deleted.
+        resultset = graphs[0].query("MATCH (n) RETURN count(n)").result_set
+        self.env.assertEquals(resultset[0][0], 0)
+
+        ##############################################################################################        
+        # Delete graph via Redis FLUSHALL.
+        ##############################################################################################
+        self.populate_graph()
+        q = """UNWIND (range(0, 10000)) AS x WITH x AS x WHERE (x / 900) = 1 RETURN x"""
+        threads = []
+        for i in range(CLIENT_COUNT):
+            graph = graphs[i]
+            t = threading.Thread(target=thread_run_query, args=(graph, q, i))
+            t.setDaemon(True)
+            threads.append(t)
+            t.start()
+
+        redis_con.flushall()
+
+        # Wait for threads to return.
+        for i in range(CLIENT_COUNT):
+            t = threads[i]
+            t.join()            
+            self.env.assertEquals(assertions[i].result_set[0][0], 900)
+
+        # Make sure Graph is empty, e.g. graph was deleted.
+        resultset = graphs[0].query("MATCH (n) RETURN count(n)").result_set
+        self.env.assertEquals(resultset[0][0], 0)
+
+        ##############################################################################################        
+        # Delete graph via GRAPH.DELETE.
+        ##############################################################################################
+        self.populate_graph()
+        q = """UNWIND (range(0, 10000)) AS x WITH x AS x WHERE (x / 900) = 1 RETURN x"""
+        threads = []
+        for i in range(CLIENT_COUNT):
+            graph = graphs[i]
+            t = threading.Thread(target=thread_run_query, args=(graph, q, i))
+            t.setDaemon(True)
+            threads.append(t)
+            t.start()
+
+        graphs[i].delete()
+
+        # Wait for threads to return.
+        for i in range(CLIENT_COUNT):
+            t = threads[i]
+            t.join()            
+            self.env.assertEquals(assertions[i].result_set[0][0], 900)
+
+        # Make sure Graph is empty, e.g. graph was deleted.
+        resultset = graphs[0].query("MATCH (n) RETURN count(n)").result_set
+        self.env.assertEquals(resultset[0][0], 0)

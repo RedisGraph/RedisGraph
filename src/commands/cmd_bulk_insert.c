@@ -62,7 +62,7 @@ void _MGraph_BulkInsert(void *args) {
 	}
 	argc -= 2; // already read node count and edge count
 
-	gc = GraphContext_Retrieve(ctx, graphname, false, true);
+	gc = GraphContext_Retrieve(ctx, rs_graph_name, false, true);
 	initial_node_count = Graph_NodeCount(gc->g);
 
 	// Lock the graph for writing.
@@ -90,7 +90,10 @@ void _MGraph_BulkInsert(void *args) {
 	RedisModule_ReplyWithStringBuffer(ctx, reply, len);
 
 cleanup:
-	if(gc) Graph_ReleaseLock(gc->g);
+	if(gc) {
+		Graph_ReleaseLock(gc->g);
+		GraphContext_Release(gc);
+	}
 	CommandCtx_ThreadSafeContextUnlock(cmd_ctx);
 	CommandCtx_Free(cmd_ctx);
 }
