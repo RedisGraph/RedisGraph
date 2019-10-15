@@ -1366,7 +1366,8 @@ static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, 
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->free_root = true;
 	ast->referenced_entities = NULL;
-	ast->annotation_ctx = NULL;
+	ast->name_ctx = NULL;
+	ast->project_all_ctx = NULL;
 
 	uint n = end_offset - start_offset;
 

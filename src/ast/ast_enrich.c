@@ -42,23 +42,23 @@ static void _Free_AnonCallback(void *userdata, const cypher_astnode_t *node, voi
 }
 
 // Construct a new annotation context for aliasing AST graph entities.
-static AnnotationCtx *_AST_NewAnnotationCtx() {
-	AnnotationCtx *annotation_ctx = cypher_ast_annotation_context();
+static AnnotationCtx *_AST_NewNameContext(void) {
+	AnnotationCtx *name_ctx = cypher_ast_annotation_context();
 	cypher_ast_annotation_context_release_handler_t handler = &_Free_AnonCallback;
-	cypher_ast_annotation_context_set_release_handler(annotation_ctx, handler, NULL);
-	return annotation_ctx;
+	cypher_ast_annotation_context_set_release_handler(name_ctx, handler, NULL);
+	return name_ctx;
 }
 
 void AST_AttachName(AST *ast, const cypher_astnode_t *node, const char *name) {
 	// Annotate AST entity with identifier string.
-	cypher_astnode_attach_annotation(ast->annotation_ctx, node, (void *)name, NULL);
+	cypher_astnode_attach_annotation(ast->name_ctx, node, (void *)name, NULL);
 }
 
 void AST_Enrich(AST *ast) {
 	/* Directives like CREATE INDEX are not queries. */
 	if(cypher_astnode_type(ast->root) != CYPHER_AST_QUERY) return;
 
-	ast->annotation_ctx = _AST_NewAnnotationCtx();
+	ast->name_ctx = _AST_NewNameContext();
 
 	uint anon_count = 0;
 	_name_anonymous_entities_in_pattern(ast, ast->root, &anon_count);

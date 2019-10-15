@@ -171,7 +171,8 @@ const cypher_astnode_t **AST_GetClauses(const AST *ast, cypher_astnode_type_t ty
 AST *AST_Build(cypher_parse_result_t *parse_result) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->referenced_entities = NULL;
-	ast->annotation_ctx = NULL;
+	ast->name_ctx = NULL;
+	ast->project_all_ctx = NULL;
 	ast->free_root = false;
 
 	// Retrieve the AST root node from a parsed query.
@@ -196,7 +197,8 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 
 AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	AST *ast = rm_malloc(sizeof(AST));
-	ast->annotation_ctx = master_ast->annotation_ctx;
+	ast->name_ctx = master_ast->name_ctx;
+	ast->project_all_ctx = master_ast->project_all_ctx;
 	ast->free_root = true;
 	ast->limit = UNLIMITED;
 	uint n = end_offset - start_offset;
@@ -274,7 +276,7 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 }
 
 const char *AST_GetEntityName(const AST *ast, const cypher_astnode_t *entity) {
-	return cypher_astnode_get_annotation(ast->annotation_ctx, entity);
+	return cypher_astnode_get_annotation(ast->name_ctx, entity);
 }
 
 // Determine the maximum number of records
@@ -289,9 +291,9 @@ void AST_Free(AST *ast) {
 	if(ast->free_root) {
 		// This is a generated AST, free its root node.
 		cypher_astnode_free((cypher_astnode_t *)ast->root);
-	} else if(ast->annotation_ctx) {
-		// This is the master AST and an annotation context has been constructed.
-		cypher_ast_annotation_context_free(ast->annotation_ctx);
+	} else if(ast->name_ctx) {
+		// This is the master AST and annotation contexts have been constructed.
+		cypher_ast_annotation_context_free(ast->name_ctx);
 	}
 	rm_free(ast);
 }

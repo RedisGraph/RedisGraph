@@ -24,7 +24,8 @@ typedef enum {
 typedef struct {
 	const cypher_astnode_t *root;     // Root element of libcypher-parser AST
 	rax *referenced_entities;         // Mapping of the referenced entities.
-	AnnotationCtx *annotation_ctx;    // Annotation context for aliasing AST graph entities.
+	AnnotationCtx *name_ctx;          // Annotation context for naming graph entities and ORDER items.
+	AnnotationCtx *project_all_ctx;   // Context containing aliases for WITH/RETURN * projections.
 	uint limit;                       // The maximum number of results in this segment.
 	bool free_root;                   // The root should only be freed if this is a sub-AST we constructed
 } AST;
