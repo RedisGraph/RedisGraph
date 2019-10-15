@@ -11,7 +11,6 @@
 #include "../redismodule.h"
 #include "../index/index.h"
 #include "../schema/schema.h"
-#include "../commands/cmd_context.h"
 #include "graph.h"
 
 typedef struct {
@@ -30,9 +29,9 @@ typedef struct {
 /* GraphContext API */
 /* Retrive the graph context according to the graph name
  * readOnly is the access mode to the graph key */
-GraphContext *GraphContext_Retrieve(CommandCtx *cmdCtx, const char *graphName, bool readOnly);
-// Deletes a graph context from the module, according to the graph name.
-void GraphContext_Delete(RedisModuleCtx *ctx, const char *graphName);
+GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphName, bool readOnly, bool shouldCreate);
+// Deletes a graph context from the module.
+void GraphContext_Delete(GraphContext *gc, RedisModuleCtx *ctx);
 
 /* Schema API */
 // Retrieve number of schemas created for given type.

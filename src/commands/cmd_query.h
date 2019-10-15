@@ -4,14 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef GRAPH_QUERY_H
-#define GRAPH_QUERY_H
+#pragma once
 
-#include "../redismodule.h"
-#include "../util/thpool/thpool.h"
-
-extern threadpool _thpool;
-
-int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
-
-#endif
+void Graph_Query(void *args);
