@@ -65,12 +65,14 @@ static inline bool _check_compact_flag(CommandCtx *qctx) {
 			!strcasecmp(RedisModule_StringPtrLen(qctx->argv[3], NULL), "--compact"));
 }
 
-void _MGraph_Query(void *args) {
+void Graph_Query(void *args) {
 	AST *ast = NULL;
 	bool lockAcquired = false;
 	ResultSet *result_set = NULL;
 	CommandCtx *qctx = (CommandCtx *)args;
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
+	GraphContext *gc = CommandCtx_GetGraphContext(qctx);
+	QueryCtx_SetGraphCtx(gc);
 
 	QueryCtx_BeginTimer(); // Start query timing.
 	QueryCtx_SetRedisModuleCtx(ctx);
@@ -89,13 +91,18 @@ void _MGraph_Query(void *args) {
 	// Prepare the constructed AST for accesses from the module
 	ast = AST_Build(parse_result);
 
-	GraphContext *gc = GraphContext_Retrieve(qctx, qctx->graphName, readonly);
-
 	bool compact = _check_compact_flag(qctx);
 
 	// Acquire the appropriate lock.
-	if(readonly) Graph_AcquireReadLock(gc->g);
-	else Graph_WriterEnter(gc->g);  // Single writer.
+	if(readonly) {
+		Graph_AcquireReadLock(gc->g);
+	} else {
+		Graph_WriterEnter(gc->g);  // Single writer.
+		/* If this is a writer query we need to re-open the graph key with write flag
+		* this notifies Redis that the key is "dirty" any watcher on that key will
+		* be notified. */
+		GraphContext_Retrieve(ctx, gc->graph_name, false, false);
+	}
 	lockAcquired = true;
 
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
@@ -128,36 +135,4 @@ cleanup:
 	if(parse_result) cypher_parse_result_free(parse_result);
 	CommandCtx_Free(qctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
-}
-
-/* Queries graph
- * Args:
- * argv[1] graph name
- * argv[2] query to execute */
-int MGraph_Query(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-	if(argc < 3) return RedisModule_WrongArity(ctx);
-
-	/* Determin query execution context
-	 * queries issued within a LUA script or multi exec block must
-	 * run on Redis main thread, others can run on different threads. */
-	CommandCtx *context;
-	int flags = RedisModule_GetContextFlags(ctx);
-	bool is_replicated = RedisModule_GetContextFlags(ctx) & REDISMODULE_CTX_FLAGS_REPLICATED;
-	if(flags & (REDISMODULE_CTX_FLAGS_MULTI |
-				REDISMODULE_CTX_FLAGS_LUA |
-				REDISMODULE_CTX_FLAGS_LOADING)) {
-		// Run query on Redis main thread.
-		context = CommandCtx_New(ctx, NULL, argv[1], argv[2], argv, argc, is_replicated);
-		_MGraph_Query(context);
-	} else {
-		// Run query on a dedicated thread.
-		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
-		context = CommandCtx_New(NULL, bc, argv[1], argv[2], argv, argc, is_replicated);
-		thpool_add_work(_thpool, _MGraph_Query, context);
-	}
-
-	// Replicate the command to slaves and AOF.
-	// If the query is read-only, slaves will do nothing after parsing.
-	RedisModule_ReplicateVerbatim(ctx);
-	return REDISMODULE_OK;
 }

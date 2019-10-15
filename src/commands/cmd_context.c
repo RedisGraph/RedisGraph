@@ -6,7 +6,7 @@ CommandCtx *CommandCtx_New
 (
 	RedisModuleCtx *ctx,
 	RedisModuleBlockedClient *bc,
-	RedisModuleString *graphName,
+	GraphContext *graph_ctx,
 	RedisModuleString *query,
 	RedisModuleString **argv,
 	int argc,
@@ -18,9 +18,7 @@ CommandCtx *CommandCtx_New
 	context->argv = argv;
 	context->argc = argc;
 	context->replicated_command = replicated_command;
-	context->graphName = NULL;
-	// Make a copy of graph name.
-	if(graphName) context->graphName = rm_strdup(RedisModule_StringPtrLen(graphName, NULL));
+	context->graph_ctx = graph_ctx;
 
 	// Make a copy of query.
 	context->query = (query) ? rm_strdup(RedisModule_StringPtrLen(query, NULL)) : NULL;
@@ -36,6 +34,11 @@ RedisModuleCtx *CommandCtx_GetRedisCtx(CommandCtx *qctx) {
 	assert(qctx->bc);
 	qctx->ctx = RedisModule_GetThreadSafeContext(qctx->bc);
 	return qctx->ctx;
+}
+
+GraphContext *CommandCtx_GetGraphContext(const CommandCtx *qctx) {
+	assert(qctx);
+	return qctx->graph_ctx;
 }
 
 void CommandCtx_ThreadSafeContextLock(const CommandCtx *qctx) {
@@ -61,7 +64,6 @@ void CommandCtx_Free(CommandCtx *qctx) {
 	}
 
 	if(qctx->query) rm_free(qctx->query);
-	if(qctx->graphName) rm_free(qctx->graphName);
 	rm_free(qctx);
 }
 

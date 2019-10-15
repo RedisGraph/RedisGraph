@@ -62,7 +62,7 @@ void _MGraph_BulkInsert(void *args) {
 	}
 	argc -= 2; // already read node count and edge count
 
-	gc = GraphContext_Retrieve(cmd_ctx, graphname, false);
+	gc = GraphContext_Retrieve(ctx, graphname, false, true);
 	initial_node_count = Graph_NodeCount(gc->g);
 
 	// Lock the graph for writing.

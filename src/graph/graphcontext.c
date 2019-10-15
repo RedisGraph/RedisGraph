@@ -62,71 +62,46 @@ static GraphContext *_GraphContext_Create(RedisModuleCtx *ctx, const char *graph
 	return gc;
 }
 
-GraphContext *GraphContext_Retrieve(CommandCtx *cmdCtx, const char *graphName, bool readOnly) {
-	assert(cmdCtx && graphName);
+GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphName, bool readOnly,
+									bool shouldCreate) {
+	assert(graphName);
 
 	GraphContext *gc = NULL;
-	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(cmdCtx);
-	RedisModuleString *graphID = RedisModule_CreateString(ctx, graphName, strlen(graphName));
 	int rwFlag = readOnly ? REDISMODULE_READ : REDISMODULE_WRITE;
+	RedisModuleString *graphID = RedisModule_CreateString(ctx, graphName, strlen(graphName));
 
-	// Acquire GIL if needed.
-	CommandCtx_ThreadSafeContextLock(cmdCtx);
-	{
-		RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, rwFlag);
-		if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
-			// Key doesn't exists, create it.
+	RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, rwFlag);
+	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
+		// Key doesn't exists, create it.
+		if(shouldCreate) {
 			gc = _GraphContext_Create(ctx, graphName, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
-		} else if(RedisModule_ModuleTypeGetType(key) == GraphContextRedisModuleType) {
-			gc = RedisModule_ModuleTypeGetValue(key);
 		}
-		RedisModule_CloseKey(key);
+	} else if(RedisModule_ModuleTypeGetType(key) == GraphContextRedisModuleType) {
+		gc = RedisModule_ModuleTypeGetValue(key);
 	}
-	// Release GIL if acquired.
-	CommandCtx_ThreadSafeContextUnlock(cmdCtx);
+	RedisModule_CloseKey(key);
 
 	RedisModule_FreeString(ctx, graphID);
-	if(gc) {
-		QueryCtx_SetGraphCtx(gc);
-		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
-	}
+	if(gc) Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 	return gc;
 }
 
-void GraphContext_Delete(RedisModuleCtx *ctx, const char *graphName) {
-	assert(ctx && graphName);
+void GraphContext_Delete(GraphContext *gc, RedisModuleCtx *ctx) {
+	assert(gc && ctx);
 
-	QueryCtx_BeginTimer(); // Start deletion timing.
-	RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphName, strlen(graphName));
+	const char *graph_name = gc->graph_name;
+
+	RedisModuleString *rs_name = RedisModule_CreateString(ctx, graph_name, strlen(graph_name));
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_WRITE);
-	int keytype = RedisModule_KeyType(key);
-	if(keytype == REDISMODULE_KEYTYPE_EMPTY) {
-		RedisModule_ReplyWithError(ctx, "Graph was not found in database.");
-		goto cleanup;
-	} else if(!(keytype == REDISMODULE_KEYTYPE_MODULE &&
-				RedisModule_ModuleTypeGetType(key) == GraphContextRedisModuleType)) {
-		RedisModule_ReplyWithError(ctx, "Specified graph name referred to incorrect key type.");
-		goto cleanup;
-	}
-	// Retrieve the GraphContext to disable synchronization.
-	GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
+	assert(RedisModule_ModuleTypeGetType(key) == GraphContextRedisModuleType);
 
 	// Acquire write lock, guarantee we're the only thread executing.
 	Graph_AcquireWriteLock(gc->g);
-
 	// Disable matrix synchronization for graph deletion.
 	Graph_SetMatrixPolicy(gc->g, DISABLED);
 
 	// Remove GraphContext from keyspace.
 	assert(RedisModule_DeleteKey(key) == REDISMODULE_OK);
-	char *strElapsed;
-	double t = QueryCtx_GetExecutionTime();
-	asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
-	RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
-	free(strElapsed);
-
-
-cleanup:
 	RedisModule_Free(rs_name);
 }
 
