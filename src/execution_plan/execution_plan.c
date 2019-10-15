@@ -71,74 +71,21 @@ static inline const char **_BuildColumnNames(OpBase *op) {
 	return columns;
 }
 
-static char **_CollectAliases(rax *map) {
-	char **aliases = array_new(char *, 1);
-	raxIterator it;
-	raxStart(&it, map);
-
-	// Seek all referenced aliases prior to the anonymous identifiers.
-	raxSeek(&it, "<", (unsigned char *)"anon_", 5);
-	while(raxPrev(&it)) { // Scan backwards
-		size_t len = it.key_len;
-		// Copy the key and add a terminator character.
-		char *alias = rm_strndup((char *)it.key, len);
-		aliases = array_append(aliases, alias);
-	}
-
-	// Seek all referenced aliases after the anonymous identifiers.
-	// The ASCII value of the backtick character is 1 greater than the underscore,
-	// so this seek will skip all keys with begining with "anon_".
-	raxSeek(&it, ">", (unsigned char *)"anon`", 5);
-	while(raxNext(&it)) { // Scan forwards
-		size_t len = it.key_len;
-		// Copy the key and add a terminator character.
-		char *alias = rm_strndup((char *)it.key, len);
-		aliases = array_append(aliases, alias);
-	}
-
-	raxStop(&it);
-
-	return aliases;
-}
-
-static void _PopulateProjectAll(ExecutionPlan *previous_segment, OpBase *op_base) {
-	char **aliases = _CollectAliases(previous_segment->record_map);
+// Given a WITH/RETURN * clause, generate the array of expressions to populate.
+static AR_ExpNode **_PopulateProjectAll(const cypher_astnode_t *clause) {
+	// Retrieve the relevant aliases from the AST.
+	const char **aliases = AST_GetProjectAll(clause);
 	uint count = array_len(aliases);
 
-	AR_ExpNode *exps[count];
-	uint offsets[count];
-
-	uint actual_count = 0;
-	for(uint i = 0; i < count; i ++) {
-		// Skip aliases that already have projections from ORDER BY expressions
-		if(OpBase_Aware(op_base, aliases[i], NULL)) continue;
-
+	AR_ExpNode **project_exps = array_new(AR_ExpNode *, count);
+	for(uint i = 0; i < count; i++) {
 		// Build an expression for each alias.
 		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(aliases[i], NULL);
 		exp->resolved_name = aliases[i];
-		exps[actual_count] = exp;
-
-		// Map the alias within the ExecutionPlan mapping.
-		int record_idx = OpBase_Modifies(op_base, aliases[i]);
-		offsets[actual_count] = record_idx;
-
-		actual_count ++;
+		project_exps = array_append(project_exps, exp);
 	}
 
-	array_free(aliases);
-
-	// Assign the new expressions to the operation.
-	if(op_base->type == OPType_PROJECT) {
-		OpProject *op = (OpProject *)op_base;
-		op->exps = array_ensure_prepend(op->exps, exps, actual_count, AR_ExpNode *);
-		op->exp_count = actual_count;
-		op->record_offsets = array_ensure_prepend(op->record_offsets, offsets, actual_count, uint);
-	} else {
-		OpAggregate *op = (OpAggregate *)op_base;
-		op->exps = array_ensure_prepend(op->exps, exps, actual_count, AR_ExpNode *);
-		op->exp_count = actual_count;
-		op->record_offsets = array_ensure_prepend(op->record_offsets, offsets, actual_count, uint);
-	}
+	return project_exps;
 }
 
 // Handle ORDER entities
@@ -153,8 +100,8 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 		const cypher_astnode_t *item = cypher_ast_order_by_get_item(order_clause, i);
 		const cypher_astnode_t *ast_exp = cypher_ast_sort_item_get_expression(item);
 		AR_ExpNode *exp = AR_EXP_FromExpression(ast_exp);
-		AR_EXP_BuildResolvedName(exp);
-		AST_AttachName(ast, item, exp->resolved_name);
+		char *name = AR_EXP_BuildResolvedName(exp);
+		AST_AttachName(ast, item, name);
 
 		order_exps = array_append(order_exps, exp);
 	}
@@ -164,9 +111,9 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 
 // Handle RETURN entities
 // (This function is not static because it is relied upon by unit tests)
-AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause, AST *ast) {
+AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause) {
 	// Query is of type "RETURN *"
-	if(cypher_ast_return_has_include_existing(ret_clause)) return NULL; // TODO hm
+	if(cypher_ast_return_has_include_existing(ret_clause)) return _PopulateProjectAll(ret_clause);
 
 	uint count = cypher_ast_return_nprojections(ret_clause);
 	AR_ExpNode **return_expressions = array_new(AR_ExpNode *, count);
@@ -200,6 +147,9 @@ AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause, AST *as
 }
 
 static AR_ExpNode **_BuildWithExpressions(const cypher_astnode_t *with_clause) {
+	// Clause is of type "WITH *"
+	if(cypher_ast_with_has_include_existing(with_clause)) return _PopulateProjectAll(with_clause);
+
 	uint count = cypher_ast_with_nprojections(with_clause);
 	AR_ExpNode **with_expressions = array_new(AR_ExpNode *, count);
 	for(uint i = 0; i < count; i++) {
@@ -474,8 +424,8 @@ static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **project
 
 // The RETURN logic is identical to WITH-culminating segments,
 // though a different set of API endpoints must be used for each.
-static inline void _buildReturnOps(ExecutionPlan *plan, const cypher_astnode_t *clause, AST *ast) {
-	AR_ExpNode **projections = _BuildReturnExpressions(clause, ast);
+static void _buildReturnOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
+	AR_ExpNode **projections = _BuildReturnExpressions(clause);
 
 	bool aggregate = AST_ClauseContainsAggregation(clause);
 	bool distinct = cypher_ast_return_is_distinct(clause);
@@ -495,7 +445,7 @@ static inline void _buildReturnOps(ExecutionPlan *plan, const cypher_astnode_t *
 	_buildProjectionOps(plan, projections, order_exps, skip, sort_direction, aggregate, distinct);
 }
 
-static inline void _buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
+static void _buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
 	AR_ExpNode **projections = _BuildWithExpressions(clause);
 	bool aggregate = AST_ClauseContainsAggregation(clause);
 	bool distinct = cypher_ast_with_is_distinct(clause);
@@ -608,7 +558,7 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 		_buildDeleteOp(plan, clause, stats);
 	} else if(t == CYPHER_AST_RETURN) {
 		// Converting a RETURN clause can create multiple operations.
-		_buildReturnOps(plan, clause, ast);
+		_buildReturnOps(plan, clause);
 	} else if(t == CYPHER_AST_WITH) {
 		// Converting a WITH clause can create multiple operations.
 		_buildWithOps(plan, clause);
@@ -704,15 +654,6 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		connecting_op = _ExecutionPlan_FindConnectingOp(current_segment->root);
 		assert(connecting_op->childCount == 0);
 
-		if(i < segment_count - 1) {
-			// Check whether segment ends in a WITH * clause.
-			const cypher_astnode_t *end = cypher_ast_query_get_clause(ast->root, segment_indices[i - 1]);
-			assert(cypher_astnode_type(end) == CYPHER_AST_WITH);
-
-			bool project_all = cypher_ast_with_has_include_existing(end);
-			if(project_all) _PopulateProjectAll(prev_segment, connecting_op);
-		}
-
 		ExecutionPlan_AddOp(connecting_op, prev_root);
 	}
 
@@ -735,10 +676,6 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 			assert(segment_count == 1);
 			connecting_op = _ExecutionPlan_FindConnectingOp(plan->root);
 		}
-
-		// Check whether the query culminates in a RETURN * clause.
-		bool return_all = cypher_ast_return_has_include_existing(last_clause);
-		if(return_all) _PopulateProjectAll(segments[segment_count - 2], connecting_op);
 
 		// Prepare column names for the ResultSet.
 		if(result_set) result_set->columns = _BuildColumnNames(connecting_op);

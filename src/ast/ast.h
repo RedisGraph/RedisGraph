@@ -68,7 +68,7 @@ void AST_BuildReferenceMap(AST *ast, const cypher_astnode_t *project_clause);
 void AST_Enrich(AST *ast);
 
 // Annotate the AST node with the given name.
-void AST_AttachName(AST *ast, const cypher_astnode_t *node, const char *name);
+void AST_AttachName(AST *ast, const cypher_astnode_t *node, char *name);
 
 // Returns true if the given alias is referenced within this AST segment.
 bool AST_AliasIsReferenced(AST *ast, const char *alias);
@@ -82,6 +82,9 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause);
 // Retrieve the name of a given AST entity. This interface is valid for
 // AST node and edge patterns as well as any ORDER BY item.
 const char *AST_GetEntityName(const AST *ast, const cypher_astnode_t *entity);
+
+// Retrieve the array of projected aliases for a WITH/RETURN * clause.
+const char **AST_GetProjectAll(const cypher_astnode_t *projection_clause);
 
 // Determine the maximum number of records
 // which will be considered when evaluating an algebraic expression.

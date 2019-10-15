@@ -30,7 +30,6 @@ typedef struct {
 	CacheGroupIterator *group_iter;
 	Record last_record;
 	uint exp_count;                                /* Number of expressions that should be freed with this op. */
-	bool project_all;                              /* Projects all user-defined aliases (tracked for freeing logic). */
 } OpAggregate;
 
 OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode **order_exps);

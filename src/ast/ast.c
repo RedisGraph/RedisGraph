@@ -186,11 +186,11 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	// Empty queries should be captured by AST validations
 	assert(ast->root);
 
-	// Annotate all graph entities with an identifier, user-provided or anonymous.
-	AST_Enrich(ast);
-
-	// Set thread-local AST
+	// Set thread-local AST.
 	QueryCtx_SetAST(ast);
+
+	// Augment the AST with annotations for naming entities and populating WITH/RETURN * projections.
+	AST_Enrich(ast);
 
 	return ast;
 }
@@ -279,6 +279,11 @@ const char *AST_GetEntityName(const AST *ast, const cypher_astnode_t *entity) {
 	return cypher_astnode_get_annotation(ast->name_ctx, entity);
 }
 
+const char **AST_GetProjectAll(const cypher_astnode_t *projection_clause) {
+	AST *ast = QueryCtx_GetAST();
+	return cypher_astnode_get_annotation(ast->project_all_ctx, projection_clause);
+}
+
 // Determine the maximum number of records
 // which will be considered when evaluating an algebraic expression.
 int TraverseRecordCap(const AST *ast) {
@@ -292,8 +297,9 @@ void AST_Free(AST *ast) {
 		// This is a generated AST, free its root node.
 		cypher_astnode_free((cypher_astnode_t *)ast->root);
 	} else if(ast->name_ctx) {
-		// This is the master AST and annotation contexts have been constructed.
+		// This is the master AST, free the annotation contexts that have been constructed.
 		cypher_ast_annotation_context_free(ast->name_ctx);
+		cypher_ast_annotation_context_free(ast->project_all_ctx);
 	}
 	rm_free(ast);
 }

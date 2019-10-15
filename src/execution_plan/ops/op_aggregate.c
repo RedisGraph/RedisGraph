@@ -209,7 +209,6 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode 
 	op->groups = CacheGroupNew();
 	op->exp_count = array_len(exps);
 	op->record_offsets = array_new(uint, op->exp_count);
-	op->project_all = (exps == NULL); // WITH/RETURN * projection, expressions will be populated later
 
 	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", AggregateInit, AggregateConsume,
 				AggregateReset, NULL, AggregateFree, plan);
@@ -222,14 +221,12 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode 
 	}
 
 	uint order_exp_count = array_len(order_exps);
-	if(order_exps && exps == NULL) op->exps = array_new(AR_ExpNode *, order_exp_count); // TODO tmp
 	for(uint i = 0; i < order_exp_count; i ++) {
 		// If an ORDER BY alias is already being projected, it does not need to be added again.
 		bool evaluated = OpBase_Aware((OpBase *)op, order_exps[i]->resolved_name, NULL);
 		if(evaluated) continue;
 
 		// Otherwise, append it the projection arrays.
-		// TODO issues if we populate a STAR projection after this point
 		op->exps = array_append(op->exps, order_exps[i]);
 		int record_idx = OpBase_Modifies((OpBase *)op, order_exps[i]->resolved_name);
 		op->record_offsets = array_append(op->record_offsets, record_idx);
@@ -285,11 +282,7 @@ static void AggregateFree(OpBase *opBase) {
 
 	if(op->exps) {
 		// Only free projection expressions (exclude order expressions).
-		for(uint i = 0; i < op->exp_count; i ++) {
-			// Expression names need to be freed if this was a * projection.
-			if(op->project_all) rm_free((char *)op->exps[i]->resolved_name); // TODO remove soon
-			AR_EXP_Free(op->exps[i]);
-		}
+		for(uint i = 0; i < op->exp_count; i ++) AR_EXP_Free(op->exps[i]);
 		array_free(op->exps);
 		op->exps = NULL;
 	}

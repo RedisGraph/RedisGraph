@@ -1,4 +1,5 @@
 #include "ast.h"
+#include "../util/arr.h"
 #include <assert.h>
 
 // Adds an identifier or an alias to the reference map.
@@ -56,15 +57,7 @@ static void _AST_MapOrderByReferences(AST *ast, const cypher_astnode_t *order_by
 }
 
 // Adds a node to the referenced entities rax, in case it has labels or properties (inline filter).
-static void _AST_MapReferencedNode(AST *ast, const cypher_astnode_t *node, bool include_all) {
-	if(include_all) { // WITH/RETURN * projection, include all user-defined aliases.
-		const cypher_astnode_t *identifier = cypher_ast_node_pattern_get_identifier(node);
-		if(identifier) {  // Alias is user-defined, include it.
-			const char *alias = cypher_ast_identifier_get_name(identifier);
-			_AST_UpdateRefMap(ast, alias);
-		}
-	}
-
+static void _AST_MapReferencedNode(AST *ast, const cypher_astnode_t *node) {
 	const cypher_astnode_t *properties = cypher_ast_node_pattern_get_properties(node);
 	// A node with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
@@ -79,15 +72,7 @@ static void _AST_MapReferencedNode(AST *ast, const cypher_astnode_t *node, bool 
 }
 
 // Adds an edge to the referenced entities rax if it has multiple types or any properties (inline filter).
-static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge, bool include_all) {
-	if(include_all) { // WITH/RETURN * projection, include all user-defined aliases.
-		const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(edge);
-		if(identifier) {  // Alias is user-defined, include it.
-			const char *alias = cypher_ast_identifier_get_name(identifier);
-			_AST_UpdateRefMap(ast, alias);
-		}
-	}
-
+static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge) {
 	const cypher_astnode_t *properties = cypher_ast_rel_pattern_get_properties(edge);
 	// An edge with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
@@ -102,26 +87,24 @@ static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge, bool 
 }
 
 // Maps entities in a given path.
-static void _AST_MapReferencedEntitiesInPath(AST *ast, const cypher_astnode_t *path,
-											 bool include_all) {
+static void _AST_MapReferencedEntitiesInPath(AST *ast, const cypher_astnode_t *path) {
 	uint path_len = cypher_ast_pattern_path_nelements(path);
 	// Node are in even positions.
 	for(uint i = 0; i < path_len; i += 2)
-		_AST_MapReferencedNode(ast, cypher_ast_pattern_path_get_element(path, i), include_all);
+		_AST_MapReferencedNode(ast, cypher_ast_pattern_path_get_element(path, i));
 	// Edges are in odd positions.
 	for(uint i = 1; i < path_len; i += 2)
-		_AST_MapReferencedEdge(ast, cypher_ast_pattern_path_get_element(path, i), include_all);
+		_AST_MapReferencedEdge(ast, cypher_ast_pattern_path_get_element(path, i));
 }
 
 // Add referenced aliases from MATCH clause - inline filtered and explicit WHERE filter.
-static void _AST_MapMatchClauseReferences(AST *ast, const cypher_astnode_t *match_clause,
-										  bool include_all) {
+static void _AST_MapMatchClauseReferences(AST *ast, const cypher_astnode_t *match_clause) {
 	// Inline filters.
 	const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match_clause);
 	uint path_count = cypher_ast_pattern_npaths(pattern);
 	for(uint i = 0; i < path_count; i++) {
 		const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
-		_AST_MapReferencedEntitiesInPath(ast, path, include_all);
+		_AST_MapReferencedEntitiesInPath(ast, path);
 	}
 
 	// Where clause.
@@ -130,13 +113,12 @@ static void _AST_MapMatchClauseReferences(AST *ast, const cypher_astnode_t *matc
 }
 
 // Add referenced aliases from CREATE clause.
-static void _AST_MapCreateClauseReferences(AST *ast, const cypher_astnode_t *create_clause,
-										   bool include_all) {
+static void _AST_MapCreateClauseReferences(AST *ast, const cypher_astnode_t *create_clause) {
 	const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(create_clause);
 	uint path_count = cypher_ast_pattern_npaths(pattern);
 	for(uint i = 0; i < path_count; i++) {
 		const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
-		_AST_MapReferencedEntitiesInPath(ast, path, include_all);
+		_AST_MapReferencedEntitiesInPath(ast, path);
 	}
 }
 
@@ -176,11 +158,10 @@ static void _AST_MapDeleteClauseReferences(AST *ast, const cypher_astnode_t *del
 }
 
 // Maps entities in MERGE clause. Either by implicit filters, or modified entities by SET clause.
-static void _AST_MapMergeClauseReference(AST *ast, const cypher_astnode_t *merge_clause,
-										 bool include_all) {
+static void _AST_MapMergeClauseReference(AST *ast, const cypher_astnode_t *merge_clause) {
 	// Collect implicitly filtered entities.
 	const cypher_astnode_t *merge_path = cypher_ast_merge_get_pattern_path(merge_clause);
-	_AST_MapReferencedEntitiesInPath(ast, merge_path, include_all);
+	_AST_MapReferencedEntitiesInPath(ast, merge_path);
 
 	// Map modified entities, either by ON MATCH or ON CREATE clause.
 	uint merge_actions = cypher_ast_merge_nactions(merge_clause);
@@ -224,7 +205,7 @@ static void _AST_MapWithReferredEntities(AST *ast_segment, const cypher_astnode_
 // Map the LHS of "AS" projected entities. "RETURN a as x order by x" will just collect a to the map.
 static void _AST_MapReturnReferredEntities(AST *ast_segment,
 										   const cypher_astnode_t *return_clause) {
-// Add referenced aliases for RETURN projections.
+	// Add referenced aliases for RETURN projections.
 	uint projectionCount = cypher_ast_return_nprojections(return_clause);
 	for(uint i = 0 ; i < projectionCount; i ++) {
 		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
@@ -237,18 +218,15 @@ static void _AST_MapReturnReferredEntities(AST *ast_segment,
 	if(order_by) _AST_MapOrderByReferences(ast_segment, order_by);
 }
 
-// Map the referred aliases (LHS) in entities projected by a WITH or RETURN clause.
-static void _AST_MapProjectionClause(AST *ast_segment, const cypher_astnode_t *project_clause) {
-	if(!project_clause) return;
-	cypher_astnode_type_t type = cypher_astnode_type(project_clause);
-	assert(type == CYPHER_AST_WITH || type == CYPHER_AST_RETURN);
-
-	if(type == CYPHER_AST_WITH) _AST_MapWithReferredEntities(ast_segment, project_clause);
-	else _AST_MapReturnReferredEntities(ast_segment, project_clause);
+static void _AST_MapProjectAll(AST *ast, const cypher_astnode_t *project_clause) {
+	const char **aliases = AST_GetProjectAll(project_clause);
+	uint alias_count = array_len(aliases);
+	for(uint i = 0; i < alias_count; i ++) {
+		_AST_UpdateRefMap(ast, aliases[i]);
+	}
 }
 
-static void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *clause,
-										 bool include_all) {
+static void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *clause) {
 	if(!clause) return;
 
 	cypher_astnode_type_t type = cypher_astnode_type(clause);
@@ -272,13 +250,13 @@ static void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *claus
 		if(order_by) _AST_MapOrderByReferences(ast, order_by);
 	} else if(type == CYPHER_AST_MATCH) {
 		// Add referenced aliases from MATCH clause - inline filtered and explicit WHERE filter.
-		_AST_MapMatchClauseReferences(ast, clause, include_all);
+		_AST_MapMatchClauseReferences(ast, clause);
 	} else if(type == CYPHER_AST_CREATE) {
 		// Add referenced aliases for CREATE clause.
-		_AST_MapCreateClauseReferences(ast, clause, include_all);
+		_AST_MapCreateClauseReferences(ast, clause);
 	} else if(type == CYPHER_AST_MERGE) {
 		// Add referenced aliases for MERGE clause - inline filtered and modified entities.
-		_AST_MapMergeClauseReference(ast, clause, include_all);
+		_AST_MapMergeClauseReference(ast, clause);
 	} else if(type == CYPHER_AST_SET) {
 		// Add referenced aliases for SET clause.
 		_AST_MapSetClauseReferences(ast, clause);
@@ -288,31 +266,40 @@ static void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *claus
 	}
 }
 
+// Map the referred aliases (LHS) in entities projected by a WITH or RETURN clause.
+static void _AST_MapProjectionClause(AST *ast_segment, const cypher_astnode_t *project_clause) {
+	cypher_astnode_type_t type = cypher_astnode_type(project_clause);
+	assert(type == CYPHER_AST_WITH || type == CYPHER_AST_RETURN);
+
+	if(type == CYPHER_AST_WITH) {
+		if(cypher_ast_with_has_include_existing(project_clause)) {
+			// If the projection clause is WITH *, all user-defined aliases are referenced.
+			_AST_MapProjectAll(ast_segment, project_clause);
+		} else {
+			_AST_MapWithReferredEntities(ast_segment, project_clause);
+		}
+	} else {
+		if(cypher_ast_return_has_include_existing(project_clause)) {
+			// If the projection clause is RETURN *, all user-defined aliases are referenced.
+			_AST_MapProjectAll(ast_segment, project_clause);
+		} else {
+			_AST_MapReturnReferredEntities(ast_segment, project_clause);
+		}
+	}
+}
+
 // Populate the AST's map of all referenced aliases.
 void AST_BuildReferenceMap(AST *ast, const cypher_astnode_t *project_clause) {
 	ast->referenced_entities = raxNew();
 
-	bool include_all = false;
-	if(project_clause) {
-		cypher_astnode_type_t type = cypher_astnode_type(project_clause);
-		assert(type == CYPHER_AST_WITH || type == CYPHER_AST_RETURN);
-		// If the projection clause is WITH/RETURN *, all user-defined aliases are referenced.
-		// Aliases can be introduced in MATCH, MERGE, CREATE, and UNWIND clauses.
-		if(type == CYPHER_AST_WITH) {
-			include_all = cypher_ast_with_has_include_existing(project_clause);
-		} else {
-			include_all = cypher_ast_return_has_include_existing(project_clause);
-		}
-
-		// If the projection is not a WITH/RETURN *, map its explicit references.
-		if(!include_all) _AST_MapProjectionClause(ast, project_clause);
-	}
+	// If this segment is followed by a projection clause, map that clause's references.
+	if(project_clause) _AST_MapProjectionClause(ast, project_clause);
 
 	// Check every clause in this AST.
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	for(uint i = 0; i < clause_count; i++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
-		_ASTClause_BuildReferenceMap(ast, clause, include_all);
+		_ASTClause_BuildReferenceMap(ast, clause);
 	}
 }
 
