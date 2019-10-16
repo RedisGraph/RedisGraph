@@ -16,6 +16,8 @@
 #include <assert.h>
 #include "util/rmalloc.h"
 #include "datatypes/array.h"
+#include "datatypes/path.h"
+#include "datatypes/sipath.h"
 
 static inline void _SIString_ToString(SIValue str, char **buf, size_t *bufferLen,
 									  size_t *bytesWritten) {
@@ -68,6 +70,11 @@ SIValue SI_Edge(void *e) {
 		.ptrval = e, .type = T_EDGE, .allocation = M_VOLATILE
 	};
 }
+
+SIValue SI_Path(void *p) {
+	Path path = *(Path *)p;
+	return SIPath_New(path);
+}
 SIValue SI_Array(u_int64_t initialCapacity) {
 	return SIArray_New(initialCapacity);
 }
@@ -117,6 +124,10 @@ SIValue SI_CloneValue(const SIValue v) {
 
 	if(v.type == T_ARRAY) {
 		return SIArray_Clone(v);
+	}
+
+	if(v.type == T_PATH) {
+		return SIPath_Clone(v);
 	}
 
 	// Copy the memory region for Node and Edge values. This does not modify the
@@ -191,6 +202,8 @@ const char *SIType_ToString(SIType t) {
 		return "Edge";
 	} else if(t & T_ARRAY) {
 		return "List";
+	} else if(t & T_PATH) {
+		return "Path";
 	} else if(t & T_NULL) {
 		return "Null";
 	} else {
@@ -228,6 +241,9 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 		break;
 	case T_ARRAY:
 		SIArray_ToString(v, buf, bufferLen, bytesWritten);
+		break;
+	case T_PATH:
+		SIPath_ToString(v, buf, bufferLen, bytesWritten);
 		break;
 	case T_NULL:
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "NULL");

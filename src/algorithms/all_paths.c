@@ -20,16 +20,16 @@
 static void __AllPathsCtx_AddConnectionToLevel(AllPathsCtx *ctx, uint level, Node *node,
 											   Edge *edge) {
 	while(array_len(ctx->levels) <= level) {
-		ctx->levels = array_append(ctx->levels, Path_new(1));
+		ctx->levels = array_append(ctx->levels, Path_New(1));
 	}
-	Path_appendNode(&ctx->levels[level], *node);
+	Path_AppendNode(&ctx->levels[level], *node);
 	if(edge != NULL)
-		Path_appendEdge(&ctx->levels[level], *edge);
+		Path_AppendEdge(&ctx->levels[level], *edge);
 }
 
 // Check to see if context levels array has entries at position 'level'.
 static bool _AllPathsCtx_LevelNotEmpty(const AllPathsCtx *ctx, uint level) {
-	return (level < array_len(ctx->levels) && Path_nodeCount(ctx->levels[level]) > 0);
+	return (level < array_len(ctx->levels) && Path_NodeCount(ctx->levels[level]) > 0);
 }
 
 AllPathsCtx *AllPathsCtx_New(Node *src, Graph *g, int *relationIDs, int relationCount,
@@ -54,7 +54,7 @@ AllPathsCtx *AllPathsToDstCtx_New(Node *src, Node *dst, Graph *g, int *relationI
 	ctx->relationIDs = relationIDs;
 	ctx->relationCount = relationCount;
 	ctx->levels = array_new(Path, 1);
-	ctx->path = Path_new(1);
+	ctx->path = Path_New(1);
 	ctx->neighbors = array_new(Edge, 32);
 	__AllPathsCtx_AddConnectionToLevel(ctx, 0, src, NULL);
 	ctx->dst = dst;
@@ -65,26 +65,26 @@ AllPathsCtx *AllPathsToDstCtx_New(Node *src, Node *dst, Graph *g, int *relationI
 Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 	if(!ctx) return NULL;
 	// As long as path is not empty OR there are neighbors to traverse.
-	while(Path_nodeCount(ctx->path) || _AllPathsCtx_LevelNotEmpty(ctx, 0)) {
-		uint32_t depth = Path_nodeCount(ctx->path);
+	while(Path_NodeCount(ctx->path) || _AllPathsCtx_LevelNotEmpty(ctx, 0)) {
+		uint32_t depth = Path_NodeCount(ctx->path);
 
 		// Can we advance?
 		if(_AllPathsCtx_LevelNotEmpty(ctx, depth)) {
 			// Get a new frontier.
-			Node frontierNode = Path_popNode(ctx->levels[depth]);
+			Node frontierNode = Path_PopNode(ctx->levels[depth]);
 
 			/* See if frontier is already on path,
 			 * it is OK for a path to contain an entity twice,
 			 * such as in the case of a cycle, but in such case we
 			 * won't expand frontier.
 			 * i.e. closing a cycle and continuing traversal. */
-			bool frontierAlreadyOnPath = Path_containsNode(ctx->path, &frontierNode);
+			bool frontierAlreadyOnPath = Path_ContainsNode(ctx->path, &frontierNode);
 
 			// Add frontier to path.
-			Path_appendNode(&ctx->path, frontierNode);
-			if(Path_edgeCount(ctx->levels[depth]) > 0) {
-				Edge frontierEdge = Path_popEdge(ctx->levels[depth]);
-				Path_appendEdge(&ctx->path, frontierEdge);
+			Path_AppendNode(&ctx->path, frontierNode);
+			if(Path_EdgeCount(ctx->levels[depth]) > 0) {
+				Edge frontierEdge = Path_PopEdge(ctx->levels[depth]);
+				Path_AppendEdge(&ctx->path, frontierEdge);
 			}
 
 			// Update path depth.
@@ -122,15 +122,15 @@ Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 			 * should be offered. */
 			if(depth >= ctx->minLen && depth <= ctx->maxLen) {
 				if(ctx->dst != NULL) {
-					Node dst = Path_head(ctx->path);
+					Node dst = Path_Head(ctx->path);
 					if(ENTITY_GET_ID(ctx->dst) != ENTITY_GET_ID(&dst)) continue;
 				}
 				return &ctx->path;
 			}
 		} else {
 			// No way to advance, backtrack.
-			Path_popNode(ctx->path);
-			if(Path_edgeCount(ctx->path)) Path_popEdge(ctx->path);
+			Path_PopNode(ctx->path);
+			if(Path_EdgeCount(ctx->path)) Path_PopEdge(ctx->path);
 		}
 	}
 	// Couldn't find a path.
@@ -140,9 +140,9 @@ Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 void AllPathsCtx_Free(AllPathsCtx *ctx) {
 	if(!ctx) return;
 	uint32_t levelsCount = array_len(ctx->levels);
-	for(int i = 0; i < levelsCount; i++) Path_free(ctx->levels[i]);
+	for(int i = 0; i < levelsCount; i++) Path_Free(ctx->levels[i]);
 	array_free(ctx->levels);
-	Path_free(ctx->path);
+	Path_Free(ctx->path);
 	array_free(ctx->neighbors);
 	rm_free(ctx);
 	ctx = NULL;
