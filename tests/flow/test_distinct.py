@@ -2,141 +2,88 @@ from redisgraph import Graph, Node, Edge
 
 from base import FlowTestsBase
 
-redis_graph = None
-redis_con = None
+graph1 = None
+graph2 = None
+graph3 = None
 
-class RedisGraphTestBase(FlowTestsBase):
-
-    def __init__(self):
-        super(RedisGraphTestBase, self).__init__()
-        global redis_con
-        redis_con = self.env.getConnection()
-        self.create_graph()
-
-    @classmethod
-    def graphId(cls):
-        return cls.__name__
-
-    @classmethod
-    def createCommand(cls):
-        raise NotImplementedError("Implement createCommand")
-
-    # several commands specified as multiine string, one command per line
-    @classmethod
-    def createCommands(cls):
-        raise NotImplementedError("Implement createCommands")
-
-    @classmethod
-    def create_graph(cls):
-        global redis_con
-        global redis_graph
-
-        redis_con.execute_command("DEL", cls.graphId())  # delete previous graph if exists
-
-        redis_graph = Graph(cls.graphId(), redis_con)
-
-        cmd = " ".join(map(lambda x: x.strip(), cls.createCommand().split("\n")))
-        if cmd != "":
-            redis_graph.query(cmd)
-
-        for cmd in cls.createCommands().split("\n"):
-            cmd = cmd.strip()
-            if cmd != "":
-                redis_graph.query(cmd)
-
-    def execute(self, cmd):
-        global redis_con
-        return redis_con.execute_command(cmd)
-
-    def query(self, cmd):
-        global redis_graph
-        q = redis_graph.query(cmd)
-        return q.result_set
-
-    def explain(self, query):
-        return redis_graph.execution_plan(query)
-
-    def multi(self):
-        global redis_con
-        redis_con.execute_command("MULTI")
-
-    def exec_(self):
-        return redis_con.execute_command("EXEC")
-
-class testReturnDistinctFlow1(RedisGraphTestBase):
+class testReturnDistinctFlow1(FlowTestsBase):
 
     def __init__(self):
         super(testReturnDistinctFlow1, self).__init__()
+        global graph1
+        redis_con = self.env.getConnection()
+        graph1 = Graph("G1", redis_con)
+        self.populate_graph()
 
-    @classmethod
-    def createCommand(cls):
-        return ""
-
-    @classmethod
-    def createCommands(cls):
-        return """
-            CREATE (:PARENT {name: 'Stevie'})
-            CREATE (:PARENT {name: 'Mike'})
-            CREATE (:PARENT {name: 'James'})
-            CREATE (:PARENT {name: 'Rich'})
-            MATCH (p:PARENT {name: 'Stevie'}) CREATE (p)-[:HAS]->(c:CHILD {name: 'child1'})
-            MATCH (p:PARENT {name: 'Stevie'}) CREATE (p)-[:HAS]->(c:CHILD {name: 'child2'})
-            MATCH (p:PARENT {name: 'Stevie'}) CREATE (p)-[:HAS]->(c:CHILD {name: 'child3'})
-            MATCH (p:PARENT {name: 'Mike'}) CREATE (p)-[:HAS]->(c:CHILD {name: 'child4'})
-            MATCH (p:PARENT {name: 'James'}) CREATE (p)-[:HAS]->(c:CHILD {name: 'child5'})
-            MATCH (p:PARENT {name: 'James'}) CREATE (p)-[:HAS]->(c:CHILD {name: 'child6'})
-        """
+    def populate_graph(self):
+        global graph1
+        graph1.query("CREATE (:PARENT {name: 'Stevie'})")
+        graph1.query("CREATE (:PARENT {name: 'Mike'})")
+        graph1.query("CREATE (:PARENT {name: 'James'})")
+        graph1.query("CREATE (:PARENT {name: 'Rich'})")
+        graph1.query("MATCH (p:PARENT {name: 'Stevie'}) CREATE (p)-[:HAS]->(c:CHILD {name: 'child1'})")
+        graph1.query("MATCH (p:PARENT {name: 'Stevie'}) CREATE (p)-[:HAS]->(c:CHILD {name: 'child2'})")
+        graph1.query("MATCH (p:PARENT {name: 'Stevie'}) CREATE (p)-[:HAS]->(c:CHILD {name: 'child3'})")
+        graph1.query("MATCH (p:PARENT {name: 'Mike'}) CREATE (p)-[:HAS]->(c:CHILD {name: 'child4'})")
+        graph1.query("MATCH (p:PARENT {name: 'James'}) CREATE (p)-[:HAS]->(c:CHILD {name: 'child5'})")
+        graph1.query("MATCH (p:PARENT {name: 'James'}) CREATE (p)-[:HAS]->(c:CHILD {name: 'child6'})")
 
     def test_distinct_optimization(self):
+        global graph1
         # Make sure we do not omit distinct when performain none aggregated projection.
-        execution_plan = self.explain("MATCH (n) RETURN DISTINCT n.name, n.age")
+        execution_plan = graph1.execution_plan("MATCH (n) RETURN DISTINCT n.name, n.age")
         self.env.assertIn("Distinct", execution_plan)
 
         # Distinct should be omitted when performain aggregation.
-        execution_plan = self.explain("MATCH (n) RETURN DISTINCT n.name, max(n.age)")
+        execution_plan = graph1.execution_plan("MATCH (n) RETURN DISTINCT n.name, max(n.age)")
         self.env.assertNotIn("Distinct", execution_plan)
 
     def test_issue_395_scenario(self):
+        global graph1
         # all
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name")
-        self.env.assertEqual(q, [['Stevie'], ['Stevie'], ['Stevie'], ['Mike'], ['James'], ['James']])
+        result = graph1.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name")
+        self.env.assertEqual(result.result_set, [['Stevie'], ['Stevie'], ['Stevie'], ['Mike'], ['James'], ['James']])
 
         # order
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name ORDER BY p.name")
-        self.env.assertEqual(q, [['James'], ['James'], ['Mike'], ['Stevie'], ['Stevie'], ['Stevie']])
+        result = graph1.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name ORDER BY p.name")
+        self.env.assertEqual(result.result_set, [['James'], ['James'], ['Mike'], ['Stevie'], ['Stevie'], ['Stevie']])
 
         # limit
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name LIMIT 2")
-        self.env.assertEqual(q, [['Stevie'], ['Stevie']])
+        result = graph1.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name LIMIT 2")
+        self.env.assertEqual(result.result_set, [['Stevie'], ['Stevie']])
 
         # order+limit
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name ORDER BY p.name LIMIT 2")
-        self.env.assertEqual(q, [['James'], ['James']])
+        result = graph1.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name ORDER BY p.name LIMIT 2")
+        self.env.assertEqual(result.result_set, [['James'], ['James']])
 
         # all+distinct
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name")
-        self.env.assertEqual(q, [['Stevie'], ['Mike'], ['James']])
+        result = graph1.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name")
+        self.env.assertEqual(result.result_set, [['Stevie'], ['Mike'], ['James']])
 
         # order+distinct
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name")
-        self.env.assertEqual(q, [['James'], ['Mike'], ['Stevie']])
+        result = graph1.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name")
+        self.env.assertEqual(result.result_set, [['James'], ['Mike'], ['Stevie']])
 
         # limit+distinct
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name LIMIT 2")
-        self.env.assertEqual(q, [['Stevie'], ['Mike']])
+        result = graph1.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name LIMIT 2")
+        self.env.assertEqual(result.result_set, [['Stevie'], ['Mike']])
 
         # order+limit+distinct
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name LIMIT 2")
-        self.env.assertEqual(q, [['James'], ['Mike']])
+        result = graph1.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name LIMIT 2")
+        self.env.assertEqual(result.result_set, [['James'], ['Mike']])
 
-class testReturnDistinctFlow2(RedisGraphTestBase):
+class testReturnDistinctFlow2(FlowTestsBase):
 
     def __init__(self):
         super(testReturnDistinctFlow2, self).__init__()
+        global graph2
+        redis_con = self.env.getConnection()
+        graph2 = Graph("G2", redis_con)
+        self.populate_graph()
 
-    @classmethod
-    def createCommand(cls):
-        return """
+    def populate_graph(self):
+        global graph2
+        create_query = """
             CREATE
                 (s:PARENT {name: 'Stevie'}),
                 (m:PARENT {name: 'Mike'}),
@@ -147,81 +94,81 @@ class testReturnDistinctFlow2(RedisGraphTestBase):
                 (s)-[:HAS]->(c3:CHILD {name: 'child3'}),
                 (m)-[:HAS]->(c4:CHILD {name: 'child4'}),
                 (j)-[:HAS]->(c5:CHILD {name: 'child5'}),
-                (j)-[:HAS]->(c6:CHILD {name: 'child6'})
-            """
-
-    @classmethod
-    def createCommands(cls):
-        return ""
+                (j)-[:HAS]->(c6:CHILD {name: 'child6'})"""
+        graph2.query(create_query)
 
     def test_issue_395_scenario_2(self):
+        global graph2
         # all
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name")
-        self.env.assertEqual(q, [['Stevie'], ['Stevie'], ['Stevie'], ['Mike'], ['James'], ['James']])
+        result = graph2.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name")
+        self.env.assertEqual(result.result_set, [['Stevie'], ['Stevie'], ['Stevie'], ['Mike'], ['James'], ['James']])
 
         # order
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name ORDER BY p.name")
-        self.env.assertEqual(q, [['James'], ['James'], ['Mike'], ['Stevie'], ['Stevie'], ['Stevie']])
+        result = graph2.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name ORDER BY p.name")
+        self.env.assertEqual(result.result_set, [['James'], ['James'], ['Mike'], ['Stevie'], ['Stevie'], ['Stevie']])
 
         # limit
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name LIMIT 2")
-        self.env.assertEqual(q, [['Stevie'], ['Stevie']])
+        result = graph2.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name LIMIT 2")
+        self.env.assertEqual(result.result_set, [['Stevie'], ['Stevie']])
 
         # order+limit
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name ORDER BY p.name DESC LIMIT 2")
-        self.env.assertEqual(q, [['Stevie'], ['Stevie']])
+        result = graph2.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN p.name ORDER BY p.name DESC LIMIT 2")
+        self.env.assertEqual(result.result_set, [['Stevie'], ['Stevie']])
 
         # all+distinct
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name")
-        self.env.assertEqual(q, [['Stevie'], ['Mike'], ['James']])
+        result = graph2.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name")
+        self.env.assertEqual(result.result_set, [['Stevie'], ['Mike'], ['James']])
 
         # order+distinct
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name DESC")
-        self.env.assertEqual(q, [['Stevie'], ['Mike'], ['James']])
+        result = graph2.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name DESC")
+        self.env.assertEqual(result.result_set, [['Stevie'], ['Mike'], ['James']])
 
         # limit+distinct
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name LIMIT 2")
-        self.env.assertEqual(q, [['Stevie'], ['Mike']])
+        result = graph2.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name LIMIT 2")
+        self.env.assertEqual(result.result_set, [['Stevie'], ['Mike']])
 
         # order+limit+distinct
-        q = self.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name DESC LIMIT 2")
-        self.env.assertEqual(q, [['Stevie'], ['Mike']])
+        result = graph2.query("MATCH (p:PARENT)-[:HAS]->(:CHILD) RETURN DISTINCT p.name ORDER BY p.name DESC LIMIT 2")
+        self.env.assertEqual(result.result_set, [['Stevie'], ['Mike']])
 
 class testDistinct(FlowTestsBase):
     def __init__(self):
-        global redis_con
-        global redis_graph
+        global graph3
         super(testDistinct, self).__init__()
         redis_con = self.env.getConnection()
-        redis_graph = Graph("G", redis_con)
+        graph3 = Graph("G3", redis_con)
         self.populate_graph()
 
     def populate_graph(self):
+        global graph3
         a = Node()
         b = Node()
         c = Node()
-        redis_graph.add_node(a)
-        redis_graph.add_node(b)
-        redis_graph.add_node(c)
-        redis_graph.add_edge(Edge(a, "know", b))
-        redis_graph.add_edge(Edge(a, "know", b))
-        redis_graph.add_edge(Edge(a, "know", c))
-        redis_graph.commit()
+        graph3.add_node(a)
+        graph3.add_node(b)
+        graph3.add_node(c)
+        graph3.add_edge(Edge(a, "know", b))
+        graph3.add_edge(Edge(a, "know", b))
+        graph3.add_edge(Edge(a, "know", c))
+        graph3.commit()
 
     def test_unwind_count_distinct(self):
+        global graph3
         query = """UNWIND [1, 2, 2, "a", "a", null] as x RETURN count(distinct x)"""
-        actual_result = redis_graph.query(query)
+        actual_result = graph3.query(query)
         expected_result = [[3]]
         self.env.assertEquals(actual_result.result_set, expected_result)
-    
+
     def test_match_count_distinct(self):
+        global graph3
         query = """MATCH (a)-[]->(x) RETURN count(distinct x)"""
-        actual_result = redis_graph.query(query)
+        actual_result = graph3.query(query)
         expected_result = [[2]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
     def test_collect_distinct(self):
+        global graph3
         query = "UNWIND ['a', 'a', null, 1, 2, 2, 3, 3, 3] AS x RETURN collect(distinct x)"
-        actual_result = redis_graph.query(query)
+        actual_result = graph3.query(query)
         expected_result = [[['a', 1, 2, 3]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
