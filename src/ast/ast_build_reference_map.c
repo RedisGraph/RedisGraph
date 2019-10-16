@@ -58,6 +58,7 @@ static void _AST_MapOrderByReferences(AST *ast, const cypher_astnode_t *order_by
 
 // Adds a node to the referenced entities rax, in case it has labels or properties (inline filter).
 static void _AST_MapReferencedNode(AST *ast, const cypher_astnode_t *node) {
+
 	const cypher_astnode_t *properties = cypher_ast_node_pattern_get_properties(node);
 	// A node with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
@@ -71,19 +72,33 @@ static void _AST_MapReferencedNode(AST *ast, const cypher_astnode_t *node) {
 	}
 }
 
+// Adds a node to the referenced entities rax.
+static void _AST_MapNode(AST *ast, const cypher_astnode_t *node) {
+	const cypher_astnode_t *identifier = cypher_ast_node_pattern_get_identifier(node);
+	const char *alias = cypher_ast_identifier_get_name(identifier);
+	_AST_UpdateRefMap(ast, alias);
+	_AST_MapReferencedNode(ast, node);
+}
+
 // Adds an edge to the referenced entities rax if it has multiple types or any properties (inline filter).
 static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge) {
 	const cypher_astnode_t *properties = cypher_ast_rel_pattern_get_properties(edge);
-	// An edge with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
-	if(properties) {
-		const char *alias = AST_GetEntityName(ast, edge);
-		_AST_UpdateRefMap(ast, alias);
+	const char *alias = AST_GetEntityName(ast, edge);
+	_AST_UpdateRefMap(ast, alias);
 
-		// Map any references within the properties map, such as 'b' in:
-		// ({val: ID(b)})
-		_AST_MapExpression(ast, properties);
-	}
+	// Map any references within the properties map, such as 'b' in:
+	// ({val: ID(b)})
+	_AST_MapExpression(ast, properties);
+}
+
+// Adds an edge to the referenced entities rax.
+static void _AST_MapEdge(AST *ast, const cypher_astnode_t *edge) {
+	const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(edge);
+	const char *alias = cypher_ast_identifier_get_name(identifier);
+	_AST_UpdateRefMap(ast, alias);
+
+	_AST_MapReferencedEdge(ast, edge);
 }
 
 // Maps entities in a given path.
@@ -95,6 +110,23 @@ static void _AST_MapReferencedEntitiesInPath(AST *ast, const cypher_astnode_t *p
 	// Edges are in odd positions.
 	for(uint i = 1; i < path_len; i += 2)
 		_AST_MapReferencedEdge(ast, cypher_ast_pattern_path_get_element(path, i));
+	const cypher_astnode_t *pathIdentifier = cypher_ast_named_path_get_identifier(path);
+	// Check if the path is a named path. If so, map all entities, else map only referenced entities.
+	if(pathIdentifier != NULL) {
+		// Node are in even positions.
+		for(uint i = 0; i < path_len; i += 2)
+			_AST_MapNode(ast, cypher_ast_pattern_path_get_element(path, i));
+		// Edges are in odd positions.
+		for(uint i = 1; i < path_len; i += 2)
+			_AST_MapEdge(ast, cypher_ast_pattern_path_get_element(path, i));
+	} else {
+		// Node are in even positions.
+		for(uint i = 0; i < path_len; i += 2)
+			_AST_MapReferencedNode(ast, cypher_ast_pattern_path_get_element(path, i));
+		// Edges are in odd positions.
+		for(uint i = 1; i < path_len; i += 2)
+			_AST_MapReferencedEdge(ast, cypher_ast_pattern_path_get_element(path, i));
+	}
 }
 
 // Add referenced aliases from MATCH clause - inline filtered and explicit WHERE filter.
