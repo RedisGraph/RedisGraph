@@ -104,15 +104,8 @@ static void _AST_MapEdge(AST *ast, const cypher_astnode_t *edge) {
 // Maps entities in a given path.
 static void _AST_MapReferencedEntitiesInPath(AST *ast, const cypher_astnode_t *path) {
 	uint path_len = cypher_ast_pattern_path_nelements(path);
-	// Node are in even positions.
-	for(uint i = 0; i < path_len; i += 2)
-		_AST_MapReferencedNode(ast, cypher_ast_pattern_path_get_element(path, i));
-	// Edges are in odd positions.
-	for(uint i = 1; i < path_len; i += 2)
-		_AST_MapReferencedEdge(ast, cypher_ast_pattern_path_get_element(path, i));
-	const cypher_astnode_t *pathIdentifier = cypher_ast_named_path_get_identifier(path);
 	// Check if the path is a named path. If so, map all entities, else map only referenced entities.
-	if(pathIdentifier != NULL) {
+	if(cypher_astnode_type(path) == CYPHER_AST_NAMED_PATH) {
 		// Node are in even positions.
 		for(uint i = 0; i < path_len; i += 2)
 			_AST_MapNode(ast, cypher_ast_pattern_path_get_element(path, i));
