@@ -174,11 +174,6 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		mat_ew = Graph_GetRelationMatrix(g, mat_id);
 	}
 
-	static void _free_fake_graph_context() {
-		GraphContext *gc = QueryCtx_GetGraphCtx();
-		GraphContext_Free(gc);
-	}
-
 	AlgebraicExpression **build_algebraic_expression(const char *query, uint *exp_count) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		cypher_parse_result_t *parse_result = parse(query);

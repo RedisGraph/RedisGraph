@@ -47,7 +47,11 @@ void Graph_Profile(void *args) {
 		/* If this is a writer query `we need to re-open the graph key with write flag
 		* this notifies Redis that the key is "dirty" any watcher on that key will
 		* be notified. */
-		GraphContext_Retrieve(ctx, gc->graph_name, false, false);
+		CommandCtx_ThreadSafeContextLock(qctx);
+		{
+			GraphContext_MarkWriter(ctx, gc);
+		}
+		CommandCtx_ThreadSafeContextUnlock(qctx);
 	}
 	lockAcquired = true;
 
@@ -78,6 +82,7 @@ cleanup:
 	ResultSet_Free(result_set);
 	AST_Free(ast);
 	if(parse_result) cypher_parse_result_free(parse_result);
+	GraphContext_Release(gc);
 	CommandCtx_Free(qctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 }
