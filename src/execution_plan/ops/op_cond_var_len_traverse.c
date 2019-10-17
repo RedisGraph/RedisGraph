@@ -92,7 +92,7 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 	/* Incase we don't have any relations to traverse we can return quickly
 	 * Consider: MATCH (S)-[:L*]->(M) RETURN M
 	 * where label L does not exists. */
-	if(op->edgeRelationCount == 0) {
+	if(op->edgeRelationCount == 0 || op->edgeRelationTypes[0] == GRAPH_UNKNOWN_RELATION) {
 		return NULL;
 	}
 
