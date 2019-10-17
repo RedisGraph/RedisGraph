@@ -1,4 +1,3 @@
-from RLTest import Env
 from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
 
@@ -10,22 +9,16 @@ node_names = ["A", "B", "C", "D"]
 # A can reach 3 nodes, B can reach 2 nodes, C can reach 1 node
 max_results = 6
 
-class VariableLengthTraversals(FlowTestsBase):
+class testVariableLengthTraversals(FlowTestsBase):
     def __init__(self):
-        super(VariableLengthTraversals, self).__init__()
+        super(testVariableLengthTraversals, self).__init__()
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph("G", redis_con)
         self.populate_graph()
 
-    @classmethod
-    def tearDownClass(cls):
-        if dis_redis is not None:
-            dis_redis.stop()
-
-    @classmethod
-    def populate_graph(cls):
+    def populate_graph(self):
         global redis_graph
 
         nodes = []
@@ -49,7 +42,7 @@ class VariableLengthTraversals(FlowTestsBase):
         expected_result = [['A', 'AB', 'B'],
                            ['B', 'BC', 'C'],
                            ['C', 'CD', 'D']]
-        self.env.assertEquals(actual_result.result_set == expected_result)
+        self.env.assertEquals(actual_result.result_set, expected_result)
 
     # Traversal with no labels
     def test02_unlabeled_traverse(self):
@@ -80,3 +73,9 @@ class VariableLengthTraversals(FlowTestsBase):
         query = """MATCH (a)<-[*]-(b:node) RETURN a.name, b.name ORDER BY a.name, b.name"""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(len(actual_result.result_set), max_results)
+
+    # Attempt to traverse non-existent relationship type.
+    def test05_invalid_traversal(self):
+        query = """MATCH (a)-[:no_edge*]->(b) RETURN a.name"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(len(actual_result.result_set), 0)

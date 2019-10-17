@@ -564,6 +564,8 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
 	NodeID destNodeID;
 	GxB_MatrixTupleIter *tupleIter;
 
+	if(edgeType == GRAPH_UNKNOWN_RELATION) return;
+
 	// Outgoing.
 	if(dir == GRAPH_EDGE_DIR_OUTGOING || dir == GRAPH_EDGE_DIR_BOTH) {
 		/* If a relationship type is specified, retrieve the appropriate relation matrix;
@@ -1140,3 +1142,4 @@ void Graph_Free(Graph *g) {
 
 	rm_free(g);
 }
+
