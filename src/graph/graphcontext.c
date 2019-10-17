@@ -5,78 +5,132 @@
 */
 
 #include <sys/param.h>
+#include <pthread.h>
 #include "graphcontext.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../redismodule.h"
 #include "../util/rmalloc.h"
+#include "../util/thpool/thpool.h"
 #include "serializers/graphcontext_type.h"
 
-extern pthread_mutex_t _module_mutex;       // Module-level lock (defined in module.c)
 // Global array tracking all extant GraphContexts (defined in module.c)
+extern threadpool _thpool;
 extern GraphContext **graphs_in_keyspace;
+
+// Forward declarations.
+static void _GraphContext_Free(void *arg);
+
+static inline void _GraphContext_IncreaseRefCount(GraphContext *gc) {
+	__atomic_fetch_add(&gc->ref_count, 1, __ATOMIC_RELAXED);
+}
+
+static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
+	// If the reference count is less than 0, the graph has been marked for deletion and no queries are active - free the graph.
+	if(__atomic_sub_fetch(&gc->ref_count, 1, __ATOMIC_RELAXED) < 0)
+		thpool_add_work(_thpool, _GraphContext_Free, gc);
+}
 
 //------------------------------------------------------------------------------
 // GraphContext API
 //------------------------------------------------------------------------------
 
-GraphContext *GraphContext_New(RedisModuleCtx *ctx, const char *graphname,
-							   size_t node_cap, size_t edge_cap) {
-	GraphContext *gc = NULL;
+// Creates and initializes a graph context struct.
+static GraphContext *_GraphContext_New(const char *graph_name, size_t node_cap, size_t edge_cap) {
+	GraphContext *gc = rm_malloc(sizeof(GraphContext));
 
-	// Create key for GraphContext from the unmodified string provided by the user
-	RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphname, strlen(graphname));
-	RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, REDISMODULE_WRITE);
-	if(RedisModule_KeyType(key) != REDISMODULE_KEYTYPE_EMPTY) {
-		goto cleanup;
-	}
-
-	gc = rm_malloc(sizeof(GraphContext));
-
-	// No indicies.
-	gc->index_count = 0;
+	gc->ref_count = 0;      // No refences.
+	gc->index_count = 0;    // No indicies.
 
 	// Initialize the graph's matrices and datablock storage
 	gc->g = Graph_New(node_cap, edge_cap);
-	gc->graph_name = rm_strdup(graphname);
+	gc->graph_name = rm_strdup(graph_name);
 	// Allocate the default space for schemas and indices
 	gc->node_schemas = array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
 	gc->relation_schemas = array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 
 	gc->string_mapping = array_new(char *, 64);
 	gc->attributes = raxNew();
-
+	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 	QueryCtx_SetGraphCtx(gc);
 
-	// Set and close GraphContext key in Redis keyspace
-	RedisModule_ModuleTypeSetValue(key, GraphContextRedisModuleType, gc);
-
-	GraphContext_RegisterWithModule(gc);
-cleanup:
-	RedisModule_CloseKey(key);
-	RedisModule_FreeString(ctx, rs_name);
 	return gc;
 }
 
-GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, const char *graphname, bool readOnly) {
-	GraphContext *gc = NULL;
-	RedisModuleString *rs_name = RedisModule_CreateString(ctx, graphname, strlen(graphname));
-	int readWriteFlag = readOnly ? REDISMODULE_READ : REDISMODULE_WRITE;
-	RedisModuleKey *key = RedisModule_OpenKey(ctx, rs_name, readWriteFlag);
-	if(RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
-		goto cleanup;
-	}
-	gc = RedisModule_ModuleTypeGetValue(key);
+/* _GraphContext_Create tries to get a graph context, and if it does not exists, create a new one.
+ * The try-get-create flow is done when module global lock is acquired, to enforce consistency
+ * while BGSave is called. */
+static GraphContext *_GraphContext_Create(RedisModuleCtx *ctx, const char *graph_name,
+										  size_t node_cap, size_t edge_cap) {
+	// Create and initialize a graph context.
+	GraphContext *gc = _GraphContext_New(graph_name, node_cap, edge_cap);
+	RedisModuleString *graphID = RedisModule_CreateString(ctx, graph_name, strlen(graph_name));
 
-	// Force GraphBLAS updates and resize matrices to node count by default
-	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+	RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_WRITE);
+	// Set value in key.
+	RedisModule_ModuleTypeSetValue(key, GraphContextRedisModuleType, gc);
+	// Register graph context for BGSave.
+	GraphContext_RegisterWithModule(gc);
 
-	QueryCtx_SetGraphCtx(gc);
-
-cleanup:
-	RedisModule_FreeString(ctx, rs_name);
+	RedisModule_FreeString(ctx, graphID);
 	RedisModule_CloseKey(key);
 	return gc;
+}
+
+GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *graphID, bool readOnly,
+									bool shouldCreate) {
+	GraphContext *gc = NULL;
+	int rwFlag = readOnly ? REDISMODULE_READ : REDISMODULE_WRITE;
+
+	RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, rwFlag);
+	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
+		// Key doesn't exists, create it.
+		if(shouldCreate) {
+			const char *graphName = RedisModule_StringPtrLen(graphID, NULL);
+			gc = _GraphContext_Create(ctx, graphName, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
+		}
+	} else if(RedisModule_ModuleTypeGetType(key) == GraphContextRedisModuleType) {
+		gc = RedisModule_ModuleTypeGetValue(key);
+	}
+	RedisModule_CloseKey(key);
+
+	if(gc) {
+		_GraphContext_IncreaseRefCount(gc);
+		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+	}
+	return gc;
+}
+
+void GraphContext_Release(GraphContext *gc) {
+	assert(gc);
+	_GraphContext_DecreaseRefCount(gc);
+}
+
+void GraphContext_MarkWriter(RedisModuleCtx *ctx, GraphContext *gc) {
+	RedisModuleString *graphID = RedisModule_CreateString(ctx, gc->graph_name, strlen(gc->graph_name));
+
+	// Reopen only if key exists (do not re-create) make sure key still exists.
+	RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_READ);
+	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) goto cleanup;
+
+	// Mark as writer.
+	key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_WRITE);
+	RedisModule_CloseKey(key);
+
+cleanup:
+	RedisModule_FreeString(ctx, graphID);
+}
+
+void GraphContext_Delete(GraphContext *gc) {
+	/* We're here as a result of a call to:
+	 * GRAPH.DELETE
+	 * FLUSHALL
+	 * DEL <graph_key>
+	 * Redis decided to remove keys to save some space. */
+
+	// Unregister graph object from global list.
+	GraphContext_RemoveFromRegistry(gc);
+	_GraphContext_DecreaseRefCount(gc);
 }
 
 //------------------------------------------------------------------------------
@@ -243,14 +297,11 @@ void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
 
 // Register a new GraphContext for module-level tracking
 void GraphContext_RegisterWithModule(GraphContext *gc) {
-	assert(pthread_mutex_lock(&_module_mutex) == 0);
 	graphs_in_keyspace = array_append(graphs_in_keyspace, gc);
-	assert(pthread_mutex_unlock(&_module_mutex) == 0);
 }
 
 // Delete a GraphContext reference from the global array
 void GraphContext_RemoveFromRegistry(GraphContext *gc) {
-	assert(pthread_mutex_lock(&_module_mutex) == 0);
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i ++) {
 		if(graphs_in_keyspace[i] == gc) {
@@ -258,7 +309,6 @@ void GraphContext_RemoveFromRegistry(GraphContext *gc) {
 			break;
 		}
 	}
-	assert(pthread_mutex_unlock(&_module_mutex) == 0);
 }
 
 //------------------------------------------------------------------------------
@@ -266,11 +316,14 @@ void GraphContext_RemoveFromRegistry(GraphContext *gc) {
 //------------------------------------------------------------------------------
 
 // Free all data associated with graph
-void GraphContext_Free(GraphContext *gc) {
-	Graph_Free(gc->g);
+static void _GraphContext_Free(void *arg) {
+	GraphContext *gc = (GraphContext *)arg;
+	uint len;
 	rm_free(gc->graph_name);
 
-	uint len;
+	// Disable matrix synchronization for graph deletion.
+	Graph_SetMatrixPolicy(gc->g, DISABLED);
+	Graph_Free(gc->g);
 
 	// Free all node schemas
 	if(gc->node_schemas) {
@@ -300,9 +353,5 @@ void GraphContext_Free(GraphContext *gc) {
 		array_free(gc->string_mapping);
 	}
 
-	// Remove GraphContext from global array of graphs
-	GraphContext_RemoveFromRegistry(gc);
-
 	rm_free(gc);
 }
-

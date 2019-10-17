@@ -6,9 +6,4 @@
 
 #pragma once
 
-#include "../redismodule.h"
-#include "../util/thpool/thpool.h"
-
-extern threadpool _thpool;
-
-int MGraph_Profile(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
+void Graph_Profile(void *args);

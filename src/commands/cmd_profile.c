@@ -12,12 +12,14 @@
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 
-void _MGraph_Profile(void *args) {
+void Graph_Profile(void *args) {
+	AST *ast = NULL;
+	bool lockAcquired = false;
+	ResultSet *result_set = NULL;
 	CommandCtx *qctx = (CommandCtx *)args;
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
-	ResultSet *result_set = NULL;
-	bool lockAcquired = false;
-	AST *ast = NULL;
+	GraphContext *gc = CommandCtx_GetGraphContext(qctx);
+	QueryCtx_SetGraphCtx(gc);
 
 	QueryCtx_BeginTimer(); // Start query timing.
 	QueryCtx_SetRedisModuleCtx(ctx);
@@ -37,31 +39,20 @@ void _MGraph_Profile(void *args) {
 	// Prepare the constructed AST for accesses from the module
 	ast = AST_Build(parse_result);
 
-	// Try to access the GraphContext
-	CommandCtx_ThreadSafeContextLock(qctx);
-	GraphContext *gc = GraphContext_Retrieve(ctx, qctx->graphName, readonly);
-	if(!gc) {
-		if(!AST_ContainsClause(ast, CYPHER_AST_CREATE) &&
-		   !AST_ContainsClause(ast, CYPHER_AST_MERGE)) {
-			CommandCtx_ThreadSafeContextUnlock(qctx);
-			RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
-			goto cleanup;
-		}
-		assert(!readonly);
-		gc = GraphContext_New(ctx, qctx->graphName, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
-		if(!gc) {
-			CommandCtx_ThreadSafeContextUnlock(qctx);
-			RedisModule_ReplyWithError(ctx, "Graph name already in use as a Redis key.");
-			goto cleanup;
-		}
-		// TODO: free graph if no entities were created.
-	}
-
-	CommandCtx_ThreadSafeContextUnlock(qctx);
-
 	// Acquire the appropriate lock.
-	if(readonly) Graph_AcquireReadLock(gc->g);
-	else Graph_WriterEnter(gc->g);  // Single writer.
+	if(readonly) {
+		Graph_AcquireReadLock(gc->g);
+	} else {
+		Graph_WriterEnter(gc->g);  // Single writer.
+		/* If this is a writer query `we need to re-open the graph key with write flag
+		* this notifies Redis that the key is "dirty" any watcher on that key will
+		* be notified. */
+		CommandCtx_ThreadSafeContextLock(qctx);
+		{
+			GraphContext_MarkWriter(ctx, gc);
+		}
+		CommandCtx_ThreadSafeContextUnlock(qctx);
+	}
 	lockAcquired = true;
 
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
@@ -91,40 +82,7 @@ cleanup:
 	ResultSet_Free(result_set);
 	AST_Free(ast);
 	if(parse_result) cypher_parse_result_free(parse_result);
+	GraphContext_Release(gc);
 	CommandCtx_Free(qctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 }
-
-/* Profiles query
- * Args:
- * argv[1] graph name
- * argv[2] query to profile */
-int MGraph_Profile(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-	if(argc < 3) return RedisModule_WrongArity(ctx);
-
-	/* Determin query execution context
-	 * queries issued within a LUA script or multi exec block must
-	 * run on Redis main thread, others can run on different threads. */
-	CommandCtx *context;
-	int flags = RedisModule_GetContextFlags(ctx);
-	bool is_replicated = RedisModule_GetContextFlags(ctx) & REDISMODULE_CTX_FLAGS_REPLICATED;
-	if(flags & (REDISMODULE_CTX_FLAGS_MULTI |
-				REDISMODULE_CTX_FLAGS_LUA |
-				REDISMODULE_CTX_FLAGS_LOADING)) {
-		// Run query on Redis main thread.
-		context = CommandCtx_New(ctx, NULL, argv[1], argv[2], argv, argc, is_replicated);
-		_MGraph_Profile(context);
-	} else {
-		// Run query on a dedicated thread.
-		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
-		context = CommandCtx_New(NULL, bc, argv[1], argv[2], argv, argc, is_replicated);
-		thpool_add_work(_thpool, _MGraph_Profile, context);
-	}
-
-	// Replicate the command to slaves and AOF.
-	// If the query is read-only, slaves will do nothing after parsing.
-	// TODO is this necessary for Profile queries?
-	RedisModule_ReplicateVerbatim(ctx);
-	return REDISMODULE_OK;
-}
-

@@ -161,9 +161,8 @@ class testGraphDeletionFlow(FlowTestsBase):
         # Delete graph.
         redis_graph.delete()
 
-        # Try to query a deleted graph should raise an exception.
-        try:
-            redis_graph.query(query)
-            self.env.assertTrue(False)
-        except:
-            pass
+        # Try to query a deleted graph.
+        redis_graph.query(query)
+        result = redis_graph.query(query)
+        nodeCount = result.result_set[0][0]
+        self.env.assertEquals(nodeCount, 0)

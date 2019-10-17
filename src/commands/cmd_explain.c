@@ -12,36 +12,20 @@
 #include "../parser/parser.h"
 #include "../execution_plan/execution_plan.h"
 
-GraphContext *_empty_graph_context() {
-	GraphContext *gc = NULL;
-	gc = rm_malloc(sizeof(GraphContext));
-	gc->g = Graph_New(1, 1);
-	gc->index_count = 0;
-	gc->attributes = NULL;
-	gc->node_schemas = NULL;
-	gc->string_mapping = NULL;
-	gc->relation_schemas = NULL;
-	gc->graph_name = rm_strdup("");
-
-	QueryCtx_SetGraphCtx(gc);
-	return gc;
-}
-
 /* Builds an execution plan but does not execute it
  * reports plan back to the client
  * Args:
- * argv[1] graph name [optional]
+ * argv[1] graph name
  * argv[2] query */
-void _MGraph_Explain(void *args) {
+void Graph_Explain(void *args) {
 	AST *ast = NULL;
-	GraphContext *gc = NULL;
 	bool lock_acquired = false;
 	ExecutionPlan *plan = NULL;
-	bool free_graph_ctx = false;
 	CommandCtx *qctx = (CommandCtx *)args;
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
+	GraphContext *gc = CommandCtx_GetGraphContext(qctx);
+	QueryCtx_SetGraphCtx(gc);
 	const char *query = qctx->query;
-	const char *graphname = qctx->graphName;
 
 	QueryCtx_SetRedisModuleCtx(ctx);
 
@@ -65,18 +49,6 @@ void _MGraph_Explain(void *args) {
 		goto cleanup;
 	}
 
-	// Retrieve the GraphContext and acquire a read lock.
-	if(graphname) {
-		gc = GraphContext_Retrieve(ctx, graphname, true);
-		if(!gc) {
-			RedisModule_ReplyWithError(ctx, "key doesn't contains a graph object.");
-			goto cleanup;
-		}
-	} else {
-		free_graph_ctx = true;
-		gc = _empty_graph_context();
-	}
-
 	Graph_AcquireReadLock(gc->g);
 	lock_acquired = true;
 
@@ -89,40 +61,7 @@ cleanup:
 
 	AST_Free(ast);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
+	GraphContext_Release(gc);
 	CommandCtx_Free(qctx);
-	if(free_graph_ctx) GraphContext_Free(gc);
 	if(parse_result) cypher_parse_result_free(parse_result);
 }
-
-int MGraph_Explain(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-	if(argc < 2) return RedisModule_WrongArity(ctx);
-
-	RedisModuleString *graphName = NULL;
-	RedisModuleString *query;
-
-	if(argc == 2) {
-		query = argv[1];
-	} else {
-		graphName = argv[1];
-		query = argv[2];
-	}
-
-	/* Determin execution context
-	 * queries issued within a LUA script or multi exec block must
-	 * run on Redis main thread, others can run on different threads. */
-	CommandCtx *context;
-	int flags = RedisModule_GetContextFlags(ctx);
-	if(flags & (REDISMODULE_CTX_FLAGS_MULTI | REDISMODULE_CTX_FLAGS_LUA)) {
-		// Run on Redis main thread.
-		context = CommandCtx_New(ctx, NULL, graphName, query, argv, argc, false);
-		_MGraph_Explain(context);
-	} else {
-		// Run on a dedicated thread.
-		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
-		context = CommandCtx_New(NULL, bc, graphName, query, argv, argc, false);
-		thpool_add_work(_thpool, _MGraph_Explain, context);
-	}
-
-	return REDISMODULE_OK;
-}
-

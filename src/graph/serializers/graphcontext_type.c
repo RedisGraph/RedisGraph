@@ -54,8 +54,7 @@ void GraphContextType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, voi
 
 void GraphContextType_Free(void *value) {
 	GraphContext *gc = value;
-	Graph_SetMatrixPolicy(gc->g, DISABLED);
-	GraphContext_Free(gc);
+	GraphContext_Delete(gc);
 }
 
 int GraphContextType_Register(RedisModuleCtx *ctx) {
