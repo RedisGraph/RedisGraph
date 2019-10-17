@@ -267,24 +267,18 @@ static void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *claus
 }
 
 // Map the referred aliases (LHS) in entities projected by a WITH or RETURN clause.
-static void _AST_MapProjectionClause(AST *ast_segment, const cypher_astnode_t *project_clause) {
-	cypher_astnode_type_t type = cypher_astnode_type(project_clause);
+static void _AST_MapProjectionClause(AST *ast_segment, const cypher_astnode_t *projection) {
+	cypher_astnode_type_t type = cypher_astnode_type(projection);
 	assert(type == CYPHER_AST_WITH || type == CYPHER_AST_RETURN);
 
 	if(type == CYPHER_AST_WITH) {
-		if(cypher_ast_with_has_include_existing(project_clause)) {
-			// If the projection clause is WITH *, all user-defined aliases are referenced.
-			_AST_MapProjectAll(ast_segment, project_clause);
-		} else {
-			_AST_MapWithReferredEntities(ast_segment, project_clause);
-		}
+		// If the projection clause is WITH *, all user-defined aliases are referenced.
+		if(cypher_ast_with_has_include_existing(projection)) _AST_MapProjectAll(ast_segment, projection);
+		else _AST_MapWithReferredEntities(ast_segment, projection);
 	} else {
-		if(cypher_ast_return_has_include_existing(project_clause)) {
-			// If the projection clause is RETURN *, all user-defined aliases are referenced.
-			_AST_MapProjectAll(ast_segment, project_clause);
-		} else {
-			_AST_MapReturnReferredEntities(ast_segment, project_clause);
-		}
+		// If the projection clause is RETURN *, all user-defined aliases are referenced.
+		if(cypher_ast_return_has_include_existing(projection)) _AST_MapProjectAll(ast_segment, projection);
+		else _AST_MapReturnReferredEntities(ast_segment, projection);
 	}
 }
 

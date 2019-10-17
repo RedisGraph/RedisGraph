@@ -25,8 +25,7 @@ void Graph_Profile(void *args) {
 	QueryCtx_SetRedisModuleCtx(ctx);
 
 	// Parse the query to construct an AST
-	cypher_parse_result_t *parse_result = cypher_parse(qctx->query, NULL, NULL,
-													   CYPHER_PARSE_ONLY_STATEMENTS);
+	cypher_parse_result_t *parse_result = parse(qctx->query);
 	if(parse_result == NULL) goto cleanup;
 
 	bool readonly = AST_ReadOnly(parse_result);
@@ -81,8 +80,9 @@ cleanup:
 
 	ResultSet_Free(result_set);
 	AST_Free(ast);
-	if(parse_result) cypher_parse_result_free(parse_result);
+	parse_result_free(parse_result);
 	GraphContext_Release(gc);
 	CommandCtx_Free(qctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 }
+

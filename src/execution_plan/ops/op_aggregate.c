@@ -168,8 +168,10 @@ static Record _handoff(OpAggregate *op) {
 	if(!CacheGroupIterNext(op->group_iter, &key, &group)) return NULL;
 
 	Record r = OpBase_CreateRecord((OpBase *)op);
-	// Track the newly-allocated Record so that they may be freed if execution fails.
-	OpBase_AddVolatileRecord((OpBase *)op, r);
+	/* In this function, we're only evaluating aggregate function calls, which do not
+	 * currently raise exceptions. As such, we don't need to register volatile Records,
+	 * though this may not be true in the future. */
+	// OpBase_AddVolatileRecord((OpBase *)op, r);
 
 	// Populate record.
 	uint aggIdx = 0; // Index into group aggregated exps.
@@ -194,7 +196,7 @@ static Record _handoff(OpAggregate *op) {
 		}
 	}
 
-	OpBase_RemoveVolatileRecords((OpBase *)op);
+	// OpBase_RemoveVolatileRecords((OpBase *)op); // Not currently necessary, as described above.
 	return r;
 }
 

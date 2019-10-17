@@ -296,11 +296,19 @@ void AST_Free(AST *ast) {
 	if(ast->free_root) {
 		// This is a generated AST, free its root node.
 		cypher_astnode_free((cypher_astnode_t *)ast->root);
-	} else if(ast->name_ctx) {
+	} else {
 		// This is the master AST, free the annotation contexts that have been constructed.
-		cypher_ast_annotation_context_free(ast->name_ctx);
-		cypher_ast_annotation_context_free(ast->project_all_ctx);
+		if(ast->name_ctx) cypher_ast_annotation_context_free(ast->name_ctx);
+		if(ast->project_all_ctx) cypher_ast_annotation_context_free(ast->project_all_ctx);
 	}
 	rm_free(ast);
+}
+
+cypher_parse_result_t *parse(const char *query) {
+	return cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+}
+
+void parse_result_free(cypher_parse_result_t *parse_result) {
+	if(parse_result) cypher_parse_result_free(parse_result);
 }
 

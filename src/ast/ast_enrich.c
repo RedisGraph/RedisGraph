@@ -223,7 +223,7 @@ static AnnotationCtx *_AST_NewProjectAllContext(void) {
 }
 
 // TODO this function is exposed since ORDER BY expressions are named later - possibly can be refactored.
-void AST_AttachName(AST *ast, const cypher_astnode_t *node, char *name) {
+void AST_AttachName(AST *ast, const cypher_astnode_t *node, const char *name) {
 	// Annotate AST entity with identifier string.
 	cypher_astnode_attach_annotation(ast->name_ctx, node, (void *)name, NULL);
 }

@@ -100,8 +100,8 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 		const cypher_astnode_t *item = cypher_ast_order_by_get_item(order_clause, i);
 		const cypher_astnode_t *ast_exp = cypher_ast_sort_item_get_expression(item);
 		AR_ExpNode *exp = AR_EXP_FromExpression(ast_exp);
-		char *name = AR_EXP_BuildResolvedName(exp);
-		AST_AttachName(ast, item, name);
+		AR_EXP_BuildResolvedName(exp);
+		AST_AttachName(ast, item, exp->resolved_name);
 
 		order_exps = array_append(order_exps, exp);
 	}

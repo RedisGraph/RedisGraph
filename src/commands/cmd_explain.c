@@ -29,8 +29,7 @@ void Graph_Explain(void *args) {
 	QueryCtx_SetRedisModuleCtx(ctx);
 
 	// Parse the query to construct an AST
-	cypher_parse_result_t *parse_result = cypher_parse(qctx->query, NULL, NULL,
-													   CYPHER_PARSE_ONLY_STATEMENTS);
+	cypher_parse_result_t *parse_result = parse(qctx->query);
 	if(parse_result == NULL) goto cleanup;
 
 	// Perform query validations
@@ -63,5 +62,6 @@ cleanup:
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 	GraphContext_Release(gc);
 	CommandCtx_Free(qctx);
-	if(parse_result) cypher_parse_result_free(parse_result);
+	parse_result_free(parse_result);
 }
+
