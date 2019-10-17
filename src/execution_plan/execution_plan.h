@@ -31,6 +31,9 @@ struct ExecutionPlan {
 /* Removes operation from execution plan. */
 void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op);
 
+/* Detaches operation from its parent. */
+void ExecutionPlan_DetachOp(OpBase *op);
+
 /* Adds operation to execution plan as a child of parent. */
 void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp);
 
@@ -62,6 +65,10 @@ void ExecutionPlan_Taps(OpBase *root, OpBase ***taps);
 /* Find the earliest operation on the ExecutionPlan at which all
  * references are resolved. */
 OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references);
+
+/* Determines all resolved modifiers at given op, this is all
+ * modified elements from given op and above it. */
+void ExecutionPlan_ResolvedModifiers(const OpBase *op, rax *modifiers);
 
 /* execution_plan.c */
 

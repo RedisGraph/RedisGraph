@@ -151,6 +151,7 @@ OpBase **ExecutionPlan_LocateOps(OpBase *root, OPType type) {
 	return ops;
 }
 
+// Introduce the new operation B between A and A's parent op.
 void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
 	/* B is a new operation. */
 	assert(!(b->parent || b->children));
@@ -213,6 +214,17 @@ void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
 	op->childCount = 0;
 }
 
+void ExecutionPlan_DetachOp(OpBase *op) {
+	// Operation has no parent.
+	if(op->parent == NULL) return;
+
+	// Remove op from its parent.
+	OpBase *parent = op->parent;
+	_OpBase_RemoveChild(op->parent, op);
+
+	op->parent = NULL;
+}
+
 OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
 	if(!root) return NULL;
 
@@ -265,3 +277,18 @@ OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references) {
 	return op;
 }
 
+// Collect all resolved entities on an operation chain.
+void ExecutionPlan_ResolvedModifiers(const OpBase *op, rax *modifiers) {
+	assert(op && modifiers);
+	if(op->modifies) {
+		uint modifies_count = array_len(op->modifies);
+		for(uint i = 0; i < modifies_count; i++) {
+			const char *modified = op->modifies[i];
+			raxTryInsert(modifiers, (unsigned char *)modified, strlen(modified), NULL, NULL);
+		}
+	}
+
+	for(int i = 0; i < op->childCount; i++) {
+		ExecutionPlan_ResolvedModifiers(op->children[i], modifiers);
+	}
+}

@@ -183,3 +183,24 @@ class testOptimizationsPlan(FlowTestsBase):
 
         resultset = graph.query(query).result_set
         self.env.assertEqual(resultset, expected) # same results expected
+
+    def test11_multiple_stream_value_hash_join(self):
+        # Issue a query that joins three streams.
+        query = """MATCH (p1:person)-[:know]->({name: 'Roi'}), (p2)-[]->(:person {name: 'Alon'}), (p3) WHERE p1.name = p2.name AND ID(p2) = ID(p3) RETURN p2.name ORDER BY p2.name"""
+        executionPlan = graph.execution_plan(query)
+        self.env.assertIn("Value Hash Join", executionPlan)
+        self.env.assertNotIn("Cartesian Product", executionPlan)
+
+        resultset = graph.query(query).result_set
+        expected = [['Ailon'], ['Boaz']]
+        self.env.assertEqual(resultset, expected)
+
+        # Issue a query that joins four streams that all resolve the same entity.
+        query = """MATCH (p1 {name: 'Ailon'}), (p2), (p3), (p4) WHERE ID(p1) = ID(p2) AND ID(p2) = ID(p3) AND p3.name = p4.name RETURN p4.name"""
+        executionPlan = graph.execution_plan(query)
+        self.env.assertIn("Value Hash Join", executionPlan)
+        self.env.assertNotIn("Cartesian Product", executionPlan)
+
+        expected = [['Ailon']]
+        resultset = graph.query(query).result_set
+        self.env.assertEqual(resultset, expected)
