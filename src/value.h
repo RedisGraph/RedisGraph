@@ -91,6 +91,7 @@ SIValue SI_PtrVal(void *v);
 SIValue SI_Node(void *n);
 SIValue SI_Edge(void *e);
 SIValue SI_Path(void *p);
+SIValue SI_IntermidatePath(void *p, int traverseDir);
 SIValue SI_Array(u_int64_t initialCapacity);
 SIValue SI_EmptyArray();
 

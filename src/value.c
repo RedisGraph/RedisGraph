@@ -75,6 +75,12 @@ SIValue SI_Path(void *p) {
 	Path path = *(Path *)p;
 	return SIPath_New(path);
 }
+
+SIValue SI_IntermidatePath(void *p, int traverseDir) {
+	Path path = *(Path *)p;
+	return SIPath_NewIntermidate(path, traverseDir);
+}
+
 SIValue SI_Array(u_int64_t initialCapacity) {
 	return SIArray_New(initialCapacity);
 }

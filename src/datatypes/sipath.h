@@ -8,6 +8,7 @@
 
 #include "../value.h"
 #include "path.h"
+#include "../graph/graph.h"
 #include <stdlib.h>
 
 /**
@@ -16,6 +17,14 @@
  * @retval SIValue which represents the given struct.
  */
 SIValue SIPath_New(Path p);
+
+/**
+ * @brief  Creates a new SIPath which represents a part of a bigger path, or edge array.
+ * @param  p: Path struct.
+ * @param  traverseDir: Traverse direction.
+ * @retval SIValue which represents the given struct.
+ */
+SIValue SIPath_NewIntermidate(Path p, GRAPH_EDGE_DIR traverseDir);
 
 /**
  * @brief  Clones a given SIPath.

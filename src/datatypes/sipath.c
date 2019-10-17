@@ -9,23 +9,44 @@
 #include "../util/arr.h"
 #include "array.h"
 
+typedef struct {
+	Path path;
+	GRAPH_EDGE_DIR traverseDir;
+	bool intermidate;
+} SIPath;
+
 SIValue SIPath_New(Path p) {
 	SIValue path;
-	path.ptrval = rm_malloc(sizeof(Path));
-	Path *pathPtr = (Path *)path.ptrval;
-	*pathPtr = Path_Clone(p);
+	path.ptrval = rm_malloc(sizeof(SIPath));
 	path.type = T_PATH;
 	path.allocation = M_SELF;
+	SIPath *sipathPtr = (SIPath *)path.ptrval;
+	sipathPtr->path = Path_Clone(p);
+	sipathPtr->intermidate = false;
+	return path;
+}
+
+SIValue SIPath_NewIntermidate(Path p, GRAPH_EDGE_DIR traverseDir) {
+	SIValue path;
+	path.ptrval = rm_malloc(sizeof(SIPath));
+	path.type = T_PATH;
+	path.allocation = M_SELF;
+	SIPath *sipath = (SIPath *) path.ptrval;
+	sipath->path = Path_Clone(p);
+	sipath->traverseDir = traverseDir;
+	sipath->intermidate = true;
 	return path;
 }
 
 SIValue SIPath_Clone(SIValue p) {
-	Path *pathPtr = (Path *)p.ptrval;
-	return SIPath_New(*pathPtr);
+	SIPath *sipathPtr = (SIPath *)p.ptrval;
+	if(sipathPtr->intermidate)
+		return SIPath_NewIntermidate(sipathPtr->path, sipathPtr->traverseDir);
+	else return SIPath_New(sipathPtr->path);
 }
 
 SIValue SIPath_Relationships(SIValue p) {
-	Path path = *(Path *) p.ptrval;
+	Path path = ((SIPath *) p.ptrval)->path;
 	uint edgeCount = Path_EdgeCount(path);
 	SIValue array = SIArray_New(edgeCount);
 	for(uint i = 0; i < edgeCount; i++) {
@@ -36,12 +57,12 @@ SIValue SIPath_Relationships(SIValue p) {
 
 SIValue SIPath_GetRelationship(SIValue p, size_t i) {
 	assert(i < SIPath_Length(p) && i > 0);
-	Path path = *(Path *) p.ptrval;
+	Path path = ((SIPath *) p.ptrval)->path;
 	return SI_Edge(&path.edges[i]);
 }
 
 SIValue SIPath_Nodes(SIValue p) {
-	Path path = *(Path *) p.ptrval;
+	Path path = ((SIPath *) p.ptrval)->path;
 	uint nodeCount = Path_NodeCount(path);
 	SIValue array = SIArray_New(nodeCount);
 	for(uint i = 0; i < nodeCount; i++) {
@@ -52,27 +73,27 @@ SIValue SIPath_Nodes(SIValue p) {
 
 SIValue SIPath_GetNode(SIValue p, size_t i) {
 	assert(i < SIPath_Length(p) + 1 && i > 0);
-	Path path = *(Path *) p.ptrval;
+	Path path = ((SIPath *) p.ptrval)->path;
 	return SI_Node(&path.nodes[i]);
 }
 
 size_t SIPath_Length(SIValue p) {
-	Path path = *(Path *) p.ptrval;
+	Path path = ((SIPath *) p.ptrval)->path;
 	return Path_Len(path);
 }
 
 size_t SIPath_Size(SIValue p) {
-	Path path = *(Path *) p.ptrval;
+	Path path = ((SIPath *) p.ptrval)->path;
 	return Path_Size(path);
 }
 
 size_t SIPath_NodeCount(SIValue p) {
-	Path path = *(Path *) p.ptrval;
+	Path path = ((SIPath *) p.ptrval)->path;
 	return Path_NodeCount(path);
 }
 
 size_t SIPath_EdgeCount(SIValue p) {
-	Path path = *(Path *) p.ptrval;
+	Path path = ((SIPath *) p.ptrval)->path;
 	return Path_EdgeCount(path);
 }
 
@@ -127,7 +148,7 @@ void SIPath_ToString(SIValue p, char **buf, size_t *bufferLen, size_t *bytesWrit
 
 void SIPath_Free(SIValue p) {
 	if(p.allocation == M_SELF) {
-		Path path = *(Path *) p.ptrval;
+		Path path = ((SIPath *) p.ptrval)->path;
 		Path_Free(path);
 		rm_free(p.ptrval);
 	}
