@@ -66,6 +66,10 @@ void ExecutionPlan_Taps(OpBase *root, OpBase ***taps);
  * references are resolved. */
 OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references);
 
+/* Determines all resolved modifiers at given op, this is all
+ * modified elements from given op and above it. */
+void ExecutionPlan_ResolvedModifiers(const OpBase *op, rax *modifiers);
+
 /* execution_plan.c */
 
 /* Creates a new execution plan from AST */

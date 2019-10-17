@@ -277,3 +277,18 @@ OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references) {
 	return op;
 }
 
+// Collect all resolved entities on an operation chain.
+void ExecutionPlan_ResolvedModifiers(const OpBase *op, rax *modifiers) {
+	assert(op && modifiers);
+	if(op->modifies) {
+		uint modifies_count = array_len(op->modifies);
+		for(uint i = 0; i < modifies_count; i++) {
+			const char *modified = op->modifies[i];
+			raxTryInsert(modifiers, (unsigned char *)modified, strlen(modified), NULL, NULL);
+		}
+	}
+
+	for(int i = 0; i < op->childCount; i++) {
+		ExecutionPlan_ResolvedModifiers(op->children[i], modifiers);
+	}
+}

@@ -16,13 +16,16 @@
 // Tests to see if given filter can act as a join condition.
 static inline bool _applicableFilter(const FT_FilterNode *f) {
 	// Can only convert filters that test equality
-	bool equality_check = (f->t == FT_N_PRED && f->pred.op == OP_EQUAL);
+	if(f->t != FT_N_PRED || f->pred.op != OP_EQUAL) return false;
 	// TODO allowing AR_ExpNodes that refer directly to graph entities currently causes memory errors.
 	// This restriction should be lifted later.
-	bool comparing_graph_entities = (f->pred.lhs->type == AR_EXP_OPERAND &&
-									 f->pred.lhs->operand.type == AR_EXP_VARIADIC &&
-									 f->pred.lhs->operand.variadic.entity_prop == NULL);
-	return equality_check && !comparing_graph_entities;
+	if((f->pred.lhs->type == AR_EXP_OPERAND &&
+		f->pred.lhs->operand.type == AR_EXP_VARIADIC &&
+		f->pred.lhs->operand.variadic.entity_prop == NULL) ||
+	   (f->pred.rhs->type == AR_EXP_OPERAND &&
+		f->pred.rhs->operand.type == AR_EXP_VARIADIC &&
+		f->pred.rhs->operand.variadic.entity_prop == NULL)) return false;
+	return true;
 }
 
 // Collects all consecutive filters beneath given op.
@@ -37,21 +40,6 @@ static OpFilter **_locate_filters(OpBase *cp) {
 	}
 
 	return filters;
-}
-
-// Collect all resolved entities on an operation chain.
-static void _stream_collect_entities(const OpBase *root, rax *entities) {
-	if(root->modifies) {
-		uint modifies_count = array_len(root->modifies);
-		for(uint i = 0; i < modifies_count; i++) {
-			const char *modified = root->modifies[i];
-			raxInsert(entities, (unsigned char *)modified, strlen(modified), NULL, NULL);
-		}
-	}
-
-	for(int i = 0; i < root->childCount; i++) {
-		_stream_collect_entities(root->children[i], entities);
-	}
 }
 
 // Returns true if the stream resolves all required entities.
@@ -86,7 +74,7 @@ static int _relate_exp_to_stream(AR_ExpNode *exp, rax **stream_entities, int str
 	}
 	raxFree(entities);
 
-	if(stream_num == stream_count) return NOT_RESOLVED; // No stream resolved all references.
+	if(stream_num == stream_count) return NOT_RESOLVED; // No single stream resolves all references.
 	return stream_num;
 }
 
@@ -106,7 +94,8 @@ void applyJoin(ExecutionPlan *plan) {
 		OpFilter **filter_ops = _locate_filters(cp);
 
 		uint filter_count = array_len(filter_ops);
-		if(filter_count == 0) { // No matching filter ops were found.
+		if(filter_count == 0) {
+			// No matching filter ops were found.
 			array_free(filter_ops);
 			continue;
 		}
@@ -116,7 +105,7 @@ void applyJoin(ExecutionPlan *plan) {
 		rax *stream_entities[stream_count];
 		for(int j = 0; j < stream_count; j ++) {
 			stream_entities[j] = raxNew();
-			_stream_collect_entities(cp->children[j], stream_entities[j]);
+			ExecutionPlan_ResolvedModifiers(cp->children[j], stream_entities[j]);
 		}
 
 		for(int j = 0; j < filter_count; j++) {
@@ -125,7 +114,7 @@ void applyJoin(ExecutionPlan *plan) {
 
 			/* Each filter being considered here tests for equality between its left and right values.
 			 * The Cartesian Product can be replaced if both sides of the filter can be fully and
-			 * separately resolved by two child streams. */
+			 * separately resolved by exactly two child streams. */
 			FT_FilterNode *f = filter_op->filterTree;
 
 			/* Make sure LHS of the filter is resolved by a stream. */
@@ -138,7 +127,6 @@ void applyJoin(ExecutionPlan *plan) {
 			uint rhs_resolving_stream = _relate_exp_to_stream(rhs, stream_entities, stream_count);
 			if(rhs_resolving_stream == NOT_RESOLVED) continue;
 
-			assert(lhs != rhs);
 			assert(lhs_resolving_stream != rhs_resolving_stream);
 
 			// Clone the filter expressions.
@@ -178,10 +166,8 @@ void applyJoin(ExecutionPlan *plan) {
 			} else {
 				// The Cartesian Product still has a child operation; introduce the join op as another child.
 				ExecutionPlan_AddOp(cp, value_hash_join);
-				// It may be possible to reduce the other child; add the Cartesian Product back into the array
-				// to be evaluated again.
-				cps = array_append(cps, cp);
-				cp_count ++;
+				// It may be possible to reduce the other child; reevaluate.
+				i--;
 			}
 
 			// Add the detached streams to the join op.
@@ -196,4 +182,3 @@ void applyJoin(ExecutionPlan *plan) {
 	}
 	array_free(cps);
 }
-
