@@ -25,10 +25,9 @@ static void AggregateFree(OpBase *opBase);
 static void _classify_expressions(OpAggregate *op) {
 	op->non_aggregated_expressions = array_new(AR_ExpNode *, 0);
 
-	uint count = array_len(op->record_offsets);
-	op->expression_classification = rm_malloc(sizeof(ExpClassification) * count);
+	op->expression_classification = rm_malloc(sizeof(ExpClassification) * op->exp_count);
 
-	for(uint i = 0; i < count; i++) {
+	for(uint i = 0; i < op->exp_count; i++) {
 		AR_ExpNode *exp = op->exps[i];
 		if(!AR_EXP_ContainsAggregation(exp, NULL)) {
 			op->expression_classification[i] = NON_AGGREGATED;
@@ -42,8 +41,7 @@ static void _classify_expressions(OpAggregate *op) {
 static AR_ExpNode **_build_aggregated_expressions(OpAggregate *op) {
 	AR_ExpNode **agg_exps = array_new(AR_ExpNode *, 1);
 
-	uint count = array_len(op->record_offsets);
-	for(uint i = 0; i < count; i++) {
+	for(uint i = 0; i < op->exp_count; i++) {
 		if(op->expression_classification[i] == NON_AGGREGATED) continue;
 		AR_ExpNode *exp = AR_EXP_Clone(op->exps[i]);
 		agg_exps = array_append(agg_exps, exp);
@@ -68,7 +66,7 @@ static Group *_CreateGroup(OpAggregate *op, Record r) {
 	}
 
 	/* There's no need to keep a reference to record if we're not sorting groups. */
-	Record cache_record = (op->exp_count == array_len(op->record_offsets)) ? r : NULL;
+	Record cache_record = (op->should_cache_records) ? r : NULL;
 	op->group = NewGroup(key_count, group_keys, agg_exps, cache_record);
 
 	return op->group;
@@ -178,8 +176,7 @@ static Record _handoff(OpAggregate *op) {
 	uint keyIdx = 0; // Index into group keys.
 	SIValue res;
 
-	uint count = array_len(op->record_offsets);
-	for(uint i = 0; i < count; i++) {
+	for(uint i = 0; i < op->exp_count; i++) {
 		int rec_idx = op->record_offsets[i];
 		if(op->expression_classification[i] == AGGREGATED) {
 			// Aggregated expression, get aggregated value.
@@ -200,7 +197,7 @@ static Record _handoff(OpAggregate *op) {
 	return r;
 }
 
-OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
+OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should_cache_records) {
 	OpAggregate *op = malloc(sizeof(OpAggregate));
 	op->exps = exps;
 	op->group = NULL;
@@ -211,6 +208,7 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	op->groups = CacheGroupNew();
 	op->exp_count = array_len(exps);
 	op->record_offsets = array_new(uint, op->exp_count);
+	op->should_cache_records = should_cache_records;
 
 	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", AggregateInit, AggregateConsume,
 				AggregateReset, NULL, AggregateFree, plan);

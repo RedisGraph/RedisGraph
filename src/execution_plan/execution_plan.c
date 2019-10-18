@@ -403,7 +403,9 @@ static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **project
 	// Our fundamental operation will be a projection or aggregation.
 	OpBase *op;
 	if(aggregate) {
-		op = NewAggregateOp(plan, projections);
+		// An aggregate op's caching policy depends on whether its results will be sorted.
+		bool sorting_after_aggregation = (order_exps != NULL);
+		op = NewAggregateOp(plan, projections, sorting_after_aggregation);
 	} else {
 		op = NewProjectOp(plan, projections);
 	}

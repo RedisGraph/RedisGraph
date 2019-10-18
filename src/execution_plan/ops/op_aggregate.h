@@ -30,7 +30,8 @@ typedef struct {
 	CacheGroupIterator *group_iter;
 	Record last_record;
 	uint exp_count;                                /* Number of projected expressions. */
+	bool should_cache_records;                     /* Records should be cached if we're sorting after aggregation. */
 } OpAggregate;
 
-OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps);
+OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should_cache_records);
 

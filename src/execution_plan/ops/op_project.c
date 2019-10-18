@@ -56,8 +56,7 @@ static Record ProjectConsume(OpBase *opBase) {
 	OpBase_AddVolatileRecord(opBase, r);
 	OpBase_AddVolatileRecord(opBase, projection);
 
-	uint count = array_len(op->record_offsets);
-	for(uint i = 0; i < count; i++) {
+	for(uint i = 0; i < op->exp_count; i++) {
 		AR_ExpNode *exp = op->exps[i];
 		SIValue v = AR_EXP_Evaluate(exp, r);
 		int rec_idx = op->record_offsets[i];
@@ -79,7 +78,6 @@ static void ProjectFree(OpBase *ctx) {
 	OpProject *op = (OpProject *)ctx;
 
 	if(op->exps) {
-		// Only free projection expressions (exclude order expressions).
 		for(uint i = 0; i < op->exp_count; i ++) AR_EXP_Free(op->exps[i]);
 		array_free(op->exps);
 		op->exps = NULL;
