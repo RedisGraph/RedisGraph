@@ -12,7 +12,6 @@
 #include "../../util/rmalloc.h"
 
 /* Forward declarations. */
-static OpResult SortInit(OpBase *opBase);
 static Record SortConsume(OpBase *opBase);
 static OpResult SortReset(OpBase *opBase);
 static void SortFree(OpBase *opBase);
@@ -80,21 +79,26 @@ static inline Record _handoff(OpSort *op) {
 	return NULL;
 }
 
-OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int direction, unsigned int limit) {
+OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int direction, uint limit) {
 	OpSort *op = malloc(sizeof(OpSort));
 	op->heap = NULL;
 	op->buffer = NULL;
 	op->limit = limit;
 	op->direction = direction;
-	op->record_offsets = NULL;
-	op->exps = exps;
 
 	if(op->limit) op->heap = heap_new(_heap_elem_compare, op);
 	else op->buffer = array_new(Record, 32);
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_SORT, "Sort", SortInit,
+	OpBase_Init((OpBase *)op, OPType_SORT, "Sort", NULL,
 				SortConsume, SortReset, NULL, SortFree, plan);
+
+	uint comparison_count = array_len(exps);
+	op->record_offsets = array_new(uint, comparison_count);
+	for(uint i = 0; i < comparison_count; i ++) {
+		int record_idx = OpBase_Modifies((OpBase *)op, exps[i]->resolved_name);
+		op->record_offsets = array_append(op->record_offsets, record_idx);
+	}
 
 	return (OpBase *)op;
 }
@@ -103,17 +107,6 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int direction, u
  * macro like this is rather ugly, but the macro passed to QSORT must
  * accept only 2 arguments. */
 #define RECORD_SORT(a, b) (_record_islt((*a), (*b), op))
-
-static OpResult SortInit(OpBase *opBase) {
-	OpSort *op = (OpSort *)opBase;
-	uint comparison_count = array_len(op->exps);
-	op->record_offsets = array_new(uint, comparison_count);
-	for(uint i = 0; i < comparison_count; i ++) {
-		int record_idx = OpBase_Modifies(opBase, op->exps[i]->resolved_name);
-		op->record_offsets = array_append(op->record_offsets, record_idx);
-	}
-	return OP_OK;
-}
 
 static Record SortConsume(OpBase *opBase) {
 	OpSort *op = (OpSort *)opBase;
@@ -195,15 +188,6 @@ static void SortFree(OpBase *ctx) {
 		}
 		array_free(op->buffer);
 		op->buffer = NULL;
-	}
-
-	if(op->exps) {
-		uint exp_count = array_len(op->exps);
-		for(uint i = 0; i < exp_count; i ++) {
-			AR_EXP_Free(op->exps[i]);
-		}
-		array_free(op->exps);
-		op->exps = NULL;
 	}
 
 	if(op->record_offsets) {

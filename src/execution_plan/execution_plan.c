@@ -47,30 +47,6 @@ static inline void _ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_ro
 	plan->root = new_root;
 }
 
-// Build the column strings for a result set.
-static inline const char **_BuildColumnNames(OpBase *op) {
-	AR_ExpNode **exps;
-	uint projection_count;
-	switch(op->type) {
-	case OPType_PROJECT:
-		exps = ((OpProject *)op)->exps;
-		projection_count = ((OpProject *)op)->exp_count;
-		break;
-	case OPType_AGGREGATE:
-		exps = ((OpAggregate *)op)->exps;
-		projection_count = ((OpAggregate *)op)->exp_count;
-		break;
-	default:
-		assert(false && "encountered impossible operation type");
-	}
-
-	const char **columns = array_new(const char *, projection_count);
-	for(uint i = 0; i < projection_count; i++) {
-		columns = array_append(columns, exps[i]->resolved_name);
-	}
-	return columns;
-}
-
 // Given a WITH/RETURN * clause, generate the array of expressions to populate.
 static AR_ExpNode **_PopulateProjectAll(const cypher_astnode_t *clause) {
 	// Retrieve the relevant aliases from the AST.
@@ -381,16 +357,55 @@ static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan) {
 	Vector_Free(sub_trees);
 }
 
+// Merge all order expressions into the projections array without duplicates,
+// returning an array of expressions to free after building projection ops.
+static AR_ExpNode **_combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **order_exps) {
+	rax *projection_names = raxNew();
+	AR_ExpNode **project_exps = *exps_ptr;
+	uint order_count = array_len(order_exps);
+	uint project_count = array_len(project_exps);
+	AR_ExpNode **free_list = array_new(AR_ExpNode *, order_count);
+
+	// Add all WITH/RETURN projection names to rax.
+	for(uint i = 0; i < project_count; i ++) {
+		const char *name = project_exps[i]->resolved_name;
+		raxTryInsert(projection_names, (unsigned char *)name, strlen(name), NULL, NULL);
+	}
+
+	// Merge non-duplicate order expressions into projection array, add duplicate expressions to free list.
+	for(uint i = 0; i < order_count; i ++) {
+		const char *name = order_exps[i]->resolved_name;
+		int new_name = raxTryInsert(projection_names, (unsigned char *)name, strlen(name), NULL, NULL);
+		if(new_name) {
+			// New projection, add to array.
+			project_exps = array_append(project_exps, order_exps[i]);
+		} else {
+			// Duplicate projection, add to free list.
+			free_list = array_append(free_list, order_exps[i]);
+		}
+	}
+
+	raxFree(projection_names);
+
+	*exps_ptr = project_exps;
+	return free_list;
+}
+
 // Build an aggregate or project operation and any required modifying operations.
 // This logic applies for both WITH and RETURN projections.
 static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **projections,
 									   AR_ExpNode **order_exps, uint skip, uint sort, bool aggregate, bool distinct) {
+
+	AR_ExpNode **free_list = NULL;
+	// Merge order expressions into the projections array.
+	if(order_exps) free_list = _combine_projection_arrays(&projections, order_exps);
+
 	// Our fundamental operation will be a projection or aggregation.
 	OpBase *op;
 	if(aggregate) {
-		op = NewAggregateOp(plan, projections, order_exps);
+		op = NewAggregateOp(plan, projections);
 	} else {
-		op = NewProjectOp(plan, projections, order_exps);
+		op = NewProjectOp(plan, projections);
 	}
 	_ExecutionPlan_UpdateRoot(plan, op);
 
@@ -420,6 +435,16 @@ static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **project
 		OpBase *op = NewLimitOp(plan, limit);
 		_ExecutionPlan_UpdateRoot(plan, op);
 	}
+
+	// Free any order expressions that have not been migrated into the projections array.
+	if(free_list) {
+		uint free_count = array_len(free_list);
+		for(uint i = 0; i < free_count; i ++) {
+			AR_EXP_Free(free_list[i]);
+		}
+		array_free(free_list);
+	}
+	if(order_exps) array_free(order_exps);
 }
 
 // The RETURN logic is identical to WITH-culminating segments,
@@ -678,7 +703,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		}
 
 		// Prepare column names for the ResultSet.
-		if(result_set) result_set->columns = _BuildColumnNames(connecting_op);
+		if(result_set) result_set->columns = AST_BuildColumnNames(last_clause);
 
 		OpBase *results_op = NewResultsOp(plan, result_set);
 		_ExecutionPlan_UpdateRoot(plan, results_op);

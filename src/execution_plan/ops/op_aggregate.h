@@ -29,8 +29,8 @@ typedef struct {
 	SIValue *group_keys;                           /* Array of values composing an aggregated group. */
 	CacheGroupIterator *group_iter;
 	Record last_record;
-	uint exp_count;                                /* Number of expressions that should be freed with this op. */
+	uint exp_count;                                /* Number of projected expressions. */
 } OpAggregate;
 
-OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode **order_exps);
+OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps);
 

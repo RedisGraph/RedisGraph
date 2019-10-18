@@ -14,7 +14,7 @@
 static Record ProjectConsume(OpBase *opBase);
 static void ProjectFree(OpBase *opBase);
 
-OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode **order_exps) {
+OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	OpProject *op = malloc(sizeof(OpProject));
 	op->exps = exps;
 	op->singleResponse = false;
@@ -29,18 +29,6 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode **
 		// The projected record will associate values with their resolved name
 		// to ensure that space is allocated for each entry.
 		int record_idx = OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
-		op->record_offsets = array_append(op->record_offsets, record_idx);
-	}
-
-	uint order_exp_count = array_len(order_exps);
-	for(uint i = 0; i < order_exp_count; i ++) {
-		// If an ORDER BY alias is already being projected, it does not need to be added again.
-		bool evaluated = OpBase_Aware((OpBase *)op, order_exps[i]->resolved_name, NULL);
-		if(evaluated) continue;
-
-		// Otherwise, append it the projection arrays.
-		op->exps = array_append(op->exps, order_exps[i]);
-		int record_idx = OpBase_Modifies((OpBase *)op, order_exps[i]->resolved_name);
 		op->record_offsets = array_append(op->record_offsets, record_idx);
 	}
 

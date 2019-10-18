@@ -86,6 +86,9 @@ const char *AST_GetEntityName(const AST *ast, const cypher_astnode_t *entity);
 // Retrieve the array of projected aliases for a WITH/RETURN * clause.
 const char **AST_GetProjectAll(const cypher_astnode_t *projection_clause);
 
+// Collect the aliases from a RETURN clause to populate ResultSet column names.
+const char **AST_BuildColumnNames(const cypher_astnode_t *return_clause);
+
 // Determine the maximum number of records
 // which will be considered when evaluating an algebraic expression.
 int TraverseRecordCap(const AST *ast);

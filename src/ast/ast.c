@@ -284,6 +284,30 @@ const char **AST_GetProjectAll(const cypher_astnode_t *projection_clause) {
 	return cypher_astnode_get_annotation(ast->project_all_ctx, projection_clause);
 }
 
+const char **AST_BuildColumnNames(const cypher_astnode_t *return_clause) {
+	const char **columns;
+	if(cypher_ast_return_has_include_existing(return_clause)) {
+		// If this is a RETURN *, the column names should be retrieved from the clause annotation.
+		const char **projection_names = AST_GetProjectAll(return_clause);
+		array_clone(columns, projection_names);
+		return columns;
+	}
+
+	// Collect every alias from the RETURN projections.
+	uint projection_count = cypher_ast_return_nprojections(return_clause);
+	columns = array_new(const char *, projection_count);
+	for(uint i = 0; i < projection_count; i++) {
+		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
+		const cypher_astnode_t *ast_alias = cypher_ast_projection_get_alias(projection);
+		// If the projection was not aliased, the projection itself is an identifier.
+		if(ast_alias == NULL) ast_alias = cypher_ast_projection_get_expression(projection);
+		const char *alias = cypher_ast_identifier_get_name(ast_alias);
+		columns = array_append(columns, alias);
+	}
+
+	return columns;
+}
+
 // Determine the maximum number of records
 // which will be considered when evaluating an algebraic expression.
 int TraverseRecordCap(const AST *ast) {
