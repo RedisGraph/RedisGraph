@@ -2,6 +2,7 @@
 #include "../util/arr.h"
 #include "../util/qsort.h"
 #include "../util/rmalloc.h"
+#include "../procedures/procedure.h"
 #include <assert.h>
 
 //------------------------------------------------------------------------------
@@ -132,6 +133,7 @@ static void _collect_with_projections(const cypher_astnode_t *with_clause, const
 static void _uniqueArray(const char **arr) {
 #define MODIFIES_ISLT(a,b) (strcmp((*a),(*b)) < 0)
 	int count = array_len(arr);
+	if(count == 0) return;
 	QSORT(const char *, arr, count, MODIFIES_ISLT);
 	uint unique_idx = 0;
 	for(int i = 0; i < count - 1; i ++) {
@@ -141,6 +143,35 @@ static void _uniqueArray(const char **arr) {
 	}
 	arr[unique_idx++] = arr[count - 1];
 	array_trimm_len(arr, unique_idx);
+}
+
+static void _collect_call_projections(const cypher_astnode_t *call_clause, const char ***aliases) {
+	uint yield_count = cypher_ast_call_nprojections(call_clause);
+	if(yield_count == 0) {
+		// If the procedure call is missing its yield part, include procedure outputs.
+		const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
+		ProcedureCtx *proc = Proc_Get(proc_name);
+		assert(proc);
+
+		uint output_count = Procedure_OutputCount(proc);
+		for(uint i = 0; i < output_count; i++) {
+			const char *name = Procedure_GetOutput(proc, i);
+			*aliases = array_append(*aliases, name);
+		}
+		Proc_Free(proc);
+		return;
+	}
+
+	for(uint i = 0; i < yield_count; i ++) {
+		const cypher_astnode_t *projection = cypher_ast_call_get_projection(call_clause, i);
+		const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
+
+		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(projection);
+		if(alias_node == NULL) alias_node = ast_exp;
+		const char *identifier = cypher_ast_identifier_get_name(alias_node);
+
+		*aliases = array_append(*aliases, identifier);
+	}
 }
 
 static const char **_collect_aliases_in_scope(AST *ast, uint scope_start, uint scope_end) {
@@ -169,6 +200,8 @@ static const char **_collect_aliases_in_scope(AST *ast, uint scope_start, uint s
 			// The UNWIND clause introduces one alias.
 			const cypher_astnode_t *unwind_alias = cypher_ast_unwind_get_alias(clause);
 			aliases = array_append(aliases, cypher_ast_identifier_get_name(unwind_alias));
+		} else if(type == CYPHER_AST_CALL) {
+			_collect_call_projections(clause, &aliases);
 		}
 	}
 
