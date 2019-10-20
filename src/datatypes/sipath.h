@@ -8,13 +8,13 @@
 
 #include "../value.h"
 #include "path.h"
-#include "../graph/graph.h"
+#include "../graph/entities/qg_edge.h"
 #include <stdlib.h>
 
 typedef struct {
-	Path path;                      // Path struct.
-	bool intermidate;               // Indicates if path is intermidate path or not.
-	GRAPH_EDGE_DIR traverseDir;     // Represents traverse direction if path is intermidate.
+	Path path;          // Path struct.
+	bool intermidate;   // Indicates if path is intermidate path or not.
+	bool incomingEdge;  // Represents the traverse direction if path is intermidate.
 } SIPath;
 
 /**
@@ -27,10 +27,10 @@ SIValue SIPath_New(Path p);
 /**
  * @brief  Creates a new SIPath which represents a part of a bigger path, or edge array.
  * @param  p: Path struct.
- * @param  traverseDir: Traverse direction.
+ * @param  incoming: Traverse direction.
  * @retval SIValue which represents the given struct.
  */
-SIValue SIPath_NewIntermidate(Path p, GRAPH_EDGE_DIR traverseDir);
+SIValue SIPath_NewIntermidate(Path p, bool incoming);
 
 /**
  * @brief  Clones a given SIPath.
@@ -64,7 +64,7 @@ SIValue SIPath_Nodes(SIValue p);
 
 /**
  * @brief  Returns a SINode in a given position in the nodes array.
- * @note   Assertion will be raised for out of bound indeices.
+ * @note   Assertion will be raised for out of bound indices.
  * @param  p: SIPath.
  * @param  i: Requested index.
  * @retval SINode in the requested index.

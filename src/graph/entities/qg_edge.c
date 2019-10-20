@@ -10,7 +10,8 @@
 #include "../../util/arr.h"
 #include <assert.h>
 
-QGEdge *QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const char *alias) {
+QGEdge *QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const char *alias,
+				   QueryEdgeDirection direction) {
 	QGEdge *e = rm_malloc(sizeof(QGEdge));
 	e->alias = alias;
 	e->reltypes = array_new(const char *, 1);
@@ -19,6 +20,7 @@ QGEdge *QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const ch
 	e->dest = NULL;
 	e->minHops = 1;
 	e->maxHops = 1;
+	e->direction = direction;
 
 	return e;
 }
@@ -32,6 +34,7 @@ QGEdge *QGEdge_Clone(const QGEdge *orig) {
 	e->maxHops = orig->maxHops;
 	e->src = NULL;
 	e->dest = NULL;
+	e->direction = orig->direction;
 
 	return e;
 }

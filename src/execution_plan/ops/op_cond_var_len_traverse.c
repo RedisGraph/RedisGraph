@@ -126,7 +126,7 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 
 
 	if(op->edgesIdx >= 0) {
-		Record_AddScalar(op->r, op->edgesIdx, SI_IntermidatePath(p, op->traverseDir));
+		Record_AddScalar(op->r, op->edgesIdx, SI_IntermidatePath(p, op->ae->edge->direction == INCOMING));
 	}
 
 	return Record_Clone(op->r);

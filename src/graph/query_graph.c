@@ -57,10 +57,13 @@ static void _BuildQueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_
 	// Each edge can only appear once in a QueryGraph.
 	assert(QueryGraph_GetEdgeByAlias(qg, alias) == NULL);
 
-	QGEdge *e = QGEdge_New(NULL, NULL, NULL, alias);
+	QueryEdgeDirection direction = cypher_ast_rel_pattern_get_direction(ast_entity) ==
+								   CYPHER_REL_INBOUND ? INCOMING : OUTGOING;
+
+	QGEdge *e = QGEdge_New(NULL, NULL, NULL, alias, direction);
 
 	// Swap the source and destination for left-pointing relations
-	if(cypher_ast_rel_pattern_get_direction(ast_entity) == CYPHER_REL_INBOUND) {
+	if(direction == INCOMING) {
 		QGNode *tmp = src;
 		src = dest;
 		dest = tmp;

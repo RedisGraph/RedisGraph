@@ -78,9 +78,9 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
 	QGNode *C = QGNode_New(NULL, "C");
 	QGNode *D = QGNode_New(NULL, "D");
 
-	QGEdge *AB = QGEdge_New(A, B, "E", "AB");
-	QGEdge *BC = QGEdge_New(B, C, "E", "BC");
-	QGEdge *CD = QGEdge_New(C, D, "E", "CD");
+	QGEdge *AB = QGEdge_New(A, B, "E", "AB", OUTGOING);
+	QGEdge *BC = QGEdge_New(B, C, "E", "BC", OUTGOING);
+	QGEdge *CD = QGEdge_New(C, D, "E", "CD", OUTGOING);
 
 	QueryGraph *qg = QueryGraph_New(4, 3);
 
@@ -193,9 +193,9 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	QGNode *C = QGNode_New(NULL, "C");
 	QGNode *D = QGNode_New(NULL, "D");
 
-	QGEdge *AB = QGEdge_New(A, B, "E", "AB");
-	QGEdge *BC = QGEdge_New(B, C, "E", "BC");
-	QGEdge *CD = QGEdge_New(C, D, "E", "CD");
+	QGEdge *AB = QGEdge_New(A, B, "E", "AB", OUTGOING);
+	QGEdge *BC = QGEdge_New(B, C, "E", "BC", OUTGOING);
+	QGEdge *CD = QGEdge_New(C, D, "E", "CD", OUTGOING);
 
 	QueryGraph *qg = QueryGraph_New(4, 3);
 
