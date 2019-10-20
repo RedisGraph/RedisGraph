@@ -45,32 +45,39 @@ static inline void _ResultSet_ReplyWithValueType(RedisModuleCtx *ctx, const SIVa
 
 static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, GraphContext *gc,
 											   const SIValue v) {
-	_ResultSet_ReplyWithValueType(ctx, v);
 	// Emit the actual value, then the value type (to facilitate client-side parsing)
 	switch(SI_TYPE(v)) {
 	case T_STRING:
+		_ResultSet_ReplyWithValueType(ctx, v);
 		RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
 		return;
 	case T_INT64:
+		_ResultSet_ReplyWithValueType(ctx, v);
 		RedisModule_ReplyWithLongLong(ctx, v.longval);
 		return;
 	case T_DOUBLE:
+		_ResultSet_ReplyWithValueType(ctx, v);
 		_ResultSet_ReplyWithRoundedDouble(ctx, v.doubleval);
 		return;
 	case T_BOOL:
+		_ResultSet_ReplyWithValueType(ctx, v);
 		if(v.longval != 0) RedisModule_ReplyWithStringBuffer(ctx, "true", 4);
 		else RedisModule_ReplyWithStringBuffer(ctx, "false", 5);
 		return;
 	case T_ARRAY:
+		_ResultSet_ReplyWithValueType(ctx, v);
 		_ResultSet_CompactReplyWithSIArray(ctx, gc, v);
 		break;
 	case T_NULL:
+		_ResultSet_ReplyWithValueType(ctx, v);
 		RedisModule_ReplyWithNull(ctx);
 		return;
 	case T_NODE:
+		_ResultSet_ReplyWithValueType(ctx, v);
 		_ResultSet_CompactReplyWithNode(ctx, gc, v.ptrval);
 		return;
 	case T_EDGE:
+		_ResultSet_ReplyWithValueType(ctx, v);
 		_ResultSet_CompactReplyWithEdge(ctx, gc, v.ptrval);
 		return;
 	case T_PATH:
@@ -197,7 +204,7 @@ static void _ResultSet_CompactReplyWithPath(RedisModuleCtx *ctx, GraphContext *g
 	SIPath *sipathPtr = (SIPath *)path.ptrval;
 	if(sipathPtr->intermidate) {
 		SIValue relationships = SIPath_Relationships(path);
-		_ResultSet_CompactReplyWithSIArray(ctx, gc, relationships);
+		_ResultSet_CompactReplyWithSIValue(ctx, gc, relationships);
 		SIValue_Free(&relationships);
 	}
 }
