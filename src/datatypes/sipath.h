@@ -11,6 +11,12 @@
 #include "../graph/graph.h"
 #include <stdlib.h>
 
+typedef struct {
+	Path path;                      // Path struct.
+	bool intermidate;               // Indicates if path is intermidate path or not.
+	GRAPH_EDGE_DIR traverseDir;     // Represents traverse direction if path is intermidate.
+} SIPath;
+
 /**
  * @brief  Creates a new SIPath out of path struct.
  * @param  p: Path struct.

@@ -9,12 +9,6 @@
 #include "../util/arr.h"
 #include "array.h"
 
-typedef struct {
-	Path path;
-	GRAPH_EDGE_DIR traverseDir;
-	bool intermidate;
-} SIPath;
-
 SIValue SIPath_New(Path p) {
 	SIValue path;
 	path.ptrval = rm_malloc(sizeof(SIPath));
@@ -46,35 +40,58 @@ SIValue SIPath_Clone(SIValue p) {
 }
 
 SIValue SIPath_Relationships(SIValue p) {
-	Path path = ((SIPath *) p.ptrval)->path;
+	SIPath *sipath = (SIPath *) p.ptrval;
+	Path path = sipath->path;
 	uint edgeCount = Path_EdgeCount(path);
 	SIValue array = SIArray_New(edgeCount);
-	for(uint i = 0; i < edgeCount; i++) {
-		SIArray_Append(&array, SI_Edge(&path.edges[i]));
+	if(sipath->intermidate && sipath->traverseDir == GRAPH_EDGE_DIR_INCOMING) {
+		for(uint i = edgeCount - 1; i >= 0; i--) {
+			SIArray_Append(&array, SI_Edge(&path.edges[i]));
+		}
+	} else {
+		for(uint i = 0; i < edgeCount; i++) {
+			SIArray_Append(&array, SI_Edge(&path.edges[i]));
+		}
 	}
 	return array;
 }
 
 SIValue SIPath_GetRelationship(SIValue p, size_t i) {
 	assert(i < SIPath_Length(p) && i > 0);
-	Path path = ((SIPath *) p.ptrval)->path;
-	return SI_Edge(&path.edges[i]);
+	SIPath *sipath = (SIPath *) p.ptrval;
+	Path path = sipath->path;
+	if(sipath->intermidate && sipath->traverseDir == GRAPH_EDGE_DIR_INCOMING) {
+		uint edgeCount = Path_EdgeCount(path);
+		return SI_Edge(&path.edges[edgeCount - i - 1]);
+
+	} else return SI_Edge(&path.edges[i]);
 }
 
 SIValue SIPath_Nodes(SIValue p) {
-	Path path = ((SIPath *) p.ptrval)->path;
+	SIPath *sipath = (SIPath *) p.ptrval;
+	Path path = sipath->path;
 	uint nodeCount = Path_NodeCount(path);
 	SIValue array = SIArray_New(nodeCount);
-	for(uint i = 0; i < nodeCount; i++) {
-		SIArray_Append(&array, SI_Node(&path.nodes[i]));
+	if(sipath->intermidate && sipath->traverseDir == GRAPH_EDGE_DIR_INCOMING) {
+		for(uint i = nodeCount - 1; i >= 0; i++) {
+			SIArray_Append(&array, SI_Node(&path.nodes[i]));
+		}
+	} else {
+		for(uint i = 0; i < nodeCount; i++) {
+			SIArray_Append(&array, SI_Node(&path.nodes[i]));
+		}
 	}
 	return array;
 }
 
 SIValue SIPath_GetNode(SIValue p, size_t i) {
 	assert(i < SIPath_Length(p) + 1 && i > 0);
-	Path path = ((SIPath *) p.ptrval)->path;
-	return SI_Node(&path.nodes[i]);
+	SIPath *sipath = (SIPath *) p.ptrval;
+	Path path = sipath->path;
+	if(sipath->intermidate && sipath->traverseDir == GRAPH_EDGE_DIR_INCOMING) {
+		uint nodeCount = Path_NodeCount(path);
+		return SI_Node(&path.nodes[nodeCount - i - 1]);
+	} else return SI_Node(&path.nodes[i]);
 }
 
 size_t SIPath_Length(SIValue p) {

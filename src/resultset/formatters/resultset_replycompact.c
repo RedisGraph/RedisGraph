@@ -7,12 +7,14 @@
 #include "resultset_formatters.h"
 #include "../../util/arr.h"
 #include "../../datatypes/array.h"
+#include "../../datatypes/sipath.h"
 
 // Forward declarations.
 static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n);
 static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e);
 static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext *gc,
-											   SIValue array) ;
+											   SIValue array);
+static void _ResultSet_CompactReplyWithPath(RedisModuleCtx *ctx, GraphContext *gc, SIValue path);
 
 static inline ValueType _mapValueType(const SIValue v) {
 	switch(SI_TYPE(v)) {
@@ -70,6 +72,9 @@ static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 		return;
 	case T_EDGE:
 		_ResultSet_CompactReplyWithEdge(ctx, gc, v.ptrval);
+		return;
+	case T_PATH:
+		_ResultSet_CompactReplyWithPath(ctx, gc, v);
 		return;
 	default:
 		assert("Unhandled value type" && false);
@@ -173,6 +178,27 @@ static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext
 	for(uint i = 0; i < arrayLen; i++) {
 		RedisModule_ReplyWithArray(ctx, 2); // Reply with array with space for type and value
 		_ResultSet_CompactReplyWithSIValue(ctx, gc, SIArray_Get(array, i));
+	}
+}
+
+static void _ResultSet_CompactReplyWithPath(RedisModuleCtx *ctx, GraphContext *gc, SIValue path) {
+	/* If path is intermidate it will return as an SIArray of edges, see array compact format.
+	 * Compact path reply:
+	 * [
+	 *      [Node compact reply format]
+	 *      [Edge compact reply format]
+	 *      .
+	 *      .
+	 *      .
+	 *      [Node compact reply format]
+	 *
+	 * ]
+	*/
+	SIPath *sipathPtr = (SIPath *)path.ptrval;
+	if(sipathPtr->intermidate) {
+		SIValue relationships = SIPath_Relationships(path);
+		_ResultSet_CompactReplyWithSIArray(ctx, gc, relationships);
+		SIValue_Free(&relationships);
 	}
 }
 

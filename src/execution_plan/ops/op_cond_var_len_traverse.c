@@ -14,7 +14,6 @@
 #include "./op_cond_var_len_traverse.h"
 
 /* Forward declarations. */
-static OpResult CondVarLenTraverseInit(OpBase *opBase);
 static Record CondVarLenTraverseConsume(OpBase *opBase);
 static OpResult CondVarLenTraverseReset(OpBase *opBase);
 static void CondVarLenTraverseFree(OpBase *opBase);
@@ -74,18 +73,13 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	_setupTraversedRelations(op, ae->edge);
 
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
-				"Conditional Variable Length Traverse", CondVarLenTraverseInit, CondVarLenTraverseConsume,
+				"Conditional Variable Length Traverse", NULL, CondVarLenTraverseConsume,
 				CondVarLenTraverseReset, CondVarLenTraverseToString, CondVarLenTraverseFree, plan);
 	assert(OpBase_Aware((OpBase *)op, ae->src_node->alias, &op->srcNodeIdx));
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, ae->dest_node->alias);
+	op->edgesIdx = OpBase_Modifies((OpBase *)op, op->ae->edge->alias);
 
 	return (OpBase *)op;
-}
-
-OpResult CondVarLenTraverseInit(OpBase *opBase) {
-	CondVarLenTraverse *op = (CondVarLenTraverse *)opBase;
-	if(!OpBase_Aware((OpBase *)op, op->ae->edge->alias, &op->edgesIdx)) op->edgesIdx = -1;
-	return OP_OK;
 }
 
 static Record CondVarLenTraverseConsume(OpBase *opBase) {
