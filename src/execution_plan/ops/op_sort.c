@@ -96,7 +96,8 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int direction, u
 	uint comparison_count = array_len(exps);
 	op->record_offsets = array_new(uint, comparison_count);
 	for(uint i = 0; i < comparison_count; i ++) {
-		int record_idx = OpBase_Modifies((OpBase *)op, exps[i]->resolved_name);
+		int record_idx;
+		assert(OpBase_Aware((OpBase *)op, exps[i]->resolved_name, &record_idx));
 		op->record_offsets = array_append(op->record_offsets, record_idx);
 	}
 
