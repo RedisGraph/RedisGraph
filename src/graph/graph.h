@@ -65,6 +65,7 @@ struct Graph {
 	GrB_Matrix *relations;              // Relation matrices.
 	GrB_Matrix *_relations_map;         // Maps from (relation, row, col) to edge id.
 	GrB_Matrix _zero_matrix;            // Zero matrix.
+    GrB_Matrix _stats;                  // Statistic 3D matrix, [src_lbl, dest_lbl, rel] = #edges.
 	pthread_mutex_t _writers_mutex;     // Mutex restrict single writer.
 	pthread_mutex_t _mutex;             // Mutex for accessing critical sections.
 	pthread_rwlock_t _rwlock;           // Read-write lock scoped to this specific graph
@@ -192,6 +193,15 @@ size_t Graph_NodeCount(
 size_t Graph_LabeledNodeCount(
 	const Graph *g,
 	int label
+);
+
+/* Returns the number of edges of type R connecting 
+ * source nodes of type S to destination nodes of type T */
+size_t GraphEdgeCount(
+    const Graph *graph,
+    int src_label,
+    int relation,
+    int dest_label
 );
 
 // Returns number of edges in the graph.

@@ -312,6 +312,65 @@ void Graph_ApplyAllPending(Graph *g) {
 	}
 }
 
+/* ================================ Graph Statistics ================================ */
+// Record a connection between source node and destination node.
+static void _recordConnection(const Graph *graph, int src_label, int relation, int dest_label) {
+	int dim = 0;
+	GrB_Info info;
+	GrB_Vector v = GrB_NULL;
+
+	/* Compancate for GRAPH_NO_LABEL (-1).
+	 * this will guarantee indicies in the range of [0,n] */
+	src_label++;
+	dest_label++;
+set:
+	info = GrB_Matrix_extractElement_UINT64((uint64_t *)&v, graph->_stats, src_label, dest_label);
+
+	if(info == GrB_INVALID_INDEX) {
+		// Resize matrix and fall through.
+		dim = (src_label >= dest_label) ? src_label : dest_label;
+		dim++;
+		assert(GxB_Matrix_resize(graph->_stats, dim, dim) == GrB_SUCCESS);
+		goto set;
+	}
+
+	if(info == GrB_NO_VALUE) {
+		GrB_Vector_new(&v, GrB_UINT64, Graph_RelationTypeCount(graph) + 1);
+		GrB_Matrix_setElement_UINT64(graph->_stats, (uint64_t)v, src_label, dest_label);
+	}
+
+	assert(v != GrB_NULL);
+	uint64_t count = 0;
+	info = GrB_Vector_extractElement_UINT64(&count, v, relation);
+	if(info == GrB_INVALID_INDEX) {
+		// Resize vector.
+		assert(GxB_Vector_resize(v, Graph_RelationTypeCount(graph)) == GrB_SUCCESS);
+	}
+	count++;
+	GrB_Vector_setElement_UINT64(v, count, relation);
+}
+
+/* Returns the number of edges of type R
+ * connecting source nodes of type S
+ * to destination nodes of type T */
+size_t GraphEdgeCount(const Graph *graph, int src_label, int relation, int dest_label) {
+	assert(graph);
+	/* Compancate for GRAPH_NO_LABEL (-1).
+	* this will guarantee indicies in the range of [0,n] */
+	src_label++;
+	dest_label++;
+
+	GrB_Info info;
+	GrB_Vector v;
+	info = GrB_Matrix_extractElement_UINT64((uint64_t *)&v, graph->_stats, src_label, dest_label);
+	if(info == GrB_INVALID_INDEX || info == GrB_NO_VALUE) return 0;
+
+	uint64_t count = 0;
+	info = GrB_Vector_extractElement_UINT64(&count, v, relation);
+	if(info == GrB_INVALID_INDEX || info == GrB_NO_VALUE) return 0;
+	return count;
+}
+
 /* ================================ Graph API ================================ */
 Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 	node_cap = MAX(node_cap, GRAPH_DEFAULT_NODE_CAP);
@@ -326,6 +385,7 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 	GrB_Matrix_new(&g->adjacency_matrix, GrB_BOOL, node_cap, node_cap);
 	GrB_Matrix_new(&g->_t_adjacency_matrix, GrB_BOOL, node_cap, node_cap);
 	GrB_Matrix_new(&g->_zero_matrix, GrB_BOOL, node_cap, node_cap);
+	GrB_Matrix_new(&g->_stats, GrB_UINT64, 0, 0);
 
 	// Initialize a read-write lock scoped to the individual graph
 	assert(pthread_rwlock_init(&g->_rwlock, NULL) == 0);
@@ -551,6 +611,7 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
 		   );
 	assert(info == GrB_SUCCESS);
 
+	_recordConnection(g, Graph_GetNodeLabel(g, src), r, Graph_GetNodeLabel(g, dest));
 	return 1;
 }
 
