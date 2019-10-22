@@ -560,9 +560,7 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str) {
 // This routine is only used to name ORDER BY expressions.
 void AR_EXP_BuildResolvedName(AR_ExpNode *root) {
 	if(root->resolved_name) return;
-	char *new_name = (char *)root->resolved_name;
-	AR_EXP_ToString(root, &new_name); // Note that this string must be freed!
-	root->resolved_name = new_name;
+	AR_EXP_ToString(root, (char **)&root->resolved_name); // Note that this string must be freed!
 }
 
 AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
