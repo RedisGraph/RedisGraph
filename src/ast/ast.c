@@ -171,6 +171,8 @@ const cypher_astnode_t **AST_GetClauses(const AST *ast, cypher_astnode_type_t ty
 AST *AST_Build(cypher_parse_result_t *parse_result) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->referenced_entities = NULL;
+	ast->name_ctx = NULL;
+	ast->project_all_ctx = NULL;
 	ast->free_root = false;
 
 	// Retrieve the AST root node from a parsed query.
@@ -180,27 +182,34 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	assert(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
 
 	ast->root = cypher_ast_statement_get_body(statement);
+
 	// Empty queries should be captured by AST validations
 	assert(ast->root);
 
-	// Set thread-local AST
+	// Set thread-local AST.
 	QueryCtx_SetAST(ast);
+
+	// Augment the AST with annotations for naming entities and populating WITH/RETURN * projections.
+	AST_Enrich(ast);
 
 	return ast;
 }
 
 AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	AST *ast = rm_malloc(sizeof(AST));
+	ast->name_ctx = master_ast->name_ctx;
+	ast->project_all_ctx = master_ast->project_all_ctx;
 	ast->free_root = true;
 	ast->limit = UNLIMITED;
 	uint n = end_offset - start_offset;
 
-	cypher_astnode_t *clauses[n];
+	const cypher_astnode_t *clauses[n];
 	for(uint i = 0; i < n; i ++) {
-		clauses[i] = (cypher_astnode_t *)cypher_ast_query_get_clause(master_ast->root, i + start_offset);
+		clauses[i] = cypher_ast_query_get_clause(master_ast->root, i + start_offset);
 	}
 	struct cypher_input_range range = {};
-	ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n, NULL, 0, range);
+	ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n,
+								 (cypher_astnode_t **)clauses, n, range);
 
 	// TODO This overwrites the previously-held AST pointer, which could lead to inconsistencies
 	// in the future if we expect the variable to hold a different AST.
@@ -266,6 +275,39 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 	return aggregated;
 }
 
+const char *AST_GetEntityName(const AST *ast, const cypher_astnode_t *entity) {
+	return cypher_astnode_get_annotation(ast->name_ctx, entity);
+}
+
+const char **AST_GetProjectAll(const cypher_astnode_t *projection_clause) {
+	AST *ast = QueryCtx_GetAST();
+	return cypher_astnode_get_annotation(ast->project_all_ctx, projection_clause);
+}
+
+const char **AST_BuildColumnNames(const cypher_astnode_t *return_clause) {
+	const char **columns;
+	if(cypher_ast_return_has_include_existing(return_clause)) {
+		// If this is a RETURN *, the column names should be retrieved from the clause annotation.
+		const char **projection_names = AST_GetProjectAll(return_clause);
+		array_clone(columns, projection_names);
+		return columns;
+	}
+
+	// Collect every alias from the RETURN projections.
+	uint projection_count = cypher_ast_return_nprojections(return_clause);
+	columns = array_new(const char *, projection_count);
+	for(uint i = 0; i < projection_count; i++) {
+		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause, i);
+		const cypher_astnode_t *ast_alias = cypher_ast_projection_get_alias(projection);
+		// If the projection was not aliased, the projection itself is an identifier.
+		if(ast_alias == NULL) ast_alias = cypher_ast_projection_get_expression(projection);
+		const char *alias = cypher_ast_identifier_get_name(ast_alias);
+		columns = array_append(columns, alias);
+	}
+
+	return columns;
+}
+
 // Determine the maximum number of records
 // which will be considered when evaluating an algebraic expression.
 int TraverseRecordCap(const AST *ast) {
@@ -275,7 +317,22 @@ int TraverseRecordCap(const AST *ast) {
 void AST_Free(AST *ast) {
 	if(ast == NULL) return;
 	if(ast->referenced_entities) raxFree(ast->referenced_entities);
-	if(ast->free_root) free((cypher_astnode_t *)ast->root);
+	if(ast->free_root) {
+		// This is a generated AST, free its root node.
+		cypher_astnode_free((cypher_astnode_t *)ast->root);
+	} else {
+		// This is the master AST, free the annotation contexts that have been constructed.
+		if(ast->name_ctx) cypher_ast_annotation_context_free(ast->name_ctx);
+		if(ast->project_all_ctx) cypher_ast_annotation_context_free(ast->project_all_ctx);
+	}
 	rm_free(ast);
+}
+
+cypher_parse_result_t *parse(const char *query) {
+	return cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+}
+
+void parse_result_free(cypher_parse_result_t *parse_result) {
+	if(parse_result) cypher_parse_result_free(parse_result);
 }
 

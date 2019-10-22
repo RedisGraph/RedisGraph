@@ -24,8 +24,8 @@ static void AggregateFree(OpBase *opBase);
  * a separate array.*/
 static void _classify_expressions(OpAggregate *op) {
 	op->non_aggregated_expressions = array_new(AR_ExpNode *, 0);
-	op->expression_classification = rm_malloc(sizeof(ExpClassification) *
-											  (op->exp_count + op->order_exp_count));
+
+	op->expression_classification = rm_malloc(sizeof(ExpClassification) * op->exp_count);
 
 	for(uint i = 0; i < op->exp_count; i++) {
 		AR_ExpNode *exp = op->exps[i];
@@ -36,16 +36,6 @@ static void _classify_expressions(OpAggregate *op) {
 			op->expression_classification[i] = AGGREGATED;
 		}
 	}
-
-	for(uint i = 0; i < op->order_exp_count; i++) {
-		AR_ExpNode *exp = op->order_exps[i];
-		if(!AR_EXP_ContainsAggregation(exp, NULL)) {
-			op->expression_classification[op->exp_count + i] = NON_AGGREGATED;
-			op->non_aggregated_expressions = array_append(op->non_aggregated_expressions, exp);
-		} else {
-			op->expression_classification[op->exp_count + i] = AGGREGATED;
-		}
-	}
 }
 
 static AR_ExpNode **_build_aggregated_expressions(OpAggregate *op) {
@@ -54,12 +44,6 @@ static AR_ExpNode **_build_aggregated_expressions(OpAggregate *op) {
 	for(uint i = 0; i < op->exp_count; i++) {
 		if(op->expression_classification[i] == NON_AGGREGATED) continue;
 		AR_ExpNode *exp = AR_EXP_Clone(op->exps[i]);
-		agg_exps = array_append(agg_exps, exp);
-	}
-
-	for(uint i = 0; i < op->order_exp_count; i++) {
-		if(op->expression_classification[op->exp_count + i] == NON_AGGREGATED) continue;
-		AR_ExpNode *exp = AR_EXP_Clone(op->order_exps[i]);
 		agg_exps = array_append(agg_exps, exp);
 	}
 
@@ -82,8 +66,8 @@ static Group *_CreateGroup(OpAggregate *op, Record r) {
 	}
 
 	/* There's no need to keep a reference to record if we're not sorting groups. */
-	if(!op->order_exps) op->group = NewGroup(key_count, group_keys, agg_exps, NULL);
-	else op->group = NewGroup(key_count, group_keys, agg_exps, r);
+	Record cache_record = (op->should_cache_records) ? r : NULL;
+	op->group = NewGroup(key_count, group_keys, agg_exps, cache_record);
 
 	return op->group;
 }
@@ -182,8 +166,10 @@ static Record _handoff(OpAggregate *op) {
 	if(!CacheGroupIterNext(op->group_iter, &key, &group)) return NULL;
 
 	Record r = OpBase_CreateRecord((OpBase *)op);
-	// Track the newly-allocated Record so that they may be freed if execution fails.
-	OpBase_AddVolatileRecord((OpBase *)op, r);
+	/* In this function, we're only evaluating aggregate function calls, which do not
+	 * currently raise exceptions. As such, we don't need to register volatile Records,
+	 * though this may not be true in the future. */
+	// OpBase_AddVolatileRecord((OpBase *)op, r);
 
 	// Populate record.
 	uint aggIdx = 0; // Index into group aggregated exps.
@@ -207,48 +193,22 @@ static Record _handoff(OpAggregate *op) {
 		}
 	}
 
-	// Tack order by exps for SORT operation to process.
-	for(uint i = 0; i < op->order_exp_count; i++) {
-		int rec_idx = op->record_offsets[i + op->exp_count];
-		if(op->expression_classification[op->exp_count + i] == AGGREGATED) {
-			// Aggregated expression, get aggregated value.
-			AR_ExpNode *exp = group->aggregationFunctions[aggIdx++];
-			AR_EXP_Reduce(exp);
-			res = AR_EXP_Evaluate(exp, NULL);
-			Record_AddScalar(r, rec_idx, res);
-		} else {
-			// Non-aggregated expression.
-			res = group->keys[keyIdx++];
-			// Key values are shared with the Record, as they'll be freed with the group cache.
-			res = SI_ShareValue(res);
-			Record_AddScalar(r, rec_idx, res);
-		}
-	}
-
-	OpBase_RemoveVolatileRecords((OpBase *)op);
+	// OpBase_RemoveVolatileRecords((OpBase *)op); // Not currently necessary, as described above.
 	return r;
 }
 
-OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode **order_exps) {
+OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should_cache_records) {
 	OpAggregate *op = malloc(sizeof(OpAggregate));
 	op->exps = exps;
 	op->group = NULL;
-	op->order_exps = order_exps;
-	op->order_exp_count = (order_exps) ? array_len(order_exps) : 0;
 	op->group_iter = NULL;
 	op->group_keys = NULL;
 	op->expression_classification = NULL;
 	op->non_aggregated_expressions = NULL;
 	op->groups = CacheGroupNew();
-	if(exps == NULL) { // WITH/RETURN * projection, expressions will be populated later
-		op->project_all = true;
-		op->exp_count = 0;
-		op->record_offsets = NULL;
-	} else {
-		op->project_all = false;
-		op->exp_count = array_len(exps);
-		op->record_offsets = array_new(uint, op->exp_count);
-	}
+	op->exp_count = array_len(exps);
+	op->record_offsets = array_new(uint, op->exp_count);
+	op->should_cache_records = should_cache_records;
 
 	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", AggregateInit, AggregateConsume,
 				AggregateReset, NULL, AggregateFree, plan);
@@ -265,14 +225,6 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode 
 
 static OpResult AggregateInit(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
-
-	for(uint i = 0; i < op->order_exp_count; i ++) {
-		// TODO We could do this in the NewProjectOp routine except for issues with STAR
-		// projections combined with ORDER BY clauses.
-		// Update the 'modifies' and record_offsets arrays to include sort expressions.
-		int record_idx = OpBase_Modifies((OpBase *)op, op->order_exps[i]->resolved_name);
-		op->record_offsets = array_append(op->record_offsets, record_idx);
-	}
 
 	// Determine whether each expression is an aggregate function or not.
 	_classify_expressions(op);
@@ -317,12 +269,7 @@ static void AggregateFree(OpBase *opBase) {
 	if(!op) return;
 
 	if(op->exps) {
-		uint exp_count = array_len(op->exps);
-		for(uint i = 0; i < exp_count; i ++) {
-			// Expression names need to be freed if this was a * projection.
-			if(op->project_all) rm_free((char *)op->exps[i]->resolved_name);
-			AR_EXP_Free(op->exps[i]);
-		}
+		for(uint i = 0; i < op->exp_count; i ++) AR_EXP_Free(op->exps[i]);
 		array_free(op->exps);
 		op->exps = NULL;
 	}

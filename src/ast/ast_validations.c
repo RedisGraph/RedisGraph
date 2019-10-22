@@ -969,8 +969,23 @@ static AST_Validation _ValidateQuerySequence(const AST *ast, char **reason) {
 	// Validate the final clause
 	if(_ValidateQueryTermination(ast, reason) != AST_VALID) return AST_INVALID;
 
-	// Verify that no intermediate clause is a RETURN
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
+
+	// The query cannot begin with a "WITH/RETURN *" projection.
+	const cypher_astnode_t *start_clause = cypher_ast_query_get_clause(ast->root, 0);
+	if(cypher_astnode_type(start_clause) == CYPHER_AST_WITH &&
+	   cypher_ast_with_has_include_existing(start_clause)) {
+		asprintf(reason, "Query cannot begin with 'WITH *'.");
+		return AST_INVALID;
+	}
+
+	if(cypher_astnode_type(start_clause) == CYPHER_AST_RETURN &&
+	   cypher_ast_return_has_include_existing(start_clause)) {
+		asprintf(reason, "Query cannot begin with 'RETURN *'.");
+		return AST_INVALID;
+	}
+
+	// Verify that no intermediate clause is a RETURN
 	for(uint i = 0; i < clause_count - 1; i ++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
 		if(cypher_astnode_type(clause) == CYPHER_AST_RETURN) {
@@ -1366,6 +1381,8 @@ static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, 
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->free_root = true;
 	ast->referenced_entities = NULL;
+	ast->name_ctx = NULL;
+	ast->project_all_ctx = NULL;
 
 	uint n = end_offset - start_offset;
 
@@ -1374,7 +1391,7 @@ static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, 
 		clauses[i] = (cypher_astnode_t *)cypher_ast_query_get_clause(root, i + start_offset);
 	}
 	struct cypher_input_range range = {};
-	ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n, NULL, 0, range);
+	ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n, clauses, n, range);
 
 	return ast;
 }

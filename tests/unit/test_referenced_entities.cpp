@@ -14,7 +14,6 @@ extern "C" {
 #include "../../src/util/rmalloc.h"
 #include "../../src/util/arr.h"
 #include "../../src/ast/ast.h"
-#include "../../src/parser/parser.h"
 
 #ifdef __cplusplus
 }
@@ -29,7 +28,7 @@ class TestReferencedEntities: public ::testing::Test {
 
 // Parse query to AST.
 AST *buildAST(const char *query) {
-	cypher_parse_result_t *parse_result = parse(query);
+	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 	return AST_Build(parse_result);
 }
 
@@ -423,3 +422,4 @@ TEST_F(TestReferencedEntities, TestReturn) {
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
 	AST_Free(astSegment);
 }
+
