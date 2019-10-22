@@ -335,7 +335,7 @@ set:
 	}
 
 	if(info == GrB_NO_VALUE) {
-		GrB_Vector_new(&v, GrB_UINT64, Graph_RelationTypeCount(graph) + 1);
+		GrB_Vector_new(&v, GrB_UINT64, Graph_RelationTypeCount(graph));
 		GrB_Matrix_setElement_UINT64(graph->_stats, (uint64_t)v, src_label, dest_label);
 	}
 
@@ -355,19 +355,62 @@ set:
  * to destination nodes of type T */
 size_t GraphEdgeCount(const Graph *graph, int src_label, int relation, int dest_label) {
 	assert(graph);
-	/* Compancate for GRAPH_NO_LABEL (-1).
-	* this will guarantee indicies in the range of [0,n] */
-	src_label++;
-	dest_label++;
+
+	// Handel src,dest/relation GRAPH_NO_LABEL/GRAPH_NO_RELATION.
+	int src_label_start_idx;    // Row start index.
+	int src_label_end_idx;      // Row end index.
+	int dest_label_start_idx;   // Column start index.
+	int dest_label_end_idx;     // Column end index.
+	int relation_start_idx;     // Vector cell start index.
+	int relation_end_idx;       // Vector cell end index.
+
+	if(src_label == GRAPH_NO_LABEL) {
+		// Scan entire range.
+		src_label_start_idx = 0;
+		src_label_end_idx = Graph_LabelTypeCount(graph) + 1;
+	} else {
+		/* Compancate for GRAPH_NO_LABEL (-1).
+		* this will guarantee indicies in the range of [0,n] */
+		src_label++;
+		src_label_start_idx = src_label;
+		src_label_end_idx = src_label + 1;
+	}
+
+	if(dest_label == GRAPH_NO_LABEL) {
+		// Scan entire range.
+		dest_label_start_idx = 0;
+		dest_label_end_idx = Graph_LabelTypeCount(graph) + 1;
+	} else {
+		/* Compancate for GRAPH_NO_LABEL (-1).
+		* this will guarantee indicies in the range of [0,n] */
+		dest_label++;
+		dest_label_start_idx = dest_label;
+		dest_label_end_idx = dest_label + 1;
+	}
+
+	if(relation == GRAPH_NO_RELATION) {
+		relation_start_idx = 0;
+		relation_end_idx = Graph_RelationTypeCount(graph);
+	} else {
+		relation_start_idx = relation;
+		relation_end_idx = relation + 1;
+	}
 
 	GrB_Info info;
 	GrB_Vector v;
-	info = GrB_Matrix_extractElement_UINT64((uint64_t *)&v, graph->_stats, src_label, dest_label);
-	if(info == GrB_INVALID_INDEX || info == GrB_NO_VALUE) return 0;
-
 	uint64_t count = 0;
-	info = GrB_Vector_extractElement_UINT64(&count, v, relation);
-	if(info == GrB_INVALID_INDEX || info == GrB_NO_VALUE) return 0;
+	for(int row_idx = src_label_start_idx; row_idx < src_label_end_idx; row_idx++) {
+		for(int col_idx = dest_label_start_idx; col_idx < dest_label_end_idx; col_idx++) {
+			info = GrB_Matrix_extractElement_UINT64((uint64_t *)&v, graph->_stats, row_idx, col_idx);
+			if(info == GrB_SUCCESS) {
+				for(int relation_idx = relation_start_idx; relation_idx < relation_end_idx; relation_idx++) {
+					uint64_t entry;
+					info = GrB_Vector_extractElement_UINT64(&entry, v, relation_idx);
+					if(info == GrB_SUCCESS) count += entry;
+				}
+			}
+		}
+	}
 	return count;
 }
 
@@ -1160,6 +1203,7 @@ void Graph_Free(Graph *g) {
 	GrB_Matrix_free(&m);
 	GrB_Matrix_free(&z);
 	GrB_Matrix_free(&tm);
+	GrB_Matrix_free(&g->_stats);
 
 	uint32_t relationCount = Graph_RelationTypeCount(g);
 	for(int i = 0; i < relationCount; i++) {
