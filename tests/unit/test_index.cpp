@@ -54,12 +54,6 @@ class IndexTest: public ::testing::Test {
 		QueryCtx_SetGraphCtx(gc);
 	}
 
-	static void _free_fake_graph_context() {
-		GraphContext *gc = QueryCtx_GetGraphCtx();
-		GraphContext_Free(gc);
-		QueryCtx_Free();
-	}
-
 	static Graph *_build_test_graph() {
 		// Allocate graph
 		size_t n = 16;

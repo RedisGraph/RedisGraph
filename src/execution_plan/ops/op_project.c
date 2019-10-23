@@ -11,28 +11,18 @@
 #include "../../util/rmalloc.h"
 
 /* Forward declarations. */
-static OpResult ProjectInit(OpBase *opBase);
 static Record ProjectConsume(OpBase *opBase);
 static void ProjectFree(OpBase *opBase);
 
-OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode **order_exps) {
+OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	OpProject *op = malloc(sizeof(OpProject));
 	op->exps = exps;
-	op->order_exps = order_exps;
-	op->order_exp_count = (order_exps) ? array_len(order_exps) : 0;
 	op->singleResponse = false;
-	if(exps == NULL) { // WITH/RETURN * projection, expressions will be populated later
-		op->project_all = true;
-		op->exp_count = 0;
-		op->record_offsets = NULL;
-	} else {
-		op->project_all = false;
-		op->exp_count = array_len(exps);
-		op->record_offsets = array_new(uint, op->exp_count);
-	}
+	op->exp_count = array_len(exps);
+	op->record_offsets = array_new(uint, op->exp_count);
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", ProjectInit, ProjectConsume,
+	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", NULL, ProjectConsume,
 				NULL, NULL, ProjectFree, plan);
 
 	for(uint i = 0; i < op->exp_count; i ++) {
@@ -45,20 +35,6 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode **
 	return (OpBase *)op;
 }
 
-static OpResult ProjectInit(OpBase *opBase) {
-	OpProject *op = (OpProject *)opBase;
-
-	for(uint i = 0; i < op->order_exp_count; i ++) {
-		// TODO We could do this in the NewProjectOp routine except for issues with STAR
-		// projections combined with ORDER BY clauses.
-		// Update the 'modifies' and record_offsets arrays to include sort expressions.
-		int record_idx = OpBase_Modifies((OpBase *)op, op->order_exps[i]->resolved_name);
-		op->record_offsets = array_append(op->record_offsets, record_idx);
-	}
-
-	return OP_OK;
-}
-
 static Record ProjectConsume(OpBase *opBase) {
 	OpProject *op = (OpProject *)opBase;
 	Record r = NULL;
@@ -69,9 +45,7 @@ static Record ProjectConsume(OpBase *opBase) {
 		if(!r) return NULL;
 	} else {
 		// QUERY: RETURN 1+2
-		// Return a single record followed by NULL
-		// on the second call.
-
+		// Return a single record followed by NULL on the second call.
 		if(op->singleResponse) return NULL;
 		op->singleResponse = true;
 		r = OpBase_CreateRecord(opBase);
@@ -82,7 +56,7 @@ static Record ProjectConsume(OpBase *opBase) {
 	OpBase_AddVolatileRecord(opBase, r);
 	OpBase_AddVolatileRecord(opBase, projection);
 
-	for(unsigned short i = 0; i < op->exp_count; i++) {
+	for(uint i = 0; i < op->exp_count; i++) {
 		AR_ExpNode *exp = op->exps[i];
 		SIValue v = AR_EXP_Evaluate(exp, r);
 		int rec_idx = op->record_offsets[i];
@@ -91,16 +65,6 @@ static Record ProjectConsume(OpBase *opBase) {
 		 * The RETURN projection here requires persistence:
 		 * MATCH (a) WITH toUpper(a.name) AS e RETURN e
 		 * TODO This is a rare case; the logic of when to persist can be improved.  */
-		if(!(v.type & SI_GRAPHENTITY)) SIValue_Persist(&v);
-		Record_Add(projection, rec_idx, v);
-	}
-
-	// Project Order expressions.
-	for(unsigned short i = 0; i < op->order_exp_count; i++) {
-		AR_ExpNode *order_exp = op->order_exps[i];
-		SIValue v = AR_EXP_Evaluate(order_exp, r);
-		int rec_idx = op->record_offsets[i + op->exp_count];
-		// TODO persisting here can be improved as described above.
 		if(!(v.type & SI_GRAPHENTITY)) SIValue_Persist(&v);
 		Record_Add(projection, rec_idx, v);
 	}
@@ -114,12 +78,7 @@ static void ProjectFree(OpBase *ctx) {
 	OpProject *op = (OpProject *)ctx;
 
 	if(op->exps) {
-		uint exp_count = array_len(op->exps);
-		for(uint i = 0; i < exp_count; i ++) {
-			// Expression names need to be freed if this was a * projection.
-			if(op->project_all) rm_free((char *)op->exps[i]->resolved_name);
-			AR_EXP_Free(op->exps[i]);
-		}
+		for(uint i = 0; i < op->exp_count; i ++) AR_EXP_Free(op->exps[i]);
 		array_free(op->exps);
 		op->exps = NULL;
 	}
@@ -128,6 +87,5 @@ static void ProjectFree(OpBase *ctx) {
 		array_free(op->record_offsets);
 		op->record_offsets = NULL;
 	}
-
 }
 

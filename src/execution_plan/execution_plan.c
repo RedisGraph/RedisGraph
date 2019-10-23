@@ -47,83 +47,27 @@ static inline void _ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_ro
 	plan->root = new_root;
 }
 
-// Build the column strings for a result set.
-static inline const char **_BuildColumnNames(AR_ExpNode **exps) {
-	uint projection_count = array_len(exps);
-	const char **columns = array_new(const char *, projection_count);
-	for(uint i = 0; i < projection_count; i++) {
-		columns = array_append(columns, exps[i]->resolved_name);
-	}
-	return columns;
-}
-
-static char **_CollectAliases(rax *map) {
-	char **aliases = array_new(char *, 1);
-	raxIterator it;
-	raxStart(&it, map);
-
-	// Seek all referenced aliases prior to the anonymous identifiers.
-	raxSeek(&it, "<", (unsigned char *)"anon_", 5);
-	while(raxPrev(&it)) { // Scan backwards
-		size_t len = it.key_len;
-		// Copy the key and add a terminator character.
-		char *alias = rm_strndup((char *)it.key, len);
-		aliases = array_append(aliases, alias);
-	}
-
-	// Seek all referenced aliases after the anonymous identifiers.
-	// The ASCII value of the backtick character is 1 greater than the underscore,
-	// so this seek will skip all keys with begining with "anon_".
-	raxSeek(&it, ">", (unsigned char *)"anon`", 5);
-	while(raxNext(&it)) { // Scan forwards
-		size_t len = it.key_len;
-		// Copy the key and add a terminator character.
-		char *alias = rm_strndup((char *)it.key, len);
-		aliases = array_append(aliases, alias);
-	}
-
-	raxStop(&it);
-
-	return aliases;
-}
-
-static void _PopulateProjectAll(ExecutionPlan *previous_segment, OpBase *op) {
-	char **aliases = _CollectAliases(previous_segment->record_map);
+// Given a WITH/RETURN * clause, generate the array of expressions to populate.
+static AR_ExpNode **_PopulateProjectAll(const cypher_astnode_t *clause) {
+	// Retrieve the relevant aliases from the AST.
+	const char **aliases = AST_GetProjectAll(clause);
 	uint count = array_len(aliases);
 
-	AR_ExpNode **exps = array_new(AR_ExpNode *, count);
-	uint *record_offsets = array_new(uint, count);
-
-	for(uint i = 0; i < count; i ++) {
+	AR_ExpNode **project_exps = array_new(AR_ExpNode *, count);
+	for(uint i = 0; i < count; i++) {
 		// Build an expression for each alias.
 		AR_ExpNode *exp = AR_EXP_NewVariableOperandNode(aliases[i], NULL);
 		exp->resolved_name = aliases[i];
-		exps = array_append(exps, exp);
-
-		// Map the alias within the ExecutionPlan mapping.
-		int record_idx = OpBase_Modifies(op, aliases[i]);
-		record_offsets = array_append(record_offsets, record_idx);
+		project_exps = array_append(project_exps, exp);
 	}
 
-	array_free(aliases);
-
-	// Assign the new expressions to the operation.
-	if(op->type == OPType_PROJECT) {
-		OpProject *project = (OpProject *)op;
-		project->exps = exps;
-		project->exp_count = count;
-		project->record_offsets = record_offsets;
-	} else {
-		OpAggregate *aggregate = (OpAggregate *)op;
-		aggregate->exps = exps;
-		aggregate->exp_count = count;
-		aggregate->record_offsets = record_offsets;
-	}
+	return project_exps;
 }
 
 // Handle ORDER entities
 static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 										   const cypher_astnode_t *order_clause) {
+	AST *ast = QueryCtx_GetAST();
 	uint projection_count = array_len(projections);
 	uint count = cypher_ast_order_by_nitems(order_clause);
 	AR_ExpNode **order_exps = array_new(AR_ExpNode *, count);
@@ -131,43 +75,11 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 	for(uint i = 0; i < count; i++) {
 		const cypher_astnode_t *item = cypher_ast_order_by_get_item(order_clause, i);
 		const cypher_astnode_t *ast_exp = cypher_ast_sort_item_get_expression(item);
-		AR_ExpNode *exp = NULL;
-		cypher_astnode_type_t type = cypher_astnode_type(ast_exp);
-		if(type == CYPHER_AST_IDENTIFIER) {
-			// Order expression is a reference to an alias in the query
-			const char *alias = cypher_ast_identifier_get_name(ast_exp);
-			for(uint j = 0; j < projection_count; j ++) {
-				AR_ExpNode *projection = projections[j];
-				if(!strcmp(projection->resolved_name, alias)) {
-					// The projection and its resolved name must be cloned to avoid a double free.
-					exp = AR_EXP_Clone(projection);
-					exp->resolved_name = rm_strdup(projection->resolved_name);
-					break;
-				}
-			}
-			if(exp == NULL) {
-				// We didn't match any previous projections. This can occur when we're
-				// ordering by a projected WITH entity that is not also being returned.
-				exp = AR_EXP_FromExpression(ast_exp);
-				AR_EXP_BuildResolvedName(exp);
-			}
-			// } else if(type == CYPHER_AST_PROPERTY_OPERATOR) {
-			// TODO can capture things like RETURN e.name ORDER by e.name here
-			// const cypher_astnode_t *entity = cypher_ast_property_operator_get_expression(ast_exp);
-			// if(cypher_astnode_type(entity) == CYPHER_AST_IDENTIFIER) {
-			// // Order expression is a reference to an alias in the query
-			// const char *alias = cypher_ast_identifier_get_name(ast_exp);
-			// }
-		} else {
-			// Independent operator like:
-			// ORDER BY COUNT(a)
-			exp = AR_EXP_FromExpression(ast_exp);
-			AR_EXP_BuildResolvedName(exp);
-		}
+		AR_ExpNode *exp = AR_EXP_FromExpression(ast_exp);
+		AR_EXP_BuildResolvedName(exp);
+		AST_AttachName(ast, item, exp->resolved_name);
 
 		order_exps = array_append(order_exps, exp);
-		// TODO direction should be specifiable per order entity
-		// ascending = cypher_ast_sort_item_is_ascending(item);
 	}
 
 	return order_exps;
@@ -175,9 +87,9 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 
 // Handle RETURN entities
 // (This function is not static because it is relied upon by unit tests)
-AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause, AST *ast) {
-	// Query is of type "RETURN *", the expressions will be populated later.
-	if(cypher_ast_return_has_include_existing(ret_clause)) return NULL;
+AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause) {
+	// Query is of type "RETURN *"
+	if(cypher_ast_return_has_include_existing(ret_clause)) return _PopulateProjectAll(ret_clause);
 
 	uint count = cypher_ast_return_nprojections(ret_clause);
 	AR_ExpNode **return_expressions = array_new(AR_ExpNode *, count);
@@ -211,6 +123,9 @@ AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause, AST *as
 }
 
 static AR_ExpNode **_BuildWithExpressions(const cypher_astnode_t *with_clause) {
+	// Clause is of type "WITH *"
+	if(cypher_ast_with_has_include_existing(with_clause)) return _PopulateProjectAll(with_clause);
+
 	uint count = cypher_ast_with_nprojections(with_clause);
 	AR_ExpNode **with_expressions = array_new(AR_ExpNode *, count);
 	for(uint i = 0; i < count; i++) {
@@ -442,16 +357,57 @@ static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan) {
 	Vector_Free(sub_trees);
 }
 
+// Merge all order expressions into the projections array without duplicates,
+// returning an array of expressions to free after building projection ops.
+static AR_ExpNode **_combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **order_exps) {
+	rax *projection_names = raxNew();
+	AR_ExpNode **project_exps = *exps_ptr;
+	uint order_count = array_len(order_exps);
+	uint project_count = array_len(project_exps);
+	AR_ExpNode **free_list = array_new(AR_ExpNode *, order_count);
+
+	// Add all WITH/RETURN projection names to rax.
+	for(uint i = 0; i < project_count; i ++) {
+		const char *name = project_exps[i]->resolved_name;
+		raxTryInsert(projection_names, (unsigned char *)name, strlen(name), NULL, NULL);
+	}
+
+	// Merge non-duplicate order expressions into projection array, add duplicate expressions to free list.
+	for(uint i = 0; i < order_count; i ++) {
+		const char *name = order_exps[i]->resolved_name;
+		int new_name = raxTryInsert(projection_names, (unsigned char *)name, strlen(name), NULL, NULL);
+		if(new_name) {
+			// New projection, add to array.
+			project_exps = array_append(project_exps, order_exps[i]);
+		} else {
+			// Duplicate projection, add to free list.
+			free_list = array_append(free_list, order_exps[i]);
+		}
+	}
+
+	raxFree(projection_names);
+
+	*exps_ptr = project_exps;
+	return free_list;
+}
+
 // Build an aggregate or project operation and any required modifying operations.
 // This logic applies for both WITH and RETURN projections.
 static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **projections,
 									   AR_ExpNode **order_exps, uint skip, uint sort, bool aggregate, bool distinct) {
+
+	AR_ExpNode **free_list = NULL;
+	// Merge order expressions into the projections array.
+	if(order_exps) free_list = _combine_projection_arrays(&projections, order_exps);
+
 	// Our fundamental operation will be a projection or aggregation.
 	OpBase *op;
 	if(aggregate) {
-		op = NewAggregateOp(plan, projections, order_exps);
+		// An aggregate op's caching policy depends on whether its results will be sorted.
+		bool sorting_after_aggregation = (order_exps != NULL);
+		op = NewAggregateOp(plan, projections, sorting_after_aggregation);
 	} else {
-		op = NewProjectOp(plan, projections, order_exps);
+		op = NewProjectOp(plan, projections);
 	}
 	_ExecutionPlan_UpdateRoot(plan, op);
 
@@ -481,12 +437,22 @@ static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **project
 		OpBase *op = NewLimitOp(plan, limit);
 		_ExecutionPlan_UpdateRoot(plan, op);
 	}
+
+	// Free any order expressions that have not been migrated into the projections array.
+	if(free_list) {
+		uint free_count = array_len(free_list);
+		for(uint i = 0; i < free_count; i ++) {
+			AR_EXP_Free(free_list[i]);
+		}
+		array_free(free_list);
+	}
+	if(order_exps) array_free(order_exps);
 }
 
 // The RETURN logic is identical to WITH-culminating segments,
 // though a different set of API endpoints must be used for each.
-static inline void _buildReturnOps(ExecutionPlan *plan, const cypher_astnode_t *clause, AST *ast) {
-	AR_ExpNode **projections = _BuildReturnExpressions(clause, ast);
+static void _buildReturnOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
+	AR_ExpNode **projections = _BuildReturnExpressions(clause);
 
 	bool aggregate = AST_ClauseContainsAggregation(clause);
 	bool distinct = cypher_ast_return_is_distinct(clause);
@@ -506,7 +472,7 @@ static inline void _buildReturnOps(ExecutionPlan *plan, const cypher_astnode_t *
 	_buildProjectionOps(plan, projections, order_exps, skip, sort_direction, aggregate, distinct);
 }
 
-static inline void _buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
+static void _buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
 	AR_ExpNode **projections = _BuildWithExpressions(clause);
 	bool aggregate = AST_ClauseContainsAggregation(clause);
 	bool distinct = cypher_ast_with_is_distinct(clause);
@@ -619,7 +585,7 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 		_buildDeleteOp(plan, clause, stats);
 	} else if(t == CYPHER_AST_RETURN) {
 		// Converting a RETURN clause can create multiple operations.
-		_buildReturnOps(plan, clause, ast);
+		_buildReturnOps(plan, clause);
 	} else if(t == CYPHER_AST_WITH) {
 		// Converting a WITH clause can create multiple operations.
 		_buildWithOps(plan, clause);
@@ -715,15 +681,6 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		connecting_op = _ExecutionPlan_FindConnectingOp(current_segment->root);
 		assert(connecting_op->childCount == 0);
 
-		if(i < segment_count - 1) {
-			// Check whether segment ends in a WITH * clause.
-			const cypher_astnode_t *end = cypher_ast_query_get_clause(ast->root, segment_indices[i - 1]);
-			assert(cypher_astnode_type(end) == CYPHER_AST_WITH);
-
-			bool project_all = cypher_ast_with_has_include_existing(end);
-			if(project_all) _PopulateProjectAll(prev_segment, connecting_op);
-		}
-
 		ExecutionPlan_AddOp(connecting_op, prev_root);
 	}
 
@@ -747,18 +704,8 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 			connecting_op = _ExecutionPlan_FindConnectingOp(plan->root);
 		}
 
-		// Check whether the query culminates in a RETURN * clause.
-		bool return_all = cypher_ast_return_has_include_existing(last_clause);
-		if(return_all) _PopulateProjectAll(segments[segment_count - 2], connecting_op);
-
-		if(result_set) {
-			// Prepare column names for the ResultSet.
-			if(connecting_op->type == OPType_PROJECT) {
-				result_set->columns = _BuildColumnNames(((OpProject *)connecting_op)->exps);
-			} else if(connecting_op->type == OPType_AGGREGATE) {
-				result_set->columns = _BuildColumnNames(((OpAggregate *)connecting_op)->exps);
-			}
-		}
+		// Prepare column names for the ResultSet.
+		if(result_set) result_set->columns = AST_BuildColumnNames(last_clause);
 
 		OpBase *results_op = NewResultsOp(plan, result_set);
 		_ExecutionPlan_UpdateRoot(plan, results_op);
@@ -933,3 +880,4 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 	raxFree(plan->record_map);
 	rm_free(plan);
 }
+

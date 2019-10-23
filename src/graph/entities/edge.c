@@ -13,20 +13,6 @@
 #include "../graphcontext.h"
 #include "../../query_ctx.h"
 
-// Edge* Edge_New(Node *src, Node *dest, const char *relationship, const char *alias) {
-// assert(src && dest);
-
-// Edge* e = calloc(1, sizeof(Edge));
-// Edge_SetSrcNode(e, src);
-// Edge_SetDestNode(e, dest);
-// e->relationID = GRAPH_UNKNOWN_RELATION;
-
-// e->relationship = relationship;
-// e->alias = alias;
-
-// return e;
-// }
-
 NodeID Edge_GetSrcNodeID(const Edge *edge) {
 	assert(edge);
 	return edge->srcNodeID;

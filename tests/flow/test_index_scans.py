@@ -108,3 +108,25 @@ class testIndexScanFlow(FlowTestsBase):
         result = redis_graph.query(query)
 
         self.env.assertEquals(result.result_set, expected_result)
+
+    # ',' is the default separator for tag indices
+    # we've updated our separator to '\0' this test verifies issue 696:
+    # https://github.com/RedisGraph/RedisGraph/issues/696    
+    def test05_tag_separator(self):
+        redis_con = self.env.getConnection()
+        redis_graph = Graph("G", redis_con)
+
+        # Create a single node with a long string property, introduce a comma as part of the string.
+        query = """CREATE (:Node{value:"A ValuePartition is a pattern that describes a restricted set of classes from which a property can be associated. The parent class is used in restrictions, and the covering axiom means that only members of the subclasses may be used as values."})"""
+        redis_graph.query(query)
+        
+        # Index property.
+        query = """CREATE INDEX ON :Node(value)"""
+        redis_graph.query(query)
+        
+        # Make sure node is returned by index scan.
+        query = """MATCH (a:Node{value:"A ValuePartition is a pattern that describes a restricted set of classes from which a property can be associated. The parent class is used in restrictions, and the covering axiom means that only members of the subclasses may be used as values."}) RETURN a"""
+        plan = redis_graph.execution_plan(query)
+        result_set = redis_graph.query(query).result_set
+        self.env.assertIn('Index Scan', plan)
+        self.env.assertEqual(len(result_set), 1)

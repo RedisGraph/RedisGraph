@@ -1,0 +1,15 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Redis Labs Source Available License Agreement
+*/
+
+#pragma once
+
+#include "../redismodule.h"
+
+/* Used as a single point of entrace to
+ * GRAPH.QUERY
+ * GRAPH.EXPLAIN
+ * GRAPH.PROFILE */
+int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);

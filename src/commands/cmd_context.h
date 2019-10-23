@@ -6,36 +6,43 @@
 
 #pragma once
 
-#include "../redismodule.h"
 #include "cypher-parser.h"
+#include "../redismodule.h"
+#include "../graph/graphcontext.h"
 
 /* Query context, used for concurent query processing. */
 typedef struct {
-	RedisModuleCtx *ctx;                  // Redis module context.
-	RedisModuleBlockedClient *bc;         // Blocked client.
-	char *graphName;                      // Graph ID.
-	char *query;                          // Query string.
-	RedisModuleString **argv;             // Arguments.
-	int argc;                             // Argument count.
-	bool replicated_command;              // Whether this instance was spawned by a replication command.
+	char *query;                    // Query string.
+	RedisModuleCtx *ctx;            // Redis module context.
+	GraphContext *graph_ctx;        // Graph context.
+	RedisModuleString **argv;       // Arguments.
+	RedisModuleBlockedClient *bc;   // Blocked client.
+	int argc;                       // Argument count.
+	bool replicated_command;        // Whether this instance was spawned by a replication command.
 } CommandCtx;
 
 // Create a new command context.
 CommandCtx *CommandCtx_New
 (
-	RedisModuleCtx *ctx,                  // Redis module context.
-	RedisModuleBlockedClient *bc,         // Blocked client.
-	RedisModuleString *graphName,         // Graph ID.
-	RedisModuleString *query,             // Query string.
-	RedisModuleString **argv,             // Arguments.
-	int argc,                             // Argument count.
-	bool replicated_command               // Whether this instance was spawned by a replication command.
+	RedisModuleCtx *ctx,            // Redis module context.
+	RedisModuleBlockedClient *bc,   // Blocked client.
+	GraphContext *graph_ctx,        // Graph context.
+	RedisModuleString *query,       // Query string.
+	RedisModuleString **argv,       // Arguments.
+	int argc,                       // Argument count.
+	bool replicated_command         // Whether this instance was spawned by a replication command.
 );
 
 // Get Redis module context
 RedisModuleCtx *CommandCtx_GetRedisCtx
 (
 	CommandCtx *qctx
+);
+
+// Get GraphContext.
+GraphContext* CommandCtx_GetGraphContext
+(
+	const CommandCtx *qctx
 );
 
 // Acquire Redis global lock.

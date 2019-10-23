@@ -20,8 +20,7 @@ typedef enum {
 
 typedef struct {
 	OpBase op;
-	AR_ExpNode **exps;
-	AR_ExpNode **order_exps;
+	AR_ExpNode **exps;                             /* Projected expressions (including order exps). */
 	uint *record_offsets;                          /* Record IDs for exps and order_exps. */
 	AR_ExpNode **non_aggregated_expressions;       /* Array of arithmetic expression. */
 	ExpClassification *expression_classification;  /* Classifies each expression as aggregated/not. */
@@ -30,10 +29,9 @@ typedef struct {
 	SIValue *group_keys;                           /* Array of values composing an aggregated group. */
 	CacheGroupIterator *group_iter;
 	Record last_record;
-	unsigned short exp_count;                      /* Number of projected expressions. */
-	unsigned short order_exp_count;                /* Number of order by expressions. */
-	bool project_all;                              /* Projects all user-defined aliases (tracked for freeing logic). */
+	uint exp_count;                                /* Number of projected expressions. */
+	bool should_cache_records;                     /* Records should be cached if we're sorting after aggregation. */
 } OpAggregate;
 
-OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, AR_ExpNode **order_exps);
+OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should_cache_records);
 

@@ -203,6 +203,7 @@ void Index_Construct
 			// Introduce both text and numeric fields.
 			RSFieldID fieldID = RediSearch_CreateField(rsIdx, idx->fields[i], RSFLDTYPE_NUMERIC | RSFLDTYPE_TAG,
 													   RSFLDOPT_NONE);
+			RediSearch_TagFieldSetSeparator(rsIdx, fieldID, '\0');
 			RediSearch_TagFieldSetCaseSensitive(rsIdx, fieldID, 1);
 		}
 	}
