@@ -1303,10 +1303,6 @@ static AST_Validation _ValidateClauses(const AST *ast, char **reason) {
 		return AST_INVALID;
 	}
 
-	if(_Validate_WITH_Clauses(ast, reason) == AST_INVALID) {
-		return AST_INVALID;
-	}
-
 	if(_Validate_MERGE_Clauses(ast, reason) == AST_INVALID) {
 		return AST_INVALID;
 	}
@@ -1420,6 +1416,10 @@ static AST_Validation _ValidateScopes(const cypher_astnode_t *root, char **reaso
 		res = _ValidateClauses(&mock_ast, reason);
 		goto cleanup;
 	}
+
+	// Validate that entities passed between scopes are not reused in other patterns (temporary limitation).
+	res = _Validate_WITH_Clauses(&mock_ast, reason);
+	if(res != AST_VALID) goto cleanup;
 
 	AST *scoped_ast;
 	uint scope_end;
