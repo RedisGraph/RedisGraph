@@ -72,13 +72,13 @@ SIValue SI_Edge(void *e) {
 }
 
 SIValue SI_Path(void *p) {
-	Path path = *(Path *)p;
+	Path *path = (Path *)p;
 	return SIPath_New(path);
 }
 
-SIValue SI_IntermidatePath(void *p, bool incoming) {
+SIValue SI_IntermidatePath(void *p) {
 	Path path = *(Path *)p;
-	return SIPath_NewIntermidate(path, incoming);
+	return SIPath_NewIntermidate(path);
 }
 
 SIValue SI_Array(u_int64_t initialCapacity) {

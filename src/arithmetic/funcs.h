@@ -13,6 +13,7 @@
 #include "boolean_funcs/boolean_funcs.h"
 #include "numeric_funcs/numeric_funcs.h"
 #include "conditional_funcs/conditional_funcs.h"
+#include "path_funcs/path_funcs.h"
 
 /* Registers all arithmetic functions. */
 void AR_RegisterFuncs();

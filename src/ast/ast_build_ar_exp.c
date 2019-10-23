@@ -296,6 +296,16 @@ static AR_ExpNode *_AR_ExpFromSliceExpression(const cypher_astnode_t *expr) {
 	return op;
 }
 
+static AR_ExpNode *_AR_ExpFromNamedPath(const cypher_astnode_t *path) {
+	uint path_len = cypher_ast_pattern_path_nelements(path);
+	AR_ExpNode *op = AR_EXP_NewOpNode("topath", 1 + path_len);
+	op->op.children[0] = AR_EXP_NewConstOperandNode(SI_PtrVal((void *)path));
+	// Node are in even positions.
+	for(uint i = 0; i < path_len; i ++)
+		op->op.children[i + 1] = _AR_EXP_FromExpression(cypher_ast_pattern_path_get_element(path, i));
+	return op;
+}
+
 static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 	const cypher_astnode_type_t type = cypher_astnode_type(expr);
 
@@ -336,6 +346,8 @@ static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 		return _AR_ExpFromSubscriptExpression(expr);
 	} else if(type == CYPHER_AST_SLICE_OPERATOR) {
 		return _AR_ExpFromSliceExpression(expr);
+	} else if(type == CYPHER_AST_NAMED_PATH) {
+		return _AR_ExpFromNamedPath(expr);
 	} else {
 		/*
 		   Unhandled types:

@@ -11,11 +11,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-typedef enum {
-	INCOMING,
-	OUTGOING
-} QueryEdgeDirection;
-
 struct QGEdge {
 	const char *alias;              /* User-provided alias attached to edge. */
 	const char **reltypes;          /* Relationship type strings */
@@ -24,14 +19,12 @@ struct QGEdge {
 	QGNode *dest;                   /* Pointer to destination node. */
 	uint minHops;                   /* Minimum number of hops this edge represents. */
 	uint maxHops;                   /* Maximum number of hops this edge represents. */
-	QueryEdgeDirection direction;   /* The direction of the edge specified by the query */
 };
 
 typedef struct QGEdge QGEdge;
 
 /* Creates a new edge, connecting src to dest node. */
-QGEdge *QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const char *alias,
-				   QueryEdgeDirection direction);
+QGEdge *QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const char *alias);
 
 /* Create a duplicate of an edge containing all of the original's data. */
 QGEdge *QGEdge_Clone(const QGEdge *orig);

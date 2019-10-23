@@ -19,18 +19,17 @@ typedef struct {
 
 /**
  * @brief  Creates a new SIPath out of path struct.
- * @param  p: Path struct.
+ * @param  p: Path struct pointer.
  * @retval SIValue which represents the given struct.
  */
-SIValue SIPath_New(Path p);
+SIValue SIPath_New(Path *p);
 
 /**
  * @brief  Creates a new SIPath which represents a part of a bigger path, or edge array.
  * @param  p: Path struct.
- * @param  incoming: Traverse direction.
  * @retval SIValue which represents the given struct.
  */
-SIValue SIPath_NewIntermidate(Path p, bool incoming);
+SIValue SIPath_NewIntermidate(Path p);
 
 /**
  * @brief  Clones a given SIPath.

@@ -9,34 +9,36 @@
 #include "../util/arr.h"
 #include "array.h"
 
-SIValue SIPath_New(Path p) {
+SIValue SIPath_New(Path *p) {
 	SIValue path;
 	path.ptrval = rm_malloc(sizeof(SIPath));
 	path.type = T_PATH;
 	path.allocation = M_SELF;
 	SIPath *sipathPtr = (SIPath *)path.ptrval;
-	sipathPtr->path = Path_Clone(p);
+	sipathPtr->path = *p;
 	sipathPtr->intermidate = false;
 	return path;
 }
 
-SIValue SIPath_NewIntermidate(Path p, bool incoming) {
+SIValue SIPath_NewIntermidate(Path p) {
 	SIValue path;
 	path.ptrval = rm_malloc(sizeof(SIPath));
 	path.type = T_PATH;
 	path.allocation = M_SELF;
 	SIPath *sipath = (SIPath *) path.ptrval;
 	sipath->path = Path_Clone(p);
-	sipath->incomingEdge = incoming;
 	sipath->intermidate = true;
 	return path;
 }
 
 SIValue SIPath_Clone(SIValue p) {
 	SIPath *sipathPtr = (SIPath *)p.ptrval;
-	if(sipathPtr->intermidate)
-		return SIPath_NewIntermidate(sipathPtr->path, sipathPtr->incomingEdge);
-	else return SIPath_New(sipathPtr->path);
+	if(sipathPtr->intermidate) {
+		return SIPath_NewIntermidate(sipathPtr->path);
+	} else {
+		Path clone = Path_Clone(sipathPtr->path);
+		return SIPath_New(&clone);
+	}
 }
 
 SIValue SIPath_Relationships(SIValue p) {
@@ -44,14 +46,8 @@ SIValue SIPath_Relationships(SIValue p) {
 	Path path = sipath->path;
 	uint edgeCount = Path_EdgeCount(path);
 	SIValue array = SIArray_New(edgeCount);
-	if(sipath->intermidate && sipath->incomingEdge) {
-		for(uint i = 0; i < edgeCount; i++) {
-			SIArray_Append(&array, SI_Edge(&path.edges[edgeCount - 1 - i]));
-		}
-	} else {
-		for(uint i = 0; i < edgeCount; i++) {
-			SIArray_Append(&array, SI_Edge(&path.edges[i]));
-		}
+	for(uint i = 0; i < edgeCount; i++) {
+		SIArray_Append(&array, SI_Edge(&path.edges[i]));
 	}
 	return array;
 }
@@ -60,11 +56,7 @@ SIValue SIPath_GetRelationship(SIValue p, size_t i) {
 	assert(i < SIPath_Length(p) && i > 0);
 	SIPath *sipath = (SIPath *) p.ptrval;
 	Path path = sipath->path;
-	if(sipath->intermidate && sipath->incomingEdge) {
-		uint edgeCount = Path_EdgeCount(path);
-		return SI_Edge(&path.edges[edgeCount - i - 1]);
-
-	} else return SI_Edge(&path.edges[i]);
+	return SI_Edge(&path.edges[i]);
 }
 
 SIValue SIPath_Nodes(SIValue p) {
@@ -72,14 +64,8 @@ SIValue SIPath_Nodes(SIValue p) {
 	Path path = sipath->path;
 	uint nodeCount = Path_NodeCount(path);
 	SIValue array = SIArray_New(nodeCount);
-	if(sipath->intermidate && sipath->incomingEdge) {
-		for(uint i = 0; i < nodeCount; i++) {
-			SIArray_Append(&array, SI_Edge(&path.nodes[nodeCount - 1 - i]));
-		}
-	} else {
-		for(uint i = 0; i < nodeCount; i++) {
-			SIArray_Append(&array, SI_Node(&path.nodes[i]));
-		}
+	for(uint i = 0; i < nodeCount; i++) {
+		SIArray_Append(&array, SI_Node(&path.nodes[i]));
 	}
 	return array;
 }
@@ -88,10 +74,7 @@ SIValue SIPath_GetNode(SIValue p, size_t i) {
 	assert(i < SIPath_Length(p) + 1 && i > 0);
 	SIPath *sipath = (SIPath *) p.ptrval;
 	Path path = sipath->path;
-	if(sipath->intermidate && sipath->incomingEdge) {
-		uint nodeCount = Path_NodeCount(path);
-		return SI_Node(&path.nodes[nodeCount - i - 1]);
-	} else return SI_Node(&path.nodes[i]);
+	return SI_Node(&path.nodes[i]);
 }
 
 size_t SIPath_Length(SIValue p) {

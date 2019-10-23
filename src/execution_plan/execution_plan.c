@@ -85,6 +85,21 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 	return order_exps;
 }
 
+static const cypher_astnode_t *_MatchClauseRetriveNamedPath(const cypher_astnode_t *match_clause,
+															const char *path_name) {
+	const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match_clause);
+	uint path_count = cypher_ast_pattern_npaths(pattern);
+	for(uint i = 0; i < path_count; i++) {
+		const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
+		if(cypher_astnode_type(path) == CYPHER_AST_NAMED_PATH) {
+			const cypher_astnode_t *path_identifier = cypher_ast_named_path_get_identifier(path);
+			if(strcmp(path_name, cypher_ast_identifier_get_name(path_identifier)) == 0) return path;
+		}
+	}
+
+	return NULL;
+}
+
 // Handle RETURN entities
 // (This function is not static because it is relied upon by unit tests)
 AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause) {
@@ -97,9 +112,6 @@ AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause) {
 		const cypher_astnode_t *projection = cypher_ast_return_get_projection(ret_clause, i);
 		// The AST expression can be an identifier, function call, or constant
 		const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
-
-		// Construction an AR_ExpNode to represent this return entity.
-		AR_ExpNode *exp = AR_EXP_FromExpression(ast_exp);
 
 		// Find the resolved name of the entity - its alias, its identifier if referring to a full entity,
 		// the entity.prop combination ("a.val"), or the function call ("MAX(a.val)")
@@ -114,6 +126,15 @@ AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause) {
 			// Retrieve "a" from "RETURN a" or "RETURN a AS e" (theoretically; the latter case is already handled)
 			identifier = cypher_ast_identifier_get_name(ast_exp);
 		}
+
+		const cypher_astnode_t *match_clause =  AST_GetClause(ast, CYPHER_AST_MATCH);
+		if(match_clause) {
+			const cypher_astnode_t *path = _MatchClauseRetriveNamedPath(match_clause, identifier);
+			if(path)
+				ast_exp = path;
+		}
+		// Construction an AR_ExpNode to represent this return entity.
+		AR_ExpNode *exp = AR_EXP_FromExpression(ast_exp);
 
 		exp->resolved_name = identifier;
 		return_expressions = array_append(return_expressions, exp);

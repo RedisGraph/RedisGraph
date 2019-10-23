@@ -79,6 +79,12 @@ void Edge_ToString(const Edge *e, char **buffer, size_t *bufferLen, size_t *byte
 						 GETYPE_EDGE);
 }
 
+Edge *Edge_Clone(Edge *edge) {
+	Edge *clone = rm_malloc(sizeof(Edge));
+	memcpy(clone, edge, sizeof(Edge));
+	return clone;
+}
+
 void Edge_Free(Edge *edge) {
 	if(!edge) return;
 
