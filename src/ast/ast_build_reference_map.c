@@ -74,8 +74,7 @@ static void _AST_MapReferencedNode(AST *ast, const cypher_astnode_t *node) {
 
 // Adds a node to the referenced entities rax.
 static void _AST_MapNode(AST *ast, const cypher_astnode_t *node) {
-	const cypher_astnode_t *identifier = cypher_ast_node_pattern_get_identifier(node);
-	const char *alias = cypher_ast_identifier_get_name(identifier);
+	const char *alias = AST_GetEntityName(ast, node);
 	_AST_UpdateRefMap(ast, alias);
 	_AST_MapReferencedNode(ast, node);
 }
@@ -83,19 +82,21 @@ static void _AST_MapNode(AST *ast, const cypher_astnode_t *node) {
 // Adds an edge to the referenced entities rax if it has multiple types or any properties (inline filter).
 static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge) {
 	const cypher_astnode_t *properties = cypher_ast_rel_pattern_get_properties(edge);
+	// An edge with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
-	const char *alias = AST_GetEntityName(ast, edge);
-	_AST_UpdateRefMap(ast, alias);
+	if(properties) {
+		const char *alias = AST_GetEntityName(ast, edge);
+		_AST_UpdateRefMap(ast, alias);
 
-	// Map any references within the properties map, such as 'b' in:
-	// ({val: ID(b)})
-	_AST_MapExpression(ast, properties);
+		// Map any references within the properties map, such as 'b' in:
+		// ({val: ID(b)})
+		_AST_MapExpression(ast, properties);
+	}
 }
 
 // Adds an edge to the referenced entities rax.
 static void _AST_MapEdge(AST *ast, const cypher_astnode_t *edge) {
-	const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(edge);
-	const char *alias = cypher_ast_identifier_get_name(identifier);
+	const char *alias = AST_GetEntityName(ast, edge);
 	_AST_UpdateRefMap(ast, alias);
 
 	_AST_MapReferencedEdge(ast, edge);
