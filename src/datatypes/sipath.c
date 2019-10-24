@@ -41,6 +41,23 @@ SIValue SIPath_Clone(SIValue p) {
 	}
 }
 
+SIValue SIPath_ToList(SIValue p) {
+	size_t nodeCount = SIPath_Size(p);
+	size_t edgeCount = SIPath_Length(p);
+	SIValue array = SI_Array(nodeCount + edgeCount);
+	for(size_t i = 0; i < nodeCount - 1 ; i++) {
+		SIValue node = SIPath_GetNode(p, i);
+		SIArray_Append(&array, node);
+		SIValue edge = SIPath_GetRelationship(p, i);
+		SIArray_Append(&array, edge);
+	}
+	if(nodeCount > 0) {
+		SIValue node = SIPath_GetNode(p, nodeCount - 1);
+		SIArray_Append(&array, node);
+	}
+	return array;
+}
+
 SIValue SIPath_Relationships(SIValue p) {
 	SIPath *sipath = (SIPath *) p.ptrval;
 	Path path = sipath->path;

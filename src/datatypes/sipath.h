@@ -39,6 +39,13 @@ SIValue SIPath_NewIntermidate(Path p);
 SIValue SIPath_Clone(SIValue p);
 
 /**
+ * @brief  Returns a path as in a list represention of interliving nodes and edges.
+ * @param  p: SIPath
+ * @retval SIArray.
+ */
+SIValue SIPath_ToList(SIValue p);
+
+/**
  * @brief  Returns a SIArray with the path edges as SIEdges.
  * @param  p: SIPath
  * @retval SIArray with the path edges.

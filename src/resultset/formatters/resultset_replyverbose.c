@@ -165,6 +165,10 @@ static void _ResultSet_VerboseReplyWithPath(RedisModuleCtx *ctx, SIValue path) {
 		SIValue relationships = SIPath_Relationships(path);
 		_ResultSet_VerboseReplyWithArray(ctx, relationships);
 		SIValue_Free(&relationships);
+	} else {
+		SIValue path_array = SIPath_ToList(path);
+		_ResultSet_VerboseReplyWithArray(ctx, path_array);
+		SIValue_Free(&path_array);
 	}
 }
 
