@@ -42,7 +42,8 @@ typedef enum {
 	OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO = (1 << 22),
 	OPType_VALUE_HASH_JOIN = (1 << 23),
 	OPType_APPLY = (1 << 24),
-    OPType_JOIN = (1 << 25),
+	OPType_JOIN = (1 << 25),
+	OPType_ARGUMENT = (1 << 26),
 } OPType;
 
 #define OP_SCAN (OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN | OPType_INDEX_SCAN | OPType_NODE_BY_ID_SEEK)
@@ -79,7 +80,7 @@ struct OpBase {
 	fpConsume consume;          // Produce next record.
 	fpConsume profile;          // Profiled version of consume.
 	fpToString toString;        // operation string representation.
-	char *name;                 // Operation name.
+	const char *name;           // Operation name.
 	int childCount;             // Number of children.
 	bool op_initialized;        // True if the operation has already been initialized.
 	struct OpBase **children;   // Child operations.
@@ -92,7 +93,8 @@ struct OpBase {
 typedef struct OpBase OpBase;
 
 // Initialize op.
-void OpBase_Init(OpBase *op, OPType type, char *name, fpInit init, fpConsume consume, fpReset reset,
+void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsume consume,
+				 fpReset reset,
 				 fpToString toString, fpFree free, const struct ExecutionPlan *plan);
 void OpBase_Free(OpBase *op);       // Free op.
 Record OpBase_Consume(OpBase *op);  // Consume op.
