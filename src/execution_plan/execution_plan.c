@@ -127,12 +127,6 @@ AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause) {
 			identifier = cypher_ast_identifier_get_name(ast_exp);
 		}
 
-		const cypher_astnode_t *match_clause =  AST_GetClause(ast, CYPHER_AST_MATCH);
-		if(match_clause) {
-			const cypher_astnode_t *path = _MatchClauseRetriveNamedPath(match_clause, identifier);
-			if(path)
-				ast_exp = path;
-		}
 		// Construction an AR_ExpNode to represent this return entity.
 		AR_ExpNode *exp = AR_EXP_FromExpression(ast_exp);
 
