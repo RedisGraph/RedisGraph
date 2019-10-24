@@ -25,24 +25,63 @@ int _reverseOp(int op) {
 	}
 }
 
+static void _transformInToOrSequence(FT_FilterNode **filter) {
+	FT_FilterNode *filter_tree = *filter;
+
+	AR_ExpNode *inOp = filter_tree->exp.exp;
+	AR_ExpNode *lhs = AR_EXP_Clone(inOp->op.children[0]);
+	SIValue list = inOp->op.children[1]->operand.constant;
+	uint listLen = SIArray_Length(list);
+
+	FT_FilterNode *root;
+	AR_ExpNode *constant;
+
+	if(listLen == 0) {
+		constant = AR_EXP_NewConstOperandNode(SI_BoolVal(false));
+		root = FilterTree_CreateExpressionFilter(constant);
+	} else {
+		constant = AR_EXP_NewConstOperandNode(SIArray_Get(list, 0));
+		root = FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, constant);
+
+		for(uint i = 1; i < listLen; i ++) {
+			FT_FilterNode *orNode = FilterTree_CreateConditionFilter(OP_OR);
+			AppendLeftChild(orNode, root);
+			constant = AR_EXP_NewConstOperandNode(SIArray_Get(list, i));
+			lhs = AR_EXP_Clone(inOp->op.children[0]);
+			AppendRightChild(orNode, FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, constant));
+			root = orNode;
+		}
+	}
+
+	// Replace and free original tree.
+	FilterTree_Free(filter_tree);
+	*filter = root;
+}
+
 /* Modifies filter tree such that the left-hand side
  * is of type variadic and the right-hand side is constant. */
-void _normalize_filter(FT_FilterNode *filter) {
+void _normalize_filter(FT_FilterNode **filter) {
+	FT_FilterNode *filter_tree = *filter;
 	// Normalize, left hand side should be variadic, right hand side const.
-	switch(filter->t) {
-	case FT_N_PRED: {
-		if(filter->pred.rhs->operand.type == AR_EXP_VARIADIC) {
+	switch(filter_tree->t) {
+	case FT_N_PRED:
+		if(filter_tree->pred.rhs->operand.type == AR_EXP_VARIADIC) {
 			// Swap.
-			AR_ExpNode *tmp = filter->pred.rhs;
-			filter->pred.rhs = filter->pred.lhs;
-			filter->pred.lhs = tmp;
-			filter->pred.op = _reverseOp(filter->pred.op);
+			AR_ExpNode *tmp = filter_tree->pred.rhs;
+			filter_tree->pred.rhs = filter_tree->pred.lhs;
+			filter_tree->pred.lhs = tmp;
+			filter_tree->pred.op = _reverseOp(filter_tree->pred.op);
 		}
 		break;
-	}
-	default: {
+	case FT_N_EXP:
+		_transformInToOrSequence(filter);
 		break;
-	}
+	case FT_N_COND:
+		_normalize_filter(&filter_tree->cond.left);
+		_normalize_filter(&filter_tree->cond.right);
+		break;
+	default:
+		assert(false);
 	}
 }
 
@@ -98,8 +137,6 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 		break;
 	}
 	case FT_N_PRED: {
-		// Make sure left hand side is variadic and right hand side is constant.
-		_normalize_filter(filter);
 		double d;
 		const char *field = filter->pred.lhs->operand.variadic.entity_prop;
 		SIValue v = filter->pred.rhs->operand.constant;
@@ -167,8 +204,9 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 		break;
 	}
 	case FT_N_EXP: {
+		// Special case: "WHERE a.v in []"
 		SIValue value = filter->exp.exp->operand.constant;
-		assert(value.longval == false);
+		assert(SI_TYPE(value) == T_BOOL && value.longval == false);
 		node = RediSearch_CreateEmptyNode(sp);
 		break;
 	}
@@ -181,132 +219,83 @@ RSQNode *_filterTreeToQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 
 //------------------------------------------------------------------------------
 
-/* Tests to see if given filter tree is a simple predicate
- * e.g. n.v = 2
- * one side is variadic while the other side is constant. */
-bool _simple_predicates(const FT_FilterNode *filter) {
-	if(filter->t == FT_N_PRED) {
-		if(filter->pred.lhs->type == AR_EXP_OP || filter->pred.rhs->type == AR_EXP_OP) {
-			return false;
-		}
-
-		// Both left and right side are variadic.
-		if(filter->pred.lhs->operand.type == AR_EXP_VARIADIC &&
-		   filter->pred.rhs->operand.type == AR_EXP_VARIADIC) {
-			return false;
-		}
-
-		// Both left and right are constants.
-		if(filter->pred.lhs->operand.type == AR_EXP_CONSTANT &&
-		   filter->pred.rhs->operand.type == AR_EXP_CONSTANT) {
-			return false;
-		}
-
-		// Validate constant type.
-		SIValue c = SI_NullVal();
-		if(filter->pred.lhs->operand.type == AR_EXP_CONSTANT) c = filter->pred.lhs->operand.constant;
-		if(filter->pred.rhs->operand.type == AR_EXP_CONSTANT) c = filter->pred.rhs->operand.constant;
-		SIType t = SI_TYPE(c);
-
-		return(t & (SI_NUMERIC | T_STRING | T_BOOL));
-	}
-
-	// FT_N_COND.
-	if(!_simple_predicates(filter->cond.left)) return false;
-	if(!_simple_predicates(filter->cond.right)) return false;
-	return true;
-}
-
-static bool _isInFilter(OpFilter *filter) {
-	return (filter->filterTree->t == FT_N_EXP &&
-			strcasecmp(filter->filterTree->exp.exp->op.func_name, "in") == 0);
+static inline bool _isInFilter(const FT_FilterNode *filter) {
+	return (filter->t == FT_N_EXP &&
+			filter->exp.exp->type == AR_EXP_OP &&
+			strcasecmp(filter->exp.exp->op.func_name, "in") == 0);
 }
 
 static bool _validateInExpression(AR_ExpNode *exp) {
 	assert(exp->op.child_count == 2);
+
 	AR_ExpNode *list = exp->op.children[1];
 	if(list->operand.type != AR_EXP_CONSTANT) return false;
+
 	assert(list->operand.constant.type == T_ARRAY);
+
 	SIValue listValue = list->operand.constant;
 	uint listLen = SIArray_Length(listValue);
 	for(uint i = 0; i < listLen; i++) {
 		SIValue v = SIArray_Get(listValue, i);
-		// Ignore everything other than number and strings.
+		// Ignore everything other than number, strings and booleans.
 		if(!(SI_TYPE(v) & (SI_NUMERIC | T_STRING | T_BOOL))) return false;
 	}
 	return true;
 }
 
-static void _transformInToOrSequence(OpFilter *filter) {
-	AR_ExpNode *inOp = filter->filterTree->exp.exp;
-	AR_ExpNode *lhs = AR_EXP_Clone(inOp->op.children[0]);
-	AR_ExpNode *list = inOp->op.children[1];
-	SIValue listValue = list->operand.constant;
-	uint listLen = SIArray_Length(listValue);
-	AR_ExpNode *constant;
-	FT_FilterNode *root;
-	if(listLen == 0) {
-		constant = AR_EXP_NewConstOperandNode(SI_BoolVal(false));
-		root = FilterTree_CreateExpressionFilter(constant);
-	} else {
-		constant = AR_EXP_NewConstOperandNode(SIArray_Get(listValue, 0));
-		root = FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, constant);
-	}
-	for(uint i = 1; i < listLen; i ++) {
-		FT_FilterNode *orNode = FilterTree_CreateConditionFilter(OP_OR);
-		AppendLeftChild(orNode, root);
-		constant = AR_EXP_NewConstOperandNode(SIArray_Get(listValue, i));
-		lhs = AR_EXP_Clone(inOp->op.children[0]);
-		AppendRightChild(orNode, FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, constant));
-		root = orNode;
-	}
-	FilterTree_Free(filter->filterTree);
-	filter->filterTree = root;
-}
+/* Tests to see if given filter tree is a simple predicate
+ * e.g. n.v = 2
+ * one side is variadic while the other side is constant. */
+bool _simple_predicates(const FT_FilterNode *filter) {
+	bool res = false;
 
-static void _prepareFilterOp(OpFilter *filter) {
-	// Filter is applicable, normalize it.
-	_normalize_filter(filter->filterTree);
-	// See if the filter tree needed to be modified, if so, replace the original, since the op will be free.
-	if(_isInFilter(filter)) _transformInToOrSequence(filter);
+	switch(filter->t) {
+	case FT_N_PRED:
+		if(filter->pred.rhs->type == AR_EXP_OPERAND &&
+		   filter->pred.lhs->type == AR_EXP_OPERAND &&
+		   (filter->pred.lhs->operand.type == AR_EXP_CONSTANT ||
+			filter->pred.rhs->operand.type == AR_EXP_CONSTANT) &&
+		   (filter->pred.lhs->operand.type == AR_EXP_VARIADIC ||
+			filter->pred.lhs->operand.type == AR_EXP_VARIADIC)) {
+
+			// Validate constant type.
+			SIValue c = SI_NullVal();
+			if(filter->pred.lhs->operand.type == AR_EXP_CONSTANT) c = filter->pred.lhs->operand.constant;
+			if(filter->pred.rhs->operand.type == AR_EXP_CONSTANT) c = filter->pred.rhs->operand.constant;
+			SIType t = SI_TYPE(c);
+
+			res = (t & (SI_NUMERIC | T_STRING | T_BOOL));
+		}
+		break;
+	case FT_N_EXP:
+		res = (_isInFilter(filter) && _validateInExpression(filter->exp.exp));
+		break;
+	case FT_N_COND:
+		res = (_simple_predicates(filter->cond.left) && _simple_predicates(filter->cond.right));
+		break;
+	default:
+		assert(false);
+	}
+
+	return res;
 }
 
 /* Checks to see if given filter can be resolved by index. */
-bool _applicableFilter(Index *idx, OpFilter *filter) {
+bool _applicableFilter(Index *idx, FT_FilterNode **filter) {
 	bool res = true;
 	rax *attr = NULL;
 	rax *entities = NULL;
 
-	FT_FilterNode *filter_tree = filter->filterTree;
+	FT_FilterNode *filter_tree = *filter;
 
-	// Make sure the filter root is not a function, other then IN
-	if(filter_tree->t == FT_N_EXP) {
-		if(!(_isInFilter(filter) && _validateInExpression(filter_tree->exp.exp))) {
-			res = false;
-			goto cleanup;
-		}
-	} else {
-		// Make sure the "not equal, <>" operator isn't used.
-		if(FilterTree_containsOp(filter_tree, OP_NEQUAL)) {
-			res = false;
-			goto cleanup;
-		}
-
-		if(!_simple_predicates(filter_tree)) {
-			res = false;
-			goto cleanup;
-		}
+	/* Make sure the filter root is not a function, other then IN
+	 * Make sure the "not equal, <>" operator isn't used. */
+	if(FilterTree_containsOp(filter_tree, OP_NEQUAL)) {
+		res = false;
+		goto cleanup;
 	}
 
-
-
-	/* filterTree will either be a predicate or a tree with an OR root.
-	 * make sure filter doesn't contains predicates of type: a.v = b.y */
-	entities = FilterTree_CollectModified(filter_tree);
-	uint entity_count = raxSize(entities);
-
-	// a.v op b.k
-	if(entity_count != 1) {
+	if(!_simple_predicates(filter_tree)) {
 		res = false;
 		goto cleanup;
 	}
@@ -338,11 +327,10 @@ bool _applicableFilter(Index *idx, OpFilter *filter) {
 	}
 
 	// Filter is applicable, prepare it to use in index.
-	_prepareFilterOp(filter);
+	_normalize_filter(filter);
 
 cleanup:
 	if(attr) raxFree(attr);
-	if(entities) raxFree(entities);
 	return res;
 }
 
@@ -357,7 +345,7 @@ OpFilter **_applicableFilters(NodeByLabelScan *scanOp, Index *idx) {
 	while(current->type == OPType_FILTER) {
 		OpFilter *filter = (OpFilter *)current;
 
-		if(_applicableFilter(idx, filter)) {
+		if(_applicableFilter(idx, &filter->filterTree)) {
 			// Make sure all predicates are of type n.v = CONST.
 			filters = array_append(filters, filter);
 		}
@@ -407,19 +395,15 @@ void _predicateTreeToRange(const FT_FilterNode *tree, rax *string_ranges, rax *n
 void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 	RSQNode *root = NULL;
 	uint rsqnode_count = 0;
+	RSQNode **rsqnodes = NULL;
+	rax *string_ranges = NULL;
+	rax *numeric_ranges = NULL;
 
 	// Make sure there's an index for scanned label.
 	const char *label = scan->n->label;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Index *idx = GraphContext_GetIndex(gc, label, NULL, IDX_EXACT_MATCH);
 	if(idx == NULL) return;
-
-	/* Reduce filters into ranges.
-	 * we differentiate between between numeric filters
-	 * and string filters. */
-	rax *string_ranges = NULL;
-	rax *numeric_ranges = NULL;
-	RSQNode **rsqnodes = array_new(RSQNode *, 1);
 
 	// Get all applicable filter for index.
 	RSIndex *rs_idx = idx->idx;
@@ -428,6 +412,11 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 	// No filters, return.
 	uint filters_count = array_len(filters);
 	if(filters_count == 0) goto cleanup;
+
+	/* Reduce filters into ranges.
+	* we differentiate between between numeric filters
+	* and string filters. */
+	rsqnodes = array_new(RSQNode *, 1);
 
 	string_ranges = raxNew();
 	numeric_ranges = raxNew();
@@ -543,10 +532,10 @@ void utilizeIndices(GraphContext *gc, ExecutionPlan *plan) {
 	int scanOpCount = array_len(scanOps);
 	for(int i = 0; i < scanOpCount; i++) {
 		NodeByLabelScan *scanOp = (NodeByLabelScan *)scanOps[i];
+		// Try to reduce label scan + filter(s) to a single IndexScan operation.
 		reduce_scan_op(plan, scanOp);
 	}
 
 	// Cleanup
 	array_free(scanOps);
 }
-

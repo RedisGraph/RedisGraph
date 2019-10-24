@@ -76,13 +76,14 @@ class testIndexScanFlow(FlowTestsBase):
 
         self.env.assertEquals(result.result_set, expected_result)
 
+    # Validate index utilization of index when filtering with the `IN` keyword.
     def test04_test_arrays_and_in_operator(self):
         # Validate the transformation of IN to multiple OR expressions.
         query = "MATCH (p:person) WHERE p.age IN [1,2,3] RETURN p"
         plan = redis_graph.execution_plan(query)
         self.env.assertIn('Index Scan', plan)
         
-        # Validate that nested arrayes are not scaned in index.
+        # Validate that nested arrayes are not scanned in index.
         query = "MATCH (p:person) WHERE p.age IN [[1,2],3] RETURN p"
         plan = redis_graph.execution_plan(query)
         self.env.assertNotIn('Index Scan', plan)
@@ -93,20 +94,44 @@ class testIndexScanFlow(FlowTestsBase):
         plan = redis_graph.execution_plan(query)
         self.env.assertIn('Index Scan', plan)
 
-        expected_result = [['Gal Derriere'],
-                           ['Lucy Yanfital']]
+        expected_result = [['Gal Derriere'], ['Lucy Yanfital']]
         result = redis_graph.query(query)
-
         self.env.assertEquals(result.result_set, expected_result)
 
-         # Validate the transformation of IN to multiple OR, over a range.
+         # Validate the transformation of IN to empty index iterator.
         query = "MATCH (p:person) WHERE p.age IN [] RETURN p.name"
         plan = redis_graph.execution_plan(query)
         self.env.assertIn('Index Scan', plan)
 
         expected_result = []
         result = redis_graph.query(query)
+        self.env.assertEquals(result.result_set, expected_result)
 
+        # Validate the transformation of IN OR IN to empty index iterators.
+        query = "MATCH (p:person) WHERE p.age IN [] OR p.age IN [] RETURN p.name"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn('Index Scan', plan)
+
+        expected_result = []
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.result_set, expected_result)
+
+        # Validate the transformation of multiple IN filters.
+        query = "MATCH (p:person) WHERE p.age IN [26, 27, 30] OR p.age IN [33, 34, 35] RETURN p.name ORDER BY p.age"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn('Index Scan', plan)
+
+        expected_result = [['Gal Derriere'], ['Lucy Yanfital'], ['Omri Traub'], ['Noam Nativ']]
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.result_set, expected_result)
+
+        # Validate the transformation of multiple IN filters.
+        query = "MATCH (p:person) WHERE p.age IN [26, 27, 30] OR p.age IN [33, 34, 35] OR p.age IN [] RETURN p.name ORDER BY p.age"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn('Index Scan', plan)
+
+        expected_result = [['Gal Derriere'], ['Lucy Yanfital'], ['Omri Traub'], ['Noam Nativ']]
+        result = redis_graph.query(query)
         self.env.assertEquals(result.result_set, expected_result)
 
     # ',' is the default separator for tag indices
