@@ -44,7 +44,11 @@ typedef enum {
 	OPType_APPLY = (1 << 24),
 	OPType_JOIN = (1 << 25),
 	OPType_ARGUMENT = (1 << 26),
-} OPType;
+	OPType_SEMI_APPLY = (1 << 27),
+	OPType_ANTI_SEMI_APPLY = (1 << 28),
+	OPType_SELECT_OR_SEMI_APPLY = (1 << 29),
+	OPType_SELECT_OR_ANTI_SEMI_APPLY = (1 << 30),
+} OPType; // TODO Consider switching from bitmask at 1<<32
 
 #define OP_SCAN (OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN | OPType_INDEX_SCAN | OPType_NODE_BY_ID_SEEK)
 #define OP_TAPS (OP_SCAN | OPType_CREATE | OPType_UNWIND | OPType_MERGE)
