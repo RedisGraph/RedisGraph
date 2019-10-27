@@ -290,13 +290,19 @@ rax *FilterTree_CollectAttributes(const FT_FilterNode *root) {
 }
 
 bool FilterTree_containsOp(const FT_FilterNode *root, AST_Operator op) {
-	if(root->t == FT_N_COND) {
-		bool contains_op = false;
+	switch(root->t) {
+	case FT_N_COND:
 		if(FilterTree_containsOp(root->cond.left, op)) return true;
 		if(FilterTree_containsOp(root->cond.right, op)) return true;
 		return false;
+	case FT_N_EXP:
+		return false;
+	case FT_N_PRED:
+		return (root->pred.op == op);
+	default:
+		assert(false);
+		return false;
 	}
-	return (root->pred.op == op);
 }
 
 void _FilterTree_ApplyNegate(FT_FilterNode **root, uint negate_count) {
