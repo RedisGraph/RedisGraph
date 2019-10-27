@@ -40,8 +40,8 @@ static void _PathBuilder_AppendNode(Path *path, Node *node) {
  */
 static Edge *_Edge_ReverseDirection(Edge *e) {
 	Edge *clone = Edge_Clone(e);
-	Edge_SetSrcNode(clone, e->dest);
-	Edge_SetDestNode(clone, e->src);
+	clone->srcNodeID = e->destNodeID;
+	clone->destNodeID = e->srcNodeID;
 	return clone;
 }
 
