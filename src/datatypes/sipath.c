@@ -70,7 +70,7 @@ SIValue SIPath_Relationships(SIValue p) {
 }
 
 SIValue SIPath_GetRelationship(SIValue p, size_t i) {
-	assert(i < SIPath_Length(p) && i > 0);
+	assert(i < SIPath_Length(p) && i >= 0);
 	SIPath *sipath = (SIPath *) p.ptrval;
 	Path path = sipath->path;
 	return SI_Edge(&path.edges[i]);
@@ -88,7 +88,7 @@ SIValue SIPath_Nodes(SIValue p) {
 }
 
 SIValue SIPath_GetNode(SIValue p, size_t i) {
-	assert(i < SIPath_Length(p) + 1 && i > 0);
+	assert(i < SIPath_Size(p) && i >= 0);
 	SIPath *sipath = (SIPath *) p.ptrval;
 	Path path = sipath->path;
 	return SI_Node(&path.nodes[i]);

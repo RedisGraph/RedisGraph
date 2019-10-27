@@ -261,6 +261,131 @@ void AST_AttachName(AST *ast, const cypher_astnode_t *node, const char *name) {
 	cypher_astnode_attach_annotation(ast->name_ctx, node, (void *)name, NULL);
 }
 
+//------------------------------------------------------------------------------
+//  Annotation context - Attach named path projection identifiers their respective ast structure
+//------------------------------------------------------------------------------
+
+static void _FreeProjectNamedPathAnnotationCallback(void *unused, const cypher_astnode_t *node,
+													void *annotation) {
+	// Do nothing, annotation is a pointer to another part of the ast.
+}
+
+static AnnotationCtx *_AST_NewProjectNamedPathContext(void) {
+	AnnotationCtx *project_all_ctx = cypher_ast_annotation_context();
+	cypher_ast_annotation_context_release_handler_t handler = &_FreeProjectNamedPathAnnotationCallback;
+	cypher_ast_annotation_context_set_release_handler(project_all_ctx, handler, NULL);
+	return project_all_ctx;
+}
+
+static void _AST_AttachAstNodeInfo(AST *ast, const cypher_astnode_t *node,
+								   const cypher_astnode_t *info) {
+	// Annotate AST node with ast information.
+	cypher_astnode_attach_annotation(ast->named_paths_ctx, node, (void *)info, NULL);
+}
+
+static const char *_extract_expression_projection_name(const cypher_astnode_t *projection,
+													   const cypher_astnode_t *ast_exp) {
+	const char *identifier = NULL;
+	const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(projection);
+	if(alias_node) {
+		// The projection either has an alias (AS), is a function call, or is a property specification (e.name).
+		identifier = cypher_ast_identifier_get_name(alias_node);
+	} else {
+		// This expression did not have an alias, so it must be an identifier
+		// Retrieve "a" from "RETURN a" or "RETURN a AS e" (theoretically; the latter case is already handled)
+		identifier = cypher_ast_identifier_get_name(ast_exp);
+	}
+	return identifier;
+}
+
+static void _annotate_relevant_projected_named_path_identifier(AST *ast,
+															   const cypher_astnode_t *ast_exp, uint scope_start, uint scope_end) {
+
+	cypher_astnode_type_t type = cypher_astnode_type(ast_exp);
+	// In case of identifier.
+	if(type == CYPHER_AST_IDENTIFIER) {
+		const char *identifier = cypher_ast_identifier_get_name(ast_exp);
+		for(uint clause_iter = scope_start; clause_iter < scope_end; clause_iter++) {
+			const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, clause_iter);
+			const cypher_astnode_type_t clause_type = cypher_astnode_type(clause);
+			if(clause_type == CYPHER_AST_MATCH) {
+				const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clause);
+				uint path_count = cypher_ast_pattern_npaths(pattern);
+				for(uint i = 0; i < path_count; i++) {
+					const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
+					if(cypher_astnode_type(path) == CYPHER_AST_NAMED_PATH) {
+						const cypher_astnode_t *path_identifier = cypher_ast_named_path_get_identifier(path);
+						if(strcmp(identifier, cypher_ast_identifier_get_name(path_identifier)) == 0)
+							cypher_astnode_attach_annotation(ast->named_paths_ctx, ast_exp, (void *)path, NULL);
+					}
+				}
+			} else if(clause_type == CYPHER_AST_MERGE) {
+				const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
+				if(cypher_astnode_type(path) == CYPHER_AST_NAMED_PATH) {
+					const cypher_astnode_t *path_identifier = cypher_ast_named_path_get_identifier(path);
+					if(strcmp(identifier, cypher_ast_identifier_get_name(path_identifier)) == 0)
+						cypher_astnode_attach_annotation(ast->named_paths_ctx, ast_exp, (void *)path, NULL);
+				}
+			}
+		}
+	} else {
+		// Recurse over children.
+		uint child_count = cypher_astnode_nchildren(ast_exp);
+		for(uint i = 0; i < child_count; i++) {
+			const cypher_astnode_t *child = cypher_astnode_get_child(ast_exp, i);
+			// Recursively continue mapping.
+			_annotate_relevant_projected_named_path_identifier(ast, child, scope_start, scope_end);
+		}
+	}
+
+}
+
+static void _annotate_with_clause_projected_named_path(AST *ast,
+													   const cypher_astnode_t *with_clause, uint scope_start, uint scope_end) {
+	// Iterate over the projections and find their identifiers.
+	uint with_projection_count = cypher_ast_with_nprojections(with_clause);
+	for(uint projection_iter = 0; projection_iter < with_projection_count; projection_iter++) {
+		const cypher_astnode_t *projection = cypher_ast_with_get_projection(with_clause, projection_iter);
+		const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
+		_annotate_relevant_projected_named_path_identifier(ast, ast_exp, scope_start, scope_end);
+	}
+}
+
+static void _annotate_return_clause_projected_named_path(AST *ast,
+														 const cypher_astnode_t *return_clause, uint scope_start, uint scope_end) {
+	uint return_projection_count = cypher_ast_return_nprojections(return_clause);
+	for(uint projection_iter = 0; projection_iter < return_projection_count; projection_iter++) {
+		const cypher_astnode_t *projection = cypher_ast_return_get_projection(return_clause,
+																			  projection_iter);
+		const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
+		_annotate_relevant_projected_named_path_identifier(ast, ast_exp, scope_start, scope_end);
+	}
+}
+
+static void _annotate_projected_named_path(AST *ast) {
+	uint *with_clause_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
+	uint with_clause_count = array_len(with_clause_indices);
+	uint scope_start = 0;
+	uint scope_end;
+	// Handle with clauses.
+	for(uint i = 0; i < with_clause_count; i ++) {
+		scope_end = with_clause_indices[i];
+		const cypher_astnode_t *with_clause = cypher_ast_query_get_clause(ast->root, scope_end);
+		_annotate_with_clause_projected_named_path(ast, with_clause, scope_start, scope_end);
+		scope_start = scope_end;
+	}
+	array_free(with_clause_indices);
+	uint clause_count = cypher_ast_query_nclauses(ast->root);
+	const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
+	cypher_astnode_type_t last_clause_type = cypher_astnode_type(last_clause);
+	if(last_clause_type == CYPHER_AST_RETURN) {
+		_annotate_return_clause_projected_named_path(ast, last_clause, scope_start, clause_count);
+	}
+}
+
+//------------------------------------------------------------------------------
+//  Main AST enrichment
+//------------------------------------------------------------------------------
 void AST_Enrich(AST *ast) {
 	/* Directives like CREATE INDEX are not queries. */
 	if(cypher_astnode_type(ast->root) != CYPHER_AST_QUERY) return;
@@ -276,5 +401,8 @@ void AST_Enrich(AST *ast) {
 	ast->project_all_ctx = _AST_NewProjectAllContext();
 	// Generate annotations for WITH/RETURN * clauses.
 	_annotate_project_all(ast);
+
+	ast->named_paths_ctx = _AST_NewProjectNamedPathContext();
+	_annotate_projected_named_path(ast);
 }
 

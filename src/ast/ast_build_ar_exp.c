@@ -8,6 +8,7 @@
 #include "../util/rmalloc.h"
 #include "../arithmetic/funcs.h"
 #include <assert.h>
+#include "../query_ctx.h"
 
 // Forward declaration
 static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr);
@@ -306,7 +307,19 @@ static AR_ExpNode *_AR_ExpFromNamedPath(const cypher_astnode_t *path) {
 	return op;
 }
 
+static AR_ExpNode *_AR_ExpNodeFromGraphEntity(const cypher_astnode_t *entity) {
+	AST *ast = QueryCtx_GetAST();
+	const char *alias = AST_GetEntityName(ast, entity);
+	return AR_EXP_NewVariableOperandNode(alias, NULL);
+}
+
 static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
+
+	AST *ast = QueryCtx_GetAST();
+	const cypher_astnode_t *named_path_annotation = cypher_astnode_get_annotation(ast->named_paths_ctx,
+																				  expr);
+	if(named_path_annotation) expr = named_path_annotation;
+
 	const cypher_astnode_type_t type = cypher_astnode_type(expr);
 
 	/* Function invocations */
@@ -348,6 +361,8 @@ static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 		return _AR_ExpFromSliceExpression(expr);
 	} else if(type == CYPHER_AST_NAMED_PATH) {
 		return _AR_ExpFromNamedPath(expr);
+	} else if(type == CYPHER_AST_NODE_PATTERN || type == CYPHER_AST_REL_PATTERN) {
+		return _AR_ExpNodeFromGraphEntity(expr);
 	} else {
 		/*
 		   Unhandled types:
