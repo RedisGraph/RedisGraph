@@ -458,14 +458,14 @@ TEST_F(TestReferencedEntities, TestNamedPath) {
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
 	AST_Free(astSegment);
 
-	q = "MATCH p =(n:Label1 {value:1})-[e:Rel*]-(m:Label2 {value:2})";
+	q = "MATCH p =(:Label1 {value:1})-[e:Rel*]-(m:Label2 {value:2})";
 	ast = buildAST(q);
 	segmentIndices = getASTSegmentIndices(ast);
 	ASSERT_EQ(1, array_len(segmentIndices));
 
 	astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
 	ASSERT_EQ(3, raxSize(astSegment->referenced_entities));
-	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"anon_0", 6));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
 	AST_Free(astSegment);

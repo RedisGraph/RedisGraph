@@ -16,8 +16,7 @@ static void __AllPathsCtx_AddConnectionToLevel(AllPathsCtx *ctx, uint level, Nod
 		ctx->levels = array_append(ctx->levels, Path_New(1));
 	}
 	Path_AppendNode(&ctx->levels[level], *node);
-	if(edge != NULL)
-		Path_AppendEdge(&ctx->levels[level], *edge);
+	if(edge != NULL) Path_AppendEdge(&ctx->levels[level], *edge);
 }
 
 // Check to see if context levels array has entries at position 'level'.
