@@ -12,13 +12,13 @@
 #include <stdbool.h>
 
 struct QGEdge {
-	const char *alias;              /* User-provided alias attached to edge. */
-	const char **reltypes;          /* Relationship type strings */
-	int *reltypeIDs;                /* Relationship type IDs */ // TODO can be uint save for GRAPH_NO_RELATION
-	QGNode *src;                    /* Pointer to source node. */
-	QGNode *dest;                   /* Pointer to destination node. */
-	uint minHops;                   /* Minimum number of hops this edge represents. */
-	uint maxHops;                   /* Maximum number of hops this edge represents. */
+	const char *alias;      /* User-provided alias attached to edge. */
+	const char **reltypes;  /* Relationship type strings */
+	int *reltypeIDs;        /* Relationship type IDs */ // TODO can be uint save for GRAPH_NO_RELATION
+	QGNode *src;            /* Pointer to source node. */
+	QGNode *dest;           /* Pointer to destination node. */
+	uint minHops;           /* Minimum number of hops this edge represents. */
+	uint maxHops;           /* Maximum number of hops this edge represents. */
 };
 
 typedef struct QGEdge QGEdge;

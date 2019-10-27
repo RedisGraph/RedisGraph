@@ -305,9 +305,11 @@ static void _annotate_relevant_projected_named_path_identifier(AST *ast,
 	// In case of identifier.
 	if(type == CYPHER_AST_IDENTIFIER) {
 		const char *identifier = cypher_ast_identifier_get_name(ast_exp);
+		// Go over match or merge clauses and find named path with the relevant identifier.
 		for(uint clause_iter = scope_start; clause_iter < scope_end; clause_iter++) {
 			const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, clause_iter);
 			const cypher_astnode_type_t clause_type = cypher_astnode_type(clause);
+			// Match.
 			if(clause_type == CYPHER_AST_MATCH) {
 				const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clause);
 				uint path_count = cypher_ast_pattern_npaths(pattern);
@@ -319,6 +321,7 @@ static void _annotate_relevant_projected_named_path_identifier(AST *ast,
 							cypher_astnode_attach_annotation(ast->named_paths_ctx, ast_exp, (void *)path, NULL);
 					}
 				}
+				// Merge.
 			} else if(clause_type == CYPHER_AST_MERGE) {
 				const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
 				if(cypher_astnode_type(path) == CYPHER_AST_NAMED_PATH) {

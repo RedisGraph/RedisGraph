@@ -10,13 +10,6 @@
 
 // Make sure context levels array have atleast 'level' entries,
 // Append given 'node' to given 'level' array.
-// static void _AllPathsCtx_AddNodeToLevel(AllPathsCtx *ctx, uint level, Node *node) {
-// 	while(array_len(ctx->levels) <= level) {
-// 		ctx->levels = array_append(ctx->levels, Path_new(0));
-// 	}
-// 	Path_appendNode(&ctx->levels[level], *node);
-// }
-
 static void __AllPathsCtx_AddConnectionToLevel(AllPathsCtx *ctx, uint level, Node *node,
 											   Edge *edge) {
 	while(array_len(ctx->levels) <= level) {

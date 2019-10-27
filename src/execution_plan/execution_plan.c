@@ -98,6 +98,9 @@ AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause) {
 		// The AST expression can be an identifier, function call, or constant
 		const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
 
+		// Construction an AR_ExpNode to represent this return entity.
+		AR_ExpNode *exp = AR_EXP_FromExpression(ast_exp);
+
 		// Find the resolved name of the entity - its alias, its identifier if referring to a full entity,
 		// the entity.prop combination ("a.val"), or the function call ("MAX(a.val)")
 		const char *identifier = NULL;
@@ -111,9 +114,6 @@ AR_ExpNode **_BuildReturnExpressions(const cypher_astnode_t *ret_clause) {
 			// Retrieve "a" from "RETURN a" or "RETURN a AS e" (theoretically; the latter case is already handled)
 			identifier = cypher_ast_identifier_get_name(ast_exp);
 		}
-
-		// Construction an AR_ExpNode to represent this return entity.
-		AR_ExpNode *exp = AR_EXP_FromExpression(ast_exp);
 
 		exp->resolved_name = identifier;
 		return_expressions = array_append(return_expressions, exp);

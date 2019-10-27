@@ -250,13 +250,6 @@ static AST_Validation _ValidateMultiHopTraversal(rax *projections, const cypher_
 	const cypher_astnode_t *ast_identifier = cypher_ast_rel_pattern_get_identifier(edge);
 	if(!ast_identifier) return AST_VALID;
 
-	// // Verify that the alias is not found in the RETURN clause.
-	// const char *identifier = cypher_ast_identifier_get_name(ast_identifier);
-	// if(_AliasIsReturned(projections, identifier)) {
-	// 	asprintf(reason, "Cannot return variable-length traversal '%s'.", identifier);
-	// 	return AST_INVALID;
-	// }
-
 	return AST_VALID;
 }
 
