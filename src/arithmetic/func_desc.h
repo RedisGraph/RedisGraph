@@ -19,9 +19,10 @@ typedef struct {
 	AR_Func func;       // Function pointer.
 	SIType *types;      // Types of arguments.
 	const char *name;   // Function name.
+    bool reducible;     // Can be reduced using static evaluation.
 } AR_FuncDesc;
 
-AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint argc, SIType *types);
+AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint argc, SIType *types, bool reducible);
 
 /* Register arithmetic function to repository. */
 void AR_RegFunc(AR_FuncDesc *func);
