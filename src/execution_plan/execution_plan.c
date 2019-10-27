@@ -671,6 +671,8 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		start_offset = end_offset;
 	}
 
+	QueryCtx_SetAST(ast); // AST segments have been freed, set master AST in QueryCtx.
+
 	OpBase *connecting_op = NULL;
 	// Merge segments.
 	for(int i = 1; i < segment_count; i++) {
