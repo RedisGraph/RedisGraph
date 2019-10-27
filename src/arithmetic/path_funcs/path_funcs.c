@@ -137,6 +137,21 @@ SIValue AR_TOPATH(SIValue *argv, int argc) {
 	return SI_Path(path);
 }
 
+SIValue AR_PATH_NODES(SIValue *argv, int argc) {
+	assert(argc == 1);
+	return SIPath_Nodes(argv[0]);
+}
+
+SIValue AR_PATH_RELATIONSHIPS(SIValue *argv, int argc) {
+	assert(argc == 1);
+	return SIPath_Relationships(argv[0]);
+}
+
+SIValue AR_PATH_LENGTH(SIValue *argv, int argc) {
+	assert(argc == 1);
+	return SI_LongVal(SIPath_Length(argv[0]));
+}
+
 void Register_PathFuncs() {
 	SIType *types;
 	AR_FuncDesc *func_desc;
@@ -145,5 +160,20 @@ void Register_PathFuncs() {
 	types = array_append(types, T_PTR);
 	types = array_append(types, T_NODE | T_EDGE | T_PATH);
 	func_desc = AR_FuncDescNew("topath", AR_TOPATH, VAR_ARG_LEN, types);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	types = array_append(types, T_PATH);
+	func_desc = AR_FuncDescNew("nodes", AR_PATH_NODES, 1, types);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	types = array_append(types, T_PATH);
+	func_desc = AR_FuncDescNew("relationships", AR_PATH_RELATIONSHIPS, 1, types);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	types = array_append(types, T_PATH);
+	func_desc = AR_FuncDescNew("length", AR_PATH_LENGTH, 1, types);
 	AR_RegFunc(func_desc);
 }

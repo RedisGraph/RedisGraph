@@ -163,6 +163,33 @@ void SIPath_ToString(SIValue p, char **buf, size_t *bufferLen, size_t *bytesWrit
 	*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "]");
 }
 
+int SIPath_Compare(SIValue p1, SIValue p2) {
+
+	size_t p1NodeCount = SIPath_NodeCount(p1);
+	size_t p2NodeCount = SIPath_NodeCount(p2);
+	// Get minimal length
+	size_t nodeCount = p1NodeCount <= p2NodeCount ? p1NodeCount : p2NodeCount;
+	int res = 0;
+	for(size_t i = 0; i < nodeCount - 1 ; i++) {
+
+		SIValue p1node = SIPath_GetNode(p1, i);
+		SIValue p2node = SIPath_GetNode(p2, i);
+		res = SIValue_Compare(p1node, p2node, NULL);
+		if(res) return res;
+		SIValue p1edge = SIPath_GetRelationship(p1, i);
+		SIValue p2edge = SIPath_GetRelationship(p2, i);
+		res = SIValue_Compare(p1edge, p2edge, NULL);
+		if(res) return res;
+	}
+	if(nodeCount > 0) {
+		SIValue p1node = SIPath_GetNode(p1, nodeCount - 1);
+		SIValue p2node = SIPath_GetNode(p2, nodeCount - 1);
+		res = SIValue_Compare(p1node, p2node, NULL);
+		if(res) return res;
+	}
+	return p1NodeCount - p2NodeCount;
+}
+
 void SIPath_Free(SIValue p) {
 	if(p.allocation == M_SELF) {
 		Path path = ((SIPath *) p.ptrval)->path;

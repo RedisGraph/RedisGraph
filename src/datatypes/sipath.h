@@ -110,6 +110,20 @@ XXH64_hash_t SIPath_HashCode(SIValue p);
 void SIPath_ToString(SIValue p, char **buf, size_t *bufferLen, size_t *bytesWritten);
 
 /**
+ * @brief  Compares between two paths.
+ * @note   From opencypher docs: Paths are tested for equality as if they were a list of
+ * alternating nodes and relationships of the path from the start node to the end node.
+ * Two paths are equal if and only if these lists of nodes and relationships are equal.
+ * Paths are also compared in this way. For example, given nodes n1, n2, n3, and relationships
+ * r1 and r2, and given that n1 < n2 < n3 and r1 < r2, then the path p1 from n1 to n3 via r1 would
+ * be less than the path p2 to n1 from n2 via r2
+ * @param  p1: lhs path.
+ * @param  p2: rhs path.
+ * @retval Order between the paths.
+ */
+int SIPath_Compare(SIValue p1, SIValue p2);
+
+/**
  * @brief  Free SIPath.
  * @param  p: SIPath.
  */
