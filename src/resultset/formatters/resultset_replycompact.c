@@ -34,6 +34,8 @@ static inline ValueType _mapValueType(const SIValue v) {
 		return VALUE_NODE;
 	case T_EDGE:
 		return VALUE_EDGE;
+	case T_PATH:
+		return VALUE_PATH;
 	default:
 		return VALUE_UNKNOWN;
 	}
@@ -189,22 +191,58 @@ static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext
 }
 
 static void _ResultSet_CompactReplyWithPath(RedisModuleCtx *ctx, GraphContext *gc, SIValue path) {
-	/* If path is intermidate it will return as an SIArray of edges, see array compact format.
-	 * Compact path reply:
-	 * [
-	 *      [Node compact reply format]
-	 *      [Edge compact reply format]
-	 *      .
-	 *      .
-	 *      .
-	 *      [Node compact reply format]
-	 *
-	 * ]
-	*/
 	SIPath *sipathPtr = (SIPath *)path.ptrval;
 	if(sipathPtr->intermidate) {
+		/* If path is intermidate it will return as an SIArray of edges, see array compact format.
+		 * Compact path reply:
+		 * [
+		 *      [Edge compact reply format],
+		 *      .
+		 *      .
+		 *      .
+		 *      [Edge compact reply format]
+		 * ]
+		 */
 		SIValue relationships = SIPath_Relationships(path);
 		_ResultSet_CompactReplyWithSIValue(ctx, gc, relationships);
+		SIValue_Free(&relationships);
+	} else {
+		/* Regular path will return as an array of two SIArrays, the first is path nodes and the second is edges,
+		 * see array compact format.
+		 * Compact path reply:
+		 * [
+		 *      type : array,
+		 *      [
+		 *          [Node compact reply format],
+		 *          .
+		 *          .
+		 *          .
+		 *          [Node compact reply format]
+		 *      ],
+		 *      type: array,
+		 *      [
+		 *          [Edge compact reply format],
+		 *          .
+		 *          .
+		 *          .
+		 *          [Edge compact reply format]
+		 *      ]
+		 * ]
+		 */
+
+		// Reply path type.
+		_ResultSet_ReplyWithValueType(ctx, path);
+		// Response consists of two arrays.
+		RedisModule_ReplyWithArray(ctx, 2);
+		// First array type and value.
+		RedisModule_ReplyWithArray(ctx, 2);
+		SIValue nodes = SIPath_Nodes(path);
+		_ResultSet_ReplyWithValueType(ctx, nodes);
+		SIValue_Free(&nodes);
+		// Second array type and value.
+		RedisModule_ReplyWithArray(ctx, 2);
+		SIValue relationships = SIPath_Relationships(path);
+		_ResultSet_ReplyWithValueType(ctx, relationships);
 		SIValue_Free(&relationships);
 	}
 }
