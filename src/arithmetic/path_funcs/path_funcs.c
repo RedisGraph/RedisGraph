@@ -64,12 +64,14 @@ static void _PathBuilder_AppendEdge(Path *path, Edge *edge, bool RTLEdge) {
 	Path_AppendEdge(path, *edge);
 }
 
-static void _PathBuilder_AppendPath(Path *path, Path *new_path, bool RTLEdge) {
+// The function will append new path to an existing path. If the new path is empty, the function returns true.
+static bool _PathBuilder_AppendPath(Path *path, Path *new_path, bool RTLEdge) {
 	uint path_node_count = Path_NodeCount(*path);
 	assert(path_node_count > 0);
 	// No need to append empty paths.
 	uint new_path_node_count = Path_NodeCount(*new_path);
-	if(new_path_node_count == 0) return;
+
+	if(new_path_node_count <= 1) return false;
 
 	Node *last_LTR_node = &path->nodes[path_node_count - 1];
 	EntityID last_LTR_node_id = ENTITY_GET_ID(last_LTR_node);
@@ -90,6 +92,8 @@ static void _PathBuilder_AppendPath(Path *path, Path *new_path, bool RTLEdge) {
 		_PathBuilder_AppendEdge(path, &new_path->edges[i], RTLEdge);
 	}
 	_PathBuilder_AppendEdge(path, &new_path->edges[new_path_edge_count - 1], RTLEdge);
+
+	return true;
 }
 
 /* Creates a path from a given sequence of graph entities.
@@ -115,8 +119,8 @@ SIValue AR_TOPATH(SIValue *argv, int argc) {
 			bool RTL_edge = cypher_ast_rel_pattern_get_direction(ast_edge) == CYPHER_REL_INBOUND;
 			// Element type can be either edge, or path.
 			if(element.type == T_EDGE) _PathBuilder_AppendEdge(&path, element.ptrval, RTL_edge);
-			// If element is not an edge, it is a path.
-			else _PathBuilder_AppendPath(&path, element.ptrval, RTL_edge);
+			// If element is not an edge, it is a path. If it is an empty path, end the build.
+			else if(!_PathBuilder_AppendPath(&path, element.ptrval, RTL_edge)) break;
 		}
 	}
 	return SI_Path(&path);
