@@ -85,13 +85,6 @@ size_t Path_EdgeCount(Path p);
 size_t Path_Len(Path p);
 
 /**
- * @brief  Returns the path size - amount of nodes.
- * @param  p: path.
- * @retval Path size.
- */
-size_t Path_Size(Path p);
-
-/**
  * @brief  Returns if a path contains a node.
  * @param  p: Path
  * @param  *n: Node
@@ -105,6 +98,13 @@ bool Path_ContainsNode(const Path p, Node *n);
  * @retval A path struct with newly allocated array copies.
  */
 Path Path_Clone(const Path p);
+
+/**
+ * @brief  Reverse the order of the path.
+ * @param  p: Path.
+ * @retval None
+ */
+void Path_Reverse(Path p);
 
 /**
  * @brief  Deletes the path nodes and edges arrays.

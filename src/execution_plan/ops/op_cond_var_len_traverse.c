@@ -12,6 +12,7 @@
 #include "../../graph/graphcontext.h"
 #include "../../algorithms/all_paths.h"
 #include "./op_cond_var_len_traverse.h"
+#include "../../query_ctx.h"
 
 /* Forward declarations. */
 static Record CondVarLenTraverseConsume(OpBase *opBase);
@@ -77,7 +78,11 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 				CondVarLenTraverseReset, CondVarLenTraverseToString, CondVarLenTraverseFree, plan);
 	assert(OpBase_Aware((OpBase *)op, ae->src_node->alias, &op->srcNodeIdx));
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, ae->dest_node->alias);
-	op->edgesIdx = OpBase_Modifies((OpBase *)op, op->ae->edge->alias);
+	// Populate edge value in record only if it is referenced.
+	AST *ast = QueryCtx_GetAST();
+	if(AST_AliasIsReferenced(ast, op->ae->edge->alias))
+		op->edgesIdx = OpBase_Modifies((OpBase *)op, op->ae->edge->alias);
+	else op->edgesIdx = -1;
 
 	return (OpBase *)op;
 }
@@ -106,16 +111,11 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 		AllPathsCtx_Free(op->allPathsCtx);
 		if(op->expandInto) {
 			Node *destNode = Record_GetNode(op->r, op->destNodeIdx);
-			op->allPathsCtx = AllPathsToDstCtx_New(srcNode, destNode, op->g, op->edgeRelationTypes,
-												   op->edgeRelationCount, op->traverseDir, op->minHops, op->maxHops);
+			op->allPathsCtx = AllPathsCtx_New(srcNode, destNode, op->g, op->edgeRelationTypes,
+											  op->edgeRelationCount, op->traverseDir, op->minHops, op->maxHops);
 		} else {
-			op->allPathsCtx = AllPathsCtx_New(srcNode,
-											  op->g,
-											  op->edgeRelationTypes,
-											  op->edgeRelationCount,
-											  op->traverseDir,
-											  op->minHops,
-											  op->maxHops);
+			op->allPathsCtx = AllPathsCtx_New(srcNode, NULL, op->g, op->edgeRelationTypes,
+											  op->edgeRelationCount, op->traverseDir, op->minHops, op->maxHops);
 		}
 
 	}
@@ -124,10 +124,7 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 
 	if(!op->expandInto) Record_AddNode(op->r, op->destNodeIdx, n);
 
-
-	if(op->edgesIdx >= 0) {
-		Record_AddScalar(op->r, op->edgesIdx, SI_IntermidatePath(p));
-	}
+	if(op->edgesIdx >= 0) Record_AddScalar(op->r, op->edgesIdx, SI_Path(p));
 
 	return Record_Clone(op->r);
 }

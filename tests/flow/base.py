@@ -46,8 +46,20 @@ class FlowTestsBase(object):
 
 
     def _assert_resultset_equals_expected(self, actual_result, query_info):
-        self._assert_only_expected_results_are_in_actual_results(actual_result, query_info)
-        self._assert_actual_results_contained_in_expected_results(actual_result, query_info, len(query_info.expected_result))
+        actual_result_set = []
+        if actual_result.result_set is not None:
+            actual_result_set = actual_result.result_set
+
+        # Assert number of results.
+        self.env.assertEqual(len(actual_result_set), len(query_info.expected_result))
+
+        # Assert actual values vs expected values.
+        for res in query_info.expected_result:
+            self.env.assertIn(res, actual_result_set)
+        
+        # Assert expected values vs actual values.
+        for res in actual_result_set:
+            self.env.assertIn(res, query_info.expected_result)
 
     def _assert_run_time(self, actual_result, query_info):
             if actual_result.run_time_ms > query_info.max_run_time_ms:

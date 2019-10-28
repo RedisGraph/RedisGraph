@@ -24,14 +24,8 @@ static bool _AllPathsCtx_LevelNotEmpty(const AllPathsCtx *ctx, uint level) {
 	return (level < array_len(ctx->levels) && Path_NodeCount(ctx->levels[level]) > 0);
 }
 
-AllPathsCtx *AllPathsCtx_New(Node *src, Graph *g, int *relationIDs, int relationCount,
+AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs, int relationCount,
 							 GRAPH_EDGE_DIR dir, unsigned int minLen, unsigned int maxLen) {
-	return AllPathsToDstCtx_New(src, NULL, g, relationIDs, relationCount, dir, minLen, maxLen);
-}
-
-AllPathsCtx *AllPathsToDstCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs,
-								  int relationCount,
-								  GRAPH_EDGE_DIR dir, unsigned int minLen, unsigned int maxLen) {
 	assert(src);
 
 	AllPathsCtx *ctx = rm_malloc(sizeof(AllPathsCtx));
@@ -51,7 +45,6 @@ AllPathsCtx *AllPathsToDstCtx_New(Node *src, Node *dst, Graph *g, int *relationI
 	__AllPathsCtx_AddConnectionToLevel(ctx, 0, src, NULL);
 	ctx->dst = dst;
 	return ctx;
-
 }
 
 Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {

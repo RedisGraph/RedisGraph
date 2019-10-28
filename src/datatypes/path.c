@@ -45,14 +45,11 @@ size_t Path_Len(const Path p) {
 	return Path_EdgeCount(p);
 }
 
-size_t Path_Size(Path p) {
-	return Path_NodeCount(p);
-}
-
 bool Path_ContainsNode(const Path p, Node *n) {
 	uint32_t pathDepth = Path_NodeCount(p);
+	EntityID nId = ENTITY_GET_ID(n);
 	for(int i = 0; i < pathDepth; i++) {
-		if(ENTITY_GET_ID(p.nodes + i) == ENTITY_GET_ID(n)) return true;
+		if(ENTITY_GET_ID(p.nodes + i) == nId) return true;
 	}
 	return false;
 }
@@ -63,6 +60,11 @@ Path Path_Clone(const Path p) {
 	array_clone(clone.edges, p.edges);
 
 	return clone;
+}
+
+void Path_Reverse(Path p) {
+	array_reverse(p.nodes);
+	array_reverse(p.edges);
 }
 
 void Path_Free(Path p) {

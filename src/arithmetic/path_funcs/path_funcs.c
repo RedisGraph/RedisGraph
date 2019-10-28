@@ -20,15 +20,6 @@
  */
 static void _PathBuilder_AppendNode(Path *path, Node *node) {
 	Path_AppendNode(path, *node);
-	uint edge_count = Path_EdgeCount(*path);
-	// If there are edges in the path, verify the node is referenced in the last edge.
-#ifndef NDEBUG
-	if(edge_count > 0) {
-		Edge *e = &path->edges[edge_count - 1];
-		EntityID nodeId = ENTITY_GET_ID(node);
-		assert(nodeId == e->srcNodeID || nodeId == e->destNodeID);
-	}
-#endif
 }
 
 /**
@@ -51,7 +42,7 @@ static Edge *_Edge_ReverseDirection(Edge *e) {
  *         Edges insertion is done by interliving nodes and edges.
  * @param  path: Path.
  * @param  e: Edge.
- * @param  RTLEdge: Indicates the if the edge is incoming (RTL in query) edge or not.
+ * @param  RTLEdge: Indicates the if the edge is incoming or outgoing edge (RTL in query).
  * @retval None
  */
 static void _PathBuilder_AppendEdge(Path *path, Edge *edge, bool RTLEdge) {
@@ -89,23 +80,16 @@ static void _PathBuilder_AppendPath(Path *path, Path *new_path, bool RTLEdge) {
 	// Validate current last LTR node is in either edges of the path.
 	assert(last_LTR_node_id == new_path_node_0_id || last_LTR_node_id == new_path_last_node_id);
 	int new_path_edge_count = Path_EdgeCount(*new_path);
+
 	// Check if path needs to be rverse inserated or not.
-	if(last_LTR_node_id == new_path_last_node_id) {
+	if(last_LTR_node_id == new_path_last_node_id) Path_Reverse(*new_path);
+
+	for(uint i = 0; i < new_path_edge_count - 1; i++) {
 		// Insert only nodes which are not the last and the first, since they will be added by append node specifically.
-		_PathBuilder_AppendEdge(path, &new_path->edges[new_path_edge_count - 1], RTLEdge);
-		for(int i = new_path_edge_count - 2; i >= 0; i++) {
-			_PathBuilder_AppendNode(path, &new_path->nodes[i + 1]);
-			_PathBuilder_AppendEdge(path, &new_path->edges[i], RTLEdge);
-		}
-	} else {
-		// Normal insertion.
-		for(uint i = 0; i < new_path_edge_count - 1; i++) {
-			// Insert only nodes which are not the last and the first, since they will be added by append node specifically.
-			_PathBuilder_AppendNode(path, &new_path->nodes[i + 1]);
-			_PathBuilder_AppendEdge(path, &new_path->edges[i], RTLEdge);
-		}
-		_PathBuilder_AppendEdge(path, &new_path->edges[new_path_edge_count - 1], RTLEdge);
+		_PathBuilder_AppendNode(path, &new_path->nodes[i + 1]);
+		_PathBuilder_AppendEdge(path, &new_path->edges[i], RTLEdge);
 	}
+	_PathBuilder_AppendEdge(path, &new_path->edges[new_path_edge_count - 1], RTLEdge);
 }
 
 /* Creates a path from a given sequence of graph entities.
@@ -114,27 +98,28 @@ static void _PathBuilder_AppendPath(Path *path, Path *new_path, bool RTLEdge) {
  * The sequence is always in odd length and defined as:
  * Odd indices members are always representing the value of a single node.
  * Even indices members are either representing the value of a single edge,
- * or an intermidate sipath, in case of variable length traversal. */
+ * or an sipath, in case of variable length traversal. */
 SIValue AR_TOPATH(SIValue *argv, int argc) {
 	const cypher_astnode_t *ast_path = argv[0].ptrval;
 	uint nelements = cypher_ast_pattern_path_nelements(ast_path);
 	assert(argc == (nelements + 1));
-	Path *path = rm_malloc(sizeof(Path));
-	*path = Path_New(nelements);
+	Path path = Path_New(nelements);
 	for(uint i = 0; i < nelements; i++) {
 		SIValue element = argv[i + 1];
 		if(i % 2 == 0) {
 			// Nodes are in even position.
-			_PathBuilder_AppendNode(path, element.ptrval);
+			_PathBuilder_AppendNode(&path, element.ptrval);
 		} else {
-			// Edges and intermidate paths are in odd positions.
+			// Edges and paths are in odd positions.
 			const cypher_astnode_t *ast_edge = cypher_ast_pattern_path_get_element(ast_path, i);
 			bool RTL_edge = cypher_ast_rel_pattern_get_direction(ast_edge) == CYPHER_REL_INBOUND;
-			if(element.type == T_EDGE) _PathBuilder_AppendEdge(path, element.ptrval, RTL_edge);
-			else _PathBuilder_AppendPath(path, element.ptrval, RTL_edge);
+			// Element type can be either edge, or path.
+			if(element.type == T_EDGE) _PathBuilder_AppendEdge(&path, element.ptrval, RTL_edge);
+			// If element is not an edge, it is a path.
+			else _PathBuilder_AppendPath(&path, element.ptrval, RTL_edge);
 		}
 	}
-	return SI_Path(path);
+	return SI_Path(&path);
 }
 
 SIValue AR_PATH_NODES(SIValue *argv, int argc) {

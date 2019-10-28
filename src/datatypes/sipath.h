@@ -11,25 +11,12 @@
 #include "../graph/entities/qg_edge.h"
 #include <stdlib.h>
 
-typedef struct {
-	Path path;          // Path struct.
-	bool intermidate;   // Indicates if path is intermidate path or not.
-	bool incomingEdge;  // Represents the traverse direction if path is intermidate.
-} SIPath;
-
 /**
  * @brief  Creates a new SIPath out of path struct.
  * @param  p: Path struct pointer.
  * @retval SIValue which represents the given struct.
  */
 SIValue SIPath_New(Path *p);
-
-/**
- * @brief  Creates a new SIPath which represents a part of a bigger path, or edge array.
- * @param  p: Path struct.
- * @retval SIValue which represents the given struct.
- */
-SIValue SIPath_NewIntermidate(Path p);
 
 /**
  * @brief  Clones a given SIPath.
@@ -86,12 +73,11 @@ SIValue SIPath_GetNode(SIValue p, size_t i);
 size_t SIPath_Length(SIValue p);
 
 /**
- * @brief  Returns the path size.
- * @note   The return value is the amount of nodes in the path.
+ * @brief  Returns the number or nodes in the path.
  * @param  p: SIPath
- * @retval Path size.
+ * @retval Number or nodes in the path..
  */
-size_t SIPath_Size(SIValue p);
+size_t SIPath_NodeCount(SIValue p);
 
 /**
  * @brief  Returns 64 bit hash code of the path.

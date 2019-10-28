@@ -250,6 +250,17 @@ static AST_Validation _ValidateMultiHopTraversal(rax *projections, const cypher_
 	const cypher_astnode_t *ast_identifier = cypher_ast_rel_pattern_get_identifier(edge);
 	if(!ast_identifier) return AST_VALID;
 
+	// Verify that the alias is not found in the RETURN clause.
+	const char *identifier = cypher_ast_identifier_get_name(ast_identifier);
+	if(_AliasIsReturned(projections, identifier)) {
+		asprintf(reason, "RedisGraph will no support the return of variable-length traversal edges '%s'. \
+        Instead, use a query in the style of: 'MATCH p = (a)-[%s*]->(b) RETURN relationships(p)'.",
+				 identifier, identifier);
+		return AST_INVALID;
+	}
+
+
+
 	return AST_VALID;
 }
 

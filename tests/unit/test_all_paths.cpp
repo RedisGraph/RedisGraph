@@ -69,6 +69,27 @@ class AllPathsTest : public ::testing::Test {
 		Graph_ConnectNodes(g, 3, 0, relation, &e);
 		return g;
 	}
+
+	// This function tests for membership of a path, inside an array of multiple paths.
+	bool pathArrayContainsPath(NodeID **array, int arrayLen, Path *path) {
+		for(int i = 0; i < arrayLen; i++) {
+			NodeID *expectedPath = array[i];
+			int expectedPathLen = expectedPath[0];
+			if(expectedPathLen != Path_NodeCount(*path)) {
+				continue;
+			}
+			bool arrayContainsPath = true;
+			for(int j = 1; j <= expectedPathLen; j++) {
+				Node n = path->nodes[j - 1];
+				if(ENTITY_GET_ID(&n) != expectedPath[j]) {
+					arrayContainsPath = false;
+					break;
+				}
+			}
+			if(arrayContainsPath) return true;
+		}
+		return false;
+	}
 };
 
 TEST_F(AllPathsTest, NoPaths) {
@@ -82,7 +103,7 @@ TEST_F(AllPathsTest, NoPaths) {
 	Graph_GetNode(g, srcNodeID, &src);
 
 	int relationships[] = {GRAPH_NO_RELATION};
-	AllPathsCtx *ctx = AllPathsCtx_New(&src, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen,
+	AllPathsCtx *ctx = AllPathsCtx_New(&src, NULL, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen,
 									   maxLen);
 	Path *p = AllPathsCtx_NextPath(ctx);
 
@@ -102,15 +123,14 @@ TEST_F(AllPathsTest, LongestPaths) {
 	unsigned int minLen = 0;
 	unsigned int maxLen = UINT_MAX - 2;
 	int relationships[] = {GRAPH_NO_RELATION};
-	AllPathsCtx *ctx = AllPathsCtx_New(&src, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen,
+	AllPathsCtx *ctx = AllPathsCtx_New(&src, NULL, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen,
 									   maxLen);
 	Path *path;
 
 	unsigned int longestPath = 0;
 	while((path = AllPathsCtx_NextPath(ctx))) {
 		size_t pathLen = Path_Len(*path);
-		if(longestPath < pathLen)
-			longestPath = pathLen;
+		if(longestPath < pathLen) longestPath = pathLen;
 	}
 
 	// 0,1,2,3,0
@@ -132,7 +152,7 @@ TEST_F(AllPathsTest, UpToThreeLegsPaths) {
 	unsigned int maxLen = 3;
 	uint pathsCount = 0;
 	int relationships[] = {GRAPH_NO_RELATION};
-	AllPathsCtx *ctx = AllPathsCtx_New(&src, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen,
+	AllPathsCtx *ctx = AllPathsCtx_New(&src, NULL, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen,
 									   maxLen);
 
 	/* Connections:
@@ -145,7 +165,7 @@ TEST_F(AllPathsTest, UpToThreeLegsPaths) {
 	 * 3 -> 0 */
 
 	// Zero leg paths.
-	NodeID p0[3] = {0, 0};
+	NodeID p0[2] = {0, 0};
 
 	// One leg paths.
 	NodeID p1[3] = {1, 0, 1};
@@ -176,14 +196,12 @@ TEST_F(AllPathsTest, UpToThreeLegsPaths) {
 			size_t expectedPathLen = expectedPath[0];
 			expectedPath++; // Skip path length.
 
-			if(Path_Len(*path) != expectedPathLen)
-				continue;
+			if(Path_Len(*path) != expectedPathLen) continue;
 
 			int j = 0;
 			for(; j < expectedPathLen; j++) {
 				Node n = path->nodes[j];
-				if(ENTITY_GET_ID(&n) != expectedPath[j])
-					break;
+				if(ENTITY_GET_ID(&n) != expectedPath[j]) break;
 			}
 			if(j == expectedPathLen) {
 				expectedPathFound = true;
@@ -210,7 +228,7 @@ TEST_F(AllPathsTest, TwoLegPaths) {
 	unsigned int maxLen = 2;
 	unsigned int pathsCount = 0;
 	int relationships[] = {GRAPH_NO_RELATION};
-	AllPathsCtx *ctx = AllPathsCtx_New(&src, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen,
+	AllPathsCtx *ctx = AllPathsCtx_New(&src, NULL, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING, minLen,
 									   maxLen);
 	/* Connections:
 	 * 0 -> 1
@@ -236,12 +254,10 @@ TEST_F(AllPathsTest, TwoLegPaths) {
 			int j;
 			for(j = 0; j < 3; j++) {
 				Node n = path->nodes[j];
-				if(ENTITY_GET_ID(&n) != expectedPath[j])
-					break;
+				if(ENTITY_GET_ID(&n) != expectedPath[j]) break;
 			}
 			expectedPathFound = (j == 3);
-			if(expectedPathFound)
-				break;
+			if(expectedPathFound) break;
 		}
 
 		ASSERT_TRUE(expectedPathFound);
@@ -254,28 +270,7 @@ TEST_F(AllPathsTest, TwoLegPaths) {
 	Graph_Free(g);
 }
 
-bool pathArrayContainsPath(NodeID **array, int arrayLen, Path *path) {
-	for(int i = 0; i < arrayLen; i++) {
-		NodeID *expectedPath = array[i];
-		int expectedPathLen = expectedPath[0];
-		if(expectedPathLen != Path_NodeCount(*path)) {
-			continue;
-		}
-		bool flag = true;
-		for(int j = 1; j <= expectedPathLen; j++) {
-			Node n = path->nodes[j - 1];
-			if(ENTITY_GET_ID(&n) != expectedPath[j]) {
-				flag = false;
-				break;
-			}
-		}
-		if(flag)
-			return true;
-	}
-
-	return false;
-}
-
+// Test all paths from source to a specific destination node.
 TEST_F(AllPathsTest, DestinationSpecificPaths) {
 	NodeID p00_0[2] = {1, 0};
 	NodeID p00_1[4] = {3, 0, 1, 0};
@@ -296,8 +291,8 @@ TEST_F(AllPathsTest, DestinationSpecificPaths) {
 	unsigned int maxLen = UINT_MAX - 2;
 	unsigned int pathsCount = 0;
 	int relationships[] = {GRAPH_NO_RELATION};
-	AllPathsCtx *ctx = AllPathsToDstCtx_New(&src, &src, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING,
-											minLen, maxLen);
+	AllPathsCtx *ctx = AllPathsCtx_New(&src, &src, g, relationships, 1, GRAPH_EDGE_DIR_OUTGOING,
+									   minLen, maxLen);
 
 	while((path = AllPathsCtx_NextPath(ctx))) {
 		ASSERT_LT(pathsCount, 5);
