@@ -574,7 +574,7 @@ static inline void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan
 	// As with paths in a MATCH query, build the appropriate traversal operations
 	// and append them to the set of ops.
 	AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(gc, clause, plan->query_graph);
-	OpBase *op = NewMergeOp(plan, stats, merge_ast_ctx.nodes_to_merge, merge_ast_ctx.edges_to_merge);
+	OpBase *op = NewMergeOp(plan, stats);
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 

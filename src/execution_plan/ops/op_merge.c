@@ -5,7 +5,6 @@
 */
 
 #include "op_merge.h"
-
 #include "../../query_ctx.h"
 #include "../../schema/schema.h"
 #include "../../arithmetic/arithmetic_expression.h"
@@ -25,126 +24,44 @@ static void _AddProperties(OpMerge *op, Record r, GraphEntity *ge, PropertyMap *
 	if(op->stats) op->stats->properties_set += props->property_count;
 }
 
-/* Saves every entity within the query graph into the actual graph.
- * update statistics regarding the number of entities create and properties set. */
-static void _CommitNodes(OpMerge *op, Record r) {
-	int labelID;
-	Graph *g = op->gc->g;
 
-	uint node_count = array_len(op->nodes_to_merge);
-
-	// Start by creating nodes.
-	Graph_AllocateNodes(g, node_count);
-
-	for(uint i = 0; i < node_count; i ++) {
-		NodeCreateCtx *node_ctx = &op->nodes_to_merge[i];
-		// Get blueprint of node to create
-		QGNode *node_blueprint = node_ctx->node;
-
-		// Newly created node will be placed within given record.
-		Node *created_node = Record_GetNode(r, node_ctx->node_idx);
-
-		Schema *schema = NULL;
-
-		// Set, create label.
-		if(node_blueprint->label == NULL) {
-			labelID = GRAPH_NO_LABEL;
-		} else {
-			schema = GraphContext_GetSchema(op->gc, node_blueprint->label, SCHEMA_NODE);
-			/* This is the first time we've encountered this label; create its schema */
-			if(schema == NULL) {
-				schema = GraphContext_AddSchema(op->gc, node_blueprint->label, SCHEMA_NODE);
-				op->stats->labels_added++;
-			}
-			labelID = schema->id;
-		}
-
-		Graph_CreateNode(g, labelID, created_node);
-
-		// Convert properties and add to newly-created node.
-		PropertyMap *map = node_ctx->properties;
-		if(map) _AddProperties(op, r, (GraphEntity *)created_node, map);
-
-		if(schema) Schema_AddNodeToIndices(schema, created_node, false);
-	}
-
-	op->stats->nodes_created += node_count;
+static inline Record _pullFromStream(OpBase *branch) {
+	return OpBase_Consume(branch);
 }
 
-static void _CommitEdges(OpMerge *op, Record r) {
-	// Create edges.
-
-	uint edge_count = array_len(op->edges_to_merge);
-	// TODO allocate? nodes get allocated here
-	for(uint i = 0; i < edge_count; i ++) {
-		EdgeCreateCtx *edge_ctx = &op->edges_to_merge[i];
-		// Get blueprint of edge to create
-		QGEdge *edge_blueprint = edge_ctx->edge;
-
-		// Newly created edge will be placed within given record.
-		Edge *created_edge = Record_GetEdge(r, edge_ctx->edge_idx);
-
-		// An edge must have exactly 1 relationship type.
-		Schema *schema = GraphContext_GetSchema(op->gc, edge_blueprint->reltypes[0], SCHEMA_EDGE);
-		if(!schema) schema = GraphContext_AddSchema(op->gc, edge_blueprint->reltypes[0], SCHEMA_EDGE);
-
-		// Node are already created, get them from record.
-		EntityID srcId = ENTITY_GET_ID(Record_GetNode(r, edge_ctx->src_idx));
-		EntityID destId = ENTITY_GET_ID(Record_GetNode(r, edge_ctx->dest_idx));
-
-		assert(Graph_ConnectNodes(op->gc->g, srcId, destId, schema->id, created_edge));
-
-		// Convert properties and add to newly-created node.
-		PropertyMap *map = edge_ctx->properties;
-		if(map) _AddProperties(op, r, (GraphEntity *)created_edge, map);
-	}
-
-	if(op->stats) op->stats->relationships_created += edge_count;
+static Record _pullFromRightStream(OpMerge *op, Record lhs_record) {
+	OpBase *rhs = op->op.children[1];
+	if(!rhs) return NULL;  // TODO tmp
+	OpBase_PropagateReset(rhs);
+	// Propegate record to the top of the right-hand side stream.
+	if(op->rhs_arg) ArgumentSetRecord(op->rhs_arg, Record_Clone(lhs_record));
+	return _pullFromStream(rhs);
 }
 
-static bool _CreateEntities(OpMerge *op, Record r) {
-	// Track the inherited Record and the newly-allocated Record so that they may be freed if execution fails.
-	OpBase_AddVolatileRecord((OpBase *)op, r);
-
-	// Lock everything.
-	if(!QueryCtx_LockForCommit()) return false;
-
-	// Commit query graph and set resultset statistics.
-	_CommitNodes(op, r);
-	_CommitEdges(op, r);
-
-	// Release lock.
-	QueryCtx_UnlockCommit();
-
-	OpBase_RemoveVolatileRecords((OpBase *)op); // No exceptions encountered, Records are not dangling.
-	return true;
-
+static Record _pullFromLeftStream(OpMerge *op) {
+	OpBase *left_handside = op->op.children[0];
+	return _pullFromStream(left_handside);
 }
 
-OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
-				   NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
+static Record _createPattern(OpMerge *op) {
+	return _pullFromStream(op->op.children[2]);
+}
+
+OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats) {
+	/* Merge is an Apply operator with three children, with the first potentially being NULL.
+	   They will be created outside of here, as with other Apply operators (see CartesianProduct
+	   and ValueHashJoin).
+
+	   I _think_ that unlike those, it must register as modifying all elements in its pattern.
+
+
+	   */
 	OpMerge *op = malloc(sizeof(OpMerge));
 	op->stats = stats;
-	op->gc = QueryCtx_GetGraphCtx();
-	op->matched = false;
-	op->created = false;
-	op->nodes_to_merge = nodes;
-	op->edges_to_merge = edges;
+	op->have_lhs_stream = false;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", NULL, MergeConsume, NULL, NULL, MergeFree, plan);
-
-	int node_count = array_len(nodes);
-	for(int i = 0; i < node_count; i++) {
-		op->nodes_to_merge[i].node_idx = OpBase_Modifies((OpBase *)op, nodes[i].node->alias);
-	}
-
-	int edge_count = array_len(edges);
-	for(int i = 0; i < edge_count; i++) {
-		op->edges_to_merge[i].edge_idx = OpBase_Modifies((OpBase *)op, edges[i].edge->alias);
-		op->edges_to_merge[i].src_idx = OpBase_Modifies((OpBase *)op, edges[i].edge->src->alias);
-		op->edges_to_merge[i].dest_idx = OpBase_Modifies((OpBase *)op, edges[i].edge->dest->alias);
-	}
 
 	return (OpBase *)op;
 }
@@ -152,57 +69,38 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
 static Record MergeConsume(OpBase *opBase) {
 	OpMerge *op = (OpMerge *)opBase;
 
-	/* Pattern was created in the previous call
-	 * Execution plan is already depleted. */
-	if(op->created) return NULL;
+	Record lhs_record = NULL;
+	Record rhs_record = NULL;
+	Record r = NULL;
+	while(true) {
+		// Try to get a record from left stream.
+		if(op->have_lhs_stream) {
+			lhs_record = _pullFromLeftStream(op);
+			if(lhs_record == NULL) return NULL; // Depleted.
+		}
 
-	OpBase *child = op->op.children[0];
-	Record r = OpBase_Consume(child);
-	if(r) {
-		/* If we're here that means pattern was matched!
-		* in that case there's no need to create any graph entity,
-		* we can simply return. */
-		op->matched = true;
-	} else {
-		/* In case there a previous match, execution plan
-		 * is simply depleted, no need to create the pattern. */
-		if(op->matched) return r;
+		// TODO remove RHS and Create returns; this operation should be eager and have both a consume and handoff context.
 
-		// No previous match, create MERGE pattern.
+		// Try to get a record from right stream.
+		rhs_record = _pullFromRightStream(op, lhs_record);
+		if(rhs_record) {
+			// Pattern was successfully matched.
+			return rhs_record;
+		}
 
-		/* TODO: once MATCH and MERGE will be mixed
-		 * we'll need to apply a similar strategy applied by op_create. */
-
-		/* Done reading, we're not going to call consume any longer
-		 * there might be operations e.g. index scan that need to free
-		 * index R/W lock, as such free all execution plan operation up the chain. */
-		OpBase_PropagateFree(child);
-
-		r = OpBase_CreateRecord((OpBase *)op);
-		if(!_CreateEntities(op, r)) return NULL;
-		op->created = true;
+		if(!op->have_lhs_stream) {
+			// Only create pattern if we have no LHS stream (and thus no bound variables)
+			// or an LHS stream and no RHS stream (bound variables and the pattern did not match).
+			r = _createPattern(op);
+			return r;
+		}
 	}
 
+	/* Out of "infinity" loop either both left and right streams managed to produce data
+	 * or we're depleted. */
 	return r;
 }
 
 static void MergeFree(OpBase *ctx) {
-	OpMerge *op = (OpMerge *)ctx;
-
-	if(op->nodes_to_merge) {
-		uint node_count = array_len(op->nodes_to_merge);
-		for(uint i = 0; i < node_count; i ++) {
-			PropertyMap_Free(op->nodes_to_merge[i].properties);
-		}
-		op->nodes_to_merge = NULL;
-	}
-
-	if(op->edges_to_merge) {
-		uint edge_count = array_len(op->edges_to_merge);
-		for(uint i = 0; i < edge_count; i ++) {
-			PropertyMap_Free(op->edges_to_merge[i].properties);
-		}
-		op->edges_to_merge = NULL;
-	}
 }
 

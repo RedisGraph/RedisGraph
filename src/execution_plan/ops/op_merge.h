@@ -7,10 +7,8 @@
 #pragma once
 
 #include "op.h"
+#include "op_argument.h"
 #include "../execution_plan.h"
-#include "../../graph/entities/node.h"
-#include "../../graph/entities/edge.h"
-#include "../../ast/ast_shared.h"
 #include "../../resultset/resultset_statistics.h"
 
 /* Merge execution plan operation,
@@ -21,13 +19,11 @@
 
 typedef struct {
 	OpBase op;                        // Base op.
-	GraphContext *gc;                 // Graph data.
-	bool matched;                     // Has the entire pattern been matched?
-	bool created;                     // Has the entire pattern been created?
-	ResultSetStatistics *stats;       // Required for statistics updates.
-	NodeCreateCtx *nodes_to_merge;
-	EdgeCreateCtx *edges_to_merge;
+	bool have_lhs_stream;             // Merge operation relies on resolving bound variables.
+	Argument *rhs_arg;
+	Argument *create_arg;
+	ResultSetStatistics *stats;       // Required for statistics updates. (might want for ON MATCH SET)
 } OpMerge;
 
-OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
-				   NodeCreateCtx *nodes_to_merge, EdgeCreateCtx *edges_to_merge);
+OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats);
+
