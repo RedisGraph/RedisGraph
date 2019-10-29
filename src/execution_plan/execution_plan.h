@@ -76,11 +76,7 @@ void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers);
 /* execution_plan.c */
 
 /* Creates a new execution plan from AST */
-ExecutionPlan *NewExecutionPlan(
-	RedisModuleCtx *ctx,    // Module-level context
-	GraphContext *gc,       // Graph access and schemas
-	ResultSet *result_set
-);
+ExecutionPlan *NewExecutionPlan(ResultSet *result_set);
 
 /* Retrieve the map of aliases to Record offsets in this ExecutionPlan segment. */
 rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan);

@@ -525,7 +525,8 @@ cleanup:
 	}
 }
 
-void utilizeIndices(GraphContext *gc, ExecutionPlan *plan) {
+void utilizeIndices(ExecutionPlan *plan) {
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	// Return immediately if the graph has no indices
 	if(!GraphContext_HasIndices(gc)) return;
 

@@ -633,23 +633,17 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 	}
 }
 
-static ExecutionPlan *_NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_set) {
+static void _NewExecutionPlan(ExecutionPlan *plan, ResultSet *result_set) {
 	AST *ast = QueryCtx_GetAST();
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-
-	// Allocate a new segment
-	ExecutionPlan *plan = rm_calloc(1, sizeof(ExecutionPlan));
-	plan->record_map = raxNew();
 	plan->result_set = result_set;
 	plan->connected_components = NULL;
 
 	// Build query graph
-	QueryGraph *qg = BuildQueryGraph(gc, ast);
-	plan->query_graph = qg;
+	plan->query_graph = BuildQueryGraph(gc, ast);
 
 	// Build filter tree
-	FT_FilterNode *filter_tree = AST_BuildFilterTree(ast);
-	plan->filter_tree = filter_tree;
+	plan->filter_tree = AST_BuildFilterTree(ast);
 
 	// If we are in a querying context, retrieve a pointer to the statistics for operations
 	// like DELETE that only produce metadata.
@@ -663,12 +657,16 @@ static ExecutionPlan *_NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_s
 	}
 
 	if(plan->filter_tree) _ExecutionPlan_PlaceFilterOps(plan);
+}
 
+ExecutionPlan *_NewEmptyExecutionPlan(void) {
+	// Allocate a new ExecutionPlan segment
+	ExecutionPlan *plan = rm_calloc(1, sizeof(ExecutionPlan));
+	plan->record_map = raxNew(); // Initialize the plan's record mapping.
 	return plan;
 }
 
-ExecutionPlan *ExecutionPlan_UnionPlans(RedisModuleCtx *ctx, GraphContext *gc,
-										ResultSet *result_set, AST *ast) {
+ExecutionPlan *ExecutionPlan_UnionPlans(ResultSet *result_set, AST *ast) {
 	uint end_offset = 0;
 	uint start_offset = 0;
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
@@ -685,7 +683,7 @@ ExecutionPlan *ExecutionPlan_UnionPlans(RedisModuleCtx *ctx, GraphContext *gc,
 		// Create an AST segment from which we will build an execution plan.
 		end_offset = union_indices[i];
 		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
-		plans[i] = NewExecutionPlan(ctx, gc, result_set);
+		plans[i] = NewExecutionPlan(result_set);
 
 		// Next segment starts where this one ends.
 		start_offset = union_indices[i] + 1;
@@ -746,13 +744,13 @@ ExecutionPlan *ExecutionPlan_UnionPlans(RedisModuleCtx *ctx, GraphContext *gc,
 	return plan;
 }
 
-ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet *result_set) {
+ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 	AST *ast = QueryCtx_GetAST();
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 
 	/* Handel UNION if there are any. */
 	if(AST_ContainsClause(ast, CYPHER_AST_UNION)) {
-		return ExecutionPlan_UnionPlans(ctx, gc, result_set, ast);
+		return ExecutionPlan_UnionPlans(result_set, ast);
 	}
 
 	uint start_offset = 0;
@@ -791,8 +789,8 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
 
 		// Construct a new ExecutionPlanSegment.
-		ExecutionPlan *segment = _NewExecutionPlan(ctx, result_set);
-
+		ExecutionPlan *segment = _NewEmptyExecutionPlan();
+		_NewExecutionPlan(segment, result_set);
 		AST_Free(ast_segment); // Free the AST segment.
 
 		segments[i] = segment;
@@ -851,7 +849,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 
 
 	// Optimize the operations in the ExecutionPlan.
-	optimizePlan(gc, plan);
+	optimizePlan(plan);
 
 	// Disregard self.
 	plan->segment_count = segment_count - 1;
@@ -1019,3 +1017,4 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 	raxFree(plan->record_map);
 	rm_free(plan);
 }
+

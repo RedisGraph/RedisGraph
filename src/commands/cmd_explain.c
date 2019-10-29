@@ -49,7 +49,7 @@ void Graph_Explain(void *args) {
 	Graph_AcquireReadLock(gc->g);
 	lock_acquired = true;
 
-	plan = NewExecutionPlan(ctx, gc, NULL);
+	plan = NewExecutionPlan(NULL);
 	if(plan) ExecutionPlan_Print(plan, ctx);
 
 cleanup:
