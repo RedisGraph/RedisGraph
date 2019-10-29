@@ -94,10 +94,6 @@ static void _extract_params(const cypher_astnode_t *statement) {
 }
 
 bool AST_ReadOnly(const cypher_parse_result_t *result) {
-	// A lot of these steps will be unnecessary once we move
-	// parsing into the subthread (and can thus perform this check
-	// after validations).
-
 	// Check for failures in libcypher-parser
 	if(AST_ContainsErrors(result)) return true;
 
