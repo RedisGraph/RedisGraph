@@ -569,6 +569,8 @@ XXH64_hash_t SIValue_HashCode(SIValue v) {
 		return SINode_HashCode(v);
 	case T_ARRAY:
 		return SIArray_HashCode(v);
+	case T_PATH:
+		return SIPath_HashCode(v);
 	// TODO: Implement for Map and temporal types once we support them.
 	default:
 		assert(false);

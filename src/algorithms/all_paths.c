@@ -10,8 +10,8 @@
 
 // Make sure context levels array have atleast 'level' entries,
 // Append given 'node' to given 'level' array.
-static void __AllPathsCtx_AddConnectionToLevel(AllPathsCtx *ctx, uint level, Node *node,
-											   Edge *edge) {
+static void _AllPathsCtx_AddConnectionToLevel(AllPathsCtx *ctx, uint level, Node *node,
+											  Edge *edge) {
 	while(array_len(ctx->levels) <= level) {
 		ctx->levels = array_append(ctx->levels, Path_New(1));
 	}
@@ -42,7 +42,7 @@ AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs, i
 	ctx->levels = array_new(Path, 1);
 	ctx->path = Path_New(1);
 	ctx->neighbors = array_new(Edge, 32);
-	__AllPathsCtx_AddConnectionToLevel(ctx, 0, src, NULL);
+	_AllPathsCtx_AddConnectionToLevel(ctx, 0, src, NULL);
 	ctx->dst = dst;
 	return ctx;
 }
@@ -94,7 +94,7 @@ Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 					} else {
 						Graph_GetNode(ctx->g, Edge_GetSrcNodeID(ctx->neighbors + i), &neighbor);
 					}
-					__AllPathsCtx_AddConnectionToLevel(ctx, depth, &neighbor, (ctx->neighbors + i));
+					_AllPathsCtx_AddConnectionToLevel(ctx, depth, &neighbor, (ctx->neighbors + i));
 				}
 				array_clear(ctx->neighbors);
 			}

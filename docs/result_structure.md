@@ -76,6 +76,15 @@ The relation representation contains 5 top-level elements:
 ]
 ```
 
+### Collections
+
+#### Arrays
+When array values are specified in a RETURN clause, the representation in the response is the array string representation. This is done solely for better readability of the response.
+The string representation of an array which contains graph entities, will print only their id. A node string representation is round braces around its id, and edge string representation is brackets around the edge is.
+
+#### Paths
+Returned path value is the string representation of an array with the path's nodes and edges, interleaved.
+
 ## Example
 
 Given the graph created by the command:

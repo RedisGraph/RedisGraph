@@ -265,37 +265,9 @@ void AST_AttachName(AST *ast, const cypher_astnode_t *node, const char *name) {
 //  Annotation context - Attach named path projection identifiers their respective ast structure
 //------------------------------------------------------------------------------
 
-static void _FreeProjectNamedPathAnnotationCallback(void *unused, const cypher_astnode_t *node,
-													void *annotation) {
-	// Do nothing, annotation is a pointer to another part of the ast.
-}
-
 static AnnotationCtx *_AST_NewProjectNamedPathContext(void) {
 	AnnotationCtx *project_all_ctx = cypher_ast_annotation_context();
-	cypher_ast_annotation_context_release_handler_t handler = &_FreeProjectNamedPathAnnotationCallback;
-	cypher_ast_annotation_context_set_release_handler(project_all_ctx, handler, NULL);
 	return project_all_ctx;
-}
-
-static void _AST_AttachAstNodeInfo(AST *ast, const cypher_astnode_t *node,
-								   const cypher_astnode_t *info) {
-	// Annotate AST node with ast information.
-	cypher_astnode_attach_annotation(ast->named_paths_ctx, node, (void *)info, NULL);
-}
-
-static const char *_extract_expression_projection_name(const cypher_astnode_t *projection,
-													   const cypher_astnode_t *ast_exp) {
-	const char *identifier = NULL;
-	const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(projection);
-	if(alias_node) {
-		// The projection either has an alias (AS), is a function call, or is a property specification (e.name).
-		identifier = cypher_ast_identifier_get_name(alias_node);
-	} else {
-		// This expression did not have an alias, so it must be an identifier
-		// Retrieve "a" from "RETURN a" or "RETURN a AS e" (theoretically; the latter case is already handled)
-		identifier = cypher_ast_identifier_get_name(ast_exp);
-	}
-	return identifier;
 }
 
 static void _annotate_relevant_projected_named_path_identifier(AST *ast,
@@ -371,6 +343,7 @@ static void _annotate_with_clause_projected_named_path(AST *ast,
 		_collect_projected_identifier(projection, identifier_map);
 	}
 	_annotate_relevant_projected_named_path_identifier(ast, identifier_map, scope_start, scope_end);
+	raxFree(identifier_map);
 }
 
 static void _annotate_return_clause_projected_named_path(AST *ast,
@@ -383,6 +356,7 @@ static void _annotate_return_clause_projected_named_path(AST *ast,
 		_collect_projected_identifier(projection, identifier_map);
 	}
 	_annotate_relevant_projected_named_path_identifier(ast, identifier_map, scope_start, scope_end);
+	raxFree(identifier_map);
 }
 
 static void _annotate_projected_named_path(AST *ast) {

@@ -1,7 +1,6 @@
 import os
 import sys
 from redisgraph import Graph, Node, Edge, Path
-from demo import QueryInfo
 from collections import Counter
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
