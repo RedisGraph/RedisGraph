@@ -139,3 +139,23 @@ class testPath(FlowTestsBase):
         query_info = QueryInfo(query = query, description="Tests path functions over bi directional variable length paths", \
                                         expected_result = expected_results)
         self._assert_resultset_equals_expected(redis_graph.query(query), query_info)
+
+    def test_zero_length_path(self):
+        node0 = Node(node_id=0, label="L1")
+        node1 = Node(node_id=1, label="L2")
+        edge01 = Edge(node0, "R1", node1, edge_id=0, properties={'value': 1})
+
+        redis_graph.add_node(node0)
+        redis_graph.add_node(node1)
+        redis_graph.add_edge(edge01)
+
+        redis_graph.flush()
+
+        path01 = Path.new_empty_path().add_node(node0).add_edge(edge01).add_node(node1)
+        expected_results=[[path01]]
+
+        query = "MATCH p=(:L1)-[*0..]->()-[]->(:L2) RETURN p"
+
+        query_info = QueryInfo(query = query, description="Tests path with zero length variable length paths", \
+                                        expected_result = expected_results)
+        self._assert_resultset_equals_expected(redis_graph.query(query), query_info)

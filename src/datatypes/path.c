@@ -22,6 +22,16 @@ void Path_AppendEdge(Path *p, Edge e) {
 	p->edges = array_append(p->edges, e);
 }
 
+Node *Path_GetNode(Path p, int index) {
+	assert(index >= 0 && index < Path_NodeCount(p));
+	return &p.nodes[index];
+}
+
+Edge *Path_GetEdge(Path p, int index) {
+	assert(index >= 0 && index < Path_EdgeCount(p));
+	return &p.edges[index];
+}
+
 Node Path_PopNode(Path p) {
 	return array_pop(p.nodes);
 }

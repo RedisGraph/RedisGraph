@@ -208,10 +208,7 @@ static AST_Validation _ValidateReferredFunctions(rax *referred_functions, char *
 }
 
 static inline bool _AliasIsReturned(rax *projections, const char *identifier) {
-	if(raxFind(projections, (unsigned char *)identifier, strlen(identifier)) != raxNotFound) {
-		return true;
-	}
-	return false;
+	return raxFind(projections, (unsigned char *)identifier, strlen(identifier)) != raxNotFound;
 }
 
 // If we have a multi-hop traversal (fixed or variable length), we cannot currently return that entity.
@@ -253,7 +250,7 @@ static AST_Validation _ValidateMultiHopTraversal(rax *projections, const cypher_
 	// Verify that the alias is not found in the RETURN clause.
 	const char *identifier = cypher_ast_identifier_get_name(ast_identifier);
 	if(_AliasIsReturned(projections, identifier)) {
-		asprintf(reason, "RedisGraph will no support the return of variable-length traversal edges '%s'. \
+		asprintf(reason, "RedisGraph does not support the return of variable-length traversal edges '%s'. \
         Instead, use a query in the style of: 'MATCH p = (a)-[%s*]->(b) RETURN relationships(p)'.",
 				 identifier, identifier);
 		return AST_INVALID;

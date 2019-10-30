@@ -297,7 +297,7 @@ static void array_free(array_t arr) {
 #define array_reverse(arr)                      \
     ({                                          \
         uint arrayLen = array_len(arr);         \
-        for(uint i =0; i < arrayLen/2; i++) {    \
+        for(uint i = 0; i < arrayLen/2; i++) {    \
             __typeof__(*arr) tmp = arr[i];      \
             uint j = arrayLen -1 -i;            \
             arr[i] = arr[j];                    \

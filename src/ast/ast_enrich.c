@@ -343,7 +343,7 @@ static void _annotate_with_clause_projected_named_path(AST *ast,
 		_collect_projected_identifier(projection, identifier_map);
 	}
 	_annotate_relevant_projected_named_path_identifier(ast, identifier_map, scope_start, scope_end);
-	raxFree(identifier_map);
+	raxFreeWithCallback(identifier_map, array_free);
 }
 
 static void _annotate_return_clause_projected_named_path(AST *ast,
@@ -356,7 +356,7 @@ static void _annotate_return_clause_projected_named_path(AST *ast,
 		_collect_projected_identifier(projection, identifier_map);
 	}
 	_annotate_relevant_projected_named_path_identifier(ast, identifier_map, scope_start, scope_end);
-	raxFree(identifier_map);
+	raxFreeWithCallback(identifier_map, array_free);
 }
 
 static void _annotate_projected_named_path(AST *ast) {

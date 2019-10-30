@@ -61,6 +61,13 @@ class FlowTestsBase(object):
         for res in actual_result_set:
             self.env.assertIn(res, query_info.expected_result)
 
+    def _assert_resultset_equals_expected_orderd(self, actual_result, query_info):
+        actual_result_set = []
+        if actual_result.result_set is not None:
+            actual_result_set = actual_result.result_set
+        
+        self.env.assertEqual(actual_result_set, query_info.expected_result)
+
     def _assert_run_time(self, actual_result, query_info):
             if actual_result.run_time_ms > query_info.max_run_time_ms:
                 warnings.warn('Maximum runtime for query \"%s\" was: %s, but should be %s' %

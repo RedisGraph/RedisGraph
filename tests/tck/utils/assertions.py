@@ -78,7 +78,7 @@ def pathToString(pathToConvert):
         node_str = nodeToString(node)
         edge = pathToConvert.get_edge(i)
         edge_str = edgeToString(edge)
-        strValue += node_str + "-"+edge_str +"->" if edge.src_node == node.id else node_str + "<-"+edge_str +"-"
+        strValue += node_str + "-" + edge_str + "->" if edge.src_node == node.id else node_str + "<-" + edge_str + "-"
 
     strValue += nodeToString(pathToConvert.get_node(nodes_count - 1)) if nodes_count > 0 else ""
     strValue +=">"

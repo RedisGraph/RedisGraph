@@ -37,6 +37,26 @@ void Path_AppendNode(Path *p, Node n);
 void Path_AppendEdge(Path *p, Edge e);
 
 /**
+ * @brief  Returns a refernce to a node in the specific index.
+ * @note   Index refers to the node's position in the path, regarding the nodes order left-to-right.
+ *         Assertion error will be thrown if index is out of bounds.
+ * @param  p: Path.
+ * @param  index: Node position.
+ * @retval Node refernce.
+ */
+Node *Path_GetNode(Path p, int index);
+
+/**
+ * @brief  Returns a refernce to an edge in the specific index.
+ * @note   Index refers to the edge's position in the path, regarding the edges order left-to-right.
+ *         Assertion error will be thrown if index is out of bounds.
+ * @param  p: Path.
+ * @param  index: Edge position.
+ * @retval Edge reference.
+ */
+Edge *Path_GetEdge(Path p, int index);
+
+/**
  * @brief  Removes the last node from the path.
  * @note   This action cause an inconsistency between the last edge and the new last node.
  *         Those actions should execute consecutively.
