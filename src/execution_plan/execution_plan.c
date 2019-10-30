@@ -243,20 +243,17 @@ static const char **_BuildCallArguments(const cypher_astnode_t *call_clause) {
 	return arguments;
 }
 
-// Returns true if the 'to_find' rax map is a subset of the 'variables' map.
-static bool _AllVariablesResolved(rax *variables, rax *to_find) {
-	raxIterator it;
-	raxStart(&it, to_find);
-	raxSeek(&it, "^", NULL, 0);
-
-	while(raxNext(&it)) { // For each key in to_find
-		// Break if key is not present in variables
-		if(raxFind(variables, it.key, it.key_len) == raxNotFound) break;
+static rax *_ArgumentBoundVariables(ExecutionPlan *plan) {
+	if(!(plan->root && plan->root->type == OPType_ARGUMENT)) return NULL;
+	/* The root op of this plan is an OpArgument only if we're building traversal ops
+	 * to populate a stream. In this case, collect the bound variables into a rax. */
+	rax *bound_vars = raxNew();
+	uint count = array_len(plan->root->modifies);
+	for(uint i = 0; i < count; i ++) {
+		const char *var = plan->root->modifies[i];
+		raxInsert(bound_vars, (unsigned char *)var, strlen(var), NULL, NULL);
 	}
-	bool all_variables_resolved = raxEOF(&it); // True if iterator was depleted.
-
-	raxStop(&it);
-	return all_variables_resolved;
+	return bound_vars;
 }
 
 static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg,
@@ -292,6 +289,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			uint expCount = 0;
 			AlgebraicExpression **exps = AlgebraicExpression_FromQueryGraph(cc, &expCount);
 
+			rax *bound_vars = _ArgumentBoundVariables(plan);
 			// Reorder exps, to the most performant arrangement of evaluation.
 			orderExpressions(exps, expCount, ft, bound_vars);
 
@@ -299,7 +297,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 
 			OpBase *tail = NULL;
 			/* Create the SCAN operation that will be the tail of the traversal chain. */
-			if(exp->src_node->label) {
+			if(exp->src_node->label) { // && not bound, possibly?
 				/* Resolve source node by performing label scan,
 				 * in which case if the first algebraic expression operand
 				 * is a label matrix (diagonal) remove it, otherwise
@@ -612,8 +610,9 @@ static void _buildMergeRightHandStreams(AST *ast, ExecutionPlan *plan,
 		for(uint i = 0; i < variable_count; i++) {
 			if(raxFind(bound_variables, (unsigned char *)variables[i], strlen(variables[i])) == raxNotFound) {
 				// Variable not found, delete from array
-				variables = array_del_fast(variables, i);
+				variables = array_del(variables, i);
 				variable_count--;
+				i--; // Deleted the current variable, repeat check at this position.
 			}
 		}
 
