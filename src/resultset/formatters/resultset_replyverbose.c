@@ -6,7 +6,7 @@
 
 #include "resultset_formatters.h"
 #include "../../util/arr.h"
-#include "../../datatypes/sipath.h"
+#include "../../datatypes/path/sipath.h"
 
 // Forward declarations.
 static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n);

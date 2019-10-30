@@ -75,7 +75,7 @@ class AllPathsTest : public ::testing::Test {
 		for(int i = 0; i < arrayLen; i++) {
 			NodeID *expectedPath = array[i];
 			int expectedPathLen = expectedPath[0];
-			if(expectedPathLen != Path_NodeCount(*path)) {
+			if(expectedPathLen != Path_NodeCount(path)) {
 				continue;
 			}
 			bool arrayContainsPath = true;
@@ -129,7 +129,7 @@ TEST_F(AllPathsTest, LongestPaths) {
 
 	unsigned int longestPath = 0;
 	while((path = AllPathsCtx_NextPath(ctx))) {
-		size_t pathLen = Path_Len(*path);
+		size_t pathLen = Path_Len(path);
 		if(longestPath < pathLen) longestPath = pathLen;
 	}
 
@@ -196,7 +196,7 @@ TEST_F(AllPathsTest, UpToThreeLegsPaths) {
 			size_t expectedPathLen = expectedPath[0];
 			expectedPath++; // Skip path length.
 
-			if(Path_Len(*path) != expectedPathLen) continue;
+			if(Path_Len(path) != expectedPathLen) continue;
 
 			int j = 0;
 			for(; j < expectedPathLen; j++) {
@@ -246,7 +246,7 @@ TEST_F(AllPathsTest, TwoLegPaths) {
 
 	while((path = AllPathsCtx_NextPath(ctx))) {
 		ASSERT_LT(pathsCount, 4);
-		ASSERT_EQ(Path_Len(*path), 2);
+		ASSERT_EQ(Path_Len(path), 2);
 		bool expectedPathFound = false;
 
 		for(int i = 0; i < 4; i++) {

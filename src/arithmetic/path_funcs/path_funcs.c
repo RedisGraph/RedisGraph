@@ -6,7 +6,7 @@
 
 #include "path_funcs.h"
 #include "../func_desc.h"
-#include "../../datatypes/sipath_builder.h"
+#include "../../datatypes/path/sipath_builder.h"
 #include "../../ast/ast.h"
 #include "../../util/rmalloc.h"
 #include "../../util/arr.h"

@@ -62,16 +62,13 @@ static void _AST_MapReferencedNode(AST *ast, const cypher_astnode_t *node, bool 
 	const cypher_astnode_t *properties = cypher_ast_node_pattern_get_properties(node);
 	// A node with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
-	if(properties) {
+	if(properties || force_mapping) {
 		const char *alias = AST_GetEntityName(ast, node);
 		_AST_UpdateRefMap(ast, alias);
 
 		// Map any references within the properties map, such as 'b' in:
 		// ({val: ID(b)})
-		_AST_MapExpression(ast, properties);
-	} else if(force_mapping) {
-		const char *alias = AST_GetEntityName(ast, node);
-		_AST_UpdateRefMap(ast, alias);
+		if(properties) _AST_MapExpression(ast, properties);
 	}
 }
 
@@ -81,16 +78,13 @@ static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge, bool 
 	const cypher_astnode_t *properties = cypher_ast_rel_pattern_get_properties(edge);
 	// An edge with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
-	if(properties) {
+	if(properties || force_mapping) {
 		const char *alias = AST_GetEntityName(ast, edge);
 		_AST_UpdateRefMap(ast, alias);
 
 		// Map any references within the properties map, such as 'b' in:
 		// ({val: ID(b)})
-		_AST_MapExpression(ast, properties);
-	} else if(force_mapping) {
-		const char *alias = AST_GetEntityName(ast, edge);
-		_AST_UpdateRefMap(ast, alias);
+		if(properties) _AST_MapExpression(ast, properties);
 	}
 }
 

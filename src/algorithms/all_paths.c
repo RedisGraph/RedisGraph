@@ -15,8 +15,8 @@ static void _AllPathsCtx_AddConnectionToLevel(AllPathsCtx *ctx, uint level, Node
 	while(array_len(ctx->levels) <= level) {
 		ctx->levels = array_append(ctx->levels, Path_New(1));
 	}
-	Path_AppendNode(&ctx->levels[level], *node);
-	if(edge != NULL) Path_AppendEdge(&ctx->levels[level], *edge);
+	Path_AppendNode(ctx->levels[level], *node);
+	if(edge != NULL) Path_AppendEdge(ctx->levels[level], *edge);
 }
 
 // Check to see if context levels array has entries at position 'level'.
@@ -39,7 +39,7 @@ AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs, i
 	ctx->maxLen = maxLen + 1;
 	ctx->relationIDs = relationIDs;
 	ctx->relationCount = relationCount;
-	ctx->levels = array_new(Path, 1);
+	ctx->levels = array_new(Path *, 1);
 	ctx->path = Path_New(1);
 	ctx->neighbors = array_new(Edge, 32);
 	_AllPathsCtx_AddConnectionToLevel(ctx, 0, src, NULL);
@@ -66,10 +66,10 @@ Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 			bool frontierAlreadyOnPath = Path_ContainsNode(ctx->path, &frontierNode);
 
 			// Add frontier to path.
-			Path_AppendNode(&ctx->path, frontierNode);
+			Path_AppendNode(ctx->path, frontierNode);
 			if(Path_EdgeCount(ctx->levels[depth]) > 0) {
 				Edge frontierEdge = Path_PopEdge(ctx->levels[depth]);
-				Path_AppendEdge(&ctx->path, frontierEdge);
+				Path_AppendEdge(ctx->path, frontierEdge);
 			}
 
 			// Update path depth.
@@ -110,7 +110,7 @@ Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 					Node dst = Path_Head(ctx->path);
 					if(ENTITY_GET_ID(ctx->dst) != ENTITY_GET_ID(&dst)) continue;
 				}
-				return &ctx->path;
+				return ctx->path;
 			}
 		} else {
 			// No way to advance, backtrack.

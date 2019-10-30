@@ -5,14 +5,13 @@
 */
 
 #include "sipath.h"
-#include "../util/rmalloc.h"
-#include "../util/arr.h"
-#include "array.h"
+#include "../../util/rmalloc.h"
+#include "../../util/arr.h"
+#include "../array.h"
 
 SIValue SIPath_New(Path *p) {
 	SIValue path;
-	path.ptrval = rm_malloc(sizeof(Path));
-	*((Path *)path.ptrval) = Path_Clone(*p);
+	path.ptrval = Path_Clone(p);
 	path.type = T_PATH;
 	path.allocation = M_SELF;
 	return path;
@@ -40,7 +39,7 @@ SIValue SIPath_ToList(SIValue p) {
 }
 
 SIValue SIPath_Relationships(SIValue p) {
-	Path path = *((Path *) p.ptrval);
+	Path *path = (Path *) p.ptrval;
 	uint edgeCount = Path_EdgeCount(path);
 	SIValue array = SIArray_New(edgeCount);
 	for(uint i = 0; i < edgeCount; i++) {
@@ -51,12 +50,12 @@ SIValue SIPath_Relationships(SIValue p) {
 
 SIValue SIPath_GetRelationship(SIValue p, size_t i) {
 	assert(i < SIPath_Length(p) && i >= 0);
-	Path path = *((Path *) p.ptrval);
+	Path *path = (Path *) p.ptrval;
 	return SI_Edge(Path_GetEdge(path, i));
 }
 
 SIValue SIPath_Nodes(SIValue p) {
-	Path path = *((Path *) p.ptrval);
+	Path *path = (Path *) p.ptrval;
 	uint nodeCount = Path_NodeCount(path);
 	SIValue array = SIArray_New(nodeCount);
 	for(uint i = 0; i < nodeCount; i++) {
@@ -67,22 +66,22 @@ SIValue SIPath_Nodes(SIValue p) {
 
 SIValue SIPath_GetNode(SIValue p, size_t i) {
 	assert(i < SIPath_NodeCount(p) && i >= 0);
-	Path path = *((Path *) p.ptrval);
+	Path *path = (Path *) p.ptrval;
 	return SI_Node(Path_GetNode(path, i));
 }
 
 size_t SIPath_Length(SIValue p) {
-	Path path = *((Path *) p.ptrval);
+	Path *path = (Path *) p.ptrval;
 	return Path_Len(path);
 }
 
 size_t SIPath_NodeCount(SIValue p) {
-	Path path = *((Path *) p.ptrval);
+	Path *path = (Path *) p.ptrval;
 	return Path_NodeCount(path);
 }
 
 size_t SIPath_EdgeCount(SIValue p) {
-	Path path = *((Path *) p.ptrval);
+	Path *path = (Path *) p.ptrval;
 	return Path_EdgeCount(path);
 }
 
@@ -166,8 +165,7 @@ int SIPath_Compare(SIValue p1, SIValue p2) {
 
 void SIPath_Free(SIValue p) {
 	if(p.allocation == M_SELF) {
-		Path path = *((Path *) p.ptrval);
+		Path *path = (Path *) p.ptrval;
 		Path_Free(path);
-		rm_free(p.ptrval);
 	}
 }

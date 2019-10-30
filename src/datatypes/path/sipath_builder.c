@@ -5,7 +5,7 @@
 */
 
 #include "sipath_builder.h"
-#include "../util/rmalloc.h"
+#include "../../util/rmalloc.h"
 #include "assert.h"
 
 /**
@@ -22,18 +22,17 @@ static Edge *_Edge_ReverseDirection(Edge *e) {
 	return clone;
 }
 
+static void _SIPath_Reverse(SIValue p) {
+	Path *path = (Path *) p.ptrval;
+	Path_Reverse(path);
+}
+
 SIValue SIPathBuilder_New(uint entity_count) {
 	SIValue path;
-	path.ptrval = rm_malloc(sizeof(Path));
-	*((Path *)path.ptrval) = Path_New(entity_count / 2);
+	path.ptrval = Path_New(entity_count / 2);
 	path.type = T_PATH;
 	path.allocation = M_SELF;
 	return path;
-}
-
-void SIPath_Reverse(SIValue p) {
-	Path *path = (Path *) p.ptrval;
-	Path_Reverse(*path);
 }
 
 void SIPathBuilder_AppendNode(SIValue p, SIValue n) {
@@ -45,10 +44,10 @@ void SIPathBuilder_AppendNode(SIValue p, SIValue n) {
 void SIPathBuilder_AppendEdge(SIValue p, SIValue e, bool RTLEdge) {
 	Path *path = (Path *) p.ptrval;
 	Edge *edge = (Edge *) e.ptrval;
-	assert(Path_NodeCount(*path) > 0);
+	assert(Path_NodeCount(path) > 0);
 	// The edge should connect nodes[edge_count] to nodes[edge_count+1]
-	uint edge_count = Path_EdgeCount(*path);
-	Node *n = Path_GetNode(*path, edge_count);
+	uint edge_count = Path_EdgeCount(path);
+	Node *n = Path_GetNode(path, edge_count);
 	EntityID nId = ENTITY_GET_ID(n);
 	// Validate source node is in the right place.
 	assert(nId == edge->srcNodeID || nId == edge->destNodeID);
@@ -63,7 +62,7 @@ void SIPathBuilder_AppendEdge(SIValue p, SIValue e, bool RTLEdge) {
 	Path_AppendEdge(path, *edge);
 }
 
-void  SIPathBuilder_AppendPath(SIValue path, SIValue new_path, bool RTLEdge) {
+void SIPathBuilder_AppendPath(SIValue path, SIValue new_path, bool RTLEdge) {
 	uint path_node_count = SIPath_NodeCount(path);
 	assert(path_node_count > 0);
 	// No need to append empty paths.
@@ -82,7 +81,7 @@ void  SIPathBuilder_AppendPath(SIValue path, SIValue new_path, bool RTLEdge) {
 	int new_path_edge_count = SIPath_Length(new_path);
 
 	// Check if path needs to be rverse inserated or not.
-	if(last_LTR_node_id == new_path_last_node_id) SIPath_Reverse(new_path);
+	if(last_LTR_node_id == new_path_last_node_id) _SIPath_Reverse(new_path);
 
 	for(uint i = 0; i < new_path_edge_count - 1; i++) {
 		SIPathBuilder_AppendEdge(path, SIPath_GetRelationship(new_path, i), RTLEdge);

@@ -16,8 +16,7 @@
 #include <assert.h>
 #include "util/rmalloc.h"
 #include "datatypes/array.h"
-#include "datatypes/path.h"
-#include "datatypes/sipath.h"
+#include "datatypes/path/sipath.h"
 
 static inline void _SIString_ToString(SIValue str, char **buf, size_t *bufferLen,
 									  size_t *bytesWritten) {

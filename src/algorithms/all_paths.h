@@ -18,13 +18,13 @@
 #ifndef _ALL_PATHS_H_
 #define _ALL_PATHS_H_
 
-#include "../datatypes/path.h"
+#include "../datatypes/path/path.h"
 #include "../graph/graph.h"
 #include "../graph/entities/node.h"
 
 typedef struct {
-	Path *levels;        // Nodes reached at depth i.
-	Path path;           // Current path.
+	Path **levels;        // Nodes reached at depth i.
+	Path *path;           // Current path.
 	Graph *g;            // Graph to traverse.
 	Edge *neighbors;     // Reusable buffer of edges along the current path.
 	int *relationIDs;    // edge type(s) to traverse.

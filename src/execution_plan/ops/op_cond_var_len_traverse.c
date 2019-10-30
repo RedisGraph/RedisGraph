@@ -120,7 +120,7 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 
 	}
 
-	Node n = Path_Head(*p);
+	Node n = Path_Head(p);
 
 	if(!op->expandInto) Record_AddNode(op->r, op->destNodeIdx, n);
 
