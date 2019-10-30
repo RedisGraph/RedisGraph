@@ -35,3 +35,6 @@ test:
 
 format:
 	astyle -Q --options=.astylerc -R --ignore-exclude-errors "./*.c,*.h,*.cpp"
+
+bench_graph500:
+	@make -C ./tests graph500

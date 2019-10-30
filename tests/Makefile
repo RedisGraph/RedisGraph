@@ -1,7 +1,7 @@
 
 MAKEFLAGS += --no-builtin-rules
 
-.PHONY: test unit flow tck test_valgrind clean
+.PHONY: test unit flow tck graph500 test_valgrind clean
 
 test: unit flow tck
 
@@ -16,6 +16,9 @@ flow:
 tck:
 	### Cypher Technology Compatibility Kit (TCK)
 	@$(MAKE) -C tck
+
+graph500:
+	@$(MAKE) -C benchmark_docker graph500
 
 clean:
 	@find . -name '*.[oad]' -type f -delete
