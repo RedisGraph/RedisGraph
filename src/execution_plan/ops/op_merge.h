@@ -20,10 +20,11 @@
 typedef struct {
 	OpBase op;                        // Base op.
 	bool have_lhs_stream;             // Merge operation relies on resolving bound variables.
+	bool expression_evaluated;        // The pattern has been evaluated successfully at least once (don't create).
 	Argument *rhs_arg;
 	Argument *create_arg;
 	ResultSetStatistics *stats;       // Required for statistics updates. (might want for ON MATCH SET)
 } OpMerge;
 
-OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats);
+OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats, bool have_lhs_stream);
 

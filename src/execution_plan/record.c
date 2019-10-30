@@ -60,6 +60,8 @@ int Record_GetEntryIdx(Record r, const char *alias) {
 }
 
 Record Record_Clone(const Record r) {
+	if(r == NULL) return NULL;
+
 	Record clone = Record_New(r->mapping);
 
 	int entry_count = Record_length(r);

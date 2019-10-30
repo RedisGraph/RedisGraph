@@ -9,7 +9,7 @@
 #include "op.h"
 #include "../execution_plan.h"
 
-/* The Argument operation simply pass on it's internal record `r`
+/* The Argument operation simply pass on its internal record `r`
  * down the execution stream, once passed the operation sets `r` to NULL.
  * `r` is expected to be set by a call to ArgumentSetRecord by some other
  * operation (Apply*) down the execution stream. */
@@ -18,6 +18,7 @@ typedef struct {
 	Record r;
 } Argument;
 
-OpBase *NewArgumentOp(const ExecutionPlan *plan);
+OpBase *NewArgumentOp(const ExecutionPlan *plan, const char **variables);
 
 void ArgumentSetRecord(Argument *arg, Record r);
+

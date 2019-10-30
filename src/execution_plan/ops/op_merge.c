@@ -31,8 +31,7 @@ static inline Record _pullFromStream(OpBase *branch) {
 
 static Record _pullFromRightStream(OpMerge *op, Record lhs_record) {
 	OpBase *rhs = op->op.children[1];
-	if(!rhs) return NULL;  // TODO tmp
-	OpBase_PropagateReset(rhs);
+	// OpBase_PropagateReset(rhs);
 	// Propegate record to the top of the right-hand side stream.
 	if(op->rhs_arg) ArgumentSetRecord(op->rhs_arg, Record_Clone(lhs_record));
 	return _pullFromStream(rhs);
@@ -47,18 +46,16 @@ static Record _createPattern(OpMerge *op) {
 	return _pullFromStream(op->op.children[2]);
 }
 
-OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats) {
+OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats, bool have_lhs_stream) {
 	/* Merge is an Apply operator with three children, with the first potentially being NULL.
-	   They will be created outside of here, as with other Apply operators (see CartesianProduct
-	   and ValueHashJoin).
-
-	   I _think_ that unlike those, it must register as modifying all elements in its pattern.
-
-
-	   */
+	 * They will be created outside of here, as with other Apply operators (see CartesianProduct
+	 * and ValueHashJoin). */
 	OpMerge *op = malloc(sizeof(OpMerge));
 	op->stats = stats;
-	op->have_lhs_stream = false;
+	op->have_lhs_stream = have_lhs_stream;
+	op->expression_evaluated = false;
+	op->rhs_arg = NULL;
+	op->create_arg = NULL;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", NULL, MergeConsume, NULL, NULL, MergeFree, plan);
@@ -85,14 +82,17 @@ static Record MergeConsume(OpBase *opBase) {
 		rhs_record = _pullFromRightStream(op, lhs_record);
 		if(rhs_record) {
 			// Pattern was successfully matched.
+			op->expression_evaluated = true;
 			return rhs_record;
 		}
 
-		if(!op->have_lhs_stream) {
+		if(!op->have_lhs_stream && !op->expression_evaluated) {
 			// Only create pattern if we have no LHS stream (and thus no bound variables)
 			// or an LHS stream and no RHS stream (bound variables and the pattern did not match).
 			r = _createPattern(op);
 			return r;
+		} else {
+			break; // Depleted.
 		}
 	}
 

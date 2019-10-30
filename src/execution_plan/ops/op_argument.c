@@ -11,13 +11,19 @@ Record ArgumentConsume(OpBase *opBase);
 OpResult ArgumentReset(OpBase *opBase);
 void ArgumentFree(OpBase *opBase);
 
-OpBase *NewArgumentOp(const ExecutionPlan *plan) {
+OpBase *NewArgumentOp(const ExecutionPlan *plan, const char **variables) {
 	Argument *op = malloc(sizeof(Argument));
 	op->r = NULL;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_ARGUMENT, "Argument", NULL,
 				ArgumentConsume, ArgumentReset, NULL, ArgumentFree, plan);
+
+	uint variable_count = array_len(variables);
+	for(uint i = 0; i < variable_count; i ++) {
+		// TODO I think it's unnecessary to track record offsets here; validate assumption.
+		OpBase_Modifies((OpBase *)op, variables[i]);
+	}
 
 	return (OpBase *)op;
 }
@@ -62,3 +68,4 @@ void ArgumentFree(OpBase *opBase) {
 		arg->r = NULL;
 	}
 }
+

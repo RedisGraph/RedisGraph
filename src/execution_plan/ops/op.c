@@ -66,11 +66,13 @@ bool OpBase_Aware(OpBase *op, const char *alias, int *idx) {
 }
 
 void OpBase_PropagateFree(OpBase *op) {
+	if(!op) return;
 	if(op->free) op->free(op);
 	for(int i = 0; i < op->childCount; i++) OpBase_PropagateFree(op->children[i]);
 }
 
 void OpBase_PropagateReset(OpBase *op) {
+	if(!op) return;
 	if(op->reset) assert(op->reset(op) == OP_OK);
 	for(int i = 0; i < op->childCount; i++) OpBase_PropagateReset(op->children[i]);
 }
