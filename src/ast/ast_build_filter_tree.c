@@ -279,15 +279,6 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 		array_free(with_clauses);
 	}
 
-	const cypher_astnode_t **merge_clauses = AST_GetClauses(ast, CYPHER_AST_MERGE);
-	if(merge_clauses) {
-		uint merge_count = array_len(merge_clauses);
-		for(uint i = 0; i < merge_count; i ++) {
-			_AST_ConvertFilters(ast, &filter_tree, merge_clauses[i]);
-		}
-		array_free(merge_clauses);
-	}
-
 	const cypher_astnode_t **call_clauses = AST_GetClauses(ast, CYPHER_AST_CALL);
 	if(call_clauses) {
 		uint call_count = array_len(call_clauses);

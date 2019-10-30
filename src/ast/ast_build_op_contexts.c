@@ -135,26 +135,42 @@ AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause) {
 	return ctx;
 }
 
-AST_MergeContext AST_PrepareMergeOp(GraphContext *gc, const cypher_astnode_t *merge_clause,
-									QueryGraph *qg) {
+AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, QueryGraph *qg,
+									const char **bound_variables_arr) {
 	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clause);
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	QueryGraph_AddPath(qg, gc, path); // TODO necessary?
 
 	uint entity_count = cypher_ast_pattern_path_nelements(path);
 
+	// Build a rax to quickly look up bound variables. // TODO simpler option?
+	rax *bound_variables = raxNew();
+	uint bound_var_count = array_len(bound_variables_arr);
+	for(uint i = 0; i < bound_var_count; i ++) {
+		const char *var = bound_variables_arr[i];
+		raxInsert(bound_variables, (unsigned char *)var, strlen(var), NULL, NULL);
+	}
+
+	// TODO largely a duplicate of AST_PrepareCreateOp logic, consolidate the two.
 	NodeCreateCtx *nodes_to_merge = array_new(NodeCreateCtx, (entity_count / 2) + 1);
 	EdgeCreateCtx *edges_to_merge = array_new(EdgeCreateCtx, entity_count / 2);
 
+	AST *ast = QueryCtx_GetAST();
 	for(uint i = 0; i < entity_count; i ++) {
 		const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, i);
-		if(i % 2) {  // Entity is a relationship
-			EdgeCreateCtx new_edge = _NewEdgeCreateCtx(gc, qg, elem);
-			edges_to_merge = array_append(edges_to_merge, new_edge);
-		} else { // Entity is a node
-			NodeCreateCtx new_node = _NewNodeCreateCtx(gc, qg, elem);
-			nodes_to_merge = array_append(nodes_to_merge, new_node);
+		const char *elem_name = AST_GetEntityName(ast, elem);
+		if(raxFind(bound_variables, (unsigned char *)elem_name, strlen(elem_name)) == raxNotFound) {
+			if(i % 2) {  // Entity is a relationship
+				EdgeCreateCtx new_edge = _NewEdgeCreateCtx(gc, qg, elem);
+				edges_to_merge = array_append(edges_to_merge, new_edge);
+			} else { // Entity is a node
+				NodeCreateCtx new_node = _NewNodeCreateCtx(gc, qg, elem);
+				nodes_to_merge = array_append(nodes_to_merge, new_node);
+			}
 		}
 	}
 
+	raxFree(bound_variables);
 	AST_MergeContext ctx = { .nodes_to_merge = nodes_to_merge, .edges_to_merge = edges_to_merge };
 	return ctx;
 }

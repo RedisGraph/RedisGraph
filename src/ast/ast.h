@@ -62,6 +62,9 @@ AST *AST_Build(cypher_parse_result_t *parse_result);
 
 AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset);
 
+// Build a temporary AST with one MATCH clause that holds the given path.
+AST *AST_MockMatchPattern(AST *master_ast, const cypher_astnode_t *original_path);
+
 // Populate the AST's map of all referenced aliases.
 void AST_BuildReferenceMap(AST *ast, const cypher_astnode_t *project_clause);
 
