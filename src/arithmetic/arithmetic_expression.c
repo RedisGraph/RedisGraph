@@ -176,11 +176,6 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode **root) {
 		if((*root)->op.type == AR_OP_FUNC) {
 			/* See if we're able to reduce each child of root
 			 * if so we'll be able to reduce root. */
-
-			/* Functions which take no arguments shouldn't be reduced
-			 * consider rand() and uuid() */
-			if((*root)->op.child_count == 0) return false;
-
 			bool reduce_children = true;
 			for(int i = 0; i < (*root)->op.child_count; i++) {
 				if(!AR_EXP_ReduceToScalar((*root)->op.children + i)) {
@@ -191,10 +186,16 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode **root) {
 			// Can't reduce root as one of its children is not a constant.
 			if(!reduce_children) return false;
 
-			// All child nodes are constants, reduce.
+			// All child nodes are constants, make sure function is marked as reducible.
+			AR_FuncDesc *func_desc = AR_GetFunc((*root)->op.func_name);
+			assert(func_desc);
+			if(!func_desc->reducible) return false;
+
+			// Evaluate function.
 			SIValue v = AR_EXP_Evaluate(*root, NULL);
 			if(SIValue_IsNull(v)) return false;
 
+			// Reduce.
 			AR_EXP_Free(*root);
 			*root = AR_EXP_NewConstOperandNode(v);
 			return true;

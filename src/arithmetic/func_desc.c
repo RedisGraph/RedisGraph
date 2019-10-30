@@ -26,12 +26,14 @@ static void inline _toLower(const char *str, char *lower, short *lower_len) {
 	lower[i] = 0;
 }
 
-AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint argc, SIType *types) {
+AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint argc, SIType *types,
+							bool reducible) {
 	AR_FuncDesc *desc = rm_malloc(sizeof(AR_FuncDesc));
 	desc->name = name;
 	desc->func = func;
 	desc->argc = argc;
 	desc->types = types;
+	desc->reducible = reducible;
 	return desc;
 }
 
