@@ -289,7 +289,6 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			uint expCount = 0;
 			AlgebraicExpression **exps = AlgebraicExpression_FromQueryGraph(cc, &expCount);
 
-			rax *bound_vars = _ArgumentBoundVariables(plan);
 			// Reorder exps, to the most performant arrangement of evaluation.
 			orderExpressions(exps, expCount, ft, bound_vars);
 
@@ -297,7 +296,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 
 			OpBase *tail = NULL;
 			/* Create the SCAN operation that will be the tail of the traversal chain. */
-			if(exp->src_node->label) { // && not bound, possibly?
+			if(exp->src_node->label) {
 				/* Resolve source node by performing label scan,
 				 * in which case if the first algebraic expression operand
 				 * is a label matrix (diagonal) remove it, otherwise
@@ -322,7 +321,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 					root = NewCondTraverseOp(plan, gc->g, exp, TraverseRecordCap(ast));
 				}
 				// Insert the new traversal op at the root of the chain.
-				ExecutionPlan_AddOp(root, tail);
+				if(tail) ExecutionPlan_AddOp(root, tail);
 				tail = root;
 			}
 
@@ -355,13 +354,14 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			}
 			raxFree(traversal_vars);
 		} else {
-			// We've built the only necessary traversal chain and have no previously-bound variables;
-			// update the ExecutionPlan root.
-			_ExecutionPlan_UpdateRoot(plan, root);
+			// We've built the only necessary traversal chain; add it directly to the ExecutionPlan.
+			// TODO clarify logic
+			if(plan->root && plan->root->type != OPType_ARGUMENT) ExecutionPlan_AddOp(plan->root, root);
+			else _ExecutionPlan_UpdateRoot(plan, root);
 		}
 	}
 
-	raxFree(bound_vars);
+	if(bound_vars) raxFree(bound_vars);
 }
 
 static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan) {
@@ -636,14 +636,14 @@ static void _buildMergeRightHandStreams(AST *ast, ExecutionPlan *plan,
 
 	// Build Create stream
 	AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(clause, plan->query_graph, variables);
-	OpBase *create_stream = NewCreateOp(plan, stats, merge_ast_ctx.nodes_to_merge,
-										merge_ast_ctx.edges_to_merge);
+	OpBase *create_op = NewCreateOp(plan, stats, merge_ast_ctx.nodes_to_merge,
+									merge_ast_ctx.edges_to_merge);
+	ExecutionPlan_AddOp(merge_op, create_op); // Add Create stream as Merge's third child.
+	// If we have bound variables, push an Argument tap beneath the Create op.
 	if(variables) {
-		OpBase *create_stream_root = NewArgumentOp(plan, variables);
-		ExecutionPlan_AddOp(create_stream_root, create_stream);
-		create_stream = create_stream_root;
+		OpBase *create_argument = NewArgumentOp(plan, variables);
+		ExecutionPlan_AddOp(create_op, create_argument);
 	}
-	ExecutionPlan_AddOp(merge_op, create_stream); // Add Create stream as Merge's third child.
 
 	array_free(variables);
 }

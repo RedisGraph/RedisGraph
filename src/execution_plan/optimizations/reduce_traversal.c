@@ -60,6 +60,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 		   ae->operands[0].diagonal) continue;
 
 		/* Search to see if dest is already resolved */
+		if(op->childCount == 0) continue;
 		if(!ExecutionPlan_LocateOpResolvingAlias(op->children[0], ae->dest_node->alias)) continue;
 
 		/* Both src and dest are already known

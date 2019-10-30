@@ -17,10 +17,11 @@
 #include "cmd_bulk_insert.h"
 
 typedef enum {
-	CMD_BULK_UNKNOWN,
+	CMD_UNKNOWN,
 	CMD_QUERY,
 	CMD_DELETE,
 	CMD_EXPLAIN,
 	CMD_PROFILE,
 	CMD_BULK_INSERT
 } GRAPH_Commands;
+

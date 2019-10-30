@@ -11,6 +11,7 @@
 #include <assert.h>
 
 /* Forward declarations. */
+static OpResult MergeInit(OpBase *opBase);
 static Record MergeConsume(OpBase *opBase);
 static void MergeFree(OpBase *opBase);
 
@@ -42,7 +43,8 @@ static Record _pullFromLeftStream(OpMerge *op) {
 	return _pullFromStream(left_handside);
 }
 
-static Record _createPattern(OpMerge *op) {
+static Record _createPattern(OpMerge *op, Record lhs_record) {
+	if(op->create_arg) ArgumentSetRecord(op->create_arg, Record_Clone(lhs_record));
 	return _pullFromStream(op->op.children[2]);
 }
 
@@ -58,7 +60,8 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats, bool h
 	op->create_arg = NULL;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", NULL, MergeConsume, NULL, NULL, MergeFree, plan);
+	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume, NULL, NULL, MergeFree,
+				plan);
 
 	return (OpBase *)op;
 }
@@ -86,10 +89,10 @@ static Record MergeConsume(OpBase *opBase) {
 			return rhs_record;
 		}
 
-		if(!op->have_lhs_stream && !op->expression_evaluated) {
+		if(!op->expression_evaluated) {
 			// Only create pattern if we have no LHS stream (and thus no bound variables)
 			// or an LHS stream and no RHS stream (bound variables and the pattern did not match).
-			r = _createPattern(op);
+			r = _createPattern(op, lhs_record);
 			return r;
 		} else {
 			break; // Depleted.
@@ -99,6 +102,21 @@ static Record MergeConsume(OpBase *opBase) {
 	/* Out of "infinity" loop either both left and right streams managed to produce data
 	 * or we're depleted. */
 	return r;
+}
+
+static OpResult MergeInit(OpBase *opBase) {
+	OpMerge *op = (OpMerge *)opBase;
+	assert(opBase->childCount == 3);
+
+	// If the RHS stream is populated by an Argument tap, store a reference to it.
+	OpBase *rhs_stream = op->op.children[1];
+	op->rhs_arg = (Argument *)ExecutionPlan_LocateOp(rhs_stream, OPType_ARGUMENT);
+
+	// If the create stream is populated by an Argument tap, store a reference to it.
+	OpBase *create_stream = op->op.children[2];
+	op->create_arg = (Argument *)ExecutionPlan_LocateOp(create_stream, OPType_ARGUMENT);
+
+	return OP_OK;
 }
 
 static void MergeFree(OpBase *ctx) {
