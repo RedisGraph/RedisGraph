@@ -23,16 +23,21 @@
 #include "../graph/entities/node.h"
 
 typedef struct {
-	Path **levels;        // Nodes reached at depth i.
-	Path *path;           // Current path.
-	Graph *g;            // Graph to traverse.
-	Edge *neighbors;     // Reusable buffer of edges along the current path.
-	int *relationIDs;    // edge type(s) to traverse.
-	int relationCount;   // length of relationIDs.
-	GRAPH_EDGE_DIR dir;  // traverse direction.
-	unsigned int minLen; // Path minimum length.
-	unsigned int maxLen; // Path max length.
-	Node *dst;           // Destination node, defaults to NULL in case of general all paths execution.
+	Node *nodes;
+	Edge *edges;
+} LevelConnections;
+
+typedef struct {
+	LevelConnections **levels;  // Nodes reached at depth i, and edges leading to them.
+	Path *path;                 // Current path.
+	Graph *g;                   // Graph to traverse.
+	Edge *neighbors;            // Reusable buffer of edges along the current path.
+	int *relationIDs;           // edge type(s) to traverse.
+	int relationCount;          // length of relationIDs.
+	GRAPH_EDGE_DIR dir;         // traverse direction.
+	unsigned int minLen;        // Path minimum length.
+	unsigned int maxLen;        // Path max length.
+	Node *dst;                  // Destination node, defaults to NULL in case of general all paths execution.
 } AllPathsCtx;
 
 // Create a new All paths context object.

@@ -8,20 +8,33 @@
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 
+static LevelConnections *_LevelConnections_new() {
+	LevelConnections *levelConnections = rm_malloc(sizeof(LevelConnections));
+	levelConnections->nodes = array_new(Node, 1);
+	levelConnections->edges = array_new(Edge, 1);
+	return levelConnections;
+}
+
+static void _LevelConnections_Free(LevelConnections *connections) {
+	array_free(connections->nodes);
+	array_free(connections->edges);
+	rm_free(connections);
+}
 // Make sure context levels array have atleast 'level' entries,
 // Append given 'node' to given 'level' array.
 static void _AllPathsCtx_AddConnectionToLevel(AllPathsCtx *ctx, uint level, Node *node,
 											  Edge *edge) {
 	while(array_len(ctx->levels) <= level) {
-		ctx->levels = array_append(ctx->levels, Path_New(1));
+		ctx->levels = array_append(ctx->levels, _LevelConnections_new());
 	}
-	Path_AppendNode(ctx->levels[level], *node);
-	if(edge != NULL) Path_AppendEdge(ctx->levels[level], *edge);
+	LevelConnections *connections = ctx->levels[level];
+	connections->nodes = array_append(connections->nodes, *node);
+	if(edge != NULL) connections->edges = array_append(connections->edges, *edge);
 }
 
 // Check to see if context levels array has entries at position 'level'.
 static bool _AllPathsCtx_LevelNotEmpty(const AllPathsCtx *ctx, uint level) {
-	return (level < array_len(ctx->levels) && Path_NodeCount(ctx->levels[level]) > 0);
+	return (level < array_len(ctx->levels) && array_len(ctx->levels[level]->nodes) > 0);
 }
 
 AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs, int relationCount,
@@ -39,7 +52,7 @@ AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs, i
 	ctx->maxLen = maxLen + 1;
 	ctx->relationIDs = relationIDs;
 	ctx->relationCount = relationCount;
-	ctx->levels = array_new(Path *, 1);
+	ctx->levels = array_new(LevelConnections *, 1);
 	ctx->path = Path_New(1);
 	ctx->neighbors = array_new(Edge, 32);
 	_AllPathsCtx_AddConnectionToLevel(ctx, 0, src, NULL);
@@ -56,7 +69,7 @@ Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 		// Can we advance?
 		if(_AllPathsCtx_LevelNotEmpty(ctx, depth)) {
 			// Get a new frontier.
-			Node frontierNode = Path_PopNode(ctx->levels[depth]);
+			Node frontierNode = array_pop(ctx->levels[depth]->nodes);
 
 			/* See if frontier is already on path,
 			 * it is OK for a path to contain an entity twice,
@@ -67,8 +80,8 @@ Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 
 			// Add frontier to path.
 			Path_AppendNode(ctx->path, frontierNode);
-			if(Path_EdgeCount(ctx->levels[depth]) > 0) {
-				Edge frontierEdge = Path_PopEdge(ctx->levels[depth]);
+			if(array_len(ctx->levels[depth]->edges) > 0) {
+				Edge frontierEdge = array_pop(ctx->levels[depth]->edges);
 				Path_AppendEdge(ctx->path, frontierEdge);
 			}
 
@@ -125,7 +138,7 @@ Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 void AllPathsCtx_Free(AllPathsCtx *ctx) {
 	if(!ctx) return;
 	uint32_t levelsCount = array_len(ctx->levels);
-	for(int i = 0; i < levelsCount; i++) Path_Free(ctx->levels[i]);
+	for(int i = 0; i < levelsCount; i++) _LevelConnections_Free(ctx->levels[i]);
 	array_free(ctx->levels);
 	Path_Free(ctx->path);
 	array_free(ctx->neighbors);
