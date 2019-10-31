@@ -36,24 +36,39 @@ void _OpBase_AddChild(OpBase *parent, OpBase *child) {
 	}
 	parent->children[parent->childCount++] = child;
 
-	// Add parent to child. (child can validly be NULL if we're building an empty stream for Merge.)
-	if(child) child->parent = parent;
+	// Add parent to child
+	child->parent = parent;
 }
 
-static void _OpBase_AddChildAtPosition(OpBase *parent, OpBase *child, int idx) {
-	// The child index should be valid and unoccupied.
-	assert(idx < parent->childCount && parent->children[idx] == NULL);
+/* Removes node b from a and update child parent lists
+ * Assuming B is a child of A. */
+void _OpBase_RemoveNode(OpBase *parent, OpBase *child) {
+	// Remove child from parent.
+	int i = 0;
+	for(; i < parent->childCount; i++) {
+		if(parent->children[i] == child) break;
+	}
 
-	// Add child to parent at the specified index.
-	parent->children[idx] = child;
+	assert(i != parent->childCount);
 
-	// Associate parent with child.
-	if(child) child->parent = parent;
+	// Update child count.
+	parent->childCount--;
+	if(parent->childCount == 0) {
+		rm_free(parent->children);
+		parent->children = NULL;
+	} else {
+		// Shift left children.
+		for(int j = i; j < parent->childCount; j++) {
+			parent->children[j] = parent->children[j + 1];
+		}
+		parent->children = rm_realloc(parent->children, sizeof(OpBase *) * parent->childCount);
+	}
+
+	// Remove parent from child.
+	child->parent = NULL;
 }
 
 const char **_ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, rax *references) {
-	if(!root) return NULL;
-
 	/* List of entities which had their ID resolved
 	 * at this point of execution, should include all
 	 * previously modified entities (up the execution plan). */
@@ -112,52 +127,8 @@ const char **_ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, rax *ref
 	return seen;
 }
 
-/* Returns true if the given operation is allowed to have NULL children. */
-static bool _DontMigrateChildren(OpBase *op) {
-	if(op->type == OPType_MERGE) return true;
-	return false;
-}
-
-/* Remove NULL children from an operation. */
-static void _OpBase_CompactChildren(OpBase *op) {
-	int deleted_count = 0;
-	for(int i = 0; i < op->childCount; i ++) {
-		if(op->children[i] != NULL) continue;
-		deleted_count++;
-		// Shift all subsequent children to the left.
-		for(int j = i; j < op->childCount - 1; j++) {
-			op->children[j] = op->children[j + 1];
-		}
-	}
-
-	op->childCount -= deleted_count;
-	if(op->childCount == 0) {
-		rm_free(op->children);
-		op->children = NULL;
-	} else {
-		op->children = rm_realloc(op->children, sizeof(OpBase *) * op->childCount);
-	}
-}
-
-/* Disconnect parent from child and return child's former index
- * (which is now occupied by a NULL pointer.) */
-int _OpBase_RemoveChild(OpBase *parent, OpBase *child) {
-	// Remove child from parent.
-	int i = 0;
-	for(; i < parent->childCount; i++) {
-		if(parent->children[i] == child) break;
-	}
-
-	assert(i != parent->childCount);
-
-	// Remove the child pointer from the children array.
-	parent->children[i] = NULL;
-
-	// Remove parent from child.
-	child->parent = NULL;
-
-	// Return the former index of the child.
-	return i;
+void _OpBase_RemoveChild(OpBase *parent, OpBase *child) {
+	_OpBase_RemoveNode(parent, child);
 }
 
 void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
@@ -195,10 +166,10 @@ void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
 	OpBase *a_former_parent = a->parent;
 
 	/* Disconnect A from its former parent. */
-	int child_idx = _OpBase_RemoveChild(a_former_parent, a);
+	_OpBase_RemoveChild(a_former_parent, a);
 
-	/* Connect B with A's former parent. */
-	_OpBase_AddChildAtPosition(a_former_parent, b, child_idx);
+	/* Add A's former parent as parent of B. */
+	_OpBase_AddChild(a_former_parent, b);
 
 	/* Add A as a child of B. */
 	_OpBase_AddChild(b, a);
@@ -218,27 +189,10 @@ void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root) {
 }
 
 void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b) {
-	if(a->parent) {
-		/* Replace A's former parent. */
-		OpBase *a_former_parent = a->parent;
-
-		int a_idx;
-		for(a_idx = 0; a_idx < a_former_parent->childCount; a_idx ++) {
-			// Replace A with B in the parent op.
-			if(a_former_parent->children[a_idx] == a) {
-				a_former_parent->children[a_idx] = b;
-				break;
-			}
-		}
-		assert(a_idx < a_former_parent->childCount && "Didn't find expected child operation.");
-		// Add parent op to B.
-		b->parent = a_former_parent;
-	}
-
-	// Add each of op's children as a child of op's parent.
-	for(int i = 0; i < a->childCount; i++) {
-		_OpBase_AddChild(b, a->children[i]);
-	}
+	// Insert the new operation between the original and its parent.
+	ExecutionPlan_PushBelow(a, b);
+	// Delete the original operation.
+	ExecutionPlan_RemoveOp(plan, a);
 }
 
 void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
@@ -252,18 +206,11 @@ void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
 	} else {
 		// Remove op from its parent.
 		OpBase *parent = op->parent;
-		int child_idx = _OpBase_RemoveChild(parent, op);
-		if(_DontMigrateChildren(parent)) {
-			// Parent op allows NULL children (currently, only true for Merge.)
-			// Migrate the child of the deleted op to the just-emptied position.
-			assert(op->childCount == 1 && "Encountered op with multiple children where one is expected.");
-			_OpBase_AddChildAtPosition(parent, op->children[0], child_idx);
-		} else {
-			_OpBase_CompactChildren(parent);
-			// Add each of op's children as a child of op's parent.
-			for(int i = 0; i < op->childCount; i++) {
-				_OpBase_AddChild(parent, op->children[i]);
-			}
+		_OpBase_RemoveChild(op->parent, op);
+
+		// Add each of op's children as a child of op's parent.
+		for(int i = 0; i < op->childCount; i++) {
+			_OpBase_AddChild(parent, op->children[i]);
 		}
 	}
 
@@ -281,7 +228,6 @@ void ExecutionPlan_DetachOp(OpBase *op) {
 	// Remove op from its parent.
 	OpBase *parent = op->parent;
 	_OpBase_RemoveChild(op->parent, op);
-	_OpBase_CompactChildren(parent);
 
 	op->parent = NULL;
 }
