@@ -83,7 +83,7 @@ struct OpBase {
 	fpReset reset;              // Reset operation state.
 	fpConsume consume;          // Produce next record.
 	fpConsume profile;          // Profiled version of consume.
-	fpToString toString;        // operation string representation.
+	fpToString toString;        // Operation string representation.
 	const char *name;           // Operation name.
 	int childCount;             // Number of children.
 	bool op_initialized;        // True if the operation has already been initialized.

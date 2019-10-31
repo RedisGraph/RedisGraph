@@ -30,34 +30,32 @@ static inline Record _pullFromStream(OpBase *branch) {
 	return OpBase_Consume(branch);
 }
 
-static Record _pullFromRightStream(OpMerge *op, Record lhs_record) {
-	OpBase *rhs = op->op.children[1];
+static Record _pullFromMatchStream(OpMerge *op, Record lhs_record) {
 	// OpBase_PropagateReset(rhs);
 	// Propegate record to the top of the right-hand side stream.
-	if(op->rhs_arg) ArgumentSetRecord(op->rhs_arg, Record_Clone(lhs_record));
-	return _pullFromStream(rhs);
+	if(op->match_argument_tap) ArgumentSetRecord(op->match_argument_tap, Record_Clone(lhs_record));
+	return _pullFromStream(op->match_stream);
 }
 
-static Record _pullFromLeftStream(OpMerge *op) {
+static Record _pullFromBoundVariableStream(OpMerge *op) {
 	OpBase *left_handside = op->op.children[0];
 	return _pullFromStream(left_handside);
 }
 
 static Record _createPattern(OpMerge *op, Record lhs_record) {
-	if(op->create_arg) ArgumentSetRecord(op->create_arg, Record_Clone(lhs_record));
-	return _pullFromStream(op->op.children[2]);
+	if(op->create_argument_tap) ArgumentSetRecord(op->create_argument_tap, Record_Clone(lhs_record));
+	return _pullFromStream(op->create_stream);
 }
 
-OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats, bool have_lhs_stream) {
+OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats) {
 	/* Merge is an Apply operator with three children, with the first potentially being NULL.
 	 * They will be created outside of here, as with other Apply operators (see CartesianProduct
 	 * and ValueHashJoin). */
 	OpMerge *op = malloc(sizeof(OpMerge));
 	op->stats = stats;
-	op->have_lhs_stream = have_lhs_stream;
 	op->expression_evaluated = false;
-	op->rhs_arg = NULL;
-	op->create_arg = NULL;
+	op->match_argument_tap = NULL;
+	op->create_argument_tap = NULL;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume, NULL, NULL, MergeFree,
@@ -74,15 +72,15 @@ static Record MergeConsume(OpBase *opBase) {
 	Record r = NULL;
 	while(true) {
 		// Try to get a record from left stream.
-		if(op->have_lhs_stream) {
-			lhs_record = _pullFromLeftStream(op);
+		if(opBase->childCount == 3) {
+			lhs_record = _pullFromBoundVariableStream(op);
 			if(lhs_record == NULL) return NULL; // Depleted.
 		}
 
 		// TODO remove RHS and Create returns; this operation should be eager and have both a consume and handoff context.
 
 		// Try to get a record from right stream.
-		rhs_record = _pullFromRightStream(op, lhs_record);
+		rhs_record = _pullFromMatchStream(op, lhs_record);
 		if(rhs_record) {
 			// Pattern was successfully matched.
 			op->expression_evaluated = true;
@@ -106,15 +104,26 @@ static Record MergeConsume(OpBase *opBase) {
 
 static OpResult MergeInit(OpBase *opBase) {
 	OpMerge *op = (OpMerge *)opBase;
-	assert(opBase->childCount == 3);
 
-	// If the RHS stream is populated by an Argument tap, store a reference to it.
-	OpBase *rhs_stream = op->op.children[1];
-	op->rhs_arg = (Argument *)ExecutionPlan_LocateOp(rhs_stream, OPType_ARGUMENT);
+	// If Merge has 2 children, there are no bound variables and thus no Arguments in the child streams.
+	if(opBase->childCount == 2) {
+		op->match_stream = opBase->children[0];
+		op->create_stream = opBase->children[1];
+		return OP_OK;
+	}
+
+	// Otherwise, the first stream resolves bound variables.
+	op->match_stream = opBase->children[1];
+	op->create_stream = opBase->children[2];
+
+	// Find and store references to the Argument taps for the Match and Create streams.
+	// The Match stream is populated by an Argument tap, store a reference to it.
+	OpBase *match_stream = op->op.children[1];
+	op->match_argument_tap = (Argument *)ExecutionPlan_LocateOp(match_stream, OPType_ARGUMENT);
 
 	// If the create stream is populated by an Argument tap, store a reference to it.
 	OpBase *create_stream = op->op.children[2];
-	op->create_arg = (Argument *)ExecutionPlan_LocateOp(create_stream, OPType_ARGUMENT);
+	op->create_argument_tap = (Argument *)ExecutionPlan_LocateOp(create_stream, OPType_ARGUMENT);
 
 	return OP_OK;
 }

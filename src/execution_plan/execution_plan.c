@@ -593,15 +593,15 @@ static const char **_MergeCollectVariables(const AST *ast, const cypher_astnode_
 	return _GetPathVariables(ast, path);
 }
 
-static void _buildMergeRightHandStreams(AST *ast, ExecutionPlan *plan,
-										const cypher_astnode_t *clause, ResultSetStatistics *stats, OpBase *merge_op) {
+static void _buildMergeStreams(AST *ast, ExecutionPlan *plan,
+							   const cypher_astnode_t *clause, ResultSetStatistics *stats, OpBase *merge_op) {
 	// Initialize an ExecutionPlan that shares this plan's Record mapping.
 	ExecutionPlan *rhs_plan = _NewEmptyExecutionPlan();
 	rhs_plan->record_map = plan->record_map;
 	const char **variables = NULL;
-	// If we have previous ops, determine which of this clause's variables are bound (if any)
+	// If Merge already has an input stream, determine which of this clause's variables are bound (if any)
 	// and build an Argument op as the source operation of the new ExecutionPlan.
-	if(merge_op->children[0]) {
+	if(merge_op->childCount > 0) {
 		variables = _MergeCollectVariables(ast, clause);
 		uint variable_count = array_len(variables);
 		rax *bound_variables = raxNew();
@@ -664,14 +664,12 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 	// (if any) through traversals, filters, etc (should be created with sub-ExecutionPlan).
 	// Our third stream is an OpCreate that respects the bound variables.
 
-	bool have_lhs_stream = (plan->root != NULL);
-	OpBase *op = NewMergeOp(plan, stats, have_lhs_stream);
-	// Set Merge op as new root and set LHS stream.
-	_ExecutionPlan_UpdateRoot(plan, op);
-	// Add an empty LHS stream if appropriate.
-	if(have_lhs_stream == false) ExecutionPlan_AddOp(op, NULL);
 
-	_buildMergeRightHandStreams(ast, plan, clause, stats, op); // Build and add RHS and Create streams.
+	OpBase *op = NewMergeOp(plan, stats);
+	// Set Merge op as new root and set LHS stream if one has been initialized.
+	_ExecutionPlan_UpdateRoot(plan, op);
+
+	_buildMergeStreams(ast, plan, clause, stats, op); // Build and add RHS and Create streams.
 
 }
 
@@ -987,8 +985,6 @@ void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx) {
 }
 
 void _ExecutionPlanInit(OpBase *root) {
-	if(!root) return;
-
 	// Initialize the operation if necessary.
 	if(root->init) root->init(root);
 
@@ -999,11 +995,7 @@ void _ExecutionPlanInit(OpBase *root) {
 }
 
 void ExecutionPlanInit(ExecutionPlan *plan) {
-	if(!plan) return;
 	_ExecutionPlanInit(plan->root);
-	// for(int i = 0; i < plan->segment_count; i ++) {
-	// _ExecutionPlanInit(plan->segments[i]->root);
-	// }
 }
 
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
@@ -1061,8 +1053,6 @@ ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan) {
 }
 
 static void _ExecutionPlan_FreeOperations(OpBase *op) {
-	if(!op) return;
-
 	for(int i = 0; i < op->childCount; i++) {
 		_ExecutionPlan_FreeOperations(op->children[i]);
 	}
