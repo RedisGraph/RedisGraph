@@ -5,6 +5,7 @@
 */
 
 #include "ast_build_ar_exp.h"
+#include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../arithmetic/funcs.h"
 #include <assert.h>
@@ -71,7 +72,6 @@ static AR_ExpNode *AR_EXP_NewOpNodeFromAST(AST_Operator op, uint child_count) {
 }
 
 static AR_ExpNode *_AR_EXP_FromApplyExpression(const cypher_astnode_t *expr) {
-	// TODO handle CYPHER_AST_APPLY_ALL_OPERATOR
 	AR_ExpNode *op;
 	const cypher_astnode_t *func_node = cypher_ast_apply_operator_get_func_name(expr);
 	const char *func_name = cypher_ast_function_name_get_value(func_node);
@@ -85,6 +85,29 @@ static AR_ExpNode *_AR_EXP_FromApplyExpression(const cypher_astnode_t *expr) {
 		// Recursively convert arguments
 		op->op.children[i] = _AR_EXP_FromExpression(arg);
 	}
+	return op;
+}
+
+static AR_ExpNode *_AR_EXP_FromApplyAllExpression(const cypher_astnode_t *expr) {
+	// ApplyAll operators use accessors similar to normal Apply operators with the exception
+	// that they have no argument accessors - by definition, they have one argument (all/STAR).
+	AR_ExpNode *op;
+	const cypher_astnode_t *func_node = cypher_ast_apply_all_operator_get_func_name(expr);
+	const char *func_name = cypher_ast_function_name_get_value(func_node);
+
+	bool distinct = cypher_ast_apply_all_operator_get_distinct(expr);
+	if(distinct) {
+		// TODO consider opening a parser error, this construction is invalid in Neo's parser.
+		char *error;
+		asprintf(&error, "Cannot specify both DISTINCT and * in the function call %s", func_name);
+		QueryCtx_SetError(error); // Set the query-level error.
+	}
+
+	op = AR_EXP_NewOpNode(func_name, 1);
+
+	// Introduce a fake child constant so that the function always operates on something.
+	op->op.children[0] = AR_EXP_NewConstOperandNode(SI_BoolVal(1));
+
 	return op;
 }
 
@@ -300,8 +323,11 @@ static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 	const cypher_astnode_type_t type = cypher_astnode_type(expr);
 
 	/* Function invocations */
-	if(type == CYPHER_AST_APPLY_OPERATOR || type == CYPHER_AST_APPLY_ALL_OPERATOR) {
+	if(type == CYPHER_AST_APPLY_OPERATOR) {
 		return _AR_EXP_FromApplyExpression(expr);
+		/* Function invocations with STAR projections */
+	} else if(type == CYPHER_AST_APPLY_ALL_OPERATOR) {
+		return _AR_EXP_FromApplyAllExpression(expr);
 		/* Variables (full nodes and edges, UNWIND artifacts */
 	} else if(type == CYPHER_AST_IDENTIFIER) {
 		return _AR_EXP_FromIdentifierExpression(expr);

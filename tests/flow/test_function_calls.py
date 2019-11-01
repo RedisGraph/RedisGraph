@@ -128,3 +128,14 @@ class testFunctionCallsFlow(FlowTestsBase):
     def test07_nonmap_errors(self):
         query = """MATCH (a) WITH a.name AS scalar RETURN scalar.name"""
         self.expect_type_error(query)
+
+    def test08_apply_all_function(self):
+        query = "MATCH () RETURN COUNT(*)"
+        actual_result = graph.query(query)
+        expected_result = [[4]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = "UNWIND [1, 2] AS a RETURN COUNT(*)"
+        actual_result = graph.query(query)
+        expected_result = [[2]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
