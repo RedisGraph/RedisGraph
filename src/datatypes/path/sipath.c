@@ -70,6 +70,14 @@ SIValue SIPath_GetNode(SIValue p, size_t i) {
 	return SI_Node(Path_GetNode(path, i));
 }
 
+SIValue SIPath_Head(SIValue p) {
+	return SIPath_GetNode(p, 0);
+}
+
+SIValue SIPath_Last(SIValue p) {
+	return(SIPath_GetNode(p, SIPath_NodeCount(p) - 1));
+}
+
 size_t SIPath_Length(SIValue p) {
 	Path *path = (Path *) p.ptrval;
 	return Path_Len(path);

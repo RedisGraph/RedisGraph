@@ -13,7 +13,7 @@
  * "MATCH p=(a)-[*]->(b)-[]->(c) RETURN p" will yield the following building sequence
  * 1. Create new empty path.
  * 2. Append node (a).
- * 3. Append path. All variable length traversal results, when part of part building sequence, are path themsevles.
+ * 3. Append path. All variable length traversal results, when part of path building sequence, are path themsevles.
  *    Note that the intermidiate path order might be reversed, during path building, to comply to the query.
  *    Since intermidate path are not projected, they can be mutable.
  * 4. Append node (b).
@@ -34,7 +34,6 @@ SIValue SIPathBuilder_New(uint entity_count);
  * @brief  Appends a SINode into SIPath.
  * @param  p: SIPath.
  * @param  n: SINode.
- * @retval None
  */
 void SIPathBuilder_AppendNode(SIValue p, SIValue n);
 
@@ -46,16 +45,16 @@ void SIPathBuilder_AppendNode(SIValue p, SIValue n);
  * @param  p: SIPath.
  * @param  e: SIEdge.
  * @param  RTLEdge: Indicates if the edge is incoming or outgoing edge (RTL in query).
- * @retval None
  */
 void SIPathBuilder_AppendEdge(SIValue p, SIValue e, bool RTLEdge);
 
 /**
  * @brief  Appends a path into an existing one.
- * @note
- * @param  p:
- * @param  other:
+ * @note   The path is added after its first or last node is added. The actual values from the path that will be taken
+ *         are the edges and all the nodes besides the first and the last, since they are added in different steps of the
+ *         path building.
+ * @param  p: SIPath.
+ * @param  other: SIPath needs to be appended to p.
  * @param  RTLEdge: Indicates edges direction if the path (RTL in query, incoming or outgoing).
- * @retval None
  */
 void SIPathBuilder_AppendPath(SIValue p, SIValue other, bool RTLEdge);

@@ -45,7 +45,7 @@ class FlowTestsBase(object):
         self.env.assertEqual(count, num_contained_results)
 
 
-    def _assert_resultset_equals_expected(self, actual_result, query_info):
+    def _assert_resultset_and_expected_mutually_included(self, actual_result, query_info):
         actual_result_set = []
         if actual_result.result_set is not None:
             actual_result_set = actual_result.result_set
@@ -61,11 +61,8 @@ class FlowTestsBase(object):
         for res in actual_result_set:
             self.env.assertIn(res, query_info.expected_result)
 
-    def _assert_resultset_equals_expected_orderd(self, actual_result, query_info):
-        actual_result_set = []
-        if actual_result.result_set is not None:
-            actual_result_set = actual_result.result_set
-        
+    def _assert_resultset_equals_expected(self, actual_result, query_info):
+        actual_result_set = actual_result.result_set or []
         self.env.assertEqual(actual_result_set, query_info.expected_result)
 
     def _assert_run_time(self, actual_result, query_info):

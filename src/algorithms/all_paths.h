@@ -23,12 +23,12 @@
 #include "../graph/entities/node.h"
 
 typedef struct {
-	Node *nodes;
-	Edge *edges;
-} LevelConnections;
+	Node node;
+	Edge edge;
+} LevelConnection;
 
 typedef struct {
-	LevelConnections **levels;  // Nodes reached at depth i, and edges leading to them.
+	LevelConnection **levels;   // Nodes reached at depth i, and edges leading to them.
 	Path *path;                 // Current path.
 	Graph *g;                   // Graph to traverse.
 	Edge *neighbors;            // Reusable buffer of edges along the current path.

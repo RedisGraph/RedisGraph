@@ -65,6 +65,22 @@ SIValue SIPath_Nodes(SIValue p);
 SIValue SIPath_GetNode(SIValue p, size_t i);
 
 /**
+ * @brief  Returns the first node in the path.
+ * @note   Assertion will be raised if path is empty;
+ * @param  p: SIPath.
+ * @retval SINode.
+ */
+SIValue SIPath_Head(SIValue p);
+
+/**
+ * @brief  Returns the last node in the path.
+ * @note   Assertion will be raised if the path is empty.
+ * @param  p: SIPath;
+ * @retval SINode.
+ */
+SIValue SIPath_Last(SIValue p);
+
+/**
  * @brief  Returns the path length.
  * @note   The return value is the amount of edges in the path.
  * @param  p: SIPath

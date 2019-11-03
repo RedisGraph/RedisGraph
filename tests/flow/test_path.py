@@ -47,7 +47,7 @@ class testPath(FlowTestsBase):
 
         query = "MATCH p=(:L1)-[:R1]->(:L1) RETURN p"
         query_info = QueryInfo(query = query, description="Tests simple paths", expected_result = expected_results)
-        self._assert_resultset_equals_expected(redis_graph.query(query), query_info)
+        self._assert_resultset_and_expected_mutually_included(redis_graph.query(query), query_info)
 
     def test_variable_length_path(self):
         node0 = Node(node_id=0, label="L1")
@@ -72,7 +72,7 @@ class testPath(FlowTestsBase):
 
         query = "MATCH p=(:L1)-[:R1*]->(:L1) RETURN p"
         query_info = QueryInfo(query = query, description="Tests variable length paths", expected_result = expected_results)
-        self._assert_resultset_equals_expected(redis_graph.query(query), query_info)
+        self._assert_resultset_and_expected_mutually_included(redis_graph.query(query), query_info)
 
     def test_bi_directional_path(self):
         node0 = Node(node_id=0, label="L1")
@@ -107,7 +107,7 @@ class testPath(FlowTestsBase):
 
         query_info = QueryInfo(query = query, description="Tests bi directional variable length paths", \
                                 expected_result = expected_results)
-        self._assert_resultset_equals_expected(redis_graph.query(query), query_info)
+        self._assert_resultset_and_expected_mutually_included(redis_graph.query(query), query_info)
 
     def test_bi_directional_path_functions(self):
         node0 = Node(node_id=0, label="L1")
@@ -138,7 +138,7 @@ class testPath(FlowTestsBase):
 
         query_info = QueryInfo(query = query, description="Tests path functions over bi directional variable length paths", \
                                         expected_result = expected_results)
-        self._assert_resultset_equals_expected(redis_graph.query(query), query_info)
+        self._assert_resultset_and_expected_mutually_included(redis_graph.query(query), query_info)
 
     def test_zero_length_path(self):
         node0 = Node(node_id=0, label="L1")
@@ -158,4 +158,4 @@ class testPath(FlowTestsBase):
 
         query_info = QueryInfo(query = query, description="Tests path with zero length variable length paths", \
                                         expected_result = expected_results)
-        self._assert_resultset_equals_expected(redis_graph.query(query), query_info)
+        self._assert_resultset_and_expected_mutually_included(redis_graph.query(query), query_info)

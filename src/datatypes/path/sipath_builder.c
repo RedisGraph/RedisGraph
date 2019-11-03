@@ -15,11 +15,11 @@
  * @param  *e: Pointer to the original edge.
  * @retval New edge with inverse direction.
  */
-static Edge *_Edge_ReverseDirection(Edge *e) {
-	Edge *clone = Edge_Clone(e);
-	clone->srcNodeID = e->destNodeID;
-	clone->destNodeID = e->srcNodeID;
-	return clone;
+static Edge _Edge_ReverseDirection(Edge *e) {
+	Edge edge = *e;
+	edge.srcNodeID = e->destNodeID;
+	edge.destNodeID = e->srcNodeID;
+	return edge;
 }
 
 static void _SIPath_Reverse(SIValue p) {
@@ -58,8 +58,8 @@ void SIPathBuilder_AppendEdge(SIValue p, SIValue e, bool RTLEdge) {
 	 * Query: MATCH p=(a)<-[]-(b)
 	 * e direction needs to be change. */
 
-	if(RTLEdge && nId == edge->srcNodeID) edge = _Edge_ReverseDirection(edge);
-	Path_AppendEdge(path, *edge);
+	Edge edge_to_append = (RTLEdge && nId == edge->srcNodeID) ? _Edge_ReverseDirection(edge) : *edge;
+	Path_AppendEdge(path, edge_to_append);
 }
 
 void SIPathBuilder_AppendPath(SIValue path, SIValue new_path, bool RTLEdge) {
@@ -72,9 +72,9 @@ void SIPathBuilder_AppendPath(SIValue path, SIValue new_path, bool RTLEdge) {
 
 	SIValue last_LTR_node = SIPath_GetNode(path, path_node_count - 1);
 	EntityID last_LTR_node_id = ENTITY_GET_ID((Node *)last_LTR_node.ptrval);
-	SIValue new_path_node_0 = SIPath_GetNode(new_path, 0);
+	SIValue new_path_node_0 = SIPath_Head(new_path);
 	EntityID new_path_node_0_id = ENTITY_GET_ID((Node *)new_path_node_0.ptrval);
-	SIValue new_path_last_node = SIPath_GetNode(new_path, new_path_node_count - 1);
+	SIValue new_path_last_node = SIPath_Last(new_path);
 	EntityID new_path_last_node_id = ENTITY_GET_ID((Node *)new_path_last_node.ptrval);
 	// Validate current last LTR node is in either edges of the path.
 	assert(last_LTR_node_id == new_path_node_0_id || last_LTR_node_id == new_path_last_node_id);
