@@ -12,9 +12,9 @@
 #include "../../graph/graphcontext.h"
 #include "../../algorithms/all_paths.h"
 #include "./op_cond_var_len_traverse.h"
+#include "../../query_ctx.h"
 
 /* Forward declarations. */
-static OpResult CondVarLenTraverseInit(OpBase *opBase);
 static Record CondVarLenTraverseConsume(OpBase *opBase);
 static OpResult CondVarLenTraverseReset(OpBase *opBase);
 static void CondVarLenTraverseFree(OpBase *opBase);
@@ -73,13 +73,16 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 
 	_setupTraversedRelations(op, ae->edge);
 
-	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
-				"Conditional Variable Length Traverse", NULL, CondVarLenTraverseConsume, CondVarLenTraverseReset,
-				CondVarLenTraverseToString, CondVarLenTraverseFree, plan);
-
+				"Conditional Variable Length Traverse", NULL, CondVarLenTraverseConsume,
+				CondVarLenTraverseReset, CondVarLenTraverseToString, CondVarLenTraverseFree, plan);
 	assert(OpBase_Aware((OpBase *)op, ae->src_node->alias, &op->srcNodeIdx));
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, ae->dest_node->alias);
+	// Populate edge value in record only if it is referenced.
+	AST *ast = QueryCtx_GetAST();
+	if(AST_AliasIsReferenced(ast, op->ae->edge->alias))
+		op->edgesIdx = OpBase_Modifies((OpBase *)op, op->ae->edge->alias);
+	else op->edgesIdx = -1;
 
 	return (OpBase *)op;
 }
@@ -87,7 +90,7 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 static Record CondVarLenTraverseConsume(OpBase *opBase) {
 	CondVarLenTraverse *op = (CondVarLenTraverse *)opBase;
 	OpBase *child = op->op.children[0];
-	Path p = NULL;
+	Path *p = NULL;
 
 	/* Incase we don't have any relations to traverse we can return quickly
 	 * Consider: MATCH (S)-[:L*]->(M) RETURN M
@@ -96,7 +99,6 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 		return NULL;
 	}
 
-compute_path:
 	while(!(p = AllPathsCtx_NextPath(op->allPathsCtx))) {
 		Record childRecord = OpBase_Consume(child);
 		if(!childRecord) return NULL;
@@ -107,27 +109,22 @@ compute_path:
 		Node *srcNode = Record_GetNode(op->r, op->srcNodeIdx);
 
 		AllPathsCtx_Free(op->allPathsCtx);
-		op->allPathsCtx = AllPathsCtx_New(srcNode,
-										  op->g,
-										  op->edgeRelationTypes,
-										  op->edgeRelationCount,
-										  op->traverseDir,
-										  op->minHops,
-										  op->maxHops);
+		if(op->expandInto) {
+			Node *destNode = Record_GetNode(op->r, op->destNodeIdx);
+			op->allPathsCtx = AllPathsCtx_New(srcNode, destNode, op->g, op->edgeRelationTypes,
+											  op->edgeRelationCount, op->traverseDir, op->minHops, op->maxHops);
+		} else {
+			op->allPathsCtx = AllPathsCtx_New(srcNode, NULL, op->g, op->edgeRelationTypes,
+											  op->edgeRelationCount, op->traverseDir, op->minHops, op->maxHops);
+		}
+
 	}
 
-	// For the timebeing we only care for the last node in path
-	Node n = Path_head(p);
+	Node n = Path_Head(p);
 
-	if(op->expandInto) {
-		/* Dest node is already resolved
-		 * need to make sure src is connected to dest
-		 * i.e. n == dest. */
-		Node *destNode = Record_GetNode(op->r, op->destNodeIdx);
-		if(ENTITY_GET_ID(&n) != ENTITY_GET_ID(destNode)) goto compute_path;
-	} else {
-		Record_AddNode(op->r, op->destNodeIdx, n);
-	}
+	if(!op->expandInto) Record_AddNode(op->r, op->destNodeIdx, n);
+
+	if(op->edgesIdx >= 0) Record_AddScalar(op->r, op->edgesIdx, SI_Path(p));
 
 	return Record_Clone(op->r);
 }

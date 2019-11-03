@@ -490,6 +490,13 @@ This section contains information on all supported functions from the Cypher que
 |indegree() | Returns the number of node's incoming edges. |
 |outdegree() | Returns the number of node's outgoing edges. |
 
+## Path functions
+|Function | Description|
+| ------- |:-----------|
+| nodes() | return a new list of nodes, of a given path. |
+| relationships() | return a new list of edges, of a given path. |
+| length() | return the length (number of edges) of the path|
+
 ## Procedures
 Procedures are invoked using the syntax:
 ```sh

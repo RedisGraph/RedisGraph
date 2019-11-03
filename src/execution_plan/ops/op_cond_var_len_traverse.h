@@ -19,6 +19,7 @@ typedef struct {
 	Record r;
 	AlgebraicExpression *ae;
 	int srcNodeIdx;                 /* Node set by operation. */
+	int edgesIdx;                   /* Edges set by operation. */
 	int destNodeIdx;                /* Node set by operation. */
 	bool expandInto;                /* Both src and dest already resolved. */
 	unsigned int minHops;           /* Maximum number of hops to perform. */

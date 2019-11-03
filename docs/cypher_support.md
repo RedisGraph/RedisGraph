@@ -11,10 +11,8 @@ Patterns are fully supported.
     - Nodes are fully supported save that a node can only be associated with a single label.
 + Relationships
     - Undirected relationships are not supported.
++ Path variables (alternating sequence of nodes and relationships).
 
-  **Unsupported:**
-
-- Path variables (alternating sequence of nodes and relationships)
 
 ### Composite types
 + Lists

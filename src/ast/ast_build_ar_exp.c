@@ -8,6 +8,7 @@
 #include "../util/rmalloc.h"
 #include "../arithmetic/funcs.h"
 #include <assert.h>
+#include "../query_ctx.h"
 
 // Forward declaration
 static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr);
@@ -296,7 +297,29 @@ static AR_ExpNode *_AR_ExpFromSliceExpression(const cypher_astnode_t *expr) {
 	return op;
 }
 
+static AR_ExpNode *_AR_ExpFromNamedPath(const cypher_astnode_t *path) {
+	uint path_len = cypher_ast_pattern_path_nelements(path);
+	/* The method TO_PATH accepts as its first parameter the ast node which represents the path.
+	 * The other parameters are the graph entities (node, edge, path) which the path builder implemented
+	 * in TO_PATH requires in order to build a complete path. The order of the evaluated graph entities
+	 * is the same order in which they apeare in the AST.*/
+	AR_ExpNode *op = AR_EXP_NewOpNode("topath", 1 + path_len);
+	// Set path AST as first paramerter.
+	op->op.children[0] = AR_EXP_NewConstOperandNode(SI_PtrVal((void *)path));
+	for(uint i = 0; i < path_len; i ++)
+		// Set graph entities as parameters, ordered according to the path AST.
+		op->op.children[i + 1] = _AR_EXP_FromExpression(cypher_ast_pattern_path_get_element(path, i));
+	return op;
+}
+
+static AR_ExpNode *_AR_ExpNodeFromGraphEntity(const cypher_astnode_t *entity) {
+	AST *ast = QueryCtx_GetAST();
+	const char *alias = AST_GetEntityName(ast, entity);
+	return AR_EXP_NewVariableOperandNode(alias, NULL);
+}
+
 static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
+
 	const cypher_astnode_type_t type = cypher_astnode_type(expr);
 
 	/* Function invocations */
@@ -304,6 +327,13 @@ static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 		return _AR_EXP_FromApplyExpression(expr);
 		/* Variables (full nodes and edges, UNWIND artifacts */
 	} else if(type == CYPHER_AST_IDENTIFIER) {
+		// Check if the identifier is a named path identifier.
+		AST *ast = QueryCtx_GetAST();
+		const cypher_astnode_t *named_path_annotation = cypher_astnode_get_annotation(ast->named_paths_ctx,
+																					  expr);
+		// If the identifier is a named path identifier, evaluate the path expression accordingly.
+		if(named_path_annotation) return _AR_EXP_FromExpression(named_path_annotation);
+		// Else, evalute the identifier.
 		return _AR_EXP_FromIdentifierExpression(expr);
 		/* Entity-property pair */
 	} else if(type == CYPHER_AST_PROPERTY_OPERATOR) {
@@ -336,6 +366,10 @@ static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 		return _AR_ExpFromSubscriptExpression(expr);
 	} else if(type == CYPHER_AST_SLICE_OPERATOR) {
 		return _AR_ExpFromSliceExpression(expr);
+	} else if(type == CYPHER_AST_NAMED_PATH) {
+		return _AR_ExpFromNamedPath(expr);
+	} else if(type == CYPHER_AST_NODE_PATTERN || type == CYPHER_AST_REL_PATTERN) {
+		return _AR_ExpNodeFromGraphEntity(expr);
 	} else {
 		/*
 		   Unhandled types:
