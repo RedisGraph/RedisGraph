@@ -93,6 +93,26 @@ static void _extract_params(const cypher_astnode_t *statement) {
 	}
 }
 
+static const char **_CollectPathVariables(const AST *ast, const cypher_astnode_t *path) {
+	uint count = cypher_ast_pattern_path_nelements(path);
+	const char **variables = array_new(const char *, count);
+
+	for(uint i = 0; i < count; i ++) {
+		const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, i);
+		const char *alias = AST_GetEntityName(ast, elem);
+		variables = array_append(variables, alias);
+	}
+
+	return variables;
+}
+
+const char **AST_CollectClauseVariables(const AST *ast, const cypher_astnode_t *clause) {
+	assert(cypher_astnode_type(clause) == CYPHER_AST_MERGE &&
+		   "add handling for other clauses that may get here");
+	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
+	return _CollectPathVariables(ast, path);
+}
+
 bool AST_ReadOnly(const cypher_parse_result_t *result) {
 	// Check for failures in libcypher-parser
 	if(AST_ContainsErrors(result)) return true;
@@ -265,38 +285,6 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 
 	// Build the map of referenced entities in this AST segment.
 	AST_BuildReferenceMap(ast, project_clause);
-
-	return ast;
-}
-
-AST *AST_MockMatchPattern(AST *master_ast, const cypher_astnode_t *original_path) {
-	// Duplicate of AST_NewSegment logic
-	AST *ast = rm_malloc(sizeof(AST));
-	ast->name_ctx = master_ast->name_ctx;
-	ast->project_all_ctx = master_ast->project_all_ctx;
-	ast->free_root = true;
-	ast->limit = UNLIMITED;
-	struct cypher_input_range range = {};
-
-	// Reuse the input path.
-	// TODO cloning loses annotations (names). Does reusing the original introduce a memory leak?
-	cypher_astnode_t *path = (cypher_astnode_t *)original_path;
-
-	// Build a pattern comprised of 1 path, the clone.
-	cypher_astnode_t *pattern = cypher_ast_pattern(&path, 1, &path, 1, range);
-
-	// Build a new match clause that holds this pattern.
-	cypher_astnode_t *match_clause = cypher_ast_match(false, pattern, NULL, 0, NULL, &pattern, 1,
-													  range);
-
-	// Build a query node holding this clause.
-	ast->root = cypher_ast_query(NULL, 0, &match_clause, 1, &match_clause, 1, range);
-
-	QueryCtx_SetAST(ast); // Update the TLS.
-
-	AST_BuildReferenceMap(ast, NULL); // Build the map of referenced entities.
-
-	// TODO Add Argument variables to map?
 
 	return ast;
 }

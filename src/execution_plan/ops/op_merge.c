@@ -53,7 +53,7 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats) {
 	 * and ValueHashJoin). */
 	OpMerge *op = malloc(sizeof(OpMerge));
 	op->stats = stats;
-	op->expression_evaluated = false;
+	op->should_create_pattern = true;
 	op->match_argument_tap = NULL;
 	op->create_argument_tap = NULL;
 
@@ -83,11 +83,11 @@ static Record MergeConsume(OpBase *opBase) {
 		rhs_record = _pullFromMatchStream(op, lhs_record);
 		if(rhs_record) {
 			// Pattern was successfully matched.
-			op->expression_evaluated = true;
+			op->should_create_pattern = false;
 			return rhs_record;
 		}
 
-		if(!op->expression_evaluated) {
+		if(op->should_create_pattern) {
 			// Only create pattern if we have no LHS stream (and thus no bound variables)
 			// or an LHS stream and no RHS stream (bound variables and the pattern did not match).
 			r = _createPattern(op, lhs_record);
@@ -104,6 +104,8 @@ static Record MergeConsume(OpBase *opBase) {
 
 static OpResult MergeInit(OpBase *opBase) {
 	OpMerge *op = (OpMerge *)opBase;
+
+	// TODO flip streams if we've introduced optimizations like index scans
 
 	// If Merge has 2 children, there are no bound variables and thus no Arguments in the child streams.
 	if(opBase->childCount == 2) {

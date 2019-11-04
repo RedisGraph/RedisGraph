@@ -34,6 +34,8 @@ bool AST_ContainsErrors(const cypher_parse_result_t *result);
 // Make sure the parse result and the AST tree pass all validations.
 AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *result);
 
+const char **AST_CollectClauseVariables(const AST *ast, const cypher_astnode_t *clause);
+
 // Checks if the parse result represents a read-only query.
 bool AST_ReadOnly(const cypher_parse_result_t *result);
 
@@ -61,9 +63,6 @@ const cypher_astnode_t **AST_GetClauses(const AST *ast, cypher_astnode_type_t ty
 AST *AST_Build(cypher_parse_result_t *parse_result);
 
 AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset);
-
-// Build a temporary AST with one MATCH clause that holds the given path.
-AST *AST_MockMatchPattern(AST *master_ast, const cypher_astnode_t *original_path);
 
 // Populate the AST's map of all referenced aliases.
 void AST_BuildReferenceMap(AST *ast, const cypher_astnode_t *project_clause);

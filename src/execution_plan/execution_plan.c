@@ -11,6 +11,7 @@
 #include "../util/qsort.h"
 #include "../util/vector.h"
 #include "../util/rmalloc.h"
+#include "../ast/ast_mock.h"
 #include "../graph/entities/edge.h"
 #include "../ast/ast_build_ar_exp.h"
 #include "./optimizations/optimizer.h"
@@ -23,7 +24,7 @@
 #include <setjmp.h>
 
 // Forward declaration
-static void _NewExecutionPlan(ExecutionPlan *plan, ResultSet *result_set);
+static void _PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set);
 
 /* Returns the left most leaf operation in the current segment. */
 static inline OpBase *_ExecutionPlan_LocateLeaf(OpBase *root) {
@@ -356,8 +357,9 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 		} else {
 			// We've built the only necessary traversal chain; add it directly to the ExecutionPlan.
 			// TODO clarify logic
-			if(plan->root && plan->root->type != OPType_ARGUMENT) ExecutionPlan_AddOp(plan->root, root);
-			else _ExecutionPlan_UpdateRoot(plan, root);
+			// if(plan->root && plan->root->type != OPType_ARGUMENT) ExecutionPlan_AddOp(plan->root, root);
+			// else _ExecutionPlan_UpdateRoot(plan, root);
+			_ExecutionPlan_UpdateRoot(plan, root); // TODO safe?
 		}
 	}
 
@@ -574,25 +576,6 @@ static inline void _buildUnwindOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
-// TODO choose place and names for these functions
-static const char **_GetPathVariables(const AST *ast, const cypher_astnode_t *path) {
-	uint count = cypher_ast_pattern_path_nelements(path);
-	const char **variables = array_new(const char *, count);
-
-	for(uint i = 0; i < count; i ++) {
-		const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, i);
-		const char *alias = AST_GetEntityName(ast, elem);
-		variables = array_append(variables, alias);
-	}
-
-	return variables;
-}
-
-static const char **_MergeCollectVariables(const AST *ast, const cypher_astnode_t *clause) {
-	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
-	return _GetPathVariables(ast, path);
-}
-
 static void _buildMergeStreams(AST *ast, ExecutionPlan *plan,
 							   const cypher_astnode_t *clause, ResultSetStatistics *stats, OpBase *merge_op) {
 	// Initialize an ExecutionPlan that shares this plan's Record mapping.
@@ -602,10 +585,10 @@ static void _buildMergeStreams(AST *ast, ExecutionPlan *plan,
 	// If Merge already has an input stream, determine which of this clause's variables are bound (if any)
 	// and build an Argument op as the source operation of the new ExecutionPlan.
 	if(merge_op->childCount > 0) {
-		variables = _MergeCollectVariables(ast, clause);
+		variables = AST_CollectClauseVariables(ast, clause);
 		uint variable_count = array_len(variables);
 		rax *bound_variables = raxNew();
-		ExecutionPlan_ResolvedModifiers(plan->root, bound_variables);
+		ExecutionPlan_BoundVariables(plan->root, bound_variables);
 
 		for(uint i = 0; i < variable_count; i++) {
 			if(raxFind(bound_variables, (unsigned char *)variables[i], strlen(variables[i])) == raxNotFound) {
@@ -624,12 +607,12 @@ static void _buildMergeStreams(AST *ast, ExecutionPlan *plan,
 	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
 	AST *rhs_ast = AST_MockMatchPattern(ast, path);
 
-	_NewExecutionPlan(rhs_plan, NULL);
+	_PopulateExecutionPlan(rhs_plan, NULL);
 
 	AST_Free(rhs_ast);
 	QueryCtx_SetAST(ast); // Reset the AST.
 
-	ExecutionPlan_AddOp(merge_op, rhs_plan->root); // Add RHS stream to Merge op.
+	ExecutionPlan_AddOp(merge_op, rhs_plan->root); // Add Match stream to Merge op.
 
 	// TODO NULL-set shared variables and free rhs_plan
 	// rhs_plan->record_map = NULL; // TODO this kills Record_New calls
@@ -638,7 +621,7 @@ static void _buildMergeStreams(AST *ast, ExecutionPlan *plan,
 	AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(clause, plan->query_graph, variables);
 	OpBase *create_op = NewCreateOp(plan, stats, merge_ast_ctx.nodes_to_merge,
 									merge_ast_ctx.edges_to_merge);
-	ExecutionPlan_AddOp(merge_op, create_op); // Add Create stream as Merge's third child.
+	ExecutionPlan_AddOp(merge_op, create_op); // Add Create stream as Merge's last child.
 	// If we have bound variables, push an Argument tap beneath the Create op.
 	if(variables) {
 		OpBase *create_argument = NewArgumentOp(plan, variables);
@@ -650,26 +633,39 @@ static void _buildMergeStreams(AST *ast, ExecutionPlan *plan,
 
 static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 						  const cypher_astnode_t *clause, ResultSetStatistics *stats) {
-	// A merge clause provides a single path that must exist or be created.
-	// As with paths in a MATCH query, build the appropriate traversal operations
-	// and append them to the set of ops.
-
-
-	/* Merge is an Apply op, LHS stream is plan->root.
-	   RHS stream starts with Argument, which accepts a clone of the Record produced by LHS.  */
-
-
-	// Our LHS is always the previous root, even if that root was NULL (if the MERGE clause is the first).
-	// Our RHS starts with an Argument if we have bound variables, and resolves all non-bound variables
-	// (if any) through traversals, filters, etc (should be created with sub-ExecutionPlan).
-	// Our third stream is an OpCreate that respects the bound variables.
-
+	/*
+	 * A MERGE clause provides a single path that must exist or be created.
+	 * If we have built ops already, they will form the first stream into the Merge op.
+	 * A clone of the Record produced by this stream will be passed into the other Merge streams
+	 * so that they properly work with bound variables.
+	 *
+	 * As with paths in a MATCH query, build the appropriate traversal operations
+	 * and add them as another stream into Merge.
+	 *
+	 * Finally, we'll add a last stream that creates the pattern if it did not get matched.
+	 *
+	 * Simple case (2 streams, no bound variables):
+	 * MERGE (:A {val: 5})
+	 *                           Merge
+	 *                          /     \
+	 *                     Filter    Create
+	 *                      /
+	 *                Label Scan
+	 *
+	 * Complex case:
+	 * MATCH (a:A) MERGE (a)-[:E]->(:B)
+	 *                                  Merge
+	 *                           /        |        \
+	 *                    LabelScan CondTraverse  Create
+	 *                                    |          \
+	 *                                Argument     Argument
+	 */
 
 	OpBase *op = NewMergeOp(plan, stats);
-	// Set Merge op as new root and set LHS stream if one has been initialized.
+	// Set Merge op as new root and add previously-built ops, if any, as Merge's first stream.
 	_ExecutionPlan_UpdateRoot(plan, op);
 
-	_buildMergeStreams(ast, plan, clause, stats, op); // Build and add RHS and Create streams.
+	_buildMergeStreams(ast, plan, clause, stats, op); // Build and add Match and Create streams.
 
 }
 
@@ -726,13 +722,13 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 	}
 }
 
-static void _NewExecutionPlan(ExecutionPlan *plan, ResultSet *result_set) {
+static void _PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set) {
 	AST *ast = QueryCtx_GetAST();
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	plan->result_set = result_set;
 
 	// Initialize the plan's record mapping if necessary.
-	// It will already be set if this ExecutionPlan has been created to build a single stream.
+	// It will already be set if this ExecutionPlan has been created to populate a single stream.
 	if(plan->record_map == NULL) plan->record_map = raxNew();
 
 	// Build query graph
@@ -879,7 +875,7 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 
 		// Construct a new ExecutionPlanSegment.
 		ExecutionPlan *segment = _NewEmptyExecutionPlan();
-		_NewExecutionPlan(segment, result_set);
+		_PopulateExecutionPlan(segment, result_set);
 		AST_Free(ast_segment); // Free the AST segment.
 
 		segments[i] = segment;

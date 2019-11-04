@@ -19,7 +19,7 @@
 
 typedef struct {
 	OpBase op;                        // Base op.
-	bool expression_evaluated;        // The pattern has been evaluated successfully at least once (don't create).
+	bool should_create_pattern;       // The pattern has not been evaluated successfully, should be created.
 	OpBase *match_stream;
 	Argument *match_argument_tap;
 	OpBase *create_stream;

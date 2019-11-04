@@ -419,7 +419,7 @@ static bool _ValueIsConstant(const cypher_astnode_t *root) {
 	return true;
 }
 
-// Validate the property maps used in node/edge patterns in MATCH, MERGE, and CREATE clauses
+// Validate the property maps used in node/edge patterns in MATCH, and CREATE clauses
 static AST_Validation _ValidateInlinedProperties(const cypher_astnode_t *props, char **reason) {
 	cypher_astnode_type_t type = cypher_astnode_type(props);
 	if(type == CYPHER_AST_PARAMETER) {
