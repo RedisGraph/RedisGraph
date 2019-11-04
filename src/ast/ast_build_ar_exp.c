@@ -91,19 +91,10 @@ static AR_ExpNode *_AR_EXP_FromApplyExpression(const cypher_astnode_t *expr) {
 static AR_ExpNode *_AR_EXP_FromApplyAllExpression(const cypher_astnode_t *expr) {
 	// ApplyAll operators use accessors similar to normal Apply operators with the exception
 	// that they have no argument accessors - by definition, they have one argument (all/STAR).
-	AR_ExpNode *op;
 	const cypher_astnode_t *func_node = cypher_ast_apply_all_operator_get_func_name(expr);
 	const char *func_name = cypher_ast_function_name_get_value(func_node);
 
-	bool distinct = cypher_ast_apply_all_operator_get_distinct(expr);
-	if(distinct) {
-		// TODO consider opening a parser error, this construction is invalid in Neo's parser.
-		char *error;
-		asprintf(&error, "Cannot specify both DISTINCT and * in the function call %s", func_name);
-		QueryCtx_SetError(error); // Set the query-level error.
-	}
-
-	op = AR_EXP_NewOpNode(func_name, 1);
+	AR_ExpNode *op = AR_EXP_NewOpNode(func_name, 1);
 
 	// Introduce a fake child constant so that the function always operates on something.
 	op->op.children[0] = AR_EXP_NewConstOperandNode(SI_BoolVal(1));
