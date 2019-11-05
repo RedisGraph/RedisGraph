@@ -89,7 +89,7 @@ static void _buildTypesWhitelist(void) {
 		CYPHER_AST_BINARY_OPERATOR,
 		CYPHER_AST_COMPARISON,
 		CYPHER_AST_APPLY_OPERATOR,
-		// CYPHER_AST_APPLY_ALL_OPERATOR,
+		CYPHER_AST_APPLY_ALL_OPERATOR,
 		CYPHER_AST_PROPERTY_OPERATOR,
 		CYPHER_AST_SUBSCRIPT_OPERATOR,
 		CYPHER_AST_SLICE_OPERATOR,
@@ -247,3 +247,4 @@ void CypherWhitelist_Build() {
 	_buildTypesWhitelist();
 	_buildOperatorsWhitelist();
 }
+

@@ -285,7 +285,6 @@ Feature: ReturnAcceptanceTest
       | -15                  |
     And no side effects
 
-@skip
   Scenario: Count star should count everything in scope
     Given an empty graph
     And having executed:

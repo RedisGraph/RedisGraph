@@ -578,7 +578,6 @@ Feature: MatchAcceptance2
       | (:B) |
     And no side effects
 
-@skip
   Scenario: ORDER BY with LIMIT
     Given an empty graph
     And having executed:

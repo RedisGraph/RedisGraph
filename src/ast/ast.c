@@ -25,10 +25,16 @@ static inline void _prepareIterateAll(rax *map, raxIterator *iter) {
 // referred_funcs will include: "abs", "max" and "min".
 static void _consume_function_call_expression(const cypher_astnode_t *expression,
 											  rax *referred_funcs) {
-	// Value is an apply operator
-	const cypher_astnode_t *func = cypher_ast_apply_operator_get_func_name(expression);
+	// Expression is an Apply or Apply All operator.
+	bool apply_all = (cypher_astnode_type(expression) == CYPHER_AST_APPLY_ALL_OPERATOR);
+
+	// Retrieve the function name and add to rax.
+	const cypher_astnode_t *func = (!apply_all) ? cypher_ast_apply_operator_get_func_name(expression) :
+								   cypher_ast_apply_all_operator_get_func_name(expression);
 	const char *func_name = cypher_ast_function_name_get_value(func);
 	raxInsert(referred_funcs, (unsigned char *)func_name, strlen(func_name), NULL, NULL);
+
+	if(apply_all) return;  // Apply All operators have no arguments.
 
 	uint narguments = cypher_ast_apply_operator_narguments(expression);
 	for(int i = 0; i < narguments; i++) {
@@ -105,7 +111,7 @@ inline bool AST_ContainsClause(const AST *ast, cypher_astnode_type_t clause) {
 // Recursively collect the names of all function calls beneath a node
 void AST_ReferredFunctions(const cypher_astnode_t *root, rax *referred_funcs) {
 	cypher_astnode_type_t root_type = cypher_astnode_type(root);
-	if(root_type == CYPHER_AST_APPLY_OPERATOR) {
+	if(root_type == CYPHER_AST_APPLY_OPERATOR || root_type == CYPHER_AST_APPLY_ALL_OPERATOR) {
 		_consume_function_call_expression(root, referred_funcs);
 	} else {
 		uint child_count = cypher_astnode_nchildren(root);

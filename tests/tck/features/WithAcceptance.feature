@@ -182,7 +182,6 @@ Feature: WithAcceptance
             | ({name: 'B'}) |
         And no side effects
 
-    @skip
     Scenario: WHERE after WITH can filter on top of an aggregation
         Given an empty graph
         And having executed:
@@ -206,7 +205,6 @@ Feature: WithAcceptance
             | ({name: 'A'}) |
         And no side effects
 
-    @skip
     Scenario: ORDER BY on an aggregating key
         Given an empty graph
         And having executed:
@@ -339,7 +337,6 @@ Feature: WithAcceptance
             | (:B) | (:A) | (:X) |
         And no side effects
 
-    @skip
     Scenario: Single WITH using a predicate and aggregation
         Given an empty graph
         And having executed:

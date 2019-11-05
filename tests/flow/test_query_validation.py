@@ -99,3 +99,20 @@ class testQueryValidationFlow(FlowTestsBase):
             # Expecting an error.
             pass
 
+    def test08_count_distinct_star(self):
+        try:
+            query = """MATCH (a) RETURN COUNT(DISTINCT *)"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass
+
+    def test09_invalid_apply_all(self):
+        try:
+            query = """MATCH (a) RETURN SUM(*)"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass
