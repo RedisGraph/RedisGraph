@@ -30,7 +30,6 @@
 
 Feature: MergeNodeAcceptance
 
-@skip
   Scenario: Merge node when no nodes exist
     Given an empty graph
     When executing query:
@@ -447,7 +446,6 @@ Feature: MergeNodeAcceptance
       | +labels     | 1 |
       | +properties | 1 |
 
-@skip
   Scenario: Merge followed by multiple creates
     Given an empty graph
     When executing query:

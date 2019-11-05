@@ -532,7 +532,6 @@ Feature: MatchAcceptance
       | <(:A {name: 'A'})-[:KNOWS {num: 1}]->(:B {name: 'B'})-[:KNOWS {num: 2}]->(:C {name: 'C'})> |
     And no side effects
 
-@skip
   Scenario: Return a var length path of length zero
     Given an empty graph
     And having executed:

@@ -73,7 +73,6 @@ Feature: MatchAcceptance2
       | (:TextNode {var: 'text'}) |
     And no side effects
 
-@skip
   Scenario: Do not fail when evaluating predicates with illegal operations if the OR'd predicate evaluates to true
     Given an empty graph
     And having executed:
@@ -931,7 +930,6 @@ Feature: MatchAcceptance2
       | [[:T]] |
     And no side effects
 
-@skip
   Scenario: Matching from null nodes should return no results owing to finding no matches
     Given an empty graph
     When executing query:
@@ -945,7 +943,6 @@ Feature: MatchAcceptance2
       | b |
     And no side effects
 
-@skip
   Scenario: Matching from null nodes should return no results owing to matches being filtered out
     Given an empty graph
     And having executed:
@@ -1039,7 +1036,6 @@ Feature: MatchAcceptance2
       | 42 | 1     |
     And no side effects
 
-@skip
   Scenario: Matching using a relationship that is already bound
     Given an empty graph
     And having executed:
@@ -1184,7 +1180,6 @@ Feature: MatchAcceptance2
       | (:X:Y) | [:T] | () |
     And no side effects
 
-@skip
   Scenario: Matching twice with conflicting relationship types on same relationship
     Given an empty graph
     And having executed:
@@ -1203,7 +1198,6 @@ Feature: MatchAcceptance2
       | a1 | r | b2 |
     And no side effects
 
-@skip
   Scenario: Matching twice with duplicate relationship types on same relationship
     Given an empty graph
     And having executed:
@@ -1244,7 +1238,6 @@ Feature: MatchAcceptance2
       | (:A)  | (:C)   |
     And no side effects
 
-@skip
   Scenario: Matching relationships into a list and matching variable length using the list, with bound nodes
     Given an empty graph
     And having executed:
@@ -1266,7 +1259,6 @@ Feature: MatchAcceptance2
       | (:A)  | (:C)   |
     And no side effects
 
-@skip
   Scenario: Matching relationships into a list and matching variable length using the list, with bound nodes, wrong direction
     Given an empty graph
     And having executed:
@@ -1455,7 +1447,6 @@ Feature: MatchAcceptance2
       | <(:Movie)<-[:T]-()> |
     And no side effects
 
-@skip
   Scenario: Named path with WITH
     Given an empty graph
     And having executed:
@@ -1618,7 +1609,6 @@ Feature: MatchAcceptance2
       | null    |
     And no side effects
 
-@skip
   Scenario: Returning multiple node property values
     Given an empty graph
     And having executed:
@@ -1651,7 +1641,6 @@ Feature: MatchAcceptance2
       | 2   |
     And no side effects
 
-@skip
   Scenario: Adding list properties in projection
     Given an empty graph
     And having executed:
@@ -1709,7 +1698,6 @@ Feature: MatchAcceptance2
       | (:A) | null | null |
     And no side effects
 
-@skip
   Scenario: Projecting a list of nodes and relationships
     Given an empty graph
     And having executed:
@@ -1763,7 +1751,6 @@ Feature: MatchAcceptance2
       | <({name: 'a'})-[:T]->({name: 'b'})> |
     And no side effects
 
-@skip
   Scenario: Respecting direction when matching non-existent path
     Given an empty graph
     And having executed:

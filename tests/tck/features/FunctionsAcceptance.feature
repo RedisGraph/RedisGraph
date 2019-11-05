@@ -476,7 +476,6 @@ Feature: FunctionsAcceptance
             | ['Foo', 'Bar'] |
         And no side effects
 
-    @skip
     Scenario: `labels()` failing on a path
         Given an empty graph
         And having executed:

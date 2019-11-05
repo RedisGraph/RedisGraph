@@ -65,7 +65,6 @@ Feature: AggregationAcceptance
             | 11         |
         And no side effects
 
-    @skip
     Scenario: Aggregates inside normal functions
         Given an empty graph
         And having executed:
@@ -191,7 +190,6 @@ Feature: AggregationAcceptance
             | 'a'    | 75         |
         And no side effects
 
-    @skip
     Scenario: Handle aggregation on functions
         Given an empty graph
         And having executed:
@@ -360,7 +358,6 @@ Feature: AggregationAcceptance
             | 100      |
         And no side effects
 
-    @skip
     Scenario: Aggregation of named paths
         Given an empty graph
         And having executed:
@@ -445,7 +442,6 @@ Feature: AggregationAcceptance
             | 42   |
         And no side effects
 
-    @skip
     Scenario: No overflow during summation
         Given any graph
         When executing query:
