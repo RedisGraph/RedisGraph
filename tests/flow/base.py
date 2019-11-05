@@ -44,6 +44,27 @@ class FlowTestsBase(object):
         # Assert number of different results is as expected.
         self.env.assertEqual(count, num_contained_results)
 
+
+    def _assert_resultset_and_expected_mutually_included(self, actual_result, query_info):
+        actual_result_set = []
+        if actual_result.result_set is not None:
+            actual_result_set = actual_result.result_set
+
+        # Assert number of results.
+        self.env.assertEqual(len(actual_result_set), len(query_info.expected_result))
+
+        # Assert actual values vs expected values.
+        for res in query_info.expected_result:
+            self.env.assertIn(res, actual_result_set)
+        
+        # Assert expected values vs actual values.
+        for res in actual_result_set:
+            self.env.assertIn(res, query_info.expected_result)
+
+    def _assert_resultset_equals_expected(self, actual_result, query_info):
+        actual_result_set = actual_result.result_set or []
+        self.env.assertEqual(actual_result_set, query_info.expected_result)
+
     def _assert_run_time(self, actual_result, query_info):
             if actual_result.run_time_ms > query_info.max_run_time_ms:
                 warnings.warn('Maximum runtime for query \"%s\" was: %s, but should be %s' %

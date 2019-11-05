@@ -7,12 +7,14 @@
 #include "resultset_formatters.h"
 #include "../../util/arr.h"
 #include "../../datatypes/array.h"
+#include "../../datatypes/path/sipath.h"
 
 // Forward declarations.
 static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n);
 static void _ResultSet_CompactReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e);
 static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext *gc,
-											   SIValue array) ;
+											   SIValue array);
+static void _ResultSet_CompactReplyWithPath(RedisModuleCtx *ctx, GraphContext *gc, SIValue path);
 
 static inline ValueType _mapValueType(const SIValue v) {
 	switch(SI_TYPE(v)) {
@@ -32,6 +34,8 @@ static inline ValueType _mapValueType(const SIValue v) {
 		return VALUE_NODE;
 	case T_EDGE:
 		return VALUE_EDGE;
+	case T_PATH:
+		return VALUE_PATH;
 	default:
 		return VALUE_UNKNOWN;
 	}
@@ -43,8 +47,9 @@ static inline void _ResultSet_ReplyWithValueType(RedisModuleCtx *ctx, const SIVa
 
 static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, GraphContext *gc,
 											   const SIValue v) {
+	// Emit the value type, then the actual value (to facilitate client-side parsing)
 	_ResultSet_ReplyWithValueType(ctx, v);
-	// Emit the actual value, then the value type (to facilitate client-side parsing)
+
 	switch(SI_TYPE(v)) {
 	case T_STRING:
 		RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
@@ -70,6 +75,9 @@ static void _ResultSet_CompactReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 		return;
 	case T_EDGE:
 		_ResultSet_CompactReplyWithEdge(ctx, gc, v.ptrval);
+		return;
+	case T_PATH:
+		_ResultSet_CompactReplyWithPath(ctx, gc, v);
 		return;
 	default:
 		assert("Unhandled value type" && false);
@@ -174,6 +182,44 @@ static void _ResultSet_CompactReplyWithSIArray(RedisModuleCtx *ctx, GraphContext
 		RedisModule_ReplyWithArray(ctx, 2); // Reply with array with space for type and value
 		_ResultSet_CompactReplyWithSIValue(ctx, gc, SIArray_Get(array, i));
 	}
+}
+
+static void _ResultSet_CompactReplyWithPath(RedisModuleCtx *ctx, GraphContext *gc, SIValue path) {
+	/* Path will return as an array of two SIArrays, the first is path nodes and the second is edges,
+	* see array compact format.
+	* Compact path reply:
+	* [
+	*      type : array,
+	*      [
+	*          [Node compact reply format],
+	*          .
+	*          .
+	*          .
+	*          [Node compact reply format]
+	*      ],
+	*      type: array,
+	*      [
+	*          [Edge compact reply format],
+	*          .
+	*          .
+	*          .
+	*          [Edge compact reply format]
+	*      ]
+	* ]
+	*/
+
+	// Response consists of two arrays.
+	RedisModule_ReplyWithArray(ctx, 2);
+	// First array type and value.
+	RedisModule_ReplyWithArray(ctx, 2);
+	SIValue nodes = SIPath_Nodes(path);
+	_ResultSet_CompactReplyWithSIValue(ctx, gc, nodes);
+	SIValue_Free(&nodes);
+	// Second array type and value.
+	RedisModule_ReplyWithArray(ctx, 2);
+	SIValue relationships = SIPath_Relationships(path);
+	_ResultSet_CompactReplyWithSIValue(ctx, gc, relationships);
+	SIValue_Free(&relationships);
 }
 
 void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,

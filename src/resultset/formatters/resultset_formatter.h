@@ -27,7 +27,8 @@ typedef enum {
 	VALUE_DOUBLE = 5,
 	VALUE_ARRAY = 6,
 	VALUE_EDGE = 7,
-	VALUE_NODE = 8
+	VALUE_NODE = 8,
+	VALUE_PATH = 9
 } ValueType;
 
 // Typedef for header formatters.

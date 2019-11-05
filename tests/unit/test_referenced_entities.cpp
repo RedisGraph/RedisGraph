@@ -423,3 +423,51 @@ TEST_F(TestReferencedEntities, TestReturn) {
 	AST_Free(astSegment);
 }
 
+TEST_F(TestReferencedEntities, TestNamedPath) {
+	char *q = "MATCH p=()";
+	AST *ast = buildAST(q);
+	uint *segmentIndices = getASTSegmentIndices(ast);
+	ASSERT_EQ(1, array_len(segmentIndices));
+
+	AST *astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
+	ASSERT_EQ(1, raxSize(astSegment->referenced_entities));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"anon_0", 6));
+	AST_Free(astSegment);
+
+	q = "MATCH p =()-[]-()";
+	ast = buildAST(q);
+	segmentIndices = getASTSegmentIndices(ast);
+	ASSERT_EQ(1, array_len(segmentIndices));
+
+	astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
+	ASSERT_EQ(3, raxSize(astSegment->referenced_entities));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"anon_0", 6));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"anon_1", 6));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"anon_2", 6));
+	AST_Free(astSegment);
+
+	q = "MATCH p =(n)-[e]-(m)";
+	ast = buildAST(q);
+	segmentIndices = getASTSegmentIndices(ast);
+	ASSERT_EQ(1, array_len(segmentIndices));
+
+	astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
+	ASSERT_EQ(3, raxSize(astSegment->referenced_entities));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
+
+	q = "MATCH p =(:Label1 {value:1})-[e:Rel*]-(m:Label2 {value:2})";
+	ast = buildAST(q);
+	segmentIndices = getASTSegmentIndices(ast);
+	ASSERT_EQ(1, array_len(segmentIndices));
+
+	astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
+	ASSERT_EQ(3, raxSize(astSegment->referenced_entities));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"anon_0", 6));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
+
+}

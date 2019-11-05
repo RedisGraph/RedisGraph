@@ -991,7 +991,6 @@ Feature: MatchAcceptance2
       | null |
     And no side effects
 
-@skip
   Scenario: Zero-length named path
     Given an empty graph
     And having executed:
@@ -1008,7 +1007,6 @@ Feature: MatchAcceptance2
       | <()> |
     And no side effects
 
-@skip
   Scenario: Variable-length named path
     Given an empty graph
     And having executed:

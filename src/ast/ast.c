@@ -179,6 +179,7 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	ast->referenced_entities = NULL;
 	ast->name_ctx = NULL;
 	ast->project_all_ctx = NULL;
+	ast->named_paths_ctx = NULL;
 	ast->free_root = false;
 
 	// Retrieve the AST root node from a parsed query.
@@ -205,6 +206,7 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->name_ctx = master_ast->name_ctx;
 	ast->project_all_ctx = master_ast->project_all_ctx;
+	ast->named_paths_ctx = master_ast->named_paths_ctx;
 	ast->free_root = true;
 	ast->limit = UNLIMITED;
 	uint n = end_offset - start_offset;
@@ -330,6 +332,7 @@ void AST_Free(AST *ast) {
 		// This is the master AST, free the annotation contexts that have been constructed.
 		if(ast->name_ctx) cypher_ast_annotation_context_free(ast->name_ctx);
 		if(ast->project_all_ctx) cypher_ast_annotation_context_free(ast->project_all_ctx);
+		if(ast->named_paths_ctx) cypher_ast_annotation_context_free(ast->named_paths_ctx);
 	}
 	rm_free(ast);
 }
