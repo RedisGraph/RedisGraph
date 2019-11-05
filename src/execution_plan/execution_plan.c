@@ -235,6 +235,22 @@ static const char **_BuildCallArguments(const cypher_astnode_t *call_clause) {
 	return arguments;
 }
 
+// Returns true if the 'to_find' rax map is a subset of the 'variables' map.
+static bool _AllVariablesResolved(rax *variables, rax *to_find) {
+	raxIterator it;
+	raxStart(&it, to_find);
+	raxSeek(&it, "^", NULL, 0);
+
+	while(raxNext(&it)) { // For each key in to_find
+		// Break if key is not present in variables
+		if(raxFind(variables, it.key, it.key_len) == raxNotFound) break;
+	}
+	bool all_variables_resolved = raxEOF(&it); // True if iterator was depleted.
+
+	raxStop(&it);
+	return all_variables_resolved;
+}
+
 static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg,
 											 AST *ast, FT_FilterNode *ft) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
@@ -242,13 +258,13 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 	QueryGraph **connectedComponents = QueryGraph_ConnectedComponents(qg);
 	uint connectedComponentsCount = array_len(connectedComponents);
 	plan->connected_components = connectedComponents;
+	rax *bound_vars = raxNew(); // NOTE - can switch this to NULL and additional checks if preferred.
+	if(plan->root) ExecutionPlan_BoundVariables(plan->root, bound_vars);
 
-	/* If we have multiple graph components or have already built projection operations in a
-	 * previous WITH projection, the root operation a Cartesian Product. Each chain of traversals
-	 * (and in the latter case, the previous project operation) will be a child of this op. */
+	/* If we have multiple graph components, the root operation a Cartesian Product.
+	 * Each chain of traversals will be a child of this op. */
 	OpBase *cartesianProduct = NULL;
-	if(connectedComponentsCount > 1 ||
-	   ExecutionPlan_LocateOp(plan->root, OPType_PROJECT | OPType_AGGREGATE)) {
+	if(connectedComponentsCount > 1) {
 		cartesianProduct = NewCartesianProductOp(plan);
 		_ExecutionPlan_UpdateRoot(plan, cartesianProduct);
 	}
@@ -269,10 +285,9 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			AlgebraicExpression **exps = AlgebraicExpression_FromQueryGraph(cc, &expCount);
 
 			// Reorder exps, to the most performant arrangement of evaluation.
-			orderExpressions(exps, expCount, ft);
+			orderExpressions(exps, expCount, ft, bound_vars);
 
 			AlgebraicExpression *exp = exps[0];
-			selectEntryPoint(exp, ft);
 
 			OpBase *tail = NULL;
 			/* Create the SCAN operation that will be the tail of the traversal chain. */
@@ -310,14 +325,37 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 		}
 
 		if(cartesianProduct) {
-			// Add this traversal chain as a child under the Cartesian Product.
+			// We have multiple disjoint traversal chains.
+			// Add each chain as a child under the Cartesian Product.
 			ExecutionPlan_AddOp(cartesianProduct, root);
+		} else if(raxSize(bound_vars) > 0) {
+			/* We've built the only necessary traversal chain and have previously-bound variables.
+			 * Check to see if all previously-bound variables are bound in the traversal chain.
+			 * If they are, the traversal ops will form the new root and the previous ops will be pushed below.
+			 * Otherwise, the streams are disjoint and will be joined under a Cartesian product. */
+			rax *traversal_vars = raxNew();
+			ExecutionPlan_BoundVariables(root, traversal_vars); // Collect all variables in the traversal chain.
+
+			if(!_AllVariablesResolved(traversal_vars, bound_vars)) {
+				// Not all bound variables are represented in the traversal ops; the streams are disjoint. Example:
+				// MATCH (a) WITH AVG(a.age) AS avg MATCH (b) WHERE b.age < avg RETURN b
+				cartesianProduct = NewCartesianProductOp(plan);
+				_ExecutionPlan_UpdateRoot(plan, cartesianProduct);
+				ExecutionPlan_AddOp(cartesianProduct, root);
+			} else {
+				// All previously-bound variables are represented in the traversal ops, we have a single stream. Example:
+				// MATCH (a) WITH a MATCH (a)-[]->(b) RETURN b
+				_ExecutionPlan_UpdateRoot(plan, root);
+			}
+			raxFree(traversal_vars);
 		} else {
-			// We've built the only necessary traversal chain; add it directly to the ExecutionPlan.
-			if(plan->root) ExecutionPlan_AddOp(plan->root, root);
-			else _ExecutionPlan_UpdateRoot(plan, root);
+			// We've built the only necessary traversal chain and have no previously-bound variables;
+			// update the ExecutionPlan root.
+			_ExecutionPlan_UpdateRoot(plan, root);
 		}
 	}
+
+	raxFree(bound_vars);
 }
 
 static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan) {
@@ -515,7 +553,10 @@ static inline void _buildCallOp(AST *ast, ExecutionPlan *plan,
 
 static inline void _buildCreateOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 								  ResultSetStatistics *stats) {
-	AST_CreateContext create_ast_ctx = AST_PrepareCreateOp(gc, ast, plan->query_graph);
+	// Collect the variables that are bound at this point, as CREATE shouldn't construct them.
+	rax *bound_vars = raxNew();
+	if(plan->root) ExecutionPlan_BoundVariables(plan->root, bound_vars);
+	AST_CreateContext create_ast_ctx = AST_PrepareCreateOp(plan->query_graph, bound_vars);
 	OpBase *op = NewCreateOp(plan, stats, create_ast_ctx.nodes_to_create,
 							 create_ast_ctx.edges_to_create);
 	_ExecutionPlan_UpdateRoot(plan, op);

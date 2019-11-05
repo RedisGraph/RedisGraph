@@ -10,9 +10,10 @@
 #include "../../util/rmalloc.h"
 #include <assert.h>
 
-#define T 1     // Transpose penalty.
-#define F 4 * T // Filter score.
-#define L 2 * T // Label score.
+#define T 1           // Transpose penalty.
+#define F 4 * T       // Filter score.
+#define L 2 * T       // Label score.
+#define B 8 * F       // Bound variable bonus (TODO choose appropriate val)
 
 typedef AlgebraicExpression **Arrangement;
 
@@ -172,40 +173,49 @@ static int penalty_arrangement(Arrangement arrangement, uint exp_count) {
 	return penalty;
 }
 
-static int reward_arrangement(Arrangement arrangement, uint exp_count,
-							  const FT_FilterNode *filters) {
+static int reward_arrangement(Arrangement arrangement, uint exp_count, rax *filtered_entities,
+							  rax *bound_vars) {
 	// Arrangement_Print(arrangement, exp_count);
 	int reward = 0;
-	rax *filtered_entities = FilterTree_CollectModified(filters);
 
 	// A bit naive at the moment.
 	for(uint i = 0; i < exp_count; i++) {
 		AlgebraicExpression *exp = arrangement[i];
+
+		// Reward bound variables such that any expression with a bound variable
+		// will be preferred over any expression without.
+		if(raxFind(bound_vars, (unsigned char *)exp->src_node->alias,
+				   strlen(exp->src_node->alias)) != raxNotFound) {
+			// Give bound source nodes an additional bonus (L) in contrast to bound destinations.
+			reward += (B + L) * (exp_count - i);
+		}
+
+		if(raxFind(bound_vars, (unsigned char *)exp->dest_node->alias,
+				   strlen(exp->dest_node->alias)) != raxNotFound) {
+			reward += B * (exp_count - i);
+		}
+
+		// Reward filters in expression.
 		if(raxFind(filtered_entities, (unsigned char *)exp->src_node->alias,
 				   strlen(exp->src_node->alias)) != raxNotFound) {
 			reward += F * (exp_count - i);
-			raxRemove(filtered_entities, (unsigned char *)exp->src_node->alias, strlen(exp->src_node->alias),
-					  NULL);
 		}
 		if(raxFind(filtered_entities, (unsigned char *)exp->dest_node->alias,
 				   strlen(exp->dest_node->alias)) != raxNotFound) {
 			reward += F * (exp_count - i);
-			raxRemove(filtered_entities, (unsigned char *)exp->dest_node->alias, strlen(exp->dest_node->alias),
-					  NULL);
 		}
 		if(exp->src_node->label) reward += L * (exp_count - i);
 	}
 
 	// printf("reward: %d\n", reward);
-	raxFree(filtered_entities);
 	return reward;
 }
 
-static int score_arrangement(Arrangement arrangement, uint exp_count,
-							 const FT_FilterNode *filters) {
+static int _score_arrangement(Arrangement arrangement, uint exp_count,
+							  rax *filtered_entities, rax *bound_vars) {
 	int score = 0;
 	int penalty = penalty_arrangement(arrangement, exp_count);
-	int reward = reward_arrangement(arrangement, exp_count, filters);
+	int reward = reward_arrangement(arrangement, exp_count, filtered_entities, bound_vars);
 	score -= penalty;
 	score += reward;
 	return score;
@@ -231,15 +241,74 @@ static void resolve_winning_sequence(AlgebraicExpression **exps, uint exp_count)
 	}
 }
 
+/* Having chosen which algebraic expression will be evaluated first, determine whether
+ * it is worthwhile to transpose it and thus swap the source and destination.
+ * We'll choose to transpose if the destination is filtered and the source is not, or
+ * if neither is filtered, if the destination is labeled and the source is not. */
+static void select_entry_point(AlgebraicExpression *ae, rax *filtered_entities, rax *bound_vars) {
+	if(ae->operand_count == 1 && ae->src_node == ae->dest_node) return;
+
+	const char *src_name = ae->src_node->alias;
+	const char *dest_name = ae->dest_node->alias;
+
+	// Always start at a bound variable if one is present.
+	if(raxFind(bound_vars, (unsigned char *)src_name, strlen(src_name)) != raxNotFound) {
+		return;
+	}
+
+	if(raxFind(bound_vars, (unsigned char *)dest_name, strlen(dest_name)) != raxNotFound) {
+		AlgebraicExpression_Transpose(ae);
+		return;
+	}
+
+	// See if either source or destination nodes are filtered.
+	if(raxFind(filtered_entities, (unsigned char *)src_name, strlen(src_name)) != raxNotFound) {
+		return; // The source node is filtered, making the current order most appealing.
+	}
+
+	bool destFiltered = (raxFind(filtered_entities, (unsigned char *)dest_name,
+								 strlen(dest_name)) != raxNotFound);
+
+	/* Prefer filter over label
+	 * if no filters are applied prefer labeled entity. */
+	bool srcLabeled = ae->src_node->label != NULL;
+	bool destLabeled = ae->dest_node->label != NULL;
+
+	/* TODO: when additional statistics are available
+	 * do not use label scan if for every node N such that
+	 * (N)-[relation]->(T) N is of the same type T, and type of
+	 * either source or destination node is T. */
+	if(destFiltered) {
+		// The destination is filtered and the source is not, transpose.
+		AlgebraicExpression_Transpose(ae);
+	} else if(srcLabeled) {
+		// Neither end is filtered and the source is labeled, making the current order most appealing.
+		return;
+	} else if(destLabeled) {
+		// The destination is labeled and the source is not, transpose.
+		AlgebraicExpression_Transpose(ae);
+	}
+}
+
 /* Given a set of algebraic expressions representing a graph traversal
  * we pick the order in which the expressions will be evaluated
  * taking into account filters and transposes.
  * exps will reordered. */
-void orderExpressions(AlgebraicExpression **exps, uint exps_count, const FT_FilterNode *filters) {
+void orderExpressions(AlgebraicExpression **exps, uint exps_count, const FT_FilterNode *filters,
+					  rax *bound_vars) {
 	assert(exps && exps_count > 0);
 
-	// Single expression, return quickly.
-	if(exps_count == 1) return;
+	// We only have one expression, no arrangements to consider.
+	if(exps_count == 1) {
+		// Our expression is only a scan, no need to select an entry point.
+		if(exps[0]->operand_count == 1 && exps[0]->src_node == exps[0]->dest_node) return;
+
+		// Select the best entry point and return.
+		rax *filtered_entities = FilterTree_CollectModified(filters);
+		select_entry_point(exps[0], filtered_entities, bound_vars);
+		raxFree(filtered_entities);
+		return;
+	}
 
 	// Compute all possible permutations of algebraic expressions.
 	Arrangement *arrangements = permutations(exps, exps_count);
@@ -256,6 +325,9 @@ void orderExpressions(AlgebraicExpression **exps, uint exps_count, const FT_Filt
 	uint valid_arrangement_count = array_len(valid_arrangements);
 	assert(valid_arrangement_count > 0);
 
+	// Collect all filtered aliases.
+	rax *filtered_entities = FilterTree_CollectModified(filters);
+
 	/* Score each arrangement,
 	 * keep track after arrangement with highest score. */
 	int max_score = INT_MIN;
@@ -263,7 +335,7 @@ void orderExpressions(AlgebraicExpression **exps, uint exps_count, const FT_Filt
 
 	for(uint i = 0; i < valid_arrangement_count; i++) {
 		Arrangement arrangement = valid_arrangements[i];
-		int score = score_arrangement(arrangement, exps_count, filters);
+		int score = _score_arrangement(arrangement, exps_count, filtered_entities, bound_vars);
 		// printf("score: %d\n", score);
 		// Arrangement_Print(arrangement, exps_count);
 		if(max_score < score) {
@@ -277,10 +349,14 @@ void orderExpressions(AlgebraicExpression **exps, uint exps_count, const FT_Filt
 	// Update input.
 	for(uint i = 0; i < exps_count; i++) exps[i] = top_arrangement[i];
 
+	// Transpose the winning expression if the destination node is a more efficient starting place.
+	select_entry_point(exps[0], filtered_entities, bound_vars);
+
 	// Depending on how the expressions have been ordered, we may have to transpose expressions
 	// so that their source nodes have already been resolved by previous expressions.
 	resolve_winning_sequence(exps, exps_count);
 
+	raxFree(filtered_entities);
 cleanup:
 	for(uint i = 0; i < arrangement_count; i++) Arrangement_Free(arrangements[i]);
 	array_free(arrangements);

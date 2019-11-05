@@ -42,57 +42,6 @@ static inline NodeCreateCtx _NewNodeCreateCtx(GraphContext *gc, const QueryGraph
 	return new_node;
 }
 
-static void _buildAliasRax(rax *map, const cypher_astnode_t *entity) {
-	if(!entity) return;
-
-	cypher_astnode_type_t type = cypher_astnode_type(entity);
-
-	const char *alias = NULL;
-	if(type == CYPHER_AST_NODE_PATTERN || type == CYPHER_AST_REL_PATTERN) {
-		AST *ast = QueryCtx_GetAST();
-		alias = AST_GetEntityName(ast, entity);
-	} else if(type == CYPHER_AST_UNWIND) {
-		// The UNWIND clause aliases an expression
-		const cypher_astnode_t *alias_node = cypher_ast_unwind_get_alias(entity);
-		assert(alias_node);
-		alias = (char *)cypher_ast_identifier_get_name(alias_node);
-	} else {
-		unsigned int child_count = cypher_astnode_nchildren(entity);
-		for(unsigned int i = 0; i < child_count; i++) {
-			const cypher_astnode_t *child = cypher_astnode_get_child(entity, i);
-			// Recursively continue searching
-			_buildAliasRax(map, child);
-		}
-		return;
-	}
-
-	if(alias) raxInsert(map, (unsigned char *)alias, strlen(alias), NULL, NULL);
-}
-
-
-static rax *_MatchMerge_DefinedEntities(const AST *ast) {
-	const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
-	uint match_count = (match_clauses) ? array_len(match_clauses) : 0;
-
-	const cypher_astnode_t **merge_clauses = AST_GetClauses(ast, CYPHER_AST_MERGE);
-	uint merge_count = (merge_clauses) ? array_len(merge_clauses) : 0;
-
-	rax *map = raxNew();
-
-	for(uint i = 0; i < match_count; i ++) {
-		_buildAliasRax(map, match_clauses[i]);
-	}
-
-	for(uint i = 0; i < merge_count; i ++) {
-		_buildAliasRax(map, merge_clauses[i]);
-	}
-
-	if(match_clauses) array_free(match_clauses);
-	if(merge_clauses) array_free(merge_clauses);
-
-	return map;
-}
-
 EntityUpdateEvalCtx *AST_PrepareUpdateOp(const cypher_astnode_t *set_clause, uint *nitems_ref) {
 	uint nitems = cypher_ast_set_nitems(set_clause);
 	EntityUpdateEvalCtx *update_expressions = rm_malloc(sizeof(EntityUpdateEvalCtx) * nitems);
@@ -214,13 +163,11 @@ AST_MergeContext AST_PrepareMergeOp(GraphContext *gc, const cypher_astnode_t *me
 //------------------------------------------------------------------------------
 // CREATE operations
 //------------------------------------------------------------------------------
-AST_CreateContext AST_PrepareCreateOp(GraphContext *gc, AST *ast, QueryGraph *qg) {
+AST_CreateContext AST_PrepareCreateOp(QueryGraph *qg, rax *bound_variables) {
+	AST *ast = QueryCtx_GetAST();
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	const cypher_astnode_t **create_clauses = AST_GetClauses(ast, CYPHER_AST_CREATE);
 	uint create_count = (create_clauses) ? array_len(create_clauses) : 0;
-
-	/* For every entity within the CREATE clause see if it's also mentioned
-	 * within the MATCH clause. */
-	rax *match_entities = _MatchMerge_DefinedEntities(ast);
 
 	NodeCreateCtx *nodes_to_create = array_new(NodeCreateCtx, 1);
 	EdgeCreateCtx *edges_to_create = array_new(EdgeCreateCtx, 1);
@@ -244,7 +191,7 @@ AST_CreateContext AST_PrepareCreateOp(GraphContext *gc, AST *ast, QueryGraph *qg
 				const char *alias = AST_GetEntityName(ast, elem);
 
 				// Skip entities defined in MATCH clauses or previously appearing in CREATE patterns
-				int rc = raxInsert(match_entities, (unsigned char *)alias, strlen(alias), NULL, NULL);
+				int rc = raxInsert(bound_variables, (unsigned char *)alias, strlen(alias), NULL, NULL);
 				if(rc == 0) continue;
 
 				if(k % 2) {  // Relation
@@ -258,7 +205,7 @@ AST_CreateContext AST_PrepareCreateOp(GraphContext *gc, AST *ast, QueryGraph *qg
 		}
 	}
 
-	raxFree(match_entities);
+	raxFree(bound_variables);
 	array_free(create_clauses);
 
 	AST_CreateContext ctx = { .nodes_to_create = nodes_to_create, .edges_to_create = edges_to_create };

@@ -105,7 +105,7 @@ void applyJoin(ExecutionPlan *plan) {
 		rax *stream_entities[stream_count];
 		for(int j = 0; j < stream_count; j ++) {
 			stream_entities[j] = raxNew();
-			ExecutionPlan_ResolvedModifiers(cp->children[j], stream_entities[j]);
+			ExecutionPlan_BoundVariables(cp->children[j], stream_entities[j]);
 		}
 
 		for(int j = 0; j < filter_count; j++) {
@@ -182,3 +182,4 @@ void applyJoin(ExecutionPlan *plan) {
 	}
 	array_free(cps);
 }
+
