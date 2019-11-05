@@ -66,9 +66,12 @@ void ExecutionPlan_Taps(OpBase *root, OpBase ***taps);
  * references are resolved. */
 OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references);
 
-/* Determines all resolved modifiers at given op, this is all
- * modified elements from given op and above it. */
-void ExecutionPlan_ResolvedModifiers(const OpBase *op, rax *modifiers);
+/* Populate a rax with all aliases that have been resolved by the given operation
+ * and its children. These are the bound variables at this point in execution, and
+ * subsequent operations should not introduce them as new entities. For example, in the query:
+ * MATCH (a:A) CREATE (a)-[:E]->(b:B)
+ * The Create operation should never introduce a new node 'a'. */
+void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers);
 
 /* execution_plan.c */
 

@@ -50,5 +50,5 @@ AST_MergeContext AST_PrepareMergeOp(GraphContext *gc, const cypher_astnode_t *me
 									QueryGraph *qg);
 
 // Extract the necessary information to populate a create operation from a CREATE clause.
-AST_CreateContext AST_PrepareCreateOp(GraphContext *gc, AST *ast, QueryGraph *qg);
+AST_CreateContext AST_PrepareCreateOp(QueryGraph *qg, rax *bound_variables);
 

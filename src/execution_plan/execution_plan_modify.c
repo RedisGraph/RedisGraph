@@ -176,9 +176,16 @@ void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
 }
 
 void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root) {
-	/* child is the current root operation and parent is a new operation. */
-	assert(!old_root->parent && !new_root->parent && !new_root->children);
-	_OpBase_AddChild(new_root, old_root);
+	/* The new root should have no parent, but may have children if we've constructed
+	 * a chain of traversals/scans. */
+	assert(!old_root->parent && !new_root->parent);
+
+	// Find the deepest child of the new root operation.
+	OpBase *tail = new_root;
+	while(tail->childCount > 0) tail = tail->children[0];
+
+	// Append the old root to the tail of the new root's chain.
+	_OpBase_AddChild(tail, old_root);
 }
 
 void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b) {
@@ -277,8 +284,8 @@ OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references) {
 	return op;
 }
 
-// Collect all resolved entities on an operation chain.
-void ExecutionPlan_ResolvedModifiers(const OpBase *op, rax *modifiers) {
+// Collect all aliases that have been resolved by the given tree of operations.
+void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers) {
 	assert(op && modifiers);
 	if(op->modifies) {
 		uint modifies_count = array_len(op->modifies);
@@ -289,6 +296,7 @@ void ExecutionPlan_ResolvedModifiers(const OpBase *op, rax *modifiers) {
 	}
 
 	for(int i = 0; i < op->childCount; i++) {
-		ExecutionPlan_ResolvedModifiers(op->children[i], modifiers);
+		ExecutionPlan_BoundVariables(op->children[i], modifiers);
 	}
 }
+
