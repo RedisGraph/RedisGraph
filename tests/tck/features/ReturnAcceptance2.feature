@@ -299,7 +299,6 @@ Feature: ReturnAcceptance2
             | {a: 1, b: 'foo'} |
         And no side effects
 
-    @skip
     Scenario: Returning an expression
         Given an empty graph
         And having executed:
@@ -316,7 +315,6 @@ Feature: ReturnAcceptance2
             | false        | true          |
         And no side effects
 
-    @skip
     Scenario: Limiting amount of rows when there are fewer left than the LIMIT argument
         Given an empty graph
         And having executed:

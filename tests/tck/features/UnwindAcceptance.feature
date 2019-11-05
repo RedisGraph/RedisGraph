@@ -78,7 +78,6 @@ Feature: UnwindAcceptance
             | 6 |
         And no side effects
 
-    @skip
     Scenario: Unwinding a collected unwound expression
         Given any graph
         When executing query:
@@ -207,7 +206,6 @@ Feature: UnwindAcceptance
             | 5         |
         And no side effects
 
-    @skip
     Scenario: Unwind does not prune context
         Given any graph
         When executing query:

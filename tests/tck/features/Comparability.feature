@@ -30,7 +30,6 @@
 
 Feature: Comparability
 
-    @skip
     Scenario: Comparing strings and integers using > in an AND'd predicate
         Given an empty graph
         And having executed:

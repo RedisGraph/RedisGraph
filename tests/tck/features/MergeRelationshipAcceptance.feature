@@ -340,7 +340,6 @@ Feature: MergeRelationshipAcceptance
       | +relationships | 1 |
       | +properties    | 2 |
 
-@skip
   Scenario: Introduce named paths 2
     Given an empty graph
     When executing query:
