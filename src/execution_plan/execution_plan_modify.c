@@ -290,7 +290,7 @@ void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers) {
 		uint modifies_count = array_len(op->modifies);
 		for(uint i = 0; i < modifies_count; i++) {
 			const char *modified = op->modifies[i];
-			raxTryInsert(modifiers, (unsigned char *)modified, strlen(modified), NULL, NULL);
+			raxTryInsert(modifiers, (unsigned char *)modified, strlen(modified), (void *)modified, NULL);
 		}
 	}
 

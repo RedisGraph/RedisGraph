@@ -12,6 +12,7 @@ AST *AST_MockMatchPattern(AST *master_ast, const cypher_astnode_t *original_path
 	// Duplicate of AST_NewSegment logic
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->name_ctx = master_ast->name_ctx;
+	ast->named_paths_ctx = master_ast->named_paths_ctx;
 	ast->project_all_ctx = master_ast->project_all_ctx;
 	ast->free_root = true;
 	ast->limit = UNLIMITED;

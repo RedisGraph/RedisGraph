@@ -576,37 +576,20 @@ static inline void _buildUnwindOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
-static void _buildMergeStreams(AST *ast, ExecutionPlan *plan,
-							   const cypher_astnode_t *clause, ResultSetStatistics *stats, OpBase *merge_op) {
+static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *clause,
+								   const char **bound_vars) {
+	AST *ast = QueryCtx_GetAST();
 	// Initialize an ExecutionPlan that shares this plan's Record mapping.
 	ExecutionPlan *rhs_plan = _NewEmptyExecutionPlan();
 	rhs_plan->record_map = plan->record_map;
-	const char **variables = NULL;
-	// If Merge already has an input stream, determine which of this clause's variables are bound (if any)
-	// and build an Argument op as the source operation of the new ExecutionPlan.
-	if(merge_op->childCount > 0) {
-		variables = AST_CollectClauseVariables(ast, clause);
-		uint variable_count = array_len(variables);
-		rax *bound_variables = raxNew();
-		ExecutionPlan_BoundVariables(plan->root, bound_variables);
-
-		for(uint i = 0; i < variable_count; i++) {
-			if(raxFind(bound_variables, (unsigned char *)variables[i], strlen(variables[i])) == raxNotFound) {
-				// Variable not found, delete from array
-				variables = array_del(variables, i);
-				variable_count--;
-				i--; // Deleted the current variable, repeat check at this position.
-			}
-		}
-
+	if(bound_vars) {
 		// If we have bound variables, build an Argument op that represents them.
-		// if(variable_count > 0) rhs_plan->root = NewArgumentOp(plan, variables);
 		/* TODO TODO in a query like:
 		   MERGE (a:A) MERGE (b:B)
 		   We don't need Argument ops, as neither Merge relies on bound variables.
 		   For the moment I'm going to create them anyway, since they simplify stream identification,
 		   but consider revisiting this. */
-		rhs_plan->root = NewArgumentOp(plan, variables);
+		rhs_plan->root = NewArgumentOp(plan, bound_vars);
 	}
 
 	// Build a temporary AST holding the MERGE path within a MATCH clause.
@@ -615,27 +598,28 @@ static void _buildMergeStreams(AST *ast, ExecutionPlan *plan,
 
 	_PopulateExecutionPlan(rhs_plan, NULL);
 
-	rhs_ast->referenced_entities = NULL;
+	rhs_ast->referenced_entities = NULL; // Shared variable, don't free.
 	AST_Free(rhs_ast);
 	QueryCtx_SetAST(ast); // Reset the AST.
 
-	ExecutionPlan_AddOp(merge_op, rhs_plan->root); // Add Match stream to Merge op.
+	ExecutionPlan_AddOp(plan->root, rhs_plan->root); // Add Match stream to Merge op.
 
 	// TODO NULL-set shared variables and free rhs_plan
 	// rhs_plan->record_map = NULL; // TODO this kills Record_New calls
+	// ExecutionPlan_Free(rhs_plan); // TODO leaks
+}
 
-	// Build Create stream
-	AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(clause, plan->query_graph, variables);
+static void _buildMergeCreateStream(ExecutionPlan *plan, const cypher_astnode_t *clause,
+									ResultSetStatistics *stats, const char **bound_vars) {
+	AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(clause, plan->query_graph, bound_vars);
 	OpBase *create_op = NewCreateOp(plan, stats, merge_ast_ctx.nodes_to_merge,
 									merge_ast_ctx.edges_to_merge);
-	ExecutionPlan_AddOp(merge_op, create_op); // Add Create stream as Merge's last child.
-	// If we have bound variables, push an Argument tap beneath the Create op. // see above TODO
-	if(variables) {
-		OpBase *create_argument = NewArgumentOp(plan, variables);
+	ExecutionPlan_AddOp(plan->root, create_op); // Add Create stream as Merge's last child.
+	// If we have bound variables, push an Argument tap beneath the Create op. // see TODO in Match stream construction.
+	if(bound_vars) {
+		OpBase *create_argument = NewArgumentOp(plan, bound_vars);
 		ExecutionPlan_AddOp(create_op, create_argument);
 	}
-
-	array_free(variables);
 }
 
 static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
@@ -668,12 +652,35 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 	 *                                Argument     Argument
 	 */
 
-	OpBase *op = NewMergeOp(plan, stats);
+	// Collect the variables that are bound at this point, as MERGE shouldn't construct them.
+	rax *bound_vars = raxNew();
+	const char **variables = NULL;
+	if(plan->root) {
+		ExecutionPlan_BoundVariables(plan->root, bound_vars);
+		variables = array_new(const char *, raxSize(bound_vars));
+		// TODO tmp logic, improve
+		raxIterator it;
+		raxStart(&it, bound_vars);
+		raxSeek(&it, "^", NULL, 0);
+		while(raxNext(&it)) { // For each bound variable
+			variables = array_append(variables, it.data); // Copy the value (the const string pointer)
+		}
+		raxStop(&it);
+	}
+
+	// Create an empty merge op.
+	OpBase *merge_op = NewMergeOp(plan, stats);
 	// Set Merge op as new root and add previously-built ops, if any, as Merge's first stream.
-	_ExecutionPlan_UpdateRoot(plan, op);
+	_ExecutionPlan_UpdateRoot(plan, merge_op);
 
-	_buildMergeStreams(ast, plan, clause, stats, op); // Build and add Match and Create streams.
+	// Build the Match stream as a Merge child.
+	_buildMergeMatchStream(plan, clause, variables);
 
+	// Build the Create stream as a Merge child.
+	_buildMergeCreateStream(plan, clause, stats, variables);
+
+	raxFree(bound_vars);
+	array_free(variables);
 }
 
 static inline void _buildUpdateOp(GraphContext *gc, ExecutionPlan *plan,
