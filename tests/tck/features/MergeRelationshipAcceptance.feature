@@ -30,7 +30,6 @@
 
 Feature: MergeRelationshipAcceptance
 
-@skip
   Scenario: Creating a relationship
     Given an empty graph
     And having executed:
@@ -49,7 +48,6 @@ Feature: MergeRelationshipAcceptance
     And the side effects should be:
       | +relationships | 1 |
 
-@skip
   Scenario: Matching a relationship
     Given an empty graph
     And having executed:
@@ -68,7 +66,6 @@ Feature: MergeRelationshipAcceptance
       | 1        |
     And no side effects
 
-@skip
   Scenario: Matching two relationships
     Given an empty graph
     And having executed:
@@ -88,7 +85,6 @@ Feature: MergeRelationshipAcceptance
       | 2        |
     And no side effects
 
-@skip
   Scenario: Filtering relationships
     Given an empty graph
     And having executed:
@@ -108,7 +104,6 @@ Feature: MergeRelationshipAcceptance
       | 1        |
     And no side effects
 
-@skip
   Scenario: Creating relationship when all matches filtered out
     Given an empty graph
     And having executed:
@@ -129,7 +124,6 @@ Feature: MergeRelationshipAcceptance
       | +relationships | 1 |
       | +properties    | 1 |
 
-@skip
   Scenario: Matching incoming relationship
     Given an empty graph
     And having executed:
@@ -149,7 +143,6 @@ Feature: MergeRelationshipAcceptance
       | 1        |
     And no side effects
 
-@skip
   Scenario: Creating relationship with property
     Given an empty graph
     And having executed:
@@ -304,7 +297,6 @@ Feature: MergeRelationshipAcceptance
     And the side effects should be:
       | +relationships | 1 |
 
-@skip
   Scenario: Mixing MERGE with CREATE
     Given an empty graph
     When executing query:
@@ -442,7 +434,6 @@ Feature: MergeRelationshipAcceptance
       | +labels        | 2 |
       | +properties    | 1 |
 
-@skip
   Scenario: Matching using list property
     Given an empty graph
     And having executed:
@@ -461,7 +452,6 @@ Feature: MergeRelationshipAcceptance
       | 1        |
     And no side effects
 
-@skip
   Scenario: Using bound variables from other updating clause
     Given an empty graph
     When executing query:
@@ -551,7 +541,6 @@ Feature: MergeRelationshipAcceptance
       | +properties    | 1 |
       | -properties    | 2 |
 
-@skip
   Scenario: Aliasing of existing nodes 1
     Given an empty graph
     And having executed:
@@ -572,7 +561,6 @@ Feature: MergeRelationshipAcceptance
     And the side effects should be:
       | +relationships | 1 |
 
-@skip
   Scenario: Aliasing of existing nodes 2
     Given an empty graph
     And having executed:

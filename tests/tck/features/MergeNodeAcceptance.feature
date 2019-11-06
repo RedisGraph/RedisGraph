@@ -446,6 +446,7 @@ Feature: MergeNodeAcceptance
       | +labels     | 1 |
       | +properties | 1 |
 
+@skip
   Scenario: Merge followed by multiple creates
     Given an empty graph
     When executing query:
