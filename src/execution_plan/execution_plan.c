@@ -829,6 +829,70 @@ ExecutionPlan *ExecutionPlan_UnionPlans(ResultSet *result_set, AST *ast) {
 	return plan;
 }
 
+// Fix the order of a Merge op's child streams if they have been shuffled by optimizations.
+static void __fixMergeStreams(OpMerge *op) { // TODO name
+	/* Merge has 2 children if it is the first clause, and 3 otherwise.
+	   The order of these children is critical:
+	   - If there are 3 children, the first should resolve the Merge pattern's bound variables.
+	   - The next (first if there are 2 children, second otherwise) should attempt to match the pattern.
+	   - The last creates the pattern.
+	*/
+	OpBase *bound_variable_stream = NULL;
+	OpBase *match_stream = NULL;
+	OpBase *create_stream = NULL;
+	if(op->op.childCount == 2) {
+		// If we only have 2 streams, we simply need to determine which has a Create op.
+		if(ExecutionPlan_LocateOp(op->op.children[0], OPType_CREATE)) {
+			// If the Create op is in the first stream, swap the children.
+			create_stream = op->op.children[0];
+			op->op.children[0] = op->op.children[1];
+			op->op.children[1] = create_stream;
+		}
+		// Otherwise, the order is already correct.
+		return;
+	}
+
+	// Handling the three-stream case.
+	for(int i = 0; i < op->op.childCount; i ++) {
+		OpBase *child = op->op.children[i];
+		// The bound variable stream is the only stream not populated by an Argument op.
+		if(!bound_variable_stream && ExecutionPlan_LocateOp(child, OPType_ARGUMENT) == false) {
+			bound_variable_stream = child;
+		}
+
+		// The Create stream is the only stream with a Create op and Argument op.
+		if(!create_stream &&
+		   ExecutionPlan_LocateOp(child, OPType_CREATE) &&
+		   ExecutionPlan_LocateOp(child, OPType_ARGUMENT)) {
+			create_stream = child;
+			break;
+		}
+
+		// The Match stream has an unknown set of operations, but is the only other stream
+		// populated by an Argument op.
+		if(!match_stream && ExecutionPlan_LocateOp(child, OPType_ARGUMENT)) {
+			match_stream = child;
+			break;
+		}
+	}
+
+	assert(bound_variable_stream && match_stream && create_stream);
+
+	op->op.children[0] = bound_variable_stream;
+	op->op.children[1] = match_stream;
+	op->op.children[2] = create_stream;
+}
+
+static void _fixMergeStreams(OpBase *op) { // TODO name
+	if(op->type == OPType_MERGE) {
+
+	}
+
+	for(int i = 0; i < op->childCount; i++) {
+		_fixMergeStreams(op->children[i]);
+	}
+}
+
 ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 	AST *ast = QueryCtx_GetAST();
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
@@ -935,6 +999,9 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 
 	// Optimize the operations in the ExecutionPlan.
 	optimizePlan(plan);
+
+	// TODO can have if(optimized)
+	_fixMergeStreams(plan->root);
 
 	// Disregard self.
 	plan->segment_count = segment_count - 1;
