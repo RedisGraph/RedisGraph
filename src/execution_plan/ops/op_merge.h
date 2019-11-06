@@ -19,13 +19,18 @@
 
 typedef struct {
 	OpBase op;                        // Base op.
-	bool should_create_pattern;       // The pattern has not been evaluated successfully, should be created.
+	// bool should_create_pattern;       // The pattern has not been evaluated successfully, should be created.
+	OpBase *bound_variable_stream;
 	OpBase *match_stream;
 	Argument *match_argument_tap;
 	OpBase *create_stream;
 	Argument *create_argument_tap;
+	Record *records;
 	ResultSetStatistics *stats;       // Required for statistics updates. (might want for ON MATCH SET)
 } OpMerge;
 
 OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats);
+
+// Fix the order of a Merge op's child streams if they have been shuffled by optimizations.
+void Merge_SetStreams(OpBase *op);
 

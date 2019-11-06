@@ -33,7 +33,14 @@ AST *AST_MockMatchPattern(AST *master_ast, const cypher_astnode_t *original_path
 
 	QueryCtx_SetAST(ast); // Update the TLS.
 
-	AST_BuildReferenceMap(ast, NULL); // Build the map of referenced entities.
+	/* TODO don't have access to the projected entities, so in a query like:
+	   MATCH (a:A), (b:B) MERGE (a)-[r:TYPE]->(b) RETURN r
+	   We won't populate 'r' (which is a problem).
+	   Testing inheriting the reference map, but I'm not sure if this will work,
+	   we might encounter issues thinking variables resolved later in the query
+	   are resolved now. */
+	ast->referenced_entities = master_ast->referenced_entities;
+	// AST_BuildReferenceMap(ast, NULL); // Build the map of referenced entities.
 
 	// TODO Add Argument variables to map?
 

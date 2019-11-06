@@ -600,7 +600,13 @@ static void _buildMergeStreams(AST *ast, ExecutionPlan *plan,
 		}
 
 		// If we have bound variables, build an Argument op that represents them.
-		if(variable_count > 0) rhs_plan->root = NewArgumentOp(plan, variables);
+		// if(variable_count > 0) rhs_plan->root = NewArgumentOp(plan, variables);
+		/* TODO TODO in a query like:
+		   MERGE (a:A) MERGE (b:B)
+		   We don't need Argument ops, as neither Merge relies on bound variables.
+		   For the moment I'm going to create them anyway, since they simplify stream identification,
+		   but consider revisiting this. */
+		rhs_plan->root = NewArgumentOp(plan, variables);
 	}
 
 	// Build a temporary AST holding the MERGE path within a MATCH clause.
@@ -609,6 +615,7 @@ static void _buildMergeStreams(AST *ast, ExecutionPlan *plan,
 
 	_PopulateExecutionPlan(rhs_plan, NULL);
 
+	rhs_ast->referenced_entities = NULL;
 	AST_Free(rhs_ast);
 	QueryCtx_SetAST(ast); // Reset the AST.
 
@@ -622,7 +629,7 @@ static void _buildMergeStreams(AST *ast, ExecutionPlan *plan,
 	OpBase *create_op = NewCreateOp(plan, stats, merge_ast_ctx.nodes_to_merge,
 									merge_ast_ctx.edges_to_merge);
 	ExecutionPlan_AddOp(merge_op, create_op); // Add Create stream as Merge's last child.
-	// If we have bound variables, push an Argument tap beneath the Create op.
+	// If we have bound variables, push an Argument tap beneath the Create op. // see above TODO
 	if(variables) {
 		OpBase *create_argument = NewArgumentOp(plan, variables);
 		ExecutionPlan_AddOp(create_op, create_argument);
@@ -830,63 +837,8 @@ ExecutionPlan *ExecutionPlan_UnionPlans(ResultSet *result_set, AST *ast) {
 }
 
 // Fix the order of a Merge op's child streams if they have been shuffled by optimizations.
-static void __fixMergeStreams(OpMerge *op) { // TODO name
-	/* Merge has 2 children if it is the first clause, and 3 otherwise.
-	   The order of these children is critical:
-	   - If there are 3 children, the first should resolve the Merge pattern's bound variables.
-	   - The next (first if there are 2 children, second otherwise) should attempt to match the pattern.
-	   - The last creates the pattern.
-	*/
-	OpBase *bound_variable_stream = NULL;
-	OpBase *match_stream = NULL;
-	OpBase *create_stream = NULL;
-	if(op->op.childCount == 2) {
-		// If we only have 2 streams, we simply need to determine which has a Create op.
-		if(ExecutionPlan_LocateOp(op->op.children[0], OPType_CREATE)) {
-			// If the Create op is in the first stream, swap the children.
-			create_stream = op->op.children[0];
-			op->op.children[0] = op->op.children[1];
-			op->op.children[1] = create_stream;
-		}
-		// Otherwise, the order is already correct.
-		return;
-	}
-
-	// Handling the three-stream case.
-	for(int i = 0; i < op->op.childCount; i ++) {
-		OpBase *child = op->op.children[i];
-		// The bound variable stream is the only stream not populated by an Argument op.
-		if(!bound_variable_stream && ExecutionPlan_LocateOp(child, OPType_ARGUMENT) == false) {
-			bound_variable_stream = child;
-		}
-
-		// The Create stream is the only stream with a Create op and Argument op.
-		if(!create_stream &&
-		   ExecutionPlan_LocateOp(child, OPType_CREATE) &&
-		   ExecutionPlan_LocateOp(child, OPType_ARGUMENT)) {
-			create_stream = child;
-			break;
-		}
-
-		// The Match stream has an unknown set of operations, but is the only other stream
-		// populated by an Argument op.
-		if(!match_stream && ExecutionPlan_LocateOp(child, OPType_ARGUMENT)) {
-			match_stream = child;
-			break;
-		}
-	}
-
-	assert(bound_variable_stream && match_stream && create_stream);
-
-	op->op.children[0] = bound_variable_stream;
-	op->op.children[1] = match_stream;
-	op->op.children[2] = create_stream;
-}
-
-static void _fixMergeStreams(OpBase *op) { // TODO name
-	if(op->type == OPType_MERGE) {
-
-	}
+static void _fixMergeStreams(OpBase *op) { // TODO improve name and location
+	if(op->type == OPType_MERGE) Merge_SetStreams(op);
 
 	for(int i = 0; i < op->childCount; i++) {
 		_fixMergeStreams(op->children[i]);
