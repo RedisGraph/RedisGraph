@@ -108,6 +108,17 @@ inline bool AST_ContainsClause(const AST *ast, cypher_astnode_type_t clause) {
 	return AST_GetClause(ast, clause) != NULL;
 }
 
+// Checks to see if an AST tree contains specified node type.
+bool AST_TreeContainsType(const cypher_astnode_t *root, cypher_astnode_type_t search_type) {
+	cypher_astnode_type_t type = cypher_astnode_type(root);
+	if(type == search_type) return true;
+	uint childCount = cypher_astnode_nchildren(root);
+	for(uint i = 0; i < childCount; i++) {
+		if(AST_TreeContainsType(cypher_astnode_get_child(root, i), search_type)) return true;
+	}
+	return false;
+}
+
 // Recursively collect the names of all function calls beneath a node
 void AST_ReferredFunctions(const cypher_astnode_t *root, rax *referred_funcs) {
 	cypher_astnode_type_t root_type = cypher_astnode_type(root);
