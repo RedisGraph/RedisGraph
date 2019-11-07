@@ -229,8 +229,8 @@ static AST_Validation _VisitFunctions(const cypher_astnode_t *node, rax *func_na
 			return AST_INVALID;
 		}
 
-		// Collect the function name.
-		raxInsert(func_names, (unsigned char *)func_name, strlen(func_name), NULL, NULL);
+		// Collect the function name, which is always "count" here.
+		raxInsert(func_names, (unsigned char *)"count", 5, NULL, NULL);
 
 		// As Apply All operators have no children, we can return here.
 		return AST_VALID;
@@ -706,6 +706,10 @@ static AST_Validation _Validate_WITH_Clauses(const AST *ast, char **reason) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
 		cypher_astnode_type_t type = cypher_astnode_type(clause);
 		if(type == CYPHER_AST_WITH) {
+			// Verify that functions invoked by the WITH clause are valid.
+			res = _ValidateFunctionCalls(clause, reason, true);
+			if(res == AST_INVALID) break;
+
 			// Collect projected aliases from WITH clauses into the same triemap
 			_AST_GetWithAliases(clause, with_projections);
 		} else if(type == CYPHER_AST_MATCH) {
@@ -813,11 +817,16 @@ static AST_Validation _Validate_CREATE_Clauses(const AST *ast, char **reason) {
 	AST_Validation res = AST_VALID;
 	uint clause_count = array_len(create_clauses);
 	for(uint i = 0; i < clause_count; i++) {
+		// Verify that functions invoked by the CREATE clause are valid.
+		res = _ValidateFunctionCalls(create_clauses[i], reason, false);
+		if(res == AST_INVALID) goto cleanup;
+
 		if(_Validate_CREATE_Clause_TypedRelations(create_clauses[i]) == AST_INVALID) {
 			asprintf(reason, "Exactly one relationship type must be specified for CREATE");
 			res = AST_INVALID;
 			goto cleanup;
 		}
+
 		// Validate that inlined properties do not use parameters
 		res = _Validate_CREATE_Clause_Properties(create_clauses[i], reason);
 		if(res == AST_INVALID) goto cleanup;
