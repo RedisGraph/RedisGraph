@@ -205,7 +205,6 @@ AST_CreateContext AST_PrepareCreateOp(QueryGraph *qg, rax *bound_variables) {
 		}
 	}
 
-	raxFree(bound_variables);
 	array_free(create_clauses);
 
 	AST_CreateContext ctx = { .nodes_to_create = nodes_to_create, .edges_to_create = edges_to_create };

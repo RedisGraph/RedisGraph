@@ -11,6 +11,7 @@
 #include "../util/qsort.h"
 #include "../util/vector.h"
 #include "../util/rmalloc.h"
+#include "../util/rax_extensions.h"
 #include "../graph/entities/edge.h"
 #include "../ast/ast_build_ar_exp.h"
 #include "./optimizations/optimizer.h"
@@ -235,22 +236,6 @@ static const char **_BuildCallArguments(const cypher_astnode_t *call_clause) {
 	return arguments;
 }
 
-// Returns true if the 'to_find' rax map is a subset of the 'variables' map.
-static bool _AllVariablesResolved(rax *variables, rax *to_find) {
-	raxIterator it;
-	raxStart(&it, to_find);
-	raxSeek(&it, "^", NULL, 0);
-
-	while(raxNext(&it)) { // For each key in to_find
-		// Break if key is not present in variables
-		if(raxFind(variables, it.key, it.key_len) == raxNotFound) break;
-	}
-	bool all_variables_resolved = raxEOF(&it); // True if iterator was depleted.
-
-	raxStop(&it);
-	return all_variables_resolved;
-}
-
 static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg,
 											 AST *ast, FT_FilterNode *ft) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
@@ -258,6 +243,8 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 	QueryGraph **connectedComponents = QueryGraph_ConnectedComponents(qg);
 	uint connectedComponentsCount = array_len(connectedComponents);
 	plan->connected_components = connectedComponents;
+	// TODO we can clone plan->record_map to act as our bound_vars if we prefer,
+	// but it must be a clone, as op construction in this function will introduce variables.
 	rax *bound_vars = raxNew(); // NOTE - can switch this to NULL and additional checks if preferred.
 	if(plan->root) ExecutionPlan_BoundVariables(plan->root, bound_vars);
 
@@ -336,7 +323,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			rax *traversal_vars = raxNew();
 			ExecutionPlan_BoundVariables(root, traversal_vars); // Collect all variables in the traversal chain.
 
-			if(!_AllVariablesResolved(traversal_vars, bound_vars)) {
+			if(!raxIsSubset(traversal_vars, bound_vars)) {
 				// Not all bound variables are represented in the traversal ops; the streams are disjoint. Example:
 				// MATCH (a) WITH AVG(a.age) AS avg MATCH (b) WHERE b.age < avg RETURN b
 				cartesianProduct = NewCartesianProductOp(plan);
@@ -554,9 +541,9 @@ static inline void _buildCallOp(AST *ast, ExecutionPlan *plan,
 static inline void _buildCreateOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 								  ResultSetStatistics *stats) {
 	// Collect the variables that are bound at this point, as CREATE shouldn't construct them.
-	rax *bound_vars = raxNew();
-	if(plan->root) ExecutionPlan_BoundVariables(plan->root, bound_vars);
+	rax *bound_vars = raxClone(plan->record_map); // TODO add
 	AST_CreateContext create_ast_ctx = AST_PrepareCreateOp(plan->query_graph, bound_vars);
+	raxFree(bound_vars);
 	OpBase *op = NewCreateOp(plan, stats, create_ast_ctx.nodes_to_create,
 							 create_ast_ctx.edges_to_create);
 	_ExecutionPlan_UpdateRoot(plan, op);
