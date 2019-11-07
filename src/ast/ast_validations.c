@@ -456,6 +456,19 @@ static AST_Validation _ValidateInlinedPropertiesOnPath(const cypher_astnode_t *p
 	return AST_VALID;
 }
 
+// TODO: Remove this once path patterns are supported at filtering.
+// This function is NOT syntax validation function. It is checks there are path pattern in the filter.
+static AST_Validation _Validate_filter_not_contains_path(const cypher_astnode_t *ast_node) {
+	cypher_astnode_type_t type = cypher_astnode_type(ast_node);
+	if(type == CYPHER_AST_PATTERN_PATH) return AST_INVALID;
+	uint childCount = cypher_astnode_nchildren(ast_node);
+	for(uint i = 0; i < childCount; i++) {
+		if(_Validate_filter_not_contains_path(cypher_astnode_get_child(ast_node, i)) == AST_INVALID)
+			return AST_INVALID;
+	}
+	return AST_VALID;
+}
+
 static AST_Validation _Validate_MATCH_Clause_Filters(const cypher_astnode_t *clause,
 													 char **reason) {
 	const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clause);
@@ -464,10 +477,15 @@ static AST_Validation _Validate_MATCH_Clause_Filters(const cypher_astnode_t *cla
 		const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
 		if(_ValidateInlinedPropertiesOnPath(path, reason) != AST_VALID) return AST_INVALID;
 	}
-
-	const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(clause);
-	if(predicate == NULL) return AST_VALID;
-
+	uint childCount = cypher_astnode_nchildren(clause);
+	for(uint i = 0; i < childCount; i++) {
+		const cypher_astnode_t *child = cypher_astnode_get_child(clause, i);
+		if(cypher_astnode_type(child) == CYPHER_AST_PATTERN) continue;
+		if(_Validate_filter_not_contains_path(child) == AST_INVALID) {
+			asprintf(reason, "RedisGraph currently does not support filtering with path pattern");
+			return AST_INVALID;
+		}
+	}
 	return AST_VALID;
 }
 
