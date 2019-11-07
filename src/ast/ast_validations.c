@@ -986,15 +986,6 @@ static AST_Validation _ValidateQuerySequence(const AST *ast, char **reason) {
 		return AST_INVALID;
 	}
 
-	// Verify that no intermediate clause is a RETURN
-	for(uint i = 0; i < clause_count - 1; i ++) {
-		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
-		if(cypher_astnode_type(clause) == CYPHER_AST_RETURN) {
-			asprintf(reason, "RETURN must be the final clause in a query.");
-			return AST_INVALID;
-		}
-	}
-
 	return AST_VALID;
 }
 

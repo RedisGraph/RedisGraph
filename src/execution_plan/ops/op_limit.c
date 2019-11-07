@@ -39,4 +39,3 @@ static OpResult LimitReset(OpBase *ctx) {
 	limit->consumed = 0;
 	return OP_OK;
 }
-
