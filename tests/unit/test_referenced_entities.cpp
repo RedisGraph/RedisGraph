@@ -191,13 +191,14 @@ TEST_F(TestReferencedEntities, TestSet) {
 	AST_Free(astSegment);
 
 	// Path match and set property.
-	q = "MATCH (n)-[e]->(m) SET n.v=1";
+	q = "MATCH (n)-[e]->(x)-[]->(m) SET n.v=x.v";
 	ast = buildAST(q);
 	segmentIndices = getASTSegmentIndices(ast);
 	ASSERT_EQ(1, array_len(segmentIndices));
 	astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
-	ASSERT_EQ(1, raxSize(astSegment->referenced_entities));
+	ASSERT_EQ(2, raxSize(astSegment->referenced_entities));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
 	AST_Free(astSegment);
@@ -320,7 +321,6 @@ TEST_F(TestReferencedEntities, TestMerge) {
 	AST_Free(astSegment);
 }
 
-
 TEST_F(TestReferencedEntities, TestUnwind) {
 	char *q = "UNWIND [1,2] as x";
 	AST *ast = buildAST(q);
@@ -332,7 +332,6 @@ TEST_F(TestReferencedEntities, TestUnwind) {
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
 	AST_Free(astSegment);
 }
-
 
 TEST_F(TestReferencedEntities, TestWith) {
 	char *q = "MATCH (n),(m) with n as x";
@@ -377,7 +376,6 @@ TEST_F(TestReferencedEntities, TestWith) {
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
 	AST_Free(astSegment);
 }
-
 
 TEST_F(TestReferencedEntities, TestReturn) {
 	char *q = "MATCH (n),(m) RETURN n as x";

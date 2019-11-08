@@ -135,6 +135,10 @@ static void _AST_MapSetPropertyReferences(AST *ast, const cypher_astnode_t *set_
 
 	const char *alias = cypher_ast_identifier_get_name(ast_entity);
 	_AST_UpdateRefMap(ast, alias);
+
+	// Map expression right hand side, e.g. a.v = 1, a.x = b.x
+	const cypher_astnode_t *set_exp = cypher_ast_set_property_get_expression(set_item);
+	_AST_MapExpression(ast, set_exp);
 }
 
 // Maps entities in SET clause.
