@@ -627,7 +627,7 @@ static ExecutionPlan *_NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_s
 }
 
 ExecutionPlan *ExecutionPlan_UnionPlans(RedisModuleCtx *ctx, GraphContext *gc,
-										ResultSet *result_set, AST *ast) {	
+										ResultSet *result_set, AST *ast) {
 	uint end_offset = 0;
 	uint start_offset = 0;
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
@@ -672,13 +672,19 @@ ExecutionPlan *ExecutionPlan_UnionPlans(RedisModuleCtx *ctx, GraphContext *gc,
 	plan->connected_components = NULL;
 
 	OpBase *results_op = NewResultsOp(plan, result_set);
+	OpBase *parent = results_op;
 	_ExecutionPlan_UpdateRoot(plan, results_op);
 
-	OpBase *distinct_op = NewDistinctOp(plan);
-	ExecutionPlan_AddOp(results_op, distinct_op);
+	// Introduce distinct only if `ALL` isn't specified.
+	const cypher_astnode_t *union_clause = AST_GetClause(ast, CYPHER_AST_UNION);
+	if(!cypher_ast_union_has_all(union_clause)) {
+		OpBase *distinct_op = NewDistinctOp(plan);
+		ExecutionPlan_AddOp(results_op, distinct_op);
+		parent = distinct_op;
+	}
 
 	OpBase *join_op = NewJoinOp(plan);
-	ExecutionPlan_AddOp(distinct_op, join_op);
+	ExecutionPlan_AddOp(parent, join_op);
 
 	// Join execution plans.
 	for(int i = 0; i < union_count; i++) {
@@ -932,7 +938,6 @@ static void _ExecutionPlan_FreeOperations(OpBase *op) {
 }
 
 void ExecutionPlan_Free(ExecutionPlan *plan) {
-	return;
 	if(plan == NULL) return;
 	if(plan->root) {
 		_ExecutionPlan_FreeOperations(plan->root);

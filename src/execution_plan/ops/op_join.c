@@ -12,7 +12,7 @@ static OpResult JoinReset(OpBase *opBase);
 static OpResult JoinInit(OpBase *opBase);
 
 OpBase *NewJoinOp(const ExecutionPlan *plan) {
-	OpJoin *op = rm_malloc(sizeof(OpJoin));
+	OpJoin *op = malloc(sizeof(OpJoin));
 	op->stream = NULL;
 
 	// Set our Op operations
@@ -40,8 +40,8 @@ static Record JoinConsume(OpBase *opBase) {
 		if(r) break;
 
 		// Stream depleted, see if there's a new stream to pull from.
+		op->streamIdx++;
 		if(op->streamIdx < op->op.childCount) {
-			op->streamIdx++;
 			op->stream = op->op.children[op->streamIdx];
 			// Re-enter loop.
 			continue;

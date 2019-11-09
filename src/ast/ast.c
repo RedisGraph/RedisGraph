@@ -116,7 +116,6 @@ void AST_ReferredFunctions(const cypher_astnode_t *root, rax *referred_funcs) {
 	}
 }
 
-
 // Retrieve the first instance of the specified clause in the AST segment, if any.
 const cypher_astnode_t *AST_GetClause(const AST *ast, cypher_astnode_type_t clause_type) {
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
