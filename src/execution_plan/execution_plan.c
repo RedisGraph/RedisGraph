@@ -937,6 +937,24 @@ static void _ExecutionPlan_FreeOperations(OpBase *op) {
 	OpBase_Free(op);
 }
 
+static void _ExecutionPlan_FreeSubPlan(ExecutionPlan *plan) {
+	if(plan == NULL) return;
+
+	for(int i = 0; i < plan->segment_count; i++) _ExecutionPlan_FreeSubPlan(plan->segments[i]);
+	if(plan->segments) rm_free(plan->segments);
+
+	if(plan->connected_components) {
+		uint connected_component_count = array_len(plan->connected_components);
+		for(uint i = 0; i < connected_component_count; i ++) QueryGraph_Free(plan->connected_components[i]);
+		array_free(plan->connected_components);
+		plan->connected_components = NULL;
+	}
+
+	QueryGraph_Free(plan->query_graph);
+	raxFree(plan->record_map);
+	rm_free(plan);
+}
+
 void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) return;
 	if(plan->root) {
@@ -948,7 +966,7 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 	 * their operation chain freed.
 	 * The last segment is the actual plan passed as an argument to this function.
 	 * TODO this logic isn't ideal, try to improve. */
-	for(int i = 0; i < plan->segment_count; i++) ExecutionPlan_Free(plan->segments[i]);
+	for(int i = 0; i < plan->segment_count; i++) _ExecutionPlan_FreeSubPlan(plan->segments[i]);
 	if(plan->segments) rm_free(plan->segments);
 
 	if(plan->connected_components) {

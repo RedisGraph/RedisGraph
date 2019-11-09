@@ -1370,11 +1370,12 @@ static AST_Validation _ValidateUnion_Clauses(const AST *ast, char **reason) {
 		const cypher_astnode_t *proj = cypher_ast_return_get_projection(return_clause, j);
 		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(proj);
 		if(alias_node == NULL)  {
-			projections[j] = NULL;
-		} else {
-			const char *alias = cypher_ast_identifier_get_name(alias_node);
-			projections[j] = alias;
+			// The projection was not aliased, so the projection itself must be an identifier.
+			alias_node = cypher_ast_projection_get_expression(proj);
+			assert(cypher_astnode_type(alias_node) == CYPHER_AST_IDENTIFIER);
 		}
+		const char *alias = cypher_ast_identifier_get_name(alias_node);
+		projections[j] = alias;
 	}
 
 	for(uint i = 1; i < return_clause_count; i++) {
@@ -1389,26 +1390,21 @@ static AST_Validation _ValidateUnion_Clauses(const AST *ast, char **reason) {
 			const cypher_astnode_t *proj = cypher_ast_return_get_projection(return_clause, j);
 			const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(proj);
 			if(alias_node == NULL)  {
-				// TODO: how to compare expressions?
-				if(projections[j] != NULL) {
-					asprintf(reason, "All sub queries in an UNION must have the same column names.");
-					res = AST_INVALID;
-					goto cleanup;
-				}
-			} else {
-				const char *alias = cypher_ast_identifier_get_name(alias_node);
-				if(strcmp(projections[j], alias) != 0) {
-					asprintf(reason, "All sub queries in an UNION must have the same column names.");
-					res = AST_INVALID;
-					goto cleanup;
-				}
+				// The projection was not aliased, so the projection itself must be an identifier.
+				alias_node = cypher_ast_projection_get_expression(proj);
+				assert(cypher_astnode_type(alias_node) == CYPHER_AST_IDENTIFIER);
+			}
+			const char *alias = cypher_ast_identifier_get_name(alias_node);
+			if(strcmp(projections[j], alias) != 0) {
+				asprintf(reason, "All sub queries in an UNION must have the same column names.");
+				res = AST_INVALID;
+				goto cleanup;
 			}
 		}
 	}
 
 cleanup:
 	array_free(return_indices);
-	printf("Passed validations!\n");
 	return res;
 }
 

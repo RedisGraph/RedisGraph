@@ -147,7 +147,6 @@ def step_impl(context):
     assert exception != None
     assert "expected Integer" in exception.message
 
-
 @then(u'a SyntaxError should be raised at compile time: InvalidArgumentType')
 def step_impl(context):
     global exception
@@ -160,3 +159,15 @@ def step_impl(context):
     global exception
     assert exception != None
     assert "Type mismatch" in exception.message
+
+@then(u'a SyntaxError should be raised at compile time: DifferentColumnsInUnion')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "must have the same column names." in exception.message
+
+@then(u'a SyntaxError should be raised at compile time: InvalidClauseComposition')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Invalid combination" in exception.message

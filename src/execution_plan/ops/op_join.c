@@ -33,20 +33,15 @@ static Record JoinConsume(OpBase *opBase) {
 	OpJoin *op = (OpJoin *)opBase;
 	Record r = NULL;
 
-	while(true) {
+	while(!r) {
 		// Try pulling from current stream.
 		r = OpBase_Consume(op->stream);
-		// Managed to get a record, break out.
-		if(r) break;
-
-		// Stream depleted, see if there's a new stream to pull from.
-		op->streamIdx++;
-		if(op->streamIdx < op->op.childCount) {
-			op->stream = op->op.children[op->streamIdx];
-			// Re-enter loop.
-			continue;
+		if(!r) {
+			// Stream depleted, see if there's a new stream to pull from.
+			op->streamIdx++;
+			if(op->streamIdx < op->op.childCount) op->stream = op->op.children[op->streamIdx];
+			else break;
 		}
-		break;
 	}
 
 	return r;
