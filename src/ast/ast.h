@@ -43,6 +43,9 @@ bool AST_ReadOnly(const cypher_parse_result_t *result);
 // Checks to see if AST contains specified clause.
 bool AST_ContainsClause(const AST *ast, cypher_astnode_type_t clause);
 
+// Checks to see if an AST tree contains specified node type.
+bool AST_TreeContainsType(const cypher_astnode_t *root, cypher_astnode_type_t clause);
+
 // Returns all function (aggregated & none aggregated) mentioned in query.
 void AST_ReferredFunctions(const cypher_astnode_t *root, rax *referred_funcs);
 

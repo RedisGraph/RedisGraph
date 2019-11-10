@@ -207,6 +207,69 @@ static AST_Validation _ValidateReferredFunctions(rax *referred_functions, char *
 	return res;
 }
 
+// Recursively collect function names and perform validations on functions with STAR arguments.
+static AST_Validation _VisitFunctions(const cypher_astnode_t *node, rax *func_names,
+									  char **reason) {
+	cypher_astnode_type_t type = cypher_astnode_type(node);
+	if(type == CYPHER_AST_APPLY_ALL_OPERATOR) {
+		// Working with a function call that has * as its argument.
+		const cypher_astnode_t *func = cypher_ast_apply_all_operator_get_func_name(node);
+		const char *func_name = cypher_ast_function_name_get_value(func);
+
+		// Verify that this is a COUNT call.
+		if(strcasecmp(func_name, "COUNT")) {
+			asprintf(reason, "COUNT is the only function which can accept * as an argument");
+			return AST_INVALID;
+		}
+
+		// Verify that DISTINCT is not specified.
+		if(cypher_ast_apply_all_operator_get_distinct(node)) {
+			// TODO consider opening a parser error, this construction is invalid in Neo's parser.
+			asprintf(reason, "Cannot specify both DISTINCT and * in COUNT(DISTINCT *)");
+			return AST_INVALID;
+		}
+
+		// Collect the function name, which is always "count" here.
+		raxInsert(func_names, (unsigned char *)"count", 5, NULL, NULL);
+
+		// As Apply All operators have no children, we can return here.
+		return AST_VALID;
+	}
+
+	if(type == CYPHER_AST_APPLY_OPERATOR) {
+		// Collect the function name.
+		const cypher_astnode_t *func = cypher_ast_apply_operator_get_func_name(node);
+		const char *func_name = cypher_ast_function_name_get_value(func);
+		raxInsert(func_names, (unsigned char *)func_name, strlen(func_name), NULL, NULL);
+	}
+
+	uint child_count = cypher_astnode_nchildren(node);
+	for(uint i = 0; i < child_count; i ++) {
+		const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
+		AST_Validation res = _VisitFunctions(child, func_names, reason);
+		if(res != AST_VALID) return res;
+	}
+
+	return AST_VALID;
+}
+
+static AST_Validation _ValidateFunctionCalls(const cypher_astnode_t *node, char **reason,
+											 bool include_aggregates) {
+	AST_Validation res = AST_VALID;
+	rax *func_names = raxNew();
+
+	// Collect function names and perform in-place validations.
+	res = _VisitFunctions(node, func_names, reason);
+	if(res != AST_VALID) goto cleanup;
+
+	// Validate all provided function names.
+	res = _ValidateReferredFunctions(func_names, reason, include_aggregates);
+
+cleanup:
+	raxFree(func_names);
+	return res;
+}
+
 static inline bool _AliasIsReturned(rax *projections, const char *identifier) {
 	return raxFind(projections, (unsigned char *)identifier, strlen(identifier)) != raxNotFound;
 }
@@ -402,9 +465,17 @@ static AST_Validation _Validate_MATCH_Clause_Filters(const cypher_astnode_t *cla
 		if(_ValidateInlinedPropertiesOnPath(path, reason) != AST_VALID) return AST_INVALID;
 	}
 
-	const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(clause);
-	if(predicate == NULL) return AST_VALID;
-
+	// TODO: Remove this once path patterns are supported at filtering.
+	// This part is NOT syntax validation code. It is checks there are path pattern in the filter.
+	uint childCount = cypher_astnode_nchildren(clause);
+	for(uint i = 0; i < childCount; i++) {
+		const cypher_astnode_t *child = cypher_astnode_get_child(clause, i);
+		if(cypher_astnode_type(child) == CYPHER_AST_PATTERN) continue;
+		if(AST_TreeContainsType(child, CYPHER_AST_PATTERN_PATH)) {
+			asprintf(reason, "RedisGraph currently does not support filtering with path pattern");
+			return AST_INVALID;
+		}
+	}
 	return AST_VALID;
 }
 
@@ -545,7 +616,6 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast, char **reason) {
 	const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
 	if(match_clauses == NULL) return AST_VALID;
 
-	rax *referred_funcs = raxNew();
 	rax *edge_aliases = raxNew();
 	rax *reused_entities = raxNew();
 	AST_Validation res;
@@ -564,8 +634,11 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast, char **reason) {
 		res = _Validate_MATCH_Clause_Filters(match_clause, reason);
 		if(res == AST_INVALID) goto cleanup;
 
-		// Collect function references
-		AST_ReferredFunctions(match_clause, referred_funcs);
+		// Validate all function references in clause. Aggregate calls cannot be made in MATCH
+		// clauses or their WHERE predicates.
+		bool include_aggregates = false;
+		res = _ValidateFunctionCalls(match_clause, reason, include_aggregates);
+		if(res == AST_INVALID) goto cleanup;
 	}
 
 	// Verify that no relation alias is also used to denote a node
@@ -575,13 +648,8 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast, char **reason) {
 		if(res == AST_INVALID) goto cleanup;
 	}
 
-	// Verify that referred functions exist.
-	bool include_aggregates = false;
-	res = _ValidateReferredFunctions(referred_funcs, reason, include_aggregates);
-
 cleanup:
 	if(projections) raxFree(projections);
-	raxFree(referred_funcs);
 	raxFree(edge_aliases);
 	raxFree(reused_entities);
 	array_free(match_clauses);
@@ -638,6 +706,10 @@ static AST_Validation _Validate_WITH_Clauses(const AST *ast, char **reason) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
 		cypher_astnode_type_t type = cypher_astnode_type(clause);
 		if(type == CYPHER_AST_WITH) {
+			// Verify that functions invoked by the WITH clause are valid.
+			res = _ValidateFunctionCalls(clause, reason, true);
+			if(res == AST_INVALID) break;
+
 			// Collect projected aliases from WITH clauses into the same triemap
 			_AST_GetWithAliases(clause, with_projections);
 		} else if(type == CYPHER_AST_MATCH) {
@@ -745,11 +817,16 @@ static AST_Validation _Validate_CREATE_Clauses(const AST *ast, char **reason) {
 	AST_Validation res = AST_VALID;
 	uint clause_count = array_len(create_clauses);
 	for(uint i = 0; i < clause_count; i++) {
+		// Verify that functions invoked by the CREATE clause are valid.
+		res = _ValidateFunctionCalls(create_clauses[i], reason, false);
+		if(res == AST_INVALID) goto cleanup;
+
 		if(_Validate_CREATE_Clause_TypedRelations(create_clauses[i]) == AST_INVALID) {
 			asprintf(reason, "Exactly one relationship type must be specified for CREATE");
 			res = AST_INVALID;
 			goto cleanup;
 		}
+
 		// Validate that inlined properties do not use parameters
 		res = _Validate_CREATE_Clause_Properties(create_clauses[i], reason);
 		if(res == AST_INVALID) goto cleanup;
@@ -781,14 +858,9 @@ static AST_Validation _Validate_RETURN_Clause(const AST *ast, char **reason) {
 	const cypher_astnode_t *return_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
 	if(!return_clause) return AST_VALID;
 
-	// Retrieve all user-specified functions in RETURN clause.
-	rax *referred_funcs = raxNew();
-	AST_ReferredFunctions(return_clause, referred_funcs);
-
-	// Verify that referred functions exist.
+	// Validate all user-specified functions in RETURN clause.
 	bool include_aggregates = true;
-	AST_Validation res = _ValidateReferredFunctions(referred_funcs, reason, include_aggregates);
-	raxFree(referred_funcs);
+	AST_Validation res = _ValidateFunctionCalls(return_clause, reason, include_aggregates);
 
 	return res;
 }
@@ -1264,25 +1336,19 @@ static AST_Validation _validateSubscriptOps(const cypher_astnode_t *root, char *
 }
 
 // checks if SET cluase contains aggregation function
-static AST_Validation _ValidateSET_Clauses(const cypher_astnode_t *root, char **reason) {
-	if(!root) return AST_VALID;
-	const cypher_astnode_type_t type = cypher_astnode_type(root);
-	if(type == CYPHER_AST_SET) {
-		rax *referred_funcs = raxNew();
-		// Collect function references
-		AST_ReferredFunctions(root, referred_funcs);
-		AST_Validation res =  _ValidateReferredFunctions(referred_funcs, reason, false);
-		raxFree(referred_funcs);
-		if(res != AST_VALID) return AST_INVALID;
+static AST_Validation _Validate_SET_Clauses(const AST *ast, char **reason) {
+	const cypher_astnode_t **set_clauses = AST_GetClauses(ast, CYPHER_AST_SET);
+	if(set_clauses == NULL) return AST_VALID;
+
+	uint set_count = array_len(set_clauses);
+	for(uint i = 0; i < set_count; i ++) {
+		// Validate function calls within the SET clause.
+		bool include_aggregates = false;
+		AST_Validation res = _ValidateFunctionCalls(ast->root, reason, include_aggregates);
+		if(res != AST_VALID) return res;
 	}
 
-	// validate children
-	uint child_count = cypher_astnode_nchildren(root);
-	for(uint i = 0; i < child_count; i++) {
-		if(_ValidateSET_Clauses(cypher_astnode_get_child(root, i),
-								reason) != AST_VALID) return AST_INVALID;
-	}
-
+	array_free(set_clauses);
 	return AST_VALID;
 }
 
@@ -1319,15 +1385,15 @@ static AST_Validation _ValidateClauses(const AST *ast, char **reason) {
 		return AST_INVALID;
 	}
 
+	if(_Validate_SET_Clauses(ast, reason) == AST_INVALID) {
+		return AST_INVALID;
+	}
+
 	if(_Validate_LIMIT_SKIP_Modifiers(ast, reason) == AST_INVALID) {
 		return AST_INVALID;
 	}
 
 	if(_ValidateMaps(ast->root, reason) == AST_INVALID) {
-		return AST_INVALID;
-	}
-
-	if(_ValidateSET_Clauses(ast->root, reason) == AST_INVALID) {
 		return AST_INVALID;
 	}
 

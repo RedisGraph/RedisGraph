@@ -48,7 +48,6 @@ Feature: AggregationAcceptance
             | 2     |
         And no side effects
 
-    @skip
     Scenario: Support column renaming for aggregates as well
         Given an empty graph
         And having executed:
@@ -96,7 +95,6 @@ Feature: AggregationAcceptance
             | {foo: a.name='Andres', kids: collect(child.name)} |
         And no side effects
 
-    @skip
     Scenario: Count nodes
         Given an empty graph
         And having executed:
@@ -137,7 +135,6 @@ Feature: AggregationAcceptance
             | 'Germany'  | 1        |
         And no side effects
 
-    @skip
     Scenario: Aggregate on property
         Given an empty graph
         And having executed:
@@ -268,7 +265,6 @@ Feature: AggregationAcceptance
             | [1] |
         And no side effects
 
-    @skip
     Scenario: Aggregate on list values
         Given an empty graph
         And having executed:
@@ -297,7 +293,6 @@ Feature: AggregationAcceptance
             """
         Then a SyntaxError should be raised at compile time: NestedAggregation
 
-    @skip
     Scenario: Aggregates with arithmetics
         Given an empty graph
         And having executed:
@@ -348,7 +343,6 @@ Feature: AggregationAcceptance
             | 1        | [()]       |
         And no side effects
 
-    @skip
     Scenario: Simple counting of nodes
         Given an empty graph
         And having executed:

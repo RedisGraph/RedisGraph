@@ -137,7 +137,6 @@ Feature: ReturnAcceptance2
             """
         Then a SyntaxError should be raised at compile time: UndefinedVariable
 
-    @skip
     Scenario: Ordering with aggregation
         Given an empty graph
         And having executed:
@@ -469,7 +468,6 @@ Feature: ReturnAcceptance2
             | +nodes      | 1 |
             | +properties | 1 |
 
-    @skip
     Scenario: Aggregating by a list property has a correct definition of equality
         Given an empty graph
         And having executed:
