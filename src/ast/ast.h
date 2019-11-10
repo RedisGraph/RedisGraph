@@ -104,4 +104,3 @@ cypher_parse_result_t *parse(const char *query);
 void parse_result_free(cypher_parse_result_t *parse_result);
 
 void AST_Free(AST *ast);
-

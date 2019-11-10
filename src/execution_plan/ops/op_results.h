@@ -21,4 +21,3 @@ typedef struct {
 
 /* Creates a new Results operation */
 OpBase *NewResultsOp(const ExecutionPlan *plan, ResultSet *result_set);
-

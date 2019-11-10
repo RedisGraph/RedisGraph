@@ -170,7 +170,6 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidArgumentType
 
-@skip
   Scenario: Failing when UNION has different columns
     When executing query:
       """
@@ -180,7 +179,6 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: DifferentColumnsInUnion
 
-@skip
   Scenario: Failing when mixing UNION and UNION ALL
     When executing query:
       """

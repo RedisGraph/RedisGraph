@@ -1058,15 +1058,6 @@ static AST_Validation _ValidateQuerySequence(const AST *ast, char **reason) {
 		return AST_INVALID;
 	}
 
-	// Verify that no intermediate clause is a RETURN
-	for(uint i = 0; i < clause_count - 1; i ++) {
-		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
-		if(cypher_astnode_type(clause) == CYPHER_AST_RETURN) {
-			asprintf(reason, "RETURN must be the final clause in a query.");
-			return AST_INVALID;
-		}
-	}
-
 	return AST_VALID;
 }
 
@@ -1409,6 +1400,80 @@ static AST_Validation _ValidateClauses(const AST *ast, char **reason) {
 	return AST_VALID;
 }
 
+static AST_Validation _ValidateUnion_Clauses(const AST *ast, char **reason) {
+	if(!AST_ContainsClause(ast, CYPHER_AST_UNION)) return AST_VALID;
+
+	/* Make sure there's no conflict between UNION clauses
+	 * either all UNION clauses specify ALL or nither of them does. */
+	AST_Validation res = AST_VALID;
+	uint *union_indices = AST_GetClauseIndices(ast, CYPHER_AST_UNION);
+	uint union_clause_count = array_len(union_indices);
+	int has_all_count = 0;
+
+	for(uint i = 0; i < union_clause_count; i++) {
+		const cypher_astnode_t *union_clause = cypher_ast_query_get_clause(ast->root, union_indices[i]);
+		if(cypher_ast_union_has_all(union_clause)) has_all_count++;
+	}
+	array_free(union_indices);
+
+	// If we've encountered UNION ALL clause, all UNION clauses should specify ALL.
+	if(has_all_count != 0) {
+		if(has_all_count != union_clause_count) {
+			asprintf(reason, "Invalid combination of UNION and UNION ALL.");
+			return AST_INVALID;
+		}
+	}
+
+	// Require all RETURN clauses to perform the exact same projection.
+	uint *return_indices = AST_GetClauseIndices(ast, CYPHER_AST_RETURN);
+	uint return_clause_count = array_len(return_indices);
+
+	const cypher_astnode_t *return_clause = cypher_ast_query_get_clause(ast->root, return_indices[0]);
+	uint proj_count = cypher_ast_return_nprojections(return_clause);
+	const char *projections[proj_count];
+
+	for(uint j = 0; j < proj_count; j++) {
+		const cypher_astnode_t *proj = cypher_ast_return_get_projection(return_clause, j);
+		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(proj);
+		if(alias_node == NULL)  {
+			// The projection was not aliased, so the projection itself must be an identifier.
+			alias_node = cypher_ast_projection_get_expression(proj);
+			assert(cypher_astnode_type(alias_node) == CYPHER_AST_IDENTIFIER);
+		}
+		const char *alias = cypher_ast_identifier_get_name(alias_node);
+		projections[j] = alias;
+	}
+
+	for(uint i = 1; i < return_clause_count; i++) {
+		return_clause = cypher_ast_query_get_clause(ast->root, return_indices[i]);
+		if(proj_count != cypher_ast_return_nprojections(return_clause)) {
+			asprintf(reason, "All sub queries in an UNION must have the same column names.");
+			res = AST_INVALID;
+			goto cleanup;
+		}
+
+		for(uint j = 0; j < proj_count; j++) {
+			const cypher_astnode_t *proj = cypher_ast_return_get_projection(return_clause, j);
+			const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(proj);
+			if(alias_node == NULL)  {
+				// The projection was not aliased, so the projection itself must be an identifier.
+				alias_node = cypher_ast_projection_get_expression(proj);
+				assert(cypher_astnode_type(alias_node) == CYPHER_AST_IDENTIFIER);
+			}
+			const char *alias = cypher_ast_identifier_get_name(alias_node);
+			if(strcmp(projections[j], alias) != 0) {
+				asprintf(reason, "All sub queries in an UNION must have the same column names.");
+				res = AST_INVALID;
+				goto cleanup;
+			}
+		}
+	}
+
+cleanup:
+	array_free(return_indices);
+	return res;
+}
+
 static AST_Validation _BlockUnsupportedMerges(AST *ast, char **reason) {
 	/* The current merge implementation does not work properly when the query is
 	 * intended to operate on multiple data streams, as in:
@@ -1516,6 +1581,13 @@ cleanup:
 	return res;
 }
 
+// Performs validations across AST scopes
+static AST_Validation _ValidateGlobalScope(const cypher_astnode_t *root, char **reason) {
+	AST mock_ast; // Build a fake AST with the correct AST root
+	mock_ast.root = root;
+	return _ValidateUnion_Clauses(&mock_ast, reason);
+}
+
 // Checks to see if libcypher-parser reported any errors.
 bool AST_ContainsErrors(const cypher_parse_result_t *result) {
 	return cypher_parse_result_nerrors(result) > 0;
@@ -1567,6 +1639,13 @@ AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *re
 
 	// Check for invalid queries not captured by libcypher-parser
 	AST_Validation res = _ValidateScopes(body, &reason);
+	if(res != AST_VALID) {
+		RedisModule_ReplyWithError(ctx, reason);
+		free(reason);
+		return res;
+	}
+
+	res = _ValidateGlobalScope(body, &reason);
 	if(res != AST_VALID) {
 		RedisModule_ReplyWithError(ctx, reason);
 		free(reason);

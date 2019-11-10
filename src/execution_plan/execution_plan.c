@@ -626,9 +626,98 @@ static ExecutionPlan *_NewExecutionPlan(RedisModuleCtx *ctx, ResultSet *result_s
 	return plan;
 }
 
+ExecutionPlan *ExecutionPlan_UnionPlans(RedisModuleCtx *ctx, GraphContext *gc,
+										ResultSet *result_set, AST *ast) {
+	uint end_offset = 0;
+	uint start_offset = 0;
+	uint clause_count = cypher_ast_query_nclauses(ast->root);
+	uint *union_indices = AST_GetClauseIndices(ast, CYPHER_AST_UNION);
+	union_indices = array_append(union_indices, clause_count);
+	int union_count = array_len(union_indices);
+	assert(union_count > 1);
+
+	/* Placeholder for each execution plan, these all will be joined
+	 * via a single UNION operation. */
+	ExecutionPlan **plans = rm_malloc(union_count * sizeof(ExecutionPlan *));
+
+	for(int i = 0; i < union_count; i++) {
+		// Create an AST segment from which we will build an execution plan.
+		end_offset = union_indices[i];
+		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
+		plans[i] = NewExecutionPlan(ctx, gc, result_set);
+
+		// Next segment starts where this one ends.
+		start_offset = union_indices[i] + 1;
+	}
+
+	array_free(union_indices);
+
+	/* Join streams:
+	 * MATCH (a) RETURN a UNION MATCH (a) RETURN a ....
+	 * left stream:     [Scan]->[Project]->[Results]
+	 * right stream:    [Scan]->[Project]->[Results]
+	 *
+	 * Joined:
+	 * left stream:     [Scan]->[Project]
+	 * right stream:    [Scan]->[Project]
+	 *                  [Union]->[Distinct]->[Result] */
+
+	ExecutionPlan *plan = rm_calloc(1, sizeof(ExecutionPlan));
+	plan->root = NULL;
+	plan->segments = plans;
+	plan->segment_count = union_count;
+	plan->query_graph = NULL;
+	plan->record_map = raxNew();
+	plan->result_set = result_set;
+	plan->connected_components = NULL;
+
+	OpBase *results_op = NewResultsOp(plan, result_set);
+	OpBase *parent = results_op;
+	_ExecutionPlan_UpdateRoot(plan, results_op);
+
+	// Introduce distinct only if `ALL` isn't specified.
+	const cypher_astnode_t *union_clause = AST_GetClause(ast, CYPHER_AST_UNION);
+	if(!cypher_ast_union_has_all(union_clause)) {
+		OpBase *distinct_op = NewDistinctOp(plan);
+		ExecutionPlan_AddOp(results_op, distinct_op);
+		parent = distinct_op;
+	}
+
+	OpBase *join_op = NewJoinOp(plan);
+	ExecutionPlan_AddOp(parent, join_op);
+
+	// Join execution plans.
+	for(int i = 0; i < union_count; i++) {
+		ExecutionPlan *sub_plan = plans[i];
+		assert(sub_plan->root->type == OPType_RESULTS);
+
+		// Remove OP_Result.
+		OpBase *op_result = sub_plan->root;
+		ExecutionPlan_RemoveOp(sub_plan, sub_plan->root);
+		OpBase_Free(op_result);
+
+		assert(sub_plan->root->type == OPType_PROJECT);
+
+		ExecutionPlan_AddOp(join_op, sub_plan->root);
+
+		// Set plan's root to NULL, to avoid freeing its operations.
+		sub_plan->root = NULL;
+	}
+
+	return plan;
+}
+
 ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet *result_set) {
 	AST *ast = QueryCtx_GetAST();
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
+
+	/* Handel UNION if there are any. */
+	if(AST_ContainsClause(ast, CYPHER_AST_UNION)) {
+		return ExecutionPlan_UnionPlans(ctx, gc, result_set, ast);
+	}
+
+	uint start_offset = 0;
+	uint end_offset = 0;
 
 	/* Execution plans are created in 1 or more segments. Every WITH clause demarcates
 	 * the beginning of a new segment, and a RETURN clause (if present) forms its own segment. */
@@ -656,7 +745,7 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 
 	uint segment_count = array_len(segment_indices);
 	ExecutionPlan **segments = rm_malloc(segment_count * sizeof(ExecutionPlan *));
-	uint start_offset = 0;
+	start_offset = 0;
 	for(int i = 0; i < segment_count; i++) {
 		uint end_offset = segment_indices[i];
 		// Slice the AST to only include the clauses in the current segment.
@@ -725,7 +814,8 @@ ExecutionPlan *NewExecutionPlan(RedisModuleCtx *ctx, GraphContext *gc, ResultSet
 	// Optimize the operations in the ExecutionPlan.
 	optimizePlan(gc, plan);
 
-	plan->segment_count = segment_count;
+	// Disregard self.
+	plan->segment_count = segment_count - 1;
 	plan->segments = segments;
 
 	return plan;
@@ -847,13 +937,17 @@ static void _ExecutionPlan_FreeOperations(OpBase *op) {
 	OpBase_Free(op);
 }
 
-static void _ExecutionPlan_FreeSegment(ExecutionPlan *plan) {
+static void _ExecutionPlan_FreeSubPlan(ExecutionPlan *plan) {
+	if(plan == NULL) return;
+
+	for(int i = 0; i < plan->segment_count; i++) _ExecutionPlan_FreeSubPlan(plan->segments[i]);
+	if(plan->segments) rm_free(plan->segments);
+
 	if(plan->connected_components) {
 		uint connected_component_count = array_len(plan->connected_components);
-		for(uint i = 0; i < connected_component_count; i ++) {
-			QueryGraph_Free(plan->connected_components[i]);
-		}
+		for(uint i = 0; i < connected_component_count; i ++) QueryGraph_Free(plan->connected_components[i]);
 		array_free(plan->connected_components);
+		plan->connected_components = NULL;
 	}
 
 	QueryGraph_Free(plan->query_graph);
@@ -863,23 +957,26 @@ static void _ExecutionPlan_FreeSegment(ExecutionPlan *plan) {
 
 void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) return;
-	_ExecutionPlan_FreeOperations(plan->root);
+	if(plan->root) {
+		_ExecutionPlan_FreeOperations(plan->root);
+		plan->root = NULL;
+	}
 
 	/* All segments but the last should have everything but
 	 * their operation chain freed.
 	 * The last segment is the actual plan passed as an argument to this function.
 	 * TODO this logic isn't ideal, try to improve. */
-	for(int i = 0; i < plan->segment_count - 1; i++) _ExecutionPlan_FreeSegment(plan->segments[i]);
-	rm_free(plan->segments);
+	for(int i = 0; i < plan->segment_count; i++) _ExecutionPlan_FreeSubPlan(plan->segments[i]);
+	if(plan->segments) rm_free(plan->segments);
 
 	if(plan->connected_components) {
 		uint connected_component_count = array_len(plan->connected_components);
 		for(uint i = 0; i < connected_component_count; i ++) QueryGraph_Free(plan->connected_components[i]);
 		array_free(plan->connected_components);
+		plan->connected_components = NULL;
 	}
 
 	QueryGraph_Free(plan->query_graph);
 	raxFree(plan->record_map);
 	rm_free(plan);
 }
-

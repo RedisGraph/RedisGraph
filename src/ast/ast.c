@@ -50,7 +50,7 @@ static inline int _get_limit(const cypher_astnode_t *project_clause) {
 	// Retrieve the AST LIMIT node if one is specified.
 	if(cypher_astnode_type(project_clause) == CYPHER_AST_WITH) {
 		limit_node = cypher_ast_with_get_limit(project_clause);
-	} else {
+	} else if(cypher_astnode_type(project_clause) == CYPHER_AST_RETURN) {
 		limit_node = cypher_ast_return_get_limit(project_clause);
 	}
 
@@ -132,7 +132,6 @@ void AST_ReferredFunctions(const cypher_astnode_t *root, rax *referred_funcs) {
 		}
 	}
 }
-
 
 // Retrieve the first instance of the specified clause in the AST segment, if any.
 const cypher_astnode_t *AST_GetClause(const AST *ast, cypher_astnode_type_t clause_type) {
@@ -240,6 +239,11 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	uint clause_count = cypher_ast_query_nclauses(master_ast->root);
 	if(clause_count > 1 && end_offset < clause_count) {
 		project_clause = cypher_ast_query_get_clause(master_ast->root, end_offset);
+		/* Last clause is not necessarily a projection clause,
+		 * [MATCH (a) RETURN a UNION] MATCH (a) RETURN a
+		 * In this case project_clause = UNION, which is not a projection clause. */
+		cypher_astnode_type_t project_type = cypher_astnode_type(project_clause);
+		if(project_type == CYPHER_AST_UNION) project_clause = NULL;
 	}
 
 	// Set the max number of results for this AST if a LIMIT modifier is specified.
