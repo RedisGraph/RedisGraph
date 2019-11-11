@@ -10,6 +10,6 @@
 
 /* Detects if graph contains a cycle. 
  * assuming graph is fully connected. */
-bool AcyclicGraph(
+bool IsAcyclicGraph(
 	const QueryGraph *qg
 );

@@ -399,7 +399,7 @@ GrB_Matrix QueryGraph_MatrixRepresentation(const QueryGraph *qg) {
 		for(uint j = 0; j < outgoing_degree; j++) {
 			const QGEdge *e = n->outgoing_edges[j];
 			GrB_Index dest = e->dest->labelID;
-			// Populate both `m` and `c`.
+			// Populate `m`.
 			res = GrB_Matrix_setElement_BOOL(m, true, src, dest);
 			assert(res == GrB_SUCCESS);
 		}
