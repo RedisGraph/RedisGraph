@@ -12,8 +12,8 @@
 //------------------------------------------------------------------------------
 
 static AnnotationCtx *_AST_NewParamsContext(void) {
-	AnnotationCtx *project_all_ctx = cypher_ast_annotation_context();
-	return project_all_ctx;
+	AnnotationCtx *param_crx = cypher_ast_annotation_context();
+	return param_crx;
 }
 
 static void _collect_query_params_map(const cypher_astnode_t *ast_exp, rax *parameter_map) {
@@ -50,7 +50,7 @@ static void _annotate_params(AST *ast) {
 	while(raxNext(&iter)) {
 		const char *key = (const char *)iter.key;
 		const cypher_astnode_t **exp_arr = iter.data;
-		const cypher_astnode_t *param_value = raxFind(params_values, (unsigned char *) key, strlen(key));
+		const cypher_astnode_t *param_value = raxFind(params_values, (unsigned char *) key, iter.key_len);
 		if(param_value != raxNotFound) {
 			uint array_length = array_len(exp_arr);
 			for(uint i = 0; i < array_length; i++) {

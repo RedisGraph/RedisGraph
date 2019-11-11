@@ -1553,7 +1553,7 @@ static AST_Validation _ValidateParameters(const cypher_astnode_t *statement, cha
 	raxSeek(&iter, "^", NULL, 0);
 	while(raxNext(&iter)) {
 		const char *key = (const char *)iter.key;
-		if(raxFind(given_params_names, (unsigned char *) key, strlen(key)) == raxNotFound) {
+		if(raxFind(given_params_names, (unsigned char *) key, iter.key_len) == raxNotFound) {
 			missing_keys = array_append(missing_keys, rm_strdup(key));
 		}
 	}
