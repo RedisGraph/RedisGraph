@@ -234,9 +234,7 @@ static bool _validateInExpression(AR_ExpNode *exp) {
 	assert(exp->op.child_count == 2);
 
 	AR_ExpNode *list = exp->op.children[1];
-	if(list->operand.type != AR_EXP_CONSTANT) return false;
-
-	assert(list->operand.constant.type == T_ARRAY);
+	if(list->operand.type != AR_EXP_CONSTANT || list->operand.constant.type != T_ARRAY) return false;
 
 	SIValue listValue = list->operand.constant;
 	uint listLen = SIArray_Length(listValue);
