@@ -10,5 +10,6 @@
 #include "./bfs.h"
 #include "./dfs.h"
 #include "./all_paths.h"
+#include "./detect_cycle.h"
 
 #endif

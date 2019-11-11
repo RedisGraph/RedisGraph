@@ -376,6 +376,39 @@ uint QueryGraph_EdgeCount(const QueryGraph *qg) {
 	return array_len(qg->edges);
 }
 
+GrB_Matrix QueryGraph_MatrixRepresentation(const QueryGraph *qg) {
+	assert(qg);
+
+	// Make a clone of the given graph as we're about to modify it.
+	QueryGraph *qg_clone = QueryGraph_Clone(qg);
+
+	// Give an ID for each node, abuse of `labelID`.
+	uint node_count = QueryGraph_NodeCount(qg_clone);
+	for(uint i = 0; i < node_count; i++) qg_clone->nodes[i]->labelID = i;
+
+	GrB_Matrix m;   // Matrix representation of QueryGraph.
+	GrB_Info res = GrB_Matrix_new(&m, GrB_BOOL, node_count, node_count);
+	assert(res == GrB_SUCCESS);
+
+	// Build matrix representation of query graph.
+	for(uint i = 0; i < node_count; i++) {
+		const QGNode *n = qg_clone->nodes[i];
+		GrB_Index src = n->labelID;
+		uint outgoing_degree = QGNode_OutgoingDegree(n);
+
+		for(uint j = 0; j < outgoing_degree; j++) {
+			const QGEdge *e = n->outgoing_edges[j];
+			GrB_Index dest = e->dest->labelID;
+			// Populate `m`.
+			res = GrB_Matrix_setElement_BOOL(m, true, src, dest);
+			assert(res == GrB_SUCCESS);
+		}
+	}
+
+	QueryGraph_Free(qg_clone);
+	return m;
+}
+
 /* Frees entire graph. */
 void QueryGraph_Free(QueryGraph *qg) {
 	if(!qg) return;
