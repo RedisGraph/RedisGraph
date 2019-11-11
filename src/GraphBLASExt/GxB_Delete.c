@@ -1,3 +1,9 @@
+/*
+* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Redis Labs Source Available License Agreement
+*/
+
 #include "./GxB_Delete.h"
 
 GrB_Info GxB_Matrix_Delete

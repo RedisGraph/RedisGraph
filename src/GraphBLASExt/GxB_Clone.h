@@ -9,11 +9,9 @@
 #include <stdint.h>
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
-/* Clears entry at position M[row,col]
- * If M[row,col] isn't empty then M's NNZ is reduced by one. */
-GrB_Info GxB_Matrix_Delete
+/* Clones given matrix. */
+GrB_Info GxB_MatrixClone
 (
-	GrB_Matrix M,
-	GrB_Index row,
-	GrB_Index col
+    const GrB_Matrix A,
+    GrB_Matrix *C
 ) ;

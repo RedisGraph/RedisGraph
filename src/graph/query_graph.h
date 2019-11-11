@@ -6,13 +6,14 @@
 
 #pragma once
 
+#include "../ast/ast.h"
+#include "graphcontext.h"
 #include "entities/node.h"
 #include "entities/edge.h"
 #include "entities/qg_node.h"
 #include "entities/qg_edge.h"
-#include "graphcontext.h"
-#include "../ast/ast.h"
 #include "../ast/ast_shared.h"
+#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 typedef struct {
 	QGNode **nodes;             // Nodes contained in QueryGraph
@@ -73,6 +74,8 @@ uint QueryGraph_NodeCount(const QueryGraph *qg);
 /* Retrieve the number of edges in a QueryGraph. */
 uint QueryGraph_EdgeCount(const QueryGraph *qg);
 
+/* Build a matrix representation of query graph. */
+GrB_Matrix QueryGraph_MatrixRepresentation(const QueryGraph *qg);
+
 /* Frees entire graph */
 void QueryGraph_Free(QueryGraph *qg);
-
