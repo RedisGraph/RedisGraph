@@ -12,6 +12,7 @@
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
 #include <assert.h>
+#include "../query_ctx.h"
 
 inline static void _prepareIterateAll(rax *map, raxIterator *iter) {
 	raxStart(iter, map);
@@ -1509,6 +1510,70 @@ cleanup:
 	return res;
 }
 
+static void _colect_query_parameters_names(const cypher_astnode_t *root, rax *keys) {
+	cypher_astnode_type_t type = cypher_astnode_type(root);
+	// In case of identifier.
+	if(type == CYPHER_AST_PARAMETER) {
+		const char *identifier = cypher_ast_parameter_get_name(root);
+		raxInsert(keys, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
+	} else {
+		// Recurse over children.
+		uint child_count = cypher_astnode_nchildren(root);
+		for(uint i = 0; i < child_count; i++) {
+			const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
+			// Recursively continue mapping.
+			_colect_query_parameters_names(child, keys);
+		}
+	}
+}
+
+// This method extracts given parameters names.
+static rax *_extract_given_params(const cypher_astnode_t *statement) {
+	rax *given_params_names = raxNew();
+	uint noptions =  cypher_ast_statement_noptions(statement);
+	for(uint i = 0; i < noptions; i++) {
+		const cypher_astnode_t *option = cypher_ast_statement_get_option(statement, i);
+		uint nparams = cypher_ast_cypher_option_nparams(option);
+		for(uint j = 0; j < nparams; j++) {
+			const cypher_astnode_t *param = cypher_ast_cypher_option_get_param(option, j);
+			const char *paramName = cypher_ast_string_get_value(cypher_ast_cypher_option_param_get_name(param));
+			raxInsert(given_params_names, (unsigned char *) paramName, strlen(paramName), NULL, NULL);
+		}
+	}
+	return given_params_names;
+}
+
+static AST_Validation _ValidateParameters(const cypher_astnode_t *statement, char **reason) {
+	rax *given_params_names = _extract_given_params(statement);
+	rax *query_params_names = raxNew();
+	_colect_query_parameters_names(statement, query_params_names);
+	char **missing_keys = array_new(char *, 0);
+	raxIterator iter;
+	raxStart(&iter, query_params_names);
+	raxSeek(&iter, "^", NULL, 0);
+	while(raxNext(&iter)) {
+		const char *key = (const char *)iter.key;
+		if(raxFind(given_params_names, (unsigned char *) key, strlen(key)) == raxNotFound) {
+			missing_keys = array_append(missing_keys, rm_strdup(key));
+		}
+	}
+	raxStop(&iter);
+	raxFree(query_params_names);
+	raxFree(given_params_names);
+	uint missing_keys_count = array_len(missing_keys);
+	AST_Validation res = AST_VALID;
+	if(missing_keys_count > 0) {
+		asprintf(reason, "Missing parameters: %s", missing_keys[0]);
+		for(uint i = 1; i < missing_keys_count; i++) {
+			asprintf(reason, "%s, %s", *reason, missing_keys[i]);
+			rm_free(missing_keys[i]);
+		}
+		res = AST_INVALID;
+	}
+	array_free(missing_keys);
+	return res;
+}
+
 static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, uint end_offset) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->free_root = true;
@@ -1624,6 +1689,12 @@ AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *re
 		// This should be unnecessary, as we're currently parsing
 		// with the CYPHER_PARSE_ONLY_STATEMENTS flag.
 		asprintf(&reason, "Encountered unsupported query type '%s'", cypher_astnode_typestr(root_type));
+		RedisModule_ReplyWithError(ctx, reason);
+		free(reason);
+		return AST_INVALID;
+	}
+
+	if(_ValidateParameters(root, &reason) != AST_VALID) {
 		RedisModule_ReplyWithError(ctx, reason);
 		free(reason);
 		return AST_INVALID;

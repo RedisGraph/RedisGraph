@@ -72,6 +72,22 @@ static void _AST_LimitResults(AST *ast, const cypher_astnode_t *root_clause,
 	}
 }
 
+static void _extract_params(const cypher_astnode_t *statement) {
+	rax *params = raxNew();
+	uint noptions =  cypher_ast_statement_noptions(statement);
+	for(uint i = 0; i < noptions; i++) {
+		const cypher_astnode_t *option = cypher_ast_statement_get_option(statement, i);
+		uint nparams = cypher_ast_cypher_option_nparams(option);
+		for(uint j = 0; j < nparams; j++) {
+			const cypher_astnode_t *param = cypher_ast_cypher_option_get_param(option, j);
+			const char *paramName = cypher_ast_string_get_value(cypher_ast_cypher_option_param_get_name(param));
+			const cypher_astnode_t *paramValue = cypher_ast_cypher_option_param_get_value(param);
+			raxInsert(params, (unsigned char *) paramName, strlen(paramName), (void *)paramValue, NULL);
+		}
+	}
+	QueryCtx_SetParams(params);
+}
+
 bool AST_ReadOnly(const cypher_parse_result_t *result) {
 	// A lot of these steps will be unnecessary once we move
 	// parsing into the subthread (and can thus perform this check
@@ -190,6 +206,7 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	ast->name_ctx = NULL;
 	ast->project_all_ctx = NULL;
 	ast->named_paths_ctx = NULL;
+	ast->params_ctx = NULL;
 	ast->free_root = false;
 
 	// Retrieve the AST root node from a parsed query.
@@ -197,7 +214,7 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	// We are parsing with the CYPHER_PARSE_ONLY_STATEMENTS flag,
 	// and double-checking this in AST validations
 	assert(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
-
+	_extract_params(statement);
 	ast->root = cypher_ast_statement_get_body(statement);
 
 	// Empty queries should be captured by AST validations
@@ -217,6 +234,7 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	ast->name_ctx = master_ast->name_ctx;
 	ast->project_all_ctx = master_ast->project_all_ctx;
 	ast->named_paths_ctx = master_ast->named_paths_ctx;
+	ast->params_ctx = master_ast->params_ctx;
 	ast->free_root = true;
 	ast->limit = UNLIMITED;
 	uint n = end_offset - start_offset;
@@ -348,6 +366,7 @@ void AST_Free(AST *ast) {
 		if(ast->name_ctx) cypher_ast_annotation_context_free(ast->name_ctx);
 		if(ast->project_all_ctx) cypher_ast_annotation_context_free(ast->project_all_ctx);
 		if(ast->named_paths_ctx) cypher_ast_annotation_context_free(ast->named_paths_ctx);
+		if(ast->params_ctx) cypher_ast_annotation_context_free(ast->params_ctx);
 	}
 	rm_free(ast);
 }

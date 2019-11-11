@@ -27,6 +27,7 @@ typedef struct {
 	AnnotationCtx *name_ctx;        // Annotation context for naming graph entities and ORDER items.
 	AnnotationCtx *project_all_ctx; // Context containing aliases for WITH/RETURN * projections.
 	AnnotationCtx *named_paths_ctx; // Annotation context for named paths projections.
+	AnnotationCtx *params_ctx;      // Annotation context for query parameters.
 	uint limit;                     // The maximum number of results in this segment.
 	bool free_root;                 // The root should only be freed if this is a sub-AST we constructed
 } AST;

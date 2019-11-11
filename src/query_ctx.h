@@ -17,6 +17,7 @@ extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key
 
 typedef struct {
 	AST *ast;                   // The scoped AST associated with this query.
+	rax *params;                // Query parameters.
 	char *error;                // The error message produced by this query, if any.
 	double timer[2];            // Query execution time tracking.
 	GraphContext *gc;           // The GraphContext associated with this query's graph.
@@ -48,6 +49,8 @@ void QueryCtx_EmitException(void);
 /* Setters */
 /* Set the provided AST for access through the QueryCtx. */
 void QueryCtx_SetAST(AST *ast);
+/* Set the query parameters values map. */
+void QueryCtx_SetParams(rax *params);
 /* Set the error message for this query. */
 void QueryCtx_SetError(char *error);
 /* Set the provided GraphCtx for access through the QueryCtx. */
@@ -58,6 +61,8 @@ void QueryCtx_SetRedisModuleCtx(RedisModuleCtx *redisctx);
 /* Getters */
 /* Retrieve the AST. */
 AST *QueryCtx_GetAST(void);
+/* Retrive the query parameters values map. */
+rax *QueryCtx_GetParams(void);
 /* Retrieve the Graph object. */
 Graph *QueryCtx_GetGraph(void);
 /* Retrieve the GraphCtx. */
