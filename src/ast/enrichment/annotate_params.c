@@ -7,23 +7,33 @@
 #include "../ast.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
+#include "../../arithmetic/arithmetic_expression.h"
+
 //------------------------------------------------------------------------------
 //  Annotation context - query parameters
 //------------------------------------------------------------------------------
 
+// AST annotation callback routine for freeing arithmetic expressions.
+static void _FreeParamAnnotationCallback(void *unused, const cypher_astnode_t *node,
+										 void *annotation) {
+	AR_EXP_Free((AR_ExpNode *)annotation);
+}
+
 static AnnotationCtx *_AST_NewParamsContext(void) {
-	AnnotationCtx *param_crx = cypher_ast_annotation_context();
-	return param_crx;
+	AnnotationCtx *param_ctx = cypher_ast_annotation_context();
+	cypher_ast_annotation_context_release_handler_t handler = &_FreeParamAnnotationCallback;
+	cypher_ast_annotation_context_set_release_handler(param_ctx, handler, NULL);
+	return param_ctx;
 }
 
 static void _collect_query_params_map(const cypher_astnode_t *ast_exp, rax *parameter_map) {
 	cypher_astnode_type_t type = cypher_astnode_type(ast_exp);
-	// In case of identifier.
+	// In case of parameter.
 	if(type == CYPHER_AST_PARAMETER) {
 		const char *identifier = cypher_ast_parameter_get_name(ast_exp);
 		const cypher_astnode_t **exp_arr = raxFind(parameter_map, (unsigned char *)identifier,
 												   strlen(identifier));
-		// Use array in case of multiple projections for the same named path.
+		// Use array in case of same parameter is used in multiple locations.
 		if(exp_arr == raxNotFound) exp_arr = array_new(const cypher_astnode_t *, 1);
 		exp_arr = array_append(exp_arr, ast_exp);
 		raxInsert(parameter_map, (unsigned char *)identifier, strlen(identifier), (void *)exp_arr, NULL);
@@ -41,7 +51,7 @@ static void _collect_query_params_map(const cypher_astnode_t *ast_exp, rax *para
 static void _annotate_params(AST *ast) {
 	// Check for number of parameters, if there aren't any, return;
 	rax *params_values = QueryCtx_GetParams();
-	if(raxSize(params_values) == 0) return;
+	if(!params_values || raxSize(params_values) == 0) return;
 	rax *query_params_map = raxNew();
 	_collect_query_params_map(ast->root, query_params_map);
 	raxIterator iter;
@@ -51,12 +61,12 @@ static void _annotate_params(AST *ast) {
 		const char *key = (const char *)iter.key;
 		const cypher_astnode_t **exp_arr = iter.data;
 		const cypher_astnode_t *param_value = raxFind(params_values, (unsigned char *) key, iter.key_len);
-		if(param_value != raxNotFound) {
-			uint array_length = array_len(exp_arr);
-			for(uint i = 0; i < array_length; i++) {
-				cypher_astnode_attach_annotation(ast->params_ctx, exp_arr[i], (void *)param_value, NULL);
-			}
+		assert(param_value != raxNotFound);
+		uint array_length = array_len(exp_arr);
+		for(uint i = 0; i < array_length; i++) {
+			cypher_astnode_attach_annotation(ast->params_ctx, exp_arr[i], (void *)param_value, NULL);
 		}
+
 	}
 	raxStop(&iter);
 	raxFreeWithCallback(query_params_map, array_free);

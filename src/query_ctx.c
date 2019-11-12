@@ -96,7 +96,6 @@ AST *QueryCtx_GetAST(void) {
 
 rax *QueryCtx_GetParams(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	assert(ctx->params);
 	return ctx->params;
 }
 

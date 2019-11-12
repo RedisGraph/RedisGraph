@@ -389,8 +389,8 @@ static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 		return _AR_ExpNodeFromGraphEntity(expr);
 	} else if(type == CYPHER_AST_PARAMETER) {
 		AST *ast = QueryCtx_GetAST();
-		const cypher_astnode_t *param_value = cypher_astnode_get_annotation(ast->params_ctx, expr);
-		return _AR_EXP_FromExpression(param_value);
+		AR_ExpNode *param_value = cypher_astnode_get_annotation(ast->params_ctx, expr);
+		return AR_EXP_Clone(param_value);
 	} else {
 		/*
 		   Unhandled types:

@@ -12,9 +12,9 @@
 //------------------------------------------------------------------------------
 //  Main AST enrichment
 //------------------------------------------------------------------------------
-/* Directives like CREATE INDEX are not queries. */
 
 void AST_Enrich(AST *ast) {
+	/* Directives like CREATE INDEX are not queries. */
 	if(cypher_astnode_type(ast->root) != CYPHER_AST_QUERY) return;
 
 	AST_AnnotateEntities(ast);

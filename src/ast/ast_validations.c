@@ -12,7 +12,6 @@
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
 #include <assert.h>
-#include "../query_ctx.h"
 
 inline static void _prepareIterateAll(rax *map, raxIterator *iter) {
 	raxStart(iter, map);
@@ -1509,27 +1508,28 @@ cleanup:
 	array_free(merge_clause_indices);
 	return res;
 }
-
-static void _colect_query_parameters_names(const cypher_astnode_t *root, rax *keys) {
+/* The method sets the name as both key and value of the rax, to avoid redundent memory allocations. */
+static void _collect_query_parameters_names(const cypher_astnode_t *root, rax *keys) {
 	cypher_astnode_type_t type = cypher_astnode_type(root);
-	// In case of identifier.
+	// In case of parameter.
 	if(type == CYPHER_AST_PARAMETER) {
 		const char *identifier = cypher_ast_parameter_get_name(root);
-		raxInsert(keys, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
+		raxInsert(keys, (unsigned char *)identifier, strlen(identifier), (void *)identifier, NULL);
 	} else {
 		// Recurse over children.
 		uint child_count = cypher_astnode_nchildren(root);
 		for(uint i = 0; i < child_count; i++) {
 			const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
 			// Recursively continue mapping.
-			_colect_query_parameters_names(child, keys);
+			_collect_query_parameters_names(child, keys);
 		}
 	}
 }
 
-// This method extracts given parameters names.
-static rax *_extract_given_params(const cypher_astnode_t *statement) {
-	rax *given_params_names = raxNew();
+/* This method extracts given parameters names. If a duplicate parameter is given, AST_INVALID will be returned. */
+static AST_Validation _extract_given_params(const cypher_astnode_t *statement,
+											rax *given_params_names, char **reason) {
+	const char **duplicate_params = array_new(const char *, 0);
 	uint noptions =  cypher_ast_statement_noptions(statement);
 	for(uint i = 0; i < noptions; i++) {
 		const cypher_astnode_t *option = cypher_ast_statement_get_option(statement, i);
@@ -1537,24 +1537,40 @@ static rax *_extract_given_params(const cypher_astnode_t *statement) {
 		for(uint j = 0; j < nparams; j++) {
 			const cypher_astnode_t *param = cypher_ast_cypher_option_get_param(option, j);
 			const char *paramName = cypher_ast_string_get_value(cypher_ast_cypher_option_param_get_name(param));
-			raxInsert(given_params_names, (unsigned char *) paramName, strlen(paramName), NULL, NULL);
+			// If parameter already exists, add it the duplicated parms array.
+			if(!raxInsert(given_params_names, (unsigned char *) paramName, strlen(paramName), NULL, NULL))
+				duplicate_params = array_append(duplicate_params, paramName);
 		}
 	}
-	return given_params_names;
+	AST_Validation res = AST_VALID;
+	uint duplicate_params_count = array_len(duplicate_params);
+	if(duplicate_params_count > 0) {
+		asprintf(reason, "Duplicated parameters: %s", duplicate_params[0]);
+		for(uint i = 1; i < duplicate_params_count; i++) {
+			asprintf(reason, "%s, %s", *reason, duplicate_params[i]);
+		}
+		res = AST_INVALID;
+	}
+	array_free(duplicate_params);
+	return res;
 }
 
 static AST_Validation _ValidateParameters(const cypher_astnode_t *statement, char **reason) {
-	rax *given_params_names = _extract_given_params(statement);
+	rax *given_params_names = raxNew();
+	if(_extract_given_params(statement, given_params_names, reason) == AST_INVALID) {
+		raxFree(given_params_names);
+		return AST_INVALID;
+	}
 	rax *query_params_names = raxNew();
-	_colect_query_parameters_names(statement, query_params_names);
-	char **missing_keys = array_new(char *, 0);
+	_collect_query_parameters_names(statement, query_params_names);
+	const char **missing_keys = array_new(const char *, 0);
 	raxIterator iter;
 	raxStart(&iter, query_params_names);
 	raxSeek(&iter, "^", NULL, 0);
 	while(raxNext(&iter)) {
-		const char *key = (const char *)iter.key;
-		if(raxFind(given_params_names, (unsigned char *) key, iter.key_len) == raxNotFound) {
-			missing_keys = array_append(missing_keys, rm_strdup(key));
+		const char *param_name = (const char *)iter.data;
+		if(raxFind(given_params_names, (unsigned char *) param_name, strlen(param_name)) == raxNotFound) {
+			missing_keys = array_append(missing_keys, param_name);
 		}
 	}
 	raxStop(&iter);
@@ -1566,7 +1582,6 @@ static AST_Validation _ValidateParameters(const cypher_astnode_t *statement, cha
 		asprintf(reason, "Missing parameters: %s", missing_keys[0]);
 		for(uint i = 1; i < missing_keys_count; i++) {
 			asprintf(reason, "%s, %s", *reason, missing_keys[i]);
-			rm_free(missing_keys[i]);
 		}
 		res = AST_INVALID;
 	}

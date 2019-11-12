@@ -13,6 +13,7 @@
 #include "../util/qsort.h"
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
+#include "ast_build_ar_exp.h"
 
 // TODO duplicated logic, find shared place for it
 static inline void _prepareIterateAll(rax *map, raxIterator *iter) {
@@ -73,7 +74,7 @@ static void _AST_LimitResults(AST *ast, const cypher_astnode_t *root_clause,
 }
 
 static void _extract_params(const cypher_astnode_t *statement) {
-	rax *params = raxNew();
+	rax *params = NULL;
 	uint noptions =  cypher_ast_statement_noptions(statement);
 	for(uint i = 0; i < noptions; i++) {
 		const cypher_astnode_t *option = cypher_ast_statement_get_option(statement, i);
@@ -82,10 +83,12 @@ static void _extract_params(const cypher_astnode_t *statement) {
 			const cypher_astnode_t *param = cypher_ast_cypher_option_get_param(option, j);
 			const char *paramName = cypher_ast_string_get_value(cypher_ast_cypher_option_param_get_name(param));
 			const cypher_astnode_t *paramValue = cypher_ast_cypher_option_param_get_value(param);
-			raxInsert(params, (unsigned char *) paramName, strlen(paramName), (void *)paramValue, NULL);
+			if(!params) params = raxNew();
+			AR_ExpNode *exp = AR_EXP_FromExpression(paramValue);
+			raxInsert(params, (unsigned char *) paramName, strlen(paramName), (void *)exp, NULL);
 		}
 	}
-	QueryCtx_SetParams(params);
+	if(params) QueryCtx_SetParams(params);
 }
 
 bool AST_ReadOnly(const cypher_parse_result_t *result) {
