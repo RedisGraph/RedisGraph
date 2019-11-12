@@ -230,21 +230,6 @@ static void _RemovePathFromGraph(QueryGraph *g, QGEdge **path) {
 	}
 }
 
-/* Determine the length of the longest path in the graph.
- * Returns a list residing on the edge of the longest path. */
-static QGNode **_DeepestLevel(const QueryGraph *g, int *level) {
-	int l = BFS_LOWEST_LEVEL;
-	QGNode **leafs = BFS(g->nodes[0], &l);
-	QGNode *leaf = leafs[0];
-	array_free(leafs);
-
-	l = BFS_LOWEST_LEVEL;
-	leafs = BFS(leaf, &l);
-
-	*level = l;
-	return leafs;
-}
-
 /* If the edge is referenced or of a variable length, it should populate the AlgebraicExpression. */
 static inline bool _should_populate_edge(QGEdge *e) {
 	return (_referred_entity(e->alias) || QGEdge_VariableLength(e));
@@ -524,6 +509,7 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, u
 		return NULL;
 	}
 
+	bool acyclic = IsAcyclicGraph(qg);
 	QueryGraph *g = QueryGraph_Clone(qg);
 	AlgebraicExpression **exps = array_new(AlgebraicExpression *, 1);
 
@@ -531,12 +517,21 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, u
 	while(QueryGraph_NodeCount(g) > 0) {
 		// Get leaf nodes at the deepest level.
 		int level;
-		QGNode **leafs = _DeepestLevel(g, &level);
-		assert(array_len(leafs) > 0 && level >= 0);
+		QGNode *n;
+		if(acyclic) n = LongestPathTree(g, &level); // Graph is a tree.
+		else n = LongestPathGraph(g, &level);       // Graph contains cycles.
 
-		// Get a path of length level.
-		QGEdge **path = DFS(leafs[0], level);
+		// Get a path of length level, alow closing a cycle if the graph is not acyclic.
+		QGEdge **path = DFS(n, level, !acyclic);
 		assert(array_len(path) == level);
+
+		/* TODO:
+		 * In case path is a cycle, e.g. (b)-[]->(a)-[]->(b)
+		 * make sure the first node on the path is referenced, _should_divide_expression(path, 0) is true.
+		 * if this is not the case we will unnceserly break the generated expression into 2 sub expressions
+		 * while what we can do is simply rotate the cycle, (a)-[]->(b)-[]->(a)
+		 * this is exactly the same only now we won't sub divide.
+		 * Checking if path is a cycle done by testing the start and end node. */
 
 		// Construct expression.
 		AlgebraicExpression *exp = _AlgebraicExpression_FromPath(path, level);
@@ -554,12 +549,15 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, u
 
 		// Clean up
 		array_free(path);
-		array_free(leafs);
 		array_free(sub_exps);
 		free(exp->operands);
 		free(exp);
 		// TODO memory leak (fails on [a|b] relations?)
 		// AlgebraicExpression_Free(exp);
+
+		/* If original graph contained a cycle
+		 * see now after we've removed a path if this is still the case. */
+		if(!acyclic) acyclic = IsAcyclicGraph(g);
 	}
 
 	// TODO just return exps?

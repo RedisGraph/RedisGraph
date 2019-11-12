@@ -115,14 +115,14 @@ class DetectCycleTest: public ::testing::Test {
 
 TEST_F(DetectCycleTest, AcyclicGraph) {
     QueryGraph *g = AcyclicBuildGraph();  // Graph traversed.
-    ASSERT_FALSE(IsAcyclicGraph(g));
+    ASSERT_TRUE(IsAcyclicGraph(g));
 	// Clean up.
 	QueryGraph_Free(g);
 }
 
 TEST_F(DetectCycleTest, CyclicGraph) {
     QueryGraph *g = CyclicBuildGraph();  // Graph traversed.
-    ASSERT_TRUE(IsAcyclicGraph(g));
+    ASSERT_FALSE(IsAcyclicGraph(g));
 	// Clean up.
 	QueryGraph_Free(g);
 }
