@@ -74,8 +74,10 @@ static void _AST_LimitResults(AST *ast, const cypher_astnode_t *root_clause,
 }
 
 static void _extract_params(const cypher_astnode_t *statement) {
-	rax *params = NULL;
+
 	uint noptions =  cypher_ast_statement_noptions(statement);
+	if(noptions == 0) return;
+	rax *params = raxNew();
 	for(uint i = 0; i < noptions; i++) {
 		const cypher_astnode_t *option = cypher_ast_statement_get_option(statement, i);
 		uint nparams = cypher_ast_cypher_option_nparams(option);
@@ -83,12 +85,11 @@ static void _extract_params(const cypher_astnode_t *statement) {
 			const cypher_astnode_t *param = cypher_ast_cypher_option_get_param(option, j);
 			const char *paramName = cypher_ast_string_get_value(cypher_ast_cypher_option_param_get_name(param));
 			const cypher_astnode_t *paramValue = cypher_ast_cypher_option_param_get_value(param);
-			if(!params) params = raxNew();
 			AR_ExpNode *exp = AR_EXP_FromExpression(paramValue);
 			raxInsert(params, (unsigned char *) paramName, strlen(paramName), (void *)exp, NULL);
 		}
 	}
-	if(params) QueryCtx_SetParams(params);
+	QueryCtx_SetParams(params);
 }
 
 bool AST_ReadOnly(const cypher_parse_result_t *result) {
