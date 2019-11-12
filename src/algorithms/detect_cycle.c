@@ -26,7 +26,7 @@ bool IsAcyclicGraph(const QueryGraph *qg) {
 
 	// Build matrix representation of query graph.
 	m = QueryGraph_MatrixRepresentation(qg);
-	GrB_Matrix_dup(&c, m);
+	res = GrB_Matrix_dup(&c, m);
 	assert(res == GrB_SUCCESS);
 	res = GrB_Matrix_new(&t, GrB_BOOL, node_count, node_count);
 	assert(res == GrB_SUCCESS);
@@ -63,3 +63,4 @@ bool IsAcyclicGraph(const QueryGraph *qg) {
 
 	return cycle;
 }
+
