@@ -30,6 +30,13 @@ static inline char *_create_anon_alias(int anon_count) {
 	return alias;
 }
 
+// TODO this function is exposed since ORDER BY expressions are named later - possibly can be refactored.
+void AST_AttachName(AST *ast, const cypher_astnode_t *node, const char *name) {
+	// Annotate AST entity with identifier string.
+	AnnotationCtx *name_ctx = AST_AnnotationCtxCollection_GetNameCtx(ast->anotCtxCollection);
+	cypher_astnode_attach_annotation(name_ctx, node, (void *)name, NULL);
+}
+
 static void _annotate_entity_names(AST *ast, const cypher_astnode_t *node, uint *anon_count) {
 	cypher_astnode_type_t t = cypher_astnode_type(node);
 	const cypher_astnode_t *ast_identifier = NULL;
@@ -78,9 +85,8 @@ static AnnotationCtx *_AST_NewNameContext(void) {
 }
 
 void AST_AnnotateEntities(AST *ast) {
-// Instantiate an annotation context for accessing AST entity names.
-	ast->name_ctx = _AST_NewNameContext();
-
+	// Instantiate an annotation context for accessing AST entity names.
+	AST_AnnotationCtxCollection_SetNameCtx(ast->anotCtxCollection, _AST_NewNameContext());
 	uint anon_count = 0;
 	// Generate all name annotations.
 	_annotate_entity_names(ast, ast->root, &anon_count);

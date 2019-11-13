@@ -174,6 +174,7 @@ Feature: KeysAcceptance
   Scenario: Using `keys()` on a parameter map
     Given any graph
     And parameters are:
+      | name  | value                                                                  |
       | param | {name: 'Alice', age: 38, address: {city: 'London', residential: true}} |
     When executing query:
       """

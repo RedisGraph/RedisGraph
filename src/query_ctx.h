@@ -49,8 +49,6 @@ void QueryCtx_EmitException(void);
 /* Setters */
 /* Set the provided AST for access through the QueryCtx. */
 void QueryCtx_SetAST(AST *ast);
-/* Set the query parameters values map. */
-void QueryCtx_SetParams(rax *params);
 /* Set the error message for this query. */
 void QueryCtx_SetError(char *error);
 /* Set the provided GraphCtx for access through the QueryCtx. */

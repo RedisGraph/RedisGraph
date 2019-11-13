@@ -147,6 +147,8 @@ static const char **_collect_aliases_in_scope(AST *ast, uint scope_start, uint s
 }
 
 static void _annotate_project_all(AST *ast) {
+	AnnotationCtx *project_all_ctx = AST_AnnotationCtxCollection_GetProjectAllCtx(
+										 ast->anotCtxCollection);
 	uint *with_clause_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
 	uint with_clause_count = array_len(with_clause_indices);
 	uint scope_start = 0;
@@ -158,7 +160,7 @@ static void _annotate_project_all(AST *ast) {
 			// Collect all aliases defined in this scope.
 			const char **aliases = _collect_aliases_in_scope(ast, scope_start, scope_end);
 			// Annotate the clause with the aliases array.
-			cypher_astnode_attach_annotation(ast->project_all_ctx, clause, (void *)aliases, NULL);
+			cypher_astnode_attach_annotation(project_all_ctx, clause, (void *)aliases, NULL);
 		}
 		scope_start = scope_end;
 	}
@@ -171,7 +173,7 @@ static void _annotate_project_all(AST *ast) {
 		// Collect all aliases defined in this scope.
 		const char **aliases = _collect_aliases_in_scope(ast, scope_start, last_clause_index);
 		// Annotate the clause with the aliases array.
-		cypher_astnode_attach_annotation(ast->project_all_ctx, last_clause, (void *)aliases, NULL);
+		cypher_astnode_attach_annotation(project_all_ctx, last_clause, (void *)aliases, NULL);
 	}
 }
 
@@ -189,15 +191,9 @@ static AnnotationCtx *_AST_NewProjectAllContext(void) {
 	return project_all_ctx;
 }
 
-// TODO this function is exposed since ORDER BY expressions are named later - possibly can be refactored.
-void AST_AttachName(AST *ast, const cypher_astnode_t *node, const char *name) {
-	// Annotate AST entity with identifier string.
-	cypher_astnode_attach_annotation(ast->name_ctx, node, (void *)name, NULL);
-}
-
 void AST_AnnotateProjectAll(AST *ast) {
 	// Instantiate an annotation context for augmenting STAR projections.
-	ast->project_all_ctx = _AST_NewProjectAllContext();
+	AST_AnnotationCtxCollection_SetProjectAllCtx(ast->anotCtxCollection, _AST_NewProjectAllContext());
 	// Generate annotations for WITH/RETURN * clauses.
 	_annotate_project_all(ast);
 }

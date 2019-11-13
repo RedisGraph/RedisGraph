@@ -19,6 +19,8 @@ static AnnotationCtx *_AST_NewProjectNamedPathContext(void) {
 static void _annotate_relevant_projected_named_path_identifier(AST *ast,
 															   rax *identifier_map, uint scope_start, uint scope_end) {
 	for(uint clause_iter = scope_start; clause_iter < scope_end; clause_iter++) {
+		AnnotationCtx *named_paths_ctx = AST_AnnotationCtxCollection_GetNamedPathsCtx(
+											 ast->anotCtxCollection);
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, clause_iter);
 		const cypher_astnode_type_t clause_type = cypher_astnode_type(clause);
 		// Match.
@@ -35,7 +37,7 @@ static void _annotate_relevant_projected_named_path_identifier(AST *ast,
 					if(exp_arr != raxNotFound) {
 						uint arrayLen = array_len(exp_arr);
 						for(uint i = 0; i < arrayLen; i++)
-							cypher_astnode_attach_annotation(ast->named_paths_ctx, exp_arr[i], (void *)path, NULL);
+							cypher_astnode_attach_annotation(named_paths_ctx, exp_arr[i], (void *)path, NULL);
 					}
 				}
 			}
@@ -50,7 +52,7 @@ static void _annotate_relevant_projected_named_path_identifier(AST *ast,
 				if(exp_arr != raxNotFound) {
 					uint arrayLen = array_len(exp_arr);
 					for(uint i = 0; i < arrayLen; i++)
-						cypher_astnode_attach_annotation(ast->named_paths_ctx, exp_arr[i], (void *)path, NULL);
+						cypher_astnode_attach_annotation(named_paths_ctx, exp_arr[i], (void *)path, NULL);
 				}
 			}
 		}
@@ -127,6 +129,7 @@ static void _annotate_projected_named_path(AST *ast) {
 }
 
 void AST_AnnotateNamedPaths(AST *ast) {
-	ast->named_paths_ctx = _AST_NewProjectNamedPathContext();
+	AST_AnnotationCtxCollection_SetNamedPathsCtx(ast->anotCtxCollection,
+												 _AST_NewProjectNamedPathContext());
 	_annotate_projected_named_path(ast);
 }

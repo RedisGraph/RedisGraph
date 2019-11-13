@@ -65,7 +65,8 @@ Feature: ExpressionAcceptance
 
 @skip
   Scenario: Use dynamic property lookup based on parameters when there is no type information
-    And parameters are:
+    And 
+      | name | value         |
       | expr | {name: 'Apa'} |
       | idx  | 'name'        |
     When executing query:
@@ -81,7 +82,8 @@ Feature: ExpressionAcceptance
 @skip
   Scenario: Use dynamic property lookup based on parameters when there is lhs type information
     And parameters are:
-      | idx | 'name' |
+      | name | value  |
+      | idx  | 'name' |
     When executing query:
       """
       CREATE (n {name: 'Apa'})
@@ -97,6 +99,7 @@ Feature: ExpressionAcceptance
 @skip
   Scenario: Use dynamic property lookup based on parameters when there is rhs type information
     And parameters are:
+      | name | value         |
       | expr | {name: 'Apa'} |
       | idx  | 'name'        |
     When executing query:
@@ -112,6 +115,7 @@ Feature: ExpressionAcceptance
 @skip
   Scenario: Fail at runtime when attempting to index with an Int into a Map
     And parameters are:
+      | name | value         |
       | expr | {name: 'Apa'} |
       | idx  | 0             |
     When executing query:
@@ -124,6 +128,7 @@ Feature: ExpressionAcceptance
 @skip
   Scenario: Fail at runtime when trying to index into a map with a non-string
     And parameters are:
+      | name | value         |
       | expr | {name: 'Apa'} |
       | idx  | 12.3          |
     When executing query:
@@ -136,8 +141,9 @@ Feature: ExpressionAcceptance
 @skip
   Scenario: Fail at runtime when trying to index something which is not a map or list
     And parameters are:
-      | expr | 100 |
-      | idx  | 0   |
+      | name | value |
+      | expr |  100  |
+      | idx  |  0    |
     When executing query:
       """
       WITH $expr AS expr, $idx AS idx

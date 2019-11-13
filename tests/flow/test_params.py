@@ -22,20 +22,19 @@ class testParams(FlowTestsBase):
     
     def test_simple_params(self):
         params = [1, 2.3, "str", True, False, None, [0, 1, 2]]
-
-        for param in params:
-            query = "RETURN $param"
+        query = "RETURN $param"
+        for param in params:    
             expected_results = [[param]]
-            
             query_info = QueryInfo(query = query, description="Tests simple params", expected_result = expected_results)
             self._assert_resultset_equals_expected(redis_graph.query(query, {'param': param}), query_info)
 
     def test_expression_on_param(self):
+        params = {'param': 1}
         query = "RETURN $param + 1"
         expected_results = [[2]]
             
         query_info = QueryInfo(query = query, description="Tests expression on param", expected_result = expected_results)
-        self._assert_resultset_equals_expected(redis_graph.query(query, {'param': 1}), query_info)
+        self._assert_resultset_equals_expected(redis_graph.query(query, params), query_info)
 
     def test_node_retrival(self):
         p0 = Node(node_id=0, label="Person", properties={'name': 'a'})
@@ -46,8 +45,9 @@ class testParams(FlowTestsBase):
         redis_graph.add_node(p2)
         redis_graph.flush()
 
+        params = {'name': 'a'}
         query = "MATCH (n :Person {name:$name}) RETURN n"
         expected_results = [[p0]]
             
         query_info = QueryInfo(query = query, description="Tests expression on param", expected_result = expected_results)
-        self._assert_resultset_equals_expected(redis_graph.query(query, {'name': 'a'}), query_info)
+        self._assert_resultset_equals_expected(redis_graph.query(query, params), query_info)

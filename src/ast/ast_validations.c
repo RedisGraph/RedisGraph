@@ -12,6 +12,7 @@
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
 #include <assert.h>
+#include "../util/rax_extensions.h"
 
 inline static void _prepareIterateAll(rax *map, raxIterator *iter) {
 	raxStart(iter, map);
@@ -1508,13 +1509,14 @@ cleanup:
 	array_free(merge_clause_indices);
 	return res;
 }
-/* The method sets the name as both key and value of the rax, to avoid redundent memory allocations. */
+/* This method collect unique parameters place holders names. It returns a rax with
+ * <name, null> as key-value entries. */
 static void _collect_query_parameters_names(const cypher_astnode_t *root, rax *keys) {
 	cypher_astnode_type_t type = cypher_astnode_type(root);
 	// In case of parameter.
 	if(type == CYPHER_AST_PARAMETER) {
 		const char *identifier = cypher_ast_parameter_get_name(root);
-		raxInsert(keys, (unsigned char *)identifier, strlen(identifier), (void *)identifier, NULL);
+		raxInsert(keys, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
 	} else {
 		// Recurse over children.
 		uint child_count = cypher_astnode_nchildren(root);
@@ -1527,9 +1529,9 @@ static void _collect_query_parameters_names(const cypher_astnode_t *root, rax *k
 }
 
 /* This method extracts given parameters names. If a duplicate parameter is given, AST_INVALID will be returned. */
-static AST_Validation _extract_given_params(const cypher_astnode_t *statement,
-											rax *given_params_names, char **reason) {
-	const char **duplicate_params = array_new(const char *, 0);
+static AST_Validation _collect_given_parameters_names(const cypher_astnode_t *statement,
+													  rax *given_params_names, char **reason) {
+	AST_Validation res = AST_VALID;
 	uint noptions =  cypher_ast_statement_noptions(statement);
 	for(uint i = 0; i < noptions; i++) {
 		const cypher_astnode_t *option = cypher_ast_statement_get_option(statement, i);
@@ -1538,54 +1540,31 @@ static AST_Validation _extract_given_params(const cypher_astnode_t *statement,
 			const cypher_astnode_t *param = cypher_ast_cypher_option_get_param(option, j);
 			const char *paramName = cypher_ast_string_get_value(cypher_ast_cypher_option_param_get_name(param));
 			// If parameter already exists, add it the duplicated parms array.
-			if(!raxInsert(given_params_names, (unsigned char *) paramName, strlen(paramName), NULL, NULL))
-				duplicate_params = array_append(duplicate_params, paramName);
+			if(!raxInsert(given_params_names, (unsigned char *) paramName, strlen(paramName), NULL, NULL)) {
+				asprintf(reason, "Duplicated parameter: %s", paramName);
+				res = AST_INVALID;
+			}
+
 		}
 	}
-	AST_Validation res = AST_VALID;
-	uint duplicate_params_count = array_len(duplicate_params);
-	if(duplicate_params_count > 0) {
-		asprintf(reason, "Duplicated parameters: %s", duplicate_params[0]);
-		for(uint i = 1; i < duplicate_params_count; i++) {
-			asprintf(reason, "%s, %s", *reason, duplicate_params[i]);
-		}
-		res = AST_INVALID;
-	}
-	array_free(duplicate_params);
 	return res;
 }
 
 static AST_Validation _ValidateParameters(const cypher_astnode_t *statement, char **reason) {
 	rax *given_params_names = raxNew();
-	if(_extract_given_params(statement, given_params_names, reason) == AST_INVALID) {
+	if(_collect_given_parameters_names(statement, given_params_names, reason) == AST_INVALID) {
 		raxFree(given_params_names);
 		return AST_INVALID;
 	}
+	AST_Validation res = AST_VALID;
 	rax *query_params_names = raxNew();
 	_collect_query_parameters_names(statement, query_params_names);
-	const char **missing_keys = array_new(const char *, 0);
-	raxIterator iter;
-	raxStart(&iter, query_params_names);
-	raxSeek(&iter, "^", NULL, 0);
-	while(raxNext(&iter)) {
-		const char *param_name = (const char *)iter.data;
-		if(raxFind(given_params_names, (unsigned char *) param_name, strlen(param_name)) == raxNotFound) {
-			missing_keys = array_append(missing_keys, param_name);
-		}
-	}
-	raxStop(&iter);
-	raxFree(query_params_names);
-	raxFree(given_params_names);
-	uint missing_keys_count = array_len(missing_keys);
-	AST_Validation res = AST_VALID;
-	if(missing_keys_count > 0) {
-		asprintf(reason, "Missing parameters: %s", missing_keys[0]);
-		for(uint i = 1; i < missing_keys_count; i++) {
-			asprintf(reason, "%s, %s", *reason, missing_keys[i]);
-		}
+	if(!raxIsSubset(given_params_names, query_params_names)) {
+		asprintf(reason, "Missing parameters");
 		res = AST_INVALID;
 	}
-	array_free(missing_keys);
+	raxFree(query_params_names);
+	raxFree(given_params_names);
 	return res;
 }
 
@@ -1593,9 +1572,7 @@ static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, 
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->free_root = true;
 	ast->referenced_entities = NULL;
-	ast->name_ctx = NULL;
-	ast->project_all_ctx = NULL;
-
+	ast->anotCtxCollection = NULL;
 	uint n = end_offset - start_offset;
 
 	cypher_astnode_t *clauses[n];

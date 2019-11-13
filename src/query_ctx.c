@@ -68,11 +68,6 @@ void QueryCtx_SetAST(AST *ast) {
 	ctx->ast = ast;
 }
 
-void QueryCtx_SetParams(rax *params) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	ctx->params = params;
-}
-
 void QueryCtx_SetGraphCtx(GraphContext *gc) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ctx->gc = gc;
@@ -96,6 +91,7 @@ AST *QueryCtx_GetAST(void) {
 
 rax *QueryCtx_GetParams(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
+	if(!ctx->params) ctx->params = raxNew();
 	return ctx->params;
 }
 
@@ -140,6 +136,7 @@ void QueryCtx_Free(void) {
 
 	if(ctx->params) {
 		raxFree(ctx->params);
+		ctx->params = NULL;
 	}
 
 	rm_free(ctx);

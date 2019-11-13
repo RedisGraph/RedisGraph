@@ -120,7 +120,8 @@ Feature: ReturnAcceptanceTest
         ({name: 'E'})
       """
     And parameters are:
-      | skipAmount | 2 |
+      | name       | value |
+      | skipAmount |  2    |
     When executing query:
       """
       MATCH (n)
@@ -171,8 +172,9 @@ Feature: ReturnAcceptanceTest
         ({name: 'E'})
       """
     And parameters are:
-      | s | 2 |
-      | l | 2 |
+      | name | value |
+      | s    | 2     |
+      | l    | 2     |
     When executing query:
       """
       MATCH (n)

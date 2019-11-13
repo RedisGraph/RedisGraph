@@ -26,6 +26,10 @@ static AnnotationCtx *_AST_NewParamsContext(void) {
 	return param_ctx;
 }
 
+/* This function collects every AST node which is a named parameter place holder. If the same name
+ * of a parameter apears in more then one place it is append to array of all the placeholders with
+ * the same name.
+ * The function returns a rax with parameter name as key, and the array of placeholders as values. */
 static void _collect_query_params_map(const cypher_astnode_t *ast_exp, rax *parameter_map) {
 	cypher_astnode_type_t type = cypher_astnode_type(ast_exp);
 	// In case of parameter.
@@ -52,6 +56,7 @@ static void _annotate_params(AST *ast) {
 	// Check for number of parameters, if there aren't any, return;
 	rax *params_values = QueryCtx_GetParams();
 	if(!params_values || raxSize(params_values) == 0) return;
+	AnnotationCtx *params_ctx = AST_AnnotationCtxCollection_GetParamsCtx(ast->anotCtxCollection);
 	rax *query_params_map = raxNew();
 	_collect_query_params_map(ast->root, query_params_map);
 	raxIterator iter;
@@ -64,7 +69,7 @@ static void _annotate_params(AST *ast) {
 		assert(param_value != raxNotFound);
 		uint array_length = array_len(exp_arr);
 		for(uint i = 0; i < array_length; i++) {
-			cypher_astnode_attach_annotation(ast->params_ctx, exp_arr[i], (void *)param_value, NULL);
+			cypher_astnode_attach_annotation(params_ctx, exp_arr[i], (void *)param_value, NULL);
 		}
 
 	}
@@ -73,6 +78,6 @@ static void _annotate_params(AST *ast) {
 }
 
 void AST_AnnotateParams(AST *ast) {
-	ast->params_ctx = _AST_NewParamsContext();
+	AST_AnnotationCtxCollection_SetParamsCtx(ast->anotCtxCollection, _AST_NewParamsContext());
 	_annotate_params(ast);
 }
