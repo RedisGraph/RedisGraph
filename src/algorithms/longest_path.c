@@ -48,24 +48,27 @@ static int _DFSMaxDepth(QGNode *n) {
 
 // Finds the longest path in an cyclic graph.
 QGNode *LongestPathGraph(const QueryGraph *g, int *level) {
+	/* To find the longest path in a graph containing a cycle
+	 * where we do not expand from a visited node:
+	 * 1. the entire graph is a cycle, in which case it doesn't matter
+	 * which node we pick to begin out traversal.
+	 * 2. there's a node with in-degree of out-degree 0, as we know
+	 * this node resided on the "edge" of the graph from which the longest path
+	 * begins/ends. */
+
 	QGNode *n = NULL;  // Node from which the longest path expand.
-	int max_path_len = 0;
 	uint node_count = QueryGraph_NodeCount(g);
-
-	// Run DFS from each node.
 	for(uint i = 0; i < node_count; i++) {
-		QGNode *node = g->nodes[i];
-		int longest_path_len = _DFSMaxDepth(node);
-
-		// Found a longer path, update.
-		if(max_path_len < longest_path_len) {
-			max_path_len = longest_path_len;
-			n = node;
+		n = g->nodes[i];
+		if(QGNode_IncomeDegree(n) == 0 || QGNode_OutgoingDegree(n) == 0) {
+			*level = _DFSMaxDepth(n);
+			return n;
 		}
 	}
-	assert(n);
 
-	*level = max_path_len;
+	// All nodes are part of a cycle, pick one randomly.
+	n = g->nodes[0];
+	*level = _DFSMaxDepth(n);
 	return n;
 }
 

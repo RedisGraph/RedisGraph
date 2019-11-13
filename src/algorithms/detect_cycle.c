@@ -13,7 +13,7 @@
 bool IsAcyclicGraph(const QueryGraph *qg) {
 	assert(qg);
 
-	bool acycle = true;
+	bool acyclic = true;
 
 	// Give an ID for each node, abuse of `labelID`.
 	uint node_count = QueryGraph_NodeCount(qg);
@@ -51,7 +51,7 @@ bool IsAcyclicGraph(const QueryGraph *qg) {
 		res = GrB_Matrix_nvals(&nvals, t);
 		assert(res == GrB_SUCCESS);
 		if(nvals != 0) {
-			acycle = false;
+			acyclic = false;
 			break;
 		}
 	}
@@ -61,5 +61,5 @@ bool IsAcyclicGraph(const QueryGraph *qg) {
 	GrB_free(&c);
 	GrB_free(&t);
 
-	return acycle;
+	return acyclic;
 }
