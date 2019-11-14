@@ -62,6 +62,15 @@ GrB_Info GB_Sauna_alloc             // create a Sauna
     }
 
     //--------------------------------------------------------------------------
+    // make the Sauna persistent
+    //--------------------------------------------------------------------------
+
+    // This is required for the MATLAB interface
+    GB_Global_persist_function (Sauna) ;
+    GB_Global_persist_function (Sauna->Sauna_Mark) ;
+    GB_Global_persist_function (Sauna->Sauna_Work) ;
+
+    //--------------------------------------------------------------------------
     // return result
     //--------------------------------------------------------------------------
 

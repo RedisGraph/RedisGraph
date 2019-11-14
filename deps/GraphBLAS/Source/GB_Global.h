@@ -67,6 +67,9 @@ void  *  GB_Global_realloc_function (void *p, size_t size) ;
 void     GB_Global_free_function_set (void (* free_function) (void *)) ;
 void     GB_Global_free_function (void *p) ;
 
+void     GB_Global_persist_function_set (void (* persist_function) (void *)) ;
+void     GB_Global_persist_function (void *p) ;
+
 void     GB_Global_malloc_is_thread_safe_set
          (
             bool malloc_is_thread_safe
@@ -95,6 +98,11 @@ int64_t  GB_Global_maxused_get (void) ;
 
 void     GB_Global_hack_set (int64_t hack) ;
 int64_t  GB_Global_hack_get (void) ;
+
+void     GB_Global_print_one_based_set (bool onebased) ;
+bool     GB_Global_print_one_based_get (void) ;
+void     GB_Global_print_format_set (int print_format) ;
+int      GB_Global_print_format_get (void) ;
 
 #endif
 

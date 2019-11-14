@@ -37,7 +37,7 @@ function C = GB_spec_transpose (C, Mask, accum, A, descriptor)
 %
 % (2) MATLAB does not allow explicit zeros in its sparse matrices. As a result,
 % the structural pattern of an input matrix A, sparse or dense, is assumed to
-% be spones(A).
+% be GB_spones_mex(A).
 %
 % (3) Operations cannot be done purely in MATLAB because of the differences in
 % typecasting rules for integers.

@@ -37,7 +37,7 @@ void GB_transpose_ix            // transpose the pattern and values of a matrix
 (
     GrB_Matrix C,                       // output matrix
     const GrB_Matrix A,                 // input matrix
-    int64_t **Rowcounts,                // Rowcounts [naslice]
+    int64_t *restrict *Rowcounts,       // Rowcounts [naslice]
     GBI_single_iterator Iter,           // iterator for the matrix A
     const int64_t *restrict A_slice,    // defines how A is sliced
     int naslice                         // # of slices of A
@@ -48,7 +48,7 @@ void GB_transpose_op    // transpose, typecast, and apply operator to a matrix
     GrB_Matrix C,                       // output matrix
     const GrB_UnaryOp op,               // operator to apply
     const GrB_Matrix A,                 // input matrix
-    int64_t **Rowcounts,                // Rowcounts [naslice]
+    int64_t *restrict *Rowcounts,       // Rowcounts [naslice]
     GBI_single_iterator Iter,           // iterator for the matrix A
     const int64_t *restrict A_slice,    // defines how A is sliced
     int naslice                         // # of slices of A

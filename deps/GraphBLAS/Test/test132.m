@@ -8,7 +8,7 @@ function test132
 
 fprintf ('\ntest132 ------------------ testing GrB_setElement and _build\n') ;
 
-debug_on ;
+% debug_on ;
 
 rng ('default') ;
 A = sparse (rand (3,2)) ;

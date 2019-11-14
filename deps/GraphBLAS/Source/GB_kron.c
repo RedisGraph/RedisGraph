@@ -167,6 +167,7 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     // C<M> = accum (C,T): accumulate the results into C via the mask
     //--------------------------------------------------------------------------
 
-    return (GB_ACCUM_MASK (C, M, NULL, accum, &T, C_replace, Mask_comp)) ;
+    return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp,
+        Context)) ;
 }
 

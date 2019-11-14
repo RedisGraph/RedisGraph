@@ -65,7 +65,14 @@ GrB_Info GB_to_hyper        // convert a matrix to hypersparse
         const int64_t *restrict Ap_old = A->p ;
         bool Ap_old_shallow = A->p_shallow ;
 
-        int64_t Count [ntasks+1] ;
+        int64_t *restrict Count ;
+        GB_MALLOC_MEMORY (Count, ntasks+1, sizeof (int64_t)) ;
+        if (Count == NULL)
+        {
+            // out of memory
+            GB_PHIX_FREE (A) ;
+            return (GB_OUT_OF_MEMORY) ;
+        }
 
         #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
         for (int tid = 0 ; tid < ntasks ; tid++)
@@ -98,6 +105,7 @@ GrB_Info GB_to_hyper        // convert a matrix to hypersparse
         if (Ap_new == NULL || Ah_new == NULL)
         { 
             // out of memory
+            GB_FREE_MEMORY (Count, ntasks+1, sizeof (int64_t)) ;
             GB_FREE_MEMORY (Ap_new, nvec_nonempty+1, sizeof (int64_t)) ;
             GB_FREE_MEMORY (Ah_new, nvec_nonempty,   sizeof (int64_t)) ;
             GB_PHIX_FREE (A) ;
@@ -142,9 +150,10 @@ GrB_Info GB_to_hyper        // convert a matrix to hypersparse
         ASSERT (A->nvec_nonempty == GB_nvec_nonempty (A, Context)) ;
 
         //----------------------------------------------------------------------
-        // free the old A->p unless it's shallow
+        // free workspace, and free the old A->p unless it's shallow
         //----------------------------------------------------------------------
 
+        GB_FREE_MEMORY (Count, ntasks+1, sizeof (int64_t)) ;
         if (!Ap_old_shallow)
         { 
             GB_FREE_MEMORY (Ap_old, n+1, sizeof (int64_t)) ;

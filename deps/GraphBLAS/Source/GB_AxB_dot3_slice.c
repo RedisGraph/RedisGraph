@@ -23,8 +23,12 @@
 // of a single entry C(i,j) can be broken into multiple tasks.  The slice of
 // A(:,i) and B(:,j) would use GB_slice_vector, where no mask would be used.
 
+#define GB_FREE_WORK \
+    GB_FREE_MEMORY (Coarse, ntasks1+1, sizeof (int64_t)) ;
+
 #define GB_FREE_ALL                                                     \
 {                                                                       \
+    GB_FREE_WORK ;                                                      \
     GB_FREE_MEMORY (TaskList, max_ntasks+1, sizeof (GB_task_struct)) ;  \
 }
 
@@ -97,6 +101,8 @@ GrB_Info GB_AxB_dot3_slice
     // allocate the initial TaskList
     //--------------------------------------------------------------------------
 
+    int64_t *restrict Coarse = NULL ;
+    int ntasks1 = 0 ;
     int nthreads = GB_nthreads (total_work, chunk, nthreads_max) ;
     GB_task_struct *restrict TaskList = NULL ;
     int max_ntasks = 0 ;
@@ -128,15 +134,19 @@ GrB_Info GB_AxB_dot3_slice
 
     double target_task_size = total_work / (double) (ntasks0) ;
     target_task_size = GB_IMAX (target_task_size, chunk) ;
-    int ntasks1 = total_work / target_task_size ;
+    ntasks1 = total_work / target_task_size ;
     ntasks1 = GB_IMAX (ntasks1, 1) ;
 
     //--------------------------------------------------------------------------
     // slice the work into coarse tasks
     //--------------------------------------------------------------------------
 
-    int64_t Coarse [ntasks1+1] ;
-    GB_pslice (Coarse, Cwork, cnz, ntasks1) ;
+    if (!GB_pslice (&Coarse, Cwork, cnz, ntasks1))
+    {
+        // out of memory
+        GB_FREE_ALL ;
+        return (GB_OUT_OF_MEMORY) ;
+    }
 
     //--------------------------------------------------------------------------
     // construct all tasks, both coarse and fine
@@ -193,9 +203,10 @@ GrB_Info GB_AxB_dot3_slice
     ASSERT (ntasks <= max_ntasks) ;
 
     //--------------------------------------------------------------------------
-    // return result
+    // free workspace and return result
     //--------------------------------------------------------------------------
 
+    GB_FREE_WORK ;
     (*p_TaskList  ) = TaskList ;
     (*p_max_ntasks) = max_ntasks ;
     (*p_ntasks    ) = ntasks ;

@@ -32,13 +32,13 @@ A.class = 'int8' ;
 nthreads_set (1,1) ;
 c1 = GB_mex_reduce_to_scalar (s, [ ], 'min', A) ;
 assert (c1 == c0) ;
-t1 = gbresults ;
+t1 = grbresults ;
 fprintf ('1 thread  %g sec\n', t1) ;
 
 nthreads_set (nthreads_max,1) ;
 c2 = GB_mex_reduce_to_scalar (s, [ ], 'min', A) ;
 assert (c2 == c0) ;
-t2 = gbresults ;
+t2 = grbresults ;
 fprintf ('%d threads %g sec\n', nthreads_max, t2) ;
 
 %-------------------------------------------------------------------------------
@@ -60,13 +60,13 @@ s = double (inf) ;
 nthreads_set (1,1) ;
 c1 = GB_mex_reduce_to_scalar (s, [ ], 'min', A) ;
 assert (c1 == c0) ;
-t1 = gbresults ;
+t1 = grbresults ;
 fprintf ('1 thread  %g sec\n', t1) ;
 
 nthreads_set (nthreads_max,1) ;
 c2 = GB_mex_reduce_to_scalar (s, [ ], 'min', A) ;
 assert (c2 == c0) ;
-t2 = gbresults ;
+t2 = grbresults ;
 fprintf ('%d threads %g sec\n', nthreads_max, t2) ;
 
 %-------------------------------------------------------------------------------
@@ -94,13 +94,13 @@ s = double (inf) ;
 nthreads_set (1,1) ;
 c1 = GB_mex_reduce_to_scalar (s, [ ], 'plus', A) ;
 assert (norm (c1 - c0) / norm (c0) < 1e-12) ;
-t1 = gbresults ;
+t1 = grbresults ;
 fprintf ('1 thread  %g sec\n', t1) ;
 
 nthreads_set (nthreads_max,1) ;
 c2 = GB_mex_reduce_to_scalar (s, [ ], 'plus', A) ;
 assert (norm (c2 - c0) / norm (c0) < 1e-12) ;
-t2 = gbresults ;
+t2 = grbresults ;
 fprintf ('%d threads %g sec\n', nthreads_max, t2) ;
 
 %-------------------------------------------------------------------------------

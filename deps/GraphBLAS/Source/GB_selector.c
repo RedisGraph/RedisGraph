@@ -19,11 +19,15 @@
 
 #define GB_FREE_WORK                                    \
 {                                                       \
-    GB_FREE_MEMORY (Zp, aplen,   sizeof (int64_t)) ;    \
-    GB_FREE_MEMORY (Cp, aplen+1, sizeof (int64_t)) ;    \
-    GB_FREE_MEMORY (Ch, aplen,   sizeof (int64_t)) ;    \
-    GB_FREE_MEMORY (Ci, cnz,     sizeof (int64_t)) ;    \
-    GB_FREE_MEMORY (Cx, cnz,     asize) ;               \
+    GB_ek_slice_free (&pstart_slice, &kfirst_slice, &klast_slice, ntasks) ; \
+    GB_FREE_MEMORY (Wfirst, ntasks, sizeof (int64_t)) ;             \
+    GB_FREE_MEMORY (Wlast, ntasks, sizeof (int64_t)) ;              \
+    GB_FREE_MEMORY (C_pstart_slice, ntasks, sizeof (int64_t)) ;     \
+    GB_FREE_MEMORY (Zp, aplen,   sizeof (int64_t)) ;                \
+    GB_FREE_MEMORY (Cp, aplen+1, sizeof (int64_t)) ;                \
+    GB_FREE_MEMORY (Ch, aplen,   sizeof (int64_t)) ;                \
+    GB_FREE_MEMORY (Ci, cnz,     sizeof (int64_t)) ;                \
+    GB_FREE_MEMORY (Cx, cnz,     asize) ;                           \
 }
 
 //------------------------------------------------------------------------------
@@ -101,7 +105,7 @@ GrB_Info GB_selector
     // If Thunk is NULL, or has no entry, it is treated as a scalar value
     // of zero.
 
-    GB_void athunk [asize] ;
+    GB_void athunk [GB_PGI(asize)] ;
     memset (athunk, 0, asize) ;
     GB_void *restrict xthunk = athunk ;
 
@@ -158,6 +162,26 @@ GrB_Info GB_selector
     Cp [anvec] = 0 ;
 
     //--------------------------------------------------------------------------
+    // allocate workspace for each task
+    //--------------------------------------------------------------------------
+
+    int64_t *pstart_slice = NULL, *kfirst_slice = NULL, *klast_slice = NULL ;
+    int64_t *restrict Wfirst = NULL ;
+    int64_t *restrict Wlast = NULL ;
+    int64_t *restrict C_pstart_slice = NULL ;
+
+    GB_CALLOC_MEMORY (Wfirst, ntasks, sizeof (int64_t)) ;
+    GB_CALLOC_MEMORY (Wlast, ntasks, sizeof (int64_t)) ;
+    GB_CALLOC_MEMORY (C_pstart_slice, ntasks, sizeof (int64_t)) ;
+
+    if (Wfirst == NULL || Wlast  == NULL || C_pstart_slice == NULL)
+    {
+        // out of memory
+        GB_FREE_ALL ;
+        return (GB_OUT_OF_MEMORY) ;
+    }
+
+    //--------------------------------------------------------------------------
     // slice the entries for each task
     //--------------------------------------------------------------------------
 
@@ -165,11 +189,12 @@ GrB_Info GB_selector
     // vectors kfirst_slice [tid] to klast_slice [tid].  The first and last
     // vectors may be shared with prior slices and subsequent slices.
 
-    int64_t pstart_slice [ntasks+1] ;
-    int64_t kfirst_slice [ntasks] ;
-    int64_t klast_slice  [ntasks] ;
-
-    GB_ek_slice (pstart_slice, kfirst_slice, klast_slice, A, ntasks) ;
+    if (!GB_ek_slice (&pstart_slice, &kfirst_slice, &klast_slice, A, ntasks))
+    {
+        // out of memory
+        GB_FREE_ALL ;
+        return (GB_OUT_OF_MEMORY) ;
+    }
 
     //--------------------------------------------------------------------------
     // count the live entries in each vector
@@ -178,15 +203,6 @@ GrB_Info GB_selector
     // Use the GB_reduce_each_vector template to count the number of live
     // entries in each vector of A.  The result is computed in Cp, where Cp [k]
     // is the number of live entries in the kth vector of A.
-
-    // workspace for each task
-    int64_t Wfirst [ntasks] ;
-    int64_t Wlast  [ntasks] ;
-    for (int tid = 0 ; tid < ntasks ; tid++)
-    { 
-        Wfirst [tid] = 0 ;
-        Wlast  [tid] = 0 ;
-    }
 
     if (opcode <= GB_RESIZE_opcode)
     {
@@ -208,7 +224,8 @@ GrB_Info GB_selector
     #define GB_sel1(opname,aname) GB_sel_phase1_ ## opname ## aname
     #define GB_SEL_WORKER(opname,aname,atype)                           \
     {                                                                   \
-        GB_sel1 (opname, aname) (Zp, Cp, Wfirst, Wlast,                 \
+        GB_sel1 (opname, aname) (Zp, Cp,                                \
+            (GB_void *) Wfirst, (GB_void *) Wlast,                      \
             A, kfirst_slice, klast_slice, pstart_slice, flipij, ithunk, \
             (atype *) xthunk, user_select, ntasks, nthreads) ;          \
     }                                                                   \
@@ -232,7 +249,6 @@ GrB_Info GB_selector
     // determine the slice boundaries in the new C matrix
     //--------------------------------------------------------------------------
 
-    int64_t C_pstart_slice [ntasks] ;
     int64_t kprior = -1 ;
     int64_t pC = 0 ;
 

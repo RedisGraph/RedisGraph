@@ -214,7 +214,7 @@ GrB_Info GB_AxB_heap                // C<M>=A*B or C=A*B using a heap
                 flipxy,
                 /* heap: */ List, pA_pair, Heap, bjnz_max,
                 /* Gustavson: */ NULL,
-                /* dot: */ NULL, 1, 1, 1, NULL,
+                /* dot2: */ NULL, NULL, 1, 1, 1, NULL,
                 /* dot3: */ NULL, 0) ;
             done = true ;
             if (info != GrB_SUCCESS)

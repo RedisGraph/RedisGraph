@@ -97,7 +97,7 @@ for j = 1:n
             % T (i,j) += A (i,k) * B (k,j), using the semiring
             if (A.pattern (i,k) && B.pattern (k,j))
                 z = GB_spec_op (multiply, A_matrix (i,k), B_matrix (k,j)) ;
-                T.matrix (i,j) = GB_spec_op (add, T.matrix (i,j),  z)  ;
+                T.matrix (i,j) = GB_spec_op (add, T.matrix (i,j), z) ;
                 T.pattern (i,j) = true ;
             end
         end

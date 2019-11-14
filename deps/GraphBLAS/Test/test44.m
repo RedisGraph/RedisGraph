@@ -73,7 +73,7 @@ t = toc ;
 tic
 [Iout, Jout] = GB_mex_qsort_2 (I, J) ;
 t2 = toc ;
-t2_just = gbresults ;
+t2_just = grbresults ;
 assert (isequal ([Iout Jout], IJout));
 
 fprintf ('MATLAB: sortrows %g sec  qsort2: %g %g speedup: %g\n', ...
@@ -85,7 +85,7 @@ for nthreads = [1 2 4 8 16 20 32 40 64 128 256]
     end
     % tic
     [Iout, Jout] = GB_mex_msort_2 (I, J, nthreads) ;
-    tp = gbresults ; % toc ;
+    tp = grbresults ; % toc ;
     if (nthreads == 1)
         tp1 = tp ;
     end
@@ -108,7 +108,7 @@ t = toc ;
 
 tic
 [Iout, Jout, Kout] = GB_mex_qsort_3 (I, J, K) ;
-t2_just = gbresults ;
+t2_just = grbresults ;
 t2 = toc ;
 assert (isequal ([Iout Jout Kout], IJKout))
 
@@ -120,7 +120,7 @@ for nthreads = [1 2 4 8 16 20 32 40 64 128 256]
     end
     % tic
     [Iout, Jout, Kout] = GB_mex_msort_3 (I, J, K, nthreads) ;
-    tp = gbresults ; % toc ;
+    tp = grbresults ; % toc ;
     if (nthreads == 1)
         tp1 = tp ;
     end

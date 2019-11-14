@@ -12,6 +12,7 @@
 
 #include "GB_Pending.h"
 #include "GB_iterator.h"
+#include "GB_printf.h"
 
 GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
 (
@@ -42,7 +43,14 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         ignore_queue_and_nzombies = true ;
     }
 
-    GBPR0 ("\nGraphBLAS %s: %s ", kind, GB_NAME) ;
+    bool one_based = GB_Global_print_one_based_get ( ) ;
+    int64_t offset = (one_based) ? 1 : 0 ;
+
+    GBPR0 ("\n  "GBd"x"GBd" GraphBLAS %s %s",
+        (A != NULL) ? GB_NROWS (A) : 0,
+        (A != NULL) ? GB_NCOLS (A) : 0,
+        (A != NULL && A->type != NULL && A->type->name != NULL) ?
+         A->type->name : "", kind) ;
 
     //--------------------------------------------------------------------------
     // check if null, freed, or uninitialized
@@ -51,7 +59,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     if (A == NULL)
     { 
         // GrB_error status not modified since this may be an optional argument
-        GBPR0 ("NULL\n") ;
+        GBPR0 (" NULL\n") ;
         return (GrB_NULL_POINTER) ;
     }
 
@@ -63,23 +71,21 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
 
     if (pr > 0)
     { 
-        GBPR ("\nnrows: "GBd" ncols: "GBd" max # entries: "GBd"\n",
-            GB_NROWS (A), GB_NCOLS (A), A->nzmax) ;
-
-        GBPR ("format: %s %s",
-            A->is_hyper ?
+        GBPR (", %s", A->is_hyper ?
                 (A->is_slice ? "hyperslice" : "hypersparse") :
-                (A->is_slice ? "slice" : "standard"),
-            A->is_csc ?   "CSC" : "CSR") ;
+                (A->is_slice ? "slice" : "sparse")) ;
+        GBPR (" %s:\n", A->is_csc ? "by col" : "by row") ;
 
-        GBPR (" vlen: "GBd, A->vlen) ;
+        #ifdef GB_DEVELOPER
+        GBPR ("  max # entries: "GBd"\n", A->nzmax) ;
+        GBPR ("  vlen: "GBd, A->vlen) ;
         if (A->nvec_nonempty != -1)
-        { 
+        {
             GBPR (" nvec_nonempty: "GBd, A->nvec_nonempty) ;
         }
-        GBPR (" nvec: "GBd" plen: "GBd " vdim: "GBd"\n",
-            A->nvec, A->plen, A->vdim) ;
-        GBPR ("hyper_ratio %g\n", A->hyper_ratio) ;
+        GBPR (" nvec: "GBd" plen: "GBd " vdim: "GBd" hyper_ratio %g\n",
+            A->nvec, A->plen, A->vdim, A->hyper_ratio) ;
+        #endif
     }
 
     //--------------------------------------------------------------------------
@@ -90,7 +96,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         A->vdim < 0 || A->vdim > GB_INDEX_MAX ||
         A->nzmax < 0 || A->nzmax > GB_INDEX_MAX)
     { 
-        GBPR0 ("invalid %s dimensions\n", kind) ;
+        GBPR0 ("  invalid %s dimensions\n", kind) ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "%s invalid : nrows, ncols, or nzmax out of range: [%s]",
             kind, GB_NAME))) ;
@@ -105,18 +111,18 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         if (A->is_hyper)
         { 
             // A is a hyperslice of a hypersparse matrix
-            GBPR0 ("hyperslice\n") ;
+            GBPR0 ("  hyperslice\n") ;
         }
         else
         { 
             // A is a slice of a standard matrix
-            GBPR0 ("slice ["GBd":"GBd"]\n",
+            GBPR0 ("  slice ["GBd":"GBd"]\n",
                 A->hfirst, A->hfirst + A->nvec + - 1) ;
         }
         if (! (A->nvec <= A->vdim && A->plen == A->nvec))
         { 
             // invalid slice
-            GBPR0 ("invalid slice %s structure\n", kind) ;
+            GBPR0 ("  invalid slice %s structure\n", kind) ;
             return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                 "invalid slice %s structure [%s]", kind, GB_NAME))) ;
         }
@@ -128,7 +134,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
             // A is hypersparse
             if (! (A->nvec >= 0 && A->nvec <= A->plen && A->plen <= A->vdim))
             { 
-                GBPR0 ("invalid hypersparse %s structure\n", kind) ;
+                GBPR0 ("  invalid hypersparse %s structure\n", kind) ;
                 return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                     "invalid hypersparse %s structure [%s]", kind, GB_NAME))) ;
             }
@@ -138,7 +144,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
             // A is standard
             if (! (A->nvec == A->plen && A->plen == A->vdim))
             { 
-                GBPR0 ("invalid standard %s structure\n", kind) ;
+                GBPR0 ("  invalid sparse %s structure\n", kind) ;
                 return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                     "invalid %s structure [%s]", kind, GB_NAME))) ;
             }
@@ -152,7 +158,6 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     GB_Pending Pending = A->Pending ;
 
     #ifdef GB_DEVELOPER
-
     // a matrix contains 1 to 9 different allocated blocks
     int64_t nallocs = 1 +                       // header
         (A->h != NULL && !A->h_shallow) +       // A->h, if not shallow
@@ -163,19 +168,23 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         (Pending != NULL && Pending->i != NULL) +
         (Pending != NULL && Pending->j != NULL) +
         (Pending != NULL && Pending->x != NULL) ;
-
-    if (pr > 1) GBPR ("A %p number of memory blocks: "GBd"\n", A, nallocs) ;
-
+    if (pr > 1) GBPR ("  A %p number of memory blocks: "GBd"\n", A, nallocs) ;
     #endif
 
     //--------------------------------------------------------------------------
     // check the type
     //--------------------------------------------------------------------------
 
-    GrB_Info info = GB_Type_check (A->type, "", pr, f, Context) ;
+    #ifdef GB_DEVELOPER
+    int pr_type = pr ;
+    #else
+    int pr_type = 0 ;
+    #endif
+
+    GrB_Info info = GB_Type_check (A->type, "", pr_type, f, Context) ;
     if (info != GrB_SUCCESS || (A->type->size != A->type_size))
     { 
-        GBPR0 ("%s has an invalid type\n", kind) ;
+        GBPR0 ("  %s has an invalid type\n", kind) ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "%s has an invalid type: [%s]", kind, GB_NAME))) ;
     }
@@ -184,28 +193,30 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     // report last method used for C=A*B
     //--------------------------------------------------------------------------
 
+    #ifdef GB_DEVELOPER
     if (pr > 1 && A->AxB_method_used != GxB_DEFAULT)
     {
-        GBPR ("last method used for GrB_mxm, vxm, or mxv: ") ;
+        GBPR ("  last method used for GrB_mxm, vxm, or mxv: ") ;
         switch (A->AxB_method_used)
         {
-            case GxB_AxB_GUSTAVSON : GBPR ("Gustavson") ; break ;
-            case GxB_AxB_HEAP      : GBPR ("heap")      ; break ;
-            case GxB_AxB_DOT       : GBPR ("dot")       ; break ;
+            case GxB_AxB_GUSTAVSON: GBPR ("Gustavson") ; break ;
+            case GxB_AxB_HEAP:      GBPR ("heap")      ; break ;
+            case GxB_AxB_DOT:       GBPR ("dot")       ; break ;
             default: ;
         }
         GBPR ("\n") ;
     }
+    #endif
 
     //--------------------------------------------------------------------------
     // report shallow structure
     //--------------------------------------------------------------------------
 
     #ifdef GB_DEVELOPER
-    if (pr > 1) GBPR ("->h: %p shallow: %d\n", A->h, A->h_shallow) ;
-    if (pr > 1) GBPR ("->p: %p shallow: %d\n", A->p, A->p_shallow) ;
-    if (pr > 1) GBPR ("->i: %p shallow: %d\n", A->i, A->i_shallow) ;
-    if (pr > 1) GBPR ("->x: %p shallow: %d\n", A->x, A->x_shallow) ;
+    if (pr > 1) GBPR ("  ->h: %p shallow: %d\n", A->h, A->h_shallow) ;
+    if (pr > 1) GBPR ("  ->p: %p shallow: %d\n", A->p, A->p_shallow) ;
+    if (pr > 1) GBPR ("  ->i: %p shallow: %d\n", A->i, A->i_shallow) ;
+    if (pr > 1) GBPR ("  ->x: %p shallow: %d\n", A->x, A->x_shallow) ;
     #endif
 
     if (A->is_slice)
@@ -214,7 +225,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         if (!A->i_shallow || !A->x_shallow)
         { 
             // bad slice: must have shallow i and x
-            GBPR0 ("invalid non-shallow slice %s\n", kind) ;
+            GBPR0 ("  invalid non-shallow slice %s\n", kind) ;
             return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                 "non-shallow: invalid slice %s [%s\n", kind, GB_NAME))) ;
         }
@@ -226,7 +237,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
 
     if (A->p == NULL)
     { 
-        GBPR0 ("->p is NULL, invalid %s\n", kind) ;
+        GBPR0 ("  ->p is NULL, invalid %s\n", kind) ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "%s contains a NULL A->p pointer: [%s]", kind, GB_NAME))) ;
     }
@@ -240,7 +251,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         // A is hypersparse
         if (A->h == NULL)
         { 
-            GBPR0 ("->h NULL, invalid hypersparse %s\n", kind) ;
+            GBPR0 ("  ->h NULL, invalid hypersparse %s\n", kind) ;
             return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                 "hypersparse %s contains a NULL A->h pointer: [%s]",
                 kind, GB_NAME))) ;
@@ -251,7 +262,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         // A is standard
         if (A->h != NULL)
         { 
-            GBPR0 ("->h not NULL, invalid non-hypersparse %s\n",
+            GBPR0 ("  ->h not NULL, invalid non-hypersparse %s\n",
                 kind) ;
             return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                 "non-hypersparse %s contains a non-NULL A->h pointer: [%s]",
@@ -269,7 +280,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         if (A->hfirst < 0 || A->hfirst + A->nvec > A->vdim)
         { 
             // bad slice: hfirst invalid
-            GBPR0 ("hfirst: invalid slice %s\n", kind) ;
+            GBPR0 ("  hfirst: invalid slice %s\n", kind) ;
             return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                 "hfirst: invalid slice %s [%s]\n", kind, GB_NAME))) ;
         }
@@ -280,7 +291,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         if (A->hfirst != 0)
         { 
             // bad hyperslice: only a standard slice can have a nonzero hfirst
-            GBPR0 ("hfirst: invalid slice %s\n", kind) ;
+            GBPR0 ("  hfirst: invalid slice %s\n", kind) ;
             return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                 "hfirst: invalid slice %s [%s]\n", kind, GB_NAME))) ;
         }
@@ -298,9 +309,9 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
 
         if (A->i != NULL || A->i_shallow || A->x_shallow)
         { 
-            GBPR0 ("invalid empty %s\n", kind) ;
+            GBPR0 ("  invalid empty %s\n", kind) ;
             return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
-                "%s is an invalid empty object: [%s]", kind, GB_NAME))) ;
+                "invalid empty %s: [%s]", kind, GB_NAME))) ;
         }
 
         // check the vector pointers
@@ -308,13 +319,12 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         {
             if (A->p [j] != 0)
             { 
-                GBPR0 ("->p ["GBd"] = "GBd" invalid\n", j,A->p[j]);
+                GBPR0 ("  ->p ["GBd"] = "GBd" invalid\n", j, A->p [j]) ;
                 return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                     "%s ->p ["GBd"] = "GBd" invalid: [%s]",
                     kind, j, A->p[j], GB_NAME))) ;
             }
         }
-        GBPR0 ("empty\n") ;
     }
 
     //--------------------------------------------------------------------------
@@ -323,7 +333,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
 
     if (!A_empty && A->i == NULL)
     { 
-        GBPR0 ("->i is NULL, invalid %s\n", kind) ;
+        GBPR0 ("  ->i is NULL, invalid %s\n", kind) ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "%s contains a NULL A->i pointer: [%s]", kind, GB_NAME))) ;
     }
@@ -334,7 +344,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
 
     if (A->is_slice ? (A->p [0] < 0) : (A->p [0] != 0))
     { 
-        GBPR0 ("->p [0] = "GBd" invalid\n", A->p [0]) ;
+        GBPR0 ("  ->p [0] = "GBd" invalid\n", A->p [0]) ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "%s A->p [0] = "GBd" invalid: [%s]", kind, A->p [0], GB_NAME))) ;
     }
@@ -343,7 +353,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     {
         if (A->p [j+1] < A->p [j] || A->p [j+1] > A->nzmax)
         { 
-            GBPR0 ("->p ["GBd"] = "GBd" invalid\n",
+            GBPR0 ("  ->p ["GBd"] = "GBd" invalid\n",
                 j+1, A->p [j+1]) ;
             return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                 "%s A->p ["GBd"] = "GBd" invalid: [%s]",
@@ -361,10 +371,9 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         for (int64_t k = 0 ; k < A->nvec ; k++)
         {
             int64_t j = A->h [k] ;
-            // printf ("Ah ["GBd"] = "GBd"\n", k, j) ;
             if (jlast >= j || j < 0 || j >= A->vdim)
             { 
-                GBPR0 ("->h ["GBd"] = "GBd" invalid\n", k, j) ;
+                GBPR0 ("  ->h ["GBd"] = "GBd" invalid\n", k, j) ;
                 return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                     "%s A->h ["GBd"] = "GBd" invalid: [%s]",
                     kind, k, j, GB_NAME))) ;
@@ -374,11 +383,29 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     }
 
     //--------------------------------------------------------------------------
-    // report number of entries
+    // report name and number of entries
     //--------------------------------------------------------------------------
 
+    GBPR0 ("  ") ;
+    if (name != NULL && strlen (name) > 0)
+    {
+        GBPR0 ("%s, ", GB_NAME) ;
+    }
+
+    // # of entries cannot be computed until all the tests above are OK
     int64_t anz = GB_NNZ (A) ;
-    GBPR0 ("number of entries: "GBd" \n", anz) ;
+    if (anz == 0)
+    {
+        GBPR0 ("no entries\n") ;
+    }
+    else if (anz == 1)
+    {
+        GBPR0 ("1 entry\n") ;
+    }
+    else
+    {
+        GBPR0 (GBd" entries\n", anz) ;
+    }
 
     //--------------------------------------------------------------------------
     // report the number of pending tuples and zombies
@@ -389,11 +416,11 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         if (A->is_slice)
         { 
             // a slice or hyperslice cannot have pending work
-            GBPR0 ("slice %s invalid: unfinished\n", kind) ;
+            GBPR0 ("  slice %s invalid: unfinished\n", kind) ;
             return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                 "slice %s invalid: unfinished [%s]", kind, GB_NAME))) ;
         }
-        GBPR0 ("pending tuples: "GBd" max pending: "GBd
+        GBPR0 ("  pending tuples: "GBd" max pending: "GBd
             " zombies: "GBd"\n", GB_Pending_n (A),
             (Pending == NULL) ? 0 : (Pending->nmax),
             A->nzombies) ;
@@ -402,7 +429,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     if (!ignore_queue_and_nzombies && (A->nzombies < 0 || A->nzombies > anz))
     { 
         // zombie count is ignored if pr is flipped
-        GBPR0 ("invalid number of zombies: "GBd" "
+        GBPR0 ("  invalid number of zombies: "GBd" "
             "must be >= 0 and <= # entries ("GBd")\n", A->nzombies, anz) ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "%s invalid number of zombies: "GBd"\n"
@@ -414,12 +441,15 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     // check and print the row indices and numerical values
     //--------------------------------------------------------------------------
 
+    if (anz > 0) GBPR0 ("\n") ;
+
     #define GB_NBRIEF 10
     #define GB_NZBRIEF 30
 
     bool jumbled = false ;
     int64_t nzombies = 0 ;
     int64_t jcount = 0 ;
+    bool truncated = false ;
 
     GBI_for_each_vector (A)
     {
@@ -432,12 +462,17 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
                 // print the header for vector j
                 if (prcol)
                 { 
-                    GBPR ("%s: "GBd" : "GBd" entries ["GBd":"GBd"]\n",
+                    #ifdef GB_DEVELOPER
+                    GBPR ("  %s: "GBd" : "GBd" entries ["GBd":"GBd"]\n",
                         A->is_csc ? "column" : "row", j, pend - p, p, pend-1) ;
+                    #endif
                 }
                 else if (pr == 2 && jcount == GB_NBRIEF)
                 { 
-                    GBPR ("...\n") ;
+                    truncated = true ;
+                    #ifdef GB_DEVELOPER
+                    GBPR ("    ...\n") ;
+                    #endif
                 }
                 jcount++ ;      // count # of vectors printed so far
             }
@@ -449,18 +484,32 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
             { 
                 if ((pr > 1 && p < GB_NZBRIEF) || pr > 2)
                 { 
-                    GBPR ("    %s "GBd": ", A->is_csc ? "row" : "column", i) ;
+                    #ifdef GB_DEVELOPER
+                    GBPR ("    %s "GBd": ", A->is_csc ? "row":"column", i) ;
+                    #else
+                    if (A->is_csc)
+                    {
+                        GBPR ("    ("GBd","GBd") ", i + offset, j + offset) ;
+                    }
+                    else
+                    {
+                        GBPR ("    ("GBd","GBd") ", j + offset, i + offset) ;
+                    }
+                    #endif
                 }
                 else if (pr == 2 && (ilast == -1 || p == GB_NZBRIEF))
                 { 
-                    GBPR ("    ...\n") ;
+                    truncated = true ;
+                    #ifdef GB_DEVELOPER
+                    GBPR ("        ...\n") ;
+                    #endif
                 }
             }
             int64_t row = A->is_csc ? i : j ;
             int64_t col = A->is_csc ? j : i ;
             if (i < 0 || i >= A->vlen)
             { 
-                GBPR0 ("index ("GBd","GBd") out of range\n", row, col) ;
+                GBPR0 ("  index ("GBd","GBd") out of range\n", row, col) ;
                 return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                     "%s index ("GBd","GBd") out of range: [%s]",
                     kind, row, col, GB_NAME))) ;
@@ -499,6 +548,10 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         }
     }
 
+    #ifndef GB_DEVELOPER
+    if (pr == 2 && truncated) GBPR ("    ...\n") ;
+    #endif
+
     //--------------------------------------------------------------------------
     // check the zombie count
     //--------------------------------------------------------------------------
@@ -506,7 +559,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     if (!ignore_queue_and_nzombies && nzombies != A->nzombies)
     { 
         // zombie count is ignored if pr is flipped
-        GBPR0 ("invalid zombie count: "GBd" exist but"
+        GBPR0 ("  invalid zombie count: "GBd" exist but"
             " A->nzombies = "GBd"\n", nzombies, A->nzombies) ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "%s invalid zombie count: "GBd" exist but A->nzombies = "GBd" "
@@ -518,7 +571,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     //--------------------------------------------------------------------------
 
     #ifdef GB_DEVELOPER
-    if (pr > 1) GBPR ("Pending %p\n", Pending) ;
+    if (pr > 1) GBPR ("  Pending %p\n", Pending) ;
     #endif
 
     if (Pending != NULL)
@@ -529,15 +582,15 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         //---------------------------------------------------------------------
 
         #ifdef GB_DEVELOPER
-        if (pr > 1) GBPR ("Pending->i %p\n", Pending->i) ;
-        if (pr > 1) GBPR ("Pending->j %p\n", Pending->j) ;
-        if (pr > 1) GBPR ("Pending->x %p\n", Pending->x) ;
+        if (pr > 1) GBPR ("  Pending->i %p\n", Pending->i) ;
+        if (pr > 1) GBPR ("  Pending->j %p\n", Pending->j) ;
+        if (pr > 1) GBPR ("  Pending->x %p\n", Pending->x) ;
         #endif
 
         if (Pending->n < 0 || Pending->n > Pending->nmax ||
             Pending->nmax < 0)
         { 
-            GBPR0 ("invalid pending count\n") ;
+            GBPR0 ("  invalid pending count\n") ;
             return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                 "%s invalid pending tuple count: pending "GBd" max "GBd": [%s]",
                 kind, Pending->n, Pending->nmax, GB_NAME))) ;
@@ -547,17 +600,17 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         if (Pending->i == NULL || Pending->x == NULL ||
             (A->vdim > 1 && Pending->j == NULL))
         { 
-            GBPR0 ("invalid pending tuples\n") ;
+            GBPR0 ("  invalid pending tuples\n") ;
             return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                 "%s invalid pending tuples: [%s]", kind, GB_NAME))) ;
         }
 
-        GBPR0 ("pending tuples:\n") ;
+        GBPR0 ("  pending tuples:\n") ;
 
         info = GB_Type_check (Pending->type, "", pr, f, Context) ;
         if (info != GrB_SUCCESS || (Pending->type->size != Pending->size))
         { 
-            GBPR0 ("%s has an invalid Pending->type\n", kind) ;
+            GBPR0 ("  %s has an invalid Pending->type\n", kind) ;
             return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                 "%s has an invalid Pending->type: [%s]", kind, GB_NAME))) ;
         }
@@ -576,7 +629,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
             // print the tuple
             if ((pr > 1 && k < GB_NZBRIEF) || pr > 2)
             { 
-                GBPR ("row: "GBd" col: "GBd" ", row, col) ;
+                GBPR ("    row: "GBd" col: "GBd" ", row, col) ;
                 info = GB_entry_check (Pending->type,
                     Pending->x +(k * Pending->type->size), f, Context) ;
                 if (info != GrB_SUCCESS) return (info) ;
@@ -585,7 +638,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
 
             if (i < 0 || i >= A->vlen || j < 0 || j >= A->vdim)
             { 
-                GBPR0 ("tuple ("GBd","GBd") out of range\n", row, col) ;
+                GBPR0 ("    tuple ("GBd","GBd") out of range\n", row, col) ;
                 return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                     "%s tuple index ("GBd","GBd") out of range: [%s]",
                     kind, row, col, GB_NAME))) ;
@@ -598,14 +651,14 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
 
         if (sorted != Pending->sorted)
         { 
-            GBPR0 ("invalid pending tuples: invalid sort\n") ;
+            GBPR0 ("  invalid pending tuples: invalid sort\n") ;
             return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                 "%s invalid pending tuples: [%s]", kind, GB_NAME))) ;
         }
 
         if (Pending->op == NULL)
         { 
-            GBPR0 ("pending operator: implicit 2nd\n") ;
+            GBPR0 ("  pending operator: implicit 2nd\n") ;
         }
         else
         {
@@ -613,7 +666,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
                 pr, f, Context) ;
             if (info != GrB_SUCCESS)
             { 
-                GBPR0 ("invalid pending operator\n") ;
+                GBPR0 ("  invalid pending operator\n") ;
                 return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                     "%s invalid operator: [%s]", kind, GB_NAME))) ;
             }
@@ -632,17 +685,17 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         GB_CRITICAL (GB_queue_status (A, &head, &prev, &next, &enqd)) ;
 
         #ifdef GB_DEVELOPER
-        if (pr > 1) GBPR ("queue head  %p\n", head) ;
-        if (pr > 1) GBPR ("queue prev  %p\n", prev) ;
-        if (pr > 1) GBPR ("queue next  %p\n", next) ;
-        if (pr > 1) GBPR ("is in queue %d\n", enqd) ;
+        if (pr > 1) GBPR ("  queue head  %p\n", head) ;
+        if (pr > 1) GBPR ("  queue prev  %p\n", prev) ;
+        if (pr > 1) GBPR ("  queue next  %p\n", next) ;
+        if (pr > 1) GBPR ("  is in queue %d\n", enqd) ;
         #endif
 
         #define GB_IS_NOT_IN_QUEUE(A) (prev == NULL && head != A)
         #define GB_IS_IN_QUEUE(A) (! GB_IS_NOT_IN_QUEUE(A))
         if (enqd != GB_IS_IN_QUEUE (A))
         { 
-            GBPR0 ("queued state inconsistent: [%d] != [%d]\n",
+            GBPR0 ("  queued state inconsistent: [%d] != [%d]\n",
                 enqd, GB_IS_IN_QUEUE (A)) ;
             return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                 "%s queued state inconsistent: [%s], [%d] != [%d]", kind,
@@ -653,7 +706,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         {
             if (!enqd)
             { 
-                GBPR0 ("must be in queue but is not there\n") ;
+                GBPR0 ("  must be in queue but is not there\n") ;
                 return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                 "%s must be in queue but is not there: [%s]", kind, GB_NAME))) ;
             }
@@ -661,7 +714,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
             // prev is NULL if and only if A is at the head of the queue
             if ((prev == NULL) != (head == A))
             { 
-                GBPR0 ("invalid queue\n") ;
+                GBPR0 ("  invalid queue\n") ;
                 return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                     "%s invalid queue: [%s]", kind, GB_NAME))) ;
             }
@@ -670,7 +723,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
         {
             if (enqd)
             { 
-                GBPR0 ("must not be in queue but is there\n") ;
+                GBPR0 ("  must not be in queue but is there\n") ;
                 return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                     "%s must not be in queue but present there: [%s]",
                     kind, GB_NAME))) ;
@@ -694,7 +747,7 @@ GrB_Info GB_matvec_check    // check a GraphBLAS matrix or vector
     if (! ((A->nvec_nonempty == actual_nvec_nonempty) ||
            (A->nvec_nonempty == -1)))
     { 
-        GBPR0 ("invalid count of non-empty vectors\n"
+        GBPR0 ("  invalid count of non-empty vectors\n"
             "A->nvec_nonempty = "GBd" actual "GBd"\n",
             A->nvec_nonempty, actual_nvec_nonempty) ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,

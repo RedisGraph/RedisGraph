@@ -23,7 +23,7 @@ for n = [1 10 19 20 21 100 1000 1e5 1e6 1e7 1e8]
         tic
         J1 = GB_mex_qsort (I) ;
         t1 = toc ;
-        t1b = gbresults ;
+        t1b = grbresults ;
 
         tic
         J4 = sort (I) ;
@@ -39,7 +39,7 @@ for n = [1 10 19 20 21 100 1000 1e5 1e6 1e7 1e8]
         tic
         J1 = GB_mex_qsort (I) ;
         t1 = toc ;
-        t1b = gbresults ;
+        t1b = grbresults ;
 
         tic
         J4 = sort (I) ;

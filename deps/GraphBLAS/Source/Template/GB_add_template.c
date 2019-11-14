@@ -14,7 +14,7 @@
 
 // phase1: does not compute C itself, but just counts the # of entries in each
 // vector of C.  Fine tasks compute the # of entries in their slice of a
-// single vector of C, and the results are cumsum'd in GB_task_cumsum.
+// single vector of C, and the results are cumsum'd.
 
 // phase2: computes C, using the counts computed by phase1.
 

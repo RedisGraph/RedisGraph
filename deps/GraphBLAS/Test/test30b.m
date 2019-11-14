@@ -32,7 +32,7 @@ fprintf ('start GraphBLAS:\n') ;
 tic 
 C2 = GB_mex_assign (A, [], [], scalar, I0, J0, []) ;
 toc
-t = gbresults
+t = grbresults
 
 C = A ; 
 fprintf ('start MATLAB:\n') ;

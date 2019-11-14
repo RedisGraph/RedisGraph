@@ -9,6 +9,7 @@
 
 #if defined ( GB_ENTRY_SELECTOR )
 
+    #define GB_CTYPE int64_t
     #include "GB_reduce_each_vector.c"
 
 #else
@@ -141,6 +142,9 @@
 
     // Wfirst [0..ntasks-1] and Wlast [0..ntasks-1] are required for
     // constructing C_start_slice [0..ntasks-1] in GB_selector.
+
+    int64_t *restrict Wfirst = (int64_t *) Wfirst_space ;
+    int64_t *restrict Wlast  = (int64_t *) Wlast_space  ;
 
     for (int tid = 0 ; tid < ntasks ; tid++)
     {

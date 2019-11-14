@@ -91,7 +91,7 @@ GrB_Info GB_tran__lnot_int32_bool
 (
     GrB_Matrix C,
     const GrB_Matrix A,
-    int64_t **Rowcounts,
+    int64_t *restrict *Rowcounts,
     GBI_single_iterator Iter,
     const int64_t *restrict A_slice,
     int naslice

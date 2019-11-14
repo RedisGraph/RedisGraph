@@ -1,7 +1,7 @@
 % test zombie deletion
 clear all
 nthreads_set(1)
-gb
+grbinfo
 test29
 test97
 

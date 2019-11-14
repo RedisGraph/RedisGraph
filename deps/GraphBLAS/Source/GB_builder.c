@@ -94,15 +94,20 @@
 #define GB_J_WORK(t) (((t) < 0) ? -1 : ((J_work == NULL) ? 0 : J_work [t]))
 #define GB_K_WORK(t) (((t) < 0) ? -1 : ((K_work == NULL) ? t : K_work [t]))
 
-#define GB_FREE_WORK                                            \
-{                                                               \
-    GB_FREE_MEMORY (*I_work_handle, ijslen, sizeof (int64_t)) ; \
-    GB_FREE_MEMORY (*J_work_handle, ijslen, sizeof (int64_t)) ; \
-    GB_FREE_MEMORY (*S_work_handle, ijslen, ssize) ;            \
-    GB_FREE_MEMORY (K_work,         nvals,  sizeof (int64_t)) ; \
-    GB_FREE_MEMORY (W0,             nvals,  sizeof (int64_t)) ; \
-    GB_FREE_MEMORY (W1,             nvals,  sizeof (int64_t)) ; \
-    GB_FREE_MEMORY (W1,             nvals,  sizeof (int64_t)) ; \
+#define GB_FREE_WORK                                                \
+{                                                                   \
+    GB_FREE_MEMORY (tstart_slice, nthreads+1, sizeof (int64_t)) ;   \
+    GB_FREE_MEMORY (tnvec_slice,  nthreads+1, sizeof (int64_t)) ;   \
+    GB_FREE_MEMORY (tnz_slice,    nthreads+1, sizeof (int64_t)) ;   \
+    GB_FREE_MEMORY (kbad,         nthreads,   sizeof (int64_t)) ;   \
+    GB_FREE_MEMORY (ilast_slice,  nthreads,   sizeof (int64_t)) ;   \
+    GB_FREE_MEMORY (*I_work_handle, ijslen, sizeof (int64_t)) ;     \
+    GB_FREE_MEMORY (*J_work_handle, ijslen, sizeof (int64_t)) ;     \
+    GB_FREE_MEMORY (*S_work_handle, ijslen, ssize) ;                \
+    GB_FREE_MEMORY (K_work,         nvals,  sizeof (int64_t)) ;     \
+    GB_FREE_MEMORY (W0,             nvals,  sizeof (int64_t)) ;     \
+    GB_FREE_MEMORY (W1,             nvals,  sizeof (int64_t)) ;     \
+    GB_FREE_MEMORY (W1,             nvals,  sizeof (int64_t)) ;     \
 }
 
 //------------------------------------------------------------------------------
@@ -193,6 +198,30 @@ GrB_Info GB_builder                 // build a matrix from tuples
     int nthreads = GB_nthreads (nvals, chunk, nthreads_max) ;
 
     //--------------------------------------------------------------------------
+    // allocate workspace
+    //--------------------------------------------------------------------------
+
+    int64_t *restrict tstart_slice = NULL ;     // size nthreads+1
+    int64_t *restrict tnvec_slice = NULL ;      // size nthreads+1
+    int64_t *restrict tnz_slice = NULL ;        // size nthreads+1
+    int64_t *restrict kbad = NULL ;             // size nthreads
+    int64_t *restrict ilast_slice = NULL ;      // size [nthreads]
+
+    GB_CALLOC_MEMORY (tstart_slice, nthreads+1, sizeof (int64_t)) ;
+    GB_CALLOC_MEMORY (tnvec_slice,  nthreads+1, sizeof (int64_t)) ;
+    GB_CALLOC_MEMORY (tnz_slice,    nthreads+1, sizeof (int64_t)) ;
+    GB_CALLOC_MEMORY (kbad,         nthreads,   sizeof (int64_t)) ;
+    GB_CALLOC_MEMORY (ilast_slice,  nthreads,   sizeof (int64_t)) ;
+
+    if (tstart_slice == NULL || tnvec_slice == NULL || tnz_slice == NULL ||
+        kbad == NULL || ilast_slice == NULL)
+    {
+        // out of memory
+        GB_FREE_WORK ;
+        return (GB_OUT_OF_MEMORY) ;
+    }
+
+    //--------------------------------------------------------------------------
     // partition the tuples for the threads
     //--------------------------------------------------------------------------
 
@@ -200,7 +229,6 @@ GrB_Info GB_builder                 // build a matrix from tuples
     // Each thread handles about the same number of tuples.  This partition
     // depends only on nvals.
 
-    int64_t tstart_slice [nthreads+1] ; // first tuple in each slice
     tstart_slice [0] = 0 ;
     for (int tid = 1 ; tid < nthreads ; tid++)
     { 
@@ -208,13 +236,11 @@ GrB_Info GB_builder                 // build a matrix from tuples
     }
     tstart_slice [nthreads] = nvals ;
 
+    // tstart_slice [tid]: first tuple in slice tid
     // tnvec_slice [tid]: # of vectors that start in a slice.  If a vector
     //                    starts in one slice and ends in another, it is
     //                    counted as being in the first slice.
     // tnz_slice   [tid]: # of entries in a slice after removing duplicates
-
-    int64_t tnvec_slice [nthreads+1] ;
-    int64_t tnz_slice   [nthreads+1] ;
 
     // sentinel values for the final cumulative sum
     tnvec_slice [nthreads] = 0 ;
@@ -297,8 +323,6 @@ GrB_Info GB_builder                 // build a matrix from tuples
             ASSERT (vdim >= 0) ;
             ASSERT (I_input != NULL) ;
 
-            int64_t kbad [nthreads] ;
-
             #pragma omp parallel for num_threads(nthreads) schedule(static) \
                 reduction(&&:known_sorted) reduction(&&:no_duplicates_found)
             for (int tid = 0 ; tid < nthreads ; tid++)
@@ -359,13 +383,13 @@ GrB_Info GB_builder                 // build a matrix from tuples
                 if (kbad [tid] >= 0)
                 { 
                     // invalid index
-                    GB_FREE_WORK ;
                     int64_t i = I_input [kbad [tid]] ;
                     int64_t j = J_input [kbad [tid]] ;
                     int64_t row = is_csc ? i : j ;
                     int64_t col = is_csc ? j : i ;
                     int64_t nrows = is_csc ? vlen : vdim ;
                     int64_t ncols = is_csc ? vdim : vlen ;
+                    GB_FREE_WORK ;
                     return (GB_ERROR (GrB_INDEX_OUT_OF_BOUNDS, (GB_LOG,
                         "index ("GBd","GBd") out of bounds,"
                         " must be < ("GBd", "GBd")", row, col, nrows, ncols))) ;
@@ -414,7 +438,6 @@ GrB_Info GB_builder                 // build a matrix from tuples
             ASSERT (I_input != NULL) ;
             ASSERT (J_input == NULL) ;
             ASSERT (vdim == 1) ;
-            int64_t kbad [nthreads] ;
 
             #pragma omp parallel for num_threads(nthreads) schedule(static) \
                 reduction(&&:known_sorted) reduction(&&:no_duplicates_found)
@@ -459,8 +482,8 @@ GrB_Info GB_builder                 // build a matrix from tuples
                 if (kbad [tid] >= 0)
                 { 
                     // invalid index
-                    GB_FREE_WORK ;
                     int64_t i = I_input [kbad [tid]] ;
+                    GB_FREE_WORK ;
                     return (GB_ERROR (GrB_INDEX_OUT_OF_BOUNDS, (GB_LOG,
                         "index ("GBd") out of bounds, must be < ("GBd")",
                         i, vlen))) ;
@@ -710,7 +733,6 @@ GrB_Info GB_builder                 // build a matrix from tuples
         // look for duplicates and count # vectors in each slice
         //----------------------------------------------------------------------
 
-        int64_t ilast_slice [nthreads] ;
         for (int tid = 0 ; tid < nthreads ; tid++)
         { 
             int64_t tstart = tstart_slice [tid] ;
@@ -1295,13 +1317,13 @@ GrB_Info GB_builder                 // build a matrix from tuples
                 #define GB_ADD_CAST_ARRAY_TO_ARRAY(Tx,p,S,k)                \
                 {                                                           \
                     /* ywork = (ytype) S [k] */                             \
-                    GB_void ywork [ysize] ;                                 \
+                    GB_void ywork [GB_PGI(ysize)] ;                         \
                     cast_S_to_Y (ywork, S +((k)*ssize), ssize) ;            \
                     /* xwork = (xtype) Tx [p] */                            \
-                    GB_void xwork [xsize] ;                                 \
+                    GB_void xwork [GB_PGI(xsize)] ;                         \
                     cast_T_to_X (xwork, Tx +((p)*tsize), tsize) ;           \
                     /* zwork = f (xwork, ywork) */                          \
-                    GB_void zwork [zsize] ;                                 \
+                    GB_void zwork [GB_PGI(zsize)] ;                         \
                     fdup (zwork, xwork, ywork) ;                            \
                     /* Tx [tnz-1] = (ttype) zwork */                        \
                     cast_Z_to_T (Tx +((p)*tsize), zwork, zsize) ;           \

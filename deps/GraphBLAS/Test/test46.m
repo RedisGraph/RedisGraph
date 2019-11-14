@@ -104,7 +104,7 @@ fprintf ('GraphBLAS start:\n')
 for nthreads = [1 20 40]
     nthreads_set (nthreads) ;
     C3 = GB_mex_subassign (C2, [], [], B, I0, J0, []) ;
-    tg = gbresults ;
+    tg = grbresults ;
     fprintf ('%d threads, GB time: %g\n', nthreads, tg) ;
     assert (isequal (C, C3.matrix)) ;
 end
@@ -129,7 +129,7 @@ fprintf ('GraphBLAS start:\n')
 for nthreads = [1 20 40]
     nthreads_set (nthreads) ;
     C3 = GB_mex_subassign (C2, [], 'plus', B, I0, J0, []) ;
-    tg = gbresults ;
+    tg = grbresults ;
     fprintf ('%d threads, GB time: %g\n', nthreads, tg) ;
     assert (isequal (C, C3.matrix)) ;
 end

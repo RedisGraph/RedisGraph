@@ -5,7 +5,7 @@ addpath ('~/ssget') ;
 addpath ('spok') ;
 % debug_on
 nthreads_set (2) ;
-gb
+grbinfo
 
 
 %

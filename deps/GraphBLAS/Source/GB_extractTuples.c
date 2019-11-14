@@ -112,7 +112,11 @@ GrB_Info GB_extractTuples       // extract all tuples from a matrix
 
     if (J != NULL)
     {
-        GB_extract_vector_list ((int64_t *) J, A, nthreads) ;
+        if (!GB_extract_vector_list ((int64_t *) J, A, nthreads))
+        {
+            // out of memory
+            return (GB_OUT_OF_MEMORY) ;
+        }
     }
 
     //--------------------------------------------------------------------------

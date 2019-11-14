@@ -34,7 +34,7 @@ for subset = [n 1e6 1e4 100]
     for nthreads = nthread_list
         nthreads_set (nthreads, chunk) ;
         C2 = GB_mex_Matrix_extract (S, [ ], [ ], A, I0, J0) ;
-        t2 = gbresults ;
+        t2 = grbresults ;
         assert (isequal (C, C2.matrix)) ;
         fprintf ('    GraphBLAS nthreads %2d %12.6f speedup %8.2f\n', nthreads, t2, t1/t2) ;
     end
@@ -57,7 +57,7 @@ for subset = [n 1e6 1e4 100]
     for nthreads = nthread_list
         nthreads_set (nthreads, chunk) ;
         C2 = GB_mex_Matrix_extract (S, [ ], [ ], A, I0, J0) ;
-        t2 = gbresults ;
+        t2 = grbresults ;
         assert (isequal (C, C2.matrix)) ;
         fprintf ('    GraphBLAS nthreads %2d %12.6f speedup %8.2f\n', nthreads, t2, t1/t2) ;
     end
@@ -83,7 +83,7 @@ for inc = [1:10 16 64 128 256 1024 100000 1e6 2e6]
         nthreads_set (nthreads, chunk) ;
         % C2 = GB_mex_Matrix_extract (S, [ ], [ ], A, I, I) ;
           C2 = GB_mex_Matrix_extract (S, [ ], [ ], A, I, J) ;
-        t2 = gbresults ;
+        t2 = grbresults ;
         spok (C2.matrix) ;
         assert (isequal (C, C2.matrix)) ;
         fprintf ('    GraphBLAS nthreads %2d %12.6f speedup %8.2f\n', nthreads, t2, t1/t2) ;
@@ -106,7 +106,7 @@ for hi = [1:10 16 64 128 256 1024 100000 1e6 2e6]
     for nthreads = nthread_list
         nthreads_set (nthreads, chunk) ;
         C2 = GB_mex_Matrix_extract (S, [ ], [ ], A, I, I) ;
-        t2 = gbresults ;
+        t2 = grbresults ;
         assert (isequal (C, C2.matrix)) ;
         fprintf ('    GraphBLAS nthreads %2d %12.6f speedup %8.2f\n', nthreads, t2, t1/t2) ;
     end
@@ -131,7 +131,7 @@ for lo = [1:10 16 64 128 256 1024 100000 1e6 2e6]
         for nthreads = nthread_list
             nthreads_set (nthreads, chunk) ;
             C2 = GB_mex_Matrix_extract (S, [ ], [ ], A, I, I) ;
-            t2 = gbresults ;
+            t2 = grbresults ;
             assert (isequal (C, C2.matrix)) ;
             fprintf ('    GraphBLAS nthreads %2d %12.6f speedup %8.2f\n', nthreads, t2, t1/t2) ;
         end
@@ -157,7 +157,7 @@ for lo = [1:10 16 64 128 256 1024 100000 1e6 2e6]
         for nthreads = nthread_list
             nthreads_set (nthreads, chunk) ;
             C2 = GB_mex_Matrix_extract (S, [ ], [ ], A, I, I) ;
-            t2 = gbresults ;
+            t2 = grbresults ;
             assert (isequal (C, C2.matrix)) ;
             fprintf ('    GraphBLAS nthreads %2d %12.6f speedup %8.2f\n', nthreads, t2, t1/t2) ;
         end
@@ -180,7 +180,7 @@ for inc = [1:10 16 64 128 256 1024 100000 1e6 2e6]
     for nthreads = nthread_list
         nthreads_set (nthreads, chunk) ;
         C2 = GB_mex_Matrix_extract (S, [ ], [ ], A, I, I) ;
-        t2 = gbresults ;
+        t2 = grbresults ;
         assert (isequal (C, C2.matrix)) ;
         fprintf ('    GraphBLAS nthreads %2d %12.6f speedup %8.2f\n', nthreads, t2, t1/t2) ;
     end

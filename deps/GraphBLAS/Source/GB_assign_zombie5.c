@@ -16,7 +16,10 @@
 #include "GB_assign.h"
 #include "GB_ek_slice.h"
 
-void GB_assign_zombie5
+#define GB_FREE_WORK \
+    GB_ek_slice_free (&pstart_slice, &kfirst_slice, &klast_slice, ntasks) ;
+
+GrB_Info GB_assign_zombie5
 (
     GrB_Matrix Z,                   // the matrix C, or a copy
     const GrB_Matrix M,
@@ -74,11 +77,12 @@ void GB_assign_zombie5
     // vectors kfirst_slice [tid] to klast_slice [tid].  The first and last
     // vectors may be shared with prior slices and subsequent slices.
 
-    int64_t pstart_slice [ntasks+1] ;
-    int64_t kfirst_slice [ntasks] ;
-    int64_t klast_slice  [ntasks] ;
-
-    GB_ek_slice (pstart_slice, kfirst_slice, klast_slice, Z, ntasks) ;
+    int64_t *pstart_slice = NULL, *kfirst_slice = NULL, *klast_slice = NULL ;
+    if (!GB_ek_slice (&pstart_slice, &kfirst_slice, &klast_slice, Z, ntasks))
+    {
+        // out of memory
+        return (GB_OUT_OF_MEMORY) ;
+    }
 
     //--------------------------------------------------------------------------
     // each task creates its own zombies
@@ -175,9 +179,11 @@ void GB_assign_zombie5
     }
 
     //--------------------------------------------------------------------------
-    // return result
+    // free workspace and return result
     //--------------------------------------------------------------------------
 
     Z->nzombies = nzombies ;
+    GB_FREE_WORK ;
+    return (GrB_SUCCESS) ;
 }
 

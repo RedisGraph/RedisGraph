@@ -10,7 +10,7 @@
 // for additional diagnostics, use:
 // #define GB_DEVELOPER 1
 
-#include "GB.h"
+#include "GB_printf.h"
 
 GrB_Info GB_Semiring_check          // check a GraphBLAS semiring
 (
@@ -27,7 +27,7 @@ GrB_Info GB_Semiring_check          // check a GraphBLAS semiring
     // check inputs
     //--------------------------------------------------------------------------
 
-    GBPR0 ("\nGraphBLAS Semiring: %s ", GB_NAME) ;
+    GBPR0 ("\n    GraphBLAS Semiring: %s ", GB_NAME) ;
 
     if (semiring == NULL)
     { 
@@ -65,7 +65,7 @@ GrB_Info GB_Semiring_check          // check a GraphBLAS semiring
     info = GB_Monoid_check (semiring->add, "semiring->add", pr, f, Context) ;
     if (info != GrB_SUCCESS)
     { 
-        GBPR0 ("Semiring->add invalid\n") ;
+        GBPR0 ("    Semiring->add invalid\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "Semiring->add is an invalid monoid: [%s]", GB_NAME))) ;
     }
@@ -74,7 +74,7 @@ GrB_Info GB_Semiring_check          // check a GraphBLAS semiring
         Context) ;
     if (info != GrB_SUCCESS)
     { 
-        GBPR0 ("Semiring->multiply invalid\n") ;
+        GBPR0 ("    Semiring->multiply invalid\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "Semiring->multiply is an invalid operator: [%s]", GB_NAME))) ;
     }
@@ -82,7 +82,8 @@ GrB_Info GB_Semiring_check          // check a GraphBLAS semiring
     // z = multiply(x,y); type of z must match monoid type
     if (semiring->multiply->ztype != semiring->add->op->ztype)
     { 
-        GBPR0 ("Semiring multiply output domain must match monoid domain\n") ;
+        GBPR0 ("    Semiring multiply output domain must match monoid"
+            " domain\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "Semiring multiply output domain must match monoid domain: [%s]",
             GB_NAME))) ;

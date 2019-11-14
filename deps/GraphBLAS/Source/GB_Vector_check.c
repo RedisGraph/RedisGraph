@@ -9,7 +9,7 @@
 
 // GrB_Vector: same as GrB_Matrix, except it has exactly one column
 
-#include "GB.h"
+#include "GB_printf.h"
 
 GrB_Info GB_Vector_check    // check a GraphBLAS vector
 (
@@ -40,7 +40,7 @@ GrB_Info GB_Vector_check    // check a GraphBLAS vector
 
     if (!GB_VECTOR_OK (v))
     { 
-        GBPR0 ("GrB_Vector is invalid [%s]\n", name) ;
+        GBPR0 ("    GrB_Vector is invalid [%s]\n", name) ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "GrB_Vector is invalid [%s]", name))) ;
     }

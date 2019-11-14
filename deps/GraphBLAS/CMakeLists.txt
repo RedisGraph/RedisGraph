@@ -55,9 +55,9 @@ if ( CMAKE_VERSION VERSION_GREATER "3.0" )
 endif ( )
 
 # version of SuiteSparse:GraphBLAS
-set ( GraphBLAS_DATE "July 26, 2019" )
+set ( GraphBLAS_DATE "Oct 21, 2019" )
 set ( GraphBLAS_VERSION_MAJOR 3 )
-set ( GraphBLAS_VERSION_MINOR 0 )
+set ( GraphBLAS_VERSION_MINOR 1 )
 set ( GraphBLAS_VERSION_SUB   1 )
 
 # GraphBLAS C API Specification version, at graphblas.org
@@ -87,8 +87,9 @@ if ( NOT CMAKE_BUILD_TYPE )
 endif ( )
 
 # select "true" to build both dynamic and static libraries:
-  set ( BUILD_GRB_STATIC_LIBRARY true )
-  # set ( BUILD_GRB_STATIC_LIBRARY false )
+#  set ( BUILD_GRB_STATIC_LIBRARY true )
+#  set ( BUILD_GRB_STATIC_LIBRARY false )
+# or use cmake with -DBUILD_GRB_STATIC_LIBRARY=1
 
 if ( BUILD_GRB_STATIC_LIBRARY )
     message ( STATUS "Building both static and dynamic GraphBLAS libraries" )
@@ -151,6 +152,9 @@ configure_file (
 
 include ( FindOpenMP  )
 include ( FindThreads )
+# enable_language ( CUDA )
+
+# for nvcc, add -DGBCUDA
 
 #-------------------------------------------------------------------------------
 # report status
@@ -215,6 +219,11 @@ elseif ( "${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" )
     endif ( )
 elseif ( "${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC" )
     # options for MicroSoft Visual Studio
+elseif ( "${CMAKE_C_COMPILER_ID}" STREQUAL "PGI" )
+    # options for PGI pgcc compiler.  The compiler has a bug, and the
+    # -DPGI_COMPILER_BUG causes GraphBLAS to use a workaround.
+    set ( CMAKE_C_FLAGS    "${CMAKE_C_FLAGS} -Mnoopenmp -noswitcherror -c11 -lm -fPIC -DPGI_COMPILER_BUG" )
+    set ( CMAKE_CXX_FLAGS  "${CMAKE_C_FLAGS} -Mnoopenmp -D__GCC_ATOMIC_TEST_AND_SET_TRUEVAL=1 -noswitcherror --c++11 -lm -fPIC -DPGI_COMPILER_BUG" )
 endif ( )
 
 if ( ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
@@ -249,6 +258,7 @@ endif ( )
 #       changing the already existing items)
 
 file ( GLOB GRAPHBLAS_SOURCES "Source/*.c" "Source/Generated/*.c" )
+
 add_library ( graphblas SHARED ${GRAPHBLAS_SOURCES} )
 SET_TARGET_PROPERTIES ( graphblas PROPERTIES
     VERSION ${GraphBLAS_VERSION_MAJOR}.${GraphBLAS_VERSION_MINOR}.${GraphBLAS_VERSION_SUB}
@@ -261,9 +271,9 @@ set_property ( TARGET graphblas PROPERTY C_STANDARD 11 )
 # static graphblas library properties
 #-------------------------------------------------------------------------------
 
-    if ( BUILD_GRB_STATIC_LIBRARY )
-add_library ( graphblas_static STATIC ${GRAPHBLAS_SOURCES} )
-   SET_TARGET_PROPERTIES ( graphblas_static PROPERTIES
+if ( BUILD_GRB_STATIC_LIBRARY )
+    add_library ( graphblas_static STATIC ${GRAPHBLAS_SOURCES} )
+    SET_TARGET_PROPERTIES ( graphblas_static PROPERTIES
        VERSION ${GraphBLAS_VERSION_MAJOR}.${GraphBLAS_VERSION_MINOR}.${GraphBLAS_VERSION_SUB}
        OUTPUT_NAME graphblas
        SOVERSION ${GraphBLAS_VERSION_MAJOR}
@@ -400,6 +410,7 @@ add_executable ( complex_demo  "Demo/Program/complex_demo.c" )
 add_executable ( kron_demo     "Demo/Program/kron_demo.c" )
 add_executable ( simple_demo   "Demo/Program/simple_demo.c" )
 add_executable ( wildtype_demo "Demo/Program/wildtype_demo.c" )
+add_executable ( reduce_demo   "Demo/Program/reduce_demo.c" )
 add_executable ( import_demo   "Demo/Program/import_demo.c" )
 
 # Libraries required for Demo programs
@@ -413,6 +424,7 @@ target_link_libraries ( complex_demo  graphblas graphblasdemo )
 target_link_libraries ( kron_demo     graphblas graphblasdemo )
 target_link_libraries ( simple_demo   graphblasdemo )
 target_link_libraries ( wildtype_demo graphblas )
+target_link_libraries ( reduce_demo   graphblas )
 target_link_libraries ( import_demo   graphblas graphblasdemo )
 
 #-------------------------------------------------------------------------------
