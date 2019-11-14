@@ -5953,6 +5953,73 @@ GrB_Info GxB_Vector_resize      // change the size of a vector
     (arg1, __VA_ARGS__)
 
 //------------------------------------------------------------------------------
+// GxB_Matrix_Pending:  Checks to see if matrix has pending operations
+//------------------------------------------------------------------------------
+GrB_Info GxB_Matrix_Pending
+(
+    GrB_Matrix A,                   // matrix to query
+    bool *pending                   // are there any pending operations
+) ;
+
+//------------------------------------------------------------------------------
+// GxB_MatrixTupleIter:  Iterates over all none zero values of a matrix
+//------------------------------------------------------------------------------
+
+// TuplesIter maintains information required
+// to iterate over a matrix
+typedef struct
+{
+    GrB_Matrix A ;          // Matrix being iterated
+    GrB_Index nvals ;       // Number of none zero values in matrix
+    GrB_Index nnz_idx ;     // Index of current none zero value
+    int64_t p ;             // Number of none zero values in current column
+    int64_t row_idx ;       // Index of current row
+    GrB_Index nrows ;       // Total number of rows in matrix
+} GxB_MatrixTupleIter ;
+
+// Create a new matrix iterator
+GrB_Info GxB_MatrixTupleIter_new
+(
+    GxB_MatrixTupleIter **iter, // iterator to create
+    GrB_Matrix A                // matrix being iterated
+) ;
+
+//iterate over specific row
+GrB_Info GxB_MatrixTupleIter_iterate_row
+(
+    GxB_MatrixTupleIter *iter,  // iterator to use
+    GrB_Index rowIdx            // row index to iterate over
+) ;
+
+// Advance iterator to the next none zero value
+GrB_Info GxB_MatrixTupleIter_next
+(
+    GxB_MatrixTupleIter *iter,      // iterator to consume
+    GrB_Index *row,                 // optional row index of current NNZ
+    GrB_Index *col,                 // optional column index of current NNZ
+    bool *depleted                  // indicate if iterator depleted
+) ;
+
+// Reset iterator
+GrB_Info GxB_MatrixTupleIter_reset
+(
+    GxB_MatrixTupleIter *iter        // iterator to reset
+) ;
+
+// Reuse iterator to scan given matrix
+GrB_Info GxB_MatrixTupleIter_reuse
+(
+    GxB_MatrixTupleIter *iter,       // iterator to update
+    GrB_Matrix A            // matrix to scan
+) ;
+
+// Release every resource consumed by iterator
+GrB_Info GxB_MatrixTupleIter_free
+(
+    GxB_MatrixTupleIter *iter        // iterator to free
+) ;
+
+//------------------------------------------------------------------------------
 // GxB_kron:  Kronecker product
 //------------------------------------------------------------------------------
 

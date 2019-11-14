@@ -10,7 +10,14 @@
 # simple Makefile for GraphBLAS, relies on cmake to do the actual build.  Use
 # the CMAKE_OPTIONS argument to this Makefile to pass options to cmake.
 
-JOBS ?= 1
+# Find the OS.
+uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
+# Set number of threads.
+ifeq ($(uname_S),Linux)
+	JOBS ?= $(shell grep -c ^processor /proc/cpuinfo)
+else
+	JOBS ?= $(shell sysctl -n hw.logicalcpu_max)
+endif
 
 default: library
 
@@ -29,6 +36,9 @@ remake:
 # just run cmake; do not compile
 cmake:
 	( cd build ; cmake $(CMAKE_OPTIONS) .. ; )
+
+static_only:
+	( cd build ; cmake $(CMAKE_OPTIONS) .. ; $(MAKE) --jobs=$(JOBS) graphblas_static )
 
 # the same as "make library"
 static:
