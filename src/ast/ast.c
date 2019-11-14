@@ -208,7 +208,7 @@ const cypher_astnode_t **AST_GetClauses(const AST *ast, cypher_astnode_type_t ty
 AST *AST_Build(cypher_parse_result_t *parse_result) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->referenced_entities = NULL;
-	ast->anotCtxCollection = AST_AnnotationCtxCollection_New();
+	ast->anot_ctx_collection = AST_AnnotationCtxCollection_New();
 	ast->free_root = false;
 
 	// Retrieve the AST root node from a parsed query.
@@ -234,7 +234,7 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 
 AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	AST *ast = rm_malloc(sizeof(AST));
-	ast->anotCtxCollection = master_ast->anotCtxCollection;
+	ast->anot_ctx_collection = master_ast->anot_ctx_collection;
 	ast->free_root = true;
 	ast->limit = UNLIMITED;
 	uint n = end_offset - start_offset;
@@ -317,14 +317,14 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 }
 
 const char *AST_GetEntityName(const AST *ast, const cypher_astnode_t *entity) {
-	AnnotationCtx *name_ctx = AST_AnnotationCtxCollection_GetNameCtx(ast->anotCtxCollection);
+	AnnotationCtx *name_ctx = AST_AnnotationCtxCollection_GetNameCtx(ast->anot_ctx_collection);
 	return cypher_astnode_get_annotation(name_ctx, entity);
 }
 
 const char **AST_GetProjectAll(const cypher_astnode_t *projection_clause) {
 	AST *ast = QueryCtx_GetAST();
 	AnnotationCtx *project_all_ctx = AST_AnnotationCtxCollection_GetProjectAllCtx(
-										 ast->anotCtxCollection);
+										 ast->anot_ctx_collection);
 	return cypher_astnode_get_annotation(project_all_ctx, projection_clause);
 }
 
@@ -358,8 +358,8 @@ int TraverseRecordCap(const AST *ast) {
 	return MIN(ast->limit, 16);  // Use 16 as the default value.
 }
 
-AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast) {
-	return ast->anotCtxCollection;
+inline AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast) {
+	return ast->anot_ctx_collection;
 }
 
 void AST_Free(AST *ast) {
@@ -370,7 +370,7 @@ void AST_Free(AST *ast) {
 		cypher_astnode_free((cypher_astnode_t *)ast->root);
 	} else {
 		// This is the master AST, free the annotation contexts that have been constructed.
-		AST_AnnotationCtxCollection_Free(ast->anotCtxCollection);
+		AST_AnnotationCtxCollection_Free(ast->anot_ctx_collection);
 	}
 	rm_free(ast);
 }

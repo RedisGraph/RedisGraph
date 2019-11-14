@@ -347,7 +347,7 @@ static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 		// Check if the identifier is a named path identifier.
 		AST *ast = QueryCtx_GetAST();
 		AnnotationCtx *named_paths_ctx = AST_AnnotationCtxCollection_GetNamedPathsCtx(
-											 ast->anotCtxCollection);
+											 ast->anot_ctx_collection);
 		const cypher_astnode_t *named_path_annotation = cypher_astnode_get_annotation(named_paths_ctx,
 																					  expr);
 		// If the identifier is a named path identifier, evaluate the path expression accordingly.
@@ -391,7 +391,7 @@ static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 		return _AR_ExpNodeFromGraphEntity(expr);
 	} else if(type == CYPHER_AST_PARAMETER) {
 		AST *ast = QueryCtx_GetAST();
-		AnnotationCtx *params_ctx = AST_AnnotationCtxCollection_GetParamsCtx(ast->anotCtxCollection);
+		AnnotationCtx *params_ctx = AST_AnnotationCtxCollection_GetParamsCtx(ast->anot_ctx_collection);
 		AR_ExpNode *param_value = cypher_astnode_get_annotation(params_ctx, expr);
 		return AR_EXP_Clone(param_value);
 	} else {

@@ -56,7 +56,7 @@ static void _annotate_params(AST *ast) {
 	// Check for number of parameters, if there aren't any, return;
 	rax *params_values = QueryCtx_GetParams();
 	if(!params_values || raxSize(params_values) == 0) return;
-	AnnotationCtx *params_ctx = AST_AnnotationCtxCollection_GetParamsCtx(ast->anotCtxCollection);
+	AnnotationCtx *params_ctx = AST_AnnotationCtxCollection_GetParamsCtx(ast->anot_ctx_collection);
 	rax *query_params_map = raxNew();
 	_collect_query_params_map(ast->root, query_params_map);
 	raxIterator iter;
@@ -78,6 +78,6 @@ static void _annotate_params(AST *ast) {
 }
 
 void AST_AnnotateParams(AST *ast) {
-	AST_AnnotationCtxCollection_SetParamsCtx(ast->anotCtxCollection, _AST_NewParamsContext());
+	AST_AnnotationCtxCollection_SetParamsCtx(ast->anot_ctx_collection, _AST_NewParamsContext());
 	_annotate_params(ast);
 }

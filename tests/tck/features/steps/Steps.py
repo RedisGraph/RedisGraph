@@ -11,6 +11,10 @@ resultset = None
 exception = None
 params = None
 
+def before_feature(context):
+    global params
+    params = None
+
 @given(u'the binary-tree-1 graph')
 def step_impl(context):
     graphs.binary_tree_graph1()
@@ -28,14 +32,6 @@ def step_impl(context):
     graphs.any_graph()
 
 @then(u'parameters are')
-def set_params(context):
-    global params
-
-    params = {}
-    for row in context.table.rows:
-        params[row[0]]=row[1]
-    print(params)
-
 @given(u'parameters are')
 def set_params(context):
     global params
@@ -45,65 +41,9 @@ def set_params(context):
         params[row[0]]=row[1]
 
 @given(u'having executed')
-def step_impl(context):
-    global resultset
-    global exception
-    global params
-
-    exception = None
-    query = context.text
-    try:
-        resultset = graphs.query(query, params)
-    except Exception as error:
-        resultset = None
-        exception = error
-    params = None
-
 @when(u'having executed')
-def step_impl(context):
-    global resultset
-    global exception
-    global params
-
-    exception = None
-    query = context.text
-    try:
-        resultset = graphs.query(query, params)
-    except Exception as error:
-        resultset = None
-        exception = error
-    params = None
-
 @then(u'having executed')
-def step_impl(context):
-    global resultset
-    global exception
-    global params
-
-    exception = None
-    query = context.text
-    try:
-        resultset = graphs.query(query, params)
-    except Exception as error:
-        resultset = None
-        exception = error
-    params = None
-
 @when(u'executing control query')
-def step_impl(context):
-    global resultset
-    global exception
-    global params
-
-    exception = None
-    query = context.text
-    try:
-        resultset = graphs.query(query, params)
-    except Exception as error:
-        resultset = None
-        exception = error
-    params = None
-
 @when(u'executing query')
 def step_impl(context):
     global resultset
@@ -117,7 +57,6 @@ def step_impl(context):
     except Exception as error:
         resultset = None
         exception = error
-    params = None
 
 @then(u'the result should be empty')
 def step_impl(context):

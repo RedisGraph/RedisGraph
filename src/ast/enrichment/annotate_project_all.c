@@ -148,7 +148,7 @@ static const char **_collect_aliases_in_scope(AST *ast, uint scope_start, uint s
 
 static void _annotate_project_all(AST *ast) {
 	AnnotationCtx *project_all_ctx = AST_AnnotationCtxCollection_GetProjectAllCtx(
-										 ast->anotCtxCollection);
+										 ast->anot_ctx_collection);
 	uint *with_clause_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
 	uint with_clause_count = array_len(with_clause_indices);
 	uint scope_start = 0;
@@ -193,7 +193,7 @@ static AnnotationCtx *_AST_NewProjectAllContext(void) {
 
 void AST_AnnotateProjectAll(AST *ast) {
 	// Instantiate an annotation context for augmenting STAR projections.
-	AST_AnnotationCtxCollection_SetProjectAllCtx(ast->anotCtxCollection, _AST_NewProjectAllContext());
+	AST_AnnotationCtxCollection_SetProjectAllCtx(ast->anot_ctx_collection, _AST_NewProjectAllContext());
 	// Generate annotations for WITH/RETURN * clauses.
 	_annotate_project_all(ast);
 }

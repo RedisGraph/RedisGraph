@@ -1531,7 +1531,6 @@ static void _collect_query_parameters_names(const cypher_astnode_t *root, rax *k
 /* This method extracts given parameters names. If a duplicate parameter is given, AST_INVALID will be returned. */
 static AST_Validation _collect_given_parameters_names(const cypher_astnode_t *statement,
 													  rax *given_params_names, char **reason) {
-	AST_Validation res = AST_VALID;
 	uint noptions =  cypher_ast_statement_noptions(statement);
 	for(uint i = 0; i < noptions; i++) {
 		const cypher_astnode_t *option = cypher_ast_statement_get_option(statement, i);
@@ -1542,12 +1541,11 @@ static AST_Validation _collect_given_parameters_names(const cypher_astnode_t *st
 			// If parameter already exists, add it the duplicated parms array.
 			if(!raxInsert(given_params_names, (unsigned char *) paramName, strlen(paramName), NULL, NULL)) {
 				asprintf(reason, "Duplicated parameter: %s", paramName);
-				res = AST_INVALID;
+				return AST_INVALID;
 			}
-
 		}
 	}
-	return res;
+	return AST_VALID;
 }
 
 static AST_Validation _ValidateParameters(const cypher_astnode_t *statement, char **reason) {
@@ -1572,7 +1570,7 @@ static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, 
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->free_root = true;
 	ast->referenced_entities = NULL;
-	ast->anotCtxCollection = NULL;
+	ast->anot_ctx_collection = NULL;
 	uint n = end_offset - start_offset;
 
 	cypher_astnode_t *clauses[n];
