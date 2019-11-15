@@ -775,7 +775,6 @@ Feature: MatchAcceptance2
       | false   |
     And no side effects
 
-@skip
   Scenario: Matching with many predicates and larger pattern
     Given an empty graph
     And having executed:
@@ -792,8 +791,9 @@ Feature: MatchAcceptance2
              (p2)-[:AP_HAS_VALUE]->(red)
       """
     And parameters are:
-      | 1 | 0 |
-      | 2 | 1 |
+      | name | value |
+      | 1    | 0     |
+      | 2    | 1     |
     When executing query:
       """
       MATCH (advertiser)-[:ADV_HAS_PRODUCT]->(out)-[:AP_HAS_VALUE]->(red)<-[:AA_HAS_VALUE]-(a)
