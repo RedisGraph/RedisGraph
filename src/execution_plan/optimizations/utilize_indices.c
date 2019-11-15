@@ -33,6 +33,7 @@ static void _transformInToOrSequence(FT_FilterNode **filter) {
 	SIValue list = inOp->op.children[1]->operand.constant;
 	uint listLen = SIArray_Length(list);
 
+	SIValue val;
 	FT_FilterNode *root;
 	AR_ExpNode *constant;
 
@@ -40,13 +41,17 @@ static void _transformInToOrSequence(FT_FilterNode **filter) {
 		constant = AR_EXP_NewConstOperandNode(SI_BoolVal(false));
 		root = FilterTree_CreateExpressionFilter(constant);
 	} else {
-		constant = AR_EXP_NewConstOperandNode(SIArray_Get(list, 0));
+		val = SIArray_Get(list, 0); // Retrieve the first array element.
+		SIValue_Persist(&val);      // Ensure the value doesn't go out of scope.
+		constant = AR_EXP_NewConstOperandNode(val);
 		root = FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, constant);
 
 		for(uint i = 1; i < listLen; i ++) {
 			FT_FilterNode *orNode = FilterTree_CreateConditionFilter(OP_OR);
 			AppendLeftChild(orNode, root);
-			constant = AR_EXP_NewConstOperandNode(SIArray_Get(list, i));
+			val = SIArray_Get(list, i); // Retrieve the next array element.
+			SIValue_Persist(&val);      // Ensure the value doesn't go out of scope.
+			constant = AR_EXP_NewConstOperandNode(val);
 			lhs = AR_EXP_Clone(inOp->op.children[0]);
 			AppendRightChild(orNode, FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, constant));
 			root = orNode;
@@ -229,9 +234,7 @@ static bool _validateInExpression(AR_ExpNode *exp) {
 	assert(exp->op.child_count == 2);
 
 	AR_ExpNode *list = exp->op.children[1];
-	if(list->operand.type != AR_EXP_CONSTANT) return false;
-
-	assert(list->operand.constant.type == T_ARRAY);
+	if(list->operand.type != AR_EXP_CONSTANT || list->operand.constant.type != T_ARRAY) return false;
 
 	SIValue listValue = list->operand.constant;
 	uint listLen = SIArray_Length(listValue);
@@ -539,3 +542,4 @@ void utilizeIndices(GraphContext *gc, ExecutionPlan *plan) {
 	// Cleanup
 	array_free(scanOps);
 }
+

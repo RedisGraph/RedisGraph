@@ -175,7 +175,7 @@ Some languages have client libraries that provide support for RedisGraph's comma
 | redisgraph.js | JavaScript | BSD | [Redis Labs](https://redislabs.com) | [GitHub](https://github.com/RedisGraph/redisgraph.js) |
 | ioredisgraph | JavaScript | ISC | [Jonah](https://github.com/Jonahss) | [GitHub](https://github.com/Jonahss/ioredisgraph) |
 | php-redis-graph | PHP | MIT | [KJDev](https://github.com/kjdev) | [GitHub](https://github.com/kjdev/php-redis-graph) |
-| php-redis-graph | PHP | ? | [jpbourbon](https://github.com/jpbourbon) | [GitHub](https://github.com/jpbourbon/redisgraph_php) |
+| redisgraph_php | PHP | MIT | [jpbourbon](https://github.com/jpbourbon) | [GitHub](https://github.com/jpbourbon/redisgraph_php) |
 
 ## Documentation
 

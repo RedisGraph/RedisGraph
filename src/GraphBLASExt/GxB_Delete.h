@@ -4,8 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __GXB_DELETE_H__
-#define __GXB_DELETE_H__
+#pragma once
 
 #include <stdint.h>
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
@@ -18,5 +17,3 @@ GrB_Info GxB_Matrix_Delete
 	GrB_Index row,
 	GrB_Index col
 ) ;
-
-#endif

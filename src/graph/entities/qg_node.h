@@ -50,4 +50,3 @@ int QGNode_ToString(const QGNode *n, char *buff, int buff_len);
 
 /* Frees allocated space by given node. */
 void QGNode_Free(QGNode *node);
-
