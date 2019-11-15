@@ -9,7 +9,7 @@
 #include "../ops/op_conditional_traverse.h"
 #include <assert.h>
 
-void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
+static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
 	// Return early if the scan has no child operations.
 	if(scan->childCount == 0) return;
 

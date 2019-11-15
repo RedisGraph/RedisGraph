@@ -257,6 +257,17 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 	rax *bound_vars = raxNew(); // NOTE - can switch this to NULL and additional checks if preferred.
 	if(plan->root) ExecutionPlan_BoundVariables(plan->root, bound_vars);
 
+	/* If we have multiple graph components or have already built projection operations in a
+	 * previous WITH projection, the root operation a Cartesian Product. Each chain of traversals
+	 * (and in the latter case, the previous project operation) will be a child of this op. */
+	/*
+	OpBase *cartesianProduct = NULL;
+	if(connectedComponentsCount > 1 ||
+	   ExecutionPlan_LocateOp(plan->root, OPType_PROJECT | OPType_AGGREGATE)) {
+		cartesianProduct = NewCartesianProductOp(plan);
+		_ExecutionPlan_UpdateRoot(plan, cartesianProduct);
+	}
+	*/
 	/* If we have multiple graph components, the root operation a Cartesian Product.
 	 * Each chain of traversals will be a child of this op. */
 	OpBase *cartesianProduct = NULL;
@@ -324,32 +335,31 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			// We have multiple disjoint traversal chains.
 			// Add each chain as a child under the Cartesian Product.
 			ExecutionPlan_AddOp(cartesianProduct, root);
-		} else if(raxSize(bound_vars) > 0) {
-			/* We've built the only necessary traversal chain and have previously-bound variables.
-			 * Check to see if all previously-bound variables are bound in the traversal chain.
-			 * If they are, the traversal ops will form the new root and the previous ops will be pushed below.
-			 * Otherwise, the streams are disjoint and will be joined under a Cartesian product. */
-			rax *traversal_vars = raxNew();
-			ExecutionPlan_BoundVariables(root, traversal_vars); // Collect all variables in the traversal chain.
+			/*
+				} else if(raxSize(bound_vars) > 0) {
+					// We've built the only necessary traversal chain and have previously-bound variables.
+					// Check to see if all previously-bound variables are bound in the traversal chain.
+					// If they are, the traversal ops will form the new root and the previous ops will be pushed below.
+					// Otherwise, the streams are disjoint and will be joined under a Cartesian product.
+					rax *traversal_vars = raxNew();
+					ExecutionPlan_BoundVariables(root, traversal_vars); // Collect all variables in the traversal chain.
 
-			if(!raxIsSubset(traversal_vars, bound_vars)) {
-				// Not all bound variables are represented in the traversal ops; the streams are disjoint. Example:
-				// MATCH (a) WITH AVG(a.age) AS avg MATCH (b) WHERE b.age < avg RETURN b
-				cartesianProduct = NewCartesianProductOp(plan);
-				_ExecutionPlan_UpdateRoot(plan, cartesianProduct);
-				ExecutionPlan_AddOp(cartesianProduct, root);
-			} else {
-				// All previously-bound variables are represented in the traversal ops, we have a single stream. Example:
-				// MATCH (a) WITH a MATCH (a)-[]->(b) RETURN b
-				_ExecutionPlan_UpdateRoot(plan, root);
-			}
-			raxFree(traversal_vars);
+					if(!raxIsSubset(traversal_vars, bound_vars)) {
+						// Not all bound variables are represented in the traversal ops; the streams are disjoint. Example:
+						// MATCH (a) WITH AVG(a.age) AS avg MATCH (b) WHERE b.age < avg RETURN b
+						cartesianProduct = NewCartesianProductOp(plan);
+						_ExecutionPlan_UpdateRoot(plan, cartesianProduct);
+						ExecutionPlan_AddOp(cartesianProduct, root);
+					} else {
+						// All previously-bound variables are represented in the traversal ops, we have a single stream. Example:
+						// MATCH (a) WITH a MATCH (a)-[]->(b) RETURN b
+						_ExecutionPlan_UpdateRoot(plan, root);
+					}
+					raxFree(traversal_vars);
+			*/
 		} else {
-			// We've built the only necessary traversal chain; add it directly to the ExecutionPlan.
-			// TODO clarify logic
-			// if(plan->root && plan->root->type != OPType_ARGUMENT) ExecutionPlan_AddOp(plan->root, root);
-			// else _ExecutionPlan_UpdateRoot(plan, root);
-			_ExecutionPlan_UpdateRoot(plan, root); // TODO safe?
+			// We've built the only necessary traversal chain, update the ExecutionPlan root.
+			_ExecutionPlan_UpdateRoot(plan, root);
 		}
 	}
 
