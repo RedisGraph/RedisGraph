@@ -11,27 +11,27 @@
 #include <assert.h>
 
 #define T 1           // Transpose penalty.
-#define F 4 * T       // Filter score.
 #define L 2 * T       // Label score.
-#define B 8 * F       // Bound variable bonus (TODO choose appropriate val)
+#define F 4 * T       // Filter score.
+#define B 8 * F       // Bound variable bonus.
 
 typedef AlgebraicExpression **Arrangement;
 
 // Create a new arrangement.
-static inline Arrangement Arrangement_New(uint size) {
+static inline Arrangement _Arrangement_New(uint size) {
 	return rm_malloc(sizeof(AlgebraicExpression *) * size);
 }
 
 // Clone arrangement.
-static inline Arrangement Arrangement_Clone(const Arrangement arrangement, uint size) {
+static inline Arrangement _Arrangement_Clone(const Arrangement arrangement, uint size) {
 	assert(arrangement);
-	Arrangement clone = Arrangement_New(size);
+	Arrangement clone = _Arrangement_New(size);
 	memcpy(clone, arrangement, sizeof(AlgebraicExpression *) * size);
 	return clone;
 }
 
 // Print arrangement.
-static inline void Arrangement_Print(Arrangement arrangement, uint size) {
+static inline void _Arrangement_Print(Arrangement arrangement, uint size) {
 	printf("Arrangement_Print\n");
 	for(uint i = 0; i < size; i++) {
 		AlgebraicExpression *exp = arrangement[i];
@@ -40,20 +40,20 @@ static inline void Arrangement_Print(Arrangement arrangement, uint size) {
 }
 
 // Free arrangement.
-static inline void Arrangement_Free(Arrangement arrangement) {
+static inline void _Arrangement_Free(Arrangement arrangement) {
 	assert(arrangement);
 	rm_free(arrangement);
 }
 
 // Computes x!
-static inline unsigned long factorial(uint x) {
+static inline unsigned long _factorial(uint x) {
 	unsigned long res = 1;
 	for(int i = 2; i <= x; i++) res *= i;
 	return res;
 }
 
 // Function to swap values at two pointers.
-static inline void swap(Arrangement exps, uint i, uint  j) {
+static inline void _swap(Arrangement exps, uint i, uint  j) {
 	AlgebraicExpression *temp;
 	temp = exps[i];
 	exps[i] = exps[j];
@@ -61,28 +61,28 @@ static inline void swap(Arrangement exps, uint i, uint  j) {
 }
 
 // Computes all permutations of set exps.
-static inline void permute(Arrangement set, int l, int r, Arrangement **permutations) {
+static inline void _permute(Arrangement set, int l, int r, Arrangement **permutations) {
 	int i;
 	if(l == r) {
-		Arrangement permutation = Arrangement_Clone(set, r + 1);
+		Arrangement permutation = _Arrangement_Clone(set, r + 1);
 		*permutations = array_append(*permutations, permutation);
 	} else {
 		for(i = l; i <= r; i++) {
-			swap(set, l, i);
-			permute(set, l + 1, r, permutations);
-			swap(set, l, i);   // backtrack.
+			_swap(set, l, i);
+			_permute(set, l + 1, r, permutations);
+			_swap(set, l, i);   // backtrack.
 		}
 	}
 }
 
 // Computes all possible permutations of exps.
-static Arrangement *permutations(const Arrangement exps, uint exps_count) {
+static Arrangement *_permutations(const Arrangement exps, uint exps_count) {
 	// Number of permutations of a set S is |S|!.
-	unsigned long permutation_count = factorial(exps_count);
+	unsigned long permutation_count = _factorial(exps_count);
 	Arrangement *permutations = array_new(Arrangement, permutation_count);
 
 	// Compute permutations.
-	permute(exps, 0, exps_count - 1, &permutations);
+	_permute(exps, 0, exps_count - 1, &permutations);
 	assert(array_len(permutations) == permutation_count);
 
 	return permutations;
@@ -90,7 +90,7 @@ static Arrangement *permutations(const Arrangement exps, uint exps_count) {
 
 /* A valid arrangement of expressions is one in which the ith expression
  * source or destination nodes appear in a previous expression k where k < i. */
-static bool valid_arrangement(const Arrangement arrangement, uint exps_count) {
+static bool _valid_arrangement(const Arrangement arrangement, uint exps_count) {
 	AlgebraicExpression *exp = arrangement[0];
 	/* A 1 hop traversals where either the source node
 	 * or destination node is labeled, can't be the opening expression
@@ -132,7 +132,7 @@ static bool valid_arrangement(const Arrangement arrangement, uint exps_count) {
 	return true;
 }
 
-static int penalty_arrangement(Arrangement arrangement, uint exp_count) {
+static int _penalty_arrangement(Arrangement arrangement, uint exp_count) {
 	int penalty = 0;
 	AlgebraicExpression *exp;
 
@@ -173,9 +173,9 @@ static int penalty_arrangement(Arrangement arrangement, uint exp_count) {
 	return penalty;
 }
 
-static int reward_arrangement(Arrangement arrangement, uint exp_count, rax *filtered_entities,
-							  rax *bound_vars) {
-	// Arrangement_Print(arrangement, exp_count);
+static int _reward_arrangement(Arrangement arrangement, uint exp_count, rax *filtered_entities,
+							   rax *bound_vars) {
+	// _Arrangement_Print(arrangement, exp_count);
 	int reward = 0;
 
 	// A bit naive at the moment.
@@ -186,8 +186,7 @@ static int reward_arrangement(Arrangement arrangement, uint exp_count, rax *filt
 		// will be preferred over any expression without.
 		if(raxFind(bound_vars, (unsigned char *)exp->src_node->alias,
 				   strlen(exp->src_node->alias)) != raxNotFound) {
-			// Give bound source nodes an additional bonus (L) in contrast to bound destinations.
-			reward += (B + L) * (exp_count - i);
+			reward += B * (exp_count - i);
 		}
 
 		if(raxFind(bound_vars, (unsigned char *)exp->dest_node->alias,
@@ -214,8 +213,8 @@ static int reward_arrangement(Arrangement arrangement, uint exp_count, rax *filt
 static int _score_arrangement(Arrangement arrangement, uint exp_count,
 							  rax *filtered_entities, rax *bound_vars) {
 	int score = 0;
-	int penalty = penalty_arrangement(arrangement, exp_count);
-	int reward = reward_arrangement(arrangement, exp_count, filtered_entities, bound_vars);
+	int penalty = _penalty_arrangement(arrangement, exp_count);
+	int reward = _reward_arrangement(arrangement, exp_count, filtered_entities, bound_vars);
 	score -= penalty;
 	score += reward;
 	return score;
@@ -223,7 +222,7 @@ static int _score_arrangement(Arrangement arrangement, uint exp_count,
 
 // Transpose out-of-order expressions so that each expresson's source is resolved
 // in the winning sequence.
-static void resolve_winning_sequence(AlgebraicExpression **exps, uint exp_count) {
+static void _resolve_winning_sequence(AlgebraicExpression **exps, uint exp_count) {
 	for(uint i = 1; i < exp_count; i ++) {
 		AlgebraicExpression *exp = exps[i];
 		bool src_resolved = false;
@@ -243,9 +242,11 @@ static void resolve_winning_sequence(AlgebraicExpression **exps, uint exp_count)
 
 /* Having chosen which algebraic expression will be evaluated first, determine whether
  * it is worthwhile to transpose it and thus swap the source and destination.
+ * If the source is bounded, we will not transpose, if only the destination is bounded, we will.
+ * If neither are bounded, we fall back to label and filter heuristics.
  * We'll choose to transpose if the destination is filtered and the source is not, or
  * if neither is filtered, if the destination is labeled and the source is not. */
-static void select_entry_point(AlgebraicExpression *ae, rax *filtered_entities, rax *bound_vars) {
+static void _select_entry_point(AlgebraicExpression *ae, rax *filtered_entities, rax *bound_vars) {
 	if(ae->operand_count == 1 && ae->src_node == ae->dest_node) return;
 
 	const char *src_name = ae->src_node->alias;
@@ -294,31 +295,22 @@ static void select_entry_point(AlgebraicExpression *ae, rax *filtered_entities, 
  * we pick the order in which the expressions will be evaluated
  * taking into account filters and transposes.
  * exps will reordered. */
-void orderExpressions(AlgebraicExpression **exps, uint exps_count, const FT_FilterNode *filters,
+void orderExpressions(AlgebraicExpression **exps, uint exp_count, const FT_FilterNode *filters,
 					  rax *bound_vars) {
-	assert(exps && exps_count > 0);
+	assert(exps && exp_count > 0);
 
-	// We only have one expression, no arrangements to consider.
-	if(exps_count == 1) {
-		// Our expression is only a scan, no need to select an entry point.
-		if(exps[0]->operand_count == 1 && exps[0]->src_node == exps[0]->dest_node) return;
-
-		// Select the best entry point and return.
-		rax *filtered_entities = FilterTree_CollectModified(filters);
-		select_entry_point(exps[0], filtered_entities, bound_vars);
-		raxFree(filtered_entities);
-		return;
-	}
+	// Return early if we only have one expression that represents a scan rather than a traversal.
+	if(exp_count == 1 && exps[0]->operand_count == 1 && exps[0]->src_node == exps[0]->dest_node) return;
 
 	// Compute all possible permutations of algebraic expressions.
-	Arrangement *arrangements = permutations(exps, exps_count);
+	Arrangement *arrangements = _permutations(exps, exp_count);
 	uint arrangement_count = array_len(arrangements);
 	if(arrangement_count == 1) goto cleanup;
 
 	// Remove invalid arrangements.
 	Arrangement *valid_arrangements = array_new(Arrangement, arrangement_count);
 	for(int i = 0; i < arrangement_count; i++) {
-		if(valid_arrangement(arrangements[i], exps_count)) {
+		if(_valid_arrangement(arrangements[i], exp_count)) {
 			valid_arrangements = array_append(valid_arrangements, arrangements[i]);
 		}
 	}
@@ -335,9 +327,9 @@ void orderExpressions(AlgebraicExpression **exps, uint exps_count, const FT_Filt
 
 	for(uint i = 0; i < valid_arrangement_count; i++) {
 		Arrangement arrangement = valid_arrangements[i];
-		int score = _score_arrangement(arrangement, exps_count, filtered_entities, bound_vars);
+		int score = _score_arrangement(arrangement, exp_count, filtered_entities, bound_vars);
 		// printf("score: %d\n", score);
-		// Arrangement_Print(arrangement, exps_count);
+		// _Arrangement_Print(arrangement, exp_count);
 		if(max_score < score) {
 			max_score = score;
 			top_arrangement = arrangement;
@@ -347,18 +339,18 @@ void orderExpressions(AlgebraicExpression **exps, uint exps_count, const FT_Filt
 	array_free(valid_arrangements);
 
 	// Update input.
-	for(uint i = 0; i < exps_count; i++) exps[i] = top_arrangement[i];
-
-	// Transpose the winning expression if the destination node is a more efficient starting place.
-	select_entry_point(exps[0], filtered_entities, bound_vars);
+	for(uint i = 0; i < exp_count; i++) exps[i] = top_arrangement[i];
 
 	// Depending on how the expressions have been ordered, we may have to transpose expressions
 	// so that their source nodes have already been resolved by previous expressions.
-	resolve_winning_sequence(exps, exps_count);
+	_resolve_winning_sequence(exps, exp_count);
+
+	// Transpose the winning expression if the destination node is a more efficient starting place.
+	_select_entry_point(exps[0], filtered_entities, bound_vars);
 
 	raxFree(filtered_entities);
 cleanup:
-	for(uint i = 0; i < arrangement_count; i++) Arrangement_Free(arrangements[i]);
+	for(uint i = 0; i < arrangement_count; i++) _Arrangement_Free(arrangements[i]);
 	array_free(arrangements);
 }
 

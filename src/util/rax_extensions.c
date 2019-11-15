@@ -36,3 +36,4 @@ rax *raxClone(rax *orig) {
 	raxStop(&it);
 	return rax;
 }
+
