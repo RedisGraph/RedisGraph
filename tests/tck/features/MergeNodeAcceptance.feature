@@ -229,7 +229,6 @@ Feature: MergeNodeAcceptance
       | +nodes  | 2 |
       | +labels | 1 |
 
-@skip
   Scenario: Should handle argument properly
     Given an empty graph
     And having executed:
@@ -248,7 +247,6 @@ Feature: MergeNodeAcceptance
       | +labels     | 1 |
       | +properties | 1 |
 
-@skip
   Scenario: Should handle arguments properly with only write clauses
     Given an empty graph
     When executing query:

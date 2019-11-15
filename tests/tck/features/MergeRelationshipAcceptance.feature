@@ -280,7 +280,6 @@ Feature: MergeRelationshipAcceptance
       | +relationships | 3 |
       | +properties    | 4 |
 
-@skip
   Scenario: Creating relationship using merged nodes
     Given an empty graph
     And having executed:
@@ -314,7 +313,6 @@ Feature: MergeRelationshipAcceptance
       | +relationships | 2 |
       | +labels        | 3 |
 
-@skip
   Scenario: Introduce named paths 1
     Given an empty graph
     When executing query:
