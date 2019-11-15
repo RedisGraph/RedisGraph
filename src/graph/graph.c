@@ -123,7 +123,7 @@ void Graph_WriterLeave(Graph *g) {
 /* Force execution of all pending operations on a matrix. */
 static inline void _Graph_ApplyPending(GrB_Matrix m) {
 	GrB_Index nvals;
-	GrB_Matrix_nvals(&nvals, m);
+	assert(GrB_Matrix_nvals(&nvals, m) == GrB_SUCCESS);
 }
 
 /* ========================= Graph utility functions ========================= */
@@ -244,12 +244,23 @@ void _MatrixSynchronize(const Graph *g, GrB_Matrix m) {
 		_Graph_EnterCriticalSection((Graph *)g);
 		// Double-check if resize is necessary.
 		GrB_Matrix_nrows(&n_rows, m);
-		if(n_rows != Graph_RequiredMatrixDim(g))
-			assert(GxB_Matrix_resize(m, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g)) == GrB_SUCCESS);
+		GrB_Index dims = Graph_RequiredMatrixDim(g);
+		if(n_rows != dims) {
+			printf("requested dimensions: %lu, current: %lu\n", dims, n_rows);
+			assert(GxB_Matrix_resize(m, dims, dims) == GrB_SUCCESS);
 
-		// Flush changes to matrices if necessary.
-		GxB_Matrix_Pending(m, &pending);
-		if(pending) _Graph_ApplyPending(m);
+			/*
+			GrB_Index n_cols;
+			GrB_Matrix_nrows(&n_rows, m); // print
+			GrB_Matrix_ncols(&n_cols, m); // print
+			if(n_rows != n_cols) {
+				printf("weird dimensions: %lu rows, %lu cols\n", n_rows, n_cols);
+			}
+			*/
+		}
+
+		// Flush changes to matrices.
+		_Graph_ApplyPending(m);
 
 		_Graph_LeaveCriticalSection((Graph *)g);
 	}

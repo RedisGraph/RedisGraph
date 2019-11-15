@@ -120,7 +120,11 @@ static inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, 
 					   B,                   // Second matrix
 					   desc                 // Descriptor
 				   );
-	assert(res == GrB_SUCCESS);
+	// assert(res == GrB_SUCCESS);
+	if(res != GrB_SUCCESS) {
+		printf("%s\n", GrB_error());
+		assert(false);
+	}
 }
 
 // Reverse order of operand within expression,

@@ -105,9 +105,10 @@ static void RegisterForkHooks() {
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	/* TODO: when module unloads call GrB_finalize. */
-	assert(GxB_init(GrB_NONBLOCKING, rm_malloc, rm_calloc, rm_realloc, rm_free, true) == GrB_SUCCESS);
+	assert(GxB_init(GrB_BLOCKING, rm_malloc, rm_calloc, rm_realloc, rm_free, true) == GrB_SUCCESS);
 	GxB_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
 	GxB_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
+	GxB_set(GxB_NTHREADS, 1);
 
 	if(RedisModule_Init(ctx, "graph", REDISGRAPH_MODULE_VERSION,
 						REDISMODULE_APIVER_1) == REDISMODULE_ERR) {
@@ -128,7 +129,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	// Create thread local storage key.
 	if(!QueryCtx_Init()) return REDISMODULE_ERR;
 
-	long long threadCount = Config_GetThreadCount(ctx, argv, argc);
+	long long threadCount = 2;
 	if(!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
 	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", threadCount);
 
@@ -161,3 +162,4 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
 	return REDISMODULE_OK;
 }
+
