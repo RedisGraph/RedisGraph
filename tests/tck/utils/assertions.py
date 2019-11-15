@@ -76,7 +76,7 @@ def pathToString(pathToConvert):
     for i in range(0, nodes_count - 1):
         node = pathToConvert.get_node(i)
         node_str = nodeToString(node)
-        edge = pathToConvert.get_edge(i)
+        edge = pathToConvert.get_relationship(i)
         edge_str = edgeToString(edge)
         strValue += node_str + "-" + edge_str + "->" if edge.src_node == node.id else node_str + "<-" + edge_str + "-"
 
