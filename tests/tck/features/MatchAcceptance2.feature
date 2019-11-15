@@ -1033,6 +1033,7 @@ Feature: MatchAcceptance2
       | 42 | 1     |
     And no side effects
 
+@skip
   Scenario: Matching using a relationship that is already bound
     Given an empty graph
     And having executed:
