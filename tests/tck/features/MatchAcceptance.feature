@@ -90,7 +90,6 @@ Feature: MatchAcceptance
       | 3 | 2 |
     And no side effects
 
-@skip
   Scenario: Use params in pattern matching predicates
     Given an empty graph
     And having executed:
@@ -98,6 +97,7 @@ Feature: MatchAcceptance
       CREATE (:A)-[:T {name: 'bar'}]->(:B {name: 'me'})
       """
     And parameters are:
+      | name  | value |
       | param | 'bar' |
     When executing query:
       """

@@ -266,6 +266,7 @@ Feature: ProcedureCallAcceptance
       | 'Stefan' | 2  | 'München' | 49           |
       | 'Petra'  | 1  | 'London'  | 44           |
     And parameters are:
+      | name | value    |
       | name | 'Stefan' |
       | id   | 1        |
     When executing query:
@@ -494,6 +495,7 @@ Feature: ProcedureCallAcceptance
     And there exists a procedure test.my.proc(name :: STRING?, in :: INTEGER?) :: (out :: INTEGER?):
       | name | in | out |
     And parameters are:
+      | name | value    |
       | name | 'Stefan' |
     When executing query:
       """

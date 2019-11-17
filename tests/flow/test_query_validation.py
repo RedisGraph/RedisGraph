@@ -116,3 +116,21 @@ class testQueryValidationFlow(FlowTestsBase):
         except redis.exceptions.ResponseError:
             # Expecting an error.
             pass
+
+    def test10_missing_params(self):
+        try:
+            query = """MATCH (a {name:$name}) RETURN a"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass
+    
+    def test11_param_error(self):
+        try:
+            query = """CYPHER name=({name:'a'}) MATCH (a {name:$name}) RETURN a"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass

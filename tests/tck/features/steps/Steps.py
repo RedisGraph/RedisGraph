@@ -1,5 +1,6 @@
 import sys
 import os
+import ast
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../utils/')
 
@@ -8,6 +9,11 @@ import graphs
 
 resultset = None
 exception = None
+params = None
+
+def before_feature(context):
+    global params
+    params = None
 
 @given(u'the binary-tree-1 graph')
 def step_impl(context):
@@ -25,67 +31,29 @@ def step_impl(context):
 def step_impl(context):
     graphs.any_graph()
 
+@then(u'parameters are')
+@given(u'parameters are')
+def set_params(context):
+    global params
+
+    params = {}
+    for row in context.table.rows:
+        params[row[0]]=row[1]
+
 @given(u'having executed')
-def step_impl(context):
-    global resultset
-    global exception
-
-    exception = None
-    query = context.text
-    try:
-        resultset = graphs.query(query)
-    except Exception as error:
-        resultset = None
-        exception = error
-
 @when(u'having executed')
-def step_impl(context):
-    global resultset
-    global exception
-
-    exception = None
-    query = context.text
-    try:
-        resultset = graphs.query(query)
-    except Exception as error:
-        resultset = None
-        exception = error
-
 @then(u'having executed')
-def step_impl(context):
-    global resultset
-    global exception
-
-    exception = None
-    query = context.text
-    try:
-        resultset = graphs.query(query)
-    except Exception as error:
-        resultset = None
-        exception = error
-
 @when(u'executing control query')
-def step_impl(context):
-    global resultset
-    global exception
-
-    exception = None
-    query = context.text
-    try:
-        resultset = graphs.query(query)
-    except Exception as error:
-        resultset = None
-        exception = error
-
 @when(u'executing query')
 def step_impl(context):
     global resultset
     global exception
+    global params
 
     exception = None
     query = context.text
     try:
-        resultset = graphs.query(query)
+        resultset = graphs.query(query, params)
     except Exception as error:
         resultset = None
         exception = error

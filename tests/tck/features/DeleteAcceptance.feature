@@ -254,7 +254,8 @@ Feature: DeleteAcceptance
       CREATE (u)-[:FRIEND]->()
       """
     And parameters are:
-      | friendIndex | 1 |
+      | name        | value |
+      | friendIndex |    1  |
     When executing query:
       """
       MATCH (:User)-[:FRIEND]->(n)
@@ -278,7 +279,8 @@ Feature: DeleteAcceptance
       CREATE (u)-[:FRIEND]->()
       """
     And parameters are:
-      | friendIndex | 1 |
+      | name        | value |
+      | friendIndex |   1   |
     When executing query:
       """
       MATCH (:User)-[r:FRIEND]->()

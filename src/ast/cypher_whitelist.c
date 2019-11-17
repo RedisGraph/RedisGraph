@@ -27,9 +27,9 @@ static void _buildTypesWhitelist(void) {
 	// When we introduce support for one of these, simply remove it from the list.
 	cypher_astnode_type_t supported_types[] = {
 		CYPHER_AST_STATEMENT,
-		// CYPHER_AST_STATEMENT_OPTION,
-		// CYPHER_AST_CYPHER_OPTION,
-		// CYPHER_AST_CYPHER_OPTION_PARAM,
+		CYPHER_AST_STATEMENT_OPTION,
+		CYPHER_AST_CYPHER_OPTION,
+		CYPHER_AST_CYPHER_OPTION_PARAM,
 		// CYPHER_AST_EXPLAIN_OPTION,
 		// CYPHER_AST_PROFILE_OPTION,
 		// CYPHER_AST_SCHEMA_COMMAND,
@@ -107,7 +107,7 @@ static void _buildTypesWhitelist(void) {
 		CYPHER_AST_COLLECTION,
 		CYPHER_AST_MAP,
 		CYPHER_AST_IDENTIFIER,
-		// CYPHER_AST_PARAMETER,
+		CYPHER_AST_PARAMETER,
 		CYPHER_AST_STRING,
 		CYPHER_AST_INTEGER,
 		CYPHER_AST_FLOAT,
