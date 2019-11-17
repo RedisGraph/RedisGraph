@@ -374,9 +374,9 @@ AlgebraicExpression *AlgebraicExpression_Empty(void) {
  * if edges are disjoint, NULL is returned. */
 static QGNode *_SharedNode(const QGEdge *a, const QGEdge *b) {
 	assert(a && b);
-	if(a->src == b->src) return a->src;
-	if(a->src == b->dest) return a->src;
 	if(a->dest == b->src) return a->dest;
+	if(a->src == b->dest) return a->src;
+	if(a->src == b->src) return a->src;
 	if(a->dest == b->dest) return a->dest;
 	return NULL;
 }
