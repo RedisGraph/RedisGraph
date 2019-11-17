@@ -26,11 +26,6 @@ static void __DFSMaxDepth(QGNode *n, int level, int *max_depth, rax *visited) {
 		__DFSMaxDepth(e->dest, level + 1, max_depth, visited);
 	}
 
-	for(uint i = 0; i < array_len(n->incoming_edges); i++) {
-		QGEdge *e = n->incoming_edges[i];
-		__DFSMaxDepth(e->src, level + 1, max_depth, visited);
-	}
-
 	raxRemove(visited, (unsigned char *)n->alias, strlen(n->alias), NULL);
 }
 

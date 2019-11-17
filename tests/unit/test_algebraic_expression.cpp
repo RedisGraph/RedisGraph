@@ -1051,21 +1051,18 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	exp_count = 0;
 	q = "MATCH (a:Person)-[:friend]->(b:Person)-[:friend]->(a:Person) RETURN a";
 	actual = build_algebraic_expression(q, &exp_count);
-	ASSERT_EQ(exp_count, 2);
+	ASSERT_EQ(exp_count, 1);
 
-	expected = (AlgebraicExpression **)malloc(sizeof(AlgebraicExpression *) * 2);
+	expected = (AlgebraicExpression **)malloc(sizeof(AlgebraicExpression *) * 1);
 	exp = AlgebraicExpression_Empty();
+	AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
+	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
 	expected[0] = exp;
 
-	exp = AlgebraicExpression_Empty();
-	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
-	AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
-	expected[1] = exp;
-
-	compare_algebraic_expressions(actual, expected, 2);
+	compare_algebraic_expressions(actual, expected, 1);
 
     // Clean up.
 	free_algebraic_expressions(actual, exp_count);
