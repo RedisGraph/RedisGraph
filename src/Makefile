@@ -15,6 +15,7 @@ DEBUGFLAGS = -g -ggdb -O3
 ifeq ($(DEBUG), 1)
 	DEBUGFLAGS = -g -ggdb -O0
 endif
+DEBUGFLAGS = -g -ggdb -O0
 
 # Default CFLAGS
 CFLAGS = \
