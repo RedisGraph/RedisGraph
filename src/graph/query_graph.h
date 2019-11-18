@@ -77,5 +77,9 @@ uint QueryGraph_EdgeCount(const QueryGraph *qg);
 /* Build a matrix representation of query graph. */
 GrB_Matrix QueryGraph_MatrixRepresentation(const QueryGraph *qg);
 
+/* Returns a string representation of query graph. 
+ * http://viz-js.com/ */
+void QueryGraph_Print(const QueryGraph *qg);
+
 /* Frees entire graph */
 void QueryGraph_Free(QueryGraph *qg);
