@@ -96,33 +96,28 @@ static inline void _Graph_LeaveCriticalSection(Graph *g) {
 /* Acquire a lock that does not restrict access from additional reader threads */
 void Graph_AcquireReadLock(Graph *g) {
 	pthread_rwlock_rdlock(&g->_rwlock);
-	// printf("Acquired read lock\n");
 }
 
 /* Acquire a lock for exclusive access to this graph's data */
 void Graph_AcquireWriteLock(Graph *g) {
 	pthread_rwlock_wrlock(&g->_rwlock);
 	g->_writelocked = true;
-	// printf("Upgraded to write lock\n");
 }
 
 /* Release the held lock */
 void Graph_ReleaseLock(Graph *g) {
 	pthread_rwlock_unlock(&g->_rwlock);
 	g->_writelocked = false;
-	// printf("Release lock\n");
 }
 
 /* Writer request access to graph. */
 void Graph_WriterEnter(Graph *g) {
 	pthread_mutex_lock(&g->_writers_mutex);
-	// printf("Writer enter\n");
 }
 
 /* Writer release access to graph. */
 void Graph_WriterLeave(Graph *g) {
 	pthread_mutex_unlock(&g->_writers_mutex);
-	// printf("Writer leave\n");
 }
 
 /* Force execution of all pending operations on a matrix. */
@@ -135,7 +130,6 @@ static inline void _Graph_ApplyPending(GrB_Matrix m) {
 
 // Get the transposed adjacency matrix.
 static GrB_Matrix _Graph_Get_Transposed_AdjacencyMatrix(const Graph *g) {
-	// printf("_Graph_Get_Transposed_AdjacencyMatrix\n");
 	assert(g);
 	GrB_Matrix m = g->_t_adjacency_matrix;
 	g->SynchronizeMatrix(g, m);
@@ -155,7 +149,6 @@ size_t _Graph_EdgeCap(const Graph *g) {
 // Retrieve a relation mapping matrix coresponding to relation_idx
 // Make sure matrix is synchronized.
 GrB_Matrix Graph_GetRelationMap(const Graph *g, int relation_idx) {
-	// printf("Graph_GetRelationMap\n");
 	assert(g && relation_idx >= 0 && relation_idx < array_len(g->_relations_map));
 	GrB_Matrix m = g->_relations_map[relation_idx];
 	g->SynchronizeMatrix(g, m);
@@ -240,34 +233,30 @@ void _MatrixSynchronize(const Graph *g, GrB_Matrix m) {
 	bool pending = false;
 	GxB_Matrix_Pending(m, &pending);
 
+	// We'll make resize and synchronize calls if we have pending ops or outdated dimensions.
+	pending |= (n_rows != dims) | (n_cols != dims);
+
 	// If the graph belongs to one thread, we don't need to flush pending operations
 	// or lock the mutex.
 	if(g->_writelocked) {
-		if(pending || (n_rows != dims) || (n_cols != dims)) {
-			// printf("Writer, requested dimensions: %llu, current: rows: %llu cols: %llu\n", dims, n_rows, n_cols);
+		if(pending) {
 			assert(GxB_Matrix_resize(m, dims, dims) == GrB_SUCCESS);
 			// Flush changes to matrices.
 			_Graph_ApplyPending(m);
-			GrB_Matrix_ncols(&n_cols, m);
-			GrB_Matrix_nrows(&n_rows, m);
-			// printf("current: rows: %llu cols: %llu\n", n_rows, n_cols);
 		}
 		return;
 	}
 
 	// If the matrix has pending operations or requires
 	// a resize, enter critical section.
-	if(pending || (n_rows != dims) || (n_cols != dims)) {
+	if(pending) {
 		_Graph_EnterCriticalSection((Graph *)g);
 		// Double-check if resize is necessary.
 		GrB_Matrix_nrows(&n_rows, m);
 		GrB_Matrix_ncols(&n_cols, m);
-		if(pending || (n_rows != dims) || (n_cols != dims)) {
-			// printf("Reader, requested dimensions: %llu, current: rows: %llu cols: %llu\n", dims, n_rows, n_cols);
+		dims = Graph_RequiredMatrixDim(g);
+		if((n_rows != dims) || (n_cols != dims)) {
 			assert(GxB_Matrix_resize(m, dims, dims) == GrB_SUCCESS);
-			GrB_Matrix_ncols(&n_cols, m);
-			GrB_Matrix_nrows(&n_rows, m);
-			// printf("current: rows: %llu cols: %llu\n", n_rows, n_cols);
 		}
 
 		// Flush changes to matrices.
@@ -284,14 +273,9 @@ void _MatrixResizeToCapacity(const Graph *g, GrB_Matrix m) {
 	GrB_Matrix_nrows(&nrows, m);
 	GrB_Index cap = _Graph_NodeCap(g) + array_len(g->nodes->deletedIdx);
 
-	// printf("_MatrixResizeToCapacity, requested dimensions: %llu, current: rows: %llu cols: %llu\n", cap, nrows, ncols);
-
 	if(ncols != cap || nrows != cap) {
 		assert(GxB_Matrix_resize(m, cap, cap) == GrB_SUCCESS);
 		_Graph_ApplyPending(m);
-		GrB_Matrix_ncols(&ncols, m);
-		GrB_Matrix_nrows(&nrows, m);
-		//printf("current: rows: %llu cols: %llu\n", nrows, ncols);
 	}
 }
 
@@ -324,7 +308,6 @@ void Graph_SetMatrixPolicy(Graph *g, MATRIX_POLICY policy) {
 
 /* Synchronize and resize all matrices in graph. */
 void Graph_ApplyAllPending(Graph *g) {
-	// printf("Graph_ApplyAllPending\n");
 	GrB_Matrix M;
 
 	for(int i = 0; i < array_len(g->labels); i ++) {
@@ -386,8 +369,6 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 size_t Graph_RequiredMatrixDim(const Graph *g) {
 	// Matrix dimensions should be at least:
 	// Number of nodes + number of deleted nodes.
-	// printf("g->nodes->itemCount: %ld\n", g->nodes->itemCount);
-	// printf("array_len(g->nodes->deletedIdx): %d\n", array_len(g->nodes->deletedIdx));
 	return g->nodes->itemCount + array_len(g->nodes->deletedIdx);
 }
 
@@ -533,7 +514,6 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 		GrB_Matrix m = g->labels[label];
 		GrB_Info res = GrB_Matrix_setElement_BOOL(m, true, id, id);
 		if(res != GrB_SUCCESS) {
-			// printf("Graph_CreateNode\n");
 			_MatrixResizeToCapacity(g, m);
 			assert(GrB_Matrix_setElement_BOOL(m, true, id, id) == GrB_SUCCESS);
 		}
@@ -541,7 +521,6 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 }
 
 int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
-	// printf("Graph_ConnectNodes\n");
 	GrB_Info info;
 	Node srcNode;
 	Node destNode;
@@ -1088,7 +1067,6 @@ int Graph_AddRelationType(Graph *g) {
 }
 
 GrB_Matrix Graph_GetAdjacencyMatrix(const Graph *g) {
-	//printf("Graph_GetAdjacencyMatrix\n");
 	assert(g);
 	GrB_Matrix m = g->adjacency_matrix;
 	g->SynchronizeMatrix(g, m);
@@ -1096,7 +1074,6 @@ GrB_Matrix Graph_GetAdjacencyMatrix(const Graph *g) {
 }
 
 GrB_Matrix Graph_GetLabelMatrix(const Graph *g, int label_idx) {
-	// printf("Graph_GetLabelMatrix\n");
 	assert(g && label_idx < array_len(g->labels));
 	GrB_Matrix m = g->labels[label_idx];
 	g->SynchronizeMatrix(g, m);
@@ -1104,7 +1081,6 @@ GrB_Matrix Graph_GetLabelMatrix(const Graph *g, int label_idx) {
 }
 
 GrB_Matrix Graph_GetRelationMatrix(const Graph *g, int relation_idx) {
-	// printf("Graph_GetRelationMatrix\n");
 	assert(g && (relation_idx == GRAPH_NO_RELATION || relation_idx < Graph_RelationTypeCount(g)));
 	GrB_Matrix m;
 
@@ -1118,7 +1094,6 @@ GrB_Matrix Graph_GetRelationMatrix(const Graph *g, int relation_idx) {
 }
 
 GrB_Matrix Graph_GetZeroMatrix(const Graph *g) {
-	// printf("Graph_GetZeroMatrix\n");
 	GrB_Index nvals;
 	GrB_Matrix z = g->_zero_matrix;
 	g->SynchronizeMatrix(g, z);
