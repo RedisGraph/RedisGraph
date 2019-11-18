@@ -232,22 +232,22 @@ void _MatrixSynchronize(const Graph *g, GrB_Matrix m) {
 	bool pending = false;
 	GxB_Matrix_Pending(m, &pending);
 
-	// We'll make resize and synchronize calls if we have pending ops or outdated dimensions.
-	pending |= (n_rows != dims) | (n_cols != dims);
-
 	// If the graph belongs to one thread, we don't need to lock the mutex.
 	if(g->_writelocked) {
-		if(pending) {
+		if((n_rows != dims) || (n_cols != dims)) {
 			assert(GxB_Matrix_resize(m, dims, dims) == GrB_SUCCESS);
-			// Flush changes to matrices if we've performed a resize.
-			_Graph_ApplyPending(m);
+			pending = true;
 		}
+
+		// Flush changes to matrices if we've performed a resize or have pending tuples.
+		if(pending) _Graph_ApplyPending(m);
+
 		return;
 	}
 
 	// If the matrix has pending operations or requires
 	// a resize, enter critical section.
-	if(pending) {
+	if(pending || (n_rows != dims) || (n_cols != dims)) {
 		_Graph_EnterCriticalSection((Graph *)g);
 		// Double-check if resize is necessary.
 		GrB_Matrix_nrows(&n_rows, m);
