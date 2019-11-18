@@ -9,16 +9,15 @@
 #include "op.h"
 #include "../execution_plan.h"
 
-/* The Argument operation simply pass on its internal record `r`
- * down the execution stream, once passed the operation sets `r` to NULL.
- * `r` is expected to be set by a call to ArgumentSetRecord by some other
- * operation (Apply*) down the execution stream. */
+/* The Argument operation holds an internal record array and emits one record per invocation.
+ * When populating an eager operation like Create, the Argument should hold all necessary records,
+ * in other contexts the 'records' array will typically contain only one record at a time. */
 typedef struct {
 	OpBase op;
-	Record r;
+	Record *records;
 } Argument;
 
 OpBase *NewArgumentOp(const ExecutionPlan *plan, const char **variables);
 
-void ArgumentSetRecord(Argument *arg, Record r);
+void Argument_AddRecord(Argument *arg, Record r);
 

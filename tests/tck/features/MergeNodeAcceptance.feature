@@ -460,7 +460,6 @@ Feature: MergeNodeAcceptance
       | +labels        | 2 |
       | +properties    | 1 |
 
-@skip
   Scenario: Unwind combined with merge
     Given an empty graph
     When executing query:

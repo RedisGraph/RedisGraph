@@ -39,20 +39,15 @@ static Record _pullFromMatchStream(OpMerge *op, Record lhs_record) {
 	return _pullFromStream(op->match_stream);
 }
 
-static Record _createPattern(OpMerge *op, Record lhs_record) {
-	return _pullFromStream(op->create_stream);
-}
-
 OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats) {
-	/* Merge is an Apply operator with three children, with the first potentially being NULL.
-	 * They will be created outside of here, as with other Apply operators (see CartesianProduct
+	/* Merge is an operator with two or three children.
+	 * They will be created outside of here, as with other multi-stream operators (see CartesianProduct
 	 * and ValueHashJoin). */
 	OpMerge *op = malloc(sizeof(OpMerge));
 	op->stats = stats;
 	op->records = NULL;
 	op->match_argument_tap = NULL;
 	op->create_argument_tap = NULL;
-	// op->should_create_pattern = true;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume, NULL, NULL, MergeFree,
@@ -77,20 +72,21 @@ static Record MergeConsume(OpBase *opBase) {
 	// Consume mode.
 	op->records = array_new(Record, 32);
 
+	bool creating = false; // TODO refactor out?
 	Record lhs_record = NULL;
-	bool reading_bound_variables = true;
-	bool should_create_pattern = true;
+	bool reading_bound_variables = true; // TODO bad name, might not have bound variables.
 	while(reading_bound_variables) {
 		Record rhs_record = NULL;
-		// Try to get a record from the bound variable stream..
+		bool should_create_pattern = true;
+		// Try to get a record from the bound variable stream.
 		if(op->bound_variable_stream) {
 			lhs_record = _pullFromBoundVariableStream(op);
-			if(lhs_record == NULL) return _handoff(op); // Depleted, switch to return mode.
+			// if(lhs_record == NULL) return _handoff(op); // Depleted, switch to return mode.
+			if(lhs_record == NULL) break;
 
-			// Propagate record to the top of the Match and Create streams.
+			// Propagate record to the top of the Match stream.
 			// TODO if statements might be unnecessary
-			if(op->match_argument_tap) ArgumentSetRecord(op->match_argument_tap, Record_Clone(lhs_record));
-			if(op->create_argument_tap) ArgumentSetRecord(op->create_argument_tap, Record_Clone(lhs_record));
+			if(op->match_argument_tap) Argument_AddRecord(op->match_argument_tap, Record_Clone(lhs_record));
 		} else {
 			reading_bound_variables = false;
 		}
@@ -109,7 +105,17 @@ static Record MergeConsume(OpBase *opBase) {
 		}
 
 		if(should_create_pattern) {
-			Record created_record = _createPattern(op, lhs_record); // TODO looks unsafe
+			// Save the LHS record so that we can create from it once we finish reading.
+			if(op->create_argument_tap) Argument_AddRecord(op->create_argument_tap, Record_Clone(lhs_record));
+			creating = true;
+		}
+	}
+
+	if(creating) {
+		/* We've populated the Create stream with all the Records it must read;
+		 * pull from it until we've retrieved all newly-created Records. */
+		Record created_record;
+		while((created_record = _pullFromStream(op->create_stream))) {
 			op->records = array_append(op->records, created_record);
 		}
 	}
