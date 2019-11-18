@@ -43,8 +43,8 @@
     //--------------------------------------------------------------------------
 
     // ztype Wfirst [ntasks], Wlast [ntasks] ;
-    GB_REDUCTION_WORKSPACE (Wfirst, ntasks) ;
-    GB_REDUCTION_WORKSPACE (Wlast , ntasks) ;
+    GB_CTYPE *restrict Wfirst = (GB_CTYPE *) Wfirst_space ;
+    GB_CTYPE *restrict Wlast  = (GB_CTYPE *) Wlast_space ;
 
     //--------------------------------------------------------------------------
     // reduce each slice

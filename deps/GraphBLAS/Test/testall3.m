@@ -2,7 +2,7 @@
 
 clear all
 make
-gb
+grbinfo
 for k = [1 2 4]
     nthreads_set (k) ;
     debug_off ;

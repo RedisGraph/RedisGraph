@@ -104,6 +104,10 @@ void Graph_Query(void *args) {
 		CommandCtx_ThreadSafeContextUnlock(qctx);
 	}
 	lockAcquired = true;
+
+	// Set policy after lock acquisition, avoid resetting policies between readers and writers.
+	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
 	if(root_type == CYPHER_AST_QUERY) {  // query operation
 		result_set = NewResultSet(ctx, compact);

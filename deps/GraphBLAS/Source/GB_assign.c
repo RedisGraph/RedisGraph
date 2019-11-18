@@ -747,8 +747,8 @@ GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
             // M has the same size as Z
             ASSERT (M->vlen == Z->vlen && M->vdim == Z->vdim) ;
 
-            GB_assign_zombie5 (Z, M, Mask_comp,
-                I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon, Context) ;
+            GB_OK (GB_assign_zombie5 (Z, M, Mask_comp,
+                I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon, Context)) ;
         }
 
         // Z is valid, but it has zombies and it not in the queue.

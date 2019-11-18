@@ -19,9 +19,9 @@ void GB_Sauna_free                  // free a Sauna
     if (Sauna != NULL)
     { 
         // free all content of the Sauna
-        size_t n = Sauna->Sauna_n ;
-        GB_FREE_MEMORY (Sauna->Sauna_Mark, n+1, sizeof (int64_t)) ;
-        GB_FREE_MEMORY (Sauna->Sauna_Work, n+1, Sauna->Sauna_size) ;
+        size_t Sauna_n = Sauna->Sauna_n ;
+        GB_FREE_MEMORY (Sauna->Sauna_Mark, Sauna_n+1, sizeof (int64_t)) ;
+        GB_FREE_MEMORY (Sauna->Sauna_Work, Sauna_n+1, Sauna->Sauna_size) ;
         // free the header of the Sauna itself
         GB_FREE_MEMORY (Sauna, 1, sizeof (struct GB_Sauna_struct)) ;
         GB_Global_Saunas_set (Sauna_id, NULL) ;

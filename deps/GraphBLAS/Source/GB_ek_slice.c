@@ -18,17 +18,43 @@
 
 #include "GB_ek_slice.h"
 
-void GB_ek_slice
+bool GB_ek_slice        // true if successful, false if out of memory
 (
     // output:
-    int64_t *restrict pstart_slice, // size ntasks+1
-    int64_t *restrict kfirst_slice, // size ntasks
-    int64_t *restrict klast_slice,  // size ntasks
+    int64_t *restrict *pstart_slice_handle, // size ntasks+1
+    int64_t *restrict *kfirst_slice_handle, // size ntasks
+    int64_t *restrict *klast_slice_handle,  // size ntasks
     // input:
-    GrB_Matrix A,                   // matrix to slize
+    GrB_Matrix A,                   // matrix to slice
     int ntasks                      // # of tasks
 )
 {
+
+    //--------------------------------------------------------------------------
+    // allocate result
+    //--------------------------------------------------------------------------
+
+    (*pstart_slice_handle) = NULL ;
+    (*kfirst_slice_handle) = NULL ;
+    (*klast_slice_handle ) = NULL ;
+
+    int64_t *restrict pstart_slice = NULL ;
+    int64_t *restrict kfirst_slice = NULL ;
+    int64_t *restrict klast_slice  = NULL ;
+
+    GB_CALLOC_MEMORY (pstart_slice, ntasks+1, sizeof (int64_t)) ;
+    GB_CALLOC_MEMORY (kfirst_slice, ntasks, sizeof (int64_t)) ;
+    GB_CALLOC_MEMORY (klast_slice, ntasks, sizeof (int64_t)) ;
+
+    if (pstart_slice == NULL || kfirst_slice == NULL | klast_slice == NULL)
+    {
+        GB_ek_slice_free (&pstart_slice, &kfirst_slice, &klast_slice, ntasks) ;
+        return (false) ;
+    }
+
+    (*pstart_slice_handle) = pstart_slice ;
+    (*kfirst_slice_handle) = kfirst_slice ;
+    (*klast_slice_handle ) = klast_slice ;
 
     //--------------------------------------------------------------------------
     // get A
@@ -46,7 +72,7 @@ void GB_ek_slice
         pstart_slice [1] = 0 ;
         kfirst_slice [0] = -1 ;
         klast_slice  [0] = -2 ;
-        return ;
+        return (true) ;
     }
 
     ASSERT (ntasks <= anz) ;
@@ -93,5 +119,6 @@ void GB_ek_slice
 
     kfirst_slice [0] = 0 ;
     klast_slice  [ntasks-1] = anvec-1 ;
+    return (true) ;
 }
 

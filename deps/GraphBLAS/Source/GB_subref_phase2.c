@@ -61,8 +61,6 @@ GrB_Info GB_subref_phase2   // C=A(I,J)
     (*Chandle) = NULL ;
 
     bool C_is_hyper = (Ch != NULL) ;
-    // printf ("Ch %p Cp %p\n", Ch, Cp) ;
-    // printf ("cnz "GBd" Cnvec "GBd" C_is_hyper %d\n", cnz, Cnvec, C_is_hyper);
 
     GrB_Type ctype = (symbolic) ? GrB_INT64 : A->type ;
 

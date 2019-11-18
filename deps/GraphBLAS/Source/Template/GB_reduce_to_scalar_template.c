@@ -12,9 +12,17 @@
 
 {
 
+    //--------------------------------------------------------------------------
+    // get A
+    //--------------------------------------------------------------------------
+
     const GB_ATYPE *restrict Ax = A->x ;
     int64_t anz = GB_NNZ (A) ;
     ASSERT (anz > 0) ;
+
+    //--------------------------------------------------------------------------
+    // reduce A to a scalar
+    //--------------------------------------------------------------------------
 
     if (nthreads == 1)
     {
@@ -38,17 +46,10 @@
     {
 
         //----------------------------------------------------------------------
-        // create workspace for multiple threads
-        //----------------------------------------------------------------------
-
-        // ztype W [ntasks] ;
-        GB_REDUCTION_WORKSPACE (W, ntasks) ;
-        ASSERT (ntasks <= anz) ;
-        bool early_exit = false ;
-
-        //----------------------------------------------------------------------
         // each thread reduces its own slice in parallel
         //----------------------------------------------------------------------
+
+        bool early_exit = false ;
 
         #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
         for (int tid = 0 ; tid < ntasks ; tid++)

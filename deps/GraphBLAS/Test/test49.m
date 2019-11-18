@@ -36,7 +36,7 @@ for m = 1:4
         tic ;
         C2 = GB_mex_mxm (W, [], [], semiring, A, B, d) ;
         % t2 = toc ;
-        t2 = gbresults ;
+        t2 = grbresults ;
 
         e = norm (C - C2.matrix, 1) ;
         fprintf (...

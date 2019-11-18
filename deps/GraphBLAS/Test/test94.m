@@ -30,7 +30,7 @@ C.class = 'logical' ;
 tic ;
 [r3, ir3] = GB_mex_dpagerank (C) ;
 toc
-t = gbresults
+t = grbresults
 
 ir_diff = length (find (ir2 ~= ir3))
 
@@ -43,7 +43,7 @@ for method = [0 1001 1002 1003]
     tic ;
     [r4, ir4] = GB_mex_dpagerank (C, method) ;
     toc
-    t = gbresults
+    t = grbresults
     assert (norm (r4 - r3) < 1e-5) ;
     assert (isequal (ir3, ir4)) ;
 end

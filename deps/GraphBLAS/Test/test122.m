@@ -78,7 +78,7 @@ for dc = [2 0 1e-6 1e-5 1e-4 1e-3 1e-2 0.1 1]
 
             C2 = GB_mex_subassign (C0, M, 'plus', A, I0, I0, d) ;
             C2 = GB_mex_subassign (C0, M, 'plus', A, I0, I0, d) ;
-            tg = gbresults ;
+            tg = grbresults ;
             if (n < 500)
                 assert (isequal (C1, C2.matrix)) ;
             end

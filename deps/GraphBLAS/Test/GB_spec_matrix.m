@@ -17,13 +17,14 @@ function Cout = GB_spec_matrix (Cin, identity)
 % of X is given by Cin.class, if present, or class(X) otherwise.  For a dense
 % X, class(X) and Cin.class, if present, must match.  If present, the pattern
 % of X is given by Cin.pattern; otherwise the pattern for a sparse X is
-% spones(X) and entries outside the pattern are assumed to be equal to
+% GB_spones_mex(X) and entries outside the pattern are assumed to be equal to
 % identity.  For a dense X, with no Cin.pattern present the pattern of X is
 % just X ~= identity.
 %
 % Cin is a matrix, then its class is given by class (Cin).  If the matrix is
-% sparse, its pattern is spones(Cin) and entries not in the pattern are assumed
-% equal to identity.  Otherwise the pattern of Cin is given by Cin ~= identity.
+% sparse, its pattern is GB_spones_mex(Cin) and entries not in the pattern are
+% assumed equal to identity.  Otherwise the pattern of Cin is given by Cin ~=
+% identity.
 %
 % The output Cout is a struct with all three fields present (matrix, pattern,
 % and class).  Cout.matrix is dense, and it has been typecast into the class
@@ -59,7 +60,7 @@ function Cout = GB_spec_matrix (Cin, identity)
 % GraphBLAS GB_mex_* functions are direct interfaces to the C functions in
 % GraphBLAS, and they always return a sparse struct; otherwise large problems
 % could not be solved.  The struct contains just C.matrix and C.class.  The
-% pattern of C.matrix is spones(C.matrix).  To compare the output C0 of
+% pattern of C.matrix is GB_spones_mex(C.matrix).  To compare the output C0 of
 % a GB_mex_* function with C1 of a GrapBLAS_spec_* function, the struct C0
 % must first be passed to this function, C0=GB_spec_matrix(C0,identity) and
 % then C0 and C1 should be identical.
@@ -105,7 +106,7 @@ else
     if (issparse (X))
         % For a sparse matrix, use the actual pattern.  Entries not in the
         % the pattern are assumed to be equal to the addititve identity.
-        xpattern = cast (full (spones (X)), 'logical') ;
+        xpattern = cast (full (GB_spones_mex (X)), 'logical') ;
     else
         xpattern = (X ~= identity) ;
     end
@@ -144,4 +145,4 @@ Cout.class = xclass ;
 assert (isstruct (Cout)) ;
 assert (isequal (Cout.class, class (Cout.matrix))) ;
 assert (~issparse (Cout.matrix)) ;
-
+% 

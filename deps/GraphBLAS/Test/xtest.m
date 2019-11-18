@@ -8,7 +8,7 @@ for nth = [2 1]
     nthreads_set (nth) ;
 
     debug_on
-    gb
+    grbinfo
     testc3
     testc4
     test53
@@ -17,7 +17,7 @@ for nth = [2 1]
     test86
 
     debug_off
-    gb
+    grbinfo
     testc3
     testc4
     test53

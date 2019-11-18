@@ -34,9 +34,10 @@ bool GB_Index_multiply      // true if ok, false if overflow
         return (false) ;
     }
 
-    // a + b is now safe to compute
-    if ((a + b) > (GB_INDEX_MAX / GB_IMIN (a,b)))
-    { 
+    double da = ceil (log2 ((double) a)) ;
+    double db = ceil (log2 ((double) b)) ;
+    if (da + db > 60)
+    {
         // a * b may overflow
         return (false) ;
     }

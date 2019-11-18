@@ -42,7 +42,7 @@ for xnz = [100:100:1000 2000:1000:72000]
     tic
     c2 = GB_mex_vxm (w, [],[], semiring, x, A, d2) ;
     t2 = toc ;
-    [t2 method] = gbresults ;
+    [t2 method] = grbresults ;
 
     tic
     c0 = x'*A ;

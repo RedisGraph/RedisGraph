@@ -6,7 +6,7 @@ addpath ('spok') ;
 
 for k = [2 1]
     nthreads_set (k) ;
-    gb
+    grbinfo
 
     test15
     test72

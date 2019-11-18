@@ -228,7 +228,7 @@
 %   btest     - test GrB_build
 %   etest     - test eWise
 %   ee        - eWiseMult and eWiseAdd performance tests
-%   gb        - print info about the GraphBLAS version
+%   grbinfo   - print info about the GraphBLAS version
 %   mtest     - test mxm
 %   longtests - very long tests
 %   gunk      - placeholder for working on test failures
@@ -255,7 +255,7 @@
 %   stat             - report status of statement coverage and malloc debugging
 %   GB_define        - create C source code for GraphBLAS.h
 %   GB_define2       - construct part of the GB.h file, to allow user-defined objects
-%   gbresults        - return time taken by last GraphBLAS function, and AxB method
+%   grbresults       - return time taken by last GraphBLAS function, and AxB method
 %   isequal_roundoff - compare two matrices, allowing for roundoff errors
 %   startup          - setup the path for tests in GraphBLAS/Test
 %   test_other       - installs all packages needed for extensive tests

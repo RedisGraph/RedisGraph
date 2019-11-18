@@ -12,6 +12,8 @@
 // MATLAB interface to GrB_reduce, which relies on GrB_Matrix_reduce_BinaryOp
 // and GrB_Matrix_reduce_Monoid to reduce a matrix to a vector.
 
+// #define GB_PRINT_MALLOC 1
+
 #include "GB_mex.h"
 
 #define USAGE "w = GB_mex_reduce_to_vector (w, mask, accum, reduce, A, desc)"

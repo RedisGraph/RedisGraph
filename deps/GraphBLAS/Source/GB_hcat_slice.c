@@ -9,6 +9,12 @@
 
 // Horizontal concatenation of slices into the matrix C.
 
+#define GB_FREE_WORK                                            \
+{                                                               \
+    GB_FREE_MEMORY (Cnzs,   nthreads+1, sizeof (int64_t)) ;     \
+    GB_FREE_MEMORY (Cnvecs, nthreads+1, sizeof (int64_t)) ;     \
+}
+
 #include "GB_mxm.h"
 
 GrB_Info GB_hcat_slice      // horizontal concatenation of the slices of C
@@ -44,6 +50,21 @@ GrB_Info GB_hcat_slice      // horizontal concatenation of the slices of C
     }
 
     //--------------------------------------------------------------------------
+    // allocate workspace
+    //--------------------------------------------------------------------------
+
+    int64_t *restrict Cnzs   ;  // size nthreads+1
+    int64_t *restrict Cnvecs ;  // size nthreads+1
+    GB_MALLOC_MEMORY (Cnzs,   nthreads+1, sizeof (int64_t)) ;
+    GB_MALLOC_MEMORY (Cnvecs, nthreads+1, sizeof (int64_t)) ;
+    if (Cnzs == NULL || Cnvecs == NULL)
+    {
+        // out of memory
+        GB_FREE_WORK ;
+        return (GB_OUT_OF_MEMORY) ;
+    }
+
+    //--------------------------------------------------------------------------
     // find the size and type of C
     //--------------------------------------------------------------------------
 
@@ -57,9 +78,6 @@ GrB_Info GB_hcat_slice      // horizontal concatenation of the slices of C
     // both arrays are size nthreads+1.  Thus, both Cnzs [0] and Cnvecs [0] are
     // zero, and their last entries are the total # entries and vectors in C,
     // respectively.
-
-    int64_t Cnzs   [nthreads+1] ;
-    int64_t Cnvecs [nthreads+1] ;
 
     // all the slices have the same type and dimension
     GrB_Type ctype = (Cslice [0])->type ;
@@ -95,6 +113,7 @@ GrB_Info GB_hcat_slice      // horizontal concatenation of the slices of C
     if (info != GrB_SUCCESS)
     { 
         // out of memory
+        GB_FREE_WORK ;
         return (GB_OUT_OF_MEMORY) ;
     }
 
@@ -142,9 +161,10 @@ GrB_Info GB_hcat_slice      // horizontal concatenation of the slices of C
     }
 
     //--------------------------------------------------------------------------
-    // finalize the matrix
+    // free workspace and finalize the matrix
     //--------------------------------------------------------------------------
 
+    GB_FREE_WORK ;
     C->magic = GB_MAGIC ;
     ASSERT_OK (GB_check (C, "C from horizontal concatenation", GB0)) ;
     return (GrB_SUCCESS) ;

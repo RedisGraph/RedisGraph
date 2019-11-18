@@ -10,7 +10,7 @@
 // for additional diagnostics, use:
 // #define GB_DEVELOPER 1
 
-#include "GB.h"
+#include "GB_printf.h"
 
 GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
 (
@@ -27,7 +27,7 @@ GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
     // check inputs
     //--------------------------------------------------------------------------
 
-    GBPR0 ("\nGraphBLAS BinaryOp: %s ", GB_NAME) ;
+    GBPR0 ("\n    GraphBLAS BinaryOp: %s ", GB_NAME) ;
 
     if (op == NULL)
     { 
@@ -62,7 +62,7 @@ GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
 
     if (op->function == NULL)
     { 
-        GBPR0 ("BinaryOp has a NULL function pointer\n") ;
+        GBPR0 ("    BinaryOp has a NULL function pointer\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "BinaryOp has a NULL function pointer: %s [%s]",
             GB_NAME, op->name))) ;
@@ -70,7 +70,7 @@ GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
 
     if (op->opcode < GB_FIRST_opcode || op->opcode > GB_USER_R_opcode)
     { 
-        GBPR0 ("BinaryOp has an invalid opcode\n") ;
+        GBPR0 ("    BinaryOp has an invalid opcode\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "BinaryOp has an invalid opcode: %s [%s]", GB_NAME, op->name))) ;
     }
@@ -80,7 +80,7 @@ GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
     info = GB_Type_check (op->ztype, "ztype", pr, f, Context) ;
     if (info != GrB_SUCCESS)
     { 
-        GBPR0 ("BinaryOp has an invalid ztype\n") ;
+        GBPR0 ("    BinaryOp has an invalid ztype\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "BinaryOp has an invalid ztype: %s [%s]", GB_NAME, op->name))) ;
     }
@@ -88,7 +88,7 @@ GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
     info = GB_Type_check (op->xtype, "xtype", pr, f, Context) ;
     if (info != GrB_SUCCESS)
     { 
-        GBPR0 ("BinaryOp has an invalid xtype\n") ;
+        GBPR0 ("    BinaryOp has an invalid xtype\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "BinaryOp has an invalid xtype: %s [%s]", GB_NAME, op->name))) ;
     }
@@ -96,7 +96,7 @@ GrB_Info GB_BinaryOp_check  // check a GraphBLAS binary operator
     info = GB_Type_check (op->ytype, "ytype", pr, f, Context) ;
     if (info != GrB_SUCCESS)
     { 
-        GBPR0 ("BinaryOp has an invalid ytype\n") ;
+        GBPR0 ("    BinaryOp has an invalid ytype\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "BinaryOp has an invalid ytype: %s [%s]", GB_NAME, op->name))) ;
     }

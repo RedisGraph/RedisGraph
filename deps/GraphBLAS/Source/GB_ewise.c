@@ -244,7 +244,8 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
     { 
         // C<M> = accum (C,T)
         // GB_accum_mask also conforms C to its desired hypersparsity
-        info = GB_ACCUM_MASK (C, M, MT, accum, &T, C_replace, Mask_comp) ;
+        info = GB_accum_mask (C, M, MT, accum, &T, C_replace, Mask_comp,
+            Context) ;
         GB_MATRIX_FREE (&MT) ;
         return (info) ;
     }

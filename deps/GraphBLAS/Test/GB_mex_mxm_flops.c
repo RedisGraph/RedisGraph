@@ -77,7 +77,8 @@ void mexFunction
     }
 
     // compute the flop count
-    bool result = GB_AxB_flopcount (Bflops, NULL, M, A, B, floplimit, Context) ;
+    bool result ;
+    GB_AxB_flopcount (&result, Bflops, NULL, M, A, B, floplimit, Context) ;
 
     // return result to MATLAB
     pargout [0] = mxCreateDoubleScalar ((double) result) ;

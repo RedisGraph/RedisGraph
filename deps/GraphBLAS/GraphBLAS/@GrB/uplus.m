@@ -1,0 +1,10 @@
+function C = uplus (G)
+%UPLUS C = +G.
+% C = +G is the unary plus operator.  It does nothing to a GraphBLAS
+% matrix, so C is just equal to G.
+
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+C = G ;
+

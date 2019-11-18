@@ -26,7 +26,7 @@ void GB_transpose_op    // transpose, typecast, and apply operator to a matrix
     GrB_Matrix C,                       // output matrix
     const GrB_UnaryOp op,               // operator to apply
     const GrB_Matrix A,                 // input matrix
-    int64_t **Rowcounts,                // Rowcounts [naslice]
+    int64_t *restrict *Rowcounts,       // Rowcounts [naslice]
     GBI_single_iterator Iter,           // iterator for the matrix A
     const int64_t *restrict A_slice,    // defines how A is sliced
     int naslice                         // # of slices of A
@@ -73,7 +73,7 @@ void GB_transpose_op    // transpose, typecast, and apply operator to a matrix
     #define GB_CAST_OP(pC,pA)                                       \
     {                                                               \
         /* xwork = (xtype) Ax [pA] */                               \
-        GB_void xwork [xsize] ;                                     \
+        GB_void xwork [GB_PGI(xsize)] ;                             \
         cast_A_to_X (xwork, Ax +(pA*asize), asize) ;                \
         /* Cx [pC] = fop (xwork) ; Cx is of type op->ztype */       \
         fop (Cx +(pC*zsize), xwork) ;                               \

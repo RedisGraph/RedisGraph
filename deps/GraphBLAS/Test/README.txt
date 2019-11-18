@@ -26,8 +26,7 @@ run all the tests:
     make ; testall
 
 If you get a linking problem on linux, add this directory to your
-LD_LIBRARY_PATCH, so that the libgraphblas.so constructed by gbmake can be
-found by the mexFunctions.
+LD_LIBRARY_PATCH, so that the libgraphblas.so can be found by the mexFunctions.
 
 Longer tests can be done as well (this can take a whole day):
 

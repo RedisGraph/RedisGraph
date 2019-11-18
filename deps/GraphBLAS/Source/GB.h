@@ -29,11 +29,17 @@
 // GraphBLAS will be slower:
 // #define GBCOMPACT 1
 
+// for code development only
+// #define GB_DEVELOPER 1
+
 // set these via cmake, or uncomment to select the user-thread model:
 
 // #define USER_POSIX_THREADS
 // #define USER_OPENMP_THREADS
 // #define USER_NO_THREADS
+
+// to turn on memory usage debug printing, uncomment this line:
+// #define GB_PRINT_MALLOC 1
 
 //------------------------------------------------------------------------------
 // manage compiler warnings
@@ -112,6 +118,43 @@
 //------------------------------------------------------------------------------
 
 #include "GraphBLAS.h"
+
+//------------------------------------------------------------------------------
+// PGI_COMPILER_BUG
+//------------------------------------------------------------------------------
+
+// If GraphBLAS is compiled with -DPGI_COMPILER_BUG, then a workaround is
+// enabled for a bug in the PGI compiler.  The compiler does not correctly
+// handle automatic arrays of variable size.  If this bug is present, then
+// user-defined types are limited in size to 128 bytes or less.  Many of the
+// type-generic routines allocate workspace for a single scalar of variable
+// size, using a statement:
+//
+//      GB_void aij [xsize] ;
+// 
+// For example.  This is a valid ANSI C11 statement, but triggers a bug in the
+// PGI compiler.  The workaround is to use a fixed-size instead, when using the
+// PGI compiler:
+//
+//      GB_void aij [GB_PGI(xsize)] ;
+//
+// In this case, user-defined types are limited to a max of 128 bytes.
+//
+// grep for "PGI" to see what parts of the code are affected.
+
+#ifdef PGI_COMPILER_BUG
+
+    #define PGI_COMPILER_BUG_MAXSIZE_FOR_ANY_GRB_TYPE 128
+
+    #define GB_PGI(s) PGI_COMPILER_BUG_MAXSIZE_FOR_ANY_GRB_TYPE
+    #define GB_PGI_NTHREADS(nthreads) GxB_NTHREADS_MAX
+
+#else
+
+    #define GB_PGI(s) s
+    #define GB_PGI_NTHREADS(nthreads) nthreads
+
+#endif
 
 //------------------------------------------------------------------------------
 // min, max, and NaN handling
@@ -935,71 +978,6 @@ GrB_Info GB_error           // log an error in thread-local-storage
 // a NULL name is treated as the empty string
 #define GB_NAME ((name != NULL) ? name : "")
 
-// print to a file f, and check the result
-#define GBPR(...)                                                           \
-{                                                                           \
-    if (f != NULL)                                                          \
-    {                                                                       \
-        if (fprintf (f, __VA_ARGS__) < 0)                                   \
-        {                                                                   \
-            int err = errno ;                                               \
-            return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,                   \
-                "File output error (%d): %s", err, strerror (err)))) ;      \
-        }                                                                   \
-    }                                                                       \
-}
-
-#define GBPR0(...)                  \
-{                                   \
-    if (pr > 0)                     \
-    {                               \
-        GBPR (__VA_ARGS__) ;        \
-    }                               \
-}
-
-// check object->magic code
-#ifdef GB_DEVELOPER
-#define GBPR_MAGIC(pcode)                                               \
-{                                                                       \
-    char *p = (char *) &(pcode) ;                                       \
-    GBPR0 (" pcode: [ %d1 %s ] ", p [0], p) ;                           \
-}
-#else
-#define GBPR_MAGIC(pcode) ;
-#endif
-
-// check object->magic and print an error if invalid
-#define GB_CHECK_MAGIC(object,kind)                                     \
-{                                                                       \
-    switch (object->magic)                                              \
-    {                                                                   \
-        case GB_MAGIC :                                                 \
-            /* the object is valid */                                   \
-            GBPR_MAGIC (object->magic) ;                                \
-            break ;                                                     \
-                                                                        \
-        case GB_FREED :                                                 \
-            /* dangling pointer! */                                     \
-            GBPR_MAGIC (object->magic) ;                                \
-            GBPR0 ("already freed!\n") ;                                \
-            return (GB_ERROR (GrB_UNINITIALIZED_OBJECT, (GB_LOG,        \
-                "%s is freed: [%s]", kind, name))) ;                    \
-                                                                        \
-        case GB_MAGIC2 :                                                \
-            /* invalid */                                               \
-            GBPR_MAGIC (object->magic) ;                                \
-            GBPR0 ("invalid\n") ;                                       \
-            return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,              \
-                "%s is invalid: [%s]", kind, name))) ;                  \
-                                                                        \
-        default :                                                       \
-            /* uninitialized */                                         \
-            GBPR0 ("uninititialized\n") ;                               \
-            return (GB_ERROR (GrB_UNINITIALIZED_OBJECT, (GB_LOG,        \
-                "%s is uninitialized: [%s]", kind, name))) ;            \
-    }                                                                   \
-}
-
 GrB_Info GB_entry_check     // print a single value
 (
     const GrB_Type type,    // type of value to print
@@ -1703,12 +1681,12 @@ GrB_Info GB_slice       // slice B into nthreads slices or hyperslices
     GB_Context Context
 ) ;
 
-void GB_pslice                      // find how to slice Ap
+bool GB_pslice          // slice Ap; return true if ok, false if out of memory
 (
-    int64_t *Slice,                 // size ntasks+1
-    const int64_t *restrict Ap,     // array of size n+1
+    int64_t *restrict *Slice_handle,    // size ntasks+1
+    const int64_t *restrict Ap,         // array of size n+1
     const int64_t n,
-    const int ntasks                // # of tasks
+    const int ntasks                    // # of tasks
 ) ;
 
 void GB_eslice
@@ -1807,11 +1785,11 @@ bool GB_size_t_multiply     // true if ok, false if overflow
     const size_t b
 ) ;
 
-void GB_extract_vector_list
+bool GB_extract_vector_list     // true if successful, false if out of memory
 (
     // output:
     int64_t *restrict J,        // size nnz(A) or more
-    // input
+    // input:
     const GrB_Matrix A,
     int nthreads
 ) ;

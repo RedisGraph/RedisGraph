@@ -22,9 +22,14 @@
 
 #include "GB_subassign_methods.h"
 
+#undef  GB_FREE_WORK
+#define GB_FREE_WORK \
+    GB_FREE_MEMORY (Coarse, ntasks1+1, sizeof (int64_t)) ;
+
 #undef  GB_FREE_ALL
 #define GB_FREE_ALL                                                     \
 {                                                                       \
+    GB_FREE_WORK ;                                                      \
     GB_FREE_MEMORY (TaskList, max_ntasks+1, sizeof (GB_task_struct)) ;  \
 }
 
@@ -94,26 +99,12 @@ GrB_Info GB_subassign_one_slice
     const int64_t Cnvec = C->nvec ;
     const int64_t cvlen = C->vlen ;
 
-    // printf ("nI "GBd" Ikind "GBd" Icolon "GBd" "GBd" "GBd"\n", nI, Ikind,
-    //     Icolon [0], Icolon [1], Icolon [2]) ;
-    // for (int64_t iA = 0 ; iA < nI ; iA++)
-    // {
-    //     int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
-    //     printf ("   iA "GBd" iC "GBd"\n", iA, iC) ;
-    // }
-
-    // printf ("nJ "GBd" Jkind "GBd" Jcolon "GBd" "GBd" "GBd"\n", nJ, Jkind,
-    //     Jcolon [0], Jcolon [1], Jcolon [2]) ;
-    // for (int64_t jA = 0 ; jA < nJ ; jA++)
-    // {
-    //     int64_t jC = GB_ijlist (J, jA, Jkind, Jcolon) ;
-    //     printf ("   jA "GBd" jC "GBd"\n", jA, jC) ;
-    // }
-
     //--------------------------------------------------------------------------
     // allocate the initial TaskList
     //--------------------------------------------------------------------------
 
+    int64_t *restrict Coarse = NULL ; // size ntasks1+1
+    int ntasks1 = 0 ;
     int nthreads = GB_nthreads (anz, chunk, nthreads_max) ;
     GB_task_struct *restrict TaskList = NULL ;
     int max_ntasks = 0 ;
@@ -143,15 +134,19 @@ GrB_Info GB_subassign_one_slice
 
     double target_task_size = ((double) anz) / (double) (ntasks0) ;
     target_task_size = GB_IMAX (target_task_size, chunk) ;
-    int ntasks1 = ((double) anz) / target_task_size ;
+    ntasks1 = ((double) anz) / target_task_size ;
     ntasks1 = GB_IMAX (ntasks1, 1) ;
 
     //--------------------------------------------------------------------------
     // slice the work into coarse tasks
     //--------------------------------------------------------------------------
 
-    int64_t Coarse [ntasks1+1] ;
-    GB_pslice (Coarse, /* A */ A->p, A->nvec, ntasks1) ;
+    if (!GB_pslice (&Coarse, /* A */ A->p, A->nvec, ntasks1))
+    {
+        // out of memory
+        GB_FREE_ALL ;
+        return (GB_OUT_OF_MEMORY) ;
+    }
 
     //--------------------------------------------------------------------------
     // construct all tasks, both coarse and fine
@@ -346,9 +341,10 @@ GrB_Info GB_subassign_one_slice
     ASSERT (ntasks <= max_ntasks) ;
 
     //--------------------------------------------------------------------------
-    // return result
+    // free workspace and return result
     //--------------------------------------------------------------------------
 
+    GB_FREE_WORK ;
     (*p_TaskList  ) = TaskList ;
     (*p_max_ntasks) = max_ntasks ;
     (*p_ntasks    ) = ntasks ;

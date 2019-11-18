@@ -63,7 +63,7 @@ for k1 = 1:4
         tic
         for trial = 1:ntrials
             c1 = GB_mex_reduce_to_scalar (cin, [ ], op, S) ;
-            t = t + gbresults ;
+            t = t + grbresults ;
         end
         if (nthreads == 1)
             t1 = t ;
@@ -114,7 +114,7 @@ for k1 = 1:4
             tic
             for trial = 1:ntrials
                 c1 = GB_mex_reduce_to_scalar (cin, [ ], op, S) ;
-                t = t + gbresults ;
+                t = t + grbresults ;
             end
             if (nthreads == 1)
                 t1 = t ;

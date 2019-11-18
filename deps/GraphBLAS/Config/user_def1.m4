@@ -133,17 +133,15 @@ m4_define(`GB_semiring', `m4_define(`GB_semirings', GB_semirings()
                 {
                     GB_info = GB_AxB_user_dot2_$1_flipxy
                         (*GB_Chandle, GB_M,
-                        GB_Aslice, false,
-                        GB_B, false, GB_C_counts, GB_dot_nthreads, GB_naslice,
-                        GB_nbslice) ;
+                        GB_Aslice, false, GB_B, false, GB_B_slice,
+                        GB_C_counts, GB_dot_nthreads, GB_naslice, GB_nbslice) ;
                 }
                 else
                 {
                     GB_info = GB_AxB_user_dot2_$1
                         (*GB_Chandle, GB_M,
-                        GB_Aslice, false,
-                        GB_B, false, GB_C_counts, GB_dot_nthreads, GB_naslice,
-                        GB_nbslice) ;
+                        GB_Aslice, false, GB_B, false, GB_B_slice,
+                        GB_C_counts, GB_dot_nthreads, GB_naslice, GB_nbslice) ;
                 }
             }
         }

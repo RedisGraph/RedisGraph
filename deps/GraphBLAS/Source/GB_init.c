@@ -132,7 +132,7 @@ GrB_Info GB_init            // start up GraphBLAS
     #if defined (USER_POSIX_THREADS)
     {
         // initialize the critical section for POSIX pthreads
-        ok = (pthread_mutex_init (&GB_sync, NULL) == 0) ;
+        bool ok = (pthread_mutex_init (&GB_sync, NULL) == 0) ;
         if (!ok) GB_PANIC ;
     }
 
@@ -142,7 +142,7 @@ GrB_Info GB_init            // start up GraphBLAS
         // This is not yet supported.  See:
         // https://docs.microsoft.com/en-us/windows/desktop/sync
         //  /using-critical-section-objects
-        ok = InitializeCriticalSectionAndSpinCount (&GB_sync, 0x00000400) ;
+        bool ok = InitializeCriticalSectionAndSpinCount (&GB_sync, 0x00000400) ;
         // also do whatever Windows needs for thread-local-storage
         if (!ok) GB_PANIC ;
     }
@@ -151,7 +151,7 @@ GrB_Info GB_init            // start up GraphBLAS
     {
         // initialize the critical section for ANSI C11 threads
         // This should work but is not yet supported.
-        ok = (mtx_init (&GB_sync, mtx_plain) == thrd_success) ;
+        bool ok = (mtx_init (&GB_sync, mtx_plain) == thrd_success) ;
         if (!ok) GB_PANIC ;
     }
 

@@ -10,7 +10,7 @@
 // for additional diagnostics, use:
 // #define GB_DEVELOPER 1
 
-#include "GB.h"
+#include "GB_printf.h"
 
 GrB_Info GB_Monoid_check        // check a GraphBLAS monoid
 (
@@ -27,7 +27,7 @@ GrB_Info GB_Monoid_check        // check a GraphBLAS monoid
     // check inputs
     //--------------------------------------------------------------------------
 
-    GBPR0 ("\nGraphBLAS Monoid: %s ", GB_NAME) ;
+    GBPR0 ("\n    GraphBLAS Monoid: %s ", GB_NAME) ;
 
     if (monoid == NULL)
     { 
@@ -65,7 +65,7 @@ GrB_Info GB_Monoid_check        // check a GraphBLAS monoid
         Context) ;
     if (info != GrB_SUCCESS)
     { 
-        GBPR0 ("Monoid contains an invalid operator\n") ;
+        GBPR0 ("    Monoid contains an invalid operator\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "Monoid contains an invalid operator: [%s]", GB_NAME))) ;
     }
@@ -73,7 +73,7 @@ GrB_Info GB_Monoid_check        // check a GraphBLAS monoid
     if (monoid->op->xtype != monoid->op->ztype ||
         monoid->op->ytype != monoid->op->ztype)
     { 
-        GBPR0 ("All domains of operator must be the same\n") ;
+        GBPR0 ("    All domains of operator must be the same\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "All domains of monoid operator must be the same: [%s]",
             GB_NAME))) ;
@@ -82,7 +82,7 @@ GrB_Info GB_Monoid_check        // check a GraphBLAS monoid
     // print the identity value
     if (pr > 0)
     { 
-        GBPR ("identity: [ ") ;
+        GBPR ("    identity: [ ") ;
         info = GB_entry_check (monoid->op->ztype, monoid->identity, f,  
             Context) ;
         if (info != GrB_SUCCESS) return (info) ;

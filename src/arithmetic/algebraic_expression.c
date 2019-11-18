@@ -122,7 +122,12 @@ static inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, 
 					   B,                   // Second matrix
 					   desc                 // Descriptor
 				   );
-	assert(res == GrB_SUCCESS);
+
+	if(res != GrB_SUCCESS) {
+		// If the multiplication failed, print error info to stderr and exit.
+		fprintf(stderr, "Enountered error in matrix multiplication:\n%s\n", GrB_error());
+		assert(false);
+	}
 }
 
 // Reverse order of operand within expression,

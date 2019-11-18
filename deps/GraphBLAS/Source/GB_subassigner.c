@@ -558,6 +558,8 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
     // select the method to use
     //--------------------------------------------------------------------------
 
+    // TODO: add method 01n for C(:,:) = scalar when nnz (C) == 0.
+
     bool S_Extraction = true ;
 
     // empty_mask:  C(I,J)<!> = ... ; empty mask is complemented
@@ -699,6 +701,7 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
         //  =====================       ==============
 
         //  -   -   -   -   -   S       01:  C(I,J) = x, with S
+        //  -   -   -   -   -   S       01n: C(:,:) = x, no S, nnz(C) == 0
         //  -   -   -   -   A   S       02:  C(I,J) = A, with S
         //  -   -   -   +   -   S       03:  C(I,J) += x, with S
         //  -   -   -   +   A   S       04:  C(I,J) += A, with S

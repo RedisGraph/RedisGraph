@@ -7,7 +7,7 @@
 
 //------------------------------------------------------------------------------
 
-#include "GB.h"
+#include "GB_printf.h"
 
 GrB_Info GB_Matrix_check    // check a GraphBLAS matrix
 (
