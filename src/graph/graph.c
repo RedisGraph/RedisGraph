@@ -162,7 +162,6 @@ void _Graph_AddRelationMap(Graph *g) {
 	GrB_Matrix mapper;
 	GrB_Info res = GrB_Matrix_new(&mapper, GrB_UINT64, Graph_RequiredMatrixDim(g),
 								  Graph_RequiredMatrixDim(g));
-	// GrB_Info res = GrB_Matrix_new(&mapper, GrB_UINT64, _Graph_NodeCap(g), _Graph_NodeCap(g));
 	assert(res == GrB_SUCCESS);
 	g->_relations_map = array_append(g->_relations_map, mapper);
 }
@@ -236,12 +235,11 @@ void _MatrixSynchronize(const Graph *g, GrB_Matrix m) {
 	// We'll make resize and synchronize calls if we have pending ops or outdated dimensions.
 	pending |= (n_rows != dims) | (n_cols != dims);
 
-	// If the graph belongs to one thread, we don't need to flush pending operations
-	// or lock the mutex.
+	// If the graph belongs to one thread, we don't need to lock the mutex.
 	if(g->_writelocked) {
 		if(pending) {
 			assert(GxB_Matrix_resize(m, dims, dims) == GrB_SUCCESS);
-			// Flush changes to matrices.
+			// Flush changes to matrices if we've performed a resize.
 			_Graph_ApplyPending(m);
 		}
 		return;
@@ -259,7 +257,7 @@ void _MatrixSynchronize(const Graph *g, GrB_Matrix m) {
 			assert(GxB_Matrix_resize(m, dims, dims) == GrB_SUCCESS);
 		}
 
-		// Flush changes to matrices.
+		// Flush changes to matrix.
 		_Graph_ApplyPending(m);
 		_Graph_LeaveCriticalSection((Graph *)g);
 	}
@@ -271,11 +269,11 @@ void _MatrixResizeToCapacity(const Graph *g, GrB_Matrix m) {
 	GrB_Index ncols;
 	GrB_Matrix_ncols(&ncols, m);
 	GrB_Matrix_nrows(&nrows, m);
-	GrB_Index cap = _Graph_NodeCap(g) + array_len(g->nodes->deletedIdx);
+	GrB_Index cap = _Graph_NodeCap(g);
 
+	// This policy should only be used in a thread-safe context, so no locking is required.
 	if(ncols != cap || nrows != cap) {
 		assert(GxB_Matrix_resize(m, cap, cap) == GrB_SUCCESS);
-		_Graph_ApplyPending(m);
 	}
 }
 
@@ -293,7 +291,7 @@ void Graph_SetMatrixPolicy(Graph *g, MATRIX_POLICY policy) {
 		g->SynchronizeMatrix = _MatrixSynchronize;
 		break;
 	case RESIZE_TO_CAPACITY:
-		// Bulk insertion behavior; does not force pending operations
+		// Bulk insertion and creation behavior; does not force pending operations
 		// and resizes matrices to the graph's current node capacity.
 		g->SynchronizeMatrix = _MatrixResizeToCapacity;
 		break;
@@ -1045,7 +1043,6 @@ int Graph_AddLabel(Graph *g) {
 
 	GrB_Matrix m;
 	GrB_Matrix_new(&m, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
-	// GrB_Matrix_new(&m, GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
 	array_append(g->labels, m);
 	return array_len(g->labels) - 1;
 }
@@ -1055,7 +1052,6 @@ int Graph_AddRelationType(Graph *g) {
 
 	GrB_Matrix m;
 	GrB_Matrix_new(&m, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
-	// GrB_Matrix_new(&m, GrB_BOOL, _Graph_NodeCap(g), _Graph_NodeCap(g));
 	g->relations = array_append(g->relations, m);
 
 	_Graph_AddRelationMap(g);
