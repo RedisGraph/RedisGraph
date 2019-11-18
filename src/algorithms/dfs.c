@@ -9,7 +9,8 @@
 #include "rax.h"
 #include "../graph/entities/qg_edge.h"
 
-bool _DFS(QGNode *n, int level, bool close_cycle, int current_level, rax *visited, QGEdge ***path) {
+bool _DFS(QGNode *n, int level, bool close_cycle, int current_level, rax *visited, rax *used_edges,
+		  QGEdge ***path) {
 	// As long as we've yet to reach required level and there are nodes to process.
 	if(current_level >= level) return true;
 
@@ -25,9 +26,11 @@ bool _DFS(QGNode *n, int level, bool close_cycle, int current_level, rax *visite
 		QGEdge *e = n->outgoing_edges[i];
 		not_seen = raxFind(visited, (unsigned char *)e->dest->alias, strlen(e->dest->alias)) == raxNotFound;
 		if(not_seen || close_cycle) {
+			if(!raxInsert(used_edges, (unsigned char *)e->alias, strlen(e->alias), NULL, NULL)) continue;
 			*path = array_append(*path, e);
-			if(_DFS(e->dest, level, close_cycle, current_level + 1, visited, path)) return true;
+			if(_DFS(e->dest, level, close_cycle, current_level + 1, visited, used_edges, path)) return true;
 			array_pop(*path);
+			raxRemove(used_edges, (unsigned char *)e->alias, strlen(e->alias), NULL);
 		}
 	}
 
@@ -35,9 +38,11 @@ bool _DFS(QGNode *n, int level, bool close_cycle, int current_level, rax *visite
 		QGEdge *e = n->incoming_edges[i];
 		not_seen = raxFind(visited, (unsigned char *)e->src->alias, strlen(e->src->alias)) == raxNotFound;
 		if(not_seen || close_cycle) {
+			if(!raxInsert(used_edges, (unsigned char *)e->alias, strlen(e->alias), NULL, NULL)) continue;
 			*path = array_append(*path, e);
-			if(_DFS(e->src, level, close_cycle, current_level + 1, visited, path)) return true;
+			if(_DFS(e->src, level, close_cycle, current_level + 1, visited, used_edges, path)) return true;
 			array_pop(*path);
+			raxRemove(used_edges, (unsigned char *)e->alias, strlen(e->alias), NULL);
 		}
 	}
 
@@ -49,9 +54,11 @@ bool _DFS(QGNode *n, int level, bool close_cycle, int current_level, rax *visite
 QGEdge **DFS(QGNode *s, int level, bool close_cycle) {
 	int current_level = 0;                  // Tracks BFS level.
 	rax *visited = raxNew();                // Dictionary of visited nodes.
+	rax *used_edges = raxNew();             // Dictionary of used edges.
 	QGEdge **path = array_new(QGEdge *, 0); // Path found.
 
-	_DFS(s, level, close_cycle, current_level, visited, &path);
+	_DFS(s, level, close_cycle, current_level, visited, used_edges, &path);
 	raxFree(visited);
+	raxFree(used_edges);
 	return path;
 }

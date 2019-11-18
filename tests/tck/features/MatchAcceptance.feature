@@ -30,7 +30,6 @@
 
 Feature: MatchAcceptance
 
-@skip
   Scenario: Path query should return results in written order
     Given an empty graph
     And having executed:
@@ -90,7 +89,6 @@ Feature: MatchAcceptance
       | 3 | 2 |
     And no side effects
 
-@skip
   Scenario: Use params in pattern matching predicates
     Given an empty graph
     And having executed:
@@ -98,6 +96,7 @@ Feature: MatchAcceptance
       CREATE (:A)-[:T {name: 'bar'}]->(:B {name: 'me'})
       """
     And parameters are:
+      | name  | value |
       | param | 'bar' |
     When executing query:
       """
@@ -359,7 +358,6 @@ Feature: MatchAcceptance
       | (:B {p2: 13}) |
     And no side effects
 
-@skip
   Scenario: Return a simple path
     Given an empty graph
     And having executed:
@@ -376,7 +374,6 @@ Feature: MatchAcceptance
       | <(:A {name: 'A'})-[:KNOWS]->(:B {name: 'B'})> |
     And no side effects
 
-@skip
   Scenario: Return a three node path
     Given an empty graph
     And having executed:
@@ -514,7 +511,6 @@ Feature: MatchAcceptance
       | [[:REL {num: 1}], [:REL {num: 2}]] |
     And no side effects
 
-@skip
   Scenario: Return a var length path
     Given an empty graph
     And having executed:
@@ -551,7 +547,6 @@ Feature: MatchAcceptance
       | (:A) | (:B) | 1 |
     And no side effects
 
-@skip
   Scenario: Return a named var length path of length zero
     Given an empty graph
     And having executed:

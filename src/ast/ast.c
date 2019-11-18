@@ -13,6 +13,7 @@
 #include "../util/qsort.h"
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
+#include "ast_build_ar_exp.h"
 
 // TODO duplicated logic, find shared place for it
 static inline void _prepareIterateAll(rax *map, raxIterator *iter) {
@@ -69,6 +70,26 @@ static void _AST_LimitResults(AST *ast, const cypher_astnode_t *root_clause,
 	} else if(project_clause) {
 		// Use the subsequent projection clause (if one is provided) otherwise.
 		ast->limit = _get_limit(project_clause);
+	}
+}
+
+/* This method extracts the query given parameters values, convert them into
+ * constant arithmetic expressions and store them in a map of <name, value>
+ * in the query context. */
+static void _extract_params(const cypher_astnode_t *statement) {
+	uint noptions = cypher_ast_statement_noptions(statement);
+	if(noptions == 0) return;
+	rax *params = QueryCtx_GetParams();
+	for(uint i = 0; i < noptions; i++) {
+		const cypher_astnode_t *option = cypher_ast_statement_get_option(statement, i);
+		uint nparams = cypher_ast_cypher_option_nparams(option);
+		for(uint j = 0; j < nparams; j++) {
+			const cypher_astnode_t *param = cypher_ast_cypher_option_get_param(option, j);
+			const char *paramName = cypher_ast_string_get_value(cypher_ast_cypher_option_param_get_name(param));
+			const cypher_astnode_t *paramValue = cypher_ast_cypher_option_param_get_value(param);
+			AR_ExpNode *exp = AR_EXP_FromExpression(paramValue);
+			raxInsert(params, (unsigned char *) paramName, strlen(paramName), (void *)exp, NULL);
+		}
 	}
 }
 
@@ -187,9 +208,7 @@ const cypher_astnode_t **AST_GetClauses(const AST *ast, cypher_astnode_type_t ty
 AST *AST_Build(cypher_parse_result_t *parse_result) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->referenced_entities = NULL;
-	ast->name_ctx = NULL;
-	ast->project_all_ctx = NULL;
-	ast->named_paths_ctx = NULL;
+	ast->anot_ctx_collection = AST_AnnotationCtxCollection_New();
 	ast->free_root = false;
 
 	// Retrieve the AST root node from a parsed query.
@@ -197,7 +216,8 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	// We are parsing with the CYPHER_PARSE_ONLY_STATEMENTS flag,
 	// and double-checking this in AST validations
 	assert(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
-
+	// Extract the given query parameters value, and store them in query context.
+	_extract_params(statement);
 	ast->root = cypher_ast_statement_get_body(statement);
 
 	// Empty queries should be captured by AST validations
@@ -214,9 +234,7 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 
 AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	AST *ast = rm_malloc(sizeof(AST));
-	ast->name_ctx = master_ast->name_ctx;
-	ast->project_all_ctx = master_ast->project_all_ctx;
-	ast->named_paths_ctx = master_ast->named_paths_ctx;
+	ast->anot_ctx_collection = master_ast->anot_ctx_collection;
 	ast->free_root = true;
 	ast->limit = UNLIMITED;
 	uint n = end_offset - start_offset;
@@ -299,12 +317,15 @@ bool AST_ClauseContainsAggregation(const cypher_astnode_t *clause) {
 }
 
 const char *AST_GetEntityName(const AST *ast, const cypher_astnode_t *entity) {
-	return cypher_astnode_get_annotation(ast->name_ctx, entity);
+	AnnotationCtx *name_ctx = AST_AnnotationCtxCollection_GetNameCtx(ast->anot_ctx_collection);
+	return cypher_astnode_get_annotation(name_ctx, entity);
 }
 
 const char **AST_GetProjectAll(const cypher_astnode_t *projection_clause) {
 	AST *ast = QueryCtx_GetAST();
-	return cypher_astnode_get_annotation(ast->project_all_ctx, projection_clause);
+	AnnotationCtx *project_all_ctx = AST_AnnotationCtxCollection_GetProjectAllCtx(
+										 ast->anot_ctx_collection);
+	return cypher_astnode_get_annotation(project_all_ctx, projection_clause);
 }
 
 const char **AST_BuildColumnNames(const cypher_astnode_t *return_clause) {
@@ -337,6 +358,10 @@ int TraverseRecordCap(const AST *ast) {
 	return MIN(ast->limit, 16);  // Use 16 as the default value.
 }
 
+inline AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast) {
+	return ast->anot_ctx_collection;
+}
+
 void AST_Free(AST *ast) {
 	if(ast == NULL) return;
 	if(ast->referenced_entities) raxFree(ast->referenced_entities);
@@ -345,9 +370,7 @@ void AST_Free(AST *ast) {
 		cypher_astnode_free((cypher_astnode_t *)ast->root);
 	} else {
 		// This is the master AST, free the annotation contexts that have been constructed.
-		if(ast->name_ctx) cypher_ast_annotation_context_free(ast->name_ctx);
-		if(ast->project_all_ctx) cypher_ast_annotation_context_free(ast->project_all_ctx);
-		if(ast->named_paths_ctx) cypher_ast_annotation_context_free(ast->named_paths_ctx);
+		AST_AnnotationCtxCollection_Free(ast->anot_ctx_collection);
 	}
 	rm_free(ast);
 }

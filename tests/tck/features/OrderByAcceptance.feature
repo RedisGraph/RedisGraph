@@ -375,7 +375,8 @@ Feature: OrderByAcceptance
     @skip
     Scenario: ORDER BY with negative parameter for LIMIT should not generate errors
         And parameters are:
-            | limit | -1 |
+            | name  | value |
+            | limit | -1    |
         When executing query:
             """
             MATCH (p:Person)

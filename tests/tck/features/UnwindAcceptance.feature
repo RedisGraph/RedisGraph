@@ -122,6 +122,7 @@ Feature: UnwindAcceptance
             CREATE (:Year {year: 2016})
             """
         And parameters are:
+            | name   | value                                      |
             | events | [{year: 2016, id: 1}, {year: 2016, id: 2}] |
         When executing query:
             """
@@ -274,6 +275,7 @@ Feature: UnwindAcceptance
     Scenario: Unwind with merge
         Given an empty graph
         And parameters are:
+            | name  | value                                                                |
             | props | [{login: 'login1', name: 'name1'}, {login: 'login2', name: 'name2'}] |
         When executing query:
             """

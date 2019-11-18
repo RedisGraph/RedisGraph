@@ -192,7 +192,8 @@ Feature: TypeConversionFunctions
   Scenario: `toInteger()` on a complex-typed expression
     Given any graph
     And parameters are:
-      | param | 1 |
+      | name  | value |
+      | param | 1     |
     When executing query:
       """
       RETURN toInteger(1 - $param) AS result

@@ -163,7 +163,6 @@ Feature: MatchAcceptance2
       | ({name: 'D'}) |
     And no side effects
 
-@skip
   Scenario: Variable length relationship without lower bound
     Given an empty graph
     And having executed:
@@ -184,7 +183,6 @@ Feature: MatchAcceptance2
       | <({name: 'A'})-[:KNOWS]->({name: 'B'})-[:KNOWS]->({name: 'C'})> |
     And no side effects
 
-@skip
   Scenario: Variable length relationship without bounds
     Given an empty graph
     And having executed:
@@ -619,7 +617,6 @@ Feature: MatchAcceptance2
       | ({name: 'bar'}) |
     And no side effects
 
-@skip
   Scenario: Handling direction of named paths
     Given an empty graph
     And having executed:
@@ -775,7 +772,6 @@ Feature: MatchAcceptance2
       | false   |
     And no side effects
 
-@skip
   Scenario: Matching with many predicates and larger pattern
     Given an empty graph
     And having executed:
@@ -792,8 +788,9 @@ Feature: MatchAcceptance2
              (p2)-[:AP_HAS_VALUE]->(red)
       """
     And parameters are:
-      | 1 | 0 |
-      | 2 | 1 |
+      | name | value |
+      | 1    | 0     |
+      | 2    | 1     |
     When executing query:
       """
       MATCH (advertiser)-[:ADV_HAS_PRODUCT]->(out)-[:AP_HAS_VALUE]->(red)<-[:AA_HAS_VALUE]-(a)
@@ -1745,7 +1742,6 @@ Feature: MatchAcceptance2
       | {node1: (:A), rel: [:T], node2: (:B)} |
     And no side effects
 
-@skip
   Scenario: Respecting direction when matching existing path
     Given an empty graph
     And having executed:
