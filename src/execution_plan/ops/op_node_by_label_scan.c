@@ -27,18 +27,9 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *node) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	op->g = gc->g;
 	op->n = node;
+	op->iter = NULL;
 	op->_zero_matrix = NULL;
 	op->child_record = NULL;
-
-	/* Find out label matrix ID. */
-	Schema *schema = GraphContext_GetSchema(gc, node->label, SCHEMA_NODE);
-	if(schema) {
-		GxB_MatrixTupleIter_new(&op->iter, Graph_GetLabelMatrix(gc->g, schema->id));
-	} else {
-		/* Label does not exist, use a fake empty matrix. */
-		GrB_Matrix_new(&op->_zero_matrix, GrB_BOOL, 1, 1);
-		GxB_MatrixTupleIter_new(&op->iter, op->_zero_matrix);
-	}
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_NODE_BY_LABEL_SCAN, "Node By Label Scan", NodeByLabelScanInit,
@@ -49,8 +40,29 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *node) {
 	return (OpBase *)op;
 }
 
+static inline void _ConstructIterator(NodeByLabelScan *op) {
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Schema *schema = GraphContext_GetSchema(gc, op->n->label, SCHEMA_NODE);
+	if(schema) {
+		GxB_MatrixTupleIter_new(&op->iter, Graph_GetLabelMatrix(gc->g, schema->id));
+	} else {
+		/* Label does not exist, use a fake empty matrix. */
+		GrB_Matrix_new(&op->_zero_matrix, GrB_BOOL, 1, 1);
+		GxB_MatrixTupleIter_new(&op->iter, op->_zero_matrix);
+	}
+}
+
 static OpResult NodeByLabelScanInit(OpBase *opBase) {
-	if(opBase->childCount > 0) opBase->consume = NodeByLabelScanConsumeFromChild;
+	/* Find out label matrix ID. */
+	NodeByLabelScan *scan = (NodeByLabelScan *)opBase;
+
+	if(opBase->childCount > 0) {
+		opBase->consume = NodeByLabelScanConsumeFromChild;
+	} else {
+		// If we have no children, we can build the iterator now.
+		_ConstructIterator((NodeByLabelScan *)opBase);
+	}
+
 	return OP_OK;
 }
 
@@ -67,6 +79,9 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 	if(op->child_record == NULL) { // should only trigger on first invocation.
 		op->child_record = OpBase_Consume(op->op.children[0]);
 		if(op->child_record == NULL) return NULL;
+		// One-time construction of the iterator.
+		// (Don't do so before now because the label might have been built in a child op.)
+		_ConstructIterator(op);
 	}
 
 	GrB_Index nodeId;

@@ -215,7 +215,6 @@ Feature: MergeNodeAcceptance
     And the side effects should be:
       | +properties | 1 |
 
-@skip
   Scenario: Should work when finding multiple elements
     Given an empty graph
     When executing query:

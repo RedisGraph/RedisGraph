@@ -15,6 +15,7 @@ static OpResult MergeInit(OpBase *opBase);
 static Record MergeConsume(OpBase *opBase);
 static void MergeFree(OpBase *opBase);
 
+/*
 static void _AddProperties(OpMerge *op, Record r, GraphEntity *ge, PropertyMap *props) {
 	for(int i = 0; i < props->property_count; i++) {
 		SIValue val = AR_EXP_Evaluate(props->values[i], r);
@@ -24,19 +25,11 @@ static void _AddProperties(OpMerge *op, Record r, GraphEntity *ge, PropertyMap *
 
 	if(op->stats) op->stats->properties_set += props->property_count;
 }
+*/
 
 
 static inline Record _pullFromStream(OpBase *branch) {
 	return OpBase_Consume(branch);
-}
-
-static Record _pullFromBoundVariableStream(OpMerge *op) {
-	return _pullFromStream(op->bound_variable_stream);
-}
-
-static Record _pullFromMatchStream(OpMerge *op, Record lhs_record) {
-	// OpBase_PropagateReset(rhs);
-	return _pullFromStream(op->match_stream);
 }
 
 OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats) {
@@ -45,7 +38,8 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats) {
 	 * and ValueHashJoin). */
 	OpMerge *op = malloc(sizeof(OpMerge));
 	op->stats = stats;
-	op->records = NULL;
+	op->output_records = NULL;
+	op->input_records = NULL;
 	op->match_argument_tap = NULL;
 	op->create_argument_tap = NULL;
 
@@ -57,9 +51,8 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats) {
 }
 
 static Record _handoff(OpMerge *op) {
-	// TODO is all this function's work necessary?
 	Record r = NULL;
-	if(array_len(op->records)) r = array_pop(op->records);
+	if(array_len(op->output_records)) r = array_pop(op->output_records);
 	return r;
 }
 
@@ -67,56 +60,62 @@ static Record MergeConsume(OpBase *opBase) {
 	OpMerge *op = (OpMerge *)opBase;
 
 	// Return mode, all data was consumed.
-	if(op->records) return _handoff(op);
+	if(op->output_records) return _handoff(op);
 
 	// Consume mode.
-	op->records = array_new(Record, 32);
+	op->output_records = array_new(Record, 32);
 
-	bool creating = false; // TODO refactor out?
-	Record lhs_record = NULL;
-	bool reading_bound_variables = true; // TODO bad name, might not have bound variables.
-	while(reading_bound_variables) {
-		Record rhs_record = NULL;
-		bool should_create_pattern = true;
-		// Try to get a record from the bound variable stream.
-		if(op->bound_variable_stream) {
-			lhs_record = _pullFromBoundVariableStream(op);
-			// if(lhs_record == NULL) return _handoff(op); // Depleted, switch to return mode.
-			if(lhs_record == NULL) break;
-
-			// Propagate record to the top of the Match stream.
-			// TODO if statements might be unnecessary
-			if(op->match_argument_tap) Argument_AddRecord(op->match_argument_tap, Record_Clone(lhs_record));
-		} else {
-			reading_bound_variables = false;
-		}
-
-		bool reading_matches = true;
-		while(reading_matches) {
-			// Retrieve Records from the Match stream until its depleted.
-			rhs_record = _pullFromMatchStream(op, lhs_record);
-			if(rhs_record == NULL) {
-				reading_matches = false;
-				break;
-			}
-			// Pattern was successfully matched.
-			should_create_pattern = false;
-			op->records = array_append(op->records, rhs_record);
-		}
-
-		if(should_create_pattern) {
-			// Save the LHS record so that we can create from it once we finish reading.
-			if(op->create_argument_tap) Argument_AddRecord(op->create_argument_tap, Record_Clone(lhs_record));
-			creating = true;
+	// If we have a bound variable stream, pull from it and store records until depleted.
+	if(op->bound_variable_stream) {
+		Record input_record;
+		while((input_record = _pullFromStream(op->bound_variable_stream))) {
+			op->input_records = array_append(op->input_records, input_record);
 		}
 	}
 
-	if(creating) {
+	bool must_create_records = false;
+	bool reading_matches = true;
+	// Match mode: attempt to resolve the pattern once for every record from the bound variable
+	// stream, or once if we have no bound variables.
+	while(reading_matches) {
+		Record lhs_record = NULL;
+		if(op->input_records) {
+			// If we had bound variables but have depleted our input records,
+			// we're done pulling from the Match stream.
+			if(array_len(op->input_records) == 0) break;
+
+			// Pull a new input record.
+			lhs_record = array_pop(op->input_records);
+			// Propagate record to the top of the Match stream.
+			Argument_AddRecord(op->match_argument_tap, Record_Clone(lhs_record));
+		} else {
+			// This loop only executes once if we don't have input records resolving bound variables.
+			reading_matches = false;
+		}
+
+		bool should_create_pattern = true;
+		Record rhs_record;
+		// Retrieve Records from the Match stream until it's depleted.
+		while((rhs_record = _pullFromStream(op->match_stream))) {
+			// Pattern was successfully matched.
+			should_create_pattern = false;
+			op->output_records = array_append(op->output_records, rhs_record);
+		}
+
+		if(should_create_pattern) {
+			// Copy the LHS record to the Create stream to build once we finish reading.
+			if(lhs_record) Argument_AddRecord(op->create_argument_tap, Record_Clone(lhs_record));
+			must_create_records = true;
+		}
+	}
+
+	// True if we have at least one pattern to create.
+	if(must_create_records) {
 		/* We've populated the Create stream with all the Records it must read;
 		 * pull from it until we've retrieved all newly-created Records. */
 		Record created_record;
 		while((created_record = _pullFromStream(op->create_stream))) {
-			op->records = array_append(op->records, created_record);
+			op->output_records = array_append(op->output_records, created_record);
 		}
 	}
 
@@ -133,6 +132,8 @@ static OpResult MergeInit(OpBase *opBase) {
 		op->create_stream = opBase->children[1];
 		return OP_OK;
 	}
+
+	op->input_records = array_new(Record, 1);
 
 	// Otherwise, the first stream resolves bound variables.
 	op->bound_variable_stream = opBase->children[0];
