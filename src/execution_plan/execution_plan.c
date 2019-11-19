@@ -566,7 +566,7 @@ static inline void _buildCreateOp(GraphContext *gc, AST *ast, ExecutionPlan *pla
 	AST_CreateContext create_ast_ctx = AST_PrepareCreateOp(plan->query_graph, bound_vars);
 	raxFree(bound_vars);
 	OpBase *op = NewCreateOp(plan, stats, create_ast_ctx.nodes_to_create,
-							 create_ast_ctx.edges_to_create);
+							 create_ast_ctx.edges_to_create, false);
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
@@ -612,8 +612,13 @@ static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *
 static void _buildMergeCreateStream(ExecutionPlan *plan, const cypher_astnode_t *clause,
 									ResultSetStatistics *stats, const char **bound_vars) {
 	AST_MergeContext merge_ast_ctx = AST_PrepareMergeOp(clause, plan->query_graph, bound_vars);
+	/* If we have bound variables, we should ensure that all of our created entities are unique. Consider:
+	 * CREATE (:A {val: 2}), (:A {val: 2})
+	 * MATCH (a:A) MERGE (:B {val: a.val})
+	 * Exactly one node should be created in the MATCH...MERGE query. */
+	bool no_duplicate_creations = bound_vars != NULL;
 	OpBase *create_op = NewCreateOp(plan, stats, merge_ast_ctx.nodes_to_merge,
-									merge_ast_ctx.edges_to_merge);
+									merge_ast_ctx.edges_to_merge, no_duplicate_creations);
 	ExecutionPlan_AddOp(plan->root, create_op); // Add Create stream as Merge's last child.
 	// If we have bound variables, push an Argument tap beneath the Create op. // see TODO in Match stream construction.
 	if(bound_vars) {

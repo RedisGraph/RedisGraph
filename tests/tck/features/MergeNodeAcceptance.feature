@@ -258,7 +258,6 @@ Feature: MergeNodeAcceptance
       | +nodes      | 2 |
       | +properties | 2 |
 
-@skip
   Scenario: Should be able to merge using property from match
     Given an empty graph
     And having executed:

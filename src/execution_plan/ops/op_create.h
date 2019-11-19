@@ -27,6 +27,7 @@ typedef struct {
 	QueryGraph *qg;
 	GraphContext *gc;
 	Record *records;
+	rax *unique_entities;
 
 	NodeCreateCtx *nodes_to_create;
 	EdgeCreateCtx *edges_to_create;
@@ -39,4 +40,5 @@ typedef struct {
 } OpCreate;
 
 OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeCreateCtx *nodes,
-					EdgeCreateCtx *edges);
+					EdgeCreateCtx *edges, bool no_duplicate_creations);
+

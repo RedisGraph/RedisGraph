@@ -49,10 +49,51 @@ static void _PendingPropertiesFree(PendingProperties *props) {
 	rm_free(props);
 }
 
+// Convert a graph entity's components into an identifying hash code.
+static XXH64_hash_t _HashEntity(GraphEntityType t, uint label_id, PendingProperties *props) {
+	XXH_errorcode res;
+	XXH64_state_t state; // TODO do we really not need to call XXH64_createState?
+
+	res = XXH64_reset(&state, 0);
+	assert(res != XXH_ERROR);
+
+	// Hash entity type
+	assert(XXH64_update(&state, &t, sizeof(t)) != XXH_ERROR);
+
+	// Hash label ID (or no ID macro)
+	assert(XXH64_update(&state, &label_id, sizeof(label_id)) != XXH_ERROR);
+
+	if(props) {
+		// Hash attribute count
+		assert(XXH64_update(&state, &props->property_count, sizeof(props->property_count)) != XXH_ERROR);
+
+		for(int i = 0; i < props->property_count; i++) {
+			// Hash attribute ID
+			assert(XXH64_update(&state, &props->attr_keys[i], sizeof(props->attr_keys[i])) != XXH_ERROR);
+
+			// Hash the hashval of the associated SIValue
+			XXH64_hash_t value_hash = SIValue_HashCode(props->values[i]);
+			assert(XXH64_update(&state, &value_hash, sizeof(value_hash)) != XXH_ERROR);
+		}
+	}
+
+	unsigned long long const hash = XXH64_digest(&state);
+
+	return hash;
+}
+
+// Returns true if the considered entity has not been encountered previously.
+static bool _EntityIsDistinct(rax *unique_entities, GraphEntityType t, uint label_id,
+							  PendingProperties *props) {
+	XXH64_hash_t hash = _HashEntity(t, label_id, props);
+	return raxTryInsert(unique_entities, (unsigned char *)&hash, sizeof(hash), NULL, NULL);
+}
+
 OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeCreateCtx *nodes,
-					EdgeCreateCtx *edges) {
+					EdgeCreateCtx *edges, bool no_duplicate_creations) {
 	OpCreate *op = calloc(1, sizeof(OpCreate));
 	op->records = NULL;
+	op->unique_entities = no_duplicate_creations ? raxNew() : NULL;
 	op->nodes_to_create = nodes;
 	op->edges_to_create = edges;
 	op->gc = QueryCtx_GetGraphCtx();
@@ -99,6 +140,13 @@ void _CreateNodes(OpCreate *op, Record r) {
 		PendingProperties *converted_properties = NULL;
 		if(map) converted_properties = _ConvertPropertyMap(r, map);
 
+		/* If we're only inserting unique entities, verify that this entity is new. */
+		if(op->unique_entities &&
+		   !_EntityIsDistinct(op->unique_entities, GETYPE_NODE, n->labelID, converted_properties)) {
+			_PendingPropertiesFree(converted_properties);
+			continue;
+		}
+
 		/* Save node for later insertion. */
 		op->created_nodes = array_append(op->created_nodes, newNode);
 
@@ -127,6 +175,15 @@ void _CreateEdges(OpCreate *op, Record r) {
 		PropertyMap *map = op->edges_to_create[i].properties;
 		PendingProperties *converted_properties = NULL;
 		if(map) converted_properties = _ConvertPropertyMap(r, map);
+
+		/* If we're only inserting unique entities, verify that this entity is new. */
+		if(op->unique_entities &&
+		   // TODO reltype ID passed here is possibly unset?
+		   !_EntityIsDistinct(op->unique_entities, GETYPE_EDGE, e->reltypeIDs[0], converted_properties)) {
+			// If the entity is not new, free its properties and skip this insertion.
+			_PendingPropertiesFree(converted_properties);
+			continue;
+		}
 
 		/* Save edge for later insertion. */
 		op->created_edges = array_append(op->created_edges, newEdge);
@@ -366,5 +423,8 @@ static void CreateFree(OpBase *ctx) {
 	}
 	array_free(op->edge_properties);
 	op->edge_properties = NULL;
+
+	if(op->unique_entities) raxFree(op->unique_entities);
+	op->unique_entities = NULL;
 }
 
