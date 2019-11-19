@@ -123,7 +123,8 @@ OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeC
 	return (OpBase *)op;
 }
 
-void _CreateNodes(OpCreate *op, Record r) {
+bool _CreateNodes(OpCreate *op, Record r) {
+	bool created_nodes = false;
 	uint nodes_to_create_count = array_len(op->nodes_to_create);
 	for(uint i = 0; i < nodes_to_create_count; i++) {
 		/* Get specified node to create. */
@@ -152,10 +153,14 @@ void _CreateNodes(OpCreate *op, Record r) {
 
 		/* Save properties to insert with node. */
 		op->node_properties = array_append(op->node_properties, converted_properties);
+
+		created_nodes = true;
 	}
+	return created_nodes;
 }
 
-void _CreateEdges(OpCreate *op, Record r) {
+bool _CreateEdges(OpCreate *op, Record r) {
+	bool created_edges = false;
 	uint edges_to_create_count = array_len(op->edges_to_create);
 	for(uint i = 0; i < edges_to_create_count; i++) {
 		/* Get specified edge to create. */
@@ -190,7 +195,10 @@ void _CreateEdges(OpCreate *op, Record r) {
 
 		/* Save properties to insert with node. */
 		op->edge_properties = array_append(op->edge_properties, converted_properties);
+
+		created_edges = true;
 	}
+	return created_edges;
 }
 
 /* Commit insertions. */
@@ -334,12 +342,14 @@ static Record CreateConsume(OpBase *opBase) {
 		r = OpBase_CreateRecord((OpBase *)op);
 		// Track the newly-allocated Record so that it may be freed if execution fails.
 		OpBase_AddVolatileRecord(opBase, r);
+
 		/* Create entities. */
-		_CreateNodes(op, r);
-		_CreateEdges(op, r);
+		bool entities_created = false;
+		entities_created |= _CreateNodes(op, r);
+		entities_created |= _CreateEdges(op, r);
 
 		// Save record for later use.
-		op->records = array_append(op->records, r);
+		if(entities_created) op->records = array_append(op->records, r);
 	} else {
 		// Pull data until child is depleted.
 		child = op->op.children[0];
@@ -348,11 +358,12 @@ static Record CreateConsume(OpBase *opBase) {
 			OpBase_AddVolatileRecord(opBase, r);
 
 			/* Create entities. */
-			_CreateNodes(op, r);
-			_CreateEdges(op, r);
+			bool entities_created = false;
+			entities_created |= _CreateNodes(op, r);
+			entities_created |= _CreateEdges(op, r);
 
 			// Save record for later use.
-			op->records = array_append(op->records, r);
+			if(entities_created) op->records = array_append(op->records, r);
 		}
 	}
 

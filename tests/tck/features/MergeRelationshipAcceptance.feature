@@ -162,7 +162,6 @@ Feature: MergeRelationshipAcceptance
       | +relationships | 1 |
       | +properties    | 1 |
 
-@skip
   Scenario: Using ON CREATE on a node
     Given an empty graph
     And having executed:
@@ -180,7 +179,6 @@ Feature: MergeRelationshipAcceptance
       | +relationships | 1 |
       | +properties    | 1 |
 
-@skip
   Scenario: Using ON CREATE on a relationship
     Given an empty graph
     And having executed:
@@ -201,7 +199,6 @@ Feature: MergeRelationshipAcceptance
       | +relationships | 1 |
       | +properties    | 1 |
 
-@skip
   Scenario: Using ON MATCH on created node
     Given an empty graph
     And having executed:
@@ -218,7 +215,6 @@ Feature: MergeRelationshipAcceptance
     And the side effects should be:
       | +relationships | 1 |
 
-@skip
   Scenario: Using ON MATCH on created relationship
     Given an empty graph
     And having executed:
@@ -235,7 +231,6 @@ Feature: MergeRelationshipAcceptance
     And the side effects should be:
       | +relationships | 1 |
 
-@skip
   Scenario: Using ON MATCH on a relationship
     Given an empty graph
     And having executed:

@@ -562,7 +562,7 @@ static inline void _buildCallOp(AST *ast, ExecutionPlan *plan,
 static inline void _buildCreateOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 								  ResultSetStatistics *stats) {
 	// Collect the variables that are bound at this point, as CREATE shouldn't construct them.
-	rax *bound_vars = raxClone(plan->record_map); // TODO add
+	rax *bound_vars = raxClone(plan->record_map);
 	AST_CreateContext create_ast_ctx = AST_PrepareCreateOp(plan->query_graph, bound_vars);
 	raxFree(bound_vars);
 	OpBase *op = NewCreateOp(plan, stats, create_ast_ctx.nodes_to_create,
@@ -576,8 +576,8 @@ static inline void _buildUnwindOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
-static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *clause,
-								   const char **bound_vars) {
+static void _buildMergeMatchStream(ExecutionPlan *plan, AST_MergeContext *merge_ctx,
+								   const cypher_astnode_t *clause, ResultSetStatistics *stats, const char **bound_vars) {
 	AST *ast = QueryCtx_GetAST();
 	// Initialize an ExecutionPlan that shares this plan's Record mapping.
 	ExecutionPlan *rhs_plan = _NewEmptyExecutionPlan();
@@ -601,6 +601,12 @@ static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *
 	rhs_ast->referenced_entities = NULL; // Shared variable, don't free.
 	AST_Free(rhs_ast);
 	QueryCtx_SetAST(ast); // Reset the AST.
+
+	if(merge_ctx->on_match) {
+		// We have an ON MATCH directive, convert it into an Update op.
+		OpBase *on_match_set_op = NewUpdateOp(plan, merge_ctx->on_match, stats);
+		_ExecutionPlan_UpdateRoot(rhs_plan, on_match_set_op); // Place Update op at head of stream.
+	}
 
 	ExecutionPlan_AddOp(plan->root, rhs_plan->root); // Add Match stream to Merge op.
 
@@ -691,7 +697,7 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 	_ExecutionPlan_UpdateRoot(plan, merge_op);
 
 	// Build the Match stream as a Merge child.
-	_buildMergeMatchStream(plan, clause, variables);
+	_buildMergeMatchStream(plan, &merge_ctx, clause, stats, variables);
 
 	// Build the Create stream as a Merge child.
 	_buildMergeCreateStream(plan, &merge_ctx, stats, variables);
@@ -718,6 +724,23 @@ static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
+/* TODO not great logic.
+ * We combine all Create clauses into one op, so if we already have a Create op we don't need another.
+ * The exception is if we have a MERGE...CREATE query, as Merge introduces its own Create op. */
+static inline bool _ConvertedCreateClauses(OpBase *root) {
+	if(!root) return false;
+
+	if(root->type == OPType_CREATE) return true;
+	else if(root->type == OPType_MERGE) return false;
+
+	for(int i = 0; i < root->childCount; i++) {
+		bool child_has_create = _ConvertedCreateClauses(root->children[i]);
+		if(child_has_create) return child_has_create;
+	}
+
+	return false;
+}
+
 static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 												ExecutionPlan *plan, ResultSetStatistics *stats, const cypher_astnode_t *clause) {
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
@@ -733,7 +756,7 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 		_buildCallOp(ast, plan, clause);
 	} else if(t == CYPHER_AST_CREATE) {
 		// Only add at most one Create op per plan. TODO Revisit and improve this logic.
-		if(ExecutionPlan_LocateOp(plan->root, OPType_CREATE)) return;
+		if(_ConvertedCreateClauses(plan->root)) return;
 		_buildCreateOp(gc, ast, plan, stats);
 	} else if(t == CYPHER_AST_UNWIND) {
 		_buildUnwindOp(plan, clause);

@@ -7,6 +7,7 @@
 #include "ast_build_op_contexts.h"
 #include "ast_build_ar_exp.h"
 #include "../util/arr.h"
+#include "../util/rax_extensions.h"
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
 #include "../query_ctx.h"
@@ -186,8 +187,11 @@ AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, QueryG
 	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clause);
 	NodeCreateCtx *nodes_to_merge = array_new(NodeCreateCtx, 1);
 	EdgeCreateCtx *edges_to_merge = array_new(EdgeCreateCtx, 1);
-	// TODO shouldn't operate on the actual bound vars rax, as this call may insert aliases.
-	AST_PreparePathCreation(path, qg, bound_vars, &nodes_to_merge, &edges_to_merge);
+
+	// Shouldn't operate on the actual bound vars rax, as this call may insert aliases.
+	rax *bound_introduced_entities = raxClone(bound_vars);
+	AST_PreparePathCreation(path, qg, bound_introduced_entities, &nodes_to_merge, &edges_to_merge);
+	raxFree(bound_introduced_entities);
 
 	merge_ctx.nodes_to_merge = nodes_to_merge;
 	merge_ctx.edges_to_merge = edges_to_merge;
