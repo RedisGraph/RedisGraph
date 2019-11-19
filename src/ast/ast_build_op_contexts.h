@@ -22,6 +22,8 @@ typedef struct {
 typedef struct {
 	NodeCreateCtx *nodes_to_merge;
 	EdgeCreateCtx *edges_to_merge;
+	EntityUpdateEvalCtx *on_match;
+	EntityUpdateEvalCtx *on_create;
 } AST_MergeContext;
 
 typedef struct {
@@ -33,7 +35,7 @@ typedef struct {
 PropertyMap *AST_ConvertPropertiesMap(const cypher_astnode_t *props);
 
 // Extract the necessary information to populate an update operation from a SET clause.
-EntityUpdateEvalCtx *AST_PrepareUpdateOp(const cypher_astnode_t *set_clause, uint *nitems_ref);
+EntityUpdateEvalCtx *AST_PrepareUpdateOp(const cypher_astnode_t *set_clause);
 
 // Extract the necessary information to populate a delete operation from a DELETE clause.
 void AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause, const QueryGraph *qg,
@@ -45,10 +47,13 @@ int AST_PrepareSortOp(const cypher_astnode_t *order_clause);
 // Extract the necessary information to populate a unwind operation from an UNWIND clause.
 AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause);
 
+void AST_PreparePathCreation(const cypher_astnode_t *path, QueryGraph *qg, rax *bound_vars,
+							 NodeCreateCtx **nodes, EdgeCreateCtx **edges);
+
 // Extract the necessary information to populate a merge operation from a MERGE clause.
 AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, QueryGraph *qg,
-									const char **bound_variables);
+									rax *bound_vars);
 
-// Extract the necessary information to populate a create operation from a CREATE clause.
-AST_CreateContext AST_PrepareCreateOp(QueryGraph *qg, rax *bound_variables);
+// Extract the necessary information to populate a create operation from all CREATE clauses.
+AST_CreateContext AST_PrepareCreateOp(QueryGraph *qg, rax *bound_vars);
 
