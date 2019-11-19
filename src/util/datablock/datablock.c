@@ -38,15 +38,15 @@
 //------------------------------------------------------------------------------
 
 Block *_Block_New(size_t itemSize) {
-    assert(itemSize > 0);
-    Block *block = rm_calloc(1, sizeof(Block) + BLOCK_CAP * itemSize);
-    block->itemSize = itemSize;
-    return block;
+	assert(itemSize > 0);
+	Block *block = rm_calloc(1, sizeof(Block) + BLOCK_CAP * itemSize);
+	block->itemSize = itemSize;
+	return block;
 }
 
 void _Block_Free(Block *block) {
-    assert(block);
-    rm_free(block);
+	assert(block);
+	rm_free(block);
 }
 
 //------------------------------------------------------------------------------
@@ -54,40 +54,39 @@ void _Block_Free(Block *block) {
 //------------------------------------------------------------------------------
 
 void _DataBlock_AddBlocks(DataBlock *dataBlock, size_t blockCount) {
-    assert(dataBlock && blockCount > 0);
+	assert(dataBlock && blockCount > 0);
 
-    size_t prevBlockCount = dataBlock->blockCount;
-    dataBlock->blockCount += blockCount;
-    if(!dataBlock->blocks)
-        dataBlock->blocks = rm_malloc(sizeof(Block*) * dataBlock->blockCount);
-    else
-        dataBlock->blocks = rm_realloc(dataBlock->blocks, sizeof(Block*) * dataBlock->blockCount);
+	size_t prevBlockCount = dataBlock->blockCount;
+	dataBlock->blockCount += blockCount;
 
-    int i;
-    for(i = prevBlockCount; i < dataBlock->blockCount; i++) {
-        dataBlock->blocks[i] = _Block_New(dataBlock->itemSize);
-        if(i>0) dataBlock->blocks[i-1]->next = dataBlock->blocks[i];
-    }
-    dataBlock->blocks[i-1]->next = NULL;
+	if(!dataBlock->blocks)
+		dataBlock->blocks = rm_malloc(sizeof(Block *) * dataBlock->blockCount);
+	else
+		dataBlock->blocks = rm_realloc(dataBlock->blocks, sizeof(Block *) * dataBlock->blockCount);
 
-    dataBlock->itemCap = dataBlock->blockCount * BLOCK_CAP;
+	for(int i = prevBlockCount; i < dataBlock->blockCount; i++) {
+		dataBlock->blocks[i] = _Block_New(dataBlock->itemSize);
+		if(i > 0) dataBlock->blocks[i - 1]->next = dataBlock->blocks[i];
+	}
+	dataBlock->blocks[dataBlock->blockCount - 1]->next = NULL;
+	dataBlock->itemCap = dataBlock->blockCount * BLOCK_CAP;
 }
 
-void static inline _DataBlock_MarkItemAsDeleted(const DataBlock *dataBlock, unsigned char* item) {
-    memset(item, DELETED_MARKER, dataBlock->itemSize);
+void static inline _DataBlock_MarkItemAsDeleted(const DataBlock *dataBlock, unsigned char *item) {
+	memset(item, DELETED_MARKER, dataBlock->itemSize);
 }
 
-void static inline _DataBlock_MarkItemAsUndelete(const DataBlock *dataBlock, unsigned char* item) {
-    item[0] = !DELETED_MARKER;
+void static inline _DataBlock_MarkItemAsUndelete(const DataBlock *dataBlock, unsigned char *item) {
+	item[0] = !DELETED_MARKER;
 }
 
-int static inline _DataBlock_IsItemDeleted(const DataBlock *dataBlock, unsigned char* item) {
-    for(int i = 0; i < dataBlock->itemSize; i++) {
-        if(item[i] != DELETED_MARKER) {
-            return 0;
-        }
-    }
-    return 1;
+int static inline _DataBlock_IsItemDeleted(const DataBlock *dataBlock, unsigned char *item) {
+	for(int i = 0; i < dataBlock->itemSize; i++) {
+		if(item[i] != DELETED_MARKER) {
+			return 0;
+		}
+	}
+	return 1;
 }
 
 // Checks to see if idx is within global array bounds
@@ -95,115 +94,114 @@ int static inline _DataBlock_IsItemDeleted(const DataBlock *dataBlock, unsigned 
 // e.g. [3, 7, 2, D, 1, D, 5] where itemCount = 5 and #deleted indices is 2
 // and so it is valid to query the array with idx 6.
 int static inline _DataBlock_IndexOutOfBounds(const DataBlock *dataBlock, size_t idx) {
-    return (idx >= (dataBlock->itemCount + array_len(dataBlock->deletedIdx)));
+	return (idx >= (dataBlock->itemCount + array_len(dataBlock->deletedIdx)));
 }
 
 DataBlock *DataBlock_New(size_t itemCap, size_t itemSize, fpDestructor fp) {
-    DataBlock *dataBlock = rm_malloc(sizeof(DataBlock));
-    dataBlock->itemCount = 0;
-    dataBlock->itemSize = itemSize;
-    dataBlock->blockCount = 0;
-    dataBlock->blocks = NULL;
-    dataBlock->deletedIdx = array_new(uint64_t, 128);
-    dataBlock->destructor = fp;
-    _DataBlock_AddBlocks(dataBlock, ITEM_COUNT_TO_BLOCK_COUNT(itemCap));
-    return dataBlock;
+	DataBlock *dataBlock = rm_malloc(sizeof(DataBlock));
+	dataBlock->itemCount = 0;
+	dataBlock->itemSize = itemSize;
+	dataBlock->blockCount = 0;
+	dataBlock->blocks = NULL;
+	dataBlock->deletedIdx = array_new(uint64_t, 128);
+	dataBlock->destructor = fp;
+	_DataBlock_AddBlocks(dataBlock, ITEM_COUNT_TO_BLOCK_COUNT(itemCap));
+	return dataBlock;
 }
 
 DataBlockIterator *DataBlock_Scan(const DataBlock *dataBlock) {
-    assert(dataBlock);
-    Block *startBlock = dataBlock->blocks[0];
+	assert(dataBlock);
+	Block *startBlock = dataBlock->blocks[0];
 
-    // Deleted items are skipped, we're about to perform 
-    // array_len(dataBlock->deletedIdx) skips during out scan.
-    int64_t endPos = dataBlock->itemCount + array_len(dataBlock->deletedIdx);
-    return DataBlockIterator_New(startBlock, 0, endPos, 1);
+	// Deleted items are skipped, we're about to perform
+	// array_len(dataBlock->deletedIdx) skips during out scan.
+	int64_t endPos = dataBlock->itemCount + array_len(dataBlock->deletedIdx);
+	return DataBlockIterator_New(startBlock, 0, endPos, 1);
 }
 
 // Make sure datablock can accommodate at least k items.
 void DataBlock_Accommodate(DataBlock *dataBlock, int64_t k) {
-    // Compute number of free slots.
-    int64_t freeSlotsCount = dataBlock->itemCap - dataBlock->itemCount;
-    int64_t additionalItems = k - freeSlotsCount;
+	// Compute number of free slots.
+	int64_t freeSlotsCount = dataBlock->itemCap - dataBlock->itemCount;
+	int64_t additionalItems = k - freeSlotsCount;
 
-    if(additionalItems > 0) {
-        int64_t additionalBlocks = ITEM_COUNT_TO_BLOCK_COUNT(additionalItems);
-        _DataBlock_AddBlocks(dataBlock, additionalBlocks);
-    }
+	if(additionalItems > 0) {
+		int64_t additionalBlocks = ITEM_COUNT_TO_BLOCK_COUNT(additionalItems);
+		_DataBlock_AddBlocks(dataBlock, additionalBlocks);
+	}
 }
 
 void *DataBlock_GetItem(const DataBlock *dataBlock, size_t idx) {
-    assert(dataBlock);
+	assert(dataBlock);
 
-    if(_DataBlock_IndexOutOfBounds(dataBlock, idx)) return NULL;
+	if(_DataBlock_IndexOutOfBounds(dataBlock, idx)) return NULL;
 
-    Block *block = GET_ITEM_BLOCK(dataBlock, idx);
-    idx = ITEM_POSITION_WITHIN_BLOCK(idx);
-    
-    unsigned char *item = block->data + (idx * block->itemSize);
+	Block *block = GET_ITEM_BLOCK(dataBlock, idx);
+	idx = ITEM_POSITION_WITHIN_BLOCK(idx);
 
-    // Incase item is marked as deleted, return NULL.
-    if(_DataBlock_IsItemDeleted(dataBlock, item)) return NULL;
+	unsigned char *item = block->data + (idx * block->itemSize);
 
-    return item;
+	// Incase item is marked as deleted, return NULL.
+	if(_DataBlock_IsItemDeleted(dataBlock, item)) return NULL;
+
+	return item;
 }
 
-void* DataBlock_AllocateItem(DataBlock *dataBlock, uint64_t *idx) {
-    // Make sure we've got room for items.
-    if(dataBlock->itemCount >= dataBlock->itemCap) {
-        // Allocate twice as much items then we currently hold.
-        size_t newCap = dataBlock->itemCount * 2;
-        size_t requiredAdditionalBlocks = ITEM_COUNT_TO_BLOCK_COUNT(newCap) - dataBlock->blockCount;
-       _DataBlock_AddBlocks(dataBlock, requiredAdditionalBlocks);
-    }
+void *DataBlock_AllocateItem(DataBlock *dataBlock, uint64_t *idx) {
+	uint64_t pos;
+	// Get index into which to store item, prefer reusing free indicies.
+	if(array_len(dataBlock->deletedIdx) > 0) {
+		pos = array_pop(dataBlock->deletedIdx);
+	} else {
+		// Make sure we've got room for items.
+		if(dataBlock->itemCount >= dataBlock->itemCap) {
+			// Allocate a new block.
+			_DataBlock_AddBlocks(dataBlock, 1);
+		}
+		pos = dataBlock->itemCount;
+	}
 
-    // Get index into which to store item,
-    // prefer reusing free indicies.
-    uint64_t pos = dataBlock->itemCount;
-    if(array_len(dataBlock->deletedIdx) > 0) {
-        pos = array_pop(dataBlock->deletedIdx);
-    }
-    dataBlock->itemCount++;
+	dataBlock->itemCount++;
 
-    if(idx) *idx = pos;
+	if(idx) *idx = pos;
 
-    Block *block = GET_ITEM_BLOCK(dataBlock, pos);
-    pos = ITEM_POSITION_WITHIN_BLOCK(pos);
-    
-    unsigned char *item = block->data + (pos * block->itemSize);
-    _DataBlock_MarkItemAsUndelete(dataBlock, item);
+	Block *block = GET_ITEM_BLOCK(dataBlock, pos);
+	pos = ITEM_POSITION_WITHIN_BLOCK(pos);
 
-    return (void*)item;
+	unsigned char *item = block->data + (pos * block->itemSize);
+	_DataBlock_MarkItemAsUndelete(dataBlock, item);
+
+	return (void *)item;
 }
 
 void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
-    assert(dataBlock);
-    if(_DataBlock_IndexOutOfBounds(dataBlock, idx)) return;
+	assert(dataBlock);
+	if(_DataBlock_IndexOutOfBounds(dataBlock, idx)) return;
 
-    // Get block.
-    size_t blockIdx = ITEM_INDEX_TO_BLOCK_INDEX(idx);
-    Block *block = dataBlock->blocks[blockIdx];
+	// Get block.
+	size_t blockIdx = ITEM_INDEX_TO_BLOCK_INDEX(idx);
+	Block *block = dataBlock->blocks[blockIdx];
 
-    uint blockPos = ITEM_POSITION_WITHIN_BLOCK(idx);
-    size_t offset = blockPos * block->itemSize;
+	uint blockPos = ITEM_POSITION_WITHIN_BLOCK(idx);
+	size_t offset = blockPos * block->itemSize;
 
-    // Return if item already deleted.
-    unsigned char *item = block->data + offset;
-    if(_DataBlock_IsItemDeleted(dataBlock, item)) return;
+	// Return if item already deleted.
+	unsigned char *item = block->data + offset;
+	if(_DataBlock_IsItemDeleted(dataBlock, item)) return;
 
-    // Call item destructor.
-    if(dataBlock->destructor) dataBlock->destructor(item);
+	// Call item destructor.
+	if(dataBlock->destructor) dataBlock->destructor(item);
 
-    _DataBlock_MarkItemAsDeleted(dataBlock, item);
-    dataBlock->deletedIdx = array_append(dataBlock->deletedIdx, idx);
-    dataBlock->itemCount--;
+	_DataBlock_MarkItemAsDeleted(dataBlock, item);
+	dataBlock->deletedIdx = array_append(dataBlock->deletedIdx, idx);
+	dataBlock->itemCount--;
 }
 
 void DataBlock_Free(DataBlock *dataBlock) {
-    for(int i = 0; i < dataBlock->blockCount; i++)
-        _Block_Free(dataBlock->blocks[i]);
+	for(int i = 0; i < dataBlock->blockCount; i++)
+		_Block_Free(dataBlock->blocks[i]);
 
-    rm_free(dataBlock->blocks);
-    array_free(dataBlock->deletedIdx);
-    rm_free(dataBlock);
+	rm_free(dataBlock->blocks);
+	array_free(dataBlock->deletedIdx);
+	rm_free(dataBlock);
 }

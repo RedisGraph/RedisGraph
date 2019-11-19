@@ -168,7 +168,7 @@ void _Graph_AddRelationMap(Graph *g) {
 
 // Locates edges connecting src to destination.
 void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int r, Edge **edges) {
-	assert(g && src < Graph_RequiredMatrixDim(g) && dest < Graph_RequiredMatrixDim(g) &&
+	assert(g && src < Graph_NodeCount(g) && dest < Graph_NodeCount(g) &&
 		   r < Graph_RelationTypeCount(g));
 
 	Edge e;
@@ -249,16 +249,18 @@ void _MatrixSynchronize(const Graph *g, GrB_Matrix m) {
 	// a resize, enter critical section.
 	if(pending || (n_rows != dims) || (n_cols != dims)) {
 		_Graph_EnterCriticalSection((Graph *)g);
-		// Double-check if resize is necessary.
-		GrB_Matrix_nrows(&n_rows, m);
-		GrB_Matrix_ncols(&n_cols, m);
-		dims = Graph_RequiredMatrixDim(g);
-		if((n_rows != dims) || (n_cols != dims)) {
-			assert(GxB_Matrix_resize(m, dims, dims) == GrB_SUCCESS);
-		}
+		{
+			// Double-check if resize is necessary.
+			GrB_Matrix_nrows(&n_rows, m);
+			GrB_Matrix_ncols(&n_cols, m);
+			dims = Graph_RequiredMatrixDim(g);
+			if((n_rows != dims) || (n_cols != dims)) {
+				assert(GxB_Matrix_resize(m, dims, dims) == GrB_SUCCESS);
+			}
 
-		// Flush changes to matrix.
-		_Graph_ApplyPending(m);
+			// Flush changes to matrix.
+			_Graph_ApplyPending(m);
+		}
 		_Graph_LeaveCriticalSection((Graph *)g);
 	}
 }
@@ -269,7 +271,8 @@ void _MatrixResizeToCapacity(const Graph *g, GrB_Matrix m) {
 	GrB_Index ncols;
 	GrB_Matrix_ncols(&ncols, m);
 	GrB_Matrix_nrows(&nrows, m);
-	GrB_Index cap = _Graph_NodeCap(g);
+	// GrB_Index cap = _Graph_NodeCap(g);
+	GrB_Index cap = Graph_RequiredMatrixDim(g);
 
 	// This policy should only be used in a thread-safe context, so no locking is required.
 	if(ncols != cap || nrows != cap) {
@@ -367,7 +370,8 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 size_t Graph_RequiredMatrixDim(const Graph *g) {
 	// Matrix dimensions should be at least:
 	// Number of nodes + number of deleted nodes.
-	return g->nodes->itemCount + array_len(g->nodes->deletedIdx);
+	// return g->nodes->itemCount + array_len(g->nodes->deletedIdx);
+	return g->nodes->itemCap;
 }
 
 size_t Graph_NodeCount(const Graph *g) {
@@ -1154,4 +1158,3 @@ void Graph_Free(Graph *g) {
 
 	rm_free(g);
 }
-
