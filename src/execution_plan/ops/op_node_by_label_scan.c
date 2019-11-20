@@ -78,7 +78,8 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 		if(op->child_record == NULL) return NULL;
 		// One-time construction of the iterator.
 		// (Don't do so before now because the label might have been built in a child op.)
-		_ConstructIterator(op);
+		if(op->iter == NULL) _ConstructIterator(op);
+		else NodeByLabelScanReset(opBase);
 	}
 
 	GrB_Index nodeId;

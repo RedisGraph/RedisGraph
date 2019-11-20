@@ -22,6 +22,7 @@ static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
 		if(ExecutionPlan_LocateOpResolvingAlias(scan->children[i], scanned_alias)) {
 			// The scanned alias is already bound, remove the redundant scan op.
 			ExecutionPlan_RemoveOp(plan, scan);
+			OpBase_Free(scan);
 			break;
 		}
 	}

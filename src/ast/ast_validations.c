@@ -737,29 +737,43 @@ static AST_Validation _Validate_CREATE_Clause_Properties(const cypher_astnode_t 
 }
 
 static AST_Validation _Validate_CREATE_Clauses(const AST *ast, char **reason) {
-	const cypher_astnode_t **create_clauses = AST_GetClauses(ast, CYPHER_AST_CREATE);
-	if(!create_clauses) return AST_VALID;
-
 	AST_Validation res = AST_VALID;
-	uint clause_count = array_len(create_clauses);
+
+	uint *create_clause_indices = AST_GetClauseIndices(ast, CYPHER_AST_CREATE);
+	uint clause_count = array_len(create_clause_indices);
+	if(clause_count == 0) goto cleanup;
 	for(uint i = 0; i < clause_count; i++) {
+		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, create_clause_indices[i]);
 		// Verify that functions invoked by the CREATE clause are valid.
-		res = _ValidateFunctionCalls(create_clauses[i], reason, false);
+		res = _ValidateFunctionCalls(clause, reason, false);
 		if(res == AST_INVALID) goto cleanup;
 
-		if(_Validate_CREATE_Clause_TypedRelations(create_clauses[i]) == AST_INVALID) {
+		if(_Validate_CREATE_Clause_TypedRelations(clause) == AST_INVALID) {
 			asprintf(reason, "Exactly one relationship type must be specified for CREATE");
 			res = AST_INVALID;
 			goto cleanup;
 		}
 
 		// Validate that inlined properties do not use parameters
-		res = _Validate_CREATE_Clause_Properties(create_clauses[i], reason);
+		res = _Validate_CREATE_Clause_Properties(clause, reason);
 		if(res == AST_INVALID) goto cleanup;
 	}
 
+	/* Since we combine all our CREATE clauses in a segment into one operation,
+	 * make sure no data-modifying clauses can separate them. TCK example:
+	 * CREATE (a:A), (b:B) MERGE (a)-[:KNOWS]->(b) CREATE (b)-[:KNOWS]->(c:C) RETURN count(*)
+	 */
+	for(uint i = create_clause_indices[0] + 1; i < create_clause_indices[clause_count - 1]; i ++) {
+		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
+		if(cypher_astnode_type(clause) == CYPHER_AST_MERGE) {
+			asprintf(reason,
+					 "RedisGraph does not support queries of the form CREATE...MERGE...CREATE without a separating WITH clause.");
+			res = AST_INVALID;
+			goto cleanup;
+		}
+	}
 cleanup:
-	array_free(create_clauses);
+	array_free(create_clause_indices);
 	return res;
 }
 

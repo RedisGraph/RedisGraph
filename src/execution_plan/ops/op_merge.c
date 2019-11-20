@@ -135,6 +135,7 @@ static Record MergeConsume(OpBase *opBase) {
 			// Pull a new input record.
 			lhs_record = array_pop(op->input_records);
 			// Propagate record to the top of the Match stream.
+			// (Must clone the Record, as it will be freed in the Match stream.)
 			Argument_AddRecord(op->match_argument_tap, Record_Clone(lhs_record));
 		} else {
 			// This loop only executes once if we don't have input records resolving bound variables.
@@ -151,10 +152,17 @@ static Record MergeConsume(OpBase *opBase) {
 		}
 
 		if(should_create_pattern) {
-			// Copy the LHS record to the Create stream to build once we finish reading.
-			if(lhs_record) Argument_AddRecord(op->create_argument_tap, Record_Clone(lhs_record));
+			// Transfer the LHS record to the Create stream to build once we finish reading
+			// (No need to clone; it won't be accessed again outside that stream.)
+			if(lhs_record) {
+				Argument_AddRecord(op->create_argument_tap, lhs_record);
+				lhs_record = NULL;
+			}
 			must_create_records = true;
 		}
+
+		// Free the LHS Record if we haven't transfered it to the Create stream.
+		if(lhs_record) Record_Free(lhs_record);
 	}
 
 	// Explicitly free the read streams in case either holds an index read lock.
@@ -258,6 +266,10 @@ void Merge_SetStreams(OpBase *opBase) {
 static void MergeFree(OpBase *opBase) {
 	OpMerge *op = (OpMerge *)opBase;
 	if(op->input_records) {
+		uint input_count = array_len(op->input_records);
+		for(uint i = 0; i < input_count; i ++) {
+			Record_Free(op->input_records[i]); // This loop should be unnecessary.
+		}
 		array_free(op->input_records);
 		op->input_records = NULL;
 	}

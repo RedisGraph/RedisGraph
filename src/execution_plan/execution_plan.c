@@ -585,12 +585,12 @@ static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *
 	// NULL-set shared variables and free rhs_plan
 	rhs_plan->root = NULL;
 	rhs_plan->record_map = NULL;
-	rhs_plan->query_graph = NULL; // TODO bad leak
 	array_free(rhs_plan->connected_components);
 	rhs_plan->connected_components = NULL;
 	ExecutionPlan_Free(rhs_plan); // TODO leaks
 
-	_updateOpPlans(rhs_root, plan); // Associate all new ops with the correct ExecutionPlan.
+	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
+	_updateOpPlans(rhs_root, plan);
 }
 
 static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge_ctx,

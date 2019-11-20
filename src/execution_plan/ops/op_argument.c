@@ -46,7 +46,7 @@ OpResult ArgumentReset(OpBase *opBase) {
 	/*
 	uint record_count = array_len(arg->records);
 	for(uint i = 0; i < record_count; i ++) {
-		Record_Free(arg->records[i]); // TODO use if cloning is moved here,
+		Record_Free(arg->records[i]);
 	}
 	*/
 
