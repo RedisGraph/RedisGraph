@@ -93,67 +93,63 @@ static void _setupIdRange(int rel, EntityID id, bool reverse, NodeID *minId, Nod
 	}
 }
 
-void _reduceTap(ExecutionPlan *plan, OpBase *tap) {
-	if(tap->type & OP_SCAN) {
-		/* See if there's a filter of the form
-		 * ID(n) = X
-		 * where X is a constant. */
-		OpBase *parent = tap->parent;
-		while(parent && parent->type == OPType_FILTER) {
-			OpFilter *filter = (OpFilter *)parent;
-			FT_FilterNode *f = filter->filterTree;
+static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
+	/* See if there's a filter of the form
+	 * ID(n) = X
+	 * where X is a constant. */
+	OpBase *parent = scan_op->parent;
+	while(parent && parent->type == OPType_FILTER) {
+		OpFilter *filter = (OpFilter *)parent;
+		FT_FilterNode *f = filter->filterTree;
 
-			int rel;
-			EntityID id;
-			bool reverse;
-			if(_idFilter(f, &rel, &id, &reverse)) {
-				const QGNode *node = NULL;
-				NodeID minId = ID_RANGE_UNBOUND;
-				NodeID maxId = ID_RANGE_UNBOUND;
-				bool inclusiveMin = false;
-				bool inclusiveMax = false;
-				OpBase *opNodeByIdSeek;
+		int rel;
+		EntityID id;
+		bool reverse;
+		if(_idFilter(f, &rel, &id, &reverse)) {
+			const QGNode *node = NULL;
+			NodeID minId = ID_RANGE_UNBOUND;
+			NodeID maxId = ID_RANGE_UNBOUND;
+			bool inclusiveMin = false;
+			bool inclusiveMax = false;
+			OpBase *opNodeByIdSeek;
 
-				switch(tap->type) {
-				case OPType_ALL_NODE_SCAN:
-					node = ((AllNodeScan *)tap)->n;
-					break;
-				case OPType_NODE_BY_LABEL_SCAN:
-					node = ((NodeByLabelScan *)tap)->n;
-					break;
-				case OPType_INDEX_SCAN:
-					node = ((IndexScan *)tap)->n;
-					break;
-				default:
-					assert(false);
-				}
-
-				_setupIdRange(rel, id, reverse, &minId, &maxId, &inclusiveMin, &inclusiveMax);
-				opNodeByIdSeek = NewNodeByIdSeekOp(tap->plan, node, minId, maxId,
-												   inclusiveMin, inclusiveMax);
-
-				// Managed to reduce!
-				ExecutionPlan_ReplaceOp(plan, tap, opNodeByIdSeek);
-				ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
+			switch(scan_op->type) {
+			case OPType_ALL_NODE_SCAN:
+				node = ((AllNodeScan *)scan_op)->n;
 				break;
+			case OPType_NODE_BY_LABEL_SCAN:
+				node = ((NodeByLabelScan *)scan_op)->n;
+				break;
+			case OPType_INDEX_SCAN:
+				node = ((IndexScan *)scan_op)->n;
+				break;
+			default:
+				assert(false);
 			}
 
-			// Advance.
-			parent = parent->parent;
+			_setupIdRange(rel, id, reverse, &minId, &maxId, &inclusiveMin, &inclusiveMax);
+			opNodeByIdSeek = NewNodeByIdSeekOp(scan_op->plan, node, minId, maxId,
+											   inclusiveMin, inclusiveMax);
+
+			// Managed to reduce!
+			ExecutionPlan_ReplaceOp(plan, scan_op, opNodeByIdSeek);
+			ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
+			break;
 		}
+
+		// Advance.
+		parent = parent->parent;
 	}
 }
 
 void seekByID(ExecutionPlan *plan) {
 	assert(plan);
+	OpBase **scan_ops = ExecutionPlan_LocateOps(plan->root, OP_SCAN);
 
-	OpBase **taps = array_new(OpBase *, 1);
-	ExecutionPlan_Taps(plan->root, &taps);
-
-	for(int i = 0; i < array_len(taps); i++) {
-		_reduceTap(plan, taps[i]);
+	for(int i = 0; i < array_len(scan_ops); i++) {
+		_UseIdOptimization(plan, scan_ops[i]);
 	}
 
-	array_free(taps);
+	array_free(scan_ops);
 }
 

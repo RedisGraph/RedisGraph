@@ -53,9 +53,6 @@ static inline void _ConstructIterator(NodeByLabelScan *op) {
 }
 
 static OpResult NodeByLabelScanInit(OpBase *opBase) {
-	/* Find out label matrix ID. */
-	NodeByLabelScan *scan = (NodeByLabelScan *)opBase;
-
 	if(opBase->childCount > 0) {
 		opBase->consume = NodeByLabelScanConsumeFromChild;
 	} else {

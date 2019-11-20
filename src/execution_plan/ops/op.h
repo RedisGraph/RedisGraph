@@ -51,7 +51,6 @@ typedef enum {
 } OPType; // TODO Consider switching from bitmask at 1<<32
 
 #define OP_SCAN (OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN | OPType_INDEX_SCAN | OPType_NODE_BY_ID_SEEK)
-#define OP_TAPS (OP_SCAN | OPType_CREATE | OPType_UNWIND | OPType_MERGE)
 
 typedef enum {
 	OP_DEPLETED = 1,

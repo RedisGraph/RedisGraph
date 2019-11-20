@@ -58,10 +58,6 @@ OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type);
  * Returns an array of operations. */
 OpBase **ExecutionPlan_LocateOps(OpBase *root, OPType type);
 
-/* Returns an array of taps; operations which generate data
- * e.g. SCAN, UNWIND, PROCEDURE_CALL, CREATE. */
-void ExecutionPlan_Taps(OpBase *root, OpBase ***taps);
-
 /* Find the earliest operation on the ExecutionPlan at which all
  * references are resolved. */
 OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references);
