@@ -15,29 +15,84 @@ static OpResult MergeInit(OpBase *opBase);
 static Record MergeConsume(OpBase *opBase);
 static void MergeFree(OpBase *opBase);
 
-/*
-static void _AddProperties(OpMerge *op, Record r, GraphEntity *ge, PropertyMap *props) {
-	for(int i = 0; i < props->property_count; i++) {
-		SIValue val = AR_EXP_Evaluate(props->values[i], r);
-		GraphEntity_AddProperty(ge, props->keys[i], val);
-		SIValue_Free(&val);
+//------------------------------------------------------------------------------
+// ON MATCH logic
+//------------------------------------------------------------------------------
+// Perform necessary index updates.
+static void _UpdateIndices(GraphContext *gc, Node *n) {
+	int label_id = Graph_GetNodeLabel(gc->g, n->entity->id);
+	if(label_id == GRAPH_NO_LABEL) return; // Unlabeled node, no need to update.
+
+	Schema *s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
+	if(!Schema_HasIndices(s)) return; // No indices, no need to update.
+
+	Schema_AddNodeToIndices(s, n, true);
+
+}
+
+// Update the appropriate property on a graph entity.
+static void _UpdateProperty(Record r, GraphEntity *ge, EntityUpdateEvalCtx *update_ctx) {
+	SIValue new_value = SI_CloneValue(AR_EXP_Evaluate(update_ctx->exp, r));
+
+	// Try to get current property value.
+	SIValue *old_value = GraphEntity_GetProperty(ge, update_ctx->attribute_idx);
+
+	if(old_value == PROPERTY_NOTFOUND) {
+		// Add new property.
+		GraphEntity_AddProperty(ge, update_ctx->attribute_idx, new_value);
+	} else {
+		// Update property.
+		GraphEntity_SetProperty(ge, update_ctx->attribute_idx, new_value);
+	}
+}
+
+// Perform all ON MATCH updates for all matched records.
+static void _UpdateProperties(OpMerge *op, Record *records) {
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Graph_AcquireWriteLock(gc->g); // Lock the graph.
+
+	// Iterate over all update contexts, converting property keys to IDs.
+	uint update_count = array_len(op->on_match);
+	for(uint i = 0; i < update_count; i ++) {
+		op->on_match[i].attribute_idx = GraphContext_FindOrAddAttribute(gc, op->on_match[i].attribute);
 	}
 
-	if(op->stats) op->stats->properties_set += props->property_count;
+	uint record_count = array_len(records);
+	for(uint i = 0; i < record_count; i ++) {  // For each matched record
+		Record r = records[i];
+		for(uint j = 0; j < update_count; j ++) { // For each pending update.
+			EntityUpdateEvalCtx *update_ctx = &op->on_match[j];
+
+			// Retrieve the appropriate entry from the Record, make sure it's either a node or an edge.
+			RecordEntryType t = Record_GetType(r, update_ctx->record_idx);
+			assert(t == REC_TYPE_NODE || t == REC_TYPE_EDGE);
+			GraphEntity *ge = Record_GetGraphEntity(r, update_ctx->record_idx);
+
+			_UpdateProperty(r, ge, update_ctx); // Updaet the entity.
+			if(t == REC_TYPE_NODE) _UpdateIndices(gc, (Node *)ge); // Update indices if necessary.
+		}
+
+		if(op->stats) op->stats->properties_set += update_count;
+	}
+
+	Graph_ReleaseLock(gc->g); // Release the lock.
 }
-*/
 
-
+//------------------------------------------------------------------------------
+// Merge logic
+//------------------------------------------------------------------------------
 static inline Record _pullFromStream(OpBase *branch) {
 	return OpBase_Consume(branch);
 }
 
-OpBase *NewMergeOp(const ExecutionPlan *plan, ResultSetStatistics *stats) {
+OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
+				   ResultSetStatistics *stats) {
 	/* Merge is an operator with two or three children.
 	 * They will be created outside of here, as with other multi-stream operators (see CartesianProduct
 	 * and ValueHashJoin). */
 	OpMerge *op = malloc(sizeof(OpMerge));
 	op->stats = stats;
+	op->on_match = on_match;
 	op->output_records = NULL;
 	op->input_records = NULL;
 	op->match_argument_tap = NULL;
@@ -108,6 +163,9 @@ static Record MergeConsume(OpBase *opBase) {
 			must_create_records = true;
 		}
 	}
+
+	// If we are setting properties with ON MATCH, execute all pending updates.
+	if(op->on_match && array_len(op->output_records) > 0) _UpdateProperties(op, op->output_records);
 
 	// True if we have at least one pattern to create.
 	if(must_create_records) {

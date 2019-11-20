@@ -543,8 +543,8 @@ static inline void _buildUnwindOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
-static void _buildMergeMatchStream(ExecutionPlan *plan, AST_MergeContext *merge_ctx,
-								   const cypher_astnode_t *clause, ResultSetStatistics *stats, const char **bound_vars) {
+static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *clause,
+								   ResultSetStatistics *stats, const char **bound_vars) {
 	AST *ast = QueryCtx_GetAST();
 	// Initialize an ExecutionPlan that shares this plan's Record mapping.
 	ExecutionPlan *rhs_plan = _NewEmptyExecutionPlan();
@@ -568,12 +568,6 @@ static void _buildMergeMatchStream(ExecutionPlan *plan, AST_MergeContext *merge_
 	rhs_ast->referenced_entities = NULL; // Shared variable, don't free.
 	AST_Free(rhs_ast);
 	QueryCtx_SetAST(ast); // Reset the AST.
-
-	if(merge_ctx->on_match) {
-		// We have an ON MATCH directive, convert it into an Update op.
-		OpBase *on_match_set_op = NewUpdateOp(plan, merge_ctx->on_match, stats);
-		_ExecutionPlan_UpdateRoot(rhs_plan, on_match_set_op); // Place Update op at head of stream.
-	}
 
 	ExecutionPlan_AddOp(plan->root, rhs_plan->root); // Add Match stream to Merge op.
 
@@ -659,12 +653,12 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 	AST_MergeContext merge_ctx = AST_PrepareMergeOp(clause, plan->query_graph, bound_vars);
 
 	// Create an empty merge op.
-	OpBase *merge_op = NewMergeOp(plan, stats);
+	OpBase *merge_op = NewMergeOp(plan, merge_ctx.on_match, stats);
 	// Set Merge op as new root and add previously-built ops, if any, as Merge's first stream.
 	_ExecutionPlan_UpdateRoot(plan, merge_op);
 
 	// Build the Match stream as a Merge child.
-	_buildMergeMatchStream(plan, &merge_ctx, clause, stats, variables);
+	_buildMergeMatchStream(plan, clause, stats, variables);
 
 	// Build the Create stream as a Merge child.
 	_buildMergeCreateStream(plan, &merge_ctx, stats, variables);

@@ -291,6 +291,7 @@ Feature: MergeRelationshipAcceptance
     And the side effects should be:
       | +relationships | 1 |
 
+@skip
   Scenario: Mixing MERGE with CREATE
     Given an empty graph
     When executing query:
