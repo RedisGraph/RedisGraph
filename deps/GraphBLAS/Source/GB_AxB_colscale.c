@@ -13,6 +13,9 @@
 #include "GB_binop__include.h"
 #endif
 
+#define GB_FREE_WORK \
+    GB_ek_slice_free (&pstart_slice, &kfirst_slice, &klast_slice, ntasks) ;
+
 GrB_Info GB_AxB_colscale            // C = A*D, column scale with diagonal D
 (
     GrB_Matrix *Chandle,            // output matrix
@@ -60,11 +63,12 @@ GrB_Info GB_AxB_colscale            // C = A*D, column scale with diagonal D
     // vectors kfirst_slice [tid] to klast_slice [tid].  The first and last
     // vectors may be shared with prior slices and subsequent slices.
 
-    int64_t pstart_slice [ntasks+1] ;
-    int64_t kfirst_slice [ntasks] ;
-    int64_t klast_slice  [ntasks] ;
-
-    GB_ek_slice (pstart_slice, kfirst_slice, klast_slice, A, ntasks) ;
+    int64_t *pstart_slice = NULL, *kfirst_slice = NULL, *klast_slice = NULL ;
+    if (!GB_ek_slice (&pstart_slice, &kfirst_slice, &klast_slice, A, ntasks))
+    {
+        // out of memory
+        return (GB_OUT_OF_MEMORY) ;
+    }
 
     //--------------------------------------------------------------------------
     // get the semiring operators
@@ -110,6 +114,7 @@ GrB_Info GB_AxB_colscale            // C = A*D, column scale with diagonal D
     if (info != GrB_SUCCESS)
     { 
         // out of memory
+        GB_FREE_WORK ;
         return (info) ;
     }
 
@@ -205,12 +210,12 @@ GrB_Info GB_AxB_colscale            // C = A*D, column scale with diagonal D
 
         // aij = A(i,j), located in Ax [pA]
         #define GB_GETA(aij,Ax,pA)                                          \
-            GB_void aij [aij_size] ;                                        \
+            GB_void aij [GB_PGI(aij_size)] ;                                \
             if (!A_is_pattern) cast_A (aij, Ax +((pA)*asize), asize) ;
 
         // dji = D(j,j), located in Dx [j]
         #define GB_GETB(djj,Dx,j)                                           \
-            GB_void djj [djj_size] ;                                        \
+            GB_void djj [GB_PGI(djj_size)] ;                                \
             if (!D_is_pattern) cast_D (djj, Dx +((j)*dsize), dsize) ;
 
         // C(i,j) = A(i,j) * D(j,j)
@@ -242,11 +247,12 @@ GrB_Info GB_AxB_colscale            // C = A*D, column scale with diagonal D
     }
 
     //--------------------------------------------------------------------------
-    // return result
+    // free workspace and return result
     //--------------------------------------------------------------------------
 
     ASSERT_OK (GB_check (C, "colscale: C = A*D output", GB0)) ;
     ASSERT (*Chandle == C) ;
+    GB_FREE_WORK ;
     return (GrB_SUCCESS) ;
 }
 

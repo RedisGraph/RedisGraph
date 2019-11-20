@@ -106,8 +106,8 @@ void Graph_AcquireWriteLock(Graph *g) {
 
 /* Release the held lock */
 void Graph_ReleaseLock(Graph *g) {
-	g->_writelocked = false;
 	pthread_rwlock_unlock(&g->_rwlock);
+	g->_writelocked = false;
 }
 
 /* Writer request access to graph. */
@@ -123,7 +123,7 @@ void Graph_WriterLeave(Graph *g) {
 /* Force execution of all pending operations on a matrix. */
 static inline void _Graph_ApplyPending(GrB_Matrix m) {
 	GrB_Index nvals;
-	GrB_Matrix_nvals(&nvals, m);
+	assert(GrB_Matrix_nvals(&nvals, m) == GrB_SUCCESS);
 }
 
 /* ========================= Graph utility functions ========================= */
@@ -225,43 +225,55 @@ static inline Entity *_Graph_GetEntity(const DataBlock *entities, EntityID id) {
  * matrix to execute any pending operations. */
 void _MatrixSynchronize(const Graph *g, GrB_Matrix m) {
 	GrB_Index n_rows;
+	GrB_Index n_cols;
 	GrB_Matrix_nrows(&n_rows, m);
+	GrB_Matrix_ncols(&n_cols, m);
+	GrB_Index dims = Graph_RequiredMatrixDim(g);
+	bool pending = false;
+	GxB_Matrix_Pending(m, &pending);
 
-	// If the graph belongs to one thread, we don't need to flush pending operations
-	// or lock the mutex.
+	// If the graph belongs to one thread, we don't need to lock the mutex.
 	if(g->_writelocked) {
-		if(n_rows != Graph_RequiredMatrixDim(g)) {
-			assert(GxB_Matrix_resize(m, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g)) == GrB_SUCCESS);
+		if((n_rows != dims) || (n_cols != dims)) {
+			assert(GxB_Matrix_resize(m, dims, dims) == GrB_SUCCESS);
+			pending = true;
 		}
+
+		// Flush changes to matrices if we've performed a resize or have pending tuples.
+		if(pending) _Graph_ApplyPending(m);
+
 		return;
 	}
 
 	// If the matrix has pending operations or requires
 	// a resize, enter critical section.
-	bool pending = false;
-	GxB_Matrix_Pending(m, &pending);
-	if(pending || (n_rows != Graph_RequiredMatrixDim(g))) {
+	if(pending || (n_rows != dims) || (n_cols != dims)) {
 		_Graph_EnterCriticalSection((Graph *)g);
 		// Double-check if resize is necessary.
 		GrB_Matrix_nrows(&n_rows, m);
-		if(n_rows != Graph_RequiredMatrixDim(g))
-			assert(GxB_Matrix_resize(m, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g)) == GrB_SUCCESS);
+		GrB_Matrix_ncols(&n_cols, m);
+		dims = Graph_RequiredMatrixDim(g);
+		if((n_rows != dims) || (n_cols != dims)) {
+			assert(GxB_Matrix_resize(m, dims, dims) == GrB_SUCCESS);
+		}
 
-		// Flush changes to matrices if necessary.
-		GxB_Matrix_Pending(m, &pending);
-		if(pending) _Graph_ApplyPending(m);
-
+		// Flush changes to matrix.
+		_Graph_ApplyPending(m);
 		_Graph_LeaveCriticalSection((Graph *)g);
 	}
 }
 
 /* Resize matrix to node capacity. */
 void _MatrixResizeToCapacity(const Graph *g, GrB_Matrix m) {
+	GrB_Index nrows;
 	GrB_Index ncols;
 	GrB_Matrix_ncols(&ncols, m);
+	GrB_Matrix_nrows(&nrows, m);
+	GrB_Index cap = _Graph_NodeCap(g);
 
-	if(ncols != _Graph_NodeCap(g)) {
-		assert(GxB_Matrix_resize(m, _Graph_NodeCap(g), _Graph_NodeCap(g)) == GrB_SUCCESS);
+	// This policy should only be used in a thread-safe context, so no locking is required.
+	if(ncols != cap || nrows != cap) {
+		assert(GxB_Matrix_resize(m, cap, cap) == GrB_SUCCESS);
 	}
 }
 
@@ -279,7 +291,7 @@ void Graph_SetMatrixPolicy(Graph *g, MATRIX_POLICY policy) {
 		g->SynchronizeMatrix = _MatrixSynchronize;
 		break;
 	case RESIZE_TO_CAPACITY:
-		// Bulk insertion behavior; does not force pending operations
+		// Bulk insertion and creation behavior; does not force pending operations
 		// and resizes matrices to the graph's current node capacity.
 		g->SynchronizeMatrix = _MatrixResizeToCapacity;
 		break;

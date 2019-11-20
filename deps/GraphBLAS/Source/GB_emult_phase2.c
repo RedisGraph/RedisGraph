@@ -169,19 +169,19 @@ GrB_Info GB_emult_phase2                // C=A.*B or C<M>=A.*B
 
         // aij = (xtype) A(i,j), located in Ax [pA]
         #define GB_GETA(aij,Ax,pA)                                          \
-            GB_void aij [xsize] ;                                           \
+            GB_void aij [GB_PGI(xsize)] ;                                   \
             cast_A_to_X (aij, Ax +((pA)*asize), asize) ;
 
         // bij = (ytype) B(i,j), located in Bx [pB]
         #define GB_GETB(bij,Bx,pB)                                          \
-            GB_void bij [ysize] ;                                           \
+            GB_void bij [GB_PGI(ysize)] ;                                   \
             cast_B_to_Y (bij, Bx +((pB)*bsize), bsize) ;
 
         // C(i,j) = (ctype) (A(i,j) + B(i,j))
         // not used if op is null
         #define GB_BINOP(cij, aij, bij)                                     \
             ASSERT (op != NULL) ;                                           \
-            GB_void z [zsize] ;                                             \
+            GB_void z [GB_PGI(zsize)] ;                                     \
             fmult (z, aij, bij) ;                                           \
             cast_Z_to_C (cij, z, csize) ;
 

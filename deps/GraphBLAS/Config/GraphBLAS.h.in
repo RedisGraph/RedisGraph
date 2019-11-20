@@ -786,7 +786,7 @@ extern GrB_BinaryOp
 // and y = true, then z = x + y = true + true = true.  DIV (x/y) is defined
 // below.  RDIV (y/x) is shown as \ in the table; it is the same as 2nd.
 
-//                                                     is  is  is  is  is  is
+//                                                   is  is  is  is  is  is
 //  x y  1st 2nd min max +   -   *   /   or  and xor eq  ne  gt  lt  ge  le rdiv
 //  0 0  0   0   0   0   0   0   0   0   0   0   0   1   0   0   0   1   1  0
 //  0 1  0   1   0   1   1   1   0   0   1   0   1   0   1   0   1   0   1  1
@@ -3318,7 +3318,8 @@ typedef enum            // for global options or matrix options
 typedef enum
 {
     GxB_BY_ROW = 0,     // CSR: compressed sparse row format
-    GxB_BY_COL = 1      // CSC: compressed sparse column format
+    GxB_BY_COL = 1,     // CSC: compressed sparse column format
+    GxB_NO_FORMAT = -1  // format not defined
 }
 GxB_Format_Value ;
 
@@ -3421,6 +3422,9 @@ GrB_Info GxB_Global_Option_get      // gets the current global default option
 //      // see the GxB_NTHREADS_MAX discussion above
 //      GxB_set (GxB_NTHREADS, nthreads_max) ;
 //      GxB_get (GxB_NTHREADS, int *nthreads_max) ;
+//
+//      GxB_set (GxB_CHUNK, double chunk) ;
+//      GxB_get (GxB_CHUNK, double *chunk) ;
 
 // To get global options that can be queried but not modified:
 //
@@ -3447,19 +3451,31 @@ GrB_Info GxB_Global_Option_get      // gets the current global default option
 //
 //      GxB_set (GrB_Descriptor d, GrB_OUTP, GxB_DEFAULT) ;
 //      GxB_set (GrB_Descriptor d, GrB_OUTP, GrB_REPLACE) ;
+//      GxB_get (GrB_Descriptor d, GrB_OUTP, GrB_Desc_Value *v) ;
 //
 //      GxB_set (GrB_Descriptor d, GrB_MASK, GxB_DEFAULT) ;
 //      GxB_set (GrB_Descriptor d, GrB_MASK, GrB_SCMP) ;
+//      GxB_get (GrB_Descriptor d, GrB_MASK, GrB_Desc_Value *v) ;
 //
 //      GxB_set (GrB_Descriptor d, GrB_INP0, GxB_DEFAULT) ;
-//      GxB_set (GrB_Descriptor d, GrB_INP0, GrB_TRAN ;
+//      GxB_set (GrB_Descriptor d, GrB_INP0, GrB_TRAN) ;
+//      GxB_get (GrB_Descriptor d, GrB_INP0, GrB_Desc_Value *v) ;
 //
 //      GxB_set (GrB_Descriptor d, GrB_INP1, GxB_DEFAULT) ;
-//      GxB_set (GrB_Descriptor d, GrB_INP1, GrB_TRAN ;
+//      GxB_set (GrB_Descriptor d, GrB_INP1, GrB_TRAN) ;
+//      GxB_get (GrB_Descriptor d, GrB_INP1, GrB_Desc_Value *v) ;
+//
+//      GxB_set (GrB_Descriptor d, GxB_AxB_METHOD, GxB_DEFAULT) ;
+//      GxB_set (GrB_Descriptor d, GxB_AxB_METHOD, GxB_AxB_GUSTAVSON) ;
+//      GxB_set (GrB_Descriptor d, GxB_AxB_METHOD, GxB_AxB_HEAP) ;
+//      GxB_set (GrB_Descriptor d, GxB_AxB_METHOD, GxB_AxB_DOT) ;
+//      GxB_get (GrB_Descriptor d, GrB_AxB_METHOD, GrB_Desc_Value *v) ;
 //
 //      GxB_set (GrB_Descriptor d, GxB_NTHREADS, nthreads) ;
+//      GxB_get (GrB_Descriptor d, GxB_NTHREADS, int *nthreads) ;
 //
-//      GxB_get (GrB_Descriptor d, GrB_Desc_Field f, GrB_Desc_Value *v) ;
+//      GxB_set (GrB_Descriptor d, GxB_CHUNK, double chunk) ;
+//      GxB_get (GrB_Descriptor d, GxB_CHUNK, double *chunk) ;
 
 #define GxB_set(arg1,...)                                   \
     _Generic                                                \
@@ -3953,7 +3969,7 @@ GrB_Info GrB_Col_extract            // w<mask> = accum (w, A(I,j))
 // SPEC: The GxB_*_subassign functions are extensions to the spec.
 
 // Each GxB_subassign function is very similar to its corresponding GrB_assign
-// function in the spec, but they differ in three ways:
+// function in the spec, but they differ in two ways:
 
 // (1) the mask in the GxB_subassign functions has the same dimensions as
 //      w(I) for vectors and C(I,J) for matrices.  In GrB_assign, the mask is
@@ -3981,16 +3997,6 @@ GrB_Info GrB_Col_extract            // w<mask> = accum (w, A(I,j))
 //      is false.  With GrB_assign, it is not possible to change entries
 //      outside the submatrix C(I,J), except to delete them in this
 //      circumstance.
-
-// (3) They differ in how duplicate indices are treated in I and J.  For both
-//      assign and subassign operations, results are not defined for
-//      GrB_Matrix_*assign, GrB_Vector_*assign, GrB_Row_*assign, and
-//      GrB_Col_*assign when duplicate indices appear in I and J.  The scalar
-//      expansion operations, GrB_*_assign_TYPE, are well-defined if duplicate
-//      indices appear (the results are the same as if duplicates are removed
-//      first from I and J).  However, the subassign scalar expansion
-//      operations, GxB_*_subassign_TYPE are not well-defined if duplicate
-//      indices appear in I and J.
 
 // GxB_subassign and GrB_assign are identical if GrB_REPLACE is set to its
 // default value of false, or if the masks happen to be the same.  The two
@@ -4064,8 +4070,7 @@ GrB_Info GrB_Col_extract            // w<mask> = accum (w, A(I,j))
 // vector u.
 
 // The GxB_subassign and GrB_assign functions have the same signatures; they
-// differ only in how they consider the Mask and the GrB_REPLACE descriptor,
-// and in how duplicate indices are treated for scalar expansion.
+// differ only in how they consider the Mask and the GrB_REPLACE descriptor.
 
 GrB_Info GxB_Vector_subassign       // w(I)<mask> = accum (w(I),u)
 (
@@ -5372,8 +5377,9 @@ GrB_Info GrB_Matrix_reduce_UDT      // c = accum (c, reduce_to_scalar (A))
 // reduce matrix to vector:
 // GrB_Matrix_reduce_Monoid   (w,mask,acc,mo,A,d) // w<mask> = acc (w,reduce(A))
 // GrB_Matrix_reduce_BinaryOp (w,mask,acc,op,A,d) // w<mask> = acc (w,reduce(A))
-// GrB_Vector_reduce_[SCALAR] (c, acc,monoid,u, d)
-// GrB_Matrix_reduce_[SCALAR] (c, acc,monoid,A, d)
+// reduce matrix to scalar:
+// GrB_Vector_reduce_[SCALAR] (c,acc,monoid,u,d)  // c = acc (c,reduce(A))
+// GrB_Matrix_reduce_[SCALAR] (c,acc,monoid,A,d)  // c = acc (c,reduce(A))
 
 #define GrB_reduce(arg1,arg2,arg3,arg4,...)                 \
     _Generic                                                \
@@ -5945,7 +5951,6 @@ GrB_Info GxB_Vector_resize      // change the size of a vector
               GrB_Matrix : GxB_Matrix_resize                \
     )                                                       \
     (arg1, __VA_ARGS__)
-
 
 //------------------------------------------------------------------------------
 // GxB_Matrix_Pending:  Checks to see if matrix has pending operations

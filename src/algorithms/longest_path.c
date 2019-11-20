@@ -11,7 +11,7 @@
 #include"./detect_cycle.h"
 
 // Scans the graph in a DFS fashion, keeps track after the longest path length.
-static void __DFSMaxDepth(QGNode *n, int level, int *max_depth, rax *visited) {
+static void __DFSMaxDepth(QGNode *n, int level, int *max_depth, rax *visited, rax *used_edges) {
 	if(level > *max_depth) *max_depth = level;
 
 	// Mark n as visited, return if node already marked.
@@ -23,12 +23,17 @@ static void __DFSMaxDepth(QGNode *n, int level, int *max_depth, rax *visited) {
 	// Expand node N by visiting all of its neighbors
 	for(uint i = 0; i < array_len(n->outgoing_edges); i++) {
 		QGEdge *e = n->outgoing_edges[i];
-		__DFSMaxDepth(e->dest, level + 1, max_depth, visited);
+		if(!raxInsert(used_edges, (unsigned char *)e->alias, strlen(e->alias), NULL, NULL)) continue;
+		__DFSMaxDepth(e->dest, level + 1, max_depth, visited, used_edges);
+		raxRemove(used_edges, (unsigned char *)e->alias, strlen(e->alias), NULL);
 	}
 
+	// Expand node N by visiting all of its neighbors
 	for(uint i = 0; i < array_len(n->incoming_edges); i++) {
 		QGEdge *e = n->incoming_edges[i];
-		__DFSMaxDepth(e->src, level + 1, max_depth, visited);
+		if(!raxInsert(used_edges, (unsigned char *)e->alias, strlen(e->alias), NULL, NULL)) continue;
+		__DFSMaxDepth(e->src, level + 1, max_depth, visited, used_edges);
+		raxRemove(used_edges, (unsigned char *)e->alias, strlen(e->alias), NULL);
 	}
 
 	raxRemove(visited, (unsigned char *)n->alias, strlen(n->alias), NULL);
@@ -39,10 +44,12 @@ static int _DFSMaxDepth(QGNode *n) {
 	int level = 0;              // Starting at level 0.
 	int max_depth = 0;          // Longest path length.
 	rax *visited = raxNew();    // Dictionary of visited nodes.
+	rax *used_edges = raxNew(); // Dictionary of used edges.
 
-	__DFSMaxDepth(n, level, &max_depth, visited);
+	__DFSMaxDepth(n, level, &max_depth, visited, used_edges);
 
 	raxFree(visited);
+	raxFree(used_edges);
 	return max_depth;
 }
 

@@ -38,12 +38,17 @@
 
 #include "GB_transpose.h"
 
-#define GB_FREE_WORK                                                    \
-{                                                                       \
-    for (int taskid = 0 ; taskid < naslice ; taskid++)                  \
-    {                                                                   \
-        GB_FREE_MEMORY (Rowcounts [taskid], vlen+1, sizeof (int64_t)) ; \
-    }                                                                   \
+#define GB_FREE_WORK                                                        \
+{                                                                           \
+    if (Rowcounts != NULL)                                                  \
+    {                                                                       \
+        for (int taskid = 0 ; taskid < naslice ; taskid++)                  \
+        {                                                                   \
+            GB_FREE_MEMORY (Rowcounts [taskid], vlen+1, sizeof (int64_t)) ; \
+        }                                                                   \
+    }                                                                       \
+    GB_FREE_MEMORY (Rowcounts, naslice, sizeof (int64_t *)) ;               \
+    GB_FREE_MEMORY (A_slice, naslice+1, sizeof (int64_t)) ;                 \
 }
 
 #define GB_FREE_ALL                                                     \
@@ -108,15 +113,8 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
 
     int naslice = GB_nthreads (anz, GB_IMAX (vlen, chunk), nthreads_max) ;
 
-    //--------------------------------------------------------------------------
-    // initialze the row count arrays
-    //--------------------------------------------------------------------------
-
-    int64_t *Rowcounts [naslice] ;
-    for (int taskid = 0 ; taskid < naslice ; taskid++)
-    {
-        Rowcounts [taskid] = NULL ;
-    }
+    int64_t *restrict A_slice = NULL ;          // size naslice+1
+    int64_t *restrict *Rowcounts = NULL ;       // size naslice
 
     //--------------------------------------------------------------------------
     // allocate C: always non-hypersparse
@@ -138,6 +136,14 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     // allocate workspace
     //--------------------------------------------------------------------------
 
+    GB_CALLOC_MEMORY (Rowcounts, naslice, sizeof (int64_t *)) ;
+    if (Rowcounts == NULL)
+    {
+        // out of memory
+        GB_FREE_ALL ;
+        return (GB_OUT_OF_MEMORY) ;
+    }
+
     for (int taskid = 0 ; taskid < naslice ; taskid++)
     {
         int64_t *rowcount = NULL ;
@@ -157,8 +163,13 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
 
     // create the iterator for A
     GBI_single_iterator Iter ;
-    int64_t A_slice [naslice+1] ;
-    GB_pslice (A_slice, /* A */ A->p, A->nvec, naslice) ;
+    if (!GB_pslice (&A_slice, /* A */ A->p, A->nvec, naslice))
+    {
+        // out of memory
+        GB_FREE_ALL ;
+        return (GB_OUT_OF_MEMORY) ;
+    }
+
     GBI1_init (&Iter, A) ;
 
     // sum up the row counts and find C->p

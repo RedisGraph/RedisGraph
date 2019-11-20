@@ -49,14 +49,14 @@
 #define MATCH(s,t) (strcmp(s,t) == 0)
 
 // timer functions, and result statistics
-extern double gbtime, tic [2] ;
+extern double grbtime, tic [2] ;
 void GB_mx_put_time
 (
     GrB_Desc_Value AxB_method_used
 ) ;
 void GB_mx_clear_time (void) ;          // clear the time and start the tic
 #define GB_MEX_TIC { GB_mx_clear_time ( ) ; }
-#define GB_MEX_TOC { gbtime = simple_toc (tic) ; }
+#define GB_MEX_TOC { grbtime = simple_toc (tic) ; }
 
 void GB_mx_abort (void) ;               // assertion failure
 
@@ -354,7 +354,7 @@ GrB_Matrix GB_mx_alias      // output matrix (NULL if no match found)
         GB_MEX_TIC ;                                                        \
         GrB_Info info = GRAPHBLAS_OPERATION ;                               \
         /* Finish the work since we're returning to MATLAB. */              \
-        /* This allows proper timing with gbresults.m */                    \
+        /* This allows proper timing with grbresults.m */                   \
         GrB_wait ( ) ;                                                      \
         GB_MEX_TOC ;                                                        \
         if (info == GrB_PANIC) mexErrMsgTxt ("panic!") ;                    \
@@ -433,14 +433,14 @@ GrB_Matrix GB_mx_alias      // output matrix (NULL if no match found)
 // statement coverage
 //------------------------------------------------------------------------------
 
-// GB_cover_get copies GraphBLAS_gbcov from the MATLAB global workspace into
+// GB_cover_get copies GraphBLAS_grbcov from the MATLAB global workspace into
 // the internal GB_cov array.  The MATLAB array is created if it doesn't exist.
-// Thus, to clear the counts simply clear GraphBLAS_gbcov from the MATLAB
+// Thus, to clear the counts simply clear GraphBLAS_grbcov from the MATLAB
 // global workpace.
 void GB_cover_get (void) ;
 
 // GB_cover_put copies the internal GB_cov array back into the MATLAB
-// GraphBLAS_gbcov array, for analysis and for subsequent statement counting.
+// GraphBLAS_grbcov array, for analysis and for subsequent statement counting.
 // This way, multiple tests in MATLAB can be accumulated into a single array
 // of counters.
 void GB_cover_put (void) ;

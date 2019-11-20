@@ -20,7 +20,18 @@
 #include "GB_red__include.h"
 #endif
 
-#define GB_FREE_ALL GB_MATRIX_FREE (&T) ;
+#define GB_FREE_WORK                                                        \
+{                                                                           \
+    GB_FREE_MEMORY (Wfirst_space, ntasks, zsize) ;                          \
+    GB_FREE_MEMORY (Wlast_space,  ntasks, zsize) ;                          \
+    GB_ek_slice_free (&pstart_slice, &kfirst_slice, &klast_slice, ntasks) ; \
+}
+
+#define GB_FREE_ALL             \
+{                               \
+    GB_FREE_WORK ;              \
+    GB_MATRIX_FREE (&T) ;       \
+}
 
 GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
 (
@@ -55,6 +66,11 @@ GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
     ASSERT_OK_OR_NULL (GB_check (desc, "desc for reduce_BinaryOp", GB0)) ;
 
     GrB_Matrix T = NULL ;
+    int ntasks = 0 ;
+    size_t zsize = 0 ;
+    int64_t *pstart_slice = NULL, *kfirst_slice = NULL, *klast_slice = NULL ;
+    GB_void *restrict Wfirst_space = NULL ;
+    GB_void *restrict Wlast_space = NULL ;
 
     // get the descriptor
     GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2);
@@ -170,7 +186,7 @@ GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
     int64_t anvec = A->nvec ;
     int64_t anz = GB_NNZ (A) ;
 
-    size_t zsize = reduce->ztype->size ;
+    zsize = reduce->ztype->size ;
     GB_Type_code zcode = reduce->ztype->code ;
 
     //--------------------------------------------------------------------------
@@ -261,14 +277,20 @@ GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
         // and vectors kfirst_slice [tid] to klast_slice [tid].  The first and
         // last vectors may be shared with prior slices and subsequent slices.
 
-        int ntasks = (nthreads == 1) ? 1 : (8 * nthreads) ;
+        ntasks = (nthreads == 1) ? 1 : (8 * nthreads) ;
         ntasks = GB_IMIN (ntasks, anz) ;
         ntasks = GB_IMAX (ntasks, 1) ;
-        int64_t pstart_slice [ntasks+1] ;
-        int64_t kfirst_slice [ntasks] ;
-        int64_t klast_slice  [ntasks] ;
 
-        GB_ek_slice (pstart_slice, kfirst_slice, klast_slice, A, ntasks) ;
+        GB_MALLOC_MEMORY (Wfirst_space, ntasks, zsize) ;
+        GB_MALLOC_MEMORY (Wlast_space,  ntasks, zsize) ;
+
+        if (Wfirst_space == NULL || Wlast_space == NULL ||
+           !GB_ek_slice (&pstart_slice, &kfirst_slice, &klast_slice, A, ntasks))
+        {
+            // out of memory
+            GB_FREE_ALL ;
+            return (GB_OUT_OF_MEMORY) ;
+        }
 
         //----------------------------------------------------------------------
         // numeric phase: launch the switch factory
@@ -282,8 +304,8 @@ GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
             #define GB_RED_WORKER(opname,aname,atype)                       \
             {                                                               \
                 info = GB_red (opname, aname) ((atype *) Tx, A,             \
-                    kfirst_slice, klast_slice, pstart_slice, ntasks,        \
-                    nthreads) ;                                             \
+                    kfirst_slice, klast_slice, pstart_slice,                \
+                    Wfirst_space, Wlast_space, ntasks, nthreads) ;          \
                 done = (info != GrB_NO_VALUE) ;                             \
             }                                                               \
             break ;
@@ -309,13 +331,9 @@ GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
             #define GB_ATYPE GB_void
             #define GB_CTYPE GB_void
 
-            // workspace for each thread
-            #define GB_REDUCTION_WORKSPACE(W, ntasks)               \
-                GB_void W [ntasks*zsize]
-
             // ztype s ;
             #define GB_SCALAR(s)                                    \
-                GB_void s [zsize]
+                GB_void s [GB_PGI(zsize)]
 
             // ztype s = (ztype) Ax [p], with typecast
             #define GB_CAST_ARRAY_TO_SCALAR(s,Ax,p)                 \
@@ -323,7 +341,7 @@ GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
 
             // s += (ztype) Ax [p], with typecast
             #define GB_ADD_CAST_ARRAY_TO_SCALAR(s, Ax, p)           \
-                GB_void awork [zsize] ;                             \
+                GB_void awork [GB_PGI(zsize)] ;                     \
                 cast_A_to_Z (awork, Ax +((p)*asize), zsize) ;       \
                 freduce (s, s, awork) ;
 
@@ -434,12 +452,13 @@ GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
             // Determine number of threads to use for constructing the buckets.
             // Each thread requires O(n) workspace, so this method does not
             // scale well when there are many threads compared to anz.  Total
-            // workspace is O(n*nth), so limit the # of threads used so that at
-            // most anz workspace is used.  Each thread takes a single task.
+            // workspace is O(n*ntasks), so limit the # of threads used so that
+            // at most anz workspace is used.  Each thread takes a single task.
 
-            int nth = anz / n ;
-            nth = GB_IMIN (nth, nthreads) ;
-            nth = GB_IMAX (nth, 1) ;
+            ntasks = (n > 0) ? (anz / n) : 1 ;
+            ntasks = GB_IMIN (ntasks, nthreads) ;
+            ntasks = GB_IMAX (ntasks, 1) ;
+            int nth = ntasks ;      // one thread per task
 
             //------------------------------------------------------------------
             // slice the entries for each thread
@@ -448,8 +467,15 @@ GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
             // Thread tid does entries pstart_slice [tid] to
             // pstart_slice [tid+1]-1.  No need to compute kfirst or klast.
 
-            int64_t pstart_slice [nth+1] ;
-            GB_eslice (pstart_slice, anz, nth) ;
+            GB_MALLOC_MEMORY (pstart_slice, ntasks+1, sizeof (int64_t)) ;
+            if (pstart_slice == NULL)
+            {
+                // out of memory
+                GB_FREE_ALL ;
+                return (GB_OUT_OF_MEMORY) ;
+            }
+
+            GB_eslice (pstart_slice, anz, ntasks) ;
 
             //------------------------------------------------------------------
             // sum across each index: T(i) = reduce (A (i,:))
@@ -463,7 +489,7 @@ GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
             #define GB_RED_WORKER(opname,aname,atype)                       \
             {                                                               \
                 info = GB_red (opname, aname) (&T, ttype, A, pstart_slice,  \
-                    nth, nthreads, Context) ;                               \
+                    ntasks, nthreads, Context) ;                            \
                 done = (info != GrB_NO_VALUE) ;                             \
             }                                                               \
             break ;
@@ -509,6 +535,8 @@ GrB_Info GB_reduce_to_vector        // C<M> = accum (C,reduce(A))
     // C<M> = accum (C,T): accumulate the results into C via the mask
     //--------------------------------------------------------------------------
 
-    return (GB_ACCUM_MASK (C, M, NULL, accum, &T, C_replace, Mask_comp)) ;
+    GB_FREE_WORK ;
+    return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp,
+        Context)) ;
 }
 

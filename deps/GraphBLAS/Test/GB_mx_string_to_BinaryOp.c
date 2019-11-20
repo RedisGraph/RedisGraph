@@ -21,7 +21,7 @@
 //  'logical', 'int8', 'uint8', 'int16', 'uint16', 'int32', 'uint32', 'int64',
 //  'uint64', 'single', 'double'
 
-// Total # of ops: 23*11 = 253, not including GrB_LOR, GrB_LAND, GrB_XOR,
+// Total # of ops: 25*11 = 275, not including GrB_LOR, GrB_LAND, GrB_XOR,
 // which are equivalent to the GxB_*_BOOL versions.
 
 // default_opclass: default class if opclass_mx is NULL

@@ -38,6 +38,19 @@
 
 #include "GB_mxm.h"
 
+#define GB_FREE_ALL                                             \
+{                                                               \
+    if (naslice > 1 && Aslice != NULL)                          \
+    {                                                           \
+        for (int tid = 0 ; tid < naslice ; tid++)               \
+        {                                                       \
+            GB_MATRIX_FREE (& (Aslice [tid])) ;                 \
+        }                                                       \
+    }                                                           \
+    GB_FREE_MEMORY (Slice,  naslice+1, sizeof (int64_t)) ;      \
+    GB_FREE_MEMORY (Aslice, naslice+1, sizeof (int64_t)) ;      \
+}
+
 GrB_Info GB_AxB_dot_parallel        // parallel dot product
 (
     GrB_Matrix *Chandle,            // output matrix, NULL on input
@@ -65,6 +78,11 @@ GrB_Info GB_AxB_dot_parallel        // parallel dot product
     ASSERT (!GB_PENDING (A)) ; ASSERT (!GB_ZOMBIES (A)) ;
     ASSERT (!GB_PENDING (B)) ; ASSERT (!GB_ZOMBIES (B)) ;
     ASSERT_OK (GB_check (semiring, "semiring for parallel A*B", GB0)) ;
+
+    int64_t naslice = 0 ;
+    int64_t nbslice = 0 ;
+    int64_t *restrict Slice = NULL ;    // size naslice+1
+    GrB_Matrix *Aslice = NULL ;         // size naslice+1
 
     if (M != NULL && !Mask_comp)
     { 
@@ -120,14 +138,10 @@ GrB_Info GB_AxB_dot_parallel        // parallel dot product
         // sequential C<!M>=A'*B or C=A'*B
         //======================================================================
 
-        #define GB_FREE_ALL ;
-
         if (nthreads == 1)
         { 
             // do the entire computation with a single thread
-            GrB_Matrix Aslice [1] ;
-            Aslice [0] = A ;
-            info = GB_AxB_dot2 (Chandle, M, Aslice, B, semiring, flipxy,
+            info = GB_AxB_dot2 (Chandle, M, &A, B, semiring, flipxy,
                 mask_applied, 1, 1, 1, NULL) ;
             if (info == GrB_SUCCESS)
             { 
@@ -141,29 +155,6 @@ GrB_Info GB_AxB_dot_parallel        // parallel dot product
         //======================================================================
 
         ASSERT (nthreads > 1) ;
-
-        int64_t Slice [32*nthreads+1] ;
-        GrB_Matrix Aslice [32*nthreads] ;
-
-        for (int tid = 0 ; tid < 32*nthreads ; tid++)
-        { 
-            Slice [tid] = 0 ;
-            Aslice [tid] = NULL ;
-        }
-        Slice [32*nthreads+1] = 0 ;
-        int nbslice = 0, naslice = 0 ;
-
-        #undef  GB_FREE_ALL
-        #define GB_FREE_ALL                                     \
-        {                                                       \
-            if (naslice > 1)                                    \
-            {                                                   \
-                for (int tid = 0 ; tid < naslice ; tid++)       \
-                {                                               \
-                    GB_MATRIX_FREE (& (Aslice [tid])) ;         \
-                }                                               \
-            }                                                   \
-        }
 
         //----------------------------------------------------------------------
         // slice A' for C=A'*B or C<!M>=A'*B
@@ -182,7 +173,7 @@ GrB_Info GB_AxB_dot_parallel        // parallel dot product
             // slice B into individual vectors
             nbslice = bnvec ;
 
-            // slice A' to get a total of about 8*nthreads tasks
+            // slice A' to get a total of about 32*nthreads tasks
             naslice = (32 * nthreads) / nbslice ;
 
             // but do not slice A too finely
@@ -196,7 +187,13 @@ GrB_Info GB_AxB_dot_parallel        // parallel dot product
         // slice A' by nz
         //----------------------------------------------------------------------
 
-        GB_pslice (Slice, /* A */ A->p, A->nvec, naslice) ;
+        GB_CALLOC_MEMORY (Aslice, naslice+1, sizeof (GrB_Matrix)) ;
+        if (Aslice == NULL || !GB_pslice (&Slice, A->p, A->nvec, naslice))
+        {
+            // out of memory
+            GB_FREE_ALL ;
+            return (GB_OUT_OF_MEMORY) ;
+        }
 
         //----------------------------------------------------------------------
         // construct each slice of A'

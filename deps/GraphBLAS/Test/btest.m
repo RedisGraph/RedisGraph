@@ -1,7 +1,7 @@
 % test GrB_build
 clear all
 nthreads_set(2)
-gb
+grbinfo
 test56
 test23
 

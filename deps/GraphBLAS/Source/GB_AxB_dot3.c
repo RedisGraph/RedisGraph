@@ -358,7 +358,7 @@ GrB_Info GB_AxB_dot3                // C<M> = A'*B using dot product method
                 flipxy,
                 /* heap: */ NULL, NULL, NULL, 0,
                 /* Gustavson: */ NULL,
-                /* dot: */ NULL, nthreads, 0, 0, NULL,
+                /* dot2: */ NULL, NULL, nthreads, 0, 0, NULL,
                 /* dot3: */ TaskList, ntasks) ;
             done = true ;
         }
@@ -419,12 +419,12 @@ GrB_Info GB_AxB_dot3                // C<M> = A'*B using dot product method
 
         // aki = A(k,i), located in Ax [pA]
         #define GB_GETA(aki,Ax,pA)                                          \
-            GB_void aki [aki_size] ;                                        \
+            GB_void aki [GB_PGI(aki_size)] ;                                \
             if (!A_is_pattern) cast_A (aki, Ax +((pA)*asize), asize) ;
 
         // bkj = B(k,j), located in Bx [pB]
         #define GB_GETB(bkj,Bx,pB)                                          \
-            GB_void bkj [bkj_size] ;                                        \
+            GB_void bkj [GB_PGI(bkj_size)] ;                                \
             if (!B_is_pattern) cast_B (bkj, Bx +((pB)*bsize), bsize) ;
 
         // break if cij reaches the terminal value
@@ -440,13 +440,13 @@ GrB_Info GB_AxB_dot3                // C<M> = A'*B using dot product method
 
         // C(i,j) += A(i,k) * B(k,j)
         #define GB_MULTADD(cij, aki, bkj)                                   \
-            GB_void zwork [csize] ;                                         \
+            GB_void zwork [GB_PGI(csize)] ;                                 \
             GB_MULTIPLY (zwork, aki, bkj) ;                                 \
             fadd (cij, cij, zwork) ;
 
         // define cij for each task
         #define GB_CIJ_DECLARE(cij)                                         \
-            GB_void cij [csize] ;
+            GB_void cij [GB_PGI(csize)] ;
 
         // address of Cx [p]
         #define GB_CX(p) Cx +((p)*csize)

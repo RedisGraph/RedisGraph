@@ -123,6 +123,7 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     // C<M> = accum (C,T): accumulate the results into C via the M
     //--------------------------------------------------------------------------
 
-    return (GB_ACCUM_MASK (C, M, NULL, accum, &T, C_replace, Mask_comp)) ;
+    return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp,
+        Context)) ;
 }
 

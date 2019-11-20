@@ -70,11 +70,10 @@ if (~ok_matrix)
     % C1.matrix
     % C2.matrix
 end
-
 if (~ok_pattern)
     fprintf ('pattern is wrong:\n') ;
-    % C1.pattern
-    % C2.pattern
+    C1.pattern
+    C2.pattern
 end
 %}
 

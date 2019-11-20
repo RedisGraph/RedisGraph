@@ -28,6 +28,17 @@ GrB_Info GB_Type_new
     GB_RETURN_IF_NULL (type) ;
     (*type) = NULL ;
 
+    #ifdef PGI_COMPILER_BUG
+
+        if (sizeof_ctype > PGI_COMPILER_BUG_MAXSIZE_FOR_ANY_GRB_TYPE)
+        {
+            return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG, "Due to a PGI"
+                "compiler bug, user-defined types are limited to %d bytes",
+                PGI_COMPILER_BUG_MAXSIZE_FOR_ANY_GRB_TYPE))) ;
+        }
+
+    #endif
+
     //--------------------------------------------------------------------------
     // create the type
     //--------------------------------------------------------------------------

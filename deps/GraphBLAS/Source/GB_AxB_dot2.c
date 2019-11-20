@@ -21,12 +21,17 @@
 #include "GB_AxB__include.h"
 #endif
 
-#define GB_FREE_ALL                                                     \
-{                                                                       \
-    for (int taskid = 0 ; taskid < naslice ; taskid++)                  \
-    {                                                                   \
-        GB_FREE_MEMORY (C_counts [taskid], cnvec, sizeof (int64_t)) ;   \
-    }                                                                   \
+#define GB_FREE_WORK                                                        \
+{                                                                           \
+    GB_FREE_MEMORY (B_slice, nbslice+1, sizeof (int64_t)) ;                 \
+    if (C_counts != NULL)                                                   \
+    {                                                                       \
+        for (int taskid = 0 ; taskid < naslice ; taskid++)                  \
+        {                                                                   \
+            GB_FREE_MEMORY (C_counts [taskid], cnvec, sizeof (int64_t)) ;   \
+        }                                                                   \
+    }                                                                       \
+    GB_FREE_MEMORY (C_counts, naslice, sizeof (int64_t *)) ;                \
 }
 
 GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
@@ -75,6 +80,10 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
     ASSERT (A->vlen == B->vlen) ;
     ASSERT (mask_applied != NULL) ;
 
+    int64_t *restrict B_slice = NULL ;
+    int64_t **C_counts = NULL ;
+    int64_t cnvec = B->nvec ;
+
     //--------------------------------------------------------------------------
     // get the semiring operators
     //--------------------------------------------------------------------------
@@ -112,6 +121,17 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
     (*Chandle) = NULL ;
 
     //--------------------------------------------------------------------------
+    // allocate workspace and slice B
+    //--------------------------------------------------------------------------
+
+    if (!GB_pslice (&B_slice, /* B */ B->p, B->nvec, nbslice))
+    {
+        // out of memory
+        GB_FREE_WORK ;
+        return (GrB_OUT_OF_MEMORY) ;
+    }
+
+    //--------------------------------------------------------------------------
     // compute # of entries in each vector of C
     //--------------------------------------------------------------------------
 
@@ -124,13 +144,12 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
         B->nvec_nonempty = GB_nvec_nonempty (B, NULL) ;
     }
 
-    int64_t cnvec = B->nvec ;
-
-    int64_t *C_counts [naslice] ;
-
-    for (int a_taskid = 0 ; a_taskid < naslice ; a_taskid++)
-    { 
-        C_counts [a_taskid] = NULL ;
+    GB_CALLOC_MEMORY (C_counts, naslice, sizeof (int64_t *)) ;
+    if (C_counts == NULL)
+    {
+        // out of memory
+        GB_FREE_WORK ;
+        return (GrB_OUT_OF_MEMORY) ;
     }
 
     for (int a_taskid = 0 ; a_taskid < naslice ; a_taskid++)
@@ -140,7 +159,7 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
         if (C_count == NULL)
         { 
             // out of memory
-            GB_FREE_ALL ;
+            GB_FREE_WORK ;
             return (GrB_OUT_OF_MEMORY) ;
         }
         C_counts [a_taskid] = C_count ;
@@ -164,7 +183,7 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
     if (info != GrB_SUCCESS)
     { 
         // out of memory
-        GB_FREE_ALL ;
+        GB_FREE_WORK ;
         return (info) ;
     }
 
@@ -211,7 +230,7 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
     { 
         // out of memory
         GB_MATRIX_FREE (Chandle) ;
-        GB_FREE_ALL ;
+        GB_FREE_WORK ;
         return (info) ;
     }
 
@@ -232,7 +251,7 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
     #define GB_AxB_WORKER(add,mult,xyname)                              \
     {                                                                   \
         info = GB_Adot2B (add,mult,xyname) (C, M,                       \
-            Aslice, A_is_pattern, B, B_is_pattern,                      \
+            Aslice, A_is_pattern, B, B_is_pattern, B_slice,             \
             C_counts, nthreads, naslice, nbslice) ;                     \
         done = (info != GrB_NO_VALUE) ;                                 \
     }                                                                   \
@@ -282,7 +301,8 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
                 flipxy,
                 /* heap: */ NULL, NULL, NULL, 0,
                 /* Gustavson: */ NULL,
-                /* dot: */ Aslice, nthreads, naslice, nbslice, C_counts,
+                /* dot2: */ Aslice, B_slice, nthreads, naslice, nbslice,
+                            C_counts,
                 /* dot3: */ NULL, 0) ;
             done = true ;
         }
@@ -343,12 +363,12 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
 
         // aki = A(k,i), located in Ax [pA]
         #define GB_GETA(aki,Ax,pA)                                          \
-            GB_void aki [aki_size] ;                                        \
+            GB_void aki [GB_PGI(aki_size)] ;                                \
             if (!A_is_pattern) cast_A (aki, Ax +((pA)*asize), asize) ;
 
         // bkj = B(k,j), located in Bx [pB]
         #define GB_GETB(bkj,Bx,pB)                                          \
-            GB_void bkj [bkj_size] ;                                        \
+            GB_void bkj [GB_PGI(bkj_size)] ;                                \
             if (!B_is_pattern) cast_B (bkj, Bx +((pB)*bsize), bsize) ;
 
         // break if cij reaches the terminal value
@@ -364,13 +384,13 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
 
         // C(i,j) += A(i,k) * B(k,j)
         #define GB_MULTADD(cij, aki, bkj)                                   \
-            GB_void zwork [csize] ;                                         \
+            GB_void zwork [GB_PGI(csize)] ;                                 \
             GB_MULTIPLY (zwork, aki, bkj) ;                                 \
             fadd (cij, cij, zwork) ;
 
         // define cij for each task
         #define GB_CIJ_DECLARE(cij)                                         \
-            GB_void cij [csize] ;
+            GB_void cij [GB_PGI(csize)] ;
 
         // address of Cx [p]
         #define GB_CX(p) Cx +((p)*csize)
@@ -406,7 +426,7 @@ GrB_Info GB_AxB_dot2                // C=A'*B or C<!M>=A'*B, dot product method
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_ALL ;
+    GB_FREE_WORK ;
     ASSERT_OK (GB_check (C, "dot: C = A'*B output", GB0)) ;
     ASSERT (*Chandle == C) ;
     (*mask_applied) = (M != NULL) ;

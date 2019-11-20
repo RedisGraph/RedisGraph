@@ -515,9 +515,11 @@ void mexFunction
     // GB_pslice
     //--------------------------------------------------------------------------
 
-    int64_t Slice [4] ;
-    GB_pslice (Slice, NULL, 0, 4) ;
+    int64_t *Slice = NULL ;
+    GB_pslice (&Slice, NULL, 0, 4) ;
     for (int t = 0 ; t < 4 ; t++) CHECK (Slice [t] == 0) ;
+    GB_free_memory (Slice, 5, sizeof (int64_t)) ;
+    Slice = NULL ;
 
     //--------------------------------------------------------------------------
     // renamed boolean monoids
@@ -748,6 +750,7 @@ void mexFunction
         }
 
         GrB_Matrix Aslice [2] = { NULL, NULL } ;
+        int64_t Slice [8] ;
         Slice [0] = 0 ;
         Slice [1] = 4 ;
         Slice [2] = 8 ;
@@ -830,7 +833,13 @@ void mexFunction
     OK (GxB_Scalar_new (&thunk, GrB_FP64)) ;
     OK (GxB_Scalar_setElement_FP64 (thunk, 4)) ;
     OK (GxB_select (C, NULL, NULL, selectop, A, thunk, NULL)) ;
+
+    printf ("\nprint in one-based, long format:\n") ;
+    GB_Global_print_one_based_set (true) ;
+    GB_Global_print_format_set (1) ;
     OK (GxB_print (C, 3)) ;
+    GB_Global_print_one_based_set (false) ;
+    GB_Global_print_format_set (0) ;
 
     expected = GrB_NULL_POINTER ;
     ERR (GxB_select (C, NULL, NULL, selectop, A, NULL, NULL)) ;

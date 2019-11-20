@@ -48,6 +48,13 @@ void mexFunction
         FREE_ALL ;
         mexErrMsgTxt ("A failed") ;
     }
+    printf ("%p %p\n", A->type, Complex) ;
+    GxB_print (A->type, 3) ;
+    GxB_print (Complex, 3) ;
+    #ifdef MY_COMPLEX
+    printf ("%p\n", My_Complex) ;
+    GxB_print (My_Complex, 3) ;
+    #endif
     if (A->type != Complex)
     {
         FREE_ALL ;

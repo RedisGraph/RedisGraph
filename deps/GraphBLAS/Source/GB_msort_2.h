@@ -35,7 +35,7 @@ void GB_merge_select_2      // parallel or sequential merge of 2-by-n arrays
     const int64_t *restrict Left_0,     // Left [0..nleft-1]
     const int64_t *restrict Left_1,
     const int64_t nleft,
-    const int64_t *restrict Right_0,    // Right [0..nright01]
+    const int64_t *restrict Right_0,    // Right [0..nright-1]
     const int64_t *restrict Right_1,
     const int64_t nright
 ) ;

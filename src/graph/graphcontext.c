@@ -94,10 +94,8 @@ GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *grap
 	}
 	RedisModule_CloseKey(key);
 
-	if(gc) {
-		_GraphContext_IncreaseRefCount(gc);
-		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
-	}
+	if(gc) _GraphContext_IncreaseRefCount(gc);
+
 	return gc;
 }
 

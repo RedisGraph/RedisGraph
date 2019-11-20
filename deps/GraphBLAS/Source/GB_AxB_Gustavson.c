@@ -276,7 +276,7 @@ GrB_Info GB_AxB_Gustavson           // C=A*B or C<M>=A*B, Gustavson's method
                 flipxy,
                 /* heap: */ NULL, NULL, NULL, 0,
                 /* Gustavson: */ Sauna,
-                /* dot: */ NULL, 1, 1, 1, NULL,
+                /* dot2: */ NULL, NULL, 1, 1, 1, NULL,
                 /* dot3: */ NULL, 0) ;
             (*mask_applied) = (M != NULL) && (info == GrB_SUCCESS) ;
             return (info) ;

@@ -15,6 +15,8 @@
 
 #include "GB_mxm.h"
 
+#define GB_FREE_ALL ;
+
 GrB_Info GB_AxB_saxpy_sequential    // single-threaded C<M>=A*B
 (
     GrB_Matrix *Chandle,            // output matrix, NULL on input
@@ -73,7 +75,11 @@ GrB_Info GB_AxB_saxpy_sequential    // single-threaded C<M>=A*B
             // (total_flops < nnz(M)).  This condition is not checked if it has
             // already been considered in the caller.
             int64_t floplimit = GB_NNZ (M) ;
-            if (GB_AxB_flopcount (NULL, NULL, M, A, B, floplimit, NULL))
+            bool flopresult ;
+            GrB_Info info ;
+            GB_OK (GB_AxB_flopcount (&flopresult, NULL, NULL, M, A, B, 
+                floplimit, NULL)) ;
+            if (flopresult)
             { 
                 // total_flops < nnz(M), so the mask is too dense to use.
                 // Discard the mask; mask_applied will be false.

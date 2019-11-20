@@ -68,7 +68,7 @@ for d = [0.001 0.01 0.1 0.4 1 2 3]
         for nthreads = [1 2 4 8 20 40]
             nthreads_set (nthreads, chunk) ;
             C4 = GB_mex_AplusB (A, B, 'plus') ;
-            tg = gbresults ;
+            tg = grbresults ;
             if (nthreads == 1)
                 t1 = tg ;
             end
@@ -98,7 +98,7 @@ for d = [0.001 0.01 0.1 0.4 1 2 3]
             C4 = GB_mex_eWiseAdd_Vector (Empty, M0, [ ], 'plus', A, B, [ ]) ;
             %
             C4 = GB_mex_eWiseAdd_Vector (Empty, M0, [ ], 'plus', A, B, [ ]) ;
-            tg = gbresults ;
+            tg = grbresults ;
             if (nthreads == 1)
                 t1 = tg ;
             end
@@ -129,9 +129,9 @@ for d = [0.001 0.01 0.1 0.4 1 2 3]
             C4 = GB_mex_eWiseMult_Vector(Empty, [ ], [ ], 'times',M, C4, [ ]) ;
             %
             C4 = GB_mex_eWiseAdd_Vector (Empty, [ ], [ ], 'plus', A, B, [ ]) ;
-            tg1 = gbresults ;
+            tg1 = grbresults ;
             C4 = GB_mex_eWiseMult_Vector(Empty, [ ], [ ], 'times',M, C4, [ ]) ;
-            tg2 = gbresults ;
+            tg2 = grbresults ;
             tg = tg1 + tg2 ;
             if (nthreads == 1)
                 t1 = tg ;
@@ -161,7 +161,7 @@ for d = [0.001 0.01 0.1 0.4 1 2 3]
             C4 = GB_mex_eWiseMult_Vector (Empty, [ ], [ ], 'times', A,B, [ ]) ;
             %
             C4 = GB_mex_eWiseMult_Vector (Empty, [ ], [ ], 'times', A,B, [ ]) ;
-            tg = gbresults ;
+            tg = grbresults ;
             if (nthreads == 1)
                 t1 = tg ;
             end
@@ -191,7 +191,7 @@ for d = [0.001 0.01 0.1 0.4 1 2 3]
             C4 = GB_mex_eWiseMult_Vector (Empty, M0, [ ], 'times', A,B, [ ]) ;
             %
             C4 = GB_mex_eWiseMult_Vector (Empty, M0, [ ], 'times', A,B, [ ]) ;
-            tg = gbresults ;
+            tg = grbresults ;
             if (nthreads == 1)
                 t1 = tg ;
             end

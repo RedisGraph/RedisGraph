@@ -54,7 +54,7 @@ for dc = [2 0 1e-6 1e-5 1e-4 1e-3 1e-2 0.1 1]
 
         C2 = GB_mex_assign (C0, [ ], 'plus', scalar, I0, I0) ;
         C2 = GB_mex_assign (C0, [ ], 'plus', scalar, I0, I0) ;
-        tg = gbresults ;
+        tg = grbresults ;
         assert (isequal (C1, C2.matrix)) ;
         if (nthreads == 1)
             t1 = tg ;

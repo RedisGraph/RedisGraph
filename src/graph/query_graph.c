@@ -409,6 +409,29 @@ GrB_Matrix QueryGraph_MatrixRepresentation(const QueryGraph *qg) {
 	return m;
 }
 
+void QueryGraph_Print(const QueryGraph *qg) {
+	char *buff = calloc(1024, sizeof(char));
+
+	uint node_count = QueryGraph_NodeCount(qg);
+	uint edge_count = QueryGraph_EdgeCount(qg);
+
+	for(int i = 0; i < node_count; i++) {
+		QGNode *n = qg->nodes[i];
+		if(QGNode_IncomeDegree(n) + QGNode_OutgoingDegree(n) == 0) {
+			// Floating node.
+			asprintf(&buff, "%s%s;\n", buff, n->alias);
+		}
+	}
+
+	for(int i = 0; i < edge_count; i++) {
+		QGEdge *e = qg->edges[i];
+		asprintf(&buff, "%s%s -> %s;\n", buff, e->src->alias, e->dest->alias);
+	}
+
+	printf("%s\n", buff);
+	free(buff);
+}
+
 /* Frees entire graph. */
 void QueryGraph_Free(QueryGraph *qg) {
 	if(!qg) return;
@@ -429,4 +452,3 @@ void QueryGraph_Free(QueryGraph *qg) {
 	array_free(qg->edges);
 	rm_free(qg);
 }
-

@@ -15,7 +15,7 @@ for nth = [2 1]
         else
             debug_off
         end
-        gb
+        grbinfo
 
         test19
         test19b

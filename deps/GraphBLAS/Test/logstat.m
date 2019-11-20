@@ -68,15 +68,15 @@ for trial = 1:ntrials
     fprintf (f, '%s %-10s %7.1f sec ', s, testscript, t) ;
 
     if (~isempty (strfind (pwd, 'Tcov')))
-        global GraphBLAS_debug GraphBLAS_gbcov
-        save gbstat GraphBLAS_debug GraphBLAS_gbcov testscript
+        global GraphBLAS_debug GraphBLAS_grbcov
+        save grbstat GraphBLAS_debug GraphBLAS_grbcov testscript
         if (isempty (GraphBLAS_debug))
             GraphBLAS_debug = false ;
         end
         % fprintf ('malloc debug: %d\n', GraphBLAS_debug) ;
-        if (~isempty (GraphBLAS_gbcov))
-            c = sum (GraphBLAS_gbcov > 0) ;
-            n = length (GraphBLAS_gbcov) ;
+        if (~isempty (GraphBLAS_grbcov))
+            c = sum (GraphBLAS_grbcov > 0) ;
+            n = length (GraphBLAS_grbcov) ;
             fprintf (   'coverage: %5d of %5d (%5.1f%%)', c, n, 100 * (c/n)) ;
             fprintf (f, 'coverage: %5d of %5d (%5.1f%%)', c, n, 100 * (c/n)) ;
             if (debug)

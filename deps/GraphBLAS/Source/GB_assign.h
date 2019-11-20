@@ -88,7 +88,7 @@ void GB_assign_zombie4
     GB_Context Context
 ) ;
 
-void GB_assign_zombie5
+GrB_Info GB_assign_zombie5
 (
     GrB_Matrix Z,
     const GrB_Matrix M,

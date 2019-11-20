@@ -88,7 +88,7 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
     for (int64_t p = 0 ; p < anz ; p++)
     { 
         // xwork = (xtype) Ax [p]
-        GB_void xwork [xsize] ;
+        GB_void xwork [GB_PGI(xsize)] ;
         cast_A_to_X (xwork, Ax +(p*asize), asize) ;
         // Cx [p] = fop (xwork)
         fop (Cx +(p*zsize), xwork) ;

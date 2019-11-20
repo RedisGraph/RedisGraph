@@ -58,6 +58,13 @@
 
 #include "GB_add.h"
 
+#define GB_FREE_WORK                                            \
+{                                                               \
+    GB_FREE_MEMORY (kA_start, ntasks+1, sizeof (int64_t)) ;     \
+    GB_FREE_MEMORY (kB_start, ntasks+1, sizeof (int64_t)) ;     \
+    GB_FREE_MEMORY (kC_start, ntasks+1, sizeof (int64_t)) ;     \
+}
+
 //------------------------------------------------------------------------------
 // GB_allocate_result
 //------------------------------------------------------------------------------
@@ -166,6 +173,11 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
         (*C_to_M_handle) = NULL ;
     }
 
+    int64_t *restrict kA_start = NULL ;
+    int64_t *restrict kB_start = NULL ;
+    int64_t *restrict kC_start = NULL ;
+    int ntasks = 0 ;
+
     //--------------------------------------------------------------------------
     // determine the number of threads to use
     //--------------------------------------------------------------------------
@@ -236,6 +248,7 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
             (A_is_hyper) ? (&C_to_A) : NULL, (B_is_hyper) ? (&C_to_B) : NULL))
         { 
             // out of memory
+            GB_FREE_WORK ;
             return (GB_OUT_OF_MEMORY) ;
         }
 
@@ -284,11 +297,20 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
         double work = GB_IMIN (Anvec + Bnvec, n) ;
         nthreads = GB_nthreads (work, chunk, nthreads_max) ;
 
-        int ntasks = (nthreads == 1) ? 1 : (64 * nthreads) ;
+        ntasks = (nthreads == 1) ? 1 : (64 * nthreads) ;
         ntasks = GB_IMIN (ntasks, work) ;
-        int64_t kA_start [ntasks+1] ;
-        int64_t kB_start [ntasks+1] ;
-        int64_t kC_start [ntasks+1] ;
+
+        // allocate workspace
+        GB_MALLOC_MEMORY (kA_start, ntasks+1, sizeof (int64_t)) ;
+        GB_MALLOC_MEMORY (kB_start, ntasks+1, sizeof (int64_t)) ;
+        GB_MALLOC_MEMORY (kC_start, ntasks+1, sizeof (int64_t)) ;
+        if (kA_start == NULL || kB_start == NULL || kC_start == NULL)
+        {
+            // out of memory
+            GB_FREE_WORK ;
+            return (GB_OUT_OF_MEMORY) ;
+        }
+
         kA_start [0] = (Anvec == 0) ? -1 : 0 ;
         kB_start [0] = (Bnvec == 0) ? -1 : 0 ;
         kA_start [ntasks] = (Anvec == 0) ? -1 : Anvec ;
@@ -362,6 +384,7 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
             (M_is_hyper) ? (&C_to_M) : NULL, &C_to_A, &C_to_B))
         { 
             // out of memory
+            GB_FREE_WORK ;
             return (GB_OUT_OF_MEMORY) ;
         }
 
@@ -512,6 +535,7 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
             (M_is_hyper) ? (&C_to_M) : NULL, &C_to_A, NULL))
         { 
             // out of memory
+            GB_FREE_WORK ;
             return (GB_OUT_OF_MEMORY) ;
         }
 
@@ -546,6 +570,7 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
             (M_is_hyper) ? (&C_to_M) : NULL, NULL, &C_to_B))
         { 
             // out of memory
+            GB_FREE_WORK ;
             return (GB_OUT_OF_MEMORY) ;
         }
 
@@ -580,6 +605,7 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
             (M_is_hyper) ? (&C_to_M) : NULL, NULL, NULL))
         { 
             // out of memory
+            GB_FREE_WORK ;
             return (GB_OUT_OF_MEMORY) ;
         }
 
@@ -606,8 +632,7 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
         }
         else
         {
-            // this case can occur only if M is present, complemented, and
-            // hypersparse, and C is standard.
+            // C is standard
             #pragma omp parallel for num_threads(nthreads) schedule(static)
             for (int64_t j = 0 ; j < n ; j++)
             { 
@@ -740,6 +765,11 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
     }
     #endif
 
+    //--------------------------------------------------------------------------
+    // free workspace and return result
+    //--------------------------------------------------------------------------
+
+    GB_FREE_WORK ;
     return (GrB_SUCCESS) ;
 }
 

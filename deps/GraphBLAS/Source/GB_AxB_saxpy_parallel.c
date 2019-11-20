@@ -66,6 +66,38 @@
 #include "GB_mxm.h"
 #include "GB_Sauna.h"
 
+#define GB_FREE_WORK                                                        \
+{                                                                           \
+    GB_FREE_MEMORY (Slice, nthreads+1, sizeof (int64_t)) ;                  \
+    GB_FREE_MEMORY (Bflops, bnvec+1, sizeof (int64_t)) ;                    \
+    GB_FREE_MEMORY (Bflops_per_entry, bnz+1, sizeof (int64_t)) ;            \
+    GB_FREE_MEMORY (AxB_methods_used, nthreads, sizeof (GrB_Desc_Value)) ;  \
+    GB_FREE_MEMORY (bjnz_max, nthreads, sizeof (int64_t)) ;                 \
+    GB_FREE_MEMORY (Sauna_ids, nthreads, sizeof (int)) ;                    \
+    if (Cslice != NULL)                                                     \
+    {                                                                       \
+        for (int tid = 0 ; tid < nthreads ; tid++)                          \
+        {                                                                   \
+            GB_MATRIX_FREE (& (Cslice [tid])) ;                             \
+        }                                                                   \
+    }                                                                       \
+    if (Bslice != NULL)                                                     \
+    {                                                                       \
+        for (int tid = 0 ; tid < nthreads ; tid++)                          \
+        {                                                                   \
+            GB_MATRIX_FREE (& (Bslice [tid])) ;                             \
+        }                                                                   \
+    }                                                                       \
+    GB_FREE_MEMORY (Cslice, nthreads, sizeof (GrB_Matrix)) ;                \
+    GB_FREE_MEMORY (Bslice, nthreads, sizeof (GrB_Matrix)) ;                \
+}
+
+#define GB_FREE_ALL                                                         \
+{                                                                           \
+    GB_FREE_WORK ;                                                          \
+    GB_MATRIX_FREE (Chandle) ;                                              \
+}
+
 GrB_Info GB_AxB_saxpy_parallel      // parallel matrix-matrix multiply
 (
     GrB_Matrix *Chandle,            // output matrix, NULL on input
@@ -127,17 +159,30 @@ GrB_Info GB_AxB_saxpy_parallel      // parallel matrix-matrix multiply
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
     int nthreads = GB_nthreads (anz + bnz, chunk, nthreads_max) ;
 
+    //--------------------------------------------------------------------------
+    // initialize workspace
+    //--------------------------------------------------------------------------
+
+    int64_t *restrict Slice = NULL ;
+    int64_t *restrict Bflops = NULL ;
+    int64_t *restrict Bflops_per_entry = NULL ;
+
+    // workspaces each of size nthreads:
+    GrB_Desc_Value *restrict AxB_methods_used = NULL ;
+    int64_t *restrict bjnz_max = NULL ;
+    int *Sauna_ids = NULL ;
+    GrB_Matrix *restrict Cslice = NULL ;
+    GrB_Matrix *restrict Bslice = NULL ;
+
     //==========================================================================
     // sequential C<M>=A*B
     //==========================================================================
 
-    #define GB_FREE_ALL ;
-
     if (nthreads == 1)
     {
         // select the method
-        int64_t bjnz_max ;
-        GB_AxB_select (A, B, semiring, AxB_method, AxB_method_used, &bjnz_max) ;
+        int64_t bjnz1max ;
+        GB_AxB_select (A, B, semiring, AxB_method, AxB_method_used, &bjnz1max) ;
 
         // acquire a Sauna if Gustavson's method is being used
         int Sauna_id = -2 ;
@@ -148,7 +193,7 @@ GrB_Info GB_AxB_saxpy_parallel      // parallel matrix-matrix multiply
 
         // C<M>=A*B
         GrB_Info info1 = GB_AxB_saxpy_sequential (Chandle, M, Mask_comp, A, B,
-            semiring, flipxy, *AxB_method_used, bjnz_max, true, mask_applied,
+            semiring, flipxy, *AxB_method_used, bjnz1max, true, mask_applied,
             Sauna_id) ;
 
         // release the Sauna for Gustavson's method
@@ -175,8 +220,7 @@ GrB_Info GB_AxB_saxpy_parallel      // parallel matrix-matrix multiply
 
     int64_t total_flops ;
     bool fine_slice = (nthreads > bnvec) ;
-    int64_t *restrict Bflops = NULL ;
-    int64_t *restrict Bflops_per_entry = NULL ;
+    bool flopresult ;
 
     if (!fine_slice)
     {
@@ -202,13 +246,14 @@ GrB_Info GB_AxB_saxpy_parallel      // parallel matrix-matrix multiply
         if (Bflops == NULL)
         { 
             // out of memory
+            GB_FREE_ALL ;
             return (GB_OUT_OF_MEMORY) ;
         }
 
         // Bflops [k] = # of flops to compute A*B(:,j) where j is the kth
         // vector in B
-        GB_AxB_flopcount (Bflops, NULL, (Mask_comp) ? NULL : M, A, B, 0,
-            Context) ;
+        GB_OK (GB_AxB_flopcount (&flopresult, Bflops, NULL,
+            (Mask_comp) ? NULL : M, A, B, 0, Context)) ;
 
         // reduce # of threads, based on flop count and the chunk size
         total_flops = Bflops [bnvec] ;
@@ -231,13 +276,14 @@ GrB_Info GB_AxB_saxpy_parallel      // parallel matrix-matrix multiply
         if (Bflops_per_entry == NULL)
         { 
             // out of memory
+            GB_FREE_ALL ;
             return (GB_OUT_OF_MEMORY) ;
         }
 
         // Bflops_per_entry [p] = # of flops to compute A(:,k)*B(k,j)
         // where B(k,j) is in Bi [p] and Bx [p].
-        GB_AxB_flopcount (NULL, Bflops_per_entry, (Mask_comp) ? NULL : M,
-            A, B, 0, Context) ;
+        GB_OK (GB_AxB_flopcount (&flopresult, NULL, Bflops_per_entry,
+            (Mask_comp) ? NULL : M, A, B, 0, Context)) ;
 
         // reduce # of threads, based on flop count and the chunk size
         total_flops = Bflops_per_entry [bnz] ;
@@ -248,20 +294,28 @@ GrB_Info GB_AxB_saxpy_parallel      // parallel matrix-matrix multiply
     //--------------------------------------------------------------------------
 
     nthreads = GB_nthreads (total_flops, chunk, nthreads_max) ;
-    int64_t Slice [nthreads+1] ;
-    Slice [0] = 0 ;
+    bool ok_pslice ;
 
     if (!fine_slice)
     { 
         // slice B by the flops needed for each vector
-        GB_pslice (Slice, Bflops, bnvec, nthreads) ;
-        GB_FREE_MEMORY (Bflops, bnvec+1, sizeof (int64_t)) ;
+        ok_pslice = GB_pslice (&Slice, Bflops, bnvec, nthreads) ;
     }
     else
     { 
         // slice B by the flops needed for each entry
-        GB_pslice (Slice, Bflops_per_entry, bnz, nthreads) ;
-        GB_FREE_MEMORY (Bflops_per_entry, bnz+1, sizeof (int64_t)) ;
+        ok_pslice = GB_pslice (&Slice, Bflops_per_entry, bnz, nthreads) ;
+    }
+
+    // free workspace
+    GB_FREE_MEMORY (Bflops, bnvec+1, sizeof (int64_t)) ;
+    GB_FREE_MEMORY (Bflops_per_entry, bnz+1, sizeof (int64_t)) ;
+
+    if (!ok_pslice)
+    {
+        // out of memory
+        GB_FREE_ALL ;
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
@@ -275,28 +329,29 @@ GrB_Info GB_AxB_saxpy_parallel      // parallel matrix-matrix multiply
     }
 
     //--------------------------------------------------------------------------
+    // allocate workspace
+    //--------------------------------------------------------------------------
+
+    GB_CALLOC_MEMORY (AxB_methods_used, nthreads, sizeof (GrB_Desc_Value)) ;
+    GB_CALLOC_MEMORY (bjnz_max, nthreads, sizeof (int64_t)) ;
+    GB_CALLOC_MEMORY (Sauna_ids, nthreads, sizeof (int)) ;
+    GB_CALLOC_MEMORY (Cslice, nthreads, sizeof (GrB_Matrix)) ;
+    GB_CALLOC_MEMORY (Bslice, nthreads, sizeof (GrB_Matrix)) ;
+
+    if (AxB_methods_used == NULL || bjnz_max == NULL || Sauna_ids == NULL
+        || Cslice == NULL || Bslice == NULL)
+    { 
+        // out of memory
+        GB_FREE_ALL ;
+        return (GB_OUT_OF_MEMORY) ;
+    }
+
+    //--------------------------------------------------------------------------
     // construct each slice of B
     //--------------------------------------------------------------------------
 
     // If the problem is small enough so that nthreads has been reduced to 1,
     // B is not sliced.
-
-    GrB_Matrix Cslice [nthreads] ;
-    GrB_Matrix Bslice [nthreads] ;
-    for (int tid = 0 ; tid < nthreads ; tid++)
-    { 
-        Cslice [tid] = NULL ;
-        Bslice [tid] = NULL ;
-    }
-    #undef  GB_FREE_ALL
-    #define GB_FREE_ALL                             \
-    {                                               \
-        for (int tid = 0 ; tid < nthreads ; tid++)  \
-        {                                           \
-            GB_MATRIX_FREE (& (Cslice [tid])) ;     \
-            GB_MATRIX_FREE (& (Bslice [tid])) ;     \
-        }                                           \
-    }
 
     if (nthreads > 1)
     {
@@ -313,10 +368,6 @@ GrB_Info GB_AxB_saxpy_parallel      // parallel matrix-matrix multiply
     //--------------------------------------------------------------------------
     // select the method for each slice
     //--------------------------------------------------------------------------
-
-    GrB_Desc_Value AxB_methods_used [nthreads] ;
-    int64_t bjnz_max [nthreads] ;
-    int Sauna_ids [nthreads] ;
 
     bool any_Gustavson = false ;
     #pragma omp parallel for num_threads(nthreads) schedule(static,1) \
@@ -474,7 +525,7 @@ GrB_Info GB_AxB_saxpy_parallel      // parallel matrix-matrix multiply
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_ALL ;
+    GB_FREE_WORK ;
     ASSERT_OK (GB_check (*Chandle, "C for parallel A*B", GB0)) ;
     return (GrB_SUCCESS) ;
 }

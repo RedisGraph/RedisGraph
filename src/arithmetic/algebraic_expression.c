@@ -25,7 +25,9 @@ static AlgebraicExpression *_AE_MUL(size_t operand_cap) {
 
 /* Node with (income + outcome degree) > 2
  * is considered a highly connected node. */
-static bool _highly_connected_node(const QGNode *n) {
+static bool _highly_connected_node(const QueryGraph *qg, const char *alias) {
+	// Look up node in qg.
+	QGNode *n = QueryGraph_GetNodeByAlias(qg, alias);
 	return ((array_len(n->incoming_edges) + array_len(n->outgoing_edges)) > 2);
 }
 
@@ -120,7 +122,12 @@ static inline void _AlgebraicExpression_Execute_MUL(GrB_Matrix C, GrB_Matrix A, 
 					   B,                   // Second matrix
 					   desc                 // Descriptor
 				   );
-	assert(res == GrB_SUCCESS);
+
+	if(res != GrB_SUCCESS) {
+		// If the multiplication failed, print error info to stderr and exit.
+		fprintf(stderr, "Enountered error in matrix multiplication:\n%s\n", GrB_error());
+		assert(false);
+	}
 }
 
 // Reverse order of operand within expression,
@@ -235,19 +242,19 @@ static inline bool _should_populate_edge(QGEdge *e) {
 	return (_referred_entity(e->alias) || QGEdge_VariableLength(e));
 }
 
-static inline bool _should_divide_expression(QGEdge **path, int idx) {
+static inline bool _should_divide_expression(QGEdge **path, int idx, const QueryGraph *qg) {
 	QGEdge *e = path[idx];
 
-	return (_should_populate_edge(e)                  ||      // This edge is populated.
-			_should_populate_edge(path[idx + 1])      ||      // The next edge is populated.
-			_highly_connected_node(e->dest)           ||      // Destination node in+out degree > 2.
-			_referred_entity(e->dest->alias));                // Destination node is referenced.
+	return (_should_populate_edge(e)                    ||  // This edge is populated.
+			_should_populate_edge(path[idx + 1])        ||  // The next edge is populated.
+			_highly_connected_node(qg, e->dest->alias)  ||  // Destination node in+out degree > 2.
+			_referred_entity(e->dest->alias));              // Destination node is referenced.
 }
 
 /* Break down expression into sub expressions.
  * considering referenced intermidate nodes and edges. */
-static AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(
-	AlgebraicExpression *exp, QGEdge **path, const QueryGraph *g) {
+static AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpression *exp,
+																		  QGEdge **path, const QueryGraph *qg) {
 
 	/* Allocating maximum number of expression possible. */
 	QGEdge *e = NULL;
@@ -268,7 +275,7 @@ static AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(
 	divide_at[pathLen - 1] = false; // Only check intermediate edges, not the last.
 	for(int i = 0; i < pathLen - 1; i++) {
 		// Track which points the expression should be subdivided at.
-		divide_at[i] = _should_divide_expression(path, i);
+		divide_at[i] = _should_divide_expression(path, i, qg);
 	}
 
 	for(int i = 0; i < pathLen; i++) {
@@ -374,9 +381,9 @@ AlgebraicExpression *AlgebraicExpression_Empty(void) {
  * if edges are disjoint, NULL is returned. */
 static QGNode *_SharedNode(const QGEdge *a, const QGEdge *b) {
 	assert(a && b);
-	if(a->src == b->src) return a->src;
-	if(a->src == b->dest) return a->src;
 	if(a->dest == b->src) return a->dest;
+	if(a->src == b->dest) return a->src;
+	if(a->src == b->src) return a->src;
 	if(a->dest == b->dest) return a->dest;
 	return NULL;
 }
@@ -537,7 +544,7 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, u
 		AlgebraicExpression *exp = _AlgebraicExpression_FromPath(path, level);
 
 		// Split constructed expression into sub expressions.
-		AlgebraicExpression **sub_exps = _AlgebraicExpression_Intermidate_Expressions(exp, path, g);
+		AlgebraicExpression **sub_exps = _AlgebraicExpression_Intermidate_Expressions(exp, path, qg);
 		sub_exps = _AlgebraicExpression_IsolateVariableLenExps(sub_exps);
 
 		// Remove path from graph.

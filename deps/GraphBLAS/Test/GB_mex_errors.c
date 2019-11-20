@@ -38,7 +38,7 @@
     GrB_free (&op1b) ;         CHECK (op1b         == NULL) ;      \
     GrB_free (&op2b) ;         CHECK (op2b         == NULL) ;      \
     GrB_free (&monoidb) ;      CHECK (monoidb      == NULL) ;      \
-    GrB_free (&semiringb) ;    CHECK (semiringb    == NULL) ;      \
+    GrB_free (&semiring2) ;    CHECK (semiring2    == NULL) ;      \
     GrB_free (&descb) ;        CHECK (descb        == NULL) ;      \
     GrB_free (&vb) ;           CHECK (vb           == NULL) ;      \
     GrB_free (&op2gunk) ;      CHECK (op2gunk      == NULL) ;      \
@@ -149,7 +149,7 @@ void mexFunction
     GrB_Monoid monoid = NULL, monoid_gunk = NULL, m2 = NULL, m0 = NULL,
         monoidb = NULL ;
     GrB_Semiring semiring = NULL, semigunk = NULL, s2 = NULL, s0 = NULL,
-        semiringb = NULL ;
+        semiring2 = NULL ;
     GrB_Descriptor desc = NULL, dgunk = NULL, d0 = NULL,
         dnt = NULL, dtn = NULL, dtt = NULL, descb = NULL ;
     GrB_Desc_Value dval ;
@@ -3808,35 +3808,35 @@ void mexFunction
     info = GB_Semiring_check (NULL, "null semiring", GB3, ff, Context) ;
     CHECK (info == GrB_NULL_POINTER) ;
 
-    CHECK (semiringb == NULL) ;
-    OK (GrB_Semiring_new (&semiringb, GxB_MAX_FP32_MONOID, GrB_TIMES_FP32)) ;
-    CHECK (semiringb != NULL) ;
+    CHECK (semiring2 == NULL) ;
+    OK (GrB_Semiring_new (&semiring2, GxB_MAX_FP32_MONOID, GrB_TIMES_FP32)) ;
+    CHECK (semiring2 != NULL) ;
 
     Context->where = "GB_Semiring_check" ;
-    OK (GB_Semiring_check (semiringb, "semiringb ok", GB3, ff, Context)) ;
+    OK (GB_Semiring_check (semiring2, "semiring2 ok", GB3, ff, Context)) ;
 
     expected = GrB_UNINITIALIZED_OBJECT ;
 
-    semiringb->magic = GB_FREED ;
-    ERR (GB_Semiring_check (semiringb, "semiringb freed", GB1, ff, Context)) ;
-    semiringb->magic = GB_MAGIC ;
+    semiring2->magic = GB_FREED ;
+    ERR (GB_Semiring_check (semiring2, "semiring2 freed", GB1, ff, Context)) ;
+    semiring2->magic = GB_MAGIC ;
 
     expected = GrB_INVALID_OBJECT ;
 
-    semiringb->add = NULL ;
-    ERR (GB_Semiring_check (semiringb, "semiringb invalid add monoid", GB1, ff,
+    semiring2->add = NULL ;
+    ERR (GB_Semiring_check (semiring2, "semiring2 invalid add monoid", GB1, ff,
         Context)) ;
-    semiringb->add = GxB_MAX_FP32_MONOID ;
+    semiring2->add = GxB_MAX_FP32_MONOID ;
 
-    semiringb->multiply = NULL ;
-    ERR (GB_Semiring_check (semiringb, "semiringb invalid mult", GB1, ff,
+    semiring2->multiply = NULL ;
+    ERR (GB_Semiring_check (semiring2, "semiring2 invalid mult", GB1, ff,
         Context)) ;
-    semiringb->multiply = GrB_TIMES_FP32 ;
+    semiring2->multiply = GrB_TIMES_FP32 ;
 
-    semiringb->multiply = GrB_TIMES_INT32 ;
-    ERR (GB_Semiring_check (semiringb, "semiringb invalid mix", GB1, ff,
+    semiring2->multiply = GrB_TIMES_INT32 ;
+    ERR (GB_Semiring_check (semiring2, "semiring2 invalid mix", GB1, ff,
         Context)) ;
-    semiringb->multiply = GrB_TIMES_FP32 ;
+    semiring2->multiply = GrB_TIMES_FP32 ;
 
     printf ("\nAll GB_Semiring_check tests passed (errors expected)\n") ;
 
@@ -5304,7 +5304,7 @@ void mexFunction
     GrB_free (&op3) ;          CHECK (op3          == NULL) ;
     GrB_free (&op1b) ;         CHECK (op1b         == NULL) ;
     GrB_free (&op2b) ;         CHECK (op2b         == NULL) ;
-    GrB_free (&semiringb) ;    CHECK (semiringb    == NULL) ;
+    GrB_free (&semiring2) ;    CHECK (semiring2    == NULL) ;
     GrB_free (&descb) ;        CHECK (descb        == NULL) ;
     GrB_free (&vb) ;           CHECK (vb           == NULL) ;
     GrB_free (&monoidb) ;      CHECK (monoidb      == NULL) ;

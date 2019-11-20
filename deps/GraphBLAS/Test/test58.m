@@ -31,7 +31,7 @@ if (~cover)
     t1 =toc ;
 
     C2 = GB_mex_eWiseAdd_Matrix (Cin, Mask, accum, add, A, B, [ ]) ;
-    t2 = gbresults ;
+    t2 = grbresults ;
     assert (isequal (C2.matrix,  C))
 
     fprintf ('MATLAB: %g GB: %g  speedup: %g\n', t1, t2, t1/t2) ;
@@ -72,7 +72,7 @@ for m = nn
         tg = 0 ;
         for k = 1:trials
             C2 = GB_mex_eWiseAdd_Matrix (Cin, [ ], accum, add, A, B, [ ]) ;
-            tg = tg + gbresults ;
+            tg = tg + grbresults ;
         end
         t2 = tg /trials ;
         assert (isequal (C1, C2.matrix)) ;
@@ -93,7 +93,7 @@ for m = nn
         tg = 0 ;
         for k = 1:trials
             C2 = GB_mex_eWiseAdd_Matrix (Cin, [ ], accum, add, A, BT, Dnt) ;
-            tg = tg + gbresults ;
+            tg = tg + grbresults ;
         end
         t2 = tg /trials ;
         assert (isequal (C1, C2.matrix)) ;
@@ -114,7 +114,7 @@ for m = nn
         tg = 0 ;
         for k = 1:trials
             C2 = GB_mex_eWiseAdd_Matrix (Cin, [ ], accum, add, AT, B, Dtn) ;
-            tg = tg + gbresults ;
+            tg = tg + grbresults ;
         end
         t2 = tg /trials ;
         assert (isequal (C1, C2.matrix)) ;
@@ -135,7 +135,7 @@ for m = nn
         tg = 0 ;
         for k = 1:trials
             C2 = GB_mex_eWiseAdd_Matrix (Cin, [ ], accum, add, AT, BT, Dtt) ;
-            tg = tg + gbresults ;
+            tg = tg + grbresults ;
         end
         t2 = tg /trials ;
         assert (isequal (C1, C2.matrix)) ;
