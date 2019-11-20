@@ -186,36 +186,35 @@ class testGraphMergeFlow(FlowTestsBase):
         self.env.assertEquals(result.properties_set, 3)
         self.env.assertEquals(result.relationships_created, 2)
 
-    # TODO index deadlock issue!
     # Add node that matches pre-existing index
-    #  def test15_merge_indexed_entity(self):
-        #  global redis_graph
-        #  # Create index
-        #  query = """CREATE INDEX ON :person(age)"""
-        #  redis_graph.query(query)
+    def test15_merge_indexed_entity(self):
+        global redis_graph
+        # Create index
+        query = """CREATE INDEX ON :person(age)"""
+        redis_graph.query(query)
 
-        #  count_query = """MATCH (p:person) WHERE p.age > 0 RETURN COUNT(p)"""
-        #  result = redis_graph.query(count_query)
-        #  original_count = result.result_set[0][0]
+        count_query = """MATCH (p:person) WHERE p.age > 0 RETURN COUNT(p)"""
+        result = redis_graph.query(count_query)
+        original_count = result.result_set[0][0]
 
-        #  # Add one new person
-        #  #  merge_query = """MERGE (p:person {age:40})"""
-        #  #  result = redis_graph.query(merge_query)
-        #  #  self.env.assertEquals(result.nodes_created, 1)
-        #  #  self.env.assertEquals(result.properties_set, 1)
-        #  #  # Verify that one indexed node has been added
-        #  #  result = redis_graph.query(count_query)
-        #  #  updated_count = result.result_set[0][0]
-        #  #  self.env.assertEquals(updated_count, original_count+1)
+        # Add one new person
+        merge_query = """MERGE (p:person {age:40})"""
+        result = redis_graph.query(merge_query)
+        self.env.assertEquals(result.nodes_created, 1)
+        self.env.assertEquals(result.properties_set, 1)
+        # Verify that one indexed node has been added
+        result = redis_graph.query(count_query)
+        updated_count = result.result_set[0][0]
+        self.env.assertEquals(updated_count, original_count+1)
 
-        #  # Perform another merge that does not create an entity
-        #  result = redis_graph.query(merge_query)
-        #  self.env.assertEquals(result.nodes_created, 0)
+        # Perform another merge that does not create an entity
+        result = redis_graph.query(merge_query)
+        self.env.assertEquals(result.nodes_created, 0)
 
-        #  # Verify that indexed node count is unchanged
-        #  result = redis_graph.query(count_query)
-        #  updated_count = result.result_set[0][0]
-        #  self.env.assertEquals(updated_count, original_count+1)
+        # Verify that indexed node count is unchanged
+        result = redis_graph.query(count_query)
+        updated_count = result.result_set[0][0]
+        self.env.assertEquals(updated_count, original_count+1)
 
     # Update nodes based on non-constant inlined properties
     def test16_merge_dynamic_properties(self):

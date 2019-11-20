@@ -164,6 +164,10 @@ static Record MergeConsume(OpBase *opBase) {
 		}
 	}
 
+	// Explicitly free the read streams in case either holds an index read lock.
+	if(op->bound_variable_stream) OpBase_PropagateFree(op->bound_variable_stream);
+	OpBase_PropagateFree(op->match_stream);
+
 	// If we are setting properties with ON MATCH, execute all pending updates.
 	if(op->on_match && array_len(op->output_records) > 0) _UpdateProperties(op, op->output_records);
 
