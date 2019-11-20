@@ -180,7 +180,10 @@ void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root) {
 	 * a chain of traversals/scans. */
 	assert(!old_root->parent && !new_root->parent);
 
-	// Find the deepest child of the new root operation.
+	/* Find the deepest child of the new root operation.
+	 * Currently, we can only follow the first child, since we don't call this function when
+	 * introducing Cartesian Products (the only multiple-stream operation at this stage.)
+	 * This may be inadequate later. */
 	OpBase *tail = new_root;
 	while(tail->childCount > 0) tail = tail->children[0];
 

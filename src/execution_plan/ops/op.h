@@ -44,10 +44,10 @@ typedef enum {
 	OPType_APPLY = (1 << 24),
 	OPType_JOIN = (1 << 25),
 	OPType_ARGUMENT = (1 << 26),
-	OPType_SEMI_APPLY = (1 << 27),
-	OPType_ANTI_SEMI_APPLY = (1 << 28),
-	OPType_SELECT_OR_SEMI_APPLY = (1 << 29),
-	OPType_SELECT_OR_ANTI_SEMI_APPLY = (1 << 30),
+	// OPType_SEMI_APPLY = (1 << 27),
+	// OPType_ANTI_SEMI_APPLY = (1 << 28),
+	// OPType_SELECT_OR_SEMI_APPLY = (1 << 29),
+	// OPType_SELECT_OR_ANTI_SEMI_APPLY = (1 << 30),
 } OPType; // TODO Consider switching from bitmask at 1<<32
 
 #define OP_SCAN (OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN | OPType_INDEX_SCAN | OPType_NODE_BY_ID_SEEK)
@@ -98,8 +98,7 @@ typedef struct OpBase OpBase;
 
 // Initialize op.
 void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsume consume,
-				 fpReset reset,
-				 fpToString toString, fpFree free, const struct ExecutionPlan *plan);
+				 fpReset reset, fpToString toString, fpFree free, const struct ExecutionPlan *plan);
 void OpBase_Free(OpBase *op);       // Free op.
 Record OpBase_Consume(OpBase *op);  // Consume op.
 Record OpBase_Profile(OpBase *op);  // Profile op.

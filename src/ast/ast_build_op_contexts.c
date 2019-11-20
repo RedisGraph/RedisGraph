@@ -49,12 +49,10 @@ static EntityUpdateEvalCtx _NewUpdateCtx(const cypher_astnode_t *set_item) {
 	// or all properties (CYPHER_AST_SET_ALL_PROPERTIES)
 	assert(type == CYPHER_AST_SET_PROPERTY);
 
-	// The SET_ITEM contains the entity alias and property key being set
-	const cypher_astnode_t *key_to_set = cypher_ast_set_property_get_property(
-											 set_item); // type == CYPHER_AST_PROPERTY_OPERATOR
-	// Property name
-	const cypher_astnode_t *prop = cypher_ast_property_operator_get_prop_name(
-									   key_to_set); // type == CYPHER_AST_PROP_NAME
+	// The SET_ITEM contains the entity alias and property key being set - type == CYPHER_AST_PROPERTY_OPERATOR
+	const cypher_astnode_t *key_to_set = cypher_ast_set_property_get_property(set_item);
+	// Property name - type == CYPHER_AST_PROP_NAME
+	const cypher_astnode_t *prop = cypher_ast_property_operator_get_prop_name(key_to_set);
 	// Entity alias
 	const cypher_astnode_t *prop_expr = cypher_ast_property_operator_get_expression(key_to_set);
 	AR_ExpNode *entity = AR_EXP_FromExpression(prop_expr);
@@ -62,9 +60,8 @@ static EntityUpdateEvalCtx _NewUpdateCtx(const cypher_astnode_t *set_item) {
 	assert(entity->type == AR_EXP_OPERAND && entity->operand.type == AR_EXP_VARIADIC &&
 		   entity->operand.variadic.entity_alias);
 
-	// Updated value
-	const cypher_astnode_t *val_to_set = cypher_ast_set_property_get_expression(
-											 set_item); // type == CYPHER_AST_SET_PROPERTY
+	// Updated value - type == CYPHER_AST_SET_PROPERTY
+	const cypher_astnode_t *val_to_set = cypher_ast_set_property_get_expression(set_item);
 
 	/* Track all required information to perform an update. */
 	const char *alias = entity->operand.variadic.entity_alias;
