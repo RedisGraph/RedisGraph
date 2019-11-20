@@ -10,7 +10,7 @@
 #include "../value.h"
 
 #define VAR_ARG_LEN UINT8_MAX
-
+#define AT_LEAST_ONE_VAR (UINT_MAX -1)
 /* AR_Func - Function pointer to an operation with an arithmetic expression */
 typedef SIValue(*AR_Func)(SIValue *argv, int argc);
 
@@ -19,10 +19,11 @@ typedef struct {
 	AR_Func func;       // Function pointer.
 	SIType *types;      // Types of arguments.
 	const char *name;   // Function name.
-    bool reducible;     // Can be reduced using static evaluation.
+	bool reducible;     // Can be reduced using static evaluation.
 } AR_FuncDesc;
 
-AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint argc, SIType *types, bool reducible);
+AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint argc, SIType *types,
+							bool reducible);
 
 /* Register arithmetic function to repository. */
 void AR_RegFunc(AR_FuncDesc *func);

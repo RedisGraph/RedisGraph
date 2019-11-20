@@ -210,7 +210,7 @@ static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint a
 	SIType expected_type = T_NULL;
 
 	// Make sure number of arguments is as expected.
-	if(fdesc->argc != VAR_ARG_LEN) {
+	if(fdesc->argc != VAR_ARG_LEN && fdesc->argc != AT_LEAST_ONE_VAR) {
 		if(fdesc->argc != argc) {
 			char *error;
 			asprintf(&error, "Received %d arguments to function '%s', expected %d", argc, fdesc->name,
@@ -236,6 +236,13 @@ static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint a
 			}
 		}
 	} else {
+		if(fdesc->argc == AT_LEAST_ONE_VAR && argc == 0) {
+			char *error;
+			asprintf(&error,
+					 "Wrong number of parameters. Expected at least one parameter but none was given.");
+			QueryCtx_SetError(error); // Set the query-level error.
+			return false;
+		}
 		/* Function accepts a variable number of arguments.
 		 * the last specified type in fdesc->types is repeatable. */
 		uint expected_types_count = array_len(fdesc->types);

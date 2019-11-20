@@ -89,10 +89,10 @@ We do not support any of these properties at the type level, meaning nodes and r
 + labels
 + timestamp
 + type
++ coalesce
 
   **Unsupported:**
 
-- coalesce
 - Casting functions (toBoolean, toFloat, toInteger)
 - Relationship functions (startNode, endNode, type)
 - Temporal arithmetics 
