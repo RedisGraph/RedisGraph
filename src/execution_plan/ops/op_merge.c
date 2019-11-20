@@ -11,7 +11,6 @@
 #include <assert.h>
 
 /* Forward declarations. */
-static OpResult MergeInit(OpBase *opBase);
 static Record MergeConsume(OpBase *opBase);
 static void MergeFree(OpBase *opBase);
 
@@ -87,20 +86,14 @@ static inline Record _pullFromStream(OpBase *branch) {
 
 OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
 				   ResultSetStatistics *stats) {
-	/* Merge is an operator with two or three children.
-	 * They will be created outside of here, as with other multi-stream operators (see CartesianProduct
-	 * and ValueHashJoin). */
-	OpMerge *op = malloc(sizeof(OpMerge));
+	/* Merge is an operator with two or three children.They will be created outside of here,
+	 * as with other multi-stream operators (see CartesianProduct and ValueHashJoin). */
+	OpMerge *op = calloc(1, sizeof(OpMerge));
 	op->stats = stats;
 	op->on_match = on_match;
-	op->output_records = NULL;
-	op->input_records = NULL;
-	op->match_argument_tap = NULL;
-	op->create_argument_tap = NULL;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume, NULL, NULL, MergeFree,
-				plan);
+	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", NULL, MergeConsume, NULL, NULL, MergeFree, plan);
 
 	return (OpBase *)op;
 }
@@ -171,7 +164,7 @@ static Record MergeConsume(OpBase *opBase) {
 	// If we are setting properties with ON MATCH, execute all pending updates.
 	if(op->on_match && array_len(op->output_records) > 0) _UpdateProperties(op, op->output_records);
 
-	// True if we have at least one pattern to create.
+	// Exhaust Create stream if we have at least one pattern to create.
 	if(must_create_records) {
 		/* We've populated the Create stream with all the Records it must read;
 		 * pull from it until we've retrieved all newly-created Records. */
@@ -182,35 +175,6 @@ static Record MergeConsume(OpBase *opBase) {
 	}
 
 	return _handoff(op);
-}
-
-static OpResult MergeInit(OpBase *opBase) {
-	OpMerge *op = (OpMerge *)opBase;
-
-	// If Merge has 2 children, there are no bound variables and thus no Arguments in the child streams.
-	if(opBase->childCount == 2) {
-		op->bound_variable_stream = NULL;
-		op->match_stream = opBase->children[0];
-		op->create_stream = opBase->children[1];
-		return OP_OK;
-	}
-
-	op->input_records = array_new(Record, 1);
-
-	// Otherwise, the first stream resolves bound variables.
-	op->bound_variable_stream = opBase->children[0];
-	op->match_stream = opBase->children[1];
-	op->create_stream = opBase->children[2];
-
-	// Find and store references to the Argument taps for the Match and Create streams.
-	// The Match stream is populated by an Argument tap, store a reference to it.
-	op->match_argument_tap = (Argument *)ExecutionPlan_LocateOp(op->match_stream, OPType_ARGUMENT);
-
-	// If the create stream is populated by an Argument tap, store a reference to it.
-	OpBase *create_stream = op->op.children[2];
-	op->create_argument_tap = (Argument *)ExecutionPlan_LocateOp(op->create_stream, OPType_ARGUMENT);
-
-	return OP_OK;
 }
 
 // Modification of ExecutionPlan_LocateOp that only follows LHS child.
@@ -226,62 +190,69 @@ static OpBase *_LocateOp(OpBase *root, OPType type) {
 	return NULL;
 }
 
-void Merge_SetStreams(OpBase *op) {
+// Merge_SetStreams performs the work that would typically be contained in an Init routine,
+// but it's better to do this here (within the NewExecutionPlan block) to improve EXPLAIN printing.
+void Merge_SetStreams(OpBase *opBase) {
 	/* Merge has 2 children if it is the first clause, and 3 otherwise.
-	   The order of these children is critical:
-	   - If there are 3 children, the first should resolve the Merge pattern's bound variables.
-	   - The next (first if there are 2 children, second otherwise) should attempt to match the pattern.
-	   - The last creates the pattern.
-	*/
-	OpBase *bound_variable_stream = NULL;
-	OpBase *match_stream = NULL;
-	OpBase *create_stream = NULL;
-	if(op->childCount == 2) {
+	 * - If there are 3 children, the first should resolve the Merge pattern's bound variables.
+	 * - The next (first if there are 2 children, second otherwise) should attempt to match the pattern.
+	 * - The last creates the pattern. */
+	OpMerge *op = (OpMerge *)opBase;
+	if(opBase->childCount == 2) {
 		// If we only have 2 streams, we simply need to determine which has a Create op.
-		if(_LocateOp(op->children[0], OPType_CREATE)) {
+		if(_LocateOp(opBase->children[0], OPType_CREATE)) {
 			// If the Create op is in the first stream, swap the children.
 			// Otherwise, the order is already correct.
-			create_stream = op->children[0];
-			op->children[0] = op->children[1];
-			op->children[1] = create_stream;
+			OpBase *tmp = opBase->children[0];
+			opBase->children[0] = opBase->children[1];
+			opBase->children[1] = tmp;
 		}
+
+		op->match_stream = opBase->children[0];
+		op->create_stream = opBase->children[1];
 		return;
 	}
 
 	// Handling the three-stream case.
-	for(int i = 0; i < op->childCount; i ++) {
-		OpBase *child = op->children[i];
+	for(int i = 0; i < opBase->childCount; i ++) {
+		OpBase *child = opBase->children[i];
 		bool child_has_argument = _LocateOp(child, OPType_ARGUMENT);
 		// The bound variable stream is the only stream not populated by an Argument op.
-		if(!bound_variable_stream && !child_has_argument) {
-			bound_variable_stream = child;
+		if(!op->bound_variable_stream && !child_has_argument) {
+			op->bound_variable_stream = child;
 			continue;
 		}
 
 		// The Create stream is the only stream with a Create op and Argument op.
-		if(!create_stream && _LocateOp(child, OPType_CREATE) && child_has_argument) {
-			create_stream = child;
+		if(!op->create_stream && _LocateOp(child, OPType_CREATE) && child_has_argument) {
+			op->create_stream = child;
 			continue;
 		}
 
 		// The Match stream has an unknown set of operations, but is the only other stream
 		// populated by an Argument op.
-		if(!match_stream && child_has_argument) {
-			match_stream = child;
+		if(!op->match_stream && child_has_argument) {
+			op->match_stream = child;
 			continue;
 		}
 	}
 
-	assert(bound_variable_stream && match_stream && create_stream);
+	assert(op->bound_variable_stream && op->match_stream && op->create_stream);
 
 	// Migrate the children so that EXPLAIN calls print properly.
-	op->children[0] = bound_variable_stream;
-	op->children[1] = match_stream;
-	op->children[2] = create_stream;
-	OpMerge *op_merge = (OpMerge *)op;
-	// op_merge->bound_variable_stream = op->children[0] = bound_variable_stream;
-	// op_merge->match_stream = op->children[1] = match_stream;
-	// op_merge->create_stream = op->children[2] = create_stream;
+	opBase->children[0] = op->bound_variable_stream;
+	opBase->children[1] = op->match_stream;
+	opBase->children[2] = op->create_stream;
+
+	// Find and store references to the Argument taps for the Match and Create streams.
+	// The Match stream is populated by an Argument tap, store a reference to it.
+	op->match_argument_tap = (Argument *)ExecutionPlan_LocateOp(op->match_stream, OPType_ARGUMENT);
+
+	// If the create stream is populated by an Argument tap, store a reference to it.
+	op->create_argument_tap = (Argument *)ExecutionPlan_LocateOp(op->create_stream, OPType_ARGUMENT);
+
+	// Set up an array to store records produced by the bound variable stream.
+	op->input_records = array_new(Record, 1);
 }
 
 static void MergeFree(OpBase *ctx) {
