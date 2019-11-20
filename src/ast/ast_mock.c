@@ -11,16 +11,16 @@
 AST *AST_MockMatchPattern(AST *master_ast, const cypher_astnode_t *original_path) {
 	// Duplicate of AST_NewSegment logic
 	AST *ast = rm_malloc(sizeof(AST));
+	ast->referenced_entities = master_ast->referenced_entities;
 	ast->anot_ctx_collection = master_ast->anot_ctx_collection;
 	ast->free_root = true;
 	ast->limit = UNLIMITED;
 	struct cypher_input_range range = {};
 
-	// Reuse the input path.
-	// TODO cloning loses annotations (names). Does reusing the original introduce a memory leak?
+	// Reuse the input path directly. We cannot clone, as this causes annotations (entity names) to be lost.
 	cypher_astnode_t *path = (cypher_astnode_t *)original_path;
 
-	// Build a pattern comprised of 1 path, the clone.
+	// Build a pattern comprised of the input path.
 	cypher_astnode_t *pattern = cypher_ast_pattern(&path, 1, &path, 1, range);
 
 	// Build a new match clause that holds this pattern.
@@ -32,17 +32,17 @@ AST *AST_MockMatchPattern(AST *master_ast, const cypher_astnode_t *original_path
 
 	QueryCtx_SetAST(ast); // Update the TLS.
 
-	/* TODO don't have access to the projected entities, so in a query like:
-	   MATCH (a:A), (b:B) MERGE (a)-[r:TYPE]->(b) RETURN r
-	   We won't populate 'r' (which is a problem).
-	   Testing inheriting the reference map, but I'm not sure if this will work,
-	   we might encounter issues thinking variables resolved later in the query
-	   are resolved now. */
-	ast->referenced_entities = master_ast->referenced_entities;
-	// AST_BuildReferenceMap(ast, NULL); // Build the map of referenced entities.
-
-	// TODO Add Argument variables to map?
-
 	return ast;
+}
+
+void AST_MockFree(AST *ast) {
+	// TODO explanatory comments
+	const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, 0);
+	assert(cypher_astnode_type(clause) == CYPHER_AST_MATCH);
+	const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clause);
+	cypher_astnode_free((cypher_astnode_t *)pattern);
+	cypher_astnode_free((cypher_astnode_t *)clause);
+	cypher_astnode_free((cypher_astnode_t *)ast->root);
+	rm_free(ast);
 }
 

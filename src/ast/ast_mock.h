@@ -10,3 +10,6 @@
 
 // Build a temporary AST with one MATCH clause that holds the given path.
 AST *AST_MockMatchPattern(AST *master_ast, const cypher_astnode_t *original_path);
+
+void AST_MockFree(AST *ast);
+

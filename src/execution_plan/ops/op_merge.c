@@ -255,6 +255,26 @@ void Merge_SetStreams(OpBase *opBase) {
 	op->input_records = array_new(Record, 1);
 }
 
-static void MergeFree(OpBase *ctx) {
+static void MergeFree(OpBase *opBase) {
+	OpMerge *op = (OpMerge *)opBase;
+	if(op->input_records) {
+		array_free(op->input_records);
+		op->input_records = NULL;
+	}
+
+	if(op->output_records) {
+
+		array_free(op->output_records);
+		op->output_records = NULL;
+	}
+
+	if(op->on_match) {
+		uint on_match_count = array_len(op->on_match);
+		for(uint i = 0; i < on_match_count; i ++) {
+			AR_EXP_Free(op->on_match[i].exp);
+		}
+		array_free(op->on_match);
+		op->on_match = NULL;
+	}
 }
 

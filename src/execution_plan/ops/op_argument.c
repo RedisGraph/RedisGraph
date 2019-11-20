@@ -63,12 +63,10 @@ void Argument_AddRecord(Argument *arg, Record r) {
 void ArgumentFree(OpBase *opBase) {
 	Argument *arg = (Argument *)opBase;
 	if(arg->records) {
-		/*
 		uint record_count = array_len(arg->records);
 		for(uint i = 0; i < record_count; i ++) {
-			Record_Free(arg->records[i]); // TODO use if cloning is moved here,
+			Record_Free(arg->records[i]);
 		}
-		*/
 		array_free(arg->records);
 		arg->records = NULL;
 	}

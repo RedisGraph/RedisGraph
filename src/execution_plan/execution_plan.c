@@ -543,8 +543,19 @@ static inline void _buildUnwindOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
+// TODO Would like better logic
+// For all ops in the given tree, assocate the provided ExecutionPlan.
+// This is for use for updating ops that have been built with a temporary ExecutionPlan.
+static void _updateOpPlans(OpBase *root, ExecutionPlan *plan) {
+	if(!root) return;
+	root->plan = plan;
+	for(int i = 0; i < root->childCount; i ++) {
+		_updateOpPlans(root->children[i], plan);
+	}
+}
+
 static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *clause,
-								   ResultSetStatistics *stats, const char **bound_vars) {
+								   const char **bound_vars) {
 	AST *ast = QueryCtx_GetAST();
 	// Initialize an ExecutionPlan that shares this plan's Record mapping.
 	ExecutionPlan *rhs_plan = _NewEmptyExecutionPlan();
@@ -565,15 +576,21 @@ static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *
 
 	_PopulateExecutionPlan(rhs_plan, NULL);
 
-	rhs_ast->referenced_entities = NULL; // Shared variable, don't free.
-	AST_Free(rhs_ast);
+	AST_MockFree(rhs_ast);
 	QueryCtx_SetAST(ast); // Reset the AST.
 
 	ExecutionPlan_AddOp(plan->root, rhs_plan->root); // Add Match stream to Merge op.
 
-	// TODO NULL-set shared variables and free rhs_plan
-	// rhs_plan->record_map = NULL; // TODO this kills Record_New calls
-	// ExecutionPlan_Free(rhs_plan); // TODO leaks
+	OpBase *rhs_root = rhs_plan->root;
+	// NULL-set shared variables and free rhs_plan
+	rhs_plan->root = NULL;
+	rhs_plan->record_map = NULL;
+	rhs_plan->query_graph = NULL; // TODO bad leak
+	array_free(rhs_plan->connected_components);
+	rhs_plan->connected_components = NULL;
+	ExecutionPlan_Free(rhs_plan); // TODO leaks
+
+	_updateOpPlans(rhs_root, plan); // Associate all new ops with the correct ExecutionPlan.
 }
 
 static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge_ctx,
@@ -658,7 +675,7 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 	_ExecutionPlan_UpdateRoot(plan, merge_op);
 
 	// Build the Match stream as a Merge child.
-	_buildMergeMatchStream(plan, clause, stats, variables);
+	_buildMergeMatchStream(plan, clause, variables);
 
 	// Build the Create stream as a Merge child.
 	_buildMergeCreateStream(plan, &merge_ctx, stats, variables);
@@ -1121,7 +1138,7 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 	}
 
 	QueryGraph_Free(plan->query_graph);
-	raxFree(plan->record_map);
+	if(plan->record_map) raxFree(plan->record_map);
 	rm_free(plan);
 }
 
