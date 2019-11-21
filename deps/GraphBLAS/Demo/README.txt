@@ -80,18 +80,18 @@ icc 19.0.3.199 20190206 compiler, and GraphBLAS v3.0.1 (July 21, 2019, draft):
 Output generated from an earlier version, MacBook Pro, gcc 8.3, Apr 11, 2019:
 
     6 output files from openmp_demo.c:
-    user_openmp_gb_openmp.out    user threads: OpenMP, GraphBLAS: OpenMP
-    user_openmp_gb_pthread.out   user threads: OpenMP, GraphBLAS: POSIX 
-    user_openmp_gb_none.out      user threads: OpenMP,
+    user_openmp_grb_openmp.out   user threads: OpenMP, GraphBLAS: OpenMP
+    user_openmp_grb_pthread.out  user threads: OpenMP, GraphBLAS: POSIX 
+    user_openmp_grb_none.out     user threads: OpenMP,
                                  GraphBLAS: none, expect failure
-    user_none_gb_openmp.out      user threads: none, GraphBLAS: OpenMP
-    user_none_gb_pthread.out     user threads: none, GraphBLAS: POSIX 
-    user_none_gb_none.out        user threads: none, GraphBLAS: none (OK)
+    user_none_grb_openmp.out     user threads: none, GraphBLAS: OpenMP
+    user_none_grb_pthread.out    user threads: none, GraphBLAS: POSIX 
+    user_none_grb_none.out       user threads: none, GraphBLAS: none (OK)
 
     3 output files from pthread_demo.c:
-    user_pthread_gb_openmp.out   user threads: POSIX, GraphBLAS: OpenMP
-    user_pthread_gb_pthread.out  user threads: POSIX, GraphBLAS: POSIX 
-    user_pthread_gb_none.out     user threads: POSIX,
+    user_pthread_grb_openmp.out  user threads: POSIX, GraphBLAS: OpenMP
+    user_pthread_grb_pthread.out user threads: POSIX, GraphBLAS: POSIX 
+    user_pthread_grb_none.out    user threads: POSIX,
                                  GraphBLAS: none, expect failure
 
 Note that two of the above files show expected failures: synchronization

@@ -34,7 +34,7 @@ extra {1} = [4 1] ;
 extra {2} = [1 1] ;
 
 % clear the statement coverage counts
-clear global GraphBLAS_gbcov
+clear global GraphBLAS_grbcov
 
 % many of the tests use SuiteSparse/MATLAB_Tools/spok, a copy of which is
 % included here in GraphBLAS/Test/spok.

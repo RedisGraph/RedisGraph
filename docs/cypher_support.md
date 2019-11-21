@@ -79,9 +79,8 @@ We do not support any of these properties at the type level, meaning nodes and r
     - The currently-supported procedures can be found in [the Procedures documentation](commands.md#procedures).
 
 ### Set Operations
-**Unsupported:**
-
-- UNION / UNION ALL
++ UNION
++ UNION ALL
 
 ## Functions
 ### Scalar functions
@@ -141,13 +140,17 @@ We do not support any of these properties at the type level, meaning nodes and r
 - replace
 - split
 
+### Predicate functions
++ exists
+
+### Expression functions
++ case...when
+
 ### Unsupported function classes
 
 - Logarithmic math functions
 - Trigonometric math functions
 - User-defined functions
-- Predicate functions (the only function in this class is EXISTS)
-
 
 ## Operators
 
@@ -166,9 +169,6 @@ String operators (STARTS WITH, ENDS WITH, CONTAINS) are supported.
 + OR
 + NOT
 + XOR
-
-### Other
-CASE expressions.
 
 ## Non-Cypher queries
 + RedisGraph provides the `GRAPH.EXPLAIN` command to print the execution plan of a provided query.

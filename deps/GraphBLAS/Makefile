@@ -38,10 +38,11 @@ cmake:
 	( cd build ; cmake $(CMAKE_OPTIONS) .. ; )
 
 # the same as "make library"
-static: library
+static:
+	( cd build ; cmake $(CMAKE_OPTIONS) -DBUILD_GRB_STATIC_LIBRARY=1 .. ; $(MAKE) --jobs=$(JOBS) )
 
 static_only:
-	( cd build ; cmake $(CMAKE_OPTIONS) .. ; $(MAKE) --jobs=$(JOBS) graphblas_static )
+	( cd build ; cmake $(CMAKE_OPTIONS) -DBUILD_GRB_STATIC_LIBRARY=1 .. ; $(MAKE) --jobs=$(JOBS) graphblas_static )
 
 # installs GraphBLAS to the install location defined by cmake, usually
 # /usr/local/lib and /usr/local/include
@@ -51,11 +52,6 @@ install:
 # create the Doc/GraphBLAS_UserGuide.pdf
 docs:
 	( cd Doc ; $(MAKE) )
-
-# create the doxygen documentation in Doc/html (first run Doc/dox_headers
-# in MATLAB if you have editted the code)
-dox:
-	doxygen
 
 # remove any installed libraries and #include files
 uninstall:
@@ -70,6 +66,8 @@ distclean:
 	rm -rf build/* Demo/*.out Demo/complex_demo_out.m Tcov/log.txt
 	rm -rf Config/*.tmp Source/control.m4
 	rm -rf Doc/html/* Doc/*.tmp
+	( cd GraphBLAS/test/tcov ; $(MAKE) distclean )
+	( cd GraphBLAS/@GrB/private ; $(MAKE) distclean )
 	( cd Test ; $(MAKE) distclean )
 	( cd Tcov ; $(MAKE) distclean )
 	( cd Doc  ; $(MAKE) distclean )

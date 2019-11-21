@@ -73,24 +73,24 @@ for pp = 0:2
             % tic
             ca = GB_mex_mxm (w, [],[], semiring, A, x, dt_auto) ;
             % t = toc ;
-            [ta auto_method] = gbresults ;
+            [ta auto_method] = grbresults ;
 
             % tic
             c1 = GB_mex_mxm (w, [],[], semiring, A, x, dt_dot) ;
             % t = toc ;
-            [t method] = gbresults ;
+            [t method] = grbresults ;
             assert (isequal (method, 'dot')) ;
 
             % tic
             cg = GB_mex_mxm (w, [],[], semiring, A, x, dt_gus) ;
             % t = toc ;
-            [tg method] = gbresults ;
+            [tg method] = grbresults ;
             assert (isequal (method, 'Gustavson')) ;
 
             % tic
             ch = GB_mex_mxm (w, [],[], semiring, A, x, dt_heap) ;
             % t = toc ;
-            [th method] = gbresults ;
+            [th method] = grbresults ;
             assert (isequal (method, 'heap')) ;
 
             tic
@@ -129,24 +129,24 @@ for pp = 0:2
             % tic
             ca = GB_mex_mxm (w, [],[], semiring, A, x, da_auto) ;
             % t = toc ;
-            [ta auto_method] = gbresults ;
+            [ta auto_method] = grbresults ;
 
             % tic
             c1 = GB_mex_mxm (w, [],[], semiring, A, x, da_dot) ;
             % t = toc ;
-            [t method] = gbresults ;
+            [t method] = grbresults ;
             assert (isequal (method, 'dot')) ;
 
             % tic
             cg = GB_mex_mxm (w, [],[], semiring, A, x, da_gus) ;
             % t = toc ;
-            [tg method] = gbresults ;
+            [tg method] = grbresults ;
             assert (isequal (method, 'Gustavson')) ;
 
             % tic
             ch = GB_mex_mxm (w, [],[], semiring, A, x, da_heap) ;
             % t = toc ;
-            [th method] = gbresults ;
+            [th method] = grbresults ;
             assert (isequal (method, 'heap')) ;
 
             tic
@@ -187,24 +187,24 @@ for pp = 0:2
             % tic
             ca = GB_mex_mxm (w, [],[], semiring, x, A, dtn_auto) ;
             % t = toc ;
-            [ta auto_method] = gbresults ;
+            [ta auto_method] = grbresults ;
 
             % tic
             c1 = GB_mex_mxm (w, [],[], semiring, x, A, dtn_dot) ;
             % t = toc ;
-            [t method] = gbresults ;
+            [t method] = grbresults ;
             assert (isequal (method, 'dot')) ;
 
             % tic
             cg = GB_mex_mxm (w, [],[], semiring, x, A, dtn_gus) ;
             % t = toc ;
-            [tg method] = gbresults ;
+            [tg method] = grbresults ;
             assert (isequal (method, 'Gustavson')) ;
 
             % tic
             ch = GB_mex_mxm (w, [],[], semiring, x, A, dtn_heap) ;
             % t = toc ;
-            [th method] = gbresults ;
+            [th method] = grbresults ;
             assert (isequal (method, 'heap')) ;
 
             tic
@@ -244,24 +244,24 @@ for pp = 0:2
             % tic
             ca = GB_mex_mxm (w, [],[], semiring, x, A, dtt_auto) ;
             % t = toc ;
-            [ta auto_method] = gbresults ;
+            [ta auto_method] = grbresults ;
 
             % tic
             c1 = GB_mex_mxm (w, [],[], semiring, x, A, dtt_dot) ;
             % t = toc ;
-            [t method] = gbresults ;
+            [t method] = grbresults ;
             assert (isequal (method, 'dot')) ;
 
             % tic
             cg = GB_mex_mxm (w, [],[], semiring, x, A, dtt_gus) ;
             % t = toc ;
-            [tg method] = gbresults ;
+            [tg method] = grbresults ;
             assert (isequal (method, 'Gustavson')) ;
 
             % tic
             ch = GB_mex_mxm (w, [],[], semiring, x, A, dtt_heap) ;
             % t = toc ;
-            [th method] = gbresults ;
+            [th method] = grbresults ;
             assert (isequal (method, 'heap')) ;
 
             tic
@@ -303,24 +303,24 @@ for pp = 0:2
             % tic
             ca = GB_mex_mxm (w, [],[], semiring, A, x, dtt_auto) ;
             % t = toc ;
-            [ta auto_method] = gbresults ;
+            [ta auto_method] = grbresults ;
 
             % tic
             c1 = GB_mex_mxm (w, [],[], semiring, A, x, dtt_dot) ;
             % t = toc ;
-            [t method] = gbresults ;
+            [t method] = grbresults ;
             assert (isequal (method, 'dot')) ;
 
             % tic
             cg = GB_mex_mxm (w, [],[], semiring, A, x, dtt_gus) ;
             % t = toc ;
-            [tg method] = gbresults ;
+            [tg method] = grbresults ;
             assert (isequal (method, 'Gustavson')) ;
 
             % tic
             ch = GB_mex_mxm (w, [],[], semiring, A, x, dtt_heap) ;
             % t = toc ;
-            [th method] = gbresults ;
+            [th method] = grbresults ;
             assert (isequal (method, 'heap')) ;
 
             tic

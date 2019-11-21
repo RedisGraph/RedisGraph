@@ -31,7 +31,7 @@ GrB_Info GB_subref_phase1               // count nnz in each C(:,j)
     const int64_t Cnvec,
     const bool need_qsort,
     const int Ikind,
-    const int nI,
+    const int64_t nI,
     const int64_t Icolon [3],
     // original input:
     const GrB_Matrix A,

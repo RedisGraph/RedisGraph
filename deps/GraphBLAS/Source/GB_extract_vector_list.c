@@ -13,7 +13,10 @@
 
 #include "GB_ek_slice.h"
 
-void GB_extract_vector_list     // construct vector indices J, for each entry
+#define GB_FREE_WORK \
+    GB_ek_slice_free (&pstart_slice, &kfirst_slice, &klast_slice, ntasks) ;
+
+bool GB_extract_vector_list     // true if successful, false if out of memory
 (
     // output:
     int64_t *restrict J,        // size nnz(A) or more
@@ -55,11 +58,12 @@ void GB_extract_vector_list     // construct vector indices J, for each entry
     // vectors kfirst_slice [tid] to klast_slice [tid].  The first and last
     // vectors may be shared with prior slices and subsequent slices.
 
-    int64_t pstart_slice [ntasks+1] ;
-    int64_t kfirst_slice [ntasks] ;
-    int64_t klast_slice  [ntasks] ;
-
-    GB_ek_slice (pstart_slice, kfirst_slice, klast_slice, A, ntasks) ;
+    int64_t *pstart_slice = NULL, *kfirst_slice = NULL, *klast_slice = NULL ;
+    if (!GB_ek_slice (&pstart_slice, &kfirst_slice, &klast_slice, A, ntasks))
+    {
+        // out of memory
+        return (false) ;
+    }
 
     //--------------------------------------------------------------------------
     // extract the vector index for each entry
@@ -95,5 +99,12 @@ void GB_extract_vector_list     // construct vector indices J, for each entry
             }
         }
     }
+
+    //--------------------------------------------------------------------------
+    // free workspace and return result
+    //--------------------------------------------------------------------------
+
+    GB_FREE_WORK ;
+    return (true) ;
 }
 

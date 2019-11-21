@@ -15,7 +15,7 @@
 // for additional diagnostics, use:
 // #define GB_DEVELOPER 1
 
-#include "GB.h"
+#include "GB_printf.h"
 
 GrB_Info GB_Type_check      // check a GraphBLAS Type
 (
@@ -32,7 +32,7 @@ GrB_Info GB_Type_check      // check a GraphBLAS Type
     // check inputs
     //--------------------------------------------------------------------------
 
-    GBPR0 ("GraphBLAS type: ") ;
+    GBPR0 ("    GraphBLAS type: ") ;
     if (pr > 0 && name != NULL) GBPR ("%s ", name) ;
 
     if (type == NULL)
@@ -77,7 +77,7 @@ GrB_Info GB_Type_check      // check a GraphBLAS Type
 
     if (type->size == 0 || type->size != GB_code_size (type->code, type->size))
     { 
-        GBPR0 ("Type has an invalid size\n") ;
+        GBPR0 ("    Type has an invalid size\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "Type has an invalid size: %s [%s]", GB_NAME, type->name))) ;
     }

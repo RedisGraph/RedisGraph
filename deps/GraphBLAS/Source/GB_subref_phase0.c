@@ -42,11 +42,9 @@ static inline void GB_find_Ap_start_end
     // get A(:,kA)
     //--------------------------------------------------------------------------
 
-    // printf ("kC: "GBd" kA: "GBd"\n", kA, kC) ;
     int64_t pA = Ap [kA] ;
     int64_t pA_end = Ap [kA+1] ;
     int64_t ajnz = pA_end - pA ;
-    // printf ("pA "GBd" pA_end "GBd"\n", pA, pA_end) ;
 
     //--------------------------------------------------------------------------
     // trim it to A(imin:imax,kA)
@@ -59,7 +57,6 @@ static inline void GB_find_Ap_start_end
         // A (:,kA) is dense; use pA and pA_end as-is
         //----------------------------------------------------------------------
 
-        // printf ("A dense\n") ;
         ;
 
     }
@@ -72,7 +69,6 @@ static inline void GB_find_Ap_start_end
 
         pA = -1 ;
         pA_end = -1 ;
-        // printf ("A empty\n") ;
 
     }
     else
@@ -144,6 +140,9 @@ static inline void GB_find_Ap_start_end
 // GB_subref_phase0
 //------------------------------------------------------------------------------
 
+#define GB_FREE_WORK \
+    GB_FREE_MEMORY (Count, max_ntasks+1, sizeof (int64_t)) ;
+
 GrB_Info GB_subref_phase0
 (
     // output
@@ -188,6 +187,15 @@ GrB_Info GB_subref_phase0
 
     GrB_Info info ;
 
+    (*p_Ch        ) = NULL ;
+    (*p_Ap_start  ) = NULL ;
+    (*p_Ap_end    ) = NULL ;
+    (*p_Cnvec     ) = 0 ;
+    (*p_need_qsort) = false ;
+    (*p_Ikind     ) = 0 ;
+    (*p_nI        ) = 0 ;
+    (*p_nJ        ) = 0 ;
+
     //--------------------------------------------------------------------------
     // get A
     //--------------------------------------------------------------------------
@@ -213,7 +221,6 @@ GrB_Info GB_subref_phase0
     bool I_unsorted, I_has_dupl, I_contig, J_unsorted, J_has_dupl, J_contig ;
     int64_t imin, imax, jmin, jmax ;
 
-    // printf ("\n================================================= I:\n") ;
     info = GB_ijproperties (I, ni, nI, avlen, &Ikind, Icolon,
         &I_unsorted, &I_has_dupl, &I_contig, &imin, &imax, Context) ;
     if (info != GrB_SUCCESS)
@@ -222,7 +229,6 @@ GrB_Info GB_subref_phase0
         return (info) ;
     }
 
-    // printf ("\n================================================= J:\n") ;
     info = GB_ijproperties (J, nj, nJ, avdim, &Jkind, Jcolon,
         &J_unsorted, &J_has_dupl, &J_contig, &jmin, &jmax, Context) ;
     if (info != GrB_SUCCESS)
@@ -305,7 +311,7 @@ GrB_Info GB_subref_phase0
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
     int nthreads = 1, ntasks = 1 ;
     int max_ntasks = nthreads_max * 8 ;
-    int64_t Count [max_ntasks+1] ;
+    int64_t *restrict Count = NULL ;        // size max_ntasks+1
 
     #define GB_GET_NTHREADS_AND_NTASKS(work)                    \
     {                                                           \
@@ -313,6 +319,17 @@ GrB_Info GB_subref_phase0
         ntasks = (nthreads == 1) ? 1 : (8 * nthreads) ;         \
         ntasks = GB_IMIN (ntasks, work) ;                       \
         ntasks = GB_IMAX (ntasks, 1) ;                          \
+    }
+
+    //--------------------------------------------------------------------------
+    // allocate workspace
+    //--------------------------------------------------------------------------
+
+    GB_CALLOC_MEMORY (Count, max_ntasks+1, sizeof (int64_t)) ;
+    if (Count == NULL)
+    {
+        // out of memory
+        return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
@@ -452,13 +469,13 @@ GrB_Info GB_subref_phase0
 
     // C is hypersparse if A is hypersparse, or if C is empty
     bool C_is_hyper = A_is_hyper || C_empty ;
-    // printf ("C_is_hyper %d C_empty %d\n", C_is_hyper, C_empty) ;
 
     if (C_is_hyper)
     {
         GB_MALLOC_MEMORY (Ch, Cnvec, sizeof (int64_t)) ;
         if (Ch == NULL)
         { 
+            GB_FREE_WORK ;
             return (GB_OUT_OF_MEMORY) ;
         }
     }
@@ -470,6 +487,7 @@ GrB_Info GB_subref_phase0
         if (Ap_start == NULL || Ap_end == NULL)
         { 
             // out of memory
+            GB_FREE_WORK ;
             GB_FREE_MEMORY (Ch, Cnvec, sizeof (int64_t)) ;
             GB_FREE_MEMORY (Ap_start, Cnvec, sizeof (int64_t)) ;
             GB_FREE_MEMORY (Ap_end,   Cnvec, sizeof (int64_t)) ;
@@ -646,8 +664,6 @@ GrB_Info GB_subref_phase0
         {
             ASSERT (jA == A->h [kA]) ;
         }
-        // printf ("kC "GBd" jC "GBd" kA "GBd" jA "GBd" found %d\n",
-        //     kC, jC, kA, jA, found) ;
         int64_t pA      = Ap_start [kC] ;
         int64_t pA_end  = Ap_end   [kC] ;
         int64_t ajnz = pA_end - pA ;
@@ -662,8 +678,6 @@ GrB_Info GB_subref_phase0
         else if (ajnz > 0)
         {
             // A(imin:imax,kA) has at least one entry, in Ai [pA:pA_end-1]
-            // printf ("pA_start_all "GBd" pA "GBd" pA_end "GBd" pA_end_all "
-            //     GBd"\n", pA_start_all, pA, pA_end, pA_end_all) ;
             ASSERT (imin <= GB_Ai (pA)) ;
             ASSERT (GB_Ai (pA_end-1) <= imax) ;
             ASSERT (pA_start_all <= pA && pA < pA_end && pA_end <= pA_end_all) ;
@@ -677,9 +691,10 @@ GrB_Info GB_subref_phase0
     #endif
 
     //--------------------------------------------------------------------------
-    // return result
+    // free workspace and return result
     //--------------------------------------------------------------------------
 
+    GB_FREE_WORK ;
     (*p_Ch        ) = Ch ;
     (*p_Ap_start  ) = Ap_start ;
     (*p_Ap_end    ) = Ap_end ;
@@ -688,7 +703,6 @@ GrB_Info GB_subref_phase0
     (*p_Ikind     ) = Ikind ;
     (*p_nI        ) = nI ;
     (*p_nJ        ) = nJ ;
-
     return (GrB_SUCCESS) ;
 }
 

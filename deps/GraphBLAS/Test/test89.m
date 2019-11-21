@@ -48,7 +48,7 @@ for do_real = 0:1
     % Gustavson's method:
 
     C2 = GB_mex_AxB (A, B) ;
-    tg = gbresults ;
+    tg = grbresults ;
     err = norm (C1-C2,1)
     fprintf ('GraphBLAS %g speedup %g\n', tg, tm/tg) ;
 
@@ -56,13 +56,13 @@ for do_real = 0:1
     % (Gustavson) which is selected by the auto-strategy.
 
     C2 = GB_mex_AxB (A, B, 0, 0, 1002) ;
-    tg = gbresults ;
+    tg = grbresults ;
     err = norm (C1-C2,1)
     fprintf ('GraphBLAS %g speedup %g (heap)\n', tg, tm/tg) ;
 
 
     C2 = GB_mex_AxB (A, B, 0, 0, 1003) ;
-    tg = gbresults ;
+    tg = grbresults ;
     err = norm (C1-C2,1)
     fprintf ('GraphBLAS %g speedup %g (dot)\n', tg, tm/tg) ;
 

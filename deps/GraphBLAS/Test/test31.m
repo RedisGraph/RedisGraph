@@ -57,25 +57,25 @@ for k = 1:length(ops)
     C = GB_mex_transpose  (Cin2, [ ], op, A, D)  ;
     S = GB_spec_transpose (Cin2, [ ], op, A, D)  ;
     assert (isequal (C.matrix, sparse (S.matrix))) ;
-    assert (isequal (spones (C.matrix), sparse (S.pattern))) ;
+    assert (isequal (GB_spones_mex (C.matrix), sparse (S.pattern))) ;
 
     % C = A', ignore the op
     D = struct ('outp', 'replace') ;
     C = GB_mex_transpose  (Cin2, [ ], op, A, D) ;
     S = GB_spec_transpose (Cin2, [ ], op, A, D) ;
-    assert (isequal (spones (C.matrix), sparse (S.pattern))) ;
+    assert (isequal (GB_spones_mex (C.matrix), sparse (S.pattern))) ;
 
     % C = A, ignore the op
     D = struct ('inp0', 'tran', 'outp', 'replace') ;
     C = GB_mex_transpose  (Cin, [ ], op, A, D) ;
     S = GB_spec_transpose (Cin, [ ], op, A, D) ;
-    assert (isequal (spones (C.matrix), sparse (S.pattern))) ;
+    assert (isequal (GB_spones_mex (C.matrix), sparse (S.pattern))) ;
 
     % C = op (Cin,A)
     D = struct ('inp0', 'tran') ;
     C = GB_mex_transpose  (Cin, [ ], op, A, D) ;
     S = GB_spec_transpose (Cin, [ ], op, A, D) ;
-    assert (isequal (spones (C.matrix), sparse (S.pattern))) ;
+    assert (isequal (GB_spones_mex (C.matrix), sparse (S.pattern))) ;
 
 end
 

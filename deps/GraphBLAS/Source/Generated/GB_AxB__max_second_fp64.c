@@ -129,6 +129,7 @@ GrB_Info GB_Adot2B__max_second_fp64
     const GrB_Matrix M,
     const GrB_Matrix *Aslice, bool A_is_pattern,
     const GrB_Matrix B, bool B_is_pattern,
+    int64_t *restrict B_slice,
     int64_t *restrict *C_counts,
     int nthreads, int naslice, int nbslice
 )

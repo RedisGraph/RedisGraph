@@ -4,8 +4,8 @@ void GB_sel_phase1
 (
     int64_t *restrict Zp,
     int64_t *restrict Cp,
-    int64_t *restrict Wfirst,
-    int64_t *restrict Wlast,
+    GB_void *restrict Wfirst_space,
+    GB_void *restrict Wlast_space,
     const GrB_Matrix A,
     const int64_t *restrict kfirst_slice,
     const int64_t *restrict klast_slice,

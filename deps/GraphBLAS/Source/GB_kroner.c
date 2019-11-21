@@ -174,14 +174,14 @@ GrB_Info GB_kroner                  // C = kron (A,B)
             int64_t pB_end   = Bp [kB+1] ;
             int64_t bknz = pB_start - pB_end ;
             if (bknz == 0) continue ;
-            GB_void bwork [bsize] ;
+            GB_void bwork [GB_PGI(bsize)] ;
             // get C(:,jC), the (kC)th vector of C
             int64_t kC = kA * bnvec + kB ;
             int64_t pC = Cp [kC] ;
             // get A(:,jA), the (kA)th vector of A
             int64_t pA_start = Ap [kA] ;
             int64_t pA_end   = Ap [kA+1] ;
-            GB_void awork [asize] ;
+            GB_void awork [GB_PGI(asize)] ;
             for (int64_t pA = pA_start ; pA < pA_end ; pA++)
             {
                 // awork = A(iA,jA), typecasted to op->xtype

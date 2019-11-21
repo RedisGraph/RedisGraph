@@ -4,7 +4,7 @@ function [d nthreads] = stat
 % SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-global GraphBLAS_debug GraphBLAS_gbcov
+global GraphBLAS_debug GraphBLAS_grbcov
 
 if (isempty (GraphBLAS_debug))
     GraphBLAS_debug = false ;
@@ -18,9 +18,9 @@ else
     d = GraphBLAS_debug ;
 end
 
-if (~isempty (GraphBLAS_gbcov))
-    covered = sum (GraphBLAS_gbcov > 0) ;
-    n = length (GraphBLAS_gbcov) ;
+if (~isempty (GraphBLAS_grbcov))
+    covered = sum (GraphBLAS_grbcov > 0) ;
+    n = length (GraphBLAS_grbcov) ;
     if (nargout == 0)
         fprintf ('test coverage: %d of %d (%0.4f%%)\n', ...
             covered, n, 100 * (covered / n)) ;

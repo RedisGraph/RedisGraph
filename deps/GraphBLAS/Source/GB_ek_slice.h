@@ -20,15 +20,23 @@
 #define GB_EK_SLICE_H
 #include "GB.h"
 
-void GB_ek_slice
+bool GB_ek_slice        // true if successful, false if out of memory
 (
     // output:
-    int64_t *restrict pstart_slice, // size ntasks+1
-    int64_t *restrict kfirst_slice, // size ntasks
-    int64_t *restrict klast_slice,  // size ntasks
+    int64_t *restrict *pstart_slice_handle, // size ntasks+1
+    int64_t *restrict *kfirst_slice_handle, // size ntasks
+    int64_t *restrict *klast_slice_handle,  // size ntasks
     // input:
     GrB_Matrix A,                   // matrix to slize
     int ntasks                      // # of tasks
+) ;
+
+void GB_ek_slice_free
+(
+    int64_t *restrict *pstart_slice_handle, // size ntasks+1
+    int64_t *restrict *kfirst_slice_handle, // size ntasks
+    int64_t *restrict *klast_slice_handle,  // size ntasks
+    int ntasks                              // # of tasks
 ) ;
 
 int64_t GB_search_for_vector        // return the vector k that contains p

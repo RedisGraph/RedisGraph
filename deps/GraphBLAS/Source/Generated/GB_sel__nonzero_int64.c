@@ -35,9 +35,6 @@
 #define GB_GET_J                                        \
     ;
 
-// workspace is a parameter to the function, not defined internally
-#define GB_REDUCTION_WORKSPACE(W, ntasks) ;
-
 // W [k] = s, no typecast
 #define GB_COPY_SCALAR_TO_ARRAY(W,k,s)                  \
     W [k] = s
@@ -79,8 +76,8 @@ void GB_sel_phase1__nonzero_int64
 (
     int64_t *restrict Zp,
     int64_t *restrict Cp,
-    int64_t *restrict Wfirst,
-    int64_t *restrict Wlast,
+    GB_void *restrict Wfirst_space,
+    GB_void *restrict Wlast_space,
     const GrB_Matrix A,
     const int64_t *restrict kfirst_slice,
     const int64_t *restrict klast_slice,

@@ -27,6 +27,7 @@
 #define GB_FREE_ALL                                                         \
 {                                                                           \
     GB_FREE_WORK ;                                                          \
+    GB_FREE_MEMORY (Npending, ntasks+1, sizeof (int64_t)) ;                 \
     GB_FREE_MEMORY (TaskList, max_ntasks+1, sizeof (GB_task_struct)) ;      \
 }
 
@@ -108,7 +109,7 @@
     size_t asize = atype->size ;                                            \
     GB_Type_code acode = atype->code ;                                      \
     GB_cast_function cast_A_to_C = GB_cast_factory (ccode, acode) ;         \
-    GB_void cwork [csize] ;                                                 \
+    GB_void cwork [GB_PGI(csize)] ;                                         \
     cast_A_to_C (cwork, scalar, asize) ;                                    \
 
 //------------------------------------------------------------------------------
@@ -118,7 +119,7 @@
 #define GB_GET_ACCUM_SCALAR                                                 \
     GB_GET_SCALAR ;                                                         \
     GB_GET_ACCUM ;                                                          \
-    GB_void ywork [ysize] ;                                                 \
+    GB_void ywork [GB_PGI(ysize)] ;                                         \
     cast_A_to_Y (ywork, scalar, asize) ;
 
 //------------------------------------------------------------------------------
@@ -258,9 +259,9 @@
     #define GB_ACCUMULATE                                                   \
     {                                                                       \
         /* C(iC,jC) = accum (C(iC,jC), ywork)                    */         \
-        GB_void xwork [xsize] ;                                             \
+        GB_void xwork [GB_PGI(xsize)] ;                                     \
         cast_C_to_X (xwork, Cx +(pC*csize), csize) ;                        \
-        GB_void zwork [zsize] ;                                             \
+        GB_void zwork [GB_PGI(zsize)] ;                                     \
         faccum (zwork, xwork, ywork) ;                                      \
         cast_Z_to_C (Cx +(pC*csize), zwork, csize) ;                        \
     }                                                                       \
@@ -677,7 +678,7 @@
             {                                                               \
                 /* ----[C A 1] with accum, scalar expansion              */ \
                 /* action: ( =C+A ): apply the accumulator               */ \
-                GB_void ywork [ysize] ;                                     \
+                GB_void ywork [GB_PGI(ysize)] ;                             \
                 GB_COPY_aij_to_ywork ;                                      \
                 GB_ACCUMULATE ;                                             \
             }                                                               \
@@ -1494,8 +1495,21 @@ GrB_Info GB_subassign_20
 //------------------------------------------------------------------------------
 
 #define GB_EMPTY_TASKLIST                                                   \
-    int ntasks, max_ntasks = 0, nthreads ;                                  \
+    int ntasks = 0, max_ntasks = 0, nthreads ;                              \
     GB_task_struct *TaskList = NULL ;                                       \
+    int64_t *restrict Npending = NULL ;
+
+//------------------------------------------------------------------------------
+// GB_ALLOCATE_NPENDING: allocate Npending workspace
+//------------------------------------------------------------------------------
+
+#define GB_ALLOCATE_NPENDING                                                \
+    GB_MALLOC_MEMORY (Npending, ntasks+1, sizeof (int64_t)) ;               \
+    if (Npending == NULL)                                                   \
+    {                                                                       \
+        GB_FREE_ALL ;                                                       \
+        return (GB_OUT_OF_MEMORY) ;                                         \
+    }
 
 //------------------------------------------------------------------------------
 // GB_SUBASSIGN_ONE_SLICE: slice one matrix (A or M)
@@ -1512,7 +1526,7 @@ GrB_Info GB_subassign_20
         &TaskList, &max_ntasks, &ntasks, &nthreads,                         \
         C, I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,                      \
         X, Context)) ;                                                      \
-    int64_t Npending [ntasks+1] ;
+    GB_ALLOCATE_NPENDING ;
 
 //------------------------------------------------------------------------------
 // GB_SUBASSIGN_TWO_SLICE: slice two matrices
@@ -1537,7 +1551,7 @@ GrB_Info GB_subassign_20
         &TaskList, &max_ntasks, &ntasks, &nthreads,                         \
         Znvec, Zh, NULL, Z_to_X, Z_to_S, false,                             \
         NULL, X, S, Context)) ;                                             \
-    int64_t Npending [ntasks+1] ;
+    GB_ALLOCATE_NPENDING ;
 
 #define GB_FREE_TWO_SLICE                                                   \
 {                                                                           \
@@ -1566,7 +1580,7 @@ GrB_Info GB_subassign_20
         &Znvec, &Zh, &Z_to_A, &Z_to_M,                                      \
         C, I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,                      \
         A, M, Context)) ;                                                   \
-    int64_t Npending [ntasks+1] ;
+    GB_ALLOCATE_NPENDING ;
 
 #define GB_FREE_EMULT_SLICE                                                 \
 {                                                                           \
@@ -1587,7 +1601,7 @@ GrB_Info GB_subassign_20
         &TaskList, &max_ntasks, &ntasks, &nthreads,                         \
         I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,                         \
         Context)) ;                                                         \
-    int64_t Npending [ntasks+1] ;
+    GB_ALLOCATE_NPENDING ;
 
 //------------------------------------------------------------------------------
 // GB_subassign_one_slice

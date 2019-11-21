@@ -15,14 +15,25 @@
 
 #include "GB.h"
 
-void GB_pslice                      // find how to slice Ap
+bool GB_pslice          // slice Ap; return true if ok, false if out of memory
 (
-    int64_t *Slice,                 // size ntasks+1
-    const int64_t *restrict Ap,     // array of size n+1
+    int64_t *restrict *Slice_handle,    // size ntasks+1
+    const int64_t *restrict Ap,         // array of size n+1
     const int64_t n,
-    const int ntasks                // # of tasks
+    const int ntasks                    // # of tasks
 )
 {
+
+    // allocate result
+    int64_t *Slice = NULL ;
+    (*Slice_handle) = NULL ;
+    GB_MALLOC_MEMORY (Slice, ntasks+1, sizeof (int64_t)) ;
+    if (Slice == NULL)
+    {
+        // out of memory
+        return (false) ;
+    }
+    (*Slice_handle) = Slice ;
 
     const double work = (Ap == NULL) ? 0 : Ap [n] ;
 
@@ -51,5 +62,6 @@ void GB_pslice                      // find how to slice Ap
         }
     }
     Slice [ntasks] = n ;
+    return (true) ;
 }
 

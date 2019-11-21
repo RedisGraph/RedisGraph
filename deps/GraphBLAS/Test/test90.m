@@ -30,7 +30,7 @@ for N = [10 100 1000]
     tic
     C2 = GB_mex_rdiv (A, B) ;
     toc
-    t = gbresults ; fprintf ('GB time %g\n', t) ;
+    t = grbresults ; fprintf ('GB time %g\n', t) ;
     assert (norm (C1-C2,1) / norm (C1,1) < 1e-10) ;
 
     for method = 1001:1003
@@ -39,7 +39,7 @@ for N = [10 100 1000]
         tic
         C2 = GB_mex_rdiv (A, B, method, cprint) ;
         toc
-        t = gbresults ; fprintf ('GB time %g\n', t) ;
+        t = grbresults ; fprintf ('GB time %g\n', t) ;
         assert (norm (C1-C2,1) / norm (C1,1) < 1e-10) ;
     end
 
@@ -92,7 +92,7 @@ for N = [10 100 1000]
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
         % toc
-        t = gbresults ; fprintf ('GB time %g\n', t) ;
+        t = grbresults ; fprintf ('GB time %g\n', t) ;
         assert (norm (C0-C5,1) / norm (C5,1) < 1e-5) ;
     end
 
@@ -108,7 +108,7 @@ for N = [10 100 1000]
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
         % toc
-        t = gbresults ; fprintf ('GB time %g\n', t) ;
+        t = grbresults ; fprintf ('GB time %g\n', t) ;
         assert (norm (C0-C5,1) / norm (C5,1) < 1e-5) ;
     end
 
@@ -124,7 +124,7 @@ for N = [10 100 1000]
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
         % toc
-        t = gbresults ; fprintf ('GB time %g\n', t) ;
+        t = grbresults ; fprintf ('GB time %g\n', t) ;
         assert (norm (C0-C5,1) / norm (C5,1) < 1e-5) ;
     end
 
@@ -140,7 +140,7 @@ for N = [10 100 1000]
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
         % toc
-        t = gbresults ; fprintf ('GB time %g\n', t) ;
+        t = grbresults ; fprintf ('GB time %g\n', t) ;
         assert (norm (C0-C5,1) / norm (C5,1) < 1e-5) ;
     end
 
@@ -156,7 +156,7 @@ for N = [10 100 1000]
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
         % toc
-        t = gbresults ; fprintf ('GB time %g\n', t) ;
+        t = grbresults ; fprintf ('GB time %g\n', t) ;
         assert (norm (C0-C5,1) / norm (C5,1) < 1e-5) ;
     end
 
@@ -172,7 +172,7 @@ for N = [10 100 1000]
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
         % toc
-        t = gbresults ; fprintf ('GB time %g\n', t) ;
+        t = grbresults ; fprintf ('GB time %g\n', t) ;
         assert (norm (C0-C5,1) / norm (C5,1) < 1e-5) ;
     end
 
@@ -188,7 +188,7 @@ for N = [10 100 1000]
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
         % toc
-        t = gbresults ; fprintf ('GB time %g\n', t) ;
+        t = grbresults ; fprintf ('GB time %g\n', t) ;
         assert (norm (C0-C5,1) / norm (C5,1) < 1e-5) ;
     end
 
@@ -204,7 +204,7 @@ for N = [10 100 1000]
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
         % toc
-        t = gbresults ; fprintf ('GB time %g\n', t) ;
+        t = grbresults ; fprintf ('GB time %g\n', t) ;
         assert (norm (C0-C5,1) / norm (C5,1) < 1e-5) ;
     end
 

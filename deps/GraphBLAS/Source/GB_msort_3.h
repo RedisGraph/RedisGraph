@@ -40,7 +40,7 @@ void GB_merge_select_3      // parallel or sequential merge of 3-by-n arrays
     const int64_t *restrict Left_1,
     const int64_t *restrict Left_2,
     const int64_t nleft,
-    const int64_t *restrict Right_0,    // Right [0..nright01]
+    const int64_t *restrict Right_0,    // Right [0..nright-1]
     const int64_t *restrict Right_1,
     const int64_t *restrict Right_2,
     const int64_t nright

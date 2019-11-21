@@ -14,7 +14,6 @@
 \hyphenation{Suite-Sparse}
 \hyphenation{Graph-BLAS}
 \hyphenation{Suite-Sparse-Graph-BLAS}
-\hyphenation{Suite-Sparse-Graph-BLAS}
 
 \newenvironment{packed_itemize}{
 \begin{itemize}
@@ -80,8 +79,10 @@ GraphBLAS library.
 
 % API version and date are set by cmake (see GraphBLAS/CMakeLists.txt)
 
-See \cite{Davis18} for a journal article on SuiteSparse:GraphBLAS, and
-\cite{Davis18b} for a more recent conference paper.  A full and precise
+For more details on SuiteSparse:GraphBLAS, and its use in LAGraph, see
+\cite{Davis18,Davis18b,DavisAznavehKolodziej19,Davis20,Mattson19}.
+
+A full and precise
 definition of the GraphBLAS specification is provided in {\em The GraphBLAS C
 API Specification} by {Ayd\i n Bulu\c{c}, Timothy Mattson, Scott McMillan,
 Jos\'e Moreira, and Carl Yang} \cite{BulucMattsonMcMillanMoreiraYang17,spec},
@@ -104,7 +105,14 @@ macros with a name of the form \verb'GxB_*' are extensions to the spec.
 
 \begin{itemize}
 
-\item Version 3.0 (2019):  The version number is increased to 3.0, since
+\item Version 3.1.0 (Oct 1, 2019).  MATLAB interface added.
+    See the \newline
+    \verb'GraphBLAS/GraphBLAS' folder for details and documentation,
+    and Section~\ref{matlab}.
+
+\item Version 3.0 (July 26, 2019), with OpenMP parallelism.
+
+The version number is increased to 3.0, since
 this version is not backward compatible with V2.x.  The \verb'GxB_select'
 operation changes; the \verb'Thunk' parameter was formerly a
 \verb'const void *' pointer, and is now a \verb'GxB_Scalar'.  A new parameter
@@ -694,10 +702,10 @@ denote the multiplication of two matrices over a semiring.
 \verb'GrB_mxv'       & matrix-vector multiply  & ${\bf w \langle m \rangle = w \odot Au}$ \\
 \hline
 \verb'GrB_eWiseMult' & element-wise,           & ${\bf C \langle M \rangle = C \odot (A \otimes B)}$ \\
-                     & set union               & ${\bf w \langle m \rangle = w \odot (u \otimes v)}$ \\
+                     & set intersection        & ${\bf w \langle m \rangle = w \odot (u \otimes v)}$ \\
 \hline
 \verb'GrB_eWiseAdd'  & element-wise,           & ${\bf C \langle M \rangle = C \odot (A \oplus  B)}$ \\
-                     & set intersection        & ${\bf w \langle m \rangle = w \odot (u \oplus  v)}$ \\
+                     & set union               & ${\bf w \langle m \rangle = w \odot (u \oplus  v)}$ \\
 \hline
 \verb'GrB_extract'   & extract submatrix       & ${\bf C \langle M \rangle = C \odot A(I,J)}$ \\
                      &                         & ${\bf w \langle m \rangle = w \odot u(i)}$ \\
@@ -713,11 +721,11 @@ denote the multiplication of two matrices over a semiring.
 \verb'GrB_apply'     & apply unary operator    & ${\bf C \langle M \rangle = C \odot} f{\bf (A)}$ \\
                      &                         & ${\bf w \langle m \rangle = w \odot} f{\bf (u)}$ \\
 \hline
-\verb'GxB_select'    & apply select operator   & ${\bf C \langle M \rangle = C \odot} f{\bf (A,k)}$ \\
-                     &                         & ${\bf w \langle m \rangle = w \odot} f{\bf (u,k)}$ \\
+\verb'GxB_select'    & apply select operator   & ${\bf C \langle M \rangle = C \odot} f({\bf A},k)$ \\
+                     &                         & ${\bf w \langle m \rangle = w \odot} f({\bf u},k)$ \\
 \hline
 \verb'GrB_reduce'    & reduce to vector        & ${\bf w \langle m \rangle = w \odot} [{\oplus}_j {\bf A}(:,j)]$ \\
-                     & reduce to scalar        & $s = s \odot [{\oplus}_{ij}  {\bf A}(I,J)]$ \\
+                     & reduce to scalar        & $s = s \odot [{\oplus}_{ij}  {\bf A}(i,j)]$ \\
 \hline
 \verb'GrB_transpose' & transpose               & ${\bf C \langle M \rangle = C \odot A^{\sf T}}$ \\
 \hline
@@ -744,13 +752,141 @@ times.
 Reduction of a matrix ${\bf A}$ to a vector reduces the $i$th row of ${\bf A}$
 to a scalar $w_i$.  This is like \verb"w=sum(A')" since by default, MATLAB
 reduces down the columns, not across the rows.
-% Since the input matrix can be
-% optionally transposed, selecting this option obtains the behavior of \verb'sum'
-% in MATLAB.
 
-% Further details of each operation are given in Section~\ref{operations}.
+\newpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Interfaces to MATLAB, Python, and Julia} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+The MATLAB interface to SuiteSparse:GraphBLAS is included with this
+distribution, described in Section~\ref{matlab}.
+It is fully polished, and fully tested, but does have
+some limitations that will be addressed in future releases.
 
+A beta version of a Python interface is now available, as is a
+Julia interface.  These are not part of the SuiteSparse:GraphBLAS distribution.
+See the links below (see Sections \ref{python} and \ref{julia}).
+
+\subsection{MATLAB Interface}
+\label{matlab}
+
+As of Version 3.1, a MATLAB interface is now available.  Refer to the
+documentation in the \verb'GraphBLAS/GraphBLAS' folder for details.  Start with
+the \verb'README.md' file in that directory.  An easy-to-read output of the
+MATLAB demos can be found in \verb'GraphBLAS/GraphBLAS/demo/html'.
+
+The MATLAB interface adds the \verb'GrB' class, which is an opaque MATLAB
+object that contains a GraphBLAS matrix, either double or single precision,
+boolean, or any of the built-in integer types.  Complex matrix support will be
+added in the future.    MATLAB sparse and full matrices can be arbitrarily
+mixed with GraphBLAS matrices.  The following overloaded operators and methods
+all work as you would expect for any matrix.  The matrix multiplication
+\verb'A*B' uses the conventional \verb'PLUS_TIMES' semiring.
+
+{\footnotesize
+\begin{verbatim}
+A+B    A-B   A*B    A.*B   A./B   A.\B   A.^b    A/b    C=A(I,J)
+-A     +A    ~A     A'     A.'    A&B    A|B     b\A    C(I,J)=A
+A~=B   A>B   A==B   A<=B   A>=B   A<B    [A,B]   [A;B]  A(1:end,1:end) \end{verbatim}}
+
+{\footnotesize
+\begin{verbatim}
+                    fix             isreal          single
+    abs             flip            isscalar        size
+    all             floor           issparse        sparse
+    amd             fprintf         issymmetric     spfun
+    and             full            istril          spones
+    any             graph           istriu          sprand
+    assert          int16           isvector        sprandn
+    bandwidth       int32           kron            sprandsym
+    ceil            int64           length          sprintf
+    colamd          int8            logical         sqrt
+    complex         isa             max             sum
+    conj            isbanded        min             symamd
+    diag            isdiag          nnz             symrcm
+    digraph         isempty         nonzeros        tril
+    disp            isequal         norm            triu
+    display         isfinite        numel           true
+    dmperm          isfloat         nzmax           uint16
+    double          ishermitian     ones            uint32
+    eig             isinf           prod            uint64
+    end             isinteger       real            uint8
+    eps             islogical       repmat          xor
+    etree           ismatrix        reshape         zeros
+    false           isnan           round
+    find            isnumeric       sign \end{verbatim}}
+
+The static methods (used in the form \verb'GrB.method') provide direct access
+to GraphBLAS functions and can be used on both MATLAB and GraphBLAS matrices,
+or any combination.  Once the \verb'GraphBLAS/GraphBLAS' folder is in your
+MATLAB path, type \verb'help graphblas' and \verb'help GrB' in MATLAB
+for more help.
+
+{\footnotesize
+\begin{verbatim}
+    apply           emult           kronecker       select          
+    assign          entries         ktruss          selectopinfo    
+    bfs             expand          laplacian       semiringinfo    
+    binopinfo       extract         mis             speye           
+    build           extracttuples   monoidinfo      subassign       
+    chunk           eye             mxm             threads         
+    clear           format          nonz            trans           
+    compact         incidence       offdiag         tricount        
+    descriptorinfo  isbycol         pagerank        type            
+    dnn             isbyrow         prune           unopinfo        
+    eadd            isfull          random          vreduce         
+    empty           issigned        reduce  \end{verbatim}}
+
+{\bf Limitations:}
+Some features for MATLAB sparse matrices are not yet available for
+GraphBLAS matrices.  Some of these may be added in future releases.
+
+\begin{packed_itemize}
+    \item Non-blocking mode is not exploited; this would require
+        a MATLAB mexFunction to modify its inputs, which is
+        technically possible but not permitted by the MATLAB API.
+    \item Linear indexing, or \verb'A(:)' for a 2D matrix, and
+        a single output of \verb'I=find(A)'.
+    \item Complex matrices.
+    \item The second output for \verb'min' and \verb'max',
+        and the \verb'includenan' option.
+    \item Singleton expansion.
+    \item Dynamically growing arrays, where \verb'C(i)=x' can increase
+        the size of \verb'C'.
+    \item Saturating element-wise binary and unary operators for integers.
+        For \verb'C=A+B' with MATLAB \verb'uint8' matrices, results
+        saturate if they exceed 255.  This is not compatible with
+        a monoid for \verb'C=A*B', and thus MATLAB does not support
+        matrix-matrix multiplication with \verb'uint8' matrices.
+        In GraphBLAS, \verb'uint8' addition acts in a modulo fashion.
+        Saturating binary operators could be added in the future,
+        so that \verb"GrB.eadd (A, '+saturate', B)" could return the
+        MATLAB result.
+    \item Solvers, so that \verb'x=A\b' could return a GF(2) solution,
+        for example.
+    \item Some methods are slower than MATLAB.  Dense vectors, for example,
+        are faster with MATLAB full vectors than GraphBLAS sparse vectors.
+        These issues will be addressed in a future version.
+    \item Sparse matrices with dimension higher than 2.  It would be
+        possible to map a N-dimensional matrix to a large 2D
+        hypersparse GraphBLAS matrix.
+\end{packed_itemize}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Python Interface} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\label{python}
+
+See Michel Pelletier's Python interface at
+\href{https://github.com/michelp/pygraphblas}{https://github.com/michelp/pygraphblas}.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Julia Interface} %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\label{julia}
+
+See Abhinav Mehndiratta's Julia interface at  \\
+\href{https://github.com/abhinavmehndiratta/SuiteSparseGraphBLAS.jl}{https://github.com/abhinavmehndiratta/SuiteSparseGraphBLAS.jl}.
 
 \newpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -3892,7 +4028,7 @@ will just be slow.
 
 % \newpage
 %-------------------------------------------------------------------------------
-\subsubsection{{\sf GrB\_Matrix\_extractTuples:}get all entries from a matrix}
+\subsubsection{{\sf GrB\_Matrix\_extractTuples:} get all entries from a matrix}
 %-------------------------------------------------------------------------------
 \label{matrix_extractTuples}
 
@@ -4174,7 +4310,7 @@ If not successful, \verb'v' is returned as \verb'NULL' and \verb'vi' and
 GrB_Info GxB_Vector_export  // export and free a vector
 (
     GrB_Vector *v,          // vector to export and free
-    GrB_Type *type,         // type of matrix exported
+    GrB_Type *type,         // type of vector exported
     GrB_Index *n,           // length of the vector
     GrB_Index *nvals,       // number of entries in the vector
     GrB_Index **vi,         // indices, size nvals
@@ -6615,191 +6751,6 @@ matrix, whether by matrix multiplication or by \verb'GrB_extract', then keep
 two copies: one stored by row, and other by column, and use the copy that
 results in the fastest computation.
 
-%===============================================================================
-% \subsection{Meta-algorithm for sparse matrix multiplication}
-% \label{meta}
-% %===============================================================================
-% 
-% SuiteSparse:GraphBLAS includes three different
-% methods for computing \verb'C<M>=A*B', and more may be added in the future.
-% It uses a meta-algorithm to select between the methods, described below.
-% The default behavior depends on the CSR/CSC format of each matrix (any
-% combination can be used for the four matrices), whether or not the mask
-% \verb'M' is present, and the descriptor values for transposing \verb'A' and
-% \verb'B'.  This gives a large number of possible combinations, so the
-% meta-algorithm that selects the method starts by reducing this space of
-% combinations.
-% 
-% A matrix stored by row but not transposed has the same data structure as a
-% matrix stored by column and transposed.  To make all matrices uniform
-% all matrices are viewed as if stored by column, by negating the transpose
-% descriptors if they are stored by row.  No data movement takes place.
-% 
-% {\footnotesize
-% \begin{verbatim}
-%     A_transpose = true if transposed by INP0, false otherwise
-%     B_transpose = true if transposed by INP1, false otherwise
-%     if (A is stored by row)
-%         A_transpose = !A_transpose
-%     if (B is stored by row)
-%         B_transpose = !B_transpose
-%     if (C is stored by row)
-%         C_transpose = true
-%     else
-%         C_transpose = false
-%     if (M is present and stored by row)
-%         M_transpose = true
-%     else
-%         M_transpose = false \end{verbatim}}
-% 
-% Now all matrices are treated as if stored by column.  The next phase applies
-% the default {\em swap rule}, which removes the transpose of \verb'C' via the
-% linear algebraic property $A^{\sf T} B^{\sf T}=(BA)^{\sf T}$.
-% 
-% {\footnotesize
-% \begin{verbatim}
-%     swap_rule = C_transpose
-%     if (swap_rule)
-%         swap the matrices A and B
-%         A_transpose = !B_transpose
-%         B_transpose = !A_transpose
-%         C_transpose = !C_transpose
-%         M_transpose = !M_transpose \end{verbatim}}
-% 
-% With this default swap rule, \verb'C_transpose' is now false.  All transposes
-% below are now explicit, requiring data movement.  Next, the mask is explicitly
-% transposed.
-% 
-% {\footnotesize
-% \begin{verbatim}
-%     if (M_transpose)
-%         M = M' (an explicit transpose)
-%         M_transpose = false \end{verbatim}}
-% 
-% There are now four cases to handle:
-% 
-% \begin{enumerate}
-% 
-% \item If computing \verb"C<M> = A'*B'":   the matrix \verb'B' is
-%     explicitly transposed and then rule (2) below is applied.
-% 
-% \item If computing \verb"C<M> = A'*B"
-% 
-% {\footnotesize
-% \begin{verbatim}
-% if default method:
-%     if M is present, or if A or B have a single column, or if B or A are dense:
-%         use the dot method
-%     else
-%         select the heap or Gustavson method (see below)
-% if dot method:
-%     compute C<M>=A'*B
-% else if heap or Gustavson's method:
-%     A=A' ;
-%     compute C<M>=A*B \end{verbatim}}
-% 
-% \item If computing \verb"C<M> = A*B'"
-% 
-% {\footnotesize
-% \begin{verbatim}
-% if default method:
-%     select the heap or Gustavson method (see below)
-% if dot method (not selected automatically):
-%     A=A' ; B=B' ;
-%     compute C<M>=A'*B
-% else if heap or Gustavson's method:
-%     B=B' ;
-%     compute C<M>=A*B \end{verbatim}}
-% 
-% \item If computing \verb"C<M> = A*B"
-% 
-% {\footnotesize
-% \begin{verbatim}
-% if default method:
-%     select the heap or Gustavson method (see below)
-% if dot method (not selected automatically):
-%     A=A' ;
-%     compute C<M>=A'*B
-% else if heap or Gustavson's method:
-%     compute C<M>=A*B \end{verbatim}}
-% 
-% \end{enumerate}
-% 
-% The \verb'GrB_vxm' and \verb'GrB_mxv' operations described in
-% Sections~\ref{vxm}~and~\ref{mxv} use the same method above, where the vectors
-% \verb'w', \verb'mask', and \verb'u' are treated as \verb'n'-by-1 matrices,
-% stored by column.
-% 
-% The default automatic selection between the heap method or Gustavson's method
-% for \verb'C<M>=A*B' depends on the sparsity of \verb'A' and \verb'B'.  Let $b$
-% be the largest number of entries in any column of \verb'B'.  Let $m$-by-$n$ be
-% the dimensions of \verb'C'.  Let $k$ be the inner dimension, so that \verb'A'
-% is $m$-by-$k$ and \verb'B' is $k$-by-$n$ (and thus $b \le k$).
-% 
-% The workspace required by the heap method is $5b$ integers, or $40b$ bytes.
-% Gustavson's method requires $(s+1)m$ bytes of workspace where $s$ is the number
-% of bytes required for the data type of \verb'C' ($s=8$ if \verb'C' is
-% \verb'GrB_FP64', for example).  The workspace of Gustavson's method can be
-% prohibitive if the matrices are extremely sparse since $m >> b$ or even $m >>
-% |{\bf B}|$ is possible.
-% 
-% When the \verb'GxB_AxB_METHOD' is \verb'GxB_DEFAULT' and the \verb'GxB_AxB_DOT'
-% method has not been chosen (see above), then the following rules are used to
-% select between the heap method and Gustavson's method.
-% 
-% \begin{itemize}
-% 
-% \item {\bf Rule (1):} If $b<2$ use the heap method.  The heap will be at most 2
-% in size, which makes the heap method very fast.  It is typically faster than
-% Gustavson's method in this case.  Example \verb'B' matrices that fit Rule (1)
-% include diagonal matrices, permutation matrices, or upper/lower bidiagonal
-% matrices.
-% 
-% \item {\bf Rule (2):}
-%     If $|{\bf B}| \le 3k$, or $|{\bf B}| \le m$,  or if $|{\bf A}| \le
-%     \min(k,m)$ then the heap method is used if its memory requirements are much
-%     less than Gustavson's method.  The heap method can be slow if $b$ is large,
-%     however, since modifying the heap after each operation can take as much as
-%     $O(\log b)$ time.  So the heap selection is penalized by a $4 \log_2 b$
-%     factor.  Thus, the heap method is used if the condition
-%     \[
-%         (40b) 4 \log_2 b < (s+1)m
-%     \]
-%     holds; otherwise Gustavson's method is used.  Rules (1) and (2) mean that
-%     the heap rule is used for computing $C=PAQ$ where $P$ and $Q$ are
-%     permutation matrices or diagonal scaling matrices, which are common use
-%     cases.  The heap method uses very little memory and is faster than
-%     Gustavson's method for these cases.
-% 
-% \item {\bf Rule (3):}
-%     Otherwise, Gustavson's method is used.  Rules (1) and (2) ensure that the
-%     workspace requirement for Gustavson's method will not be prohibitive.
-% 
-% \end{itemize}
-% 
-% The automatic selection applies to any mixture of the format of the
-% four matrices (CSR or CSC, and hypersparse or non-hypersparse), and any
-% combination of the input descriptors that transpose \verb'A' and \verb'B'.
-% If all matrices are CSR format, \verb'C<M>=A*B' does not explicitly
-% transpose any matrix.
-% 
-% \paragraph{\bf Performance considerations:}
-% With such a large space of combinations, the default meta-algorithm may not
-% select the fastest method, which is why the method can be selected via the
-% \verb'GxB_AxB_METHOD' field of the descriptor.
-% 
-% The meta-algorithm never transposes the final result (\verb"C=A'*B'" is never
-% converted into \verb"C=(B*A)'"), although that strategy can lead to better
-% performance.
-% % A different \verb'swap_rule' would allow for the output matrix to
-% % be transposed (with \verb"C=(B*A)'" being computed); a user descriptor may be
-% % added in the future to allow for this selection.
-% The user application can do this by computing \verb"C'=B*A", and then
-% transposing the result via \verb'GrB_transpose' to obtain
-% \verb"C=(B*A)'=A'*B'".  This can be faster in some cases, depending on the size
-% and sparsity of the three or four matrices (\verb'C', \verb'A', \verb'B', and
-% \verb'M' if present).
-
 \newpage
 %===============================================================================
 \subsection{{\sf GrB\_vxm:} vector-matrix multiply} %===========================
@@ -7980,7 +7931,7 @@ if \verb'A' is transposed.
 % \end{spec}
 
 The \verb'GxB_subassign' and \verb'GrB_assign' operations are very similar, but
-they differ in three ways:
+they differ in two ways:
 
 \begin{enumerate}
 \item {\bf The Mask has a different size:}
@@ -8009,17 +7960,19 @@ they differ in three ways:
     \verb'C(I,J)' submatrix.  If the \verb'GrB_REPLACE' descriptor is
     true, \verb'GrB_assign' deletes this entry.
 
-\item {\bf Scalar expansion when duplicates appear in \verb'I' or \verb'J':} \\
-    They differ in how duplicate indices are treated in \verb'I' and \verb'J'.
-    For both \verb'assign' and \verb'subassign', results are not defined for
-    \verb'GrB_Matrix_*assign', \verb'GrB_Vector_*assign',
-    \verb'GrB_Row_*assign', and \verb'GrB_Col_*assign' when duplicate indices
-    appear in \verb'I' or \verb'J'.  The scalar expansion operations,
-    \verb'GrB_*_assign_<type>', are well-defined if duplicate indices appear
-    (the results are the same as if duplicates are removed first from \verb'I'
-    and \verb'J').  However, the scalar expansion operations
-    \verb'GxB_*_subassign_<type>' are not well-defined if duplicate indices
-    appear in \verb'I' or \verb'J'.
+% Duplicates are now handled in V3.0.1 and later, so this difference no
+% no longer exists.
+%\item {\bf Scalar expansion when duplicates appear in \verb'I' or \verb'J':} \\
+%   They differ in how duplicate indices are treated in \verb'I' and \verb'J'.
+%   For both \verb'assign' and \verb'subassign', results are not defined for
+%   \verb'GrB_Matrix_*assign', \verb'GrB_Vector_*assign',
+%   \verb'GrB_Row_*assign', and \verb'GrB_Col_*assign' when duplicate indices
+%   appear in \verb'I' or \verb'J'.  The scalar expansion operations,
+%   \verb'GrB_*_assign_<type>', are well-defined if duplicate indices appear
+%   (the results are the same as if duplicates are removed first from \verb'I'
+%   and \verb'J').  However, the scalar expansion operations
+%   \verb'GxB_*_subassign_<type>' are not well-defined if duplicate indices
+%   appear in \verb'I' or \verb'J'.
 
 \end{enumerate}
 
@@ -8028,8 +7981,10 @@ they differ in three ways:
 is set to its default value of false, and if the masks happen to be the same.
 The two masks can be the same in two cases:  either the \verb'Mask' input is
 \verb'NULL' (and it is not complemented via \verb'GrB_SCMP'), or \verb'I' and
-\verb'J' are both \verb'GrB_ALL'.  For scalar expansion, no duplicates can
-appear in the index lists \verb'I' and \verb'J'.  If all these conditions hold,
+\verb'J' are both \verb'GrB_ALL'.
+%For scalar expansion, no duplicates can
+% appear in the index lists \verb'I' and \verb'J'.
+If all these conditions hold,
 the two algorithms are identical and have the same performance.  Otherwise,
 \verb'GxB_subassign' is much faster than \verb'GrB_assign' when the latter
 must examine the entire matrix \verb'C' to delete entries (when
@@ -8070,8 +8025,8 @@ controls how \verb'C(i,j)' is modified by the subassign, from the value
 
 The \verb'GxB_subassign' and \verb'GrB_assign' functions have the same
 signatures; they differ only in how they consider the \verb'Mask' and the
-\verb'GrB_REPLACE' descriptor, and in how duplicate indices are treated for
-scalar expansion.
+\verb'GrB_REPLACE' descriptor
+% , and in how duplicate indices are treated for scalar expansion.
 
 Details of each step of the two operations are listed below:
 
@@ -8094,7 +8049,8 @@ ${\bf S} \odot {\bf A}$,
 described in Section~\ref{accummask}, is the same in both
 operations.  The result is simply ${\bf A}$ if \verb'accum' is \verb'NULL'.  It
 only applies to the submatrix ${\bf S}$, not the whole matrix.
-The result ${\bf S} \odot {\bf A}$ is used differently in the Mask/Replace phase.
+The result ${\bf S} \odot {\bf A}$ is used differently in the Mask/Replace
+phase.
 
 The Mask/Replace Phase, described in Section~\ref{accummask} is different:
 \begin{itemize}
@@ -8432,67 +8388,19 @@ which only needs to examine the \verb'C(I,J)' submatrix.  Furthermore,
 
 Submatrix assignment in SuiteSparse:GraphBLAS is extremely efficient, even
 without considering the advantages of non-blocking mode discussed in
-Section~\ref{compare_assign}.  Consider assigning a large submatrix
-\verb'C(I,J)=A' where \verb'C' is derived from the \verb'Freescale2' matrix
-from the SuiteSparse Collection \cite{DavisHu11}, of size 3 million by 3
-million, with 14.3 million nonzeros.  The matrix \verb'C' is
-\verb'repmat(F,4,4)', if \verb'F' is the \verb'Freescale2' matrix, about 12
-million by 12 milion with 230 million nonzeros.  With the vectors
-\verb'I=randperm(n,5500)' and \verb'J=randperm(n,7000)' and \verb'A' a random
-sparse matrix with 38,500 nonzeros, \verb'C(I,J)=A' takes about 30 minutes in
-MATLAB.\footnote{This performance measurement was done on an NVIDIA DGX
-workstation, 2.2 GHz Intel Xeon E5-2698, with 256GB RAM, 20 hardware cores,
-Ubuntu 16.04, gcc 5.4.0, and MATLAB R2018a.} The same computation takes 0.74
-seconds with 40 threads in SuiteSparse:GraphBLAS, a speedup of 2,660x.  This is
-after finishing all pending computations in GraphBLAS and returning result to
-MATLAB as a valid MATLAB sparse matrix.  The dominant time complexity for
-GraphBLAS is $O(n+c)$, where $n$ is the dimension of \verb'C' and $c$ is its
-number of nonzeros.  As a comparison, MATLAB takes just 8.6 seconds to compute
-\verb"C+C'" for this matrix, which also takes time linear in the size of the
-matrix data structure, $O(n+c)$.
+Section~\ref{compare_assign}.  It can be up to 500x faster than MATLAB
+R2019b, or even higher depending on the kind of matrix assignment.
+MATLAB logical indexing (the mask of GraphBLAS) is much faster with
+GraphBLAS than in MATLAB R2019b.
 
-The time for submatrix assignment can be greatly reduced if \verb'C' is
-hypersparse.  Let $\bar{n}$ be the number of non-empty rows, where $\bar{n}<n$,
-and sometimes $\bar{n} << n$.  The $\log n$ terms remain since they reflect the
-binary search inside a row, but the term $n$ by itself is replaced by
-$\bar{n}$ or $\bar{n} \log \bar{n}$.  The term $a$ is replaced by $a \log
-\bar{n}$.  The total time for a sequence of $t$ updates to a hypersparse matrix
-$C$ takes $O (t \left [a \log \bar{n} + s \log n \right] + (\bar{n} + c + st
-\log st))$ time.  This assumes that \verb'C' could include one or more dense
-rows, with $n$ entries.  If instead the number of entries in each row of
-\verb'C' is bounded by a constant, the $\log n$ term becomes a constant.  If
-\verb'A' is also hypersparse, the value $a$ is removed from the expression,
-replaced with its number of non-empty rows, $\bar{a}$.  Suppose also $t$ is
-a constant, and $s$ is $O(\bar{a})$.  Suppose the pattern of \verb'C' changes.
-Suppose the number of entries in any one row of \verb'C' is bounded by
-$\bar{n}$, and likewise for \verb'A'.  Then the time for the non-hypersparse
-case simplifies to:
-\[ O ( a                    + s \log \bar{n} + (n       + c + s \log s)). \]
-For the hypersparse case it becomes
-\[ O ( \bar{a} \log \bar{n} + s \log \bar{n} + (\bar{n} + c + s \log s)). \]
-Both of these times include the similar terms
-\[ O (                        s \log \bar{n} + (          c + s \log s)), \]
-which reflects the sorting of and searching of the nonzero entries themselves,
-in \verb'C' and \verb'A'.
-Excluding those terms and just considering the additional time,
-the non-hypersparse case takes an extra time of
-\[ O ( a                    +                   n                      ), \]
-whereas the hypersparse case takes only:
-\[ O ( \bar{a} \log \bar{n} +                   \bar{n}                ). \]
-
-The difference is astonishing if $\bar{n} << n$ and $\bar{a} << a$.
-Hypersparse \verb'C' and \verb'A' matrices can be created with $a = n =
-2^{60}$, but suppose $\bar{a} = \bar{n} = 2^{24}$, say, which is 4 million.
-Then $\bar{a} \log_{2} \bar{n} + \bar{n}$ is only about 420 million.  In stark
-contrast, updating the same matrices held in non-hypersparse form would take
-$2^{60}$ time and memory, a number currently beyond the reach of the world's
-largest supercomputer.
-
-If the matrices \verb'C' and \verb'A' have no empty columns or rows, then
-$\bar{a} = a$ and $\bar{n}=n$.  Hypersparse matrices are more costly in this
-case, since they still require an extra $\log n$ term to search for a specific
-row in \verb'C'.  As a result, SuiteSparse:GraphBLAS supports both
-hypersparse and non-hypersparse data structures.
+All of the 28 variants (each with their own source code) are either
+asymptotically optimal, or to within a log factor of being asymptotically
+optimal.  The methods are also fully parallel.  For hypersparse matrices, the
+term $n$ in the expressions in the above discussion is dropped, and is replaced
+with $h \log h$, at the worst case, where $h << n$ is the number of non-empty
+columns of a hypersparse matrix stored by column, or the number of non-empty
+rows of a hypersparse matrix stored by row.  In many methods, $n$ is replaced
+with $h$, not $h \log h$.
 
 \newpage
 %===============================================================================
@@ -8721,6 +8629,12 @@ and
 The comparators \verb'GxB_GT_*' \verb'GxB_GE_*' \verb'GxB_LT_*', and
 \verb'GxB_LE_*' only work for built-in types.  All other built-in select
 operators can be used for any type, both built-in and any user-defined type.
+
+{\bf NOTE:} For floating-point values, comparisons with \verb'NaN' always return
+false.  The built-in select operators should not be used with a scalar
+\verb'thunk' that is equal to \verb'NaN'.  For this case, create a user-defined
+select operator that performs the test with the ANSI C \verb'isnan' function
+instead.
 
 \vspace{0.2in}
 {\small
@@ -8963,7 +8877,8 @@ the \verb'Mask' and \verb'accum', and provide a non-default descriptor
     GrB_Descriptor_set (desc, GrB_INP0, GrB_TRAN) ;
     GrB_transpose (C, NULL, NULL, A, desc) ; \end{verbatim}}
 
-If the types of \verb'C' and match, then the above two lines of code are the
+If the types of \verb'C' and \verb'A' match,
+then the above two lines of code are the
 same as \verb'GrB_Matrix_dup (&C, A)', except that for \verb'GrB_transpose' the
 matrix \verb'C' must already exist and be the right size.  If \verb'C' does not
 exist, the work of \verb'GrB_Matrix_dup' can be replicated with this:
@@ -9977,7 +9892,7 @@ sequential methods, and methods that use OpenMP).
 
 The LAGraph project is a community-wide effort to create graph algorithms based
 on GraphBLAS (any implementation of the API, not just SuiteSparse: GraphBLAS).
-As of July, 2019, the library includes the algorithms and utilities listed in
+As of Oct, 2019, the library includes the algorithms and utilities listed in
 the table below.  Many additional algorithms are planned, such as betweenness
 centrality, PageRank, single-source shortest path (via delta stepping), minimum
 spanning trees, connected components, and many more.  Refer to
@@ -9995,6 +9910,8 @@ the GraphBLAS source could be placed anywhere, as long as
 Build \verb'GraphBLAS' first, then the \verb'LAGraph' library, and then the
 tests in \verb'LAGraph/Test'.
 
+Many of these algorithms are described in \cite{Davis20}.
+
 \vspace{0.1in}
 {\small
 \begin{tabular}{ll}
@@ -10007,14 +9924,18 @@ Algorithms & description \\
                                 \cite{Beamer:2012:DOB,Yang:2018:IPE}, \\
                             & typically 2x faster than \verb'bfs5m' \\
 \verb'LAGraph_bfs_simple'   & a simple BFS (about the same as \verb'bfs5m') \\
-\verb'LACC_GraphBLAS.c'     & connected components \\
-\verb'LAGraph_BF_*.c'       & two variants of Bellman-Ford \\
+\verb'LAGraph_bc_batch'     & batched betweenness-centrality \\
+\verb'LAGraph_bc'           & betweenness-centrality \\
+\verb'LAGraph_cdlp'         & community detection via label propagation \\
+\verb'LAGraph_cc'           & connected components \\
+\verb'LAGraph_BF_*'         & three variants of Bellman-Ford \\
 \verb'LAGraph_allktruss'    & construct all $k$-trusses \\
-\verb'LAGraph_dnn'          & sparse deep neural network \\
+\verb'LAGraph_dnn'          & sparse deep neural network \cite{DavisAznavehKolodziej19} \\
 \verb'LAGraph_ktruss'       & construct a $k$-trusses \\
 \verb'LAGraph_lcc'          & local clustering coefficient \\
 \verb'LAGraph_pagerank'     & PageRank \\
-\verb'LAGraph_tricount'     & triangle count \\
+\verb'LAGraph_pagerank2'    & PageRank variant \\
+\verb'LAGraph_tricount'     & triangle counting \\
 \end{tabular}}
 
 \vspace{0.1in}
@@ -10052,7 +9973,11 @@ Utilities & description \\
 \verb'LAGraph_toc'              & end a timer \\
 \verb'LAGraph_tsvread'          & read a TSV file \\
 \verb'LAGraph_xinit'            & starts LAGraph, with different malloc \\
+\verb'LAgraph_1_to_n'           & construct the vector \verb'1:n' \\
+\verb'GB_*sort*'                & sorting for \verb'LAGraph_cdlp' \\
+% \verb'LAGraph_internal.h'
 \end{tabular}}
+
 
 \newpage
 %-------------------------------------------------------------------------------
@@ -10931,17 +10856,17 @@ case).  This gives 9 different combinations:
 User    & GraphBLAS & \verb'Demo/Output' file & comments \\
 applic. &           & & \\
 \hline
-none    & none      & \verb'user_none_gb_none.out'      & OK \\
-none    & OpenMP    & \verb'user_none_gb_openmp.out'    & OK \\
-none    & pthread   & \verb'user_none_gb_pthread.out'   & OK \\
+none    & none      & \verb'user_none_grb_none.out'      & OK \\
+none    & OpenMP    & \verb'user_none_grb_openmp.out'    & OK \\
+none    & pthread   & \verb'user_none_grb_pthread.out'   & OK \\
 \hline
-OpenMP  & none      & \verb'user_openmp_gb_none.out'    & fail \\
-OpenMP  & OpenMP    & \verb'user_openmp_gb_openmp.out'  & OK, random \\
-OpenMP  & pthread   & \verb'user_openmp_gb_pthread.out' & OK, random \\
+OpenMP  & none      & \verb'user_openmp_grb_none.out'    & fail \\
+OpenMP  & OpenMP    & \verb'user_openmp_grb_openmp.out'  & OK, random \\
+OpenMP  & pthread   & \verb'user_openmp_grb_pthread.out' & OK, random \\
 \hline
-pthread & none      & \verb'user_pthread_gb_none.out'   & fail \\
-pthread & OpenMP    & \verb'user_pthread_gb_openmp.out' & OK, random \\
-pthread & pthread   & \verb'user_pthread_gb_pthread.out'& OK, random \\
+pthread & none      & \verb'user_pthread_grb_none.out'   & fail \\
+pthread & OpenMP    & \verb'user_pthread_grb_openmp.out' & OK, random \\
+pthread & pthread   & \verb'user_pthread_grb_pthread.out'& OK, random \\
 \hline
 \end{tabular}}
 \vspace{0.1in}
@@ -11020,31 +10945,6 @@ to use 32 parallel jobs and the \verb'gcc' compiler, do the following:
     {\small
     \begin{verbatim}
     JOBS=32 CC=gcc make \end{verbatim} }
-
-%----------------------------------------
-\subsection{Creating the Doxygen documentation}
-\label{sec:doxygen}
-%----------------------------------------
-
-SuiteSparse:GraphBLAS is equipped with a \verb'Doxyfile' that specifies how
-\verb'doxygen' can be used to create detailed documentation of each file,
-including call-graphs.  The \verb'doxygen' documentation is not meant for
-end-users of GraphBLAS, but for GraphBLAS developers instead.
-
-If you edit GraphBLAS, you must first run the MATLAB script
-\verb'dox_headers.m' in \verb'Doc/', in MATLAB.  This script parses all of the
-source code for structured comments, to create header files suitable for
-parsing by \verb'doxygen'.  Next, do the following in the top-level
-\verb'GraphBLAS' folder:
-
-    {\small
-    \begin{verbatim}
-    make dox\end{verbatim} }
-
-This creates the \verb'Doc/html/' folder, which is initially empty in
-the default distribution.  Open the file \verb'Doc/html/index.html' in
-any web browser.  Alternatively, a copy of the \verb'doxygen' documentation can
-be found at \url{http://faculty.cse.tamu.edu/davis/GraphBLAS/html}.
 
 %----------------------------------------
 \subsection{Thread-safety in multithreaded user applications}

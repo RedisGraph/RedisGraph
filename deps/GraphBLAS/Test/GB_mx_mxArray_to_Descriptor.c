@@ -8,7 +8,7 @@
 //------------------------------------------------------------------------------
 
 // get a GraphBLAS descriptor from a MATLAB struct.
-// D.output, D.input0, D.input1, and D.mask must all be strings.
+// D.out, D.in0, D.in0, and D.mask must all be strings.
 // Fields that are not present are left unchanged.
 
 #include "GB_mex.h"
@@ -62,11 +62,11 @@ static bool get_descriptor
         {
             info = GxB_set (D, field, GxB_DEFAULT) ;
         }
-        else if (MATCH (s, "tran"))
+        else if (MATCH (s, "tran") || MATCH (s, "transpose"))
         {
             info = GxB_set (D, field, GrB_TRAN) ;
         }
-        else if (MATCH (s, "scmp"))
+        else if (MATCH (s, "scmp") || MATCH (s, "complement"))
         {
             info = GxB_set (D, field, GrB_SCMP) ;
         }

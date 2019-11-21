@@ -86,12 +86,6 @@
     #define GB_ADD_SCALAR_TO_ARRAY(W,k,s)           \
         W [k] *= s
 
-// workspace
-
-    // declare a ztype array of size ntasks
-    #define GB_REDUCTION_WORKSPACE(W,ntasks)        \
-        uint64_t W [ntasks]   
-
 // break the loop if terminal condition reached
 
     #define GB_HAS_TERMINAL                         \
@@ -122,6 +116,7 @@ GrB_Info GB_red_scalar__times_uint64
 (
     uint64_t *result,
     const GrB_Matrix A,
+    GB_void *restrict W_space,
     int ntasks,
     int nthreads
 )
@@ -147,6 +142,8 @@ GrB_Info GB_red_eachvec__times_uint64
     const int64_t *restrict kfirst_slice,
     const int64_t *restrict klast_slice,
     const int64_t *restrict pstart_slice,
+    GB_void *Wfirst_space,
+    GB_void *Wlast_space,
     int ntasks,
     int nthreads
 )

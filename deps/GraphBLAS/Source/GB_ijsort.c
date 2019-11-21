@@ -11,7 +11,7 @@
 
 /*
     [I1 I1k] = sort (I) ;
-    Iduplicate = [I1 (1:end-1) == I1 (2:end)), false] ;
+    Iduplicate = [(I1 (1:end-1) == I1 (2:end)), false] ;
     I2  = I1  (~Iduplicate) ;
     I2k = I1k (~Iduplicate) ;
 */
@@ -19,12 +19,13 @@
 #include "GB_ij.h"
 #include "GB_sort.h"
 
-#define GB_FREE_WORK                                    \
-{                                                       \
-    GB_FREE_MEMORY (W0,  ni, sizeof (GrB_Index)) ;      \
-    GB_FREE_MEMORY (W1,  ni, sizeof (GrB_Index)) ;      \
-    GB_FREE_MEMORY (I1,  ni, sizeof (GrB_Index)) ;      \
-    GB_FREE_MEMORY (I1k, ni, sizeof (GrB_Index)) ;      \
+#define GB_FREE_WORK                                        \
+{                                                           \
+    GB_FREE_MEMORY (Count, ntasks+1, sizeof (int64_t)) ;    \
+    GB_FREE_MEMORY (W0,  ni, sizeof (GrB_Index)) ;          \
+    GB_FREE_MEMORY (W1,  ni, sizeof (GrB_Index)) ;          \
+    GB_FREE_MEMORY (I1,  ni, sizeof (GrB_Index)) ;          \
+    GB_FREE_MEMORY (I1k, ni, sizeof (GrB_Index)) ;          \
 }
 
 GrB_Info GB_ijsort
@@ -59,6 +60,8 @@ GrB_Info GB_ijsort
     int64_t *restrict W1 = NULL ;
     int64_t ni = *p_ni ;
     ASSERT (ni > 1) ;
+    int64_t *restrict Count = NULL ;        // size ntasks+1
+    int ntasks = 0 ;
 
     //--------------------------------------------------------------------------
     // determine the number of threads to use
@@ -89,7 +92,10 @@ GrB_Info GB_ijsort
     #pragma omp parallel for num_threads(nthreads) schedule(static)
     for (int64_t k = 0 ; k < ni ; k++)
     { 
-        I1k [k] = k ;
+        // the key is selected so that the last duplicate entry comes first in
+        // the sorted result.  It must be adjusted later, so that the kth entry
+        // has a key equal to k.
+        I1k [k] = (ni-k) ;
     }
 
     //--------------------------------------------------------------------------
@@ -129,14 +135,28 @@ GrB_Info GB_ijsort
     }
 
     //--------------------------------------------------------------------------
-    // count unique entries in I1
+    // determine number of tasks to create
     //--------------------------------------------------------------------------
 
-    int ntasks = (nthreads == 1) ? 1 : (32 * nthreads) ;
+    ntasks = (nthreads == 1) ? 1 : (32 * nthreads) ;
     ntasks = GB_IMIN (ntasks, ni) ;
     ntasks = GB_IMAX (ntasks, 1) ;
 
-    int64_t Count [ntasks+1] ;
+    //--------------------------------------------------------------------------
+    // allocate workspace
+    //--------------------------------------------------------------------------
+
+    GB_MALLOC_MEMORY (Count, ntasks+1, sizeof (int64_t)) ;
+    if (Count == NULL)
+    {
+        // out of memory
+        GB_FREE_WORK ;
+        return (GB_OUT_OF_MEMORY) ;
+    }
+
+    //--------------------------------------------------------------------------
+    // count unique entries in I1
+    //--------------------------------------------------------------------------
 
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
     for (int tid = 0 ; tid < ntasks ; tid++)
@@ -184,7 +204,7 @@ GrB_Info GB_ijsort
         { 
             // the first entry in I1 is never a duplicate
             I2  [k2] = I1  [0] ;
-            I2k [k2] = I1k [0] ;
+            I2k [k2] = (ni - I1k [0]) ;
             k2++ ;
         }
         for (int64_t k = GB_IMAX (kfirst,1) ; k < klast ; k++)
@@ -192,7 +212,7 @@ GrB_Info GB_ijsort
             if (I1 [k-1] != I1 [k])
             { 
                 I2  [k2] = I1  [k] ;
-                I2k [k2] = I1k [k] ;
+                I2k [k2] = ni - I1k [k] ;
                 k2++ ;
             }
         }
@@ -205,16 +225,16 @@ GrB_Info GB_ijsort
     #ifdef GB_DEBUG
     {
         int64_t ni1 = 1 ;
+        I1k [0] = ni - I1k [0] ;
         for (int64_t k = 1 ; k < ni ; k++)
         {
             if (I1 [ni1-1] != I1 [k])
             {
                 I1  [ni1] = I1  [k] ;
-                I1k [ni1] = I1k [k] ;
+                I1k [ni1] = ni - I1k [k] ;
                 ni1++ ;
             }
         }
-        // printf ("OK "GBd" "GBd"\n", ni1, ni) ;
         ASSERT (ni1 == ni2) ;
         for (int64_t k = 0 ; k < ni1 ; k++)
         {

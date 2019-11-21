@@ -23,8 +23,8 @@
 // should not appear in a MATLAB matrix but MATLAB handles them without
 // difficulty.  They are returned to MATLAB in C.matrix.  If any work is done
 // in MATLAB on the matrix, these entries will get dropped.  If they are to be
-// preserved, do C.pattern = spones (C.matrix) in MATLAB before modifying
-// C.matrix.
+// preserved, do C.pattern = GB_spones_mex (C.matrix) in MATLAB before
+// modifying C.matrix.
 
 #include "GB_mex.h"
 

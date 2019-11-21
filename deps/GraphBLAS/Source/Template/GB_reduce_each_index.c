@@ -29,34 +29,58 @@
     // allocate workspace for each thread
     //--------------------------------------------------------------------------
 
-    GB_CTYPE *Works [nth] ;
-    bool     *Marks [nth] ;
-    bool ok = true ;
+    int ntasks = 256 * nthreads ;
+    ntasks = GB_IMIN (ntasks, n) ;
+
+    GB_CTYPE *restrict *Works = NULL ;      // size nth
+    bool     *restrict *Marks = NULL ;      // size nth
+    int64_t  *restrict Tnz = NULL ;         // size nth
+    int64_t  *restrict Count = NULL ;       // size ntasks+1
+
+    GB_CALLOC_MEMORY (Works, nth, sizeof (GB_CTYPE *)) ;
+    GB_CALLOC_MEMORY (Marks, nth, sizeof (bool *)) ;
+    GB_CALLOC_MEMORY (Tnz, nth, sizeof (int64_t)) ;
+    GB_CALLOC_MEMORY (Count, ntasks+1, sizeof (int64_t)) ;
+    bool ok = (Works != NULL && Marks != NULL && Tnz != NULL && Count != NULL) ;
 
     // This does not need to be parallel.  The calloc does not take O(n) time.
-    for (int tid = 0 ; tid < nth ; tid++)
-    { 
-        GB_MALLOC_MEMORY (Works [tid], n, zsize) ;
-        GB_CALLOC_MEMORY (Marks [tid], n, sizeof (bool)) ;
-        ok = ok && (Works [tid] != NULL && Marks [tid] != NULL) ;
+    if (ok)
+    {
+        for (int tid = 0 ; tid < nth ; tid++)
+        { 
+            GB_MALLOC_MEMORY (Works [tid], n, zsize) ;
+            GB_CALLOC_MEMORY (Marks [tid], n, sizeof (bool)) ;
+            ok = ok && (Works [tid] != NULL && Marks [tid] != NULL) ;
+        }
     }
 
     if (!ok)
     {
         // out of memory
-        for (int tid = 0 ; tid < nth ; tid++)
-        { 
-            GB_FREE_MEMORY (Works [tid], n, zsize) ;
-            GB_FREE_MEMORY (Marks [tid], n, sizeof (bool)) ;
+        if (Works != NULL)
+        {
+            for (int tid = 0 ; tid < nth ; tid++)
+            { 
+                GB_FREE_MEMORY (Works [tid], n, zsize) ;
+            }
         }
+        if (Marks != NULL)
+        {
+            for (int tid = 0 ; tid < nth ; tid++)
+            { 
+                GB_FREE_MEMORY (Marks [tid], n, sizeof (bool)) ;
+            }
+        }
+        GB_FREE_MEMORY (Works, nth, sizeof (GB_CTYPE *)) ;
+        GB_FREE_MEMORY (Marks, nth, sizeof (bool *)) ;
+        GB_FREE_MEMORY (Tnz, nth, sizeof (int64_t)) ;
+        GB_FREE_MEMORY (Count, ntasks+1, sizeof (int64_t)) ;
         return (GB_OUT_OF_MEMORY) ;
     }
 
     //--------------------------------------------------------------------------
     // reduce each slice in its own workspace
     //--------------------------------------------------------------------------
-
-    int64_t  Tnz [nth] ;
 
     // each thread reduces its own slice in parallel
     #pragma omp parallel for num_threads(nth) schedule(static)
@@ -145,6 +169,14 @@
     }
 
     //--------------------------------------------------------------------------
+    // free workspace
+    //--------------------------------------------------------------------------
+
+    GB_FREE_MEMORY (Works, nth, sizeof (GB_CTYPE *)) ;
+    GB_FREE_MEMORY (Marks, nth, sizeof (bool *)) ;
+    GB_FREE_MEMORY (Tnz, nth, sizeof (int64_t)) ;
+
+    //--------------------------------------------------------------------------
     // allocate T
     //--------------------------------------------------------------------------
 
@@ -154,8 +186,9 @@
     if (info != GrB_SUCCESS)
     { 
         // out of memory
-        GB_FREE_MEMORY (Works [0], n, zsize) ;
-        GB_FREE_MEMORY (Marks [0], n, sizeof (bool)) ;
+        GB_FREE_MEMORY (Work0, n, zsize) ;
+        GB_FREE_MEMORY (Mark0, n, sizeof (bool)) ;
+        GB_FREE_MEMORY (Count, ntasks+1, sizeof (int64_t)) ;
         return (GB_OUT_OF_MEMORY) ;
     }
 
@@ -224,9 +257,6 @@
             // Some tasks may be completely empty and thus take no time at all;
             // 256 tasks per thread are created for better load balancing.
 
-            int ntasks = 256 * nthreads ;
-            ntasks = GB_IMIN (ntasks, n) ;
-            int64_t Count [ntasks+1] ;
             #pragma omp parallel for num_threads(nthreads) schedule(dynamic)
             for (int taskid = 0 ; taskid < ntasks ; taskid++)
             {
@@ -279,9 +309,10 @@
     }
 
     //--------------------------------------------------------------------------
-    // free workspace for thread 0 
+    // free workspace
     //--------------------------------------------------------------------------
 
+    GB_FREE_MEMORY (Count, ntasks+1, sizeof (int64_t)) ;
     GB_FREE_MEMORY (Work0, n, zsize) ;
     GB_FREE_MEMORY (Mark0, n, sizeof (bool)) ;
 }

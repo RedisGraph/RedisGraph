@@ -12,7 +12,7 @@
 void GB_mx_clear_time ( )               // clear the time and start the tic
 {
 
-    gbtime = 0 ;
+    grbtime = 0 ;
     tic [0] = 0 ;
     tic [1] = 0 ;
 

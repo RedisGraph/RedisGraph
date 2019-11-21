@@ -24,6 +24,7 @@ GrB_Info GB_AxB_user
 
     // for dot method only:
     const GrB_Matrix *GB_Aslice,    // for dot2 only
+    int64_t *restrict GB_B_slice,   // for dot2 only
     const int GB_dot_nthreads,      // for dot2 and dot3
     const int GB_naslice,           // for dot2 only
     const int GB_nbslice,           // for dot2 only

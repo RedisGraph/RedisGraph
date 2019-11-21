@@ -5,10 +5,10 @@ make
 for k = 32 % [1 2 4 8 16 32]
     nthreads_set (k)
     debug_off
-    gb
+    grbinfo
     test27  % band, for user-defined
     debug_on
-    gb
+    grbinfo
     test27
 end
 

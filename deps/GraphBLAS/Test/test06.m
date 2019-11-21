@@ -245,7 +245,7 @@ for k1 = k1_list % 1:length(mult_ops)
                 % tic
                 if (ok)
                 C1 = GB_mex_mxm  (Cin, [ ], [ ], semiring, A, B, dnn) ;
-                [t1 method1] = gbresults ; % toc ;
+                [t1 method1] = grbresults ; % toc ;
                 if (n < 200)
                 C2 = GB_spec_mxm (Cin, [ ], [ ], semiring, A, B, dnn);
                 GB_spec_compare (C1, C2, id) ;
@@ -255,7 +255,7 @@ for k1 = k1_list % 1:length(mult_ops)
                 % C = A'*B, no mask
                 if (ok)
                 C1 = GB_mex_mxm  (Cin, [ ], [ ], semiring, A, B, dtn);
-                [t2 method2] = gbresults ; % toc ;
+                [t2 method2] = grbresults ; % toc ;
                 if (n < 200)
                 C2 = GB_spec_mxm (Cin, [ ], [ ], semiring, A, B, dtn);
                 GB_spec_compare (C1, C2, id) ;
@@ -265,7 +265,7 @@ for k1 = k1_list % 1:length(mult_ops)
                 % C = A*B', no mask
                 if (ok)
                 C1 = GB_mex_mxm  (Cin, [ ], [ ], semiring, A, B, dnt);
-                [t3 method3] = gbresults ; % toc ;
+                [t3 method3] = grbresults ; % toc ;
                 if (n < 200)
                 C2 = GB_spec_mxm (Cin, [ ], [ ], semiring, A, B, dnt);
                 GB_spec_compare (C1, C2, id) ;
@@ -275,7 +275,7 @@ for k1 = k1_list % 1:length(mult_ops)
                 % C = A'*B', no mask
                 if (ok)
                 C1 = GB_mex_mxm  (Cin, [ ], [ ], semiring, A, B, dtt);
-                [t4 method4] = gbresults ; % toc ;
+                [t4 method4] = grbresults ; % toc ;
                 if (n < 200)
                 C2 = GB_spec_mxm (Cin, [ ], [ ], semiring, A, B, dtt);
                 GB_spec_compare (C1, C2, id) ;
@@ -292,7 +292,7 @@ for k1 = k1_list % 1:length(mult_ops)
                 % C = A*B, with mask
                 % tic
                 C1 = GB_mex_mxm  (Cin, Mask, [ ], semiring, A, B, dnn);
-                [t1 method1m] = gbresults ; % toc ;
+                [t1 method1m] = grbresults ; % toc ;
                 if (n < 200)
                 C2 = GB_spec_mxm (Cin, Mask, [ ], semiring, A, B, dnn);
                 GB_spec_compare (C1, C2, id) ;
@@ -301,7 +301,7 @@ for k1 = k1_list % 1:length(mult_ops)
                 % C = A'*B, with mask
                 % tic
                 C1 = GB_mex_mxm  (Cin, Mask, [ ], semiring, A, B, dtn);
-                [t2 method2m] = gbresults ; % toc ;
+                [t2 method2m] = grbresults ; % toc ;
                 if (n < 200)
                 C2 = GB_spec_mxm (Cin, Mask, [ ], semiring, A, B, dtn);
                 GB_spec_compare (C1, C2, id) ;
@@ -310,7 +310,7 @@ for k1 = k1_list % 1:length(mult_ops)
                 % C = A*B', with mask
                 % tic
                 C1 = GB_mex_mxm  (Cin, Mask, [ ], semiring, A, B, dnt);
-                [t3 method3m] = gbresults ; % toc ;
+                [t3 method3m] = grbresults ; % toc ;
                 if (n < 200)
                 C2 = GB_spec_mxm (Cin, Mask, [ ], semiring, A, B, dnt);
                 GB_spec_compare (C1, C2, id) ;
@@ -319,7 +319,7 @@ for k1 = k1_list % 1:length(mult_ops)
                 % C = A'*B', with mask
                 % tic
                 C1 = GB_mex_mxm  (Cin, Mask, [ ], semiring, A, B, dtt);
-                [t4 method4m] = gbresults ; % toc ;
+                [t4 method4m] = grbresults ; % toc ;
                 if (n < 200)
                 C2 = GB_spec_mxm (Cin, Mask, [ ], semiring, A, B, dtt);
                 GB_spec_compare (C1, C2, id) ;

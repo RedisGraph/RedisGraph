@@ -34,7 +34,7 @@
 #define GB_swap(A,a,b)                                                      \
 {                                                                           \
     int64_t t = A ## _0 [a] ; A ## _0 [a] = A ## _0 [b] ; A ## _0 [b] = t ; \
-    GB_void t1 [xsize] ;                                                    \
+    GB_void t1 [GB_PGI(xsize)] ;                                            \
     memcpy (t1, A ## _1 + (a)*xsize, xsize) ;                               \
     memcpy (A ## _1 + (a)*xsize, A ## _1 + (b)*xsize, xsize) ;              \
     memcpy (A ## _1 + (b)*xsize, t1, xsize) ;                               \

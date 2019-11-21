@@ -4,6 +4,7 @@ GrB_Info GB_red_scalar
 (
     GB_atype *result,
     const GrB_Matrix A,
+    GB_void *restrict W_space,
     int ntasks,
     int nthreads
 ) ;
@@ -15,6 +16,8 @@ GrB_Info GB_red_eachvec
     const int64_t *restrict kfirst_slice,
     const int64_t *restrict klast_slice,
     const int64_t *restrict pstart_slice,
+    GB_void *Wfirst_space,
+    GB_void *Wlast_space,
     int ntasks,
     int nthreads
 ) ;

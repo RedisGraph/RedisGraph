@@ -101,6 +101,7 @@ static inline bool GB_ij_is_in_list // determine if i is in the list I
     const int64_t Icolon [3]    // begin:inc:end for all but GB_LIST
 )
 {
+
     if (Ikind == GB_ALL)
     { 
         // I is ":", all indices are in the sequence
