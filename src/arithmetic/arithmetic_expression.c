@@ -210,50 +210,43 @@ static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint a
 	SIType expected_type = T_NULL;
 
 	// Make sure number of arguments is as expected.
-	if(fdesc->argc != VAR_ARG_LEN) {
-		if(fdesc->argc != argc) {
+	if(fdesc->min_argc > argc) {
+		char *error;
+		asprintf(&error, "Received %d arguments to function '%s', expected at least %d", argc, fdesc->name,
+				 fdesc->min_argc);
+		QueryCtx_SetError(error); // Set the query-level error.
+		return false;
+	}
+
+	if(fdesc->max_argc < argc) {
+		char *error;
+		asprintf(&error, "Received %d arguments to function '%s', expected at most %d", argc, fdesc->name,
+				 fdesc->max_argc);
+		QueryCtx_SetError(error); // Set the query-level error.
+		return false;
+	}
+
+	uint expected_types_count = array_len(fdesc->types);
+	for(int i = 0; i < argc; i++) {
+		actual_type = SI_TYPE(argv[i]);
+		/* For a function that accepts a variable number of arguments.
+		* the last specified type in fdesc->types is repeatable. */
+		if(i < expected_types_count) {
+			expected_type = fdesc->types[i];
+		}
+		if(!(actual_type & expected_type)) {
+			const char *actual_type_str = SIType_ToString(actual_type);
+			const char *expected_type_str = SIType_ToString(expected_type);
 			char *error;
-			asprintf(&error, "Received %d arguments to function '%s', expected %d", argc, fdesc->name,
-					 fdesc->argc);
+			/* TODO extend string-building logic to better express multiple acceptable types, like:
+			 * RETURN 'a' * 2
+			 * "Type mismatch: expected Float, Integer or Duration but was String" */
+			asprintf(&error, "Type mismatch: expected %s but was %s", expected_type_str, actual_type_str);
 			QueryCtx_SetError(error); // Set the query-level error.
 			return false;
 		}
-		// Make sure each argument is of the expected type.
-		for(int i = 0; i < argc; i++) {
-			actual_type = SI_TYPE(argv[i]);
-			expected_type = fdesc->types[i];
-
-			if(!(SI_TYPE(argv[i]) & fdesc->types[i])) {
-				const char *actual_type_str = SIType_ToString(actual_type);
-				/* TODO extend string-building logic to better express multiple acceptable types, like:
-				 * RETURN 'a' * 2
-				 * "Type mismatch: expected Float, Integer or Duration but was String" */
-				const char *expected_type_str = SIType_ToString(expected_type);
-				char *error;
-				asprintf(&error, "Type mismatch: expected %s but was %s", expected_type_str, actual_type_str);
-				QueryCtx_SetError(error); // Set the query-level error.
-				return false;
-			}
-		}
-	} else {
-		/* Function accepts a variable number of arguments.
-		 * the last specified type in fdesc->types is repeatable. */
-		uint expected_types_count = array_len(fdesc->types);
-		for(int i = 0; i < argc; i++) {
-			actual_type = SI_TYPE(argv[i]);
-			if(i < expected_types_count) {
-				expected_type = fdesc->types[i];
-			}
-			if(!(actual_type & expected_type)) {
-				const char *actual_type_str = SIType_ToString(actual_type);
-				const char *expected_type_str = SIType_ToString(expected_type);
-				char *error;
-				asprintf(&error, "Type mismatch: expected %s but was %s", expected_type_str, actual_type_str);
-				QueryCtx_SetError(error); // Set the query-level error.
-				return false;
-			}
-		}
 	}
+
 
 	return true;
 }

@@ -30,7 +30,6 @@
 
 Feature: FunctionsAcceptance
 
-    @skip
     Scenario: Run coalesce
         Given an empty graph
         And having executed:
