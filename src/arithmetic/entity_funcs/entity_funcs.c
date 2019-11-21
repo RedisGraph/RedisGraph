@@ -114,12 +114,12 @@ void Register_EntityFuncs() {
 	types = array_new(SIType, 2);
 	types = array_append(types, T_NODE);
 	types = array_append(types, T_STRING);
-	func_desc = AR_FuncDescNew("indegree", AR_INCOMEDEGREE, 0, VAR_ARG_LEN, types, false);
+	func_desc = AR_FuncDescNew("indegree", AR_INCOMEDEGREE, 1, VAR_ARG_LEN, types, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, T_NODE);
 	types = array_append(types, T_STRING);
-	func_desc = AR_FuncDescNew("outdegree", AR_OUTGOINGDEGREE, 0, VAR_ARG_LEN, types, false);
+	func_desc = AR_FuncDescNew("outdegree", AR_OUTGOINGDEGREE, 1, VAR_ARG_LEN, types, false);
 	AR_RegFunc(func_desc);
 }

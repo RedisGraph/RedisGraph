@@ -187,14 +187,14 @@ void Register_ListFuncs() {
 	types = array_append(types, T_ARRAY);
 	types = array_append(types, T_INT64 | T_NULL);
 	types = array_append(types, T_INT64 | T_NULL);
-	func_desc = AR_FuncDescNew("slice", AR_SLICE, 0, VAR_ARG_LEN, types, true);
+	func_desc = AR_FuncDescNew("slice", AR_SLICE, 3, 3, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
 	types = array_append(types, T_INT64 | T_NULL);
 	types = array_append(types, T_INT64 | T_NULL);
 	types = array_append(types, T_INT64 | T_NULL);
-	func_desc = AR_FuncDescNew("range", AR_RANGE, 0, VAR_ARG_LEN, types, true);
+	func_desc = AR_FuncDescNew("range", AR_RANGE, 2, 3, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);

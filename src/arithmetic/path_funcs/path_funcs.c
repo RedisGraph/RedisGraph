@@ -73,7 +73,7 @@ void Register_PathFuncs() {
 	types = array_new(SIType, 2);
 	types = array_append(types, T_PTR);
 	types = array_append(types, T_NODE | T_EDGE | T_PATH);
-	func_desc = AR_FuncDescNew("topath", AR_TOPATH, 0, VAR_ARG_LEN, types, false);
+	func_desc = AR_FuncDescNew("topath", AR_TOPATH, 1, VAR_ARG_LEN, types, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);

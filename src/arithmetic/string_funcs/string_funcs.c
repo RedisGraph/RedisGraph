@@ -300,7 +300,7 @@ void Register_StringFuncs() {
 	types = array_append(types, (T_STRING | T_NULL));
 	types = array_append(types, T_INT64);
 	types = array_append(types, T_INT64);
-	func_desc = AR_FuncDescNew("substring", AR_SUBSTRING, 0, VAR_ARG_LEN, types, true);
+	func_desc = AR_FuncDescNew("substring", AR_SUBSTRING, 2, 3, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);

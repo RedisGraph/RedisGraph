@@ -126,22 +126,22 @@ void Register_NumericFuncs() {
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (SI_NUMERIC | T_STRING | T_ARRAY | T_BOOL | T_NULL));
-	func_desc = AR_FuncDescNew("add", AR_ADD, 0, VAR_ARG_LEN, types, true);
+	func_desc = AR_FuncDescNew("add", AR_ADD, 2, VAR_ARG_LEN, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (SI_NUMERIC | T_NULL));
-	func_desc = AR_FuncDescNew("sub", AR_SUB, 0, VAR_ARG_LEN, types, true);
+	func_desc = AR_FuncDescNew("sub", AR_SUB, 2, VAR_ARG_LEN, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (SI_NUMERIC | T_NULL));
-	func_desc = AR_FuncDescNew("mul", AR_MUL, 0, VAR_ARG_LEN, types, true);
+	func_desc = AR_FuncDescNew("mul", AR_MUL, 2, VAR_ARG_LEN, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (SI_NUMERIC | T_NULL));
-	func_desc = AR_FuncDescNew("div", AR_DIV, 0, VAR_ARG_LEN, types, true);
+	func_desc = AR_FuncDescNew("div", AR_DIV, 2, VAR_ARG_LEN, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
