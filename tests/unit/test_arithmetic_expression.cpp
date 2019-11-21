@@ -1411,3 +1411,22 @@ TEST_F(ArithmeticTest, ParamTest) {
 	for(int i = 0; i < 3; i++) SIArray_Append(&array, SI_LongVal(i));
 	ASSERT_EQ(0, SIValue_Compare(array, arExp->operand.constant, NULL));
 }
+
+TEST_F(ArithmeticTest, CoalesceTest) {
+	const char *query;
+	AR_ExpNode *arExp;
+
+	// Test reduction of coalesce over static values.
+	query = "RETURN coalesce(1)";
+	arExp = _exp_from_query(query);
+	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
+	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
+	ASSERT_EQ(0, SIValue_Compare(SI_LongVal(1), arExp->operand.constant, NULL));
+
+	// Test reduction of coalesce over static values.
+	query = "RETURN coalesce(null, 1)";
+	arExp = _exp_from_query(query);
+	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
+	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
+	ASSERT_EQ(0, SIValue_Compare(SI_LongVal(1), arExp->operand.constant, NULL));
+}
