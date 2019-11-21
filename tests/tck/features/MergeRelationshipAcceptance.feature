@@ -397,7 +397,6 @@ Feature: MergeRelationshipAcceptance
       | [:KNOWS {name: 'cd'}] |
     And no side effects
 
-@skip
   Scenario: Fail when imposing new predicates on a variable that is already bound
     Given any graph
     When executing query:

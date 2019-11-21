@@ -109,6 +109,12 @@ def step_impl(context):
     assert exception != None
     assert "not defined" in exception.message
 
+@then(u'a SyntaxError should be raised at compile time: VariableAlreadyBound')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "can't be redeclared" in exception.message
+
 @then(u'a TypeError should be raised at runtime: ListElementAccessByNonInteger')
 def step_impl(context):
     global exception

@@ -171,6 +171,13 @@ void Record_AddEdge(Record r, int idx, Edge edge) {
 	r->entries[idx].type = REC_TYPE_EDGE;
 }
 
+void Record_PersistScalars(Record r) {
+	uint len = Record_length(r);
+	for(uint i = 0; i < len; i++) {
+		if(r->entries[i].type == REC_TYPE_SCALAR) SIValue_Persist(&r->entries[i].value.s);
+	}
+}
+
 size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {
 	uint rLen = Record_length(r);
 	SIValue values[rLen];

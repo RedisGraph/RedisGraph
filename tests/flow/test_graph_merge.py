@@ -4,13 +4,16 @@ from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
 
 redis_graph = None
+graph_2 = None
 
 class testGraphMergeFlow(FlowTestsBase):
     def __init__(self):
         super(testGraphMergeFlow, self).__init__()
         global redis_graph
+        global graph_2
         redis_con = self.env.getConnection()
         redis_graph = Graph("G", redis_con)
+        graph_2 = Graph("H", redis_con)
 
     # Create a single node without any labels or properties.
     def test01_single_node_with_label(self):
@@ -29,39 +32,39 @@ class testGraphMergeFlow(FlowTestsBase):
         self.env.assertEquals(result.labels_added, 0)
         self.env.assertEquals(result.nodes_created, 0)
         self.env.assertEquals(result.properties_set, 0)
-    
+
     # Create a single node with two properties and no labels.
     def test03_single_node_with_properties(self):
         global redis_graph
         query = """MERGE (charlie { name: 'Charlie Sheen', age: 10 })"""
-        result = redis_graph.query(query)        
+        result = redis_graph.query(query)
         self.env.assertEquals(result.labels_added, 0)
         self.env.assertEquals(result.nodes_created, 1)
         self.env.assertEquals(result.properties_set, 2)
-    
+
     # Retry to create an existing entity.
     def test04_existing_single_node_with_properties(self):
         global redis_graph
         query = """MERGE (charlie { name: 'Charlie Sheen', age: 10 })"""
-        result = redis_graph.query(query)        
+        result = redis_graph.query(query)
         self.env.assertEquals(result.labels_added, 0)
         self.env.assertEquals(result.nodes_created, 0)
         self.env.assertEquals(result.properties_set, 0)
-    
+
     # Create a single node with both label and property.
     def test05_single_node_both_label_and_property(self):
         global redis_graph
         query = """MERGE (michael:Person { name: 'Michael Douglas' })"""
-        result = redis_graph.query(query)        
+        result = redis_graph.query(query)
         self.env.assertEquals(result.labels_added, 1)
         self.env.assertEquals(result.nodes_created, 1)
         self.env.assertEquals(result.properties_set, 1)
-    
+
     # Retry to create an existing entity.
     def test06_existing_single_node_both_label_and_property(self):
         global redis_graph
         query = """MERGE (michael:Person { name: 'Michael Douglas' })"""
-        result = redis_graph.query(query)        
+        result = redis_graph.query(query)
         self.env.assertEquals(result.labels_added, 0)
         self.env.assertEquals(result.nodes_created, 0)
         self.env.assertEquals(result.properties_set, 0)
@@ -70,17 +73,17 @@ class testGraphMergeFlow(FlowTestsBase):
     def test07_merge_on_relationship(self):
         global redis_graph
         query = """MERGE (charlie:ACTOR)-[r:ACTED_IN]->(wallStreet:MOVIE)"""
-        result = redis_graph.query(query)        
+        result = redis_graph.query(query)
         self.env.assertEquals(result.labels_added, 2)
         self.env.assertEquals(result.nodes_created, 2)
         self.env.assertEquals(result.properties_set, 0)
         self.env.assertEquals(result.relationships_created, 1)
-    
+
     # Retry to create a single edge and additional two nodes.
     def test08_existing_merge_on_relationship(self):
         global redis_graph
         query = """MERGE (charlie:ACTOR)-[r:ACTED_IN]->(wallStreet:MOVIE)"""
-        result = redis_graph.query(query)        
+        result = redis_graph.query(query)
         self.env.assertEquals(result.labels_added, 0)
         self.env.assertEquals(result.nodes_created, 0)
         self.env.assertEquals(result.properties_set, 0)
@@ -125,7 +128,7 @@ class testGraphMergeFlow(FlowTestsBase):
         self.env.assertEquals(result.nodes_created, 2)
         self.env.assertEquals(result.properties_set, 4)
         self.env.assertEquals(result.relationships_created, 1)
-    
+
     # Update existing relation
     def test12_update_existing_edge(self):
         global redis_graph
@@ -140,7 +143,7 @@ class testGraphMergeFlow(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected_result = [['Franklin Cover', None, 5.9, 1998]]
         self.env.assertEquals(actual_result.result_set, expected_result)
-    
+
     # Update multiple nodes
     def test13_update_multiple_nodes(self):
         global redis_graph
@@ -237,10 +240,97 @@ class testGraphMergeFlow(FlowTestsBase):
         self.env.assertEquals(result.properties_set, 0)
 
         # Verify that MATCH...MERGE on the same entity does not introduce changes
-        # TODO currently unsupported
-        #  query = """MATCH (q {name: 'ABCDE'}) MERGE (r {name: q.name}) RETURN r.name"""
-        #  result = redis_graph.query(query)
-        #  self.env.assertEquals(result.labels_added, 0)
-        #  self.env.assertEquals(result.nodes_created, 0)
-        #  self.env.assertEquals(result.properties_set, 0)
-        #  self.env.assertEquals(result.result_set, expected)
+        query = """MATCH (q {name: 'ABCDE'}) MERGE (r {name: q.name}) RETURN r.name"""
+        result = redis_graph.query(query)
+        self.env.assertEquals(result.labels_added, 0)
+        self.env.assertEquals(result.nodes_created, 0)
+        self.env.assertEquals(result.properties_set, 0)
+        self.env.assertEquals(result.result_set, expected)
+
+    def test17_complex_merge_queries(self):
+        # Beginning with an empty graph
+        global graph_2
+        # Create a new pattern
+        query = """MERGE (a:Person {name: 'a'}) MERGE (b:Person {name: 'b'}) MERGE (a)-[e:FRIEND {val: 1}]->(b) RETURN a.name, e.val, b.name"""
+        result = graph_2.query(query)
+        expected = [['a', 1, 'b']]
+
+        # Verify the results
+        self.env.assertEquals(result.labels_added, 1)
+        self.env.assertEquals(result.nodes_created, 2)
+        self.env.assertEquals(result.relationships_created, 1)
+        self.env.assertEquals(result.properties_set, 3)
+        self.env.assertEquals(result.result_set, expected)
+
+        # Repeat the query and verify that no changes were introduced
+        result = graph_2.query(query)
+        self.env.assertEquals(result.labels_added, 0)
+        self.env.assertEquals(result.nodes_created, 0)
+        self.env.assertEquals(result.relationships_created, 0)
+        self.env.assertEquals(result.properties_set, 0)
+        self.env.assertEquals(result.result_set, expected)
+
+        # Verify that these entities are accessed properly with MATCH...MERGE queries
+        query = """MATCH (a:Person {name: 'a'}), (b:Person {name: 'b'}) MERGE (a)-[e:FRIEND {val: 1}]->(b) RETURN a.name, e.val, b.name"""
+        result = graph_2.query(query)
+        self.env.assertEquals(result.labels_added, 0)
+        self.env.assertEquals(result.nodes_created, 0)
+        self.env.assertEquals(result.relationships_created, 0)
+        self.env.assertEquals(result.properties_set, 0)
+        self.env.assertEquals(result.result_set, expected)
+
+        # Verify that we can bind entities properly in variable-length traversals
+        query = """MATCH (a)-[*]->(b) MERGE (a)-[e:FRIEND {val: 1}]->(b) RETURN a.name, e.val, b.name"""
+        result = graph_2.query(query)
+        self.env.assertEquals(result.labels_added, 0)
+        self.env.assertEquals(result.nodes_created, 0)
+        self.env.assertEquals(result.relationships_created, 0)
+        self.env.assertEquals(result.properties_set, 0)
+        self.env.assertEquals(result.result_set, expected)
+
+        # Verify UNWIND...MERGE does not recreate existing entities
+        query = """UNWIND ['a', 'b'] AS names MERGE (a:Person {name: names}) RETURN a.name"""
+        expected = [['a'], ['b']]
+
+        result = graph_2.query(query)
+        self.env.assertEquals(result.labels_added, 0)
+        self.env.assertEquals(result.nodes_created, 0)
+        self.env.assertEquals(result.relationships_created, 0)
+        self.env.assertEquals(result.properties_set, 0)
+        self.env.assertEquals(result.result_set, expected)
+
+        # Merging entities from an UNWIND list
+        query = """UNWIND ['a', 'b', 'c'] AS names MERGE (a:Person {name: names}) ON MATCH SET a.set_by = 'match' ON CREATE SET a.set_by = 'create' RETURN a.name, a.set_by ORDER BY a.name"""
+        expected = [['a', 'match'],
+                    ['b', 'match'],
+                    ['c', 'create']]
+
+        result = graph_2.query(query)
+        self.env.assertEquals(result.labels_added, 0)
+        self.env.assertEquals(result.nodes_created, 1)
+        self.env.assertEquals(result.properties_set, 4)
+        self.env.assertEquals(result.result_set, expected)
+
+        # Verify function calls in MERGE do not recreate existing entities
+        query = """UNWIND ['A', 'B'] AS names MERGE (a:Person {name: toLower(names)}) RETURN a.name"""
+        expected = [['a'], ['b']]
+
+        result = graph_2.query(query)
+        self.env.assertEquals(result.labels_added, 0)
+        self.env.assertEquals(result.nodes_created, 0)
+        self.env.assertEquals(result.relationships_created, 0)
+        self.env.assertEquals(result.properties_set, 0)
+        self.env.assertEquals(result.result_set, expected)
+
+        query = """MERGE (a:Person {name: 'a'}) ON MATCH SET a.set_by = 'match' ON CREATE SET a.set_by = 'create' MERGE (b:Clone {name: a.name + '_clone'}) ON MATCH SET b.set_by = 'match' ON CREATE SET b.set_by = 'create' RETURN a.name, a.set_by, b.name, b.set_by"""
+        result = graph_2.query(query)
+        expected = [['a', 'match', 'a_clone', 'create']]
+
+        # Verify the results
+        self.env.assertEquals(result.labels_added, 1)
+        self.env.assertEquals(result.nodes_created, 1)
+        self.env.assertEquals(result.properties_set, 3)
+        self.env.assertEquals(result.result_set, expected)
+
+        #  import ipdb
+        #  ipdb.set_trace()

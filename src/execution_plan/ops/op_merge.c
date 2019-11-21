@@ -31,7 +31,7 @@ static void _UpdateIndices(GraphContext *gc, Node *n) {
 
 // Update the appropriate property on a graph entity.
 static void _UpdateProperty(Record r, GraphEntity *ge, EntityUpdateEvalCtx *update_ctx) {
-	SIValue new_value = SI_CloneValue(AR_EXP_Evaluate(update_ctx->exp, r));
+	SIValue new_value = AR_EXP_Evaluate(update_ctx->exp, r);
 
 	// Try to get current property value.
 	SIValue *old_value = GraphEntity_GetProperty(ge, update_ctx->attribute_idx);
@@ -95,6 +95,14 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", NULL, MergeConsume, NULL, NULL, MergeFree, plan);
 
+	if(op->on_match) {
+		// If we have ON MATCH directives, set the appropriate record IDs of entities to be updated.
+		uint on_match_count = array_len(op->on_match);
+		for(uint i = 0; i < on_match_count; i ++) {
+			op->on_match[i].record_idx = OpBase_Modifies((OpBase *)op, op->on_match[i].alias);
+		}
+	}
+
 	return (OpBase *)op;
 }
 
@@ -152,9 +160,12 @@ static Record MergeConsume(OpBase *opBase) {
 		}
 
 		if(should_create_pattern) {
-			// Transfer the LHS record to the Create stream to build once we finish reading
-			// (No need to clone; it won't be accessed again outside that stream.)
+			/* Transfer the LHS record to the Create stream to build once we finish reading.
+			 * We don't need to clone the record, as it won't be accessed again outside that stream,
+			 * but we must make sure its elements are access-safe, as the input stream will be freed
+			 * before entities are created. */
 			if(lhs_record) {
+				Record_PersistScalars(lhs_record);
 				Argument_AddRecord(op->create_argument_tap, lhs_record);
 				lhs_record = NULL;
 			}
@@ -275,7 +286,6 @@ static void MergeFree(OpBase *opBase) {
 	}
 
 	if(op->output_records) {
-
 		array_free(op->output_records);
 		op->output_records = NULL;
 	}
