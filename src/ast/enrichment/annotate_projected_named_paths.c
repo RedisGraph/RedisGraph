@@ -120,12 +120,17 @@ static void _annotate_projected_named_path(AST *ast) {
 		scope_start = scope_end;
 	}
 	array_free(with_clause_indices);
-	uint clause_count = cypher_ast_query_nclauses(ast->root);
-	const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
-	cypher_astnode_type_t last_clause_type = cypher_astnode_type(last_clause);
-	if(last_clause_type == CYPHER_AST_RETURN) {
-		_annotate_return_clause_projected_named_path(ast, last_clause, scope_start, clause_count);
+
+	uint *return_clause_indices = AST_GetClauseIndices(ast, CYPHER_AST_RETURN);
+	uint return_clause_count = array_len(return_clause_indices);
+	scope_start = 0;
+	for(uint i = 0; i < return_clause_count; i++) {
+		scope_end = return_clause_indices[i];
+		const cypher_astnode_t *return_clause = cypher_ast_query_get_clause(ast->root, scope_end);
+		_annotate_return_clause_projected_named_path(ast, return_clause, scope_start, scope_end);
+		scope_start = scope_end;
 	}
+	array_free(return_clause_indices);
 }
 
 void AST_AnnotateNamedPaths(AST *ast) {
