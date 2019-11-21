@@ -54,9 +54,8 @@ SIValue AR_CASEWHEN(SIValue *argv, int argc) {
 
 // Coalesce - return the first value which is not null. Defaults to null.
 SIValue AR_COALESCE(SIValue *argv, int argc) {
-	for(int i = 0; i < argc; i++) {
+	for(int i = 0; i < argc; i++)
 		if(!SIValue_IsNull(argv[i])) return argv[i];
-	}
 	return SI_NullVal();
 }
 
@@ -66,11 +65,11 @@ void Register_ConditionalFuncs() {
 
 	types = array_new(SIType, 1);
 	types = array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("case", AR_CASEWHEN, VAR_ARG_LEN, types, true);
+	func_desc = AR_FuncDescNew("case", AR_CASEWHEN, 0, VAR_ARG_LEN, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("coalesce", AR_COALESCE, AT_LEAST_ONE_VAR, types, true);
+	func_desc = AR_FuncDescNew("coalesce", AR_COALESCE, 1, VAR_ARG_LEN, types, true);
 	AR_RegFunc(func_desc);
 }
