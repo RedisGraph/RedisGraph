@@ -696,8 +696,6 @@ ExecutionPlan *ExecutionPlan_UnionPlans(RedisModuleCtx *ctx, GraphContext *gc,
 		ExecutionPlan_RemoveOp(sub_plan, sub_plan->root);
 		OpBase_Free(op_result);
 
-		assert(sub_plan->root->type == OPType_PROJECT);
-
 		ExecutionPlan_AddOp(join_op, sub_plan->root);
 
 		// Set plan's root to NULL, to avoid freeing its operations.
