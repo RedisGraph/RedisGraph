@@ -56,9 +56,8 @@ static Record AllNodeScanConsumeFromChild(OpBase *opBase) {
 
 		// Reset iterator and evaluate again.
 		AllNodeScanReset(opBase);
-		en = (Entity *)DataBlockIterator_Next(op->iter);
-		// TODO should only happen on an empty iter, better options?
-		if(en == NULL) return NULL;
+		en = DataBlockIterator_Next(op->iter);
+		if(!en) return NULL; // Iterator was empty; return immediately.
 	}
 
 	// Clone the held Record, as it will be freed upstream.

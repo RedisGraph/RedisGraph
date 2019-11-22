@@ -477,7 +477,6 @@ Feature: CreateAcceptance
       | +nodes         | 2 |
       | +relationships | 1 |
 
-@skip
   Scenario: A bound node should be recognized after projection with WITH + MERGE node
     Given an empty graph
     When executing query:
@@ -493,7 +492,6 @@ Feature: CreateAcceptance
       | +nodes         | 2 |
       | +relationships | 1 |
 
-@skip
   Scenario: A bound node should be recognized after projection with WITH + MERGE pattern
     Given an empty graph
     When executing query:

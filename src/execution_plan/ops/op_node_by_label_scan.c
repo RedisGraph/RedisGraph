@@ -94,8 +94,7 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 		// Reset iterator and evaluate again.
 		NodeByLabelScanReset(opBase);
 		GxB_MatrixTupleIter_next(op->iter, NULL, &nodeId, &depleted);
-		// TODO should only happen on an empty iter, better options?
-		if(depleted) return NULL;
+		if(depleted) return NULL; // Empty iterator; return immediately.
 	}
 
 	// Clone the held Record, as it will be freed upstream.

@@ -9,7 +9,6 @@
 #include "../util/rmalloc.h"
 
 AST *AST_MockMatchPattern(AST *master_ast, const cypher_astnode_t *original_path) {
-	// Duplicate of AST_NewSegment logic
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->referenced_entities = master_ast->referenced_entities;
 	ast->anot_ctx_collection = master_ast->anot_ctx_collection;
@@ -18,6 +17,7 @@ AST *AST_MockMatchPattern(AST *master_ast, const cypher_astnode_t *original_path
 	struct cypher_input_range range = {};
 
 	// Reuse the input path directly. We cannot clone, as this causes annotations (entity names) to be lost.
+	// TODO consider updating parser to improve this.
 	cypher_astnode_t *path = (cypher_astnode_t *)original_path;
 
 	// Build a pattern comprised of the input path.
@@ -36,7 +36,9 @@ AST *AST_MockMatchPattern(AST *master_ast, const cypher_astnode_t *original_path
 }
 
 void AST_MockFree(AST *ast) {
-	// TODO explanatory comments
+	/* When freeing the mock AST, we have to be careful to not free the shared path
+	 * or its annotations. We'll free every surrounding layer explicitly - the MATCH
+	 * pattern, the MATCH clause, and finally the AST root. */
 	const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, 0);
 	assert(cypher_astnode_type(clause) == CYPHER_AST_MATCH);
 	const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clause);

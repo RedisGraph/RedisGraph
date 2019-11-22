@@ -34,8 +34,6 @@ bool AST_ContainsErrors(const cypher_parse_result_t *result);
 // Make sure the parse result and the AST tree pass all validations.
 AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *result);
 
-const char **AST_CollectClauseVariables(const AST *ast, const cypher_astnode_t *clause);
-
 // Checks if the parse result represents a read-only query.
 bool AST_ReadOnly(const cypher_parse_result_t *result);
 

@@ -66,8 +66,7 @@ static Record IndexScanConsumeFromChild(OpBase *opBase) {
 		// Reset iterator and evaluate again.
 		IndexScanReset(opBase);
 		nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL);
-		// TODO should only happen on an empty iter, better options?
-		if(!nodeId) return NULL;
+		if(!nodeId) return NULL; // Empty iterator, return immediately.
 	}
 
 	// Clone the held Record, as it will be freed upstream.

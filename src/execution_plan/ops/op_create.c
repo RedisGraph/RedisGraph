@@ -52,7 +52,7 @@ static void _PendingPropertiesFree(PendingProperties *props) {
 // Convert a graph entity's components into an identifying hash code.
 static XXH64_hash_t _HashEntity(GraphEntityType t, uint label_id, PendingProperties *props) {
 	XXH_errorcode res;
-	XXH64_state_t state; // TODO do we really not need to call XXH64_createState?
+	XXH64_state_t state;
 
 	res = XXH64_reset(&state, 0);
 	assert(res != XXH_ERROR);
@@ -183,7 +183,6 @@ bool _CreateEdges(OpCreate *op, Record r) {
 
 		/* If we're only inserting unique entities, verify that this entity is new. */
 		if(op->unique_entities &&
-		   // TODO reltype ID passed here is possibly unset?
 		   !_EntityIsDistinct(op->unique_entities, GETYPE_EDGE, e->reltypeIDs[0], converted_properties)) {
 			// If the entity is not new, free its properties and skip this insertion.
 			_PendingPropertiesFree(converted_properties);

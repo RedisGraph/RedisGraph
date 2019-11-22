@@ -185,10 +185,10 @@ AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, QueryG
 	NodeCreateCtx *nodes_to_merge = array_new(NodeCreateCtx, 1);
 	EdgeCreateCtx *edges_to_merge = array_new(EdgeCreateCtx, 1);
 
-	// Shouldn't operate on the actual bound vars rax, as this call may insert aliases.
-	rax *bound_introduced_entities = raxClone(bound_vars);
-	AST_PreparePathCreation(path, qg, bound_introduced_entities, &nodes_to_merge, &edges_to_merge);
-	raxFree(bound_introduced_entities);
+	// Shouldn't operate on the original bound variables map, as this function may insert aliases.
+	rax *bound_and_introduced_entities = (bound_vars) ? raxClone(bound_vars) : raxNew();
+	AST_PreparePathCreation(path, qg, bound_and_introduced_entities, &nodes_to_merge, &edges_to_merge);
+	raxFree(bound_and_introduced_entities);
 
 	merge_ctx.nodes_to_merge = nodes_to_merge;
 	merge_ctx.edges_to_merge = edges_to_merge;
@@ -235,6 +235,10 @@ AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, QueryG
 AST_CreateContext AST_PrepareCreateOp(QueryGraph *qg, rax *bound_vars) {
 	AST *ast = QueryCtx_GetAST();
 	GraphContext *gc = QueryCtx_GetGraphCtx();
+
+	// Shouldn't operate on the original bound variables map, as this function may insert aliases.
+	rax *bound_and_introduced_entities = raxClone(bound_vars);
+
 	const cypher_astnode_t **create_clauses = AST_GetClauses(ast, CYPHER_AST_CREATE);
 	uint create_count = (create_clauses) ? array_len(create_clauses) : 0;
 
@@ -248,11 +252,13 @@ AST_CreateContext AST_PrepareCreateOp(QueryGraph *qg, rax *bound_vars) {
 
 		for(uint j = 0; j < npaths; j++) {
 			const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
-			AST_PreparePathCreation(path, qg, bound_vars, &nodes_to_create, &edges_to_create);
+			AST_PreparePathCreation(path, qg, bound_and_introduced_entities, &nodes_to_create,
+									&edges_to_create);
 		}
 	}
 
 	array_free(create_clauses);
+	raxFree(bound_and_introduced_entities);
 
 	AST_CreateContext ctx = { .nodes_to_create = nodes_to_create, .edges_to_create = edges_to_create };
 

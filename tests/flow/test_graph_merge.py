@@ -331,6 +331,3 @@ class testGraphMergeFlow(FlowTestsBase):
         self.env.assertEquals(result.nodes_created, 1)
         self.env.assertEquals(result.properties_set, 3)
         self.env.assertEquals(result.result_set, expected)
-
-        #  import ipdb
-        #  ipdb.set_trace()

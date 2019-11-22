@@ -110,8 +110,7 @@ static Record NodeByIdSeekConsumeFromChild(OpBase *opBase) {
 		// Reset iterator and evaluate again.
 		NodeByIdSeekReset(opBase);
 		n = _SeekNextNode(op);
-		// TODO should only happen on an empty iter, better options?
-		if(n.entity == NULL) return NULL;
+		if(n.entity == NULL) return NULL; // Empty iterator; return immediately.
 	}
 
 	// Clone the held Record, as it will be freed upstream.

@@ -93,27 +93,11 @@ static void _extract_params(const cypher_astnode_t *statement) {
 	}
 }
 
-static const char **_CollectPathVariables(const AST *ast, const cypher_astnode_t *path) {
-	uint count = cypher_ast_pattern_path_nelements(path);
-	const char **variables = array_new(const char *, count);
-
-	for(uint i = 0; i < count; i ++) {
-		const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, i);
-		const char *alias = AST_GetEntityName(ast, elem);
-		variables = array_append(variables, alias);
-	}
-
-	return variables;
-}
-
-const char **AST_CollectClauseVariables(const AST *ast, const cypher_astnode_t *clause) {
-	assert(cypher_astnode_type(clause) == CYPHER_AST_MERGE &&
-		   "add handling for other clauses that may get here");
-	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
-	return _CollectPathVariables(ast, path);
-}
-
 bool AST_ReadOnly(const cypher_parse_result_t *result) {
+	// A lot of these steps will be unnecessary once we move
+	// parsing into the subthread (and can thus perform this check
+	// after validations).
+
 	// Check for failures in libcypher-parser
 	if(AST_ContainsErrors(result)) return true;
 

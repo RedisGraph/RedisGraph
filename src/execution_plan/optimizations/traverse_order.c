@@ -184,14 +184,16 @@ static int _reward_arrangement(Arrangement arrangement, uint exp_count, rax *fil
 
 		// Reward bound variables such that any expression with a bound variable
 		// will be preferred over any expression without.
-		if(raxFind(bound_vars, (unsigned char *)exp->src_node->alias,
-				   strlen(exp->src_node->alias)) != raxNotFound) {
-			reward += B * (exp_count - i);
-		}
+		if(bound_vars) {
+			if(raxFind(bound_vars, (unsigned char *)exp->src_node->alias,
+					   strlen(exp->src_node->alias)) != raxNotFound) {
+				reward += B * (exp_count - i);
+			}
 
-		if(raxFind(bound_vars, (unsigned char *)exp->dest_node->alias,
-				   strlen(exp->dest_node->alias)) != raxNotFound) {
-			reward += B * (exp_count - i);
+			if(raxFind(bound_vars, (unsigned char *)exp->dest_node->alias,
+					   strlen(exp->dest_node->alias)) != raxNotFound) {
+				reward += B * (exp_count - i);
+			}
 		}
 
 		// Reward filters in expression.
@@ -253,13 +255,13 @@ static void _select_entry_point(AlgebraicExpression *ae, rax *filtered_entities,
 	const char *dest_name = ae->dest_node->alias;
 
 	// Always start at a bound variable if one is present.
-	if(raxFind(bound_vars, (unsigned char *)src_name, strlen(src_name)) != raxNotFound) {
-		return;
-	}
+	if(bound_vars) {
+		if(raxFind(bound_vars, (unsigned char *)src_name, strlen(src_name)) != raxNotFound) return;
 
-	if(raxFind(bound_vars, (unsigned char *)dest_name, strlen(dest_name)) != raxNotFound) {
-		AlgebraicExpression_Transpose(ae);
-		return;
+		if(raxFind(bound_vars, (unsigned char *)dest_name, strlen(dest_name)) != raxNotFound) {
+			AlgebraicExpression_Transpose(ae);
+			return;
+		}
 	}
 
 	// See if either source or destination nodes are filtered.

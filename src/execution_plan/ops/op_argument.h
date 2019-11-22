@@ -11,7 +11,7 @@
 
 /* The Argument operation holds an internal record array and emits one record per invocation.
  * When populating an eager operation like Create, the Argument should hold all necessary records,
- * in other contexts the 'records' array will typically contain only one record at a time. */
+ * in other contexts the 'records' array will contain only one record at a time. */
 typedef struct {
 	OpBase op;
 	Record *records;
