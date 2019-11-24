@@ -9,6 +9,7 @@
 
 #include <stdlib.h>
 #include <stdint.h>
+#include <pthread.h>
 #include "./block.h"
 #include "./datablock_iterator.h"
 
@@ -26,6 +27,7 @@ typedef struct DataBlock {
     size_t itemSize;            // Size of a single Item in bytes.
     Block **blocks;             // Array of blocks.
     uint64_t *deletedIdx;       // Array of free indicies.
+    pthread_mutex_t mutex;      // Mutex guarding from concurent updates.
     fpDestructor destructor;    // Function pointer to a clean-up function of an item.
 } DataBlock;
 
