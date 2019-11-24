@@ -23,10 +23,8 @@ void Graph_Explain(void *args) {
 	CommandCtx *qctx = (CommandCtx *)args;
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
 	GraphContext *gc = CommandCtx_GetGraphContext(qctx);
-	QueryCtx_SetGraphCtx(gc);
+	QueryCtx_SetGlobalExecCtx(qctx);
 	const char *query = qctx->query;
-
-	QueryCtx_SetRedisModuleCtx(ctx);
 
 	// Parse the query to construct an AST
 	cypher_parse_result_t *parse_result = parse(qctx->query);

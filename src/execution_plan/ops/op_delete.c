@@ -25,7 +25,7 @@ void _DeleteEntities(OpDelete *op) {
 	if((node_count + edge_count) == 0) return;
 
 	/* Lock everything. */
-	Graph_AcquireWriteLock(g);
+	QueryCtx_LockForCommit();
 
 	if(GraphContext_HasIndices(op->gc)) {
 		for(int i = 0; i < node_count; i++) {
@@ -38,7 +38,7 @@ void _DeleteEntities(OpDelete *op) {
 					 edge_count, &node_deleted, &relationships_deleted);
 
 	/* Release lock. */
-	Graph_ReleaseLock(g);
+	QueryCtx_NotifyCommitAndUnlock();
 
 	if(op->stats) op->stats->nodes_deleted += node_deleted;
 	if(op->stats) op->stats->relationships_deleted += relationships_deleted;

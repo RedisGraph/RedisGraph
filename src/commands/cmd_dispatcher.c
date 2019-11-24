@@ -66,9 +66,5 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		thpool_add_work(_thpool, handler, context);
 	}
 
-	// Replicate the command to slaves and AOF.
-	// If the query is read-only, slaves will do nothing after parsing.
-	// TODO: only replicate if query is a writer.
-	if(cmd == CMD_QUERY || cmd == CMD_PROFILE) RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
