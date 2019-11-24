@@ -106,8 +106,15 @@ void Graph_AcquireWriteLock(Graph *g) {
 
 /* Release the held lock */
 void Graph_ReleaseLock(Graph *g) {
-	pthread_rwlock_unlock(&g->_rwlock);
+	/* Set _writelocked to false BEFORE unlocking
+	 * if this is a reader thread no harm done,
+	 * if this is a writer thread the writer is about to unlock so once again
+	 * no harm done, if we set `_writelocked` to false after unlocking it is possible
+	 * for a reader thread to be considered as writer, performing illegal access to
+	 * underline matrices, consider a context switch after unlocking `_rwlock` but
+	 * before setting `_writelocked` to false. */
 	g->_writelocked = false;
+	pthread_rwlock_unlock(&g->_rwlock);
 }
 
 /* Writer request access to graph. */
