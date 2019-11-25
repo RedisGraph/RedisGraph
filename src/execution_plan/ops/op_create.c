@@ -62,7 +62,7 @@ static XXH64_hash_t _HashEntity(GraphEntityType t, const char *alias, const char
 	assert(XXH64_update(&state, &t, sizeof(t)) != XXH_ERROR);
 
 	// Hash entity identifier.
-	if(alias) assert(XXH64_update(&state, alias, strlen(alias)) != XXH_ERROR);
+	assert(XXH64_update(&state, alias, strlen(alias)) != XXH_ERROR);
 
 	// Hash label if one is provided
 	if(label) assert(XXH64_update(&state, label, strlen(label)) != XXH_ERROR);
@@ -89,6 +89,7 @@ static XXH64_hash_t _HashEntity(GraphEntityType t, const char *alias, const char
 // Returns true if the considered entity has not been encountered previously.
 static bool _EntityIsDistinct(rax *unique_entities, GraphEntityType t, const char *alias,
 							  const char *label, PendingProperties *props) {
+	if(!strncmp(alias, "anon_", 5)) return true;
 	XXH64_hash_t hash = _HashEntity(t, alias, label, props);
 	return raxTryInsert(unique_entities, (unsigned char *)&hash, sizeof(hash), NULL, NULL);
 }
@@ -127,7 +128,7 @@ OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeC
 	return (OpBase *)op;
 }
 
-bool _CreateNodes(OpCreate *op, Record r) {
+bool _CreateNodes(OpCreate *op, Record r, bool created_edges) {
 	bool created_nodes = false;
 	uint nodes_to_create_count = array_len(op->nodes_to_create);
 	for(uint i = 0; i < nodes_to_create_count; i++) {
@@ -145,8 +146,9 @@ bool _CreateNodes(OpCreate *op, Record r) {
 		PendingProperties *converted_properties = NULL;
 		if(map) converted_properties = _ConvertPropertyMap(r, map);
 
-		/* If we're only inserting unique entities, verify that this entity is new. */
-		if(op->unique_entities &&
+		/* If we're only inserting unique entities and have not already created edges,
+		 * verify that this entity is new. */
+		if(!created_edges && op->unique_entities &&
 		   !_EntityIsDistinct(op->unique_entities, GETYPE_NODE, n->alias, n->label, converted_properties)) {
 			_PendingPropertiesFree(converted_properties);
 			continue;
@@ -349,8 +351,8 @@ static Record CreateConsume(OpBase *opBase) {
 
 		/* Create entities. */
 		bool entities_created = false;
-		entities_created |= _CreateNodes(op, r);
 		entities_created |= _CreateEdges(op, r);
+		entities_created |= _CreateNodes(op, r, entities_created);
 
 		// Save record for later use.
 		if(entities_created) op->records = array_append(op->records, r);
@@ -363,8 +365,8 @@ static Record CreateConsume(OpBase *opBase) {
 
 			/* Create entities. */
 			bool entities_created = false;
-			entities_created |= _CreateNodes(op, r);
 			entities_created |= _CreateEdges(op, r);
+			entities_created |= _CreateNodes(op, r, entities_created);
 
 			// Save record for later use.
 			if(entities_created) op->records = array_append(op->records, r);

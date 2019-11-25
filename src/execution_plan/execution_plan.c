@@ -608,10 +608,8 @@ static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge
 	/* If we have bound variables, we must ensure that all of our created entities are unique. Consider:
 	 * UNWIND [1, 1] AS x MERGE ({val: x})
 	 * Exactly one node should be created in the UNWIND...MERGE query. */
-	bool no_duplicate_creations = arguments != NULL;
-	no_duplicate_creations = true;
 	OpBase *create_op = NewCreateOp(plan, stats, merge_ctx->nodes_to_merge, merge_ctx->edges_to_merge,
-									no_duplicate_creations);
+									true);
 	ExecutionPlan_AddOp(tail, create_op); // Add Create op to stream.
 
 	// If we have bound variables, push an Argument tap beneath the Create op.
