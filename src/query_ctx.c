@@ -135,19 +135,19 @@ bool QueryCtx_LockForCommit(void) {
 														  strlen(gc->graph_name));
 	RedisModuleKey *key = RedisModule_OpenKey(redis_ctx, graphID, REDISMODULE_WRITE);
 	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
-		asprintf(&ctx->internal_exec_ctx.error, "Encountered an empty key when opened key %s ",
+		asprintf(&ctx->internal_exec_ctx.error, "Encountered an empty key when opened key %s",
 				 ctx->gc->graph_name);
 
 		goto clean_up;
 	}
 	if(RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
-		asprintf(&ctx->internal_exec_ctx.error, "Encountered a non-graph value type when opened key %s ",
+		asprintf(&ctx->internal_exec_ctx.error, "Encountered a non-graph value type when opened key %s",
 				 ctx->gc->graph_name);
 		goto clean_up;
 
 	}
 	if(gc != RedisModule_ModuleTypeGetValue(key)) {
-		asprintf(&ctx->internal_exec_ctx.error, "Encountered different graph value when opened key %s ",
+		asprintf(&ctx->internal_exec_ctx.error, "Encountered different graph value when opened key %s",
 				 ctx->gc->graph_name);
 		goto clean_up;
 	}

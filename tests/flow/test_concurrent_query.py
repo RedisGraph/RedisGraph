@@ -2,6 +2,7 @@ import os
 import sys
 import threading
 from redisgraph import Graph, Node, Edge
+from redis import ResponseError
 
 from base import FlowTestsBase
 
@@ -48,6 +49,19 @@ def query_write(graph, query, threadID):
 def thread_run_query(graph, query, threadID):
     global assertions
     assertions[threadID] = graph.query(query)
+
+def thread_try_run_query(graph, query, threadID):
+    global assertions
+    try:
+        assertions[threadID] = graph.query(query)
+    except ResponseError as e:
+        assertions[threadID] = str(e)
+
+def thread_delete_graph(redis_con, graph_id):
+    redis_con.delete(graph_id)
+
+def thread_replace_graph(redis_con, graph_id):
+    redis_con.set(graph_id, "1")
 
 def delete_graph(graph, threadID):
     global assertions
@@ -236,3 +250,40 @@ class testConcurrentQueryFlow(FlowTestsBase):
         # Make sure Graph is empty, e.g. graph was deleted.
         resultset = graphs[0].query("MATCH (n) RETURN count(n)").result_set
         self.env.assertEquals(resultset[0][0], 0)
+
+    def test_06_concurrent_write_delete(self):
+        redis_con = self.env.getConnection()
+        heavy_write_query = """UNWIND(range(0,999999)) as x CREATE(n)"""
+        threads = []
+        t = threading.Thread(target=thread_try_run_query, args=(graphs[0], heavy_write_query, 0))
+        t.setDaemon(True)
+        threads.append(t)
+        t = threading.Thread(target=thread_delete_graph, args=(redis_con, GRAPH_ID))
+        t.setDaemon(True)
+        threads.append(t)
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.env.assertEquals(assertions[0], "Encountered an empty key when opened key " + GRAPH_ID)
+    
+    def test_07_concurrent_write_replace(self):
+        redis_con = self.env.getConnection()
+        heavy_write_query = """UNWIND(range(0,999999)) as x CREATE(n)"""
+        threads = []
+        t = threading.Thread(target=thread_try_run_query, args=(graphs[0], heavy_write_query, 0))
+        t.setDaemon(True)
+        threads.append(t)
+        t = threading.Thread(target=thread_replace_graph, args=(redis_con, GRAPH_ID))
+        t.setDaemon(True)
+        threads.append(t)
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.env.assertEquals(assertions[0], "Encountered a non-graph value type when opened key " + GRAPH_ID)
+
+
+
+
+
