@@ -60,7 +60,7 @@ class testBoundVariables(FlowTestsBase):
         self.env.assertEquals(actual_result.relationships_created, 1)
         self.env.assertEquals(actual_result.nodes_created, 1)
 
-    def test02_procedure_match_bound_variable(self):
+    def test03_procedure_match_bound_variable(self):
         # Create a full-text index.
         redis_graph.call_procedure("db.idx.fulltext.createNodeIndex", 'L', 'val')
 

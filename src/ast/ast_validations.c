@@ -749,8 +749,8 @@ static AST_Validation _Validate_MERGE_Clauses(const AST *ast, char **reason) {
 		}
 		start_offset = clause_idx;
 
-		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, clause_idx);
-		const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
+		const cypher_astnode_t *merge_clause = cypher_ast_query_get_clause(ast->root, clause_idx);
+		const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clause);
 		uint nelems = cypher_ast_pattern_path_nelements(path);
 		for(uint j = 0; j < nelems; j ++) {
 			const cypher_astnode_t *entity = cypher_ast_pattern_path_get_element(path, j);
@@ -1081,9 +1081,9 @@ static AST_Validation _ValidateClauseOrder(const AST *ast, char **reason) {
 	for(uint i = 0; i < clause_count; i ++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
 		cypher_astnode_type_t type = cypher_astnode_type(clause);
-		if(type == CYPHER_AST_CREATE || type == CYPHER_AST_MERGE ||
-		   type == CYPHER_AST_DELETE || type == CYPHER_AST_SET ||
-		   type == CYPHER_AST_REMOVE) {
+		if(!encountered_updating_clause && (type == CYPHER_AST_CREATE || type == CYPHER_AST_MERGE ||
+											type == CYPHER_AST_DELETE || type == CYPHER_AST_SET ||
+											type == CYPHER_AST_REMOVE)) {
 			encountered_updating_clause = true;
 		} else if(encountered_updating_clause && (type == CYPHER_AST_MATCH ||
 												  type == CYPHER_AST_UNWIND ||

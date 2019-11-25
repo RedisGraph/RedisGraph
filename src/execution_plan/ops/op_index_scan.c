@@ -27,6 +27,7 @@ OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, const QGNode *n, RSI
 	op->n = n;
 	op->idx = idx;
 	op->iter = iter;
+	op->child_record = NULL;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_INDEX_SCAN, "Index Scan", IndexScanInit, IndexScanConsume,
@@ -64,7 +65,7 @@ static Record IndexScanConsumeFromChild(OpBase *opBase) {
 		if(op->child_record == NULL) return NULL; // Child depleted.
 
 		// Reset iterator and evaluate again.
-		IndexScanReset(opBase);
+		RediSearch_ResultsIteratorReset(op->iter);
 		nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL);
 		if(!nodeId) return NULL; // Empty iterator, return immediately.
 	}
@@ -106,6 +107,11 @@ static void IndexScanFree(OpBase *opBase) {
 	if(op->iter) {
 		RediSearch_ResultsIteratorFree(op->iter);
 		op->iter = NULL;
+	}
+
+	if(op->child_record) {
+		Record_Free(op->child_record);
+		op->child_record = NULL;
 	}
 }
 

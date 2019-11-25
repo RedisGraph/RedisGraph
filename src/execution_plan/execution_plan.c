@@ -71,7 +71,6 @@ static void _ExecutionPlan_UpdatePlanReferences(OpBase *root, ExecutionPlan *pla
 	}
 }
 
-
 // Allocate a new ExecutionPlan segment.
 static inline ExecutionPlan *_NewEmptyExecutionPlan(void) {
 	return rm_calloc(1, sizeof(ExecutionPlan));
@@ -560,6 +559,8 @@ static inline void _buildUnwindOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
+/* Given a MERGE clause, build the stream of operations required to match its pattern
+ * and add it as a child of the Merge op. */
 static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *clause,
 								   const char **arguments) {
 	AST *ast = QueryCtx_GetAST();
@@ -609,9 +610,8 @@ static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge
 	}
 
 	/* If we have bound variables, we must ensure that all of our created entities are unique. Consider:
-	 * CREATE (:A {val: 2}), (:A {val: 2})
-	 * MATCH (a:A) MERGE (:B {val: a.val})
-	 * Exactly one node should be created in the MATCH...MERGE query. */
+	 * UNWIND [1, 1] AS x MERGE ({val: x})
+	 * Exactly one node should be created in the UNWIND...MERGE query. */
 	bool no_duplicate_creations = arguments != NULL;
 	OpBase *create_op = NewCreateOp(plan, stats, merge_ctx->nodes_to_merge, merge_ctx->edges_to_merge,
 									no_duplicate_creations);
@@ -769,6 +769,7 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 	}
 }
 
+// Build a tree of operations that performs all the worked required by the clauses of the current AST.
 static void _PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set) {
 	AST *ast = QueryCtx_GetAST();
 	GraphContext *gc = QueryCtx_GetGraphCtx();

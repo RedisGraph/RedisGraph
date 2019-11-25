@@ -11,6 +11,7 @@
 #include <assert.h>
 
 /* Forward declarations. */
+static OpResult MergeInit(OpBase *opBase);
 static Record MergeConsume(OpBase *opBase);
 static void MergeFree(OpBase *opBase);
 
@@ -67,12 +68,12 @@ static void _UpdateProperties(OpMerge *op, Record *records) {
 			assert(t == REC_TYPE_NODE || t == REC_TYPE_EDGE);
 			GraphEntity *ge = Record_GetGraphEntity(r, update_ctx->record_idx);
 
-			_UpdateProperty(r, ge, update_ctx); // Updaet the entity.
+			_UpdateProperty(r, ge, update_ctx); // Update the entity.
 			if(t == REC_TYPE_NODE) _UpdateIndices(gc, (Node *)ge); // Update indices if necessary.
 		}
-
-		if(op->stats) op->stats->properties_set += update_count;
 	}
+
+	if(op->stats) op->stats->properties_set += update_count * record_count;
 
 	Graph_ReleaseLock(gc->g); // Release the lock.
 }
@@ -86,14 +87,15 @@ static inline Record _pullFromStream(OpBase *branch) {
 
 OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
 				   ResultSetStatistics *stats) {
-	/* Merge is an operator with two or three children.They will be created outside of here,
+	/* Merge is an operator with two or three children. They will be created outside of here,
 	 * as with other multi-stream operators (see CartesianProduct and ValueHashJoin). */
 	OpMerge *op = calloc(1, sizeof(OpMerge));
 	op->stats = stats;
 	op->on_match = on_match;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", NULL, MergeConsume, NULL, NULL, MergeFree, plan);
+	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume, NULL, NULL, MergeFree,
+				plan);
 
 	if(op->on_match) {
 		// If we have ON MATCH directives, set the appropriate record IDs of entities to be updated.
@@ -104,6 +106,15 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
 	}
 
 	return (OpBase *)op;
+}
+
+static OpResult MergeInit(OpBase *opBase) {
+	if(opBase->childCount == 2) return OP_OK;  // Do nothing if we have a bound variable stream.
+	OpMerge *op = (OpMerge *)opBase;
+	// Set up an array to store records produced by the bound variable stream.
+	op->input_records = array_new(Record, 1);
+
+	return OP_OK;
 }
 
 static Record _handoff(OpMerge *op) {
@@ -201,11 +212,8 @@ static Record MergeConsume(OpBase *opBase) {
 // Match and Create streams are always guaranteed to not branch (have any ops with multiple children).
 static OpBase *_LocateOp(OpBase *root, OPType type) {
 	if(!root) return NULL;
-
 	if(root->type & type) return root;
-
 	if(root->childCount > 0) return _LocateOp(root->children[0], type);
-
 	return NULL;
 }
 
@@ -216,6 +224,7 @@ void Merge_SetStreams(OpBase *opBase) {
 	 * - If there are 3 children, the first should resolve the Merge pattern's bound variables.
 	 * - The next (first if there are 2 children, second otherwise) should attempt to match the pattern.
 	 * - The last creates the pattern. */
+	assert(opBase->childCount == 2 || opBase->childCount == 3);
 	OpMerge *op = (OpMerge *)opBase;
 	if(opBase->childCount == 2) {
 		// If we only have 2 streams, we simply need to determine which has a Create op.
@@ -269,9 +278,6 @@ void Merge_SetStreams(OpBase *opBase) {
 
 	// If the create stream is populated by an Argument tap, store a reference to it.
 	op->create_argument_tap = (Argument *)ExecutionPlan_LocateOp(op->create_stream, OPType_ARGUMENT);
-
-	// Set up an array to store records produced by the bound variable stream.
-	op->input_records = array_new(Record, 1);
 }
 
 static void MergeFree(OpBase *opBase) {

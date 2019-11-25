@@ -185,6 +185,7 @@ void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root) {
 	 * introducing Cartesian Products (the only multiple-stream operation at this stage.)
 	 * This may be inadequate later. */
 	OpBase *tail = new_root;
+	assert(tail->childCount <= 1);
 	while(tail->childCount > 0) tail = tail->children[0];
 
 	// Append the old root to the tail of the new root's chain.

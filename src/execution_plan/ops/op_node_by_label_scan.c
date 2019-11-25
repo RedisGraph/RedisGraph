@@ -79,7 +79,7 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 		// One-time construction of the iterator.
 		// (Don't do so before now because the label might have been built in a child op.)
 		if(op->iter == NULL) _ConstructIterator(op);
-		else NodeByLabelScanReset(opBase);
+		else GxB_MatrixTupleIter_reset(op->iter);
 	}
 
 	GrB_Index nodeId;
@@ -92,7 +92,6 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 		if(op->child_record == NULL) return NULL; // Child depleted.
 
 		// Reset iterator and evaluate again.
-		NodeByLabelScanReset(opBase);
 		GxB_MatrixTupleIter_next(op->iter, NULL, &nodeId, &depleted);
 		if(depleted) return NULL; // Empty iterator; return immediately.
 	}
@@ -143,6 +142,7 @@ static void NodeByLabelScanFree(OpBase *op) {
 
 	if(nodeByLabelScan->child_record) {
 		Record_Free(nodeByLabelScan->child_record);
+		nodeByLabelScan->child_record = NULL;
 	}
 }
 

@@ -12,6 +12,7 @@ static OpResult NodeByIdSeekInit(OpBase *opBase);
 static Record NodeByIdSeekConsume(OpBase *opBase);
 static Record NodeByIdSeekConsumeFromChild(OpBase *opBase);
 static OpResult NodeByIdSeekReset(OpBase *opBase);
+static void NodeByIdSeekFree(OpBase *opBase);
 
 // Checks to see if operation index is within its bounds.
 static inline bool _outOfBounds(NodeByIdSeek *op) {
@@ -57,7 +58,7 @@ OpBase *NewNodeByIdSeekOp
 
 
 	OpBase_Init((OpBase *)op, OPType_NODE_BY_ID_SEEK, "NodeByIdSeek", NodeByIdSeekInit,
-				NodeByIdSeekConsume, NodeByIdSeekReset, NULL, NULL, plan);
+				NodeByIdSeekConsume, NodeByIdSeekReset, NULL, NodeByIdSeekFree, plan);
 
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, node->alias);
 
@@ -142,5 +143,13 @@ static OpResult NodeByIdSeekReset(OpBase *ctx) {
 	op->currentId = op->minId;
 	if(!op->minInclusive) op->currentId++;
 	return OP_OK;
+}
+
+static void NodeByIdSeekFree(OpBase *opBase) {
+	NodeByIdSeek *op = (NodeByIdSeek *)opBase;
+	if(op->child_record) {
+		Record_Free(op->child_record);
+		op->child_record = NULL;
+	}
 }
 
