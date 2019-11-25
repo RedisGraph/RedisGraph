@@ -50,8 +50,6 @@ typedef enum {
 	// OPType_SELECT_OR_ANTI_SEMI_APPLY = (1 << 30),
 } OPType; // TODO Consider switching from bitmask at 1<<32
 
-#define OP_SCAN (OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN | OPType_INDEX_SCAN | OPType_NODE_BY_ID_SEEK)
-
 typedef enum {
 	OP_DEPLETED = 1,
 	OP_REFRESH = 2,

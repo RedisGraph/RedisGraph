@@ -63,11 +63,11 @@ static void _ExecutionPlan_CorrectMergeStreams(OpBase *op) {
 
 // For all ops in the given tree, assocate the provided ExecutionPlan.
 // This is for use for updating ops that have been built with a temporary ExecutionPlan.
-static void _ExecutionPlan_UpdatePlanReferences(OpBase *root, ExecutionPlan *plan) {
+static void _BindPlanToOps(OpBase *root, ExecutionPlan *plan) {
 	if(!root) return;
 	root->plan = plan;
 	for(int i = 0; i < root->childCount; i ++) {
-		_ExecutionPlan_UpdatePlanReferences(root->children[i], plan);
+		_BindPlanToOps(root->children[i], plan);
 	}
 }
 
@@ -271,10 +271,8 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 	QueryGraph **connectedComponents = QueryGraph_ConnectedComponents(qg);
 	uint connectedComponentsCount = array_len(connectedComponents);
 	plan->connected_components = connectedComponents;
-	/* If we have already constructed any ops, the plan's record map contains all variables bound at this time.
-	 * We'll clone the rax here, as op construction in this function will introduce more variables. */
-	rax *bound_vars = NULL;
-	if(plan->root) bound_vars = raxClone(plan->record_map);
+	// If we have already constructed any ops, the plan's record map contains all variables bound at this time.
+	rax *bound_vars = plan->record_map;
 
 	/* If we have multiple graph components, the root operation is a Cartesian Product.
 	 * Each chain of traversals will be a child of this op. */
@@ -348,8 +346,6 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			_ExecutionPlan_UpdateRoot(plan, root);
 		}
 	}
-
-	if(bound_vars) raxFree(bound_vars);
 }
 
 static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan) {
@@ -595,7 +591,7 @@ static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *
 	ExecutionPlan_Free(rhs_plan);
 
 	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
-	_ExecutionPlan_UpdatePlanReferences(rhs_root, plan);
+	_BindPlanToOps(rhs_root, plan);
 }
 
 static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge_ctx,
@@ -613,6 +609,7 @@ static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge
 	 * UNWIND [1, 1] AS x MERGE ({val: x})
 	 * Exactly one node should be created in the UNWIND...MERGE query. */
 	bool no_duplicate_creations = arguments != NULL;
+	no_duplicate_creations = true;
 	OpBase *create_op = NewCreateOp(plan, stats, merge_ctx->nodes_to_merge, merge_ctx->edges_to_merge,
 									no_duplicate_creations);
 	ExecutionPlan_AddOp(tail, create_op); // Add Create op to stream.
@@ -684,7 +681,8 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 	// Convert all the AST data required to populate our operations tree.
 	AST_MergeContext merge_ctx = AST_PrepareMergeOp(clause, plan->query_graph, bound_vars);
 
-	// Create a Merge operation with all ON MATCH update directives.
+	// Create a Merge operation. It will store no information at this time except for any graph updates
+	// it should make due to ON MATCH SET directives in the query.
 	OpBase *merge_op = NewMergeOp(plan, merge_ctx.on_match, stats);
 
 	// Set Merge op as new root and add previously-built ops, if any, as Merge's first stream.

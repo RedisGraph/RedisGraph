@@ -42,7 +42,7 @@ static OpResult AllNodeScanInit(OpBase *opBase) {
 static Record AllNodeScanConsumeFromChild(OpBase *opBase) {
 	AllNodeScan *op = (AllNodeScan *)opBase;
 
-	if(op->child_record == NULL) { // should only trigger on first invocation.
+	if(op->child_record == NULL) {
 		op->child_record = OpBase_Consume(op->op.children[0]);
 		if(op->child_record == NULL) return NULL;
 	}
@@ -94,6 +94,11 @@ static void AllNodeScanFree(OpBase *ctx) {
 	if(op->iter) {
 		DataBlockIterator_Free(op->iter);
 		op->iter = NULL;
+	}
+
+	if(op->child_record) {
+		Record_Free(op->child_record);
+		op->child_record = NULL;
 	}
 }
 

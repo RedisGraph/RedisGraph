@@ -46,7 +46,7 @@ static inline void _UpdateRecord(IndexScan *op, Record r, EntityID node_id) {
 	// Get a pointer to a heap allocated node.
 	Node *n = Record_GetNode(r, op->nodeRecIdx);
 	// Update node's internal entity pointer.
-	Graph_GetNode(op->g, node_id, n);
+	assert(Graph_GetNode(op->g, node_id, n));
 }
 
 static Record IndexScanConsumeFromChild(OpBase *opBase) {

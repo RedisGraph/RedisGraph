@@ -269,8 +269,10 @@ static void _select_entry_point(AlgebraicExpression *ae, rax *filtered_entities,
 		return; // The source node is filtered, making the current order most appealing.
 	}
 
-	bool destFiltered = (raxFind(filtered_entities, (unsigned char *)dest_name,
-								 strlen(dest_name)) != raxNotFound);
+	if(raxFind(filtered_entities, (unsigned char *)dest_name, strlen(dest_name)) != raxNotFound) {
+		AlgebraicExpression_Transpose(ae); // The destination is filtered and the source is not, transpose.
+		return;
+	}
 
 	/* Prefer filter over label
 	 * if no filters are applied prefer labeled entity. */
@@ -281,10 +283,7 @@ static void _select_entry_point(AlgebraicExpression *ae, rax *filtered_entities,
 	 * do not use label scan if for every node N such that
 	 * (N)-[relation]->(T) N is of the same type T, and type of
 	 * either source or destination node is T. */
-	if(destFiltered) {
-		// The destination is filtered and the source is not, transpose.
-		AlgebraicExpression_Transpose(ae);
-	} else if(srcLabeled) {
+	if(srcLabeled) {
 		// Neither end is filtered and the source is labeled, making the current order most appealing.
 		return;
 	} else if(destLabeled) {

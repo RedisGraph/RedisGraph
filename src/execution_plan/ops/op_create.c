@@ -50,7 +50,8 @@ static void _PendingPropertiesFree(PendingProperties *props) {
 }
 
 // Convert a graph entity's components into an identifying hash code.
-static XXH64_hash_t _HashEntity(GraphEntityType t, uint label_id, PendingProperties *props) {
+static XXH64_hash_t _HashEntity(GraphEntityType t, const char *alias, const char *label,
+								PendingProperties *props) {
 	XXH_errorcode res;
 	XXH64_state_t state;
 
@@ -60,8 +61,11 @@ static XXH64_hash_t _HashEntity(GraphEntityType t, uint label_id, PendingPropert
 	// Hash entity type
 	assert(XXH64_update(&state, &t, sizeof(t)) != XXH_ERROR);
 
-	// Hash label ID (or no ID macro)
-	assert(XXH64_update(&state, &label_id, sizeof(label_id)) != XXH_ERROR);
+	// Hash entity identifier.
+	if(alias) assert(XXH64_update(&state, alias, strlen(alias)) != XXH_ERROR);
+
+	// Hash label if one is provided
+	if(label) assert(XXH64_update(&state, label, strlen(label)) != XXH_ERROR);
 
 	if(props) {
 		// Hash attribute count
@@ -83,9 +87,9 @@ static XXH64_hash_t _HashEntity(GraphEntityType t, uint label_id, PendingPropert
 }
 
 // Returns true if the considered entity has not been encountered previously.
-static bool _EntityIsDistinct(rax *unique_entities, GraphEntityType t, uint label_id,
-							  PendingProperties *props) {
-	XXH64_hash_t hash = _HashEntity(t, label_id, props);
+static bool _EntityIsDistinct(rax *unique_entities, GraphEntityType t, const char *alias,
+							  const char *label, PendingProperties *props) {
+	XXH64_hash_t hash = _HashEntity(t, alias, label, props);
 	return raxTryInsert(unique_entities, (unsigned char *)&hash, sizeof(hash), NULL, NULL);
 }
 
@@ -143,7 +147,7 @@ bool _CreateNodes(OpCreate *op, Record r) {
 
 		/* If we're only inserting unique entities, verify that this entity is new. */
 		if(op->unique_entities &&
-		   !_EntityIsDistinct(op->unique_entities, GETYPE_NODE, n->labelID, converted_properties)) {
+		   !_EntityIsDistinct(op->unique_entities, GETYPE_NODE, n->alias, n->label, converted_properties)) {
 			_PendingPropertiesFree(converted_properties);
 			continue;
 		}
@@ -183,7 +187,8 @@ bool _CreateEdges(OpCreate *op, Record r) {
 
 		/* If we're only inserting unique entities, verify that this entity is new. */
 		if(op->unique_entities &&
-		   !_EntityIsDistinct(op->unique_entities, GETYPE_EDGE, e->reltypeIDs[0], converted_properties)) {
+		   !_EntityIsDistinct(op->unique_entities, GETYPE_EDGE, e->alias, e->reltypes[0],
+							  converted_properties)) {
 			// If the entity is not new, free its properties and skip this insertion.
 			_PendingPropertiesFree(converted_properties);
 			continue;

@@ -144,7 +144,8 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 
 void seekByID(ExecutionPlan *plan) {
 	assert(plan);
-	OpBase **scan_ops = ExecutionPlan_LocateOps(plan->root, OP_SCAN);
+	OpBase **scan_ops = ExecutionPlan_LocateOps(plan->root,
+												(OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN));
 
 	for(int i = 0; i < array_len(scan_ops); i++) {
 		_UseIdOptimization(plan, scan_ops[i]);

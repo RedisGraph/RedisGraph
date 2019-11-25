@@ -95,7 +95,7 @@ static inline Node _SeekNextNode(NodeByIdSeek *op) {
 static Record NodeByIdSeekConsumeFromChild(OpBase *opBase) {
 	NodeByIdSeek *op = (NodeByIdSeek *)opBase;
 
-	if(op->child_record == NULL) { // should only trigger on first invocation.
+	if(op->child_record == NULL) {
 		op->child_record = OpBase_Consume(op->op.children[0]);
 		if(op->child_record == NULL) return NULL;
 	}

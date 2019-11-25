@@ -73,7 +73,7 @@ static inline void _UpdateRecord(NodeByLabelScan *op, Record r, GrB_Index node_i
 static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 	NodeByLabelScan *op = (NodeByLabelScan *)opBase;
 
-	if(op->child_record == NULL) { // should only trigger on first invocation.
+	if(op->child_record == NULL) {
 		op->child_record = OpBase_Consume(op->op.children[0]);
 		if(op->child_record == NULL) return NULL;
 		// One-time construction of the iterator.
