@@ -66,10 +66,11 @@ void QueryCtx_EmitException(void) {
 
 void QueryCtx_SetGlobalExecCtx(CommandCtx *cmd_ctx) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	ctx->global_exec_ctx.redis_ctx = cmd_ctx->ctx;
-	ctx->global_exec_ctx.bc = cmd_ctx->bc;
-	ctx->gc = cmd_ctx->graph_ctx;
-	ctx->query_data.query = cmd_ctx->query;
+	ctx->global_exec_ctx.redis_ctx = CommandCtx_GetRedisCtx(cmd_ctx);
+	ctx->global_exec_ctx.bc = CommandCtx_GetBlockingClient(cmd_ctx);
+	ctx->global_exec_ctx.command_name = CommandCtx_GetCommandName(cmd_ctx);
+	ctx->gc = CommandCtx_GetGraphContext(cmd_ctx);
+	ctx->query_data.query = CommandCtx_GetQuery(cmd_ctx);
 }
 
 void QueryCtx_SetAST(AST *ast) {
@@ -171,7 +172,8 @@ void QueryCtx_NotifyCommitAndUnlock(void) {
 	GraphContext *gc = ctx->gc;
 
 	// Replicate.
-	RedisModule_ReplicateVerbatim(redis_ctx);
+	RedisModule_Replicate(redis_ctx, ctx->global_exec_ctx.command_name, "cc!", gc->graph_name,
+						  ctx->query_data.query);
 	// Release graph R/W lock.
 	Graph_ReleaseLock(gc->g);
 	// Close Key.

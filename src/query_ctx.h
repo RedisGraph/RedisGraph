@@ -19,7 +19,7 @@ extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key
 typedef struct {
 	AST *ast;       // The scoped AST associated with this query.
 	rax *params;    // Query parameters.
-	char *query;    // Query string.
+	const char *query;    // Query string.
 } QueryCtx_QueryData;
 
 typedef struct {
@@ -32,6 +32,7 @@ typedef struct {
 typedef struct {
 	RedisModuleCtx *redis_ctx;      // The Redis module context.
 	RedisModuleBlockedClient *bc;   // Blocked client.
+	const char *command_name;       // Command name.
 } QueryCtx_GlobalExecCtx;
 
 typedef struct {

@@ -57,12 +57,12 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 											REDISMODULE_CTX_FLAGS_LOADING));
 	if(execute_on_main_thread) {
 		// Run query on Redis main thread.
-		context = CommandCtx_New(ctx, NULL, gc, argv[2], argv, argc, is_replicated);
+		context = CommandCtx_New(ctx, NULL, command_name, gc, argv[2], argv, argc, is_replicated);
 		handler(context);
 	} else {
 		// Run query on a dedicated thread.
 		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
-		context = CommandCtx_New(NULL, bc, gc, argv[2], argv, argc, is_replicated);
+		context = CommandCtx_New(NULL, bc, command_name, gc, argv[2], argv, argc, is_replicated);
 		thpool_add_work(_thpool, handler, context);
 	}
 
