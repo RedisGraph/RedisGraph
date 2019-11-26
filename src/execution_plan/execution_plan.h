@@ -80,6 +80,9 @@ rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan);
 /* Prints execution plan. */
 void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx);
 
+/* Initialize all operations in an ExecutionPlan. */
+void ExecutionPlan_Init(ExecutionPlan *plan);
+
 /* Executes plan */
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan);
 

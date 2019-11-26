@@ -30,6 +30,3 @@ typedef struct {
 OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
 				   ResultSetStatistics *stats);
 
-// Fix the order of a Merge op's child streams if they have been shuffled by optimizations.
-void Merge_SetStreams(OpBase *op);
-

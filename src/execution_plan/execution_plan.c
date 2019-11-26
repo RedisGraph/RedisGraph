@@ -52,15 +52,6 @@ static inline void _ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_ro
 	plan->root = new_root;
 }
 
-// Fix the order of a Merge op's child streams if they have been shuffled by optimizations.
-static void _ExecutionPlan_CorrectMergeStreams(OpBase *op) {
-	if(op->type == OPType_MERGE) Merge_SetStreams(op);
-
-	for(int i = 0; i < op->childCount; i++) {
-		_ExecutionPlan_CorrectMergeStreams(op->children[i]);
-	}
-}
-
 // For all ops in the given tree, assocate the provided ExecutionPlan.
 // This is for use for updating ops that have been built with a temporary ExecutionPlan.
 static void _BindPlanToOps(OpBase *root, ExecutionPlan *plan) {
@@ -980,10 +971,6 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 	// Optimize the operations in the ExecutionPlan.
 	optimizePlan(plan);
 
-	// TODO This call is only strictly necessary if we have a Merge op and
-	// optimizePlan modified operations; can track this if desired.
-	_ExecutionPlan_CorrectMergeStreams(plan->root);
-
 	// Disregard self.
 	plan->segment_count = segment_count - 1;
 	plan->segments = segments;
@@ -1038,12 +1025,12 @@ void _ExecutionPlanInit(OpBase *root) {
 	}
 }
 
-void ExecutionPlanInit(ExecutionPlan *plan) {
+void ExecutionPlan_Init(ExecutionPlan *plan) {
 	_ExecutionPlanInit(plan->root);
 }
 
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
-	ExecutionPlanInit(plan);
+	ExecutionPlan_Init(plan);
 
 	/* Set an exception-handling breakpoint to capture run-time errors.
 	 * encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
