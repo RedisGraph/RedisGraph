@@ -194,6 +194,7 @@ void __agg_maxCtxFree(AggCtx *ctx) {
 
 void *__agg_maxCtxNew() {
 	__agg_maxCtx *ac = rm_malloc(sizeof(__agg_maxCtx));
+	ac->max = SI_NullVal();
 	ac->init = false;
 	return ac;
 }
@@ -238,6 +239,7 @@ int __agg_minReduceNext(AggCtx *ctx) {
 
 void *__agg_minCtxNew() {
 	__agg_minCtx *ac = rm_malloc(sizeof(__agg_minCtx));
+	ac->min = SI_NullVal();
 	ac->init = false;
 	return ac;
 }
@@ -370,6 +372,11 @@ int __agg_percDistinctStep(AggCtx *ctx, SIValue *argv, int argc) {
 int __agg_percDiscReduceNext(AggCtx *ctx) {
 	__agg_percCtx *ac = Agg_FuncCtx(ctx);
 
+	if(ac->count == 0) {
+		Agg_SetResult(ctx, SI_NullVal());
+		return AGG_OK;
+	}
+
 	QSORT(double, ac->values, ac->count, ISLT);
 
 	// If ac->percentile == 0, employing this formula would give an index of -1
@@ -384,6 +391,11 @@ int __agg_percContReduceNext(AggCtx *ctx) {
 	__agg_percCtx *ac = Agg_FuncCtx(ctx);
 
 	QSORT(double, ac->values, ac->count, ISLT);
+
+	if(ac->count == 0) {
+		Agg_SetResult(ctx, SI_NullVal());
+		return AGG_OK;
+	}
 
 	if(ac->percentile == 1.0 || ac->count == 1) {
 		Agg_SetResult(ctx, SI_DoubleVal(ac->values[ac->count - 1]));
