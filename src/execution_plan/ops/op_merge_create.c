@@ -4,112 +4,64 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "op_create.h"
+#include "op_merge_create.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../schema/schema.h"
 #include <assert.h>
 
 /* Forward declarations. */
-static Record CreateConsume(OpBase *opBase);
-static void CreateFree(OpBase *opBase);
-
-// Resolve the properties specified in the query into constant values.
-PendingProperties *_ConvertPropertyMap(Record r, const PropertyMap *map) {
-	PendingProperties *converted = rm_malloc(sizeof(PendingProperties));
-	converted->property_count = map->property_count;
-	converted->attr_keys = map->keys; // This pointer can be copied directly.
-	converted->values = rm_malloc(sizeof(SIValue) * map->property_count);
-	for(int i = 0; i < map->property_count; i++) {
-		// TODO potential memory leak on evaluation failure
-		converted->values[i] = AR_EXP_Evaluate(map->values[i], r);
-	}
-
-	return converted;
-}
-
-// Commit properties to the GraphEntity.
-static void _AddProperties(OpCreate *op, GraphEntity *ge, PendingProperties *props) {
-	for(int i = 0; i < props->property_count; i++) {
-		GraphEntity_AddProperty(ge, props->attr_keys[i], props->values[i]);
-	}
-
-	if(op->stats) op->stats->properties_set += props->property_count;
-}
-
-// Free the properties that have been committed to the graph
-static void _PendingPropertiesFree(PendingProperties *props) {
-	if(props == NULL) return;
-	// The 'keys' array belongs to the original PropertyMap, so so shouldn't be freed here.
-	for(uint j = 0; j < props->property_count; j ++) {
-		SIValue_Free(&props->values[j]);
-	}
-	rm_free(props->values);
-	rm_free(props);
-}
+static Record MergeCreateConsume(OpBase *opBase);
+static void MergeCreateFree(OpBase *opBase);
 
 // Convert a graph entity's components into an identifying hash code.
-static XXH64_hash_t _HashEntity(GraphEntityType t, const char *alias, const char *label,
-								PendingProperties *props) {
-	XXH_errorcode res;
-	XXH64_state_t state;
-
-	res = XXH64_reset(&state, 0);
-	assert(res != XXH_ERROR);
-
-	// Hash entity type
-	assert(XXH64_update(&state, &t, sizeof(t)) != XXH_ERROR);
-
-	// Hash entity identifier.
-	assert(XXH64_update(&state, alias, strlen(alias)) != XXH_ERROR);
-
-	// Hash label if one is provided
-	if(label) assert(XXH64_update(&state, label, strlen(label)) != XXH_ERROR);
+static void _IncrementalHashEntity(XXH64_state_t *state, const char *label,
+								   PendingProperties *props) {
+	// Update hash with label if one is provided.
+	if(label) assert(XXH64_update(state, label, strlen(label)) != XXH_ERROR);
 
 	if(props) {
-		// Hash attribute count
-		assert(XXH64_update(&state, &props->property_count, sizeof(props->property_count)) != XXH_ERROR);
-
+		// Update hash with attribute count.
+		assert(XXH64_update(state, &props->property_count, sizeof(props->property_count)) != XXH_ERROR);
 		for(int i = 0; i < props->property_count; i++) {
-			// Hash attribute ID
-			assert(XXH64_update(&state, &props->attr_keys[i], sizeof(props->attr_keys[i])) != XXH_ERROR);
+			// Update hash with attribute ID.
+			assert(XXH64_update(state, &props->attr_keys[i], sizeof(props->attr_keys[i])) != XXH_ERROR);
 
-			// Hash the hashval of the associated SIValue
+			// Update hash with the hashval of the associated SIValue.
 			XXH64_hash_t value_hash = SIValue_HashCode(props->values[i]);
-			assert(XXH64_update(&state, &value_hash, sizeof(value_hash)) != XXH_ERROR);
+			assert(XXH64_update(state, &value_hash, sizeof(value_hash)) != XXH_ERROR);
 		}
 	}
-
-	unsigned long long const hash = XXH64_digest(&state);
-
-	return hash;
 }
 
-// Returns true if the considered entity has not been encountered previously.
-static bool _EntityIsDistinct(rax *unique_entities, GraphEntityType t, const char *alias,
-							  const char *label, PendingProperties *props) {
-	if(!strncmp(alias, "anon_", 5)) return true;
-	XXH64_hash_t hash = _HashEntity(t, alias, label, props);
-	return raxTryInsert(unique_entities, (unsigned char *)&hash, sizeof(hash), NULL, NULL);
+// Revert the most recent set of buffered creations and free any allocations.
+static void _RollbackPendingCreations(OpMergeCreate *op) {
+	uint nodes_to_create_count = array_len(op->pending.nodes_to_create);
+	for(uint i = 0; i < nodes_to_create_count; i++) {
+		array_pop(op->pending.created_nodes);
+		PendingProperties *props = array_pop(op->pending.node_properties);
+		PendingPropertiesFree(props);
+	}
+
+	uint edges_to_create_count = array_len(op->pending.edges_to_create);
+	for(uint i = 0; i < edges_to_create_count; i++) {
+		array_pop(op->pending.created_edges);
+		PendingProperties *props = array_pop(op->pending.edge_properties);
+		PendingPropertiesFree(props);
+	}
 }
 
-OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeCreateCtx *nodes,
-					EdgeCreateCtx *edges, bool no_duplicate_creations) {
-	OpCreate *op = calloc(1, sizeof(OpCreate));
+OpBase *NewMergeCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
+						 NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
+	OpMergeCreate *op = calloc(1, sizeof(OpMergeCreate));
 	op->records = NULL;
-	op->unique_entities = no_duplicate_creations ? raxNew() : NULL;
-	op->nodes_to_create = nodes;
-	op->edges_to_create = edges;
-	op->gc = QueryCtx_GetGraphCtx();
-	op->created_nodes = array_new(Node *, 0);
-	op->created_edges = array_new(Edge *, 0);
-	op->node_properties = array_new(PendingProperties *, 0);
-	op->edge_properties = array_new(PendingProperties *, 0);
-	op->stats = stats;
+	op->unique_entities = raxNew();       // Create a map to unique pending creations.
+	op->hash_state = XXH64_createState(); // Create a hash state.
+	op->pending = NewPendingCreationsContainer(stats, nodes, edges); // Prepare all creation variables.
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_CREATE, "Create", NULL, CreateConsume,
-				NULL, NULL, CreateFree, plan);
+	OpBase_Init((OpBase *)op, OPType_MERGE_CREATE, "MergeCreate", NULL, MergeCreateConsume,
+				NULL, NULL, MergeCreateFree, plan);
 
 	uint node_blueprint_count = array_len(nodes);
 	uint edge_blueprint_count = array_len(edges);
@@ -127,211 +79,88 @@ OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeC
 	return (OpBase *)op;
 }
 
-bool _CreateNodes(OpCreate *op, Record r, bool created_edges) {
-	bool created_nodes = false;
-	uint nodes_to_create_count = array_len(op->nodes_to_create);
+/* Prepare all creations associated with the current Record.
+ * Returns false and does not buffer data if every entity to create for this Record
+ * has been created in a previous call. */
+static bool _CreateEntities(OpMergeCreate *op, Record r) {
+	assert(XXH64_reset(op->hash_state, 0) != XXH_ERROR); // Reset hash state
+
+	uint nodes_to_create_count = array_len(op->pending.nodes_to_create);
 	for(uint i = 0; i < nodes_to_create_count; i++) {
 		/* Get specified node to create. */
-		QGNode *n = op->nodes_to_create[i].node;
+		QGNode *n = op->pending.nodes_to_create[i].node;
 
 		/* Create a new node. */
-		Node *newNode = Record_GetNode(r, op->nodes_to_create[i].node_idx);
+		Node *newNode = Record_GetNode(r, op->pending.nodes_to_create[i].node_idx);
 		newNode->entity = NULL;
 		newNode->label = n->label;
 		newNode->labelID = n->labelID;
 
 		/* Convert query-level properties. */
-		PropertyMap *map = op->nodes_to_create[i].properties;
+		PropertyMap *map = op->pending.nodes_to_create[i].properties;
 		PendingProperties *converted_properties = NULL;
-		if(map) converted_properties = _ConvertPropertyMap(r, map);
+		if(map) converted_properties = ConvertPropertyMap(r, map);
 
-		/* If we're only inserting unique entities and have not already created edges,
-		 * verify that this entity is new. */
-		if(!created_edges && op->unique_entities &&
-		   !_EntityIsDistinct(op->unique_entities, GETYPE_NODE, n->alias, n->label, converted_properties)) {
-			_PendingPropertiesFree(converted_properties);
-			continue;
-		}
+		/* Update the hash code with this entity. */
+		_IncrementalHashEntity(op->hash_state, n->label, converted_properties);
 
 		/* Save node for later insertion. */
-		op->created_nodes = array_append(op->created_nodes, newNode);
+		op->pending.created_nodes = array_append(op->pending.created_nodes, newNode);
 
 		/* Save properties to insert with node. */
-		op->node_properties = array_append(op->node_properties, converted_properties);
-
-		created_nodes = true;
+		op->pending.node_properties = array_append(op->pending.node_properties, converted_properties);
 	}
-	return created_nodes;
-}
 
-bool _CreateEdges(OpCreate *op, Record r) {
-	bool created_edges = false;
-	uint edges_to_create_count = array_len(op->edges_to_create);
+	uint edges_to_create_count = array_len(op->pending.edges_to_create);
 	for(uint i = 0; i < edges_to_create_count; i++) {
 		/* Get specified edge to create. */
-		QGEdge *e = op->edges_to_create[i].edge;
+		QGEdge *e = op->pending.edges_to_create[i].edge;
 
 		/* Retrieve source and dest nodes. */
-		Node *src_node = Record_GetNode(r, op->edges_to_create[i].src_idx);
-		Node *dest_node = Record_GetNode(r, op->edges_to_create[i].dest_idx);
+		Node *src_node = Record_GetNode(r, op->pending.edges_to_create[i].src_idx);
+		Node *dest_node = Record_GetNode(r, op->pending.edges_to_create[i].dest_idx);
 
 		/* Create the actual edge. */
-		Edge *newEdge = Record_GetEdge(r, op->edges_to_create[i].edge_idx);
+		Edge *newEdge = Record_GetEdge(r, op->pending.edges_to_create[i].edge_idx);
 		if(array_len(e->reltypes) > 0) newEdge->relationship = e->reltypes[0];
 		Edge_SetSrcNode(newEdge, src_node);
 		Edge_SetDestNode(newEdge, dest_node);
 
 		/* Convert query-level properties. */
-		PropertyMap *map = op->edges_to_create[i].properties;
+		PropertyMap *map = op->pending.edges_to_create[i].properties;
 		PendingProperties *converted_properties = NULL;
-		if(map) converted_properties = _ConvertPropertyMap(r, map);
+		if(map) converted_properties = ConvertPropertyMap(r, map);
 
-		/* If we're only inserting unique entities, verify that this entity is new. */
-		if(op->unique_entities &&
-		   !_EntityIsDistinct(op->unique_entities, GETYPE_EDGE, e->alias, e->reltypes[0],
-							  converted_properties)) {
-			// If the entity is not new, free its properties and skip this insertion.
-			_PendingPropertiesFree(converted_properties);
-			continue;
-		}
+		/* Update the hash code with this entity. */
+		_IncrementalHashEntity(op->hash_state, e->reltypes[0], converted_properties);
 
 		/* Save edge for later insertion. */
-		op->created_edges = array_append(op->created_edges, newEdge);
+		op->pending.created_edges = array_append(op->pending.created_edges, newEdge);
 
 		/* Save properties to insert with node. */
-		op->edge_properties = array_append(op->edge_properties, converted_properties);
-
-		created_edges = true;
+		op->pending.edge_properties = array_append(op->pending.edge_properties, converted_properties);
 	}
-	return created_edges;
+
+	// Finalize the hash value for all processed creations.
+	XXH64_hash_t const hash = XXH64_digest(op->hash_state);
+	// Check if any creations are unique.
+	bool should_create_entities = raxTryInsert(op->unique_entities, (unsigned char *)&hash,
+											   sizeof(hash), NULL, NULL);
+	// If no entity to be created is unique, roll back all the creations that have just been prepared.
+	if(!should_create_entities) _RollbackPendingCreations(op);
+
+	return should_create_entities;
 }
 
-/* Commit insertions. */
-static void _CommitNodes(OpCreate *op) {
-	Node *n;
-	GraphContext *gc = op->gc;
-	Graph *g = gc->g;
-
-	/* Create missing schemas.
-	 * this loop iterates over the CREATE pattern, e.g.
-	 * CREATE (p:Person)
-	 * As such we're not expecting a large number of iterations. */
-	uint blueprint_node_count = array_len(op->nodes_to_create);
-	for(uint i = 0; i < blueprint_node_count; i++) {
-		NodeCreateCtx *node_ctx = op->nodes_to_create + i;
-
-		const char *label = node_ctx->node->label;
-		if(label) {
-			if(GraphContext_GetSchema(gc, label, SCHEMA_NODE) == NULL) {
-				Schema *s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
-				op->stats->labels_added++;
-			}
-		}
-	}
-
-	uint node_count = array_len(op->created_nodes);
-	Graph_AllocateNodes(g, node_count);
-
-	for(uint i = 0; i < node_count; i++) {
-		n = op->created_nodes[i];
-		Schema *s = NULL;
-
-		// Get label ID.
-		int labelID = GRAPH_NO_LABEL;
-		if(n->label != NULL) {
-			s = GraphContext_GetSchema(gc, n->label, SCHEMA_NODE);
-			assert(s);
-			labelID = s->id;
-		}
-
-		// Introduce node into graph.
-		Graph_CreateNode(g, labelID, n);
-
-		if(op->node_properties[i]) _AddProperties(op, (GraphEntity *)n, op->node_properties[i]);
-
-		if(s && Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n, false);
-	}
-}
-
-static void _CommitEdges(OpCreate *op) {
-	Edge *e;
-	GraphContext *gc = op->gc;
-	Graph *g = gc->g;
-
-	/* Create missing schemas.
-	 * this loop iterates over the CREATE pattern, e.g.
-	 * CREATE (p:Person)-[e:VISITED]->(q)
-	 * As such we're not expecting a large number of iterations. */
-	uint blueprint_edge_count = array_len(op->edges_to_create);
-	for(uint i = 0; i < blueprint_edge_count; i++) {
-		EdgeCreateCtx *edge_ctx = op->edges_to_create + i;
-
-		const char **reltypes = edge_ctx->edge->reltypes;
-		if(reltypes) {
-			uint reltype_count = array_len(reltypes);
-			for(uint j = 0; j < reltype_count; j ++) {
-				const char *reltype = reltypes[j];
-				if(GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE) == NULL) {
-					Schema *s = GraphContext_AddSchema(gc, reltype, SCHEMA_EDGE);
-				}
-			}
-		}
-	}
-
-	int relationships_created = 0;
-
-	uint edge_count = array_len(op->created_edges);
-	for(uint i = 0; i < edge_count; i++) {
-		e = op->created_edges[i];
-		NodeID srcNodeID;
-		NodeID destNodeID;
-
-		// Nodes which already existed prior to this query would
-		// have their ID set under e->srcNodeID and e->destNodeID
-		// Nodes which are created as part of this query would be
-		// saved under edge src/dest pointer.
-		if(e->srcNodeID != INVALID_ENTITY_ID) srcNodeID = e->srcNodeID;
-		else srcNodeID = ENTITY_GET_ID(Edge_GetSrcNode(e));
-		if(e->destNodeID != INVALID_ENTITY_ID) destNodeID = e->destNodeID;
-		else destNodeID = ENTITY_GET_ID(Edge_GetDestNode(e));
-
-		Schema *schema = GraphContext_GetSchema(gc, e->relationship, SCHEMA_EDGE);
-		if(!schema) schema = GraphContext_AddSchema(gc, e->relationship, SCHEMA_EDGE);
-		int relation_id = schema->id;
-
-		if(!Graph_ConnectNodes(g, srcNodeID, destNodeID, relation_id, e)) continue;
-		relationships_created++;
-
-		if(op->edge_properties[i]) _AddProperties(op, (GraphEntity *)e, op->edge_properties[i]);
-	}
-
-	op->stats->relationships_created += relationships_created;
-}
-
-static void _CommitNewEntities(OpCreate *op) {
-	Graph *g = op->gc->g;
-
-	// Lock everything.
-	Graph_AcquireWriteLock(g);
-	Graph_SetMatrixPolicy(g, RESIZE_TO_CAPACITY);
-	uint node_count = array_len(op->created_nodes);
-	if(node_count > 0) _CommitNodes(op);
-	if(array_len(op->created_edges) > 0) _CommitEdges(op);
-	Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
-	// Release lock.
-	Graph_ReleaseLock(g);
-
-	op->stats->nodes_created += node_count;
-}
-
-static Record _handoff(OpCreate *op) {
+// Return mode, emit a populated Record.
+static Record _handoff(OpMergeCreate *op) {
 	Record r = NULL;
 	if(array_len(op->records)) r = array_pop(op->records);
 	return r;
 }
 
-static Record CreateConsume(OpBase *opBase) {
-	OpCreate *op = (OpCreate *)opBase;
+static Record MergeCreateConsume(OpBase *opBase) {
+	OpMergeCreate *op = (OpMergeCreate *)opBase;
 	Record r;
 
 	// Return mode, all data was consumed.
@@ -340,31 +169,28 @@ static Record CreateConsume(OpBase *opBase) {
 	// Consume mode.
 	op->records = array_new(Record, 32);
 
-	// No child operation to call.
 	OpBase *child = NULL;
-	if(!op->op.childCount) {
-		r = OpBase_CreateRecord((OpBase *)op);
+	if(!opBase->childCount) {
+		// No child operation to call.
+		r = OpBase_CreateRecord(opBase);
 		// Track the newly-allocated Record so that it may be freed if execution fails.
 		OpBase_AddVolatileRecord(opBase, r);
 
-		/* Create entities. */
-		bool entities_created = false;
-		entities_created |= _CreateEdges(op, r);
-		entities_created |= _CreateNodes(op, r, entities_created);
+		/* Buffer all entity creations.
+		 * If this operation has no children, it should always have unique creations. */
+		assert(_CreateEntities(op, r));
 
 		// Save record for later use.
-		if(entities_created) op->records = array_append(op->records, r);
+		op->records = array_append(op->records, r);
 	} else {
 		// Pull data until child is depleted.
-		child = op->op.children[0];
+		child = opBase->children[0];
 		while((r = OpBase_Consume(child))) {
 			// Track inherited Record so that it may be freed if execution fails.
 			OpBase_AddVolatileRecord(opBase, r);
 
 			/* Create entities. */
-			bool entities_created = false;
-			entities_created |= _CreateEdges(op, r);
-			entities_created |= _CreateNodes(op, r, entities_created);
+			bool entities_created = _CreateEntities(op, r);
 
 			// Save record for later use.
 			if(entities_created) op->records = array_append(op->records, r);
@@ -379,14 +205,14 @@ static Record CreateConsume(OpBase *opBase) {
 	if(child) OpBase_PropagateFree(child);
 
 	// Create entities.
-	_CommitNewEntities(op);
+	CommitNewEntities(&op->pending);
 
 	// Return record.
 	return _handoff(op);
 }
 
-static void CreateFree(OpBase *ctx) {
-	OpCreate *op = (OpCreate *)ctx;
+static void MergeCreateFree(OpBase *ctx) {
+	OpMergeCreate *op = (OpMergeCreate *)ctx;
 
 	if(op->records) {
 		uint rec_count = array_len(op->records);
@@ -395,51 +221,16 @@ static void CreateFree(OpBase *ctx) {
 		op->records = NULL;
 	}
 
-	if(op->nodes_to_create) {
-		uint nodes_to_create_count = array_len(op->nodes_to_create);
-		for(uint i = 0; i < nodes_to_create_count; i ++) {
-			PropertyMap_Free(op->nodes_to_create[i].properties);
-		}
-		array_free(op->nodes_to_create);
-		op->nodes_to_create = NULL;
+	if(op->unique_entities) {
+		raxFree(op->unique_entities);
+		op->unique_entities = NULL;
 	}
 
-	if(op->edges_to_create) {
-		uint edges_to_create_count = array_len(op->edges_to_create);
-		for(uint i = 0; i < edges_to_create_count; i ++) {
-			PropertyMap_Free(op->edges_to_create[i].properties);
-		}
-		array_free(op->edges_to_create);
-		op->edges_to_create = NULL;
+	if(op->hash_state) {
+		XXH64_freeState(op->hash_state);
+		op->hash_state = NULL;
 	}
 
-	if(op->created_nodes) {
-		array_free(op->created_nodes);
-		op->created_nodes = NULL;
-	}
-
-	if(op->created_edges) {
-		array_free(op->created_edges);
-		op->created_edges = NULL;
-	}
-
-	// Free all graph-committed properties associated with nodes
-	uint prop_count = array_len(op->node_properties);
-	for(uint i = 0; i < prop_count; i ++) {
-		_PendingPropertiesFree(op->node_properties[i]);
-	}
-	array_free(op->node_properties);
-	op->node_properties = NULL;
-
-	// Free all graph-committed properties associated withedges
-	prop_count = array_len(op->edge_properties);
-	for(uint i = 0; i < prop_count; i ++) {
-		_PendingPropertiesFree(op->edge_properties[i]);
-	}
-	array_free(op->edge_properties);
-	op->edge_properties = NULL;
-
-	if(op->unique_entities) raxFree(op->unique_entities);
-	op->unique_entities = NULL;
+	PendingCreationsFree(&op->pending);
 }
 

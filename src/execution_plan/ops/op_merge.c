@@ -126,8 +126,8 @@ static OpResult MergeInit(OpBase *opBase) {
 	assert(opBase->childCount == 2 || opBase->childCount == 3);
 	OpMerge *op = (OpMerge *)opBase;
 	if(opBase->childCount == 2) {
-		// If we only have 2 streams, we simply need to determine which has a Create op.
-		if(_LocateOp(opBase->children[0], OPType_CREATE)) {
+		// If we only have 2 streams, we simply need to determine which has a MergeCreate op.
+		if(_LocateOp(opBase->children[0], OPType_MERGE_CREATE)) {
 			// If the Create op is in the first stream, swap the children.
 			// Otherwise, the order is already correct.
 			OpBase *tmp = opBase->children[0];
@@ -150,8 +150,8 @@ static OpResult MergeInit(OpBase *opBase) {
 			continue;
 		}
 
-		// The Create stream is the only stream with a Create op and Argument op.
-		if(!op->create_stream && _LocateOp(child, OPType_CREATE) && child_has_argument) {
+		// The Create stream is the only stream with a MergeCreate op and Argument op.
+		if(!op->create_stream && _LocateOp(child, OPType_MERGE_CREATE) && child_has_argument) {
 			op->create_stream = child;
 			continue;
 		}

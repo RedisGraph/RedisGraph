@@ -52,9 +52,10 @@ static inline void _UpdateRecord(IndexScan *op, Record r, EntityID node_id) {
 static Record IndexScanConsumeFromChild(OpBase *opBase) {
 	IndexScan *op = (IndexScan *)opBase;
 
-	if(op->child_record == NULL) { // should only trigger on first invocation.
+	if(op->child_record == NULL) {
 		op->child_record = OpBase_Consume(op->op.children[0]);
 		if(op->child_record == NULL) return NULL;
+		else RediSearch_ResultsIteratorReset(op->iter);
 	}
 
 	const EntityID *nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL);

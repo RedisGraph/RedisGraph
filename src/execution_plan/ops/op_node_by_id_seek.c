@@ -98,6 +98,7 @@ static Record NodeByIdSeekConsumeFromChild(OpBase *opBase) {
 	if(op->child_record == NULL) {
 		op->child_record = OpBase_Consume(op->op.children[0]);
 		if(op->child_record == NULL) return NULL;
+		else NodeByIdSeekReset(opBase);
 	}
 
 	Node n = _SeekNextNode(op);

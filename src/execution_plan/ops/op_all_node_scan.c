@@ -45,6 +45,7 @@ static Record AllNodeScanConsumeFromChild(OpBase *opBase) {
 	if(op->child_record == NULL) {
 		op->child_record = OpBase_Consume(op->op.children[0]);
 		if(op->child_record == NULL) return NULL;
+		else DataBlockIterator_Reset(op->iter);
 	}
 
 	Entity *en = (Entity *)DataBlockIterator_Next(op->iter);
@@ -55,7 +56,7 @@ static Record AllNodeScanConsumeFromChild(OpBase *opBase) {
 		if(op->child_record == NULL) return NULL; // Child depleted.
 
 		// Reset iterator and evaluate again.
-		AllNodeScanReset(opBase);
+		DataBlockIterator_Reset(op->iter);
 		en = DataBlockIterator_Next(op->iter);
 		if(!en) return NULL; // Iterator was empty; return immediately.
 	}

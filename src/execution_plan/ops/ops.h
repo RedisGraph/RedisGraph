@@ -33,4 +33,5 @@
 #include "op_apply.h"
 #include "op_join.h"
 #include "op_argument.h"
+#include "op_merge_create.h"
 

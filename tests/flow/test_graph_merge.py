@@ -331,3 +331,22 @@ class testGraphMergeFlow(FlowTestsBase):
         self.env.assertEquals(result.nodes_created, 1)
         self.env.assertEquals(result.properties_set, 3)
         self.env.assertEquals(result.result_set, expected)
+
+    def test18_merge_unique_creations(self):
+        global graph_2
+        # Create a new pattern with non-unique entities.
+        query = """UNWIND ['newprop1', 'newprop2'] AS x MERGE ({v:x})-[:e]->(n {v:'newprop1'})"""
+        result = graph_2.query(query)
+
+        # Verify that every entity was created in both executions.
+        self.env.assertEquals(result.nodes_created, 4)
+        self.env.assertEquals(result.relationships_created, 2)
+        self.env.assertEquals(result.properties_set, 4)
+
+        # Repeat the query.
+        result = graph_2.query(query)
+
+        # Verify that no data was modified.
+        self.env.assertEquals(result.nodes_created, 0)
+        self.env.assertEquals(result.relationships_created, 0)
+        self.env.assertEquals(result.properties_set, 0)

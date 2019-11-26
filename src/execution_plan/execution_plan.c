@@ -536,7 +536,7 @@ static inline void _buildCreateOp(GraphContext *gc, AST *ast, ExecutionPlan *pla
 								  ResultSetStatistics *stats) {
 	AST_CreateContext create_ast_ctx = AST_PrepareCreateOp(plan->query_graph, plan->record_map);
 	OpBase *op = NewCreateOp(plan, stats, create_ast_ctx.nodes_to_create,
-							 create_ast_ctx.edges_to_create, false);
+							 create_ast_ctx.edges_to_create);
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
@@ -599,14 +599,14 @@ static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge
 	/* If we have bound variables, we must ensure that all of our created entities are unique. Consider:
 	 * UNWIND [1, 1] AS x MERGE ({val: x})
 	 * Exactly one node should be created in the UNWIND...MERGE query. */
-	OpBase *create_op = NewCreateOp(plan, stats, merge_ctx->nodes_to_merge, merge_ctx->edges_to_merge,
-									true);
-	ExecutionPlan_AddOp(tail, create_op); // Add Create op to stream.
+	OpBase *merge_create = NewMergeCreateOp(plan, stats, merge_ctx->nodes_to_merge,
+											merge_ctx->edges_to_merge);
+	ExecutionPlan_AddOp(tail, merge_create); // Add MergeCreate op to stream.
 
 	// If we have bound variables, push an Argument tap beneath the Create op.
 	if(arguments) {
 		OpBase *create_argument = NewArgumentOp(plan, arguments);
-		ExecutionPlan_AddOp(create_op, create_argument); // Add Argument op to stream.
+		ExecutionPlan_AddOp(merge_create, create_argument); // Add Argument op to stream.
 	}
 }
 
@@ -705,23 +705,6 @@ static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
-/* We combine all Create clauses into one op, so if we already have a Create op we don't need another.
- * The exception is if we have a MERGE...CREATE query, as Merge introduces its own Create op.
- * TODO this logic is fairly ugly. */
-static inline bool _ConvertedCreateClauses(OpBase *root) {
-	if(!root) return false;
-
-	if(root->type == OPType_CREATE) return true;
-	else if(root->type == OPType_MERGE) return false;
-
-	for(int i = 0; i < root->childCount; i++) {
-		// Recursively visit children, looking for any Create op outside of a Merge stream.
-		if(_ConvertedCreateClauses(root->children[i])) return true;
-	}
-
-	return false;
-}
-
 static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 												ExecutionPlan *plan, ResultSetStatistics *stats, const cypher_astnode_t *clause) {
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
@@ -737,7 +720,7 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 		_buildCallOp(ast, plan, clause);
 	} else if(t == CYPHER_AST_CREATE) {
 		// Only add at most one Create op per plan. TODO Revisit and improve this logic.
-		if(_ConvertedCreateClauses(plan->root)) return;
+		if(ExecutionPlan_LocateOp(plan->root, OPType_CREATE)) return;
 		_buildCreateOp(gc, ast, plan, stats);
 	} else if(t == CYPHER_AST_UNWIND) {
 		_buildUnwindOp(plan, clause);
