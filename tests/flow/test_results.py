@@ -112,3 +112,46 @@ class testResultSetFlow(FlowTestsBase):
         self.env.assertEqual(result.header, expected_header)
         # Verify that 3 columns are returned
         self.env.assertEqual(len(result.result_set[0]), 3)
+
+    # Tests for aggregation functions default values. Fix for issue 767.
+    def test07_agg_func_default_values(self):
+        # Test for aggregation over non existing node properties.
+        # Max default value is null.
+        query = """MATCH (a) return max(a.missing_field)"""
+        result = graph.query(query)
+        self.env.assertEqual(None, result.result_set[0][0])
+        
+        # Min default value is null.
+        query = """MATCH (a) return min(a.missing_field)"""
+        result = graph.query(query)
+        self.env.assertEqual(None, result.result_set[0][0])
+
+        # Count default value is 0.
+        query = """MATCH (a) return count(a.missing_field)"""
+        result = graph.query(query)
+        self.env.assertEqual(0, result.result_set[0][0])
+
+        # Avarage default value is 0.
+        query = """MATCH (a) return avg(a.missing_field)"""
+        result = graph.query(query)
+        self.env.assertEqual(0, result.result_set[0][0])
+
+         # Collect default value is an empty array.
+        query = """MATCH (a) return collect(a.missing_field)"""
+        result = graph.query(query)
+        self.env.assertEqual([], result.result_set[0][0])
+
+        # StdDev default value is 0.
+        query = """MATCH (a) return stdev(a.missing_field)"""
+        result = graph.query(query)
+        self.env.assertEqual(0, result.result_set[0][0])
+
+        # percentileCont default value is null.
+        query = """MATCH (a) return percentileCont(a.missing_field, 0.1)"""
+        result = graph.query(query)
+        self.env.assertEqual(None, result.result_set[0][0])
+
+        # percentileDisc default value is null.
+        query = """MATCH (a) return percentileDisc(a.missing_field, 0.1)"""
+        result = graph.query(query)
+        self.env.assertEqual(None, result.result_set[0][0])
