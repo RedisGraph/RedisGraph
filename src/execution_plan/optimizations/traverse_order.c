@@ -303,10 +303,16 @@ void orderExpressions(AlgebraicExpression **exps, uint exp_count, const FT_Filte
 	// Return early if we only have one expression that represents a scan rather than a traversal.
 	if(exp_count == 1 && exps[0]->operand_count == 1 && exps[0]->src_node == exps[0]->dest_node) return;
 
+	// Collect all filtered aliases.
+	rax *filtered_entities = FilterTree_CollectModified(filters);
+
 	// Compute all possible permutations of algebraic expressions.
 	Arrangement *arrangements = _permutations(exps, exp_count);
 	uint arrangement_count = array_len(arrangements);
-	if(arrangement_count == 1) goto cleanup;
+
+	/* If we only have one arrangement, we still want to select the optimal entry point
+	 * but have no other work to do. */
+	if(arrangement_count == 1) goto select_entry_point;
 
 	// Remove invalid arrangements.
 	Arrangement *valid_arrangements = array_new(Arrangement, arrangement_count);
@@ -317,9 +323,6 @@ void orderExpressions(AlgebraicExpression **exps, uint exp_count, const FT_Filte
 	}
 	uint valid_arrangement_count = array_len(valid_arrangements);
 	assert(valid_arrangement_count > 0);
-
-	// Collect all filtered aliases.
-	rax *filtered_entities = FilterTree_CollectModified(filters);
 
 	/* Score each arrangement,
 	 * keep track after arrangement with highest score. */
@@ -346,11 +349,11 @@ void orderExpressions(AlgebraicExpression **exps, uint exp_count, const FT_Filte
 	// so that their source nodes have already been resolved by previous expressions.
 	_resolve_winning_sequence(exps, exp_count);
 
+select_entry_point:
 	// Transpose the winning expression if the destination node is a more efficient starting place.
 	_select_entry_point(exps[0], filtered_entities, bound_vars);
 
 	raxFree(filtered_entities);
-cleanup:
 	for(uint i = 0; i < arrangement_count; i++) _Arrangement_Free(arrangements[i]);
 	array_free(arrangements);
 }
