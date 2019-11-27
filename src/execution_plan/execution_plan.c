@@ -27,26 +27,6 @@
 // Forward declaration
 static void _PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set);
 
-/* Returns the left most leaf operation in the current segment. */
-static inline OpBase *_ExecutionPlan_LocateLeaf(OpBase *root) {
-	if(root->childCount == 0) return root;
-	return _ExecutionPlan_LocateLeaf(root->children[0]);
-}
-
-static inline OpBase *_ExecutionPlan_LocateParentProjection(OpBase *root) {
-	assert(root);
-	if(root->type & (OPType_PROJECT | OPType_AGGREGATE)) return root;
-	return _ExecutionPlan_LocateParentProjection(root->parent);
-}
-
-static inline OpBase *_ExecutionPlan_FindConnectingOp(OpBase *root) {
-	// Find the leftmost leaf in this segment.
-	OpBase *leaf = _ExecutionPlan_LocateLeaf(root);
-
-	// Traverse upwards until an aggregate/project op is found.
-	return _ExecutionPlan_LocateParentProjection(leaf);
-}
-
 static inline void _ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_root) {
 	if(plan->root) ExecutionPlan_NewRoot(plan->root, new_root);
 	plan->root = new_root;
@@ -909,7 +889,7 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 		ExecutionPlan *current_segment = segments[i];
 
 		OpBase *prev_root = prev_segment->root;
-		connecting_op = _ExecutionPlan_FindConnectingOp(current_segment->root);
+		connecting_op = ExecutionPlan_LocateOp(current_segment->root, OPType_PROJECT | OPType_AGGREGATE);
 		assert(connecting_op->childCount == 0);
 
 		ExecutionPlan_AddOp(connecting_op, prev_root);
@@ -932,7 +912,7 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 		if(!connecting_op) {
 			// Set the connecting op if our query is just a RETURN.
 			assert(segment_count == 1);
-			connecting_op = _ExecutionPlan_FindConnectingOp(plan->root);
+			connecting_op = ExecutionPlan_LocateOp(plan->root, OPType_PROJECT | OPType_AGGREGATE);
 		}
 
 		// Prepare column names for the ResultSet.
