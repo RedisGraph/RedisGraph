@@ -58,6 +58,17 @@ int OpBase_Modifies(OpBase *op, const char *alias) {
 	return (intptr_t)id;
 }
 
+int OpBase_AliasModifier(OpBase *op, const char *modifier, const char *alias) {
+	rax *mapping = ExecutionPlan_GetMappings(op->plan);
+	void *id = raxFind(mapping, (unsigned char *)modifier, strlen(modifier));
+	assert(id != raxNotFound);
+
+	raxInsert(mapping, (unsigned char *)alias, strlen(alias), id, NULL);
+	op->modifies = array_append(op->modifies, alias);
+
+	return (intptr_t)id;
+}
+
 bool OpBase_Aware(OpBase *op, const char *alias, int *idx) {
 	rax *mapping = ExecutionPlan_GetMappings(op->plan);
 	void *rec_idx = raxFind(mapping, (unsigned char *)alias, strlen(alias));

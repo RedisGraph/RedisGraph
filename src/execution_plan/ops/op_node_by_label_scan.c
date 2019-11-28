@@ -92,6 +92,7 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 		if(op->child_record == NULL) return NULL; // Child depleted.
 
 		// Reset iterator and evaluate again.
+		GxB_MatrixTupleIter_reset(op->iter);
 		GxB_MatrixTupleIter_next(op->iter, NULL, &nodeId, &depleted);
 		if(depleted) return NULL; // Empty iterator; return immediately.
 	}
@@ -145,4 +146,3 @@ static void NodeByLabelScanFree(OpBase *op) {
 		nodeByLabelScan->child_record = NULL;
 	}
 }
-

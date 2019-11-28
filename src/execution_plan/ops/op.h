@@ -114,6 +114,9 @@ void OpBase_RemoveVolatileRecords(OpBase *op);
  * Returns the ID associated with alias. */
 int OpBase_Modifies(OpBase *op, const char *alias);
 
+/* Adds an alias to an existing modifier, such that record[modifier] = record[alias]. */
+int OpBase_AliasModifier(OpBase *op, const char *modifier, const char *alias);
+
 /* Returns true if op is aware of alias.
  * an operation is aware of all aliases it modifies and all aliases
  * modified by prior operation within its segment. */

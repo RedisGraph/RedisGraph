@@ -499,16 +499,7 @@ static inline void _buildCallOp(AST *ast, ExecutionPlan *plan,
 	const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
 	const char **arguments = _BuildCallArguments(call_clause);
 	AR_ExpNode **yield_exps = _BuildCallProjections(call_clause, ast); // TODO only need strings
-	uint yield_count = array_len(yield_exps);
-	const char **yields = array_new(const char *, yield_count);
-
-	for(uint i = 0; i < yield_count; i ++) {
-		// Track the names of yielded variables.
-		yields = array_append(yields, yield_exps[i]->operand.variadic.entity_alias);
-		AR_EXP_Free(yield_exps[i]);
-	}
-	array_free(yield_exps);
-	OpBase *op = NewProcCallOp(plan, proc_name, arguments, yields);
+	OpBase *op = NewProcCallOp(plan, proc_name, arguments, yield_exps);
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
