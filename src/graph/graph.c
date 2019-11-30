@@ -872,9 +872,9 @@ void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 	assert(g && g->_writelocked && edges && edge_count > 0);
 
 	int relationCount = Graph_RelationTypeCount(g);
-	GrB_Matrix *masks = array_new(GrB_Matrix, relationCount);
+	GrB_Matrix masks[relationCount];
 	for(int i = 0; i < relationCount; i++) masks[i] = NULL;
-	bool need_update = false;
+	bool update_adj_matrices = false;
 
 	for(int i = 0; i < edge_count; i++) {
 		Edge *e = edges + i;
@@ -886,7 +886,7 @@ void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		GrB_Matrix_extractElement_UINT64(&edge_id, M, src_id, dest_id);
 
 		if(SINGLE_EDGE(edge_id)) {
-			need_update = true;
+			update_adj_matrices = true;
 			GrB_Matrix mask = masks[r];    // mask noteing all deleted edges.
 			// Get mask of this relation type.
 			if(mask == NULL) {
@@ -931,7 +931,7 @@ void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		DataBlock_DeleteItem(g->edges, ENTITY_GET_ID(e));
 	}
 
-	if(need_update) {
+	if(update_adj_matrices) {
 		GrB_Matrix remaining_mask;
 		GrB_Matrix_new(&remaining_mask, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
 		GrB_Descriptor desc;    // GraphBLAS descriptor.
@@ -942,50 +942,56 @@ void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		// Clear updated output matrix before assignment.
 		GrB_Descriptor_set(desc, GrB_OUTP, GrB_REPLACE);
 
-		/* Calling GrB_Matrix_apply over a matrix and mask, without setting GrB_MASK = GrB_SCMP, or setting
-		 * the desctiptort to GrB_NULL
-		 * GrB_Matrix_apply(res, mask, NULL, GrB_IDENTITY_UINT64, mat, NULL)
-		 * is matrix addition: res = mat + mask.
-		 * When the descriptor set to GrB_MASK = GrB_SCMP, calling
+		/* The following is explanation about the matrix addition, substraction and mutation preformed next:
+		 *
+		 * Calling GrB_Matrix_apply over a matrix and mask, without setting
+		 * GrB_MASK = GrB_SCMP and GrB_OUTP = GrB_REPLACE, or setting the desctiptort to GrB_NULL
+		 * GrB_Matrix_apply(mat, mask, NULL, GrB_IDENTITY_UINT64, mat, NULL)
+		 * is matrix addition: mat+=mask. From GraphBLAS notes:
+		 * "If desc[GrB OUTP].GrB REPLACE is not set, the elements of Z indicated by the mask
+		 * are copied into the result matrix, C, and elements of C that fall outside the
+		 * set indicated by the mask are unchanged".
+		 *
+		 * When the descriptor set to GrB_MASK = GrB_SCMP and GrB_OUTP = GrB_REPLACE, calling
 		 * GrB_Matrix_apply(res, mask, NULL, GrB_IDENTITY_UINT64, mat, desc)
-		 * is matrix substructing: res = mat - mask. */
+		 * is matrix substructing: res = mat - mask.
+		 *
+		 * When the descriptor set to GrB_MASK = GxB_DEFAULT and GrB_OUTP = GrB_REPLACE, calling
+		 * GrB_Matrix_apply(res, mask, NULL, GrB_IDENTITY_UINT64, mat, desc)
+		 * is matrix mutation: res = mat & mask. */
 
 		for(int r = 0; r < relationCount; r++) {
 			GrB_Matrix mask = masks[r];
 			GrB_Matrix R = Graph_GetRelationMatrix(g, r); // Relation Matrix.
-			GrB_Index nvals;
 			if(mask) {
 				GrB_Matrix M = Graph_GetRelationMap(g, r);  // Relation mapping matrix.
-				GrB_Matrix_nvals(&nvals, mask);
 				// Remove every entry of R and M marked by Mask.
+				// Desc: GrB_MASK = GrB_SCMP,  GrB_OUTP = GrB_REPLACE.
 				// R = R - mask.
-				GrB_Matrix_apply(R, mask, NULL, GrB_IDENTITY_UINT64, R, desc);
+				GrB_Matrix_apply(R, mask, GrB_NULL, GrB_IDENTITY_UINT64, R, desc);
 				// M = M - mask.
-				GrB_Matrix_apply(M, mask, NULL, GrB_IDENTITY_UINT64, M, desc);
+				GrB_Matrix_apply(M, mask, GrB_NULL, GrB_IDENTITY_UINT64, M, desc);
 				GrB_free(&mask);
 			}
 			// Collect remaining edges. remaining_mask = remaining_mask + R.
-			GrB_Matrix_apply(remaining_mask, R, NULL, GrB_IDENTITY_UINT64, R, NULL);
+			GrB_Matrix_apply(remaining_mask, R, GrB_NULL, GrB_IDENTITY_UINT64, R, GrB_NULL);
 		}
 
 		GrB_Matrix adj_matrix = Graph_GetAdjacencyMatrix(g);
 		GrB_Matrix t_adj_matrix = _Graph_Get_Transposed_AdjacencyMatrix(g);
 		// To calculate edges to delete, remove all the remaining edges from "The" adjency matrix.
-		// remaining_mask = adj_matrix - remaining_mask.
-		GrB_Matrix_apply(remaining_mask, remaining_mask, NULL, GrB_IDENTITY_UINT64, adj_matrix, desc);
-
-		// adj_matrix = adj_matrix - remaining_mask.
-		GrB_Matrix_apply(adj_matrix, remaining_mask, NULL, GrB_IDENTITY_UINT64, adj_matrix, desc);
-		// Transpose remaining_mask and substract from t_adj_matrix
-		GrB_transpose(remaining_mask, NULL,  NULL, remaining_mask, NULL);
-		GrB_Matrix_apply(t_adj_matrix, remaining_mask, NULL, GrB_IDENTITY_UINT64, t_adj_matrix, desc);
+		// Set descriptor mask to default.
+		GrB_Descriptor_set(desc, GrB_MASK, GxB_DEFAULT);
+		// adj_matrix = adj_matrix & remaining_mask.
+		GrB_Matrix_apply(adj_matrix, remaining_mask, GrB_NULL, GrB_IDENTITY_UINT64, adj_matrix, desc);
+		// Transpose remaining_mask.
+		GrB_transpose(remaining_mask, GrB_NULL,  GrB_NULL, remaining_mask, GrB_NULL);
+		// t_adj_matrix = t_adj_matrix & remaining_mask.
+		GrB_Matrix_apply(t_adj_matrix, remaining_mask, GrB_NULL, GrB_IDENTITY_UINT64, t_adj_matrix, desc);
 
 		GrB_free(&remaining_mask);
 		GrB_free(&desc);
 	}
-
-	// Clean up.
-	array_free(masks);
 }
 
 /* Removes both nodes and edges from graph. */
