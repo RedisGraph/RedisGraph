@@ -942,24 +942,6 @@ void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		// Clear updated output matrix before assignment.
 		GrB_Descriptor_set(desc, GrB_OUTP, GrB_REPLACE);
 
-		/* The following is explanation about the matrix addition, substraction and mutation preformed next:
-		 *
-		 * Calling GrB_Matrix_apply over a matrix and mask, without setting
-		 * GrB_MASK = GrB_SCMP and GrB_OUTP = GrB_REPLACE, or setting the desctiptort to GrB_NULL
-		 * GrB_Matrix_apply(mat, mask, NULL, GrB_IDENTITY_UINT64, mat, NULL)
-		 * is matrix addition: mat+=mask. From GraphBLAS notes:
-		 * "If desc[GrB OUTP].GrB REPLACE is not set, the elements of Z indicated by the mask
-		 * are copied into the result matrix, C, and elements of C that fall outside the
-		 * set indicated by the mask are unchanged".
-		 *
-		 * When the descriptor set to GrB_MASK = GrB_SCMP and GrB_OUTP = GrB_REPLACE, calling
-		 * GrB_Matrix_apply(res, mask, NULL, GrB_IDENTITY_UINT64, mat, desc)
-		 * is matrix substructing: res = mat - mask.
-		 *
-		 * When the descriptor set to GrB_MASK = GxB_DEFAULT and GrB_OUTP = GrB_REPLACE, calling
-		 * GrB_Matrix_apply(res, mask, NULL, GrB_IDENTITY_UINT64, mat, desc)
-		 * is matrix mutation: res = mat & mask. */
-
 		for(int r = 0; r < relationCount; r++) {
 			GrB_Matrix mask = masks[r];
 			GrB_Matrix R = Graph_GetRelationMatrix(g, r); // Relation Matrix.
@@ -967,14 +949,15 @@ void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 				GrB_Matrix M = Graph_GetRelationMap(g, r);  // Relation mapping matrix.
 				// Remove every entry of R and M marked by Mask.
 				// Desc: GrB_MASK = GrB_SCMP,  GrB_OUTP = GrB_REPLACE.
-				// R = R - mask.
+				// R = R & !mask.
 				GrB_Matrix_apply(R, mask, GrB_NULL, GrB_IDENTITY_UINT64, R, desc);
-				// M = M - mask.
+				// M = M & !mask.
 				GrB_Matrix_apply(M, mask, GrB_NULL, GrB_IDENTITY_UINT64, M, desc);
 				GrB_free(&mask);
 			}
 			// Collect remaining edges. remaining_mask = remaining_mask + R.
-			GrB_Matrix_apply(remaining_mask, R, GrB_NULL, GrB_IDENTITY_UINT64, R, GrB_NULL);
+			GrB_eWiseAdd_Matrix_BinaryOp(remaining_mask, GrB_NULL, GrB_NULL, GrB_PLUS_BOOL, remaining_mask, R,
+										 GrB_NULL);
 		}
 
 		GrB_Matrix adj_matrix = Graph_GetAdjacencyMatrix(g);
