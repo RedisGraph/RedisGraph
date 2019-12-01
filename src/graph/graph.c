@@ -842,8 +842,8 @@ void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 	GrB_Descriptor_set(desc, GrB_MASK, GrB_SCMP);
 
 	// Update Adjacency and transposed adjacency matrices.
-	GrB_Matrix_apply(adj, Mask, NULL, GrB_IDENTITY_UINT64, adj, desc);
-	GrB_Matrix_apply(tadj, Mask, NULL, GrB_IDENTITY_UINT64, tadj, desc);
+	GrB_Matrix_apply(adj, Mask, NULL, GrB_IDENTITY_BOOL, adj, desc);
+	GrB_Matrix_apply(tadj, Mask, NULL, GrB_IDENTITY_BOOL, tadj, desc);
 
 	/* Delete nodes
 	 * All nodes marked for deleteion are detected, no incoming / outgoing edges. */
@@ -950,7 +950,7 @@ void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 				// Remove every entry of R and M marked by Mask.
 				// Desc: GrB_MASK = GrB_SCMP,  GrB_OUTP = GrB_REPLACE.
 				// R = R & !mask.
-				GrB_Matrix_apply(R, mask, GrB_NULL, GrB_IDENTITY_UINT64, R, desc);
+				GrB_Matrix_apply(R, mask, GrB_NULL, GrB_IDENTITY_BOOL, R, desc);
 				// M = M & !mask.
 				GrB_Matrix_apply(M, mask, GrB_NULL, GrB_IDENTITY_UINT64, M, desc);
 				GrB_free(&mask);
@@ -966,11 +966,11 @@ void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		// Set descriptor mask to default.
 		GrB_Descriptor_set(desc, GrB_MASK, GxB_DEFAULT);
 		// adj_matrix = adj_matrix & remaining_mask.
-		GrB_Matrix_apply(adj_matrix, remaining_mask, GrB_NULL, GrB_IDENTITY_UINT64, adj_matrix, desc);
+		GrB_Matrix_apply(adj_matrix, remaining_mask, GrB_NULL, GrB_IDENTITY_BOOL, adj_matrix, desc);
 		// Transpose remaining_mask.
 		GrB_transpose(remaining_mask, GrB_NULL,  GrB_NULL, remaining_mask, GrB_NULL);
 		// t_adj_matrix = t_adj_matrix & remaining_mask.
-		GrB_Matrix_apply(t_adj_matrix, remaining_mask, GrB_NULL, GrB_IDENTITY_UINT64, t_adj_matrix, desc);
+		GrB_Matrix_apply(t_adj_matrix, remaining_mask, GrB_NULL, GrB_IDENTITY_BOOL, t_adj_matrix, desc);
 
 		GrB_free(&remaining_mask);
 		GrB_free(&desc);
