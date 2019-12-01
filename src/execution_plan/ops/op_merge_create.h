@@ -25,4 +25,3 @@ typedef struct {
 
 OpBase *NewMergeCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
 						 NodeCreateCtx *nodes, EdgeCreateCtx *edges);
-

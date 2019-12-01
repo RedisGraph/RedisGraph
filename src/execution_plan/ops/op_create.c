@@ -118,8 +118,6 @@ static Record CreateConsume(OpBase *opBase) {
 	if(!op->op.childCount) {
 		// No child operation to call.
 		r = OpBase_CreateRecord(opBase);
-		// Track the newly-allocated Record so that it may be freed if execution fails.
-		OpBase_AddVolatileRecord(opBase, r);
 		/* Create entities. */
 		_CreateNodes(op, r);
 		_CreateEdges(op, r);
@@ -130,9 +128,6 @@ static Record CreateConsume(OpBase *opBase) {
 		// Pull data until child is depleted.
 		child = op->op.children[0];
 		while((r = OpBase_Consume(child))) {
-			// Track inherited Record so that it may be freed if execution fails.
-			OpBase_AddVolatileRecord(opBase, r);
-
 			/* Create entities. */
 			_CreateNodes(op, r);
 			_CreateEdges(op, r);
@@ -141,8 +136,6 @@ static Record CreateConsume(OpBase *opBase) {
 			op->records = array_append(op->records, r);
 		}
 	}
-
-	OpBase_RemoveVolatileRecords(opBase); // No exceptions encountered, Records are not dangling.
 
 	/* Done reading, we're not going to call consume any longer
 	 * there might be operations e.g. index scan that need to free

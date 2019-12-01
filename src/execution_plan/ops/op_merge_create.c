@@ -54,7 +54,6 @@ static void _RollbackPendingCreations(OpMergeCreate *op) {
 OpBase *NewMergeCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
 						 NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
 	OpMergeCreate *op = calloc(1, sizeof(OpMergeCreate));
-	op->records = NULL;
 	op->unique_entities = raxNew();       // Create a map to unique pending creations.
 	op->hash_state = XXH64_createState(); // Create a hash state.
 	op->pending = NewPendingCreationsContainer(stats, nodes, edges); // Prepare all creation variables.
@@ -173,8 +172,6 @@ static Record MergeCreateConsume(OpBase *opBase) {
 	if(!opBase->childCount) {
 		// No child operation to call.
 		r = OpBase_CreateRecord(opBase);
-		// Track the newly-allocated Record so that it may be freed if execution fails.
-		OpBase_AddVolatileRecord(opBase, r);
 
 		/* Buffer all entity creations.
 		 * If this operation has no children, it should always have unique creations. */
@@ -186,18 +183,15 @@ static Record MergeCreateConsume(OpBase *opBase) {
 		// Pull data until child is depleted.
 		child = opBase->children[0];
 		while((r = OpBase_Consume(child))) {
-			// Track inherited Record so that it may be freed if execution fails.
-			OpBase_AddVolatileRecord(opBase, r);
-
 			/* Create entities. */
-			bool entities_created = _CreateEntities(op, r);
-
-			// Save record for later use.
-			if(entities_created) op->records = array_append(op->records, r);
+			if(_CreateEntities(op, r)) {
+				// Save record for later use.
+				op->records = array_append(op->records, r);
+			} else {
+				Record_Free(r);
+			}
 		}
 	}
-
-	OpBase_RemoveVolatileRecords(opBase); // No exceptions encountered, Records are not dangling.
 
 	/* Done reading, we're not going to call consume any longer
 	 * there might be operations e.g. index scan that need to free

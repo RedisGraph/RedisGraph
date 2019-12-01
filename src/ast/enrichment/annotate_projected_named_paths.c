@@ -18,9 +18,10 @@ static AnnotationCtx *_AST_NewProjectNamedPathContext(void) {
 
 static void _annotate_relevant_projected_named_path_identifier(AST *ast,
 															   rax *identifier_map, uint scope_start, uint scope_end) {
+	AnnotationCtx *named_paths_ctx = AST_AnnotationCtxCollection_GetNamedPathsCtx(
+										 ast->anot_ctx_collection);
+
 	for(uint clause_iter = scope_start; clause_iter < scope_end; clause_iter++) {
-		AnnotationCtx *named_paths_ctx = AST_AnnotationCtxCollection_GetNamedPathsCtx(
-											 ast->anot_ctx_collection);
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, clause_iter);
 		const cypher_astnode_type_t clause_type = cypher_astnode_type(clause);
 		// Match.
@@ -81,8 +82,8 @@ void _collect_projected_identifier(const cypher_astnode_t *ast_exp, rax *identif
 	}
 }
 
-static void _annotate_with_projected_paths(AST *ast, const cypher_astnode_t *with_clause,
-										   uint scope_start, uint scope_end) {
+static void _annotate_with_clause_projected_named_path(AST *ast,
+													   const cypher_astnode_t *with_clause, uint scope_start, uint scope_end) {
 	// Iterate over the projections and find their identifiers.
 	rax *identifier_map = raxNew();
 	uint with_projection_count = cypher_ast_with_nprojections(with_clause);
@@ -94,8 +95,8 @@ static void _annotate_with_projected_paths(AST *ast, const cypher_astnode_t *wit
 	raxFreeWithCallback(identifier_map, array_free);
 }
 
-static void _annotate_return_projected_paths(AST *ast, const cypher_astnode_t *return_clause,
-											 uint scope_start, uint scope_end) {
+static void _annotate_return_clause_projected_named_path(AST *ast,
+														 const cypher_astnode_t *return_clause, uint scope_start, uint scope_end) {
 	rax *identifier_map = raxNew();
 	uint return_projection_count = cypher_ast_return_nprojections(return_clause);
 	for(uint projection_iter = 0; projection_iter < return_projection_count; projection_iter++) {
@@ -108,20 +109,22 @@ static void _annotate_return_projected_paths(AST *ast, const cypher_astnode_t *r
 }
 
 static void _annotate_projected_named_path(AST *ast) {
-	uint clause_count = cypher_ast_query_nclauses(ast->root);
-	uint scope_start = 0;
 	uint scope_end;
-	for(uint i = 0; i < clause_count; i ++) {
-		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
-		cypher_astnode_type_t type = cypher_astnode_type(clause);
-		// WITH and RETURN clauses demarcate scope boundaries.
-		if(type != CYPHER_AST_WITH && type != CYPHER_AST_RETURN) continue;
-
-		scope_end = i; // The examined scope ends at this clause.
-		// Annotate the current clause.
-		if(type == CYPHER_AST_WITH) _annotate_with_projected_paths(ast, clause, scope_start, scope_end);
-		else _annotate_return_projected_paths(ast, clause, scope_start, scope_end);
-		scope_start = scope_end; // Start the next scope.
+	uint scope_start = 0;
+	uint clause_count = cypher_ast_query_nclauses(ast->root);
+	for(uint i = 0; i < clause_count; i++) {
+		const cypher_astnode_t *child = cypher_ast_query_get_clause(ast->root, i);
+		if(cypher_astnode_type(child) == CYPHER_AST_WITH) {
+			scope_end = i;
+			const cypher_astnode_t *with_clause = cypher_ast_query_get_clause(ast->root, i);
+			_annotate_with_clause_projected_named_path(ast, with_clause, scope_start, scope_end);
+			scope_start = scope_end;
+		} else if(cypher_astnode_type(child) == CYPHER_AST_RETURN) {
+			scope_end = i;
+			const cypher_astnode_t *return_clause = cypher_ast_query_get_clause(ast->root, i);
+			_annotate_return_clause_projected_named_path(ast, return_clause, scope_start, scope_end);
+			scope_start = scope_end;
+		}
 	}
 }
 
@@ -130,4 +133,3 @@ void AST_AnnotateNamedPaths(AST *ast) {
 												 _AST_NewProjectNamedPathContext());
 	_annotate_projected_named_path(ast);
 }
-

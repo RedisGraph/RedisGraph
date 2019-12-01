@@ -66,6 +66,19 @@ Record Record_Clone(const Record r) {
 	size_t required_record_size = sizeof(Entry) * entry_count;
 
 	memcpy(clone->entries, r->entries, required_record_size);
+
+	/* Foreach scalar entry in cloned record, make sure it is not freed.
+	 * it is the original record owner responsibility to free the record
+	 * and its internal scalar as a result.
+	 *
+	 * TODO: I wish we wouldn't have to perform this loop as it is a major performance hit
+	 * with the introduction of a garbage collection this should be removed. */
+	for(int i = 0; i < entry_count; i++) {
+		if(Record_GetType(clone, i) == REC_TYPE_SCALAR) {
+			SIValue_MakeVolatile(&clone->entries[i].value.s);
+		}
+	}
+
 	return clone;
 }
 

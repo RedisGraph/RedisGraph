@@ -49,33 +49,33 @@ static void _UpdateProperty(Record r, GraphEntity *ge, EntityUpdateEvalCtx *upda
 // Perform all ON MATCH updates for all matched records.
 static void _UpdateProperties(OpMerge *op, Record *records) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Graph_AcquireWriteLock(gc->g); // Lock the graph.
-
-	// Iterate over all update contexts, converting property keys to IDs.
 	uint update_count = array_len(op->on_match);
-	for(uint i = 0; i < update_count; i ++) {
-		op->on_match[i].attribute_idx = GraphContext_FindOrAddAttribute(gc, op->on_match[i].attribute);
-	}
-
 	uint record_count = array_len(records);
-	for(uint i = 0; i < record_count; i ++) {  // For each matched record
-		Record r = records[i];
-		for(uint j = 0; j < update_count; j ++) { // For each pending update.
-			EntityUpdateEvalCtx *update_ctx = &op->on_match[j];
 
-			// Retrieve the appropriate entry from the Record, make sure it's either a node or an edge.
-			RecordEntryType t = Record_GetType(r, update_ctx->record_idx);
-			assert(t == REC_TYPE_NODE || t == REC_TYPE_EDGE);
-			GraphEntity *ge = Record_GetGraphEntity(r, update_ctx->record_idx);
+	Graph_AcquireWriteLock(gc->g); // Lock the graph.
+	{
+		// Iterate over all update contexts, converting property keys to IDs.
+		for(uint i = 0; i < update_count; i ++) {
+			op->on_match[i].attribute_idx = GraphContext_FindOrAddAttribute(gc, op->on_match[i].attribute);
+		}
 
-			_UpdateProperty(r, ge, update_ctx); // Update the entity.
-			if(t == REC_TYPE_NODE) _UpdateIndices(gc, (Node *)ge); // Update indices if necessary.
+		for(uint i = 0; i < record_count; i ++) {  // For each matched record
+			Record r = records[i];
+			for(uint j = 0; j < update_count; j ++) { // For each pending update.
+				EntityUpdateEvalCtx *update_ctx = &op->on_match[j];
+
+				// Retrieve the appropriate entry from the Record, make sure it's either a node or an edge.
+				RecordEntryType t = Record_GetType(r, update_ctx->record_idx);
+				assert(t == REC_TYPE_NODE || t == REC_TYPE_EDGE);
+				GraphEntity *ge = Record_GetGraphEntity(r, update_ctx->record_idx);
+
+				_UpdateProperty(r, ge, update_ctx); // Update the entity.
+				if(t == REC_TYPE_NODE) _UpdateIndices(gc, (Node *)ge); // Update indices if necessary.
+			}
 		}
 	}
-
-	if(op->stats) op->stats->properties_set += update_count * record_count;
-
 	Graph_ReleaseLock(gc->g); // Release the lock.
+	if(op->stats) op->stats->properties_set += update_count * record_count;
 }
 
 //------------------------------------------------------------------------------
@@ -174,7 +174,6 @@ static OpResult MergeInit(OpBase *opBase) {
 	// Find and store references to the Argument taps for the Match and Create streams.
 	// The Match stream is populated by an Argument tap, store a reference to it.
 	op->match_argument_tap = (Argument *)ExecutionPlan_LocateOp(op->match_stream, OPType_ARGUMENT);
-
 	// If the create stream is populated by an Argument tap, store a reference to it.
 	op->create_argument_tap = (Argument *)ExecutionPlan_LocateOp(op->create_stream, OPType_ARGUMENT);
 	// Set up an array to store records produced by the bound variable stream.
@@ -208,7 +207,7 @@ static Record MergeConsume(OpBase *opBase) {
 
 	bool must_create_records = false;
 	bool reading_matches = true;
-	// Match mode: attempt to resolve the pattern once for every record from the bound variable
+	// Match mode: attempt to resolve the pattern for every record from the bound variable
 	// stream, or once if we have no bound variables.
 	while(reading_matches) {
 		Record lhs_record = NULL;
@@ -249,7 +248,7 @@ static Record MergeConsume(OpBase *opBase) {
 			must_create_records = true;
 		}
 
-		// Free the LHS Record if we haven't transfered it to the Create stream.
+		// Free the LHS Record if we haven't transferred it to the Create stream.
 		if(lhs_record) Record_Free(lhs_record);
 	}
 
@@ -278,13 +277,17 @@ static void MergeFree(OpBase *opBase) {
 	if(op->input_records) {
 		uint input_count = array_len(op->input_records);
 		for(uint i = 0; i < input_count; i ++) {
-			Record_Free(op->input_records[i]); // This loop should be unnecessary.
+			Record_Free(op->input_records[i]);
 		}
 		array_free(op->input_records);
 		op->input_records = NULL;
 	}
 
 	if(op->output_records) {
+		uint output_count = array_len(op->output_records);
+		for(uint i = 0; i < output_count; i ++) {
+			Record_Free(op->output_records[i]);
+		}
 		array_free(op->output_records);
 		op->output_records = NULL;
 	}
@@ -298,4 +301,3 @@ static void MergeFree(OpBase *opBase) {
 		op->on_match = NULL;
 	}
 }
-

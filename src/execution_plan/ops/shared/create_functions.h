@@ -43,4 +43,3 @@ void PendingPropertiesFree(PendingProperties *props);
 
 // Free all data associated with a completed create operation.
 void PendingCreationsFree(PendingCreations *pending);
-
