@@ -114,7 +114,7 @@ static bool _CreateEntities(OpMerge *op, Record r) {
 	_CommitEdges(op, r);
 
 	// Release lock.
-	QueryCtx_NotifyCommitAndUnlock();
+	QueryCtx_UnlockCommit();
 
 	OpBase_RemoveVolatileRecords((OpBase *)op); // No exceptions encountered, Records are not dangling.
 	return true;

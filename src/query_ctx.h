@@ -65,7 +65,7 @@ void QueryCtx_EmitException(void);
 
 /* Setters */
 /* Sets the global execution context */
-void QueryCtx_SetGlobalExecCtx(CommandCtx *cmd_ctx);
+void QueryCtx_SetGlobalExecutionCtx(CommandCtx *cmd_ctx);
 /* Set the provided AST for access through the QueryCtx. */
 void QueryCtx_SetAST(AST *ast);
 /* Set the error message for this query. */
@@ -98,11 +98,11 @@ bool QueryCtx_LockForCommit(void);
 
 /* Starts an ulocking flow and notifies Redis after commiting changes in the graph and Redis keyspace.
  * Unlocking flow is:
- * 1. Replicate verbatim
+ * 1. Replicate.
  * 2. Unlock graph R/W lock
  * 3. Close key
  * 4. Unlock GIL */
-void QueryCtx_NotifyCommitAndUnlock(void);
+void QueryCtx_UnlockCommit(void);
 
 /* Compute and return elapsed query execution time. */
 double QueryCtx_GetExecutionTime(void);

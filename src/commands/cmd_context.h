@@ -38,45 +38,46 @@ CommandCtx *CommandCtx_New
 // Get Redis module context
 RedisModuleCtx *CommandCtx_GetRedisCtx
 (
-	CommandCtx *qctx
+	CommandCtx *command_ctx
 );
 
 // Get blocking client.
-RedisModuleBlockedClient *CommandCtx_GetBlockingClient(
-	const CommandCtx *qctx
+RedisModuleBlockedClient *CommandCtx_GetBlockingClient
+(
+	const CommandCtx *command_ctx
 );
 
 // Get GraphContext.
 GraphContext *CommandCtx_GetGraphContext
 (
-	const CommandCtx *qctx
+	const CommandCtx *command_ctx
 );
 
 // Get command name.
-const char *CommandCtx_GetCommandName(
-	const CommandCtx *qctx
+const char *CommandCtx_GetCommandName
+(
+	const CommandCtx *command_ctx
 );
 
 const char *CommandCtx_GetQuery
 (
-	const CommandCtx *qctx
+	const CommandCtx *command_ctx
 );
 
 // Acquire Redis global lock.
 void CommandCtx_ThreadSafeContextLock
 (
-	const CommandCtx *qctx
+	const CommandCtx *command_ctx
 );
 
 // Release Redis global lock.
 void CommandCtx_ThreadSafeContextUnlock
 (
-	const CommandCtx *qctx
+	const CommandCtx *command_ctx
 );
 
 // Free command context.
 void CommandCtx_Free
 (
-	CommandCtx *qctx
+	CommandCtx *command_ctx
 );
-

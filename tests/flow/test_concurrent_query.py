@@ -10,6 +10,7 @@ GRAPH_ID = "G"                      # Graph identifier.
 CLIENT_COUNT = 16                   # Number of concurrent connections.
 graphs = None                       # One graph object per client.
 assertions = [True] * CLIENT_COUNT  # Each thread places its verdict at position threadID.
+exceptions = [None] * CLIENT_COUNT  # Each thread which fails sets its exception content ar position threadID.
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
 
 def query_aggregate(graph, query, threadID):
@@ -48,14 +49,10 @@ def query_write(graph, query, threadID):
 
 def thread_run_query(graph, query, threadID):
     global assertions
-    assertions[threadID] = graph.query(query)
-
-def thread_try_run_query(graph, query, threadID):
-    global assertions
     try:
         assertions[threadID] = graph.query(query)
     except ResponseError as e:
-        assertions[threadID] = str(e)
+        exceptions[threadID] = str(e)
 
 def thread_delete_graph(redis_con, graph_id):
     redis_con.delete(graph_id)
@@ -255,33 +252,33 @@ class testConcurrentQueryFlow(FlowTestsBase):
         redis_con = self.env.getConnection()
         heavy_write_query = """UNWIND(range(0,999999)) as x CREATE(n)"""
         threads = []
-        t = threading.Thread(target=thread_try_run_query, args=(graphs[0], heavy_write_query, 0))
-        t.setDaemon(True)
-        threads.append(t)
-        t = threading.Thread(target=thread_delete_graph, args=(redis_con, GRAPH_ID))
-        t.setDaemon(True)
-        threads.append(t)
+        writer = threading.Thread(target=thread_run_query, args=(graphs[0], heavy_write_query, 0))
+        writer.setDaemon(True)
+        threads.append(writer)
+        adversary = threading.Thread(target=thread_delete_graph, args=(redis_con, GRAPH_ID))
+        adversary.setDaemon(True)
+        threads.append(adversary)
         for thread in threads:
             thread.start()
         for thread in threads:
             thread.join()
-        self.env.assertEquals(assertions[0], "Encountered an empty key when opened key " + GRAPH_ID)
+        self.env.assertEquals(exceptions[0], "Encountered an empty key when opened key " + GRAPH_ID)
     
     def test_07_concurrent_write_replace(self):
         redis_con = self.env.getConnection()
         heavy_write_query = """UNWIND(range(0,999999)) as x CREATE(n)"""
         threads = []
-        t = threading.Thread(target=thread_try_run_query, args=(graphs[0], heavy_write_query, 0))
-        t.setDaemon(True)
-        threads.append(t)
-        t = threading.Thread(target=thread_replace_graph, args=(redis_con, GRAPH_ID))
-        t.setDaemon(True)
-        threads.append(t)
+        writer = threading.Thread(target=thread_run_query, args=(graphs[0], heavy_write_query, 0))
+        writer.setDaemon(True)
+        threads.append(writer)
+        adversary = threading.Thread(target=thread_replace_graph, args=(redis_con, GRAPH_ID))
+        adversary.setDaemon(True)
+        threads.append(adversary)
         for thread in threads:
             thread.start()
         for thread in threads:
             thread.join()
-        self.env.assertEquals(assertions[0], "Encountered a non-graph value type when opened key " + GRAPH_ID)
+        self.env.assertEquals(exceptions[0], "Encountered a non-graph value type when opened key " + GRAPH_ID)
 
 
 

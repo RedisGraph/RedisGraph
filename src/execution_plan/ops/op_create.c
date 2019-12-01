@@ -249,7 +249,7 @@ static bool _CommitNewEntities(OpCreate *op) {
 	if(array_len(op->created_edges) > 0) _CommitEdges(op);
 	Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
 	// Release lock.
-	QueryCtx_NotifyCommitAndUnlock();
+	QueryCtx_UnlockCommit();
 
 	op->stats->nodes_created += node_count;
 	return true;
