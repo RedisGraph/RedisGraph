@@ -79,8 +79,6 @@ void Graph_Query(void *args) {
 	cypher_parse_result_t *parse_result = parse(command_ctx->query);
 	if(parse_result == NULL) goto cleanup;
 	bool readonly = AST_ReadOnly(parse_result);
-	// If we are a replica and the query is read-only, no work needs to be done.
-	if(readonly && command_ctx->replicated_command) goto cleanup;
 
 	// Perform query validations
 	if(AST_Validate(ctx, parse_result) != AST_VALID) goto cleanup;

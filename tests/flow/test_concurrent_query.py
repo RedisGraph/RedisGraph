@@ -60,6 +60,9 @@ def thread_delete_graph(redis_con, graph_id):
 def thread_replace_graph(redis_con, graph_id):
     redis_con.set(graph_id, "1")
 
+def thread_rename_graph(redis_con, other_graph, graph_id):
+    redis_con.rename(other_graph, graph_id)
+
 def delete_graph(graph, threadID):
     global assertions
     assertions[threadID] = True
@@ -263,8 +266,32 @@ class testConcurrentQueryFlow(FlowTestsBase):
         for thread in threads:
             thread.join()
         self.env.assertEquals(exceptions[0], "Encountered an empty key when opened key " + GRAPH_ID)
+        # Restore to default.
+        exceptions[0] = None
     
-    def test_07_concurrent_write_replace(self):
+    def test_07_concurrent_write_rename(self):
+        redis_con = self.env.getConnection()
+        new_name = GRAPH_ID + "2"
+        redis_con.execute_command("GRAPH.QUERY",new_name, """MATCH (n) return n""", "--compact")
+        heavy_write_query = """UNWIND(range(0,999999)) as x CREATE(n)"""
+        threads = []
+        writer = threading.Thread(target=thread_run_query, args=(graphs[0], heavy_write_query, 0))
+        writer.setDaemon(True)
+        threads.append(writer)
+        adversary = threading.Thread(target=thread_rename_graph, args=(redis_con, new_name, GRAPH_ID))
+        adversary.setDaemon(True)
+        threads.append(adversary)
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        self.env.assertEquals(exceptions[0], "Encountered different graph value when opened key " + GRAPH_ID)
+        # Restore to default.
+        graphs[0].delete()
+        graphs[0].query("MATCH (n) RETURN n")
+        exceptions[0] = None
+    
+    def test_08_concurrent_write_replace(self):
         redis_con = self.env.getConnection()
         heavy_write_query = """UNWIND(range(0,999999)) as x CREATE(n)"""
         threads = []
@@ -279,8 +306,6 @@ class testConcurrentQueryFlow(FlowTestsBase):
         for thread in threads:
             thread.join()
         self.env.assertEquals(exceptions[0], "Encountered a non-graph value type when opened key " + GRAPH_ID)
-
-
-
-
+        # Restore to default.
+        exceptions[0] = None
 
