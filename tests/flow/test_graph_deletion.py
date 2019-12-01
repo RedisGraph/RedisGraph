@@ -3,6 +3,8 @@ import sys
 from redisgraph import Graph, Node, Edge
 
 from base import FlowTestsBase
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../')
+from demo import QueryInfo
 
 GRAPH_ID = "G"
 redis_graph = None
@@ -166,3 +168,14 @@ class testGraphDeletionFlow(FlowTestsBase):
         result = redis_graph.query(query)
         nodeCount = result.result_set[0][0]
         self.env.assertEquals(nodeCount, 0)
+
+    def test10_bulk_edge_deletion_timing(self):
+        # Create large amount of relationships (50000).
+        redis_graph.query("""UNWIND(range(1, 50000)) as x CREATE ()-[:R]->()""")
+        # Delete and benchmark for 300ms.
+        query = """MATCH (a)-[e:R]->(b) DELETE e"""
+        result = redis_graph.query(query)
+        query_info = QueryInfo(query = query, description = "Test the execution time for deleting large number of edges", max_run_time_ms = 300)
+        # Test will not fail for execution time > 300ms but a warning will be shown at the test output.
+        self.env.assertEquals(result.relationships_deleted, 50000)
+        self._assert_run_time(result, query_info)
