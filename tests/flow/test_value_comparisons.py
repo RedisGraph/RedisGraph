@@ -78,6 +78,13 @@ class testValueComparison(FlowTestsBase):
         self.env.assertEquals(
             len(actual_result.result_set), expected_result_count)
 
+    # Verify that comparisons between very small and very large values are ordered properly.
+    def test_large_comparisons(self):
+        query = """UNWIND [933, 1099511628237] AS val RETURN val ORDER BY val"""
+        actual_result = redis_graph.query(query)
+        expected = [[933], [1099511628237]]
+        self.env.assertEquals(actual_result.result_set, expected)
+
     # Verify that AND conditions on true, false, and NULL values evaluate appropriately
     def test_AND_truth_tables(self):
         # Test two non-NULL values
