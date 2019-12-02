@@ -20,6 +20,7 @@ typedef struct {
 	const QGNode *n;
 	uint nodeRecIdx;
 	DataBlockIterator *iter;
+	Record child_record;        /* The Record this op acts on if it is not a tap. */
 } AllNodeScan;
 
 OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const Graph *g, const QGNode *n);

@@ -16,13 +16,14 @@
 typedef struct {
 	OpBase op;
 	Graph *g;               // Graph object.
+	Record child_record;    // The Record this op acts on if it is not a tap.
 	NodeID currentId;       // Current ID fetched.
 	NodeID minId;           // Min ID to fetch.
 	NodeID maxId;           // Max ID to fetch.
 	bool minInclusive;      // Include min ID.
 	bool maxInclusive;      // Include max ID.
 	int nodeRecIdx;         // Position of entity within record.
-} OpNodeByIdSeek;
+} NodeByIdSeek;
 
 OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const QGNode *node, NodeID minId, NodeID maxId,
 						  bool includeMin, bool includeMax);

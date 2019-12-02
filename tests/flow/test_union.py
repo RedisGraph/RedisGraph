@@ -40,14 +40,3 @@ class testUnion(FlowTestsBase):
         except redis.exceptions.ResponseError:
             # Expecting an error.
             pass
-
-    def test_union_order(self):
-        q = """UNWIND [1,2,3] AS i RETURN i LIMIT 1 UNION ALL UNWIND [1,2,3] AS i RETURN i ORDER BY i DESC"""
-        result_set = redis_graph.query(q).result_set
-        expected_result = [[1], [3], [2], [1]]
-        self.env.assertEquals(result_set, expected_result)
-
-        q = """UNWIND [1,2,3] AS i RETURN i LIMIT 1 UNION ALL UNWIND [1,2,3] AS i RETURN i ORDER BY i ASC"""
-        result_set = redis_graph.query(q).result_set
-        expected_result = [[1], [1], [2], [3]]
-        self.env.assertEquals(result_set, expected_result)

@@ -1,79 +1,43 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
-*
-* This file is available under the Redis Labs Source Available License Agreement
-*/
+ * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ *
+ * This file is available under the Redis Labs Source Available License Agreement
+ */
 
 #include "./reduce_scans.h"
 #include "../../util/arr.h"
 #include "../ops/op_conditional_traverse.h"
 #include <assert.h>
 
-// Locates all SCAN operations within execution plan.
-void _collectScanOpes(OpBase *root, OpBase ***scans) {
-	if(root == NULL) return;
+static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
+	// Return early if the scan has no child operations.
+	if(scan->childCount == 0) return;
 
-	if(root->type == OPType_ALL_NODE_SCAN ||
-	   root->type == OPType_NODE_BY_LABEL_SCAN ||
-	   root->type == OPType_INDEX_SCAN) {
-		*scans = array_append(*scans, root);
-	}
+	// The scan operation should be operating on a single alias.
+	assert(array_len(scan->modifies) == 1);
+	const char *scanned_alias = scan->modifies[0];
 
-	for(int i = 0; i < root->childCount; i++) {
-		_collectScanOpes(root->children[i], scans);
+	// Check if that alias is already bound by any of the scan's children.
+	for(int i = 0; i < scan->childCount; i ++) {
+		if(ExecutionPlan_LocateOpResolvingAlias(scan->children[i], scanned_alias)) {
+			// The scanned alias is already bound, remove the redundant scan op.
+			ExecutionPlan_RemoveOp(plan, scan);
+			OpBase_Free(scan);
+			break;
+		}
 	}
 }
-
-// void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
-// if(!scan->children || scan->childCount == 0) return;
-
-/* Find taps above scan.
- * a tap is an operation which is a source of data
- * for example SCAN, UNWIND, PROCEDURE_CALL operation. */
-// OpBase **taps = array_new(OpBase*, 0);
-// ExecutionPlan_LocateTaps(scan->children[0], &taps);
-
-// // No taps.
-// int taps_count = array_len(taps);
-// if(taps_count == 0) {
-// array_free(taps);
-// return;
-// }
-
-/* See if one of the taps modifies the same entity as
- * current scan operation. */
-// assert(array_len(scan->modifies) == 1);
-// uint scanned_entity = scan->modifies[0];
-
-// for(int i = 0; i < taps_count; i++) {
-// int j = 0;
-// OpBase *tap = taps[i];
-// for(; j < array_len(tap->modifies); j++) {
-// uint set_entity = tap->modifies[j];
-// if(set_entity == scanned_entity) {
-// // Entity already set remove SCAN.
-// ExecutionPlan_RemoveOp(plan, scan);
-// break;
-// }
-// }
-// if(j < array_len(tap->modifies)) break;
-// }
-
-// array_free(taps);
-// }
 
 void reduceScans(ExecutionPlan *plan) {
-	// OpBase **scans = array_new(OpBase*, 0);
-	// _collectScanOpes(plan->root, &scans);
+	// Collect all SCAN operations within the execution plan.
+	OpBase **scans = ExecutionPlan_LocateOps(plan->root,
+											 (OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN |
+											  OPType_INDEX_SCAN | OPType_NODE_BY_ID_SEEK));
+	uint scan_count = array_len(scans);
+	for(uint i = 0; i < scan_count; i++) {
+		_reduceScans(plan, scans[i]);
+	}
 
-	// int scan_ops_count = array_len(scans);
-
-	// if(scan_ops_count) {
-	// for(int i = 0; i < scan_ops_count; i++) {
-	// OpBase *scan = scans[i];
-	// _reduceScans(plan, scan);
-	// }
-	// }
-
-	// array_free(scans);
+	array_free(scans);
 }
+

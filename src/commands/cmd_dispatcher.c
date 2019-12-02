@@ -34,7 +34,7 @@ static GRAPH_Commands determine_command(const char *cmd_name) {
 	if(strcasecmp(cmd_name, "graph.PROFILE") == 0) return CMD_PROFILE;
 
 	assert(false);
-	return CMD_BULK_UNKNOWN;
+	return CMD_UNKNOWN;
 }
 
 int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -68,3 +68,4 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 	return REDISMODULE_OK;
 }
+

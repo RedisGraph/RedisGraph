@@ -58,32 +58,30 @@ OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type);
  * Returns an array of operations. */
 OpBase **ExecutionPlan_LocateOps(OpBase *root, OPType type);
 
-/* Returns an array of taps; operations which generate data
- * e.g. SCAN, UNWIND, PROCEDURE_CALL, CREATE. */
-void ExecutionPlan_Taps(OpBase *root, OpBase ***taps);
-
 /* Find the earliest operation on the ExecutionPlan at which all
  * references are resolved. */
 OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references);
 
-/* Determines all resolved modifiers at given op, this is all
- * modified elements from given op and above it. */
-void ExecutionPlan_ResolvedModifiers(const OpBase *op, rax *modifiers);
+/* Populate a rax with all aliases that have been resolved by the given operation
+ * and its children. These are the bound variables at this point in execution, and
+ * subsequent operations should not introduce them as new entities. For example, in the query:
+ * MATCH (a:A) CREATE (a)-[:E]->(b:B)
+ * The Create operation should never introduce a new node 'a'. */
+void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers);
 
 /* execution_plan.c */
 
 /* Creates a new execution plan from AST */
-ExecutionPlan *NewExecutionPlan(
-	RedisModuleCtx *ctx,    // Module-level context
-	GraphContext *gc,       // Graph access and schemas
-	ResultSet *result_set
-);
+ExecutionPlan *NewExecutionPlan(ResultSet *result_set);
 
 /* Retrieve the map of aliases to Record offsets in this ExecutionPlan segment. */
 rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan);
 
 /* Prints execution plan. */
 void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx);
+
+/* Initialize all operations in an ExecutionPlan. */
+void ExecutionPlan_Init(ExecutionPlan *plan);
 
 /* Executes plan */
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan);

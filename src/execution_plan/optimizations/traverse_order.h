@@ -19,5 +19,7 @@ typedef enum {
 void orderExpressions(
 	AlgebraicExpression **exps,     // Expressions to order.
 	uint exps_count,                // Number of expressions.
-	const FT_FilterNode *filters    // Filters.
+	const FT_FilterNode *filters,   // Filters.
+	rax *bound_vars                 // Previously-bound variables.
 );
+

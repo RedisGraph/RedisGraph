@@ -29,30 +29,19 @@ MATCH (a)-[e]->(b) WHERE ID(e) >= 0 RETURN COUNT(b)
 MATCH (a)-[e]->(b) RETURN COUNT(b), e.dummyval
 ```
 
-## WITH clause limitations
+## LIMIT clause does not affect eager operations
 
-### Using nodes and relationships specified in WITH clause in multiple patterns
+When a WITH or RETURN clause introduces a LIMIT value, this value ought to be respected by all preceding operations.
 
-```sh
-MATCH (src {val: 1}) WITH src MATCH (src)-[]->(dest) RETURN dest
-```
-
-Will return a validation error.
-
-### Specifying WITH entities in curly braces:
+For example, given the query:
 
 ```sh
-UNWIND [1,2,3] AS value WITH value CREATE (:label_a {val: value})
-UNWIND [1,2,3] AS value WITH value MATCH (a {val: value})
+UNWIND [1,2,3] AS value CREATE (a {property: value}) RETURN a LIMIT 1
 ```
 
-Will return a syntax error.
+One node should be created with its 'property' set to 1. RedisGraph will currently create three nodes, and only return the first.
 
-WITH entities may be used in other contexts, such as:
-
-```sh
-UNWIND [1,2,3] AS value WITH value MATCH (b) WHERE b.val = value RETURN b
-```
+This limitation affects all eager operations: CREATE, SET, DELETE, MERGE, and projections with aggregate functions.
 
 ## Indexing limitations
 

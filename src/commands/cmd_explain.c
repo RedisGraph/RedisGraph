@@ -49,8 +49,11 @@ void Graph_Explain(void *args) {
 	Graph_AcquireReadLock(gc->g);
 	lock_acquired = true;
 
-	plan = NewExecutionPlan(ctx, gc, NULL);
-	if(plan) ExecutionPlan_Print(plan, ctx);
+	plan = NewExecutionPlan(NULL);
+	if(plan == NULL) goto cleanup;
+
+	ExecutionPlan_Init(plan);       // Initialize the plan's ops.
+	ExecutionPlan_Print(plan, ctx); // Print the execution plan.
 
 cleanup:
 	if(lock_acquired) Graph_ReleaseLock(gc->g);

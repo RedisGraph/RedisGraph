@@ -138,7 +138,7 @@ void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
 void _ExecutionPlan_LocateOps(OpBase *root, OPType type, OpBase ***ops) {
 	if(!root) return;
 
-	if(root->type & type)(*ops) = array_append((*ops), root);
+	if(root->type & type) *ops = array_append(*ops, root);
 
 	for(int i = 0; i < root->childCount; i++) {
 		_ExecutionPlan_LocateOps(root->children[i], type, ops);
@@ -176,9 +176,20 @@ void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
 }
 
 void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root) {
-	/* child is the current root operation and parent is a new operation. */
-	assert(!old_root->parent && !new_root->parent && !new_root->children);
-	_OpBase_AddChild(new_root, old_root);
+	/* The new root should have no parent, but may have children if we've constructed
+	 * a chain of traversals/scans. */
+	assert(!old_root->parent && !new_root->parent);
+
+	/* Find the deepest child of the new root operation.
+	 * Currently, we can only follow the first child, since we don't call this function when
+	 * introducing Cartesian Products (the only multiple-stream operation at this stage.)
+	 * This may be inadequate later. */
+	OpBase *tail = new_root;
+	assert(tail->childCount <= 1);
+	while(tail->childCount > 0) tail = tail->children[0];
+
+	// Append the old root to the tail of the new root's chain.
+	_OpBase_AddChild(tail, old_root);
 }
 
 void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b) {
@@ -260,15 +271,6 @@ OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type) {
 	return NULL;
 }
 
-void ExecutionPlan_Taps(OpBase *root, OpBase ***taps) {
-	if(root == NULL) return;
-	if(root->type & OP_SCAN) *taps = array_append(*taps, root);
-
-	for(int i = 0; i < root->childCount; i++) {
-		ExecutionPlan_Taps(root->children[i], taps);
-	}
-}
-
 OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references) {
 	OpBase *op = NULL;
 	const char **temp = _ExecutionPlan_LocateReferences(root, &op, references);
@@ -276,18 +278,19 @@ OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references) {
 	return op;
 }
 
-// Collect all resolved entities on an operation chain.
-void ExecutionPlan_ResolvedModifiers(const OpBase *op, rax *modifiers) {
+// Collect all aliases that have been resolved by the given tree of operations.
+void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers) {
 	assert(op && modifiers);
 	if(op->modifies) {
 		uint modifies_count = array_len(op->modifies);
 		for(uint i = 0; i < modifies_count; i++) {
 			const char *modified = op->modifies[i];
-			raxTryInsert(modifiers, (unsigned char *)modified, strlen(modified), NULL, NULL);
+			raxTryInsert(modifiers, (unsigned char *)modified, strlen(modified), (void *)modified, NULL);
 		}
 	}
 
 	for(int i = 0; i < op->childCount; i++) {
-		ExecutionPlan_ResolvedModifiers(op->children[i], modifiers);
+		ExecutionPlan_BoundVariables(op->children[i], modifiers);
 	}
 }
+

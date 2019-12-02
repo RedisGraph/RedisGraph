@@ -61,7 +61,7 @@ void Graph_Profile(void *args) {
 	}
 
 	result_set = NewResultSet(ctx, false);
-	ExecutionPlan *plan = NewExecutionPlan(ctx, gc, result_set);
+	ExecutionPlan *plan = NewExecutionPlan(result_set);
 	if(plan) {
 		ExecutionPlan_Profile(plan);
 		ExecutionPlan_Print(plan, ctx);

@@ -5,6 +5,7 @@
 */
 
 #include "op_update.h"
+#include "../../query_ctx.h"
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
 #include "../../arithmetic/arithmetic_expression.h"
@@ -137,24 +138,24 @@ static Record _handoff(OpUpdate *op) {
 	return NULL;
 }
 
-OpBase *NewUpdateOp(const ExecutionPlan *plan, GraphContext *gc, EntityUpdateEvalCtx *update_exps,
-					uint update_exp_count, ResultSetStatistics *stats) {
+OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps,
+					ResultSetStatistics *stats) {
 	OpUpdate *op = calloc(1, sizeof(OpUpdate));
-	op->gc = gc;
+	op->gc = QueryCtx_GetGraphCtx();
 	op->stats = stats;
 	op->records = NULL;
 	op->updates_commited = false;
 	op->pending_updates_cap = 16; /* 16 seems reasonable number to start with. */
 	op->pending_updates_count = 0;
 	op->update_expressions = update_exps;
-	op->update_expressions_count = update_exp_count;
+	op->update_expressions_count = array_len(update_exps);
 	op->pending_updates = rm_malloc(sizeof(EntityUpdateCtx) * op->pending_updates_cap);
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", UpdateInit, UpdateConsume,
 				UpdateReset, NULL, UpdateFree, plan);
 
-	for(uint i = 0; i < update_exp_count; i ++) {
+	for(uint i = 0; i < op->update_expressions_count; i ++) {
 		op->update_expressions[i].record_idx = OpBase_Modifies((OpBase *)op, update_exps[i].alias);
 	}
 
@@ -244,7 +245,7 @@ static void UpdateFree(OpBase *ctx) {
 	}
 
 	if(op->update_expressions) {
-		rm_free(op->update_expressions);
+		array_free(op->update_expressions);
 		op->update_expressions = NULL;
 	}
 

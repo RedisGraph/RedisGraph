@@ -9,7 +9,9 @@
 #include "../../query_ctx.h"
 
 /* Forward declarations. */
+static OpResult NodeByLabelScanInit(OpBase *opBase);
 static Record NodeByLabelScanConsume(OpBase *opBase);
+static Record NodeByLabelScanConsumeFromChild(OpBase *opBase);
 static OpResult NodeByLabelScanReset(OpBase *opBase);
 static void NodeByLabelScanFree(OpBase *opBase);
 
@@ -25,10 +27,22 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *node) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	op->g = gc->g;
 	op->n = node;
+	op->iter = NULL;
 	op->_zero_matrix = NULL;
+	op->child_record = NULL;
 
-	/* Find out label matrix ID. */
-	Schema *schema = GraphContext_GetSchema(gc, node->label, SCHEMA_NODE);
+	// Set our Op operations
+	OpBase_Init((OpBase *)op, OPType_NODE_BY_LABEL_SCAN, "Node By Label Scan", NodeByLabelScanInit,
+				NodeByLabelScanConsume, NodeByLabelScanReset, NodeByLabelScanToString, NodeByLabelScanFree, plan);
+
+	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, node->alias);
+
+	return (OpBase *)op;
+}
+
+static inline void _ConstructIterator(NodeByLabelScan *op) {
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Schema *schema = GraphContext_GetSchema(gc, op->n->label, SCHEMA_NODE);
 	if(schema) {
 		GxB_MatrixTupleIter_new(&op->iter, Graph_GetLabelMatrix(gc->g, schema->id));
 	} else {
@@ -36,14 +50,60 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *node) {
 		GrB_Matrix_new(&op->_zero_matrix, GrB_BOOL, 1, 1);
 		GxB_MatrixTupleIter_new(&op->iter, op->_zero_matrix);
 	}
+}
 
-	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_NODE_BY_LABEL_SCAN, "Node By Label Scan", NULL,
-				NodeByLabelScanConsume, NodeByLabelScanReset, NodeByLabelScanToString, NodeByLabelScanFree, plan);
+static OpResult NodeByLabelScanInit(OpBase *opBase) {
+	if(opBase->childCount > 0) {
+		opBase->consume = NodeByLabelScanConsumeFromChild;
+	} else {
+		// If we have no children, we can build the iterator now.
+		_ConstructIterator((NodeByLabelScan *)opBase);
+	}
 
-	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, node->alias);
+	return OP_OK;
+}
 
-	return (OpBase *)op;
+static inline void _UpdateRecord(NodeByLabelScan *op, Record r, GrB_Index node_id) {
+	// Get a pointer to the node's allocated space within the Record.
+	Node *n = Record_GetNode(r, op->nodeRecIdx);
+	// Populate the Record with the graph entity data.
+	Graph_GetNode(op->g, node_id, n);
+}
+
+static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
+	NodeByLabelScan *op = (NodeByLabelScan *)opBase;
+
+	if(op->child_record == NULL) {
+		op->child_record = OpBase_Consume(op->op.children[0]);
+		if(op->child_record == NULL) return NULL;
+		// One-time construction of the iterator.
+		// (Don't do so before now because the label might have been built in a child op.)
+		if(op->iter == NULL) _ConstructIterator(op);
+		else GxB_MatrixTupleIter_reset(op->iter);
+	}
+
+	GrB_Index nodeId;
+	bool depleted = false;
+	GxB_MatrixTupleIter_next(op->iter, NULL, &nodeId, &depleted);
+	if(depleted) {
+		Record_Free(op->child_record); // Free old record.
+		// Pull a new record from child.
+		op->child_record = OpBase_Consume(op->op.children[0]);
+		if(op->child_record == NULL) return NULL; // Child depleted.
+
+		// Reset iterator and evaluate again.
+		GxB_MatrixTupleIter_reset(op->iter);
+		GxB_MatrixTupleIter_next(op->iter, NULL, &nodeId, &depleted);
+		if(depleted) return NULL; // Empty iterator; return immediately.
+	}
+
+	// Clone the held Record, as it will be freed upstream.
+	Record r = Record_Clone(op->child_record);
+
+	// Populate the Record with the actual node.
+	_UpdateRecord(op, r, nodeId);
+
+	return r;
 }
 
 static Record NodeByLabelScanConsume(OpBase *opBase) {
@@ -55,10 +115,10 @@ static Record NodeByLabelScanConsume(OpBase *opBase) {
 	if(depleted) return NULL;
 
 	Record r = OpBase_CreateRecord((OpBase *)op);
-	// Get a pointer to a heap allocated node.
-	Node *n = Record_GetNode(r, op->nodeRecIdx);
-	// Update node's internal entity pointer.
-	Graph_GetNode(op->g, nodeId, n);
+
+	// Populate the Record with the actual node.
+	_UpdateRecord(op, r, nodeId);
+
 	return r;
 }
 
@@ -80,5 +140,9 @@ static void NodeByLabelScanFree(OpBase *op) {
 		GrB_Matrix_free(&nodeByLabelScan->_zero_matrix);
 		nodeByLabelScan->_zero_matrix = NULL;
 	}
-}
 
+	if(nodeByLabelScan->child_record) {
+		Record_Free(nodeByLabelScan->child_record);
+		nodeByLabelScan->child_record = NULL;
+	}
+}

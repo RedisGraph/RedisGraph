@@ -18,9 +18,10 @@ static AnnotationCtx *_AST_NewProjectNamedPathContext(void) {
 
 static void _annotate_relevant_projected_named_path_identifier(AST *ast,
 															   rax *identifier_map, uint scope_start, uint scope_end) {
+	AnnotationCtx *named_paths_ctx = AST_AnnotationCtxCollection_GetNamedPathsCtx(
+										 ast->anot_ctx_collection);
+
 	for(uint clause_iter = scope_start; clause_iter < scope_end; clause_iter++) {
-		AnnotationCtx *named_paths_ctx = AST_AnnotationCtxCollection_GetNamedPathsCtx(
-											 ast->anot_ctx_collection);
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, clause_iter);
 		const cypher_astnode_type_t clause_type = cypher_astnode_type(clause);
 		// Match.
@@ -108,29 +109,23 @@ static void _annotate_return_clause_projected_named_path(AST *ast,
 }
 
 static void _annotate_projected_named_path(AST *ast) {
-	uint *with_clause_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
-	uint with_clause_count = array_len(with_clause_indices);
-	uint scope_start = 0;
 	uint scope_end;
-	// Handle with clauses.
-	for(uint i = 0; i < with_clause_count; i ++) {
-		scope_end = with_clause_indices[i];
-		const cypher_astnode_t *with_clause = cypher_ast_query_get_clause(ast->root, scope_end);
-		_annotate_with_clause_projected_named_path(ast, with_clause, scope_start, scope_end);
-		scope_start = scope_end;
+	uint scope_start = 0;
+	uint clause_count = cypher_ast_query_nclauses(ast->root);
+	for(uint i = 0; i < clause_count; i++) {
+		const cypher_astnode_t *child = cypher_ast_query_get_clause(ast->root, i);
+		if(cypher_astnode_type(child) == CYPHER_AST_WITH) {
+			scope_end = i;
+			const cypher_astnode_t *with_clause = cypher_ast_query_get_clause(ast->root, i);
+			_annotate_with_clause_projected_named_path(ast, with_clause, scope_start, scope_end);
+			scope_start = scope_end;
+		} else if(cypher_astnode_type(child) == CYPHER_AST_RETURN) {
+			scope_end = i;
+			const cypher_astnode_t *return_clause = cypher_ast_query_get_clause(ast->root, i);
+			_annotate_return_clause_projected_named_path(ast, return_clause, scope_start, scope_end);
+			scope_start = scope_end;
+		}
 	}
-	array_free(with_clause_indices);
-
-	uint *return_clause_indices = AST_GetClauseIndices(ast, CYPHER_AST_RETURN);
-	uint return_clause_count = array_len(return_clause_indices);
-	scope_start = 0;
-	for(uint i = 0; i < return_clause_count; i++) {
-		scope_end = return_clause_indices[i];
-		const cypher_astnode_t *return_clause = cypher_ast_query_get_clause(ast->root, scope_end);
-		_annotate_return_clause_projected_named_path(ast, return_clause, scope_start, scope_end);
-		scope_start = scope_end;
-	}
-	array_free(return_clause_indices);
 }
 
 void AST_AnnotateNamedPaths(AST *ast) {

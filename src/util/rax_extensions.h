@@ -15,3 +15,4 @@ bool raxIsSubset(rax *a, rax *b);
 
 // Duplicates a rax, performing a shallow copy of the original's values.
 rax *raxClone(rax *orig);
+

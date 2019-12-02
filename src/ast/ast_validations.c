@@ -14,6 +14,9 @@
 #include <assert.h>
 #include "../util/rax_extensions.h"
 
+// Forward declaration
+static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identifiers);
+
 inline static void _prepareIterateAll(rax *map, raxIterator *iter) {
 	raxStart(iter, map);
 	raxSeek(iter, "^", NULL, 0);
@@ -419,20 +422,25 @@ static bool _ValueIsConstant(const cypher_astnode_t *root) {
 	return true;
 }
 
-// Validate the property maps used in node/edge patterns in MATCH, MERGE, and CREATE clauses
+// Validate the property maps used in node/edge patterns in MATCH, and CREATE clauses
 static AST_Validation _ValidateInlinedProperties(const cypher_astnode_t *props, char **reason) {
-	cypher_astnode_type_t type = cypher_astnode_type(props);
-	if(type == CYPHER_AST_PARAMETER) {
-		asprintf(reason, "Parameters are not currently supported in RedisGraph.");
-		return AST_INVALID;
-	}
-
-	if(type != CYPHER_AST_MAP) {
+	if(cypher_astnode_type(props) != CYPHER_AST_MAP) {
 		// This should be impossible
 		asprintf(reason, "Encountered unhandled type in inlined properties.");
 		return AST_INVALID;
 	}
 
+	// TODO Introduce this validation, so we capture cases like:
+	// CREATE (:Clone {name: fake})
+	/*
+	for(uint i = 0; i < prop_count; i ++) {
+		const cypher_astnode_t *value = cypher_ast_map_get_value(props, i);
+		cypher_astnode_type_t value_type = cypher_astnode_type(value);
+		if(value_type == CYPHER_AST_IDENTIFIER) {
+			// If the identifier is not resolved earlier in the segment than this, emit an error.
+		}
+	}
+	*/
 	return AST_VALID;
 }
 
@@ -658,121 +666,108 @@ cleanup:
 	return res;
 }
 
-static AST_Validation _ValidateWithEntitiesOnPath(const cypher_astnode_t *path,
-												  rax *projections, char **reason) {
-	uint path_len = cypher_ast_pattern_path_nelements(path);
-	// Check all entities on the path
-	for(uint i = 0; i < path_len; i ++) {
-		const cypher_astnode_t *ast_identifier = NULL;
-		if(i % 2) {  // Checking an edge pattern
-			const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
-			ast_identifier = cypher_ast_rel_pattern_get_identifier(edge);
-		} else { // Checking a node pattern
-			const cypher_astnode_t *node = cypher_ast_pattern_path_get_element(path, i);
-			ast_identifier = cypher_ast_node_pattern_get_identifier(node);
+static AST_Validation _Validate_WITH_Clauses(const AST *ast, char **reason) {
+	// Verify that all functions used in the WITH clause and (if present) its WHERE predicate
+	// are defined and used validly.
+	// An AST segment has at most 1 WITH clause.
+	const cypher_astnode_t *with_clause = AST_GetClause(ast, CYPHER_AST_WITH);
+	if(with_clause == NULL) return AST_VALID;
+
+	// Verify that functions invoked by the WITH clause are valid.
+	return _ValidateFunctionCalls(with_clause, reason, true);
+}
+
+// Verify that MERGE doesn't redeclare bound relations and that one reltype is specified for unbound relations.
+static AST_Validation _ValidateMergeRelation(const cypher_astnode_t *entity, rax *defined_aliases,
+											 char **reason) {
+	const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(entity);
+	const char *alias = NULL;
+	if(identifier) alias = cypher_ast_identifier_get_name(identifier);
+
+	uint reltype_count = cypher_ast_rel_pattern_nreltypes(entity);
+	if(alias == NULL ||
+	   raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) == raxNotFound) {
+		// If the entity is unaliased or not previously bound, it cannot be redeclared.
+		// In this case, exactly one reltype should be specified for the edge.
+		if(reltype_count != 1) {
+			asprintf(reason,
+					 "Exactly one relationship type must be specified for each relation in a MERGE pattern.");
+			return AST_INVALID;
 		}
 
-		// If this entity was labeled, ensure that it has not been projected from a WITH clause
-		if(ast_identifier) {
-			const char *identifier = cypher_ast_identifier_get_name(ast_identifier);
-			if(raxFind(projections, (unsigned char *)identifier, strlen(identifier)) != raxNotFound) {
-				asprintf(reason, "Reusing the WITH projection '%s' in another pattern is currently not supported",
-						 identifier);
-				return AST_INVALID;
-			}
-		}
+		return AST_VALID;
+	}
+
+	if(reltype_count > 0 || cypher_ast_rel_pattern_get_properties(entity)) {
+		asprintf(reason, "The bound variable %s' can't be redeclared in a MERGE clause", alias);
+		return AST_INVALID;
 	}
 
 	return AST_VALID;
 }
 
-static AST_Validation _Validate_WITH_Clauses(const AST *ast, char **reason) {
-	// Verify that projected entities (nodes and edges) are not used in
-	// later path patterns.
-	// TODO The QueryGraph should be extended to allow this in the future.
+// Verify that MERGE doesn't redeclare bound nodes.
+static AST_Validation _ValidateMergeNode(const cypher_astnode_t *entity, rax *defined_aliases,
+										 char **reason) {
+	if(raxSize(defined_aliases) == 0) return AST_VALID;
 
-	// Retrieve the indices of each WITH clause to properly set the bounds of each scope.
-	// If the query does not have a WITH clause, there is only one scope.
-	uint end_offset;
-	uint start_offset = 0;
-	uint with_clause_count = AST_GetClauseCount(ast, CYPHER_AST_WITH);
-	if(with_clause_count == 0) return AST_VALID;
+	const cypher_astnode_t *identifier = cypher_ast_node_pattern_get_identifier(entity);
+	if(identifier == NULL) return AST_VALID;
 
-	rax *with_projections = raxNew();
-	uint clause_count = cypher_ast_query_nclauses(ast->root);
-	AST_Validation res = AST_VALID;
-
-	// Visit all clauses in order
-	for(uint i = 0; i < clause_count; i ++) {
-		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
-		cypher_astnode_type_t type = cypher_astnode_type(clause);
-		if(type == CYPHER_AST_WITH) {
-			// Verify that functions invoked by the WITH clause are valid.
-			res = _ValidateFunctionCalls(clause, reason, true);
-			if(res == AST_INVALID) break;
-
-			// Collect projected aliases from WITH clauses into the same triemap
-			_AST_GetWithAliases(clause, with_projections);
-		} else if(type == CYPHER_AST_MATCH) {
-			// Verify that no path in a MATCH pattern reuses a WITH projection
-			const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clause);
-			uint path_count = cypher_ast_pattern_npaths(pattern);
-			for(uint j = 0; j < path_count; j ++) {
-				const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
-				res = _ValidateWithEntitiesOnPath(path, with_projections, reason);
-				if(res == AST_INVALID) break;
-			}
-		} else if(type == CYPHER_AST_CREATE) {
-			// Verify that no path in a CREATE pattern reuses a WITH projection
-			const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(clause);
-			uint path_count = cypher_ast_pattern_npaths(pattern);
-			for(uint j = 0; j < path_count; j ++) {
-				const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
-				res = _ValidateWithEntitiesOnPath(path, with_projections, reason);
-				if(res == AST_INVALID) break;
-			}
-
-		} else if(type == CYPHER_AST_MERGE) {
-			// Verify that the single path in a MERGE clause doesn't reuse a WITH projection
-			const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
-			res = _ValidateWithEntitiesOnPath(path, with_projections, reason);
-			if(res == AST_INVALID) break;
-		}
+	const char *alias = cypher_ast_identifier_get_name(identifier);
+	if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) == raxNotFound) {
+		// If the entity is unaliased or not previously bound, it cannot be redeclared.
+		return AST_VALID;
 	}
 
-	raxFree(with_projections);
-	return res;
+	// If the entity is already bound, the MERGE pattern should not introduce labels or properties.
+	if((cypher_ast_node_pattern_nlabels(entity) > 0) ||
+	   cypher_ast_node_pattern_get_properties(entity)) {
+		asprintf(reason, "The bound node '%s' can't be redeclared in a MERGE clause", alias);
+		return AST_INVALID;
+	}
+
+	return AST_VALID;
 }
 
 static AST_Validation _Validate_MERGE_Clauses(const AST *ast, char **reason) {
-	const cypher_astnode_t **merge_clauses = AST_GetClauses(ast, CYPHER_AST_MERGE);
-	if(merge_clauses == NULL) return AST_VALID;
-
 	AST_Validation res = AST_VALID;
-	uint merge_count = array_len(merge_clauses);
+	uint *merge_clause_indices = AST_GetClauseIndices(ast, CYPHER_AST_MERGE);
+	uint merge_count = array_len(merge_clause_indices);
+	rax *defined_aliases = NULL;
+	if(merge_count == 0) goto cleanup;
+
+	defined_aliases = raxNew();
+	uint start_offset = 0;
 	for(uint i = 0; i < merge_count; i ++) {
-		const cypher_astnode_t *merge_clause = merge_clauses[i];
+		uint clause_idx = merge_clause_indices[i];
+
+		// Collect all entities that are bound before this MERGE clause.
+		for(uint j = start_offset; i < clause_idx; i ++) {
+			const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
+			_AST_GetDefinedIdentifiers(clause, defined_aliases);
+		}
+		start_offset = clause_idx;
+
+		const cypher_astnode_t *merge_clause = cypher_ast_query_get_clause(ast->root, clause_idx);
 		const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clause);
 		uint nelems = cypher_ast_pattern_path_nelements(path);
-		// Check every relation (each odd index in the path) to verify that
-		// exactly one reltype is specified.
-		for(uint j = 1; j < nelems; j += 2) {
-			const cypher_astnode_t *rel = cypher_ast_pattern_path_get_element(path, j);
-			if(cypher_ast_rel_pattern_nreltypes(rel) != 1) {
-				asprintf(reason,
-						 "Exactly one relationship type must be specified for each relation in a MERGE pattern.");
-				res = AST_INVALID;
-				goto cleanup;
-			}
+		for(uint j = 0; j < nelems; j ++) {
+			const cypher_astnode_t *entity = cypher_ast_pattern_path_get_element(path, j);
+			// Odd offsets correspond to edges, even offsets correspond to nodes.
+			res = (j % 2) ? _ValidateMergeRelation(entity, defined_aliases, reason)
+				  : _ValidateMergeNode(entity, defined_aliases, reason);
+			if(res != AST_VALID) goto cleanup;
 		}
 
-		// Verify that any filters on the path refer to constants rather than parameters
+		// Verify that any filters on the path refer to constants or resolved identifiers.
 		res = _ValidateInlinedPropertiesOnPath(path, reason);
 		if(res != AST_VALID) goto cleanup;
 	}
 
 cleanup:
-	array_free(merge_clauses);
+	array_free(merge_clause_indices);
+	if(defined_aliases) raxFree(defined_aliases);
 	return res;
 }
 
@@ -812,29 +807,43 @@ static AST_Validation _Validate_CREATE_Clause_Properties(const cypher_astnode_t 
 }
 
 static AST_Validation _Validate_CREATE_Clauses(const AST *ast, char **reason) {
-	const cypher_astnode_t **create_clauses = AST_GetClauses(ast, CYPHER_AST_CREATE);
-	if(!create_clauses) return AST_VALID;
-
 	AST_Validation res = AST_VALID;
-	uint clause_count = array_len(create_clauses);
+
+	uint *create_clause_indices = AST_GetClauseIndices(ast, CYPHER_AST_CREATE);
+	uint clause_count = array_len(create_clause_indices);
+	if(clause_count == 0) goto cleanup;
 	for(uint i = 0; i < clause_count; i++) {
+		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, create_clause_indices[i]);
 		// Verify that functions invoked by the CREATE clause are valid.
-		res = _ValidateFunctionCalls(create_clauses[i], reason, false);
+		res = _ValidateFunctionCalls(clause, reason, false);
 		if(res == AST_INVALID) goto cleanup;
 
-		if(_Validate_CREATE_Clause_TypedRelations(create_clauses[i]) == AST_INVALID) {
+		if(_Validate_CREATE_Clause_TypedRelations(clause) == AST_INVALID) {
 			asprintf(reason, "Exactly one relationship type must be specified for CREATE");
 			res = AST_INVALID;
 			goto cleanup;
 		}
 
-		// Validate that inlined properties do not use parameters
-		res = _Validate_CREATE_Clause_Properties(create_clauses[i], reason);
+		// Validate that inlined properties do not use undefined identifiers.
+		res = _Validate_CREATE_Clause_Properties(clause, reason);
 		if(res == AST_INVALID) goto cleanup;
 	}
 
+	/* Since we combine all our CREATE clauses in a segment into one operation,
+	 * make sure no data-modifying clauses can separate them. TCK example:
+	 * CREATE (a:A), (b:B) MERGE (a)-[:KNOWS]->(b) CREATE (b)-[:KNOWS]->(c:C) RETURN count(*)
+	 */
+	for(uint i = create_clause_indices[0] + 1; i < create_clause_indices[clause_count - 1]; i ++) {
+		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
+		if(cypher_astnode_type(clause) == CYPHER_AST_MERGE) {
+			asprintf(reason,
+					 "RedisGraph does not support queries of the form CREATE...MERGE...CREATE without a separating WITH clause.");
+			res = AST_INVALID;
+			goto cleanup;
+		}
+	}
 cleanup:
-	array_free(create_clauses);
+	array_free(create_clause_indices);
 	return res;
 }
 
@@ -1057,6 +1066,32 @@ static AST_Validation _ValidateQuerySequence(const AST *ast, char **reason) {
 	   cypher_ast_return_has_include_existing(start_clause)) {
 		asprintf(reason, "Query cannot begin with 'RETURN *'.");
 		return AST_INVALID;
+	}
+
+	return AST_VALID;
+}
+
+// In any given query scope, reading clauses (MATCH, UNWIND, and InQueryCall)
+// cannot follow updating clauses (CREATE, MERGE, DELETE, SET, REMOVE).
+// https://s3.amazonaws.com/artifacts.opencypher.org/railroad/SinglePartQuery.html
+static AST_Validation _ValidateClauseOrder(const AST *ast, char **reason) {
+	uint clause_count = cypher_ast_query_nclauses(ast->root);
+
+	bool encountered_updating_clause = false;
+	for(uint i = 0; i < clause_count; i ++) {
+		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
+		cypher_astnode_type_t type = cypher_astnode_type(clause);
+		if(!encountered_updating_clause && (type == CYPHER_AST_CREATE || type == CYPHER_AST_MERGE ||
+											type == CYPHER_AST_DELETE || type == CYPHER_AST_SET ||
+											type == CYPHER_AST_REMOVE)) {
+			encountered_updating_clause = true;
+		} else if(encountered_updating_clause && (type == CYPHER_AST_MATCH ||
+												  type == CYPHER_AST_UNWIND ||
+												  type == CYPHER_AST_CALL)) {
+			asprintf(reason, "A WITH clause is required to introduce %s after an updating clause.",
+					 cypher_astnode_typestr(type));
+			return AST_INVALID;
+		}
 	}
 
 	return AST_VALID;
@@ -1354,6 +1389,9 @@ static AST_Validation _Validate_SET_Clauses(const AST *ast, char **reason) {
 }
 
 static AST_Validation _ValidateClauses(const AST *ast, char **reason) {
+	// Verify that the clause order in the scope is valid.
+	if(_ValidateClauseOrder(ast, reason) != AST_VALID) return AST_INVALID;
+
 	if(_Validate_CALL_Clauses(ast, reason) == AST_INVALID) {
 		return AST_INVALID;
 	}
@@ -1475,40 +1513,6 @@ cleanup:
 	return res;
 }
 
-static AST_Validation _BlockUnsupportedMerges(AST *ast, char **reason) {
-	/* The current merge implementation does not work properly when the query is
-	 * intended to operate on multiple data streams, as in:
-	 * CREATE (a:A), (b:B)
-	 * MATCH (a:A), (b:B) MERGE (a)-[:TYPE]->(b)
-	 * This currently creates two new nodes. TODO fix */
-	AST_Validation res = AST_VALID;
-	uint *merge_clause_indices = AST_GetClauseIndices(ast, CYPHER_AST_MERGE);
-	uint merge_count = array_len(merge_clause_indices);
-	if(merge_count == 0) goto cleanup;
-
-	if(merge_count > 1) {
-		asprintf(reason, "RedisGraph does not currently support multiple MERGE clauses in a single query.");
-		res = AST_INVALID;
-		goto cleanup;
-	}
-
-
-	uint merge_idx = merge_clause_indices[0];
-	for(uint i = 0; i < merge_idx; i ++) {
-		const cypher_astnode_t *prev_clause = cypher_ast_query_get_clause(ast->root, i);
-		cypher_astnode_type_t prev_clause_type = cypher_astnode_type(prev_clause);
-		if(prev_clause_type == CYPHER_AST_MATCH || prev_clause_type == CYPHER_AST_CREATE) {
-			asprintf(reason,
-					 "RedisGraph does not currently support MERGE clauses after MATCH or CREATE clauses.");
-			res = AST_INVALID;
-			goto cleanup;
-		}
-	}
-
-cleanup:
-	array_free(merge_clause_indices);
-	return res;
-}
 /* This method collect unique parameters place holders names. It returns a rax with
  * <name, null> as key-value entries. */
 static void _collect_query_parameters_names(const cypher_astnode_t *root, rax *keys) {
@@ -1594,8 +1598,6 @@ static AST_Validation _ValidateScopes(const cypher_astnode_t *root, char **reaso
 
 	// Validate identifiers, which may be passed between scopes
 	if(_Validate_Aliases_Defined(&mock_ast, reason) == AST_INVALID) return AST_INVALID;
-
-	if(_BlockUnsupportedMerges(&mock_ast, reason) == AST_INVALID) return AST_INVALID;
 
 	// Aliases are scoped by the WITH clauses within the query.
 	// If we have one or more WITH clauses, MATCH validations should be performed one scope at a time.
