@@ -75,7 +75,6 @@ static void _UpdateProperties(OpMerge *op, Record *records) {
 			}
 		}
 	}
-	QueryCtx_UnlockCommit(); // Release the lock.
 	if(op->stats) op->stats->properties_set += update_count * record_count;
 }
 

@@ -122,6 +122,7 @@ void Graph_Query(void *args) {
 
 	// Clean up.
 cleanup:
+	QueryCtx_UnlockCommit(); // If context is locked, commit all changes and unlock.
 	// Release the read-write lock
 	if(lockAcquired) {
 		// TODO In the case of a failing writing query, we may hold both locks:

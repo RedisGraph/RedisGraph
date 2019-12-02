@@ -27,6 +27,7 @@ typedef struct {
 	double timer[2];        // Query execution time tracking.
 	jmp_buf *breakpoint;    // The breakpoint to return to if the query causes an exception.
 	RedisModuleKey *key;    // Saves an open key value, for later extraction and closing.
+	bool context_locked;    // True if a key is open and the context is locked.
 } QueryCtx_InternalExecCtx;
 
 typedef struct {
@@ -38,7 +39,7 @@ typedef struct {
 typedef struct {
 	QueryCtx_QueryData query_data;              // The data related to the query syntax.
 	QueryCtx_InternalExecCtx internal_exec_ctx; // The data related to internal query execution.
-	QueryCtx_GlobalExecCtx global_exec_ctx;     // The data rlated to global redis execution.
+	QueryCtx_GlobalExecCtx global_exec_ctx;     // The data related to global redis execution.
 	GraphContext *gc;                           // The GraphContext associated with this query's graph.
 } QueryCtx;
 
@@ -96,7 +97,7 @@ RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void);
  * and sets the relevant error message. */
 bool QueryCtx_LockForCommit(void);
 
-/* Starts an ulocking flow and notifies Redis after commiting changes in the graph and Redis keyspace.
+/* Starts an unlocking flow and notifies Redis after committing changes in the graph and Redis keyspace.
  * Unlocking flow is:
  * 1. Replicate.
  * 2. Unlock graph R/W lock

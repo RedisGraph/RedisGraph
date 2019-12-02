@@ -40,9 +40,11 @@ int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
 
 cleanup:
+	QueryCtx_UnlockCommit(); // If context is locked, commit all changes and unlock.
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 	if(strElapsed) free(strElapsed);
 	// Delete commands should always modify slaves.
 	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
+

@@ -69,6 +69,7 @@ void Graph_Profile(void *args) {
 	}
 
 cleanup:
+	QueryCtx_UnlockCommit(); // If context is locked, commit all changes and unlock.
 	// Release the read-write lock
 	if(lockAcquired) {
 		if(readonly)Graph_ReleaseLock(gc->g);

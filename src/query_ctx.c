@@ -126,6 +126,9 @@ static void _QueryCtx_ThreadSafeContextUnlock(QueryCtx *ctx) {
 
 bool QueryCtx_LockForCommit(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
+	// Do nothing if the context is already locked.
+	if(ctx->internal_exec_ctx.context_locked) return true;
+
 	// Lock GIL.
 	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
 	GraphContext *gc = ctx->gc;
@@ -133,6 +136,10 @@ bool QueryCtx_LockForCommit(void) {
 														  strlen(gc->graph_name));
 	char *error;
 	_QueryCtx_ThreadSafeContextLock(ctx);
+
+	// Mark the context as locked.
+	ctx->internal_exec_ctx.context_locked = true;
+
 	// Open key and verify.
 	RedisModuleKey *key = RedisModule_OpenKey(redis_ctx, graphID, REDISMODULE_WRITE);
 	RedisModule_FreeString(redis_ctx, graphID);
@@ -162,6 +169,7 @@ bool QueryCtx_LockForCommit(void) {
 	return true;
 
 clean_up:
+	ctx->internal_exec_ctx.context_locked = false;
 	// Unlock GIL.
 	_QueryCtx_ThreadSafeContextUnlock(ctx);
 	// If there is a break point for runtime exception, raise it, otherwise return false.
@@ -172,12 +180,16 @@ clean_up:
 
 void QueryCtx_UnlockCommit(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
+	// Do nothing if the context is not locked.
+	if(!ctx->internal_exec_ctx.context_locked) return;
 	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
 	GraphContext *gc = ctx->gc;
 
 	// Replicate.
 	RedisModule_Replicate(redis_ctx, ctx->global_exec_ctx.command_name, "cc!", gc->graph_name,
 						  ctx->query_data.query);
+	// Mark the context as unlocked.
+	ctx->internal_exec_ctx.context_locked = false;
 	// Release graph R/W lock.
 	Graph_ReleaseLock(gc->g);
 	// Close Key.
