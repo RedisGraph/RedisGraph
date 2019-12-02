@@ -52,7 +52,8 @@ static void _UpdateProperties(OpMerge *op, Record *records) {
 	uint update_count = array_len(op->on_match);
 	uint record_count = array_len(records);
 
-	Graph_AcquireWriteLock(gc->g); // Lock the graph.
+	// Lock everything.
+	if(!QueryCtx_LockForCommit()) return;
 	{
 		// Iterate over all update contexts, converting property keys to IDs.
 		for(uint i = 0; i < update_count; i ++) {
@@ -74,7 +75,7 @@ static void _UpdateProperties(OpMerge *op, Record *records) {
 			}
 		}
 	}
-	Graph_ReleaseLock(gc->g); // Release the lock.
+	QueryCtx_UnlockCommit(); // Release the lock.
 	if(op->stats) op->stats->properties_set += update_count * record_count;
 }
 
@@ -301,3 +302,4 @@ static void MergeFree(OpBase *opBase) {
 		op->on_match = NULL;
 	}
 }
+
