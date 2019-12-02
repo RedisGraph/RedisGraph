@@ -105,7 +105,7 @@ For more verbose output, run ```make test V=1```.
 
 ## Loading RedisGraph into Redis
 
-RedisGraph is hosted by [Redis](https://redis.io), so you'll first have to load it as a Module to a Redis server: running [Redis v4.0 or above](https://redis.io/download).
+RedisGraph is hosted by [Redis](https://redis.io), so you'll first have to load it as a Module to a Redis server: running [Redis v5.0.7 or above](https://redis.io/download).
 
 We recommend having Redis load RedisGraph during startup by adding the following to your redis.conf file:
 
