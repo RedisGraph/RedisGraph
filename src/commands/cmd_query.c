@@ -57,38 +57,35 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc,
 	ResultSet_ReportQueryRuntime(ctx);
 }
 
-static inline bool _check_compact_flag(CommandCtx *qctx) {
+static inline bool _check_compact_flag(CommandCtx *command_ctx) {
 	// The only additional argument to check currently is whether the query results
 	// should be returned in compact form
-	return (qctx->argc > 3 &&
-			!strcasecmp(RedisModule_StringPtrLen(qctx->argv[3], NULL), "--compact"));
+	return (command_ctx->argc > 3 &&
+			!strcasecmp(RedisModule_StringPtrLen(command_ctx->argv[3], NULL), "--compact"));
 }
 
 void Graph_Query(void *args) {
 	AST *ast = NULL;
 	bool lockAcquired = false;
 	ResultSet *result_set = NULL;
-	CommandCtx *qctx = (CommandCtx *)args;
-	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
-	GraphContext *gc = CommandCtx_GetGraphContext(qctx);
-	QueryCtx_SetGraphCtx(gc);
+	CommandCtx *command_ctx = (CommandCtx *)args;
+	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(command_ctx);
+	GraphContext *gc = CommandCtx_GetGraphContext(command_ctx);
+	QueryCtx_SetGlobalExecutionCtx(command_ctx);
 
 	QueryCtx_BeginTimer(); // Start query timing.
-	QueryCtx_SetRedisModuleCtx(ctx);
 
 	// Parse the query to construct an AST.
-	cypher_parse_result_t *parse_result = parse(qctx->query);
+	cypher_parse_result_t *parse_result = parse(command_ctx->query);
 	if(parse_result == NULL) goto cleanup;
 	bool readonly = AST_ReadOnly(parse_result);
-	// If we are a replica and the query is read-only, no work needs to be done.
-	if(readonly && qctx->replicated_command) goto cleanup;
 
 	// Perform query validations
 	if(AST_Validate(ctx, parse_result) != AST_VALID) goto cleanup;
 	// Prepare the constructed AST for accesses from the module
 	ast = AST_Build(parse_result);
 
-	bool compact = _check_compact_flag(qctx);
+	bool compact = _check_compact_flag(command_ctx);
 	// Acquire the appropriate lock.
 	if(readonly) {
 		Graph_AcquireReadLock(gc->g);
@@ -97,11 +94,11 @@ void Graph_Query(void *args) {
 		/* If this is a writer query we need to re-open the graph key with write flag
 		* this notifies Redis that the key is "dirty" any watcher on that key will
 		* be notified. */
-		CommandCtx_ThreadSafeContextLock(qctx);
+		CommandCtx_ThreadSafeContextLock(command_ctx);
 		{
 			GraphContext_MarkWriter(ctx, gc);
 		}
-		CommandCtx_ThreadSafeContextUnlock(qctx);
+		CommandCtx_ThreadSafeContextUnlock(command_ctx);
 	}
 	lockAcquired = true;
 
@@ -137,7 +134,7 @@ cleanup:
 	AST_Free(ast);
 	parse_result_free(parse_result);
 	GraphContext_Release(gc);
-	CommandCtx_Free(qctx);
+	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 }
 

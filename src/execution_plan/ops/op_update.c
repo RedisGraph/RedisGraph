@@ -8,6 +8,7 @@
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
 #include "../../arithmetic/arithmetic_expression.h"
+#include "../../query_ctx.h"
 
 /* Forward declarations. */
 static OpResult UpdateInit(OpBase *opBase);
@@ -206,10 +207,10 @@ static Record UpdateConsume(OpBase *opBase) {
 	OpBase_PropagateFree(child);
 
 	/* Lock everything. */
-	Graph_AcquireWriteLock(op->gc->g);
+	if(!QueryCtx_LockForCommit()) return NULL;
 	_CommitUpdates(op);
 	// Release lock.
-	Graph_ReleaseLock(op->gc->g);
+	QueryCtx_UnlockCommit();
 
 	op->updates_commited = true;
 	return _handoff(op);

@@ -102,21 +102,22 @@ static void _CommitEdges(OpMerge *op, Record r) {
 	if(op->stats) op->stats->relationships_created += edge_count;
 }
 
-static void _CreateEntities(OpMerge *op, Record r) {
+static bool _CreateEntities(OpMerge *op, Record r) {
 	// Track the inherited Record and the newly-allocated Record so that they may be freed if execution fails.
 	OpBase_AddVolatileRecord((OpBase *)op, r);
 
 	// Lock everything.
-	Graph_AcquireWriteLock(op->gc->g);
+	if(!QueryCtx_LockForCommit()) return false;
 
 	// Commit query graph and set resultset statistics.
 	_CommitNodes(op, r);
 	_CommitEdges(op, r);
 
 	// Release lock.
-	Graph_ReleaseLock(op->gc->g);
+	QueryCtx_UnlockCommit();
 
 	OpBase_RemoveVolatileRecords((OpBase *)op); // No exceptions encountered, Records are not dangling.
+	return true;
 
 }
 
@@ -178,7 +179,7 @@ static Record MergeConsume(OpBase *opBase) {
 		OpBase_PropagateFree(child);
 
 		r = OpBase_CreateRecord((OpBase *)op);
-		_CreateEntities(op, r);
+		if(!_CreateEntities(op, r)) return NULL;
 		op->created = true;
 	}
 

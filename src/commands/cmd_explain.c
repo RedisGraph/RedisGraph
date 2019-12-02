@@ -20,16 +20,14 @@ void Graph_Explain(void *args) {
 	AST *ast = NULL;
 	bool lock_acquired = false;
 	ExecutionPlan *plan = NULL;
-	CommandCtx *qctx = (CommandCtx *)args;
-	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
-	GraphContext *gc = CommandCtx_GetGraphContext(qctx);
-	QueryCtx_SetGraphCtx(gc);
-	const char *query = qctx->query;
-
-	QueryCtx_SetRedisModuleCtx(ctx);
+	CommandCtx *command_ctx = (CommandCtx *)args;
+	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(command_ctx);
+	GraphContext *gc = CommandCtx_GetGraphContext(command_ctx);
+	QueryCtx_SetGlobalExecutionCtx(command_ctx);
+	const char *query = command_ctx->query;
 
 	// Parse the query to construct an AST
-	cypher_parse_result_t *parse_result = parse(qctx->query);
+	cypher_parse_result_t *parse_result = parse(command_ctx->query);
 	if(parse_result == NULL) goto cleanup;
 
 	// Perform query validations
@@ -61,7 +59,7 @@ cleanup:
 	AST_Free(ast);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 	GraphContext_Release(gc);
-	CommandCtx_Free(qctx);
+	CommandCtx_Free(command_ctx);
 	parse_result_free(parse_result);
 }
 

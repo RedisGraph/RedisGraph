@@ -2,6 +2,7 @@ import os
 import sys
 import threading
 from redisgraph import Graph, Node, Edge
+from redis import ResponseError
 
 from base import FlowTestsBase
 
@@ -9,6 +10,7 @@ GRAPH_ID = "G"                      # Graph identifier.
 CLIENT_COUNT = 16                   # Number of concurrent connections.
 graphs = None                       # One graph object per client.
 assertions = [True] * CLIENT_COUNT  # Each thread places its verdict at position threadID.
+exceptions = [None] * CLIENT_COUNT  # Each thread which fails sets its exception content ar position threadID.
 people = ["Roi", "Alon", "Ailon", "Boaz", "Tal", "Omri", "Ori"]
 
 def query_aggregate(graph, query, threadID):
@@ -47,7 +49,10 @@ def query_write(graph, query, threadID):
 
 def thread_run_query(graph, query, threadID):
     global assertions
-    assertions[threadID] = graph.query(query)
+    try:
+        assertions[threadID] = graph.query(query)
+    except ResponseError as e:
+        exceptions[threadID] = str(e)
 
 def delete_graph(graph, threadID):
     global assertions
@@ -236,3 +241,44 @@ class testConcurrentQueryFlow(FlowTestsBase):
         # Make sure Graph is empty, e.g. graph was deleted.
         resultset = graphs[0].query("MATCH (n) RETURN count(n)").result_set
         self.env.assertEquals(resultset[0][0], 0)
+
+    def test_06_concurrent_write_delete(self):
+        redis_con = self.env.getConnection()
+        heavy_write_query = """UNWIND(range(0,999999)) as x CREATE(n)"""
+        writer = threading.Thread(target=thread_run_query, args=(graphs[0], heavy_write_query, 0))
+        writer.setDaemon(True)
+        writer.start()
+        redis_con.delete(GRAPH_ID)
+        writer.join()
+        self.env.assertEquals(exceptions[0], "Encountered an empty key when opened key " + GRAPH_ID)
+        # Restore to default.
+        exceptions[0] = None
+    
+    def test_07_concurrent_write_rename(self):
+        redis_con = self.env.getConnection()
+        new_graph = GRAPH_ID + "2"
+        # Create new empty graph with id GRAPH_ID + "2"
+        redis_con.execute_command("GRAPH.QUERY",new_graph, """MATCH (n) return n""", "--compact")
+        heavy_write_query = """UNWIND(range(0,999999)) as x CREATE(n)"""
+        writer = threading.Thread(target=thread_run_query, args=(graphs[0], heavy_write_query, 0))
+        writer.setDaemon(True)
+        writer.start()
+        redis_con.rename(new_graph, GRAPH_ID)
+        writer.join()
+        self.env.assertEquals(exceptions[0], "Encountered different graph value when opened key " + GRAPH_ID)
+        # Restore to default.
+        graphs[0].delete()
+        graphs[0].query("MATCH (n) RETURN n")
+        exceptions[0] = None
+    
+    def test_08_concurrent_write_replace(self):
+        redis_con = self.env.getConnection()
+        heavy_write_query = """UNWIND(range(0,999999)) as x CREATE(n)"""
+        writer = threading.Thread(target=thread_run_query, args=(graphs[0], heavy_write_query, 0))
+        writer.setDaemon(True)
+        writer.start()
+        redis_con.set(GRAPH_ID, "1")
+        writer.join()
+        self.env.assertEquals(exceptions[0], "Encountered a non-graph value type when opened key " + GRAPH_ID)
+        # Restore to default.
+        exceptions[0] = None

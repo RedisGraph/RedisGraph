@@ -9,6 +9,7 @@
 #include "../../query_ctx.h"
 #include "../../schema/schema.h"
 #include <assert.h>
+#include "../../query_ctx.h"
 
 /* Forward declarations. */
 static Record CreateConsume(OpBase *opBase);
@@ -237,20 +238,21 @@ static void _CommitEdges(OpCreate *op) {
 	op->stats->relationships_created += relationships_created;
 }
 
-static void _CommitNewEntities(OpCreate *op) {
+static bool _CommitNewEntities(OpCreate *op) {
 	Graph *g = op->gc->g;
 
 	// Lock everything.
-	Graph_AcquireWriteLock(g);
+	if(!QueryCtx_LockForCommit()) return false;
 	Graph_SetMatrixPolicy(g, RESIZE_TO_CAPACITY);
 	uint node_count = array_len(op->created_nodes);
 	if(node_count > 0) _CommitNodes(op);
 	if(array_len(op->created_edges) > 0) _CommitEdges(op);
 	Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
 	// Release lock.
-	Graph_ReleaseLock(g);
+	QueryCtx_UnlockCommit();
 
 	op->stats->nodes_created += node_count;
+	return true;
 }
 
 static Record _handoff(OpCreate *op) {
@@ -305,7 +307,7 @@ static Record CreateConsume(OpBase *opBase) {
 	if(child) OpBase_PropagateFree(child);
 
 	// Create entities.
-	_CommitNewEntities(op);
+	if(!_CommitNewEntities(op)) return NULL;
 
 	// Return record.
 	return _handoff(op);
