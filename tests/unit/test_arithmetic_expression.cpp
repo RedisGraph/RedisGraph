@@ -600,6 +600,60 @@ TEST_F(ArithmeticTest, RTrimTest) {
 	AR_EXP_Free(arExp);
 }
 
+TEST_F(ArithmeticTest, StartsWithTest) {
+	SIValue result;
+	const char *query;
+	AR_ExpNode *arExp;
+
+	/* startsWith('abcd','') */
+	query = "RETURN startsWith('abcd', '')";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);	
+	ASSERT_EQ(true, result.longval);
+	AR_EXP_Free(arExp);
+
+    /* startsWith('abcd','ab') */
+	query = "RETURN startsWith('abcd', 'ab')";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);	
+	ASSERT_EQ(true, result.longval);
+	AR_EXP_Free(arExp);
+
+    /* startsWith('abcd','cd') */
+	query = "RETURN startsWith('abcd', 'cd')";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);	
+	ASSERT_EQ(false, result.longval);
+	AR_EXP_Free(arExp);
+}
+
+TEST_F(ArithmeticTest, EndsWithTest) {
+	SIValue result;
+	const char *query;
+	AR_ExpNode *arExp;
+
+	/* startsWith('abcd','') */
+	query = "RETURN endsWith('abcd', '')";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);	
+	ASSERT_EQ(true, result.longval);
+	AR_EXP_Free(arExp);
+
+    /* endsWith('abcd','ab') */
+	query = "RETURN endsWith('abcd', 'cd')";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);	
+	ASSERT_EQ(true, result.longval);
+	AR_EXP_Free(arExp);
+
+    /* endsWith('abcd','cd') */
+	query = "RETURN endsWith('abcd', 'ab')";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);	
+	ASSERT_EQ(false, result.longval);
+	AR_EXP_Free(arExp);
+}
+
 TEST_F(ArithmeticTest, RandomUUID) {
 	SIValue result;
 	const char *query;
