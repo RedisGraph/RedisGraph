@@ -450,7 +450,7 @@ int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull) {
 		switch(a.type) {
 		case T_INT64:
 		case T_BOOL:
-			return a.longval - b.longval;
+			return SAFE_COMPARISON_RESULT(a.longval - b.longval);
 		case T_DOUBLE:
 			return SAFE_COMPARISON_RESULT(a.doubleval - b.doubleval);
 		case T_STRING:
