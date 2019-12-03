@@ -157,9 +157,7 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 	node_count = edge_count = raxSize(ast->referenced_entities);
 	QueryGraph *qg = QueryGraph_New(node_count, edge_count);
 
-	// We are interested in every path held in a MATCH pattern,
-	// and the (single) path described by a MERGE clause.
-
+	// We are interested in every path held in a MATCH pattern.
 	const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
 	if(match_clauses) {
 		uint match_count = array_len(match_clauses);
@@ -172,17 +170,6 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 			}
 		}
 		array_free(match_clauses);
-	}
-
-	// MERGE clauses
-	const cypher_astnode_t **merge_clauses = AST_GetClauses(ast, CYPHER_AST_MERGE);
-	if(merge_clauses) {
-		uint merge_count = array_len(merge_clauses);
-		for(uint i = 0; i < merge_count; i ++) {
-			const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clauses[i]);
-			QueryGraph_AddPath(qg, gc, path);
-		}
-		array_free(merge_clauses);
 	}
 
 	return qg;

@@ -42,11 +42,14 @@ typedef enum {
 	OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO = (1 << 22),
 	OPType_VALUE_HASH_JOIN = (1 << 23),
 	OPType_APPLY = (1 << 24),
-    OPType_JOIN = (1 << 25),
-} OPType;
-
-#define OP_SCAN (OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN | OPType_INDEX_SCAN | OPType_NODE_BY_ID_SEEK)
-#define OP_TAPS (OP_SCAN | OPType_CREATE | OPType_UNWIND | OPType_MERGE)
+	OPType_JOIN = (1 << 25),
+	OPType_ARGUMENT = (1 << 26),
+	OPType_MERGE_CREATE = (1 << 27),
+	// OPType_SEMI_APPLY = (1 << 28),
+	// OPType_ANTI_SEMI_APPLY = (1 << 29),
+	// OPType_SELECT_OR_SEMI_APPLY = (1 << 30),
+	// OPType_SELECT_OR_ANTI_SEMI_APPLY = (1 << 31),
+} OPType; // TODO Consider switching from bitmask at 1<<32
 
 typedef enum {
 	OP_DEPLETED = 1,
@@ -78,8 +81,8 @@ struct OpBase {
 	fpReset reset;              // Reset operation state.
 	fpConsume consume;          // Produce next record.
 	fpConsume profile;          // Profiled version of consume.
-	fpToString toString;        // operation string representation.
-	char *name;                 // Operation name.
+	fpToString toString;        // Operation string representation.
+	const char *name;           // Operation name.
 	int childCount;             // Number of children.
 	bool op_initialized;        // True if the operation has already been initialized.
 	struct OpBase **children;   // Child operations.
@@ -92,8 +95,8 @@ struct OpBase {
 typedef struct OpBase OpBase;
 
 // Initialize op.
-void OpBase_Init(OpBase *op, OPType type, char *name, fpInit init, fpConsume consume, fpReset reset,
-				 fpToString toString, fpFree free, const struct ExecutionPlan *plan);
+void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsume consume,
+				 fpReset reset, fpToString toString, fpFree free, const struct ExecutionPlan *plan);
 void OpBase_Free(OpBase *op);       // Free op.
 Record OpBase_Consume(OpBase *op);  // Consume op.
 Record OpBase_Profile(OpBase *op);  // Profile op.
@@ -110,6 +113,9 @@ void OpBase_RemoveVolatileRecords(OpBase *op);
 /* Mark alias as being modified by operation.
  * Returns the ID associated with alias. */
 int OpBase_Modifies(OpBase *op, const char *alias);
+
+/* Adds an alias to an existing modifier, such that record[modifier] = record[alias]. */
+int OpBase_AliasModifier(OpBase *op, const char *modifier, const char *alias);
 
 /* Returns true if op is aware of alias.
  * an operation is aware of all aliases it modifies and all aliases

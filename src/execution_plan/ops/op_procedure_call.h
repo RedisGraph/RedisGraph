@@ -24,6 +24,7 @@ typedef struct {
 	OpBase op;                  // Base op.
 	const char **args;          // Arguments passed to procedure.
 	const char **output;        // Procedure output.
+    AR_ExpNode **yield_exps;    // Yield expressions.
 	ProcedureCtx *procedure;    // Procedure to call.
 	OutputMap *yield_map;       // Maps between yield to procedure output and record idx.
 } OpProcCall;
@@ -32,6 +33,5 @@ OpBase *NewProcCallOp(
 	const ExecutionPlan *plan,  // Execution plan this operation belongs to.
 	const char *procedure,      // Procedure name.
 	const char **args,          // Arguments passed to procedure invocation.
-	const char **output         // Procedure output.
+	AR_ExpNode **yield_exps         // Procedure output.
 );
-

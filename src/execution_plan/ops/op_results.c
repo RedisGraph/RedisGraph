@@ -38,4 +38,3 @@ static Record ResultsConsume(OpBase *opBase) {
 	ResultSet_AddRecord(op->result_set, r);
 	return r;
 }
-

@@ -21,6 +21,7 @@ typedef struct {
 	GrB_Matrix _zero_matrix;    /* Fake matrix, in-case label does not exists. */
 	unsigned int nodeRecIdx;    /* Node position within record. */
 	GxB_MatrixTupleIter *iter;
+	Record child_record;        /* The Record this op acts on if it is not a tap. */
 } NodeByLabelScan;
 
 /* Creates a new NodeByLabelScan operation */

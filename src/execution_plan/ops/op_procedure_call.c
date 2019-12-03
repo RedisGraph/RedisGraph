@@ -57,13 +57,16 @@ static void _yield(OpProcCall *op, SIValue *proc_output, Record r) {
 }
 
 OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *procedure, const char **args,
-					  const char **output) {
+					  AR_ExpNode **yield_exps) {
 	assert(procedure);
 	OpProcCall *op = malloc(sizeof(OpProcCall));
 	op->args = args;
-	op->output = output;
+	op->yield_exps = yield_exps;
 	op->procedure = Proc_Get(procedure);
 	op->yield_map = NULL;
+
+	uint yield_count = array_len(yield_exps);
+	op->output = array_new(const char *, yield_count);
 
 	assert(op->procedure);
 
@@ -71,9 +74,14 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *procedure, const ch
 	OpBase_Init((OpBase *)op, OPType_PROC_CALL, "ProcedureCall", ProcCallInit, ProcCallConsume,
 				ProcCallReset, NULL, ProcCallFree, plan);
 
-	int outputs_count = array_len(output);
-	for(int i = 0; i < outputs_count; i++) {
-		OpBase_Modifies((OpBase *)op, output[i]);
+	// Set modifiers.
+	for(uint i = 0; i < yield_count; i ++) {
+		const char *alias = yield_exps[i]->resolved_name;
+		const char *yield = yield_exps[i]->operand.variadic.entity_alias;
+
+		op->output = array_append(op->output, yield);
+		OpBase_Modifies((OpBase *)op, yield);
+		if(alias && strcmp(alias, yield) != 0) OpBase_AliasModifier((OpBase *)op, yield, alias);
 	}
 
 	return (OpBase *)op;
@@ -139,5 +147,11 @@ static void ProcCallFree(OpBase *ctx) {
 		array_free(op->output);
 		op->output = NULL;
 	}
-}
 
+	if(op->yield_exps) {
+		uint yield_count = array_len(op->yield_exps);
+		for(uint i = 0; i < yield_count; i ++) AR_EXP_Free(op->yield_exps[i]);
+		array_free(op->yield_exps);
+		op->yield_exps = NULL;
+	}
+}

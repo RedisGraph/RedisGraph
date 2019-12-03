@@ -30,7 +30,6 @@
 
 Feature: WithAcceptance
 
-    @skip
     Scenario: Passing on pattern nodes
         Given an empty graph
         And having executed:
@@ -49,7 +48,6 @@ Feature: WithAcceptance
             | (:A) | (:B) |
         And no side effects
 
-    @skip
     Scenario: ORDER BY and LIMIT can be used
         Given an empty graph
         And having executed:
@@ -71,7 +69,6 @@ Feature: WithAcceptance
             | (:A) |
         And no side effects
 
-    @skip
     Scenario: No dependencies between the query parts
         Given an empty graph
         And having executed:
@@ -161,7 +158,6 @@ Feature: WithAcceptance
             | ({name: 'A', num: 0, id: 0}) |
         And no side effects
 
-    @skip
     Scenario: WHERE after WITH should filter results
         Given an empty graph
         And having executed:
@@ -316,7 +312,6 @@ Feature: WithAcceptance
             | 'baz'                |
         And no side effects
 
-    @skip
     Scenario: Connected components succeeding WITH
         Given an empty graph
         And having executed:

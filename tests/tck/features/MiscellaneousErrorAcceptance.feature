@@ -108,7 +108,6 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: UndefinedVariable
 
-@skip
   Scenario: Failing when using undefined variable in SET
     When executing query:
       """
@@ -118,7 +117,6 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: UndefinedVariable
 
-@skip
   Scenario: Failing when using undefined variable in DELETE
     When executing query:
       """

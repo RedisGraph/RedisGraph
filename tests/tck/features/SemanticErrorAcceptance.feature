@@ -33,7 +33,6 @@ Feature: SemanticErrorAcceptance
   Background:
     Given any graph
 
-@skip
   Scenario: Failing when returning an undefined variable
     When executing query:
       """
@@ -42,7 +41,6 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: UndefinedVariable
 
-@skip
   Scenario: Failing when comparing to an undefined variable
     When executing query:
       """
@@ -139,7 +137,6 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: RelationshipUniquenessViolation
 
-@skip
   Scenario: Failing when using NOT on string literal
     When executing query:
       """

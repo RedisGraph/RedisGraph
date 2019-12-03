@@ -16,7 +16,6 @@
 #include "./utilize_indices.h"
 #include "./reduce_distinct.h"
 #include "./reduce_traversal.h"
-#include "./select_entry_point.h"
 
 #endif
 

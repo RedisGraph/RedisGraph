@@ -66,6 +66,19 @@ Record Record_Clone(const Record r) {
 	size_t required_record_size = sizeof(Entry) * entry_count;
 
 	memcpy(clone->entries, r->entries, required_record_size);
+
+	/* Foreach scalar entry in cloned record, make sure it is not freed.
+	 * it is the original record owner responsibility to free the record
+	 * and its internal scalar as a result.
+	 *
+	 * TODO: I wish we wouldn't have to perform this loop as it is a major performance hit
+	 * with the introduction of a garbage collection this should be removed. */
+	for(int i = 0; i < entry_count; i++) {
+		if(Record_GetType(clone, i) == REC_TYPE_SCALAR) {
+			SIValue_MakeVolatile(&clone->entries[i].value.s);
+		}
+	}
+
 	return clone;
 }
 
@@ -169,6 +182,13 @@ void Record_AddNode(Record r, int idx, Node node) {
 void Record_AddEdge(Record r, int idx, Edge edge) {
 	r->entries[idx].value.e = edge;
 	r->entries[idx].type = REC_TYPE_EDGE;
+}
+
+void Record_PersistScalars(Record r) {
+	uint len = Record_length(r);
+	for(uint i = 0; i < len; i++) {
+		if(r->entries[i].type == REC_TYPE_SCALAR) SIValue_Persist(&r->entries[i].value.s);
+	}
 }
 
 size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {

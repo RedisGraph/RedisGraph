@@ -13,8 +13,8 @@
 /* Forward declarations */
 rax *ExecutionPlan_GetMappings(const struct ExecutionPlan *plan);
 
-void OpBase_Init(OpBase *op, OPType type, char *name, fpInit init, fpConsume consume, fpReset reset,
-				 fpToString toString, fpFree free, const struct ExecutionPlan *plan) {
+void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsume consume,
+				 fpReset reset, fpToString toString, fpFree free, const struct ExecutionPlan *plan) {
 
 	op->type = type;
 	op->name = name;
@@ -54,6 +54,17 @@ int OpBase_Modifies(OpBase *op, const char *alias) {
 		id = (void *)raxSize(mapping);
 		raxInsert(mapping, (unsigned char *)alias, strlen(alias), id, NULL);
 	}
+
+	return (intptr_t)id;
+}
+
+int OpBase_AliasModifier(OpBase *op, const char *modifier, const char *alias) {
+	rax *mapping = ExecutionPlan_GetMappings(op->plan);
+	void *id = raxFind(mapping, (unsigned char *)modifier, strlen(modifier));
+	assert(id != raxNotFound);
+
+	raxInsert(mapping, (unsigned char *)alias, strlen(alias), id, NULL);
+	op->modifies = array_append(op->modifies, alias);
 
 	return (intptr_t)id;
 }
