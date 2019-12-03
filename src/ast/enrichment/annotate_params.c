@@ -13,19 +13,6 @@
 //  Annotation context - query parameters
 //------------------------------------------------------------------------------
 
-// AST annotation callback routine for freeing arithmetic expressions.
-static void _FreeParamAnnotationCallback(void *unused, const cypher_astnode_t *node,
-										 void *annotation) {
-	AR_EXP_Free((AR_ExpNode *)annotation);
-}
-
-static AnnotationCtx *_AST_NewParamsContext(void) {
-	AnnotationCtx *param_ctx = cypher_ast_annotation_context();
-	cypher_ast_annotation_context_release_handler_t handler = &_FreeParamAnnotationCallback;
-	cypher_ast_annotation_context_set_release_handler(param_ctx, handler, NULL);
-	return param_ctx;
-}
-
 /* This function collects every AST node which is a named parameter place holder. If the same name
  * of a parameter apears in more then one place it is append to array of all the placeholders with
  * the same name.
@@ -78,6 +65,8 @@ static void _annotate_params(AST *ast) {
 }
 
 void AST_AnnotateParams(AST *ast) {
-	AST_AnnotationCtxCollection_SetParamsCtx(ast->anot_ctx_collection, _AST_NewParamsContext());
+	AnnotationCtx *param_ctx = cypher_ast_annotation_context();
+	AST_AnnotationCtxCollection_SetParamsCtx(ast->anot_ctx_collection, param_ctx);
 	_annotate_params(ast);
 }
+
