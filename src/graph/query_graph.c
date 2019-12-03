@@ -338,6 +338,7 @@ QueryGraph **QueryGraph_ConnectedComponents(const QueryGraph *qg) {
 			} else {
 				n = QueryGraph_GetNodeByAlias(cc, n->alias);
 				QueryGraph_RemoveNode(cc, n);
+				QGNode_Free(n);
 			}
 		}
 

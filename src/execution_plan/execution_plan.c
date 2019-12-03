@@ -787,6 +787,7 @@ ExecutionPlan *ExecutionPlan_UnionPlans(ResultSet *result_set, AST *ast) {
 		end_offset = union_indices[i];
 		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
 		plans[i] = NewExecutionPlan(result_set);
+		AST_Free(ast_segment); // Free the AST segment.
 
 		// Next segment starts where this one ends.
 		start_offset = union_indices[i] + 1;
