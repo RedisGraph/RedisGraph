@@ -211,7 +211,7 @@ static Record UpdateConsume(OpBase *opBase) {
 	if(!QueryCtx_LockForCommit()) return NULL;
 	_CommitUpdates(op);
 	// Release lock.
-	QueryCtx_UnlockCommit((OpBase *)op);
+	QueryCtx_UnlockCommit(&op->op);
 
 	op->updates_commited = true;
 	return _handoff(op);

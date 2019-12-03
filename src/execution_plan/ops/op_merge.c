@@ -76,7 +76,7 @@ static void _UpdateProperties(OpMerge *op, Record *records) {
 		}
 		if(op->stats) op->stats->properties_set += update_count * record_count;
 	}
-	QueryCtx_UnlockCommit((OpBase *)op); // Release the lock.
+	QueryCtx_UnlockCommit(&op->op); // Release the lock.
 }
 
 //------------------------------------------------------------------------------
@@ -247,11 +247,6 @@ static Record MergeConsume(OpBase *opBase) {
 				lhs_record = NULL;
 			}
 			must_create_records = true;
-			/* Since op_merge is is closer to the results op then op_merge_create, it is initially may be marked as the last writer
-			 * Now that it knows that op_merge_create will write after the merge_op write it should try to replace itself as the
-			 * last writer. */
-
-			QueryCtx_UpdateLastWriter((OpBase *)op, op->create_stream);
 		}
 
 		// Free the LHS Record if we haven't transferred it to the Create stream.
@@ -261,6 +256,12 @@ static Record MergeConsume(OpBase *opBase) {
 	// Explicitly free the read streams in case either holds an index read lock.
 	if(op->bound_variable_stream) OpBase_PropagateFree(op->bound_variable_stream);
 	OpBase_PropagateFree(op->match_stream);
+
+	/* Since op_merge is is closer to the results op then op_merge_create, it is initially may be marked as the last writer
+	 * Now that it knows that op_merge_create will write after the merge_op write it should try to replace itself as the
+	 * last writer. */
+
+	if(must_create_records)	QueryCtx_UpdateLastWriter((OpBase *)op, op->create_stream);
 
 	// If we are setting properties with ON MATCH, execute all pending updates.
 	_UpdateProperties(op, op->output_records);
