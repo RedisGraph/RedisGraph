@@ -54,7 +54,7 @@ static void _UpdateProperties(OpMerge *op, Record *records) {
 
 	// Lock everything.
 	if(!QueryCtx_LockForCommit()) return;
-	{
+	if(op->on_match) {
 		// Iterate over all update contexts, converting property keys to IDs.
 		for(uint i = 0; i < update_count; i ++) {
 			op->on_match[i].attribute_idx = GraphContext_FindOrAddAttribute(gc, op->on_match[i].attribute);
@@ -74,9 +74,9 @@ static void _UpdateProperties(OpMerge *op, Record *records) {
 				if(t == REC_TYPE_NODE) _UpdateIndices(gc, (Node *)ge); // Update indices if necessary.
 			}
 		}
+		if(op->stats) op->stats->properties_set += update_count * record_count;
 	}
-	QueryCtx_UnlockCommit(); // Release the lock.
-	if(op->stats) op->stats->properties_set += update_count * record_count;
+	QueryCtx_UnlockCommit((OpBase *)op); // Release the lock.
 }
 
 //------------------------------------------------------------------------------
@@ -247,6 +247,11 @@ static Record MergeConsume(OpBase *opBase) {
 				lhs_record = NULL;
 			}
 			must_create_records = true;
+			/* Since op_merge is is closer to the results op then op_merge_create, it is initially may be marked as the last writer
+			 * Now that it knows that op_merge_create will write after the merge_op write it should try to replace itself as the
+			 * last writer. */
+
+			QueryCtx_UpdateLastWriter((OpBase *)op, op->create_stream);
 		}
 
 		// Free the LHS Record if we haven't transferred it to the Create stream.
@@ -258,7 +263,7 @@ static Record MergeConsume(OpBase *opBase) {
 	OpBase_PropagateFree(op->match_stream);
 
 	// If we are setting properties with ON MATCH, execute all pending updates.
-	if(op->on_match && array_len(op->output_records) > 0) _UpdateProperties(op, op->output_records);
+	_UpdateProperties(op, op->output_records);
 
 	// Exhaust Create stream if we have at least one pattern to create.
 	if(must_create_records) {
