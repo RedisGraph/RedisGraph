@@ -292,7 +292,10 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			/* For each expression, build the appropriate traversal operation. */
 			for(int j = 0; j < expCount; j++) {
 				exp = exps[j];
-				if(exp->operand_count == 0) continue;
+				if(exp->operand_count == 0) {
+					AlgebraicExpression_Free(exp);
+					continue;
+				}
 
 				if(exp->edge && QGEdge_VariableLength(exp->edge)) {
 					root = NewCondVarLenTraverseOp(plan, gc->g, exp);

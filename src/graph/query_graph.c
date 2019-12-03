@@ -229,17 +229,19 @@ QGNode *QueryGraph_RemoveNode(QueryGraph *qg, QGNode *n) {
 	// if(!QueryGraph_ContainsNode(qg, n)) return NULL;
 
 	/* Remove node from query graph.
-	 * Remove all edges associated with node. */
+	 * Remove and free all edges associated with node. */
 	uint incoming_edge_count = array_len(n->incoming_edges);
-	uint outgoing_edge_count = array_len(n->outgoing_edges);
-
 	for(uint i = 0; i < incoming_edge_count; i++) {
 		QGEdge *e = n->incoming_edges[i];
 		QueryGraph_RemoveEdge(qg, e);
+		QGEdge_Free(e);
 	}
+
+	uint outgoing_edge_count = array_len(n->outgoing_edges);
 	for(uint i = 0; i < outgoing_edge_count; i++) {
 		QGEdge *e = n->outgoing_edges[i];
 		QueryGraph_RemoveEdge(qg, e);
+		QGEdge_Free(e);
 	}
 
 	// Remove node from graph nodes.
