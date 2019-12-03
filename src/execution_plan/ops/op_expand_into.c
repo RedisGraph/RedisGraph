@@ -224,7 +224,6 @@ static OpResult ExpandIntoReset(OpBase *ctx) {
 	OpExpandInto *op = (OpExpandInto *)ctx;
 	for(int i = 0; i < op->recordCount; i++) {
 		if(op->records[i]) Record_Free(op->records[i]);
-		op->records = NULL;
 	}
 	op->recordCount = 0;
 
@@ -264,7 +263,6 @@ static void ExpandIntoFree(OpBase *ctx) {
 	if(op->records) {
 		for(int i = 0; i < op->recordsCap; i++) {
 			if(op->records[i]) Record_Free(op->records[i]);
-			else break;
 		}
 		rm_free(op->records);
 		op->records = NULL;
