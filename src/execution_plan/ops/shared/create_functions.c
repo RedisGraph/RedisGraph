@@ -137,16 +137,12 @@ PendingCreations NewPendingCreationsContainer(ResultSetStatistics *stats, NodeCr
 void CommitNewEntities(PendingCreations *pending) {
 	Graph *g = QueryCtx_GetGraph();
 
-	// Lock everything.
-	if(!QueryCtx_LockForCommit()) return;
 	Graph_SetMatrixPolicy(g, RESIZE_TO_CAPACITY);
 	uint node_count = array_len(pending->created_nodes);
 	if(node_count > 0) _CommitNodes(pending);
 	uint edge_count = array_len(pending->created_edges);
 	if(edge_count > 0) _CommitEdges(pending);
 	Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
-	// Release lock.
-	QueryCtx_UnlockCommit();
 
 	pending->stats->nodes_created += node_count;
 	pending->stats->relationships_created += edge_count;

@@ -214,8 +214,12 @@ static Record MergeCreateConsume(OpBase *opBase) {
 	 * index R/W lock, as such free all execution plan operation up the chain. */
 	if(child) OpBase_PropagateFree(child);
 
+	// Lock everything.
+	if(!QueryCtx_LockForCommit()) return NULL;
 	// Create entities.
 	CommitNewEntities(&op->pending);
+	// Release lock.
+	QueryCtx_UnlockCommit((OpBase *)op);
 
 	// Return record.
 	return _handoff(op);

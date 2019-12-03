@@ -6,13 +6,15 @@
 
 #pragma once
 
-#include"ast/ast.h"
+#include "ast/ast.h"
 #include "redismodule.h"
 #include "util/rmalloc.h"
 #include "graph/graphcontext.h"
 #include <setjmp.h>
 #include <pthread.h>
 #include "commands/cmd_context.h"
+#include "resultset/resultset_statistics.h"
+#include "execution_plan/ops/op.h"
 
 extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
 
@@ -23,10 +25,13 @@ typedef struct {
 } QueryCtx_QueryData;
 
 typedef struct {
-	char *error;            // The error message produced by this query, if any.
-	double timer[2];        // Query execution time tracking.
-	jmp_buf *breakpoint;    // The breakpoint to return to if the query causes an exception.
-	RedisModuleKey *key;    // Saves an open key value, for later extraction and closing.
+	char *error;                // The error message produced by this query, if any.
+	double timer[2];            // Query execution time tracking.
+	jmp_buf *breakpoint;        // The breakpoint to return to if the query causes an exception.
+	RedisModuleKey *key;        // Saves an open key value, for later extraction and closing.
+	ResultSetStatistics *stats; // Save the statistics of the execution.
+	bool locked_for_commit;     // Indicates if a call for QueryCtx_LockForCommit issued before.
+	OpBase *last_writer;        // The last writer operation which indicates the need for commit.
 } QueryCtx_InternalExecCtx;
 
 typedef struct {
@@ -74,6 +79,12 @@ void QueryCtx_SetError(char *error);
 void QueryCtx_SetGraphCtx(GraphContext *gc);
 /* Set the Redis module context. */
 void QueryCtx_SetRedisModuleCtx(RedisModuleCtx *redisctx);
+/* Set the resultset statistics. */
+void QueryCtx_SetResultSetStatistics(ResultSetStatistics *stats);
+/* Set the last writer which needs to commit */
+void QueryCtx_SetLastWriter(OpBase *op);
+/* Set the new writer as the last writer, if the old writer was indeed the last writer */
+void QueryCtx_UpdateLastWriter(OpBase *old_writer, OpBase *new_writer);
 
 /* Getters */
 /* Retrieve the AST. */
@@ -102,7 +113,7 @@ bool QueryCtx_LockForCommit(void);
  * 2. Unlock graph R/W lock
  * 3. Close key
  * 4. Unlock GIL */
-void QueryCtx_UnlockCommit(void);
+void QueryCtx_UnlockCommit(OpBase *writer_op);
 
 /* Compute and return elapsed query execution time. */
 double QueryCtx_GetExecutionTime(void);
