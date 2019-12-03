@@ -543,6 +543,8 @@ This section contains information on all supported functions from the Cypher que
 |toString() | Converts an integer, float or boolean value to a string |
 |toUpper() | Returns the original string in uppercase |
 |trim() | Returns the original string with leading and trailing whitespace removed |
+|startsWith() | Returns true if the given string starts has given prefix  |
+|endsWith() | Returns true if the given string ends has given suffix |
 
 ## Node functions
 |Function | Description|
