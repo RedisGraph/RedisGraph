@@ -28,9 +28,9 @@ static const char *_ASTOpToString(AST_Operator op) {
 	case OP_CONTAINS:
 		return "CONTAINS";
 	case OP_STARTSWITH:
-		return "STARTS WITH";
+		return "STARTSWITH";
 	case OP_ENDSWITH:
-		return "ENDS WITH";
+		return "ENDSWITH";
 	case OP_AND:
 		return "AND";
 	case OP_OR:

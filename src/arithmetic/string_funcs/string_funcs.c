@@ -332,13 +332,13 @@ void Register_StringFuncs() {
 	types = array_new(SIType, 2);
 	types = array_append(types, (T_STRING | T_NULL));
 	types = array_append(types, (T_STRING | T_NULL));
-	func_desc = AR_FuncDescNew("starts with", AR_STARTSWITH, 2, 2, types, true);
+	func_desc = AR_FuncDescNew("startswith", AR_STARTSWITH, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	types = array_append(types, (T_STRING | T_NULL));
 	types = array_append(types, (T_STRING | T_NULL));
-	func_desc = AR_FuncDescNew("ends with", AR_ENDSWITH, 2, 2, types, true);
+	func_desc = AR_FuncDescNew("endswith", AR_ENDSWITH, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 0);
