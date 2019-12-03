@@ -151,48 +151,48 @@ static void _QueryCtx_ThreadSafeContextUnlock(QueryCtx *ctx) {
 
 bool QueryCtx_LockForCommit(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	if(!ctx->internal_exec_ctx.locked_for_commit) {
-		// Lock GIL.
-		RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
-		GraphContext *gc = ctx->gc;
-		RedisModuleString *graphID = RedisModule_CreateString(redis_ctx, gc->graph_name,
-															  strlen(gc->graph_name));
-		char *error;
-		_QueryCtx_ThreadSafeContextLock(ctx);
-		// Open key and verify.
-		RedisModuleKey *key = RedisModule_OpenKey(redis_ctx, graphID, REDISMODULE_WRITE);
-		RedisModule_FreeString(redis_ctx, graphID);
-		if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
-			asprintf(&error, "Encountered an empty key when opened key %s",
-					 ctx->gc->graph_name);
-			QueryCtx_SetError(error);
+	if(ctx->internal_exec_ctx.locked_for_commit) return true;
+	// Lock GIL.
+	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
+	GraphContext *gc = ctx->gc;
+	RedisModuleString *graphID = RedisModule_CreateString(redis_ctx, gc->graph_name,
+														  strlen(gc->graph_name));
+	char *error;
+	_QueryCtx_ThreadSafeContextLock(ctx);
+	// Open key and verify.
+	RedisModuleKey *key = RedisModule_OpenKey(redis_ctx, graphID, REDISMODULE_WRITE);
+	RedisModule_FreeString(redis_ctx, graphID);
+	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
+		asprintf(&error, "Encountered an empty key when opened key %s",
+				 ctx->gc->graph_name);
+		QueryCtx_SetError(error);
 
-			goto clean_up;
-		}
-		if(RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
-			asprintf(&error, "Encountered a non-graph value type when opened key %s",
-					 ctx->gc->graph_name);
-			QueryCtx_SetError(error);
-			goto clean_up;
-
-		}
-		if(gc != RedisModule_ModuleTypeGetValue(key)) {
-			asprintf(&error, "Encountered different graph value when opened key %s",
-					 ctx->gc->graph_name);
-			QueryCtx_SetError(error);
-			goto clean_up;
-		}
-		ctx->internal_exec_ctx.key = key;
-		// Acquire graph write lock.
-		Graph_AcquireWriteLock(gc->g);
-		ctx->internal_exec_ctx.locked_for_commit = true;
+		goto clean_up;
 	}
+	if(RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
+		asprintf(&error, "Encountered a non-graph value type when opened key %s",
+				 ctx->gc->graph_name);
+		QueryCtx_SetError(error);
+		goto clean_up;
+
+	}
+	if(gc != RedisModule_ModuleTypeGetValue(key)) {
+		asprintf(&error, "Encountered different graph value when opened key %s",
+				 ctx->gc->graph_name);
+		QueryCtx_SetError(error);
+		goto clean_up;
+	}
+	ctx->internal_exec_ctx.key = key;
+	// Acquire graph write lock.
+	Graph_AcquireWriteLock(gc->g);
+	ctx->internal_exec_ctx.locked_for_commit = true;
+
 	return true;
 
 clean_up:
-	// Unlock GIL.
+// Unlock GIL.
 	_QueryCtx_ThreadSafeContextUnlock(ctx);
-	// If there is a break point for runtime exception, raise it, otherwise return false.
+// If there is a break point for runtime exception, raise it, otherwise return false.
 	QueryCtx_RaiseRuntimeException();
 	return false;
 
