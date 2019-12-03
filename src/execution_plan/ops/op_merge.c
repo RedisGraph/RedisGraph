@@ -52,7 +52,6 @@ static void _UpdateProperties(OpMerge *op, Record *records) {
 	uint update_count = array_len(op->on_match);
 	uint record_count = array_len(records);
 
-
 	if(op->on_match && update_count && record_count) {
 		// Lock everything.
 		if(!QueryCtx_LockForCommit()) return;
@@ -265,7 +264,6 @@ static Record MergeConsume(OpBase *opBase) {
 	// Explicitly free the read streams in case either holds an index read lock.
 	if(op->bound_variable_stream) OpBase_PropagateFree(op->bound_variable_stream);
 	OpBase_PropagateFree(op->match_stream);
-
 
 	// Exhaust Create stream if we have at least one pattern to create.
 	if(must_create_records) {

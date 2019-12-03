@@ -146,6 +146,7 @@ void CommitNewEntities(OpBase *op, PendingCreations *pending) {
 	if(edge_count > 0) _CommitEdges(pending);
 	Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
 	// Release lock.
+
 	pending->stats->nodes_created += node_count;
 	pending->stats->relationships_created += edge_count;
 	QueryCtx_UnlockCommit(op);
