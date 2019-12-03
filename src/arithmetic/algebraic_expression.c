@@ -173,12 +173,11 @@ void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool 
 void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp,
 									 bool freeOp, bool diagonal) {
 	assert(ae);
-
-	ae->operand_count++;
 	if(ae->operand_count + 1 > ae->operand_cap) {
 		ae->operand_cap += 4;
 		ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
 	}
+	ae->operand_count++;
 
 	// TODO: might be optimized with memcpy.
 	// Shift operands to the right, making room at the begining.
@@ -224,6 +223,16 @@ void AlgebraicExpression_PrependOperand(AlgebraicExpression *ae, AlgebraicExpres
 	ae->operands[0] = op;
 }
 
+static void _UpdateQueryGraphReferences(const QueryGraph *qg, AlgebraicExpression **exps) {
+	uint exp_count = array_len(exps);
+	for(uint i = 0; i < exp_count; i++) {
+		// Update QGNode and QGEdge pointers to reference the original QueryGraph.
+		exps[i]->src_node = QueryGraph_GetNodeByAlias(qg, exps[i]->src_node->alias);
+		exps[i]->dest_node = QueryGraph_GetNodeByAlias(qg, exps[i]->dest_node->alias);
+		if(exps[i]->edge) exps[i]->edge = QueryGraph_GetEdgeByAlias(qg, exps[i]->edge->alias);
+	}
+}
+
 static void _RemovePathFromGraph(QueryGraph *g, QGEdge **path) {
 	uint edge_count = array_len(path);
 	for(uint i = 0; i < edge_count; i++) {
@@ -232,8 +241,15 @@ static void _RemovePathFromGraph(QueryGraph *g, QGEdge **path) {
 		QGNode *dest = e->dest;
 
 		QueryGraph_RemoveEdge(g, e);
-		if(QGNode_EdgeCount(src) == 0) QueryGraph_RemoveNode(g, src);
-		if(QGNode_EdgeCount(dest) == 0) QueryGraph_RemoveNode(g, dest);
+		QGEdge_Free(e);
+		if(QGNode_EdgeCount(src) == 0) {
+			QueryGraph_RemoveNode(g, src);
+			QGNode_Free(src);
+		}
+		if(src != dest && QGNode_EdgeCount(dest) == 0) {
+			QueryGraph_RemoveNode(g, dest);
+			QGNode_Free(dest);
+		}
 	}
 }
 
@@ -253,8 +269,8 @@ static inline bool _should_divide_expression(QGEdge **path, int idx, const Query
 
 /* Break down expression into sub expressions.
  * considering referenced intermidate nodes and edges. */
-static AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpression *exp,
-																		  QGEdge **path, const QueryGraph *qg) {
+static AlgebraicExpression **_AlgebraicExpression_Intermediate_Expressions(AlgebraicExpression *exp,
+																		   QGEdge **path, const QueryGraph *qg) {
 
 	/* Allocating maximum number of expression possible. */
 	QGEdge *e = NULL;
@@ -545,11 +561,14 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, u
 		AlgebraicExpression *exp = _AlgebraicExpression_FromPath(path, level);
 
 		// Split constructed expression into sub expressions.
-		AlgebraicExpression **sub_exps = _AlgebraicExpression_Intermidate_Expressions(exp, path, qg);
+		AlgebraicExpression **sub_exps = _AlgebraicExpression_Intermediate_Expressions(exp, path, qg);
 		sub_exps = _AlgebraicExpression_IsolateVariableLenExps(sub_exps);
 
+		// Associate nodes and edges on path with the master QueryGraph.
+		_UpdateQueryGraphReferences(qg, sub_exps);
+
 		// Remove path from graph.
-		_RemovePathFromGraph(g, path); // TODO memory leak
+		_RemovePathFromGraph(g, path);
 
 		// Add constructed expression to return value.
 		uint sub_count = array_len(sub_exps);
