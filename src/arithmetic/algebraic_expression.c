@@ -223,16 +223,6 @@ void AlgebraicExpression_PrependOperand(AlgebraicExpression *ae, AlgebraicExpres
 	ae->operands[0] = op;
 }
 
-static void _UpdateQueryGraphReferences(const QueryGraph *qg, AlgebraicExpression **exps) {
-	uint exp_count = array_len(exps);
-	for(uint i = 0; i < exp_count; i++) {
-		// Update QGNode and QGEdge pointers to reference the original QueryGraph.
-		exps[i]->src_node = QueryGraph_GetNodeByAlias(qg, exps[i]->src_node->alias);
-		exps[i]->dest_node = QueryGraph_GetNodeByAlias(qg, exps[i]->dest_node->alias);
-		if(exps[i]->edge) exps[i]->edge = QueryGraph_GetEdgeByAlias(qg, exps[i]->edge->alias);
-	}
-}
-
 static void _RemovePathFromGraph(QueryGraph *g, QGEdge **path) {
 	uint edge_count = array_len(path);
 	for(uint i = 0; i < edge_count; i++) {
@@ -565,13 +555,13 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, u
 		sub_exps = _AlgebraicExpression_IsolateVariableLenExps(sub_exps);
 
 		// Associate nodes and edges on path with the master QueryGraph.
-		_UpdateQueryGraphReferences(qg, sub_exps);
+		uint sub_count = array_len(sub_exps);
+		for(uint i = 0; i < sub_count; i++) AlgebraicExpression_UpdateReferences(qg, sub_exps[i]);
 
 		// Remove path from graph.
 		_RemovePathFromGraph(g, path);
 
 		// Add constructed expression to return value.
-		uint sub_count = array_len(sub_exps);
 		for(uint j = 0; j < sub_count; j++) exps = array_append(exps, sub_exps[j]);
 
 		// Clean up
@@ -671,6 +661,13 @@ void AlgebraicExpression_RemoveTerm(AlgebraicExpression *ae, int idx,
 	}
 
 	ae->operand_count--;
+}
+
+void AlgebraicExpression_UpdateReferences(const QueryGraph *qg, AlgebraicExpression *exp) {
+	// Update QGNode and QGEdge pointers to reference the original QueryGraph.
+	exp->src_node = QueryGraph_GetNodeByAlias(qg, exp->src_node->alias);
+	exp->dest_node = QueryGraph_GetNodeByAlias(qg, exp->dest_node->alias);
+	if(exp->edge) exp->edge = QueryGraph_GetEdgeByAlias(qg, exp->edge->alias);
 }
 
 void AlgebraicExpression_Free(AlgebraicExpression *ae) {

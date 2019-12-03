@@ -99,6 +99,9 @@ void AlgebraicExpression_RemoveTerm(AlgebraicExpression *ae, int idx,
  * directly accessing expression transpose flag is forbidden. */
 void AlgebraicExpression_Transpose(AlgebraicExpression *ae);
 
+// Update node and edge pointers in an AlgebraicExpression to reference the given QueryGraph.
+void AlgebraicExpression_UpdateReferences(const QueryGraph *qg, AlgebraicExpression *exp);
+
 void AlgebraicExpression_Free(AlgebraicExpression *ae);
 
 #endif

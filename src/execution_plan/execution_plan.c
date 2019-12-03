@@ -32,11 +32,41 @@ static inline void _ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_ro
 	plan->root = new_root;
 }
 
+// For all ops that refer to QG entities, rebind them with the matching entity
+// in the provided QueryGraph.
+// (This logic is ugly, but currently necessary.)
+static void _RebindQueryGraphReferences(OpBase *op, const QueryGraph *qg) {
+	switch(op->type) {
+	case OPType_INDEX_SCAN:
+		((IndexScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((IndexScan *)op)->n->alias);
+		return;
+	case OPType_ALL_NODE_SCAN:
+		((AllNodeScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((AllNodeScan *)op)->n->alias);
+		return;
+	case OPType_NODE_BY_LABEL_SCAN:
+		((NodeByLabelScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((NodeByLabelScan *)op)->n->alias);
+		return;
+	case OPType_EXPAND_INTO:
+		AlgebraicExpression_UpdateReferences(qg, ((OpExpandInto *)op)->ae);
+		return;
+	case OPType_CONDITIONAL_TRAVERSE:
+		AlgebraicExpression_UpdateReferences(qg, ((CondTraverse *)op)->ae);
+		return;
+	case OPType_CONDITIONAL_VAR_LEN_TRAVERSE:
+	case OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO:
+		AlgebraicExpression_UpdateReferences(qg, ((CondVarLenTraverse *)op)->ae);
+		return;
+	default:
+		return;
+	}
+}
+
 // For all ops in the given tree, assocate the provided ExecutionPlan.
 // This is for use for updating ops that have been built with a temporary ExecutionPlan.
 static void _BindPlanToOps(OpBase *root, ExecutionPlan *plan) {
 	if(!root) return;
 	root->plan = plan;
+	_RebindQueryGraphReferences(root, plan->query_graph);
 	for(int i = 0; i < root->childCount; i ++) {
 		_BindPlanToOps(root->children[i], plan);
 	}
@@ -544,19 +574,15 @@ static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *
 	ExecutionPlan_AddOp(plan->root, rhs_plan->root); // Add Match stream to Merge op.
 
 	OpBase *rhs_root = rhs_plan->root;
+	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
+	_BindPlanToOps(rhs_root, plan);
+
 	// NULL-set variables shared between the rhs_plan and the overall plan.
 	rhs_plan->root = NULL;
 	rhs_plan->record_map = NULL;
-	// We can't free the plan's individual QueryGraphs, as operations like label scans
-	// may later try to access their entities.
-	array_free(rhs_plan->connected_components);
-	rhs_plan->connected_components = NULL;
-
 	// Free the temporary plan.
 	ExecutionPlan_Free(rhs_plan);
 
-	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
-	_BindPlanToOps(rhs_root, plan);
 }
 
 static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge_ctx,
