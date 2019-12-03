@@ -317,7 +317,7 @@ QueryGraph **QueryGraph_ConnectedComponents(const QueryGraph *qg) {
 		}
 
 		/* Visited comprise the connected component defined by S.
-		 * Remove all none reachable nodes from current connected component.
+		 * Remove all non-reachable nodes from current connected component.
 		 * Remove connected component from graph. */
 		QueryGraph *cc = QueryGraph_Clone(g);
 		uint node_count = QueryGraph_NodeCount(g);
@@ -439,3 +439,4 @@ void QueryGraph_Free(QueryGraph *qg) {
 	array_free(qg->edges);
 	rm_free(qg);
 }
+

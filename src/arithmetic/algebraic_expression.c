@@ -528,14 +528,15 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, u
 		if(acyclic) n = LongestPathTree(g, &level); // Graph is a tree.
 		else n = LongestPathGraph(g, &level);       // Graph contains cycles.
 
-		// Get a path of length level, alow closing a cycle if the graph is not acyclic.
+		// Get a path of length level, allow closing a cycle if the graph is not acyclic.
 		QGEdge **path = DFS(n, level, !acyclic);
-		assert(array_len(path) == level);
+		uint path_len = array_len(path);
+		assert(path_len == level);
 
 		/* TODO:
 		 * In case path is a cycle, e.g. (b)-[]->(a)-[]->(b)
 		 * make sure the first node on the path is referenced, _should_divide_expression(path, 0) is true.
-		 * if this is not the case we will unnceserly break the generated expression into 2 sub expressions
+		 * if this is not the case we will unnecessarily break the generated expression into 2 sub expressions
 		 * while what we can do is simply rotate the cycle, (a)-[]->(b)-[]->(a)
 		 * this is exactly the same only now we won't sub divide.
 		 * Checking if path is a cycle done by testing the start and end node. */
@@ -905,39 +906,5 @@ static GrB_Matrix _AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Ma
 
 void AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Matrix res) {
 	_AlgebraicExpression_Eval(exp, res);
-}
-
-static void _AlgebraicExpressionNode_UniqueNodes(AlgebraicExpressionNode *root,
-												 AlgebraicExpressionNode ***uniqueNodes) {
-	if(!root) return;
-
-	// Have we seen this node before?
-	int nodeCount = array_len(*uniqueNodes);
-	for(int i = 0; i < nodeCount; i++) if(root == (*uniqueNodes)[i]) return;
-
-	*uniqueNodes = array_append((*uniqueNodes), root);
-
-	if(root->type != AL_OPERATION) return;
-
-	_AlgebraicExpressionNode_UniqueNodes(root->operation.r, uniqueNodes);
-	_AlgebraicExpressionNode_UniqueNodes(root->operation.l, uniqueNodes);
-}
-
-void AlgebraicExpressionNode_Free(AlgebraicExpressionNode *root) {
-	if(!root) return;
-
-	// Delay free for nodes which are referred from multiple points.
-	AlgebraicExpressionNode **uniqueNodes = array_new(AlgebraicExpressionNode *, 1);
-	_AlgebraicExpressionNode_UniqueNodes(root, &uniqueNodes);
-
-	// Free unique nodes.
-	AlgebraicExpressionNode *node;
-	int nodesCount = array_len(uniqueNodes);
-	for(int i = 0; i < nodesCount; i++) {
-		node = array_pop(uniqueNodes);
-		if(node->operation.v) GrB_Matrix_free(&node->operation.v);
-		rm_free(node);
-	}
-	array_free(uniqueNodes);
 }
 
