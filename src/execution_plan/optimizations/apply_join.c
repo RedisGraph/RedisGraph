@@ -143,8 +143,8 @@ void applyJoin(ExecutionPlan *plan) {
 			/* The Value Hash Join will cache its left-hand stream. To reduce the cache size,
 			 * prefer to cache the stream which will produce the smallest number of records.
 			 * Our current heuristic for this is to prefer a stream which contains a filter operation. */
-			bool left_branch_filtered = (ExecutionPlan_LocateOp(left_branch, OPType_FILTER) != NULL);
-			bool right_branch_filtered = (ExecutionPlan_LocateOp(right_branch, OPType_FILTER) != NULL);
+			bool left_branch_filtered = (ExecutionPlan_LocateFirstOp(left_branch, OPType_FILTER) != NULL);
+			bool right_branch_filtered = (ExecutionPlan_LocateFirstOp(right_branch, OPType_FILTER) != NULL);
 			if(!left_branch_filtered && right_branch_filtered) {
 				// Only the RHS stream is filtered, swap the input streams and expressions.
 				value_hash_join = NewValueHashJoin(cp->plan, rhs, lhs);
