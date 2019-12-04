@@ -91,6 +91,7 @@ EntityUpdateEvalCtx *AST_PrepareUpdateOp(const cypher_astnode_t *set_clause) {
 
 void AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause, const QueryGraph *qg,
 						 const char ***nodes_ref, const char ***edges_ref) {
+	AST *ast = QueryCtx_GetAST();
 	uint delete_count = cypher_ast_delete_nexpressions(delete_clause);
 	const char **nodes_to_delete = array_new(const char *, delete_count);
 	const char **edges_to_delete = array_new(const char *, delete_count);
@@ -98,7 +99,10 @@ void AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause, const QueryGraph
 	for(uint i = 0; i < delete_count; i ++) {
 		const cypher_astnode_t *ast_expr = cypher_ast_delete_get_expression(delete_clause, i);
 		assert(cypher_astnode_type(ast_expr) == CYPHER_AST_IDENTIFIER);
-		const char *alias = cypher_ast_identifier_get_name(ast_expr);
+
+		const char *ast_alias = cypher_ast_identifier_get_name(ast_expr);
+		// Retrieve the canonical pointer for the QueryGraph entity.
+		char *alias = raxFind(ast->canonical_entity_names, (unsigned char *)ast_alias, strlen(ast_alias));
 
 		/* We need to determine whether each alias refers to a node or edge.
 		 * Currently, we'll do this by consulting with the QueryGraph. */

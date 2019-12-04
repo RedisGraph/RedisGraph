@@ -60,34 +60,31 @@ static void _annotate_entity_names(AST *ast, const cypher_astnode_t *node, uint 
 	char *alias;
 	if(ast_identifier) {
 		// Graph entity has a user-defined alias, clone it for the annotation.
-		alias = rm_strdup(cypher_ast_identifier_get_name(ast_identifier));
+		const char *identifier = cypher_ast_identifier_get_name(ast_identifier);
+		// Use one canonical pointer for each identifier.
+		alias = raxFind(ast->canonical_entity_names, (unsigned char *)identifier, strlen(identifier));
+		if(alias == raxNotFound) {
+			alias = rm_strdup(identifier);
+			// Introduce a new canonical name.
+			raxInsert(ast->canonical_entity_names, (unsigned char *)alias, strlen(alias), alias, NULL);
+		}
 	} else {
 		// Graph entity is an unaliased, create an anonymous identifier.
 		alias = _create_anon_alias((*anon_count)++);
+		// Introduce a new canonical name.
+		raxInsert(ast->canonical_entity_names, (unsigned char *)alias, strlen(alias), alias, NULL);
 	}
 
 	// Add AST annotation.
 	AST_AttachName(ast, node, alias);
 }
 
-// AST annotation callback routine for freeing generated entity names.
-static void _FreeNameAnnotationCallback(void *unused, const cypher_astnode_t *node,
-										void *annotation) {
-	rm_free(annotation);
-}
-
-// Construct a new annotation context for holding AST entity names (aliases or anonymous identifiers).
-static AnnotationCtx *_AST_NewNameContext(void) {
-	AnnotationCtx *name_ctx = cypher_ast_annotation_context();
-	cypher_ast_annotation_context_release_handler_t handler = &_FreeNameAnnotationCallback;
-	cypher_ast_annotation_context_set_release_handler(name_ctx, handler, NULL);
-	return name_ctx;
-}
-
 void AST_AnnotateEntities(AST *ast) {
 	// Instantiate an annotation context for accessing AST entity names.
-	AST_AnnotationCtxCollection_SetNameCtx(ast->anot_ctx_collection, _AST_NewNameContext());
+	AnnotationCtx *name_ctx = cypher_ast_annotation_context();
+	AST_AnnotationCtxCollection_SetNameCtx(ast->anot_ctx_collection, name_ctx);
 	uint anon_count = 0;
 	// Generate all name annotations.
 	_annotate_entity_names(ast, ast->root, &anon_count);
 }
+

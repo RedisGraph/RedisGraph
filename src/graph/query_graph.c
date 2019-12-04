@@ -178,7 +178,7 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 QGNode *QueryGraph_GetNodeByAlias(const QueryGraph *qg, const char *alias) {
 	uint node_count = QueryGraph_NodeCount(qg);
 	for(uint i = 0; i < node_count; i ++) {
-		if(strcmp(qg->nodes[i]->alias, alias) == 0) return qg->nodes[i];
+		if(qg->nodes[i]->alias == alias) return qg->nodes[i];
 	}
 	return NULL;
 }
@@ -186,7 +186,7 @@ QGNode *QueryGraph_GetNodeByAlias(const QueryGraph *qg, const char *alias) {
 QGEdge *QueryGraph_GetEdgeByAlias(const QueryGraph *qg, const char *alias) {
 	uint edge_count = QueryGraph_EdgeCount(qg);
 	for(uint i = 0; i < edge_count; i ++) {
-		if(strcmp(qg->edges[i]->alias, alias) == 0) return qg->edges[i];
+		if(qg->edges[i]->alias == alias) return qg->edges[i];
 	}
 	return NULL;
 }
@@ -224,9 +224,6 @@ QueryGraph *QueryGraph_Clone(const QueryGraph *qg) {
 
 QGNode *QueryGraph_RemoveNode(QueryGraph *qg, QGNode *n) {
 	assert(qg && n);
-
-	// Make sure node exists.
-	// if(!QueryGraph_ContainsNode(qg, n)) return NULL;
 
 	/* Remove node from query graph.
 	 * Remove and free all edges associated with node. */
