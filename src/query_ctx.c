@@ -201,6 +201,7 @@ clean_up:
 void QueryCtx_UnlockCommit(OpBase *writer_op) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	if(ctx->internal_exec_ctx.last_writer != writer_op) return;
+	if(!ctx->internal_exec_ctx.locked_for_commit) return;
 	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
 	GraphContext *gc = ctx->gc;
 	if(ResultSetStat_IndicateModification(*(ctx->internal_exec_ctx.stats)))

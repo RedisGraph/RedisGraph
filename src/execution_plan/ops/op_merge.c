@@ -52,9 +52,10 @@ static void _UpdateProperties(OpMerge *op, Record *records) {
 	uint update_count = array_len(op->on_match);
 	uint record_count = array_len(records);
 
-	// Lock everything.
-	if(!QueryCtx_LockForCommit()) return;
-	if(op->on_match) {
+
+	if(op->on_match && update_count && record_count) {
+		// Lock everything.
+		if(!QueryCtx_LockForCommit()) return;
 		// Iterate over all update contexts, converting property keys to IDs.
 		for(uint i = 0; i < update_count; i ++) {
 			op->on_match[i].attribute_idx = GraphContext_FindOrAddAttribute(gc, op->on_match[i].attribute);
