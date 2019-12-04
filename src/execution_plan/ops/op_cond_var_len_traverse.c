@@ -6,12 +6,13 @@
 
 #include <assert.h>
 
+#include "op_cond_var_len_traverse.h"
+#include "shared/print_functions.h"
 #include "../../util/arr.h"
 #include "../../ast/ast.h"
 #include "../../arithmetic/arithmetic_expression.h"
 #include "../../graph/graphcontext.h"
 #include "../../algorithms/all_paths.h"
-#include "./op_cond_var_len_traverse.h"
 #include "../../query_ctx.h"
 
 /* Forward declarations. */
@@ -31,19 +32,8 @@ static void _setupTraversedRelations(CondVarLenTraverse *op, QGEdge *e) {
 	}
 }
 
-static int CondVarLenTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
-	const CondVarLenTraverse *op = (const CondVarLenTraverse *)ctx;
-
-	// TODO clean this up, can just use one snprintf
-	int offset = 0;
-	offset += snprintf(buff + offset, buff_len - offset, "%s | (%s)", op->op.name, op->ae->src);
-	if(op->ae->edge) {
-		offset += snprintf(buff + offset, buff_len - offset, "-[%s]->", op->ae->edge);
-	} else {
-		offset += snprintf(buff + offset, buff_len - offset, "->");
-	}
-	offset += snprintf(buff + offset, buff_len - offset, "(%s)", op->ae->dest);
-	return offset;
+static inline int CondVarLenTraverseToString(const OpBase *ctx, char *buf, uint buf_len) {
+	return TraversalToString(ctx, buf, buf_len, ((const CondVarLenTraverse *)ctx)->ae);
 }
 
 void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {

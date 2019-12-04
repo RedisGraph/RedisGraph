@@ -5,6 +5,7 @@
 */
 
 #include "op_index_scan.h"
+#include "shared/print_functions.h"
 
 /* Forward declarations. */
 static OpResult IndexScanInit(OpBase *opBase);
@@ -13,10 +14,9 @@ static Record IndexScanConsumeFromChild(OpBase *opBase);
 static OpResult IndexScanReset(OpBase *opBase);
 static void IndexScanFree(OpBase *opBase);
 
-static int IndexScanToString(const OpBase *ctx, char *buff, uint buff_len) {
+static int IndexScanToString(const OpBase *ctx, char *buf, uint buf_len) {
 	const IndexScan *op = (const IndexScan *)ctx;
-	int offset = snprintf(buff, buff_len, "%s | (%s)", op->op.name, op->alias);
-	return offset;
+	return ScanToString(ctx, buf, buf_len, op->alias, NULL);
 }
 
 OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, const char *alias, RSIndex *idx,

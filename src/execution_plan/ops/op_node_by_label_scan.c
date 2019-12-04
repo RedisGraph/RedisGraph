@@ -5,6 +5,7 @@
 */
 
 #include "op_node_by_label_scan.h"
+#include "shared/print_functions.h"
 #include "../../ast/ast.h"
 #include "../../query_ctx.h"
 
@@ -15,10 +16,9 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase);
 static OpResult NodeByLabelScanReset(OpBase *opBase);
 static void NodeByLabelScanFree(OpBase *opBase);
 
-static int NodeByLabelScanToString(const OpBase *ctx, char *buff, uint buff_len) {
+static inline int NodeByLabelScanToString(const OpBase *ctx, char *buf, uint buf_len) {
 	const NodeByLabelScan *op = (const NodeByLabelScan *)ctx;
-	int offset = snprintf(buff, buff_len, "%s | (%s:%s)", op->op.name, op->alias, op->label);
-	return offset;
+	return ScanToString(ctx, buf, buf_len, op->alias, op->label);
 }
 
 OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *node) {

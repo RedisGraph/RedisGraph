@@ -26,7 +26,7 @@ static inline bool _outOfBounds(NodeByIdSeek *op) {
 OpBase *NewNodeByIdSeekOp
 (
 	const ExecutionPlan *plan,
-	const char *node,
+	const char *alias,
 	NodeID minId,
 	NodeID maxId,
 	bool minInclusive,
@@ -60,7 +60,7 @@ OpBase *NewNodeByIdSeekOp
 	OpBase_Init((OpBase *)op, OPType_NODE_BY_ID_SEEK, "NodeByIdSeek", NodeByIdSeekInit,
 				NodeByIdSeekConsume, NodeByIdSeekReset, NULL, NodeByIdSeekFree, plan);
 
-	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, node);
+	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, alias);
 
 	return (OpBase *)op;
 }

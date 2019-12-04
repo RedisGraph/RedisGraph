@@ -5,6 +5,7 @@
 */
 
 #include "op_conditional_traverse.h"
+#include "shared/print_functions.h"
 #include "../../util/arr.h"
 #include "../../GraphBLASExt/GxB_Delete.h"
 #include "../../arithmetic/arithmetic_expression.h"
@@ -72,21 +73,8 @@ void _traverse(CondTraverse *op) {
 	GrB_Matrix_clear(op->F);
 }
 
-static int CondTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
-	const CondTraverse *op = (const CondTraverse *)ctx;
-
-	// TODO clean up
-	int offset = 0;
-	offset += snprintf(buff + offset, buff_len - offset, "%s | (%s)", op->op.name, op->ae->src);
-	if(op->ae->edge) {
-		bool transpose = _expressionContainsTranspose(op->ae);
-		if(transpose) offset += snprintf(buff + offset, buff_len - offset, "<-[%s]-", op->ae->edge);
-		else offset += snprintf(buff + offset, buff_len - offset, "-[%s]->", op->ae->edge);
-	} else {
-		offset += snprintf(buff + offset, buff_len - offset, "->");
-	}
-	offset += snprintf(buff + offset, buff_len - offset, "(%s)", op->ae->dest);
-	return offset;
+static inline int CondTraverseToString(const OpBase *ctx, char *buf, uint buf_len) {
+	return TraversalToString(ctx, buf, buf_len, ((const CondTraverse *)ctx)->ae);
 }
 
 OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,

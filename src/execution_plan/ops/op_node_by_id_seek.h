@@ -25,6 +25,6 @@ typedef struct {
 	int nodeRecIdx;         // Position of entity within record.
 } NodeByIdSeek;
 
-OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const char *node, NodeID minId, NodeID maxId,
+OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const char *alias, NodeID minId, NodeID maxId,
 						  bool includeMin, bool includeMax);
 

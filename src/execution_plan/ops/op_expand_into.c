@@ -5,6 +5,7 @@
 */
 
 #include "op_expand_into.h"
+#include "shared/print_functions.h"
 #include "../../ast/ast.h"
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
@@ -18,19 +19,8 @@ static OpResult ExpandIntoReset(OpBase *opBase);
 static void ExpandIntoFree(OpBase *opBase);
 
 // String representation of operation.
-static int ExpandIntoToString(const OpBase *ctx, char *buff, uint buff_len) {
-	const OpExpandInto *op = (const OpExpandInto *)ctx;
-
-	// TODO clean this up, can just use one snprintf
-	int offset = 0;
-	offset += snprintf(buff + offset, buff_len - offset, "%s | (%s)", op->op.name, op->ae->src);
-	if(op->ae->edge) {
-		offset += snprintf(buff + offset, buff_len - offset, "-[%s]->", op->ae->edge);
-	} else {
-		offset += snprintf(buff + offset, buff_len - offset, "->");
-	}
-	offset += snprintf(buff + offset, buff_len - offset, "(%s)", op->ae->dest);
-	return offset;
+static inline int ExpandIntoToString(const OpBase *ctx, char *buf, uint buf_len) {
+	return TraversalToString(ctx, buf, buf_len, ((const OpExpandInto *)ctx)->ae);
 }
 
 /* Collects traversed edge relations.
