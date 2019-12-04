@@ -793,6 +793,8 @@ ExecutionPlan *ExecutionPlan_UnionPlans(ResultSet *result_set, AST *ast) {
 		start_offset = union_indices[i] + 1;
 	}
 
+	QueryCtx_SetAST(ast); // AST segments have been freed, set master AST in QueryCtx.
+
 	array_free(union_indices);
 
 	/* Join streams:
@@ -852,7 +854,7 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 	AST *ast = QueryCtx_GetAST();
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 
-	/* Handel UNION if there are any. */
+	/* Handle UNION if there are any. */
 	if(AST_ContainsClause(ast, CYPHER_AST_UNION)) {
 		return ExecutionPlan_UnionPlans(result_set, ast);
 	}
