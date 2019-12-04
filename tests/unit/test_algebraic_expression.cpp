@@ -1406,8 +1406,8 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
 	AlgebraicExpression *exp = ae[0];
 	AlgebraicExpression_Execute(exp, res);
 
-	ASSERT_STREQ(exp->src_node->alias, "p");
-	ASSERT_STREQ(exp->dest_node->alias, "e");
+	ASSERT_STREQ(exp->src, "p");
+	ASSERT_STREQ(exp->dest, "e");
 
 	// Validate result matrix.
 	GrB_Index ncols, nrows;
