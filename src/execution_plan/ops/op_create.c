@@ -143,7 +143,7 @@ static Record CreateConsume(OpBase *opBase) {
 	if(child) OpBase_PropagateFree(child);
 
 	// Create entities.
-	CommitNewEntities(&op->op, &op->pending);
+	CommitNewEntities(opBase, &op->pending);
 
 	// Return record.
 	return _handoff(op);
