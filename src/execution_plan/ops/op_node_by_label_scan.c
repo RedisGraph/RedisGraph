@@ -18,7 +18,8 @@ static void NodeByLabelScanFree(OpBase *opBase);
 
 static inline int NodeByLabelScanToString(const OpBase *ctx, char *buf, uint buf_len) {
 	const NodeByLabelScan *op = (const NodeByLabelScan *)ctx;
-	return ScanToString(ctx, buf, buf_len, op->alias, op->label);
+	QGNode *n = QueryGraph_GetNodeByAlias(ctx->plan->query_graph, op->alias);
+	return ScanToString(ctx, buf, buf_len, n);
 }
 
 OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *node) {

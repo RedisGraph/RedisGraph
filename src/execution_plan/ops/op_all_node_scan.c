@@ -16,7 +16,8 @@ static void AllNodeScanFree(OpBase *opBase);
 
 static inline int AllNodeScanToString(const OpBase *ctx, char *buf, uint buf_len) {
 	const AllNodeScan *op = (const AllNodeScan *)ctx;
-	return ScanToString(ctx, buf, buf_len, op->alias, NULL);
+	QGNode *n = QueryGraph_GetNodeByAlias(ctx->plan->query_graph, op->alias);
+	return ScanToString(ctx, buf, buf_len, n);
 }
 
 OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const Graph *g, const QGNode *n) {

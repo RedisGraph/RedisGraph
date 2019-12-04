@@ -5,6 +5,7 @@
  */
 
 #include "print_functions.h"
+#include "../../execution_plan.h"
 
 /* Given an AlgebraicExpression with a populated edge, determine whether we're traversing a
  * transposed edge matrix. The edge matrix will be either the first or second operand, and is
@@ -19,33 +20,47 @@ static inline bool _expressionContainsTranspose(AlgebraicExpression *exp) {
 }
 
 int TraversalToString(const OpBase *op, char *buf, uint buf_len, AlgebraicExpression *ae) {
+	int offset = 0;
+	// This edge should be printed right-to-left if the edge matrix is transposed.
 	bool transpose = (ae->edge) ? _expressionContainsTranspose(ae) : false;
-	switch(ae->edge == NULL) {
-	case true:
+	offset += snprintf(buf, buf_len, "%s | ", op->name);
+
+	// Retrieve QueryGraph entities.
+	QGNode *src = QueryGraph_GetNodeByAlias(op->plan->query_graph, ae->src);
+	QGNode *dest = QueryGraph_GetNodeByAlias(op->plan->query_graph, ae->dest);
+	QGEdge *e = (ae->edge) ? QueryGraph_GetEdgeByAlias(op->plan->query_graph, ae->edge) : NULL;
+
+	offset += QGNode_ToString(src, buf + offset, buf_len - offset);
+	if(e) {
 		switch(transpose) {
 		case true:
-			return snprintf(buf, buf_len, "%s | (%s)<-(%s)", op->name, ae->src, ae->dest);
+			offset += snprintf(buf + offset, buf_len - offset, "<-");
+			offset += QGEdge_ToString(e, buf + offset, buf_len - offset);
+			offset += snprintf(buf + offset, buf_len - offset, "-");
+			break;
 		case false:
-			return snprintf(buf, buf_len, "%s | (%s)->(%s)", op->name, ae->src, ae->dest);
+			offset += snprintf(buf + offset, buf_len - offset, "-");
+			offset += QGEdge_ToString(e, buf + offset, buf_len - offset);
+			offset += snprintf(buf + offset, buf_len - offset, "->");
+			break;
 		}
-	case false:
+	} else {
 		switch(transpose) {
 		case true:
-			return snprintf(buf, buf_len, "%s | (%s)<-[%s]-(%s)", op->name, ae->src, ae->edge, ae->dest);
+			offset += snprintf(buf + offset, buf_len - offset, "<-");
+			break;
 		case false:
-			return snprintf(buf, buf_len, "%s | (%s)-[%s]->(%s)", op->name, ae->src, ae->edge, ae->dest);
+			offset += snprintf(buf + offset, buf_len - offset, "->");
+			break;
 		}
 	}
-	return 0;
+	offset += QGNode_ToString(dest, buf + offset, buf_len - offset);
+	return offset;
 }
 
-int ScanToString(const OpBase *op, char *buf, uint buf_len, const char *alias, const char *label) {
-	switch(label == NULL) {
-	case true:
-		return snprintf(buf, buf_len, "%s | (%s)", op->name, alias);
-	case false:
-		return snprintf(buf, buf_len, "%s | (%s:%s)", op->name, alias, label);
-	}
-	return 0;
+int ScanToString(const OpBase *op, char *buf, uint buf_len, const QGNode *n) {
+	int offset = snprintf(buf, buf_len, "%s | ", op->name);
+	offset += QGNode_ToString(n, buf + offset, buf_len - offset);
+	return offset;
 }
 

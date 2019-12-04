@@ -16,7 +16,8 @@ static void IndexScanFree(OpBase *opBase);
 
 static int IndexScanToString(const OpBase *ctx, char *buf, uint buf_len) {
 	const IndexScan *op = (const IndexScan *)ctx;
-	return ScanToString(ctx, buf, buf_len, op->alias, NULL);
+	QGNode *n = QueryGraph_GetNodeByAlias(ctx->plan->query_graph, op->alias);
+	return ScanToString(ctx, buf, buf_len, n);
 }
 
 OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, const char *alias, RSIndex *idx,
