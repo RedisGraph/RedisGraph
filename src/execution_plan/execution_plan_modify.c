@@ -255,20 +255,40 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
 
 	return NULL;
 }
+typedef enum {
+	LTR,
+	RTL,
+	DONT_CARE
+} LocateOp_SearchDirection;
 
-OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type) {
+OpBase *_ExecutionPlan_LocateOp(OpBase *root, OPType type,
+								LocateOp_SearchDirection search_direction) {
 	if(!root) return NULL;
 
 	if(root->type & type) { // NOTE - this will fail if OPType is later changed to not be a bitmask.
 		return root;
 	}
-
-	for(int i = 0; i < root->childCount; i++) {
-		OpBase *op = ExecutionPlan_LocateOp(root->children[i], type);
-		if(op) return op;
+	if(search_direction == RTL) {
+		for(int i = root->childCount - 1; i >= 0; i--) {
+			OpBase *op = _ExecutionPlan_LocateOp(root->children[i], type, search_direction);
+			if(op) return op;
+		}
+	} else {
+		for(int i = 0; i < root->childCount; i++) {
+			OpBase *op = _ExecutionPlan_LocateOp(root->children[i], type, search_direction);
+			if(op) return op;
+		}
 	}
 
 	return NULL;
+}
+
+OpBase *ExecutionPlan_LocateFirstOp(OpBase *root, OPType type) {
+	return _ExecutionPlan_LocateOp(root, type, LTR);
+}
+
+OpBase *ExecutionPlan_LocateLastOp(OpBase *root, OPType type) {
+	return _ExecutionPlan_LocateOp(root, type, RTL);
 }
 
 OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references) {
