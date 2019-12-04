@@ -1015,8 +1015,6 @@ void _ExecutionPlanInit(OpBase *root) {
 
 void ExecutionPlan_Init(ExecutionPlan *plan) {
 	_ExecutionPlanInit(plan->root);
-	OpBase *last_writer = ExecutionPlan_LocateLastOp(plan->root, WRITE_OPS);
-	if(last_writer) QueryCtx_SetLastWriter(last_writer);
 }
 
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
