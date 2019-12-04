@@ -106,7 +106,7 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 		EntityID id;
 		bool reverse;
 		if(_idFilter(f, &rel, &id, &reverse)) {
-			const QGNode *node = NULL;
+			const char *node = NULL;
 			NodeID minId = ID_RANGE_UNBOUND;
 			NodeID maxId = ID_RANGE_UNBOUND;
 			bool inclusiveMin = false;
@@ -115,13 +115,13 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 
 			switch(scan_op->type) {
 			case OPType_ALL_NODE_SCAN:
-				node = ((AllNodeScan *)scan_op)->n;
+				node = ((AllNodeScan *)scan_op)->alias;
 				break;
 			case OPType_NODE_BY_LABEL_SCAN:
-				node = ((NodeByLabelScan *)scan_op)->n;
+				node = ((NodeByLabelScan *)scan_op)->alias;
 				break;
 			case OPType_INDEX_SCAN:
-				node = ((IndexScan *)scan_op)->n;
+				node = ((IndexScan *)scan_op)->alias;
 				break;
 			default:
 				assert(false);

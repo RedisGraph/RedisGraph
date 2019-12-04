@@ -17,8 +17,7 @@ static void NodeByLabelScanFree(OpBase *opBase);
 
 static int NodeByLabelScanToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const NodeByLabelScan *op = (const NodeByLabelScan *)ctx;
-	int offset = snprintf(buff, buff_len, "%s | ", op->op.name);
-	offset += QGNode_ToString(op->n, buff + offset, buff_len - offset);
+	int offset = snprintf(buff, buff_len, "%s | (%s:%s)", op->op.name, op->alias, op->label);
 	return offset;
 }
 
@@ -26,7 +25,8 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *node) {
 	NodeByLabelScan *op = malloc(sizeof(NodeByLabelScan));
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	op->g = gc->g;
-	op->n = node;
+	op->alias = node->alias;
+	op->label = node->label;
 	op->iter = NULL;
 	op->_zero_matrix = NULL;
 	op->child_record = NULL;
@@ -42,7 +42,7 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *node) {
 
 static inline void _ConstructIterator(NodeByLabelScan *op) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Schema *schema = GraphContext_GetSchema(gc, op->n->label, SCHEMA_NODE);
+	Schema *schema = GraphContext_GetSchema(gc, op->label, SCHEMA_NODE);
 	if(schema) {
 		GxB_MatrixTupleIter_new(&op->iter, Graph_GetLabelMatrix(gc->g, schema->id));
 	} else {
@@ -146,3 +146,4 @@ static void NodeByLabelScanFree(OpBase *op) {
 		nodeByLabelScan->child_record = NULL;
 	}
 }
+

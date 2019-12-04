@@ -16,14 +16,13 @@ static void AllNodeScanFree(OpBase *opBase);
 
 static int AllNodeScanToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const AllNodeScan *op = (const AllNodeScan *)ctx;
-	int offset = snprintf(buff, buff_len, "%s | ", op->op.name);
-	offset += QGNode_ToString(op->n, buff + offset, buff_len - offset);
+	int offset = snprintf(buff, buff_len, "%s | (%s)", op->op.name, op->alias);
 	return offset;
 }
 
 OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const Graph *g, const QGNode *n) {
 	AllNodeScan *op = malloc(sizeof(AllNodeScan));
-	op->n = n;
+	op->alias = n->alias;
 	op->iter = Graph_ScanNodes(g);
 	op->child_record = NULL;
 

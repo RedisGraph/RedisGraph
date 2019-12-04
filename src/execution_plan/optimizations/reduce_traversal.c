@@ -14,7 +14,7 @@
 
 void _removeRedundantTraversal(ExecutionPlan *plan, CondTraverse *traverse) {
 	AlgebraicExpression *ae =  traverse->ae;
-	if(ae->operand_count == 1 && ae->src_node == ae->dest_node) {
+	if(ae->operand_count == 1 && ae->src == ae->dest) {
 		ExecutionPlan_RemoveOp(plan, (OpBase *)traverse);
 		OpBase_Free((OpBase *)traverse);
 	}
@@ -55,19 +55,22 @@ void reduceTraversal(ExecutionPlan *plan) {
 		 * in this case there will be a traverse operation which will
 		 * filter our dest nodes (b) which aren't of type B. */
 
-		if(ae->src_node == ae->dest_node &&
+		if(ae->src == ae->dest &&
 		   ae->operand_count == 1 &&
 		   ae->operands[0].diagonal) continue;
 
 		/* Search to see if dest is already resolved */
-		if(!ExecutionPlan_LocateOpResolvingAlias(op->children[0], ae->dest_node->alias)) continue;
+		if(!ExecutionPlan_LocateOpResolvingAlias(op->children[0], ae->dest)) continue;
 
 		/* Both src and dest are already known
 		 * perform expand into instaed of traverse. */
 		if(op->type == OPType_CONDITIONAL_TRAVERSE) {
+			QGEdge *edge = NULL;
 			CondTraverse *traverse = (CondTraverse *)op;
-			OpBase *expand_into = NewExpandIntoOp(traverse->op.plan, traverse->graph, traverse->ae,
-												  traverse->recordsCap);
+			const ExecutionPlan *traverse_plan = traverse->op.plan;
+			if(ae->edge) edge = QueryGraph_GetEdgeByAlias(traverse_plan->query_graph, ae->edge);
+			OpBase *expand_into = NewExpandIntoOp(traverse_plan, traverse->graph, traverse->ae,
+												  edge, traverse->recordsCap);
 
 			// Set traverse algebraic_expression to NULL to avoid early free.
 			traverse->ae = NULL;
@@ -75,6 +78,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 			OpBase_Free((OpBase *)traverse);
 		} else {
 			CondVarLenTraverse *traverse = (CondVarLenTraverse *)op;
+			const ExecutionPlan *traverse_plan = traverse->op.plan;
 			CondVarLenTraverseOp_ExpandInto(traverse);
 			/* Conditional variable length traversal do not perform
 			 * label filtering by matrix matrix multiplication
@@ -82,14 +86,16 @@ void reduceTraversal(ExecutionPlan *plan) {
 			 * to perform label filtering, but in case a node is already
 			 * resolved this filtering is redundent and should be removed. */
 			OpBase *t;
-			if(ae->src_node->label) {
+			QGNode *src = QueryGraph_GetNodeByAlias(traverse_plan->query_graph, ae->src);
+			if(src->label) {
 				t = op->children[0];
 				if(t->type == OPType_CONDITIONAL_TRAVERSE) {
 					// Queue traversal for removal.
 					redundantTraversals[redundantTraversalsCount++] = (CondTraverse *)t;
 				}
 			}
-			if(ae->dest_node->label) {
+			QGNode *dest = QueryGraph_GetNodeByAlias(traverse_plan->query_graph, ae->dest);
+			if(dest->label) {
 				t = op->parent;
 				if(t->type == OPType_CONDITIONAL_TRAVERSE) {
 					// Queue traversal for removal.

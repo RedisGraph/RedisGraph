@@ -75,30 +75,22 @@ void _traverse(CondTraverse *op) {
 static int CondTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const CondTraverse *op = (const CondTraverse *)ctx;
 
+	// TODO clean up
 	int offset = 0;
-	offset += snprintf(buff + offset, buff_len - offset, "%s | ", op->op.name);
-	offset += QGNode_ToString(op->ae->src_node, buff + offset, buff_len - offset);
+	offset += snprintf(buff + offset, buff_len - offset, "%s | (%s)", op->op.name, op->ae->src);
 	if(op->ae->edge) {
-		// This edge should be printed right-to-left if the edge matrix is transposed.
 		bool transpose = _expressionContainsTranspose(op->ae);
-		if(transpose) {
-			offset += snprintf(buff + offset, buff_len - offset, "<-");
-			offset += QGEdge_ToString(op->ae->edge, buff + offset, buff_len - offset);
-			offset += snprintf(buff + offset, buff_len - offset, "-");
-		} else {
-			offset += snprintf(buff + offset, buff_len - offset, "-");
-			offset += QGEdge_ToString(op->ae->edge, buff + offset, buff_len - offset);
-			offset += snprintf(buff + offset, buff_len - offset, "->");
-		}
+		if(transpose) offset += snprintf(buff + offset, buff_len - offset, "<-[%s]-", op->ae->edge);
+		else offset += snprintf(buff + offset, buff_len - offset, "-[%s]->", op->ae->edge);
 	} else {
 		offset += snprintf(buff + offset, buff_len - offset, "->");
 	}
-	offset += QGNode_ToString(op->ae->dest_node, buff + offset, buff_len - offset);
+	offset += snprintf(buff + offset, buff_len - offset, "(%s)", op->ae->dest);
 	return offset;
 }
 
 OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
-						  uint records_cap) {
+						  QGEdge *edge, uint records_cap) {
 	CondTraverse *op = calloc(1, sizeof(CondTraverse));
 	op->graph = g;
 	op->ae = ae;
@@ -120,13 +112,13 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", CondTraverseInit,
 				CondTraverseConsume, CondTraverseReset, CondTraverseToString, CondTraverseFree, plan);
 
-	assert(OpBase_Aware((OpBase *)op, ae->src_node->alias, &op->srcNodeIdx));
-	op->destNodeIdx = OpBase_Modifies((OpBase *)op, ae->dest_node->alias);
+	assert(OpBase_Aware((OpBase *)op, ae->src, &op->srcNodeIdx));
+	op->destNodeIdx = OpBase_Modifies((OpBase *)op, ae->dest);
 
-	if(ae->edge) {
+	if(edge) {
 		op->edges = array_new(Edge, 32);
-		_setupTraversedRelations(op, ae->edge);
-		op->edgeRecIdx = OpBase_Modifies((OpBase *)op, ae->edge->alias);
+		_setupTraversedRelations(op, edge);
+		op->edgeRecIdx = OpBase_Modifies((OpBase *)op, edge->alias);
 	}
 
 	return (OpBase *)op;

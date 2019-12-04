@@ -21,17 +21,15 @@ static void ExpandIntoFree(OpBase *opBase);
 static int ExpandIntoToString(const OpBase *ctx, char *buff, uint buff_len) {
 	const OpExpandInto *op = (const OpExpandInto *)ctx;
 
+	// TODO clean this up, can just use one snprintf
 	int offset = 0;
-	offset += snprintf(buff + offset, buff_len - offset, "%s | ", op->op.name);
-	offset += QGNode_ToString(op->ae->src_node, buff + offset, buff_len - offset);
+	offset += snprintf(buff + offset, buff_len - offset, "%s | (%s)", op->op.name, op->ae->src);
 	if(op->ae->edge) {
-		offset += snprintf(buff + offset, buff_len - offset, "-");
-		offset += QGEdge_ToString(op->ae->edge, buff + offset, buff_len - offset);
-		offset += snprintf(buff + offset, buff_len - offset, "->");
+		offset += snprintf(buff + offset, buff_len - offset, "-[%s]->", op->ae->edge);
 	} else {
 		offset += snprintf(buff + offset, buff_len - offset, "->");
 	}
-	offset += QGNode_ToString(op->ae->dest_node, buff + offset, buff_len - offset);
+	offset += snprintf(buff + offset, buff_len - offset, "(%s)", op->ae->dest);
 	return offset;
 }
 
@@ -83,7 +81,7 @@ static void _traverse(OpExpandInto *op) {
 }
 
 OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
-						uint records_cap) {
+						QGEdge *edge, uint records_cap) {
 	OpExpandInto *op = calloc(1, sizeof(OpExpandInto));
 	op->graph = g;
 	op->ae = ae;
@@ -101,13 +99,13 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 
 	// Make sure that all entities are represented in Record
 	op->edgeIdx = IDENTIFIER_NOT_FOUND;
-	assert(OpBase_Aware((OpBase *)op, ae->src_node->alias, &op->srcNodeIdx));
-	assert(OpBase_Aware((OpBase *)op, ae->dest_node->alias, &op->destNodeIdx));
+	assert(OpBase_Aware((OpBase *)op, ae->src, &op->srcNodeIdx));
+	assert(OpBase_Aware((OpBase *)op, ae->dest, &op->destNodeIdx));
 
 	if(ae->edge) {
 		op->edges = array_new(Edge, 32);
-		_setupTraversedRelations(op, ae->edge);
-		op->edgeIdx = OpBase_Modifies((OpBase *)op, ae->edge->alias);
+		_setupTraversedRelations(op, edge);
+		op->edgeIdx = OpBase_Modifies((OpBase *)op, ae->edge);
 	}
 
 	return (OpBase *)op;
