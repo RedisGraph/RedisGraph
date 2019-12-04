@@ -1013,19 +1013,9 @@ void _ExecutionPlanInit(OpBase *root) {
 	}
 }
 
-OpBase *_ExecutionPlan_FindLastWriteOp(OpBase *root) {
-	if(!root) return NULL;
-	if(OP_IS_WRITE_OP(root->type)) return root;
-	for(int i = root->childCount - 1; i >= 0; i--) {
-		OpBase *res = _ExecutionPlan_FindLastWriteOp(root->children[i]);
-		if(res) return res;
-	}
-	return NULL;
-}
-
 void ExecutionPlan_Init(ExecutionPlan *plan) {
 	_ExecutionPlanInit(plan->root);
-	OpBase *last_writer = _ExecutionPlan_FindLastWriteOp(plan->root);
+	OpBase *last_writer = ExecutionPlan_LocateLastOp(plan->root, WRITE_OPS);
 	if(last_writer) QueryCtx_SetLastWriter(last_writer);
 }
 
