@@ -849,7 +849,7 @@ ExecutionPlan *ExecutionPlan_UnionPlans(ResultSet *result_set, AST *ast) {
 }
 
 ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
-	if(result_set) QueryCtx_SetResultSetStatistics(&(result_set->stats));
+	if(result_set) QueryCtx_SetResultSet(result_set);
 	AST *ast = QueryCtx_GetAST();
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 
@@ -952,7 +952,8 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 	// Disregard self.
 	plan->segment_count = segment_count - 1;
 	plan->segments = segments;
-
+	OpBase *last_writer = ExecutionPlan_LocateLastOp(plan->root, WRITE_OPS);
+	if(last_writer) QueryCtx_SetLastWriter(last_writer);
 	return plan;
 }
 
@@ -1005,8 +1006,6 @@ void _ExecutionPlanInit(OpBase *root) {
 
 void ExecutionPlan_Init(ExecutionPlan *plan) {
 	_ExecutionPlanInit(plan->root);
-	OpBase *last_writer = ExecutionPlan_LocateLastOp(plan->root, WRITE_OPS);
-	if(last_writer) QueryCtx_SetLastWriter(last_writer);
 }
 
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
