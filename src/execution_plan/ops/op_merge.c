@@ -187,7 +187,12 @@ static OpResult MergeInit(OpBase *opBase) {
 
 static Record _handoff(OpMerge *op) {
 	Record r = NULL;
-	if(array_len(op->output_records)) r = array_pop(op->output_records);
+	if(op->matched_records) {
+		if(array_len(op->matched_records)) r = array_pop(op->matched_records);
+		else if(op->created_records) {
+			if(array_len(op->created_records)) r = array_pop(op->created_records);
+		}
+	}
 	return r;
 }
 
@@ -195,10 +200,10 @@ static Record MergeConsume(OpBase *opBase) {
 	OpMerge *op = (OpMerge *)opBase;
 
 	// Return mode, all data was consumed.
-	if(op->output_records) return _handoff(op);
+	if(op->matched_records || op->created_records) return _handoff(op);
 
 	// Consume mode.
-	op->output_records = array_new(Record, 32);
+	op->matched_records = array_new(Record, 32);
 
 	// If we have a bound variable stream, pull from it and store records until depleted.
 	if(op->bound_variable_stream) {
@@ -235,7 +240,7 @@ static Record MergeConsume(OpBase *opBase) {
 		while((rhs_record = _pullFromStream(op->match_stream))) {
 			// Pattern was successfully matched.
 			should_create_pattern = false;
-			op->output_records = array_append(op->output_records, rhs_record);
+			op->matched_records = array_append(op->matched_records, rhs_record);
 		}
 
 		if(should_create_pattern) {
@@ -259,24 +264,20 @@ static Record MergeConsume(OpBase *opBase) {
 	if(op->bound_variable_stream) OpBase_PropagateFree(op->bound_variable_stream);
 	OpBase_PropagateFree(op->match_stream);
 
-	/* Since op_merge is is closer to the results op then op_merge_create, it is initially may be marked as the last writer
-	 * Now that it knows that op_merge_create will write after the merge_op write it should try to replace itself as the
-	 * last writer. */
-
-	if(must_create_records)	QueryCtx_UpdateLastWriter((OpBase *)op, op->create_stream);
-
-	// If we are setting properties with ON MATCH, execute all pending updates.
-	_UpdateProperties(op, op->output_records);
 
 	// Exhaust Create stream if we have at least one pattern to create.
 	if(must_create_records) {
 		/* We've populated the Create stream with all the Records it must read;
 		 * pull from it until we've retrieved all newly-created Records. */
+		if(!op->created_records) op->created_records = array_new(Record, 32);
 		Record created_record;
 		while((created_record = _pullFromStream(op->create_stream))) {
-			op->output_records = array_append(op->output_records, created_record);
+			op->created_records = array_append(op->created_records, created_record);
 		}
 	}
+
+	// If we are setting properties with ON MATCH, execute all pending updates.
+	_UpdateProperties(op, op->matched_records);
 
 	return _handoff(op);
 }
@@ -292,13 +293,22 @@ static void MergeFree(OpBase *opBase) {
 		op->input_records = NULL;
 	}
 
-	if(op->output_records) {
-		uint output_count = array_len(op->output_records);
+	if(op->matched_records) {
+		uint output_count = array_len(op->matched_records);
 		for(uint i = 0; i < output_count; i ++) {
-			Record_Free(op->output_records[i]);
+			Record_Free(op->matched_records[i]);
 		}
-		array_free(op->output_records);
-		op->output_records = NULL;
+		array_free(op->matched_records);
+		op->matched_records = NULL;
+	}
+
+	if(op->created_records) {
+		uint output_count = array_len(op->created_records);
+		for(uint i = 0; i < output_count; i ++) {
+			Record_Free(op->created_records[i]);
+		}
+		array_free(op->created_records);
+		op->created_records = NULL;
 	}
 
 	if(op->on_match) {

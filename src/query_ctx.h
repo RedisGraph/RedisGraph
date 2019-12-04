@@ -13,7 +13,7 @@
 #include <setjmp.h>
 #include <pthread.h>
 #include "commands/cmd_context.h"
-#include "resultset/resultset_statistics.h"
+#include "resultset/resultset.h"
 #include "execution_plan/ops/op.h"
 
 extern pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
@@ -29,7 +29,7 @@ typedef struct {
 	double timer[2];            // Query execution time tracking.
 	jmp_buf *breakpoint;        // The breakpoint to return to if the query causes an exception.
 	RedisModuleKey *key;        // Saves an open key value, for later extraction and closing.
-	ResultSetStatistics *stats; // Save the statistics of the execution.
+	ResultSet *result_set;      // Save the execution result set.
 	bool locked_for_commit;     // Indicates if a call for QueryCtx_LockForCommit issued before.
 	OpBase *last_writer;        // The last writer operation which indicates the need for commit.
 } QueryCtx_InternalExecCtx;
@@ -80,11 +80,9 @@ void QueryCtx_SetGraphCtx(GraphContext *gc);
 /* Set the Redis module context. */
 void QueryCtx_SetRedisModuleCtx(RedisModuleCtx *redisctx);
 /* Set the resultset statistics. */
-void QueryCtx_SetResultSetStatistics(ResultSetStatistics *stats);
+void QueryCtx_SetResultSet(ResultSet *result_set);
 /* Set the last writer which needs to commit */
 void QueryCtx_SetLastWriter(OpBase *op);
-/* Set the new writer as the last writer, if the old writer was indeed the last writer */
-void QueryCtx_UpdateLastWriter(OpBase *old_writer, OpBase *new_writer);
 
 /* Getters */
 /* Retrieve the AST. */

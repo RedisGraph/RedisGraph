@@ -88,20 +88,14 @@ void QueryCtx_SetError(char *error) {
 	ctx->internal_exec_ctx.error = error;
 }
 
-void QueryCtx_SetResultSetStatistics(ResultSetStatistics *stats) {
+void QueryCtx_SetResultSet(ResultSet *result_set) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	ctx->internal_exec_ctx.stats = stats;
+	ctx->internal_exec_ctx.result_set = result_set;
 }
 
 void QueryCtx_SetLastWriter(OpBase *last_writer) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	ctx->internal_exec_ctx.last_writer = last_writer;
-}
-
-void QueryCtx_UpdateLastWriter(OpBase *old_writer, OpBase *new_writer) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	if(ctx->internal_exec_ctx.last_writer == old_writer)
-		ctx->internal_exec_ctx.last_writer = new_writer;
 }
 
 AST *QueryCtx_GetAST(void) {
@@ -195,7 +189,7 @@ void QueryCtx_UnlockCommit(OpBase *writer_op) {
 	if(!ctx->internal_exec_ctx.locked_for_commit) return;
 	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
 	GraphContext *gc = ctx->gc;
-	if(ResultSetStat_IndicateModification(*(ctx->internal_exec_ctx.stats)))
+	if(ResultSetStat_IndicateModification(ctx->internal_exec_ctx.result_set->stats))
 		// Replicate only in case of changes.
 		RedisModule_Replicate(redis_ctx, ctx->global_exec_ctx.command_name, "cc!", gc->graph_name,
 							  ctx->query_data.query);
