@@ -66,12 +66,9 @@ typedef struct {
 	size_t operand_count;                   // Number of operands.
 	size_t operand_cap;                     // Allocated number of operands.
 	AlgebraicExpressionOperand *operands;   // Array of operands.
-	// QGNode *src_node;                       // Nodes represented by the first operand columns.
-	// QGNode *dest_node;                      // Nodes represented by the last operand rows.
-	// QGEdge *edge;                           // Edge represented by sole operand.
-	const char *src;
-	const char *dest;
-	const char *edge;
+	const char *src;                        // Alias of source node.
+	const char *dest;                       // Alias of destination node.
+	const char *edge;                       // Alias of sole edge operand, if one is present.
 } AlgebraicExpression;
 
 /* Constructs an empty expression. */

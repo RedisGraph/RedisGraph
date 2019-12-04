@@ -18,8 +18,6 @@ static inline bool _expressionContainsTranspose(AlgebraicExpression *exp) {
 	return false;
 }
 
-// int TraversalToString(const OpBase *op, char *buf, uint buf_len, const char *src, const char *dest,
-// const char *edge, bool transpose) {
 int TraversalToString(const OpBase *op, char *buf, uint buf_len, AlgebraicExpression *ae) {
 	bool transpose = (ae->edge) ? _expressionContainsTranspose(ae) : false;
 	switch(ae->edge == NULL) {
