@@ -344,7 +344,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 					continue;
 				}
 
-				if(exp->qg_edge && QGEdge_VariableLength(exp->qg_edge)) {
+				if(exp->edge && QGEdge_VariableLength(exp->edge)) {
 					root = NewCondVarLenTraverseOp(plan, gc->g, exp);
 				} else {
 					root = NewCondTraverseOp(plan, gc->g, exp, TraverseRecordCap(ast));

@@ -15,7 +15,7 @@
 
 void _removeRedundantTraversal(ExecutionPlan *plan, CondTraverse *traverse) {
 	AlgebraicExpression *ae =  traverse->ae;
-	if(ae->operand_count == 1 && !RG_STRCMP(ae->src, ae->dest)) {
+	if(ae->operand_count == 1 && !RG_STRCMP(ae->src_alias, ae->dest_alias)) {
 		ExecutionPlan_RemoveOp(plan, (OpBase *)traverse);
 		OpBase_Free((OpBase *)traverse);
 	}
@@ -56,12 +56,12 @@ void reduceTraversal(ExecutionPlan *plan) {
 		 * in this case there will be a traverse operation which will
 		 * filter our dest nodes (b) which aren't of type B. */
 
-		if(!RG_STRCMP(ae->src, ae->dest) &&
+		if(!RG_STRCMP(ae->src_alias, ae->dest_alias) &&
 		   ae->operand_count == 1 &&
 		   ae->operands[0].diagonal) continue;
 
 		/* Search to see if dest is already resolved */
-		if(!ExecutionPlan_LocateOpResolvingAlias(op->children[0], ae->dest)) continue;
+		if(!ExecutionPlan_LocateOpResolvingAlias(op->children[0], ae->dest_alias)) continue;
 
 		/* Both src and dest are already known
 		 * perform expand into instaed of traverse. */

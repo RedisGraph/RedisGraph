@@ -68,10 +68,10 @@ typedef struct {
 	AlgebraicExpressionOperand *operands;   // Array of operands.
 	QGNode *src_node;                       // Nodes represented by the first operand columns.
 	QGNode *dest_node;                      // Nodes represented by the last operand rows.
-	QGEdge *qg_edge;                        // Edge represented by sole operand.
-	const char *src;                        // Alias of source node.
-	const char *dest;                       // Alias of destination node.
-	const char *edge;                       // Alias of sole edge operand, if one is present.
+	QGEdge *edge;                           // Edge represented by sole operand.
+	const char *src_alias;                  // Alias of source node.
+	const char *dest_alias;                 // Alias of destination node.
+	const char *edge_alias;                 // Alias of sole edge operand, if one is present.
 } AlgebraicExpression;
 
 /* Constructs an empty expression. */
