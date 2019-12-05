@@ -58,8 +58,8 @@ class testProcedures(FlowTestsBase):
         return False
 
     # Issue query and validates resultset.
-    def queryAndValidate(self, query, expected_results):
-        actual_resultset = redis_graph.query(query).result_set
+    def queryAndValidate(self, query, expected_results, query_params={}):
+        actual_resultset = redis_graph.query(query, query_params).result_set
         self.env.assertEquals(len(actual_resultset), len(expected_results))
         for i in range(len(actual_resultset)):
             self.env.assertTrue(self._inResultSet(expected_results[i], actual_resultset))
@@ -133,137 +133,144 @@ class testProcedures(FlowTestsBase):
 
     # Test procedure call while mixing a number of addition clauses.
     def test_mix_clauses(self):
+        query_params = {'prefix': 'Orange*'}
         # CALL + RETURN.
-        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+
+        query = """CALL db.idx.fulltext.queryNodes('fruit', $prefix) YIELD node
                     RETURN node"""
         expected_results = [node4, node2, node3, node1]
-        self.queryAndValidate(query, expected_results)
+        self.queryAndValidate(query, expected_results, query_params=query_params)
 
 
         # The combination of CALL and WHERE currently creates a syntax error in libcypher-parser.
         # CALL + WHERE + RETURN + ORDER.
-        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', $prefix) YIELD node
                     WHERE node.value > 2
                     RETURN node
                     """
         expected_results = [node3, node4]
-        self.queryAndValidate(query, expected_results)
+        self.queryAndValidate(query, expected_results, query_params=query_params)
 
 
         # CALL + WHERE + RETURN + ORDER + SKIP.
-        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', $prefix) YIELD node
                     WHERE node.value > 2
                     RETURN node
                     ORDER BY node.value
                     SKIP 1"""
         expected_results = [node4]
-        self.queryAndValidate(query, expected_results)
+        self.queryAndValidate(query, expected_results, query_params=query_params)
 
 
         # CALL + WHERE + RETURN + LIMIT.
-        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', $prefix) YIELD node
                     WHERE node.value > 2
                     RETURN node
                     LIMIT 2"""
         expected_results = [node3, node4]
-        self.queryAndValidate(query, expected_results)
+        self.queryAndValidate(query, expected_results, query_params=query_params)
 
 
         # CALL + WHERE + RETURN + ORDER + SKIP + LIMIT.
-        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', $prefix) YIELD node
                     WHERE node.value > 2
                     RETURN node
                     ORDER BY node.value
                     SKIP 1
                     LIMIT 1"""
         expected_results = [node4]
-        self.queryAndValidate(query, expected_results)
+        self.queryAndValidate(query, expected_results, query_params=query_params)
 
         # CALL + RETURN + ORDER.
-        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', $prefix) YIELD node
                     RETURN node
                     ORDER BY node.value
                     """
         expected_results = [node1, node2, node3, node4]
-        self.queryAndValidate(query, expected_results)
+        self.queryAndValidate(query, expected_results, query_params=query_params)
 
 
         # CALL + RETURN + ORDER + SKIP.
-        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', $prefix) YIELD node
                     RETURN node
                     ORDER BY node.value
                     SKIP 1
                     """
         expected_results = [node2, node3, node4]
-        self.queryAndValidate(query, expected_results)
+        self.queryAndValidate(query, expected_results, query_params=query_params)
 
 
         # CALL + RETURN + ORDER + LIMIT.
-        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', $prefix) YIELD node
                     RETURN node
                     ORDER BY node.value
                     LIMIT 2
                     """
         expected_results = [node1, node2]
-        self.queryAndValidate(query, expected_results)
+        self.queryAndValidate(query, expected_results, query_params=query_params)
 
 
         # CALL + RETURN + ORDER + SKIP + LIMIT.
-        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', $prefix) YIELD node
                     RETURN node
                     ORDER BY node.value
                     SKIP 1
                     LIMIT 1
                     """
         expected_results = [node2]
-        self.queryAndValidate(query, expected_results)
+        self.queryAndValidate(query, expected_results, query_params=query_params)
 
 
         # CALL + WHERE + RETURN + ORDER.
-        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', $prefix) YIELD node
                     WHERE node.value > 2
                     RETURN node
                     ORDER BY node.value"""
         expected_results = [node3, node4]
-        self.queryAndValidate(query, expected_results)
+        self.queryAndValidate(query, expected_results, query_params=query_params)
 
 
         # CALL + WHERE + RETURN + ORDER + SKIP.
-        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', $prefix) YIELD node
                     WHERE node.value > 2
                     RETURN node
                     ORDER BY node.value
                     SKIP 1"""
         expected_results = [node4]
-        self.queryAndValidate(query, expected_results)
+        self.queryAndValidate(query, expected_results, query_params=query_params)
 
 
         # CALL + WHERE + RETURN + ORDER + LIMIT.
-        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', $prefix) YIELD node
                     WHERE node.value > 2
                     RETURN node
                     ORDER BY node.value
                     LIMIT 1"""
         expected_results = [node3]
-        self.queryAndValidate(query, expected_results)
+        self.queryAndValidate(query, expected_results, query_params=query_params)
 
 
         # CALL + WHERE + RETURN + ORDER + SKIP + LIMIT.
-        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', $prefix) YIELD node
                     WHERE node.value > 2
                     RETURN node
                     ORDER BY node.value
                     SKIP 1
                     LIMIT 1"""
         expected_results = [node4]
-        self.queryAndValidate(query, expected_results)
+        self.queryAndValidate(query, expected_results, query_params=query_params)
 
         # CALL + MATCH + RETURN.
-        query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node
+        query = """CALL db.idx.fulltext.queryNodes('fruit', $prefix) YIELD node
             MATCH (node)-[]->(z)
             RETURN z"""
         expected_results = [node5]
-        self.queryAndValidate(query, expected_results)
+        self.queryAndValidate(query, expected_results, query_params=query_params)
+
+        # UNWIND + CALL + RETURN.
+        query = """UNWIND([1,2]) AS x CALL db.idx.fulltext.queryNodes('fruit', $prefix) YIELD node RETURN node"""
+        expected_results = [node4, node2, node3, node1, node4, node2, node3, node1]
+        self.queryAndValidate(query, expected_results, query_params=query_params)
 
     def test_procedure_labels(self):
         actual_resultset = redis_graph.call_procedure("db.labels").result_set
@@ -279,3 +286,4 @@ class testProcedures(FlowTestsBase):
         actual_resultset = redis_graph.call_procedure("db.propertyKeys").result_set
         expected_results = [["name"], ["value"]]
         self.env.assertEquals(actual_resultset, expected_results)
+    
