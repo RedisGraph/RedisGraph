@@ -76,7 +76,7 @@ OpBase *NewDeleteOp(const ExecutionPlan *plan, const char **nodes_ref, const cha
 
 	op->node_count = array_len(op->nodes_to_delete);
 	op->edge_count = array_len(op->edges_to_delete);
-
+	OpBase_RegisterAsWriter((OpBase *) op);
 	return (OpBase *)op;
 }
 

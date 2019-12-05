@@ -50,7 +50,8 @@ ProcedureCtx *Proc_FulltextDropIdxGen() {
 								   Proc_FulltextDropIndexStep,
 								   Proc_FulltextDropIndexInvoke,
 								   Proc_FulltextDropIndexFree,
-								   privateData);
+								   privateData,
+								   true);
 
 	return ctx;
 }

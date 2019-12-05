@@ -74,7 +74,7 @@ OpBase *NewMergeCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
 		assert(OpBase_Aware((OpBase *)op, edges[i].edge->src->alias, &edges[i].src_idx));
 		assert(OpBase_Aware((OpBase *)op, edges[i].edge->dest->alias, &edges[i].dest_idx));
 	}
-
+	OpBase_RegisterAsWriter((OpBase *) op);
 	return (OpBase *)op;
 }
 

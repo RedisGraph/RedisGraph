@@ -8,6 +8,7 @@
 #define __GRAPH_RESULTSET_STATS_H__
 
 #include <stdbool.h>
+#define NOT_SET -1
 
 typedef struct {
 	int labels_added;           /* Number of labels added as part of a create query. */
@@ -16,6 +17,8 @@ typedef struct {
 	int relationships_created;  /* Number of edges created as part of a create query. */
 	int nodes_deleted;          /* Number of nodes removed as part of a delete query.*/
 	int relationships_deleted;  /* Number of edges removed as part of a delete query.*/
+	int indicies_created;       /* Number of indicies created. */
+	int indicies_deleted;       /* Number of indicies created. */
 } ResultSetStatistics;
 
 /* Checks to see if resultset-statistics indicate that a modification was made. */
