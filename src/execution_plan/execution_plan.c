@@ -561,7 +561,7 @@ static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *
 	ExecutionPlan_AddOp(plan->root, rhs_plan->root); // Add Match stream to Merge op.
 
 	OpBase *rhs_root = rhs_plan->root;
-	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
+	// Associate all new ops with the correct ExecutionPlan.
 	_BindPlanToOps(rhs_root, plan);
 
 	// NULL-set variables shared between the rhs_plan and the overall plan.

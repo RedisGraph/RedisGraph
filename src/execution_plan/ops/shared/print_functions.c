@@ -45,14 +45,7 @@ int TraversalToString(const OpBase *op, char *buf, uint buf_len, AlgebraicExpres
 			break;
 		}
 	} else {
-		switch(transpose) {
-		case true:
-			offset += snprintf(buf + offset, buf_len - offset, "<-");
-			break;
-		case false:
-			offset += snprintf(buf + offset, buf_len - offset, "->");
-			break;
-		}
+		offset += snprintf(buf + offset, buf_len - offset, "->");
 	}
 	offset += QGNode_ToString(dest, buf + offset, buf_len - offset);
 	return offset;

@@ -6,6 +6,7 @@
 
 #include "./traverse_order.h"
 #include "../../util/arr.h"
+#include "../../util/strcmp.h"
 #include "../../util/vector.h"
 #include "../../util/rmalloc.h"
 #include <assert.h>
@@ -120,10 +121,10 @@ static bool _valid_arrangement(const Arrangement arrangement, uint exps_count, Q
 		// Scan previous expressions.
 		for(; j >= 0; j--) {
 			AlgebraicExpression *prev_exp = arrangement[j];
-			if(prev_exp->src == exp->src     ||
-			   prev_exp->dest == exp->src    ||
-			   prev_exp->src == exp->dest    ||
-			   prev_exp->dest == exp->dest) break;
+			if(!RG_STRCMP(prev_exp->src, exp->src)     ||
+			   !RG_STRCMP(prev_exp->dest, exp->src)    ||
+			   !RG_STRCMP(prev_exp->src, exp->dest)    ||
+			   !RG_STRCMP(prev_exp->dest, exp->dest)) break;
 		}
 		/* Nither src or dest nodes are mentioned in previous expressions
 		 * as such the arrangement is invalid. */
