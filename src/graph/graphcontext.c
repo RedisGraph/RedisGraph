@@ -255,15 +255,35 @@ int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label, cons
 	// Retrieve the schema for this label
 	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(s == NULL) s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
-	return Schema_AddIndex(idx, s, field, type);
+	int res = Schema_AddIndex(idx, s, field, type);
+	ResultSet *result_set = QueryCtx_GetResultSet();
+	if(res == INDEX_OK) {
+		if(result_set->stats.indicies_created == NOT_SET) {
+			result_set->stats.indicies_created = 1;
+		} else result_set->stats.indicies_created += 1;
+	} else {
+		if(result_set->stats.indicies_created == NOT_SET)
+			result_set->stats.indicies_created = 0;
+	}
+	return res;
 }
 
 int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *field,
 							 IndexType type) {
 	// Retrieve the schema for this label
 	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-	if(s == NULL) return INDEX_FAIL;
-	return Schema_RemoveIndex(s, field, type);
+	int res = INDEX_FAIL;
+	if(s != NULL) res = Schema_RemoveIndex(s, field, type);
+	ResultSet *result_set = QueryCtx_GetResultSet();
+	if(res == INDEX_OK) {
+		if(result_set->stats.indicies_deleted == NOT_SET) {
+			result_set->stats.indicies_deleted = 1;
+		} else result_set->stats.indicies_deleted += 1;
+	} else {
+		if(result_set->stats.indicies_deleted == NOT_SET)
+			result_set->stats.indicies_deleted = 0;
+	}
+	return res;
 }
 
 // Delete all references to a node from any indices built upon its properties

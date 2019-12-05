@@ -79,7 +79,7 @@ void QueryCtx_SetError(char *error);
 void QueryCtx_SetGraphCtx(GraphContext *gc);
 /* Set the Redis module context. */
 void QueryCtx_SetRedisModuleCtx(RedisModuleCtx *redisctx);
-/* Set the resultset statistics. */
+/* Set the resultset. */
 void QueryCtx_SetResultSet(ResultSet *result_set);
 /* Set the last writer which needs to commit */
 void QueryCtx_SetLastWriter(OpBase *op);
@@ -95,6 +95,8 @@ Graph *QueryCtx_GetGraph(void);
 GraphContext *QueryCtx_GetGraphCtx(void);
 /* Retrieve the Redis module context. */
 RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void);
+/* Retrive the resultset. */
+ResultSet *QueryCtx_GetResultSet(void);
 
 /* Starts a locking flow before commiting changes in the graph and Redis keyspace.
  * Locking flow is:
