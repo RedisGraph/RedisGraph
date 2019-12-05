@@ -109,7 +109,8 @@ ProcedureCtx *Proc_FulltextQueryNodeGen() {
 								   Proc_FulltextQueryNodeStep,
 								   Proc_FulltextQueryNodeInvoke,
 								   Proc_FulltextQueryNodeFree,
-								   privateData);
+								   privateData,
+								   false);
 	return ctx;
 }
 

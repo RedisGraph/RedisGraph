@@ -7,6 +7,7 @@
 #include "op_procedure_call.h"
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
+#include "../../query_ctx.h"
 
 /* Forward declarations. */
 static Record ProcCallConsume(OpBase *opBase);
@@ -94,7 +95,7 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNo
 		OpBase_Modifies((OpBase *)op, yield);
 		if(alias && strcmp(alias, yield) != 0) OpBase_AliasModifier((OpBase *)op, yield, alias);
 	}
-
+	if(op->procedure->isWriteProcedure) OpBase_RegisterAsWriter((OpBase *)op);
 	return (OpBase *)op;
 }
 

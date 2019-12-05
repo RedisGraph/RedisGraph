@@ -52,6 +52,7 @@ struct ProcedureCtx {
 	ProcStep Step;              //
 	ProcInvoke Invoke;          //
 	ProcFree Free;              //
+	bool isWriteProcedure;      // Indicates if the procedure is able to mutate the graph.
 };
 typedef struct ProcedureCtx ProcedureCtx;
 
@@ -62,5 +63,6 @@ ProcedureCtx *ProcCtxNew(
 	ProcStep fStep,             // Procedure Step function.
 	ProcInvoke fInvoke,         // Procedure Invoke function.
 	ProcFree fFree,             // Procedure Free function.
-	void *privateData           // Procedure private data.
+	void *privateData,          // Procedure private data.
+	bool isWriteProcedure       // Indicates if the procedure is able to mutate the graph.
 );

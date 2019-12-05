@@ -23,6 +23,8 @@ static void _ResultSet_ReplayStats(RedisModuleCtx *ctx, ResultSet *set) {
 	if(set->stats.relationships_created > 0) resultset_size++;
 	if(set->stats.nodes_deleted > 0) resultset_size++;
 	if(set->stats.relationships_deleted > 0) resultset_size++;
+	if(set->stats.indicies_created != NOT_SET) resultset_size++;
+	if(set->stats.indicies_deleted != NOT_SET) resultset_size++;
 
 	RedisModule_ReplyWithArray(ctx, resultset_size);
 
@@ -53,6 +55,16 @@ static void _ResultSet_ReplayStats(RedisModuleCtx *ctx, ResultSet *set) {
 
 	if(set->stats.relationships_deleted > 0) {
 		buflen = sprintf(buff, "Relationships deleted: %d", set->stats.relationships_deleted);
+		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
+	}
+
+	if(set->stats.indicies_created != NOT_SET) {
+		buflen = sprintf(buff, "Indicies created: %d", set->stats.indicies_created);
+		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
+	}
+
+	if(set->stats.indicies_deleted != NOT_SET) {
+		buflen = sprintf(buff, "Indicies deleted: %d", set->stats.indicies_deleted);
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
 
@@ -93,6 +105,8 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact) {
 	set->stats.relationships_created = 0;
 	set->stats.nodes_deleted = 0;
 	set->stats.relationships_deleted = 0;
+	set->stats.indicies_created = NOT_SET;
+	set->stats.indicies_deleted = NOT_SET;
 
 	return set;
 }

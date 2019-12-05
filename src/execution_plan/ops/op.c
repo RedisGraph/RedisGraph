@@ -28,6 +28,7 @@ void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsu
 	op->op_initialized = false;
 	op->dangling_records = NULL;
 	op->modifies = NULL;
+	op->is_writer = false;
 
 	// Function pointers.
 	op->init = init;
@@ -128,6 +129,15 @@ void OpBase_RemoveVolatileRecords(OpBase *op) {
 	if(!op->dangling_records) return;
 
 	array_clear(op->dangling_records);
+}
+
+
+void OpBase_RegisterAsWriter(OpBase *op) {
+	op->is_writer = true;
+}
+
+bool OpBase_IsWriter(OpBase *op) {
+	return op->is_writer;
 }
 
 Record OpBase_CreateRecord(const OpBase *op) {

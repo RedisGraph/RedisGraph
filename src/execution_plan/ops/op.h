@@ -15,7 +15,6 @@
 #include "../../graph/entities/edge.h"
 
 #define OP_REQUIRE_NEW_DATA(opRes) (opRes & (OP_DEPLETED | OP_REFRESH)) > 0
-#define WRITE_OPS (OPType_CREATE | OPType_DELETE | OPType_MERGE | OPType_MERGE_CREATE | OPType_UPDATE)
 
 typedef enum {
 	OPType_AGGREGATE = 1,
@@ -92,6 +91,7 @@ struct OpBase {
 	Record *dangling_records;   // Records allocated by this operation that must be freed.
 	struct OpBase *parent;      // Parent operations.
 	const struct ExecutionPlan *plan; // ExecutionPlan this operation is part of.
+	bool is_writer;             // Indicates this is a writer operation.
 };
 typedef struct OpBase OpBase;
 
@@ -125,6 +125,12 @@ bool OpBase_Aware(OpBase *op, const char *alias, int *idx);
 
 void OpBase_PropagateFree(OpBase *op); // Sends free request to each operation up the chain.
 void OpBase_PropagateReset(OpBase *op); // Sends reset request to each operation up the chain.
+
+// Sets the operation to indicate itself as a writer operation.
+void OpBase_RegisterAsWriter(OpBase *op);
+
+// Indicates if the operation is a writer operation.
+bool OpBase_IsWriter(OpBase *op);
 
 // Creates a new record that will be populated during execution.
 Record OpBase_CreateRecord(const OpBase *op);

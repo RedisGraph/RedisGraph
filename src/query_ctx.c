@@ -135,6 +135,11 @@ RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void) {
 	return ctx->global_exec_ctx.redis_ctx;
 }
 
+ResultSet *QueryCtx_GetResultSet(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	return ctx->internal_exec_ctx.result_set;
+}
+
 static void _QueryCtx_ThreadSafeContextLock(QueryCtx *ctx) {
 	if(ctx->global_exec_ctx.bc) RedisModule_ThreadSafeContextLock(ctx->global_exec_ctx.redis_ctx);
 }

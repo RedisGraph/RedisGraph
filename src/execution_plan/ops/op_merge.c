@@ -94,7 +94,6 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
 	OpMerge *op = calloc(1, sizeof(OpMerge));
 	op->stats = stats;
 	op->on_match = on_match;
-
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume, NULL, NULL, MergeFree,
 				plan);
@@ -106,7 +105,7 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
 			op->on_match[i].record_idx = OpBase_Modifies((OpBase *)op, op->on_match[i].alias);
 		}
 	}
-
+	OpBase_RegisterAsWriter((OpBase *) op);
 	return (OpBase *)op;
 }
 
@@ -188,9 +187,12 @@ static OpResult MergeInit(OpBase *opBase) {
 static Record _handoff(OpMerge *op) {
 	Record r = NULL;
 	if(op->matched_records) {
-		if(array_len(op->matched_records)) r = array_pop(op->matched_records);
-		else if(op->created_records) {
-			if(array_len(op->created_records)) r = array_pop(op->created_records);
+		if(array_len(op->matched_records)) {
+			r = array_pop(op->matched_records);
+		} else if(op->created_records) {
+			if(array_len(op->created_records)) {
+				r = array_pop(op->created_records);
+			}
 		}
 	}
 	return r;
@@ -295,18 +297,14 @@ static void MergeFree(OpBase *opBase) {
 
 	if(op->matched_records) {
 		uint output_count = array_len(op->matched_records);
-		for(uint i = 0; i < output_count; i ++) {
-			Record_Free(op->matched_records[i]);
-		}
+		for(uint i = 0; i < output_count; i ++) Record_Free(op->matched_records[i]);
 		array_free(op->matched_records);
 		op->matched_records = NULL;
 	}
 
 	if(op->created_records) {
 		uint output_count = array_len(op->created_records);
-		for(uint i = 0; i < output_count; i ++) {
-			Record_Free(op->created_records[i]);
-		}
+		for(uint i = 0; i < output_count; i ++) Record_Free(op->created_records[i]);
 		array_free(op->created_records);
 		op->created_records = NULL;
 	}

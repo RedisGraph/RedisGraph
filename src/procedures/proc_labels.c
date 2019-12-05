@@ -74,7 +74,8 @@ ProcedureCtx *Proc_LabelsCtx() {
 								   Proc_LabelsStep,
 								   Proc_LabelsInvoke,
 								   Proc_LabelsFree,
-								   privateData);
+								   privateData,
+								   false);
 	return ctx;
 }
 
