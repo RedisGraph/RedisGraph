@@ -46,6 +46,19 @@ static void _RebindQueryGraphReferences(OpBase *op, const QueryGraph *qg) {
 	case OPType_NODE_BY_LABEL_SCAN:
 		((NodeByLabelScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((NodeByLabelScan *)op)->n->alias);
 		return;
+	case OPType_NODE_BY_ID_SEEK:
+		((NodeByIdSeek *)op)->n = QueryGraph_GetNodeByAlias(qg, ((NodeByIdSeek *)op)->n->alias);
+		return;
+	case OPType_EXPAND_INTO:
+		AlgebraicExpression_BindGraphEntities(qg, ((OpExpandInto *)op)->ae);
+		return;
+	case OPType_CONDITIONAL_TRAVERSE:
+		AlgebraicExpression_BindGraphEntities(qg, ((CondTraverse *)op)->ae);
+		return;
+	case OPType_CONDITIONAL_VAR_LEN_TRAVERSE:
+	case OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO:
+		AlgebraicExpression_BindGraphEntities(qg, ((CondVarLenTraverse *)op)->ae);
+		return;
 	default:
 		return;
 	}
@@ -61,7 +74,6 @@ static void _BindPlanToOps(OpBase *root, ExecutionPlan *plan) {
 		_BindPlanToOps(root->children[i], plan);
 	}
 }
-
 
 // Allocate a new ExecutionPlan segment.
 static inline ExecutionPlan *_NewEmptyExecutionPlan(void) {
@@ -304,14 +316,13 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			AlgebraicExpression **exps = AlgebraicExpression_FromQueryGraph(cc, &expCount);
 
 			// Reorder exps, to the most performant arrangement of evaluation.
-			orderExpressions(qg, exps, expCount, ft, bound_vars);
+			orderExpressions(exps, expCount, ft, bound_vars);
 
 			AlgebraicExpression *exp = exps[0];
 
 			OpBase *tail = NULL;
 			/* Create the SCAN operation that will be the tail of the traversal chain. */
-			QGNode *src = QueryGraph_GetNodeByAlias(qg, exp->src);
-			if(src->label) {
+			if(exp->src_node->label) {
 				/* Resolve source node by performing label scan,
 				 * in which case if the first algebraic expression operand
 				 * is a label matrix (diagonal) remove it, otherwise
@@ -320,9 +331,9 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				 * try to locate and remove it, there's no real harm except some performace hit
 				 * in keeping that label matrix. */
 				if(exp->operands[0].diagonal) AlgebraicExpression_RemoveTerm(exp, 0, NULL);
-				tail = NewNodeByLabelScanOp(plan, src);
+				tail = NewNodeByLabelScanOp(plan, exp->src_node);
 			} else {
-				tail = NewAllNodeScanOp(plan, gc->g, src);
+				tail = NewAllNodeScanOp(plan, gc->g, exp->src_node);
 			}
 
 			/* For each expression, build the appropriate traversal operation. */
@@ -333,12 +344,10 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 					continue;
 				}
 
-				QGEdge *edge = NULL;
-				if(exp->edge) edge = QueryGraph_GetEdgeByAlias(qg, exp->edge);
-				if(edge && QGEdge_VariableLength(edge)) {
-					root = NewCondVarLenTraverseOp(plan, gc->g, exp, edge);
+				if(exp->qg_edge && QGEdge_VariableLength(exp->qg_edge)) {
+					root = NewCondVarLenTraverseOp(plan, gc->g, exp);
 				} else {
-					root = NewCondTraverseOp(plan, gc->g, exp, edge, TraverseRecordCap(ast));
+					root = NewCondTraverseOp(plan, gc->g, exp, TraverseRecordCap(ast));
 				}
 				// Insert the new traversal op at the root of the chain.
 				ExecutionPlan_AddOp(root, tail);

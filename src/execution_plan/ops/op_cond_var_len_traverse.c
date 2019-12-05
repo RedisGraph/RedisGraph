@@ -44,9 +44,8 @@ void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {
 	op->op.name = "Conditional Variable Length Traverse (Expand Into)";
 }
 
-OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
-								QGEdge *edge) {
-	assert(ae && edge->minHops <= edge->maxHops && g && ae->operand_count == 1);
+OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
+	assert(ae && ae->qg_edge->minHops <= ae->qg_edge->maxHops && g && ae->operand_count == 1);
 
 	CondVarLenTraverse *op = malloc(sizeof(CondVarLenTraverse));
 	op->g = g;
@@ -55,12 +54,12 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	op->expandInto = false;
 	op->allPathsCtx = NULL;
 	op->edgeRelationTypes = NULL;
-	op->minHops = edge->minHops;
-	op->maxHops = edge->maxHops;
+	op->minHops = ae->qg_edge->minHops;
+	op->maxHops = ae->qg_edge->maxHops;
 	// The AlgebraicExpression populating a variable-length traversal only contains one operand.
 	op->traverseDir = (ae->operands[0].transpose) ? GRAPH_EDGE_DIR_INCOMING : GRAPH_EDGE_DIR_OUTGOING;
 
-	_setupTraversedRelations(op, edge);
+	_setupTraversedRelations(op, ae->qg_edge);
 
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
 				"Conditional Variable Length Traverse", NULL, CondVarLenTraverseConsume,
@@ -69,8 +68,8 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, ae->dest);
 	// Populate edge value in record only if it is referenced.
 	AST *ast = QueryCtx_GetAST();
-	if(AST_AliasIsReferenced(ast, edge->alias))
-		op->edgesIdx = OpBase_Modifies((OpBase *)op, edge->alias);
+	if(AST_AliasIsReferenced(ast, ae->qg_edge->alias))
+		op->edgesIdx = OpBase_Modifies((OpBase *)op, ae->qg_edge->alias);
 	else op->edgesIdx = -1;
 
 	return (OpBase *)op;

@@ -20,6 +20,7 @@ static AlgebraicExpression *_AE_MUL(size_t operand_cap) {
 	ae->operand_count = 0;
 	ae->operands = malloc(sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
 	ae->edge = NULL;
+	ae->qg_edge = NULL;
 	return ae;
 }
 
@@ -562,7 +563,11 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, u
 
 		// Add constructed expression to return value.
 		uint sub_count = array_len(sub_exps);
-		for(uint j = 0; j < sub_count; j++) exps = array_append(exps, sub_exps[j]);
+		for(uint j = 0; j < sub_count; j++) {
+			// Algebraic expressions have been finalized, bind their QueryGraph references.
+			AlgebraicExpression_BindGraphEntities(qg, sub_exps[j]);
+			exps = array_append(exps, sub_exps[j]);
+		}
 
 		// Clean up
 		array_free(path);
@@ -663,6 +668,13 @@ void AlgebraicExpression_RemoveTerm(AlgebraicExpression *ae, int idx,
 	ae->operand_count--;
 }
 
+void AlgebraicExpression_BindGraphEntities(const QueryGraph *qg, AlgebraicExpression *ae) {
+	// Update QGNode and QGEdge pointers to reference the original QueryGraph.
+	ae->src_node = QueryGraph_GetNodeByAlias(qg, ae->src);
+	ae->dest_node = QueryGraph_GetNodeByAlias(qg, ae->dest);
+	if(ae->edge) ae->qg_edge = QueryGraph_GetEdgeByAlias(qg, ae->edge);
+}
+
 void AlgebraicExpression_Free(AlgebraicExpression *ae) {
 	for(int i = 0; i < ae->operand_count; i++) {
 		if(ae->operands[i].free) {
@@ -682,9 +694,12 @@ void AlgebraicExpression_Transpose(AlgebraicExpression *ae) {
 	 * = CT*BT*AT */
 
 	// Switch expression src and dest nodes.
-	const char *tmp = ae->src;
+	const char *tmp_alias = ae->src;
 	ae->src = ae->dest;
-	ae->dest = tmp;
+	ae->dest = tmp_alias;
+	QGNode *tmp_node = ae->src_node;
+	ae->src_node = ae->dest_node;
+	ae->dest_node = tmp_node;
 
 	_AlgebraicExpression_ReverseOperandOrder(ae);
 

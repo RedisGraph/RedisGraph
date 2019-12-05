@@ -66,6 +66,9 @@ typedef struct {
 	size_t operand_count;                   // Number of operands.
 	size_t operand_cap;                     // Allocated number of operands.
 	AlgebraicExpressionOperand *operands;   // Array of operands.
+	QGNode *src_node;                       // Nodes represented by the first operand columns.
+	QGNode *dest_node;                      // Nodes represented by the last operand rows.
+	QGEdge *qg_edge;                        // Edge represented by sole operand.
 	const char *src;                        // Alias of source node.
 	const char *dest;                       // Alias of destination node.
 	const char *edge;                       // Alias of sole edge operand, if one is present.
@@ -98,6 +101,9 @@ void AlgebraicExpression_RemoveTerm(AlgebraicExpression *ae, int idx,
 /* Whenever we decide to transpose an expression, call this function
  * directly accessing expression transpose flag is forbidden. */
 void AlgebraicExpression_Transpose(AlgebraicExpression *ae);
+
+// Set node and edge pointers in an AlgebraicExpression to reference the given QueryGraph.
+void AlgebraicExpression_BindGraphEntities(const QueryGraph *qg, AlgebraicExpression *ae);
 
 void AlgebraicExpression_Free(AlgebraicExpression *ae);
 
