@@ -250,7 +250,7 @@ static void _resolve_winning_sequence(AlgebraicExpression **exps, uint exp_count
  * if neither is filtered, if the destination is labeled and the source is not. */
 static void _select_entry_point(QueryGraph *qg, AlgebraicExpression *ae, rax *filtered_entities,
 								rax *bound_vars) {
-	if(ae->operand_count == 1 && ae->src == ae->dest) return;
+	if(ae->operand_count == 1 && !RG_STRCMP(ae->src, ae->dest)) return;
 
 	// Always start at a bound variable if one is present.
 	if(bound_vars) {
