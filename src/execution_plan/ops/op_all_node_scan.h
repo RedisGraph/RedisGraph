@@ -17,7 +17,7 @@
  * Scans entire graph */
 typedef struct {
 	OpBase op;
-	const char *alias;          /* Alias of node being scanned. */
+	const QGNode *n;
 	uint nodeRecIdx;
 	DataBlockIterator *iter;
 	Record child_record;        /* The Record this op acts on if it is not a tap. */

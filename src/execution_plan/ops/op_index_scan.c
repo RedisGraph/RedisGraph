@@ -15,16 +15,14 @@ static OpResult IndexScanReset(OpBase *opBase);
 static void IndexScanFree(OpBase *opBase);
 
 static int IndexScanToString(const OpBase *ctx, char *buf, uint buf_len) {
-	const IndexScan *op = (const IndexScan *)ctx;
-	QGNode *n = QueryGraph_GetNodeByAlias(ctx->plan->query_graph, op->alias);
-	return ScanToString(ctx, buf, buf_len, n);
+	return ScanToString(ctx, buf, buf_len, ((const IndexScan *)ctx)->n);
 }
 
-OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, const char *alias, RSIndex *idx,
+OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, const QGNode *n, RSIndex *idx,
 					   RSResultsIterator *iter) {
 	IndexScan *op = malloc(sizeof(IndexScan));
 	op->g = g;
-	op->alias = alias;
+	op->n = n;
 	op->idx = idx;
 	op->iter = iter;
 	op->child_record = NULL;
@@ -33,7 +31,7 @@ OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, const char *alias, R
 	OpBase_Init((OpBase *)op, OPType_INDEX_SCAN, "Index Scan", IndexScanInit, IndexScanConsume,
 				IndexScanReset, IndexScanToString, IndexScanFree, plan);
 
-	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, alias);
+	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 	return (OpBase *)op;
 }
 

@@ -16,13 +16,13 @@ typedef struct {
 	OpBase op;
 	Graph *g;
 	RSIndex *idx;
-	const char *alias;          /* Alias of node being scanned. */
+	const QGNode *n;
 	uint nodeRecIdx;
 	RSResultsIterator *iter;
 	Record child_record;        /* The Record this op acts on if it is not a tap. */
 } IndexScan;
 
 /* Creates a new IndexScan operation */
-OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, const char *alias, RSIndex *idx,
+OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, const QGNode *n, RSIndex *idx,
 					   RSResultsIterator *iter);
 

@@ -15,14 +15,12 @@ static OpResult AllNodeScanReset(OpBase *opBase);
 static void AllNodeScanFree(OpBase *opBase);
 
 static inline int AllNodeScanToString(const OpBase *ctx, char *buf, uint buf_len) {
-	const AllNodeScan *op = (const AllNodeScan *)ctx;
-	QGNode *n = QueryGraph_GetNodeByAlias(ctx->plan->query_graph, op->alias);
-	return ScanToString(ctx, buf, buf_len, n);
+	return ScanToString(ctx, buf, buf_len, ((const AllNodeScan *)ctx)->n);
 }
 
 OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const Graph *g, const QGNode *n) {
 	AllNodeScan *op = malloc(sizeof(AllNodeScan));
-	op->alias = n->alias;
+	op->n = n;
 	op->iter = Graph_ScanNodes(g);
 	op->child_record = NULL;
 

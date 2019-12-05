@@ -8,6 +8,7 @@
 
 #include "../../util/arr.h"
 #include "../../util/vector.h"
+#include "../../util/strcmp.h"
 #include "../ops/op_expand_into.h"
 #include "../ops/op_conditional_traverse.h"
 #include "../ops/op_cond_var_len_traverse.h"
@@ -55,7 +56,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 		 * in this case there will be a traverse operation which will
 		 * filter our dest nodes (b) which aren't of type B. */
 
-		if(ae->src == ae->dest &&
+		if(!RG_STRCMP(ae->src, ae->dest) &&
 		   ae->operand_count == 1 &&
 		   ae->operands[0].diagonal) continue;
 
@@ -65,12 +66,10 @@ void reduceTraversal(ExecutionPlan *plan) {
 		/* Both src and dest are already known
 		 * perform expand into instaed of traverse. */
 		if(op->type == OPType_CONDITIONAL_TRAVERSE) {
-			QGEdge *edge = NULL;
 			CondTraverse *traverse = (CondTraverse *)op;
 			const ExecutionPlan *traverse_plan = traverse->op.plan;
-			if(ae->edge) edge = QueryGraph_GetEdgeByAlias(traverse_plan->query_graph, ae->edge);
 			OpBase *expand_into = NewExpandIntoOp(traverse_plan, traverse->graph, traverse->ae,
-												  edge, traverse->recordsCap);
+												  traverse->recordsCap);
 
 			// Set traverse algebraic_expression to NULL to avoid early free.
 			traverse->ae = NULL;

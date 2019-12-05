@@ -71,7 +71,7 @@ static void _traverse(OpExpandInto *op) {
 }
 
 OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
-						QGEdge *edge, uint records_cap) {
+						uint records_cap) {
 	OpExpandInto *op = calloc(1, sizeof(OpExpandInto));
 	op->graph = g;
 	op->ae = ae;
@@ -94,7 +94,8 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 
 	if(ae->edge) {
 		op->edges = array_new(Edge, 32);
-		_setupTraversedRelations(op, edge);
+		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, ae->edge);
+		_setupTraversedRelations(op, e);
 		op->edgeIdx = OpBase_Modifies((OpBase *)op, ae->edge);
 	}
 

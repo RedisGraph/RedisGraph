@@ -5,6 +5,7 @@
 */
 
 #include "op_node_by_id_seek.h"
+#include "shared/print_functions.h"
 #include "../../query_ctx.h"
 
 /* Forward declarations. */
@@ -13,6 +14,10 @@ static Record NodeByIdSeekConsume(OpBase *opBase);
 static Record NodeByIdSeekConsumeFromChild(OpBase *opBase);
 static OpResult NodeByIdSeekReset(OpBase *opBase);
 static void NodeByIdSeekFree(OpBase *opBase);
+
+static inline int NodeByIdSeekToString(const OpBase *ctx, char *buf, uint buf_len) {
+	return ScanToString(ctx, buf, buf_len, ((const NodeByIdSeek *)ctx)->n);
+}
 
 // Checks to see if operation index is within its bounds.
 static inline bool _outOfBounds(NodeByIdSeek *op) {
@@ -26,7 +31,7 @@ static inline bool _outOfBounds(NodeByIdSeek *op) {
 OpBase *NewNodeByIdSeekOp
 (
 	const ExecutionPlan *plan,
-	const char *alias,
+	const QGNode *n,
 	NodeID minId,
 	NodeID maxId,
 	bool minInclusive,
@@ -38,6 +43,7 @@ OpBase *NewNodeByIdSeekOp
 
 	NodeByIdSeek *op = malloc(sizeof(NodeByIdSeek));
 	op->g = QueryCtx_GetGraph();
+	op->n = n;
 	op->child_record = NULL;
 
 	op->minInclusive = minInclusive;
@@ -58,9 +64,9 @@ OpBase *NewNodeByIdSeekOp
 
 
 	OpBase_Init((OpBase *)op, OPType_NODE_BY_ID_SEEK, "NodeByIdSeek", NodeByIdSeekInit,
-				NodeByIdSeekConsume, NodeByIdSeekReset, NULL, NodeByIdSeekFree, plan);
+				NodeByIdSeekConsume, NodeByIdSeekReset, NodeByIdSeekToString, NodeByIdSeekFree, plan);
 
-	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, alias);
+	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 
 	return (OpBase *)op;
 }

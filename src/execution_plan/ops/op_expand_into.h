@@ -32,5 +32,5 @@ typedef struct {
 } OpExpandInto;
 
 OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
-						QGEdge *edge, uint records_cap);
+						uint records_cap);
 
