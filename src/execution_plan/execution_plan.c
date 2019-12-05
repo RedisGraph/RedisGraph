@@ -859,7 +859,6 @@ static OpBase *_ExecutionPlan_FindLastWriter(OpBase *root) {
 }
 
 ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
-	if(result_set) QueryCtx_SetResultSet(result_set);
 	AST *ast = QueryCtx_GetAST();
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 

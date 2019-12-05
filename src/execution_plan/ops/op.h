@@ -15,7 +15,6 @@
 #include "../../graph/entities/edge.h"
 
 #define OP_REQUIRE_NEW_DATA(opRes) (opRes & (OP_DEPLETED | OP_REFRESH)) > 0
-#define WRITE_OPS (OPType_CREATE | OPType_DELETE | OPType_MERGE | OPType_MERGE_CREATE | OPType_UPDATE)
 
 typedef enum {
 	OPType_AGGREGATE = 1,
