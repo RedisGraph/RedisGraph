@@ -78,7 +78,7 @@ static inline int CondTraverseToString(const OpBase *ctx, char *buf, uint buf_le
 }
 
 OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
-						  QGEdge *edge, uint records_cap) {
+						  uint records_cap) {
 	CondTraverse *op = calloc(1, sizeof(CondTraverse));
 	op->graph = g;
 	op->ae = ae;
@@ -103,10 +103,11 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	assert(OpBase_Aware((OpBase *)op, ae->src, &op->srcNodeIdx));
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, ae->dest);
 
-	if(edge) {
+	if(ae->edge) {
 		op->edges = array_new(Edge, 32);
-		_setupTraversedRelations(op, edge);
-		op->edgeRecIdx = OpBase_Modifies((OpBase *)op, edge->alias);
+		QGEdge *qg_edge = QueryGraph_GetEdgeByAlias(plan->query_graph, ae->edge);
+		_setupTraversedRelations(op, qg_edge);
+		op->edgeRecIdx = OpBase_Modifies((OpBase *)op, ae->edge);
 	}
 
 	return (OpBase *)op;

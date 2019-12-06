@@ -150,7 +150,7 @@ static int _penalty_arrangement(Arrangement arrangement, uint exp_count) {
 		// See if source is already resolved.
 		for(int j = i - 1; j >= 0; j--) {
 			AlgebraicExpression *prev_exp = arrangement[j];
-			if(prev_exp->src == exp->src || prev_exp->dest == exp->src) {
+			if(!RG_STRCMP(prev_exp->src, exp->src) || !RG_STRCMP(prev_exp->dest, exp->src)) {
 				src_resolved = true;
 				break;
 			}
@@ -233,7 +233,7 @@ static void _resolve_winning_sequence(AlgebraicExpression **exps, uint exp_count
 		// See if source is already resolved.
 		for(int j = i - 1; j >= 0; j--) {
 			AlgebraicExpression *prev_exp = exps[j];
-			if(prev_exp->src == exp->src || prev_exp->dest == exp->src) {
+			if(!RG_STRCMP(prev_exp->src, exp->src) || !RG_STRCMP(prev_exp->dest, exp->src)) {
 				src_resolved = true;
 				break;
 			}
@@ -301,7 +301,7 @@ void orderExpressions(QueryGraph *qg, AlgebraicExpression **exps, uint exp_count
 	assert(exps && exp_count > 0);
 
 	// Return early if we only have one expression that represents a scan rather than a traversal.
-	if(exp_count == 1 && exps[0]->operand_count == 1 && exps[0]->src == exps[0]->dest) return;
+	if(exp_count == 1 && exps[0]->operand_count == 1 && !RG_STRCMP(exps[0]->src, exps[0]->dest)) return;
 
 	// Collect all filtered aliases.
 	rax *filtered_entities = FilterTree_CollectModified(filters);

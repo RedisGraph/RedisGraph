@@ -46,6 +46,9 @@ static void _RebindQueryGraphReferences(OpBase *op, const QueryGraph *qg) {
 	case OPType_NODE_BY_LABEL_SCAN:
 		((NodeByLabelScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((NodeByLabelScan *)op)->n->alias);
 		return;
+	case OPType_NODE_BY_ID_SEEK:
+		((NodeByIdSeek *)op)->n = QueryGraph_GetNodeByAlias(qg, ((NodeByIdSeek *)op)->n->alias);
+		return;
 	default:
 		return;
 	}
@@ -336,9 +339,9 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				QGEdge *edge = NULL;
 				if(exp->edge) edge = QueryGraph_GetEdgeByAlias(qg, exp->edge);
 				if(edge && QGEdge_VariableLength(edge)) {
-					root = NewCondVarLenTraverseOp(plan, gc->g, exp, edge);
+					root = NewCondVarLenTraverseOp(plan, gc->g, exp);
 				} else {
-					root = NewCondTraverseOp(plan, gc->g, exp, edge, TraverseRecordCap(ast));
+					root = NewCondTraverseOp(plan, gc->g, exp, TraverseRecordCap(ast));
 				}
 				// Insert the new traversal op at the root of the chain.
 				ExecutionPlan_AddOp(root, tail);

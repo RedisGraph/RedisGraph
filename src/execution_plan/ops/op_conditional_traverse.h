@@ -34,5 +34,5 @@ typedef struct {
 
 /* Creates a new Traverse operation */
 OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
-						  QGEdge *edge, uint records_cap);
+						  uint records_cap);
 

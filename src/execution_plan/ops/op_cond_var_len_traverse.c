@@ -44,8 +44,8 @@ void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {
 	op->op.name = "Conditional Variable Length Traverse (Expand Into)";
 }
 
-OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
-								QGEdge *edge) {
+OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
+	QGEdge *edge = QueryGraph_GetEdgeByAlias(plan->query_graph, ae->edge);
 	assert(ae && edge->minHops <= edge->maxHops && g && ae->operand_count == 1);
 
 	CondVarLenTraverse *op = malloc(sizeof(CondVarLenTraverse));
@@ -70,7 +70,7 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	// Populate edge value in record only if it is referenced.
 	AST *ast = QueryCtx_GetAST();
 	if(AST_AliasIsReferenced(ast, edge->alias))
-		op->edgesIdx = OpBase_Modifies((OpBase *)op, edge->alias);
+		op->edgesIdx = OpBase_Modifies((OpBase *)op, ae->edge);
 	else op->edgesIdx = -1;
 
 	return (OpBase *)op;
