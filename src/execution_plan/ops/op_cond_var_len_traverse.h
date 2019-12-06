@@ -30,7 +30,8 @@ typedef struct {
 	GRAPH_EDGE_DIR traverseDir;     /* Traverse direction. */
 } CondVarLenTraverse;
 
-OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae);
+OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
+								QGEdge *edge);
 
 /* Transform operation from Conditional Variable Length Traverse
  * to Expand Into Conditional Variable Length Traverse */

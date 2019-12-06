@@ -26,24 +26,28 @@ int TraversalToString(const OpBase *op, char *buf, uint buf_len, AlgebraicExpres
 	offset += snprintf(buf, buf_len, "%s | ", op->name);
 
 	// Retrieve QueryGraph entities.
-	offset += QGNode_ToString(ae->src_node, buf + offset, buf_len - offset);
-	if(ae->edge) {
+	QGNode *src = QueryGraph_GetNodeByAlias(op->plan->query_graph, ae->src);
+	QGNode *dest = QueryGraph_GetNodeByAlias(op->plan->query_graph, ae->dest);
+	QGEdge *e = (ae->edge) ? QueryGraph_GetEdgeByAlias(op->plan->query_graph, ae->edge) : NULL;
+
+	offset += QGNode_ToString(src, buf + offset, buf_len - offset);
+	if(e) {
 		switch(transpose) {
 		case true:
 			offset += snprintf(buf + offset, buf_len - offset, "<-");
-			offset += QGEdge_ToString(ae->qg_edge, buf + offset, buf_len - offset);
+			offset += QGEdge_ToString(e, buf + offset, buf_len - offset);
 			offset += snprintf(buf + offset, buf_len - offset, "-");
 			break;
 		case false:
 			offset += snprintf(buf + offset, buf_len - offset, "-");
-			offset += QGEdge_ToString(ae->qg_edge, buf + offset, buf_len - offset);
+			offset += QGEdge_ToString(e, buf + offset, buf_len - offset);
 			offset += snprintf(buf + offset, buf_len - offset, "->");
 			break;
 		}
 	} else {
 		offset += snprintf(buf + offset, buf_len - offset, "->");
 	}
-	offset += QGNode_ToString(ae->dest_node, buf + offset, buf_len - offset);
+	offset += QGNode_ToString(dest, buf + offset, buf_len - offset);
 	return offset;
 }
 

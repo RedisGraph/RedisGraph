@@ -85,14 +85,16 @@ void reduceTraversal(ExecutionPlan *plan) {
 			 * to perform label filtering, but in case a node is already
 			 * resolved this filtering is redundent and should be removed. */
 			OpBase *t;
-			if(ae->src_node->label) {
+			QGNode *src = QueryGraph_GetNodeByAlias(traverse_plan->query_graph, ae->src);
+			if(src->label) {
 				t = op->children[0];
 				if(t->type == OPType_CONDITIONAL_TRAVERSE) {
 					// Queue traversal for removal.
 					redundantTraversals[redundantTraversalsCount++] = (CondTraverse *)t;
 				}
 			}
-			if(ae->dest_node->label) {
+			QGNode *dest = QueryGraph_GetNodeByAlias(traverse_plan->query_graph, ae->dest);
+			if(dest->label) {
 				t = op->parent;
 				if(t->type == OPType_CONDITIONAL_TRAVERSE) {
 					// Queue traversal for removal.
