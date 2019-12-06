@@ -111,6 +111,7 @@ Feature: WithAcceptance
             | (:End {num: 42}) |
         And no side effects
 
+@crash
     @skip
     Scenario: Handle dependencies across WITH
         Given an empty graph
@@ -134,6 +135,7 @@ Feature: WithAcceptance
             | (:End {num: 42, id: 0}) |
         And no side effects
 
+@crash
     @skip
     Scenario: Handle dependencies across WITH with SKIP
         Given an empty graph
@@ -243,6 +245,7 @@ Feature: WithAcceptance
             | 'B'  |
         And no side effects
 
+@crash
     @skip
     Scenario: WHERE on a DISTINCT column
         Given an empty graph
