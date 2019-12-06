@@ -13,6 +13,6 @@ bool ResultSetStat_IndicateModification(ResultSetStatistics stats) {
 			|| stats.relationships_created > 0
 			|| stats.nodes_deleted > 0
 			|| stats.relationships_deleted > 0
-			|| stats.indicies_created != NOT_SET
-			|| stats.indicies_deleted != NOT_SET);
+			|| stats.indicies_created > 0
+			|| stats.indicies_deleted > 0);
 }
