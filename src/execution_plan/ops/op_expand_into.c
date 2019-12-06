@@ -89,13 +89,14 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 
 	// Make sure that all entities are represented in Record
 	op->edgeIdx = IDENTIFIER_NOT_FOUND;
-	assert(OpBase_Aware((OpBase *)op, ae->src_alias, &op->srcNodeIdx));
-	assert(OpBase_Aware((OpBase *)op, ae->dest_alias, &op->destNodeIdx));
+	assert(OpBase_Aware((OpBase *)op, ae->src, &op->srcNodeIdx));
+	assert(OpBase_Aware((OpBase *)op, ae->dest, &op->destNodeIdx));
 
 	if(ae->edge) {
 		op->edges = array_new(Edge, 32);
-		_setupTraversedRelations(op, ae->edge);
-		op->edgeIdx = OpBase_Modifies((OpBase *)op, ae->edge_alias);
+		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, ae->edge);
+		_setupTraversedRelations(op, e);
+		op->edgeIdx = OpBase_Modifies((OpBase *)op, ae->edge);
 	}
 
 	return (OpBase *)op;

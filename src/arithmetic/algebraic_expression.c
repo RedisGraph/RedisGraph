@@ -20,7 +20,7 @@ static AlgebraicExpression *_AE_MUL(size_t operand_cap) {
 	ae->operand_count = 0;
 	ae->operands = malloc(sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
 	ae->edge = NULL;
-	ae->edge_alias = NULL;
+	ae->qg_edge = NULL;
 	return ae;
 }
 
@@ -40,8 +40,8 @@ static inline bool _referred_entity(const char *alias) {
 /* Checks if given expression contains a variable length edge. */
 static bool _AlgebraicExpression_ContainsVariableLengthEdge(const QueryGraph *qg,
 															const AlgebraicExpression *exp) {
-	if(!exp->edge_alias) return false;
-	QGEdge *e = QueryGraph_GetEdgeByAlias(qg, exp->edge_alias);
+	if(!exp->edge) return false;
+	QGEdge *e = QueryGraph_GetEdgeByAlias(qg, exp->edge);
 	return QGEdge_VariableLength(e);
 }
 
@@ -66,8 +66,8 @@ static AlgebraicExpression **_AlgebraicExpression_IsolateVariableLenExps(
 			continue;
 		}
 
-		QGNode *src = QueryGraph_GetNodeByAlias(qg, exp->src_alias);
-		QGNode *dest = QueryGraph_GetNodeByAlias(qg, exp->dest_alias);
+		QGNode *src = QueryGraph_GetNodeByAlias(qg, exp->src);
+		QGNode *dest = QueryGraph_GetNodeByAlias(qg, exp->dest);
 
 		// A variable length expression with a labeled source node
 		// We only care about the source label matrix, when it comes to
@@ -80,8 +80,8 @@ static AlgebraicExpression **_AlgebraicExpression_IsolateVariableLenExps(
 
 			/* Create a new expression. */
 			AlgebraicExpression *newExp = _AE_MUL(1);
-			newExp->src_alias = exp->src_alias;
-			newExp->dest_alias = exp->src_alias;
+			newExp->src = exp->src;
+			newExp->dest = exp->src;
 			AlgebraicExpression_PrependTerm(newExp, op.operand, op.transpose, op.free, op.diagonal);
 			res = array_append(res, newExp);
 		}
@@ -102,8 +102,8 @@ static AlgebraicExpression **_AlgebraicExpression_IsolateVariableLenExps(
 												op.diagonal);
 			} else {
 				AlgebraicExpression *newExp = _AE_MUL(1);
-				newExp->src_alias = exp->dest_alias;
-				newExp->dest_alias = exp->dest_alias;
+				newExp->src = exp->dest;
+				newExp->dest = exp->dest;
 				AlgebraicExpression_PrependTerm(newExp, op.operand, op.transpose, op.free, op.diagonal);
 				res = array_append(res, newExp);
 			}
@@ -150,13 +150,13 @@ static void _AlgebraicExpression_ReverseOperandOrder(AlgebraicExpression *exp) {
 
 // Debug function which prints given algebraic expression.
 void _AlgebraicExpression_Print(const AlgebraicExpression *ae) {
-	printf("src: %s \n", ae->src_alias);
+	printf("src: %s \n", ae->src);
 	for(int i = 0; i < ae->operand_count; i++) {
 		printf("\tdiagonal: %d ", ae->operands[i].diagonal);
 		printf("\ttranspose: %d ", ae->operands[i].transpose);
 		printf("\tfree: %d \n", ae->operands[i].free);
 	}
-	printf("dest: %s\n", ae->dest_alias);
+	printf("dest: %s\n", ae->dest);
 }
 
 void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp,
@@ -276,8 +276,8 @@ static AlgebraicExpression **_AlgebraicExpression_Intermediate_Expressions(Algeb
 	expressions = array_new(AlgebraicExpression *, exp->operand_count);
 	AlgebraicExpression *iexp = _AE_MUL(exp->operand_count);
 	iexp->operand_count = 0;
-	iexp->src_alias = exp->src_alias;
-	iexp->dest_alias = exp->dest_alias;
+	iexp->src = exp->src;
+	iexp->dest = exp->dest;
 	expressions = array_append(expressions, iexp);
 	expIdx++;
 
@@ -290,8 +290,8 @@ static AlgebraicExpression **_AlgebraicExpression_Intermediate_Expressions(Algeb
 
 	for(int i = 0; i < pathLen; i++) {
 		e = path[i];
-		/* Set expression edge alias if necessary . */
-		if(_should_populate_edge(e)) iexp->edge_alias = e->alias;
+		/* Set expression edge pointer. */
+		if(_should_populate_edge(e)) iexp->edge = e->alias; // Set expression edge pointer if necessary.
 
 		if(i == 0 && e->src->label) iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
 
@@ -305,11 +305,11 @@ static AlgebraicExpression **_AlgebraicExpression_Intermediate_Expressions(Algeb
 
 		/* If required, finalize the current algebraic expression and begin a new one. */
 		if(divide_at[i]) {
-			iexp->dest_alias = e->dest->alias;
+			iexp->dest = e->dest->alias;
 			iexp = _AE_MUL(exp->operand_count - operandIdx);
 			iexp->operand_count = 0;
-			iexp->src_alias = expressions[expIdx - 1]->dest_alias;
-			iexp->dest_alias = exp->dest_alias;
+			iexp->src = expressions[expIdx - 1]->dest;
+			iexp->dest = exp->dest;
 			expressions = array_append(expressions, iexp);
 			expIdx++;
 		}
@@ -499,8 +499,8 @@ static AlgebraicExpression *_AlgebraicExpression_FromPath(QGEdge **path, uint pa
 	}
 
 	// Set expression source and destination nodes.
-	exp->src_alias = path[0]->src->alias;
-	exp->dest_alias = e->dest->alias;
+	exp->src = path[0]->src->alias;
+	exp->dest = e->dest->alias;
 
 	return exp;
 }
@@ -670,9 +670,9 @@ void AlgebraicExpression_RemoveTerm(AlgebraicExpression *ae, int idx,
 
 void AlgebraicExpression_BindGraphEntities(const QueryGraph *qg, AlgebraicExpression *ae) {
 	// Update QGNode and QGEdge pointers to reference the original QueryGraph.
-	ae->src_node = QueryGraph_GetNodeByAlias(qg, ae->src_alias);
-	ae->dest_node = QueryGraph_GetNodeByAlias(qg, ae->dest_alias);
-	if(ae->edge_alias) ae->edge = QueryGraph_GetEdgeByAlias(qg, ae->edge_alias);
+	ae->src_node = QueryGraph_GetNodeByAlias(qg, ae->src);
+	ae->dest_node = QueryGraph_GetNodeByAlias(qg, ae->dest);
+	if(ae->edge) ae->qg_edge = QueryGraph_GetEdgeByAlias(qg, ae->edge);
 }
 
 void AlgebraicExpression_Free(AlgebraicExpression *ae) {
@@ -694,9 +694,9 @@ void AlgebraicExpression_Transpose(AlgebraicExpression *ae) {
 	 * = CT*BT*AT */
 
 	// Switch expression src and dest nodes.
-	const char *tmp_alias = ae->src_alias;
-	ae->src_alias = ae->dest_alias;
-	ae->dest_alias = tmp_alias;
+	const char *tmp_alias = ae->src;
+	ae->src = ae->dest;
+	ae->dest = tmp_alias;
 	QGNode *tmp_node = ae->src_node;
 	ae->src_node = ae->dest_node;
 	ae->dest_node = tmp_node;

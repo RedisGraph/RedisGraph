@@ -31,12 +31,12 @@ int TraversalToString(const OpBase *op, char *buf, uint buf_len, AlgebraicExpres
 		switch(transpose) {
 		case true:
 			offset += snprintf(buf + offset, buf_len - offset, "<-");
-			offset += QGEdge_ToString(ae->edge, buf + offset, buf_len - offset);
+			offset += QGEdge_ToString(ae->qg_edge, buf + offset, buf_len - offset);
 			offset += snprintf(buf + offset, buf_len - offset, "-");
 			break;
 		case false:
 			offset += snprintf(buf + offset, buf_len - offset, "-");
-			offset += QGEdge_ToString(ae->edge, buf + offset, buf_len - offset);
+			offset += QGEdge_ToString(ae->qg_edge, buf + offset, buf_len - offset);
 			offset += snprintf(buf + offset, buf_len - offset, "->");
 			break;
 		}
