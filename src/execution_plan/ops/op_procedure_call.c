@@ -121,7 +121,9 @@ static Record ProcCallConsume(OpBase *opBase) {
 		}
 
 		// Evaluate arguments, free args from previous call.
-		for(uint i = 0; i < op->arg_count; i++) SIValue_Free(op->args + i);
+		uint arg_count = array_len(op->args);
+		for(uint i = 0; i < arg_count; i++) SIValue_Free(op->args + i);
+
 		array_clear(op->args);
 		for(uint i = 0; i < op->arg_count; i++) {
 			op->args = array_append(op->args, AR_EXP_Evaluate(op->arg_exps[i], op->r));
@@ -166,7 +168,8 @@ static void ProcCallFree(OpBase *ctx) {
 	}
 
 	if(op->args) {
-		for(uint i = 0; i < op->arg_count; i++) SIValue_Free(op->args + i);
+		uint arg_count = array_len(op->args);
+		for(uint i = 0; i < arg_count; i++) SIValue_Free(op->args + i);
 		array_free(op->args);
 		op->args = NULL;
 	}
