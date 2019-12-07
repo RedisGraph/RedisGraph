@@ -146,7 +146,7 @@ ProcedureCtx *Proc_PagerankCtx() {
 
 	outputs = array_append(outputs, output_node);
 	outputs = array_append(outputs, output_score);
-	ProcedureCtx *ctx = ProcCtxNew("db.pageRank",
+	ProcedureCtx *ctx = ProcCtxNew("algo.pageRank",
 								   2,
 								   outputs,
 								   Proc_PagerankStep,

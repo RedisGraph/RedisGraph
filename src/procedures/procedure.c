@@ -92,13 +92,6 @@ SIValue *Proc_Step(ProcedureCtx *proc) {
 	return val;
 }
 
-ProcedureResult ProcedureReset(ProcedureCtx *proc) {
-	// return proc->restart(proc);
-	// Reset procedure state.
-	proc->state = PROCEDURE_NOT_INIT;
-	return PROCEDURE_OK;
-}
-
 uint Procedure_Argc(const ProcedureCtx *proc) {
 	assert(proc);
 	return proc->argc;
@@ -126,9 +119,11 @@ bool Procedure_ContainsOutput(const ProcedureCtx *proc, const char *output) {
 void Proc_Free(ProcedureCtx *proc) {
 	if(!proc) return;
 	proc->Free(proc);
-	for(uint i = 0; i < array_len(proc->output); i++) {
-		rm_free(proc->output[i]);
+
+	if(proc->output) {
+		for(uint i = 0; i < array_len(proc->output); i++) rm_free(proc->output[i]);
+		array_free(proc->output);
 	}
-	if(proc->output) array_free(proc->output);
+
 	rm_free(proc);
 }

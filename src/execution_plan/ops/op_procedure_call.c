@@ -129,11 +129,12 @@ static Record ProcCallConsume(OpBase *opBase) {
 			op->args = array_append(op->args, AR_EXP_Evaluate(op->arg_exps[i], op->r));
 		}
 
-		/* Invoke procedure: make sure to reset before invoking,
-		 * no harm reseting an uninitialized procedure. */
-		ProcedureResult res = ProcedureReset(op->procedure);
-		res = Proc_Invoke(op->procedure, op->args);
-
+		/* Free previous invocation.
+		 * TODO: replace with Proc_Reset */
+		const char *proc_name = op->procedure->name;
+		Proc_Free(op->procedure);
+		op->procedure = Proc_Get(proc_name);
+		ProcedureResult res = Proc_Invoke(op->procedure, op->args);
 		/* TODO: should rise run-time exception?
 		 * op->r will be freed in ProcCallFree. */
 		if(res != PROCEDURE_OK) return NULL;
@@ -145,8 +146,7 @@ static Record ProcCallConsume(OpBase *opBase) {
 static OpResult ProcCallReset(OpBase *ctx) {
 	OpProcCall *op = (OpProcCall *)ctx;
 	op->first_call = true;
-	ProcedureResult res = ProcedureReset(op->procedure);
-	return (res == PROCEDURE_OK) ? OP_OK : OP_ERR;
+	return OP_OK;
 }
 
 static void ProcCallFree(OpBase *ctx) {
