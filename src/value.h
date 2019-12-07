@@ -60,7 +60,8 @@ typedef enum {
 
 /* Build an integer return value for a comparison routine in the style of strcmp.
  * This is necessary to construct safe returns when the delta between
- * two values is < 1.0 (and would thus be rounded to 0). */
+ * two values is < 1.0 (and would thus be rounded to 0)
+ * or the delta is too large to fit in a 32-bit integer. */
 #define SAFE_COMPARISON_RESULT(a) SIGN(a)
 
 /* Returns 1 if argument is positive, -1 if argument is negative,
