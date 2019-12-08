@@ -237,12 +237,18 @@ static OpResult AggregateInit(OpBase *opBase) {
 
 static Record AggregateConsume(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
-	OpBase *child = op->op.children[0];
-
 	if(op->group_iter) return _handoff(op);
 
 	Record r;
-	while((r = OpBase_Consume(child))) _aggregateRecord(op, r);
+	if(op->op.childCount == 0) {
+		/* RETURN max (1)
+		 * Create a 'fake' record. */
+		r = OpBase_CreateRecord(opBase);
+		_aggregateRecord(op, r);
+	} else {
+		OpBase *child = op->op.children[0];
+		while((r = OpBase_Consume(child))) _aggregateRecord(op, r);
+	}
 
 	op->group_iter = CacheGroupIter(op->groups);
 	return _handoff(op);
