@@ -146,3 +146,9 @@ def step_impl(context):
     global exception
     assert exception != None
     assert "Invalid combination" in exception.message
+
+@then(u'a SyntaxError should be raised at compile time: NestedAggregation')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Can't use aggregate functions inside of aggregate functions" in exception.message

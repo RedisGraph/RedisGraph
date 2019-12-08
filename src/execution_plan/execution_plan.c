@@ -881,14 +881,6 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 
 	ExecutionPlan *plan = segments[segment_count - 1];
 
-	// Check to see if we've encountered an error while constructing the execution-plan.
-	if(QueryCtx_EncounteredError()) {
-		// A compile time error was encountered.
-		ExecutionPlan_Free(plan);
-		QueryCtx_EmitException();
-		return NULL;
-	}
-
 	// The root operation is OpResults only if the query culminates in a RETURN or CALL clause.
 	if(query_has_return) {
 		if(!connecting_op) {
