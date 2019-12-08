@@ -139,3 +139,19 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         expected_result = [[2]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+    
+    def test09_static_aggregation(self):
+        query = "RETURN count(*)"
+        actual_result = graph.query(query)
+        expected_result = [[1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = "RETURN max(2)"
+        actual_result = graph.query(query)
+        expected_result = [[2]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = "RETURN min(3)"
+        actual_result = graph.query(query)
+        expected_result = [[3]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
