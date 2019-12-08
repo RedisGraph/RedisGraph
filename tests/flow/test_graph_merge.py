@@ -311,6 +311,17 @@ class testGraphMergeFlow(FlowTestsBase):
         self.env.assertEquals(result.properties_set, 4)
         self.env.assertEquals(result.result_set, expected)
 
+        # Connect 'c' to both 'a' and 'b' via a Friend relation
+        # One thing to note here is that both `c` and `x` are bounded, which means
+        # our current merge distinct validation inspect the created edge only using its relationship, properties and bounded
+        # nodes! as such the first created edge is different from the second one (due to changes in the destination node).
+        query = """MATCH (c:Person {name: 'c'}) MATCH (x:Person) WHERE x.name in ['a', 'b'] WITH c, x MERGE(c)-[:FRIEND]->(x)"""
+        result = graph_2.query(query)
+        self.env.assertEquals(result.labels_added, 0)
+        self.env.assertEquals(result.nodes_created, 0)
+        self.env.assertEquals(result.properties_set, 0)
+        self.env.assertEquals(result.relationships_created, 2)
+
         # Verify function calls in MERGE do not recreate existing entities
         query = """UNWIND ['A', 'B'] AS names MERGE (a:Person {name: toLower(names)}) RETURN a.name"""
         expected = [['a'], ['b']]
