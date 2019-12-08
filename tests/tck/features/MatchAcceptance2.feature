@@ -95,6 +95,7 @@ Feature: MatchAcceptance2
       | (:IntNode {var: 0})       |
     And no side effects
 
+@crash
 @skip
   Scenario: Aggregation with named paths
     Given an empty graph
@@ -406,6 +407,7 @@ Feature: MatchAcceptance2
       | [[:X], [:Y]] |
     And no side effects
 
+@crash
 @skip
   Scenario: Excluding connected nodes
     Given an empty graph
@@ -1076,6 +1078,7 @@ Feature: MatchAcceptance2
       | [:T2] |
     And no side effects
 
+@crash
 @skip
   Scenario: Matching using a relationship that is already bound, in conjunction with aggregation and ORDER BY
     Given an empty graph

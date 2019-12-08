@@ -96,6 +96,7 @@ Feature: ExpressionAcceptance
       | +nodes      | 1 |
       | +properties | 1 |
 
+@crash
 @skip
   Scenario: Use dynamic property lookup based on parameters when there is rhs type information
     And parameters are:
@@ -112,6 +113,7 @@ Feature: ExpressionAcceptance
       | 'Apa' |
     And no side effects
 
+@crash
 @skip
   Scenario: Fail at runtime when attempting to index with an Int into a Map
     And parameters are:
@@ -125,6 +127,7 @@ Feature: ExpressionAcceptance
       """
     Then a TypeError should be raised at runtime: MapElementAccessByNonString
 
+@crash
 @skip
   Scenario: Fail at runtime when trying to index into a map with a non-string
     And parameters are:

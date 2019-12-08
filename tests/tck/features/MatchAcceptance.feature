@@ -390,6 +390,7 @@ Feature: MatchAcceptance
       | <(:A {name: 'A'})-[:KNOWS]->(:B {name: 'B'})-[:KNOWS]->(:C {name: 'C'})> |
     And no side effects
 
+@crash
 @skip
   Scenario: Do not return anything because path length does not match
     Given an empty graph
@@ -407,6 +408,7 @@ Feature: MatchAcceptance
       | x |
     And no side effects
 
+@crash
 @skip
   Scenario: Pass the path length test
     Given an empty graph
@@ -425,6 +427,7 @@ Feature: MatchAcceptance
       | (:B {name: 'B'}) |
     And no side effects
 
+@crash
 @skip
   Scenario: Return relationships by fetching them from the path - starting from the end
     Given an empty graph
@@ -442,6 +445,7 @@ Feature: MatchAcceptance
       | [[:REL {num: 1}], [:REL {num: 2}]] |
     And no side effects
 
+@crash
 @skip
   Scenario: Return relationships by fetching them from the path
     Given an empty graph

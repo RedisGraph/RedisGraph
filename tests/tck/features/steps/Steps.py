@@ -57,6 +57,7 @@ def step_impl(context):
     except Exception as error:
         resultset = None
         exception = error
+    params = None
 
 @then(u'the result should be empty')
 def step_impl(context):

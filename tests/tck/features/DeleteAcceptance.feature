@@ -115,6 +115,7 @@ Feature: DeleteAcceptance
       | -relationships | 3 |
       | -labels        | 1 |
 
+@crash
 @skip
   Scenario: Detach deleting paths
     Given an empty graph
@@ -231,6 +232,7 @@ Feature: DeleteAcceptance
     Then the result should be empty
     And no side effects
 
+@crash
 @skip
   Scenario: Delete on null path
     Given an empty graph
