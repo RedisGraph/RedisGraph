@@ -21,6 +21,10 @@ static inline Record _pullFromStream(OpBase *branch) {
 
 static Record _pullFromBranchStream(OpSemiApply *op) {
 	OpBase *branch = op->op.children[1];
+<<<<<<< HEAD
+=======
+	OpBase_PropagateReset(branch);
+>>>>>>> introduced semi-apply
 	// Propegate record to the top of the right-hand side stream.
 	if(op->op_arg) Argument_AddRecord(op->op_arg, Record_Clone(op->r));
 	return _pullFromStream(branch);
