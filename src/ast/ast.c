@@ -206,6 +206,21 @@ const cypher_astnode_t **AST_GetClauses(const AST *ast, cypher_astnode_type_t ty
 	return found;
 }
 
+void AST_CollectAliases(const char ***aliases, const cypher_astnode_t *entity) {
+	if(entity == NULL) return;
+
+	if(cypher_astnode_type(entity) == CYPHER_AST_IDENTIFIER) {
+		const char *identifier = cypher_ast_identifier_get_name(entity);
+		*aliases = array_append(*aliases, identifier);
+		return;
+	}
+
+	uint nchildren = cypher_astnode_nchildren(entity);
+	for(uint i = 0; i < nchildren; i ++) {
+		AST_CollectAliases(aliases, cypher_astnode_get_child(entity, i));
+	}
+}
+
 AST *AST_Build(cypher_parse_result_t *parse_result) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->referenced_entities = NULL;

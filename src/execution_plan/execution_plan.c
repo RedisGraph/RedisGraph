@@ -24,9 +24,6 @@
 #include <assert.h>
 #include <setjmp.h>
 
-// Forward declaration
-static void _PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set);
-
 static inline void _ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_root) {
 	if(plan->root) ExecutionPlan_NewRoot(plan->root, new_root);
 	plan->root = new_root;
@@ -67,7 +64,7 @@ static void _BindPlanToOps(OpBase *root, ExecutionPlan *plan) {
 
 
 // Allocate a new ExecutionPlan segment.
-static inline ExecutionPlan *_NewEmptyExecutionPlan(void) {
+inline ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void) {
 	return rm_calloc(1, sizeof(ExecutionPlan));
 }
 
@@ -552,7 +549,7 @@ static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *
 								   const char **arguments) {
 	AST *ast = QueryCtx_GetAST();
 	// Initialize an ExecutionPlan that shares this plan's Record mapping.
-	ExecutionPlan *rhs_plan = _NewEmptyExecutionPlan();
+	ExecutionPlan *rhs_plan = ExecutionPlan_NewEmptyExecutionPlan();
 	rhs_plan->record_map = plan->record_map;
 
 	// If we have bound variables, build an Argument op that represents them.
@@ -562,10 +559,7 @@ static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *
 	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
 	AST *rhs_ast = AST_MockMatchPattern(ast, path);
 
-	// Populate sub-ExecutionPlan.
-	_PopulateExecutionPlan(rhs_plan, NULL);
-	// Add filter ops to sub-ExecutionPlan.
-	if(rhs_plan->filter_tree) _ExecutionPlan_PlaceFilterOps(rhs_plan, NULL);
+	ExecutionPlan_PopulateExecutionPlan(rhs_plan, NULL);
 
 	AST_MockFree(rhs_ast);
 	QueryCtx_SetAST(ast); // Reset the AST.
@@ -610,7 +604,7 @@ static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge
 }
 
 // Build an array of const strings to populate the 'modifies' arrays of Argument ops.
-static inline const char **_buildArgumentModifiesArray(rax *bound_vars) {
+inline const char **ExecutionPlan_BuildArgumentModifiesArray(rax *bound_vars) {
 	const char **arguments = array_new(const char *, raxSize(bound_vars));
 	raxIterator it;
 	raxStart(&it, bound_vars);
@@ -663,7 +657,7 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 		// parser-generated constant strings.
 		ExecutionPlan_BoundVariables(plan->root, bound_vars);
 		// Prepare the variables for populating the Argument ops we will build.
-		arguments = _buildArgumentModifiesArray(bound_vars);
+		arguments = ExecutionPlan_BuildArgumentModifiesArray(bound_vars);
 	}
 
 	// Convert all the AST data required to populate our operations tree.
@@ -734,8 +728,7 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 	}
 }
 
-// Build a tree of operations that performs all the worked required by the clauses of the current AST.
-static void _PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set) {
+void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set) {
 	AST *ast = QueryCtx_GetAST();
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	plan->result_set = result_set;
@@ -898,8 +891,8 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
 
 		// Construct a new ExecutionPlanSegment.
-		ExecutionPlan *segment = _NewEmptyExecutionPlan();
-		_PopulateExecutionPlan(segment, result_set);
+		ExecutionPlan *segment = ExecutionPlan_NewEmptyExecutionPlan();
+		ExecutionPlan_PopulateExecutionPlan(segment, result_set);
 		AST_Free(ast_segment); // Free the AST segment.
 
 		segments[i] = segment;

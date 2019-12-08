@@ -74,6 +74,16 @@ OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit
  * The Create operation should never introduce a new node 'a'. */
 void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers);
 
+/* Allocate a new ExecutionPlan segment. */
+ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void);
+
+/* Build a tree of operations that performs all the worked required by the clauses of the current AST. */
+void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set);
+
+/* Build an array of const strings to populate the 'modifies' arrays of Argument ops.
+ * Use after the call to ExecutionPlan_BoundVariables. */
+const char **ExecutionPlan_BuildArgumentModifiesArray(rax *bound_vars);
+
 /* execution_plan.c */
 
 /* Creates a new execution plan from AST */
