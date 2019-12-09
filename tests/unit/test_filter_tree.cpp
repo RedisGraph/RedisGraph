@@ -258,6 +258,7 @@ TEST_F(FilterTreeTest, NOTReduction) {
 	}
 }
 
+<<<<<<< HEAD
 TEST_F(FilterTreeTest, InvalidTree) {
 	/* MATCH (u) where u.v NOT NULL RETURN u
 	 * is an invalid query,
@@ -268,6 +269,8 @@ TEST_F(FilterTreeTest, InvalidTree) {
 	ASSERT_TRUE(tree == NULL);
 }
 
+=======
+>>>>>>> wip
 TEST_F(FilterTreeTest, ContainsFunc) {
 	bool found = false;
 	FT_FilterNode *node = NULL;
