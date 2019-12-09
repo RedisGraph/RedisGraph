@@ -359,6 +359,8 @@ static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *rec
 */
 static OpBase *_ExecutionPlan_FilterTreeToOpBaseReduction(ExecutionPlan *plan,
 														  FT_FilterNode *filter_root) {
+
+
 	switch(filter_root->t) {
 	case FT_N_EXP: {
 		AR_ExpNode *expression = filter_root->exp.exp;
