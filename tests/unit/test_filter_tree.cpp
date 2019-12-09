@@ -18,6 +18,7 @@ extern "C" {
 #include "../../src/util/rmalloc.h"
 #include "../../src/filter_tree/filter_tree.h"
 #include "../../src/ast/ast_build_filter_tree.h"
+#include "../../src/arithmetic/funcs.h"
 
 #ifdef __cplusplus
 }
@@ -50,6 +51,8 @@ class FilterTreeTest: public ::testing::Test {
 
 		ASSERT_TRUE(QueryCtx_Init());
 		QueryCtx_SetGraphCtx(gc);
+		AR_RegisterFuncs();
+
 	}
 
 	AST *_build_ast(const char *query) {
@@ -256,11 +259,45 @@ TEST_F(FilterTreeTest, NOTReduction) {
 }
 
 TEST_F(FilterTreeTest, InvalidTree) {
-    /* MATCH (u) where u.v NOT NULL RETURN u
-     * is an invalid query,
-     * should have been:
-     * MATCH (u) where u.v IS NOT NULL RETURN u */
-    const char *query = "MATCH (u) where u.v NOT NULL RETURN u";
-    FT_FilterNode *tree = build_tree_from_query(query);
-    ASSERT_TRUE(tree == NULL);
+	/* MATCH (u) where u.v NOT NULL RETURN u
+	 * is an invalid query,
+	 * should have been:
+	 * MATCH (u) where u.v IS NOT NULL RETURN u */
+	const char *query = "MATCH (u) where u.v NOT NULL RETURN u";
+	FT_FilterNode *tree = build_tree_from_query(query);
+	ASSERT_TRUE(tree == NULL);
 }
+
+TEST_F(FilterTreeTest, ContainsFunc) {
+	bool found = false;
+	FT_FilterNode *node = NULL;
+	const char *q = "MATCH (n) WHERE tolower(n.name) = 'alex' RETURN n";
+	FT_FilterNode *tree = build_tree_from_query(q);
+
+	found = FilterTree_containsFunc(tree, "tolower", &node);
+	ASSERT_TRUE(found);
+	ASSERT_TRUE(node != NULL);
+
+	node = NULL;
+	found = FilterTree_containsFunc(tree, "toupper", &node);
+	ASSERT_FALSE(found);
+	ASSERT_TRUE(node == NULL);
+
+	FilterTree_Free(tree);
+	//------------------------------------------------------------------------------
+
+	q = "MATCH (n) WHERE tolower(toupper(n.name)) = 'alex' RETURN n";
+	tree = build_tree_from_query(q);
+
+	found = FilterTree_containsFunc(tree, "tolower", &node);
+	ASSERT_TRUE(found);
+	ASSERT_TRUE(node != NULL);
+
+	node = NULL;
+	found = FilterTree_containsFunc(tree, "toupper", &node);
+	ASSERT_TRUE(found);
+	ASSERT_TRUE(node != NULL);
+
+	FilterTree_Free(tree);
+}
+

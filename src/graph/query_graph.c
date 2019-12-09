@@ -147,7 +147,12 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 	uint edge_count;
 	// The initial node and edge arrays will be large enough to accommodate all AST entities
 	// (which is overkill, consider reducing)
-	node_count = edge_count = raxSize(ast->referenced_entities);
+	if(ast->referenced_entities)
+		node_count = edge_count = raxSize(ast->referenced_entities);
+	else {
+		node_count = edge_count = 1;
+	}
+
 	QueryGraph *qg = QueryGraph_New(node_count, edge_count);
 
 	// We are interested in every path held in a MATCH pattern.
