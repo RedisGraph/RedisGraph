@@ -8,6 +8,7 @@
 #include "../func_desc.h"
 #include "../../datatypes/array.h"
 #include "../../util/arr.h"
+#include"../../query_ctx.h"
 
 /* Create a list from a given squence of values.
    "RETURN [1, '2', True, null]" */
@@ -87,14 +88,22 @@ SIValue AR_SLICE(SIValue *argv, int argc) {
    If step was not suppllied, it will be default as 1
    "RETURN range(3,8,2)" will yield [3, 5, 7] */
 SIValue AR_RANGE(SIValue *argv, int argc) {
-	assert(argc > 1 && argc <= 3 && argv[0].type == T_INT64 && argv[1].type == T_INT64);
 	int64_t start = argv[0].longval;
 	int64_t end = argv[1].longval;
 	int64_t interval = 1;
 	if(argc == 3) {
 		assert(argv[2].type == T_INT64);
 		interval = argv[2].longval;
+		if(interval < 1) {
+			char *error;
+			asprintf(&error, "ArgumentError: step argument to range() must be >= 1");
+			QueryCtx_SetError(error);
+			QueryCtx_RaiseRuntimeException();
+			// Incase expection handler wasn't set, return NULL.
+			return SI_NullVal();
+		}
 	}
+
 	SIValue array = SI_Array(1 + (end - start) / interval);
 	for(; start <= end; start += interval) {
 		SIArray_Append(&array, SI_LongVal(start));
@@ -191,8 +200,8 @@ void Register_ListFuncs() {
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 3);
-	types = array_append(types, T_INT64 | T_NULL);
-	types = array_append(types, T_INT64 | T_NULL);
+	types = array_append(types, T_INT64);
+	types = array_append(types, T_INT64);
 	types = array_append(types, T_INT64 | T_NULL);
 	func_desc = AR_FuncDescNew("range", AR_RANGE, 2, 3, types, true);
 	AR_RegFunc(func_desc);
