@@ -451,6 +451,34 @@ void FilterTree_Print(const FT_FilterNode *root) {
 	_FilterTree_Print(root, 0);
 }
 
+FT_FilterNode *FilterTree_Clone(const FT_FilterNode *root) {
+	if(root == NULL) return NULL;
+	FT_FilterNode *new_root;
+	switch(root->t) {
+	case FT_N_EXP: {
+		new_root = FilterTree_CreateExpressionFilter(root->exp.exp);
+		break;
+	}
+	case FT_N_PRED: {
+		AR_ExpNode *lhs = AR_EXP_Clone(root->pred.lhs);
+		AR_ExpNode *rhs = AR_EXP_Clone(root->pred.rhs);
+		new_root = FilterTree_CreatePredicateFilter(root->pred.op, lhs, rhs);
+		break;
+	}
+
+	case FT_N_COND: {
+		new_root = FilterTree_CreateConditionFilter(root->cond.op);
+		if(root->cond.left) AppendLeftChild(new_root, FilterTree_Clone(root->cond.left));
+		if(root->cond.right) AppendLeftChild(new_root, FilterTree_Clone(root->cond.right));
+		break;
+	}
+	default:
+		assert(false);
+	}
+
+	return new_root;
+}
+
 void FilterTree_Free(FT_FilterNode *root) {
 	if(root == NULL) return;
 	switch(root->t) {

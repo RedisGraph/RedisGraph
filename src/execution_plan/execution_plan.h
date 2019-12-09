@@ -84,6 +84,8 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_
  * Use after the call to ExecutionPlan_BoundVariables. */
 const char **ExecutionPlan_BuildArgumentModifiesArray(rax *bound_vars);
 
+/* Reduces a filter operation into an apply operation. */
+void ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpBase *filter);
 /* execution_plan.c */
 
 /* Creates a new execution plan from AST */
