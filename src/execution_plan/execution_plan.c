@@ -251,22 +251,13 @@ static AR_ExpNode **_BuildCallProjections(const cypher_astnode_t *call_clause, A
 
 /* Strings enclosed in the parentheses of a CALL clause represent the arguments to the procedure.
  * _BuildCallArguments creates a string array holding all of these arguments. */
-static const char **_BuildCallArguments(const cypher_astnode_t *call_clause) {
+static AR_ExpNode **_BuildCallArguments(const cypher_astnode_t *call_clause) {
 	// Handle argument entities
 	uint arg_count = cypher_ast_call_narguments(call_clause);
-	const char **arguments = array_new(const char *, arg_count);
+	AR_ExpNode **arguments = array_new(AR_ExpNode *, arg_count);
 	for(uint i = 0; i < arg_count; i ++) {
-		/* For the timebeing we're only supporting procedures that accept
-		 * string argument, as such we can quickly transfer AST procedure
-		 * call arguments to strings.
-		 * TODO: create an arithmetic expression for each argument
-		 * evaluate it and pass SIValues as arguments to procedure. */
 		const cypher_astnode_t *exp = cypher_ast_call_get_argument(call_clause, i);
-		const cypher_astnode_type_t type = cypher_astnode_type(exp);
-
-		if(type != CYPHER_AST_STRING) continue;
-
-		const char *arg = cypher_ast_string_get_value(exp);
+		AR_ExpNode *arg = AR_EXP_FromExpression(exp);
 		arguments = array_append(arguments, arg);
 	}
 
@@ -536,12 +527,12 @@ static void _buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
 	_buildProjectionOps(plan, projections, order_exps, skip, sort_direction, aggregate, distinct);
 }
 
-// Convert a CALL clause into a procedure call oepration.
+// Convert a CALL clause into a procedure call operation.
 static inline void _buildCallOp(AST *ast, ExecutionPlan *plan,
 								const cypher_astnode_t *call_clause) {
 	// A call clause has a procedure name, 0+ arguments (parenthesized expressions), and a projection if YIELD is included
 	const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
-	const char **arguments = _BuildCallArguments(call_clause);
+	AR_ExpNode **arguments = _BuildCallArguments(call_clause);
 	AR_ExpNode **yield_exps = _BuildCallProjections(call_clause, ast); // TODO only need strings
 	OpBase *op = NewProcCallOp(plan, proc_name, arguments, yield_exps);
 	_ExecutionPlan_UpdateRoot(plan, op);

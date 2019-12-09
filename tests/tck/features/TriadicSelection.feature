@@ -47,6 +47,7 @@ Feature: TriadicSelection
       | 'c22'  |
     And no side effects
 
+@crash
 @skip
   Scenario: Handling triadic friend of a friend that is not a friend
     Given the binary-tree-1 graph
@@ -66,6 +67,7 @@ Feature: TriadicSelection
       | 'c22'  |
     And no side effects
 
+@crash
 @skip
   Scenario: Handling triadic friend of a friend that is not a friend with different relationship type
     Given the binary-tree-1 graph
@@ -85,6 +87,7 @@ Feature: TriadicSelection
       | 'c22'  |
     And no side effects
 
+@crash
 @skip
   Scenario: Handling triadic friend of a friend that is not a friend with superset of relationship type
     Given the binary-tree-1 graph
@@ -103,6 +106,7 @@ Feature: TriadicSelection
       | 'c22'  |
     And no side effects
 
+@crash
 @skip
   Scenario: Handling triadic friend of a friend that is not a friend with implicit subset of relationship type
     Given the binary-tree-1 graph
@@ -127,6 +131,7 @@ Feature: TriadicSelection
       | 'c42'  |
     And no side effects
 
+@crash
 @skip
   Scenario: Handling triadic friend of a friend that is not a friend with explicit subset of relationship type
     Given the binary-tree-1 graph
@@ -151,6 +156,7 @@ Feature: TriadicSelection
       | 'c42'  |
     And no side effects
 
+@crash
 @skip
   Scenario: Handling triadic friend of a friend that is not a friend with same labels
     Given the binary-tree-2 graph
@@ -168,6 +174,7 @@ Feature: TriadicSelection
       | 'c21'  |
     And no side effects
 
+@crash
 @skip
   Scenario: Handling triadic friend of a friend that is not a friend with different labels
     Given the binary-tree-2 graph
@@ -184,6 +191,7 @@ Feature: TriadicSelection
       | 'c22'  |
     And no side effects
 
+@crash
 @skip
   Scenario: Handling triadic friend of a friend that is not a friend with implicit subset of labels
     Given the binary-tree-2 graph
@@ -201,6 +209,7 @@ Feature: TriadicSelection
       | 'c21'  |
     And no side effects
 
+@crash
 @skip
   Scenario: Handling triadic friend of a friend that is not a friend with implicit superset of labels
     Given the binary-tree-2 graph
@@ -220,6 +229,7 @@ Feature: TriadicSelection
       | 'c22'  |
     And no side effects
 
+@crash
 @skip
   Scenario: Handling triadic friend of a friend that is a friend
     Given the binary-tree-2 graph
@@ -235,6 +245,7 @@ Feature: TriadicSelection
       | 'b2'   |
     And no side effects
 
+@crash
 @skip
   Scenario: Handling triadic friend of a friend that is a friend with different relationship type
     Given the binary-tree-1 graph
@@ -250,6 +261,7 @@ Feature: TriadicSelection
       | 'b3'   |
     And no side effects
 
+@crash
 @skip
   Scenario: Handling triadic friend of a friend that is a friend with superset of relationship type
     Given the binary-tree-1 graph
@@ -266,6 +278,7 @@ Feature: TriadicSelection
       | 'b3'   |
     And no side effects
 
+@crash
 @skip
   Scenario: Handling triadic friend of a friend that is a friend with implicit subset of relationship type
     Given the binary-tree-1 graph
@@ -282,6 +295,7 @@ Feature: TriadicSelection
       | 'b2'   |
     And no side effects
 
+@crash
 @skip
   Scenario: Handling triadic friend of a friend that is a friend with explicit subset of relationship type
     Given the binary-tree-1 graph
@@ -298,6 +312,7 @@ Feature: TriadicSelection
       | 'b2'   |
     And no side effects
 
+@crash
 @skip
   Scenario: Handling triadic friend of a friend that is a friend with same labels
     Given the binary-tree-2 graph
@@ -313,6 +328,7 @@ Feature: TriadicSelection
       | 'b2'   |
     And no side effects
 
+@crash
 @skip
   Scenario: Handling triadic friend of a friend that is a friend with different labels
     Given the binary-tree-2 graph
@@ -327,6 +343,7 @@ Feature: TriadicSelection
       | c.name |
     And no side effects
 
+@crash
 @skip
   Scenario: Handling triadic friend of a friend that is a friend with implicit subset of labels
     Given the binary-tree-2 graph
@@ -342,6 +359,7 @@ Feature: TriadicSelection
       | 'b2'   |
     And no side effects
 
+@crash
 @skip
   Scenario: Handling triadic friend of a friend that is a friend with implicit superset of labels
     Given the binary-tree-2 graph

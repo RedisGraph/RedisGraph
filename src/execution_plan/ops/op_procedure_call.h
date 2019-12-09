@@ -22,16 +22,20 @@ typedef struct {
 /* OpProcCall, */
 typedef struct {
 	OpBase op;                  // Base op.
-	const char **args;          // Arguments passed to procedure.
+    Record r;                   // Current record.
+    uint arg_count;             // Number of arguments.
+    AR_ExpNode **arg_exps;      // Expression representing arguments to procedure.
+    SIValue *args;              // Computed arguments.
 	const char **output;        // Procedure output.
     AR_ExpNode **yield_exps;    // Yield expressions.
 	ProcedureCtx *procedure;    // Procedure to call.
 	OutputMap *yield_map;       // Maps between yield to procedure output and record idx.
+    bool first_call;            // Indicate first call.
 } OpProcCall;
 
 OpBase *NewProcCallOp(
 	const ExecutionPlan *plan,  // Execution plan this operation belongs to.
-	const char *procedure,      // Procedure name.
-	const char **args,          // Arguments passed to procedure invocation.
-	AR_ExpNode **yield_exps         // Procedure output.
+	const char *proc_name,      // Procedure name.
+    AR_ExpNode **arg_exps,          // Arguments passed to procedure invocation.
+	AR_ExpNode **yield_exps     // Procedure output.
 );

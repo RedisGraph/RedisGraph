@@ -219,15 +219,22 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	// The traversal op doesn't contain information about the traversed edge, cannot apply optimization.
 	if(edgeRelationCount == 0) return;
 
-	if(condTraverse->edgeRelationTypes[0] != GRAPH_NO_RELATION) {
-		uint64_t edges = 0;
-		for(int i = 0; i < edgeRelationCount; i++) {
-			edges += _countRelationshipEdges(Graph_GetRelationMap(g, condTraverse->edgeRelationTypes[i]));
+	uint64_t edges = 0;
+	for(int i = 0; i < edgeRelationCount; i++) {
+		int relType = condTraverse->edgeRelationTypes[i];
+		switch(relType) {
+		case GRAPH_NO_RELATION:
+			// Should be the only relationship type mentioned, -[]->
+			edges = Graph_EdgeCount(g);
+			break;
+		case GRAPH_UNKNOWN_RELATION:
+			// No change to current count, -[:none_existing]->
+			break;
+		default:
+			edges += _countRelationshipEdges(Graph_GetRelationMap(g, relType));
 		}
-		edgeCount = SI_LongVal(edges);
-	} else {
-		edgeCount = SI_LongVal(Graph_EdgeCount(g));
 	}
+	edgeCount = SI_LongVal(edges);
 
 	/* Construct a constant expression, used by a new
 	 * projection operation. */
@@ -260,4 +267,3 @@ void reduceCount(ExecutionPlan *plan) {
 	 * then edge count will be tried to be executed upon the same execution plan */
 	if(!_reduceNodeCount(plan)) _reduceEdgeCount(plan);
 }
-

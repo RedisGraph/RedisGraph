@@ -26,16 +26,17 @@ typedef struct {
 	RSResultsIterator *iter;
 } QueryNodeContext;
 
-ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const char **args) {
-	if(array_len(args) < 2) return PROCEDURE_ERR;
+ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *args) {
+	if(array_len((SIValue *)args) != 2) return PROCEDURE_ERR;
+	if(!(SI_TYPE(args[0]) & SI_TYPE(args[1]) & T_STRING)) return PROCEDURE_ERR;
 
 	ctx->privateData = NULL;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
 	// See if there's a full-text index for given label.
 	char *err = NULL;
-	const char *label = args[0];
-	const char *query = args[1];
+	const char *label = args[0].stringval;
+	const char *query = args[1].stringval;
 
 	// Get full-text index from schema.
 	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);

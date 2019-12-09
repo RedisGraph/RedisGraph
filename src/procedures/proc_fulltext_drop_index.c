@@ -18,10 +18,11 @@
 // CALL db.idx.fulltext.drop(label)
 // CALL db.idx.fulltext.drop('books')
 
-ProcedureResult Proc_FulltextDropIndexInvoke(ProcedureCtx *ctx, const char **args) {
-	if(array_len(args) != 1) return PROCEDURE_ERR;
+ProcedureResult Proc_FulltextDropIndexInvoke(ProcedureCtx *ctx, const SIValue *args) {
+	if(array_len((SIValue *)args) != 1) return PROCEDURE_ERR;
+	if(!(SI_TYPE(args[0]) & T_STRING)) return PROCEDURE_ERR;
 
-	const char *label = args[0];
+	const char *label = args[0].stringval;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	// Schema doesn't exists, TODO: report error.

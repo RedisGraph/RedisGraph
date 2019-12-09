@@ -17,6 +17,14 @@ typedef enum {
 	PROCEDURE_ERR = (1 << 0),
 } ProcedureResult;
 
+// Procedure internal state.
+typedef enum {
+    PROCEDURE_NOT_INIT = 0,         // Start state.
+    PROCEDURE_INIT = (1 << 0),      // Once invoked is called.
+    PROCEDURE_DEPLETED = (1 << 1),  // Once step can no longer produce data.
+    PROCEDURE_ERROR = (1 << 2),     // Whenever an error occurred.
+} ProcedureState;
+
 // Procedure output
 typedef struct {
 	char *name;     // Name of output.
@@ -30,13 +38,14 @@ typedef struct ProcedureCtx *(*ProcGenerator)();
 // Procedure step function.
 typedef SIValue *(*ProcStep)(struct ProcedureCtx *ctx);
 // Procedure function pointer.
-typedef ProcedureResult(*ProcInvoke)(struct ProcedureCtx *ctx, const char **args);
+typedef ProcedureResult(*ProcInvoke)(struct ProcedureCtx *ctx, const SIValue *args);
 // Procedure free resources.
 typedef ProcedureResult(*ProcFree)(struct ProcedureCtx *ctx);
 
 /* ProcedureCtx */
 struct ProcedureCtx {
 	const char *name;           // Procedure name.
+    ProcedureState state;       // State in which the procedure is in.
 	unsigned int argc;          // Number of arguments procedure accepts.
 	ProcedureOutput **output;   // Procedure possible output(s).
 	void *privateData;          //

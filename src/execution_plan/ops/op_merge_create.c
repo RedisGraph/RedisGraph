@@ -130,8 +130,24 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		PendingProperties *converted_properties = NULL;
 		if(map) converted_properties = ConvertPropertyMap(r, map);
 
-		/* Update the hash code with this entity. */
+		/* Update the hash code with this entity, an edge is represented by its
+		 * relation, properties and nodes.
+		 * Note that unbounded nodes were already presented to the hash.
+		 * Incase node has its internal entity set, this means the node has been retrieved from the graph
+		 * i.e. bounded node. */
 		_IncrementalHashEntity(op->hash_state, e->reltypes[0], converted_properties);
+		if(src_node->entity != NULL) {
+			EntityID id = ENTITY_GET_ID(src_node);
+			void *data = &id;
+			size_t len = sizeof(id);
+			assert(XXH64_update(op->hash_state, data, len) != XXH_ERROR);
+		}
+		if(dest_node->entity != NULL) {
+			EntityID id = ENTITY_GET_ID(dest_node);
+			void *data = &id;
+			size_t len = sizeof(id);
+			assert(XXH64_update(op->hash_state, data, len) != XXH_ERROR);
+		}
 
 		/* Save edge for later insertion. */
 		op->pending.created_edges = array_append(op->pending.created_edges, newEdge);

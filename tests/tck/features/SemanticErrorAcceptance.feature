@@ -236,6 +236,7 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
+@crash
 @skip
   Scenario: Failing when using MERGE on a relationship that is already bound
     When executing query:
@@ -245,6 +246,7 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
+@crash
 @skip
   Scenario: Failing when using undefined variable in ON CREATE
     When executing query:
@@ -320,6 +322,7 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidArgumentExpression
 
+@crash
 @skip
   Scenario: Bad arguments for `range()`
     When executing query:

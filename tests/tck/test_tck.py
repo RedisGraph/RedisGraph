@@ -13,6 +13,7 @@ from behave.__main__ import main as behave_main
 def test_tck():
     env = Env()
     cmd = ["./features/", '--tags=-skip']
+    #  cmd = ["./features/", '--tags=-crash'] # Run all tests except crashing tests
     if not env.verbose:
         cmd.append('--format=progress')
     res = behave_main(cmd)

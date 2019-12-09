@@ -42,6 +42,7 @@ Feature: SyntaxErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: UnknownFunction
 
+@crash
 @skip
   Scenario: Using `rand()` in aggregations
     When executing query:
@@ -50,6 +51,7 @@ Feature: SyntaxErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: NonConstantExpression
 
+@crash
 @skip
   Scenario: Supplying invalid hexadecimal literal 1
     When executing query:
@@ -58,6 +60,7 @@ Feature: SyntaxErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidNumberLiteral
 
+@crash
 @skip
   Scenario: Supplying invalid hexadecimal literal 2
     When executing query:

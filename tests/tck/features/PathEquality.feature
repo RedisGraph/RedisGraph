@@ -30,6 +30,7 @@
 
 Feature: PathEquality
 
+@crash
 @skip
   Scenario: Direction of traversed relationship is not significant for path equality, simple
     Given an empty graph

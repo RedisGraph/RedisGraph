@@ -477,6 +477,7 @@ Feature: MergeRelationshipAcceptance
       | +labels        | 2 |
       | +properties    | 5 |
 
+@crash
 @skip
   Scenario: Do not match on deleted entities
     Given an empty graph
@@ -573,6 +574,7 @@ Feature: MergeRelationshipAcceptance
     And the side effects should be:
       | +relationships | 1 |
 
+@crash
 @skip
   Scenario: Double aliasing of existing nodes 1
     Given an empty graph
@@ -598,6 +600,7 @@ Feature: MergeRelationshipAcceptance
     And the side effects should be:
       | +relationships | 1 |
 
+@crash
 @skip
   Scenario: Double aliasing of existing nodes 2
     Given an empty graph
