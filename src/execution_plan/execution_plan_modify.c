@@ -285,6 +285,14 @@ void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers) {
 	}
 }
 
+void ExecutionPlan_BindPlanToOps(OpBase *root, ExecutionPlan *plan) {
+	if(!root) return;
+	root->plan = plan;
+	for(int i = 0; i < root->childCount; i ++) {
+		ExecutionPlan_BindPlanToOps(root->children[i], plan);
+	}
+}
+
 static OpBase *_buildMatchBranch(ExecutionPlan *plan, const cypher_astnode_t *path) {
 	AST *ast = QueryCtx_GetAST();
 
@@ -325,6 +333,9 @@ static OpBase *_buildMatchBranch(ExecutionPlan *plan, const cypher_astnode_t *pa
 
 	// Free the temporary plan.
 	ExecutionPlan_Free(match_branch_plan);
+
+	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
+	ExecutionPlan_BindPlanToOps(branch_match_root, plan);
 
 	return branch_match_root;
 }

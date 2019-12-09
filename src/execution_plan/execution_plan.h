@@ -84,6 +84,10 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_
  * Use after the call to ExecutionPlan_BoundVariables. */
 const char **ExecutionPlan_BuildArgumentModifiesArray(rax *bound_vars);
 
+/* For all ops in the given tree, assocate the provided ExecutionPlan.
+ * This is for use for updating ops that have been built with a temporary ExecutionPlan. */
+void ExecutionPlan_BindPlanToOps(OpBase *root, ExecutionPlan *plan);
+
 /* Reduces a filter operation into an apply operation. */
 void ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpBase *filter);
 /* execution_plan.c */
