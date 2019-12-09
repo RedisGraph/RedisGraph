@@ -97,7 +97,25 @@ static void RG_AfterForkChild() {
 	process_is_child = true;
 }
 
-static void RegisterForkHooks() {
+static int _RenameGraphContext(RedisModuleCtx *ctx, int type, const char *event,
+							   RedisModuleString *key_name) {
+	if(type != REDISMODULE_NOTIFY_ALL) return REDISMODULE_OK;
+	if(strcasecmp(event, "RENAME") == 0) {
+		RedisModuleKey *key = RedisModule_OpenKey(ctx, key_name, REDISMODULE_WRITE);
+		if(RedisModule_ModuleTypeGetType(key) == GraphContextRedisModuleType) {
+			GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
+			size_t len;
+			const char *new_name = RedisModule_StringPtrLen(key_name, &len);
+			GraphContext_SetName(gc, new_name);
+		}
+		RedisModule_CloseKey(key);
+	}
+	return REDISMODULE_OK;
+}
+
+static void RegisterForkHooks(RedisModuleCtx *ctx) {
+	RedisModule_SubscribeToKeyspaceEvents(ctx, REDISMODULE_NOTIFY_ALL, _RenameGraphContext);
+
 	/* Register handlers to control the behavior of fork calls.
 	 * The child process does not require a handler. */
 	assert(pthread_atfork(RG_ForkPrepare, RG_AfterForkParent, RG_AfterForkChild) == 0);
@@ -122,7 +140,8 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	AR_RegisterFuncs();      // Register arithmetic functions.
 	Agg_RegisterFuncs();     // Register aggregation functions.
 	_PrepareModuleGlobals(); // Set up global lock and variables scoped to the entire module.
-	RegisterForkHooks();     // Set up forking logic to prevent bgsave deadlocks.
+	RegisterForkHooks(
+		ctx);  // Set up hooks for key rename and forking logic to prevent bgsave deadlocks.
 	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
 
 	// Create thread local storage key.

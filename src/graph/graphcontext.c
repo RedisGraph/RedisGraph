@@ -131,6 +131,10 @@ void GraphContext_Delete(GraphContext *gc) {
 	_GraphContext_DecreaseRefCount(gc);
 }
 
+void GraphContext_SetName(GraphContext *gc, const char *name) {
+	gc->graph_name = (char *)name;
+}
+
 //------------------------------------------------------------------------------
 // Schema API
 //------------------------------------------------------------------------------
