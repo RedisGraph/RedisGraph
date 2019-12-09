@@ -101,19 +101,19 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
 	AlgebraicExpression_AppendTerm(ExpBC, NULL, false, false, false);
 	AlgebraicExpression_AppendTerm(ExpCD, NULL, false, false, false);
 
-	ExpAB->src_node = A;
-	ExpAB->dest_node = B;
-	ExpBC->src_node = B;
-	ExpBC->dest_node = C;
-	ExpCD->src_node = C;
-	ExpCD->dest_node = D;
+	ExpAB->src = "A";
+	ExpAB->dest = "B";
+	ExpBC->src = "B";
+	ExpBC->dest = "C";
+	ExpCD->src = "C";
+	ExpCD->dest = "D";
 
 	// { [CD], [BC], [AB] }
 	set[0] = ExpCD;
 	set[1] = ExpBC;
 	set[2] = ExpAB;
 
-	orderExpressions(set, 3, NULL, NULL);
+	orderExpressions(qg, set, 3, NULL, NULL);
 	ASSERT_EQ(set[0], ExpAB);
 	ASSERT_EQ(set[1], ExpBC);
 	ASSERT_EQ(set[2], ExpCD);
@@ -122,7 +122,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
 	set[0] = ExpAB;
 	set[1] = ExpBC;
 	set[2] = ExpCD;
-	orderExpressions(set, 3, NULL, NULL);
+	orderExpressions(qg, set, 3, NULL, NULL);
 	ASSERT_EQ(set[0], ExpAB);
 	ASSERT_EQ(set[1], ExpBC);
 	ASSERT_EQ(set[2], ExpCD);
@@ -131,7 +131,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
 	set[0] = ExpAB;
 	set[1] = ExpCD;
 	set[2] = ExpBC;
-	orderExpressions(set, 3, NULL, NULL);
+	orderExpressions(qg, set, 3, NULL, NULL);
 	ASSERT_EQ(set[0], ExpAB);
 	ASSERT_EQ(set[1], ExpBC);
 	ASSERT_EQ(set[2], ExpCD);
@@ -140,7 +140,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
 	set[0] = ExpBC;
 	set[1] = ExpAB;
 	set[2] = ExpCD;
-	orderExpressions(set, 3, NULL, NULL);
+	orderExpressions(qg, set, 3, NULL, NULL);
 	ASSERT_EQ(set[0], ExpAB);
 	ASSERT_EQ(set[1], ExpBC);
 	ASSERT_EQ(set[2], ExpCD);
@@ -149,7 +149,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
 	set[0] = ExpBC;
 	set[1] = ExpCD;
 	set[2] = ExpAB;
-	orderExpressions(set, 3, NULL, NULL);
+	orderExpressions(qg, set, 3, NULL, NULL);
 	ASSERT_EQ(set[0], ExpAB);
 	ASSERT_EQ(set[1], ExpBC);
 	ASSERT_EQ(set[2], ExpCD);
@@ -158,7 +158,7 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
 	set[0] = ExpCD;
 	set[1] = ExpAB;
 	set[2] = ExpBC;
-	orderExpressions(set, 3, NULL, NULL);
+	orderExpressions(qg, set, 3, NULL, NULL);
 	ASSERT_EQ(set[0], ExpAB);
 	ASSERT_EQ(set[1], ExpBC);
 	ASSERT_EQ(set[2], ExpCD);
@@ -216,12 +216,12 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	AlgebraicExpression_AppendTerm(ExpBC, NULL, false, false, false);
 	AlgebraicExpression_AppendTerm(ExpCD, NULL, false, false, false);
 
-	ExpAB->src_node = A;
-	ExpAB->dest_node = B;
-	ExpBC->src_node = B;
-	ExpBC->dest_node = C;
-	ExpCD->src_node = C;
-	ExpCD->dest_node = D;
+	ExpAB->src = "A";
+	ExpAB->dest = "B";
+	ExpBC->src = "B";
+	ExpBC->dest = "C";
+	ExpCD->src = "C";
+	ExpCD->dest = "D";
 
 	// { [AB], [BC], [CD] }
 	set[0] = ExpAB;
@@ -231,7 +231,7 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	filters = build_filter_tree_from_query(
 				  "MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE A.val = 1 RETURN *");
 
-	orderExpressions(set, 3, filters, NULL);
+	orderExpressions(qg, set, 3, filters, NULL);
 	ASSERT_EQ(set[0], ExpAB);
 	ASSERT_EQ(set[1], ExpBC);
 	ASSERT_EQ(set[2], ExpCD);
@@ -245,7 +245,7 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 
 	filters = build_filter_tree_from_query("MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE B.val = 1 RETURN *");
 
-	orderExpressions(set, 3, filters, NULL);
+	orderExpressions(qg, set, 3, filters, NULL);
 	ASSERT_TRUE(set[0] == ExpAB || set[0] == ExpBC);
 
 	FilterTree_Free(filters);
@@ -257,7 +257,7 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 
 	filters = build_filter_tree_from_query("MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE C.val = 1 RETURN *");
 
-	orderExpressions(set, 3, filters, NULL);
+	orderExpressions(qg, set, 3, filters, NULL);
 	ASSERT_TRUE(set[0] == ExpBC || set[0] == ExpCD);
 
 	FilterTree_Free(filters);
@@ -269,7 +269,7 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 
 	filters = build_filter_tree_from_query("MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE D.val = 1 RETURN *");
 
-	orderExpressions(set, 3, filters, NULL);
+	orderExpressions(qg, set, 3, filters, NULL);
 
 	ASSERT_EQ(set[0], ExpCD);
 	ASSERT_EQ(set[1], ExpBC);

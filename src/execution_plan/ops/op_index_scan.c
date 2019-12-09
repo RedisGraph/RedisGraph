@@ -5,6 +5,7 @@
 */
 
 #include "op_index_scan.h"
+#include "shared/print_functions.h"
 
 /* Forward declarations. */
 static OpResult IndexScanInit(OpBase *opBase);
@@ -13,11 +14,8 @@ static Record IndexScanConsumeFromChild(OpBase *opBase);
 static OpResult IndexScanReset(OpBase *opBase);
 static void IndexScanFree(OpBase *opBase);
 
-static int IndexScanToString(const OpBase *ctx, char *buff, uint buff_len) {
-	const IndexScan *op = (const IndexScan *)ctx;
-	int offset = snprintf(buff, buff_len, "%s | ", op->op.name);
-	offset += QGNode_ToString(op->n, buff + offset, buff_len - offset);
-	return offset;
+static int IndexScanToString(const OpBase *ctx, char *buf, uint buf_len) {
+	return ScanToString(ctx, buf, buf_len, ((const IndexScan *)ctx)->n);
 }
 
 OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, const QGNode *n, RSIndex *idx,

@@ -17,6 +17,7 @@ typedef struct {
 	OpBase op;
 	Graph *g;               // Graph object.
 	Record child_record;    // The Record this op acts on if it is not a tap.
+	const QGNode *n;        // The node being scanned.
 	NodeID currentId;       // Current ID fetched.
 	NodeID minId;           // Min ID to fetch.
 	NodeID maxId;           // Max ID to fetch.
@@ -25,6 +26,6 @@ typedef struct {
 	int nodeRecIdx;         // Position of entity within record.
 } NodeByIdSeek;
 
-OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const QGNode *node, NodeID minId, NodeID maxId,
+OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const QGNode *n, NodeID minId, NodeID maxId,
 						  bool includeMin, bool includeMax);
 

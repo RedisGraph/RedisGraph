@@ -6,6 +6,7 @@
 
 #include "query_graph.h"
 #include "../util/arr.h"
+#include "../util/strcmp.h"
 #include "../query_ctx.h"
 #include "../schema/schema.h"
 #include "../../deps/rax/rax.h"
@@ -178,7 +179,7 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 QGNode *QueryGraph_GetNodeByAlias(const QueryGraph *qg, const char *alias) {
 	uint node_count = QueryGraph_NodeCount(qg);
 	for(uint i = 0; i < node_count; i ++) {
-		if(strcmp(qg->nodes[i]->alias, alias) == 0) return qg->nodes[i];
+		if(!RG_STRCMP(qg->nodes[i]->alias, alias)) return qg->nodes[i];
 	}
 	return NULL;
 }
@@ -186,7 +187,7 @@ QGNode *QueryGraph_GetNodeByAlias(const QueryGraph *qg, const char *alias) {
 QGEdge *QueryGraph_GetEdgeByAlias(const QueryGraph *qg, const char *alias) {
 	uint edge_count = QueryGraph_EdgeCount(qg);
 	for(uint i = 0; i < edge_count; i ++) {
-		if(strcmp(qg->edges[i]->alias, alias) == 0) return qg->edges[i];
+		if(!RG_STRCMP(qg->edges[i]->alias, alias)) return qg->edges[i];
 	}
 	return NULL;
 }
@@ -225,21 +226,20 @@ QueryGraph *QueryGraph_Clone(const QueryGraph *qg) {
 QGNode *QueryGraph_RemoveNode(QueryGraph *qg, QGNode *n) {
 	assert(qg && n);
 
-	// Make sure node exists.
-	// if(!QueryGraph_ContainsNode(qg, n)) return NULL;
-
 	/* Remove node from query graph.
-	 * Remove all edges associated with node. */
+	 * Remove and free all edges associated with node. */
 	uint incoming_edge_count = array_len(n->incoming_edges);
-	uint outgoing_edge_count = array_len(n->outgoing_edges);
-
 	for(uint i = 0; i < incoming_edge_count; i++) {
 		QGEdge *e = n->incoming_edges[i];
 		QueryGraph_RemoveEdge(qg, e);
+		QGEdge_Free(e);
 	}
+
+	uint outgoing_edge_count = array_len(n->outgoing_edges);
 	for(uint i = 0; i < outgoing_edge_count; i++) {
 		QGEdge *e = n->outgoing_edges[i];
 		QueryGraph_RemoveEdge(qg, e);
+		QGEdge_Free(e);
 	}
 
 	// Remove node from graph nodes.
@@ -317,7 +317,7 @@ QueryGraph **QueryGraph_ConnectedComponents(const QueryGraph *qg) {
 		}
 
 		/* Visited comprise the connected component defined by S.
-		 * Remove all none reachable nodes from current connected component.
+		 * Remove all non-reachable nodes from current connected component.
 		 * Remove connected component from graph. */
 		QueryGraph *cc = QueryGraph_Clone(g);
 		uint node_count = QueryGraph_NodeCount(g);
@@ -336,6 +336,7 @@ QueryGraph **QueryGraph_ConnectedComponents(const QueryGraph *qg) {
 			} else {
 				n = QueryGraph_GetNodeByAlias(cc, n->alias);
 				QueryGraph_RemoveNode(cc, n);
+				QGNode_Free(n);
 			}
 		}
 
@@ -439,3 +440,4 @@ void QueryGraph_Free(QueryGraph *qg) {
 	array_free(qg->edges);
 	rm_free(qg);
 }
+

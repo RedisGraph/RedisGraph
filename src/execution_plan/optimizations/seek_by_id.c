@@ -134,7 +134,12 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 			// Managed to reduce!
 			ExecutionPlan_ReplaceOp(plan, scan_op, opNodeByIdSeek);
 			ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
-			break;
+
+			// Free replaced operations.
+			OpBase_Free(scan_op);
+			OpBase_Free((OpBase *)filter);
+
+			break; // Exit loop.
 		}
 
 		// Advance.

@@ -208,6 +208,7 @@ const cypher_astnode_t **AST_GetClauses(const AST *ast, cypher_astnode_type_t ty
 AST *AST_Build(cypher_parse_result_t *parse_result) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->referenced_entities = NULL;
+	ast->canonical_entity_names = raxNew();
 	ast->anot_ctx_collection = AST_AnnotationCtxCollection_New();
 	ast->free_root = false;
 
@@ -235,6 +236,7 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	AST *ast = rm_malloc(sizeof(AST));
 	ast->anot_ctx_collection = master_ast->anot_ctx_collection;
+	ast->canonical_entity_names = master_ast->canonical_entity_names;
 	ast->free_root = true;
 	ast->limit = UNLIMITED;
 	uint n = end_offset - start_offset;
@@ -371,6 +373,7 @@ void AST_Free(AST *ast) {
 	} else {
 		// This is the master AST, free the annotation contexts that have been constructed.
 		AST_AnnotationCtxCollection_Free(ast->anot_ctx_collection);
+		raxFreeWithCallback(ast->canonical_entity_names, rm_free);
 	}
 	rm_free(ast);
 }
