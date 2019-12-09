@@ -1,11 +1,8 @@
 #include "execution_plan.h"
 #include "../util/qsort.h"
 #include "ops/ops.h"
-<<< <<< < HEAD
-== == == =
 #include "../query_ctx.h"
 #include "../ast/ast_mock.h"
-	>>> >>> > passed basic semi - apply
 
 // Sort an array and remove duplicate entries.
 static void _uniqueArray(const char **arr) {
@@ -357,6 +354,9 @@ static OpBase *_buildMatchBranch(ExecutionPlan *plan, const cypher_astnode_t *pa
 
 	// Free the temporary plan.
 	ExecutionPlan_Free(match_branch_plan);
+
+	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
+	ExecutionPlan_BindPlanToOps(branch_match_root, plan);
 
 	return branch_match_root;
 }
