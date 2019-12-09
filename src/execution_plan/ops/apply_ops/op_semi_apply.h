@@ -10,7 +10,6 @@
 #include "../op_argument.h"
 #include "../../execution_plan.h"
 
-<<< <<< < HEAD
 /* SemiApply operation tests for the presence of a pattern
  * Normal Semi Apply: Starts by pulling on the main execution plan branch,
  * for each record received it tries to get a record from the match branch
@@ -20,17 +19,11 @@
  * for each record received it tries to get a record from the match branch
  * if no data is produced the main execution plan branch record is passed onward
  * otherwise it will try to fetch a new data point from the main execution plan branch. */
-== == == =
-	>>>>>>> introduced semi - apply
-	struct OpSemiApply;
-
-typedef Record(*ApplyLogic)(struct OpSemiApply *);
 
 typedef struct OpSemiApply {
 	OpBase op;
 	Record r;               // Main execution plan branch record..
 	Argument *op_arg;       // Match branch tap.
-	ApplyLogic apply_func;  // Which apply method to invoke (semi or anti semi apply)
 } OpSemiApply;
 
 OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti);
