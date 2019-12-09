@@ -850,17 +850,7 @@ cleanup:
 static AST_Validation _Validate_DELETE_Clauses(const AST *ast, char **reason) {
 	const cypher_astnode_t *delete_clause = AST_GetClause(ast, CYPHER_AST_DELETE);
 	if(!delete_clause) return AST_VALID;
-
-	// Validate that every deleted object is an identifier and not property.
-	uint nitems = cypher_ast_delete_nexpressions(delete_clause);
-	for(uint i = 0; i < nitems; i++) {
-		const cypher_astnode_t *ast_expr = cypher_ast_delete_get_expression(delete_clause, i);
-		if(cypher_astnode_type(ast_expr) != CYPHER_AST_IDENTIFIER) {
-			asprintf(reason, "DELETE support the removal of valid graph entities only.");
-			return AST_INVALID;
-		}
-		// TODO: Validated that the deleted entities are indeed matched or projected.
-	}
+	// TODO: Validated that the deleted entities are indeed matched or projected.
 	return AST_VALID;
 }
 
@@ -883,24 +873,6 @@ static AST_Validation _Validate_UNWIND_Clauses(const AST *ast, char **reason) {
 	uint clause_count = array_len(unwind_clauses);
 	for(uint i = 0; i < clause_count; i++) {
 		const cypher_astnode_t *expression = cypher_ast_unwind_get_expression(unwind_clauses[i]);
-		cypher_astnode_type_t type = cypher_astnode_type(expression);
-		// Ensure that the UNWIND expression is a collection (aka list/array)
-		if(type == CYPHER_AST_APPLY_OPERATOR) {
-			const cypher_astnode_t *funcNode =  cypher_ast_apply_operator_get_func_name(expression);
-			const char *funcName = cypher_ast_function_name_get_value(funcNode);
-			// function name is NOT range
-			if(strcasecmp(funcName, "range")) {
-				asprintf(reason, "UNWIND expects range function; encountered '%s'", funcName);
-				res = AST_INVALID;
-				goto cleanup;
-			}
-		} else if(!(type == CYPHER_AST_COLLECTION || type == CYPHER_AST_IDENTIFIER ||
-					type == CYPHER_AST_PROPERTY_OPERATOR)) {
-			asprintf(reason, "UNWIND expects a list argument or an list identifier; encountered ''%s'",
-					 cypher_astnode_typestr(type));
-			res = AST_INVALID;
-			goto cleanup;
-		}
 		// Verify that all elements of the UNWIND collection are supported by RedisGraph
 		uint child_count = cypher_astnode_nchildren(expression);
 		for(uint j = 0; j < child_count; j ++) {

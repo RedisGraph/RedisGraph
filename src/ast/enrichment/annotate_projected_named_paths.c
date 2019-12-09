@@ -95,6 +95,28 @@ static void _annotate_with_clause_projected_named_path(AST *ast,
 	raxFreeWithCallback(identifier_map, array_free);
 }
 
+static void _annotate_delete_clause_projected_named_path(AST *ast,
+														 const cypher_astnode_t *delete_clause, uint scope_start, uint scope_end) {
+	rax *identifier_map = raxNew();
+	uint delete_exp_count = cypher_ast_delete_nexpressions(delete_clause);
+	for(uint exp_iter = 0; exp_iter < delete_exp_count; exp_iter++) {
+		const cypher_astnode_t *exp = cypher_ast_delete_get_expression(delete_clause, exp_iter);
+		_collect_projected_identifier(exp, identifier_map);
+	}
+	_annotate_relevant_projected_named_path_identifier(ast, identifier_map, scope_start, scope_end);
+	raxFreeWithCallback(identifier_map, array_free);
+}
+
+static void _annotate_unwind_clause_projected_named_path(AST *ast,
+														 const cypher_astnode_t *unwind_clause, uint scope_start, uint scope_end) {
+	rax *identifier_map = raxNew();
+	const cypher_astnode_t *exp = cypher_ast_unwind_get_expression(unwind_clause);
+	_collect_projected_identifier(exp, identifier_map);
+
+	_annotate_relevant_projected_named_path_identifier(ast, identifier_map, scope_start, scope_end);
+	raxFreeWithCallback(identifier_map, array_free);
+}
+
 static void _annotate_return_clause_projected_named_path(AST *ast,
 														 const cypher_astnode_t *return_clause, uint scope_start, uint scope_end) {
 	rax *identifier_map = raxNew();
@@ -109,6 +131,7 @@ static void _annotate_return_clause_projected_named_path(AST *ast,
 }
 
 static void _annotate_projected_named_path(AST *ast) {
+	// TODO: find a better approach for PATH annotation.
 	uint scope_end;
 	uint scope_start = 0;
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
@@ -124,6 +147,16 @@ static void _annotate_projected_named_path(AST *ast) {
 			const cypher_astnode_t *return_clause = cypher_ast_query_get_clause(ast->root, i);
 			_annotate_return_clause_projected_named_path(ast, return_clause, scope_start, scope_end);
 			scope_start = scope_end;
+		} else if(cypher_astnode_type(child) == CYPHER_AST_DELETE) {
+			scope_end = i;
+			const cypher_astnode_t *delete_clause = cypher_ast_query_get_clause(ast->root, i);
+			_annotate_delete_clause_projected_named_path(ast, delete_clause, scope_start, scope_end);
+			// Do not update scopre start!
+		} else if(cypher_astnode_type(child) == CYPHER_AST_UNWIND) {
+			scope_end = i;
+			const cypher_astnode_t *unwind_clause = cypher_ast_query_get_clause(ast->root, i);
+			_annotate_unwind_clause_projected_named_path(ast, unwind_clause, scope_start, scope_end);
+			// Do not update scopre start!
 		}
 	}
 }

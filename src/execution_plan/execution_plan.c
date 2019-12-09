@@ -698,12 +698,8 @@ static inline void _buildUpdateOp(ExecutionPlan *plan, const cypher_astnode_t *c
 
 static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *clause,
 								  ResultSetStatistics *stats) {
-	const char **nodes_ref;
-	const char **edges_ref;
-	AST_PrepareDeleteOp(clause, plan->query_graph, &nodes_ref, &edges_ref);
-	OpBase *op = NewDeleteOp(plan, nodes_ref, edges_ref, stats);
-	array_free(nodes_ref);
-	array_free(edges_ref);
+	AR_ExpNode **exps = AST_PrepareDeleteOp(clause);
+	OpBase *op = NewDeleteOp(plan, exps, stats);
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 

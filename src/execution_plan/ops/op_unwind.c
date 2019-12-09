@@ -117,4 +117,3 @@ static void UnwindFree(OpBase *ctx) {
 		op->currentRecord = NULL;
 	}
 }
-
