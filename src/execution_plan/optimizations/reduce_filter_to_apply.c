@@ -65,7 +65,8 @@ static OpBase *_reduction(ExecutionPlan *plan, FT_FilterNode *filter_root) {
 			expression = expression->op.children[0];
 		}
 		OpBase *op_semi_apply = NewSemiApplyOp(plan, anti);
-		ExecutionPlan_AddOp(op_semi_apply, _buildRHS(plan, expression->operand.constant.ptrval));
+		const cypher_astnode_t *path = expression->op.children[0]->operand.constant.ptrval;
+		ExecutionPlan_AddOp(op_semi_apply, _buildRHS(plan, path));
 		return op_semi_apply;
 	}
 
