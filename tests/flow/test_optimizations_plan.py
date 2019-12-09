@@ -68,7 +68,19 @@ class testOptimizationsPlan(FlowTestsBase):
         expected = [[24]]
         self.env.assertEqual(resultset, expected)
 
-    def test03_typeless_edge_count_with_alias(self):
+    def test03_unknown_typed_edge_count(self):
+        query = """MATCH ()-[r:unknown]->() RETURN COUNT(r)"""
+        resultset = graph.query(query).result_set
+        executionPlan = graph.execution_plan(query)
+        self.env.assertIn("Project", executionPlan)
+        self.env.assertIn("Results", executionPlan)
+        self.env.assertNotIn("All Node Scan", executionPlan)
+        self.env.assertNotIn("Conditional Traverse", executionPlan)
+        self.env.assertNotIn("Aggregate", executionPlan)
+        expected = [[0]]
+        self.env.assertEqual(resultset, expected)
+
+    def test04_typeless_edge_count_with_alias(self):
         query = """MATCH ()-[r]->() RETURN COUNT(r) as c"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
@@ -80,7 +92,7 @@ class testOptimizationsPlan(FlowTestsBase):
         expected = [[36]]
         self.env.assertEqual(resultset, expected)
 
-    def test04_typed_edge_count_with_alias(self):
+    def test05_typed_edge_count_with_alias(self):
         query = """MATCH ()-[r:know]->() RETURN COUNT(r) as c"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
@@ -92,7 +104,7 @@ class testOptimizationsPlan(FlowTestsBase):
         expected = [[24]]
         self.env.assertEqual(resultset, expected)
 
-    def test05_multiple_typed_edge_count_with_alias(self):
+    def test06_multiple_typed_edge_count_with_alias(self):
         query = """MATCH ()-[r:know | :works_with]->() RETURN COUNT(r) as c"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
@@ -104,7 +116,7 @@ class testOptimizationsPlan(FlowTestsBase):
         expected = [[36]]
         self.env.assertEqual(resultset, expected)
 
-    def test06_count_unreferenced_edge(self):
+    def test07_count_unreferenced_edge(self):
         query = """MATCH ()-[:know]->(b) RETURN COUNT(b)"""
         # This count in this query cannot be reduced, as the traversal op doesn't store
         # data about non-referenced edges.
@@ -118,7 +130,7 @@ class testOptimizationsPlan(FlowTestsBase):
         expected = [[12]]
         self.env.assertEqual(resultset, expected)
 
-    def test07_non_labeled_node_count(self):
+    def test08_non_labeled_node_count(self):
         query = """MATCH (n) RETURN COUNT(n)"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
@@ -130,7 +142,7 @@ class testOptimizationsPlan(FlowTestsBase):
         expected = [[4]]
         self.env.assertEqual(resultset, expected)
 
-    def test08_non_labeled_node_count_with_alias(self):
+    def test09_non_labeled_node_count_with_alias(self):
         query = """MATCH (n) RETURN COUNT(n) as c"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
@@ -142,7 +154,7 @@ class testOptimizationsPlan(FlowTestsBase):
         expected = [[4]]
         self.env.assertEqual(resultset, expected)
 
-    def test09_labled_node_count(self):
+    def test10_labled_node_count(self):
         query = """MATCH (n:person) RETURN COUNT(n)"""
         resultset = graph.query(query).result_set
         executionPlan = graph.execution_plan(query)
@@ -154,7 +166,7 @@ class testOptimizationsPlan(FlowTestsBase):
         expected = [[4]]
         self.env.assertEqual(resultset, expected)
 
-    def test10_value_hash_join(self):
+    def test11_value_hash_join(self):
         # Issue a query that joins two streams on a node property.
         query = """MATCH (p1:person)-[:know]->({name: 'Roi'}), (p2)-[]->(:person {name: 'Alon'}) WHERE p1.name = p2.name RETURN p2.name ORDER BY p2.name"""
         executionPlan = graph.execution_plan(query)
@@ -184,7 +196,7 @@ class testOptimizationsPlan(FlowTestsBase):
         resultset = graph.query(query).result_set
         self.env.assertEqual(resultset, expected) # same results expected
 
-    def test11_multiple_stream_value_hash_join(self):
+    def test12_multiple_stream_value_hash_join(self):
         # Issue a query that joins three streams.
         query = """MATCH (p1:person)-[:know]->({name: 'Roi'}), (p2)-[]->(:person {name: 'Alon'}), (p3) WHERE p1.name = p2.name AND ID(p2) = ID(p3) RETURN p2.name ORDER BY p2.name"""
         executionPlan = graph.execution_plan(query)
