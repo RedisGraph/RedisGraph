@@ -382,6 +382,54 @@ static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *rec
 	Vector_Free(sub_trees);
 }
 
+/* This method reduces a filter tree into an OpBase. The method perfrom post-order traversal over the
+ * filter tree, and checks if if the current subtree rooted at the visited node contains path filter or not,
+ * and either reduces the root or continue traversal and reduction.
+ * The three possible operations could be:
+ * 1. OpFilter - In the case the subtree originated from the root does not contains any path filters.
+ * 2. OpSemiApply - In case of the current root is an expression which contains a path filter.
+ * 3. ApplyMultiplexer - In case the current root is an operator (OR or AND) and at least one of its children
+ * has been reduced to OpSemiApply or ApplyMultiplexer.
+*/
+static OpBase *_ExecutionPlan_FilterTreeToOpBaseReduction(ExecutionPlan *plan,
+														  FT_FilterNode *filter_root) {
+	switch(filter_root->t) {
+	case FT_N_EXP: {
+		AR_ExpNode *expression = filter_root->exp.exp;
+		bool anti = false;
+		if(strcasecmp(expression->op.func_name, "not") == 0) {
+			anti = true;
+			expression = expression->op.children[0];
+		}
+		OpBase *op_semi_apply = NewSemiApplyOp(plan, anti);
+		const cypher_astnode_t *path = expression->op.children[0]->operand.constant.ptrval;
+		ExecutionPlan_AddOp(op_semi_apply, _buildRHS(plan, path));
+		return op_semi_apply;
+	}
+
+	default:
+		return NewFilterOp(plan, filter_root);
+	}
+}
+
+static void _ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpFilter *filter) {
+	OpBase *apply_op = _ExecutionPlan_FilterTreeToOpBaseReduction(plan, filter->filterTree);
+	ExecutionPlan_ReplaceOp(plan, (OpBase *)filter, apply_op);
+	OpBase_Free(filter);
+}
+
+static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
+	OpBase **filter_ops = ExecutionPlan_LocateOps(plan->root, OPType_FILTER);
+	uint filter_ops_count = array_len(filter_ops);
+	for(uint i = 0; i < filter_ops_count; i++) {
+		OpFilter *filter = (OpFilter *) filter_ops[i];
+		FT_FilterNode *node;
+		if(FilterTree_containsFunc(filter->filterTree, "path_filter", &node)) {
+			_ExecutionPlan_ReduceFilterToApply(plan, filter);
+		}
+	}
+}
+
 // Merge all order expressions into the projections array without duplicates,
 // returning an array of expressions to free after building projection ops.
 static AR_ExpNode **_combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **order_exps) {
@@ -752,6 +800,11 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_
 		// Build the appropriate operation(s) for each clause in the query.
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
 		_ExecutionPlanSegment_ConvertClause(gc, ast, plan, stats, clause);
+	}
+
+	if(plan->filter_tree) {
+		_ExecutionPlan_PlaceFilterOps(plan);
+		_ExecutionPlan_PlaceApplyOps(plan);
 	}
 }
 
