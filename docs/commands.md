@@ -513,10 +513,10 @@ This section contains information on all supported functions from the Cypher que
 ## List functions
 |Function| Description|
 | ------- |:-----------|
-| head()  | return the first member of a list |
-| range() | create a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval.|
-| size()  | return a list size |
-| tail()  | return a sublist of a list, which contains all the values withiout the first value |
+| head()  | Return the first member of a list |
+| range() | Create a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval.|
+| size()  | Return a list size |
+| tail()  | Return a sublist of a list, which contains all the values withiout the first value |
 
 ## Mathematical functions
 
@@ -528,6 +528,7 @@ This section contains information on all supported functions from the Cypher que
 |rand() | Returns a random floating point number in the range from 0 to 1; i.e. [0,1] |
 |round() | Returns the value of a number rounded to the nearest integer |
 |sign() | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number |
+|toInteger() | Converts a floating point or string value to an integer value. |
 
 ## String functions
 
@@ -553,9 +554,9 @@ This section contains information on all supported functions from the Cypher que
 ## Path functions
 |Function | Description|
 | ------- |:-----------|
-| nodes() | return a new list of nodes, of a given path. |
-| relationships() | return a new list of edges, of a given path. |
-| length() | return the length (number of edges) of the path|
+| nodes() | Return a new list of nodes, of a given path. |
+| relationships() | Return a new list of edges, of a given path. |
+| length() | Return the length (number of edges) of the path|
 
 ## Procedures
 Procedures are invoked using the syntax:

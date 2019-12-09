@@ -112,7 +112,9 @@ void AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause, const QueryGraph
 		} else if(type == ENTITY_EDGE) {
 			edges_to_delete = array_append(edges_to_delete, alias);
 		} else {
-			assert(false);
+            char *error;
+            asprintf(&error, "Delete type mismatch for entity '%s', expected Node or Relationship.", ast_alias);
+            QueryCtx_SetError(error);
 		}
 	}
 
