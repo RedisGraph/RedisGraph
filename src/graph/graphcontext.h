@@ -77,8 +77,8 @@ void GraphContext_RegisterWithModule(GraphContext *gc);
 // Remove GraphContext from global array
 void GraphContext_RemoveFromRegistry(GraphContext *gc);
 
-// Sets a name in graph context, after renaming.
-void GraphContext_SetName(GraphContext *gc, const char *name);
+// Rename a graph context.
+void GraphContext_Rename(GraphContext *gc, const char *name);
 
 #endif
 
