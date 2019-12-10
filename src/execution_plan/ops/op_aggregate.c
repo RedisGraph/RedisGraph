@@ -29,7 +29,7 @@ static void _classify_expressions(OpAggregate *op) {
 
 	for(uint i = 0; i < op->exp_count; i++) {
 		AR_ExpNode *exp = op->exps[i];
-		if(!AR_EXP_ContainsAggregation(exp, NULL)) {
+		if(!AR_EXP_ContainsAggregation(exp)) {
 			op->expression_classification[i] = NON_AGGREGATED;
 			op->non_aggregated_expressions = array_append(op->non_aggregated_expressions, exp);
 		} else {

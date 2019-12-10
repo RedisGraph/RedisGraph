@@ -62,6 +62,20 @@ void Graph_Profile(void *args) {
 
 	result_set = NewResultSet(ctx, false);
 	ExecutionPlan *plan = NewExecutionPlan(result_set);
+	/* Make sure there are no compile-time errors.
+	 * We prefer to emit the error only once the entire execution-plan
+	 * is constructed in-favour of the time it was encountered
+	 * for memory management considerations.
+	 * this should be revisited in order to save some time (fail fast). */
+	if(QueryCtx_EncounteredError()) {
+		/* TODO: move ExecutionPlan_Free to `cleanup`
+		 * once no all pendding operation commitment (create,delete,update)
+		 * are no performed in free callback. */
+		if(plan) ExecutionPlan_Free(plan);
+		QueryCtx_EmitException();
+		goto cleanup;
+	}
+
 	if(plan) {
 		ExecutionPlan_Profile(plan);
 		ExecutionPlan_Print(plan, ctx);

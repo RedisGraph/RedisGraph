@@ -282,8 +282,6 @@ Feature: AggregationAcceptance
             | ['blue'] | 1        |
         And no side effects
 
-@crash
-    @skip
     Scenario: Aggregates in aggregates
         Given any graph
         When executing query:

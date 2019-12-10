@@ -51,6 +51,14 @@ class testFunctionCallsFlow(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             # Expecting a type error.
             self.env.assertIn("Type mismatch", e.message)
+    
+    def expect_error(self, query, expected_err_msg):
+        try:
+            graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting a type error.
+            self.env.assertIn(expected_err_msg, e.message)
 
     # Validate capturing of errors prior to query execution.
     def test01_compile_time_errors(self):
@@ -59,6 +67,9 @@ class testFunctionCallsFlow(FlowTestsBase):
 
         query = """RETURN 'a' * 2"""
         self.expect_type_error(query)
+
+        query = """RETURN max(1 + min(2))"""
+        self.expect_error(query, "Can't use aggregate functions inside of aggregate functions")
 
     def test02_boolean_comparisons(self):
         query = """RETURN true = 5"""
