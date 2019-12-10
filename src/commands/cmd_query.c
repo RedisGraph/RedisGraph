@@ -109,7 +109,22 @@ void Graph_Query(void *args) {
 	if(root_type == CYPHER_AST_QUERY) {  // query operation
 		result_set = NewResultSet(ctx, compact);
 		ExecutionPlan *plan = NewExecutionPlan(result_set);
+		/* Make sure there are no compile-time errors.
+		 * We prefer to emit the error only once the entire execution-plan
+		 * is constructed in-favour of the time it was encountered
+		 * for memory management considerations.
+		 * this should be revisited in order to save some time (fail fast). */
+		if(QueryCtx_EncounteredError()) {
+			/* TODO: move ExecutionPlan_Free to `cleanup`
+			 * once no all pendding operation commitment (create,delete,update)
+			 * are no performed in free callback. */
+			if(plan) ExecutionPlan_Free(plan);
+			QueryCtx_EmitException();
+			goto cleanup;
+		}
+
 		if(!plan) goto cleanup;
+
 		result_set = ExecutionPlan_Execute(plan);
 		ExecutionPlan_Free(plan);
 		ResultSet_Replay(result_set);    // Send result-set back to client.

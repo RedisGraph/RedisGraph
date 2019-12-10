@@ -152,11 +152,6 @@ AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant) {
 	return node;
 }
 
-int AR_EXP_GetOperandType(AR_ExpNode *exp) {
-	if(exp->type == AR_EXP_OPERAND) return exp->operand.type;
-	return -1;
-}
-
 /* Compact tree by evaluating constant expressions
  * e.g. MINUS(X) where X is a constant number will be reduced to
  * a single node with the value -X
@@ -456,18 +451,13 @@ void AR_EXP_CollectAttributes(AR_ExpNode *root, rax *attributes) {
 	}
 }
 
-bool AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node) {
-	if(root->type == AR_EXP_OP && root->op.type == AR_OP_AGGREGATE) {
-		if(agg_node != NULL) *agg_node = root;
-		return true;
-	}
+bool AR_EXP_ContainsAggregation(AR_ExpNode *root) {
+	if(root->type == AR_EXP_OP && root->op.type == AR_OP_AGGREGATE) return true;
 
 	if(root->type == AR_EXP_OP) {
 		for(int i = 0; i < root->op.child_count; i++) {
 			AR_ExpNode *child = root->op.children[i];
-			if(AR_EXP_ContainsAggregation(child, agg_node)) {
-				return true;
-			}
+			if(AR_EXP_ContainsAggregation(child)) return true;
 		}
 	}
 

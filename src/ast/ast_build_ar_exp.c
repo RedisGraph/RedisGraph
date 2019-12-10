@@ -14,6 +14,31 @@
 // Forward declaration
 static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr);
 
+static bool __AR_EXP_ContainsNestedAgg(const AR_ExpNode *root, bool in_agg) {
+	// Is this an aggregation node?
+	bool agg_node = (root->type == AR_EXP_OP && root->op.type == AR_OP_AGGREGATE);
+	// Aggregation node nested within another aggregation node.
+	if(agg_node && in_agg) return true;
+
+	if(root->type == AR_EXP_OP) {
+		// Scan child nodes.
+		for(int i = 0; i < root->op.child_count; i++) {
+			AR_ExpNode *child = root->op.children[i];
+			// Cary on `in_agg`.
+			if(__AR_EXP_ContainsNestedAgg(child, agg_node | in_agg)) return true;
+		}
+	}
+
+	return false;
+}
+
+/* Return true if expression contains nested calls to aggregation functions
+ * e.g. MAX(MIN(1)) */
+static bool _AR_EXP_ContainsNestedAgg(const AR_ExpNode *exp) {
+	bool in_agg = false;
+	return __AR_EXP_ContainsNestedAgg(exp, in_agg);
+}
+
 static const char *_ASTOpToString(AST_Operator op) {
 	// TODO: switch to a table, tbl[op] = string.
 	switch(op) {
@@ -415,6 +440,15 @@ static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 AR_ExpNode *AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 	AR_ExpNode *root = _AR_EXP_FromExpression(expr);
 	AR_EXP_ReduceToScalar(&root);
+
+	/* Make sure expression doesn't contains nested aggregation functions
+	 * count(max(n.v)) */
+	if(_AR_EXP_ContainsNestedAgg(root)) {
+		// Set error (compile-time), this error will be raised later on.
+		char *error;
+		asprintf(&error, "Can't use aggregate functions inside of aggregate functions.");
+		QueryCtx_SetError(error);
+	}
+
 	return root;
 }
-

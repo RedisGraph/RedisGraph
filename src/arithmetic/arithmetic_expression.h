@@ -94,21 +94,17 @@ AR_ExpNode *AR_EXP_NewOpNode(const char *func_name, uint child_count);
 /* Creates a new distinct arithmetic expression operation node */
 AR_ExpNode *AR_EXP_NewDistinctOpNode(const char *func_name, uint child_count);
 
-/* Returns if the operation is distinct aggregation" */
-bool AR_EXP_PerformDistinct(AR_ExpNode *op);
-
 /* Creates a new Arithmetic expression variable operand node */
 AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias, const char *prop);
 
 /* Creates a new Arithmetic expression constant operand node */
 AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant);
 
-/* Return AR_OperandNodeType for operands and -1 for operations. */
-int AR_EXP_GetOperandType(AR_ExpNode *exp);
+/* Returns if the operation is distinct aggregation */
+bool AR_EXP_PerformDistinct(AR_ExpNode *op);
 
 /* Compact tree by evaluating all contained functions that can be resolved right now. */
 bool AR_EXP_ReduceToScalar(AR_ExpNode **root);
-
 
 /* Evaluate arithmetic expression tree. */
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r);
@@ -124,9 +120,9 @@ void AR_EXP_CollectEntities(AR_ExpNode *root, rax *aliases);
 void AR_EXP_CollectAttributes(AR_ExpNode *root, rax *attributes);
 
 /* Search for an aggregation node within the expression tree.
- * Return 1 and sets agg_node to the aggregation node if exists,
- * Please note an expression tree can only contain a single aggregation node. */
-bool AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node);
+ * Return 1 if one exists.
+ * Please note an expression tree can't contain nested aggregation nodes. */
+bool AR_EXP_ContainsAggregation(AR_ExpNode *root);
 
 /* Constructs string representation of arithmetic expression tree. */
 void AR_EXP_ToString(const AR_ExpNode *root, char **str);
@@ -140,4 +136,3 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp);
 
 /* Free arithmetic expression tree. */
 void AR_EXP_Free(AR_ExpNode *root);
-

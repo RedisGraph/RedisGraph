@@ -100,6 +100,12 @@ def step_impl(context):
     assert exception != None
     assert "expected a map" in exception.message
 
+@then(u'a ArgumentError should be raised at runtime: NumberOutOfRange')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "ArgumentError" in exception.message
+
 @then(u'a SyntaxError should be raised at compile time: InvalidAggregation')
 def step_impl(context):
     assert exception != None
@@ -146,3 +152,9 @@ def step_impl(context):
     global exception
     assert exception != None
     assert "Invalid combination" in exception.message
+
+@then(u'a SyntaxError should be raised at compile time: NestedAggregation')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Can't use aggregate functions inside of aggregate functions" in exception.message

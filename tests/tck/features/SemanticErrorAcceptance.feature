@@ -322,8 +322,6 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidArgumentExpression
 
-@crash
-@skip
   Scenario: Bad arguments for `range()`
     When executing query:
       """

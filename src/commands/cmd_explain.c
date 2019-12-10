@@ -50,6 +50,15 @@ void Graph_Explain(void *args) {
 	lock_acquired = true;
 
 	plan = NewExecutionPlan(NULL);
+	/* Make sure there are no compile-time errors.
+	 * We prefer to emit the error only once the entire execution-plan
+	 * is constructed in-favour of the time it was encountered
+	 * for memory management considerations.
+	 * this should be revisited in order to save some time (fail fast). */
+	if(QueryCtx_EncounteredError()) {
+		QueryCtx_EmitException();
+		goto cleanup;
+	}
 	if(plan == NULL) goto cleanup;
 
 	ExecutionPlan_Init(plan);       // Initialize the plan's ops.
