@@ -47,7 +47,7 @@ typedef enum {
 	OPType_MERGE_CREATE = (1 << 27),
 	OpType_NODE_BY_LABEL_AND_ID_SCAN = (1 << 28),
 	OPType_SEMI_APPLY = (1 << 29),
-
+	OPType_APPLY_MULTIPLEXER = (1 << 30),
 } OPType; // TODO Consider switching from bitmask at 1<<32
 
 typedef enum {

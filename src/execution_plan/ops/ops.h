@@ -35,4 +35,4 @@
 #include "op_argument.h"
 #include "op_merge_create.h"
 #include "apply_ops/op_semi_apply.h"
-
+#include "apply_ops/op_apply_multiplexer.h"
