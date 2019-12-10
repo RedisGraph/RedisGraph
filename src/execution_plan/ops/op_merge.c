@@ -104,7 +104,7 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
 			op->on_match[i].record_idx = OpBase_Modifies((OpBase *)op, op->on_match[i].alias);
 		}
 	}
-	OpBase_RegisterAsWriter((OpBase *) op);
+	if(op->on_match) OpBase_RegisterAsWriter((OpBase *) op);
 	return (OpBase *)op;
 }
 

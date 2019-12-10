@@ -255,6 +255,7 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
 
 	return NULL;
 }
+
 typedef enum {
 	LTR,
 	RTL
