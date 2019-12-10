@@ -196,7 +196,6 @@ static Record MergeConsume(OpBase *opBase) {
 
 	// Consume mode.
 	op->output_records = array_new(Record, 32);
-
 	// If we have a bound variable stream, pull from it and store records until depleted.
 	if(op->bound_variable_stream) {
 		Record input_record;
@@ -263,7 +262,6 @@ static Record MergeConsume(OpBase *opBase) {
 	if(must_create_records) {
 		/* We've populated the Create stream with all the Records it must read;
 		 * pull from it until we've retrieved all newly-created Records. */
-		if(!op->output_records) op->output_records = array_new(Record, 32);
 		Record created_record;
 		while((created_record = _pullFromStream(op->create_stream))) {
 			op->output_records = array_append(op->output_records, created_record);
@@ -272,7 +270,6 @@ static Record MergeConsume(OpBase *opBase) {
 
 	// If we are setting properties with ON MATCH, execute all pending updates.
 	_UpdateProperties(op, op->output_records, matched_records_count);
-
 	return _handoff(op);
 }
 
