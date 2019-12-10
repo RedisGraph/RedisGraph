@@ -465,8 +465,15 @@ TEST_F(ArithmeticTest, ToIntegerTest) {
 	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
-    /* toInteger(z') */
+    /* toInteger('z') */
 	query = "RETURN toInteger('z')";
+	arExp = _exp_from_query(query);
+	expected = SI_NullVal();
+	_test_ar_func(arExp, expected, NULL);
+	AR_EXP_Free(arExp);
+
+    /* toInteger(NULL) */
+	query = "RETURN toInteger(null)";
 	arExp = _exp_from_query(query);
 	expected = SI_NullVal();
 	_test_ar_func(arExp, expected, NULL);
