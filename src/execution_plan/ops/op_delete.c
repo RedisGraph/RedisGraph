@@ -74,23 +74,24 @@ static Record DeleteConsume(OpBase *opBase) {
 	for(int i = 0; i < op->exp_count; i++) {
 		AR_ExpNode *exp = op->exps[i];
 		SIValue value = AR_EXP_Evaluate(exp, r);
-
-		if(!(SI_TYPE(value) & SI_GRAPHENTITY)) {
-			char *error;
-			asprintf(&error, "Delete type mismatch, expecting either Node or Relationship.");
-			QueryCtx_SetError(error);
-			QueryCtx_RaiseRuntimeException();
-			break;
-		}
 		/* Enqueue entities for deletion. */
-		else if(SI_TYPE(value) & T_NODE) {
+		if(SI_TYPE(value) & T_NODE) {
 			Node *n = (Node *)value.ptrval;
 			op->deleted_nodes = array_append(op->deleted_nodes, *n);
 		} else if(SI_TYPE(value) & T_EDGE) {
 			Edge *e = (Edge *)value.ptrval;
 			op->deleted_edges = array_append(op->deleted_edges, *e);
 		} else {
-			assert(false);
+			/* Expression evaluated to a none graph entity type
+			 * clear pending deletions and raise an exception. */
+			array_clear(op->deleted_nodes);
+			array_clear(op->deleted_edges);
+
+			char *error;
+			asprintf(&error, "Delete type mismatch, expecting either Node or Relationship.");
+			QueryCtx_SetError(error);
+			QueryCtx_RaiseRuntimeException();
+			break;
 		}
 	}
 

@@ -126,6 +126,8 @@ SIValue AR_TOINTEGER(SIValue *argv, int argc) {
 	char *sEnd = NULL;
 
 	switch(SI_TYPE(arg)) {
+	case T_NULL:
+		return SI_NullVal();
 	case T_INT64:
 		return arg;
 	case T_DOUBLE:
@@ -135,8 +137,7 @@ SIValue AR_TOINTEGER(SIValue *argv, int argc) {
 		errno = 0;
 		double parsedval = strtod(arg.stringval, &sEnd);
 		/* The input was not a complete number or represented a number that
-		 * cannot be represented as a double.
-		 * Create a string SIValue. */
+		 * cannot be represented as a double. */
 		if(sEnd[0] != '\0' || errno == ERANGE) return SI_NullVal();
 		// Remove floating point.
 		return SI_LongVal(floor(parsedval));
@@ -199,7 +200,7 @@ void Register_NumericFuncs() {
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	types = array_append(types, (SI_NUMERIC | T_STRING));
+	types = array_append(types, (SI_NUMERIC | T_STRING | T_NULL));
 	func_desc = AR_FuncDescNew("tointeger", AR_TOINTEGER, 1, 1, types, true);
 	AR_RegFunc(func_desc);
 }

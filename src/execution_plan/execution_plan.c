@@ -1014,8 +1014,6 @@ void ExecutionPlan_Init(ExecutionPlan *plan) {
 }
 
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
-	ExecutionPlan_Init(plan);
-
 	/* Set an exception-handling breakpoint to capture run-time errors.
 	 * encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
 	 * a downstream exception returns us to this breakpoint. */
@@ -1025,6 +1023,8 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 		// Encountered a run-time error; return immediately.
 		return plan->result_set;
 	}
+
+	ExecutionPlan_Init(plan);
 
 	Record r = NULL;
 	// Execute the root operation and free the processed Record until the data stream is depleted.
