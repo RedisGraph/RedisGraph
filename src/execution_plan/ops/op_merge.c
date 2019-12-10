@@ -196,7 +196,6 @@ static Record MergeConsume(OpBase *opBase) {
 
 	// Consume mode.
 	op->output_records = array_new(Record, 32);
-
 	// If we have a bound variable stream, pull from it and store records until depleted.
 	if(op->bound_variable_stream) {
 		Record input_record;

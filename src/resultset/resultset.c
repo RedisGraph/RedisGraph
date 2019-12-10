@@ -59,12 +59,12 @@ static void _ResultSet_ReplayStats(RedisModuleCtx *ctx, ResultSet *set) {
 	}
 
 	if(set->stats.indicies_created != NOT_SET) {
-		buflen = sprintf(buff, "Indicies created: %d", set->stats.indicies_created);
+		buflen = sprintf(buff, "Indices created: %d", set->stats.indicies_created);
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
 
 	if(set->stats.indicies_deleted != NOT_SET) {
-		buflen = sprintf(buff, "Indicies deleted: %d", set->stats.indicies_deleted);
+		buflen = sprintf(buff, "Indices deleted: %d", set->stats.indicies_deleted);
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
 

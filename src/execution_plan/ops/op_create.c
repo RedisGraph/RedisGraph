@@ -143,6 +143,7 @@ static Record CreateConsume(OpBase *opBase) {
 
 	// Create entities.
 	CommitNewEntities(opBase, &op->pending);
+
 	// Return record.
 	return _handoff(op);
 }
