@@ -47,10 +47,9 @@ static void _UpdateProperty(Record r, GraphEntity *ge, EntityUpdateEvalCtx *upda
 }
 
 // Perform all ON MATCH updates for all matched records.
-static void _UpdateProperties(OpMerge *op, Record *records) {
+static void _UpdateProperties(OpMerge *op, Record *records, uint record_count) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	uint update_count = array_len(op->on_match);
-	uint record_count = array_len(records);
 
 	if(op->on_match && update_count && record_count) {
 		// Lock everything.
@@ -104,7 +103,7 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
 			op->on_match[i].record_idx = OpBase_Modifies((OpBase *)op, op->on_match[i].alias);
 		}
 	}
-	if(op->on_match) OpBase_RegisterAsWriter((OpBase *) op);
+	OpBase_RegisterAsWriter((OpBase *) op);
 	return (OpBase *)op;
 }
 
@@ -185,15 +184,7 @@ static OpResult MergeInit(OpBase *opBase) {
 
 static Record _handoff(OpMerge *op) {
 	Record r = NULL;
-	if(op->matched_records) {
-		if(array_len(op->matched_records)) {
-			r = array_pop(op->matched_records);
-		} else if(op->created_records) {
-			if(array_len(op->created_records)) {
-				r = array_pop(op->created_records);
-			}
-		}
-	}
+	if(array_len(op->output_records)) r = array_pop(op->output_records);
 	return r;
 }
 
@@ -201,10 +192,10 @@ static Record MergeConsume(OpBase *opBase) {
 	OpMerge *op = (OpMerge *)opBase;
 
 	// Return mode, all data was consumed.
-	if(op->matched_records || op->created_records) return _handoff(op);
+	if(op->output_records) return _handoff(op);
 
 	// Consume mode.
-	op->matched_records = array_new(Record, 32);
+	op->output_records = array_new(Record, 32);
 
 	// If we have a bound variable stream, pull from it and store records until depleted.
 	if(op->bound_variable_stream) {
@@ -216,6 +207,7 @@ static Record MergeConsume(OpBase *opBase) {
 
 	bool must_create_records = false;
 	bool reading_matches = true;
+	uint matched_records_count = 0;
 	// Match mode: attempt to resolve the pattern for every record from the bound variable
 	// stream, or once if we have no bound variables.
 	while(reading_matches) {
@@ -241,7 +233,8 @@ static Record MergeConsume(OpBase *opBase) {
 		while((rhs_record = _pullFromStream(op->match_stream))) {
 			// Pattern was successfully matched.
 			should_create_pattern = false;
-			op->matched_records = array_append(op->matched_records, rhs_record);
+			op->output_records = array_append(op->output_records, rhs_record);
+			matched_records_count++;
 		}
 
 		if(should_create_pattern) {
@@ -269,15 +262,15 @@ static Record MergeConsume(OpBase *opBase) {
 	if(must_create_records) {
 		/* We've populated the Create stream with all the Records it must read;
 		 * pull from it until we've retrieved all newly-created Records. */
-		if(!op->created_records) op->created_records = array_new(Record, 32);
+		if(!op->output_records) op->output_records = array_new(Record, 32);
 		Record created_record;
 		while((created_record = _pullFromStream(op->create_stream))) {
-			op->created_records = array_append(op->created_records, created_record);
+			op->output_records = array_append(op->output_records, created_record);
 		}
 	}
 
 	// If we are setting properties with ON MATCH, execute all pending updates.
-	_UpdateProperties(op, op->matched_records);
+	_UpdateProperties(op, op->output_records, matched_records_count);
 
 	return _handoff(op);
 }
@@ -293,18 +286,13 @@ static void MergeFree(OpBase *opBase) {
 		op->input_records = NULL;
 	}
 
-	if(op->matched_records) {
-		uint output_count = array_len(op->matched_records);
-		for(uint i = 0; i < output_count; i ++) Record_Free(op->matched_records[i]);
-		array_free(op->matched_records);
-		op->matched_records = NULL;
-	}
-
-	if(op->created_records) {
-		uint output_count = array_len(op->created_records);
-		for(uint i = 0; i < output_count; i ++) Record_Free(op->created_records[i]);
-		array_free(op->created_records);
-		op->created_records = NULL;
+	if(op->output_records) {
+		uint output_count = array_len(op->output_records);
+		for(uint i = 0; i < output_count; i ++) {
+			Record_Free(op->output_records[i]);
+		}
+		array_free(op->output_records);
+		op->output_records = NULL;
 	}
 
 	if(op->on_match) {
