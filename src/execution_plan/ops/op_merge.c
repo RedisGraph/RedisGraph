@@ -52,7 +52,6 @@ static void _UpdateProperties(OpMerge *op, Record *records) {
 	uint update_count = array_len(op->on_match);
 	uint record_count = array_len(records);
 
-
 	if(op->on_match && update_count && record_count) {
 		// Lock everything.
 		if(!QueryCtx_LockForCommit()) return;
@@ -105,7 +104,7 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
 			op->on_match[i].record_idx = OpBase_Modifies((OpBase *)op, op->on_match[i].alias);
 		}
 	}
-	OpBase_RegisterAsWriter((OpBase *) op);
+	if(op->on_match) OpBase_RegisterAsWriter((OpBase *) op);
 	return (OpBase *)op;
 }
 

@@ -260,10 +260,11 @@ int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label, cons
 	if(res == INDEX_OK) {
 		if(result_set->stats.indicies_created == NOT_SET) {
 			result_set->stats.indicies_created = 1;
-		} else result_set->stats.indicies_created += 1;
-	} else {
-		if(result_set->stats.indicies_created == NOT_SET)
-			result_set->stats.indicies_created = 0;
+		} else {
+			result_set->stats.indicies_created += 1;
+		}
+	} else if(result_set->stats.indicies_created == NOT_SET) {
+		result_set->stats.indicies_created = 0;
 	}
 	return res;
 }
@@ -278,10 +279,11 @@ int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *fi
 	if(res == INDEX_OK) {
 		if(result_set->stats.indicies_deleted == NOT_SET) {
 			result_set->stats.indicies_deleted = 1;
-		} else result_set->stats.indicies_deleted += 1;
-	} else {
-		if(result_set->stats.indicies_deleted == NOT_SET)
-			result_set->stats.indicies_deleted = 0;
+		} else {
+			result_set->stats.indicies_deleted += 1;
+		}
+	} else if(result_set->stats.indicies_deleted == NOT_SET) {
+		result_set->stats.indicies_deleted = 0;
 	}
 	return res;
 }
