@@ -10,7 +10,7 @@
 
 // Forward declarations.
 void SemiApplyFree(OpBase *opBase);
-OpResult SemiApplyInit(OpBase *opBase);
+// OpResult SemiApplyInit(OpBase *opBase);
 Record SemiApplyConsume(OpBase *opBase);
 OpResult SemiApplyReset(OpBase *opBase);
 
@@ -20,14 +20,14 @@ static inline Record _pullFromStream(OpBase *branch) {
 }
 
 static Record _pullFromBranchStream(OpSemiApply *op) {
-	OpBase *branch = op->op.children[1];
+	OpBase *branch = op->match_branch;
 	// Propegate record to the top of the right-hand side stream.
 	if(op->op_arg) Argument_AddRecord(op->op_arg, Record_Clone(op->r));
 	return _pullFromStream(branch);
 }
 
 static Record _pullFromMainStream(OpSemiApply *op) {
-	OpBase *main_stream = op->op.children[0];
+	OpBase *main_stream = op->execution_plan_branch;
 	return _pullFromStream(main_stream);
 }
 
@@ -77,6 +77,40 @@ static Record _OpSemiApply_AntiSemiApplyLogic(OpSemiApply *op) {
 	}
 }
 
+void SemiApplyOp_SetExecutionPlanBranch(OpSemiApply *semi_apply_op, OpBase *execution_plan_root) {
+	// Check children count remains <= 2 before and after insertion.
+	assert(semi_apply_op->op.childCount <= 2);
+	// Check that the new child has not been preiously added.
+	bool root_is_not_op_child = true;
+	for(uint i = 0; i < semi_apply_op->op.childCount; i++) {
+		if(execution_plan_root == semi_apply_op->op.children[i]) {
+			root_is_not_op_child = false;
+			break;
+		}
+	}
+	assert(root_is_not_op_child);
+	semi_apply_op->execution_plan_branch = execution_plan_root;
+	ExecutionPlan_AddOp((OpBase *)semi_apply_op, execution_plan_root);
+	assert(semi_apply_op->op.childCount <= 2);
+}
+
+void SemiApplyOp_SetMatchBranch(OpSemiApply *semi_apply_op, OpBase *match_branch_root) {
+	// Check children count remains <= 2 before and after insertion.
+	assert(semi_apply_op->op.childCount <= 2);
+	// Check that the new child has not been preiously added.
+	bool root_is_not_op_child = true;
+	for(uint i = 0; i < semi_apply_op->op.childCount; i++) {
+		if(match_branch_root == semi_apply_op->op.children[i]) {
+			root_is_not_op_child = false;
+			break;
+		}
+	}
+	assert(root_is_not_op_child);
+	semi_apply_op->match_branch = match_branch_root;
+	ExecutionPlan_AddOp((OpBase *)semi_apply_op, match_branch_root);
+	assert(semi_apply_op->op.childCount <= 2);
+}
+
 OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti) {
 	OpSemiApply *op = malloc(sizeof(OpSemiApply));
 	op->r = NULL;
@@ -92,32 +126,32 @@ OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti) {
 	}
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, name, SemiApplyInit, SemiApplyConsume,
+	OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, name, NULL, SemiApplyConsume,
 				SemiApplyReset, NULL, SemiApplyFree, plan);
 
 	return (OpBase *) op;
 }
 
-OpResult SemiApplyInit(OpBase *opBase) {
-	assert(opBase->childCount == 2);
+// OpResult SemiApplyInit(OpBase *opBase) {
+// 	assert(opBase->childCount == 2);
 
-	OpSemiApply *op = (OpSemiApply *)opBase;
+// 	OpSemiApply *op = (OpSemiApply *)opBase;
 
-	// If we only have 2 streams, we simply need to determine which has a MergeCreate op.
-	if(ExecutionPlan_LocateOp(opBase->children[0], OPType_ARGUMENT)) {
-		// If the Create op is in the first stream, swap the children.
-		// Otherwise, the order is already correct.
-		OpBase *tmp = opBase->children[0];
-		opBase->children[0] = opBase->children[1];
-		opBase->children[1] = tmp;
-	}
+// 	// If we only have 2 streams, we simply need to determine which has a MergeCreate op.
+// 	if(ExecutionPlan_LocateOp(opBase->children[0], OPType_ARGUMENT)) {
+// 		// If the Create op is in the first stream, swap the children.
+// 		// Otherwise, the order is already correct.
+// 		OpBase *tmp = opBase->children[0];
+// 		opBase->children[0] = opBase->children[1];
+// 		opBase->children[1] = tmp;
+// 	}
 
-	// Locate branch's Argument op tap.
-	OpBase *branch = op->op.children[1];
-	op->op_arg = (Argument *)ExecutionPlan_LocateOp(branch, OPType_ARGUMENT);
-	if(op->op_arg) assert(op->op_arg->op.childCount == 0);
-	return OP_OK;
-}
+// 	// Locate branch's Argument op tap.
+// 	OpBase *branch = op->op.children[1];
+// 	op->op_arg = (Argument *)ExecutionPlan_LocateOp(branch, OPType_ARGUMENT);
+// 	if(op->op_arg) assert(op->op_arg->op.childCount == 0);
+// 	return OP_OK;
+// }
 
 Record SemiApplyConsume(OpBase *opBase) {
 	OpSemiApply *op = (OpSemiApply *)opBase;

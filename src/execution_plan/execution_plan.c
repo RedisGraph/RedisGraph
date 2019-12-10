@@ -555,8 +555,6 @@ static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *
 	// Free the temporary plan.
 	ExecutionPlan_Free(rhs_plan);
 
-	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
-	ExecutionPlan_BindPlanToOps(rhs_root, plan);
 }
 
 static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge_ctx,

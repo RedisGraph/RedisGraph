@@ -33,15 +33,21 @@ typedef Record(*ApplyLogic)(struct OpApplyMultiplexer *);
 
 typedef struct OpApplyMultiplexer {
 	OpBase op;
+	Record r;                       // Main execution plan branch record.
+	OpBase *execution_plan_branch;  // Main execution plan branch root;
 	OpFilter *filter;               // Optional filter.
-	Record r;                       // Main execution plan branch record..
-	Argument **op_arg;              // Branch taps.
+	Argument *filter_argument;      // Optional filter branch argument root;
+	OpBase **branches;              // branches roots;
+	Argument **branches_arg;        // Branches taps.
 	ApplyLogic apply_func;          // Which apply method to invoke (OR or AND multiplexion).
 	AST_Operator boolean_operator;  // Defines the operation logic.
 } OpApplyMultiplexer;
 
 OpBase *NewApplyMultiplexerOp(ExecutionPlan *plan, AST_Operator boolean_operator);
 
-OpBase *OpApplyMultiplexer_AddFilter(OpFilter *filter);
+/* Sets the main execution plan branch. In case this operation is called from ApplyMultiplexer operation
+ * this branch will be an argument operation. */
+void OpApplyMultiplexer_SetExecutionPlanBranch(OpApplyMultiplexer *apply_multiplexer,
+											   OpBase *execution_plan_root);
 
-OpBase *OpApplyMultiplexer_AddBranch(OpBase *branch_root);
+void OpApplyMultiplexer_AddBranch(OpApplyMultiplexer *apply_multiplexer, OpBase *branch_root);
