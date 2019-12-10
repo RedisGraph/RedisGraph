@@ -257,6 +257,7 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
 }
 
 typedef enum {
+
 	LTR,
 	RTL
 } LocateOp_SearchDirection;
