@@ -89,35 +89,17 @@ EntityUpdateEvalCtx *AST_PrepareUpdateOp(const cypher_astnode_t *set_clause) {
 	return update_expressions;
 }
 
-void AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause, const QueryGraph *qg,
-						 const char ***nodes_ref, const char ***edges_ref) {
+AR_ExpNode **AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause) {
 	AST *ast = QueryCtx_GetAST();
 	uint delete_count = cypher_ast_delete_nexpressions(delete_clause);
-	const char **nodes_to_delete = array_new(const char *, delete_count);
-	const char **edges_to_delete = array_new(const char *, delete_count);
+	AR_ExpNode **exps = array_new(AR_ExpNode *, delete_count);
 
 	for(uint i = 0; i < delete_count; i ++) {
 		const cypher_astnode_t *ast_expr = cypher_ast_delete_get_expression(delete_clause, i);
-		assert(cypher_astnode_type(ast_expr) == CYPHER_AST_IDENTIFIER);
-
-		const char *ast_alias = cypher_ast_identifier_get_name(ast_expr);
-		// Retrieve the canonical pointer for the QueryGraph entity.
-		char *alias = raxFind(ast->canonical_entity_names, (unsigned char *)ast_alias, strlen(ast_alias));
-
-		/* We need to determine whether each alias refers to a node or edge.
-		 * Currently, we'll do this by consulting with the QueryGraph. */
-		EntityType type = QueryGraph_GetEntityTypeByAlias(qg, alias);
-		if(type == ENTITY_NODE) {
-			nodes_to_delete = array_append(nodes_to_delete, alias);
-		} else if(type == ENTITY_EDGE) {
-			edges_to_delete = array_append(edges_to_delete, alias);
-		} else {
-			assert(false);
-		}
+		AR_ExpNode *exp = AR_EXP_FromExpression(ast_expr);
+		exps = array_append(exps, exp);
 	}
-
-	*nodes_ref = nodes_to_delete;
-	*edges_ref = edges_to_delete;
+	return exps;
 }
 
 int AST_PrepareSortOp(const cypher_astnode_t *order_clause) {

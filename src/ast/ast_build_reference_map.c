@@ -157,11 +157,7 @@ static void _AST_MapDeleteClauseReferences(AST *ast, const cypher_astnode_t *del
 	uint nitems = cypher_ast_delete_nexpressions(delete_clause);
 	for(uint i = 0; i < nitems; i++) {
 		const cypher_astnode_t *delete_exp = cypher_ast_delete_get_expression(delete_clause, i);
-
-		assert(cypher_astnode_type(delete_exp) == CYPHER_AST_IDENTIFIER);
-
-		const char *alias = cypher_ast_identifier_get_name(delete_exp);
-		_AST_UpdateRefMap(ast, alias);
+		_AST_MapExpression(ast, delete_exp);
 	}
 }
 

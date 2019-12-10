@@ -30,7 +30,6 @@
 
 Feature: AggregationAcceptance
 
-    @skip
     Scenario: Support multiple divisions in aggregate function
         Given an empty graph
         And having executed:
@@ -41,7 +40,8 @@ Feature: AggregationAcceptance
         When executing query:
             """
             MATCH (n)
-            RETURN count(n) / 60 / 60 AS count
+            WITH count(n) / 60 / 60 AS count
+            RETURN floor(count)
             """
         Then the result should be:
             | count |
@@ -380,7 +380,6 @@ Feature: AggregationAcceptance
             | [[(:C), (:D), (:E), (:F)]]                               | 3 |
         And no side effects
 
-    @skip
     Scenario: Aggregation with `min()`
         Given an empty graph
         And having executed:
@@ -397,9 +396,9 @@ Feature: AggregationAcceptance
             WITH a, other, min(length(p)) AS len
             RETURN a.name AS name, collect(other.name) AS others, len
             """
-        Then the result should be (ignoring element order for lists):
+        Then the result should be:
             | name | others     | len |
-            | 'a'  | ['c', 'b'] | 1   |
+            | 'a'  | ['b', 'c'] | 1   |
         And no side effects
 
     @skip

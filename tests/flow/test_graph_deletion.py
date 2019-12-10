@@ -179,3 +179,68 @@ class testGraphDeletionFlow(FlowTestsBase):
         # Test will not fail for execution time > 300ms but a warning will be shown at the test output.
         self.env.assertEquals(result.relationships_deleted, 50000)
         self._assert_run_time(result, query_info)
+
+    def test11_delete_entity_type_validation(self):
+        # Currently we only support deletion of either nodes or edges
+        # we've yet to introduce deletion of Path.
+
+        # Try to delete an integer.
+        query = """UNWIND [1] AS x DELETE x"""
+        try:
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except Exception as error:
+            self.env.assertTrue("Delete type mismatch" in error.message)
+
+        query = """MATCH p=(n) DELETE p"""
+        try:
+            redis_graph.query(query)
+            self.env.assertTrue(False)
+        except Exception as error:
+            self.env.assertTrue("Delete type mismatch" in error.message)
+    
+    def test12_delete_unwind_entity(self):
+        redis_con = self.env.getConnection()
+        redis_graph = Graph("delete_test", redis_con)
+
+        # Create 10 nodes.
+        for i in range(10):
+            redis_graph.add_node(Node())        
+        redis_graph.flush()
+
+        # Unwind path nodes.
+        query = """MATCH p = () UNWIND nodes(p) AS node DELETE node"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.nodes_deleted, 10)
+        self.env.assertEquals(actual_result.relationships_deleted, 0)
+
+        for i in range(10):
+            redis_graph.add_node(Node())
+        redis_graph.flush()
+
+        # Unwind collected nodes.
+        query = """MATCH (n) WITH collect(n) AS nodes UNWIND nodes AS node DELETE node"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.nodes_deleted, 10)
+        self.env.assertEquals(actual_result.relationships_deleted, 0)
+
+    def test13_delete_path_elements(self):
+        self.env.flush()
+        redis_con = self.env.getConnection()
+        redis_graph = Graph("delete_test", redis_con)
+
+        src = Node()
+        dest = Node()
+        edge = Edge(src, "R", dest)
+
+        redis_graph.add_node(src)
+        redis_graph.add_node(dest)
+        redis_graph.add_edge(edge)        
+        redis_graph.flush()
+        
+        # Delete projected
+        # Unwind path nodes.
+        query = """MATCH p = (src)-[e]->(dest) WITH nodes(p)[0] AS node, relationships(p)[0] as edge DELETE node, edge"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.nodes_deleted, 1)
+        self.env.assertEquals(actual_result.relationships_deleted, 1)

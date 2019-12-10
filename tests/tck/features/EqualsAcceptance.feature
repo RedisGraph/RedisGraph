@@ -30,7 +30,6 @@
 
 Feature: EqualsAcceptance
 
-@skip
   Scenario: Number-typed integer comparison
     Given an empty graph
     And having executed:
@@ -50,7 +49,6 @@ Feature: EqualsAcceptance
       | ({id: 0}) |
     And no side effects
 
-@skip
   Scenario: Number-typed float comparison
     Given an empty graph
     And having executed:
@@ -69,7 +67,6 @@ Feature: EqualsAcceptance
       | n |
     And no side effects
 
-@skip
   Scenario: Any-typed string comparison
     Given an empty graph
     And having executed:
@@ -126,7 +123,7 @@ Feature: EqualsAcceptance
       | 1        |
     And no side effects
 
-@skip
+  @skip
   Scenario Outline: Comparing lists to lists
     Given an empty graph
     When executing query:
@@ -142,7 +139,44 @@ Feature: EqualsAcceptance
       | lhs           | rhs           | result |
       | [1, 2]        | [1]           | false  |
       | [null]        | [1]           | null   |
-      | ['a']         | [1]           | null   |
+      | ['a']         | [1]           | false  |
       | [[1]]         | [[1], [null]] | false  |
       | [[1], [2]]    | [[1], [null]] | null   |
       | [[1], [2, 3]] | [[1], [null]] | false  |
+
+  @skip
+  Scenario Outline: Equality and inequality of NaN
+    Given any graph
+    When executing query:
+      """
+      RETURN <lhs> = <rhs> AS isEqual, <lhs> <> <rhs> AS isNotEqual
+      """
+    Then the result should be:
+      | isEqual | isNotEqual |
+      | false   | true       |
+    And no side effects
+
+    Examples:
+      | lhs       | rhs       |
+      | 0.0 / 0.0 | 1         |
+      | 0.0 / 0.0 | 1.0       |
+      | 0.0 / 0.0 | 0.0 / 0.0 |
+      | 0.0 / 0.0 | 'a'       |
+
+  Scenario Outline: Equality between strings and numbers
+    Given any graph
+    When executing query:
+      """
+      RETURN <lhs> = <rhs> AS result
+      """
+    Then the result should be:
+      | result   |
+      | <result> |
+    And no side effects
+
+    Examples:
+      | lhs   | rhs | result  |
+      | 1.0   | 1.0 | true    |
+      | 1     | 1.0 | true    |
+      | '1.0' | 1.0 | false   |
+      | '1'   | 1   | false   |

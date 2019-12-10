@@ -6,6 +6,7 @@
 
 #include <assert.h>
 #include "op_unwind.h"
+#include "../../query_ctx.h"
 #include "../../datatypes/array.h"
 #include "../../arithmetic/arithmetic_expression.h"
 #include "limits.h"
@@ -34,6 +35,18 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 	return (OpBase *)op;
 }
 
+/* Evaluate list expression, raise runtime exception
+ * if expression did not returned a list type value. */
+static void _initList(OpUnwind *op) {
+	op->list = AR_EXP_Evaluate(op->exp, op->currentRecord);
+	if(op->list.type != T_ARRAY) {
+		char *error;
+		asprintf(&error, "Type mismatch: expected List but was %s", SIType_ToString(op->list.type));
+		QueryCtx_SetError(error);
+		QueryCtx_RaiseRuntimeException();
+	}
+}
+
 static OpResult UnwindInit(OpBase *opBase) {
 	OpUnwind *op = (OpUnwind *) opBase;
 	op->currentRecord = OpBase_CreateRecord((OpBase *)op);
@@ -41,7 +54,7 @@ static OpResult UnwindInit(OpBase *opBase) {
 	if(op->op.childCount == 0) {
 		// No child operation, list must be static.
 		op->listIdx = 0;
-		op->list = AR_EXP_Evaluate(op->exp, op->currentRecord);
+		_initList(op);
 	} else {
 		// List might depend on data provided by child operation.
 		op->list = SI_EmptyArray();
@@ -86,8 +99,7 @@ static Record UnwindConsume(OpBase *opBase) {
 
 		// Reset index and set list.
 		op->listIdx = 0;
-		op->list = AR_EXP_Evaluate(op->exp, r);
-		assert(op->list.type == T_ARRAY);
+		_initList(op);
 	}
 
 	return _handoff(op);
@@ -105,7 +117,6 @@ static OpResult UnwindReset(OpBase *ctx) {
 static void UnwindFree(OpBase *ctx) {
 	OpUnwind *op = (OpUnwind *)ctx;
 	SIValue_Free(&op->list);
-	op->list = SI_NullVal();
 
 	if(op->exp) {
 		AR_EXP_Free(op->exp);
@@ -117,4 +128,3 @@ static void UnwindFree(OpBase *ctx) {
 		op->currentRecord = NULL;
 	}
 }
-

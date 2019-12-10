@@ -122,6 +122,7 @@ We do not support any of these properties at the type level, meaning nodes and r
 + sign
 + round
 + rand
++ toInteger
 
 ### String functions
 + left

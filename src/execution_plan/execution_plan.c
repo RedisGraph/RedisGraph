@@ -698,12 +698,8 @@ static inline void _buildUpdateOp(ExecutionPlan *plan, const cypher_astnode_t *c
 
 static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *clause,
 								  ResultSetStatistics *stats) {
-	const char **nodes_ref;
-	const char **edges_ref;
-	AST_PrepareDeleteOp(clause, plan->query_graph, &nodes_ref, &edges_ref);
-	OpBase *op = NewDeleteOp(plan, nodes_ref, edges_ref, stats);
-	array_free(nodes_ref);
-	array_free(edges_ref);
+	AR_ExpNode **exps = AST_PrepareDeleteOp(clause);
+	OpBase *op = NewDeleteOp(plan, exps, stats);
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
@@ -1010,8 +1006,6 @@ void ExecutionPlan_Init(ExecutionPlan *plan) {
 }
 
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
-	ExecutionPlan_Init(plan);
-
 	/* Set an exception-handling breakpoint to capture run-time errors.
 	 * encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
 	 * a downstream exception returns us to this breakpoint. */
@@ -1021,6 +1015,8 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 		// Encountered a run-time error; return immediately.
 		return plan->result_set;
 	}
+
+	ExecutionPlan_Init(plan);
 
 	Record r = NULL;
 	// Execute the root operation and free the processed Record until the data stream is depleted.

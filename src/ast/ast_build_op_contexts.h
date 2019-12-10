@@ -38,8 +38,7 @@ PropertyMap *AST_ConvertPropertiesMap(const cypher_astnode_t *props);
 EntityUpdateEvalCtx *AST_PrepareUpdateOp(const cypher_astnode_t *set_clause);
 
 // Extract the necessary information to populate a delete operation from a DELETE clause.
-void AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause, const QueryGraph *qg,
-						 const char ***nodes_ref, const char ***edges_ref);
+AR_ExpNode **AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause);
 
 // Determine whether a sort operation should be ascending or descending
 int AST_PrepareSortOp(const cypher_astnode_t *order_clause);
