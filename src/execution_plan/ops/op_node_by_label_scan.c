@@ -5,6 +5,7 @@
 */
 
 #include "op_node_by_label_scan.h"
+#include "shared/print_functions.h"
 #include "../../ast/ast.h"
 #include "../../query_ctx.h"
 
@@ -15,18 +16,15 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase);
 static OpResult NodeByLabelScanReset(OpBase *opBase);
 static void NodeByLabelScanFree(OpBase *opBase);
 
-static int NodeByLabelScanToString(const OpBase *ctx, char *buff, uint buff_len) {
-	const NodeByLabelScan *op = (const NodeByLabelScan *)ctx;
-	int offset = snprintf(buff, buff_len, "%s | ", op->op.name);
-	offset += QGNode_ToString(op->n, buff + offset, buff_len - offset);
-	return offset;
+static inline int NodeByLabelScanToString(const OpBase *ctx, char *buf, uint buf_len) {
+	return ScanToString(ctx, buf, buf_len, ((const NodeByLabelScan *)ctx)->n);
 }
 
-OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *node) {
+OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *n) {
 	NodeByLabelScan *op = malloc(sizeof(NodeByLabelScan));
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	op->g = gc->g;
-	op->n = node;
+	op->n = n;
 	op->iter = NULL;
 	op->_zero_matrix = NULL;
 	op->child_record = NULL;
@@ -35,7 +33,7 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *node) {
 	OpBase_Init((OpBase *)op, OPType_NODE_BY_LABEL_SCAN, "Node By Label Scan", NodeByLabelScanInit,
 				NodeByLabelScanConsume, NodeByLabelScanReset, NodeByLabelScanToString, NodeByLabelScanFree, plan);
 
-	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, node->alias);
+	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 
 	return (OpBase *)op;
 }
@@ -146,3 +144,4 @@ static void NodeByLabelScanFree(OpBase *op) {
 		nodeByLabelScan->child_record = NULL;
 	}
 }
+

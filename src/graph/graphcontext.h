@@ -15,7 +15,7 @@
 
 typedef struct {
 	Graph *g;                   // Container for all matrices and entity properties
-    int ref_count;              // Number of active references.
+	int ref_count;              // Number of active references.
 	rax *attributes;            // From strings to attribute IDs
 	char *graph_name;           // String associated with graph
 	char **string_mapping;      // From attribute IDs to strings
@@ -27,7 +27,8 @@ typedef struct {
 /* GraphContext API */
 /* Retrive the graph context according to the graph name
  * readOnly is the access mode to the graph key */
-GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *graphID, bool readOnly, bool shouldCreate);
+GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *graphID, bool readOnly,
+									bool shouldCreate);
 // GraphContext_Retrieve counterpart, releases a retrieved GraphContext.
 void GraphContext_Release(GraphContext *gc);
 // Mark graph key as "dirty" for Redis to pick up on.
@@ -60,11 +61,14 @@ Attribute_ID GraphContext_GetAttributeID(const GraphContext *gc, const char *str
 /* Index API */
 bool GraphContext_HasIndices(GraphContext *gc);
 // Attempt to retrieve an index on the given label and attribute
-Index *GraphContext_GetIndex(const GraphContext *gc, const char *label, const char *field, IndexType type);
+Index *GraphContext_GetIndex(const GraphContext *gc, const char *label, const char *field,
+							 IndexType type);
 // Create an index for the given label and attribute
-int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label, const char *field, IndexType type);
+int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label, const char *field,
+						  IndexType type);
 // Remove and free an index
-int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *field, IndexType type);
+int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *field,
+							 IndexType type);
 // Remove a single node from all indices that refer to it
 void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n);
 
@@ -72,6 +76,9 @@ void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n);
 void GraphContext_RegisterWithModule(GraphContext *gc);
 // Remove GraphContext from global array
 void GraphContext_RemoveFromRegistry(GraphContext *gc);
+
+// Rename a graph context.
+void GraphContext_Rename(GraphContext *gc, const char *name);
 
 #endif
 

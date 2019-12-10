@@ -129,7 +129,7 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 
 /* Generate a heap-allocated name for an arithmetic expression.
  * This routine is only used to name ORDER BY expressions. */
-void AR_EXP_BuildResolvedName(AR_ExpNode *root);
+char *AR_EXP_BuildResolvedName(AR_ExpNode *root);
 
 /* Clones given expression. */
 AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp);

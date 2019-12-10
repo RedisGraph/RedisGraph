@@ -37,8 +37,11 @@ static inline bool _referred_entity(const char *alias) {
 }
 
 /* Checks if given expression contains a variable length edge. */
-static bool _AlgebraicExpression_ContainsVariableLengthEdge(const AlgebraicExpression *exp) {
-	return (exp->edge && QGEdge_VariableLength(exp->edge));
+static bool _AlgebraicExpression_ContainsVariableLengthEdge(const QueryGraph *qg,
+															const AlgebraicExpression *exp) {
+	if(!exp->edge) return false;
+	QGEdge *e = QueryGraph_GetEdgeByAlias(qg, exp->edge);
+	return QGEdge_VariableLength(e);
 }
 
 /* Variable length expression must contain only a single operand, the edge being
@@ -46,7 +49,7 @@ static bool _AlgebraicExpression_ContainsVariableLengthEdge(const AlgebraicExpre
  * are applied via a label matrix operand, this function migrates A and B from a
  * variable length expression to other expressions. */
 static AlgebraicExpression **_AlgebraicExpression_IsolateVariableLenExps(
-	AlgebraicExpression **expressions) {
+	const QueryGraph *qg, AlgebraicExpression **expressions) {
 	/* Return value is a new set of expressions, where each variable length expression
 	 * is guaranteed to have a single operand, as such in the worst case the number of
 	 * expressions doubles + 1. */
@@ -57,13 +60,13 @@ static AlgebraicExpression **_AlgebraicExpression_IsolateVariableLenExps(
 	 * have a variable length edge in them. */
 	for(size_t expIdx = 0; expIdx < expCount; expIdx++) {
 		AlgebraicExpression *exp = expressions[expIdx];
-		if(!_AlgebraicExpression_ContainsVariableLengthEdge(exp)) {
+		if(!_AlgebraicExpression_ContainsVariableLengthEdge(qg, exp)) {
 			res = array_append(res, exp);
 			continue;
 		}
 
-		QGNode *src = exp->src_node;
-		QGNode *dest = exp->dest_node;
+		QGNode *src = QueryGraph_GetNodeByAlias(qg, exp->src);
+		QGNode *dest = QueryGraph_GetNodeByAlias(qg, exp->dest);
 
 		// A variable length expression with a labeled source node
 		// We only care about the source label matrix, when it comes to
@@ -76,8 +79,8 @@ static AlgebraicExpression **_AlgebraicExpression_IsolateVariableLenExps(
 
 			/* Create a new expression. */
 			AlgebraicExpression *newExp = _AE_MUL(1);
-			newExp->src_node = exp->src_node;
-			newExp->dest_node = exp->src_node;
+			newExp->src = exp->src;
+			newExp->dest = exp->src;
 			AlgebraicExpression_PrependTerm(newExp, op.operand, op.transpose, op.free, op.diagonal);
 			res = array_append(res, newExp);
 		}
@@ -93,13 +96,13 @@ static AlgebraicExpression **_AlgebraicExpression_IsolateVariableLenExps(
 			/* See if dest mat can be prepended to the following expression.
 			 * If not create a new expression. */
 			if(expIdx < expCount - 1 &&
-			   !_AlgebraicExpression_ContainsVariableLengthEdge(expressions[expIdx + 1])) {
+			   !_AlgebraicExpression_ContainsVariableLengthEdge(qg, expressions[expIdx + 1])) {
 				AlgebraicExpression_PrependTerm(expressions[expIdx + 1], op.operand, op.transpose, op.free,
 												op.diagonal);
 			} else {
 				AlgebraicExpression *newExp = _AE_MUL(1);
-				newExp->src_node = exp->dest_node;
-				newExp->dest_node = exp->dest_node;
+				newExp->src = exp->dest;
+				newExp->dest = exp->dest;
 				AlgebraicExpression_PrependTerm(newExp, op.operand, op.transpose, op.free, op.diagonal);
 				res = array_append(res, newExp);
 			}
@@ -146,13 +149,13 @@ static void _AlgebraicExpression_ReverseOperandOrder(AlgebraicExpression *exp) {
 
 // Debug function which prints given algebraic expression.
 void _AlgebraicExpression_Print(const AlgebraicExpression *ae) {
-	printf("src: %s \n", ae->src_node->alias);
+	printf("src: %s \n", ae->src);
 	for(int i = 0; i < ae->operand_count; i++) {
 		printf("\tdiagonal: %d ", ae->operands[i].diagonal);
 		printf("\ttranspose: %d ", ae->operands[i].transpose);
 		printf("\tfree: %d \n", ae->operands[i].free);
 	}
-	printf("dest: %s\n", ae->dest_node->alias);
+	printf("dest: %s\n", ae->dest);
 }
 
 void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp,
@@ -173,12 +176,11 @@ void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool 
 void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp,
 									 bool freeOp, bool diagonal) {
 	assert(ae);
-
-	ae->operand_count++;
 	if(ae->operand_count + 1 > ae->operand_cap) {
 		ae->operand_cap += 4;
 		ae->operands = realloc(ae->operands, sizeof(AlgebraicExpressionOperand) * ae->operand_cap);
 	}
+	ae->operand_count++;
 
 	// TODO: might be optimized with memcpy.
 	// Shift operands to the right, making room at the begining.
@@ -232,8 +234,15 @@ static void _RemovePathFromGraph(QueryGraph *g, QGEdge **path) {
 		QGNode *dest = e->dest;
 
 		QueryGraph_RemoveEdge(g, e);
-		if(QGNode_EdgeCount(src) == 0) QueryGraph_RemoveNode(g, src);
-		if(QGNode_EdgeCount(dest) == 0) QueryGraph_RemoveNode(g, dest);
+		QGEdge_Free(e);
+		if(QGNode_EdgeCount(src) == 0) {
+			QueryGraph_RemoveNode(g, src);
+			QGNode_Free(src);
+		}
+		if(src != dest && QGNode_EdgeCount(dest) == 0) {
+			QueryGraph_RemoveNode(g, dest);
+			QGNode_Free(dest);
+		}
 	}
 }
 
@@ -253,8 +262,8 @@ static inline bool _should_divide_expression(QGEdge **path, int idx, const Query
 
 /* Break down expression into sub expressions.
  * considering referenced intermidate nodes and edges. */
-static AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(AlgebraicExpression *exp,
-																		  QGEdge **path, const QueryGraph *qg) {
+static AlgebraicExpression **_AlgebraicExpression_Intermediate_Expressions(AlgebraicExpression *exp,
+																		   QGEdge **path, const QueryGraph *qg) {
 
 	/* Allocating maximum number of expression possible. */
 	QGEdge *e = NULL;
@@ -266,8 +275,8 @@ static AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(Algebr
 	expressions = array_new(AlgebraicExpression *, exp->operand_count);
 	AlgebraicExpression *iexp = _AE_MUL(exp->operand_count);
 	iexp->operand_count = 0;
-	iexp->src_node = exp->src_node;
-	iexp->dest_node = exp->dest_node;
+	iexp->src = exp->src;
+	iexp->dest = exp->dest;
 	expressions = array_append(expressions, iexp);
 	expIdx++;
 
@@ -281,7 +290,7 @@ static AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(Algebr
 	for(int i = 0; i < pathLen; i++) {
 		e = path[i];
 		/* Set expression edge pointer. */
-		if(_should_populate_edge(e)) iexp->edge = e; // Set expression edge pointer if necessary.
+		if(_should_populate_edge(e)) iexp->edge = e->alias; // Set expression edge pointer if necessary.
 
 		if(i == 0 && e->src->label) iexp->operands[iexp->operand_count++] = exp->operands[operandIdx++];
 
@@ -295,11 +304,11 @@ static AlgebraicExpression **_AlgebraicExpression_Intermidate_Expressions(Algebr
 
 		/* If required, finalize the current algebraic expression and begin a new one. */
 		if(divide_at[i]) {
-			iexp->dest_node = e->dest;
+			iexp->dest = e->dest->alias;
 			iexp = _AE_MUL(exp->operand_count - operandIdx);
 			iexp->operand_count = 0;
-			iexp->src_node = expressions[expIdx - 1]->dest_node;
-			iexp->dest_node = exp->dest_node;
+			iexp->src = expressions[expIdx - 1]->dest;
+			iexp->dest = exp->dest;
 			expressions = array_append(expressions, iexp);
 			expIdx++;
 		}
@@ -489,8 +498,8 @@ static AlgebraicExpression *_AlgebraicExpression_FromPath(QGEdge **path, uint pa
 	}
 
 	// Set expression source and destination nodes.
-	exp->src_node = path[0]->src;
-	exp->dest_node = e->dest;
+	exp->src = path[0]->src->alias;
+	exp->dest = e->dest->alias;
 
 	return exp;
 }
@@ -528,14 +537,15 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, u
 		if(acyclic) n = LongestPathTree(g, &level); // Graph is a tree.
 		else n = LongestPathGraph(g, &level);       // Graph contains cycles.
 
-		// Get a path of length level, alow closing a cycle if the graph is not acyclic.
+		// Get a path of length level, allow closing a cycle if the graph is not acyclic.
 		QGEdge **path = DFS(n, level, !acyclic);
-		assert(array_len(path) == level);
+		uint path_len = array_len(path);
+		assert(path_len == level);
 
 		/* TODO:
 		 * In case path is a cycle, e.g. (b)-[]->(a)-[]->(b)
 		 * make sure the first node on the path is referenced, _should_divide_expression(path, 0) is true.
-		 * if this is not the case we will unnceserly break the generated expression into 2 sub expressions
+		 * if this is not the case we will unnecessarily break the generated expression into 2 sub expressions
 		 * while what we can do is simply rotate the cycle, (a)-[]->(b)-[]->(a)
 		 * this is exactly the same only now we won't sub divide.
 		 * Checking if path is a cycle done by testing the start and end node. */
@@ -544,11 +554,11 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, u
 		AlgebraicExpression *exp = _AlgebraicExpression_FromPath(path, level);
 
 		// Split constructed expression into sub expressions.
-		AlgebraicExpression **sub_exps = _AlgebraicExpression_Intermidate_Expressions(exp, path, qg);
-		sub_exps = _AlgebraicExpression_IsolateVariableLenExps(sub_exps);
+		AlgebraicExpression **sub_exps = _AlgebraicExpression_Intermediate_Expressions(exp, path, qg);
+		sub_exps = _AlgebraicExpression_IsolateVariableLenExps(qg, sub_exps);
 
 		// Remove path from graph.
-		_RemovePathFromGraph(g, path); // TODO memory leak
+		_RemovePathFromGraph(g, path);
 
 		// Add constructed expression to return value.
 		uint sub_count = array_len(sub_exps);
@@ -672,9 +682,9 @@ void AlgebraicExpression_Transpose(AlgebraicExpression *ae) {
 	 * = CT*BT*AT */
 
 	// Switch expression src and dest nodes.
-	QGNode *n = ae->src_node;
-	ae->src_node = ae->dest_node;
-	ae->dest_node = n;
+	const char *tmp = ae->src;
+	ae->src = ae->dest;
+	ae->dest = tmp;
 
 	_AlgebraicExpression_ReverseOperandOrder(ae);
 
@@ -905,39 +915,5 @@ static GrB_Matrix _AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Ma
 
 void AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Matrix res) {
 	_AlgebraicExpression_Eval(exp, res);
-}
-
-static void _AlgebraicExpressionNode_UniqueNodes(AlgebraicExpressionNode *root,
-												 AlgebraicExpressionNode ***uniqueNodes) {
-	if(!root) return;
-
-	// Have we seen this node before?
-	int nodeCount = array_len(*uniqueNodes);
-	for(int i = 0; i < nodeCount; i++) if(root == (*uniqueNodes)[i]) return;
-
-	*uniqueNodes = array_append((*uniqueNodes), root);
-
-	if(root->type != AL_OPERATION) return;
-
-	_AlgebraicExpressionNode_UniqueNodes(root->operation.r, uniqueNodes);
-	_AlgebraicExpressionNode_UniqueNodes(root->operation.l, uniqueNodes);
-}
-
-void AlgebraicExpressionNode_Free(AlgebraicExpressionNode *root) {
-	if(!root) return;
-
-	// Delay free for nodes which are referred from multiple points.
-	AlgebraicExpressionNode **uniqueNodes = array_new(AlgebraicExpressionNode *, 1);
-	_AlgebraicExpressionNode_UniqueNodes(root, &uniqueNodes);
-
-	// Free unique nodes.
-	AlgebraicExpressionNode *node;
-	int nodesCount = array_len(uniqueNodes);
-	for(int i = 0; i < nodesCount; i++) {
-		node = array_pop(uniqueNodes);
-		if(node->operation.v) GrB_Matrix_free(&node->operation.v);
-		rm_free(node);
-	}
-	array_free(uniqueNodes);
 }
 

@@ -5,7 +5,7 @@
 */
 
 #include "op_all_node_scan.h"
-#include "../../ast/ast.h"
+#include "shared/print_functions.h"
 
 /* Forward declarations. */
 static OpResult AllNodeScanInit(OpBase *opBase);
@@ -14,11 +14,8 @@ static Record AllNodeScanConsumeFromChild(OpBase *opBase);
 static OpResult AllNodeScanReset(OpBase *opBase);
 static void AllNodeScanFree(OpBase *opBase);
 
-static int AllNodeScanToString(const OpBase *ctx, char *buff, uint buff_len) {
-	const AllNodeScan *op = (const AllNodeScan *)ctx;
-	int offset = snprintf(buff, buff_len, "%s | ", op->op.name);
-	offset += QGNode_ToString(op->n, buff + offset, buff_len - offset);
-	return offset;
+static inline int AllNodeScanToString(const OpBase *ctx, char *buf, uint buf_len) {
+	return ScanToString(ctx, buf, buf_len, ((const AllNodeScan *)ctx)->n);
 }
 
 OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const Graph *g, const QGNode *n) {

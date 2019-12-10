@@ -97,7 +97,30 @@ static void RG_AfterForkChild() {
 	process_is_child = true;
 }
 
-static void RegisterForkHooks() {
+/* This callback invokes once rename for a graph is done. Since the key value is a graph context
+ * which saves the name of the graph for later key accesses, this data must be consistent with the key name,
+ * otherwise, the graph context will remain with the previous graph name, and a key access to this name might
+ * yield an empty key or wrong value. This method changes the graph name value at the graph context to be
+ * consistent with the key name. */
+static int _RenameGraphHandler(RedisModuleCtx *ctx, int type, const char *event,
+							   RedisModuleString *key_name) {
+	if(type != REDISMODULE_NOTIFY_GENERIC) return REDISMODULE_OK;
+	if(strcasecmp(event, "RENAME") == 0) {
+		RedisModuleKey *key = RedisModule_OpenKey(ctx, key_name, REDISMODULE_WRITE);
+		if(RedisModule_ModuleTypeGetType(key) == GraphContextRedisModuleType) {
+			GraphContext *gc = RedisModule_ModuleTypeGetValue(key);
+			size_t len;
+			const char *new_name = RedisModule_StringPtrLen(key_name, &len);
+			GraphContext_Rename(gc, new_name);
+		}
+		RedisModule_CloseKey(key);
+	}
+	return REDISMODULE_OK;
+}
+
+static void RegisterForkHooks(RedisModuleCtx *ctx) {
+	RedisModule_SubscribeToKeyspaceEvents(ctx, REDISMODULE_NOTIFY_GENERIC, _RenameGraphHandler);
+
 	/* Register handlers to control the behavior of fork calls.
 	 * The child process does not require a handler. */
 	assert(pthread_atfork(RG_ForkPrepare, RG_AfterForkParent, RG_AfterForkChild) == 0);
@@ -122,7 +145,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	AR_RegisterFuncs();      // Register arithmetic functions.
 	Agg_RegisterFuncs();     // Register aggregation functions.
 	_PrepareModuleGlobals(); // Set up global lock and variables scoped to the entire module.
-	RegisterForkHooks();     // Set up forking logic to prevent bgsave deadlocks.
+	RegisterForkHooks(ctx);  // Set up hooks for renaming and forking logic to prevent bgsave deadlocks.
 	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
 
 	// Create thread local storage key.

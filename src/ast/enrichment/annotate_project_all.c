@@ -129,7 +129,7 @@ static const char **_collect_aliases_in_scope(AST *ast, uint scope_start, uint s
 		} else if(type == CYPHER_AST_MERGE) {
 			// The MERGE clause contains one path.
 			const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
-			_collect_aliases_in_pattern(path, &aliases);
+			_collect_aliases_in_path(path, &aliases);
 		} else if(type == CYPHER_AST_UNWIND) {
 			// The UNWIND clause introduces one alias.
 			const cypher_astnode_t *unwind_alias = cypher_ast_unwind_get_alias(clause);
@@ -197,3 +197,4 @@ void AST_AnnotateProjectAll(AST *ast) {
 	// Generate annotations for WITH/RETURN * clauses.
 	_annotate_project_all(ast);
 }
+

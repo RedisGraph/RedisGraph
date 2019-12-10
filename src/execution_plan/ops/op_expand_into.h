@@ -33,3 +33,4 @@ typedef struct {
 
 OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
 						uint records_cap);
+

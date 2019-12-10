@@ -5,6 +5,7 @@
 */
 
 #include "op_conditional_traverse.h"
+#include "shared/print_functions.h"
 #include "../../util/arr.h"
 #include "../../GraphBLASExt/GxB_Delete.h"
 #include "../../arithmetic/arithmetic_expression.h"
@@ -72,29 +73,8 @@ void _traverse(CondTraverse *op) {
 	GrB_Matrix_clear(op->F);
 }
 
-static int CondTraverseToString(const OpBase *ctx, char *buff, uint buff_len) {
-	const CondTraverse *op = (const CondTraverse *)ctx;
-
-	int offset = 0;
-	offset += snprintf(buff + offset, buff_len - offset, "%s | ", op->op.name);
-	offset += QGNode_ToString(op->ae->src_node, buff + offset, buff_len - offset);
-	if(op->ae->edge) {
-		// This edge should be printed right-to-left if the edge matrix is transposed.
-		bool transpose = _expressionContainsTranspose(op->ae);
-		if(transpose) {
-			offset += snprintf(buff + offset, buff_len - offset, "<-");
-			offset += QGEdge_ToString(op->ae->edge, buff + offset, buff_len - offset);
-			offset += snprintf(buff + offset, buff_len - offset, "-");
-		} else {
-			offset += snprintf(buff + offset, buff_len - offset, "-");
-			offset += QGEdge_ToString(op->ae->edge, buff + offset, buff_len - offset);
-			offset += snprintf(buff + offset, buff_len - offset, "->");
-		}
-	} else {
-		offset += snprintf(buff + offset, buff_len - offset, "->");
-	}
-	offset += QGNode_ToString(op->ae->dest_node, buff + offset, buff_len - offset);
-	return offset;
+static inline int CondTraverseToString(const OpBase *ctx, char *buf, uint buf_len) {
+	return TraversalToString(ctx, buf, buf_len, ((const CondTraverse *)ctx)->ae);
 }
 
 OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
@@ -120,13 +100,14 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", CondTraverseInit,
 				CondTraverseConsume, CondTraverseReset, CondTraverseToString, CondTraverseFree, plan);
 
-	assert(OpBase_Aware((OpBase *)op, ae->src_node->alias, &op->srcNodeIdx));
-	op->destNodeIdx = OpBase_Modifies((OpBase *)op, ae->dest_node->alias);
+	assert(OpBase_Aware((OpBase *)op, ae->src, &op->srcNodeIdx));
+	op->destNodeIdx = OpBase_Modifies((OpBase *)op, ae->dest);
 
 	if(ae->edge) {
 		op->edges = array_new(Edge, 32);
-		_setupTraversedRelations(op, ae->edge);
-		op->edgeRecIdx = OpBase_Modifies((OpBase *)op, ae->edge->alias);
+		QGEdge *qg_edge = QueryGraph_GetEdgeByAlias(plan->query_graph, ae->edge);
+		_setupTraversedRelations(op, qg_edge);
+		op->edgeRecIdx = OpBase_Modifies((OpBase *)op, ae->edge);
 	}
 
 	return (OpBase *)op;

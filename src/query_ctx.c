@@ -6,8 +6,9 @@
 
 #include "query_ctx.h"
 #include "util/simple_timer.h"
-#include <assert.h>
+#include "arithmetic/arithmetic_expression.h"
 #include "graph/serializers/graphcontext_type.h"
+#include <assert.h>
 
 pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
 
@@ -31,6 +32,11 @@ static jmp_buf *_QueryCtx_GetExceptionHandler(void) {
 static char *_QueryCtx_GetError(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	return ctx->internal_exec_ctx.error;
+}
+
+/* rax callback routine for freeing computed parameter values. */
+static void _ParameterFreeCallback(void *param_val) {
+	AR_EXP_Free(param_val);
 }
 
 bool QueryCtx_Init(void) {
@@ -213,7 +219,7 @@ void QueryCtx_Free(void) {
 	}
 
 	if(ctx->query_data.params) {
-		raxFree(ctx->query_data.params);
+		raxFreeWithCallback(ctx->query_data.params, _ParameterFreeCallback);
 		ctx->query_data.params = NULL;
 	}
 

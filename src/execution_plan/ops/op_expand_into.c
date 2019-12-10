@@ -5,6 +5,7 @@
 */
 
 #include "op_expand_into.h"
+#include "shared/print_functions.h"
 #include "../../ast/ast.h"
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
@@ -18,21 +19,8 @@ static OpResult ExpandIntoReset(OpBase *opBase);
 static void ExpandIntoFree(OpBase *opBase);
 
 // String representation of operation.
-static int ExpandIntoToString(const OpBase *ctx, char *buff, uint buff_len) {
-	const OpExpandInto *op = (const OpExpandInto *)ctx;
-
-	int offset = 0;
-	offset += snprintf(buff + offset, buff_len - offset, "%s | ", op->op.name);
-	offset += QGNode_ToString(op->ae->src_node, buff + offset, buff_len - offset);
-	if(op->ae->edge) {
-		offset += snprintf(buff + offset, buff_len - offset, "-");
-		offset += QGEdge_ToString(op->ae->edge, buff + offset, buff_len - offset);
-		offset += snprintf(buff + offset, buff_len - offset, "->");
-	} else {
-		offset += snprintf(buff + offset, buff_len - offset, "->");
-	}
-	offset += QGNode_ToString(op->ae->dest_node, buff + offset, buff_len - offset);
-	return offset;
+static inline int ExpandIntoToString(const OpBase *ctx, char *buf, uint buf_len) {
+	return TraversalToString(ctx, buf, buf_len, ((const OpExpandInto *)ctx)->ae);
 }
 
 /* Collects traversed edge relations.
@@ -101,13 +89,14 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 
 	// Make sure that all entities are represented in Record
 	op->edgeIdx = IDENTIFIER_NOT_FOUND;
-	assert(OpBase_Aware((OpBase *)op, ae->src_node->alias, &op->srcNodeIdx));
-	assert(OpBase_Aware((OpBase *)op, ae->dest_node->alias, &op->destNodeIdx));
+	assert(OpBase_Aware((OpBase *)op, ae->src, &op->srcNodeIdx));
+	assert(OpBase_Aware((OpBase *)op, ae->dest, &op->destNodeIdx));
 
 	if(ae->edge) {
 		op->edges = array_new(Edge, 32);
-		_setupTraversedRelations(op, ae->edge);
-		op->edgeIdx = OpBase_Modifies((OpBase *)op, ae->edge->alias);
+		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, ae->edge);
+		_setupTraversedRelations(op, e);
+		op->edgeIdx = OpBase_Modifies((OpBase *)op, ae->edge);
 	}
 
 	return (OpBase *)op;
@@ -224,7 +213,6 @@ static OpResult ExpandIntoReset(OpBase *ctx) {
 	OpExpandInto *op = (OpExpandInto *)ctx;
 	for(int i = 0; i < op->recordCount; i++) {
 		if(op->records[i]) Record_Free(op->records[i]);
-		op->records = NULL;
 	}
 	op->recordCount = 0;
 
@@ -264,7 +252,6 @@ static void ExpandIntoFree(OpBase *ctx) {
 	if(op->records) {
 		for(int i = 0; i < op->recordsCap; i++) {
 			if(op->records[i]) Record_Free(op->records[i]);
-			else break;
 		}
 		rm_free(op->records);
 		op->records = NULL;

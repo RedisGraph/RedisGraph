@@ -326,7 +326,6 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_ADD) {
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&C);
 	GrB_Matrix_free(&res);
-	AlgebraicExpressionNode_Free(exp);
 }
 
 TEST_F(AlgebraicExpressionTest, Exp_OP_MUL) {
@@ -370,7 +369,6 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_MUL) {
 	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&I);
 	GrB_Matrix_free(&res);
-	AlgebraicExpressionNode_Free(exp);
 }
 
 TEST_F(AlgebraicExpressionTest, Exp_OP_ADD_Transpose) {
@@ -417,7 +415,6 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_ADD_Transpose) {
 	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&res);
-	AlgebraicExpressionNode_Free(exp);
 }
 
 TEST_F(AlgebraicExpressionTest, Exp_OP_MUL_Transpose) {
@@ -465,7 +462,6 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_MUL_Transpose) {
 	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&res);
-	AlgebraicExpressionNode_Free(exp);
 }
 
 TEST_F(AlgebraicExpressionTest, Exp_OP_A_MUL_B_Plus_C) {
@@ -519,7 +515,6 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_A_MUL_B_Plus_C) {
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&C);
 	GrB_Matrix_free(&res);
-	AlgebraicExpressionNode_Free(exp);
 }
 
 TEST_F(AlgebraicExpressionTest, ExpTransform_A_Times_B_Plus_C) {
@@ -574,7 +569,6 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_A_Times_B_Plus_C) {
 	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&C);
-	AlgebraicExpressionNode_Free(root);
 }
 
 TEST_F(AlgebraicExpressionTest, ExpTransform_AB_Times_C_Plus_D) {
@@ -653,7 +647,6 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_AB_Times_C_Plus_D) {
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&C);
 	GrB_Matrix_free(&D);
-	AlgebraicExpressionNode_Free(root);
 }
 
 TEST_F(AlgebraicExpressionTest, MultipleIntermidateReturnNodes) {
@@ -1044,10 +1037,10 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	free(actual);
 
 	// Cycle.
-    /* TODO: The algebraic expression here can be improved
-     * reducing from 2 expression into a single one
-     * mat_p * mat_ef * mat_p * mat_ef * mat_p 
-     * see comment in AlgebraicExpression_FromQueryGraph regarding cycles. */
+	/* TODO: The algebraic expression here can be improved
+	 * reducing from 2 expression into a single one
+	 * mat_p * mat_ef * mat_p * mat_ef * mat_p
+	 * see comment in AlgebraicExpression_FromQueryGraph regarding cycles. */
 	exp_count = 0;
 	q = "MATCH (a:Person)-[:friend]->(b:Person)-[:friend]->(a:Person) RETURN a";
 	actual = build_algebraic_expression(q, &exp_count);
@@ -1064,7 +1057,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 
 	compare_algebraic_expressions(actual, expected, 1);
 
-    // Clean up.
+	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
 	free(expected);
@@ -1082,11 +1075,11 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
-	AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);	
+	AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	AlgebraicExpression_AppendTerm(exp, mat_p, false, false, true);
 	expected[0] = exp;
-	
+
 	compare_algebraic_expressions(actual, expected, 1);
 
 	// Clean up.
@@ -1116,23 +1109,23 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	free(expected);
 	free(actual);
 
-    //(p1)-[]->(p2)-[]->(p3)-[]->(p2)-[]->(p4)-[]->(p5) RETURN p1
-    exp_count = 0;
+	//(p1)-[]->(p2)-[]->(p3)-[]->(p2)-[]->(p4)-[]->(p5) RETURN p1
+	exp_count = 0;
 	q = "MATCH (p1)-[:friend]->(p2)-[:friend]->(p3)-[:friend]->(p2)-[:friend]->(p4)-[:friend]->(p5) RETURN p1";
 	actual = build_algebraic_expression(q, &exp_count);
 	ASSERT_EQ(exp_count, 3);
 
 	expected = (AlgebraicExpression **)malloc(sizeof(AlgebraicExpression *) * 3);
-	exp = AlgebraicExpression_Empty();	
+	exp = AlgebraicExpression_Empty();
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
-    expected[0] = exp;
+	expected[0] = exp;
 
-    exp = AlgebraicExpression_Empty();
+	exp = AlgebraicExpression_Empty();
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[1] = exp;
 
-    exp = AlgebraicExpression_Empty();
+	exp = AlgebraicExpression_Empty();
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[2] = exp;
@@ -1145,31 +1138,31 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	free(expected);
 	free(actual);
 
-    // (p1)-[]->(p2)-[]->(p3)-[]->(p2)-[]->(p4)-[]->(p5) RETURN p1,p2,p3,p4,p5
-    exp_count = 0;
+	// (p1)-[]->(p2)-[]->(p3)-[]->(p2)-[]->(p4)-[]->(p5) RETURN p1,p2,p3,p4,p5
+	exp_count = 0;
 	q = "MATCH (p1)-[:friend]->(p2)-[:friend]->(p3)-[:friend]->(p2)-[:friend]->(p4)-[:friend]->(p5) RETURN p1,p2,p3,p4,p5";
 	actual = build_algebraic_expression(q, &exp_count);
 	ASSERT_EQ(exp_count, 5);
 
 	expected = (AlgebraicExpression **)malloc(sizeof(AlgebraicExpression *) * 5);
-	exp = AlgebraicExpression_Empty();	
+	exp = AlgebraicExpression_Empty();
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
-    expected[0] = exp;
+	expected[0] = exp;
 
-    exp = AlgebraicExpression_Empty();
-	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);	
+	exp = AlgebraicExpression_Empty();
+	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[1] = exp;
 
-    exp = AlgebraicExpression_Empty();
-	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);	
+	exp = AlgebraicExpression_Empty();
+	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[2] = exp;
 
-    exp = AlgebraicExpression_Empty();
-	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);	
+	exp = AlgebraicExpression_Empty();
+	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[3] = exp;
 
-    exp = AlgebraicExpression_Empty();
-	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);	
+	exp = AlgebraicExpression_Empty();
+	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[4] = exp;
 
 	compare_algebraic_expressions(actual, expected, 5);
@@ -1180,31 +1173,31 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	free(expected);
 	free(actual);
 
-    // MATCH (p1)-[]->(p2)-[]->(p3)-[]->(p4)-[]->(p5)-[]->(p2)-[]->(p6)-[]->(p7)-[]->(p3) RETURN p1
-    exp_count = 0;
+	// MATCH (p1)-[]->(p2)-[]->(p3)-[]->(p4)-[]->(p5)-[]->(p2)-[]->(p6)-[]->(p7)-[]->(p3) RETURN p1
+	exp_count = 0;
 	q = "MATCH (p1)-[:friend]->(p2)-[:friend]->(p3)-[:friend]->(p4)-[:friend]->(p5)-[:friend]->(p2)-[:friend]->(p6)-[:friend]->(p7)-[:friend]->(p3) RETURN p1";
 	actual = build_algebraic_expression(q, &exp_count);
 	ASSERT_EQ(exp_count, 4);
 
 	expected = (AlgebraicExpression **)malloc(sizeof(AlgebraicExpression *) * 4);
-	exp = AlgebraicExpression_Empty();	
+	exp = AlgebraicExpression_Empty();
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
-    expected[0] = exp;
+	expected[0] = exp;
 
-    exp = AlgebraicExpression_Empty();
+	exp = AlgebraicExpression_Empty();
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[1] = exp;
 
-    exp = AlgebraicExpression_Empty();
-	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);	
-	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);	
-	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);	
+	exp = AlgebraicExpression_Empty();
+	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[2] = exp;
 
-    exp = AlgebraicExpression_Empty();
-	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);	
+	exp = AlgebraicExpression_Empty();
+	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[3] = exp;
 
 	compare_algebraic_expressions(actual, expected, 4);
@@ -1215,43 +1208,43 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	free(expected);
 	free(actual);
 
-    // MATCH (p1)-[]->(p2)-[]->(p3)-[]->(p4)-[]->(p5)-[]->(p2)-[]->(p6)-[]->(p7)-[]->(p3) RETURN p1,p2,p3,p4,p5,p6,p7
-    exp_count = 0;
+	// MATCH (p1)-[]->(p2)-[]->(p3)-[]->(p4)-[]->(p5)-[]->(p2)-[]->(p6)-[]->(p7)-[]->(p3) RETURN p1,p2,p3,p4,p5,p6,p7
+	exp_count = 0;
 	q = "MATCH (p1)-[:friend]->(p2)-[:friend]->(p3)-[:friend]->(p4)-[:friend]->(p5)-[:friend]->(p2)-[:friend]->(p6)-[:friend]->(p7)-[:friend]->(p3) RETURN p1,p2,p3,p4,p5,p6,p7";
 	actual = build_algebraic_expression(q, &exp_count);
 	ASSERT_EQ(exp_count, 8);
 
 	expected = (AlgebraicExpression **)malloc(sizeof(AlgebraicExpression *) * 8);
-	exp = AlgebraicExpression_Empty();	
+	exp = AlgebraicExpression_Empty();
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
-    expected[0] = exp;
+	expected[0] = exp;
 
-    exp = AlgebraicExpression_Empty();
+	exp = AlgebraicExpression_Empty();
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[1] = exp;
 
-    exp = AlgebraicExpression_Empty();
-	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);	
+	exp = AlgebraicExpression_Empty();
+	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[2] = exp;
 
-    exp = AlgebraicExpression_Empty();
-	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);	
+	exp = AlgebraicExpression_Empty();
+	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[3] = exp;
 
-    exp = AlgebraicExpression_Empty();	
+	exp = AlgebraicExpression_Empty();
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
-    expected[4] = exp;
+	expected[4] = exp;
 
-    exp = AlgebraicExpression_Empty();
+	exp = AlgebraicExpression_Empty();
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[5] = exp;
 
-    exp = AlgebraicExpression_Empty();
-	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);	
+	exp = AlgebraicExpression_Empty();
+	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[6] = exp;
 
-    exp = AlgebraicExpression_Empty();
-	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);	
+	exp = AlgebraicExpression_Empty();
+	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[7] = exp;
 
 	compare_algebraic_expressions(actual, expected, 8);
@@ -1262,29 +1255,29 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	free(expected);
 	free(actual);
 
-    // MATCH (p1)-[]->(p2)-[]->(p3)-[]->(p4)-[]->(p1)-[]->(p4),(p4)-[]->(p5) RETURN p1
-    exp_count = 0;
+	// MATCH (p1)-[]->(p2)-[]->(p3)-[]->(p4)-[]->(p1)-[]->(p4),(p4)-[]->(p5) RETURN p1
+	exp_count = 0;
 	q = "MATCH (p1)-[:friend]->(p2)-[:friend]->(p3)-[:friend]->(p4)-[:friend]->(p1)-[:friend]->(p4)-[:friend]->(p5) RETURN p1";
 	actual = build_algebraic_expression(q, &exp_count);
 	ASSERT_EQ(exp_count, 4);
 
 	expected = (AlgebraicExpression **)malloc(sizeof(AlgebraicExpression *) * 4);
-	exp = AlgebraicExpression_Empty();	
+	exp = AlgebraicExpression_Empty();
 	AlgebraicExpression_AppendTerm(exp, mat_ef, true, false, false);
-    expected[0] = exp;
+	expected[0] = exp;
 
-    exp = AlgebraicExpression_Empty();
+	exp = AlgebraicExpression_Empty();
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[1] = exp;
 
-    exp = AlgebraicExpression_Empty();
-	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);	
-	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);	
-	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);	
+	exp = AlgebraicExpression_Empty();
+	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
+	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[2] = exp;
 
-    exp = AlgebraicExpression_Empty();
-	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);	
+	exp = AlgebraicExpression_Empty();
+	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[3] = exp;
 
 	compare_algebraic_expressions(actual, expected, 4);
@@ -1295,34 +1288,34 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	free(expected);
 	free(actual);
 
-    // MATCH (p1)-[]->(p2)-[]->(p3)-[]->(p4)-[]->(p1)-[]->(p4),(p4)-[]->(p5) RETURN p1,p2,p3,p4,p5
-    exp_count = 0;
+	// MATCH (p1)-[]->(p2)-[]->(p3)-[]->(p4)-[]->(p1)-[]->(p4),(p4)-[]->(p5) RETURN p1,p2,p3,p4,p5
+	exp_count = 0;
 	q = "MATCH (p1)-[:friend]->(p2)-[:friend]->(p3)-[:friend]->(p4)-[:friend]->(p1)-[:friend]->(p4)-[:friend]->(p5) RETURN p1,p2,p3,p4,p5";
 	actual = build_algebraic_expression(q, &exp_count);
 	ASSERT_EQ(exp_count, 6);
 
 	expected = (AlgebraicExpression **)malloc(sizeof(AlgebraicExpression *) * 6);
-	exp = AlgebraicExpression_Empty();	
+	exp = AlgebraicExpression_Empty();
 	AlgebraicExpression_AppendTerm(exp, mat_ef, true, false, false);
-    expected[0] = exp;
+	expected[0] = exp;
 
-    exp = AlgebraicExpression_Empty();
+	exp = AlgebraicExpression_Empty();
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[1] = exp;
 
-    exp = AlgebraicExpression_Empty();
+	exp = AlgebraicExpression_Empty();
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[2] = exp;
 
-    exp = AlgebraicExpression_Empty();
+	exp = AlgebraicExpression_Empty();
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[3] = exp;
 
-    exp = AlgebraicExpression_Empty();
+	exp = AlgebraicExpression_Empty();
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[4] = exp;
 
-    exp = AlgebraicExpression_Empty();
+	exp = AlgebraicExpression_Empty();
 	AlgebraicExpression_AppendTerm(exp, mat_ef, false, false, false);
 	expected[5] = exp;
 
@@ -1413,8 +1406,8 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
 	AlgebraicExpression *exp = ae[0];
 	AlgebraicExpression_Execute(exp, res);
 
-	ASSERT_STREQ(exp->src_node->alias, "p");
-	ASSERT_STREQ(exp->dest_node->alias, "e");
+	ASSERT_STREQ(exp->src, "p");
+	ASSERT_STREQ(exp->dest, "e");
 
 	// Validate result matrix.
 	GrB_Index ncols, nrows;

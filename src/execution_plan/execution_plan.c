@@ -32,15 +32,39 @@ static inline void _ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_ro
 	plan->root = new_root;
 }
 
+// For all ops that refer to QG entities, rebind them with the matching entity
+// in the provided QueryGraph.
+// (This logic is ugly, but currently necessary.)
+static void _RebindQueryGraphReferences(OpBase *op, const QueryGraph *qg) {
+	switch(op->type) {
+	case OPType_INDEX_SCAN:
+		((IndexScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((IndexScan *)op)->n->alias);
+		return;
+	case OPType_ALL_NODE_SCAN:
+		((AllNodeScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((AllNodeScan *)op)->n->alias);
+		return;
+	case OPType_NODE_BY_LABEL_SCAN:
+		((NodeByLabelScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((NodeByLabelScan *)op)->n->alias);
+		return;
+	case OPType_NODE_BY_ID_SEEK:
+		((NodeByIdSeek *)op)->n = QueryGraph_GetNodeByAlias(qg, ((NodeByIdSeek *)op)->n->alias);
+		return;
+	default:
+		return;
+	}
+}
+
 // For all ops in the given tree, assocate the provided ExecutionPlan.
 // This is for use for updating ops that have been built with a temporary ExecutionPlan.
 static void _BindPlanToOps(OpBase *root, ExecutionPlan *plan) {
 	if(!root) return;
 	root->plan = plan;
+	_RebindQueryGraphReferences(root, plan->query_graph);
 	for(int i = 0; i < root->childCount; i ++) {
 		_BindPlanToOps(root->children[i], plan);
 	}
 }
+
 
 // Allocate a new ExecutionPlan segment.
 static inline ExecutionPlan *_NewEmptyExecutionPlan(void) {
@@ -76,7 +100,21 @@ static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
 		const cypher_astnode_t *item = cypher_ast_order_by_get_item(order_clause, i);
 		const cypher_astnode_t *ast_exp = cypher_ast_sort_item_get_expression(item);
 		AR_ExpNode *exp = AR_EXP_FromExpression(ast_exp);
-		AR_EXP_BuildResolvedName(exp);
+		// Build a string representation of the ORDER identity.
+		char *constructed_name = AR_EXP_BuildResolvedName(exp);
+		// If the constructed name refers to a QueryGraph entity, use its canonical name.
+		char *canonical_name = raxFind(ast->canonical_entity_names, (unsigned char *)constructed_name,
+									   strlen(constructed_name));
+		if(canonical_name == raxNotFound) {
+			// Otherwise, introduce a new canonical name.
+			canonical_name = constructed_name;
+			raxInsert(ast->canonical_entity_names, (unsigned char *)constructed_name, strlen(constructed_name),
+					  constructed_name, NULL);
+		} else {
+			rm_free(constructed_name);
+		}
+
+		exp->resolved_name = canonical_name;
 		AST_AttachName(ast, item, exp->resolved_name);
 
 		order_exps = array_append(order_exps, exp);
@@ -260,13 +298,14 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			AlgebraicExpression **exps = AlgebraicExpression_FromQueryGraph(cc, &expCount);
 
 			// Reorder exps, to the most performant arrangement of evaluation.
-			orderExpressions(exps, expCount, ft, bound_vars);
+			orderExpressions(qg, exps, expCount, ft, bound_vars);
 
 			AlgebraicExpression *exp = exps[0];
 
 			OpBase *tail = NULL;
 			/* Create the SCAN operation that will be the tail of the traversal chain. */
-			if(exp->src_node->label) {
+			QGNode *src = QueryGraph_GetNodeByAlias(qg, exp->src);
+			if(src->label) {
 				/* Resolve source node by performing label scan,
 				 * in which case if the first algebraic expression operand
 				 * is a label matrix (diagonal) remove it, otherwise
@@ -275,17 +314,22 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				 * try to locate and remove it, there's no real harm except some performace hit
 				 * in keeping that label matrix. */
 				if(exp->operands[0].diagonal) AlgebraicExpression_RemoveTerm(exp, 0, NULL);
-				tail = NewNodeByLabelScanOp(plan, exp->src_node);
+				tail = NewNodeByLabelScanOp(plan, src);
 			} else {
-				tail = NewAllNodeScanOp(plan, gc->g, exp->src_node);
+				tail = NewAllNodeScanOp(plan, gc->g, src);
 			}
 
 			/* For each expression, build the appropriate traversal operation. */
 			for(int j = 0; j < expCount; j++) {
 				exp = exps[j];
-				if(exp->operand_count == 0) continue;
+				if(exp->operand_count == 0) {
+					AlgebraicExpression_Free(exp);
+					continue;
+				}
 
-				if(exp->edge && QGEdge_VariableLength(exp->edge)) {
+				QGEdge *edge = NULL;
+				if(exp->edge) edge = QueryGraph_GetEdgeByAlias(qg, exp->edge);
+				if(edge && QGEdge_VariableLength(edge)) {
 					root = NewCondVarLenTraverseOp(plan, gc->g, exp);
 				} else {
 					root = NewCondTraverseOp(plan, gc->g, exp, TraverseRecordCap(ast));
@@ -532,19 +576,15 @@ static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *
 	ExecutionPlan_AddOp(plan->root, rhs_plan->root); // Add Match stream to Merge op.
 
 	OpBase *rhs_root = rhs_plan->root;
+	// Associate all new ops with the correct ExecutionPlan.
+	_BindPlanToOps(rhs_root, plan);
+
 	// NULL-set variables shared between the rhs_plan and the overall plan.
 	rhs_plan->root = NULL;
 	rhs_plan->record_map = NULL;
-	// We can't free the plan's individual QueryGraphs, as operations like label scans
-	// may later try to access their entities.
-	array_free(rhs_plan->connected_components);
-	rhs_plan->connected_components = NULL;
-
 	// Free the temporary plan.
 	ExecutionPlan_Free(rhs_plan);
 
-	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
-	_BindPlanToOps(rhs_root, plan);
 }
 
 static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge_ctx,
@@ -749,10 +789,13 @@ ExecutionPlan *ExecutionPlan_UnionPlans(ResultSet *result_set, AST *ast) {
 		end_offset = union_indices[i];
 		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
 		plans[i] = NewExecutionPlan(result_set);
+		AST_Free(ast_segment); // Free the AST segment.
 
 		// Next segment starts where this one ends.
 		start_offset = union_indices[i] + 1;
 	}
+
+	QueryCtx_SetAST(ast); // AST segments have been freed, set master AST in QueryCtx.
 
 	array_free(union_indices);
 
@@ -813,7 +856,7 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 	AST *ast = QueryCtx_GetAST();
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 
-	/* Handel UNION if there are any. */
+	/* Handle UNION if there are any. */
 	if(AST_ContainsClause(ast, CYPHER_AST_UNION)) {
 		return ExecutionPlan_UnionPlans(result_set, ast);
 	}

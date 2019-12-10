@@ -24,6 +24,7 @@ typedef struct {
 	const cypher_astnode_t *root;                       // Root element of libcypher-parser AST
 	rax *referenced_entities;                           // Mapping of the referenced entities.
 	AST_AnnotationCtxCollection *anot_ctx_collection;   // Holds annotations contexts.
+	rax *canonical_entity_names;                        // Storage for canonical graph entity names.
 	uint limit;                                         // The maximum number of results in this segment.
 	bool free_root;                                     // The root should only be freed if this is a sub-AST we constructed
 } AST;
@@ -104,3 +105,4 @@ void parse_result_free(cypher_parse_result_t *parse_result);
 AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast);
 
 void AST_Free(AST *ast);
+

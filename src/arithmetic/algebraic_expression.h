@@ -43,17 +43,17 @@ struct AlgebraicExpressionNode {
 
 AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperationNode(AL_EXP_OP op);
 AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperandNode(GrB_Matrix operand);
+// AppendLeftChild and AppendRightChild are only used in unit tests.
 void AlgebraicExpressionNode_AppendLeftChild(AlgebraicExpressionNode *root,
 											 AlgebraicExpressionNode *child);
 void AlgebraicExpressionNode_AppendRightChild(AlgebraicExpressionNode *root,
 											  AlgebraicExpressionNode *child);
 void AlgebraicExpression_SumOfMul(AlgebraicExpressionNode **root);
 void AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Matrix res);
-void AlgebraicExpressionNode_Free(AlgebraicExpressionNode *root);
 
 /* AlgebraicExpressionOperand a single operand within an
  * algebraic expression. */
-typedef struct  {
+typedef struct {
 	bool diagonal;          // Diagonal matrix.
 	bool transpose;         // Should the matrix be transposed.
 	bool free;              // Should the matrix be freed?
@@ -66,9 +66,9 @@ typedef struct {
 	size_t operand_count;                   // Number of operands.
 	size_t operand_cap;                     // Allocated number of operands.
 	AlgebraicExpressionOperand *operands;   // Array of operands.
-	QGNode *src_node;                       // Nodes represented by the first operand columns.
-	QGNode *dest_node;                      // Nodes represented by the last operand rows.
-	QGEdge *edge;                           // Edge represented by sole operand.
+	const char *src;                        // Alias of source node.
+	const char *dest;                       // Alias of destination node.
+	const char *edge;                       // Alias of sole edge operand, if one is present.
 } AlgebraicExpression;
 
 /* Constructs an empty expression. */

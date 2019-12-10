@@ -35,3 +35,4 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 /* Transform operation from Conditional Variable Length Traverse
  * to Expand Into Conditional Variable Length Traverse */
 void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op);
+
