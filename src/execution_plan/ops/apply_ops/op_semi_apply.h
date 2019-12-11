@@ -23,17 +23,10 @@
 typedef struct OpSemiApply {
 	OpBase op;
 	Record r;               // Main execution plan branch record..
-	Argument *op_arg;       // Match branch tap.
-	OpBase *execution_plan_branch;  // Main execution plan branch root;
+	Record r;                       // Bound branch record.
+	OpBase *bound_branch;           // Bound branch root;
 	OpBase *match_branch;           // Match branch root;
-	Record r;                       // Main execution plan branch record.
 	Argument *op_arg;               // Match branch tap.
 } OpSemiApply;
 
 OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti);
-
-/* Sets the main execution plan branch. In case this operation is called from ApplyMultiplexer operation
- * this branch will be an argument operation. */
-void SemiApplyOp_SetExecutionPlanBranch(OpSemiApply *semi_apply_op, OpBase *execution_plan_root);
-
-void SemiApplyOp_SetMatchBranch(OpSemiApply *semi_apply_op, OpBase *match_branch_root);

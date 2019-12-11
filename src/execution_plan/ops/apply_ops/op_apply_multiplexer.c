@@ -5,8 +5,10 @@
  */
 
 #include "op_apply_multiplexer.h"
+#include "apply_ops_utils.h"
 
 // Forward declerations.
+OpResult OpApplyMultiplexerInit(OpBase *opBase);
 OpResult OpApplyMultiplexerReset(OpBase *opBase);
 Record OpApplyMultiplexerConsume(OpBase *opBase);
 void OpApplyMultiplexerFree(OpBase *opBase);
@@ -16,17 +18,7 @@ static inline Record _pullFromStream(OpBase *branch) {
 	return OpBase_Consume(branch);
 }
 
-static Record _pullFromBranchStream(OpSemiApply *op) {
-	OpBase *branch = op->match_branch;
-	// Propegate record to the top of the right-hand side stream.
-	if(op->op_arg) Argument_AddRecord(op->op_arg, Record_Clone(op->r));
-	return _pullFromStream(branch);
-}
 
-static Record _pullFromMainStream(OpApplyMultiplexer *op) {
-	OpBase *main_stream = op->execution_plan_branch;
-	return _pullFromStream(main_stream);
-}
 
 static Record _OpApplyMultiplexer_OrApplyLogic(OpApplyMultiplexer *apply_multiplexer) {
 
@@ -53,8 +45,8 @@ OpBase *NewApplyMultiplexerOp(ExecutionPlan *plan, AST_Operator boolean_operator
 	}
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_APPLY_MULTIPLEXER, name, NULL, OpApplyMultiplexerConsume,
-				OpApplyMultiplexerReset, NULL, OpApplyMultiplexerFree, plan);
+	OpBase_Init((OpBase *)op, OPType_APPLY_MULTIPLEXER, name, OpApplyMultiplexerInit,
+				OpApplyMultiplexerConsume, OpApplyMultiplexerReset, NULL, OpApplyMultiplexerFree, plan);
 
 	return (OpBase *) op;
 }
@@ -62,6 +54,36 @@ OpBase *NewApplyMultiplexerOp(ExecutionPlan *plan, AST_Operator boolean_operator
 Record OpApplyMultiplexerConsume(OpBase *opBase) {
 	OpApplyMultiplexer *op;
 	return op->apply_func(op);
+}
+
+bool _isApplyBranch(OpBase *branch) {
+	if(ExecutionPlan_LocateOp(branch, OPType_SEMI_APPLY | OPType_APPLY_MULTIPLEXER)) return true;
+	return false;
+}
+
+OpResult OpApplyMultiplexerInit(OpBase *opBase) {
+	int childCount = opBase->childCount;
+	OpApplyMultiplexer *apply_multiplexer = (OpApplyMultiplexer *) opBase;
+	apply_multiplexer->filters = array_new(OpBase *, childCount);
+	apply_multiplexer->filters_arguments = array_new(Argument *, childCount);
+	apply_multiplexer->branches = array_new(OpBase *, childCount);
+	apply_multiplexer->branches_arguments = array_new(Argument *, childCount);
+	for(int i = 0; i < childCount; i++) {
+		OpBase *child = opBase->children[i];
+		if(ApplyOpUtils_IsBoundBranch(child)) {
+			assert(apply_multiplexer->bound_branch == NULL);
+			apply_multiplexer->bound_branch = child;
+			continue;
+		}
+		if(_isApplyBranch(child)) {
+
+		} else {
+
+		}
+
+
+	}
+
 }
 
 OpResult OpApplyMultiplexerReset(OpBase *opBase) {

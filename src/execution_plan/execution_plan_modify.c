@@ -98,7 +98,7 @@ OpBase **ExecutionPlan_LocateOps(OpBase *root, OPType type) {
 // Introduce the new operation B between A and A's parent op.
 void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
 	// /* B is a new operation. */
-	assert(!(b->parent || b->children));
+	// assert(!(b->parent || b->children));
 
 	if(a->parent == NULL) {
 		/* A is the root operation. */
@@ -375,26 +375,15 @@ static OpBase *_buildFilterBranch(ExecutionPlan *plan, FT_FilterNode *filter_tre
 		arguments = ExecutionPlan_BuildArgumentModifiesArray(bound_vars);
 	}
 
-	// Initialize an ExecutionPlan that shares this plan's Record mapping.
-	ExecutionPlan *filter_branch_plan = ExecutionPlan_NewEmptyExecutionPlan();
-	filter_branch_plan->record_map = plan->record_map;
-
-	// If we have bound variables, build an Argument op that represents them.
-	if(arguments) filter_branch_plan->root = NewArgumentOp(plan, arguments);
+	Argument *arg =  NewArgumentOp(plan, arguments);
 
 	OpBase *filter_op = NewFilterOp(plan, filter_tree);
-	ExecutionPlan_PushBelow(filter_branch_plan->root, filter_op);
-	// NULL-set variables shared between the match_branch_plan and the overall plan.
-	filter_branch_plan->root = NULL;
-	filter_branch_plan->record_map = NULL;
-
-	// Free the temporary plan.
-	ExecutionPlan_Free(filter_branch_plan);
+	ExecutionPlan_PushBelow(arg, filter_op);
 
 	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
 	ExecutionPlan_BindPlanToOps(filter_op, plan);
 
-	return filter_op;
+	return (OpBase *)filter_op;
 }
 
 /* This method reduces a filter tree into an OpBase. The method perfrom post-order traversal over the
@@ -419,7 +408,7 @@ static OpBase *_ExecutionPlan_FilterTreeToOpBaseReduction(ExecutionPlan *plan,
 		}
 		OpBase *op_semi_apply = NewSemiApplyOp(plan, anti);
 		const cypher_astnode_t *path = expression->op.children[0]->operand.constant.ptrval;
-		SemiApplyOp_SetMatchBranch(op_semi_apply, _buildMatchBranch(plan, path));
+		ExecutionPlan_AddOp(op_semi_apply, _buildMatchBranch(plan, path));
 		return op_semi_apply;
 	}
 	// Case of an operator (Or or And) which its subtree contains path filter
@@ -427,43 +416,18 @@ static OpBase *_ExecutionPlan_FilterTreeToOpBaseReduction(ExecutionPlan *plan,
 		OpBase *lhs = _ExecutionPlan_FilterTreeToOpBaseReduction(plan, filter_root->cond.left);
 		OpBase *rhs = _ExecutionPlan_FilterTreeToOpBaseReduction(plan, filter_root->cond.right);
 		OpApplyMultiplexer *apply_multiplexer = NewApplyMultiplexerOp(plan, filter_root->cond.op);
-		OpApplyMultiplexer_AddBranch(apply_multiplexer, lhs);
-		OpApplyMultiplexer_AddBranch(apply_multiplexer, rhs);
+		ExecutionPlan_AddOp(apply_multiplexer, lhs);
+		ExecutionPlan_AddOp(apply_multiplexer, rhs);
 		return apply_multiplexer;
 	}
-	return NewFilterOp(plan, FilterTree_Clone(filter_root));
-}
-
-void _ExecutionPlan_ReduceFilterToApply_ReplaceOps(ExecutionPlan *plan, OpFilter *filter,
-												   OpBase *apply_op) {
-	assert(apply_op->type == OPType_SEMI_APPLY || apply_op->type == OPType_APPLY_MULTIPLEXER);
-	assert(filter->op.childCount == 1);
-
-	OpBase *filter_child = filter->op.children[0];
-	_OpBase_RemoveChild((OpBase *)filter, filter_child);
-	filter_child->parent = apply_op;
-	if(apply_op->type == OPType_SEMI_APPLY)
-		SemiApplyOp_SetExecutionPlanBranch((OpSemiApply *)apply_op, filter_child);
-	else
-		OpApplyMultiplexer_SetExecutionPlanBranch((OpApplyMultiplexer *)apply_op, filter_child);
-
-	if(filter->op.parent) {
-		OpBase *filter_parent = filter->op.parent;
-
-		/* Disconnect filter from its parent. */
-		_OpBase_RemoveChild(filter_parent, filter);
-
-		/* Set filter former parent as parent of the apply operation. */
-		_OpBase_AddChild(filter_parent, apply_op);
-	}
-
-	if(filter == plan->root) plan->root = apply_op;
-	OpBase_Free(filter);
+	return _buildFilterBranch(plan, FilterTree_Clone(filter_root));
 }
 
 void ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpBase *op) {
 	assert(op->type == OPType_FILTER);
 	OpFilter *filter = (OpFilter *) op;
 	OpBase *apply_op = _ExecutionPlan_FilterTreeToOpBaseReduction(plan, filter->filterTree);
-	_ExecutionPlan_ReduceFilterToApply_ReplaceOps(plan, op, apply_op);
+	ExecutionPlan_ReplaceOp(plan, op, apply_op);
+	if(op == plan->root) plan->root = apply_op;
+	OpBase_Free(op);
 }
