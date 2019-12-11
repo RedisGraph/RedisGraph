@@ -97,8 +97,6 @@ OpBase **ExecutionPlan_LocateOps(OpBase *root, OPType type) {
 
 // Introduce the new operation B between A and A's parent op.
 void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
-	// /* B is a new operation. */
-	// assert(!(b->parent || b->children));
 
 	if(a->parent == NULL) {
 		/* A is the root operation. */
@@ -357,13 +355,17 @@ static OpBase *_buildMatchBranch(ExecutionPlan *plan, const cypher_astnode_t *pa
 	// Free the temporary plan.
 	ExecutionPlan_Free(match_branch_plan);
 
-	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
-	ExecutionPlan_BindPlanToOps(branch_match_root, plan);
-
 	return branch_match_root;
 }
 
-static OpBase *_buildFilterBranch(ExecutionPlan *plan, FT_FilterNode *filter_tree) {
+static void _OpBaseSwapChildren(OpBase *op, int a, int b) {
+	assert(a >= 0 && b >= 0 && a < op->childCount && b < op->childCount);
+	OpBase *tmp = op->children[a];
+	op->children[a] = op->children[b];
+	op->children[b] = tmp;
+}
+
+static void _CreateBoundBranch(OpBase *op, ExecutionPlan *plan) {
 	rax *bound_vars = NULL;
 	const char **arguments = NULL;
 	if(plan->root) {
@@ -374,20 +376,18 @@ static OpBase *_buildFilterBranch(ExecutionPlan *plan, FT_FilterNode *filter_tre
 		// Prepare the variables for populating the Argument ops we will build.
 		arguments = ExecutionPlan_BuildArgumentModifiesArray(bound_vars);
 	}
+	OpBase *arg = NewArgumentOp(plan, arguments);
 
-	Argument *arg =  NewArgumentOp(plan, arguments);
-
-	OpBase *filter_op = NewFilterOp(plan, filter_tree);
-	ExecutionPlan_PushBelow(arg, filter_op);
-
-	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
-	ExecutionPlan_BindPlanToOps(filter_op, plan);
-
-	return (OpBase *)filter_op;
-}
-
-void _CreateBoundBranch(OpBase *op, ExecutionPlan *plan) {
-
+	/* In case of Apply operations, we need to append, the new argument branch and
+	 * set it as the first child. */
+	if(op->type & (OPType_APPLY_MULTIPLEXER | OPType_SEMI_APPLY)) {
+		ExecutionPlan_AddOp(op, arg);
+		_OpBaseSwapChildren(op, 0, op->childCount - 1);
+	} else {
+		// -1 & everything is true;
+		op = ExecutionPlan_LocateFirstOp(op, -1);
+		ExecutionPlan_AddOp(op, arg);
+	}
 }
 
 /* This method reduces a filter tree into an OpBase. The method perfrom post-order traversal over the
@@ -418,20 +418,24 @@ static OpBase *_ExecutionPlan_FilterTreeToOpBaseReduction(ExecutionPlan *plan,
 	// Case of an operator (Or or And) which its subtree contains path filter
 	if(filter_root->t == FT_N_COND && FilterTree_containsFunc(filter_root, "path_filter", &node)) {
 		OpBase *lhs = _ExecutionPlan_FilterTreeToOpBaseReduction(plan, filter_root->cond.left);
+		_CreateBoundBranch(lhs, plan);
 		OpBase *rhs = _ExecutionPlan_FilterTreeToOpBaseReduction(plan, filter_root->cond.right);
-		OpApplyMultiplexer *apply_multiplexer = NewApplyMultiplexerOp(plan, filter_root->cond.op);
+		_CreateBoundBranch(rhs, plan);
+		OpBase *apply_multiplexer = NewApplyMultiplexerOp(plan, filter_root->cond.op);
 		ExecutionPlan_AddOp(apply_multiplexer, lhs);
 		ExecutionPlan_AddOp(apply_multiplexer, rhs);
 		return apply_multiplexer;
 	}
-	return _buildFilterBranch(plan, FilterTree_Clone(filter_root));
+	return NewFilterOp(plan, FilterTree_Clone(filter_root));
 }
 
 void ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpBase *op) {
 	assert(op->type == OPType_FILTER);
 	OpFilter *filter = (OpFilter *) op;
 	OpBase *apply_op = _ExecutionPlan_FilterTreeToOpBaseReduction(plan, filter->filterTree);
+	ExecutionPlan_BindPlanToOps(apply_op, plan);
 	ExecutionPlan_ReplaceOp(plan, op, apply_op);
+	_OpBaseSwapChildren(apply_op, 0, apply_op->childCount - 1);
 	if(op == plan->root) plan->root = apply_op;
 	OpBase_Free(op);
 }

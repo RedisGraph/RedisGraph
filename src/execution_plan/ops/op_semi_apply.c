@@ -5,9 +5,7 @@
  */
 
 #include "op_semi_apply.h"
-#include "../../execution_plan.h"
-#include "../op_argument.h"
-#include "apply_ops_utils.h"
+#include "../execution_plan.h"
 
 // Forward declarations.
 void SemiApplyFree(OpBase *opBase);
@@ -18,23 +16,19 @@ OpResult SemiApplyReset(OpBase *opBase);
 static Record _pullFromBranchStream(OpSemiApply *op) {
 	// Propegate record to the top of the match stream.
 	if(op->op_arg) Argument_AddRecord(op->op_arg, Record_Clone(op->r));
-	return ApplyOpUtils_PullFromStream(op->match_branch);
-}
-
-static Record _pullFromBoundStream(OpSemiApply *op) {
-	return ApplyOpUtils_PullFromStream(op->bound_branch);
+	return OpBase_Consume(op->match_branch);
 }
 
 static Record _OpSemiApply_SemiApplyLogic(OpSemiApply *op) {
 	while(true) {
-		// Try to get a record from left stream.
-		op->r = _pullFromBoundStream(op);
+		// Try to get a record from bound stream.
+		op->r = OpBase_Consume(op->bound_branch);
 		if(!op->r) return NULL; // Depleted.
 
-		// Try to get a record from right stream.
+		// Try to get a record from match stream.
 		Record righthand_record = _pullFromBranchStream(op);
 		if(righthand_record) {
-			// Don't care for righthand record.
+			// Don't care for matched record.
 			Record_Free(righthand_record);
 			Record r = op->r;
 			op->r = NULL;   // Null to avoid double free.
@@ -48,15 +42,15 @@ static Record _OpSemiApply_SemiApplyLogic(OpSemiApply *op) {
 
 static Record _OpSemiApply_AntiSemiApplyLogic(OpSemiApply *op) {
 	while(true) {
-		// Try to get a record from left stream.
-		op->r = _pullFromBoundStream(op);
+		// Try to get a record from bound stream.
+		op->r = OpBase_Consume(op->bound_branch);
 		if(!op->r) return NULL; // Depleted.
 
 		/* Try pulling right stream
-		 * return left handside record if right handside returned NULL. */
+		 * return bounded stream record if match stream returns NULL. */
 		Record righthand_record = _pullFromBranchStream(op);
 		if(righthand_record) {
-			/* managed to get a record from right handside,
+			/* managed to get a record from match stream,
 			 * free it and pull again from left handside. */
 			Record_Free(righthand_record);
 			Record_Free(op->r);
@@ -85,8 +79,8 @@ OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti) {
 	}
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, name, NULL, SemiApplyConsume,
-				SemiApplyReset, NULL, SemiApplyFree, plan);
+	OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, name, SemiApplyInit, SemiApplyConsume,
+				SemiApplyReset, NULL, SemiApplyFree, false, plan);
 
 	return (OpBase *) op;
 }
@@ -95,16 +89,11 @@ OpResult SemiApplyInit(OpBase *opBase) {
 	assert(opBase->childCount == 2);
 
 	OpSemiApply *op = (OpSemiApply *)opBase;
-	if(ApplyOpUtils_IsBoundBranch(opBase->children[0])) {
-		op->bound_branch = opBase->children[0];
-		op->match_branch = opBase->children[1];
-	} else {
-		op->bound_branch = opBase->children[1];
-		op->match_branch = opBase->children[0];
-	}
+	op->bound_branch = opBase->children[0];
+	op->match_branch = opBase->children[1];
 
 	// Locate branch's Argument op tap.
-	op->op_arg = (Argument *)ExecutionPlan_LocateOp(op->match_branch, OPType_ARGUMENT);
+	op->op_arg = (Argument *)ExecutionPlan_LocateFirstOp(op->match_branch, OPType_ARGUMENT);
 	if(op->op_arg) assert(op->op_arg->op.childCount == 0);
 	return OP_OK;
 }

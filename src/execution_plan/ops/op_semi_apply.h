@@ -6,9 +6,9 @@
 
 #pragma once
 
-#include "../op.h"
-#include "../op_argument.h"
-#include "../../execution_plan.h"
+#include "op.h"
+#include "op_argument.h"
+#include "../execution_plan.h"
 
 /* SemiApply operation tests for the presence of a pattern
  * Normal Semi Apply: Starts by pulling on the main execution plan branch,
