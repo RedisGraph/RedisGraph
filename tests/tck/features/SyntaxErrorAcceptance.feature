@@ -33,7 +33,6 @@ Feature: SyntaxErrorAcceptance
   Background:
     Given any graph
 
-@skip
   Scenario: Using a non-existent function
     When executing query:
       """
