@@ -386,6 +386,10 @@ static OpBase *_buildFilterBranch(ExecutionPlan *plan, FT_FilterNode *filter_tre
 	return (OpBase *)filter_op;
 }
 
+void _CreateBoundBranch(OpBase *op, ExecutionPlan *plan) {
+
+}
+
 /* This method reduces a filter tree into an OpBase. The method perfrom post-order traversal over the
  * filter tree, and checks if if the current subtree rooted at the visited node contains path filter or not,
  * and either reduces the root or continue traversal and reduction.
