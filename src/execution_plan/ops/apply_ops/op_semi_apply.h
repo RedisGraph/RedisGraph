@@ -23,47 +23,13 @@ struct OpSemiApply;
 
 typedef Record(*ApplyLogic)(struct OpSemiApply *);
 
-<<< <<< < HEAD
-<<< <<< < HEAD
 typedef struct OpSemiApply {
 	OpBase op;
-	<<< <<< < HEAD
-	Record r;               // Main execution plan branch record..
-	Argument *op_arg;       // Match branch tap.
-	== == == =
-		/* SemiApply operation tests for the presence of a pattern
-		 * It starts by pulling on the left-hand side branch,
-		 * for each record received it tries to get a record from the right-hand side
-		 * if no data is produced it will try to fetch a new data point from the left-hand side
-		 * otherwise the left-hand side record is passed onward. */
-	typedef struct OpSemiApply {
-		OpBase op;
-		Record r;               // Lefthand-side record.
-		Argument *op_arg;       // Righthand-side tap.
-		>>> >>> > introduced semi - apply
-		== == == =
-		typedef struct OpSemiApply {
-			OpBase op;
-			Record r;               // Main execution plan branch record..
-			Argument *op_arg;       // Match branch tap.
-			>>> >>> > wip
-			ApplyLogic apply_func;  // Which apply method to invoke (semi or anti semi apply)
-		} OpSemiApply;
+	Record r;                       // Bound branch record.
+	OpBase *bound_branch;           // Bound branch root;
+	OpBase *match_branch;           // Match branch root;
+	Argument *op_arg;               // Match branch tap.
+	ApplyLogic apply_func;          // Which apply method to invoke (semi or anti semi apply)
+} OpSemiApply;
 
-		OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti);
-		== == == =
-			OpBase * execution_plan_branch; // Main execution plan branch root;
-		OpBase *match_branch;           // Match branch root;
-		Record r;                       // Main execution plan branch record.
-		Argument *op_arg;               // Match branch tap.
-		ApplyLogic apply_func;          // Which apply method to invoke (semi or anti semi apply)
-	} OpSemiApply;
-
-	OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti);
-
-	/* Sets the main execution plan branch. In case this operation is called from ApplyMultiplexer operation
-	 * this branch will be an argument operation. */
-	void SemiApplyOp_SetExecutionPlanBranch(OpSemiApply *semi_apply_op, OpBase *execution_plan_root);
-
-	void SemiApplyOp_SetMatchBranch(OpSemiApply *semi_apply_op, OpBase *match_branch_root);
-	>>> >>> > wip
+OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti);
