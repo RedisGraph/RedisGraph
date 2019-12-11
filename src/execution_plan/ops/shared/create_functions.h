@@ -33,7 +33,7 @@ PendingCreations NewPendingCreationsContainer(ResultSetStatistics *stats, NodeCr
 											  EdgeCreateCtx *edges);
 
 // Lock the graph and commit all changes introduced by the operation.
-void CommitNewEntities(PendingCreations *pending);
+void CommitNewEntities(OpBase *op, PendingCreations *pending);
 
 // Resolve the properties specified in the query into constant values.
 PendingProperties *ConvertPropertyMap(Record r, const PropertyMap *map);

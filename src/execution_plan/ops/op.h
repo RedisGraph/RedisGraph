@@ -91,12 +91,13 @@ struct OpBase {
 	Record *dangling_records;   // Records allocated by this operation that must be freed.
 	struct OpBase *parent;      // Parent operations.
 	const struct ExecutionPlan *plan; // ExecutionPlan this operation is part of.
+	bool writer;             // Indicates this is a writer operation.
 };
 typedef struct OpBase OpBase;
 
 // Initialize op.
 void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsume consume,
-				 fpReset reset, fpToString toString, fpFree free, const struct ExecutionPlan *plan);
+				 fpReset reset, fpToString toString, fpFree free, bool writer, const struct ExecutionPlan *plan);
 void OpBase_Free(OpBase *op);       // Free op.
 Record OpBase_Consume(OpBase *op);  // Consume op.
 Record OpBase_Profile(OpBase *op);  // Profile op.
@@ -124,6 +125,9 @@ bool OpBase_Aware(OpBase *op, const char *alias, int *idx);
 
 void OpBase_PropagateFree(OpBase *op); // Sends free request to each operation up the chain.
 void OpBase_PropagateReset(OpBase *op); // Sends reset request to each operation up the chain.
+
+// Indicates if the operation is a writer operation.
+bool OpBase_IsWriter(OpBase *op);
 
 // Creates a new record that will be populated during execution.
 Record OpBase_CreateRecord(const OpBase *op);

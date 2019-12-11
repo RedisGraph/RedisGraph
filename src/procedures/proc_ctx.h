@@ -19,10 +19,10 @@ typedef enum {
 
 // Procedure internal state.
 typedef enum {
-    PROCEDURE_NOT_INIT = 0,         // Start state.
-    PROCEDURE_INIT = (1 << 0),      // Once invoked is called.
-    PROCEDURE_DEPLETED = (1 << 1),  // Once step can no longer produce data.
-    PROCEDURE_ERROR = (1 << 2),     // Whenever an error occurred.
+	PROCEDURE_NOT_INIT = 0,         // Start state.
+	PROCEDURE_INIT = (1 << 0),      // Once invoked is called.
+	PROCEDURE_DEPLETED = (1 << 1),  // Once step can no longer produce data.
+	PROCEDURE_ERROR = (1 << 2),     // Whenever an error occurred.
 } ProcedureState;
 
 // Procedure output
@@ -45,13 +45,14 @@ typedef ProcedureResult(*ProcFree)(struct ProcedureCtx *ctx);
 /* ProcedureCtx */
 struct ProcedureCtx {
 	const char *name;           // Procedure name.
-    ProcedureState state;       // State in which the procedure is in.
+	ProcedureState state;       // State in which the procedure is in.
 	unsigned int argc;          // Number of arguments procedure accepts.
 	ProcedureOutput **output;   // Procedure possible output(s).
 	void *privateData;          //
 	ProcStep Step;              //
 	ProcInvoke Invoke;          //
 	ProcFree Free;              //
+	bool readOnly;              // Indicates if the procedure is able to mutate the graph.
 };
 typedef struct ProcedureCtx ProcedureCtx;
 
@@ -62,5 +63,6 @@ ProcedureCtx *ProcCtxNew(
 	ProcStep fStep,             // Procedure Step function.
 	ProcInvoke fInvoke,         // Procedure Invoke function.
 	ProcFree fFree,             // Procedure Free function.
-	void *privateData           // Procedure private data.
+	void *privateData,          // Procedure private data.
+	bool isWriteProcedure       // Indicates if the procedure is able to mutate the graph.
 );

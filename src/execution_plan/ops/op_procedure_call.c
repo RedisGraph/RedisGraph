@@ -7,6 +7,7 @@
 #include "op_procedure_call.h"
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
+#include "../../query_ctx.h"
 
 /* Forward declarations. */
 static Record ProcCallConsume(OpBase *opBase);
@@ -83,7 +84,7 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNo
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_PROC_CALL, "ProcedureCall", NULL, ProcCallConsume,
-				ProcCallReset, NULL, ProcCallFree, plan);
+				ProcCallReset, NULL, ProcCallFree, !op->procedure->readOnly, plan);
 
 	// Set modifiers.
 	for(uint i = 0; i < yield_count; i ++) {

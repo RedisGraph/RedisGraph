@@ -52,7 +52,11 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias);
 
 /* Locate the first operation of a given type within execution plan.
  * Returns NULL if operation wasn't found. */
-OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type);
+OpBase *ExecutionPlan_LocateFirstOp(OpBase *root, OPType type);
+
+/* Locate the last operation of a given type within execution plan.
+ * Returns NULL if operation wasn't found. */
+OpBase *ExecutionPlan_LocateLastOp(OpBase *root, OPType type);
 
 /* Locate all operations of a given type within execution plan.
  * Returns an array of operations. */
