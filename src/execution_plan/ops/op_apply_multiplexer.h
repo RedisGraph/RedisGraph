@@ -26,11 +26,16 @@
  * a new data point from the main execution plan branch, otherwise the main execution plan branch
  * record is passed onward.*/
 
+struct OpApplyMultiplexer;
+
+typedef Record(*MultiplexerApplyLogic)(struct OpApplyMultiplexer *);
+
 typedef struct OpApplyMultiplexer {
 	OpBase op;
 	Record r;                       // Bound branch record.
 	OpBase *bound_branch;           // Bound branch root;
 	Argument **branches_arguments;  // Branches taps.
+	MultiplexerApplyLogic apply_func;          // Which apply method to invoke (OR or AND multiplexion).
 	AST_Operator boolean_operator;  // Defines the operation logic.
 } OpApplyMultiplexer;
 

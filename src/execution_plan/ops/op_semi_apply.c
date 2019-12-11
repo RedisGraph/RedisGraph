@@ -19,8 +19,7 @@ static Record _pullFromBranchStream(OpSemiApply *op) {
 	return OpBase_Consume(op->match_branch);
 }
 
-static Record OpSemiApply_SemiApplyConsume(OpBase *opBase) {
-	OpSemiApply *op = (OpSemiApply *)opBase;
+static Record _OpSemiApply_SemiApplyLogic(OpSemiApply *op) {
 	while(true) {
 		// Try to get a record from bound stream.
 		op->r = OpBase_Consume(op->bound_branch);
@@ -41,8 +40,7 @@ static Record OpSemiApply_SemiApplyConsume(OpBase *opBase) {
 	}
 }
 
-static Record OpSemiApply_AntiSemiApplyConsume(OpBase *opBase) {
-	OpSemiApply *op = (OpSemiApply *)opBase;
+static Record _OpSemiApply_AntiSemiApplyLogic(OpSemiApply *op) {
 	while(true) {
 		// Try to get a record from bound stream.
 		op->r = OpBase_Consume(op->bound_branch);
@@ -67,19 +65,23 @@ static Record OpSemiApply_AntiSemiApplyConsume(OpBase *opBase) {
 }
 
 OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti) {
-	OpSemiApply *op = rm_malloc(sizeof(OpSemiApply));
+	OpSemiApply *op = malloc(sizeof(OpSemiApply));
 	op->r = NULL;
 	op->op_arg = NULL;
-	// Set our Op operations
+
+	const char *name;
 	if(anti) {
-		OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, "Anti Semi Apply", SemiApplyInit,
-					OpSemiApply_AntiSemiApplyConsume,
-					SemiApplyReset, NULL, SemiApplyFree, false, plan);
+		name = "Anti Semi Apply";
+		op->apply_func = _OpSemiApply_AntiSemiApplyLogic;
 	} else {
-		OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, "Semi Apply", SemiApplyInit,
-					OpSemiApply_SemiApplyConsume,
-					SemiApplyReset, NULL, SemiApplyFree, false, plan);
+		name = "Semi Apply";
+		op->apply_func = _OpSemiApply_SemiApplyLogic;
 	}
+
+	// Set our Op operations
+	OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, name, SemiApplyInit, SemiApplyConsume,
+				SemiApplyReset, NULL, SemiApplyFree, false, plan);
+
 	return (OpBase *) op;
 }
 
@@ -94,6 +96,16 @@ OpResult SemiApplyInit(OpBase *opBase) {
 	op->op_arg = (Argument *)ExecutionPlan_LocateFirstOp(op->match_branch, OPType_ARGUMENT);
 	if(op->op_arg) assert(op->op_arg->op.childCount == 0);
 	return OP_OK;
+}
+
+Record SemiApplyConsume(OpBase *opBase) {
+	OpSemiApply *op = (OpSemiApply *)opBase;
+	return op->apply_func(op);
+
+
+
+	/* Out of "infinity" loop either both left and right streams managed to produce data
+	 * or we're depleted. */
 }
 
 OpResult SemiApplyReset(OpBase *opBase) {

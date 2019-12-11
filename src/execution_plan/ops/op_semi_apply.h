@@ -19,14 +19,17 @@
  * for each record received it tries to get a record from the match branch
  * if no data is produced the main execution plan branch record is passed onward
  * otherwise it will try to fetch a new data point from the main execution plan branch. */
+struct OpSemiApply;
+
+typedef Record(*ApplyLogic)(struct OpSemiApply *);
 
 typedef struct OpSemiApply {
 	OpBase op;
-	Record r;               // Main execution plan branch record..
 	Record r;                       // Bound branch record.
 	OpBase *bound_branch;           // Bound branch root;
 	OpBase *match_branch;           // Match branch root;
 	Argument *op_arg;               // Match branch tap.
+	ApplyLogic apply_func;          // Which apply method to invoke (semi or anti semi apply)
 } OpSemiApply;
 
 OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti);
