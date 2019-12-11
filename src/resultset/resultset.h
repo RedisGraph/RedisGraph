@@ -33,6 +33,9 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact);
 
 int ResultSet_AddRecord(ResultSet *set, Record r);
 
+void ResultSet_IndexCreated(ResultSet *set, int status_code);
+void ResultSet_IndexDeleted(ResultSet *set, int status_code);
+
 void ResultSet_Replay(ResultSet *set);
 
 void ResultSet_ReportQueryRuntime(RedisModuleCtx *ctx);

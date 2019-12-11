@@ -20,7 +20,7 @@ OpBase *NewApplyOp(const ExecutionPlan *plan) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_APPLY, "Apply", NULL, ApplyConsume, ApplyReset, NULL,
-				ApplyFree, plan);
+				ApplyFree, false, plan);
 
 	return (OpBase *)op;
 }

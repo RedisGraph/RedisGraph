@@ -8,7 +8,7 @@
 
 void reduceDistinct(ExecutionPlan *plan) {
 	// Look for aggregate operation.
-	OpBase *aggregate = ExecutionPlan_LocateOp(plan->root, OPType_AGGREGATE);
+	OpBase *aggregate = ExecutionPlan_LocateFirstOp(plan->root, OPType_AGGREGATE);
 	if(aggregate == NULL || aggregate->parent == NULL) return;
 
 	// See if there's a distinct operation following aggregate

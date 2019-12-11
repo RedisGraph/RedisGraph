@@ -709,8 +709,8 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 	// Because 't' is set using the offsetof() call, it cannot be used in switch statements.
 	if(t == CYPHER_AST_MATCH) {
 		// Only add at most one set of traversals per plan. TODO Revisit and improve this logic.
-		if(ExecutionPlan_LocateOp(plan->root, OPType_NODE_BY_LABEL_SCAN) ||
-		   ExecutionPlan_LocateOp(plan->root, OPType_ALL_NODE_SCAN)) {
+		if(ExecutionPlan_LocateFirstOp(plan->root, OPType_NODE_BY_LABEL_SCAN) ||
+		   ExecutionPlan_LocateFirstOp(plan->root, OPType_ALL_NODE_SCAN)) {
 			return;
 		}
 		_ExecutionPlan_ProcessQueryGraph(plan, plan->query_graph, ast, plan->filter_tree);
@@ -718,7 +718,7 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 		_buildCallOp(ast, plan, clause);
 	} else if(t == CYPHER_AST_CREATE) {
 		// Only add at most one Create op per plan. TODO Revisit and improve this logic.
-		if(ExecutionPlan_LocateOp(plan->root, OPType_CREATE)) return;
+		if(ExecutionPlan_LocateFirstOp(plan->root, OPType_CREATE)) return;
 		_buildCreateOp(gc, ast, plan, stats);
 	} else if(t == CYPHER_AST_UNWIND) {
 		_buildUnwindOp(plan, clause);
@@ -848,6 +848,16 @@ ExecutionPlan *ExecutionPlan_UnionPlans(ResultSet *result_set, AST *ast) {
 	return plan;
 }
 
+static OpBase *_ExecutionPlan_FindLastWriter(OpBase *root) {
+	if(OpBase_IsWriter(root)) return root;
+	for(int i = root->childCount - 1; i >= 0; i--) {
+		OpBase *child = root->children[i];
+		OpBase *res = _ExecutionPlan_FindLastWriter(child);
+		if(res) return res;
+	}
+	return NULL;
+}
+
 ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 	AST *ast = QueryCtx_GetAST();
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
@@ -910,7 +920,8 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 		ExecutionPlan *current_segment = segments[i];
 
 		OpBase *prev_root = prev_segment->root;
-		connecting_op = ExecutionPlan_LocateOp(current_segment->root, OPType_PROJECT | OPType_AGGREGATE);
+		connecting_op = ExecutionPlan_LocateFirstOp(current_segment->root,
+													OPType_PROJECT | OPType_AGGREGATE);
 		assert(connecting_op->childCount == 0);
 
 		ExecutionPlan_AddOp(connecting_op, prev_root);
@@ -925,7 +936,7 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 		if(!connecting_op) {
 			// Set the connecting op if our query is just a RETURN.
 			assert(segment_count == 1);
-			connecting_op = ExecutionPlan_LocateOp(plan->root, OPType_PROJECT | OPType_AGGREGATE);
+			connecting_op = ExecutionPlan_LocateFirstOp(plan->root, OPType_PROJECT | OPType_AGGREGATE);
 		}
 
 		// Prepare column names for the ResultSet.
@@ -950,7 +961,7 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 	// Disregard self.
 	plan->segment_count = segment_count - 1;
 	plan->segments = segments;
-
+	QueryCtx_SetLastWriter(_ExecutionPlan_FindLastWriter(plan->root));
 	return plan;
 }
 

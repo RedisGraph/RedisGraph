@@ -73,6 +73,7 @@ ProcedureCtx *Proc_PropKeysCtx() {
 								   Proc_PropKeysStep,
 								   Proc_PropKeysInvoke,
 								   Proc_PropKeysFree,
-								   privateData);
+								   privateData,
+								   true);
 	return ctx;
 }

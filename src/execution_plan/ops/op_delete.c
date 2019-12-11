@@ -37,11 +37,12 @@ void _DeleteEntities(OpDelete *op) {
 	Graph_BulkDelete(g, op->deleted_nodes, node_count, op->deleted_edges,
 					 edge_count, &node_deleted, &relationships_deleted);
 
+	if(op->stats) {
+		op->stats->nodes_deleted += node_deleted;
+		op->stats->relationships_deleted += relationships_deleted;
+	}
 	/* Release lock. */
-	QueryCtx_UnlockCommit();
-
-	if(op->stats) op->stats->nodes_deleted += node_deleted;
-	if(op->stats) op->stats->relationships_deleted += relationships_deleted;
+	QueryCtx_UnlockCommit(&op->op);
 }
 
 OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps, ResultSetStatistics *stats) {
@@ -56,7 +57,7 @@ OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps, ResultSetStati
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", NULL, DeleteConsume,
-				NULL, NULL, DeleteFree, plan);
+				NULL, NULL, DeleteFree, true, plan);
 
 	return (OpBase *)op;
 }

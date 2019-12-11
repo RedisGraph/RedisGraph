@@ -15,14 +15,6 @@
 
 static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc,
 							 const cypher_astnode_t *index_op) {
-	/* Set up nested array response for index creation and deletion,
-	 * Following the response struture of other queries:
-	 * First element is an empty result-set followed by statistics.
-	 * We'll enqueue one string response to indicate the operation's success,
-	 * and the query runtime will be appended after this call returns. */
-	RedisModule_ReplyWithArray(ctx, 2); // Two Arrays
-	RedisModule_ReplyWithArray(ctx, 0); // Empty result-set
-	RedisModule_ReplyWithArray(ctx, 2); // Statistics.
 	Index *idx = NULL;
 
 	if(cypher_astnode_type(index_op) == CYPHER_AST_CREATE_NODE_PROPS_INDEX) {
@@ -31,30 +23,24 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc,
 														  index_op));
 		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_create_node_props_index_get_prop_name(
 															  index_op, 0));
-		if(GraphContext_AddIndex(&idx, gc, label, prop, IDX_EXACT_MATCH) != INDEX_OK) {
-			// Index creation may have failed if the label or property was invalid, or the index already exists.
-			RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
-		} else {
-			Index_Construct(idx);
-			RedisModule_ReplyWithSimpleString(ctx, "Indices added: 1");
-		}
+		QueryCtx_LockForCommit();
+		if(GraphContext_AddIndex(&idx, gc, label, prop, IDX_EXACT_MATCH) == INDEX_OK) Index_Construct(idx);
+		QueryCtx_UnlockCommit(NULL);
 	} else {
 		// Retrieve strings from AST node
 		const char *label = cypher_ast_label_get_name(cypher_ast_drop_node_props_index_get_label(index_op));
 		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_drop_node_props_index_get_prop_name(
 															  index_op, 0));
-		if(GraphContext_DeleteIndex(gc, label, prop, IDX_EXACT_MATCH) == INDEX_OK) {
-			RedisModule_ReplyWithSimpleString(ctx, "Indices removed: 1");
-		} else {
-			char *reply;
-			asprintf(&reply, "ERR Unable to drop index on :%s(%s): no such index.", label, prop);
-			RedisModule_ReplyWithError(ctx, reply);
-			free(reply);
+		QueryCtx_LockForCommit();
+		int res = GraphContext_DeleteIndex(gc, label, prop, IDX_EXACT_MATCH);
+		QueryCtx_UnlockCommit(NULL);
+
+		if(res != INDEX_OK) {
+			char *error;
+			asprintf(&error, "ERR Unable to drop index on :%s(%s): no such index.", label, prop);
+			QueryCtx_SetError(error);
 		}
 	}
-
-	/* Report execution timing. */
-	ResultSet_ReportQueryRuntime(ctx);
 }
 
 static inline bool _check_compact_flag(CommandCtx *command_ctx) {
@@ -104,10 +90,10 @@ void Graph_Query(void *args) {
 
 	// Set policy after lock acquisition, avoid resetting policies between readers and writers.
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
-
+	result_set = NewResultSet(ctx, compact);
+	QueryCtx_SetResultSet(result_set);
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
 	if(root_type == CYPHER_AST_QUERY) {  // query operation
-		result_set = NewResultSet(ctx, compact);
 		ExecutionPlan *plan = NewExecutionPlan(result_set);
 		/* Make sure there are no compile-time errors.
 		 * We prefer to emit the error only once the entire execution-plan
@@ -127,13 +113,14 @@ void Graph_Query(void *args) {
 
 		result_set = ExecutionPlan_Execute(plan);
 		ExecutionPlan_Free(plan);
-		ResultSet_Replay(result_set);    // Send result-set back to client.
 	} else if(root_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
 			  root_type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {
 		_index_operation(ctx, gc, ast->root);
 	} else {
 		assert("Unhandled query type" && false);
 	}
+	QueryCtx_ForceUnlockCommit();
+	ResultSet_Replay(result_set);    // Send result-set back to client.
 
 	// Clean up.
 cleanup:
@@ -141,7 +128,7 @@ cleanup:
 	if(lockAcquired) {
 		// TODO In the case of a failing writing query, we may hold both locks:
 		// "CREATE (a {num: 1}) MERGE ({v: a.num})"
-		if(readonly)Graph_ReleaseLock(gc->g);
+		if(readonly) Graph_ReleaseLock(gc->g);
 		else Graph_WriterLeave(gc->g);
 	}
 

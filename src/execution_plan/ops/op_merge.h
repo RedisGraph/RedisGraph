@@ -29,4 +29,3 @@ typedef struct {
 
 OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
 				   ResultSetStatistics *stats);
-
