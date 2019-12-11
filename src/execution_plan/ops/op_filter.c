@@ -11,7 +11,7 @@ static Record FilterConsume(OpBase *opBase);
 static void FilterFree(OpBase *opBase);
 
 OpBase *NewFilterOp(const ExecutionPlan *plan, FT_FilterNode *filterTree) {
-	OpFilter *op = malloc(sizeof(OpFilter));
+	OpFilter *op = rm_malloc(sizeof(OpFilter));
 	op->filterTree = filterTree;
 
 	// Set our Op operations

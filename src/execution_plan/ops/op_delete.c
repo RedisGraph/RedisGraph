@@ -46,7 +46,7 @@ void _DeleteEntities(OpDelete *op) {
 }
 
 OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps, ResultSetStatistics *stats) {
-	OpDelete *op = malloc(sizeof(OpDelete));
+	OpDelete *op = rm_malloc(sizeof(OpDelete));
 
 	op->gc = QueryCtx_GetGraphCtx();
 	op->exps = exps;

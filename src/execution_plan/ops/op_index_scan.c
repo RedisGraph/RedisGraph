@@ -20,7 +20,7 @@ static int IndexScanToString(const OpBase *ctx, char *buf, uint buf_len) {
 
 OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, const QGNode *n, RSIndex *idx,
 					   RSResultsIterator *iter) {
-	IndexScan *op = malloc(sizeof(IndexScan));
+	IndexScan *op = rm_malloc(sizeof(IndexScan));
 	op->g = g;
 	op->n = n;
 	op->idx = idx;

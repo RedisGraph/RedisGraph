@@ -65,7 +65,7 @@ static Record _OpSemiApply_AntiSemiApplyLogic(OpSemiApply *op) {
 }
 
 OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti) {
-	OpSemiApply *op = malloc(sizeof(OpSemiApply));
+	OpSemiApply *op = rm_malloc(sizeof(OpSemiApply));
 	op->r = NULL;
 	op->op_arg = NULL;
 

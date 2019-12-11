@@ -13,7 +13,7 @@ static Record DistinctConsume(OpBase *opBase);
 static void DistinctFree(OpBase *opBase);
 
 OpBase *NewDistinctOp(const ExecutionPlan *plan) {
-	OpDistinct *op = malloc(sizeof(OpDistinct));
+	OpDistinct *op = rm_malloc(sizeof(OpDistinct));
 	op->found = raxNew();
 
 	OpBase_Init((OpBase *)op, OPType_DISTINCT, "Distinct", NULL, DistinctConsume,

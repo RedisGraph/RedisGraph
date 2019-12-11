@@ -140,7 +140,7 @@ static Record _handoff(OpUpdate *op) {
 
 OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps,
 					ResultSetStatistics *stats) {
-	OpUpdate *op = calloc(1, sizeof(OpUpdate));
+	OpUpdate *op = rm_calloc(1, sizeof(OpUpdate));
 	op->gc = QueryCtx_GetGraphCtx();
 	op->stats = stats;
 	op->records = NULL;

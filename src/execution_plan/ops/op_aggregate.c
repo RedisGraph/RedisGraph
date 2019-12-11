@@ -198,7 +198,7 @@ static Record _handoff(OpAggregate *op) {
 }
 
 OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should_cache_records) {
-	OpAggregate *op = malloc(sizeof(OpAggregate));
+	OpAggregate *op = rm_malloc(sizeof(OpAggregate));
 	op->exps = exps;
 	op->group = NULL;
 	op->group_iter = NULL;

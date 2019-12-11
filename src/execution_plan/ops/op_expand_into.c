@@ -92,7 +92,7 @@ static void _traverse(OpExpandInto *op) {
 
 OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
 						uint records_cap) {
-	OpExpandInto *op = calloc(1, sizeof(OpExpandInto));
+	OpExpandInto *op = rm_calloc(1, sizeof(OpExpandInto));
 	op->graph = g;
 	op->ae = ae;
 	op->r = NULL;

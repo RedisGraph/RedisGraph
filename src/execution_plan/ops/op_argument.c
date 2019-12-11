@@ -12,7 +12,7 @@ OpResult ArgumentReset(OpBase *opBase);
 void ArgumentFree(OpBase *opBase);
 
 OpBase *NewArgumentOp(const ExecutionPlan *plan, const char **variables) {
-	Argument *op = malloc(sizeof(Argument));
+	Argument *op = rm_malloc(sizeof(Argument));
 	op->records = array_new(Record, 1);
 
 	// Set our Op operations

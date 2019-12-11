@@ -168,7 +168,7 @@ static int ValueHashJoinToString(const OpBase *ctx, char *buff, uint buff_len) {
 
 /* Creates a new valueHashJoin operation */
 OpBase *NewValueHashJoin(const ExecutionPlan *plan, AR_ExpNode *lhs_exp, AR_ExpNode *rhs_exp) {
-	OpValueHashJoin *op = malloc(sizeof(OpValueHashJoin));
+	OpValueHashJoin *op = rm_malloc(sizeof(OpValueHashJoin));
 	op->rhs_rec = NULL;
 	op->lhs_exp = lhs_exp;
 	op->rhs_exp = rhs_exp;

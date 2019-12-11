@@ -17,7 +17,7 @@ static void CreateFree(OpBase *opBase);
 
 OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeCreateCtx *nodes,
 					EdgeCreateCtx *edges) {
-	OpCreate *op = calloc(1, sizeof(OpCreate));
+	OpCreate *op = rm_calloc(1, sizeof(OpCreate));
 	op->records = NULL;
 	op->pending = NewPendingCreationsContainer(stats, nodes, edges); // Prepare all creation variables.
 	// Set our Op operations

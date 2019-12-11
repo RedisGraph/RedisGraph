@@ -20,7 +20,7 @@ static OpResult UnwindReset(OpBase *opBase);
 static void UnwindFree(OpBase *opBase);
 
 OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
-	OpUnwind *op = malloc(sizeof(OpUnwind));
+	OpUnwind *op = rm_malloc(sizeof(OpUnwind));
 
 	op->exp = exp;
 	op->list = SI_NullVal();

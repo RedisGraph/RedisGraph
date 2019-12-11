@@ -12,7 +12,7 @@
 static Record ResultsConsume(OpBase *opBase);
 
 OpBase *NewResultsOp(const ExecutionPlan *plan, ResultSet *result_set) {
-	Results *op = malloc(sizeof(Results));
+	Results *op = rm_malloc(sizeof(Results));
 	op->result_set = result_set;
 
 	// Set our Op operations

@@ -15,7 +15,7 @@ static Record ProjectConsume(OpBase *opBase);
 static void ProjectFree(OpBase *opBase);
 
 OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
-	OpProject *op = malloc(sizeof(OpProject));
+	OpProject *op = rm_malloc(sizeof(OpProject));
 	op->exps = exps;
 	op->singleResponse = false;
 	op->exp_count = array_len(exps);

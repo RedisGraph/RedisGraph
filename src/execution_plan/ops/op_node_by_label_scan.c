@@ -22,7 +22,7 @@ static inline int NodeByLabelScanToString(const OpBase *ctx, char *buf, uint buf
 }
 
 OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *n) {
-	NodeByLabelScan *op = malloc(sizeof(NodeByLabelScan));
+	NodeByLabelScan *op = rm_malloc(sizeof(NodeByLabelScan));
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	op->g = gc->g;
 	op->n = n;
