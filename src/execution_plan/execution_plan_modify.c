@@ -343,13 +343,10 @@ static OpBase *_buildMatchBranch(ExecutionPlan *plan, const cypher_astnode_t *pa
 	QueryCtx_SetAST(ast); // Reset the AST.
 
 	OpBase *branch_match_root = match_branch_plan->root;
+	ExecutionPlan_BindPlanToOps(branch_match_root, plan);
 	// NULL-set variables shared between the match_branch_plan and the overall plan.
 	match_branch_plan->root = NULL;
 	match_branch_plan->record_map = NULL;
-	// We can't free the plan's individual QueryGraphs, as operations like label scans
-	// may later try to access their entities.
-	array_free(match_branch_plan->connected_components);
-	match_branch_plan->connected_components = NULL;
 
 	// Free the temporary plan.
 	ExecutionPlan_Free(match_branch_plan);
