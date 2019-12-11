@@ -41,7 +41,6 @@ Feature: SyntaxErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: UnknownFunction
 
-@crash
 @skip
   Scenario: Using `rand()` in aggregations
     When executing query:
