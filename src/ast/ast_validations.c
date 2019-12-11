@@ -886,6 +886,9 @@ static AST_Validation _Validate_UNWIND_Clauses(const AST *ast, char **reason) {
 			res = CypherWhitelist_ValidateQuery(cypher_astnode_get_child(expression, j), reason);
 			if(res != AST_VALID) goto cleanup;
 		}
+		// Verify that UNWIND doesn't call non-existent or unsupported functions.
+		res = _ValidateFunctionCalls(expression, reason, true);
+		if(res != AST_VALID) goto cleanup;
 	}
 
 cleanup:
