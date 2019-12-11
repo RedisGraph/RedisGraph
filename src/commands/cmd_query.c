@@ -119,6 +119,7 @@ void Graph_Query(void *args) {
 	} else {
 		assert("Unhandled query type" && false);
 	}
+	QueryCtx_ForceUnlockCommit();
 	ResultSet_Replay(result_set);    // Send result-set back to client.
 
 	// Clean up.
@@ -127,12 +128,8 @@ cleanup:
 	if(lockAcquired) {
 		// TODO In the case of a failing writing query, we may hold both locks:
 		// "CREATE (a {num: 1}) MERGE ({v: a.num})"
-		if(readonly) {
-			Graph_ReleaseLock(gc->g);
-		} else {
-			QueryCtx_DontPanic_AvoidDeadlocks();
-			Graph_WriterLeave(gc->g);
-		}
+		if(readonly) Graph_ReleaseLock(gc->g);
+		else Graph_WriterLeave(gc->g);
 	}
 
 	ResultSet_Free(result_set);

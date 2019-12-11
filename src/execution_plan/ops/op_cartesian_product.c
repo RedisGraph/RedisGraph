@@ -19,7 +19,7 @@ OpBase *NewCartesianProductOp(const ExecutionPlan *plan) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CARTESIAN_PRODUCT, "Cartesian Product", CartesianProductInit,
-				CartesianProductConsume, CartesianProductReset, NULL, CartesianProductFree, plan, false);
+				CartesianProductConsume, CartesianProductReset, NULL, CartesianProductFree, false, plan);
 	return (OpBase *)op;
 }
 

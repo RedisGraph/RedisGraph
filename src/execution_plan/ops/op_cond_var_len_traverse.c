@@ -64,7 +64,7 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
 				"Conditional Variable Length Traverse", NULL, CondVarLenTraverseConsume,
-				CondVarLenTraverseReset, CondVarLenTraverseToString, CondVarLenTraverseFree, plan, false);
+				CondVarLenTraverseReset, CondVarLenTraverseToString, CondVarLenTraverseFree, false, plan);
 	assert(OpBase_Aware((OpBase *)op, ae->src, &op->srcNodeIdx));
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, ae->dest);
 	// Populate edge value in record only if it is referenced.

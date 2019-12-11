@@ -217,12 +217,13 @@ void QueryCtx_UnlockCommit(OpBase *writer_op) {
 	_QueryCtx_ThreadSafeContextUnlock(ctx);
 }
 
-void QueryCtx_DontPanic_AvoidDeadlocks() {
+void QueryCtx_ForceUnlockCommit() {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	if(!ctx->internal_exec_ctx.locked_for_commit) return;
 	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
 	GraphContext *gc = ctx->gc;
-	RedisModule_Log(redis_ctx, "warning", "RedisGraph used deadlock avoidance procedure for query %s",
+	RedisModule_Log(redis_ctx, "warning",
+					"RedisGraph used forced unlocking commit flow for the query %s",
 					ctx->query_data.query);
 	if(ResultSetStat_IndicateModification(ctx->internal_exec_ctx.result_set->stats))
 		// Replicate only in case of changes.

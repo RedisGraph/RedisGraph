@@ -126,7 +126,7 @@ void QueryCtx_UnlockCommit(OpBase *writer_op);
  *
  * This method force releases the locks acquired during commit flow if for
  * some reason the last writer op has not invoked QueryCtx_UnlockCommit and Redis is locked.*/
-void QueryCtx_DontPanic_AvoidDeadlocks(void);
+void QueryCtx_ForceUnlockCommit(void);
 
 /* Compute and return elapsed query execution time. */
 double QueryCtx_GetExecutionTime(void);

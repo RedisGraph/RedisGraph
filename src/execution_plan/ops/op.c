@@ -14,7 +14,7 @@
 rax *ExecutionPlan_GetMappings(const struct ExecutionPlan *plan);
 
 void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsume consume,
-				 fpReset reset, fpToString toString, fpFree free, const struct ExecutionPlan *plan, bool writer) {
+				 fpReset reset, fpToString toString, fpFree free, bool writer, const struct ExecutionPlan *plan) {
 
 	op->type = type;
 	op->name = name;

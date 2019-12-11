@@ -26,7 +26,7 @@ OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const Graph *g, const QGNode
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_ALL_NODE_SCAN, "All Node Scan", AllNodeScanInit,
-				AllNodeScanConsume, AllNodeScanReset, AllNodeScanToString, AllNodeScanFree, plan, false);
+				AllNodeScanConsume, AllNodeScanReset, AllNodeScanToString, AllNodeScanFree, false, plan);
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 	return (OpBase *)op;
 }

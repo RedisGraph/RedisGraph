@@ -97,7 +97,7 @@ typedef struct OpBase OpBase;
 
 // Initialize op.
 void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsume consume,
-				 fpReset reset, fpToString toString, fpFree free, const struct ExecutionPlan *plan, bool writer);
+				 fpReset reset, fpToString toString, fpFree free, bool writer, const struct ExecutionPlan *plan);
 void OpBase_Free(OpBase *op);       // Free op.
 Record OpBase_Consume(OpBase *op);  // Consume op.
 Record OpBase_Profile(OpBase *op);  // Profile op.
