@@ -23,8 +23,8 @@ static void _ResultSet_ReplayStats(RedisModuleCtx *ctx, ResultSet *set) {
 	if(set->stats.relationships_created > 0) resultset_size++;
 	if(set->stats.nodes_deleted > 0) resultset_size++;
 	if(set->stats.relationships_deleted > 0) resultset_size++;
-	if(set->stats.indicies_created != NOT_SET) resultset_size++;
-	if(set->stats.indicies_deleted != NOT_SET) resultset_size++;
+	if(set->stats.indices_created != STAT_NOT_SET) resultset_size++;
+	if(set->stats.indices_deleted != STAT_NOT_SET) resultset_size++;
 
 	RedisModule_ReplyWithArray(ctx, resultset_size);
 
@@ -58,13 +58,13 @@ static void _ResultSet_ReplayStats(RedisModuleCtx *ctx, ResultSet *set) {
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
 
-	if(set->stats.indicies_created != NOT_SET) {
-		buflen = sprintf(buff, "Indices created: %d", set->stats.indicies_created);
+	if(set->stats.indices_created != STAT_NOT_SET) {
+		buflen = sprintf(buff, "Indices created: %d", set->stats.indices_created);
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
 
-	if(set->stats.indicies_deleted != NOT_SET) {
-		buflen = sprintf(buff, "Indices deleted: %d", set->stats.indicies_deleted);
+	if(set->stats.indices_deleted != STAT_NOT_SET) {
+		buflen = sprintf(buff, "Indices deleted: %d", set->stats.indices_deleted);
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
 
@@ -105,8 +105,8 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact) {
 	set->stats.relationships_created = 0;
 	set->stats.nodes_deleted = 0;
 	set->stats.relationships_deleted = 0;
-	set->stats.indicies_created = NOT_SET;
-	set->stats.indicies_deleted = NOT_SET;
+	set->stats.indices_created = STAT_NOT_SET;
+	set->stats.indices_deleted = STAT_NOT_SET;
 
 	return set;
 }
@@ -121,6 +121,30 @@ int ResultSet_AddRecord(ResultSet *set, Record r) {
 	set->formatter->EmitRecord(set->ctx, set->gc, r, set->column_count);
 
 	return RESULTSET_OK;
+}
+
+void ResultSet_IndexCreated(ResultSet *set, int status_code) {
+	if(status_code == INDEX_OK) {
+		if(set->stats.indices_created == STAT_NOT_SET) {
+			set->stats.indices_created = 1;
+		} else {
+			set->stats.indices_created += 1;
+		}
+	} else if(set->stats.indices_created == STAT_NOT_SET) {
+		set->stats.indices_created = 0;
+	}
+}
+
+void ResultSet_IndexDeleted(ResultSet *set, int status_code) {
+	if(status_code == INDEX_OK) {
+		if(set->stats.indices_deleted == STAT_NOT_SET) {
+			set->stats.indices_deleted = 1;
+		} else {
+			set->stats.indices_deleted += 1;
+		}
+	} else if(set->stats.indices_deleted == STAT_NOT_SET) {
+		set->stats.indices_deleted = 0;
+	}
 }
 
 void ResultSet_Replay(ResultSet *set) {

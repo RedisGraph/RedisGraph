@@ -72,7 +72,7 @@ ProcedureCtx *Proc_FulltextCreateNodeIdxGen() {
 								   Proc_FulltextCreateNodeIdxInvoke,
 								   Proc_FulltextCreateNodeIdxFree,
 								   privateData,
-								   true);
+								   false);
 
 	return ctx;
 }

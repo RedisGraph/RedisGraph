@@ -40,7 +40,7 @@ ProcedureCtx *ProcCtxNew(const char *name,
 						 ProcInvoke fInvoke,
 						 ProcFree fFree,
 						 void *privateData,
-						 bool isWriteProcedure) {
+						 bool readOnly) {
 
 	ProcedureCtx *ctx = rm_malloc(sizeof(ProcedureCtx));
 	ctx->argc = argc;
@@ -50,7 +50,7 @@ ProcedureCtx *ProcCtxNew(const char *name,
 	ctx->Invoke = fInvoke;
 	ctx->Free = fFree;
 	ctx->privateData = privateData;
-	ctx->isWriteProcedure = isWriteProcedure;
+	ctx->readOnly = readOnly;
 	return ctx;
 }
 

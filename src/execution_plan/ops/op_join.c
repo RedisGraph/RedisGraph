@@ -16,7 +16,8 @@ OpBase *NewJoinOp(const ExecutionPlan *plan) {
 	op->stream = NULL;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_JOIN, "Join", JoinInit, JoinConsume, NULL, NULL, NULL, plan);
+	OpBase_Init((OpBase *)op, OPType_JOIN, "Join", JoinInit, JoinConsume, NULL, NULL, NULL, plan,
+				false);
 
 	return (OpBase *)op;
 }

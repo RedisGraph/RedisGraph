@@ -91,7 +91,7 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int direction, u
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_SORT, "Sort", NULL,
-				SortConsume, SortReset, NULL, SortFree, plan);
+				SortConsume, SortReset, NULL, SortFree, plan, false);
 
 	uint comparison_count = array_len(exps);
 	op->record_offsets = array_new(uint, comparison_count);

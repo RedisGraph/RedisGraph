@@ -22,7 +22,7 @@ OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeC
 	op->pending = NewPendingCreationsContainer(stats, nodes, edges); // Prepare all creation variables.
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CREATE, "Create", NULL, CreateConsume,
-				NULL, NULL, CreateFree, plan);
+				NULL, NULL, CreateFree, plan, true);
 
 	uint node_blueprint_count = array_len(nodes);
 	uint edge_blueprint_count = array_len(edges);
@@ -36,7 +36,7 @@ OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeC
 		assert(OpBase_Aware((OpBase *)op, edges[i].edge->src->alias, &edges[i].src_idx));
 		assert(OpBase_Aware((OpBase *)op, edges[i].edge->dest->alias, &edges[i].dest_idx));
 	}
-	OpBase_RegisterAsWriter((OpBase *) op);
+
 	return (OpBase *)op;
 }
 

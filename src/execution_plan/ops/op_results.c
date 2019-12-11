@@ -17,7 +17,7 @@ OpBase *NewResultsOp(const ExecutionPlan *plan, ResultSet *result_set) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_RESULTS, "Results", NULL, ResultsConsume,
-				NULL, NULL, NULL, plan);
+				NULL, NULL, NULL, plan, false);
 
 	return (OpBase *)op;
 }

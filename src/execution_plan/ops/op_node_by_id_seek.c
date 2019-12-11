@@ -64,7 +64,7 @@ OpBase *NewNodeByIdSeekOp
 
 
 	OpBase_Init((OpBase *)op, OPType_NODE_BY_ID_SEEK, "NodeByIdSeek", NodeByIdSeekInit,
-				NodeByIdSeekConsume, NodeByIdSeekReset, NodeByIdSeekToString, NodeByIdSeekFree, plan);
+				NodeByIdSeekConsume, NodeByIdSeekReset, NodeByIdSeekToString, NodeByIdSeekFree, plan, false);
 
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 

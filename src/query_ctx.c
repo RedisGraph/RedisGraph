@@ -199,10 +199,31 @@ clean_up:
 
 void QueryCtx_UnlockCommit(OpBase *writer_op) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
+	// Check that the writer_op is entitled to release the lock.
 	if(ctx->internal_exec_ctx.last_writer != writer_op) return;
 	if(!ctx->internal_exec_ctx.locked_for_commit) return;
 	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
 	GraphContext *gc = ctx->gc;
+	if(ResultSetStat_IndicateModification(ctx->internal_exec_ctx.result_set->stats))
+		// Replicate only in case of changes.
+		RedisModule_Replicate(redis_ctx, ctx->global_exec_ctx.command_name, "cc!", gc->graph_name,
+							  ctx->query_data.query);
+	ctx->internal_exec_ctx.locked_for_commit = false;
+	// Release graph R/W lock.
+	Graph_ReleaseLock(gc->g);
+	// Close Key.
+	RedisModule_CloseKey(ctx->internal_exec_ctx.key);
+	// Unlock GIL.
+	_QueryCtx_ThreadSafeContextUnlock(ctx);
+}
+
+void QueryCtx_DontPanic_AvoidDeadlocks() {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	if(!ctx->internal_exec_ctx.locked_for_commit) return;
+	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
+	GraphContext *gc = ctx->gc;
+	RedisModule_Log(redis_ctx, "warning", "RedisGraph used deadlock avoidance procedure for query %s",
+					ctx->query_data.query);
 	if(ResultSetStat_IndicateModification(ctx->internal_exec_ctx.result_set->stats))
 		// Replicate only in case of changes.
 		RedisModule_Replicate(redis_ctx, ctx->global_exec_ctx.command_name, "cc!", gc->graph_name,

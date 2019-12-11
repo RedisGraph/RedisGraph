@@ -84,7 +84,7 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNo
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_PROC_CALL, "ProcedureCall", NULL, ProcCallConsume,
-				ProcCallReset, NULL, ProcCallFree, plan);
+				ProcCallReset, NULL, ProcCallFree, plan, !op->procedure->readOnly);
 
 	// Set modifiers.
 	for(uint i = 0; i < yield_count; i ++) {
@@ -95,7 +95,7 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNo
 		OpBase_Modifies((OpBase *)op, yield);
 		if(alias && strcmp(alias, yield) != 0) OpBase_AliasModifier((OpBase *)op, yield, alias);
 	}
-	if(op->procedure->isWriteProcedure) OpBase_RegisterAsWriter((OpBase *)op);
+
 	return (OpBase *)op;
 }
 

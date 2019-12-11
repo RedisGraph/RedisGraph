@@ -75,7 +75,7 @@ ProcedureCtx *Proc_RelationsCtx() {
 								   Proc_RelationsInvoke,
 								   Proc_RelationsFree,
 								   privateData,
-								   false);
+								   true);
 	return ctx;
 }
 

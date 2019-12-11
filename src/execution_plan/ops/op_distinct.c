@@ -17,7 +17,7 @@ OpBase *NewDistinctOp(const ExecutionPlan *plan) {
 	op->found = raxNew();
 
 	OpBase_Init((OpBase *)op, OPType_DISTINCT, "Distinct", NULL, DistinctConsume,
-				NULL, NULL, DistinctFree, plan);
+				NULL, NULL, DistinctFree, plan, false);
 
 	return (OpBase *)op;
 }

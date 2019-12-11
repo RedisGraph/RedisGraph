@@ -14,7 +14,7 @@
 rax *ExecutionPlan_GetMappings(const struct ExecutionPlan *plan);
 
 void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsume consume,
-				 fpReset reset, fpToString toString, fpFree free, const struct ExecutionPlan *plan) {
+				 fpReset reset, fpToString toString, fpFree free, const struct ExecutionPlan *plan, bool writer) {
 
 	op->type = type;
 	op->name = name;
@@ -28,7 +28,7 @@ void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsu
 	op->op_initialized = false;
 	op->dangling_records = NULL;
 	op->modifies = NULL;
-	op->is_writer = false;
+	op->writer = writer;
 
 	// Function pointers.
 	op->init = init;
@@ -131,13 +131,8 @@ void OpBase_RemoveVolatileRecords(OpBase *op) {
 	array_clear(op->dangling_records);
 }
 
-
-void OpBase_RegisterAsWriter(OpBase *op) {
-	op->is_writer = true;
-}
-
 bool OpBase_IsWriter(OpBase *op) {
-	return op->is_writer;
+	return op->writer;
 }
 
 Record OpBase_CreateRecord(const OpBase *op) {

@@ -139,7 +139,7 @@ void CommitNewEntities(OpBase *op, PendingCreations *pending) {
 	uint node_count = array_len(pending->created_nodes);
 	uint edge_count = array_len(pending->created_edges);
 	// Lock everything.
-	if(!QueryCtx_LockForCommit()) return;
+	QueryCtx_LockForCommit();
 
 	Graph_SetMatrixPolicy(g, RESIZE_TO_CAPACITY);
 	if(node_count > 0) _CommitNodes(pending);

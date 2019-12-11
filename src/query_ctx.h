@@ -121,6 +121,13 @@ bool QueryCtx_LockForCommit(void);
  * 4. Unlock GIL */
 void QueryCtx_UnlockCommit(OpBase *writer_op);
 
+/*
+ * -------------------------FOR SAFETY ONLY---------------------------
+ *
+ * This method force releases the locks acquired during commit flow if for
+ * some reason the last writer op has not invoked QueryCtx_UnlockCommit and Redis is locked.*/
+void QueryCtx_DontPanic_AvoidDeadlocks(void);
+
 /* Compute and return elapsed query execution time. */
 double QueryCtx_GetExecutionTime(void);
 /* Returns true if this query has caused an error. */

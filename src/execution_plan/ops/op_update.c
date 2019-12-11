@@ -153,12 +153,12 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps,
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", UpdateInit, UpdateConsume,
-				UpdateReset, NULL, UpdateFree, plan);
+				UpdateReset, NULL, UpdateFree, plan, true);
 
 	for(uint i = 0; i < op->update_expressions_count; i ++) {
 		op->update_expressions[i].record_idx = OpBase_Modifies((OpBase *)op, update_exps[i].alias);
 	}
-	OpBase_RegisterAsWriter((OpBase *) op);
+
 	return (OpBase *)op;
 }
 
@@ -208,7 +208,7 @@ static Record UpdateConsume(OpBase *opBase) {
 	OpBase_PropagateFree(child);
 
 	/* Lock everything. */
-	if(!QueryCtx_LockForCommit()) return NULL;
+	QueryCtx_LockForCommit();
 	_CommitUpdates(op);
 	// Release lock.
 	QueryCtx_UnlockCommit(opBase);

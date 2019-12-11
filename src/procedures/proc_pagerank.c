@@ -153,6 +153,6 @@ ProcedureCtx *Proc_PagerankCtx() {
 								   Proc_PagerankInvoke,
 								   Proc_PagerankFree,
 								   privateData,
-								   false);
+								   true);
 	return ctx;
 }

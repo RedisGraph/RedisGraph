@@ -262,15 +262,7 @@ int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label, cons
 	if(s == NULL) s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
 	int res = Schema_AddIndex(idx, s, field, type);
 	ResultSet *result_set = QueryCtx_GetResultSet();
-	if(res == INDEX_OK) {
-		if(result_set->stats.indicies_created == NOT_SET) {
-			result_set->stats.indicies_created = 1;
-		} else {
-			result_set->stats.indicies_created += 1;
-		}
-	} else if(result_set->stats.indicies_created == NOT_SET) {
-		result_set->stats.indicies_created = 0;
-	}
+	ResultSet_IndexCreated(result_set, res);
 	return res;
 }
 
@@ -281,15 +273,7 @@ int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *fi
 	int res = INDEX_FAIL;
 	if(s != NULL) res = Schema_RemoveIndex(s, field, type);
 	ResultSet *result_set = QueryCtx_GetResultSet();
-	if(res == INDEX_OK) {
-		if(result_set->stats.indicies_deleted == NOT_SET) {
-			result_set->stats.indicies_deleted = 1;
-		} else {
-			result_set->stats.indicies_deleted += 1;
-		}
-	} else if(result_set->stats.indicies_deleted == NOT_SET) {
-		result_set->stats.indicies_deleted = 0;
-	}
+	ResultSet_IndexDeleted(result_set, res);
 	return res;
 }
 

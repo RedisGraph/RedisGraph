@@ -31,7 +31,8 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *n) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_NODE_BY_LABEL_SCAN, "Node By Label Scan", NodeByLabelScanInit,
-				NodeByLabelScanConsume, NodeByLabelScanReset, NodeByLabelScanToString, NodeByLabelScanFree, plan);
+				NodeByLabelScanConsume, NodeByLabelScanReset, NodeByLabelScanToString, NodeByLabelScanFree, plan,
+				false);
 
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 
