@@ -56,12 +56,12 @@ int IsNodePredicate(const FT_FilterNode *node) {
 	return node->t == FT_N_PRED;
 }
 
-FT_FilterNode *AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child) {
+FT_FilterNode *FilterTree_AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child) {
 	root->cond.left = child;
 	return root->cond.left;
 }
 
-FT_FilterNode *AppendRightChild(FT_FilterNode *root, FT_FilterNode *child) {
+FT_FilterNode *FilterTree_AppendRightChild(FT_FilterNode *root, FT_FilterNode *child) {
 	root->cond.right = child;
 	return root->cond.right;
 }
@@ -334,6 +334,33 @@ void _FilterTree_ApplyNegate(FT_FilterNode **root, uint negate_count) {
 	}
 }
 
+bool FilterTree_Valid(const FT_FilterNode *root) {
+	// An empty tree is has a valid structure.
+	if(!root) return true;
+
+	switch(root->t) {
+	case FT_N_EXP:
+		// No need to validate expression.
+		return true;
+		break;
+	case FT_N_PRED:
+		// Empty or semi empty predicate, invalid structure.
+		if((!root->pred.lhs || !root->pred.rhs)) return false;
+		break;
+	case FT_N_COND:
+		// Empty condition, invalid structure.
+		// OR, AND should utilize both left and right children
+		// NOT utilize only the left child.
+		if(!root->cond.left && !root->cond.right) return false;
+		if(!FilterTree_Valid(root->cond.left)) return false;
+		if(!FilterTree_Valid(root->cond.right)) return false;
+		break;
+	default:
+		assert("Unknown filter tree node" && false);
+	}
+	return true;
+}
+
 void _FilterTree_DeMorgan(FT_FilterNode **root, uint negate_count) {
 	/* Search for NOT nodes and reduce using DeMorgan. */
 	if(*root == NULL || (*root)->t == FT_N_PRED || (*root)->t == FT_N_EXP) return;
@@ -417,4 +444,3 @@ void FilterTree_Free(FT_FilterNode *root) {
 
 	free(root);
 }
-
