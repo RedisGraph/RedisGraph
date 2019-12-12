@@ -73,7 +73,6 @@ Feature: OrderByAcceptance
             | -5   |
         And no side effects
 
-    @skip
     Scenario: ORDER BY of a column introduced in RETURN should return salient results in ascending order
         When executing query:
             """

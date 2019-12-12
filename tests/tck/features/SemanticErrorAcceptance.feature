@@ -352,7 +352,6 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidAggregation
 
-@skip
   Scenario: Failing when using non-constants in SKIP
     When executing query:
       """
@@ -372,7 +371,6 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: NegativeIntegerArgument
 
-@skip
   Scenario: Failing when using non-constants in LIMIT
     When executing query:
       """

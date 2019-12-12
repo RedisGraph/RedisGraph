@@ -104,7 +104,6 @@ Feature: TypeConversionFunctions
       | 1.0     |
 
 
-@skip
   Scenario: `toInteger()`
     Given an empty graph
     And having executed:
@@ -123,7 +122,6 @@ Feature: TypeConversionFunctions
       | 42   |
     And no side effects
 
-@skip
   Scenario: `toInteger()` on float
     Given any graph
     When executing query:
@@ -188,7 +186,6 @@ Feature: TypeConversionFunctions
       | [2, 2, null] |
     And no side effects
 
-@skip
   Scenario: `toInteger()` on a complex-typed expression
     Given any graph
     And parameters are:
@@ -426,7 +423,6 @@ Feature: TypeConversionFunctions
       | r       |
       | p       |
 
-@skip
   Scenario: `toString()` should accept potentially correct types 1
     Given any graph
     When executing query:
@@ -441,7 +437,6 @@ Feature: TypeConversionFunctions
       | 'x'      |
     And no side effects
 
-@skip
   Scenario: `toString()` should accept potentially correct types 2
     Given any graph
     When executing query:

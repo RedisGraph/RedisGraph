@@ -820,7 +820,6 @@ Feature: ListOperations
             | 'Apa' |
         And no side effects
 
-    @skip
     Scenario: Use list lookup based on parameters when there is rhs type information
         Given any graph
         And parameters are:
