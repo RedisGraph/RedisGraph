@@ -314,10 +314,16 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				 * try to locate and remove it, there's no real harm except some performace hit
 				 * in keeping that label matrix. */
 				if(exp->operands[0].diagonal) AlgebraicExpression_RemoveTerm(exp, 0, NULL);
-				tail = NewNodeByLabelScanOp(plan, src);
+				root = tail = NewNodeByLabelScanOp(plan, src);
 			} else {
-				tail = NewAllNodeScanOp(plan, gc->g, src);
+				root = tail = NewAllNodeScanOp(plan, gc->g, src);
 			}
+
+			/* The expression has been fully converted - the QueryGraph had edges, but we don't
+			 * need to build traversals. This can occur in cases like:
+			 * MATCH (a)-[*0]->(c) RETURN c
+			 * We can just mark the destination alias as referring to the same entity as the source. */
+			if(exp->operand_count == 0) OpBase_AliasModifier(root, exp->src, exp->dest);
 
 			/* For each expression, build the appropriate traversal operation. */
 			for(int j = 0; j < expCount; j++) {
@@ -709,8 +715,8 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 	// Because 't' is set using the offsetof() call, it cannot be used in switch statements.
 	if(t == CYPHER_AST_MATCH) {
 		// Only add at most one set of traversals per plan. TODO Revisit and improve this logic.
-		if(ExecutionPlan_LocateFirstOp(plan->root, OPType_NODE_BY_LABEL_SCAN) ||
-		   ExecutionPlan_LocateFirstOp(plan->root, OPType_ALL_NODE_SCAN)) {
+		if(plan->root && (ExecutionPlan_LocateFirstOp(plan->root, OPType_NODE_BY_LABEL_SCAN) ||
+						  ExecutionPlan_LocateFirstOp(plan->root, OPType_ALL_NODE_SCAN))) {
 			return;
 		}
 		_ExecutionPlan_ProcessQueryGraph(plan, plan->query_graph, ast, plan->filter_tree);
