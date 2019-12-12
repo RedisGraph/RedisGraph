@@ -47,6 +47,7 @@ Feature: NullAcceptance
       | false             | true             |
     And no side effects
 
+@skip
   Scenario: Property existence check on optional non-null node
     Given an empty graph
     And having executed:
