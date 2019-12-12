@@ -574,7 +574,10 @@ static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *
 	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
 	AST *rhs_ast = AST_MockMatchPattern(ast, path);
 
+	// Populate sub-ExecutionPlan.
 	_PopulateExecutionPlan(rhs_plan, NULL);
+	// Add filter ops to sub-ExecutionPlan.
+	if(rhs_plan->filter_tree) _ExecutionPlan_PlaceFilterOps(rhs_plan);
 
 	AST_MockFree(rhs_ast);
 	QueryCtx_SetAST(ast); // Reset the AST.
@@ -769,8 +772,6 @@ static void _PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
 		_ExecutionPlanSegment_ConvertClause(gc, ast, plan, stats, clause);
 	}
-
-	if(plan->filter_tree) _ExecutionPlan_PlaceFilterOps(plan);
 }
 
 ExecutionPlan *ExecutionPlan_UnionPlans(ResultSet *result_set, AST *ast) {
@@ -919,6 +920,9 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 
 	QueryCtx_SetAST(ast); // AST segments have been freed, set master AST in QueryCtx.
 
+	// Place filter ops required by first ExecutionPlan segment.
+	if(segments[0]->filter_tree) _ExecutionPlan_PlaceFilterOps(segments[0]);
+
 	OpBase *connecting_op = NULL;
 	// Merge segments.
 	for(int i = 1; i < segment_count; i++) {
@@ -931,6 +935,9 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 		assert(connecting_op->childCount == 0);
 
 		ExecutionPlan_AddOp(connecting_op, prev_root);
+
+		// Place filter ops required by current segment.
+		if(current_segment->filter_tree) _ExecutionPlan_PlaceFilterOps(current_segment);
 	}
 
 	array_free(segment_indices);
