@@ -158,3 +158,15 @@ def step_impl(context):
     global exception
     assert exception != None
     assert "Can't use aggregate functions inside of aggregate functions" in exception.message
+
+@then(u'a SyntaxError should be raised at compile time: UnknownFunction')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Unknown function" in exception.message
+
+@then(u'a SyntaxError should be raised at compile time: NonConstantExpression')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "invalid type" in exception.message
