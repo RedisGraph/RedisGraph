@@ -1,6 +1,7 @@
 #include "ast_build_filter_tree.h"
 #include "ast_shared.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "ast_build_ar_exp.h"
 
 // Forward declaration
@@ -23,18 +24,18 @@ void _FT_Append(FT_FilterNode **root_ptr, FT_FilterNode *child) {
 
 	if(root->t == FT_N_COND) {
 		if(root->cond.left == NULL) {
-			AppendLeftChild(root, child);
+			FilterTree_AppendLeftChild(root, child);
 			return;
 		}
 		if(root->cond.right == NULL) {
-			AppendRightChild(root, child);
+			FilterTree_AppendRightChild(root, child);
 			return;
 		}
 	}
 
 	FT_FilterNode *new_root = FilterTree_CreateConditionFilter(OP_AND);
-	AppendLeftChild(new_root, root);
-	AppendRightChild(new_root, child);
+	FilterTree_AppendLeftChild(new_root, root);
+	FilterTree_AppendRightChild(new_root, child);
 	*root_ptr = new_root;
 }
 
@@ -45,13 +46,13 @@ FT_FilterNode *_CreateFilterSubtree(AST_Operator op, const cypher_astnode_t *lhs
 	case OP_OR:
 	case OP_AND:
 		filter = FilterTree_CreateConditionFilter(op);
-		AppendLeftChild(filter, _FilterNode_FromAST(lhs));
-		AppendRightChild(filter, _FilterNode_FromAST(rhs));
+		FilterTree_AppendLeftChild(filter, _FilterNode_FromAST(lhs));
+		FilterTree_AppendRightChild(filter, _FilterNode_FromAST(rhs));
 		return filter;
 	case OP_NOT:
 		filter = FilterTree_CreateConditionFilter(op);
-		AppendLeftChild(filter, _FilterNode_FromAST(lhs));
-		AppendRightChild(filter, NULL);
+		FilterTree_AppendLeftChild(filter, _FilterNode_FromAST(lhs));
+		FilterTree_AppendRightChild(filter, NULL);
 		return filter;
 	case OP_EQUAL:
 	case OP_NEQUAL:
@@ -61,7 +62,12 @@ FT_FilterNode *_CreateFilterSubtree(AST_Operator op, const cypher_astnode_t *lhs
 	case OP_GE:
 		return _CreatePredicateFilterNode(op, lhs, rhs);
 	default:
-		assert("attempted to convert unhandled type into filter" && false);
+		/* Probably an invalid query
+		 * e.g. MATCH (u) where u.v NOT NULL RETURN u
+		 * this will cause the constructed tree to form an illegal structure
+		 * which will be caught later on by `FilterTree_Valid`
+		 * and set a compile-time error. */
+		return NULL;
 	}
 }
 
@@ -152,8 +158,8 @@ static FT_FilterNode *_convertComparison(const cypher_astnode_t *comparison_node
 		FT_FilterNode *b = array_pop(filters);
 		FT_FilterNode *intersec = FilterTree_CreateConditionFilter(OP_AND);
 
-		AppendLeftChild(intersec, a);
-		AppendRightChild(intersec, b);
+		FilterTree_AppendLeftChild(intersec, a);
+		FilterTree_AppendRightChild(intersec, b);
 
 		filters = array_append(filters, intersec);
 	}
@@ -217,7 +223,11 @@ FT_FilterNode *_FilterNode_FromAST(const cypher_astnode_t *expr) {
 	} else if(type == CYPHER_AST_INTEGER) {
 		return _convertIntegerOperator(expr);
 	} else {
-		assert(false);
+		/* Probably an invalid query
+		 * e.g. MATCH (u) where u.v NOT NULL RETURN u
+		 * this will cause the constructed tree to form an illegal structure
+		 * which will be caught later on by `FilterTree_Valid`
+		 * and set a compile-time error. */
 		return NULL;
 	}
 }
@@ -289,9 +299,18 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 		array_free(call_clauses);
 	}
 
+	if(!FilterTree_Valid(filter_tree)) {
+		// Invalid filter tree structure, set a compile-time error.
+		char *error;
+		asprintf(&error, "Invalid filter statement.");
+		QueryCtx_SetError(error);
+
+		FilterTree_Free(filter_tree);
+		return NULL;
+	}
+
 	// Apply De Morgan's laws
 	FilterTree_DeMorgan(&filter_tree);
 
 	return filter_tree;
 }
-
