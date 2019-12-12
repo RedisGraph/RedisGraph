@@ -307,6 +307,7 @@ Feature: MatchAcceptance2
       | ({name: 'e'}) |
     And no side effects
 
+@skip
   Scenario: MATCH with OPTIONAL MATCH in longer pattern
     Given an empty graph
     And having executed:
@@ -407,7 +408,6 @@ Feature: MatchAcceptance2
       | [[:X], [:Y]] |
     And no side effects
 
-@crash
 @skip
   Scenario: Excluding connected nodes
     Given an empty graph
@@ -929,6 +929,7 @@ Feature: MatchAcceptance2
       | [[:T]] |
     And no side effects
 
+@skip
   Scenario: Matching from null nodes should return no results owing to finding no matches
     Given an empty graph
     When executing query:
@@ -942,6 +943,7 @@ Feature: MatchAcceptance2
       | b |
     And no side effects
 
+@skip
   Scenario: Matching from null nodes should return no results owing to matches being filtered out
     Given an empty graph
     And having executed:
