@@ -327,6 +327,8 @@ Feature: FunctionsAcceptance
             | -1         |
             | 1.1        |
 
+    # Fails in create query
+    @crash
     @skip
     Scenario: `percentileDisc()` failing in more involved query
         Given an empty graph
