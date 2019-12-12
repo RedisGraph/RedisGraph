@@ -390,8 +390,6 @@ Feature: MatchAcceptance
       | <(:A {name: 'A'})-[:KNOWS]->(:B {name: 'B'})-[:KNOWS]->(:C {name: 'C'})> |
     And no side effects
 
-@crash
-@skip
   Scenario: Do not return anything because path length does not match
     Given an empty graph
     And having executed:
@@ -408,8 +406,6 @@ Feature: MatchAcceptance
       | x |
     And no side effects
 
-@crash
-@skip
   Scenario: Pass the path length test
     Given an empty graph
     And having executed:

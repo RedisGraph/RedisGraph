@@ -21,7 +21,7 @@ static void _annotate_relevant_projected_named_path_identifier(AST *ast,
 	AnnotationCtx *named_paths_ctx = AST_AnnotationCtxCollection_GetNamedPathsCtx(
 										 ast->anot_ctx_collection);
 
-	for(uint clause_iter = scope_start; clause_iter < scope_end; clause_iter++) {
+	for(uint clause_iter = scope_start; clause_iter <= scope_end; clause_iter++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, clause_iter);
 		const cypher_astnode_type_t clause_type = cypher_astnode_type(clause);
 		// Match.
@@ -130,6 +130,14 @@ static void _annotate_return_clause_projected_named_path(AST *ast,
 	raxFreeWithCallback(identifier_map, array_free);
 }
 
+static void _annotate_match_clause_projected_named_path(AST *ast,
+														const cypher_astnode_t *match_clause, uint scope_start, uint scope_end) {
+	rax *identifier_map = raxNew();
+	_collect_projected_identifier(match_clause, identifier_map);
+	_annotate_relevant_projected_named_path_identifier(ast, identifier_map, scope_start, scope_end);
+	raxFreeWithCallback(identifier_map, array_free);
+}
+
 static void _annotate_projected_named_path(AST *ast) {
 	// TODO: find a better approach for PATH annotation.
 	uint scope_end;
@@ -156,6 +164,11 @@ static void _annotate_projected_named_path(AST *ast) {
 			scope_end = i;
 			const cypher_astnode_t *unwind_clause = cypher_ast_query_get_clause(ast->root, i);
 			_annotate_unwind_clause_projected_named_path(ast, unwind_clause, scope_start, scope_end);
+			// Do not update scopre start!
+		} else if(cypher_astnode_type(child) == CYPHER_AST_MATCH) {
+			scope_end = i;
+			const cypher_astnode_t *match_clause = cypher_ast_query_get_clause(ast->root, i);
+			_annotate_match_clause_projected_named_path(ast, match_clause, scope_start, scope_end);
 			// Do not update scopre start!
 		}
 	}
