@@ -138,6 +138,7 @@ Feature: OptionalMatchAcceptance
       | null |
     And no side effects
 
+@skip
   Scenario: OPTIONAL MATCH and bound nodes
     When executing query:
       """
@@ -184,6 +185,7 @@ Feature: OptionalMatchAcceptance
       | null |
     And no side effects
 
+@skip
   Scenario: Variable length optional relationships
     When executing query:
       """
@@ -241,6 +243,7 @@ Feature: OptionalMatchAcceptance
       | null |
     And no side effects
 
+@skip
   Scenario: Variable length optional relationships with bound nodes
     When executing query:
       """
@@ -266,6 +269,7 @@ Feature: OptionalMatchAcceptance
       | null |
     And no side effects
 
+@skip
   Scenario: Longer pattern with bound nodes
     When executing query:
       """

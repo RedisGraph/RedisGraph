@@ -274,10 +274,16 @@ unsigned long long Record_Hash64(const Record r) {
 			break;
 
 		case REC_TYPE_UNKNOWN:
-			assert(false);
-
+			/* Record hash should be able to handle hasing of records with missing entries.
+			 * consider: UNWIND [42] AS X WITH X WHERE X > 32 WITH DISTINCT X MERGE (a {v: Z}) RETURN a
+			 * The distinct operation is aware of both `X` and `a` as a result
+			 * when distinct perform record hashing to will access both record entries:
+			 * `X` and `a` at which point `a` is not set. */
+			data = &"REC_TYPE_UNKNOWN";
+			len = strlen("REC_TYPE_UNKNOWN");
+			break;
 		default:
-			assert(false);
+			assert("Unhandled record type" && false);
 		}
 
 		res = XXH64_update(&state, data, len);
