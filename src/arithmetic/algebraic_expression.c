@@ -147,16 +147,16 @@ static void _AlgebraicExpression_ReverseOperandOrder(AlgebraicExpression *exp) {
 	}
 }
 
-// Debug function which prints given algebraic expression.
-void _AlgebraicExpression_Print(const AlgebraicExpression *ae) {
-	printf("src: %s \n", ae->src);
-	for(int i = 0; i < ae->operand_count; i++) {
-		printf("\tdiagonal: %d ", ae->operands[i].diagonal);
-		printf("\ttranspose: %d ", ae->operands[i].transpose);
-		printf("\tfree: %d \n", ae->operands[i].free);
-	}
-	printf("dest: %s\n", ae->dest);
-}
+// // Debug function which prints given algebraic expression.
+// void _AlgebraicExpression_Print(const AlgebraicExpression *ae) {
+// 	printf("src: %s \n", ae->src);
+// 	for(int i = 0; i < ae->operand_count; i++) {
+// 		printf("\tdiagonal: %d ", ae->operands[i].diagonal);
+// 		printf("\ttranspose: %d ", ae->operands[i].transpose);
+// 		printf("\tfree: %d \n", ae->operands[i].free);
+// 	}
+// 	printf("dest: %s\n", ae->dest);
+// }
 
 void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp,
 									bool freeOp, bool diagonal) {
@@ -317,123 +317,129 @@ static AlgebraicExpression **_AlgebraicExpression_Intermediate_Expressions(Algeb
 	return expressions;
 }
 
-static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromNode(QGNode *n) {
-	AlgebraicExpressionOperand op;
-	op.free = false;
-	op.diagonal = true;
-	op.transpose = false;
+static AlgebraicExpressionNode *_AlgebraicExpression_OperandFromNode
+(
+	QGNode *n
+) {
+	GrB_Matrix mat;
+	bool free = false;
+	bool diagonal = true;
+	bool transpose = false;
 	Graph *g = QueryCtx_GetGraph();
-	if(n->labelID == GRAPH_UNKNOWN_LABEL) {
-		op.operand = Graph_GetZeroMatrix(g);
-	} else {
-		op.operand = Graph_GetLabelMatrix(g, n->labelID);
-	}
-	return op;
+
+	if(n->labelID == GRAPH_UNKNOWN_LABEL) mat = Graph_GetZeroMatrix(g);
+	else mat = Graph_GetLabelMatrix(g, n->labelID);
+
+	return AlgebraicExpressionNode_NewOperandNode(mat, free, diagonal, n->alias, n->alias, NULL);
 }
 
-static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge(
+static AlgebraicExpressionNode *_AlgebraicExpression_OperandFromEdge(
 	QGEdge *e,
 	bool transpose
 ) {
-	Graph *g = QueryCtx_GetGraph();
-	AlgebraicExpressionOperand op;
-	bool freeMatrix = false;
 	GrB_Matrix mat;
+	uint reltype_id;
+	Graph *g = QueryCtx_GetGraph();
+	AlgebraicExpressionNode *add;
+	AlgebraicExpressionNode *root = NULL;
 
 	uint reltype_count = array_len(e->reltypeIDs);
-	if(reltype_count == 0) {
-		// No relationship types specified; use the full adjacency matrix
+	switch(reltype_count) {
+	case 0: // No relationship types specified; use the full adjacency matrix
 		mat = Graph_GetAdjacencyMatrix(g);
-	} else if(reltype_count == 1) {
-		// One relationship type
-		uint reltype_id = e->reltypeIDs[0];
-		if(reltype_id == GRAPH_UNKNOWN_RELATION) {
-			mat = Graph_GetZeroMatrix(g);
-		} else {
-			mat = Graph_GetRelationMatrix(g, e->reltypeIDs[0]);
-		}
-	} else {
-		// [:A|:B]
-		// Create matrix M = A+B.
-		freeMatrix = true; // A temporary matrix is being built, and must later be freed.
-
-		GrB_Matrix m;
-		GrB_Matrix_new(&m, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
-
+		root = AlgebraicExpressionNode_NewOperandNode(mat, false, false, e->src->alias, e->dest->alias,
+													  e->alias);
+		break;
+	case 1: // One relationship type
+		reltype_id = e->reltypeIDs[0];
+		if(reltype_id == GRAPH_UNKNOWN_RELATION) mat = Graph_GetZeroMatrix(g);
+		else mat = Graph_GetRelationMatrix(g, e->reltypeIDs[0]);
+		root = AlgebraicExpressionNode_NewOperandNode(mat, false, false, e->src->alias, e->dest->alias,
+													  e->alias);
+		break;
+	default: // Multiple edge type: -[:A|:B]->
+		add = AlgebraicExpressionNode_NewOperationNode(AL_EXP_ADD);
 		for(uint i = 0; i < reltype_count; i++) {
-			GrB_Matrix l;
 			uint reltype_id = e->reltypeIDs[i];
-			if(reltype_id == GRAPH_UNKNOWN_RELATION) {
-				// No matrix to add
-				continue;
-			}
-			l = Graph_GetRelationMatrix(g, reltype_id);
-			GrB_Info info = GrB_eWiseAdd_Matrix_Semiring(m, NULL, NULL, GxB_LAND_LOR_BOOL, m, l, NULL);
+			// No matrix to add
+			if(reltype_id == GRAPH_UNKNOWN_RELATION) mat = Graph_GetZeroMatrix(g);
+			else mat = Graph_GetRelationMatrix(g, reltype_id);
+			AlgebraicExpressionNode *operand = AlgebraicExpressionNode_NewOperandNode(mat, false, false,
+																					  e->src->alias, e->dest->alias, e->alias);
+			AlgebraicExpressionNode_AddChild(add, operand);
 		}
-		mat = m;
+		root = add;
+		break;
 	}
 
-	op.operand = mat;
-	op.diagonal = false;
-	op.free = freeMatrix;
-	op.transpose = transpose;
-	return op;
+	/* Expand fixed variable length edge.
+	 * -[A*2..2]->
+	 * A*A
+	 * -[A|B*2..2]->
+	 * (A+B) * (A+B) */
+	if(!QGEdge_VariableLength(e) && e->minHops > 1) {
+		AlgebraicExpressionNode *mul = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+		for(int i = 0; i < e->minHops; i++) AlgebraicExpressionNode_AddChild(mul, root);
+		root = mul;
+	}
+
+	if(transpose) {
+		AlgebraicExpressionNode *op_transpose = AlgebraicExpressionNode_NewOperationNode(AL_EXP_TRANSPOSE);
+		AlgebraicExpressionNode_AddChild(op_transpose, root);
+		root = op_transpose;
+	}
+
+	// If src node has a label, multiply by label matrix.
+	if(e->src->label) {
+		AlgebraicExpressionNode *mul = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+		AlgebraicExpressionNode_AddChild(mul, _AlgebraicExpression_OperandFromNode(e->src));
+		AlgebraicExpressionNode_AddChild(mul, root);
+		root = mul;
+	}
+
+	return root;
 }
 
 AlgebraicExpression *AlgebraicExpression_Empty(void) {
 	return _AE_MUL(1);
 }
 
-/* In case edge a and b share a node:
- * (a)-[E0]->(b)<-[e1]-(c)
+/* In case edges `a` and `b` share a node:
+ * (a)-[E0]->(b)<-[E1]-(c)
  * than the shared entity is returned
  * if edges are disjoint, NULL is returned. */
-static QGNode *_SharedNode(const QGEdge *a, const QGEdge *b) {
+static QGNode *_SharedNode
+(
+	const QGEdge *a,
+	const QGEdge *b
+) {
 	assert(a && b);
-	if(a->dest == b->src) return a->dest;
-	if(a->src == b->dest) return a->src;
-	if(a->src == b->src) return a->src;
-	if(a->dest == b->dest) return a->dest;
+	if(a->dest == b->src) return a->dest;   // (a)-[E0]->(b)-[E1]->(c)
+	if(a->src == b->dest) return a->src;    // (a)<-[E0]-(b)<-[E1]-(c)
+	if(a->src == b->src) return a->src;     // (a)<-[E0]-(b)-[E1]->(c)
+	if(a->dest == b->dest) return a->dest;  // (a)-[E0]->(b)<-[E1]-(c)
 	return NULL;
 }
 
-static bool _shouldReversePath(QGEdge **path, uint path_len, bool *to_transpose) {
-	if(path_len <= 1) {
-		to_transpose[0] = false;
-		return false;
-	}
-
-	uint transposeCount = 0;
-	// For every edge except the last:
-	for(uint i = 0; i < path_len - 1; i++) {
-		to_transpose[i] = false;
-		QGEdge *e = path[i];
-		QGEdge *follow = path[i + 1];
-		QGNode *shared = _SharedNode(e, follow);
-		// The edge should be transposed if its destination is not shared.
-		if(e->dest != shared) {
-			to_transpose[i] = true;
-			transposeCount++;
-		}
-	}
-	// For the last edge, transpose if its source is not shared.
-	QGEdge *e = path[path_len - 1];
-	QGNode *shared = _SharedNode(path[path_len - 2], e);
-	if(e->src != shared) {
-		transposeCount++;
-		to_transpose[path_len - 1] = true;
-	} else {
-		to_transpose[path_len - 1] = false;
-	}
-	return transposeCount > path_len - transposeCount;
-}
-
-static void _reversePath(QGEdge **path, uint path_len, bool *to_transpose) {
+static void _reversePath
+(
+	QGEdge **path,
+	uint path_len,
+	bool *transpositions
+) {
 	for(uint i = 0; i < path_len; i++) {
-		// A reversed path should have its transpositions flipped
-		to_transpose[i] = !to_transpose[i];
-		if(to_transpose[i]) QGEdge_Reverse(path[i]);
+		/* A reversed path should have its transpositions flipped
+		 * transpose(transpose(A)) = A */
+		transpositions[i] = !transpositions[i];
 	}
+
+	/* Transpose(A*B) = Transpose(B) * Transpose(A)
+	 * (a)<-[A]-(b)<-[B]-(c)-[C]->(d)
+	 * At * Bt * C
+	 * Transpose(At * Bt * C) =
+	 * = Ct * B * A
+	 * (d)-[Ct]->(c)-[B]->(b)-[A]->(a) */
+
 	// Reverse the path array as well as the transposition array
 	for(uint i = 0; i < path_len / 2; i++) {
 		uint opposite = path_len - i - 1;
@@ -441,20 +447,70 @@ static void _reversePath(QGEdge **path, uint path_len, bool *to_transpose) {
 		path[opposite] = path[i];
 		path[i] = tmp;
 
-		bool transpose_tmp = to_transpose[opposite];
-		to_transpose[opposite] = to_transpose[i];
-		to_transpose[i] = transpose_tmp;
+		bool transpose_tmp = transpositions[opposite];
+		transpositions[opposite] = transpositions[i];
+		transpositions[i] = transpose_tmp;
 	}
 }
 
-static AlgebraicExpression *_AlgebraicExpression_FromPath(QGEdge **path, uint path_len) {
+static void _normalizePath
+(
+	QGEdge **path,          // Path to normalize.
+	uint path_len,          // Path length.
+	bool *transpositions    // Specifies which edges need to be transposed.
+) {
+	// Initialize `transpositions` array.
+	for(uint i = 0; i < path_len; i++) transpositions[i] = false;
+
+	// A single leg path.
+	if(path_len <= 1) return;
+
+	uint transposeCount = 0;
+	// For every edge except the last:
+	for(uint i = 0; i < path_len - 1; i++) {
+		QGEdge *e = path[i];
+		QGEdge *follow = path[i + 1];
+		QGNode *shared = _SharedNode(e, follow);
+		assert(shared);
+
+		/* The edge should be transposed if its destination is not shared.
+		 * (dest)<-[e]-(shared)-[follow]->()
+		 * (dest)<-[e]-(shared)<-[follow]-() */
+		if(e->dest != shared) {
+			transpositions[i] = true;
+			transposeCount++;
+		}
+	}
+
+	// For the last edge, transpose if its source is not shared.
+	QGEdge *e = path[path_len - 1];
+	QGNode *shared = _SharedNode(path[path_len - 2], e);
+	if(e->src != shared) {
+		transposeCount++;
+		transpositions[path_len - 1] = true;
+	}
+
+	// Reverse entire path if the majority of edges must be transposed.
+	if(transposeCount > (path_len - transposeCount)) {
+		_reversePath(path, path_len, transpositions);
+	}
+
+	// Apply transpose.
+	for(uint i = 0; i < path_len; i++) {
+		QGEdge *e = path[i];
+		if(transpositions[i]) QGEdge_Reverse(e);
+	}
+}
+
+static AlgebraicExpressionNode *_AlgebraicExpression_FromPath
+(
+	QGEdge **path,
+	uint path_len
+) {
 	assert(path && path_len > 0);
 
 	QGEdge *e = NULL;
-	AlgebraicExpressionOperand op;
-
-	// Construct expression.
-	AlgebraicExpression *exp = _AE_MUL(path_len * 2 - 1);  // (3) Node Edge Node.
+	AlgebraicExpressionNode *root = NULL;
 
 	/* Treating path as a chain
 	 * we're aligning all edges to "point right"
@@ -464,56 +520,52 @@ static AlgebraicExpression *_AlgebraicExpression_FromPath(QGEdge **path, uint pa
 	 * E1 will be transposed:
 	 * (A)-[E0]->(B)-[E1]->(C)-[E2]->(D) */
 
-	bool to_transpose[path_len];
-	// Track which edges must be transposed, and whether the entire path should be reversed.
-	bool reverse_path = _shouldReversePath(path, path_len, to_transpose);
-	// Reverse the path if the majority of edges must be transposed.
-	if(reverse_path) _reversePath(path, path_len, to_transpose);
+	bool transpositions[path_len];
+	_normalizePath(path, path_len, transpositions);
 
+	// Construct expression.
 	for(int i = 0; i < path_len; i++) {
 		e = path[i];
-		// If our path has been reversed, we've already corrected the edges.
-		if(to_transpose[i] && !reverse_path) QGEdge_Reverse(e);
-
-		// If src node has a label, multiply by label matrix.
-		if(e->src->label) {
-			op = _AlgebraicExpression_OperandFromNode(e->src);
-			AlgebraicExpression_AppendOperand(exp, op);
-		}
-
 		// Add Edge matrix.
-		op = _AlgebraicExpression_OperandFromEdge(e, to_transpose[i]);
+		AlgebraicExpressionNode *op = _AlgebraicExpression_OperandFromEdge(e, transpositions[i]);
 
-		/* Expand fixed variable length edge */
-		unsigned int hops = (!QGEdge_VariableLength(e)) ? e->minHops : 1;
-		for(int j = 0; j < hops; j++) {
-			AlgebraicExpression_AppendOperand(exp, op);
+		if(!root) {
+			root = op;
+		} else {
+			// Connect via a multiplication node.
+			AlgebraicExpressionNode *mul = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+			AlgebraicExpressionNode_AddChild(mul, root);
+			AlgebraicExpressionNode_AddChild(mul, op);
+			root = mul;
 		}
 	}   // End of path traversal.
 
 	// If last node on path has a label, multiply by label matrix.
 	if(e->dest->label) {
-		op = _AlgebraicExpression_OperandFromNode(e->dest);
-		AlgebraicExpression_AppendOperand(exp, op);
+		AlgebraicExpressionNode *mul = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+		AlgebraicExpressionNode_AddChild(mul, root);
+		AlgebraicExpressionNode_AddChild(mul, _AlgebraicExpression_OperandFromNode(e->dest));
+		root = mul;
 	}
 
-	// Set expression source and destination nodes.
-	exp->src = path[0]->src->alias;
-	exp->dest = e->dest->alias;
-
-	return exp;
+	return root;
 }
 
-AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, uint *exp_count) {
-	assert(qg);
-	/* Construct algebraic expression(s) from query graph
-	 * trying to take advantage of long multiplications with as few
+AlgebraicExpressionNode **AlgebraicExpression_FromQueryGraph
+(
+	const QueryGraph *qg,   // Query-graph to process
+	uint *exp_count         // Number of algebraic expressions generated.
+) {
+	assert(qg && exp_count);
+
+	/* Construct algebraic expression(s) from query-graph.
+	 * Trying to take advantage of long multiplications with as few
 	 * transpose as possible we'll transform paths crossing the graph
 	 * "diameter", these are guarantee to be the longest, although
 	 * there might be situations in which these are not the most optimal paths
 	 * to explore.
 	 *
-	 * Once a path been transformed it's removed from the graph and the process
+	 * Once a path been transformed it's removed from the query-graph and the process
 	 * repeat itself. */
 
 	/* A graph with no edges implies an empty algebraic expression
@@ -527,20 +579,20 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, u
 
 	bool acyclic = IsAcyclicGraph(qg);
 	QueryGraph *g = QueryGraph_Clone(qg);
-	AlgebraicExpression **exps = array_new(AlgebraicExpression *, 1);
+	AlgebraicExpressionNode **exps = array_new(AlgebraicExpressionNode *, 1);
 
-	// As long as there are nodes to process.
-	while(QueryGraph_NodeCount(g) > 0) {
+	// As long as the query-graph isn't empty.
+	while(QueryGraph_EdgeCount(g) > 0) {
 		// Get leaf nodes at the deepest level.
-		int level;
+		int depth;
 		QGNode *n;
-		if(acyclic) n = LongestPathTree(g, &level); // Graph is a tree.
-		else n = LongestPathGraph(g, &level);       // Graph contains cycles.
+		if(acyclic) n = LongestPathTree(g, &depth); // Graph is a tree.
+		else n = LongestPathGraph(g, &depth);       // Graph contains cycles.
 
 		// Get a path of length level, allow closing a cycle if the graph is not acyclic.
-		QGEdge **path = DFS(n, level, !acyclic);
+		QGEdge **path = DFS(n, depth, !acyclic);
 		uint path_len = array_len(path);
-		assert(path_len == level);
+		assert(path_len == depth);
 
 		/* TODO:
 		 * In case path is a cycle, e.g. (b)-[]->(a)-[]->(b)
@@ -551,24 +603,25 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, u
 		 * Checking if path is a cycle done by testing the start and end node. */
 
 		// Construct expression.
-		AlgebraicExpression *exp = _AlgebraicExpression_FromPath(path, level);
+		AlgebraicExpressionNode *exp = _AlgebraicExpression_FromPath(path, depth);
+		AlgebraicExpression_Print(exp);
 
 		// Split constructed expression into sub expressions.
-		AlgebraicExpression **sub_exps = _AlgebraicExpression_Intermediate_Expressions(exp, path, qg);
-		sub_exps = _AlgebraicExpression_IsolateVariableLenExps(qg, sub_exps);
+		// AlgebraicExpression **sub_exps = _AlgebraicExpression_Intermediate_Expressions(exp, path, qg);
+		// sub_exps = _AlgebraicExpression_IsolateVariableLenExps(qg, sub_exps);
 
 		// Remove path from graph.
 		_RemovePathFromGraph(g, path);
 
 		// Add constructed expression to return value.
-		uint sub_count = array_len(sub_exps);
-		for(uint j = 0; j < sub_count; j++) exps = array_append(exps, sub_exps[j]);
+		// uint sub_count = array_len(sub_exps);
+		// for(uint j = 0; j < sub_count; j++) exps = array_append(exps, sub_exps[j]);
 
 		// Clean up
 		array_free(path);
-		array_free(sub_exps);
-		free(exp->operands);
-		free(exp);
+		// array_free(sub_exps);
+		// free(exp->operands);
+		// free(exp);
 		// TODO memory leak (fails on [a|b] relations?)
 		// AlgebraicExpression_Free(exp);
 
@@ -579,7 +632,7 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph(const QueryGraph *qg, u
 
 	// TODO just return exps?
 	*exp_count = array_len(exps);
-	AlgebraicExpression **res = rm_malloc(sizeof(AlgebraicExpression *) * (*exp_count));
+	AlgebraicExpressionNode **res = rm_malloc(sizeof(AlgebraicExpressionNode *) * (*exp_count));
 	for(size_t i = 0; i < (*exp_count); i++) res[i] = exps[i];
 	array_free(exps);
 
@@ -694,45 +747,95 @@ void AlgebraicExpression_Transpose(AlgebraicExpression *ae) {
 	}
 }
 
-AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperationNode(AL_EXP_OP op) {
+//------------------------------------------------------------------------------
+// AlgebraicExpression Node creation functions.
+//------------------------------------------------------------------------------
+
+AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperationNode
+(
+	AL_EXP_OP op    // Operation to perform.
+) {
 	AlgebraicExpressionNode *node = rm_calloc(1, sizeof(AlgebraicExpressionNode));
 	node->type = AL_OPERATION;
 	node->operation.op = op;
-	node->operation.reusable = false;
-	node->operation.v = NULL;
-	node->operation.l = NULL;
-	node->operation.r = NULL;
+	node->operation.children = array_new(AlgebraicExpressionNode *, 0);
 	return node;
 }
 
-AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperandNode(GrB_Matrix operand) {
+AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperandNode
+(
+	GrB_Matrix mat,     // Matrix.
+	bool free,          // Should operand be free when we're done.
+	bool diagonal,      // Is operand a diagonal matrix?
+	const char *src,    // Operand row domain (src node).
+	const char *dest,   // Operand column domain (destination node).
+	const char *edge    // Operand alias (edge).
+) {
 	AlgebraicExpressionNode *node = rm_calloc(1, sizeof(AlgebraicExpressionNode));
 	node->type = AL_OPERAND;
-	node->operand = operand;
+	node->operand.matrix = mat;
+	node->operand.free = free;
+	node->operand.diagonal = diagonal;
+	node->operand.src = src;
+	node->operand.dest = dest;
+	node->operand.edge = edge;
 	return node;
 }
 
-void AlgebraicExpressionNode_AppendLeftChild(AlgebraicExpressionNode *root,
-											 AlgebraicExpressionNode *child) {
-	assert(root && root->type == AL_OPERATION && root->operation.l == NULL);
-	root->operation.l = child;
+//------------------------------------------------------------------------------
+// AlgebraicExpression attributes.
+//------------------------------------------------------------------------------
+
+const char *AlgebraicExpressionNode_Source
+(
+	AlgebraicExpressionNode *root   // Root of expression.
+) {
+	assert(root);
+	while(root->type == AL_OPERATION) {
+		root = root->operation.children[0];
+	}
+
+	return root->operand.src;
 }
 
-void AlgebraicExpressionNode_AppendRightChild(AlgebraicExpressionNode *root,
-											  AlgebraicExpressionNode *child) {
-	assert(root && root->type == AL_OPERATION && root->operation.r == NULL);
-	root->operation.r = child;
+const char *AlgebraicExpressionNode_Destination
+(
+	AlgebraicExpressionNode *root   // Root of expression.
+) {
+	assert(root);
+	while(root->type == AL_OPERATION) {
+		uint child_count = array_len(root->operation.children);
+		root = root->operation.children[child_count - 1];
+	}
+
+	return root->operand.dest;
+}
+
+//------------------------------------------------------------------------------
+// AlgebraicExpression modification functions.
+//------------------------------------------------------------------------------
+
+void AlgebraicExpressionNode_AddChild
+(
+	AlgebraicExpressionNode *root,  // Root to attach child to.
+	AlgebraicExpressionNode *child  // Child node to attach.
+) {
+	assert(root && root->type == AL_OPERATION);
+	root->operation.children = array_append(root->operation.children, child);
 }
 
 // restructure tree
-//              (*)
-//      (*)               (+)
-// (a)       (b)    (e0)       (e1)
+// A * (B + C) =
+// = (A * B) + (A * C)
+//
+//           (*)
+//   (A)             (+)
+//            (B)          (C)
 
 // To
 //               (+)
 //       (*)                (*)
-// (ab)       (e0)    (ab)       (e1)
+// (A)        (B)     (A)        (C)
 
 // Whenever we encounter a multiplication operation
 // where one child is an addition operation and the other child
@@ -740,55 +843,112 @@ void AlgebraicExpressionNode_AppendRightChild(AlgebraicExpressionNode *root,
 // operation with an addition operation with two multiplication operations
 // one for each child of the original addition operation, as can be seen above.
 // we'll want to reuse the left handside of the multiplication.
-void AlgebraicExpression_SumOfMul(AlgebraicExpressionNode **root) {
-	if((*root)->type == AL_OPERATION && (*root)->operation.op == AL_EXP_MUL) {
-		AlgebraicExpressionNode *l = (*root)->operation.l;
-		AlgebraicExpressionNode *r = (*root)->operation.r;
+// void AlgebraicExpression_SumOfMul(AlgebraicExpressionNode **root) {
+// 	if((*root)->type == AL_OPERATION && (*root)->operation.op == AL_EXP_MUL) {
+// 		AlgebraicExpressionNode *l = (*root)->operation.l;
+// 		AlgebraicExpressionNode *r = (*root)->operation.r;
 
-		if((l->type == AL_OPERATION && l->operation.op == AL_EXP_ADD &&
-			!(r->type == AL_OPERATION && r->operation.op == AL_EXP_ADD)) ||
-		   (r->type == AL_OPERATION && r->operation.op == AL_EXP_ADD &&
-			!(l->type == AL_OPERATION && l->operation.op == AL_EXP_ADD))) {
+// 		if((l->type == AL_OPERATION && l->operation.op == AL_EXP_ADD &&
+// 			!(r->type == AL_OPERATION && r->operation.op == AL_EXP_ADD)) ||
+// 		   (r->type == AL_OPERATION && r->operation.op == AL_EXP_ADD &&
+// 			!(l->type == AL_OPERATION && l->operation.op == AL_EXP_ADD))) {
 
-			AlgebraicExpressionNode *add = AlgebraicExpressionNode_NewOperationNode(AL_EXP_ADD);
-			AlgebraicExpressionNode *lMul = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
-			AlgebraicExpressionNode *rMul = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+// 			AlgebraicExpressionNode *add = AlgebraicExpressionNode_NewOperationNode(AL_EXP_ADD);
+// 			AlgebraicExpressionNode *lMul = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
+// 			AlgebraicExpressionNode *rMul = AlgebraicExpressionNode_NewOperationNode(AL_EXP_MUL);
 
-			AlgebraicExpressionNode_AppendLeftChild(add, lMul);
-			AlgebraicExpressionNode_AppendRightChild(add, rMul);
+// 			AlgebraicExpressionNode_AppendLeftChild(add, lMul);
+// 			AlgebraicExpressionNode_AppendRightChild(add, rMul);
 
-			if(l->operation.op == AL_EXP_ADD) {
-				// Lefthand side is addition, righthand side is multiplication.
-				AlgebraicExpressionNode_AppendLeftChild(lMul, r);
-				AlgebraicExpressionNode_AppendRightChild(lMul, l->operation.l);
-				AlgebraicExpressionNode_AppendLeftChild(rMul, r);
-				AlgebraicExpressionNode_AppendRightChild(rMul, l->operation.r);
+// 			if(l->operation.op == AL_EXP_ADD) {
+// 				// Lefthand side is addition, righthand side is multiplication.
+// 				AlgebraicExpressionNode_AppendLeftChild(lMul, r);
+// 				AlgebraicExpressionNode_AppendRightChild(lMul, l->operation.l);
+// 				AlgebraicExpressionNode_AppendLeftChild(rMul, r);
+// 				AlgebraicExpressionNode_AppendRightChild(rMul, l->operation.r);
 
-				// Mark r as reusable.
-				if(r->type == AL_OPERATION) r->operation.reusable = true;
-			} else {
-				// Righthand side is addition, lefthand side is multiplication.
-				AlgebraicExpressionNode_AppendLeftChild(lMul, l);
-				AlgebraicExpressionNode_AppendRightChild(lMul, r->operation.l);
-				AlgebraicExpressionNode_AppendLeftChild(rMul, l);
-				AlgebraicExpressionNode_AppendRightChild(rMul, r->operation.r);
+// 				// Mark r as reusable.
+// 				if(r->type == AL_OPERATION) r->operation.reusable = true;
+// 			} else {
+// 				// Righthand side is addition, lefthand side is multiplication.
+// 				AlgebraicExpressionNode_AppendLeftChild(lMul, l);
+// 				AlgebraicExpressionNode_AppendRightChild(lMul, r->operation.l);
+// 				AlgebraicExpressionNode_AppendLeftChild(rMul, l);
+// 				AlgebraicExpressionNode_AppendRightChild(rMul, r->operation.r);
 
-				// Mark r as reusable.
-				if(l->type == AL_OPERATION) l->operation.reusable = true;
+// 				// Mark r as reusable.
+// 				if(l->type == AL_OPERATION) l->operation.reusable = true;
+// 			}
+
+// 			// TODO: free old root.
+// 			*root = add;
+// 			AlgebraicExpression_SumOfMul(root);
+// 		} else {
+// 			AlgebraicExpression_SumOfMul(&l);
+// 			AlgebraicExpression_SumOfMul(&r);
+// 		}
+// 	}
+// }
+
+// Forward declaration.
+void AlgebraicExpression_Eval(const AlgebraicExpressionNode *exp, GrB_Matrix res);
+
+//------------------------------------------------------------------------------
+// AlgebraicExpression debugging utilities.
+//------------------------------------------------------------------------------
+
+static void _AlgebraicExpression_Print
+(
+	const AlgebraicExpressionNode *exp,
+	uint ident
+) {
+	uint child_count = 0;
+	const char *alias = NULL;
+
+	printf("%*s", ident * 4, "");
+	switch(exp->type) {
+	case AL_OPERATION:
+		child_count = array_len(exp->operation.children);
+		switch(exp->operation.op) {
+		case AL_EXP_ADD:
+			printf("+\n");
+			for(uint i = 0; i < child_count; i++) {
+				_AlgebraicExpression_Print(exp->operation.children[i], ident + 1);
 			}
-
-			// TODO: free old root.
-			*root = add;
-			AlgebraicExpression_SumOfMul(root);
-		} else {
-			AlgebraicExpression_SumOfMul(&l);
-			AlgebraicExpression_SumOfMul(&r);
+			break;
+		case AL_EXP_MUL:
+			printf("*\n");
+			for(uint i = 0; i < child_count; i++) {
+				_AlgebraicExpression_Print(exp->operation.children[i], ident + 1);
+			}
+			break;
+		case AL_EXP_TRANSPOSE:
+			printf("Transpose\n");
+			for(uint i = 0; i < child_count; i++) {
+				_AlgebraicExpression_Print(exp->operation.children[i], ident + 1);
+			}
+			break;
+		default:
+			assert("Unknown algebraic expression operation");
+			break;
 		}
+		break;
+	case AL_OPERAND:
+		if(exp->operand.edge) alias = exp->operand.edge;
+		else alias = exp->operand.src;
+		printf("%s\n", alias);
+	default:
+		assert("Unknown algebraic expression node type");
+		break;
 	}
 }
 
-// Forward declaration.
-static GrB_Matrix _AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Matrix res);
+void AlgebraicExpression_Print
+(
+	const AlgebraicExpressionNode *exp  // Root node.
+) {
+	_AlgebraicExpression_Print(exp, 0);
+}
 
 static GrB_Matrix _AlgebraicExpression_Eval_ADD(AlgebraicExpressionNode *exp, GrB_Matrix res) {
 	// Expression already evaluated.
@@ -845,75 +1005,70 @@ static GrB_Matrix _AlgebraicExpression_Eval_ADD(AlgebraicExpressionNode *exp, Gr
 	return res;
 }
 
-static GrB_Matrix _AlgebraicExpression_Eval_MUL(AlgebraicExpressionNode *exp, GrB_Matrix res) {
-	// Expression already evaluated.
-	if(exp->operation.v != NULL) return exp->operation.v;
+// static GrB_Matrix _AlgebraicExpression_Eval_MUL(AlgebraicExpressionNode *exp, GrB_Matrix res) {
+// 	// Expression already evaluated.
+// 	if(exp->operation.v != NULL) return exp->operation.v;
 
-	GrB_Descriptor desc = NULL; // Descriptor used for transposing.
-	AlgebraicExpressionNode *rightHand = exp->operation.r;
-	AlgebraicExpressionNode *leftHand = exp->operation.l;
+// 	GrB_Descriptor desc = NULL; // Descriptor used for transposing.
+// 	AlgebraicExpressionNode *rightHand = exp->operation.r;
+// 	AlgebraicExpressionNode *leftHand = exp->operation.l;
 
-	// Determine if left or right expression needs to be transposed.
-	if(leftHand && leftHand->type == AL_OPERATION && leftHand->operation.op == AL_EXP_TRANSPOSE) {
-		if(!desc) GrB_Descriptor_new(&desc);
-		GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
-	}
+// 	// Determine if left or right expression needs to be transposed.
+// 	if(leftHand && leftHand->type == AL_OPERATION && leftHand->operation.op == AL_EXP_TRANSPOSE) {
+// 		if(!desc) GrB_Descriptor_new(&desc);
+// 		GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
+// 	}
 
-	if(rightHand && rightHand->type == AL_OPERATION && rightHand->operation.op == AL_EXP_TRANSPOSE) {
-		if(!desc) GrB_Descriptor_new(&desc);
-		GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
-	}
+// 	if(rightHand && rightHand->type == AL_OPERATION && rightHand->operation.op == AL_EXP_TRANSPOSE) {
+// 		if(!desc) GrB_Descriptor_new(&desc);
+// 		GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
+// 	}
 
-	// Evaluate right left expressions.
-	GrB_Matrix r = _AlgebraicExpression_Eval(exp->operation.r, res);
-	GrB_Matrix l = _AlgebraicExpression_Eval(exp->operation.l, res);
+// 	// Evaluate right left expressions.
+// 	GrB_Matrix r = _AlgebraicExpression_Eval(exp->operation.r, res);
+// 	GrB_Matrix l = _AlgebraicExpression_Eval(exp->operation.l, res);
 
-	// Perform multiplication.
-	assert(GrB_mxm(res, NULL, NULL, GxB_LAND_LOR_BOOL, l, r, desc) == GrB_SUCCESS);
+// 	// Perform multiplication.
+// 	assert(GrB_mxm(res, NULL, NULL, GxB_LAND_LOR_BOOL, l, r, desc) == GrB_SUCCESS);
 
-	// Store intermidate if expression is marked for reuse.
-	if(exp->operation.reusable) {
-		assert(exp->operation.v == NULL);
-		GrB_Matrix_dup(&exp->operation.v, res);
-	}
+// 	// Store intermidate if expression is marked for reuse.
+// 	if(exp->operation.reusable) {
+// 		assert(exp->operation.v == NULL);
+// 		GrB_Matrix_dup(&exp->operation.v, res);
+// 	}
 
-	if(desc) GrB_Descriptor_free(&desc);
-	return res;
-}
+// 	if(desc) GrB_Descriptor_free(&desc);
+// 	return res;
+// }
 
-static GrB_Matrix _AlgebraicExpression_Eval_TRANSPOSE(AlgebraicExpressionNode *exp,
-													  GrB_Matrix res) {
-	// Transpose is an unary operation which gets delayed.
-	AlgebraicExpressionNode *rightHand = exp->operation.r;
-	AlgebraicExpressionNode *leftHand = exp->operation.l;
+// static GrB_Matrix _AlgebraicExpression_Eval_TRANSPOSE(AlgebraicExpressionNode *exp,
+// 													  GrB_Matrix res) {
+// 	// Transpose is an unary operation which gets delayed.
+// 	AlgebraicExpressionNode *rightHand = exp->operation.r;
+// 	AlgebraicExpressionNode *leftHand = exp->operation.l;
 
-	assert(!(leftHand && rightHand) && (leftHand || rightHand));   // Verify unary.
-	if(leftHand) return _AlgebraicExpression_Eval(leftHand, res);
-	else return _AlgebraicExpression_Eval(rightHand, res);
-}
+// 	assert(!(leftHand && rightHand) && (leftHand || rightHand));   // Verify unary.
+// 	if(leftHand) return _AlgebraicExpression_Eval(leftHand, res);
+// 	else return _AlgebraicExpression_Eval(rightHand, res);
+// }
 
-static GrB_Matrix _AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Matrix res) {
-	if(exp == NULL) return NULL;
-	if(exp->type == AL_OPERAND) return exp->operand;
+void AlgebraicExpression_Eval(const AlgebraicExpressionNode *exp, GrB_Matrix res) {
+	if(exp == NULL) return;
+	if(exp->type == AL_OPERAND) return;
 
 	// Perform operation.
-	switch(exp->operation.op) {
-	case AL_EXP_MUL:
-		return _AlgebraicExpression_Eval_MUL(exp, res);
+	// switch(exp->operation.op) {
+	// case AL_EXP_MUL:
+	// 	return _AlgebraicExpression_Eval_MUL(exp, res);
 
-	case AL_EXP_ADD:
-		return _AlgebraicExpression_Eval_ADD(exp, res);
+	// case AL_EXP_ADD:
+	// 	return _AlgebraicExpression_Eval_ADD(exp, res);
 
-	case AL_EXP_TRANSPOSE:
-		return _AlgebraicExpression_Eval_TRANSPOSE(exp, res);
+	// case AL_EXP_TRANSPOSE:
+	// 	return _AlgebraicExpression_Eval_TRANSPOSE(exp, res);
 
-	default:
-		assert(false);
-	}
-	return res;
+	// default:
+	// 	assert(false);
+	// }
+	// return res;
 }
-
-void AlgebraicExpression_Eval(AlgebraicExpressionNode *exp, GrB_Matrix res) {
-	_AlgebraicExpression_Eval(exp, res);
-}
-

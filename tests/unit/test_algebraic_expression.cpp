@@ -312,8 +312,8 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_ADD) {
 	AlgebraicExpressionNode *exp = AlgebraicExpressionNode_NewOperationNode(AL_EXP_ADD);
 	AlgebraicExpressionNode *a = AlgebraicExpressionNode_NewOperandNode(A);
 	AlgebraicExpressionNode *b = AlgebraicExpressionNode_NewOperandNode(B);
-	AlgebraicExpressionNode_AppendLeftChild(exp, a);
-	AlgebraicExpressionNode_AppendRightChild(exp, b);
+	AlgebraicExpressionNode_AddChild(exp, a);
+	AlgebraicExpressionNode_AddChild(exp, b);
 
 	AlgebraicExpression_SumOfMul(&exp);
 	AlgebraicExpression_Eval(exp, res);

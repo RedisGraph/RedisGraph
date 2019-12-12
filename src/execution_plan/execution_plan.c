@@ -295,7 +295,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 		} else {
 			/* The component has edges, so we'll build a node scan and a chain of traversals. */
 			uint expCount = 0;
-			AlgebraicExpression **exps = AlgebraicExpression_FromQueryGraph(cc, &expCount);
+			AlgebraicExpressionNode **exps = AlgebraicExpression_FromQueryGraph(cc, &expCount);
 
 			// Reorder exps, to the most performant arrangement of evaluation.
 			orderExpressions(qg, exps, expCount, ft, bound_vars);
