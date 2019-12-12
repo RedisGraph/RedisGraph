@@ -117,7 +117,6 @@ Feature: VarLengthAcceptance
     And no side effects
 
 # TODO this doesn't crash when standalone, but does against a single server?
-@crash
 @skip
   Scenario: Fail when asterisk operator is missing
     When executing query:
