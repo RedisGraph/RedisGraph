@@ -420,8 +420,6 @@ Feature: AggregationAcceptance
             | 42  | 42  | {name:1} |
         And no side effects
 
-@crash
-    @skip
     Scenario: Projection during aggregation in WITH before MERGE and after WITH with predicate
         Given an empty graph
         And having executed:
