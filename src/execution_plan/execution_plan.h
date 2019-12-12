@@ -64,7 +64,7 @@ OpBase **ExecutionPlan_LocateOps(OpBase *root, OPType type);
 
 /* Find the earliest operation on the ExecutionPlan at which all
  * references are resolved. */
-OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references);
+OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references_to_resolve);
 
 /* Populate a rax with all aliases that have been resolved by the given operation
  * and its children. These are the bound variables at this point in execution, and

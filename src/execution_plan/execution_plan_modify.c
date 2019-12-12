@@ -1,20 +1,4 @@
 #include "execution_plan.h"
-#include "../util/qsort.h"
-
-// Sort an array and remove duplicate entries.
-static void _uniqueArray(const char **arr) {
-#define MODIFIES_ISLT(a,b) (strcmp((*a),(*b)) > 0)
-	int count = array_len(arr);
-	QSORT(const char *, arr, count, MODIFIES_ISLT);
-	uint unique_idx = 0;
-	for(int i = 0; i < count - 1; i ++) {
-		if(arr[i] != arr[i + 1]) {
-			arr[unique_idx++] = arr[i];
-		}
-	}
-	arr[unique_idx++] = arr[count - 1];
-	array_trimm_len(arr, unique_idx);
-}
 
 /* Checks if parent has given child, if so returns 1
  * otherwise returns 0 */
@@ -68,63 +52,31 @@ void _OpBase_RemoveNode(OpBase *parent, OpBase *child) {
 	child->parent = NULL;
 }
 
-const char **_ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, rax *references) {
-	/* List of entities which had their ID resolved
-	 * at this point of execution, should include all
-	 * previously modified entities (up the execution plan). */
-	const char **seen = array_new(const char *, 0);
+bool _ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, rax *references_to_resolve,
+									 bool subtree_is_dependent) {
+	bool refs_resolved = false;
+	for(int i = 0; i < root->childCount; i++) {
+		/* Recurse to each child to resolve references. The final argument indicates whether references
+		 * have already been resolved - if so, the child cannot be the fully-resolving op. */
+		refs_resolved |= _ExecutionPlan_LocateReferences(root->children[i], op, references_to_resolve,
+														 refs_resolved | subtree_is_dependent);
+		/* Return early if the resolving op has been set. */
+		if(*op) return true;
+	}
 
 	uint modifies_count = array_len(root->modifies);
-	/* Append current op modified entities. */
 	for(uint i = 0; i < modifies_count; i++) {
-		seen = array_append(seen, root->modifies[i]);
-		// printf("%u\n", root->modifies[i]);
+		const char *ref = root->modifies[i];
+		// Attempt to remove the current op's references, marking whether any removal was succesful.
+		refs_resolved |= raxRemove(references_to_resolve, (unsigned char *)ref, strlen(ref), NULL);
 	}
 
-	/* Traverse execution plan, upwards. */
-	for(int i = 0; i < root->childCount; i++) {
-		const char **saw = _ExecutionPlan_LocateReferences(root->children[i], op, references);
+	/* Set the op if all references have been resolved in this subtree.
+	 * If subtree_is_dependent is true, references have been resolved outside of this subtree, and the
+	 * filter op must be placed higher in the tree. */
+	if(!subtree_is_dependent && raxSize(references_to_resolve) == 0) *op = root;
 
-		/* Quick return if op was located. */
-		if(*op) {
-			array_free(saw);
-			return seen;
-		}
-
-		uint saw_count = array_len(saw);
-		/* Append current op modified entities. */
-		for(uint i = 0; i < saw_count; i++) {
-			seen = array_append(seen, saw[i]);
-		}
-		array_free(saw);
-	}
-
-	// Sort the 'seen' array and remove duplicate entries.
-	// This is necessary to properly intersect 'seen' with the 'references' rax.
-	_uniqueArray(seen);
-
-	uint seen_count = array_len(seen);
-
-	/* See if all references have been resolved. */
-	uint match = raxSize(references);
-
-	for(uint i = 0; i < seen_count; i++) {
-		// Too many unmatched references.
-		if(match > (seen_count - i)) break;
-		const char *seen_id = seen[i];
-
-		if(raxFind(references, (unsigned char *)seen_id, strlen(seen_id)) != raxNotFound) {
-			match--;
-			// All references have been resolved.
-			if(match == 0) {
-				*op = root;
-				break;
-			}
-		}
-	}
-
-	// if(!match) *op = root; // TODO might be necessary for post-WITH segments
-	return seen;
+	return refs_resolved;
 }
 
 void _OpBase_RemoveChild(OpBase *parent, OpBase *child) {
@@ -292,10 +244,9 @@ OpBase *ExecutionPlan_LocateLastOp(OpBase *root, OPType type) {
 	return _ExecutionPlan_LocateOp(root, type, RTL);
 }
 
-OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references) {
+OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references_to_resolve) {
 	OpBase *op = NULL;
-	const char **temp = _ExecutionPlan_LocateReferences(root, &op, references);
-	array_free(temp);
+	_ExecutionPlan_LocateReferences(root, &op, references_to_resolve, false);
 	return op;
 }
 
