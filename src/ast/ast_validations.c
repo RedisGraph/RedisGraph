@@ -1098,8 +1098,12 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identi
 		// as the WHERE predicate refers to identifiers (rather than defining them).
 		const cypher_astnode_t *match_pattern = cypher_ast_match_get_pattern(node);
 		_AST_GetIdentifiers(match_pattern, identifiers);
-	} else if(type == CYPHER_AST_MERGE ||
-			  type == CYPHER_AST_UNWIND ||
+	} else if(type == CYPHER_AST_MERGE) {
+		// Only collect the identifiers from the path in the MERGE clause,
+		// as ON CREATE and ON MATCH actions refer to identifiers (rather than defining them).
+		const cypher_astnode_t *merge_path = cypher_ast_merge_get_pattern_path(node);
+		_AST_GetIdentifiers(merge_path, identifiers);
+	} else if(type == CYPHER_AST_UNWIND ||
 			  type == CYPHER_AST_CREATE) {
 		_AST_GetIdentifiers(node, identifiers);
 	} else if(type == CYPHER_AST_CALL) {
@@ -1121,7 +1125,8 @@ static void _AST_GetReferredIdentifiers(const cypher_astnode_t *node, rax *ident
 		_AST_GetIdentifiers(where_clause, identifiers);
 	} else if(type == CYPHER_AST_WITH) {
 		_AST_GetWithReferences(node, identifiers);
-	} else if(type == CYPHER_AST_SET || type == CYPHER_AST_RETURN || type == CYPHER_AST_DELETE) {
+	} else if(type == CYPHER_AST_SET || type == CYPHER_AST_RETURN || type == CYPHER_AST_DELETE ||
+			  type == CYPHER_AST_ON_CREATE || type == CYPHER_AST_ON_MATCH) {
 		_AST_GetIdentifiers(node, identifiers);
 	} else {
 		uint child_count = cypher_astnode_nchildren(node);

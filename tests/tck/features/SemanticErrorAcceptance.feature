@@ -246,8 +246,6 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
-@crash
-@skip
   Scenario: Failing when using undefined variable in ON CREATE
     When executing query:
       """
@@ -256,7 +254,6 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: UndefinedVariable
 
-@skip
   Scenario: Failing when using undefined variable in ON MATCH
     When executing query:
       """
