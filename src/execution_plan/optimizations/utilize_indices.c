@@ -48,12 +48,12 @@ static void _transformInToOrSequence(FT_FilterNode **filter) {
 
 		for(uint i = 1; i < listLen; i ++) {
 			FT_FilterNode *orNode = FilterTree_CreateConditionFilter(OP_OR);
-			AppendLeftChild(orNode, root);
+			FilterTree_AppendLeftChild(orNode, root);
 			val = SIArray_Get(list, i); // Retrieve the next array element.
 			SIValue_Persist(&val);      // Ensure the value doesn't go out of scope.
 			constant = AR_EXP_NewConstOperandNode(val);
 			lhs = AR_EXP_Clone(inOp->op.children[0]);
-			AppendRightChild(orNode, FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, constant));
+			FilterTree_AppendRightChild(orNode, FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, constant));
 			root = orNode;
 		}
 	}
