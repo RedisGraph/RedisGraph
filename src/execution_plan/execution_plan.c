@@ -360,7 +360,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 	}
 }
 
-static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan) {
+static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_limit) {
 	Vector *sub_trees = FilterTree_SubTrees(plan->filter_tree);
 
 	/* For each filter tree find the earliest position along the execution
@@ -374,7 +374,7 @@ static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan) {
 		if(raxSize(references) > 0) {
 			/* Scan execution plan, locate the earliest position where all
 			 * references been resolved. */
-			op = ExecutionPlan_LocateReferences(plan->root, references);
+			op = ExecutionPlan_LocateReferences(plan->root, recurse_limit, references);
 			assert(op);
 		} else {
 			/* The filter tree does not contain references, like:
@@ -577,7 +577,7 @@ static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *
 	// Populate sub-ExecutionPlan.
 	_PopulateExecutionPlan(rhs_plan, NULL);
 	// Add filter ops to sub-ExecutionPlan.
-	if(rhs_plan->filter_tree) _ExecutionPlan_PlaceFilterOps(rhs_plan);
+	if(rhs_plan->filter_tree) _ExecutionPlan_PlaceFilterOps(rhs_plan, NULL);
 
 	AST_MockFree(rhs_ast);
 	QueryCtx_SetAST(ast); // Reset the AST.
@@ -921,9 +921,10 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 	QueryCtx_SetAST(ast); // AST segments have been freed, set master AST in QueryCtx.
 
 	// Place filter ops required by first ExecutionPlan segment.
-	if(segments[0]->filter_tree) _ExecutionPlan_PlaceFilterOps(segments[0]);
+	if(segments[0]->filter_tree) _ExecutionPlan_PlaceFilterOps(segments[0], NULL);
 
 	OpBase *connecting_op = NULL;
+	OpBase *prev_scope_end = NULL;
 	// Merge segments.
 	for(int i = 1; i < segment_count; i++) {
 		ExecutionPlan *prev_segment = segments[i - 1];
@@ -937,7 +938,9 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 		ExecutionPlan_AddOp(connecting_op, prev_root);
 
 		// Place filter ops required by current segment.
-		if(current_segment->filter_tree) _ExecutionPlan_PlaceFilterOps(current_segment);
+		if(current_segment->filter_tree) _ExecutionPlan_PlaceFilterOps(current_segment, prev_scope_end);
+
+		prev_scope_end = prev_root; // Track the previous scope's end so filter placement doesn't overreach.
 	}
 
 	array_free(segment_indices);

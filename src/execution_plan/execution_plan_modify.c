@@ -52,14 +52,16 @@ void _OpBase_RemoveNode(OpBase *parent, OpBase *child) {
 	child->parent = NULL;
 }
 
-bool _ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, rax *references_to_resolve,
-									 bool subtree_is_dependent) {
+bool _ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, const OpBase *recurse_limit,
+									 rax *references_to_resolve, bool subtree_is_dependent) {
+	if(root == recurse_limit) return false; // Don't traverse into earlier ExecutionPlan scopes.
+
 	bool refs_resolved = false;
 	for(int i = 0; i < root->childCount; i++) {
 		/* Recurse to each child to resolve references. The final argument indicates whether references
 		 * have already been resolved - if so, the child cannot be the fully-resolving op. */
-		refs_resolved |= _ExecutionPlan_LocateReferences(root->children[i], op, references_to_resolve,
-														 refs_resolved | subtree_is_dependent);
+		refs_resolved |= _ExecutionPlan_LocateReferences(root->children[i], op, recurse_limit,
+														 references_to_resolve, refs_resolved | subtree_is_dependent);
 		/* Return early if the resolving op has been set. */
 		if(*op) return true;
 	}
@@ -244,9 +246,10 @@ OpBase *ExecutionPlan_LocateLastOp(OpBase *root, OPType type) {
 	return _ExecutionPlan_LocateOp(root, type, RTL);
 }
 
-OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references_to_resolve) {
+OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
+									   rax *references_to_resolve) {
 	OpBase *op = NULL;
-	_ExecutionPlan_LocateReferences(root, &op, references_to_resolve, false);
+	_ExecutionPlan_LocateReferences(root, &op, recurse_limit, references_to_resolve, false);
 	return op;
 }
 

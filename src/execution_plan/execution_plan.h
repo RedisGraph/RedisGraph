@@ -62,9 +62,10 @@ OpBase *ExecutionPlan_LocateLastOp(OpBase *root, OPType type);
  * Returns an array of operations. */
 OpBase **ExecutionPlan_LocateOps(OpBase *root, OPType type);
 
-/* Find the earliest operation on the ExecutionPlan at which all
- * references are resolved. */
-OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references_to_resolve);
+/* Find the earliest operation above the provided recurse_limit, if any,
+ * at which all references are resolved. */
+OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
+									   rax *references_to_resolve);
 
 /* Populate a rax with all aliases that have been resolved by the given operation
  * and its children. These are the bound variables at this point in execution, and
