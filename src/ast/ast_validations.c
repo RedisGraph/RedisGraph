@@ -75,7 +75,8 @@ static void _AST_GetWithAliases(const cypher_astnode_t *node, rax *aliases) {
 			alias = cypher_ast_identifier_get_name(alias_node);
 		} else {
 			const cypher_astnode_t *expr = cypher_ast_projection_get_expression(child);
-			assert(cypher_astnode_type(expr) == CYPHER_AST_IDENTIFIER);
+			// This expression not being an identifier is an error case, but will be captured in a later validation.
+			if(cypher_astnode_type(expr) != CYPHER_AST_IDENTIFIER) continue;
 			// Retrieve "a" from "WITH a"
 			alias = cypher_ast_identifier_get_name(expr);
 		}
@@ -679,6 +680,17 @@ static AST_Validation _Validate_WITH_Clauses(const AST *ast, char **reason) {
 	// An AST segment has at most 1 WITH clause.
 	const cypher_astnode_t *with_clause = AST_GetClause(ast, CYPHER_AST_WITH);
 	if(with_clause == NULL) return AST_VALID;
+
+	// Verify that each WITH projection either is aliased or is itself an identifier.
+	uint projection_count = cypher_ast_with_nprojections(with_clause);
+	for(uint i = 0; i < projection_count; i ++) {
+		const cypher_astnode_t *proj = cypher_ast_with_get_projection(with_clause, i);
+		if(!cypher_ast_projection_get_alias(proj) &&
+		   cypher_astnode_type(cypher_ast_projection_get_expression(proj)) != CYPHER_AST_IDENTIFIER) {
+			asprintf(reason, "WITH clause projections must be aliased");
+			return AST_INVALID;
+		}
+	}
 
 	// Verify that functions invoked by the WITH clause are valid.
 	return _ValidateFunctionCalls(with_clause, reason, true);
