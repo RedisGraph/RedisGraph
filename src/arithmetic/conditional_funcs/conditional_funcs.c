@@ -55,7 +55,7 @@ SIValue AR_CASEWHEN(SIValue *argv, int argc) {
 // Coalesce - return the first value which is not null. Defaults to null.
 SIValue AR_COALESCE(SIValue *argv, int argc) {
 	for(int i = 0; i < argc; i++)
-		if(!SIValue_IsNull(argv[i])) return argv[i];
+		if(!SIValue_IsNull(argv[i])) return SI_CloneValue(argv[i]);
 	return SI_NullVal();
 }
 
