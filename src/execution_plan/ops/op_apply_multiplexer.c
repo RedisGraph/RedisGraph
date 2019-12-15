@@ -19,12 +19,8 @@ static Record _pullFromBranchStream(OpApplyMultiplexer *apply_multiplexer, int b
 	return OpBase_Consume(apply_multiplexer->op.children[branch_index]);
 }
 
-<<<<<<< HEAD
 static Record OpApplyMultiplexer_OrConsume(OpBase *opBase) {
 	OpApplyMultiplexer *op = (OpApplyMultiplexer *)opBase;
-=======
-static Record _OpApplyMultiplexer_OrApplyLogic(OpApplyMultiplexer *op) {
->>>>>>> tests pass after done implementing filter to apply reduction
 	while(true) {
 		// Try to get a record from bound stream.
 		op->r = OpBase_Consume(op->bound_branch);
@@ -47,12 +43,8 @@ static Record _OpApplyMultiplexer_OrApplyLogic(OpApplyMultiplexer *op) {
 	}
 }
 
-<<<<<<< HEAD
 static Record OpApplyMultiplexer_AndConsume(OpBase *opBase) {
 	OpApplyMultiplexer *op = (OpApplyMultiplexer *)opBase;
-=======
-static Record _OpApplyMultiplexer_AndApplyLogic(OpApplyMultiplexer *op) {
->>>>>>> tests pass after done implementing filter to apply reduction
 	while(true) {
 		// Try to get a record from bound stream.
 		op->r = OpBase_Consume(op->bound_branch);
@@ -81,7 +73,6 @@ OpBase *NewApplyMultiplexerOp(ExecutionPlan *plan, AST_Operator boolean_operator
 
 	OpApplyMultiplexer *op = rm_calloc(1, sizeof(OpApplyMultiplexer));
 	op->boolean_operator = boolean_operator;
-<<<<<<< HEAD
 	// Set our Op operations
 	if(boolean_operator == OP_OR) {
 		OpBase_Init((OpBase *)op, OPType_APPLY_MULTIPLEXER, "AND Apply Multiplexer", OpApplyMultiplexerInit,
@@ -102,35 +93,6 @@ static void _OpApplyMultiplexer_SortChildren(OpBase *op) {
 		// Push apply ops to the end.
 		if(child->type & (OPType_APPLY_MULTIPLEXER | OPType_SEMI_APPLY)) {
 			// From current position to the end, search for filter op.
-=======
-	const char *name;
-	if(boolean_operator == OP_OR) {
-		name = "OR Apply Multiplexer";
-		op->apply_func = _OpApplyMultiplexer_OrApplyLogic;
-	} else if(boolean_operator == OP_AND) {
-		name = "OR Apply Multiplexer";
-		op->apply_func = _OpApplyMultiplexer_AndApplyLogic;
-	} else {
-		assert(false);
-	}
-
-	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_APPLY_MULTIPLEXER, name, OpApplyMultiplexerInit,
-				OpApplyMultiplexerConsume, OpApplyMultiplexerReset, NULL, OpApplyMultiplexerFree, false, plan);
-
-	return (OpBase *) op;
-}
-
-Record OpApplyMultiplexerConsume(OpBase *opBase) {
-	OpApplyMultiplexer *op = (OpApplyMultiplexer *) opBase;
-	return op->apply_func(op);
-}
-
-static void _OpApplyMultiplexer_SortChildren(OpBase *op) {
-	for(int i = 1; i < op->childCount; i++) {
-		OpBase *child = op->children[i];
-		if(child->type & (OPType_APPLY_MULTIPLEXER | OPType_SEMI_APPLY)) {
->>>>>>> tests pass after done implementing filter to apply reduction
 			bool swapped = false;
 			for(int j = i + 1; j < op->childCount; j++) {
 				OpBase *candidate = op->children[j];
@@ -139,15 +101,10 @@ static void _OpApplyMultiplexer_SortChildren(OpBase *op) {
 					op->children[i] = candidate;
 					op->children[j] = child;
 					swapped = true;
-<<<<<<< HEAD
 					break;
 				}
 			}
 			// No swapped occurred, everything is sorted.
-=======
-				}
-			}
->>>>>>> tests pass after done implementing filter to apply reduction
 			if(!swapped) return;
 		}
 	}
@@ -156,15 +113,10 @@ static void _OpApplyMultiplexer_SortChildren(OpBase *op) {
 OpResult OpApplyMultiplexerInit(OpBase *opBase) {
 	_OpApplyMultiplexer_SortChildren(opBase);
 	OpApplyMultiplexer *apply_multiplexer = (OpApplyMultiplexer *) opBase;
-<<<<<<< HEAD
 	// Set up bounded branch.
 	apply_multiplexer->bound_branch = opBase->children[0];
 	int childCount = opBase->childCount;
 	// For every child, find its argument op for record injection.
-=======
-	apply_multiplexer->bound_branch = opBase->children[0];
-	int childCount = opBase->childCount;
->>>>>>> tests pass after done implementing filter to apply reduction
 	apply_multiplexer->branches_arguments = array_new(Argument *, childCount - 1);
 	for(int i = 1; i < childCount; i++) {
 		OpBase *child = opBase->children[i];
@@ -186,14 +138,11 @@ OpResult OpApplyMultiplexerReset(OpBase *opBase) {
 void OpApplyMultiplexerFree(OpBase *opBase) {
 	OpApplyMultiplexer *op = (OpApplyMultiplexer *)opBase;
 
-<<<<<<< HEAD
 	if(op->branches_arguments) {
 		array_free(op->branches_arguments);
 		op->branches_arguments = NULL;
 	}
 
-=======
->>>>>>> tests pass after done implementing filter to apply reduction
 	if(op->r) {
 		Record_Free(op->r);
 		op->r = NULL;
