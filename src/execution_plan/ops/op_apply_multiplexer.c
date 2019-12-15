@@ -19,7 +19,8 @@ static Record _pullFromBranchStream(OpApplyMultiplexer *apply_multiplexer, int b
 	return OpBase_Consume(apply_multiplexer->op.children[branch_index]);
 }
 
-static Record _OpApplyMultiplexer_OrApplyLogic(OpApplyMultiplexer *op) {
+static Record OpApplyMultiplexer_OrConsume(OpBase *opBase) {
+	OpApplyMultiplexer *op = (OpApplyMultiplexer *)opBase;
 	while(true) {
 		// Try to get a record from bound stream.
 		op->r = OpBase_Consume(op->bound_branch);
@@ -42,7 +43,8 @@ static Record _OpApplyMultiplexer_OrApplyLogic(OpApplyMultiplexer *op) {
 	}
 }
 
-static Record _OpApplyMultiplexer_AndApplyLogic(OpApplyMultiplexer *op) {
+static Record OpApplyMultiplexer_AndConsume(OpBase *opBase) {
+	OpApplyMultiplexer *op = (OpApplyMultiplexer *)opBase;
 	while(true) {
 		// Try to get a record from bound stream.
 		op->r = OpBase_Consume(op->bound_branch);
@@ -71,33 +73,26 @@ OpBase *NewApplyMultiplexerOp(ExecutionPlan *plan, AST_Operator boolean_operator
 
 	OpApplyMultiplexer *op = rm_calloc(1, sizeof(OpApplyMultiplexer));
 	op->boolean_operator = boolean_operator;
-	const char *name;
+	// Set our Op operations
 	if(boolean_operator == OP_OR) {
-		name = "OR Apply Multiplexer";
-		op->apply_func = _OpApplyMultiplexer_OrApplyLogic;
+		OpBase_Init((OpBase *)op, OPType_APPLY_MULTIPLEXER, "AND Apply Multiplexer", OpApplyMultiplexerInit,
+					OpApplyMultiplexer_OrConsume, OpApplyMultiplexerReset, NULL, OpApplyMultiplexerFree, false, plan);
 	} else if(boolean_operator == OP_AND) {
-		name = "OR Apply Multiplexer";
-		op->apply_func = _OpApplyMultiplexer_AndApplyLogic;
+		OpBase_Init((OpBase *)op, OPType_APPLY_MULTIPLEXER, "OR Apply Multiplexer", OpApplyMultiplexerInit,
+					OpApplyMultiplexer_AndConsume, OpApplyMultiplexerReset, NULL, OpApplyMultiplexerFree, false, plan);
 	} else {
 		assert(false);
 	}
-
-	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_APPLY_MULTIPLEXER, name, OpApplyMultiplexerInit,
-				OpApplyMultiplexerConsume, OpApplyMultiplexerReset, NULL, OpApplyMultiplexerFree, false, plan);
-
 	return (OpBase *) op;
 }
 
-Record OpApplyMultiplexerConsume(OpBase *opBase) {
-	OpApplyMultiplexer *op = (OpApplyMultiplexer *) opBase;
-	return op->apply_func(op);
-}
-
+// Sorts the multiplexer children. Apply operations to the end, filter operations to the start.
 static void _OpApplyMultiplexer_SortChildren(OpBase *op) {
 	for(int i = 1; i < op->childCount; i++) {
 		OpBase *child = op->children[i];
+		// Push apply ops to the end.
 		if(child->type & (OPType_APPLY_MULTIPLEXER | OPType_SEMI_APPLY)) {
+			// From current position to the end, search for filter op.
 			bool swapped = false;
 			for(int j = i + 1; j < op->childCount; j++) {
 				OpBase *candidate = op->children[j];
@@ -106,8 +101,10 @@ static void _OpApplyMultiplexer_SortChildren(OpBase *op) {
 					op->children[i] = candidate;
 					op->children[j] = child;
 					swapped = true;
+					break;
 				}
 			}
+			// No swapped occurred, everything is sorted.
 			if(!swapped) return;
 		}
 	}
@@ -116,8 +113,10 @@ static void _OpApplyMultiplexer_SortChildren(OpBase *op) {
 OpResult OpApplyMultiplexerInit(OpBase *opBase) {
 	_OpApplyMultiplexer_SortChildren(opBase);
 	OpApplyMultiplexer *apply_multiplexer = (OpApplyMultiplexer *) opBase;
+	// Set up bounded branch.
 	apply_multiplexer->bound_branch = opBase->children[0];
 	int childCount = opBase->childCount;
+	// For every child, find its argument op for record injection.
 	apply_multiplexer->branches_arguments = array_new(Argument *, childCount - 1);
 	for(int i = 1; i < childCount; i++) {
 		OpBase *child = opBase->children[i];
@@ -138,6 +137,11 @@ OpResult OpApplyMultiplexerReset(OpBase *opBase) {
 
 void OpApplyMultiplexerFree(OpBase *opBase) {
 	OpApplyMultiplexer *op = (OpApplyMultiplexer *)opBase;
+
+	if(op->branches_arguments) {
+		array_free(op->branches_arguments);
+		op->branches_arguments = NULL;
+	}
 
 	if(op->r) {
 		Record_Free(op->r);
