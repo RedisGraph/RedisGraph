@@ -23,6 +23,7 @@ typedef struct {
 	UnsignedRange *id_range;    /* ID range to iterate over. */
 	GxB_MatrixTupleIter *iter;
 	Record child_record;        /* The Record this op acts on if it is not a tap. */
+	const char *label;          /* The label to look after */
 } NodeByLabelScan;
 
 /* Creates a new NodeByLabelScan operation */

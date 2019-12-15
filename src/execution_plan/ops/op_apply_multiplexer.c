@@ -75,10 +75,10 @@ OpBase *NewApplyMultiplexerOp(ExecutionPlan *plan, AST_Operator boolean_operator
 	op->boolean_operator = boolean_operator;
 	// Set our Op operations
 	if(boolean_operator == OP_OR) {
-		OpBase_Init((OpBase *)op, OPType_APPLY_MULTIPLEXER, "AND Apply Multiplexer", OpApplyMultiplexerInit,
+		OpBase_Init((OpBase *)op, OPType_APPLY_MULTIPLEXER, "OR Apply Multiplexer", OpApplyMultiplexerInit,
 					OpApplyMultiplexer_OrConsume, OpApplyMultiplexerReset, NULL, OpApplyMultiplexerFree, false, plan);
 	} else if(boolean_operator == OP_AND) {
-		OpBase_Init((OpBase *)op, OPType_APPLY_MULTIPLEXER, "OR Apply Multiplexer", OpApplyMultiplexerInit,
+		OpBase_Init((OpBase *)op, OPType_APPLY_MULTIPLEXER, "AND Apply Multiplexer", OpApplyMultiplexerInit,
 					OpApplyMultiplexer_AndConsume, OpApplyMultiplexerReset, NULL, OpApplyMultiplexerFree, false, plan);
 	} else {
 		assert(false);

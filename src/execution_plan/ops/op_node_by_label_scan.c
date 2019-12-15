@@ -26,6 +26,7 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *n) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	op->g = gc->g;
 	op->n = n;
+	op->label = n->label;
 	op->iter = NULL;
 	op->child_record = NULL;
 	// Defaults to [0...UINT64_MAX].

@@ -2,6 +2,7 @@
 #include "ops/ops.h"
 #include "../query_ctx.h"
 #include "../ast/ast_mock.h"
+#include "./optimizations/optimizer.h"
 
 static OpBase *_buildMatchBranch(ExecutionPlan *plan, const cypher_astnode_t *path) {
 	AST *ast = QueryCtx_GetAST();
@@ -34,10 +35,36 @@ static OpBase *_buildMatchBranch(ExecutionPlan *plan, const cypher_astnode_t *pa
 
 	OpBase *branch_match_root = match_branch_plan->root;
 	ExecutionPlan_BindPlanToOps(branch_match_root, plan);
+	OpBase *argument = ExecutionPlan_LocateFirstOp(branch_match_root, OPType_ARGUMENT);
+	if(argument) {
+		if(argument->modifies) {
+			/* Don't lose information when optimizing this branch. The optimizations are lookgin for
+			 * specific operation types and if the result of the operations is achievable by one of its
+			 * decedents, this op is redundant. The argument op "modifies" the execution plan by
+			 * showing the bounded arguments. Given that, once optimized the label scan op is
+			 * so called redundant and will be removed, since its result is achievable by the argument op.
+			 * But this is wrong since the argument op is not modifing anything.
+			 * The next sequence should avoid the removal of the label scan op, and yet optimize the rest
+			 * of the branch. */
+			if(argument->parent->type == OPType_NODE_BY_LABEL_SCAN) {
+				OpBase *parent = argument->parent;
+				// Temporary remove label scan op. Now argument op is the top op.
+				ExecutionPlan_RemoveOp(plan, parent);
+				// Optimize the rest of the plan. Unfortunately, this currently needs to be done in place.
+				optimizePlan(match_branch_plan);
+				// Add back the scan op in its proper place.
+				ExecutionPlan_ReplaceOp(match_branch_plan, argument, parent);
+				ExecutionPlan_AddOp(parent, argument);
+				// Remove modifies from argument op since no modifications are required in this branch.
+				array_free(argument->modifies);
+				argument->modifies = NULL;
+			}
+		}
+	}
+
 	// NULL-set variables shared between the match_branch_plan and the overall plan.
 	match_branch_plan->root = NULL;
 	match_branch_plan->record_map = NULL;
-
 	// Free the temporary plan.
 	ExecutionPlan_Free(match_branch_plan);
 
