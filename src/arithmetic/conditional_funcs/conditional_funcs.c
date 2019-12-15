@@ -55,7 +55,14 @@ SIValue AR_CASEWHEN(SIValue *argv, int argc) {
 // Coalesce - return the first value which is not null. Defaults to null.
 SIValue AR_COALESCE(SIValue *argv, int argc) {
 	for(int i = 0; i < argc; i++)
-		if(!SIValue_IsNull(argv[i])) return SI_CloneValue(argv[i]);
+		if(!SIValue_IsNull(argv[i])) {
+			/* Avoid double free, since the value is propagated and will be free twice:
+			 * 1. Argument array free.
+			 * 2. Record free. */
+			SIValue copy = argv[i];
+			SIValue_MakeVolatile(argv + i);
+			return copy;
+		}
 	return SI_NullVal();
 }
 
