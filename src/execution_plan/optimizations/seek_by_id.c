@@ -106,6 +106,14 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 		EntityID id;
 		bool reverse;
 		if(_idFilter(f, &rel, &id, &reverse)) {
+			/* Don't use this optimization on label scans unless for exact match.
+			 * Issue 818 https://github.com/RedisGraph/RedisGraph/issues/818
+			 * This optimization caused a range query over the entire range of ids in the graph
+			 * regardless to the label. */
+			if(rel != OP_EQUAL && scan_op->type == OPType_NODE_BY_LABEL_SCAN) {
+				parent = parent->parent;
+				continue;
+			}
 			const QGNode *node = NULL;
 			NodeID minId = ID_RANGE_UNBOUND;
 			NodeID maxId = ID_RANGE_UNBOUND;
