@@ -251,7 +251,6 @@ Feature: MergeRelationshipAcceptance
     And the side effects should be:
       | +properties | 1 |
 
-@skip
   Scenario: Using ON CREATE and ON MATCH
     Given an empty graph
     And having executed:

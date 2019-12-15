@@ -88,8 +88,6 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidAggregation
 
-@crash
-@skip
   Scenario: Failing when not aliasing expressions in WITH
     When executing query:
       """
