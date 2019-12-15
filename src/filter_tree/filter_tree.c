@@ -468,8 +468,8 @@ FT_FilterNode *FilterTree_Clone(const FT_FilterNode *root) {
 
 	case FT_N_COND: {
 		new_root = FilterTree_CreateConditionFilter(root->cond.op);
-		if(root->cond.left) AppendLeftChild(new_root, FilterTree_Clone(root->cond.left));
-		if(root->cond.right) AppendLeftChild(new_root, FilterTree_Clone(root->cond.right));
+		if(root->cond.left) FilterTree_AppendLeftChild(new_root, FilterTree_Clone(root->cond.left));
+		if(root->cond.right) FilterTree_AppendRightChild(new_root, FilterTree_Clone(root->cond.right));
 		break;
 	}
 	default:

@@ -35,10 +35,3 @@ typedef struct OpApplyMultiplexer {
 } OpApplyMultiplexer;
 
 OpBase *NewApplyMultiplexerOp(ExecutionPlan *plan, AST_Operator boolean_operator);
-
-/* Sets the main execution plan branch. In case this operation is called from ApplyMultiplexer operation
- * this branch will be an argument operation. */
-void OpApplyMultiplexer_SetExecutionPlanBranch(OpApplyMultiplexer *apply_multiplexer,
-											   OpBase *execution_plan_root);
-
-void OpApplyMultiplexer_AddBranch(OpApplyMultiplexer *apply_multiplexer, OpBase *branch_root);
