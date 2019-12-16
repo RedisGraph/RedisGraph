@@ -143,3 +143,12 @@ class testQueryValidationFlow(FlowTestsBase):
         except redis.exceptions.ResponseError:
             # Expecting an error.
             pass
+
+    def test13_create_bound_variables(self):
+        try:
+            query = """MATCH (a)-[e]->(b) CREATE (a)-[e]->(b)"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass
