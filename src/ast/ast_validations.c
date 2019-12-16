@@ -804,6 +804,11 @@ static AST_Validation _Validate_CREATE_Entities(const cypher_astnode_t *clause,
 		if(_ValidateInlinedPropertiesOnPath(path, reason) != AST_VALID) return AST_INVALID;
 
 		uint nelems = cypher_ast_pattern_path_nelements(path);
+		/* Visit every relationship (every odd offset) on the path to validate its alias and structure.
+		 * TODO There should also be a syntax error for redeclaring nodes, as in:
+		 * MATCH (a) CREATE (a)
+		 * But this is a no-op query, and we don't have the logic to differentiate this from a valid query like
+		 * MATCH (a) CREATE (a)-[:E]->(:B) */
 		for(uint j = 1; j < nelems; j += 2) {
 			const cypher_astnode_t *rel = cypher_ast_pattern_path_get_element(path, j);
 			const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(rel);
