@@ -31,7 +31,11 @@ class testGraphRename(FlowTestsBase):
 
         graph = Graph(NEW_GRAPH_ID, redis_con)
 
+        node1 = Node(node_id=0, label="L", properties={'name':'x', 'age':1})
+        graph.add_node(node1)
+        graph.flush()
+
         query = "MATCH (n) return n"
-        expected_results = [[node0]]
+        expected_results = [[node0], [node1]]
         query_info = QueryInfo(query = query, description="Tests data is valid after renaming", expected_result = expected_results)
-        self._assert_resultset_equals_expected(graph.query(query), query_info)
+        self._assert_resultset_and_expected_mutually_included(graph.query(query), query_info)
