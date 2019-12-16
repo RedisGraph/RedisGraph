@@ -11,6 +11,7 @@
 #include "../ops/op_all_node_scan.h"
 #include "../ops/op_node_by_id_seek.h"
 #include "../ops/op_node_by_label_scan.h"
+#include "../../util/range/numeric_range.h"
 
 static bool _idFilter(FT_FilterNode *f, int *rel, EntityID *id, bool *reverse) {
 	if(f->t != FT_N_PRED) return false;
@@ -106,20 +107,11 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 		EntityID id;
 		bool reverse;
 		if(_idFilter(f, &rel, &id, &reverse)) {
-			/* Don't use this optimization on label scans unless for exact match.
-			 * Issue 818 https://github.com/RedisGraph/RedisGraph/issues/818
-			 * This optimization caused a range query over the entire range of ids in the graph
-			 * regardless to the label. */
-			if(rel != OP_EQUAL && scan_op->type == OPType_NODE_BY_LABEL_SCAN) {
-				parent = parent->parent;
-				continue;
-			}
 			const QGNode *node = NULL;
 			NodeID minId = ID_RANGE_UNBOUND;
 			NodeID maxId = ID_RANGE_UNBOUND;
 			bool inclusiveMin = false;
 			bool inclusiveMax = false;
-			OpBase *opNodeByIdSeek;
 
 			switch(scan_op->type) {
 			case OPType_ALL_NODE_SCAN:
@@ -136,16 +128,30 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 			}
 
 			_setupIdRange(rel, id, reverse, &minId, &maxId, &inclusiveMin, &inclusiveMax);
-			opNodeByIdSeek = NewNodeByIdSeekOp(scan_op->plan, node, minId, maxId,
-											   inclusiveMin, inclusiveMax);
+			/* Don't replace label scan, but set it to have range query.
+			 * Issue 818 https://github.com/RedisGraph/RedisGraph/issues/818
+			 * This optimization caused a range query over the entire range of ids in the graph
+			 * regardless to the label. */
+			if(scan_op->type == OPType_NODE_BY_LABEL_SCAN) {
+				NodeByLabelScan *label_scan = (NodeByLabelScan *) scan_op;
+				label_scan->minId = minId;
+				label_scan->minInclusive = inclusiveMin;
+				label_scan->maxId = maxId;
+				label_scan->maxInclusive = inclusiveMax;
 
-			// Managed to reduce!
-			ExecutionPlan_ReplaceOp(plan, scan_op, opNodeByIdSeek);
-			ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
+			} else {
+				OpBase *opNodeByIdSeek = NewNodeByIdSeekOp(scan_op->plan, node, minId, maxId,
+														   inclusiveMin, inclusiveMax);
 
-			// Free replaced operations.
-			OpBase_Free(scan_op);
-			OpBase_Free((OpBase *)filter);
+				// Managed to reduce!
+				ExecutionPlan_ReplaceOp(plan, scan_op, opNodeByIdSeek);
+				ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
+
+				// Free replaced operations.
+				OpBase_Free(scan_op);
+				OpBase_Free((OpBase *)filter);
+			}
+
 
 			break; // Exit loop.
 		}
