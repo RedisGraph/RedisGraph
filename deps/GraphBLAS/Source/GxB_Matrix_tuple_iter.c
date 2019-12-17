@@ -35,7 +35,7 @@ GrB_Info GxB_MatrixTupleIter_iterate_row
 	GB_WHERE("GxB_MatrixTupleIter_iterate_row (iter, rowIdx)");
 	GB_RETURN_IF_NULL(iter);
 
-	if(rowIdx < 0 && rowIdx >= iter->nrows) {
+	if(rowIdx < 0 || rowIdx >= iter->nrows) {
 		return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "Row index out of range")));
 	}
 
@@ -44,6 +44,24 @@ GrB_Info GxB_MatrixTupleIter_iterate_row
 	iter->row_idx = rowIdx;
 	iter->p = 0;
 	return (GrB_SUCCESS);
+}
+
+GrB_Info GxB_MatrixTupleIter_jump_to_row
+(
+	GxB_MatrixTupleIter *iter,
+	GrB_Index rowIdx
+) {
+	GB_WHERE("GxB_MatrixTupleIter_jump_to_row (iter, rowIdx)");
+	GB_RETURN_IF_NULL(iter);
+
+	if(rowIdx < 0 || rowIdx >= iter->nrows) {
+		return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "Row index out of range")));
+	}
+
+	iter->nnz_idx = iter->A->p[rowIdx] ;
+	iter->row_idx = rowIdx ;
+	iter->p = 0 ;
+	return (GrB_SUCCESS) ;
 }
 
 // Advance iterator
