@@ -5,6 +5,7 @@
 */
 
 #include "op_node_by_label_scan.h"
+#include "op_node_by_id_seek.h"
 #include "shared/print_functions.h"
 #include "../../ast/ast.h"
 #include "../../query_ctx.h"
@@ -22,20 +23,17 @@ static inline int NodeByLabelScanToString(const OpBase *ctx, char *buf, uint buf
 }
 
 // Checks to see if operation index is within its bounds.
-static inline bool _outOfBounds(NodeByLabelScan *op) {
+static inline bool _outOfBounds(NodeByLabelScan *op, NodeID id) {
 	/* Because currentId starts at minimum and only increases
 	 * we only care about top bound. */
-	if(op->currentId > op->maxId) return true;
-	if(op->currentId == op->maxId && !op->maxInclusive) return true;
+	if(id > op->maxId) return true;
+	if(id == op->maxId && !op->maxInclusive) return true;
 	return false;
 }
 
 static inline void _setIndices(NodeByLabelScan *op) {
 	// The largest possible entity ID is the same as Graph_RequiredMatrixDim.
 	op->maxId = MIN(op->maxId, Graph_RequiredMatrixDim(op->g));
-	op->currentId = op->minId;
-	/* Advance current ID when min is not inclusive. */
-	if(!op->minInclusive) op->currentId++;
 }
 
 OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *n) {
@@ -50,7 +48,7 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *n) {
 	op->minId = 0;
 	op->minInclusive = true;
 	// Set now, final set upon iterator creation.
-	op->maxId = UINT64_MAX;
+	op->maxId = ID_RANGE_UNBOUND;
 	op->maxInclusive = false;
 
 	// Set our Op operations
@@ -65,6 +63,14 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *n) {
 
 void NodeByLabelScanOp_IDRange(NodeByLabelScan *op, NodeID minId, bool minInclusive, NodeID maxId,
 							   bool maxInclusive) {
+	// Can't include unspecified bound.
+	assert(!(minId == ID_RANGE_UNBOUND && minInclusive));
+	assert(!(maxId == ID_RANGE_UNBOUND && maxInclusive));
+	if(minId == ID_RANGE_UNBOUND && !minInclusive) {
+		minId = 0;
+		minInclusive = true;
+	}
+
 	op->minId = minId;
 	op->minInclusive = minInclusive;
 	op->maxId = maxId;
@@ -79,7 +85,8 @@ static inline bool _ConstructIterator(NodeByLabelScan *op) {
 	Schema *schema = GraphContext_GetSchema(gc, op->n->label, SCHEMA_NODE);
 	if(schema) {
 		GxB_MatrixTupleIter_new(&op->iter, Graph_GetLabelMatrix(gc->g, schema->id));
-		GxB_MatrixTupleIter_iterate_row(op->iter, op->currentId);
+		NodeID start_row = op->minInclusive ? op->minId : op->minId + 1;
+		GxB_MatrixTupleIter_jump_to_row(op->iter, start_row);
 		return true;
 	} else {
 		/* Label does not exist, no need to iterate. */
@@ -111,18 +118,8 @@ static inline void _UpdateRecord(NodeByLabelScan *op, Record r, GrB_Index node_i
 
 static inline void _ResetIterator(NodeByLabelScan *op) {
 	_setIndices(op);
-	GxB_MatrixTupleIter_reset(op->iter);
-	GxB_MatrixTupleIter_iterate_row(op->iter, op->minId);
-}
-
-static inline void _iterate(NodeByLabelScan *op, GrB_Index *nodeId, bool *depleted) {
-
-	*depleted = true;
-	while(*depleted && !_outOfBounds(op)) {
-		GxB_MatrixTupleIter_next(op->iter, NULL, nodeId, depleted);
-		op->currentId = *nodeId;
-	}
-	if(_outOfBounds(op)) *depleted = true;
+	NodeID start_row = op->minInclusive ? op->minId : op->minId + 1;
+	GxB_MatrixTupleIter_jump_to_row(op->iter, start_row);
 }
 
 static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
@@ -146,8 +143,8 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 
 	GrB_Index nodeId;
 	bool depleted = false;
-	_iterate(op, &nodeId, &depleted);
-	if(depleted) {
+	GxB_MatrixTupleIter_next(op->iter, NULL, &nodeId, &depleted);
+	if(depleted || _outOfBounds(op, nodeId)) {
 		Record_Free(op->child_record); // Free old record.
 		// Pull a new record from child.
 		op->child_record = OpBase_Consume(op->op.children[0]);
@@ -155,8 +152,8 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 
 		// Reset iterator and evaluate again.
 		_ResetIterator(op);
-		_iterate(op, &nodeId, &depleted);
-		if(depleted) return NULL; // Empty iterator; return immediately.
+		GxB_MatrixTupleIter_next(op->iter, NULL, &nodeId, &depleted);
+		if(depleted || _outOfBounds(op, nodeId)) return NULL; // Empty iterator; return immediately.
 	}
 
 	// Clone the held Record, as it will be freed upstream.
@@ -173,8 +170,8 @@ static Record NodeByLabelScanConsume(OpBase *opBase) {
 
 	GrB_Index nodeId;
 	bool depleted = false;
-	_iterate(op, &nodeId, &depleted);
-	if(depleted) return NULL;
+	GxB_MatrixTupleIter_next(op->iter, NULL, &nodeId, &depleted);
+	if(depleted || _outOfBounds(op, nodeId)) return NULL;
 
 	Record r = OpBase_CreateRecord((OpBase *)op);
 
@@ -209,4 +206,3 @@ static void NodeByLabelScanFree(OpBase *op) {
 		nodeByLabelScan->child_record = NULL;
 	}
 }
-

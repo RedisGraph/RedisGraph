@@ -19,7 +19,6 @@ typedef struct {
 	Graph *g;
 	const QGNode *n;            /* Node being scanned. */
 	unsigned int nodeRecIdx;    /* Node position within record. */
-	NodeID currentId;           // Current ID fetched.
 	NodeID minId;               // Min ID to fetch.
 	NodeID maxId;               // Max ID to fetch.
 	bool minInclusive;          // Include min ID.
