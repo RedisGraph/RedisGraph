@@ -701,24 +701,20 @@ static AST_Validation _ValidateMergeRelation(const cypher_astnode_t *entity, rax
 											 char **reason) {
 	const cypher_astnode_t *identifier = cypher_ast_rel_pattern_get_identifier(entity);
 	const char *alias = NULL;
-	if(identifier) alias = cypher_ast_identifier_get_name(identifier);
-
-	uint reltype_count = cypher_ast_rel_pattern_nreltypes(entity);
-	if(alias == NULL ||
-	   raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) == raxNotFound) {
-		// If the entity is unaliased or not previously bound, it cannot be redeclared.
-		// In this case, exactly one reltype should be specified for the edge.
-		if(reltype_count != 1) {
-			asprintf(reason,
-					 "Exactly one relationship type must be specified for each relation in a MERGE pattern.");
+	if(identifier) {
+		alias = cypher_ast_identifier_get_name(identifier);
+		// Verify that we're not redeclaring a bound variable.
+		if(raxFind(defined_aliases, (unsigned char *)alias, strlen(alias)) != raxNotFound) {
+			asprintf(reason, "The bound variable %s' can't be redeclared in a MERGE clause", alias);
 			return AST_INVALID;
 		}
-
-		return AST_VALID;
 	}
 
-	if(reltype_count > 0 || cypher_ast_rel_pattern_get_properties(entity)) {
-		asprintf(reason, "The bound variable %s' can't be redeclared in a MERGE clause", alias);
+	// Exactly one reltype should be specified for the introduced edge.
+	uint reltype_count = cypher_ast_rel_pattern_nreltypes(entity);
+	if(reltype_count != 1) {
+		asprintf(reason,
+				 "Exactly one relationship type must be specified for each relation in a MERGE pattern.");
 		return AST_INVALID;
 	}
 
