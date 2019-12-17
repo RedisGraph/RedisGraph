@@ -227,7 +227,6 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
-@skip
   Scenario: Failing when using CREATE on a relationship that is already bound
     When executing query:
       """
