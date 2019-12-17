@@ -415,13 +415,15 @@ TEST_F(TuplesTest, IteratorJumpToRowTest) {
 	ASSERT_EQ(GrB_SUCCESS, info);
 
 	// Check that the right indices are retrived.
-	for(int i = 1; i < 3; i++) {
+	for(int i = 1; i < 5; i++) {
 		info = GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 		ASSERT_EQ(GrB_SUCCESS, info);
 		ASSERT_EQ(indices[i][0], row);
 		ASSERT_EQ(indices[i][1], col);
 		ASSERT_FALSE(depleted);
 	}
+	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+	ASSERT_TRUE(depleted);
 
 	// Jump to start, check that iterator is depleted only when it is done iterating the matrix.
 	info = GxB_MatrixTupleIter_jump_to_row(iter, 0);
