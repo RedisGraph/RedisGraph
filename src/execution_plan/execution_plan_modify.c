@@ -52,35 +52,6 @@ void _OpBase_RemoveNode(OpBase *parent, OpBase *child) {
 	child->parent = NULL;
 }
 
-bool _ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, const OpBase *recurse_limit,
-									 rax *references_to_resolve, bool subtree_is_dependent) {
-	if(root == recurse_limit) return false; // Don't traverse into earlier ExecutionPlan scopes.
-
-	bool refs_resolved = false;
-	for(int i = 0; i < root->childCount; i++) {
-		/* Recurse to each child to resolve references. The final argument indicates whether references
-		 * have already been resolved - if so, the child cannot be the fully-resolving op. */
-		refs_resolved |= _ExecutionPlan_LocateReferences(root->children[i], op, recurse_limit,
-														 references_to_resolve, refs_resolved | subtree_is_dependent);
-		/* Return early if the resolving op has been set. */
-		if(*op) return true;
-	}
-
-	uint modifies_count = array_len(root->modifies);
-	for(uint i = 0; i < modifies_count; i++) {
-		const char *ref = root->modifies[i];
-		// Attempt to remove the current op's references, marking whether any removal was succesful.
-		refs_resolved |= raxRemove(references_to_resolve, (unsigned char *)ref, strlen(ref), NULL);
-	}
-
-	/* Set the op if all references have been resolved in this subtree.
-	 * If subtree_is_dependent is true, references have been resolved outside of this subtree, and the
-	 * filter op must be placed higher in the tree. */
-	if(!subtree_is_dependent && raxSize(references_to_resolve) == 0) *op = root;
-
-	return refs_resolved;
-}
-
 void _OpBase_RemoveChild(OpBase *parent, OpBase *child) {
 	_OpBase_RemoveNode(parent, child);
 }
@@ -211,7 +182,6 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
 }
 
 typedef enum {
-
 	LTR,
 	RTL
 } LocateOp_SearchDirection;
@@ -247,10 +217,37 @@ OpBase *ExecutionPlan_LocateLastOp(OpBase *root, OPType type) {
 }
 
 OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
-									   rax *references_to_resolve) {
-	OpBase *op = NULL;
-	_ExecutionPlan_LocateReferences(root, &op, recurse_limit, references_to_resolve, false);
-	return op;
+									   rax *refs_to_resolve) {
+	if(root == recurse_limit) return NULL; // Don't traverse into earlier ExecutionPlan scopes.
+
+	int dependency_count = 0;
+	OpBase *resolving_op = NULL;
+	bool all_refs_resolved = false;
+	for(int i = 0; i < root->childCount && !all_refs_resolved; i++) {
+		// Visit each child and try to resolve references, storing a pointer to the child if successful.
+		resolving_op = ExecutionPlan_LocateReferences(root->children[i], recurse_limit, refs_to_resolve);
+		if(resolving_op) dependency_count ++; // Count how many children resolved references.
+		all_refs_resolved = (raxSize(refs_to_resolve) == 0); // We're done when the rax is empty.
+	}
+
+	// If we've resolved all references, our work is done.
+	if(all_refs_resolved) {
+		/* Return the stored child if it resolved all references, or
+		 * the current op if multiple children resolved references. */
+		return (dependency_count == 1) ? resolving_op : root;
+	}
+
+	// Try to resolve references in the current operation.
+	bool refs_resolved = false;
+	uint modifies_count = array_len(root->modifies);
+	for(uint i = 0; i < modifies_count; i++) {
+		const char *ref = root->modifies[i];
+		// Attempt to remove the current op's references, marking whether any removal was succesful.
+		refs_resolved |= raxRemove(refs_to_resolve, (unsigned char *)ref, strlen(ref), NULL);
+	}
+
+	if(refs_resolved) resolving_op = root;
+	return resolving_op;
 }
 
 // Collect all aliases that have been resolved by the given tree of operations.
