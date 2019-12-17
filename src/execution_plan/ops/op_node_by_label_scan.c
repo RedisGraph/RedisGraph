@@ -34,7 +34,7 @@ static inline void _setIndices(NodeByLabelScan *op) {
 	// The largest possible entity ID is the same as Graph_RequiredMatrixDim.
 	op->maxId = MIN(op->maxId, Graph_RequiredMatrixDim(op->g));
 	op->currentId = op->minId;
-	/* Advance current ID when min is not inclusive and */
+	/* Advance current ID when min is not inclusive. */
 	if(!op->minInclusive) op->currentId++;
 }
 
@@ -61,6 +61,16 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *n) {
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 
 	return (OpBase *)op;
+}
+
+void NodeByLabelScanOp_IDRange(NodeByLabelScan *op, NodeID minId, bool minInclusive, NodeID maxId,
+							   bool maxInclusive) {
+	op->minId = minId;
+	op->minInclusive = minInclusive;
+	op->maxId = maxId;
+	op->maxInclusive = maxInclusive;
+	op->op.type = OpType_NODE_BY_LABEL_AND_ID_SCAN;
+	op->op.name = "Node By Label and ID Scan";
 }
 
 static inline bool _ConstructIterator(NodeByLabelScan *op) {
@@ -110,9 +120,9 @@ static inline void _iterate(NodeByLabelScan *op, GrB_Index *nodeId, bool *deplet
 	*depleted = true;
 	while(*depleted && !_outOfBounds(op)) {
 		GxB_MatrixTupleIter_next(op->iter, NULL, nodeId, depleted);
-		op->currentId++;
-		GxB_MatrixTupleIter_iterate_row(op->iter, op->currentId);
+		op->currentId = *nodeId;
 	}
+	if(_outOfBounds(op)) *depleted = true;
 }
 
 static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
@@ -174,6 +184,8 @@ static Record NodeByLabelScanConsume(OpBase *opBase) {
 	return r;
 }
 
+/* This function is invoked when the op has no children and no valid label is requested (either no label, or non existing label).
+ * The op simply needs to return NULL */
 static Record NodeByLabelScanNoOp(OpBase *opBase) {
 	return NULL;
 }

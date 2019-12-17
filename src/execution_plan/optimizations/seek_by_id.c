@@ -134,24 +134,18 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 			 * regardless to the label. */
 			if(scan_op->type == OPType_NODE_BY_LABEL_SCAN) {
 				NodeByLabelScan *label_scan = (NodeByLabelScan *) scan_op;
-				label_scan->minId = minId;
-				label_scan->minInclusive = inclusiveMin;
-				label_scan->maxId = maxId;
-				label_scan->maxInclusive = inclusiveMax;
-
+				NodeByLabelScanOp_IDRange(label_scan, minId, inclusiveMin, maxId, inclusiveMax);
 			} else {
 				OpBase *opNodeByIdSeek = NewNodeByIdSeekOp(scan_op->plan, node, minId, maxId,
 														   inclusiveMin, inclusiveMax);
 
 				// Managed to reduce!
 				ExecutionPlan_ReplaceOp(plan, scan_op, opNodeByIdSeek);
-				ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
-
-				// Free replaced operations.
 				OpBase_Free(scan_op);
-				OpBase_Free((OpBase *)filter);
 			}
-
+			// Free replaced operations.
+			ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
+			OpBase_Free((OpBase *)filter);
 
 			break; // Exit loop.
 		}
