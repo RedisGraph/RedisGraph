@@ -267,15 +267,21 @@ class testConcurrentQueryFlow(FlowTestsBase):
         writer.join()
         # Possible scenarios:
         # 1. Rename is done before query is sent. The name in the graph context is new_graph, so when upon commit, when trying to open new_graph key, it will encounter an empty key since new_graph is not a valid key. 
+        #    Note: As from https://github.com/RedisGraph/RedisGraph/pull/820 this may not be valid since the rename event handler might actually rename the graph key, before the query execution.    
         # 2. Rename is done during query executing, so when commiting and comparing stored graph context name (GRAPH_ID) to the retrived value graph context name (new_graph), the identifiers are not the same, since new_graph value is now stored at GRAPH_ID value.
 
         possible_exceptions = ["Encountered different graph value when opened key " + GRAPH_ID, 
         "Encountered an empty key when opened key " + new_graph]
-        self.env.assertContains(exceptions[0], possible_exceptions)
+        if exceptions[0] is not None:
+            self.env.assertContains(exceptions[0], possible_exceptions)
+            exceptions[0] = None
+        else:
+            self.env.assertEquals(1000000, assertions[0].nodes_created)
+
         # Restore to default.
         graphs[0].delete()
         graphs[0].query("MATCH (n) RETURN n")
-        exceptions[0] = None
+        
     
     def test_08_concurrent_write_replace(self):
         redis_con = self.env.getConnection()
