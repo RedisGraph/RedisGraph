@@ -153,7 +153,13 @@ static AR_ExpNode *_AR_EXP_FromIntegerExpression(const cypher_astnode_t *expr) {
 	const char *value_str = cypher_ast_integer_get_valuestr(expr);
 	char *endptr = NULL;
 	int64_t l = strtol(value_str, &endptr, 0);
-	assert(endptr[0] == 0);
+	if(endptr[0] != 0) {
+		// Failed to convert integer value; set compile-time error to be raised later.
+		char *error;
+		asprintf(&error, "Invalid numeric value '%s'", value_str);
+		QueryCtx_SetError(error);
+		return AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
 	SIValue converted = SI_LongVal(l);
 	return AR_EXP_NewConstOperandNode(converted);
 }
@@ -162,7 +168,13 @@ static AR_ExpNode *_AR_EXP_FromFloatExpression(const cypher_astnode_t *expr) {
 	const char *value_str = cypher_ast_float_get_valuestr(expr);
 	char *endptr = NULL;
 	double d = strtod(value_str, &endptr);
-	assert(endptr[0] == 0);
+	if(endptr[0] != 0) {
+		// Failed to convert integer value; set compile-time error to be raised later.
+		char *error;
+		asprintf(&error, "Invalid numeric value '%s'", value_str);
+		QueryCtx_SetError(error);
+		return AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
 	SIValue converted = SI_DoubleVal(d);
 	return AR_EXP_NewConstOperandNode(converted);
 }
@@ -452,3 +464,4 @@ AR_ExpNode *AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 
 	return root;
 }
+
