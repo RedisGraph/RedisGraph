@@ -235,8 +235,6 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
-@crash
-@skip
   Scenario: Failing when using MERGE on a relationship that is already bound
     When executing query:
       """
