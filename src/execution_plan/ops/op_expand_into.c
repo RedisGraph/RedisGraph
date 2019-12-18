@@ -58,13 +58,13 @@ static bool _setEdge(OpExpandInto *op) {
  * clears filter matrix. */
 static void _traverse(OpExpandInto *op) {
 	// Append filter matrix to algebraic expression, as the left most operand.
-	AlgebraicExpression_PrependTerm(op->ae, op->F, false, false, false);
+	AlgebraicExpression_MultiplyToTheLeft(&op->ae, op->F);
 
 	// Evaluate expression.
-	AlgebraicExpression_Execute(op->ae, op->M);
+	AlgebraicExpression_Eval(op->ae, op->M);
 
 	// Remove operand.
-	AlgebraicExpression_RemoveTerm(op->ae, 0, NULL);
+	AlgebraicExpression_RemoveRightmostNode(op->ae);
 
 	// Clear filter matrix.
 	GrB_Matrix_clear(op->F);
@@ -89,14 +89,16 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 
 	// Make sure that all entities are represented in Record
 	op->edgeIdx = IDENTIFIER_NOT_FOUND;
-	assert(OpBase_Aware((OpBase *)op, ae->src, &op->srcNodeIdx));
-	assert(OpBase_Aware((OpBase *)op, ae->dest, &op->destNodeIdx));
+	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
+	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Destination(ae), &op->destNodeIdx));
 
-	if(ae->edge) {
+	const char *edge = AlgebraicExpression_Edge(ae);
+	if(edge) {
+		op->setEdge = true;
 		op->edges = array_new(Edge, 32);
-		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, ae->edge);
+		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
 		_setupTraversedRelations(op, e);
-		op->edgeIdx = OpBase_Modifies((OpBase *)op, ae->edge);
+		op->edgeIdx = OpBase_Modifies((OpBase *)op, edge);
 	}
 
 	return (OpBase *)op;
@@ -117,7 +119,7 @@ static Record _handoff(OpExpandInto *op) {
 	/* If we're required to update edge,
 	 * try to get an edge, if successful we can return quickly,
 	 * otherwise try to get a new pair of source and destination nodes. */
-	if(op->ae->edge) {
+	if(op->setEdge) {
 		if(_setEdge(op)) return Record_Clone(op->r);
 	}
 
@@ -144,7 +146,7 @@ static Record _handoff(OpExpandInto *op) {
 		if(res != GrB_SUCCESS) continue;
 
 		// If we're here src is connected to dest.
-		if(op->ae->edge) {
+		if(op->setEdge) {
 			for(int i = 0; i < op->edgeRelationCount; i++) {
 				Graph_GetEdgesConnectingNodes(op->graph,
 											  srcId,

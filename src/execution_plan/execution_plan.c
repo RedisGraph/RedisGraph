@@ -295,7 +295,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 		} else {
 			/* The component has edges, so we'll build a node scan and a chain of traversals. */
 			uint expCount = 0;
-			AlgebraicExpressionNode **exps = AlgebraicExpression_FromQueryGraph(cc, &expCount);
+			AlgebraicExpression **exps = AlgebraicExpression_FromQueryGraph(cc, &expCount);
 
 			// Reorder exps, to the most performant arrangement of evaluation.
 			orderExpressions(qg, exps, expCount, ft, bound_vars);
@@ -304,7 +304,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 
 			OpBase *tail = NULL;
 			/* Create the SCAN operation that will be the tail of the traversal chain. */
-			QGNode *src = QueryGraph_GetNodeByAlias(qg, exp->src);
+			QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(exp));
 			if(src->label) {
 				/* Resolve source node by performing label scan,
 				 * in which case if the first algebraic expression operand
@@ -313,7 +313,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				 * within another traversal operation, for the timebeing do not
 				 * try to locate and remove it, there's no real harm except some performace hit
 				 * in keeping that label matrix. */
-				if(exp->operands[0].diagonal) AlgebraicExpression_RemoveTerm(exp, 0, NULL);
+				AlgebraicExpression_RemoveLeftmostNode(exp);
 				tail = NewNodeByLabelScanOp(plan, src);
 			} else {
 				tail = NewAllNodeScanOp(plan, gc->g, src);
@@ -322,13 +322,15 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			/* For each expression, build the appropriate traversal operation. */
 			for(int j = 0; j < expCount; j++) {
 				exp = exps[j];
-				if(exp->operand_count == 0) {
+				// A single operand, no multiplications/hops.
+				if(AlgebraicExpression_OperandCount(exp) == 1) {
 					AlgebraicExpression_Free(exp);
 					continue;
 				}
 
 				QGEdge *edge = NULL;
-				if(exp->edge) edge = QueryGraph_GetEdgeByAlias(qg, exp->edge);
+				if(AlgebraicExpression_Edge(exp)) edge = QueryGraph_GetEdgeByAlias(qg,
+																					   AlgebraicExpression_Edge(exp));
 				if(edge && QGEdge_VariableLength(edge)) {
 					root = NewCondVarLenTraverseOp(plan, gc->g, exp);
 				} else {

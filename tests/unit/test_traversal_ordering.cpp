@@ -93,20 +93,9 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
 	QueryGraph_ConnectNodes(qg, C, D, CD);
 
 	AlgebraicExpression *set[3];
-	AlgebraicExpression *ExpAB = AlgebraicExpression_Empty();
-	AlgebraicExpression *ExpBC = AlgebraicExpression_Empty();
-	AlgebraicExpression *ExpCD = AlgebraicExpression_Empty();
-
-	AlgebraicExpression_AppendTerm(ExpAB, NULL, false, false, false);
-	AlgebraicExpression_AppendTerm(ExpBC, NULL, false, false, false);
-	AlgebraicExpression_AppendTerm(ExpCD, NULL, false, false, false);
-
-	ExpAB->src = "A";
-	ExpAB->dest = "B";
-	ExpBC->src = "B";
-	ExpBC->dest = "C";
-	ExpCD->src = "C";
-	ExpCD->dest = "D";
+	AlgebraicExpression *ExpAB = AlgebraicExpression_NewOperand(GrB_NULL, false, false, "A", "B", NULL);
+	AlgebraicExpression *ExpBC = AlgebraicExpression_NewOperand(GrB_NULL, false, false, "B", "C", NULL);
+	AlgebraicExpression *ExpCD = AlgebraicExpression_NewOperand(GrB_NULL, false, false, "C", "D", NULL);
 
 	// { [CD], [BC], [AB] }
 	set[0] = ExpCD;
@@ -208,20 +197,9 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	QueryGraph_ConnectNodes(qg, C, D, CD);
 
 	AlgebraicExpression *set[3];
-	AlgebraicExpression *ExpAB = AlgebraicExpression_Empty();
-	AlgebraicExpression *ExpBC = AlgebraicExpression_Empty();
-	AlgebraicExpression *ExpCD = AlgebraicExpression_Empty();
-
-	AlgebraicExpression_AppendTerm(ExpAB, NULL, false, false, false);
-	AlgebraicExpression_AppendTerm(ExpBC, NULL, false, false, false);
-	AlgebraicExpression_AppendTerm(ExpCD, NULL, false, false, false);
-
-	ExpAB->src = "A";
-	ExpAB->dest = "B";
-	ExpBC->src = "B";
-	ExpBC->dest = "C";
-	ExpCD->src = "C";
-	ExpCD->dest = "D";
+    AlgebraicExpression *ExpAB = AlgebraicExpression_NewOperand(GrB_NULL, false, false, "A", "B", NULL);
+	AlgebraicExpression *ExpBC = AlgebraicExpression_NewOperand(GrB_NULL, false, false, "B", "C", NULL);
+	AlgebraicExpression *ExpCD = AlgebraicExpression_NewOperand(GrB_NULL, false, false, "C", "D", NULL);
 
 	// { [AB], [BC], [CD] }
 	set[0] = ExpAB;
@@ -282,4 +260,3 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	AlgebraicExpression_Free(ExpCD);
 	QueryGraph_Free(qg);
 }
-

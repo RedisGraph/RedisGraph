@@ -28,18 +28,6 @@ static void _setupTraversedRelations(CondTraverse *op, QGEdge *e) {
 	}
 }
 
-/* Given an AlgebraicExpression with a populated edge, determine whether we're traversing a
- * transposed edge matrix. The edge matrix will be either the first or second operand, and is
- * the only operand which can be transposed (as the others are label diagonals). */
-static inline bool _expressionContainsTranspose(AlgebraicExpression *exp) {
-	for(uint i = 0; i < exp->operand_count; i ++) {
-		if(exp->operands[i].transpose) {
-			return true;
-		}
-	}
-	return false;
-}
-
 // Updates query graph edge.
 static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
 	// Consumed edges connecting current source and destination nodes.
@@ -59,12 +47,12 @@ static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
  * clears filter matrix. */
 void _traverse(CondTraverse *op) {
 	// Prepend matrix to algebraic expression, as the left most operand.
-	AlgebraicExpression_PrependTerm(op->ae, op->F, false, false, false);
+	AlgebraicExpression_MultiplyToTheLeft(&op->ae, op->F);
 	// Evaluate expression.
-	AlgebraicExpression_Execute(op->ae, op->M);
+	AlgebraicExpression_Eval(op->ae, op->M);
 
 	// Remove operand.
-	AlgebraicExpression_RemoveTerm(op->ae, 0, NULL);
+	AlgebraicExpression_RemoveLeftmostNode(op->ae);
 
 	if(op->iter == NULL) GxB_MatrixTupleIter_new(&op->iter, op->M);
 	else GxB_MatrixTupleIter_reuse(op->iter, op->M);
@@ -100,14 +88,16 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", CondTraverseInit,
 				CondTraverseConsume, CondTraverseReset, CondTraverseToString, CondTraverseFree, plan);
 
-	assert(OpBase_Aware((OpBase *)op, ae->src, &op->srcNodeIdx));
-	op->destNodeIdx = OpBase_Modifies((OpBase *)op, ae->dest);
+	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
+	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
 
-	if(ae->edge) {
+	const char *edge = AlgebraicExpression_Edge(ae);
+	if(edge) {
 		op->edges = array_new(Edge, 32);
-		QGEdge *qg_edge = QueryGraph_GetEdgeByAlias(plan->query_graph, ae->edge);
+		QGEdge *qg_edge = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
 		_setupTraversedRelations(op, qg_edge);
-		op->edgeRecIdx = OpBase_Modifies((OpBase *)op, ae->edge);
+		op->edgeRecIdx = OpBase_Modifies((OpBase *)op, edge);
+		op->setEdge = true;
 	}
 
 	return (OpBase *)op;
@@ -118,11 +108,13 @@ static OpResult CondTraverseInit(OpBase *opBase) {
 	AlgebraicExpression *exp = op->ae;
 
 	// Nothing needs to be done if we're not populating an edge.
-	if(exp->edge == NULL) return OP_OK;
-	// If this operation traverses a transposed edge, the source and destination nodes
-	// will be swapped in the Record.
-	op->transposed_edge = _expressionContainsTranspose(exp);
+	if(AlgebraicExpression_Edge(exp) == NULL) return OP_OK;
 
+	/* Given an AlgebraicExpression with a populated edge, determine whether we're traversing a
+	 * transposed edge matrix.
+	 * If this operation traverses a transposed edge, the source and destination nodes
+	 * will be swapped in the Record. */
+	op->transposed_edge = AlgebraicExpression_ContainsOp(exp, AL_EXP_TRANSPOSE);
 	return OP_OK;
 }
 
@@ -136,7 +128,7 @@ static Record CondTraverseConsume(OpBase *opBase) {
 	/* If we're required to update edge,
 	 * try to get an edge, if successful we can return quickly,
 	 * otherwise try to get a new pair of source and destination nodes. */
-	if(op->ae->edge) {
+	if(op->setEdge) {
 		if(_CondTraverse_SetEdge(op, op->r)) {
 			return Record_Clone(op->r);
 		}
@@ -182,7 +174,7 @@ static Record CondTraverseConsume(OpBase *opBase) {
 	Node *destNode = Record_GetNode(op->r, op->destNodeIdx);
 	Graph_GetNode(op->graph, dest_id, destNode);
 
-	if(op->ae->edge) {
+	if(op->setEdge) {
 		// We're guarantee to have at least one edge.
 		Node *srcNode;
 		Node *destNode;

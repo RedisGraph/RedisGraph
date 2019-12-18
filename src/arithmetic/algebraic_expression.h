@@ -4,29 +4,58 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef ALGEBRAIC_EXPRESSION_H
-#define ALGEBRAIC_EXPRESSION_H
+#pragma once
 
 #include "../graph/query_graph.h"
 #include "../graph/graph.h"
 
 // Matrix, vector operations.
 typedef enum {
-	AL_EXP_ADD,
-	AL_EXP_MUL,
-	AL_EXP_TRANSPOSE,
+	AL_EXP_ADD = 1,                 // Matrix addition.
+	AL_EXP_MUL = (1 << 1),          // Matrix multiplication.
+	AL_EXP_POW = (1 << 2),          // Matrix raised to a power.
+	AL_EXP_TRANSPOSE = (1 << 3),    // Matrix transpose.
 } AL_EXP_OP;
+
+#define AL_EXP_ALL (AL_EXP_ADD | AL_EXP_MUL | AL_EXP_POW | AL_EXP_TRANSPOSE)
+
+/* Algebraic operation, describes one of the following operations:
+ * Matrix matrix addition
+ * Matrix matrix multiplication
+ * Matrix masking
+ * Matrix transpose */
+struct AlgebraicOperation {
+    union{
+        struct {
+            GrB_Matrix Mask;
+            GrB_Semiring semiring;
+        } add;
+        struct {
+            GrB_Matrix Mask;
+            GrB_Semiring semiring;
+        } mul;
+        struct {
+            GrB_Matrix Mask;
+            GrB_Semiring semiring;
+        } pow;
+        struct {
+            GrB_Matrix Mask;
+            GrB_Semiring semiring;
+        } transpose;
+    };
+    AL_EXP_OP type;
+};
 
 // Type of node within an algebraic expression
 typedef enum {
 	AL_OPERAND,
 	AL_OPERATION,
-} AlgebraicExpressionNodeType;
+} AlgebraicExpressionType;
 
 /* Forward declarations. */
-typedef struct AlgebraicExpressionNode AlgebraicExpressionNode;
+typedef struct AlgebraicExpression AlgebraicExpression;
 
-struct AlgebraicExpressionNode {
+struct AlgebraicExpression {
 	union {
         struct {
             bool free;              // Should the matrix be freed?
@@ -38,25 +67,35 @@ struct AlgebraicExpressionNode {
         } operand;
 		struct {
 			AL_EXP_OP op;                       // Operation: `*`,`+`,`transpose`
-			AlgebraicExpressionNode **children; // Child nodes.
+			AlgebraicExpression **children; // Child nodes.
 		} operation;
 	};
-	AlgebraicExpressionNodeType type;   // Type of node, either an operation or an operand.
+	AlgebraicExpressionType type;   // Type of node, either an operation or an operand.
 };
 
+//------------------------------------------------------------------------------
+// AlgebraicExpression construction.
+//------------------------------------------------------------------------------
+
+// Construct algebraic expression form query graph.
+AlgebraicExpression **AlgebraicExpression_FromQueryGraph
+(
+	const QueryGraph *qg,   // Query-graph to process
+	uint *exp_count         // Number of algebraic expressions generated.
+);
 
 //------------------------------------------------------------------------------
 // AlgebraicExpression Node creation functions.
 //------------------------------------------------------------------------------
 
 // Create a new AlgebraicExpression operation node.
-AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperationNode
+AlgebraicExpression *AlgebraicExpression_NewOperation
 (
     AL_EXP_OP op    // Operation to perform.
 );
 
 // Create a new AlgebraicExpression operand node.
-AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperandNode
+AlgebraicExpression *AlgebraicExpression_NewOperand
 (
     GrB_Matrix mat,     // Matrix.
     bool free,          // Should operand be free when we're done.
@@ -66,20 +105,72 @@ AlgebraicExpressionNode *AlgebraicExpressionNode_NewOperandNode
     const char *edge    // Operand alias (edge).
 );
 
+// Clone algebraic expression node.
+AlgebraicExpression *AlgebraicExpression_Clone
+(
+    const AlgebraicExpression *exp  // Expression to clone.
+);
+
 //------------------------------------------------------------------------------
 // AlgebraicExpression attributes.
 //------------------------------------------------------------------------------
 
 // Returns the source entity represented by the left-most operand row domain.
-const char *AlgebraicExpressionNode_Source
+const char *AlgebraicExpression_Source
 (
-    AlgebraicExpressionNode *root   // Root of expression.
+    AlgebraicExpression *root   // Root of expression.
 );
 
 // Returns the destination entity represented by the right-most operand column domain.
-const char *AlgebraicExpressionNode_Destination
+const char *AlgebraicExpression_Destination
 (
-    AlgebraicExpressionNode *root   // Root of expression.
+    AlgebraicExpression *root   // Root of expression.
+);
+
+/* Returns the first edge alias encountered.
+ * if no edge alias is found NULL is returned. */
+const char *AlgebraicExpression_Edge
+(
+    const AlgebraicExpression *root   // Root of expression.
+);
+
+// Returns the number of child nodes directly under root.
+uint AlgebraicExpression_ChildCount
+(
+    const AlgebraicExpression *root   // Root of expression.
+);
+
+// Returns the number of operands in expression.
+uint AlgebraicExpression_OperandCount
+(
+    const AlgebraicExpression *root   // Root of expression.
+);
+
+// Returns the number of operations in expression.
+uint AlgebraicExpression_OperationCount
+(
+    const AlgebraicExpression *root,    // Root of expression.
+    AL_EXP_OP op_type                   // Type of operation.
+);
+
+// Returns true if entire expression is transposed.
+bool AlgebraicExpression_Transposed
+(
+    const AlgebraicExpression *root   // Root of expression.
+);
+
+// Returns true if expression contains operation.
+bool AlgebraicExpression_ContainsOp
+(
+    const AlgebraicExpression *root,    // Root of expression.
+    AL_EXP_OP op                        // Operation to look for.
+);
+
+// Checks to see if operand at position `operand_idx` is a diagonal matrix.
+bool AlgebraicExpression_DiagonalOperand
+(
+    const AlgebraicExpression *root,    // Root of expression.
+    uint operand_idx                    // Operand position (LTR, zero based).
 );
 
 //------------------------------------------------------------------------------
@@ -87,78 +178,102 @@ const char *AlgebraicExpressionNode_Destination
 //------------------------------------------------------------------------------
 
 // Adds child node to root children list.
-void AlgebraicExpressionNode_AddChild
+void AlgebraicExpression_AddChild
 (
-    AlgebraicExpressionNode *root,  // Root to attach child to.
-    AlgebraicExpressionNode *child  // Child node to attach.
+    AlgebraicExpression *root,  // Root to attach child to.
+    AlgebraicExpression *child  // Child node to attach.
+);
+
+// Remove leftmost child node from root.
+AlgebraicExpression *AlgebraicExpression_RemoveLeftmostNode
+(
+    AlgebraicExpression *root   // Root from which to remove a child.
+);
+
+// Remove rightmost child node from root.
+AlgebraicExpression *AlgebraicExpression_RemoveRightmostNode
+(
+    AlgebraicExpression *root   // Root from which to remove a child.
+);
+
+// Multiply expression to the left by operand
+// A * (exp)
+void AlgebraicExpression_MultiplyToTheLeft
+(
+    AlgebraicExpression **root,
+    GrB_Matrix m
+);
+
+// Multiply expression to the right by operand
+// (exp) * A
+void AlgebraicExpression_MultiplyToTheRight
+(
+    AlgebraicExpression **root,
+	GrB_Matrix m
+);
+
+// Add expression to the left by operand
+// A + (exp)
+void AlgebraicExpression_AddToTheLeft
+(
+    AlgebraicExpression **root,
+    GrB_Matrix m
+);
+
+// Add expression to the right by operand
+// (exp) + A
+void AlgebraicExpression_AddToTheRight
+(
+    AlgebraicExpression **root,
+	GrB_Matrix m
+);
+
+// Transpose expression
+// T(T(A)) = A
+// T(A + B) = T(A) + T(B)
+// T(A * B) = T(B) * T(B)
+void AlgebraicExpression_Transpose
+(
+    AlgebraicExpression *exp    // Expression to transpose.
 );
 
 // Evaluate expression tree.
 void AlgebraicExpression_Eval
 (
-    const AlgebraicExpressionNode *exp, // Root node.
-    GrB_Matrix res                      // Result output.
+    const AlgebraicExpression *exp, // Root node.
+    GrB_Matrix res                  // Result output.
 );
 
 //------------------------------------------------------------------------------
 // AlgebraicExpression debugging utilities.
 //------------------------------------------------------------------------------
 
+// Print a tree structure of algebraic expression to stdout.
+void AlgebraicExpression_PrintTree
+(
+    const AlgebraicExpression *exp  // Root node.
+);
+
 // Print algebraic expression to stdout.
 void AlgebraicExpression_Print
 (
-    const AlgebraicExpressionNode *exp  // Root node.
+    const AlgebraicExpression *exp  // Root node.
 );
 
-/* AlgebraicExpressionOperand a single operand within an
- * algebraic expression. */
-typedef struct {
-	bool diagonal;          // Diagonal matrix.
-	bool transpose;         // Should the matrix be transposed.
-	bool free;              // Should the matrix be freed?
-	GrB_Matrix operand;
-} AlgebraicExpressionOperand;
-
-// Algebraic expression e.g. A*B*C
-typedef struct {
-	AL_EXP_OP op;                           // Operation to perform.
-	size_t operand_count;                   // Number of operands.
-	size_t operand_cap;                     // Allocated number of operands.
-	AlgebraicExpressionOperand *operands;   // Array of operands.
-	const char *src;                        // Alias of source node.
-	const char *dest;                       // Alias of destination node.
-	const char *edge;                       // Alias of sole edge operand, if one is present.
-} AlgebraicExpression;
-
-/* Constructs an empty expression. */
-AlgebraicExpression *AlgebraicExpression_Empty(void);
-
-/* Construct algebraic expression(s) from query graph. */
-AlgebraicExpressionNode **AlgebraicExpression_FromQueryGraph(
-	const QueryGraph *g,    // Graph to construct expression from.
-	uint *exp_count         // Number of expressions created.
+//------------------------------------------------------------------------------
+// AlgebraicExpression optimizations
+//------------------------------------------------------------------------------
+void AlgebraicExpression_Optimize
+(
+    AlgebraicExpression **exp   // Expression to optimize.
 );
 
-/* Executes given expression. */
-void AlgebraicExpression_Execute(AlgebraicExpression *ae, GrB_Matrix res);
+//------------------------------------------------------------------------------
+// AlgebraicExpression free
+//------------------------------------------------------------------------------
 
-/* Appends m as the last term in the expression ae. */
-void AlgebraicExpression_AppendTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp,
-									bool freeOp, bool diagonal);
-
-/* Prepend m as the first term in the expression ae. */
-void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool transposeOp,
-									 bool freeOp, bool diagonal);
-
-/* Removes operand at position idx */
-void AlgebraicExpression_RemoveTerm(AlgebraicExpression *ae, int idx,
-									AlgebraicExpressionOperand *operand);
-
-/* Whenever we decide to transpose an expression, call this function
- * directly accessing expression transpose flag is forbidden. */
-void AlgebraicExpression_Transpose(AlgebraicExpression *ae);
-
-void AlgebraicExpression_Free(AlgebraicExpression *ae);
-
-#endif
-
+// Free algebraic expression.
+void AlgebraicExpression_Free
+(
+    AlgebraicExpression *root  // Root node.
+);

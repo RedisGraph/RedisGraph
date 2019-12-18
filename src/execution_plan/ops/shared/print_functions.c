@@ -7,28 +7,18 @@
 #include "print_functions.h"
 #include "../../execution_plan.h"
 
-/* Given an AlgebraicExpression with a populated edge, determine whether we're traversing a
- * transposed edge matrix. The edge matrix will be either the first or second operand, and is
- * the only operand which can be transposed (as the others are label diagonals). */
-static inline bool _expressionContainsTranspose(AlgebraicExpression *exp) {
-	for(uint i = 0; i < exp->operand_count; i ++) {
-		if(exp->operands[i].transpose) {
-			return true;
-		}
-	}
-	return false;
-}
-
 int TraversalToString(const OpBase *op, char *buf, uint buf_len, AlgebraicExpression *ae) {
 	int offset = 0;
 	// This edge should be printed right-to-left if the edge matrix is transposed.
-	bool transpose = (ae->edge) ? _expressionContainsTranspose(ae) : false;
+	const char *edge = AlgebraicExpression_Edge(ae);
+	bool transpose = (edge && AlgebraicExpression_ContainsOp(ae, AL_EXP_TRANSPOSE));
 	offset += snprintf(buf, buf_len, "%s | ", op->name);
 
 	// Retrieve QueryGraph entities.
-	QGNode *src = QueryGraph_GetNodeByAlias(op->plan->query_graph, ae->src);
-	QGNode *dest = QueryGraph_GetNodeByAlias(op->plan->query_graph, ae->dest);
-	QGEdge *e = (ae->edge) ? QueryGraph_GetEdgeByAlias(op->plan->query_graph, ae->edge) : NULL;
+	QGNode *src = QueryGraph_GetNodeByAlias(op->plan->query_graph, AlgebraicExpression_Source(ae));
+	QGNode *dest = QueryGraph_GetNodeByAlias(op->plan->query_graph,
+											 AlgebraicExpression_Destination(ae));
+	QGEdge *e = (edge) ? QueryGraph_GetEdgeByAlias(op->plan->query_graph, edge) : NULL;
 
 	offset += QGNode_ToString(src, buf + offset, buf_len - offset);
 	if(e) {
