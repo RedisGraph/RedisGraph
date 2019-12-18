@@ -89,10 +89,8 @@ static AR_ExpNode **_PopulateProjectAll(const cypher_astnode_t *clause) {
 }
 
 // Handle ORDER entities
-static AR_ExpNode **_BuildOrderExpressions(AR_ExpNode **projections,
-										   const cypher_astnode_t *order_clause) {
+static AR_ExpNode **_BuildOrderExpressions(const cypher_astnode_t *order_clause) {
 	AST *ast = QueryCtx_GetAST();
-	uint projection_count = array_len(projections);
 	uint count = cypher_ast_order_by_nitems(order_clause);
 	AR_ExpNode **order_exps = array_new(AR_ExpNode *, count);
 
@@ -397,6 +395,46 @@ static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *rec
 	Vector_Free(sub_trees);
 }
 
+/* If an ORDER BY expression refers to an alias introduced in the RETURN clause, update it
+ * to look up the original name (as this is what the input Record will contain.)
+ * This solves invalid lookups in queries like:
+ * MATCH (original_name) RETURN original_name AS alias ORDER BY alias.val */
+static void _rename_order_aliases(AR_ExpNode **project_exps, AR_ExpNode **order_exps) {
+	rax *alias_map = raxNew();
+	uint project_count = array_len(project_exps);
+	// Iterate over all RETURN expressions.
+	for(uint i = 0; i < project_count; i ++) {
+		AR_ExpNode *project_exp = project_exps[i];
+		// We are only interested in RETURN expressions that are just entities
+		// with aliases (resolved names) that do not match the internal entity name.
+		if(project_exp->type == AR_EXP_OPERAND &&
+		   project_exp->operand.type == AR_EXP_VARIADIC &&
+		   project_exp->operand.variadic.entity_prop == NULL &&
+		   strcmp(project_exp->operand.variadic.entity_alias, project_exp->resolved_name)) {
+			const char *original_name = project_exp->operand.variadic.entity_alias;
+			const char *alias = project_exp->resolved_name;
+			// Update the map with the alias as the key and the original identifier as the value.
+			raxTryInsert(alias_map, (unsigned char *)alias, strlen(alias), (void *)original_name, NULL);
+		}
+	}
+	if(raxSize(alias_map) == 0) goto cleanup; // Exit early if we didn't populate the map.
+
+	uint order_count = array_len(order_exps);
+	for(uint i = 0; i < order_count; i ++) {
+		AR_ExpNode *order_exp = order_exps[i];
+		if(order_exp->type == AR_EXP_OPERAND && order_exp->operand.type == AR_EXP_VARIADIC) {
+			const char *alias = order_exp->operand.variadic.entity_alias;
+			// See if the order expression's internal entity name has been mapped to another identifier.
+			const char *original_name = raxFind(alias_map, (unsigned char *)alias, strlen(alias));
+			// If so, update the internal entity name.
+			if(original_name != raxNotFound) order_exp->operand.variadic.entity_alias = original_name;
+		}
+	}
+
+cleanup:
+	raxFree(alias_map);
+}
+
 // Merge all order expressions into the projections array without duplicates,
 // returning an array of expressions to free after building projection ops.
 static AR_ExpNode **_combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **order_exps) {
@@ -437,8 +475,12 @@ static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **project
 									   AR_ExpNode **order_exps, uint skip, uint sort, bool aggregate, bool distinct) {
 
 	AR_ExpNode **free_list = NULL;
-	// Merge order expressions into the projections array.
-	if(order_exps) free_list = _combine_projection_arrays(&projections, order_exps);
+	if(order_exps) {
+		// Replace RETURN-introduced aliases in order expressions with original identifiers.
+		_rename_order_aliases(projections, order_exps);
+		// Merge order expressions into the projections array.
+		free_list = _combine_projection_arrays(&projections, order_exps);
+	}
 
 	// Our fundamental operation will be a projection or aggregation.
 	OpBase *op;
@@ -507,7 +549,7 @@ static void _buildReturnOps(ExecutionPlan *plan, const cypher_astnode_t *clause)
 	const cypher_astnode_t *order_clause = cypher_ast_return_get_order_by(clause);
 	if(order_clause) {
 		sort_direction = AST_PrepareSortOp(order_clause);
-		order_exps = _BuildOrderExpressions(projections, order_clause);
+		order_exps = _BuildOrderExpressions(order_clause);
 	}
 	_buildProjectionOps(plan, projections, order_exps, skip, sort_direction, aggregate, distinct);
 }
@@ -528,7 +570,7 @@ static void _buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
 	const cypher_astnode_t *order_clause = cypher_ast_with_get_order_by(clause);
 	if(order_clause) {
 		sort_direction = AST_PrepareSortOp(order_clause);
-		order_exps = _BuildOrderExpressions(projections, order_clause);
+		order_exps = _BuildOrderExpressions(order_clause);
 	}
 	_buildProjectionOps(plan, projections, order_exps, skip, sort_direction, aggregate, distinct);
 }

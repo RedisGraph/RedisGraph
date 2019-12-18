@@ -1080,8 +1080,6 @@ Feature: MatchAcceptance2
       | [:T2] |
     And no side effects
 
-@crash
-@skip
   Scenario: Matching using a relationship that is already bound, in conjunction with aggregation and ORDER BY
     Given an empty graph
     And having executed:
