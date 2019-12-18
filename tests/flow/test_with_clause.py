@@ -193,3 +193,28 @@ class testWithClause(FlowTestsBase):
         actual_result = redis_graph.query(query)
         # Expecting count of 5: [1,3,5,7,9].
         self.env.assertEqual(actual_result.result_set[0], [5])
+
+    # Verify that filters can properly be placed in the scope up to WITH and the expressions projected by it.
+    def test09_filter_placement(self):
+        # Place a filter on a projected expression.
+        query = """UNWIND [1,2,3] AS a WITH a WHERE a = 2 RETURN a"""
+        actual_result = redis_graph.query(query)
+        expected = [[2]]
+        self.env.assertEqual(actual_result.result_set, expected)
+
+        # Place a filter on a projected expression that is aliased by the WITH clause.
+        query = """UNWIND [1,2,3] AS a WITH a AS b WHERE a = 2 RETURN b"""
+        actual_result = redis_graph.query(query)
+        expected = [[2]]
+        self.env.assertEqual(actual_result.result_set, expected)
+
+        # Verify that filters cannot be placed in earlier scopes.
+        query = """UNWIND ['scope1'] AS a WITH a AS b UNWIND ['scope2'] AS a WITH a WHERE a = 'scope1' RETURN a"""
+        actual_result = redis_graph.query(query)
+        expected = [] # No results should be returned
+        self.env.assertEqual(actual_result.result_set, expected)
+
+        query = """UNWIND ['scope1'] AS a WITH a AS b UNWIND ['scope2'] AS a WITH a WHERE a = 'scope2' RETURN a"""
+        actual_result = redis_graph.query(query)
+        expected = [['scope2']]
+        self.env.assertEqual(actual_result.result_set, expected)

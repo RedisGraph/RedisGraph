@@ -1,20 +1,4 @@
 #include "execution_plan.h"
-#include "../util/qsort.h"
-
-// Sort an array and remove duplicate entries.
-static void _uniqueArray(const char **arr) {
-#define MODIFIES_ISLT(a,b) (strcmp((*a),(*b)) > 0)
-	int count = array_len(arr);
-	QSORT(const char *, arr, count, MODIFIES_ISLT);
-	uint unique_idx = 0;
-	for(int i = 0; i < count - 1; i ++) {
-		if(arr[i] != arr[i + 1]) {
-			arr[unique_idx++] = arr[i];
-		}
-	}
-	arr[unique_idx++] = arr[count - 1];
-	array_trimm_len(arr, unique_idx);
-}
 
 /* Checks if parent has given child, if so returns 1
  * otherwise returns 0 */
@@ -66,65 +50,6 @@ void _OpBase_RemoveNode(OpBase *parent, OpBase *child) {
 
 	// Remove parent from child.
 	child->parent = NULL;
-}
-
-const char **_ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, rax *references) {
-	/* List of entities which had their ID resolved
-	 * at this point of execution, should include all
-	 * previously modified entities (up the execution plan). */
-	const char **seen = array_new(const char *, 0);
-
-	uint modifies_count = array_len(root->modifies);
-	/* Append current op modified entities. */
-	for(uint i = 0; i < modifies_count; i++) {
-		seen = array_append(seen, root->modifies[i]);
-		// printf("%u\n", root->modifies[i]);
-	}
-
-	/* Traverse execution plan, upwards. */
-	for(int i = 0; i < root->childCount; i++) {
-		const char **saw = _ExecutionPlan_LocateReferences(root->children[i], op, references);
-
-		/* Quick return if op was located. */
-		if(*op) {
-			array_free(saw);
-			return seen;
-		}
-
-		uint saw_count = array_len(saw);
-		/* Append current op modified entities. */
-		for(uint i = 0; i < saw_count; i++) {
-			seen = array_append(seen, saw[i]);
-		}
-		array_free(saw);
-	}
-
-	// Sort the 'seen' array and remove duplicate entries.
-	// This is necessary to properly intersect 'seen' with the 'references' rax.
-	_uniqueArray(seen);
-
-	uint seen_count = array_len(seen);
-
-	/* See if all references have been resolved. */
-	uint match = raxSize(references);
-
-	for(uint i = 0; i < seen_count; i++) {
-		// Too many unmatched references.
-		if(match > (seen_count - i)) break;
-		const char *seen_id = seen[i];
-
-		if(raxFind(references, (unsigned char *)seen_id, strlen(seen_id)) != raxNotFound) {
-			match--;
-			// All references have been resolved.
-			if(match == 0) {
-				*op = root;
-				break;
-			}
-		}
-	}
-
-	// if(!match) *op = root; // TODO might be necessary for post-WITH segments
-	return seen;
 }
 
 void _OpBase_RemoveChild(OpBase *parent, OpBase *child) {
@@ -257,7 +182,6 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
 }
 
 typedef enum {
-
 	LTR,
 	RTL
 } LocateOp_SearchDirection;
@@ -292,11 +216,38 @@ OpBase *ExecutionPlan_LocateLastOp(OpBase *root, OPType type) {
 	return _ExecutionPlan_LocateOp(root, type, RTL);
 }
 
-OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references) {
-	OpBase *op = NULL;
-	const char **temp = _ExecutionPlan_LocateReferences(root, &op, references);
-	array_free(temp);
-	return op;
+OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
+									   rax *refs_to_resolve) {
+	if(root == recurse_limit) return NULL; // Don't traverse into earlier ExecutionPlan scopes.
+
+	int dependency_count = 0;
+	OpBase *resolving_op = NULL;
+	bool all_refs_resolved = false;
+	for(int i = 0; i < root->childCount && !all_refs_resolved; i++) {
+		// Visit each child and try to resolve references, storing a pointer to the child if successful.
+		resolving_op = ExecutionPlan_LocateReferences(root->children[i], recurse_limit, refs_to_resolve);
+		if(resolving_op) dependency_count ++; // Count how many children resolved references.
+		all_refs_resolved = (raxSize(refs_to_resolve) == 0); // We're done when the rax is empty.
+	}
+
+	// If we've resolved all references, our work is done.
+	if(all_refs_resolved) {
+		/* Return the stored child if it resolved all references, or
+		 * the current op if multiple children resolved references. */
+		return (dependency_count == 1) ? resolving_op : root;
+	}
+
+	// Try to resolve references in the current operation.
+	bool refs_resolved = false;
+	uint modifies_count = array_len(root->modifies);
+	for(uint i = 0; i < modifies_count; i++) {
+		const char *ref = root->modifies[i];
+		// Attempt to remove the current op's references, marking whether any removal was succesful.
+		refs_resolved |= raxRemove(refs_to_resolve, (unsigned char *)ref, strlen(ref), NULL);
+	}
+
+	if(refs_resolved) resolving_op = root;
+	return resolving_op;
 }
 
 // Collect all aliases that have been resolved by the given tree of operations.

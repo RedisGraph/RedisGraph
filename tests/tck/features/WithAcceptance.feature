@@ -245,8 +245,6 @@ Feature: WithAcceptance
             | 'B'  |
         And no side effects
 
-@crash
-    @skip
     Scenario: WHERE on a DISTINCT column
         Given an empty graph
         And having executed:
