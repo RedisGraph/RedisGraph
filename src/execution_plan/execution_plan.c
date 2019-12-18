@@ -9,6 +9,7 @@
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/qsort.h"
+#include "../util/strcmp.h"
 #include "../util/vector.h"
 #include "../util/rmalloc.h"
 #include "../ast/ast_mock.h"
