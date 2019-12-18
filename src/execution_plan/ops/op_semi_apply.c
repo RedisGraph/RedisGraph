@@ -13,13 +13,16 @@ OpResult SemiApplyInit(OpBase *opBase);
 Record SemiApplyConsume(OpBase *opBase);
 OpResult SemiApplyReset(OpBase *opBase);
 
-static Record _pullFromBranchStream(OpSemiApply *op) {
+static Record _pullFromMatchStream(OpSemiApply *op) {
 	// Propegate record to the top of the match stream.
 	if(op->op_arg) Argument_AddRecord(op->op_arg, Record_Clone(op->r));
 	return OpBase_Consume(op->match_branch);
 }
 
-static Record OpSemiApply_SemiApplyConsume(OpBase *opBase) {
+/* This function pulls a record from the op's bounded branch, set it as an argument for the op branch stream
+ * (the match branch) and consumes a record from the match branch.
+ * If there is a record from the match branch, the bounded branch record is returned. */
+static Record _SemiApplyConsume(OpBase *opBase) {
 	OpSemiApply *op = (OpSemiApply *)opBase;
 	while(true) {
 		// Try to get a record from bound stream.
@@ -27,7 +30,7 @@ static Record OpSemiApply_SemiApplyConsume(OpBase *opBase) {
 		if(!op->r) return NULL; // Depleted.
 
 		// Try to get a record from match stream.
-		Record righthand_record = _pullFromBranchStream(op);
+		Record righthand_record = _pullFromMatchStream(op);
 		if(righthand_record) {
 			// Don't care for matched record.
 			Record_Free(righthand_record);
@@ -41,7 +44,10 @@ static Record OpSemiApply_SemiApplyConsume(OpBase *opBase) {
 	}
 }
 
-static Record OpSemiApply_AntiSemiApplyConsume(OpBase *opBase) {
+/* This function pulls a record from the op's bounded branch, set it as an argument for the op branch stream
+ * (the match branch) and consumes a record from the match branch.
+ * If there is no record from the match branch, the bounded branch record is returned. */
+static Record _AntiSemiApplyConsume(OpBase *opBase) {
 	OpSemiApply *op = (OpSemiApply *)opBase;
 	while(true) {
 		// Try to get a record from bound stream.
@@ -50,7 +56,7 @@ static Record OpSemiApply_AntiSemiApplyConsume(OpBase *opBase) {
 
 		/* Try pulling right stream
 		 * return bounded stream record if match stream returns NULL. */
-		Record righthand_record = _pullFromBranchStream(op);
+		Record righthand_record = _pullFromMatchStream(op);
 		if(righthand_record) {
 			/* managed to get a record from match stream,
 			 * free it and pull again from left handside. */
@@ -73,11 +79,11 @@ OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti) {
 	// Set our Op operations
 	if(anti) {
 		OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, "Anti Semi Apply", SemiApplyInit,
-					OpSemiApply_AntiSemiApplyConsume,
+					_AntiSemiApplyConsume,
 					SemiApplyReset, NULL, SemiApplyFree, false, plan);
 	} else {
 		OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, "Semi Apply", SemiApplyInit,
-					OpSemiApply_SemiApplyConsume,
+					_SemiApplyConsume,
 					SemiApplyReset, NULL, SemiApplyFree, false, plan);
 	}
 	return (OpBase *) op;

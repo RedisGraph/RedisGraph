@@ -355,7 +355,7 @@ static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
 	for(uint i = 0; i < filter_ops_count; i++) {
 		OpBase *op = filter_ops[i];
 		FT_FilterNode *node;
-		if(FilterTree_containsFunc(((OpFilter *)op)->filterTree, "path_filter", &node)) {
+		if(FilterTree_ContainsFunc(((OpFilter *)op)->filterTree, "path_filter", &node)) {
 			ExecutionPlan_ReduceFilterToApply(plan, op);
 		}
 	}
@@ -581,21 +581,6 @@ static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge
 		OpBase *create_argument = NewArgumentOp(plan, arguments);
 		ExecutionPlan_AddOp(merge_create, create_argument); // Add Argument op to stream.
 	}
-}
-
-// Build an array of const strings to populate the 'modifies' arrays of Argument ops.
-inline const char **ExecutionPlan_BuildArgumentModifiesArray(rax *bound_vars) {
-	const char **arguments = array_new(const char *, raxSize(bound_vars));
-	raxIterator it;
-	raxStart(&it, bound_vars);
-	raxSeek(&it, "^", NULL, 0);
-	while(raxNext(&it)) { // For each bound variable
-		// Copy the const string variable name into the array.
-		arguments = array_append(arguments, it.data);
-	}
-	raxStop(&it);
-
-	return arguments;
 }
 
 static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,

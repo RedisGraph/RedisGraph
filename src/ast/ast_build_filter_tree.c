@@ -254,28 +254,29 @@ FT_FilterNode *_FilterNode_FromAST(const cypher_astnode_t *expr) {
 	}
 }
 
-void _AST_ConvertGraphEntities(const AST *ast, FT_FilterNode **root,
-							   const cypher_astnode_t *entity) {
-	if(!entity) return;
-
-	FT_FilterNode *node = NULL;
-	cypher_astnode_type_t type = cypher_astnode_type(entity);
-	// If the current entity is a node or edge pattern, capture its properties map (if any)
-	if(type == CYPHER_AST_NODE_PATTERN) {
-		node = _convertInlinedProperties(ast, entity, GETYPE_NODE);
-	} else if(type == CYPHER_AST_REL_PATTERN) {
-		node = _convertInlinedProperties(ast, entity, GETYPE_EDGE);
-	} else {
-		uint child_count = cypher_astnode_nchildren(entity);
-		for(uint i = 0; i < child_count; i++) {
-			const cypher_astnode_t *child = cypher_astnode_get_child(entity, i);
-			// Recursively continue searching
-			_AST_ConvertGraphEntities(ast, root, child);
+void _AST_ConvertGraphPatternToFilter(const AST *ast, FT_FilterNode **root,
+									  const cypher_astnode_t *pattern) {
+	if(!pattern) return;
+	FT_FilterNode *ft_node = NULL;
+	uint npaths = cypher_ast_pattern_npaths(pattern);
+	// Go over each path in the pattern.
+	for(uint i = 0; i < npaths; i++) {
+		const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
+		// Go over each element in the path pattern and check if there is an inline filter.
+		uint nelements = cypher_ast_pattern_path_nelements(path);
+		// Nodes are in even places.
+		for(uint n = 0; n < nelements; n += 2) {
+			const cypher_astnode_t *node = cypher_ast_pattern_path_get_element(path, n);
+			ft_node = _convertInlinedProperties(ast, node, GETYPE_NODE);
+			if(ft_node) _FT_Append(root, ft_node);
+		}
+		// Edges are in odd places.
+		for(uint e = 1; e < nelements; e += 2) {
+			const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, e);
+			ft_node = _convertInlinedProperties(ast, edge, GETYPE_EDGE);
+			if(ft_node) _FT_Append(root, ft_node);
 		}
 	}
-
-	if(node) _FT_Append(root, node);
-
 }
 
 void _AST_ConvertFilters(const AST *ast, FT_FilterNode **root, const cypher_astnode_t *entity) {
@@ -319,7 +320,7 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 		uint match_count = array_len(match_clauses);
 		for(uint i = 0; i < match_count; i ++) {
 			const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match_clauses[i]);
-			_AST_ConvertGraphEntities(ast, &filter_tree, pattern);
+			_AST_ConvertGraphPatternToFilter(ast, &filter_tree, pattern);
 			const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(match_clauses[i]);
 			if(predicate) _AST_ConvertFilters(ast, &filter_tree, predicate);
 		}

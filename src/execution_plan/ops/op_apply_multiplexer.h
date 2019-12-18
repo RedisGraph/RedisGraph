@@ -30,7 +30,7 @@ typedef struct OpApplyMultiplexer {
 	OpBase op;
 	Record r;                       // Bound branch record.
 	OpBase *bound_branch;           // Bound branch root;
-	Argument **branches_arguments;  // Branches taps.
+	Argument **branch_arguments;  // Branches taps.
 	AST_Operator boolean_operator;  // Defines the operation logic.
 } OpApplyMultiplexer;
 

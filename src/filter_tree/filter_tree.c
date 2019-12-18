@@ -305,12 +305,12 @@ bool FilterTree_containsOp(const FT_FilterNode *root, AST_Operator op) {
 	}
 }
 
-bool FilterTree_containsFunc(const FT_FilterNode *root, const char *func, FT_FilterNode **node) {
+bool FilterTree_ContainsFunc(const FT_FilterNode *root, const char *func, FT_FilterNode **node) {
 	if(root == NULL) return false;
 	switch(root->t) {
 	case FT_N_COND: {
-		return FilterTree_containsFunc(root->cond.left, func, node) ||
-			   FilterTree_containsFunc(root->cond.right, func, node);
+		return FilterTree_ContainsFunc(root->cond.left, func, node) ||
+			   FilterTree_ContainsFunc(root->cond.right, func, node);
 	}
 	case FT_N_PRED: {
 		if(AR_EXP_ContainsFunc(root->pred.lhs, func) || AR_EXP_ContainsFunc(root->pred.rhs, func)) {

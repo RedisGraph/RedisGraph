@@ -74,12 +74,6 @@ OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit
  * The Create operation should never introduce a new node 'a'. */
 void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers);
 
-/* Allocate a new ExecutionPlan segment. */
-ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void);
-
-/* Build a tree of operations that performs all the worked required by the clauses of the current AST. */
-void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set);
-
 /* Build an array of const strings to populate the 'modifies' arrays of Argument ops.
  * Use after the call to ExecutionPlan_BoundVariables. */
 const char **ExecutionPlan_BuildArgumentModifiesArray(rax *bound_vars);
@@ -88,12 +82,21 @@ const char **ExecutionPlan_BuildArgumentModifiesArray(rax *bound_vars);
  * This is for use for updating ops that have been built with a temporary ExecutionPlan. */
 void ExecutionPlan_BindPlanToOps(OpBase *root, ExecutionPlan *plan);
 
+/* execution_plan_reduce_to_apply.c - Reduces a filter with path pattern into apply operation. */
+
 /* Reduces a filter operation into an apply operation. */
 void ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpBase *filter);
+
 /* execution_plan.c */
 
 /* Creates a new execution plan from AST */
 ExecutionPlan *NewExecutionPlan(ResultSet *result_set);
+
+/* Allocate a new ExecutionPlan segment. */
+ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void);
+
+/* Build a tree of operations that performs all the work required by the clauses of the current AST. */
+void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set);
 
 /* Retrieve the map of aliases to Record offsets in this ExecutionPlan segment. */
 rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan);

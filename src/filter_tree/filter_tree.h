@@ -100,7 +100,7 @@ bool FilterTree_containsOp(const FT_FilterNode *root, AST_Operator op);
  * root - tree root to traverse.
  * func - function name to lookup.
  * node - point to tree node in which func was located, null if func isn't located. */
-bool FilterTree_containsFunc(const FT_FilterNode *root, const char *func, FT_FilterNode **node);
+bool FilterTree_ContainsFunc(const FT_FilterNode *root, const char *func, FT_FilterNode **node);
 
 /* Prints tree. */
 void FilterTree_Print(const FT_FilterNode *root);
@@ -111,7 +111,7 @@ void FilterTree_Print(const FT_FilterNode *root);
  * components possible following the two rules above. */
 Vector *FilterTree_SubTrees(const FT_FilterNode *root);
 
-/* Verifies tree structure 
+/* Verifies tree structure
  * a condition or predicate node can't be childless. */
 bool FilterTree_Valid(const FT_FilterNode *root);
 

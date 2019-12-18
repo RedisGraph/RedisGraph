@@ -274,12 +274,12 @@ TEST_F(FilterTreeTest, ContainsFunc) {
 	const char *q = "MATCH (n) WHERE tolower(n.name) = 'alex' RETURN n";
 	FT_FilterNode *tree = build_tree_from_query(q);
 
-	found = FilterTree_containsFunc(tree, "tolower", &node);
+	found = FilterTree_ContainsFunc(tree, "tolower", &node);
 	ASSERT_TRUE(found);
 	ASSERT_TRUE(node != NULL);
 
 	node = NULL;
-	found = FilterTree_containsFunc(tree, "toupper", &node);
+	found = FilterTree_ContainsFunc(tree, "toupper", &node);
 	ASSERT_FALSE(found);
 	ASSERT_TRUE(node == NULL);
 
@@ -289,12 +289,12 @@ TEST_F(FilterTreeTest, ContainsFunc) {
 	q = "MATCH (n) WHERE tolower(toupper(n.name)) = 'alex' RETURN n";
 	tree = build_tree_from_query(q);
 
-	found = FilterTree_containsFunc(tree, "tolower", &node);
+	found = FilterTree_ContainsFunc(tree, "tolower", &node);
 	ASSERT_TRUE(found);
 	ASSERT_TRUE(node != NULL);
 
 	node = NULL;
-	found = FilterTree_containsFunc(tree, "toupper", &node);
+	found = FilterTree_ContainsFunc(tree, "toupper", &node);
 	ASSERT_TRUE(found);
 	ASSERT_TRUE(node != NULL);
 
