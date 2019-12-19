@@ -479,6 +479,21 @@ TEST_F(TuplesTest, IteratorRange) {
 	info = GxB_MatrixTupleIter_iterate_range(iter, n - 1, 0);
 	ASSERT_EQ(GrB_INVALID_INDEX, info);
 
+	// Iterate single row.
+	info = GxB_MatrixTupleIter_iterate_range(iter, 2, 2);
+	ASSERT_EQ(GrB_SUCCESS, info);
+
+	// Check that the right indices are retrived.
+	for(int i = 1; i <= 2; i++) {
+		info = GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+		ASSERT_EQ(GrB_SUCCESS, info);
+		ASSERT_EQ(indices[i][0], row);
+		ASSERT_EQ(indices[i][1], col);
+		ASSERT_FALSE(depleted);
+	}
+	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+	ASSERT_TRUE(depleted);
+
 	// Check for legal range setting.
 	info = GxB_MatrixTupleIter_iterate_range(iter, 2, 3);
 	ASSERT_EQ(GrB_SUCCESS, info);
@@ -493,6 +508,7 @@ TEST_F(TuplesTest, IteratorRange) {
 	}
 	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 	ASSERT_TRUE(depleted);
+
 
 	// Set the entire rows as range, check that iterator is depleted only when it is done iterating the matrix.
 	info = GxB_MatrixTupleIter_iterate_range(iter, 0, n - 1);
