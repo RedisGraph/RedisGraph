@@ -13,7 +13,7 @@
 UnsignedRange *UnsignedRange_New(void) {
 	UnsignedRange *range = rm_malloc(sizeof(UnsignedRange));
 	range->valid = true;
-	range->max = INFINITY;
+	range->max = UINT64_MAX;
 	range->min = 0;
 	range->include_min = true;
 	range->include_max = false;
@@ -33,7 +33,7 @@ bool UnsignedRange_IsValid(const UnsignedRange *range) {
 	}
 }
 
-bool UnsignedRange_ContainsValue(const UnsignedRange *range, double v) {
+bool UnsignedRange_ContainsValue(const UnsignedRange *range, uint64_t v) {
 	if(!range->valid) return false;
 
 	// Make sure v is <= max.
@@ -53,7 +53,7 @@ bool UnsignedRange_ContainsValue(const UnsignedRange *range, double v) {
 	return true;
 }
 
-void UnsignedRange_TightenRange(UnsignedRange *range, int op, double v) {
+void UnsignedRange_TightenRange(UnsignedRange *range, int op, uint64_t v) {
 	if(!range->valid) return;
 
 	switch(op) {
@@ -109,13 +109,12 @@ void UnsignedRange_ToString(const UnsignedRange *range) {
 	if(range->include_min) offset += sprintf(buff + offset, "[");
 	else offset += sprintf(buff + offset, "(");
 
-	if(range->min == -INFINITY) offset += sprintf(buff + offset, "-inf");
-	else offset += sprintf(buff + offset, "%f", range->min);
+	offset += sprintf(buff + offset, "%llu", range->min);
 
 	offset += sprintf(buff + offset, ",");
 
-	if(range->max == -INFINITY) offset += sprintf(buff + offset, "inf");
-	else offset += sprintf(buff + offset, "%f", range->max);
+	if(range->max == UINT64_MAX) offset += sprintf(buff + offset, "UINT64_MAX");
+	else offset += sprintf(buff + offset, "%llu", range->max);
 
 	if(range->include_max) offset += sprintf(buff + offset, "]");
 	else offset += sprintf(buff + offset, ")");
