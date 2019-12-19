@@ -82,7 +82,7 @@ GrB_Info GxB_MatrixTupleIter_iterate_range
 	}
 
 	if(startRowIdx > endRowIdx) {
-		return (GB_ERROR(GrB_INVALID_VALUE, (GB_LOG, "Start row index > end row index")));
+		return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "Start row index > end row index")));
 	}
 
 	iter->nnz_idx = iter->A->p[startRowIdx] ;

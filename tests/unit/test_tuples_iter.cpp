@@ -477,7 +477,7 @@ TEST_F(TuplesTest, IteratorRange) {
 	info = GxB_MatrixTupleIter_iterate_range(iter, 0, n);
 	ASSERT_EQ(GrB_INVALID_INDEX, info);
 	info = GxB_MatrixTupleIter_iterate_range(iter, n - 1, 0);
-	ASSERT_EQ(GrB_INVALID_VALUE, info);
+	ASSERT_EQ(GrB_INVALID_INDEX, info);
 
 	// Check for legal range setting.
 	info = GxB_MatrixTupleIter_iterate_range(iter, 2, 3);
