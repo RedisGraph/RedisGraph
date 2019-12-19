@@ -5,7 +5,6 @@
 */
 
 #include "op_node_by_label_scan.h"
-#include "op_node_by_id_seek.h"
 #include "shared/print_functions.h"
 #include "../../ast/ast.h"
 #include "../../query_ctx.h"
@@ -22,6 +21,8 @@ static inline int NodeByLabelScanToString(const OpBase *ctx, char *buf, uint buf
 	return ScanToString(ctx, buf, buf_len, ((const NodeByLabelScan *)ctx)->n);
 }
 
+/* Upon every call to create or reset iterator, there is need to see if the matrix size might have changed.
+ * The upper bound of the range should be a result of comparing the INPUT upper bound, and the maximal number of rows in matrix.*/
 static inline void _setIndices(NodeByLabelScan *op) {
 	// The largest possible entity ID is the same as Graph_RequiredMatrixDim.
 	NodeID max_id;
@@ -55,27 +56,18 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *n) {
 
 void NodeByLabelScanOp_SetIDRange(NodeByLabelScan *op, UnsignedRange *id_range) {
 	op->id_range = UnsignedRange_New();
-	op->id_range->min = id_range->min;
-	op->id_range->max = id_range->max;
-	op->id_range->include_min = id_range->include_min;
-	op->id_range->include_max = id_range->include_max;
+	memcpy(op->id_range, id_range, sizeof(UnsignedRange));
 	op->minId = op->id_range->include_min ? op->id_range->min : op->id_range->min + 1;
 	op->op.type = OpType_NODE_BY_LABEL_AND_ID_SCAN;
 	op->op.name = "Node By Label and ID Scan";
 }
 
-static inline bool _ConstructIterator(NodeByLabelScan *op) {
+static void _ConstructIterator(NodeByLabelScan *op) {
 	_setIndices(op);
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Schema *schema = GraphContext_GetSchema(gc, op->n->label, SCHEMA_NODE);
-	if(schema) {
-		GxB_MatrixTupleIter_new(&op->iter, Graph_GetLabelMatrix(gc->g, schema->id));
-		GxB_MatrixTupleIter_iterate_range(op->iter, op->minId, op->maxId);
-		return true;
-	} else {
-		/* Label does not exist, no need to iterate. */
-		return false;
-	}
+	GxB_MatrixTupleIter_new(&op->iter, Graph_GetLabelMatrix(gc->g, schema->id));
+	GxB_MatrixTupleIter_iterate_range(op->iter, op->minId, op->maxId);
 }
 
 static OpResult NodeByLabelScanInit(OpBase *opBase) {
@@ -83,11 +75,12 @@ static OpResult NodeByLabelScanInit(OpBase *opBase) {
 	if(opBase->childCount > 0) {
 		opBase->consume = NodeByLabelScanConsumeFromChild;
 	} else {
+		GraphContext *gc = QueryCtx_GetGraphCtx();
+		Schema *schema = GraphContext_GetSchema(gc, op->n->label, SCHEMA_NODE);
+		// No label matrix, just return null.
+		if(!schema) opBase->consume = NodeByLabelScanNoOp;
 		// If we have no children, we can build the iterator now.
-		if(!_ConstructIterator((NodeByLabelScan *)opBase)) {
-			// No label matrix, just return null.
-			opBase->consume = NodeByLabelScanNoOp;
-		}
+		else _ConstructIterator((NodeByLabelScan *)opBase);
 	}
 
 	return OP_OK;
@@ -113,14 +106,21 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 		if(op->child_record == NULL) return NULL;
 		// One-time construction of the iterator.
 		// (Don't do so before now because the label might have been built in a child op.)
-		if(op->iter == NULL) {
-			if(!_ConstructIterator(op)) {
-				// No need to iterate - consume child.
-				while(OpBase_Consume(op->op.children[0])) {}
-				return NULL;
-			}
-		} else {
+		if(op->iter) {
 			_ResetIterator(op);
+		} else {
+			// Iterator wasn't set up until now
+			GraphContext *gc = QueryCtx_GetGraphCtx();
+			Schema *schema = GraphContext_GetSchema(gc, op->n->label, SCHEMA_NODE);
+			// No label matrix, no need to iterate - consume child.
+			if(!schema) {
+				while(OpBase_Consume(op->op.children[0])) {}
+				Record_Free(op->child_record); // Free old record.
+				op->child_record = NULL;
+				return NULL;
+			} else {
+				_ConstructIterator((NodeByLabelScan *)opBase);
+			}
 		}
 	}
 
@@ -171,7 +171,10 @@ static Record NodeByLabelScanNoOp(OpBase *opBase) {
 
 static OpResult NodeByLabelScanReset(OpBase *ctx) {
 	NodeByLabelScan *op = (NodeByLabelScan *)ctx;
-	op->child_record = NULL;
+	if(op->child_record) {
+		Record_Free(op->child_record); // Free old record.
+		op->child_record = NULL;
+	}
 	_ResetIterator(op);
 	return OP_OK;
 }

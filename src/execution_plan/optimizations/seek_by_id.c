@@ -49,51 +49,6 @@ static bool _idFilter(FT_FilterNode *f, AST_Operator *rel, EntityID *id, bool *r
 	return true;
 }
 
-static void _setupIdRange(int rel, EntityID id, bool reverse, NodeID *minId, NodeID *maxId,
-						  bool *inclusiveMin, bool *inclusiveMax) {
-	switch(rel) {
-	case OP_GT:
-		*minId = id;
-		break;
-	case OP_GE:
-		*minId = id;
-		*inclusiveMin = true;
-		break;
-	case OP_LT:
-		*maxId = id;
-		break;
-	case OP_LE:
-		*maxId = id;
-		*inclusiveMax = true;
-		break;
-	case OP_EQUAL:
-		*minId = id;
-		*maxId = id;
-		*inclusiveMin = true;
-		*inclusiveMax = true;
-		break;
-	default:
-		assert(false);
-		break;
-	}
-
-	/* WHERE ID(n) >= 5
-	 * Reverse
-	 * WHERE 5 <= ID(n) */
-	if(reverse) {
-		NodeID tmpNodeId;
-		bool tmpInclusive;
-
-		tmpNodeId = *minId;
-		*minId = *maxId;
-		*maxId = tmpNodeId;
-
-		tmpInclusive = *inclusiveMin;
-		*inclusiveMin = *inclusiveMax;
-		*inclusiveMax = tmpInclusive;
-	}
-}
-
 static void _reverseOp(AST_Operator *op) {
 	switch(*op) {
 	case OP_GE:
@@ -133,9 +88,6 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 			if(!id_range) id_range = UnsignedRange_New();
 			if(reverse) _reverseOp(&op);
 			UnsignedRange_TightenRange(id_range, op, id);
-
-			// _setupIdRange(op, id, reverse, &id_range->min, &id_range->min, &id_range->include_min,
-			// 			  &id_range->include_max);
 
 			// Free replaced operations.
 			ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
