@@ -26,7 +26,6 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *n) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	op->g = gc->g;
 	op->n = n;
-	op->label = n->label;
 	op->iter = NULL;
 	op->child_record = NULL;
 	// Defaults to [0...UINT64_MAX].
@@ -56,6 +55,7 @@ static void _ConstructIterator(NodeByLabelScan *op) {
 	NodeID minId = op->id_range->include_min ? op->id_range->min : op->id_range->min + 1;
 	NodeID maxId = op->id_range->include_max ? op->id_range->max : op->id_range->max - 1 ;
 	GxB_MatrixTupleIter_iterate_range(op->iter, minId, maxId);
+
 }
 
 static OpResult NodeByLabelScanInit(OpBase *opBase) {

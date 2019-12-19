@@ -35,7 +35,7 @@ static OpBase *_buildMatchBranch(ExecutionPlan *plan, const cypher_astnode_t *pa
 	QueryCtx_SetAST(ast); // Reset the AST.
 
 	OpBase *branch_match_root = match_branch_plan->root;
-	ExecutionPlan_BindPlanToOps(branch_match_root, plan);
+	// ExecutionPlan_BindPlanToOps(branch_match_root, plan);
 	/* Don't lose information when optimizing this branch. The optimizations are lookgin for
 	* specific operation types and if the result of the operations is achievable by one of its
 	* descendants, this op is redundant. The argument op "modifies" the execution plan by
@@ -58,11 +58,11 @@ static OpBase *_buildMatchBranch(ExecutionPlan *plan, const cypher_astnode_t *pa
 		argument->modifies = NULL;
 	}
 
-	// NULL-set variables shared between the match_branch_plan and the overall plan.
-	match_branch_plan->root = NULL;
-	match_branch_plan->record_map = NULL;
-	// Free the temporary plan.
-	ExecutionPlan_Free(match_branch_plan);
+	// // NULL-set variables shared between the match_branch_plan and the overall plan.
+	// match_branch_plan->root = NULL;
+	// match_branch_plan->record_map = NULL;
+	// // Free the temporary plan.
+	// ExecutionPlan_Free(match_branch_plan);
 
 	return branch_match_root;
 }
@@ -149,7 +149,6 @@ void ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpBase *op) {
 	OpFilter *filter = (OpFilter *) op;
 	// Reduce.
 	OpBase *apply_op = _ReduceFilterToOpBase(plan, filter->filterTree);
-	ExecutionPlan_BindPlanToOps(apply_op, plan);
 	// Replace operations.
 	ExecutionPlan_ReplaceOp(plan, op, apply_op);
 	// Bounded branch is now the last child (after ops replacement). Make it the first.
