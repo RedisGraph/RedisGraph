@@ -439,3 +439,72 @@ TEST_F(TuplesTest, IteratorJumpToRowTest) {
 	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 	ASSERT_TRUE(depleted);
 }
+
+
+TEST_F(TuplesTest, IteratorRange) {
+
+	// Matrix is 6X6 and will be populated with the following indices.
+	GrB_Index indices[6][2] = {
+		{0, 2},
+		{2, 1},
+		{2, 3},
+		{3, 0},
+		{3, 4},
+		{5, 5}
+	};
+
+	bool depleted;
+	GrB_Info info;
+	GrB_Index row;
+	GrB_Index col;
+
+	// Create and populate the matrix.
+	GrB_Index n = 6;
+	GrB_Matrix A = CreateSquareNByNEmptyMatrix(n);
+	for(int i = 0; i < 6; i ++) {
+		row = indices[i][0];
+		col = indices[i][1];
+		GrB_Matrix_setElement_BOOL(A, true, row, col);
+	}
+
+	// Create iterator.
+	GxB_MatrixTupleIter *iter;
+	GxB_MatrixTupleIter_new(&iter, A);
+
+	// Check for invalid index exception for range iteration.
+	info = GxB_MatrixTupleIter_iterate_range(iter, -1, n - 1);
+	ASSERT_EQ(GrB_INVALID_INDEX, info);
+	info = GxB_MatrixTupleIter_iterate_range(iter, 0, n);
+	ASSERT_EQ(GrB_INVALID_INDEX, info);
+	info = GxB_MatrixTupleIter_iterate_range(iter, n - 1, 0);
+	ASSERT_EQ(GrB_INVALID_VALUE, info);
+
+	// Check for legal range setting.
+	info = GxB_MatrixTupleIter_iterate_range(iter, 2, 3);
+	ASSERT_EQ(GrB_SUCCESS, info);
+
+	// Check that the right indices are retrived.
+	for(int i = 1; i <= 4; i++) {
+		info = GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+		ASSERT_EQ(GrB_SUCCESS, info);
+		ASSERT_EQ(indices[i][0], row);
+		ASSERT_EQ(indices[i][1], col);
+		ASSERT_FALSE(depleted);
+	}
+	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+	ASSERT_TRUE(depleted);
+
+	// Set the entire rows as range, check that iterator is depleted only when it is done iterating the matrix.
+	info = GxB_MatrixTupleIter_iterate_range(iter, 0, n - 1);
+	ASSERT_EQ(GrB_SUCCESS, info);
+
+	for(int i = 0; i < 6; i ++) {
+		info = GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+		ASSERT_EQ(GrB_SUCCESS, info);
+		ASSERT_EQ(indices[i][0], row);
+		ASSERT_EQ(indices[i][1], col);
+		ASSERT_FALSE(depleted);
+	}
+	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
+	ASSERT_TRUE(depleted);
+}
