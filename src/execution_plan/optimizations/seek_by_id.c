@@ -13,7 +13,7 @@
 #include "../ops/op_node_by_label_scan.h"
 #include "../../util/range/numeric_range.h"
 
-static bool _idFilter(FT_FilterNode *f, int *rel, EntityID *id, bool *reverse) {
+static bool _idFilter(FT_FilterNode *f, AST_Operator *rel, EntityID *id, bool *reverse) {
 	if(f->t != FT_N_PRED) return false;
 	if(f->pred.op == OP_NEQUAL) return false;
 
@@ -94,31 +94,69 @@ static void _setupIdRange(int rel, EntityID id, bool reverse, NodeID *minId, Nod
 	}
 }
 
+static void _reverseOp(AST_Operator *op) {
+	switch(*op) {
+	case OP_GE:
+		*op = OP_LE;
+		break;
+	case OP_LE:
+		*op = OP_GE;
+		break;
+	case OP_LT:
+		*op = OP_GT;
+		break;
+	case OP_GT:
+		*op = OP_LT;
+		break;
+	case OP_EQUAL:
+		break;
+	default:
+		assert(false);
+		break;
+	}
+}
+
 static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 	/* See if there's a filter of the form
 	 * ID(n) = X
 	 * where X is a constant. */
 	OpBase *parent = scan_op->parent;
+	UnsignedRange *id_range = NULL;
 	while(parent && parent->type == OPType_FILTER) {
 		OpFilter *filter = (OpFilter *)parent;
 		FT_FilterNode *f = filter->filterTree;
 
-		int rel;
+		AST_Operator op;
 		EntityID id;
 		bool reverse;
-		if(_idFilter(f, &rel, &id, &reverse)) {
-			const QGNode *node = NULL;
-			NodeID minId = ID_RANGE_UNBOUND;
-			NodeID maxId = ID_RANGE_UNBOUND;
-			bool inclusiveMin = false;
-			bool inclusiveMax = false;
+		if(_idFilter(f, &op, &id, &reverse)) {
+			if(!id_range) id_range = UnsignedRange_New();
+			if(reverse) _reverseOp(&op);
+			UnsignedRange_TightenRange(id_range, op, id);
 
+			// _setupIdRange(op, id, reverse, &id_range->min, &id_range->min, &id_range->include_min,
+			// 			  &id_range->include_max);
+
+			// Free replaced operations.
+			ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
+			OpBase_Free((OpBase *)filter);
+		}
+		// Advance.
+		parent = parent->parent;
+	}
+	if(id_range) {
+		/* Don't replace label scan, but set it to have range query.
+		 * Issue 818 https://github.com/RedisGraph/RedisGraph/issues/818
+		 * This optimization caused a range query over the entire range of ids in the graph
+		 * regardless to the label. */
+		if(scan_op->type == OPType_NODE_BY_LABEL_SCAN) {
+			NodeByLabelScan *label_scan = (NodeByLabelScan *) scan_op;
+			NodeByLabelScanOp_SetIDRange(label_scan, id_range);
+		} else {
+			const QGNode *node = NULL;
 			switch(scan_op->type) {
 			case OPType_ALL_NODE_SCAN:
 				node = ((AllNodeScan *)scan_op)->n;
-				break;
-			case OPType_NODE_BY_LABEL_SCAN:
-				node = ((NodeByLabelScan *)scan_op)->n;
 				break;
 			case OPType_INDEX_SCAN:
 				node = ((IndexScan *)scan_op)->n;
@@ -126,32 +164,13 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 			default:
 				assert(false);
 			}
+			OpBase *opNodeByIdSeek = NewNodeByIdSeekOp(scan_op->plan, node, id_range);
 
-			_setupIdRange(rel, id, reverse, &minId, &maxId, &inclusiveMin, &inclusiveMax);
-			/* Don't replace label scan, but set it to have range query.
-			 * Issue 818 https://github.com/RedisGraph/RedisGraph/issues/818
-			 * This optimization caused a range query over the entire range of ids in the graph
-			 * regardless to the label. */
-			if(scan_op->type == OPType_NODE_BY_LABEL_SCAN) {
-				NodeByLabelScan *label_scan = (NodeByLabelScan *) scan_op;
-				NodeByLabelScanOp_IDRange(label_scan, minId, inclusiveMin, maxId, inclusiveMax);
-			} else {
-				OpBase *opNodeByIdSeek = NewNodeByIdSeekOp(scan_op->plan, node, minId, maxId,
-														   inclusiveMin, inclusiveMax);
-
-				// Managed to reduce!
-				ExecutionPlan_ReplaceOp(plan, scan_op, opNodeByIdSeek);
-				OpBase_Free(scan_op);
-			}
-			// Free replaced operations.
-			ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
-			OpBase_Free((OpBase *)filter);
-
-			break; // Exit loop.
+			// Managed to reduce!
+			ExecutionPlan_ReplaceOp(plan, scan_op, opNodeByIdSeek);
+			OpBase_Free(scan_op);
 		}
-
-		// Advance.
-		parent = parent->parent;
+		UnsignedRange_Free(id_range);
 	}
 }
 

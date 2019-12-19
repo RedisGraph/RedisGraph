@@ -16,7 +16,7 @@ UnsignedRange *UnsignedRange_New(void) {
 	range->max = UINT64_MAX;
 	range->min = 0;
 	range->include_min = true;
-	range->include_max = false;
+	range->include_max = true;
 	return range;
 }
 

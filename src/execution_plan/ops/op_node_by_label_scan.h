@@ -11,6 +11,7 @@
 #include "../../graph/graph.h"
 #include "../../graph/entities/node.h"
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
+#include "../../util/range/unsigned_range.h"
 
 /* NodeByLabelScan, scans entire label. */
 
@@ -19,10 +20,9 @@ typedef struct {
 	Graph *g;
 	const QGNode *n;            /* Node being scanned. */
 	unsigned int nodeRecIdx;    /* Node position within record. */
-	NodeID minId;               // Min ID to fetch.
-	NodeID maxId;               // Max ID to fetch.
-	bool minInclusive;          // Include min ID.
-	bool maxInclusive;          // Include max ID.
+	NodeID minId;               /* Min ID to fetch. */
+	NodeID maxId;               /* Max ID to fetch. */
+	UnsignedRange *id_range;    /* ID range to iterate over. */
 	GxB_MatrixTupleIter *iter;
 	Record child_record;        /* The Record this op acts on if it is not a tap. */
 } NodeByLabelScan;
@@ -31,6 +31,4 @@ typedef struct {
 OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *node);
 
 /* Transform a simple label scan to perform additional range query over the label  matrix. */
-void NodeByLabelScanOp_IDRange(NodeByLabelScan *op, NodeID minId, bool minInclusive, NodeID maxId,
-							   bool maxInclusive);
-
+void NodeByLabelScanOp_SetIDRange(NodeByLabelScan *op, UnsignedRange *id_range);

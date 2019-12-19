@@ -317,7 +317,7 @@ TEST_F(RangeTest, UnsignedRangeNew) {
 	ASSERT_TRUE(r->valid);
 	ASSERT_EQ(r->max, UINT64_MAX);
 	ASSERT_EQ(r->min, 0);
-	ASSERT_FALSE(r->include_max);
+	ASSERT_TRUE(r->include_max);
 	ASSERT_TRUE(r->include_min);
 
 	UnsignedRange_Free(r);
