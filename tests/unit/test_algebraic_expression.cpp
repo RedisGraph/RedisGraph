@@ -278,50 +278,6 @@ class AlgebraicExpressionTest: public ::testing::Test {
 			AlgebraicExpression_Free(exp);
 		}
 	}
-
-    AlgebraicExpression *algebraic_expression_from_string(const char *exp) {
-        char *alias;
-        uint exp_len = strlen(exp);
-        AlgebraicExpression *root = NULL;
-        AlgebraicExpression *op = NULL;
-        AlgebraicExpression *rhs = NULL;
-
-        for(uint i = 0; i < exp_len; i++) {
-            char c = exp[i];
-            switch(c) {
-                case '+':
-                    op = AlgebraicExpression_NewOperation(AL_EXP_ADD);
-                    rhs = algebraic_expression_from_string(exp + (i + 1));
-                    AlgebraicExpression_AddChild(op, root);
-                    AlgebraicExpression_AddChild(op, rhs);
-                    root = op;
-                break;
-                case '*':
-                    op = AlgebraicExpression_NewOperation(AL_EXP_MUL);
-                    rhs = algebraic_expression_from_string(exp + (i + 1));
-                    AlgebraicExpression_AddChild(op, root);
-                    AlgebraicExpression_AddChild(op, rhs);
-                    root = op;
-                break;
-                case 'T':
-                case '(':
-                    // Wait for closing ')'
-                    break;
-                case ')':
-                    AlgebraicExpression_Transpose(root);
-                break;
-                default:
-                    alias = (char*)malloc(sizeof(char) * 2);
-                    alias[0] = c;
-                    alias[1] = '\0';
-                    root = AlgebraicExpression_NewOperand(GrB_NULL, false, false, alias, alias, NULL);
-                break;
-            }
-        }
-
-        AlgebraicExpression_Optimize(&root);
-        return root;
-    }
 };
 
 TEST_F(AlgebraicExpressionTest, AlgebraicExpression_New) {
@@ -370,12 +326,13 @@ TEST_F(AlgebraicExpressionTest, AlgebraicExpression_New) {
 TEST_F(AlgebraicExpressionTest, AlgebraicExpression_Clone) {
     AlgebraicExpression *exp = NULL;
     AlgebraicExpression *clone = NULL;
-
     const char *expressions[13] = {"A", "A*B", "A*B*C", "A+B", "A+B+C", "A*B+C", "A+B*C",
     "T(A)", "T(A*B)", "T(A*B*C)", "T(A+B)", "T(A+B+C)", "T(T(A))"};
 
     for(uint i = 0; i < 13; i++) {        
-        exp = algebraic_expression_from_string(expressions[i]);
+        exp = AlgebraicExpression_FromString(expressions[i], NULL);
+        AlgebraicExpression_Print(exp);
+        printf("\n");
         clone = AlgebraicExpression_Clone(exp);
         compare_algebraic_expression(exp, clone);
         AlgebraicExpression_Free(clone);
@@ -391,9 +348,19 @@ TEST_F(AlgebraicExpressionTest, AlgebraicExpression_Transpose) {
     const char *transposed_expressions[6] = {"T(A)", "T(B)*T(A)", "T(C)*T(B)*T(A)", "T(A)+T(B)", "T(A)+T(B)+T(C)", "A"};
 
     for(uint i = 0; i < 6; i++) {
-        exp = algebraic_expression_from_string(expressions[i]);
+        exp = AlgebraicExpression_FromString(expressions[i], NULL);
+        
+        AlgebraicExpression_Print(exp);
+        printf("\n");
+        
         AlgebraicExpression_Transpose(exp);
-        transposed_exp = algebraic_expression_from_string(transposed_expressions[i]);
+        
+        AlgebraicExpression_PrintTree(exp);
+        printf("\n");
+
+        transposed_exp = AlgebraicExpression_FromString(transposed_expressions[i], NULL);
+        AlgebraicExpression_PrintTree(transposed_exp);
+        printf("\n");
         compare_algebraic_expression(exp, transposed_exp);
         AlgebraicExpression_Free(exp);
         AlgebraicExpression_Free(transposed_exp);
@@ -435,8 +402,8 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_ADD) {
 	// but also contains the result of expression evaluation.
 	GrB_Matrix_new(&res, GrB_BOOL, 2, 2);
 
-	// A + B	
-	AlgebraicExpression *exp = AlgebraicExpression_NewOperand(A, false, false, NULL, NULL, NULL);
+	// A + B
+	AlgebraicExpression *exp = AlgebraicExpression_NewOperand(A, false, false, "a", "a", NULL);
 	AlgebraicExpression_AddToTheRight(&exp, B);
 	AlgebraicExpression_Optimize(&exp);
 	AlgebraicExpression_Eval(exp, res);

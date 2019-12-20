@@ -10,6 +10,73 @@
 // AlgebraicExpression debugging utilities.
 //------------------------------------------------------------------------------
 
+AlgebraicExpression *_AlgebraicExpression_FromString
+(
+	const char **exp,   // String representation of expression.
+	rax *matrices       // Map of matrices referred to in expression.
+) {
+	char *alias;
+	GrB_Matrix m;
+	AlgebraicExpression *op;
+	AlgebraicExpression *rhs;
+	AlgebraicExpression *root;
+	while(*exp[0] != '\0') {
+		char c = (*exp)[0];
+		*exp = *exp + 1; // Advance.
+
+		switch(c) {
+		case '+':
+			op = AlgebraicExpression_NewOperation(AL_EXP_ADD);
+			rhs = _AlgebraicExpression_FromString(exp, matrices);
+			AlgebraicExpression_AddChild(op, root);
+			AlgebraicExpression_AddChild(op, rhs);
+			root = op;
+			break;
+		case '*':
+			op = AlgebraicExpression_NewOperation(AL_EXP_MUL);
+			rhs = _AlgebraicExpression_FromString(exp, matrices);
+			AlgebraicExpression_AddChild(op, root);
+			AlgebraicExpression_AddChild(op, rhs);
+			root = op;
+			break;
+		case '(':
+			// Beginning of sub expression.
+			return _AlgebraicExpression_FromString(exp, matrices);
+			break;
+		case ')':
+			// End of sub expression.
+			return root;
+			break;
+		case 'T':
+			root = _AlgebraicExpression_FromString(exp, matrices);
+			AlgebraicExpression_Transpose(root);
+			break;
+		default:
+			// Operand.
+			alias = (char *)malloc(sizeof(char) * 2);
+			alias[0] = c;
+			alias[1] = '\0';
+
+			m = GrB_NULL;
+			if(matrices) m = (GrB_Matrix)raxFind(matrices, (unsigned char *)alias, strlen(alias));
+			root = AlgebraicExpression_NewOperand(m, false, false, alias, alias, NULL);
+			break;
+		}
+	}
+
+	return root;
+}
+
+AlgebraicExpression *AlgebraicExpression_FromString
+(
+	const char *exp,    // String representation of expression.
+	rax *matrices       // Map of matrices referred to in expression.
+) {
+	AlgebraicExpression *root = _AlgebraicExpression_FromString(&exp, matrices);
+	AlgebraicExpression_Optimize(&root);
+	return root;
+}
+
 static void _AlgebraicExpression_PrintTree
 (
 	const AlgebraicExpression *exp,

@@ -248,6 +248,14 @@ void AlgebraicExpression_Eval
 // AlgebraicExpression debugging utilities.
 //------------------------------------------------------------------------------
 
+// Create an algebraic expression from string
+// e.g. B*T(B+A)
+AlgebraicExpression *AlgebraicExpression_FromString
+(
+    const char *exp,    // String representation of expression.
+    rax *matrices       // Map of matrices referred to in expression.
+);
+
 // Print a tree structure of algebraic expression to stdout.
 void AlgebraicExpression_PrintTree
 (

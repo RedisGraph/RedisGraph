@@ -171,6 +171,67 @@ static void _AlgebraicExpression_MulOverSum(AlgebraicExpression **root) {
 	while(__AlgebraicExpression_MulOverSum(root));
 }
 
+static void _AlgebraicExpression_CollectOperands(AlgebraicExpression *root, AlgebraicExpression ***operands) {
+    uint child_count = 0;
+
+    switch(root->type) {
+        case AL_OPERAND:
+        *operands = array_append(*operands, root);
+        break;
+        case AL_OPERATION:
+        switch(root->operation.op) {
+            case AL_EXP_TRANSPOSE:
+            // Transposed is considered as an operand.
+            *operands = array_append(*operands, root);
+            break;
+            case AL_EXP_ADD:
+            case AL_EXP_MUL:
+            child_count = AlgebraicExpression_ChildCount(root);
+            for(uint i = 0; i < child_count; i++) {
+                _AlgebraicExpression_CollectOperands(AlgebraicExpression_Clone(CHILD_AT(root, i)), operands);
+            }
+            default:
+            assert("Unknow algebraic expression operation type" && false);
+        }
+        default:
+        assert("Unknow algebraic expression node type" && false);
+    }
+}
+
+static void _AlgebraicExpression_FlattenMultiplications(AlgebraicExpression *root) {
+    assert(root);
+    uint child_count;
+
+    switch(root->type) {
+        case AL_OPERATION:
+        switch(root->operation.op) {
+            case AL_EXP_ADD:
+            case AL_EXP_TRANSPOSE:
+                child_count = AlgebraicExpression_ChildCount(root);
+                for(int i = 0; i < child_count; i++) _AlgebraicExpression_FlattenMultiplications(CHILD_AT(root, i));
+            break;
+            
+            case AL_EXP_MUL:
+            // Root has sub multiplication node(s).
+            if(AlgebraicExpression_OperationCount(root, AL_EXP_MUL) > 1) {
+                uint child_count = AlgebraicExpression_ChildCount(root);
+                AlgebraicExpression **flat_children = array_new(AlgebraicExpression *, child_count);
+                _AlgebraicExpression_CollectOperands(root, &flat_children);
+                for(uint i = 0; i < child_count; i++) AlgebraicExpression_Free(CHILD_AT(root, i));
+                array_free(root->operation.children);
+                root->operation.children = flat_children;
+            }
+
+            break;
+            default:
+                assert("Unknown algebraic operation type" && false);
+            break;
+        }
+        default:
+        break;
+    }
+}
+
 /* Multiplies `exp` to the left by `lhs`.
  * Returns new expression root.
  * `lhs` = (A + B)
@@ -1188,6 +1249,7 @@ void AlgebraicExpression_Optimize
 ) {
 	assert(exp);
 	_AlgebraicExpression_MulOverSum(exp);
+	_AlgebraicExpression_FlattenMultiplications(*exp);
 }
 
 //------------------------------------------------------------------------------

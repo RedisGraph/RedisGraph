@@ -1111,4 +1111,3 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan->record_map) raxFree(plan->record_map);
 	rm_free(plan);
 }
-
