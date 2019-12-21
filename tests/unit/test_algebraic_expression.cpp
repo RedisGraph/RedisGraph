@@ -331,8 +331,6 @@ TEST_F(AlgebraicExpressionTest, AlgebraicExpression_Clone) {
 
     for(uint i = 0; i < 13; i++) {        
         exp = AlgebraicExpression_FromString(expressions[i], NULL);
-        AlgebraicExpression_Print(exp);
-        printf("\n");
         clone = AlgebraicExpression_Clone(exp);
         compare_algebraic_expression(exp, clone);
         AlgebraicExpression_Free(clone);
@@ -349,18 +347,8 @@ TEST_F(AlgebraicExpressionTest, AlgebraicExpression_Transpose) {
 
     for(uint i = 0; i < 6; i++) {
         exp = AlgebraicExpression_FromString(expressions[i], NULL);
-        
-        AlgebraicExpression_Print(exp);
-        printf("\n");
-        
-        AlgebraicExpression_Transpose(exp);
-        
-        AlgebraicExpression_PrintTree(exp);
-        printf("\n");
-
+        AlgebraicExpression_Transpose(exp);        
         transposed_exp = AlgebraicExpression_FromString(transposed_expressions[i], NULL);
-        AlgebraicExpression_PrintTree(transposed_exp);
-        printf("\n");
         compare_algebraic_expression(exp, transposed_exp);
         AlgebraicExpression_Free(exp);
         AlgebraicExpression_Free(transposed_exp);
@@ -398,30 +386,33 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_ADD) {
 	GrB_Matrix_setElement_BOOL(C, true, 1, 0);
 	GrB_Matrix_setElement_BOOL(C, true, 1, 1);
 
+    rax *matrices = raxNew();
+    raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
+    raxInsert(matrices, (unsigned char *)"B", strlen("B"), B, NULL);
+    AlgebraicExpression *exp = AlgebraicExpression_FromString("A+B", matrices);
+
 	// Matrix used for intermidate computations of AlgebraicExpression_Eval
 	// but also contains the result of expression evaluation.
 	GrB_Matrix_new(&res, GrB_BOOL, 2, 2);
-
-	// A + B
-	AlgebraicExpression *exp = AlgebraicExpression_NewOperand(A, false, false, "a", "a", NULL);
-	AlgebraicExpression_AddToTheRight(&exp, B);
-	AlgebraicExpression_Optimize(&exp);
 	AlgebraicExpression_Eval(exp, res);
 
 	// Using the A matrix described above,
 	// A + B = C.
 	ASSERT_TRUE(_compare_matrices(res, C));
 
+    raxFree(matrices);
 	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&C);
 	GrB_Matrix_free(&res);
+    AlgebraicExpression_Free(exp);
 }
 
 TEST_F(AlgebraicExpressionTest, Exp_OP_MUL) {
 	// Exp = A * I
 	GrB_Matrix A;
 	GrB_Matrix I;
+	GrB_Matrix res;
 
 	// A
 	// 1 1
@@ -436,25 +427,26 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_MUL) {
 	GrB_Matrix_new(&I, GrB_BOOL, 2, 2);
 	GrB_Matrix_setElement_BOOL(I, true, 0, 0);
 	GrB_Matrix_setElement_BOOL(I, true, 1, 1);
-	GrB_Matrix res;
+
+    rax *matrices = raxNew();
+    raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
+    raxInsert(matrices, (unsigned char *)"I", strlen("I"), I, NULL);
+    AlgebraicExpression *exp = AlgebraicExpression_FromString("A*I", matrices);
 
 	// Matrix used for intermidate computations of AlgebraicExpression_Eval
 	// but also contains the result of expression evaluation.
 	GrB_Matrix_new(&res, GrB_BOOL, 2, 2);
-
-	// A * I
-	AlgebraicExpression *exp = AlgebraicExpression_NewOperand(A, false, false, NULL, NULL, NULL);
-	AlgebraicExpression_MultiplyToTheRight(&exp, I);
-	AlgebraicExpression_Optimize(&exp);
 	AlgebraicExpression_Eval(exp, res);
 
 	// Using the A matrix described above,
 	// A * I = A.
 	ASSERT_TRUE(_compare_matrices(res, A));
 
-	GrB_Matrix_free(&A);
+    raxFree(matrices);
+    GrB_Matrix_free(&A);
 	GrB_Matrix_free(&I);
 	GrB_Matrix_free(&res);
+    AlgebraicExpression_Free(exp);
 }
 
 TEST_F(AlgebraicExpressionTest, Exp_OP_ADD_Transpose) {
@@ -471,10 +463,11 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_ADD_Transpose) {
 	GrB_Matrix_setElement_BOOL(A, true, 0, 1);
 
 	// B
-	// 1 0
+	// 1 1
 	// 1 0
 	GrB_Matrix_new(&B, GrB_BOOL, 2, 2);
 	GrB_Matrix_setElement_BOOL(B, true, 0, 0);
+	GrB_Matrix_setElement_BOOL(B, true, 0, 1);
 	GrB_Matrix_setElement_BOOL(B, true, 1, 0);
 
 	// Matrix used for intermidate computations of AlgebraicExpression_Eval
@@ -482,19 +475,20 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_ADD_Transpose) {
 	GrB_Matrix_new(&res, GrB_BOOL, 2, 2);
 
 	// A + Transpose(A)	
-	AlgebraicExpression *exp = AlgebraicExpression_NewOperand(A, false, false, NULL, NULL, NULL);
-	AlgebraicExpression_Transpose(exp);
-    AlgebraicExpression_AddToTheLeft(&exp, A);
-    AlgebraicExpression_Optimize(&exp);
+    rax *matrices = raxNew();
+    raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
+    AlgebraicExpression *exp = AlgebraicExpression_FromString("A+T(A)", matrices);	
 	AlgebraicExpression_Eval(exp, res);
 
 	// Using the A matrix described above,
 	// A + Transpose(A) = B.
 	ASSERT_TRUE(_compare_matrices(res, B));
 
+    raxFree(matrices);
 	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&res);
+    AlgebraicExpression_Free(exp);
 }
 
 TEST_F(AlgebraicExpressionTest, Exp_OP_MUL_Transpose) {
@@ -511,32 +505,30 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_MUL_Transpose) {
 	GrB_Matrix_setElement_BOOL(A, true, 0, 1);
 
 	// B
-	// 1 1
-	// 1 1
+	// 1 0
+	// 0 0
 	GrB_Matrix_new(&B, GrB_BOOL, 2, 2);
 	GrB_Matrix_setElement_BOOL(B, true, 0, 0);
-	GrB_Matrix_setElement_BOOL(B, true, 0, 1);
-	GrB_Matrix_setElement_BOOL(B, true, 1, 0);
-	GrB_Matrix_setElement_BOOL(B, true, 1, 1);
 
 	// Matrix used for intermidate computations of AlgebraicExpression_Eval
 	// but also contains the result of expression evaluation.
 	GrB_Matrix_new(&res, GrB_BOOL, 2, 2);
 
 	// Transpose(A) * A
-	AlgebraicExpression *exp = AlgebraicExpression_NewOperand(A, false, false, NULL, NULL, NULL);
-    AlgebraicExpression_Transpose(exp);
-    AlgebraicExpression_MultiplyToTheRight(&exp, A);
-    AlgebraicExpression_Optimize(&exp);
+    rax *matrices = raxNew();
+    raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
+    AlgebraicExpression *exp = AlgebraicExpression_FromString("A*T(A)", matrices);
 	AlgebraicExpression_Eval(exp, res);
 
 	// Using the A matrix described above,
 	// Transpose(A) * A = B.
 	ASSERT_TRUE(_compare_matrices(res, B));
 
+    raxFree(matrices);
 	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&res);
+    AlgebraicExpression_Free(exp);
 }
 
 TEST_F(AlgebraicExpressionTest, Exp_OP_A_MUL_B_Plus_C) {
@@ -569,19 +561,22 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_A_MUL_B_Plus_C) {
 	// but also contains the result of expression evaluation.
 	GrB_Matrix_new(&res, GrB_BOOL, 2, 2);
 
-	// A * (B+C) = A.
-	AlgebraicExpression *exp = AlgebraicExpression_NewOperand(B, false, false, NULL, NULL, NULL);
-    AlgebraicExpression_AddToTheRight(&exp, C);
-    AlgebraicExpression_MultiplyToTheLeft(&exp, A);
-    // AB + AC.
-	AlgebraicExpression_Optimize(&exp);
-	AlgebraicExpression_Eval(exp, res);
-	ASSERT_TRUE(_compare_matrices(res, A));
+	// A * (B+C) = A.rax *matrices = raxNew();
+    rax *matrices = raxNew();
+    raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
+    raxInsert(matrices, (unsigned char *)"B", strlen("B"), B, NULL);
+    raxInsert(matrices, (unsigned char *)"C", strlen("C"), C, NULL);
+    AlgebraicExpression *exp = AlgebraicExpression_FromString("A*(B+C)", matrices);
+	AlgebraicExpression_Eval(exp, res);	
+	
+    ASSERT_TRUE(_compare_matrices(res, A));
 
+    raxFree(matrices);
 	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&C);
 	GrB_Matrix_free(&res);
+    AlgebraicExpression_Free(exp);
 }
 
 TEST_F(AlgebraicExpressionTest, ExpTransform_A_Times_B_Plus_C) {
@@ -595,14 +590,13 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_A_Times_B_Plus_C) {
 	GrB_Matrix_new(&B, GrB_BOOL, 2, 2);
 	GrB_Matrix_new(&C, GrB_BOOL, 2, 2);
 
-	AlgebraicExpression *exp = AlgebraicExpression_NewOperand(B, false, false, NULL, NULL, NULL);	
-
-	// A*(B+C)
-	AlgebraicExpression_AddToTheRight(&exp, C);
-    AlgebraicExpression_MultiplyToTheLeft(&exp, A);
-	AlgebraicExpression_Optimize(&exp);
-
-	// Verifications
+    rax *matrices = raxNew();
+    raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
+    raxInsert(matrices, (unsigned char *)"B", strlen("B"), B, NULL);
+    raxInsert(matrices, (unsigned char *)"C", strlen("C"), C, NULL);
+    AlgebraicExpression *exp = AlgebraicExpression_FromString("A*(B+C)", matrices);
+    
+    // Verifications
 	// (A*B)+(A*C)
 	ASSERT_TRUE(exp->type == AL_OPERATION && exp->operation.op == AL_EXP_ADD);
 
@@ -625,9 +619,11 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_A_Times_B_Plus_C) {
 	AlgebraicExpression *rightRight = rootRightChild->operation.children[1];
 	ASSERT_TRUE(rightRight->type == AL_OPERAND && rightRight->operand.matrix == C);
 
+    raxFree(matrices);
 	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&C);
+    AlgebraicExpression_Free(exp);
 }
 
 TEST_F(AlgebraicExpressionTest, ExpTransform_AB_Times_C_Plus_D) {
@@ -664,34 +660,30 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_AB_Times_C_Plus_D) {
 	ASSERT_TRUE(rootRightChild && rootRightChild->type == AL_OPERATION &&
 				rootRightChild->operation.op == AL_EXP_MUL);
 
-	AlgebraicExpression *leftLeft = rootLeftChild->operation.children[0];
-	ASSERT_TRUE(leftLeft->type == AL_OPERATION && leftLeft->operation.op == AL_EXP_MUL);
+	AlgebraicExpression *leftchild_0 = rootLeftChild->operation.children[0];
+	ASSERT_TRUE(leftchild_0->type == AL_OPERAND && leftchild_0->operand.matrix == A);
 
-	AlgebraicExpression *leftLeftLeft = leftLeft->operation.children[0];
-	ASSERT_TRUE(leftLeftLeft->type == AL_OPERAND && leftLeftLeft->operand.matrix == A);
+	AlgebraicExpression *leftchild_1 = rootLeftChild->operation.children[1];
+	ASSERT_TRUE(leftchild_1->type == AL_OPERAND && leftchild_1->operand.matrix == B);
 
-	AlgebraicExpression *leftLeftRight = leftLeft->operation.children[1];
-	ASSERT_TRUE(leftLeftRight->type == AL_OPERAND && leftLeftRight->operand.matrix == B);
+	AlgebraicExpression *leftchild_2 = rootLeftChild->operation.children[2];
+	ASSERT_TRUE(leftchild_2->type == AL_OPERAND && leftchild_2->operand.matrix == C);
 
-	AlgebraicExpression *leftRight = rootLeftChild->operation.children[1];
-	ASSERT_TRUE(leftRight->type == AL_OPERAND && leftRight->operand.matrix == C);
+    AlgebraicExpression *rightchild_0 = rootRightChild->operation.children[0];
+	ASSERT_TRUE(rightchild_0->type == AL_OPERAND && rightchild_0->operand.matrix == A);
 
-	AlgebraicExpression *rightLeft = rootRightChild->operation.children[0];
-	ASSERT_TRUE(rightLeft->type == AL_OPERATION && rightLeft->operation.op == AL_EXP_MUL);
+	AlgebraicExpression *rightchild_1 = rootRightChild->operation.children[1];
+	ASSERT_TRUE(rightchild_1->type == AL_OPERAND && rightchild_1->operand.matrix == B);
 
-	AlgebraicExpression *rightLeftLeft = rightLeft->operation.children[0];
-	ASSERT_TRUE(rightLeftLeft->type == AL_OPERAND && rightLeftLeft->operand.matrix == A);
+	AlgebraicExpression *rightchild_2 = rootRightChild->operation.children[2];
+	ASSERT_TRUE(rightchild_2->type == AL_OPERAND && rightchild_2->operand.matrix == D);
 
-	AlgebraicExpression *rightLeftRight = rightLeft->operation.children[1];
-	ASSERT_TRUE(rightLeftRight->type == AL_OPERAND && rightLeftRight->operand.matrix == B);
-
-	AlgebraicExpression *rightRight = rootRightChild->operation.children[1];
-	ASSERT_TRUE(rightRight->type == AL_OPERAND && rightRight->operand.matrix == D);
 
 	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&C);
 	GrB_Matrix_free(&D);
+    AlgebraicExpression_Free(exp);
 }
 
 // TEST_F(AlgebraicExpressionTest, MultipleIntermidateReturnNodes) {

@@ -171,65 +171,83 @@ static void _AlgebraicExpression_MulOverSum(AlgebraicExpression **root) {
 	while(__AlgebraicExpression_MulOverSum(root));
 }
 
-static void _AlgebraicExpression_CollectOperands(AlgebraicExpression *root, AlgebraicExpression ***operands) {
-    uint child_count = 0;
+/* Collect all operands under given root by performing a left to right scan
+ * adding each encountered operand to the `operands` array. */
+static void _AlgebraicExpression_CollectOperands(AlgebraicExpression *root,
+												 AlgebraicExpression ***operands) {
+	uint child_count = 0;
 
-    switch(root->type) {
-        case AL_OPERAND:
-        *operands = array_append(*operands, root);
-        break;
-        case AL_OPERATION:
-        switch(root->operation.op) {
-            case AL_EXP_TRANSPOSE:
-            // Transposed is considered as an operand.
-            *operands = array_append(*operands, root);
-            break;
-            case AL_EXP_ADD:
-            case AL_EXP_MUL:
-            child_count = AlgebraicExpression_ChildCount(root);
-            for(uint i = 0; i < child_count; i++) {
-                _AlgebraicExpression_CollectOperands(AlgebraicExpression_Clone(CHILD_AT(root, i)), operands);
-            }
-            default:
-            assert("Unknow algebraic expression operation type" && false);
-        }
-        default:
-        assert("Unknow algebraic expression node type" && false);
-    }
+	switch(root->type) {
+	case AL_OPERAND:
+		*operands = array_append(*operands, root);
+		break;
+	case AL_OPERATION:
+		switch(root->operation.op) {
+		case AL_EXP_TRANSPOSE:
+			// Transpose is considered as an operand.
+			*operands = array_append(*operands, root);
+			break;
+		case AL_EXP_ADD:
+		case AL_EXP_MUL:
+			child_count = AlgebraicExpression_ChildCount(root);
+			for(uint i = 0; i < child_count; i++) {
+				_AlgebraicExpression_CollectOperands(AlgebraicExpression_Clone(CHILD_AT(root, i)), operands);
+			}
+			break;
+		default:
+			assert("Unknow algebraic expression operation type" && false);
+			break;
+		}
+		break;
+	default:
+		assert("Unknow algebraic expression node type" && false);
+		break;
+	}
 }
 
+/* Collapse multiplication operation under a single multiplication op
+ * exp = A * B * C
+ * exp can be computed in two ways:
+ * 1. (A * B) * C
+ * 2. A * (B * C)
+ * by flattening the expression both 1 and 2 are represented by the
+ * same tree structure. */
 static void _AlgebraicExpression_FlattenMultiplications(AlgebraicExpression *root) {
-    assert(root);
-    uint child_count;
+	assert(root);
+	uint child_count;
 
-    switch(root->type) {
-        case AL_OPERATION:
-        switch(root->operation.op) {
-            case AL_EXP_ADD:
-            case AL_EXP_TRANSPOSE:
-                child_count = AlgebraicExpression_ChildCount(root);
-                for(int i = 0; i < child_count; i++) _AlgebraicExpression_FlattenMultiplications(CHILD_AT(root, i));
-            break;
-            
-            case AL_EXP_MUL:
-            // Root has sub multiplication node(s).
-            if(AlgebraicExpression_OperationCount(root, AL_EXP_MUL) > 1) {
-                uint child_count = AlgebraicExpression_ChildCount(root);
-                AlgebraicExpression **flat_children = array_new(AlgebraicExpression *, child_count);
-                _AlgebraicExpression_CollectOperands(root, &flat_children);
-                for(uint i = 0; i < child_count; i++) AlgebraicExpression_Free(CHILD_AT(root, i));
-                array_free(root->operation.children);
-                root->operation.children = flat_children;
-            }
+	switch(root->type) {
+	case AL_OPERATION:
+		switch(root->operation.op) {
+		case AL_EXP_ADD:
+		case AL_EXP_TRANSPOSE:
+			// Keep searching for a multiplication operation.
+			child_count = AlgebraicExpression_ChildCount(root);
+			for(int i = 0; i < child_count; i++) {
+				_AlgebraicExpression_FlattenMultiplications(CHILD_AT(root, i));
+			}
+			break;
 
-            break;
-            default:
-                assert("Unknown algebraic operation type" && false);
-            break;
-        }
-        default:
-        break;
-    }
+		case AL_EXP_MUL:
+			// Root has sub multiplication node(s).
+			if(AlgebraicExpression_OperationCount(root, AL_EXP_MUL) > 1) {
+				child_count = AlgebraicExpression_ChildCount(root);
+				AlgebraicExpression **flat_children = array_new(AlgebraicExpression *, child_count);
+				_AlgebraicExpression_CollectOperands(root, &flat_children);
+				// Free `old` child array.
+				for(uint i = 0; i < child_count; i++) AlgebraicExpression_Free(CHILD_AT(root, i));
+				array_free(root->operation.children);
+				root->operation.children = flat_children;
+			}
+
+			break;
+		default:
+			assert("Unknown algebraic operation type" && false);
+			break;
+		}
+	default:
+		break;
+	}
 }
 
 /* Multiplies `exp` to the left by `lhs`.
@@ -828,24 +846,9 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 		sub_exps = _AlgebraicExpression_IsolateVariableLenExps(qg, sub_exps);
 
 		uint sub_count = array_len(sub_exps);
-		printf("sub_count: %d\n", sub_count);
 		for(uint i = 0; i < sub_count; i++) {
 			AlgebraicExpression *exp = sub_exps[i];
-			printf("src: %s\n", AlgebraicExpression_Source(exp));
-			printf("dest: %s\n", AlgebraicExpression_Destination(exp));
-
-			AlgebraicExpression_Print(exp);
-			printf("\n");
-			AlgebraicExpression_PrintTree(exp);
-			printf("\n\n\n");
-
-			_AlgebraicExpression_MulOverSum(&exp);
-
-			AlgebraicExpression_Print(exp);
-			printf("\n");
-			AlgebraicExpression_PrintTree(exp);
-			printf("\n\n\n");
-
+			AlgebraicExpression_Optimize(&exp);
 			// Add constructed expression to return value.
 			exps = array_append(exps, exp);
 		}
@@ -1027,7 +1030,7 @@ uint AlgebraicExpression_OperationCount
 ) {
 	uint op_count = 0;
 	if(root->type == AL_OPERATION) {
-		if(root->type & op_type) op_count = 1;
+		if(root->operation.op & op_type) op_count = 1;
 		uint child_count = AlgebraicExpression_ChildCount(root);
 		for(uint i = 0; i < child_count; i++) {
 			op_count += AlgebraicExpression_OperationCount(CHILD_AT(root, i), op_type);
