@@ -27,7 +27,7 @@ static inline void _setIndices(NodeByLabelScan *op) {
 	// The largest possible entity ID is the same as Graph_RequiredMatrixDim.
 	NodeID max_id;
 	if(op->id_range) max_id = op->id_range->include_max ? op->id_range->max : op->id_range->max - 1;
-	else max_id = op->maxId;
+	else max_id = UINT64_MAX;
 	op->maxId = MIN(max_id,  Graph_RequiredMatrixDim(op->g) - 1);
 }
 
