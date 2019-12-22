@@ -77,17 +77,13 @@ GrB_Info GxB_MatrixTupleIter_iterate_range
 		return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "Start row index out of range")));
 	}
 
-	if(endRowIdx < 0 || endRowIdx >= iter->nrows) {
-		return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "End row index out of range")));
-	}
-
 	if(startRowIdx > endRowIdx) {
 		return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "Start row index > end row index")));
 	}
 
 	iter->nnz_idx = iter->A->p[startRowIdx] ;
 	iter->row_idx = startRowIdx ;
-	iter->nvals = iter->A->p[endRowIdx + 1] ;
+	if(endRowIdx < iter->nrows) iter->nvals = iter->A->p[endRowIdx + 1] ;
 	iter->p = 0 ;
 	return (GrB_SUCCESS) ;
 }

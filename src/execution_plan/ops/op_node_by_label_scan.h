@@ -20,8 +20,6 @@ typedef struct {
 	Graph *g;
 	const QGNode *n;            /* Node being scanned. */
 	unsigned int nodeRecIdx;    /* Node position within record. */
-	NodeID minId;               /* Min ID to fetch. */
-	NodeID maxId;               /* Max ID to fetch. */
 	UnsignedRange *id_range;    /* ID range to iterate over. */
 	GxB_MatrixTupleIter *iter;
 	Record child_record;        /* The Record this op acts on if it is not a tap. */

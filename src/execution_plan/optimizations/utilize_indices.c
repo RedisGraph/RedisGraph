@@ -7,7 +7,7 @@
 #include "../../util/range/string_range.h"
 #include "../../util/range/numeric_range.h"
 #include "../../datatypes/array.h"
-#include "optimizations_shared.h"
+#include "../../arithmetic/arithmetic_op.h"
 
 static void _transformInToOrSequence(FT_FilterNode **filter) {
 	FT_FilterNode *filter_tree = *filter;
@@ -59,7 +59,7 @@ void _normalize_filter(FT_FilterNode **filter) {
 			AR_ExpNode *tmp = filter_tree->pred.rhs;
 			filter_tree->pred.rhs = filter_tree->pred.lhs;
 			filter_tree->pred.lhs = tmp;
-			filter_tree->pred.op = Optimizer_ReverseOp(filter_tree->pred.op);
+			filter_tree->pred.op = ArithmeticOp_ReverseOp(filter_tree->pred.op);
 		}
 		break;
 	case FT_N_EXP:

@@ -12,7 +12,7 @@
 #include "../ops/op_node_by_id_seek.h"
 #include "../ops/op_node_by_label_scan.h"
 #include "../../util/range/numeric_range.h"
-#include "optimizations_shared.h"
+#include "../../arithmetic/arithmetic_op.h"
 
 static bool _idFilter(FT_FilterNode *f, AST_Operator *rel, EntityID *id, bool *reverse) {
 	if(f->t != FT_N_PRED) return false;
@@ -87,7 +87,7 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 		bool reverse;
 		if(_idFilter(f, &op, &id, &reverse)) {
 			if(!id_range) id_range = UnsignedRange_New();
-			if(reverse) op = Optimizer_ReverseOp(op);
+			if(reverse) op = ArithmeticOp_ReverseOp(op);
 			UnsignedRange_TightenRange(id_range, op, id);
 
 			// Free replaced operations.
