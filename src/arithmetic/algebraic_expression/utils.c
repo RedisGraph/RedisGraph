@@ -35,6 +35,80 @@ void _InplaceRepurposeOperationToOperand
 	memcpy(operation, operand, sizeof(AlgebraicExpression));
 }
 
+// Removes the rightmost direct child node of root.
+AlgebraicExpression *_AlgebraicExpression_OperationRemoveRightmostChild
+(
+	AlgebraicExpression *root  // Root from which to remove a child.
+) {
+	assert(root);
+	if(root->type != AL_OPERATION) return NULL;
+
+	// No child nodes to remove.
+	if(AlgebraicExpression_ChildCount(root) == 0) return NULL;
+
+	// Remove rightmost child.
+	AlgebraicExpression *child = array_pop(root->operation.children);
+	return child;
+}
+
+// Removes the leftmost direct child node of root.
+AlgebraicExpression *_AlgebraicExpression_OperationRemoveLeftmostChild
+(
+	AlgebraicExpression *root   // Root from which to remove a child.
+) {
+	assert(root);
+	if(root->type != AL_OPERATION) return NULL;
+
+	uint child_count = AlgebraicExpression_ChildCount(root);
+	// No child nodes to remove.
+	if(child_count == 0) return NULL;
+
+	// Remove leftmost child.
+	AlgebraicExpression *child = root->operation.children[0];
+
+	// Shift left by 1.
+	for(uint i = 0; i < child_count - 1; i++) {
+		root->operation.children[i] = root->operation.children[i + 1];
+	}
+	array_pop(root->operation.children);
+
+	return child;
+}
+
+/* Multiplies `exp` to the left by `lhs`.
+ * Returns new expression root.
+ * `lhs` = (A + B)
+ * `exp` = Transpose(C)
+ * Returns (A + B) * Transpose(C) where `*` is the new root. */
+AlgebraicExpression *_AlgebraicExpression_MultiplyToTheLeft
+(
+	AlgebraicExpression *lhs,
+	AlgebraicExpression *exp
+) {
+	assert(lhs && exp);
+	AlgebraicExpression *mul = AlgebraicExpression_NewOperation(AL_EXP_MUL);
+	AlgebraicExpression_AddChild(mul, lhs);
+	AlgebraicExpression_AddChild(mul, exp);
+	return mul;
+}
+
+/* Multiplies `exp` to the right by `rhs`.
+ * Returns new expression root.
+ * `exp` = Transpose(C)
+ * `rhs` = (A + B)
+ * Returns Transpose(C) * (A + B) where `*` is the new root. */
+AlgebraicExpression *_AlgebraicExpression_MultiplyToTheRight
+(
+	AlgebraicExpression *exp,
+	AlgebraicExpression *rhs
+) {
+	assert(exp && rhs);
+	AlgebraicExpression *mul = AlgebraicExpression_NewOperation(AL_EXP_MUL);
+	AlgebraicExpression_AddChild(mul, exp);
+	AlgebraicExpression_AddChild(mul, rhs);
+	return mul;
+}
+
 void _AlgebraicExpression_FreeOperation
 (
 	AlgebraicExpression *node

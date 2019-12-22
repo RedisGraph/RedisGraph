@@ -134,6 +134,7 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 
 	GrB_Matrix A;
 	GrB_Matrix B;
+	GrB_Index nvals;
 	GrB_Descriptor desc;
 	AlgebraicExpression *left = CHILD_AT(exp, 0);
 	AlgebraicExpression *right = CHILD_AT(exp, 1);
@@ -162,6 +163,8 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 		assert(false);
 	}
 
+	GrB_Matrix_nvals(&nvals, res);
+
 	// Reset descriptor.
 	GrB_Descriptor_set(desc, GrB_INP0, GxB_DEFAULT);
 	GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
@@ -177,14 +180,20 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 		B = right->operand.matrix;
 
 		// Perform multiplication.
-		info = GrB_mxm(res, GrB_NULL, GrB_NULL, GxB_LOR_LAND_BOOL, A, B, desc);
+		info = GrB_mxm(res, GrB_NULL, GrB_NULL, GxB_LOR_LAND_BOOL, res, B, desc);
 		if(info != GrB_SUCCESS) {
 			// If the multiplication failed, print error info to stderr and exit.
 			fprintf(stderr, "Enountered error in matrix multiplication:\n%s\n", GrB_error());
 			assert(false);
 		}
+		GrB_Matrix_nvals(&nvals, res);
+		if(nvals == 0) break;
+
+		// Reset descriptor.
+		GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
 	}
 
+	GrB_free(&desc);
 	return res;
 }
 

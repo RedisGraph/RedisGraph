@@ -72,6 +72,9 @@ static void _AlgebraicExpression_TransposeOperand
 (
 	AlgebraicExpression *exp
 ) {
+	// No need to transpose a diagonal matrix.
+	if(exp->operand.diagonal) return;
+
 	// A -> Transpose(A)
 	// We're going to repourpose exp, make a clone.
 	AlgebraicExpression *operand = _InplaceRepurposeOperandToOperation(exp, AL_EXP_TRANSPOSE);

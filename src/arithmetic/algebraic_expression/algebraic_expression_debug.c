@@ -58,7 +58,10 @@ AlgebraicExpression *_AlgebraicExpression_FromString
 			alias[1] = '\0';
 
 			m = GrB_NULL;
-			if(matrices) m = (GrB_Matrix)raxFind(matrices, (unsigned char *)alias, strlen(alias));
+			if(matrices) {
+				m = (GrB_Matrix)raxFind(matrices, (unsigned char *)alias, strlen(alias));
+				assert(m && "Missing matrix");
+			}
 			root = AlgebraicExpression_NewOperand(m, false, false, alias, alias, NULL);
 			break;
 		}

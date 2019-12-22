@@ -28,6 +28,40 @@ void _InplaceRepurposeOperationToOperand
 	AlgebraicExpression *operand    // Operand to turn operation into.
 );
 
+// Removes the rightmost direct child node of root.
+AlgebraicExpression *_AlgebraicExpression_OperationRemoveRightmostChild
+(
+	AlgebraicExpression *root  // Root from which to remove a child.
+);
+
+// Removes the leftmost direct child node of root.
+AlgebraicExpression *_AlgebraicExpression_OperationRemoveLeftmostChild
+(
+	AlgebraicExpression *root   // Root from which to remove a child.
+);
+
+/* Multiplies `exp` to the left by `lhs`.
+ * Returns new expression root.
+ * `lhs` = (A + B)
+ * `exp` = Transpose(C)
+ * Returns (A + B) * Transpose(C) where `*` is the new root. */
+AlgebraicExpression *_AlgebraicExpression_MultiplyToTheLeft
+(
+	AlgebraicExpression *lhs,
+	AlgebraicExpression *exp
+);
+
+/* Multiplies `exp` to the right by `rhs`.
+ * Returns new expression root.
+ * `exp` = Transpose(C)
+ * `rhs` = (A + B)
+ * Returns Transpose(C) * (A + B) where `*` is the new root. */
+AlgebraicExpression *_AlgebraicExpression_MultiplyToTheRight
+(
+	AlgebraicExpression *exp,
+	AlgebraicExpression *rhs
+);
+
 // Free Operation internals.
 void _AlgebraicExpression_FreeOperation
 (
