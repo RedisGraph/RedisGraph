@@ -18,14 +18,14 @@ static OpResult NodeByLabelScanReset(OpBase *opBase);
 static void NodeByLabelScanFree(OpBase *opBase);
 
 static inline int NodeByLabelScanToString(const OpBase *ctx, char *buf, uint buf_len) {
-	return ScanToString(ctx, buf, buf_len, ((const NodeByLabelScan *)ctx)->label);
+	return ScanToString(ctx, buf, buf_len, ((const NodeByLabelScan *)ctx)->n);
 }
 
 OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *n) {
 	NodeByLabelScan *op = rm_malloc(sizeof(NodeByLabelScan));
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	op->g = gc->g;
-	op->label = n->label;
+	op->n = n;
 	op->iter = NULL;
 	op->child_record = NULL;
 	// Defaults to [0...UINT64_MAX].

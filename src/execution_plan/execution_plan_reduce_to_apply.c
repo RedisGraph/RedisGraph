@@ -20,10 +20,10 @@ static OpBase *_buildMatchBranch(ExecutionPlan *plan, const cypher_astnode_t *pa
 
 	// Initialize an ExecutionPlan that shares this plan's Record mapping.
 	ExecutionPlan *match_branch_plan = ExecutionPlan_NewEmptyExecutionPlan();
-	match_branch_plan->record_map = plan->record_map;
+	ExecutionPlan_AppendSubExecutionPlan(plan, match_branch_plan);
 
 	// We have bound variables, build an Argument op that represents them.
-	OpBase *argument = NewArgumentOp(plan, arguments);
+	OpBase *argument = NewArgumentOp(match_branch_plan, arguments);
 	match_branch_plan->root = argument;
 
 	// Build a temporary AST holding a MATCH clause.
@@ -34,38 +34,9 @@ static OpBase *_buildMatchBranch(ExecutionPlan *plan, const cypher_astnode_t *pa
 	AST_MockFree(match_branch_ast);
 	QueryCtx_SetAST(ast); // Reset the AST.
 
-	OpBase *branch_match_root = match_branch_plan->root;
-	ExecutionPlan_BindPlanToOps(branch_match_root, plan);
-	/* Don't lose information when optimizing this branch. The optimizations are lookgin for
-	* specific operation types and if the result of the operations is achievable by one of its
-	* descendants, this op is redundant. The argument op "modifies" the execution plan by
-	* showing the bounded arguments. Given that, once optimized the label scan op is
-	* so called redundant and will be removed, since its result is achievable by the argument op.
-	* But this is wrong since the argument op is not modifing anything.
-	* The next sequence should avoid the removal of the label scan op, and yet optimize the rest
-	* of the branch. */
-	if(argument->parent->type == OPType_NODE_BY_LABEL_SCAN) {
-		OpBase *parent = argument->parent;
-		// Temporary remove label scan op. Now argument op is the top op.
-		ExecutionPlan_RemoveOp(plan, parent);
-		// Optimize the rest of the plan. Unfortunately, this currently needs to be done in place.
-		optimizePlan(match_branch_plan);
-		// Add back the scan op in its proper place.
-		ExecutionPlan_ReplaceOp(match_branch_plan, argument, parent);
-		ExecutionPlan_AddOp(parent, argument);
-		// Remove modifies from argument op since no modifications are required in this branch.
-		array_free(argument->modifies);
-		argument->modifies = NULL;
-	}
-
-	// // NULL-set variables shared between the match_branch_plan and the overall plan.
-	match_branch_plan->root = NULL;
-	match_branch_plan->record_map = NULL;
-	// // Free the temporary plan.
-	ExecutionPlan_Free(match_branch_plan);
-
-	return branch_match_root;
+	return match_branch_plan->root;
 }
+
 
 /* Swap operation on operation children. If two valid indices, a and b, are given, this operation
  * swap the child in index a with the child in index b. */
@@ -152,7 +123,6 @@ void ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpBase *op) {
 	// Replace operations.
 	ExecutionPlan_ReplaceOp(plan, op, apply_op);
 	// Bounded branch is now the last child (after ops replacement). Make it the first.
-	ExecutionPlan_BindPlanToOps(apply_op, plan);
 	_OpBaseSwapChildren(apply_op, 0, apply_op->childCount - 1);
 	if(op == plan->root) plan->root = apply_op;
 	// Free filter op.

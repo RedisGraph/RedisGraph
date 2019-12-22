@@ -325,3 +325,10 @@ void ExecutionPlan_BindPlanToOps(OpBase *root, ExecutionPlan *plan) {
 		ExecutionPlan_BindPlanToOps(root->children[i], plan);
 	}
 }
+
+void ExecutionPlan_AppendSubExecutionPlan(ExecutionPlan *master_plan, ExecutionPlan *sub_plan) {
+	if(!master_plan->sub_execution_plans)
+		master_plan->sub_execution_plans = array_new(ExecutionPlan *, 1);
+	sub_plan->record_map = master_plan->record_map;
+	master_plan->sub_execution_plans = array_append(master_plan->sub_execution_plans, sub_plan);
+}

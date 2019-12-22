@@ -1064,6 +1064,21 @@ static void _ExecutionPlan_FreeSubPlan(ExecutionPlan *plan) {
 
 void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) return;
+
+	if(plan->sub_execution_plans) {
+		uint sub_execution_plans_count = array_len(plan->sub_execution_plans);
+		for(uint i = 0; i < sub_execution_plans_count; i++) {
+			ExecutionPlan *sub_execution_plan = plan->sub_execution_plans[i];
+			/* NULL-set variables shared between the match_branch_plan and the overall plan. Those items will be free
+			 * In the main execution plan release. */
+			sub_execution_plan->record_map = NULL;
+			sub_execution_plan->root = NULL;
+			ExecutionPlan_Free(sub_execution_plan);
+		}
+		array_free(plan->sub_execution_plans);
+		plan->sub_execution_plans = NULL;
+	}
+
 	if(plan->root) {
 		_ExecutionPlan_FreeOperations(plan->root);
 		plan->root = NULL;

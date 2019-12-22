@@ -23,6 +23,8 @@ struct ExecutionPlan {
 	// NOTE - segments and segment_count are only stored for proper freeing.
 	int segment_count;                  // Number of ExecutionPlan segments.
 	ExecutionPlan **segments;           // Partial execution plans scoped to a subset of operations.
+	// Semi-independent sub execution plans which created during the build of the main execution plan.
+	ExecutionPlan **sub_execution_plans;
 };
 
 /* execution_plan_modify.c
@@ -81,6 +83,9 @@ const char **ExecutionPlan_BuildArgumentModifiesArray(rax *bound_vars);
 /* For all ops in the given tree, assocate the provided ExecutionPlan.
  * This is for use for updating ops that have been built with a temporary ExecutionPlan. */
 void ExecutionPlan_BindPlanToOps(OpBase *root, ExecutionPlan *plan);
+
+/* Adds a semi-independent sub execution plan. The only thing the sub execution plan is dependent on is the record mapping. */
+void ExecutionPlan_AppendSubExecutionPlan(ExecutionPlan *master_plan, ExecutionPlan *sub_plan);
 
 /* execution_plan_reduce_to_apply.c - Reduces a filter with path pattern into apply operation. */
 
