@@ -7,23 +7,7 @@
 #include "../../util/range/string_range.h"
 #include "../../util/range/numeric_range.h"
 #include "../../datatypes/array.h"
-
-/* Reverse an inequality symbol so that indices can support
- * inequalities with right-hand variables. */
-int _reverseOp(int op) {
-	switch(op) {
-	case OP_LT:
-		return OP_GT;
-	case OP_LE:
-		return OP_GE;
-	case OP_GT:
-		return OP_LT;
-	case OP_GE:
-		return OP_LE;
-	default:
-		return op;
-	}
-}
+#include "optimizations_shared.h"
 
 static void _transformInToOrSequence(FT_FilterNode **filter) {
 	FT_FilterNode *filter_tree = *filter;
@@ -75,7 +59,7 @@ void _normalize_filter(FT_FilterNode **filter) {
 			AR_ExpNode *tmp = filter_tree->pred.rhs;
 			filter_tree->pred.rhs = filter_tree->pred.lhs;
 			filter_tree->pred.lhs = tmp;
-			filter_tree->pred.op = _reverseOp(filter_tree->pred.op);
+			filter_tree->pred.op = Optimizer_ReverseOp(filter_tree->pred.op);
 		}
 		break;
 	case FT_N_EXP:

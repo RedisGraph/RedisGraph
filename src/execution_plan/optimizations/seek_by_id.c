@@ -12,6 +12,7 @@
 #include "../ops/op_node_by_id_seek.h"
 #include "../ops/op_node_by_label_scan.h"
 #include "../../util/range/numeric_range.h"
+#include "optimizations_shared.h"
 
 static bool _idFilter(FT_FilterNode *f, AST_Operator *rel, EntityID *id, bool *reverse) {
 	if(f->t != FT_N_PRED) return false;
@@ -73,8 +74,8 @@ static void _reverseOp(AST_Operator *op) {
 
 static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 	/* See if there's a filter of the form
-	 * ID(n) = X
-	 * where X is a constant. */
+	 * ID(n) op X
+	 * where X is a constant and op in [EQ, GE, LE, GT, LT] */
 	OpBase *parent = scan_op->parent;
 	UnsignedRange *id_range = NULL;
 	while(parent && parent->type == OPType_FILTER) {
@@ -86,7 +87,7 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 		bool reverse;
 		if(_idFilter(f, &op, &id, &reverse)) {
 			if(!id_range) id_range = UnsignedRange_New();
-			if(reverse) _reverseOp(&op);
+			if(reverse) op = Optimizer_ReverseOp(op);
 			UnsignedRange_TightenRange(id_range, op, id);
 
 			// Free replaced operations.
