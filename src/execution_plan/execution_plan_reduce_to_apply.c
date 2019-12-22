@@ -59,10 +59,10 @@ static OpBase *_buildMatchBranch(ExecutionPlan *plan, const cypher_astnode_t *pa
 	}
 
 	// // NULL-set variables shared between the match_branch_plan and the overall plan.
-	// match_branch_plan->root = NULL;
-	// match_branch_plan->record_map = NULL;
+	match_branch_plan->root = NULL;
+	match_branch_plan->record_map = NULL;
 	// // Free the temporary plan.
-	// ExecutionPlan_Free(match_branch_plan);
+	ExecutionPlan_Free(match_branch_plan);
 
 	return branch_match_root;
 }
@@ -152,6 +152,7 @@ void ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpBase *op) {
 	// Replace operations.
 	ExecutionPlan_ReplaceOp(plan, op, apply_op);
 	// Bounded branch is now the last child (after ops replacement). Make it the first.
+	ExecutionPlan_BindPlanToOps(apply_op, plan);
 	_OpBaseSwapChildren(apply_op, 0, apply_op->childCount - 1);
 	if(op == plan->root) plan->root = apply_op;
 	// Free filter op.
