@@ -84,6 +84,7 @@ GrB_Info GxB_MatrixTupleIter_iterate_range
 	iter->nnz_idx = iter->A->p[startRowIdx] ;
 	iter->row_idx = startRowIdx ;
 	if(endRowIdx < iter->nrows) iter->nvals = iter->A->p[endRowIdx + 1] ;
+	else GrB_Matrix_nvals(&(iter->nvals), iter->A) ;
 	iter->p = 0 ;
 	return (GrB_SUCCESS) ;
 }

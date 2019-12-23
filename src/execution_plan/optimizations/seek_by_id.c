@@ -50,28 +50,6 @@ static bool _idFilter(FT_FilterNode *f, AST_Operator *rel, EntityID *id, bool *r
 	return true;
 }
 
-static void _reverseOp(AST_Operator *op) {
-	switch(*op) {
-	case OP_GE:
-		*op = OP_LE;
-		break;
-	case OP_LE:
-		*op = OP_GE;
-		break;
-	case OP_LT:
-		*op = OP_GT;
-		break;
-	case OP_GT:
-		*op = OP_LT;
-		break;
-	case OP_EQUAL:
-		break;
-	default:
-		assert(false);
-		break;
-	}
-}
-
 static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 	/* See if there's a filter of the form
 	 * ID(n) op X
