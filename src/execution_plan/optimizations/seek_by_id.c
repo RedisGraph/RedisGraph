@@ -11,8 +11,10 @@
 #include "../ops/op_all_node_scan.h"
 #include "../ops/op_node_by_id_seek.h"
 #include "../ops/op_node_by_label_scan.h"
+#include "../../util/range/numeric_range.h"
+#include "../../arithmetic/arithmetic_op.h"
 
-static bool _idFilter(FT_FilterNode *f, int *rel, EntityID *id, bool *reverse) {
+static bool _idFilter(FT_FilterNode *f, AST_Operator *rel, EntityID *id, bool *reverse) {
 	if(f->t != FT_N_PRED) return false;
 	if(f->pred.op == OP_NEQUAL) return false;
 
@@ -48,77 +50,44 @@ static bool _idFilter(FT_FilterNode *f, int *rel, EntityID *id, bool *reverse) {
 	return true;
 }
 
-static void _setupIdRange(int rel, EntityID id, bool reverse, NodeID *minId, NodeID *maxId,
-						  bool *inclusiveMin, bool *inclusiveMax) {
-	switch(rel) {
-	case OP_GT:
-		*minId = id;
-		break;
-	case OP_GE:
-		*minId = id;
-		*inclusiveMin = true;
-		break;
-	case OP_LT:
-		*maxId = id;
-		break;
-	case OP_LE:
-		*maxId = id;
-		*inclusiveMax = true;
-		break;
-	case OP_EQUAL:
-		*minId = id;
-		*maxId = id;
-		*inclusiveMin = true;
-		*inclusiveMax = true;
-		break;
-	default:
-		assert(false);
-		break;
-	}
-
-	/* WHERE ID(n) >= 5
-	 * Reverse
-	 * WHERE 5 <= ID(n) */
-	if(reverse) {
-		NodeID tmpNodeId;
-		bool tmpInclusive;
-
-		tmpNodeId = *minId;
-		*minId = *maxId;
-		*maxId = tmpNodeId;
-
-		tmpInclusive = *inclusiveMin;
-		*inclusiveMin = *inclusiveMax;
-		*inclusiveMax = tmpInclusive;
-	}
-}
-
 static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 	/* See if there's a filter of the form
-	 * ID(n) = X
-	 * where X is a constant. */
+	 * ID(n) op X
+	 * where X is a constant and op in [EQ, GE, LE, GT, LT] */
 	OpBase *parent = scan_op->parent;
+	UnsignedRange *id_range = NULL;
 	while(parent && parent->type == OPType_FILTER) {
 		OpFilter *filter = (OpFilter *)parent;
 		FT_FilterNode *f = filter->filterTree;
 
-		int rel;
+		AST_Operator op;
 		EntityID id;
 		bool reverse;
-		if(_idFilter(f, &rel, &id, &reverse)) {
-			const QGNode *node = NULL;
-			NodeID minId = ID_RANGE_UNBOUND;
-			NodeID maxId = ID_RANGE_UNBOUND;
-			bool inclusiveMin = false;
-			bool inclusiveMax = false;
-			OpBase *opNodeByIdSeek;
+		if(_idFilter(f, &op, &id, &reverse)) {
+			if(!id_range) id_range = UnsignedRange_New();
+			if(reverse) op = ArithmeticOp_ReverseOp(op);
+			UnsignedRange_TightenRange(id_range, op, id);
 
+			// Free replaced operations.
+			ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
+			OpBase_Free((OpBase *)filter);
+		}
+		// Advance.
+		parent = parent->parent;
+	}
+	if(id_range) {
+		/* Don't replace label scan, but set it to have range query.
+		 * Issue 818 https://github.com/RedisGraph/RedisGraph/issues/818
+		 * This optimization caused a range query over the entire range of ids in the graph
+		 * regardless to the label. */
+		if(scan_op->type == OPType_NODE_BY_LABEL_SCAN) {
+			NodeByLabelScan *label_scan = (NodeByLabelScan *) scan_op;
+			NodeByLabelScanOp_SetIDRange(label_scan, id_range);
+		} else {
+			const QGNode *node = NULL;
 			switch(scan_op->type) {
 			case OPType_ALL_NODE_SCAN:
 				node = ((AllNodeScan *)scan_op)->n;
-				break;
-			case OPType_NODE_BY_LABEL_SCAN:
-				node = ((NodeByLabelScan *)scan_op)->n;
 				break;
 			case OPType_INDEX_SCAN:
 				node = ((IndexScan *)scan_op)->n;
@@ -126,24 +95,13 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 			default:
 				assert(false);
 			}
-
-			_setupIdRange(rel, id, reverse, &minId, &maxId, &inclusiveMin, &inclusiveMax);
-			opNodeByIdSeek = NewNodeByIdSeekOp(scan_op->plan, node, minId, maxId,
-											   inclusiveMin, inclusiveMax);
+			OpBase *opNodeByIdSeek = NewNodeByIdSeekOp(scan_op->plan, node, id_range);
 
 			// Managed to reduce!
 			ExecutionPlan_ReplaceOp(plan, scan_op, opNodeByIdSeek);
-			ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
-
-			// Free replaced operations.
 			OpBase_Free(scan_op);
-			OpBase_Free((OpBase *)filter);
-
-			break; // Exit loop.
 		}
-
-		// Advance.
-		parent = parent->parent;
+		UnsignedRange_Free(id_range);
 	}
 }
 

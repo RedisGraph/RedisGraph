@@ -13,6 +13,7 @@ extern "C" {
 #include "../../src/ast/ast_shared.h"
 #include "../../src/util/range/string_range.h"
 #include "../../src/util/range/numeric_range.h"
+#include "../../src/util/range/unsigned_range.h"
 #include <math.h>
 #ifdef __cplusplus
 }
@@ -304,4 +305,139 @@ TEST_F(RangeTest, StringContainsValue) {
 	ASSERT_FALSE(StringRange_ContainsValue(r, "k"));
 
 	StringRange_Free(r);
+}
+
+//------------------------------------------------------------------------------
+// Unsigned range
+//------------------------------------------------------------------------------
+
+TEST_F(RangeTest, UnsignedRangeNew) {
+	UnsignedRange *r = UnsignedRange_New();
+
+	ASSERT_TRUE(r->valid);
+	ASSERT_EQ(r->max, UINT64_MAX);
+	ASSERT_EQ(r->min, 0);
+	ASSERT_TRUE(r->include_max);
+	ASSERT_TRUE(r->include_min);
+
+	UnsignedRange_Free(r);
+}
+
+TEST_F(RangeTest, UnsignedRangeValidation) {
+	UnsignedRange *r = UnsignedRange_New();
+
+	// X > 5 AND X < 5
+	r->max = 5;
+	r->min = 5;
+	r->include_max = false;
+	r->include_min = false;
+	ASSERT_FALSE(UnsignedRange_IsValid(r));
+
+	// X >= 5 AND X < 5
+	r->max = 5;
+	r->min = 5;
+	r->include_max = false;
+	r->include_min = true;
+	ASSERT_FALSE(UnsignedRange_IsValid(r));
+
+	// X >= 5 AND X <= 5
+	r->max = 5;
+	r->min = 5;
+	r->include_max = true;
+	r->include_min = true;
+	ASSERT_TRUE(UnsignedRange_IsValid(r));
+
+	// X > 5 AND X <= 5
+	r->max = 5;
+	r->min = 5;
+	r->include_max = true;
+	r->include_min = false;
+	ASSERT_FALSE(UnsignedRange_IsValid(r));
+
+	// (5, 10)  X > 5 AND x < 10.
+	r->max = 10;
+	r->min = 5;
+	r->include_max = false;
+	r->include_min = false;
+	ASSERT_TRUE(UnsignedRange_IsValid(r));
+
+	// (5, 10]  X > 5 AND x <= 10.
+	r->max = 10;
+	r->min = 5;
+	r->include_max = true;
+	r->include_min = false;
+	ASSERT_TRUE(UnsignedRange_IsValid(r));
+
+	// [5, 10)  X >= 5 AND x < 10.
+	r->max = 10;
+	r->min = 5;
+	r->include_max = false;
+	r->include_min = true;
+	ASSERT_TRUE(UnsignedRange_IsValid(r));
+
+	// [5, 10]  X >= 5 AND x =< 10.
+	r->max = 10;
+	r->min = 5;
+	r->include_max = true;
+	r->include_min = true;
+	ASSERT_TRUE(UnsignedRange_IsValid(r));
+
+	UnsignedRange_Free(r);
+}
+
+TEST_F(RangeTest, UnsignedTightenRange) {
+	UnsignedRange *r = UnsignedRange_New();
+
+	// X < 100
+	UnsignedRange_TightenRange(r, OP_LT, 100);
+	ASSERT_EQ(r->max, 100);
+	ASSERT_FALSE(r->include_max);
+
+	// X <= 100
+	UnsignedRange_TightenRange(r, OP_LE, 100);
+	ASSERT_EQ(r->max, 100);
+	ASSERT_FALSE(r->include_max);
+
+	// X >= 50
+	UnsignedRange_TightenRange(r, OP_GE, 50);
+	ASSERT_EQ(r->min, 50);
+	ASSERT_TRUE(r->include_min);
+
+	// X > 50
+	UnsignedRange_TightenRange(r, OP_GT, 50);
+	ASSERT_EQ(r->min, 50);
+	ASSERT_FALSE(r->include_min);
+
+	// 75 <= X >= 75
+	UnsignedRange_TightenRange(r, OP_EQUAL, 75);
+	ASSERT_EQ(r->min, 75);
+	ASSERT_TRUE(r->include_min);
+	ASSERT_EQ(r->max, 75);
+	ASSERT_TRUE(r->include_max);
+
+	ASSERT_TRUE(UnsignedRange_IsValid(r));
+	UnsignedRange_Free(r);
+}
+
+TEST_F(RangeTest, UnsignedContainsValue) {
+	UnsignedRange *r = UnsignedRange_New();
+	// 0 <= X < UINT64_MAX
+	ASSERT_TRUE(UnsignedRange_ContainsValue(r, 100));
+
+	// X <= 100
+	UnsignedRange_TightenRange(r, OP_LE, 100);
+	ASSERT_FALSE(UnsignedRange_ContainsValue(r, 101));
+	ASSERT_TRUE(UnsignedRange_ContainsValue(r, 100));
+	ASSERT_TRUE(UnsignedRange_ContainsValue(r, 99));
+
+	// X >= 0 AND X <= 0
+	UnsignedRange_TightenRange(r, OP_EQUAL, 0);
+	ASSERT_FALSE(UnsignedRange_ContainsValue(r, 1));
+	ASSERT_TRUE(UnsignedRange_ContainsValue(r, 0));
+
+	// X > 0
+	UnsignedRange_TightenRange(r, OP_GT, 0);
+	ASSERT_FALSE(UnsignedRange_ContainsValue(r, 0));
+
+	UnsignedRange_Free(r);
 }
