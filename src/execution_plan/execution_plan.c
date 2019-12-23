@@ -312,6 +312,18 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 	}
 }
 
+static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
+	OpBase **filter_ops = ExecutionPlan_LocateOps(plan->root, OPType_FILTER);
+	uint filter_ops_count = array_len(filter_ops);
+	for(uint i = 0; i < filter_ops_count; i++) {
+		OpBase *op = filter_ops[i];
+		FT_FilterNode *node;
+		if(FilterTree_ContainsFunc(((OpFilter *)op)->filterTree, "path_filter", &node)) {
+			ExecutionPlan_ReduceFilterToApply(plan, op);
+		}
+	}
+}
+
 static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_limit) {
 	Vector *sub_trees = FilterTree_SubTrees(plan->filter_tree);
 
@@ -347,18 +359,7 @@ static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *rec
 		raxFree(references);
 	}
 	Vector_Free(sub_trees);
-}
-
-static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
-	OpBase **filter_ops = ExecutionPlan_LocateOps(plan->root, OPType_FILTER);
-	uint filter_ops_count = array_len(filter_ops);
-	for(uint i = 0; i < filter_ops_count; i++) {
-		OpBase *op = filter_ops[i];
-		FT_FilterNode *node;
-		if(FilterTree_ContainsFunc(((OpFilter *)op)->filterTree, "path_filter", &node)) {
-			ExecutionPlan_ReduceFilterToApply(plan, op);
-		}
-	}
+	_ExecutionPlan_PlaceApplyOps(plan);
 }
 
 // Merge all order expressions into the projections array without duplicates,
@@ -538,7 +539,7 @@ static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *
 	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
 	AST *rhs_ast = AST_MockMatchPattern(ast, path);
 
-	ExecutionPlan_PopulateExecutionPlan(rhs_plan, NULL);
+	ExecutionPlan_PopulateExecutionPlan(rhs_plan, NULL, NULL, NULL);
 
 	AST_MockFree(rhs_ast);
 	QueryCtx_SetAST(ast); // Reset the AST.
@@ -693,7 +694,8 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 	}
 }
 
-void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set) {
+void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set,
+										 OpBase *prev_scope_root, OpBase *prev_scope_end) {
 	AST *ast = QueryCtx_GetAST();
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	plan->result_set = result_set;
@@ -718,11 +720,15 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
 		_ExecutionPlanSegment_ConvertClause(gc, ast, plan, stats, clause);
 	}
-
-	if(plan->filter_tree) {
-		_ExecutionPlan_PlaceFilterOps(plan);
-		_ExecutionPlan_PlaceApplyOps(plan);
+	// Merge to a previous execution plan scope if exists.
+	OpBase *connecting_op = ExecutionPlan_LocateFirstOp(plan->root,
+														OPType_PROJECT | OPType_AGGREGATE);
+	if(connecting_op && prev_scope_root) {
+		assert(connecting_op->childCount == 0);
+		ExecutionPlan_AddOp(connecting_op, prev_scope_root);
 	}
+
+	if(plan->filter_tree) _ExecutionPlan_PlaceFilterOps(plan, prev_scope_end);
 }
 
 ExecutionPlan *ExecutionPlan_UnionPlans(ResultSet *result_set, AST *ast) {
@@ -855,6 +861,8 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 	uint segment_count = array_len(segment_indices);
 	ExecutionPlan **segments = rm_malloc(segment_count * sizeof(ExecutionPlan *));
 	start_offset = 0;
+	OpBase *prev_scope_end = NULL;
+	OpBase *prev_scope_root = NULL;
 	for(int i = 0; i < segment_count; i++) {
 		uint end_offset = segment_indices[i];
 		// Slice the AST to only include the clauses in the current segment.
@@ -862,42 +870,22 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 
 		// Construct a new ExecutionPlanSegment.
 		ExecutionPlan *segment = ExecutionPlan_NewEmptyExecutionPlan();
-		ExecutionPlan_PopulateExecutionPlan(segment, result_set);
+		ExecutionPlan_PopulateExecutionPlan(segment, result_set, prev_scope_root, prev_scope_end);
 		AST_Free(ast_segment); // Free the AST segment.
 
 		segments[i] = segment;
 		start_offset = end_offset;
+		prev_scope_end = prev_scope_root;
+		prev_scope_root = segment->root;
 	}
 
 	QueryCtx_SetAST(ast); // AST segments have been freed, set master AST in QueryCtx.
 
-	// Place filter ops required by first ExecutionPlan segment.
-	if(segments[0]->filter_tree) _ExecutionPlan_PlaceFilterOps(segments[0], NULL);
-
-	OpBase *connecting_op = NULL;
-	OpBase *prev_scope_end = NULL;
-	// Merge segments.
-	for(int i = 1; i < segment_count; i++) {
-		ExecutionPlan *prev_segment = segments[i - 1];
-		ExecutionPlan *current_segment = segments[i];
-
-		OpBase *prev_root = prev_segment->root;
-		connecting_op = ExecutionPlan_LocateFirstOp(current_segment->root,
-													OPType_PROJECT | OPType_AGGREGATE);
-		assert(connecting_op->childCount == 0);
-
-		ExecutionPlan_AddOp(connecting_op, prev_root);
-
-		// Place filter ops required by current segment.
-		if(current_segment->filter_tree) _ExecutionPlan_PlaceFilterOps(current_segment, prev_scope_end);
-
-		prev_scope_end = prev_root; // Track the previous scope's end so filter placement doesn't overreach.
-	}
-
 	array_free(segment_indices);
 
 	ExecutionPlan *plan = segments[segment_count - 1];
-
+	OpBase *connecting_op;
+	connecting_op = plan->root;
 	// The root operation is OpResults only if the query culminates in a RETURN or CALL clause.
 	if(query_has_return) {
 		if(!connecting_op) {
