@@ -45,6 +45,7 @@ typedef enum {
 	OPType_JOIN = (1 << 25),
 	OPType_ARGUMENT = (1 << 26),
 	OPType_MERGE_CREATE = (1 << 27),
+	OpType_NODE_BY_LABEL_AND_ID_SCAN = (1 << 28),
 	// OPType_SEMI_APPLY = (1 << 28),
 	// OPType_ANTI_SEMI_APPLY = (1 << 29),
 	// OPType_SELECT_OR_SEMI_APPLY = (1 << 30),

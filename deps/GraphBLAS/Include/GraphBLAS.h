@@ -5998,6 +5998,15 @@ GrB_Info GxB_MatrixTupleIter_jump_to_row
     GrB_Index rowIdx            // row index to move iterator to
 ) ;
 
+// Move iterator over specific rows range
+GrB_Info GxB_MatrixTupleIter_iterate_range
+(
+    GxB_MatrixTupleIter *iter,  // iterator to use
+    GrB_Index startRowIdx,      // row index to start with
+    GrB_Index endRowIdx         // row index to finish with
+) ;
+
+
 // Advance iterator to the next none zero value
 GrB_Info GxB_MatrixTupleIter_next
 (

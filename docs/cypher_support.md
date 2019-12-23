@@ -163,7 +163,11 @@ We do not support any of these properties at the type level, meaning nodes and r
 - Modulo, exponentiation
 
 ### String operators
-String operators (STARTS WITH, ENDS WITH, CONTAINS) are supported.
++ String operators (STARTS WITH, ENDS WITH, CONTAINS) are supported.
+  
+  **Unsupported:**
+- Regex operator
+
 
 ### Boolean operators
 + AND
