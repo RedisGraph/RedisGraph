@@ -13,15 +13,15 @@
 #define FIRST_CHILD(node) CHILD_AT(node, 0)
 #define LAST_CHILD(node) CHILD_AT(node, AlgebraicExpression_ChildCount(node) - 1)
 
-/* Performs inplace re-purposing of an operand into an operation
- * a clone of the original operand is returned. */
-AlgebraicExpression *_InplaceRepurposeOperandToOperation
+// Performs inplace re-purposing of an operand into an operation
+void _InplaceRepurposeOperandToOperation
 (
 	AlgebraicExpression *operand,   // Operand to repurpose.
 	AL_EXP_OP op                    // Operation to turn operand into.
 );
 
 // Performs inplace re-purposing of an operation into an operand.
+// Operation mustn't contain any children.
 void _InplaceRepurposeOperationToOperand
 (
     AlgebraicExpression *operation, // Operation to repurpose.
@@ -57,6 +57,28 @@ AlgebraicExpression *_AlgebraicExpression_MultiplyToTheLeft
  * `rhs` = (A + B)
  * Returns Transpose(C) * (A + B) where `*` is the new root. */
 AlgebraicExpression *_AlgebraicExpression_MultiplyToTheRight
+(
+	AlgebraicExpression *exp,
+	AlgebraicExpression *rhs
+);
+
+/* Adds `exp` to the left by `lhs`.
+ * Returns new expression root.
+ * `lhs` = (A * B)
+ * `exp` = Transpose(C)
+ * Returns (A * B) + Transpose(C) where `+` is the new root. */
+AlgebraicExpression *_AlgebraicExpression_AddToTheLeft
+(
+	AlgebraicExpression *lhs,
+	AlgebraicExpression *exp
+);
+
+/* Adds `exp` to the right by `rhs`.
+ * Returns new expression root.
+ * `exp` = Transpose(C)
+ * `rhs` = (A * B)
+ * Returns Transpose(C) + (A * B) where `+` is the new root. */
+AlgebraicExpression *_AlgebraicExpression_AddToTheRight
 (
 	AlgebraicExpression *exp,
 	AlgebraicExpression *rhs

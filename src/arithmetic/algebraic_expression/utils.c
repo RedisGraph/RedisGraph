@@ -2,22 +2,19 @@
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
 
-/* Performs inplace re-purposing of an operand into an operation
- * a clone of the original operand is returned. */
-AlgebraicExpression *_InplaceRepurposeOperandToOperation
+/* Performs inplace re-purposing of an operand into an operation. */
+void _InplaceRepurposeOperandToOperation
 (
 	AlgebraicExpression *operand,
 	AL_EXP_OP op
 ) {
-	AlgebraicExpression *clone = AlgebraicExpression_Clone(operand);
+	assert(operand && operand->type == AL_OPERAND);
 	AlgebraicExpression *operation = AlgebraicExpression_NewOperation(op);
 	// turn operand into an operation.
 	memcpy(operand, operation, sizeof(AlgebraicExpression));
 
 	// Don't free op internals!
 	rm_free(operation);
-
-	return clone;
 }
 
 // Performs inplace re-purposing of an operation into an operand.
@@ -27,7 +24,9 @@ void _InplaceRepurposeOperationToOperand
 	AlgebraicExpression *operand
 ) {
 	assert(operation &&
+		   operation->type == AL_OPERATION &&
 		   operand &&
+		   operand->type == AL_OPERAND &&
 		   AlgebraicExpression_ChildCount(operation) == 0);
 
 	// Free operation internals.
@@ -109,17 +108,54 @@ AlgebraicExpression *_AlgebraicExpression_MultiplyToTheRight
 	return mul;
 }
 
+/* Adds `exp` to the left by `lhs`.
+ * Returns new expression root.
+ * `lhs` = (A * B)
+ * `exp` = Transpose(C)
+ * Returns (A * B) + Transpose(C) where `+` is the new root. */
+AlgebraicExpression *_AlgebraicExpression_AddToTheLeft
+(
+	AlgebraicExpression *lhs,
+	AlgebraicExpression *exp
+) {
+	assert(lhs && exp);
+	AlgebraicExpression *add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
+	AlgebraicExpression_AddChild(add, lhs);
+	AlgebraicExpression_AddChild(add, exp);
+	return add;
+}
+
+/* Adds `exp` to the right by `rhs`.
+ * Returns new expression root.
+ * `exp` = Transpose(C)
+ * `rhs` = (A * B)
+ * Returns Transpose(C) + (A * B) where `+` is the new root. */
+AlgebraicExpression *_AlgebraicExpression_AddToTheRight
+(
+	AlgebraicExpression *exp,
+	AlgebraicExpression *rhs
+) {
+	assert(exp && rhs);
+	AlgebraicExpression *add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
+	AlgebraicExpression_AddChild(add, exp);
+	AlgebraicExpression_AddChild(add, rhs);
+	return add;
+}
+
 void _AlgebraicExpression_FreeOperation
 (
 	AlgebraicExpression *node
 ) {
 	assert(node && node->type == AL_OPERATION);
 
-	uint child_count = AlgebraicExpression_ChildCount(node);
-	for(uint i = 0; i < child_count; i++) {
-		AlgebraicExpression_Free(node->operation.children[i]);
+	if(node->operation.children) {
+		uint child_count = AlgebraicExpression_ChildCount(node);
+		for(uint i = 0; i < child_count; i++) {
+			AlgebraicExpression_Free(node->operation.children[i]);
+		}
+		array_free(node->operation.children);
+		node->operation.children = NULL;
 	}
-	array_free(node->operation.children);
 }
 
 void _AlgebraicExpression_FreeOperand
@@ -139,13 +175,13 @@ AlgebraicExpression *_AlgebraicExpression_GetOperand
 	const AlgebraicExpression *root,    // Root of expression.
 	uint operand_idx                    // Operand position (LTR, zero based).
 ) {
+	printf("TODO rewrite to a simple linear scan");
 	// `operand_idx` must be within [0, AlgebraicExpression_OperandCount(root)).
 	assert(root && operand_idx < AlgebraicExpression_OperandCount(root));
 
 	// Find operand at position `operand_idx`.
 	uint current_operand_idx = -1;
 	AlgebraicExpression *op = (AlgebraicExpression *)root;
-	const AlgebraicExpression *current_operand = root;
 
 	while(op->type == AL_OPERATION) {
 		uint child_count = AlgebraicExpression_ChildCount(op);
@@ -154,7 +190,7 @@ AlgebraicExpression *_AlgebraicExpression_GetOperand
 			uint sub_tree_child_count = AlgebraicExpression_OperandCount(CHILD_AT(op, i));
 			/* Visit subtree if `operand_idx` is less than number of operands in subtree
 			 * plus number of operands already skipped. */
-			if((sub_tree_child_count + current_operand_idx) > operand_idx) {
+			if((sub_tree_child_count + current_operand_idx) >= operand_idx) {
 				// Investigate subtree.
 				op = CHILD_AT(op, i);
 				break;

@@ -144,7 +144,7 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 	if(left->type == AL_OPERATION) {
 		assert(left->operation.op = AL_EXP_TRANSPOSE);
 		GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
-		left = CHILD_AT(right, 0);
+		left = CHILD_AT(left, 0);
 	}
 	A = left->operand.matrix;
 

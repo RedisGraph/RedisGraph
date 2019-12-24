@@ -54,12 +54,60 @@ static bool __AlgebraicExpression_MulOverSum(AlgebraicExpression **root) {
 		AlgebraicExpression *l = (*root)->operation.children[0];
 		AlgebraicExpression *r = (*root)->operation.children[1];
 
-		// Do not care for (A + B) * (C + D)
-		// As this will end up performing A*C + A*D + B*C + B*D
-		// which is 4 multiplications and 3 additions compared to the original
-		// 2 additions and one multiplication.
-		if((_AlgebraicExpression_IsAdditionNode(l) && !_AlgebraicExpression_IsAdditionNode(r)) ||
-		   (_AlgebraicExpression_IsAdditionNode(r) && !_AlgebraicExpression_IsAdditionNode(l))) {
+		if(_AlgebraicExpression_IsAdditionNode(l) && _AlgebraicExpression_IsAdditionNode(r)) {
+			// MATCH ()-[:A|B]->()-[:C|D]->()
+			// (A+B)*(C+D) =
+			// = (A*C)+(A*D)+(B*C)+(B*D)
+
+			uint left_op_count = AlgebraicExpression_ChildCount(l);
+			uint right_op_count = AlgebraicExpression_ChildCount(r);
+			AlgebraicExpression **left_ops = array_new(AlgebraicExpression *, left_op_count);
+			AlgebraicExpression **right_ops = array_new(AlgebraicExpression *, right_op_count);
+
+			for(uint i = 0; i < left_op_count; i++) {
+				left_ops = array_append(left_ops, _AlgebraicExpression_OperationRemoveLeftmostChild(l));
+			}
+			for(uint i = 0; i < right_op_count; i++) {
+				right_ops = array_append(right_ops, _AlgebraicExpression_OperationRemoveLeftmostChild(r));
+			}
+
+			assert(AlgebraicExpression_ChildCount(l) == 0 && AlgebraicExpression_ChildCount(r) == 0);
+
+			// Multiply each left op by right op: (A*C), (A*D), (B*C), (B*D).
+			AlgebraicExpression **multiplications = array_new(AlgebraicExpression *,
+															  left_op_count * right_op_count);
+			for(uint i = 0; i < left_op_count; i++) {
+				AlgebraicExpression *l_op = left_ops[i];
+				for(uint j = 0; j < right_op_count; j++) {
+					// Clone op as it's being reused: A*C, A*D.
+					if(j > 0) l_op = AlgebraicExpression_Clone(l_op);
+					AlgebraicExpression *r_op = right_ops[j];
+					// Clone op as it's being reused B*C, B*D.
+					if(i > 0) r_op = AlgebraicExpression_Clone(r_op);
+					AlgebraicExpression *mul = _AlgebraicExpression_MultiplyToTheRight(l_op, r_op);
+					multiplications = array_append(multiplications, mul);
+				}
+			}
+			array_free(left_ops);
+			array_free(right_ops);
+
+			// Sum all multiplications: (A*C)+(A*D)+(B*C)+(B*D).
+			AlgebraicExpression *add = _AlgebraicExpression_AddToTheRight(multiplications[0],
+																		  multiplications[1]);
+			for(uint i = 2; i < (left_op_count * right_op_count); i++) {
+				add = _AlgebraicExpression_AddToTheRight(add, multiplications[i]);
+			}
+			array_free(multiplications);
+
+			// Free root internals and overwrite it with new addition root.
+			_AlgebraicExpression_FreeOperation((*root));
+			// Update root.
+			memcpy((*root), add, sizeof(AlgebraicExpression));
+			return true;
+		}
+
+		else if((_AlgebraicExpression_IsAdditionNode(l) && !_AlgebraicExpression_IsAdditionNode(r)) ||
+				(_AlgebraicExpression_IsAdditionNode(r) && !_AlgebraicExpression_IsAdditionNode(l))) {
 
 			AlgebraicExpression *add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
 			AlgebraicExpression *lMul = AlgebraicExpression_NewOperation(AL_EXP_MUL);

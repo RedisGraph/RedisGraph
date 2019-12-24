@@ -33,6 +33,5 @@ void optimizePlan(ExecutionPlan *plan) {
 
 	/* Try to reduce execution plan incase it perform node or edge counting. */
 	reduceCount(plan);
-
 }
 

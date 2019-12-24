@@ -36,40 +36,6 @@ static AlgebraicExpression *_rightMostNode(AlgebraicExpression *exp) {
 	return right_most;
 }
 
-/* Adds `exp` to the left by `lhs`.
- * Returns new expression root.
- * `lhs` = (A * B)
- * `exp` = Transpose(C)
- * Returns (A * B) + Transpose(C) where `+` is the new root. */
-static AlgebraicExpression *_AlgebraicExpression_AddToTheLeft
-(
-	AlgebraicExpression *lhs,
-	AlgebraicExpression *exp
-) {
-	assert(lhs && exp);
-	AlgebraicExpression *add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
-	AlgebraicExpression_AddChild(add, lhs);
-	AlgebraicExpression_AddChild(add, exp);
-	return add;
-}
-
-/* Adds `exp` to the right by `rhs`.
- * Returns new expression root.
- * `exp` = Transpose(C)
- * `rhs` = (A * B)
- * Returns Transpose(C) + (A * B) where `+` is the new root. */
-static AlgebraicExpression *_AlgebraicExpression_AddToTheRight
-(
-	AlgebraicExpression *exp,
-	AlgebraicExpression *rhs
-) {
-	assert(exp && rhs);
-	AlgebraicExpression *add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
-	AlgebraicExpression_AddChild(add, exp);
-	AlgebraicExpression_AddChild(add, rhs);
-	return add;
-}
-
 static AlgebraicExpression *_AlgebraicExpression_CloneOperation
 (
 	const AlgebraicExpression *exp
@@ -153,7 +119,7 @@ AlgebraicExpression *AlgebraicExpression_Clone
 // AlgebraicExpression attributes.
 //------------------------------------------------------------------------------
 
-// Returns the source entity represented by the left-most operand row domain.
+// Returns the source entity alias represented by the left-most operand row domain.
 const char *AlgebraicExpression_Source
 (
 	AlgebraicExpression *root   // Root of expression.
@@ -166,7 +132,7 @@ const char *AlgebraicExpression_Source
 	return root->operand.src;
 }
 
-// Returns the destination entity represented by the right-most operand column domain.
+// Returns the destination entity alias represented by the right-most operand column domain.
 const char *AlgebraicExpression_Destination
 (
 	AlgebraicExpression *root   // Root of expression.
@@ -281,7 +247,7 @@ AlgebraicExpression *AlgebraicExpression_RemoveLeftmostNode
 
 	while(current->type == AL_OPERATION) {
 		prev = current;
-		current = current->operation.children[0];
+		current = FIRST_CHILD(current);
 	}
 	assert(current->type == AL_OPERAND);
 
@@ -295,11 +261,7 @@ AlgebraicExpression *AlgebraicExpression_RemoveLeftmostNode
 		if(child_count < 2) {
 			if(child_count == 1) {
 				AlgebraicExpression *replacement = _AlgebraicExpression_OperationRemoveRightmostChild(prev);
-				/* Free operation internals, doesn't free `prev` as it might be pointed
-				 * at by other operations. */
-				_AlgebraicExpression_FreeOperation(prev);
-				// Overide prev with replacement.
-				memcpy(prev, replacement, sizeof(AlgebraicExpression));
+				_InplaceRepurposeOperationToOperand(prev, replacement);
 				// Free replacement as it has been copied.
 				rm_free(replacement);
 			} else {
@@ -321,8 +283,7 @@ AlgebraicExpression *AlgebraicExpression_RemoveRightmostNode
 
 	while(current->type == AL_OPERATION) {
 		prev = current;
-		uint child_count = AlgebraicExpression_ChildCount(current);
-		current = current->operation.children[child_count - 1];
+		current = LAST_CHILD(current);
 	}
 	assert(current->type == AL_OPERAND);
 
@@ -336,11 +297,7 @@ AlgebraicExpression *AlgebraicExpression_RemoveRightmostNode
 		if(child_count < 2) {
 			if(child_count == 1) {
 				AlgebraicExpression *replacement = _AlgebraicExpression_OperationRemoveRightmostChild(prev);
-				/* Free operation internals, doesn't free `prev` as it might be pointed
-				 * at by other operations. */
-				_AlgebraicExpression_FreeOperation(prev);
-				// Overide prev with replacement.
-				memcpy(prev, replacement, sizeof(AlgebraicExpression));
+				_InplaceRepurposeOperationToOperand(prev, replacement);
 				// Free replacement as it has been copied.
 				rm_free(replacement);
 			} else {

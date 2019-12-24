@@ -5,6 +5,7 @@
 */
 #include "../algebraic_expression.h"
 #include "utils.h"
+#include "../../util/rmalloc.h"
 
 //------------------------------------------------------------------------------
 // AlgebraicExpression debugging utilities.
@@ -183,4 +184,66 @@ void AlgebraicExpression_Print
 		assert("Unknown algebraic expression node type");
 		break;
 	}
+}
+
+void _AlgebraicExpression_ToString
+(
+	const AlgebraicExpression *exp, // Root node.
+	char *buff
+) {
+	assert(exp);
+	const char *alias;
+
+	switch(exp->type) {
+	case AL_OPERATION:
+		switch(exp->operation.op) {
+		case AL_EXP_ADD:
+			sprintf(buff + strlen(buff), "(");
+			// Print add first operand.
+			_AlgebraicExpression_ToString(FIRST_CHILD(exp), buff);
+			// Expecting at least 2 operands, concat using '+'.
+			for(uint i = 1; i < AlgebraicExpression_ChildCount(exp); i++) {
+				sprintf(buff + strlen(buff), " + ");
+				_AlgebraicExpression_ToString(CHILD_AT(exp, i), buff);
+			}
+			sprintf(buff + strlen(buff), ")");
+			break;
+		case AL_EXP_MUL:
+			// Print add first operand.
+			_AlgebraicExpression_ToString(FIRST_CHILD(exp), buff);
+			// Expecting at least 2 operands, concat using '*'.
+			for(uint i = 1; i < AlgebraicExpression_ChildCount(exp); i++) {
+				sprintf(buff + strlen(buff), " * ");
+				_AlgebraicExpression_ToString(CHILD_AT(exp, i), buff);
+			}
+			break;
+		case AL_EXP_TRANSPOSE:
+			// Expecting a single child.
+			assert(AlgebraicExpression_ChildCount(exp) == 1);
+			sprintf(buff + strlen(buff), "Transpose(");
+			_AlgebraicExpression_ToString(FIRST_CHILD(exp), buff);
+			sprintf(buff + strlen(buff), ")");
+			break;
+		default:
+			assert("Unknown algebraic expression operation");
+			break;
+		}
+		break;
+	case AL_OPERAND:
+		if(exp->operand.edge) alias = exp->operand.edge;
+		else alias = exp->operand.src;
+		sprintf(buff + strlen(buff), "%s", alias);
+	default:
+		assert("Unknown algebraic expression node type");
+		break;
+	}
+}
+
+char *AlgebraicExpression_ToString
+(
+	const AlgebraicExpression *exp  // Root node.
+) {
+	char *buff = rm_malloc(sizeof(char) * 1024);
+	_AlgebraicExpression_ToString(exp, buff);
+	return buff;
 }

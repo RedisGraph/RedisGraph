@@ -19,33 +19,6 @@ typedef enum {
 
 #define AL_EXP_ALL (AL_EXP_ADD | AL_EXP_MUL | AL_EXP_POW | AL_EXP_TRANSPOSE)
 
-/* Algebraic operation, describes one of the following operations:
- * Matrix matrix addition
- * Matrix matrix multiplication
- * Matrix masking
- * Matrix transpose */
-struct AlgebraicOperation {
-    union{
-        struct {
-            GrB_Matrix Mask;
-            GrB_Semiring semiring;
-        } add;
-        struct {
-            GrB_Matrix Mask;
-            GrB_Semiring semiring;
-        } mul;
-        struct {
-            GrB_Matrix Mask;
-            GrB_Semiring semiring;
-        } pow;
-        struct {
-            GrB_Matrix Mask;
-            GrB_Semiring semiring;
-        } transpose;
-    };
-    AL_EXP_OP type;
-};
-
 // Type of node within an algebraic expression
 typedef enum {
 	AL_OPERAND,
@@ -80,8 +53,7 @@ struct AlgebraicExpression {
 // Construct algebraic expression form query graph.
 AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 (
-	const QueryGraph *qg,   // Query-graph to process
-	uint *exp_count         // Number of algebraic expressions generated.
+	const QueryGraph *qg    // Query-graph to process
 );
 
 //------------------------------------------------------------------------------
@@ -115,13 +87,13 @@ AlgebraicExpression *AlgebraicExpression_Clone
 // AlgebraicExpression attributes.
 //------------------------------------------------------------------------------
 
-// Returns the source entity represented by the left-most operand row domain.
+// Returns the source entity alias represented by the left-most operand (row domain).
 const char *AlgebraicExpression_Source
 (
     AlgebraicExpression *root   // Root of expression.
 );
 
-// Returns the destination entity represented by the right-most operand column domain.
+// Returns the destination entity alias represented by the right-most operand (column domain).
 const char *AlgebraicExpression_Destination
 (
     AlgebraicExpression *root   // Root of expression.
@@ -146,7 +118,7 @@ uint AlgebraicExpression_OperandCount
     const AlgebraicExpression *root   // Root of expression.
 );
 
-// Returns the number of operations in expression.
+// Returns the number of operations of given type in expression.
 uint AlgebraicExpression_OperationCount
 (
     const AlgebraicExpression *root,    // Root of expression.
@@ -159,7 +131,7 @@ bool AlgebraicExpression_Transposed
     const AlgebraicExpression *root   // Root of expression.
 );
 
-// Returns true if expression contains operation.
+// Returns true if expression contains an operation of type `op`.
 bool AlgebraicExpression_ContainsOp
 (
     const AlgebraicExpression *root,    // Root of expression.
@@ -197,7 +169,7 @@ AlgebraicExpression *AlgebraicExpression_RemoveRightmostNode
 );
 
 // Multiply expression to the left by operand
-// A * (exp)
+// m * (exp)
 void AlgebraicExpression_MultiplyToTheLeft
 (
     AlgebraicExpression **root,
@@ -205,7 +177,7 @@ void AlgebraicExpression_MultiplyToTheLeft
 );
 
 // Multiply expression to the right by operand
-// (exp) * A
+// (exp) * m
 void AlgebraicExpression_MultiplyToTheRight
 (
     AlgebraicExpression **root,
@@ -213,7 +185,7 @@ void AlgebraicExpression_MultiplyToTheRight
 );
 
 // Add expression to the left by operand
-// A + (exp)
+// m + (exp)
 void AlgebraicExpression_AddToTheLeft
 (
     AlgebraicExpression **root,
@@ -221,7 +193,7 @@ void AlgebraicExpression_AddToTheLeft
 );
 
 // Add expression to the right by operand
-// (exp) + A
+// (exp) + m
 void AlgebraicExpression_AddToTheRight
 (
     AlgebraicExpression **root,
@@ -264,6 +236,12 @@ void AlgebraicExpression_PrintTree
 
 // Print algebraic expression to stdout.
 void AlgebraicExpression_Print
+(
+    const AlgebraicExpression *exp  // Root node.
+);
+
+// Return a string representation of expression.
+char *AlgebraicExpression_ToString
 (
     const AlgebraicExpression *exp  // Root node.
 );

@@ -408,10 +408,9 @@ static AlgebraicExpression *_AlgebraicExpression_FromPath
 // Construct algebraic expression form query graph.
 AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 (
-	const QueryGraph *qg,   // Query-graph to process
-	uint *exp_count         // Number of algebraic expressions generated.
+	const QueryGraph *qg    // Query-graph to process
 ) {
-	assert(qg && exp_count);
+	assert(qg);
 
 	/* Construct algebraic expression(s) from query-graph.
 	 * Trying to take advantage of long multiplications with as few
@@ -426,15 +425,12 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 	/* A graph with no edges implies an empty algebraic expression
 	 * the reasoning behind this decission is that algebraic expression
 	 * represent graph traversals, no edges means no traversals. */
+	AlgebraicExpression **exps = array_new(AlgebraicExpression *, 1);
 	uint edge_count = QueryGraph_EdgeCount(qg);
-	if(edge_count == 0) {
-		*exp_count = 0;
-		return NULL;
-	}
+	if(edge_count == 0) return exps;
 
 	bool acyclic = IsAcyclicGraph(qg);
 	QueryGraph *g = QueryGraph_Clone(qg);
-	AlgebraicExpression **exps = array_new(AlgebraicExpression *, 1);
 
 	// As long as the query-graph isn't empty.
 	while(QueryGraph_EdgeCount(g) > 0) {
@@ -460,15 +456,6 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 		// Split path into sub paths.
 		bool transpositions[path_len];
 		_normalizePath(path, path_len, transpositions);
-
-		// Print path.
-		// printf("Entire path\n");
-		// uint path_length = array_len(path);
-		// for(uint i = 0; i < path_length; i++) {
-		// 	QGEdge *e = path[i];
-		// 	printf("%s %s %s %d   ", e->src->alias, e->alias, e->dest->alias, transpositions[i]);
-		// }
-		// printf("\n");
 
 		QGEdge ***paths = _Intermediate_Paths(path, qg);
 		AlgebraicExpression **sub_exps = array_new(AlgebraicExpression *, 1);
@@ -507,9 +494,6 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 			}
 			// Expression can not be empty.
 			assert(AlgebraicExpression_OperandCount(exp) > 0);
-			// printf("Sub path\n");
-			// AlgebraicExpression_Print(exp);
-			// printf("\n");
 		}
 
 		sub_exps = _AlgebraicExpression_IsolateVariableLenExps(qg, sub_exps);
@@ -535,13 +519,6 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 		if(!acyclic) acyclic = IsAcyclicGraph(g);
 	}
 
-	// TODO just return exps?
-	*exp_count = array_len(exps);
-	AlgebraicExpression **res = rm_malloc(sizeof(AlgebraicExpression *) * (*exp_count));
-	for(size_t i = 0; i < (*exp_count); i++) res[i] = exps[i];
-	array_free(exps);
-
 	QueryGraph_Free(g);
-
-	return res;
+	return exps;
 }

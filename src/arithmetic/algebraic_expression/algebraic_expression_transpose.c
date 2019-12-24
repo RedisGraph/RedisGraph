@@ -77,7 +77,8 @@ static void _AlgebraicExpression_TransposeOperand
 
 	// A -> Transpose(A)
 	// We're going to repourpose exp, make a clone.
-	AlgebraicExpression *operand = _InplaceRepurposeOperandToOperation(exp, AL_EXP_TRANSPOSE);
+	AlgebraicExpression *operand = AlgebraicExpression_Clone(exp);
+	_InplaceRepurposeOperandToOperation(exp, AL_EXP_TRANSPOSE);
 
 	/* Add original operand as a child of exp (which is now a transpose operation).
 	 * Transpose(A) */
