@@ -250,9 +250,15 @@ class testConcurrentQueryFlow(FlowTestsBase):
         writer.start()
         redis_con.delete(GRAPH_ID)
         writer.join()
-        self.env.assertEquals(exceptions[0], "Encountered an empty key when opened key " + GRAPH_ID)
+        if exceptions[0] is not None:
+            self.env.assertEquals(exceptions[0], "Encountered an empty key when opened key " + GRAPH_ID)
+            exceptions[0] = None
+        else:
+            self.env.assertEquals(1000000, assertions[0].nodes_created)
+            assertions[0] = None
+
         # Restore to default.
-        exceptions[0] = None
+        graphs[0].query("MATCH (n) RETURN n")
     
     def test_07_concurrent_write_rename(self):
         redis_con = self.env.getConnection()
@@ -277,6 +283,7 @@ class testConcurrentQueryFlow(FlowTestsBase):
             exceptions[0] = None
         else:
             self.env.assertEquals(1000000, assertions[0].nodes_created)
+            assertions[0] = None
 
         # Restore to default.
         graphs[0].delete()
