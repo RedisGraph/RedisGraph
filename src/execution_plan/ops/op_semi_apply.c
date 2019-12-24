@@ -32,7 +32,7 @@ static Record _SemiApplyConsume(OpBase *opBase) {
 		// Try to get a record from match stream.
 		Record righthand_record = _pullFromMatchStream(op);
 		if(righthand_record) {
-			// Don't care for matched record.
+			// Don't care about matched record.
 			Record_Free(righthand_record);
 			Record r = op->r;
 			op->r = NULL;   // Null to avoid double free.
@@ -79,11 +79,9 @@ OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti) {
 	// Set our Op operations
 	if(anti) {
 		OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, "Anti Semi Apply", SemiApplyInit,
-					_AntiSemiApplyConsume,
-					SemiApplyReset, NULL, SemiApplyFree, false, plan);
+					_AntiSemiApplyConsume, SemiApplyReset, NULL, SemiApplyFree, false, plan);
 	} else {
-		OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, "Semi Apply", SemiApplyInit,
-					_SemiApplyConsume,
+		OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, "Semi Apply", SemiApplyInit, _SemiApplyConsume,
 					SemiApplyReset, NULL, SemiApplyFree, false, plan);
 	}
 	return (OpBase *) op;

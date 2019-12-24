@@ -1,32 +1,5 @@
 #include "execution_plan.h"
-#include "../util/qsort.h"
 #include "ops/ops.h"
-
-// Sort an array and remove duplicate entries.
-static void _uniqueArray(const char **arr) {
-#define MODIFIES_ISLT(a,b) (strcmp((*a),(*b)) > 0)
-	int count = array_len(arr);
-	QSORT(const char *, arr, count, MODIFIES_ISLT);
-	uint unique_idx = 0;
-	for(int i = 0; i < count - 1; i ++) {
-		if(arr[i] != arr[i + 1]) {
-			arr[unique_idx++] = arr[i];
-		}
-	}
-	arr[unique_idx++] = arr[count - 1];
-	array_trimm_len(arr, unique_idx);
-}
-
-/* Checks if parent has given child, if so returns 1
- * otherwise returns 0 */
-int _OpBase_ContainsChild(const OpBase *parent, const OpBase *child) {
-	for(int i = 0; i < parent->childCount; i++) {
-		if(parent->children[i] == child) {
-			return 1;
-		}
-	}
-	return 0;
-}
 
 void _OpBase_AddChild(OpBase *parent, OpBase *child) {
 	// Add child to parent

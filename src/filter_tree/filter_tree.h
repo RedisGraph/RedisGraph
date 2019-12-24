@@ -121,8 +121,5 @@ void FilterTree_DeMorgan(FT_FilterNode **root);
 /* Prints tree. */
 void FilterTree_Print(const FT_FilterNode *root);
 
-/* Clones a filter tree */
-FT_FilterNode *FilterTree_Clone(const FT_FilterNode *root);
-
 /* Free tree. */
 void FilterTree_Free(FT_FilterNode *root);

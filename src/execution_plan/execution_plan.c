@@ -883,17 +883,9 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 
 	array_free(segment_indices);
 
-	ExecutionPlan *plan = segments[segment_count - 1];
-	OpBase *connecting_op;
-	connecting_op = plan->root;
+	ExecutionPlan *plan = segments[segment_count - 1];;
 	// The root operation is OpResults only if the query culminates in a RETURN or CALL clause.
 	if(query_has_return) {
-		if(!connecting_op) {
-			// Set the connecting op if our query is just a RETURN.
-			assert(segment_count == 1);
-			connecting_op = ExecutionPlan_LocateFirstOp(plan->root, OPType_PROJECT | OPType_AGGREGATE);
-		}
-
 		// Prepare column names for the ResultSet.
 		if(result_set) result_set->columns = AST_BuildColumnNames(last_clause);
 
@@ -1050,19 +1042,16 @@ static void _ExecutionPlan_FreeSubPlan(ExecutionPlan *plan) {
 	rm_free(plan);
 }
 
+
+
+
 void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) return;
 
 	if(plan->sub_execution_plans) {
 		uint sub_execution_plans_count = array_len(plan->sub_execution_plans);
-		for(uint i = 0; i < sub_execution_plans_count; i++) {
-			ExecutionPlan *sub_execution_plan = plan->sub_execution_plans[i];
-			/* NULL-set variables shared between the match_branch_plan and the overall plan. Those items will be free
-			 * In the main execution plan release. */
-			sub_execution_plan->record_map = NULL;
-			sub_execution_plan->root = NULL;
-			ExecutionPlan_Free(sub_execution_plan);
-		}
+		for(uint i = 0; i < sub_execution_plans_count; i++)
+			_ExecutionPlan_FreeSubPlan(plan->sub_execution_plans[i]);
 		array_free(plan->sub_execution_plans);
 		plan->sub_execution_plans = NULL;
 	}

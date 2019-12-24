@@ -12,8 +12,8 @@
 #include <assert.h>
 
 static FT_FilterNode *buildLabelFilter(NodeByLabelScan *label_scan) {
-	AR_ExpNode *const_label_node = AR_EXP_NewConstOperandNode(SI_ConstStringVal((
-																					char *)label_scan->n->label));
+	char *label = (char *)label_scan->n->label;
+	AR_ExpNode *const_label_node = AR_EXP_NewConstOperandNode(SI_ConstStringVal(label));
 	AR_ExpNode *variadic_node = AR_EXP_NewVariableOperandNode(label_scan->n->alias, NULL);
 	AR_ExpNode *labels_func_node = AR_EXP_NewOpNode("labels", 1);
 	labels_func_node->op.children[0] = variadic_node;
