@@ -208,3 +208,28 @@ class testIndexScanFlow(FlowTestsBase):
         result_set = redis_graph.query(query).result_set
         self.env.assertIn('Index Scan', plan)
         self.env.assertEqual(len(result_set), 1)
+
+    def test07_index_scan_and_id(self):
+        redis_con = self.env.getConnection()
+        redis_graph = Graph("G", redis_con)
+        nodes=[]
+        for i in range(10):
+            node = Node(node_id=i, label='person', properties={'age':i})
+            nodes.append(node)
+            redis_graph.add_node(node)
+            redis_graph.flush()
+        
+        query = """CREATE INDEX ON :person(age)"""
+        query_result = redis_graph.query(query)
+        self.env.assertEqual(1, query_result.indices_created)
+
+        query = """MATCH (n:person) WHERE id(n)>=7 AND n.age<9 RETURN n ORDER BY n.age"""
+        plan = redis_graph.execution_plan(query)
+        query_result = redis_graph.query(query)
+        self.env.assertIn('Index Scan', plan)
+        self.env.assertIn('Filter', plan)
+        query_result = redis_graph.query(query)
+
+        self.env.assertEqual(2, len(query_result.result_set))
+        expected_result = [[nodes[7]], [nodes[8]]]
+        self.env.assertEquals(expected_result, query_result.result_set)

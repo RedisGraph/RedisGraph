@@ -8,12 +8,12 @@
 #include "./optimizations.h"
 
 void optimizePlan(ExecutionPlan *plan) {
-	// Try to reduce SCAN + FILTER to a node seek operation.
-	seekByID(plan);
-
 	/* When possible, replace label scan and filter ops
 	 * with index scans. */
 	utilizeIndices(plan);
+
+	// Try to reduce SCAN + FILTER to a node seek operation.
+	seekByID(plan);
 
 	/* Remove redundant SCAN operations. */
 	reduceScans(plan);
