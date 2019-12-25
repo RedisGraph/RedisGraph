@@ -361,3 +361,64 @@ class testGraphMergeFlow(FlowTestsBase):
         self.env.assertEquals(result.nodes_created, 0)
         self.env.assertEquals(result.relationships_created, 0)
         self.env.assertEquals(result.properties_set, 0)
+
+    def test19_merge_merge(self):
+        redis_con = self.env.getConnection()
+        graph = Graph("M", redis_con)        
+        
+        # Starting with an empty graph.
+        # Create 2 nodes and connect them to one another.
+        self.env.cmd("flushall")
+        query = """MERGE (a:Person {name: 'a'}) MERGE (b:Person {name: 'b'}) MERGE (a)-[:FRIEND]->(b) MERGE (b)-[:FRIEND]->(a) RETURN a,b"""
+        result = graph.query(query)
+
+        # Verify that every entity was created.
+        self.env.assertEquals(result.nodes_created, 2)
+        self.env.assertEquals(result.relationships_created, 2)
+        self.env.assertEquals(result.properties_set, 2)
+
+        # Repeat the query.
+        result = graph.query(query)
+
+        # Verify that no data was modified.
+        self.env.assertEquals(result.nodes_created, 0)
+        self.env.assertEquals(result.relationships_created, 0)
+        self.env.assertEquals(result.properties_set, 0)
+
+        # Starting with an empty graph.
+        # Make sure the pattern ()-[]->()-[]->()-[]->() exists.
+        self.env.cmd("flushall")
+        query = """MERGE (a {v:1}) MERGE (b {v:2}) MERGE (a)-[:KNOWS]->(b) MERGE ()-[:KNOWS]->()-[:KNOWS]->()"""
+        result = graph.query(query)
+
+        # Verify that every entity was created.
+        self.env.assertEquals(result.nodes_created, 5)
+        self.env.assertEquals(result.relationships_created, 3)
+        self.env.assertEquals(result.properties_set, 2)
+
+        # Repeat the query.
+        result = graph.query(query)
+
+        # Verify that no data was modified.
+        self.env.assertEquals(result.nodes_created, 0)
+        self.env.assertEquals(result.relationships_created, 0)
+        self.env.assertEquals(result.properties_set, 0)
+
+        # Starting with an empty graph.
+        # Make sure the pattern ()-[]->()-[]->()-[]->() exists.
+        self.env.cmd("flushall")
+        query = """MERGE (a {v:1}) MERGE (b {v:2}) MERGE (a)-[:KNOWS]->(b) WITH a AS c, b AS d MATCH (c)-[:KNOWS]->(d) MERGE (c)-[:LIKES]->(d)"""
+        result = graph.query(query)
+
+        # Verify that every entity was created.
+        self.env.assertEquals(result.nodes_created, 2)
+        self.env.assertEquals(result.relationships_created, 2)
+        self.env.assertEquals(result.properties_set, 2)
+
+        # Repeat the query.
+        result = graph.query(query)
+
+        # Verify that no data was modified.
+        self.env.assertEquals(result.nodes_created, 0)
+        self.env.assertEquals(result.relationships_created, 0)
+        self.env.assertEquals(result.properties_set, 0)

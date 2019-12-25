@@ -236,21 +236,19 @@ void _MatrixSynchronize(const Graph *g, GrB_Matrix m) {
 	GrB_Matrix_nrows(&n_rows, m);
 	GrB_Matrix_ncols(&n_cols, m);
 	GrB_Index dims = Graph_RequiredMatrixDim(g);
-	bool pending = false;
-	GxB_Matrix_Pending(m, &pending);
 
 	// If the graph belongs to one thread, we don't need to lock the mutex.
 	if(g->_writelocked) {
 		if((n_rows != dims) || (n_cols != dims)) {
 			assert(GxB_Matrix_resize(m, dims, dims) == GrB_SUCCESS);
-			pending = true;
 		}
 
-		// Flush changes to matrices if we've performed a resize or have pending tuples.
-		if(pending) _Graph_ApplyPending(m);
-
+		// Writer under write lock, no need to flush pending changes.
 		return;
 	}
+
+	bool pending = false;
+	GxB_Matrix_Pending(m, &pending);
 
 	// If the matrix has pending operations or requires
 	// a resize, enter critical section.
