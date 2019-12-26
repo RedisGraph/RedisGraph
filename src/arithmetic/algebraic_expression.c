@@ -322,6 +322,7 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromNode(QGNode *n
 	op.free = false;
 	op.diagonal = true;
 	op.transpose = false;
+	op.label = n->label;
 	Graph *g = QueryCtx_GetGraph();
 	if(n->labelID == GRAPH_UNKNOWN_LABEL) {
 		op.operand = Graph_GetZeroMatrix(g);
@@ -344,6 +345,7 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge(
 	if(reltype_count == 0) {
 		// No relationship types specified; use the full adjacency matrix
 		mat = Graph_GetAdjacencyMatrix(g);
+		op.label = NULL;
 	} else if(reltype_count == 1) {
 		// One relationship type
 		uint reltype_id = e->reltypeIDs[0];
@@ -352,6 +354,7 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge(
 		} else {
 			mat = Graph_GetRelationMatrix(g, e->reltypeIDs[0]);
 		}
+		op.label = e->reltypes[0];
 	} else {
 		// [:A|:B]
 		// Create matrix M = A+B.
@@ -371,6 +374,7 @@ static AlgebraicExpressionOperand _AlgebraicExpression_OperandFromEdge(
 			GrB_Info info = GrB_eWiseAdd_Matrix_Semiring(m, NULL, NULL, GxB_LAND_LOR_BOOL, m, l, NULL);
 		}
 		mat = m;
+		op.label = NULL;
 	}
 
 	op.operand = mat;
@@ -614,10 +618,8 @@ void AlgebraicExpression_Execute(AlgebraicExpression *ae, GrB_Matrix res) {
 		leftTerm = operands[i - 1];
 		rightTerm = operands[i];
 
-
 		/* Incase we're required to transpose right hand side operand
 		 * perform transpose once and update original expression. */
-
 		if(rightTerm.transpose) {
 			assert(!rightTerm.diagonal); // Never transpose diagonal matrix.
 			GrB_Matrix t = rightTerm.operand;
@@ -672,6 +674,53 @@ void AlgebraicExpression_Free(AlgebraicExpression *ae) {
 
 	free(ae->operands);
 	free(ae);
+}
+
+/* Refetch all operands from graph.
+ * This is to guarantee operands destination comply with
+ * multiplication requirements.
+ * As algebraic expressions are composed prior to the actual query evaluation
+ * operands dimensions might be outdated as the query evaluates
+ * consider WRITE READ WRITE query:
+ * MERGE (a) MERGE (b) MERGE (a)-[:R]->(b) MERGE (b)-[:R]->(a)
+ * In case the graph is empty at the time the algebraic expression is constructed
+ * the operand `R` is the zero matrix, but when the last merge is evaluated `R` is created. */
+void AlgebraicExpression_SyncOperands(AlgebraicExpression *ae) {
+	assert(ae);
+	Graph *g = QueryCtx_GetGraph();
+	const GraphContext *gc = QueryCtx_GetGraphCtx();
+
+	for(uint i = 0; i < ae->operand_count; i++) {
+		AlgebraicExpressionOperand *operand = ae->operands + i;
+		const char *label = operand->label;
+		Schema *s = NULL;
+
+		// Intermidate matrix, e.g. [:A|B]
+		if(operand->free) {
+			GrB_Index dim = Graph_RequiredMatrixDim(g);
+			// Ok to simply resize.
+			GxB_Matrix_resize(operand->operand, dim, dim);
+			continue;
+		}
+
+		if(operand->diagonal) {
+			// Operand represents a node.
+			s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+			if(!s) operand->operand = Graph_GetZeroMatrix(g);
+			else operand->operand = Graph_GetLabelMatrix(g, s->id);
+		} else {
+			// Operand represents an edge.
+			if(!label) {
+				operand->operand = Graph_GetAdjacencyMatrix(g);
+				continue;
+			}
+
+			s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
+			if(!s) {
+				operand->operand = Graph_GetZeroMatrix(g);
+			} else operand->operand = Graph_GetRelationMatrix(g, s->id);
+		}
+	}
 }
 
 void AlgebraicExpression_Transpose(AlgebraicExpression *ae) {

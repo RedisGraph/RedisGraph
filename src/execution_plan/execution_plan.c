@@ -291,7 +291,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			/* If there are no edges in the component, we only need a node scan. */
 			QGNode *n = cc->nodes[0];
 			if(n->labelID != GRAPH_NO_LABEL) root = NewNodeByLabelScanOp(plan, n);
-			else root = NewAllNodeScanOp(plan, gc->g, n);
+			else root = NewAllNodeScanOp(plan, n);
 		} else {
 			/* The component has edges, so we'll build a node scan and a chain of traversals. */
 			uint expCount = 0;
@@ -316,7 +316,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				if(exp->operands[0].diagonal) AlgebraicExpression_RemoveTerm(exp, 0, NULL);
 				root = tail = NewNodeByLabelScanOp(plan, src);
 			} else {
-				root = tail = NewAllNodeScanOp(plan, gc->g, src);
+				root = tail = NewAllNodeScanOp(plan, src);
 			}
 
 			/* The expression has been fully converted - the QueryGraph had edges, but we don't

@@ -136,17 +136,23 @@ PendingCreations NewPendingCreationsContainer(ResultSetStatistics *stats, NodeCr
 // Lock the graph and commit all changes introduced by the operation.
 void CommitNewEntities(OpBase *op, PendingCreations *pending) {
 	Graph *g = QueryCtx_GetGraph();
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	uint node_count = array_len(pending->created_nodes);
 	uint edge_count = array_len(pending->created_edges);
 	// Lock everything.
 	QueryCtx_LockForCommit();
 
+	/* Set sync policy to resize to capacity only for node introduction
+	 * as only node creation can have an effect on matrix dimensions. */
 	Graph_SetMatrixPolicy(g, RESIZE_TO_CAPACITY);
 	if(node_count > 0) _CommitNodes(pending);
-	if(edge_count > 0) _CommitEdges(pending);
-	Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
-	// Release lock.
 
+	/* Reset sync policy to minimum space to avoid further matrix resize:
+	 * From capacity to actual node count.
+	 * Recall that edge creation/deletion doesn't have an effect on matrix dimensions. */
+	Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
+	if(edge_count > 0) _CommitEdges(pending);
+	// Release lock.
 	pending->stats->nodes_created += node_count;
 	pending->stats->relationships_created += edge_count;
 	QueryCtx_UnlockCommit(op);

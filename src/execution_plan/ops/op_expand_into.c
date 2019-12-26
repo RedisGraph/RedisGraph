@@ -51,12 +51,44 @@ static bool _setEdge(OpExpandInto *op) {
 	return true;
 }
 
+static void _populate_filter_matrix(OpExpandInto *op) {
+	for(uint i = 0; i < op->recordCount; i++) {
+		Record r = op->records[i];
+		/* Update filter matrix F, set row i at position srcId
+		 * F[i, srcId] = true. */
+		Node *n = Record_GetNode(r, op->srcNodeIdx);
+		NodeID srcId = ENTITY_GET_ID(n);
+		GrB_Matrix_setElement_BOOL(op->F, true, i, srcId);
+	}
+}
+
+// Initialize all algebraic expression matrices.
+static void _sync_matrices(OpExpandInto *op) {
+	size_t required_dim = Graph_RequiredMatrixDim(op->graph);
+	GrB_Index ncols;
+
+	/* An awkward way of testing if we need to resize as a result of
+	 * entities either being added or removed from the graph */
+	GrB_Matrix_ncols(&ncols, op->F);
+	if(ncols != required_dim) {
+		GxB_Matrix_resize(op->F, op->recordsCap, required_dim);
+		GxB_Matrix_resize(op->M, op->recordsCap, required_dim);
+		AlgebraicExpression_SyncOperands(op->ae);
+	}
+}
+
 /* Evaluate algebraic expression:
  * appends filter matrix as the left most operand
  * perform multiplications.
  * removed filter matrix from original expression
  * clears filter matrix. */
 static void _traverse(OpExpandInto *op) {
+	// Align matrices dimensions.
+	_sync_matrices(op);
+
+	// Populate filter matrix.
+	_populate_filter_matrix(op);
+
 	// Append filter matrix to algebraic expression, as the left most operand.
 	AlgebraicExpression_PrependTerm(op->ae, op->F, false, false, false);
 
@@ -194,11 +226,6 @@ static Record ExpandIntoConsume(OpBase *opBase) {
 
 			// Store received record.
 			op->records[op->recordCount] = childRecord;
-			/* Update filter matrix F, set row i at position srcId
-			 * F[i, srcId] = true. */
-			n = Record_GetNode(childRecord, op->srcNodeIdx);
-			NodeID srcId = ENTITY_GET_ID(n);
-			GrB_Matrix_setElement_BOOL(op->F, true, op->recordCount, srcId);
 		}
 
 		// Depleted.
@@ -215,7 +242,6 @@ static OpResult ExpandIntoReset(OpBase *ctx) {
 		if(op->records[i]) Record_Free(op->records[i]);
 	}
 	op->recordCount = 0;
-
 	if(op->F) GrB_Matrix_clear(op->F);
 	if(op->edges) array_clear(op->edges);
 	return OP_OK;

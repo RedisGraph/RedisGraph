@@ -57,6 +57,7 @@ typedef struct {
 	bool diagonal;          // Diagonal matrix.
 	bool transpose;         // Should the matrix be transposed.
 	bool free;              // Should the matrix be freed?
+    const char *label;      // Matrix label/relation-type.
 	GrB_Matrix operand;
 } AlgebraicExpressionOperand;
 
@@ -94,6 +95,11 @@ void AlgebraicExpression_PrependTerm(AlgebraicExpression *ae, GrB_Matrix m, bool
 /* Removes operand at position idx */
 void AlgebraicExpression_RemoveTerm(AlgebraicExpression *ae, int idx,
 									AlgebraicExpressionOperand *operand);
+
+/* Refetch all operands from graph. 
+ * This is to guarantee operands destination comply with
+ * multiplication requirements. */
+void AlgebraicExpression_SyncOperands(AlgebraicExpression *ae);
 
 /* Whenever we decide to transpose an expression, call this function
  * directly accessing expression transpose flag is forbidden. */
