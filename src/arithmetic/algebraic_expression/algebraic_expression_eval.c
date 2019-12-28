@@ -149,7 +149,7 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 	A = left->operand.matrix;
 
 	if(right->type == AL_OPERATION) {
-		assert(left->operation.op = AL_EXP_TRANSPOSE);
+		assert(right->operation.op = AL_EXP_TRANSPOSE);
 		GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
 		right = CHILD_AT(right, 0);
 	}
@@ -173,7 +173,7 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 	for(uint i = 2; i < child_count; i++) {
 		right = CHILD_AT(exp, i);
 		if(right->type == AL_OPERATION) {
-			assert(left->operation.op = AL_EXP_TRANSPOSE);
+			assert(right->operation.op = AL_EXP_TRANSPOSE);
 			GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
 			right = CHILD_AT(right, 0);
 		}

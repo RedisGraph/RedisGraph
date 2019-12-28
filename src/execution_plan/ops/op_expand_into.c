@@ -59,12 +59,13 @@ static bool _setEdge(OpExpandInto *op) {
 static void _traverse(OpExpandInto *op) {
 	// Append filter matrix to algebraic expression, as the left most operand.
 	AlgebraicExpression_MultiplyToTheLeft(&op->ae, op->F);
-
+	// TODO: consider performing optimization as part of evaluation.
+	AlgebraicExpression_Optimize(&op->ae);
 	// Evaluate expression.
 	AlgebraicExpression_Eval(op->ae, op->M);
 
 	// Remove operand.
-	AlgebraicExpression_RemoveRightmostNode(op->ae);
+	AlgebraicExpression_RemoveLeftmostNode(op->ae);
 
 	// Clear filter matrix.
 	GrB_Matrix_clear(op->F);

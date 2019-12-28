@@ -37,6 +37,7 @@ struct AlgebraicExpression {
             const char *src;        // Alias given to operand's rows (src node).
             const char *dest;       // Alias given to operand's columns (destination node).
             const char *edge;       // Alias given to operand (edge).
+            const char *label;      // Label attached to matrix.
         } operand;
 		struct {
 			AL_EXP_OP op;                       // Operation: `*`,`+`,`transpose`
@@ -74,7 +75,8 @@ AlgebraicExpression *AlgebraicExpression_NewOperand
     bool diagonal,      // Is operand a diagonal matrix?
     const char *src,    // Operand row domain (src node).
     const char *dest,   // Operand column domain (destination node).
-    const char *edge    // Operand alias (edge).
+    const char *edge,   // Operand alias (edge).
+    const char *label   // Label attached to matrix.
 );
 
 // Clone algebraic expression node.

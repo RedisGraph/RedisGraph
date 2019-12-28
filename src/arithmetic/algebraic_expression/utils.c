@@ -18,20 +18,19 @@ void _InplaceRepurposeOperandToOperation
 }
 
 // Performs inplace re-purposing of an operation into an operand.
-void _InplaceRepurposeOperationToOperand
+void _AlgebraicExpression_InplaceRepurpose
 (
-	AlgebraicExpression *operation,
-	AlgebraicExpression *operand
+	AlgebraicExpression *exp,
+	AlgebraicExpression *replacement
 ) {
-	assert(operation &&
-		   operation->type == AL_OPERATION &&
-		   operand &&
-		   operand->type == AL_OPERAND &&
-		   AlgebraicExpression_ChildCount(operation) == 0);
+	assert(exp && replacement && AlgebraicExpression_ChildCount(exp) == 0);
+	// Free internals.
+	if(exp->type == AL_OPERATION) _AlgebraicExpression_FreeOperation(exp);
+	else if(exp->type == AL_OPERAND) _AlgebraicExpression_FreeOperand(exp);
+	else assert("Unknown algebraic expression type" && false);
 
-	// Free operation internals.
-	_AlgebraicExpression_FreeOperation(operation);
-	memcpy(operation, operand, sizeof(AlgebraicExpression));
+	// Replace.
+	memcpy(exp, replacement, sizeof(AlgebraicExpression));
 }
 
 // Removes the rightmost direct child node of root.
@@ -170,36 +169,41 @@ void _AlgebraicExpression_FreeOperand
 }
 
 // Locate operand at position `operand_idx` counting from left to right.
+AlgebraicExpression *__AlgebraicExpression_GetOperand
+(
+	const AlgebraicExpression *root,    // Root of expression.
+	uint operand_idx,                   // Operand position (LTR, zero based).
+	uint *current_operand_idx
+) {
+	// `operand_idx` must be within [0, AlgebraicExpression_OperandCount(root)).
+	assert(root);
+
+	uint child_count = 0;
+	AlgebraicExpression *operand = NULL;
+
+	switch(root->type) {
+	case  AL_OPERAND:
+		if(operand_idx == *current_operand_idx) return (AlgebraicExpression *)root;
+		*current_operand_idx += 1;
+		break;
+	case AL_OPERATION:
+		child_count = AlgebraicExpression_ChildCount(root);
+		for(uint i = 0; i < child_count; i++) {
+			operand = __AlgebraicExpression_GetOperand(CHILD_AT(root, i), operand_idx, current_operand_idx);
+			if(operand) return operand;
+		}
+		break;
+	default:
+		assert("unknown algebraic expression node type" && false);
+	}
+	return NULL;
+}
+
 AlgebraicExpression *_AlgebraicExpression_GetOperand
 (
 	const AlgebraicExpression *root,    // Root of expression.
 	uint operand_idx                    // Operand position (LTR, zero based).
 ) {
-	printf("TODO rewrite to a simple linear scan");
-	// `operand_idx` must be within [0, AlgebraicExpression_OperandCount(root)).
-	assert(root && operand_idx < AlgebraicExpression_OperandCount(root));
-
-	// Find operand at position `operand_idx`.
-	uint current_operand_idx = -1;
-	AlgebraicExpression *op = (AlgebraicExpression *)root;
-
-	while(op->type == AL_OPERATION) {
-		uint child_count = AlgebraicExpression_ChildCount(op);
-		for(uint i = 0; i < child_count; i++) {
-			// How many operands are there beneath current tree.
-			uint sub_tree_child_count = AlgebraicExpression_OperandCount(CHILD_AT(op, i));
-			/* Visit subtree if `operand_idx` is less than number of operands in subtree
-			 * plus number of operands already skipped. */
-			if((sub_tree_child_count + current_operand_idx) >= operand_idx) {
-				// Investigate subtree.
-				op = CHILD_AT(op, i);
-				break;
-			}
-			// Quickly skip subtree.
-			current_operand_idx += sub_tree_child_count;
-		}
-	}
-
-	assert(op->type == AL_OPERAND);
-	return op;
+	uint current_operand_idx = 0;
+	return __AlgebraicExpression_GetOperand(root, operand_idx, &current_operand_idx);
 }

@@ -41,8 +41,15 @@ static void _AlgebraicExpression_TransposeTranspose
 	assert(AlgebraicExpression_ChildCount(exp) == 1);
 	AlgebraicExpression *only_child = AlgebraicExpression_RemoveRightmostNode(exp);
 
+	assert(only_child->type == AL_OPERAND);
+
+	// Swap src and dest.
+	const char *temp = only_child->operand.src;
+	only_child->operand.src = only_child->operand.dest;
+	only_child->operand.dest = temp;
+
 	// Replace Transpose operation with its child.
-	_InplaceRepurposeOperationToOperand(exp, only_child);
+	_AlgebraicExpression_InplaceRepurpose(exp, only_child);
 }
 
 // Transpose operation.

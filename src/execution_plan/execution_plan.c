@@ -301,6 +301,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			orderExpressions(qg, exps, expCount, ft, bound_vars);
 
 			AlgebraicExpression *exp = exps[0];
+			uint operand_count = AlgebraicExpression_OperandCount(exp);
 
 			OpBase *tail = NULL;
 			/* Create the SCAN operation that will be the tail of the traversal chain. */
@@ -313,21 +314,31 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				 * within another traversal operation, for the timebeing do not
 				 * try to locate and remove it, there's no real harm except some performace hit
 				 * in keeping that label matrix. */
-				AlgebraicExpression_RemoveLeftmostNode(exp);
+				AlgebraicExpression *left_most_operand = AlgebraicExpression_RemoveLeftmostNode(exp);
+				operand_count--;
+				if(operand_count > 0) AlgebraicExpression_Free(left_most_operand);
 				tail = NewNodeByLabelScanOp(plan, src);
 			} else {
 				tail = NewAllNodeScanOp(plan, gc->g, src);
 			}
 
-			/* For each expression, build the appropriate traversal operation. */
-			for(int j = 0; j < expCount; j++) {
-				exp = exps[j];
-				// A single operand, no multiplications/hops.
-				if(AlgebraicExpression_OperandCount(exp) == 1) {
-					AlgebraicExpression_Free(exp);
-					continue;
-				}
+			/* The expression has been fully converted - the QueryGraph had edges, but we don't
+			 * need to build traversals. This can occur in cases like:
+			 * MATCH (a)-[*0]->(c) RETURN c
+			 * We can just mark the destination alias as referring to the same entity as the source. */
+			int j = 0;
+			if(operand_count == 0) {
+				OpBase_AliasModifier(tail, AlgebraicExpression_Source(exp), AlgebraicExpression_Destination(exp));
+				AlgebraicExpression_Free(exp);
+				// Skip first expression, as it has been fully converted.
+				// TODO: improve `AlgebraicExpression_RemoveLeft/RightmostNode`  such that
+				// when removing the only operand, the original expression will become THE empty algebraic expression.
+				j++;
+			}
 
+			/* For each expression, build the appropriate traversal operation. */
+			for(; j < expCount; j++) {
+				exp = exps[j];
 				QGEdge *edge = NULL;
 				if(AlgebraicExpression_Edge(exp)) edge = QueryGraph_GetEdgeByAlias(qg,
 																					   AlgebraicExpression_Edge(exp));
@@ -342,7 +353,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			}
 
 			// Free the expressions array, as its parts have been converted into operations
-			rm_free(exps);
+			array_free(exps);
 		}
 
 		if(cartesianProduct) {

@@ -48,6 +48,8 @@ static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
 void _traverse(CondTraverse *op) {
 	// Prepend matrix to algebraic expression, as the left most operand.
 	AlgebraicExpression_MultiplyToTheLeft(&op->ae, op->F);
+	// TODO: consider performing optimization as part of evaluation.
+	AlgebraicExpression_Optimize(&op->ae);
 	// Evaluate expression.
 	AlgebraicExpression_Eval(op->ae, op->M);
 

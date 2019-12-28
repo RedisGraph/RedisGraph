@@ -63,7 +63,7 @@ AlgebraicExpression *_AlgebraicExpression_FromString
 				m = (GrB_Matrix)raxFind(matrices, (unsigned char *)alias, strlen(alias));
 				assert(m && "Missing matrix");
 			}
-			root = AlgebraicExpression_NewOperand(m, false, false, alias, alias, NULL);
+			root = AlgebraicExpression_NewOperand(m, false, false, alias, alias, NULL, NULL);
 			break;
 		}
 	}
@@ -178,6 +178,7 @@ void AlgebraicExpression_Print
 		break;
 	case AL_OPERAND:
 		if(exp->operand.edge) alias = exp->operand.edge;
+		else if(exp->operand.label) alias = exp->operand.label;
 		else alias = exp->operand.src;
 		printf("%s", alias);
 	default:
@@ -243,7 +244,7 @@ char *AlgebraicExpression_ToString
 (
 	const AlgebraicExpression *exp  // Root node.
 ) {
-	char *buff = rm_malloc(sizeof(char) * 1024);
+	char *buff = rm_calloc(1024, sizeof(char));
 	_AlgebraicExpression_ToString(exp, buff);
 	return buff;
 }

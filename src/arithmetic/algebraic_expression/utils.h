@@ -20,12 +20,12 @@ void _InplaceRepurposeOperandToOperation
 	AL_EXP_OP op                    // Operation to turn operand into.
 );
 
-// Performs inplace re-purposing of an operation into an operand.
-// Operation mustn't contain any children.
-void _InplaceRepurposeOperationToOperand
+// Performs inplace re-purposing of expression,
+// exp mustn't contain any children.
+void _AlgebraicExpression_InplaceRepurpose
 (
-    AlgebraicExpression *operation, // Operation to repurpose.
-	AlgebraicExpression *operand    // Operand to turn operation into.
+    AlgebraicExpression *exp,           // Expression to repurpose.
+	AlgebraicExpression *replacement    // Replacement expression taking over `exp`.
 );
 
 // Removes the rightmost direct child node of root.

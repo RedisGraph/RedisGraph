@@ -1,4 +1,3 @@
-CC=gcc-9
 # find the OS
 uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 

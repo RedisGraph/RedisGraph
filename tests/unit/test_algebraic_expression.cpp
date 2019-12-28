@@ -297,8 +297,9 @@ TEST_F(AlgebraicExpressionTest, AlgebraicExpression_New) {
     const char *src = "src";
     const char *dest = "dest";
     const char *edge = "edge";
+    const char *label = "label";
 
-    AlgebraicExpression *operand = AlgebraicExpression_NewOperand(matrix, free, diagonal, src, dest, edge);
+    AlgebraicExpression *operand = AlgebraicExpression_NewOperand(matrix, free, diagonal, src, dest, edge, label);
     ASSERT_EQ(operand->type, AL_OPERAND);
     ASSERT_EQ(operand->operand.matrix, matrix);
     ASSERT_EQ(operand->operand.free, free);
@@ -306,6 +307,7 @@ TEST_F(AlgebraicExpressionTest, AlgebraicExpression_New) {
     ASSERT_EQ(operand->operand.src, src);
     ASSERT_EQ(operand->operand.dest, dest);
     ASSERT_EQ(operand->operand.edge, edge);
+    ASSERT_EQ(operand->operand.label, label);
 
     ASSERT_EQ(AlgebraicExpression_Source(operand), src);
     ASSERT_EQ(AlgebraicExpression_Destination(operand), dest);
@@ -650,7 +652,7 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_AB_Times_C_Plus_D) {
 	GrB_Matrix_new(&D, GrB_BOOL, 2, 2);
 
     // A*B*(C+D) -> A*B*C + A*B*D
-	AlgebraicExpression *exp = AlgebraicExpression_NewOperand(C, false, false, NULL, NULL, NULL);	
+	AlgebraicExpression *exp = AlgebraicExpression_NewOperand(C, false, false, NULL, NULL, NULL, NULL);	
 
 	// A*B*(C+D)
 	AlgebraicExpression_AddToTheRight(&exp, D);
@@ -769,7 +771,7 @@ TEST_F(AlgebraicExpressionTest, MultipleIntermidateReturnNodes) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 }
 
 TEST_F(AlgebraicExpressionTest, OneIntermidateReturnNode) {
@@ -791,7 +793,7 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnNode) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 }
 
 TEST_F(AlgebraicExpressionTest, NoIntermidateReturnNodes) {
@@ -808,7 +810,7 @@ TEST_F(AlgebraicExpressionTest, NoIntermidateReturnNodes) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 }
 
 TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
@@ -832,7 +834,7 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 
 	//==============================================================================================
 	//=== MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ev
@@ -850,7 +852,7 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 
 	//==============================================================================================
 	//=== MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN ew
@@ -868,7 +870,7 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 }
 
 TEST_F(AlgebraicExpressionTest, BothDirections) {
@@ -885,7 +887,7 @@ TEST_F(AlgebraicExpressionTest, BothDirections) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 }
 
 TEST_F(AlgebraicExpressionTest, SingleNode) {
@@ -900,7 +902,7 @@ TEST_F(AlgebraicExpressionTest, SingleNode) {
 
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
-	free(actual);
+	array_free(actual);
 }
 
 TEST_F(AlgebraicExpressionTest, ShareableEntity) {
@@ -917,7 +919,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 
 	exp_count = 0;
 	q = "MATCH (p:Person)-[ef:friend]->(f:Person) MATCH (f:Person)<-[ev:visit]-(c:City)<-[ew:war]-(e:City) RETURN p,e";
@@ -931,7 +933,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 
 	exp_count = 0;
 	q = "MATCH (p:Person)-[ef:friend]->(f:Person) MATCH (f:Person)-[ev:visit]->(c:City) MATCH (c:City)-[ew:war]->(e:City) RETURN p,e";
@@ -945,7 +947,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 
 	exp_count = 0;
 	q = "MATCH (a:Person)-[:friend]->(f:Person) MATCH (b:Person)-[:friend]->(f:Person) RETURN a,b";
@@ -959,7 +961,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 
 	// High incoming degree.
 	exp_count = 0;
@@ -976,7 +978,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 
 	// High outgoing degree.
 	exp_count = 0;
@@ -993,7 +995,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 
 	// Cycle.
 	/* TODO: The algebraic expression here can be improved
@@ -1012,7 +1014,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 
 	// Longer cycle.
 	exp_count = 0;
@@ -1027,7 +1029,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 
 	// Self pointing node.
 	exp_count = 0;
@@ -1042,7 +1044,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 
 	//(p1)-[]->(p2)-[]->(p3)-[]->(p2)-[]->(p4)-[]->(p5) RETURN p1
 	exp_count = 0;
@@ -1059,7 +1061,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 
 	// (p1)-[]->(p2)-[]->(p3)-[]->(p2)-[]->(p4)-[]->(p5) RETURN p1,p2,p3,p4,p5
 	exp_count = 0;
@@ -1078,7 +1080,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 
 	// MATCH (p1)-[]->(p2)-[]->(p3)-[]->(p4)-[]->(p5)-[]->(p2)-[]->(p6)-[]->(p7)-[]->(p3) RETURN p1
 	exp_count = 0;
@@ -1096,7 +1098,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 
 	// MATCH (p1)-[]->(p2)-[]->(p3)-[]->(p4)-[]->(p5)-[]->(p2)-[]->(p6)-[]->(p7)-[]->(p3) RETURN p1,p2,p3,p4,p5,p6,p7
 	exp_count = 0;
@@ -1118,7 +1120,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 
 	// MATCH (p1)-[]->(p2)-[]->(p3)-[]->(p4)-[]->(p1)-[]->(p4),(p4)-[]->(p5) RETURN p1
 	exp_count = 0;
@@ -1136,7 +1138,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 
 	// MATCH (p1)-[]->(p2)-[]->(p3)-[]->(p4)-[]->(p1)-[]->(p4),(p4)-[]->(p5) RETURN p1,p2,p3,p4,p5
 	exp_count = 0;
@@ -1157,7 +1159,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 }
 
 TEST_F(AlgebraicExpressionTest, VariableLength) {
@@ -1176,7 +1178,7 @@ TEST_F(AlgebraicExpressionTest, VariableLength) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 
 	// Transposed variable length.
 	exp_count = 0;
@@ -1193,7 +1195,7 @@ TEST_F(AlgebraicExpressionTest, VariableLength) {
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
 	free_algebraic_expressions(expected, exp_count);
-	free(actual);
+	array_free(actual);
 }
 
 TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
@@ -1236,5 +1238,5 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
 	GrB_Matrix_free(&res);
 	GrB_Matrix_free(&expected);
 	free_algebraic_expressions(ae, exp_count);
-    free(ae);
+    array_free(ae);
 }

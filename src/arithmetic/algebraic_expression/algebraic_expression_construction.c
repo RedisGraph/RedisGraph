@@ -105,7 +105,6 @@ static AlgebraicExpression **_AlgebraicExpression_IsolateVariableLenExps(
 
 		// Expression contains a variable length edge.
 		QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(exp));
-		QGNode *dest = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Destination(exp));
 
 		// A variable length expression with a labeled source node
 		// We only care about the source label matrix, when it comes to
@@ -120,6 +119,7 @@ static AlgebraicExpression **_AlgebraicExpression_IsolateVariableLenExps(
 		res = array_append(res, exp);
 
 		// If the expression has a labeled destination, separate it into its own expression.
+		QGNode *dest = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Destination(exp));
 		if(dest->label) {
 			// Remove dest node matrix from expression.
 			AlgebraicExpression *op = AlgebraicExpression_RemoveRightmostNode(exp);
@@ -186,7 +186,7 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromNode
 	if(n->labelID == GRAPH_UNKNOWN_LABEL) mat = Graph_GetZeroMatrix(g);
 	else mat = Graph_GetLabelMatrix(g, n->labelID);
 
-	return AlgebraicExpression_NewOperand(mat, free, diagonal, n->alias, n->alias, NULL);
+	return AlgebraicExpression_NewOperand(mat, free, diagonal, n->alias, n->alias, NULL, n->label);
 }
 
 static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
@@ -200,19 +200,23 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
 	AlgebraicExpression *add;
 	AlgebraicExpression *root = NULL;
 
+	QGNode *src_node = e->src;
+	QGNode *dest_node = e->dest;
+	const char *src = src_node->alias;
+	const char *dest = dest_node->alias;
+	const char *edge = _should_populate_edge(e) ? e->alias : NULL;
+
 	uint reltype_count = array_len(e->reltypeIDs);
 	switch(reltype_count) {
 	case 0: // No relationship types specified; use the full adjacency matrix
 		mat = Graph_GetAdjacencyMatrix(g);
-		root = AlgebraicExpression_NewOperand(mat, false, false, e->src->alias, e->dest->alias,
-											  e->alias);
+		root = AlgebraicExpression_NewOperand(mat, false, false, src, dest, edge, NULL);
 		break;
 	case 1: // One relationship type
 		reltype_id = e->reltypeIDs[0];
 		if(reltype_id == GRAPH_UNKNOWN_RELATION) mat = Graph_GetZeroMatrix(g);
 		else mat = Graph_GetRelationMatrix(g, e->reltypeIDs[0]);
-		root = AlgebraicExpression_NewOperand(mat, false, false, e->src->alias, e->dest->alias,
-											  e->alias);
+		root = AlgebraicExpression_NewOperand(mat, false, false, src, dest, edge, e->reltypes[0]);
 		break;
 	default: // Multiple edge type: -[:A|:B]->
 		add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
@@ -221,8 +225,8 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
 			// No matrix to add
 			if(reltype_id == GRAPH_UNKNOWN_RELATION) mat = Graph_GetZeroMatrix(g);
 			else mat = Graph_GetRelationMatrix(g, reltype_id);
-			AlgebraicExpression *operand = AlgebraicExpression_NewOperand(mat, false, false,
-																		  e->src->alias, e->dest->alias, e->alias);
+			AlgebraicExpression *operand = AlgebraicExpression_NewOperand(mat, false, false, src, dest, edge,
+																		  e->reltypes[i]);
 			AlgebraicExpression_AddChild(add, operand);
 		}
 		root = add;
@@ -251,8 +255,8 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
 	}
 
 	// If src node has a label, multiply to the left by label matrix.
-	if(e->src->label) {
-		root = _AlgebraicExpression_MultiplyToTheLeft(_AlgebraicExpression_OperandFromNode(e->src), root);
+	if(src_node->label) {
+		root = _AlgebraicExpression_MultiplyToTheLeft(_AlgebraicExpression_OperandFromNode(src_node), root);
 	}
 
 	return root;
@@ -375,9 +379,6 @@ static AlgebraicExpression *_AlgebraicExpression_FromPath
 	 * (A)-[E0]->(B)<-[E1]-(C)-[E2]->(D)
 	 * E1 will be transposed:
 	 * (A)-[E0]->(B)-[E1]->(C)-[E2]->(D) */
-
-	// bool transpositions[path_len];
-	// _normalizePath(path, path_len, transpositions);
 
 	// Construct expression.
 	for(int i = 0; i < path_len; i++) {
