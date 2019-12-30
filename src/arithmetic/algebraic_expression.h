@@ -9,7 +9,7 @@
 #include "../graph/query_graph.h"
 #include "../graph/graph.h"
 
-static GrB_Matrix IDENTITY_MATRIX = GrB_NULL;  // Identity matrix.
+static GrB_Matrix IDENTITY_MATRIX = (GrB_Matrix)0x31032017;  // Identity matrix.
 
 // Matrix, vector operations.
 typedef enum {

@@ -17,6 +17,7 @@ typedef struct {
 	OpBase op;
 	Graph *g;
 	Record r;
+    QueryGraph *qg;                 /* Query graph. */
 	AlgebraicExpression *ae;
 	int srcNodeIdx;                 /* Node set by operation. */
 	int edgesIdx;                   /* Edges set by operation. */

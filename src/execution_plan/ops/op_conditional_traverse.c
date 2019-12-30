@@ -50,21 +50,6 @@ static void _populate_filter_matrix(CondTraverse *op) {
 	}
 }
 
-// Initialize all algebraic expression matrices.
-static void _sync_matrices(CondTraverse *op) {
-	size_t required_dim = Graph_RequiredMatrixDim(op->graph);
-	GrB_Index ncols;
-
-	/* An awkward way of testing if we need to resize as a result of
-	 * entities either being added or removed from the graph */
-	GrB_Matrix_ncols(&ncols, op->F);
-	if(ncols != required_dim) {
-		GxB_Matrix_resize(op->F, op->recordsCap, required_dim);
-		GxB_Matrix_resize(op->M, op->recordsCap, required_dim);
-		AlgebraicExpression_SyncOperands(op->ae);
-	}
-}
-
 /* Evaluate algebraic expression:
  * prepends filter matrix as the left most operand
  * perform multiplications
@@ -72,8 +57,13 @@ static void _sync_matrices(CondTraverse *op) {
  * removed filter matrix from original expression
  * clears filter matrix. */
 void _traverse(CondTraverse *op) {
-	// Align matrices dimensions.
-	_sync_matrices(op);
+	// Create both filter and result matrices.
+	if(op->F == GrB_NULL) {
+		size_t required_dim = Graph_RequiredMatrixDim(op->graph);
+		GrB_Matrix_new(&op->M, GrB_BOOL, op->recordsCap, required_dim);
+		GrB_Matrix_new(&op->F, GrB_BOOL, op->recordsCap, required_dim);
+	}
+
 	// Populate filter matrix.
 	_populate_filter_matrix(op);
 	// Prepend matrix to algebraic expression, as the left most operand.
@@ -82,7 +72,6 @@ void _traverse(CondTraverse *op) {
 	AlgebraicExpression_Optimize(&op->ae);
 	// Evaluate expression.
 	AlgebraicExpression_Eval(op->ae, op->M);
-
 	// Remove operand.
 	AlgebraicExpression_RemoveLeftmostNode(&op->ae);
 
@@ -103,18 +92,15 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	op->graph = g;
 	op->ae = ae;
 	op->r = NULL;
-	op->F = NULL;
 	op->iter = NULL;
 	op->edges = NULL;
+	op->F = GrB_NULL;
+	op->M = GrB_NULL;
 	op->recordsLen = 0;
 	op->transposed_edge = false;
 	op->edgeRelationTypes = NULL;
 	op->recordsCap = records_cap;
 	op->records = rm_calloc(op->recordsCap, sizeof(Record));
-
-	size_t required_dim = Graph_RequiredMatrixDim(g);
-	GrB_Matrix_new(&op->M, GrB_BOOL, op->recordsCap, required_dim);
-	GrB_Matrix_new(&op->F, GrB_BOOL, op->recordsCap, required_dim);
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", CondTraverseInit,
@@ -236,7 +222,7 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 		GxB_MatrixTupleIter_free(op->iter);
 		op->iter = NULL;
 	}
-	if(op->F) GrB_Matrix_clear(op->F);
+	if(op->F != GrB_NULL) GrB_Matrix_clear(op->F);
 	return OP_OK;
 }
 
@@ -248,14 +234,14 @@ static void CondTraverseFree(OpBase *ctx) {
 		op->iter = NULL;
 	}
 
-	if(op->F) {
+	if(op->F != GrB_NULL) {
 		GrB_Matrix_free(&op->F);
-		op->F = NULL;
+		op->F = GrB_NULL;
 	}
 
-	if(op->M) {
+	if(op->M != GrB_NULL) {
 		GrB_Matrix_free(&op->M);
-		op->M = NULL;
+		op->M = GrB_NULL;
 	}
 
 	if(op->edges) {

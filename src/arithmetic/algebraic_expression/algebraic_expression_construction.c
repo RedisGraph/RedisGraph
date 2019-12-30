@@ -222,24 +222,16 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
 		uint reltype_count = array_len(e->reltypeIDs);
 		switch(reltype_count) {
 		case 0: // No relationship types specified; use the full adjacency matrix
-			mat = Graph_GetAdjacencyMatrix(g);
-			root = AlgebraicExpression_NewOperand(mat, false, false, src, dest, edge, NULL);
+			root = AlgebraicExpression_NewOperand(GrB_NULL, false, false, src, dest, edge, NULL);
 			break;
 		case 1: // One relationship type
-			reltype_id = e->reltypeIDs[0];
-			if(reltype_id == GRAPH_UNKNOWN_RELATION) mat = Graph_GetZeroMatrix(g);
-			else mat = Graph_GetRelationMatrix(g, e->reltypeIDs[0]);
-			root = AlgebraicExpression_NewOperand(mat, false, false, src, dest, edge, e->reltypes[0]);
+			root = AlgebraicExpression_NewOperand(GrB_NULL, false, false, src, dest, edge, e->reltypes[0]);
 			break;
 		default: // Multiple edge type: -[:A|:B]->
 			add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
 			for(uint i = 0; i < reltype_count; i++) {
-				uint reltype_id = e->reltypeIDs[i];
-				// No matrix to add
-				if(reltype_id == GRAPH_UNKNOWN_RELATION) mat = Graph_GetZeroMatrix(g);
-				else mat = Graph_GetRelationMatrix(g, reltype_id);
-				AlgebraicExpression *operand = AlgebraicExpression_NewOperand(mat, false, false, src, dest, edge,
-																			  e->reltypes[i]);
+				AlgebraicExpression *operand = AlgebraicExpression_NewOperand(GrB_NULL, false, false, src, dest,
+																			  edge, e->reltypes[i]);
 				AlgebraicExpression_AddChild(add, operand);
 			}
 			root = add;

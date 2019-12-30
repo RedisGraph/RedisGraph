@@ -5,6 +5,7 @@
 */
 
 #include "utils.h"
+#include "../../query_ctx.h"
 #include "../algebraic_expression.h"
 
 // Forward declarations
@@ -245,5 +246,10 @@ GrB_Matrix _AlgebraicExpression_Eval(const AlgebraicExpression *exp, GrB_Matrix 
 
 void AlgebraicExpression_Eval(const AlgebraicExpression *exp, GrB_Matrix res) {
 	assert(exp && exp->type == AL_OPERATION);
+
+	// On first evaluation we need to fetch operands
+	_AlgebraicExpression_FetchOperands((AlgebraicExpression *)exp, QueryCtx_GetGraphCtx(),
+									   QueryCtx_GetGraph());
+
 	_AlgebraicExpression_Eval(exp, res);
 }

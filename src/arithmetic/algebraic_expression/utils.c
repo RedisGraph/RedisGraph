@@ -207,3 +207,40 @@ AlgebraicExpression *_AlgebraicExpression_GetOperand
 	uint current_operand_idx = 0;
 	return __AlgebraicExpression_GetOperand(root, operand_idx, &current_operand_idx);
 }
+
+void _AlgebraicExpression_FetchOperands(AlgebraicExpression *exp, const GraphContext *gc,
+										Graph *g) {
+	Schema *s = NULL;
+	uint child_count = 0;
+	GrB_Matrix m = GrB_NULL;
+	const char *label = NULL;
+
+	switch(exp->type) {
+	case AL_OPERATION:
+		child_count = AlgebraicExpression_ChildCount(exp);
+		for(uint i = 0; i < child_count; i++) {
+			_AlgebraicExpression_FetchOperands(CHILD_AT(exp, i), gc, g);
+		}
+		break;
+	case AL_OPERAND:
+		if(exp->operand.matrix == GrB_NULL) {
+			label = exp->operand.label;
+			if(label == NULL) {
+				m = Graph_GetAdjacencyMatrix(g);
+			} else if(exp->operand.diagonal) {
+				s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+				if(!s) m = Graph_GetZeroMatrix(g);
+				else m = Graph_GetLabelMatrix(g, s->id);
+			} else {
+				s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
+				if(!s) m = Graph_GetZeroMatrix(g);
+				else m = Graph_GetRelationMatrix(g, s->id);
+			}
+			exp->operand.matrix = m;
+		}
+		break;
+	default:
+		assert("Unknow algebraic expression node type" && false);
+		break;
+	}
+}

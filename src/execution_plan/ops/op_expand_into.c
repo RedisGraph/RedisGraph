@@ -13,7 +13,6 @@
 #include "../../GraphBLASExt/GxB_Delete.h"
 
 /* Forward declarations. */
-static OpResult ExpandIntoInit(OpBase *opBase);
 static Record ExpandIntoConsume(OpBase *opBase);
 static OpResult ExpandIntoReset(OpBase *opBase);
 static void ExpandIntoFree(OpBase *opBase);
@@ -62,43 +61,29 @@ static void _populate_filter_matrix(OpExpandInto *op) {
 	}
 }
 
-// Initialize all algebraic expression matrices.
-static void _sync_matrices(OpExpandInto *op) {
-	size_t required_dim = Graph_RequiredMatrixDim(op->graph);
-	GrB_Index ncols;
-
-	/* An awkward way of testing if we need to resize as a result of
-	 * entities either being added or removed from the graph */
-	GrB_Matrix_ncols(&ncols, op->F);
-	if(ncols != required_dim) {
-		GxB_Matrix_resize(op->F, op->recordsCap, required_dim);
-		GxB_Matrix_resize(op->M, op->recordsCap, required_dim);
-		AlgebraicExpression_SyncOperands(op->ae);
-	}
-}
-
 /* Evaluate algebraic expression:
  * appends filter matrix as the left most operand
  * perform multiplications.
  * removed filter matrix from original expression
  * clears filter matrix. */
 static void _traverse(OpExpandInto *op) {
-	// Align matrices dimensions.
-	_sync_matrices(op);
+	// Create both filter and result matrices.
+	if(op->F == GrB_NULL) {
+		size_t required_dim = Graph_RequiredMatrixDim(op->graph);
+		GrB_Matrix_new(&op->M, GrB_BOOL, op->recordsCap, required_dim);
+		GrB_Matrix_new(&op->F, GrB_BOOL, op->recordsCap, required_dim);
+	}
 
 	// Populate filter matrix.
 	_populate_filter_matrix(op);
-
 	// Append filter matrix to algebraic expression, as the left most operand.
 	AlgebraicExpression_MultiplyToTheLeft(&op->ae, op->F);
 	// TODO: consider performing optimization as part of evaluation.
 	AlgebraicExpression_Optimize(&op->ae);
 	// Evaluate expression.
 	AlgebraicExpression_Eval(op->ae, op->M);
-
 	// Remove operand.
 	AlgebraicExpression_RemoveLeftmostNode(&op->ae);
-
 	// Clear filter matrix.
 	GrB_Matrix_clear(op->F);
 }
@@ -108,16 +93,17 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 	OpExpandInto *op = calloc(1, sizeof(OpExpandInto));
 	op->graph = g;
 	op->ae = ae;
-	op->F = NULL;
 	op->r = NULL;
 	op->edges = NULL;
+	op->F = GrB_NULL;
+	op->M = GrB_NULL;
 	op->recordCount = 0;
 	op->edgeRelationTypes = NULL;
 	op->recordsCap = records_cap;
 	op->records = rm_calloc(op->recordsCap, sizeof(Record));
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", ExpandIntoInit, ExpandIntoConsume,
+	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", NULL, ExpandIntoConsume,
 				ExpandIntoReset, ExpandIntoToString, ExpandIntoFree, false, plan);
 
 	// Make sure that all entities are represented in Record
@@ -135,15 +121,6 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 	}
 
 	return (OpBase *)op;
-}
-
-static OpResult ExpandIntoInit(OpBase *opBase) {
-	OpExpandInto *op = (OpExpandInto *)opBase;
-
-	size_t required_dim = Graph_RequiredMatrixDim(op->graph);
-	GrB_Matrix_new(&op->M, GrB_BOOL, op->recordsCap, required_dim);
-	GrB_Matrix_new(&op->F, GrB_BOOL, op->recordsCap, required_dim);
-	return OP_OK;
 }
 
 /* Emits a record when possible,
@@ -245,7 +222,7 @@ static OpResult ExpandIntoReset(OpBase *ctx) {
 		if(op->records[i]) Record_Free(op->records[i]);
 	}
 	op->recordCount = 0;
-	if(op->F) GrB_Matrix_clear(op->F);
+	if(op->F != GrB_NULL) GrB_Matrix_clear(op->F);
 	if(op->edges) array_clear(op->edges);
 	return OP_OK;
 }
@@ -253,14 +230,14 @@ static OpResult ExpandIntoReset(OpBase *ctx) {
 /* Frees ExpandInto */
 static void ExpandIntoFree(OpBase *ctx) {
 	OpExpandInto *op = (OpExpandInto *)ctx;
-	if(op->F) {
+	if(op->F != GrB_NULL) {
 		GrB_Matrix_free(&op->F);
-		op->F = NULL;
+		op->F = GrB_NULL;
 	}
 
-	if(op->M) {
+	if(op->M != GrB_NULL) {
 		GrB_Matrix_free(&op->M);
-		op->M = NULL;
+		op->M = GrB_NULL;
 	}
 
 	if(op->edges) {
