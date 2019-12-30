@@ -29,7 +29,7 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", UnwindInit, UnwindConsume,
-				UnwindReset, NULL, UnwindFree, plan);
+				UnwindReset, NULL, UnwindFree, false, plan);
 
 	op->unwindRecIdx = OpBase_Modifies((OpBase *)op, exp->resolved_name);
 	return (OpBase *)op;
@@ -117,6 +117,7 @@ static OpResult UnwindReset(OpBase *ctx) {
 static void UnwindFree(OpBase *ctx) {
 	OpUnwind *op = (OpUnwind *)ctx;
 	SIValue_Free(&op->list);
+	op->list = SI_NullVal();
 
 	if(op->exp) {
 		AR_EXP_Free(op->exp);

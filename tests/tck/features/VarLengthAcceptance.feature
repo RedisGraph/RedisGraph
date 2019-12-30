@@ -116,8 +116,6 @@ Feature: VarLengthAcceptance
       | 'n0111' |
     And no side effects
 
-# TODO this doesn't crash when standalone, but does against a single server?
-@crash
 @skip
   Scenario: Fail when asterisk operator is missing
     When executing query:
@@ -128,8 +126,6 @@ Feature: VarLengthAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidRelationshipPattern
 
-@crash
-@skip
   Scenario: Handling single bounded variable length match 1
     When executing query:
       """
@@ -205,8 +201,6 @@ Feature: VarLengthAcceptance
       | 'n011' |
     And no side effects
 
-@crash
-@skip
   Scenario: Handling symmetrically bounded variable length match, bounds are zero
     When executing query:
       """

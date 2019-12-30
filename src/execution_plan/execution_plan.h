@@ -52,15 +52,20 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias);
 
 /* Locate the first operation of a given type within execution plan.
  * Returns NULL if operation wasn't found. */
-OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type);
+OpBase *ExecutionPlan_LocateFirstOp(OpBase *root, OPType type);
+
+/* Locate the last operation of a given type within execution plan.
+ * Returns NULL if operation wasn't found. */
+OpBase *ExecutionPlan_LocateLastOp(OpBase *root, OPType type);
 
 /* Locate all operations of a given type within execution plan.
  * Returns an array of operations. */
 OpBase **ExecutionPlan_LocateOps(OpBase *root, OPType type);
 
-/* Find the earliest operation on the ExecutionPlan at which all
- * references are resolved. */
-OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references);
+/* Find the earliest operation above the provided recurse_limit, if any,
+ * at which all references are resolved. */
+OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
+									   rax *references_to_resolve);
 
 /* Populate a rax with all aliases that have been resolved by the given operation
  * and its children. These are the bound variables at this point in execution, and

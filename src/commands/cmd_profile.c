@@ -78,6 +78,7 @@ void Graph_Profile(void *args) {
 
 	if(plan) {
 		ExecutionPlan_Profile(plan);
+		QueryCtx_ForceUnlockCommit();
 		ExecutionPlan_Print(plan, ctx);
 		ExecutionPlan_Free(plan);
 	}
@@ -85,7 +86,7 @@ void Graph_Profile(void *args) {
 cleanup:
 	// Release the read-write lock
 	if(lockAcquired) {
-		if(readonly)Graph_ReleaseLock(gc->g);
+		if(readonly) Graph_ReleaseLock(gc->g);
 		else Graph_WriterLeave(gc->g);
 	}
 

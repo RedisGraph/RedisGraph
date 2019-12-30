@@ -24,47 +24,26 @@ static inline bool _outOfBounds(NodeByIdSeek *op) {
 	/* Because currentId starts at minimum and only increases
 	 * we only care about top bound. */
 	if(op->currentId > op->maxId) return true;
-	if(op->currentId == op->maxId && !op->maxInclusive) return true;
 	return false;
 }
 
-OpBase *NewNodeByIdSeekOp
-(
-	const ExecutionPlan *plan,
-	const QGNode *n,
-	NodeID minId,
-	NodeID maxId,
-	bool minInclusive,
-	bool maxInclusive
-) {
-	// Can't include unspecified bound.
-	assert(!(minId == ID_RANGE_UNBOUND && minInclusive));
-	assert(!(maxId == ID_RANGE_UNBOUND && maxInclusive));
+OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const QGNode *n, UnsignedRange *id_range) {
 
 	NodeByIdSeek *op = malloc(sizeof(NodeByIdSeek));
 	op->g = QueryCtx_GetGraph();
 	op->n = n;
 	op->child_record = NULL;
 
-	op->minInclusive = minInclusive;
-	op->maxInclusive = maxInclusive;
-
-	// The smallest possible entity ID is 0.
-	op->minId = minId;
-	if(minId == ID_RANGE_UNBOUND) op->minId = 0;
+	op->minId = id_range->include_min ? id_range->min : id_range->min + 1;
 
 	// The largest possible entity ID is the same as Graph_RequiredMatrixDim.
-	if(maxId == ID_RANGE_UNBOUND) maxId = Graph_RequiredMatrixDim(op->g);
-	op->maxId = MIN(Graph_RequiredMatrixDim(op->g), maxId);
+	NodeID maxId = id_range->include_max ? id_range->max : id_range->max - 1;
+	op->maxId = MIN(Graph_RequiredMatrixDim(op->g) - 1, maxId);
 
 	op->currentId = op->minId;
-	/* Advance current ID when min is not inclusive and
-	 * minimum range is specified. */
-	if(!minInclusive && minId != ID_RANGE_UNBOUND) op->currentId++;
-
 
 	OpBase_Init((OpBase *)op, OPType_NODE_BY_ID_SEEK, "NodeByIdSeek", NodeByIdSeekInit,
-				NodeByIdSeekConsume, NodeByIdSeekReset, NodeByIdSeekToString, NodeByIdSeekFree, plan);
+				NodeByIdSeekConsume, NodeByIdSeekReset, NodeByIdSeekToString, NodeByIdSeekFree, false, plan);
 
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 
@@ -148,7 +127,6 @@ static Record NodeByIdSeekConsume(OpBase *opBase) {
 static OpResult NodeByIdSeekReset(OpBase *ctx) {
 	NodeByIdSeek *op = (NodeByIdSeek *)ctx;
 	op->currentId = op->minId;
-	if(!op->minInclusive) op->currentId++;
 	return OP_OK;
 }
 

@@ -17,7 +17,7 @@ OpBase *NewLimitOp(const ExecutionPlan *plan, unsigned int l) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_LIMIT, "Limit", NULL, LimitConsume,
-				LimitReset, NULL, NULL, plan);
+				LimitReset, NULL, NULL, false, plan);
 
 	return (OpBase *)op;
 }

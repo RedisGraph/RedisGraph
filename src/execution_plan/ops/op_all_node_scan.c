@@ -5,6 +5,7 @@
 */
 
 #include "op_all_node_scan.h"
+#include "../../query_ctx.h"
 #include "shared/print_functions.h"
 
 /* Forward declarations. */
@@ -18,21 +19,23 @@ static inline int AllNodeScanToString(const OpBase *ctx, char *buf, uint buf_len
 	return ScanToString(ctx, buf, buf_len, ((const AllNodeScan *)ctx)->n);
 }
 
-OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const Graph *g, const QGNode *n) {
+OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const QGNode *n) {
 	AllNodeScan *op = malloc(sizeof(AllNodeScan));
 	op->n = n;
-	op->iter = Graph_ScanNodes(g);
+	op->iter = NULL;
 	op->child_record = NULL;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_ALL_NODE_SCAN, "All Node Scan", AllNodeScanInit,
-				AllNodeScanConsume, AllNodeScanReset, AllNodeScanToString, AllNodeScanFree, plan);
+				AllNodeScanConsume, AllNodeScanReset, AllNodeScanToString, AllNodeScanFree, false, plan);
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 	return (OpBase *)op;
 }
 
 static OpResult AllNodeScanInit(OpBase *opBase) {
+	AllNodeScan *op = (AllNodeScan *)opBase;
 	if(opBase->childCount > 0) opBase->consume = AllNodeScanConsumeFromChild;
+	else op->iter = Graph_ScanNodes(QueryCtx_GetGraph());
 	return OP_OK;
 }
 
@@ -42,7 +45,10 @@ static Record AllNodeScanConsumeFromChild(OpBase *opBase) {
 	if(op->child_record == NULL) {
 		op->child_record = OpBase_Consume(op->op.children[0]);
 		if(op->child_record == NULL) return NULL;
-		else DataBlockIterator_Reset(op->iter);
+		else {
+			if(!op->iter) op->iter = Graph_ScanNodes(QueryCtx_GetGraph());
+			else DataBlockIterator_Reset(op->iter);
+		}
 	}
 
 	Entity *en = (Entity *)DataBlockIterator_Next(op->iter);
@@ -83,7 +89,7 @@ static Record AllNodeScanConsume(OpBase *opBase) {
 
 static OpResult AllNodeScanReset(OpBase *op) {
 	AllNodeScan *allNodeScan = (AllNodeScan *)op;
-	DataBlockIterator_Reset(allNodeScan->iter);
+	if(allNodeScan->iter) DataBlockIterator_Reset(allNodeScan->iter);
 	return OP_OK;
 }
 
@@ -99,4 +105,3 @@ static void AllNodeScanFree(OpBase *ctx) {
 		op->child_record = NULL;
 	}
 }
-

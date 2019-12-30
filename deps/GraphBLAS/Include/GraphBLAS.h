@@ -5984,12 +5984,28 @@ GrB_Info GxB_MatrixTupleIter_new
     GrB_Matrix A                // matrix being iterated
 ) ;
 
-//iterate over specific row
+// Iterate over specific row
 GrB_Info GxB_MatrixTupleIter_iterate_row
 (
     GxB_MatrixTupleIter *iter,  // iterator to use
     GrB_Index rowIdx            // row index to iterate over
 ) ;
+
+// Move iterator to a specific row
+GrB_Info GxB_MatrixTupleIter_jump_to_row
+(
+    GxB_MatrixTupleIter *iter,  // iterator to use
+    GrB_Index rowIdx            // row index to move iterator to
+) ;
+
+// Move iterator over specific rows range
+GrB_Info GxB_MatrixTupleIter_iterate_range
+(
+    GxB_MatrixTupleIter *iter,  // iterator to use
+    GrB_Index startRowIdx,      // row index to start with
+    GrB_Index endRowIdx         // row index to finish with
+) ;
+
 
 // Advance iterator to the next none zero value
 GrB_Info GxB_MatrixTupleIter_next

@@ -93,6 +93,25 @@ static void _extract_params(const cypher_astnode_t *statement) {
 	}
 }
 
+static bool _AST_ReadOnly(const cypher_astnode_t *root) {
+	if(!root) return false;
+	cypher_astnode_type_t type = cypher_astnode_type(root);
+	if(type == CYPHER_AST_CREATE                      ||
+	   type == CYPHER_AST_MERGE                  ||
+	   type == CYPHER_AST_DELETE                 ||
+	   type == CYPHER_AST_SET                    ||
+	   type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
+	   type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {
+		return false;
+	}
+	uint num_children = cypher_astnode_nchildren(root);
+	for(uint i = 0; i < num_children; i ++) {
+		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
+		if(!_AST_ReadOnly(child)) return false;
+	}
+	return true;
+}
+
 bool AST_ReadOnly(const cypher_parse_result_t *result) {
 	// A lot of these steps will be unnecessary once we move
 	// parsing into the subthread (and can thus perform this check
@@ -104,25 +123,7 @@ bool AST_ReadOnly(const cypher_parse_result_t *result) {
 	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
 	// Check for empty query
 	if(root == NULL) return true;
-
-	const cypher_astnode_t *body = cypher_ast_statement_get_body(root);
-	// Iterate over children rather than clauses, as the root is not
-	// guaranteed to be a query.
-	uint num_children = cypher_astnode_nchildren(body);
-	for(uint i = 0; i < num_children; i ++) {
-		const cypher_astnode_t *child = cypher_astnode_get_child(body, i);
-		cypher_astnode_type_t type = cypher_astnode_type(child);
-		if(type == CYPHER_AST_CREATE                      ||
-		   type == CYPHER_AST_MERGE                  ||
-		   type == CYPHER_AST_DELETE                 ||
-		   type == CYPHER_AST_SET                    ||
-		   type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
-		   type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {
-			return false;
-		}
-	}
-
-	return true;
+	return _AST_ReadOnly(root);
 }
 
 inline bool AST_ContainsClause(const AST *ast, cypher_astnode_type_t clause) {

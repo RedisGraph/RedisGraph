@@ -39,6 +39,32 @@ static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
 	return 1;
 }
 
+static void _populate_filter_matrix(CondTraverse *op) {
+	for(uint i = 0; i < op->recordsLen; i++) {
+		Record r = op->records[i];
+		/* Update filter matrix F, set row i at position srcId
+		 * F[i, srcId] = true. */
+		Node *n = Record_GetNode(r, op->srcNodeIdx);
+		NodeID srcId = ENTITY_GET_ID(n);
+		GrB_Matrix_setElement_BOOL(op->F, true, i, srcId);
+	}
+}
+
+// Initialize all algebraic expression matrices.
+static void _sync_matrices(CondTraverse *op) {
+	size_t required_dim = Graph_RequiredMatrixDim(op->graph);
+	GrB_Index ncols;
+
+	/* An awkward way of testing if we need to resize as a result of
+	 * entities either being added or removed from the graph */
+	GrB_Matrix_ncols(&ncols, op->F);
+	if(ncols != required_dim) {
+		GxB_Matrix_resize(op->F, op->recordsCap, required_dim);
+		GxB_Matrix_resize(op->M, op->recordsCap, required_dim);
+		AlgebraicExpression_SyncOperands(op->ae);
+	}
+}
+
 /* Evaluate algebraic expression:
  * prepends filter matrix as the left most operand
  * perform multiplications
@@ -46,6 +72,10 @@ static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
  * removed filter matrix from original expression
  * clears filter matrix. */
 void _traverse(CondTraverse *op) {
+	// Align matrices dimensions.
+	_sync_matrices(op);
+	// Populate filter matrix.
+	_populate_filter_matrix(op);
 	// Prepend matrix to algebraic expression, as the left most operand.
 	AlgebraicExpression_MultiplyToTheLeft(&op->ae, op->F);
 	// TODO: consider performing optimization as part of evaluation.
@@ -88,7 +118,7 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", CondTraverseInit,
-				CondTraverseConsume, CondTraverseReset, CondTraverseToString, CondTraverseFree, plan);
+				CondTraverseConsume, CondTraverseReset, CondTraverseToString, CondTraverseFree, false, plan);
 
 	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
@@ -158,11 +188,6 @@ static Record CondTraverseConsume(OpBase *opBase) {
 
 			// Store received record.
 			op->records[op->recordsLen] = childRecord;
-			/* Update filter matrix F, set column i at position srcId
-			 * F[srcId, i] = true. */
-			Node *n = Record_GetNode(childRecord, op->srcNodeIdx);
-			NodeID srcId = ENTITY_GET_ID(n);
-			GrB_Matrix_setElement_BOOL(op->F, true, op->recordsLen, srcId);
 		}
 
 		// No data.

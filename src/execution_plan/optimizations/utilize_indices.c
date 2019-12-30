@@ -7,23 +7,7 @@
 #include "../../util/range/string_range.h"
 #include "../../util/range/numeric_range.h"
 #include "../../datatypes/array.h"
-
-/* Reverse an inequality symbol so that indices can support
- * inequalities with right-hand variables. */
-int _reverseOp(int op) {
-	switch(op) {
-	case OP_LT:
-		return OP_GT;
-	case OP_LE:
-		return OP_GE;
-	case OP_GT:
-		return OP_LT;
-	case OP_GE:
-		return OP_LE;
-	default:
-		return op;
-	}
-}
+#include "../../arithmetic/arithmetic_op.h"
 
 static void _transformInToOrSequence(FT_FilterNode **filter) {
 	FT_FilterNode *filter_tree = *filter;
@@ -48,12 +32,12 @@ static void _transformInToOrSequence(FT_FilterNode **filter) {
 
 		for(uint i = 1; i < listLen; i ++) {
 			FT_FilterNode *orNode = FilterTree_CreateConditionFilter(OP_OR);
-			AppendLeftChild(orNode, root);
+			FilterTree_AppendLeftChild(orNode, root);
 			val = SIArray_Get(list, i); // Retrieve the next array element.
 			SIValue_Persist(&val);      // Ensure the value doesn't go out of scope.
 			constant = AR_EXP_NewConstOperandNode(val);
 			lhs = AR_EXP_Clone(inOp->op.children[0]);
-			AppendRightChild(orNode, FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, constant));
+			FilterTree_AppendRightChild(orNode, FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, constant));
 			root = orNode;
 		}
 	}
@@ -75,7 +59,7 @@ void _normalize_filter(FT_FilterNode **filter) {
 			AR_ExpNode *tmp = filter_tree->pred.rhs;
 			filter_tree->pred.rhs = filter_tree->pred.lhs;
 			filter_tree->pred.lhs = tmp;
-			filter_tree->pred.op = _reverseOp(filter_tree->pred.op);
+			filter_tree->pred.op = ArithmeticOp_ReverseOp(filter_tree->pred.op);
 		}
 		break;
 	case FT_N_EXP:

@@ -9,6 +9,7 @@
 #include "op.h"
 #include "../execution_plan.h"
 #include "../../graph/graph.h"
+#include "../../util/range/unsigned_range.h"
 
 #define ID_RANGE_UNBOUND -1
 
@@ -21,11 +22,8 @@ typedef struct {
 	NodeID currentId;       // Current ID fetched.
 	NodeID minId;           // Min ID to fetch.
 	NodeID maxId;           // Max ID to fetch.
-	bool minInclusive;      // Include min ID.
-	bool maxInclusive;      // Include max ID.
 	int nodeRecIdx;         // Position of entity within record.
 } NodeByIdSeek;
 
-OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const QGNode *n, NodeID minId, NodeID maxId,
-						  bool includeMin, bool includeMax);
+OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const QGNode *n, UnsignedRange *id_range);
 

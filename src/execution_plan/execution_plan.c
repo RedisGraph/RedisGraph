@@ -293,7 +293,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			/* If there are no edges in the component, we only need a node scan. */
 			QGNode *n = cc->nodes[0];
 			if(n->labelID != GRAPH_NO_LABEL) root = NewNodeByLabelScanOp(plan, n);
-			else root = NewAllNodeScanOp(plan, gc->g, n);
+			else root = NewAllNodeScanOp(plan, n);
 		} else {
 			/* The component has edges, so we'll build a node scan and a chain of traversals. */
 			AlgebraicExpression **exps = AlgebraicExpression_FromQueryGraph(cc);
@@ -309,9 +309,9 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				 * in which case if the first algebraic expression operand
 				 * is a label matrix (diagonal) remove it. */
 				AlgebraicExpression_Free(AlgebraicExpression_RemoveLeftmostNode(&exps[0]));
-				tail = NewNodeByLabelScanOp(plan, src);
+				root = tail = NewNodeByLabelScanOp(plan, src);
 			} else {
-				tail = NewAllNodeScanOp(plan, gc->g, src);
+				root = tail = NewAllNodeScanOp(plan, src);
 			}
 
 			/* For each expression, build the appropriate traversal operation. */
@@ -348,7 +348,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 	}
 }
 
-static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan) {
+static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_limit) {
 	Vector *sub_trees = FilterTree_SubTrees(plan->filter_tree);
 
 	/* For each filter tree find the earliest position along the execution
@@ -362,7 +362,7 @@ static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan) {
 		if(raxSize(references) > 0) {
 			/* Scan execution plan, locate the earliest position where all
 			 * references been resolved. */
-			op = ExecutionPlan_LocateReferences(plan->root, references);
+			op = ExecutionPlan_LocateReferences(plan->root, recurse_limit, references);
 			assert(op);
 		} else {
 			/* The filter tree does not contain references, like:
@@ -562,7 +562,10 @@ static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *
 	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
 	AST *rhs_ast = AST_MockMatchPattern(ast, path);
 
+	// Populate sub-ExecutionPlan.
 	_PopulateExecutionPlan(rhs_plan, NULL);
+	// Add filter ops to sub-ExecutionPlan.
+	if(rhs_plan->filter_tree) _ExecutionPlan_PlaceFilterOps(rhs_plan, NULL);
 
 	AST_MockFree(rhs_ast);
 	QueryCtx_SetAST(ast); // Reset the AST.
@@ -703,8 +706,8 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 	// Because 't' is set using the offsetof() call, it cannot be used in switch statements.
 	if(t == CYPHER_AST_MATCH) {
 		// Only add at most one set of traversals per plan. TODO Revisit and improve this logic.
-		if(ExecutionPlan_LocateOp(plan->root, OPType_NODE_BY_LABEL_SCAN) ||
-		   ExecutionPlan_LocateOp(plan->root, OPType_ALL_NODE_SCAN)) {
+		if(plan->root && (ExecutionPlan_LocateFirstOp(plan->root, OPType_NODE_BY_LABEL_SCAN) ||
+						  ExecutionPlan_LocateFirstOp(plan->root, OPType_ALL_NODE_SCAN))) {
 			return;
 		}
 		_ExecutionPlan_ProcessQueryGraph(plan, plan->query_graph, ast, plan->filter_tree);
@@ -712,7 +715,7 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 		_buildCallOp(ast, plan, clause);
 	} else if(t == CYPHER_AST_CREATE) {
 		// Only add at most one Create op per plan. TODO Revisit and improve this logic.
-		if(ExecutionPlan_LocateOp(plan->root, OPType_CREATE)) return;
+		if(ExecutionPlan_LocateFirstOp(plan->root, OPType_CREATE)) return;
 		_buildCreateOp(gc, ast, plan, stats);
 	} else if(t == CYPHER_AST_UNWIND) {
 		_buildUnwindOp(plan, clause);
@@ -757,8 +760,6 @@ static void _PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
 		_ExecutionPlanSegment_ConvertClause(gc, ast, plan, stats, clause);
 	}
-
-	if(plan->filter_tree) _ExecutionPlan_PlaceFilterOps(plan);
 }
 
 ExecutionPlan *ExecutionPlan_UnionPlans(ResultSet *result_set, AST *ast) {
@@ -842,6 +843,16 @@ ExecutionPlan *ExecutionPlan_UnionPlans(ResultSet *result_set, AST *ast) {
 	return plan;
 }
 
+static OpBase *_ExecutionPlan_FindLastWriter(OpBase *root) {
+	if(OpBase_IsWriter(root)) return root;
+	for(int i = root->childCount - 1; i >= 0; i--) {
+		OpBase *child = root->children[i];
+		OpBase *res = _ExecutionPlan_FindLastWriter(child);
+		if(res) return res;
+	}
+	return NULL;
+}
+
 ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 	AST *ast = QueryCtx_GetAST();
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
@@ -897,17 +908,27 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 
 	QueryCtx_SetAST(ast); // AST segments have been freed, set master AST in QueryCtx.
 
+	// Place filter ops required by first ExecutionPlan segment.
+	if(segments[0]->filter_tree) _ExecutionPlan_PlaceFilterOps(segments[0], NULL);
+
 	OpBase *connecting_op = NULL;
+	OpBase *prev_scope_end = NULL;
 	// Merge segments.
 	for(int i = 1; i < segment_count; i++) {
 		ExecutionPlan *prev_segment = segments[i - 1];
 		ExecutionPlan *current_segment = segments[i];
 
 		OpBase *prev_root = prev_segment->root;
-		connecting_op = ExecutionPlan_LocateOp(current_segment->root, OPType_PROJECT | OPType_AGGREGATE);
+		connecting_op = ExecutionPlan_LocateFirstOp(current_segment->root,
+													OPType_PROJECT | OPType_AGGREGATE);
 		assert(connecting_op->childCount == 0);
 
 		ExecutionPlan_AddOp(connecting_op, prev_root);
+
+		// Place filter ops required by current segment.
+		if(current_segment->filter_tree) _ExecutionPlan_PlaceFilterOps(current_segment, prev_scope_end);
+
+		prev_scope_end = prev_root; // Track the previous scope's end so filter placement doesn't overreach.
 	}
 
 	array_free(segment_indices);
@@ -919,7 +940,7 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 		if(!connecting_op) {
 			// Set the connecting op if our query is just a RETURN.
 			assert(segment_count == 1);
-			connecting_op = ExecutionPlan_LocateOp(plan->root, OPType_PROJECT | OPType_AGGREGATE);
+			connecting_op = ExecutionPlan_LocateFirstOp(plan->root, OPType_PROJECT | OPType_AGGREGATE);
 		}
 
 		// Prepare column names for the ResultSet.
@@ -944,7 +965,7 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 	// Disregard self.
 	plan->segment_count = segment_count - 1;
 	plan->segments = segments;
-
+	QueryCtx_SetLastWriter(_ExecutionPlan_FindLastWriter(plan->root));
 	return plan;
 }
 

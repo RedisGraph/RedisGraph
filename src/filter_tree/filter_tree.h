@@ -34,7 +34,7 @@ typedef struct {
 } FT_ExpressionNode;
 
 /* The FT_PredicateNode represents a leaf node within the filter tree
- * it holds an operator: [<. <=, =, >, >=]
+ * it holds an operator: [<. <=, =, <>, >, >=]
  * a left and right hand-side arithmetic expressions
  * which are evaluated and compared to one another using the operator. */
 typedef struct {
@@ -68,10 +68,10 @@ typedef struct FT_FilterNode FT_FilterNode;
 int IsNodePredicate(const FT_FilterNode *node);
 
 /* Appends a left hand-side node to root. */
-FT_FilterNode *AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child);
+FT_FilterNode *FilterTree_AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child);
 
 /* Appends a right hand-side node to root. */
-FT_FilterNode *AppendRightChild(FT_FilterNode *root, FT_FilterNode *child);
+FT_FilterNode *FilterTree_AppendRightChild(FT_FilterNode *root, FT_FilterNode *child);
 
 /* Creates a new expression node. */
 FT_FilterNode *FilterTree_CreateExpressionFilter(AR_ExpNode *exp);
@@ -104,6 +104,10 @@ void FilterTree_Print(const FT_FilterNode *root);
  * sub trees under an AND operator are broken down to the smallest
  * components possible following the two rules above. */
 Vector *FilterTree_SubTrees(const FT_FilterNode *root);
+
+/* Verifies tree structure 
+ * a condition or predicate node can't be childless. */
+bool FilterTree_Valid(const FT_FilterNode *root);
 
 /* Remove NOT nodes by applying DeMorgan laws */
 void FilterTree_DeMorgan(FT_FilterNode **root);

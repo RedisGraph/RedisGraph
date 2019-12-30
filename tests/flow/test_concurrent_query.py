@@ -243,6 +243,11 @@ class testConcurrentQueryFlow(FlowTestsBase):
         self.env.assertEquals(resultset[0][0], 0)
 
     def test_06_concurrent_write_delete(self):
+        # Test setup - validate that graph exists and possible results are None
+        graphs[0].query("MATCH (n) RETURN n")
+        assertions[0] = None
+        exceptions[0] = None
+
         redis_con = self.env.getConnection()
         heavy_write_query = """UNWIND(range(0,999999)) as x CREATE(n)"""
         writer = threading.Thread(target=thread_run_query, args=(graphs[0], heavy_write_query, 0))
@@ -250,11 +255,17 @@ class testConcurrentQueryFlow(FlowTestsBase):
         writer.start()
         redis_con.delete(GRAPH_ID)
         writer.join()
-        self.env.assertEquals(exceptions[0], "Encountered an empty key when opened key " + GRAPH_ID)
-        # Restore to default.
-        exceptions[0] = None
+        if exceptions[0] is not None:
+            self.env.assertEquals(exceptions[0], "Encountered an empty key when opened key " + GRAPH_ID)
+        else:
+            self.env.assertEquals(1000000, assertions[0].nodes_created)       
     
     def test_07_concurrent_write_rename(self):
+        # Test setup - validate that graph exists and possible results are None
+        graphs[0].query("MATCH (n) RETURN n")
+        assertions[0] = None
+        exceptions[0] = None
+
         redis_con = self.env.getConnection()
         new_graph = GRAPH_ID + "2"
         # Create new empty graph with id GRAPH_ID + "2"
@@ -267,17 +278,22 @@ class testConcurrentQueryFlow(FlowTestsBase):
         writer.join()
         # Possible scenarios:
         # 1. Rename is done before query is sent. The name in the graph context is new_graph, so when upon commit, when trying to open new_graph key, it will encounter an empty key since new_graph is not a valid key. 
+        #    Note: As from https://github.com/RedisGraph/RedisGraph/pull/820 this may not be valid since the rename event handler might actually rename the graph key, before the query execution.    
         # 2. Rename is done during query executing, so when commiting and comparing stored graph context name (GRAPH_ID) to the retrived value graph context name (new_graph), the identifiers are not the same, since new_graph value is now stored at GRAPH_ID value.
 
         possible_exceptions = ["Encountered different graph value when opened key " + GRAPH_ID, 
         "Encountered an empty key when opened key " + new_graph]
-        self.env.assertContains(exceptions[0], possible_exceptions)
-        # Restore to default.
-        graphs[0].delete()
-        graphs[0].query("MATCH (n) RETURN n")
-        exceptions[0] = None
-    
+        if exceptions[0] is not None:
+            self.env.assertContains(exceptions[0], possible_exceptions)
+        else:
+            self.env.assertEquals(1000000, assertions[0].nodes_created)
+        
     def test_08_concurrent_write_replace(self):
+        # Test setup - validate that graph exists and possible results are None
+        graphs[0].query("MATCH (n) RETURN n")
+        assertions[0] = None
+        exceptions[0] = None
+
         redis_con = self.env.getConnection()
         heavy_write_query = """UNWIND(range(0,999999)) as x CREATE(n)"""
         writer = threading.Thread(target=thread_run_query, args=(graphs[0], heavy_write_query, 0))
@@ -286,5 +302,3 @@ class testConcurrentQueryFlow(FlowTestsBase):
         redis_con.set(GRAPH_ID, "1")
         writer.join()
         self.env.assertEquals(exceptions[0], "Encountered a non-graph value type when opened key " + GRAPH_ID)
-        # Restore to default.
-        exceptions[0] = None

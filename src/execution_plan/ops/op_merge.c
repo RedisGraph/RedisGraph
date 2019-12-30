@@ -47,14 +47,13 @@ static void _UpdateProperty(Record r, GraphEntity *ge, EntityUpdateEvalCtx *upda
 }
 
 // Perform all ON MATCH updates for all matched records.
-static void _UpdateProperties(OpMerge *op, Record *records) {
+static void _UpdateProperties(OpMerge *op, Record *records, uint record_count) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	uint update_count = array_len(op->on_match);
-	uint record_count = array_len(records);
 
-	// Lock everything.
-	if(!QueryCtx_LockForCommit()) return;
-	{
+	if(update_count && record_count) {
+		// Lock everything.
+		QueryCtx_LockForCommit();
 		// Iterate over all update contexts, converting property keys to IDs.
 		for(uint i = 0; i < update_count; i ++) {
 			op->on_match[i].attribute_idx = GraphContext_FindOrAddAttribute(gc, op->on_match[i].attribute);
@@ -74,9 +73,9 @@ static void _UpdateProperties(OpMerge *op, Record *records) {
 				if(t == REC_TYPE_NODE) _UpdateIndices(gc, (Node *)ge); // Update indices if necessary.
 			}
 		}
+		if(op->stats) op->stats->properties_set += update_count * record_count;
 	}
-	QueryCtx_UnlockCommit(); // Release the lock.
-	if(op->stats) op->stats->properties_set += update_count * record_count;
+	QueryCtx_UnlockCommit(&op->op); // Release the lock.
 }
 
 //------------------------------------------------------------------------------
@@ -93,10 +92,9 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
 	OpMerge *op = calloc(1, sizeof(OpMerge));
 	op->stats = stats;
 	op->on_match = on_match;
-
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume, NULL, NULL, MergeFree,
-				plan);
+				true, plan);
 
 	if(op->on_match) {
 		// If we have ON MATCH directives, set the appropriate record IDs of entities to be updated.
@@ -144,6 +142,17 @@ static OpResult MergeInit(OpBase *opBase) {
 	// Handling the three-stream case.
 	for(int i = 0; i < opBase->childCount; i ++) {
 		OpBase *child = opBase->children[i];
+
+		bool child_has_merge = _LocateOp(child, OPType_MERGE);
+		/* Nither Match stream and Create stream have a Merge op
+		 * the bound variable stream will have a Merge op in-case of a merge merge query
+		 * MERGE (a:A) MERGE (b:B)
+		 * In which case the first Merge has yet to order its streams! */
+		if(!op->bound_variable_stream && child_has_merge) {
+			op->bound_variable_stream = child;
+			continue;
+		}
+
 		bool child_has_argument = _LocateOp(child, OPType_ARGUMENT);
 		// The bound variable stream is the only stream not populated by an Argument op.
 		if(!op->bound_variable_stream && !child_has_argument) {
@@ -174,9 +183,10 @@ static OpResult MergeInit(OpBase *opBase) {
 
 	// Find and store references to the Argument taps for the Match and Create streams.
 	// The Match stream is populated by an Argument tap, store a reference to it.
-	op->match_argument_tap = (Argument *)ExecutionPlan_LocateOp(op->match_stream, OPType_ARGUMENT);
+	op->match_argument_tap = (Argument *)ExecutionPlan_LocateFirstOp(op->match_stream, OPType_ARGUMENT);
 	// If the create stream is populated by an Argument tap, store a reference to it.
-	op->create_argument_tap = (Argument *)ExecutionPlan_LocateOp(op->create_stream, OPType_ARGUMENT);
+	op->create_argument_tap = (Argument *)ExecutionPlan_LocateFirstOp(op->create_stream,
+																	  OPType_ARGUMENT);
 	// Set up an array to store records produced by the bound variable stream.
 	op->input_records = array_new(Record, 1);
 
@@ -197,7 +207,6 @@ static Record MergeConsume(OpBase *opBase) {
 
 	// Consume mode.
 	op->output_records = array_new(Record, 32);
-
 	// If we have a bound variable stream, pull from it and store records until depleted.
 	if(op->bound_variable_stream) {
 		Record input_record;
@@ -208,6 +217,7 @@ static Record MergeConsume(OpBase *opBase) {
 
 	bool must_create_records = false;
 	bool reading_matches = true;
+	uint matched_records_count = 0;
 	// Match mode: attempt to resolve the pattern for every record from the bound variable
 	// stream, or once if we have no bound variables.
 	while(reading_matches) {
@@ -234,6 +244,7 @@ static Record MergeConsume(OpBase *opBase) {
 			// Pattern was successfully matched.
 			should_create_pattern = false;
 			op->output_records = array_append(op->output_records, rhs_record);
+			matched_records_count++;
 		}
 
 		if(should_create_pattern) {
@@ -257,18 +268,19 @@ static Record MergeConsume(OpBase *opBase) {
 	if(op->bound_variable_stream) OpBase_PropagateFree(op->bound_variable_stream);
 	OpBase_PropagateFree(op->match_stream);
 
-	// If we are setting properties with ON MATCH, execute all pending updates.
-	if(op->on_match && array_len(op->output_records) > 0) _UpdateProperties(op, op->output_records);
-
 	// Exhaust Create stream if we have at least one pattern to create.
 	if(must_create_records) {
 		/* We've populated the Create stream with all the Records it must read;
 		 * pull from it until we've retrieved all newly-created Records. */
+		if(!op->output_records) op->output_records = array_new(Record, 32);
 		Record created_record;
 		while((created_record = _pullFromStream(op->create_stream))) {
 			op->output_records = array_append(op->output_records, created_record);
 		}
 	}
+
+	// If we are setting properties with ON MATCH, execute all pending updates.
+	_UpdateProperties(op, op->output_records, matched_records_count);
 
 	return _handoff(op);
 }
