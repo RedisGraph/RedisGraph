@@ -63,8 +63,10 @@ int OpBase_AliasModifier(OpBase *op, const char *modifier, const char *alias) {
 	void *id = raxFind(mapping, (unsigned char *)modifier, strlen(modifier));
 	assert(id != raxNotFound);
 
-	raxInsert(mapping, (unsigned char *)alias, strlen(alias), id, NULL);
-	op->modifies = array_append(op->modifies, alias);
+	// Make sure to not introduce the same modifier twice.
+	if(raxInsert(mapping, (unsigned char *)alias, strlen(alias), id, NULL)) {
+		op->modifies = array_append(op->modifies, alias);
+	}
 
 	return (intptr_t)id;
 }

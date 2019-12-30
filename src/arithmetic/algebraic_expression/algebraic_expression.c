@@ -177,7 +177,9 @@ uint AlgebraicExpression_ChildCount
 (
 	const AlgebraicExpression *root   // Root of expression.
 ) {
-	assert(root);
+	// Empty expression.
+	if(!root) return 0;
+
 	if(root->type == AL_OPERATION) return array_len(root->operation.children);
 	else return 0;
 }
@@ -187,6 +189,9 @@ uint AlgebraicExpression_OperandCount
 (
 	const AlgebraicExpression *root
 ) {
+	// Empty expression.
+	if(!root) return 0;
+
 	uint operand_count = 0;
 	uint child_count = 0;
 	switch(root->type) {
@@ -212,6 +217,9 @@ uint AlgebraicExpression_OperationCount
 	const AlgebraicExpression *root,
 	AL_EXP_OP op_type
 ) {
+	// Empty expression.
+	if(!root) return 0;
+
 	uint op_count = 0;
 	if(root->type == AL_OPERATION) {
 		if(root->operation.op & op_type) op_count = 1;
@@ -221,6 +229,51 @@ uint AlgebraicExpression_OperationCount
 		}
 	}
 	return op_count;
+}
+
+// Returns true if entire expression is transposed.
+bool AlgebraicExpression_Transposed
+(
+	const AlgebraicExpression *root   // Root of expression.
+) {
+	// Empty expression.
+	if(!root) return false;
+
+	//TODO: handle cases such as T(A) + T(B).
+	return (root->type == AL_OPERATION && root->operation.op == AL_EXP_TRANSPOSE);
+}
+
+// Returns true if expression contains operation.
+bool AlgebraicExpression_ContainsOp
+(
+	const AlgebraicExpression *root,
+	AL_EXP_OP op
+) {
+	// Empty expression.
+	if(!root) return false;
+
+	if(root->type == AL_OPERATION) {
+		if(root->operation.op == op) return true;
+		uint child_count = AlgebraicExpression_ChildCount(root);
+		for(uint i = 0; i < child_count; i++) {
+			if(AlgebraicExpression_ContainsOp(CHILD_AT(root, i), op)) return true;
+		}
+	}
+	return false;
+}
+
+// Checks to see if operand at position `operand_idx` is a diagonal matrix.
+bool AlgebraicExpression_DiagonalOperand
+(
+	const AlgebraicExpression *root,    // Root of expression.
+	uint operand_idx                    // Operand position (LTR, zero based).
+) {
+	// Empty expression.
+	if(!root) return false;
+
+	const AlgebraicExpression *op = _AlgebraicExpression_GetOperand(root, operand_idx);
+	assert(op && op->type == AL_OPERAND);
+	return op->operand.diagonal;
 }
 
 //------------------------------------------------------------------------------
@@ -240,17 +293,24 @@ void AlgebraicExpression_AddChild
 // Remove leftmost child node from root.
 AlgebraicExpression *AlgebraicExpression_RemoveLeftmostNode
 (
-	AlgebraicExpression *root   // Root from which to remove left most child.
+	AlgebraicExpression **root  // Root from which to remove left most child.
 ) {
-	assert(root);
-	AlgebraicExpression *prev = root;
-	AlgebraicExpression *current = root;
+	assert(*root);
+	AlgebraicExpression *prev = *root;
+	AlgebraicExpression *current = *root;
 
 	while(current->type == AL_OPERATION) {
 		prev = current;
 		current = FIRST_CHILD(current);
 	}
 	assert(current->type == AL_OPERAND);
+
+	if(prev == current) {
+		/* Expression is just a single operand
+		 * return operand and update root to NULL. */
+		*root = NULL;
+		return current;
+	}
 
 	/* Removing an operand from an operation
 	 * this might cause a replacement of the operation:
@@ -276,17 +336,24 @@ AlgebraicExpression *AlgebraicExpression_RemoveLeftmostNode
 // Remove rightmost child node from root.
 AlgebraicExpression *AlgebraicExpression_RemoveRightmostNode
 (
-	AlgebraicExpression *root   // Root from which to remove left most child.
+	AlgebraicExpression **root  // Root from which to remove left most child.
 ) {
-	assert(root);
-	AlgebraicExpression *prev = root;
-	AlgebraicExpression *current = root;
+	assert(*root);
+	AlgebraicExpression *prev = *root;
+	AlgebraicExpression *current = *root;
 
 	while(current->type == AL_OPERATION) {
 		prev = current;
 		current = LAST_CHILD(current);
 	}
 	assert(current->type == AL_OPERAND);
+
+	if(prev == current) {
+		/* Expression is just a single operand
+		 * return operand and update root to NULL. */
+		*root = NULL;
+		return current;
+	}
 
 	/* Removing an operand from an operation
 	 * this might cause a replacement of the operation:
@@ -381,42 +448,6 @@ void AlgebraicExpression_AddToTheRight
 															  NULL);
 
 	*root = _AlgebraicExpression_AddToTheRight(lhs, rhs);
-}
-
-// Returns true if entire expression is transposed.
-bool AlgebraicExpression_Transposed
-(
-	const AlgebraicExpression *root   // Root of expression.
-) {
-	printf("TODO: handle cases such as T(A) + T(B)");
-	return (root->type == AL_OPERATION && root->operation.op == AL_EXP_TRANSPOSE);
-}
-
-// Returns true if expression contains operation.
-bool AlgebraicExpression_ContainsOp
-(
-	const AlgebraicExpression *root,
-	AL_EXP_OP op
-) {
-	if(root->type == AL_OPERATION) {
-		if(root->operation.op == op) return true;
-		uint child_count = AlgebraicExpression_ChildCount(root);
-		for(uint i = 0; i < child_count; i++) {
-			if(AlgebraicExpression_ContainsOp(CHILD_AT(root, i), op)) return true;
-		}
-	}
-	return false;
-}
-
-// Checks to see if operand at position `operand_idx` is a diagonal matrix.
-bool AlgebraicExpression_DiagonalOperand
-(
-	const AlgebraicExpression *root,    // Root of expression.
-	uint operand_idx                    // Operand position (LTR, zero based).
-) {
-	const AlgebraicExpression *op = _AlgebraicExpression_GetOperand(root, operand_idx);
-	assert(op && op->type == AL_OPERAND);
-	return op->operand.diagonal;
 }
 
 //------------------------------------------------------------------------------

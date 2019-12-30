@@ -65,7 +65,7 @@ static void _traverse(OpExpandInto *op) {
 	AlgebraicExpression_Eval(op->ae, op->M);
 
 	// Remove operand.
-	AlgebraicExpression_RemoveLeftmostNode(op->ae);
+	AlgebraicExpression_RemoveLeftmostNode(&op->ae);
 
 	// Clear filter matrix.
 	GrB_Matrix_clear(op->F);

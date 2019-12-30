@@ -39,7 +39,7 @@ static void _AlgebraicExpression_TransposeTranspose
 	// T(T(A)) = A
 	// Expecting just a single operand.
 	assert(AlgebraicExpression_ChildCount(exp) == 1);
-	AlgebraicExpression *only_child = AlgebraicExpression_RemoveRightmostNode(exp);
+	AlgebraicExpression *only_child = AlgebraicExpression_RemoveRightmostNode(&exp);
 
 	assert(only_child->type == AL_OPERAND);
 

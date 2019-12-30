@@ -9,6 +9,8 @@
 #include "../graph/query_graph.h"
 #include "../graph/graph.h"
 
+static GrB_Matrix IDENTITY_MATRIX = GrB_NULL;  // Identity matrix.
+
 // Matrix, vector operations.
 typedef enum {
 	AL_EXP_ADD = 1,                 // Matrix addition.
@@ -161,13 +163,13 @@ void AlgebraicExpression_AddChild
 // Remove leftmost child node from root.
 AlgebraicExpression *AlgebraicExpression_RemoveLeftmostNode
 (
-    AlgebraicExpression *root   // Root from which to remove a child.
+    AlgebraicExpression **root   // Root from which to remove a child.
 );
 
 // Remove rightmost child node from root.
 AlgebraicExpression *AlgebraicExpression_RemoveRightmostNode
 (
-    AlgebraicExpression *root   // Root from which to remove a child.
+    AlgebraicExpression **root   // Root from which to remove a child.
 );
 
 // Multiply expression to the left by operand

@@ -808,7 +808,7 @@ void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 
 		/* Isolate implicit edges.
 		 * A will contain all implicitly deleted edges from R. */
-		GrB_Matrix_apply(A, Mask, NULL, GrB_IDENTITY_UINT64, R, desc);
+		GrB_Matrix_apply(A, Mask, GrB_NULL, GrB_IDENTITY_UINT64, R, desc);
 
 		/* Free each multi edge array entry in A
 		 * Call _select_op_free_edge on each entry of A. */
@@ -829,11 +829,11 @@ void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 		GrB_Descriptor_set(desc, GrB_MASK, GrB_SCMP);
 
 		// Remove every entry of R marked by Mask.
-		GrB_Matrix_apply(R, Mask, NULL, GrB_IDENTITY_UINT64, R, desc);
+		GrB_Matrix_apply(R, Mask, GrB_NULL, GrB_IDENTITY_UINT64, R, desc);
 
 		R = Graph_GetRelationMatrix(g, i);
 		// Remove every entry of R marked by Mask.
-		GrB_Matrix_apply(R, Mask, NULL, GrB_IDENTITY_UINT64, R, desc);
+		GrB_Matrix_apply(R, Mask, GrB_NULL, GrB_IDENTITY_UINT64, R, desc);
 	}
 
 	/* Descriptor:
@@ -842,15 +842,15 @@ void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 	GrB_Descriptor_set(desc, GrB_MASK, GrB_SCMP);
 
 	// Update Adjacency and transposed adjacency matrices.
-	GrB_Matrix_apply(adj, Mask, NULL, GrB_IDENTITY_BOOL, adj, desc);
-	GrB_Matrix_apply(tadj, Mask, NULL, GrB_IDENTITY_BOOL, tadj, desc);
+	GrB_Matrix_apply(adj, Mask, GrB_NULL, GrB_IDENTITY_BOOL, adj, desc);
+	GrB_Matrix_apply(tadj, Mask, GrB_NULL, GrB_IDENTITY_BOOL, tadj, desc);
 
 	/* Delete nodes
 	 * All nodes marked for deleteion are detected, no incoming / outgoing edges. */
 	int node_type_count = Graph_LabelTypeCount(g);
 	for(int i = 0; i < node_type_count; i++) {
 		GrB_Matrix L = Graph_GetLabelMatrix(g, i);
-		GrB_Matrix_apply(L, Nodes, NULL, GrB_IDENTITY_BOOL, L, desc);
+		GrB_Matrix_apply(L, Nodes, GrB_NULL, GrB_IDENTITY_BOOL, L, desc);
 	}
 
 	for(uint i = 0; i < node_count; i++) {

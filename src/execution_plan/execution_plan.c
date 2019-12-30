@@ -287,6 +287,8 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 		QueryGraph *cc = connectedComponents[i];
 		uint edge_count = array_len(cc->edges);
 		OpBase *root = NULL; // The root of the traversal chain will be added to the ExecutionPlan.
+		OpBase *tail = NULL;
+
 		if(edge_count == 0) {
 			/* If there are no edges in the component, we only need a node scan. */
 			QGNode *n = cc->nodes[0];
@@ -300,45 +302,24 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			// Reorder exps, to the most performant arrangement of evaluation.
 			orderExpressions(qg, exps, expCount, ft, bound_vars);
 
-			AlgebraicExpression *exp = exps[0];
-			uint operand_count = AlgebraicExpression_OperandCount(exp);
-
-			OpBase *tail = NULL;
 			/* Create the SCAN operation that will be the tail of the traversal chain. */
-			QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(exp));
+			QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(exps[0]));
 			if(src->label) {
 				/* Resolve source node by performing label scan,
 				 * in which case if the first algebraic expression operand
-				 * is a label matrix (diagonal) remove it, otherwise
-				 * the label matrix associated with source's label is located
-				 * within another traversal operation, for the timebeing do not
-				 * try to locate and remove it, there's no real harm except some performace hit
-				 * in keeping that label matrix. */
-				AlgebraicExpression *left_most_operand = AlgebraicExpression_RemoveLeftmostNode(exp);
-				operand_count--;
-				if(operand_count > 0) AlgebraicExpression_Free(left_most_operand);
+				 * is a label matrix (diagonal) remove it. */
+				AlgebraicExpression_Free(AlgebraicExpression_RemoveLeftmostNode(&exps[0]));
 				tail = NewNodeByLabelScanOp(plan, src);
 			} else {
 				tail = NewAllNodeScanOp(plan, gc->g, src);
 			}
 
-			/* The expression has been fully converted - the QueryGraph had edges, but we don't
-			 * need to build traversals. This can occur in cases like:
-			 * MATCH (a)-[*0]->(c) RETURN c
-			 * We can just mark the destination alias as referring to the same entity as the source. */
-			int j = 0;
-			if(operand_count == 0) {
-				OpBase_AliasModifier(tail, AlgebraicExpression_Source(exp), AlgebraicExpression_Destination(exp));
-				AlgebraicExpression_Free(exp);
-				// Skip first expression, as it has been fully converted.
-				// TODO: improve `AlgebraicExpression_RemoveLeft/RightmostNode`  such that
-				// when removing the only operand, the original expression will become THE empty algebraic expression.
-				j++;
-			}
-
 			/* For each expression, build the appropriate traversal operation. */
-			for(; j < expCount; j++) {
-				exp = exps[j];
+			for(int j = 0; j < expCount; j++) {
+				AlgebraicExpression *exp = exps[j];
+				// Empty expression, already freed.
+				if(AlgebraicExpression_OperandCount(exp) == 0) continue;
+
 				QGEdge *edge = NULL;
 				if(AlgebraicExpression_Edge(exp)) edge = QueryGraph_GetEdgeByAlias(qg,
 																					   AlgebraicExpression_Edge(exp));
