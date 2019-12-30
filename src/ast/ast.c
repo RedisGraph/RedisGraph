@@ -206,19 +206,35 @@ const cypher_astnode_t **AST_GetClauses(const AST *ast, cypher_astnode_type_t ty
 	return found;
 }
 
+
+
+static void _AST_GetAllTypedNodes(const cypher_astnode_t  ***nodes, const cypher_astnode_t *root,
+								  cypher_astnode_type_t type) {
+	if(cypher_astnode_type(root) == type) *nodes = array_append(*nodes, root);
+	uint nchildren = cypher_astnode_nchildren(root);
+	for(uint i = 0; i < nchildren; i ++) {
+		_AST_GetAllTypedNodes(nodes, cypher_astnode_get_child(root, i), type);
+	}
+}
+
+const cypher_astnode_t **AST_GetAllTypedNodes(const cypher_astnode_t *root,
+											  cypher_astnode_type_t type) {
+	const cypher_astnode_t **nodes = array_new(const cypher_astnode_t *, 0);
+	_AST_GetAllTypedNodes(&nodes, root, type);
+	return nodes;
+}
+
 void AST_CollectAliases(const char ***aliases, const cypher_astnode_t *entity) {
 	if(entity == NULL) return;
 
-	if(cypher_astnode_type(entity) == CYPHER_AST_IDENTIFIER) {
-		const char *identifier = cypher_ast_identifier_get_name(entity);
+	const  cypher_astnode_t **identifier_nodes =  AST_GetAllTypedNodes(entity, CYPHER_AST_IDENTIFIER);
+	uint nodes_count = array_len(identifier_nodes);
+	for(uint i = 0 ; i < nodes_count; i ++) {
+		const char *identifier = cypher_ast_identifier_get_name(identifier_nodes[i]);
 		*aliases = array_append(*aliases, identifier);
-		return;
 	}
 
-	uint nchildren = cypher_astnode_nchildren(entity);
-	for(uint i = 0; i < nchildren; i ++) {
-		AST_CollectAliases(aliases, cypher_astnode_get_child(entity, i));
-	}
+	array_free(identifier_nodes);
 }
 
 AST *AST_Build(cypher_parse_result_t *parse_result) {

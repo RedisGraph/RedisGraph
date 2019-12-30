@@ -467,7 +467,6 @@ bool AR_EXP_ContainsAggregation(AR_ExpNode *root) {
 bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
 	if(root == NULL) return false;
 	if(root->type == AR_EXP_OP) {
-		// TODO: case insensitive!
 		if(strcasecmp(root->op.func_name, func) == 0) return true;
 		for(int i = 0; i < root->op.child_count; i++) {
 			if(AR_EXP_ContainsFunc(root->op.children[i], func)) return true;

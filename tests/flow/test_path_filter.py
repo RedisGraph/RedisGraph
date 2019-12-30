@@ -18,13 +18,11 @@ class testPathFilter(FlowTestsBase):
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
-
-
-
+        
     def setUp(self):
         self.env.flush()
 
-    def test00_semi_apply(self):
+    def test00_simple_path_filter(self):
         node0 = Node(node_id=0, label="L")
         node1 = Node(node_id=1, label="L", properties={'x':1})
         edge01 = Edge(src_node=node0, dest_node=node1, relation="R")
@@ -39,7 +37,7 @@ class testPathFilter(FlowTestsBase):
         query_info = QueryInfo(query = query, description="Tests simple path filter", expected_result = expected_results)
         self._assert_resultset_equals_expected(result_set, query_info)
     
-    def test01_anti_semi_apply(self):
+    def test01_negated_simple_path_filter(self):
         node0 = Node(node_id=0, label="L")
         node1 = Node(node_id=1, label="L", properties={'x':1})
         edge01 = Edge(src_node=node0, dest_node=node1, relation="R")
@@ -54,7 +52,7 @@ class testPathFilter(FlowTestsBase):
         query_info = QueryInfo(query = query, description="Tests simple negated path filter", expected_result = expected_results)
         self._assert_resultset_equals_expected(result_set, query_info)
 
-    def test02_test_or_multiplexer_with_filter(self):
+    def test02_test_path_filter_or_property_filter(self):
         node0 = Node(node_id=0, label="L")
         node1 = Node(node_id=1, label="L", properties={'x':1})
         edge01 = Edge(src_node=node0, dest_node=node1, relation="R")
@@ -69,7 +67,7 @@ class testPathFilter(FlowTestsBase):
         query_info = QueryInfo(query = query, description="Tests OR condition with simple filter and path filter", expected_result = expected_results)
         self._assert_resultset_and_expected_mutually_included(result_set, query_info)
 
-    def test03_test_or_multiplexer_with_path(self):
+    def test03_path_filter_or_negated_path_filter(self):
         node0 = Node(node_id=0, label="L")
         node1 = Node(node_id=1, label="L", properties={'x':1})
         edge01 = Edge(src_node=node0, dest_node=node1, relation="R")
@@ -84,7 +82,7 @@ class testPathFilter(FlowTestsBase):
         query_info = QueryInfo(query = query, description="Tests OR condition with path and negated path filters", expected_result = expected_results)
         self._assert_resultset_and_expected_mutually_included(result_set, query_info)
 
-    def test04_test_and_multiplexer_with_filter(self):
+    def test04_test_level_1_nesting_logical_operators_over_path_and_property_filters(self):
         node0 = Node(node_id=0, label="L")
         node1 = Node(node_id=1, label="L", properties={'x':1})
         edge01 = Edge(src_node=node0, dest_node=node1, relation="R")
@@ -99,7 +97,7 @@ class testPathFilter(FlowTestsBase):
         query_info = QueryInfo(query = query, description="Tests AND condition with simple filter and negated path filter", expected_result = expected_results)
         self._assert_resultset_and_expected_mutually_included(result_set, query_info)
 
-    def test05_test_and_multiplexer_with_nested_or_multiplexer(self):
+    def test05_test_level_2_nesting_logical_operators_over_path_and_property_filters(self):
         node0 = Node(node_id=0, label="L")
         node1 = Node(node_id=1, label="L", properties={'x':1})
         edge01 = Edge(src_node=node0, dest_node=node1, relation="R")
@@ -114,7 +112,7 @@ class testPathFilter(FlowTestsBase):
         query_info = QueryInfo(query = query, description="Tests AND condition with simple filter and nested OR", expected_result = expected_results)
         self._assert_resultset_and_expected_mutually_included(result_set, query_info)
     
-    def test06_test_and_multiplexer_with_nested_or_multiplexer_over_paths(self):
+    def test04_test_level_2_nesting_logical_operators_over_path_filters(self):
         node0 = Node(node_id=0, label="L")
         node1 = Node(node_id=1, label="L", properties={'x':1})
         node2 = Node(node_id=2, label="L2")
@@ -132,6 +130,3 @@ class testPathFilter(FlowTestsBase):
         expected_results = [[node0],[node1]]
         query_info = QueryInfo(query = query, description="Tests AND condition with simple filter and nested OR", expected_result = expected_results)
         self._assert_resultset_and_expected_mutually_included(result_set, query_info)
-
-
-

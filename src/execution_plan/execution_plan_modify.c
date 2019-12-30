@@ -290,18 +290,21 @@ static void _RebindQueryGraphReferences(OpBase *op, const QueryGraph *qg) {
 	}
 }
 
-void ExecutionPlan_BindPlanToOps(OpBase *root, ExecutionPlan *plan) {
+void ExecutionPlan_BindPlanToOps(ExecutionPlan *plan, OpBase *root) {
 	if(!root) return;
 	root->plan = plan;
 	_RebindQueryGraphReferences(root, plan->query_graph);
 	for(int i = 0; i < root->childCount; i ++) {
-		ExecutionPlan_BindPlanToOps(root->children[i], plan);
+		ExecutionPlan_BindPlanToOps(plan, root->children[i]);
 	}
 }
 
 void ExecutionPlan_AppendSubExecutionPlan(ExecutionPlan *master_plan, ExecutionPlan *sub_plan) {
 	if(!master_plan->sub_execution_plans)
 		master_plan->sub_execution_plans = array_new(ExecutionPlan *, 1);
+	if(sub_plan->record_map) {
+		raxFree(sub_plan->record_map);
+	}
 	sub_plan->record_map = master_plan->record_map;
 	master_plan->sub_execution_plans = array_append(master_plan->sub_execution_plans, sub_plan);
 }

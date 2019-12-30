@@ -25,6 +25,10 @@
 #include <assert.h>
 #include <setjmp.h>
 
+//----reduce_to_apply.c----//
+/* Reduces a filter operation into an apply operation. */
+void ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpFilter *filter);
+
 static inline void _ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_root) {
 	if(plan->root) ExecutionPlan_NewRoot(plan->root, new_root);
 	plan->root = new_root;
@@ -316,9 +320,9 @@ static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
 	OpBase **filter_ops = ExecutionPlan_LocateOps(plan->root, OPType_FILTER);
 	uint filter_ops_count = array_len(filter_ops);
 	for(uint i = 0; i < filter_ops_count; i++) {
-		OpBase *op = filter_ops[i];
+		OpFilter *op = (OpFilter *)filter_ops[i];
 		FT_FilterNode *node;
-		if(FilterTree_ContainsFunc(((OpFilter *)op)->filterTree, "path_filter", &node)) {
+		if(FilterTree_ContainsFunc(op->filterTree, "path_filter", &node)) {
 			ExecutionPlan_ReduceFilterToApply(plan, op);
 		}
 	}
@@ -549,7 +553,7 @@ static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *
 	OpBase *rhs_root = rhs_plan->root;
 
 	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
-	ExecutionPlan_BindPlanToOps(rhs_root, plan);
+	ExecutionPlan_BindPlanToOps(plan, rhs_root);
 
 	// NULL-set variables shared between the rhs_plan and the overall plan.
 	rhs_plan->root = NULL;

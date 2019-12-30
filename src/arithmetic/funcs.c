@@ -23,6 +23,6 @@ void AR_RegisterFuncs() {
 	Register_BooleanFuncs();
 	Register_ConditionalFuncs();
 	Register_PathFuncs();
-	Register_NoOpFuncs();
+	Register_PlaceholderFuncs();
 }
 

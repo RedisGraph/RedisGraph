@@ -305,7 +305,7 @@ bool FilterTree_containsOp(const FT_FilterNode *root, AST_Operator op) {
 	}
 }
 
-bool FilterTree_ContainsFunc(const FT_FilterNode *root, const char *func, FT_FilterNode **node) {
+bool _FilterTree_ContainsFunc(const FT_FilterNode *root, const char *func, FT_FilterNode **node) {
 	if(root == NULL) return false;
 	switch(root->t) {
 	case FT_N_COND: {
@@ -327,9 +327,15 @@ bool FilterTree_ContainsFunc(const FT_FilterNode *root, const char *func, FT_Fil
 		return false;
 	}
 	default:
-		assert(false);
+		assert("Unkown filter tree node type" && false);
 	}
 	return false;
+}
+
+bool FilterTree_ContainsFunc(const FT_FilterNode *root, const char *func, FT_FilterNode **node) {
+	assert(root && func && node);
+	*node = NULL;
+	return _FilterTree_ContainsFunc(root, func, node);
 }
 
 void _FilterTree_ApplyNegate(FT_FilterNode **root, uint negate_count) {

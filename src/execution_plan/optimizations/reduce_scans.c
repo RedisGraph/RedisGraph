@@ -11,7 +11,7 @@
 #include "../ops/op_filter.h"
 #include <assert.h>
 
-static FT_FilterNode *buildLabelFilter(NodeByLabelScan *label_scan) {
+static FT_FilterNode *_buildLabelFilter(NodeByLabelScan *label_scan) {
 	char *label = (char *)label_scan->n->label;
 	AR_ExpNode *const_label_node = AR_EXP_NewConstOperandNode(SI_ConstStringVal(label));
 	AR_ExpNode *variadic_node = AR_EXP_NewVariableOperandNode(label_scan->n->alias, NULL);
@@ -32,7 +32,7 @@ static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
 	for(int i = 0; i < scan->childCount; i ++) {
 		if(ExecutionPlan_LocateOpResolvingAlias(scan->children[i], scanned_alias)) {
 			if(scan->type == OPType_NODE_BY_LABEL_SCAN) {
-				OpBase *filter = NewFilterOp(plan, buildLabelFilter((NodeByLabelScan *)scan));
+				OpBase *filter = NewFilterOp(plan, _buildLabelFilter((NodeByLabelScan *)scan));
 				ExecutionPlan_ReplaceOp(plan, scan, filter);
 				OpBase_Free(scan);
 				break;

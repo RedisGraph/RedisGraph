@@ -9,4 +9,4 @@
 #include "../../value.h"
 /* This function register place holders as functions, for later execution plan modifications,
  * once a dedicated method encounters this place holder. */
-void Register_NoOpFuncs();
+void Register_PlaceholderFuncs();

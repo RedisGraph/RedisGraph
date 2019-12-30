@@ -11,6 +11,7 @@
 void SemiApplyFree(OpBase *opBase);
 OpResult SemiApplyInit(OpBase *opBase);
 Record SemiApplyConsume(OpBase *opBase);
+Record AntiSemiApplyConsume(OpBase *opBase);
 OpResult SemiApplyReset(OpBase *opBase);
 
 static Record _pullFromMatchStream(OpSemiApply *op) {
@@ -19,10 +20,44 @@ static Record _pullFromMatchStream(OpSemiApply *op) {
 	return OpBase_Consume(op->match_branch);
 }
 
-/* This function pulls a record from the op's bounded branch, set it as an argument for the op branch stream
- * (the match branch) and consumes a record from the match branch.
- * If there is a record from the match branch, the bounded branch record is returned. */
-static Record _SemiApplyConsume(OpBase *opBase) {
+OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti) {
+	OpSemiApply *op = rm_malloc(sizeof(OpSemiApply));
+	op->r = NULL;
+	op->op_arg = NULL;
+	op->bound_branch = NULL;
+	op->match_branch = NULL;
+	// Set our Op operations
+	if(anti) {
+		OpBase_Init((OpBase *)op, OpType_ANTI_SEMI_APPLY, "Anti Semi Apply", SemiApplyInit,
+					AntiSemiApplyConsume, SemiApplyReset, NULL, SemiApplyFree, false, plan);
+	} else {
+		OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, "Semi Apply", SemiApplyInit, SemiApplyConsume,
+					SemiApplyReset, NULL, SemiApplyFree, false, plan);
+	}
+	return (OpBase *) op;
+}
+
+OpResult SemiApplyInit(OpBase *opBase) {
+	assert(opBase->childCount == 2);
+
+	OpSemiApply *op = (OpSemiApply *)opBase;
+	/* The op bounded branch and match branch are set to be the first and second child, respectively,
+	 * during the operation building procedure at execution_plan_reduce_to_apply.c */
+	op->bound_branch = opBase->children[0];
+	op->match_branch = opBase->children[1];
+	assert(op->bound_branch && op->match_branch);
+
+	// Locate branch's Argument op tap.
+	op->op_arg = (Argument *)ExecutionPlan_LocateFirstOp(op->match_branch, OPType_ARGUMENT);
+	assert(op->op_arg && op->op_arg->op.childCount == 0);
+	if(op->op_arg) assert(op->op_arg->op.childCount == 0);
+	return OP_OK;
+}
+
+/* This function pulls a record from the op's bounded branch, set it as an argument for the op match branch
+ * and consumes a record from the match branch. If there is a record from the match branch,
+ * the bounded branch record is returned. */
+Record SemiApplyConsume(OpBase *opBase) {
 	OpSemiApply *op = (OpSemiApply *)opBase;
 	while(true) {
 		// Try to get a record from bound stream.
@@ -44,10 +79,10 @@ static Record _SemiApplyConsume(OpBase *opBase) {
 	}
 }
 
-/* This function pulls a record from the op's bounded branch, set it as an argument for the op branch stream
- * (the match branch) and consumes a record from the match branch.
- * If there is no record from the match branch, the bounded branch record is returned. */
-static Record _AntiSemiApplyConsume(OpBase *opBase) {
+/* This function pulls a record from the op's bounded branch, set it as an argument for the op match branch
+ * and consumes a record from the match branch. If there is no record from the match branch,
+ * the bounded branch record is returned. */
+Record AntiSemiApplyConsume(OpBase *opBase) {
 	OpSemiApply *op = (OpSemiApply *)opBase;
 	while(true) {
 		// Try to get a record from bound stream.
@@ -70,34 +105,6 @@ static Record _AntiSemiApplyConsume(OpBase *opBase) {
 			return r;
 		}
 	}
-}
-
-OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti) {
-	OpSemiApply *op = rm_malloc(sizeof(OpSemiApply));
-	op->r = NULL;
-	op->op_arg = NULL;
-	// Set our Op operations
-	if(anti) {
-		OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, "Anti Semi Apply", SemiApplyInit,
-					_AntiSemiApplyConsume, SemiApplyReset, NULL, SemiApplyFree, false, plan);
-	} else {
-		OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, "Semi Apply", SemiApplyInit, _SemiApplyConsume,
-					SemiApplyReset, NULL, SemiApplyFree, false, plan);
-	}
-	return (OpBase *) op;
-}
-
-OpResult SemiApplyInit(OpBase *opBase) {
-	assert(opBase->childCount == 2);
-
-	OpSemiApply *op = (OpSemiApply *)opBase;
-	op->bound_branch = opBase->children[0];
-	op->match_branch = opBase->children[1];
-
-	// Locate branch's Argument op tap.
-	op->op_arg = (Argument *)ExecutionPlan_LocateFirstOp(op->match_branch, OPType_ARGUMENT);
-	if(op->op_arg) assert(op->op_arg->op.childCount == 0);
-	return OP_OK;
 }
 
 OpResult SemiApplyReset(OpBase *opBase) {

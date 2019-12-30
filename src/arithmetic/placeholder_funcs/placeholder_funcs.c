@@ -4,7 +4,7 @@
 *This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "no_op_funcs.h"
+#include "placeholder_funcs.h"
 #include "../func_desc.h"
 #include "../../util/arr.h"
 #include <assert.h>
@@ -14,7 +14,7 @@ SIValue AR_PATH_FILTER(SIValue *argv, int argc) {
 	return SI_NullVal();
 }
 
-void Register_NoOpFuncs() {
+void Register_PlaceholderFuncs() {
 	SIType *types;
 	AR_FuncDesc *func_desc;
 
