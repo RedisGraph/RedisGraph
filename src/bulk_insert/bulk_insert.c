@@ -15,8 +15,9 @@
 typedef enum {
 	BI_NULL,
 	BI_BOOL,
-	BI_NUMERIC,
-	BI_STRING
+	BI_DOUBLE,
+	BI_STRING,
+	BI_LONG
 } TYPE;
 
 // Read the header of a data stream to parse its property keys and update schemas.
@@ -74,10 +75,14 @@ static inline SIValue _BulkInsert_ReadProperty(const char *data, size_t *data_id
 		bool b = data[*data_idx];
 		*data_idx += 1;
 		v = SI_BoolVal(b);
-	} else if(t == BI_NUMERIC) {
+	} else if(t == BI_DOUBLE) {
 		double d = *(double *)&data[*data_idx];
 		*data_idx += sizeof(double);
 		v = SI_DoubleVal(d);
+	} else if(t == BI_LONG) {
+		int64_t d = *(int64_t *)&data[*data_idx];
+		*data_idx += sizeof(int64_t);
+		v = SI_LongVal(d);
 	} else if(t == BI_STRING) {
 		char *s = rm_strdup(data + *data_idx);
 		*data_idx += strlen(s) + 1;
