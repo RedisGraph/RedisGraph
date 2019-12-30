@@ -7,14 +7,12 @@
 static OpBase *_buildMatchBranch(ExecutionPlan *plan, const cypher_astnode_t *path) {
 	AST *ast = QueryCtx_GetAST();
 
-	rax *bound_vars = NULL;
-	const char **arguments = NULL;
-	bound_vars = raxNew();
+	rax *bound_vars = raxNew();
 	// Rather than cloning the record map, collect the bound variables along with their
 	// parser-generated constant strings.
 	ExecutionPlan_BoundVariables(plan->root, bound_vars);
 	// Prepare the variables for populating the Argument ops we will build.
-	arguments = ExecutionPlan_BuildArgumentModifiesArray(bound_vars);
+	const char **arguments = ExecutionPlan_BuildArgumentModifiesArray(bound_vars);
 
 	// Initialize an ExecutionPlan that shares this plan's Record mapping.
 	ExecutionPlan *match_branch_plan = ExecutionPlan_NewEmptyExecutionPlan();
@@ -22,6 +20,7 @@ static OpBase *_buildMatchBranch(ExecutionPlan *plan, const cypher_astnode_t *pa
 
 	// We have bound variables, build an Argument op that represents them.
 	OpBase *argument = NewArgumentOp(match_branch_plan, arguments);
+	array_free(arguments);
 	match_branch_plan->root = argument;
 
 	// Build a temporary AST holding a MATCH clause.
@@ -46,17 +45,14 @@ static void _OpBaseSwapChildren(OpBase *op, int a, int b) {
 }
 
 static void _CreateBoundBranch(OpBase *op, ExecutionPlan *plan) {
-	rax *bound_vars = NULL;
-	const char **arguments = NULL;
-	if(plan->root) {
-		bound_vars = raxNew();
-		// Rather than cloning the record map, collect the bound variables along with their
-		// parser-generated constant strings.
-		ExecutionPlan_BoundVariables(plan->root, bound_vars);
-		// Prepare the variables for populating the Argument ops we will build.
-		arguments = ExecutionPlan_BuildArgumentModifiesArray(bound_vars);
-	}
+	rax *bound_vars = raxNew();
+	// Rather than cloning the record map, collect the bound variables along with their
+	// parser-generated constant strings.
+	ExecutionPlan_BoundVariables(plan->root, bound_vars);
+	// Prepare the variables for populating the Argument ops we will build.
+	const char **arguments = arguments = ExecutionPlan_BuildArgumentModifiesArray(bound_vars);
 	OpBase *arg = NewArgumentOp(plan, arguments);
+	array_free(arguments);
 
 	/* In case of Apply operations, we need to append, the new argument branch and
 	 * set it as the first child. */

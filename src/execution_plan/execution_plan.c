@@ -326,6 +326,7 @@ static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
 			ExecutionPlan_ReduceFilterToApply(plan, op);
 		}
 	}
+	array_free(filter_ops);
 }
 
 static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_limit) {
@@ -1031,6 +1032,18 @@ static void _ExecutionPlan_FreeOperations(OpBase *op) {
 static void _ExecutionPlan_FreeSubPlan(ExecutionPlan *plan) {
 	if(plan == NULL) return;
 
+	if(plan->sub_execution_plans) {
+		uint sub_execution_plans_count = array_len(plan->sub_execution_plans);
+		for(uint i = 0; i < sub_execution_plans_count; i++) {
+			ExecutionPlan *sub_plan = plan->sub_execution_plans[i];
+			// Avoid double free
+			sub_plan->record_map = NULL;
+			_ExecutionPlan_FreeSubPlan(sub_plan);
+		}
+		array_free(plan->sub_execution_plans);
+		plan->sub_execution_plans = NULL;
+	}
+
 	for(int i = 0; i < plan->segment_count; i++) _ExecutionPlan_FreeSubPlan(plan->segments[i]);
 	if(plan->segments) rm_free(plan->segments);
 
@@ -1042,23 +1055,12 @@ static void _ExecutionPlan_FreeSubPlan(ExecutionPlan *plan) {
 	}
 
 	QueryGraph_Free(plan->query_graph);
-	raxFree(plan->record_map);
+	if(plan->record_map) raxFree(plan->record_map);
 	rm_free(plan);
 }
 
-
-
-
 void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) return;
-
-	if(plan->sub_execution_plans) {
-		uint sub_execution_plans_count = array_len(plan->sub_execution_plans);
-		for(uint i = 0; i < sub_execution_plans_count; i++)
-			_ExecutionPlan_FreeSubPlan(plan->sub_execution_plans[i]);
-		array_free(plan->sub_execution_plans);
-		plan->sub_execution_plans = NULL;
-	}
 
 	if(plan->root) {
 		_ExecutionPlan_FreeOperations(plan->root);
