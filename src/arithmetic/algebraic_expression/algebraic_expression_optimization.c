@@ -99,8 +99,8 @@ static bool __AlgebraicExpression_MulOverSum(AlgebraicExpression **root) {
 
 			array_free(multiplications);
 
-			// Free root internals and overwrite it with new addition root.
-			_AlgebraicExpression_FreeOperation((*root));
+			// Free original root and overwrite it with new addition root.
+			AlgebraicExpression_Free(*root);
 			// Update root.
 			*root = add;
 			return true;
@@ -152,8 +152,8 @@ static bool __AlgebraicExpression_MulOverSum(AlgebraicExpression **root) {
 				AlgebraicExpression_AddChild(rMul, AlgebraicExpression_Clone(C));
 				AlgebraicExpression_AddChild(rMul, B);
 			}
-			// Free root internals and overwrite it with new addition root.
-			_AlgebraicExpression_FreeOperation((*root));
+			// Free original root and overwrite it with new addition root.
+			AlgebraicExpression_Free(*root);
 			// Update root.
 			*root = add;
 			return true;
@@ -246,3 +246,4 @@ void AlgebraicExpression_Optimize
 	_AlgebraicExpression_MulOverSum(exp);
 	_AlgebraicExpression_FlattenMultiplications(*exp);
 }
+
