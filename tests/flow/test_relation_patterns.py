@@ -141,8 +141,149 @@ class testRelationPattern(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set, expected_result)
 
+    # Test traversals that don't specify an edge direction.
+    def test05_bidirectional_traversals(self):
+        query = """MATCH (a)-[:e]-(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        actual_result = redis_graph.query(query)
+        # Each relation should appear twice with the source and destination swapped in the second result.
+        expected_result = [['v1', 'v2'],
+                           ['v2', 'v1'],
+                           ['v2', 'v3'],
+                           ['v3', 'v2']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test undirected traversals with a referenced edge.
+        query = """MATCH (a)-[e:e]-(b) RETURN ID(e), a.val, b.val ORDER BY a.val, b.val"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[0, 'v1', 'v2'],
+                           [0, 'v2', 'v1'],
+                           [1, 'v2', 'v3'],
+                           [1, 'v3', 'v2']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Test 0-hop undirected traversals.
+        query = """MATCH (a)-[*0]-(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', 'v1'],
+                           ['v2', 'v2'],
+                           ['v3', 'v3']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # TODO doesn't work - returns each node with itself as source and destination in adition to expected results.
+        # Test combinations of directed and undirected traversals.
+        #  query = """MATCH (a)-[:e]->()-[]-(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        #  actual_result = redis_graph.query(query)
+        #  expected_result = [['v1', 'v3']]
+        #  self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # TODO doesn't work for the same reason.
+        # Test fixed-length multi-hop undirected traversals.
+        #  query = """MATCH (a)-[:e*2]-(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        #  actual_result = redis_graph.query(query)
+        #  expected_result = [[0, 'v1', 'v3'],
+                           #  [0, 'v3', 'v1']]
+        #  self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Test variable-length traversals that don't specify an edge direction.
+    def test06_bidirectional_variable_length_traversals(self):
+        query = """MATCH (a)-[*]-(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        actual_result = redis_graph.query(query)
+        # Each combination of distinct node source and destination should appear once.
+        expected_result = [['v1', 'v2'],
+                           ['v1', 'v3'],
+                           ['v2', 'v1'],
+                           ['v2', 'v3'],
+                           ['v3', 'v1'],
+                           ['v3', 'v2']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Should generate the same results as the previous query.
+        query = """MATCH (a)-[*1..2]-(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Collect self and all direct neighbors.
+        query = """MATCH (a)-[*0..1]-(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        actual_result = redis_graph.query(query)
+        # Each combination of distinct node source and destination should appear once.
+        expected_result = [['v1', 'v1'],
+                           ['v1', 'v2'],
+                           ['v2', 'v1'],
+                           ['v2', 'v2'],
+                           ['v2', 'v3'],
+                           ['v3', 'v2'],
+                           ['v3', 'v3']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Test traversals that don't specify an edge direction in a graph with a cycle.
+    def test07_bidirectional_traversals_with_cycle(self):
+        # Introduce a cycle between v2 and v1.
+        query = """MATCH (a {val: 'v1'}), (b {val: 'v2'}) CREATE (b)-[:e]->(a)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.nodes_created, 0)
+        self.env.assertEquals(actual_result.relationships_created, 1)
+
+        # Test undirected traversals with a referenced edge.
+        # TODO The variant query in which the edge is not referenced does not work:
+        #  query = """MATCH (a)-[:e]-(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        query = """MATCH (a)-[e:e]-(b) RETURN ID(e) AS id, a.val, b.val ORDER BY id, a.val, b.val"""
+        actual_result = redis_graph.query(query)
+        # Each relation should appear twice with the source and destination swapped in the second result.
+        expected_result = [[0, 'v1', 'v2'],
+                           [0, 'v2', 'v1'],
+                           [1, 'v2', 'v3'],
+                           [1, 'v3', 'v2'],
+                           [2, 'v1', 'v2'],
+                           [2, 'v2', 'v1']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Test variable-length traversals that don't specify an edge direction.
+    def test08_bidirectional_variable_length_traversals_with_cycle(self):
+        # TODO returns 16 rows; 18 rows expected.
+        # The missing two rows are both `['v2', 'v3']
+        #  query = """MATCH (a)-[*]-(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+
+        query = """MATCH (a)-[*1..2]-(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        actual_result = redis_graph.query(query)
+        # Each src/dest pair (including when the source and dest are the same) is returned twice
+        # except for (v2)-[]->(v3), which correctly only occurs once as the missing traversal pattern takes 3 hops.
+        expected_result = [['v1', 'v1'],
+                           ['v1', 'v1'],
+                           ['v1', 'v2'],
+                           ['v1', 'v2'],
+                           ['v1', 'v3'],
+                           ['v1', 'v3'],
+                           ['v2', 'v1'],
+                           ['v2', 'v1'],
+                           ['v2', 'v2'],
+                           ['v2', 'v2'],
+                           ['v2', 'v3'],
+                           ['v3', 'v1'],
+                           ['v3', 'v1'],
+                           ['v3', 'v2']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Collect self and all direct neighbors with the pattern (v1)-[]-(v2) oubledrepeated.
+        query = """MATCH (a)-[*0..1]-(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', 'v1'],
+                           ['v1', 'v2'],
+                           ['v1', 'v2'],
+                           ['v2', 'v1'],
+                           ['v2', 'v1'],
+                           ['v2', 'v2'],
+                           ['v2', 'v3'],
+                           ['v3', 'v2'],
+                           ['v3', 'v3']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Remove the edge forming the cycle.
+        query = """MATCH (a {val: 'v1'})<-[e]-(b {val: 'v2'}) DELETE e"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.relationships_deleted, 1)
+
     # Test traversals over explicit relationship types
-    def test05_relation_types(self):
+    def test09_relation_types(self):
         # Add two nodes and two edges of a new type.
         # The new form of the graph will be:
         # (v1)-[:e]->(v2)-[:e]->(v3)-[:q]->(v4)-[:q]->(v5)
@@ -213,7 +354,7 @@ class testRelationPattern(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
     # Test traversals over transposed edge matrices.
-    def test06_transposed_traversals(self):
+    def test10_transposed_traversals(self):
         # The intermediate node 'b' will be used to form the scan operation because it is filtered.
         # As such, one of the traversals must be transposed.
         query = """MATCH (a)-[e]->(b {val:'v3'})-[]->(c:L) RETURN COUNT(e)"""
