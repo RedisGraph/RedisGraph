@@ -109,7 +109,6 @@ Feature: MatchAcceptance
       | (:B {name: 'me'}) |
     And no side effects
 
-@skip
   Scenario: Filter out based on node prop name
     Given an empty graph
     And having executed:
@@ -256,7 +255,6 @@ Feature: MatchAcceptance
       | (:D {animal: 'cow'})    | (:B {animal: 'cow'})    |
     And no side effects
 
-@skip
   Scenario: Return two subgraphs with bound undirected relationship
     Given an empty graph
     And having executed:
