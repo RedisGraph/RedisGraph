@@ -716,9 +716,8 @@ void AlgebraicExpression_SyncOperands(AlgebraicExpression *ae) {
 			}
 
 			s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
-			if(!s) {
-				operand->operand = Graph_GetZeroMatrix(g);
-			} else operand->operand = Graph_GetRelationMatrix(g, s->id);
+			if(!s) operand->operand = Graph_GetZeroMatrix(g);
+			else operand->operand = Graph_GetRelationMatrix(g, s->id);
 		}
 	}
 }
