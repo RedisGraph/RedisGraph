@@ -13,7 +13,6 @@
 #include "../../GraphBLASExt/GxB_Delete.h"
 
 /* Forward declarations. */
-static OpResult ExpandIntoInit(OpBase *opBase);
 static Record ExpandIntoConsume(OpBase *opBase);
 static OpResult ExpandIntoReset(OpBase *opBase);
 static void ExpandIntoFree(OpBase *opBase);
@@ -62,42 +61,31 @@ static void _populate_filter_matrix(OpExpandInto *op) {
 	}
 }
 
-// Initialize all algebraic expression matrices.
-static void _sync_matrices(OpExpandInto *op) {
-	size_t required_dim = Graph_RequiredMatrixDim(op->graph);
-	GrB_Index ncols;
-
-	/* An awkward way of testing if we need to resize as a result of
-	 * entities either being added or removed from the graph */
-	GrB_Matrix_ncols(&ncols, op->F);
-	if(ncols != required_dim) {
-		GxB_Matrix_resize(op->F, op->recordsCap, required_dim);
-		GxB_Matrix_resize(op->M, op->recordsCap, required_dim);
-		AlgebraicExpression_SyncOperands(op->ae);
-	}
-}
-
 /* Evaluate algebraic expression:
  * appends filter matrix as the left most operand
  * perform multiplications.
  * removed filter matrix from original expression
  * clears filter matrix. */
 static void _traverse(OpExpandInto *op) {
-	// Align matrices dimensions.
-	_sync_matrices(op);
+	// Create both filter and result matrices.
+	if(op->F == GrB_NULL) {
+		size_t required_dim = Graph_RequiredMatrixDim(op->graph);
+		GrB_Matrix_new(&op->M, GrB_BOOL, op->recordsCap, required_dim);
+		GrB_Matrix_new(&op->F, GrB_BOOL, op->recordsCap, required_dim);
+	}
 
 	// Populate filter matrix.
 	_populate_filter_matrix(op);
-
+	// Clone expression, as we're about to modify the structure with Optimize.
+	AlgebraicExpression *clone = AlgebraicExpression_Clone(op->ae);
 	// Append filter matrix to algebraic expression, as the left most operand.
-	AlgebraicExpression_PrependTerm(op->ae, op->F, false, false, false);
-
+	AlgebraicExpression_MultiplyToTheLeft(&clone, op->F);
+	// TODO: consider performing optimization as part of evaluation.
+	AlgebraicExpression_Optimize(&clone);
 	// Evaluate expression.
-	AlgebraicExpression_Execute(op->ae, op->M);
-
-	// Remove operand.
-	AlgebraicExpression_RemoveTerm(op->ae, 0, NULL);
-
+	AlgebraicExpression_Eval(clone, op->M);
+	// Free clone.
+	AlgebraicExpression_Free(clone);
 	// Clear filter matrix.
 	GrB_Matrix_clear(op->F);
 }
@@ -107,40 +95,34 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 	OpExpandInto *op = calloc(1, sizeof(OpExpandInto));
 	op->graph = g;
 	op->ae = ae;
-	op->F = NULL;
 	op->r = NULL;
 	op->edges = NULL;
+	op->F = GrB_NULL;
+	op->M = GrB_NULL;
 	op->recordCount = 0;
 	op->edgeRelationTypes = NULL;
 	op->recordsCap = records_cap;
 	op->records = rm_calloc(op->recordsCap, sizeof(Record));
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", ExpandIntoInit, ExpandIntoConsume,
+	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", NULL, ExpandIntoConsume,
 				ExpandIntoReset, ExpandIntoToString, ExpandIntoFree, false, plan);
 
 	// Make sure that all entities are represented in Record
 	op->edgeIdx = IDENTIFIER_NOT_FOUND;
-	assert(OpBase_Aware((OpBase *)op, ae->src, &op->srcNodeIdx));
-	assert(OpBase_Aware((OpBase *)op, ae->dest, &op->destNodeIdx));
+	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
+	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Destination(ae), &op->destNodeIdx));
 
-	if(ae->edge) {
+	const char *edge = AlgebraicExpression_Edge(ae);
+	if(edge) {
+		op->setEdge = true;
 		op->edges = array_new(Edge, 32);
-		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, ae->edge);
+		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
 		_setupTraversedRelations(op, e);
-		op->edgeIdx = OpBase_Modifies((OpBase *)op, ae->edge);
+		op->edgeIdx = OpBase_Modifies((OpBase *)op, edge);
 	}
 
 	return (OpBase *)op;
-}
-
-static OpResult ExpandIntoInit(OpBase *opBase) {
-	OpExpandInto *op = (OpExpandInto *)opBase;
-
-	size_t required_dim = Graph_RequiredMatrixDim(op->graph);
-	GrB_Matrix_new(&op->M, GrB_BOOL, op->recordsCap, required_dim);
-	GrB_Matrix_new(&op->F, GrB_BOOL, op->recordsCap, required_dim);
-	return OP_OK;
 }
 
 /* Emits a record when possible,
@@ -149,7 +131,7 @@ static Record _handoff(OpExpandInto *op) {
 	/* If we're required to update edge,
 	 * try to get an edge, if successful we can return quickly,
 	 * otherwise try to get a new pair of source and destination nodes. */
-	if(op->ae->edge) {
+	if(op->setEdge) {
 		if(_setEdge(op)) return Record_Clone(op->r);
 	}
 
@@ -176,7 +158,7 @@ static Record _handoff(OpExpandInto *op) {
 		if(res != GrB_SUCCESS) continue;
 
 		// If we're here src is connected to dest.
-		if(op->ae->edge) {
+		if(op->setEdge) {
 			for(int i = 0; i < op->edgeRelationCount; i++) {
 				Graph_GetEdgesConnectingNodes(op->graph,
 											  srcId,
@@ -242,7 +224,7 @@ static OpResult ExpandIntoReset(OpBase *ctx) {
 		if(op->records[i]) Record_Free(op->records[i]);
 	}
 	op->recordCount = 0;
-	if(op->F) GrB_Matrix_clear(op->F);
+	if(op->F != GrB_NULL) GrB_Matrix_clear(op->F);
 	if(op->edges) array_clear(op->edges);
 	return OP_OK;
 }
@@ -250,14 +232,14 @@ static OpResult ExpandIntoReset(OpBase *ctx) {
 /* Frees ExpandInto */
 static void ExpandIntoFree(OpBase *ctx) {
 	OpExpandInto *op = (OpExpandInto *)ctx;
-	if(op->F) {
+	if(op->F != GrB_NULL) {
 		GrB_Matrix_free(&op->F);
-		op->F = NULL;
+		op->F = GrB_NULL;
 	}
 
-	if(op->M) {
+	if(op->M != GrB_NULL) {
 		GrB_Matrix_free(&op->M);
-		op->M = NULL;
+		op->M = GrB_NULL;
 	}
 
 	if(op->edges) {

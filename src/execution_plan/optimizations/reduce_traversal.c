@@ -15,7 +15,8 @@
 
 void _removeRedundantTraversal(ExecutionPlan *plan, CondTraverse *traverse) {
 	AlgebraicExpression *ae =  traverse->ae;
-	if(ae->operand_count == 1 && !RG_STRCMP(ae->src, ae->dest)) {
+	if(AlgebraicExpression_OperandCount(ae) == 1 &&
+	   !RG_STRCMP(AlgebraicExpression_Source(ae), AlgebraicExpression_Destination(ae))) {
 		ExecutionPlan_RemoveOp(plan, (OpBase *)traverse);
 		OpBase_Free((OpBase *)traverse);
 	}
@@ -56,12 +57,13 @@ void reduceTraversal(ExecutionPlan *plan) {
 		 * in this case there will be a traverse operation which will
 		 * filter our dest nodes (b) which aren't of type B. */
 
-		if(!RG_STRCMP(ae->src, ae->dest) &&
-		   ae->operand_count == 1 &&
-		   ae->operands[0].diagonal) continue;
+		if(!RG_STRCMP(AlgebraicExpression_Source(ae), AlgebraicExpression_Destination(ae)) &&
+		   AlgebraicExpression_OperandCount(ae) == 1 &&
+		   AlgebraicExpression_DiagonalOperand(ae, 0)) continue;
 
 		/* Search to see if dest is already resolved */
-		if(!ExecutionPlan_LocateOpResolvingAlias(op->children[0], ae->dest)) continue;
+		if(!ExecutionPlan_LocateOpResolvingAlias(op->children[0],
+												 AlgebraicExpression_Destination(ae))) continue;
 
 		/* Both src and dest are already known
 		 * perform expand into instaed of traverse. */
@@ -85,7 +87,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 			 * to perform label filtering, but in case a node is already
 			 * resolved this filtering is redundent and should be removed. */
 			OpBase *t;
-			QGNode *src = QueryGraph_GetNodeByAlias(traverse_plan->query_graph, ae->src);
+			QGNode *src = QueryGraph_GetNodeByAlias(traverse_plan->query_graph, AlgebraicExpression_Source(ae));
 			if(src->label) {
 				t = op->children[0];
 				if(t->type == OPType_CONDITIONAL_TRAVERSE) {
@@ -93,7 +95,8 @@ void reduceTraversal(ExecutionPlan *plan) {
 					redundantTraversals[redundantTraversalsCount++] = (CondTraverse *)t;
 				}
 			}
-			QGNode *dest = QueryGraph_GetNodeByAlias(traverse_plan->query_graph, ae->dest);
+			QGNode *dest = QueryGraph_GetNodeByAlias(traverse_plan->query_graph,
+													 AlgebraicExpression_Destination(ae));
 			if(dest->label) {
 				t = op->parent;
 				if(t->type == OPType_CONDITIONAL_TRAVERSE) {
