@@ -367,13 +367,6 @@ static AST_Validation _ValidateRelation(rax *projections, const cypher_astnode_t
 		if(res != AST_VALID) return res;
 	}
 
-	// Validate that the relation is explicit and directed
-	// TODO Lift this limitation when possible
-	if(cypher_ast_rel_pattern_get_direction(edge) == CYPHER_REL_BIDIRECTIONAL) {
-		asprintf(reason, "RedisGraph does not currently support undirected relations.");
-		return AST_INVALID;
-	};
-
 	return res;
 }
 

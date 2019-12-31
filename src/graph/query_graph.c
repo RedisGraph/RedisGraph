@@ -54,48 +54,42 @@ static void _BuildQueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	AST *ast = QueryCtx_GetAST();
 	const char *alias = AST_GetEntityName(ast, ast_entity);
+	enum cypher_rel_direction dir = cypher_ast_rel_pattern_get_direction(ast_entity);
 
 	// Each edge can only appear once in a QueryGraph.
 	assert(QueryGraph_GetEdgeByAlias(qg, alias) == NULL);
 
-	QGEdge *e = QGEdge_New(NULL, NULL, NULL, alias);
-
-	// Swap the source and destination for left-pointing relations
-	if(cypher_ast_rel_pattern_get_direction(ast_entity) == CYPHER_REL_INBOUND) {
-		QGNode *tmp = src;
-		src = dest;
-		dest = tmp;
-	}
+	QGEdge *edge = QGEdge_New(NULL, NULL, NULL, alias);
+	edge->bidirectional = (dir == CYPHER_REL_BIDIRECTIONAL);
 
 	// Add the IDs of all reltype matrixes
 	uint nreltypes = cypher_ast_rel_pattern_nreltypes(ast_entity);
 	for(uint i = 0; i < nreltypes; i ++) {
 		const char *reltype = cypher_ast_reltype_get_name(cypher_ast_rel_pattern_get_reltype(ast_entity,
 														  i));
-		e->reltypes = array_append(e->reltypes, reltype);
+		edge->reltypes = array_append(edge->reltypes, reltype);
 		Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
 		if(!s) {
-			e->reltypeIDs = array_append(e->reltypeIDs, GRAPH_UNKNOWN_RELATION);
+			edge->reltypeIDs = array_append(edge->reltypeIDs, GRAPH_UNKNOWN_RELATION);
 			continue;
 		}
-		e->reltypeIDs = array_append(e->reltypeIDs, s->id);
+		edge->reltypeIDs = array_append(edge->reltypeIDs, s->id);
 	}
 
 	// Incase of a variable length edge, set edge min/max hops.
 	const cypher_astnode_t *range = cypher_ast_rel_pattern_get_varlength(ast_entity);
 	if(range) {
 		const cypher_astnode_t *start = cypher_ast_range_get_start(range);
-		if(start) e->minHops = AST_ParseIntegerNode(start);
-
 		const cypher_astnode_t *end = cypher_ast_range_get_end(range);
-		if(end) {
-			e->maxHops = AST_ParseIntegerNode(end);
-		} else {
-			e->maxHops = EDGE_LENGTH_INF;
-		}
+		if(start) edge->minHops = AST_ParseIntegerNode(start);
+		if(end) edge->maxHops = AST_ParseIntegerNode(end);
+		else edge->maxHops = EDGE_LENGTH_INF;
 	}
 
-	QueryGraph_ConnectNodes(qg, src, dest, e);
+	// Build and add a QGEdge representing this entity to the QueryGraph.
+	// Swap the source and destination for left-pointing relations
+	if(dir != CYPHER_REL_INBOUND) QueryGraph_ConnectNodes(qg, src, dest, edge);
+	else QueryGraph_ConnectNodes(qg, dest, src, edge);
 }
 
 QueryGraph *QueryGraph_New(uint node_cap, uint edge_cap) {
@@ -142,10 +136,8 @@ void QueryGraph_AddPath(QueryGraph *qg, const GraphContext *gc, const cypher_ast
 		QGNode *right = QueryGraph_GetNodeByAlias(qg, r_alias);
 
 		// Retrieve the AST reference to this edge.
-		const cypher_astnode_t *entity = cypher_ast_pattern_path_get_element(path, i);
-
-		// Build and add a QGEdge representing this entity to the QueryGraph.
-		_BuildQueryGraphAddEdge(qg, entity, left, right);
+		const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
+		_BuildQueryGraphAddEdge(qg, edge, left, right);
 	}
 }
 

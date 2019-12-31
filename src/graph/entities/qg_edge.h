@@ -19,6 +19,7 @@ struct QGEdge {
 	QGNode *dest;           /* Pointer to destination node. */
 	uint minHops;           /* Minimum number of hops this edge represents. */
 	uint maxHops;           /* Maximum number of hops this edge represents. */
+    bool bidirectional;     /* Edge doesn't have a direction. */
 };
 
 typedef struct QGEdge QGEdge;

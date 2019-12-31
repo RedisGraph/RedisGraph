@@ -76,14 +76,16 @@ static void _traverse(OpExpandInto *op) {
 
 	// Populate filter matrix.
 	_populate_filter_matrix(op);
+	// Clone expression, as we're about to modify the structure with Optimize.
+	AlgebraicExpression *clone = AlgebraicExpression_Clone(op->ae);
 	// Append filter matrix to algebraic expression, as the left most operand.
-	AlgebraicExpression_MultiplyToTheLeft(&op->ae, op->F);
+	AlgebraicExpression_MultiplyToTheLeft(&clone, op->F);
 	// TODO: consider performing optimization as part of evaluation.
-	AlgebraicExpression_Optimize(&op->ae);
+	AlgebraicExpression_Optimize(&clone);
 	// Evaluate expression.
-	AlgebraicExpression_Eval(op->ae, op->M);
-	// Remove and free operand.
-	AlgebraicExpression_Free(AlgebraicExpression_RemoveLeftmostNode(&op->ae));
+	AlgebraicExpression_Eval(clone, op->M);
+	// Free clone.
+	AlgebraicExpression_Free(clone);
 	// Clear filter matrix.
 	GrB_Matrix_clear(op->F);
 }

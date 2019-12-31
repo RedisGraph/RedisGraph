@@ -237,6 +237,24 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
 			break;
 		}
 
+		if(e->bidirectional) {
+			/* ()-[]-()
+			 * The Adj + Transpose(The Adj)
+			 *
+			 * ()-[:R]-()
+			 * R + Transpose(R)
+			 *
+			 * ()-[:R0|R1]-()
+			 * (R0 + R1) + Transpose(R0 + R1) */
+			add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
+			AlgebraicExpression_AddChild(add, root);
+
+			AlgebraicExpression *op_transpose = AlgebraicExpression_NewOperation(AL_EXP_TRANSPOSE);
+			AlgebraicExpression_AddChild(op_transpose, AlgebraicExpression_Clone(root));
+			AlgebraicExpression_AddChild(add, op_transpose);
+			root = add;
+		}
+
 		/* Expand fixed variable length edge.
 		 * -[A*2..2]->
 		 * A*A

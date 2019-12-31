@@ -66,14 +66,16 @@ void _traverse(CondTraverse *op) {
 
 	// Populate filter matrix.
 	_populate_filter_matrix(op);
+	// Clone expression, as we're about to modify the structure with Optimize.
+	AlgebraicExpression *clone = AlgebraicExpression_Clone(op->ae);
 	// Prepend matrix to algebraic expression, as the left most operand.
-	AlgebraicExpression_MultiplyToTheLeft(&op->ae, op->F);
+	AlgebraicExpression_MultiplyToTheLeft(&clone, op->F);
 	// TODO: consider performing optimization as part of evaluation.
-	AlgebraicExpression_Optimize(&op->ae);
+	AlgebraicExpression_Optimize(&clone);
 	// Evaluate expression.
-	AlgebraicExpression_Eval(op->ae, op->M);
-	// Remove and free operand.
-	AlgebraicExpression_Free(AlgebraicExpression_RemoveLeftmostNode(&op->ae));
+	AlgebraicExpression_Eval(clone, op->M);
+	// Free clone.
+	AlgebraicExpression_Free(clone);
 
 	if(op->iter == NULL) GxB_MatrixTupleIter_new(&op->iter, op->M);
 	else GxB_MatrixTupleIter_reuse(op->iter, op->M);
@@ -265,4 +267,3 @@ static void CondTraverseFree(OpBase *ctx) {
 		op->records = NULL;
 	}
 }
-
