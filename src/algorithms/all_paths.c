@@ -73,9 +73,11 @@ Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 
 			/* If depth is 0 this is the source node, there is no leading edge to it.
 			 * For depth > 0 for each frontier node, there is a leading edge. */
+			EntityID frontierId = INVALID_ENTITY_ID;
 			if(depth > 0) {
 				Edge frontierEdge = frontierConnection.edge;
 				Path_AppendEdge(ctx->path, frontierEdge);
+				frontierId = ENTITY_GET_ID(&frontierEdge);
 			}
 
 			// Update path depth.
@@ -86,16 +88,24 @@ Path *AllPathsCtx_NextPath(AllPathsCtx *ctx) {
 			if(depth < ctx->maxLen && !frontierAlreadyOnPath) {
 				// Get frontier neighbors.
 				for(int i = 0; i < ctx->relationCount; i++) {
-					Graph_GetNodeEdges(ctx->g, &frontierNode, ctx->dir, ctx->relationIDs[i],
-									   &ctx->neighbors);
+					Graph_GetNodeEdges(ctx->g, &frontierNode, ctx->dir, ctx->relationIDs[i], &ctx->neighbors);
 				}
 
 				// Add unvisited neighbors to next level.
 				uint32_t neighborsCount = array_len(ctx->neighbors);
 				for(uint32_t i = 0; i < neighborsCount; i++) {
-					// TODO might need to check direction!
+					// Don't follow the frontier edge again.
+					if(frontierId == ENTITY_GET_ID(ctx->neighbors + i)) continue;
 					Node neighbor;
-					if(ctx->dir == GRAPH_EDGE_DIR_OUTGOING) {
+					bool neighbor_is_dest = false;
+					if(ctx->dir == GRAPH_EDGE_DIR_BOTH) {
+						/* If we're traversing bidirectionally, the frontier node will always be the
+						 * source or destination of each edge. We are only interested in the other node. */
+						EntityID destId = Edge_GetDestNodeID(ctx->neighbors + i);
+						neighbor_is_dest = ENTITY_GET_ID(&frontierNode) != destId;
+					}
+
+					if(ctx->dir == GRAPH_EDGE_DIR_OUTGOING || neighbor_is_dest) {
 						Graph_GetNode(ctx->g, Edge_GetDestNodeID(ctx->neighbors + i), &neighbor);
 					} else {
 						Graph_GetNode(ctx->g, Edge_GetSrcNodeID(ctx->neighbors + i), &neighbor);
@@ -138,3 +148,4 @@ void AllPathsCtx_Free(AllPathsCtx *ctx) {
 	rm_free(ctx);
 	ctx = NULL;
 }
+

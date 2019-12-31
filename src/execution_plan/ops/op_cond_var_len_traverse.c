@@ -75,10 +75,6 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	op->qg = plan->query_graph;
 	op->edgeRelationTypes = NULL;
 
-	// The AlgebraicExpression populating a variable-length traversal only contains one operand.
-	op->traverseDir = AlgebraicExpression_Transposed(ae) ? GRAPH_EDGE_DIR_INCOMING :
-					  GRAPH_EDGE_DIR_OUTGOING;
-
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
 				"Conditional Variable Length Traverse", NULL, CondVarLenTraverseConsume, CondVarLenTraverseReset,
 				CondVarLenTraverseToString, CondVarLenTraverseFree, false, plan);
@@ -89,9 +85,17 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	// Populate edge value in record only if it is referenced.
 	AST *ast = QueryCtx_GetAST();
 	QGEdge *e = QueryGraph_GetEdgeByAlias(op->qg, AlgebraicExpression_Edge(op->ae));
-	if(AST_AliasIsReferenced(ast, e->alias))
-		op->edgesIdx = OpBase_Modifies((OpBase *)op, e->alias);
+	if(AST_AliasIsReferenced(ast, e->alias)) op->edgesIdx = OpBase_Modifies((OpBase *)op, e->alias);
 	else op->edgesIdx = -1;
+
+	if(e->bidirectional) {
+		op->traverseDir = GRAPH_EDGE_DIR_BOTH;
+	} else if(AlgebraicExpression_Transposed(ae)) {
+		// If the sole operand in the AlgebraicExpression is transposed, we are traversing right-to-left.
+		op->traverseDir = GRAPH_EDGE_DIR_INCOMING;
+	} else {
+		op->traverseDir = GRAPH_EDGE_DIR_OUTGOING;
+	}
 
 	return (OpBase *)op;
 }
@@ -118,16 +122,13 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 		}
 
 		Node *srcNode = Record_GetNode(op->r, op->srcNodeIdx);
+		// The destination node is known in advance if we're performing an ExpandInto.
+		Node *destNode = NULL;
+		if(op->expandInto) destNode = Record_GetNode(op->r, op->destNodeIdx);
 
 		AllPathsCtx_Free(op->allPathsCtx);
-		if(op->expandInto) {
-			Node *destNode = Record_GetNode(op->r, op->destNodeIdx);
-			op->allPathsCtx = AllPathsCtx_New(srcNode, destNode, op->g, op->edgeRelationTypes,
-											  op->edgeRelationCount, op->traverseDir, op->minHops, op->maxHops);
-		} else {
-			op->allPathsCtx = AllPathsCtx_New(srcNode, NULL, op->g, op->edgeRelationTypes,
-											  op->edgeRelationCount, op->traverseDir, op->minHops, op->maxHops);
-		}
+		op->allPathsCtx = AllPathsCtx_New(srcNode, destNode, op->g, op->edgeRelationTypes,
+										  op->edgeRelationCount, op->traverseDir, op->minHops, op->maxHops);
 
 	}
 
@@ -174,3 +175,4 @@ static void CondVarLenTraverseFree(OpBase *ctx) {
 		op->allPathsCtx = NULL;
 	}
 }
+
