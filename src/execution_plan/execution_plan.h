@@ -96,8 +96,11 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set);
 ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void);
 
 /* Build a tree of operations that performs all the work required by the clauses of the current AST. */
-void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set,
-										 OpBase *prev_scope_root, OpBase *prev_scope_end);
+void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set);
+
+// TODO: Remove this once filter are placed after their respective clause.
+/* Place filter ops*/
+void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_limit);
 
 /* Retrieve the map of aliases to Record offsets in this ExecutionPlan segment. */
 rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan);

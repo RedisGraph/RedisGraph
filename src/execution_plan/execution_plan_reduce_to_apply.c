@@ -26,7 +26,8 @@ static OpBase *_buildMatchBranch(ExecutionPlan *plan, const cypher_astnode_t *pa
 	// Build a temporary AST holding a MATCH clause.
 	AST *match_branch_ast = AST_MockMatchPattern(ast, path);
 
-	ExecutionPlan_PopulateExecutionPlan(match_branch_plan, NULL, NULL, NULL);
+	ExecutionPlan_PopulateExecutionPlan(match_branch_plan, NULL);
+	if(match_branch_plan->filter_tree) ExecutionPlan_PlaceFilterOps(match_branch_plan, NULL);
 
 	AST_MockFree(match_branch_ast);
 	QueryCtx_SetAST(ast); // Reset the AST.
