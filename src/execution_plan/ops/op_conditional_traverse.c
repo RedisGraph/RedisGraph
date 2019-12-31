@@ -11,7 +11,6 @@
 #include "../../arithmetic/arithmetic_expression.h"
 
 /* Forward declarations. */
-static OpResult CondTraverseInit(OpBase *opBase);
 static Record CondTraverseConsume(OpBase *opBase);
 static OpResult CondTraverseReset(OpBase *opBase);
 static void CondTraverseFree(OpBase *opBase);
@@ -37,6 +36,19 @@ static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
 	Record_AddEdge(r, op->edgeRecIdx, *e);
 	array_pop(op->edges);
 	return 1;
+}
+
+// Collect edges between the source and destination nodes.
+static void _CondTraverse_CollectEdges(CondTraverse *op, int src, int dest) {
+	Node *srcNode = Record_GetNode(op->r, src);
+	Node *destNode = Record_GetNode(op->r, dest);
+	for(int i = 0; i < op->edgeRelationCount; i++) {
+		Graph_GetEdgesConnectingNodes(op->graph,
+									  ENTITY_GET_ID(srcNode),
+									  ENTITY_GET_ID(destNode),
+									  op->edgeRelationTypes[i],
+									  &op->edges);
+	}
 }
 
 static void _populate_filter_matrix(CondTraverse *op) {
@@ -99,13 +111,13 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	op->F = GrB_NULL;
 	op->M = GrB_NULL;
 	op->recordsLen = 0;
-	op->transposed_edge = false;
+	op->direction = GRAPH_EDGE_DIR_OUTGOING;
 	op->edgeRelationTypes = NULL;
 	op->recordsCap = records_cap;
 	op->records = rm_calloc(op->recordsCap, sizeof(Record));
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", CondTraverseInit,
+	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", NULL,
 				CondTraverseConsume, CondTraverseReset, CondTraverseToString, CondTraverseFree, false, plan);
 
 	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
@@ -118,24 +130,17 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 		_setupTraversedRelations(op, qg_edge);
 		op->edgeRecIdx = OpBase_Modifies((OpBase *)op, edge);
 		op->setEdge = true;
+		// Determine the edge directions we need to collect.
+		if(qg_edge->bidirectional) {
+			op->direction = GRAPH_EDGE_DIR_BOTH;
+		} else if(AlgebraicExpression_ContainsOp(ae, AL_EXP_TRANSPOSE)) {
+			/* If this operation traverses a transposed edge, the source and destination nodes
+			 * will be swapped in the Record. */
+			op->direction = GRAPH_EDGE_DIR_INCOMING;
+		}
 	}
 
 	return (OpBase *)op;
-}
-
-static OpResult CondTraverseInit(OpBase *opBase) {
-	CondTraverse *op = (CondTraverse *)opBase;
-	AlgebraicExpression *exp = op->ae;
-
-	// Nothing needs to be done if we're not populating an edge.
-	if(AlgebraicExpression_Edge(exp) == NULL) return OP_OK;
-
-	/* Given an AlgebraicExpression with a populated edge, determine whether we're traversing a
-	 * transposed edge matrix.
-	 * If this operation traverses a transposed edge, the source and destination nodes
-	 * will be swapped in the Record. */
-	op->transposed_edge = AlgebraicExpression_ContainsOp(exp, AL_EXP_TRANSPOSE);
-	return OP_OK;
 }
 
 /* CondTraverseConsume next operation
@@ -190,26 +195,21 @@ static Record CondTraverseConsume(OpBase *opBase) {
 	Graph_GetNode(op->graph, dest_id, destNode);
 
 	if(op->setEdge) {
-		// We're guarantee to have at least one edge.
-		Node *srcNode;
-		Node *destNode;
-
-		if(op->transposed_edge) {
-			srcNode = Record_GetNode(op->r, op->destNodeIdx);
-			destNode = Record_GetNode(op->r, op->srcNodeIdx);
-		} else {
-			srcNode = Record_GetNode(op->r, op->srcNodeIdx);
-			destNode = Record_GetNode(op->r, op->destNodeIdx);
+		// We're guaranteed to have at least one edge.
+		switch(op->direction) {
+		case GRAPH_EDGE_DIR_OUTGOING:
+			_CondTraverse_CollectEdges(op, op->srcNodeIdx, op->destNodeIdx);
+			break;
+		case GRAPH_EDGE_DIR_INCOMING:
+			// If we're traversing incoming edges, swap the source and destination.
+			_CondTraverse_CollectEdges(op, op->destNodeIdx, op->srcNodeIdx);
+			break;
+		case GRAPH_EDGE_DIR_BOTH:
+			// If we're traversing in both directions, collect edges in both directions.
+			_CondTraverse_CollectEdges(op, op->srcNodeIdx, op->destNodeIdx);
+			_CondTraverse_CollectEdges(op, op->destNodeIdx, op->srcNodeIdx);
+			break;
 		}
-
-		for(int i = 0; i < op->edgeRelationCount; i++) {
-			Graph_GetEdgesConnectingNodes(op->graph,
-										  ENTITY_GET_ID(srcNode),
-										  ENTITY_GET_ID(destNode),
-										  op->edgeRelationTypes[i],
-										  &op->edges);
-		}
-
 		_CondTraverse_SetEdge(op, op->r);
 	}
 
@@ -267,3 +267,4 @@ static void CondTraverseFree(OpBase *ctx) {
 		op->records = NULL;
 	}
 }
+
