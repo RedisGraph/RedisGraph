@@ -74,4 +74,3 @@ cleanup:
 	CommandCtx_Free(command_ctx);
 	parse_result_free(parse_result);
 }
-

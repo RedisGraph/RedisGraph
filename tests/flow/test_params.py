@@ -18,7 +18,7 @@ class testParams(FlowTestsBase):
         redis_graph = Graph(GRAPH_ID, redis_con)
 
     def setUp(self):
-        self.env.flush() 
+        self.env.flush()
     
     def test_simple_params(self):
         params = [1, 2.3, "str", True, False, None, [0, 1, 2]]

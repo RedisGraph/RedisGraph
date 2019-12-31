@@ -28,18 +28,6 @@ static void _setupTraversedRelations(CondTraverse *op, QGEdge *e) {
 	}
 }
 
-/* Given an AlgebraicExpression with a populated edge, determine whether we're traversing a
- * transposed edge matrix. The edge matrix will be either the first or second operand, and is
- * the only operand which can be transposed (as the others are label diagonals). */
-static inline bool _expressionContainsTranspose(AlgebraicExpression *exp) {
-	for(uint i = 0; i < exp->operand_count; i ++) {
-		if(exp->operands[i].transpose) {
-			return true;
-		}
-	}
-	return false;
-}
-
 // Updates query graph edge.
 static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
 	// Consumed edges connecting current source and destination nodes.
@@ -62,21 +50,6 @@ static void _populate_filter_matrix(CondTraverse *op) {
 	}
 }
 
-// Initialize all algebraic expression matrices.
-static void _sync_matrices(CondTraverse *op) {
-	size_t required_dim = Graph_RequiredMatrixDim(op->graph);
-	GrB_Index ncols;
-
-	/* An awkward way of testing if we need to resize as a result of
-	 * entities either being added or removed from the graph */
-	GrB_Matrix_ncols(&ncols, op->F);
-	if(ncols != required_dim) {
-		GxB_Matrix_resize(op->F, op->recordsCap, required_dim);
-		GxB_Matrix_resize(op->M, op->recordsCap, required_dim);
-		AlgebraicExpression_SyncOperands(op->ae);
-	}
-}
-
 /* Evaluate algebraic expression:
  * prepends filter matrix as the left most operand
  * perform multiplications
@@ -84,17 +57,25 @@ static void _sync_matrices(CondTraverse *op) {
  * removed filter matrix from original expression
  * clears filter matrix. */
 void _traverse(CondTraverse *op) {
-	// Align matrices dimensions.
-	_sync_matrices(op);
+	// Create both filter and result matrices.
+	if(op->F == GrB_NULL) {
+		size_t required_dim = Graph_RequiredMatrixDim(op->graph);
+		GrB_Matrix_new(&op->M, GrB_BOOL, op->recordsCap, required_dim);
+		GrB_Matrix_new(&op->F, GrB_BOOL, op->recordsCap, required_dim);
+	}
+
 	// Populate filter matrix.
 	_populate_filter_matrix(op);
+	// Clone expression, as we're about to modify the structure with Optimize.
+	AlgebraicExpression *clone = AlgebraicExpression_Clone(op->ae);
 	// Prepend matrix to algebraic expression, as the left most operand.
-	AlgebraicExpression_PrependTerm(op->ae, op->F, false, false, false);
+	AlgebraicExpression_MultiplyToTheLeft(&clone, op->F);
+	// TODO: consider performing optimization as part of evaluation.
+	AlgebraicExpression_Optimize(&clone);
 	// Evaluate expression.
-	AlgebraicExpression_Execute(op->ae, op->M);
-
-	// Remove operand.
-	AlgebraicExpression_RemoveTerm(op->ae, 0, NULL);
+	AlgebraicExpression_Eval(clone, op->M);
+	// Free clone.
+	AlgebraicExpression_Free(clone);
 
 	if(op->iter == NULL) GxB_MatrixTupleIter_new(&op->iter, op->M);
 	else GxB_MatrixTupleIter_reuse(op->iter, op->M);
@@ -113,31 +94,30 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	op->graph = g;
 	op->ae = ae;
 	op->r = NULL;
-	op->F = NULL;
 	op->iter = NULL;
 	op->edges = NULL;
+	op->F = GrB_NULL;
+	op->M = GrB_NULL;
 	op->recordsLen = 0;
 	op->transposed_edge = false;
 	op->edgeRelationTypes = NULL;
 	op->recordsCap = records_cap;
 	op->records = rm_calloc(op->recordsCap, sizeof(Record));
 
-	size_t required_dim = Graph_RequiredMatrixDim(g);
-	GrB_Matrix_new(&op->M, GrB_BOOL, op->recordsCap, required_dim);
-	GrB_Matrix_new(&op->F, GrB_BOOL, op->recordsCap, required_dim);
-
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", CondTraverseInit,
 				CondTraverseConsume, CondTraverseReset, CondTraverseToString, CondTraverseFree, false, plan);
 
-	assert(OpBase_Aware((OpBase *)op, ae->src, &op->srcNodeIdx));
-	op->destNodeIdx = OpBase_Modifies((OpBase *)op, ae->dest);
+	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
+	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
 
-	if(ae->edge) {
+	const char *edge = AlgebraicExpression_Edge(ae);
+	if(edge) {
 		op->edges = array_new(Edge, 32);
-		QGEdge *qg_edge = QueryGraph_GetEdgeByAlias(plan->query_graph, ae->edge);
+		QGEdge *qg_edge = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
 		_setupTraversedRelations(op, qg_edge);
-		op->edgeRecIdx = OpBase_Modifies((OpBase *)op, ae->edge);
+		op->edgeRecIdx = OpBase_Modifies((OpBase *)op, edge);
+		op->setEdge = true;
 	}
 
 	return (OpBase *)op;
@@ -148,11 +128,13 @@ static OpResult CondTraverseInit(OpBase *opBase) {
 	AlgebraicExpression *exp = op->ae;
 
 	// Nothing needs to be done if we're not populating an edge.
-	if(exp->edge == NULL) return OP_OK;
-	// If this operation traverses a transposed edge, the source and destination nodes
-	// will be swapped in the Record.
-	op->transposed_edge = _expressionContainsTranspose(exp);
+	if(AlgebraicExpression_Edge(exp) == NULL) return OP_OK;
 
+	/* Given an AlgebraicExpression with a populated edge, determine whether we're traversing a
+	 * transposed edge matrix.
+	 * If this operation traverses a transposed edge, the source and destination nodes
+	 * will be swapped in the Record. */
+	op->transposed_edge = AlgebraicExpression_ContainsOp(exp, AL_EXP_TRANSPOSE);
 	return OP_OK;
 }
 
@@ -166,7 +148,7 @@ static Record CondTraverseConsume(OpBase *opBase) {
 	/* If we're required to update edge,
 	 * try to get an edge, if successful we can return quickly,
 	 * otherwise try to get a new pair of source and destination nodes. */
-	if(op->ae->edge) {
+	if(op->setEdge) {
 		if(_CondTraverse_SetEdge(op, op->r)) {
 			return Record_Clone(op->r);
 		}
@@ -207,7 +189,7 @@ static Record CondTraverseConsume(OpBase *opBase) {
 	Node *destNode = Record_GetNode(op->r, op->destNodeIdx);
 	Graph_GetNode(op->graph, dest_id, destNode);
 
-	if(op->ae->edge) {
+	if(op->setEdge) {
 		// We're guarantee to have at least one edge.
 		Node *srcNode;
 		Node *destNode;
@@ -242,7 +224,7 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 		GxB_MatrixTupleIter_free(op->iter);
 		op->iter = NULL;
 	}
-	if(op->F) GrB_Matrix_clear(op->F);
+	if(op->F != GrB_NULL) GrB_Matrix_clear(op->F);
 	return OP_OK;
 }
 
@@ -254,14 +236,14 @@ static void CondTraverseFree(OpBase *ctx) {
 		op->iter = NULL;
 	}
 
-	if(op->F) {
+	if(op->F != GrB_NULL) {
 		GrB_Matrix_free(&op->F);
-		op->F = NULL;
+		op->F = GrB_NULL;
 	}
 
-	if(op->M) {
+	if(op->M != GrB_NULL) {
 		GrB_Matrix_free(&op->M);
-		op->M = NULL;
+		op->M = GrB_NULL;
 	}
 
 	if(op->edges) {
@@ -285,4 +267,3 @@ static void CondTraverseFree(OpBase *ctx) {
 		op->records = NULL;
 	}
 }
-
