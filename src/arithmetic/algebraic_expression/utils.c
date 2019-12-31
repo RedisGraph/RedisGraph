@@ -162,10 +162,6 @@ void _AlgebraicExpression_FreeOperand
 	AlgebraicExpression *node
 ) {
 	assert(node && node->type == AL_OPERAND);
-	if(node->operand.free) {
-		// TODO: Free matrix.
-		// GrB_free(node->operand.matrix);
-	}
 }
 
 // Locate operand at position `operand_idx` counting from left to right.

@@ -7,11 +7,11 @@
 #include "utils.h"
 #include "../../util/arr.h"
 
-static bool _AlgebraicExpression_IsMultiplicationNode(const AlgebraicExpression *node) {
+static inline bool _AlgebraicExpression_IsMultiplicationNode(const AlgebraicExpression *node) {
 	return (node->type == AL_OPERATION && node->operation.op == AL_EXP_MUL);
 }
 
-static bool _AlgebraicExpression_IsAdditionNode(const AlgebraicExpression *node) {
+static inline bool _AlgebraicExpression_IsAdditionNode(const AlgebraicExpression *node) {
 	return (node->type == AL_OPERATION && node->operation.op == AL_EXP_ADD);
 }
 
@@ -23,36 +23,36 @@ static void _AlgebraicExpression_CollectOperands(AlgebraicExpression *root,
 
 	switch(root->type) {
 	case AL_OPERAND:
-		*operands = array_append(*operands, root);
+		*operands = array_append(*operands, AlgebraicExpression_Clone(root));
 		break;
 	case AL_OPERATION:
 		switch(root->operation.op) {
 		case AL_EXP_TRANSPOSE:
 			// Transpose is considered as an operand.
-			*operands = array_append(*operands, root);
+			*operands = array_append(*operands, AlgebraicExpression_Clone(root));
 			break;
 		case AL_EXP_ADD:
 		case AL_EXP_MUL:
 			child_count = AlgebraicExpression_ChildCount(root);
 			for(uint i = 0; i < child_count; i++) {
-				_AlgebraicExpression_CollectOperands(AlgebraicExpression_Clone(CHILD_AT(root, i)), operands);
+				_AlgebraicExpression_CollectOperands(CHILD_AT(root, i), operands);
 			}
 			break;
 		default:
-			assert("Unknow algebraic expression operation type" && false);
+			assert("Unknown algebraic expression operation type" && false);
 			break;
 		}
 		break;
 	default:
-		assert("Unknow algebraic expression node type" && false);
+		assert("Unknown algebraic expression node type" && false);
 		break;
 	}
 }
 
 static bool __AlgebraicExpression_MulOverSum(AlgebraicExpression **root) {
 	if(_AlgebraicExpression_IsMultiplicationNode(*root)) {
-		AlgebraicExpression *l = (*root)->operation.children[0];
-		AlgebraicExpression *r = (*root)->operation.children[1];
+		AlgebraicExpression *l = CHILD_AT((*root), 0);
+		AlgebraicExpression *r = CHILD_AT((*root), 1);
 
 		if(_AlgebraicExpression_IsAdditionNode(l) && _AlgebraicExpression_IsAdditionNode(r)) {
 			// MATCH ()-[:A|B]->()-[:C|D]->()
@@ -92,22 +92,27 @@ static bool __AlgebraicExpression_MulOverSum(AlgebraicExpression **root) {
 			array_free(right_ops);
 
 			// Sum all multiplications: (A*C)+(A*D)+(B*C)+(B*D).
-			AlgebraicExpression *add = _AlgebraicExpression_AddToTheRight(multiplications[0],
-																		  multiplications[1]);
-			for(uint i = 2; i < (left_op_count * right_op_count); i++) {
+			AlgebraicExpression *add = multiplications[0];
+			for(uint i = 1; i < (left_op_count * right_op_count); i++) {
 				add = _AlgebraicExpression_AddToTheRight(add, multiplications[i]);
 			}
+
 			array_free(multiplications);
 
 			// Free root internals and overwrite it with new addition root.
 			_AlgebraicExpression_FreeOperation((*root));
 			// Update root.
-			memcpy((*root), add, sizeof(AlgebraicExpression));
+			*root = add;
 			return true;
 		}
 
 		else if((_AlgebraicExpression_IsAdditionNode(l) && !_AlgebraicExpression_IsAdditionNode(r)) ||
 				(_AlgebraicExpression_IsAdditionNode(r) && !_AlgebraicExpression_IsAdditionNode(l))) {
+
+			// Disconnect left and right children from root.
+			r = _AlgebraicExpression_OperationRemoveRightmostChild((*root));
+			l = _AlgebraicExpression_OperationRemoveRightmostChild((*root));
+			assert(AlgebraicExpression_ChildCount(*root) == 0);
 
 			AlgebraicExpression *add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
 			AlgebraicExpression *lMul = AlgebraicExpression_NewOperation(AL_EXP_MUL);
@@ -120,7 +125,7 @@ static bool __AlgebraicExpression_MulOverSum(AlgebraicExpression **root) {
 			AlgebraicExpression *B;
 			AlgebraicExpression *C;
 
-			if(l->operation.op == AL_EXP_ADD) {
+			if(_AlgebraicExpression_IsAdditionNode(l)) {
 				// Lefthand side is addition.
 				// (A + B) * C = (A * C) + (B * C)
 
@@ -133,9 +138,6 @@ static bool __AlgebraicExpression_MulOverSum(AlgebraicExpression **root) {
 				AlgebraicExpression_AddChild(lMul, C);
 				AlgebraicExpression_AddChild(rMul, B);
 				AlgebraicExpression_AddChild(rMul, AlgebraicExpression_Clone(C));
-
-				// TODO: Mark r as reusable.
-				// if(r->type == AL_OPERATION) r->operation.reusable = true;
 			} else {
 				// Righthand side is addition.
 				// C * (A + B) = (C * A) + (C * B)
@@ -149,10 +151,10 @@ static bool __AlgebraicExpression_MulOverSum(AlgebraicExpression **root) {
 				AlgebraicExpression_AddChild(lMul, A);
 				AlgebraicExpression_AddChild(rMul, AlgebraicExpression_Clone(C));
 				AlgebraicExpression_AddChild(rMul, B);
-
-				// TODO: Mark r as reusable.
-				// if(l->type == AL_OPERATION) l->operation.reusable = true;
 			}
+			// Free root internals and overwrite it with new addition root.
+			_AlgebraicExpression_FreeOperation((*root));
+			// Update root.
 			*root = add;
 			return true;
 		}
@@ -216,18 +218,16 @@ static void _AlgebraicExpression_FlattenMultiplications(AlgebraicExpression *roo
 		case AL_EXP_MUL:
 			// Root has sub multiplication node(s).
 			if(AlgebraicExpression_OperationCount(root, AL_EXP_MUL) > 1) {
-				child_count = AlgebraicExpression_ChildCount(root);
+				child_count = AlgebraicExpression_OperandCount(root);
 				AlgebraicExpression **flat_children = array_new(AlgebraicExpression *, child_count);
 				_AlgebraicExpression_CollectOperands(root, &flat_children);
-				// Free `old` child array.
-				for(uint i = 0; i < child_count; i++) AlgebraicExpression_Free(CHILD_AT(root, i));
-				array_free(root->operation.children);
+				_AlgebraicExpression_FreeOperation(root);
 				root->operation.children = flat_children;
 			}
 
 			break;
 		default:
-			assert("Unknown algebraic operation type" && false);
+			assert("Unknownn algebraic operation type" && false);
 			break;
 		}
 	default:

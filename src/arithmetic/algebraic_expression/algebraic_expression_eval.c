@@ -18,7 +18,7 @@ static GrB_Matrix _Eval_Transpose
 ) {
 	assert(exp && AlgebraicExpression_ChildCount(exp) == 1);
 
-	AlgebraicExpression *child = exp->operation.children[0];
+	AlgebraicExpression *child = FIRST_CHILD(exp);
 	assert(child->type == AL_OPERAND);
 	GrB_Info info = GrB_transpose(res, GrB_NULL, GrB_NULL, child->operand.matrix, GrB_NULL);
 	assert(info == GrB_SUCCESS);
@@ -90,12 +90,13 @@ static GrB_Matrix _Eval_Add(const AlgebraicExpression *exp, GrB_Matrix res) {
 
 	// Reset descriptor.
 	GrB_Descriptor_set(desc, GrB_INP0, GxB_DEFAULT);
-	GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
 
 	uint child_count = AlgebraicExpression_ChildCount(exp);
 	// Expression has more than 2 operands, e.g. A+B+C...
 	for(uint i = 2; i < child_count; i++) {
-		right = exp->operation.children[i];
+		// Reset descriptor.
+		GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
+		right = CHILD_AT(exp, i);
 
 		if(right->type == AL_OPERAND) {
 			b = right->operand.matrix;
@@ -118,9 +119,6 @@ static GrB_Matrix _Eval_Add(const AlgebraicExpression *exp, GrB_Matrix res) {
 			printf("Failed adding operands, error:%s\n", GrB_error());
 			assert(false);
 		}
-
-		// Reset descriptor.
-		GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
 	}
 
 	if(inter != GrB_NULL) GrB_Matrix_free(&inter);
@@ -144,14 +142,14 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 	GrB_Descriptor_new(&desc);  // Descriptor used for transposing operands.
 
 	if(left->type == AL_OPERATION) {
-		assert(left->operation.op = AL_EXP_TRANSPOSE);
+		assert(left->operation.op == AL_EXP_TRANSPOSE);
 		GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
 		left = CHILD_AT(left, 0);
 	}
 	A = left->operand.matrix;
 
 	if(right->type == AL_OPERATION) {
-		assert(right->operation.op = AL_EXP_TRANSPOSE);
+		assert(right->operation.op == AL_EXP_TRANSPOSE);
 		GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
 		right = CHILD_AT(right, 0);
 	}
@@ -179,13 +177,15 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 
 	// Reset descriptor.
 	GrB_Descriptor_set(desc, GrB_INP0, GxB_DEFAULT);
-	GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
 
 	uint child_count = AlgebraicExpression_ChildCount(exp);
 	for(uint i = 2; i < child_count; i++) {
+		// Reset descriptor.
+		GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
+
 		right = CHILD_AT(exp, i);
 		if(right->type == AL_OPERATION) {
-			assert(right->operation.op = AL_EXP_TRANSPOSE);
+			assert(right->operation.op == AL_EXP_TRANSPOSE);
 			GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
 			right = CHILD_AT(right, 0);
 		}
@@ -202,9 +202,6 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 		}
 		GrB_Matrix_nvals(&nvals, res);
 		if(nvals == 0) break;
-
-		// Reset descriptor.
-		GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
 	}
 
 	GrB_free(&desc);

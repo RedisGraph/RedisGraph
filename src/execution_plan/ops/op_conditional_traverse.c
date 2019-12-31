@@ -72,8 +72,8 @@ void _traverse(CondTraverse *op) {
 	AlgebraicExpression_Optimize(&op->ae);
 	// Evaluate expression.
 	AlgebraicExpression_Eval(op->ae, op->M);
-	// Remove operand.
-	AlgebraicExpression_RemoveLeftmostNode(&op->ae);
+	// Remove and free operand.
+	AlgebraicExpression_Free(AlgebraicExpression_RemoveLeftmostNode(&op->ae));
 
 	if(op->iter == NULL) GxB_MatrixTupleIter_new(&op->iter, op->M);
 	else GxB_MatrixTupleIter_reuse(op->iter, op->M);

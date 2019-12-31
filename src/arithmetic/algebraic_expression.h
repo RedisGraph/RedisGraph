@@ -33,7 +33,6 @@ typedef struct AlgebraicExpression AlgebraicExpression;
 struct AlgebraicExpression {
 	union {
         struct {
-            bool free;              // Should the matrix be freed?
             bool diagonal;          // Diagonal matrix.
 		    GrB_Matrix matrix;      // Matrix operand.
             const char *src;        // Alias given to operand's rows (src node).
@@ -73,7 +72,6 @@ AlgebraicExpression *AlgebraicExpression_NewOperation
 AlgebraicExpression *AlgebraicExpression_NewOperand
 (
     GrB_Matrix mat,     // Matrix.
-    bool free,          // Should operand be free when we're done.
     bool diagonal,      // Is operand a diagonal matrix?
     const char *src,    // Operand row domain (src node).
     const char *dest,   // Operand column domain (destination node).

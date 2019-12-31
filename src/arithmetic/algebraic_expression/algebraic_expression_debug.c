@@ -20,7 +20,7 @@ AlgebraicExpression *_AlgebraicExpression_FromString
 	GrB_Matrix m;
 	AlgebraicExpression *op;
 	AlgebraicExpression *rhs;
-	AlgebraicExpression *root;
+	AlgebraicExpression *root = NULL;
 	while(*exp[0] != '\0') {
 		char c = (*exp)[0];
 		*exp = *exp + 1; // Advance.
@@ -63,7 +63,7 @@ AlgebraicExpression *_AlgebraicExpression_FromString
 				m = (GrB_Matrix)raxFind(matrices, (unsigned char *)alias, strlen(alias));
 				assert(m && "Missing matrix");
 			}
-			root = AlgebraicExpression_NewOperand(m, false, false, alias, alias, NULL, NULL);
+			root = AlgebraicExpression_NewOperand(m, false, alias, alias, NULL, NULL);
 			break;
 		}
 	}

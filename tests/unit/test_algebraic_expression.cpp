@@ -299,17 +299,15 @@ class AlgebraicExpressionTest: public ::testing::Test {
 
 TEST_F(AlgebraicExpressionTest, AlgebraicExpression_New) {
     GrB_Matrix matrix = GrB_NULL;
-    bool free = false;
     bool diagonal = false;
     const char *src = "src";
     const char *dest = "dest";
     const char *edge = "edge";
     const char *label = "label";
 
-    AlgebraicExpression *operand = AlgebraicExpression_NewOperand(matrix, free, diagonal, src, dest, edge, label);
+    AlgebraicExpression *operand = AlgebraicExpression_NewOperand(matrix, diagonal, src, dest, edge, label);
     ASSERT_EQ(operand->type, AL_OPERAND);
     ASSERT_EQ(operand->operand.matrix, matrix);
-    ASSERT_EQ(operand->operand.free, free);
     ASSERT_EQ(operand->operand.diagonal, diagonal);
     ASSERT_EQ(operand->operand.src, src);
     ASSERT_EQ(operand->operand.dest, dest);
@@ -659,7 +657,7 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_AB_Times_C_Plus_D) {
 	GrB_Matrix_new(&D, GrB_BOOL, 2, 2);
 
     // A*B*(C+D) -> A*B*C + A*B*D
-	AlgebraicExpression *exp = AlgebraicExpression_NewOperand(C, false, false, NULL, NULL, NULL, NULL);	
+	AlgebraicExpression *exp = AlgebraicExpression_NewOperand(C, false, NULL, NULL, NULL, NULL);
 
 	// A*B*(C+D)
 	AlgebraicExpression_AddToTheRight(&exp, D);

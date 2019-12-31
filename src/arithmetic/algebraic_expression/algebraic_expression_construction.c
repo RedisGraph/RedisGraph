@@ -178,7 +178,6 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromNode
 	QGNode *n
 ) {
 	GrB_Matrix mat;
-	bool free = false;
 	bool diagonal = true;
 	bool transpose = false;
 	Graph *g = QueryCtx_GetGraph();
@@ -186,7 +185,7 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromNode
 	if(n->labelID == GRAPH_UNKNOWN_LABEL) mat = Graph_GetZeroMatrix(g);
 	else mat = Graph_GetLabelMatrix(g, n->labelID);
 
-	return AlgebraicExpression_NewOperand(mat, free, diagonal, n->alias, n->alias, NULL, n->label);
+	return AlgebraicExpression_NewOperand(mat, diagonal, n->alias, n->alias, NULL, n->label);
 }
 
 static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
@@ -217,20 +216,20 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
 	 * in this case we want to use the identity matrix
 	 * f * I  = f */
 	if(!var_len_traversal && e->minHops == 0) {
-		root = AlgebraicExpression_NewOperand(IDENTITY_MATRIX, false, true, src, dest, edge, "I");
+		root = AlgebraicExpression_NewOperand(IDENTITY_MATRIX, true, src, dest, edge, "I");
 	} else {
 		uint reltype_count = array_len(e->reltypeIDs);
 		switch(reltype_count) {
 		case 0: // No relationship types specified; use the full adjacency matrix
-			root = AlgebraicExpression_NewOperand(GrB_NULL, false, false, src, dest, edge, NULL);
+			root = AlgebraicExpression_NewOperand(GrB_NULL, false, src, dest, edge, NULL);
 			break;
 		case 1: // One relationship type
-			root = AlgebraicExpression_NewOperand(GrB_NULL, false, false, src, dest, edge, e->reltypes[0]);
+			root = AlgebraicExpression_NewOperand(GrB_NULL, false, src, dest, edge, e->reltypes[0]);
 			break;
 		default: // Multiple edge type: -[:A|:B]->
 			add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
 			for(uint i = 0; i < reltype_count; i++) {
-				AlgebraicExpression *operand = AlgebraicExpression_NewOperand(GrB_NULL, false, false, src, dest,
+				AlgebraicExpression *operand = AlgebraicExpression_NewOperand(GrB_NULL, false, src, dest,
 																			  edge, e->reltypes[i]);
 				AlgebraicExpression_AddChild(add, operand);
 			}
@@ -487,12 +486,6 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 			if(i > 0) {
 				// Make sure expression i follows previous expression.
 				QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(exp));
-				// QGNode *prev_dest = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Destination(sub_exps[i - 1]));
-				// if(prev_dest != src) {
-				// 	AlgebraicExpression_Transpose(exp);
-				// 	src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(exp));
-				// }
-
 				if(src->label) {
 					/* exp[i] shares a label matrix with exp[i-1]
 					 * remove redundancy. */
@@ -519,6 +512,7 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 
 		// Clean up
 		for(uint i = 0; i < path_count; i++) array_free(paths[i]);
+		array_free(path);
 		array_free(paths);
 		array_free(sub_exps);
 

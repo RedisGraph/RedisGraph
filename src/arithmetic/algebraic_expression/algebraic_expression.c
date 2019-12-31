@@ -53,8 +53,8 @@ static AlgebraicExpression *_AlgebraicExpression_CloneOperand
 (
 	const AlgebraicExpression *exp
 ) {
-	return AlgebraicExpression_NewOperand(exp->operand.matrix, exp->operand.free, exp->operand.diagonal,
-										  exp->operand.src, exp->operand.dest, exp->operand.edge, exp->operand.label);
+	return AlgebraicExpression_NewOperand(exp->operand.matrix, exp->operand.diagonal, exp->operand.src,
+										  exp->operand.dest, exp->operand.edge, exp->operand.label);
 }
 
 //------------------------------------------------------------------------------
@@ -77,7 +77,6 @@ AlgebraicExpression *AlgebraicExpression_NewOperation
 AlgebraicExpression *AlgebraicExpression_NewOperand
 (
 	GrB_Matrix mat,     // Matrix.
-	bool free,          // Should operand be free when we're done.
 	bool diagonal,      // Is operand a diagonal matrix?
 	const char *src,    // Operand row domain (src node).
 	const char *dest,   // Operand column domain (destination node).
@@ -87,7 +86,6 @@ AlgebraicExpression *AlgebraicExpression_NewOperand
 	AlgebraicExpression *node = rm_malloc(sizeof(AlgebraicExpression));
 	node->type = AL_OPERAND;
 	node->operand.matrix = mat;
-	node->operand.free = free;
 	node->operand.diagonal = diagonal;
 	node->operand.src = src;
 	node->operand.dest = dest;
@@ -333,7 +331,7 @@ AlgebraicExpression *AlgebraicExpression_RemoveLeftmostNode
 	return current;
 }
 
-// Remove rightmost child node from root.
+// Remove right most child node from root.
 AlgebraicExpression *AlgebraicExpression_RemoveRightmostNode
 (
 	AlgebraicExpression **root  // Root from which to remove left most child.
@@ -362,15 +360,11 @@ AlgebraicExpression *AlgebraicExpression_RemoveRightmostNode
 	if(prev->type == AL_OPERATION) {
 		_AlgebraicExpression_OperationRemoveRightmostChild(prev);
 		uint child_count = AlgebraicExpression_ChildCount(prev);
-		if(child_count < 2) {
-			if(child_count == 1) {
-				AlgebraicExpression *replacement = _AlgebraicExpression_OperationRemoveRightmostChild(prev);
-				_AlgebraicExpression_InplaceRepurpose(prev, replacement);
-				// Free replacement as it has been copied.
-				rm_free(replacement);
-			} else {
-				printf("Warning, operation with no child operands, e.g. empty transpose.\n");
-			}
+		if(child_count == 1) {
+			AlgebraicExpression *replacement = _AlgebraicExpression_OperationRemoveRightmostChild(prev);
+			_AlgebraicExpression_InplaceRepurpose(prev, replacement);
+			// Free replacement as it has been copied.
+			rm_free(replacement);
 		}
 	}
 	return current;
@@ -388,8 +382,8 @@ void AlgebraicExpression_MultiplyToTheLeft
 	/* Assuming new operand inherits (src, dest and edge) from
 	 * from the current left most operand. */
 	AlgebraicExpression *left_most_operand = _leftMostNode(rhs);
-	AlgebraicExpression *lhs = AlgebraicExpression_NewOperand(m, false, false,
-															  left_most_operand->operand.src, left_most_operand->operand.dest, NULL, NULL);
+	AlgebraicExpression *lhs = AlgebraicExpression_NewOperand(m, false, left_most_operand->operand.src,
+															  left_most_operand->operand.dest, NULL, NULL);
 
 	*root = _AlgebraicExpression_MultiplyToTheLeft(lhs, rhs);
 }
@@ -406,8 +400,8 @@ void AlgebraicExpression_MultiplyToTheRight
 	/* Assuming new operand inherits (src, dest and edge) from
 	 * from the current right most operand. */
 	AlgebraicExpression *right_most_operand = _rightMostNode(lhs);
-	AlgebraicExpression *rhs = AlgebraicExpression_NewOperand(m, false, false,
-															  right_most_operand->operand.src, right_most_operand->operand.dest, NULL, NULL);
+	AlgebraicExpression *rhs = AlgebraicExpression_NewOperand(m, false, right_most_operand->operand.src,
+															  right_most_operand->operand.dest, NULL, NULL);
 
 	*root = _AlgebraicExpression_MultiplyToTheRight(lhs, rhs);
 }
@@ -424,9 +418,8 @@ void AlgebraicExpression_AddToTheLeft
 	/* Assuming new operand inherits (src, dest and edge) from
 	 * from the current left most operand. */
 	AlgebraicExpression *left_most_operand = _leftMostNode(rhs);
-	AlgebraicExpression *lhs = AlgebraicExpression_NewOperand(m, false, false,
-															  left_most_operand->operand.src, left_most_operand->operand.dest, left_most_operand->operand.edge,
-															  NULL);
+	AlgebraicExpression *lhs = AlgebraicExpression_NewOperand(m, false, left_most_operand->operand.src,
+															  left_most_operand->operand.dest, left_most_operand->operand.edge, NULL);
 
 	*root = _AlgebraicExpression_AddToTheLeft(lhs, rhs);
 }
@@ -443,9 +436,8 @@ void AlgebraicExpression_AddToTheRight
 	/* Assuming new operand inherits (src, dest and edge) from
 	 * from the current right most operand. */
 	AlgebraicExpression *right_most_operand = _rightMostNode(lhs);
-	AlgebraicExpression *rhs = AlgebraicExpression_NewOperand(m, false, false,
-															  right_most_operand->operand.src, right_most_operand->operand.dest, right_most_operand->operand.edge,
-															  NULL);
+	AlgebraicExpression *rhs = AlgebraicExpression_NewOperand(m, false, right_most_operand->operand.src,
+															  right_most_operand->operand.dest, right_most_operand->operand.edge, NULL);
 
 	*root = _AlgebraicExpression_AddToTheRight(lhs, rhs);
 }

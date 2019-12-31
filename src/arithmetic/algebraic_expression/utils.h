@@ -8,7 +8,7 @@
 
 #include "../algebraic_expression.h"
 
-#define CHILDREN(node) node->operation.children
+#define CHILDREN(node) (node)->operation.children
 #define CHILD_AT(node, idx) CHILDREN(node)[idx]
 #define FIRST_CHILD(node) CHILD_AT(node, 0)
 #define LAST_CHILD(node) CHILD_AT(node, AlgebraicExpression_ChildCount(node) - 1)
