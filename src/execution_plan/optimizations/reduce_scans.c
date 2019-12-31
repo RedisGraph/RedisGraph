@@ -10,14 +10,19 @@
 #include "../ops/op_node_by_label_scan.h"
 #include "../ops/op_filter.h"
 #include <assert.h>
+#include "../../query_ctx.h"
 
-static FT_FilterNode *_buildLabelFilter(NodeByLabelScan *label_scan) {
-	char *label = (char *)label_scan->n->label;
-	AR_ExpNode *const_label_node = AR_EXP_NewConstOperandNode(SI_ConstStringVal(label));
-	AR_ExpNode *variadic_node = AR_EXP_NewVariableOperandNode(label_scan->n->alias, NULL);
-	AR_ExpNode *labels_func_node = AR_EXP_NewOpNode("labels", 1);
-	labels_func_node->op.children[0] = variadic_node;
-	return FilterTree_CreatePredicateFilter(OP_EQUAL, labels_func_node, const_label_node);
+static OpBase *_LabelScanToConditionalTraverse(NodeByLabelScan *label_scan) {
+	const QGNode *n = label_scan->n;
+	Graph *g = QueryCtx_GetGraph();
+	GrB_Matrix mat;
+	if(n->labelID == GRAPH_UNKNOWN_LABEL) mat = Graph_GetZeroMatrix(g);
+	else mat = Graph_GetLabelMatrix(g, n->labelID);
+	AlgebraicExpression *ae = AlgebraicExpression_NewOperand(mat, true, n->alias, n->alias, NULL,
+															 n->label);
+	AST *ast = QueryCtx_GetAST();
+	return NewCondTraverseOp(label_scan->op.plan, g, ae,  TraverseRecordCap(ast));
+
 }
 
 static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
@@ -32,8 +37,8 @@ static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
 	for(int i = 0; i < scan->childCount; i ++) {
 		if(ExecutionPlan_LocateOpResolvingAlias(scan->children[i], scanned_alias)) {
 			if(scan->type == OPType_NODE_BY_LABEL_SCAN) {
-				OpBase *filter = NewFilterOp(plan, _buildLabelFilter((NodeByLabelScan *)scan));
-				ExecutionPlan_ReplaceOp(plan, scan, filter);
+				OpBase *traverse = _LabelScanToConditionalTraverse((NodeByLabelScan *)scan);
+				ExecutionPlan_ReplaceOp(plan, scan, traverse);
 				OpBase_Free(scan);
 				break;
 			}
