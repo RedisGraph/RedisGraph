@@ -391,6 +391,10 @@ SIValue SIValue_Divide(const SIValue a, const SIValue b) {
 	return SI_DoubleVal(SI_GET_NUMERIC(a) / (double)SI_GET_NUMERIC(b));
 }
 
+SIValue SIValue_Modulo(const SIValue a, const SIValue b) {
+	return SI_LongVal(a.longval % b.longval);
+}
+
 int SIArray_Compare(SIValue arrayA, SIValue arrayB, int *disjointOrNull) {
 	uint arrayALen = SIArray_Length(arrayA);
 	uint arrayBLen = SIArray_Length(arrayB);

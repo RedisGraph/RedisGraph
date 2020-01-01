@@ -69,6 +69,17 @@ SIValue AR_DIV(SIValue *argv, int argc) {
 	return result;
 }
 
+SIValue AR_MODULO(SIValue *argv, int argc) {
+	SIValue result = argv[0];
+	if(!_validate_numeric(result)) return SI_NullVal();
+
+	for(int i = 1; i < argc; i++) {
+		if(!_validate_numeric(argv[i])) return SI_NullVal();
+		result = SIValue_Modulo(result, argv[i]);
+	}
+	return result;
+}
+
 /* TODO All AR_* functions need to emit appropriate failures when provided
  * with arguments of invalid types and handle multiple arguments. */
 /* returns the absolute value of the given number. */
@@ -168,6 +179,11 @@ void Register_NumericFuncs() {
 	types = array_new(SIType, 1);
 	types = array_append(types, (SI_NUMERIC | T_NULL));
 	func_desc = AR_FuncDescNew("div", AR_DIV, 2, VAR_ARG_LEN, types, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	types = array_append(types, (T_INT64 | T_NULL));
+	func_desc = AR_FuncDescNew("mod", AR_MODULO, 2, VAR_ARG_LEN, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
