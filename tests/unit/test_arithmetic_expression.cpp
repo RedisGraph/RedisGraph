@@ -146,6 +146,21 @@ TEST_F(ArithmeticTest, ExpressionTest) {
 	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_TRUE(strcmp(result.stringval, "4a9") == 0);
 	AR_EXP_Free(arExp);
+
+	query = "RETURN 9 % 5";
+	arExp = _exp_from_query(query);
+	ASSERT_EQ(arExp->type, AR_EXP_OPERAND);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	ASSERT_EQ(result.longval, 4);
+	AR_EXP_Free(arExp);
+
+	query = "RETURN 9 % 5 % 3";
+	arExp = _exp_from_query(query);
+	ASSERT_EQ(arExp->type, AR_EXP_OPERAND);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	ASSERT_EQ(result.longval, 1);
+	AR_EXP_Free(arExp);
+
 }
 
 TEST_F(ArithmeticTest, NullArithmetic) {
@@ -208,6 +223,19 @@ TEST_F(ArithmeticTest, NullArithmetic) {
 	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_TRUE(SIValue_IsNull(result));
 	AR_EXP_Free(arExp);
+
+	query = "RETURN 5 % null";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	ASSERT_TRUE(SIValue_IsNull(result));
+	AR_EXP_Free(arExp);
+
+	query = "RETURN null % 5";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	ASSERT_TRUE(SIValue_IsNull(result));
+	AR_EXP_Free(arExp);
+
 }
 
 TEST_F(ArithmeticTest, AggregateTest) {
@@ -419,7 +447,7 @@ TEST_F(ArithmeticTest, SignTest) {
 }
 
 TEST_F(ArithmeticTest, ToIntegerTest) {
-    SIValue expected;
+	SIValue expected;
 	const char *query;
 	AR_ExpNode *arExp;
 
@@ -430,49 +458,49 @@ TEST_F(ArithmeticTest, ToIntegerTest) {
 	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
-    /* toInteger(1.1) */
+	/* toInteger(1.1) */
 	query = "RETURN toInteger(1.1)";
 	arExp = _exp_from_query(query);
 	expected = SI_LongVal(1);
 	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
-    /* toInteger(1.9) */
+	/* toInteger(1.9) */
 	query = "RETURN toInteger(1.9)";
 	arExp = _exp_from_query(query);
 	expected = SI_LongVal(1);
 	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
-    /* toInteger('1') */
+	/* toInteger('1') */
 	query = "RETURN toInteger('1')";
 	arExp = _exp_from_query(query);
 	expected = SI_LongVal(1);
 	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
-    /* toInteger('1.1') */
+	/* toInteger('1.1') */
 	query = "RETURN toInteger('1.1')";
 	arExp = _exp_from_query(query);
 	expected = SI_LongVal(1);
 	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
-    /* toInteger('1.9') */
+	/* toInteger('1.9') */
 	query = "RETURN toInteger('1.9')";
 	arExp = _exp_from_query(query);
 	expected = SI_LongVal(1);
 	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
-    /* toInteger('z') */
+	/* toInteger('z') */
 	query = "RETURN toInteger('z')";
 	arExp = _exp_from_query(query);
 	expected = SI_NullVal();
 	_test_ar_func(arExp, expected, NULL);
 	AR_EXP_Free(arExp);
 
-    /* toInteger(NULL) */
+	/* toInteger(NULL) */
 	query = "RETURN toInteger(null)";
 	arExp = _exp_from_query(query);
 	expected = SI_NullVal();
