@@ -15,14 +15,10 @@
 static OpBase *_LabelScanToConditionalTraverse(NodeByLabelScan *label_scan) {
 	const QGNode *n = label_scan->n;
 	Graph *g = QueryCtx_GetGraph();
-	GrB_Matrix mat;
-	if(n->labelID == GRAPH_UNKNOWN_LABEL) mat = Graph_GetZeroMatrix(g);
-	else mat = Graph_GetLabelMatrix(g, n->labelID);
-	AlgebraicExpression *ae = AlgebraicExpression_NewOperand(mat, true, n->alias, n->alias, NULL,
+	AlgebraicExpression *ae = AlgebraicExpression_NewOperand(GrB_NULL, true, n->alias, n->alias, NULL,
 															 n->label);
 	AST *ast = QueryCtx_GetAST();
-	return NewCondTraverseOp(label_scan->op.plan, g, ae,  TraverseRecordCap(ast));
-
+	return NewCondTraverseOp(label_scan->op.plan, g, ae, TraverseRecordCap(ast));
 }
 
 static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
