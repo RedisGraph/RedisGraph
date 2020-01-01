@@ -55,8 +55,10 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 	 * ID(n) op X
 	 * where X is a constant and op in [EQ, GE, LE, GT, LT] */
 	OpBase *parent = scan_op->parent;
+	OpBase *grandparent;
 	UnsignedRange *id_range = NULL;
 	while(parent && parent->type == OPType_FILTER) {
+		grandparent = parent->parent; // Track the next op to visit in case we free parent.
 		OpFilter *filter = (OpFilter *)parent;
 		FT_FilterNode *f = filter->filterTree;
 
@@ -73,7 +75,7 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 			OpBase_Free((OpBase *)filter);
 		}
 		// Advance.
-		parent = parent->parent;
+		parent = grandparent;
 	}
 	if(id_range) {
 		/* Don't replace label scan, but set it to have range query.
