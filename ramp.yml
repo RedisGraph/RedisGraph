@@ -13,3 +13,4 @@ capabilities:
     - failover_migrate
     - persistence_rdb
     - persistence_aof
+    - replica_of
