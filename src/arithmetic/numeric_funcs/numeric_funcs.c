@@ -21,52 +21,30 @@ static inline int _validate_numeric(const SIValue v) {
 /* The '+' operator is overloaded to perform string concatenation
  * as well as arithmetic addition. */
 SIValue AR_ADD(SIValue *argv, int argc) {
-	// Don't modify input.
-	SIValue result = SI_CloneValue(argv[0]);
-	char buffer[512];
-	char *string_arg = NULL;
-
-	if(SIValue_IsNull(argv[0])) return SI_NullVal();
-	for(int i = 1; i < argc; i++) {
-		result = SIValue_Add(result, argv[i]);
-	}
-	return result;
+	return SIValue_Add(argv[0], argv[1]);
 }
 
 /* returns the subtracting given values. */
 SIValue AR_SUB(SIValue *argv, int argc) {
-	SIValue result = argv[0];
-	if(!_validate_numeric(result)) return SI_NullVal();
-
-	for(int i = 1; i < argc; i++) {
-		if(!_validate_numeric(argv[i])) return SI_NullVal();
-		result = SIValue_Subtract(result, argv[i]);
-	}
-	return result;
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
+	return SIValue_Subtract(argv[0], argv[1]);
 }
 
 /* returns the multiplication of given values. */
 SIValue AR_MUL(SIValue *argv, int argc) {
-	SIValue result = argv[0];
-	if(!_validate_numeric(result)) return SI_NullVal();
-
-	for(int i = 1; i < argc; i++) {
-		if(!_validate_numeric(argv[i])) return SI_NullVal();
-		result = SIValue_Multiply(result, argv[i]);
-	}
-	return result;
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
+	return SIValue_Multiply(argv[0], argv[1]);
 }
 
 /* returns the division of given values. */
 SIValue AR_DIV(SIValue *argv, int argc) {
-	SIValue result = argv[0];
-	if(!_validate_numeric(result)) return SI_NullVal();
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
+	return SIValue_Divide(argv[0], argv[1]);
+}
 
-	for(int i = 1; i < argc; i++) {
-		if(!_validate_numeric(argv[i])) return SI_NullVal();
-		result = SIValue_Divide(result, argv[i]);
-	}
-	return result;
+SIValue AR_MODULO(SIValue *argv, int argc) {
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
+	return SIValue_Modulo(argv[0], argv[1]);
 }
 
 /* TODO All AR_* functions need to emit appropriate failures when provided
@@ -152,22 +130,27 @@ void Register_NumericFuncs() {
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (SI_NUMERIC | T_STRING | T_ARRAY | T_BOOL | T_NULL));
-	func_desc = AR_FuncDescNew("add", AR_ADD, 2, VAR_ARG_LEN, types, true);
+	func_desc = AR_FuncDescNew("add", AR_ADD, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (SI_NUMERIC | T_NULL));
-	func_desc = AR_FuncDescNew("sub", AR_SUB, 2, VAR_ARG_LEN, types, true);
+	func_desc = AR_FuncDescNew("sub", AR_SUB, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (SI_NUMERIC | T_NULL));
-	func_desc = AR_FuncDescNew("mul", AR_MUL, 2, VAR_ARG_LEN, types, true);
+	func_desc = AR_FuncDescNew("mul", AR_MUL, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (SI_NUMERIC | T_NULL));
-	func_desc = AR_FuncDescNew("div", AR_DIV, 2, VAR_ARG_LEN, types, true);
+	func_desc = AR_FuncDescNew("div", AR_DIV, 2, 2, types, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	types = array_append(types, (T_INT64 | T_NULL));
+	func_desc = AR_FuncDescNew("mod", AR_MODULO, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
