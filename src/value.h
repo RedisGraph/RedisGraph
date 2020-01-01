@@ -153,6 +153,7 @@ SIValue SIValue_Subtract(const SIValue a, const SIValue b);
 SIValue SIValue_Multiply(const SIValue a, const SIValue b);
 /* SIValue_Divide always returns a double value. */
 SIValue SIValue_Divide(const SIValue a, const SIValue b);
+/* SIValue_Modulo always gets integer values as input and return integer value. */
 SIValue SIValue_Modulo(const SIValue a, const SIValue b);
 
 /* Compares two SIValues and returns a value similar to strcmp.

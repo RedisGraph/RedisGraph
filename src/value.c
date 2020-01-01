@@ -392,6 +392,8 @@ SIValue SIValue_Divide(const SIValue a, const SIValue b) {
 }
 
 SIValue SIValue_Modulo(const SIValue a, const SIValue b) {
+	// Since C % operator requires integer inputs, we need to validate this.
+	assert(SI_TYPE(a) & SI_TYPE(b) & T_INT64);
 	return SI_LongVal(a.longval % b.longval);
 }
 
