@@ -185,7 +185,7 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromNode
 	if(n->labelID == GRAPH_UNKNOWN_LABEL) mat = Graph_GetZeroMatrix(g);
 	else mat = Graph_GetLabelMatrix(g, n->labelID);
 
-	return AlgebraicExpression_NewOperand(mat, diagonal, n->alias, n->alias, NULL, n->label);
+	return AlgebraicExpression_NewMatrixOperand(mat, diagonal, n->alias, n->alias, NULL, n->label);
 }
 
 static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
@@ -216,21 +216,21 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
 	 * in this case we want to use the identity matrix
 	 * f * I  = f */
 	if(!var_len_traversal && e->minHops == 0) {
-		root = AlgebraicExpression_NewOperand(IDENTITY_MATRIX, true, src, dest, edge, "I");
+		root = AlgebraicExpression_NewMatrixOperand(IDENTITY_MATRIX, true, src, dest, edge, "I");
 	} else {
 		uint reltype_count = array_len(e->reltypeIDs);
 		switch(reltype_count) {
 		case 0: // No relationship types specified; use the full adjacency matrix
-			root = AlgebraicExpression_NewOperand(GrB_NULL, false, src, dest, edge, NULL);
+			root = AlgebraicExpression_NewMatrixOperand(GrB_NULL, false, src, dest, edge, NULL);
 			break;
 		case 1: // One relationship type
-			root = AlgebraicExpression_NewOperand(GrB_NULL, false, src, dest, edge, e->reltypes[0]);
+			root = AlgebraicExpression_NewMatrixOperand(GrB_NULL, false, src, dest, edge, e->reltypes[0]);
 			break;
 		default: // Multiple edge type: -[:A|:B]->
 			add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
 			for(uint i = 0; i < reltype_count; i++) {
-				AlgebraicExpression *operand = AlgebraicExpression_NewOperand(GrB_NULL, false, src, dest,
-																			  edge, e->reltypes[i]);
+				AlgebraicExpression *operand = AlgebraicExpression_NewMatrixOperand(GrB_NULL, false, src, dest,
+																					edge, e->reltypes[i]);
 				AlgebraicExpression_AddChild(add, operand);
 			}
 			root = add;

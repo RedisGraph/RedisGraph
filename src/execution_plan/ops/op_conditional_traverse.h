@@ -20,7 +20,7 @@ typedef struct {
 	int destNodeIdx;            // Index into record.
 	int *edgeRelationTypes;     // One or more relation types.
 	int edgeRelationCount;      // length of edgeRelationTypes.
-	GrB_Matrix F;               // Filter matrix.
+    GrB_Vector f;               // Filter vector.
 	GrB_Matrix M;               // Algebraic expression result.
     bool setEdge;               // Edge needs to be set.
 	Edge *edges;                // Discovered edges.

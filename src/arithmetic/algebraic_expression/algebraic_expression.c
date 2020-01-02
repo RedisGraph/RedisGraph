@@ -53,8 +53,16 @@ static AlgebraicExpression *_AlgebraicExpression_CloneOperand
 (
 	const AlgebraicExpression *exp
 ) {
-	return AlgebraicExpression_NewOperand(exp->operand.matrix, exp->operand.diagonal, exp->operand.src,
-										  exp->operand.dest, exp->operand.edge, exp->operand.label);
+	AlgebraicExpression *clone;
+	if(exp->operand.type == AL_OPERAND_MATRIX) {
+		clone = AlgebraicExpression_NewMatrixOperand(exp->operand.matrix, exp->operand.diagonal,
+													 exp->operand.src,
+													 exp->operand.dest, exp->operand.edge, exp->operand.label);
+	} else {
+		clone = AlgebraicExpression_NewVectorOperand(exp->operand.vector, exp->operand.src,
+													 exp->operand.dest);
+	}
+	return clone;
 }
 
 //------------------------------------------------------------------------------
@@ -74,7 +82,7 @@ AlgebraicExpression *AlgebraicExpression_NewOperation
 }
 
 // Create a new AlgebraicExpression operand node.
-AlgebraicExpression *AlgebraicExpression_NewOperand
+AlgebraicExpression *AlgebraicExpression_NewMatrixOperand
 (
 	GrB_Matrix mat,     // Matrix.
 	bool diagonal,      // Is operand a diagonal matrix?
@@ -86,11 +94,33 @@ AlgebraicExpression *AlgebraicExpression_NewOperand
 	AlgebraicExpression *node = rm_malloc(sizeof(AlgebraicExpression));
 	node->type = AL_OPERAND;
 	node->operand.matrix = mat;
+	node->operand.vector = GrB_NULL;
 	node->operand.diagonal = diagonal;
 	node->operand.src = src;
 	node->operand.dest = dest;
 	node->operand.edge = edge;
 	node->operand.label = label;
+	node->operand.type = AL_OPERAND_MATRIX;
+	return node;
+}
+
+// Create a new AlgebraicExpression operand node.
+AlgebraicExpression *AlgebraicExpression_NewVectorOperand
+(
+	GrB_Vector vec,     // Vector.
+	const char *src,    // Operand row domain (src node).
+	const char *dest    // Operand column domain (destination node).
+) {
+	AlgebraicExpression *node = rm_malloc(sizeof(AlgebraicExpression));
+	node->type = AL_OPERAND;
+	node->operand.vector = vec;
+	node->operand.matrix = GrB_NULL;
+	node->operand.diagonal = false;
+	node->operand.src = src;
+	node->operand.dest = dest;
+	node->operand.edge = NULL;
+	node->operand.label = NULL;
+	node->operand.type = AL_OPERAND_VECTOR;
 	return node;
 }
 
@@ -370,9 +400,45 @@ AlgebraicExpression *AlgebraicExpression_RemoveRightmostNode
 	return current;
 }
 
+/* Multiply root to the left by v.
+ * Updates root. */
+void AlgebraicExpression_VectorMultiplyToTheLeft
+(
+	AlgebraicExpression **root,
+	GrB_Vector v
+) {
+	assert(root && v);
+	AlgebraicExpression *rhs = *root;
+	/* Assuming new operand inherits (src, dest and edge) from
+	 * from the current left most operand. */
+	AlgebraicExpression *left_most_operand = _leftMostNode(rhs);
+	AlgebraicExpression *lhs = AlgebraicExpression_NewVectorOperand(v, left_most_operand->operand.src,
+																	left_most_operand->operand.dest);
+
+	*root = _AlgebraicExpression_MultiplyToTheLeft(lhs, rhs);
+}
+
+/* Multiply root to the right by v.
+ * Updates root. */
+void AlgebraicExpression_VectorMultiplyToTheRight
+(
+	AlgebraicExpression **root,
+	GrB_Vector v
+) {
+	assert(root && v);
+	AlgebraicExpression *lhs = *root;
+	/* Assuming new operand inherits (src, dest and edge) from
+	 * from the current right most operand. */
+	AlgebraicExpression *right_most_operand = _rightMostNode(lhs);
+	AlgebraicExpression *rhs = AlgebraicExpression_NewVectorOperand(v, right_most_operand->operand.src,
+																	right_most_operand->operand.dest);
+
+	*root = _AlgebraicExpression_MultiplyToTheRight(lhs, rhs);
+}
+
 /* Multiply root to the left with op.
  * Updates root. */
-void AlgebraicExpression_MultiplyToTheLeft
+void AlgebraicExpression_MatrixMultiplyToTheLeft
 (
 	AlgebraicExpression **root,
 	GrB_Matrix m
@@ -382,8 +448,9 @@ void AlgebraicExpression_MultiplyToTheLeft
 	/* Assuming new operand inherits (src, dest and edge) from
 	 * from the current left most operand. */
 	AlgebraicExpression *left_most_operand = _leftMostNode(rhs);
-	AlgebraicExpression *lhs = AlgebraicExpression_NewOperand(m, false, left_most_operand->operand.src,
-															  left_most_operand->operand.dest, NULL, NULL);
+	AlgebraicExpression *lhs = AlgebraicExpression_NewMatrixOperand(m, false,
+																	left_most_operand->operand.src,
+																	left_most_operand->operand.dest, NULL, NULL);
 
 	*root = _AlgebraicExpression_MultiplyToTheLeft(lhs, rhs);
 }
@@ -400,8 +467,9 @@ void AlgebraicExpression_MultiplyToTheRight
 	/* Assuming new operand inherits (src, dest and edge) from
 	 * from the current right most operand. */
 	AlgebraicExpression *right_most_operand = _rightMostNode(lhs);
-	AlgebraicExpression *rhs = AlgebraicExpression_NewOperand(m, false, right_most_operand->operand.src,
-															  right_most_operand->operand.dest, NULL, NULL);
+	AlgebraicExpression *rhs = AlgebraicExpression_NewMatrixOperand(m, false,
+																	right_most_operand->operand.src,
+																	right_most_operand->operand.dest, NULL, NULL);
 
 	*root = _AlgebraicExpression_MultiplyToTheRight(lhs, rhs);
 }
@@ -418,8 +486,9 @@ void AlgebraicExpression_AddToTheLeft
 	/* Assuming new operand inherits (src, dest and edge) from
 	 * from the current left most operand. */
 	AlgebraicExpression *left_most_operand = _leftMostNode(rhs);
-	AlgebraicExpression *lhs = AlgebraicExpression_NewOperand(m, false, left_most_operand->operand.src,
-															  left_most_operand->operand.dest, left_most_operand->operand.edge, NULL);
+	AlgebraicExpression *lhs = AlgebraicExpression_NewMatrixOperand(m, false,
+																	left_most_operand->operand.src,
+																	left_most_operand->operand.dest, left_most_operand->operand.edge, NULL);
 
 	*root = _AlgebraicExpression_AddToTheLeft(lhs, rhs);
 }
@@ -436,8 +505,9 @@ void AlgebraicExpression_AddToTheRight
 	/* Assuming new operand inherits (src, dest and edge) from
 	 * from the current right most operand. */
 	AlgebraicExpression *right_most_operand = _rightMostNode(lhs);
-	AlgebraicExpression *rhs = AlgebraicExpression_NewOperand(m, false, right_most_operand->operand.src,
-															  right_most_operand->operand.dest, right_most_operand->operand.edge, NULL);
+	AlgebraicExpression *rhs = AlgebraicExpression_NewMatrixOperand(m, false,
+																	right_most_operand->operand.src,
+																	right_most_operand->operand.dest, right_most_operand->operand.edge, NULL);
 
 	*root = _AlgebraicExpression_AddToTheRight(lhs, rhs);
 }

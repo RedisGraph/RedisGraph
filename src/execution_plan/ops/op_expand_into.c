@@ -50,14 +50,14 @@ static bool _setEdge(OpExpandInto *op) {
 	return true;
 }
 
-static void _populate_filter_matrix(OpExpandInto *op) {
+static void _populate_filter_vector(OpExpandInto *op) {
 	for(uint i = 0; i < op->recordCount; i++) {
 		Record r = op->records[i];
 		/* Update filter matrix F, set row i at position srcId
 		 * F[i, srcId] = true. */
 		Node *n = Record_GetNode(r, op->srcNodeIdx);
 		NodeID srcId = ENTITY_GET_ID(n);
-		GrB_Matrix_setElement_BOOL(op->F, true, i, srcId);
+		GrB_Vector_setElement_UINT64(op->f, srcId, i);
 	}
 }
 
@@ -68,26 +68,28 @@ static void _populate_filter_matrix(OpExpandInto *op) {
  * clears filter matrix. */
 static void _traverse(OpExpandInto *op) {
 	// Create both filter and result matrices.
-	if(op->F == GrB_NULL) {
-		size_t required_dim = Graph_RequiredMatrixDim(op->graph);
-		GrB_Matrix_new(&op->M, GrB_BOOL, op->recordsCap, required_dim);
-		GrB_Matrix_new(&op->F, GrB_BOOL, op->recordsCap, required_dim);
+	size_t required_dim = Graph_RequiredMatrixDim(op->graph);
+	if(op->f == GrB_NULL) {
+		assert(GrB_Vector_new(&op->f, GrB_UINT64, op->recordsCap) == GrB_SUCCESS);
+		assert(GrB_Matrix_new(&op->M, GrB_BOOL, op->recordCount, required_dim) == GrB_SUCCESS);
 	}
 
 	// Populate filter matrix.
-	_populate_filter_matrix(op);
+	_populate_filter_vector(op);
 	// Clone expression, as we're about to modify the structure with Optimize.
 	AlgebraicExpression *clone = AlgebraicExpression_Clone(op->ae);
 	// Append filter matrix to algebraic expression, as the left most operand.
-	AlgebraicExpression_MultiplyToTheLeft(&clone, op->F);
+	AlgebraicExpression_VectorMultiplyToTheLeft(&clone, op->f);
 	// TODO: consider performing optimization as part of evaluation.
 	AlgebraicExpression_Optimize(&clone);
+	// Make sure M dimensions matches number of source nodes.
+	assert(GxB_Matrix_resize(op->M, op->recordCount, required_dim) == GrB_SUCCESS);
 	// Evaluate expression.
 	AlgebraicExpression_Eval(clone, op->M);
 	// Free clone.
 	AlgebraicExpression_Free(clone);
 	// Clear filter matrix.
-	GrB_Matrix_clear(op->F);
+	GrB_Vector_clear(op->f);
 }
 
 OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
@@ -97,7 +99,7 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 	op->ae = ae;
 	op->r = NULL;
 	op->edges = NULL;
-	op->F = GrB_NULL;
+	op->f = GrB_NULL;
 	op->M = GrB_NULL;
 	op->recordCount = 0;
 	op->edgeRelationTypes = NULL;
@@ -224,7 +226,7 @@ static OpResult ExpandIntoReset(OpBase *ctx) {
 		if(op->records[i]) Record_Free(op->records[i]);
 	}
 	op->recordCount = 0;
-	if(op->F != GrB_NULL) GrB_Matrix_clear(op->F);
+	if(op->f != GrB_NULL) GrB_Vector_clear(op->f);
 	if(op->edges) array_clear(op->edges);
 	return OP_OK;
 }
@@ -232,9 +234,9 @@ static OpResult ExpandIntoReset(OpBase *ctx) {
 /* Frees ExpandInto */
 static void ExpandIntoFree(OpBase *ctx) {
 	OpExpandInto *op = (OpExpandInto *)ctx;
-	if(op->F != GrB_NULL) {
-		GrB_Matrix_free(&op->F);
-		op->F = GrB_NULL;
+	if(op->f != GrB_NULL) {
+		GrB_Vector_free(&op->f);
+		op->f = GrB_NULL;
 	}
 
 	if(op->M != GrB_NULL) {

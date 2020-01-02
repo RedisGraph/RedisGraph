@@ -21,6 +21,12 @@ typedef enum {
 
 #define AL_EXP_ALL (AL_EXP_ADD | AL_EXP_MUL | AL_EXP_POW | AL_EXP_TRANSPOSE)
 
+// Type of operand.
+typedef enum {
+    AL_OPERAND_MATRIX,
+    AL_OPERAND_VECTOR,
+} AlgebraicExpressionOperandType;
+
 // Type of node within an algebraic expression
 typedef enum {
 	AL_OPERAND,
@@ -35,10 +41,12 @@ struct AlgebraicExpression {
         struct {
             bool diagonal;          // Diagonal matrix.
 		    GrB_Matrix matrix;      // Matrix operand.
+		    GrB_Vector vector;      // Vector operand.
             const char *src;        // Alias given to operand's rows (src node).
             const char *dest;       // Alias given to operand's columns (destination node).
             const char *edge;       // Alias given to operand (edge).
-            const char *label;      // Label attached to matrix.
+            const char *label;      // Label attached to operand.
+            AlgebraicExpressionOperandType type;   // Type of node, either an operation or an operand.
         } operand;
 		struct {
 			AL_EXP_OP op;                       // Operation: `*`,`+`,`transpose`
@@ -69,7 +77,15 @@ AlgebraicExpression *AlgebraicExpression_NewOperation
 );
 
 // Create a new AlgebraicExpression operand node.
-AlgebraicExpression *AlgebraicExpression_NewOperand
+AlgebraicExpression *AlgebraicExpression_NewVectorOperand
+(
+    GrB_Vector vec,     // Vector.
+    const char *src,    // Operand row domain (src node).
+    const char *dest    // Operand column domain (destination node).
+);
+
+// Create a new AlgebraicExpression operand node.
+AlgebraicExpression *AlgebraicExpression_NewMatrixOperand
 (
     GrB_Matrix mat,     // Matrix.
     bool diagonal,      // Is operand a diagonal matrix?
@@ -171,8 +187,24 @@ AlgebraicExpression *AlgebraicExpression_RemoveRightmostNode
 );
 
 // Multiply expression to the left by operand
+// v * (exp)
+void AlgebraicExpression_VectorMultiplyToTheLeft
+(
+    AlgebraicExpression **root,
+    GrB_Vector v
+);
+
+// Multiply expression to the right by operand
+// (exp) * v
+void AlgebraicExpression_VectorMultiplyToTheRight
+(
+    AlgebraicExpression **root,
+	GrB_Vector m
+);
+
+// Multiply expression to the left by operand
 // m * (exp)
-void AlgebraicExpression_MultiplyToTheLeft
+void AlgebraicExpression_MatrixMultiplyToTheLeft
 (
     AlgebraicExpression **root,
     GrB_Matrix m
@@ -180,7 +212,7 @@ void AlgebraicExpression_MultiplyToTheLeft
 
 // Multiply expression to the right by operand
 // (exp) * m
-void AlgebraicExpression_MultiplyToTheRight
+void AlgebraicExpression_MatrixMultiplyToTheRight
 (
     AlgebraicExpression **root,
 	GrB_Matrix m
