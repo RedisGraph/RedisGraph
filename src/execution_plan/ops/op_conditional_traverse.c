@@ -39,14 +39,14 @@ static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
 	return 1;
 }
 
-static void _populate_filter_matrix(CondTraverse *op) {
+static void _populate_filter_vector(CondTraverse *op) {
 	for(uint i = 0; i < op->recordsLen; i++) {
 		Record r = op->records[i];
 		/* Update filter matrix F, set row i at position srcId
 		 * F[i, srcId] = true. */
 		Node *n = Record_GetNode(r, op->srcNodeIdx);
 		NodeID srcId = ENTITY_GET_ID(n);
-		GrB_Matrix_setElement_BOOL(op->F, true, i, srcId);
+		GrB_Vector_setElement_UINT64(op->f, srcId, i);
 	}
 }
 
@@ -58,20 +58,23 @@ static void _populate_filter_matrix(CondTraverse *op) {
  * clears filter matrix. */
 void _traverse(CondTraverse *op) {
 	// Create both filter and result matrices.
-	if(op->F == GrB_NULL) {
-		size_t required_dim = Graph_RequiredMatrixDim(op->graph);
-		GrB_Matrix_new(&op->M, GrB_BOOL, op->recordsCap, required_dim);
-		GrB_Matrix_new(&op->F, GrB_BOOL, op->recordsCap, required_dim);
+	size_t required_dim = Graph_RequiredMatrixDim(op->graph);
+	if(op->f == GrB_NULL) {
+		// Create filter vector.
+		assert(GrB_Vector_new(&op->f, GrB_UINT64, op->recordsCap) == GrB_SUCCESS);
+		assert(GrB_Matrix_new(&op->M, GrB_BOOL, op->recordsLen, required_dim) == GrB_SUCCESS);
 	}
 
 	// Populate filter matrix.
-	_populate_filter_matrix(op);
+	_populate_filter_vector(op);
 	// Clone expression, as we're about to modify the structure with Optimize.
 	AlgebraicExpression *clone = AlgebraicExpression_Clone(op->ae);
 	// Prepend matrix to algebraic expression, as the left most operand.
-	AlgebraicExpression_MultiplyToTheLeft(&clone, op->F);
+	AlgebraicExpression_VectorMultiplyToTheLeft(&clone, op->f);
 	// TODO: consider performing optimization as part of evaluation.
 	AlgebraicExpression_Optimize(&clone);
+	// Make sure M dimensions matches number of source nodes.
+	assert(GxB_Matrix_resize(op->M, op->recordsLen, required_dim) == GrB_SUCCESS);
 	// Evaluate expression.
 	AlgebraicExpression_Eval(clone, op->M);
 	// Free clone.
@@ -81,7 +84,7 @@ void _traverse(CondTraverse *op) {
 	else GxB_MatrixTupleIter_reuse(op->iter, op->M);
 
 	// Clear filter matrix.
-	GrB_Matrix_clear(op->F);
+	GrB_Vector_clear(op->f);
 }
 
 static inline int CondTraverseToString(const OpBase *ctx, char *buf, uint buf_len) {
@@ -96,7 +99,7 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	op->r = NULL;
 	op->iter = NULL;
 	op->edges = NULL;
-	op->F = GrB_NULL;
+	op->f = GrB_NULL;
 	op->M = GrB_NULL;
 	op->recordsLen = 0;
 	op->transposed_edge = false;
@@ -218,13 +221,17 @@ static Record CondTraverseConsume(OpBase *opBase) {
 
 static OpResult CondTraverseReset(OpBase *ctx) {
 	CondTraverse *op = (CondTraverse *)ctx;
-	if(op->r) Record_Free(op->r);
-	if(op->edges) array_clear(op->edges);
+	if(op->r) {
+		Record_Free(op->r);
+		op->r = NULL;
+	}
 	if(op->iter) {
 		GxB_MatrixTupleIter_free(op->iter);
 		op->iter = NULL;
 	}
-	if(op->F != GrB_NULL) GrB_Matrix_clear(op->F);
+	if(op->edges) array_clear(op->edges);
+	if(op->f != GrB_NULL) GrB_Vector_clear(op->f);
+
 	return OP_OK;
 }
 
@@ -236,9 +243,9 @@ static void CondTraverseFree(OpBase *ctx) {
 		op->iter = NULL;
 	}
 
-	if(op->F != GrB_NULL) {
-		GrB_Matrix_free(&op->F);
-		op->F = GrB_NULL;
+	if(op->f != GrB_NULL) {
+		GrB_free(&op->f);
+		op->f = GrB_NULL;
 	}
 
 	if(op->M != GrB_NULL) {

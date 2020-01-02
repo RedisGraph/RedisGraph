@@ -11,6 +11,58 @@
 // Forward declarations
 GrB_Matrix _AlgebraicExpression_Eval(const AlgebraicExpression *exp, GrB_Matrix res);
 
+//
+static GrB_Matrix _Eval_Extract(const AlgebraicExpression *exp, GrB_Matrix res) {
+	assert(exp &&
+		   AlgebraicExpression_ChildCount(exp) > 1 &&
+		   AlgebraicExpression_OperationCount(exp, AL_EXP_MUL) == 1);
+
+	GrB_Vector V;
+	GrB_Matrix B;
+	GrB_Info info;
+	GrB_Index nrows;
+	GrB_Index ncols;
+	GrB_Index nvals;
+	GrB_Descriptor desc;
+	AlgebraicExpression *left = CHILD_AT(exp, 0);
+	AlgebraicExpression *right = CHILD_AT(exp, 1);
+
+	info = GrB_Descriptor_new(&desc);  // Descriptor used for transposing operands.
+
+	assert(left->type == AL_OPERAND && left->operand.type == AL_OPERAND_VECTOR);
+	V = left->operand.vector;
+
+	if(right->type == AL_OPERATION) {
+		assert(right->operation.op == AL_EXP_TRANSPOSE);
+		info = GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
+		right = CHILD_AT(right, 0);
+	}
+	B = right->operand.matrix;
+
+	info = GrB_Vector_nvals(&nvals, V);
+	GrB_Index indicies[nvals];
+
+	// Extract indicies.
+	info = GrB_Vector_extractTuples_UINT64(GrB_NULL, indicies, &nvals, V);
+
+	if(B == IDENTITY_MATRIX) {
+		/* v * I
+		 * as I doesn't really exist, we'll manually populate `res`.
+		 * each entry x in v, v[x] will extract row v[x] from I. */
+		for(uint i = 0; i < nvals; i++) GrB_Matrix_setElement_BOOL(res, true, i, indicies[i]);
+	} else {
+		info = GrB_Matrix_ncols(&ncols, B);
+		info = GrB_Matrix_extract(res, GrB_NULL, GrB_NULL, B, indicies, nvals, GrB_ALL, ncols, desc);
+		if(info != GrB_SUCCESS) {
+			fprintf(stderr, "Encountered an error in matrix extraction:\n%s\n", GrB_error());
+			assert(false);
+		}
+	}
+
+	info = GrB_free(&desc);
+	return res;
+}
+
 static GrB_Matrix _Eval_Transpose
 (
 	const AlgebraicExpression *exp,
@@ -155,7 +207,10 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 	}
 	B = right->operand.matrix;
 
-	if(B == IDENTITY_MATRIX) {
+	if(left->operand.type == AL_OPERAND_VECTOR) {
+		// Vector Matrix multiplication.
+		_Eval_Extract(exp, res);
+	} else if(B == IDENTITY_MATRIX) {
 		// B is the identity matrix, Perform A * I.
 		info = GrB_Matrix_apply(res, GrB_NULL, GrB_NULL, GrB_IDENTITY_BOOL, A, desc);
 		if(info != GrB_SUCCESS) {
@@ -173,9 +228,7 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 		}
 	}
 
-	GrB_Matrix_nvals(&nvals, res);
-
-	// Reset descriptor.
+// Reset descriptor.
 	GrB_Descriptor_set(desc, GrB_INP0, GxB_DEFAULT);
 
 	uint child_count = AlgebraicExpression_ChildCount(exp);

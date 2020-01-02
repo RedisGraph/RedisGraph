@@ -305,7 +305,7 @@ TEST_F(AlgebraicExpressionTest, AlgebraicExpression_New) {
     const char *edge = "edge";
     const char *label = "label";
 
-    AlgebraicExpression *operand = AlgebraicExpression_NewOperand(matrix, diagonal, src, dest, edge, label);
+    AlgebraicExpression *operand = AlgebraicExpression_NewMatrixOperand(matrix, diagonal, src, dest, edge, label);
     ASSERT_EQ(operand->type, AL_OPERAND);
     ASSERT_EQ(operand->operand.matrix, matrix);
     ASSERT_EQ(operand->operand.diagonal, diagonal);
@@ -657,12 +657,12 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_AB_Times_C_Plus_D) {
 	GrB_Matrix_new(&D, GrB_BOOL, 2, 2);
 
     // A*B*(C+D) -> A*B*C + A*B*D
-	AlgebraicExpression *exp = AlgebraicExpression_NewOperand(C, false, NULL, NULL, NULL, NULL);
+	AlgebraicExpression *exp = AlgebraicExpression_NewMatrixOperand(C, false, NULL, NULL, NULL, NULL);
 
 	// A*B*(C+D)
 	AlgebraicExpression_AddToTheRight(&exp, D);
-    AlgebraicExpression_MultiplyToTheLeft(&exp, B);
-    AlgebraicExpression_MultiplyToTheLeft(&exp, A);
+    AlgebraicExpression_MatrixMultiplyToTheLeft(&exp, B);
+    AlgebraicExpression_MatrixMultiplyToTheLeft(&exp, A);
 	AlgebraicExpression_Optimize(&exp);
 
 	// Verifications

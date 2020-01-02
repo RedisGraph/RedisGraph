@@ -16,7 +16,7 @@ typedef struct {
 	OpBase op;
 	Graph *graph;
 	AlgebraicExpression *ae;
-	GrB_Matrix F;               // Filter matrix.
+	GrB_Vector f;               // Filter vector.
 	GrB_Matrix M;               // Algebraic expression result.
 	int *edgeRelationTypes;     // One or more relation types.
 	int edgeRelationCount;      // length of edgeRelationTypes.
