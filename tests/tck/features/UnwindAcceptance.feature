@@ -92,7 +92,6 @@ Feature: UnwindAcceptance
             | 2 |
         And no side effects
 
-    @skip
     Scenario: Unwinding a collected expression
         Given an empty graph
         And having executed:
@@ -220,7 +219,6 @@ Feature: UnwindAcceptance
             | [1, 2, 3] | 3 |
         And no side effects
 
-    @skip
     Scenario: Unwind does not remove variables from scope
         Given an empty graph
         And having executed:
