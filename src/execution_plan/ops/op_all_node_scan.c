@@ -20,7 +20,7 @@ static inline int AllNodeScanToString(const OpBase *ctx, char *buf, uint buf_len
 }
 
 OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const QGNode *n) {
-	AllNodeScan *op = malloc(sizeof(AllNodeScan));
+	AllNodeScan *op = rm_malloc(sizeof(AllNodeScan));
 	op->n = n;
 	op->iter = NULL;
 	op->child_record = NULL;

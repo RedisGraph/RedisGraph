@@ -12,7 +12,7 @@ static OpResult JoinReset(OpBase *opBase);
 static OpResult JoinInit(OpBase *opBase);
 
 OpBase *NewJoinOp(const ExecutionPlan *plan) {
-	OpJoin *op = malloc(sizeof(OpJoin));
+	OpJoin *op = rm_malloc(sizeof(OpJoin));
 	op->stream = NULL;
 
 	// Set our Op operations

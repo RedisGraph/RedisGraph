@@ -53,7 +53,7 @@ static void _RollbackPendingCreations(OpMergeCreate *op) {
 
 OpBase *NewMergeCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
 						 NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
-	OpMergeCreate *op = calloc(1, sizeof(OpMergeCreate));
+	OpMergeCreate *op = rm_calloc(1, sizeof(OpMergeCreate));
 	op->unique_entities = raxNew();       // Create a map to unique pending creations.
 	op->hash_state = XXH64_createState(); // Create a hash state.
 	op->pending = NewPendingCreationsContainer(stats, nodes, edges); // Prepare all creation variables.

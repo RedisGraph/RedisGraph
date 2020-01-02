@@ -13,7 +13,11 @@
 #include "../ops/op_conditional_traverse.h"
 #include "../ops/op_cond_var_len_traverse.h"
 
-void _removeRedundantTraversal(ExecutionPlan *plan, CondTraverse *traverse) {
+static inline bool _isInSubExecutionPlan(OpBase *op) {
+	return ExecutionPlan_LocateFirstOp(op, OPType_ARGUMENT) != NULL;
+}
+
+static void _removeRedundantTraversal(ExecutionPlan *plan, CondTraverse *traverse) {
 	AlgebraicExpression *ae =  traverse->ae;
 	if(AlgebraicExpression_OperandCount(ae) == 1 &&
 	   !RG_STRCMP(AlgebraicExpression_Source(ae), AlgebraicExpression_Destination(ae))) {
@@ -90,7 +94,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 			QGNode *src = QueryGraph_GetNodeByAlias(traverse_plan->query_graph, AlgebraicExpression_Source(ae));
 			if(src->label) {
 				t = op->children[0];
-				if(t->type == OPType_CONDITIONAL_TRAVERSE) {
+				if(t->type == OPType_CONDITIONAL_TRAVERSE && !_isInSubExecutionPlan(op)) {
 					// Queue traversal for removal.
 					redundantTraversals[redundantTraversalsCount++] = (CondTraverse *)t;
 				}
@@ -99,7 +103,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 													 AlgebraicExpression_Destination(ae));
 			if(dest->label) {
 				t = op->parent;
-				if(t->type == OPType_CONDITIONAL_TRAVERSE) {
+				if(t->type == OPType_CONDITIONAL_TRAVERSE && !_isInSubExecutionPlan(op)) {
 					// Queue traversal for removal.
 					redundantTraversals[redundantTraversalsCount++] = (CondTraverse *)t;
 				}

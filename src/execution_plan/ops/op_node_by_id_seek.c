@@ -29,7 +29,7 @@ static inline bool _outOfBounds(NodeByIdSeek *op) {
 
 OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const QGNode *n, UnsignedRange *id_range) {
 
-	NodeByIdSeek *op = malloc(sizeof(NodeByIdSeek));
+	NodeByIdSeek *op = rm_malloc(sizeof(NodeByIdSeek));
 	op->g = QueryCtx_GetGraph();
 	op->n = n;
 	op->child_record = NULL;

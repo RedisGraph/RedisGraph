@@ -90,7 +90,7 @@ static inline int CondTraverseToString(const OpBase *ctx, char *buf, uint buf_le
 
 OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
 						  uint records_cap) {
-	CondTraverse *op = calloc(1, sizeof(CondTraverse));
+	CondTraverse *op = rm_calloc(1, sizeof(CondTraverse));
 	op->graph = g;
 	op->ae = ae;
 	op->r = NULL;

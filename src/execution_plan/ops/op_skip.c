@@ -11,7 +11,7 @@ static Record SkipConsume(OpBase *opBase);
 static OpResult SkipReset(OpBase *opBase);
 
 OpBase *NewSkipOp(const ExecutionPlan *plan, unsigned int rec_to_skip) {
-	OpSkip *op = malloc(sizeof(OpSkip));
+	OpSkip *op = rm_malloc(sizeof(OpSkip));
 	op->skipped = 0;
 	op->rec_to_skip = rec_to_skip;
 

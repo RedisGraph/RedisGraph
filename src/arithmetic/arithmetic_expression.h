@@ -127,6 +127,11 @@ bool AR_EXP_ContainsAggregation(AR_ExpNode *root);
 /* Constructs string representation of arithmetic expression tree. */
 void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 
+/* Checks to see if expression contains given function.
+ * root - expression root to traverse.
+ * func - function name to lookup. */
+bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func);
+
 /* Generate a heap-allocated name for an arithmetic expression.
  * This routine is only used to name ORDER BY expressions. */
 char *AR_EXP_BuildResolvedName(AR_ExpNode *root);

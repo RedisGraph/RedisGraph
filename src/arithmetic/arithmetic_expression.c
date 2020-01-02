@@ -464,6 +464,17 @@ bool AR_EXP_ContainsAggregation(AR_ExpNode *root) {
 	return false;
 }
 
+bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
+	if(root == NULL) return false;
+	if(root->type == AR_EXP_OP) {
+		if(strcasecmp(root->op.func_name, func) == 0) return true;
+		for(int i = 0; i < root->op.child_count; i++) {
+			if(AR_EXP_ContainsFunc(root->op.children[i], func)) return true;
+		}
+	}
+	return false;
+}
+
 void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 					  size_t *bytes_written) {
 	/* Make sure there are at least 64 bytes in str. */

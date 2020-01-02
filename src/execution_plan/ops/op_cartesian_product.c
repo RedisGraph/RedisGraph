@@ -13,7 +13,7 @@ static OpResult CartesianProductReset(OpBase *opBase);
 static void CartesianProductFree(OpBase *opBase);
 
 OpBase *NewCartesianProductOp(const ExecutionPlan *plan) {
-	CartesianProduct *op = malloc(sizeof(CartesianProduct));
+	CartesianProduct *op = rm_malloc(sizeof(CartesianProduct));
 	op->init = true;
 	op->r = NULL;
 

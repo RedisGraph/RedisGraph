@@ -9,6 +9,7 @@
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/qsort.h"
+#include "../util/strcmp.h"
 #include "../util/vector.h"
 #include "../util/rmalloc.h"
 #include "../ast/ast_mock.h"
@@ -24,50 +25,17 @@
 #include <assert.h>
 #include <setjmp.h>
 
-// Forward declaration
-static void _PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set);
+//----reduce_to_apply.c----//
+/* Reduces a filter operation into an apply operation. */
+void ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpFilter *filter);
 
 static inline void _ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_root) {
 	if(plan->root) ExecutionPlan_NewRoot(plan->root, new_root);
 	plan->root = new_root;
 }
 
-// For all ops that refer to QG entities, rebind them with the matching entity
-// in the provided QueryGraph.
-// (This logic is ugly, but currently necessary.)
-static void _RebindQueryGraphReferences(OpBase *op, const QueryGraph *qg) {
-	switch(op->type) {
-	case OPType_INDEX_SCAN:
-		((IndexScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((IndexScan *)op)->n->alias);
-		return;
-	case OPType_ALL_NODE_SCAN:
-		((AllNodeScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((AllNodeScan *)op)->n->alias);
-		return;
-	case OPType_NODE_BY_LABEL_SCAN:
-		((NodeByLabelScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((NodeByLabelScan *)op)->n->alias);
-		return;
-	case OPType_NODE_BY_ID_SEEK:
-		((NodeByIdSeek *)op)->n = QueryGraph_GetNodeByAlias(qg, ((NodeByIdSeek *)op)->n->alias);
-		return;
-	default:
-		return;
-	}
-}
-
-// For all ops in the given tree, assocate the provided ExecutionPlan.
-// This is for use for updating ops that have been built with a temporary ExecutionPlan.
-static void _BindPlanToOps(OpBase *root, ExecutionPlan *plan) {
-	if(!root) return;
-	root->plan = plan;
-	_RebindQueryGraphReferences(root, plan->query_graph);
-	for(int i = 0; i < root->childCount; i ++) {
-		_BindPlanToOps(root->children[i], plan);
-	}
-}
-
-
 // Allocate a new ExecutionPlan segment.
-static inline ExecutionPlan *_NewEmptyExecutionPlan(void) {
+inline ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void) {
 	return rm_calloc(1, sizeof(ExecutionPlan));
 }
 
@@ -348,7 +316,19 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 	}
 }
 
-static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_limit) {
+static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
+	OpBase **filter_ops = ExecutionPlan_LocateOps(plan->root, OPType_FILTER);
+	uint filter_ops_count = array_len(filter_ops);
+	for(uint i = 0; i < filter_ops_count; i++) {
+		OpFilter *op = (OpFilter *)filter_ops[i];
+		FT_FilterNode *node;
+		if(FilterTree_ContainsFunc(op->filterTree, "path_filter", &node)) {
+			ExecutionPlan_ReduceFilterToApply(plan, op);
+		}
+	}
+	array_free(filter_ops);
+}
+void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_limit) {
 	Vector *sub_trees = FilterTree_SubTrees(plan->filter_tree);
 
 	/* For each filter tree find the earliest position along the execution
@@ -383,6 +363,7 @@ static void _ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *rec
 		raxFree(references);
 	}
 	Vector_Free(sub_trees);
+	_ExecutionPlan_PlaceApplyOps(plan);
 }
 
 // Merge all order expressions into the projections array without duplicates,
@@ -552,7 +533,7 @@ static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *
 								   const char **arguments) {
 	AST *ast = QueryCtx_GetAST();
 	// Initialize an ExecutionPlan that shares this plan's Record mapping.
-	ExecutionPlan *rhs_plan = _NewEmptyExecutionPlan();
+	ExecutionPlan *rhs_plan = ExecutionPlan_NewEmptyExecutionPlan();
 	rhs_plan->record_map = plan->record_map;
 
 	// If we have bound variables, build an Argument op that represents them.
@@ -562,19 +543,19 @@ static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *
 	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
 	AST *rhs_ast = AST_MockMatchPattern(ast, path);
 
-	// Populate sub-ExecutionPlan.
-	_PopulateExecutionPlan(rhs_plan, NULL);
-	// Add filter ops to sub-ExecutionPlan.
-	if(rhs_plan->filter_tree) _ExecutionPlan_PlaceFilterOps(rhs_plan, NULL);
+	ExecutionPlan_PopulateExecutionPlan(rhs_plan, NULL);
 
 	AST_MockFree(rhs_ast);
 	QueryCtx_SetAST(ast); // Reset the AST.
+	// Add filter ops to sub-ExecutionPlan.
+	if(rhs_plan->filter_tree) ExecutionPlan_PlaceFilterOps(rhs_plan, NULL);
 
 	ExecutionPlan_AddOp(plan->root, rhs_plan->root); // Add Match stream to Merge op.
 
 	OpBase *rhs_root = rhs_plan->root;
-	// Associate all new ops with the correct ExecutionPlan.
-	_BindPlanToOps(rhs_root, plan);
+
+	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
+	ExecutionPlan_BindPlanToOps(plan, rhs_root);
 
 	// NULL-set variables shared between the rhs_plan and the overall plan.
 	rhs_plan->root = NULL;
@@ -607,21 +588,6 @@ static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge
 		OpBase *create_argument = NewArgumentOp(plan, arguments);
 		ExecutionPlan_AddOp(merge_create, create_argument); // Add Argument op to stream.
 	}
-}
-
-// Build an array of const strings to populate the 'modifies' arrays of Argument ops.
-static inline const char **_buildArgumentModifiesArray(rax *bound_vars) {
-	const char **arguments = array_new(const char *, raxSize(bound_vars));
-	raxIterator it;
-	raxStart(&it, bound_vars);
-	raxSeek(&it, "^", NULL, 0);
-	while(raxNext(&it)) { // For each bound variable
-		// Copy the const string variable name into the array.
-		arguments = array_append(arguments, it.data);
-	}
-	raxStop(&it);
-
-	return arguments;
 }
 
 static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
@@ -663,7 +629,7 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 		// parser-generated constant strings.
 		ExecutionPlan_BoundVariables(plan->root, bound_vars);
 		// Prepare the variables for populating the Argument ops we will build.
-		arguments = _buildArgumentModifiesArray(bound_vars);
+		arguments = ExecutionPlan_BuildArgumentModifiesArray(bound_vars);
 	}
 
 	// Convert all the AST data required to populate our operations tree.
@@ -734,8 +700,7 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 	}
 }
 
-// Build a tree of operations that performs all the worked required by the clauses of the current AST.
-static void _PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set) {
+void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set) {
 	AST *ast = QueryCtx_GetAST();
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	plan->result_set = result_set;
@@ -891,25 +856,24 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 
 	uint segment_count = array_len(segment_indices);
 	ExecutionPlan **segments = rm_malloc(segment_count * sizeof(ExecutionPlan *));
+	AST **ast_segments = array_new(AST *, segment_count);
 	start_offset = 0;
 	for(int i = 0; i < segment_count; i++) {
 		uint end_offset = segment_indices[i];
 		// Slice the AST to only include the clauses in the current segment.
 		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
-
+		ast_segments = array_append(ast_segments, ast_segment);
 		// Construct a new ExecutionPlanSegment.
-		ExecutionPlan *segment = _NewEmptyExecutionPlan();
-		_PopulateExecutionPlan(segment, result_set);
-		AST_Free(ast_segment); // Free the AST segment.
+		ExecutionPlan *segment = ExecutionPlan_NewEmptyExecutionPlan();
+		ExecutionPlan_PopulateExecutionPlan(segment, result_set);
 
 		segments[i] = segment;
 		start_offset = end_offset;
 	}
 
-	QueryCtx_SetAST(ast); // AST segments have been freed, set master AST in QueryCtx.
-
 	// Place filter ops required by first ExecutionPlan segment.
-	if(segments[0]->filter_tree) _ExecutionPlan_PlaceFilterOps(segments[0], NULL);
+	QueryCtx_SetAST(ast_segments[0]);
+	if(segments[0]->filter_tree) ExecutionPlan_PlaceFilterOps(segments[0], NULL);
 
 	OpBase *connecting_op = NULL;
 	OpBase *prev_scope_end = NULL;
@@ -926,10 +890,17 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 		ExecutionPlan_AddOp(connecting_op, prev_root);
 
 		// Place filter ops required by current segment.
-		if(current_segment->filter_tree) _ExecutionPlan_PlaceFilterOps(current_segment, prev_scope_end);
+		QueryCtx_SetAST(ast_segments[i]);
+		if(current_segment->filter_tree) ExecutionPlan_PlaceFilterOps(current_segment, prev_scope_end);
 
 		prev_scope_end = prev_root; // Track the previous scope's end so filter placement doesn't overreach.
 	}
+
+	for(uint i = 0; i < segment_count; i++) {
+		AST_Free(ast_segments[i]);
+	}
+	array_free(ast_segments);
+	QueryCtx_SetAST(ast); // AST segments have been freed, set master AST in QueryCtx.
 
 	array_free(segment_indices);
 
@@ -957,7 +928,6 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 		OpBase *results_op = NewResultsOp(plan, result_set);
 		_ExecutionPlan_UpdateRoot(plan, results_op);
 	}
-
 
 	// Optimize the operations in the ExecutionPlan.
 	optimizePlan(plan);
@@ -1084,6 +1054,18 @@ static void _ExecutionPlan_FreeOperations(OpBase *op) {
 static void _ExecutionPlan_FreeSubPlan(ExecutionPlan *plan) {
 	if(plan == NULL) return;
 
+	if(plan->sub_execution_plans) {
+		uint sub_execution_plans_count = array_len(plan->sub_execution_plans);
+		for(uint i = 0; i < sub_execution_plans_count; i++) {
+			ExecutionPlan *sub_plan = plan->sub_execution_plans[i];
+			// Avoid double free
+			sub_plan->record_map = NULL;
+			_ExecutionPlan_FreeSubPlan(sub_plan);
+		}
+		array_free(plan->sub_execution_plans);
+		plan->sub_execution_plans = NULL;
+	}
+
 	for(int i = 0; i < plan->segment_count; i++) _ExecutionPlan_FreeSubPlan(plan->segments[i]);
 	if(plan->segments) rm_free(plan->segments);
 
@@ -1095,12 +1077,13 @@ static void _ExecutionPlan_FreeSubPlan(ExecutionPlan *plan) {
 	}
 
 	QueryGraph_Free(plan->query_graph);
-	raxFree(plan->record_map);
+	if(plan->record_map) raxFree(plan->record_map);
 	rm_free(plan);
 }
 
 void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) return;
+
 	if(plan->root) {
 		_ExecutionPlan_FreeOperations(plan->root);
 		plan->root = NULL;

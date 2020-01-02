@@ -66,7 +66,7 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNo
 					  AR_ExpNode **yield_exps) {
 
 	assert(proc_name);
-	OpProcCall *op = malloc(sizeof(OpProcCall));
+	OpProcCall *op = rm_malloc(sizeof(OpProcCall));
 	op->r = NULL;
 	op->arg_exps = arg_exps;
 	op->yield_map = NULL;

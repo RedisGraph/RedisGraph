@@ -66,7 +66,7 @@ void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {
 OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
 	assert(ae && g);
 
-	CondVarLenTraverse *op = malloc(sizeof(CondVarLenTraverse));
+	CondVarLenTraverse *op = rm_malloc(sizeof(CondVarLenTraverse));
 	op->g = g;
 	op->ae = ae;
 	op->r = NULL;

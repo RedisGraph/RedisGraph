@@ -12,7 +12,7 @@ static OpResult ApplyReset(OpBase *opBase);
 static void ApplyFree(OpBase *opBase);
 
 OpBase *NewApplyOp(const ExecutionPlan *plan) {
-	Apply *op = malloc(sizeof(Apply));
+	Apply *op = rm_malloc(sizeof(Apply));
 	op->init = true;
 	op->rhs_idx = 0;
 	op->lhs_record = NULL;

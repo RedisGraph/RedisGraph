@@ -305,6 +305,39 @@ bool FilterTree_containsOp(const FT_FilterNode *root, AST_Operator op) {
 	}
 }
 
+bool _FilterTree_ContainsFunc(const FT_FilterNode *root, const char *func, FT_FilterNode **node) {
+	if(root == NULL) return false;
+	switch(root->t) {
+	case FT_N_COND: {
+		return FilterTree_ContainsFunc(root->cond.left, func, node) ||
+			   FilterTree_ContainsFunc(root->cond.right, func, node);
+	}
+	case FT_N_PRED: {
+		if(AR_EXP_ContainsFunc(root->pred.lhs, func) || AR_EXP_ContainsFunc(root->pred.rhs, func)) {
+			*node = (FT_FilterNode *)root;
+			return true;
+		}
+		return false;
+	}
+	case FT_N_EXP: {
+		if(AR_EXP_ContainsFunc(root->exp.exp, func)) {
+			*node = (FT_FilterNode *) root;
+			return true;
+		}
+		return false;
+	}
+	default:
+		assert("Unkown filter tree node type" && false);
+	}
+	return false;
+}
+
+bool FilterTree_ContainsFunc(const FT_FilterNode *root, const char *func, FT_FilterNode **node) {
+	assert(root && func && node);
+	*node = NULL;
+	return _FilterTree_ContainsFunc(root, func, node);
+}
+
 void _FilterTree_ApplyNegate(FT_FilterNode **root, uint negate_count) {
 	switch((*root)->t) {
 	case FT_N_EXP:

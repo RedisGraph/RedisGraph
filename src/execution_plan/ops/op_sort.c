@@ -80,7 +80,7 @@ static inline Record _handoff(OpSort *op) {
 }
 
 OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int direction, uint limit) {
-	OpSort *op = malloc(sizeof(OpSort));
+	OpSort *op = rm_malloc(sizeof(OpSort));
 	op->heap = NULL;
 	op->buffer = NULL;
 	op->limit = limit;

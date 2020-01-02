@@ -11,7 +11,7 @@ static Record LimitConsume(OpBase *opBase);
 static OpResult LimitReset(OpBase *opBase);
 
 OpBase *NewLimitOp(const ExecutionPlan *plan, unsigned int l) {
-	OpLimit *op = malloc(sizeof(OpLimit));
+	OpLimit *op = rm_malloc(sizeof(OpLimit));
 	op->limit = l;
 	op->consumed = 0;
 

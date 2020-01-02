@@ -204,6 +204,26 @@ static FT_FilterNode *_convertInlinedProperties(const AST *ast, const cypher_ast
 	return root;
 }
 
+static FT_FilterNode *_convertPatternPath(const cypher_astnode_t *entity) {
+	// Collect aliases specified in pattern.
+	const char **aliases = array_new(const char *, 1);
+	AST_CollectAliases(&aliases, entity);
+	uint alias_count = array_len(aliases);
+
+	/* Create a function call expression
+	 * First argument is a pointer to the original AST pattern node.
+	 * argument 1..alias_count are the referenced aliases,
+	 * required for filter positioning when constructing an execution plan. */
+	AR_ExpNode *exp = AR_EXP_NewOpNode("path_filter", 1 + alias_count);
+	exp->op.children[0] = AR_EXP_NewConstOperandNode(SI_PtrVal((void *)entity));
+	for(uint i = 0; i < alias_count; i++) {
+		AR_ExpNode *child = AR_EXP_NewVariableOperandNode(aliases[i], NULL);
+		exp->op.children[1 + i] = child;
+	}
+	array_free(aliases);
+	return FilterTree_CreateExpressionFilter(exp);
+}
+
 FT_FilterNode *_FilterNode_FromAST(const cypher_astnode_t *expr) {
 	assert(expr);
 	cypher_astnode_type_t type = cypher_astnode_type(expr);
@@ -222,6 +242,8 @@ FT_FilterNode *_FilterNode_FromAST(const cypher_astnode_t *expr) {
 		return _convertFalseOperator();
 	} else if(type == CYPHER_AST_INTEGER) {
 		return _convertIntegerOperator(expr);
+	} else if(type == CYPHER_AST_PATTERN_PATH) {
+		return _convertPatternPath(expr);
 	} else {
 		/* Probably an invalid query
 		 * e.g. MATCH (u) where u.v NOT NULL RETURN u
@@ -232,17 +254,40 @@ FT_FilterNode *_FilterNode_FromAST(const cypher_astnode_t *expr) {
 	}
 }
 
+void _AST_ConvertGraphPatternToFilter(const AST *ast, FT_FilterNode **root,
+									  const cypher_astnode_t *pattern) {
+	if(!pattern) return;
+	FT_FilterNode *ft_node = NULL;
+	uint npaths = cypher_ast_pattern_npaths(pattern);
+	// Go over each path in the pattern.
+	for(uint i = 0; i < npaths; i++) {
+		const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
+		// Go over each element in the path pattern and check if there is an inline filter.
+		uint nelements = cypher_ast_pattern_path_nelements(path);
+		// Nodes are in even places.
+		for(uint n = 0; n < nelements; n += 2) {
+			const cypher_astnode_t *node = cypher_ast_pattern_path_get_element(path, n);
+			ft_node = _convertInlinedProperties(ast, node, GETYPE_NODE);
+			if(ft_node) _FT_Append(root, ft_node);
+		}
+		// Edges are in odd places.
+		for(uint e = 1; e < nelements; e += 2) {
+			const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, e);
+			ft_node = _convertInlinedProperties(ast, edge, GETYPE_EDGE);
+			if(ft_node) _FT_Append(root, ft_node);
+		}
+	}
+}
+
 void _AST_ConvertFilters(const AST *ast, FT_FilterNode **root, const cypher_astnode_t *entity) {
 	if(!entity) return;
 
 	cypher_astnode_type_t type = cypher_astnode_type(entity);
 
 	FT_FilterNode *node = NULL;
-	// If the current entity is a node or edge pattern, capture its properties map (if any)
-	if(type == CYPHER_AST_NODE_PATTERN) {
-		node = _convertInlinedProperties(ast, entity, GETYPE_NODE);
-	} else if(type == CYPHER_AST_REL_PATTERN) {
-		node = _convertInlinedProperties(ast, entity, GETYPE_EDGE);
+
+	if(type == CYPHER_AST_PATTERN_PATH) {
+		node = _convertPatternPath(entity);
 	} else if(type == CYPHER_AST_COMPARISON) {
 		node = _convertComparison(entity);
 	} else if(type == CYPHER_AST_BINARY_OPERATOR) {
@@ -274,7 +319,10 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 	if(match_clauses) {
 		uint match_count = array_len(match_clauses);
 		for(uint i = 0; i < match_count; i ++) {
-			_AST_ConvertFilters(ast, &filter_tree, match_clauses[i]);
+			const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match_clauses[i]);
+			_AST_ConvertGraphPatternToFilter(ast, &filter_tree, pattern);
+			const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(match_clauses[i]);
+			if(predicate) _AST_ConvertFilters(ast, &filter_tree, predicate);
 		}
 		array_free(match_clauses);
 	}

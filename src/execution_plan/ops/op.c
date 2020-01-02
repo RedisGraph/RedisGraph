@@ -156,6 +156,6 @@ void OpBase_Free(OpBase *op) {
 		}
 		array_free(op->dangling_records);
 	}
-	free(op);
+	rm_free(op);
 }
 

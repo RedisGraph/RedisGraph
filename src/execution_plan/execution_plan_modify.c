@@ -1,15 +1,5 @@
 #include "execution_plan.h"
-
-/* Checks if parent has given child, if so returns 1
- * otherwise returns 0 */
-int _OpBase_ContainsChild(const OpBase *parent, const OpBase *child) {
-	for(int i = 0; i < parent->childCount; i++) {
-		if(parent->children[i] == child) {
-			return 1;
-		}
-	}
-	return 0;
-}
+#include "ops/ops.h"
 
 void _OpBase_AddChild(OpBase *parent, OpBase *child) {
 	// Add child to parent
@@ -78,9 +68,6 @@ OpBase **ExecutionPlan_LocateOps(OpBase *root, OPType type) {
 
 // Introduce the new operation B between A and A's parent op.
 void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
-	/* B is a new operation. */
-	assert(!(b->parent || b->children));
-
 	if(a->parent == NULL) {
 		/* A is the root operation. */
 		_OpBase_AddChild(b, a);
@@ -266,3 +253,56 @@ void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers) {
 	}
 }
 
+// Build an array of const strings to populate the 'modifies' arrays of Argument ops.
+inline const char **ExecutionPlan_BuildArgumentModifiesArray(rax *bound_vars) {
+	const char **arguments = array_new(const char *, raxSize(bound_vars));
+	raxIterator it;
+	raxStart(&it, bound_vars);
+	raxSeek(&it, "^", NULL, 0);
+	while(raxNext(&it)) { // For each bound variable
+		// Copy the const string variable name into the array.
+		arguments = array_append(arguments, it.data);
+	}
+	raxStop(&it);
+
+	return arguments;
+}
+
+// For all ops that refer to QG entities, rebind them with the matching entity
+// in the provided QueryGraph.
+// (This logic is ugly, but currently necessary.)
+static void _RebindQueryGraphReferences(OpBase *op, const QueryGraph *qg) {
+	switch(op->type) {
+	case OPType_INDEX_SCAN:
+		((IndexScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((IndexScan *)op)->n->alias);
+		return;
+	case OPType_ALL_NODE_SCAN:
+		((AllNodeScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((AllNodeScan *)op)->n->alias);
+		return;
+	case OPType_NODE_BY_LABEL_SCAN:
+		((NodeByLabelScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((NodeByLabelScan *)op)->n->alias);
+		return;
+	case OPType_NODE_BY_ID_SEEK:
+		((NodeByIdSeek *)op)->n = QueryGraph_GetNodeByAlias(qg, ((NodeByIdSeek *)op)->n->alias);
+		return;
+	default:
+		return;
+	}
+}
+
+void ExecutionPlan_BindPlanToOps(ExecutionPlan *plan, OpBase *root) {
+	if(!root) return;
+	root->plan = plan;
+	_RebindQueryGraphReferences(root, plan->query_graph);
+	for(int i = 0; i < root->childCount; i ++) {
+		ExecutionPlan_BindPlanToOps(plan, root->children[i]);
+	}
+}
+
+void ExecutionPlan_AppendSubExecutionPlan(ExecutionPlan *master_plan, ExecutionPlan *sub_plan) {
+	if(!master_plan->sub_execution_plans)
+		master_plan->sub_execution_plans = array_new(ExecutionPlan *, 1);
+	if(sub_plan->record_map) raxFree(sub_plan->record_map);
+	sub_plan->record_map = master_plan->record_map;
+	master_plan->sub_execution_plans = array_append(master_plan->sub_execution_plans, sub_plan);
+}
