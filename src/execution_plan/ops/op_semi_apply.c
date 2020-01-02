@@ -50,7 +50,6 @@ OpResult SemiApplyInit(OpBase *opBase) {
 	// Locate branch's Argument op tap.
 	op->op_arg = (Argument *)ExecutionPlan_LocateFirstOp(op->match_branch, OPType_ARGUMENT);
 	assert(op->op_arg && op->op_arg->op.childCount == 0);
-	if(op->op_arg) assert(op->op_arg->op.childCount == 0);
 	return OP_OK;
 }
 

@@ -43,6 +43,7 @@ OpBase *NewApplyMultiplexerOp(ExecutionPlan *plan, AST_Operator boolean_operator
  * filter operations to the beginning (leftmost).
  * The filter operations evaluted faster then the apply operations so we want to evaluate them first. */
 static void _OpApplyMultiplexer_SortChildren(OpBase *op) {
+	// The 0 child is the bounded branch of this operation, which consumes the record and is set on execution_plan_reduce_to_apply.c
 	for(int i = 1; i < op->childCount; i++) {
 		OpBase *child = op->children[i];
 		// Push apply ops to the end.

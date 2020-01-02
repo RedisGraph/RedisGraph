@@ -13,11 +13,11 @@
 #include "../../query_ctx.h"
 
 static OpBase *_LabelScanToConditionalTraverse(NodeByLabelScan *label_scan) {
-	const QGNode *n = label_scan->n;
+	AST *ast = QueryCtx_GetAST();
 	Graph *g = QueryCtx_GetGraph();
+	const QGNode *n = label_scan->n;
 	AlgebraicExpression *ae = AlgebraicExpression_NewOperand(GrB_NULL, true, n->alias, n->alias, NULL,
 															 n->label);
-	AST *ast = QueryCtx_GetAST();
 	return NewCondTraverseOp(label_scan->op.plan, g, ae, TraverseRecordCap(ast));
 }
 
@@ -32,6 +32,10 @@ static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
 	// Check if that alias is already bound by any of the scan's children.
 	for(int i = 0; i < scan->childCount; i ++) {
 		if(ExecutionPlan_LocateOpResolvingAlias(scan->children[i], scanned_alias)) {
+			/* Here is the case where a node is already populated in the record when it arrived to a label scan operation.
+			 * The label scan operation here is redundent since it will re-scan the entire graph, so we will replace it with
+			 * a conditional traverse operation which will filter only the nodes with the requested labels.
+			 * The conditional traverse is done over the label matrix, and is more efficient then a filter operation. */
 			if(scan->type == OPType_NODE_BY_LABEL_SCAN) {
 				OpBase *traverse = _LabelScanToConditionalTraverse((NodeByLabelScan *)scan);
 				ExecutionPlan_ReplaceOp(plan, scan, traverse);

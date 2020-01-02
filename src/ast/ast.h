@@ -60,8 +60,8 @@ uint AST_GetClauseCount(const AST *ast, cypher_astnode_type_t clause_type);
 const cypher_astnode_t **AST_GetClauses(const AST *ast, cypher_astnode_type_t type);
 
 // Returns an array (arr.h type) of all the nodes from a given type. Note: array must be free after use.
-const cypher_astnode_t **AST_GetAllTypedNodes(const cypher_astnode_t *ast,
-											  cypher_astnode_type_t type);
+const cypher_astnode_t **AST_GetTypedNodes(const cypher_astnode_t *ast,
+										   cypher_astnode_type_t type);
 
 // Collect all aliases within `entity` subtree.
 void AST_CollectAliases(const char ***aliases, const cypher_astnode_t *entity);

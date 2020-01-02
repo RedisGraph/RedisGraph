@@ -14,8 +14,7 @@
 #include "../ops/op_cond_var_len_traverse.h"
 
 static inline bool _isInSubExecutionPlan(OpBase *op) {
-	if(ExecutionPlan_LocateFirstOp(op, OPType_ARGUMENT)) return true;
-	return false;
+	return ExecutionPlan_LocateFirstOp(op, OPType_ARGUMENT) != NULL;
 }
 
 static void _removeRedundantTraversal(ExecutionPlan *plan, CondTraverse *traverse) {

@@ -871,8 +871,6 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 		start_offset = end_offset;
 	}
 
-
-
 	// Place filter ops required by first ExecutionPlan segment.
 	QueryCtx_SetAST(ast_segments[0]);
 	if(segments[0]->filter_tree) ExecutionPlan_PlaceFilterOps(segments[0], NULL);
@@ -930,7 +928,6 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 		OpBase *results_op = NewResultsOp(plan, result_set);
 		_ExecutionPlan_UpdateRoot(plan, results_op);
 	}
-
 
 	// Optimize the operations in the ExecutionPlan.
 	optimizePlan(plan);

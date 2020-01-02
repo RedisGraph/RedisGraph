@@ -4,6 +4,8 @@
 #include "../ast/ast_mock.h"
 #include "./optimizations/optimizer.h"
 
+#define APPLY_OPS (OPType_OR_APPLY_MULTIPLEXER | OPType_AND_APPLY_MULTIPLEXER | OPType_SEMI_APPLY | OpType_ANTI_SEMI_APPLY)
+
 static OpBase *_buildMatchBranch(ExecutionPlan *plan, const cypher_astnode_t *path) {
 	AST *ast = QueryCtx_GetAST();
 
@@ -59,8 +61,7 @@ static void _CreateBoundBranch(OpBase *op, ExecutionPlan *plan) {
 	 * set it as the first child. */
 	ExecutionPlan_AddOp(op, arg);
 
-	if(op->type & (OPType_OR_APPLY_MULTIPLEXER | OPType_AND_APPLY_MULTIPLEXER | OPType_SEMI_APPLY |
-				   OpType_ANTI_SEMI_APPLY))
+	if(op->type & APPLY_OPS)
 		_OpBaseSwapChildren(op, 0, op->childCount - 1);
 }
 
@@ -94,7 +95,7 @@ static OpBase *_ReduceFilterToOp(ExecutionPlan *plan,
 	// Case of an expression which contains path filter.
 	if(filter_root->t == FT_N_EXP && FilterTree_ContainsFunc(filter_root, "path_filter", &node)) {
 		/* If an expression filter tree node contains "path_filter" function, it can be either as
-		 * a single function, or a single child of a single "not" function. ß*/
+		 * a single function, or a single child of a single "not" function. */
 		AR_ExpNode *expression = filter_root->exp.exp;
 		return _ApplyOpFromPathExpression(plan, expression);
 	}
@@ -108,6 +109,8 @@ static OpBase *_ReduceFilterToOp(ExecutionPlan *plan,
 		OpBase *rhs = _ReduceFilterToOp(plan, filter_root->cond.right);
 		if(rhs->type == OPType_FILTER) filter_root->cond.right = NULL;
 		_CreateBoundBranch(rhs, plan);
+		// Check that at least one of the branches is not a filter.
+		assert(!(rhs->type == OPType_FILTER && lhs->type == OPType_FILTER));
 		// Create multiplexer op and set the branches as its children.
 		OpBase *apply_multiplexer = NewApplyMultiplexerOp(plan, filter_root->cond.op);
 		ExecutionPlan_AddOp(apply_multiplexer, lhs);
