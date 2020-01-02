@@ -71,7 +71,7 @@ Record _handoff(OpUnwind *op) {
 	// If there is a new value ready, return it.
 	if(op->listIdx < SIArray_Length(op->list)) {
 		Record r = Record_Clone(op->currentRecord);
-		Record_AddScalar(r, op->unwindRecIdx, SIArray_Get(op->list, op->listIdx));
+		Record_Add(r, op->unwindRecIdx, SIArray_Get(op->list, op->listIdx));
 		op->listIdx++;
 		return r;
 	}
