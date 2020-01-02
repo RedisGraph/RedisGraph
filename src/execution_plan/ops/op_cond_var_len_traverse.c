@@ -85,8 +85,7 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	// Populate edge value in record only if it is referenced.
 	AST *ast = QueryCtx_GetAST();
 	QGEdge *e = QueryGraph_GetEdgeByAlias(op->qg, AlgebraicExpression_Edge(op->ae));
-	if(AST_AliasIsReferenced(ast, e->alias)) op->edgesIdx = OpBase_Modifies((OpBase *)op, e->alias);
-	else op->edgesIdx = -1;
+	op->edgesIdx = AST_AliasIsReferenced(ast, e->alias) ? OpBase_Modifies((OpBase *)op, e->alias) : -1;
 
 	if(e->bidirectional) {
 		op->traverseDir = GRAPH_EDGE_DIR_BOTH;
@@ -121,9 +120,9 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 			if(op->edgeRelationCount == 0) return NULL;
 		}
 
+		Node *destNode = NULL;
 		Node *srcNode = Record_GetNode(op->r, op->srcNodeIdx);
 		// The destination node is known in advance if we're performing an ExpandInto.
-		Node *destNode = NULL;
 		if(op->expandInto) destNode = Record_GetNode(op->r, op->destNodeIdx);
 
 		AllPathsCtx_Free(op->allPathsCtx);
