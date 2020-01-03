@@ -14,6 +14,7 @@ extern "C"
 #include "../../src/graph/graph.h"
 #include "../../src/util/arr.h"
 #include "../../src/util/simple_timer.h"
+#include "../../src/graph/entities/graph_entity.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "../../src/util/datablock/datablock_iterator.h"
 #include "../../src/util/rmalloc.h"
@@ -763,7 +764,6 @@ TEST_F(GraphTest, GetEdge) {
 	Graph_Free(g);
 }
 
-
 TEST_F(GraphTest, BulkDelete) {
 	// Create graph.
 	int node_count = 5;
@@ -880,4 +880,83 @@ TEST_F(GraphTest, BulkDelete) {
 
 	// Clean up.
 	Graph_Free(g);
+}
+
+TEST_F(GraphTest, GraphStatistics) {
+    Node p;
+    Node c;
+    Node u;
+    Edge e;
+    size_t count = 0;
+    size_t nodeCount = 16;
+    Graph *g = Graph_New(nodeCount, nodeCount);
+
+    Graph_AcquireWriteLock(g);
+    
+    int label_person = Graph_AddLabel(g);
+	int label_country = Graph_AddLabel(g);
+    int relation_born = Graph_AddRelationType(g);
+    int relation_visit = Graph_AddRelationType(g);
+
+	Graph_CreateNode(g, GRAPH_NO_LABEL, &u);
+    Graph_CreateNode(g, label_person, &p);
+	Graph_CreateNode(g, label_country, &c);
+
+    count = GraphEdgeCount(g, label_person, relation_visit, label_country);
+    ASSERT_EQ(count, 0);
+    count = GraphEdgeCount(g, GRAPH_NO_LABEL, relation_visit, label_country);
+    ASSERT_EQ(count, 0);
+    count = GraphEdgeCount(g, label_person, GRAPH_NO_RELATION, label_country);
+    ASSERT_EQ(count, 0);
+    count = GraphEdgeCount(g, label_person, relation_visit, GRAPH_NO_LABEL);
+    ASSERT_EQ(count, 0);
+    count = GraphEdgeCount(g, label_person, GRAPH_NO_RELATION, GRAPH_NO_LABEL);
+    ASSERT_EQ(count, 0);
+    count = GraphEdgeCount(g, GRAPH_NO_LABEL, relation_visit, GRAPH_NO_LABEL);
+    ASSERT_EQ(count, 0);
+    count = GraphEdgeCount(g, GRAPH_NO_LABEL, GRAPH_NO_RELATION, label_country);
+    ASSERT_EQ(count, 0);
+    count = GraphEdgeCount(g, GRAPH_NO_LABEL, GRAPH_NO_RELATION, GRAPH_NO_LABEL);
+    ASSERT_EQ(count, 0);
+
+    // Form connections.
+    Graph_ConnectNodes(g, ENTITY_GET_ID(&p), ENTITY_GET_ID(&c), relation_born, &e);
+    Graph_ConnectNodes(g, ENTITY_GET_ID(&p), ENTITY_GET_ID(&c), relation_visit, &e);
+    Graph_ConnectNodes(g, ENTITY_GET_ID(&p), ENTITY_GET_ID(&c), relation_visit, &e);
+    Graph_ConnectNodes(g, ENTITY_GET_ID(&u), ENTITY_GET_ID(&c), relation_born, &e);
+
+    // (:person)-[:visit]->(:country), (:person)-[:visit]->(:country)
+    count = GraphEdgeCount(g, label_person, relation_visit, label_country);
+    ASSERT_EQ(count, 2);
+
+    // ()-[:born]->(country), (:person)-[:born]->(:country)
+    count = GraphEdgeCount(g, GRAPH_NO_LABEL, relation_born, label_country);
+    ASSERT_EQ(count, 2);
+
+    // (:person)-[:visit]->(:country), (:person)-[:visit]->(:country), (:person)-[:born]->(:country)
+    count = GraphEdgeCount(g, label_person, GRAPH_NO_RELATION, label_country);
+    ASSERT_EQ(count, 3);
+
+    // (:person)-[:visit]->(:country), (:person)-[:visit]->(:country)
+    count = GraphEdgeCount(g, label_person, relation_visit, GRAPH_NO_LABEL);
+    ASSERT_EQ(count, 2);
+    
+    // (:person)-[:visit]->(:country), (:person)-[:visit]->(:country), (:person)-[:born]->(:country)
+    count = GraphEdgeCount(g, label_person, GRAPH_NO_RELATION, GRAPH_NO_LABEL);
+    ASSERT_EQ(count, 3);
+
+    // (:person)-[:born]->(:country), ()-[:born]->(country)
+    count = GraphEdgeCount(g, GRAPH_NO_LABEL, relation_born, GRAPH_NO_LABEL);
+    ASSERT_EQ(count, 2);
+
+    // (:person)-[:visit]->(:country), (:person)-[:visit]->(:country), (:person)-[:born]->(:country), ()-[:born]->(country)
+    count = GraphEdgeCount(g, GRAPH_NO_LABEL, GRAPH_NO_RELATION, label_country);
+    ASSERT_EQ(count, 4);
+
+    // (:person)-[:visit]->(:country), (:person)-[:visit]->(:country), (:person)-[:born]->(:country), ()-[:born]->(country)
+    count = GraphEdgeCount(g, GRAPH_NO_LABEL, GRAPH_NO_RELATION, GRAPH_NO_LABEL);
+    ASSERT_EQ(count, 4);
+
+ 	Graph_ReleaseLock(g);
+	Graph_Free(g);   
 }
