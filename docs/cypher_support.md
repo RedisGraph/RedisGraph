@@ -156,11 +156,11 @@ We do not support any of these properties at the type level, meaning nodes and r
 ## Operators
 
 ### Mathematical operators
-+ Multiplication, addition, subtraction, division
++ Multiplication, addition, subtraction, division, modulo
 
   **Unsupported:**
 
-- Modulo, exponentiation
+- Exponentiation
 
 ### String operators
 + String operators (STARTS WITH, ENDS WITH, CONTAINS) are supported.
