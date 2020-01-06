@@ -148,6 +148,24 @@ Here we've required that the president node's name will have the value "Jed Bart
 
 There's no difference between inline predicates and predicates specified within the WHERE clause.
 
+It is also possible to filter on graph patterns. The following queries, which return all presidents and the states they won in, produce the same results:
+
+```sh
+MATCH (p:president), (s:state) WHERE (p)-[:won]->(s) RETURN p, s
+```
+
+and
+
+```sh
+MATCH (p:president)-[:won]->(s:state) RETURN p, s
+```
+
+Pattern predicates can be also negated and combined with the logical operators AND, OR, and NOT. The following query returns all the presidents that did not win in the states where they were governors:
+
+```sh
+MATCH (p:president), (s:state) WHERE NOT (p)-[:won]->(s) AND (p)->[:governor]->(s) RETURN p, s
+```
+
 #### RETURN
 
 In its simple form, Return defines which properties the returned result-set will contain.
