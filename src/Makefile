@@ -13,7 +13,7 @@ LIBCYPHER-PARSER_DIR = ../deps/libcypher-parser/lib/src
 # if DEBUG env var is set, we compile with "debug" cflags
 DEBUGFLAGS = -g -ggdb -O3 
 ifeq ($(DEBUG), 1)
-	DEBUGFLAGS = -g -ggdb -O0
+	DEBUGFLAGS = -fno-omit-frame-pointer -g -ggdb -O0
 endif
 
 # Default CFLAGS
