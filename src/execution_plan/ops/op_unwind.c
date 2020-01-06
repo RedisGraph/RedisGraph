@@ -70,7 +70,7 @@ static OpResult UnwindInit(OpBase *opBase) {
 Record _handoff(OpUnwind *op) {
 	// If there is a new value ready, return it.
 	if(op->listIdx < SIArray_Length(op->list)) {
-		Record r = Record_Clone(op->currentRecord);
+		Record r = OpBase_CloneRecord(op->currentRecord);
 		Record_Add(r, op->unwindRecIdx, SIArray_Get(op->list, op->listIdx));
 		op->listIdx++;
 		return r;
@@ -92,7 +92,7 @@ static Record UnwindConsume(OpBase *opBase) {
 	// Did we managed to get new data?
 	if((r = OpBase_Consume(child))) {
 		// Free current record to accommodate new record.
-		Record_Free(op->currentRecord);
+		OpBase_DeleteRecord(op->currentRecord);
 		op->currentRecord = r;
 		// Free old list.
 		SIValue_Free(&op->list);
@@ -125,7 +125,7 @@ static void UnwindFree(OpBase *ctx) {
 	}
 
 	if(op->currentRecord) {
-		Record_Free(op->currentRecord);
+		OpBase_DeleteRecord(op->currentRecord);
 		op->currentRecord = NULL;
 	}
 }

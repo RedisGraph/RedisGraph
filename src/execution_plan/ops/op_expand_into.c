@@ -132,7 +132,7 @@ static Record _handoff(OpExpandInto *op) {
 	 * try to get an edge, if successful we can return quickly,
 	 * otherwise try to get a new pair of source and destination nodes. */
 	if(op->setEdge) {
-		if(_setEdge(op)) return Record_Clone(op->r);
+		if(_setEdge(op)) return OpBase_CloneRecord(op->r);
 	}
 
 	Node *srcNode;
@@ -167,7 +167,7 @@ static Record _handoff(OpExpandInto *op) {
 											  &op->edges);
 			}
 			_setEdge(op);
-			return Record_Clone(op->r);
+			return OpBase_CloneRecord(op->r);
 		}
 
 		// Mark as NULL to avoid double free.
@@ -193,7 +193,7 @@ static Record ExpandIntoConsume(OpBase *opBase) {
 		 * clean up and try to get new data points. */
 		for(int i = 0; i < op->recordsCap; i++) {
 			if(op->records[i]) {
-				Record_Free(op->records[i]);
+				OpBase_DeleteRecord(op->records[i]);
 				op->records[i] = NULL;
 			} else {
 				break;
@@ -221,7 +221,7 @@ static Record ExpandIntoConsume(OpBase *opBase) {
 static OpResult ExpandIntoReset(OpBase *ctx) {
 	OpExpandInto *op = (OpExpandInto *)ctx;
 	for(int i = 0; i < op->recordCount; i++) {
-		if(op->records[i]) Record_Free(op->records[i]);
+		if(op->records[i]) OpBase_DeleteRecord(op->records[i]);
 	}
 	op->recordCount = 0;
 	if(op->F != GrB_NULL) GrB_Matrix_clear(op->F);
@@ -259,7 +259,7 @@ static void ExpandIntoFree(OpBase *ctx) {
 
 	if(op->records) {
 		for(int i = 0; i < op->recordsCap; i++) {
-			if(op->records[i]) Record_Free(op->records[i]);
+			if(op->records[i]) OpBase_DeleteRecord(op->records[i]);
 		}
 		rm_free(op->records);
 		op->records = NULL;

@@ -133,3 +133,8 @@ bool OpBase_IsWriter(OpBase *op);
 // Creates a new record that will be populated during execution.
 Record OpBase_CreateRecord(const OpBase *op);
 
+// Clones given record.
+Record OpBase_CloneRecord(Record r);
+
+// Release record.
+void OpBase_DeleteRecord(Record r);

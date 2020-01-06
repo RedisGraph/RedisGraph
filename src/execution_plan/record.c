@@ -59,9 +59,7 @@ int Record_GetEntryIdx(Record r, const char *alias) {
 	return (intptr_t)idx;
 }
 
-Record Record_Clone(const Record r) {
-	Record clone = Record_New(r->mapping);
-
+void Record_Clone(const Record r, Record clone) {
 	int entry_count = Record_length(r);
 	size_t required_record_size = sizeof(Entry) * entry_count;
 
@@ -78,8 +76,6 @@ Record Record_Clone(const Record r) {
 			SIValue_MakeVolatile(&clone->entries[i].value.s);
 		}
 	}
-
-	return clone;
 }
 
 void Record_Merge(Record *a, const Record b) {
@@ -294,13 +290,16 @@ unsigned long long Record_Hash64(const Record r) {
 	return hash;
 }
 
-void Record_Free(Record r) {
+void Record_FreeEntries(Record r) {
 	unsigned int length = Record_length(r);
 	for(unsigned int i = 0; i < length; i++) {
 		if(r->entries[i].type == REC_TYPE_SCALAR) {
 			SIValue_Free(&r->entries[i].value.s);
 		}
 	}
-	rm_free(r);
 }
 
+void Record_Free(Record r) {
+	Record_FreeEntries(r);
+	rm_free(r);
+}

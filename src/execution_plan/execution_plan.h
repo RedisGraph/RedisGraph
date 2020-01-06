@@ -25,6 +25,7 @@ struct ExecutionPlan {
 	ExecutionPlan **segments;           // Partial execution plans scoped to a subset of operations.
 	// Semi-independent sub execution plans which created during the build of the main execution plan.
 	ExecutionPlan **sub_execution_plans;
+    DataBlock *record_pool;
 };
 
 /* execution_plan_modify.c
@@ -104,6 +105,12 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_lim
 
 /* Retrieve the map of aliases to Record offsets in this ExecutionPlan segment. */
 rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan);
+
+/* Retrieves a record from records pool. */
+Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan);
+
+/* Free record - returns record to records pool. */
+void ExecutionPlan_ReturnRecord(ExecutionPlan *plan, Record r);
 
 /* Prints execution plan. */
 void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx);

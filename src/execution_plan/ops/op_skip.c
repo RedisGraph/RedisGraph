@@ -34,7 +34,7 @@ static Record SkipConsume(OpBase *opBase) {
 		if(!discard) return NULL;
 
 		// Discard.
-		Record_Free(discard);
+		OpBase_DeleteRecord(discard);
 
 		// Advance.
 		skip->skipped++;

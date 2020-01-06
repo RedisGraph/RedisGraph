@@ -66,8 +66,9 @@ static Group *_CreateGroup(OpAggregate *op, Record r) {
 	}
 
 	/* There's no need to keep a reference to record if we're not sorting groups. */
-	Record cache_record = (op->should_cache_records) ? r : NULL;
-	op->group = NewGroup(key_count, group_keys, agg_exps, cache_record);
+	// Record cache_record = (op->should_cache_records) ? r : NULL;
+	// op->group = NewGroup(key_count, group_keys, agg_exps, cache_record);
+	op->group = NewGroup(key_count, group_keys, agg_exps, NULL);
 
 	return op->group;
 }
@@ -156,7 +157,7 @@ static void _aggregateRecord(OpAggregate *op, Record r) {
 
 	/* Free record, incase it is not group representative.
 	 * group representative will be freed once group is freed. */
-	Record_Free(r);
+	OpBase_DeleteRecord(r);
 }
 
 /* Returns a record populated with group data. */

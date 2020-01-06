@@ -942,9 +942,36 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 	return plan;
 }
 
-rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan) {
+inline rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan) {
 	assert(plan && plan->record_map);
 	return plan->record_map;
+}
+
+Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan) {
+	rax *mapping = ExecutionPlan_GetMappings(plan);
+	if(!plan->record_pool) {
+		/* Initialize record pool.
+		 * Determine data block entry (Record) size. */
+		uint entries_count = raxSize(mapping);
+		uint rec_size = sizeof(_Record);
+		rec_size += sizeof(Entry) * entries_count;
+
+		// Create a data block with initial capacity of 256 records.
+		plan->record_pool = DataBlock_New(256, rec_size, (fpDestructor)Record_FreeEntries);
+	}
+
+	// Get a record from pool and set its owner, id and mapping.
+	uint64_t record_id;
+	Record r = (Record)DataBlock_AllocateItem(plan->record_pool, &record_id);
+	r->owner = plan;
+	r->id = record_id;
+	r->mapping = plan->record_map;
+	return r;
+}
+
+void ExecutionPlan_ReturnRecord(ExecutionPlan *plan, Record r) {
+	assert(plan && r);
+	DataBlock_DeleteItem(plan->record_pool, r->id);
 }
 
 void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx, char *buffer, int buffer_len,
@@ -1008,7 +1035,8 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 
 	Record r = NULL;
 	// Execute the root operation and free the processed Record until the data stream is depleted.
-	while((r = OpBase_Consume(plan->root)) != NULL) Record_Free(r);
+	// while((r = OpBase_Consume(plan->root)) != NULL) Record_Free(r);
+	while((r = OpBase_Consume(plan->root)) != NULL) ExecutionPlan_ReturnRecord(r->owner, r);
 
 	// Return the result set.
 	return plan->result_set;
@@ -1081,6 +1109,7 @@ static void _ExecutionPlan_FreeSubPlan(ExecutionPlan *plan) {
 
 	QueryGraph_Free(plan->query_graph);
 	if(plan->record_map) raxFree(plan->record_map);
+	if(plan->record_pool) DataBlock_Free(plan->record_pool);
 	rm_free(plan);
 }
 
@@ -1108,5 +1137,6 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 
 	QueryGraph_Free(plan->query_graph);
 	if(plan->record_map) raxFree(plan->record_map);
+	if(plan->record_pool) DataBlock_Free(plan->record_pool);
 	rm_free(plan);
 }

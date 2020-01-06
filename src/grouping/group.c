@@ -17,8 +17,9 @@ Group *NewGroup(int key_count, SIValue *keys, AR_ExpNode **funcs, Record r) {
 	g->keys = keys;
 	g->key_count = key_count;
 	g->aggregationFunctions = funcs;
-	if(r) g->r = Record_Clone(r);
-	else g->r = NULL;
+	// if(r) g->r = Record_Clone(r);
+	// else g->r = NULL;
+	g->r = NULL;
 	return g;
 }
 
@@ -37,7 +38,8 @@ void Group_KeyStr(const Group *g, char **group_key) {
 
 void FreeGroup(Group *g) {
 	if(g == NULL) return;
-	if(g->r) Record_Free(g->r);
+	// if(g->r) OpBase_DeleteRecord(g->r);
+	if(g->r) Record_FreeEntries(g->r);  // Will be free by record owner.
 	if(g->keys) {
 		for(int i = 0; i < g->key_count; i ++) {
 			SIValue_Free(&g->keys[i]);

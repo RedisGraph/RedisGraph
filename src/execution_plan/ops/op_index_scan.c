@@ -58,7 +58,7 @@ static Record IndexScanConsumeFromChild(OpBase *opBase) {
 
 	const EntityID *nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL);
 	if(!nodeId) { // Index scan depleted.
-		Record_Free(op->child_record); // Free old record.
+		OpBase_DeleteRecord(op->child_record); // Free old record.
 		// Pull a new record from child.
 		op->child_record = OpBase_Consume(op->op.children[0]);
 		if(op->child_record == NULL) return NULL; // Child depleted.
@@ -70,7 +70,7 @@ static Record IndexScanConsumeFromChild(OpBase *opBase) {
 	}
 
 	// Clone the held Record, as it will be freed upstream.
-	Record r = Record_Clone(op->child_record);
+	Record r = OpBase_CloneRecord(op->child_record);
 
 	// Populate the Record with the actual node.
 	_UpdateRecord(op, r, *nodeId);
@@ -109,7 +109,7 @@ static void IndexScanFree(OpBase *opBase) {
 	}
 
 	if(op->child_record) {
-		Record_Free(op->child_record);
+		OpBase_DeleteRecord(op->child_record);
 		op->child_record = NULL;
 	}
 }

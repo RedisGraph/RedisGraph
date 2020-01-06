@@ -112,7 +112,7 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 		Record childRecord = OpBase_Consume(child);
 		if(!childRecord) return NULL;
 
-		if(op->r) Record_Free(op->r);
+		if(op->r) OpBase_DeleteRecord(op->r);
 		op->r = childRecord;
 
 		// Create edge relation type array on first call to consume.
@@ -141,13 +141,13 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 
 	if(op->edgesIdx >= 0) Record_AddScalar(op->r, op->edgesIdx, SI_Path(p));
 
-	return Record_Clone(op->r);
+	return OpBase_CloneRecord(op->r);
 }
 
 static OpResult CondVarLenTraverseReset(OpBase *ctx) {
 	CondVarLenTraverse *op = (CondVarLenTraverse *)ctx;
 	if(op->r) {
-		Record_Free(op->r);
+		OpBase_DeleteRecord(op->r);
 		op->r = NULL;
 	}
 	AllPathsCtx_Free(op->allPathsCtx);
@@ -169,7 +169,7 @@ static void CondVarLenTraverseFree(OpBase *ctx) {
 	}
 
 	if(op->r) {
-		Record_Free(op->r);
+		OpBase_DeleteRecord(op->r);
 		op->r = NULL;
 	}
 
