@@ -3,7 +3,7 @@ MAKEFLAGS += --no-builtin-rules
 
 .PHONY: test unit flow tck test_valgrind clean
 
-test: unit flow tck
+test: tck
 
 unit:
 	### unit tests
