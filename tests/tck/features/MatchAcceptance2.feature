@@ -222,7 +222,6 @@ Feature: MatchAcceptance2
       | ({name: 'A'}) | ({name: 'B'}) | ({name: 'C'}) |
     And no side effects
 
-@skip
   Scenario: Two bound nodes pointing to the same node
     Given an empty graph
     And having executed:
@@ -848,7 +847,6 @@ Feature: MatchAcceptance2
       | (:A) | (:C) | (:A) | (:C) |
     And no side effects
 
-@skip
   Scenario: Non-optional matches should not return nulls
     Given an empty graph
     And having executed:
@@ -1430,7 +1428,6 @@ Feature: MatchAcceptance2
       | 1        |
     And no side effects
 
-@skip
   Scenario: Undirected named path
     Given an empty graph
     And having executed:
