@@ -403,7 +403,8 @@ static AR_ExpNode **_combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNod
 // Build an aggregate or project operation and any required modifying operations.
 // This logic applies for both WITH and RETURN projections.
 static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **projections,
-									   AR_ExpNode **order_exps, uint skip, uint sort, bool aggregate, bool distinct) {
+									   AR_ExpNode **order_exps, uint skip,
+									   int *sort_directions, bool aggregate, bool distinct) {
 
 	AR_ExpNode **free_list = NULL;
 	// Merge order expressions into the projections array.
@@ -430,10 +431,10 @@ static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **project
 	AST *ast = QueryCtx_GetAST();
 	uint limit = ast->limit;
 
-	if(sort) {
+	if(NULL != sort_directions) {
 		// The sort operation will obey a specified limit, but must account for skipped records
 		uint sort_limit = (limit != UNLIMITED) ? limit + skip : 0;
-		OpBase *op = NewSortOp(plan, order_exps, sort, sort_limit);
+		OpBase *op = NewSortOp(plan, order_exps, sort_directions, sort_limit);
 		_ExecutionPlan_UpdateRoot(plan, op);
 	}
 
@@ -471,14 +472,14 @@ static void _buildReturnOps(ExecutionPlan *plan, const cypher_astnode_t *clause)
 	uint skip = 0;
 	if(skip_clause) skip = AST_ParseIntegerNode(skip_clause);
 
-	int sort_direction = 0;
+	int *sort_directions = NULL;
 	AR_ExpNode **order_exps = NULL;
 	const cypher_astnode_t *order_clause = cypher_ast_return_get_order_by(clause);
 	if(order_clause) {
-		sort_direction = AST_PrepareSortOp(order_clause);
+		AST_PrepareSortOp(order_clause, &sort_directions);
 		order_exps = _BuildOrderExpressions(projections, order_clause);
 	}
-	_buildProjectionOps(plan, projections, order_exps, skip, sort_direction, aggregate, distinct);
+	_buildProjectionOps(plan, projections, order_exps, skip, sort_directions, aggregate, distinct);
 }
 
 static void _buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
@@ -492,14 +493,14 @@ static void _buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
 	uint limit = RESULTSET_UNLIMITED;
 	if(skip_clause) skip = AST_ParseIntegerNode(skip_clause);
 
-	int sort_direction = 0;
+	int *sort_directions = NULL;
 	AR_ExpNode **order_exps = NULL;
 	const cypher_astnode_t *order_clause = cypher_ast_with_get_order_by(clause);
 	if(order_clause) {
-		sort_direction = AST_PrepareSortOp(order_clause);
+		AST_PrepareSortOp(order_clause, &sort_directions);
 		order_exps = _BuildOrderExpressions(projections, order_clause);
 	}
-	_buildProjectionOps(plan, projections, order_exps, skip, sort_direction, aggregate, distinct);
+	_buildProjectionOps(plan, projections, order_exps, skip, sort_directions, aggregate, distinct);
 }
 
 // Convert a CALL clause into a procedure call operation.
