@@ -351,7 +351,6 @@ Feature: WithAcceptance
             | 1        |
         And no side effects
 
-    @skip
     Scenario: Multiple WITHs using a predicate and aggregation
         Given an empty graph
         And having executed:

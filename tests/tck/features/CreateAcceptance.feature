@@ -57,7 +57,6 @@ Feature: CreateAcceptance
     And the side effects should be:
       | +nodes | 2 |
 
-@skip
   Scenario: Combine MATCH, WITH and CREATE
     Given an empty graph
     And having executed:

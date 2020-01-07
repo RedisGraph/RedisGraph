@@ -573,7 +573,6 @@ Feature: MergeRelationshipAcceptance
     And the side effects should be:
       | +relationships | 1 |
 
-@skip
   Scenario: Double aliasing of existing nodes 1
     Given an empty graph
     And having executed:
@@ -598,7 +597,6 @@ Feature: MergeRelationshipAcceptance
     And the side effects should be:
       | +relationships | 1 |
 
-@skip
   Scenario: Double aliasing of existing nodes 2
     Given an empty graph
     And having executed:
