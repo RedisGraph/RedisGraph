@@ -39,7 +39,7 @@ static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
 }
 
 // Collect edges between the source and destination nodes.
-static void _CondTraverse_CollectEdges(CondTraverse *op, int src, int dest) {
+static void __CondTraverse_CollectEdges(CondTraverse *op, int src, int dest) {
 	Node *srcNode = Record_GetNode(op->r, src);
 	Node *destNode = Record_GetNode(op->r, dest);
 	for(int i = 0; i < op->edgeRelationCount; i++) {
@@ -48,6 +48,24 @@ static void _CondTraverse_CollectEdges(CondTraverse *op, int src, int dest) {
 									  ENTITY_GET_ID(destNode),
 									  op->edgeRelationTypes[i],
 									  &op->edges);
+	}
+}
+
+// Collect edges between the source and destination nodes matching the op's traversal direction.
+static void _CondTraverse_CollectEdges(CondTraverse *op, int src, int dest) {
+	switch(op->direction) {
+	case GRAPH_EDGE_DIR_OUTGOING:
+		__CondTraverse_CollectEdges(op, op->srcNodeIdx, op->destNodeIdx);
+		return;
+	case GRAPH_EDGE_DIR_INCOMING:
+		// If we're traversing incoming edges, swap the source and destination.
+		__CondTraverse_CollectEdges(op, op->destNodeIdx, op->srcNodeIdx);
+		return;
+	case GRAPH_EDGE_DIR_BOTH:
+		// If we're traversing in both directions, collect edges in both directions.
+		__CondTraverse_CollectEdges(op, op->srcNodeIdx, op->destNodeIdx);
+		__CondTraverse_CollectEdges(op, op->destNodeIdx, op->srcNodeIdx);
+		return;
 	}
 }
 
@@ -195,21 +213,8 @@ static Record CondTraverseConsume(OpBase *opBase) {
 	Graph_GetNode(op->graph, dest_id, destNode);
 
 	if(op->setEdge) {
+		_CondTraverse_CollectEdges(op, op->destNodeIdx, op->srcNodeIdx);
 		// We're guaranteed to have at least one edge.
-		switch(op->direction) {
-		case GRAPH_EDGE_DIR_OUTGOING:
-			_CondTraverse_CollectEdges(op, op->srcNodeIdx, op->destNodeIdx);
-			break;
-		case GRAPH_EDGE_DIR_INCOMING:
-			// If we're traversing incoming edges, swap the source and destination.
-			_CondTraverse_CollectEdges(op, op->destNodeIdx, op->srcNodeIdx);
-			break;
-		case GRAPH_EDGE_DIR_BOTH:
-			// If we're traversing in both directions, collect edges in both directions.
-			_CondTraverse_CollectEdges(op, op->srcNodeIdx, op->destNodeIdx);
-			_CondTraverse_CollectEdges(op, op->destNodeIdx, op->srcNodeIdx);
-			break;
-		}
 		_CondTraverse_SetEdge(op, op->r);
 	}
 

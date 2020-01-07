@@ -48,9 +48,11 @@ static void _addNeighbors(AllPathsCtx *ctx, LevelConnection *frontier, uint32_t 
 		case GRAPH_EDGE_DIR_OUTGOING:
 			Graph_GetNode(ctx->g, Edge_GetDestNodeID(ctx->neighbors + i), &neighbor);
 			break;
-		default:
+		case GRAPH_EDGE_DIR_INCOMING:
 			Graph_GetNode(ctx->g, Edge_GetSrcNodeID(ctx->neighbors + i), &neighbor);
 			break;
+		default:
+			assert(false && "encountered unexpected traversal direction in AllPaths");
 		}
 		// Add the node and edge to the frontier.
 		_AllPathsCtx_AddConnectionToLevel(ctx, depth, &neighbor, (ctx->neighbors + i));

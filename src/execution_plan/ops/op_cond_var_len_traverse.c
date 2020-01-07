@@ -51,6 +51,18 @@ static void _setupTraversedRelations(CondVarLenTraverse *op) {
 	}
 }
 
+// Set the traversal direction to match the traversed edge and AlgebraicExpression form.
+static inline void _setTraverseDirection(CondVarLenTraverse *op, const QGEdge *e) {
+	if(e->bidirectional) {
+		op->traverseDir = GRAPH_EDGE_DIR_BOTH;
+	} else if(AlgebraicExpression_Transposed(op->ae)) {
+		// If the sole operand in the AlgebraicExpression is transposed, we are traversing right-to-left.
+		op->traverseDir = GRAPH_EDGE_DIR_INCOMING;
+	} else {
+		op->traverseDir = GRAPH_EDGE_DIR_OUTGOING;
+	}
+}
+
 static inline int CondVarLenTraverseToString(const OpBase *ctx, char *buf, uint buf_len) {
 	return TraversalToString(ctx, buf, buf_len, ((const CondVarLenTraverse *)ctx)->ae);
 }
@@ -86,15 +98,7 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	AST *ast = QueryCtx_GetAST();
 	QGEdge *e = QueryGraph_GetEdgeByAlias(op->qg, AlgebraicExpression_Edge(op->ae));
 	op->edgesIdx = AST_AliasIsReferenced(ast, e->alias) ? OpBase_Modifies((OpBase *)op, e->alias) : -1;
-
-	if(e->bidirectional) {
-		op->traverseDir = GRAPH_EDGE_DIR_BOTH;
-	} else if(AlgebraicExpression_Transposed(ae)) {
-		// If the sole operand in the AlgebraicExpression is transposed, we are traversing right-to-left.
-		op->traverseDir = GRAPH_EDGE_DIR_INCOMING;
-	} else {
-		op->traverseDir = GRAPH_EDGE_DIR_OUTGOING;
-	}
+	_setTraverseDirection(op, e);
 
 	return (OpBase *)op;
 }
