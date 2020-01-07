@@ -31,6 +31,7 @@
 # Folders
 CMakeFiles/
 logs/
+tests/tck/allure_result/
 
 # Files
 CMakeCache.txt
