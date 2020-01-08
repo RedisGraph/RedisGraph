@@ -309,7 +309,8 @@ void orderExpressions(QueryGraph *qg, AlgebraicExpression **exps, uint exp_count
 					  const FT_FilterNode *filters, rax *bound_vars) {
 	assert(exps && exp_count > 0);
 
-	// Return early if we only have one expression that represents a scan rather than a traversal.
+	/* Return early if we only have one expression that represents a scan rather than a traversal.
+	 * e.g. MATCH (n:L) RETURN n */
 	if(exp_count == 1 && AlgebraicExpression_OperandCount(exps[0]) == 1 &&
 	   !RG_STRCMP(AlgebraicExpression_Source(exps[0]), AlgebraicExpression_Destination(exps[0]))) return;
 

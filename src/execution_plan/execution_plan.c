@@ -276,7 +276,9 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				/* Resolve source node by performing label scan,
 				 * in which case if the first algebraic expression operand
 				 * is a label matrix (diagonal) remove it. */
-				AlgebraicExpression_Free(AlgebraicExpression_RemoveLeftmostNode(&exps[0]));
+				if(AlgebraicExpression_DiagonalOperand(exps[0], 0)) {
+					AlgebraicExpression_Free(AlgebraicExpression_RemoveLeftmostNode(&exps[0]));
+				}
 				root = tail = NewNodeByLabelScanOp(plan, src);
 			} else {
 				root = tail = NewAllNodeScanOp(plan, src);
