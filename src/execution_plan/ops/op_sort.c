@@ -16,21 +16,6 @@ static Record SortConsume(OpBase *opBase);
 static OpResult SortReset(OpBase *opBase);
 static void SortFree(OpBase *opBase);
 
-// Quicksort function to compare two records on a subset of fields.
-// Returns true if a is less than b.
-static bool _record_islt(Record a, Record b, const OpSort *op) {
-	uint comparison_count = array_len(op->record_offsets);
-	for(uint i = 0; i < comparison_count; i++) {
-		SIValue aVal = Record_Get(a, op->record_offsets[i]);
-		SIValue bVal = Record_Get(b, op->record_offsets[i]);
-		int rel = SIValue_Compare(aVal, bVal, NULL);
-		if(rel == 0) continue;  // Elements are equal; try next ORDER BY element.
-		rel *= op->directions[i];   // Flip value for descending order.
-		return rel > 0;         // Return true if the current left element is less than the right.
-	}
-	return false;   // b >= a
-}
-
 // Heapsort function to compare two records on a subset of fields.
 // Return value similar to strcmp.
 static int _record_compare(Record a, Record b, const OpSort *op) {
@@ -39,9 +24,17 @@ static int _record_compare(Record a, Record b, const OpSort *op) {
 		SIValue aVal = Record_Get(a, op->record_offsets[i]);
 		SIValue bVal = Record_Get(b, op->record_offsets[i]);
 		int rel = SIValue_Compare(aVal, bVal, NULL);
-		if(rel) return rel * op->directions[i]; // Return comparison value if elements aren't equal.
+		if(rel == 0) continue;  	// Elements are equal; try next ORDER BY element.
+		rel *= op->directions[i];   // Flip value for descending order.
+		return rel;
 	}
 	return 0;
+}
+
+// Quicksort function to compare two records on a subset of fields.
+// Returns true if a is less than b.
+static bool _record_islt(Record a, Record b, const OpSort *op) {
+  return _record_compare(a, b, op) > 0; // Return true if the current left element is less than the right.
 }
 
 // Compares two heap record nodes.

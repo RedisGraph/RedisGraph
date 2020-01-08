@@ -431,7 +431,7 @@ static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **project
 	AST *ast = QueryCtx_GetAST();
 	uint limit = ast->limit;
 
-	if(NULL != sort_directions) {
+	if(sort_directions) {
 		// The sort operation will obey a specified limit, but must account for skipped records
 		uint sort_limit = (limit != UNLIMITED) ? limit + skip : 0;
 		OpBase *op = NewSortOp(plan, order_exps, sort_directions, sort_limit);

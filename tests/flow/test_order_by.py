@@ -19,8 +19,15 @@ class testOrderBy(FlowTestsBase):
         q = """CREATE (:Person { id: 819, name: "Bing" })"""
         redis_graph.query(q)
 
-        q = """MATCH (n:Person) RETURN n.id ORDER BY n.id DESC, n.name ASC"""
+        q = """CREATE (:Person { id: 819, name: "Qiu" })"""
+        redis_graph.query(q)
+
+        q = """MATCH (n:Person) RETURN n.id, n.name ORDER BY n.id DESC, n.name ASC"""
+        expected = [[819, "Bing"], [819, "Qiu"], [622, "Mo"]]
         actual_result = redis_graph.query(q)
-        print actual_result.result_set
-        expected = [[819], [622]]
+        self.env.assertEquals(actual_result.result_set, expected)
+
+        # Same query with limit, force use heap sort
+        q = """MATCH (n:Person) RETURN n.id, n.name ORDER BY n.id DESC, n.name ASC LIMIT 10"""
+        actual_result = redis_graph.query(q)
         self.env.assertEquals(actual_result.result_set, expected)

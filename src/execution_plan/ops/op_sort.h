@@ -17,7 +17,7 @@ typedef struct {
 	heap_t *heap;               // Holds top n records.
 	Record *buffer;             // Holds all records.
 	uint limit;                 // Total number of records to produce, 0 no limit.
-	int *directions;            // Ascending / desending.
+	int *directions;            // Array of sort directions(ascending / desending) for each item.
 } OpSort;
 
 /* Creates a new Sort operation */
