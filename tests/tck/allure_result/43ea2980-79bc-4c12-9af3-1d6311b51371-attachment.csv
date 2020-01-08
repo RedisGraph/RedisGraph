@@ -1,0 +1,7 @@
+x,r1,y,r2,z
+(:A),[:T1],(:Looper),[:LOOP],(:Looper)
+(:A),[:T1],(:Looper),[:T2],(:B)
+(:Looper),[:LOOP],(:Looper),[:T1],(:A)
+(:Looper),[:LOOP],(:Looper),[:T2],(:B)
+(:B),[:T2],(:Looper),[:LOOP],(:Looper)
+(:B),[:T2],(:Looper),[:T1],(:A)

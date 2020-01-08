@@ -1,0 +1,2 @@
+CREATE (a), (b)
+CREATE (a)-[:T {name: 'val'}]->(b)

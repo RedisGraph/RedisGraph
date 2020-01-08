@@ -1,0 +1,2 @@
+CREATE (a:Movie), (b)
+CREATE (b)-[:T]->(a)

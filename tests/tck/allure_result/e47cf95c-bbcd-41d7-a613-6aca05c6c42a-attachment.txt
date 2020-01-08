@@ -1,0 +1,4 @@
+UNWIND ['Keanu Reeves', 'Hugo Weaving', 'Carrie-Anne Moss', 'Laurence Fishburne'] AS actor
+MERGE (m:Movie {name: 'The Matrix'})
+MERGE (p:Person {name: actor})
+MERGE (p)-[:ACTED_IN]->(m)

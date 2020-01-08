@@ -1,0 +1,4 @@
+MATCH (a:A), (b:B)
+MERGE (a)-[r:TYPE]->(b)
+  ON CREATE SET r.name = 'Lola'
+RETURN count(r)

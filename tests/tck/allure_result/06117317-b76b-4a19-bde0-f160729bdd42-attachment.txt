@@ -1,0 +1,2 @@
+CREATE (a {id: 1}), (b {id: 2})
+CREATE (a)-[:KNOWS]->(b)

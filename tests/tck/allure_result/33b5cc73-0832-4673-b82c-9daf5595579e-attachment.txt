@@ -1,0 +1,5 @@
+MATCH (a:Begin)
+WITH a.num AS property
+MATCH (b:End)
+WHERE property = b.num
+RETURN b

@@ -1,0 +1,1 @@
+CREATE (:Label1)<-[:T1]-(:Label2)-[:T2]->(:Label3)

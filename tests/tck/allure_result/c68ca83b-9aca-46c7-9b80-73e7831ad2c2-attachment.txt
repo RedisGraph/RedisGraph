@@ -1,0 +1,1 @@
+RETURN 4 IN [1, null, 3] AS res

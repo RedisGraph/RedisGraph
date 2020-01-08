@@ -1,0 +1,1 @@
+CREATE (:A {name: 'A'}), (:B {name: 'B'})

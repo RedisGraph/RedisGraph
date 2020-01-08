@@ -1,0 +1,5 @@
+CREATE (c1:Crew {name: 'Neo', rank: 1}),
+(c2:Crew {name: 'Neo', rank: 2}),
+(c3:Crew {name: 'Neo', rank: 3}),
+(c4:Crew {name: 'Neo', rank: 4}),
+(c5:Crew {name: 'Neo', rank: 5})

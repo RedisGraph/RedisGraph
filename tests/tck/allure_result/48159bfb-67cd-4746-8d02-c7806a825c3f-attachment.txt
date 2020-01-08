@@ -1,0 +1,3 @@
+CREATE ({color: ['red']})
+CREATE ({color: ['blue']})
+CREATE ({color: ['red']})

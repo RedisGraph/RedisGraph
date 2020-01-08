@@ -1,0 +1,2 @@
+MATCH p = (n)-[r:T]->()
+RETURN [x IN [1, p] | toInteger(x) ] AS list

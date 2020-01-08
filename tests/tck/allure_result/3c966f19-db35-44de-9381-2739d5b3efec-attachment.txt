@@ -1,0 +1,3 @@
+CREATE (:X), (x:X), (y1:Y), (y2:Y:Z)
+CREATE (x)-[:REL]->(y1),
+       (x)-[:REL]->(y2)

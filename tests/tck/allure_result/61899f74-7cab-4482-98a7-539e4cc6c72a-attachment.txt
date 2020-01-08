@@ -1,0 +1,2 @@
+MATCH p = ({name: 'a'})<--({name: 'b'})
+RETURN p

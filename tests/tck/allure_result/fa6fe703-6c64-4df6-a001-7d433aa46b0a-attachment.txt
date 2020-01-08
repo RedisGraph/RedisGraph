@@ -1,0 +1,2 @@
+MATCH ()
+RETURN foo

@@ -1,0 +1,3 @@
+WITH 'Stefan' AS name, 1 AS id
+CALL test.my.proc(name, id) YIELD -
+RETURN name, id, count(*) AS count

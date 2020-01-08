@@ -1,0 +1,2 @@
+CREATE (:Person {bornIn: 'New York'}),
+  (:Person {bornIn: 'Ohio'})

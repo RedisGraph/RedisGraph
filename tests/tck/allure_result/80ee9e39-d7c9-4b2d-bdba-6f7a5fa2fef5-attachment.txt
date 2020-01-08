@@ -1,0 +1,3 @@
+CREATE (:TheLabel {name: 'ABCDEF'}), (:TheLabel {name: 'AB'}),
+       (:TheLabel {name: 'abcdef'}), (:TheLabel {name: 'ab'}),
+       (:TheLabel {name: ''}), (:TheLabel)

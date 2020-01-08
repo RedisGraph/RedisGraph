@@ -1,0 +1,2 @@
+MATCH (a)
+DELETE x

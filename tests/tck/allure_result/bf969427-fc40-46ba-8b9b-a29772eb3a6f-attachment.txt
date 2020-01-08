@@ -1,0 +1,2 @@
+MATCH (n)
+RETURN count(DISTINCT {name: [{name2: n.list}, {baz: {apa: n.list}}]}) AS count

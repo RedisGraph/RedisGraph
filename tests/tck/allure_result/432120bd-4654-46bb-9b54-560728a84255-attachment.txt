@@ -1,0 +1,4 @@
+MATCH (a:A)-->(n)-->(m)
+RETURN n.num, count(*)
+  ORDER BY n.num
+  LIMIT 1000

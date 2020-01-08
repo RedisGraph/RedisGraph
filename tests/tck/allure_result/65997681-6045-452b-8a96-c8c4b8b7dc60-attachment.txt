@@ -1,0 +1,6 @@
+CREATE (a {name: 'A'}),
+(b {name: 'B'})
+CREATE (a)-[:REL]->(),
+(a)-[:REL]->(),
+(a)-[:REL]->(),
+(b)-[:REL]->()

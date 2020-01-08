@@ -1,0 +1,2 @@
+CREATE (n {id: 12, name: null})
+RETURN n.id AS id

@@ -1,0 +1,4 @@
+MATCH (n)
+OPTIONAL MATCH (n)-[r]->()
+REMOVE r.num
+RETURN n

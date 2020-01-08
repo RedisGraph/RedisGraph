@@ -1,0 +1,3 @@
+n,x
+(:A {animal: 'monkey'}),(:C {animal: 'monkey'})
+(:D {animal: 'cow'}),(:B {animal: 'cow'})

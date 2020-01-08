@@ -1,0 +1,1 @@
+RETURN properties(null)

@@ -1,0 +1,2 @@
+MATCH (:A)-->()--()
+RETURN count(*)

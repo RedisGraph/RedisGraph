@@ -1,0 +1,2 @@
+MERGE p = (a {num: 1})
+RETURN p

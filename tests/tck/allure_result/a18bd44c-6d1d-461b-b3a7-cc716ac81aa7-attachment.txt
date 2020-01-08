@@ -1,0 +1,4 @@
+CREATE (a:Blue), (b:Red), (c:Green), (d:Yellow)
+CREATE (a)-[:T]->(b),
+       (b)-[:T]->(c),
+       (b)-[:T]->(d)

@@ -1,0 +1,3 @@
+CREATE (a {name: 'A', num: 0, id: 0}),
+({name: 'B', num: a.id, id: 1}),
+({name: 'C', num: 0, id: 2})

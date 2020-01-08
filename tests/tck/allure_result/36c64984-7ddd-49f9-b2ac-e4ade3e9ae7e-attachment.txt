@@ -1,0 +1,3 @@
+CREATE (:DoesExist {num: 42})
+CREATE (:DoesExist {num: 43})
+CREATE (:DoesExist {num: 44})

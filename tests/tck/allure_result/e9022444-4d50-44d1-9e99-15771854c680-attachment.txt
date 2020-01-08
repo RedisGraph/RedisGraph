@@ -1,0 +1,5 @@
+UNWIND [42] AS props
+WITH props WHERE props > 32
+WITH DISTINCT props AS p
+MERGE (a:A {num: p})
+RETURN a.num AS prop

@@ -1,0 +1,7 @@
+CREATE (n0:Node),
+       (n1:Node),
+       (n2:Node),
+       (n3:Node),
+       (n0)-[:EDGE]->(n1),
+       (n1)-[:EDGE]->(n2),
+       (n2)-[:EDGE]->(n3)

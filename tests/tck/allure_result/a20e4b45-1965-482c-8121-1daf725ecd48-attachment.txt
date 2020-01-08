@@ -1,0 +1,2 @@
+MATCH p = (n)-[r:T]->()
+RETURN [x IN [r, 1.0] | type(x) ] AS list

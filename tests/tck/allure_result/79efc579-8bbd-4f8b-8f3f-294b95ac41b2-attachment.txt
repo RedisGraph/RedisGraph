@@ -1,0 +1,2 @@
+MATCH ()-[r:TYPE]->()
+RETURN [key IN keys(r) | key + '->' + r[key]] AS keyValue

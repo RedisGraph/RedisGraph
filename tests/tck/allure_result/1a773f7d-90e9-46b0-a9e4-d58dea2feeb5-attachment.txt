@@ -1,0 +1,2 @@
+UNWIND [1, 2, 0, null, -1] AS x
+RETURN max(x)

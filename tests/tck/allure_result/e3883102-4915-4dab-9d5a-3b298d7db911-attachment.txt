@@ -1,0 +1,2 @@
+MERGE (n)
+  ON CREATE SET x.num = 1

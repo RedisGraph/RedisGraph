@@ -1,0 +1,3 @@
+CREATE (a {id: 2}), (b {id: 1})
+MERGE (a)-[r:KNOWS]-(b)
+RETURN startNode(r).id AS s, endNode(r).id AS e

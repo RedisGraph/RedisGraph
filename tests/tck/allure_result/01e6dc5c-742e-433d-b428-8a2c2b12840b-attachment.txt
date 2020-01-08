@@ -1,0 +1,2 @@
+CREATE (a:A), (b:B)
+CREATE (a)-[:TYPE]->(b)

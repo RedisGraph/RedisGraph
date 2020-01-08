@@ -1,0 +1,3 @@
+UNWIND [1, 2, 3, 4] AS int
+MERGE (n {id: int})
+RETURN count(*)

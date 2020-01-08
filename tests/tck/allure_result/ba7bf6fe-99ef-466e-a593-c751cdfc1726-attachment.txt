@@ -1,0 +1,4 @@
+MATCH (a)
+WITH DISTINCT a.name AS bars
+ORDER BY a.name
+RETURN *

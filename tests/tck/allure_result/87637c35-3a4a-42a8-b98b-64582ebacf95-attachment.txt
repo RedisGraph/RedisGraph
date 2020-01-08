@@ -1,0 +1,4 @@
+CREATE ({name: 'a'}),
+       (:Person),
+       (:Animal),
+       (:Animal)

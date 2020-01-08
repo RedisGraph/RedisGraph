@@ -1,0 +1,3 @@
+CREATE (n {name: 'foo'})
+WITH n.name AS n2
+RETURN n2.name

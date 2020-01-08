@@ -1,0 +1,2 @@
+CREATE (a:A), (:A), (:A)
+CREATE (a)-[:HAS]->()

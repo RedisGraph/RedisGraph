@@ -1,0 +1,1 @@
+CREATE ({list: ['A', 'B']}), ({list: ['A', 'B']})

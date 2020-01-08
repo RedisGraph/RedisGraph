@@ -1,0 +1,2 @@
+MERGE (a:TheLabel)
+RETURN labels(a)

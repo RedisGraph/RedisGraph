@@ -1,0 +1,2 @@
+MERGE (b)
+  ON CREATE SET b.created = 1

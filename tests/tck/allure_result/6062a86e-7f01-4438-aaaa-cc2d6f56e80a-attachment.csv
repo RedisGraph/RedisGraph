@@ -1,0 +1,2 @@
+exists(a.id),a IS NOT NULL
+false,true

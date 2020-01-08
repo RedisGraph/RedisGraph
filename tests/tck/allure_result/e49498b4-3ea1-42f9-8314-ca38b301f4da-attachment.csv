@@ -1,0 +1,4 @@
+a,b,c
+({name: 'A'}),({name: 'A'}),({name: 'A'})
+({name: 'A'}),({name: 'B'}),({name: 'B'})
+({name: 'A'}),({name: 'B'}),({name: 'C'})

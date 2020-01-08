@@ -1,0 +1,3 @@
+CREATE (a:End {num: 42, id: 0}),
+(:End {num: 3}),
+(:Begin {num: a.id})

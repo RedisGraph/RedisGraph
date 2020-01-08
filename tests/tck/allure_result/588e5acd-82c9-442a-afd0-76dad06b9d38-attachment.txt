@@ -1,0 +1,2 @@
+WITH {notName: 0, notName2: null} AS map
+RETURN exists(map.name) AS result

@@ -1,0 +1,2 @@
+MERGE (a)
+  ON MATCH SET a:L

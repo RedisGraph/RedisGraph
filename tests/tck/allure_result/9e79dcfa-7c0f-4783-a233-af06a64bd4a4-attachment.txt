@@ -1,0 +1,2 @@
+MATCH (a)
+RETURN count(DISTINCT a.name)

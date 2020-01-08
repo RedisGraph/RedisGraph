@@ -1,0 +1,4 @@
+x,y,z
+(:X {val: 1}),(:Y {val: 2}),(:Z {val: 3})
+(:X {val: 4}),null,null
+(:X {val: 6}),null,null

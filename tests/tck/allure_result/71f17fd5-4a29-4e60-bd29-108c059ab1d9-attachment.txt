@@ -1,0 +1,3 @@
+CREATE (a:TheLabel {id: 0}), (b:TheLabel {id: 1}), (c:TheLabel {id: 2})
+CREATE (a)-[:T]->(b),
+       (b)-[:T]->(c)

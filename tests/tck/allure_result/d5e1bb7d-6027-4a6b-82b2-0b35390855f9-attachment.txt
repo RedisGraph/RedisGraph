@@ -1,0 +1,2 @@
+CREATE (a:X {num: 42}), (:X {num: 43})
+CREATE (a)-[:T]->()

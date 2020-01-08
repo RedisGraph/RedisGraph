@@ -1,0 +1,2 @@
+CREATE (a), (b)
+MERGE (a)-[r:X {num: null}]->(b)

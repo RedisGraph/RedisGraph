@@ -1,0 +1,3 @@
+MATCH ()-[r]->()
+SET r.property1 = null
+RETURN r

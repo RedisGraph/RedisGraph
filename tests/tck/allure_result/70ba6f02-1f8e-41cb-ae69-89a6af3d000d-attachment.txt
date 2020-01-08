@@ -1,0 +1,3 @@
+OPTIONAL MATCH (a:DoesNotExist)
+SET a.num = 42
+RETURN a

@@ -1,0 +1,2 @@
+CREATE (a:Person), (b:Person), (m:Message {id: 10})
+CREATE (a)-[:LIKE {creationDate: 20160614}]->(m)-[:POSTED_BY]->(b)

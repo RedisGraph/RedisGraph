@@ -1,0 +1,4 @@
+CALL test.labels() YIELD label
+WITH count(*) AS c
+CALL test.labels() YIELD label
+RETURN *

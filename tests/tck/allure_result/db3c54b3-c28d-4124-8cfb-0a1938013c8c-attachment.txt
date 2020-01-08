@@ -1,0 +1,3 @@
+MATCH (n:Person)
+WHERE exists(n['name'])
+RETURN n

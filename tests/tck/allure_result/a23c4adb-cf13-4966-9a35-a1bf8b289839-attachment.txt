@@ -1,0 +1,4 @@
+MATCH p = (n:N)-[r:REL]->()
+UNWIND [n, r, p, 1.5, ['list'], 'text', null, false, toFloat(null), {a: 'map'}] AS types
+RETURN types
+ORDER BY types

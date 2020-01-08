@@ -1,0 +1,3 @@
+CREATE (:TheLabel {name: ' Foo '}),
+       (:TheLabel {name: '\nFoo\n'}),
+       (:TheLabel {name: '\tFoo\t'})

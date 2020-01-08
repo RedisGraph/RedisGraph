@@ -1,0 +1,6 @@
+MATCH (foo)
+WITH foo.x AS x, foo.y AS y
+MERGE (:N {x: x, y: y + 1})
+MERGE (:N {x: x, y: y})
+MERGE (:N {x: x + 1, y: y})
+RETURN x, y

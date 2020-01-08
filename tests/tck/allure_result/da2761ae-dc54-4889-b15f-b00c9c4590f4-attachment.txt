@@ -1,0 +1,7 @@
+CREATE (a:A)
+CREATE (b1:B {num: 0}), (b2:B {num: 1})
+CREATE (c1:C), (c2:C)
+CREATE (a)-[:REL]->(b1),
+       (a)-[:REL]->(b2),
+       (b1)-[:REL]->(c1),
+       (b2)-[:REL]->(c2)

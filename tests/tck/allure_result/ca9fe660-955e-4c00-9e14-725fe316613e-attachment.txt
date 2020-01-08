@@ -1,0 +1,5 @@
+CREATE (u:User)
+CREATE (u)-[:FRIEND]->()
+CREATE (u)-[:FRIEND]->()
+CREATE (u)-[:FRIEND]->()
+CREATE (u)-[:FRIEND]->()

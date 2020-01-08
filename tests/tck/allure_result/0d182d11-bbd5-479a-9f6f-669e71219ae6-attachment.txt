@@ -1,0 +1,4 @@
+CREATE ({division: 'A', age: 22}),
+  ({division: 'B', age: 33}),
+  ({division: 'B', age: 44}),
+  ({division: 'C', age: 55})

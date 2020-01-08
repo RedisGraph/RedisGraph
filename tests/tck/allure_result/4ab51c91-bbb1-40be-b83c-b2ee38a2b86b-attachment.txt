@@ -1,0 +1,2 @@
+MERGE (test:L:B {num: 42})
+RETURN labels(test) AS labels

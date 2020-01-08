@@ -1,0 +1,2 @@
+CREATE (n {name: 'foo'})
+RETURN n.name AS p

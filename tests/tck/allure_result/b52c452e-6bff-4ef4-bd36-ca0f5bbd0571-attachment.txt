@@ -1,0 +1,4 @@
+MATCH (x:X)
+OPTIONAL MATCH (x)-[:E1]->(y:Y)
+WHERE x.val < y.val
+RETURN x, y

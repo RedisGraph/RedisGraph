@@ -1,0 +1,2 @@
+MATCH (a)
+RETURN a.list2 + a.list1 AS foo

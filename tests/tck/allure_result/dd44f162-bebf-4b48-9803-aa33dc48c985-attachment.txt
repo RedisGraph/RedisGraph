@@ -1,0 +1,4 @@
+CREATE (n1 {num: 1}), (n2 {num: 2}),
+       (n3 {num: 3}), (n4 {num: 4})
+CREATE (n1)-[:T]->(n2),
+       (n3)-[:T]->(n4)

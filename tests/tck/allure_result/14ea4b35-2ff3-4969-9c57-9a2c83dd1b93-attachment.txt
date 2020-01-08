@@ -1,0 +1,2 @@
+MERGE (a {num: 43})
+RETURN a.num

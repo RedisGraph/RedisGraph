@@ -1,0 +1,5 @@
+MATCH (d:D)
+CREATE (e1:E {name: d.name + '0'}),
+       (e2:E {name: d.name + '1'})
+CREATE (d)-[:LIKES]->(e1),
+       (d)-[:LIKES]->(e2)

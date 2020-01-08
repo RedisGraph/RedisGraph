@@ -1,0 +1,4 @@
+p
+<(:A {name: 'A'})>
+<(:A {name: 'A'})-[:KNOWS]->(:B {name: 'B'})>
+<(:A {name: 'A'})-[:KNOWS]->(:B {name: 'B'})-[:FRIEND]->(:C {name: 'C'})>

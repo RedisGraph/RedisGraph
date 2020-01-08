@@ -1,0 +1,5 @@
+MATCH (person:Person)
+MERGE (city:City)
+  ON MATCH SET city.name = person.bornIn
+  ON CREATE SET city.name = person.bornIn
+RETURN person.bornIn

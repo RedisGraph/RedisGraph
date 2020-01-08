@@ -1,0 +1,2 @@
+MATCH (person:Person)
+MERGE (city:City {name: person.bornIn})

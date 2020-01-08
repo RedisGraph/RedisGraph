@@ -1,0 +1,11 @@
+types
+{a: 'map'}
+(:N)
+[:REL]
+['list']
+<(:N)-[:REL]->()>
+'text'
+false
+1.5
+NaN
+null

@@ -1,0 +1,4 @@
+MATCH (foo)
+RETURN foo.num AS x
+  ORDER BY x DESC
+  LIMIT 4

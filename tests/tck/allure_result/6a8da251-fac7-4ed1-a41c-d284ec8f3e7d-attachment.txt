@@ -1,0 +1,2 @@
+CREATE ({id: 2})-[r:KNOWS]-({id: 1})
+RETURN r

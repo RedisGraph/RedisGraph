@@ -1,0 +1,3 @@
+MERGE (a:TheLabel)
+  ON CREATE SET a:Foo
+RETURN labels(a)

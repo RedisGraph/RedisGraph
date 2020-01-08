@@ -1,0 +1,4 @@
+MATCH (n:A)
+WHERE n.name = 'Andres'
+SET n.name = 'Michael'
+RETURN n

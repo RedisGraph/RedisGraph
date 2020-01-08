@@ -1,0 +1,8 @@
+CREATE (a:A {animal: 'monkey'}),
+  (b:B {animal: 'cow'}),
+  (c:C {animal: 'monkey'}),
+  (d:D {animal: 'cow'}),
+  (a)-[:KNOWS]->(b),
+  (a)-[:KNOWS]->(c),
+  (d)-[:KNOWS]->(b),
+  (d)-[:KNOWS]->(c)

@@ -1,0 +1,2 @@
+p
+<(:A {name: 'A'})-[:KNOWS]->(:B {name: 'B'})>

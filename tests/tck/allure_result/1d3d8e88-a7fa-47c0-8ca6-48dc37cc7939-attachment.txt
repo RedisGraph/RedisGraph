@@ -1,0 +1,2 @@
+CREATE (a:A), (b:B)
+CREATE (a)-[:T {numbers: [42, 43]}]->(b)
