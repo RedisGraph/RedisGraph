@@ -79,3 +79,10 @@ class testVariableLengthTraversals(FlowTestsBase):
         query = """MATCH (a)-[:no_edge*]->(b) RETURN a.name"""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(len(actual_result.result_set), 0)
+
+    # Test bidirectional traversal
+    def test06_bidirectional_traversal(self):
+        query = """MATCH (a)-[*]-(b) RETURN a.name, b.name ORDER BY a.name, b.name"""
+        actual_result = redis_graph.query(query)
+        # The undirected traversal should represent every combination twice.
+        self.env.assertEquals(len(actual_result.result_set), max_results * 2)

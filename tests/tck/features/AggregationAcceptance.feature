@@ -453,7 +453,6 @@ Feature: AggregationAcceptance
             | 3004498500 |
         And no side effects
 
-    @skip
     Scenario: Counting with loops
         Given an empty graph
         And having executed:

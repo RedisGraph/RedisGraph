@@ -85,7 +85,7 @@ Nodes can have more than one relationship coming in or out of them, for instance
 
 Here we're interested in knowing which of my friends have visited at least one country I've been to.
 
-#### Variable length relationships
+##### Variable length relationships
 
 Nodes that are a variable number of relationship→node hops away can be found using the following syntax:
 
@@ -101,11 +101,32 @@ Example:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"MATCH (martin:actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]->(colleague:actor)
+"MATCH (charlie:actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]->(colleague:actor)
 RETURN colleague"
 ```
 
 Returns all actors related to 'Charlie Sheen' by 1 to 3 hops.
+
+##### Bidirectional path traversal
+
+If a relationship pattern does not specify a direction, it will match regardless of which node is the source and which is the destination:
+```sh
+-[:type]-
+```
+
+Example:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (person_a:Person)-[:KNOWS]-(person_b:Person)
+RETURN person_a, person_b"
+```
+
+Returns all pairs of people connected by a `KNOWS` relationship. Note that each pair will be returned twice, once with each node in the `person_a` field and once in the `person_b` field.
+
+The syntactic sugar `(person_a)<-[:KNOWS]->(person_b)` will return the same results.
+
+The bracketed edge description can be omitted if all relations should be considered: `(person_a)--(person_b)`.
 
 #### WHERE
 
