@@ -16,21 +16,6 @@ static Record SortConsume(OpBase *opBase);
 static OpResult SortReset(OpBase *opBase);
 static void SortFree(OpBase *opBase);
 
-// Quicksort function to compare two records on a subset of fields.
-// Returns true if a is less than b.
-static bool _record_islt(Record a, Record b, const OpSort *op) {
-	uint comparison_count = array_len(op->record_offsets);
-	for(uint i = 0; i < comparison_count; i++) {
-		SIValue aVal = Record_Get(a, op->record_offsets[i]);
-		SIValue bVal = Record_Get(b, op->record_offsets[i]);
-		int rel = SIValue_Compare(aVal, bVal, NULL);
-		if(rel == 0) continue;  // Elements are equal; try next ORDER BY element.
-		rel *= op->direction;   // Flip value for descending order.
-		return rel > 0;         // Return true if the current left element is less than the right.
-	}
-	return false;   // b >= a
-}
-
 // Heapsort function to compare two records on a subset of fields.
 // Return value similar to strcmp.
 static int _record_compare(Record a, Record b, const OpSort *op) {
@@ -39,9 +24,17 @@ static int _record_compare(Record a, Record b, const OpSort *op) {
 		SIValue aVal = Record_Get(a, op->record_offsets[i]);
 		SIValue bVal = Record_Get(b, op->record_offsets[i]);
 		int rel = SIValue_Compare(aVal, bVal, NULL);
-		if(rel) return rel; // Return comparison value if elements aren't equal.
+		if(rel == 0) continue;  	// Elements are equal; try next ORDER BY element.
+		rel *= op->directions[i];   // Flip value for descending order.
+		return rel;
 	}
 	return 0;
+}
+
+// Quicksort function to compare two records on a subset of fields.
+// Returns true if a is less than b.
+static bool _record_islt(Record a, Record b, const OpSort *op) {
+  return _record_compare(a, b, op) > 0; // Return true if the current left element is less than the right.
 }
 
 // Compares two heap record nodes.
@@ -49,7 +42,7 @@ static int _heap_elem_compare(const void *A, const void *B, const void *udata) {
 	OpSort *op = (OpSort *)udata;
 	Record aRec = (Record)A;
 	Record bRec = (Record)B;
-	return _record_compare(aRec, bRec, op) * op->direction;
+	return _record_compare(aRec, bRec, op);
 }
 
 static void _accumulate(OpSort *op, Record r) {
@@ -79,12 +72,12 @@ static inline Record _handoff(OpSort *op) {
 	return NULL;
 }
 
-OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int direction, uint limit) {
+OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions, uint limit) {
 	OpSort *op = rm_malloc(sizeof(OpSort));
 	op->heap = NULL;
 	op->buffer = NULL;
 	op->limit = limit;
-	op->direction = direction;
+	op->directions = directions;
 
 	if(op->limit) op->heap = heap_new(_heap_elem_compare, op);
 	else op->buffer = array_new(Record, 32);
@@ -194,6 +187,11 @@ static void SortFree(OpBase *ctx) {
 	if(op->record_offsets) {
 		array_free(op->record_offsets);
 		op->record_offsets = NULL;
+	}
+
+	if (op->directions) {
+		array_free(op->directions);
+		op->directions = NULL;
 	}
 }
 

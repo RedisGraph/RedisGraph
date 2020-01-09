@@ -40,8 +40,8 @@ EntityUpdateEvalCtx *AST_PrepareUpdateOp(const cypher_astnode_t *set_clause);
 // Extract the necessary information to populate a delete operation from a DELETE clause.
 AR_ExpNode **AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause);
 
-// Determine whether a sort operation should be ascending or descending
-int AST_PrepareSortOp(const cypher_astnode_t *order_clause);
+// Determine sort directions (ascending / descending) of multiple sort operations
+void AST_PrepareSortOp(const cypher_astnode_t *order_clause, int **sort_directions);
 
 // Extract the necessary information to populate a unwind operation from an UNWIND clause.
 AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause);
