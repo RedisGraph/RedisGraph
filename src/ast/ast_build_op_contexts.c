@@ -102,16 +102,16 @@ AR_ExpNode **AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause) {
 	return exps;
 }
 
+// Get direction of each sort operation, append to an array, return the array in the form of out parameter
 void AST_PrepareSortOp(const cypher_astnode_t *order_clause, int **sort_directions) {
-	assert(order_clause);
+	assert(order_clause && sort_directions);
 
 	unsigned int nitems = cypher_ast_order_by_nitems(order_clause);
 	int *directions = array_new(int, nitems);
 
 	for(unsigned int i = 0; i < nitems; i ++) {
 		const cypher_astnode_t *item = cypher_ast_order_by_get_item(order_clause, i);
-		bool ascending = cypher_ast_sort_item_is_ascending(item);
-		int direction = ascending ? DIR_ASC : DIR_DESC;
+		int direction = cypher_ast_sort_item_is_ascending(item) ? DIR_ASC : DIR_DESC;
 		directions = array_append(directions, direction);
 	}
 
