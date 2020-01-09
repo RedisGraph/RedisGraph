@@ -216,3 +216,30 @@ class testOptimizationsPlan(FlowTestsBase):
         expected = [['Ailon']]
         resultset = graph.query(query).result_set
         self.env.assertEqual(resultset, expected)
+
+    def test13_distinct_aggregations(self):
+        # Verify that the Distinct operation is removed from the aggregating query.
+        query = """MATCH (src:person)-[:know]->(dest) RETURN DISTINCT src.name, COUNT(dest) ORDER BY src.name"""
+        executionPlan = graph.execution_plan(query)
+        self.env.assertIn("Aggregate", executionPlan)
+        self.env.assertNotIn("Distinct", executionPlan)
+
+        resultset = graph.query(query).result_set
+        expected = [['Ailon', 3],
+                    ['Alon', 3],
+                    ['Boaz', 3],
+                    ['Roi', 3]]
+        self.env.assertEqual(resultset, expected)
+
+
+        # Verify that the Distinct operation is not removed from a valid projection.
+        query = """MATCH (src:person) WITH DISTINCT src MATCH (src)-[:know]->(dest) RETURN src.name, COUNT(dest) ORDER BY src.name"""
+        executionPlan = graph.execution_plan(query)
+        self.env.assertIn("Aggregate", executionPlan)
+        self.env.assertIn("Distinct", executionPlan)
+
+        resultset = graph.query(query).result_set
+        # This query should emit the same result.
+        self.env.assertEqual(resultset, expected)
+
+
