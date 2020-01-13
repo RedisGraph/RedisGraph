@@ -151,7 +151,6 @@ Record OpBase_CloneRecord(Record r) {
 
 void OpBase_DeleteRecord(Record r) {
 	ExecutionPlan_ReturnRecord(r->owner, r);
-	*r = NULL;
 }
 
 void OpBase_Free(OpBase *op) {
