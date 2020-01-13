@@ -835,12 +835,15 @@ void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 	}
 
 	/* Descriptor:
-	 * GrB_MASK, GrB_SCMP
-	 * GrB_OUTP, GrB_REPLACE */
+	 * GrB_MASK, GrB_SCMP */
 	GrB_Descriptor_set(desc, GrB_MASK, GrB_SCMP);
-
-	// Update Adjacency and transposed adjacency matrices.
+	// Update the adjacency matrix to remove deleted entries.
 	GrB_Matrix_apply(adj, Mask, GrB_NULL, GrB_IDENTITY_BOOL, adj, desc);
+
+	// Transpose the mask so that it will match the transposed adjacency matrix.
+	GrB_transpose(Mask, GrB_NULL,  GrB_NULL, Mask, GrB_NULL);
+
+	// Update the transposed adjacency matrix.
 	GrB_Matrix_apply(tadj, Mask, GrB_NULL, GrB_IDENTITY_BOOL, tadj, desc);
 
 	/* Delete nodes
