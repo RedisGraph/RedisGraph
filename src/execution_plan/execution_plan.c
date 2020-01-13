@@ -957,7 +957,7 @@ Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan) {
 		rec_size += sizeof(Entry) * entries_count;
 
 		// Create a data block with initial capacity of 256 records.
-		plan->record_pool = DataBlock_New(256, rec_size, (fpDestructor)Record_FreeEntries);
+		plan->record_pool = DataBlock_New(256, rec_size, (fpDestructor)Record_FreeEntries, false);
 	}
 
 	// Get a record from pool and set its owner, id and mapping.
@@ -1140,3 +1140,4 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan->record_pool) DataBlock_Free(plan->record_pool);
 	rm_free(plan);
 }
+

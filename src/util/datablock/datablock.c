@@ -98,7 +98,7 @@ int static inline _DataBlock_IndexOutOfBounds(const DataBlock *dataBlock, size_t
 	return (idx >= (dataBlock->itemCount + array_len(dataBlock->deletedIdx)));
 }
 
-DataBlock *DataBlock_New(size_t itemCap, size_t itemSize, fpDestructor fp) {
+DataBlock *DataBlock_New(size_t itemCap, size_t itemSize, fpDestructor fp, bool threadsafe) {
 	DataBlock *dataBlock = rm_malloc(sizeof(DataBlock));
 	dataBlock->itemCount = 0;
 	dataBlock->itemSize = itemSize;
@@ -106,7 +106,11 @@ DataBlock *DataBlock_New(size_t itemCap, size_t itemSize, fpDestructor fp) {
 	dataBlock->blocks = NULL;
 	dataBlock->deletedIdx = array_new(uint64_t, 128);
 	dataBlock->destructor = fp;
-	assert(pthread_mutex_init(&dataBlock->mutex, NULL) == 0);
+	dataBlock->mutex = NULL;
+	if(threadsafe) {
+		dataBlock->mutex = rm_malloc(sizeof(pthread_mutex_t));
+		assert(pthread_mutex_init(dataBlock->mutex, NULL) == 0);
+	}
 	_DataBlock_AddBlocks(dataBlock, ITEM_COUNT_TO_BLOCK_COUNT(itemCap));
 	return dataBlock;
 }
@@ -203,12 +207,17 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
 	 * if there's enough space to accommodate the deleted idx the operation should
 	 * return quickly otherwise, memory reallocation will occur, which we want to perform
 	 * in a thread safe matter. */
-	pthread_mutex_lock(&dataBlock->mutex);
+	if(dataBlock->mutex == NULL) {
+		dataBlock->deletedIdx = array_append(dataBlock->deletedIdx, idx);
+		dataBlock->itemCount--;
+		return;
+	}
+	pthread_mutex_lock(dataBlock->mutex);
 	{
 		dataBlock->deletedIdx = array_append(dataBlock->deletedIdx, idx);
 		dataBlock->itemCount--;
 	}
-	pthread_mutex_unlock(&dataBlock->mutex);
+	pthread_mutex_unlock(dataBlock->mutex);
 }
 
 void DataBlock_Free(DataBlock *dataBlock) {
@@ -217,6 +226,7 @@ void DataBlock_Free(DataBlock *dataBlock) {
 
 	rm_free(dataBlock->blocks);
 	array_free(dataBlock->deletedIdx);
-	assert(pthread_mutex_destroy(&dataBlock->mutex) == 0);
+	if(dataBlock->mutex) assert(pthread_mutex_destroy(dataBlock->mutex) == 0);
 	rm_free(dataBlock);
 }
+

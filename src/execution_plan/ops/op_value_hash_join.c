@@ -129,13 +129,9 @@ void _cache_records(OpValueHashJoin *op) {
 	Record r = left_child->consume(left_child);
 	if(!r) return;
 
-	op->join_value_rec_idx = Record_length(r);
-	int extended_rec_len = Record_length(r) + 1;
-
 	// As long as there's data coming in from left branch.
 	do {
 		// Add joined value to record.
-		Record_Extend(&r, extended_rec_len); // Cache record.
 		op->cached_records = array_append(op->cached_records, r);
 
 		// Evaluate joined expression.
@@ -174,7 +170,6 @@ OpBase *NewValueHashJoin(const ExecutionPlan *plan, AR_ExpNode *lhs_exp, AR_ExpN
 	op->rhs_exp = rhs_exp;
 	op->intersect_idx = -1;
 	op->cached_records = NULL;
-	op->join_value_rec_idx = -1;
 	op->number_of_intersections = 0;
 
 	// Set our Op operations
@@ -182,6 +177,7 @@ OpBase *NewValueHashJoin(const ExecutionPlan *plan, AR_ExpNode *lhs_exp, AR_ExpN
 				ValueHashJoinConsume, ValueHashJoinReset, ValueHashJoinToString,
 				ValueHashJoinFree, false, plan);
 
+	op->join_value_rec_idx = OpBase_Modifies((OpBase *)op, "pivot");
 	return (OpBase *)op;
 }
 
