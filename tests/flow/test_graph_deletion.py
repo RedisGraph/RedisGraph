@@ -271,13 +271,13 @@ class testGraphDeletionFlow(FlowTestsBase):
         self.env.assertEquals(actual_result.nodes_deleted, 1)
         self.env.assertEquals(actual_result.relationships_deleted, 1)
 
-        query = """MATCH (n1:Src)-[*]->(n2:Dest {val: 0}) RETURN COUNT(*)"""
+        query = """MATCH (n1:Src)-[*]->(n2:Dest) RETURN COUNT(*)"""
         actual_result = redis_graph.query(query)
         expected_result = [[1]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-        # Perform the same traversal in the opposite direction.
-        query = """MATCH (dest:Dest {val: 0})<-[*]-(n2:Src) RETURN COUNT(*)"""
+        # Perform the same traversal, this time traveling from destination to source.
+        query = """MATCH (n1:Src)-[*]->(n2:Dest {val: 0}) RETURN COUNT(*)"""
         actual_result = redis_graph.query(query)
         expected_result = [[1]]
         self.env.assertEquals(actual_result.result_set, expected_result)
