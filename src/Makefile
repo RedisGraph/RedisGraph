@@ -75,6 +75,7 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/schema/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/procedures/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/datablock/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/util/object_pool/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/thpool/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/range/*.c)
 
