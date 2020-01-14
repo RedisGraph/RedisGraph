@@ -89,7 +89,7 @@ static Record NodeByIdSeekConsumeFromChild(OpBase *opBase) {
 	Node n = _SeekNextNode(op);
 
 	if(n.entity == NULL) { // Failed to retrieve a node.
-		OpBase_DeleteRecord(op->child_record); // Free old record.
+		OpBase_DeleteRecord(&op->child_record); // Free old record.
 		// Pull a new record from child.
 		op->child_record = OpBase_Consume(op->op.children[0]);
 		if(op->child_record == NULL) return NULL; // Child depleted.
@@ -133,7 +133,7 @@ static OpResult NodeByIdSeekReset(OpBase *ctx) {
 static void NodeByIdSeekFree(OpBase *opBase) {
 	NodeByIdSeek *op = (NodeByIdSeek *)opBase;
 	if(op->child_record) {
-		OpBase_DeleteRecord(op->child_record);
+		OpBase_DeleteRecord(&op->child_record);
 		op->child_record = NULL;
 	}
 }

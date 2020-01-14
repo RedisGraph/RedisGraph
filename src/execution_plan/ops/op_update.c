@@ -197,7 +197,7 @@ static Record UpdateConsume(OpBase *opBase) {
 			op->records = array_append(op->records, r);
 		} else {
 			// Record not going to be used, discard.
-			OpBase_DeleteRecord(r);
+			OpBase_DeleteRecord(&r);
 		}
 		OpBase_RemoveVolatileRecords(opBase); // No exceptions encountered, Records are not dangling.
 	}
@@ -239,7 +239,7 @@ static void UpdateFree(OpBase *ctx) {
 
 	if(op->records) {
 		uint records_count = array_len(op->records);
-		for(uint i = 0; i < records_count; i++) OpBase_DeleteRecord(op->records[i]);
+		for(uint i = 0; i < records_count; i++) OpBase_DeleteRecord(&op->records[i]);
 		array_free(op->records);
 		op->records = NULL;
 	}

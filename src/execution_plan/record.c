@@ -37,18 +37,6 @@ uint Record_length(const Record r) {
 	return raxSize(r->mapping);
 }
 
-// Make sure record is able to hold len entries.
-void Record_Extend(Record *r, int len) {
-	int original_len = Record_length(*r);
-	if(original_len >= len) return;
-
-	// Determin record size.
-	size_t required_record_size = sizeof(Record);
-	required_record_size += sizeof(Entry) * len ;
-
-	*r = rm_realloc(*r, required_record_size);
-}
-
 // Retrieve the offset into the Record of the given alias.
 int Record_GetEntryIdx(Record r, const char *alias) {
 	assert(r && alias);
@@ -79,11 +67,8 @@ void Record_Clone(const Record r, Record clone) {
 }
 
 void Record_Merge(Record *a, const Record b) {
-	int aLength = Record_length(*a);
-	int bLength = Record_length(b);
-	if(aLength < bLength) Record_Extend(a, bLength);
-
-	for(int i = 0; i < bLength; i++) {
+	uint len = Record_length(b);
+	for(uint i = 0; i < len; i++) {
 		if(b->entries[i].type != REC_TYPE_UNKNOWN) {
 			(*a)->entries[i] = b->entries[i];
 		}
@@ -91,11 +76,8 @@ void Record_Merge(Record *a, const Record b) {
 }
 
 void Record_TransferEntries(Record *to, Record from) {
-	int aLength = Record_length(*to);
-	int bLength = Record_length(from);
-	if(aLength < bLength) Record_Extend(to, bLength);
-
-	for(int i = 0; i < bLength; i++) {
+	uint len = Record_length(from);
+	for(uint i = 0; i < len; i++) {
 		if(from->entries[i].type != REC_TYPE_UNKNOWN) {
 			_RecordPropagateEntry(*to, from, i);
 		}
@@ -303,3 +285,4 @@ void Record_Free(Record r) {
 	Record_FreeEntries(r);
 	rm_free(r);
 }
+

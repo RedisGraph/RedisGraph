@@ -66,7 +66,7 @@ static Record ProjectConsume(OpBase *opBase) {
 		Record_Add(projection, rec_idx, v);
 	}
 
-	OpBase_DeleteRecord(r);
+	OpBase_DeleteRecord(&r);
 	return projection;
 }
 

@@ -53,7 +53,7 @@ static Record AllNodeScanConsumeFromChild(OpBase *opBase) {
 
 	Entity *en = (Entity *)DataBlockIterator_Next(op->iter);
 	if(en == NULL) {
-		OpBase_DeleteRecord(op->child_record); // Free old record.
+		OpBase_DeleteRecord(&op->child_record); // Free old record.
 		// Pull a new record from child.
 		op->child_record = OpBase_Consume(op->op.children[0]);
 		if(op->child_record == NULL) return NULL; // Child depleted.
@@ -101,7 +101,7 @@ static void AllNodeScanFree(OpBase *ctx) {
 	}
 
 	if(op->child_record) {
-		OpBase_DeleteRecord(op->child_record);
+		OpBase_DeleteRecord(&op->child_record);
 		op->child_record = NULL;
 	}
 }

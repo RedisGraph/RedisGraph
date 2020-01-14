@@ -13,7 +13,7 @@
 #include <sys/types.h>
 
 typedef enum  {
-	REC_TYPE_UNKNOWN = 0,
+	REC_TYPE_UNKNOWN = -1,
 	REC_TYPE_SCALAR = 1 << 0,
 	REC_TYPE_NODE = 1 << 1,
 	REC_TYPE_EDGE = 1 << 2,
@@ -30,8 +30,8 @@ typedef struct {
 } Entry;
 
 typedef struct {
-    size_t id;          // Record internal ID.
-    void *owner;        // Owner of record.
+	size_t id;          // Record internal ID.
+	void *owner;        // Owner of record.
 	rax *mapping;       // Mapping between alias to record entry.
 	Entry entries[];    // Array of entries.
 } _Record;
@@ -43,9 +43,6 @@ Record Record_New(rax *mapping);
 
 // Clones record.
 void Record_Clone(const Record r, Record clone);
-
-// Extends record to accommodate 'len' entries.
-void Record_Extend(Record *r, int len);
 
 // Merge record b into a, sharing any nested references in b with a.
 void Record_Merge(Record *a, const Record b);
@@ -103,3 +100,4 @@ void Record_FreeEntries(Record r);
 
 // Free record.
 void Record_Free(Record r);
+

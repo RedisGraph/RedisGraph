@@ -190,7 +190,7 @@ static Record CondTraverseConsume(OpBase *opBase) {
 		/* Run out of tuples, try to get new data.
 		 * Free old records. */
 		op->r = NULL;
-		for(int i = 0; i < op->recordsLen; i++) OpBase_DeleteRecord(op->records[i]);
+		for(int i = 0; i < op->recordsLen; i++) OpBase_DeleteRecord(&op->records[i]);
 
 		// Ask child operations for data.
 		for(op->recordsLen = 0; op->recordsLen < op->recordsCap; op->recordsLen++) {
@@ -223,7 +223,7 @@ static Record CondTraverseConsume(OpBase *opBase) {
 
 static OpResult CondTraverseReset(OpBase *ctx) {
 	CondTraverse *op = (CondTraverse *)ctx;
-	if(op->r) OpBase_DeleteRecord(op->r);
+	if(op->r) OpBase_DeleteRecord(&op->r);
 	if(op->edges) array_clear(op->edges);
 	if(op->iter) {
 		GxB_MatrixTupleIter_free(op->iter);
@@ -267,7 +267,7 @@ static void CondTraverseFree(OpBase *ctx) {
 	}
 
 	if(op->records) {
-		for(int i = 0; i < op->recordsLen; i++) OpBase_DeleteRecord(op->records[i]);
+		for(int i = 0; i < op->recordsLen; i++) OpBase_DeleteRecord(&op->records[i]);
 		rm_free(op->records);
 		op->records = NULL;
 	}

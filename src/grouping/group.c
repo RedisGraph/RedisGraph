@@ -38,7 +38,7 @@ void Group_KeyStr(const Group *g, char **group_key) {
 
 void FreeGroup(Group *g) {
 	if(g == NULL) return;
-	// if(g->r) OpBase_DeleteRecord(g->r);
+	// if(g->r) OpBase_DeleteRecord(&g->r);
 	if(g->r) Record_FreeEntries(g->r);  // Will be free by record owner.
 	if(g->keys) {
 		for(int i = 0; i < g->key_count; i ++) {

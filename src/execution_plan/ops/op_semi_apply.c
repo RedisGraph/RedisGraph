@@ -67,13 +67,13 @@ Record SemiApplyConsume(OpBase *opBase) {
 		Record righthand_record = _pullFromMatchStream(op);
 		if(righthand_record) {
 			// Don't care about matched record.
-			OpBase_DeleteRecord(righthand_record);
+			OpBase_DeleteRecord(&righthand_record);
 			Record r = op->r;
 			op->r = NULL;   // Null to avoid double free.
 			return r;
 		}
 		// Did not managed to get a record from right-hand side, loop back and restart.
-		OpBase_DeleteRecord(op->r);
+		OpBase_DeleteRecord(&op->r);
 		op->r = NULL;
 	}
 }
@@ -94,8 +94,8 @@ Record AntiSemiApplyConsume(OpBase *opBase) {
 		if(righthand_record) {
 			/* managed to get a record from match stream,
 			 * free it and pull again from left handside. */
-			OpBase_DeleteRecord(righthand_record);
-			OpBase_DeleteRecord(op->r);
+			OpBase_DeleteRecord(&righthand_record);
+			OpBase_DeleteRecord(&op->r);
 			op->r = NULL;
 		} else {
 			// Right stream returned NULL, return left handside record.
@@ -109,7 +109,7 @@ Record AntiSemiApplyConsume(OpBase *opBase) {
 OpResult SemiApplyReset(OpBase *opBase) {
 	OpSemiApply *op = (OpSemiApply *)opBase;
 	if(op->r) {
-		OpBase_DeleteRecord(op->r);
+		OpBase_DeleteRecord(&op->r);
 		op->r = NULL;
 	}
 	return OP_OK;
@@ -119,7 +119,7 @@ void SemiApplyFree(OpBase *opBase) {
 	OpSemiApply *op = (OpSemiApply *)opBase;
 
 	if(op->r) {
-		OpBase_DeleteRecord(op->r);
+		OpBase_DeleteRecord(&op->r);
 		op->r = NULL;
 	}
 }
