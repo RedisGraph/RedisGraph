@@ -63,7 +63,7 @@ void _DataBlock_AddBlocks(DataBlock *dataBlock, size_t blockCount) {
 	else
 		dataBlock->blocks = rm_realloc(dataBlock->blocks, sizeof(Block *) * dataBlock->blockCount);
 
-	int i;
+	size_t i;
 	for(i = prevBlockCount; i < dataBlock->blockCount; i++) {
 		dataBlock->blocks[i] = _Block_New(dataBlock->itemSize);
 		if(i > 0) dataBlock->blocks[i - 1]->next = dataBlock->blocks[i];
@@ -73,19 +73,17 @@ void _DataBlock_AddBlocks(DataBlock *dataBlock, size_t blockCount) {
 	dataBlock->itemCap = dataBlock->blockCount * BLOCK_CAP;
 }
 
-void static inline _DataBlock_MarkItemAsDeleted(const DataBlock *dataBlock, unsigned char *item) {
+static inline void _DataBlock_MarkItemAsDeleted(const DataBlock *dataBlock, unsigned char *item) {
 	memset(item, dataBlock->deleted_marker, dataBlock->itemSize);
 }
 
-void static inline _DataBlock_MarkItemAsUndelete(const DataBlock *dataBlock, unsigned char *item) {
+static inline void _DataBlock_MarkItemAsUndelete(const DataBlock *dataBlock, unsigned char *item) {
 	item[0] = !dataBlock->deleted_marker;
 }
 
-int static inline _DataBlock_IsItemDeleted(const DataBlock *dataBlock, unsigned char *item) {
-	for(int i = 0; i < dataBlock->itemSize; i++) {
-		if(item[i] != dataBlock->deleted_marker) {
-			return 0;
-		}
+static inline int _DataBlock_IsItemDeleted(const DataBlock *dataBlock, unsigned char *item) {
+	for(size_t i = 0; i < dataBlock->itemSize; i++) {
+		if(item[i] != dataBlock->deleted_marker) return 0;
 	}
 	return 1;
 }
@@ -94,7 +92,7 @@ int static inline _DataBlock_IsItemDeleted(const DataBlock *dataBlock, unsigned 
 // array bounds are between 0 and itemCount + #deleted indices
 // e.g. [3, 7, 2, D, 1, D, 5] where itemCount = 5 and #deleted indices is 2
 // and so it is valid to query the array with idx 6.
-int static inline _DataBlock_IndexOutOfBounds(const DataBlock *dataBlock, size_t idx) {
+static inline int _DataBlock_IndexOutOfBounds(const DataBlock *dataBlock, size_t idx) {
 	return (idx >= (dataBlock->itemCount + array_len(dataBlock->deletedIdx)));
 }
 
