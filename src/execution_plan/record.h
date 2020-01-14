@@ -13,7 +13,7 @@
 #include <sys/types.h>
 
 typedef enum  {
-	REC_TYPE_UNKNOWN = -1,
+	REC_TYPE_UNKNOWN = 0,
 	REC_TYPE_SCALAR = 1 << 0,
 	REC_TYPE_NODE = 1 << 1,
 	REC_TYPE_EDGE = 1 << 2,

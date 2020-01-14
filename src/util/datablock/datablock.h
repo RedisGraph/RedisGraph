@@ -14,8 +14,6 @@
 #include "./block.h"
 #include "./datablock_iterator.h"
 
-#define DELETED_MARKER 0xFF
-
 typedef void (*fpDestructor)(void *);
 
 /* Data block is a type agnostic continues block of memory
@@ -28,14 +26,16 @@ typedef struct DataBlock {
 	size_t itemSize;            // Size of a single Item in bytes.
 	Block **blocks;             // Array of blocks.
 	uint64_t *deletedIdx;       // Array of free indicies.
-	pthread_mutex_t *mutex;      // Mutex guarding from concurent updates.
+	pthread_mutex_t *mutex;     // Mutex guarding from concurent updates.
+	uint8_t deleted_marker;
 	fpDestructor destructor;    // Function pointer to a clean-up function of an item.
 } DataBlock;
 
 // Create a new DataBlock
 // itemCap - number of items datablock can hold before resizing.
 // itemSize - item size in bytes.
-DataBlock *DataBlock_New(size_t itemCap, size_t itemSize, fpDestructor fp, bool threadsafe);
+DataBlock *DataBlock_New(size_t itemCap, size_t itemSize, fpDestructor fp, bool threadsafe,
+						 uint8_t deleted_marker);
 
 // Make sure datablock can accommodate at least k items.
 void DataBlock_Accommodate(DataBlock *dataBlock, int64_t k);

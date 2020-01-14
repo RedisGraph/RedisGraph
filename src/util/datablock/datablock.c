@@ -74,16 +74,16 @@ void _DataBlock_AddBlocks(DataBlock *dataBlock, size_t blockCount) {
 }
 
 void static inline _DataBlock_MarkItemAsDeleted(const DataBlock *dataBlock, unsigned char *item) {
-	memset(item, DELETED_MARKER, dataBlock->itemSize);
+	memset(item, dataBlock->deleted_marker, dataBlock->itemSize);
 }
 
 void static inline _DataBlock_MarkItemAsUndelete(const DataBlock *dataBlock, unsigned char *item) {
-	item[0] = !DELETED_MARKER;
+	item[0] = !dataBlock->deleted_marker;
 }
 
 int static inline _DataBlock_IsItemDeleted(const DataBlock *dataBlock, unsigned char *item) {
 	for(int i = 0; i < dataBlock->itemSize; i++) {
-		if(item[i] != DELETED_MARKER) {
+		if(item[i] != dataBlock->deleted_marker) {
 			return 0;
 		}
 	}
@@ -98,7 +98,8 @@ int static inline _DataBlock_IndexOutOfBounds(const DataBlock *dataBlock, size_t
 	return (idx >= (dataBlock->itemCount + array_len(dataBlock->deletedIdx)));
 }
 
-DataBlock *DataBlock_New(size_t itemCap, size_t itemSize, fpDestructor fp, bool threadsafe) {
+DataBlock *DataBlock_New(size_t itemCap, size_t itemSize, fpDestructor fp, bool threadsafe,
+						 uint8_t deleted_marker) {
 	DataBlock *dataBlock = rm_malloc(sizeof(DataBlock));
 	dataBlock->itemCount = 0;
 	dataBlock->itemSize = itemSize;
@@ -107,6 +108,7 @@ DataBlock *DataBlock_New(size_t itemCap, size_t itemSize, fpDestructor fp, bool 
 	dataBlock->deletedIdx = array_new(uint64_t, 128);
 	dataBlock->destructor = fp;
 	dataBlock->mutex = NULL;
+	dataBlock->deleted_marker = deleted_marker;
 	if(threadsafe) {
 		dataBlock->mutex = rm_malloc(sizeof(pthread_mutex_t));
 		assert(pthread_mutex_init(dataBlock->mutex, NULL) == 0);
@@ -122,7 +124,7 @@ DataBlockIterator *DataBlock_Scan(const DataBlock *dataBlock) {
 	// Deleted items are skipped, we're about to perform
 	// array_len(dataBlock->deletedIdx) skips during out scan.
 	int64_t endPos = dataBlock->itemCount + array_len(dataBlock->deletedIdx);
-	return DataBlockIterator_New(startBlock, 0, endPos, 1);
+	return DataBlockIterator_New(startBlock, 0, endPos, 1, dataBlock->deleted_marker);
 }
 
 // Make sure datablock can accommodate at least k items.
