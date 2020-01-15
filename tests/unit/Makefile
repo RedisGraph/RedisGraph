@@ -1,4 +1,4 @@
-CXX=g++-9
+
 ROOT=../..
 
 # Path to Google Test source

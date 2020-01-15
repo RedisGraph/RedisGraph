@@ -37,14 +37,14 @@
 // Block
 //------------------------------------------------------------------------------
 
-static inline Block *_Block_New(size_t itemSize) {
+Block *_Block_New(size_t itemSize) {
 	assert(itemSize > 0);
 	Block *block = rm_calloc(1, sizeof(Block) + BLOCK_CAP * itemSize);
 	block->itemSize = itemSize;
 	return block;
 }
 
-static inline void _Block_Free(Block *block) {
+void _Block_Free(Block *block) {
 	assert(block);
 	rm_free(block);
 }
@@ -53,7 +53,7 @@ static inline void _Block_Free(Block *block) {
 // DataBlock
 //------------------------------------------------------------------------------
 
-static void _DataBlock_AddBlocks(DataBlock *dataBlock, size_t blockCount) {
+void _DataBlock_AddBlocks(DataBlock *dataBlock, size_t blockCount) {
 	assert(dataBlock && blockCount > 0);
 
 	size_t prevBlockCount = dataBlock->blockCount;
@@ -63,7 +63,7 @@ static void _DataBlock_AddBlocks(DataBlock *dataBlock, size_t blockCount) {
 	else
 		dataBlock->blocks = rm_realloc(dataBlock->blocks, sizeof(Block *) * dataBlock->blockCount);
 
-	size_t i;
+	int i;
 	for(i = prevBlockCount; i < dataBlock->blockCount; i++) {
 		dataBlock->blocks[i] = _Block_New(dataBlock->itemSize);
 		if(i > 0) dataBlock->blocks[i - 1]->next = dataBlock->blocks[i];
@@ -73,17 +73,19 @@ static void _DataBlock_AddBlocks(DataBlock *dataBlock, size_t blockCount) {
 	dataBlock->itemCap = dataBlock->blockCount * BLOCK_CAP;
 }
 
-static inline void _DataBlock_MarkItemAsDeleted(const DataBlock *dataBlock, unsigned char *item) {
-	memset(item, dataBlock->deleted_marker, dataBlock->itemSize);
+void static inline _DataBlock_MarkItemAsDeleted(const DataBlock *dataBlock, unsigned char *item) {
+	memset(item, DELETED_MARKER, dataBlock->itemSize);
 }
 
-static inline void _DataBlock_MarkItemAsUndelete(const DataBlock *dataBlock, unsigned char *item) {
-	item[0] = !dataBlock->deleted_marker;
+void static inline _DataBlock_MarkItemAsUndelete(const DataBlock *dataBlock, unsigned char *item) {
+	item[0] = !DELETED_MARKER;
 }
 
-static inline int _DataBlock_IsItemDeleted(const DataBlock *dataBlock, unsigned char *item) {
-	for(size_t i = 0; i < dataBlock->itemSize; i++) {
-		if(item[i] != dataBlock->deleted_marker) return 0;
+int static inline _DataBlock_IsItemDeleted(const DataBlock *dataBlock, unsigned char *item) {
+	for(int i = 0; i < dataBlock->itemSize; i++) {
+		if(item[i] != DELETED_MARKER) {
+			return 0;
+		}
 	}
 	return 1;
 }
@@ -92,12 +94,11 @@ static inline int _DataBlock_IsItemDeleted(const DataBlock *dataBlock, unsigned 
 // array bounds are between 0 and itemCount + #deleted indices
 // e.g. [3, 7, 2, D, 1, D, 5] where itemCount = 5 and #deleted indices is 2
 // and so it is valid to query the array with idx 6.
-static inline int _DataBlock_IndexOutOfBounds(const DataBlock *dataBlock, size_t idx) {
+int static inline _DataBlock_IndexOutOfBounds(const DataBlock *dataBlock, size_t idx) {
 	return (idx >= (dataBlock->itemCount + array_len(dataBlock->deletedIdx)));
 }
 
-DataBlock *DataBlock_New(size_t itemCap, size_t itemSize, fpDestructor fp, bool threadsafe,
-						 uint8_t deleted_marker) {
+DataBlock *DataBlock_New(size_t itemCap, size_t itemSize, fpDestructor fp) {
 	DataBlock *dataBlock = rm_malloc(sizeof(DataBlock));
 	dataBlock->itemCount = 0;
 	dataBlock->itemSize = itemSize;
@@ -105,12 +106,7 @@ DataBlock *DataBlock_New(size_t itemCap, size_t itemSize, fpDestructor fp, bool 
 	dataBlock->blocks = NULL;
 	dataBlock->deletedIdx = array_new(uint64_t, 128);
 	dataBlock->destructor = fp;
-	dataBlock->mutex = NULL;
-	dataBlock->deleted_marker = deleted_marker;
-	if(threadsafe) {
-		dataBlock->mutex = rm_malloc(sizeof(pthread_mutex_t));
-		assert(pthread_mutex_init(dataBlock->mutex, NULL) == 0);
-	}
+	assert(pthread_mutex_init(&dataBlock->mutex, NULL) == 0);
 	_DataBlock_AddBlocks(dataBlock, ITEM_COUNT_TO_BLOCK_COUNT(itemCap));
 	return dataBlock;
 }
@@ -122,7 +118,7 @@ DataBlockIterator *DataBlock_Scan(const DataBlock *dataBlock) {
 	// Deleted items are skipped, we're about to perform
 	// array_len(dataBlock->deletedIdx) skips during out scan.
 	int64_t endPos = dataBlock->itemCount + array_len(dataBlock->deletedIdx);
-	return DataBlockIterator_New(startBlock, 0, endPos, 1, dataBlock->deleted_marker);
+	return DataBlockIterator_New(startBlock, 0, endPos, 1);
 }
 
 // Make sure datablock can accommodate at least k items.
@@ -155,7 +151,7 @@ void *DataBlock_GetItem(const DataBlock *dataBlock, size_t idx) {
 
 void *DataBlock_AllocateItem(DataBlock *dataBlock, uint64_t *idx) {
 	// Make sure we've got room for items.
-	if(dataBlock->itemCount >= dataBlock->itemCap) { // TODO can check for deleted indices first.
+	if(dataBlock->itemCount >= dataBlock->itemCap) {
 		// Allocate twice as much items then we currently hold.
 		size_t newCap = dataBlock->itemCount * 2;
 		size_t requiredAdditionalBlocks = ITEM_COUNT_TO_BLOCK_COUNT(newCap) - dataBlock->blockCount;
@@ -207,17 +203,12 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
 	 * if there's enough space to accommodate the deleted idx the operation should
 	 * return quickly otherwise, memory reallocation will occur, which we want to perform
 	 * in a thread safe matter. */
-	if(dataBlock->mutex == NULL) {
-		dataBlock->deletedIdx = array_append(dataBlock->deletedIdx, idx);
-		dataBlock->itemCount--;
-		return;
-	}
-	pthread_mutex_lock(dataBlock->mutex);
+	pthread_mutex_lock(&dataBlock->mutex);
 	{
 		dataBlock->deletedIdx = array_append(dataBlock->deletedIdx, idx);
 		dataBlock->itemCount--;
 	}
-	pthread_mutex_unlock(dataBlock->mutex);
+	pthread_mutex_unlock(&dataBlock->mutex);
 }
 
 void DataBlock_Free(DataBlock *dataBlock) {
@@ -226,7 +217,6 @@ void DataBlock_Free(DataBlock *dataBlock) {
 
 	rm_free(dataBlock->blocks);
 	array_free(dataBlock->deletedIdx);
-	if(dataBlock->mutex) assert(pthread_mutex_destroy(dataBlock->mutex) == 0);
+	assert(pthread_mutex_destroy(&dataBlock->mutex) == 0);
 	rm_free(dataBlock);
 }
-

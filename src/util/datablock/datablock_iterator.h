@@ -4,7 +4,8 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#pragma once
+#ifndef _DATABLOCK_ITERATOR_H_
+#define _DATABLOCK_ITERATOR_H_
 
 #include "./block.h"
 #include "stdint.h"
@@ -12,30 +13,28 @@
 /* Datablock iterator iterates over items within a datablock. */
 
 typedef struct DataBlockIterator {
-	Block *_start_block;    // Current block.
-	Block *_current_block;
-	int _start_pos;             // Iterator initial position.
-	int _current_pos;           // Iterator current position.
-	int _block_pos;             // Position within a block.
-	int _end_pos;               // Iterator won't pass end position.
-	int _step;                  // Increase current_pos by step each iteration.
-	uint8_t _deleted_marker;
+    Block *_start_block;    // Current block.
+    Block *_current_block;
+    int _start_pos;             // Iterator initial position.
+    int _current_pos;           // Iterator current position.
+    int _block_pos;             // Position within a block.
+    int _end_pos;               // Iterator won't pass end position.
+    int _step;                  // Increase current_pos by step each iteration.
 } DataBlockIterator;
 
 // Creates a new datablock iterator.
-DataBlockIterator *DataBlockIterator_New(
-	Block *block,       // Block from which iteration begins.
-	int64_t start_pos,  // Iteration starts here.
-	int64_t end_pos,    // Iteration stops here.
-	int step,           // To scan entire range, set step to 1.
-	uint8_t deleted_marker
+DataBlockIterator *DataBlockIterator_New (
+    Block *block,       // Block from which iteration begins.
+    int64_t start_pos,  // Iteration starts here.
+    int64_t end_pos,    // Iteration stops here.
+    int step            // To scan entire range, set step to 1.
 );
 
 #define DataBlockIterator_Position(iter) (iter)->_current_pos
 
 // Clones given iterator.
-DataBlockIterator *DataBlockIterator_Clone(
-	const DataBlockIterator *it  // Iterator to clone.
+DataBlockIterator *DataBlockIterator_Clone (
+    const DataBlockIterator *it  // Iterator to clone.
 );
 
 // Returns the next item, unless we've reached the end
@@ -48,3 +47,4 @@ void DataBlockIterator_Reset(DataBlockIterator *iter);
 // Free iterator.
 void DataBlockIterator_Free(DataBlockIterator *iter);
 
+#endif

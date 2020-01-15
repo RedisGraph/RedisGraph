@@ -335,8 +335,8 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 	edge_cap = MAX(node_cap, GRAPH_DEFAULT_EDGE_CAP);
 
 	Graph *g = rm_malloc(sizeof(Graph));
-	g->nodes = DataBlock_New(node_cap, sizeof(Entity), (fpDestructor)FreeEntity, true, -1);
-	g->edges = DataBlock_New(edge_cap, sizeof(Entity), (fpDestructor)FreeEntity, true, -1);
+	g->nodes = DataBlock_New(node_cap, sizeof(Entity), (fpDestructor)FreeEntity);
+	g->edges = DataBlock_New(edge_cap, sizeof(Entity), (fpDestructor)FreeEntity);
 	g->labels = array_new(GrB_Matrix, GRAPH_DEFAULT_LABEL_CAP);
 	g->relations = array_new(GrB_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 	g->_relations_map = array_new(GrB_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP);
