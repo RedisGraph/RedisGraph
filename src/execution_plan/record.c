@@ -18,6 +18,7 @@ static void _RecordPropagateEntry(Record dest, Record src, uint idx) {
 	if(e.type == REC_TYPE_SCALAR) SIValue_MakeVolatile(&src->entries[idx].value.s);
 }
 
+// This function is currently unused.
 Record Record_New(rax *mapping) {
 	assert(mapping);
 	// Determine record size.
@@ -273,14 +274,16 @@ unsigned long long Record_Hash64(const Record r) {
 }
 
 void Record_FreeEntries(Record r) {
-	unsigned int length = Record_length(r);
-	for(unsigned int i = 0; i < length; i++) {
+	uint length = Record_length(r);
+	for(uint i = 0; i < length; i++) {
+		// Free any allocations held by this Record.
 		if(r->entries[i].type == REC_TYPE_SCALAR) {
 			SIValue_Free(&r->entries[i].value.s);
 		}
 	}
 }
 
+// This function is currently unused.
 void Record_Free(Record r) {
 	Record_FreeEntries(r);
 	rm_free(r);

@@ -4,14 +4,13 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include <math.h>
-#include <string.h>
-#include <assert.h>
-#include <stdio.h>
-#include "../arr.h"
 #include "datablock.h"
 #include "datablock_iterator.h"
+#include "../arr.h"
 #include "../rmalloc.h"
+#include <math.h>
+#include <assert.h>
+#include <stdbool.h>
 
 // Computes the number of blocks required to accommodate n items.
 #define ITEM_COUNT_TO_BLOCK_COUNT(n) \
@@ -25,47 +24,23 @@
 #define ITEM_POSITION_WITHIN_BLOCK(idx) \
     (idx % BLOCK_CAP)
 
-// Get currently active block.
-#define ACTIVE_BLOCK(dataBlock) \
-    dataBlock->blocks[ITEM_INDEX_TO_BLOCK_INDEX(dataBlock->itemCount)]
-
 // Retrieves block in which item with index resides.
 #define GET_ITEM_BLOCK(dataBlock, idx) \
     dataBlock->blocks[ITEM_INDEX_TO_BLOCK_INDEX(idx)]
 
-//------------------------------------------------------------------------------
-// Block
-//------------------------------------------------------------------------------
-
-Block *_Block_New(size_t itemSize) {
-	assert(itemSize > 0);
-	Block *block = rm_calloc(1, sizeof(Block) + BLOCK_CAP * itemSize);
-	block->itemSize = itemSize;
-	return block;
-}
-
-void _Block_Free(Block *block) {
-	assert(block);
-	rm_free(block);
-}
-
-//------------------------------------------------------------------------------
-// DataBlock
-//------------------------------------------------------------------------------
-
-void _DataBlock_AddBlocks(DataBlock *dataBlock, size_t blockCount) {
+static void _DataBlock_AddBlocks(DataBlock *dataBlock, uint blockCount) {
 	assert(dataBlock && blockCount > 0);
 
-	size_t prevBlockCount = dataBlock->blockCount;
+	uint prevBlockCount = dataBlock->blockCount;
 	dataBlock->blockCount += blockCount;
 	if(!dataBlock->blocks)
 		dataBlock->blocks = rm_malloc(sizeof(Block *) * dataBlock->blockCount);
 	else
 		dataBlock->blocks = rm_realloc(dataBlock->blocks, sizeof(Block *) * dataBlock->blockCount);
 
-	int i;
+	uint i;
 	for(i = prevBlockCount; i < dataBlock->blockCount; i++) {
-		dataBlock->blocks[i] = _Block_New(dataBlock->itemSize);
+		dataBlock->blocks[i] = Block_New(dataBlock->itemSize, BLOCK_CAP);
 		if(i > 0) dataBlock->blocks[i - 1]->next = dataBlock->blocks[i];
 	}
 	dataBlock->blocks[i - 1]->next = NULL;
@@ -73,32 +48,30 @@ void _DataBlock_AddBlocks(DataBlock *dataBlock, size_t blockCount) {
 	dataBlock->itemCap = dataBlock->blockCount * BLOCK_CAP;
 }
 
-void static inline _DataBlock_MarkItemAsDeleted(const DataBlock *dataBlock, unsigned char *item) {
+static inline void _DataBlock_MarkItemAsDeleted(const DataBlock *dataBlock, unsigned char *item) {
 	memset(item, DELETED_MARKER, dataBlock->itemSize);
 }
 
-void static inline _DataBlock_MarkItemAsUndelete(const DataBlock *dataBlock, unsigned char *item) {
+static inline void _DataBlock_MarkItemAsUndelete(const DataBlock *dataBlock, unsigned char *item) {
 	item[0] = !DELETED_MARKER;
 }
 
-int static inline _DataBlock_IsItemDeleted(const DataBlock *dataBlock, unsigned char *item) {
+static inline bool _DataBlock_IsItemDeleted(const DataBlock *dataBlock, unsigned char *item) {
 	for(int i = 0; i < dataBlock->itemSize; i++) {
-		if(item[i] != DELETED_MARKER) {
-			return 0;
-		}
+		if(item[i] != DELETED_MARKER) return false;
 	}
-	return 1;
+	return true;
 }
 
 // Checks to see if idx is within global array bounds
 // array bounds are between 0 and itemCount + #deleted indices
 // e.g. [3, 7, 2, D, 1, D, 5] where itemCount = 5 and #deleted indices is 2
 // and so it is valid to query the array with idx 6.
-int static inline _DataBlock_IndexOutOfBounds(const DataBlock *dataBlock, size_t idx) {
+static inline bool _DataBlock_IndexOutOfBounds(const DataBlock *dataBlock, uint64_t idx) {
 	return (idx >= (dataBlock->itemCount + array_len(dataBlock->deletedIdx)));
 }
 
-DataBlock *DataBlock_New(size_t itemCap, size_t itemSize, fpDestructor fp) {
+DataBlock *DataBlock_New(uint64_t itemCap, uint itemSize, fpDestructor fp) {
 	DataBlock *dataBlock = rm_malloc(sizeof(DataBlock));
 	dataBlock->itemCount = 0;
 	dataBlock->itemSize = itemSize;
@@ -133,7 +106,7 @@ void DataBlock_Accommodate(DataBlock *dataBlock, int64_t k) {
 	}
 }
 
-void *DataBlock_GetItem(const DataBlock *dataBlock, size_t idx) {
+void *DataBlock_GetItem(const DataBlock *dataBlock, uint64_t idx) {
 	assert(dataBlock);
 
 	if(_DataBlock_IndexOutOfBounds(dataBlock, idx)) return NULL;
@@ -153,14 +126,14 @@ void *DataBlock_AllocateItem(DataBlock *dataBlock, uint64_t *idx) {
 	// Make sure we've got room for items.
 	if(dataBlock->itemCount >= dataBlock->itemCap) {
 		// Allocate twice as much items then we currently hold.
-		size_t newCap = dataBlock->itemCount * 2;
-		size_t requiredAdditionalBlocks = ITEM_COUNT_TO_BLOCK_COUNT(newCap) - dataBlock->blockCount;
+		uint newCap = dataBlock->itemCount * 2;
+		uint requiredAdditionalBlocks = ITEM_COUNT_TO_BLOCK_COUNT(newCap) - dataBlock->blockCount;
 		_DataBlock_AddBlocks(dataBlock, requiredAdditionalBlocks);
 	}
 
 	// Get index into which to store item,
 	// prefer reusing free indicies.
-	uint64_t pos = dataBlock->itemCount;
+	uint pos = dataBlock->itemCount;
 	if(array_len(dataBlock->deletedIdx) > 0) {
 		pos = array_pop(dataBlock->deletedIdx);
 	}
@@ -182,11 +155,11 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
 	if(_DataBlock_IndexOutOfBounds(dataBlock, idx)) return;
 
 	// Get block.
-	size_t blockIdx = ITEM_INDEX_TO_BLOCK_INDEX(idx);
+	uint blockIdx = ITEM_INDEX_TO_BLOCK_INDEX(idx);
 	Block *block = dataBlock->blocks[blockIdx];
 
 	uint blockPos = ITEM_POSITION_WITHIN_BLOCK(idx);
-	size_t offset = blockPos * block->itemSize;
+	uint offset = blockPos * block->itemSize;
 
 	// Return if item already deleted.
 	unsigned char *item = block->data + offset;
@@ -212,11 +185,11 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
 }
 
 void DataBlock_Free(DataBlock *dataBlock) {
-	for(int i = 0; i < dataBlock->blockCount; i++)
-		_Block_Free(dataBlock->blocks[i]);
+	for(uint i = 0; i < dataBlock->blockCount; i++) Block_Free(dataBlock->blocks[i]);
 
 	rm_free(dataBlock->blocks);
 	array_free(dataBlock->deletedIdx);
 	assert(pthread_mutex_destroy(&dataBlock->mutex) == 0);
 	rm_free(dataBlock);
 }
+

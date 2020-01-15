@@ -139,7 +139,7 @@ bool OpBase_IsWriter(OpBase *op) {
 	return op->writer;
 }
 
-Record OpBase_CreateRecord(const OpBase *op) {
+inline Record OpBase_CreateRecord(const OpBase *op) {
 	return ExecutionPlan_BorrowRecord((struct ExecutionPlan *)op->plan);
 }
 
@@ -149,7 +149,7 @@ Record OpBase_CloneRecord(Record r) {
 	return clone;
 }
 
-void OpBase_DeleteRecord(Record *r) {
+inline void OpBase_DeleteRecord(Record *r) {
 	ExecutionPlan_ReturnRecord((*r)->owner, *r);
 	*r = NULL;
 }
@@ -164,7 +164,7 @@ void OpBase_Free(OpBase *op) {
 	if(op->dangling_records) {
 		uint count = array_len(op->dangling_records);
 		for(uint i = 0; i < count; i ++) {
-			Record_Free(op->dangling_records[i]);
+			OpBase_DeleteRecord(&op->dangling_records[i]);
 		}
 		array_free(op->dangling_records);
 	}

@@ -859,13 +859,13 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 
 	uint segment_count = array_len(segment_indices);
 	ExecutionPlan **segments = rm_malloc(segment_count * sizeof(ExecutionPlan *));
-	AST **ast_segments = array_new(AST *, segment_count);
+	AST *ast_segments[segment_count];
 	start_offset = 0;
 	for(int i = 0; i < segment_count; i++) {
 		uint end_offset = segment_indices[i];
 		// Slice the AST to only include the clauses in the current segment.
 		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
-		ast_segments = array_append(ast_segments, ast_segment);
+		ast_segments[i] = ast_segment;
 		// Construct a new ExecutionPlanSegment.
 		ExecutionPlan *segment = ExecutionPlan_NewEmptyExecutionPlan();
 		ExecutionPlan_PopulateExecutionPlan(segment, result_set);
@@ -899,10 +899,9 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 		prev_scope_end = prev_root; // Track the previous scope's end so filter placement doesn't overreach.
 	}
 
-	for(uint i = 0; i < segment_count; i++) {
-		AST_Free(ast_segments[i]);
-	}
-	array_free(ast_segments);
+	// Free all scoped ASTs.
+	for(uint i = 0; i < segment_count; i++) AST_Free(ast_segments[i]);
+
 	QueryCtx_SetAST(ast); // AST segments have been freed, set master AST in QueryCtx.
 
 	array_free(segment_indices);
@@ -949,20 +948,11 @@ inline rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan) {
 
 Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan) {
 	rax *mapping = ExecutionPlan_GetMappings(plan);
-	if(!plan->record_pool) {
-		/* Initialize record pool.
-		 * Determine data block entry (Record) size. */
-		uint entries_count = raxSize(mapping);
-		uint rec_size = sizeof(_Record);
-		rec_size += sizeof(Entry) * entries_count;
-
-		// Create a data block with initial capacity of 256 records.
-		plan->record_pool = ObjectPool_New(256, rec_size, (fpDestructor)Record_FreeEntries);
-	}
+	assert(plan->record_pool);
 
 	// Get a record from pool and set its owner, id and mapping.
 	uint record_id;
-	Record r = ObjectPool_AllocateItem(plan->record_pool, &record_id);
+	Record r = ObjectPool_NewItem(plan->record_pool, &record_id);
 	r->owner = plan;
 	r->id = record_id;
 	r->mapping = plan->record_map;
@@ -1006,7 +996,21 @@ void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx) {
 	RedisModule_ReplySetArrayLength(ctx, op_count);
 }
 
+static inline void _ExecutionPlan_InitRecordPool(ExecutionPlan *plan) {
+	if(plan->record_pool) return;
+	/* Initialize record pool.
+	 * Determine Record size to inform ObjectPool allocation. */
+	uint entries_count = raxSize(plan->record_map);
+	uint rec_size = sizeof(_Record) + (sizeof(Entry) * entries_count);
+
+	// Create a data block with initial capacity of 256 records.
+	plan->record_pool = ObjectPool_New(256, rec_size, (fpDestructor)Record_FreeEntries);
+}
+
 void _ExecutionPlanInit(OpBase *root) {
+	// If the ExecutionPlan associated with this op hasn't built a record pool yet, do so now.
+	_ExecutionPlan_InitRecordPool((ExecutionPlan *)root->plan);
+
 	// Initialize the operation if necessary.
 	if(root->init) root->init(root);
 
@@ -1035,7 +1039,6 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 
 	Record r = NULL;
 	// Execute the root operation and free the processed Record until the data stream is depleted.
-	// while((r = OpBase_Consume(plan->root)) != NULL) Record_Free(r);
 	while((r = OpBase_Consume(plan->root)) != NULL) ExecutionPlan_ReturnRecord(r->owner, r);
 
 	// Return the result set.

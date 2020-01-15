@@ -168,14 +168,9 @@ static Record CondTraverseConsume(OpBase *opBase) {
 	CondTraverse *op = (CondTraverse *)opBase;
 	OpBase *child = op->op.children[0];
 
-	/* If we're required to update edge,
-	 * try to get an edge, if successful we can return quickly,
-	 * otherwise try to get a new pair of source and destination nodes. */
-	if(op->setEdge) {
-		if(_CondTraverse_SetEdge(op, op->r)) {
-			return OpBase_CloneRecord(op->r);
-		}
-	}
+	/* If we're required to update an edge and have one queued, we can return early.
+	 * Otherwise, try to get a new pair of source and destination nodes. */
+	if(op->setEdge && _CondTraverse_SetEdge(op, op->r)) return OpBase_CloneRecord(op->r);
 
 	bool depleted = true;
 	NodeID src_id = INVALID_ENTITY_ID;

@@ -8,52 +8,33 @@
 
 #include <stdlib.h>
 #include <stdint.h>
-#include <stdbool.h>
-#include <pthread.h>
-
-typedef void (*fpDestructor)(void *);
 
 // Number of items in a block. Should always be a power of 2.
 #define POOL_BLOCK_CAP 256
 
-/* Data block is a type agnostic continuous block of memory
- * used to hold items of the same type, each block has a next
- * pointer to another block or NULL if this is the last block. */
-
-typedef struct ObjectPoolBlock {
-	size_t itemSize;        // Size of a single Item in bytes.
-	struct ObjectPoolBlock *next;     // Pointer to next block.
-	unsigned char data[];   // Item array. MUST BE LAST MEMBER OF THE STRUCT!
-} ObjectPoolBlock;
-
-/* Data block is a type agnostic continues block of memory
- * used to hold items of the same type, each block has a next
- * pointer to another block or NULL if this is the last block. */
+/* The ObjectPool, like the DataBlock, is a container structure for holding arbitrary items of a uniform type
+ * in order to reduce the number of alloc/free calls and improve locality of reference.
+ * In contrast to the DataBlock, deletions are not thread-safe. */
 typedef struct {
-	uint itemCount;             // Number of items stored in datablock.
-	uint itemCap;               // Number of items datablock can hold.
-	uint blockCount;            // Number of blocks in datablock.
-	uint itemSize;              // Size of a single Item in bytes.
-	ObjectPoolBlock **blocks;   // Array of blocks.
-	uint *deletedIdx;           // Array of free indicies.
+	uint itemCount;             // Number of items stored in ObjectPool.
+	uint itemCap;               // Number of items ObjectPool can hold.
+	uint blockCount;            // Number of blocks in ObjectPool.
+	uint itemSize;              // Size of a single item in bytes.
+	Block **blocks;             // Array of blocks.
+	uint *deletedIdx;           // Array of free indices.
 	fpDestructor destructor;    // Function pointer to a clean-up function of an item.
 } ObjectPool;
 
 // Create a new ObjectPool
-// itemCap - number of items datablock can hold before resizing.
+// itemCap - number of items ObjectPool can hold before resizing.
 // itemSize - item size in bytes.
+// fp - destructor routine for freeing items.
 ObjectPool *ObjectPool_New(uint itemCap, uint itemSize, fpDestructor fp);
 
-// Make sure datablock can accommodate at least k items.
-// void ObjectPool_Accommodate(ObjectPool *pool, uint k);
-
-// Get item at position idx
-// void *ObjectPool_GetItem(const ObjectPool *pool, uint idx);
-
-// Allocate a new item within given pool,
-// if idx is not NULL, idx will contain item position
-// return a pointer to the newly allocated item.
-void *ObjectPool_AllocateItem(ObjectPool *pool, uint *idx);
+// Allocate a new item within the given pool.
+// idx will be set to the item's position within the pool's blocks,
+// and a pointer to the item will be returned.
+void *ObjectPool_NewItem(ObjectPool *pool, uint *idx);
 
 // Removes item at position idx.
 void ObjectPool_DeleteItem(ObjectPool *pool, uint idx);

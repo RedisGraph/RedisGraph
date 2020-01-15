@@ -281,7 +281,7 @@ int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *fi
 void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
 	Schema *s = NULL;
 
-	if(n->label && n->label != (char *) -1) { // TODO tmp
+	if(n->label) {
 		// Node will have a label string if one was specified in the query MATCH clause
 		s = GraphContext_GetSchema(gc, n->label, SCHEMA_NODE);
 	} else {

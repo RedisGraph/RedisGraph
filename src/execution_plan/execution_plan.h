@@ -107,10 +107,10 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_lim
 /* Retrieve the map of aliases to Record offsets in this ExecutionPlan segment. */
 rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan);
 
-/* Retrieves a record from records pool. */
+/* Retrieves a Record from the ExecutionPlan's Record pool. */
 Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan);
 
-/* Free record - returns record to records pool. */
+/* Free Record contents and return it to the Record pool. */
 void ExecutionPlan_ReturnRecord(ExecutionPlan *plan, Record r);
 
 /* Prints execution plan. */

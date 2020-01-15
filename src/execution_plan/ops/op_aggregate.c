@@ -66,9 +66,8 @@ static Group *_CreateGroup(OpAggregate *op, Record r) {
 	}
 
 	/* There's no need to keep a reference to record if we're not sorting groups. */
-	// Record cache_record = (op->should_cache_records) ? r : NULL;
-	// op->group = NewGroup(key_count, group_keys, agg_exps, cache_record);
-	op->group = NewGroup(key_count, group_keys, agg_exps, NULL);
+	Record cache_record = (op->should_cache_records) ? r : NULL;
+	op->group = NewGroup(key_count, group_keys, agg_exps, cache_record);
 
 	return op->group;
 }

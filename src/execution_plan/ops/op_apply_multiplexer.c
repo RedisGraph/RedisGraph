@@ -15,8 +15,7 @@ void OpApplyMultiplexerFree(OpBase *opBase);
 
 static Record _pullFromBranchStream(OpApplyMultiplexer *op, int branch_index) {
 	// Propegate record to the top of the match stream.
-	Argument_AddRecord(op->branch_arguments[branch_index - 1],
-					   OpBase_CloneRecord(op->r));
+	Argument_AddRecord(op->branch_arguments[branch_index - 1], OpBase_CloneRecord(op->r));
 	return OpBase_Consume(op->op.children[branch_index]);
 }
 
@@ -163,3 +162,4 @@ void OpApplyMultiplexerFree(OpBase *opBase) {
 		op->r = NULL;
 	}
 }
+
