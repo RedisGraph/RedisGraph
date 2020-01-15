@@ -957,12 +957,12 @@ Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan) {
 		rec_size += sizeof(Entry) * entries_count;
 
 		// Create a data block with initial capacity of 256 records.
-		plan->record_pool = DataBlock_New(256, rec_size, (fpDestructor)Record_FreeEntries, false, 0);
+		plan->record_pool = ObjectPool_New(256, rec_size, (fpDestructor)Record_FreeEntries);
 	}
 
 	// Get a record from pool and set its owner, id and mapping.
-	uint64_t record_id;
-	Record r = (Record)DataBlock_AllocateItem(plan->record_pool, &record_id);
+	uint record_id;
+	Record r = ObjectPool_AllocateItem(plan->record_pool, &record_id);
 	r->owner = plan;
 	r->id = record_id;
 	r->mapping = plan->record_map;
@@ -971,7 +971,7 @@ Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan) {
 
 void ExecutionPlan_ReturnRecord(ExecutionPlan *plan, Record r) {
 	assert(plan && r);
-	DataBlock_DeleteItem(plan->record_pool, r->id);
+	ObjectPool_DeleteItem(plan->record_pool, r->id);
 }
 
 void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx, char *buffer, int buffer_len,
@@ -1109,7 +1109,7 @@ static void _ExecutionPlan_FreeSubPlan(ExecutionPlan *plan) {
 
 	QueryGraph_Free(plan->query_graph);
 	if(plan->record_map) raxFree(plan->record_map);
-	if(plan->record_pool) DataBlock_Free(plan->record_pool);
+	if(plan->record_pool) ObjectPool_Free(plan->record_pool);
 	rm_free(plan);
 }
 
@@ -1137,7 +1137,7 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 
 	QueryGraph_Free(plan->query_graph);
 	if(plan->record_map) raxFree(plan->record_map);
-	if(plan->record_pool) DataBlock_Free(plan->record_pool);
+	if(plan->record_pool) ObjectPool_Free(plan->record_pool);
 	rm_free(plan);
 }
 

@@ -19,7 +19,7 @@ typedef void (*fpDestructor)(void *);
 /* Data block is a type agnostic continues block of memory
  * used to hold items of the same type, each block has a next
  * pointer to another block or NULL if this is the last block. */
-typedef struct DataBlock {
+typedef struct {
 	size_t itemCount;           // Number of items stored in datablock.
 	size_t itemCap;             // Number of items datablock can hold.
 	size_t blockCount;          // Number of blocks in datablock.

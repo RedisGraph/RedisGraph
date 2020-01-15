@@ -14,36 +14,36 @@
 
 // Computes the number of blocks required to accommodate n items.
 #define ITEM_COUNT_TO_BLOCK_COUNT(n) \
-    ceil((double)n / BLOCK_CAP)
+    ceil((double)n / POOL_BLOCK_CAP)
 
 // Computes block index from item index.
 #define ITEM_INDEX_TO_BLOCK_INDEX(idx) \
-    (idx / BLOCK_CAP)
+    (idx / POOL_BLOCK_CAP)
 
 // Computes item position within a block.
 #define ITEM_POSITION_WITHIN_BLOCK(idx) \
-    (idx % BLOCK_CAP)
+    (idx % POOL_BLOCK_CAP)
 
 // Get currently active block.
-#define ACTIVE_BLOCK(dataBlock) \
-    dataBlock->blocks[ITEM_INDEX_TO_BLOCK_INDEX(dataBlock->itemCount)]
+#define ACTIVE_BLOCK(pool) \
+    pool->blocks[ITEM_INDEX_TO_BLOCK_INDEX(pool->itemCount)]
 
 // Retrieves block in which item with index resides.
-#define GET_ITEM_BLOCK(dataBlock, idx) \
-    dataBlock->blocks[ITEM_INDEX_TO_BLOCK_INDEX(idx)]
+#define GET_ITEM_BLOCK(pool, idx) \
+    pool->blocks[ITEM_INDEX_TO_BLOCK_INDEX(idx)]
 
 //------------------------------------------------------------------------------
-// Block
+// ObjectPoolBlock
 //------------------------------------------------------------------------------
 
-static inline Block *_Block_New(uint itemSize) {
+static inline ObjectPoolBlock *_Block_New(uint itemSize) {
 	assert(itemSize > 0);
-	Block *block = rm_calloc(1, sizeof(Block) + BLOCK_CAP * itemSize);
+	ObjectPoolBlock *block = rm_calloc(1, sizeof(ObjectPoolBlock) + POOL_BLOCK_CAP * itemSize);
 	block->itemSize = itemSize;
 	return block;
 }
 
-static inline void _Block_Free(Block *block) {
+static inline void _Block_Free(ObjectPoolBlock *block) {
 	assert(block);
 	rm_free(block);
 }
@@ -52,155 +52,117 @@ static inline void _Block_Free(Block *block) {
 // ObjectPool
 //------------------------------------------------------------------------------
 
-void _ObjectPool_AddBlocks(ObjectPool *dataBlock, uint blockCount) {
-	assert(dataBlock && blockCount > 0);
+static void _ObjectPool_AddBlocks(ObjectPool *pool, uint blockCount) {
+	assert(pool && blockCount > 0);
 
-	uint prevBlockCount = dataBlock->blockCount;
-	dataBlock->blockCount += blockCount;
-	if(!dataBlock->blocks)
-		dataBlock->blocks = rm_malloc(sizeof(Block *) * dataBlock->blockCount);
-	else
-		dataBlock->blocks = rm_realloc(dataBlock->blocks, sizeof(Block *) * dataBlock->blockCount);
+	uint prevBlockCount = pool->blockCount;
+	pool->blockCount += blockCount;
+	if(!pool->blocks) pool->blocks = rm_malloc(sizeof(ObjectPoolBlock *) * pool->blockCount);
+	else pool->blocks = rm_realloc(pool->blocks, sizeof(ObjectPoolBlock *) * pool->blockCount);
 
 	uint i;
-	for(i = prevBlockCount; i < dataBlock->blockCount; i++) {
-		dataBlock->blocks[i] = _Block_New(dataBlock->itemSize);
-		if(i > 0) dataBlock->blocks[i - 1]->next = dataBlock->blocks[i];
+	for(i = prevBlockCount; i < pool->blockCount; i++) {
+		pool->blocks[i] = _Block_New(pool->itemSize);
+		if(i > 0) pool->blocks[i - 1]->next = pool->blocks[i];
 	}
-	dataBlock->blocks[i - 1]->next = NULL;
+	pool->blocks[i - 1]->next = NULL;
 
-	dataBlock->itemCap = dataBlock->blockCount * BLOCK_CAP;
+	pool->itemCap = pool->blockCount * POOL_BLOCK_CAP;
 }
 
-static inline void _ObjectPool_MarkItemAsDeleted(const ObjectPool *dataBlock, unsigned char *item) {
-	memset(item, 0, dataBlock->itemSize);
-}
-
-static inline void _ObjectPool_MarkItemAsUndelete(const ObjectPool *dataBlock,
-												  unsigned char *item) {
-	// item[0] = !dataBlock->deleted_marker;
-}
-
-static inline int _ObjectPool_IsItemDeleted(const ObjectPool *dataBlock, unsigned char *item) {
-	for(uint i = 0; i < dataBlock->itemSize; i++) {
-		if(item[i] != dataBlock->deleted_marker) return 0;
-	}
-	return 1;
-}
-
-// Checks to see if idx is within global array bounds
-// array bounds are between 0 and itemCount + #deleted indices
-// e.g. [3, 7, 2, D, 1, D, 5] where itemCount = 5 and #deleted indices is 2
-// and so it is valid to query the array with idx 6.
-static inline int _ObjectPool_IndexOutOfBounds(const ObjectPool *dataBlock, uint idx) {
-	return (idx >= (dataBlock->itemCount + array_len(dataBlock->deletedIdx)));
+static inline void _ObjectPool_ClearItem(const ObjectPool *pool, unsigned char *item) {
+	memset(item, 0, pool->itemSize);
 }
 
 ObjectPool *ObjectPool_New(uint itemCap, uint itemSize, fpDestructor fp) {
-	ObjectPool *dataBlock = rm_malloc(sizeof(ObjectPool));
-	dataBlock->itemCount = 0;
-	dataBlock->itemSize = itemSize;
-	dataBlock->blockCount = 0;
-	dataBlock->blocks = NULL;
-	dataBlock->deletedIdx = array_new(uint, 128);
-	dataBlock->destructor = fp;
-	dataBlock->deleted_marker = deleted_marker;
-	_ObjectPool_AddBlocks(dataBlock, ITEM_COUNT_TO_BLOCK_COUNT(itemCap));
-	return dataBlock;
+	ObjectPool *pool = rm_malloc(sizeof(ObjectPool));
+	pool->itemCount = 0;
+	pool->itemSize = itemSize;
+	pool->blockCount = 0;
+	pool->blocks = NULL;
+	pool->deletedIdx = array_new(uint, 128);
+	pool->destructor = fp;
+	_ObjectPool_AddBlocks(pool, ITEM_COUNT_TO_BLOCK_COUNT(itemCap));
+	return pool;
 }
 
+/*
 // Make sure datablock can accommodate at least k items.
-void ObjectPool_Accommodate(ObjectPool *dataBlock, int64_t k) {
+void ObjectPool_Accommodate(ObjectPool *pool, uint k) {
 	// Compute number of free slots.
-	int64_t freeSlotsCount = dataBlock->itemCap - dataBlock->itemCount;
+	int64_t freeSlotsCount = pool->itemCap - pool->itemCount;
 	int64_t additionalItems = k - freeSlotsCount;
 
 	if(additionalItems > 0) {
 		int64_t additionalBlocks = ITEM_COUNT_TO_BLOCK_COUNT(additionalItems);
-		_ObjectPool_AddBlocks(dataBlock, additionalBlocks);
+		_ObjectPool_AddBlocks(pool, additionalBlocks);
 	}
 }
+*/
 
-void *ObjectPool_GetItem(const ObjectPool *dataBlock, uint idx) {
-	assert(dataBlock);
+/*
+void *ObjectPool_GetItem(const ObjectPool *pool, uint idx) {
+	assert(pool);
 
-	if(_ObjectPool_IndexOutOfBounds(dataBlock, idx)) return NULL;
-
-	Block *block = GET_ITEM_BLOCK(dataBlock, idx);
+	ObjectPoolBlock *block = GET_ITEM_BLOCK(pool, idx);
 	idx = ITEM_POSITION_WITHIN_BLOCK(idx);
 
 	unsigned char *item = block->data + (idx * block->itemSize);
 
-	// Incase item is marked as deleted, return NULL.
-	if(_ObjectPool_IsItemDeleted(dataBlock, item)) return NULL;
-
 	return item;
 }
+*/
 
-void *ObjectPool_AllocateItem(ObjectPool *dataBlock, uint *idx) {
+void *ObjectPool_AllocateItem(ObjectPool *pool, uint *idx) {
 	// Make sure we've got room for items.
-	if(dataBlock->itemCount >= dataBlock->itemCap) { // TODO can check for deleted indices first.
+	if(pool->itemCount >= pool->itemCap) { // TODO can check for deleted indices first.
 		// Allocate twice as much items then we currently hold.
-		uint newCap = dataBlock->itemCount * 2;
-		uint requiredAdditionalBlocks = ITEM_COUNT_TO_BLOCK_COUNT(newCap) - dataBlock->blockCount;
-		_ObjectPool_AddBlocks(dataBlock, requiredAdditionalBlocks);
+		uint newCap = pool->itemCount * 2;
+		uint requiredAdditionalBlocks = ITEM_COUNT_TO_BLOCK_COUNT(newCap) - pool->blockCount;
+		_ObjectPool_AddBlocks(pool, requiredAdditionalBlocks);
 	}
 
 	// Get index into which to store item,
 	// prefer reusing free indicies.
-	uint pos = dataBlock->itemCount;
-	if(array_len(dataBlock->deletedIdx) > 0) {
-		pos = array_pop(dataBlock->deletedIdx);
-	}
-	dataBlock->itemCount++;
+	uint pos = (array_len(pool->deletedIdx)) ? array_pop(pool->deletedIdx) : pool->itemCount;
+	pool->itemCount++;
 
 	if(idx) *idx = pos;
 
-	Block *block = GET_ITEM_BLOCK(dataBlock, pos);
+	ObjectPoolBlock *block = GET_ITEM_BLOCK(pool, pos);
 	pos = ITEM_POSITION_WITHIN_BLOCK(pos);
 
 	unsigned char *item = block->data + (pos * block->itemSize);
-	_ObjectPool_MarkItemAsUndelete(dataBlock, item);
 
-	return (void *)item;
+	return item;
 }
 
-void ObjectPool_DeleteItem(ObjectPool *dataBlock, uint idx) {
-	assert(dataBlock);
-	if(_ObjectPool_IndexOutOfBounds(dataBlock, idx)) return;
+void ObjectPool_DeleteItem(ObjectPool *pool, uint idx) {
+	assert(pool);
 
 	// Get block.
 	uint blockIdx = ITEM_INDEX_TO_BLOCK_INDEX(idx);
-	Block *block = dataBlock->blocks[blockIdx];
+	ObjectPoolBlock *block = pool->blocks[blockIdx];
 
 	uint blockPos = ITEM_POSITION_WITHIN_BLOCK(idx);
 	uint offset = blockPos * block->itemSize;
 
-	// Return if item already deleted.
-	unsigned char *item = block->data + offset;
-	if(_ObjectPool_IsItemDeleted(dataBlock, item)) return;
-
 	// Call item destructor.
-	if(dataBlock->destructor) dataBlock->destructor(item);
+	unsigned char *item = block->data + offset;
+	if(pool->destructor) pool->destructor(item);
+	_ObjectPool_ClearItem(pool, item); // TODO consider combining with destructor
 
-	_ObjectPool_MarkItemAsDeleted(dataBlock, item);
-
-	/* ObjectPool_DeleteItem should be thread-safe as it's being called
-	 * from GraphBLAS concurent operations, e.g. GxB_SelectOp.
-	 * As such updateing the datablock deleted indices array must be guarded
-	 * if there's enough space to accommodate the deleted idx the operation should
-	 * return quickly otherwise, memory reallocation will occur, which we want to perform
-	 * in a thread safe matter. */
-	dataBlock->deletedIdx = array_append(dataBlock->deletedIdx, idx);
-	dataBlock->itemCount--;
+	pool->deletedIdx = array_append(pool->deletedIdx, idx);
+	pool->itemCount--;
 }
 
-void ObjectPool_Free(ObjectPool *dataBlock) {
-	for(int i = 0; i < dataBlock->blockCount; i++)
-		_Block_Free(dataBlock->blocks[i]);
+void ObjectPool_Free(ObjectPool *pool) {
+	for(int i = 0; i < pool->blockCount; i++) {
+		_Block_Free(pool->blocks[i]);
+	}
 
-	rm_free(dataBlock->blocks);
-	array_free(dataBlock->deletedIdx);
-	rm_free(dataBlock);
+	rm_free(pool->blocks);
+	array_free(pool->deletedIdx);
+	rm_free(pool);
 }
 
