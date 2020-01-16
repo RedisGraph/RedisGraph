@@ -4,10 +4,9 @@
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
-#include "../arr.h"
-#include "../block.h"
-#include "../rmalloc.h"
 #include "object_pool.h"
+#include "../arr.h"
+#include "../rmalloc.h"
 #include <math.h>
 #include <string.h>
 #include <assert.h>
@@ -33,7 +32,10 @@
 typedef uint64_t ObjectID;
 #define HEADER_SIZE sizeof(ObjectID)
 
-// Given an item, retrieve its ID.
+/* Given an item, retrieve its ID.
+ * As this is a direct memory access, it can be used as either a getter or a setter.
+ * ITEM_ID(x) = 5 will assign 5 to the item x, while
+ * ObjectID num = ITEM_ID(x) will write x's ID to the variable num. */
 #define ITEM_ID(item) *((ObjectID*)((item) - sizeof(ObjectID)))
 
 // Given an item header, retrieve the item data.

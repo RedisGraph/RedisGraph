@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../block.h"
 #include <stdlib.h>
 #include <stdint.h>
 
