@@ -28,8 +28,8 @@
 #define GET_ITEM_BLOCK(pool, idx) \
 	pool->blocks[ITEM_INDEX_TO_BLOCK_INDEX(idx)]
 
-/* Each allocated item has an ID that is equivalent to its index in the ObjectPool.
- * This ID is held in the 8 bytes immediately preceding the item in the Block, and is only used internally. */
+/* Each allocated item has an ID header that is equivalent to its index in the ObjectPool.
+ * This ID is held in the bytes immediately preceding the item in the Block, and is only used internally. */
 typedef uint64_t ObjectID;
 #define HEADER_SIZE sizeof(ObjectID)
 
@@ -57,18 +57,7 @@ static void _ObjectPool_AddBlocks(ObjectPool *pool, uint blockCount) {
 	pool->itemCap = pool->blockCount * POOL_BLOCK_CAP;
 }
 
-ObjectPool *ObjectPool_New(uint64_t itemCap, uint itemSize, fpDestructor fp) {
-	ObjectPool *pool = rm_malloc(sizeof(ObjectPool));
-	pool->itemCount = 0;
-	pool->itemSize = itemSize + HEADER_SIZE; // Add extra space to accommodate the item's header.
-	pool->blockCount = 0;
-	pool->blocks = NULL;
-	pool->deletedIdx = array_new(uint64_t, 128);
-	pool->destructor = fp;
-	_ObjectPool_AddBlocks(pool, ITEM_COUNT_TO_BLOCK_COUNT(itemCap));
-	return pool;
-}
-
+// Clear a deleted item and recycle it to the caller.
 static void *_ObjectPool_ReuseItem(ObjectPool *pool) {
 	ObjectID idx = array_pop(pool->deletedIdx);
 
@@ -86,6 +75,18 @@ static void *_ObjectPool_ReuseItem(ObjectPool *pool) {
 	memset(item, 0, block->itemSize - HEADER_SIZE);
 
 	return item;
+}
+
+ObjectPool *ObjectPool_New(uint64_t itemCap, uint itemSize, fpDestructor fp) {
+	ObjectPool *pool = rm_malloc(sizeof(ObjectPool));
+	pool->itemCount = 0;
+	pool->itemSize = itemSize + HEADER_SIZE; // Add extra space to accommodate the item's header.
+	pool->blockCount = 0;
+	pool->blocks = NULL;
+	pool->deletedIdx = array_new(uint64_t, 128);
+	pool->destructor = fp;
+	_ObjectPool_AddBlocks(pool, ITEM_COUNT_TO_BLOCK_COUNT(itemCap));
+	return pool;
 }
 
 void *ObjectPool_NewItem(ObjectPool *pool) {

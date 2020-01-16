@@ -12,6 +12,8 @@
 // Number of items in a block. Should always be a power of 2.
 #define POOL_BLOCK_CAP 256
 
+typedef void (*fpDestructor)(void *);
+
 /* The ObjectPool is a container structure for holding arbitrary items of a uniform type
  * in order to reduce the number of alloc/free calls and improve locality of reference.
  * Deletions are not thread-safe. */
@@ -38,5 +40,5 @@ void *ObjectPool_NewItem(ObjectPool *pool);
 void ObjectPool_DeleteItem(ObjectPool *pool, void *item);
 
 // Free pool.
-void ObjectPool_Free(ObjectPool *block);
+void ObjectPool_Free(ObjectPool *pool);
 

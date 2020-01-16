@@ -8,8 +8,6 @@
 
 #include <stdlib.h>
 
-typedef void (*fpDestructor)(void *);
-
 /* The Block is a type-agnostic block of continuous memory used to hold items of the same type.
  * Each block has a next pointer to another block, or NULL if this is the last block. */
 typedef struct Block {
