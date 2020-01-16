@@ -58,15 +58,9 @@ ObjectPool *ObjectPool_New(uint itemCap, uint itemSize, fpDestructor fp) {
 	return pool;
 }
 
-void *ObjectPool_NewItem(ObjectPool *pool, uint *idx) {
-	// Make sure we have room for a new item.
-	if(pool->itemCount >= pool->itemCap) {
-		// Double the capacity of the pool.
-		_ObjectPool_AddBlocks(pool, pool->itemCap);
-	}
+static void *_ObjectPool_ReuseItem(ObjectPool *pool, uint *idx) {
+	uint pos = array_pop(pool->deletedIdx);
 
-	// Get the index of the allocation, reusing a deleted index if possible.
-	uint pos = (array_len(pool->deletedIdx)) ? array_pop(pool->deletedIdx) : pool->itemCount;
 	pool->itemCount++;
 
 	*idx = pos;
@@ -81,8 +75,32 @@ void *ObjectPool_NewItem(ObjectPool *pool, uint *idx) {
 	return item;
 }
 
+void *ObjectPool_NewItem(ObjectPool *pool, uint *idx) {
+	// Reuse a deleted item if one is available.
+	if(array_len(pool->deletedIdx)) return _ObjectPool_ReuseItem(pool, idx);
+
+	// Make sure we have room for a new item.
+	if(pool->itemCount >= pool->itemCap) {
+		// Double the capacity of the pool.
+		_ObjectPool_AddBlocks(pool, ITEM_COUNT_TO_BLOCK_COUNT(pool->itemCap));
+	}
+
+	// Get the index of the new allocation.
+	uint pos = pool->itemCount;
+	pool->itemCount++;
+
+	*idx = pos;
+
+	Block *block = GET_ITEM_BLOCK(pool, pos);
+	pos = ITEM_POSITION_WITHIN_BLOCK(pos);
+
+	unsigned char *item = block->data + (pos * block->itemSize);
+
+	return item;
+}
+
 void ObjectPool_DeleteItem(ObjectPool *pool, uint idx) {
-	assert(pool);
+	assert(pool && idx < pool->itemCount + array_len(pool->deletedIdx));
 
 	// Get block.
 	uint blockIdx = ITEM_INDEX_TO_BLOCK_INDEX(idx);
@@ -92,8 +110,10 @@ void ObjectPool_DeleteItem(ObjectPool *pool, uint idx) {
 	uint offset = blockPos * block->itemSize;
 
 	// Call item destructor.
-	unsigned char *item = block->data + offset;
-	if(pool->destructor) pool->destructor(item);
+	if(pool->destructor) {
+		unsigned char *item = block->data + offset;
+		pool->destructor(item);
+	}
 
 	pool->deletedIdx = array_append(pool->deletedIdx, idx);
 	pool->itemCount--;

@@ -137,5 +137,5 @@ Record OpBase_CreateRecord(const OpBase *op);
 Record OpBase_CloneRecord(Record r);
 
 // Release record.
-void OpBase_DeleteRecord(Record *r);
+void OpBase_DeleteRecord(Record r);
 

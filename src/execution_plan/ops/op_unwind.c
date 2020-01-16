@@ -92,7 +92,7 @@ static Record UnwindConsume(OpBase *opBase) {
 	// Did we managed to get new data?
 	if((r = OpBase_Consume(child))) {
 		// Free current record to accommodate new record.
-		OpBase_DeleteRecord(&op->currentRecord);
+		OpBase_DeleteRecord(op->currentRecord);
 		op->currentRecord = r;
 		// Free old list.
 		SIValue_Free(&op->list);
@@ -125,7 +125,7 @@ static void UnwindFree(OpBase *ctx) {
 	}
 
 	if(op->currentRecord) {
-		OpBase_DeleteRecord(&op->currentRecord);
+		OpBase_DeleteRecord(op->currentRecord);
 		op->currentRecord = NULL;
 	}
 }

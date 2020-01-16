@@ -106,7 +106,7 @@ static Record ProcCallConsume(OpBase *opBase) {
 	while(!(yield_record = _yield(op))) {
 		// Free old record.
 		if(op->r) {
-			OpBase_DeleteRecord(&op->r);
+			OpBase_DeleteRecord(op->r);
 			op->r = NULL;
 		}
 
@@ -154,7 +154,7 @@ static void ProcCallFree(OpBase *ctx) {
 	OpProcCall *op = (OpProcCall *)ctx;
 
 	if(op->r) {
-		OpBase_DeleteRecord(&op->r);
+		OpBase_DeleteRecord(op->r);
 		op->r = NULL;
 	}
 

@@ -156,7 +156,7 @@ static void _aggregateRecord(OpAggregate *op, Record r) {
 
 	/* Free record, incase it is not group representative.
 	 * group representative will be freed once group is freed. */
-	OpBase_DeleteRecord(&r);
+	OpBase_DeleteRecord(r);
 }
 
 /* Returns a record populated with group data. */

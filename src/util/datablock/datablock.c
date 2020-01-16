@@ -14,15 +14,15 @@
 
 // Computes the number of blocks required to accommodate n items.
 #define ITEM_COUNT_TO_BLOCK_COUNT(n) \
-    ceil((double)n / BLOCK_CAP)
+    ceil((double)n / DATABLOCK_BLOCK_CAP)
 
 // Computes block index from item index.
 #define ITEM_INDEX_TO_BLOCK_INDEX(idx) \
-    (idx / BLOCK_CAP)
+    (idx / DATABLOCK_BLOCK_CAP)
 
 // Computes item position within a block.
 #define ITEM_POSITION_WITHIN_BLOCK(idx) \
-    (idx % BLOCK_CAP)
+    (idx % DATABLOCK_BLOCK_CAP)
 
 // Retrieves block in which item with index resides.
 #define GET_ITEM_BLOCK(dataBlock, idx) \
@@ -40,12 +40,12 @@ static void _DataBlock_AddBlocks(DataBlock *dataBlock, uint blockCount) {
 
 	uint i;
 	for(i = prevBlockCount; i < dataBlock->blockCount; i++) {
-		dataBlock->blocks[i] = Block_New(dataBlock->itemSize, BLOCK_CAP);
+		dataBlock->blocks[i] = Block_New(dataBlock->itemSize, DATABLOCK_BLOCK_CAP);
 		if(i > 0) dataBlock->blocks[i - 1]->next = dataBlock->blocks[i];
 	}
 	dataBlock->blocks[i - 1]->next = NULL;
 
-	dataBlock->itemCap = dataBlock->blockCount * BLOCK_CAP;
+	dataBlock->itemCap = dataBlock->blockCount * DATABLOCK_BLOCK_CAP;
 }
 
 static inline void _DataBlock_MarkItemAsDeleted(const DataBlock *dataBlock, unsigned char *item) {

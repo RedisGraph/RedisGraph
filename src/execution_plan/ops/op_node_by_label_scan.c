@@ -100,7 +100,7 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 	 * 2. Iterator depleted - For every child record the iterator finished the entire matrix scan and it needs to restart. */
 	while(depleted) {
 		// Try to get a record.
-		if(op->child_record) OpBase_DeleteRecord(&op->child_record);
+		if(op->child_record) OpBase_DeleteRecord(op->child_record);
 		op->child_record = NULL;
 		op->child_record = OpBase_Consume(op->op.children[0]);
 		if(op->child_record == NULL) return NULL;
@@ -155,7 +155,7 @@ static Record NodeByLabelScanNoOp(OpBase *opBase) {
 static OpResult NodeByLabelScanReset(OpBase *ctx) {
 	NodeByLabelScan *op = (NodeByLabelScan *)ctx;
 	if(op->child_record) {
-		OpBase_DeleteRecord(&op->child_record); // Free old record.
+		OpBase_DeleteRecord(op->child_record); // Free old record.
 		op->child_record = NULL;
 	}
 	_ResetIterator(op);
@@ -171,7 +171,7 @@ static void NodeByLabelScanFree(OpBase *op) {
 	}
 
 	if(nodeByLabelScan->child_record) {
-		OpBase_DeleteRecord(&nodeByLabelScan->child_record);
+		OpBase_DeleteRecord(nodeByLabelScan->child_record);
 		nodeByLabelScan->child_record = NULL;
 	}
 

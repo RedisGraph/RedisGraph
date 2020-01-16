@@ -14,8 +14,10 @@
 
 #define DELETED_MARKER 0xFF
 
+typedef void (*fpDestructor)(void *);
+
 // Number of items in a block. Should always be a power of 2.
-#define BLOCK_CAP 16384
+#define DATABLOCK_BLOCK_CAP 16384
 
 /* The DataBlock is a container structure for holding arbitrary items of a uniform type
  * in order to reduce the number of alloc/free calls and improve locality of reference.

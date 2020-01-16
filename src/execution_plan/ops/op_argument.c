@@ -44,7 +44,7 @@ OpResult ArgumentReset(OpBase *opBase) {
 	// I don't believe there is any situation in which this loop should trigger,
 	// but keeping it for safety.
 	uint record_count = array_len(arg->records);
-	for(uint i = 0; i < record_count; i ++) OpBase_DeleteRecord(&arg->records[i]);
+	for(uint i = 0; i < record_count; i ++) OpBase_DeleteRecord(arg->records[i]);
 	array_clear(arg->records);
 
 	return OP_OK;
@@ -58,7 +58,7 @@ void ArgumentFree(OpBase *opBase) {
 	Argument *arg = (Argument *)opBase;
 	if(arg->records) {
 		uint record_count = array_len(arg->records);
-		for(uint i = 0; i < record_count; i ++) OpBase_DeleteRecord(&arg->records[i]);
+		for(uint i = 0; i < record_count; i ++) OpBase_DeleteRecord(arg->records[i]);
 		array_free(arg->records);
 		arg->records = NULL;
 	}

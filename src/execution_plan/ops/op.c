@@ -149,9 +149,8 @@ Record OpBase_CloneRecord(Record r) {
 	return clone;
 }
 
-inline void OpBase_DeleteRecord(Record *r) {
-	ExecutionPlan_ReturnRecord((*r)->owner, *r);
-	*r = NULL;
+inline void OpBase_DeleteRecord(Record r) {
+	ExecutionPlan_ReturnRecord(r->owner, r);
 }
 
 void OpBase_Free(OpBase *op) {
@@ -164,7 +163,7 @@ void OpBase_Free(OpBase *op) {
 	if(op->dangling_records) {
 		uint count = array_len(op->dangling_records);
 		for(uint i = 0; i < count; i ++) {
-			OpBase_DeleteRecord(&op->dangling_records[i]);
+			OpBase_DeleteRecord(op->dangling_records[i]);
 		}
 		array_free(op->dangling_records);
 	}

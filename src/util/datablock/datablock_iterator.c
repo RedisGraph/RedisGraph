@@ -24,7 +24,7 @@ DataBlockIterator *DataBlockIterator_New(Block *block, uint start_pos, uint end_
 	DataBlockIterator *iter = rm_malloc(sizeof(DataBlockIterator));
 	iter->_start_block = block;
 	iter->_current_block = block;
-	iter->_block_pos = start_pos % BLOCK_CAP;
+	iter->_block_pos = start_pos % DATABLOCK_BLOCK_CAP;
 	iter->_start_pos = start_pos;
 	iter->_current_pos = iter->_start_pos;
 	iter->_end_pos = end_pos;
@@ -53,8 +53,8 @@ void *DataBlockIterator_Next(DataBlockIterator *iter) {
 		iter->_current_pos += iter->_step;
 
 		// Advance to next block if current block consumed.
-		if(iter->_block_pos >= BLOCK_CAP) {
-			iter->_block_pos -= BLOCK_CAP;
+		if(iter->_block_pos >= DATABLOCK_BLOCK_CAP) {
+			iter->_block_pos -= DATABLOCK_BLOCK_CAP;
 			iter->_current_block = iter->_current_block->next;
 		}
 
@@ -71,7 +71,7 @@ void *DataBlockIterator_Next(DataBlockIterator *iter) {
 
 void DataBlockIterator_Reset(DataBlockIterator *iter) {
 	assert(iter);
-	iter->_block_pos = iter->_start_pos % BLOCK_CAP;
+	iter->_block_pos = iter->_start_pos % DATABLOCK_BLOCK_CAP;
 	iter->_current_block = iter->_start_block;
 	iter->_current_pos = iter->_start_pos;
 }

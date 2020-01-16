@@ -12,9 +12,9 @@
 // Number of items in a block. Should always be a power of 2.
 #define POOL_BLOCK_CAP 256
 
-/* The ObjectPool, like the DataBlock, is a container structure for holding arbitrary items of a uniform type
+/* The ObjectPool is a container structure for holding arbitrary items of a uniform type
  * in order to reduce the number of alloc/free calls and improve locality of reference.
- * In contrast to the DataBlock, deletions are not thread-safe. */
+ * Deletions are not thread-safe. */
 typedef struct {
 	uint itemCount;             // Number of items stored in ObjectPool.
 	uint itemCap;               // Number of items ObjectPool can hold.
@@ -39,6 +39,6 @@ void *ObjectPool_NewItem(ObjectPool *pool, uint *idx);
 // Removes item at position idx.
 void ObjectPool_DeleteItem(ObjectPool *pool, uint idx);
 
-// Free block.
+// Free pool.
 void ObjectPool_Free(ObjectPool *block);
 

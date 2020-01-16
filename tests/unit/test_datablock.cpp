@@ -38,7 +38,7 @@ TEST_F(DataBlockTest, New) {
 	ASSERT_EQ(dataBlock->itemCount, 0);     // No items were added.
 	ASSERT_GE(dataBlock->itemCap, 1024);
 	ASSERT_EQ(dataBlock->itemSize, itemSize);
-	ASSERT_GE(dataBlock->blockCount, 1024 / BLOCK_CAP);
+	ASSERT_GE(dataBlock->blockCount, 1024 / DATABLOCK_BLOCK_CAP);
 
 	for(int i = 0; i < dataBlock->blockCount; i++) {
 		Block *block = dataBlock->blocks[i];
@@ -186,3 +186,4 @@ TEST_F(DataBlockTest, RemoveItem) {
 	// Cleanup.
 	DataBlock_Free(dataBlock);
 }
+
