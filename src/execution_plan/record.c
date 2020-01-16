@@ -23,7 +23,7 @@ Record Record_New(rax *mapping) {
 	assert(mapping);
 	// Determine record size.
 	uint entries_count = raxSize(mapping);
-	uint rec_size = sizeof(Record);
+	uint rec_size = sizeof(_Record);
 	rec_size += sizeof(Entry) * entries_count;
 
 	Record r = rm_calloc(1, rec_size);

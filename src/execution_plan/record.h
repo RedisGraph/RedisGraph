@@ -30,7 +30,6 @@ typedef struct {
 } Entry;
 
 typedef struct {
-	uint id;            // Record internal ID.
 	void *owner;        // Owner of record.
 	rax *mapping;       // Mapping between alias to record entry.
 	Entry entries[];    // Array of entries.

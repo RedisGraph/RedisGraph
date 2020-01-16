@@ -16,12 +16,12 @@
  * in order to reduce the number of alloc/free calls and improve locality of reference.
  * Deletions are not thread-safe. */
 typedef struct {
-	uint itemCount;             // Number of items stored in ObjectPool.
-	uint itemCap;               // Number of items ObjectPool can hold.
+	uint64_t itemCount;         // Number of items stored in ObjectPool.
+	uint64_t itemCap;           // Number of items ObjectPool can hold.
 	uint blockCount;            // Number of blocks in ObjectPool.
 	uint itemSize;              // Size of a single item in bytes.
 	Block **blocks;             // Array of blocks.
-	uint *deletedIdx;           // Array of free indices.
+	uint64_t *deletedIdx;       // Array of free indices.
 	fpDestructor destructor;    // Function pointer to a clean-up function of an item.
 } ObjectPool;
 
@@ -29,15 +29,13 @@ typedef struct {
 // itemCap - number of items ObjectPool can hold before resizing.
 // itemSize - item size in bytes.
 // fp - destructor routine for freeing items.
-ObjectPool *ObjectPool_New(uint itemCap, uint itemSize, fpDestructor fp);
+ObjectPool *ObjectPool_New(uint64_t itemCap, uint itemSize, fpDestructor fp);
 
-// Allocate a new item within the given pool.
-// idx will be set to the item's position within the pool's blocks,
-// and a pointer to the item will be returned.
-void *ObjectPool_NewItem(ObjectPool *pool, uint *idx);
+// Allocate a new item within the given pool and return a pointer to it.
+void *ObjectPool_NewItem(ObjectPool *pool);
 
-// Removes item at position idx.
-void ObjectPool_DeleteItem(ObjectPool *pool, uint idx);
+// Removes item from pool.
+void ObjectPool_DeleteItem(ObjectPool *pool, void *item);
 
 // Free pool.
 void ObjectPool_Free(ObjectPool *block);

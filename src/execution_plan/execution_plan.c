@@ -950,18 +950,16 @@ Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan) {
 	rax *mapping = ExecutionPlan_GetMappings(plan);
 	assert(plan->record_pool);
 
-	// Get a record from pool and set its owner, id and mapping.
-	uint record_id;
-	Record r = ObjectPool_NewItem(plan->record_pool, &record_id);
+	// Get a Record from the pool and set its owner and mapping.
+	Record r = ObjectPool_NewItem(plan->record_pool);
 	r->owner = plan;
-	r->id = record_id;
 	r->mapping = plan->record_map;
 	return r;
 }
 
 void ExecutionPlan_ReturnRecord(ExecutionPlan *plan, Record r) {
 	assert(plan && r);
-	ObjectPool_DeleteItem(plan->record_pool, r->id);
+	ObjectPool_DeleteItem(plan->record_pool, r);
 }
 
 void _ExecutionPlan_Print(const OpBase *op, RedisModuleCtx *ctx, char *buffer, int buffer_len,

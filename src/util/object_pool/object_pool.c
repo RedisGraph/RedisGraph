@@ -28,6 +28,17 @@
 #define GET_ITEM_BLOCK(pool, idx) \
 	pool->blocks[ITEM_INDEX_TO_BLOCK_INDEX(idx)]
 
+/* Each allocated item has an ID that is equivalent to its index in the ObjectPool.
+ * This ID is held in the 8 bytes immediately preceding the item in the Block, and is only used internally. */
+typedef uint64_t ObjectID;
+#define HEADER_SIZE sizeof(ObjectID)
+
+// Given an item, retrieve its ID.
+#define ITEM_ID(item) *((ObjectID*)((item) - sizeof(ObjectID)))
+
+// Given an item header, retrieve the item data.
+#define ITEM_FROM_HEADER(header) ((header) + sizeof(ObjectID))
+
 static void _ObjectPool_AddBlocks(ObjectPool *pool, uint blockCount) {
 	assert(pool && blockCount > 0);
 
@@ -46,38 +57,40 @@ static void _ObjectPool_AddBlocks(ObjectPool *pool, uint blockCount) {
 	pool->itemCap = pool->blockCount * POOL_BLOCK_CAP;
 }
 
-ObjectPool *ObjectPool_New(uint itemCap, uint itemSize, fpDestructor fp) {
+ObjectPool *ObjectPool_New(uint64_t itemCap, uint itemSize, fpDestructor fp) {
 	ObjectPool *pool = rm_malloc(sizeof(ObjectPool));
 	pool->itemCount = 0;
-	pool->itemSize = itemSize;
+	pool->itemSize = itemSize + HEADER_SIZE; // Add extra space to accommodate the item's header.
 	pool->blockCount = 0;
 	pool->blocks = NULL;
-	pool->deletedIdx = array_new(uint, 128);
+	pool->deletedIdx = array_new(uint64_t, 128);
 	pool->destructor = fp;
 	_ObjectPool_AddBlocks(pool, ITEM_COUNT_TO_BLOCK_COUNT(itemCap));
 	return pool;
 }
 
-static void *_ObjectPool_ReuseItem(ObjectPool *pool, uint *idx) {
-	uint pos = array_pop(pool->deletedIdx);
+static void *_ObjectPool_ReuseItem(ObjectPool *pool) {
+	ObjectID idx = array_pop(pool->deletedIdx);
 
 	pool->itemCount++;
 
-	*idx = pos;
+	Block *block = GET_ITEM_BLOCK(pool, idx);
+	uint pos = ITEM_POSITION_WITHIN_BLOCK(idx);
 
-	Block *block = GET_ITEM_BLOCK(pool, pos);
-	pos = ITEM_POSITION_WITHIN_BLOCK(pos);
+	// Retrieve a pointer to the item's header.
+	unsigned char *item_header = block->data + (pos * block->itemSize);
+	unsigned char *item = ITEM_FROM_HEADER(item_header);
+	assert(ITEM_ID(item) == idx); // The item ID should not change on reuse.
 
-	unsigned char *item = block->data + (pos * block->itemSize);
 	// Zero-set the item being returned.
-	memset(item, 0, block->itemSize);
+	memset(item, 0, block->itemSize - HEADER_SIZE);
 
 	return item;
 }
 
-void *ObjectPool_NewItem(ObjectPool *pool, uint *idx) {
+void *ObjectPool_NewItem(ObjectPool *pool) {
 	// Reuse a deleted item if one is available.
-	if(array_len(pool->deletedIdx)) return _ObjectPool_ReuseItem(pool, idx);
+	if(array_len(pool->deletedIdx)) return _ObjectPool_ReuseItem(pool);
 
 	// Make sure we have room for a new item.
 	if(pool->itemCount >= pool->itemCap) {
@@ -86,35 +99,29 @@ void *ObjectPool_NewItem(ObjectPool *pool, uint *idx) {
 	}
 
 	// Get the index of the new allocation.
-	uint pos = pool->itemCount;
+	ObjectID idx = pool->itemCount;
 	pool->itemCount++;
 
-	*idx = pos;
+	Block *block = GET_ITEM_BLOCK(pool, idx);
+	uint pos = ITEM_POSITION_WITHIN_BLOCK(idx);
 
-	Block *block = GET_ITEM_BLOCK(pool, pos);
-	pos = ITEM_POSITION_WITHIN_BLOCK(pos);
-
-	unsigned char *item = block->data + (pos * block->itemSize);
+	// Retrieve a pointer to the item's header.
+	unsigned char *item_header = block->data + (pos * block->itemSize);
+	unsigned char *item = ITEM_FROM_HEADER(item_header);
+	ITEM_ID(item) = idx; // Set the item ID.
 
 	return item;
 }
 
-void ObjectPool_DeleteItem(ObjectPool *pool, uint idx) {
-	assert(pool && idx < pool->itemCount + array_len(pool->deletedIdx));
-
-	// Get block.
-	uint blockIdx = ITEM_INDEX_TO_BLOCK_INDEX(idx);
-	Block *block = pool->blocks[blockIdx];
-
-	uint blockPos = ITEM_POSITION_WITHIN_BLOCK(idx);
-	uint offset = blockPos * block->itemSize;
+void ObjectPool_DeleteItem(ObjectPool *pool, void *item) {
+	assert(pool);
+	// Get item ID.
+	ObjectID idx = ITEM_ID(item);
 
 	// Call item destructor.
-	if(pool->destructor) {
-		unsigned char *item = block->data + offset;
-		pool->destructor(item);
-	}
+	if(pool->destructor) pool->destructor(item);
 
+	// Add ID to deleted list.
 	pool->deletedIdx = array_append(pool->deletedIdx, idx);
 	pool->itemCount--;
 }
