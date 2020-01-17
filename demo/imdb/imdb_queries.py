@@ -367,6 +367,33 @@ class IMDBQueries(object):
                             ['Tim Blake Nelson']]
         )
 
+        ##################################################################
+        ### Find actors who played in numerous movies together.
+        ##################################################################
+        # NOTE: this query is not part of the IMDB test suite.
+        self.actors_similarity = QueryInfo(
+            query="""CALL algo.commonNeighbors('act') YIELD node1, node2, score
+                     WHERE outdegree(node1) > 1 AND outdegree(node2) > 1 AND score > 0.75
+                     WITH node1, node2
+                     MATCH (node1)-[:act]->(m)<-[:act]-(node2)
+                     RETURN node1.name, node2.name, collect(m.title)
+                     ORDER BY count(m) DESC
+                     LIMIT 10""",
+            description='Actors who have played in numerous movies together.',
+            reversible=False,
+            max_run_time_ms=18,
+            expected_result=[['Ansel Elgort', 'Shailene Woodley', ['Insurgent', 'Divergent', 'The Fault in Our Stars']],
+                            ['Donald Sutherland', 'Willow Shields', ['The Hunger Games: Mockingjay - Part 2', 'The Hunger Games: Mockingjay - Part 1']],
+                            ["Dylan O'Brien", 'Kaya Scodelario', ['Maze Runner: The Scorch Trials', 'The Maze Runner']],
+                            ['Giovanni Ribisi', 'Seth MacFarlane', ['Ted 2', 'A Million Ways to Die in the West']],
+                            ['Josh Hutcherson', 'Philip Seymour Hoffman', ['The Hunger Games: Mockingjay - Part 2', 'The Hunger Games: Mockingjay - Part 1']],
+                            ['Donald Sutherland', 'Philip Seymour Hoffman', ['The Hunger Games: Mockingjay - Part 2', 'The Hunger Games: Mockingjay - Part 1']],
+                            ['Alan Ritchson', 'Jeremy Howard', ['Teenage Mutant Ninja Turtles: Out of the Shadows', 'Teenage Mutant Ninja Turtles']],
+                            ['Donald Sutherland', 'Josh Hutcherson', ['The Hunger Games: Mockingjay - Part 2', 'The Hunger Games: Mockingjay - Part 1']],
+                            ['Alan Ritchson', 'Noel Fisher', ['Teenage Mutant Ninja Turtles: Out of the Shadows', 'Teenage Mutant Ninja Turtles']],
+                            ['Josh Hutcherson', 'Willow Shields', ['The Hunger Games: Mockingjay - Part 2', 'The Hunger Games: Mockingjay - Part 1']]]
+        )
+
         self.queries_info = [
             self.number_of_actors_query,
             self.actors_played_with_nicolas_cage_query,
