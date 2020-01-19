@@ -18,11 +18,12 @@ static void _RecordPropagateEntry(Record dest, Record src, uint idx) {
 	if(e.type == REC_TYPE_SCALAR) SIValue_MakeVolatile(&src->entries[idx].value.s);
 }
 
+// This function is currently unused.
 Record Record_New(rax *mapping) {
 	assert(mapping);
 	// Determine record size.
 	uint entries_count = raxSize(mapping);
-	uint rec_size = sizeof(Record);
+	uint rec_size = sizeof(_Record);
 	rec_size += sizeof(Entry) * entries_count;
 
 	Record r = rm_calloc(1, rec_size);
@@ -37,18 +38,6 @@ uint Record_length(const Record r) {
 	return raxSize(r->mapping);
 }
 
-// Make sure record is able to hold len entries.
-void Record_Extend(Record *r, int len) {
-	int original_len = Record_length(*r);
-	if(original_len >= len) return;
-
-	// Determin record size.
-	size_t required_record_size = sizeof(Record);
-	required_record_size += sizeof(Entry) * len ;
-
-	*r = rm_realloc(*r, required_record_size);
-}
-
 // Retrieve the offset into the Record of the given alias.
 int Record_GetEntryIdx(Record r, const char *alias) {
 	assert(r && alias);
@@ -59,9 +48,7 @@ int Record_GetEntryIdx(Record r, const char *alias) {
 	return (intptr_t)idx;
 }
 
-Record Record_Clone(const Record r) {
-	Record clone = Record_New(r->mapping);
-
+void Record_Clone(const Record r, Record clone) {
 	int entry_count = Record_length(r);
 	size_t required_record_size = sizeof(Entry) * entry_count;
 
@@ -78,16 +65,11 @@ Record Record_Clone(const Record r) {
 			SIValue_MakeVolatile(&clone->entries[i].value.s);
 		}
 	}
-
-	return clone;
 }
 
 void Record_Merge(Record *a, const Record b) {
-	int aLength = Record_length(*a);
-	int bLength = Record_length(b);
-	if(aLength < bLength) Record_Extend(a, bLength);
-
-	for(int i = 0; i < bLength; i++) {
+	uint len = Record_length(b);
+	for(uint i = 0; i < len; i++) {
 		if(b->entries[i].type != REC_TYPE_UNKNOWN) {
 			(*a)->entries[i] = b->entries[i];
 		}
@@ -95,11 +77,8 @@ void Record_Merge(Record *a, const Record b) {
 }
 
 void Record_TransferEntries(Record *to, Record from) {
-	int aLength = Record_length(*to);
-	int bLength = Record_length(from);
-	if(aLength < bLength) Record_Extend(to, bLength);
-
-	for(int i = 0; i < bLength; i++) {
+	uint len = Record_length(from);
+	for(uint i = 0; i < len; i++) {
 		if(from->entries[i].type != REC_TYPE_UNKNOWN) {
 			_RecordPropagateEntry(*to, from, i);
 		}
@@ -294,13 +273,19 @@ unsigned long long Record_Hash64(const Record r) {
 	return hash;
 }
 
-void Record_Free(Record r) {
-	unsigned int length = Record_length(r);
-	for(unsigned int i = 0; i < length; i++) {
+void Record_FreeEntries(Record r) {
+	uint length = Record_length(r);
+	for(uint i = 0; i < length; i++) {
+		// Free any allocations held by this Record.
 		if(r->entries[i].type == REC_TYPE_SCALAR) {
 			SIValue_Free(&r->entries[i].value.s);
 		}
 	}
+}
+
+// This function is currently unused.
+void Record_Free(Record r) {
+	Record_FreeEntries(r);
 	rm_free(r);
 }
 

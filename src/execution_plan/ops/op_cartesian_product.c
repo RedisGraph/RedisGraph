@@ -35,7 +35,7 @@ static int _PullFromStreams(CartesianProduct *op) {
 
 		if(childRecord) {
 			Record_TransferEntries(&op->r, childRecord);
-			Record_Free(childRecord);
+			OpBase_DeleteRecord(childRecord);
 			/* Managed to get new data
 			 * Reset streams [0-i] */
 			_ResetStreams(op, i);
@@ -46,7 +46,7 @@ static int _PullFromStreams(CartesianProduct *op) {
 				childRecord = OpBase_Consume(child);
 				if(childRecord) {
 					Record_TransferEntries(&op->r, childRecord);
-					Record_Free(childRecord);
+					OpBase_DeleteRecord(childRecord);
 				} else {
 					return 0;
 				}
@@ -80,9 +80,9 @@ static Record CartesianProductConsume(OpBase *opBase) {
 			childRecord = OpBase_Consume(child);
 			if(!childRecord) return NULL;
 			Record_TransferEntries(&op->r, childRecord);
-			Record_Free(childRecord);
+			OpBase_DeleteRecord(childRecord);
 		}
-		return Record_Clone(op->r);
+		return OpBase_CloneRecord(op->r);
 	}
 
 	// Pull from first stream.
@@ -92,7 +92,7 @@ static Record CartesianProductConsume(OpBase *opBase) {
 	if(childRecord) {
 		// Managed to get data from first stream.
 		Record_TransferEntries(&op->r, childRecord);
-		Record_Free(childRecord);
+		OpBase_DeleteRecord(childRecord);
 	} else {
 		// Failed to get data from first stream,
 		// try pulling other streams for data.
@@ -100,7 +100,7 @@ static Record CartesianProductConsume(OpBase *opBase) {
 	}
 
 	// Pass down a clone of record.
-	return Record_Clone(op->r);
+	return OpBase_CloneRecord(op->r);
 }
 
 static OpResult CartesianProductReset(OpBase *opBase) {
@@ -112,7 +112,7 @@ static OpResult CartesianProductReset(OpBase *opBase) {
 static void CartesianProductFree(OpBase *opBase) {
 	CartesianProduct *op = (CartesianProduct *)opBase;
 	if(op->r) {
-		Record_Free(op->r);
+		OpBase_DeleteRecord(op->r);
 		op->r = NULL;
 	}
 }

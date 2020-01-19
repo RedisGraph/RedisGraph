@@ -58,7 +58,7 @@ static Record ApplyConsume(OpBase *opBase) {
 	}
 
 	// Clone the left-hand record
-	Record r = Record_Clone(op->lhs_record);
+	Record r = OpBase_CloneRecord(op->lhs_record);
 
 	// No records were produced by the right-hand stream
 	if(rhs_count == 0) return r;
@@ -69,7 +69,7 @@ static Record ApplyConsume(OpBase *opBase) {
 		// We've joined all data from the right-hand stream with the current
 		// retrieval from the left-hand stream.
 		// The next call to ApplyConsume will attempt to pull new data.
-		Record_Free(op->lhs_record);
+		OpBase_DeleteRecord(op->lhs_record);
 		op->lhs_record = NULL;
 		op->rhs_idx = 0;
 	}
@@ -88,13 +88,13 @@ static OpResult ApplyReset(OpBase *opBase) {
 static void ApplyFree(OpBase *opBase) {
 	Apply *op = (Apply *)opBase;
 	if(op->lhs_record) {
-		Record_Free(op->lhs_record);
+		OpBase_DeleteRecord(op->lhs_record);
 		op->lhs_record = NULL;
 	}
 	if(op->rhs_records) {
 		uint len = array_len(op->rhs_records);
 		for(uint i = 0; i < len; i ++) {
-			Record_Free(op->rhs_records[i]);
+			OpBase_DeleteRecord(op->rhs_records[i]);
 		}
 		array_free(op->rhs_records);
 		op->rhs_records = NULL;

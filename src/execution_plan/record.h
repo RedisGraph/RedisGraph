@@ -30,6 +30,7 @@ typedef struct {
 } Entry;
 
 typedef struct {
+	void *owner;        // Owner of record.
 	rax *mapping;       // Mapping between alias to record entry.
 	Entry entries[];    // Array of entries.
 } _Record;
@@ -40,10 +41,7 @@ typedef _Record *Record;
 Record Record_New(rax *mapping);
 
 // Clones record.
-Record Record_Clone(const Record r);
-
-// Extends record to accommodate 'len' entries.
-void Record_Extend(Record *r, int len);
+void Record_Clone(const Record r, Record clone);
 
 // Merge record b into a, sharing any nested references in b with a.
 void Record_Merge(Record *a, const Record b);
@@ -95,6 +93,9 @@ size_t Record_ToString(const Record r, char **buf, size_t *buf_cap);
 
 // 64-bit hash of record
 unsigned long long Record_Hash64(const Record r);
+
+// Free record entries.
+void Record_FreeEntries(Record r);
 
 // Free record.
 void Record_Free(Record r);

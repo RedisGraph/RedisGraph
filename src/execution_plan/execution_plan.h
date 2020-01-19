@@ -10,6 +10,7 @@
 #include "../graph/graph.h"
 #include "../resultset/resultset.h"
 #include "../filter_tree/filter_tree.h"
+#include "../util/object_pool/object_pool.h"
 
 typedef struct ExecutionPlan ExecutionPlan;
 
@@ -25,6 +26,7 @@ struct ExecutionPlan {
 	ExecutionPlan **segments;           // Partial execution plans scoped to a subset of operations.
 	// Semi-independent sub execution plans which created during the build of the main execution plan.
 	ExecutionPlan **sub_execution_plans;
+	ObjectPool *record_pool;
 };
 
 /* execution_plan_modify.c
@@ -104,6 +106,12 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_lim
 
 /* Retrieve the map of aliases to Record offsets in this ExecutionPlan segment. */
 rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan);
+
+/* Retrieves a Record from the ExecutionPlan's Record pool. */
+Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan);
+
+/* Free Record contents and return it to the Record pool. */
+void ExecutionPlan_ReturnRecord(ExecutionPlan *plan, Record r);
 
 /* Prints execution plan. */
 void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx);

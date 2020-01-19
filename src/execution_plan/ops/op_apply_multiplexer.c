@@ -15,8 +15,7 @@ void OpApplyMultiplexerFree(OpBase *opBase);
 
 static Record _pullFromBranchStream(OpApplyMultiplexer *op, int branch_index) {
 	// Propegate record to the top of the match stream.
-	Argument_AddRecord(op->branch_arguments[branch_index - 1],
-					   Record_Clone(op->r));
+	Argument_AddRecord(op->branch_arguments[branch_index - 1], OpBase_CloneRecord(op->r));
 	return OpBase_Consume(op->op.children[branch_index]);
 }
 
@@ -103,14 +102,14 @@ Record OrMultiplexer_Consume(OpBase *opBase) {
 			Record branch_record = _pullFromBranchStream(op, i);
 			if(branch_record) {
 				// Don't care about the branch record.
-				Record_Free(branch_record);
+				OpBase_DeleteRecord(branch_record);
 				Record r = op->r;
 				op->r = NULL;   // Null to avoid double free.
 				return r;
 			}
 		}
 		// Did not managed to get a record from any branch, loop back and restart.
-		Record_Free(op->r);
+		OpBase_DeleteRecord(op->r);
 		op->r = NULL;
 	}
 }
@@ -126,10 +125,10 @@ Record AndMultiplexer_Consume(OpBase *opBase) {
 		for(int i = 1; i < op->op.childCount; i++) {
 			Record branch_record = _pullFromBranchStream(op, i);
 			// Don't care about the branch record.
-			if(branch_record) Record_Free(branch_record);
+			if(branch_record) OpBase_DeleteRecord(branch_record);
 			else {
 				// Did not managed to get a record from some branch, loop back and restart.
-				Record_Free(op->r);
+				OpBase_DeleteRecord(op->r);
 				op->r = NULL;
 				break;
 			}
@@ -144,7 +143,7 @@ Record AndMultiplexer_Consume(OpBase *opBase) {
 OpResult OpApplyMultiplexerReset(OpBase *opBase) {
 	OpApplyMultiplexer *op = (OpApplyMultiplexer *)opBase;
 	if(op->r) {
-		Record_Free(op->r);
+		OpBase_DeleteRecord(op->r);
 		op->r = NULL;
 	}
 	return OP_OK;
@@ -159,7 +158,8 @@ void OpApplyMultiplexerFree(OpBase *opBase) {
 	}
 
 	if(op->r) {
-		Record_Free(op->r);
+		OpBase_DeleteRecord(op->r);
 		op->r = NULL;
 	}
 }
+

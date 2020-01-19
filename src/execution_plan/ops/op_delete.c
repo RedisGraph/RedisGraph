@@ -83,7 +83,7 @@ static Record DeleteConsume(OpBase *opBase) {
 			Edge *e = (Edge *)value.ptrval;
 			op->deleted_edges = array_append(op->deleted_edges, *e);
 		} else {
-			/* Expression evaluated to a none graph entity type
+			/* Expression evaluated to a non-graph entity type
 			 * clear pending deletions and raise an exception. */
 			array_clear(op->deleted_nodes);
 			array_clear(op->deleted_edges);
@@ -120,3 +120,4 @@ static void DeleteFree(OpBase *ctx) {
 		op->exps = NULL;
 	}
 }
+

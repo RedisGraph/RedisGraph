@@ -36,7 +36,7 @@ static Record _yield(OpProcCall *op) {
 		}
 	}
 
-	Record clone = Record_Clone(op->r);
+	Record clone = OpBase_CloneRecord(op->r);
 	for(uint i = 0; i < array_len(op->output); i++) {
 		int idx = op->yield_map[i].rec_idx;
 		uint proc_out_idx = op->yield_map[i].proc_out_idx;
@@ -106,7 +106,7 @@ static Record ProcCallConsume(OpBase *opBase) {
 	while(!(yield_record = _yield(op))) {
 		// Free old record.
 		if(op->r) {
-			Record_Free(op->r);
+			OpBase_DeleteRecord(op->r);
 			op->r = NULL;
 		}
 
@@ -154,7 +154,7 @@ static void ProcCallFree(OpBase *ctx) {
 	OpProcCall *op = (OpProcCall *)ctx;
 
 	if(op->r) {
-		Record_Free(op->r);
+		OpBase_DeleteRecord(op->r);
 		op->r = NULL;
 	}
 

@@ -11,7 +11,9 @@
 #include <assert.h>
 
 /* Forward declarations */
+Record ExecutionPlan_BorrowRecord(struct ExecutionPlan *plan);
 rax *ExecutionPlan_GetMappings(const struct ExecutionPlan *plan);
+void ExecutionPlan_ReturnRecord(struct ExecutionPlan *plan, Record r);
 
 void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsume consume,
 				 fpReset reset, fpToString toString, fpFree free, bool writer, const struct ExecutionPlan *plan) {
@@ -137,9 +139,18 @@ bool OpBase_IsWriter(OpBase *op) {
 	return op->writer;
 }
 
-Record OpBase_CreateRecord(const OpBase *op) {
-	rax *mapping = ExecutionPlan_GetMappings(op->plan);
-	return Record_New(mapping);
+inline Record OpBase_CreateRecord(const OpBase *op) {
+	return ExecutionPlan_BorrowRecord((struct ExecutionPlan *)op->plan);
+}
+
+Record OpBase_CloneRecord(Record r) {
+	Record clone = ExecutionPlan_BorrowRecord((struct ExecutionPlan *)r->owner);
+	Record_Clone(r, clone);
+	return clone;
+}
+
+inline void OpBase_DeleteRecord(Record r) {
+	ExecutionPlan_ReturnRecord(r->owner, r);
 }
 
 void OpBase_Free(OpBase *op) {
@@ -152,7 +163,7 @@ void OpBase_Free(OpBase *op) {
 	if(op->dangling_records) {
 		uint count = array_len(op->dangling_records);
 		for(uint i = 0; i < count; i ++) {
-			Record_Free(op->dangling_records[i]);
+			OpBase_DeleteRecord(op->dangling_records[i]);
 		}
 		array_free(op->dangling_records);
 	}

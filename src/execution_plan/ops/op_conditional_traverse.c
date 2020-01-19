@@ -168,14 +168,9 @@ static Record CondTraverseConsume(OpBase *opBase) {
 	CondTraverse *op = (CondTraverse *)opBase;
 	OpBase *child = op->op.children[0];
 
-	/* If we're required to update edge,
-	 * try to get an edge, if successful we can return quickly,
-	 * otherwise try to get a new pair of source and destination nodes. */
-	if(op->setEdge) {
-		if(_CondTraverse_SetEdge(op, op->r)) {
-			return Record_Clone(op->r);
-		}
-	}
+	/* If we're required to update an edge and have one queued, we can return early.
+	 * Otherwise, try to get a new pair of source and destination nodes. */
+	if(op->setEdge && _CondTraverse_SetEdge(op, op->r)) return OpBase_CloneRecord(op->r);
 
 	bool depleted = true;
 	NodeID src_id = INVALID_ENTITY_ID;
@@ -190,7 +185,7 @@ static Record CondTraverseConsume(OpBase *opBase) {
 		/* Run out of tuples, try to get new data.
 		 * Free old records. */
 		op->r = NULL;
-		for(int i = 0; i < op->recordsLen; i++) Record_Free(op->records[i]);
+		for(int i = 0; i < op->recordsLen; i++) OpBase_DeleteRecord(op->records[i]);
 
 		// Ask child operations for data.
 		for(op->recordsLen = 0; op->recordsLen < op->recordsCap; op->recordsLen++) {
@@ -218,12 +213,12 @@ static Record CondTraverseConsume(OpBase *opBase) {
 		_CondTraverse_SetEdge(op, op->r);
 	}
 
-	return Record_Clone(op->r);
+	return OpBase_CloneRecord(op->r);
 }
 
 static OpResult CondTraverseReset(OpBase *ctx) {
 	CondTraverse *op = (CondTraverse *)ctx;
-	if(op->r) Record_Free(op->r);
+	if(op->r) OpBase_DeleteRecord(op->r);
 	if(op->edges) array_clear(op->edges);
 	if(op->iter) {
 		GxB_MatrixTupleIter_free(op->iter);
@@ -267,7 +262,7 @@ static void CondTraverseFree(OpBase *ctx) {
 	}
 
 	if(op->records) {
-		for(int i = 0; i < op->recordsLen; i++) Record_Free(op->records[i]);
+		for(int i = 0; i < op->recordsLen; i++) OpBase_DeleteRecord(op->records[i]);
 		rm_free(op->records);
 		op->records = NULL;
 	}

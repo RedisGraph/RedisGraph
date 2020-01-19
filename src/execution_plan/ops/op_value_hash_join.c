@@ -129,13 +129,9 @@ void _cache_records(OpValueHashJoin *op) {
 	Record r = left_child->consume(left_child);
 	if(!r) return;
 
-	op->join_value_rec_idx = Record_length(r);
-	int extended_rec_len = Record_length(r) + 1;
-
 	// As long as there's data coming in from left branch.
 	do {
 		// Add joined value to record.
-		Record_Extend(&r, extended_rec_len); // Cache record.
 		op->cached_records = array_append(op->cached_records, r);
 
 		// Evaluate joined expression.
@@ -174,7 +170,6 @@ OpBase *NewValueHashJoin(const ExecutionPlan *plan, AR_ExpNode *lhs_exp, AR_ExpN
 	op->rhs_exp = rhs_exp;
 	op->intersect_idx = -1;
 	op->cached_records = NULL;
-	op->join_value_rec_idx = -1;
 	op->number_of_intersections = 0;
 
 	// Set our Op operations
@@ -182,6 +177,7 @@ OpBase *NewValueHashJoin(const ExecutionPlan *plan, AR_ExpNode *lhs_exp, AR_ExpN
 				ValueHashJoinConsume, ValueHashJoinReset, ValueHashJoinToString,
 				ValueHashJoinFree, false, plan);
 
+	op->join_value_rec_idx = OpBase_Modifies((OpBase *)op, "pivot");
 	return (OpBase *)op;
 }
 
@@ -219,14 +215,14 @@ static Record ValueHashJoinConsume(OpBase *opBase) {
 			/* Merge into cached records to avoid
 			 * record extension */
 			Record_Merge(&l, op->rhs_rec);
-			return Record_Clone(l);
+			return OpBase_CloneRecord(l);
 		}
 	}
 
 	/* If we're here there are no more
 	 * left hand side records which intersect with R
 	 * discard R. */
-	if(op->rhs_rec) Record_Free(op->rhs_rec);
+	if(op->rhs_rec) OpBase_DeleteRecord(op->rhs_rec);
 
 	/* Try to get new right hand side record
 	 * which intersect with a left hand side record. */
@@ -240,14 +236,14 @@ static Record ValueHashJoinConsume(OpBase *opBase) {
 
 		// No intersection, discard R.
 		if(!_set_intersection_idx(op, v)) {
-			Record_Free(op->rhs_rec);
+			OpBase_DeleteRecord(op->rhs_rec);
 			continue;
 		}
 
 		// Found atleast one intersecting record.
 		l = _get_intersecting_record(op);
 		Record_Merge(&l, op->rhs_rec);
-		return Record_Clone(l);
+		return OpBase_CloneRecord(l);
 	}
 }
 
@@ -258,7 +254,7 @@ static OpResult ValueHashJoinReset(OpBase *ctx) {
 
 	// Clear cached records.
 	if(op->rhs_rec) {
-		Record_Free(op->rhs_rec);
+		OpBase_DeleteRecord(op->rhs_rec);
 		op->rhs_rec = NULL;
 	}
 
@@ -266,7 +262,7 @@ static OpResult ValueHashJoinReset(OpBase *ctx) {
 		uint record_count = array_len(op->cached_records);
 		for(uint i = 0; i < record_count; i++) {
 			Record r = op->cached_records[i];
-			Record_Free(r);
+			OpBase_DeleteRecord(r);
 		}
 		array_free(op->cached_records);
 		op->cached_records = NULL;
@@ -280,7 +276,7 @@ static void ValueHashJoinFree(OpBase *ctx) {
 	OpValueHashJoin *op = (OpValueHashJoin *)ctx;
 	// Free cached records.
 	if(op->rhs_rec) {
-		Record_Free(op->rhs_rec);
+		OpBase_DeleteRecord(op->rhs_rec);
 		op->rhs_rec = NULL;
 	}
 
@@ -288,7 +284,7 @@ static void ValueHashJoinFree(OpBase *ctx) {
 		uint record_count = array_len(op->cached_records);
 		for(uint i = 0; i < record_count; i++) {
 			Record r = op->cached_records[i];
-			Record_Free(r);
+			OpBase_DeleteRecord(r);
 		}
 		array_free(op->cached_records);
 		op->cached_records = NULL;
