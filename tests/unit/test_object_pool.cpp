@@ -100,29 +100,16 @@ TEST_F(ObjectPoolTest, RemoveItem) {
 		ASSERT_EQ(*item_pointers[i], i);
 	}
 
-	// Remove the first item and perform validations.
-	// Index 0 should be added to ObjectPool deletedIdx array.
-	ObjectPool_DeleteItem(object_pool, item_pointers[0]);
-	ASSERT_EQ(object_pool->itemCount, item_count - 1);
-	ASSERT_EQ(array_len(object_pool->deletedIdx), 1);
-	ASSERT_EQ(object_pool->deletedIdx[0], 0);
-
-	// Add a new item and verify that the deleted entry is reused.
-	uint *new_item = (uint *)ObjectPool_NewItem(object_pool);
-	ASSERT_EQ(object_pool->itemCount, item_count);
-	ASSERT_EQ(array_len(object_pool->deletedIdx), 0);
-	// Verify that the new entry is zeroed.
-	ASSERT_EQ(*new_item, 0);
-
-	// Delete a later entry from the pool.
+	// Delete an entry from the pool and perform validations..
 	uint delete_idx = 10;
 	ObjectPool_DeleteItem(object_pool, item_pointers[delete_idx]);
 	ASSERT_EQ(object_pool->itemCount, item_count - 1);
 	ASSERT_EQ(array_len(object_pool->deletedIdx), 1);
+	// Index 10 should be added to ObjectPool deletedIdx array.
 	ASSERT_EQ(object_pool->deletedIdx[0], 10);
 
-	// Verify that the deleted entry is reused.
-	new_item = (uint *)ObjectPool_NewItem(object_pool);
+	// Add a new item and verify that the deleted entry is reused.
+	uint *new_item = (uint *)ObjectPool_NewItem(object_pool);
 	ASSERT_EQ(object_pool->itemCount, item_count);
 	ASSERT_EQ(array_len(object_pool->deletedIdx), 0);
 	// Verify that the new entry is zeroed.
