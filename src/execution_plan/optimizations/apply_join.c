@@ -155,6 +155,10 @@ void applyJoin(ExecutionPlan *plan) {
 				value_hash_join = NewValueHashJoin(cp->plan, lhs, rhs);
 			}
 
+			// Add the detached streams to the join op.
+			ExecutionPlan_AddOp(value_hash_join, left_branch);
+			ExecutionPlan_AddOp(value_hash_join, right_branch);
+
 			// The filter will now be resolved by the join operation; remove it.
 			ExecutionPlan_RemoveOp(plan, (OpBase *)filter_op);
 			OpBase_Free((OpBase *)filter_op);
@@ -175,29 +179,18 @@ void applyJoin(ExecutionPlan *plan) {
 					// Check for additional filters which checking for the same equality.
 					OpFilter *additional_filter = filter_ops[k];
 					FT_FilterNode *additional_filter_tree = additional_filter->filterTree;
-					AR_ExpNode *additional_filter_tree_lhs = additional_filter_tree->pred.lhs;
-					uint additional_filter_lhs_resolving_stream = _relate_exp_to_stream(additional_filter_tree_lhs,
-																						stream_entities, stream_count);
-					AR_ExpNode *additional_filter_tree_rhs = additional_filter_tree->pred.rhs;
-					uint additional_filter_rhs_resolving_stream = _relate_exp_to_stream(additional_filter_tree_rhs,
-																						stream_entities, stream_count);
-					// If the additional filter operands resolved by the join streams
-					if((additional_filter_lhs_resolving_stream == lhs_resolving_stream &&
-						additional_filter_rhs_resolving_stream == rhs_resolving_stream) ||
-					   (additional_filter_lhs_resolving_stream == rhs_resolving_stream &&
-						additional_filter_rhs_resolving_stream == lhs_resolving_stream)) {
-						// Remove the additional filter from its current location and place it after the join filter.
+
+					rax *references = FilterTree_CollectModified(additional_filter_tree);
+					OpBase *op = ExecutionPlan_LocateReferences(cp, NULL, references);
+					if(op) {
 						ExecutionPlan_RemoveOp(plan, (OpBase *)additional_filter);
-						ExecutionPlan_PushBelow(value_hash_join, (OpBase *)additional_filter);
+						ExecutionPlan_PushBelow(op, (OpBase *)additional_filter);
 					}
+					raxFree(references);
 				}
 				// It may be possible to reduce the other child; reevaluate.
 				i--;
 			}
-
-			// Add the detached streams to the join op.
-			ExecutionPlan_AddOp(value_hash_join, left_branch);
-			ExecutionPlan_AddOp(value_hash_join, right_branch);
 
 			break; // The operations have been updated, don't evaluate more filters.
 		}

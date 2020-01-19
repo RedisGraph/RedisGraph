@@ -203,8 +203,8 @@ OpBase *ExecutionPlan_LocateLastOp(OpBase *root, OPType type) {
 	return _ExecutionPlan_LocateOp(root, type, RTL);
 }
 
-OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
-									   rax *refs_to_resolve) {
+static OpBase *_ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
+											   rax *refs_to_resolve) {
 	if(root == recurse_limit) return NULL; // Don't traverse into earlier ExecutionPlan scopes.
 
 	int dependency_count = 0;
@@ -212,17 +212,15 @@ OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit
 	bool all_refs_resolved = false;
 	for(int i = 0; i < root->childCount && !all_refs_resolved; i++) {
 		// Visit each child and try to resolve references, storing a pointer to the child if successful.
-		resolving_op = ExecutionPlan_LocateReferences(root->children[i], recurse_limit, refs_to_resolve);
-		if(resolving_op) dependency_count ++; // Count how many children resolved references.
+		OpBase *tmp_op = _ExecutionPlan_LocateReferences(root->children[i], recurse_limit, refs_to_resolve);
+		if(tmp_op) dependency_count ++; // Count how many children resolved references.
+		// If there is more then one child resolving an op, set the root as the resolver.
+		resolving_op = resolving_op ? root : tmp_op;
 		all_refs_resolved = (raxSize(refs_to_resolve) == 0); // We're done when the rax is empty.
 	}
 
 	// If we've resolved all references, our work is done.
-	if(all_refs_resolved) {
-		/* Return the stored child if it resolved all references, or
-		 * the current op if multiple children resolved references. */
-		return (dependency_count == 1) ? resolving_op : root;
-	}
+	if(all_refs_resolved) return resolving_op;
 
 	// Try to resolve references in the current operation.
 	bool refs_resolved = false;
@@ -235,6 +233,14 @@ OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit
 
 	if(refs_resolved) resolving_op = root;
 	return resolving_op;
+}
+
+OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
+									   rax *refs_to_resolve) {
+	OpBase *op = _ExecutionPlan_LocateReferences(root, recurse_limit, refs_to_resolve);
+	if(op) assert("ExecutionPlan_LocateReferences located op but not all references found" &&
+					  (raxSize(refs_to_resolve) == 0));
+	return op;
 }
 
 // Collect all aliases that have been resolved by the given tree of operations.
