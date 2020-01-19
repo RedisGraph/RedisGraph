@@ -619,6 +619,7 @@ YIELD modifiers are only required if explicitly specified; by default the value 
 |db.idx.fulltext.drop | `label` | none | Deletes the full-text index associated with the given label. |
 |db.idx.fulltext.queryNodes | `label`, `string` | `node` | Retrieve all nodes that contain the specified string in the full-text indexes on the given label. |
 |algo.pageRank | `label`, `relationship-type` | `node`, `score` | Runs the pagerank algorithm over nodes of given label, considering only edges of given relationship type. |
+|algo.commonNeighbors | `relationship-type` | `node1`, `node2`, `score` | Compute similarity score between nodes, inspecting direct neighbors connected to by given relationship type. |
 
 ## Indexing
 RedisGraph supports single-property indexes for node labels.

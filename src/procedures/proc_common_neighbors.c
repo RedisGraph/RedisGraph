@@ -11,6 +11,16 @@
 #include "../graph/graphcontext.h"
 #define BATCH_SIZE 16384
 
+
+//------------------------------------------------------------------------------
+// Node similarity
+// Computes similarity between pairs of nodes
+// Inspecting each node direct neighbors connected by specified relationship type.
+// Similarity score = common_neighbors(a,b) / (out_degree(a) + out_degree(b) - common_neighbors(a,b))
+//------------------------------------------------------------------------------
+
+// CALL algo.commonNeighbors('act') YIELD node1, node2, score
+
 typedef struct {
 	GrB_Index nrows;            // Rows in A.
 	GrB_Index batch_size;       // Number of rows to process.
