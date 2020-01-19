@@ -166,6 +166,31 @@ void applyJoin(ExecutionPlan *plan) {
 			} else {
 				// The Cartesian Product still has a child operation; introduce the join op as another child.
 				ExecutionPlan_AddOp(cp, value_hash_join);
+				// Search for additional filters which can be solved by the join operation branches.
+				for(int k = j + 1; k < filter_count; k++) {
+					/* Fix for issue #869 https://github.com/RedisGraph/RedisGraph/issues/869.
+					 * When trying to replace a cartesian product which followed by multiple filters that can be resolved by the same two branches
+					 * the application crashed on assert(lhs_resolving_stream != rhs_resolving_stream) since before the fix only one filter was used
+					 * to create the hash join, and the other were ignored. */
+					// Check for additional filters which checking for the same equality.
+					OpFilter *additional_filter = filter_ops[k];
+					FT_FilterNode *additional_filter_tree = additional_filter->filterTree;
+					AR_ExpNode *additional_filter_tree_lhs = additional_filter_tree->pred.lhs;
+					uint additional_filter_lhs_resolving_stream = _relate_exp_to_stream(additional_filter_tree_lhs,
+																						stream_entities, stream_count);
+					AR_ExpNode *additional_filter_tree_rhs = additional_filter_tree->pred.rhs;
+					uint additional_filter_rhs_resolving_stream = _relate_exp_to_stream(additional_filter_tree_rhs,
+																						stream_entities, stream_count);
+					// If the additional filter operands resolved by the join streams
+					if((additional_filter_lhs_resolving_stream == lhs_resolving_stream &&
+						additional_filter_rhs_resolving_stream == rhs_resolving_stream) ||
+					   (additional_filter_lhs_resolving_stream == rhs_resolving_stream &&
+						additional_filter_rhs_resolving_stream == lhs_resolving_stream)) {
+						// Remove the additional filter from its current location and place it after the join filter.
+						ExecutionPlan_RemoveOp(plan, (OpBase *)additional_filter);
+						ExecutionPlan_PushBelow(value_hash_join, (OpBase *)additional_filter);
+					}
+				}
 				// It may be possible to reduce the other child; reevaluate.
 				i--;
 			}
