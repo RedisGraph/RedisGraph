@@ -78,11 +78,11 @@ static int _relate_exp_to_stream(AR_ExpNode *exp, rax **stream_entities, int str
 	return stream_num;
 }
 
-static OpBase *_build_hash_join(ExecutionPlan *plan, OpBase *left_branch, OpBase *right_branch,
-								AR_ExpNode *lhs_join_exp, AR_ExpNode *rhs_join_exp) {
+// This function builds a Hash Join operation given its left and right branches and join criteria.
+static OpBase *_build_hash_join_op(const ExecutionPlan *plan, OpBase *left_branch,
+								   OpBase *right_branch, AR_ExpNode *lhs_join_exp, AR_ExpNode *rhs_join_exp) {
 	OpBase *value_hash_join;
-
-	// Detach the streams for the Value Hash Join from the cartesian product.
+	// Detach the streams for the Value Hash Join from the execution plan.
 	ExecutionPlan_DetachOp(right_branch);
 	ExecutionPlan_DetachOp(left_branch);
 
@@ -108,6 +108,8 @@ static OpBase *_build_hash_join(ExecutionPlan *plan, OpBase *left_branch, OpBase
 	return value_hash_join;
 }
 
+/* This function will reorder a filter after a hash join operation has been built from a cartesian product,
+ * and try to propogate the filter up to the first op that first shows the filter entities. */
 static void _re_order_filter_op(ExecutionPlan *plan, OpBase *cp, OpFilter *filter) {
 	FT_FilterNode *additional_filter_tree = filter->filterTree;
 
@@ -119,6 +121,7 @@ static void _re_order_filter_op(ExecutionPlan *plan, OpBase *cp, OpFilter *filte
 
 }
 
+// Reduces a cartisian product to hash joins operations.
 static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 	// Retrieve all equality filter operations located upstream from the Cartesian Product.
 	OpFilter **filter_ops = _locate_filters(cp);
@@ -161,7 +164,8 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 			OpBase *right_branch = cp->children[rhs_resolving_stream];
 			OpBase *left_branch = cp->children[lhs_resolving_stream];
 			// Build hash join op.
-			OpBase *value_hash_join = _build_hash_join(cp->plan, left_branch, right_branch, lhs, rhs);
+			OpBase *value_hash_join = _build_hash_join_op
+									  (cp->plan, left_branch, right_branch, lhs, rhs);
 
 			// The filter will now be resolved by the join operation; remove it.
 			ExecutionPlan_RemoveOp(plan, (OpBase *)filter_op);
@@ -211,4 +215,3 @@ void applyJoin(ExecutionPlan *plan) {
 	}
 	array_free(cps);
 }
-
