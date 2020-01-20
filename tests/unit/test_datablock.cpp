@@ -14,6 +14,7 @@ extern "C" {
 #include <string.h>
 #include "../../src/util/arr.h"
 #include "../../src/util/datablock/datablock.h"
+#include "../../src/util/datablock/datablock_defs.h"
 #include "../../src/util/rmalloc.h"
 
 #ifdef __cplusplus
@@ -37,7 +38,7 @@ TEST_F(DataBlockTest, New) {
 
 	ASSERT_EQ(dataBlock->itemCount, 0);     // No items were added.
 	ASSERT_GE(dataBlock->itemCap, 1024);
-	ASSERT_EQ(dataBlock->itemSize, itemSize);
+	ASSERT_EQ(dataBlock->itemSize, itemSize + ITEM_HEADER_SIZE);
 	ASSERT_GE(dataBlock->blockCount, 1024 / DATABLOCK_BLOCK_CAP);
 
 	for(int i = 0; i < dataBlock->blockCount; i++) {
@@ -175,7 +176,7 @@ TEST_F(DataBlockTest, RemoveItem) {
 	int *newItem = (int *)DataBlock_AllocateItem(dataBlock, NULL);
 	ASSERT_EQ(dataBlock->itemCount, itemCount);
 	ASSERT_EQ(array_len(dataBlock->deletedIdx), 0);
-	ASSERT_TRUE((void *)newItem == (void *)(&dataBlock->blocks[0]->data));
+	ASSERT_TRUE((void *)newItem == (void *)(&dataBlock->blocks[0]->data) + ITEM_HEADER_SIZE);
 
 	it = DataBlock_Scan(dataBlock);
 	counter = 0;

@@ -12,8 +12,6 @@
 #include "../block.h"
 #include "./datablock_iterator.h"
 
-#define DELETED_MARKER 0xFF
-
 typedef void (*fpDestructor)(void *);
 
 // Number of items in a block. Should always be a power of 2.

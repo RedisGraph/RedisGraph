@@ -5,6 +5,7 @@
 */
 
 #include "datablock.h"
+#include "datablock_defs.h"
 #include "datablock_iterator.h"
 #include "../arr.h"
 #include "../rmalloc.h"
@@ -48,19 +49,16 @@ static void _DataBlock_AddBlocks(DataBlock *dataBlock, uint blockCount) {
 	dataBlock->itemCap = dataBlock->blockCount * DATABLOCK_BLOCK_CAP;
 }
 
-static inline void _DataBlock_MarkItemAsDeleted(const DataBlock *dataBlock, unsigned char *item) {
-	memset(item, DELETED_MARKER, dataBlock->itemSize);
+static inline void _DataBlock_MarkItemAsDeleted(unsigned char *item_header) {
+	MARK_HEADER_AS_DELETED(item_header);
 }
 
-static inline void _DataBlock_MarkItemAsUndelete(const DataBlock *dataBlock, unsigned char *item) {
-	item[0] = !DELETED_MARKER;
+static inline void _DataBlock_MarkItemAsUndelete(unsigned char *item_header) {
+	MARK_HEADER_AS_NOT_DELETED(item_header);
 }
 
-static inline bool _DataBlock_IsItemDeleted(const DataBlock *dataBlock, unsigned char *item) {
-	for(int i = 0; i < dataBlock->itemSize; i++) {
-		if(item[i] != DELETED_MARKER) return false;
-	}
-	return true;
+static inline bool _DataBlock_IsItemDeleted(unsigned char *item_header) {
+	return IS_HEADER_DELETED(item_header);
 }
 
 // Checks to see if idx is within global array bounds
@@ -74,7 +72,7 @@ static inline bool _DataBlock_IndexOutOfBounds(const DataBlock *dataBlock, uint6
 DataBlock *DataBlock_New(uint64_t itemCap, uint itemSize, fpDestructor fp) {
 	DataBlock *dataBlock = rm_malloc(sizeof(DataBlock));
 	dataBlock->itemCount = 0;
-	dataBlock->itemSize = itemSize;
+	dataBlock->itemSize = itemSize + ITEM_HEADER_SIZE;
 	dataBlock->blockCount = 0;
 	dataBlock->blocks = NULL;
 	dataBlock->deletedIdx = array_new(uint64_t, 128);
@@ -114,12 +112,12 @@ void *DataBlock_GetItem(const DataBlock *dataBlock, uint64_t idx) {
 	Block *block = GET_ITEM_BLOCK(dataBlock, idx);
 	idx = ITEM_POSITION_WITHIN_BLOCK(idx);
 
-	unsigned char *item = block->data + (idx * block->itemSize);
+	unsigned char *item_header = block->data + (idx * block->itemSize);
 
 	// Incase item is marked as deleted, return NULL.
-	if(_DataBlock_IsItemDeleted(dataBlock, item)) return NULL;
+	if(_DataBlock_IsItemDeleted(item_header)) return NULL;
 
-	return item;
+	return (void *)GET_ITEM_DATA(item_header);
 }
 
 void *DataBlock_AllocateItem(DataBlock *dataBlock, uint64_t *idx) {
@@ -144,10 +142,10 @@ void *DataBlock_AllocateItem(DataBlock *dataBlock, uint64_t *idx) {
 	Block *block = GET_ITEM_BLOCK(dataBlock, pos);
 	pos = ITEM_POSITION_WITHIN_BLOCK(pos);
 
-	unsigned char *item = block->data + (pos * block->itemSize);
-	_DataBlock_MarkItemAsUndelete(dataBlock, item);
+	unsigned char *item_header = block->data + (pos * block->itemSize);
+	_DataBlock_MarkItemAsUndelete(item_header);
 
-	return (void *)item;
+	return (void *)GET_ITEM_DATA(item_header);
 }
 
 void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
@@ -162,13 +160,14 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
 	uint offset = blockPos * block->itemSize;
 
 	// Return if item already deleted.
-	unsigned char *item = block->data + offset;
-	if(_DataBlock_IsItemDeleted(dataBlock, item)) return;
+	unsigned char *item_header = block->data + offset;
+	if(_DataBlock_IsItemDeleted(item_header)) return;
 
 	// Call item destructor.
+	unsigned char *item = GET_ITEM_DATA(item_header);
 	if(dataBlock->destructor) dataBlock->destructor(item);
 
-	_DataBlock_MarkItemAsDeleted(dataBlock, item);
+	_DataBlock_MarkItemAsDeleted(item_header);
 
 	/* DataBlock_DeleteItem should be thread-safe as it's being called
 	 * from GraphBLAS concurent operations, e.g. GxB_SelectOp.
@@ -192,4 +191,3 @@ void DataBlock_Free(DataBlock *dataBlock) {
 	assert(pthread_mutex_destroy(&dataBlock->mutex) == 0);
 	rm_free(dataBlock);
 }
-
