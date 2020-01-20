@@ -78,28 +78,53 @@ static int _relate_exp_to_stream(AR_ExpNode *exp, rax **stream_entities, int str
 	return stream_num;
 }
 
-// TODO: Consider changing Cartesian Products such that each has exactly two child operations.
-/* Try to replace Cartesian Products (cross joins) with Value Hash Joins.
- * This is viable when a Cartesian Product is combining two streams that each satisfies
- * one side of an EQUALS filter operation, like:
- * MATCH (a), (b) WHERE ID(a) = ID(b) */
-void applyJoin(ExecutionPlan *plan) {
-	OpBase **cps = ExecutionPlan_LocateOps(plan->root, OPType_CARTESIAN_PRODUCT);
-	uint cp_count = array_len(cps);
+static OpBase *_build_hash_join(ExecutionPlan *plan, OpBase *left_branch, OpBase *right_branch,
+								AR_ExpNode *lhs_join_exp, AR_ExpNode *rhs_join_exp) {
+	OpBase *value_hash_join;
 
-	for(uint i = 0; i < cp_count; i++) {
-		OpBase *cp = cps[i];
+	// Detach the streams for the Value Hash Join from the cartesian product.
+	ExecutionPlan_DetachOp(right_branch);
+	ExecutionPlan_DetachOp(left_branch);
 
-		// Retrieve all equality filter operations located upstream from the Cartesian Product.
-		OpFilter **filter_ops = _locate_filters(cp);
+	/* The Value Hash Join will cache its left-hand stream. To reduce the cache size,
+	 * prefer to cache the stream which will produce the smallest number of records.
+	 * Our current heuristic for this is to prefer a stream which contains a filter operation. */
+	bool left_branch_filtered = (ExecutionPlan_LocateFirstOp(left_branch, OPType_FILTER) != NULL);
+	bool right_branch_filtered = (ExecutionPlan_LocateFirstOp(right_branch, OPType_FILTER) != NULL);
+	if(!left_branch_filtered && right_branch_filtered) {
+		// Only the RHS stream is filtered, swap the input streams and expressions.
+		value_hash_join = NewValueHashJoin(plan, rhs_join_exp, lhs_join_exp);
+		OpBase *t = left_branch;
+		left_branch = right_branch;
+		right_branch = t;
+	} else {
+		value_hash_join = NewValueHashJoin(plan, lhs_join_exp, rhs_join_exp);
+	}
 
-		uint filter_count = array_len(filter_ops);
-		if(filter_count == 0) {
-			// No matching filter ops were found.
-			array_free(filter_ops);
-			continue;
-		}
+	// Add the detached streams to the join op.
+	ExecutionPlan_AddOp(value_hash_join, left_branch);
+	ExecutionPlan_AddOp(value_hash_join, right_branch);
 
+	return value_hash_join;
+}
+
+static void _re_order_filter_op(ExecutionPlan *plan, OpBase *cp, OpFilter *filter) {
+	FT_FilterNode *additional_filter_tree = filter->filterTree;
+
+	rax *references = FilterTree_CollectModified(additional_filter_tree);
+	OpBase *op = ExecutionPlan_LocateReferences(cp, NULL, references);
+	ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
+	ExecutionPlan_PushBelow(op, (OpBase *)filter);
+	raxFree(references);
+
+}
+
+static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
+	// Retrieve all equality filter operations located upstream from the Cartesian Product.
+	OpFilter **filter_ops = _locate_filters(cp);
+	uint filter_count = array_len(filter_ops);
+
+	while(filter_count > 0) {
 		// For each stream joined by the Cartesian product, collect all entities the stream resolves.
 		int stream_count = cp->childCount;
 		rax *stream_entities[stream_count];
@@ -132,32 +157,11 @@ void applyJoin(ExecutionPlan *plan) {
 			// Clone the filter expressions.
 			lhs = AR_EXP_Clone(lhs);
 			rhs = AR_EXP_Clone(rhs);
-
-			// Detach the streams for the Value Hash Join from the cartesian product.
+			// Retrieve the relevent branch roots.
 			OpBase *right_branch = cp->children[rhs_resolving_stream];
 			OpBase *left_branch = cp->children[lhs_resolving_stream];
-			ExecutionPlan_DetachOp(right_branch);
-			ExecutionPlan_DetachOp(left_branch);
-
-			OpBase *value_hash_join;
-			/* The Value Hash Join will cache its left-hand stream. To reduce the cache size,
-			 * prefer to cache the stream which will produce the smallest number of records.
-			 * Our current heuristic for this is to prefer a stream which contains a filter operation. */
-			bool left_branch_filtered = (ExecutionPlan_LocateFirstOp(left_branch, OPType_FILTER) != NULL);
-			bool right_branch_filtered = (ExecutionPlan_LocateFirstOp(right_branch, OPType_FILTER) != NULL);
-			if(!left_branch_filtered && right_branch_filtered) {
-				// Only the RHS stream is filtered, swap the input streams and expressions.
-				value_hash_join = NewValueHashJoin(cp->plan, rhs, lhs);
-				OpBase *t = left_branch;
-				left_branch = right_branch;
-				right_branch = t;
-			} else {
-				value_hash_join = NewValueHashJoin(cp->plan, lhs, rhs);
-			}
-
-			// Add the detached streams to the join op.
-			ExecutionPlan_AddOp(value_hash_join, left_branch);
-			ExecutionPlan_AddOp(value_hash_join, right_branch);
+			// Build hash join op.
+			OpBase *value_hash_join = _build_hash_join(cp->plan, left_branch, right_branch, lhs, rhs);
 
 			// The filter will now be resolved by the join operation; remove it.
 			ExecutionPlan_RemoveOp(plan, (OpBase *)filter_op);
@@ -178,25 +182,32 @@ void applyJoin(ExecutionPlan *plan) {
 					 * to create the hash join, and the other were ignored. */
 					// Check for additional filters which checking for the same equality.
 					OpFilter *additional_filter = filter_ops[k];
-					FT_FilterNode *additional_filter_tree = additional_filter->filterTree;
-
-					rax *references = FilterTree_CollectModified(additional_filter_tree);
-					OpBase *op = ExecutionPlan_LocateReferences(cp, NULL, references);
-					if(op) {
-						ExecutionPlan_RemoveOp(plan, (OpBase *)additional_filter);
-						ExecutionPlan_PushBelow(op, (OpBase *)additional_filter);
-					}
-					raxFree(references);
+					_re_order_filter_op(plan, cp, additional_filter);
 				}
-				// It may be possible to reduce the other child; reevaluate.
-				i--;
 			}
-
 			break; // The operations have been updated, don't evaluate more filters.
 		}
-
 		for(int j = 0; j < stream_count; j ++) raxFree(stream_entities[j]);
+		// We have modifed the filters array, we need to re-collect the remaining equality filters.
 		array_free(filter_ops);
+		filter_ops = _locate_filters(cp);
+		filter_count = array_len(filter_ops);
+	}
+	array_free(filter_ops);
+}
+
+// TODO: Consider changing Cartesian Products such that each has exactly two child operations.
+/* Try to replace Cartesian Products (cross joins) with Value Hash Joins.
+ * This is viable when a Cartesian Product is combining two streams that each satisfies
+ * one side of an EQUALS filter operation, like:
+ * MATCH (a), (b) WHERE ID(a) = ID(b) */
+void applyJoin(ExecutionPlan *plan) {
+	OpBase **cps = ExecutionPlan_LocateOps(plan->root, OPType_CARTESIAN_PRODUCT);
+	uint cp_count = array_len(cps);
+
+	for(uint i = 0; i < cp_count; i++) {
+		OpBase *cp = cps[i];
+		_reduce_cp_to_hashjoin(plan, cp);
 	}
 	array_free(cps);
 }
