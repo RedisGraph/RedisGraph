@@ -555,4 +555,3 @@ void AlgebraicExpression_Optimize
 	// Replace transpose operators with actual transposed operands.
 	_AlgebraicExpression_ApplyTranspose(*exp);
 }
-
