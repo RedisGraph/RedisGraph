@@ -29,7 +29,7 @@ To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGr
 
 To quickly try out RedisGraph, launch an instance using docker:
 
-```sh
+```
 docker run -p 6379:6379 -it --rm redislabs/redisgraph
 ```
 
