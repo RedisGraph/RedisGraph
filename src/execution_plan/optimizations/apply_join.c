@@ -82,9 +82,6 @@ static int _relate_exp_to_stream(AR_ExpNode *exp, rax **stream_entities, int str
 static OpBase *_build_hash_join_op(const ExecutionPlan *plan, OpBase *left_branch,
 								   OpBase *right_branch, AR_ExpNode *lhs_join_exp, AR_ExpNode *rhs_join_exp) {
 	OpBase *value_hash_join;
-	// Detach the streams for the Value Hash Join from the execution plan.
-	ExecutionPlan_DetachOp(right_branch);
-	ExecutionPlan_DetachOp(left_branch);
 
 	/* The Value Hash Join will cache its left-hand stream. To reduce the cache size,
 	 * prefer to cache the stream which will produce the smallest number of records.
@@ -155,7 +152,7 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 			uint rhs_resolving_stream = _relate_exp_to_stream(rhs, stream_entities, stream_count);
 			if(rhs_resolving_stream == NOT_RESOLVED) continue;
 
-			assert(lhs_resolving_stream != rhs_resolving_stream);
+			if(lhs_resolving_stream == rhs_resolving_stream) continue;
 
 			// Clone the filter expressions.
 			lhs = AR_EXP_Clone(lhs);
@@ -163,6 +160,9 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 			// Retrieve the relevent branch roots.
 			OpBase *right_branch = cp->children[rhs_resolving_stream];
 			OpBase *left_branch = cp->children[lhs_resolving_stream];
+			// Detach the streams for the Value Hash Join from the execution plan.
+			ExecutionPlan_DetachOp(right_branch);
+			ExecutionPlan_DetachOp(left_branch);
 			// Build hash join op.
 			OpBase *value_hash_join = _build_hash_join_op
 									  (cp->plan, left_branch, right_branch, lhs, rhs);
@@ -189,7 +189,6 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 					_re_order_filter_op(plan, cp, additional_filter);
 				}
 			}
-			break; // The operations have been updated, don't evaluate more filters.
 		}
 		for(int j = 0; j < stream_count; j ++) raxFree(stream_entities[j]);
 		// We have modifed the filters array, we need to re-collect the remaining equality filters.

@@ -214,7 +214,7 @@ static OpBase *_ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recur
 		// Visit each child and try to resolve references, storing a pointer to the child if successful.
 		OpBase *tmp_op = _ExecutionPlan_LocateReferences(root->children[i], recurse_limit, refs_to_resolve);
 		if(tmp_op) dependency_count ++; // Count how many children resolved references.
-		// If there is more then one child resolving an op, set the root as the resolver.
+		// If there is more than one child resolving an op, set the root as the resolver.
 		resolving_op = resolving_op ? root : tmp_op;
 		all_refs_resolved = (raxSize(refs_to_resolve) == 0); // We're done when the rax is empty.
 	}
