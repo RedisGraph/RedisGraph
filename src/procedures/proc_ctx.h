@@ -64,5 +64,5 @@ ProcedureCtx *ProcCtxNew(
 	ProcInvoke fInvoke,         // Procedure Invoke function.
 	ProcFree fFree,             // Procedure Free function.
 	void *privateData,          // Procedure private data.
-	bool isWriteProcedure       // Indicates if the procedure is able to mutate the graph.
+	bool readOnly               // Indicates if the procedure is able to mutate the graph.
 );
