@@ -118,6 +118,11 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 		// Create edge relation type array on first call to consume.
 		if(!op->edgeRelationTypes) {
 			_setupTraversedRelations(op);
+			/* Incase we don't have any relations to traverse and minimal traversal is larger then one hop
+			 * we can return quickly.
+			 * Consider: MATCH (S)-[:L*]->(M) RETURN M
+			 * where label L does not exists. */
+			if(op->edgeRelationCount == 0 && op->minHops > 0) return NULL;
 		}
 
 		Node *destNode = NULL;
