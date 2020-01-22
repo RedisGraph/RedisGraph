@@ -151,17 +151,17 @@ Be sure to wrap predicates within parentheses to control precedence.
 
 Examples:
 
-```sh
+```
 WHERE (actor.name = "john doe" OR movie.rating > 8.8) AND movie.votes <= 250)
 ```
 
-```sh
+```
 WHERE actor.age >= director.age AND actor.age > 32
 ```
 
 It is also possible to specify equality predicates within nodes using the curly braces as such:
 
-```sh
+```
 (:president {name:"Jed Bartlett"})-[:won]->(:state)
 ```
 
@@ -244,13 +244,14 @@ Order by specifies that the output be sorted and how.
 
 You can order by multiple properties by stating each variable in the ORDER BY clause.
 
+Each property may specify its sort order with `ASC`/`ASCENDING` or `DESC`/`DESCENDING`. If no order is specified, it defaults to ascending.
+
 The result will be sorted by the first variable listed.
 
-For equal values, it will go to the next property in the ORDER BY
-clause, and so on.
+For equal values, it will go to the next property in the ORDER BY clause, and so on.
 
 ```sh
-ORDER BY <alias.property list> [ASC/DESC]
+ORDER BY <alias.property [ASC/DESC] list>
 ```
 
 Below we sort our friends by height. For equal heights, weight is used to break ties.
@@ -278,7 +279,7 @@ GRAPH.QUERY DEMO_GRAPH "MATCH (p:person) RETURN p ORDER BY p.name SKIP 100 LIMIT
 Although not mandatory, you can use the limit clause
 to limit the number of records returned by a query:
 
-```sh
+```
 LIMIT <max records to return>
 ```
 
