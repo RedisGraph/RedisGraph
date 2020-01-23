@@ -128,14 +128,14 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 	OpFilter **pending_filters = array_new(OpFilter *, filter_count);
 	OpBase *pending_filters_lookup_root = cp;
 
+	// For each stream joined by the Cartesian product, collect all entities the stream resolves.
+	int stream_count = cp->childCount;
+	rax *stream_entities[stream_count];
+	for(int j = 0; j < stream_count; j ++) {
+		stream_entities[j] = raxNew();
+		ExecutionPlan_BoundVariables(cp->children[j], stream_entities[j]);
+	}
 	for(uint i = 0; i < filter_count; i ++) {
-		// For each stream joined by the Cartesian product, collect all entities the stream resolves.
-		int stream_count = cp->childCount;
-		rax *stream_entities[stream_count];
-		for(int j = 0; j < stream_count; j ++) {
-			stream_entities[j] = raxNew();
-			ExecutionPlan_BoundVariables(cp->children[j], stream_entities[j]);
-		}
 		// Try reduce the cartesian product to value hash join with the current filter.
 		OpFilter *filter_op = filter_ops[i];
 
@@ -181,26 +181,37 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 		if(cp->childCount == 0) {
 			// The entire Cartesian Product can be replaced with the join op.
 			ExecutionPlan_ReplaceOp(plan, cp, value_hash_join);
-			pending_filters_lookup_root = value_hash_join;
 			OpBase_Free(cp);
+			pending_filters_lookup_root = value_hash_join;
+			break;
 		} else {
 			// The Cartesian Product still has a child operation; introduce the join op as another child.
 			ExecutionPlan_AddOp(cp, value_hash_join);
+			// Streams are no longer valid since cartesian product changed.
+			for(int j = 0; j < stream_count; j ++) raxFree(stream_entities[j]);
+			// Re-collect cartesian product streams.
+			stream_count = cp->childCount;
+			for(int j = 0; j < stream_count; j ++) {
+				stream_entities[j] = raxNew();
+				ExecutionPlan_BoundVariables(cp->children[j], stream_entities[j]);
+			}
 		}
-
-		// Streams are no longer valid.
-		for(int j = 0; j < stream_count; j ++) raxFree(stream_entities[j]);
 	}
 	// Try to re-position the additional filters which can be solved by the join operation branches.
 	uint pending_filters_count = array_len(pending_filters);
-	for(uint i = 0; i < pending_filters_count; i++) {
-		/* Fix for issue #869 https://github.com/RedisGraph/RedisGraph/issues/869.
-		 * When trying to replace a cartesian product which followed by multiple filters that can be resolved by the same two branches
-		 * the application crashed on assert(lhs_resolving_stream != rhs_resolving_stream) since before the fix only one filter was used
-		 * to create the hash join, and the other were ignored. */
-		OpFilter *additional_filter = pending_filters[i];
-		_re_order_filter_op(plan, pending_filters_lookup_root, additional_filter);
+	// If there was a reduction to join, there will be less pending filters.
+	if(pending_filters_count < filter_count) {
+		for(uint i = 0; i < pending_filters_count; i++) {
+			/* Fix for issue #869 https://github.com/RedisGraph/RedisGraph/issues/869.
+			 * When trying to replace a cartesian product which followed by multiple filters that can be resolved by the same two branches
+			 * the application crashed on assert(lhs_resolving_stream != rhs_resolving_stream) since before the fix only one filter was used
+			 * to create the hash join, and the other were ignored. */
+			OpFilter *additional_filter = pending_filters[i];
+			_re_order_filter_op(plan, pending_filters_lookup_root, additional_filter);
+		}
 	}
+	// Clean up.
+	for(int j = 0; j < stream_count; j ++) raxFree(stream_entities[j]);
 	array_free(filter_ops);
 	array_free(pending_filters);
 }
