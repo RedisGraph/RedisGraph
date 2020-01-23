@@ -5,7 +5,6 @@
 */
 
 #include "datablock.h"
-#include "datablock_defs.h"
 #include "datablock_iterator.h"
 #include "../arr.h"
 #include "../rmalloc.h"
@@ -49,16 +48,16 @@ static void _DataBlock_AddBlocks(DataBlock *dataBlock, uint blockCount) {
 	dataBlock->itemCap = dataBlock->blockCount * DATABLOCK_BLOCK_CAP;
 }
 
-static inline void _DataBlock_MarkItemAsDeleted(unsigned char *item_header) {
+static inline void _DataBlock_MarkItemAsDeleted(DataBlockItemHeader *item_header) {
 	MARK_HEADER_AS_DELETED(item_header);
 }
 
-static inline void _DataBlock_MarkItemAsUndelete(unsigned char *item_header) {
+static inline void _DataBlock_MarkItemAsUndelete(DataBlockItemHeader *item_header) {
 	MARK_HEADER_AS_NOT_DELETED(item_header);
 }
 
-static inline bool _DataBlock_IsItemDeleted(unsigned char *item_header) {
-	return IS_HEADER_DELETED(item_header);
+static inline bool _DataBlock_IsItemDeleted(DataBlockItemHeader *item_header) {
+	return IS_ITEM_DELETED(item_header);
 }
 
 // Checks to see if idx is within global array bounds
@@ -112,12 +111,12 @@ void *DataBlock_GetItem(const DataBlock *dataBlock, uint64_t idx) {
 	Block *block = GET_ITEM_BLOCK(dataBlock, idx);
 	idx = ITEM_POSITION_WITHIN_BLOCK(idx);
 
-	unsigned char *item_header = block->data + (idx * block->itemSize);
+	DataBlockItemHeader *item_header = (DataBlockItemHeader *)block->data + (idx * block->itemSize);
 
 	// Incase item is marked as deleted, return NULL.
 	if(_DataBlock_IsItemDeleted(item_header)) return NULL;
 
-	return (void *)GET_ITEM_DATA(item_header);
+	return ITEM_DATA(item_header);
 }
 
 void *DataBlock_AllocateItem(DataBlock *dataBlock, uint64_t *idx) {
@@ -142,10 +141,10 @@ void *DataBlock_AllocateItem(DataBlock *dataBlock, uint64_t *idx) {
 	Block *block = GET_ITEM_BLOCK(dataBlock, pos);
 	pos = ITEM_POSITION_WITHIN_BLOCK(pos);
 
-	unsigned char *item_header = block->data + (pos * block->itemSize);
+	DataBlockItemHeader *item_header = (DataBlockItemHeader *)block->data + (pos * block->itemSize);
 	_DataBlock_MarkItemAsUndelete(item_header);
 
-	return (void *)GET_ITEM_DATA(item_header);
+	return ITEM_DATA(item_header);
 }
 
 void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
@@ -160,11 +159,11 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
 	uint offset = blockPos * block->itemSize;
 
 	// Return if item already deleted.
-	unsigned char *item_header = block->data + offset;
+	DataBlockItemHeader *item_header = (DataBlockItemHeader *)block->data + offset;
 	if(_DataBlock_IsItemDeleted(item_header)) return;
 
 	// Call item destructor.
-	unsigned char *item = GET_ITEM_DATA(item_header);
+	unsigned char *item = ITEM_DATA(item_header);
 	if(dataBlock->destructor) dataBlock->destructor(item);
 
 	_DataBlock_MarkItemAsDeleted(item_header);

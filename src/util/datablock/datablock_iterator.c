@@ -6,7 +6,6 @@
 
 #include "datablock_iterator.h"
 #include "datablock.h"
-#include "datablock_defs.h"
 #include "../rmalloc.h"
 #include <stdio.h>
 #include <assert.h>
@@ -35,12 +34,12 @@ void *DataBlockIterator_Next(DataBlockIterator *iter) {
 
 	if(iter->_current_pos >= iter->_end_pos || iter->_current_block == NULL) return NULL;
 
-	unsigned char *item_header = NULL;
+	DataBlockItemHeader *item_header = NULL;
 	// Have we reached the end of our iterator?
 	while(iter->_current_pos < iter->_end_pos && iter->_current_block != NULL) {
 		// Get item at current position.
 		Block *block = iter->_current_block;
-		item_header = block->data + (iter->_block_pos * block->itemSize);
+		item_header = (DataBlockItemHeader *)block->data + (iter->_block_pos * block->itemSize);
 
 		// Advance to next position.
 		iter->_block_pos += iter->_step;
@@ -52,7 +51,7 @@ void *DataBlockIterator_Next(DataBlockIterator *iter) {
 			iter->_current_block = iter->_current_block->next;
 		}
 
-		if(IS_HEADER_DELETED(item_header)) {
+		if(IS_ITEM_DELETED(item_header)) {
 			item_header = NULL;
 			continue;
 		}
@@ -60,7 +59,7 @@ void *DataBlockIterator_Next(DataBlockIterator *iter) {
 		break;
 	}
 
-	return (void *)GET_ITEM_DATA(item_header);
+	return ITEM_DATA(item_header);
 }
 
 void DataBlockIterator_Reset(DataBlockIterator *iter) {
