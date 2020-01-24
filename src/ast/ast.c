@@ -14,6 +14,7 @@
 #include "../arithmetic/repository.h"
 #include "../arithmetic/arithmetic_expression.h"
 #include "ast_build_ar_exp.h"
+#include "../procedures/procedure.h"
 
 // TODO duplicated logic, find shared place for it
 static inline void _prepareIterateAll(rax *map, raxIterator *iter) {
@@ -103,6 +104,12 @@ static bool _AST_ReadOnly(const cypher_astnode_t *root) {
 	   type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
 	   type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {
 		return false;
+	}
+	// In case of procedure call which modifies the graph/indices.
+	if(type == CYPHER_AST_CALL) {
+		const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(root));
+		ProcedureCtx *proc = Proc_Get(proc_name);
+		return proc->readOnly;
 	}
 	uint num_children = cypher_astnode_nchildren(root);
 	for(uint i = 0; i < num_children; i ++) {

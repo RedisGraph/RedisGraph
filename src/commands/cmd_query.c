@@ -64,10 +64,12 @@ void Graph_Query(void *args) {
 	// Parse the query to construct an AST.
 	cypher_parse_result_t *parse_result = parse(command_ctx->query);
 	if(parse_result == NULL) goto cleanup;
-	bool readonly = AST_ReadOnly(parse_result);
 
 	// Perform query validations
 	if(AST_Validate(ctx, parse_result) != AST_VALID) goto cleanup;
+
+	bool readonly = AST_ReadOnly(parse_result);
+
 	// Prepare the constructed AST for accesses from the module
 	ast = AST_Build(parse_result);
 
