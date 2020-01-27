@@ -217,6 +217,16 @@ class testOptimizationsPlan(FlowTestsBase):
         resultset = graph.query(query).result_set
         self.env.assertEqual(resultset, expected)
 
+        # Issue a query that joins four streams that all resolve the same entity, with multiple reapeating filter (issue #869).
+        query = """MATCH (p1 {name: 'Ailon'}), (p2), (p3), (p4) WHERE ID(p1) = ID(p2) AND ID(p2) = ID(p3) AND ID(p3)=ID(p2) AND ID(p2)= ID(p1) AND p3.name = p4.name AND p4.name = p3.name RETURN p4.name"""
+        executionPlan = graph.execution_plan(query)
+        self.env.assertIn("Value Hash Join", executionPlan)
+        self.env.assertNotIn("Cartesian Product", executionPlan)
+
+        expected = [['Ailon']]
+        resultset = graph.query(query).result_set
+        self.env.assertEqual(resultset, expected)
+
     def test13_distinct_aggregations(self):
         # Verify that the Distinct operation is removed from the aggregating query.
         query = """MATCH (src:person)-[:know]->(dest) RETURN DISTINCT src.name, COUNT(dest) ORDER BY src.name"""
