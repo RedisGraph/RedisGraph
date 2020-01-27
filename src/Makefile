@@ -172,8 +172,8 @@ ifeq ($(ALL),1)
 	@$(MAKE) -C ../deps/rax clean
 	@$(MAKE) -C ../deps/xxHash clean
 	@$(MAKE) -C ../deps/GraphBLAS clean
-	@$(MAKE) -C ../deps/RediSearch clean
 	@$(MAKE) -C ../deps/libcypher-parser clean
+	rm -rf ../deps/RediSearch/build/      # Directly delete the RediSearch build artifacts
 endif
 	@$(MAKE) -C ../tests clean
 
