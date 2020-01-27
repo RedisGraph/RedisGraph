@@ -11,13 +11,6 @@
 #include <assert.h>
 #include <stdbool.h>
 
-static inline bool _IsItemDeleted(uint itemSize, unsigned char *item) {
-	for(uint i = 0; i < itemSize; i++) {
-		if(item[i] != DELETED_MARKER) return false;
-	}
-	return true;
-}
-
 DataBlockIterator *DataBlockIterator_New(Block *block, uint start_pos, uint end_pos, uint step) {
 	assert(block && start_pos >= 0 && end_pos >= start_pos && step >= 1);
 
@@ -41,12 +34,12 @@ void *DataBlockIterator_Next(DataBlockIterator *iter) {
 
 	if(iter->_current_pos >= iter->_end_pos || iter->_current_block == NULL) return NULL;
 
-	unsigned char *item = NULL;
+	DataBlockItemHeader *item_header = NULL;
 	// Have we reached the end of our iterator?
 	while(iter->_current_pos < iter->_end_pos && iter->_current_block != NULL) {
 		// Get item at current position.
 		Block *block = iter->_current_block;
-		item = block->data + (iter->_block_pos * block->itemSize);
+		item_header = (DataBlockItemHeader *)block->data + (iter->_block_pos * block->itemSize);
 
 		// Advance to next position.
 		iter->_block_pos += iter->_step;
@@ -58,15 +51,12 @@ void *DataBlockIterator_Next(DataBlockIterator *iter) {
 			iter->_current_block = iter->_current_block->next;
 		}
 
-		if(_IsItemDeleted(block->itemSize, item)) {
-			item = NULL;
-			continue;
+		if(!IS_ITEM_DELETED(item_header)) {
+			return ITEM_DATA(item_header);
 		}
-
-		break;
 	}
 
-	return (void *)item;
+	return NULL;
 }
 
 void DataBlockIterator_Reset(DataBlockIterator *iter) {
@@ -80,4 +70,3 @@ void DataBlockIterator_Free(DataBlockIterator *iter) {
 	assert(iter);
 	rm_free(iter);
 }
-

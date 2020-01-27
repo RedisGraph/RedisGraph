@@ -37,7 +37,7 @@ TEST_F(DataBlockTest, New) {
 
 	ASSERT_EQ(dataBlock->itemCount, 0);     // No items were added.
 	ASSERT_GE(dataBlock->itemCap, 1024);
-	ASSERT_EQ(dataBlock->itemSize, itemSize);
+	ASSERT_EQ(dataBlock->itemSize, itemSize + ITEM_HEADER_SIZE);
 	ASSERT_GE(dataBlock->blockCount, 1024 / DATABLOCK_BLOCK_CAP);
 
 	for(int i = 0; i < dataBlock->blockCount; i++) {
@@ -150,12 +150,12 @@ TEST_F(DataBlockTest, RemoveItem) {
 	ASSERT_EQ(*item, 0);
 
 	// Remove item at position 0 and perform validations
-	// A DELETED_MARKER should mark cell as deleted
 	// Index 0 should be added to datablock deletedIdx array.
 	DataBlock_DeleteItem(dataBlock, 0);
 	ASSERT_EQ(dataBlock->itemCount, itemCount - 1);
 	ASSERT_EQ(array_len(dataBlock->deletedIdx), 1);
-	ASSERT_TRUE((char)dataBlock->blocks[0]->data[0] && (char)DELETED_MARKER);
+	DataBlockItemHeader *header = (DataBlockItemHeader *)dataBlock->blocks[0]->data;
+	ASSERT_TRUE(IS_ITEM_DELETED(header));
 
 	// Try to get item from deleted cell.
 	item = (int *)DataBlock_GetItem(dataBlock, 0);
@@ -175,7 +175,7 @@ TEST_F(DataBlockTest, RemoveItem) {
 	int *newItem = (int *)DataBlock_AllocateItem(dataBlock, NULL);
 	ASSERT_EQ(dataBlock->itemCount, itemCount);
 	ASSERT_EQ(array_len(dataBlock->deletedIdx), 0);
-	ASSERT_TRUE((void *)newItem == (void *)(&dataBlock->blocks[0]->data));
+	ASSERT_TRUE((void *)newItem == (void *)((dataBlock->blocks[0]->data) + ITEM_HEADER_SIZE));
 
 	it = DataBlock_Scan(dataBlock);
 	counter = 0;

@@ -7,17 +7,33 @@
 #pragma once
 
 #include <stdlib.h>
-#include <stdint.h>
 #include <pthread.h>
 #include "../block.h"
 #include "./datablock_iterator.h"
-
-#define DELETED_MARKER 0xFF
 
 typedef void (*fpDestructor)(void *);
 
 // Number of items in a block. Should always be a power of 2.
 #define DATABLOCK_BLOCK_CAP 16384
+
+// Returns the item header size.
+#define ITEM_HEADER_SIZE 1
+
+// DataBlock item is stored as ||header|data||. This macro retrive the data pointer out of the header pointer.
+#define ITEM_DATA(header) ((void *)((header) + ITEM_HEADER_SIZE))
+
+// DataBlock item is stored as ||header|data||. This macro retrive the header pointer out of the data pointer.
+#define GET_ITEM_HEADER(item) ((item) - ITEM_HEADER_SIZE)
+
+// Sets the deleted bit in the header to 1.
+#define MARK_HEADER_AS_DELETED(header) ((header)->deleted |= 1)
+
+// Sets the deleted bit in the header to 0.
+#define MARK_HEADER_AS_NOT_DELETED(header) ((header)->deleted &= 0)
+
+// Checks if the deleted bit in the header is 1 or not.
+#define IS_ITEM_DELETED(header) ((header)->deleted & 1)
+
 
 /* The DataBlock is a container structure for holding arbitrary items of a uniform type
  * in order to reduce the number of alloc/free calls and improve locality of reference.
@@ -33,6 +49,12 @@ typedef struct {
 	pthread_mutex_t mutex;      // Mutex guarding from concurent updates.
 	fpDestructor destructor;    // Function pointer to a clean-up function of an item.
 } DataBlock;
+
+// This struct is for data block item header data.
+// TODO: Consider using pragma pack/pop for tight memory/word alignment.
+typedef struct {
+	unsigned char deleted: 1;  // A bit indicate if the current item is deleted or not.
+} DataBlockItemHeader;
 
 // Create a new DataBlock
 // itemCap - number of items datablock can hold before resizing.
@@ -59,4 +81,3 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx);
 
 // Free block.
 void DataBlock_Free(DataBlock *block);
-
