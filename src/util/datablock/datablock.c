@@ -48,18 +48,6 @@ static void _DataBlock_AddBlocks(DataBlock *dataBlock, uint blockCount) {
 	dataBlock->itemCap = dataBlock->blockCount * DATABLOCK_BLOCK_CAP;
 }
 
-static inline void _DataBlock_MarkItemAsDeleted(DataBlockItemHeader *item_header) {
-	MARK_HEADER_AS_DELETED(item_header);
-}
-
-static inline void _DataBlock_MarkItemAsUndelete(DataBlockItemHeader *item_header) {
-	MARK_HEADER_AS_NOT_DELETED(item_header);
-}
-
-static inline bool _DataBlock_IsItemDeleted(DataBlockItemHeader *item_header) {
-	return IS_ITEM_DELETED(item_header);
-}
-
 // Checks to see if idx is within global array bounds
 // array bounds are between 0 and itemCount + #deleted indices
 // e.g. [3, 7, 2, D, 1, D, 5] where itemCount = 5 and #deleted indices is 2
@@ -114,7 +102,7 @@ void *DataBlock_GetItem(const DataBlock *dataBlock, uint64_t idx) {
 	DataBlockItemHeader *item_header = (DataBlockItemHeader *)block->data + (idx * block->itemSize);
 
 	// Incase item is marked as deleted, return NULL.
-	if(_DataBlock_IsItemDeleted(item_header)) return NULL;
+	if(IS_ITEM_DELETED(item_header)) return NULL;
 
 	return ITEM_DATA(item_header);
 }
@@ -142,7 +130,7 @@ void *DataBlock_AllocateItem(DataBlock *dataBlock, uint64_t *idx) {
 	pos = ITEM_POSITION_WITHIN_BLOCK(pos);
 
 	DataBlockItemHeader *item_header = (DataBlockItemHeader *)block->data + (pos * block->itemSize);
-	_DataBlock_MarkItemAsUndelete(item_header);
+	MARK_HEADER_AS_NOT_DELETED(item_header);
 
 	return ITEM_DATA(item_header);
 }
@@ -160,13 +148,15 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
 
 	// Return if item already deleted.
 	DataBlockItemHeader *item_header = (DataBlockItemHeader *)block->data + offset;
-	if(_DataBlock_IsItemDeleted(item_header)) return;
+	if(IS_ITEM_DELETED(item_header)) return;
 
 	// Call item destructor.
-	unsigned char *item = ITEM_DATA(item_header);
-	if(dataBlock->destructor) dataBlock->destructor(item);
+	if(dataBlock->destructor) {
+		unsigned char *item = ITEM_DATA(item_header);
+		dataBlock->destructor(item);
+	}
 
-	_DataBlock_MarkItemAsDeleted(item_header);
+	MARK_HEADER_AS_DELETED(item_header);
 
 	/* DataBlock_DeleteItem should be thread-safe as it's being called
 	 * from GraphBLAS concurent operations, e.g. GxB_SelectOp.

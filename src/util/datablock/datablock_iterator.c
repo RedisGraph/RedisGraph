@@ -51,15 +51,12 @@ void *DataBlockIterator_Next(DataBlockIterator *iter) {
 			iter->_current_block = iter->_current_block->next;
 		}
 
-		if(IS_ITEM_DELETED(item_header)) {
-			item_header = NULL;
-			continue;
+		if(!IS_ITEM_DELETED(item_header)) {
+			return ITEM_DATA(item_header);
 		}
-
-		break;
 	}
 
-	return ITEM_DATA(item_header);
+	return NULL;
 }
 
 void DataBlockIterator_Reset(DataBlockIterator *iter) {
