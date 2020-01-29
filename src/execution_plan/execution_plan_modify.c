@@ -42,6 +42,22 @@ void _OpBase_RemoveNode(OpBase *parent, OpBase *child) {
 	child->parent = NULL;
 }
 
+/* Replace an operation in the tree in-place. */
+static void _OpBase_ReplaceOp(OpBase *old_child, OpBase *new_child) {
+	OpBase *parent = old_child->parent;
+
+	for(int i = 0; i < parent->childCount; i ++) {
+		/* Scan the children array to find the op being replaced. */
+		if(parent->children[i] != old_child) continue;
+		/* Replace the original child with the new one. */
+		parent->children[i] = new_child;
+		new_child->parent = parent;
+		return;
+	}
+
+	assert(false && "failed to locate the operation to be replaced");
+}
+
 void _OpBase_RemoveChild(OpBase *parent, OpBase *child) {
 	_OpBase_RemoveNode(parent, child);
 }
@@ -74,14 +90,8 @@ void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
 		return;
 	}
 
-	/* Replace A's former parent. */
-	OpBase *a_former_parent = a->parent;
-
-	/* Disconnect A from its former parent. */
-	_OpBase_RemoveChild(a_former_parent, a);
-
-	/* Add A's former parent as parent of B. */
-	_OpBase_AddChild(a_former_parent, b);
+	/* Disconnect A from its parent and replace it with B. */
+	_OpBase_ReplaceOp(a, b);
 
 	/* Add A as a child of B. */
 	_OpBase_AddChild(b, a);
@@ -312,3 +322,4 @@ void ExecutionPlan_AppendSubExecutionPlan(ExecutionPlan *master_plan, ExecutionP
 	sub_plan->record_map = master_plan->record_map;
 	master_plan->sub_execution_plans = array_append(master_plan->sub_execution_plans, sub_plan);
 }
+
