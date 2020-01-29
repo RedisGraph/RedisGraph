@@ -1,7 +1,7 @@
 #include "execution_plan.h"
 #include "ops/ops.h"
 
-void _OpBase_AddChild(OpBase *parent, OpBase *child) {
+static void _OpBase_AddChild(OpBase *parent, OpBase *child) {
 	// Add child to parent
 	if(parent->children == NULL) {
 		parent->children = rm_malloc(sizeof(OpBase *));
@@ -14,9 +14,27 @@ void _OpBase_AddChild(OpBase *parent, OpBase *child) {
 	child->parent = parent;
 }
 
+/* Remove the operation old_child from its parent and replace it
+ * with the new child without reordering elements. */
+static void _ExecutionPlan_ParentReplaceChild(OpBase *parent, OpBase *old_child,
+											  OpBase *new_child) {
+	assert(parent->childCount > 0);
+
+	for(int i = 0; i < parent->childCount; i ++) {
+		/* Scan the children array to find the op being replaced. */
+		if(parent->children[i] != old_child) continue;
+		/* Replace the original child with the new one. */
+		parent->children[i] = new_child;
+		new_child->parent = parent;
+		return;
+	}
+
+	assert(false && "failed to locate the operation to be replaced");
+}
+
 /* Removes node b from a and update child parent lists
  * Assuming B is a child of A. */
-void _OpBase_RemoveNode(OpBase *parent, OpBase *child) {
+static void _OpBase_RemoveChild(OpBase *parent, OpBase *child) {
 	// Remove child from parent.
 	int i = 0;
 	for(; i < parent->childCount; i++) {
@@ -42,33 +60,11 @@ void _OpBase_RemoveNode(OpBase *parent, OpBase *child) {
 	child->parent = NULL;
 }
 
-/* Remove the operation old_child from its parent and replace it
- * with the new child without reordering elements. */
-static void _ExecutionPlan_ParentReplaceChild(OpBase *parent, OpBase *old_child,
-											  OpBase *new_child) {
-	assert(parent->childCount > 0);
-
-	for(int i = 0; i < parent->childCount; i ++) {
-		/* Scan the children array to find the op being replaced. */
-		if(parent->children[i] != old_child) continue;
-		/* Replace the original child with the new one. */
-		parent->children[i] = new_child;
-		new_child->parent = parent;
-		return;
-	}
-
-	assert(false && "failed to locate the operation to be replaced");
-}
-
-void _OpBase_RemoveChild(OpBase *parent, OpBase *child) {
-	_OpBase_RemoveNode(parent, child);
-}
-
-void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
+inline void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
 	_OpBase_AddChild(parent, newOp);
 }
 
-void _ExecutionPlan_LocateOps(OpBase *root, OPType type, OpBase ***ops) {
+static void _ExecutionPlan_LocateOps(OpBase *root, OPType type, OpBase ***ops) {
 	if(!root) return;
 
 	if(root->type & type) *ops = array_append(*ops, root);
@@ -185,8 +181,8 @@ typedef enum {
 	RTL
 } LocateOp_SearchDirection;
 
-OpBase *_ExecutionPlan_LocateOp(OpBase *root, OPType type,
-								LocateOp_SearchDirection search_direction) {
+static OpBase *_ExecutionPlan_LocateOp(OpBase *root, OPType type,
+									   LocateOp_SearchDirection search_direction) {
 	if(!root) return NULL;
 
 	if(root->type & type) { // NOTE - this will fail if OPType is later changed to not be a bitmask.
