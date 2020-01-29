@@ -14,6 +14,7 @@ The full functionality of RedisGraph is available through `redis-cli` and the Re
 | ioredisgraph | JavaScript | ISC | [Jonah](https://github.com/Jonahss) | [GitHub](https://github.com/Jonahss/ioredisgraph) |
 | php-redis-graph | PHP | MIT | [KJDev](https://github.com/kjdev) | [GitHub](https://github.com/kjdev/php-redis-graph) |
 | redisgraph_php | PHP | MIT | [jpbourbon](https://github.com/jpbourbon) | [GitHub](https://github.com/jpbourbon/redisgraph_php) |
+| redisgraph-ex | Elixir | MIT | [crflynn](https://github.com/crflynn) | [GitHub](https://github.com/crflynn/redisgraph-ex) |
 
 ## Implementing a client
 
