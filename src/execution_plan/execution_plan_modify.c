@@ -42,9 +42,11 @@ void _OpBase_RemoveNode(OpBase *parent, OpBase *child) {
 	child->parent = NULL;
 }
 
-/* Replace an operation in the tree in-place. */
-static void _OpBase_ReplaceOp(OpBase *old_child, OpBase *new_child) {
-	OpBase *parent = old_child->parent;
+/* Remove the operation old_child from its parent and replace it
+ * with the new child without reordering elements. */
+static void _ExecutionPlan_ParentReplaceChild(OpBase *parent, OpBase *old_child,
+											  OpBase *new_child) {
+	assert(parent->childCount > 0);
 
 	for(int i = 0; i < parent->childCount; i ++) {
 		/* Scan the children array to find the op being replaced. */
@@ -91,7 +93,7 @@ void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
 	}
 
 	/* Disconnect A from its parent and replace it with B. */
-	_OpBase_ReplaceOp(a, b);
+	_ExecutionPlan_ParentReplaceChild(a->parent, a, b);
 
 	/* Add A as a child of B. */
 	_OpBase_AddChild(b, a);
