@@ -1,6 +1,6 @@
-[![GitHub issues](https://img.shields.io/github/release/RedisGraph/RedisGraph.svg)](https://github.com/RedisGraph/RedisGraph/releases/latest)
+[![Release](https://img.shields.io/github/release/RedisGraph/RedisGraph.svg?sort=semver)](https://github.com/RedisGraph/RedisGraph/releases/latest)
 [![CircleCI](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master.svg?style=svg)](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master)
-[![DockerHub](https://dockerbuildbadges.quelltext.eu/status.svg?organization=redislabs&repository=redisgraph)](https://hub.docker.com/r/redislabs/redisgraph/builds/)
+[![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/redislabs/redisgraph.svg)](https://hub.docker.com/r/redislabs/redisgraph/builds/)
 [![Mailing List](https://img.shields.io/badge/Mailing%20List-RedisGraph-blue)](https://groups.google.com/forum/#!forum/redisgraph)
 [![Gitter](https://badges.gitter.im/RedisLabs/RedisGraph.svg)](https://gitter.im/RedisLabs/RedisGraph?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
@@ -176,6 +176,8 @@ Some languages have client libraries that provide support for RedisGraph's comma
 | ioredisgraph | JavaScript | ISC | [Jonah](https://github.com/Jonahss) | [GitHub](https://github.com/Jonahss/ioredisgraph) |
 | php-redis-graph | PHP | MIT | [KJDev](https://github.com/kjdev) | [GitHub](https://github.com/kjdev/php-redis-graph) |
 | redisgraph_php | PHP | MIT | [jpbourbon](https://github.com/jpbourbon) | [GitHub](https://github.com/jpbourbon/redisgraph_php) |
+| redisgraph-ex | Elixir | MIT | [crflynn](https://github.com/crflynn) | [GitHub](https://github.com/crflynn/redisgraph-ex) |
+
 
 ## Documentation
 

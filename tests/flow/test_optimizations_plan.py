@@ -227,7 +227,18 @@ class testOptimizationsPlan(FlowTestsBase):
         resultset = graph.query(query).result_set
         self.env.assertEqual(resultset, expected)
 
-    def test13_distinct_aggregations(self):
+    def test13_duplicate_filter_placement(self):
+        # Issue a query that joins three streams and contains a redundant filter.
+        query = """MATCH (p0), (p1), (p2) where id(p2) = id(p0) AND id(p1) = id(p2) AND id(p1) = id(p2) return p2.name ORDER BY p2.name"""
+        executionPlan = graph.execution_plan(query)
+        self.env.assertIn("Value Hash Join", executionPlan)
+        self.env.assertNotIn("Cartesian Product", executionPlan)
+
+        resultset = graph.query(query).result_set
+        expected = [['Ailon'], ['Alon'], ['Boaz'], ['Roi']]
+        self.env.assertEqual(resultset, expected)
+
+    def test14_distinct_aggregations(self):
         # Verify that the Distinct operation is removed from the aggregating query.
         query = """MATCH (src:person)-[:know]->(dest) RETURN DISTINCT src.name, COUNT(dest) ORDER BY src.name"""
         executionPlan = graph.execution_plan(query)
