@@ -391,10 +391,17 @@ SIValue SIValue_Divide(const SIValue a, const SIValue b) {
 	return SI_DoubleVal(SI_GET_NUMERIC(a) / (double)SI_GET_NUMERIC(b));
 }
 
-SIValue SIValue_Modulo(const SIValue a, const SIValue b) {
-	// Since C % operator requires integer inputs, we need to validate this.
-	assert(SI_TYPE(a) & SI_TYPE(b) & T_INT64);
-	return SI_LongVal(a.longval % b.longval);
+// Calculate a mod n for integer and floating-point inputs.
+SIValue SIValue_Modulo(const SIValue a, const SIValue n) {
+	bool inputs_are_integers = SI_TYPE(a) & SI_TYPE(n) & T_INT64;
+	switch(inputs_are_integers) {
+	case true:
+		// The modulo machine instruction may be used if a and n are both integers.
+		return SI_LongVal(a.longval % n.longval);
+	case false:
+		// Otherwise, use the library function fmod to calculate the modulo and return a double.
+		return SI_DoubleVal(fmod(SI_GET_NUMERIC(a), SI_GET_NUMERIC(n)));
+	}
 }
 
 int SIArray_Compare(SIValue arrayA, SIValue arrayB, int *disjointOrNull) {
