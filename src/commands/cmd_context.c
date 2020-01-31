@@ -1,5 +1,7 @@
 #include "cmd_context.h"
+#include "../query_ctx.h"
 #include "../util/rmalloc.h"
+#include "../slow_log/slow_log.h"
 #include <assert.h>
 
 CommandCtx *CommandCtx_New
@@ -80,7 +82,12 @@ void CommandCtx_Free(CommandCtx *command_ctx) {
 		RedisModule_FreeThreadSafeContext(command_ctx->ctx);
 	}
 
+	// Report command to slowlog.
+	if(command_ctx->query) {
+		SlowLog_Add(command_ctx->command_name, command_ctx->graph_ctx->graph_name, command_ctx->query,
+					QueryCtx_GetExecutionTime());
+	}
+
 	if(command_ctx->query) rm_free(command_ctx->query);
 	rm_free(command_ctx);
 }
-

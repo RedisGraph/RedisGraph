@@ -24,6 +24,7 @@ void Graph_Explain(void *args) {
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(command_ctx);
 	GraphContext *gc = CommandCtx_GetGraphContext(command_ctx);
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
+	QueryCtx_BeginTimer(); // Start query timing.
 	const char *query = command_ctx->query;
 
 	// Parse the query to construct an AST
@@ -70,8 +71,8 @@ cleanup:
 	if(plan) ExecutionPlan_Free(plan);
 
 	AST_Free(ast);
-	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
+	parse_result_free(parse_result);
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
-	parse_result_free(parse_result);
+	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 }
