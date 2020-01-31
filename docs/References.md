@@ -1,3 +1,5 @@
+* Video - [Building a Multi-dimensional Analytics Engine with RedisGraph](https://www.youtube.com/watch?v=6FYYn-9fPXE)
+
 * Blog - [RedisGraph Elixir client](https://flynn.gg/blog/redisgraph-elixir/). [Christopher Flynn](https://flynn.gg/)
 
 * Slides - [RedisGraph A Low Latency Graph DB](https://www.slideshare.net/RedisLabs/redisgraph-a-low-latency-graph-db-pieter-cailliau). [Pieter Cailliau](https://redislabs.com/author/pcailliau/).
