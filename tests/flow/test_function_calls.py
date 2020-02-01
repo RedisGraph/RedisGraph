@@ -166,3 +166,40 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         expected_result = [[3]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test10_modulo_inputs(self):
+        # Validate modulo with integer inputs.
+        query = "RETURN 5 % 2"
+        actual_result = graph.query(query)
+        expected_result = [[1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate modulo with a floating-point dividend.
+        query = "RETURN 5.5 % 2"
+        actual_result = graph.query(query)
+        expected_result = [[1.5]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate modulo with a floating-point divisor.
+        query = "RETURN 5 % 2.5"
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate modulo with both a floating-point dividen and a floating-point divisor.
+        query = "RETURN 5.5 % 2.5"
+        actual_result = graph.query(query)
+        expected_result = [[0.5]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate modulo with negative integer inputs.
+        query = "RETURN -5 % -2"
+        actual_result = graph.query(query)
+        expected_result = [[-1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate modulo with negative floating-point inputs.
+        query = "RETURN -5.5 % -2.5"
+        actual_result = graph.query(query)
+        expected_result = [[-0.5]]
+        self.env.assertEquals(actual_result.result_set, expected_result)

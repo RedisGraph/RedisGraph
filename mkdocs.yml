@@ -33,6 +33,7 @@ pages:
     - 'Design': design.md
     - 'Contributor agreement': contrib.md
     - 'Cypher coverage': cypher_support.md
+    - 'References': References.md
     - 'Known limitations': known_limitations.md
 
 markdown_extensions:
