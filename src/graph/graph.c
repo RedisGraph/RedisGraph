@@ -83,16 +83,6 @@ bool _select_op_free_edge(GrB_Index i, GrB_Index j, GrB_Index nrows, GrB_Index n
 
 /* ========================= Synchronization functions ========================= */
 
-/* Acquire mutex when a reader thread may modify shared data. */
-static inline void _Graph_EnterCriticalSection(Graph *g) {
-	pthread_mutex_lock(&g->_mutex);
-}
-
-/* Release mutex. */
-static inline void _Graph_LeaveCriticalSection(Graph *g) {
-	pthread_mutex_unlock(&g->_mutex);
-}
-
 /* Acquire a lock that does not restrict access from additional reader threads */
 void Graph_AcquireReadLock(Graph *g) {
 	pthread_rwlock_rdlock(&g->_rwlock);
@@ -135,6 +125,30 @@ static inline void _Graph_ApplyPending(GrB_Matrix m) {
 
 /* ========================= Graph utility functions ========================= */
 
+// Creates a mutex per matrix and stores it in the matrix=>mutex mapping.
+static void _Graph_Create_Matrix_Mutex(Graph *g, GrB_Matrix *m) {
+	// Create and initialize mutex.
+	pthread_mutex_t *matrix_mutex = rm_calloc(1, sizeof(pthread_mutex_t));
+	pthread_mutex_init(matrix_mutex, NULL);
+	// Try insert mutex to the rax. In case of existing mapping, exception is thrown.
+	assert("There was a duplicate attempt to create a matrix mutex. A matrix should have exactly one mutex."
+		   && raxTryInsert(g->_matrices_mutex, (unsigned char *) m, sizeof(GrB_Matrix), (void *)matrix_mutex,
+						   NULL));
+}
+
+// Returns a matrix mutex from the matrix=>mutex mapping.
+static pthread_mutex_t *_Graph_Get_Matrix_Mutex(const Graph *g, GrB_Matrix *m) {
+	pthread_mutex_t *matrix_mutex = raxFind(g->_matrices_mutex, (unsigned char *)m, sizeof(GrB_Matrix));
+	assert("Matrix should have a mutex" && matrix_mutex != raxNotFound);
+	return matrix_mutex;
+}
+
+// A wrapper around pthread_mutex_destroy for rax usage.
+static void _Graph_Free_Matrix_Mutex(void *mutex) {
+	pthread_mutex_t *typed_mutex = (pthread_mutex_t *)mutex;
+	pthread_mutex_destroy(typed_mutex);
+}
+
 // Get the transposed adjacency matrix.
 static GrB_Matrix _Graph_Get_Transposed_AdjacencyMatrix(const Graph *g) {
 	assert(g);
@@ -171,6 +185,7 @@ void _Graph_AddRelationMap(Graph *g) {
 								  Graph_RequiredMatrixDim(g));
 	assert(res == GrB_SUCCESS);
 	g->_relations_map = array_append(g->_relations_map, mapper);
+	_Graph_Create_Matrix_Mutex(g, &mapper);
 }
 
 // Locates edges connecting src to destination.
@@ -246,6 +261,9 @@ void _MatrixSynchronize(const Graph *g, GrB_Matrix m) {
 		// Writer under write lock, no need to flush pending changes.
 		return;
 	}
+	// Get matrix mutex and lock it.
+	pthread_mutex_t *matrix_mutex = _Graph_Get_Matrix_Mutex(g, &m);
+	pthread_mutex_lock(matrix_mutex);
 
 	bool pending = false;
 	GxB_Matrix_Pending(m, &pending);
@@ -253,7 +271,6 @@ void _MatrixSynchronize(const Graph *g, GrB_Matrix m) {
 	// If the matrix has pending operations or requires
 	// a resize, enter critical section.
 	if(pending || (n_rows != dims) || (n_cols != dims)) {
-		_Graph_EnterCriticalSection((Graph *)g);
 		// Double-check if resize is necessary.
 		GrB_Matrix_nrows(&n_rows, m);
 		GrB_Matrix_ncols(&n_cols, m);
@@ -261,11 +278,11 @@ void _MatrixSynchronize(const Graph *g, GrB_Matrix m) {
 		if((n_rows != dims) || (n_cols != dims)) {
 			assert(GxB_Matrix_resize(m, dims, dims) == GrB_SUCCESS);
 		}
-
 		// Flush changes to matrix.
 		_Graph_ApplyPending(m);
-		_Graph_LeaveCriticalSection((Graph *)g);
 	}
+	// Unlock matrix mutex.
+	pthread_mutex_unlock(matrix_mutex);
 }
 
 /* Resize matrix to node capacity. */
@@ -351,11 +368,12 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 	// Force GraphBLAS updates and resize matrices to node count by default
 	Graph_SetMatrixPolicy(g, SYNC_AND_MINIMIZE_SPACE);
 
-	/* TODO: We might want a mutex per matrix,
-	 * such that when a thread is resizing matrix A
-	 * another thread could be resizing matrix B. */
-	assert(pthread_mutex_init(&g->_mutex, NULL) == 0);
+	// Synchronization objects initialization.
 	assert(pthread_mutex_init(&g->_writers_mutex, NULL) == 0);
+	g->_matrices_mutex = raxNew();
+	_Graph_Create_Matrix_Mutex(g, &g->adjacency_matrix);
+	_Graph_Create_Matrix_Mutex(g, &g->_t_adjacency_matrix);
+	_Graph_Create_Matrix_Mutex(g, &g->_zero_matrix);
 
 	// Create edge accumulator binary function
 	if(!_graph_edge_accum) {
@@ -1048,6 +1066,7 @@ int Graph_AddLabel(Graph *g) {
 	GrB_Matrix m;
 	GrB_Matrix_new(&m, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
 	array_append(g->labels, m);
+	_Graph_Create_Matrix_Mutex(g, &m);
 	return array_len(g->labels) - 1;
 }
 
@@ -1057,7 +1076,7 @@ int Graph_AddRelationType(Graph *g) {
 	GrB_Matrix m;
 	GrB_Matrix_new(&m, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
 	g->relations = array_append(g->relations, m);
-
+	_Graph_Create_Matrix_Mutex(g, &m);
 	_Graph_AddRelationMap(g);
 
 	// Edge mapping for relation K is at _relations_map[K].
@@ -1150,7 +1169,7 @@ void Graph_Free(Graph *g) {
 	DataBlock_Free(g->edges);
 
 	// Destroy graph-scoped locks.
-	assert(pthread_mutex_destroy(&g->_mutex) == 0);
+	raxFreeWithCallback(g->_matrices_mutex, _Graph_Free_Matrix_Mutex);
 	assert(pthread_mutex_destroy(&g->_writers_mutex) == 0);
 
 	if(g->_writelocked) Graph_ReleaseLock(g);

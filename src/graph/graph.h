@@ -65,8 +65,8 @@ struct Graph {
 	GrB_Matrix *relations;              // Relation matrices.
 	GrB_Matrix *_relations_map;         // Maps from (relation, row, col) to edge id.
 	GrB_Matrix _zero_matrix;            // Zero matrix.
+	rax *_matrices_mutex;               // Matrices mutex map.
 	pthread_mutex_t _writers_mutex;     // Mutex restrict single writer.
-	pthread_mutex_t _mutex;             // Mutex for accessing critical sections.
 	pthread_rwlock_t _rwlock;           // Read-write lock scoped to this specific graph
 	bool _writelocked;                  // true if the read-write lock was acquired by a writer
 	SyncMatrixFunc SynchronizeMatrix;   // Function pointer to matrix synchronization routine.
