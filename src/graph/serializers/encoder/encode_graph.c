@@ -193,7 +193,7 @@ void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g, char **string_mapping) {
 		NodeID src;
 		NodeID dest;
 		EdgeID edgeID;
-		GrB_Matrix M = g->_relations_map[r];
+		GrB_Matrix M = Graph_GetRelationMap(g, r);
 		GxB_MatrixTupleIter *it;
 		GxB_MatrixTupleIter_new(&it, M);
 		bool depleted = false;
