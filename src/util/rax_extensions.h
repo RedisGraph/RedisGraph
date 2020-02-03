@@ -13,6 +13,9 @@
 // Returns true if 'b' is a subset of 'a'.
 bool raxIsSubset(rax *a, rax *b);
 
+// Returns true if any key is found in both 'a' and 'b'.
+bool raxIntersects(rax *a, rax *b);
+
 // Duplicates a rax, performing a shallow copy of the original's values.
 rax *raxClone(rax *orig);
 

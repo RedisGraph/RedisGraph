@@ -89,7 +89,6 @@ Feature: OrderByAcceptance
             | 1 |
         And no side effects
 
-    @skip
     Scenario: Renaming columns before ORDER BY should return results in ascending order
         And having executed:
             """

@@ -105,7 +105,6 @@ class testWithClause(FlowTestsBase):
         expected = [[6, 15]]
         self.env.assertEqual(actual_result.result_set, expected)
 
-    # TODO UNWIND support needs to be extended for combinations like UNWIND...MATCH
     def test04_with_unwind_expressions(self):
         query = """UNWIND [1, 2, 3] AS x WITH x AS y RETURN y"""
         actual_result = redis_graph.query(query)
@@ -146,7 +145,6 @@ class testWithClause(FlowTestsBase):
         self.env.assertEqual(actual_result.nodes_created, 1)
         self.env.assertEqual(actual_result.properties_set, 1)
 
-        # TODO Update CREATE to accept variable arguments from UNWIND, WITH, etc
         query = """UNWIND [5] AS a WITH a AS b CREATE (:unwind_label {prop: 'some_constant'})"""
         actual_result = redis_graph.query(query)
 
@@ -217,4 +215,11 @@ class testWithClause(FlowTestsBase):
         query = """UNWIND ['scope1'] AS a WITH a AS b UNWIND ['scope2'] AS a WITH a WHERE a = 'scope2' RETURN a"""
         actual_result = redis_graph.query(query)
         expected = [['scope2']]
+        self.env.assertEqual(actual_result.result_set, expected)
+
+    # Verify that ORDER BY expressions on aliased projections work properly.
+    def test10_order_with_aliases(self):
+        query = """MATCH (a) WITH ID(a) AS id ORDER BY toInteger(id) LIMIT 3 RETURN id"""
+        actual_result = redis_graph.query(query)
+        expected = [[0], [1], [2]]
         self.env.assertEqual(actual_result.result_set, expected)

@@ -1078,8 +1078,6 @@ Feature: MatchAcceptance2
       | [:T2] |
     And no side effects
 
-@crash
-@skip
   Scenario: Matching using a relationship that is already bound, in conjunction with aggregation and ORDER BY
     Given an empty graph
     And having executed:
@@ -1142,7 +1140,6 @@ Feature: MatchAcceptance2
       | (:A) | [:T] | (:B) |
     And no side effects
 
-@skip
   Scenario: Matching with LIMIT, then matching again using a relationship and node that are both already bound along with an additional predicate
     Given an empty graph
     And having executed:
