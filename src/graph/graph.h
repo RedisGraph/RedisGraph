@@ -51,21 +51,27 @@ typedef enum {
 	DISABLED,
 } MATRIX_POLICY;
 
+// Forward declaration of RG_Matrix type. Internal to graph.
+typedef struct {
+	GrB_Matrix grb_matrix;              // Underlying GrB_Matrix.
+	pthread_mutex_t mutex;              // Lock.
+} _RG_Matrix;
+typedef _RG_Matrix *RG_Matrix;
+
 // Forward declaration of Graph struct
 typedef struct Graph Graph;
 // typedef for synchronization function pointer
-typedef void (*SyncMatrixFunc)(const Graph *, GrB_Matrix);
+typedef void (*SyncMatrixFunc)(const Graph *, RG_Matrix);
 
 struct Graph {
 	DataBlock *nodes;                   // Graph nodes stored in blocks.
 	DataBlock *edges;                   // Graph edges stored in blocks.
-	GrB_Matrix adjacency_matrix;        // Adjacency matrix, holds all graph connections.
-	GrB_Matrix _t_adjacency_matrix;     // Transposed Adjacency matrix.
-	GrB_Matrix *labels;                 // Label matrices.
-	GrB_Matrix *relations;              // Relation matrices.
-	GrB_Matrix *_relations_map;         // Maps from (relation, row, col) to edge id.
-	GrB_Matrix _zero_matrix;            // Zero matrix.
-	rax *_matrices_mutex;               // Matrices mutex map.
+	RG_Matrix adjacency_matrix;         // Adjacency matrix, holds all graph connections.
+	RG_Matrix _t_adjacency_matrix;      // Transposed Adjacency matrix.
+	RG_Matrix *labels;                  // Label matrices.
+	RG_Matrix *relations;               // Relation matrices.
+	RG_Matrix *_relations_map;          // Maps from (relation, row, col) to edge id.
+	RG_Matrix _zero_matrix;             // Zero matrix.
 	pthread_mutex_t _writers_mutex;     // Mutex restrict single writer.
 	pthread_rwlock_t _rwlock;           // Read-write lock scoped to this specific graph
 	bool _writelocked;                  // true if the read-write lock was acquired by a writer
