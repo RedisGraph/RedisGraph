@@ -5,6 +5,7 @@
  */
 
 #include "rax_extensions.h"
+#include <assert.h>
 
 bool raxIsSubset(rax *a, rax *b) {
 	raxIterator it;
@@ -22,6 +23,7 @@ bool raxIsSubset(rax *a, rax *b) {
 }
 
 bool raxIntersects(rax *a, rax *b) {
+	assert(a && b);
 	raxIterator it;
 	raxStart(&it, a);
 	raxSeek(&it, "^", NULL, 0);
