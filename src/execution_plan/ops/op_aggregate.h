@@ -20,7 +20,7 @@ typedef enum {
 
 typedef struct {
 	OpBase op;
-	AR_ExpNode **exps;                             /* Projected expressions (including order exps). */
+	AR_ExpNode **projection_exps;                  /* Projected expressions (including order exps). */
 	uint *record_offsets;                          /* Record IDs for exps and order_exps. */
 	AR_ExpNode **non_aggregated_expressions;       /* Array of arithmetic expression. */
 	ExpClassification *expression_classification;  /* Classifies each expression as aggregated/not. */
@@ -33,5 +33,6 @@ typedef struct {
 	bool should_cache_records;                     /* Records should be cached if we're sorting after aggregation. */
 } OpAggregate;
 
-OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should_cache_records);
+OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **projection_exps,
+					   AR_ExpNode **order_exps);
 

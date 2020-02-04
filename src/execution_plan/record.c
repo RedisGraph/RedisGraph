@@ -18,7 +18,6 @@ static void _RecordPropagateEntry(Record dest, Record src, uint idx) {
 	if(e.type == REC_TYPE_SCALAR) SIValue_MakeVolatile(&src->entries[idx].value.s);
 }
 
-// This function is currently unused.
 Record Record_New(rax *mapping) {
 	assert(mapping);
 	// Determine record size.
@@ -283,7 +282,6 @@ void Record_FreeEntries(Record r) {
 	}
 }
 
-// This function is currently unused.
 void Record_Free(Record r) {
 	Record_FreeEntries(r);
 	rm_free(r);

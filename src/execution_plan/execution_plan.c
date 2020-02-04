@@ -368,82 +368,21 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_lim
 	_ExecutionPlan_PlaceApplyOps(plan);
 }
 
-/* Merge all order expressions that can operate on the input Record into the projections array, removing duplicates.
- * Returns an array containing all expressions that should operate on the projected Record. */
-static AR_ExpNode **_combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **order_exps) {
-	rax *projection_names = raxNew();
-	AR_ExpNode **project_exps = *exps_ptr;
-	uint order_count = array_len(order_exps);
-	uint project_count = array_len(project_exps);
-	AR_ExpNode **post_projection_exps = array_new(AR_ExpNode *, order_count);
-
-	// Add all WITH/RETURN projection names to rax.
-	for(uint i = 0; i < project_count; i ++) {
-		const char *name = project_exps[i]->resolved_name;
-		raxTryInsert(projection_names, (unsigned char *)name, strlen(name), NULL, NULL);
-	}
-
-	// Merge non-duplicate order expressions into one of the two projection arrays, depending on when it can be resolved.
-	for(int i = 0; i < order_count; i ++) {
-		const char *name = order_exps[i]->resolved_name;
-		// The ORDER BY alias is also in WITH/RETURN; this expression is redundant and may be skipped. Ex:
-		// UNWIND [1,2] AS a RETURN a ORDER BY a
-		if(raxFind(projection_names, (unsigned char *)name, strlen(name)) != raxNotFound) continue;
-
-		/* Separate the ORDER expressions that should operate on the projected Record rather than the input Record.
-		 * UNWIND [1,2] AS a RETURN a, rand() AS r ORDER BY ABS(r)
-		 * ABS(r) relies on the value computed by rand(), which can only be accessed in the projected Record. */
-		rax *aliases_in_expression = raxNew();
-		AR_EXP_CollectEntities(order_exps[i], aliases_in_expression);
-		bool operate_on_projection = raxIntersects(aliases_in_expression, projection_names);
-		if(operate_on_projection) {
-			// The ORDER expression relies on an alias in the projected Record, and should operate on that.
-			post_projection_exps = array_append(post_projection_exps, order_exps[i]);
-		} else {
-			// The ORDER expression is independent and may be combined with the input expressions. Ex:
-			// MATCH (a) RETURN a.name ORDER BY a.age
-			project_exps = array_append(project_exps, order_exps[i]);
-		}
-
-		raxFree(aliases_in_expression);
-		order_exps = array_del_fast(order_exps, i); // Remove the migrated expression.
-		// Decrement the loop variables so that the next evaluation operates on the correct ORDER expression.
-		i--;
-		order_count--;
-	}
-
-	raxFree(projection_names);
-
-	*exps_ptr = project_exps;
-	return post_projection_exps;
-}
-
 // Build an aggregate or project operation and any required modifying operations.
 // This logic applies for both WITH and RETURN projections.
 static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **projections,
 									   AR_ExpNode **order_exps, uint skip,
 									   int *sort_directions, bool aggregate, bool distinct) {
 
-	AR_ExpNode **post_projection_exps = NULL;
-	AR_ExpNode **mutable_order_exps = NULL;
-	// Merge order expressions into the projections array.
-	if(order_exps) {
-		/* Copy the array of ORDER BY expressions so that we can remove redundant entries
-		 * and differentiate between pre- and post- projection expressions without modifying
-		 * the input to NewSortOp. */
-		array_clone(mutable_order_exps, order_exps);
-		post_projection_exps = _combine_projection_arrays(&projections, mutable_order_exps);
-	}
+	// If we are performing sorting, collect all ORDER BY aliases to populate the sort op.
+	uint order_exp_count = array_len(order_exps);
+	const char *order_aliases[order_exp_count];
+	for(uint i = 0; i < order_exp_count; i ++) order_aliases[i] = order_exps[i]->resolved_name;
 
 	// Our fundamental operation will be a projection or aggregation.
 	OpBase *op;
-	if(aggregate) {
-		// An aggregate op's caching policy depends on whether its results will be sorted.
-		bool sorting_after_aggregation = (order_exps != NULL);
-		op = NewAggregateOp(plan, projections, sorting_after_aggregation);
-	} else {
-		op = NewProjectOp(plan, projections, post_projection_exps);
-	}
+	if(aggregate) op = NewAggregateOp(plan, projections, order_exps);
+	else op = NewProjectOp(plan, projections, order_exps);
 	_ExecutionPlan_UpdateRoot(plan, op);
 
 	/* Add modifier operations in order such that the final execution plan will follow the sequence:
@@ -459,14 +398,8 @@ static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **project
 	if(sort_directions) {
 		// The sort operation will obey a specified limit, but must account for skipped records
 		uint sort_limit = (limit != UNLIMITED) ? limit + skip : 0;
-		OpBase *op = NewSortOp(plan, order_exps, sort_directions, sort_limit);
+		OpBase *op = NewSortOp(plan, order_aliases, order_exp_count, sort_directions, sort_limit);
 		_ExecutionPlan_UpdateRoot(plan, op);
-
-		// Free any order expressions that have not been migrated into the projections array.
-		uint free_count = array_len(mutable_order_exps);
-		for(uint i = 0; i < free_count; i++) AR_EXP_Free(mutable_order_exps[i]);
-		array_free(mutable_order_exps);
-		array_free(order_exps);
 	}
 
 	if(skip) {

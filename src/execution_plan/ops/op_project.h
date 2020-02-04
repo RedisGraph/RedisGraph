@@ -12,10 +12,12 @@
 
 typedef struct {
 	OpBase op;
-	AR_ExpNode **input_exps;        // Expressions to evaluate on the input Record.
-	AR_ExpNode **output_exps;       // Expressions to evaluate on the projected Record.
-	uint *record_offsets;           // Record IDs corresponding to each projection (including order exps).
-	bool singleResponse;            // When no child operations, return NULL after a first response.
+	Record intermediate_record;        // Intermediate Record in case we need to access inputs and outputs.
+	intptr_t *intermediate_record_ids; // IDs for populating the intermediate Record.
+	AR_ExpNode **projection_exps;      // Expressions to evaluate on the input Record.
+	AR_ExpNode **order_exps;           // Expressions to evaluate on the intermediate Record.
+	uint *record_offsets;              // Record IDs corresponding to all projections (including order exps).
+	bool singleResponse;               // When no child operations, return NULL after a first response.
 } OpProject;
 
 OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **input_exps, AR_ExpNode **output_exps);

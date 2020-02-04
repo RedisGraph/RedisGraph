@@ -23,7 +23,7 @@ class testOrderBy(FlowTestsBase):
 
         redis_graph.commit()
 
-    def test_multiple_order_by(self):
+    def test01_multiple_order_by(self):
         # Query with multiple order by operation
         q = """MATCH (n:Person) RETURN n.id, n.name ORDER BY n.id DESC, n.name ASC"""
         expected = [[819, "Bing"], [819, "Qiu"], [622, "Mo"]]
@@ -35,9 +35,16 @@ class testOrderBy(FlowTestsBase):
         actual_result = redis_graph.query(q)
         self.env.assertEquals(actual_result.result_set, expected)
 
-    def test_order_by_function_on_alias(self):
+    def test02_order_by_function_on_alias(self):
         # Validate that aliases introduced by the RETURN clause can be accessed by nested ORDER BY expressions.
         q = """MATCH (n:Person) RETURN n.id AS id ORDER BY toInteger(id)"""
+        expected = [[622], [819], [819]]
+        actual_result = redis_graph.query(q)
+        self.env.assertEquals(actual_result.result_set, expected)
+
+    def test03_order_by_input_and_projection_vals(self):
+        # Validate that ORDER BY expressions that rely on both inputted and calculated values evaluate properly.
+        q = """MATCH (n:Person) RETURN n.id AS id ORDER BY id + n.id"""
         expected = [[622], [819], [819]]
         actual_result = redis_graph.query(q)
         self.env.assertEquals(actual_result.result_set, expected)

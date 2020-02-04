@@ -21,5 +21,6 @@ typedef struct {
 } OpSort;
 
 /* Creates a new Sort operation */
-OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions, uint limit);
+OpBase *NewSortOp(const ExecutionPlan *plan, const char **order_aliases, uint order_count,
+				  int *directions, uint limit);
 

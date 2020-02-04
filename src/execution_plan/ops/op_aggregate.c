@@ -6,6 +6,7 @@
 
 #include "op_aggregate.h"
 #include "op_sort.h"
+#include "shared/project_functions.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../../util/rmalloc.h"
@@ -28,7 +29,7 @@ static void _classify_expressions(OpAggregate *op) {
 	op->expression_classification = rm_malloc(sizeof(ExpClassification) * op->exp_count);
 
 	for(uint i = 0; i < op->exp_count; i++) {
-		AR_ExpNode *exp = op->exps[i];
+		AR_ExpNode *exp = op->projection_exps[i];
 		if(!AR_EXP_ContainsAggregation(exp)) {
 			op->expression_classification[i] = NON_AGGREGATED;
 			op->non_aggregated_expressions = array_append(op->non_aggregated_expressions, exp);
@@ -43,7 +44,7 @@ static AR_ExpNode **_build_aggregated_expressions(OpAggregate *op) {
 
 	for(uint i = 0; i < op->exp_count; i++) {
 		if(op->expression_classification[i] == NON_AGGREGATED) continue;
-		AR_ExpNode *exp = AR_EXP_Clone(op->exps[i]);
+		AR_ExpNode *exp = AR_EXP_Clone(op->projection_exps[i]);
 		agg_exps = array_append(agg_exps, exp);
 	}
 
@@ -197,18 +198,23 @@ static Record _handoff(OpAggregate *op) {
 	return r;
 }
 
-OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should_cache_records) {
+OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **projection_exps,
+					   AR_ExpNode **order_exps) {
 	OpAggregate *op = rm_malloc(sizeof(OpAggregate));
-	op->exps = exps;
 	op->group = NULL;
 	op->group_iter = NULL;
 	op->group_keys = NULL;
 	op->expression_classification = NULL;
 	op->non_aggregated_expressions = NULL;
 	op->groups = CacheGroupNew();
-	op->exp_count = array_len(exps);
+	op->should_cache_records = (order_exps != NULL);
+
+	// Migrate ORDER expressions to the projection array as appropriate.
+	CombineProjectionArrays(&projection_exps, &order_exps);
+	assert(!order_exps && "Aggregate operation does not resolve all ORDER BY expressions"); // TODO tmp
+	op->exp_count = array_len(projection_exps);
+	op->projection_exps = projection_exps;
 	op->record_offsets = array_new(uint, op->exp_count);
-	op->should_cache_records = should_cache_records;
 
 	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", AggregateInit, AggregateConsume,
 				AggregateReset, NULL, AggregateFree, false, plan);
@@ -216,7 +222,7 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should
 	for(uint i = 0; i < op->exp_count; i ++) {
 		// The projected record will associate values with their resolved name
 		// to ensure that space is allocated for each entry.
-		int record_idx = OpBase_Modifies((OpBase *)op, op->exps[i]->resolved_name);
+		int record_idx = OpBase_Modifies((OpBase *)op, op->projection_exps[i]->resolved_name);
 		op->record_offsets = array_append(op->record_offsets, record_idx);
 	}
 
@@ -274,10 +280,10 @@ static void AggregateFree(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
 	if(!op) return;
 
-	if(op->exps) {
-		for(uint i = 0; i < op->exp_count; i ++) AR_EXP_Free(op->exps[i]);
-		array_free(op->exps);
-		op->exps = NULL;
+	if(op->projection_exps) {
+		for(uint i = 0; i < op->exp_count; i ++) AR_EXP_Free(op->projection_exps[i]);
+		array_free(op->projection_exps);
+		op->projection_exps = NULL;
 	}
 
 	if(op->group_keys) {

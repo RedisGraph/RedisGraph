@@ -34,7 +34,8 @@ static int _record_compare(Record a, Record b, const OpSort *op) {
 // Quicksort function to compare two records on a subset of fields.
 // Returns true if a is less than b.
 static bool _record_islt(Record a, Record b, const OpSort *op) {
-  return _record_compare(a, b, op) > 0; // Return true if the current left element is less than the right.
+	// Return true if the current left element is less than the right.
+	return _record_compare(a, b, op) > 0;
 }
 
 // Compares two heap record nodes.
@@ -72,7 +73,8 @@ static inline Record _handoff(OpSort *op) {
 	return NULL;
 }
 
-OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions, uint limit) {
+OpBase *NewSortOp(const ExecutionPlan *plan, const char **order_aliases, uint order_count,
+				  int *directions, uint limit) {
 	OpSort *op = rm_malloc(sizeof(OpSort));
 	op->heap = NULL;
 	op->buffer = NULL;
@@ -86,11 +88,10 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions,
 	OpBase_Init((OpBase *)op, OPType_SORT, "Sort", NULL,
 				SortConsume, SortReset, NULL, SortFree, false, plan);
 
-	uint comparison_count = array_len(exps);
-	op->record_offsets = array_new(uint, comparison_count);
-	for(uint i = 0; i < comparison_count; i ++) {
+	op->record_offsets = array_new(uint, order_count);
+	for(uint i = 0; i < order_count; i ++) {
 		int record_idx;
-		assert(OpBase_Aware((OpBase *)op, exps[i]->resolved_name, &record_idx));
+		assert(OpBase_Aware((OpBase *)op, order_aliases[i], &record_idx));
 		op->record_offsets = array_append(op->record_offsets, record_idx);
 	}
 
@@ -189,7 +190,7 @@ static void SortFree(OpBase *ctx) {
 		op->record_offsets = NULL;
 	}
 
-	if (op->directions) {
+	if(op->directions) {
 		array_free(op->directions);
 		op->directions = NULL;
 	}
