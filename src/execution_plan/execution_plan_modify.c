@@ -128,13 +128,17 @@ void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
 		// Remove new root's parent pointer.
 		plan->root->parent = NULL;
 	} else {
-		// Remove op from its parent.
-		OpBase *parent = op->parent;
-		_OpBase_RemoveChild(op->parent, op);
+		if(op->childCount == 1) {
+			_ExecutionPlan_ParentReplaceChild(op->parent, op, op->children[0]);
+		} else {
+			// Remove op from its parent.
+			OpBase *parent = op->parent;
+			_OpBase_RemoveChild(op->parent, op);
 
-		// Add each of op's children as a child of op's parent.
-		for(int i = 0; i < op->childCount; i++) {
-			_OpBase_AddChild(parent, op->children[i]);
+			// Add each of op's children as a child of op's parent.
+			for(int i = 0; i < op->childCount; i++) {
+				_OpBase_AddChild(parent, op->children[i]);
+			}
 		}
 	}
 
