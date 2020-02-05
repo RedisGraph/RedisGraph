@@ -75,7 +75,8 @@ static int _relate_exp_to_stream(AR_ExpNode *exp, rax **stream_entities, int str
 	return stream_num;
 }
 
-static OpBase *_chain_cp_and_filter(ExecutionPlan *plan, OpBase *lhs, OpBase *rhs, OpBase *filter) {
+static OpBase *_chain_cp_and_filter(const ExecutionPlan *plan, OpBase *lhs, OpBase *rhs,
+									OpBase *filter) {
 	OpBase *cp = NewCartesianProductOp(plan);
 	ExecutionPlan_AddOp(cp, lhs);
 	ExecutionPlan_AddOp(cp, rhs);
@@ -143,7 +144,7 @@ static void _optimize_cartesian_product(ExecutionPlan *plan, OpBase *cp) {
 		ExecutionPlan_DetachOp(left_branch);
 		ExecutionPlan_RemoveOp(plan, (OpBase *)filter_op);
 		// Combine the streams as cartesian product and filter them.
-		OpBase *filtered_cp_branch = _chain_cp_and_filter(plan, left_branch, right_branch,
+		OpBase *filtered_cp_branch = _chain_cp_and_filter(cp->plan, left_branch, right_branch,
 														  (OpBase *)filter_op);
 
 		if(cp->childCount == 0) {
