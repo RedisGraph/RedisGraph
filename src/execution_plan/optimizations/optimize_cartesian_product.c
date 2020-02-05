@@ -7,6 +7,7 @@
 #include "optimize_cartesian_product.h"
 #include "../ops/op_filter.h"
 #include "../ops/op_cartesian_product.h"
+#include "optimizations_util.h"
 
 #define NOT_RESOLVED -1
 
@@ -39,42 +40,6 @@ static OpFilter **_locate_filters(OpBase *cp) {
 	return filters;
 }
 
-// Returns true if the stream resolves all required entities.
-static bool _stream_resolves_entities(rax *stream_resolves, rax *entities_to_resolve) {
-	bool resolved_all = true;
-	raxIterator it;
-	raxStart(&it, entities_to_resolve);
-
-	raxSeek(&it, "^", NULL, 0);
-	while(raxNext(&it)) {
-		if(raxFind(stream_resolves, it.key, it.key_len) == raxNotFound) {
-			resolved_all = false;
-			break;
-		}
-	}
-
-	raxStop(&it);
-	return resolved_all;
-}
-
-/* Given an expression node from a filter tree, returns the stream number
- * that fully resolves the expression's references. */
-static int _relate_exp_to_stream(AR_ExpNode *exp, rax **stream_entities, int stream_count) {
-	// Collect the referenced entities in the expression.
-	rax *entities = raxNew();
-	AR_EXP_CollectEntities(exp, entities);
-
-	int stream_num;
-	for(stream_num = 0; stream_num < stream_count; stream_num ++) {
-		// See if the stream resolves all of the references.
-		if(_stream_resolves_entities(stream_entities[stream_num], entities)) break;
-	}
-	raxFree(entities);
-
-	if(stream_num == stream_count) return NOT_RESOLVED; // No single stream resolves all references.
-	return stream_num;
-}
-
 static OpBase *_chain_cp_and_filter(const ExecutionPlan *plan, OpBase *lhs, OpBase *rhs,
 									OpBase *filter) {
 	OpBase *cp = NewCartesianProductOp(plan);
@@ -82,18 +47,6 @@ static OpBase *_chain_cp_and_filter(const ExecutionPlan *plan, OpBase *lhs, OpBa
 	ExecutionPlan_AddOp(cp, rhs);
 	ExecutionPlan_AddOp(filter, cp);
 	return filter;
-}
-
-/* This function will try to re-position given filter after the optimization had modified the execution plan structure.
- * The filter will be placed at the earliest position along the execution plan where all references are resolved. */
-static void _re_order_filter_op(ExecutionPlan *plan, OpBase *cp, OpFilter *filter) {
-	FT_FilterNode *additional_filter_tree = filter->filterTree;
-
-	rax *references = FilterTree_CollectModified(additional_filter_tree);
-	OpBase *op = ExecutionPlan_LocateReferences(cp, NULL, references);
-	ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
-	ExecutionPlan_PushBelow(op, (OpBase *)filter);
-	raxFree(references);
 }
 
 static void _optimize_cartesian_product(ExecutionPlan *plan, OpBase *cp) {
@@ -108,10 +61,7 @@ static void _optimize_cartesian_product(ExecutionPlan *plan, OpBase *cp) {
 	// For each stream joined by the Cartesian product, collect all entities the stream resolves.
 	int stream_count = cp->childCount;
 	rax *stream_entities[stream_count];
-	for(int j = 0; j < stream_count; j ++) {
-		stream_entities[j] = raxNew();
-		ExecutionPlan_BoundVariables(cp->children[j], stream_entities[j]);
-	}
+	build_streams_from_op(cp, stream_entities, stream_count);
 
 	for(uint i = 0; i < filter_count; i ++) {
 		// Try to create a new dual-branched cartesian product, followed by the current filter.
@@ -123,11 +73,11 @@ static void _optimize_cartesian_product(ExecutionPlan *plan, OpBase *cp) {
 
 		/* Make sure LHS of the filter is resolved by a stream. */
 		AR_ExpNode *lhs = f->pred.lhs;
-		uint lhs_resolving_stream = _relate_exp_to_stream(lhs, stream_entities, stream_count);
+		uint lhs_resolving_stream = relate_exp_to_stream(lhs, stream_entities, stream_count);
 		if(lhs_resolving_stream == NOT_RESOLVED) continue;
 		/* Make sure RHS of the filter is resolved by a stream. */
 		AR_ExpNode *rhs = f->pred.rhs;
-		uint rhs_resolving_stream = _relate_exp_to_stream(rhs, stream_entities, stream_count);
+		uint rhs_resolving_stream = relate_exp_to_stream(rhs, stream_entities, stream_count);
 		if(rhs_resolving_stream == NOT_RESOLVED) continue;
 
 		// This stream is solved by a single cartesian product child and needs to be propogate later.
@@ -160,10 +110,7 @@ static void _optimize_cartesian_product(ExecutionPlan *plan, OpBase *cp) {
 			for(int j = 0; j < stream_count; j ++) raxFree(stream_entities[j]);
 			// Re-collect cartesian product streams.
 			stream_count = cp->childCount;
-			for(int j = 0; j < stream_count; j ++) {
-				stream_entities[j] = raxNew();
-				ExecutionPlan_BoundVariables(cp->children[j], stream_entities[j]);
-			}
+			build_streams_from_op(cp, stream_entities, stream_count);
 		}
 	}
 	// Try to re-position the additional filters.
@@ -172,7 +119,7 @@ static void _optimize_cartesian_product(ExecutionPlan *plan, OpBase *cp) {
 	if(pending_filters_count < filter_count) {
 		for(uint i = 0; i < pending_filters_count; i++) {
 			OpFilter *additional_filter = pending_filters[i];
-			_re_order_filter_op(plan, pending_filters_lookup_root, additional_filter);
+			re_order_filter_op(plan, pending_filters_lookup_root, additional_filter);
 		}
 	}
 	// Clean up.
