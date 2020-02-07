@@ -73,15 +73,11 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 	// Retrieve all equality filter operations located upstream from the Cartesian Product.
 	OpFilter **filter_ops = _locate_filters(cp);
 	uint filter_count = array_len(filter_ops);
-	/* This array will hold filters which are possible to re position in the execution plan,
-	 * but during the optimization construction they will not yield a new join operation. */
-	OpFilter **pending_filters = array_new(OpFilter *, filter_count);
-	OpBase *pending_filters_lookup_root = cp;
 
 	// For each stream joined by the Cartesian product, collect all entities the stream resolves.
 	int stream_count = cp->childCount;
 	rax *stream_entities[stream_count];
-	build_streams_from_op(cp, stream_entities, stream_count);
+	OptimizeUtils_BuildStreamFromOp(cp, stream_entities, stream_count);
 	for(uint i = 0; i < filter_count; i ++) {
 		// Try reduce the cartesian product to value hash join with the current filter.
 		OpFilter *filter_op = filter_ops[i];
@@ -93,16 +89,20 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 
 		/* Make sure LHS of the filter is resolved by a stream. */
 		AR_ExpNode *lhs = f->pred.lhs;
-		uint lhs_resolving_stream = relate_exp_to_stream(lhs, stream_entities, stream_count);
+		uint lhs_resolving_stream = OptimizeUtils_RelateExpToStream(lhs, stream_entities, stream_count);
 		if(lhs_resolving_stream == NOT_RESOLVED) continue;
 		/* Make sure RHS of the filter is resolved by a stream. */
 		AR_ExpNode *rhs = f->pred.rhs;
-		uint rhs_resolving_stream = relate_exp_to_stream(rhs, stream_entities, stream_count);
+		uint rhs_resolving_stream = OptimizeUtils_RelateExpToStream(rhs, stream_entities, stream_count);
 		if(rhs_resolving_stream == NOT_RESOLVED) continue;
 
-		// This stream is solved by a single cartesian product child and needs to be propogate later.
+		/* Fix for issue #869 https://github.com/RedisGraph/RedisGraph/issues/869.
+		* When trying to replace a cartesian product which followed by multiple filters that can be resolved by the same two branches
+		* the application crashed on assert(lhs_resolving_stream != rhs_resolving_stream) since before the fix only one filter was used
+		* to create the hash join, and the other were ignored. */
+		// This stream is solved by a single cartesian product child and needs to be propogate up.
 		if(lhs_resolving_stream == rhs_resolving_stream) {
-			pending_filters = array_append(pending_filters, filter_op);
+			OptimizeUtils_MigrateFilterOp(plan, cp->children[rhs_resolving_stream], filter_op);
 			continue;
 		}
 
@@ -129,8 +129,11 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 			// The entire Cartesian Product can be replaced with the join op.
 			ExecutionPlan_ReplaceOp(plan, cp, value_hash_join);
 			OpBase_Free(cp);
-			pending_filters_lookup_root = value_hash_join;
-			break;
+			// Try to popagate up the remaining filters.
+			i++;
+			for(; i < filter_count; i++) {
+				OptimizeUtils_MigrateFilterOp(plan, value_hash_join, filter_ops[i]);
+			}
 		} else {
 			// The Cartesian Product still has a child operation; introduce the join op as another child.
 			ExecutionPlan_AddOp(cp, value_hash_join);
@@ -138,26 +141,12 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 			for(int j = 0; j < stream_count; j ++) raxFree(stream_entities[j]);
 			// Re-collect cartesian product streams.
 			stream_count = cp->childCount;
-			build_streams_from_op(cp, stream_entities, stream_count);
-		}
-	}
-	// Try to re-position the additional filters which can be solved by the join operation branches.
-	uint pending_filters_count = array_len(pending_filters);
-	// If there was a reduction to join, there will be less pending filters.
-	if(pending_filters_count < filter_count) {
-		for(uint i = 0; i < pending_filters_count; i++) {
-			/* Fix for issue #869 https://github.com/RedisGraph/RedisGraph/issues/869.
-			 * When trying to replace a cartesian product which followed by multiple filters that can be resolved by the same two branches
-			 * the application crashed on assert(lhs_resolving_stream != rhs_resolving_stream) since before the fix only one filter was used
-			 * to create the hash join, and the other were ignored. */
-			OpFilter *additional_filter = pending_filters[i];
-			re_order_filter_op(plan, pending_filters_lookup_root, additional_filter);
+			OptimizeUtils_BuildStreamFromOp(cp, stream_entities, stream_count);
 		}
 	}
 	// Clean up.
 	for(int j = 0; j < stream_count; j ++) raxFree(stream_entities[j]);
 	array_free(filter_ops);
-	array_free(pending_filters);
 }
 
 // TODO: Consider changing Cartesian Products such that each has exactly two child operations.

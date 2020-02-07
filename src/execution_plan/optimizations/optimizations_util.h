@@ -9,7 +9,7 @@
 #include "../execution_plan.h"
 #include "../ops/op_filter.h"
 
-// To be used as a possible output of Relate_exp_to_stream.
+// To be used as a possible output of OptimizeUtils_RelateExpToStream.
 #define NOT_RESOLVED -1
 
 
@@ -22,7 +22,7 @@
  * @param  *filter: Filter operation to place.
  * @retval None
  */
-void re_order_filter_op(ExecutionPlan *plan, OpBase *root, OpFilter *filter);
+void OptimizeUtils_MigrateFilterOp(ExecutionPlan *plan, OpBase *root, OpFilter *filter);
 
 /*  */
 /**
@@ -33,7 +33,7 @@ void re_order_filter_op(ExecutionPlan *plan, OpBase *root, OpFilter *filter);
  * @param  stream_count: Amount of stream to search in (Left-to-Right).
  * @retval Stream index if found. NOT_RESOLVED if non of the stream resolve the expression.
  */
-int relate_exp_to_stream(AR_ExpNode *exp, rax **stream_entities, int stream_count);
+int OptimizeUtils_RelateExpToStream(AR_ExpNode *exp, rax **stream_entities, int stream_count);
 
 /**
  * @brief  This function generates a rax containing the bound variables of each
@@ -45,4 +45,4 @@ int relate_exp_to_stream(AR_ExpNode *exp, rax **stream_entities, int stream_coun
  * @param  stream_count: Amount of op children to process (Left-to-Right order).
  * @retval None
  */
-void build_streams_from_op(OpBase *op, rax **streams, int stream_count);
+void OptimizeUtils_BuildStreamFromOp(OpBase *op, rax **streams, int stream_count);

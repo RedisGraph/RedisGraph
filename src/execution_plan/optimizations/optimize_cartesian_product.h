@@ -24,6 +24,6 @@
  * a and b, and re-position the filter after this new cartesian product, remove both a and b branches from
  * the original cartesian product and place the filter operation is a new branch.
  * Creating nested cartesian products operations and re-positioning the filter op will:
- * 1. Might reduce memory consumption (store f records instead n^x) in each phase.
- * 2. The filter overall runtime by order(s) of magnitude.*/
+ * 1. Potentially reduce memory consumption (storing only f records instead n^x) in each phase.
+ * 2. Reduce the overall filter runtime by potentially order(s) of magnitude. */
 void optimizeCartesianProduct(ExecutionPlan *plan);
