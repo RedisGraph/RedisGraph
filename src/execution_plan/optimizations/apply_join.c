@@ -97,10 +97,10 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 		if(rhs_resolving_stream == NOT_RESOLVED) continue;
 
 		/* Fix for issue #869 https://github.com/RedisGraph/RedisGraph/issues/869.
-		* When trying to replace a cartesian product which followed by multiple filters that can be resolved by the same two branches
-		* the application crashed on assert(lhs_resolving_stream != rhs_resolving_stream) since before the fix only one filter was used
-		* to create the hash join, and the other were ignored. */
-		// This stream is solved by a single cartesian product child and needs to be propogate up.
+		 * When trying to replace a cartesian product which followed by multiple filters that can be resolved by the same two branches
+		 * the application crashed on assert(lhs_resolving_stream != rhs_resolving_stream) since before the fix only one filter was used
+		 * to create the hash join, and the other were ignored. */
+		// This stream is solved by a single cartesian product child and needs to be propagated up.
 		if(lhs_resolving_stream == rhs_resolving_stream) {
 			OptimizeUtils_MigrateFilterOp(plan, cp->children[rhs_resolving_stream], filter_op);
 			continue;
@@ -110,7 +110,7 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 		lhs = AR_EXP_Clone(lhs);
 		rhs = AR_EXP_Clone(rhs);
 
-		// Retrieve the relevent branch roots.
+		// Retrieve the relevant branch roots.
 		OpBase *right_branch = cp->children[rhs_resolving_stream];
 		OpBase *left_branch = cp->children[lhs_resolving_stream];
 		// Detach the streams for the Value Hash Join from the execution plan.
@@ -129,7 +129,11 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 			// The entire Cartesian Product can be replaced with the join op.
 			ExecutionPlan_ReplaceOp(plan, cp, value_hash_join);
 			OpBase_Free(cp);
-			// Try to popagate up the remaining filters.
+			/* The optimization has depleted all of the cartesian product children, merged them and replaced the
+			 * cartesian product with the new operation.
+			 * Since the original cartesian product is no longer a valid operation, and there might be
+			 * additional filters which are applicable to re position after the optimization is done,
+			 * the following code tries to propagate up the remaining filters, and finish the loop. */
 			i++;
 			for(; i < filter_count; i++) {
 				OptimizeUtils_MigrateFilterOp(plan, value_hash_join, filter_ops[i]);
@@ -137,11 +141,13 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 		} else {
 			// The Cartesian Product still has a child operation; introduce the join op as another child.
 			ExecutionPlan_AddOp(cp, value_hash_join);
-			// Streams are no longer valid since cartesian product changed.
-			for(int j = 0; j < stream_count; j ++) raxFree(stream_entities[j]);
-			// Re-collect cartesian product streams.
-			stream_count = cp->childCount;
-			OptimizeUtils_BuildStreamFromOp(cp, stream_entities, stream_count);
+			// If there are remaining filters, re-collect cartesian product streams.
+			if(i + 1 < filter_count) {
+				// Streams are no longer valid since cartesian product changed.
+				for(int j = 0; j < stream_count; j ++) raxFree(stream_entities[j]);
+				stream_count = cp->childCount;
+				OptimizeUtils_BuildStreamFromOp(cp, stream_entities, stream_count);
+			}
 		}
 	}
 	// Clean up.

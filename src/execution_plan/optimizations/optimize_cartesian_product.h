@@ -10,7 +10,7 @@
 
 /* This optimization takes multiple branched cartesian product (with more than two branches),
  * followed by filter(s) and try to apply the filter as soon possible by
- * trying to locate situations where a cartesian product of two disjoint streams
+ * locating situations where a new Cartesian Product of just two streams can resolve the filter.
  * can be filtered by the filter.
  * For a filter F executing on a dual-branched cartesian product output, the runtime complexity is at most f=n^2.
  * For a filter F' which execute on a dual-branched cartesian product output, where one of its branches is F,

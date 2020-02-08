@@ -273,3 +273,14 @@ class testOptimizationsPlan(FlowTestsBase):
                     ['Roi']]
         resultset = graph.query(query).result_set
         self.env.assertEqual(resultset, expected)
+    
+    def test16_test_splitting_cartesian_product_with_multiple_filters(self):
+        query = """MATCH (p1), (p2), (p3) WHERE p1.name <> p2.name AND ID(p1) <> ID(p2) RETURN DISTINCT p2.name ORDER BY p2.name"""
+        executionPlan = graph.execution_plan(query)
+        self.env.assertEqual(2, executionPlan.count("Cartesian Product"))
+        expected = [['Ailon'],
+                    ['Alon'],
+                    ['Boaz'],
+                    ['Roi']]
+        resultset = graph.query(query).result_set
+        self.env.assertEqual(resultset, expected)

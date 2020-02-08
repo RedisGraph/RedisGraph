@@ -10,8 +10,10 @@
 void OptimizeUtils_MigrateFilterOp(ExecutionPlan *plan, OpBase *root, OpFilter *filter) {
 	rax *references = FilterTree_CollectModified(filter->filterTree);
 	OpBase *op = ExecutionPlan_LocateReferences(root, NULL, references);
-	ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
-	ExecutionPlan_PushBelow(op, (OpBase *)filter);
+	if(op != filter->op.children[0]) {
+		ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
+		ExecutionPlan_PushBelow(op, (OpBase *)filter);
+	}
 	raxFree(references);
 }
 
