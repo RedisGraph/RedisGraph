@@ -151,3 +151,27 @@ class testPathFilter(FlowTestsBase):
         expected_results = [[node0]]
         query_info = QueryInfo(query = query, description="Tests pattern filter edge conditions", expected_result = expected_results)
         self._assert_resultset_and_expected_mutually_included(result_set, query_info)
+
+    def test08_indexed_child_stream_resolution(self):
+        node0 = Node(node_id=0, label="L", properties={'x': 'a'})
+        node1 = Node(node_id=1, label="L", properties={'x': 'b'})
+        node2 = Node(node_id=2, label="L", properties={'x': 'c'})
+        edge01 = Edge(src_node=node0, dest_node=node1, relation="R")
+        edge12 = Edge(src_node=node1, dest_node=node2, relation="R")
+        redis_graph.add_node(node0)
+        redis_graph.add_node(node1)
+        redis_graph.add_node(node2)
+        redis_graph.add_edge(edge01)
+        redis_graph.add_edge(edge12)
+        redis_graph.flush()
+
+        # Create index.
+        query = "CREATE INDEX ON :L(x)"
+        result_set = redis_graph.query(query)
+        self.env.assertEquals(result_set.indices_created, 1)
+
+        # Issue a query in which the bound variable stream of the SemiApply op is an Index Scan.
+        query = "MATCH (n:L) WHERE (:L)<-[]-(n)<-[]-(:L {x: 'a'}) AND n.x = 'b' RETURN n.x"
+        result_set = redis_graph.query(query)
+        expected_results = [['b']]
+        self.env.assertEquals(result_set.result_set, expected_results)
