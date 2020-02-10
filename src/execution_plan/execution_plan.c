@@ -330,39 +330,53 @@ static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
 	}
 	array_free(filter_ops);
 }
+
+void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *search_root,
+									  const OpBase *recurse_limit, OpBase *filter) {
+	assert(filter->type == OPType_FILTER);
+	rax *references = FilterTree_CollectModified(((OpFilter *)filter)->filterTree);
+	OpBase *op;
+	if(raxSize(references) > 0) {
+		/* Scan execution plan, locate the earliest position where all
+		 * references been resolved. */
+		op = ExecutionPlan_LocateReferences(search_root, recurse_limit, references);
+	} else {
+		/* The filter tree does not contain references, like:
+		 * WHERE 1=1
+		 * TODO This logic is inadequate. For now, we'll place the op
+		 * directly below the first projection (hopefully there is one!). */
+		op = plan->root;
+		while(op->childCount > 0 && op->type != OPType_PROJECT && op->type != OPType_AGGREGATE) {
+			op = op->children[0];
+		}
+	}
+	assert(op);
+	// In case this is a pre-existing filter (this function is not called out from ExecutionPlan_PlaceFilterOps)
+	if(filter->childCount > 0) {
+		// If the located op is not the filter child, re position the filter.
+		if(op != filter->children[0]) {
+			ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
+			ExecutionPlan_PushBelow(op, (OpBase *)filter);
+		}
+	} else {
+		// This is a new filter.
+		ExecutionPlan_PushBelow(op, (OpBase *)filter);
+	}
+	// Re set the plan root if needed.
+	if(op == plan->root) plan->root = filter;
+	raxFree(references);
+}
+
 void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_limit) {
 	Vector *sub_trees = FilterTree_SubTrees(plan->filter_tree);
 
 	/* For each filter tree find the earliest position along the execution
 	 * after which the filter tree can be applied. */
 	for(int i = 0; i < Vector_Size(sub_trees); i++) {
-		OpBase *op;
 		FT_FilterNode *tree;
 		Vector_Get(sub_trees, i, &tree);
-		rax *references = FilterTree_CollectModified(tree);
-
-		if(raxSize(references) > 0) {
-			/* Scan execution plan, locate the earliest position where all
-			 * references been resolved. */
-			op = ExecutionPlan_LocateReferences(plan->root, recurse_limit, references);
-			assert(op);
-		} else {
-			/* The filter tree does not contain references, like:
-			 * WHERE 1=1
-			 * TODO This logic is inadequate. For now, we'll place the op
-			 * directly below the first projection (hopefully there is one!). */
-			op = plan->root;
-			while(op->childCount > 0 && op->type != OPType_PROJECT && op->type != OPType_AGGREGATE) {
-				op = op->children[0];
-			}
-		}
-
-		/* Create filter node.
-		 * Introduce filter op right below located op. */
 		OpBase *filter_op = NewFilterOp(plan, tree);
-		ExecutionPlan_PushBelow(op, filter_op);
-		if(op == plan->root) plan->root = filter_op;
-		raxFree(references);
+		ExecutionPlan_RePositionFilterOp(plan, plan->root, recurse_limit, filter_op);
 	}
 	Vector_Free(sub_trees);
 	_ExecutionPlan_PlaceApplyOps(plan);

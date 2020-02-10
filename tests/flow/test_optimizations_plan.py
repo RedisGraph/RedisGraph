@@ -284,3 +284,13 @@ class testOptimizationsPlan(FlowTestsBase):
                     ['Roi']]
         resultset = graph.query(query).result_set
         self.env.assertEqual(resultset, expected)
+
+    def test17_test_multiple_branch_filter_cp_optimization(self):
+        query = """MATCH (p1), (p2), (p3), (p4) WHERE p1.val + p2.val = p3.val AND p3.val > 0 RETURN DISTINCT p3.name ORDER BY p3.name"""
+        executionPlan = graph.execution_plan(query)
+        self.env.assertEqual(2, executionPlan.count("Cartesian Product"))
+        expected = [['Ailon'],
+                    ['Alon'],
+                    ['Boaz']]
+        resultset = graph.query(query).result_set
+        self.env.assertEqual(resultset, expected)

@@ -25,7 +25,7 @@ void optimizePlan(ExecutionPlan *plan) {
 	reduceScans(plan);
 
 	/* Try to optimize cartesian product */
-	optimizeCartesianProduct(plan);
+	reduceCartesianProductStreamCount(plan);
 
 	/* Try to match disjoint entities by applying a join */
 	applyJoin(plan);
