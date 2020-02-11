@@ -66,8 +66,8 @@ void reduceTraversal(ExecutionPlan *plan) {
 		   AlgebraicExpression_DiagonalOperand(ae, 0)) continue;
 
 		/* Search to see if dest is already resolved */
-		if(!ExecutionPlan_LocateOpResolvingAlias(op->children[0],
-												 AlgebraicExpression_Destination(ae))) continue;
+		if(!ExecutionPlan_LocateOpResolvingAliasExcludeApplyOps(op->children[0],
+																AlgebraicExpression_Destination(ae))) continue;
 
 		/* Both src and dest are already known
 		 * perform expand into instaed of traverse. */

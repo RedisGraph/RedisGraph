@@ -147,7 +147,8 @@ static Record _handoff(OpExpandInto *op) {
 		// Current record resides at row recordCount.
 		int rowIdx = op->recordCount;
 		op->r = op->records[op->recordCount];
-
+		assert(Record_GetType(op->r, op->srcNodeIdx) == REC_TYPE_NODE);
+		assert(Record_GetType(op->r, op->destNodeIdx) == REC_TYPE_NODE);
 		srcNode = Record_GetNode(op->r, op->srcNodeIdx);
 		destNode = Record_GetNode(op->r, op->destNodeIdx);
 		srcId = ENTITY_GET_ID(srcNode);
