@@ -331,15 +331,15 @@ static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
 	array_free(filter_ops);
 }
 
-void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *search_root,
-									  const OpBase *recurse_limit, OpBase *filter) {
+void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
+									  const OpBase *upper_bound, OpBase *filter) {
 	assert(filter->type == OPType_FILTER);
 	rax *references = FilterTree_CollectModified(((OpFilter *)filter)->filterTree);
 	OpBase *op;
 	if(raxSize(references) > 0) {
 		/* Scan execution plan, locate the earliest position where all
 		 * references been resolved. */
-		op = ExecutionPlan_LocateReferences(search_root, recurse_limit, references);
+		op = ExecutionPlan_LocateReferences(lower_bound, upper_bound, references);
 	} else {
 		/* The filter tree does not contain references, like:
 		 * WHERE 1=1
