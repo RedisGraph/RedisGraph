@@ -14,9 +14,7 @@ Record SemiApplyConsume(OpBase *opBase);
 Record AntiSemiApplyConsume(OpBase *opBase);
 OpResult SemiApplyReset(OpBase *opBase);
 
-static Record _pullFromMatchStream(OpSemiApply *op) {
-	// Propegate record to the top of the match stream.
-	if(op->op_arg) Argument_AddRecord(op->op_arg, OpBase_CloneRecord(op->r));
+static inline Record _pullFromMatchStream(OpSemiApply *op) {
 	return OpBase_Consume(op->match_branch);
 }
 
@@ -62,18 +60,22 @@ Record SemiApplyConsume(OpBase *opBase) {
 		// Try to get a record from bound stream.
 		op->r = OpBase_Consume(op->bound_branch);
 		if(!op->r) return NULL; // Depleted.
+		// Propagate Record to the top of the Match stream.
+		if(op->op_arg) Argument_AddRecord(op->op_arg, OpBase_CloneRecord(op->r));
 
-		// Try to get a record from match stream.
-		Record righthand_record = _pullFromMatchStream(op);
-		if(righthand_record) {
+		bool matched = false;
+		Record rhs_record;
+		// Retrieve Records from the Match stream until it's depleted.
+		while((rhs_record = _pullFromMatchStream(op))) {
 			// Don't care about matched record.
-			OpBase_DeleteRecord(righthand_record);
-			Record r = op->r;
-			op->r = NULL;   // Null to avoid double free.
-			return r;
+			OpBase_DeleteRecord(rhs_record);
+			matched = true;
 		}
+		Record r = op->r;
+		op->r = NULL;   // Null to avoid double free.
+		if(matched) return r;
 		// Did not managed to get a record from right-hand side, loop back and restart.
-		OpBase_DeleteRecord(op->r);
+		OpBase_DeleteRecord(r);
 		op->r = NULL;
 	}
 }
@@ -88,16 +90,23 @@ Record AntiSemiApplyConsume(OpBase *opBase) {
 		op->r = OpBase_Consume(op->bound_branch);
 		if(!op->r) return NULL; // Depleted.
 
+		// Propagate record to the top of the Match stream.
+		// (Must clone the Record, as it will be freed in the Match stream.)
+		if(op->op_arg) Argument_AddRecord(op->op_arg, OpBase_CloneRecord(op->r));
 		/* Try pulling right stream
 		 * return bounded stream record if match stream returns NULL. */
-		Record righthand_record = _pullFromMatchStream(op);
-		if(righthand_record) {
+		bool matched = false;
+		Record rhs_record;
+		// Retrieve Records from the Match stream until it's depleted.
+		while((rhs_record = _pullFromMatchStream(op))) {
 			/* managed to get a record from match stream,
 			 * free it and pull again from left handside. */
-			OpBase_DeleteRecord(righthand_record);
+			OpBase_DeleteRecord(rhs_record);
 			OpBase_DeleteRecord(op->r);
 			op->r = NULL;
-		} else {
+			matched = true;
+		}
+		if(!matched) {
 			// Right stream returned NULL, return left handside record.
 			Record r = op->r;
 			op->r = NULL;   // Null to avoid double free.
@@ -123,3 +132,4 @@ void SemiApplyFree(OpBase *opBase) {
 		op->r = NULL;
 	}
 }
+
