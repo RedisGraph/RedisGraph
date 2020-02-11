@@ -294,3 +294,28 @@ class testOptimizationsPlan(FlowTestsBase):
                     ['Boaz']]
         resultset = graph.query(query).result_set
         self.env.assertEqual(resultset, expected)
+
+    def test18_test_semi_apply_and_cp_optimize(self):
+        graph.query ("UNWIND range(0,3) as i CREATE ({val:i})")
+        graph.query ("MATCH (n {val:1}), (m {val:2}), (x {val:3}) CREATE (n)-[:R]->(m)-[:R]->(x)")
+        # The next query generates the execution plan:
+        # 1) "Results"
+        # 2) "    Sort"
+        # 3) "        Distinct"
+        # 4) "            Project"
+        # 5) "                Semi Apply"
+        # 6) "                    Cartesian Product"
+        # 7) "                        All Node Scan | (n4)"
+        # 8) "                        Filter"
+        # 9) "                            Cartesian Product"
+        # 10) "                                All Node Scan | (n1)"
+        # 11) "                                Filter"
+        # 12) "                                    All Node Scan | (n3)"
+        # 13) "                                All Node Scan | (n2)"
+        # 14) "                    Expand Into | (n3)->(n4)"
+        # 15) "                        Filter"
+        # 16) "                            Argument"
+        # We want to make sure the optimization is not misplacing the semi apply bounded branch.
+        resultset = graph.query("MATCH (n1), (n2), (n3), (n4) WHERE (n3)-[:R]->(n4 {val:n3.val+1}) AND n1.val + n2.val = n3.val AND n3.val > 1  RETURN DISTINCT n3.val ORDER BY n3.val").result_set
+        expected = [[2]]
+        self.env.assertEqual(resultset, expected)
