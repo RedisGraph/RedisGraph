@@ -491,22 +491,31 @@ cleanup:
 	if(numeric_ranges) raxFreeWithCallback(numeric_ranges, (void(*)(void *))NumericRange_Free);
 	if(rsqnodes) array_free(rsqnodes);
 
-	if(filters) {
-		for(uint i = 0; i < filters_count; i++) {
-			OpFilter *filter = filters[i];
-			ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
-			OpBase_Free((OpBase *)filter);
-		}
-		array_free(filters);
-	}
-
 	if(root) {
-		// Pass ownership of root to iterator.
+		/* We've successfully created a RediSearch query node that may be used to populate an Index Scan.
+		 * Pass ownership of the root node to the iterator. */
 		RSResultsIterator *iter = RediSearch_GetResultsIterator(root, rs_idx);
+		// Build the Index Scan.
 		OpBase *indexOp = NewIndexScanOp(scan->op.plan, scan->g, scan->n, rs_idx, iter);
-		ExecutionPlan_ReplaceOp(plan, (OpBase *)scan, indexOp);
+		/* In place, replace the last redundant filter (highest in the op tree) with the new scan op.
+		 * This ensures that the children array of the scan's parent op does not get shuffled,
+		 * avoiding problems with stream-sensitive ops like SemiApply. */
+		OpBase *last_filter = (OpBase *)array_pop(filters);
+		filters_count--;
+		ExecutionPlan_ReplaceOp(plan, last_filter, indexOp);
+		// Free the redundant filter and scan op.
+		OpBase_Free(last_filter);
+		ExecutionPlan_RemoveOp(plan, (OpBase *)scan);
 		OpBase_Free((OpBase *)scan);
 	}
+
+	// Free all remaining filters.
+	for(uint i = 0; i < filters_count; i++) {
+		OpFilter *filter = filters[i];
+		ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
+		OpBase_Free((OpBase *)filter);
+	}
+	array_free(filters);
 }
 
 void utilizeIndices(ExecutionPlan *plan) {
