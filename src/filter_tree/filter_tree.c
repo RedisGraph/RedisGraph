@@ -7,6 +7,7 @@
 #include "../value.h"
 #include "filter_tree.h"
 #include "../util/arr.h"
+#include "../util/rmalloc.h"
 #include "../ast/ast_shared.h"
 #include <assert.h>
 
@@ -70,14 +71,14 @@ FT_FilterNode *FilterTree_CreateExpressionFilter(AR_ExpNode *exp) {
 	// TODO: make sure exp return boolean.
 	assert(exp);
 
-	FT_FilterNode *node = malloc(sizeof(FT_FilterNode));
+	FT_FilterNode *node = rm_malloc(sizeof(FT_FilterNode));
 	node->t = FT_N_EXP;
 	node->exp.exp = exp;
 	return node;
 }
 
 FT_FilterNode *FilterTree_CreatePredicateFilter(AST_Operator op, AR_ExpNode *lhs, AR_ExpNode *rhs) {
-	FT_FilterNode *filterNode = malloc(sizeof(FT_FilterNode));
+	FT_FilterNode *filterNode = rm_malloc(sizeof(FT_FilterNode));
 	filterNode->t = FT_N_PRED;
 	filterNode->pred.op = op;
 	filterNode->pred.lhs = lhs;
@@ -86,7 +87,7 @@ FT_FilterNode *FilterTree_CreatePredicateFilter(AST_Operator op, AR_ExpNode *lhs
 }
 
 FT_FilterNode *FilterTree_CreateConditionFilter(AST_Operator op) {
-	FT_FilterNode *filterNode = (FT_FilterNode *)malloc(sizeof(FT_FilterNode));
+	FT_FilterNode *filterNode = rm_malloc(sizeof(FT_FilterNode));
 	filterNode->t = FT_N_COND;
 	filterNode->cond.op = op;
 	return filterNode;
@@ -107,7 +108,7 @@ void _FilterTree_SubTrees(const FT_FilterNode *root, Vector *sub_trees) {
 			/* Break AND down to its components. */
 			_FilterTree_SubTrees(root->cond.left, sub_trees);
 			_FilterTree_SubTrees(root->cond.right, sub_trees);
-			free((FT_FilterNode *)root);
+			rm_free((FT_FilterNode *)root);
 			break;
 		case OP_OR:
 			/* OR tree must be return as is. */
@@ -417,6 +418,45 @@ void FilterTree_DeMorgan(FT_FilterNode **root) {
 	_FilterTree_DeMorgan(root, 0);
 }
 
+// Clone an expression node.
+static inline FT_FilterNode *_FilterTree_Clone_Exp(FT_FilterNode *node) {
+	AR_ExpNode *exp_clone = AR_EXP_Clone(node->exp.exp);
+	return FilterTree_CreateExpressionFilter(exp_clone);
+}
+
+// Clones a condition node.
+static inline FT_FilterNode *_FilterTree_Clone_Cond(FT_FilterNode *node) {
+	FT_FilterNode *clone = FilterTree_CreateConditionFilter(node->cond.op);
+	FT_FilterNode *left_child_clone = FilterTree_Clone(node->cond.left);
+	FilterTree_AppendLeftChild(clone, left_child_clone);
+	FT_FilterNode *right_child_clone = FilterTree_Clone(node->cond.right);
+	FilterTree_AppendRightChild(clone, right_child_clone);
+	return clone;
+}
+
+// Clones a predicate node.
+static inline FT_FilterNode *_FilterTree_Clone_Pred(FT_FilterNode *node) {
+	AST_Operator op = node->pred.op;
+	AR_ExpNode *lhs_exp_clone = AR_EXP_Clone(node->pred.lhs);
+	AR_ExpNode *rhs_exp_clone = AR_EXP_Clone(node->pred.rhs);
+	return FilterTree_CreatePredicateFilter(op, lhs_exp_clone, rhs_exp_clone);
+}
+
+FT_FilterNode *FilterTree_Clone(FT_FilterNode *root) {
+	if(!root) return NULL;
+	switch(root->t) {
+	case FT_N_EXP:
+		return _FilterTree_Clone_Exp(root);
+	case FT_N_COND:
+		return _FilterTree_Clone_Cond(root);
+	case FT_N_PRED:
+		return _FilterTree_Clone_Pred(root);
+	default:
+		assert(false && "Unkown filter tree node to clone");
+		return NULL;
+	}
+}
+
 void _FilterTree_Print(const FT_FilterNode *root, int ident) {
 	char *exp = NULL;
 	char *left = NULL;
@@ -475,5 +515,5 @@ void FilterTree_Free(FT_FilterNode *root) {
 		assert(false);
 	}
 
-	free(root);
+	rm_free(root);
 }
