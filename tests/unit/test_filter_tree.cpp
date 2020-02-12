@@ -300,3 +300,38 @@ TEST_F(FilterTreeTest, ContainsFunc) {
 
 	FilterTree_Free(tree);
 }
+
+TEST_F(FilterTreeTest, FilterTree_Clone) {
+	FT_FilterNode *expected;
+	FT_FilterNode *actual;
+
+	expected = _build_simple_const_tree();
+	actual = FilterTree_Clone(expected);
+	compareFilterTrees(expected, actual);
+	FilterTree_Free(expected);
+	FilterTree_Free(actual);
+
+	expected = _build_simple_varying_tree();
+	actual = FilterTree_Clone(expected);
+	compareFilterTrees(expected, actual);
+	FilterTree_Free(expected);
+	FilterTree_Free(actual);
+
+	expected = _build_AND_cond_tree();
+	actual = FilterTree_Clone(expected);
+	compareFilterTrees(expected, actual);
+	FilterTree_Free(expected);
+	FilterTree_Free(actual);
+
+	expected = _build_OR_cond_tree();
+	actual = FilterTree_Clone(expected);
+	compareFilterTrees(expected, actual);
+	FilterTree_Free(expected);
+	FilterTree_Free(actual);
+
+	expected = _build_deep_tree();
+	actual = FilterTree_Clone(expected);
+	compareFilterTrees(expected, actual);
+	FilterTree_Free(expected);
+	FilterTree_Free(actual);
+}

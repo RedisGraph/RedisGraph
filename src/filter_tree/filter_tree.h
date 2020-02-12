@@ -118,6 +118,9 @@ bool FilterTree_Valid(const FT_FilterNode *root);
 /* Remove NOT nodes by applying DeMorgan laws */
 void FilterTree_DeMorgan(FT_FilterNode **root);
 
+/* Clones tree. */
+FT_FilterNode *FilterTree_Clone(FT_FilterNode *root);
+
 /* Prints tree. */
 void FilterTree_Print(const FT_FilterNode *root);
 
