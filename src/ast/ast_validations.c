@@ -476,12 +476,12 @@ static AST_Validation _Validate_CALL_Clauses(const AST *ast, char **reason) {
 	 * 1. procedure exists
 	 * 2. number of arguments to procedure is as expected
 	 * 3. yield refers to procedure output */
+	const cypher_astnode_t **call_clauses = AST_GetClauses(ast, CYPHER_AST_CALL);
+	if(call_clauses == NULL) return AST_VALID;
+
 	AST_Validation res = AST_VALID;
 	ProcedureCtx *proc = NULL;
 	rax *identifiers = raxNew();
-
-	const cypher_astnode_t **call_clauses = AST_GetClauses(ast, CYPHER_AST_CALL);
-	if(call_clauses == NULL) return AST_VALID;
 
 	uint call_count = array_len(call_clauses);
 	for(uint i = 0; i < call_count; i ++) {
