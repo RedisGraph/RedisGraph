@@ -46,8 +46,7 @@ static void _OpApplyMultiplexer_SortChildren(OpBase *op) {
 	for(int i = 1; i < op->childCount; i++) {
 		OpBase *child = op->children[i];
 		// Push apply ops to the end.
-		if(child->type & (OPType_OR_APPLY_MULTIPLEXER | OPType_AND_APPLY_MULTIPLEXER | OPType_SEMI_APPLY |
-						  OpType_ANTI_SEMI_APPLY)) {
+		if(child->type & APPLY_OPS) {
 			// From current position to the end, search for filter op.
 			bool swapped = false;
 			for(int j = i + 1; j < op->childCount; j++) {

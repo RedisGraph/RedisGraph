@@ -53,7 +53,14 @@ void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b);
 /* Traverse upwards until an operation that resolves the given alias is found.
  * Returns NULL if alias is not resolved. */
 OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias);
-OpBase *ExecutionPlan_LocateOpResolvingAliasExcludeApplyOps(OpBase *root, const char *alias);
+
+/* Variant of ExecutionPlan_LocateOpResolvingAlias.
+ * Recursively walks the op tree to resolve the given alias, but does not
+ * visit any Apply ops or their child trees.
+ * This prevents erroneous op replacements caused by Argument taps of Apply ops
+ * being the aliases of all bound variables in the plan, rather than just those that are already resolved.
+ * TODO There may be better logical solutions to this scenario. */
+OpBase *ExecutionPlan_LocateOpResolvingAliasExcludeApply(OpBase *root, const char *alias);
 
 /* Locate the first operation of a given type within execution plan.
  * Returns NULL if operation wasn't found. */

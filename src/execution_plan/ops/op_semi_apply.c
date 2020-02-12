@@ -76,7 +76,6 @@ Record SemiApplyConsume(OpBase *opBase) {
 		if(matched) return r;
 		// Did not managed to get a record from right-hand side, loop back and restart.
 		OpBase_DeleteRecord(r);
-		op->r = NULL;
 	}
 }
 
@@ -102,8 +101,6 @@ Record AntiSemiApplyConsume(OpBase *opBase) {
 			/* managed to get a record from match stream,
 			 * free it and pull again from left handside. */
 			OpBase_DeleteRecord(rhs_record);
-			OpBase_DeleteRecord(op->r);
-			op->r = NULL;
 			matched = true;
 		}
 		if(!matched) {
@@ -112,6 +109,7 @@ Record AntiSemiApplyConsume(OpBase *opBase) {
 			op->r = NULL;   // Null to avoid double free.
 			return r;
 		}
+		OpBase_DeleteRecord(op->r);
 	}
 }
 

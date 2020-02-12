@@ -4,8 +4,6 @@
 #include "../ast/ast_mock.h"
 #include "./optimizations/optimizer.h"
 
-#define APPLY_OPS (OPType_OR_APPLY_MULTIPLEXER | OPType_AND_APPLY_MULTIPLEXER | OPType_SEMI_APPLY | OpType_ANTI_SEMI_APPLY)
-
 static OpBase *_buildMatchBranch(ExecutionPlan *plan, const cypher_astnode_t *path) {
 	AST *ast = QueryCtx_GetAST();
 
@@ -133,3 +131,4 @@ void ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpFilter *filter) {
 	// Free filter op.
 	OpBase_Free((OpBase *)filter);
 }
+

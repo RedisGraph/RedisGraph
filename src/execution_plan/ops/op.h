@@ -52,6 +52,9 @@ typedef enum {
 	OPType_AND_APPLY_MULTIPLEXER = (1 << 31), // TODO same value as OR_APPLY
 } OPType; // TODO Consider switching from bitmask at 1<<32
 
+// Bitmask matching all Apply operations.
+#define APPLY_OPS (OPType_OR_APPLY_MULTIPLEXER | OPType_AND_APPLY_MULTIPLEXER | OPType_SEMI_APPLY | OpType_ANTI_SEMI_APPLY)
+
 typedef enum {
 	OP_DEPLETED = 1,
 	OP_REFRESH = 2,

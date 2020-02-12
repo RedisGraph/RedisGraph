@@ -178,22 +178,17 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
 	return NULL;
 }
 
-OpBase *ExecutionPlan_LocateOpResolvingAliasExcludeApplyOps(OpBase *root, const char *alias) {
-	// if(!root || root->type == OPType_ARGUMENT) return NULL;
-	if(!root || root->type == OPType_SEMI_APPLY || root->type == OpType_ANTI_SEMI_APPLY) return NULL;
-	// TODO think about
-	// OPType_OR_APPLY_MULTIPLEXER OPType_AND_APPLY_MULTIPLEXER
-	uint count = array_len(root->modifies);
+OpBase *ExecutionPlan_LocateOpResolvingAliasExcludeApply(OpBase *root, const char *alias) {
+	// Return early if inspecting an Apply operator.
+	if(!root || (root->type & APPLY_OPS)) return NULL;
 
+	uint count = array_len(root->modifies);
 	for(uint i = 0; i < count; i++) {
-		const char *resolved_alias = root->modifies[i];
-		/* NOTE - if this function is later used to modify the returned operation, we should return
-		 * the deepest operation that modifies the alias rather than the shallowest, as done here. */
-		if(strcmp(resolved_alias, alias) == 0) return root;
+		if(!strcmp(root->modifies[i], alias)) return root;
 	}
 
 	for(int i = 0; i < root->childCount; i++) {
-		OpBase *op = ExecutionPlan_LocateOpResolvingAliasExcludeApplyOps(root->children[i], alias);
+		OpBase *op = ExecutionPlan_LocateOpResolvingAliasExcludeApply(root->children[i], alias);
 		if(op) return op;
 	}
 
