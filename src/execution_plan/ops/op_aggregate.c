@@ -270,6 +270,11 @@ static OpResult AggregateReset(OpBase *opBase) {
 	return OP_OK;
 }
 
+static OpBase *AggregateClone(OpBase *opBase) {
+	OpAggregate *op = (OpAggregate *)opBase;
+
+}
+
 static void AggregateFree(OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
 	if(!op) return;

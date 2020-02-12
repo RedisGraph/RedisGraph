@@ -153,6 +153,12 @@ inline void OpBase_DeleteRecord(Record r) {
 	ExecutionPlan_ReturnRecord(r->owner, r);
 }
 
+OpBase *OpBase_Clone(OpBase *op) {
+	if(!op) return NULL;
+	if(op->clone) return op->clone(op);
+	return NULL;
+}
+
 void OpBase_Free(OpBase *op) {
 	// Free internal operation
 	if(op->free) op->free(op);

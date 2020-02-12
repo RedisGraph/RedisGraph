@@ -66,6 +66,7 @@ typedef OpResult(*fpInit)(struct OpBase *);
 typedef Record(*fpConsume)(struct OpBase *);
 typedef OpResult(*fpReset)(struct OpBase *);
 typedef int (*fpToString)(const struct OpBase *, char *, uint);
+typedef OpBase *(*fpClone)(const struct OpBase *);
 
 // Execution plan operation statistics.
 typedef struct {
@@ -78,11 +79,13 @@ struct ExecutionPlan;
 struct OpBase {
 	OPType type;                // Type of operation.
 	fpInit init;                // Called once before execution.
+
 	fpFree free;                // Free operation.
 	fpReset reset;              // Reset operation state.
 	fpConsume consume;          // Produce next record.
 	fpConsume profile;          // Profiled version of consume.
 	fpToString toString;        // Operation string representation.
+	fpClone clone;              // Operation clone.
 	const char *name;           // Operation name.
 	int childCount;             // Number of children.
 	bool op_initialized;        // True if the operation has already been initialized.
@@ -98,7 +101,9 @@ typedef struct OpBase OpBase;
 
 // Initialize op.
 void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsume consume,
-				 fpReset reset, fpToString toString, fpFree free, bool writer, const struct ExecutionPlan *plan);
+				 fpReset reset, fpToString toString, fpClone clone, fpFree free, bool writer,
+				 const struct ExecutionPlan *plan);
+OpBase *OpBase_Clone(OpBase *op);   // Clone op.
 void OpBase_Free(OpBase *op);       // Free op.
 Record OpBase_Consume(OpBase *op);  // Consume op.
 Record OpBase_Profile(OpBase *op);  // Profile op.
