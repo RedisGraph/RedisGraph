@@ -158,7 +158,7 @@ void Index_IndexNode
 	}
 
 	if(doc_field_count > 0) RediSearch_SpecAddDocument(rsIdx, doc);
-	// TODO: if doc_field_count == 0, need to free document.
+	else RediSearch_FreeDocument(doc);
 }
 
 void Index_RemoveNode
