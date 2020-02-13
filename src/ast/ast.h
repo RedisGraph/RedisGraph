@@ -101,6 +101,11 @@ const char **AST_BuildReturnColumnNames(const cypher_astnode_t *return_clause);
 // Collect the aliases from a CALL clause to populate ResultSet column names.
 const char **AST_BuildCallColumnNames(const cypher_astnode_t *return_clause);
 
+/* This method extracts the query given parameters values, convert them into
+ * constant arithmetic expressions and store them in a map of <name, value>
+ * in the query context. */
+void AST_Extract_Params(const cypher_astnode_t *parse_result);
+
 // Determine the maximum number of records
 // which will be considered when evaluating an algebraic expression.
 int TraverseRecordCap(const AST *ast);

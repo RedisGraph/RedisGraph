@@ -152,6 +152,14 @@ AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant) {
 	return node;
 }
 
+AR_ExpNode *AR_EXP_NewParameterOperandNode(const char *param_name) {
+	AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
+	node->resolved_name = NULL;
+	node->type = AR_EXP_OPERAND;
+	node->operand.type = AR_EXP_PARAM;
+	node->operand.param_name = param_name;
+}
+
 /* Compact tree by evaluating constant expressions
  * e.g. MINUS(X) where X is a constant number will be reduced to
  * a single node with the value -X

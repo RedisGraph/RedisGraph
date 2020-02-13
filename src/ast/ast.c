@@ -77,7 +77,12 @@ static void _AST_LimitResults(AST *ast, const cypher_astnode_t *root_clause,
 /* This method extracts the query given parameters values, convert them into
  * constant arithmetic expressions and store them in a map of <name, value>
  * in the query context. */
-static void _extract_params(const cypher_astnode_t *statement) {
+void AST_Extract_Params(const cypher_astnode_t *parse_result) {
+	// Retrieve the AST root node from a parsed query.
+	const cypher_astnode_t *statement = cypher_parse_result_get_root(parse_result, 0);
+	// We are parsing with the CYPHER_PARSE_ONLY_STATEMENTS flag,
+	// and double-checking this in AST validations
+	assert(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
 	uint noptions = cypher_ast_statement_noptions(statement);
 	if(noptions == 0) return;
 	rax *params = QueryCtx_GetParams();
@@ -256,8 +261,6 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	// We are parsing with the CYPHER_PARSE_ONLY_STATEMENTS flag,
 	// and double-checking this in AST validations
 	assert(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
-	// Extract the given query parameters value, and store them in query context.
-	_extract_params(statement);
 	ast->root = cypher_ast_statement_get_body(statement);
 
 	// Empty queries should be captured by AST validations

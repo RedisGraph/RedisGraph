@@ -34,11 +34,12 @@ typedef enum {
 } AR_OPType;
 
 /* AR_OperandNodeType type of leaf node,
- * either a constant: 3, or a variable: node.property. */
+ * either a constant: 3, a variable: node.property, or a parameter. */
 typedef enum {
 	AR_EXP_OP_UNKNOWN,
 	AR_EXP_CONSTANT,
 	AR_EXP_VARIADIC,
+	AR_EXP_PARAM
 } AR_OperandNodeType;
 
 /* Success of an evaluation. */
@@ -60,9 +61,10 @@ typedef struct {
 } AR_OpNode;
 
 /* OperandNode represents either a constant numeric value,
- * or a graph entity property. */
+ * a graph entity property, or a parameter. */
 typedef struct {
 	union {
+		const char *param_name;
 		SIValue constant;
 		struct {
 			const char *entity_alias;
@@ -99,6 +101,9 @@ AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias, const char *prop);
 
 /* Creates a new Arithmetic expression constant operand node */
 AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant);
+
+/* Creates a new Arithmetic expression parameter operand node. */
+AR_ExpNode *AR_EXP_NewParameterOperandNode(const char *param_name);
 
 /* Returns if the operation is distinct aggregation */
 bool AR_EXP_PerformDistinct(AR_ExpNode *op);

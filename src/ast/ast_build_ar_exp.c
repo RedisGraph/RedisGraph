@@ -369,6 +369,11 @@ static AR_ExpNode *_AR_ExpNodeFromGraphEntity(const cypher_astnode_t *entity) {
 	return AR_EXP_NewVariableOperandNode(alias, NULL);
 }
 
+static AR_ExpNode *_AR_ExpNodeFromParameter(const cypher_astnode_t *param) {
+	const char *identifier = cypher_ast_parameter_get_name(param);
+	return AR_EXP_NewParameterOperandNode(identifier);
+}
+
 static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 
 	const cypher_astnode_type_t type = cypher_astnode_type(expr);
