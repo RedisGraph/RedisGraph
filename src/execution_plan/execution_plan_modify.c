@@ -178,23 +178,6 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
 	return NULL;
 }
 
-OpBase *ExecutionPlan_LocateOpResolvingAliasExcludeApply(OpBase *root, const char *alias) {
-	// Return early if inspecting an Apply operator.
-	if(!root || (root->type & APPLY_OPS)) return NULL;
-
-	uint count = array_len(root->modifies);
-	for(uint i = 0; i < count; i++) {
-		if(!strcmp(root->modifies[i], alias)) return root;
-	}
-
-	for(int i = 0; i < root->childCount; i++) {
-		OpBase *op = ExecutionPlan_LocateOpResolvingAliasExcludeApply(root->children[i], alias);
-		if(op) return op;
-	}
-
-	return NULL;
-}
-
 typedef enum {
 	LTR,
 	RTL
