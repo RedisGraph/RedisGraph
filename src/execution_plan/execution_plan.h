@@ -100,6 +100,10 @@ ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void);
 /* Build a tree of operations that performs all the work required by the clauses of the current AST. */
 void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set);
 
+/* Re position filter op. */
+void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
+									  const OpBase *upper_bound, OpBase *filter);
+
 // TODO: Remove this once filter are placed after their respective clause.
 /* Place filter ops*/
 void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_limit);

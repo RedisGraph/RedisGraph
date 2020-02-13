@@ -128,13 +128,15 @@ void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
 		// Remove new root's parent pointer.
 		plan->root->parent = NULL;
 	} else {
-		// Remove op from its parent.
 		OpBase *parent = op->parent;
-		_OpBase_RemoveChild(op->parent, op);
-
-		// Add each of op's children as a child of op's parent.
-		for(int i = 0; i < op->childCount; i++) {
-			_OpBase_AddChild(parent, op->children[i]);
+		if(op->childCount > 0) {
+			// In place replacement of the op first branch instead of op.
+			_ExecutionPlan_ParentReplaceChild(op->parent, op, op->children[0]);
+			// Add each of op's children as a child of op's parent.
+			for(int i = 1; i < op->childCount; i++) _OpBase_AddChild(parent, op->children[i]);
+		} else {
+			// Remove op from its parent.
+			_OpBase_RemoveChild(op->parent, op);
 		}
 	}
 
@@ -246,8 +248,6 @@ static OpBase *_ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recur
 OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
 									   rax *refs_to_resolve) {
 	OpBase *op = _ExecutionPlan_LocateReferences(root, recurse_limit, refs_to_resolve);
-	if(op) assert("ExecutionPlan_LocateReferences located op but not all references found" &&
-					  (raxSize(refs_to_resolve) == 0));
 	return op;
 }
 
