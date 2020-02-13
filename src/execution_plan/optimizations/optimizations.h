@@ -16,6 +16,7 @@
 #include "./utilize_indices.h"
 #include "./reduce_distinct.h"
 #include "./reduce_traversal.h"
+#include "./optimize_cartesian_product.h"
 
 #endif
 

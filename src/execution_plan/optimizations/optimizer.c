@@ -24,6 +24,9 @@ void optimizePlan(ExecutionPlan *plan) {
 	/* Remove redundant SCAN operations. */
 	reduceScans(plan);
 
+	/* Try to optimize cartesian product */
+	reduceCartesianProductStreamCount(plan);
+
 	/* Try to match disjoint entities by applying a join */
 	applyJoin(plan);
 

@@ -263,4 +263,58 @@ class testOptimizationsPlan(FlowTestsBase):
         # This query should emit the same result.
         self.env.assertEqual(resultset, expected)
 
+    def test15_test_splitting_cartesian_product(self):
+        query = """MATCH (p1), (p2), (p3) WHERE p1.name <> p2.name AND p2.name <> p3.name RETURN DISTINCT p2.name ORDER BY p2.name"""
+        executionPlan = graph.execution_plan(query)
+        self.env.assertEqual(2, executionPlan.count("Cartesian Product"))
+        expected = [['Ailon'],
+                    ['Alon'],
+                    ['Boaz'],
+                    ['Roi']]
+        resultset = graph.query(query).result_set
+        self.env.assertEqual(resultset, expected)
+    
+    def test16_test_splitting_cartesian_product_with_multiple_filters(self):
+        query = """MATCH (p1), (p2), (p3) WHERE p1.name <> p2.name AND ID(p1) <> ID(p2) RETURN DISTINCT p2.name ORDER BY p2.name"""
+        executionPlan = graph.execution_plan(query)
+        self.env.assertEqual(2, executionPlan.count("Cartesian Product"))
+        expected = [['Ailon'],
+                    ['Alon'],
+                    ['Boaz'],
+                    ['Roi']]
+        resultset = graph.query(query).result_set
+        self.env.assertEqual(resultset, expected)
 
+    def test17_test_multiple_branch_filter_cp_optimization(self):
+        query = """MATCH (p1), (p2), (p3), (p4) WHERE p1.val + p2.val = p3.val AND p3.val > 0 RETURN DISTINCT p3.name ORDER BY p3.name"""
+        executionPlan = graph.execution_plan(query)
+        self.env.assertEqual(2, executionPlan.count("Cartesian Product"))
+        expected = [['Ailon'],
+                    ['Alon'],
+                    ['Boaz']]
+        resultset = graph.query(query).result_set
+        self.env.assertEqual(resultset, expected)
+
+    def test18_test_semi_apply_and_cp_optimize(self):
+        graph.query ("CREATE ({val:0}), ({val:1})-[:R]->({val:2})-[:R]->({val:3})")
+        # The next query generates the execution plan:
+        # 1) "Results"
+        # 2) "    Sort"
+        # 3) "        Distinct"
+        # 4) "            Project"
+        # 5) "                Semi Apply"
+        # 6) "                    Cartesian Product"
+        # 7) "                        All Node Scan | (n4)"
+        # 8) "                        Filter"
+        # 9) "                            Cartesian Product"
+        # 10) "                                All Node Scan | (n1)"
+        # 11) "                                Filter"
+        # 12) "                                    All Node Scan | (n3)"
+        # 13) "                                All Node Scan | (n2)"
+        # 14) "                    Expand Into | (n3)->(n4)"
+        # 15) "                        Filter"
+        # 16) "                            Argument"
+        # We want to make sure the optimization is not misplacing the semi apply bounded branch.
+        resultset = graph.query("MATCH (n1), (n2), (n3), (n4) WHERE (n3)-[:R]->(n4 {val:n3.val+1}) AND n1.val + n2.val = n3.val AND n3.val > 1  RETURN DISTINCT n3.val ORDER BY n3.val").result_set
+        expected = [[2]]
+        self.env.assertEqual(resultset, expected)
