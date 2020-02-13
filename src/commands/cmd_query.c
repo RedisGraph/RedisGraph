@@ -70,6 +70,9 @@ void Graph_Query(void *args) {
 
 	bool readonly = AST_ReadOnly(parse_result);
 
+	// Query caching enabler.
+	AST_Extract_Params(parse_result);
+
 	// Prepare the constructed AST for accesses from the module
 	ast = AST_Build(parse_result);
 

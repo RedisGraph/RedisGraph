@@ -432,10 +432,7 @@ static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 	} else if(type == CYPHER_AST_NODE_PATTERN || type == CYPHER_AST_REL_PATTERN) {
 		return _AR_ExpNodeFromGraphEntity(expr);
 	} else if(type == CYPHER_AST_PARAMETER) {
-		AST *ast = QueryCtx_GetAST();
-		AnnotationCtx *params_ctx = AST_AnnotationCtxCollection_GetParamsCtx(ast->anot_ctx_collection);
-		AR_ExpNode *param_value = cypher_astnode_get_annotation(params_ctx, expr);
-		return AR_EXP_Clone(param_value);
+		return _AR_ExpNodeFromParameter(expr);
 	} else {
 		/*
 		   Unhandled types:
