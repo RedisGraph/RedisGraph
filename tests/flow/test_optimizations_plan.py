@@ -296,8 +296,7 @@ class testOptimizationsPlan(FlowTestsBase):
         self.env.assertEqual(resultset, expected)
 
     def test18_test_semi_apply_and_cp_optimize(self):
-        graph.query ("UNWIND range(0,3) as i CREATE ({val:i})")
-        graph.query ("MATCH (n {val:1}), (m {val:2}), (x {val:3}) CREATE (n)-[:R]->(m)-[:R]->(x)")
+        graph.query ("CREATE ({val:0}), ({val:1})-[:R]->({val:2})-[:R]->({val:3})")
         # The next query generates the execution plan:
         # 1) "Results"
         # 2) "    Sort"

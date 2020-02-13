@@ -18,6 +18,11 @@ typedef struct {
 	rax *entities;      // Contains the entities that the filter references.
 } FilterCtx;
 
+// Free FilterCtx.
+static inline void _FilterCtx_Free(FilterCtx *ctx) {
+	raxFree(ctx->entities);
+}
+
 /* Collects all consecutive filters beneath given op, sort them by the number of referenced entities.
  * The array is soreted in order to reposition the filter that require smaller cartiesian products first. */
 static FilterCtx *_locate_filters_and_entities(OpBase *cp) {
@@ -121,7 +126,7 @@ static void _optimize_cartesian_product(ExecutionPlan *plan, OpBase *cp) {
 		}
 	}
 	// Clean up.
-	for(uint i = 0; i < filter_count; i++) raxFree(filter_ctx_arr[i].entities);
+	for(uint i = 0; i < filter_count; i++) _FilterCtx_Free(filter_ctx_arr + i);
 	array_free(filter_ctx_arr);
 }
 

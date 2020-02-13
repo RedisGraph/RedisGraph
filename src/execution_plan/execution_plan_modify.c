@@ -130,7 +130,7 @@ void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
 	} else {
 		OpBase *parent = op->parent;
 		if(op->childCount > 0) {
-			// In place replacement of the op bounded branch instead of op.
+			// In place replacement of the op first branch instead of op.
 			_ExecutionPlan_ParentReplaceChild(op->parent, op, op->children[0]);
 			// Add each of op's children as a child of op's parent.
 			for(int i = 1; i < op->childCount; i++) _OpBase_AddChild(parent, op->children[i]);
