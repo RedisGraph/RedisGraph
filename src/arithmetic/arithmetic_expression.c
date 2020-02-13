@@ -298,8 +298,17 @@ cleanup:
 	return res;
 }
 
-static inline void _AR_EXP_UpdateEntityIdx(AR_OperandNode *node, const Record r) {
-	node->variadic.entity_alias_idx = Record_GetEntryIdx(r, node->variadic.entity_alias);
+static inline AR_EXP_Result _AR_EXP_UpdateEntityIdx(AR_OperandNode *node, const Record r) {
+	int entry_alias_idx = Record_GetEntryIdx(r, node->variadic.entity_alias);
+	if(entry_alias_idx == INVALID_INDEX) {
+		char *error;
+		asprintf(&error, "There is no such node or edge named %s", node->variadic.entity_alias);
+		QueryCtx_SetError(error); // Set the query-level error.
+		return EVAL_ERR;
+	} else {
+		node->variadic.entity_alias_idx = entry_alias_idx;
+		return EVAL_OK;
+	}
 }
 
 static AR_EXP_Result _AR_EXP_EvaluateProperty(AR_ExpNode *node, const Record r, SIValue *result) {
@@ -334,7 +343,7 @@ static AR_EXP_Result _AR_EXP_EvaluateProperty(AR_ExpNode *node, const Record r, 
 static AR_EXP_Result _AR_EXP_EvaluateVariadic(AR_ExpNode *node, const Record r, SIValue *result) {
 	// Make sure entity record index is known.
 	if(node->operand.variadic.entity_alias_idx == IDENTIFIER_NOT_FOUND) {
-		_AR_EXP_UpdateEntityIdx(&node->operand, r);
+		if(_AR_EXP_UpdateEntityIdx(&node->operand, r) == EVAL_ERR) return EVAL_ERR;
 	}
 
 	// Fetch entity property value.
