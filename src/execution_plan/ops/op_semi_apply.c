@@ -63,19 +63,19 @@ Record SemiApplyConsume(OpBase *opBase) {
 		// Propagate Record to the top of the Match stream.
 		if(op->op_arg) Argument_AddRecord(op->op_arg, OpBase_CloneRecord(op->r));
 
-		bool matched = false;
-		Record rhs_record;
-		// Retrieve Records from the Match stream until it's depleted.
-		while((rhs_record = _pullFromMatchStream(op))) {
-			// Don't care about matched record.
+		Record rhs_record = _pullFromMatchStream(op);
+		if(rhs_record) {
+			/* Successfully retrieved a Record from the match stream,
+			 * free it and return the bound Record. */
 			OpBase_DeleteRecord(rhs_record);
-			matched = true;
+			// Reset the match branch to maintain parity with the bound branch.
+			OpBase_PropagateReset(op->match_branch);
+			Record r = op->r;
+			op->r = NULL;   // Null to avoid double free.
+			return r;
 		}
-		Record r = op->r;
-		op->r = NULL;   // Null to avoid double free.
-		if(matched) return r;
-		// Did not managed to get a record from right-hand side, loop back and restart.
-		OpBase_DeleteRecord(r);
+		// Did not manage to get a record from right-hand side, loop back and restart.
+		OpBase_DeleteRecord(op->r);
 	}
 }
 
@@ -92,24 +92,22 @@ Record AntiSemiApplyConsume(OpBase *opBase) {
 		// Propagate record to the top of the Match stream.
 		// (Must clone the Record, as it will be freed in the Match stream.)
 		if(op->op_arg) Argument_AddRecord(op->op_arg, OpBase_CloneRecord(op->r));
-		/* Try pulling right stream
-		 * return bounded stream record if match stream returns NULL. */
-		bool matched = false;
-		Record rhs_record;
-		// Retrieve Records from the Match stream until it's depleted.
-		while((rhs_record = _pullFromMatchStream(op))) {
-			/* managed to get a record from match stream,
-			 * free it and pull again from left handside. */
+		/* Try to pull data from the right stream,
+		 * returning the bound stream record if unsuccessful. */
+		Record rhs_record = _pullFromMatchStream(op);
+		if(rhs_record) {
+			/* Successfully retrieved a Record from the match stream,
+			 * free it and pull again from the bound stream. */
 			OpBase_DeleteRecord(rhs_record);
-			matched = true;
-		}
-		if(!matched) {
+			OpBase_DeleteRecord(op->r);
+			// Reset the match branch to maintain parity with the bound branch.
+			OpBase_PropagateReset(op->match_branch);
+		} else {
 			// Right stream returned NULL, return left handside record.
 			Record r = op->r;
 			op->r = NULL;   // Null to avoid double free.
 			return r;
 		}
-		OpBase_DeleteRecord(op->r);
 	}
 }
 

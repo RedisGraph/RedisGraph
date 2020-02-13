@@ -190,7 +190,7 @@ class testPathFilter(FlowTestsBase):
         redis_graph.flush()
 
         # Issue a query in which the match stream and the bound stream must both perform traversal.
-        query = "MATCH (n:L)-[]->(x:L) WHERE ({x: 'a'})-[]->(n) RETURN n.x"
+        query = "MATCH (n:L)-[]->(:L) WHERE ({x: 'a'})-[]->(n) RETURN n.x"
         plan = redis_graph.execution_plan(query)
         # Verify that the execution plan has no Expand Into and two traversals.
         self.env.assertNotIn("Expand Into", plan)
