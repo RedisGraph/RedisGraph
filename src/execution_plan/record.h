@@ -12,6 +12,9 @@
 #include "../graph/entities/edge.h"
 #include <sys/types.h>
 
+// Return value in case of call to Record_GetEntryIdx with invalid entry alias.
+#define INVALID_INDEX -1
+
 typedef enum  {
 	REC_TYPE_UNKNOWN = 0,
 	REC_TYPE_SCALAR = 1 << 0,

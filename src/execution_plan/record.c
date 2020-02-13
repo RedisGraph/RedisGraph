@@ -43,9 +43,8 @@ int Record_GetEntryIdx(Record r, const char *alias) {
 	assert(r && alias);
 
 	void *idx = raxFind(r->mapping, (unsigned char *)alias, strlen(alias));
-	assert(idx != raxNotFound && "ERR: tried to resolve unexpected alias");
 
-	return (intptr_t)idx;
+	return idx != raxNotFound ? (intptr_t)idx : INVALID_INDEX;
 }
 
 void Record_Clone(const Record r, Record clone) {
