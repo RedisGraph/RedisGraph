@@ -218,7 +218,11 @@ static Record CondTraverseConsume(OpBase *opBase) {
 
 static OpResult CondTraverseReset(OpBase *ctx) {
 	CondTraverse *op = (CondTraverse *)ctx;
-	if(op->r) OpBase_DeleteRecord(op->r);
+
+	op->r = NULL;
+	for(int i = 0; i < op->recordsLen; i++) OpBase_DeleteRecord(op->records[i]);
+	op->recordsLen = 0;
+
 	if(op->edges) array_clear(op->edges);
 	if(op->iter) {
 		GxB_MatrixTupleIter_free(op->iter);
