@@ -221,12 +221,18 @@ static Record ExpandIntoConsume(OpBase *opBase) {
 
 static OpResult ExpandIntoReset(OpBase *ctx) {
 	OpExpandInto *op = (OpExpandInto *)ctx;
+	op->r = NULL;
 	for(int i = 0; i < op->recordCount; i++) {
 		if(op->records[i]) OpBase_DeleteRecord(op->records[i]);
 	}
 	op->recordCount = 0;
-	if(op->F != GrB_NULL) GrB_Matrix_clear(op->F);
+
 	if(op->edges) array_clear(op->edges);
+	if(op->iter) {
+		GxB_MatrixTupleIter_free(op->iter);
+		op->iter = NULL;
+	}
+	if(op->F != GrB_NULL) GrB_Matrix_clear(op->F);
 	return OP_OK;
 }
 
