@@ -12,7 +12,6 @@
 #include "../util/strcmp.h"
 #include "../util/vector.h"
 #include "../util/rmalloc.h"
-#include "../ast/ast_mock.h"
 #include "../util/rax_extensions.h"
 #include "../graph/entities/edge.h"
 #include "../ast/ast_build_ar_exp.h"
@@ -544,44 +543,6 @@ static inline void _buildUnwindOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
-/* Given a MERGE clause, build the stream of operations required to match its pattern
- * and add it as a child of the Merge op. */
-static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *clause,
-								   const char **arguments) {
-	AST *ast = QueryCtx_GetAST();
-	// Initialize an ExecutionPlan that shares this plan's Record mapping.
-	ExecutionPlan *rhs_plan = ExecutionPlan_NewEmptyExecutionPlan();
-	rhs_plan->record_map = plan->record_map;
-
-	// If we have bound variables, build an Argument op that represents them.
-	if(arguments) rhs_plan->root = NewArgumentOp(plan, arguments);
-
-	// Build a temporary AST holding the MERGE path within a MATCH clause.
-	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
-	AST *rhs_ast = AST_MockMatchPattern(ast, path);
-
-	ExecutionPlan_PopulateExecutionPlan(rhs_plan, NULL);
-
-	AST_MockFree(rhs_ast);
-	QueryCtx_SetAST(ast); // Reset the AST.
-	// Add filter ops to sub-ExecutionPlan.
-	if(rhs_plan->filter_tree) ExecutionPlan_PlaceFilterOps(rhs_plan, NULL);
-
-	ExecutionPlan_AddOp(plan->root, rhs_plan->root); // Add Match stream to Merge op.
-
-	OpBase *rhs_root = rhs_plan->root;
-
-	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
-	ExecutionPlan_BindPlanToOps(plan, rhs_root);
-
-	// NULL-set variables shared between the rhs_plan and the overall plan.
-	rhs_plan->root = NULL;
-	rhs_plan->record_map = NULL;
-	// Free the temporary plan.
-	ExecutionPlan_Free(rhs_plan);
-
-}
-
 static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge_ctx,
 									ResultSetStatistics *stats, const char **arguments) {
 	/* If we have bound variables, we must ensure that all of our created entities are unique. Consider:
@@ -651,7 +612,9 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 	_ExecutionPlan_UpdateRoot(plan, merge_op);
 
 	// Build the Match stream as a Merge child.
-	_buildMergeMatchStream(plan, clause, arguments);
+	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
+	OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
+	ExecutionPlan_AddOp(plan->root, match_stream); // Add Match stream to Merge op.
 
 	// Build the Create stream as a Merge child.
 	_buildMergeCreateStream(plan, &merge_ctx, stats, arguments);

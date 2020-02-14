@@ -1,5 +1,7 @@
 #include "execution_plan.h"
 #include "ops/ops.h"
+#include "../query_ctx.h"
+#include "../ast/ast_mock.h"
 
 static void _OpBase_AddChild(OpBase *parent, OpBase *child) {
 	// Add child to parent
@@ -311,6 +313,44 @@ void ExecutionPlan_BindPlanToOps(ExecutionPlan *plan, OpBase *root) {
 	for(int i = 0; i < root->childCount; i ++) {
 		ExecutionPlan_BindPlanToOps(plan, root->children[i]);
 	}
+}
+
+OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **vars,
+									   const cypher_astnode_t *path) {
+	// Initialize an ExecutionPlan that shares this plan's Record mapping.
+	ExecutionPlan *rhs_plan = ExecutionPlan_NewEmptyExecutionPlan();
+	rhs_plan->record_map = plan->record_map;
+
+	// If we have bound variables, build an Argument op that represents them.
+	if(vars) rhs_plan->root = NewArgumentOp(plan, vars);
+
+	AST *ast = QueryCtx_GetAST();
+	// Build a temporary AST holding a MATCH clause.
+	AST *rhs_ast = AST_MockMatchPattern(ast, path);
+
+	ExecutionPlan_PopulateExecutionPlan(rhs_plan, NULL);
+
+	AST_MockFree(rhs_ast);
+	QueryCtx_SetAST(ast); // Reset the AST.
+	// Add filter ops to sub-ExecutionPlan.
+	if(rhs_plan->filter_tree) ExecutionPlan_PlaceFilterOps(rhs_plan, NULL);
+
+	// If the temporary execution plan has added new QueryGraph entities,
+	// migrate them to the master plan's QueryGraph.
+	// (This is only necessary for producing EXPLAIN outputs.)
+	QueryGraph_MergeGraphs(plan->query_graph, rhs_plan->query_graph);
+	OpBase *rhs_root = rhs_plan->root;
+
+	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
+	ExecutionPlan_BindPlanToOps(plan, rhs_root);
+
+	// NULL-set variables shared between the rhs_plan and the overall plan.
+	rhs_plan->root = NULL;
+	rhs_plan->record_map = NULL;
+	// Free the temporary plan.
+	ExecutionPlan_Free(rhs_plan);
+
+	return rhs_root;
 }
 
 void ExecutionPlan_AppendSubExecutionPlan(ExecutionPlan *master_plan, ExecutionPlan *sub_plan) {

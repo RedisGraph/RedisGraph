@@ -86,6 +86,9 @@ const char **ExecutionPlan_BuildArgumentModifiesArray(rax *bound_vars);
  * This is for use for updating ops that have been built with a temporary ExecutionPlan. */
 void ExecutionPlan_BindPlanToOps(ExecutionPlan *plan, OpBase *root);
 
+OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **vars,
+									   const cypher_astnode_t *path);
+
 /* Adds a semi-independent sub execution plan. The only thing the sub execution plan is dependent on is the record mapping. */
 void ExecutionPlan_AppendSubExecutionPlan(ExecutionPlan *master_plan, ExecutionPlan *sub_plan);
 
