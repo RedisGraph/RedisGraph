@@ -64,12 +64,12 @@ Record SemiApplyConsume(OpBase *opBase) {
 		if(op->op_arg) Argument_AddRecord(op->op_arg, OpBase_CloneRecord(op->r));
 
 		Record rhs_record = _pullFromMatchStream(op);
+		// Reset the match branch to maintain parity with the bound branch.
+		OpBase_PropagateReset(op->match_branch);
 		if(rhs_record) {
 			/* Successfully retrieved a Record from the match stream,
 			 * free it and return the bound Record. */
 			OpBase_DeleteRecord(rhs_record);
-			// Reset the match branch to maintain parity with the bound branch.
-			OpBase_PropagateReset(op->match_branch);
 			Record r = op->r;
 			op->r = NULL;   // Null to avoid double free.
 			return r;

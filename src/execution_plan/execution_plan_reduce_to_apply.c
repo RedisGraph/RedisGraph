@@ -4,29 +4,6 @@
 #include "../ast/ast_mock.h"
 #include "./optimizations/optimizer.h"
 
-static OpBase *_buildMatchBranch(ExecutionPlan *plan, const char **vars,
-								 const cypher_astnode_t *path) {
-	// Initialize an ExecutionPlan that shares this plan's Record mapping.
-	ExecutionPlan *match_branch_plan = ExecutionPlan_NewEmptyExecutionPlan();
-	ExecutionPlan_AppendSubExecutionPlan(plan, match_branch_plan);
-
-	// We have bound variables, build an Argument op that represents them.
-	match_branch_plan->root = NewArgumentOp(match_branch_plan, vars);
-
-	AST *ast = QueryCtx_GetAST();
-	// Build a temporary AST holding a MATCH clause.
-	AST *match_branch_ast = AST_MockMatchPattern(ast, path);
-
-	ExecutionPlan_PopulateExecutionPlan(match_branch_plan, NULL);
-	if(match_branch_plan->filter_tree) ExecutionPlan_PlaceFilterOps(match_branch_plan, NULL);
-
-	AST_MockFree(match_branch_ast);
-	QueryCtx_SetAST(ast); // Reset the AST.
-
-	return match_branch_plan->root;
-}
-
-
 /* Swap operation on operation children. If two valid indices, a and b, are given, this operation
  * swap the child in index a with the child in index b. */
 static inline void _OpBaseSwapChildren(OpBase *op, int a, int b) {
