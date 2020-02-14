@@ -95,13 +95,13 @@ Record AntiSemiApplyConsume(OpBase *opBase) {
 		/* Try to pull data from the right stream,
 		 * returning the bound stream record if unsuccessful. */
 		Record rhs_record = _pullFromMatchStream(op);
+		// Reset the match branch to maintain parity with the bound branch.
+		OpBase_PropagateReset(op->match_branch);
 		if(rhs_record) {
 			/* Successfully retrieved a Record from the match stream,
 			 * free it and pull again from the bound stream. */
 			OpBase_DeleteRecord(rhs_record);
 			OpBase_DeleteRecord(op->r);
-			// Reset the match branch to maintain parity with the bound branch.
-			OpBase_PropagateReset(op->match_branch);
 		} else {
 			// Right stream returned NULL, return left handside record.
 			Record r = op->r;
