@@ -84,6 +84,8 @@ const char **ExecutionPlan_BuildArgumentModifiesArray(rax *bound_vars);
  * This is for use for updating ops that have been built with a temporary ExecutionPlan. */
 void ExecutionPlan_BindPlanToOps(ExecutionPlan *plan, OpBase *root);
 
+/* Given an AST path pattern, generate the tree of scan, traverse,
+ * and filter operations required to represent it. */
 OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **vars,
 									   const cypher_astnode_t *path);
 
