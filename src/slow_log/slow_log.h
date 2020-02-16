@@ -19,7 +19,6 @@ typedef struct {
     char *cmd;          // Redis command.
     time_t time;        // Item creation time.
 	char *query;        // Query.
-    char *graph_id;     // Graph ID.
 	double latency;     // How much time query was processed.
 } SlowLogItem;
 
@@ -31,8 +30,14 @@ typedef struct {
      pthread_mutex_t *locks;    // Array of locks.
 } SlowLog;
 
+// Create a new slowlog.
+SlowLog *SlowLog_New();
+
 // Introduce item to slow log.
-void SlowLog_Add(const char *cmd, const char *graph_id, const char *query, double latency);
+void SlowLog_Add(SlowLog *slowlog, const char *cmd, const char *query, double latency);
 
 // Replies with slow log content.
-void SlowLog_Replay(RedisModuleCtx *ctx);
+void SlowLog_Replay(const SlowLog *slowlog, RedisModuleCtx *ctx);
+
+// Free slowlog.
+void SlowLog_Free(SlowLog *slowlog);

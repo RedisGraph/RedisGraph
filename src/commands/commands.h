@@ -24,5 +24,5 @@ typedef enum {
 	CMD_EXPLAIN,
 	CMD_PROFILE,
 	CMD_BULK_INSERT,
-    CMD_SLOW_LOG
+    CMD_SLOWLOG
 } GRAPH_Commands;

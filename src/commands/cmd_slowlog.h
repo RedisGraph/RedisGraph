@@ -8,4 +8,4 @@
 
 #include "../redismodule.h"
 
-int MGraph_Slowlog(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
+void Graph_Slowlog(void *args);

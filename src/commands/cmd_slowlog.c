@@ -5,9 +5,17 @@
 */
 
 #include "./cmd_slowlog.h"
+#include "cmd_context.h"
 #include "../slow_log/slow_log.h"
 
-int MGraph_Slowlog(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-	SlowLog_Replay(ctx);
-	return REDISMODULE_OK;
+void Graph_Slowlog(void *args) {
+	CommandCtx *command_ctx = (CommandCtx *)args;
+	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(command_ctx);
+	GraphContext *gc = CommandCtx_GetGraphContext(command_ctx);
+	SlowLog *slowlog = GraphContext_GetSlowLog(gc);
+
+	SlowLog_Replay(slowlog, ctx);
+
+	GraphContext_Release(gc);
+	CommandCtx_Free(command_ctx);
 }

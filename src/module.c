@@ -182,8 +182,8 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	if(RedisModule_CreateCommand(ctx, "graph.SLOWLOG", MGraph_Slowlog, "readonly", 0, 0,
-								 0) == REDISMODULE_ERR) {
+	if(RedisModule_CreateCommand(ctx, "graph.SLOWLOG", CommandDispatch, "readonly", 1, 1,
+								 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
 
