@@ -8,6 +8,9 @@
 #include "./optimizations.h"
 
 void optimizePlan(ExecutionPlan *plan) {
+
+	compactFilters(plan);
+
 	/* Scan optimizations order:
 	 * 1. First try to use the indices. Given a label scan and an indexed property, apply index scan.
 	 * 2. Given a filter which checks id condition, and full or label scan, reduce it to id scan or label with id scan.

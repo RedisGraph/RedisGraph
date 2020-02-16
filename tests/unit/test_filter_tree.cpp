@@ -84,6 +84,51 @@ class FilterTreeTest: public ::testing::Test {
 		return build_tree_from_query(q);
 	}
 
+	FT_FilterNode *_build_true_tree() {
+		const char *q = "MATCH (n) WHERE 1 = 1 RETURN n";
+		return build_tree_from_query(q);
+	}
+
+	FT_FilterNode *_build_compactable_or_true_tree() {
+		const char *q = "MATCH (n) WHERE n.val = n.val2 OR 1 = 1 RETURN n";
+		return build_tree_from_query(q);
+	}
+
+	FT_FilterNode *_build_deep_compactable_or_true_tree() {
+		const char *q = "MATCH (n) WHERE n.val = n.val2 OR ( 1 = 1 AND 1 = 1) RETURN n";
+		return build_tree_from_query(q);
+	}
+
+	FT_FilterNode *_build_deep_non_compactable_or_true_tree() {
+		const char *q = "MATCH (n) WHERE n.val = n.val2 OR ( n.val3 = n.val4 AND 1 = 1) RETURN n";
+		return build_tree_from_query(q);
+	}
+
+	FT_FilterNode *_build_false_tree() {
+		const char *q = "MATCH (n) WHERE 1 > 1 RETURN n";
+		return build_tree_from_query(q);
+	}
+
+	FT_FilterNode *_build_compactable_or_false_tree() {
+		const char *q = "MATCH (n) WHERE 1 = 2 OR 1 > 1 RETURN n";
+		return build_tree_from_query(q);
+	}
+
+	FT_FilterNode *_build_non_compactable_or_false_tree() {
+		const char *q = "MATCH (n) WHERE n.val = n.val2 OR 1 > 1 RETURN n";
+		return build_tree_from_query(q);
+	}
+
+	FT_FilterNode *_build_deep_compactable_or_false_tree() {
+		const char *q = "MATCH (n) WHERE 1 > 1 OR ( n.val3 = n.val4 AND 1 > 1) RETURN n";
+		return build_tree_from_query(q);
+	}
+
+	FT_FilterNode *_build_deep_non_compactable_or_false_tree() {
+		const char *q = "MATCH (n) WHERE n.val = n.val2 OR ( n.val3 = n.val4 AND 1 > 1) RETURN n";
+		return build_tree_from_query(q);
+	}
+
 	FT_FilterNode *_build_AND_cond_tree() {
 		return _build_cond_tree(OP_AND);
 	}
@@ -101,26 +146,22 @@ class FilterTreeTest: public ::testing::Test {
 		return build_tree_from_query(q);
 	}
 
+	void _compareExpressions(AR_ExpNode *lhs, AR_ExpNode *rhs) {
+		char *lhs_variable;
+		char *rhs_variable;
+		AR_EXP_ToString(lhs, &lhs_variable);
+		AR_EXP_ToString(rhs, &rhs_variable);
+		ASSERT_STREQ(lhs_variable, rhs_variable);
+
+		free(lhs_variable);
+		free(rhs_variable);
+	}
 	void _compareFilterTreePredicateNode(const FT_FilterNode *a, const FT_FilterNode *b) {
 		ASSERT_EQ(a->t, b->t);
 		ASSERT_EQ(a->t, FT_N_PRED);
 		ASSERT_EQ(a->pred.op, b->pred.op);
-
-		char *a_variable;
-		char *b_variable;
-		AR_EXP_ToString(a->pred.lhs, &a_variable);
-		AR_EXP_ToString(b->pred.lhs, &b_variable);
-		ASSERT_STREQ(a_variable, b_variable);
-
-		free(a_variable);
-		free(b_variable);
-
-		AR_EXP_ToString(a->pred.rhs, &a_variable);
-		AR_EXP_ToString(b->pred.rhs, &b_variable);
-		ASSERT_STREQ(a_variable, b_variable);
-
-		free(a_variable);
-		free(b_variable);
+		_compareExpressions(a->pred.lhs, b->pred.lhs);
+		_compareExpressions(a->pred.rhs, b->pred.rhs);
 	}
 
 	void compareFilterTrees(const FT_FilterNode *a, const FT_FilterNode *b) {
@@ -128,10 +169,11 @@ class FilterTreeTest: public ::testing::Test {
 
 		if(a->t == FT_N_PRED) {
 			_compareFilterTreePredicateNode(a, b);
-		} else {
-			ASSERT_EQ(a->cond.op, b->cond.op);
+		} else if(a->t == FT_N_COND) {
 			compareFilterTrees(a->cond.left, b->cond.left);
 			compareFilterTrees(a->cond.right, b->cond.right);
+		} else {
+			_compareExpressions(a->exp.exp, b->exp.exp);
 		}
 	}
 };
@@ -334,4 +376,61 @@ TEST_F(FilterTreeTest, FilterTree_Clone) {
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(expected);
 	FilterTree_Free(actual);
+}
+
+TEST_F(FilterTreeTest, FilterTree_Compact) {
+	FT_FilterNode *actual;
+	FT_FilterNode *expected;
+
+	SIValue bool_val = SI_BoolVal(true);
+	expected = FilterTree_CreateExpressionFilter(AR_EXP_NewConstOperandNode(bool_val));
+
+	actual = _build_true_tree();
+	ASSERT_TRUE(FilterTree_Compact(actual));
+	compareFilterTrees(expected, actual);
+	FilterTree_Free(actual);
+
+	actual = _build_compactable_or_true_tree();
+	ASSERT_TRUE(FilterTree_Compact(actual));
+	compareFilterTrees(expected, actual);
+	FilterTree_Free(actual);
+
+	actual = _build_deep_compactable_or_true_tree();
+	ASSERT_TRUE(FilterTree_Compact(actual));
+	compareFilterTrees(expected, actual);
+	FilterTree_Free(actual);
+
+	actual = _build_deep_non_compactable_or_true_tree();
+	ASSERT_FALSE(FilterTree_Compact(actual));
+
+	FilterTree_Free(actual);
+	FilterTree_Free(expected);
+
+	bool_val = SI_BoolVal(false);
+	expected = FilterTree_CreateExpressionFilter(AR_EXP_NewConstOperandNode(bool_val));
+
+	actual = _build_false_tree();
+	FilterTree_Compact(actual);
+	compareFilterTrees(expected, actual);
+	FilterTree_Free(actual);
+
+	actual = _build_compactable_or_false_tree();
+	FilterTree_Compact(actual);
+	compareFilterTrees(expected, actual);
+	FilterTree_Free(actual);
+
+	actual = _build_deep_compactable_or_false_tree();
+	FilterTree_Compact(actual);
+	compareFilterTrees(expected, actual);
+	FilterTree_Free(actual);
+
+	actual = _build_non_compactable_or_false_tree();
+	ASSERT_FALSE(FilterTree_Compact(actual));
+	FilterTree_Free(actual);
+
+	actual = _build_deep_non_compactable_or_false_tree();
+	ASSERT_FALSE(FilterTree_Compact(actual));
+
+	FilterTree_Free(actual);
+	FilterTree_Free(expected);
 }
