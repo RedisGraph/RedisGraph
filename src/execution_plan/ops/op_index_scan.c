@@ -29,7 +29,7 @@ OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, const QGNode *n, RSI
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_INDEX_SCAN, "Index Scan", IndexScanInit, IndexScanConsume,
-				IndexScanReset, IndexScanToString, IndexScanFree, false, plan);
+				IndexScanReset, IndexScanToString, NULL, IndexScanFree, false, plan);
 
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 	return (OpBase *)op;

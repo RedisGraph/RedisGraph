@@ -40,6 +40,12 @@ static Record FilterConsume(OpBase *opBase) {
 	return r;
 }
 
+static OpBase *FilterClone(const ExecutionPlan *plan, OpBase *opBase) {
+	OpFilter *filter = (OpFilter *)opBase;
+	FT_FilterNode filter_tree_clone = FilterTree_
+
+}
+
 /* Frees OpFilter*/
 static void FilterFree(OpBase *ctx) {
 	OpFilter *filter = (OpFilter *)ctx;

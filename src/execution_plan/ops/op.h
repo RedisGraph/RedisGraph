@@ -103,7 +103,7 @@ typedef struct OpBase OpBase;
 void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsume consume,
 				 fpReset reset, fpToString toString, fpClone clone, fpFree free, bool writer,
 				 const struct ExecutionPlan *plan);
-OpBase *OpBase_Clone(OpBase *op);   // Clone op.
+OpBase *OpBase_Clone(const struct ExecutionPlan *plan, OpBase *op);   // Clone op.
 void OpBase_Free(OpBase *op);       // Free op.
 Record OpBase_Consume(OpBase *op);  // Consume op.
 Record OpBase_Profile(OpBase *op);  // Profile op.

@@ -9,6 +9,7 @@
 /* Forward declarations. */
 static Record LimitConsume(OpBase *opBase);
 static OpResult LimitReset(OpBase *opBase);
+static OpBase *LimitClone(const ExecutionPlan *plan, OpBase *opBase);
 
 OpBase *NewLimitOp(const ExecutionPlan *plan, unsigned int l) {
 	OpLimit *op = rm_malloc(sizeof(OpLimit));
@@ -17,7 +18,7 @@ OpBase *NewLimitOp(const ExecutionPlan *plan, unsigned int l) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_LIMIT, "Limit", NULL, LimitConsume,
-				LimitReset, NULL, NULL, false, plan);
+				LimitReset, NULL, LimitClone, NULL, false, plan);
 
 	return (OpBase *)op;
 }
@@ -38,4 +39,9 @@ static OpResult LimitReset(OpBase *ctx) {
 	OpLimit *limit = (OpLimit *)ctx;
 	limit->consumed = 0;
 	return OP_OK;
+}
+
+static inline OpBase *LimitClone(const ExecutionPlan *plan, OpBase *opBase) {
+	OpLimit *op = (OpLimit *)opBase;
+	return NewLimitOp(plan, op->limit);
 }

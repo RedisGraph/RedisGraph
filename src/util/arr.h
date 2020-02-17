@@ -294,6 +294,14 @@ static void array_free(array_t arr) {
    memcpy(dest, arr, sizeof(*arr) * (array_len(arr)));    \
   })
 
+#define array_clone_with_cb(dest, arr, cb)        \
+({                                                \
+    uint arrayLen = array_len(arr);               \
+    dest = array_newlen(typeof(*arr), arrayLen);  \
+    for(uint i = 0; i < array_len; i++)           \
+        dest = array_append(dest, cb(arr[i]));    \
+})
+
 #define array_reverse(arr)                      \
     ({                                          \
         uint arrayLen = array_len(arr);         \

@@ -12,6 +12,7 @@
 
 /* Forward declarations. */
 static Record MergeCreateConsume(OpBase *opBase);
+static OpBase *MergeCreateClone(const ExecutionPlan *plan, OpBase *opBase);
 static void MergeCreateFree(OpBase *opBase);
 
 // Convert a graph entity's components into an identifying hash code.
@@ -51,16 +52,16 @@ static void _RollbackPendingCreations(OpMergeCreate *op) {
 	}
 }
 
-OpBase *NewMergeCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
-						 NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
+OpBase *NewMergeCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
 	OpMergeCreate *op = rm_calloc(1, sizeof(OpMergeCreate));
 	op->unique_entities = raxNew();       // Create a map to unique pending creations.
 	op->hash_state = XXH64_createState(); // Create a hash state.
-	op->pending = NewPendingCreationsContainer(stats, nodes, edges); // Prepare all creation variables.
+	op->pending = NewPendingCreationsContainer(QueryCtx_GetStatistics(), nodes,
+											   edges); // Prepare all creation variables.
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_MERGE_CREATE, "MergeCreate", NULL, MergeCreateConsume,
-				NULL, NULL, MergeCreateFree, true, plan);
+				NULL, NULL, MergeCreateClone, MergeCreateFree, true, plan);
 
 	uint node_blueprint_count = array_len(nodes);
 	uint edge_blueprint_count = array_len(edges);
@@ -218,6 +219,15 @@ static Record MergeCreateConsume(OpBase *opBase) {
 	CommitNewEntities(opBase, &op->pending);
 	// Return record.
 	return _handoff(op);
+}
+
+static OpBase *MergeCreateClone(const ExecutionPlan *plan, OpBase *opBase) {
+	OpMergeCreate *op = (OpMergeCreate *)opBase;
+	NodeCreateCtx *nodes_clone;
+	EdgeCreateCtx *edges_clone;
+	array_clone_with_cb(nodes_clone, op->pending.nodes_to_create, NodeCreateCtx_Clone);
+	array_clone_with_cb(edges_clone, op->pending.edges_to_create, EdgeCreateCtx_Clone);
+	return NewMergeCreateOp(plan, nodes_clone, edges_clone);
 }
 
 static void MergeCreateFree(OpBase *ctx) {

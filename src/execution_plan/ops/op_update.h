@@ -41,6 +41,5 @@ typedef struct {
 	bool updates_commited;                      /* Updates performed? */
 } OpUpdate;
 
-OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps,
-					ResultSetStatistics *stats);
+OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps);
 

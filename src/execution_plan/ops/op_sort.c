@@ -14,6 +14,7 @@
 /* Forward declarations. */
 static Record SortConsume(OpBase *opBase);
 static OpResult SortReset(OpBase *opBase);
+static void SortClone(const ExecutionPlan *plan, OpBase *opBase);
 static void SortFree(OpBase *opBase);
 
 // Heapsort function to compare two records on a subset of fields.
@@ -34,7 +35,8 @@ static int _record_compare(Record a, Record b, const OpSort *op) {
 // Quicksort function to compare two records on a subset of fields.
 // Returns true if a is less than b.
 static bool _record_islt(Record a, Record b, const OpSort *op) {
-  return _record_compare(a, b, op) > 0; // Return true if the current left element is less than the right.
+	return _record_compare(a, b, op) >
+		   0; // Return true if the current left element is less than the right.
 }
 
 // Compares two heap record nodes.
@@ -78,13 +80,14 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions,
 	op->buffer = NULL;
 	op->limit = limit;
 	op->directions = directions;
+	op->exps = exps;
 
 	if(op->limit) op->heap = heap_new(_heap_elem_compare, op);
 	else op->buffer = array_new(Record, 32);
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_SORT, "Sort", NULL,
-				SortConsume, SortReset, NULL, SortFree, false, plan);
+				SortConsume, SortReset, NULL, SortClone, SortFree, false, plan);
 
 	uint comparison_count = array_len(exps);
 	op->record_offsets = array_new(uint, comparison_count);
@@ -160,6 +163,16 @@ static OpResult SortReset(OpBase *ctx) {
 	return OP_OK;
 }
 
+static void SortClone(const ExecutionPlan *plan, OpBase *opBase) {
+	OpSort *op = (OpSort *)opBase;
+	uint directionCount = array_len(op->directions);
+	int *directions_clone;
+	array_clone(directions_clone, op->directions);
+	AR_ExpNode **exp_clones;
+	array_clone_with_cb(exp_clones, op->exps, AR_EXP_Clone);
+	return NewSortOp(plan, exp_clones, directions_clone, op->limit);
+}
+
 /* Frees Sort */
 static void SortFree(OpBase *ctx) {
 	OpSort *op = (OpSort *)ctx;
@@ -189,9 +202,15 @@ static void SortFree(OpBase *ctx) {
 		op->record_offsets = NULL;
 	}
 
-	if (op->directions) {
+	if(op->directions) {
 		array_free(op->directions);
 		op->directions = NULL;
 	}
-}
 
+	if(op->exps) {
+		uint exps_count = array_len(op->exps);
+		for(uint i = 0; i < exps_count; i++) AR_EXP_Free(op->exps[i]);
+		array_free(op->exps);
+		op->exps = NULL;
+	}
+}

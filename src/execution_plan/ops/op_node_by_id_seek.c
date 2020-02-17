@@ -13,6 +13,7 @@ static OpResult NodeByIdSeekInit(OpBase *opBase);
 static Record NodeByIdSeekConsume(OpBase *opBase);
 static Record NodeByIdSeekConsumeFromChild(OpBase *opBase);
 static OpResult NodeByIdSeekReset(OpBase *opBase);
+static OpBase *NodeByIDSeekClone(const ExecutionPlan *plan, OpBase *opBase);
 static void NodeByIdSeekFree(OpBase *opBase);
 
 static inline int NodeByIdSeekToString(const OpBase *ctx, char *buf, uint buf_len) {
@@ -30,7 +31,7 @@ static inline bool _outOfBounds(NodeByIdSeek *op) {
 OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const QGNode *n, UnsignedRange *id_range) {
 
 	NodeByIdSeek *op = rm_malloc(sizeof(NodeByIdSeek));
-	op->g = QueryCtx_GetGraph();
+
 	op->n = n;
 	op->child_record = NULL;
 
@@ -43,7 +44,8 @@ OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const QGNode *n, UnsignedRa
 	op->currentId = op->minId;
 
 	OpBase_Init((OpBase *)op, OPType_NODE_BY_ID_SEEK, "NodeByIdSeek", NodeByIdSeekInit,
-				NodeByIdSeekConsume, NodeByIdSeekReset, NodeByIdSeekToString, NodeByIdSeekFree, false, plan);
+				NodeByIdSeekConsume, NodeByIdSeekReset, NodeByIdSeekToString, NodeByIDSeekClone, NodeByIdSeekFree,
+				false, plan);
 
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 
@@ -130,6 +132,16 @@ static OpResult NodeByIdSeekReset(OpBase *ctx) {
 	return OP_OK;
 }
 
+static OpBase *NodeByIDSeekClone(const ExecutionPlan *plan, OpBase *opBase) {
+	NodeByIdSeek *op = (NodeByIdSeek *)opBase;
+	UnsignedRange range;
+	range.include_max = true;
+	range.include_min = true;
+	range.min = op->minId;
+	range.max = op->maxId;
+	return NewNodeByIdSeekOp(plan, op->n, &range);
+}
+
 static void NodeByIdSeekFree(OpBase *opBase) {
 	NodeByIdSeek *op = (NodeByIdSeek *)opBase;
 	if(op->child_record) {
@@ -137,4 +149,3 @@ static void NodeByIdSeekFree(OpBase *opBase) {
 		op->child_record = NULL;
 	}
 }
-

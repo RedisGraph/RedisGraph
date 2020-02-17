@@ -15,6 +15,7 @@ static Record NodeByLabelScanConsume(OpBase *opBase);
 static Record NodeByLabelScanConsumeFromChild(OpBase *opBase);
 static Record NodeByLabelScanNoOp(OpBase *opBase);
 static OpResult NodeByLabelScanReset(OpBase *opBase);
+static OpBase *NodeByLabelScanClone(const ExecutionPlan *plan, OpBase *opBase);
 static void NodeByLabelScanFree(OpBase *opBase);
 
 static inline int NodeByLabelScanToString(const OpBase *ctx, char *buf, uint buf_len) {
@@ -33,8 +34,8 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *n) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_NODE_BY_LABEL_SCAN, "Node By Label Scan", NodeByLabelScanInit,
-				NodeByLabelScanConsume, NodeByLabelScanReset, NodeByLabelScanToString, NodeByLabelScanFree, false,
-				plan);
+				NodeByLabelScanConsume, NodeByLabelScanReset, NodeByLabelScanToString, NodeByLabelScanClone,
+				NodeByLabelScanFree, false, plan);
 
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 
@@ -160,6 +161,14 @@ static OpResult NodeByLabelScanReset(OpBase *ctx) {
 	}
 	_ResetIterator(op);
 	return OP_OK;
+}
+
+static inline OpBase *NodeByLabelScanClone(const ExecutionPlan *plan, OpBase *opBase) {
+	NodeByLabelScan *nodeByLabelScan = (NodeByLabelScan *)opBase;
+	OpBase *clone = NewNodeByLabelScanOp(plan, nodeByLabelScan->n);
+	NodeByLabelScan *nodeByLabelScan_clone = (NodeByLabelScan *)clone;
+	memcpy(nodeByLabelScan_clone->id_range, nodeByLabelScan->id_range, sizeof(UnsignedRange));
+	return clone;
 }
 
 static void NodeByLabelScanFree(OpBase *op) {

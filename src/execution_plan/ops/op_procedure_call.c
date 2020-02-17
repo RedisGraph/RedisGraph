@@ -12,6 +12,7 @@
 /* Forward declarations. */
 static Record ProcCallConsume(OpBase *opBase);
 static OpResult ProcCallReset(OpBase *opBase);
+static *ProcCallClone(const ExecutionPlan *plan, OpBase *opBase);
 static void ProcCallFree(OpBase *opBase);
 
 static Record _yield(OpProcCall *op) {
@@ -84,7 +85,7 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNo
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_PROC_CALL, "ProcedureCall", NULL, ProcCallConsume,
-				ProcCallReset, NULL, ProcCallFree, !op->procedure->readOnly, plan);
+				ProcCallReset, NULL, ProcCallClone, ProcCallFree, !op->procedure->readOnly, plan);
 
 	// Set modifiers.
 	for(uint i = 0; i < yield_count; i ++) {
@@ -148,6 +149,15 @@ static OpResult ProcCallReset(OpBase *ctx) {
 	OpProcCall *op = (OpProcCall *)ctx;
 	op->first_call = true;
 	return OP_OK;
+}
+
+static OpBase *ProcCallClone(const ExecutionPlan *plan, OpBase *opBase) {
+	OpProcCall *op = (OpProcCall *)opBase;
+	AR_ExpNode **arg_exps_clone;
+	AR_ExpNode **yield_exps_clone;
+	array_clone_with_cb(arg_exps_clone, op->arg_exps, AR_EXP_Clone);
+	array_clone_with_cb(yield_exps_clone, op->yield_exps, AR_EXP_Clone);
+	return NewProcCallOp(plan, op->procedure->name, arg_exps_clone, yield_exps_clone);
 }
 
 static void ProcCallFree(OpBase *ctx) {

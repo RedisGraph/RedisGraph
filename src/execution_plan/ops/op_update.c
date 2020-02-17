@@ -15,6 +15,7 @@
 static OpResult UpdateInit(OpBase *opBase);
 static Record UpdateConsume(OpBase *opBase);
 static OpResult UpdateReset(OpBase *opBase);
+static OpBase *UpdateClone(const ExecutionPlan *plan, OpBase *opBase);
 static void UpdateFree(OpBase *opBase);
 
 /* Delay updates until all entities are processed,
@@ -138,11 +139,10 @@ static Record _handoff(OpUpdate *op) {
 	return NULL;
 }
 
-OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps,
-					ResultSetStatistics *stats) {
+OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps) {
 	OpUpdate *op = rm_calloc(1, sizeof(OpUpdate));
 	op->gc = QueryCtx_GetGraphCtx();
-	op->stats = stats;
+	op->stats = QueryCtx_GetStatistics();
 	op->records = NULL;
 	op->updates_commited = false;
 	op->pending_updates_cap = 16; /* 16 seems reasonable number to start with. */
@@ -153,7 +153,7 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps,
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", UpdateInit, UpdateConsume,
-				UpdateReset, NULL, UpdateFree, true, plan);
+				UpdateReset, NULL, UpdateClone, UpdateFree, true, plan);
 
 	for(uint i = 0; i < op->update_expressions_count; i ++) {
 		op->update_expressions[i].record_idx = OpBase_Modifies((OpBase *)op, update_exps[i].alias);
@@ -225,6 +225,13 @@ static OpResult UpdateReset(OpBase *ctx) {
 	op->pending_updates = rm_realloc(op->pending_updates,
 									 op->pending_updates_cap * sizeof(EntityUpdateCtx));
 	return OP_OK;
+}
+
+static inline OpBase *UpdateClone(const ExecutionPlan *plan, OpBase *opBase) {
+	OpUpdate *op = (OpUpdate *)opBase;
+	EntityUpdateEvalCtx *exp_clones;
+	array_clone_with_cb(exp_clones, op->update_expressions, EntityUpdateEvalCtx_Clone);
+	return NewUpdateOp(plan, exp_clones);
 }
 
 static void UpdateFree(OpBase *ctx) {

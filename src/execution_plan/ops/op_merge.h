@@ -27,5 +27,4 @@ typedef struct {
 	ResultSetStatistics *stats;       // Required for tracking statistics updates in ON MATCH.
 } OpMerge;
 
-OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
-				   ResultSetStatistics *stats);
+OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match);

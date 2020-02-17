@@ -13,6 +13,7 @@
 /* Forward declarations. */
 static OpResult MergeInit(OpBase *opBase);
 static Record MergeConsume(OpBase *opBase);
+static OpBase *MergeClone(const ExecutionPlan *plan, OpBase *opBase);
 static void MergeFree(OpBase *opBase);
 
 //------------------------------------------------------------------------------
@@ -85,16 +86,15 @@ static inline Record _pullFromStream(OpBase *branch) {
 	return OpBase_Consume(branch);
 }
 
-OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
-				   ResultSetStatistics *stats) {
+OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match) {
 	/* Merge is an operator with two or three children. They will be created outside of here,
 	 * as with other multi-stream operators (see CartesianProduct and ValueHashJoin). */
 	OpMerge *op = rm_calloc(1, sizeof(OpMerge));
-	op->stats = stats;
+	op->stats = QueryCtx_GetStatistics();
 	op->on_match = on_match;
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume, NULL, NULL, MergeFree,
-				true, plan);
+	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume, NULL, NULL, MergeClone,
+				MergeFree, true, plan);
 
 	if(op->on_match) {
 		// If we have ON MATCH directives, set the appropriate record IDs of entities to be updated.
@@ -283,6 +283,13 @@ static Record MergeConsume(OpBase *opBase) {
 	_UpdateProperties(op, op->output_records, matched_records_count);
 
 	return _handoff(op);
+}
+
+static inline OpBase *MergeClone(const ExecutionPlan *plan, OpBase *opBase) {
+	OpMerge *op = (OpMerge *)opBase;
+	EntityUpdateEvalCtx *on_match_clone;
+	array_clone_with_cb(on_match_clone, op->on_match, EntityUpdateEvalCtx_Clone);
+	return NewMergeOp(plan, on_match_clone);
 }
 
 static void MergeFree(OpBase *opBase) {
