@@ -8,7 +8,7 @@
 
 #include "../execution_plan.h"
 
-/* The compact filters optimizer scans an execution plans for filters that can be
- * compressed for either 'true' or 'false' final values. In case the filter is reduced
- * to 'true' the filter operation will be removed from the execution plan. */
+/* The compact filters optimizer scans an execution plan for filters that can be
+ * compressed. In case the filter is compressed into a final constant 'true' value,
+ * the filter operation will be removed from the execution plan. */
 void compactFilters(ExecutionPlan *plan);

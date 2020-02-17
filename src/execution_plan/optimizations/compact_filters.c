@@ -15,15 +15,17 @@ static inline bool _compactFilter(OpBase *op) {
 	return FilterTree_Compact(filter_op->filterTree);
 }
 
-// In case the compacted filter resolved to true, remove it from the execution plan.
+// In case the compacted filter resolved to 'true', remove it from the execution plan.
 static void _removeTrueFilter(ExecutionPlan *plan, OpBase *op) {
 	assert(op->type == OPType_FILTER);
 	OpFilter *filter_op = (OpFilter *)op;
 	FT_FilterNode *root = filter_op->filterTree;
+	// We can only have a contant expression in this point (after compaction).
 	assert(root->t == FT_N_EXP);
+	// Evaluate the expression, and check if it is a 'true' value.
 	SIValue bool_val = AR_EXP_Evaluate(root->exp.exp, NULL);
 	assert(SI_TYPE(bool_val) == T_BOOL);
-	if(bool_val.longval) {
+	if(SIValue_IsTrue(bool_val)) {
 		ExecutionPlan_RemoveOp(plan, op);
 		OpBase_Free(op);
 	}

@@ -9,6 +9,7 @@
 
 void optimizePlan(ExecutionPlan *plan) {
 
+	// Tries to compact filter trees, and remove redundant filters.
 	compactFilters(plan);
 
 	/* Scan optimizations order:

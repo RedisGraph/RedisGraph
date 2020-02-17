@@ -418,15 +418,10 @@ void FilterTree_DeMorgan(FT_FilterNode **root) {
 	_FilterTree_DeMorgan(root, 0);
 }
 
-// This method returns if an arithmetic expression is valid to be use in filter tree compaction.
-static inline bool _FT_FilterNode_constnat_expression(AR_ExpNode *exp) {
-	// TODO: Handle injected parames.
-	return exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_CONSTANT;
-}
 
-// Compacts an expression node. Return if this node can be used in compression.
+// Return if this node can be used in compression - constant expression.
 static inline bool _FilterTree_Compact_Exp(FT_FilterNode *node) {
-	return _FT_FilterNode_constnat_expression(node->exp.exp);
+	return AR_EXP_IsConstant(node->exp.exp);
 }
 
 // In place set an existing filter tree node to expression node.
@@ -439,44 +434,54 @@ static inline void _FilterTree_In_Place_Set_Exp(FT_FilterNode *node, SIValue v) 
 static bool _FilterTree_Compact_And(FT_FilterNode *node) {
 	// Try to compact left and right children.
 	bool is_lhs_const = FilterTree_Compact(node->cond.left);
-	bool ihs_rhs_const = FilterTree_Compact(node->cond.right);
+	bool is_rhs_const = FilterTree_Compact(node->cond.right);
 	// If both are not compactable, this node is not compactable.
-	if(!is_lhs_const && !ihs_rhs_const) return false;
-	// Compact to 'false' in case at least one child is 'false'
-	if(is_lhs_const) {
-		SIValue lhs_value = AR_EXP_Evaluate(node->cond.left->exp.exp, NULL);
+	if(!is_lhs_const && !is_rhs_const) return false;
+	// In every case from now, there will be a reduction, save the children in local placeholders for current node in-place modifications.
+	FT_FilterNode *lhs = node->cond.left;
+	FT_FilterNode *rhs = node->cond.right ;
+	// Both children are constants. This node can be set as constant expression.
+	if(is_lhs_const && is_rhs_const) {
+		// Both children are now contant expressions. We can evaluate and compact.
+		SIValue rhs_value = AR_EXP_Evaluate(rhs->exp.exp, NULL);
+		SIValue lhs_value = AR_EXP_Evaluate(lhs->exp.exp, NULL);
+		SIValue final_value = SI_BoolVal(SIValue_IsTrue(lhs_value) && SIValue_IsTrue(rhs_value));
+		_FilterTree_In_Place_Set_Exp(node, final_value);
+		FilterTree_Free(lhs);
+		FilterTree_Free(rhs);
+		return true;
+	} else if(is_lhs_const) {
+		// Only lhs is constant - evaluate and free lhs.
+		SIValue lhs_value = AR_EXP_Evaluate(lhs->exp.exp, NULL);
+		FilterTree_Free(lhs);
 		// If lhs is false, everything is false.
-		if(!lhs_value.longval) {
-			FilterTree_Free(node->cond.left);
-			FilterTree_Free(node->cond.right);
+		if(SIValue_IsFalse(lhs_value)) {
 			_FilterTree_In_Place_Set_Exp(node, lhs_value);
-			return true;
-		}
-		// Lhs is true. Check Rhs.
-		if(ihs_rhs_const) {
-			// Rhs is const, there will be a compaction.
-			SIValue rhs_value = AR_EXP_Evaluate(node->cond.right->exp.exp, NULL);
-			FilterTree_Free(node->cond.left);
-			FilterTree_Free(node->cond.right);
-			// Since lhs is true, the new value is determent be rhs.
-			_FilterTree_In_Place_Set_Exp(node, rhs_value);
+			FilterTree_Free(rhs);
 			return true;
 		} else {
-			// Cannot compact;
+			// Lhs is true. Current node should be replaced with rhs.
+			memcpy(node, rhs, sizeof(FT_FilterNode));
+			// Free rhs allocation, without free the data.
+			rm_free(rhs);
 			return false;
 		}
 	} else {
-		// Rhs is const and lhs is not, the only possible compaction is to 'false'.
-		SIValue rhs_value = AR_EXP_Evaluate(node->cond.right->exp.exp, NULL);
-		if(!rhs_value.longval) {
-			// If rhs is false, everything is false.
-			FilterTree_Free(node->cond.left);
-			FilterTree_Free(node->cond.right);
+		// Only rhs is constant - evaluate and free rhs.
+		SIValue rhs_value = AR_EXP_Evaluate(rhs->exp.exp, NULL);
+		FilterTree_Free(rhs);
+		// If rhs is false, everything is false.
+		if(SIValue_IsFalse(rhs_value)) {
 			_FilterTree_In_Place_Set_Exp(node, rhs_value);
+			FilterTree_Free(lhs);
 			return true;
+		} else {
+			// Rhs is true. Current node should be replaced with lhs.
+			memcpy(node, lhs, sizeof(FT_FilterNode));
+			// Free lhs allocation, without free the data.
+			rm_free(lhs);
+			return false;
 		}
-		// Cannot compact;
-		return false;
 	}
 }
 
@@ -484,44 +489,54 @@ static bool _FilterTree_Compact_And(FT_FilterNode *node) {
 static bool _FilterTree_Compact_Or(FT_FilterNode *node) {
 	// Try to compact left and right children.
 	bool is_lhs_const = FilterTree_Compact(node->cond.left);
-	bool ihs_rhs_const = FilterTree_Compact(node->cond.right);
+	bool is_rhs_const = FilterTree_Compact(node->cond.right);
 	// If both are not compactable, this node is not compactable.
-	if(!is_lhs_const && !ihs_rhs_const) return false;
-	// Compact to 'false' in case at least one child is 'false'
-	if(is_lhs_const) {
-		SIValue lhs_value = AR_EXP_Evaluate(node->cond.left->exp.exp, NULL);
+	if(!is_lhs_const && !is_rhs_const) return false;
+	// In every case from now, there will be a reduction, save the children in local placeholders for current node in-place modifications.
+	FT_FilterNode *lhs = node->cond.left;
+	FT_FilterNode *rhs = node->cond.right ;
+	// Both children are constants. This node can be set as constant expression.
+	if(is_lhs_const && is_rhs_const) {
+		// Both children are now contant expressions. We can evaluate and compact.
+		SIValue rhs_value = AR_EXP_Evaluate(rhs->exp.exp, NULL);
+		SIValue lhs_value = AR_EXP_Evaluate(lhs->exp.exp, NULL);
+		SIValue final_value = SI_BoolVal(SIValue_IsTrue(lhs_value) || SIValue_IsTrue(rhs_value));
+		_FilterTree_In_Place_Set_Exp(node, final_value);
+		FilterTree_Free(lhs);
+		FilterTree_Free(rhs);
+		return true;
+	} else if(is_lhs_const) {
+		// Only lhs is constant - evaluate and free lhs.
+		SIValue lhs_value = AR_EXP_Evaluate(lhs->exp.exp, NULL);
+		FilterTree_Free(lhs);
 		// If lhs is true, everything is true.
-		if(lhs_value.longval) {
-			FilterTree_Free(node->cond.left);
-			FilterTree_Free(node->cond.right);
+		if(SIValue_IsTrue(lhs_value)) {
 			_FilterTree_In_Place_Set_Exp(node, lhs_value);
-			return true;
-		}
-		// Lhs is false. Check Rhs.
-		if(ihs_rhs_const) {
-			// Rhs is const, there will be a compaction.
-			SIValue rhs_value = AR_EXP_Evaluate(node->cond.right->exp.exp, NULL);
-			FilterTree_Free(node->cond.left);
-			FilterTree_Free(node->cond.right);
-			// Since lhs is false, the new value is determent be rhs.
-			_FilterTree_In_Place_Set_Exp(node, rhs_value);
+			FilterTree_Free(rhs);
 			return true;
 		} else {
-			// Cannot compact;
+			// Lhs is false. Current node should be replaced with rhs.
+			memcpy(node, rhs, sizeof(FT_FilterNode));
+			// Free rhs allocation, without free the data.
+			rm_free(rhs);
 			return false;
 		}
 	} else {
-		// Rhs is const and lhs is not, the only possible compaction is to 'true'.
-		SIValue rhs_value = AR_EXP_Evaluate(node->cond.right->exp.exp, NULL);
-		if(rhs_value.longval) {
-			// If rhs is true, everything is true.
-			FilterTree_Free(node->cond.left);
-			FilterTree_Free(node->cond.right);
+		// Only rhs is constant - evaluate and free rhs.
+		SIValue rhs_value = AR_EXP_Evaluate(rhs->exp.exp, NULL);
+		FilterTree_Free(rhs);
+		// If rhs is true, everything is true.
+		if(SIValue_IsTrue(rhs_value)) {
 			_FilterTree_In_Place_Set_Exp(node, rhs_value);
+			FilterTree_Free(lhs);
 			return true;
+		} else {
+			// Rhs is false. Current node should be replaced with lhs.
+			memcpy(node, lhs, sizeof(FT_FilterNode));
+			// Free lhs allocation, without free the data.
+			rm_free(lhs);
+			return false;
 		}
-		// Cannot compact;
-		return false;
 	}
 }
 
@@ -535,8 +550,7 @@ static inline bool _FilterTree_Compact_Cond(FT_FilterNode *node) {
 // Compacts a predicate node if possible,
 static bool _FilterTree_Compact_Pred(FT_FilterNode *node) {
 	// Check both sides are constant expressions.
-	if(_FT_FilterNode_constnat_expression(node->pred.lhs) &&
-	   _FT_FilterNode_constnat_expression(node->pred.rhs)) {
+	if(AR_EXP_IsConstant(node->pred.lhs) && AR_EXP_IsConstant(node->pred.rhs)) {
 		// Evaluate expressions.
 		SIValue lhs = AR_EXP_Evaluate(node->pred.lhs, NULL);
 		SIValue rhs = AR_EXP_Evaluate(node->pred.rhs, NULL);

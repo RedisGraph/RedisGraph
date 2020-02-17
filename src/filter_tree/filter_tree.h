@@ -118,7 +118,7 @@ bool FilterTree_Valid(const FT_FilterNode *root);
 /* Remove NOT nodes by applying DeMorgan laws */
 void FilterTree_DeMorgan(FT_FilterNode **root);
 
-/* Try to compress a filter tree to a simple 'true' or 'false' values. */
+/* Try to compress a given filter tree. */
 bool FilterTree_Compact(FT_FilterNode *root);
 
 /* Clones tree. */

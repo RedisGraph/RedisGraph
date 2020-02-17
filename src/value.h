@@ -120,6 +120,8 @@ void SIValue_Persist(SIValue *v);
 
 bool SIValue_IsNull(SIValue v);
 bool SIValue_IsNullPtr(SIValue *v);
+bool SIValue_IsFalse(SIValue v);
+bool SIValue_IsTrue(SIValue v);
 
 const char *SIType_ToString(SIType t);
 

@@ -181,6 +181,14 @@ inline bool SIValue_IsNull(SIValue v) {
 	return v.type == T_NULL;
 }
 
+inline bool SIValue_IsFalse(SIValue v) {
+	return !v.longval;
+}
+
+inline bool SIValue_IsTrue(SIValue v) {
+	return v.longval;
+}
+
 inline bool SIValue_IsNullPtr(SIValue *v) {
 	return v == NULL || v->type == T_NULL;
 }
