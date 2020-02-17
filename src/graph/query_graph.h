@@ -7,7 +7,6 @@
 #pragma once
 
 #include "../ast/ast.h"
-#include "graphcontext.h"
 #include "entities/node.h"
 #include "entities/edge.h"
 #include "entities/qg_node.h"
@@ -39,12 +38,12 @@ void QueryGraph_ConnectNodes(QueryGraph *qg, QGNode *src, QGNode *dest, QGEdge *
 /* Add all nodes and relationships from a single path
  * (from part of a MATCH or CREATE pattern, or a MERGE clause)
  * to the QueryGraph. */
-void QueryGraph_AddPath(QueryGraph *qg, const GraphContext *gc, const cypher_astnode_t *path);
+void QueryGraph_AddPath(QueryGraph *qg, const cypher_astnode_t *path);
 
 /* Adds all paths described in an AST pattern node (from a
  * MATCH or MERGE clause) to a meta-graph that describes all
  * nodes and relationships in a query. */
-QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast);
+QueryGraph *BuildQueryGraph(const AST *ast);
 
 /* Retrieve node by alias */
 QGNode *QueryGraph_GetNodeByAlias(const QueryGraph *qg, const char *alias);

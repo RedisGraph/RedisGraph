@@ -12,7 +12,7 @@
 
 /* Forward declarations. */
 static Record ProjectConsume(OpBase *opBase);
-static OpBase *ProjectClone(const ExecutionPlan *plan, OpBase *opBase);
+static OpBase *ProjectClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void ProjectFree(OpBase *opBase);
 
 OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
@@ -71,7 +71,7 @@ static Record ProjectConsume(OpBase *opBase) {
 	return projection;
 }
 
-static inline OpBase *ProjectClone(const ExecutionPlan *plan, OpBase *opBase) {
+static inline OpBase *ProjectClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	OpProject *op = (OpProject *)opBase;
 	AR_ExpNode **exp_clones;
 	array_clone_with_cb(exp_clones, op->exps, AR_EXP_Clone);

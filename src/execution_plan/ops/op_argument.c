@@ -9,6 +9,7 @@
 // Forward declarations
 Record ArgumentConsume(OpBase *opBase);
 OpResult ArgumentReset(OpBase *opBase);
+static OpBase *ArgumentClone(const ExecutionPlan *plan, const OpBase *opBase);
 void ArgumentFree(OpBase *opBase);
 
 OpBase *NewArgumentOp(const ExecutionPlan *plan, const char **variables) {
@@ -17,7 +18,7 @@ OpBase *NewArgumentOp(const ExecutionPlan *plan, const char **variables) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_ARGUMENT, "Argument", NULL,
-				ArgumentConsume, ArgumentReset, NULL, ArgumentFree, false, plan);
+				ArgumentConsume, ArgumentReset, NULL, ArgumentClone, ArgumentFree, false, plan);
 
 	uint variable_count = array_len(variables);
 	for(uint i = 0; i < variable_count; i ++) {
@@ -52,6 +53,10 @@ OpResult ArgumentReset(OpBase *opBase) {
 
 void Argument_AddRecord(Argument *arg, Record r) {
 	arg->records = array_append(arg->records, r);
+}
+
+static OpBase *ArgumentClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	return NewArgumentOp(plan, opBase->modifies);
 }
 
 void ArgumentFree(OpBase *opBase) {

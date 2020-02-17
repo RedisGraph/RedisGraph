@@ -232,10 +232,8 @@ static AR_ExpNode **_BuildCallArguments(const cypher_astnode_t *call_clause) {
 	return arguments;
 }
 
-static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg,
-											 AST *ast, FT_FilterNode *ft) {
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-
+static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg, AST *ast,
+											 FT_FilterNode *ft) {
 	QueryGraph **connectedComponents = QueryGraph_ConnectedComponents(qg);
 	uint connectedComponentsCount = array_len(connectedComponents);
 	plan->connected_components = connectedComponents;
@@ -294,9 +292,9 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				if(AlgebraicExpression_Edge(exp)) edge = QueryGraph_GetEdgeByAlias(qg,
 																					   AlgebraicExpression_Edge(exp));
 				if(edge && QGEdge_VariableLength(edge)) {
-					root = NewCondVarLenTraverseOp(plan, gc->g, exp);
+					root = NewCondVarLenTraverseOp(plan, exp);
 				} else {
-					root = NewCondTraverseOp(plan, gc->g, exp, TraverseRecordCap(ast));
+					root = NewCondTraverseOp(plan, exp, TraverseRecordCap(ast));
 				}
 				// Insert the new traversal op at the root of the chain.
 				ExecutionPlan_AddOp(root, tail);
@@ -384,12 +382,11 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_lim
 
 // Merge all order expressions into the projections array without duplicates,
 // returning an array of expressions to free after building projection ops.
-static AR_ExpNode **_combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **order_exps) {
+static void _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **order_exps) {
 	rax *projection_names = raxNew();
 	AR_ExpNode **project_exps = *exps_ptr;
 	uint order_count = array_len(order_exps);
 	uint project_count = array_len(project_exps);
-	AR_ExpNode **free_list = array_new(AR_ExpNode *, order_count);
 
 	// Add all WITH/RETURN projection names to rax.
 	for(uint i = 0; i < project_count; i ++) {
@@ -403,17 +400,13 @@ static AR_ExpNode **_combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNod
 		int new_name = raxTryInsert(projection_names, (unsigned char *)name, strlen(name), NULL, NULL);
 		if(new_name) {
 			// New projection, add to array.
-			project_exps = array_append(project_exps, order_exps[i]);
-		} else {
-			// Duplicate projection, add to free list.
-			free_list = array_append(free_list, order_exps[i]);
+			project_exps = array_append(project_exps, AR_EXP_Clone(order_exps[i]));
 		}
 	}
 
 	raxFree(projection_names);
 
 	*exps_ptr = project_exps;
-	return free_list;
 }
 
 // Build an aggregate or project operation and any required modifying operations.
@@ -424,7 +417,7 @@ static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **project
 
 	AR_ExpNode **free_list = NULL;
 	// Merge order expressions into the projections array.
-	if(order_exps) free_list = _combine_projection_arrays(&projections, order_exps);
+	_combine_projection_arrays(&projections, order_exps);
 
 	// Our fundamental operation will be a projection or aggregation.
 	OpBase *op;
@@ -466,15 +459,6 @@ static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **project
 	if(limit != UNLIMITED) {
 		OpBase *op = NewLimitOp(plan, limit);
 		_ExecutionPlan_UpdateRoot(plan, op);
-	}
-
-	// Free any order expressions that have not been migrated into the projections array.
-	if(free_list) {
-		uint free_count = array_len(free_list);
-		for(uint i = 0; i < free_count; i ++) {
-			AR_EXP_Free(free_list[i]);
-		}
-		array_free(free_list);
 	}
 }
 
@@ -533,11 +517,9 @@ static inline void _buildCallOp(AST *ast, ExecutionPlan *plan,
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
-static inline void _buildCreateOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
-								  ResultSetStatistics *stats) {
+static inline void _buildCreateOp(AST *ast, ExecutionPlan *plan) {
 	AST_CreateContext create_ast_ctx = AST_PrepareCreateOp(plan->query_graph, plan->record_map);
-	OpBase *op = NewCreateOp(plan, stats, create_ast_ctx.nodes_to_create,
-							 create_ast_ctx.edges_to_create);
+	OpBase *op = NewCreateOp(plan, create_ast_ctx.nodes_to_create, create_ast_ctx.edges_to_create);
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
@@ -609,8 +591,7 @@ static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge
 	}
 }
 
-static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
-						  const cypher_astnode_t *clause, ResultSetStatistics *stats) {
+static void _buildMergeOp(AST *ast, ExecutionPlan *plan, const cypher_astnode_t *clause) {
 	/*
 	 * A MERGE clause provides a single path that must exist or be created.
 	 * If we have built ops already, they will form the first stream into the Merge op.
@@ -656,7 +637,7 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 
 	// Create a Merge operation. It will store no information at this time except for any graph updates
 	// it should make due to ON MATCH SET directives in the query.
-	OpBase *merge_op = NewMergeOp(plan, merge_ctx.on_match, stats);
+	OpBase *merge_op = NewMergeOp(plan, merge_ctx.on_match);
 
 	// Set Merge op as new root and add previously-built ops, if any, as Merge's first stream.
 	_ExecutionPlan_UpdateRoot(plan, merge_op);
@@ -665,7 +646,7 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 	_buildMergeMatchStream(plan, clause, arguments);
 
 	// Build the Create stream as a Merge child.
-	_buildMergeCreateStream(plan, &merge_ctx, stats, arguments);
+	_buildMergeCreateStream(plan, &merge_ctx, arguments);
 
 	if(bound_vars) raxFree(bound_vars);
 	array_free(arguments);
@@ -677,15 +658,14 @@ static inline void _buildUpdateOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
-static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *clause,
-								  ResultSetStatistics *stats) {
+static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *clause) {
 	AR_ExpNode **exps = AST_PrepareDeleteOp(clause);
-	OpBase *op = NewDeleteOp(plan, exps, stats);
+	OpBase *op = NewDeleteOp(plan, exps);
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
-static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
-												ExecutionPlan *plan, ResultSetStatistics *stats, const cypher_astnode_t *clause) {
+static void _ExecutionPlanSegment_ConvertClause(AST *ast, ExecutionPlan *plan,
+												const cypher_astnode_t *clause) {
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
 	// Because 't' is set using the offsetof() call, it cannot be used in switch statements.
 	if(t == CYPHER_AST_MATCH) {
@@ -700,15 +680,15 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 	} else if(t == CYPHER_AST_CREATE) {
 		// Only add at most one Create op per plan. TODO Revisit and improve this logic.
 		if(ExecutionPlan_LocateFirstOp(plan->root, OPType_CREATE)) return;
-		_buildCreateOp(gc, ast, plan, stats);
+		_buildCreateOp(ast, plan);
 	} else if(t == CYPHER_AST_UNWIND) {
 		_buildUnwindOp(plan, clause);
 	} else if(t == CYPHER_AST_MERGE) {
-		_buildMergeOp(gc, ast, plan, clause, stats);
+		_buildMergeOp(ast, plan, clause);
 	} else if(t == CYPHER_AST_SET) {
 		_buildUpdateOp(plan, clause);
 	} else if(t == CYPHER_AST_DELETE) {
-		_buildDeleteOp(plan, clause, stats);
+		_buildDeleteOp(plan, clause);
 	} else if(t == CYPHER_AST_RETURN) {
 		// Converting a RETURN clause can create multiple operations.
 		_buildReturnOps(plan, clause);
@@ -720,7 +700,6 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 
 void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set) {
 	AST *ast = QueryCtx_GetAST();
-	GraphContext *gc = QueryCtx_GetGraphCtx();
 	plan->result_set = result_set;
 
 	// Initialize the plan's record mapping if necessary.
@@ -728,20 +707,16 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_
 	if(plan->record_map == NULL) plan->record_map = raxNew();
 
 	// Build query graph
-	plan->query_graph = BuildQueryGraph(gc, ast);
+	plan->query_graph = BuildQueryGraph(ast);
 
 	// Build filter tree
 	plan->filter_tree = AST_BuildFilterTree(ast);
-
-	// If we are in a querying context, retrieve a pointer to the statistics for operations
-	// like DELETE that only produce metadata.
-	ResultSetStatistics *stats = (result_set) ? &result_set->stats : NULL;
 
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	for(uint i = 0; i < clause_count; i ++) {
 		// Build the appropriate operation(s) for each clause in the query.
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
-		_ExecutionPlanSegment_ConvertClause(gc, ast, plan, stats, clause);
+		_ExecutionPlanSegment_ConvertClause(ast, plan, clause);
 	}
 }
 

@@ -16,7 +16,8 @@ rax *ExecutionPlan_GetMappings(const struct ExecutionPlan *plan);
 void ExecutionPlan_ReturnRecord(struct ExecutionPlan *plan, Record r);
 
 void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsume consume,
-				 fpReset reset, fpToString toString, fpFree free, bool writer, const struct ExecutionPlan *plan) {
+				 fpReset reset, fpToString toString, fpClone clone, fpFree free, bool writer,
+				 const struct ExecutionPlan *plan) {
 
 	op->type = type;
 	op->name = name;
@@ -37,6 +38,7 @@ void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsu
 	op->consume = consume;
 	op->reset = reset;
 	op->toString = toString;
+	op->clone = clone;
 	op->free = free;
 }
 
@@ -153,9 +155,9 @@ inline void OpBase_DeleteRecord(Record r) {
 	ExecutionPlan_ReturnRecord(r->owner, r);
 }
 
-OpBase *OpBase_Clone(OpBase *op) {
+OpBase *OpBase_Clone(const struct ExecutionPlan *plan, OpBase *op) {
 	if(!op) return NULL;
-	if(op->clone) return op->clone(op);
+	if(op->clone) return op->clone(plan, op);
 	return NULL;
 }
 

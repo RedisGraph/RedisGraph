@@ -15,7 +15,7 @@ static Record NodeByLabelScanConsume(OpBase *opBase);
 static Record NodeByLabelScanConsumeFromChild(OpBase *opBase);
 static Record NodeByLabelScanNoOp(OpBase *opBase);
 static OpResult NodeByLabelScanReset(OpBase *opBase);
-static OpBase *NodeByLabelScanClone(const ExecutionPlan *plan, OpBase *opBase);
+static OpBase *NodeByLabelScanClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void NodeByLabelScanFree(OpBase *opBase);
 
 static inline int NodeByLabelScanToString(const OpBase *ctx, char *buf, uint buf_len) {
@@ -163,7 +163,7 @@ static OpResult NodeByLabelScanReset(OpBase *ctx) {
 	return OP_OK;
 }
 
-static inline OpBase *NodeByLabelScanClone(const ExecutionPlan *plan, OpBase *opBase) {
+static inline OpBase *NodeByLabelScanClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	NodeByLabelScan *nodeByLabelScan = (NodeByLabelScan *)opBase;
 	OpBase *clone = NewNodeByLabelScanOp(plan, nodeByLabelScan->n);
 	NodeByLabelScan *nodeByLabelScan_clone = (NodeByLabelScan *)clone;

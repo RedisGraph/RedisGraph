@@ -296,9 +296,9 @@ static void array_free(array_t arr) {
 
 #define array_clone_with_cb(dest, arr, cb)        \
 ({                                                \
-    uint arrayLen = array_len(arr);               \
+    uint arrayLen = array_len((arr));               \
     dest = array_newlen(typeof(*arr), arrayLen);  \
-    for(uint i = 0; i < array_len; i++)           \
+    for(uint i = 0; i < arrayLen; i++)           \
         dest = array_append(dest, cb(arr[i]));    \
 })
 

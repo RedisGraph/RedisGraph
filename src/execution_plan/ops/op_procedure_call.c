@@ -12,7 +12,7 @@
 /* Forward declarations. */
 static Record ProcCallConsume(OpBase *opBase);
 static OpResult ProcCallReset(OpBase *opBase);
-static *ProcCallClone(const ExecutionPlan *plan, OpBase *opBase);
+static OpBase *ProcCallClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void ProcCallFree(OpBase *opBase);
 
 static Record _yield(OpProcCall *op) {
@@ -151,7 +151,7 @@ static OpResult ProcCallReset(OpBase *ctx) {
 	return OP_OK;
 }
 
-static OpBase *ProcCallClone(const ExecutionPlan *plan, OpBase *opBase) {
+static OpBase *ProcCallClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	OpProcCall *op = (OpProcCall *)opBase;
 	AR_ExpNode **arg_exps_clone;
 	AR_ExpNode **yield_exps_clone;

@@ -14,7 +14,7 @@
 /* Forward declarations. */
 static Record SortConsume(OpBase *opBase);
 static OpResult SortReset(OpBase *opBase);
-static void SortClone(const ExecutionPlan *plan, OpBase *opBase);
+static OpBase *SortClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void SortFree(OpBase *opBase);
 
 // Heapsort function to compare two records on a subset of fields.
@@ -163,7 +163,7 @@ static OpResult SortReset(OpBase *ctx) {
 	return OP_OK;
 }
 
-static void SortClone(const ExecutionPlan *plan, OpBase *opBase) {
+static OpBase *SortClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	OpSort *op = (OpSort *)opBase;
 	uint directionCount = array_len(op->directions);
 	int *directions_clone;

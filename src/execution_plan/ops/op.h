@@ -60,21 +60,20 @@ typedef enum {
 } OpResult;
 
 struct OpBase;
+struct ExecutionPlan;
 
 typedef void (*fpFree)(struct OpBase *);
 typedef OpResult(*fpInit)(struct OpBase *);
 typedef Record(*fpConsume)(struct OpBase *);
 typedef OpResult(*fpReset)(struct OpBase *);
 typedef int (*fpToString)(const struct OpBase *, char *, uint);
-typedef OpBase *(*fpClone)(const struct OpBase *);
+typedef struct OpBase *(*fpClone)(const struct ExecutionPlan *plan, const struct OpBase *);
 
 // Execution plan operation statistics.
 typedef struct {
 	int profileRecordCount;     // Number of records generated.
 	double profileExecTime;     // Operation total execution time in ms.
 }  OpStats;
-
-struct ExecutionPlan;
 
 struct OpBase {
 	OPType type;                // Type of operation.

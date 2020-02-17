@@ -9,10 +9,12 @@
 #include "../../util/arr.h"
 #include "../../GraphBLASExt/GxB_Delete.h"
 #include "../../arithmetic/arithmetic_expression.h"
+#include "../../query_ctx.h"
 
 /* Forward declarations. */
 static Record CondTraverseConsume(OpBase *opBase);
 static OpResult CondTraverseReset(OpBase *opBase);
+static OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void CondTraverseFree(OpBase *opBase);
 
 static void _setupTraversedRelations(CondTraverse *op, QGEdge *e) {
@@ -118,10 +120,9 @@ static inline int CondTraverseToString(const OpBase *ctx, char *buf, uint buf_le
 	return TraversalToString(ctx, buf, buf_len, ((const CondTraverse *)ctx)->ae);
 }
 
-OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
-						  uint records_cap) {
+OpBase *NewCondTraverseOp(const ExecutionPlan *plan, AlgebraicExpression *ae, uint records_cap) {
 	CondTraverse *op = rm_calloc(1, sizeof(CondTraverse));
-	op->graph = g;
+	op->graph = QueryCtx_GetGraph();
 	op->ae = ae;
 	op->r = NULL;
 	op->iter = NULL;
@@ -136,7 +137,8 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", NULL,
-				CondTraverseConsume, CondTraverseReset, CondTraverseToString, CondTraverseFree, false, plan);
+				CondTraverseConsume, CondTraverseReset, CondTraverseToString, CondTraverseClone, CondTraverseFree,
+				false, plan);
 
 	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
@@ -226,6 +228,12 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 	}
 	if(op->F != GrB_NULL) GrB_Matrix_clear(op->F);
 	return OP_OK;
+}
+
+static inline OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	CondTraverse *op = (CondTraverse *)opBase;
+	AlgebraicExpression *ae_clone = AlgebraicExpression_Clone(op->ae);
+	return NewCondTraverseOp(plan, ae_clone, op->recordsCap);
 }
 
 /* Frees CondTraverse */

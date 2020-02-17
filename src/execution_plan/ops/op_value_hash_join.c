@@ -15,7 +15,7 @@
 static OpResult ValueHashJoinInit(OpBase *opBase);
 static Record ValueHashJoinConsume(OpBase *opBase);
 static OpResult ValueHashJoinReset(OpBase *opBase);
-static OpBase *ValueHashJoinClone(const ExecutionPlan *plan, OpBase *opBase);
+static OpBase *ValueHashJoinClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void ValueHashJoinFree(OpBase *opBase);
 
 /* Determins order between two records by inspecting
@@ -272,7 +272,7 @@ static OpResult ValueHashJoinReset(OpBase *ctx) {
 	return OP_OK;
 }
 
-static inline OpBase *ValueHashJoinClone(const ExecutionPlan *plan, OpBase *opBase) {
+static inline OpBase *ValueHashJoinClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	OpValueHashJoin *op = (OpValueHashJoin *)opBase;
 	AR_ExpNode *lhs_clone = AR_EXP_Clone(op->lhs_exp);
 	AR_ExpNode *rhs_clone = AR_EXP_Clone(op->rhs_exp);

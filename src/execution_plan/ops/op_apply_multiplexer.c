@@ -7,11 +7,12 @@
 #include "op_apply_multiplexer.h"
 
 // Forward declerations.
-OpResult OpApplyMultiplexerInit(OpBase *opBase);
-Record OrMultiplexer_Consume(OpBase *opBase);
-Record AndMultiplexer_Consume(OpBase *opBase);
-OpResult OpApplyMultiplexerReset(OpBase *opBase);
-void OpApplyMultiplexerFree(OpBase *opBase);
+static OpResult OpApplyMultiplexerInit(OpBase *opBase);
+static Record OrMultiplexer_Consume(OpBase *opBase);
+static Record AndMultiplexer_Consume(OpBase *opBase);
+static OpResult OpApplyMultiplexerReset(OpBase *opBase);
+static OpBase *OpApplyMultiplexerClone(const ExecutionPlan *plan, const OpBase *opBase);
+static void OpApplyMultiplexerFree(OpBase *opBase);
 
 static Record _pullFromBranchStream(OpApplyMultiplexer *op, int branch_index) {
 	// Propegate record to the top of the match stream.
@@ -19,19 +20,19 @@ static Record _pullFromBranchStream(OpApplyMultiplexer *op, int branch_index) {
 	return OpBase_Consume(op->op.children[branch_index]);
 }
 
-OpBase *NewApplyMultiplexerOp(ExecutionPlan *plan, AST_Operator boolean_operator) {
+OpBase *NewApplyMultiplexerOp(const ExecutionPlan *plan, AST_Operator boolean_operator) {
 
 	OpApplyMultiplexer *op = rm_calloc(1, sizeof(OpApplyMultiplexer));
 	op->boolean_operator = boolean_operator;
 	// Set our Op operations
 	if(boolean_operator == OP_OR) {
 		OpBase_Init((OpBase *)op, OPType_OR_APPLY_MULTIPLEXER, "OR Apply Multiplexer",
-					OpApplyMultiplexerInit,
-					OrMultiplexer_Consume, OpApplyMultiplexerReset, NULL, OpApplyMultiplexerFree, false, plan);
+					OpApplyMultiplexerInit, OrMultiplexer_Consume, OpApplyMultiplexerReset, NULL,
+					OpApplyMultiplexerClone, OpApplyMultiplexerFree, false, plan);
 	} else if(boolean_operator == OP_AND) {
 		OpBase_Init((OpBase *)op, OPType_AND_APPLY_MULTIPLEXER, "AND Apply Multiplexer",
-					OpApplyMultiplexerInit,
-					AndMultiplexer_Consume, OpApplyMultiplexerReset, NULL, OpApplyMultiplexerFree, false, plan);
+					OpApplyMultiplexerInit, AndMultiplexer_Consume, OpApplyMultiplexerReset, NULL,
+					OpApplyMultiplexerClone, OpApplyMultiplexerFree, false, plan);
 	} else {
 		assert("apply multiplexer boolean operator should be AND or OR only" && false);
 	}
@@ -114,7 +115,7 @@ Record OrMultiplexer_Consume(OpBase *opBase) {
 	}
 }
 
-Record AndMultiplexer_Consume(OpBase *opBase) {
+static Record AndMultiplexer_Consume(OpBase *opBase) {
 	OpApplyMultiplexer *op = (OpApplyMultiplexer *)opBase;
 	while(true) {
 		// Try to get a record from bound stream.
@@ -140,7 +141,7 @@ Record AndMultiplexer_Consume(OpBase *opBase) {
 	}
 }
 
-OpResult OpApplyMultiplexerReset(OpBase *opBase) {
+static OpResult OpApplyMultiplexerReset(OpBase *opBase) {
 	OpApplyMultiplexer *op = (OpApplyMultiplexer *)opBase;
 	if(op->r) {
 		OpBase_DeleteRecord(op->r);
@@ -149,7 +150,12 @@ OpResult OpApplyMultiplexerReset(OpBase *opBase) {
 	return OP_OK;
 }
 
-void OpApplyMultiplexerFree(OpBase *opBase) {
+static inline OpBase *OpApplyMultiplexerClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	OpApplyMultiplexer *op = (OpApplyMultiplexer *)opBase;
+	return NewApplyMultiplexerOp(plan, op->boolean_operator);
+}
+
+static void OpApplyMultiplexerFree(OpBase *opBase) {
 	OpApplyMultiplexer *op = (OpApplyMultiplexer *)opBase;
 
 	if(op->branch_arguments) {

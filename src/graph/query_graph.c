@@ -5,6 +5,7 @@
 */
 
 #include "query_graph.h"
+#include "graphcontext.h"
 #include "../util/arr.h"
 #include "../util/strcmp.h"
 #include "../query_ctx.h"
@@ -112,7 +113,7 @@ void QueryGraph_ConnectNodes(QueryGraph *qg, QGNode *src, QGNode *dest, QGEdge *
 	qg->edges = array_append(qg->edges, e);
 }
 
-void QueryGraph_AddPath(QueryGraph *qg, const GraphContext *gc, const cypher_astnode_t *path) {
+void QueryGraph_AddPath(QueryGraph *qg, const cypher_astnode_t *path) {
 	uint nelems = cypher_ast_pattern_path_nelements(path);
 	/* Introduce nodes first. Nodes are positioned at every even offset
 	 * into the path (0, 2, ...) */
@@ -142,7 +143,7 @@ void QueryGraph_AddPath(QueryGraph *qg, const GraphContext *gc, const cypher_ast
 }
 
 /* Build a query graph from MATCH and MERGE clauses. */
-QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
+QueryGraph *BuildQueryGraph(const AST *ast) {
 	uint node_count;
 	uint edge_count;
 	// The initial node and edge arrays will be large enough to accommodate all AST entities
@@ -159,7 +160,7 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 			uint npaths = cypher_ast_pattern_npaths(pattern);
 			for(uint j = 0; j < npaths; j ++) {
 				const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
-				QueryGraph_AddPath(qg, gc, path);
+				QueryGraph_AddPath(qg, path);
 			}
 		}
 		array_free(match_clauses);

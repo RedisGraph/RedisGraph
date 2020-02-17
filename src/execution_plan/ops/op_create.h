@@ -22,6 +22,5 @@ typedef struct {
 	PendingCreations pending;  // Container struct for all graph changes to be committed.
 } OpCreate;
 
-OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeCreateCtx *nodes,
-					EdgeCreateCtx *edges);
+OpBase *NewCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateCtx *edges);
 

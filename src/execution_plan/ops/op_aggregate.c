@@ -16,6 +16,7 @@
 static OpResult AggregateInit(OpBase *opBase);
 static Record AggregateConsume(OpBase *opBase);
 static OpResult AggregateReset(OpBase *opBase);
+static OpBase *AggregateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void AggregateFree(OpBase *opBase);
 
 /* Initialize expression_classification, which denotes whether each
@@ -211,7 +212,7 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should
 	op->should_cache_records = should_cache_records;
 
 	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", AggregateInit, AggregateConsume,
-				AggregateReset, NULL, AggregateFree, false, plan);
+				AggregateReset, NULL, AggregateClone, AggregateFree, false, plan);
 
 	for(uint i = 0; i < op->exp_count; i ++) {
 		// The projected record will associate values with their resolved name
@@ -270,9 +271,11 @@ static OpResult AggregateReset(OpBase *opBase) {
 	return OP_OK;
 }
 
-static OpBase *AggregateClone(OpBase *opBase) {
+static inline OpBase *AggregateClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	OpAggregate *op = (OpAggregate *)opBase;
-
+	AR_ExpNode **exps_clone;
+	array_clone_with_cb(exps_clone, op->exps, AR_EXP_Clone);
+	return NewAggregateOp(plan, exps_clone, op->should_cache_records);
 }
 
 static void AggregateFree(OpBase *opBase) {

@@ -18,6 +18,7 @@
 /* Forward declarations. */
 static Record CondVarLenTraverseConsume(OpBase *opBase);
 static OpResult CondVarLenTraverseReset(OpBase *opBase);
+static OpBase *CondVarLenTraverseClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void CondVarLenTraverseFree(OpBase *opBase);
 
 static void _setupTraversedRelations(CondVarLenTraverse *op) {
@@ -75,11 +76,11 @@ void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op) {
 	op->op.name = "Conditional Variable Length Traverse (Expand Into)";
 }
 
-OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
-	assert(ae && g);
+OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, AlgebraicExpression *ae) {
+	assert(ae);
 
 	CondVarLenTraverse *op = rm_malloc(sizeof(CondVarLenTraverse));
-	op->g = g;
+	op->g = QueryCtx_GetGraph();
 	op->ae = ae;
 	op->r = NULL;
 	op->expandInto = false;
@@ -89,7 +90,7 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
 				"Conditional Variable Length Traverse", NULL, CondVarLenTraverseConsume, CondVarLenTraverseReset,
-				CondVarLenTraverseToString, CondVarLenTraverseFree, false, plan);
+				CondVarLenTraverseToString, CondVarLenTraverseClone, CondVarLenTraverseFree, false, plan);
 
 	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
@@ -154,6 +155,12 @@ static OpResult CondVarLenTraverseReset(OpBase *ctx) {
 	AllPathsCtx_Free(op->allPathsCtx);
 	op->allPathsCtx = NULL;
 	return OP_OK;
+}
+
+static inline OpBase *CondVarLenTraverseClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	CondVarLenTraverse *op = (CondVarLenTraverse *)opBase;
+	AlgebraicExpression *ae_clone = AlgebraicExpression_Clone(op->ae);
+	return NewCondVarLenTraverseOp(plan, ae_clone);
 }
 
 static void CondVarLenTraverseFree(OpBase *ctx) {

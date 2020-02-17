@@ -13,7 +13,7 @@
 /* Forward declarations. */
 static OpResult MergeInit(OpBase *opBase);
 static Record MergeConsume(OpBase *opBase);
-static OpBase *MergeClone(const ExecutionPlan *plan, OpBase *opBase);
+static OpBase *MergeClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void MergeFree(OpBase *opBase);
 
 //------------------------------------------------------------------------------
@@ -285,7 +285,7 @@ static Record MergeConsume(OpBase *opBase) {
 	return _handoff(op);
 }
 
-static inline OpBase *MergeClone(const ExecutionPlan *plan, OpBase *opBase) {
+static inline OpBase *MergeClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	OpMerge *op = (OpMerge *)opBase;
 	EntityUpdateEvalCtx *on_match_clone;
 	array_clone_with_cb(on_match_clone, op->on_match, EntityUpdateEvalCtx_Clone);

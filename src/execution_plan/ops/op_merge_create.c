@@ -12,7 +12,7 @@
 
 /* Forward declarations. */
 static Record MergeCreateConsume(OpBase *opBase);
-static OpBase *MergeCreateClone(const ExecutionPlan *plan, OpBase *opBase);
+static OpBase *MergeCreateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void MergeCreateFree(OpBase *opBase);
 
 // Convert a graph entity's components into an identifying hash code.
@@ -221,7 +221,7 @@ static Record MergeCreateConsume(OpBase *opBase) {
 	return _handoff(op);
 }
 
-static OpBase *MergeCreateClone(const ExecutionPlan *plan, OpBase *opBase) {
+static OpBase *MergeCreateClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	OpMergeCreate *op = (OpMergeCreate *)opBase;
 	NodeCreateCtx *nodes_clone;
 	EdgeCreateCtx *edges_clone;

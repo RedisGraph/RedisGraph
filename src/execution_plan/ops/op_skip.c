@@ -9,7 +9,7 @@
 /* Forward declarations. */
 static Record SkipConsume(OpBase *opBase);
 static OpResult SkipReset(OpBase *opBase);
-static OpBase *SkipClone(const ExecutionPlan *plan, OpBase *opBase);
+static OpBase *SkipClone(const ExecutionPlan *plan, const OpBase *opBase);
 
 OpBase *NewSkipOp(const ExecutionPlan *plan, unsigned int rec_to_skip) {
 	OpSkip *op = rm_malloc(sizeof(OpSkip));
@@ -51,7 +51,7 @@ static OpResult SkipReset(OpBase *ctx) {
 	return OP_OK;
 }
 
-static inline OpBase *SkipClone(const ExecutionPlan *plan, OpBase *opBase) {
+static inline OpBase *SkipClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	OpSkip *skip = (OpSkip *)opBase;
 	return NewSkipOp(plan, skip->rec_to_skip);
 }

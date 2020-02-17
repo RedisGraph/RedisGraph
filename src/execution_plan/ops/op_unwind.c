@@ -17,7 +17,7 @@
 static OpResult UnwindInit(OpBase *opBase);
 static Record UnwindConsume(OpBase *opBase);
 static OpResult UnwindReset(OpBase *opBase);
-static OpBase *UnwindClone(const ExecutionPlan *plan, OpBase *opBase);
+static OpBase *UnwindClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void UnwindFree(OpBase *opBase);
 
 OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
@@ -115,7 +115,7 @@ static OpResult UnwindReset(OpBase *ctx) {
 	return OP_OK;
 }
 
-static inline OpBase *UnwindClone(const ExecutionPlan *plan, OpBase *opBase) {
+static inline OpBase *UnwindClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	OpUnwind *op = (OpUnwind *)opBase;
 	return NewUnwindOp(plan, AR_EXP_Clone(op->exp));
 }

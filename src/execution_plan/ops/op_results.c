@@ -11,11 +11,11 @@
 
 /* Forward declarations. */
 static Record ResultsConsume(OpBase *opBase);
-static OpBase *ResultsClone(const ExecutionPlan *plan, OpBase *opBase);
+static OpBase *ResultsClone(const ExecutionPlan *plan, const OpBase *opBase);
 
 OpBase *NewResultsOp(const ExecutionPlan *plan) {
 	Results *op = rm_malloc(sizeof(Results));
-	op->result_set = QueryCtx_GetResultSet;
+	op->result_set = QueryCtx_GetResultSet();
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_RESULTS, "Results", NULL, ResultsConsume, NULL, NULL, ResultsClone,
@@ -41,6 +41,6 @@ static Record ResultsConsume(OpBase *opBase) {
 	return r;
 }
 
-static inline OpBase *ResultsClone(const ExecutionPlan *plan, OpBase *opBase) {
+static inline OpBase *ResultsClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	return NewResultsOp(plan);
 }

@@ -21,7 +21,7 @@ typedef struct {
 	int *edgeRelationTypes;     // One or more relation types.
 	int edgeRelationCount;      // length of edgeRelationTypes.
 	Edge *edges;                // Discovered edges.
-    bool setEdge;               // Edge needs to be set.
+	bool setEdge;               // Edge needs to be set.
 	GxB_MatrixTupleIter *iter;  // Iterator over M.
 	int srcNodeIdx;             // Index into record.
 	int destNodeIdx;            // Index into record.
@@ -32,6 +32,5 @@ typedef struct {
 	Record r;                   // Current selected record.
 } OpExpandInto;
 
-OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
-						uint records_cap);
+OpBase *NewExpandIntoOp(const ExecutionPlan *plan, AlgebraicExpression *ae, uint records_cap);
 

@@ -17,12 +17,12 @@ typedef struct {
 	OpBase op;
 	Graph *g;
 	Record r;
-    QueryGraph *qg;                 /* Query graph. */
+	QueryGraph *qg;                 /* Query graph. */
 	AlgebraicExpression *ae;
 	int srcNodeIdx;                 /* Node set by operation. */
 	int edgesIdx;                   /* Edges set by operation. */
 	int destNodeIdx;                /* Node set by operation. */
-	bool expandInto;                /* Both src and dest already resolved. */    
+	bool expandInto;                /* Both src and dest already resolved. */
 	unsigned int minHops;           /* Maximum number of hops to perform. */
 	unsigned int maxHops;           /* Maximum number of hops to perform. */
 	int edgeRelationCount;          /* Length of edgeRelationTypes. */
@@ -31,7 +31,7 @@ typedef struct {
 	GRAPH_EDGE_DIR traverseDir;     /* Traverse direction. */
 } CondVarLenTraverse;
 
-OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae);
+OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, AlgebraicExpression *ae);
 
 /* Transform operation from Conditional Variable Length Traverse
  * to Expand Into Conditional Variable Length Traverse */

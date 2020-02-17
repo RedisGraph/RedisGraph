@@ -115,7 +115,7 @@ void AST_PrepareSortOp(const cypher_astnode_t *order_clause, int **sort_directio
 		directions = array_append(directions, direction);
 	}
 
-  	*sort_directions = directions;
+	*sort_directions = directions;
 }
 
 AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause) {
@@ -133,7 +133,7 @@ void AST_PreparePathCreation(const cypher_astnode_t *path, QueryGraph *qg, rax *
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
 	// Add the path to the QueryGraph
-	QueryGraph_AddPath(qg, gc, path);
+	QueryGraph_AddPath(qg, path);
 
 	uint path_elem_count = cypher_ast_pattern_path_nelements(path);
 	for(uint i = 0; i < path_elem_count; i ++) {

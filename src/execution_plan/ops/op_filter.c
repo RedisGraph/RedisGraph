@@ -8,6 +8,7 @@
 
 /* Forward declarations. */
 static Record FilterConsume(OpBase *opBase);
+static OpBase *FilterClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void FilterFree(OpBase *opBase);
 
 OpBase *NewFilterOp(const ExecutionPlan *plan, FT_FilterNode *filterTree) {
@@ -16,7 +17,7 @@ OpBase *NewFilterOp(const ExecutionPlan *plan, FT_FilterNode *filterTree) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_FILTER, "Filter", NULL, FilterConsume,
-				NULL, NULL, FilterFree, false, plan);
+				NULL, NULL, FilterClone, FilterFree, false, plan);
 
 	return (OpBase *)op;
 }
@@ -40,10 +41,10 @@ static Record FilterConsume(OpBase *opBase) {
 	return r;
 }
 
-static OpBase *FilterClone(const ExecutionPlan *plan, OpBase *opBase) {
+static inline OpBase *FilterClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	OpFilter *filter = (OpFilter *)opBase;
-	FT_FilterNode filter_tree_clone = FilterTree_
-
+	FT_FilterNode *filter_tree_clone = FilterTree_Clone(filter->filterTree);
+	return NewFilterOp(plan, filter_tree_clone);
 }
 
 /* Frees OpFilter*/

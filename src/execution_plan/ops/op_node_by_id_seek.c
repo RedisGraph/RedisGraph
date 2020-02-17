@@ -13,7 +13,7 @@ static OpResult NodeByIdSeekInit(OpBase *opBase);
 static Record NodeByIdSeekConsume(OpBase *opBase);
 static Record NodeByIdSeekConsumeFromChild(OpBase *opBase);
 static OpResult NodeByIdSeekReset(OpBase *opBase);
-static OpBase *NodeByIDSeekClone(const ExecutionPlan *plan, OpBase *opBase);
+static OpBase *NodeByIDSeekClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void NodeByIdSeekFree(OpBase *opBase);
 
 static inline int NodeByIdSeekToString(const OpBase *ctx, char *buf, uint buf_len) {
@@ -31,7 +31,7 @@ static inline bool _outOfBounds(NodeByIdSeek *op) {
 OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const QGNode *n, UnsignedRange *id_range) {
 
 	NodeByIdSeek *op = rm_malloc(sizeof(NodeByIdSeek));
-
+	op->g = QueryCtx_GetGraph();
 	op->n = n;
 	op->child_record = NULL;
 
@@ -132,7 +132,7 @@ static OpResult NodeByIdSeekReset(OpBase *ctx) {
 	return OP_OK;
 }
 
-static OpBase *NodeByIDSeekClone(const ExecutionPlan *plan, OpBase *opBase) {
+static OpBase *NodeByIDSeekClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	NodeByIdSeek *op = (NodeByIdSeek *)opBase;
 	UnsignedRange range;
 	range.include_max = true;
