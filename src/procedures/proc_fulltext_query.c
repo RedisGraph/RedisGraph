@@ -55,6 +55,19 @@ ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *a
 
 	// Execute query
 	pdata->iter = Index_Query(pdata->idx, query, &err);
+	// Raise runtime exception if err != NULL.
+	if(err) {
+		/* RediSearch error message is allocated using `rm_strdup`
+		 * QueryCtx is expecting to free `error` using `free`
+		 * in which case we have no option but to clone error. */
+		char *error;
+		asprintf(&error, "RediSearch: %s", err);
+		rm_free(err);
+		QueryCtx_SetError(error);
+		/* Raise the exception, we expect an exception handler to be set.
+		 * as procedure invocation is done at runtime. */
+		QueryCtx_RaiseRuntimeException();
+	}
 	assert(pdata->iter);
 
 	ctx->privateData = pdata;
