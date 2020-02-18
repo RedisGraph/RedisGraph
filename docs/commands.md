@@ -660,7 +660,7 @@ GRAPH.QUERY DEMO_GRAPH "DROP INDEX ON :person(age)"
 
 ## Full-text indexes
 
-RedisGraph leverages the indexing capabilities of RediSearch to provide full-text indexes through procedure calls. To construct a full-text index on the `title` property of all nodes with label `movie`, use the syntax:
+RedisGraph leverages the indexing capabilities of [RediSearch](https://oss.redislabs.com/redisearch/index.html) to provide full-text indices through procedure calls. To construct a full-text index on the `title` property of all nodes with label `movie`, use the syntax:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('movie', 'title')"
