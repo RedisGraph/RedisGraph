@@ -308,6 +308,11 @@ static void _RebindQueryGraphReferences(OpBase *op, const QueryGraph *qg) {
 
 void ExecutionPlan_BindPlanToOps(ExecutionPlan *plan, OpBase *root) {
 	if(!root) return;
+	// If the temporary execution plan has added new QueryGraph entities,
+	// migrate them to the master plan's QueryGraph.
+	// (This is only necessary for producing EXPLAIN outputs.)
+	QueryGraph_MergeGraphs(plan->query_graph, root->plan->query_graph);
+
 	root->plan = plan;
 	_RebindQueryGraphReferences(root, plan->query_graph);
 	for(int i = 0; i < root->childCount; i ++) {
@@ -315,41 +320,37 @@ void ExecutionPlan_BindPlanToOps(ExecutionPlan *plan, OpBase *root) {
 	}
 }
 
-OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **vars,
+OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_vars,
 									   const cypher_astnode_t *path) {
 	// Initialize an ExecutionPlan that shares this plan's Record mapping.
-	ExecutionPlan *rhs_plan = ExecutionPlan_NewEmptyExecutionPlan();
-	rhs_plan->record_map = plan->record_map;
+	ExecutionPlan *match_stream_plan = ExecutionPlan_NewEmptyExecutionPlan();
+	match_stream_plan->record_map = plan->record_map;
 
 	// If we have bound variables, build an Argument op that represents them.
-	if(vars) rhs_plan->root = NewArgumentOp(plan, vars);
+	if(bound_vars) match_stream_plan->root = NewArgumentOp(plan, bound_vars);
 
 	AST *ast = QueryCtx_GetAST();
 	// Build a temporary AST holding a MATCH clause.
-	AST *rhs_ast = AST_MockMatchPattern(ast, path);
+	AST *match_stream_ast = AST_MockMatchPattern(ast, path);
 
-	ExecutionPlan_PopulateExecutionPlan(rhs_plan, NULL);
+	ExecutionPlan_PopulateExecutionPlan(match_stream_plan, NULL);
 
-	AST_MockFree(rhs_ast);
+	AST_MockFree(match_stream_ast);
 	QueryCtx_SetAST(ast); // Reset the AST.
 	// Add filter ops to sub-ExecutionPlan.
-	if(rhs_plan->filter_tree) ExecutionPlan_PlaceFilterOps(rhs_plan, NULL);
+	if(match_stream_plan->filter_tree) ExecutionPlan_PlaceFilterOps(match_stream_plan, NULL);
 
-	// If the temporary execution plan has added new QueryGraph entities,
-	// migrate them to the master plan's QueryGraph.
-	// (This is only necessary for producing EXPLAIN outputs.)
-	QueryGraph_MergeGraphs(plan->query_graph, rhs_plan->query_graph);
-	OpBase *rhs_root = rhs_plan->root;
+	OpBase *match_stream_root = match_stream_plan->root;
 
 	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
-	ExecutionPlan_BindPlanToOps(plan, rhs_root);
+	ExecutionPlan_BindPlanToOps(plan, match_stream_root);
 
-	// NULL-set variables shared between the rhs_plan and the overall plan.
-	rhs_plan->root = NULL;
-	rhs_plan->record_map = NULL;
+	// NULL-set variables shared between the match_stream_plan and the overall plan.
+	match_stream_plan->root = NULL;
+	match_stream_plan->record_map = NULL;
 	// Free the temporary plan.
-	ExecutionPlan_Free(rhs_plan);
+	ExecutionPlan_Free(match_stream_plan);
 
-	return rhs_root;
+	return match_stream_root;
 }
 

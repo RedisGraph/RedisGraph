@@ -219,6 +219,8 @@ static Record CondTraverseConsume(OpBase *opBase) {
 static OpResult CondTraverseReset(OpBase *ctx) {
 	CondTraverse *op = (CondTraverse *)ctx;
 
+	// Do not explicitly free op->r, as the same pointer is also held
+	// in the op->records array and as such will be freed there.
 	op->r = NULL;
 	for(int i = 0; i < op->recordsLen; i++) OpBase_DeleteRecord(op->records[i]);
 	op->recordsLen = 0;
