@@ -408,7 +408,7 @@ SIValue SIValue_Modulo(const SIValue a, const SIValue n) {
 	case true:
 		// The modulo machine instruction may be used if a and n are both integers.
 		return SI_LongVal(a.longval % n.longval);
-	case false:
+	default:
 		// Otherwise, use the library function fmod to calculate the modulo and return a double.
 		return SI_DoubleVal(fmod(SI_GET_NUMERIC(a), SI_GET_NUMERIC(n)));
 	}
