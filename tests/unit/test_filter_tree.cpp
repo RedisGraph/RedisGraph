@@ -84,60 +84,79 @@ class FilterTreeTest: public ::testing::Test {
 		return build_tree_from_query(q);
 	}
 
-	FT_FilterNode *_build_explicit_true_tree() {
+	FT_FilterNode *_build_explicit_true_tree(FT_FilterNode **expected) {
+		SIValue true_val = SI_BoolVal(true);
+		*expected = FilterTree_CreateExpressionFilter(AR_EXP_NewConstOperandNode(true_val));
 		const char *q = "MATCH (n) WHERE TRUE n";
 		return build_tree_from_query(q);
 	}
 
-	FT_FilterNode *_build_true_tree() {
-		const char *q = "MATCH (n) WHERE 1 = 1 RETURN n";
-		return build_tree_from_query(q);
-	}
-
-	FT_FilterNode *_build_compactable_or_true_tree() {
-		const char *q = "MATCH (n) WHERE n.val = n.val2 OR 1 = 1 RETURN n";
-		return build_tree_from_query(q);
-	}
-
-	FT_FilterNode *_build_deep_compactable_or_true_tree() {
-		const char *q = "MATCH (n) WHERE n.val = n.val2 OR ( 1 = 1 AND 1 = 1) RETURN n";
-		return build_tree_from_query(q);
-	}
-
-	FT_FilterNode *_build_deep_non_compactable_or_true_tree() {
-		// Should reduce to MATCH (n) WHERE n.val = n.val2 OR n.val3 = n.val4 RETURN n
-		const char *q = "MATCH (n) WHERE n.val = n.val2 OR ( n.val3 = n.val4 AND 1 = 1) RETURN n";
-		return build_tree_from_query(q);
-	}
-
-	FT_FilterNode *_build_explicit_false_tree() {
+	FT_FilterNode *_build_explicit_false_tree(FT_FilterNode **expected) {
+		SIValue false_val = SI_BoolVal(false);
+		*expected = FilterTree_CreateExpressionFilter(AR_EXP_NewConstOperandNode(false_val));
 		const char *q = "MATCH (n) WHERE FALSE n";
 		return build_tree_from_query(q);
 	}
 
-	FT_FilterNode *_build_false_tree() {
+	FT_FilterNode *_build_true_tree(FT_FilterNode **expected) {
+		SIValue true_val = SI_BoolVal(true);
+		*expected = FilterTree_CreateExpressionFilter(AR_EXP_NewConstOperandNode(true_val));
+		const char *q = "MATCH (n) WHERE 1 = 1 RETURN n";
+		return build_tree_from_query(q);
+	}
+
+	FT_FilterNode *_build_compactable_or_true_tree(FT_FilterNode **expected) {
+		SIValue true_val = SI_BoolVal(true);
+		*expected = FilterTree_CreateExpressionFilter(AR_EXP_NewConstOperandNode(true_val));
+		const char *q = "MATCH (n) WHERE n.val = n.val2 OR 1 = 1 RETURN n";
+		return build_tree_from_query(q);
+	}
+
+	FT_FilterNode *_build_deep_compactable_or_true_tree(FT_FilterNode **expected) {
+		SIValue true_val = SI_BoolVal(true);
+		*expected = FilterTree_CreateExpressionFilter(AR_EXP_NewConstOperandNode(true_val));
+		const char *q = "MATCH (n) WHERE n.val = n.val2 OR ( 1 = 1 AND 1 = 1) RETURN n";
+		return build_tree_from_query(q);
+	}
+
+	FT_FilterNode *_build_deep_non_compactable_or_true_tree(FT_FilterNode **expected) {
+		const char *expected_q = "MATCH (n) WHERE n.val = n.val2 OR n.val3 = n.val4 RETURN n";
+		*expected = build_tree_from_query(expected_q);
+		const char *q = "MATCH (n) WHERE n.val = n.val2 OR ( n.val3 = n.val4 AND 1 = 1) RETURN n";
+		return build_tree_from_query(q);
+	}
+
+	FT_FilterNode *_build_false_tree(FT_FilterNode **expected) {
+		SIValue false_val = SI_BoolVal(false);
+		*expected = FilterTree_CreateExpressionFilter(AR_EXP_NewConstOperandNode(false_val));
 		const char *q = "MATCH (n) WHERE 1 > 1 RETURN n";
 		return build_tree_from_query(q);
 	}
 
-	FT_FilterNode *_build_compactable_or_false_tree() {
+	FT_FilterNode *_build_compactable_or_false_tree(FT_FilterNode **expected) {
+		SIValue false_val = SI_BoolVal(false);
+		*expected = FilterTree_CreateExpressionFilter(AR_EXP_NewConstOperandNode(false_val));
 		const char *q = "MATCH (n) WHERE 1 = 2 OR 1 > 1 RETURN n";
 		return build_tree_from_query(q);
 	}
 
-	FT_FilterNode *_build_non_compactable_or_false_tree() {
-		// Should reduce to MATCH (n) WHERE n.val = n.val2 RETURN n
+	FT_FilterNode *_build_non_compactable_or_false_tree(FT_FilterNode **expected) {
+		const char *expected_q = "MATCH (n) WHERE n.val = n.val2 RETURN n";
+		*expected = build_tree_from_query(expected_q);
 		const char *q = "MATCH (n) WHERE n.val = n.val2 OR 1 > 1 RETURN n";
 		return build_tree_from_query(q);
 	}
 
-	FT_FilterNode *_build_deep_compactable_or_false_tree() {
+	FT_FilterNode *_build_deep_compactable_or_false_tree(FT_FilterNode **expected) {
+		SIValue false_val = SI_BoolVal(false);
+		*expected = FilterTree_CreateExpressionFilter(AR_EXP_NewConstOperandNode(false_val));
 		const char *q = "MATCH (n) WHERE 1 > 1 OR ( n.val3 = n.val4 AND 1 > 1) RETURN n";
 		return build_tree_from_query(q);
 	}
 
-	FT_FilterNode *_build_deep_non_compactable_or_false_tree() {
-		// Should reduce to MATCH (n) WHERE n.val = n.val2 RETURN n
+	FT_FilterNode *_build_deep_non_compactable_or_false_tree(FT_FilterNode **expected) {
+		const char *expected_q = "MATCH (n) WHERE n.val = n.val2 RETURN n";
+		*expected = build_tree_from_query(expected_q);
 		const char *q = "MATCH (n) WHERE n.val = n.val2 OR ( n.val3 = n.val4 AND 1 > 1) RETURN n";
 		return build_tree_from_query(q);
 	}
@@ -397,74 +416,70 @@ TEST_F(FilterTreeTest, FilterTree_Compact) {
 	FT_FilterNode *expected;
 
 	// Compactable 'true' trees.
-	SIValue bool_val = SI_BoolVal(true);
-	expected = FilterTree_CreateExpressionFilter(AR_EXP_NewConstOperandNode(bool_val));
-
-	actual = _build_explicit_true_tree();
+	actual = _build_explicit_true_tree(&expected);
 	ASSERT_TRUE(FilterTree_Compact(actual));
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
+	FilterTree_Free(expected);
 
-	actual = _build_true_tree();
+	actual = _build_true_tree(&expected);
 	ASSERT_TRUE(FilterTree_Compact(actual));
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
+	FilterTree_Free(expected);
 
-	actual = _build_compactable_or_true_tree();
+	actual = _build_compactable_or_true_tree(&expected);
 	ASSERT_TRUE(FilterTree_Compact(actual));
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
+	FilterTree_Free(expected);
 
-	actual = _build_deep_compactable_or_true_tree();
+	actual = _build_deep_compactable_or_true_tree(&expected);
 	ASSERT_TRUE(FilterTree_Compact(actual));
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
 	FilterTree_Free(expected);
 
 	// Non compactable 'true' tree.
-	actual = _build_deep_non_compactable_or_true_tree();
-	expected =
-		build_tree_from_query("MATCH (n) WHERE n.val = n.val2 OR n.val3 = n.val4 RETURN n");
+	actual = _build_deep_non_compactable_or_true_tree(&expected);
 	ASSERT_FALSE(FilterTree_Compact(actual));
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
 	FilterTree_Free(expected);
 
 	// Compactable 'false' trees.
-	bool_val = SI_BoolVal(false);
-	expected = FilterTree_CreateExpressionFilter(AR_EXP_NewConstOperandNode(bool_val));
-
-	actual = _build_explicit_false_tree();
+	actual = _build_explicit_false_tree(&expected);
 	FilterTree_Compact(actual);
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
+	FilterTree_Free(expected);
 
-	actual = _build_false_tree();
+	actual = _build_false_tree(&expected);
 	FilterTree_Compact(actual);
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
+	FilterTree_Free(expected);
 
-	actual = _build_compactable_or_false_tree();
+	actual = _build_compactable_or_false_tree(&expected);
 	FilterTree_Compact(actual);
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
+	FilterTree_Free(expected);
 
-	actual = _build_deep_compactable_or_false_tree();
+	actual = _build_deep_compactable_or_false_tree(&expected);
 	FilterTree_Compact(actual);
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
 	FilterTree_Free(expected);
 
 	// Non compactable 'false' trees.
-	actual = _build_non_compactable_or_false_tree();
-	expected = build_tree_from_query("MATCH (n) WHERE n.val = n.val2 RETURN n");
+	actual = _build_non_compactable_or_false_tree(&expected);
 	ASSERT_FALSE(FilterTree_Compact(actual));
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);
 	FilterTree_Free(expected);
 
-	actual = _build_deep_non_compactable_or_false_tree();
-	expected = build_tree_from_query("MATCH (n) WHERE n.val = n.val2 RETURN n");
+	actual = _build_deep_non_compactable_or_false_tree(&expected);
 	ASSERT_FALSE(FilterTree_Compact(actual));
 	compareFilterTrees(expected, actual);
 	FilterTree_Free(actual);

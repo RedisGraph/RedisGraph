@@ -182,10 +182,12 @@ inline bool SIValue_IsNull(SIValue v) {
 }
 
 inline bool SIValue_IsFalse(SIValue v) {
+	assert(SI_TYPE(v) ==  T_BOOL && "SIValue_IsFalse: Expected boolean");
 	return !v.longval;
 }
 
 inline bool SIValue_IsTrue(SIValue v) {
+	assert(SI_TYPE(v) ==  T_BOOL && "SIValue_IsTrue: Expected boolean");
 	return v.longval;
 }
 

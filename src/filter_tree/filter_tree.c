@@ -445,41 +445,35 @@ static bool _FilterTree_Compact_And(FT_FilterNode *node) {
 		// Both children are now contant expressions. We can evaluate and compact.
 		SIValue rhs_value = AR_EXP_Evaluate(rhs->exp.exp, NULL);
 		SIValue lhs_value = AR_EXP_Evaluate(lhs->exp.exp, NULL);
+		// Final value is AND operation on lhs and rhs - reducing an AND node.
 		SIValue final_value = SI_BoolVal(SIValue_IsTrue(lhs_value) && SIValue_IsTrue(rhs_value));
+		// In place set the node to be an expression node.
 		_FilterTree_In_Place_Set_Exp(node, final_value);
 		FilterTree_Free(lhs);
 		FilterTree_Free(rhs);
 		return true;
-	} else if(is_lhs_const) {
-		// Only lhs is constant - evaluate and free lhs.
-		SIValue lhs_value = AR_EXP_Evaluate(lhs->exp.exp, NULL);
-		FilterTree_Free(lhs);
-		// If lhs is false, everything is false.
-		if(SIValue_IsFalse(lhs_value)) {
-			_FilterTree_In_Place_Set_Exp(node, lhs_value);
-			FilterTree_Free(rhs);
-			return true;
-		} else {
-			// Lhs is true. Current node should be replaced with rhs.
-			memcpy(node, rhs, sizeof(FT_FilterNode));
-			// Free rhs allocation, without free the data.
-			rm_free(rhs);
-			return false;
-		}
 	} else {
-		// Only rhs is constant - evaluate and free rhs.
-		SIValue rhs_value = AR_EXP_Evaluate(rhs->exp.exp, NULL);
-		FilterTree_Free(rhs);
-		// If rhs is false, everything is false.
-		if(SIValue_IsFalse(rhs_value)) {
-			_FilterTree_In_Place_Set_Exp(node, rhs_value);
-			FilterTree_Free(lhs);
+		// Only one of the nodes is constant. Find and evaluate.
+		FT_FilterNode *const_node = is_lhs_const ? lhs : rhs;
+		FT_FilterNode *non_const_node = is_lhs_const ? rhs : lhs;
+
+		// Evaluate constant.
+		SIValue const_value = AR_EXP_Evaluate(const_node->exp.exp, NULL);
+		// If consant is false, everything is false.
+		if(SIValue_IsFalse(const_value)) {
+			*node = *const_node;
+			// Free const node allocation, without free the data.
+			rm_free(const_node);
+			// Free non const node completely.
+			FilterTree_Free(non_const_node);
 			return true;
 		} else {
-			// Rhs is true. Current node should be replaced with lhs.
-			memcpy(node, lhs, sizeof(FT_FilterNode));
-			// Free lhs allocation, without free the data.
-			rm_free(lhs);
+			// Const value is true. Current node should be replaced with the non const node.
+			*node = *non_const_node;
+			// Free non const node allocation, without free the data.
+			rm_free(non_const_node);
+			// Free const node completely.
+			FilterTree_Free(const_node);
 			return false;
 		}
 	}
@@ -500,41 +494,35 @@ static bool _FilterTree_Compact_Or(FT_FilterNode *node) {
 		// Both children are now contant expressions. We can evaluate and compact.
 		SIValue rhs_value = AR_EXP_Evaluate(rhs->exp.exp, NULL);
 		SIValue lhs_value = AR_EXP_Evaluate(lhs->exp.exp, NULL);
+		// Final value is OR operation on lhs and rhs - reducing an OR node.
 		SIValue final_value = SI_BoolVal(SIValue_IsTrue(lhs_value) || SIValue_IsTrue(rhs_value));
+		// In place set the node to be an expression node.
 		_FilterTree_In_Place_Set_Exp(node, final_value);
 		FilterTree_Free(lhs);
 		FilterTree_Free(rhs);
 		return true;
-	} else if(is_lhs_const) {
-		// Only lhs is constant - evaluate and free lhs.
-		SIValue lhs_value = AR_EXP_Evaluate(lhs->exp.exp, NULL);
-		FilterTree_Free(lhs);
-		// If lhs is true, everything is true.
-		if(SIValue_IsTrue(lhs_value)) {
-			_FilterTree_In_Place_Set_Exp(node, lhs_value);
-			FilterTree_Free(rhs);
-			return true;
-		} else {
-			// Lhs is false. Current node should be replaced with rhs.
-			memcpy(node, rhs, sizeof(FT_FilterNode));
-			// Free rhs allocation, without free the data.
-			rm_free(rhs);
-			return false;
-		}
 	} else {
-		// Only rhs is constant - evaluate and free rhs.
-		SIValue rhs_value = AR_EXP_Evaluate(rhs->exp.exp, NULL);
-		FilterTree_Free(rhs);
-		// If rhs is true, everything is true.
-		if(SIValue_IsTrue(rhs_value)) {
-			_FilterTree_In_Place_Set_Exp(node, rhs_value);
-			FilterTree_Free(lhs);
+		// Only one of the nodes is constant. Find and evaluate.
+		FT_FilterNode *const_node = is_lhs_const ? lhs : rhs;
+		FT_FilterNode *non_const_node = is_lhs_const ? rhs : lhs;
+
+		// Evaluate constant.
+		SIValue const_value = AR_EXP_Evaluate(const_node->exp.exp, NULL);
+		// If consant is true, everything is true.
+		if(SIValue_IsTrue(const_value)) {
+			*node = *const_node;
+			// Free const node allocation, without free the data.
+			rm_free(const_node);
+			// Free non const node completely.
+			FilterTree_Free(non_const_node);
 			return true;
 		} else {
-			// Rhs is false. Current node should be replaced with lhs.
-			memcpy(node, lhs, sizeof(FT_FilterNode));
-			// Free lhs allocation, without free the data.
-			rm_free(lhs);
+			// Const value is false. Current node should be replaced with the non const node.
+			*node = *non_const_node;
+			// Free non const node allocation, without free the data.
+			rm_free(non_const_node);
+			// Free const node completely.
+			FilterTree_Free(const_node);
 			return false;
 		}
 	}

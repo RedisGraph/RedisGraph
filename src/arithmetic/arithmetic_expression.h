@@ -132,7 +132,7 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str);
  * func - function name to lookup. */
 bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func);
 
-/* Returns if an arithmetic expression node is a constant. */
+/* Returns true if an arithmetic expression node is a constant. */
 bool AR_EXP_IsConstant(const AR_ExpNode *exp);
 
 /* Generate a heap-allocated name for an arithmetic expression.
