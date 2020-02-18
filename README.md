@@ -166,17 +166,44 @@ reply = r.execute_command('GRAPH.QUERY', 'social', "CREATE (:person {name:'roi',
 
 Some languages have client libraries that provide support for RedisGraph's commands:
 
-| Project | Language | License | Author | URL |
-| ------- | -------- | ------- | ------ | --- |
-| redisgraph-py | Python | BSD | [Redis Labs](https://redislabs.com) | [GitHub](https://github.com/RedisGraph/redisgraph-py) |
-| JRedisGraph | Java | BSD | [Redis Labs](https://redislabs.com) | [GitHub](https://github.com/RedisGraph/JRedisGraph) |
-| redisgraph-rb | Ruby | BSD | [Redis Labs](https://redislabs.com) | [GitHub](https://github.com/RedisGraph/redisgraph-rb) |
-| redisgraph-go | Go | BSD | [Redis Labs](https://redislabs.com) | [GitHub](https://github.com/RedisGraph/redisgraph-go) |
-| redisgraph.js | JavaScript | BSD | [Redis Labs](https://redislabs.com) | [GitHub](https://github.com/RedisGraph/redisgraph.js) |
-| ioredisgraph | JavaScript | ISC | [Jonah](https://github.com/Jonahss) | [GitHub](https://github.com/Jonahss/ioredisgraph) |
-| php-redis-graph | PHP | MIT | [KJDev](https://github.com/kjdev) | [GitHub](https://github.com/kjdev/php-redis-graph) |
-| redisgraph_php | PHP | MIT | [jpbourbon](https://github.com/jpbourbon) | [GitHub](https://github.com/jpbourbon/redisgraph_php) |
-| redisgraph-ex | Elixir | MIT | [crflynn](https://github.com/crflynn) | [GitHub](https://github.com/crflynn/redisgraph-ex) |
+| Project         | Language   | License | Author                             | URL                           |
+| --------------- | ---------- | ------- | ---------------------------------- | ----------------------------- |
+| redisgraph-py   | Python     | BSD     | [Redis Labs][redisgraph-py-author] | [GitHub][redisgraph-py-url]   |
+| JRedisGraph     | Java       | BSD     | [Redis Labs][JRedisGraph-author]   | [GitHub][JRedisGraph-url]     |
+| redisgraph-rb   | Ruby       | BSD     | [Redis Labs][redisgraph-rb-author] | [GitHub][redisgraph-rb-url]   |
+| redisgraph-go   | Go         | BSD     | [Redis Labs][redisgraph-go-author] | [GitHub][redisgraph-go-url]   |
+| redisgraph.js   | JavaScript | BSD     | [Redis Labs][redisgraph.js-author] | [GitHub][redisgraph.js-url]   |
+| ioredisgraph    | JavaScript | ISC     | [Jonah][ioredisgraph-author]       | [GitHub][ioredisgraph-url]    |
+| php-redis-graph | PHP        | MIT     | [KJDev][php-redis-graph-author]    | [GitHub][php-redis-graph-url] |
+| redisgraph_php  | PHP        | MIT     | [jpbourbon][redisgraph_php-author] | [GitHub][redisgraph_php-url]  |
+| redisgraph-ex   | Elixir     | MIT     | [crflynn][redisgraph-ex-author]    | [GitHub][redisgraph-ex-url]   |
+
+[redisgraph-py-author]: https://redislabs.com
+[redisgraph-py-url]: https://github.com/RedisGraph/redisgraph-py
+
+[JRedisGraph-author]: https://redislabs.com
+[JRedisGraph-url]: https://github.com/RedisGraph/JRedisGraph
+
+[redisgraph-rb-author]: https://redislabs.com
+[redisgraph-rb-url]: https://github.com/RedisGraph/redisgraph-rb
+
+[redisgraph-go-author]: https://redislabs.com
+[redisgraph-go-url]: https://github.com/RedisGraph/redisgraph-go
+
+[redisgraph.js-author]: https://redislabs.com
+[redisgraph.js-url]: https://github.com/RedisGraph/redisgraph.js
+
+[ioredisgraph-author]: https://github.com/Jonahss
+[ioredisgraph-url]: https://github.com/Jonahss/ioredisgraph
+
+[php-redis-graph-author]: https://github.com/kjdev
+[php-redis-graph-url]: https://github.com/kjdev/php-redis-graph
+
+[redisgraph_php-author]: https://github.com/jpbourbon
+[redisgraph_php-url]: https://github.com/jpbourbon/redisgraph_php
+
+[redisgraph-ex-author]: https://github.com/crflynn
+[redisgraph-ex-url]: https://github.com/crflynn/redisgraph-ex
 
 
 ## Documentation
