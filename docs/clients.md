@@ -12,6 +12,7 @@ The full functionality of RedisGraph is available through `redis-cli` and the Re
 | redisgraph-go   | Go         | BSD     | [Redis Labs][redisgraph-go-author] | [GitHub][redisgraph-go-url]   |
 | redisgraph.js   | JavaScript | BSD     | [Redis Labs][redisgraph.js-author] | [GitHub][redisgraph.js-url]   |
 | ioredisgraph    | JavaScript | ISC     | [Jonah][ioredisgraph-author]       | [GitHub][ioredisgraph-url]    |
+| @hydre/rgraph   | JavaScript | MIT     | [Sceat][rgraph-author]             | [Github][rgraph-url]          |
 | php-redis-graph | PHP        | MIT     | [KJDev][php-redis-graph-author]    | [GitHub][php-redis-graph-url] |
 | redisgraph_php  | PHP        | MIT     | [jpbourbon][redisgraph_php-author] | [GitHub][redisgraph_php-url]  |
 | redisgraph-ex   | Elixir     | MIT     | [crflynn][redisgraph-ex-author]    | [GitHub][redisgraph-ex-url]   |
@@ -30,6 +31,9 @@ The full functionality of RedisGraph is available through `redis-cli` and the Re
 
 [redisgraph.js-author]: https://redislabs.com
 [redisgraph.js-url]: https://github.com/RedisGraph/redisgraph.js
+
+[rgraph-author]: https://github.com/Sceat
+[rgraph-url]: https://github.com/HydreIO/rgraph
 
 [ioredisgraph-author]: https://github.com/Jonahss
 [ioredisgraph-url]: https://github.com/Jonahss/ioredisgraph
