@@ -2,6 +2,7 @@
 #include "ops/ops.h"
 #include "../query_ctx.h"
 #include "../ast/ast_mock.h"
+#include "../util/rax_extensions.h"
 #include "./optimizations/optimizer.h"
 
 /* Swap operation on operation children. If two valid indices, a and b, are given, this operation
@@ -88,7 +89,7 @@ void ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpFilter *filter) {
 	rax *bound_vars = raxNew();
 	ExecutionPlan_BoundVariables((OpBase *)filter, bound_vars);
 	// Prepare the variables for populating the Argument ops we will build.
-	const char **vars = ExecutionPlan_BuildArgumentModifiesArray(bound_vars);
+	const char **vars = raxValues(bound_vars);
 
 	// Reduce.
 	OpBase *apply_op = _ReduceFilterToOp(plan, vars, filter->filterTree);
@@ -100,6 +101,7 @@ void ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpFilter *filter) {
 
 	// Free filter op.
 	OpBase_Free((OpBase *)filter);
+	raxFree(bound_vars);
 	array_free(vars);
 }
 

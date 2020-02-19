@@ -269,21 +269,6 @@ void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers) {
 	}
 }
 
-// Build an array of const strings to populate the 'modifies' arrays of Argument ops.
-inline const char **ExecutionPlan_BuildArgumentModifiesArray(rax *bound_vars) {
-	const char **arguments = array_new(const char *, raxSize(bound_vars));
-	raxIterator it;
-	raxStart(&it, bound_vars);
-	raxSeek(&it, "^", NULL, 0);
-	while(raxNext(&it)) { // For each bound variable
-		// Copy the const string variable name into the array.
-		arguments = array_append(arguments, it.data);
-	}
-	raxStop(&it);
-
-	return arguments;
-}
-
 // For all ops that refer to QG entities, rebind them with the matching entity
 // in the provided QueryGraph.
 // (This logic is ugly, but currently necessary.)

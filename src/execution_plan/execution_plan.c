@@ -598,7 +598,7 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 		// parser-generated constant strings.
 		ExecutionPlan_BoundVariables(plan->root, bound_vars);
 		// Prepare the variables for populating the Argument ops we will build.
-		arguments = ExecutionPlan_BuildArgumentModifiesArray(bound_vars);
+		arguments = raxValues(bound_vars);
 	}
 
 	// Convert all the AST data required to populate our operations tree.
