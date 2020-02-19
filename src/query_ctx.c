@@ -91,9 +91,9 @@ void QueryCtx_SetGraphCtx(GraphContext *gc) {
 
 void QueryCtx_SetError(char *error) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	// An error is already set.
-	if(ctx->internal_exec_ctx.error) free(error);
-
+	// An error is already set - free it.
+	if(ctx->internal_exec_ctx.error) free(ctx->internal_exec_ctx.error);
+	// Set the new error.
 	ctx->internal_exec_ctx.error = error;
 }
 
