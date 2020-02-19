@@ -147,7 +147,8 @@ static Record _handoff(OpExpandInto *op) {
 		// Current record resides at row recordCount.
 		int rowIdx = op->recordCount;
 		op->r = op->records[op->recordCount];
-
+		assert(Record_GetType(op->r, op->srcNodeIdx) == REC_TYPE_NODE);
+		assert(Record_GetType(op->r, op->destNodeIdx) == REC_TYPE_NODE);
 		srcNode = Record_GetNode(op->r, op->srcNodeIdx);
 		destNode = Record_GetNode(op->r, op->destNodeIdx);
 		srcId = ENTITY_GET_ID(srcNode);
@@ -220,12 +221,18 @@ static Record ExpandIntoConsume(OpBase *opBase) {
 
 static OpResult ExpandIntoReset(OpBase *ctx) {
 	OpExpandInto *op = (OpExpandInto *)ctx;
+	op->r = NULL;
 	for(int i = 0; i < op->recordCount; i++) {
 		if(op->records[i]) OpBase_DeleteRecord(op->records[i]);
 	}
 	op->recordCount = 0;
-	if(op->F != GrB_NULL) GrB_Matrix_clear(op->F);
+
 	if(op->edges) array_clear(op->edges);
+	if(op->iter) {
+		GxB_MatrixTupleIter_free(op->iter);
+		op->iter = NULL;
+	}
+	if(op->F != GrB_NULL) GrB_Matrix_clear(op->F);
 	return OP_OK;
 }
 

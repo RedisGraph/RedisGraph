@@ -218,7 +218,13 @@ static Record CondTraverseConsume(OpBase *opBase) {
 
 static OpResult CondTraverseReset(OpBase *ctx) {
 	CondTraverse *op = (CondTraverse *)ctx;
-	if(op->r) OpBase_DeleteRecord(op->r);
+
+	// Do not explicitly free op->r, as the same pointer is also held
+	// in the op->records array and as such will be freed there.
+	op->r = NULL;
+	for(int i = 0; i < op->recordsLen; i++) OpBase_DeleteRecord(op->records[i]);
+	op->recordsLen = 0;
+
 	if(op->edges) array_clear(op->edges);
 	if(op->iter) {
 		GxB_MatrixTupleIter_free(op->iter);

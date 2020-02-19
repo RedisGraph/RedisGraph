@@ -57,6 +57,8 @@ OpBase *NewMergeCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
 	op->unique_entities = raxNew();       // Create a map to unique pending creations.
 	op->hash_state = XXH64_createState(); // Create a hash state.
 	op->pending = NewPendingCreationsContainer(stats, nodes, edges); // Prepare all creation variables.
+	op->handoff_mode = false;
+	op->records = array_new(Record, 32);
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_MERGE_CREATE, "MergeCreate", NULL, MergeCreateConsume,
@@ -179,12 +181,9 @@ static Record MergeCreateConsume(OpBase *opBase) {
 	Record r;
 
 	// Return mode, all data was consumed.
-	if(op->records) return _handoff(op);
+	if(op->handoff_mode) return _handoff(op);
 
 	// Consume mode.
-	op->records = array_new(Record, 32);
-
-	OpBase *child = NULL;
 	if(!opBase->childCount) {
 		// No child operation to call.
 		r = OpBase_CreateRecord(opBase);
@@ -196,9 +195,9 @@ static Record MergeCreateConsume(OpBase *opBase) {
 		// Save record for later use.
 		op->records = array_append(op->records, r);
 	} else {
-		// Pull data until child is depleted.
-		child = opBase->children[0];
-		while((r = OpBase_Consume(child))) {
+		// Pull record from child.
+		r = OpBase_Consume(opBase->children[0]);
+		if(r) {
 			/* Create entities. */
 			if(_CreateEntities(op, r)) {
 				// Save record for later use.
@@ -209,15 +208,19 @@ static Record MergeCreateConsume(OpBase *opBase) {
 		}
 	}
 
+	// MergeCreate returns no data while in creation mode.
+	return NULL;
+}
+
+void MergeCreate_Commit(OpBase *opBase) {
+	OpMergeCreate *op = (OpMergeCreate *)opBase;
+	op->handoff_mode = true;
 	/* Done reading, we're not going to call consume any longer
 	 * there might be operations e.g. index scan that need to free
 	 * index R/W lock, as such free all execution plan operation up the chain. */
-	if(child) OpBase_PropagateFree(child);
-
+	if(opBase->childCount > 0) OpBase_PropagateFree(opBase->children[0]);
 	// Create entities.
 	CommitNewEntities(opBase, &op->pending);
-	// Return record.
-	return _handoff(op);
 }
 
 static void MergeCreateFree(OpBase *ctx) {

@@ -5,6 +5,7 @@
  */
 
 #include "rax_extensions.h"
+#include "arr.h"
 
 bool raxIsSubset(rax *a, rax *b) {
 	raxIterator it;
@@ -35,5 +36,21 @@ rax *raxClone(rax *orig) {
 
 	raxStop(&it);
 	return rax;
+}
+
+void **raxValues(rax *rax) {
+	// Instantiate an array to hold all of the values in the rax.
+	void **values = array_new(void *, raxSize(rax));
+	raxIterator it;
+	raxStart(&it, rax);
+	// Iterate over all keys in the rax.
+	raxSeek(&it, "^", NULL, 0);
+	while(raxNext(&it)) {
+		// Copy the value associated with the key into the array.
+		values = array_append(values, it.data);
+	}
+	raxStop(&it);
+
+	return values;
 }
 

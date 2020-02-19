@@ -38,7 +38,7 @@ class testPathFilter(FlowTestsBase):
         expected_results = [[node0]]
         query_info = QueryInfo(query = query, description="Tests simple path filter", expected_result = expected_results)
         self._assert_resultset_equals_expected(result_set, query_info)
-    
+
     def test01_negated_simple_path_filter(self):
         node0 = Node(node_id=0, label="L")
         node1 = Node(node_id=1, label="L", properties={'x':1})
@@ -113,7 +113,7 @@ class testPathFilter(FlowTestsBase):
         expected_results = [[node0],[node1]]
         query_info = QueryInfo(query = query, description="Tests AND condition with simple filter and nested OR", expected_result = expected_results)
         self._assert_resultset_and_expected_mutually_included(result_set, query_info)
-    
+
     def test06_test_level_2_nesting_logical_operators_over_path_filters(self):
         node0 = Node(node_id=0, label="L")
         node1 = Node(node_id=1, label="L", properties={'x':1})
@@ -134,10 +134,10 @@ class testPathFilter(FlowTestsBase):
         self._assert_resultset_and_expected_mutually_included(result_set, query_info)
 
     def test07_test_edge_filters(self):
-        node0 = Node(node_id=0, label="L")
-        node1 = Node(node_id=1, label="L")
-        node2 = Node(node_id=2, label="L")
-        edge01 = Edge(src_node=node0, dest_node=node1, relation="R", properties={'x':1})
+        node0 = Node(node_id=0, label="L", properties={'x': 'a'})
+        node1 = Node(node_id=1, label="L", properties={'x': 'b'})
+        node2 = Node(node_id=2, label="L", properties={'x': 'c'})
+        edge01 = Edge(src_node=node0, dest_node=node1, relation="R", properties={'x': 1})
         edge12 = Edge(src_node=node1, dest_node=node2, relation="R")
         redis_graph.add_node(node0)
         redis_graph.add_node(node1)
@@ -146,9 +146,9 @@ class testPathFilter(FlowTestsBase):
         redis_graph.add_edge(edge12)
         redis_graph.flush()
 
-        query = "MATCH (n:L) WHERE (n)-[:R {x:1}]->() RETURN n"
+        query = "MATCH (n:L) WHERE (n)-[:R {x:1}]->() RETURN n.x"
         result_set = redis_graph.query(query)
-        expected_results = [[node0]]
+        expected_results = [['a']]
         query_info = QueryInfo(query = query, description="Tests pattern filter edge conditions", expected_result = expected_results)
         self._assert_resultset_and_expected_mutually_included(result_set, query_info)
 
@@ -174,4 +174,50 @@ class testPathFilter(FlowTestsBase):
         query = "MATCH (n:L) WHERE (:L)<-[]-(n)<-[]-(:L {x: 'a'}) AND n.x = 'b' RETURN n.x"
         result_set = redis_graph.query(query)
         expected_results = [['b']]
+        self.env.assertEquals(result_set.result_set, expected_results)
+
+    def test09_no_invalid_expand_into(self):
+        node0 = Node(node_id=0, label="L", properties={'x': 'a'})
+        node1 = Node(node_id=1, label="L", properties={'x': 'b'})
+        node2 = Node(node_id=2, label="L", properties={'x': 'c'})
+        edge01 = Edge(src_node=node0, dest_node=node1, relation="R")
+        edge12 = Edge(src_node=node1, dest_node=node2, relation="R")
+        redis_graph.add_node(node0)
+        redis_graph.add_node(node1)
+        redis_graph.add_node(node2)
+        redis_graph.add_edge(edge01)
+        redis_graph.add_edge(edge12)
+        redis_graph.flush()
+
+        # Issue a query in which the match stream and the bound stream must both perform traversal.
+        query = "MATCH (n:L)-[]->(:L) WHERE ({x: 'a'})-[]->(n) RETURN n.x"
+        plan = redis_graph.execution_plan(query)
+        # Verify that the execution plan has no Expand Into and two traversals.
+        self.env.assertNotIn("Expand Into", plan)
+        self.env.assertEquals(2, plan.count("Conditional Traverse"))
+
+        result_set = redis_graph.query(query)
+        expected_results = [['b']]
+        self.env.assertEquals(result_set.result_set, expected_results)
+
+    def test10_verify_apply_results(self):
+        # Build a graph with 3 nodes and 3 edges, 2 of which have the same source.
+        node0 = Node(node_id=0, label="L", properties={'x': 'a'})
+        node1 = Node(node_id=1, label="L", properties={'x': 'b'})
+        node2 = Node(node_id=2, label="L", properties={'x': 'c'})
+        edge01 = Edge(src_node=node0, dest_node=node1, relation="R")
+        edge02 = Edge(src_node=node0, dest_node=node2, relation="R")
+        edge12 = Edge(src_node=node1, dest_node=node2, relation="R")
+        redis_graph.add_node(node0)
+        redis_graph.add_node(node1)
+        redis_graph.add_node(node2)
+        redis_graph.add_edge(edge01)
+        redis_graph.add_edge(edge02)
+        redis_graph.add_edge(edge12)
+        redis_graph.flush()
+
+        query = "MATCH (n:L) WHERE (n)-[]->() RETURN n.x ORDER BY n.x"
+        result_set = redis_graph.query(query)
+        # Each source node should be returned exactly once.
+        expected_results = [['a'], ['b']]
         self.env.assertEquals(result_set.result_set, expected_results)

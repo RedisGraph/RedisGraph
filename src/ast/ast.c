@@ -250,6 +250,7 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	ast->canonical_entity_names = raxNew();
 	ast->anot_ctx_collection = AST_AnnotationCtxCollection_New();
 	ast->free_root = false;
+	ast->limit = UNLIMITED;
 
 	// Retrieve the AST root node from a parsed query.
 	const cypher_astnode_t *statement = cypher_parse_result_get_root(parse_result, 0);

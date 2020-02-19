@@ -9,12 +9,10 @@
 #include "op.h"
 #include "../execution_plan.h"
 
-/* The Argument operation holds an internal record array and emits one record per invocation.
- * When populating an eager operation like Create, the Argument should hold all necessary records,
- * in other contexts the 'records' array will contain only one record at a time. */
+/* The Argument operation holds an internal Record that it will emit exactly once. */
 typedef struct {
 	OpBase op;
-	Record *records;
+	Record r;
 } Argument;
 
 OpBase *NewArgumentOp(const ExecutionPlan *plan, const char **variables);

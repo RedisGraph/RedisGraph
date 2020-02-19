@@ -1387,6 +1387,7 @@ Feature: MatchAcceptance2
       | (:Artist:B) | (:Artist:C) |
     And no side effects
 
+@skip
   Scenario: Variable length pattern checking labels on endnodes
     Given an empty graph
     And having executed:
