@@ -36,6 +36,8 @@ void ResultSet_SetColumns(ResultSet *set, const char **columns);
 
 int ResultSet_AddRecord(ResultSet *set, Record r);
 
+void ResultSet_SetColumns(ResultSet *set, const char **column_names);
+
 void ResultSet_IndexCreated(ResultSet *set, int status_code);
 
 void ResultSet_IndexDeleted(ResultSet *set, int status_code);

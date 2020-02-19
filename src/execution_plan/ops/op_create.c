@@ -15,11 +15,10 @@
 static Record CreateConsume(OpBase *opBase);
 static void CreateFree(OpBase *opBase);
 
-OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeCreateCtx *nodes,
-					EdgeCreateCtx *edges) {
+OpBase *NewCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
 	OpCreate *op = rm_calloc(1, sizeof(OpCreate));
 	op->records = NULL;
-	op->pending = NewPendingCreationsContainer(stats, nodes, edges); // Prepare all creation variables.
+	op->pending = NewPendingCreationsContainer(nodes, edges); // Prepare all creation variables.
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CREATE, "Create", NULL, CreateConsume,
 				NULL, NULL, NULL, CreateFree, true, plan);

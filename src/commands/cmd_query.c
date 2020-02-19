@@ -112,8 +112,8 @@ void Graph_Query(void *args) {
 		}
 
 		if(!plan) goto cleanup;
-
-		result_set = ExecutionPlan_Execute(plan);
+		ExecutionPlan_PreparePlan(plan);
+		ExecutionPlan_Execute(plan);
 		ExecutionPlan_Free(plan);
 	} else if(root_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
 			  root_type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {

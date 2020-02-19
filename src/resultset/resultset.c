@@ -150,6 +150,13 @@ int ResultSet_AddRecord(ResultSet *set, Record r) {
 	return RESULTSET_OK;
 }
 
+inline void ResultSet_SetColumns(ResultSet *set, const char **column_names) {
+	if(!set) return;
+	// This function should be called once.
+	assert(!set->columns);
+	array_clone(set->columns, column_names);
+}
+
 void ResultSet_IndexCreated(ResultSet *set, int status_code) {
 	if(status_code == INDEX_OK) {
 		if(set->stats.indices_created == STAT_NOT_SET) {
@@ -211,4 +218,3 @@ void ResultSet_Free(ResultSet *set) {
 
 	rm_free(set);
 }
-

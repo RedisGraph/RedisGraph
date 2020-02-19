@@ -77,6 +77,7 @@ void Graph_Profile(void *args) {
 	}
 
 	if(plan) {
+		ExecutionPlan_PreparePlan(plan);
 		ExecutionPlan_Profile(plan);
 		QueryCtx_ForceUnlockCommit();
 		ExecutionPlan_Print(plan, ctx);

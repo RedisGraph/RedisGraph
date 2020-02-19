@@ -8,7 +8,6 @@
 
 #include "./ops/op.h"
 #include "../graph/graph.h"
-#include "../resultset/resultset.h"
 #include "../filter_tree/filter_tree.h"
 #include "../util/object_pool/object_pool.h"
 
@@ -17,7 +16,6 @@ typedef struct ExecutionPlan ExecutionPlan;
 struct ExecutionPlan {
 	OpBase *root;                       // Root operation of overall ExecutionPlan.
 	rax *record_map;                    // Mapping between identifiers and record indices.
-	ResultSet *result_set;              // ResultSet populated by this query.
 	QueryGraph *query_graph;            // QueryGraph representing all graph entities in this segment.
 	FT_FilterNode *filter_tree;         // FilterTree containing filters to be applied to this segment.
 	QueryGraph **connected_components;  // Array of all connected components in this segment.
@@ -25,6 +23,8 @@ struct ExecutionPlan {
 	int segment_count;                  // Number of ExecutionPlan segments.
 	ExecutionPlan **segments;           // Partial execution plans scoped to a subset of operations.
 	ObjectPool *record_pool;
+	const char **returned_column_names; // The final result set column names.
+	bool is_union;                      // Indicates if the execution plan as a union of execution plans.
 };
 
 /* execution_plan_modify.c
@@ -88,13 +88,16 @@ OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **vars,
 /* execution_plan.c */
 
 /* Creates a new execution plan from AST */
-ExecutionPlan *NewExecutionPlan(ResultSet *result_set);
+ExecutionPlan *NewExecutionPlan();
+
+/* Prepare an execution plan for execution: optimize, initialize result set schema. */
+void ExecutionPlan_PreparePlan(ExecutionPlan *plan);
 
 /* Allocate a new ExecutionPlan segment. */
 ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void);
 
 /* Build a tree of operations that performs all the work required by the clauses of the current AST. */
-void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set);
+void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan);
 
 /* Re position filter op. */
 void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
@@ -106,6 +109,9 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_lim
 
 /* Retrieve the map of aliases to Record offsets in this ExecutionPlan segment. */
 rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan);
+
+/* Retrieve the result set column names. */
+const char **ExecutionPlan_GetResultColumns(const ExecutionPlan *plan);
 
 /* Retrieves a Record from the ExecutionPlan's Record pool. */
 Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan);
@@ -120,10 +126,10 @@ void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx);
 void ExecutionPlan_Init(ExecutionPlan *plan);
 
 /* Executes plan */
-ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan);
+void ExecutionPlan_Execute(ExecutionPlan *plan);
 
 /* Profile executes plan */
-ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan);
+void ExecutionPlan_Profile(ExecutionPlan *plan);
 
 /* Free execution plan */
 void ExecutionPlan_Free(ExecutionPlan *plan);

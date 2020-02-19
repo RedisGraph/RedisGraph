@@ -529,11 +529,9 @@ static inline void _buildCallOp(AST *ast, ExecutionPlan *plan,
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
-static inline void _buildCreateOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
-								  ResultSetStatistics *stats) {
+static inline void _buildCreateOp(GraphContext *gc, AST *ast, ExecutionPlan *plan) {
 	AST_CreateContext create_ast_ctx = AST_PrepareCreateOp(plan->query_graph, plan->record_map);
-	OpBase *op = NewCreateOp(plan, stats, create_ast_ctx.nodes_to_create,
-							 create_ast_ctx.edges_to_create);
+	OpBase *op = NewCreateOp(plan, create_ast_ctx.nodes_to_create, create_ast_ctx.edges_to_create);
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
@@ -543,13 +541,13 @@ static inline void _buildUnwindOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
+
 static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge_ctx,
-									ResultSetStatistics *stats, const char **arguments) {
+									const char **arguments) {
 	/* If we have bound variables, we must ensure that all of our created entities are unique. Consider:
 	 * UNWIND [1, 1] AS x MERGE ({val: x})
 	 * Exactly one node should be created in the UNWIND...MERGE query. */
-	OpBase *merge_create = NewMergeCreateOp(plan, stats, merge_ctx->nodes_to_merge,
-											merge_ctx->edges_to_merge);
+	OpBase *merge_create = NewMergeCreateOp(plan, merge_ctx->nodes_to_merge, merge_ctx->edges_to_merge);
 	ExecutionPlan_AddOp(plan->root, merge_create); // Add MergeCreate op to stream.
 
 	// If we have bound variables, push an Argument tap beneath the Create op.
@@ -560,7 +558,7 @@ static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge
 }
 
 static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
-						  const cypher_astnode_t *clause, ResultSetStatistics *stats) {
+						  const cypher_astnode_t *clause) {
 	/*
 	 * A MERGE clause provides a single path that must exist or be created.
 	 * If we have built ops already, they will form the first stream into the Merge op.
@@ -605,8 +603,8 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 	AST_MergeContext merge_ctx = AST_PrepareMergeOp(clause, plan->query_graph, bound_vars);
 
 	// Create a Merge operation. It will store no information at this time except for any graph updates
-	// it should make due to ON MATCH and ON CREATE SET directives in the query.
-	OpBase *merge_op = NewMergeOp(plan, merge_ctx.on_match, merge_ctx.on_create, stats);
+	// it should make due to ON MATCH SET directives in the query.
+	OpBase *merge_op = NewMergeOp(plan, merge_ctx.on_match);
 
 	// Set Merge op as new root and add previously-built ops, if any, as Merge's first stream.
 	_ExecutionPlan_UpdateRoot(plan, merge_op);
@@ -617,28 +615,26 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 	ExecutionPlan_AddOp(plan->root, match_stream); // Add Match stream to Merge op.
 
 	// Build the Create stream as a Merge child.
-	_buildMergeCreateStream(plan, &merge_ctx, stats, arguments);
+	_buildMergeCreateStream(plan, &merge_ctx, arguments);
 
 	if(bound_vars) raxFree(bound_vars);
 	array_free(arguments);
 }
 
-static inline void _buildUpdateOp(ExecutionPlan *plan, const cypher_astnode_t *clause,
-								  ResultSetStatistics *stats) {
+static inline void _buildUpdateOp(ExecutionPlan *plan, const cypher_astnode_t *clause) {
 	EntityUpdateEvalCtx *update_exps = AST_PrepareUpdateOp(clause);
-	OpBase *op = NewUpdateOp(plan, update_exps, stats);
+	OpBase *op = NewUpdateOp(plan, update_exps);
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
-static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *clause,
-								  ResultSetStatistics *stats) {
+static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *clause) {
 	AR_ExpNode **exps = AST_PrepareDeleteOp(clause);
-	OpBase *op = NewDeleteOp(plan, exps, stats);
+	OpBase *op = NewDeleteOp(plan, exps);
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
-static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
-												ExecutionPlan *plan, ResultSetStatistics *stats, const cypher_astnode_t *clause) {
+static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, ExecutionPlan *plan,
+												const cypher_astnode_t *clause) {
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
 	// Because 't' is set using the offsetof() call, it cannot be used in switch statements.
 	if(t == CYPHER_AST_MATCH) {
@@ -653,15 +649,15 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 	} else if(t == CYPHER_AST_CREATE) {
 		// Only add at most one Create op per plan. TODO Revisit and improve this logic.
 		if(ExecutionPlan_LocateFirstOp(plan->root, OPType_CREATE)) return;
-		_buildCreateOp(gc, ast, plan, stats);
+		_buildCreateOp(gc, ast, plan);
 	} else if(t == CYPHER_AST_UNWIND) {
 		_buildUnwindOp(plan, clause);
 	} else if(t == CYPHER_AST_MERGE) {
-		_buildMergeOp(gc, ast, plan, clause, stats);
+		_buildMergeOp(gc, ast, plan, clause);
 	} else if(t == CYPHER_AST_SET) {
-		_buildUpdateOp(plan, clause, stats);
+		_buildUpdateOp(plan, clause);
 	} else if(t == CYPHER_AST_DELETE) {
-		_buildDeleteOp(plan, clause, stats);
+		_buildDeleteOp(plan, clause);
 	} else if(t == CYPHER_AST_RETURN) {
 		// Converting a RETURN clause can create multiple operations.
 		_buildReturnOps(plan, clause);
@@ -671,10 +667,9 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast,
 	}
 }
 
-void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set) {
+void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan) {
 	AST *ast = QueryCtx_GetAST();
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	plan->result_set = result_set;
 
 	// Initialize the plan's record mapping if necessary.
 	// It will already be set if this ExecutionPlan has been created to populate a single stream.
@@ -686,19 +681,15 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_
 	// Build filter tree
 	plan->filter_tree = AST_BuildFilterTree(ast);
 
-	// If we are in a querying context, retrieve a pointer to the statistics for operations
-	// like DELETE that only produce metadata.
-	ResultSetStatistics *stats = (result_set) ? &result_set->stats : NULL;
-
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	for(uint i = 0; i < clause_count; i ++) {
 		// Build the appropriate operation(s) for each clause in the query.
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
-		_ExecutionPlanSegment_ConvertClause(gc, ast, plan, stats, clause);
+		_ExecutionPlanSegment_ConvertClause(gc, ast, plan, clause);
 	}
 }
 
-ExecutionPlan *ExecutionPlan_UnionPlans(ResultSet *result_set, AST *ast) {
+ExecutionPlan *ExecutionPlan_UnionPlans(AST *ast) {
 	uint end_offset = 0;
 	uint start_offset = 0;
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
@@ -715,7 +706,7 @@ ExecutionPlan *ExecutionPlan_UnionPlans(ResultSet *result_set, AST *ast) {
 		// Create an AST segment from which we will build an execution plan.
 		end_offset = union_indices[i];
 		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
-		plans[i] = NewExecutionPlan(result_set);
+		plans[i] = NewExecutionPlan();
 		AST_Free(ast_segment); // Free the AST segment.
 
 		// Next segment starts where this one ends.
@@ -742,10 +733,10 @@ ExecutionPlan *ExecutionPlan_UnionPlans(ResultSet *result_set, AST *ast) {
 	plan->segment_count = union_count;
 	plan->query_graph = NULL;
 	plan->record_map = raxNew();
-	plan->result_set = result_set;
 	plan->connected_components = NULL;
+	array_clone(plan->returned_column_names, plans[union_count - 1]->returned_column_names);
 
-	OpBase *results_op = NewResultsOp(plan, result_set);
+	OpBase *results_op = NewResultsOp(plan);
 	OpBase *parent = results_op;
 	_ExecutionPlan_UpdateRoot(plan, results_op);
 
@@ -771,9 +762,6 @@ ExecutionPlan *ExecutionPlan_UnionPlans(ResultSet *result_set, AST *ast) {
 		OpBase_Free(op_result);
 
 		ExecutionPlan_AddOp(join_op, sub_plan->root);
-
-		// Set plan's root to NULL, to avoid freeing its operations.
-		sub_plan->root = NULL;
 	}
 
 	return plan;
@@ -789,13 +777,13 @@ static OpBase *_ExecutionPlan_FindLastWriter(OpBase *root) {
 	return NULL;
 }
 
-ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
+ExecutionPlan *NewExecutionPlan() {
 	AST *ast = QueryCtx_GetAST();
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 
 	/* Handle UNION if there are any. */
 	if(AST_ContainsClause(ast, CYPHER_AST_UNION)) {
-		return ExecutionPlan_UnionPlans(result_set, ast);
+		return ExecutionPlan_UnionPlans(ast);
 	}
 
 	uint start_offset = 0;
@@ -836,7 +824,7 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 		ast_segments[i] = ast_segment;
 		// Construct a new ExecutionPlanSegment.
 		ExecutionPlan *segment = ExecutionPlan_NewEmptyExecutionPlan();
-		ExecutionPlan_PopulateExecutionPlan(segment, result_set);
+		ExecutionPlan_PopulateExecutionPlan(segment);
 
 		segments[i] = segment;
 		start_offset = end_offset;
@@ -885,37 +873,41 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 		}
 
 		// Prepare column names for the ResultSet.
-		if(result_set) ResultSet_SetColumns(result_set, AST_BuildColumnNames(last_clause));
+		plan->returned_column_names = AST_BuildColumnNames(last_clause);
 
-		OpBase *results_op = NewResultsOp(plan, result_set);
+		OpBase *results_op = NewResultsOp(plan);
 		_ExecutionPlan_UpdateRoot(plan, results_op);
 	} else if(last_clause_type == CYPHER_AST_CALL) {
 		assert(plan->root->type == OPType_PROC_CALL);
 		OpProcCall *last_op = (OpProcCall *)plan->root;
 		// Prepare column names for the ResultSet.
-		if(result_set) {
-			const char **columns;
-			array_clone(columns, last_op->output);
-			ResultSet_SetColumns(result_set, columns);
-		}
+		array_clone(plan->returned_column_names, last_op->output);
 
-		OpBase *results_op = NewResultsOp(plan, result_set);
+		OpBase *results_op = NewResultsOp(plan);
 		_ExecutionPlan_UpdateRoot(plan, results_op);
 	}
-
-	// Optimize the operations in the ExecutionPlan.
-	optimizePlan(plan);
 
 	// Disregard self.
 	plan->segment_count = segment_count - 1;
 	plan->segments = segments;
-	QueryCtx_SetLastWriter(_ExecutionPlan_FindLastWriter(plan->root));
+
 	return plan;
+}
+
+void ExecutionPlan_PreparePlan(ExecutionPlan *plan) {
+	optimizePlan(plan);
+	QueryCtx_SetLastWriter(_ExecutionPlan_FindLastWriter(plan->root));
+	ResultSet_SetColumns(QueryCtx_GetResultSet(), ExecutionPlan_GetResultColumns(plan));
 }
 
 inline rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan) {
 	assert(plan && plan->record_map);
 	return plan->record_map;
+}
+
+inline const char **ExecutionPlan_GetResultColumns(const ExecutionPlan *plan) {
+	assert(plan);
+	return plan->returned_column_names;
 }
 
 Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan) {
@@ -994,7 +986,7 @@ void ExecutionPlan_Init(ExecutionPlan *plan) {
 	_ExecutionPlanInit(plan->root);
 }
 
-ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
+void ExecutionPlan_Execute(ExecutionPlan *plan) {
 	/* Set an exception-handling breakpoint to capture run-time errors.
 	 * encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
 	 * a downstream exception returns us to this breakpoint. */
@@ -1002,7 +994,7 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 
 	if(encountered_error) {
 		// Encountered a run-time error; return immediately.
-		return plan->result_set;
+		return;
 	}
 
 	ExecutionPlan_Init(plan);
@@ -1010,9 +1002,6 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 	Record r = NULL;
 	// Execute the root operation and free the processed Record until the data stream is depleted.
 	while((r = OpBase_Consume(plan->root)) != NULL) ExecutionPlan_ReturnRecord(r->owner, r);
-
-	// Return the result set.
-	return plan->result_set;
 }
 
 static void _ExecutionPlan_InitProfiling(OpBase *root) {
@@ -1041,11 +1030,10 @@ static void _ExecutionPlan_FinalizeProfiling(OpBase *root) {
 	root->stats->profileExecTime *= 1000;   // Milliseconds.
 }
 
-ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan) {
+void ExecutionPlan_Profile(ExecutionPlan *plan) {
 	_ExecutionPlan_InitProfiling(plan->root);
-	ResultSet *rs = ExecutionPlan_Execute(plan);
+	ExecutionPlan_Execute(plan);
 	_ExecutionPlan_FinalizeProfiling(plan->root);
-	return rs;
 }
 
 static void _ExecutionPlan_FreeOperations(OpBase *op) {
@@ -1099,6 +1087,7 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 	QueryGraph_Free(plan->query_graph);
 	if(plan->record_map) raxFree(plan->record_map);
 	if(plan->record_pool) ObjectPool_Free(plan->record_pool);
+	if(plan->returned_column_names) array_free(plan->returned_column_names);
 	rm_free(plan);
 }
 
