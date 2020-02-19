@@ -318,3 +318,16 @@ class testOptimizationsPlan(FlowTestsBase):
         resultset = graph.query("MATCH (n1), (n2), (n3), (n4) WHERE (n3)-[:R]->(n4 {val:n3.val+1}) AND n1.val + n2.val = n3.val AND n3.val > 1  RETURN DISTINCT n3.val ORDER BY n3.val").result_set
         expected = [[2]]
         self.env.assertEqual(resultset, expected)
+    
+    def test19_test_filter_compaction_remove_true_filter(self):
+        query = "MATCH (n) WHERE 1 = 1 RETURN n"
+        executionPlan = graph.execution_plan(query)
+        self.env.assertNotIn("Filter", executionPlan)
+
+    def test19_test_filter_compaction_not_removing_false_filter(self):
+        query = "MATCH (n) WHERE 1 > 1 RETURN n"
+        executionPlan = graph.execution_plan(query)
+        self.env.assertIn("Filter", executionPlan)
+        resultset = graph.query(query).result_set
+        expected = []
+        self.env.assertEqual(resultset, expected)
