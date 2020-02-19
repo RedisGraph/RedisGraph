@@ -35,11 +35,15 @@ uint Procedure_Argc(const ProcedureCtx *proc);
 /* Return number of outputs yield by procedure. */
 uint Procedure_OutputCount(const ProcedureCtx *proc);
 
-/* Retrieves procedure ith output */
+/* Retrieves procedure with output */
 const char *Procedure_GetOutput(const ProcedureCtx *proc, uint output_idx);
 
 /* Returns true if given output can be yield by procedure */
 bool Procedure_ContainsOutput(const ProcedureCtx *proc, const char *output);
 
+/* Returns true if procedure is read-only. */
+bool Proc_ReadOnly(const char *proc_name);
+
 // Free procedure context.
 void Proc_Free(ProcedureCtx *proc);
+
