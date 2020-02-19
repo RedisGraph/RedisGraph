@@ -106,7 +106,7 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", NULL, ExpandIntoConsume,
-				ExpandIntoReset, ExpandIntoToString, ExpandIntoFree, false, plan);
+				ExpandIntoReset, ExpandIntoToString, NULL, ExpandIntoFree, false, plan);
 
 	// Make sure that all entities are represented in Record
 	op->edgeIdx = IDENTIFIER_NOT_FOUND;

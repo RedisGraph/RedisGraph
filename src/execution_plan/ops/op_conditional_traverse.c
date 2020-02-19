@@ -136,7 +136,7 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", NULL,
-				CondTraverseConsume, CondTraverseReset, CondTraverseToString, CondTraverseFree, false, plan);
+				CondTraverseConsume, CondTraverseReset, CondTraverseToString, NULL, CondTraverseFree, false, plan);
 
 	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
