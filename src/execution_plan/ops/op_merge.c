@@ -93,8 +93,8 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
 	op->stats = stats;
 	op->on_match = on_match;
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume, NULL, NULL, MergeFree,
-				true, plan);
+	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume, NULL, NULL, NULL,
+				MergeFree, true, plan);
 
 	if(op->on_match) {
 		// If we have ON MATCH directives, set the appropriate record IDs of entities to be updated.

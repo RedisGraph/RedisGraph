@@ -60,7 +60,7 @@ OpBase *NewMergeCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_MERGE_CREATE, "MergeCreate", NULL, MergeCreateConsume,
-				NULL, NULL, MergeCreateFree, true, plan);
+				NULL, NULL, NULL, MergeCreateFree, true, plan);
 
 	uint node_blueprint_count = array_len(nodes);
 	uint edge_blueprint_count = array_len(edges);

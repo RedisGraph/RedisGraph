@@ -57,7 +57,7 @@ OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps, ResultSetStati
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", NULL, DeleteConsume,
-				NULL, NULL, DeleteFree, true, plan);
+				NULL, NULL, NULL, DeleteFree, true, plan);
 
 	return (OpBase *)op;
 }

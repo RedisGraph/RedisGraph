@@ -211,7 +211,7 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should
 	op->should_cache_records = should_cache_records;
 
 	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", AggregateInit, AggregateConsume,
-				AggregateReset, NULL, AggregateFree, false, plan);
+				AggregateReset, NULL, NULL, AggregateFree, false, plan);
 
 	for(uint i = 0; i < op->exp_count; i ++) {
 		// The projected record will associate values with their resolved name
