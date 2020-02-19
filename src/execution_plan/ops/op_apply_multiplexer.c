@@ -27,11 +27,11 @@ OpBase *NewApplyMultiplexerOp(ExecutionPlan *plan, AST_Operator boolean_operator
 	if(boolean_operator == OP_OR) {
 		OpBase_Init((OpBase *)op, OPType_OR_APPLY_MULTIPLEXER, "OR Apply Multiplexer",
 					OpApplyMultiplexerInit,
-					OrMultiplexer_Consume, OpApplyMultiplexerReset, NULL, OpApplyMultiplexerFree, false, plan);
+					OrMultiplexer_Consume, OpApplyMultiplexerReset, NULL, NULL, OpApplyMultiplexerFree, false, plan);
 	} else if(boolean_operator == OP_AND) {
 		OpBase_Init((OpBase *)op, OPType_AND_APPLY_MULTIPLEXER, "AND Apply Multiplexer",
 					OpApplyMultiplexerInit,
-					AndMultiplexer_Consume, OpApplyMultiplexerReset, NULL, OpApplyMultiplexerFree, false, plan);
+					AndMultiplexer_Consume, OpApplyMultiplexerReset, NULL, NULL, OpApplyMultiplexerFree, false, plan);
 	} else {
 		assert("apply multiplexer boolean operator should be AND or OR only" && false);
 	}

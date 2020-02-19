@@ -174,8 +174,8 @@ OpBase *NewValueHashJoin(const ExecutionPlan *plan, AR_ExpNode *lhs_exp, AR_ExpN
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_VALUE_HASH_JOIN, "Value Hash Join", ValueHashJoinInit,
-				ValueHashJoinConsume, ValueHashJoinReset, ValueHashJoinToString,
-				ValueHashJoinFree, false, plan);
+				ValueHashJoinConsume, ValueHashJoinReset, ValueHashJoinToString, NULL, ValueHashJoinFree, false,
+				plan);
 
 	op->join_value_rec_idx = OpBase_Modifies((OpBase *)op, "pivot");
 	return (OpBase *)op;

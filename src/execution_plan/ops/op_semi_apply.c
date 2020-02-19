@@ -27,10 +27,10 @@ OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti) {
 	// Set our Op operations
 	if(anti) {
 		OpBase_Init((OpBase *)op, OpType_ANTI_SEMI_APPLY, "Anti Semi Apply", SemiApplyInit,
-					AntiSemiApplyConsume, SemiApplyReset, NULL, SemiApplyFree, false, plan);
+					AntiSemiApplyConsume, SemiApplyReset, NULL, NULL, SemiApplyFree, false, plan);
 	} else {
 		OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, "Semi Apply", SemiApplyInit, SemiApplyConsume,
-					SemiApplyReset, NULL, SemiApplyFree, false, plan);
+					SemiApplyReset, NULL, NULL, SemiApplyFree, false, plan);
 	}
 	return (OpBase *) op;
 }

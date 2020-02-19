@@ -84,7 +84,7 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNo
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_PROC_CALL, "ProcedureCall", NULL, ProcCallConsume,
-				ProcCallReset, NULL, ProcCallFree, !op->procedure->readOnly, plan);
+				ProcCallReset, NULL, NULL, ProcCallFree, !op->procedure->readOnly, plan);
 
 	// Set modifiers.
 	for(uint i = 0; i < yield_count; i ++) {
