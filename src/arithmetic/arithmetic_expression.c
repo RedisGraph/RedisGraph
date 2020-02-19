@@ -486,6 +486,10 @@ bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
 	return false;
 }
 
+bool inline  AR_EXP_IsConstant(const AR_ExpNode *exp) {
+	return exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_CONSTANT;
+}
+
 void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 					  size_t *bytes_written) {
 	/* Make sure there are at least 64 bytes in str. */
