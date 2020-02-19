@@ -17,7 +17,6 @@ bool raxIsSubset(rax *a, rax *b);
 rax *raxClone(rax *orig);
 
 // Collect all values in a rax into an array.
-// This function assumes that each value is a pointer,
-// and will cast each to a const char pointer.
-const char **raxValues(rax *rax);
+// This function assumes that each value is a pointer (or at least an 8-byte payload).
+void **raxValues(rax *rax);
 

@@ -597,8 +597,8 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 		// Rather than cloning the record map, collect the bound variables along with their
 		// parser-generated constant strings.
 		ExecutionPlan_BoundVariables(plan->root, bound_vars);
-		// Prepare the variables for populating the Argument ops we will build.
-		arguments = raxValues(bound_vars);
+		// Collect the variable names from bound_vars to populate the Argument ops we will build.
+		arguments = (const char **)raxValues(bound_vars);
 	}
 
 	// Convert all the AST data required to populate our operations tree.

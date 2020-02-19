@@ -38,9 +38,9 @@ rax *raxClone(rax *orig) {
 	return rax;
 }
 
-const char **raxValues(rax *rax) {
+void **raxValues(rax *rax) {
 	// Instantiate an array to hold all of the values in the rax.
-	const char **values = array_new(const char *, raxSize(rax));
+	void **values = array_new(void *, raxSize(rax));
 	raxIterator it;
 	raxStart(&it, rax);
 	// Iterate over all keys in the rax.

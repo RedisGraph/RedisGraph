@@ -88,8 +88,8 @@ void ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpFilter *filter) {
 	// Collect all variables that are bound at this position in the op tree.
 	rax *bound_vars = raxNew();
 	ExecutionPlan_BoundVariables((OpBase *)filter, bound_vars);
-	// Prepare the variables for populating the Argument ops we will build.
-	const char **vars = raxValues(bound_vars);
+	// Collect the variable names from bound_vars to populate the Argument ops we will build.
+	const char **vars = (const char **)raxValues(bound_vars);
 
 	// Reduce.
 	OpBase *apply_op = _ReduceFilterToOp(plan, vars, filter->filterTree);
