@@ -19,7 +19,7 @@ OpBase *NewApplyOp(const ExecutionPlan *plan) {
 	op->rhs_records = array_new(Record, 32);
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_APPLY, "Apply", NULL, ApplyConsume, ApplyReset, NULL,
+	OpBase_Init((OpBase *)op, OPType_APPLY, "Apply", NULL, ApplyConsume, ApplyReset, NULL, NULL,
 				ApplyFree, false, plan);
 
 	return (OpBase *)op;

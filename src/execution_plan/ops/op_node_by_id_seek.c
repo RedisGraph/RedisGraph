@@ -43,7 +43,7 @@ OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const QGNode *n, UnsignedRa
 	op->currentId = op->minId;
 
 	OpBase_Init((OpBase *)op, OPType_NODE_BY_ID_SEEK, "NodeByIdSeek", NodeByIdSeekInit,
-				NodeByIdSeekConsume, NodeByIdSeekReset, NodeByIdSeekToString, NodeByIdSeekFree, false, plan);
+				NodeByIdSeekConsume, NodeByIdSeekReset, NodeByIdSeekToString, NULL, NodeByIdSeekFree, false, plan);
 
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 

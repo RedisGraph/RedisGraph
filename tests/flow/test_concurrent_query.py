@@ -299,9 +299,16 @@ class testConcurrentQueryFlow(FlowTestsBase):
         writer = threading.Thread(target=thread_run_query, args=(graphs[0], heavy_write_query, 0))
         writer.setDaemon(True)
         writer.start()
-        redis_con.set(GRAPH_ID, "1")
+        set_result = redis_con.set(GRAPH_ID, "1")
         writer.join()
-        self.env.assertEquals(exceptions[0], "Encountered a non-graph value type when opened key " + GRAPH_ID)
+        if exceptions[0] is not None:
+            # If the SET command attempted to execute while the CREATE query was running,
+            # an exception should have been issued.
+            self.env.assertEquals(exceptions[0], "Encountered a non-graph value type when opened key " + GRAPH_ID)
+        else:
+            # Otherwise, both the CREATE query and the SET command should have succeeded.
+            self.env.assertEquals(1000000, assertions[0].nodes_created)
+            self.env.assertEquals(set_result, True)
 
     def test_09_concurrent_multiple_readers_after_big_write(self):
         # Test issue #890

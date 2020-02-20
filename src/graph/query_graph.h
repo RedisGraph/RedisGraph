@@ -46,6 +46,9 @@ void QueryGraph_AddPath(QueryGraph *qg, const GraphContext *gc, const cypher_ast
  * nodes and relationships in a query. */
 QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast);
 
+// Make sure that all entities in the "from" QueryGraph are represented in the "to" QueryGraph.
+void QueryGraph_MergeGraphs(QueryGraph *to, QueryGraph *from);
+
 /* Retrieve node by alias */
 QGNode *QueryGraph_GetNodeByAlias(const QueryGraph *qg, const char *alias);
 

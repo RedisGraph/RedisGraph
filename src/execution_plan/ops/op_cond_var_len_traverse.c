@@ -21,7 +21,7 @@ static OpResult CondVarLenTraverseReset(OpBase *opBase);
 static void CondVarLenTraverseFree(OpBase *opBase);
 
 static void _setupTraversedRelations(CondVarLenTraverse *op) {
-	QGEdge *e = QueryGraph_GetEdgeByAlias(op->qg, AlgebraicExpression_Edge(op->ae));
+	QGEdge *e = QueryGraph_GetEdgeByAlias(op->op.plan->query_graph, AlgebraicExpression_Edge(op->ae));
 	assert(e->minHops <= e->maxHops);
 	op->minHops = e->minHops;
 	op->maxHops = e->maxHops;
@@ -84,19 +84,18 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	op->r = NULL;
 	op->expandInto = false;
 	op->allPathsCtx = NULL;
-	op->qg = plan->query_graph;
 	op->edgeRelationTypes = NULL;
 
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
 				"Conditional Variable Length Traverse", NULL, CondVarLenTraverseConsume, CondVarLenTraverseReset,
-				CondVarLenTraverseToString, CondVarLenTraverseFree, false, plan);
+				CondVarLenTraverseToString, NULL, CondVarLenTraverseFree, false, plan);
 
 	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
 
 	// Populate edge value in record only if it is referenced.
 	AST *ast = QueryCtx_GetAST();
-	QGEdge *e = QueryGraph_GetEdgeByAlias(op->qg, AlgebraicExpression_Edge(op->ae));
+	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, AlgebraicExpression_Edge(op->ae));
 	op->edgesIdx = AST_AliasIsReferenced(ast, e->alias) ? OpBase_Modifies((OpBase *)op, e->alias) : -1;
 	_setTraverseDirection(op, e);
 

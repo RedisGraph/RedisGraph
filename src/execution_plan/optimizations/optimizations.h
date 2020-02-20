@@ -13,6 +13,7 @@
 #include "./reduce_scans.h"
 #include "./reduce_filters.h"
 #include "./traverse_order.h"
+#include "./compact_filters.h"
 #include "./utilize_indices.h"
 #include "./reduce_distinct.h"
 #include "./reduce_traversal.h"
