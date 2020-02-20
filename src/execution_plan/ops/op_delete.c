@@ -22,7 +22,7 @@ void _DeleteEntities(OpDelete *op) {
 	uint edge_count = array_len(op->deleted_edges);
 
 	/* Nothing to delete, quickly return. */
-	if((node_count + edge_count) == 0) return;
+	if((node_count + edge_count) == 0) goto cleanup;
 
 	/* Lock everything. */
 	QueryCtx_LockForCommit();
@@ -41,7 +41,9 @@ void _DeleteEntities(OpDelete *op) {
 		op->stats->nodes_deleted += node_deleted;
 		op->stats->relationships_deleted += relationships_deleted;
 	}
-	/* Release lock. */
+
+cleanup:
+	/* Release lock, no harm in trying to release an unlocked lock. */
 	QueryCtx_UnlockCommit(&op->op);
 }
 
@@ -102,7 +104,7 @@ static Record DeleteConsume(OpBase *opBase) {
 static void DeleteFree(OpBase *ctx) {
 	OpDelete *op = (OpDelete *)ctx;
 
-	if(op->deleted_nodes || op->deleted_edges) _DeleteEntities(op);
+	_DeleteEntities(op);
 
 	if(op->deleted_nodes) {
 		array_free(op->deleted_nodes);
