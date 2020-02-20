@@ -7,10 +7,11 @@
 #include "resultset_formatters.h"
 #include "../../util/arr.h"
 
-void ResultSet_EmitNOPHeader(RedisModuleCtx *ctx, const char **columns, const Record r) {
+void ResultSet_EmitNOPHeader(RedisModuleCtx *ctx, const char **columns,
+							 const Record r, uint *col_rec_map) {
 
 }
-void ResultSet_EmitNOPRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r, uint numcols) {
+void ResultSet_EmitNOPRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r, uint numcols,
+							 uint *col_rec_map) {
 
 }
-
