@@ -604,7 +604,7 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 
 	// Create a Merge operation. It will store no information at this time except for any graph updates
 	// it should make due to ON MATCH SET directives in the query.
-	OpBase *merge_op = NewMergeOp(plan, merge_ctx.on_match);
+	OpBase *merge_op = NewMergeOp(plan, merge_ctx.on_match, merge_ctx.on_create);
 
 	// Set Merge op as new root and add previously-built ops, if any, as Merge's first stream.
 	_ExecutionPlan_UpdateRoot(plan, merge_op);
@@ -897,7 +897,8 @@ ExecutionPlan *NewExecutionPlan() {
 void ExecutionPlan_PreparePlan(ExecutionPlan *plan) {
 	optimizePlan(plan);
 	QueryCtx_SetLastWriter(_ExecutionPlan_FindLastWriter(plan->root));
-	ResultSet_SetColumns(QueryCtx_GetResultSet(), ExecutionPlan_GetResultColumns(plan));
+	if(plan->returned_column_names) ResultSet_SetColumns(QueryCtx_GetResultSet(),
+															 ExecutionPlan_GetResultColumns(plan));
 }
 
 inline rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan) {

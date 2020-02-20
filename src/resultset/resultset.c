@@ -128,8 +128,12 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact) {
 }
 
 void ResultSet_SetColumns(ResultSet *set, const char **columns) {
-	assert(set && columns);
-	set->columns = columns;
+	// Avoid situations like in EXPLAIN which has no result set.
+	if(!set) return;
+	// assert(columns);
+	// Set columns only once.
+	assert(!set->columns);
+	array_clone(set->columns, columns);
 	set->column_count = array_len(columns);
 }
 
@@ -148,13 +152,6 @@ int ResultSet_AddRecord(ResultSet *set, Record r) {
 	set->formatter->EmitRecord(set->ctx, set->gc, r, set->column_count, set->columns_record_map);
 
 	return RESULTSET_OK;
-}
-
-inline void ResultSet_SetColumns(ResultSet *set, const char **column_names) {
-	if(!set) return;
-	// This function should be called once.
-	assert(!set->columns);
-	array_clone(set->columns, column_names);
 }
 
 void ResultSet_IndexCreated(ResultSet *set, int status_code) {
