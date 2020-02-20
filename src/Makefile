@@ -192,3 +192,6 @@ ifneq ($(uname_S),Linux)
 endif
 endif
 	@$(MAKE) -C ../tests test
+
+memcheck: redisgraph.so
+	@$(MAKE) -C ../tests memcheck
