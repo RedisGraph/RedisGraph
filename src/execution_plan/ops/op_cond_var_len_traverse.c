@@ -105,9 +105,11 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 static Record CondVarLenTraverseConsume(OpBase *opBase) {
 	CondVarLenTraverse *op = (CondVarLenTraverse *)opBase;
 	OpBase *child = op->op.children[0];
+	bool reused_record = true;
 	Path *p = NULL;
 
 	while(!(p = AllPathsCtx_NextPath(op->allPathsCtx))) {
+		reused_record = false;
 		Record childRecord = OpBase_Consume(child);
 		if(!childRecord) return NULL;
 
@@ -138,8 +140,15 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 	Node n = Path_Head(p);
 
 	if(!op->expandInto) Record_AddNode(op->r, op->destNodeIdx, n);
-
-	if(op->edgesIdx >= 0) Record_AddScalar(op->r, op->edgesIdx, SI_Path(p));
+	if(op->edgesIdx >= 0) {
+		if(reused_record) {
+			// If we're returning a new path from a previously-used Record,
+			// free the previous path to avoid a memory leak.
+			SIValue old_path = Record_GetScalar(op->r, op->edgesIdx);
+			SIValue_Free(&old_path);
+		}
+		Record_AddScalar(op->r, op->edgesIdx, SI_Path(p));
+	}
 
 	return OpBase_CloneRecord(op->r);
 }
