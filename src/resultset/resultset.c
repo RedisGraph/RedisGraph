@@ -72,6 +72,22 @@ static void _ResultSet_ReplayStats(RedisModuleCtx *ctx, ResultSet *set) {
 	ResultSet_ReportQueryRuntime(ctx);
 }
 
+/* Map each column to a record index
+ * such that when resolving resultset row i column j we'll extract
+ * data from record at position columns_record_map[j]. */
+static void _ResultSet_SetColToRecMap(ResultSet *set, const Record r) {
+	assert(set->columns_record_map == NULL);
+
+	set->columns_record_map = rm_malloc(sizeof(uint) * set->column_count);
+
+	for(uint i = 0; i < set->column_count; i++) {
+		const char *column = set->columns[i];
+		uint idx = Record_GetEntryIdx(r, column);
+		assert(idx != INVALID_INDEX);
+		set->columns_record_map[i] = idx;
+	}
+}
+
 static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
 	assert(set->recordCount == 0);
 
@@ -79,10 +95,9 @@ static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
 	RedisModule_ReplyWithArray(set->ctx, 3);
 
 	// Emit the table header using the appropriate formatter
-	set->formatter->EmitHeader(set->ctx, set->columns, r);
+	set->formatter->EmitHeader(set->ctx, set->columns, r, set->columns_record_map);
 
 	set->header_emitted = true;
-	set->column_count = array_len(set->columns);
 
 	// We don't know at this point the number of records we're about to return.
 	RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
@@ -94,10 +109,11 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact) {
 	set->gc = QueryCtx_GetGraphCtx();
 	set->compact = compact;
 	set->formatter = (compact) ? &ResultSetFormatterCompact : &ResultSetFormatterVerbose;
+	set->columns = NULL;
 	set->recordCount = 0;
 	set->column_count = 0;
 	set->header_emitted = false;
-	set->columns = NULL;
+	set->columns_record_map = NULL;
 
 	set->stats.labels_added = 0;
 	set->stats.nodes_created = 0;
@@ -111,14 +127,25 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact) {
 	return set;
 }
 
+void ResultSet_SetColumns(ResultSet *set, const char **columns) {
+	assert(set && columns);
+	set->columns = columns;
+	set->column_count = array_len(columns);
+}
+
 int ResultSet_AddRecord(ResultSet *set, Record r) {
-	// Prepare response arrays and emit the header if this is the first Record encountered
-	if(set->header_emitted == false) _ResultSet_ReplyWithPreamble(set, r);
+	// If this is the first Record encountered
+	if(set->header_emitted == false) {
+		// Map columns to record indices.
+		_ResultSet_SetColToRecMap(set, r);
+		// Prepare response arrays and emit the header.
+		_ResultSet_ReplyWithPreamble(set, r);
+	}
 
 	set->recordCount++;
 
 	// Output the current record using the defined formatter
-	set->formatter->EmitRecord(set->ctx, set->gc, r, set->column_count);
+	set->formatter->EmitRecord(set->ctx, set->gc, r, set->column_count, set->columns_record_map);
 
 	return RESULTSET_OK;
 }
@@ -180,6 +207,7 @@ void ResultSet_Free(ResultSet *set) {
 	if(!set) return;
 
 	array_free(set->columns);
+	rm_free(set->columns_record_map);
 
 	rm_free(set);
 }

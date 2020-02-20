@@ -931,7 +931,7 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 		}
 
 		// Prepare column names for the ResultSet.
-		if(result_set) result_set->columns = AST_BuildColumnNames(last_clause);
+		if(result_set) ResultSet_SetColumns(result_set, AST_BuildColumnNames(last_clause));
 
 		OpBase *results_op = NewResultsOp(plan, result_set);
 		_ExecutionPlan_UpdateRoot(plan, results_op);
@@ -939,7 +939,11 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 		assert(plan->root->type == OPType_PROC_CALL);
 		OpProcCall *last_op = (OpProcCall *)plan->root;
 		// Prepare column names for the ResultSet.
-		if(result_set) array_clone(result_set->columns, last_op->output);
+		if(result_set) {
+			const char **columns;
+			array_clone(columns, last_op->output);
+			ResultSet_SetColumns(result_set, columns);
+		}
 
 		OpBase *results_op = NewResultsOp(plan, result_set);
 		_ExecutionPlan_UpdateRoot(plan, results_op);
