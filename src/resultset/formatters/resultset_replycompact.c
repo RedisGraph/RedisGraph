@@ -214,12 +214,12 @@ static void _ResultSet_CompactReplyWithPath(RedisModuleCtx *ctx, GraphContext *g
 	RedisModule_ReplyWithArray(ctx, 2);
 	SIValue nodes = SIPath_Nodes(path);
 	_ResultSet_CompactReplyWithSIValue(ctx, gc, nodes);
-	SIValue_Free(&nodes);
+	SIValue_Free(nodes);
 	// Second array type and value.
 	RedisModule_ReplyWithArray(ctx, 2);
 	SIValue relationships = SIPath_Relationships(path);
 	_ResultSet_CompactReplyWithSIValue(ctx, gc, relationships);
-	SIValue_Free(&relationships);
+	SIValue_Free(relationships);
 }
 
 void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,

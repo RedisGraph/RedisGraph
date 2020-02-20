@@ -174,8 +174,8 @@ int _applyPredicateFilters(const FT_FilterNode *root, const Record r) {
 
 	int ret = _applyFilter(&lhs, &rhs, root->pred.op);
 
-	SIValue_Free(&lhs);
-	SIValue_Free(&rhs);
+	SIValue_Free(lhs);
+	SIValue_Free(rhs);
 
 	return ret;
 }
