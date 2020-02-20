@@ -77,7 +77,7 @@ static int _identifyNodeCountPattern(OpBase *root, OpResult **opResult, OpAggreg
 
 bool _reduceNodeCount(ExecutionPlan *plan) {
 	/* We'll only modify execution plan if it is structured as follows:
-	     * "Scan -> Aggregate -> Results" */
+	 * "Scan -> Aggregate -> Results" */
 	const char *label;
 	OpBase *opScan;
 	OpResult *opResult;
