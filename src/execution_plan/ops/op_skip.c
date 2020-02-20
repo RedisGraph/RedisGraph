@@ -16,8 +16,8 @@ OpBase *NewSkipOp(const ExecutionPlan *plan, unsigned int rec_to_skip) {
 	op->rec_to_skip = rec_to_skip;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_SKIP, "Skip", NULL, SkipConsume, SkipReset, NULL, NULL, false,
-				plan);
+	OpBase_Init((OpBase *)op, OPType_SKIP, "Skip", NULL, SkipConsume, SkipReset, NULL, NULL, NULL,
+				false, plan);
 
 	return (OpBase *)op;
 }

@@ -14,9 +14,7 @@ Record SemiApplyConsume(OpBase *opBase);
 Record AntiSemiApplyConsume(OpBase *opBase);
 OpResult SemiApplyReset(OpBase *opBase);
 
-static Record _pullFromMatchStream(OpSemiApply *op) {
-	// Propegate record to the top of the match stream.
-	if(op->op_arg) Argument_AddRecord(op->op_arg, OpBase_CloneRecord(op->r));
+static inline Record _pullFromMatchStream(OpSemiApply *op) {
 	return OpBase_Consume(op->match_branch);
 }
 
@@ -29,10 +27,10 @@ OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti) {
 	// Set our Op operations
 	if(anti) {
 		OpBase_Init((OpBase *)op, OpType_ANTI_SEMI_APPLY, "Anti Semi Apply", SemiApplyInit,
-					AntiSemiApplyConsume, SemiApplyReset, NULL, SemiApplyFree, false, plan);
+					AntiSemiApplyConsume, SemiApplyReset, NULL, NULL, SemiApplyFree, false, plan);
 	} else {
 		OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, "Semi Apply", SemiApplyInit, SemiApplyConsume,
-					SemiApplyReset, NULL, SemiApplyFree, false, plan);
+					SemiApplyReset, NULL, NULL, SemiApplyFree, false, plan);
 	}
 	return (OpBase *) op;
 }
@@ -62,19 +60,22 @@ Record SemiApplyConsume(OpBase *opBase) {
 		// Try to get a record from bound stream.
 		op->r = OpBase_Consume(op->bound_branch);
 		if(!op->r) return NULL; // Depleted.
+		// Propagate Record to the top of the Match stream.
+		if(op->op_arg) Argument_AddRecord(op->op_arg, OpBase_CloneRecord(op->r));
 
-		// Try to get a record from match stream.
-		Record righthand_record = _pullFromMatchStream(op);
-		if(righthand_record) {
-			// Don't care about matched record.
-			OpBase_DeleteRecord(righthand_record);
+		Record rhs_record = _pullFromMatchStream(op);
+		// Reset the match branch to maintain parity with the bound branch.
+		OpBase_PropagateReset(op->match_branch);
+		if(rhs_record) {
+			/* Successfully retrieved a Record from the match stream,
+			 * free it and return the bound Record. */
+			OpBase_DeleteRecord(rhs_record);
 			Record r = op->r;
 			op->r = NULL;   // Null to avoid double free.
 			return r;
 		}
-		// Did not managed to get a record from right-hand side, loop back and restart.
+		// Did not manage to get a record from right-hand side, loop back and restart.
 		OpBase_DeleteRecord(op->r);
-		op->r = NULL;
 	}
 }
 
@@ -88,15 +89,19 @@ Record AntiSemiApplyConsume(OpBase *opBase) {
 		op->r = OpBase_Consume(op->bound_branch);
 		if(!op->r) return NULL; // Depleted.
 
-		/* Try pulling right stream
-		 * return bounded stream record if match stream returns NULL. */
-		Record righthand_record = _pullFromMatchStream(op);
-		if(righthand_record) {
-			/* managed to get a record from match stream,
-			 * free it and pull again from left handside. */
-			OpBase_DeleteRecord(righthand_record);
+		// Propagate record to the top of the Match stream.
+		// (Must clone the Record, as it will be freed in the Match stream.)
+		if(op->op_arg) Argument_AddRecord(op->op_arg, OpBase_CloneRecord(op->r));
+		/* Try to pull data from the right stream,
+		 * returning the bound stream record if unsuccessful. */
+		Record rhs_record = _pullFromMatchStream(op);
+		// Reset the match branch to maintain parity with the bound branch.
+		OpBase_PropagateReset(op->match_branch);
+		if(rhs_record) {
+			/* Successfully retrieved a Record from the match stream,
+			 * free it and pull again from the bound stream. */
+			OpBase_DeleteRecord(rhs_record);
 			OpBase_DeleteRecord(op->r);
-			op->r = NULL;
 		} else {
 			// Right stream returned NULL, return left handside record.
 			Record r = op->r;
@@ -123,3 +128,4 @@ void SemiApplyFree(OpBase *opBase) {
 		op->r = NULL;
 	}
 }
+
