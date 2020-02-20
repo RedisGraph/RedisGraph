@@ -80,7 +80,6 @@ class testResultSetFlow(FlowTestsBase):
         self.env.assertEquals(len(result.result_set), 12) # 12 relations (fully connected graph)
         self.env.assertEquals(len(result.header), 3) # 3 columns in result set
 
-
     # Verify that the DISTINCT operator works with full entity returns
     def test05_distinct_full_entities(self):
         graph2 = Graph("H", redis_con)
@@ -155,3 +154,21 @@ class testResultSetFlow(FlowTestsBase):
         query = """MATCH (a) return percentileDisc(a.missing_field, 0.1)"""
         result = graph.query(query)
         self.env.assertEqual(None, result.result_set[0][0])
+
+    # Test returning multiple occurrence of an expression.
+    def test08_return_duplicate_expression(self):
+        query = """MATCH (a) RETURN max(a.val), max(a.val)"""
+        result = graph.query(query)
+        self.env.assertEqual(result.result_set[0][0], result.result_set[0][1])
+
+        query = """MATCH (a) return max(a.val) as x, max(a.val) as x"""
+        result = graph.query(query)
+        self.env.assertEqual(result.result_set[0][0], result.result_set[0][1])
+
+        query = """MATCH (a) RETURN a.val, a.val LIMIT 1"""
+        result = graph.query(query)
+        self.env.assertEqual(result.result_set[0][0], result.result_set[0][1])
+
+        query = """MATCH (a) return a.val as x, a.val as x LIMIT 1"""
+        result = graph.query(query)
+        self.env.assertEqual(result.result_set[0][0], result.result_set[0][1])
