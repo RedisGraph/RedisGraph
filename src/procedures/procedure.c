@@ -118,6 +118,18 @@ bool Procedure_ContainsOutput(const ProcedureCtx *proc, const char *output) {
 	return false;
 }
 
+bool Proc_ReadOnly(const char *proc_name) {
+	assert(__procedures);
+	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name, strlen(proc_name));
+	if(gen == raxNotFound) return false; // Invalid procedure specified, handled elsewhere.
+	/* TODO It would be preferable to be able to determine whether a procedure is read-only
+	 * without creating its entire context; this is wasteful. */
+	ProcedureCtx *ctx = gen();
+	bool read_only = ctx->readOnly;
+	Proc_Free(ctx);
+	return read_only;
+}
+
 void Proc_Free(ProcedureCtx *proc) {
 	if(!proc) return;
 	proc->Free(proc);
@@ -129,3 +141,4 @@ void Proc_Free(ProcedureCtx *proc) {
 
 	rm_free(proc);
 }
+
