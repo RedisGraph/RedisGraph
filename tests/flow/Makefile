@@ -14,7 +14,7 @@ endif
 
 #check valgrind flag
 ifneq ($(VALGRIND),)
-	valgrind += -V --vg-no-leakcheck --vg-verbose
+	valgrind += -V --vg-no-leakcheck --vg-verbose --env-reuse
 	TEST_ARGS += $(valgrind)
 endif
 
@@ -29,12 +29,12 @@ test:
 # if host is linux
 ifeq ($(OS), Linux)
 	# regular tests on linux
-	@python -m RLTest --module ../../src/redisgraph.so  $(TEST_ARGS)
+	@python -m RLTest --module ../../src/redisgraph.so $(TEST_ARGS)
 else
 # mac
 ifeq ($(VALGRIND),)
 	# no valgrind
-	@python -m RLTest --module ../../src/redisgraph.so  $(TEST_ARGS)
+	@python -m RLTest --module ../../src/redisgraph.so $(TEST_ARGS)
 else
 	# valgrind in docker
 	@echo running docker to run valgrind flow test on MacOS
