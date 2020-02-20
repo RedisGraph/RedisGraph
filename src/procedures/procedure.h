@@ -35,7 +35,7 @@ uint Procedure_Argc(const ProcedureCtx *proc);
 /* Return number of outputs yield by procedure. */
 uint Procedure_OutputCount(const ProcedureCtx *proc);
 
-/* Retrieves procedure with output */
+/* Return the name of the procedure's output at position output_idx. */
 const char *Procedure_GetOutput(const ProcedureCtx *proc, uint output_idx);
 
 /* Returns true if given output can be yield by procedure */
