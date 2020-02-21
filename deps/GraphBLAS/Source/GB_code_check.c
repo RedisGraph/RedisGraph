@@ -2,7 +2,7 @@
 // GB_code_check: print an entry using a type code
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -28,7 +28,7 @@ GrB_Info GB_code_check          // print an entry using a type code
 
     switch (code)
     {
-        #ifdef GB_DEVELOPER
+        #if GB_DEVELOPER
 
         case GB_BOOL_code:   i = *((bool     *) x) ; GBPR ("bool "    GBd, i) ; break ;
         case GB_INT8_code:   i = *((int8_t   *) x) ; GBPR ("int8 "    GBd, i) ; break ;
@@ -85,7 +85,6 @@ GrB_Info GB_code_check          // print an entry using a type code
             break ;
         #endif
 
-        case GB_UCT_code    :
         case GB_UDT_code    :
             { 
                 GBPR ("[user-defined value]") ;

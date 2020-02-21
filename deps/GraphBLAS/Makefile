@@ -2,7 +2,7 @@
 # GraphBLAS/Makefile
 #-------------------------------------------------------------------------------
 
-# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 # http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 #-------------------------------------------------------------------------------
@@ -10,18 +10,11 @@
 # simple Makefile for GraphBLAS, relies on cmake to do the actual build.  Use
 # the CMAKE_OPTIONS argument to this Makefile to pass options to cmake.
 
-# Find the OS.
-uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
-# Set number of threads.
-ifeq ($(uname_S),Linux)
-	JOBS ?= $(shell grep -c ^processor /proc/cpuinfo)
-else
-	JOBS ?= $(shell sysctl -n hw.logicalcpu_max)
-endif
+JOBS ?= 1
 
 default: library
 
-# just build the static and dynamic libraries; do not run the demo
+# just build the dynamic library; do not run the demo
 library:
 	( cd build ; cmake $(CMAKE_OPTIONS) .. ; $(MAKE) --jobs=$(JOBS) )
 
@@ -37,12 +30,9 @@ remake:
 cmake:
 	( cd build ; cmake $(CMAKE_OPTIONS) .. ; )
 
-# the same as "make library"
+# build both the static and dynamic libraries do not run the demo
 static:
 	( cd build ; cmake $(CMAKE_OPTIONS) -DBUILD_GRB_STATIC_LIBRARY=1 .. ; $(MAKE) --jobs=$(JOBS) )
-
-static_only:
-	( cd build ; cmake $(CMAKE_OPTIONS) -DBUILD_GRB_STATIC_LIBRARY=1 .. ; $(MAKE) --jobs=$(JOBS) graphblas_static )
 
 # installs GraphBLAS to the install location defined by cmake, usually
 # /usr/local/lib and /usr/local/include
@@ -71,4 +61,5 @@ distclean:
 	( cd Test ; $(MAKE) distclean )
 	( cd Tcov ; $(MAKE) distclean )
 	( cd Doc  ; $(MAKE) distclean )
+	( cd alternative  ; $(MAKE) distclean )
 

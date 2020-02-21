@@ -1,6 +1,9 @@
 function test112
 %TEST112 test row/col scale
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 fprintf ('test112: row/col scale\n') ;
 
 rng ('default') ;

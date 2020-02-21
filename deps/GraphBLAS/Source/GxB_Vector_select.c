@@ -2,7 +2,7 @@
 // GxB_Vector_select: select entries from a vector
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -26,25 +26,30 @@ GrB_Info GxB_Vector_select          // w<M> = accum (w, select(u,k))
     //--------------------------------------------------------------------------
 
     GB_WHERE ("GxB_Vector_select (w, M, accum, op, u, Thunk, desc)") ;
+    GB_BURBLE_START ("GxB_select") ;
     GB_RETURN_IF_NULL_OR_FAULTY (w) ;
     GB_RETURN_IF_FAULTY (M) ;
     GB_RETURN_IF_NULL_OR_FAULTY (u) ;
 
     // get the descriptor
-    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, Mask_struct,
+        xx1, xx2, xx3) ;
 
     //--------------------------------------------------------------------------
     // select the entries; do not transpose; assemble pending entries
     //--------------------------------------------------------------------------
 
-    return (GB_select (
+    info = GB_select (
         (GrB_Matrix) w,     C_replace,      // w and its descriptor
-        (GrB_Matrix) M,     Mask_comp,      // mask and its descriptor
+        (GrB_Matrix) M, Mask_comp, Mask_struct, // mask and its descriptor
         accum,                              // optional accum for Z=accum(C,T)
         op,                                 // operator to select the entries
         (GrB_Matrix) u,                     // first input: u
         Thunk,                              // optional input for select op
         false,                              // u, not transposed
-        Context)) ;
+        Context) ;
+
+    GB_BURBLE_END ;
+    return (info) ;
 }
 

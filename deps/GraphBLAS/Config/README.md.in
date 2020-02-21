@@ -1,6 +1,6 @@
 # SuiteSparse:GraphBLAS
 
-SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 VERSION @GraphBLAS_VERSION_MAJOR@.@GraphBLAS_VERSION_MINOR@.@GraphBLAS_VERSION_SUB@, @GraphBLAS_DATE@
@@ -18,7 +18,9 @@ SuiteSparse implementation of GraphBLAS, and how to use it in your
 applications.
 
 See http://graphblas.org for more information on GraphBLAS, including the
-GraphBLAS C API (also in `Doc/GraphBLAS_API_C.pdf`).
+GraphBLAS C API (also in `Doc/GraphBLAS_API_C.pdf`).  See
+https://github.com/szarnyasg/graphblas-pointers for additional resources on
+GraphBLAS.
 
 QUICK START: To compile, run several demos, and install, do these commands in
 this directory:
@@ -83,8 +85,6 @@ Test:           Extensive tests, not meant for general usage.  To compile
                 SuiteSparse:GraphBLAS and test in MATLAB, go to this directory
                 and type make;testall in MATLAB.
 
-User:           user-defined objects at compile-time (.m4 files)
-
 build:          build directory for CMake, initially empty
 
 alternative:    an alternative to CMake; edit the alternative/Makefile and do
@@ -101,4 +101,12 @@ keyword SPEC: in the code and in the User Guide, and in the Include/GraphBLAS.h
 file.  All functions, objects, and macros with the prefix GxB are extensions to
 the spec.  Functions, objects, and macros with prefix GB must not be accessed
 by user code.  They are for internal use in GraphBLAS only.
+
+
+--------------------------------------------------------------------------------
+## For Windows users:
+
+This version is not compatible with Microsoft Visual Studio.  Use another
+compiler, or use SuiteSparse:GraphBLAS v3.1.2 instead.  See the User Guide
+for more details.
 

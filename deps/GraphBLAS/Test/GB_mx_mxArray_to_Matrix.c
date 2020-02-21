@@ -2,7 +2,7 @@
 // GB_mx_mxArray_to_Matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -70,7 +70,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
         {
             // treat as a sparse 0-by-0 matrix, not NULL
             GrB_Matrix_new (&A, GrB_FP64, 0, 0) ;
-            ASSERT_OK (GB_check (A, "got A = [ ] from MATLAB", GB0)) ;
+            ASSERT_MATRIX_OK (A, "got A = [ ] from MATLAB", GB0) ;
             return (A) ;
         }
         else
@@ -189,8 +189,8 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
         }
     }
 
-    ASSERT_OK (GB_check (atype_in,  "A type in", GB0)) ;
-    ASSERT_OK (GB_check (atype_out, "A type out", GB0)) ;
+    ASSERT_TYPE_OK (atype_in,  "A type in", GB0) ;
+    ASSERT_TYPE_OK (atype_out, "A type out", GB0) ;
 
     if (atype_in == NULL || atype_out == NULL)
     {
@@ -344,7 +344,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
 
     A->nvec_nonempty = -1 ; // compute when needed; see also GxB_Matrix_import
 
-    ASSERT_OK (GB_check (A, "got natural A from MATLAB", GB0)) ;
+    ASSERT_MATRIX_OK (A, "got natural A from MATLAB", GB0) ;
     ASSERT (!A->is_hyper) ;
 
     //--------------------------------------------------------------------------
@@ -363,7 +363,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
         ASSERT (!A->is_csc) ;
     }
 
-    ASSERT_OK (GB_check (A, "conformed from MATLAB", GB0)) ;
+    ASSERT_MATRIX_OK (A, "conformed from MATLAB", GB0) ;
     ASSERT (!A->is_hyper) ;
     ASSERT (A->is_csc == is_csc) ;
 
@@ -392,7 +392,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
         }
     }
 
-    ASSERT_OK (GB_check (A, "final hyper/nonhyper", GB0)) ;
+    ASSERT_MATRIX_OK (A, "final hyper/nonhyper", GB0) ;
     ASSERT (A->is_csc == is_csc) ;
     ASSERT (nrows_old == GB_NROWS (A)) ;
     ASSERT (ncols_old == GB_NCOLS (A)) ;
@@ -401,7 +401,7 @@ GrB_Matrix GB_mx_mxArray_to_Matrix     // returns GraphBLAS version of A
     // return the GraphBLAS matrix
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (A, "got A from MATLAB", GB0)) ;
+    ASSERT_MATRIX_OK (A, "got A from MATLAB", GB0) ;
     return (A) ;
 }
 

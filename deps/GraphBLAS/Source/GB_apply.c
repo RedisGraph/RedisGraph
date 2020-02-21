@@ -2,7 +2,7 @@
 // GB_apply: apply a unary operator; optionally transpose a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -21,6 +21,7 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     const bool C_replace,           // C descriptor
     const GrB_Matrix M,             // optional mask for C, unused if NULL
     const bool Mask_comp,           // M descriptor
+    const bool Mask_struct,         // if true, use the only structure of M
     const GrB_BinaryOp accum,       // optional accum for Z=accum(C,T)
     const GrB_UnaryOp op,           // operator to apply to the entries
     const GrB_Matrix A,             // first input:  matrix A
@@ -38,11 +39,11 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     GB_RETURN_IF_FAULTY (accum) ;
     GB_RETURN_IF_NULL_OR_FAULTY (op) ;
 
-    ASSERT_OK (GB_check (C, "C input for GB_apply", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_apply", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_apply", GB0)) ;
-    ASSERT_OK (GB_check (op, "op for GB_apply", GB0)) ;
-    ASSERT_OK (GB_check (A, "A input for GB_apply", GB0)) ;
+    ASSERT_MATRIX_OK (C, "C input for GB_apply", GB0) ;
+    ASSERT_MATRIX_OK_OR_NULL (M, "M for GB_apply", GB0) ;
+    ASSERT_BINARYOP_OK_OR_NULL (accum, "accum for GB_apply", GB0) ;
+    ASSERT_UNARYOP_OK (op, "op for GB_apply", GB0) ;
+    ASSERT_MATRIX_OK (A, "A input for GB_apply", GB0) ;
 
     // check domains and dimensions for C<M> = accum (C,T)
     GrB_Type T_type = op->ztype ;
@@ -101,13 +102,24 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     { 
         // T = op (A'), typecasting to op->ztype
         // transpose: typecast, apply an op, not in place
+        GBBURBLE ("(transpose-op) ") ;
         info = GB_transpose (&T, T_type, C_is_csc, A, op, Context) ;
+    }
+    else if (M == NULL && accum == NULL && (C == A) && C->type == op->ztype)
+    {
+        GBBURBLE ("(inplace-op) ") ;
+        // C = op (C), operating on the values in place, with no typecasting
+        // of the output of the operator with the matrix C.  Always succeeds.
+        // FUTURE::: also handle C += op(C), with accum
+        GB_apply_op (C->x, op, C->x, C->type, GB_NNZ (C), Context) ;
+        return (GrB_SUCCESS) ;
     }
     else
     { 
         // T = op (A), pattern is a shallow copy of A, type is op->ztype.  If
         // op is the built-in IDENTITY and A->type is op->xtype == op->ztype,
         // then a pure shallow copy is made.
+        GBBURBLE ("(shallow-op) ") ;
         info = GB_shallow_op (&T, C_is_csc, op, A, Context) ;
     }
 
@@ -124,6 +136,6 @@ GrB_Info GB_apply                   // C<M> = accum (C, op(A)) or op(A')
     //--------------------------------------------------------------------------
 
     return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp,
-        Context)) ;
+        Mask_struct, Context)) ;
 }
 

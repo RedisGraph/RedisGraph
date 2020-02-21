@@ -2,13 +2,10 @@
 // GB_UnaryOp_check: check and print a unary operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
-
-// for additional diagnostics, use:
-// #define GB_DEVELOPER 1
 
 #include "GB_printf.h"
 
@@ -43,14 +40,10 @@ GrB_Info GB_UnaryOp_check   // check a GraphBLAS unary operator
     GB_CHECK_MAGIC (op, "UnaryOp") ;
 
     if (pr > 0)
-    { 
-        if (op->opcode == GB_USER_C_opcode)
+    {
+        if (op->opcode >= GB_USER_opcode)
         { 
-            GBPR ("(compile-time user-defined) ") ;
-        }
-        else if (op->opcode == GB_USER_R_opcode)
-        { 
-            GBPR ("(run-time user-defined) ") ;
+            GBPR ("(user-defined) ") ;
         }
         else
         { 
@@ -74,8 +67,7 @@ GrB_Info GB_UnaryOp_check   // check a GraphBLAS unary operator
           op->opcode == GB_ABS_opcode ||
           op->opcode == GB_MINV_opcode ||
           op->opcode == GB_LNOT_opcode ||
-          op->opcode == GB_USER_C_opcode ||       // unary or binary
-          op->opcode == GB_USER_R_opcode))        // unary or binary
+          op->opcode == GB_USER_opcode))        // unary or binary
     { 
         GBPR0 ("    invalid opcode\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,

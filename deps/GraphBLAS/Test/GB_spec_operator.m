@@ -1,5 +1,4 @@
 function [opname opclass zclass] = GB_spec_operator (op, opclass_default)
-%
 %GB_SPEC_OPERATOR get the contents of an operator
 %
 % On input, op can be a struct with a string op.opname that gives the operator
@@ -11,7 +10,7 @@ function [opname opclass zclass] = GB_spec_operator (op, opclass_default)
 % class of the output is zclass, and it is either the same as x and y, or
 % logical for 'eq', 'ne', 'gt', 'lt', 'ge', 'le'.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (isempty (op))

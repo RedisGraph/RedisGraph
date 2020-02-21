@@ -162,7 +162,7 @@ classdef GrB
 %   [lo,hi] = bandwidth (G) determine the lower & upper bandwidth of G
 %   C = sum (G, option)     reduce via sum, to vector or scalar
 %   C = prod (G, option)    reduce via product, to vector or scalar
-%   s = norm (G, kind)      1-norm or inf-norm of a GrB matrix
+%   s = norm (G, kind)      norm of a GrB matrix
 %   [C,I] = max (G, ...)    reduce via max, to vector or scalar
 %   C = min (G, ...)        reduce via min, to vector or scalar
 %   C = any (G, ...)        reduce via '|', to vector or scalar
@@ -244,6 +244,8 @@ classdef GrB
 % GraphBLAS basic functions:
 %---------------------------
 %
+%   GrB.init                     initialize GraphBLAS
+%   GrB.finalize                 finish GraphBLAS
 %   GrB.clear                    clear GraphBLAS workspace and settings
 %   GrB.descriptorinfo (d)       list properties of a descriptor
 %   GrB.unopinfo (op, type)      list properties of a unary operator
@@ -253,6 +255,7 @@ classdef GrB
 %   GrB.selectopinfo (op)        list properties of a select operator
 %   t = GrB.threads (t)          set/get # of threads to use in GraphBLAS
 %   c = GrB.chunk (c)            set/get chunk size to use in GraphBLAS
+%   b = GrB.burble (b)           set/get burble (diagnostic output)
 %   result = GrB.entries (G,...) count or query entries in a matrix
 %   result = GrB.nonz (G,...)    count or query nonzeros in a matrix
 %   C = GrB.prune (A, id)        prune entries equal to id
@@ -273,6 +276,7 @@ classdef GrB
 %                               build a GrB matrix from list of entries
 %   [I,J,X] = GrB.extracttuples (A, desc)
 %                               extract all entries from a matrix
+%   s = GrB.normdiff (A, B, kind)   norm (A-B,kind)
 %
 %-------------------------------------
 % Static Methods for graph algorithms:
@@ -455,7 +459,7 @@ classdef GrB
 %
 % See also sparse.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 properties (SetAccess = private, GetAccess = private)
@@ -750,6 +754,8 @@ methods (Static)
     % MATLAB sparse, or MATLAB full).  The output matrix C or Cout is a
     % GraphBLAS matrix.
 
+    init ;
+    finalize ;
     clear ;
     descriptorinfo (d) ;
     unopinfo (op, type) ;
@@ -759,6 +765,7 @@ methods (Static)
     semiringinfo (s, type) ;
     nthreads = threads (varargin) ;
     c = chunk (varargin) ;
+    b = burble (varargin) ;
     C = empty (arg1, arg2) ;
     s = type (A) ;
     s = issigned (type) ;
@@ -786,7 +793,7 @@ methods (Static)
     Cout = emult (varargin) ;
     Cout = apply (varargin) ;
     Cout = extract (varargin) ;
-    r = pagerank (A, opts) ;
+    [r, stats] = pagerank (A, opts) ;
     C = ktruss (A, k, check) ;
     s = tricount (A, check) ;
     L = laplacian (A, type, check) ;
@@ -797,6 +804,7 @@ methods (Static)
     result = entries (A, varargin) ;
     result = nonz (A, varargin) ;
     [C, I, J] = compact (A, id) ;
+    s = normdiff (A, B, kind) ;
 
 end
 end

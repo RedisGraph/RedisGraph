@@ -2,7 +2,7 @@
 // GxB_Matrix_subassign_[SCALAR]: assign to submatrix, via scalar expansion
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -35,10 +35,13 @@ GrB_Info GxB_Matrix_subassign_ ## T /* C(Rows,Cols)<M> += x                 */ \
 {                                                                              \
     GB_WHERE ("GxB_Matrix_subassign_" GB_STR(T)                                \
         " (C, M, accum, x, Rows, nRows, Cols, nCols, desc)") ;                 \
+    GB_BURBLE_START ("GxB_subassign") ;                                        \
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;                                          \
     GB_RETURN_IF_FAULTY (M) ;                                                  \
-    return (GB_subassign_scalar (C, M, accum, ampersand x,                     \
-        GB_## T ## _code, Rows, nRows, Cols, nCols, desc, Context)) ;          \
+    GrB_Info info = GB_subassign_scalar (C, M, accum, ampersand x,             \
+        GB_## T ## _code, Rows, nRows, Cols, nCols, desc, Context) ;           \
+    GB_BURBLE_END ;                                                            \
+    return (info) ;                                                            \
 }
 
 GB_ASSIGN (bool     , BOOL   , &)

@@ -2,7 +2,7 @@
 // gbdisp: display a GraphBLAS matrix struct
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ void mexFunction
     GrB_Matrix C = gb_get_shallow (pargin [0]) ;
     OK (GxB_Matrix_fprint (C, s, level, NULL)) ;
     printf ("\n") ;
-    OK (GrB_free (&C)) ;
+    OK (GrB_Matrix_free (&C)) ;
     GB_WRAPUP ;
 }
 

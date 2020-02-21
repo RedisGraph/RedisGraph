@@ -7,7 +7,7 @@ function C = GB_spec_eWiseAdd_Matrix (C, Mask, accum, add, A, B, descriptor, ign
 % Computes C<Mask> = accum(C,T), in GraphBLAS notation, where T =A+B, A'+B,
 % A+B' or A'+B'.  The pattern of T is the union of A and B.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 %-------------------------------------------------------------------------------
@@ -22,8 +22,9 @@ C = GB_spec_matrix (C) ;
 A = GB_spec_matrix (A) ;
 B = GB_spec_matrix (B) ;
 [add_op xyclass zclass] = GB_spec_operator (add, C.class) ;
-Mask = GB_spec_getmask (Mask) ;
-[C_replace Mask_comp Atrans Btrans] = GB_spec_descriptor (descriptor) ;
+[C_replace Mask_comp Atrans Btrans Mask_struct] = ...
+    GB_spec_descriptor (descriptor) ;
+Mask = GB_spec_getmask (Mask, Mask_struct) ;
 
 %-------------------------------------------------------------------------------
 % do the work via a clean MATLAB interpretation of the entire GraphBLAS spec

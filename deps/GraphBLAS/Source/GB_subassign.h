@@ -2,7 +2,7 @@
 // GB_subassign.h: definitions for GB_subassign
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -15,9 +15,10 @@
 GrB_Info GB_subassign               // C(Rows,Cols)<M> += A or A'
 (
     GrB_Matrix C,                   // input/output matrix for results
-    const bool C_replace,           // descriptor for C
+    bool C_replace,                 // descriptor for C
     const GrB_Matrix M_in,          // optional mask for C(Rows,Cols)
     const bool Mask_comp,           // true if mask is complemented
+    const bool Mask_struct,         // if true, use the only structure of M
     bool M_transpose,               // true if the mask should be transposed
     const GrB_BinaryOp accum,       // optional accum for accum(C,T)
     const GrB_Matrix A_in,          // input matrix
@@ -53,6 +54,7 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
     bool C_replace,                 // C matrix descriptor
     const GrB_Matrix M_input,       // optional mask for C(I,J), unused if NULL
     const bool Mask_comp,           // mask descriptor
+    const bool Mask_struct,         // if true, use the only structure of M
     const GrB_BinaryOp accum,       // optional accum for Z=accum(C(I,J),A)
     const GrB_Matrix A_input,       // input matrix (NULL for scalar expansion)
     const GrB_Index *I_input,       // list of indices

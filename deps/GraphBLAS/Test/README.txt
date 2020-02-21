@@ -1,4 +1,4 @@
-SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 GraphBLAS/Test:
@@ -15,18 +15,12 @@ files to provide 'help GB_mex...' documentation.
 
 Requirements:  the mex command must use a C compiler supporting ANSI C11.
 
-To run the tests you must first compile "spok":
-
-    cd spok
-    spok_install
-
-Next, compile and install GraphBLAS.  Then, in this directory, to compile and
-run all the tests:
+To run the tests, use the following command in this directory, in MATLAB:
 
     make ; testall
 
 If you get a linking problem on linux, add this directory to your
-LD_LIBRARY_PATCH, so that the libgraphblas.so can be found by the mexFunctions.
+LD_LIBRARY_PATH, so that the libgraphblas.so can be found by the mexFunctions.
 
 Longer tests can be done as well (this can take a whole day):
 
@@ -49,9 +43,9 @@ handling in GraphBLAS to be tested.  If the function fails, the counter is
 reset, and the test is done again.  The initial state of this counter is
 increased until the function succeeds.  During this entire process, a count is
 kept of malloc'd blocks, and an error is reported if a leak is found.
-GraphBLAS will be very slow with malloc debugging enabled.  It is only
-done through the MATLAB interface and has no effect when GraphBLAS is
-used through a C program (as in the Demo/ programs).
+GraphBLAS will be very slow with malloc debugging enabled.  It is only done
+through the MATLAB interface and has no effect when GraphBLAS is used through a
+C program (as in the Demo/ programs).
 
 To enable further debugging tests, see the comments in Source/GB.h.
 

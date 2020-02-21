@@ -1,15 +1,17 @@
 function gbtest7
 %GBTEST7 test GrB.build
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+rng ('default') ;
 
 n = 5 ;
 A = sprand (n, n, 0.5) ;
 A (n,n) = 5 ;
 
-[i j x] = find (A) ;
-[m n] = size (A) ;
+[i, j, x] = find (A) ;
+[m, n] = size (A) ;
 
 G = GrB.build (i, j, x, m, n) ;
 S = sparse   (i, j, x, m, n) ;

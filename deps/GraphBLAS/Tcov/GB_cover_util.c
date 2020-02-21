@@ -2,7 +2,7 @@
 // GB_cover_util.c: utilities for test coverage
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -28,7 +28,8 @@ void GB_cover_get ( )
 
     // get GraphBLAS_grbcov from MATLAB global workspace
     mxArray *GB_cov_matlab = NULL ;
-    GB_cov_matlab = (mxArray *) mexGetVariablePtr ("global", "GraphBLAS_grbcov") ;
+    GB_cov_matlab =
+        (mxArray *) mexGetVariablePtr ("global", "GraphBLAS_grbcov") ;
 
     if (GB_cov_matlab == NULL || mxIsEmpty (GB_cov_matlab))
     {

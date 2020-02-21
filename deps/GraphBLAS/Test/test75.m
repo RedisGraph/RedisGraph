@@ -1,7 +1,7 @@
 function test75
-%TEST75 test GrB_mxm and GrB_vxm on all semirings (A'B dot product)
+%TEST75 test GrB_mxm and GrB_vxm on all semirings
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 [mult_ops, ~, add_ops, classes, ~, ~] = GB_spec_opsall ;
@@ -59,6 +59,12 @@ Y.pattern = logical (spones (y_sparse)) ;
 fprintf ('\n-------------- GrB_mxm, vxm (dot product) on all semirings\n') ;
 
 Cin = sparse (n, n) ;
+
+Din = 10 * sparse (rand (n, n)) ;
+D.matrix = Din ;
+D.class = 'see below' ;
+D.pattern = true (n,n) ;
+
 Xin = sparse (n, 1) ;
 
 Mask = sparse (ones (n,n)) ;
@@ -66,6 +72,8 @@ mask = sparse (ones (n,1)) ;
 
 dnn = struct ;
 dtn = struct ( 'inp0', 'tran' ) ;
+dtn_dot   = struct ( 'inp0', 'tran', 'axb', 'dot' ) ;
+dtn_saxpy = struct ( 'inp0', 'tran', 'axb', 'saxpy' ) ;
 dnt = struct ( 'inp1', 'tran' ) ;
 dtt = struct ( 'inp0', 'tran', 'inp1', 'tran' ) ;
 
@@ -102,67 +110,71 @@ for k1 = 1:length(mult_ops)
                 continue
             end
 
-            % there are 1440 semirings that pass this test:
-            % 19 ops: 10:(1st, 2nd, min, max, plus, minus, rminus, times, div, rdiv)
-            %         6:(is*)
-            %         3:(or,and,xor)
-            %       TxT->T
-            %       each has 44 monoids: all 11 types: max,min,plus,times
-            %       and 4 for boolean or,and,xor,eq
-            %       17*48 = 912
-            % 6 ops: eq,ne,gt,lt,ge,le
-            %       TxT->bool
-            %       each has 11 types
-            %       and 8 monoids (max,min,plus,times,or,and,xor,eq)
-            %       6*11*8 = 528
-            % 912 + 528 = 1440
-            % but only 1040 are unique.
-            % see GrB_AxB_builtin for details.
-
             A.class = clas ;
             B.class = clas ;
             X.class = clas ;
             Y.class = clas ;
+            D.class = add_op.opclass ;
 
             n_semirings = n_semirings + 1 ;
             fprintf ('.') ;
 
-            % C = A'*B, with mask
-            tic
-            C1 = GB_mex_mxm  (Cin, Mask, [ ], semiring, A, B, dtn);
-            t2 = toc ;
-            C2 = GB_spec_mxm (Cin, Mask, [ ], semiring, A, B, dtn);
+            % C<M> = A'*B, with mask
+            C1 = GB_mex_mxm  (Cin, Mask, [ ], semiring, A, B, dtn_dot);
+            C2 = GB_spec_mxm (Cin, Mask, [ ], semiring, A, B, dtn) ;
+            GB_spec_compare (C1, C2, id) ;
+            C1 = GB_mex_mxm  (Cin, Mask, [ ], semiring, A, B, dtn_saxpy);
+            GB_spec_compare (C1, C2, id) ;
+
+            % C<M> += A'*B, C dense, typecasting of C
+            C1 = GB_mex_mxm  (Din, Mask, add_op, semiring, A, B, dtn_dot) ;
+            C2 = GB_spec_mxm (Din, Mask, add_op, semiring, A, B, dtn) ;
+            GB_spec_compare (C1, C2, id) ;
+            C1 = GB_mex_mxm  (Din, Mask, add_op, semiring, A, B, dtn_saxpy) ;
+            GB_spec_compare (C1, C2, id) ;
+
+            % C<M> += A'*B, C dense, no typecasting of C
+            C1 = GB_mex_mxm  (D, Mask, add_op, semiring, A, B, dtn_dot) ;
+            C2 = GB_spec_mxm (D, Mask, add_op, semiring, A, B, dtn) ;
+            GB_spec_compare (C1, C2, id) ;
+            C1 = GB_mex_mxm  (D, Mask, add_op, semiring, A, B, dtn_saxpy) ;
+            GB_spec_compare (C1, C2, id) ;
+
+            % C += A'*B, C dense, typecasting of C
+            C1 = GB_mex_mxm  (Din, [ ], add_op, semiring, A, B, dtn_dot) ;
+            C2 = GB_spec_mxm (Din, [ ], add_op, semiring, A, B, dtn) ;
+            GB_spec_compare (C1, C2, id) ;
+            C1 = GB_mex_mxm  (Din, [ ], add_op, semiring, A, B, dtn_saxpy) ;
+            GB_spec_compare (C1, C2, id) ;
+
+            % C += A'*B, C dense, no typecasting of C
+            C1 = GB_mex_mxm  (D, [ ], add_op, semiring, A, B, dtn_dot) ;
+            C2 = GB_spec_mxm (D, [ ], add_op, semiring, A, B, dtn) ;
+            GB_spec_compare (C1, C2, id) ;
+            C1 = GB_mex_mxm  (D, [ ], add_op, semiring, A, B, dtn_saxpy) ;
             GB_spec_compare (C1, C2, id) ;
 
             % X = u*A, with mask
-            tic
-            C1 = GB_mex_vxm  (Xin, mask, [ ], semiring, X, A, [ ]);
-            t2 = toc ;
-            C2 = GB_spec_vxm (Xin, mask, [ ], semiring, X, A, [ ]);
+            C1 = GB_mex_vxm  (Xin, mask, [ ], semiring, X, A, [ ]) ;
+            C2 = GB_spec_vxm (Xin, mask, [ ], semiring, X, A, [ ]) ;
             GB_spec_compare (C1, C2, id) ;
 
             if (k3 == 1)
-                % repeat but with typecasing, to test generic A'*B
+                % repeat but with typecasting, to test generic A'*B
                 A.class = 'double' ;
 
                 % C = A'*B, with mask
-                tic
                 C1 = GB_mex_mxm  (Cin, Mask, [ ], semiring, A, B, dtn);
-                t2 = toc ;
                 C2 = GB_spec_mxm (Cin, Mask, [ ], semiring, A, B, dtn);
                 GB_spec_compare (C1, C2, id) ;
 
                 % X = u*A, with mask
-                tic
                 C1 = GB_mex_vxm  (Xin, mask, [ ], semiring, X, A, [ ]);
-                t2 = toc ;
                 C2 = GB_spec_vxm (Xin, mask, [ ], semiring, X, A, [ ]);
                 GB_spec_compare (C1, C2, id) ;
 
                 % X = u*A, with mask
-                tic
                 C1 = GB_mex_vxm  (Xin, mask, [ ], semiring, Y, A, [ ]);
-                t2 = toc ;
                 C2 = GB_spec_vxm (Xin, mask, [ ], semiring, Y, A, [ ]);
                 GB_spec_compare (C1, C2, id) ;
 

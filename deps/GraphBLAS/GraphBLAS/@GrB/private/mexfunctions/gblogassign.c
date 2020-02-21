@@ -2,7 +2,7 @@
 // gblogassign: logical assignment: C(M) = A
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -99,9 +99,9 @@ void mexFunction
     GrB_Matrix M_input = gb_get_shallow (pargin [1]) ;
     GrB_Matrix M ;
     OK (GrB_Matrix_new (&M, GrB_BOOL, nrows, ncols)) ;
-    OK (GxB_set (M, GxB_FORMAT, GxB_BY_COL)) ;
-    OK (GxB_select (M, NULL, NULL, GxB_NONZERO, M_input, NULL, NULL)) ;
-    OK (GrB_free (&M_input)) ;
+    OK (GxB_Matrix_Option_set (M, GxB_FORMAT, GxB_BY_COL)) ;
+    OK (GxB_Matrix_select (M, NULL, NULL, GxB_NONZERO, M_input, NULL, NULL)) ;
+    OK (GrB_Matrix_free (&M_input)) ;
 
     GrB_Index mnz ;
     OK (GrB_Matrix_nvals (&mnz, M)) ;
@@ -153,7 +153,7 @@ void mexFunction
 
     GrB_Matrix S ;
     OK (GrB_Matrix_new (&S, atype, nrows, ncols)) ;
-    OK (GxB_set (S, GxB_FORMAT, GxB_BY_COL)) ;
+    OK (GxB_Matrix_Option_set (S, GxB_FORMAT, GxB_BY_COL)) ;
 
     if (atype == GrB_BOOL)
     { 
@@ -214,7 +214,8 @@ void mexFunction
     // C<M> = S
     //--------------------------------------------------------------------------
 
-    OK (GxB_subassign (C, M, NULL, S, GrB_ALL, nrows, GrB_ALL, ncols, NULL)) ;
+    OK (GxB_Matrix_subassign (C, M, NULL,
+        S, GrB_ALL, nrows, GrB_ALL, ncols, NULL)) ;
 
     //--------------------------------------------------------------------------
     // free shallow copies and temporary matrices
@@ -223,8 +224,8 @@ void mexFunction
     gb_mxfree (&Si) ;
     gb_mxfree (&Sj) ;
     gb_mxfree (&Mj) ;
-    OK (GrB_free (&M)) ;
-    OK (GrB_free (&M_input)) ;
+    OK (GrB_Matrix_free (&M)) ;
+    OK (GrB_Matrix_free (&M_input)) ;
 
     //--------------------------------------------------------------------------
     // export the output matrix C back to MATLAB

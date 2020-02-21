@@ -2,33 +2,36 @@
 // GB_AxB_dot2_nomask:  C=A'*B via dot products
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 {
+    int ntasks = naslice * nbslice ;
 
-    #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) collapse(2)
-    for (int a_taskid = 0 ; a_taskid < naslice ; a_taskid++)
-    for (int b_taskid = 0 ; b_taskid < nbslice ; b_taskid++)
+    int taskid ;
+    #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
+    for (taskid = 0 ; taskid < ntasks ; taskid++)
     {
+        int a_taskid = taskid / nbslice ;
+        int b_taskid = taskid % nbslice ;
 
         //----------------------------------------------------------------------
         // get A
         //----------------------------------------------------------------------
 
         GrB_Matrix A = Aslice [a_taskid] ;
-        const int64_t *restrict Ai = A->i ;
+        const int64_t *GB_RESTRICT Ai = A->i ;
 
         #if defined ( GB_PHASE_1_OF_2 )
-        int64_t *restrict C_count = C_counts [a_taskid] ;
+        int64_t *GB_RESTRICT C_count = C_counts [a_taskid] ;
         #else
-        int64_t *restrict C_count_start =
+        int64_t *GB_RESTRICT C_count_start =
             (a_taskid == 0) ?         NULL : C_counts [a_taskid] ;
-        int64_t *restrict C_count_end   =
+        int64_t *GB_RESTRICT C_count_end   =
             (a_taskid == naslice-1) ? NULL : C_counts [a_taskid+1] ;
-        const GB_ATYPE *restrict Ax = A_is_pattern ? NULL : A->x ;
+        const GB_ATYPE *GB_RESTRICT Ax = A_is_pattern ? NULL : A->x ;
         #endif
 
         //----------------------------------------------------------------------

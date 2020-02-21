@@ -2,7 +2,7 @@
 // GB_assign_scalar:    C<M>(Rows,Cols) = accum (C(Rows,Cols),x)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -45,7 +45,8 @@ GrB_Info GB_assign_scalar           // C<M>(Rows,Cols) += x
     ASSERT (scalar_code <= GB_UDT_code) ;
 
     // get the descriptor
-    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, Mask_struct,
+        xx1, xx2, xx3) ;
 
     //--------------------------------------------------------------------------
     // C<M>(Rows,Cols) = accum (C(Rows,Cols), scalar)
@@ -53,7 +54,7 @@ GrB_Info GB_assign_scalar           // C<M>(Rows,Cols) += x
 
     return (GB_assign (
         C,          C_replace,      // C matrix and its descriptor
-        M,          Mask_comp,      // mask matrix and its descriptor
+        M, Mask_comp, Mask_struct,  // mask matrix and its descriptor
         false,                      // do not transpose the mask
         accum,                      // for accum (C(Rows,Cols),scalar)
         NULL,       false,          // no explicit matrix A

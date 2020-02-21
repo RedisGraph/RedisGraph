@@ -23,7 +23,7 @@ function Graph = graph (G, varargin)
 %
 % See also graph, digraph, GrB/digraph.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 type = GrB.type (G) ;

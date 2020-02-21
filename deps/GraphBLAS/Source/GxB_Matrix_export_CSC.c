@@ -2,7 +2,7 @@
 // GxB_Matrix_export_CSC: export a matrix in CSC format
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -33,6 +33,7 @@ GrB_Info GxB_Matrix_export_CSC  // export and free a CSC matrix
 
     GB_WHERE ("GxB_Matrix_export_CSC (&A, &type, &nrows, &ncols, &nvals,"
         " &nonempty, &Ap, &Ai, &Ax, desc)") ;
+    GB_BURBLE_START ("GxB_Matrix_export_CSC") ;
     GB_EXPORT_CHECK ;
 
     GB_RETURN_IF_NULL (Ap) ;
@@ -48,6 +49,7 @@ GrB_Info GxB_Matrix_export_CSC  // export and free a CSC matrix
     if (!((*A)->is_csc))
     { 
         // A = A', done in place, to put A in CSC format
+        GBBURBLE ("(transpose) ") ;
         GB_OK (GB_transpose (NULL, NULL, true, (*A), NULL, Context)) ;
     }
     if ((*A)->is_hyper)
@@ -56,7 +58,7 @@ GrB_Info GxB_Matrix_export_CSC  // export and free a CSC matrix
         GB_OK (GB_to_nonhyper ((*A), Context)) ;
     }
 
-    ASSERT_OK (GB_check ((*A), "A export: standard CSC", GB0)) ;
+    ASSERT_MATRIX_OK ((*A), "A export: standard CSC", GB0) ;
     ASSERT ((*A)->is_csc) ;
     ASSERT (!((*A)->is_hyper)) ;
 
@@ -92,6 +94,7 @@ GrB_Info GxB_Matrix_export_CSC  // export and free a CSC matrix
     // which has already been removed above.
     GB_MATRIX_FREE (A) ;
     ASSERT (*A == NULL) ;
+    GB_BURBLE_END ;
     return (GrB_SUCCESS) ;
 }
 

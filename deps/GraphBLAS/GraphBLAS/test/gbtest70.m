@@ -1,7 +1,7 @@
 function gbtest70
 %GBTEST70 test GrB.random
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 
@@ -18,14 +18,14 @@ for k = 1:length(types)
     type = types {k} ;
 
     rng ('default') ;
-    G = GrB.random (30, 40, 0.6) ;
+    G = GrB.random (30, 40, 0.6) ; %#ok<*NASGU>
 
     r = cast ([3 40], type) ;
     G = GrB.random (300, 400, 0.6, 'range', r) ;
     assert (isequal (GrB.type (G), type)) ;
 
     if (~isequal (type, 'logical'))
-        [i,j,x] = find (G) ;
+        [i,j,x] = find (G) ; %#ok<*ASGLU>
         if (isinteger (r))
             assert (min (r) == min (r)) ;
             assert (max (r) == max (r)) ;
@@ -40,7 +40,7 @@ for k = 1:length(types)
 
     G = GrB.random (30, 40, inf, 'normal') ;
     assert (isequal (GrB.type (G), 'double')) ;
-    assert (nnz (G) == prod (size (G))) ;
+    assert (nnz (G) == prod (size (G))) ; %#ok<*PSIZE>
 
     G = GrB.random (30, 40, 0.6, 'normal', 'range', r) ;
     assert (isequal (GrB.type (G), type)) ;

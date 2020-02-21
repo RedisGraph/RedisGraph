@@ -1,4 +1,4 @@
-SuiteSparse:GraphBLAS, Copyright 2017-2019, Timothy A. Davis
+SuiteSparse:GraphBLAS, Copyright 2017-2020, Timothy A. Davis
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use SuiteSparse:GraphBLAS except in compliance with the

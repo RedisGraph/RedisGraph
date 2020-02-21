@@ -2,7 +2,7 @@
 // GB_mx_build_template: build a sparse vector or matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -160,8 +160,8 @@ GrB_Info builder
     #define BUILD(type) info = GrB_Vector_build (C,I,  (const type *)X,ni,dup)
     #endif
 
-    ASSERT_OK (GB_check (ctype, "ctype for build", GB0)) ;
-    ASSERT_OK (GB_check (dup, "dup for build", GB0)) ;
+    ASSERT_TYPE_OK (ctype, "ctype for build", GB0) ;
+    ASSERT_BINARYOP_OK (dup, "dup for build", GB0) ;
     // printf ("code %d biulding ni "GBd"\n", ctype->code, ni) ;
 
     switch (xclass)
@@ -191,7 +191,7 @@ GrB_Info builder
 
     if (info == GrB_SUCCESS)
     {
-        ASSERT_OK (GB_check (C, "C built", GB0)) ;
+        ASSERT_MATRIX_OK (C, "C built", GB0) ;
     }
     else
     {
@@ -344,7 +344,7 @@ void mexFunction
     METHOD (builder (&C, ctype, nrows, ncols, I, J, X, ni, dup,
         C_is_csc, xclass, Context)) ;
 
-    ASSERT_OK (GB_check (C, "C built", GB0)) ;
+    ASSERT_MATRIX_OK (C, "C built", GB0) ;
 
     // return C to MATLAB as a struct and free the GraphBLAS C
     #ifdef MATRIX

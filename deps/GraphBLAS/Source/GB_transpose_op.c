@@ -2,7 +2,7 @@
 // GB_transpose_op: transpose, typecast, and apply an operator to a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -26,9 +26,9 @@ void GB_transpose_op    // transpose, typecast, and apply operator to a matrix
     GrB_Matrix C,                       // output matrix
     const GrB_UnaryOp op,               // operator to apply
     const GrB_Matrix A,                 // input matrix
-    int64_t *restrict *Rowcounts,       // Rowcounts [naslice]
+    int64_t *GB_RESTRICT *Rowcounts,       // Rowcounts [naslice]
     GBI_single_iterator Iter,           // iterator for the matrix A
-    const int64_t *restrict A_slice,    // defines how A is sliced
+    const int64_t *GB_RESTRICT A_slice,    // defines how A is sliced
     int naslice                         // # of slices of A
 )
 { 
@@ -62,6 +62,8 @@ void GB_transpose_op    // transpose, typecast, and apply operator to a matrix
     // generic worker: transpose, typecast, and apply an operator
     //--------------------------------------------------------------------------
 
+    GB_BURBLE_MATRIX (A, "generic ") ;
+
     size_t asize = Atype->size ;
     size_t zsize = op->ztype->size ;
     size_t xsize = op->xtype->size ;
@@ -73,7 +75,7 @@ void GB_transpose_op    // transpose, typecast, and apply operator to a matrix
     #define GB_CAST_OP(pC,pA)                                       \
     {                                                               \
         /* xwork = (xtype) Ax [pA] */                               \
-        GB_void xwork [GB_PGI(xsize)] ;                             \
+        GB_void xwork [GB_VLA(xsize)] ;                             \
         cast_A_to_X (xwork, Ax +(pA*asize), asize) ;                \
         /* Cx [pC] = fop (xwork) ; Cx is of type op->ztype */       \
         fop (Cx +(pC*zsize), xwork) ;                               \

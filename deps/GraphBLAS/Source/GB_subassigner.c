@@ -2,7 +2,7 @@
 // GB_subassigner: C(I,J)<#M> = accum (C(I,J), A)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -63,6 +63,7 @@
 #include "GB_subassign.h"
 #include "GB_subassign_methods.h"
 #include "GB_subref.h"
+#include "GB_dense.h"
 #ifdef GB_DEBUG
 #include "GB_iterator.h"
 #endif
@@ -80,6 +81,7 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
     bool C_replace,                 // C matrix descriptor
     const GrB_Matrix M_input,       // optional mask for C(I,J), unused if NULL
     const bool Mask_comp,           // mask descriptor
+    const bool Mask_struct,         // if true, use the only structure of M
     const GrB_BinaryOp accum,       // optional accum for Z=accum(C(I,J),A)
     const GrB_Matrix A_input,       // input matrix (NULL for scalar expansion)
     const GrB_Index *I_input,       // list of indices
@@ -102,17 +104,10 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
     GrB_Matrix A2 = NULL ;
     GrB_Matrix M2 = NULL ;
 
-    GrB_Index *restrict I2  = NULL ;
-    GrB_Index *restrict I2k = NULL ;
-    GrB_Index *restrict J2  = NULL ;
-    GrB_Index *restrict J2k = NULL ;
-
-    /*
-    GrB_Index *I2  = NULL ;
-    GrB_Index *I2k = NULL ;
-    GrB_Index *J2  = NULL ;
-    GrB_Index *J2k = NULL ;
-    */
+    GrB_Index *GB_RESTRICT I2  = NULL ;
+    GrB_Index *GB_RESTRICT I2k = NULL ;
+    GrB_Index *GB_RESTRICT J2  = NULL ;
+    GrB_Index *GB_RESTRICT J2k = NULL ;
 
     GrB_Matrix A = A_input ;
     GrB_Matrix M = M_input ;
@@ -123,6 +118,7 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
     #define I ((I_jumbled) ? I2 : I_input)
     #define J ((J_jumbled) ? J2 : J_input)
 
+    // GB_subassigner cannot tolerate C==A and C==M aliasing.  A==M is OK.
     ASSERT (C != NULL) ;
     ASSERT (!GB_aliased (C, M)) ;
     ASSERT (!GB_aliased (C, A)) ;
@@ -131,48 +127,69 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
     // delete any lingering zombies and assemble any pending tuples
     //--------------------------------------------------------------------------
 
+    ASSERT_MATRIX_OK (C, "C input for subassigner", GB0) ;
+
     // subassign tolerates both zombies and pending tuples in C, but not M or A
     GB_WAIT (M) ;
     GB_WAIT (A) ;
 
     //--------------------------------------------------------------------------
-    // check empty mask conditions
+    // check mask conditions
     //--------------------------------------------------------------------------
+
+    bool empty_mask = false ;   // true if mask not present and complemented
+    bool no_mask = false ;      // true if mask not present and not complemented
 
     if (M == NULL)
     {
-        // the mask is empty
+        // the mask is not present
         if (Mask_comp)
         {
-            // an empty mask is complemented
+            // empty_mask:  mask is not present, and complemented
+            empty_mask = true ;
             if (!C_replace)
             { 
                 // No work to do.  This the same as the GB_RETURN_IF_QUICK_MASK
                 // case in other GraphBLAS functions, except here only the
-                // sub-case of C_replace=false is handled.  The C_replace=true
-                // sub-case needs to delete all entries in C(I,J), which is
-                // handled below in GB_subassign_00.
+                // sub-case of C_replace == false is handled.  The C_replace ==
+                // true sub-case needs to delete all entries in C(I,J), which
+                // is handled below in GB_subassign_00.  This "quick" case is
+                // checked again if C_replace becomes effectively false, below.
+                GBBURBLE ("quick ") ;
                 return (GrB_SUCCESS) ;
             }
         }
         else
-        { 
-            // The mask is empty and not complemented.  In this case, C_replace
-            // is effectively false.  Disable it, since it can force pending
-            // tuples to be assembled.  In the comments below "C_replace
-            // effectively false" means that either C_replace is false on
-            // input, or the mask is empty and not complemented and thus
-            // C_replace is set to false here.
-            C_replace = false ;
+        {
+            // no_mask:  mask is not present, and not complemented
+            no_mask = true ;
+            if (C_replace)
+            { 
+                // The mask is not present and not complemented.  In this case,
+                // C_replace is effectively false.  Disable it, since it can
+                // force pending tuples to be assembled.  In the comments below
+                // "C_replace effectively false" means that either C_replace is
+                // false on input, or the mask is not present and not
+                // complemented and thus C_replace is set to false here.
+                GBBURBLE ("(no mask: C_replace effectively false) ") ;
+                C_replace = false ;
+            }
         }
     }
 
-    // C_replace now has its effective value: can only be true if true on
-    // input and if the mask is present, or empty and complemented.  C_replace
-    // is false if it is false on input, or if the mask is empty and not
-    // complemented.
+    //--------------------------------------------------------------------------
+    // check if C is empty
+    //--------------------------------------------------------------------------
 
-    ASSERT (GB_IMPLIES (M == NULL && !Mask_comp, C_replace == false)) ;
+    bool C_is_empty = (GB_NNZ (C) == 0 && !GB_PENDING (C) && !GB_ZOMBIES (C)) ;
+    if (C_is_empty)
+    { 
+        // C is completely empty.  C_replace is irrelevant, so set it to false.
+        // The burble for this case occurs below, after GB_wait (C), since C
+        // may become empty if it contains nothing but zombies, or after the
+        // GB_clear (C) below.
+        C_replace = false ;
+    }
 
     //--------------------------------------------------------------------------
     // get the C matrix
@@ -354,20 +371,19 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
         ASSERT (scalar != NULL) ;
         anz = mn ;
         A_is_dense = true ;
-        // a run-time or compile-time user-defined scalar is assumed to have
-        // the same type as C->type which is also user-defined (or else it
-        // would not be compatible).  Compatibility has already been checked in
-        // the caller.  The type of scalar for built-in types is determined by
-        // scalar_code, instead, since it can differ from C (in which case it
-        // is typecasted into C->type).  User-defined scalars cannot be
-        // typecasted.
+        // a user-defined scalar is assumed to have the same type as C->type
+        // which is also user-defined (or else it would not be compatible).
+        // Compatibility has already been checked in the caller.  The type of
+        // scalar for built-in types is determined by scalar_code, instead,
+        // since it can differ from C (in which case it is typecasted into
+        // C->type).  User-defined scalars cannot be typecasted.
         atype = GB_code_type (scalar_code, C->type) ;
-        ASSERT_OK (GB_check (atype, "atype for scalar expansion", GB0)) ;
+        ASSERT_TYPE_OK (atype, "atype for scalar expansion", GB0) ;
     }
     else
     { 
         // A is an nI-by-nJ matrix, with no pending computations
-        ASSERT_OK (GB_check (A, "A for subassign kernel", GB0)) ;
+        ASSERT_MATRIX_OK (A, "A for subassign kernel", GB0) ;
         ASSERT (nI == A->vlen && nJ == A->vdim) ;
         ASSERT (!GB_PENDING (A)) ;   ASSERT (!GB_ZOMBIES (A)) ;
         ASSERT (scalar == NULL) ;
@@ -385,9 +401,108 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
     if (M != NULL)
     { 
         // M can have no pending tuples nor zombies
-        ASSERT_OK (GB_check (M, "M for subassign kernel", GB0)) ;
+        ASSERT_MATRIX_OK (M, "M for subassign kernel", GB0) ;
         ASSERT (!GB_PENDING (M)) ;  ASSERT (!GB_ZOMBIES (M)) ;
         ASSERT (nI == M->vlen && nJ == M->vdim) ;
+    }
+
+    //--------------------------------------------------------------------------
+    // C(:,:) assignment
+    //--------------------------------------------------------------------------
+
+    // whole_C_matrix is true if all of C(:,:) is being assigned to
+    bool whole_C_matrix = (Ikind == GB_ALL) && (Jkind == GB_ALL) ;
+
+    bool C_splat_scalar = false ;   // C(:,:) = x
+    bool C_splat_matrix = false ;   // C(:,:) = A
+
+    if (whole_C_matrix && no_mask && (accum == NULL))
+    {
+
+        //----------------------------------------------------------------------
+        // C(:,:) = x or A:  whole matrix assignment with no mask
+        //----------------------------------------------------------------------
+
+        if (scalar_expansion)
+        { 
+            // Method 21: C(:,:) = x
+            C_splat_scalar = true ;
+        }
+        else
+        { 
+            // Method 24: C(:,:) = A
+            C_splat_matrix = true ;
+        }
+        // C_replace is already effectively false (see no_mask case above)
+        ASSERT (C_replace == false) ;
+
+        // free pending tuples early but do not clear all of C.  If it is
+        // already dense then its pattern can be reused.
+        GB_Pending_free (&(C->Pending)) ;
+
+    }
+    else if (whole_C_matrix && C_replace && (accum == NULL))
+    {
+
+        //----------------------------------------------------------------------
+        // C(:,:)<any mask, replace> = A or x, no accum operator present
+        //----------------------------------------------------------------------
+
+        // If the entire C(:,:) is being assigned to, and if no accum operator
+        // is present, then the matrix can be cleared of all entries now, and
+        // then C_replace can be set false.  This can only be done because C is
+        // not aliased to M or A on input. which the caller ensures is true.
+        // See the assertion above.  Clearing C now speeds up the assignment
+        // since the wait on C can be skipped, below.  It also simplifies the
+        // kernels.  If S is constructed, it is just an empty matrix.
+
+        GB_OK (GB_clear (C, Context)) ;
+        if (C_replace)
+        { 
+            GBBURBLE ("(C cleared early) ") ;
+            C_replace = false ;
+        }
+
+        // By clearing C now and setting C_replace to false, the following
+        // methods are used: 09 becomes 05, 10 becomes 06n or 06s, 17
+        // becomes 13, and 18 becomes 14.  The S matrix for methods 06s,
+        // 13, and 14 is still created, but it is very fast to construct
+        // and traverse since C is empty.  Method 00 can be skipped since
+        // C is already empty (see "quick" case below).
+
+        // prior time             new  time           action
+        // ----- ----             ---  ----           ------
+
+        // 00:  O(S)              nothing, O(1)       C already cleared
+
+        // 09:  O(M+S)            05:  O(M)           C<M> = x, no S
+
+        // 10:  O((A+S)*log(m))   06n: O(M*(log(a))   C<M> = A, no S
+        //                        06s: O(A*(log(m))   C<M> = A, with S
+
+        // 17:  O(m*n)            13:  O(m*n)         C<!M> = x, with S
+
+        // 18:  O(A*log(m))       14:  O(A*log(m))    C<!M> = A, with S
+
+        //  =====================       ==============
+        //  M   cmp rpl acc A   S       method: action
+        //  =====================       ==============
+
+        //  M   -   -   -   -   -       05:  C(I,J)<M> = x, no S
+        //  M   -   -   -   A   -       06n: C(I,J)<M> = A, no S
+        //  M   -   -   -   A   S       06s: C(I,J)<M> = A, with S
+
+        //  M   -   r   -   -   S       09:  C(I,J)<M,repl> = x, with S
+        //  M   -   r   -   A   S       10:  C(I,J)<M,repl> = A, with S
+
+        //  M   c   -   -   -   S       13:  C(I,J)<!M> = x, with S
+        //  M   c   -   -   A   S       14:  C(I,J)<!M> = A, with S
+
+        //  M   c   r   -   -   S       17:  C(I,J)<!M,repl> = x, with S
+        //  M   c   r   -   A   S       18:  C(I,J)<!M,repl> = A, with S
+
+        // Methods 09, 10, 17, and 18 are now used only if C(I,J) is a
+        // submatrix of C, and not for the whole_C_matrix case.
     }
 
     //--------------------------------------------------------------------------
@@ -396,10 +511,10 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
 
     // The action: ( delete ), described below, can only delete a live
     // entry in the pattern.  It cannot delete a pending tuple; pending tuples
-    // cannot become zombies.  Thus, if this call to GxB_subassign has the
+    // cannot become zombies.  Thus, if this call to GB_subassigner has the
     // potential for creating zombies, all prior pending tuples must be
     // assembled now.  They thus become live entries in the pattern of C, so
-    // that this GxB_subassign can (potentially) turn them into zombies via
+    // that this GB_subassigner can (potentially) turn them into zombies via
     // action: ( delete ).
 
     // If accum is NULL, the operation is C(I,J) = A, or C(I,J)<M> = A.
@@ -415,7 +530,7 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
     // All pending tuples will be assembled sometime later on, using a single
     // pending operator, and thus the current accum operator must match the
     // prior pending operator.  If the operators do not match, then all prior
-    // pending tuples must be assembled now, so that this GxB_subassign can
+    // pending tuples must be assembled now, so that this GB_subassigner can
     // (potentially) insert new pending tuples whose pending operator is accum.
 
     // These tests are conservative because it is possible that this
@@ -523,12 +638,42 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
         // Prior computations are not compatible with this assignment, so all
         // prior work must be finished.  This potentially costly.
         // delete any lingering zombies and assemble any pending tuples
-        ASSERT_OK (GB_check (C, "C before wait", GB0)) ;
+        ASSERT_MATRIX_OK (C, "C before wait", GB0) ;
         GB_OK (GB_wait (C, Context)) ;
     }
 
-    ASSERT_OK (GB_check (C, "C before subassign", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum for assign", GB0)) ;
+    ASSERT_MATRIX_OK (C, "C before subassign", GB0) ;
+    ASSERT_BINARYOP_OK_OR_NULL (accum, "accum for assign", GB0) ;
+
+    //--------------------------------------------------------------------------
+    // check again if C is empty
+    //--------------------------------------------------------------------------
+
+    // GB_clear or GB_wait, above, may have deleted all the zombies in C, so
+    // check again if C is empty.
+    C_is_empty = (GB_NNZ (C) == 0 && !GB_PENDING (C) && !GB_ZOMBIES (C)) ;
+    if (C_is_empty)
+    { 
+        // C is completely empty.  C_replace is irrelevant, so set it to false.
+        GBBURBLE ("(C empty) ") ;
+        C_replace = false ;
+    }
+
+    //--------------------------------------------------------------------------
+    // check "quick" case again
+    //--------------------------------------------------------------------------
+
+    if (empty_mask && !C_replace)
+    { 
+        // The mask is empty (not present, but complemented), and C_replace is
+        // now effectively false.  If C_replace was false on input, then the
+        // "quick" case above has already been triggered.  However, if C is now
+        // empty (either cleared with GB_clear, empty on input, or empty after
+        // GB_wait), then C_replace is now effectively false.  In this case,
+        // the "quick" case can be checked again.  No more work to do.
+        GBBURBLE ("quick ") ;
+        return (GrB_SUCCESS) ;
+    }
 
     //--------------------------------------------------------------------------
     // keep track of the current accum operator
@@ -536,9 +681,9 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
 
     // If accum is NULL and pending tuples are added, they will be assembled
     // sometime later (not here) using the implied SECOND_Ctype operator.  This
-    // GxB_subassign operation corresponds to C(I,J)=A or C(I,J)<M>=A.
-    // Subsequent calls to GrB_setElement, and subsequent calls to
-    // GxB_subassign with an explict SECOND_Ctype operator, may create
+    // GB_subassigner operation corresponds to C(I,J)=A or C(I,J)<M>=A.
+    // Subsequent calls to GrB_setElement, and subsequent calls to GrB_assign
+    // or GxB_subassign with an explict SECOND_Ctype operator, may create
     // additional pending tuples and add them to the list without requiring
     // that they be assembled first.
 
@@ -558,12 +703,19 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
     // select the method to use
     //--------------------------------------------------------------------------
 
-    // TODO: add method 01n for C(:,:) = scalar when nnz (C) == 0.
-
-    bool S_Extraction = true ;
-
-    // empty_mask:  C(I,J)<!> = ... ; empty mask is complemented
-    bool empty_mask =(Mask_comp && M == NULL) ;
+    // check if C is competely dense:  all entries present and no pending work.
+    bool C_is_dense = !GB_PENDING_OR_ZOMBIES (C) && GB_is_dense (C) ;
+    bool C_dense_update = false ;
+    if (C_is_dense)
+    { 
+        GBBURBLE ("(C dense) ") ;
+        if (whole_C_matrix && no_mask && (accum != NULL)
+            && (C->type == accum->ztype) && (C->type == accum->xtype))
+        { 
+            // C(:,:) += x or A, where C is dense, no typecasting of C
+            C_dense_update = true ;
+        }
+    }
 
     // simple_mask: C(I,J)<M> = ... ; or C(I,J)<M> += ...
     bool simple_mask = (!C_replace && M != NULL && !Mask_comp) ;
@@ -574,29 +726,70 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
     // C_Mask_matrix:  C(I,J)<M> = A or += A
     bool C_Mask_matrix = (!scalar_expansion && simple_mask) ;
 
+    bool S_Extraction ;
     if (empty_mask)
     { 
-        // use Method 00: C(I,J) = empty
+        // The mask is not present, but complemented.
+        // Method 00: C(I,J)<!,repl> = empty
         S_Extraction = true ;
+    }
+    else if (C_splat_scalar)
+    { 
+        // Method 21: C(:,:) = x where x is a scalar; C becomes dense
+        S_Extraction = false ;
+    }
+    else if (C_splat_matrix)
+    { 
+        // Method 24: C(:,:) = A
+        S_Extraction = false ;
+    }
+    else if (C_dense_update)
+    { 
+        // Methods 22 and 23: C(:,:) += x or A where C is dense
+        S_Extraction = false ;
     }
     else if (C_Mask_scalar)
     { 
-        // use Method 05 or 07: C(I,J)<M> = or += scalar; C_replace false
+        // Method 05*, or 07: C(I,J)<M> = or += scalar; C_replace false
         S_Extraction = false ;
     }
     else if (C_Mask_matrix)
     {
+        // C(I,J)<M> = A or += A
         if (accum != NULL)
         { 
-            // C(I,J)<M> += A always uses method 08.  S is not constructed.
+            // Method 08: C(I,J)<M> += A
             S_Extraction = false ;
         }
         else
         { 
             // C(I,J)<M> = A ;  use 06s (with S) or 06n (without S)
-            // method 06s (with S) is faster when nnz (A) < nnz (M)
-            S_Extraction = (anz < GB_NNZ (M)) ;
+            // method 06s (with S) is faster when nnz (A) < nnz (M).
+            // If M and A are aliased, then nnz (A) == nnz (M), so method
+            // 06n is used.
+            if (C_is_dense && whole_C_matrix && M == A)
+            {
+                // Method 06d: C<A> = A
+                S_Extraction = false ;
+            }
+            else if (C_is_empty && whole_C_matrix && A_is_dense && Mask_struct)
+            {
+                // Method 25: C<M,s> = A, where M is structural, A is
+                // dense, and C starts out empty.  The pattern of C will be the
+                // same as M, and the subassign method is extremely simple.
+                S_Extraction = false ;
+            }
+            else
+            {
+                // Method 06n: or Method 06s:
+                S_Extraction = (anz < GB_NNZ (M)) ;
+            }
         }
+    }
+    else
+    { 
+        // all other methods require S
+        S_Extraction = true ;
     }
 
     //--------------------------------------------------------------------------
@@ -620,6 +813,9 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
         // extract symbolic structure S=C(I,J)
         //----------------------------------------------------------------------
 
+        // FUTURE::: if whole_C_matrix is true, then C(:,:) = ... and S == C,
+        // except that S is zombie-free, read-only; and C collects zombies.
+
         // FUTURE:: the properties of I and J are already known, and thus do
         // not need to be recomputed by GB_subref.
 
@@ -629,12 +825,12 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
 
         GB_OK (GB_subref (&S, C->is_csc, C, I, ni, J, nj, true, true, Context));
 
-        ASSERT_OK (GB_check (C, "C for subref extraction", GB0)) ;
-        ASSERT_OK (GB_check (S, "S for subref extraction", GB0)) ;
+        ASSERT_MATRIX_OK (C, "C for subref extraction", GB0) ;
+        ASSERT_MATRIX_OK (S, "S for subref extraction", GB0) ;
 
         #ifdef GB_DEBUG
-        const int64_t *restrict Si = S->i ;
-        const int64_t *restrict Sx = S->x ;
+        const int64_t *GB_RESTRICT Si = S->i ;
+        const int64_t *GB_RESTRICT Sx = S->x ;
         // this body of code explains what S contains.
         // S is nI-by-nJ where nI = length (I) and nJ = length (J)
         GBI_for_each_vector (S)
@@ -677,12 +873,14 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
     // (C_replace is effectively false if M=NULL and Mask_comp=false), or they
     // are not used (the last option, whether or not S is constructed, is
     // determined here; it is not a user input).  The first 5 options are
-    // determined by the input.  The table below has been collapsed to remove
+    // determined by the input.  The table below has been pruned to remove
     // combinations that are not used, or equivalent to other entries in the
-    // table.  Only 22 unique combinations of the 64 combinations are needed.
+    // table.  Only 22 unique combinations of the 64 combinations are needed,
+    // with additional special cases when C(:,:) is dense.
 
     //      M           present or NULL
     //      Mask_comp   true or false
+    //      Mask_struct structural or valued mask
     //      C_replace   true or false
     //      accum       present or NULL
     //      A           scalar (x) or matrix (A)
@@ -700,15 +898,24 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
         //  M   cmp rpl acc A   S       method: action
         //  =====================       ==============
 
+        //  -   -   x   -   -   -       21:  C = x, no S, C anything
+        //  -   -   x   -   A   -       24:  C = A, no S, C and A anything
+        //  -   -   -   +   -   -       22:  C += x, no S, C dense
+        //  -   -   -   +   A   -       23:  C += A, no S, C dense
+
         //  -   -   -   -   -   S       01:  C(I,J) = x, with S
-        //  -   -   -   -   -   S       01n: C(:,:) = x, no S, nnz(C) == 0
         //  -   -   -   -   A   S       02:  C(I,J) = A, with S
         //  -   -   -   +   -   S       03:  C(I,J) += x, with S
         //  -   -   -   +   A   S       04:  C(I,J) += A, with S
         //  -   -   r                        uses methods 01, 02, 03, 04
-        //  -   c   -                   no work to do
+        //  -   c   -                        no work to do
         //  -   c   r           S       00:  C(I,J)<!,repl> = empty, with S
+
+        //  M   -   -   -   -   -       05d: C<M> = x, no S, C dense
+        //  M   -   -   -   -   -       05e: C<M,s> = x, no S, C empty
         //  M   -   -   -   -   -       05:  C(I,J)<M> = x, no S
+        //  A   -   -   -   A   -       06d: C<A> = A, no S, C dense
+        //  M   -   -   -   A   -       20:  C<M,s> = A, A dense, C empty
         //  M   -   -   -   A   -       06n: C(I,J)<M> = A, no S
         //  M   -   -   -   A   S       06s: C(I,J)<M> = A, with S
         //  M   -   -   +   -   -       07:  C(I,J)<M> += x, no S
@@ -717,6 +924,7 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
         //  M   -   r   -   A   S       10:  C(I,J)<M,repl> = A, with S
         //  M   -   r   +   -   S       11:  C(I,J)<M,repl> += x, with S
         //  M   -   r   +   A   S       12:  C(I,J)<M,repl> += A, with S
+
         //  M   c   -   -   -   S       13:  C(I,J)<!M> = x, with S
         //  M   c   -   -   A   S       14:  C(I,J)<!M> = A, with S
         //  M   c   -   +   -   S       15:  C(I,J)<!M> += x, with S
@@ -726,10 +934,16 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
         //  M   c   r   +   -   S       19:  C(I,J)<!M,repl> += x, with S
         //  M   c   r   +   A   S       20:  C(I,J)<!M,repl> += A, with S
 
+        //----------------------------------------------------------------------
+        // FUTURE::: C<C,s> = x    C == M, replace all values, C_replace ignored
+        // FUTURE::: C<C,s> += x   C == M, update all values, C_replace ignored
+        // FUTURE::: C<C,s> = A    C == M, A dense, C_replace ignored
+        //----------------------------------------------------------------------
+
     // For the single case C(I,J)<M>=A, two methods can be used: 06n and 06s.
 
-    // FUTURE:: create a set of methods that operate on a dense matrix C.
-    // The matrix S is not needed.
+    #define Istring ((Ikind == GB_ALL) ? ":" : "I")
+    #define Jstring ((Jkind == GB_ALL) ? ":" : "I")
 
     if (empty_mask)
     { 
@@ -747,9 +961,95 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
         ASSERT (S != NULL) ;
 
         // Method 00: C(I,J) = empty ; using S
+        GBBURBLE ("Method 00: C(%s,%s) = empty ; using S ",
+            Istring, Jstring) ;
         GB_OK (GB_subassign_00 (C,
             I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
             S, Context)) ;
+
+    }
+    else if (C_splat_scalar)
+    { 
+
+        //----------------------------------------------------------------------
+        // C = x where x is a scalar; C becomes dense
+        //----------------------------------------------------------------------
+
+        //  =====================       ==============
+        //  M   cmp rpl acc A   S       method: action
+        //  =====================       ==============
+
+        //  -   -   x   -   -   -       21:  C = x, no S, C anything
+
+        ASSERT (whole_C_matrix) ;           // C(:,:) is modified
+        ASSERT (M == NULL) ;                // no mask present
+        ASSERT (accum == NULL) ;            // accum is not present
+        ASSERT (!C_replace) ;               // C_replace is effectively false
+        ASSERT (S == NULL) ;                // S is not used
+        ASSERT (scalar_expansion) ;         // x is a scalar
+
+        // Method 21: C = x where x is a scalar; C becomes dense
+        GBBURBLE ("Method 21: (C dense) = scalar ") ;
+        GB_OK (GB_dense_subassign_21 (C, scalar, atype, Context)) ;
+
+    }
+    else if (C_splat_matrix)
+    { 
+
+        //----------------------------------------------------------------------
+        // C = A
+        //----------------------------------------------------------------------
+
+        //  =====================       ==============
+        //  M   cmp rpl acc A   S       method: action
+        //  =====================       ==============
+
+        //  -   -   x   -   A   -       24:  C = A, no S, C and A anything
+
+        ASSERT (whole_C_matrix) ;           // C(:,:) is modified
+        ASSERT (M == NULL) ;                // no mask present
+        ASSERT (accum == NULL) ;            // accum is not present
+        ASSERT (!C_replace) ;               // C_replace is effectively false
+        ASSERT (S == NULL) ;                // S is not used
+        ASSERT (!scalar_expansion) ;        // A is a matrix
+
+        // Method 24: C = A
+        GBBURBLE ("Method 24: C = Z ") ;
+        GB_OK (GB_dense_subassign_24 (C, A, Context)) ;
+
+    }
+    else if (C_dense_update)
+    { 
+
+        //----------------------------------------------------------------------
+        // C += A or x where C is dense
+        //----------------------------------------------------------------------
+
+        //  =====================       ==============
+        //  M   cmp rpl acc A   S       method: action
+        //  =====================       ==============
+        //  -   -   -   +   -   -       22:  C += x, no S, C dense
+        //  -   -   -   +   A   -       23:  C += A, no S, C dense
+
+        ASSERT (C_is_dense) ;               // C is dense
+        ASSERT (whole_C_matrix) ;           // C(:,:) is modified
+        ASSERT (M == NULL) ;                // no mask present
+        ASSERT (accum != NULL) ;            // accum is present
+        ASSERT (!C_replace) ;               // C_replace is false
+        ASSERT (S == NULL) ;                // S is not used
+
+        if (scalar_expansion)
+        {
+            // Method 22: C(:,:) += x where C is dense
+            GBBURBLE ("Method 22: (C dense) += scalar ") ;
+            GB_OK (GB_dense_subassign_22 (C, scalar, atype, accum, Context)) ;
+        }
+        else
+        {
+            // Method 23: C(:,:) += A where C is dense
+            GBBURBLE ("Method 23: (C dense) += Z ") ;
+            GB_OK (GB_dense_subassign_23 (C, A, accum, Context)) ;
+        }
 
     }
     else if (C_Mask_scalar)
@@ -762,6 +1062,8 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
         //  =====================       ==============
         //  M   cmp rpl acc A   S       method: action
         //  =====================       ==============
+        //  M   -   -   -   -   -       05d: C(:,:)<M> = x, no S, C dense
+        //  M   -   -   -   -   -       05e: C(:,:)<M,s> = x, no S, C empty
         //  M   -   -   -   -   -       05:  C(I,J)<M> = x, no S
         //  M   -   -   +   -   -       07:  C(I,J)<M> += x, no S
 
@@ -771,18 +1073,38 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
         ASSERT (S == NULL) ;                // S is not used
 
         if (accum == NULL)
-        { 
-            // Method 05: C(I,J)<M> = scalar ; no S
-            GB_OK (GB_subassign_05 (C,
-                I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
-                M, scalar, atype, Context)) ;
+        {
+            if (C_is_empty && whole_C_matrix && Mask_struct)
+            { 
+                // Method 05e: C(:,:)<M> = scalar ; no S; C empty, M structural
+                GBBURBLE ("Method 05e: (C empty)<M> = scalar ") ;
+                GB_OK (GB_subassign_05e (C, M, scalar, atype, Context)) ;
+            }
+            else if (C_is_dense && whole_C_matrix)
+            { 
+                // Method 05d: C(:,:)<M> = scalar ; no S; C is dense
+                GBBURBLE ("Method 05d: (C dense)<M> = scalar ") ;
+                GB_OK (GB_dense_subassign_05d (C,
+                    M, Mask_struct, scalar, atype, Context)) ;
+            }
+            else
+            { 
+                // Method 05: C(I,J)<M> = scalar ; no S
+                GBBURBLE ("Method 05: C(%s,%s)<M> = scalar ; no S ",
+                    Istring, Jstring) ;
+                GB_OK (GB_subassign_05 (C,
+                    I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
+                    M, Mask_struct, scalar, atype, Context)) ;
+            }
         }
         else
         { 
             // Method 07: C(I,J)<M> += scalar ; no S
+            GBBURBLE ("Method 07: C(%s,%s)<M> += scalar ; no S",
+                Istring, Jstring) ;
             GB_OK (GB_subassign_07 (C,
                 I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
-                M, accum, scalar, atype, Context)) ;
+                M, Mask_struct, accum, scalar, atype, Context)) ;
         }
 
     }
@@ -797,6 +1119,8 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
         //  M   cmp rpl acc A   S       method: action
         //  =====================       ==============
         //  M   -   -   +   A   -       08:  C(I,J)<M> += A, no S
+        //  A   -   -   -   A   -       06d: C<A> = A, no S, C dense
+        //  M   -   x   -   A   -       25:  C<M,s> = A, A dense, C empty
         //  M   -   -   -   A   -       06n: C(I,J)<M> = A, no S
         //  M   -   -   -   A   S       06s: C(I,J)<M> = A, with S
 
@@ -807,24 +1131,41 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
         if (accum != NULL)
         { 
             // Method 08: C(I,J)<M> += A ; no S
+            GBBURBLE ("Method 08: C(%s,%s)<M> += Z ; no S ",
+                Istring, Jstring) ;
             ASSERT (S == NULL) ;
             GB_OK (GB_subassign_08 (C,
                 I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
-                M, accum, A, Context)) ;
+                M, Mask_struct, accum, A, Context)) ;
+        }
+        else if (C_is_dense && whole_C_matrix && M == A)
+        { 
+            // Method 06d: C(:,:)<A> = A ; no S, C dense
+            GBBURBLE ("Method 06d: (C dense)<Z> = Z ") ;
+            GB_OK (GB_dense_subassign_06d (C, A, Mask_struct, Context)) ;
+        }
+        else if (C_is_empty && whole_C_matrix && A_is_dense && Mask_struct)
+        { 
+            GBBURBLE ("Method 25: (C empty)<M> = (Z dense) ") ;
+            GB_OK (GB_dense_subassign_25 (C, M, A, Context)) ;
         }
         else if (S == NULL)
         { 
             // Method 06n: C(I,J)<M> = A ; no S
+            GBBURBLE ("Method 06n: C(%s,%s)<M> = Z ; no S ",
+                Istring, Jstring) ;
             GB_OK (GB_subassign_06n (C,
                 I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
-                M, A, Context)) ;
+                M, Mask_struct, A, Context)) ;
         }
         else
         { 
             // Method 06s: C(I,J)<M> = A ; using S
+            GBBURBLE ("Method 06s: C(%s,%s)<M> = Z ; using S ",
+                Istring, Jstring) ;
             GB_OK (GB_subassign_06s (C,
                 I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
-                M, A, S, Context)) ;
+                M, Mask_struct, A, S, Context)) ;
         }
 
     }
@@ -852,6 +1193,8 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
             if (accum == NULL)
             { 
                 // Method 01: C(I,J) = scalar ; using S
+                GBBURBLE ("Method 01: C(%s,%s) = scalar ; using S ",
+                    Istring, Jstring) ;
                 GB_OK (GB_subassign_01 (C,
                     I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
                     scalar, atype, S, Context)) ;
@@ -859,6 +1202,8 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
             else
             { 
                 // Method 03: C(I,J) += scalar ; using S
+                GBBURBLE ("Method 03: C(%s,%s) += scalar ; using S ",
+                    Istring, Jstring) ;
                 GB_OK (GB_subassign_03 (C,
                     I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
                     accum, scalar, atype, S, Context)) ;
@@ -869,6 +1214,8 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
             if (accum == NULL)
             { 
                 // Method 02: C(I,J) = A ; using S
+                GBBURBLE ("Method 02: C(%s,%s) = Z ; using S ",
+                    Istring, Jstring) ;
                 GB_OK (GB_subassign_02 (C,
                     I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
                     A, S, Context)) ;
@@ -876,6 +1223,8 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
             else
             { 
                 // Method 04: C(I,J) += A ; using S
+                GBBURBLE ("Method 04: C(%s,%s) += Z ; using S ",
+                    Istring, Jstring) ;
                 GB_OK (GB_subassign_04 (C,
                     I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
                     accum, A, S, Context)) ;
@@ -909,24 +1258,30 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
             if (Mask_comp && C_replace)
             { 
                 // Method 17: C(I,J)<!M,repl> = scalar ; using S
+                GBBURBLE ("Method 17: C(%s,%s)<!M,repl> = scalar ; using S ",
+                    Istring, Jstring) ;
                 GB_OK (GB_subassign_17 (C,
                     I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
-                    M, scalar, atype, S, Context)) ;
+                    M, Mask_struct, scalar, atype, S, Context)) ;
             }
             else if (Mask_comp)
             { 
                 // Method 13: C(I,J)<!M> = scalar ; using S
+                GBBURBLE ("Method 13: C(%s,%s)<!M> = scalar ; using S ",
+                    Istring, Jstring) ;
                 GB_OK (GB_subassign_13 (C,
                     I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
-                    M, scalar, atype, S, Context)) ;
+                    M, Mask_struct, scalar, atype, S, Context)) ;
             }
             else // if (C_replace)
             { 
                 // Method 09: C(I,J)<M,repl> = scalar ; using S
+                GBBURBLE ("Method 09: C(%s,%s)<M,repl> = scalar ; using S ",
+                    Istring, Jstring) ;
                 ASSERT (C_replace) ;
                 GB_OK (GB_subassign_09 (C,
                     I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
-                    M, scalar, atype, S, Context)) ;
+                    M, Mask_struct, scalar, atype, S, Context)) ;
             }
         }
         else
@@ -934,24 +1289,30 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
             if (Mask_comp && C_replace)
             { 
                 // Method 19: C(I,J)<!M,repl> += scalar ; using S
+                GBBURBLE ("Method 19: C(%s,%s)<!M,repl> += scalar ; using S ",
+                    Istring, Jstring) ;
                 GB_OK (GB_subassign_19 (C,
                     I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
-                    M, accum, scalar, atype, S, Context)) ;
+                    M, Mask_struct, accum, scalar, atype, S, Context)) ;
             }
             else if (Mask_comp)
             { 
                 // Method 15: C(I,J)<!M> += scalar ; using S
+                GBBURBLE ("Method 15: C(%s,%s)<!M> += scalar ; using S ",
+                    Istring, Jstring) ;
                 GB_OK (GB_subassign_15 (C,
                     I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
-                    M, accum, scalar, atype, S, Context)) ;
+                    M, Mask_struct, accum, scalar, atype, S, Context)) ;
             }
             else // if (C_replace)
             { 
                 // Method 11: C(I,J)<M,repl> += scalar ; using S
+                GBBURBLE ("Method 11: C(%s,%s)<M,repl> += scalar ; using S ",
+                    Istring, Jstring) ;
                 ASSERT (C_replace) ;
                 GB_OK (GB_subassign_11 (C,
                     I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
-                    M, accum, scalar, atype, S, Context)) ;
+                    M, Mask_struct, accum, scalar, atype, S, Context)) ;
             }
         }
 
@@ -981,24 +1342,30 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
             if (Mask_comp && C_replace)
             { 
                 // Method 18: C(I,J)<!M,repl> = A ; using S
+                GBBURBLE ("Method 18: C(%s,%s)<!M,repl> = Z ; using S ",
+                    Istring, Jstring) ;
                 GB_OK (GB_subassign_18 (C,
                     I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
-                    M, A, S, Context)) ;
+                    M, Mask_struct, A, S, Context)) ;
             }
             else if (Mask_comp)
             { 
                 // Method 14: C(I,J)<!M> = A ; using S
+                GBBURBLE ("Method 14: C(%s,%s)<!M> = Z ; using S ",
+                    Istring, Jstring) ;
                 GB_OK (GB_subassign_14 (C,
                     I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
-                    M, A, S, Context)) ;
+                    M, Mask_struct, A, S, Context)) ;
             }
             else // if (C_replace)
             { 
                 // Method 10: C(I,J)<M,repl> = A ; using S
+                GBBURBLE ("Method 10: C(%s,%s)<M,repl> = Z ; using S ",
+                    Istring, Jstring) ;
                 ASSERT (C_replace) ;
                 GB_OK (GB_subassign_10 (C,
                     I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
-                    M, A, S, Context)) ;
+                    M, Mask_struct, A, S, Context)) ;
             }
         }
         else
@@ -1006,24 +1373,30 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
             if (Mask_comp && C_replace)
             { 
                 // Method 20: C(I,J)<!M,repl> += A ; using S
+                GBBURBLE ("Method 20: C(%s,%s)<!M,repl> += Z ; using S ",
+                    Istring, Jstring) ;
                 GB_OK (GB_subassign_20 (C,
                     I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
-                    M, accum, A, S, Context)) ;
+                    M, Mask_struct, accum, A, S, Context)) ;
             }
             else if (Mask_comp)
             { 
                 // Method 16: C(I,J)<!M> += A ; using S
+                GBBURBLE ("Method 16: C(%s,%s)<!M> += Z ; using S ",
+                    Istring, Jstring) ;
                 GB_OK (GB_subassign_16 (C,
                     I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
-                    M, accum, A, S, Context)) ;
+                    M, Mask_struct, accum, A, S, Context)) ;
             }
             else // if (C_replace)
             { 
                 // Method 12: C(I,J)<M,repl> += A ; using S
+                GBBURBLE ("Method 12: C(%s,%s)<M,repl> += Z ; using S ",
+                    Istring, Jstring) ;
                 ASSERT (C_replace) ;
                 GB_OK (GB_subassign_12 (C,
                     I, nI, Ikind, Icolon, J, nJ, Jkind, Jcolon,
-                    M, accum, A, S, Context)) ;
+                    M, Mask_struct, accum, A, S, Context)) ;
             }
             // note that C(I,J)<M> += A always uses method 6b, without S.
         }
@@ -1064,7 +1437,7 @@ GrB_Info GB_subassigner             // C(I,J)<#M> = A or accum (C (I,J), A)
     // finalize C and return result
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (C, "C(I,J) result", GB0)) ;
+    ASSERT_MATRIX_OK (C, "C(I,J) result", GB0) ;
     return (GB_block (C, Context)) ;
 }
 

@@ -1,7 +1,7 @@
 function test95
 %TEST95 performance test for GrB_transpose
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\ntest95: performance tests : GrB_transpose \n') ;

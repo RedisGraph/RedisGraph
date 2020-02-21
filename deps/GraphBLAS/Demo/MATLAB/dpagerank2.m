@@ -21,6 +21,9 @@ function [r,irank,iters] = dpagerank2 (A, tol, itermax)
 %
 % See also ipagerank.
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 if (nargin < 2)
     tol = 1e-5 ;        % stopping criterion
 end

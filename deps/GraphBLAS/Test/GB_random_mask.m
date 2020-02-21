@@ -5,6 +5,9 @@ function Mask = GB_random_mask (m, n, d, M_is_csc, M_is_hyper)
 % With 3 arguments, Mask is a sparse logical matrix.
 % With 4, Mask is a struct.
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 M = (sprand (m, n, d) ~= 0) ;
 
 if (nargin < 4)

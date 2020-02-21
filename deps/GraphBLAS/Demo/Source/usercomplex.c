@@ -2,6 +2,11 @@
 // GraphBLAS/Demo/Source/usercomplex.c:  complex numbers as a user-defined type
 //------------------------------------------------------------------------------
 
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+//------------------------------------------------------------------------------
+
 #include "usercomplex.h"
 
 #if defined __INTEL_COMPILER
@@ -23,11 +28,12 @@
 #define BOOL(X) (X != ZERO)
 
 //------------------------------------------------------------------------------
-// 8 binary functions, z=f(x,y), where CxC -> C
+// binary functions, z=f(x,y), where CxC -> C
 //------------------------------------------------------------------------------
 
 void complex_first  (C Z, const C X, const C Y) { Z = X ; }
 void complex_second (C Z, const C X, const C Y) { Z = Y ; }
+void complex_pair   (C Z, const C X, const C Y) { Z = ONE ; }
 void complex_plus   (C Z, const C X, const C Y) { Z = X + Y ; }
 void complex_minus  (C Z, const C X, const C Y) { Z = X - Y ; }
 void complex_rminus (C Z, const C X, const C Y) { Z = Y - X ; }
@@ -94,7 +100,7 @@ void complex_max (C Z, const C X, const C Y)
 GrB_BinaryOp Complex_first = NULL, Complex_second = NULL, Complex_min = NULL,
              Complex_max   = NULL, Complex_plus   = NULL, Complex_minus = NULL,
              Complex_times = NULL, Complex_div    = NULL, Complex_rminus = NULL,
-             Complex_rdiv  = NULL ;
+             Complex_rdiv  = NULL, Complex_pair   = NULL ;
 
 //------------------------------------------------------------------------------
 // 6 binary functions, z=f(x,y), where CxC -> C ; (1,0) = true, (0,0) = false
@@ -202,9 +208,7 @@ GrB_UnaryOp Complex_complex_real = NULL, Complex_complex_imag = NULL ;
 // Complex type, scalars, monoids, and semiring
 //------------------------------------------------------------------------------
 
-#ifndef MY_COMPLEX
 GrB_Type Complex = NULL ;
-#endif
 GrB_Monoid   Complex_plus_monoid = NULL, Complex_times_monoid = NULL ;
 GrB_Semiring Complex_plus_times = NULL ;
 C Complex_1  = ONE ;
@@ -231,9 +235,7 @@ GrB_Info Complex_init ( )
     // create the Complex type
     //--------------------------------------------------------------------------
 
-    #ifndef MY_COMPLEX
     OK (GrB_Type_new (&Complex, sizeof (C))) ;    
-    #endif
 
     #undef C
     #undef D
@@ -246,6 +248,7 @@ GrB_Info Complex_init ( )
 
     OK (GrB_BinaryOp_new (&Complex_first  , complex_first  , C, C, C)) ;
     OK (GrB_BinaryOp_new (&Complex_second , complex_second , C, C, C)) ;
+    OK (GrB_BinaryOp_new (&Complex_pair   , complex_pair   , C, C, C)) ;
     OK (GrB_BinaryOp_new (&Complex_min    , complex_min    , C, C, C)) ;
     OK (GrB_BinaryOp_new (&Complex_max    , complex_max    , C, C, C)) ;
     OK (GrB_BinaryOp_new (&Complex_plus   , complex_plus   , C, C, C)) ;
@@ -349,91 +352,92 @@ GrB_Info Complex_finalize ( )
     // free the Complex plus-times semiring
     //--------------------------------------------------------------------------
 
-    GrB_free (&Complex_plus_times) ;
+    GrB_Semiring_free (&Complex_plus_times) ;
 
     //--------------------------------------------------------------------------
     // free the Complex monoids
     //--------------------------------------------------------------------------
 
-    GrB_free (&Complex_plus_monoid ) ;
-    GrB_free (&Complex_times_monoid) ;
+    GrB_Monoid_free (&Complex_plus_monoid ) ;
+    GrB_Monoid_free (&Complex_times_monoid) ;
 
     //--------------------------------------------------------------------------
     // free the Complex binary operators, CxC->C
     //--------------------------------------------------------------------------
 
-    GrB_free (&Complex_first ) ;
-    GrB_free (&Complex_second) ;
-    GrB_free (&Complex_min   ) ;
-    GrB_free (&Complex_max   ) ;
-    GrB_free (&Complex_plus  ) ;
-    GrB_free (&Complex_minus ) ;
-    GrB_free (&Complex_rminus) ;
-    GrB_free (&Complex_times ) ;
-    GrB_free (&Complex_div   ) ;
-    GrB_free (&Complex_rdiv  ) ;
+    GrB_BinaryOp_free (&Complex_first ) ;
+    GrB_BinaryOp_free (&Complex_second) ;
+    GrB_BinaryOp_free (&Complex_pair  ) ;
+    GrB_BinaryOp_free (&Complex_min   ) ;
+    GrB_BinaryOp_free (&Complex_max   ) ;
+    GrB_BinaryOp_free (&Complex_plus  ) ;
+    GrB_BinaryOp_free (&Complex_minus ) ;
+    GrB_BinaryOp_free (&Complex_rminus) ;
+    GrB_BinaryOp_free (&Complex_times ) ;
+    GrB_BinaryOp_free (&Complex_div   ) ;
+    GrB_BinaryOp_free (&Complex_rdiv  ) ;
 
-    GrB_free (&Complex_iseq) ;
-    GrB_free (&Complex_isne) ;
-    GrB_free (&Complex_isgt) ;
-    GrB_free (&Complex_islt) ;
-    GrB_free (&Complex_isge) ;
-    GrB_free (&Complex_isle) ;
+    GrB_BinaryOp_free (&Complex_iseq) ;
+    GrB_BinaryOp_free (&Complex_isne) ;
+    GrB_BinaryOp_free (&Complex_isgt) ;
+    GrB_BinaryOp_free (&Complex_islt) ;
+    GrB_BinaryOp_free (&Complex_isge) ;
+    GrB_BinaryOp_free (&Complex_isle) ;
 
-    GrB_free (&Complex_or) ;
-    GrB_free (&Complex_and) ;
-    GrB_free (&Complex_xor) ;
+    GrB_BinaryOp_free (&Complex_or) ;
+    GrB_BinaryOp_free (&Complex_and) ;
+    GrB_BinaryOp_free (&Complex_xor) ;
 
     //--------------------------------------------------------------------------
     // free the Complex binary operators, CxC -> bool
     //--------------------------------------------------------------------------
 
-    GrB_free (&Complex_eq) ;
-    GrB_free (&Complex_ne) ;
-    GrB_free (&Complex_gt) ;
-    GrB_free (&Complex_lt) ;
-    GrB_free (&Complex_ge) ;
-    GrB_free (&Complex_le) ;
+    GrB_BinaryOp_free (&Complex_eq) ;
+    GrB_BinaryOp_free (&Complex_ne) ;
+    GrB_BinaryOp_free (&Complex_gt) ;
+    GrB_BinaryOp_free (&Complex_lt) ;
+    GrB_BinaryOp_free (&Complex_ge) ;
+    GrB_BinaryOp_free (&Complex_le) ;
 
     //--------------------------------------------------------------------------
     // free the Complex binary operator, double x double -> complex
     //--------------------------------------------------------------------------
 
-    GrB_free (&Complex_complex) ;
+    GrB_BinaryOp_free (&Complex_complex) ;
 
     //--------------------------------------------------------------------------
     // free the Complex unary operators, C->C
     //--------------------------------------------------------------------------
 
-    GrB_free (&Complex_one     ) ;
-    GrB_free (&Complex_identity) ;
-    GrB_free (&Complex_ainv    ) ;
-    GrB_free (&Complex_abs     ) ;
-    GrB_free (&Complex_minv    ) ;
-    GrB_free (&Complex_not     ) ;
-    GrB_free (&Complex_conj    ) ;
+    GrB_UnaryOp_free (&Complex_one     ) ;
+    GrB_UnaryOp_free (&Complex_identity) ;
+    GrB_UnaryOp_free (&Complex_ainv    ) ;
+    GrB_UnaryOp_free (&Complex_abs     ) ;
+    GrB_UnaryOp_free (&Complex_minv    ) ;
+    GrB_UnaryOp_free (&Complex_not     ) ;
+    GrB_UnaryOp_free (&Complex_conj    ) ;
 
     //--------------------------------------------------------------------------
     // free the unary functions, C -> double
     //--------------------------------------------------------------------------
 
-    GrB_free (&Complex_real ) ;
-    GrB_free (&Complex_imag ) ;
-    GrB_free (&Complex_cabs ) ;
-    GrB_free (&Complex_angle) ;
+    GrB_UnaryOp_free (&Complex_real ) ;
+    GrB_UnaryOp_free (&Complex_imag ) ;
+    GrB_UnaryOp_free (&Complex_cabs ) ;
+    GrB_UnaryOp_free (&Complex_angle) ;
 
     //--------------------------------------------------------------------------
     // free the unary functions, double -> C
     //--------------------------------------------------------------------------
 
-    GrB_free (&Complex_complex_real) ;
-    GrB_free (&Complex_complex_imag) ;
+    GrB_UnaryOp_free (&Complex_complex_real) ;
+    GrB_UnaryOp_free (&Complex_complex_imag) ;
 
     //--------------------------------------------------------------------------
     // free the Complex type
     //--------------------------------------------------------------------------
 
-    GrB_free (&Complex) ;
+    GrB_Type_free (&Complex) ;
 
     return (GrB_SUCCESS) ;
 }

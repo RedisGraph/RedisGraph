@@ -2,7 +2,7 @@
 // GB_mex.h: definitions for the MATLAB interface to GraphBLAS
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -18,7 +18,6 @@
 // #include "GB.h"
 #include "GB_mxm.h"
 #include "GB_Pending.h"
-#include "GB_Sauna.h"
 #include "GB_add.h"
 #include "GB_subref.h"
 #include "GB_transpose.h"
@@ -278,13 +277,32 @@ bool GB_mx_xsame    // true if arrays X and Y are the same (ignoring zombies)
     int64_t *I      // row indices (for zombies), same length as X and Y
 ) ;
 
+bool GB_mx_xsame32  // true if arrays X and Y are the same (ignoring zombies)
+(
+    float *X,
+    float *Y,
+    int64_t len,    // length of X and Y
+    int64_t *I,     // row indices (for zombies), same length as X and Y
+    float eps       // error tolerance allowed (eps > 0)
+) ;
+
+bool GB_mx_xsame64  // true if arrays X and Y are the same (ignoring zombies)
+(
+    double *X,
+    double *Y,
+    int64_t len,    // length of X and Y
+    int64_t *I,     // row indices (for zombies), same length as X and Y
+    double eps      // error tolerance allowed (eps > 0)
+) ;
+
 bool GB_mx_isequal  // true if A and B are exactly the same
 (
     GrB_Matrix A,
-    GrB_Matrix B
+    GrB_Matrix B,
+    double eps      // if A and B are both FP32 or FP64, and if eps > 0,
+                    // then the values are considered equal if their relative
+                    // difference is less than or equal to eps.
 ) ;
-
-int GB_mx_Sauna_nmalloc (void) ;  // return # of mallocs in Saunas in use
 
 GrB_Matrix GB_mx_alias      // output matrix (NULL if no match found)
 (
@@ -368,7 +386,6 @@ GrB_Matrix GB_mx_alias      // output matrix (NULL if no match found)
     {                                                                       \
         /* brutal malloc debug */                                           \
         int nmalloc_start = (int) GB_Global_nmalloc_get ( ) ;               \
-        int nmalloc_Sauna_start = GB_mx_Sauna_nmalloc ( ) ;                 \
         for (int tries = 0 ; ; tries++)                                     \
         {                                                                   \
             /* give GraphBLAS the ability to do a # of mallocs, */          \
@@ -397,20 +414,15 @@ GrB_Matrix GB_mx_alias      // output matrix (NULL if no match found)
                 FREE_DEEP_COPY ;                                            \
                 GET_DEEP_COPY ;                                             \
                 int nmalloc_end = (int) GB_Global_nmalloc_get ( ) ;         \
-                int nmalloc_Sauna_end = GB_mx_Sauna_nmalloc ( ) ;           \
-                int nleak = ((nmalloc_end   - nmalloc_Sauna_end  ) -        \
-                             (nmalloc_start - nmalloc_Sauna_start)) ;       \
+                int nleak = nmalloc_end - nmalloc_start ;                   \
                 if (nleak > 0)                                              \
                 {                                                           \
                     /* memory leak */                                       \
                     printf ("Leak! tries %d : nleak %d\n"                   \
                         "nmalloc_end:        %d\n"                          \
-                        "nmalloc_Sauna_end   %d\n"                          \
                         "nmalloc_start:      %d\n"                          \
-                        "nmalloc_Sauna_start %d\n"                          \
                         "method [%s]\n",                                    \
-                        tries, nleak, nmalloc_end, nmalloc_Sauna_end,       \
-                        nmalloc_start, nmalloc_Sauna_start,                 \
+                        tries, nleak, nmalloc_end, nmalloc_start,           \
                         GB_STR (GRAPHBLAS_OPERATION)) ;                     \
                     mexWarnMsgIdAndTxt ("GB:leak", GrB_error ( )) ;         \
                     FREE_ALL ;                                              \

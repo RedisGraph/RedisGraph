@@ -1,7 +1,9 @@
-SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 GraphBLAS/Tcov: statement coverage tests
+
+Requirements:  the mex command must use a C compiler supporting ANSI C11.
 
 Since nearly all GraphBLAS tests are in MATLAB, I have taken the unusual step
 of creating a statement coverage mechanism to use within a MATLAB mexFunction.
@@ -11,15 +13,10 @@ this in the MATLAB command window.
     grbmake ; testcov
 
 If you get a linking problem on linux, add this directory to your
-LD_LIBRARY_PATCH, so that the libgraphblas_tcov.so constructed by grbmake can be
+LD_LIBRARY_PATH, so that the libgraphblas_tcov.so constructed by grbmake can be
 found by the mexFunctions.
 
-Statement coverage tests results will be saved in Tcov/log.txt.  Note that full
-coverage requires some or all of the GraphBLAS/User/Examples/*.m4 files to
-first be moved into the GraphBLAS/User/ directory (and then run "make cmake" in
-the shell before doing testcov in MATLAB).  The tests will work without this
-step, but some statements that handle compile-time user-defined semirings in
-the User/*m4 files will not be tested.
+Statement coverage tests results will be saved in Tcov/log.txt.
 
 To list the lines covered by the test, do this in MATLAB:
 

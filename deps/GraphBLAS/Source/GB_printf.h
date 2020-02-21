@@ -2,7 +2,7 @@
 // GB_printf.h: definitions for printing by GraphBLAS check functions
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -16,7 +16,7 @@
 
 #include "GB.h"
 
-extern int (* GB_printf_function ) (const char *format, ...) ;
+GB_PUBLIC int (* GB_printf_function ) (const char *format, ...) ;
 
 // print to a file f, and check the result
 #define GBPR(...)                                                           \

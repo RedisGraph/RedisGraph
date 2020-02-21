@@ -11,6 +11,9 @@ function [r,irank] = ipagerank (A) ;
 %
 % See also dpagerank.
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 % original problem in real arithmetic
 n = size (A,1) ;        % number of nodes
 c = 0.85 ;              % probability of walking to random neighbor

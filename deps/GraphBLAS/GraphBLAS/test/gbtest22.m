@@ -1,7 +1,7 @@
 function gbtest22
 %GBTEST22 test reduce to scalar
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 rng ('default') ;
@@ -13,7 +13,7 @@ for k = 1:length (types)
     type = types {k} ;
     if (isequal (type, 'logical'))
         c = false ;
-        c = GrB.reduce (c, '|', '|', cast (A, 'logical')) ;
+        c = GrB.reduce (c, '|', '|', cast (A, 'logical')) ; %#ok<*NASGU>
     else
         c = ones (1, 1, type) ;
         c = GrB.reduce (c, '+', '+', cast (A, type)) ;
@@ -28,7 +28,7 @@ for trial = 1:10
         for n = 0:5
             A = 100 * sprand (m, n, 0.5) ;
             G = GrB (A) ;
-            [i j x] = find (A) ;
+            [i, j, x] = find (A) ; %#ok<*ASGLU>
 
             % c1 = sum (A, 'all') ;
             c1 = sum (sum (A)) ;
@@ -97,7 +97,7 @@ for trial = 1:10
             c3 = all (G, 'all') ;
             assert (c1 == logical (c3)) ;
 
-            [i j x] = find (A) ;
+            [i, j, x] = find (A) ;
             % c1 = all (x, 'all') ;
             c1 = all (x) ;
             c2 = GrB.reduce ('&.logical', A) ;

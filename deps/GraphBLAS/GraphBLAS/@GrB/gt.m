@@ -8,7 +8,7 @@ function C = gt (A, B)
 %
 % See also GrB/lt, GrB/le, GrB/ge, GrB/ne, GrB/eq.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 C = lt (B, A) ;

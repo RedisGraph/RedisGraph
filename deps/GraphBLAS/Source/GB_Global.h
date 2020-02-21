@@ -2,7 +2,7 @@
 // GB_Global.h: definitions for global variables
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -20,28 +20,28 @@ void  *  GB_Global_queue_head_get (void) ;
 void     GB_Global_mode_set (GrB_Mode mode) ;
 GrB_Mode GB_Global_mode_get (void) ;
 
+GB_PUBLIC   // accessed by the MATLAB interface only
 void     GB_Global_GrB_init_called_set (bool GrB_init_called) ;
+GB_PUBLIC   // accessed by the MATLAB interface only
 bool     GB_Global_GrB_init_called_get (void) ;
 
+GB_PUBLIC   // accessed by the MATLAB interface only
 void     GB_Global_nthreads_max_set (int nthreads_max) ;
+GB_PUBLIC   // accessed by the MATLAB interface only
 int      GB_Global_nthreads_max_get (void) ;
 
 int      GB_Global_omp_get_max_threads (void) ;
 
+GB_PUBLIC   // accessed by the MATLAB interface only
 void     GB_Global_chunk_set (double chunk) ;
+GB_PUBLIC   // accessed by the MATLAB interface only
 double   GB_Global_chunk_get (void) ;
 
 void     GB_Global_hyper_ratio_set (double hyper_ratio) ;
 double   GB_Global_hyper_ratio_get (void) ;
 
 void     GB_Global_is_csc_set (bool is_csc) ;
-double   GB_Global_is_csc_get (void) ;
-
-void     GB_Global_Saunas_set (int id, GB_Sauna Sauna) ;
-GB_Sauna GB_Global_Saunas_get (int id) ;
-
-bool     GB_Global_Sauna_in_use_get (int id) ;
-void     GB_Global_Sauna_in_use_set (int id, bool in_use) ;
+bool     GB_Global_is_csc_get (void) ;
 
 void     GB_Global_abort_function_set (void (* abort_function) (void)) ;
 void     GB_Global_abort_function (void) ;
@@ -66,9 +66,6 @@ void  *  GB_Global_realloc_function (void *p, size_t size) ;
 
 void     GB_Global_free_function_set (void (* free_function) (void *)) ;
 void     GB_Global_free_function (void *p) ;
-
-void     GB_Global_persist_function_set (void (* persist_function) (void *)) ;
-void     GB_Global_persist_function (void *p) ;
 
 void     GB_Global_malloc_is_thread_safe_set
          (
@@ -99,9 +96,16 @@ int64_t  GB_Global_maxused_get (void) ;
 void     GB_Global_hack_set (int64_t hack) ;
 int64_t  GB_Global_hack_get (void) ;
 
+void     GB_Global_burble_set (bool burble) ;
+bool     GB_Global_burble_get (void) ;
+
+GB_PUBLIC   // accessed by the MATLAB interface only
 void     GB_Global_print_one_based_set (bool onebased) ;
+GB_PUBLIC   // accessed by the MATLAB interface only
 bool     GB_Global_print_one_based_get (void) ;
+GB_PUBLIC   // accessed by the MATLAB interface only
 void     GB_Global_print_format_set (int print_format) ;
+GB_PUBLIC   // accessed by the MATLAB interface only
 int      GB_Global_print_format_get (void) ;
 
 #endif

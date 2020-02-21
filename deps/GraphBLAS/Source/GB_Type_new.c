@@ -2,7 +2,7 @@
 // GB_Type_new: create a new user-defined type
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -28,13 +28,13 @@ GrB_Info GB_Type_new
     GB_RETURN_IF_NULL (type) ;
     (*type) = NULL ;
 
-    #ifdef PGI_COMPILER_BUG
+    #if ( ! GB_HAS_VLA )
 
-        if (sizeof_ctype > PGI_COMPILER_BUG_MAXSIZE_FOR_ANY_GRB_TYPE)
+        if (sizeof_ctype > GB_VLA_MAXSIZE)
         {
-            return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG, "Due to a PGI"
-                "compiler bug, user-defined types are limited to %d bytes",
-                PGI_COMPILER_BUG_MAXSIZE_FOR_ANY_GRB_TYPE))) ;
+            return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG, "user-defined types"
+                " are limited to %d bytes (ANSI C99 or later is required)",
+                GB_VLA_MAXSIZE))) ;
         }
 
     #endif
@@ -55,7 +55,7 @@ GrB_Info GB_Type_new
     GrB_Type t = *type ;
     t->magic = GB_MAGIC ;
     t->size = GB_IMAX (sizeof_ctype, 1) ;
-    t->code = GB_UDT_code ;     // run-time user-defined type
+    t->code = GB_UDT_code ;     // user-defined type
 
     //--------------------------------------------------------------------------
     // get the name

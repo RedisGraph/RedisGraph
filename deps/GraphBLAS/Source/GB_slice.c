@@ -2,7 +2,7 @@
 // GB_slice: create hypersparse shallow slices of a matrix B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -41,7 +41,7 @@ GrB_Info GB_slice       // slice B into nslices slices or hyperslices
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (B, "B to slice", GB0)) ;
+    ASSERT_MATRIX_OK (B, "B to slice", GB0) ;
     ASSERT (nslices >= 1) ;
     ASSERT (Bslice != NULL) ;
     ASSERT (Slice != NULL) ;
@@ -68,15 +68,10 @@ GrB_Info GB_slice       // slice B into nslices slices or hyperslices
 
     for (int s = 0 ; s < nslices ; s++)
     {
-        // printf ("\n================== slice %d\n", s) ;
-
         // Bslice [s] = B (:, bcol_first:bcol_last)
         int64_t bvec_first  = Slice [s] ;
         int64_t bvec_last   = Slice [s+1] - 1 ;
         int64_t bslice_nvec = bvec_last - bvec_first + 1 ;
-
-        // printf ("first "GBd" last "GBd" nvec "GBd"\n", 
-        // bvec_first, bvec_last, bslice_nvec) ;
 
         // allocate just the header for Bslice [s]; all content is shallow
         Bslice [s] = NULL ;
@@ -137,7 +132,7 @@ GrB_Info GB_slice       // slice B into nslices slices or hyperslices
         (Bslice [s])->nzmax = B->nzmax ;
         (Bslice [s])->magic = GB_MAGIC ;
 
-        ASSERT_OK (GB_check (Bslice [s], "Bslice", GB0)) ;
+        ASSERT_MATRIX_OK (Bslice [s], "Bslice", GB0) ;
     }
 
     //--------------------------------------------------------------------------

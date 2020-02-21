@@ -2,7 +2,7 @@
 // GrB_eWiseAdd_Matrix: matrix element-wise operations, set union
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -12,25 +12,24 @@
 #include "GB_ewise.h"
 
 #define GB_EWISE(op)                                                        \
-{                                                                           \
     /* check inputs */                                                      \
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;                                       \
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;                                       \
     GB_RETURN_IF_NULL_OR_FAULTY (B) ;                                       \
     GB_RETURN_IF_FAULTY (M) ;                                               \
     /* get the descriptor */                                                \
-    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_tran, B_tran, xx) ; \
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, Mask_struct,       \
+        A_tran, B_tran, xx) ;                                               \
     /* C<M> = accum (C,T) where T = A+B, A'+B, A+B', or A'+B' */            \
-    return (GB_ewise (                                                      \
+    info = GB_ewise (                                                       \
         C,              C_replace,  /* C and its descriptor        */       \
-        M,              Mask_comp,  /* mask and its descriptor     */       \
+        M, Mask_comp, Mask_struct,  /* mask and its descriptor     */       \
         accum,                      /* accumulate operator         */       \
         op,                         /* operator that defines '+'   */       \
         A,              A_tran,     /* A matrix and its descriptor */       \
         B,              B_tran,     /* B matrix and its descriptor */       \
         true,                       /* eWiseAdd                    */       \
-        Context)) ;                                                         \
-}
+        Context) ;
 
 //------------------------------------------------------------------------------
 // GrB_eWiseAdd_Matrix_BinaryOp: matrix addition
@@ -53,6 +52,7 @@ GrB_Info GrB_eWiseAdd_Matrix_BinaryOp       // C<M> = accum (C, A+B)
     //--------------------------------------------------------------------------
 
     GB_WHERE ("GrB_eWiseAdd_Matrix_BinaryOp (C, M, accum, add, A, B, desc)") ;
+    GB_BURBLE_START ("GrB_eWiseAdd") ;
     GB_RETURN_IF_NULL_OR_FAULTY (add) ;
 
     //--------------------------------------------------------------------------
@@ -60,6 +60,8 @@ GrB_Info GrB_eWiseAdd_Matrix_BinaryOp       // C<M> = accum (C, A+B)
     //--------------------------------------------------------------------------
 
     GB_EWISE (add) ;
+    GB_BURBLE_END ;
+    return (info) ;
 }
 
 //------------------------------------------------------------------------------
@@ -85,6 +87,7 @@ GrB_Info GrB_eWiseAdd_Matrix_Monoid         // C<M> = accum (C, A+B)
     //--------------------------------------------------------------------------
 
     GB_WHERE ("GrB_eWiseAdd_Matrix_Monoid (C, M, accum, monoid, A, B, desc)") ;
+    GB_BURBLE_START ("GrB_eWiseAdd") ;
     GB_RETURN_IF_NULL_OR_FAULTY (monoid) ;
 
     //--------------------------------------------------------------------------
@@ -92,6 +95,8 @@ GrB_Info GrB_eWiseAdd_Matrix_Monoid         // C<M> = accum (C, A+B)
     //--------------------------------------------------------------------------
 
     GB_EWISE (monoid->op) ;
+    GB_BURBLE_END ;
+    return (info) ;
 }
 
 //------------------------------------------------------------------------------
@@ -118,6 +123,7 @@ GrB_Info GrB_eWiseAdd_Matrix_Semiring       // C<M> = accum (C, A+B)
 
     GB_WHERE ("GrB_eWiseAdd_Matrix_Semiring (C, M, accum, semiring, A, B,"
         " desc)") ;
+    GB_BURBLE_START ("GrB_eWiseAdd") ;
     GB_RETURN_IF_NULL_OR_FAULTY (semiring) ;
 
     //--------------------------------------------------------------------------
@@ -125,5 +131,7 @@ GrB_Info GrB_eWiseAdd_Matrix_Semiring       // C<M> = accum (C, A+B)
     //--------------------------------------------------------------------------
 
     GB_EWISE (semiring->add->op) ;
+    GB_BURBLE_END ;
+    return (info) ;
 }
 

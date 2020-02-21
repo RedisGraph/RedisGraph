@@ -2,7 +2,7 @@
 // GraphBLAS/Demo/Source/get_matrix.c: get matrix from file, or create random
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -11,9 +11,9 @@
 // matrix.  If reading from a file, the file is assumed to be 0-based.
 
 #define FREE_ALL        \
-    GrB_free (&A) ;     \
-    GrB_free (&desc) ;  \
-    GrB_free (&Mask) ;
+    GrB_Matrix_free (&A) ;     \
+    GrB_Descriptor_free (&desc) ;  \
+    GrB_Matrix_free (&Mask) ;
 
 #include "demos.h"
 
@@ -108,7 +108,7 @@ GrB_Info get_matrix         // get a matrix from stdin, or create random one
                 for (int64_t i = 0 ; i < nrows ; i++)
                 {
                     // Mask (i,i) = true
-                    OK (GrB_Matrix_setElement (Mask, (bool) true, i, i)) ;
+                    OK (GrB_Matrix_setElement_BOOL (Mask, (bool) true, i, i)) ;
                 }
                 // A<~Mask> = A, thus removing the diagonal.  GrB_transpose
                 // does C<Mask>=A', so setting inp0 to tran does C=A'', and
@@ -117,11 +117,11 @@ GrB_Info get_matrix         // get a matrix from stdin, or create random one
                 // diagonal is not touched by C<~Mask>=A.
                 OK (GrB_Descriptor_new (&desc)) ;
                 OK (GrB_Descriptor_set (desc, GrB_INP0, GrB_TRAN)) ;
-                OK (GrB_Descriptor_set (desc, GrB_MASK, GrB_SCMP)) ;
+                OK (GrB_Descriptor_set (desc, GrB_MASK, GrB_COMP)) ;
                 OK (GrB_Descriptor_set (desc, GrB_OUTP, GrB_REPLACE)) ;
                 OK (GrB_transpose (A, Mask, NULL, A, desc)) ;
-                GrB_free (&Mask) ;
-                GrB_free (&desc) ;
+                GrB_Matrix_free (&Mask) ;
+                GrB_Descriptor_free (&desc) ;
             }
 
             // force completion, just to check timing

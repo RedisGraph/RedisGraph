@@ -2,7 +2,7 @@
 // GB_mex_mxm: C<Mask> = accum(C,A*B)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -48,13 +48,7 @@ void mexFunction
         FREE_ALL ;
         mexErrMsgTxt ("A failed") ;
     }
-    printf ("%p %p\n", A->type, Complex) ;
-    GxB_print (A->type, 3) ;
-    GxB_print (Complex, 3) ;
-    #ifdef MY_COMPLEX
-    printf ("%p\n", My_Complex) ;
-    GxB_print (My_Complex, 3) ;
-    #endif
+
     if (A->type != Complex)
     {
         FREE_ALL ;
@@ -65,22 +59,19 @@ void mexFunction
     double complex zero = CMPLX(0,0) ;
 
     // create the monoid
-    info = GxB_Monoid_terminal_new_UDT (&Times_terminal, Complex_times,
-        &one, &zero) ;
+    info = GxB_Monoid_terminal_new_UDT (&Times_terminal,
+        Complex_times, &one, &zero) ;
     if (info != GrB_SUCCESS)
     {
         FREE_ALL ;
         mexErrMsgTxt ("Times_terminal failed") ;
     }
 
-    // GxB_print (Times_terminal, 3) ;
-
     int64_t GET_SCALAR (1, int64_t, hack, -1) ;
     if (hack >= 0)
     {
         double complex *Ax = A->x ;
         Ax [hack] = 0 ;
-        // GxB_print (A, 2) ;
     }
 
     // reduce to a scalar
@@ -88,6 +79,7 @@ void mexFunction
     info = GrB_Matrix_reduce_UDT (&c, NULL, Times_terminal, A, NULL) ;
     if (info != GrB_SUCCESS)
     {
+        printf ("Error:\n%s\n", GrB_error ( )) ;
         FREE_ALL ;
         mexErrMsgTxt ("reduce failed") ;
     }

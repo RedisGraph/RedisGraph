@@ -1,7 +1,7 @@
 function gbtest54
 %GBTEST54 test GrB.compact
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 rng ('default') ;
@@ -11,7 +11,7 @@ I = sort (randperm (n, 4)) ;
 J = sort (randperm (n, 4)) ;
 A = magic (4) ;
 H (I,J) = A ;
-[C, I, J] = GrB.compact (H) ;
+[C, I, J] = GrB.compact (H) ; %#ok<*ASGLU>
 H (I, J(1)) = 0 ;
 [C, I, J] = GrB.compact (H, 0) ;
 assert (isequal (C, A (:,2:end))) ;

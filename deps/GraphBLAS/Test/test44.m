@@ -1,7 +1,7 @@
 function test44(longtests)
 %TEST44 test qsort
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\ntest44\n------------------------------------- qsort tests\n') ;

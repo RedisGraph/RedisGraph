@@ -2,7 +2,7 @@
 // GxB_Global_Option_get: get a global default option for all future matrices
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -293,6 +293,21 @@ GrB_Info GxB_Global_Option_get      // gets the current global option
                 va_end (ap) ;
                 GB_RETURN_IF_NULL (api_url) ;
                 (*api_url) = "http://graphblas.org" ;
+            }
+            break ;
+
+        //----------------------------------------------------------------------
+        // controlling diagnostic output, for development only
+        //----------------------------------------------------------------------
+
+        case GxB_BURBLE : 
+
+            {
+                va_start (ap, field) ;
+                bool *burble = va_arg (ap, bool *) ;
+                va_end (ap) ;
+                GB_RETURN_IF_NULL (burble) ;
+                (*burble) = GB_Global_burble_get ( ) ;
             }
             break ;
 

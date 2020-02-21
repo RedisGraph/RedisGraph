@@ -2,7 +2,7 @@ function gbtest30
 %GBTEST30 test colon notation
 
 rng ('default') ;
-n = 1e9
+n = 1e9 %#ok<*NOPRT>
 A = sparse (n, 1) ;
 
 k = n/2 - 1 ;
@@ -36,7 +36,7 @@ assert (gbtest_eq (x, y)) ;
 
 % GraphBLAS can construct huge-by-huge matrices
 tic
-[c huge] = computer
+[c, huge] = computer %#ok<*ASGLU>
 H = GrB (huge, huge)
 I = sort (randperm (huge, 4)) ;
 M = magic (4)
@@ -52,7 +52,7 @@ middle = ceil (median (I))
 fprintf ('GraphBLAS colon notation:\nmiddle = %g\n\n', middle) ;
 fprintf ('H2 = H ({1, middle}, {1, middle}) works, and is very fast:\n') ;
 tic
-H2 = H ({1, middle}, {1, middle})
+H2 = H ({1, middle}, {1, middle}) %#ok<*NASGU>
 toc
 
 % This is not possible, because 1:middle is too big:

@@ -2,7 +2,7 @@
 // GB_mex_select: C<M> = accum(C,select(A,k)) or select(A',k)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -131,9 +131,6 @@ void mexFunction
         A->nvec_nonempty = -1 ;
         C->nvec_nonempty = -1 ;
     }
-
-    // GxB_print (op, 3) ;
-    // GxB_print (Thunk, 3) ;
 
     // C<M> = accum(C,op(A))
     if (C->vdim == 1 && (desc == NULL || desc->in0 == GxB_DEFAULT))
