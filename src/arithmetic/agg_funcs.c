@@ -581,7 +581,7 @@ int __agg_collectStep(AggCtx *ctx, SIValue *argv, int argc) {
 
 	SIValue value = argv[0];
 	if(value.type == T_NULL) return AGG_OK;
-	SIArray_Append(&ac->list, value);
+	SIArray_Append(&ac->list, SI_ShareValue(value));
 	return AGG_OK;
 }
 
@@ -611,6 +611,7 @@ void *__agg_collectCtxNew(AggCtx *ctx) {
 void __agg_collectCtxFree(AggCtx *ctx) {
 	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
 	if(ac->hashSet) Set_Free(ac->hashSet);
+	SIValue_Free(ac->list);
 	rm_free(ac);
 }
 
@@ -638,3 +639,4 @@ void Agg_RegisterFuncs() {
 	Agg_RegisterFunc("stDevP", Agg_StdevPFunc);
 	Agg_RegisterFunc("collect", Agg_CollectFunc);
 }
+
