@@ -145,7 +145,7 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 			// If we're returning a new path from a previously-used Record,
 			// free the previous path to avoid a memory leak.
 			SIValue old_path = Record_GetScalar(op->r, op->edgesIdx);
-			SIValue_Free(&old_path);
+			SIValue_Free(old_path);
 		}
 		Record_AddScalar(op->r, op->edgesIdx, SI_Path(p));
 	}
