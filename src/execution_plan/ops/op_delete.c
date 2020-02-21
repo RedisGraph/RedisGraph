@@ -89,6 +89,8 @@ static Record DeleteConsume(OpBase *opBase) {
 			 * clear pending deletions and raise an exception. */
 			array_clear(op->deleted_nodes);
 			array_clear(op->deleted_edges);
+			// If evaluating the expression allocated any memory, free it.
+			SIValue_Free(value);
 
 			char *error;
 			asprintf(&error, "Delete type mismatch, expecting either Node or Relationship.");

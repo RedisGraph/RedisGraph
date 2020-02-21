@@ -619,8 +619,11 @@ void SIValue_Free(SIValue v) {
 		return;
 	case T_ARRAY:
 		SIArray_Free(v);
+		return;
+	case T_PATH:
+		SIPath_Free(v);
+		return;
 	default:
 		return;
 	}
 }
-
