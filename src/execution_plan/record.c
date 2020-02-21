@@ -277,7 +277,7 @@ void Record_FreeEntries(Record r) {
 	for(uint i = 0; i < length; i++) {
 		// Free any allocations held by this Record.
 		if(r->entries[i].type == REC_TYPE_SCALAR) {
-			SIValue_Free(&r->entries[i].value.s);
+			SIValue_Free(r->entries[i].value.s);
 		}
 	}
 }

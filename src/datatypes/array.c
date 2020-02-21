@@ -77,7 +77,7 @@ void SIArray_Free(SIValue siarray) {
 	uint arrayLen = SIArray_Length(siarray);
 	for(uint i = 0; i < arrayLen; i++) {
 		SIValue value = siarray.array[i];
-		SIValue_Free(&value);
+		SIValue_Free(value);
 	}
 	array_free(siarray.array);
 }

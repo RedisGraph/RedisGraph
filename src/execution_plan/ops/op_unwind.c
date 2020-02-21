@@ -95,7 +95,7 @@ static Record UnwindConsume(OpBase *opBase) {
 		OpBase_DeleteRecord(op->currentRecord);
 		op->currentRecord = r;
 		// Free old list.
-		SIValue_Free(&op->list);
+		SIValue_Free(op->list);
 
 		// Reset index and set list.
 		op->listIdx = 0;
@@ -116,7 +116,7 @@ static OpResult UnwindReset(OpBase *ctx) {
 
 static void UnwindFree(OpBase *ctx) {
 	OpUnwind *op = (OpUnwind *)ctx;
-	SIValue_Free(&op->list);
+	SIValue_Free(op->list);
 	op->list = SI_NullVal();
 
 	if(op->exp) {

@@ -253,7 +253,7 @@ static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint a
  * the result of toUpper() is allocated within this tree, and will leak if not freed here. */
 static inline void _AR_EXP_FreeResultsArray(SIValue *results, int count) {
 	for(int i = 0; i < count; i ++) {
-		SIValue_Free(&results[i]);
+		SIValue_Free(results[i]);
 	}
 }
 
@@ -601,7 +601,7 @@ void AR_EXP_Free(AR_ExpNode *root) {
 			AggCtx_Free(root->op.agg_func);
 		}
 	} else if(root->operand.type == AR_EXP_CONSTANT) {
-		SIValue_Free(&root->operand.constant);
+		SIValue_Free(root->operand.constant);
 	}
 	rm_free(root);
 }
