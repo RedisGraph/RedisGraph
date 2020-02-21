@@ -54,5 +54,6 @@ inline void *Agg_FuncCtx(AggCtx *ctx) {
 }
 
 inline void Agg_SetResult(struct AggCtx *ctx, SIValue v) {
-	ctx->result = v;
+	ctx->result = SI_ShareValue(v);
 }
+
