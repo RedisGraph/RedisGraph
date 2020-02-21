@@ -2,7 +2,7 @@
 // GB_reduce_each_vector: Tx(j)=reduce(A(:,j)), reduce a matrix to a vector
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -30,10 +30,10 @@
     // get A
     //--------------------------------------------------------------------------
 
-    const int64_t  *restrict Ap = A->p ;
-    const int64_t  *restrict Ah = A->h ;
-    const int64_t  *restrict Ai = A->i ;
-    const GB_ATYPE *restrict Ax = A->x ;
+    const int64_t  *GB_RESTRICT Ap = A->p ;
+    const int64_t  *GB_RESTRICT Ah = A->h ;
+    const int64_t  *GB_RESTRICT Ai = A->i ;
+    const GB_ATYPE *GB_RESTRICT Ax = A->x ;
     size_t  asize = A->type->size ;
     int64_t avlen = A->vlen ;
     int64_t avdim = A->vdim ;
@@ -43,16 +43,17 @@
     //--------------------------------------------------------------------------
 
     // ztype Wfirst [ntasks], Wlast [ntasks] ;
-    GB_CTYPE *restrict Wfirst = (GB_CTYPE *) Wfirst_space ;
-    GB_CTYPE *restrict Wlast  = (GB_CTYPE *) Wlast_space ;
+    GB_CTYPE *GB_RESTRICT Wfirst = (GB_CTYPE *) Wfirst_space ;
+    GB_CTYPE *GB_RESTRICT Wlast  = (GB_CTYPE *) Wlast_space ;
 
     //--------------------------------------------------------------------------
     // reduce each slice
     //--------------------------------------------------------------------------
 
     // each thread reduces its own part in parallel
+    int tid ;
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-    for (int tid = 0 ; tid < ntasks ; tid++)
+    for (tid = 0 ; tid < ntasks ; tid++)
     {
 
         // if kfirst > klast then thread tid does no work at all

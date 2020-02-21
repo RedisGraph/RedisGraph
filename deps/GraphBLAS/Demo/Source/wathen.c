@@ -2,6 +2,11 @@
 // GraphBLAS/Demo/Source/wathen.c: a finite-element matrix on a regular mesh
 //------------------------------------------------------------------------------
 
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+//------------------------------------------------------------------------------
+
 #include "demos.h"
 
 // Create a finite-element matrix on an nx-by-ny 2D mesh, as computed by
@@ -45,11 +50,11 @@ GrB_Info wathen             // construct a random Wathen matrix
 
     // macro to free all workspace.  Not every method uses every object
     #define FREE_ALL                    \
-        GrB_free (&A) ;                 \
-        GrB_free (&F) ;                 \
-        GrB_free (&D) ;                 \
-        GrB_free (&E) ;                 \
-        GrB_free (&rho_op) ;            \
+        GrB_Matrix_free (&A) ;                 \
+        GrB_Matrix_free (&F) ;                 \
+        GrB_Matrix_free (&D) ;                 \
+        GrB_Matrix_free (&E) ;                 \
+        GrB_UnaryOp_free (&rho_op) ;            \
         if (rho_rand != NULL) free (rho_rand) ;   \
         if (I != NULL) free (I) ;       \
         if (J != NULL) free (J) ;       \
@@ -184,7 +189,7 @@ GrB_Info wathen             // construct a random Wathen matrix
             }
 
             // A = sparse (I,J,X,n,n) ;
-            OK (GrB_Matrix_build (A, I, J, X, ntriplets, GrB_PLUS_FP64)) ;
+            OK (GrB_Matrix_build_FP64 (A, I, J, X, ntriplets, GrB_PLUS_FP64)) ;
 
         }
         break ;
@@ -236,7 +241,7 @@ GrB_Info wathen             // construct a random Wathen matrix
                         for (int kcol = 0 ; kcol < 8 ; kcol++)
                         {
                             // A (nn[krow],nn[kcol]) += em (krow,kcol)
-                            OK (GrB_assign (A, NULL,
+                            OK (GrB_Matrix_assign_FP64 (A, NULL,
                                 GrB_PLUS_FP64, em (krow,kcol),
                                 (&nn [krow]), 1, (&nn [kcol]), 1, NULL)) ;
                         }
@@ -280,13 +285,13 @@ GrB_Info wathen             // construct a random Wathen matrix
                         for (int kcol = 0 ; kcol < 8 ; kcol++)
                         {
                             // F (krow,kcol) = em (krow, kcol)
-                            OK (GrB_Matrix_setElement (F,
+                            OK (GrB_Matrix_setElement_FP64 (F,
                                 em (krow,kcol), krow, kcol)) ;
                         }
                     }
 
                     // A (nn,nn) += F
-                    OK (GrB_assign (A, NULL, GrB_PLUS_FP64,
+                    OK (GrB_Matrix_assign (A, NULL, GrB_PLUS_FP64,
                         F, nn, 8, nn, 8, NULL)) ;
                 }
             }
@@ -315,7 +320,7 @@ GrB_Info wathen             // construct a random Wathen matrix
                 for (int kcol = 0 ; kcol < 8 ; kcol++)
                 {
                     double ex = e [krow][kcol] ;
-                    OK (GrB_Matrix_setElement (E, ex, krow, kcol)) ;
+                    OK (GrB_Matrix_setElement_FP64 (E, ex, krow, kcol)) ;
                 }
             }
 
@@ -343,7 +348,7 @@ GrB_Info wathen             // construct a random Wathen matrix
                     OK (GrB_Matrix_apply (F, NULL, NULL, rho_op, E, NULL)) ;
 
                     // A (nn,nn) += F
-                    OK (GrB_assign (A, NULL, GrB_PLUS_FP64,
+                    OK (GrB_Matrix_assign (A, NULL, GrB_PLUS_FP64,
                         F, nn, 8, nn, 8, NULL)) ;
                 }
             }
@@ -374,8 +379,8 @@ GrB_Info wathen             // construct a random Wathen matrix
         {
             // D (i,i) = 1 / A (i,i) ;
             double di ;
-            OK (GrB_Matrix_extractElement (&di, A, i, i)) ;
-            OK (GrB_Matrix_setElement (D, 1/di, i, i)) ;
+            OK (GrB_Matrix_extractElement_FP64 (&di, A, i, i)) ;
+            OK (GrB_Matrix_setElement_FP64 (D, 1/di, i, i)) ;
         }
         // A = D*A
         OK (GrB_mxm (A, NULL, NULL, GxB_PLUS_TIMES_FP64, D, A, NULL)) ;

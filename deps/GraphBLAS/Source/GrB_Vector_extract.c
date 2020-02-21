@@ -2,7 +2,7 @@
 // GrB_Vector_extract: w<M> = accum (w, u(I))
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -26,6 +26,7 @@ GrB_Info GrB_Vector_extract         // w<M> = accum (w, u(I))
     //--------------------------------------------------------------------------
 
     GB_WHERE ("GrB_Vector_extract (w, M, accum, u, I, ni, desc)") ;
+    GB_BURBLE_START ("GrB_extract") ;
     GB_RETURN_IF_NULL_OR_FAULTY (w) ;
     GB_RETURN_IF_FAULTY (M) ;
     GB_RETURN_IF_NULL_OR_FAULTY (u) ;
@@ -34,7 +35,8 @@ GrB_Info GrB_Vector_extract         // w<M> = accum (w, u(I))
     ASSERT (GB_VECTOR_OK (u)) ;
 
     // get the descriptor
-    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, Mask_struct,
+        xx1, xx2, xx3) ;
 
     //--------------------------------------------------------------------------
     // extract entries
@@ -47,21 +49,20 @@ GrB_Info GrB_Vector_extract         // w<M> = accum (w, u(I))
     // not transposed.  All GrB_Matrix objects will be in CSC format, and no
     // matrices are transposed via the C_is_vector option in GB_extract.
 
-    // construct the column index list J = [ 0 ] of length nj = 1
-    GrB_Index J [1] ;
-    J [0] = 0 ;
-
     //--------------------------------------------------------------------------
     // do the work in GB_extract
     //--------------------------------------------------------------------------
 
-    return (GB_extract (
+    info = GB_extract (
         (GrB_Matrix) w,     C_replace,  // w as a matrix, and its descriptor
-        (GrB_Matrix) M,     Mask_comp,  // mask matrix, and its descriptor
+        (GrB_Matrix) M, Mask_comp, Mask_struct,  // mask and its descriptor
         accum,                          // optional accum for z=accum(w,t)
         (GrB_Matrix) u,     false,      // u as matrix; never transposed
         I, ni,                          // row indices I and length ni
-        J, 1,                           // one column index, nj = 1
-        Context)) ;
+        GrB_ALL, 1,                     // all columns
+        Context) ;
+
+    GB_BURBLE_END ;
+    return (info) ;
 }
 

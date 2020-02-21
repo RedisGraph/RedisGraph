@@ -1,7 +1,7 @@
 function test26(longtests)
 %TEST26 performance test for GxB_select
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\ntest26 ------------------------------performance of GxB_select\n') ;
@@ -131,6 +131,15 @@ for probs = 1:nprobs
 
         end
     end
+end
+
+ok = true ;
+A = sparse (ones (4)) ;
+try
+    C = GB_mex_select (A, [ ], [ ], 'tril', A, A, [ ]) ;
+    ok = false ;
+catch me
+    fprintf ('\nexpected error: %s\n', me.message) ;
 end
 
 nthreads_set (save_nthreads, save_chunk) ;

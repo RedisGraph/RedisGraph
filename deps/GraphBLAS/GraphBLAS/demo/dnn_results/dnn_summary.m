@@ -12,6 +12,9 @@
 % threads:   1 time:   13816.56 sec speedup:     1.00 rate:       4.37 billion
 % threads:   1 time:   54701.46 sec speedup:     1.00 rate:       4.42 billion
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 TM1 =  [
       23.53
       67.52

@@ -42,10 +42,10 @@ for k1 = 1:length(types)
                 assert (numel (G) == m*n) ;
                 assert (nzmax (G) == max (nnz (G), 1))
                 assert (isequal (size (G), [m n])) ;
-                [m1 n1]  = size (G) ;
+                [m1, n1]  = size (G) ;
                 assert (isequal ([m1 n1], [m n])) ;
-                if (m == 0 | n == 0)
-                    assert (length (G) == 0) ;
+                if (m == 0 || n == 0)
+                    assert (isempty (G)) ;
                 else
                     assert (length (G) == max (m, n)) ;
                 end

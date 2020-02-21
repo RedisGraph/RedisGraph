@@ -2,7 +2,7 @@
 // GB_mex_op: apply a built-in GraphBLAS operator to MATLAB arrays
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -91,7 +91,7 @@ void mexFunction
         op_ztype = op2->ztype ; op_zsize = op_ztype->size ;
         op_xtype = op2->xtype ; op_xsize = op_xtype->size ;
         op_ytype = op2->ytype ; op_ysize = op_ytype->size ;
-        ASSERT_OK (GB_check (op2, "binary op", GB0)) ;
+        ASSERT_BINARYOP_OK (op2, "binary op", GB0) ;
     }
     else
     {
@@ -106,10 +106,10 @@ void mexFunction
         op_ztype = op1->ztype ; op_zsize = op_ztype->size ;
         op_xtype = op1->xtype ; op_xsize = op_xtype->size ;
         op_ytype = NULL       ; op_ysize = 1 ;
-        ASSERT_OK (GB_check (op1, "unary op", GB0)) ;
+        ASSERT_UNARYOP_OK (op1, "unary op", GB0) ;
     }
 
-    ASSERT_OK (GB_check (op_ztype, "Z type", GB0)) ;
+    ASSERT_TYPE_OK (op_ztype, "Z type", GB0) ;
 
     //--------------------------------------------------------------------------
     // get X
@@ -123,7 +123,7 @@ void mexFunction
         FREE_ALL ;
         mexErrMsgTxt ("X must be numeric") ;
     }
-    ASSERT_OK (GB_check (X_type, "X type", GB0)) ;
+    ASSERT_TYPE_OK (X_type, "X type", GB0) ;
     size_t X_size = X_type->size ;
 
     if (!GB_Type_compatible (op_xtype, X_type))
@@ -152,7 +152,7 @@ void mexFunction
             FREE_ALL ;
             mexErrMsgTxt ("Y must be numeric") ;
         }
-        ASSERT_OK (GB_check (Y_type, "Y type", GB0)) ;
+        ASSERT_TYPE_OK (Y_type, "Y type", GB0) ;
         Y_size = Y_type->size ;
 
         if (!GB_Type_compatible (op_ytype, Y_type))

@@ -1,10 +1,8 @@
-
-
 //------------------------------------------------------------------------------
 // GB_AxB:  hard-coded functions for semiring: C<M>=A*B or A'*B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -15,25 +13,29 @@
 #ifndef GBCOMPACT
 #include "GB_control.h"
 #include "GB_ek_slice.h"
-#include "GB_Sauna.h"
-#include "GB_jappend.h"
 #include "GB_bracket.h"
 #include "GB_iterator.h"
+#include "GB_sort.h"
+#include "GB_atomics.h"
+#include "GB_AxB_saxpy3.h"
 #include "GB_AxB__include.h"
 
 // The C=A*B semiring is defined by the following types and operators:
 
-// A*B function (Gustavon):  GB_AgusB__min_lor_uint32
 // A'*B function (dot2):     GB_Adot2B__min_lor_uint32
 // A'*B function (dot3):     GB_Adot3B__min_lor_uint32
-// A*B function (heap):      GB_AheapB__min_lor_uint32
+// C+=A'*B function (dot4):  GB_Adot4B__min_lor_uint32
+// A*B function (saxpy3):    GB_Asaxpy3B__min_lor_uint32
 
 // C type:   uint32_t
 // A type:   uint32_t
 // B type:   uint32_t
 
 // Multiply: z = ((aik != 0) || (bkj != 0))
-// Add:      cij = GB_IMIN (cij, x_op_y)
+// Add:      cij = GB_IMIN (cij, z)
+//           'any' monoid?  0
+//           atomic?        1
+//           OpenMP atomic? 0
 // MultAdd:  uint32_t x_op_y = ((aik != 0) || (bkj != 0)) ; cij = GB_IMIN (cij, x_op_y)
 // Identity: UINT32_MAX
 // Terminal: if (cij == 0) break ;
@@ -58,17 +60,14 @@
 #define GB_CX(p) Cx [p]
 
 // multiply operator
-#define GB_MULT(z, x, y)        \
-    z = ((x != 0) || (y != 0)) ;
+#define GB_MULT(z, x, y) \
+    z = ((x != 0) || (y != 0))
 
 // multiply-add
-#define GB_MULTADD(z, x, y)     \
-    uint32_t x_op_y = ((x != 0) || (y != 0)) ; z = GB_IMIN (z, x_op_y) ;
+#define GB_MULTADD(z, x, y) \
+    uint32_t x_op_y = ((x != 0) || (y != 0)) ; z = GB_IMIN (z, x_op_y)
 
-// copy scalar
-#define GB_COPY_C(z,x) z = x ;
-
-// monoid identity value (Gustavson's method only, with no mask)
+// monoid identity value
 #define GB_IDENTITY \
     UINT32_MAX
 
@@ -76,49 +75,100 @@
 #define GB_DOT_TERMINAL(cij) \
     if (cij == 0) break ;
 
-// simd pragma for dot product
-#define GB_DOT_SIMD \
+// simd pragma for dot-product loop vectorization
+#define GB_PRAGMA_VECTORIZE_DOT \
     ;
 
-// cij is not a pointer but a scalar; nothing to do
-#define GB_CIJ_REACQUIRE(cij,cnz) ;
+// simd pragma for other loop vectorization
+#define GB_PRAGMA_VECTORIZE GB_PRAGMA_SIMD
 
 // declare the cij scalar
-#define GB_CIJ_DECLARE(cij) ; \
-    uint32_t cij ;
+#define GB_CIJ_DECLARE(cij) \
+    uint32_t cij
 
 // save the value of C(i,j)
-#define GB_CIJ_SAVE(cij,p) Cx [p] = cij ;
+#define GB_CIJ_SAVE(cij,p) Cx [p] = cij
 
-#define GB_SAUNA_WORK(i) Sauna_Work [i]
+// cij = Cx [pC]
+#define GB_GETC(cij,pC) \
+    cij = Cx [pC]
+
+// Cx [pC] = cij
+#define GB_PUTC(cij,pC) \
+    Cx [pC] = cij
+
+// Cx [p] = t
+#define GB_CIJ_WRITE(p,t) Cx [p] = t
+
+// C(i,j) += t
+#define GB_CIJ_UPDATE(p,t) \
+    Cx [p] = GB_IMIN (Cx [p], t)
+
+// x + y
+#define GB_ADD_FUNCTION(x,y) \
+    GB_IMIN (x, y)
+
+// type with size of GB_CTYPE, and can be used in compare-and-swap
+#define GB_CTYPE_PUN \
+    uint32_t
+
+// bit pattern for bool, 8-bit, 16-bit, and 32-bit integers
+#define GB_CTYPE_BITS \
+    0xffffffffL
+
+// 1 if monoid update can skipped entirely (the ANY monoid)
+#define GB_IS_ANY_MONOID \
+    0
+
+// 1 if monoid update is EQ
+#define GB_IS_EQ_MONOID \
+    0
+
+// 1 if monoid update can be done atomically, 0 otherwise
+#define GB_HAS_ATOMIC \
+    1
+
+// 1 if monoid update can be done with an OpenMP atomic update, 0 otherwise
+#define GB_HAS_OMP_ATOMIC \
+    0
+
+// 1 for the ANY_PAIR semirings
+#define GB_IS_ANY_PAIR_SEMIRING \
+    0
+
+// 1 if PAIR is the multiply operator 
+#define GB_IS_PAIR_MULTIPLIER \
+    0
+
+#if GB_IS_ANY_PAIR_SEMIRING
+
+    // result is purely symbolic; no numeric work to do.  Hx is not used.
+    #define GB_HX_WRITE(i,t)
+    #define GB_CIJ_GATHER(p,i)
+    #define GB_HX_UPDATE(i,t)
+    #define GB_CIJ_MEMCPY(p,i,len)
+
+#else
+
+    // Hx [i] = t
+    #define GB_HX_WRITE(i,t) Hx [i] = t
+
+    // Cx [p] = Hx [i]
+    #define GB_CIJ_GATHER(p,i) Cx [p] = Hx [i]
+
+    // Hx [i] += t
+    #define GB_HX_UPDATE(i,t) \
+        Hx [i] = GB_IMIN (Hx [i], t)
+
+    // memcpy (&(Cx [p]), &(Hx [i]), len)
+    #define GB_CIJ_MEMCPY(p,i,len) \
+        memcpy (Cx +(p), Hx +(i), (len) * sizeof(uint32_t))
+
+#endif
 
 // disable this semiring and use the generic case if these conditions hold
 #define GB_DISABLE \
     (GxB_NO_MIN || GxB_NO_LOR || GxB_NO_UINT32 || GxB_NO_MIN_UINT32 || GxB_NO_LOR_UINT32 || GxB_NO_MIN_LOR_UINT32)
-
-//------------------------------------------------------------------------------
-// C<M>=A*B and C=A*B: gather/scatter saxpy-based method (Gustavson)
-//------------------------------------------------------------------------------
-
-GrB_Info GB_AgusB__min_lor_uint32
-(
-    GrB_Matrix C,
-    const GrB_Matrix M,
-    const GrB_Matrix A, bool A_is_pattern,
-    const GrB_Matrix B, bool B_is_pattern,
-    GB_Sauna Sauna
-)
-{ 
-    #if GB_DISABLE
-    return (GrB_NO_VALUE) ;
-    #else
-    uint32_t *restrict Sauna_Work = Sauna->Sauna_Work ;
-    uint32_t *restrict Cx = C->x ;
-    GrB_Info info = GrB_SUCCESS ;
-    #include "GB_AxB_Gustavson_meta.c"
-    return (info) ;
-    #endif
-}
 
 //------------------------------------------------------------------------------
 // C=A'*B or C<!M>=A'*B: dot product (phase 2)
@@ -127,11 +177,11 @@ GrB_Info GB_AgusB__min_lor_uint32
 GrB_Info GB_Adot2B__min_lor_uint32
 (
     GrB_Matrix C,
-    const GrB_Matrix M,
+    const GrB_Matrix M, const bool Mask_struct,
     const GrB_Matrix *Aslice, bool A_is_pattern,
     const GrB_Matrix B, bool B_is_pattern,
-    int64_t *restrict B_slice,
-    int64_t *restrict *C_counts,
+    int64_t *GB_RESTRICT B_slice,
+    int64_t *GB_RESTRICT *C_counts,
     int nthreads, int naslice, int nbslice
 )
 { 
@@ -153,10 +203,10 @@ GrB_Info GB_Adot2B__min_lor_uint32
 GrB_Info GB_Adot3B__min_lor_uint32
 (
     GrB_Matrix C,
-    const GrB_Matrix M,
+    const GrB_Matrix M, const bool Mask_struct,
     const GrB_Matrix A, bool A_is_pattern,
     const GrB_Matrix B, bool B_is_pattern,
-    const GB_task_struct *restrict TaskList,
+    const GB_task_struct *GB_RESTRICT TaskList,
     const int ntasks,
     const int nthreads
 )
@@ -170,33 +220,51 @@ GrB_Info GB_Adot3B__min_lor_uint32
 }
 
 //------------------------------------------------------------------------------
-// C<M>=A*B and C=A*B: heap saxpy-based method
+// C+=A'*B: dense dot product
 //------------------------------------------------------------------------------
 
-#include "GB_heap.h"
-
-GrB_Info GB_AheapB__min_lor_uint32
+GrB_Info GB_Adot4B__min_lor_uint32
 (
-    GrB_Matrix *Chandle,
-    const GrB_Matrix M,
+    GrB_Matrix C,
     const GrB_Matrix A, bool A_is_pattern,
+    int64_t *GB_RESTRICT A_slice, int naslice,
     const GrB_Matrix B, bool B_is_pattern,
-    int64_t *restrict List,
-    GB_pointer_pair *restrict pA_pair,
-    GB_Element *restrict Heap,
-    const int64_t bjnz_max
+    int64_t *GB_RESTRICT B_slice, int nbslice,
+    const int nthreads
 )
 { 
     #if GB_DISABLE
     return (GrB_NO_VALUE) ;
     #else
-    GrB_Matrix C = (*Chandle) ;
-    uint32_t *restrict Cx = C->x ;
-    uint32_t cij ;
-    int64_t cvlen = C->vlen ;
-    GrB_Info info = GrB_SUCCESS ;
-    #include "GB_AxB_heap_meta.c"
-    return (info) ;
+    #include "GB_AxB_dot4_template.c"
+    return (GrB_SUCCESS) ;
+    #endif
+}
+
+//------------------------------------------------------------------------------
+// C=A*B, C<M>=A*B, C<!M>=A*B: saxpy3 method (Gustavson + Hash)
+//------------------------------------------------------------------------------
+
+#include "GB_AxB_saxpy3_template.h"
+
+GrB_Info GB_Asaxpy3B__min_lor_uint32
+(
+    GrB_Matrix C,
+    const GrB_Matrix M, bool Mask_comp, const bool Mask_struct,
+    const GrB_Matrix A, bool A_is_pattern,
+    const GrB_Matrix B, bool B_is_pattern,
+    GB_saxpy3task_struct *GB_RESTRICT TaskList,
+    const int ntasks,
+    const int nfine,
+    const int nthreads,
+    GB_Context Context
+)
+{ 
+    #if GB_DISABLE
+    return (GrB_NO_VALUE) ;
+    #else
+    #include "GB_AxB_saxpy3_template.c"
+    return (GrB_SUCCESS) ;
     #endif
 }
 

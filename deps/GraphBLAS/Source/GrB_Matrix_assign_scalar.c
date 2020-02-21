@@ -2,7 +2,7 @@
 // GrB_Matrix_assign_[SCALAR]: assign a scalar to matrix, via scalar expansion
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -37,10 +37,13 @@ GrB_Info GrB_Matrix_assign_ ## T    /* C<M>(Rows,Cols) += x                 */ \
 {                                                                              \
     GB_WHERE ("GrB_Matrix_assign_" GB_STR(T)                                   \
         " (C, M, accum, x, Rows, nRows, Cols, nCols, desc)") ;                 \
+    GB_BURBLE_START ("GrB_assign") ;                                           \
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;                                          \
     GB_RETURN_IF_FAULTY (M) ;                                                  \
-    return (GB_assign_scalar (C, M, accum, ampersand x, GB_## T ## _code,      \
-        Rows, nRows, Cols, nCols, desc, Context)) ;                            \
+    GrB_Info info = GB_assign_scalar (C, M, accum, ampersand x,                \
+        GB_## T ## _code, Rows, nRows, Cols, nCols, desc, Context) ;           \
+    GB_BURBLE_END ;                                                            \
+    return (info) ;                                                            \
 }
 
 GB_ASSIGN (bool     , BOOL   , &)

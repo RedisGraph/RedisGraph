@@ -3,6 +3,9 @@ function test118
 
 % test C(:,:)<M> = A
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 fprintf ('test118 ----------------------------------- C(:,:)<M> = A\n') ;
 
 [save save_chunk] = nthreads_get ;

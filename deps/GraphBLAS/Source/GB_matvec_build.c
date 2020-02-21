@@ -2,7 +2,7 @@
 // GB_matvec_build: check inputs and build a matrix or vector
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -32,7 +32,7 @@ GrB_Info GB_matvec_build        // check inputs then build matrix or vector
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (C, "C for GB_matvec_build", GB0)) ;
+    ASSERT_MATRIX_OK (C, "C for GB_matvec_build", GB0) ;
     GB_RETURN_IF_NULL (I) ;
     if (I == GrB_ALL)
     { 
@@ -64,7 +64,7 @@ GrB_Info GB_matvec_build        // check inputs then build matrix or vector
     GB_RETURN_IF_NULL (X) ;
     GB_RETURN_IF_NULL_OR_FAULTY (dup) ;
 
-    ASSERT_OK (GB_check (dup, "dup operator for assembling duplicates", GB0)) ;
+    ASSERT_BINARYOP_OK (dup, "dup operator for assembling duplicates", GB0) ;
     ASSERT (scode <= GB_UDT_code) ;
 
     if (nvals > GB_INDEX_MAX)

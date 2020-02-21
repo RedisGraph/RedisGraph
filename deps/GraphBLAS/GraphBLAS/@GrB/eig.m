@@ -1,8 +1,10 @@
 function [V, varargout] = eig (G, varargin)
 %EIG Eigenvalues and eigenvectors of a GraphBLAS matrix.
 % See 'help eig' for details.
+%
+% See also eigs.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (isreal (G) && issymmetric (G))

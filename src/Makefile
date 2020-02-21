@@ -19,7 +19,7 @@ endif
 # Default CFLAGS
 CFLAGS = \
 	-Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result \
-	-fPIC -std=gnu99 \
+	-fPIC \
 	-D_GNU_SOURCE -DREDIS_MODULE_TARGET -DREDISMODULE_EXPERIMENTAL_API -DXXH_STATIC_LINKING_ONLY
 CFLAGS += $(DEBUGFLAGS)
 
@@ -131,7 +131,7 @@ $(LIBXXHASH):
 # Build GraphBLAS only if library does not already exists.
 $(GRAPHBLAS):
 ifeq (,$(wildcard $(GRAPHBLAS)))
-	@$(MAKE) -C ../deps/GraphBLAS CMAKE_OPTIONS="-DCMAKE_C_COMPILER='$(CC)' -DCMAKE_CXX_COMPILER='$(CXX)'" static_only
+	@$(MAKE) -C ../deps/GraphBLAS CMAKE_OPTIONS="-DCMAKE_C_COMPILER='$(CC)'" static_only
 endif
 .PHONY: $(GRAPHBLAS)
 

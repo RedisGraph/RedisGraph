@@ -2,7 +2,7 @@
 // GrB_Vector_assign_[SCALAR]: assign scalar to vector, via scalar expansion
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -27,13 +27,16 @@ GrB_Info GrB_Vector_assign_ ## T    /* w<M>(Rows) = accum (w(Rows),x)       */ \
 {                                                                              \
     GB_WHERE ("GrB_Vector_assign_" GB_STR(T)                                   \
         " (w, M, accum, x, Rows, nRows, desc)") ;                              \
+    GB_BURBLE_START ("GrB_assign") ;                                           \
     GB_RETURN_IF_NULL_OR_FAULTY (w) ;                                          \
     GB_RETURN_IF_FAULTY (M) ;                                                  \
     ASSERT (GB_VECTOR_OK (w)) ;                                                \
     ASSERT (GB_IMPLIES (M != NULL, GB_VECTOR_OK (M))) ;                        \
-    return (GB_assign_scalar ((GrB_Matrix) w, (GrB_Matrix) M, accum,           \
+    GrB_Info info = GB_assign_scalar ((GrB_Matrix) w, (GrB_Matrix) M, accum,   \
         ampersand x, GB_## T ## _code, Rows, nRows, GrB_ALL, 1, desc,          \
-        Context)) ;                                                            \
+        Context) ;                                                             \
+    GB_BURBLE_END ;                                                            \
+    return (info) ;                                                            \
 }
 
 GB_ASSIGN (bool     , BOOL   , &)

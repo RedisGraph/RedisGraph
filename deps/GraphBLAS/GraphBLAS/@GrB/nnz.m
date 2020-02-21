@@ -6,7 +6,7 @@ function e = nnz (G)
 %
 % See also GrB.entries, GrB.prune, nonzeros, size, numel.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 e = GrB.entries (G) - GrB.entries (GrB.select (G, '==0')) ;

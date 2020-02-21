@@ -88,7 +88,7 @@ function C = random (varargin)
 %
 % See also sprand, sprandn, sprandsym, GrB/sprand, GrB/sprandn, GrB/sprandsym.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 % defaults
@@ -125,7 +125,7 @@ if (firstchar == 2)
     % C = GrB.random (A, ...) ;
     A = varargin {1} ;
     [m, n] = size (A) ;
-    if (symmetric & (m ~= n))
+    if (symmetric && (m ~= n))
         gb_error ('input matrix must be square') ;
     end
     [I, J] = GrB.extracttuples (A, desc) ;

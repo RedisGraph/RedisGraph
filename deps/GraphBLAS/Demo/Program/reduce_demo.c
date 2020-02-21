@@ -2,6 +2,11 @@
 // GraphBLAS/Demo/Program/reduce_demo: reduce a matrix to a scalar
 //------------------------------------------------------------------------------
 
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+//------------------------------------------------------------------------------
+
 #include "GraphBLAS.h"
 
 // #define N 65536
@@ -16,10 +21,12 @@ int main (void)
 
     // start GraphBLAS
     GrB_init (GrB_NONBLOCKING) ;
-    printf ("demo: reduce a matrix to a scalar\n") ;
+    int nthreads ;
+    GxB_get (GxB_NTHREADS, &nthreads) ;
+    printf ("demo: reduce a matrix to a scalar, nthreads: %d\n", nthreads) ;
 
     int nthreads_max ;
-    GxB_get (GxB_NTHREADS, &nthreads_max) ;
+    GxB_Global_Option_get (GxB_NTHREADS, &nthreads_max) ;
     printf ("# of threads: %d\n", nthreads_max) ;
 
     #if defined ( _OPENMP )
@@ -37,23 +44,22 @@ int main (void)
     GrB_Index *J = malloc (nrows * ncols * sizeof (GrB_Index)) ;
     int64_t   *X = malloc (nrows * ncols * sizeof (int64_t)) ;
 
-    #pragma omp parallel for num_threads(nthreads_max) collapse(2) \
-        schedule(static)
-    for (int64_t i = 0 ; i < nrows ; i++)
+    int64_t k ;
+    #pragma omp parallel for num_threads(nthreads_max) schedule(static)
+    for (k = 0 ; k < N*N ; k++)
     {
-        for (int64_t j = 0 ; j < ncols ; j++)
-        {
-            int64_t k = i * N + j ;
-            // int x = (int) (rand ( ) & 0xFF) ;
-            int x = (int) (k & 0xFF) ;
-            I [k] = i ;
-            J [k] = j ;
-            X [k] = x ;
-        }
+        // k = i * N + j ;
+        int64_t i = k / N ;
+        int64_t j = k % N ;
+        // int x = (int) (rand ( ) & 0xFF) ;
+        int x = (int) (k & 0xFF) ;
+        I [k] = i ;
+        J [k] = j ;
+        X [k] = x ;
     }
 
     GrB_Index nvals = N*N ;
-    GrB_Matrix_build (A, I, J, X, nvals, GrB_PLUS_INT64) ;
+    GrB_Matrix_build_INT64 (A, I, J, X, nvals, GrB_PLUS_INT64) ;
 
     free (I) ;
     free (J) ;
@@ -72,11 +78,12 @@ int main (void)
 
     for (int nthreads = 1 ; nthreads <= nthreads_max ; nthreads++)
     {
-        GxB_set (GxB_NTHREADS, nthreads) ;
+        GxB_Global_Option_set (GxB_NTHREADS, nthreads) ;
         #if defined ( _OPENMP )
         double t = omp_get_wtime ( ) ;
         #endif
-        GrB_reduce (&result, NULL, GxB_PLUS_INT64_MONOID, A, NULL) ;
+        GrB_Matrix_reduce_UINT64 (&result, NULL, GxB_PLUS_INT64_MONOID,
+            A, NULL) ;
         #if defined ( _OPENMP )
         t = omp_get_wtime ( ) - t ;
         if (nthreads == 1) t1 = t ;
@@ -88,7 +95,7 @@ int main (void)
     printf ("result %"PRId64"\n", result) ;
 
     // free everyting
-    GrB_free (&A) ;
+    GrB_Matrix_free (&A) ;
     GrB_finalize ( ) ;
 }
 

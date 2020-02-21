@@ -2,7 +2,7 @@
 // GB_extract: C<M> = accum(C,A(I,J))
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -29,6 +29,7 @@ GrB_Info GB_extract                 // C<M> = accum (C, A(I,J))
     const bool C_replace,           // C matrix descriptor
     const GrB_Matrix M,             // optional mask for C, unused if NULL
     const bool Mask_comp,           // mask descriptor
+    const bool Mask_struct,         // if true, use the only structure of M
     const GrB_BinaryOp accum,       // optional accum for Z=accum(C,T)
     const GrB_Matrix A,             // input matrix
     const bool A_transpose,         // A matrix descriptor
@@ -50,10 +51,10 @@ GrB_Info GB_extract                 // C<M> = accum (C, A(I,J))
     GB_RETURN_IF_NULL (Cols) ;
     GB_RETURN_IF_FAULTY (accum) ;
 
-    ASSERT_OK (GB_check (C, "C input for GB_Matrix_extract", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_Matrix_extract", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_Matrix_extract", GB0)) ;
-    ASSERT_OK (GB_check (A, "A input for GB_Matrix_extract", GB0)) ;
+    ASSERT_MATRIX_OK (C, "C input for GB_Matrix_extract", GB0) ;
+    ASSERT_MATRIX_OK_OR_NULL (M, "M for GB_Matrix_extract", GB0) ;
+    ASSERT_BINARYOP_OK_OR_NULL (accum, "accum for GB_Matrix_extract", GB0) ;
+    ASSERT_MATRIX_OK (A, "A input for GB_Matrix_extract", GB0) ;
 
     // check domains and dimensions for C<M> = accum (C,T)
     GrB_Info info = GB_compatible (C->type, C, M, accum, A->type, Context) ;
@@ -176,11 +177,11 @@ GrB_Info GB_extract                 // C<M> = accum (C, A(I,J))
 
     if (must_sort)
     { 
-        ASSERT_OK (GB_check (T, "T extracted", GB0)) ;
+        ASSERT_MATRIX_OK (T, "T extracted", GB0) ;
     }
     else
     { 
-        ASSERT_OK_OR_JUMBLED (GB_check (T, "T extracted (jumbled OK)", GB0)) ;
+        ASSERT_MATRIX_OK_OR_JUMBLED (T, "T extracted (jumbled OK)", GB0) ;
     }
 
     //--------------------------------------------------------------------------
@@ -188,6 +189,6 @@ GrB_Info GB_extract                 // C<M> = accum (C, A(I,J))
     //--------------------------------------------------------------------------
 
     return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp,
-        Context)) ;
+        Mask_struct, Context)) ;
 }
 

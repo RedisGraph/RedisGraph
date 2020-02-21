@@ -1,7 +1,7 @@
 function test28
 %TEST28 test mxm with aliased inputs, C<C> = accum(C,C*C)
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 rng ('default') ;
@@ -19,7 +19,7 @@ for n = [1 5 10 100]
 
         C1 = GB_mex_mxm_alias (C, 'plus', semiring, [ ]) ;
         C2 = GB_mex_mxm (C, C, 'plus', semiring, C, C, [ ]) ;
-        assert (isequal (C1, C2)) ;
+        assert (norm (C1.matrix - C2.matrix, 1) < 1e-12) ;
     end
 end
 

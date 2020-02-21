@@ -1,7 +1,7 @@
 function test23(fulltest)
 %TEST23 test GrB_*_build
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 [~, ~, ~, classes, ~, ~] = GB_spec_opsall ;
@@ -14,6 +14,8 @@ end
 ops = {
 'first',  0, % z = x
 'second', 0, % z = y
+'pair',   1, % z = 1
+'any',    1, % z = pick x or y
 'min',    1, % z = min(x,y)
 'max',    1, % z = max(x,y)
 'plus',   1, % z = x + y
@@ -61,6 +63,7 @@ for k0 = 1:size (problems,1) ;
     for k1 = 1:size (ops,1)
         op.opname = ops {k1,1} ;
         is_associative = ops {k1,2} ;
+        op_is_any = isequal (op.opname, 'any') ;
 
         fprintf ('%s', op.opname) ;
 
@@ -110,45 +113,48 @@ for k0 = 1:size (problems,1) ;
 
                     for A_is_csc   = 0:1
 
-                    A = GB_mex_Matrix_build (I, J, X, nrows, ncols, op, ...
-                        cclass, A_is_csc) ;
-                    % A is sparse but may have explicit zeros
-                    if (~spok (A.matrix*1))
-                        fprintf ('test failure: invalid sparse matrix\n') ;
-                        assert (false) ;
-                    end
-                    A.matrix = full (double (A.matrix)) ;
-                    S = GB_spec_build (I, J, X, nrows, ncols, op, 'natural', cclass) ;
-                    if (~isequalwithequalnans (A.matrix, double (S.matrix))) ;
-                        fprintf ('test failure: does not match spec\n') ;
-                        assert (false) ;
-                    end
-                    assert (isequal (S.class, A.class)) ;
-
-                    % build in random order, for associative operators.
-                    if (is_associative)
-                        [S2 p] = GB_spec_build (I, J, X, nrows, ncols, ...
-                            op, 'random', cclass) ;
-                        if (opint)
-                            % integers are perfectly associative
-                            if (~isequal (A.matrix, double (S2.matrix)))
-                                fprintf ('fail: int non-associative\n') ;
+                        A = GB_mex_Matrix_build (I, J, X, nrows, ncols, op, ...
+                            cclass, A_is_csc) ;
+                        % A is sparse but may have explicit zeros
+                        if (~spok (A.matrix*1))
+                            fprintf ('test failure: invalid sparse matrix\n') ;
+                            assert (false) ;
+                        end
+                        A.matrix = full (double (A.matrix)) ;
+                        if (~op_is_any)
+                            S = GB_spec_build (I, J, X, nrows, ncols, op, 'natural', cclass) ;
+                            if (~isequalwithequalnans (A.matrix, double (S.matrix))) ;
+                                fprintf ('test failure: does not match spec\n') ;
                                 assert (false) ;
                             end
-                        else
-                            % floating point is approximately associative
-                            tol = norm (double (S2.matrix)) * eps (op.opclass) ;
-                            ok = isequal (isnan (A.matrix), isnan (S2.matrix)) ;
-                            A.matrix (isnan (A.matrix)) = 0 ;
-                            S2.matrix (isnan (S2.matrix)) = 0 ;
-                            ok = ok & (norm (double (A.matrix - double (S2.matrix))) < tol) ;
-                            if (~ok)
-                                fprintf ('fail: float non-associative\n') ;
-                                assert (false) ;
+                            assert (isequal (S.class, A.class)) ;
+                        end
+
+                        % build in random order, for associative operators.
+                        if (is_associative)
+                            [S2 p] = GB_spec_build (I, J, X, nrows, ncols, ...
+                                op, 'random', cclass) ;
+                            if (op_is_any)
+                                % 'any' reduction
+                            elseif (opint)
+                                % integers are perfectly associative
+                                if (~isequal (A.matrix, double (S2.matrix)))
+                                    fprintf ('fail: int non-associative\n') ;
+                                    assert (false) ;
+                                end
+                            else
+                                % floating point is approximately associative
+                                tol = norm (double (S2.matrix)) * eps (op.opclass) ;
+                                ok = isequal (isnan (A.matrix), isnan (S2.matrix)) ;
+                                A.matrix (isnan (A.matrix)) = 0 ;
+                                S2.matrix (isnan (S2.matrix)) = 0 ;
+                                ok = ok & (norm (double (A.matrix - double (S2.matrix))) < tol) ;
+                                if (~ok)
+                                    fprintf ('fail: float non-associative\n') ;
+                                    assert (false) ;
+                                end
                             end
                         end
-                    end
-
                     end
 
                     % build a vector in the natural order (discard J)
@@ -156,19 +162,19 @@ for k0 = 1:size (problems,1) ;
                     % fprintf ('opclass: %s ', opclass) ;
                     % fprintf ('xclass: %s\n', xclass) ;
                     A = GB_mex_Vector_build (I, X, nrows, op, cclass) ;
-                    % pause
                     % A is sparse but may have explicit zeros
                     if (~spok (A.matrix*1))
                         fprintf ('test failure: invalid sparse matrix\n') ;
                         assert (false) ;
                     end
-                    A.matrix = full (double (A.matrix)) ;
-                    S = GB_spec_build (I, [ ], X, nrows, 1, op, 'natural', cclass) ;
-                    if (~isequalwithequalnans (A.matrix, double (S.matrix))) ;
-                        fprintf ('test failure: does not match spec\n') ;
-                        assert (false) ;
+                    if (~op_is_any)
+                        A.matrix = full (double (A.matrix)) ;
+                        S = GB_spec_build (I, [ ], X, nrows, 1, op, 'natural', cclass) ;
+                        if (~isequalwithequalnans (A.matrix, double (S.matrix))) ;
+                            fprintf ('test failure: does not match spec\n') ;
+                            assert (false) ;
+                        end
                     end
-
                 end
             end
         end

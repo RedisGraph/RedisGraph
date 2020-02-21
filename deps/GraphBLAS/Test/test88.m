@@ -1,6 +1,9 @@
 function test88
 %TEST88 test hypersparse matrices with heap-based method
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 rng ('default') ;
 d.axb = 'heap' ;
 semiring.multiply = 'times' ;
@@ -23,7 +26,10 @@ for n = [10 100 200 300 1000]
         C1 = A.matrix * B.matrix ;
         C2 = GB_mex_mxm (S, [ ], [ ], semiring, A, B, d) ;
         [t method] = grbresults ;
-        assert (isequal (method, 'heap')) ;
+        % v3.1:
+        % assert (isequal (method, 'heap')) ;
+        % v3.2:
+        assert (isequal (method, 'saxpy')) ;
         assert (isequal_roundoff (C1, C2.matrix)) ;
     end
 end

@@ -2,7 +2,7 @@
 // GB_subassign_05: C(I,J)<M> = scalar ; no S
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -31,6 +31,7 @@ GrB_Info GB_subassign_05
     const int Jkind,
     const int64_t Jcolon [3],
     const GrB_Matrix M,
+    const bool Mask_struct,
     const void *scalar,
     const GrB_Type atype,
     GB_Context Context
@@ -44,8 +45,8 @@ GrB_Info GB_subassign_05
     GB_GET_C ;
     int64_t zorig = C->nzombies ;
     const bool C_is_hyper = C->is_hyper ;
-    const int64_t *restrict Ch = C->h ;
-    const int64_t *restrict Cp = C->p ;
+    const int64_t *GB_RESTRICT Ch = C->h ;
+    const int64_t *GB_RESTRICT Cp = C->p ;
     const int64_t Cnvec = C->nvec ;
     const int64_t cvlen = C->vlen ;
     GB_GET_MASK ;
@@ -78,9 +79,10 @@ GrB_Info GB_subassign_05
     // phase 1: create zombies, update entries, and count pending tuples
     //--------------------------------------------------------------------------
 
+    int taskid ;
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) \
         reduction(+:nzombies)
-    for (int taskid = 0 ; taskid < ntasks ; taskid++)
+    for (taskid = 0 ; taskid < ntasks ; taskid++)
     {
 
         //----------------------------------------------------------------------
@@ -128,17 +130,10 @@ GrB_Info GB_subassign_05
                 {
 
                     //----------------------------------------------------------
-                    // consider the entry M(iA,j)
-                    //----------------------------------------------------------
-
-                    bool mij ;
-                    cast_M (&mij, Mx +(pM*msize), 0) ;
-
-                    //----------------------------------------------------------
                     // update C(iC,jC), but only if M(iA,j) allows it
                     //----------------------------------------------------------
 
-                    if (mij)
+                    if (GB_mcast (Mx, pM, msize))
                     { 
                         int64_t iA = Mi [pM] ;
                         GB_iC_DENSE_LOOKUP ;
@@ -162,19 +157,14 @@ GrB_Info GB_subassign_05
                 {
 
                     //----------------------------------------------------------
-                    // consider the entry M(iA,j)
-                    //----------------------------------------------------------
-
-                    bool mij ;
-                    cast_M (&mij, Mx +(pM*msize), 0) ;
-
-                    //----------------------------------------------------------
                     // update C(iC,jC), but only if M(iA,j) allows it
                     //----------------------------------------------------------
 
-                    if (mij)
+                    if (GB_mcast (Mx, pM, msize))
                     {
                         int64_t iA = Mi [pM] ;
+
+                        // find C(iC,jC) in C(:,jC)
                         GB_iC_BINARY_SEARCH ;
                         if (cij_found)
                         { 
@@ -206,7 +196,7 @@ GrB_Info GB_subassign_05
 
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) \
         reduction(&&:pending_sorted)
-    for (int taskid = 0 ; taskid < ntasks ; taskid++)
+    for (taskid = 0 ; taskid < ntasks ; taskid++)
     {
 
         //----------------------------------------------------------------------
@@ -253,19 +243,14 @@ GrB_Info GB_subassign_05
                 {
 
                     //----------------------------------------------------------
-                    // consider the entry M(iA,j)
-                    //----------------------------------------------------------
-
-                    bool mij ;
-                    cast_M (&mij, Mx +(pM*msize), 0) ;
-
-                    //----------------------------------------------------------
                     // update C(iC,jC), but only if M(iA,j) allows it
                     //----------------------------------------------------------
 
-                    if (mij)
+                    if (GB_mcast (Mx, pM, msize))
                     {
                         int64_t iA = Mi [pM] ;
+
+                        // find C(iC,jC) in C(:,jC)
                         GB_iC_BINARY_SEARCH ;
                         if (!cij_found)
                         { 

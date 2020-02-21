@@ -2,7 +2,7 @@
 // GB_ek_slice: slice the entries and vectors of a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -21,9 +21,9 @@
 bool GB_ek_slice        // true if successful, false if out of memory
 (
     // output:
-    int64_t *restrict *pstart_slice_handle, // size ntasks+1
-    int64_t *restrict *kfirst_slice_handle, // size ntasks
-    int64_t *restrict *klast_slice_handle,  // size ntasks
+    int64_t *GB_RESTRICT *pstart_slice_handle, // size ntasks+1
+    int64_t *GB_RESTRICT *kfirst_slice_handle, // size ntasks
+    int64_t *GB_RESTRICT *klast_slice_handle,  // size ntasks
     // input:
     GrB_Matrix A,                   // matrix to slice
     int ntasks                      // # of tasks
@@ -38,16 +38,16 @@ bool GB_ek_slice        // true if successful, false if out of memory
     (*kfirst_slice_handle) = NULL ;
     (*klast_slice_handle ) = NULL ;
 
-    int64_t *restrict pstart_slice = NULL ;
-    int64_t *restrict kfirst_slice = NULL ;
-    int64_t *restrict klast_slice  = NULL ;
+    int64_t *GB_RESTRICT pstart_slice = NULL ;
+    int64_t *GB_RESTRICT kfirst_slice = NULL ;
+    int64_t *GB_RESTRICT klast_slice  = NULL ;
 
     GB_CALLOC_MEMORY (pstart_slice, ntasks+1, sizeof (int64_t)) ;
     GB_CALLOC_MEMORY (kfirst_slice, ntasks, sizeof (int64_t)) ;
     GB_CALLOC_MEMORY (klast_slice, ntasks, sizeof (int64_t)) ;
 
-    if (pstart_slice == NULL || kfirst_slice == NULL | klast_slice == NULL)
-    {
+    if (pstart_slice == NULL || kfirst_slice == NULL || klast_slice == NULL)
+    { 
         GB_ek_slice_free (&pstart_slice, &kfirst_slice, &klast_slice, ntasks) ;
         return (false) ;
     }

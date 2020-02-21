@@ -7,8 +7,8 @@ function grbmake
 %
 % See also: grbcover, grbcover_edit
 
-%  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
-%  http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 % copy the GraphBLAS.h file
 copyfile ('../Include/GraphBLAS.h', 'tmp_include/GraphBLAS.h') ;
@@ -17,15 +17,13 @@ copyfile ('../Include/GraphBLAS.h', 'tmp_include/GraphBLAS.h') ;
 hfiles = [ dir('../Demo/Include') ; ...
            dir('../Source/*.h') ; ...
            dir('../Source/Template') ; ...
-           dir('../Source/Generated/*.h') ; ...
-           dir('../Source/Generator/GB_AxB.*') ; ] ;
+           dir('../Source/Generated/*.h') ; ] ;
 count = grbcover_edit (hfiles, 0, 'tmp_include') ;
 fprintf ('hfile count: %d\n', count) ;
 
 % create the C files and place in tmp_source
 cfiles = [ dir('../Source/*.c') ; ...
            dir('../Source/Generated/*.c') ; ...
-
            dir('GB_cover_finish.c')
            ] ;
 count = grbcover_edit (cfiles, count, 'tmp_source') ;

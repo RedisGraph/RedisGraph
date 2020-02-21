@@ -2,7 +2,7 @@
 // GB_assign_zombie1: delete all entries in C(:,j) for GB_assign
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -24,7 +24,7 @@ void GB_assign_zombie1
     // get C(:,j)
     //--------------------------------------------------------------------------
 
-    int64_t *restrict Ci = C->i ;
+    int64_t *GB_RESTRICT Ci = C->i ;
     int64_t pC_start, pC_end, pleft = 0, pright = C->nvec-1 ;
     GB_lookup (C->is_hyper, C->h, C->p, &pleft, pright, j, &pC_start, &pC_end) ;
     int64_t cjnz = pC_end - pC_start ;
@@ -41,9 +41,10 @@ void GB_assign_zombie1
     // C(:,j) = empty
     //--------------------------------------------------------------------------
 
+    int64_t pC ;
     #pragma omp parallel for num_threads(nthreads) schedule(static) \
         reduction(+:nzombies)
-    for (int64_t pC = pC_start ; pC < pC_end ; pC++)
+    for (pC = pC_start ; pC < pC_end ; pC++)
     {
         int64_t i = Ci [pC] ;
         if (!GB_IS_ZOMBIE (i))

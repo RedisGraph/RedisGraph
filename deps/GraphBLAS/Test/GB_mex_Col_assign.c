@@ -2,7 +2,7 @@
 // GB_mex_assign: C<Mask>(I,J) = accum (C (I,J), A)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 // This function is a wrapper for GrB_Matrix_assign, GrB_Matrix_assign_T
@@ -81,11 +81,11 @@ GrB_Info assign ( )
     GrB_Info info ;
 
     // printf ("\n--- assign:\n") ;
-    ASSERT_OK (GB_check (C, "C", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (Mask, "Mask", GB0)) ;
-    ASSERT_OK (GB_check (A, "A", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (desc, "desc", GB0)) ;
+    ASSERT_MATRIX_OK (C, "C", GB0) ;
+    ASSERT_MATRIX_OK_OR_NULL (Mask, "Mask", GB0) ;
+    ASSERT_MATRIX_OK (A, "A", GB0) ;
+    ASSERT_BINARYOP_OK_OR_NULL (accum, "accum", GB0) ;
+    ASSERT_DESCRIPTOR_OK_OR_NULL (desc, "desc", GB0) ;
 
     /*
     if (I == NULL)
@@ -144,7 +144,6 @@ GrB_Info assign ( )
                 case GB_UINT64_code : ASSIGN (uint64_t) ;
                 case GB_FP32_code   : ASSIGN (float) ;
                 case GB_FP64_code   : ASSIGN (double) ;
-                case GB_UCT_code    :
                 case GB_UDT_code    :
                 default:
                     FREE_ALL ;
@@ -152,7 +151,7 @@ GrB_Info assign ( )
             }
             #undef ASSIGN
 
-            ASSERT_OK (GB_check (C, "C after setElement", GB0)) ;
+            ASSERT_MATRIX_OK (C, "C after setElement", GB0) ;
 
         }
         if (C->vdim == 1)
@@ -180,7 +179,6 @@ GrB_Info assign ( )
                 case GB_UINT64_code : ASSIGN (uint64_t) ;
                 case GB_FP32_code   : ASSIGN (float) ;
                 case GB_FP64_code   : ASSIGN (double) ;
-                case GB_UCT_code    :
                 case GB_UDT_code    :
                 {
                     OK (GrB_assign ((GrB_Vector) C, (GrB_Vector) Mask,
@@ -218,7 +216,6 @@ GrB_Info assign ( )
                 case GB_UINT64_code : ASSIGN (uint64_t) ;
                 case GB_FP32_code   : ASSIGN (float) ;
                 case GB_FP64_code   : ASSIGN (double) ;
-                case GB_UCT_code    :
                 case GB_UDT_code    :
                 {
                     OK (GrB_assign (C, Mask, accum, Ax, I, ni, J, nj, desc)) ;
@@ -249,7 +246,7 @@ GrB_Info assign ( )
         OK (GrB_assign (C, Mask, accum, A, I, ni, J, nj, desc)) ;
     }
 
-    ASSERT_OK (GB_check (C, "Final C before wait", GB0)) ;
+    ASSERT_MATRIX_OK (C, "Final C before wait", GB0) ;
     OK (GrB_wait ( )) ;
     return (info) ;
 }
@@ -375,7 +372,7 @@ GrB_Info many_assign
         }
     }
 
-    ASSERT_OK (GB_check (C, "Final C before wait", GB0)) ;
+    ASSERT_MATRIX_OK (C, "Final C before wait", GB0) ;
     OK (GrB_wait ( )) ;
     return (info) ;
 }

@@ -1,4 +1,4 @@
-# Ignore all files in GraphBLAS/build except this file.
+# Ignore all files except this file.
 *
 */
 !.gitignore

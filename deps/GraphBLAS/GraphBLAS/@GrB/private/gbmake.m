@@ -11,16 +11,26 @@ function gbmake (what)
 % For the Mac, the GraphBLAS library must be installed in /usr/local/lib/ as
 % libgraphblas.dylib.  It cannot be used where it is created in ../build,
 % because of the default Mac security settings.  For Unix/Linux, the library
-% used is ../build/libgraph.so if found, or in /usr/local/lib if not found
+% used is ../build/libgraphblas.so if found, or in /usr/local/lib if not found
 % there.
 %
-% See also: mex, version
+% If GraphBLAS has been initialized already, then gbmake must first finalize
+% GraphBLAS, just as GrB.clear does.  It then calls GrB.init to initialize
+% GraphBLAS.
+%
+% See also: mex, version, GrB.clear
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if verLessThan ('matlab', '9.4')
     gb_error ('MATLAB 9.4 (R2018a) or later is required') ;
+end
+
+% finish GraphBLAS
+try
+    GrB.finalize
+catch
 end
 
 if (nargin < 1)
@@ -51,9 +61,8 @@ try
             end
         end
     end
+catch
 end
-
-libraries = '-L../../../build -L. -L/usr/local/lib -lgraphblas' ;
 
 if (~ismac && isunix)
     flags = [ flags   ' CFLAGS="$CXXFLAGS -fopenmp -fPIC -Wno-pragmas" '] ;
@@ -61,7 +70,17 @@ if (~ismac && isunix)
     flags = [ flags  ' LDFLAGS="$LDFLAGS  -fopenmp -fPIC" '] ;
 end
 
+if ispc
+    % Windows
+    object_suffix = '.obj' ;
+else
+    % Linux, Mac
+    object_suffix = '.o' ;
+end
+
 inc = '-Iutil -I../../../Include -I../../../Source -I../../../Source/Template' ;
+
+ldflags = sprintf ('-L''%s/../../../build''', pwd) ;
 
 hfiles = [ dir('*.h') ; dir('util/*.h') ] ;
 
@@ -86,10 +105,10 @@ for k = 1:length (cfiles)
 
     % get the object file name
     ofile = cfiles(k).name ;
-    objfile = [ ofile(1:end-2) '.o' ] ;
+    objfile = [ ofile(1:end-2) object_suffix ] ;
 
     % get the object file modification time
-    objlist = [ objlist ' ' objfile ] ;
+    objlist = [ objlist ' ' objfile ] ;     %#ok
     dobj = dir (objfile) ;
     if (isempty (dobj))
         % there is no object file; the cfile must be compiled
@@ -102,7 +121,7 @@ for k = 1:length (cfiles)
     if (make_all || tc > tobj || htime > tobj)
         % compile the cfile
         fprintf ('%s\n', cfile) ;
-        mexcmd = sprintf ('mex -c %s -silent %s %s', flags, inc, cfile) ;
+        mexcmd = sprintf ('mex -c %s -silent %s ''%s''', flags, inc, cfile) ;
         eval (mexcmd) ;
         any_c_compiled = true ;
     end
@@ -131,10 +150,16 @@ for k = 1:length (mexfunctions)
     % compile if it is newer than its object file, or if any cfile was compiled
     if (make_all || tc > tobj || any_c_compiled)
         % compile the mexFunction
-        mexcmd = sprintf ('mex -silent %s %s %s %s %s', ...
-            flags, inc, mexfunction, objlist, libraries) ;
-        fprintf ('%s\n', mexfunction) ;
+        mexcmd = sprintf ('mex %s -silent %s %s ''%s'' %s -lgraphblas', ...
+            ldflags, flags, inc, mexfunction, objlist) ;
+        fprintf ('%s\n', mexcmd) ;
         eval (mexcmd) ;
     end
+end
+
+% start GraphBLAS
+try
+    GrB.init
+catch
 end
 

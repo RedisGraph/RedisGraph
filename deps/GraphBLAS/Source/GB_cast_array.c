@@ -2,7 +2,7 @@
 // GB_cast_array: typecast an array
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -18,9 +18,9 @@
 
 void GB_cast_array              // typecast an array
 (
-    GB_void *restrict Cx,       // output array
+    GB_void *Cx,                // output array
     const GB_Type_code code1,   // type code for Cx
-    const GB_void *restrict Ax, // input array
+    GB_void *Ax,                // input array
     const GB_Type_code code2,   // type code for Ax
     const int64_t anz,          // number of entries in Cx and Ax
     GB_Context Context
@@ -65,8 +65,8 @@ void GB_cast_array              // typecast an array
 
         #define GB_WORKER(ignore1,zname,ztype,xname,xtype)                  \
         {                                                                   \
-            GrB_Info info = GB_unop (zname,xname) ((ztype *restrict) Cx,    \
-                (const xtype *restrict) Ax, anz, nthreads) ;                \
+            GrB_Info info = GB_unop (zname,xname) ((ztype *) Cx,            \
+                (xtype *) Ax, anz, nthreads) ;                              \
             if (info == GrB_SUCCESS) return ;                               \
         }                                                                   \
         break ;
@@ -83,12 +83,17 @@ void GB_cast_array              // typecast an array
     // generic worker: typecasting for compact case only
     //--------------------------------------------------------------------------
 
+    // This is dead code unless GBCOMPACT is enabled.
+
+    GB_BURBLE_N (anz, "generic ") ;
+
     int64_t csize = GB_code_size (code1, 1) ;
     int64_t asize = GB_code_size (code2, 1) ;
     GB_cast_function cast_A_to_C = GB_cast_factory (code1, code2) ;
 
+    int64_t p ;
     #pragma omp parallel for num_threads(nthreads) schedule(static)
-    for (int64_t p = 0 ; p < anz ; p++)
+    for (p = 0 ; p < anz ; p++)
     {
         // Cx [p] = Ax [p]
         cast_A_to_C (Cx +(p*csize), Ax +(p*asize), asize) ;

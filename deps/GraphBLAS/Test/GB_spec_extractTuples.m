@@ -1,7 +1,7 @@
 function [I, J, X] = GB_spec_extractTuples (A, xclass)
 %GB_SPEC_EXTRACTTUPLES a MATLAB mimic of GrB_*_extractTuples
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 A = GB_spec_matrix (A) ;

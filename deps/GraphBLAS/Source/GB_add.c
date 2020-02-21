@@ -2,7 +2,7 @@
 // GB_add: C = A+B or C<M>=A+B, but not C<!M>=A+B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -41,6 +41,7 @@ GrB_Info GB_add             // C=A+B or C<M>=A+B
     const GrB_Type ctype,   // type of output matrix C
     const bool C_is_csc,    // format of output matrix C
     const GrB_Matrix M,     // optional mask for C, unused if NULL
+    const bool Mask_struct, // if true, use the only structure of M
     const GrB_Matrix A,     // input A matrix
     const GrB_Matrix B,     // input B matrix
     const GrB_BinaryOp op,  // op to perform C = op (A,B)
@@ -52,11 +53,13 @@ GrB_Info GB_add             // C=A+B or C<M>=A+B
     // check inputs
     //--------------------------------------------------------------------------
 
+    GBBURBLE ((M == NULL) ? "add " : "masked_add ") ;
+
     ASSERT (Chandle != NULL) ;
-    ASSERT_OK (GB_check (A, "A for add", GB0)) ;
-    ASSERT_OK (GB_check (B, "B for add", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (op, "op for add", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (M, "M for add", GB0)) ;
+    ASSERT_MATRIX_OK (A, "A for add", GB0) ;
+    ASSERT_MATRIX_OK (B, "B for add", GB0) ;
+    ASSERT_BINARYOP_OK_OR_NULL (op, "op for add", GB0) ;
+    ASSERT_MATRIX_OK_OR_NULL (M, "M for add", GB0) ;
     ASSERT (A->vdim == B->vdim && A->vlen == B->vlen) ;
     if (M != NULL)
     { 
@@ -132,7 +135,7 @@ GrB_Info GB_add             // C=A+B or C<M>=A+B
         // from phase0:
         Cnvec, Ch, C_to_M, C_to_A, C_to_B, Ch_is_Mh,
         // original input:
-        M, A, B, Context) ;
+        M, Mask_struct, A, B, Context) ;
 
     if (info != GrB_SUCCESS)
     { 
@@ -162,7 +165,7 @@ GrB_Info GB_add             // C=A+B or C<M>=A+B
         // from phase0:
         Cnvec, Ch, C_to_M, C_to_A, C_to_B, Ch_is_Mh,
         // original input:
-        M, A, B, Context) ;
+        M, Mask_struct, A, B, Context) ;
 
     // free workspace
     GB_FREE_MEMORY (TaskList, max_ntasks+1, sizeof (GB_task_struct)) ;
@@ -182,7 +185,7 @@ GrB_Info GB_add             // C=A+B or C<M>=A+B
     // return result
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (C, "C output for add", GB0)) ;
+    ASSERT_MATRIX_OK (C, "C output for add", GB0) ;
     (*Chandle) = C ;
     return (GrB_SUCCESS) ;
 }

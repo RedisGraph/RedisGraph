@@ -2,7 +2,7 @@
 // GB_Pending.h: data structure and operations for pending tuples
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -133,8 +133,8 @@ static inline bool GB_Pending_add   // add a tuple to the list
     // keep track of whether or not the pending tuples are already sorted
     //--------------------------------------------------------------------------
 
-    int64_t *restrict Pending_i = Pending->i ;
-    int64_t *restrict Pending_j = Pending->j ;
+    int64_t *GB_RESTRICT Pending_i = Pending->i ;
+    int64_t *GB_RESTRICT Pending_j = Pending->j ;
 
     if (n > 0 && Pending->sorted)
     { 
@@ -153,7 +153,7 @@ static inline bool GB_Pending_add   // add a tuple to the list
         Pending_j [n] = j ;
     }
     size_t size = type->size ;
-    GB_void *restrict Pending_x = Pending->x ;
+    GB_void *GB_RESTRICT Pending_x = Pending->x ;
     memcpy (Pending_x +(n*size), scalar, size) ;
     Pending->n++ ;
 
@@ -182,6 +182,24 @@ static inline bool GB_Pending_add   // add a tuple to the list
     n++ ;                                                                   \
     ilast = iC ;                                                            \
     jlast = jC ;
+
+//------------------------------------------------------------------------------
+// GB_shall_block: see if the matrix should be finished
+//------------------------------------------------------------------------------
+
+static inline bool GB_shall_block   // return true if GB_wait (A) should be done
+(
+    GrB_Matrix A
+)
+{
+
+    if (!GB_PENDING_OR_ZOMBIES (A)) return (false) ;
+    double npending = GB_Pending_n (A) ;
+    double anzmax = ((double) A->vlen) * ((double) A->vdim) ;
+    bool many_pending = (npending >= anzmax) ;
+    bool blocking = (GB_Global_mode_get ( ) == GrB_BLOCKING) ;
+    return (many_pending || blocking) ;
+}
 
 #endif
 

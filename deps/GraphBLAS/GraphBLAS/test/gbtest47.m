@@ -1,7 +1,7 @@
 function gbtest47
 %GBTEST47 test GrB.entries, GrB.nonz, numel
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 rng ('default') ;
@@ -51,7 +51,7 @@ assert (c0 == c1) ;
 assert (c1 == c2) ;
 
 try
-    x = vpa (1) ;
+    x = vpa (1) ; %#ok<*NASGU>
     have_symbolic = true ;
 catch
     % symbolic toolbox not available

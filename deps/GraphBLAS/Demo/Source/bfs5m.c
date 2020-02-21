@@ -2,9 +2,17 @@
 // GraphBLAS/Demo/Source/bfs5m.c: breadth first search (vxm and assign/reduce)
 //------------------------------------------------------------------------------
 
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+//------------------------------------------------------------------------------
+
 // Modified from the GraphBLAS C API Specification, by Aydin Buluc, Timothy
 // Mattson, Scott McMillan, Jose' Moreira, Carl Yang.  Based on "GraphBLAS
 // Mathematics" by Jeremy Kepner.
+
+// No copyright claim is made for this particular file; the above copyright
+// applies to all of SuiteSparse:GraphBLAS, not this file.
 
 // This method has been updated as of Version 2.2 of SuiteSparse:GraphBLAS.
 // It now assumes the matrix is held by row (GxB_BY_ROW) and uses GrB_vxm
@@ -51,16 +59,16 @@ GrB_Info bfs5m              // BFS of a graph (using vector assign & reduce)
 
     GrB_Matrix_nrows (&n, A) ;             // n = # of rows of A
     GrB_Vector_new (&v, GrB_INT32, n) ;    // Vector<int32_t> v(n) = 0
-    GrB_assign (v, NULL, NULL, 0, GrB_ALL, n, NULL) ;   // make v dense
+    GrB_Vector_assign_INT32 (v, NULL, NULL, 0, GrB_ALL, n, NULL) ;// make dense
     GrB_Vector_nvals (&n, v) ;             // finish pending work on v
 
     GrB_Vector_new (&q, GrB_BOOL, n) ;     // Vector<bool> q(n) = false
-    GrB_Vector_setElement (q, true, s) ;   // q[s] = true, false elsewhere
+    GrB_Vector_setElement_BOOL (q, true, s) ;   // q[s] = true, false elsewhere
 
-    GrB_Monoid_new (&Lor, GrB_LOR, (bool) false) ;
+    GrB_Monoid_new_BOOL (&Lor, GrB_LOR, (bool) false) ;
     GrB_Semiring_new (&Boolean, Lor, GrB_LAND) ;
     GrB_Descriptor_new (&desc) ;
-    GrB_Descriptor_set (desc, GrB_MASK, GrB_SCMP) ;     // invert the mask
+    GrB_Descriptor_set (desc, GrB_MASK, GrB_COMP) ;     // invert the mask
     GrB_Descriptor_set (desc, GrB_OUTP, GrB_REPLACE) ;  // clear q first
 
     //--------------------------------------------------------------------------
@@ -72,26 +80,26 @@ GrB_Info bfs5m              // BFS of a graph (using vector assign & reduce)
     {
 
         // v<q> = level, using vector assign with q as the mask
-        GrB_assign (v, q, NULL, level, GrB_ALL, n, NULL) ;
+        GrB_Vector_assign_INT32 (v, q, NULL, level, GrB_ALL, n, NULL) ;
 
         // q<!v> = q ||.&& A ; finds all the unvisited
         // successors from current q, using !v as the mask
         GrB_vxm (q, v, NULL, Boolean, q, A, desc) ;
 
         // successor = ||(q)
-        GrB_reduce (&successor, NULL, Lor, q, NULL) ;
+        GrB_Vector_reduce_BOOL (&successor, NULL, Lor, q, NULL) ;
     }
 
     // make v sparse
     GrB_Descriptor_set (desc, GrB_MASK, GxB_DEFAULT) ;  // mask not inverted
-    GrB_assign (v, v, NULL, v, GrB_ALL, n, desc) ;
+    GrB_Vector_assign (v, v, NULL, v, GrB_ALL, n, desc) ;
 
     *v_output = v ;         // return result
 
-    GrB_free (&q) ;
-    GrB_free (&Lor) ;
-    GrB_free (&Boolean) ;
-    GrB_free (&desc) ;
+    GrB_Vector_free (&q) ;
+    GrB_Monoid_free (&Lor) ;
+    GrB_Semiring_free (&Boolean) ;
+    GrB_Descriptor_free (&desc) ;
 
     return (GrB_SUCCESS) ;
 }

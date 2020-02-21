@@ -2,7 +2,7 @@
 // gbextract: extract entries into a GraphBLAS matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -102,7 +102,7 @@ void mexFunction
     //--------------------------------------------------------------------------
 
     GrB_Desc_Value in0 ;
-    OK (GxB_get (desc, GrB_INP0, &in0)) ;
+    OK (GxB_Desc_get (desc, GrB_INP0, &in0)) ;
     GrB_Index anrows, ancols ;
     bool A_transpose = (in0 == GrB_TRAN) ;
     if (A_transpose)
@@ -162,22 +162,22 @@ void mexFunction
 
         OK (GrB_Matrix_new (&C, ctype, cnrows, cncols)) ;
         fmt = gb_get_format (cnrows, cncols, A, NULL, fmt) ;
-        OK (GxB_set (C, GxB_FORMAT, fmt)) ;
+        OK (GxB_Matrix_Option_set (C, GxB_FORMAT, fmt)) ;
     }
 
     //--------------------------------------------------------------------------
     // compute C<M> += A(I,J) or AT(I,J)
     //--------------------------------------------------------------------------
 
-    OK (GrB_extract (C, M, accum, A, I, ni, J, nj, desc)) ;
+    OK (GrB_Matrix_extract (C, M, accum, A, I, ni, J, nj, desc)) ;
 
     //--------------------------------------------------------------------------
     // free shallow copies
     //--------------------------------------------------------------------------
 
-    OK (GrB_free (&M)) ;
-    OK (GrB_free (&A)) ;
-    OK (GrB_free (&desc)) ;
+    OK (GrB_Matrix_free (&M)) ;
+    OK (GrB_Matrix_free (&A)) ;
+    OK (GrB_Descriptor_free (&desc)) ;
     if (I_allocated) gb_mxfree (&I) ;
     if (J_allocated) gb_mxfree (&J) ;
 

@@ -2,7 +2,7 @@
 // GrB_Vector_reduce_scalar: reduce a vector to a scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -29,10 +29,13 @@ GrB_Info GrB_Vector_reduce_ ## T    /* c = accum (c, reduce_to_scalar (u))  */ \
 )                                                                              \
 {                                                                              \
     GB_WHERE ("GrB_Vector_reduce_" GB_STR(T) " (&c, accum, reduce, u, desc)") ;\
+    GB_BURBLE_START ("GrB_reduce") ;                                           \
     GB_RETURN_IF_NULL_OR_FAULTY (u) ;                                          \
     ASSERT (GB_VECTOR_OK (u)) ;                                                \
-    return (GB_reduce_to_scalar (c, GrB_ ## T, accum, reduce, (GrB_Matrix) u,  \
-        Context)) ;                                                     \
+    GrB_Info info = GB_reduce_to_scalar (c, GrB_ ## T, accum, reduce,          \
+        (GrB_Matrix) u, Context) ;                                             \
+    GB_BURBLE_END ;                                                            \
+    return (info) ;                                                            \
 }
 
 GB_VECTOR_TO_SCALAR (bool     , BOOL   )
@@ -58,10 +61,13 @@ GrB_Info GrB_Vector_reduce_UDT      // c = accum (c, reduce_to_scalar (u))
 { 
     // See comments on GrB_Matrix_reduce_UDT
     GB_WHERE ("GrB_Vector_reduce_UDT (&c, accum, reduce, u, desc)") ;
+    GB_BURBLE_START ("GrB_reduce") ;
     GB_RETURN_IF_NULL_OR_FAULTY (u) ;
     GB_RETURN_IF_NULL_OR_FAULTY (reduce) ;
     ASSERT (GB_VECTOR_OK (u)) ;
-    return (GB_reduce_to_scalar (c, reduce->op->ztype,
-        accum, reduce, (GrB_Matrix) u, Context)) ;
+    GrB_Info info = GB_reduce_to_scalar (c, reduce->op->ztype,
+        accum, reduce, (GrB_Matrix) u, Context) ;
+    GB_BURBLE_END ;
+    return (info) ;
 }
 
