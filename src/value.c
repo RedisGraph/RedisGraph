@@ -604,27 +604,26 @@ XXH64_hash_t SIValue_HashCode(SIValue v) {
 	return hashCode;
 }
 
-void SIValue_Free(SIValue *v) {
+void SIValue_Free(SIValue v) {
 	// The free routine only performs work if it owns a heap allocation.
-	if(v->allocation != M_SELF) return;
+	if(v.allocation != M_SELF) return;
 
-	switch(v->type) {
+	switch(v.type) {
 	case T_STRING:
-		rm_free(v->stringval);
-		v->stringval = NULL;
+		rm_free(v.stringval);
+		v.stringval = NULL;
 		return;
 	case T_NODE:
 	case T_EDGE:
-		rm_free(v->ptrval);
+		rm_free(v.ptrval);
 		return;
 	case T_ARRAY:
-		SIArray_Free(*v);
+		SIArray_Free(v);
 		return;
 	case T_PATH:
-		SIPath_Free(*v);
+		SIPath_Free(v);
 		return;
 	default:
 		return;
 	}
 }
-

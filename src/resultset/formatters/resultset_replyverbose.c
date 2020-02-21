@@ -162,7 +162,7 @@ static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, SIValue array)
 static void _ResultSet_VerboseReplyWithPath(RedisModuleCtx *ctx, SIValue path) {
 	SIValue path_array = SIPath_ToList(path);
 	_ResultSet_VerboseReplyWithArray(ctx, path_array);
-	SIValue_Free(&path_array);
+	SIValue_Free(path_array);
 }
 
 void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
