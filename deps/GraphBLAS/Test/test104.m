@@ -1,6 +1,9 @@
 function test104
 %TEST104 export/import
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 rng 'default'
 fprintf ('\ntest104: export/import tests\n') ;
 

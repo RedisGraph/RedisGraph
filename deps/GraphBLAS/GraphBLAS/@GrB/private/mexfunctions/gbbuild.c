@@ -2,7 +2,7 @@
 // gbbuild: build a GraphBLAS matrix or a MATLAB sparse matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -50,7 +50,7 @@ void mexFunction
     GrB_Descriptor desc = 
         gb_mxarray_to_descriptor (pargin [nargin-1], &kind, &fmt, &base) ;
 
-    OK (GrB_free (&desc)) ;
+    OK (GrB_Descriptor_free (&desc)) ;
 
     // remove the descriptor from consideration
     nargin-- ;
@@ -133,7 +133,8 @@ void mexFunction
         else
         { 
             // nrows = max entry in I+1
-            nrows = GB_matlab_helper4 (I, ni) ;
+            bool ok = GB_matlab_helper4 (I, ni, &nrows) ;
+            CHECK_ERROR (!ok, "out of memory") ;
         }
     }
     else
@@ -153,7 +154,8 @@ void mexFunction
         else
         { 
             // ncols = max entry in J+1
-            ncols = GB_matlab_helper4 (J, nj) ;
+            bool ok = GB_matlab_helper4 (J, nj, &ncols) ;
+            CHECK_ERROR (!ok, "out of memory") ;
         }
     }
     else
@@ -197,7 +199,7 @@ void mexFunction
     GrB_Matrix A ;
     OK (GrB_Matrix_new (&A, type, nrows, ncols)) ;
     fmt = gb_get_format (nrows, ncols, NULL, NULL, fmt) ;
-    OK (GxB_set (A, GxB_FORMAT, fmt)) ;
+    OK (GxB_Matrix_Option_set (A, GxB_FORMAT, fmt)) ;
 
     // expandx is true if X must be expanded from a scalar to a vector
     void *X2 = NULL ;

@@ -2,7 +2,7 @@
 // GB_select_count: count entries in eacn vector for C=select(A,thunk)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -18,9 +18,9 @@
     // get A
     //--------------------------------------------------------------------------
 
-    const int64_t *restrict Ap = A->p ;
-    const int64_t *restrict Ah = A->h ;
-    const int64_t *restrict Ai = A->i ;
+    const int64_t *GB_RESTRICT Ap = A->p ;
+    const int64_t *GB_RESTRICT Ah = A->h ;
+    const int64_t *GB_RESTRICT Ai = A->i ;
     int64_t anvec = A->nvec ;
     int64_t avlen = A->vlen ;
 
@@ -28,8 +28,9 @@
     // tril, triu, diag, offdiag, resize: binary search in each vector
     //--------------------------------------------------------------------------
 
+    int64_t k ;
     #pragma omp parallel for num_threads(nthreads) schedule(guided)
-    for (int64_t k = 0 ; k < anvec ; k++)
+    for (k = 0 ; k < anvec ; k++)
     {
 
         //----------------------------------------------------------------------
@@ -81,7 +82,7 @@
             { 
                 // binary search for A (i,k)
                 int64_t pright = pA_end - 1 ;
-                GB_BINARY_SPLIT_SEARCH (i, Ai, p, pright, found) ;
+                GB_SPLIT_BINARY_SEARCH (i, Ai, p, pright, found) ;
             }
 
             #if defined ( GB_TRIL_SELECTOR )
@@ -143,8 +144,8 @@
     // Wfirst [0..ntasks-1] and Wlast [0..ntasks-1] are required for
     // constructing C_start_slice [0..ntasks-1] in GB_selector.
 
-    int64_t *restrict Wfirst = (int64_t *) Wfirst_space ;
-    int64_t *restrict Wlast  = (int64_t *) Wlast_space  ;
+    int64_t *GB_RESTRICT Wfirst = (int64_t *) Wfirst_space ;
+    int64_t *GB_RESTRICT Wlast  = (int64_t *) Wlast_space  ;
 
     for (int tid = 0 ; tid < ntasks ; tid++)
     {

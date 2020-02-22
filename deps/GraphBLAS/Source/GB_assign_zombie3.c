@@ -2,7 +2,7 @@
 // GB_assign_zombie3: delete entries in C(:,j) for C_replace_phase
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -21,6 +21,7 @@ void GB_assign_zombie3
     GrB_Matrix Z,                   // the matrix C, or a copy
     const GrB_Matrix M,
     const bool Mask_comp,
+    const bool Mask_struct,
     const int64_t j,                // vector index with entries to delete
     const GrB_Index *I,
     const int64_t nI,
@@ -34,9 +35,9 @@ void GB_assign_zombie3
     // get Z (:,j)
     //--------------------------------------------------------------------------
 
-    const int64_t *restrict Zh = Z->h ;
-    const int64_t *restrict Zp = Z->p ;
-    int64_t *restrict Zi = Z->i ;
+    const int64_t *GB_RESTRICT Zh = Z->h ;
+    const int64_t *GB_RESTRICT Zp = Z->p ;
+    int64_t *GB_RESTRICT Zi = Z->i ;
     int64_t pZ_start, pZ_end, pleft = 0, pright = Z->nvec-1 ;
     GB_lookup (Z->is_hyper, Zh, Zp, &pleft, pright, j, &pZ_start, &pZ_end) ;
     int64_t nzombies = Z->nzombies ;
@@ -46,12 +47,10 @@ void GB_assign_zombie3
     // get M(:,0)
     //--------------------------------------------------------------------------
 
-    const int64_t *restrict Mp = M->p ;
-    const int64_t *restrict Mi = M->i ;
-    const GB_void *restrict Mx = M->x ;
+    const int64_t *GB_RESTRICT Mp = M->p ;
+    const int64_t *GB_RESTRICT Mi = M->i ;
+    const GB_void *GB_RESTRICT Mx = (Mask_struct ? NULL : (M->x)) ;
     const size_t msize = M->type->size ;
-    const GB_cast_function cast_M =
-        GB_cast_factory (GB_BOOL_code, M->type->code) ;
     int64_t pM_start = Mp [0] ;
     int64_t pM_end = Mp [1] ;
 
@@ -67,9 +66,10 @@ void GB_assign_zombie3
     // delete entries from Z(:,j) that are outside I, if the mask M allows it
     //--------------------------------------------------------------------------
 
+    int taskid ;
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) \
         reduction(+:nzombies)
-    for (int taskid = 0 ; taskid < ntasks ; taskid++)
+    for (taskid = 0 ; taskid < ntasks ; taskid++)
     {
         int64_t p1, p2 ;
         GB_PARTITION (p1, p2, zjnz, taskid, ntasks) ;
@@ -106,7 +106,7 @@ void GB_assign_zombie3
                     if (found)
                     { 
                         // found it
-                        cast_M (&mij, Mx +(pM*msize), 0) ;
+                        mij = GB_mcast (Mx, pM, msize) ;
                     }
                     if (Mask_comp)
                     { 

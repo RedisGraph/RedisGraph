@@ -2,7 +2,7 @@
 // GB_mex_rdiv2: compute C=A*B with the rdiv2 operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -14,7 +14,7 @@
 
 #include "GB_mex.h"
 
-#define USAGE "C = GB_mex_AxB (A, B, atrans, btrans, axb_method, flipxy)"
+#define USAGE "C = GB_mex_rdiv2 (A, B, atrans, btrans, axb_method, flipxy, C_scalar)"
 
 #define FREE_ALL                        \
 {                                       \
@@ -22,6 +22,7 @@
     GB_MATRIX_FREE (&B) ;               \
     GB_MATRIX_FREE (&B64) ;             \
     GB_MATRIX_FREE (&C) ;               \
+    GB_MATRIX_FREE (&T) ;               \
     GrB_free (&My_rdiv2) ;              \
     GrB_free (&My_plus_rdiv2) ;         \
     GB_mx_put_global (true, 0) ;        \
@@ -31,20 +32,21 @@
 
 GrB_Info info ;
 bool malloc_debug = false ;
-bool ignore = false ;
+bool ignore = false, ignore2 = false ;
 bool atranspose = false ;
 bool btranspose = false ;
-GrB_Matrix A = NULL, B = NULL, B64 = NULL, C = NULL ;
+GrB_Matrix A = NULL, B = NULL, B64 = NULL, C = NULL, T = NULL ;
 int64_t anrows = 0 ;
 int64_t ancols = 0 ;
 int64_t bnrows = 0 ;
 int64_t bncols = 0 ;
 GrB_Desc_Value AxB_method = GxB_DEFAULT, AxB_method_used ;
 bool flipxy = false ;
+bool done_in_place = false ;
+double C_scalar = 0 ;
 
 GrB_Info axb (GB_Context Context) ;
 
-#ifndef MY_RDIV
 GrB_Semiring My_plus_rdiv2 = NULL ;
 GrB_BinaryOp My_rdiv2 = NULL ;
 
@@ -54,13 +56,11 @@ void my_rdiv2 (double *z, const double *x, const float *y)
 {
     (*z) = ((double) (*y)) / (*x) ;
 }
-#endif
 
 //------------------------------------------------------------------------------
 
 GrB_Info axb (GB_Context Context)
 {
-    #ifndef MY_RDIV
     // create the rdiv2 operator
     info = GrB_BinaryOp_new (&My_rdiv2, my_rdiv2, GrB_FP64, GrB_FP64, GrB_FP32);
     if (info != GrB_SUCCESS) return (info) ;
@@ -70,27 +70,74 @@ GrB_Info axb (GB_Context Context)
         GrB_free (&My_rdiv2) ;
         return (info) ;
     }
-    #else
-    // printf ("using precompiled semiring %p\n", My_plus_rdiv2) ;
-    #endif
 
-    // GB_check (My_plus_rdiv2, "My_plus_rdiv2", GB0) ;
+    bool do_in_place = (C_scalar != 0) ;
+    C = NULL ;
 
-    // C = A*B
-    info = GB_AxB_meta (&C,
+    if (do_in_place)
+    {
+        // construct the result matrix and fill it with the scalar
+        GrB_Index cnrows = anrows ;
+        GrB_Index cncols = bncols ;
+        info = GrB_Matrix_new (&C, GrB_FP64, cnrows, cncols) ;
+        if (info != GrB_SUCCESS)
+        {
+            GrB_free (&My_rdiv2) ;
+            GrB_free (&My_plus_rdiv2) ;
+            return (info) ;
+        }
+        info = GrB_assign (C, NULL, NULL, C_scalar,
+            GrB_ALL, cnrows, GrB_ALL, cncols, NULL) ;
+        if (info != GrB_SUCCESS) 
+        {
+            GrB_free (&My_rdiv2) ;
+            GrB_free (&My_plus_rdiv2) ;
+            GrB_free (&C) ;
+            return (info) ;
+        }
+        // GxB_print (C, 3) ;
+    }
+
+    // C = A*B or C += A*B
+    info = GB_AxB_meta (
+        &T,
+        C,
+        false,      // C_replace
         true,       // CSC
         NULL,       // no MT returned
         NULL,       // no Mask
         false,      // mask not complemented
+        false,      // mask not structural
+        (do_in_place) ? GrB_PLUS_FP64 : NULL,   // accum
         A, B,
         My_plus_rdiv2,
         atranspose,
         btranspose,
         flipxy,
         &ignore,    // mask_applied
+        &done_in_place,
         AxB_method, &AxB_method_used, Context) ;
 
-    // does nothing if the objects are pre-compiled
+    if (info == GrB_SUCCESS)
+    {
+        if (done_in_place != do_in_place)
+        {
+            printf ("done in place: %d %d\n", do_in_place, done_in_place) ;
+            mexErrMsgTxt ("failure: not in place as expected\n") ;
+        }
+        if (!done_in_place)
+        {
+            GrB_free (&C) ;
+            C = T ;
+            T = NULL ;
+        }
+    }
+    else
+    {
+        GrB_free (&C) ;
+        GrB_free (&T) ;
+    }
+
     GrB_free (&My_rdiv2) ;
     GrB_free (&My_plus_rdiv2) ;
 
@@ -116,15 +163,13 @@ void mexFunction
     B64 = NULL ;
     C = NULL ;
 
-    #ifndef MY_RDIV
     My_rdiv2 = NULL ;
     My_plus_rdiv2 = NULL ;
-    #endif
 
     GB_WHERE (USAGE) ;
 
     // check inputs
-    if (nargout > 1 || nargin < 2 || nargin > 6)
+    if (nargout > 1 || nargin < 2 || nargin > 7)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
     }
@@ -157,11 +202,15 @@ void mexFunction
     // 1001: Gustavson
     // 1002: heap
     // 1003: dot
+    // 1004: hash
+    // 1005: saxpy
     GET_SCALAR (4, GrB_Desc_Value, AxB_method, GxB_DEFAULT) ;
 
     if (! ((AxB_method == GxB_DEFAULT) ||
         (AxB_method == GxB_AxB_GUSTAVSON) ||
         (AxB_method == GxB_AxB_HEAP) ||
+        (AxB_method == GxB_AxB_HASH) ||
+        (AxB_method == GxB_AxB_SAXPY) ||
         (AxB_method == GxB_AxB_DOT)))
     {
         mexErrMsgTxt ("unknown method") ;
@@ -169,6 +218,10 @@ void mexFunction
 
     // get the flipxy option
     GET_SCALAR (5, bool, flipxy, false) ;
+
+    // get the C_scalar
+    GET_SCALAR (6, double, C_scalar, 0) ;
+    // printf ("C scalar: %g\n", C_scalar) ;
 
     // determine the dimensions
     anrows = (atranspose) ? GB_NCOLS (A) : GB_NROWS (A) ;
@@ -181,15 +234,19 @@ void mexFunction
         mexErrMsgTxt ("invalid dimensions") ;
     }
 
+    if (atranspose && btranspose && C_scalar != 0)
+    {
+        printf ("C=A'*B'; ignoring C_scalar!\n") ;
+        C_scalar = 0 ;
+    }
+
     // convert B64 (double) to B (float)
     GrB_Matrix_new (&B, GrB_FP32, bnrows, bncols) ;
     GrB_assign (B, NULL, NULL, B64, GrB_ALL, 0, GrB_ALL, 0, NULL) ;
 
-    // B must be completed for GB_AxB_meta to work
+    // B must be completed
     GrB_Index nvals ;
     GrB_Matrix_nvals (&nvals, B) ;
-    // GB_check (B, "B float", GB0) ;
-    // GB_check (B64, "B64 double", GB0) ;
 
     METHOD (axb (Context)) ;
 

@@ -2,7 +2,7 @@
 // GB_ops_template.h: define the unary and binary functions and operators
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -67,7 +67,7 @@ inline void GB (IDENTITY_f) (GB_Z_X_ARGS) { (*z) = (*x) ; }
     inline void GB (LNOT_f)     (GB_Z_X_ARGS) { (*z) = ! ((*x) != 0) ; }
 #endif
 
-extern struct GB_UnaryOp_opaque
+GB_PUBLIC struct GB_UnaryOp_opaque
     GB (opaque_GxB_ONE),
     GB (opaque_GrB_IDENTITY),
     GB (opaque_GrB_AINV),
@@ -76,12 +76,14 @@ extern struct GB_UnaryOp_opaque
     GB (opaque_GxB_LNOT) ;
 
 //------------------------------------------------------------------------------
-// 8 binary functions z=f(x,y) where x,y,z have the same type
+// 12 binary functions z=f(x,y) where x,y,z have the same type
 //------------------------------------------------------------------------------
 
-// first, second, plus, minus, rminus, times
 inline void GB (FIRST_f)  (GB_Z_X_Y_ARGS) { (*z) = (*x) ; }
 inline void GB (SECOND_f) (GB_Z_X_Y_ARGS) { (*z) = (*y) ; }
+inline void GB (PAIR_f)   (GB_Z_X_Y_ARGS) { (*z) = 1 ; }
+inline void GB (ANY_f)    (GB_Z_X_Y_ARGS) { (*z) = (*y) ; } // same as SECOND
+
 inline void GB (PLUS_f)   (GB_Z_X_Y_ARGS) { (*z) = (*x) + (*y) ; }
 inline void GB (MINUS_f)  (GB_Z_X_Y_ARGS) { (*z) = (*x) - (*y) ; }
 inline void GB (RMINUS_f) (GB_Z_X_Y_ARGS) { (*z) = (*y) - (*x) ; }
@@ -140,15 +142,19 @@ inline void GB (TIMES_f)  (GB_Z_X_Y_ARGS) { (*z) = (*x) * (*y) ; }
     #endif
 #endif
 
-extern struct GB_BinaryOp_opaque
+GB_PUBLIC struct GB_BinaryOp_opaque
     GB (opaque_GrB_FIRST),
     GB (opaque_GrB_SECOND),
-    GB (opaque_GrB_MIN),
-    GB (opaque_GrB_MAX),
+    GB (opaque_GxB_PAIR),
+    GB (opaque_GxB_ANY),
+
     GB (opaque_GrB_PLUS),
     GB (opaque_GrB_MINUS),
     GB (opaque_GxB_RMINUS),
     GB (opaque_GrB_TIMES),
+
+    GB (opaque_GrB_MIN),
+    GB (opaque_GrB_MAX),
     GB (opaque_GrB_DIV),
     GB (opaque_GxB_RDIV) ;
 
@@ -163,7 +169,7 @@ inline void GB (ISLT_f)   (GB_Z_X_Y_ARGS) { (*z) = ((*x) <  (*y)) ; }
 inline void GB (ISGE_f)   (GB_Z_X_Y_ARGS) { (*z) = ((*x) >= (*y)) ; }
 inline void GB (ISLE_f)   (GB_Z_X_Y_ARGS) { (*z) = ((*x) <= (*y)) ; }
 
-extern struct GB_BinaryOp_opaque
+GB_PUBLIC struct GB_BinaryOp_opaque
     GB (opaque_GxB_ISEQ),
     GB (opaque_GxB_ISNE),
     GB (opaque_GxB_ISGT),
@@ -187,7 +193,7 @@ inline void GB (LAND_f) (GB_Z_X_Y_ARGS) { (*z) = (((*x) != 0) && ((*y) != 0)) ;}
 inline void GB (LXOR_f) (GB_Z_X_Y_ARGS) { (*z) = (((*x) != 0) != ((*y) != 0)) ;}
 #endif
 
-extern struct GB_BinaryOp_opaque
+GB_PUBLIC struct GB_BinaryOp_opaque
     GB (opaque_GxB_LOR),
     GB (opaque_GxB_LAND),
     GB (opaque_GxB_LXOR) ;
@@ -203,7 +209,7 @@ inline void GB (LT_f) (GB_Zbool_X_Y_ARGS) { (*z) = ((*x) <  (*y)) ; }
 inline void GB (GE_f) (GB_Zbool_X_Y_ARGS) { (*z) = ((*x) >= (*y)) ; }
 inline void GB (LE_f) (GB_Zbool_X_Y_ARGS) { (*z) = ((*x) <= (*y)) ; }
 
-extern struct GB_BinaryOp_opaque
+GB_PUBLIC struct GB_BinaryOp_opaque
     GB (opaque_GrB_EQ),
     GB (opaque_GrB_NE),
     GB (opaque_GrB_GT),

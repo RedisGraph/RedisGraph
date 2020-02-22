@@ -2,7 +2,7 @@
 // GrB_finalize: finalize GraphBLAS
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -12,7 +12,7 @@
 // function.  Results are undefined if more than one thread calls this
 // function at the same time.
 
-#include "GB_Sauna.h"
+#include "GB.h"
 
 GrB_Info GrB_finalize ( )
 { 
@@ -22,15 +22,6 @@ GrB_Info GrB_finalize ( )
     //--------------------------------------------------------------------------
 
     GB_WHERE ("GrB_finalize") ;
-
-    //--------------------------------------------------------------------------
-    // free all workspace
-    //--------------------------------------------------------------------------
-
-    for (int Sauna_id = 0 ; Sauna_id < GxB_NTHREADS_MAX ; Sauna_id++)
-    { 
-        GB_Sauna_free (Sauna_id) ;
-    }
 
     //--------------------------------------------------------------------------
     // destroy the queue

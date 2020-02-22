@@ -2,7 +2,7 @@
 // GB_subassign_17: C(I,J)<!M,repl> = scalar ; using S
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -31,6 +31,7 @@ GrB_Info GB_subassign_17
     const int Jkind,
     const int64_t Jcolon [3],
     const GrB_Matrix M,
+    const bool Mask_struct,
     const void *scalar,
     const GrB_Type atype,
     const GrB_Matrix S,
@@ -45,14 +46,14 @@ GrB_Info GB_subassign_17
     GB_GET_C ;
     const bool C_is_hyper = C->is_hyper ;
     const int64_t Cnvec = C->nvec ;
-    const int64_t *restrict Ch = C->h ;
-    const int64_t *restrict Cp = C->p ;
+    const int64_t *GB_RESTRICT Ch = C->h ;
+    const int64_t *GB_RESTRICT Cp = C->p ;
     GB_GET_MASK ;
     const bool M_is_hyper = M->is_hyper ;
     const int64_t Mnvec = M->nvec ;
     GB_GET_SCALAR ;
     GB_GET_S ;
-    const int64_t *restrict Sh = S->h ;
+    const int64_t *GB_RESTRICT Sh = S->h ;
     const int64_t Snvec = S->nvec ;
     const bool S_is_hyper = S->is_hyper ;
     GrB_BinaryOp accum = NULL ;
@@ -76,9 +77,10 @@ GrB_Info GB_subassign_17
     // phase 1: create zombies, update entries, and count pending tuples
     //--------------------------------------------------------------------------
 
+    int taskid ;
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) \
         reduction(+:nzombies)
-    for (int taskid = 0 ; taskid < ntasks ; taskid++)
+    for (taskid = 0 ; taskid < ntasks ; taskid++)
     {
 
         //----------------------------------------------------------------------
@@ -135,7 +137,7 @@ GrB_Info GB_subassign_17
                 if (i == iM)
                 { 
                     // mij = (bool) M [pM]
-                    cast_M (&mij, Mx +(pM*msize), 0) ;
+                    mij = GB_mcast (Mx, pM, msize) ;
                     GB_NEXT (M) ;
                 }
                 else
@@ -202,7 +204,7 @@ GrB_Info GB_subassign_17
 
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) \
         reduction(&&:pending_sorted)
-    for (int taskid = 0 ; taskid < ntasks ; taskid++)
+    for (taskid = 0 ; taskid < ntasks ; taskid++)
     {
 
         //----------------------------------------------------------------------
@@ -259,7 +261,7 @@ GrB_Info GB_subassign_17
                 if (i == iM)
                 { 
                     // mij = (bool) M [pM]
-                    cast_M (&mij, Mx +(pM*msize), 0) ;
+                    mij = GB_mcast (Mx, pM, msize) ;
                     GB_NEXT (M) ;
                 }
                 else

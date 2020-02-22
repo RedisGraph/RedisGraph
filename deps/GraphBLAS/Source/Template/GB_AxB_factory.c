@@ -2,7 +2,7 @@
 // GB_AxB_factory: switch factory for C=A*B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -20,6 +20,10 @@
 //      GB_AxB_compare_factory: handles all semirings where the multiply
 //          operator is TxT->bool (for the comparison operators, LT, GT, etc),
 //          and where the monoid is bool x bool -> bool.
+
+// If the multiplicative operator is ANY, then it is replaced here by SECOND,
+// since that is faster for the saxpy-based methods (y is the value of B(k,j),
+// which is loaded less frequently from memory than A(i,k)).
 
 {
     //--------------------------------------------------------------------------
@@ -41,12 +45,28 @@
 
         //----------------------------------------------------------------------
         case GB_SECOND_opcode  :    // z = y
+        case GB_ANY_opcode     :    // z = y
         //----------------------------------------------------------------------
 
             // 44 semirings: (min,max,plus,times) for non-boolean, and
             // (or,and,xor,eq) for boolean
             #define GB_MULT_NAME _second
             #include "GB_AxB_type_factory.c"
+            break ;
+
+        //----------------------------------------------------------------------
+        case GB_PAIR_opcode   :    // z = 1
+        //----------------------------------------------------------------------
+
+            // land_pair, lor_pair, max_pair, min_pair, times_pair
+            // all become any_pair.
+
+            // 44 semirings: (min,max,plus,times) for non-boolean, and
+            // (or,and,xor,eq) for boolean
+            #define GB_MULT_IS_PAIR_OPERATOR
+            #define GB_MULT_NAME _pair
+            #include "GB_AxB_type_factory.c"
+            #undef  GB_MULT_IS_PAIR_OPERATOR
             break ;
 
         //----------------------------------------------------------------------

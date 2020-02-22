@@ -2,7 +2,7 @@
 // GB_transplant_conform: transplant T into C, then conform C
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -28,8 +28,8 @@ GrB_Info GB_transplant_conform      // transplant and conform hypersparsity
 
     ASSERT (C != NULL) ;
     ASSERT (Thandle != NULL) ;
-    ASSERT_OK (GB_check (*Thandle, "T to transplant into C", GB0)) ;
-    ASSERT_OK (GB_check (ctype, "ctype for transplant into C", GB0)) ;
+    ASSERT_MATRIX_OK (*Thandle, "T to transplant into C", GB0) ;
+    ASSERT_TYPE_OK (ctype, "ctype for transplant into C", GB0) ;
     ASSERT (GB_ZOMBIES_OK (*Thandle)) ;
     ASSERT (!GB_PENDING (*Thandle)) ;
 
@@ -48,7 +48,7 @@ GrB_Info GB_transplant_conform      // transplant and conform hypersparsity
         return (info) ;
     }
 
-    ASSERT_OK (GB_check (C, "C transplanted", GB0)) ;
+    ASSERT_MATRIX_OK (C, "C transplanted", GB0) ;
 
     //--------------------------------------------------------------------------
     // conform C to its desired hypersparsity

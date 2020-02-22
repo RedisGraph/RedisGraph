@@ -2,7 +2,7 @@ function test24(fulltest)
 %TEST24 test GrB_reduce
 % test24(fulltest); fulltest=1 if longer test, 0 for quick test
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 [accum_ops, ~, add_ops, classes, ~, ~] = GB_spec_opsall ;
@@ -125,7 +125,7 @@ for k1 = cset % 1:length (classes)
                                     (cin, accum, reduce, B) ;
                                 assert (isequal (c, c3))
 
-%                               % row-wise reduce matrix to vector
+                                % row-wise reduce matrix to vector
 
                                 % no mask
                                 x = GB_mex_reduce_to_vector ...
@@ -142,7 +142,7 @@ for k1 = cset % 1:length (classes)
                                     (xin, mask, accum, reduce, A, [ ]) ;
                                 GB_spec_compare (x, x3, identity) ;
 
-%                               % col-wise reduce matrix to vector
+                                % col-wise reduce matrix to vector
 
                                 % no mask
                                 y = GB_mex_reduce_to_vector ...

@@ -1,3 +1,34 @@
+Version 3.2.0, Feb 20, 2020
+
+    * GxB_*_define for user-defined compile-time objects: removed.  Not
+        compatible with the faster kernels for mxm and dense matrices/vectors.
+        Use the GrB_*_new functions in the GraphBLAS C API Specification
+        instead.
+    * faster saxpy-based matrix multiply (about 5x to 10x for mxv and vxm):
+        removed Sauna workspace.  Heap method removed.  Hash method added.
+    * better performance for dense matrix and vectors
+    * faster typecast of the mask matrix M: GB_mcast replaces cast_M
+    * added GB_BURBLE: for development diagnostics
+    * changed default chunk size: from 4K to 64K
+    * added the PAIR binary operator: f(x,y)=1
+    * added the ANY binary operator: f(x,y)=x, or f(x,y)=y ; arbitrary choice
+    * added structural mask: from v1.3 C API Specification
+    * added GrB_DESC_*: predefined descriptor, from v1.3 C API Specification
+    * many atomics added: for the faster matrix multiply.  These changes have
+        not been ported to Microsoft Visual Studio, which only supports a
+        subset of "#pragma omp atomic" statements.  This will be resolved in a
+        future version; in the meantime, use v3.1.2 with MS Visual Studio
+        instead of v3.2.0.
+
+Version 3.1.2, Dec 16, 2019
+
+    * (15) bug fix in parallel matrix-matrix multiply: could occur when # of
+        threads is larger than the # of columns of B, for C=A*B, and when
+        B is a standard matrix with one or more empty vectors.
+    * (14) bug fix for MATLAB interface: A(58) and A(:) were conflated.
+    * compiler port: changes to allow GraphBLAS to be compiled with older
+        compilers (pre ANSI C11), and Microsoft Visual Studio.
+
 Version 3.1.1, Oct 21, 2019
 
     * minor edits: user guide and comments in code

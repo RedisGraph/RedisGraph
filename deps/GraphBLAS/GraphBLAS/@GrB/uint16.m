@@ -10,7 +10,7 @@ function C = uint16 (G)
 % See also GrB, double, complex, single, logical, int8, int16, int32,
 % int64, uint8, uint32, and uint64.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 C = gbfull (G.opaque, 'uint16') ;

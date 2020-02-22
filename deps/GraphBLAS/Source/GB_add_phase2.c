@@ -2,7 +2,7 @@
 // GB_add_phase2: C=A+B or C<M>=A+B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -37,21 +37,22 @@ GrB_Info GB_add_phase2      // C=A+B or C<M>=A+B
     const bool C_is_csc,    // format of output matrix C
     const GrB_BinaryOp op,  // op to perform C = op (A,B), or NULL if no op
     // from phase1:
-    const int64_t *restrict Cp,         // vector pointers for C
+    const int64_t *GB_RESTRICT Cp,         // vector pointers for C
     const int64_t Cnvec_nonempty,       // # of non-empty vectors in C
     // tasks from phase0b:
-    const GB_task_struct *restrict TaskList,    // array of structs
+    const GB_task_struct *GB_RESTRICT TaskList,    // array of structs
     const int ntasks,                           // # of tasks
     const int nthreads,                         // # of threads to use
     // analysis from phase0:
     const int64_t Cnvec,
-    const int64_t *restrict Ch,
-    const int64_t *restrict C_to_M,
-    const int64_t *restrict C_to_A,
-    const int64_t *restrict C_to_B,
+    const int64_t *GB_RESTRICT Ch,
+    const int64_t *GB_RESTRICT C_to_M,
+    const int64_t *GB_RESTRICT C_to_A,
+    const int64_t *GB_RESTRICT C_to_B,
     const bool Ch_is_Mh,        // if true, then Ch == M->h
     // original input:
     const GrB_Matrix M,         // optional mask, may be NULL
+    const bool Mask_struct,         // if true, use the only structure of M
     const GrB_Matrix A,
     const GrB_Matrix B,
     GB_Context Context
@@ -63,10 +64,10 @@ GrB_Info GB_add_phase2      // C=A+B or C<M>=A+B
     //--------------------------------------------------------------------------
 
     ASSERT (Cp != NULL) ;
-    ASSERT_OK_OR_NULL (GB_check (op, "op for add phase2", GB0)) ;
-    ASSERT_OK (GB_check (A, "A for add phase2", GB0)) ;
-    ASSERT_OK (GB_check (B, "B for add phase2", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (M, "M for add phase2", GB0)) ;
+    ASSERT_BINARYOP_OK_OR_NULL (op, "op for add phase2", GB0) ;
+    ASSERT_MATRIX_OK (A, "A for add phase2", GB0) ;
+    ASSERT_MATRIX_OK (B, "B for add phase2", GB0) ;
+    ASSERT_MATRIX_OK_OR_NULL (M, "M for add phase2", GB0) ;
     ASSERT (A->vdim == B->vdim) ;
 
     if (op == NULL)
@@ -146,7 +147,7 @@ GrB_Info GB_add_phase2      // C=A+B or C<M>=A+B
 
     #define GB_BINOP_WORKER(mult,xyname)                            \
     {                                                               \
-        info = GB_AaddB(mult,xyname) (C, M, A, B, Ch_is_Mh,         \
+        info = GB_AaddB(mult,xyname) (C, M, Mask_struct, A, B, Ch_is_Mh, \
             C_to_M, C_to_A, C_to_B, TaskList, ntasks, nthreads) ;   \
         done = (info != GrB_NO_VALUE) ;                             \
     }                                                               \
@@ -159,7 +160,7 @@ GrB_Info GB_add_phase2      // C=A+B or C<M>=A+B
     GB_Opcode opcode ;
     GB_Type_code xycode, zcode ;
 
-    if (GB_binop_builtin (A, false, B, false, op,
+    if (GB_binop_builtin (A->type, false, B->type, false, op,
         false, &opcode, &xycode, &zcode) && ccode == zcode)
     { 
         #include "GB_binop_factory.c"
@@ -174,6 +175,7 @@ GrB_Info GB_add_phase2      // C=A+B or C<M>=A+B
 
     if (!done)
     {
+        GB_BURBLE_MATRIX (C, "generic ") ;
 
         GxB_binary_function fadd ;
         size_t csize, asize, bsize, xsize, ysize, zsize ;
@@ -223,19 +225,19 @@ GrB_Info GB_add_phase2      // C=A+B or C<M>=A+B
 
         // aij = (xtype) A(i,j), located in Ax [pA]
         #define GB_GETA(aij,Ax,pA)                                          \
-            GB_void aij [GB_PGI(xsize)] ;                                   \
+            GB_void aij [GB_VLA(xsize)] ;                                   \
             cast_A_to_X (aij, Ax +((pA)*asize), asize) ;
 
         // bij = (ytype) B(i,j), located in Bx [pB]
         #define GB_GETB(bij,Bx,pB)                                          \
-            GB_void bij [GB_PGI(ysize)] ;                                   \
+            GB_void bij [GB_VLA(ysize)] ;                                   \
             cast_B_to_Y (bij, Bx +((pB)*bsize), bsize) ;
 
         // C(i,j) = (ctype) (A(i,j) + B(i,j))
         // not used if op is null
         #define GB_BINOP(cij, aij, bij)                                     \
             ASSERT (op != NULL) ;                                           \
-            GB_void z [GB_PGI(zsize)] ;                                     \
+            GB_void z [GB_VLA(zsize)] ;                                     \
             fadd (z, aij, bij) ;                                            \
             cast_Z_to_C (cij, z, csize) ;
 
@@ -248,36 +250,22 @@ GrB_Info GB_add_phase2      // C=A+B or C<M>=A+B
 
         #define GB_PHASE_2_OF_2
 
-        #include "GB_add_template.c"
+        // loops cannot be vectorized
+        #define GB_PRAGMA_VECTORIZE
 
+        #include "GB_add_template.c"
     }
 
     //--------------------------------------------------------------------------
     // remove empty vectors from C, if hypersparse
     //--------------------------------------------------------------------------
 
-    if (C_is_hyper && C->nvec_nonempty < Cnvec)
-    {
-        // create new Cp_new and Ch_new arrays, with no empty vectors
-        int64_t *restrict Cp_new = NULL ;
-        int64_t *restrict Ch_new = NULL ;
-        int64_t nvec_new ;
-        info = GB_hyper_prune (&Cp_new, &Ch_new, &nvec_new, C->p, C->h, Cnvec,
-            Context) ;
-        if (info != GrB_SUCCESS)
-        { 
-            // out of memory
-            GB_MATRIX_FREE (&C) ;
-            return (info) ;
-        }
-        // transplant the new hyperlist into C
-        GB_FREE_MEMORY (C->p, Cnvec+1, sizeof (int64_t)) ;
-        GB_FREE_MEMORY (C->h, Cnvec,   sizeof (int64_t)) ;
-        C->p = Cp_new ;
-        C->h = Ch_new ;
-        C->nvec = nvec_new ;
-        C->plen = nvec_new ;
-        ASSERT (C->nvec == C->nvec_nonempty) ;
+    info = GB_hypermatrix_prune (C, Context) ;
+    if (info != GrB_SUCCESS)
+    { 
+        // out of memory
+        GB_MATRIX_FREE (&C) ;
+        return (info) ;
     }
 
     //--------------------------------------------------------------------------
@@ -285,7 +273,7 @@ GrB_Info GB_add_phase2      // C=A+B or C<M>=A+B
     //--------------------------------------------------------------------------
 
     // caller must free C_to_M, C_to_A, and C_to_B, but not Cp or Ch
-    ASSERT_OK (GB_check (C, "C output for add phase2", GB0)) ;
+    ASSERT_MATRIX_OK (C, "C output for add phase2", GB0) ;
     (*Chandle) = C ;
     return (GrB_SUCCESS) ;
 }

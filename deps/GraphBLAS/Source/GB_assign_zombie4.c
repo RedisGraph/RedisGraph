@@ -2,7 +2,7 @@
 // GB_assign_zombie4: delete entries in C(i,:) for C_replace_phase
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -20,6 +20,7 @@ void GB_assign_zombie4
     GrB_Matrix Z,                   // the matrix C, or a copy
     const GrB_Matrix M,
     const bool Mask_comp,
+    const bool Mask_struct,
     const int64_t i,                // index of entries to delete
     const GrB_Index *J,
     const int64_t nJ,
@@ -33,10 +34,10 @@ void GB_assign_zombie4
     // get Z
     //--------------------------------------------------------------------------
 
-    const int64_t *restrict Zh = Z->h ;
-    const int64_t *restrict Zp = Z->p ;
+    const int64_t *GB_RESTRICT Zh = Z->h ;
+    const int64_t *GB_RESTRICT Zp = Z->p ;
     const int64_t Znvec = Z->nvec ;
-    int64_t *restrict Zi = Z->i ;
+    int64_t *GB_RESTRICT Zi = Z->i ;
     int64_t nzombies = Z->nzombies ;
     const int64_t zorig = nzombies ;
 
@@ -44,12 +45,10 @@ void GB_assign_zombie4
     // get M
     //--------------------------------------------------------------------------
 
-    const int64_t *restrict Mh = M->h ;
-    const int64_t *restrict Mp = M->p ;
-    const GB_void *restrict Mx = M->x ;
+    const int64_t *GB_RESTRICT Mh = M->h ;
+    const int64_t *GB_RESTRICT Mp = M->p ;
+    const GB_void *GB_RESTRICT Mx = (Mask_struct ? NULL : (M->x)) ;
     const size_t msize = M->type->size ;
-    const GB_cast_function cast_M =
-        GB_cast_factory (GB_BOOL_code, M->type->code) ;
     const int64_t Mnvec = M->nvec ;
     const bool M_is_hyper = M->is_hyper ;
 
@@ -68,9 +67,10 @@ void GB_assign_zombie4
     // The entry Z(i,j) is deleted if j is not in the J, and if M(0,j)=0 (if
     // the mask is not complemented) or M(0.j)=1 (if the mask is complemented.
 
+    int taskid ;
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) \
         reduction(+:nzombies)
-    for (int taskid = 0 ; taskid < ntasks ; taskid++)
+    for (taskid = 0 ; taskid < ntasks ; taskid++)
     {
         int64_t kfirst, klast ;
         GB_PARTITION (kfirst, klast, Znvec, taskid, ntasks) ;
@@ -94,7 +94,8 @@ void GB_assign_zombie4
                 int64_t pZ_end = Zp [k+1] ;
                 int64_t pright = pZ_end - 1 ;
                 bool found, is_zombie ;
-                GB_BINARY_ZOMBIE (i, Zi, pZ, pright, found, zorig, is_zombie) ;
+                GB_BINARY_SEARCH_ZOMBIE (i, Zi, pZ, pright, found, zorig,
+                    is_zombie) ;
 
                 //--------------------------------------------------------------
                 // delete Z(i,j) if found, not a zombie, and M(0,j) allows it
@@ -118,7 +119,7 @@ void GB_assign_zombie4
                     if (pM < pM_end)
                     { 
                         // found it
-                        cast_M (&mij, Mx +(pM*msize), 0) ;
+                        mij = GB_mcast (Mx, pM, msize) ;
                     }
                     if (Mask_comp)
                     { 

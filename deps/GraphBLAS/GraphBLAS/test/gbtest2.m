@@ -1,7 +1,7 @@
 function gbtest2
 %GBTEST2 list all binary operators
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 optype = gbtest_types ;
@@ -16,7 +16,7 @@ for k1 = 1:length(opnames)
 
         op = opname ;
         if (k2 > 0)
-            op = [op '.' optype{k2}] ;
+            op = [op '.' optype{k2}] ; %#ok<*AGROW>
         end
         fprintf ('\nop: [%s]\n', op) ;
         if (k2 > 0)

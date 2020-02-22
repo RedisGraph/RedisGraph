@@ -2,7 +2,7 @@
 // GB_extractTuples: extract all the tuples from a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -53,7 +53,7 @@ GrB_Info GB_extractTuples       // extract all tuples from a matrix
             A->type->name, GB_code_string (xcode)))) ;
     }
 
-    ASSERT_OK (GB_check (A, "A to extract", GB0)) ;
+    ASSERT_MATRIX_OK (A, "A to extract", GB0) ;
 
     int64_t anz = GB_NNZ (A) ;
 
@@ -113,7 +113,7 @@ GrB_Info GB_extractTuples       // extract all tuples from a matrix
     if (J != NULL)
     {
         if (!GB_extract_vector_list ((int64_t *) J, A, nthreads))
-        {
+        { 
             // out of memory
             return (GB_OUT_OF_MEMORY) ;
         }

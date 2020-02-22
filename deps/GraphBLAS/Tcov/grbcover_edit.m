@@ -24,8 +24,8 @@ function count = grbcover_edit (infiles, count, outdir)
 %       case stuff :  GB_cov[count]++ ; statement
 %       default :     GB_cov[count]++ ; statement
 %
-%  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
-%  http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 % infiles can be a struct from dir, or a single string with one filename
 if (~isstruct (infiles))
@@ -67,6 +67,8 @@ for k = 1:nfiles
             if (enabled)
                 fprintf (f_output, '%s  GB_cov[%d]++ ;\n', cline, count) ;
                 count = count + 1 ;
+            else
+                fprintf (f_output, '%s\n', cline) ;
             end
 
         elseif ((~isempty (strfind (cline, ' case ')) || ...
@@ -80,7 +82,9 @@ for k = 1:nfiles
                 colon = find (cline == ':', 1) ;
                 fprintf (f_output, '%s : GB_cov[%d]++ ; %s\n', ...
                     cline (1:colon-1), count, cline (colon+1:end)) ;
-                count = count+1 ;
+                count = count + 1 ;
+            else
+                fprintf (f_output, '%s\n', cline) ;
             end
 
         else
@@ -89,10 +93,11 @@ for k = 1:nfiles
             fprintf (f_output, '%s\n', cline) ;
 
             % determine if the code is commented out
-            if (isequal (cline, '#if 0'))
+            if (isequal (cline, '#if 0') || isequal (cline, '    #if 0'))
                 % code coverage disabled
                 enabled = false ;
-            elseif (isequal (cline, '#endif'))
+            elseif (isequal (cline, '#endif') || isequal (cline, '    #endif'))
+                % code coverage enabled
                 enabled = true ;
             end
 

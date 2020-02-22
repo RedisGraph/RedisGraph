@@ -2,7 +2,7 @@
 // GB_subref_phase1: find # of entries in C=A(I,J)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -16,18 +16,18 @@
 
 GrB_Info GB_subref_phase1               // count nnz in each C(:,j)
 (
-    int64_t *restrict *Cp_handle,       // output of size Cnvec+1
+    int64_t *GB_RESTRICT *Cp_handle,       // output of size Cnvec+1
     int64_t *Cnvec_nonempty,            // # of non-empty vectors in C
     // tasks from phase0b:
-    GB_task_struct *restrict TaskList,  // array of structs
+    GB_task_struct *GB_RESTRICT TaskList,  // array of structs
     const int ntasks,                   // # of tasks
     const int nthreads,                 // # of threads to use
     const int64_t *Mark,                // for I inverse buckets, size A->vlen
     const int64_t *Inext,               // for I inverse buckets, size nI
     const int64_t nduplicates,          // # of duplicates, if I inverted
     // analysis from phase0:
-    const int64_t *restrict Ap_start,
-    const int64_t *restrict Ap_end,
+    const int64_t *GB_RESTRICT Ap_start,
+    const int64_t *GB_RESTRICT Ap_end,
     const int64_t Cnvec,
     const bool need_qsort,
     const int Ikind,
@@ -46,13 +46,13 @@ GrB_Info GB_subref_phase1               // count nnz in each C(:,j)
     //--------------------------------------------------------------------------
 
     ASSERT (Cp_handle != NULL) ;
-    ASSERT_OK (GB_check (A, "A for subref phase1", GB0)) ;
+    ASSERT_MATRIX_OK (A, "A for subref phase1", GB0) ;
 
     //--------------------------------------------------------------------------
     // allocate the result
     //--------------------------------------------------------------------------
 
-    int64_t *restrict Cp = NULL ;
+    int64_t *GB_RESTRICT Cp = NULL ;
     (*Cp_handle) = NULL ;
 
     GB_CALLOC_MEMORY (Cp, GB_IMAX (2, Cnvec+1), sizeof (int64_t)) ;

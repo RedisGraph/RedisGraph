@@ -1,31 +1,28 @@
-function floptest (M, A, B, floplimit, mflops)
+function floptest (M, Mask_complement, A, B, flops1)
 %FLOPTEST compare flopcount with GB_mex_mxm_flops
-% floptest (M, A, B, floplimit, mflops)
+% floptest (M, Mask_complement, A, B, flops1)
 %
 % compares the results of
-% mflops = flopcount (M, A, B) ;
+% flops1 = flopcount (M, Mask_complement, A, B)
 % with
-% [result bflops] = GB_mex_mxm_flops (M,A,B,floplimit)
+% flops2 = GB_mex_mxm_flops (M, Mask_complement, A, B)
 %
-% However, flopcount(M,A,B) can only be computed when M, A, B are all MATLAB
-% sparse matrices, not structs.  If the matrices are hypersparse, bflops has
-% length B->nvec+1, not size(B,2).  In this case, the last entries of both
-% mflops and bflops must match (equal to the total flops), and to do the test,
-% mflops(end) is passed to this function in instead of all of mflops.
+% However, flopcount(M,Mask_complement,A,B) can only be computed when M, A, B
+% are all MATLAB sparse matrices, not structs.  If the matrices are
+% hypersparse, flops1 has length B->nvec+1, not size(B,2).  In this case,
+% only the total flop count is checked.  In that case, flops1 is a scalar.
 
-% get both the result of the test, and bflops
-[result bflops] = GB_mex_mxm_flops (M, A, B, floplimit) ;
-total_flops = bflops (end) ;
-assert (result == (total_flops <= floplimit)) ;
-if (isscalar (mflops))
-    % mflops is just the total flop count
-    assert (isequal (mflops, bflops (end)))
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+[flops2 mwork] = GB_mex_mxm_flops (M, Mask_complement, A, B) ;
+total_flops = flops2 (end) ;
+
+if (isscalar (flops1))
+    % flops1 is just the total flop count
+    assert (isequal (flops1, total_flops)) ;
 else
-    % mflops is the cumulative sum
-    assert (isequal (mflops, bflops))
+    % flops1 is the cumulative sum
+    assert (isequal (flops1, flops2)) ;
 end
-
-% just get the result, not bflops:
-result = GB_mex_mxm_flops (M, A, B, floplimit) ;
-assert (result == (total_flops <= floplimit)) ;
 

@@ -2,7 +2,7 @@
 // GB_ijproperties: check I and determine its properties
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -193,17 +193,30 @@ GrB_Info GB_ijproperties        // check I and determine its properties
         //----------------------------------------------------------------------
 
         // scan I to find imin and imax, and validate the list. Also determine
-        // if it is sorted or not, and contigous or not.
+        // if it is sorted or not, and contiguous or not.
 
         imin = limit ;
         imax = -1 ;
 
+        // allocate workspace for imin and imax
+        int64_t *Work = NULL ;
+        GB_MALLOC_MEMORY (Work, 2*ntasks, sizeof (int64_t)) ;
+        if (Work == NULL)
+        { 
+            // out of memory
+            return (GB_OUT_OF_MEMORY) ;
+        }
+        int64_t *Work_imin = Work ;
+        int64_t *Work_imax = Work + ntasks ;
+
+        int tid ;
         #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) \
             reduction(||:I_unsorted) reduction(&&:I_contig) \
-            reduction(min:imin) reduction(max:imax) \
             reduction(||:I_has_duplicates)
-        for (int tid = 0 ; tid < ntasks ; tid++)
+        for (tid = 0 ; tid < ntasks ; tid++)
         {
+            int64_t my_imin = limit ;
+            int64_t my_imax = -1 ;
             int64_t istart, iend ;
             GB_PARTITION (istart, iend, ni, tid, ntasks) ;
             int64_t ilast = (istart == 0) ? -1 : I [istart-1] ;
@@ -234,11 +247,23 @@ GrB_Info GB_ijproperties        // check I and determine its properties
                         I_contig = false ;
                     }
                 }
-                imin = GB_IMIN (imin, i) ;
-                imax = GB_IMAX (imax, i) ;
+                my_imin = GB_IMIN (my_imin, i) ;
+                my_imax = GB_IMAX (my_imax, i) ;
                 ilast = i ;
             }
+            Work_imin [tid] = my_imin ;
+            Work_imax [tid] = my_imax ;
         }
+
+        // wrapup
+        for (tid = 0 ; tid < ntasks ; tid++)
+        { 
+            imin = GB_IMIN (imin, Work_imin [tid]) ;
+            imax = GB_IMAX (imax, Work_imax [tid]) ;
+        }
+
+        // free workspace
+        GB_FREE_MEMORY (Work, 2*ntasks, sizeof (int64_t)) ;
 
         #ifdef GB_DEBUG
         {

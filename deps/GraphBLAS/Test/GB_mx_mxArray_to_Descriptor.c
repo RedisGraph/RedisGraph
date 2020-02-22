@@ -2,7 +2,7 @@
 // GB_mx_mxArray_to_Descriptor: get the contents of a GraphBLAS Descriptor
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -66,13 +66,26 @@ static bool get_descriptor
         {
             info = GxB_set (D, field, GrB_TRAN) ;
         }
-        else if (MATCH (s, "scmp") || MATCH (s, "complement"))
+        else if (MATCH (s, "scmp") || MATCH (s, "complement")
+              || MATCH (s, "comp"))
         {
-            info = GxB_set (D, field, GrB_SCMP) ;
+            info = GxB_set (D, field, GrB_COMP) ;
+        }
+        else if (MATCH (s, "structure") || MATCH (s, "structural"))
+        {
+            info = GxB_set (D, field, GrB_STRUCTURE) ;
+        }
+        else if (MATCH (s, "structural complement"))
+        {
+            info = GxB_set (D, field, GrB_COMP + GrB_STRUCTURE) ;
         }
         else if (MATCH (s, "replace"))
         {
             info = GxB_set (D, field, GrB_REPLACE) ;
+        }
+        else if (MATCH (s, "saxpy"))
+        {
+            info = GxB_set (D, field, GxB_AxB_SAXPY) ;
         }
         else if (MATCH (s, "gustavson"))
         {
@@ -85,6 +98,10 @@ static bool get_descriptor
         else if (MATCH (s, "heap"))
         {
             info = GxB_set (D, field, GxB_AxB_HEAP) ;
+        }
+        else if (MATCH (s, "hash"))
+        {
+            info = GxB_set (D, field, GxB_AxB_HASH) ;
         }
         else
         {
@@ -144,7 +161,7 @@ bool GB_mx_mxArray_to_Descriptor   // true if successful, false otherwise
     }
 
     // return the non-null Descriptor to the caller
-    ASSERT_OK (GB_check (D, name, GB0)) ;
+    ASSERT_DESCRIPTOR_OK (D, name, GB0) ;
     (*handle) = D ;
     return (true) ;
 }

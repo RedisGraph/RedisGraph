@@ -2,7 +2,7 @@
 // gb_matlab.h: definitions for MATLAB interface for SuiteSparse:GraphBLAS
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -306,8 +306,6 @@ void gb_mxfree              // mxFree wrapper
     void **p_handle         // handle to pointer to be freed
 ) ;
 
-void gb_at_exit (void)  ;   // called when GraphBLAS is cleared by MATLAB
-
 int64_t *gb_mxarray_to_list     // return List of integers
 (
     const mxArray *mxList,      // list to extract
@@ -446,6 +444,14 @@ void gb_get_mxargs
     base_enum_t *base,          // desc.base
     kind_enum_t *kind,          // desc.kind
     GxB_Format_Value *fmt       // desc.format
+) ;
+
+int64_t gb_norm_kind (const mxArray *arg) ;
+
+double gb_norm              // compute norm (A,kind)
+(
+    GrB_Matrix A,
+    int64_t norm_kind       // 0, 1, 2, INT64_MAX, or INT64_MIN
 ) ;
 
 #endif

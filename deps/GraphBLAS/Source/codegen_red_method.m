@@ -8,6 +8,7 @@ f = fopen ('control.m4', 'w') ;
 [aname, unsigned, bits] = codegen_type (atype) ;
 
 name = sprintf ('%s_%s', opname, aname) ;
+is_any = isequal (opname, 'any') ;
 
 % function names
 fprintf (f, 'define(`GB_red_build'', `GB_red_build__%s'')\n', name) ;
@@ -34,17 +35,28 @@ else
     fprintf (f, 'define(`endif_is_monoid'', `#endif'')\n') ;
 end
 
-if (~isempty (terminal))
+if (is_any)
+    fprintf (f, 'define(`GB_is_any_monoid'', `1'')\n') ;
+    fprintf (f, 'define(`GB_has_terminal'', `1'')\n') ;
+    fprintf (f, 'define(`GB_terminal_value'', `(any value)'')\n') ;
+    fprintf (f, 'define(`GB_terminal'', `break ;'')\n') ;
+elseif (~isempty (terminal))
+    fprintf (f, 'define(`GB_is_any_monoid'', `0'')\n') ;
     fprintf (f, 'define(`GB_has_terminal'', `1'')\n') ;
     fprintf (f, 'define(`GB_terminal_value'', `%s'')\n', terminal) ;
     fprintf (f, 'define(`GB_terminal'', `if (s == %s) break ;'')\n', terminal) ;
 else
+    fprintf (f, 'define(`GB_is_any_monoid'', `0'')\n') ;
     fprintf (f, 'define(`GB_has_terminal'', `0'')\n') ;
     fprintf (f, 'define(`GB_terminal_value'', `(none)'')\n') ;
     fprintf (f, 'define(`GB_terminal'', `;'')\n') ;
 end
 
-fprintf (f, 'define(`GB_panel'', `%d'')\n', panel) ;
+if (is_any)
+    fprintf (f, 'define(`GB_panel'', `(no panel)'')\n') ;
+else
+    fprintf (f, 'define(`GB_panel'', `%d'')\n', panel) ;
+end
 
 % create the operator
 func = strrep (func, 'zarg', '`$1''') ;
@@ -61,14 +73,14 @@ fclose (f) ;
 
 % construct the *.c file
 cmd = sprintf (...
-'cat control.m4 Generator/GB_red.c | m4 | tail -n +16 > Generated/GB_red__%s.c', ...
+'cat control.m4 Generator/GB_red.c | m4 | tail -n +17 > Generated/GB_red__%s.c', ...
 name) ;
 fprintf ('.') ;
 system (cmd) ;
 
 % append to the *.h file
 cmd = sprintf (...
-'cat control.m4 Generator/GB_red.h | m4 | tail -n +16 >> Generated/GB_red__include.h') ;
+'cat control.m4 Generator/GB_red.h | m4 | tail -n +17 >> Generated/GB_red__include.h') ;
 system (cmd) ;
 
 delete ('control.m4') ;

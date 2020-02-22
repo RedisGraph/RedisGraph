@@ -2,7 +2,7 @@
 // GB_mx_Type_to_classID: return the GraphBLAS type of the MATLAB class ID
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -29,9 +29,7 @@ mxClassID GB_mx_Type_to_classID        // returns a MATLAB class ID
         case GB_FP32_code   : return (mxSINGLE_CLASS ) ;   // 9  -> 7
         case GB_FP64_code   : return (mxDOUBLE_CLASS ) ;   // 10 -> 6
         // assume user-defined type is Complex, and MATLAB double complex
-        case GB_UCT_code    :
-        case GB_UDT_code    :
-                              return (mxDOUBLE_CLASS ) ;   // 11,12 -> 6
+        case GB_UDT_code    : return (mxDOUBLE_CLASS ) ;   // 11 -> 6
         default             : ;
     }
     mexWarnMsgIdAndTxt ("GB:warn", "invalid type code") ;

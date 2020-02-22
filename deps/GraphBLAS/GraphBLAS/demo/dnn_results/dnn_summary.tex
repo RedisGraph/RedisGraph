@@ -1,15 +1,18 @@
 \documentclass[12pt]{article}
+\usepackage{url}
+\urlstyle{sf}
+% \usepackage[colorlinks,linkcolor=Blue,citecolor=Blue,urlcolor=Blue]{hyperref}
 \title{Sparse DNN Results with the MATLAB interface to SuiteSparse:GraphBLAS}
 \author{Tim Davis}
-\date{Sept 2, 2019}
+\date{Sept 2, 2019 (updated Feb 20, 2020)}
 
 \begin{document}
 \maketitle
 
-The tables below report the results for the 12 sparse deep neural network problems.
-Problems 1-3 use 1024 neurons, 4-6 use 4,096 neurons, 7-9 use 16K neurons, and the
-last use 64K neurons.  Each group of three uses 120, 480, and 1920 layers,
-respectively.
+The tables below report the results for the 12 sparse deep neural network
+problems.  Problems 1-3 use 1024 neurons, 4-6 use 4,096 neurons, 7-9 use 16K
+neurons, and the last use 64K neurons.  Each group of three uses 120, 480, and
+1920 layers, respectively.
 
 \section{The MATLAB code}
 
@@ -32,8 +35,9 @@ end
 \end{verbatim}}
 
 For comparison, here is the MATLAB reference implmentation at \newline
-http://graphchallenge.org.  It is about 60x to 70x slower than the two methods
-using GraphBLAS.  Applying the bias is more complex than the GraphBLAS code:
+\url{http://graphchallenge.org}.  It is about 60x to 70x slower than the two
+methods using GraphBLAS.  Applying the bias is more complex than the GraphBLAS
+code:
 
 {\footnotesize
 \begin{verbatim}
@@ -121,40 +125,67 @@ GrB_Info LAGraph_dnn    // returns GrB_SUCCESS if successful
 } \end{verbatim}}
 
 
+\newpage
 \section{Run time results}
 
 Run time in seconds on an Intel Xeon E5-2698v4 @ 2.2GHz, with 20 hardware cores
-and 256GB of RAM, using the GCC 5.4.0 compiler, and Ubuntu 16.04.  Note that
-the icc compiler generates faster code, but it's not compatible with MATLAB,
-so the gcc compiler on the system was used instead.
-MATLAB R2018a was used.
+and 256GB of RAM, using the GCC 5.4.0 compiler, and Ubuntu 16.04.
+The fastest time in bold, for one and 40 threads.  Lower is better.
+MATLAB R2018a was used for both v3.1.0 and v3.2.0.
 
-The fastest time is shown in bold, for one and 40 threads.
-Lower is better.
+\subsection{GraphBLAS v3.1.0, August 2019}
 
+{\small
 % Run time [1 thread: MATLAB LAGraph M/L]  [40 threads: MATLAB LAGraph M/L]
-\vspace{0.1in}
 \begin{tabular}{l|rr|r||rr|r}
 \hline
-     & \multicolumn{3}{c}{one thread}               &  \multicolumn{3}{c}{40 threads}  \\
-Prob & MATLAB & LAGraph & M/L                       &   MATLAB & LAGraph & M/L         \\
+     & \multicolumn{3}{c}{one thread}                &  \multicolumn{3}{c}{40 threads}  \\
+Prob & MATLAB         & LAGraph        & M/L         &   MATLAB      & LAGraph       & M/L        \\
 \hline
-  1 & {\bf       24 }&            24  &     0.97    &            3  & {\bf        2 }&     1.17   \\
-  2 & {\bf       68 }&            68  &     0.99    &            9  & {\bf        5 }&     2.07   \\
-  3 & {\bf      242 }&           243  &     1.00    &           34  & {\bf       16 }&     2.09   \\
+  1  & {\bf       24 }&          24.2  &     0.97    &            3  & {\bf     2.4 }&     1.17   \\
+  2  & {\bf       68 }&          68.2  &     0.99    &            9  & {\bf     4.5 }&     2.07   \\
+  3  & {\bf      242 }&         243.3  &     1.00    &           34  & {\bf    16.4 }&     2.09   \\
 \hline
-  4 & {\bf       98 }&           108  &     0.90    &           10  & {\bf        9 }&     1.07   \\
-  5 & {\bf      293 }&           330  &     0.89    &{\bf       31 }&            31  &     1.00   \\
-  6 & {\bf     1076 }&          1222  &     0.88    &{\bf      117 }&           118  &     0.99   \\
+  4  & {\bf       98 }&         108.1  &     0.90    &           10  & {\bf     9.3 }&     1.07   \\
+  5  & {\bf      293 }&         330.1  &     0.89    &{\bf       31 }&         30.7  &     1.00   \\
+  6  & {\bf     1076 }&        1222.5  &     0.88    &{\bf      117 }&        117.6  &     0.99   \\
 \hline
-  7 &          766  & {\bf      741 }&     1.03     &          58  & {\bf       51 }&     1.15   \\
-  8 &         2684  & {\bf     2552 }&     1.05     &         201  & {\bf      175 }&     1.15   \\
-  9 &        10381  & {\bf     9783 }&     1.06     &         783  & {\bf      690 }&     1.13   \\
+  7  &           766  & {\bf    741.4 }&     1.03    &           58  & {\bf    51.0 }&     1.15   \\
+  8  &          2684  & {\bf   2552.1 }&     1.05    &          201  & {\bf   175.0 }&     1.15   \\
+  9  &         10381  & {\bf   9783.1 }&     1.06    &          783  & {\bf   690.1 }&     1.13   \\
 \hline
- 10 &{\bf     3777 }&          4536  &     0.83     &         254  & {\bf      245 }&     1.04   \\
- 11 &{\bf    13817 }&         16447  &     0.84     &         971  & {\bf      926 }&     1.05   \\
- 12 &{\bf    54701 }&         65492  &     0.84     &        3829  & {\bf     3743 }&     1.02   \\
+ 10  &{\bf      3777 }&        4536.3  &     0.83    &          254  & {\bf   245.3 }&     1.04   \\
+ 11  &{\bf     13817 }&       16447.9  &     0.84    &          971  & {\bf   926.4 }&     1.05   \\
+ 12  &{\bf     54701 }&       65492.3  &     0.84    &         3829  & {\bf  3743.3 }&     1.02   \\
 \end{tabular}
+}
+
+\subsection{GraphBLAS v3.2.0, Feb 2020}
+
+{\small
+% Run time [1 thread: MATLAB LAGraph M/L]  [40 threads: MATLAB LAGraph M/L]
+\begin{tabular}{l|rr|r||rr|r}
+\hline
+     & \multicolumn{3}{c}{one thread}                &  \multicolumn{3}{c}{40 threads}  \\
+Prob & MATLAB         & LAGraph        & M/L         &   MATLAB      & LAGraph       & M/L        \\
+\hline
+  1  &                &          25.1  &      .      &               &          1.4  &      .     \\
+  2  &                &          85.6  &      .      &               &          4.8  &      .     \\
+  3  &                &         328.7  &      .      &               &         18.3  &      .     \\
+\hline
+  4  &                &         102.0  &      .      &               &          6.2  &      .     \\
+  5  &                &         356.6  &      .      &               &         21.7  &      .     \\
+  6  &                &        1395.9  &      .      &               &         84.1  &      .     \\
+\hline
+  7  &                &         722.0  &      .      &               &         35.0  &      .     \\
+  8  &                &        2653.2  &      .      &               &        131.5  &      .     \\
+  9  &                &       10407.3  &      .      &               &        504.7  &      .     \\
+\hline
+ 10  &                &        4001.3  &      .      &               &        229.4  &      .     \\
+ 11  &                &       15124.5  &      .      &               &        918.9  &      .     \\
+ 12  &                &            .   &      .      &               &           .   &      .     \\
+\end{tabular}
+}
 
 \newpage
 \section{Rate results}
@@ -163,33 +194,66 @@ The rate is equal to the number of edges in the DNN, times the number of
 features (60,000 for all cases), divided by the run time.  Rate is reported
 in terms of billions of edges/sec.  Best rate shown in bold; higher is better.
 
-\vspace{0.1in}
+\subsection{GraphBLAS v3.1.0, August 2019}
+
+{\small
 \begin{tabular}{l|rr|r||rr|r}
 % Rate(1e9)[1 thread: MATLAB LAGraph M/L]  [40 threads: MATLAB LAGraph M/L]
 \hline
-     & \multicolumn{3}{c}{one thread}               &  \multicolumn{3}{c}{40 threads}  \\
-Prob & MATLAB & LAGraph & M/L                       &   MATLAB & LAGraph & M/L         \\
+     & \multicolumn{3}{c}{one thread}                &  \multicolumn{3}{c}{40 threads}  \\
+Prob & MATLAB         & LAGraph        & M/L         &   MATLAB      & LAGraph       & M/L        \\
 \hline
-  1 &{\bf     10.0 }&           9.7  &     1.03  &  {        85.8 }& {\bf    100.4 }&     0.85   \\
-  2 &{\bf     14.0 }&          13.8  &     1.01  &  {       101.3 }& {\bf    209.2 }&     0.48   \\
-  3 &{\bf     15.6 }&          15.5  &     1.00  &  {       110.1 }& {\bf    230.2 }&     0.48   \\
+  1  &{\bf      10.0 }&           9.7  &       1.03  &  {      85.8 }& {\bf   100.4 }&     0.85   \\
+  2  &{\bf      14.0 }&          13.8  &       1.01  &  {     101.3 }& {\bf   209.2 }&     0.48   \\
+  3  &{\bf      15.6 }&          15.5  &       1.00  &  {     110.1 }& {\bf   230.2 }&     0.48   \\
 \hline
-  4 &{\bf      9.7 }&           8.7  &     1.11  &  {        94.6 }& {\bf    101.1 }&     0.93   \\
-  5 &{\bf     12.9 }&          11.4  &     1.13  &  {\bf    123.3 }& {       122.9 }&     1.00   \\
-  6 &{\bf     14.0 }&          12.4  &     1.14  &  {\bf    129.1 }& {       128.4 }&     1.01   \\
+  4  &{\bf       9.7 }&           8.7  &       1.11  &  {      94.6 }& {\bf   101.1 }&     0.93   \\
+  5  &{\bf      12.9 }&          11.4  &       1.13  &  {\bf  123.3 }& {      122.9 }&     1.00   \\
+  6  &{\bf      14.0 }&          12.4  &       1.14  &  {\bf  129.1 }& {      128.4 }&     1.01   \\
 \hline
-  7 &          4.9  & {\bf      5.1 }&     0.97  &  {        64.6 }& {\bf     74.0 }&     0.87   \\
-  8 &          5.6  & {\bf      5.9 }&     0.95  &  {        75.2 }& {\bf     86.3 }&     0.87   \\
-  9 &          5.8  & {\bf      6.2 }&     0.94  &  {        77.2 }& {\bf     87.5 }&     0.88   \\
+  7  &           4.9  & {\bf      5.1 }&       0.97  &  {      64.6 }& {\bf    74.0 }&     0.87   \\
+  8  &           5.6  & {\bf      5.9 }&       0.95  &  {      75.2 }& {\bf    86.3 }&     0.87   \\
+  9  &           5.8  & {\bf      6.2 }&       0.94  &  {      77.2 }& {\bf    87.5 }&     0.88   \\
 \hline
- 10 &{\bf      4.0 }&           3.3  &     1.20  &  {        59.4 }& {\bf     61.5 }&     0.96   \\
- 11 &{\bf      4.4 }&           3.7  &     1.19  &  {        62.2 }& {\bf     65.2 }&     0.95   \\
- 12 &{\bf      4.4 }&           3.7  &     1.20  &  {        63.1 }& {\bf     64.5 }&     0.98   \\
+ 10  &{\bf       4.0 }&           3.3  &       1.20  &  {      59.4 }& {\bf    61.5 }&     0.96   \\
+ 11  &{\bf       4.4 }&           3.7  &       1.19  &  {      62.2 }& {\bf    65.2 }&     0.95   \\
+ 12  &{\bf       4.4 }&           3.7  &       1.20  &  {      63.1 }& {\bf    64.5 }&     0.98   \\
 \end{tabular}
+}
 
+\subsection{GraphBLAS v3.2.0, Feb 2020}
+
+{\small
+\begin{tabular}{l|rr|r||rr|r}
+% Rate(1e9)[1 thread: MATLAB LAGraph M/L]  [40 threads: MATLAB LAGraph M/L]
+\hline
+     & \multicolumn{3}{c}{one thread}                &  \multicolumn{3}{c}{40 threads}  \\
+Prob & MATLAB         & LAGraph        & M/L         &   MATLAB      & LAGraph       & M/L        \\
+\hline
+  1  &{           .  }& {         9.4 }&        .    &  {        .  }& {      164.9 }&      .     \\
+  2  &{           .  }& {        11.0 }&        .    &  {        .  }& {      198.5 }&      .     \\
+  3  &{           .  }& {        11.5 }&        .    &  {        .  }& {      205.8 }&      .     \\
+\hline
+  4  &{           .  }& {         9.2 }&        .    &  {        .  }& {      152.8 }&      .     \\
+  5  &{           .  }& {        10.6 }&        .    &  {        .  }& {      174.1 }&      .     \\
+  6  &{           .  }& {        10.8 }&        .    &  {        .  }& {      179.6 }&      .     \\
+\hline
+  7  &{           .  }& {         5.2 }&        .    &  {        .  }& {      107.9 }&      .     \\
+  8  &{           .  }& {         5.7 }&        .    &  {        .  }& {      114.8 }&      .     \\
+  9  &{           .  }& {         5.8 }&        .    &  {        .  }& {      119.7 }&      .     \\
+\hline
+ 10  &{           .  }& {         3.8 }&        .    &  {        .  }& {       65.8 }&      .     \\
+ 11  &{           .  }& {         4.0 }&        .    &  {        .  }& {       65.7 }&      .     \\
+ 12  &{           .  }& {          .  }&        .    &  {        .  }& {         .  }&      .     \\
+\end{tabular}
+}
 
 \section{Comparison}
-When using 40 threads, the performance of the two methods is
+
+\subsection{v3.1.0, August 2019}
+
+When using 40 threads, the performance of the two methods
+(MATLAB+LAGraph, vs pure C in LAGraph) is
 almost identical, except for problems 2 and 3, where LAGraph
 is about twice as fast as the MATLAB \verb'dnn_gb.m'.
 The two codes differ in how the max threshold of 32 is implemented.  The MATLAB
@@ -208,6 +272,25 @@ interface does not allow for user-defined operators, it was most natural to
 write the max32 threshold as masked assigment.  In that sense, this is a
 fair comparison between MATLAB+GraphBLAS and LAGRAPH+GraphBLAS.
 
+\subsection{v3.2.0, Feb 2020}
+
+The new method in v3.2.0 is more parallelizable than the method in v3.1.0.
+However, for the smaller problems, v3.1.0 is faster when using a single thread.
+When using 40 threads, v3.2.0 (in LAGraph) is almost always significantly
+faster than the method in v3.1.0 (except for problems 2 and 3).
+
+The sequential performance in v3.1.0 is likely higher because that version of
+GraphBLAS kept a set of global workspaces that it reused for each matrix
+multiplication (the Sauna).  Those have been removed in v3.2.0.  For the next
+release of GraphBLAS, I will explore how to improve the sequential performance
+of the Sauna-free method in v3.2.x, to see if I can match the performance of
+the Sauna-based method in v3.1.0.
+
+Using a single thread on the largest problem takes about 18 hours, and thus
+results were still in progress at the time v3.2.0 was released.  This document
+will be updated after the formal release of v3.2.0 when the runs complete.  See
+the master branch at \url{https://github.com/DrTimothyAldenDavis/GraphBLAS} for
+the updated document.
 
 \end{document}
 

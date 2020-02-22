@@ -2,7 +2,7 @@
 // GraphBLAS/Demo/Program/mis_demo.c: maximal independent set
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -34,14 +34,14 @@
 
 // macro used by OK(...) to free workspace if an error occurs
 #define FREE_ALL                \
-    GrB_free (&A) ;             \
-    GrB_free (&C) ;             \
-    GrB_free (&iset1) ;         \
-    GrB_free (&iset2) ;         \
-    GrB_free (&e) ;             \
-    GrB_free (&dt) ;            \
-    GrB_free (&Lor) ;           \
-    GrB_free (&Boolean) ;       \
+    GrB_Matrix_free (&A) ;             \
+    GrB_Matrix_free (&C) ;             \
+    GrB_Vector_free (&iset1) ;         \
+    GrB_Vector_free (&iset2) ;         \
+    GrB_Vector_free (&e) ;             \
+    GrB_Descriptor_free (&dt) ;            \
+    GrB_Monoid_free (&Lor) ;           \
+    GrB_Semiring_free (&Boolean) ;       \
     if (I2 != NULL) free (I2) ; \
     if (J2 != NULL) free (J2) ; \
     if (X2 != NULL) free (X2) ; \
@@ -77,7 +77,8 @@ GrB_Info mis_check_results
     //--------------------------------------------------------------------------
 
     int64_t isize ;
-    OK (GrB_reduce (&isize, NULL, GxB_PLUS_INT64_MONOID, iset, NULL)) ;
+    OK (GrB_Vector_reduce_INT64 (&isize, NULL, GxB_PLUS_INT64_MONOID,
+        iset, NULL)) ;
     (*p_isize) = isize ;
 
     GrB_Index nvals ;
@@ -92,7 +93,7 @@ GrB_Info mis_check_results
         exit (1) ;
     }
 
-    OK (GrB_Vector_extractTuples (I, X, &nvals, iset)) ;
+    OK (GrB_Vector_extractTuples_FP32 (I, X, &nvals, iset)) ;
 
     // I [0..isize-1] is the independent set
     isize = 0 ;
@@ -115,7 +116,7 @@ GrB_Info mis_check_results
     //--------------------------------------------------------------------------
 
     OK (GrB_Matrix_new (&C, GrB_BOOL, isize, isize)) ;
-    OK (GrB_extract (C, NULL, NULL, A, I, isize, I, isize, NULL)) ;
+    OK (GrB_Matrix_extract (C, NULL, NULL, A, I, isize, I, isize, NULL)) ;
     OK (GrB_Matrix_nvals (&nvals, C)) ;
 
     I2 = malloc (nvals * sizeof (GrB_Index)) ;
@@ -129,8 +130,8 @@ GrB_Info mis_check_results
     }
 
     // could do this with a mask instead of extractTuples.
-    OK (GrB_Matrix_extractTuples (I2, J2, X2, &nvals, C)) ;
-    GrB_free (&C) ;
+    OK (GrB_Matrix_extractTuples_BOOL (I2, J2, X2, &nvals, C)) ;
+    GrB_Matrix_free (&C) ;
 
     for (int64_t k = 0 ; k < nvals ; k++)
     {
@@ -153,7 +154,7 @@ GrB_Info mis_check_results
     // e = (e || A*iset), using the Boolean semiring
     OK (GrB_vxm (e, NULL, GrB_LOR, GxB_LOR_LAND_BOOL, iset, A, NULL)) ;
     OK (GrB_Vector_nvals (&nvals, e)) ;
-    GrB_free (&e) ;
+    GrB_Vector_free (&e) ;
     if (nvals != n)
     {
         fprintf (stderr, "error! A (I,I is not maximal!\n") ;
@@ -176,7 +177,9 @@ int main (int argc, char **argv)
 
     double tic [2], t1, t2 ;
     OK (GrB_init (GrB_NONBLOCKING)) ;
-    fprintf (stderr, "\nmis_demo:\n") ;
+    int nthreads ;
+    OK (GxB_get (GxB_NTHREADS, &nthreads)) ;
+    fprintf (stderr, "\nmis_demo: nthreads: %d\n", nthreads) ;
 
     //--------------------------------------------------------------------------
     // get a symmetric matrix with no self edges
@@ -190,11 +193,11 @@ int main (int argc, char **argv)
     //--------------------------------------------------------------------------
 
     OK (GrB_Descriptor_new (&dt)) ;
-    OK (GxB_set (dt, GrB_INP0, GrB_TRAN)) ;
+    OK (GxB_Desc_set (dt, GrB_INP0, GrB_TRAN)) ;
     OK (GrB_Matrix_new (&C, GrB_BOOL, n, n)) ;
     OK (GrB_transpose (C, NULL, NULL, A, dt)) ;
-    GrB_free (&dt) ;
-    GrB_free (&A) ;
+    GrB_Descriptor_free (&dt) ;
+    GrB_Matrix_free (&A) ;
     A = C ;
     C = NULL ;
 
@@ -231,8 +234,8 @@ int main (int argc, char **argv)
                 "======size differs!\n") ;
             printf ("size differs!\n") ;
         }
-        GrB_free (&iset1) ;
-        GrB_free (&iset2) ;
+        GrB_Vector_free (&iset1) ;
+        GrB_Vector_free (&iset2) ;
     }
 
     FREE_ALL ;

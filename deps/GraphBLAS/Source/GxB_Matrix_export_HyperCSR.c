@@ -2,7 +2,7 @@
 // GxB_Matrix_export_HyperCSR: export a matrix in hypersparse CSR format
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -35,6 +35,7 @@ GrB_Info GxB_Matrix_export_HyperCSR  // export and free a hypersparse CSR matrix
 
     GB_WHERE ("GxB_Matrix_export_HyperCSR (&A, &type, &nrows, &ncols, &nvals,"
         " &nonempty, &nvec, &Ah, &Ap, &Aj, &Ax, desc)") ;
+    GB_BURBLE_START ("GxB_Matrix_export_HyperCSR") ;
     GB_EXPORT_CHECK ;
 
     GB_RETURN_IF_NULL (nvec) ;
@@ -57,6 +58,7 @@ GrB_Info GxB_Matrix_export_HyperCSR  // export and free a hypersparse CSR matrix
     if ((*A)->is_csc)
     {
         // A = A', done in place, to put A in CSR format
+        GBBURBLE ("(transpose) ") ;
         GB_OK (GB_transpose (NULL, NULL, false, (*A), NULL, Context)) ;
         // the transpose might make it non-hypersparse (if vdim is 1)
         if (!((*A)->is_hyper))
@@ -66,7 +68,7 @@ GrB_Info GxB_Matrix_export_HyperCSR  // export and free a hypersparse CSR matrix
         }
     }
 
-    ASSERT_OK (GB_check ((*A), "A export: hyper CSR", GB0)) ;
+    ASSERT_MATRIX_OK ((*A), "A export: hyper CSR", GB0) ;
     ASSERT (!((*A)->is_csc)) ;
     ASSERT ((*A)->is_hyper) ;
 
@@ -104,6 +106,7 @@ GrB_Info GxB_Matrix_export_HyperCSR  // export and free a hypersparse CSR matrix
     // which has already been removed above.
     GB_MATRIX_FREE (A) ;
     ASSERT (*A == NULL) ;
+    GB_BURBLE_END ;
     return (GrB_SUCCESS) ;
 }
 

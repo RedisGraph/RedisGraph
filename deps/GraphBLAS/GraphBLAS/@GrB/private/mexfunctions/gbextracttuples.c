@@ -2,7 +2,7 @@
 // gbextracttuples: extract all entries from a GraphBLAS matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -47,7 +47,7 @@ void mexFunction
     { 
         desc = gb_mxarray_to_descriptor (pargin [1], &kind, &fmt, &base) ;
     }
-    OK (GrB_free (&desc)) ;
+    OK (GrB_Descriptor_free (&desc)) ;
 
     //--------------------------------------------------------------------------
     // get the matrix
@@ -219,7 +219,7 @@ void mexFunction
     // free workspace
     //--------------------------------------------------------------------------
 
-    OK (GrB_free (&A)) ;
+    OK (GrB_Matrix_free (&A)) ;
 
     //--------------------------------------------------------------------------
     // export I and J

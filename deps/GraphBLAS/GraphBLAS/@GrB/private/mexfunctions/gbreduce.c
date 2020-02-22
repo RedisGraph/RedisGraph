@@ -2,7 +2,7 @@
 // gbreduce: reduce a sparse matrix to a scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -109,7 +109,7 @@ void mexFunction
 
         OK (GrB_Matrix_new (&C, ctype, 1, 1)) ;
         fmt = gb_get_format (1, 1, A, NULL, fmt) ;
-        OK (GxB_set (C, GxB_FORMAT, fmt)) ;
+        OK (GxB_Matrix_Option_set (C, GxB_FORMAT, fmt)) ;
     }
 
     //--------------------------------------------------------------------------
@@ -130,7 +130,7 @@ void mexFunction
     { 
         // set C(0,0) to zero
         OK (GrB_Matrix_nvals (&nvals, C)) ;
-        OK (GrB_Matrix_setElement (C, 0, 0, 0)) ;
+        OK (GrB_Matrix_setElement_BOOL (C, 0, 0, 0)) ;
     }
 
     //--------------------------------------------------------------------------
@@ -232,8 +232,8 @@ void mexFunction
     // free shallow copies
     //--------------------------------------------------------------------------
 
-    OK (GrB_free (&A)) ;
-    OK (GrB_free (&desc)) ;
+    OK (GrB_Matrix_free (&A)) ;
+    OK (GrB_Descriptor_free (&desc)) ;
 
     //--------------------------------------------------------------------------
     // export the output matrix C back to MATLAB

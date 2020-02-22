@@ -2,7 +2,7 @@
 // gbfull: convert a GraphBLAS matrix struct into a MATLAB dense matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -81,7 +81,7 @@ void mexFunction
 
     GrB_Matrix B ;
     OK (GrB_Matrix_new (&B, type, nrows, ncols)) ;
-    OK (GxB_set (B, GxB_FORMAT, fmt)) ;
+    OK (GxB_Matrix_Option_set (B, GxB_FORMAT, fmt)) ;
     gb_matrix_assign_scalar (B, NULL, NULL, id, GrB_ALL, 0, GrB_ALL, 0, NULL,
         false) ;
 
@@ -91,17 +91,18 @@ void mexFunction
 
     GrB_Matrix C ;
     OK (GrB_Matrix_new (&C, type, nrows, ncols)) ;
-    OK (GxB_set (C, GxB_FORMAT, fmt)) ;
-    OK (GrB_eWiseAdd (C, NULL, NULL, gb_first_binop (type), A, B, NULL)) ;
+    OK (GxB_Matrix_Option_set (C, GxB_FORMAT, fmt)) ;
+    OK (GrB_eWiseAdd_Matrix_BinaryOp (C, NULL, NULL,
+        gb_first_binop (type), A, B, NULL)) ;
 
     //--------------------------------------------------------------------------
     // free workspace
     //--------------------------------------------------------------------------
 
-    OK (GrB_free (&id)) ;
-    OK (GrB_free (&B)) ;
-    OK (GrB_free (&A)) ;
-    OK (GrB_free (&desc)) ;
+    OK (GrB_Matrix_free (&id)) ;
+    OK (GrB_Matrix_free (&B)) ;
+    OK (GrB_Matrix_free (&A)) ;
+    OK (GrB_Descriptor_free (&desc)) ;
 
     //--------------------------------------------------------------------------
     // export C to a MATLAB dense matrix

@@ -2,7 +2,7 @@
 // GB_mx_isequal: check if two matrices are equal
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -12,7 +12,10 @@
 bool GB_mx_isequal     // true if A and B are exactly the same
 (
     GrB_Matrix A,
-    GrB_Matrix B
+    GrB_Matrix B,
+    double eps      // if A and B are both FP32 or FP64, and if eps > 0,
+                    // then the values are considered equal if their relative
+                    // difference is less than or equal to eps.
 )
 {
     // printf ("mx_isequal\n") ;
@@ -80,8 +83,22 @@ bool GB_mx_isequal     // true if A and B are exactly the same
         if (!GB_mx_same  ((char *) A->i, (char *) B->i, nnz * s))
             return (false) ;
         // printf ("i same\n") ;
-        if (!GB_mx_xsame (A->x, B->x, nnz, asize, A->i))
-            return (false) ;
+
+        if (A->type == GrB_FP32 && eps > 0)
+        {
+            if (!GB_mx_xsame32 (A->x, B->x, nnz, A->i, eps))
+                return (false) ;
+        }
+        else if (A->type == GrB_FP64 && eps > 0)
+        {
+            if (!GB_mx_xsame64 (A->x, B->x, nnz, A->i, eps))
+                return (false) ;
+        }
+        else
+        {
+            if (!GB_mx_xsame (A->x, B->x, nnz, asize, A->i))
+                return (false) ;
+        }
         // printf ("x same\n") ;
     }
 

@@ -2,7 +2,7 @@
 // GB_unaryop_transpose: C=op(cast(A')), transpose, typecast, and apply op
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -19,24 +19,25 @@
     // get A and C
     //--------------------------------------------------------------------------
 
-    const int64_t *restrict Ai = A->i ;
+    const int64_t *GB_RESTRICT Ai = A->i ;
 
     #if defined ( GB_PHASE_2_OF_2 )
-    const GB_ATYPE *restrict Ax = A->x ;
-    // int64_t  *restrict Cp = C->p ;
-    int64_t  *restrict Ci = C->i ;
-    GB_CTYPE *restrict Cx = C->x ;
+    const GB_ATYPE *GB_RESTRICT Ax = A->x ;
+    // int64_t  *GB_RESTRICT Cp = C->p ;
+    int64_t  *GB_RESTRICT Ci = C->i ;
+    GB_CTYPE *GB_RESTRICT Cx = C->x ;
     #endif
 
     //--------------------------------------------------------------------------
     // C = op (cast (A'))
     //--------------------------------------------------------------------------
 
+    int taskid ;
     #pragma omp parallel for num_threads(naslice) schedule(static)
-    for (int taskid = 0 ; taskid < naslice ; taskid++)
+    for (taskid = 0 ; taskid < naslice ; taskid++)
     {
         // get the rowcount for this slice, of size A->vlen
-        int64_t *restrict rowcount = Rowcounts [taskid] ;
+        int64_t *GB_RESTRICT rowcount = Rowcounts [taskid] ;
         for (int64_t Iter_k = A_slice [taskid] ;
                      Iter_k < A_slice [taskid+1] ;
                      Iter_k++)

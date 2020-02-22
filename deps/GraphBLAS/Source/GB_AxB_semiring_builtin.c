@@ -2,7 +2,7 @@
 // GB_AxB_semiring_builtin:  determine if semiring is built-in
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -55,7 +55,7 @@ bool GB_AxB_semiring_builtin        // true if semiring is builtin
     //--------------------------------------------------------------------------
 
     (*add_opcode) = add->opcode ;
-    if (*add_opcode >= GB_USER_C_opcode)
+    if (*add_opcode >= GB_USER_opcode)
     { 
         // semiring has a user-defined add operator for its monoid
         return (false) ;
@@ -76,8 +76,29 @@ bool GB_AxB_semiring_builtin        // true if semiring is builtin
     // check the multiply operator
     //--------------------------------------------------------------------------
 
-    return (GB_binop_builtin (A, A_is_pattern, B, B_is_pattern, mult, flipxy,
-        mult_opcode, xycode, zcode)) ;
+    if (!GB_binop_builtin (A->type, A_is_pattern, B->type, B_is_pattern,
+        mult, flipxy, mult_opcode, xycode, zcode))
+    { 
+        return (false) ;
+    }
+
+    //--------------------------------------------------------------------------
+    // rename to ANY_PAIR
+    //--------------------------------------------------------------------------
+
+    if ((*mult_opcode) == GB_PAIR_opcode)
+    { 
+        if (((*add_opcode) == GB_EQ_opcode) ||
+            ((*add_opcode) == GB_LAND_opcode) ||
+            ((*add_opcode) == GB_LOR_opcode) ||
+            ((*add_opcode) == GB_MAX_opcode) ||
+            ((*add_opcode) == GB_MIN_opcode) ||
+            ((*add_opcode) == GB_TIMES_opcode))
+        // rename to ANY_PAIR
+        (*add_opcode) = GB_PAIR_opcode ;
+    }
+
+    return (true) ;
 }
 
 #endif

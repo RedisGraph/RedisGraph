@@ -2,7 +2,7 @@
 // GB_ix_realloc: reallocate a matrix to hold a given number of entries
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -26,9 +26,10 @@ GrB_Info GB_ix_realloc      // reallocate space in a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    // GB_new does not always initialize A->p; GB_check fails in this case.  So
-    // the following assertion is not possible here.  This is by design.
-    // Thus, ASSERT_OK (GB_check (A, "A", ...)) ;  cannot be used here.
+    // GB_new does not always initialize A->p; GB_Matrix_check fails in this
+    // case.  So the following assertion is not possible here.  This is by
+    // design.  Thus, ASSERT_MATRIX_OK (A, "A", ...) ;  cannot be
+    // used here.
     ASSERT (A != NULL && A->p != NULL) ;
     ASSERT (GB_IMPLIES (A->is_hyper, A->h != NULL)) ;
     ASSERT (!A->i_shallow && !A->x_shallow) ;

@@ -8,7 +8,7 @@ function c = GB_spec_reduce_to_scalar (cin, accum, reduce, A)
 %
 % cin is a dense scalar
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 %-------------------------------------------------------------------------------
@@ -37,6 +37,9 @@ end
 
 % get the identity
 identity = GB_spec_identity (reduce_op, reduce_class) ;
+if (isempty (identity))
+    identity = 0 ;
+end
 
 % get the input matrix
 A = GB_spec_matrix (A, identity) ;

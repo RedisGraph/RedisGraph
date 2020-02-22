@@ -2,7 +2,7 @@
 // GB_new: create a new GraphBLAS matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -58,7 +58,7 @@ GrB_Info GB_new                 // create matrix, except for indices & values
     //--------------------------------------------------------------------------
 
     ASSERT (Ahandle != NULL) ;
-    ASSERT_OK (GB_check (type, "type for GB_new", GB0)) ;
+    ASSERT_TYPE_OK (type, "type for GB_new", GB0) ;
     ASSERT (vlen >= 0 && vlen <= GB_INDEX_MAX)
     ASSERT (vdim >= 0 && vdim <= GB_INDEX_MAX) ;
 
@@ -215,7 +215,7 @@ GrB_Info GB_new                 // create matrix, except for indices & values
     // The vector pointers A->p are initialized only if Ap_calloc is true
     if (Ap_option == GB_Ap_calloc)
     { 
-        ASSERT_OK (GB_check (A, "new matrix from GB_new", GB0)) ;
+        ASSERT_MATRIX_OK (A, "new matrix from GB_new", GB0) ;
     }
     return (GrB_SUCCESS) ;
 }

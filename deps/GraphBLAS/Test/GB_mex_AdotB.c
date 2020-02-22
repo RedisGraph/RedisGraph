@@ -2,7 +2,7 @@
 // GB_mex_AdotB: compute C=spones(Mask).*(A'*B)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -48,7 +48,7 @@ GrB_Info adotb_complex (GB_Context Context)
         return (info) ;
     }
 
-    // force completion, since GB_AxB_meta expects its inputs to be finished
+    // force completion
     info = GrB_wait ( ) ;
     if (info != GrB_SUCCESS)
     {
@@ -56,22 +56,9 @@ GrB_Info adotb_complex (GB_Context Context)
         return (info) ;
     }
 
-    #ifdef MY_COMPLEX
-    // use the precompiled complex type
-    if (Aconj != NULL) Aconj->type = My_Complex ;
-    if (B     != NULL) B->type     = My_Complex ;
-    #endif
-
     bool mask_applied = false ;
 
-    GrB_Semiring semiring =
-        #ifdef MY_COMPLEX
-            My_Complex_plus_times ;
-        #else
-            Complex_plus_times ;
-        #endif
-
-    // GxB_print (semiring,3) ;
+    GrB_Semiring semiring = Complex_plus_times ;
 
     GrB_Matrix Aslice [1] ;
     Aslice [0] = Aconj ;
@@ -79,24 +66,17 @@ GrB_Info adotb_complex (GB_Context Context)
     if (Mask != NULL)
     {
         // C<M> = A'*B using dot product method
-        info = GB_AxB_dot3 (&C, Mask, Aconj, B, semiring, flipxy, Context) ;
+        info = GB_AxB_dot3 (&C, Mask, false, Aconj, B, semiring, flipxy, Context);
         mask_applied = true ;
     }
     else
     {
         // C = A'*B using dot product method
-        info = GB_AxB_dot2 (&C, NULL, Aslice, B, semiring, flipxy,
+        info = GB_AxB_dot2 (&C, NULL, false, Aslice, B, semiring, flipxy,
             &mask_applied,
             /* single thread: */
             1, 1, 1, Context) ;
     }
-
-    #ifdef MY_COMPLEX
-    // convert back to run-time complex type
-    if (C     != NULL) C->type     = Complex ;
-    if (B     != NULL) B->type     = Complex ;
-    if (Aconj != NULL) Aconj->type = Complex ;
-    #endif
 
     GrB_free (&Aconj) ;
     return (info) ;
@@ -123,14 +103,14 @@ GrB_Info adotb (GB_Context Context)
     if (Mask != NULL)
     {
         // C<M> = A'*B using dot product method
-        info = GB_AxB_dot3 (&C, Mask, A, B,
+        info = GB_AxB_dot3 (&C, Mask, false, A, B,
             semiring /* GxB_PLUS_TIMES_FP64 */,
             flipxy, Context) ;
         mask_applied = true ;
     }
     else
     {
-        info = GB_AxB_dot2 (&C, NULL, Aslice, B,
+        info = GB_AxB_dot2 (&C, NULL, false, Aslice, B,
             semiring /* GxB_PLUS_TIMES_FP64 */,
             flipxy, &mask_applied,
             // single thread:
@@ -200,7 +180,6 @@ void mexFunction
 
         GrB_Matrix_nrows (&mnrows, Mask) ;
         GrB_Matrix_ncols (&mncols, Mask) ;
-        // GxB_print (Mask, 3) ;
 
         if (!Mask->is_csc)
         {

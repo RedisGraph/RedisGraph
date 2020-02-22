@@ -2,7 +2,7 @@
 // GrB_Col_extract: w<M> = accum (w, A(I,j)) or A(j,I)'
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -32,6 +32,7 @@ GrB_Info GrB_Col_extract        // w<M> = accum (w, A(I,j)) or (A(j,I))'
     //--------------------------------------------------------------------------
 
     GB_WHERE ("GrB_Col_extract (w, M, accum, A, I, ni, j, desc)") ;
+    GB_BURBLE_START ("GrB_extract") ;
     GB_RETURN_IF_NULL_OR_FAULTY (w) ;
     GB_RETURN_IF_FAULTY (M) ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
@@ -39,7 +40,8 @@ GrB_Info GrB_Col_extract        // w<M> = accum (w, A(I,j)) or (A(j,I))'
     ASSERT (GB_IMPLIES (M != NULL, GB_VECTOR_OK (M))) ;
 
     // get the descriptor
-    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2);
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, Mask_struct,
+        A_transpose, xx1, xx2) ;
 
     GrB_Index ancols = (A_transpose ? GB_NROWS (A) : GB_NCOLS (A)) ;
     if (j >= ancols)
@@ -60,13 +62,16 @@ GrB_Info GrB_Col_extract        // w<M> = accum (w, A(I,j)) or (A(j,I))'
     // do the work in GB_extract
     //--------------------------------------------------------------------------
 
-    return (GB_extract (
+    info = GB_extract (
         (GrB_Matrix) w,    C_replace,   // w as a matrix, and descriptor
-        (GrB_Matrix) M,    Mask_comp,   // mask a matrix, and its descriptor
+        (GrB_Matrix) M, Mask_comp, Mask_struct,  // mask and its descriptor
         accum,                          // optional accum for z=accum(w,t)
         A,                 A_transpose, // A and its descriptor
         I, ni,                          // row indices I and length ni
         J, 1,                           // one column index, nj = 1
-        Context)) ;
+        Context) ;
+
+    GB_BURBLE_END ;
+    return (info) ;
 }
 

@@ -14,7 +14,7 @@
 // prand_seed (&Seed, seed, n, nthreads): creates a GrB_Vector Seed of n random
 // number seeds, based on the scalar integer seed.  nthreads are used to
 // construct the seed; if zero, the OpenMP default is used.  Free the vector
-// with GrB_free (&Seed) when done.  The Seed vector is fully dense; all
+// with GrB_Vector_free (&Seed) when done.  The Seed vector is fully dense; all
 // entries are present.
 
 // prand_iget (X, Seed): fills an existing GrB_Vector X with n random integers
@@ -54,13 +54,16 @@
             prand_iget (Z, Another) ;   // fill Z with 2*n random uint64's
         }
 
-        GrB_free (&Seed) ;              // free the vectors
-        GrB_free (&Another) ;
-        GrB_free (&X) ;
-        GrB_free (&Y) ;
+        GrB_Vector_free (&Seed) ;              // free the vectors
+        GrB_Vector_free (&Another) ;
+        GrB_Vector_free (&X) ;
+        GrB_Vector_free (&Y) ;
 
         prand_finalize ( ) ;            // free the prand types and operators
 */
+
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 #include "GraphBLAS.h"
 

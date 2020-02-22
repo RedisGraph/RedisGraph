@@ -2,7 +2,7 @@
 // GB_op_is_second: return true if op is the SECOND operator of the right type
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -22,7 +22,8 @@ bool GB_op_is_second    // return true if op is SECOND, of the right type
         // of the right type
         return (true) ;
     }
-    else if (op->opcode == GB_SECOND_opcode)
+
+    if (op->opcode == GB_SECOND_opcode)
     {
         // op is the explict SECOND operator; check its type
         if (type == NULL)
@@ -35,16 +36,9 @@ bool GB_op_is_second    // return true if op is SECOND, of the right type
             // type is explicitly the right type
             return (true) ;
         }
-        else
-        { 
-            // wrong type
-            return (false) ;
-        }
     }
-    else
-    { 
-        // wrong opcode
-        return (false) ;
-    }
+
+    // wrong opcode or wrong type
+    return (false) ;
 }
 

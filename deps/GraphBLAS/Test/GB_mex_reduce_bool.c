@@ -2,7 +2,7 @@
 // GB_mex_reduce_bool: c = accum(c,reduce_to_scalar(A)) for boolean
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -59,8 +59,6 @@ void mexFunction
         mexErrMsgTxt ("A must be boolean") ;
     }
 
-    // GxB_print (A, 3) ;
-
     // get the op (always boolean)
     if (!GB_mx_mxArray_to_BinaryOp (&reduceop, pargin [1], "reduceop",
         GB_NOP_opcode, mxLOGICAL_CLASS, false, false))
@@ -68,8 +66,6 @@ void mexFunction
         FREE_ALL ;
         mexErrMsgTxt ("reduceop failed") ;
     }
-
-    // GxB_print (reduceop, 3) ;
 
     // get the boolean identity value
     bool GET_SCALAR (2, bool, identity, true) ;
@@ -97,9 +93,6 @@ void mexFunction
         FREE_ALL ;
         mexErrMsgTxt ("monoid failed") ;
     }
-
-    // GxB_print (reduce, 3) ;
-
 
     // reduce to a scalar
     bool result = false ;

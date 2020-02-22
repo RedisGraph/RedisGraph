@@ -1,6 +1,9 @@
 function test109
 %TEST109 terminal monoid with user-defined type
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 fprintf ('\ntest109: terminal monoid with user-defined type\n') ;
 
 rng ('default') ;

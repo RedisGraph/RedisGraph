@@ -12,6 +12,7 @@ function R = GB_spec_mask (C, Mask, Z, C_replace, Mask_complement, identity)
 % Mask: if empty or not present, Mask = ones (size (C))
 % C_replace: set C to zero first. Default is false.
 % Mask_complement: use ~Mask instead of Mask. Default is false.
+% Mask_struct: handled by GB_spec_mask.
 % identity: the additive identity of the semiring.  Default is zero.
 %   This is only needed because the GB_spec_* routines operate on dense
 %   matrices, and thus they need to know the value of the implicit 'zero'.
@@ -19,7 +20,7 @@ function R = GB_spec_mask (C, Mask, Z, C_replace, Mask_complement, identity)
 % This method operates on both plain matrices and on structs with
 % matrix, pattern, and class components.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin < 6)
@@ -72,7 +73,7 @@ if (isempty (Mask))
         R = C ;
     end
 else
-    % form the Boolean mask. For GraphBLAS, this does the
+    % form the valued mask. For GraphBLAS, this does the
     % right thing and ignores explicit zeros in Mask.
     Mask = (Mask ~= 0) ;
     if (~Mask_complement)

@@ -1,9 +1,11 @@
 function C = eps (G)
 %EPS Spacing of floating-point numbers in a GraphBLAS matrix.
+%
+% See also isfloat, realmax, realmin.
 
 % FUTURE: this will be much faster as a mexFunction.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (~isfloat (G))

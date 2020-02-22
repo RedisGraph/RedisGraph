@@ -2,7 +2,7 @@
 // GB_ek_slice_free: free workspace created by GB_ek_slice
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -11,9 +11,9 @@
 
 void GB_ek_slice_free
 (
-    int64_t *restrict *pstart_slice_handle, // size ntasks+1
-    int64_t *restrict *kfirst_slice_handle, // size ntasks
-    int64_t *restrict *klast_slice_handle,  // size ntasks
+    int64_t *GB_RESTRICT *pstart_slice_handle, // size ntasks+1
+    int64_t *GB_RESTRICT *kfirst_slice_handle, // size ntasks
+    int64_t *GB_RESTRICT *klast_slice_handle,  // size ntasks
     int ntasks                              // # of tasks
 )
 { 

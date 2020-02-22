@@ -2,7 +2,7 @@
 // GB_mex_subassign: C(I,J)<M> = accum (C (I,J), A)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 // This function is a wrapper for all GxB_*_subassign functions.
@@ -39,26 +39,39 @@
 
 #define FREE_ALL                        \
 {                                       \
+    bool A_is_M = (A == M) ;            \
+    bool A_is_C = (A == C) ;            \
+    bool C_is_M = (C == M) ;            \
     GB_MATRIX_FREE (&A) ;               \
-    GB_MATRIX_FREE (&M) ;               \
+    if (A_is_C) C = NULL ;              \
+    if (A_is_M) M = NULL ;              \
     GB_MATRIX_FREE (&C) ;               \
+    if (C_is_M) M = NULL ;              \
+    GB_MATRIX_FREE (&M) ;               \
     GrB_free (&desc) ;                  \
     if (!reduce_is_complex) GrB_free (&reduce) ;                \
     GB_mx_put_global (true, 0) ;        \
 }
 
-#define GET_DEEP_COPY \
+#define GET_DEEP_COPY                                                   \
+{                                                                       \
     C = GB_mx_mxArray_to_Matrix (pargin [0], "C input", true, true) ;   \
     if (nargin > 2 && mxIsChar (pargin [1]))                            \
     {                                                                   \
-        M = GB_mx_alias ("M", pargin [1], "C",C, "A",A) ;               \
+        M = GB_mx_alias ("M", pargin [1], "C", C, "A", A) ;             \
     }                                                                   \
     if (nargin > 3 && mxIsChar (pargin [3]))                            \
     {                                                                   \
-        A = GB_mx_alias ("A", pargin [3], "C",C, "M",M) ;               \
-    }
+        A = GB_mx_alias ("A", pargin [3], "C", C, "M", M) ;             \
+    }                                                                   \
+}
 
-#define FREE_DEEP_COPY GB_MATRIX_FREE (&C) ;
+#define FREE_DEEP_COPY          \
+{                               \
+    if (A == C) A = NULL ;      \
+    if (M == C) M = NULL ;      \
+    GB_MATRIX_FREE (&C) ;       \
+}
 
 GrB_Matrix C = NULL ;
 GrB_Matrix M = NULL ;
@@ -111,12 +124,12 @@ GrB_Info assign (GB_Context Context)
     bool at = (desc != NULL && desc->in0 == GrB_TRAN) ;
     GrB_Info info ;
 
-    int pr = 0 ;
+    int pr = GB0 ;
     bool ph = (pr > 0) ;
 
-    ASSERT_OK (GB_check (C, "C before mex assign", pr)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum for mex assign", pr)) ;
-    ASSERT_OK (GB_check (A, "A for mex assign", pr)) ;
+    ASSERT_MATRIX_OK (C, "C before mex assign", pr) ;
+    ASSERT_BINARYOP_OK_OR_NULL (accum, "accum for mex assign", pr) ;
+    ASSERT_MATRIX_OK (A, "A for mex assign", pr) ;
 
     if (GB_NROWS (A) == 1 && GB_NCOLS (A) == 1 && GB_NNZ (A) == 1)
     {
@@ -148,7 +161,6 @@ GrB_Info assign (GB_Context Context)
                 case GB_UINT64_code : ASSIGN (uint64_t) ;
                 case GB_FP32_code   : ASSIGN (float) ;
                 case GB_FP64_code   : ASSIGN (double) ;
-                case GB_UCT_code    :
                 case GB_UDT_code    :
                 default:
                     FREE_ALL ;
@@ -182,7 +194,6 @@ GrB_Info assign (GB_Context Context)
                 case GB_UINT64_code : ASSIGN (uint64_t) ;
                 case GB_FP32_code   : ASSIGN (float) ;
                 case GB_FP64_code   : ASSIGN (double) ;
-                case GB_UCT_code    :
                 case GB_UDT_code    :
                 {
                     OK (GxB_subassign ((GrB_Vector) C, (GrB_Vector) M,
@@ -220,7 +231,6 @@ GrB_Info assign (GB_Context Context)
                 case GB_UINT64_code : ASSIGN (uint64_t) ;
                 case GB_FP32_code   : ASSIGN (float) ;
                 case GB_FP64_code   : ASSIGN (double) ;
-                case GB_UCT_code    :
                 case GB_UDT_code    :
                 {
                     OK (GxB_subassign (C, M, accum, Ax, I, ni, J, nj, desc)) ;
@@ -277,7 +287,7 @@ GrB_Info assign (GB_Context Context)
         OK (GxB_subassign (C, M, accum, A, I, ni, J, nj, desc)) ;
     }
 
-    ASSERT_OK (GB_check (C, "C after assign", pr)) ;
+    ASSERT_MATRIX_OK (C, "C after assign", pr) ;
     return (info) ;
 }
 
@@ -525,6 +535,7 @@ void mexFunction
             mexErrMsgTxt ("C failed") ;
         }
         mxClassID cclass = GB_mx_Type_to_classID (C->type) ;
+        // GxB_print (C, 2) ;
 
         // get accum; default: NOP, default class is class(C)
         accum = NULL ;
@@ -653,10 +664,14 @@ void mexFunction
     // return C to MATLAB as a struct
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (C, "Final C before wait", GB0)) ;
+    ASSERT_MATRIX_OK (C, "Final C before wait", GB0) ;
     GrB_wait ( ) ;
     GB_MEX_TOC ;
+
+    if (C == A) A = NULL ;      // do not free A if it is aliased to C
+    if (C == M) M = NULL ;      // do not free M if it is aliased to C
     pargout [0] = GB_mx_Matrix_to_mxArray (&C, "C assign result", true) ;
+
     FREE_ALL ;
 }
 
