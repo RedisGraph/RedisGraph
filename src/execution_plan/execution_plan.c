@@ -979,20 +979,23 @@ void ExecutionPlan_Init(ExecutionPlan *plan) {
 	_ExecutionPlanInit(plan->root);
 }
 
-void ExecutionPlan_Execute(ExecutionPlan *plan) {
+ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 	/* Set an exception-handling breakpoint to capture run-time errors.
 	 * encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
 	 * a downstream exception returns us to this breakpoint. */
 	int encountered_error = SET_EXCEPTION_HANDLER();
 
 	// Encountered a run-time error - return immediately.
-	if(encountered_error) return;
+	if(encountered_error) goto clean_up;
 
 	ExecutionPlan_Init(plan);
 
 	Record r = NULL;
 	// Execute the root operation and free the processed Record until the data stream is depleted.
 	while((r = OpBase_Consume(plan->root)) != NULL) ExecutionPlan_ReturnRecord(r->owner, r);
+
+clean_up:
+	return QueryCtx_GetResultSet();
 }
 
 static void _ExecutionPlan_InitProfiling(OpBase *root) {

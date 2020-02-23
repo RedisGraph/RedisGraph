@@ -103,7 +103,7 @@ static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
 	RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
 }
 
-void NewResultSet(RedisModuleCtx *ctx, bool compact) {
+ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact) {
 	ResultSet *set = rm_malloc(sizeof(ResultSet));
 	set->ctx = ctx;
 	set->gc = QueryCtx_GetGraphCtx();
@@ -124,7 +124,7 @@ void NewResultSet(RedisModuleCtx *ctx, bool compact) {
 	set->stats.indices_created = STAT_NOT_SET;
 	set->stats.indices_deleted = STAT_NOT_SET;
 
-	QueryCtx_SetResultSet(set);
+	return set;
 }
 
 void ResultSet_SetColumns(const char **columns) {
@@ -154,8 +154,7 @@ int ResultSet_AddRecord(ResultSet *set, Record r) {
 	return RESULTSET_OK;
 }
 
-void ResultSet_IndexCreated(int status_code) {
-	ResultSet *set = QueryCtx_GetResultSet();
+void ResultSet_IndexCreated(ResultSet *set, int status_code) {
 	if(status_code == INDEX_OK) {
 		if(set->stats.indices_created == STAT_NOT_SET) {
 			set->stats.indices_created = 1;
@@ -167,8 +166,7 @@ void ResultSet_IndexCreated(int status_code) {
 	}
 }
 
-void ResultSet_IndexDeleted(int status_code) {
-	ResultSet *set = QueryCtx_GetResultSet();
+void ResultSet_IndexDeleted(ResultSet *set, int status_code) {
 	if(status_code == INDEX_OK) {
 		if(set->stats.indices_deleted == STAT_NOT_SET) {
 			set->stats.indices_deleted = 1;
@@ -180,8 +178,7 @@ void ResultSet_IndexDeleted(int status_code) {
 	}
 }
 
-void ResultSet_Replay(void) {
-	ResultSet *set = QueryCtx_GetResultSet();
+void ResultSet_Reply(ResultSet *set) {
 	if(set->header_emitted) {
 		// If we have emitted a header, set the number of elements in the preceding array.
 		RedisModule_ReplySetArrayLength(set->ctx, set->recordCount);

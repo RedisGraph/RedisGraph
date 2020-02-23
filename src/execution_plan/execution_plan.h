@@ -8,6 +8,7 @@
 
 #include "./ops/op.h"
 #include "../graph/graph.h"
+#include "../resultset/resultset.h"
 #include "../filter_tree/filter_tree.h"
 #include "../util/object_pool/object_pool.h"
 
@@ -122,7 +123,7 @@ void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx);
 void ExecutionPlan_Init(ExecutionPlan *plan);
 
 /* Executes plan */
-void ExecutionPlan_Execute(ExecutionPlan *plan);
+ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan);
 
 /* Profile executes plan */
 void ExecutionPlan_Profile(ExecutionPlan *plan);

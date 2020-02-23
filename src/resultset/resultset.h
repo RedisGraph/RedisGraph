@@ -30,17 +30,17 @@ typedef struct {
 	ResultSetFormatter *formatter;  /* ResultSet data formatter. */
 } ResultSet;
 
-void NewResultSet(RedisModuleCtx *ctx, bool compact);
+ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact);
 
 void ResultSet_SetColumns(const char **columns);
 
 int ResultSet_AddRecord(ResultSet *set, Record r);
 
-void ResultSet_IndexCreated(int status_code);
+void ResultSet_IndexCreated(ResultSet *set, int status_code);
 
-void ResultSet_IndexDeleted(int status_code);
+void ResultSet_IndexDeleted(ResultSet *set, int status_code);
 
-void ResultSet_Replay(void);
+void ResultSet_Reply(ResultSet *set);
 
 void ResultSet_ReportQueryRuntime(RedisModuleCtx *ctx);
 

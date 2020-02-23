@@ -92,7 +92,8 @@ void Graph_Query(void *args) {
 
 	// Set policy after lock acquisition, avoid resetting policies between readers and writers.
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
-	NewResultSet(ctx, compact);
+	result_set = NewResultSet(ctx, compact);
+	QueryCtx_SetResultSet(result_set);
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
 	if(root_type == CYPHER_AST_QUERY) {  // query operation
 		ExecutionPlan *plan = NewExecutionPlan();
@@ -112,7 +113,7 @@ void Graph_Query(void *args) {
 
 		if(!plan) goto cleanup;
 		ExecutionPlan_PreparePlan(plan);
-		ExecutionPlan_Execute(plan);
+		result_set = ExecutionPlan_Execute(plan);
 		ExecutionPlan_Free(plan);
 	} else if(root_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
 			  root_type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {
@@ -121,7 +122,7 @@ void Graph_Query(void *args) {
 		assert("Unhandled query type" && false);
 	}
 	QueryCtx_ForceUnlockCommit();
-	ResultSet_Replay();    // Send result-set back to client.
+	ResultSet_Reply(result_set);    // Send result-set back to client.
 
 	// Clean up.
 cleanup:
@@ -133,6 +134,7 @@ cleanup:
 		else Graph_WriterLeave(gc->g);
 	}
 
+	ResultSet_Free(result_set);
 	AST_Free(ast);
 	parse_result_free(parse_result);
 	GraphContext_Release(gc);
