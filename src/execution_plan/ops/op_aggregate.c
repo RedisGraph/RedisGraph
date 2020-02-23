@@ -101,8 +101,7 @@ static Group *_GetGroup(OpAggregate *op, Record r) {
 		op->group = _CreateGroup(op, r);
 		Group_KeyStr(op->group, &group_key_str);
 		CacheGroupAdd(op->groups, group_key_str, op->group);
-		rm_free(group_key_str);
-		return op->group;
+		goto cleanup;
 	}
 
 	// Evaluate non-aggregated fields, see if they match
@@ -123,14 +122,12 @@ static Group *_GetGroup(OpAggregate *op, Record r) {
 	// Can't reuse last accessed group, lookup group by identifier key.
 	_ComputeGroupKeyStr(op, &group_key_str);
 	op->group = CacheGroupGet(op->groups, group_key_str);
-	if(op->group) {
-		rm_free(group_key_str);
-		return op->group;
+	if(!op->group) {
+		// Group does not exists, create it.
+		op->group = _CreateGroup(op, r);
+		CacheGroupAdd(op->groups, group_key_str, op->group);
 	}
-
-	// Group does not exists, create it.
-	op->group = _CreateGroup(op, r);
-	CacheGroupAdd(op->groups, group_key_str, op->group);
+cleanup:
 	rm_free(group_key_str);
 	return op->group;
 }
