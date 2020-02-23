@@ -286,4 +286,12 @@ class testProcedures(FlowTestsBase):
         actual_resultset = redis_graph.call_procedure("db.propertyKeys").result_set
         expected_results = [["name"], ["value"]]
         self.env.assertEquals(actual_resultset, expected_results)
-    
+
+    def test_procedure_fulltext_syntax_error(self):
+        try:
+            query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange || Apple') YIELD node RETURN node"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass

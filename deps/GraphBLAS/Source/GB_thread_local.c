@@ -2,7 +2,7 @@
 // GB_thread_local: manage thread-local storage
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -44,8 +44,8 @@ char GB_thread_local_report [GB_RLEN+1] = "" ;
 
 #else // USER_OPENMP_THREADS, or USER_NO_THREADS
 // OpenMP user threads, or no user threads: this is the default
-#pragma omp threadprivate(GB_thread_local_report)
 char GB_thread_local_report [GB_RLEN+1] = "" ;
+#pragma omp threadprivate(GB_thread_local_report)
 #endif
 
 //------------------------------------------------------------------------------

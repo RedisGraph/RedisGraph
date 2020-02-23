@@ -1,7 +1,7 @@
 function test20(fulltest)
 %TEST20 test GrB_mxm, mxv, and vxm
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 [mult_ops, ~, add_ops, classes, ~, ~] = GB_spec_opsall ;
@@ -33,7 +33,7 @@ if (fulltest > 0)
     k2_list = 1:length(add_ops) ;
     k3_list = 1:length(classes) ;
 else
-    k1_list = [ 8 ] ;   % times
+    k1_list = [ 9 ] ;   % times
     k2_list = [ 3 ] ;   % plus
     k3_list = [ 11 ] ;  % double
 end

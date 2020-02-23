@@ -2,7 +2,7 @@
 // GB_mex_dump: copy and print a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -49,7 +49,7 @@ void mexFunction
     int GET_SCALAR (1, int, pr, 1) ;
 
     // dump the matrix
-    GrB_Info info = GB_check (A, "", pr) ;
+    GrB_Info info = GB_Matrix_check (A, "", pr, stdout, NULL) ;
     if (info != GrB_SUCCESS)
     {
         mexErrMsgTxt (GrB_error ( )) ;

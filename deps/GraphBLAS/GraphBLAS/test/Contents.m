@@ -74,6 +74,10 @@
 %  gbtest69  - test flip
 %  gbtest70  - test GrB.random
 %  gbtest71  - test GrB.selectopinfo
+%  gbtest72  - test any-pair semiring
+%  gbtest73  - test GrB.normdiff
+%  gbtest97  - test A*x performance
+%  gbtest98  - test A'*x performance
 %  gbtest99  - test GrB.bfs and plot (graph (G))
 %
 % Utilities:
@@ -82,6 +86,6 @@
 %  gbtest_types  - return a cell array of strings, listing all types
 %  gbtest_eq     - tests if A and B are equal, after dropping zeros.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 

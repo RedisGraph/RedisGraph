@@ -47,7 +47,7 @@
 %   GB_spec_subassign             - a MATLAB mimic of GxB_subassign
 %   GB_spec_transpose             - a MATLAB mimic of GrB_transpose
 %   GB_spec_vxm                   - a MATLAB mimic of GrB_vxm
-%   GB_user_compare               - compare GraphBLAS results for complex types
+%   GB_complex_compare            - compare GraphBLAS results for complex types
 %   GB_user_op                    - apply a complex binary and unary operator
 %   GB_user_opsall                - return list of complex operators
 %   accum_mask                    - apply the mask
@@ -60,7 +60,7 @@
 %   test00   - test GB_mex_mis
 %   test01   - test GraphBLAS error handling
 %   test02   - test GrB_*_dup
-%   test03   - test GB_check functions
+%   test03   - test GB_*_check functions
 %   test04   - test and demo for accumulator/mask and transpose
 %   test05   - test GrB_*_setElement
 %   test06   - test GrB_mxm on all semirings
@@ -140,7 +140,8 @@
 %   test72   - special cases for mxm, ewise, ...
 %   test73   - performance of C = A*B, with mask
 %   test74   - test GrB_mxm: all built-in semirings
-%   test75   - test GrB_mxm and GrB_vxm on all semirings (A'B dot product)
+%   test75   - test GrB_mxm and GrB_vxm on all semirings
+%   test75b  - GrB_mxm and GrB_vxm on all semirings (shorter test than test75)
 %   test76   - test GxB_resize
 %   test77   - test GxB_kron
 %   test78   - test subref
@@ -155,7 +156,7 @@
 %   test87   - performance test of GrB_mxm
 %   test88   - test hypersparse matrices with heap-based method
 %   test89   - performance test of complex A*B
-%   test90   - test AxB with pre-compiled semirings: plus_rdiv and plus_rdiv2
+%   test90   - test AxB with user-defined semirings: plus_rdiv and plus_rdiv2
 %   test91   - test subref performance on dense vectors
 %   test92   - test GB_subref (symbolic case)
 %   test93   - test dpagerank and ipagerank
@@ -206,6 +207,17 @@
 %   test137  - GrB_eWiseMult with FIRST and SECOND operators
 %   test138  - test assign, with coarse-only tasks in IxJ slice
 %   test139  - merge sort, special cases
+%   test140  - test assign with duplicates
+%   test141  - test GrB_eWiseAdd (all types and operators) for dense matrices
+%   test142  - test GrB_assign for dense matrices
+%   test143  - test special cases for C<!M>=A*B and C<M>=A*B
+%   test144  - test GB_cumsum
+%   test145  - test dot4
+%   test146  - test C<M,struct> = scalar
+%   test147  - test C<M>A*B with very sparse M
+%   test148  - eWiseAdd with aliases
+%   test149  - test fine hash method for C<!M>=A*B
+%   test150  - test GrB_mxm with typecasting and zombies (dot3)
 
 %   testc1   - test complex operators
 %   testc2   - test complex A*B, A'*B, A*B', A'*B', A+B
@@ -222,6 +234,7 @@
 
 % Other tests:
 
+%   t74       - run test20 and test74
 %   testperf  - run all performance tests
 %   atest     - test GrB_assign and GxB_subassign
 %   atest11   - test GrB_assign and GxB_subassign
@@ -231,7 +244,7 @@
 %   grbinfo   - print info about the GraphBLAS version
 %   mtest     - test mxm
 %   longtests - very long tests
-%   gunk      - placeholder for working on test failures
+
 %   rtest     - test GrB_reduce to vector and scalar
 %   ss        - test GxB_select
 %   stest     - test GxB_select
@@ -254,16 +267,20 @@
 %   runtest          - run a single GraphBLAS test
 %   stat             - report status of statement coverage and malloc debugging
 %   GB_define        - create C source code for GraphBLAS.h
-%   GB_define2       - construct part of the GB.h file, to allow user-defined objects
+
 %   grbresults       - return time taken by last GraphBLAS function, and AxB method
 %   isequal_roundoff - compare two matrices, allowing for roundoff errors
-%   startup          - setup the path for tests in GraphBLAS/Test
+
 %   test_other       - installs all packages needed for extensive tests
 
-%   bfs_book         - graph on the cover of the book, 'Graph Algorithms in the language
+%   grb_clear_coverage - clear current statement coverage
+%   gbclear            - clear and reload GraphBLAS
+%   grb_get_coverage   - return current statement coverage
+
+%   bfs_book         - run BFS on a small graph
 %   bfs_matlab       - a simple breadth-first-search in MATLAB
 %   bfs_test         - compares bfs_matlab and GB_mex_bfs
-%   flopcount        - returns cumulative sum of flop counts for A*B or C<M>=A*B
+%   flopcount        - cumulative sum of flop counts for A*B, C<M>=A*B, C<!M>=A*B
 %   floptest         - compare flopcount with GB_mex_mxm_flops
 
 % Triangle counting:
@@ -284,3 +301,5 @@
 %   ../Demo/MATLAB/kron_demo      - test Program/kron_demo.c and compare with MATLAB kron
 %   ../Demo/MATLAB/kron_test      - test kron_demo.m
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.

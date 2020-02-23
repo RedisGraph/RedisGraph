@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -49,8 +49,11 @@ typedef enum {
 	OPType_SEMI_APPLY = (1 << 29),
 	OpType_ANTI_SEMI_APPLY = (1 << 30),
 	OPType_OR_APPLY_MULTIPLEXER = (1 << 31),
-	OPType_AND_APPLY_MULTIPLEXER = (1 << 31),
+	OPType_AND_APPLY_MULTIPLEXER = (1 << 31), // TODO same value as OR_APPLY
 } OPType; // TODO Consider switching from bitmask at 1<<32
+
+// Bitmask matching all Apply operations.
+#define APPLY_OPS (OPType_OR_APPLY_MULTIPLEXER | OPType_AND_APPLY_MULTIPLEXER | OPType_SEMI_APPLY | OpType_ANTI_SEMI_APPLY)
 
 typedef enum {
 	OP_DEPLETED = 1,
@@ -60,12 +63,14 @@ typedef enum {
 } OpResult;
 
 struct OpBase;
+struct ExecutionPlan;
 
 typedef void (*fpFree)(struct OpBase *);
 typedef OpResult(*fpInit)(struct OpBase *);
 typedef Record(*fpConsume)(struct OpBase *);
 typedef OpResult(*fpReset)(struct OpBase *);
 typedef int (*fpToString)(const struct OpBase *, char *, uint);
+typedef struct OpBase *(*fpClone)(const struct ExecutionPlan *, const struct OpBase *);
 
 // Execution plan operation statistics.
 typedef struct {
@@ -73,13 +78,12 @@ typedef struct {
 	double profileExecTime;     // Operation total execution time in ms.
 }  OpStats;
 
-struct ExecutionPlan;
-
 struct OpBase {
 	OPType type;                // Type of operation.
 	fpInit init;                // Called once before execution.
 	fpFree free;                // Free operation.
 	fpReset reset;              // Reset operation state.
+	fpClone clone;              // Operation clone.
 	fpConsume consume;          // Produce next record.
 	fpConsume profile;          // Profiled version of consume.
 	fpToString toString;        // Operation string representation.
@@ -98,12 +102,15 @@ typedef struct OpBase OpBase;
 
 // Initialize op.
 void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsume consume,
-				 fpReset reset, fpToString toString, fpFree free, bool writer, const struct ExecutionPlan *plan);
+				 fpReset reset, fpToString toString, fpClone, fpFree free, bool writer,
+				 const struct ExecutionPlan *plan);
 void OpBase_Free(OpBase *op);       // Free op.
 Record OpBase_Consume(OpBase *op);  // Consume op.
 Record OpBase_Profile(OpBase *op);  // Profile op.
 
 int OpBase_ToString(const OpBase *op, char *buff, uint buff_len);
+
+OpBase *OpBase_Clone(const struct ExecutionPlan *plan, const OpBase *op);
 
 /* If an operation holds the sole reference to a Record it is evaluating,
  * that reference should be tracked so that it may be freed in the event of a run-time error. */

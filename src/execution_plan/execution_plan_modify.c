@@ -1,5 +1,7 @@
 #include "execution_plan.h"
 #include "ops/ops.h"
+#include "../query_ctx.h"
+#include "../ast/ast_mock.h"
 
 static void _OpBase_AddChild(OpBase *parent, OpBase *child) {
 	// Add child to parent
@@ -128,13 +130,15 @@ void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
 		// Remove new root's parent pointer.
 		plan->root->parent = NULL;
 	} else {
-		// Remove op from its parent.
 		OpBase *parent = op->parent;
-		_OpBase_RemoveChild(op->parent, op);
-
-		// Add each of op's children as a child of op's parent.
-		for(int i = 0; i < op->childCount; i++) {
-			_OpBase_AddChild(parent, op->children[i]);
+		if(op->childCount > 0) {
+			// In place replacement of the op first branch instead of op.
+			_ExecutionPlan_ParentReplaceChild(op->parent, op, op->children[0]);
+			// Add each of op's children as a child of op's parent.
+			for(int i = 1; i < op->childCount; i++) _OpBase_AddChild(parent, op->children[i]);
+		} else {
+			// Remove op from its parent.
+			_OpBase_RemoveChild(op->parent, op);
 		}
 	}
 
@@ -159,7 +163,7 @@ void ExecutionPlan_DetachOp(OpBase *op) {
 OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
 	if(!root) return NULL;
 
-	uint count = (root->modifies) ? array_len(root->modifies) : 0;
+	uint count = array_len(root->modifies);
 
 	for(uint i = 0; i < count; i++) {
 		const char *resolved_alias = root->modifies[i];
@@ -246,8 +250,6 @@ static OpBase *_ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recur
 OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
 									   rax *refs_to_resolve) {
 	OpBase *op = _ExecutionPlan_LocateReferences(root, recurse_limit, refs_to_resolve);
-	if(op) assert("ExecutionPlan_LocateReferences located op but not all references found" &&
-					  (raxSize(refs_to_resolve) == 0));
 	return op;
 }
 
@@ -265,21 +267,6 @@ void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers) {
 	for(int i = 0; i < op->childCount; i++) {
 		ExecutionPlan_BoundVariables(op->children[i], modifiers);
 	}
-}
-
-// Build an array of const strings to populate the 'modifies' arrays of Argument ops.
-inline const char **ExecutionPlan_BuildArgumentModifiesArray(rax *bound_vars) {
-	const char **arguments = array_new(const char *, raxSize(bound_vars));
-	raxIterator it;
-	raxStart(&it, bound_vars);
-	raxSeek(&it, "^", NULL, 0);
-	while(raxNext(&it)) { // For each bound variable
-		// Copy the const string variable name into the array.
-		arguments = array_append(arguments, it.data);
-	}
-	raxStop(&it);
-
-	return arguments;
 }
 
 // For all ops that refer to QG entities, rebind them with the matching entity
@@ -306,6 +293,11 @@ static void _RebindQueryGraphReferences(OpBase *op, const QueryGraph *qg) {
 
 void ExecutionPlan_BindPlanToOps(ExecutionPlan *plan, OpBase *root) {
 	if(!root) return;
+	// If the temporary execution plan has added new QueryGraph entities,
+	// migrate them to the master plan's QueryGraph.
+	// (This is only necessary for producing EXPLAIN outputs.)
+	QueryGraph_MergeGraphs(plan->query_graph, root->plan->query_graph);
+
 	root->plan = plan;
 	_RebindQueryGraphReferences(root, plan->query_graph);
 	for(int i = 0; i < root->childCount; i ++) {
@@ -313,11 +305,37 @@ void ExecutionPlan_BindPlanToOps(ExecutionPlan *plan, OpBase *root) {
 	}
 }
 
-void ExecutionPlan_AppendSubExecutionPlan(ExecutionPlan *master_plan, ExecutionPlan *sub_plan) {
-	if(!master_plan->sub_execution_plans)
-		master_plan->sub_execution_plans = array_new(ExecutionPlan *, 1);
-	if(sub_plan->record_map) raxFree(sub_plan->record_map);
-	sub_plan->record_map = master_plan->record_map;
-	master_plan->sub_execution_plans = array_append(master_plan->sub_execution_plans, sub_plan);
+OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_vars,
+									   const cypher_astnode_t *path) {
+	// Initialize an ExecutionPlan that shares this plan's Record mapping.
+	ExecutionPlan *match_stream_plan = ExecutionPlan_NewEmptyExecutionPlan();
+	match_stream_plan->record_map = plan->record_map;
+
+	// If we have bound variables, build an Argument op that represents them.
+	if(bound_vars) match_stream_plan->root = NewArgumentOp(plan, bound_vars);
+
+	AST *ast = QueryCtx_GetAST();
+	// Build a temporary AST holding a MATCH clause.
+	AST *match_stream_ast = AST_MockMatchPattern(ast, path);
+
+	ExecutionPlan_PopulateExecutionPlan(match_stream_plan, NULL);
+
+	AST_MockFree(match_stream_ast);
+	QueryCtx_SetAST(ast); // Reset the AST.
+	// Add filter ops to sub-ExecutionPlan.
+	if(match_stream_plan->filter_tree) ExecutionPlan_PlaceFilterOps(match_stream_plan, NULL);
+
+	OpBase *match_stream_root = match_stream_plan->root;
+
+	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
+	ExecutionPlan_BindPlanToOps(plan, match_stream_root);
+
+	// NULL-set variables shared between the match_stream_plan and the overall plan.
+	match_stream_plan->root = NULL;
+	match_stream_plan->record_map = NULL;
+	// Free the temporary plan.
+	ExecutionPlan_Free(match_stream_plan);
+
+	return match_stream_root;
 }
 

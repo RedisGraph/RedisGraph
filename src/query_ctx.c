@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -91,9 +91,9 @@ void QueryCtx_SetGraphCtx(GraphContext *gc) {
 
 void QueryCtx_SetError(char *error) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	// An error is already set.
-	if(ctx->internal_exec_ctx.error) free(error);
-
+	// An error is already set - free it.
+	if(ctx->internal_exec_ctx.error) free(ctx->internal_exec_ctx.error);
+	// Set the new error.
 	ctx->internal_exec_ctx.error = error;
 }
 
@@ -189,9 +189,11 @@ bool QueryCtx_LockForCommit(void) {
 	return true;
 
 clean_up:
-// Unlock GIL.
+	// Free key handle.
+	RedisModule_CloseKey(key);
+	// Unlock GIL.
 	_QueryCtx_ThreadSafeContextUnlock(ctx);
-// If there is a break point for runtime exception, raise it, otherwise return false.
+	// If there is a break point for runtime exception, raise it, otherwise return false.
 	QueryCtx_RaiseRuntimeException();
 	return false;
 

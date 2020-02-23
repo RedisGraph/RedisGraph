@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -12,7 +12,6 @@
 #include "../util/strcmp.h"
 #include "../util/vector.h"
 #include "../util/rmalloc.h"
-#include "../ast/ast_mock.h"
 #include "../util/rax_extensions.h"
 #include "../graph/entities/edge.h"
 #include "../ast/ast_build_ar_exp.h"
@@ -330,39 +329,53 @@ static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
 	}
 	array_free(filter_ops);
 }
+
+void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
+									  const OpBase *upper_bound, OpBase *filter) {
+	assert(filter->type == OPType_FILTER);
+	rax *references = FilterTree_CollectModified(((OpFilter *)filter)->filterTree);
+	OpBase *op;
+	if(raxSize(references) > 0) {
+		/* Scan execution plan, locate the earliest position where all
+		 * references been resolved. */
+		op = ExecutionPlan_LocateReferences(lower_bound, upper_bound, references);
+	} else {
+		/* The filter tree does not contain references, like:
+		 * WHERE 1=1
+		 * TODO This logic is inadequate. For now, we'll place the op
+		 * directly below the first projection (hopefully there is one!). */
+		op = plan->root;
+		while(op->childCount > 0 && op->type != OPType_PROJECT && op->type != OPType_AGGREGATE) {
+			op = op->children[0];
+		}
+	}
+	assert(op);
+	// In case this is a pre-existing filter (this function is not called out from ExecutionPlan_PlaceFilterOps)
+	if(filter->childCount > 0) {
+		// If the located op is not the filter child, re position the filter.
+		if(op != filter->children[0]) {
+			ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
+			ExecutionPlan_PushBelow(op, (OpBase *)filter);
+		}
+	} else {
+		// This is a new filter.
+		ExecutionPlan_PushBelow(op, (OpBase *)filter);
+	}
+	// Re set the plan root if needed.
+	if(op == plan->root) plan->root = filter;
+	raxFree(references);
+}
+
 void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_limit) {
 	Vector *sub_trees = FilterTree_SubTrees(plan->filter_tree);
 
 	/* For each filter tree find the earliest position along the execution
 	 * after which the filter tree can be applied. */
 	for(int i = 0; i < Vector_Size(sub_trees); i++) {
-		OpBase *op;
 		FT_FilterNode *tree;
 		Vector_Get(sub_trees, i, &tree);
-		rax *references = FilterTree_CollectModified(tree);
-
-		if(raxSize(references) > 0) {
-			/* Scan execution plan, locate the earliest position where all
-			 * references been resolved. */
-			op = ExecutionPlan_LocateReferences(plan->root, recurse_limit, references);
-			assert(op);
-		} else {
-			/* The filter tree does not contain references, like:
-			 * WHERE 1=1
-			 * TODO This logic is inadequate. For now, we'll place the op
-			 * directly below the first projection (hopefully there is one!). */
-			op = plan->root;
-			while(op->childCount > 0 && op->type != OPType_PROJECT && op->type != OPType_AGGREGATE) {
-				op = op->children[0];
-			}
-		}
-
-		/* Create filter node.
-		 * Introduce filter op right below located op. */
 		OpBase *filter_op = NewFilterOp(plan, tree);
-		ExecutionPlan_PushBelow(op, filter_op);
-		if(op == plan->root) plan->root = filter_op;
-		raxFree(references);
+		ExecutionPlan_RePositionFilterOp(plan, plan->root, recurse_limit, filter_op);
 	}
 	Vector_Free(sub_trees);
 	_ExecutionPlan_PlaceApplyOps(plan);
@@ -530,61 +543,14 @@ static inline void _buildUnwindOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
-/* Given a MERGE clause, build the stream of operations required to match its pattern
- * and add it as a child of the Merge op. */
-static void _buildMergeMatchStream(ExecutionPlan *plan, const cypher_astnode_t *clause,
-								   const char **arguments) {
-	AST *ast = QueryCtx_GetAST();
-	// Initialize an ExecutionPlan that shares this plan's Record mapping.
-	ExecutionPlan *rhs_plan = ExecutionPlan_NewEmptyExecutionPlan();
-	rhs_plan->record_map = plan->record_map;
-
-	// If we have bound variables, build an Argument op that represents them.
-	if(arguments) rhs_plan->root = NewArgumentOp(plan, arguments);
-
-	// Build a temporary AST holding the MERGE path within a MATCH clause.
-	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
-	AST *rhs_ast = AST_MockMatchPattern(ast, path);
-
-	ExecutionPlan_PopulateExecutionPlan(rhs_plan, NULL);
-
-	AST_MockFree(rhs_ast);
-	QueryCtx_SetAST(ast); // Reset the AST.
-	// Add filter ops to sub-ExecutionPlan.
-	if(rhs_plan->filter_tree) ExecutionPlan_PlaceFilterOps(rhs_plan, NULL);
-
-	ExecutionPlan_AddOp(plan->root, rhs_plan->root); // Add Match stream to Merge op.
-
-	OpBase *rhs_root = rhs_plan->root;
-
-	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
-	ExecutionPlan_BindPlanToOps(plan, rhs_root);
-
-	// NULL-set variables shared between the rhs_plan and the overall plan.
-	rhs_plan->root = NULL;
-	rhs_plan->record_map = NULL;
-	// Free the temporary plan.
-	ExecutionPlan_Free(rhs_plan);
-
-}
-
 static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge_ctx,
 									ResultSetStatistics *stats, const char **arguments) {
-	OpBase *tail = plan->root; // Where to append ops generated by this routine.
-
-	if(merge_ctx->on_create) {
-		// We have an ON CREATE directive, convert it into an Update op.
-		OpBase *on_create_set_op = NewUpdateOp(plan, merge_ctx->on_create, stats);
-		ExecutionPlan_AddOp(tail, on_create_set_op); // Add Update op to stream.
-		tail = on_create_set_op;
-	}
-
 	/* If we have bound variables, we must ensure that all of our created entities are unique. Consider:
 	 * UNWIND [1, 1] AS x MERGE ({val: x})
 	 * Exactly one node should be created in the UNWIND...MERGE query. */
 	OpBase *merge_create = NewMergeCreateOp(plan, stats, merge_ctx->nodes_to_merge,
 											merge_ctx->edges_to_merge);
-	ExecutionPlan_AddOp(tail, merge_create); // Add MergeCreate op to stream.
+	ExecutionPlan_AddOp(plan->root, merge_create); // Add MergeCreate op to stream.
 
 	// If we have bound variables, push an Argument tap beneath the Create op.
 	if(arguments) {
@@ -631,22 +597,24 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 		// Rather than cloning the record map, collect the bound variables along with their
 		// parser-generated constant strings.
 		ExecutionPlan_BoundVariables(plan->root, bound_vars);
-		// Prepare the variables for populating the Argument ops we will build.
-		arguments = ExecutionPlan_BuildArgumentModifiesArray(bound_vars);
+		// Collect the variable names from bound_vars to populate the Argument ops we will build.
+		arguments = (const char **)raxValues(bound_vars);
 	}
 
 	// Convert all the AST data required to populate our operations tree.
 	AST_MergeContext merge_ctx = AST_PrepareMergeOp(clause, plan->query_graph, bound_vars);
 
 	// Create a Merge operation. It will store no information at this time except for any graph updates
-	// it should make due to ON MATCH SET directives in the query.
-	OpBase *merge_op = NewMergeOp(plan, merge_ctx.on_match, stats);
+	// it should make due to ON MATCH and ON CREATE SET directives in the query.
+	OpBase *merge_op = NewMergeOp(plan, merge_ctx.on_match, merge_ctx.on_create, stats);
 
 	// Set Merge op as new root and add previously-built ops, if any, as Merge's first stream.
 	_ExecutionPlan_UpdateRoot(plan, merge_op);
 
 	// Build the Match stream as a Merge child.
-	_buildMergeMatchStream(plan, clause, arguments);
+	const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(clause);
+	OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, path);
+	ExecutionPlan_AddOp(plan->root, match_stream); // Add Match stream to Merge op.
 
 	// Build the Create stream as a Merge child.
 	_buildMergeCreateStream(plan, &merge_ctx, stats, arguments);
@@ -917,7 +885,7 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 		}
 
 		// Prepare column names for the ResultSet.
-		if(result_set) result_set->columns = AST_BuildColumnNames(last_clause);
+		if(result_set) ResultSet_SetColumns(result_set, AST_BuildColumnNames(last_clause));
 
 		OpBase *results_op = NewResultsOp(plan, result_set);
 		_ExecutionPlan_UpdateRoot(plan, results_op);
@@ -925,7 +893,11 @@ ExecutionPlan *NewExecutionPlan(ResultSet *result_set) {
 		assert(plan->root->type == OPType_PROC_CALL);
 		OpProcCall *last_op = (OpProcCall *)plan->root;
 		// Prepare column names for the ResultSet.
-		if(result_set) array_clone(result_set->columns, last_op->output);
+		if(result_set) {
+			const char **columns;
+			array_clone(columns, last_op->output);
+			ResultSet_SetColumns(result_set, columns);
+		}
 
 		OpBase *results_op = NewResultsOp(plan, result_set);
 		_ExecutionPlan_UpdateRoot(plan, results_op);
@@ -1085,18 +1057,6 @@ static void _ExecutionPlan_FreeOperations(OpBase *op) {
 
 static void _ExecutionPlan_FreeSubPlan(ExecutionPlan *plan) {
 	if(plan == NULL) return;
-
-	if(plan->sub_execution_plans) {
-		uint sub_execution_plans_count = array_len(plan->sub_execution_plans);
-		for(uint i = 0; i < sub_execution_plans_count; i++) {
-			ExecutionPlan *sub_plan = plan->sub_execution_plans[i];
-			// Avoid double free
-			sub_plan->record_map = NULL;
-			_ExecutionPlan_FreeSubPlan(sub_plan);
-		}
-		array_free(plan->sub_execution_plans);
-		plan->sub_execution_plans = NULL;
-	}
 
 	for(int i = 0; i < plan->segment_count; i++) _ExecutionPlan_FreeSubPlan(plan->segments[i]);
 	if(plan->segments) rm_free(plan->segments);

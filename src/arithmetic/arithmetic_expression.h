@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -131,6 +131,9 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str);
  * root - expression root to traverse.
  * func - function name to lookup. */
 bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func);
+
+/* Returns true if an arithmetic expression node is a constant. */
+bool AR_EXP_IsConstant(const AR_ExpNode *exp);
 
 /* Generate a heap-allocated name for an arithmetic expression.
  * This routine is only used to name ORDER BY expressions. */

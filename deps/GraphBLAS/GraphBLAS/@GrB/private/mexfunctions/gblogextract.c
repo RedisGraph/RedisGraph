@@ -2,7 +2,7 @@
 // gblogextract: logical extraction: C = A(M)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -115,9 +115,9 @@ void mexFunction
     GrB_Matrix M_input = gb_get_shallow (pargin [1]) ;
     GrB_Matrix M ;
     OK (GrB_Matrix_new (&M, GrB_BOOL, nrows, ncols)) ;
-    OK (GxB_set (M, GxB_FORMAT, GxB_BY_COL)) ;
-    OK (GxB_select (M, NULL, NULL, GxB_NONZERO, M_input, NULL, NULL)) ;
-    OK (GrB_free (&M_input)) ;
+    OK (GxB_Matrix_Option_set (M, GxB_FORMAT, GxB_BY_COL)) ;
+    OK (GxB_Matrix_select (M, NULL, NULL, GxB_NONZERO, M_input, NULL, NULL)) ;
+    OK (GrB_Matrix_free (&M_input)) ;
 
     GrB_Index mnz ;
     OK (GrB_Matrix_nvals (&mnz, M)) ;
@@ -131,12 +131,13 @@ void mexFunction
     OK (GxB_Matrix_type (&type, A)) ;
     GrB_Matrix G ;
     OK (GrB_Matrix_new (&G, type, nrows, ncols)) ;
-    OK (GxB_set (G, GxB_FORMAT, GxB_BY_COL)) ;
+    OK (GxB_Matrix_Option_set (G, GxB_FORMAT, GxB_BY_COL)) ;
 
-    OK (GxB_subassign (G, M, NULL, A, GrB_ALL, nrows, GrB_ALL, ncols, NULL)) ;
+    OK (GxB_Matrix_subassign (G, M, NULL,
+        A, GrB_ALL, nrows, GrB_ALL, ncols, NULL)) ;
 
-    OK (GrB_free (&A_copy)) ;
-    OK (GrB_free (&A_input)) ;
+    OK (GrB_Matrix_free (&A_copy)) ;
+    OK (GrB_Matrix_free (&A_input)) ;
 
     //--------------------------------------------------------------------------
     // extract Gx, the values of G
@@ -183,8 +184,9 @@ void mexFunction
 
     GrB_Matrix T ;
     OK (GrB_Matrix_new (&T, GrB_UINT64, nrows, ncols)) ;
-    OK (GxB_set (T, GxB_FORMAT, GxB_BY_COL)) ;
-    OK (GxB_subassign (T, G, NULL, K, GrB_ALL, nrows, GrB_ALL, ncols, NULL)) ;
+    OK (GxB_Matrix_Option_set (T, GxB_FORMAT, GxB_BY_COL)) ;
+    OK (GxB_Matrix_subassign (T, G, NULL,
+        K, GrB_ALL, nrows, GrB_ALL, ncols, NULL)) ;
 
     //--------------------------------------------------------------------------
     // extract Tx, the values of T
@@ -227,9 +229,9 @@ void mexFunction
     // free shallow copies and temporary matrices
     //--------------------------------------------------------------------------
 
-    OK (GrB_free (&G)) ;
-    OK (GrB_free (&K)) ;
-    OK (GrB_free (&T)) ;
+    OK (GrB_Matrix_free (&G)) ;
+    OK (GrB_Matrix_free (&K)) ;
+    OK (GrB_Matrix_free (&T)) ;
 
     //--------------------------------------------------------------------------
     // export the output matrix C back to MATLAB

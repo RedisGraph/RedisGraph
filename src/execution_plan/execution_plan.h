@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -24,8 +24,6 @@ struct ExecutionPlan {
 	// NOTE - segments and segment_count are only stored for proper freeing.
 	int segment_count;                  // Number of ExecutionPlan segments.
 	ExecutionPlan **segments;           // Partial execution plans scoped to a subset of operations.
-	// Semi-independent sub execution plans which created during the build of the main execution plan.
-	ExecutionPlan **sub_execution_plans;
 	ObjectPool *record_pool;
 };
 
@@ -78,16 +76,14 @@ OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit
  * The Create operation should never introduce a new node 'a'. */
 void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers);
 
-/* Build an array of const strings to populate the 'modifies' arrays of Argument ops.
- * Use after the call to ExecutionPlan_BoundVariables. */
-const char **ExecutionPlan_BuildArgumentModifiesArray(rax *bound_vars);
-
 /* For all ops in the given tree, assocate the provided ExecutionPlan.
  * This is for use for updating ops that have been built with a temporary ExecutionPlan. */
 void ExecutionPlan_BindPlanToOps(ExecutionPlan *plan, OpBase *root);
 
-/* Adds a semi-independent sub execution plan. The only thing the sub execution plan is dependent on is the record mapping. */
-void ExecutionPlan_AppendSubExecutionPlan(ExecutionPlan *master_plan, ExecutionPlan *sub_plan);
+/* Given an AST path pattern, generate the tree of scan, traverse,
+ * and filter operations required to represent it. */
+OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **vars,
+									   const cypher_astnode_t *path);
 
 /* execution_plan.c */
 
@@ -99,6 +95,10 @@ ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void);
 
 /* Build a tree of operations that performs all the work required by the clauses of the current AST. */
 void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set);
+
+/* Re position filter op. */
+void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
+									  const OpBase *upper_bound, OpBase *filter);
 
 // TODO: Remove this once filter are placed after their respective clause.
 /* Place filter ops*/

@@ -1,13 +1,13 @@
 function gbtest13
 %GBTEST13 test find and GrB.extracttuples
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 list = gbtest_types ;
 
 A = 100 * rand (3) ;
-[I, J, X] = find (A) ;
+[I, J, X] = find (A) ; %#ok<*ASGLU>
 I_0 = int64 (I) - 1 ;
 J_0 = int64 (J) - 1 ;
 A (1,1) = 0 ;

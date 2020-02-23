@@ -2,7 +2,7 @@
 // GB_sel:  hard-coded functions for selection operators
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -74,23 +74,23 @@
 
 void GB_sel_phase1__gt_thunk_uint16
 (
-    int64_t *restrict Zp,
-    int64_t *restrict Cp,
-    GB_void *restrict Wfirst_space,
-    GB_void *restrict Wlast_space,
+    int64_t *GB_RESTRICT Zp,
+    int64_t *GB_RESTRICT Cp,
+    GB_void *GB_RESTRICT Wfirst_space,
+    GB_void *GB_RESTRICT Wlast_space,
     const GrB_Matrix A,
-    const int64_t *restrict kfirst_slice,
-    const int64_t *restrict klast_slice,
-    const int64_t *restrict pstart_slice,
+    const int64_t *GB_RESTRICT kfirst_slice,
+    const int64_t *GB_RESTRICT klast_slice,
+    const int64_t *GB_RESTRICT pstart_slice,
     const bool flipij,
     const int64_t ithunk,
-    const uint16_t *restrict xthunk,
+    const uint16_t *GB_RESTRICT xthunk,
     const GxB_select_function user_select,
     const int ntasks,
     const int nthreads
 )
 { 
-    int64_t *restrict Tx = Cp ;
+    int64_t *GB_RESTRICT Tx = Cp ;
     uint16_t thunk = (*xthunk) ;
     #include "GB_select_phase1.c"
 }
@@ -103,18 +103,18 @@ void GB_sel_phase1__gt_thunk_uint16
 
 void GB_sel_phase2__gt_thunk_uint16
 (
-    int64_t *restrict Ci,
-    uint16_t *restrict Cx,
-    const int64_t *restrict Zp,
-    const int64_t *restrict Cp,
-    const int64_t *restrict C_pstart_slice,
+    int64_t *GB_RESTRICT Ci,
+    uint16_t *GB_RESTRICT Cx,
+    const int64_t *GB_RESTRICT Zp,
+    const int64_t *GB_RESTRICT Cp,
+    const int64_t *GB_RESTRICT C_pstart_slice,
     const GrB_Matrix A,
-    const int64_t *restrict kfirst_slice,
-    const int64_t *restrict klast_slice,
-    const int64_t *restrict pstart_slice,
+    const int64_t *GB_RESTRICT kfirst_slice,
+    const int64_t *GB_RESTRICT klast_slice,
+    const int64_t *GB_RESTRICT pstart_slice,
     const bool flipij,
     const int64_t ithunk,
-    const uint16_t *restrict xthunk,
+    const uint16_t *GB_RESTRICT xthunk,
     const GxB_select_function user_select,
     const int ntasks,
     const int nthreads

@@ -2,7 +2,7 @@
 // GB_subassign_11: C(I,J)<M,repl> += scalar ; using S
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -33,6 +33,7 @@ GrB_Info GB_subassign_11
     const int Jkind,
     const int64_t Jcolon [3],
     const GrB_Matrix M,
+    const bool Mask_struct,
     const GrB_BinaryOp accum,
     const void *scalar,
     const GrB_Type atype,
@@ -47,12 +48,11 @@ GrB_Info GB_subassign_11
 
     GB_GET_C ;
     // GB_GET_MASK ;
-    const int64_t *restrict Mp = M->p ;
-//  const int64_t *restrict Mh = M->h ;
-    const int64_t *restrict Mi = M->i ;
-    const GB_void *restrict Mx = M->x ;
+    const int64_t *GB_RESTRICT Mp = M->p ;
+//  const int64_t *GB_RESTRICT Mh = M->h ;
+    const int64_t *GB_RESTRICT Mi = M->i ;
+    const GB_void *GB_RESTRICT Mx = (Mask_struct ? NULL : (M->x)) ;
     const size_t msize = M->type->size ;
-    GB_cast_function cast_M = GB_cast_factory (GB_BOOL_code, M->type->code) ;
     GB_GET_ACCUM_SCALAR ;
     GB_GET_S ;
 
@@ -81,9 +81,10 @@ GrB_Info GB_subassign_11
     // phase 1: create zombies, update entries, and count pending tuples
     //--------------------------------------------------------------------------
 
+    int taskid ;
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) \
         reduction(+:nzombies)
-    for (int taskid = 0 ; taskid < ntasks ; taskid++)
+    for (taskid = 0 ; taskid < ntasks ; taskid++)
     {
 
         //----------------------------------------------------------------------
@@ -133,9 +134,7 @@ GrB_Info GB_subassign_11
                 else if (iM < iS)
                 {
                     // S (i,j) is not present, M (i,j) is present
-                    bool mij ;
-                    cast_M (&mij, Mx +(pM*msize), 0) ;
-                    if (mij)
+                    if (GB_mcast (Mx, pM, msize))
                     { 
                         // ----[. A 1]------------------------------------------
                         // [. A 1]: action: ( insert )
@@ -146,10 +145,8 @@ GrB_Info GB_subassign_11
                 else
                 {
                     // both S (i,j) and M (i,j) present
-                    bool mij ;
-                    cast_M (&mij, Mx +(pM*msize), 0) ;
                     GB_C_S_LOOKUP ;
-                    if (mij)
+                    if (GB_mcast (Mx, pM, msize))
                     { 
                         // ----[C A 1] or [X A 1]-------------------------------
                         // [C A 1]: action: ( =C+A ): apply accum
@@ -184,10 +181,7 @@ GrB_Info GB_subassign_11
             while (pM < pM_end)
             {
                 // S (i,j) is not present, M (i,j) is present
-                // mij = (bool) M [pM]
-                bool mij ;
-                cast_M (&mij, Mx +(pM*msize), 0) ;
-                if (mij)
+                if (GB_mcast (Mx, pM, msize))
                 { 
                     // ----[. A 1]------------------------------------------
                     // [. A 1]: action: ( insert )
@@ -208,7 +202,7 @@ GrB_Info GB_subassign_11
 
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) \
         reduction(&&:pending_sorted)
-    for (int taskid = 0 ; taskid < ntasks ; taskid++)
+    for (taskid = 0 ; taskid < ntasks ; taskid++)
     {
 
         //----------------------------------------------------------------------
@@ -253,9 +247,7 @@ GrB_Info GB_subassign_11
                 else if (iM < iS)
                 {
                     // S (i,j) is not present, M (i,j) is present
-                    bool mij ;
-                    cast_M (&mij, Mx +(pM*msize), 0) ;
-                    if (mij)
+                    if (GB_mcast (Mx, pM, msize))
                     { 
                         // ----[. A 1]------------------------------------------
                         // [. A 1]: action: ( insert )
@@ -276,10 +268,7 @@ GrB_Info GB_subassign_11
             while (pM < pM_end)
             {
                 // S (i,j) is not present, M (i,j) is present
-                // mij = (bool) M [pM]
-                bool mij ;
-                cast_M (&mij, Mx +(pM*msize), 0) ;
-                if (mij)
+                if (GB_mcast (Mx, pM, msize))
                 { 
                     // ----[. A 1]------------------------------------------
                     // [. A 1]: action: ( insert )

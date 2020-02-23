@@ -1,12 +1,12 @@
 function gbtest50
 %GBTEST50 test GrB.ktruss and GrB.tricount
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 rng ('default') ;
 
-load west0479 ;
+load west0479 ; %#ok<*LOAD>
 A = GrB.offdiag (west0479) ;
 A = A+A' ;
 C3a  = GrB.ktruss (A) ;

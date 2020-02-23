@@ -2,7 +2,7 @@
 // GraphBLAS/Demo/Program/pagerank_demo.c: PageRank via various semirings
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -29,7 +29,7 @@
 // macro used by OK(...) to free workspace if an error occurs
 #define FREE_ALL                    \
 {                                   \
-    GrB_free (&A) ;                 \
+    GrB_Matrix_free (&A) ;                 \
     if (Pd != NULL) free (Pd) ;     \
     if (Pi != NULL) free (Pi) ;     \
     if (P2 != NULL) free (P2) ;     \
@@ -51,8 +51,10 @@ int main (int argc, char **argv)
 
     double tic [2], t ;
     OK (GrB_init (GrB_NONBLOCKING)) ;
-    fprintf (stderr, "\npagerank_demo:\n") ;
-    printf  (        "\npagerank_demo:\n") ;
+    int nthreads ;
+    OK (GxB_get (GxB_NTHREADS, &nthreads)) ;
+    fprintf (stderr, "\npagerank_demo: nthreads: %d\n", nthreads) ;
+    printf  (        "\npagerank_demo: nthreads: %d\n", nthreads) ;
 
     //--------------------------------------------------------------------------
     // read a matrix from stdin

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -17,7 +17,7 @@ OpBase *NewResultsOp(const ExecutionPlan *plan, ResultSet *result_set) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_RESULTS, "Results", NULL, ResultsConsume,
-				NULL, NULL, NULL, false, plan);
+				NULL, NULL, NULL, NULL, false, plan);
 
 	return (OpBase *)op;
 }

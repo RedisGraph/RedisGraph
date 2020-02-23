@@ -1,11 +1,11 @@
 function gbtest1
 %GBTEST1 test GrB
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 rng ('default') ;
-X = 100 * sprand (3, 4, 0.4)
+X = 100 * sprand (3, 4, 0.4) %#ok<*NOPRT>
 
 % types = { 'double' } ;
 

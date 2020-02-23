@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -33,7 +33,8 @@ int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// Remove graph from keyspace.
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_WRITE);
 	RedisModule_DeleteKey(key); // Decreases graph ref count.
-	GraphContext_Release(gc);  // Decrease graph ref count.
+	RedisModule_CloseKey(key);  // Free key handle.
+	GraphContext_Release(gc);   // Decrease graph ref count.
 
 	double t = QueryCtx_GetExecutionTime();
 	asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
@@ -46,3 +47,4 @@ cleanup:
 	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
+

@@ -2,7 +2,7 @@
 // GB_ijsort:  sort an index array I and remove duplicates
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -30,11 +30,11 @@
 
 GrB_Info GB_ijsort
 (
-    const GrB_Index *restrict I, // size ni, where ni > 1 always holds
-    int64_t *restrict p_ni,      // : size of I, output: # of indices in I2
-    GrB_Index *restrict *p_I2,   // size ni2, where I2 [0..ni2-1]
+    const GrB_Index *GB_RESTRICT I, // size ni, where ni > 1 always holds
+    int64_t *GB_RESTRICT p_ni,      // : size of I, output: # of indices in I2
+    GrB_Index *GB_RESTRICT *p_I2,   // size ni2, where I2 [0..ni2-1]
                         // contains the sorted indices with duplicates removed.
-    GrB_Index *restrict *p_I2k,  // output array of size ni2
+    GrB_Index *GB_RESTRICT *p_I2k,  // output array of size ni2
     GB_Context Context
 )
 {
@@ -52,15 +52,15 @@ GrB_Info GB_ijsort
     // get inputs
     //--------------------------------------------------------------------------
 
-    GrB_Index *restrict I1  = NULL ;
-    GrB_Index *restrict I1k = NULL ;
-    GrB_Index *restrict I2  = NULL ;
-    GrB_Index *restrict I2k = NULL ;
-    int64_t *restrict W0  = NULL ;
-    int64_t *restrict W1 = NULL ;
+    GrB_Index *GB_RESTRICT I1  = NULL ;
+    GrB_Index *GB_RESTRICT I1k = NULL ;
+    GrB_Index *GB_RESTRICT I2  = NULL ;
+    GrB_Index *GB_RESTRICT I2k = NULL ;
+    int64_t *GB_RESTRICT W0  = NULL ;
+    int64_t *GB_RESTRICT W1 = NULL ;
     int64_t ni = *p_ni ;
     ASSERT (ni > 1) ;
-    int64_t *restrict Count = NULL ;        // size ntasks+1
+    int64_t *GB_RESTRICT Count = NULL ;        // size ntasks+1
     int ntasks = 0 ;
 
     //--------------------------------------------------------------------------
@@ -89,8 +89,9 @@ GrB_Info GB_ijsort
 
     GB_memcpy (I1, I, ni * sizeof (GrB_Index), nthreads) ;
 
+    int64_t k ;
     #pragma omp parallel for num_threads(nthreads) schedule(static)
-    for (int64_t k = 0 ; k < ni ; k++)
+    for (k = 0 ; k < ni ; k++)
     { 
         // the key is selected so that the last duplicate entry comes first in
         // the sorted result.  It must be adjusted later, so that the kth entry
@@ -148,7 +149,7 @@ GrB_Info GB_ijsort
 
     GB_MALLOC_MEMORY (Count, ntasks+1, sizeof (int64_t)) ;
     if (Count == NULL)
-    {
+    { 
         // out of memory
         GB_FREE_WORK ;
         return (GB_OUT_OF_MEMORY) ;
@@ -158,8 +159,9 @@ GrB_Info GB_ijsort
     // count unique entries in I1
     //--------------------------------------------------------------------------
 
+    int tid ;
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-    for (int tid = 0 ; tid < ntasks ; tid++)
+    for (tid = 0 ; tid < ntasks ; tid++)
     {
         int64_t kfirst, klast, my_count = (tid == 0) ? 1 : 0 ;
         GB_PARTITION (kfirst, klast, ni, tid, ntasks) ;
@@ -196,7 +198,7 @@ GrB_Info GB_ijsort
     //--------------------------------------------------------------------------
 
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-    for (int tid = 0 ; tid < ntasks ; tid++)
+    for (tid = 0 ; tid < ntasks ; tid++)
     {
         int64_t kfirst, klast, k2 = Count [tid] ;
         GB_PARTITION (kfirst, klast, ni, tid, ntasks) ;

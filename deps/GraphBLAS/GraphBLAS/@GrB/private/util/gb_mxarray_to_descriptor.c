@@ -2,7 +2,7 @@
 // gb_mxarray_to_descriptor: get the contents of a GraphBLAS Descriptor
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -37,7 +37,7 @@ static void get_descriptor
             CHECK_ERROR (!gb_mxarray_is_scalar (value),
                 "d.nthreads must be a scalar") ;
             int nthreads_max = (int) mxGetScalar (value) ;
-            OK (GxB_set (D, GxB_NTHREADS, nthreads_max)) ;
+            OK (GxB_Desc_set (D, GxB_NTHREADS, nthreads_max)) ;
 
         }
         else if (MATCH (fieldname, "chunk"))
@@ -47,7 +47,7 @@ static void get_descriptor
             CHECK_ERROR (!gb_mxarray_is_scalar (value),
                 "d.chunk must be a scalar") ;
             double chunk = mxGetScalar (value) ;
-            OK (GxB_set (D, GxB_CHUNK, chunk)) ;
+            OK (GxB_Desc_set (D, GxB_CHUNK, chunk)) ;
 
         }
         else
@@ -60,31 +60,47 @@ static void get_descriptor
             // convert the string to a Descriptor value, and set the value
             if (MATCH (s, "default"))
             { 
-                OK (GxB_set (D, field, GxB_DEFAULT)) ;
+                OK (GxB_Desc_set (D, field, GxB_DEFAULT)) ;
             }
             else if (MATCH (s, "transpose"))
             { 
-                OK (GxB_set (D, field, GrB_TRAN)) ;
+                OK (GxB_Desc_set (D, field, GrB_TRAN)) ;
             }
-            else if (MATCH (s, "complement"))
+            else if (MATCH (s, "complement") || MATCH (s, "comp"))
             { 
-                OK (GxB_set (D, field, GrB_SCMP)) ;
+                OK (GxB_Desc_set (D, field, GrB_COMP)) ;
+            }
+            else if (MATCH (s, "structure") || MATCH (s, "structural"))
+            { 
+                OK (GxB_Desc_set (D, field, GrB_STRUCTURE)) ;
+            }
+            else if (MATCH (s, "structural complement"))
+            { 
+                OK (GxB_Desc_set (D, field, GrB_COMP + GrB_STRUCTURE)) ;
             }
             else if (MATCH (s, "replace"))
             { 
-                OK (GxB_set (D, field, GrB_REPLACE)) ;
+                OK (GxB_Desc_set (D, field, GrB_REPLACE)) ;
             }
             else if (MATCH (s, "gustavson"))
             { 
-                OK (GxB_set (D, field, GxB_AxB_GUSTAVSON)) ;
+                OK (GxB_Desc_set (D, field, GxB_AxB_GUSTAVSON)) ;
             }
             else if (MATCH (s, "dot"))
             { 
-                OK (GxB_set (D, field, GxB_AxB_DOT)) ;
+                OK (GxB_Desc_set (D, field, GxB_AxB_DOT)) ;
+            }
+            else if (MATCH (s, "saxpy"))
+            { 
+                OK (GxB_Desc_set (D, field, GxB_AxB_SAXPY)) ;
             }
             else if (MATCH (s, "heap"))
             { 
-                OK (GxB_set (D, field, GxB_AxB_HEAP)) ;
+                OK (GxB_Desc_set (D, field, GxB_AxB_HEAP)) ;
+            }
+            else if (MATCH (s, "hash"))
+            { 
+                OK (GxB_Desc_set (D, field, GxB_AxB_HASH)) ;
             }
             else
             { 

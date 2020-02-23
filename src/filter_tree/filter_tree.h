@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -117,6 +117,12 @@ bool FilterTree_Valid(const FT_FilterNode *root);
 
 /* Remove NOT nodes by applying DeMorgan laws */
 void FilterTree_DeMorgan(FT_FilterNode **root);
+
+/* Try to compress a given filter tree. */
+bool FilterTree_Compact(FT_FilterNode *root);
+
+/* Clones tree. */
+FT_FilterNode *FilterTree_Clone(FT_FilterNode *root);
 
 /* Prints tree. */
 void FilterTree_Print(const FT_FilterNode *root);

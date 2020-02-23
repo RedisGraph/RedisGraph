@@ -1,5 +1,4 @@
 function C = GB_spec_op (op, A, B)
-%
 %GB_SPEC_OP apply a unary or binary operator
 %
 % Apply a binary operator z = f (x,y) element-wise to x and y, or a unary
@@ -9,28 +8,16 @@ function C = GB_spec_op (op, A, B)
 % op or op.opname is a string with just the operator name.  Valid names of
 % binary operators are 'first', 'second', 'min', 'max', 'plus', 'minus',
 % 'rminus', 'times', 'div', 'rdiv', 'eq', 'ne', 'gt', 'lt', 'ge', 'le', 'or',
-% 'and', 'xor'.  'iseq', 'isne', 'isgt', 'islt', 'isge', 'le'.
+% 'and', 'xor'.  'iseq', 'isne', 'isgt', 'islt', 'isge', 'le', 'pair', 'any'
 %
 % Unary operators are 'one', 'identity', 'ainv', 'abs', 'minv', and 'not'
 %
 % op.opclass: 'logical', 'int8', 'uint8', 'int16', 'uint16', 'int32',
 %  'uint32', 'int64', 'uint64', 'single', or 'double'
 %
-%  17 valid operators z=f(x,y) where all of x,y,z are any of the 11 classes:
-%  'first', 'second', 'min', 'max', 'plus', 'minus', 'times', 'div',
-%  'iseq', 'isne', 'isgt', 'islt', 'isge', 'isle', 'and', 'or', 'xor'
-%
-%  6 valid operators z=f(x,y) where x and y are any of the 11 classes, but
-%  z is logical: 'eq', 'ne', 'gt', 'lt', 'ge', 'le'
-%
-% This gives a total of (10 numeric, 6 'is', 3 bool) * 11 types = 209 ops
-% for which x, y, and z have the same type, and 6*11 = 66 unary operators
-% z=f(x) where z and x have the same type.
-%
 % The class of Z is the same as the class of the output of the operator,
 % which is op.opclass except for 'eq', 'ne', 'gt', 'lt', 'ge', 'le',
-% in which case Z is logical.  This gives 6*11 = 66 operators of this
-% type, where z = f(x,y), and z is logical.
+% in which case Z is logical.
 %
 % Intrinsic MATLAB operators are used as much as possible, so as to test
 % GraphBLAS operators.  Some must be done in GraphBLAS because the
@@ -38,7 +25,7 @@ function C = GB_spec_op (op, A, B)
 % Also, typecasting in MATLAB and GraphBLAS differs under underflow and
 % overflow conditions.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 % get the operator name and class
@@ -66,11 +53,15 @@ end
 
 switch opname
 
-    % 10 binary operators, result is opclass
+    % 12 binary operators, result is opclass
     case 'first'
         z = x ;
     case 'second'
         z = y ;
+    case 'any'
+        z = y ;
+    case 'pair'
+        z = ones (size (x), opclass) ;
     case 'min'
         % min(x,y) in SuiteSparse:GraphBLAS is min(x,y,'omitnan') in MATLAB.
         % see discussion in SuiteSparse/GraphBLAS/Source/GB.h

@@ -1,6 +1,9 @@
 function test114
 %TEST114 performance of reduce-to-scalar
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 rng ('default') ;
 
 [save save_chunk] = nthreads_get ;

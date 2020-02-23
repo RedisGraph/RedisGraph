@@ -2,7 +2,7 @@
 // GB_red:  hard-coded functions for reductions
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -11,6 +11,7 @@
 
 #include "GB.h"
 #ifndef GBCOMPACT
+#include "GB_atomics.h"
 #include "GB_ek_slice.h"
 #include "GB_control.h" 
 #include "GB_red__include.h"
@@ -102,6 +103,11 @@
     #define GB_PANEL                                \
         GB_panel
 
+// special case for the ANY monoid
+
+    #define GB_IS_ANY_MONOID                        \
+        GB_is_any_monoid
+
 // disable this operator and use the generic case if these conditions hold
 #define GB_DISABLE \
     GB_disable
@@ -116,7 +122,7 @@ GrB_Info GB_red_scalar
 (
     GB_atype *result,
     const GrB_Matrix A,
-    GB_void *restrict W_space,
+    GB_void *GB_RESTRICT W_space,
     int ntasks,
     int nthreads
 )
@@ -131,17 +137,21 @@ GrB_Info GB_red_scalar
     #endif
 }
 
+endif_is_monoid
+
 //------------------------------------------------------------------------------
 // reduce to each vector: each vector A(:,k) reduces to a scalar Tx (k)
 //------------------------------------------------------------------------------
 
+if_is_monoid
+
 GrB_Info GB_red_eachvec
 (
-    GB_atype *restrict Tx,
+    GB_atype *GB_RESTRICT Tx,
     GrB_Matrix A,
-    const int64_t *restrict kfirst_slice,
-    const int64_t *restrict klast_slice,
-    const int64_t *restrict pstart_slice,
+    const int64_t *GB_RESTRICT kfirst_slice,
+    const int64_t *GB_RESTRICT klast_slice,
+    const int64_t *GB_RESTRICT pstart_slice,
     GB_void *Wfirst_space,
     GB_void *Wlast_space,
     int ntasks,
@@ -156,16 +166,20 @@ GrB_Info GB_red_eachvec
     #endif
 }
 
+endif_is_monoid
+
 //------------------------------------------------------------------------------
 // reduce to each index: each A(i,:) reduces to a scalar T (i)
 //------------------------------------------------------------------------------
+
+if_is_monoid
 
 GrB_Info GB_red_eachindex
 (
     GrB_Matrix *Thandle,
     GrB_Type ttype,
     GrB_Matrix A,
-    const int64_t *restrict pstart_slice,
+    const int64_t *GB_RESTRICT pstart_slice,
     int nth,
     int nthreads,
     GB_Context Context
@@ -192,15 +206,15 @@ endif_is_monoid
 
 GrB_Info GB_red_build
 (
-    GB_atype *restrict Tx,
-    int64_t  *restrict Ti,
-    const GB_atype *restrict S,
+    GB_atype *GB_RESTRICT Tx,
+    int64_t  *GB_RESTRICT Ti,
+    const GB_atype *GB_RESTRICT S,
     int64_t nvals,
     int64_t ndupl,
-    const int64_t *restrict I_work,
-    const int64_t *restrict K_work,
-    const int64_t *restrict tstart_slice,
-    const int64_t *restrict tnz_slice,
+    const int64_t *GB_RESTRICT I_work,
+    const int64_t *GB_RESTRICT K_work,
+    const int64_t *GB_RESTRICT tstart_slice,
+    const int64_t *GB_RESTRICT tnz_slice,
     int nthreads
 )
 { 

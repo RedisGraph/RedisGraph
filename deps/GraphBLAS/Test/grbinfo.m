@@ -3,6 +3,9 @@ function [nth chnk] = grbinfo
 %
 % nthreads = grbinfo
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 [nthreads threading thread_safety format hyperratio ... 
 name version date about license compiledate compiletime api api_about ...
 chunk ] = GB_mex_init ;

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -108,8 +108,7 @@ static bool _AST_ReadOnly(const cypher_astnode_t *root) {
 	// In case of procedure call which modifies the graph/indices.
 	if(type == CYPHER_AST_CALL) {
 		const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(root));
-		ProcedureCtx *proc = Proc_Get(proc_name);
-		return proc->readOnly;
+		return Proc_ReadOnly(proc_name);
 	}
 	uint num_children = cypher_astnode_nchildren(root);
 	for(uint i = 0; i < num_children; i ++) {
@@ -250,6 +249,7 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	ast->canonical_entity_names = raxNew();
 	ast->anot_ctx_collection = AST_AnnotationCtxCollection_New();
 	ast->free_root = false;
+	ast->limit = UNLIMITED;
 
 	// Retrieve the AST root node from a parsed query.
 	const cypher_astnode_t *statement = cypher_parse_result_get_root(parse_result, 0);

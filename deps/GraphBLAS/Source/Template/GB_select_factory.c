@@ -2,7 +2,7 @@
 // GB_select_factory: switch factory for C=select(A,thunk)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -15,8 +15,7 @@ switch (opcode)
     case GB_DIAG_opcode          : GB_SEL_WORKER (_diag    , _any, GB_void)
     case GB_OFFDIAG_opcode       : GB_SEL_WORKER (_offdiag , _any, GB_void)
     case GB_RESIZE_opcode        : GB_SEL_WORKER (_resize  , _any, GB_void)
-    case GB_USER_SELECT_C_opcode :
-    case GB_USER_SELECT_R_opcode : GB_SEL_WORKER (_user    , _any, GB_void)
+    case GB_USER_SELECT_opcode   : GB_SEL_WORKER (_user    , _any, GB_void)
 
     case GB_NONZOMBIE_opcode :  // A(i,j) not a zombie
 

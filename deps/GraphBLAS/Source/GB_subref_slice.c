@@ -2,7 +2,7 @@
 // GB_subref_slice: construct coarse/fine tasks for C = A(I,J)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -53,12 +53,12 @@ GrB_Info GB_subref_slice
     int *p_ntasks,                  // # of tasks constructed
     int *p_nthreads,                // # of threads for subref operation
     bool *p_post_sort,              // true if a final post-sort is needed
-    int64_t *restrict *p_Mark,      // for I inverse, if needed; size avlen
-    int64_t *restrict *p_Inext,     // for I inverse, if needed; size nI
+    int64_t *GB_RESTRICT *p_Mark,      // for I inverse, if needed; size avlen
+    int64_t *GB_RESTRICT *p_Inext,     // for I inverse, if needed; size nI
     int64_t *p_nduplicates,         // # of duplicates, if I inverse computed
     // from phase0:
-    const int64_t *restrict Ap_start,   // location of A(imin:imax,kA)
-    const int64_t *restrict Ap_end,
+    const int64_t *GB_RESTRICT Ap_start,   // location of A(imin:imax,kA)
+    const int64_t *GB_RESTRICT Ap_end,
     const int64_t Cnvec,            // # of vectors of C
     const bool need_qsort,          // true if C must be sorted
     const int Ikind,                // GB_ALL, GB_RANGE, GB_STRIDE or GB_LIST
@@ -92,11 +92,11 @@ GrB_Info GB_subref_slice
     (*p_Mark    ) = NULL ;
     (*p_Inext   ) = NULL ;
 
-    int64_t *restrict Mark = NULL ;
-    int64_t *restrict Inext = NULL ;
+    int64_t *GB_RESTRICT Mark = NULL ;
+    int64_t *GB_RESTRICT Inext = NULL ;
 
-    int64_t *restrict Cwork = NULL ;
-    int64_t *restrict Coarse = NULL ;   // size ntasks1+1
+    int64_t *GB_RESTRICT Cwork = NULL ;
+    int64_t *GB_RESTRICT Coarse = NULL ;   // size ntasks1+1
     int ntasks1 = 0 ;
 
     GrB_Info info ;
@@ -119,7 +119,7 @@ GrB_Info GB_subref_slice
     // When the mask is present, it is often fastest to break the work up
     // into tasks, even when nthreads_max is 1.
 
-    GB_task_struct *restrict TaskList = NULL ;
+    GB_task_struct *GB_RESTRICT TaskList = NULL ;
     int max_ntasks = 0 ;
     int ntasks0 = (nthreads_max == 1) ? 1 : (32 * nthreads_max) ;
     GB_REALLOC_TASK_LIST (TaskList, ntasks0, max_ntasks) ;
@@ -145,10 +145,6 @@ GrB_Info GB_subref_slice
     bool post_sort = false ;
     int64_t iinc = Icolon [GxB_INC] ;
 
-    // printf ("nI "GBd" avlen "GBd" anz "GBd"\n", nI, avlen, anz) ;
-    // printf ("I_inverse_limit "GBd"\n", I_inverse_limit) ;
-    // printf ("I inverse ok: %d\n", I_inverse_ok) ;
-
     //--------------------------------------------------------------------------
     // allocate workspace
     //--------------------------------------------------------------------------
@@ -167,15 +163,10 @@ GrB_Info GB_subref_slice
 
     int nthreads_for_Cwork = GB_nthreads (Cnvec, chunk, nthreads_max) ;
 
-    #ifdef GB_DEBUG
-    // For debugging only: record the methods used for each vector.
-    int64_t Hist [13] ;
-    for (int method = 0 ; method <= 12 ; method++) Hist [method] = 0 ;
-    #endif
-
+    int64_t kC ;
     #pragma omp parallel for num_threads(nthreads_for_Cwork) schedule(static) \
         reduction(||:need_I_inverse)
-    for (int64_t kC = 0 ; kC < Cnvec ; kC++)
+    for (kC = 0 ; kC < Cnvec ; kC++)
     { 
         // jC is the (kC)th vector of C = A(I,J)
         // int64_t jC = (Ch == NULL) ? kC : Ch [kC] ;
@@ -193,30 +184,13 @@ GrB_Info GB_subref_slice
         // must be created.  The # of duplicates has no impact on the I inverse
         // decision, and a minor effect on the work (which is ignored).
 
-        #ifdef GB_DEBUG
-        int method =
-        #endif
         GB_subref_method (&work, &this_needs_I_inverse, alen, avlen,
             Ikind, nI, I_inverse_ok, need_qsort, iinc, 0) ;
-        #ifdef GB_DEBUG
-        #pragma omp atomic update
-        Hist [method] ++ ;
-        #endif
 
         // log the result
         need_I_inverse = need_I_inverse || this_needs_I_inverse ;
         Cwork [kC] = work ;
     }
-
-    #ifdef GB_DEBUG
-    for (int method = 0 ; method <= 12 ; method++)
-    {
-        if (Hist [method] > 0)
-        {
-            // printf ("method %2d : "GBd"\n", method, Hist [method]) ;
-        }
-    }
-    #endif
 
     //--------------------------------------------------------------------------
     // replace Cwork with its cumulative sum

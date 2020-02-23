@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -253,7 +253,7 @@ static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint a
  * the result of toUpper() is allocated within this tree, and will leak if not freed here. */
 static inline void _AR_EXP_FreeResultsArray(SIValue *results, int count) {
 	for(int i = 0; i < count; i ++) {
-		SIValue_Free(&results[i]);
+		SIValue_Free(results[i]);
 	}
 }
 
@@ -298,8 +298,19 @@ cleanup:
 	return res;
 }
 
-static inline void _AR_EXP_UpdateEntityIdx(AR_OperandNode *node, const Record r) {
-	node->variadic.entity_alias_idx = Record_GetEntryIdx(r, node->variadic.entity_alias);
+static bool _AR_EXP_UpdateEntityIdx(AR_OperandNode *node, const Record r) {
+	int entry_alias_idx = Record_GetEntryIdx(r, node->variadic.entity_alias);
+	if(entry_alias_idx == INVALID_INDEX) {
+		char *error;
+		asprintf(&error,
+				 "_AR_EXP_UpdateEntityIdx: Unable to locate a value with alias %s within the record",
+				 node->variadic.entity_alias);
+		QueryCtx_SetError(error); // Set the query-level error.
+		return false;
+	} else {
+		node->variadic.entity_alias_idx = entry_alias_idx;
+		return true;
+	}
 }
 
 static AR_EXP_Result _AR_EXP_EvaluateProperty(AR_ExpNode *node, const Record r, SIValue *result) {
@@ -334,10 +345,10 @@ static AR_EXP_Result _AR_EXP_EvaluateProperty(AR_ExpNode *node, const Record r, 
 static AR_EXP_Result _AR_EXP_EvaluateVariadic(AR_ExpNode *node, const Record r, SIValue *result) {
 	// Make sure entity record index is known.
 	if(node->operand.variadic.entity_alias_idx == IDENTIFIER_NOT_FOUND) {
-		_AR_EXP_UpdateEntityIdx(&node->operand, r);
+		if(!_AR_EXP_UpdateEntityIdx(&node->operand, r)) return EVAL_ERR;
 	}
 
-	// Fetch entity property value.
+// Fetch entity property value.
 	if(node->operand.variadic.entity_prop != NULL) {
 		return _AR_EXP_EvaluateProperty(node, r, result);
 	} else {
@@ -475,6 +486,10 @@ bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
 	return false;
 }
 
+bool inline  AR_EXP_IsConstant(const AR_ExpNode *exp) {
+	return exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_CONSTANT;
+}
+
 void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
 					  size_t *bytes_written) {
 	/* Make sure there are at least 64 bytes in str. */
@@ -586,7 +601,7 @@ void AR_EXP_Free(AR_ExpNode *root) {
 			AggCtx_Free(root->op.agg_func);
 		}
 	} else if(root->operand.type == AR_EXP_CONSTANT) {
-		SIValue_Free(&root->operand.constant);
+		SIValue_Free(root->operand.constant);
 	}
 	rm_free(root);
 }

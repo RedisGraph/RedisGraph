@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -84,7 +84,7 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNo
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_PROC_CALL, "ProcedureCall", NULL, ProcCallConsume,
-				ProcCallReset, NULL, ProcCallFree, !op->procedure->readOnly, plan);
+				ProcCallReset, NULL, NULL, ProcCallFree, !op->procedure->readOnly, plan);
 
 	// Set modifiers.
 	for(uint i = 0; i < yield_count; i ++) {
@@ -123,7 +123,7 @@ static Record ProcCallConsume(OpBase *opBase) {
 
 		// Evaluate arguments, free args from previous call.
 		uint arg_count = array_len(op->args);
-		for(uint i = 0; i < arg_count; i++) SIValue_Free(op->args + i);
+		for(uint i = 0; i < arg_count; i++) SIValue_Free(op->args[i]);
 
 		array_clear(op->args);
 		for(uint i = 0; i < op->arg_count; i++) {
@@ -170,7 +170,7 @@ static void ProcCallFree(OpBase *ctx) {
 
 	if(op->args) {
 		uint arg_count = array_len(op->args);
-		for(uint i = 0; i < arg_count; i++) SIValue_Free(op->args + i);
+		for(uint i = 0; i < arg_count; i++) SIValue_Free(op->args[i]);
 		array_free(op->args);
 		op->args = NULL;
 	}
@@ -193,3 +193,4 @@ static void ProcCallFree(OpBase *ctx) {
 		op->yield_exps = NULL;
 	}
 }
+

@@ -2,7 +2,7 @@
 // GrB_Col_assign:    C<M>(Rows,col) = accum (C(Rows,col),u)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -29,6 +29,7 @@ GrB_Info GrB_Col_assign             // C<M>(Rows,col) = accum (C(Rows,col),u)
     //--------------------------------------------------------------------------
 
     GB_WHERE ("GrB_Col_assign (C, M, accum, u, Rows, nRows, col, desc)") ;
+    GB_BURBLE_START ("GrB_assign") ;
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;
     GB_RETURN_IF_FAULTY (M) ;
     GB_RETURN_IF_NULL_OR_FAULTY (u) ;
@@ -36,7 +37,8 @@ GrB_Info GrB_Col_assign             // C<M>(Rows,col) = accum (C(Rows,col),u)
     ASSERT (GB_VECTOR_OK (u)) ;
 
     // get the descriptor
-    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, Mask_struct,
+        xx1, xx2, xx3) ;
 
     //--------------------------------------------------------------------------
     // C(Rows,col)<M> = accum (C(Rows,col), u)
@@ -46,9 +48,9 @@ GrB_Info GrB_Col_assign             // C<M>(Rows,col) = accum (C(Rows,col),u)
     GrB_Index Cols [1] ;
     Cols [0] = col ;
 
-    return (GB_assign (
+    info = GB_assign (
         C,                  C_replace,      // C matrix and its descriptor
-        (GrB_Matrix) M,     Mask_comp,      // mask and its descriptor
+        (GrB_Matrix) M, Mask_comp, Mask_struct, // mask and its descriptor
         false,                              // do not transpose the mask
         accum,                              // for accum (C(Rows,col),u)
         (GrB_Matrix) u,     false,          // u as a matrix; never transposed
@@ -56,6 +58,8 @@ GrB_Info GrB_Col_assign             // C<M>(Rows,col) = accum (C(Rows,col),u)
         Cols, 1,                            // a single column index
         false, NULL, GB_ignore_code,        // no scalar expansion
         true, false,                        // GrB_Col_assign
-        Context)) ;
-}
+        Context) ;
 
+    GB_BURBLE_END ;
+    return (info) ;
+}

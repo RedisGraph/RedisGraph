@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -45,6 +45,9 @@ void QueryGraph_AddPath(QueryGraph *qg, const GraphContext *gc, const cypher_ast
  * MATCH or MERGE clause) to a meta-graph that describes all
  * nodes and relationships in a query. */
 QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast);
+
+// Make sure that all entities in the "from" QueryGraph are represented in the "to" QueryGraph.
+void QueryGraph_MergeGraphs(QueryGraph *to, QueryGraph *from);
 
 /* Retrieve node by alias */
 QGNode *QueryGraph_GetNodeByAlias(const QueryGraph *qg, const char *alias);

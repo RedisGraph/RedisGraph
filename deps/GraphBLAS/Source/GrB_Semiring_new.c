@@ -2,7 +2,7 @@
 // GrB_Semiring_new: create a new semiring
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -46,8 +46,8 @@ GrB_Info GrB_Semiring_new           // create a semiring
     (*semiring) = NULL ;
     GB_RETURN_IF_NULL_OR_FAULTY (add) ;
     GB_RETURN_IF_NULL_OR_FAULTY (multiply) ;
-    ASSERT_OK (GB_check (add, "semiring->add", GB0)) ;
-    ASSERT_OK (GB_check (multiply, "semiring->multiply", GB0)) ;
+    ASSERT_MONOID_OK (add, "semiring->add", GB0) ;
+    ASSERT_BINARYOP_OK (multiply, "semiring->multiply", GB0) ;
 
     // z = multiply(x,y); type of z must match monoid z = add(z,z)
     if (multiply->ztype != add->op->ztype)
@@ -76,7 +76,7 @@ GrB_Info GrB_Semiring_new           // create a semiring
     s->multiply = multiply ;
     s->object_kind = GB_USER_RUNTIME ;
 
-    ASSERT_OK (GB_check (s, "new semiring", GB0)) ;
+    ASSERT_SEMIRING_OK (s, "new semiring", GB0) ;
     return (GrB_SUCCESS) ;
 }
 

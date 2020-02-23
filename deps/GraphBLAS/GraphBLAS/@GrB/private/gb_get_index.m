@@ -1,7 +1,7 @@
 function [I, whole] = gb_get_index (I_input)
 %GB_GET_INDEX helper function for subsref and subsasgn
 
-whole = isequal (I_input, {':'}) ;
+whole = isequal (I_input, {':'}) & ischar (I_input {1}) ;
 if (whole)
     % C (:)
     I = { } ;

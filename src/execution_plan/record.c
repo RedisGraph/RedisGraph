@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -43,9 +43,8 @@ int Record_GetEntryIdx(Record r, const char *alias) {
 	assert(r && alias);
 
 	void *idx = raxFind(r->mapping, (unsigned char *)alias, strlen(alias));
-	assert(idx != raxNotFound && "ERR: tried to resolve unexpected alias");
 
-	return (intptr_t)idx;
+	return idx != raxNotFound ? (intptr_t)idx : INVALID_INDEX;
 }
 
 void Record_Clone(const Record r, Record clone) {
@@ -278,7 +277,7 @@ void Record_FreeEntries(Record r) {
 	for(uint i = 0; i < length; i++) {
 		// Free any allocations held by this Record.
 		if(r->entries[i].type == REC_TYPE_SCALAR) {
-			SIValue_Free(&r->entries[i].value.s);
+			SIValue_Free(r->entries[i].value.s);
 		}
 	}
 }

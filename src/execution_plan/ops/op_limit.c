@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -17,7 +17,7 @@ OpBase *NewLimitOp(const ExecutionPlan *plan, unsigned int l) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_LIMIT, "Limit", NULL, LimitConsume,
-				LimitReset, NULL, NULL, false, plan);
+				LimitReset, NULL, NULL, NULL, false, plan);
 
 	return (OpBase *)op;
 }

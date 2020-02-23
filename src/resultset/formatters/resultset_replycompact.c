@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -214,30 +214,31 @@ static void _ResultSet_CompactReplyWithPath(RedisModuleCtx *ctx, GraphContext *g
 	RedisModule_ReplyWithArray(ctx, 2);
 	SIValue nodes = SIPath_Nodes(path);
 	_ResultSet_CompactReplyWithSIValue(ctx, gc, nodes);
-	SIValue_Free(&nodes);
+	SIValue_Free(nodes);
 	// Second array type and value.
 	RedisModule_ReplyWithArray(ctx, 2);
 	SIValue relationships = SIPath_Relationships(path);
 	_ResultSet_CompactReplyWithSIValue(ctx, gc, relationships);
-	SIValue_Free(&relationships);
+	SIValue_Free(relationships);
 }
 
 void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
-								 uint numcols) {
+								 uint numcols, uint *col_rec_map) {
 	// Prepare return array sized to the number of RETURN entities
 	RedisModule_ReplyWithArray(ctx, numcols);
 
 	for(uint i = 0; i < numcols; i++) {
-		switch(Record_GetType(r, i)) {
+		uint idx = col_rec_map[i];
+		switch(Record_GetType(r, idx)) {
 		case REC_TYPE_NODE:
-			_ResultSet_CompactReplyWithNode(ctx, gc, Record_GetNode(r, i));
+			_ResultSet_CompactReplyWithNode(ctx, gc, Record_GetNode(r, idx));
 			break;
 		case REC_TYPE_EDGE:
-			_ResultSet_CompactReplyWithEdge(ctx, gc, Record_GetEdge(r, i));
+			_ResultSet_CompactReplyWithEdge(ctx, gc, Record_GetEdge(r, idx));
 			break;
 		default:
 			RedisModule_ReplyWithArray(ctx, 2); // Reply with array with space for type and value
-			_ResultSet_CompactReplyWithSIValue(ctx, gc, Record_GetScalar(r, i));
+			_ResultSet_CompactReplyWithSIValue(ctx, gc, Record_GetScalar(r, idx));
 		}
 	}
 }
@@ -245,8 +246,8 @@ void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Re
 // For every column in the header, emit a 2-array that specifies
 // the column alias followed by an enum denoting what type
 // (scalar, node, or relation) it holds.
-void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns,
-									  const Record r) {
+void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns, const Record r,
+									  uint *col_rec_map) {
 	uint columns_len = array_len(columns);
 	RedisModule_ReplyWithArray(ctx, columns_len);
 	for(uint i = 0; i < columns_len; i++) {
@@ -254,7 +255,7 @@ void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns,
 		ColumnType t;
 		// First, emit the column type enum
 		if(r) {
-			RecordEntryType entry_type = Record_GetType(r, i);
+			RecordEntryType entry_type = Record_GetType(r, col_rec_map[i]);
 			switch(entry_type) {
 			case REC_TYPE_NODE:
 				t = COLUMN_NODE;
@@ -281,4 +282,3 @@ void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns,
 		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
 	}
 }
-

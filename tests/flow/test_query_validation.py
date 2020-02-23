@@ -152,3 +152,22 @@ class testQueryValidationFlow(FlowTestsBase):
         except redis.exceptions.ResponseError:
             # Expecting an error.
             pass
+
+    def test14_treat_path_as_entity(self):
+        redis_graph.query("CREATE ()-[:R]->()")
+        try:
+            query= """MATCH x=()-[]->() RETURN x.name"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass
+
+    def test15_dont_crash_on_multiple_errors(self):
+        try:
+            query = """MATCH (a) where id(a) IN range(0) OR id(a) in range(1)"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass

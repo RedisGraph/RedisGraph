@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -16,7 +16,7 @@ OpBase *NewFilterOp(const ExecutionPlan *plan, FT_FilterNode *filterTree) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_FILTER, "Filter", NULL, FilterConsume,
-				NULL, NULL, FilterFree, false, plan);
+				NULL, NULL, NULL, FilterFree, false, plan);
 
 	return (OpBase *)op;
 }

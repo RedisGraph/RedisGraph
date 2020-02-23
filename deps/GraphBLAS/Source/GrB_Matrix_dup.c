@@ -2,7 +2,7 @@
 // GrB_Matrix_dup: make a deep copy of a sparse matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -23,6 +23,7 @@ GrB_Info GrB_Matrix_dup     // make an exact copy of a matrix
     //--------------------------------------------------------------------------
 
     GB_WHERE ("GrB_Matrix_dup (&C, A)") ;
+    GB_BURBLE_START ("GrB_Matrix_dup") ;
     GB_RETURN_IF_NULL (C) ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
 
@@ -30,6 +31,8 @@ GrB_Info GrB_Matrix_dup     // make an exact copy of a matrix
     // duplicate the matrix
     //--------------------------------------------------------------------------
 
-    return (GB_dup (C, A, true, NULL, Context)) ;
+    GrB_Info info = GB_dup (C, A, true, NULL, Context) ;
+    GB_BURBLE_END ;
+    return (info) ;
 }
 

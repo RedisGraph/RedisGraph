@@ -2,7 +2,7 @@
 // gbsize: number of rows and columns in a GraphBLAS matrix struct
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -84,7 +84,7 @@ void mexFunction
     // free shallow copy of X
     //--------------------------------------------------------------------------
 
-    OK (GrB_free (&X)) ;
+    OK (GrB_Matrix_free (&X)) ;
     GB_WRAPUP ;
 }
 

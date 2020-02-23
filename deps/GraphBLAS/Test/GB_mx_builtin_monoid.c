@@ -2,7 +2,7 @@
 // GB_mx_builtin_monoid: return a built-in monoid
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -54,7 +54,7 @@ GrB_Monoid GB_mx_builtin_monoid     // built-in monoid, or NULL if error
             // 11 MAX monoids
             switch (add->xtype->code)
             {
-                // bool case redudandt with OR
+                // bool case redundant with OR
                 case GB_BOOL_code   : return (GxB_LOR_BOOL_MONOID     ) ;
                 case GB_INT8_code   : return (GxB_MAX_INT8_MONOID     ) ;
                 case GB_UINT8_code  : return (GxB_MAX_UINT8_MONOID    ) ;
@@ -77,7 +77,7 @@ GrB_Monoid GB_mx_builtin_monoid     // built-in monoid, or NULL if error
             // 11 PLUS monoids
             switch (add->xtype->code)
             {
-                // bool case redudandt with OR
+                // bool case redundant with OR
                 case GB_BOOL_code   : return (GxB_LOR_BOOL_MONOID     ) ;
                 case GB_INT8_code   : return (GxB_PLUS_INT8_MONOID    ) ;
                 case GB_UINT8_code  : return (GxB_PLUS_UINT8_MONOID   ) ;
@@ -100,7 +100,7 @@ GrB_Monoid GB_mx_builtin_monoid     // built-in monoid, or NULL if error
             // 11 TIMES monoids
             switch (add->xtype->code)
             {
-                // bool case redudandt with AND
+                // bool case redundant with AND
                 case GB_BOOL_code   : return (GxB_LAND_BOOL_MONOID    ) ;
                 case GB_INT8_code   : return (GxB_TIMES_INT8_MONOID   ) ;
                 case GB_UINT8_code  : return (GxB_TIMES_UINT8_MONOID  ) ;
@@ -112,6 +112,28 @@ GrB_Monoid GB_mx_builtin_monoid     // built-in monoid, or NULL if error
                 case GB_UINT64_code : return (GxB_TIMES_UINT64_MONOID ) ;
                 case GB_FP32_code   : return (GxB_TIMES_FP32_MONOID   ) ;
                 case GB_FP64_code   : return (GxB_TIMES_FP64_MONOID   ) ;
+                default: 
+                    mexWarnMsgIdAndTxt ("GB:warn", "unknown type") ;
+                    return (NULL) ;
+            }
+            break ;
+
+        case GB_ANY_opcode   :
+
+            // 11 ANY monoids
+            switch (add->xtype->code)
+            {
+                case GB_BOOL_code   : return (GxB_ANY_BOOL_MONOID   ) ;
+                case GB_INT8_code   : return (GxB_ANY_INT8_MONOID   ) ;
+                case GB_UINT8_code  : return (GxB_ANY_UINT8_MONOID  ) ;
+                case GB_INT16_code  : return (GxB_ANY_INT16_MONOID  ) ;
+                case GB_UINT16_code : return (GxB_ANY_UINT16_MONOID ) ;
+                case GB_INT32_code  : return (GxB_ANY_INT32_MONOID  ) ;
+                case GB_UINT32_code : return (GxB_ANY_UINT32_MONOID ) ;
+                case GB_INT64_code  : return (GxB_ANY_INT64_MONOID  ) ;
+                case GB_UINT64_code : return (GxB_ANY_UINT64_MONOID ) ;
+                case GB_FP32_code   : return (GxB_ANY_FP32_MONOID   ) ;
+                case GB_FP64_code   : return (GxB_ANY_FP64_MONOID   ) ;
                 default: 
                     mexWarnMsgIdAndTxt ("GB:warn", "unknown type") ;
                     return (NULL) ;

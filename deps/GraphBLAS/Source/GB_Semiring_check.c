@@ -2,13 +2,10 @@
 // GB_Semiring_check: check and print a semiring
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
-
-// for additional diagnostics, use:
-// #define GB_DEVELOPER 1
 
 #include "GB_printf.h"
 
@@ -48,12 +45,8 @@ GrB_Info GB_Semiring_check          // check a GraphBLAS semiring
             GBPR0 ("(built-in)") ;
             break ;
 
-        case GB_USER_COMPILED:
-            GBPR0 ("(user-defined at compile-time)") ;
-            break ;
-
         case GB_USER_RUNTIME:
-            GBPR0 ("(user-defined at run-time)") ;
+            GBPR0 ("(user-defined)") ;
             break ;
 
         default:

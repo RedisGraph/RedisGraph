@@ -2,7 +2,7 @@
 // GB_BinaryOp_new: create a new binary operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -58,8 +58,8 @@ GrB_Info GB_BinaryOp_new
     op->ztype = ztype ;
     op->function = function ;
     strncpy (op->name, name, GB_LEN-1) ;
-    op->opcode = GB_USER_R_opcode ;     // run-time user-defined operator
-    ASSERT_OK (GB_check (op, "new user-defined binary op", GB0)) ;
+    op->opcode = GB_USER_opcode ;     // user-defined operator
+    ASSERT_BINARYOP_OK (op, "new user-defined binary op", GB0) ;
     return (GrB_SUCCESS) ;
 }
 

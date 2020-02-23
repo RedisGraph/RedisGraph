@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -136,7 +136,7 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", NULL,
-				CondTraverseConsume, CondTraverseReset, CondTraverseToString, CondTraverseFree, false, plan);
+				CondTraverseConsume, CondTraverseReset, CondTraverseToString, NULL, CondTraverseFree, false, plan);
 
 	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
@@ -191,8 +191,8 @@ static Record CondTraverseConsume(OpBase *opBase) {
 		for(op->recordsLen = 0; op->recordsLen < op->recordsCap; op->recordsLen++) {
 			Record childRecord = OpBase_Consume(child);
 			if(!childRecord) break;
-
 			// Store received record.
+			Record_PersistScalars(childRecord);
 			op->records[op->recordsLen] = childRecord;
 		}
 
@@ -218,7 +218,13 @@ static Record CondTraverseConsume(OpBase *opBase) {
 
 static OpResult CondTraverseReset(OpBase *ctx) {
 	CondTraverse *op = (CondTraverse *)ctx;
-	if(op->r) OpBase_DeleteRecord(op->r);
+
+	// Do not explicitly free op->r, as the same pointer is also held
+	// in the op->records array and as such will be freed there.
+	op->r = NULL;
+	for(int i = 0; i < op->recordsLen; i++) OpBase_DeleteRecord(op->records[i]);
+	op->recordsLen = 0;
+
 	if(op->edges) array_clear(op->edges);
 	if(op->iter) {
 		GxB_MatrixTupleIter_free(op->iter);

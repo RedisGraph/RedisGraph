@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -110,6 +110,7 @@ void GraphContext_MarkWriter(RedisModuleCtx *ctx, GraphContext *gc) {
 	// Reopen only if key exists (do not re-create) make sure key still exists.
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_READ);
 	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) goto cleanup;
+	RedisModule_CloseKey(key);
 
 	// Mark as writer.
 	key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_WRITE);

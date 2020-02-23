@@ -299,6 +299,38 @@ class testConcurrentQueryFlow(FlowTestsBase):
         writer = threading.Thread(target=thread_run_query, args=(graphs[0], heavy_write_query, 0))
         writer.setDaemon(True)
         writer.start()
-        redis_con.set(GRAPH_ID, "1")
+        set_result = redis_con.set(GRAPH_ID, "1")
         writer.join()
-        self.env.assertEquals(exceptions[0], "Encountered a non-graph value type when opened key " + GRAPH_ID)
+        if exceptions[0] is not None:
+            # If the SET command attempted to execute while the CREATE query was running,
+            # an exception should have been issued.
+            self.env.assertEquals(exceptions[0], "Encountered a non-graph value type when opened key " + GRAPH_ID)
+        else:
+            # Otherwise, both the CREATE query and the SET command should have succeeded.
+            self.env.assertEquals(1000000, assertions[0].nodes_created)
+            self.env.assertEquals(set_result, True)
+
+    def test_09_concurrent_multiple_readers_after_big_write(self):
+        # Test issue #890
+        global assertions
+        global exceptions
+        redis_con = self.env.getConnection()
+        redis_graph = Graph("G890", redis_con)
+        redis_graph.query("""UNWIND(range(0,999)) as x CREATE()-[:R]->()""")
+        read_query = """MATCH (n)-[r:R]->(m) RETURN n, r, m"""
+        assertions = [True] * CLIENT_COUNT
+        exceptions = [None] * CLIENT_COUNT
+        threads = []
+        for i in range(CLIENT_COUNT):
+            t = threading.Thread(target=thread_run_query, args=(redis_graph, read_query, i))
+            t.setDaemon(True)
+            threads.append(t)
+            t.start()
+        
+        for i in range(CLIENT_COUNT):
+            t = threads[i]
+            t.join()
+        
+        for i in range(CLIENT_COUNT):
+            self.env.assertIsNone(exceptions[i])
+            self.env.assertEquals(1000, len(assertions[i].result_set))

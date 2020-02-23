@@ -2,7 +2,7 @@
 // gb_export_to_mxstruct: export a GrB_Matrix to a MATLAB struct
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -138,7 +138,7 @@ mxArray *gb_export_to_mxstruct  // return exported MATLAB struct G
     // free the header of A
     //--------------------------------------------------------------------------
 
-    OK (GrB_free (A_handle)) ;
+    OK (GrB_Matrix_free (A_handle)) ;
 
     //--------------------------------------------------------------------------
     // return the MATLAB struct

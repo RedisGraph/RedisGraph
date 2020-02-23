@@ -2,7 +2,7 @@
 // GrB_transpose: transpose a sparse matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -29,18 +29,20 @@ GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
     // C may be aliased with M and/or A
 
     GB_WHERE ("GrB_transpose (C, M, accum, A, desc)") ;
+    GB_BURBLE_START ("GrB_transpose") ;
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;
     GB_RETURN_IF_FAULTY (M) ;
     GB_RETURN_IF_FAULTY (accum) ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
 
-    ASSERT_OK (GB_check (C, "C input for GrB_transpose", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (M, "M for GrB_transpose", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GrB_transpose", GB0)) ;
-    ASSERT_OK (GB_check (A, "A input for GrB_transpose", GB0)) ;
+    ASSERT_MATRIX_OK (C, "C input for GrB_transpose", GB0) ;
+    ASSERT_MATRIX_OK_OR_NULL (M, "M for GrB_transpose", GB0) ;
+    ASSERT_BINARYOP_OK_OR_NULL (accum, "accum for GrB_transpose", GB0) ;
+    ASSERT_MATRIX_OK (A, "A input for GrB_transpose", GB0) ;
 
     // get the descriptor
-    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx1, xx2);
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, Mask_struct,
+        A_transpose, xx1, xx2) ;
 
     // check domains and dimensions for C<M> = accum (C,T)
     info = GB_compatible (C->type, C, M, accum, A->type, Context) ;
@@ -88,6 +90,7 @@ GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
 
         // T = A', the default behavior.  This step may seem counter-intuitive,
         // but method computes C<M>=A' by default when A_transpose is false.
+        GBBURBLE ("(transpose) ") ;
 
         // Precasting:
         if (accum == NULL)
@@ -121,6 +124,7 @@ GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
         // typecasted eventually, into the type of C if the types of T and C
         // differ.  That can be postponed at no cost since the following step
         // is free.
+        GBBURBLE ("(cheap) ") ;
         info = GB_shallow_copy (&T, C_is_csc, A, Context) ;
     }
 
@@ -131,14 +135,18 @@ GrB_Info GrB_transpose              // C<M> = accum(C,A') or accum(C,A)
     }
 
     ASSERT (T->is_csc == C->is_csc) ;
-    ASSERT_OK (GB_check (T, "T for GrB_transpose", GB0)) ;
-    ASSERT_OK (GB_check (C, "C for GrB_transpose", GB0)) ;
+    ASSERT_MATRIX_OK (T, "T for GrB_transpose", GB0) ;
+    ASSERT_MATRIX_OK (C, "C for GrB_transpose", GB0) ;
 
     //--------------------------------------------------------------------------
     // C<M> = accum (C,T): accumulate the results into C via the mask M
     //--------------------------------------------------------------------------
 
-    return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp,
-        Context)) ;
+    info = GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp, 
+        Mask_struct, Context) ;
+    ASSERT (T == NULL) ;
+
+    GB_BURBLE_END ;
+    return (info) ;
 }
 

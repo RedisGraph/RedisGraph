@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -21,7 +21,7 @@ static OpResult CondVarLenTraverseReset(OpBase *opBase);
 static void CondVarLenTraverseFree(OpBase *opBase);
 
 static void _setupTraversedRelations(CondVarLenTraverse *op) {
-	QGEdge *e = QueryGraph_GetEdgeByAlias(op->qg, AlgebraicExpression_Edge(op->ae));
+	QGEdge *e = QueryGraph_GetEdgeByAlias(op->op.plan->query_graph, AlgebraicExpression_Edge(op->ae));
 	assert(e->minHops <= e->maxHops);
 	op->minHops = e->minHops;
 	op->maxHops = e->maxHops;
@@ -84,19 +84,18 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	op->r = NULL;
 	op->expandInto = false;
 	op->allPathsCtx = NULL;
-	op->qg = plan->query_graph;
 	op->edgeRelationTypes = NULL;
 
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
 				"Conditional Variable Length Traverse", NULL, CondVarLenTraverseConsume, CondVarLenTraverseReset,
-				CondVarLenTraverseToString, CondVarLenTraverseFree, false, plan);
+				CondVarLenTraverseToString, NULL, CondVarLenTraverseFree, false, plan);
 
 	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
 
 	// Populate edge value in record only if it is referenced.
 	AST *ast = QueryCtx_GetAST();
-	QGEdge *e = QueryGraph_GetEdgeByAlias(op->qg, AlgebraicExpression_Edge(op->ae));
+	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, AlgebraicExpression_Edge(op->ae));
 	op->edgesIdx = AST_AliasIsReferenced(ast, e->alias) ? OpBase_Modifies((OpBase *)op, e->alias) : -1;
 	_setTraverseDirection(op, e);
 
@@ -106,9 +105,11 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 static Record CondVarLenTraverseConsume(OpBase *opBase) {
 	CondVarLenTraverse *op = (CondVarLenTraverse *)opBase;
 	OpBase *child = op->op.children[0];
+	bool reused_record = true;
 	Path *p = NULL;
 
 	while(!(p = AllPathsCtx_NextPath(op->allPathsCtx))) {
+		reused_record = false;
 		Record childRecord = OpBase_Consume(child);
 		if(!childRecord) return NULL;
 
@@ -139,8 +140,15 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 	Node n = Path_Head(p);
 
 	if(!op->expandInto) Record_AddNode(op->r, op->destNodeIdx, n);
-
-	if(op->edgesIdx >= 0) Record_AddScalar(op->r, op->edgesIdx, SI_Path(p));
+	if(op->edgesIdx >= 0) {
+		if(reused_record) {
+			// If we're returning a new path from a previously-used Record,
+			// free the previous path to avoid a memory leak.
+			SIValue old_path = Record_GetScalar(op->r, op->edgesIdx);
+			SIValue_Free(old_path);
+		}
+		Record_AddScalar(op->r, op->edgesIdx, SI_Path(p));
+	}
 
 	return OpBase_CloneRecord(op->r);
 }

@@ -2,7 +2,7 @@
 // GB_mx_mxArray_to_indices
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -33,7 +33,6 @@ bool GB_mx_mxArray_to_indices       // true if successful, false otherwise
         (*handle) = I ;
         (*I_is_list) = false ;
         // Icolon not used
-        // printf ("got index (:)\n") ;
     }
     else
     {
@@ -69,8 +68,6 @@ bool GB_mx_mxArray_to_indices       // true if successful, false otherwise
             {
                 (*ni) = GxB_RANGE ;
                 Icolon [GxB_INC] = 1 ;
-                // printf ("got range ("GBd":"GBd")\n",
-                //     Icolon [GxB_BEGIN], Icolon [GxB_END]) ;
             }
             else
             {
@@ -96,8 +93,6 @@ bool GB_mx_mxArray_to_indices       // true if successful, false otherwise
                     (*ni) = GxB_BACKWARDS ;
                     Icolon [GxB_INC] = -iinc ;
                 }
-                // printf ("got stride ("GBd":"GBd":"GBd")\n",
-                //     Icolon [GxB_BEGIN], Icolon [GxB_INC], Icolon [GxB_END]) ;
             }
             (*handle) = Icolon ;
 
@@ -114,7 +109,6 @@ bool GB_mx_mxArray_to_indices       // true if successful, false otherwise
             I = mxGetData (I_matlab) ;
             (*ni) = (uint64_t) mxGetNumberOfElements (I_matlab) ;
             (*handle) = I ;
-            // printf ("got index list, size "GBd"\n", (int64_t) (*ni)) ;
         }
     }
 

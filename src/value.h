@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -120,6 +120,8 @@ void SIValue_Persist(SIValue *v);
 
 bool SIValue_IsNull(SIValue v);
 bool SIValue_IsNullPtr(SIValue *v);
+bool SIValue_IsFalse(SIValue v);
+bool SIValue_IsTrue(SIValue v);
 
 const char *SIType_ToString(SIType t);
 
@@ -166,4 +168,5 @@ XXH64_hash_t SIValue_HashCode(SIValue v);
 
 /* Free an SIValue's internal property if that property is a heap allocation owned
  * by this object. */
-void SIValue_Free(SIValue *v);
+void SIValue_Free(SIValue v);
+

@@ -3,13 +3,14 @@ function [mult_ops unary_ops add_ops classes semirings selops] = GB_spec_opsall
 %
 % [mult_ops unary_ops add_ops classes semirings select_ops] = GB_spec_opsall
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 mult_ops = {
-% 10 operators where x,y,z are all the same class
+% 11 operators where x,y,z are all the same class
 'first',     % z = x
 'second',    % z = y
+'pair',      % z = 1
 'min',       % z = min(x,y)
 'max',       % z = max(x,y)
 'plus',      % z = x + y
@@ -56,6 +57,7 @@ add_ops = {
 'max',       % z = max(x,y) : identity is -inf
 'plus',      % z = x + y    : identity is 0
 'times',     % z = x * y    : identity is 1
+'any',       % z = pick x or y: both sets
 %----------------------------
 % 4 monoids for just boolean
 'or',        % z = x || y   : identity is 0 (false)
@@ -94,9 +96,9 @@ nonbool = {
 
 n = 0 ;
 
-% 760: x,y,z all nonboolean:  (10+6+3)*4*10
-for mult = {'first', 'second', 'min', 'max', 'plus', 'minus', 'rminus', ...
-            'times', 'div', 'rdiv', ...
+% 800: x,y,z all nonboolean:  (10+6+3)*4*10
+for mult = {'first', 'second', 'pair', 'min', 'max', 'plus', 'minus', ...
+            'rminus', 'times', 'div', 'rdiv', ...
             'iseq', 'isne', 'isgt', 'islt', 'isge', 'isle', ...
             'or', 'and', 'xor', }
     for add = { 'min', 'max', 'plus', 'times' }
@@ -121,9 +123,10 @@ for mult = { 'eq', 'ne', 'gt', 'lt', 'ge', 'le' }
     end
 end
 
-% 40: x,y,z all boolean: 10 * 4
-for mult = { 'first', 'second', 'or', 'and', 'xor', 
-             'eq', 'gt', 'lt', 'ge', 'le' }
+%-------------------------------------------------------------------------------
+% 44: x,y,z all boolean: 10 * 4
+for mult = { 'first', 'second', 'pair', 'or', 'and', 'xor', ...
+    'eq', 'gt', 'lt', 'ge', 'le' }
     for add = { 'or', 'and', 'xor', 'eq' }
         n = n + 1 ;
         s = struct ('multiply', mult{1}, 'add', add{1}, 'class', c{1}) ;

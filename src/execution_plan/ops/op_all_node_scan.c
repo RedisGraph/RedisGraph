@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -27,7 +27,7 @@ OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const QGNode *n) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_ALL_NODE_SCAN, "All Node Scan", AllNodeScanInit,
-				AllNodeScanConsume, AllNodeScanReset, AllNodeScanToString, AllNodeScanFree, false, plan);
+				AllNodeScanConsume, AllNodeScanReset, AllNodeScanToString, NULL, AllNodeScanFree, false, plan);
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 	return (OpBase *)op;
 }

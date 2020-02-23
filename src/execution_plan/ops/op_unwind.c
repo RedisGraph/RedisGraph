@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -29,7 +29,7 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", UnwindInit, UnwindConsume,
-				UnwindReset, NULL, UnwindFree, false, plan);
+				UnwindReset, NULL, NULL, UnwindFree, false, plan);
 
 	op->unwindRecIdx = OpBase_Modifies((OpBase *)op, exp->resolved_name);
 	return (OpBase *)op;
@@ -95,7 +95,7 @@ static Record UnwindConsume(OpBase *opBase) {
 		OpBase_DeleteRecord(op->currentRecord);
 		op->currentRecord = r;
 		// Free old list.
-		SIValue_Free(&op->list);
+		SIValue_Free(op->list);
 
 		// Reset index and set list.
 		op->listIdx = 0;
@@ -116,7 +116,7 @@ static OpResult UnwindReset(OpBase *ctx) {
 
 static void UnwindFree(OpBase *ctx) {
 	OpUnwind *op = (OpUnwind *)ctx;
-	SIValue_Free(&op->list);
+	SIValue_Free(op->list);
 	op->list = SI_NullVal();
 
 	if(op->exp) {

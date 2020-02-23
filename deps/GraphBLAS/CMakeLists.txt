@@ -2,7 +2,7 @@
 # GraphBLAS/CMakeLists.txt:  cmake script for GraphBLAS
 #-------------------------------------------------------------------------------
 
-# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 # http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 # CMakeLists.txt: instructions for cmake to build GraphBLAS.
@@ -46,8 +46,10 @@
 # get the version
 #-------------------------------------------------------------------------------
 
-# cmake 3.0 is preferred.
+# cmake 3.13 is preferred.
 cmake_minimum_required ( VERSION 2.8.12 )
+
+message ( STATUS "CMake version: " ${CMAKE_VERSION} )
 
 if ( CMAKE_VERSION VERSION_GREATER "3.0" )
     cmake_policy ( SET CMP0042 NEW )
@@ -55,10 +57,10 @@ if ( CMAKE_VERSION VERSION_GREATER "3.0" )
 endif ( )
 
 # version of SuiteSparse:GraphBLAS
-set ( GraphBLAS_DATE "Oct 21, 2019" )
+set ( GraphBLAS_DATE "Feb 20, 2020" )
 set ( GraphBLAS_VERSION_MAJOR 3 )
-set ( GraphBLAS_VERSION_MINOR 1 )
-set ( GraphBLAS_VERSION_SUB   1 )
+set ( GraphBLAS_VERSION_MINOR 2 )
+set ( GraphBLAS_VERSION_SUB   0 )
 
 # GraphBLAS C API Specification version, at graphblas.org
 set ( GraphBLAS_API_DATE "May 18, 2018" )
@@ -68,9 +70,9 @@ set ( GraphBLAS_API_VERSION_SUB   0 )
 
 if ( CMAKE_MAJOR_VERSION GREATER 2 )
     project ( graphblas
-        VERSION "${GraphBLAS_VERSION_MAJOR}.${GraphBLAS_VERSION_MINOR}.${GraphBLAS_VERSION_SUB}" )
+        VERSION "${GraphBLAS_VERSION_MAJOR}.${GraphBLAS_VERSION_MINOR}.${GraphBLAS_VERSION_SUB}" LANGUAGES C )
 else ( )
-    project ( graphblas )
+    project ( graphblas C )
 endif ( )
 
 #-------------------------------------------------------------------------------
@@ -87,8 +89,8 @@ if ( NOT CMAKE_BUILD_TYPE )
 endif ( )
 
 # select "true" to build both dynamic and static libraries:
-#  set ( BUILD_GRB_STATIC_LIBRARY true )
-#  set ( BUILD_GRB_STATIC_LIBRARY false )
+# set ( BUILD_GRB_STATIC_LIBRARY true )
+# set ( BUILD_GRB_STATIC_LIBRARY false )
 # or use cmake with -DBUILD_GRB_STATIC_LIBRARY=1
 
 if ( BUILD_GRB_STATIC_LIBRARY )
@@ -97,8 +99,16 @@ else ( )
     message ( STATUS "Building dynamic GraphBLAS library only" )
 endif ( )
 
+# select "true" to enable burble, for GraphBLAS development only
+# set ( GB_BURBLE true )
+  set ( GB_BURBLE false )
+
+if ( GB_BURBLE )
+    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DGB_BURBLE=1 " )
+endif ( )
+
 #-------------------------------------------------------------------------------
-# find m4 and configure GraphBLAS with user-defined objects (if any)
+# configure GraphBLAS
 #-------------------------------------------------------------------------------
 
 find_program ( M4EXISTS m4 )
@@ -106,22 +116,10 @@ if ( NOT M4EXISTS )
     message ( FATAL_ERROR "m4 not found, but is required.  Install via your system package manager, or download at http://www.gnu.org/software/m4/m4.html or http://gnuwin32.sourceforge.net for Windows" )
 endif ( )
 
-# configure user-defined objects defined in User/*.m4
-file ( GLOB USER_M4 "User/*.m4" )
-set ( DEF0 "Config/user_def0.m4" )
-set ( DEF1 "Config/user_def1.m4" )
-set ( DEF2 "Config/user_def2.m4" )
-execute_process (
-    WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-    COMMAND m4 -P ${DEF0} ${DEF1} ${USER_M4} ${DEF2}
-    OUTPUT_FILE "Source/all_user_objects.c"
-)
 set ( DEC0 "Config/GraphBLAS.h.in" )
-set ( DEC1 "Config/user_dec1.m4" )
-set ( DEC2 "Config/user_dec2.m4" )
 execute_process (
     WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
-    COMMAND m4 -P ${DEC0} ${DEC1} ${USER_M4} ${DEC2}
+    COMMAND m4 -P ${DEC0}
     OUTPUT_FILE "Config/GraphBLAS.h.tmp"
 )
 
@@ -130,8 +128,8 @@ execute_process (
 #-------------------------------------------------------------------------------
 
 configure_file (
-    "Config/GraphBLAS.h.tmp" 
-    "${PROJECT_SOURCE_DIR}/Include/GraphBLAS.h" 
+    "Config/GraphBLAS.h.tmp"
+    "${PROJECT_SOURCE_DIR}/Include/GraphBLAS.h"
 )
 configure_file (
     "Config/GraphBLAS_version.tex.in"
@@ -152,8 +150,9 @@ configure_file (
 
 include ( FindOpenMP  )
 include ( FindThreads )
-# enable_language ( CUDA )
 
+# FUTURE: rely on CUDA
+# enable_language ( CUDA )
 # for nvcc, add -DGBCUDA
 
 #-------------------------------------------------------------------------------
@@ -175,6 +174,42 @@ message ( STATUS "CMAKE have Win32 pthreads: " ${CMAKE_USE_WIN32_THREADS_INIT} )
 message ( STATUS "CMAKE have OpenMP:         " ${OPENMP_FOUND} )
 
 #-------------------------------------------------------------------------------
+# find the BLAS
+#-------------------------------------------------------------------------------
+
+# FUTURE: CBLAS disabled for now because of a linking issue.  The problem is
+# that GraphBLAS gets linked with both libgomp and libiomp, when the MKL BLAS
+# is used.  The FindOpenMP includes libgomp and FindBLAS with BLA_VENDOR set to
+# Intel10_64ilp includes libiomp.  When this happens, incorrect results are
+# obtained from cblas_saxpy and cblas_daxpy.  The Intel MKL can work with
+# libgomp, but not when libiomp is also included.
+
+#   if ( CMAKE_VERSION VERSION_GREATER "3.13" )
+#       # Look for the parallel 64-bit MKL BLAS by default
+#       set ( BLA_VENDOR Intel10_64ilp )
+#       include ( FindBLAS )
+#       if ( ${BLAS_FOUND} )
+#           set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DMKL_ILP64 " )
+#       else ( )
+#           message ( STATUS "CBLAS : Intel MKL not found" )
+#           # FUTURE: enable other BLAS flavors here
+#           # set ( BLA_VENDOR ... )
+#           # include ( FindBLAS )
+#       endif ( )
+#   endif ( )
+
+#   if ( ${BLAS_FOUND} )
+#       # BLAS_LINKER_FLAGS: uncached list of required linker flags
+#       # (excluding -l and -L).
+#       message ( STATUS "CBLAS:                     found" )
+#       message ( STATUS "CBLAS linker flags:        " ${BLAS_LINKER_FLAGS} )
+#       # BLAS_LIBRARIES: list of libraries to link against (may be empty)
+#       message ( STATUS "CBLAS libraries:    " ${BLAS_LIBRARIES} )
+#   else ( )
+#       message ( STATUS "CBLAS:                     not found" )
+#   endif ( )
+
+#-------------------------------------------------------------------------------
 # include directories for both graphblas and graphblasdemo libraries
 #-------------------------------------------------------------------------------
 
@@ -191,22 +226,25 @@ include_directories ( Source/Template Source Source/Generated Source/Generator I
 if ( "${CMAKE_C_COMPILER_ID}" STREQUAL "GNU")
     # cmake 2.8 workaround: gcc needs to be told to do ANSI C11.
     # cmake 3.0 doesn't have this problem.
-    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -std=c11 -lm -Wno-pragmas -fPIC " )
+    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -std=c11 -lm -Wno-pragmas " )
     # check all warnings (uncomment for development only)
 #   set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -Wall -Wextra -Wpedantic -Werror " )
+    # set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -g" )
     if ( CMAKE_C_COMPILER_VERSION VERSION_LESS 4.9 )
         message ( FATAL_ERROR "gcc version must be at least 4.9" )
     endif ( )
 elseif ( "${CMAKE_C_COMPILER_ID}" STREQUAL "Intel" )
     # options for icc: also needs -std=c11
-#   set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -qopt-report -qopt-report-phase=vec" )
+    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -diag-disable 10397,15552 " )
+    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -qopt-report=5 -qopt-report-phase=vec" )
     # the -mp1 option is important for predictable floating-point results with
     # the icc compiler.  Without, ((float) 1.)/((float) 0.) produces NaN,
     # instead of the correct result, Inf.
-    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -std=c11 -mp1 -fPIC" )
+    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -std=c11 -mp1" )
     # The -g option is useful for the Intel VTune tool, but it should be
     # removed in production.  Comment this line out if not in use:
     # set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -g" )
+    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -qopt-malloc-options=3" )
     # check all warnings and remarks (uncomment for development only):
 #   set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -w3 -Wremarks -Werror " )
     if ( CMAKE_C_COMPILER_VERSION VERSION_LESS 19.0 )
@@ -219,11 +257,12 @@ elseif ( "${CMAKE_C_COMPILER_ID}" STREQUAL "Clang" )
     endif ( )
 elseif ( "${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC" )
     # options for MicroSoft Visual Studio
+    set (CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -wd\"4244\" -wd\"4146\" -wd\"4018\" -wd\"4996\" -wd\"4047\" -wd\"4554\"")
 elseif ( "${CMAKE_C_COMPILER_ID}" STREQUAL "PGI" )
     # options for PGI pgcc compiler.  The compiler has a bug, and the
     # -DPGI_COMPILER_BUG causes GraphBLAS to use a workaround.
-    set ( CMAKE_C_FLAGS    "${CMAKE_C_FLAGS} -Mnoopenmp -noswitcherror -c11 -lm -fPIC -DPGI_COMPILER_BUG" )
-    set ( CMAKE_CXX_FLAGS  "${CMAKE_C_FLAGS} -Mnoopenmp -D__GCC_ATOMIC_TEST_AND_SET_TRUEVAL=1 -noswitcherror --c++11 -lm -fPIC -DPGI_COMPILER_BUG" )
+    set ( CMAKE_C_FLAGS    "${CMAKE_C_FLAGS} -Mnoopenmp -noswitcherror -c11 -lm -DPGI_COMPILER_BUG" )
+    set ( CMAKE_CXX_FLAGS  "${CMAKE_C_FLAGS} -Mnoopenmp -D__GCC_ATOMIC_TEST_AND_SET_TRUEVAL=1 -noswitcherror --c++11 -lm -DPGI_COMPILER_BUG" )
 endif ( )
 
 if ( ${CMAKE_BUILD_TYPE} STREQUAL "Debug")
@@ -283,7 +322,7 @@ if ( BUILD_GRB_STATIC_LIBRARY )
 endif ( )
 
 #-------------------------------------------------------------------------------
-# select the threading library 
+# select the threading library
 #-------------------------------------------------------------------------------
 
 if ( USER_OPENMP )
@@ -308,37 +347,47 @@ else ( )
 endif ( )
 
 #-------------------------------------------------------------------------------
+# select the math library (not required for Microsoft Visual Studio)
+#-------------------------------------------------------------------------------
+
+if ( "${CMAKE_C_COMPILER_ID}" STREQUAL "MSVC" )
+    set ( M_LIB "" )
+else ( )
+    set ( M_LIB "m" )
+endif ( )
+
+#-------------------------------------------------------------------------------
 # add the threading library
 #-------------------------------------------------------------------------------
 
 if ( USE_OPENMP )
     # use OpenMP for user thread synchronization
     message ( STATUS "Using OpenMP to synchronize user threads" )
-    target_link_libraries ( graphblas        m ${OpenMP_C_LIBRARIES} )
+    target_link_libraries ( graphblas ${M_LIB} ${OpenMP_C_LIBRARIES} )
     if ( BUILD_GRB_STATIC_LIBRARY )
-        target_link_libraries ( graphblas_static m ${OpenMP_C_LIBRARIES} )
+        target_link_libraries ( graphblas_static ${M_LIB} ${OpenMP_C_LIBRARIES} )
     endif ( )
     set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS} -DUSER_OPENMP_THREADS " )
 elseif ( USE_POSIX )
     # use POSIX for user thread synchronization
     message ( STATUS "Using POSIX pthreads to synchronize user threads" )
-    target_link_libraries ( graphblas        m )
+    target_link_libraries ( graphblas ${M_LIB} )
     if ( BUILD_GRB_STATIC_LIBRARY )
-        target_link_libraries ( graphblas_static m )
+        target_link_libraries ( graphblas_static ${M_LIB} )
     endif ( )
     set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -pthread -DUSER_POSIX_THREADS " )
 else ( )
     # use no threading at all
     message ( WARNING "No support for user threads; GraphBLAS will not be thread-safe" )
-    target_link_libraries ( graphblas        m )
+    target_link_libraries ( graphblas ${M_LIB} )
     if ( BUILD_GRB_STATIC_LIBRARY )
-        target_link_libraries ( graphblas_static m )
+        target_link_libraries ( graphblas_static ${M_LIB} )
     endif ( )
     set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DUSER_NO_THREADS " )
 endif ( )
 
 if ( CMAKE_THREAD_LIBS_INIT )
-    target_link_libraries ( graphblas        ${CMAKE_THREAD_LIBS_INIT} )
+    target_link_libraries ( graphblas ${CMAKE_THREAD_LIBS_INIT} )
     if ( BUILD_GRB_STATIC_LIBRARY )
         target_link_libraries ( graphblas_static ${CMAKE_THREAD_LIBS_INIT} )
     endif ( )
@@ -348,9 +397,9 @@ if ( OPENMP_FOUND )
     # use OpenMP for internal parallelism
     message ( STATUS "Using OpenMP for internal parallelism" )
     set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} ${OpenMP_C_FLAGS}" )
-    target_link_libraries ( graphblas        m ${OpenMP_C_LIBRARIES} )
+    target_link_libraries ( graphblas ${M_LIB} ${OpenMP_C_LIBRARIES} )
     if ( BUILD_GRB_STATIC_LIBRARY )
-        target_link_libraries ( graphblas_static m ${OpenMP_C_LIBRARIES} )
+        target_link_libraries ( graphblas_static ${M_LIB} ${OpenMP_C_LIBRARIES} )
     endif ( )
 endif ( )
 
@@ -360,6 +409,13 @@ endif ( )
 
 if ( CMAKE_USE_WIN32_THREADS_INIT )
     set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DHAVE_WINDOWS_THREADS " )
+endif ( )
+
+if ( BLAS_FOUND )
+    # use the dense CBLAS
+    message ( STATUS "Using dense CBLAS for faster dense matrix/vector operations" )
+    set ( CMAKE_C_FLAGS  "${CMAKE_C_FLAGS} -DGB_HAS_CBLAS " )
+    target_link_libraries ( graphblas ${BLAS_LIBRARIES} )
 endif ( )
 
 #-------------------------------------------------------------------------------
@@ -386,7 +442,7 @@ add_library ( graphblasdemo SHARED ${DEMO_SOURCES} )
 SET_TARGET_PROPERTIES ( graphblasdemo PROPERTIES
     C_STANDARD_REQUIRED 11 )
 set_property ( TARGET graphblasdemo PROPERTY C_STANDARD 11 )
-target_link_libraries ( graphblasdemo         m graphblas )
+target_link_libraries ( graphblasdemo ${M_LIB} graphblas )
 
 if ( BUILD_GRB_STATIC_LIBRARY )
     add_library ( graphblasdemo_static STATIC ${DEMO_SOURCES} )
@@ -450,4 +506,5 @@ else ( )
          ARCHIVE       DESTINATION ${CMAKE_INSTALL_LIBDIR} )
 
 endif ( )
+
 

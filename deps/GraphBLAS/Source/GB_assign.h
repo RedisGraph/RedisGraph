@@ -2,7 +2,7 @@
 // GB_assign.h: definitions for GB_assign and related functions
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -14,9 +14,10 @@
 GrB_Info GB_assign                  // C<M>(Rows,Cols) += A or A'
 (
     GrB_Matrix C,                   // input/output matrix for results
-    const bool C_replace,           // descriptor for C
+    bool C_replace,                 // descriptor for C
     const GrB_Matrix M_in,          // optional mask for C
     const bool Mask_comp,           // true if mask is complemented
+    const bool Mask_struct,         // if true, use the only structure of M
     bool M_transpose,               // true if the mask should be transposed
     const GrB_BinaryOp accum,       // optional accum for accum(C,T)
     const GrB_Matrix A_in,          // input matrix
@@ -67,6 +68,7 @@ void GB_assign_zombie3
     GrB_Matrix Z,
     const GrB_Matrix M,
     const bool Mask_comp,
+    const bool Mask_struct,         // if true, use the only structure of M
     const int64_t j,
     const GrB_Index *I,
     const int64_t nI,
@@ -80,6 +82,7 @@ void GB_assign_zombie4
     GrB_Matrix Z,
     const GrB_Matrix M,
     const bool Mask_comp,
+    const bool Mask_struct,         // if true, use the only structure of M
     const int64_t i,
     const GrB_Index *J,
     const int64_t nJ,
@@ -93,6 +96,7 @@ GrB_Info GB_assign_zombie5
     GrB_Matrix Z,
     const GrB_Matrix M,
     const bool Mask_comp,
+    const bool Mask_struct,         // if true, use the only structure of M
     const GrB_Index *I,
     const int64_t nI,
     const int Ikind,

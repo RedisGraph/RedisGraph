@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -23,7 +23,7 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", NULL, ProjectConsume,
-				NULL, NULL, ProjectFree, false, plan);
+				NULL, NULL, NULL, ProjectFree, false, plan);
 
 	for(uint i = 0; i < op->exp_count; i ++) {
 		// The projected record will associate values with their resolved name

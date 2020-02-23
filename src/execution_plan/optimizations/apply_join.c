@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -10,8 +10,35 @@
 #include "rax.h"
 #include "../ops/op_value_hash_join.h"
 #include "../ops/op_cartesian_product.h"
+#include "../../util/rax_extensions.h"
 
+
+// To be used as a possible output of _relate_exp_to_stream.
 #define NOT_RESOLVED -1
+
+/**
+ * @brief Given an expression node from a filter tree, returns the stream number
+ *        that fully resolves the expression's references.
+ * @param  *exp: Filter tree expression node.
+ * @param  **stream_entities: Streams to search the expressions referenced entities.
+ * @param  stream_count: Amount of stream to search in (Left-to-Right).
+ * @retval Stream index if found. NOT_RESOLVED if non of the stream resolve the expression.
+ */
+static int _relate_exp_to_stream(AR_ExpNode *exp, rax **stream_entities, int stream_count) {
+	// Collect the referenced entities in the expression.
+	rax *entities = raxNew();
+	AR_EXP_CollectEntities(exp, entities);
+
+	int stream_num;
+	for(stream_num = 0; stream_num < stream_count; stream_num ++) {
+		// See if the stream resolves all of the references.
+		if(raxIsSubset(stream_entities[stream_num], entities)) break;
+	}
+	raxFree(entities);
+
+	if(stream_num == stream_count) return NOT_RESOLVED; // No single stream resolves all references.
+	return stream_num;
+}
 
 // Tests to see if given filter can act as a join condition.
 static inline bool _applicableFilter(const FT_FilterNode *f) {
@@ -42,42 +69,6 @@ static OpFilter **_locate_filters(OpBase *cp) {
 	return filters;
 }
 
-// Returns true if the stream resolves all required entities.
-static bool _stream_resolves_entities(rax *stream_resolves, rax *entities_to_resolve) {
-	bool resolved_all = true;
-	raxIterator it;
-	raxStart(&it, entities_to_resolve);
-
-	raxSeek(&it, "^", NULL, 0);
-	while(raxNext(&it)) {
-		if(raxFind(stream_resolves, it.key, it.key_len) == raxNotFound) {
-			resolved_all = false;
-			break;
-		}
-	}
-
-	raxStop(&it);
-	return resolved_all;
-}
-
-/* Given an expression node from a filter tree, returns the stream number
- * that fully resolves the expression's references. */
-static int _relate_exp_to_stream(AR_ExpNode *exp, rax **stream_entities, int stream_count) {
-	// Collect the referenced entities in the expression.
-	rax *entities = raxNew();
-	AR_EXP_CollectEntities(exp, entities);
-
-	int stream_num;
-	for(stream_num = 0; stream_num < stream_count; stream_num ++) {
-		// See if the stream resolves all of the references.
-		if(_stream_resolves_entities(stream_entities[stream_num], entities)) break;
-	}
-	raxFree(entities);
-
-	if(stream_num == stream_count) return NOT_RESOLVED; // No single stream resolves all references.
-	return stream_num;
-}
-
 // This function builds a Hash Join operation given its left and right branches and join criteria.
 static OpBase *_build_hash_join_op(const ExecutionPlan *plan, OpBase *left_branch,
 								   OpBase *right_branch, AR_ExpNode *lhs_join_exp, AR_ExpNode *rhs_join_exp) {
@@ -105,28 +96,11 @@ static OpBase *_build_hash_join_op(const ExecutionPlan *plan, OpBase *left_branc
 	return value_hash_join;
 }
 
-/* This function will try to re-position given filter after a hash join operation has been introduced.
- * The filter will be placed at the earliest position along the execution plan where all references are resolved. */
-static void _re_order_filter_op(ExecutionPlan *plan, OpBase *cp, OpFilter *filter) {
-	FT_FilterNode *additional_filter_tree = filter->filterTree;
-
-	rax *references = FilterTree_CollectModified(additional_filter_tree);
-	OpBase *op = ExecutionPlan_LocateReferences(cp, NULL, references);
-	ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
-	ExecutionPlan_PushBelow(op, (OpBase *)filter);
-	raxFree(references);
-
-}
-
 // Reduces a cartisian product to hash joins operations.
 static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 	// Retrieve all equality filter operations located upstream from the Cartesian Product.
 	OpFilter **filter_ops = _locate_filters(cp);
 	uint filter_count = array_len(filter_ops);
-	/* This array will hold filters which are possible to re position in the execution plan,
-	 * but during the optimization construction they will not yield a new join operation. */
-	OpFilter **pending_filters = array_new(OpFilter *, filter_count);
-	OpBase *pending_filters_lookup_root = cp;
 
 	// For each stream joined by the Cartesian product, collect all entities the stream resolves.
 	int stream_count = cp->childCount;
@@ -153,9 +127,10 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 		uint rhs_resolving_stream = _relate_exp_to_stream(rhs, stream_entities, stream_count);
 		if(rhs_resolving_stream == NOT_RESOLVED) continue;
 
-		// This stream is solved by a single cartesian product child and needs to be propogate later.
+		// This filter is solved by a single cartesian product child and needs to be propagated up.
 		if(lhs_resolving_stream == rhs_resolving_stream) {
-			pending_filters = array_append(pending_filters, filter_op);
+			ExecutionPlan_RemoveOp(plan, (OpBase *)filter_op);
+			ExecutionPlan_PushBelow(cp->children[rhs_resolving_stream], (OpBase *)filter_op);
 			continue;
 		}
 
@@ -163,7 +138,7 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 		lhs = AR_EXP_Clone(lhs);
 		rhs = AR_EXP_Clone(rhs);
 
-		// Retrieve the relevent branch roots.
+		// Retrieve the relevant branch roots.
 		OpBase *right_branch = cp->children[rhs_resolving_stream];
 		OpBase *left_branch = cp->children[lhs_resolving_stream];
 		// Detach the streams for the Value Hash Join from the execution plan.
@@ -182,38 +157,33 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 			// The entire Cartesian Product can be replaced with the join op.
 			ExecutionPlan_ReplaceOp(plan, cp, value_hash_join);
 			OpBase_Free(cp);
-			pending_filters_lookup_root = value_hash_join;
-			break;
+			/* The optimization has depleted all of the cartesian product children, merged them and replaced the
+			 * cartesian product with the new operation.
+			 * Since the original cartesian product is no longer a valid operation, and there might be
+			 * additional filters which are applicable to re position after the optimization is done,
+			 * the following code tries to propagate up the remaining filters, and finish the loop. */
+			i++;
+			for(; i < filter_count; i++) {
+				ExecutionPlan_RePositionFilterOp(plan, value_hash_join, NULL, (OpBase *)filter_ops[i]);
+			}
 		} else {
 			// The Cartesian Product still has a child operation; introduce the join op as another child.
 			ExecutionPlan_AddOp(cp, value_hash_join);
-			// Streams are no longer valid since cartesian product changed.
-			for(int j = 0; j < stream_count; j ++) raxFree(stream_entities[j]);
-			// Re-collect cartesian product streams.
-			stream_count = cp->childCount;
-			for(int j = 0; j < stream_count; j ++) {
-				stream_entities[j] = raxNew();
-				ExecutionPlan_BoundVariables(cp->children[j], stream_entities[j]);
+			// If there are remaining filters, re-collect cartesian product streams.
+			if(i + 1 < filter_count) {
+				// Streams are no longer valid since cartesian product changed.
+				for(int j = 0; j < stream_count; j ++) raxFree(stream_entities[j]);
+				stream_count = cp->childCount;
+				for(int j = 0; j < stream_count; j ++) {
+					stream_entities[j] = raxNew();
+					ExecutionPlan_BoundVariables(cp->children[j], stream_entities[j]);
+				}
 			}
 		}
 	}
-	// Try to re-position the additional filters which can be solved by the join operation branches.
-	uint pending_filters_count = array_len(pending_filters);
-	// If there was a reduction to join, there will be less pending filters.
-	if(pending_filters_count < filter_count) {
-		for(uint i = 0; i < pending_filters_count; i++) {
-			/* Fix for issue #869 https://github.com/RedisGraph/RedisGraph/issues/869.
-			 * When trying to replace a cartesian product which followed by multiple filters that can be resolved by the same two branches
-			 * the application crashed on assert(lhs_resolving_stream != rhs_resolving_stream) since before the fix only one filter was used
-			 * to create the hash join, and the other were ignored. */
-			OpFilter *additional_filter = pending_filters[i];
-			_re_order_filter_op(plan, pending_filters_lookup_root, additional_filter);
-		}
-	}
 	// Clean up.
-	for(int j = 0; j < stream_count; j ++) raxFree(stream_entities[j]);
+	for(int i = 0; i < stream_count; i ++) raxFree(stream_entities[i]);
 	array_free(filter_ops);
-	array_free(pending_filters);
 }
 
 // TODO: Consider changing Cartesian Products such that each has exactly two child operations.

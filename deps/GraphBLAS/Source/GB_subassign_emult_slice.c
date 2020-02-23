@@ -2,7 +2,7 @@
 // GB_subassign_emult_slice: slice the entries and vectors for GB_subassign_08
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -22,6 +22,8 @@
 
 #include "GB_subassign_methods.h"
 #include "GB_emult.h"
+// Npending is set to NULL by the GB_EMPTY_TASKLIST macro, but unused here.
+#include "GB_unused.h"
 
 #undef  GB_FREE_ALL
 #define GB_FREE_ALL                                                         \
@@ -38,9 +40,9 @@ GrB_Info GB_subassign_emult_slice
     int *p_ntasks,                  // # of tasks constructed
     int *p_nthreads,                // # of threads to use
     int64_t *p_Znvec,               // # of vectors to compute in Z
-    const int64_t *restrict *Zh_handle,     // Zh is A->h, M->h, or NULL
-    int64_t *restrict *Z_to_A_handle, // Z_to_A: output of size Znvec, or NULL
-    int64_t *restrict *Z_to_M_handle, // Z_to_M: output of size Znvec, or NULL
+    const int64_t *GB_RESTRICT *Zh_handle,     // Zh is A->h, M->h, or NULL
+    int64_t *GB_RESTRICT *Z_to_A_handle, // Z_to_A: output size Znvec, or NULL
+    int64_t *GB_RESTRICT *Z_to_M_handle, // Z_to_M: output size Znvec, or NULL
     // input:
     const GrB_Matrix C,             // output matrix C
     const GrB_Index *I,
@@ -65,9 +67,9 @@ GrB_Info GB_subassign_emult_slice
     ASSERT (p_max_ntasks != NULL) ;
     ASSERT (p_ntasks != NULL) ;
     ASSERT (p_nthreads != NULL) ;
-    ASSERT_OK (GB_check (C, "C for emult_slice", GB0)) ;
-    ASSERT_OK (GB_check (M, "M for emult_slice", GB0)) ;
-    ASSERT_OK (GB_check (A, "A for emult_slice", GB0)) ;
+    ASSERT_MATRIX_OK (C, "C for emult_slice", GB0) ;
+    ASSERT_MATRIX_OK (M, "M for emult_slice", GB0) ;
+    ASSERT_MATRIX_OK (A, "A for emult_slice", GB0) ;
 
     ASSERT (p_Znvec != NULL) ;
     ASSERT (Zh_handle != NULL) ;
@@ -91,21 +93,21 @@ GrB_Info GB_subassign_emult_slice
     //--------------------------------------------------------------------------
 
     GrB_Info info ;
-    int64_t *restrict Ci = C->i ;
+    int64_t *GB_RESTRICT Ci = C->i ;
     int64_t nzombies = C->nzombies ;
     const bool C_is_hyper = C->is_hyper ;
     const int64_t Cnvec = C->nvec ;
     const int64_t cvlen = C->vlen ;
-    const int64_t *restrict Ch = C->h ;
-    const int64_t *restrict Cp = C->p ;
+    const int64_t *GB_RESTRICT Ch = C->h ;
+    const int64_t *GB_RESTRICT Cp = C->p ;
 
-    const int64_t *restrict Mp = M->p ;
-    const int64_t *restrict Mh = M->h ;
-    const int64_t *restrict Mi = M->i ;
+    const int64_t *GB_RESTRICT Mp = M->p ;
+    const int64_t *GB_RESTRICT Mh = M->h ;
+    const int64_t *GB_RESTRICT Mi = M->i ;
 
-    const int64_t *restrict Ap = A->p ;
-    const int64_t *restrict Ah = A->h ;
-    const int64_t *restrict Ai = A->i ;
+    const int64_t *GB_RESTRICT Ap = A->p ;
+    const int64_t *GB_RESTRICT Ah = A->h ;
+    const int64_t *GB_RESTRICT Ai = A->i ;
 
     //--------------------------------------------------------------------------
     // construct fine/coarse tasks for eWise multiply of A.*M
@@ -115,9 +117,9 @@ GrB_Info GB_subassign_emult_slice
     // function takes the place of B in GB_emult.
 
     int64_t Znvec ;
-    const int64_t *restrict Zh = NULL ;
-    int64_t *restrict Z_to_A = NULL ;
-    int64_t *restrict Z_to_M = NULL ;
+    const int64_t *GB_RESTRICT Zh = NULL ;
+    int64_t *GB_RESTRICT Z_to_A = NULL ;
+    int64_t *GB_RESTRICT Z_to_M = NULL ;
 
     GB_OK (GB_emult_phase0 (
         &Znvec, &Zh, NULL, &Z_to_A, &Z_to_M,
@@ -215,23 +217,17 @@ GrB_Info GB_subassign_emult_slice
                 int64_t iC_start = GB_IMIN (iC1, iC2) ;
                 int64_t iC_end   = GB_IMAX (iC1, iC2) ;
 
-                // printf ("\niA_start "GBd"\n", iA_start) ;
-                // printf ("iA_end   "GBd"\n", iA_end) ;
-
-                // printf ("\niC_start "GBd"\n", iC_start) ;
-                // printf ("iC_end   "GBd"\n", iC_end) ;
-
                 // this task works on Ci,Cx [pC:pC_end-1]
                 int64_t pleft = pC_start ;
                 int64_t pright = pC_end - 1 ;
                 bool found, is_zombie ;
-                GB_BINARY_SPLIT_ZOMBIE (iC_start, Ci, pleft, pright,
+                GB_SPLIT_BINARY_SEARCH_ZOMBIE (iC_start, Ci, pleft, pright,
                     found, nzombies, is_zombie) ;
                 TaskList [taskid].pC = pleft ;
 
                 pleft = pC_start ;
                 pright = pC_end - 1 ;
-                GB_BINARY_SPLIT_ZOMBIE (iC_end, Ci, pleft, pright,
+                GB_SPLIT_BINARY_SEARCH_ZOMBIE (iC_end, Ci, pleft, pright,
                     found, nzombies, is_zombie) ;
                 TaskList [taskid].pC_end = (found) ? (pleft+1) : pleft ;
             }

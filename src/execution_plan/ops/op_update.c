@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -116,7 +116,7 @@ static void _CommitUpdates(OpUpdate *op) {
 		} else {
 			_UpdateEdge(op, ctx);
 		}
-		SIValue_Free(&ctx->new_value);
+		SIValue_Free(ctx->new_value);
 	}
 
 	if(op->stats) op->stats->properties_set += op->pending_updates_count;
@@ -153,7 +153,7 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps,
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", UpdateInit, UpdateConsume,
-				UpdateReset, NULL, UpdateFree, true, plan);
+				UpdateReset, NULL, NULL, UpdateFree, true, plan);
 
 	for(uint i = 0; i < op->update_expressions_count; i ++) {
 		op->update_expressions[i].record_idx = OpBase_Modifies((OpBase *)op, update_exps[i].alias);

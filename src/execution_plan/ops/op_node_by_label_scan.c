@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -33,8 +33,8 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *n) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_NODE_BY_LABEL_SCAN, "Node By Label Scan", NodeByLabelScanInit,
-				NodeByLabelScanConsume, NodeByLabelScanReset, NodeByLabelScanToString, NodeByLabelScanFree, false,
-				plan);
+				NodeByLabelScanConsume, NodeByLabelScanReset, NodeByLabelScanToString, NULL, NodeByLabelScanFree,
+				false, plan);
 
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 

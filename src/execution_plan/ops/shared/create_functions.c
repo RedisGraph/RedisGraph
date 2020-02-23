@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -175,7 +175,7 @@ void PendingPropertiesFree(PendingProperties *props) {
 	if(props == NULL) return;
 	// The 'keys' array belongs to the original PropertyMap, so shouldn't be freed here.
 	for(uint j = 0; j < props->property_count; j ++) {
-		SIValue_Free(&props->values[j]);
+		SIValue_Free(props->values[j]);
 	}
 	rm_free(props->values);
 	rm_free(props);

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -179,6 +179,16 @@ void SIValue_Persist(SIValue *v) {
 
 inline bool SIValue_IsNull(SIValue v) {
 	return v.type == T_NULL;
+}
+
+inline bool SIValue_IsFalse(SIValue v) {
+	assert(SI_TYPE(v) ==  T_BOOL && "SIValue_IsFalse: Expected boolean");
+	return !v.longval;
+}
+
+inline bool SIValue_IsTrue(SIValue v) {
+	assert(SI_TYPE(v) ==  T_BOOL && "SIValue_IsTrue: Expected boolean");
+	return v.longval;
 }
 
 inline bool SIValue_IsNullPtr(SIValue *v) {
@@ -391,10 +401,17 @@ SIValue SIValue_Divide(const SIValue a, const SIValue b) {
 	return SI_DoubleVal(SI_GET_NUMERIC(a) / (double)SI_GET_NUMERIC(b));
 }
 
-SIValue SIValue_Modulo(const SIValue a, const SIValue b) {
-	// Since C % operator requires integer inputs, we need to validate this.
-	assert(SI_TYPE(a) & SI_TYPE(b) & T_INT64);
-	return SI_LongVal(a.longval % b.longval);
+// Calculate a mod n for integer and floating-point inputs.
+SIValue SIValue_Modulo(const SIValue a, const SIValue n) {
+	bool inputs_are_integers = SI_TYPE(a) & SI_TYPE(n) & T_INT64;
+	switch(inputs_are_integers) {
+	case true:
+		// The modulo machine instruction may be used if a and n are both integers.
+		return SI_LongVal(a.longval % n.longval);
+	default:
+		// Otherwise, use the library function fmod to calculate the modulo and return a double.
+		return SI_DoubleVal(fmod(SI_GET_NUMERIC(a), SI_GET_NUMERIC(n)));
+	}
 }
 
 int SIArray_Compare(SIValue arrayA, SIValue arrayB, int *disjointOrNull) {
@@ -587,23 +604,26 @@ XXH64_hash_t SIValue_HashCode(SIValue v) {
 	return hashCode;
 }
 
-void SIValue_Free(SIValue *v) {
+void SIValue_Free(SIValue v) {
 	// The free routine only performs work if it owns a heap allocation.
-	if(v->allocation != M_SELF) return;
+	if(v.allocation != M_SELF) return;
 
-	switch(v->type) {
+	switch(v.type) {
 	case T_STRING:
-		rm_free(v->stringval);
-		v->stringval = NULL;
+		rm_free(v.stringval);
+		v.stringval = NULL;
 		return;
 	case T_NODE:
 	case T_EDGE:
-		rm_free(v->ptrval);
+		rm_free(v.ptrval);
 		return;
 	case T_ARRAY:
-		SIArray_Free(*v);
+		SIArray_Free(v);
+		return;
+	case T_PATH:
+		SIPath_Free(v);
+		return;
 	default:
 		return;
 	}
 }
-

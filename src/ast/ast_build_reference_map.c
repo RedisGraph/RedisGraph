@@ -2,6 +2,9 @@
 #include "../util/arr.h"
 #include <assert.h>
 
+// Forward declerations:
+static void _AST_MapReferencedEntitiesInPath(AST *ast, const cypher_astnode_t *path);
+
 // Adds an identifier or an alias to the reference map.
 static inline void _AST_UpdateRefMap(AST *ast, const char *name) {
 	raxInsert(ast->referenced_entities, (unsigned char *)name, strlen(name), NULL, NULL);
@@ -21,6 +24,9 @@ static void _AST_MapExpression(AST *ast, const cypher_astnode_t *exp) {
 		assert(cypher_astnode_type(exp) == CYPHER_AST_IDENTIFIER);
 		const char *identifier_name = cypher_ast_identifier_get_name(exp);
 		_AST_UpdateRefMap(ast, identifier_name);
+	} else if(type == CYPHER_AST_PATTERN_PATH) {
+		// In case of pattern filter.
+		_AST_MapReferencedEntitiesInPath(ast, exp);
 	} else {
 		// Recurse over children.
 		uint child_count = cypher_astnode_nchildren(exp);

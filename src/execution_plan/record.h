@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -11,6 +11,9 @@
 #include "../graph/entities/node.h"
 #include "../graph/entities/edge.h"
 #include <sys/types.h>
+
+// Return value in case of call to Record_GetEntryIdx with invalid entry alias.
+#define INVALID_INDEX -1
 
 typedef enum  {
 	REC_TYPE_UNKNOWN = 0,

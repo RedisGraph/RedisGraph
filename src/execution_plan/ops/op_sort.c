@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -34,7 +34,8 @@ static int _record_compare(Record a, Record b, const OpSort *op) {
 // Quicksort function to compare two records on a subset of fields.
 // Returns true if a is less than b.
 static bool _record_islt(Record a, Record b, const OpSort *op) {
-  return _record_compare(a, b, op) > 0; // Return true if the current left element is less than the right.
+	return _record_compare(a, b, op) >
+		   0; // Return true if the current left element is less than the right.
 }
 
 // Compares two heap record nodes.
@@ -84,7 +85,7 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions,
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_SORT, "Sort", NULL,
-				SortConsume, SortReset, NULL, SortFree, false, plan);
+				SortConsume, SortReset, NULL, NULL, SortFree, false, plan);
 
 	uint comparison_count = array_len(exps);
 	op->record_offsets = array_new(uint, comparison_count);
@@ -189,7 +190,7 @@ static void SortFree(OpBase *ctx) {
 		op->record_offsets = NULL;
 	}
 
-	if (op->directions) {
+	if(op->directions) {
 		array_free(op->directions);
 		op->directions = NULL;
 	}

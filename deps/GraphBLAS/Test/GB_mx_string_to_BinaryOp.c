@@ -2,7 +2,7 @@
 // GB_mx_string_to_BinaryOp.c: get a GraphBLAS operator from MATLAB strings
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -10,7 +10,7 @@
 #include "GB_mex.h"
 
 // opname_mx: a MATLAB string defining the operator name (25 kinds):
-// 10: first, second, min, max, plus, minus, rminus, times, div, rdiv
+// 10: first, second, pair, min, max, plus, minus, rminus, times, div, rdiv
 //  6: iseq, isne, isgt, islt, isge, isle,
 //  6: eq, ne, gt, lt, ge, le,
 //  3: or, and, xor
@@ -73,7 +73,7 @@ bool GB_mx_string_to_BinaryOp          // true if successful, false otherwise
         //----------------------------------------------------------------------
 
         // user-defined Complex binary operator
-        opcode  = GB_USER_R_opcode ;    // generic user-defined opcode
+        opcode  = GB_USER_opcode ;      // user-defined opcode
         opclass = mxDOUBLE_CLASS ;      // MATLAB class for complex
 
         if (len == 0)
@@ -81,9 +81,11 @@ bool GB_mx_string_to_BinaryOp          // true if successful, false otherwise
             op = NULL ;                 // no default Complex operator
         }
 
-        // 10 binary operators z=f(x,y), all x,y,z are Complex
+        // 12 binary operators z=f(x,y), all x,y,z are Complex
         else if (MATCH (opname, "first"   )) { op = Complex_first  ; }
         else if (MATCH (opname, "second"  )) { op = Complex_second ; }
+        else if (MATCH (opname, "pair"    )) { op = Complex_pair   ; }
+        else if (MATCH (opname, "any"     )) { op = Complex_second ; }
         else if (MATCH (opname, "min"     )) { op = Complex_min    ; }
         else if (MATCH (opname, "max"     )) { op = Complex_max    ; }
         else if (MATCH (opname, "plus"    )) { op = Complex_plus   ; }
@@ -136,9 +138,11 @@ bool GB_mx_string_to_BinaryOp          // true if successful, false otherwise
             opcode = default_opcode ;
         }
 
-        // 10 binary operators z=f(x,y), all x,y,z of the same type
+        // 12 binary operators z=f(x,y), all x,y,z of the same type
         else if (MATCH (opname, "first"   )) { opcode = GB_FIRST_opcode ; }
         else if (MATCH (opname, "second"  )) { opcode = GB_SECOND_opcode ; }
+        else if (MATCH (opname, "pair"    )) { opcode = GB_PAIR_opcode ; }
+        else if (MATCH (opname, "any"     )) { opcode = GB_ANY_opcode ; }
         else if (MATCH (opname, "min"     )) { opcode = GB_MIN_opcode ; }
         else if (MATCH (opname, "max"     )) { opcode = GB_MAX_opcode ; }
         else if (MATCH (opname, "plus"    )) { opcode = GB_PLUS_opcode ; }
@@ -174,23 +178,23 @@ bool GB_mx_string_to_BinaryOp          // true if successful, false otherwise
         {
             // z = complex(x,y) = x + i*y
             op = Complex_complex ;
-            opcode = GB_USER_R_opcode ;
+            opcode = GB_USER_opcode ;
             opclass = mxDOUBLE_CLASS ;
         }
 
         else
         {
-            mexWarnMsgIdAndTxt ("GB:warn", "unrecognised function name") ;
+            mexWarnMsgIdAndTxt ("GB:warn", "unrecognized function name") ;
             return (false) ;
         }
 
-        if (opcode != GB_USER_R_opcode)
+        if (opcode != GB_USER_opcode)
         {
             // get the opclass from the opclass_mx string, if present
             opclass = GB_mx_string_to_classID (opclass, opclass_mx) ;
             if (opclass == mxUNKNOWN_CLASS)
             {
-                mexWarnMsgIdAndTxt ("GB:warn", "unrecognised op class") ;
+                mexWarnMsgIdAndTxt ("GB:warn", "unrecognized op class") ;
                 return (false) ;
             }
         }
@@ -234,6 +238,48 @@ bool GB_mx_string_to_BinaryOp          // true if successful, false otherwise
                     case mxUINT64_CLASS  : op = GrB_SECOND_UINT64 ; break ;
                     case mxSINGLE_CLASS  : op = GrB_SECOND_FP32   ; break ;
                     case mxDOUBLE_CLASS  : op = GrB_SECOND_FP64   ; break ;
+                    default              : 
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
+                        return (false) ;
+                }
+                break ;
+
+            case GB_ANY_opcode:
+
+                switch (opclass)
+                {
+                    case mxLOGICAL_CLASS : op = GxB_ANY_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GxB_ANY_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GxB_ANY_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GxB_ANY_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GxB_ANY_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GxB_ANY_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GxB_ANY_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GxB_ANY_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GxB_ANY_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GxB_ANY_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GxB_ANY_FP64   ; break ;
+                    default              : 
+                        mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
+                        return (false) ;
+                }
+                break ;
+
+            case GB_PAIR_opcode:
+
+                switch (opclass)
+                {
+                    case mxLOGICAL_CLASS : op = GxB_PAIR_BOOL   ; break ;
+                    case mxINT8_CLASS    : op = GxB_PAIR_INT8   ; break ;
+                    case mxUINT8_CLASS   : op = GxB_PAIR_UINT8  ; break ;
+                    case mxINT16_CLASS   : op = GxB_PAIR_INT16  ; break ;
+                    case mxUINT16_CLASS  : op = GxB_PAIR_UINT16 ; break ;
+                    case mxINT32_CLASS   : op = GxB_PAIR_INT32  ; break ;
+                    case mxUINT32_CLASS  : op = GxB_PAIR_UINT32 ; break ;
+                    case mxINT64_CLASS   : op = GxB_PAIR_INT64  ; break ;
+                    case mxUINT64_CLASS  : op = GxB_PAIR_UINT64 ; break ;
+                    case mxSINGLE_CLASS  : op = GxB_PAIR_FP32   ; break ;
+                    case mxDOUBLE_CLASS  : op = GxB_PAIR_FP64   ; break ;
                     default              : 
                         mexWarnMsgIdAndTxt ("GB:warn","unknown type") ;
                         return (false) ;
@@ -725,9 +771,8 @@ bool GB_mx_string_to_BinaryOp          // true if successful, false otherwise
                 }
                 break ;
 
-            case GB_NOP_opcode   :
-            case GB_USER_C_opcode   :
-            case GB_USER_R_opcode   :
+            case GB_NOP_opcode  :
+            case GB_USER_opcode :
 
                 // no operation is requested so return NULL, or user-defined
                 break ;
@@ -748,7 +793,7 @@ bool GB_mx_string_to_BinaryOp          // true if successful, false otherwise
 
 
     // return the binary operator to the caller
-    ASSERT_OK_OR_NULL (GB_check (op, "got binary op", GB0)) ;
+    ASSERT_BINARYOP_OK_OR_NULL (op, "got binary op", GB0) ;
     (*handle) = op ;
     return (true) ;
 }

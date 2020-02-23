@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -17,7 +17,7 @@ OpBase *NewDistinctOp(const ExecutionPlan *plan) {
 	op->found = raxNew();
 
 	OpBase_Init((OpBase *)op, OPType_DISTINCT, "Distinct", NULL, DistinctConsume,
-				NULL, NULL, DistinctFree, false, plan);
+				NULL, NULL, NULL, DistinctFree, false, plan);
 
 	return (OpBase *)op;
 }

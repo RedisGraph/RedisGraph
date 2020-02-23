@@ -163,3 +163,14 @@ to it.  The Agreement may cover more than one software project managed by Us.
 Us
 Timothy A. Davis, GraphBLAS author
 
+
+You:
+
+    Your Name (printed):
+
+
+    Your Signature:
+
+
+    Date:
+

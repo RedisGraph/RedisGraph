@@ -2,7 +2,7 @@
 // GrB_Descriptor_set: set a field in a descriptor
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -23,7 +23,13 @@ GrB_Info GrB_Descriptor_set     // set a parameter in a descriptor
 
     GB_WHERE ("GrB_Descriptor_set (desc, field, value)") ;
     GB_RETURN_IF_NULL_OR_FAULTY (desc) ;
-    ASSERT_OK (GB_check (desc, "desc to set", GB0)) ;
+    ASSERT_DESCRIPTOR_OK (desc, "desc to set", GB0) ;
+
+    if (desc->predefined)
+    { 
+        return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
+            "predefined descriptors may not be modified"))) ;
+    }
 
     //--------------------------------------------------------------------------
     // set the parameter
@@ -46,14 +52,25 @@ GrB_Info GrB_Descriptor_set     // set a parameter in a descriptor
 
         case GrB_MASK : 
 
-            if (! (value == GxB_DEFAULT || value == GrB_SCMP))
+            if (! (value == GxB_DEFAULT ||
+                   value == GrB_COMP ||
+                   value == GrB_STRUCTURE ||
+                   value == (GrB_COMP + GrB_STRUCTURE)))
             { 
                 return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
                     "invalid descriptor value [%d] for GrB_MASK field;\n"
-                    "must be GxB_DEFAULT [%d] or GrB_SCMP [%d]",
-                    (int) value, (int) GxB_DEFAULT, (int) GrB_SCMP))) ;
+                    "must be GxB_DEFAULT [%d], GrB_COMP [%d],\n"
+                    "GrB_STRUCTURE [%d], or GrB_COMP+GrB_STRUCTURE [%d]",
+                    (int) value, (int) GxB_DEFAULT, (int) GrB_COMP,
+                    (int) GrB_STRUCTURE,
+                    (int) (GrB_COMP + GrB_STRUCTURE)))) ;
             }
-            desc->mask = value ;
+            switch (value)
+            {
+                case GrB_COMP:      desc->mask |= GrB_COMP ;      break ;
+                case GrB_STRUCTURE: desc->mask |= GrB_STRUCTURE ; break ;
+                default:            desc->mask = value ;          break ;
+            }
             break ;
 
         case GrB_INP0 : 
@@ -83,14 +100,17 @@ GrB_Info GrB_Descriptor_set     // set a parameter in a descriptor
         case GxB_AxB_METHOD : 
 
             if (! (value == GxB_DEFAULT  || value == GxB_AxB_GUSTAVSON
-                || value == GxB_AxB_HEAP || value == GxB_AxB_DOT))
+                || value == GxB_AxB_HEAP || value == GxB_AxB_DOT
+                || value == GxB_AxB_HASH || value == GxB_AxB_SAXPY))
             { 
                 return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
                     "invalid descriptor value [%d] for GrB_AxB_METHOD field;\n"
                     "must be GxB_DEFAULT [%d], GxB_AxB_GUSTAVSON [%d]\n"
-                    "GxB_AxB_HEAP [%d] or GxB_AxB_DOT [%d]",
+                    "GxB_AxB_HEAP [%d], GxB_AxB_DOT [%d]"
+                    "GxB_AxB_HASH [%d] or GxB_AxB_SAXPY [%d]",
                     (int) value, (int) GxB_DEFAULT, (int) GxB_AxB_GUSTAVSON,
-                    (int) GxB_AxB_HEAP, (int) GxB_AxB_DOT))) ;
+                    (int) GxB_AxB_HEAP, (int) GxB_AxB_DOT,
+                    (int) GxB_AxB_HASH, (int) GxB_AxB_SAXPY))) ;
             }
             desc->axb  = value ;
             break ;

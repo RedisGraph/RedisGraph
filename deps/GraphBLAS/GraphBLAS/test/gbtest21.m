@@ -1,7 +1,7 @@
 function gbtest21
 %GBTEST21 test isfinite, isinf, isnan
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 rng ('default') ;
@@ -13,7 +13,7 @@ for trial = 1:40
             if (rand < 0.1)
                 A = int32 (full (A)) ;
             else
-                A (1,1) = nan ;
+                A (1,1) = nan ; %#ok<*SPRIX>
                 A (2,2) = inf ;
             end
             G = GrB (A) ;

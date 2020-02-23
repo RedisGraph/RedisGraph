@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -26,7 +26,7 @@ static void _GraphEntity_RemoveProperty(const GraphEntity *e, Attribute_ID attr_
 	int prop_count = e->entity->prop_count;
 	for(int i = 0; i < prop_count; i++) {
 		if(attr_id == e->entity->properties[i].id) {
-			SIValue_Free(&(e->entity->properties[i].value));
+			SIValue_Free(e->entity->properties[i].value);
 			e->entity->prop_count--;
 
 			if(e->entity->prop_count == 0) {
@@ -87,7 +87,7 @@ void GraphEntity_SetProperty(const GraphEntity *e, Attribute_ID attr_id, SIValue
 
 	SIValue *prop = GraphEntity_GetProperty(e, attr_id);
 	assert(prop != PROPERTY_NOTFOUND);
-	SIValue_Free(prop);
+	SIValue_Free(*prop);
 	*prop = SI_CloneValue(value);
 }
 
@@ -206,7 +206,7 @@ void GraphEntity_ToString(const GraphEntity *e, char **buffer, size_t *bufferLen
 void FreeEntity(Entity *e) {
 	assert(e);
 	if(e->properties != NULL) {
-		for(int i = 0; i < e->prop_count; i++) SIValue_Free(&e->properties[i].value);
+		for(int i = 0; i < e->prop_count; i++) SIValue_Free(e->properties[i].value);
 		rm_free(e->properties);
 		e->properties = NULL;
 	}

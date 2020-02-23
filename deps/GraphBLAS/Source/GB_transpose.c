@@ -2,7 +2,7 @@
 // GB_transpose:  C=A' or C=op(A'), with typecasting
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -164,9 +164,9 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
 
     bool in_place = (in_place_A || in_place_C) ;
 
-    ASSERT_OK_OR_JUMBLED (GB_check (A, "A input for GB_transpose", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (ctype, "ctype for GB_transpose", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (op_in, "op for GB_transpose", GB0)) ;
+    ASSERT_MATRIX_OK_OR_JUMBLED (A, "A input for GB_transpose", GB0) ;
+    ASSERT_TYPE_OK_OR_NULL (ctype, "ctype for GB_transpose", GB0) ;
+    ASSERT_UNARYOP_OK_OR_NULL (op_in, "op for GB_transpose", GB0) ;
     ASSERT (!GB_PENDING (A)) ;
     ASSERT (!GB_ZOMBIES (A)) ;
 
@@ -200,10 +200,10 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
     int64_t anzmax = A->nzmax ;
 
     // if in place, these must be freed when done, whether successful or not
-    int64_t *restrict Ap = A->p ;
-    int64_t *restrict Ah = A->h ;
-    int64_t *restrict Ai = A->i ;
-    GB_void *restrict Ax = A->x ;
+    int64_t *GB_RESTRICT Ap = A->p ;
+    int64_t *GB_RESTRICT Ah = A->h ;
+    int64_t *GB_RESTRICT Ai = A->i ;
+    GB_void *GB_RESTRICT Ax = A->x ;
 
     bool Ap_shallow = A->p_shallow ;
     bool Ah_shallow = A->h_shallow ;
@@ -219,14 +219,14 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
     int ntasks = (nth == 1) ? 1 : (8 * nth) ;
     ntasks = GB_IMIN (ntasks, avdim) ;
     ntasks = GB_IMAX (ntasks, 1) ;
-    int64_t *restrict Count = NULL ;    // size ntasks+1, if allocated
+    int64_t *GB_RESTRICT Count = NULL ;    // size ntasks+1, if allocated
 
     if (anz > 0 && avdim != 1 && avlen == 1)
     {
         // Count is only used in one case below
         GB_CALLOC_MEMORY (Count, ntasks+1, sizeof (int64_t)) ;
         if (Count == NULL)
-        {
+        { 
             // out of memory
             GB_FREE_C ;
             return (GB_OUT_OF_MEMORY) ;
@@ -294,7 +294,6 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
         // returned.
         GB_CREATE (Chandle, ctype, avdim, avlen, GB_Ap_calloc,
             C_is_csc, GB_FORCE_HYPER, A_hyper_ratio, 1, 1, true, Context) ;
-
         if (info != GrB_SUCCESS)
         { 
             // out of memory
@@ -302,7 +301,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
             GB_FREE_WORK ;
             return (info) ;
         }
-        ASSERT_OK (GB_check (*Chandle, "C transpose empty", GB0)) ;
+        ASSERT_MATRIX_OK (*Chandle, "C transpose empty", GB0) ;
 
     }
     else if (avdim == 1)
@@ -314,7 +313,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
 
         // transpose a vector (avlen-by-1) into a "row" matrix (1-by-avlen).
         // A must be already sorted on input
-        ASSERT_OK (GB_check (A, "the vector A must already be sorted", GB0)) ;
+        ASSERT_MATRIX_OK (A, "the vector A must already be sorted", GB0) ;
 
         //----------------------------------------------------------------------
         // allocate space
@@ -348,9 +347,9 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
         }
 
         // allocate new space for the values and pattern
-        GB_void *restrict Cx = NULL ;
-        int64_t *restrict Cp ;
-        int64_t *restrict Ci ;
+        GB_void *GB_RESTRICT Cx = NULL ;
+        int64_t *GB_RESTRICT Cp ;
+        int64_t *GB_RESTRICT Ci ;
         GB_MALLOC_MEMORY (Cp, anz+1, sizeof (int64_t)) ;
         GB_CALLOC_MEMORY (Ci, anz  , sizeof (int64_t)) ;
         if (allocate_new_Cx)
@@ -410,8 +409,9 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
         C->p = Cp ; C->p_shallow = false ;
 
         // fill the vector pointers C->p
+        int64_t k ;
         #pragma omp parallel for num_threads(nthreads) schedule(static)
-        for (int64_t k = 0 ; k <= anz ; k++)
+        for (k = 0 ; k <= anz ; k++)
         { 
             Cp [k] = k ;
         }
@@ -433,7 +433,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
 
         // transpose a "row" matrix (1-by-avdim) into a vector (avdim-by-1).
         // if A->vlen is 1, all vectors of A are implicitly sorted
-        ASSERT_OK (GB_check (A, "1-by-n input A already sorted", GB0)) ;
+        ASSERT_MATRIX_OK (A, "1-by-n input A already sorted", GB0) ;
 
         //----------------------------------------------------------------------
         // allocate space
@@ -467,9 +467,9 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
         }
 
         // allocate new space for the values and pattern
-        GB_void *restrict Cx = NULL ;
-        int64_t *restrict Cp ;
-        int64_t *restrict Ci = NULL ;
+        GB_void *GB_RESTRICT Cx = NULL ;
+        int64_t *GB_RESTRICT Cp ;
+        int64_t *GB_RESTRICT Ci = NULL ;
         GB_CALLOC_MEMORY (Cp, 2, sizeof (int64_t)) ;
 
         bool allocate_new_Ci = (!A_is_hyper) ;
@@ -575,8 +575,9 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
                 // construct Ci in parallel
                 //--------------------------------------------------------------
 
+                int tid ;
                 #pragma omp parallel for num_threads(nth) schedule(dynamic,1)
-                for (int tid = 0 ; tid < ntasks ; tid++)
+                for (tid = 0 ; tid < ntasks ; tid++)
                 {
                     int64_t jstart, jend, k = 0 ;
                     GB_PARTITION (jstart, jend, avdim, tid, ntasks) ;
@@ -594,7 +595,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
                 ASSERT (Count [ntasks] == anz) ;
 
                 #pragma omp parallel for num_threads(nth) schedule(dynamic,1)
-                for (int tid = 0 ; tid < ntasks ; tid++)
+                for (tid = 0 ; tid < ntasks ; tid++)
                 {
                     int64_t jstart, jend, k = Count [tid] ;
                     GB_PARTITION (jstart, jend, avdim, tid, ntasks) ;
@@ -657,7 +658,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
         // transpose a general matrix
         //======================================================================
 
-        ASSERT_OK_OR_JUMBLED (GB_check (A, "A GB_transpose jumbled ok", GB0)) ;
+        ASSERT_MATRIX_OK_OR_JUMBLED (A, "A GB_transpose jumbled ok", GB0) ;
         ASSERT (avdim > 1 && avlen > 1) ;
 
         // T=A' with optional typecasting, or T=op(A')
@@ -946,7 +947,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
                 return (info) ;
             }
 
-            ASSERT_OK (GB_check (T, "T from bucket", GB0)) ;
+            ASSERT_MATRIX_OK (T, "T from bucket", GB0) ;
 
             if (in_place_A)
             { 
@@ -983,7 +984,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
     // transplant the hyper_ratio from A to C
     C->hyper_ratio = A_hyper_ratio ;
 
-    ASSERT_OK (GB_check (C, "C to conform in GB_transpose", GB0)) ;
+    ASSERT_MATRIX_OK (C, "C to conform in GB_transpose", GB0) ;
 
     info = GB_to_hyper_conform (C, Context) ;
     if (info != GrB_SUCCESS)
@@ -993,7 +994,7 @@ GrB_Info GB_transpose           // C=A', C=(ctype)A or C=op(A')
         return (info) ;
     }
 
-    ASSERT_OK (GB_check (*Chandle, "Chandle conformed in GB_transpose", GB0)) ;
+    ASSERT_MATRIX_OK (*Chandle, "Chandle conformed in GB_transpose", GB0) ;
     return (GrB_SUCCESS) ;
 }
 

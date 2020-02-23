@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -40,7 +40,7 @@ void FreeGroup(Group *g) {
 	if(g->r) Record_FreeEntries(g->r);  // Will be freed by Record owner.
 	if(g->keys) {
 		for(int i = 0; i < g->key_count; i ++) {
-			SIValue_Free(&g->keys[i]);
+			SIValue_Free(g->keys[i]);
 		}
 		rm_free(g->keys);
 	}

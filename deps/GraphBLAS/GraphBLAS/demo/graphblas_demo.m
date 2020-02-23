@@ -4,7 +4,7 @@
 % for more details and resources.  See also the SuiteSparse:GraphBLAS
 % User Guide in this package.
 %
-% SuiteSparse:GraphBLAS, (c) 2017-2019, Tim Davis, Texas A&M University,
+% SuiteSparse:GraphBLAS, (c) 2017-2020, Tim Davis, Texas A&M University,
 % http://faculty.cse.tamu.edu/davis
 
 %% GraphBLAS: faster and more general sparse matrices for MATLAB
@@ -430,7 +430,9 @@ err = norm (C - C2, 1)
 %
 % d.out  = 'default' or 'replace', clears C after the accum op is used.
 %
-% d.mask = 'default' or 'complement', to use M or ~M as the mask matrix.
+% d.mask = 'default' or 'complement', to use M or ~M as the mask matrix;
+%          'structural', or 'structural complement', to use the pattern
+%           of M or ~M.
 %
 % d.in0  = 'default' or 'transpose', to transpose A for C=A*B, C=A+B, etc.
 %
@@ -1034,6 +1036,7 @@ err = norm (C1-C2,1)
 %   GrB.semiringinfo (s, type)   list properties of a semiring
 %   t = GrB.threads (t)          set/get # of threads to use in GraphBLAS
 %   c = GrB.chunk (c)            set/get chunk size to use in GraphBLAS
+%   b = GrB.burble (b)           set/get burble (diagnostic output)
 %   result = GrB.entries (G,...) count or query entries in a matrix
 %   result = GrB.nonz (G,...)    count or query nonzeros in a matrix
 %   C = GrB.prune (A, id)        prune entries equal to id
@@ -1053,6 +1056,7 @@ err = norm (C1-C2,1)
 %                                build a GrB matrix from list of entries
 %   [I,J,X] = GrB.extracttuples (A, desc)
 %                                extract all entries from a matrix
+%   s = GrB.normdiff (A, B, kind)   norm (A-B,kind)
 
 %% GraphBLAS operations with Cout, mask M, and accum.
 %

@@ -2,7 +2,7 @@
 // GB_code_compatible: return true if domains are compatible
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -21,8 +21,8 @@ bool GB_code_compatible         // check if two types can be typecast
 )
 {
 
-    bool a_user = (acode == GB_UDT_code || acode == GB_UCT_code) ;
-    bool b_user = (bcode == GB_UDT_code || bcode == GB_UCT_code) ;
+    bool a_user = (acode == GB_UDT_code) ;
+    bool b_user = (bcode == GB_UDT_code) ;
 
     if (a_user || b_user)
     { 

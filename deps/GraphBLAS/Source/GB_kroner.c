@@ -2,7 +2,7 @@
 // GB_kroner: Kronecker product, C = kron (A,B)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -40,9 +40,9 @@ GrB_Info GB_kroner                  // C = kron (A,B)
     //--------------------------------------------------------------------------
 
     ASSERT (Chandle != NULL) ;
-    ASSERT_OK (GB_check (A, "A for kron (A,B)", GB0)) ;
-    ASSERT_OK (GB_check (B, "B for kron (A,B)", GB0)) ;
-    ASSERT_OK (GB_check (op, "op for kron (A,B)", GB0)) ;
+    ASSERT_MATRIX_OK (A, "A for kron (A,B)", GB0) ;
+    ASSERT_MATRIX_OK (B, "B for kron (A,B)", GB0) ;
+    ASSERT_BINARYOP_OK (op, "op for kron (A,B)", GB0) ;
     ASSERT (!GB_PENDING (A)) ; ASSERT (!GB_ZOMBIES (A)) ;
     ASSERT (!GB_PENDING (B)) ; ASSERT (!GB_ZOMBIES (B)) ;
 
@@ -54,20 +54,20 @@ GrB_Info GB_kroner                  // C = kron (A,B)
 
     (*Chandle) = NULL ;
 
-    const int64_t *restrict Ap = A->p ;
-    const int64_t *restrict Ah = A->h ;
-    const int64_t *restrict Ai = A->i ;
-    const GB_void *restrict Ax = A->x ;
+    const int64_t *GB_RESTRICT Ap = A->p ;
+    const int64_t *GB_RESTRICT Ah = A->h ;
+    const int64_t *GB_RESTRICT Ai = A->i ;
+    const GB_void *GB_RESTRICT Ax = A->x ;
     const int64_t asize = A->type->size ;
     const int64_t avlen = A->vlen ;
     const int64_t avdim = A->vdim ;
     int64_t anvec = A->nvec ;
     int64_t anz = GB_NNZ (A) ;
 
-    const int64_t *restrict Bp = B->p ;
-    const int64_t *restrict Bh = B->h ;
-    const int64_t *restrict Bi = B->i ;
-    const GB_void *restrict Bx = B->x ;
+    const int64_t *GB_RESTRICT Bp = B->p ;
+    const int64_t *GB_RESTRICT Bh = B->h ;
+    const int64_t *GB_RESTRICT Bi = B->i ;
+    const GB_void *GB_RESTRICT Bx = B->x ;
     const int64_t bsize = B->type->size ;
     const int64_t bvlen = B->vlen ;
     const int64_t bvdim = B->vdim ;
@@ -115,10 +115,10 @@ GrB_Info GB_kroner                  // C = kron (A,B)
     // get C
     //--------------------------------------------------------------------------
 
-    int64_t *restrict Cp = C->p ;
-    int64_t *restrict Ch = C->h ;
-    int64_t *restrict Ci = C->i ;
-    GB_void *restrict Cx = C->x ;
+    int64_t *GB_RESTRICT Cp = C->p ;
+    int64_t *GB_RESTRICT Ch = C->h ;
+    int64_t *GB_RESTRICT Ci = C->i ;
+    GB_void *GB_RESTRICT Cx = C->x ;
     const int64_t csize = C->type->size ;
 
     GxB_binary_function fmult = op->function ;
@@ -131,11 +131,13 @@ GrB_Info GB_kroner                  // C = kron (A,B)
     // compute the column counts of C, and C->h if C is hypersparse
     //--------------------------------------------------------------------------
 
-    #pragma omp parallel for num_threads(nthreads) schedule(guided) collapse(2)
-    for (int64_t kA = 0 ; kA < anvec ; kA++)
+    int64_t kC ;
+    #pragma omp parallel for num_threads(nthreads) schedule(guided)
+    for (kC = 0 ; kC < cnvec ; kC++)
     {
-        for (int64_t kB = 0 ; kB < bnvec ; kB++)
-        {
+        int64_t kA = kC / bnvec ;
+        int64_t kB = kC % bnvec ;
+
             // get A(:,jA), the (kA)th vector of A
             int64_t jA = (Ah == NULL) ? kA : Ah [kA] ;
             int64_t aknz = Ap [kA+1] - Ap [kA] ;
@@ -143,13 +145,13 @@ GrB_Info GB_kroner                  // C = kron (A,B)
             int64_t jB = (Bh == NULL) ? kB : Bh [kB] ;
             int64_t bknz = Bp [kB+1] - Bp [kB] ;
             // determine # entries in C(:,jC), the (kC)th vector of C
-            int64_t kC = kA * bnvec + kB ;
+            // int64_t kC = kA * bnvec + kB ;
             Cp [kC] = aknz * bknz ;
             if (C_is_hyper)
             { 
                 Ch [kC] = jA * bvdim + jB ;
             }
-        }
+
     }
 
     //--------------------------------------------------------------------------
@@ -164,41 +166,44 @@ GrB_Info GB_kroner                  // C = kron (A,B)
     // C = kron (A,B)
     //--------------------------------------------------------------------------
 
-    #pragma omp parallel for num_threads(nthreads) schedule(guided) collapse(2)
-    for (int64_t kA = 0 ; kA < anvec ; kA++)
+    #pragma omp parallel for num_threads(nthreads) schedule(guided)
+    for (kC = 0 ; kC < cnvec ; kC++)
     {
-        for (int64_t kB = 0 ; kB < bnvec ; kB++)
+        int64_t kA = kC / bnvec ;
+        int64_t kB = kC % bnvec ;
+
+        // get B(:,jB), the (kB)th vector of B
+        int64_t pB_start = Bp [kB] ;
+        int64_t pB_end   = Bp [kB+1] ;
+        int64_t bknz = pB_start - pB_end ;
+        if (bknz == 0) continue ;
+        GB_void bwork [GB_VLA(bsize)] ;
+
+        // get C(:,jC), the (kC)th vector of C
+        // int64_t kC = kA * bnvec + kB ;
+        int64_t pC = Cp [kC] ;
+
+        // get A(:,jA), the (kA)th vector of A
+        int64_t pA_start = Ap [kA] ;
+        int64_t pA_end   = Ap [kA+1] ;
+        GB_void awork [GB_VLA(asize)] ;
+
+        for (int64_t pA = pA_start ; pA < pA_end ; pA++)
         {
-            // get B(:,jB), the (kB)th vector of B
-            int64_t pB_start = Bp [kB] ;
-            int64_t pB_end   = Bp [kB+1] ;
-            int64_t bknz = pB_start - pB_end ;
-            if (bknz == 0) continue ;
-            GB_void bwork [GB_PGI(bsize)] ;
-            // get C(:,jC), the (kC)th vector of C
-            int64_t kC = kA * bnvec + kB ;
-            int64_t pC = Cp [kC] ;
-            // get A(:,jA), the (kA)th vector of A
-            int64_t pA_start = Ap [kA] ;
-            int64_t pA_end   = Ap [kA+1] ;
-            GB_void awork [GB_PGI(asize)] ;
-            for (int64_t pA = pA_start ; pA < pA_end ; pA++)
-            {
-                // awork = A(iA,jA), typecasted to op->xtype
-                int64_t iA = Ai [pA] ;
-                int64_t iAblock = iA * bvlen ;
-                cast_A (awork, Ax +(pA*asize), asize) ;
-                for (int64_t pB = pB_start ; pB < pB_end ; pB++)
-                { 
-                    // bwork = B(iB,jB), typecasted to op->ytype
-                    int64_t iB = Bi [pB] ;
-                    cast_B (bwork, Bx +(pB*bsize), bsize) ;
-                    // C(iC,jC) = A(iA,jA) * B(iB,jB)
-                    int64_t iC = iAblock + iB ;
-                    Ci [pC] = iC ;
-                    fmult (Cx +(pC*csize), awork, bwork) ;
-                    pC++ ;
-                }
+            // awork = A(iA,jA), typecasted to op->xtype
+            int64_t iA = Ai [pA] ;
+            int64_t iAblock = iA * bvlen ;
+            cast_A (awork, Ax +(pA*asize), asize) ;
+            for (int64_t pB = pB_start ; pB < pB_end ; pB++)
+            { 
+                // bwork = B(iB,jB), typecasted to op->ytype
+                int64_t iB = Bi [pB] ;
+                cast_B (bwork, Bx +(pB*bsize), bsize) ;
+                // C(iC,jC) = A(iA,jA) * B(iB,jB)
+                int64_t iC = iAblock + iB ;
+                Ci [pC] = iC ;
+                fmult (Cx +(pC*csize), awork, bwork) ;
+                pC++ ;
             }
         }
     }
@@ -207,11 +212,21 @@ GrB_Info GB_kroner                  // C = kron (A,B)
     // remove empty vectors from C, if hypersparse
     //--------------------------------------------------------------------------
 
+    info = GB_hypermatrix_prune (C, Context) ;
+    if (info != GrB_SUCCESS)
+    { 
+        // out of memory
+        GB_MATRIX_FREE (&C) ;
+        return (info) ;
+    }
+
+#if 0
+    // see GB_hypermatrix_prune
     if (C_is_hyper && C->nvec_nonempty < cnvec)
     {
         // create new Cp_new and Ch_new arrays, with no empty vectors
-        int64_t *restrict Cp_new = NULL ;
-        int64_t *restrict Ch_new = NULL ;
+        int64_t *GB_RESTRICT Cp_new = NULL ;
+        int64_t *GB_RESTRICT Ch_new = NULL ;
         int64_t nvec_new ;
         info = GB_hyper_prune (&Cp_new, &Ch_new, &nvec_new, C->p, C->h, cnvec,
             Context) ;
@@ -230,6 +245,7 @@ GrB_Info GB_kroner                  // C = kron (A,B)
         C->plen = nvec_new ;
         ASSERT (C->nvec == C->nvec_nonempty) ;
     }
+#endif
 
     ASSERT (C->nvec_nonempty == GB_nvec_nonempty (C, Context)) ;
 
@@ -237,7 +253,7 @@ GrB_Info GB_kroner                  // C = kron (A,B)
     // return result
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (C, "C=kron(A,B)", GB0)) ;
+    ASSERT_MATRIX_OK (C, "C=kron(A,B)", GB0) ;
     (*Chandle) = C ;
     return (GrB_SUCCESS) ;
 }

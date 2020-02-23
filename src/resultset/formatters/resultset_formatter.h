@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -32,10 +32,10 @@ typedef enum {
 } ValueType;
 
 // Typedef for header formatters.
-typedef void (*EmitHeaderFunc)(RedisModuleCtx *ctx, const char **columns, const Record r);
+typedef void (*EmitHeaderFunc)(RedisModuleCtx *ctx, const char **columns, const Record r, uint *col_rec_map);
 
 // Typedef for record formatters.
-typedef void (*EmitRecordFunc)(RedisModuleCtx *ctx, GraphContext *gc, const Record r, uint numcols);
+typedef void (*EmitRecordFunc)(RedisModuleCtx *ctx, GraphContext *gc, const Record r, uint numcols, uint *col_rec_map);
 
 typedef struct {
 	EmitRecordFunc EmitRecord;

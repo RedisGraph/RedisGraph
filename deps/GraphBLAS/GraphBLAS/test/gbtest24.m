@@ -1,7 +1,7 @@
 function gbtest24
 %GBTEST24 test any, all
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 rng ('default') ;
@@ -19,7 +19,7 @@ for trial = 1:10
             MB = MB .* S ;
 
             GA = GrB (MA) ;
-            GB = GrB (MB) ;
+            GB = GrB (MB) ; %#ok<*NASGU>
 
             c1 = all (MA) ;
             c2 = all (GA) ;
