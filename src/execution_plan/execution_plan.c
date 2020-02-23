@@ -603,7 +603,7 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 	AST_MergeContext merge_ctx = AST_PrepareMergeOp(clause, plan->query_graph, bound_vars);
 
 	// Create a Merge operation. It will store no information at this time except for any graph updates
-	// it should make due to ON MATCH SET directives in the query.
+	// it should make due to ON MATCH and ON CREATE SET directives in the query.
 	OpBase *merge_op = NewMergeOp(plan, merge_ctx.on_match, merge_ctx.on_create);
 
 	// Set Merge op as new root and add previously-built ops, if any, as Merge's first stream.
@@ -734,7 +734,7 @@ ExecutionPlan *ExecutionPlan_UnionPlans(AST *ast) {
 	plan->query_graph = NULL;
 	plan->record_map = raxNew();
 	plan->connected_components = NULL;
-	array_clone(plan->returned_column_names, plans[union_count - 1]->returned_column_names);
+	array_clone(plan->column_names, plans[union_count - 1]->column_names);
 
 	OpBase *results_op = NewResultsOp(plan);
 	OpBase *parent = results_op;
@@ -777,14 +777,12 @@ static OpBase *_ExecutionPlan_FindLastWriter(OpBase *root) {
 	return NULL;
 }
 
-ExecutionPlan *NewExecutionPlan() {
+ExecutionPlan *NewExecutionPlan(void) {
 	AST *ast = QueryCtx_GetAST();
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 
 	/* Handle UNION if there are any. */
-	if(AST_ContainsClause(ast, CYPHER_AST_UNION)) {
-		return ExecutionPlan_UnionPlans(ast);
-	}
+	if(AST_ContainsClause(ast, CYPHER_AST_UNION)) return ExecutionPlan_UnionPlans(ast);
 
 	uint start_offset = 0;
 	uint end_offset = 0;
@@ -873,7 +871,7 @@ ExecutionPlan *NewExecutionPlan() {
 		}
 
 		// Prepare column names for the ResultSet.
-		plan->returned_column_names = AST_BuildColumnNames(last_clause);
+		plan->column_names = AST_BuildColumnNames(last_clause);
 
 		OpBase *results_op = NewResultsOp(plan);
 		_ExecutionPlan_UpdateRoot(plan, results_op);
@@ -881,7 +879,7 @@ ExecutionPlan *NewExecutionPlan() {
 		assert(plan->root->type == OPType_PROC_CALL);
 		OpProcCall *last_op = (OpProcCall *)plan->root;
 		// Prepare column names for the ResultSet.
-		array_clone(plan->returned_column_names, last_op->output);
+		array_clone(plan->column_names, last_op->output);
 
 		OpBase *results_op = NewResultsOp(plan);
 		_ExecutionPlan_UpdateRoot(plan, results_op);
@@ -897,18 +895,12 @@ ExecutionPlan *NewExecutionPlan() {
 void ExecutionPlan_PreparePlan(ExecutionPlan *plan) {
 	optimizePlan(plan);
 	QueryCtx_SetLastWriter(_ExecutionPlan_FindLastWriter(plan->root));
-	if(plan->returned_column_names) ResultSet_SetColumns(QueryCtx_GetResultSet(),
-															 ExecutionPlan_GetResultColumns(plan));
+	if(plan->column_names) ResultSet_SetColumns(plan->column_names);
 }
 
 inline rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan) {
 	assert(plan && plan->record_map);
 	return plan->record_map;
-}
-
-inline const char **ExecutionPlan_GetResultColumns(const ExecutionPlan *plan) {
-	assert(plan);
-	return plan->returned_column_names;
 }
 
 Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan) {
@@ -993,10 +985,8 @@ void ExecutionPlan_Execute(ExecutionPlan *plan) {
 	 * a downstream exception returns us to this breakpoint. */
 	int encountered_error = SET_EXCEPTION_HANDLER();
 
-	if(encountered_error) {
-		// Encountered a run-time error; return immediately.
-		return;
-	}
+	// Encountered a run-time error - return immediately.
+	if(encountered_error) return;
 
 	ExecutionPlan_Init(plan);
 
@@ -1088,7 +1078,7 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 	QueryGraph_Free(plan->query_graph);
 	if(plan->record_map) raxFree(plan->record_map);
 	if(plan->record_pool) ObjectPool_Free(plan->record_pool);
-	if(plan->returned_column_names) array_free(plan->returned_column_names);
+	if(plan->column_names) array_free(plan->column_names);
 	rm_free(plan);
 }
 

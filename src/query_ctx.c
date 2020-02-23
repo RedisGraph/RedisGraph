@@ -258,6 +258,11 @@ double QueryCtx_GetExecutionTime(void) {
 void QueryCtx_Free(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 
+	if(ctx->internal_exec_ctx.result_set) {
+		ResultSet_Free(ctx->internal_exec_ctx.result_set);
+		ctx->internal_exec_ctx.result_set = NULL;
+	}
+
 	if(ctx->internal_exec_ctx.error) {
 		free(ctx->internal_exec_ctx.error);
 		ctx->internal_exec_ctx.error = NULL;

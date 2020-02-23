@@ -23,8 +23,7 @@ struct ExecutionPlan {
 	int segment_count;                  // Number of ExecutionPlan segments.
 	ExecutionPlan **segments;           // Partial execution plans scoped to a subset of operations.
 	ObjectPool *record_pool;
-	const char **returned_column_names; // The final result set column names.
-	bool is_union;                      // Indicates if the execution plan as a union of execution plans.
+	const char **column_names;          // The final result set column names.
 };
 
 /* execution_plan_modify.c
@@ -88,7 +87,7 @@ OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **vars,
 /* execution_plan.c */
 
 /* Creates a new execution plan from AST */
-ExecutionPlan *NewExecutionPlan();
+ExecutionPlan *NewExecutionPlan(void);
 
 /* Prepare an execution plan for execution: optimize, initialize result set schema. */
 void ExecutionPlan_PreparePlan(ExecutionPlan *plan);
@@ -109,9 +108,6 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_lim
 
 /* Retrieve the map of aliases to Record offsets in this ExecutionPlan segment. */
 rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan);
-
-/* Retrieve the result set column names. */
-const char **ExecutionPlan_GetResultColumns(const ExecutionPlan *plan);
 
 /* Retrieves a Record from the ExecutionPlan's Record pool. */
 Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan);

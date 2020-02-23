@@ -262,8 +262,7 @@ int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label, cons
 	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(s == NULL) s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
 	int res = Schema_AddIndex(idx, s, field, type);
-	ResultSet *result_set = QueryCtx_GetResultSet();
-	ResultSet_IndexCreated(result_set, res);
+	ResultSet_IndexCreated(res);
 	return res;
 }
 
@@ -273,8 +272,7 @@ int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *fi
 	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	int res = INDEX_FAIL;
 	if(s != NULL) res = Schema_RemoveIndex(s, field, type);
-	ResultSet *result_set = QueryCtx_GetResultSet();
-	ResultSet_IndexDeleted(result_set, res);
+	ResultSet_IndexDeleted(res);
 	return res;
 }
 

@@ -60,7 +60,7 @@ void Graph_Profile(void *args) {
 		assert("Unhandled query type" && false);
 	}
 
-	result_set = NewResultSet(ctx, false);
+	NewResultSet(ctx, false);
 	ExecutionPlan *plan = NewExecutionPlan();
 	/* Make sure there are no compile-time errors.
 	 * We prefer to emit the error only once the entire execution-plan
@@ -91,7 +91,6 @@ cleanup:
 		else Graph_WriterLeave(gc->g);
 	}
 
-	ResultSet_Free(result_set);
 	AST_Free(ast);
 	parse_result_free(parse_result);
 	GraphContext_Release(gc);

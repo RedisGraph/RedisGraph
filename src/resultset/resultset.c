@@ -103,7 +103,7 @@ static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
 	RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
 }
 
-ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact) {
+void NewResultSet(RedisModuleCtx *ctx, bool compact) {
 	ResultSet *set = rm_malloc(sizeof(ResultSet));
 	set->ctx = ctx;
 	set->gc = QueryCtx_GetGraphCtx();
@@ -124,13 +124,13 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact) {
 	set->stats.indices_created = STAT_NOT_SET;
 	set->stats.indices_deleted = STAT_NOT_SET;
 
-	return set;
+	QueryCtx_SetResultSet(set);
 }
 
-void ResultSet_SetColumns(ResultSet *set, const char **columns) {
+void ResultSet_SetColumns(const char **columns) {
+	ResultSet *set = QueryCtx_GetResultSet();
 	// Avoid situations like in EXPLAIN which has no result set.
 	if(!set) return;
-	// assert(columns);
 	// Set columns only once.
 	assert(!set->columns);
 	array_clone(set->columns, columns);
@@ -154,7 +154,8 @@ int ResultSet_AddRecord(ResultSet *set, Record r) {
 	return RESULTSET_OK;
 }
 
-void ResultSet_IndexCreated(ResultSet *set, int status_code) {
+void ResultSet_IndexCreated(int status_code) {
+	ResultSet *set = QueryCtx_GetResultSet();
 	if(status_code == INDEX_OK) {
 		if(set->stats.indices_created == STAT_NOT_SET) {
 			set->stats.indices_created = 1;
@@ -166,7 +167,8 @@ void ResultSet_IndexCreated(ResultSet *set, int status_code) {
 	}
 }
 
-void ResultSet_IndexDeleted(ResultSet *set, int status_code) {
+void ResultSet_IndexDeleted(int status_code) {
+	ResultSet *set = QueryCtx_GetResultSet();
 	if(status_code == INDEX_OK) {
 		if(set->stats.indices_deleted == STAT_NOT_SET) {
 			set->stats.indices_deleted = 1;
@@ -178,7 +180,8 @@ void ResultSet_IndexDeleted(ResultSet *set, int status_code) {
 	}
 }
 
-void ResultSet_Replay(ResultSet *set) {
+void ResultSet_Replay(void) {
+	ResultSet *set = QueryCtx_GetResultSet();
 	if(set->header_emitted) {
 		// If we have emitted a header, set the number of elements in the preceding array.
 		RedisModule_ReplySetArrayLength(set->ctx, set->recordCount);
