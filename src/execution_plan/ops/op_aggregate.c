@@ -107,13 +107,8 @@ static Group *_GetGroup(OpAggregate *op, Record r) {
 	// Evaluate non-aggregated fields, see if they match
 	// the last accessed group.
 	bool reuseLastAccessedGroup = true;
-	for(uint i = 0; i < op->key_count; i++) {
-		if(reuseLastAccessedGroup &&
-		   SIValue_Compare(op->group->keys[i], op->group_keys[i], NULL) == 0) {
-			reuseLastAccessedGroup = true;
-		} else {
-			reuseLastAccessedGroup = false;
-		}
+	for(uint i = 0; reuseLastAccessedGroup && i < op->key_count; i++) {
+		reuseLastAccessedGroup = (SIValue_Compare(op->group->keys[i], op->group_keys[i], NULL) == 0);
 	}
 
 	// See if we can reuse last accessed group.
