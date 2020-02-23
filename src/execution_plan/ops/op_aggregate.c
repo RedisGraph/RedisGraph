@@ -154,10 +154,6 @@ static Record _handoff(OpAggregate *op) {
 	if(!CacheGroupIterNext(op->group_iter, &key, &group)) return NULL;
 
 	Record r = OpBase_CreateRecord((OpBase *)op);
-	/* In this function, we're only evaluating aggregate function calls, which do not
-	 * currently raise exceptions. As such, we don't need to register volatile Records,
-	 * though this may not be true in the future. */
-	// OpBase_AddVolatileRecord((OpBase *)op, r);
 
 	// Add all projected keys to the Record.
 	for(uint i = 0; i < op->key_count; i++) {
@@ -178,7 +174,6 @@ static Record _handoff(OpAggregate *op) {
 		Record_AddScalar(r, rec_idx, res);
 	}
 
-	// OpBase_RemoveVolatileRecords((OpBase *)op); // Not currently necessary, as described above.
 	return r;
 }
 
