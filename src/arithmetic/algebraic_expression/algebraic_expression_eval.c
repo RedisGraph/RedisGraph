@@ -82,7 +82,7 @@ static GrB_Matrix _Eval_Add(const AlgebraicExpression *exp, GrB_Matrix res) {
 	}
 
 	// Perform addition.
-	if(GrB_eWiseAdd_Matrix_Semiring(res, GrB_NULL, GrB_NULL, GxB_LOR_LAND_BOOL, a, b,
+	if(GrB_eWiseAdd_Matrix_Semiring(res, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, a, b,
 									desc) != GrB_SUCCESS) {
 		printf("Failed adding operands, error:%s\n", GrB_error());
 		assert(false);
@@ -114,7 +114,7 @@ static GrB_Matrix _Eval_Add(const AlgebraicExpression *exp, GrB_Matrix res) {
 		}
 
 		// Perform addition.
-		if(GrB_eWiseAdd_Matrix_Semiring(res, GrB_NULL, GrB_NULL, GxB_LOR_LAND_BOOL, res, b,
+		if(GrB_eWiseAdd_Matrix_Semiring(res, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, res, b,
 										GrB_NULL) != GrB_SUCCESS) {
 			printf("Failed adding operands, error:%s\n", GrB_error());
 			assert(false);
@@ -165,7 +165,7 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 		}
 	} else {
 		// Perform multiplication.
-		info = GrB_mxm(res, GrB_NULL, GrB_NULL, GxB_LOR_LAND_BOOL, A, B, desc);
+		info = GrB_mxm(res, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, A, B, desc);
 		if(info != GrB_SUCCESS) {
 			// If the multiplication failed, print error info to stderr and exit.
 			fprintf(stderr, "Encountered an error in matrix multiplication:\n%s\n", GrB_error());
@@ -193,7 +193,7 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 
 		if(B != IDENTITY_MATRIX) {
 			// Perform multiplication.
-			info = GrB_mxm(res, GrB_NULL, GrB_NULL, GxB_LOR_LAND_BOOL, res, B, desc);
+			info = GrB_mxm(res, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, res, B, desc);
 			if(info != GrB_SUCCESS) {
 				// If the multiplication failed, print error info to stderr and exit.
 				fprintf(stderr, "Encountered an error in matrix multiplication:\n%s\n", GrB_error());
