@@ -441,8 +441,11 @@ static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 		   CYPHER_AST_PATTERN_COMPREHENSION
 		   CYPHER_AST_REDUCE
 		*/
-		printf("Encountered unhandled type '%s'\n", cypher_astnode_typestr(type));
-		assert(false);
+		const char *type_str = cypher_astnode_typestr(type);
+		char *error;
+		asprintf(&error, "RedisGraph does not currently support the type '%s'", type_str);
+		QueryCtx_SetError(error);
+		return AR_EXP_NewConstOperandNode(SI_NullVal());
 	}
 
 	assert(false);
