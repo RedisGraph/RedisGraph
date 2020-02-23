@@ -24,7 +24,7 @@ struct ExecutionPlan {
 	int segment_count;                  // Number of ExecutionPlan segments.
 	ExecutionPlan **segments;           // Partial execution plans scoped to a subset of operations.
 	ObjectPool *record_pool;
-	const char **column_names;          // The final result set column names.
+	bool is_exec_ready;                 // Indicates if the execution plan is ready for execute.
 };
 
 /* execution_plan_modify.c

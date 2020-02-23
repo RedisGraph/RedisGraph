@@ -6,14 +6,10 @@
 
 #include "./optimizer.h"
 #include "./optimizations.h"
+#include "../../query_ctx.h"
 
-void optimizePlan(ExecutionPlan *plan) {
-	// if(plan->is_union) {
-	// 	for(uint i = 0; i < plan->segment_count; i++) optimizePlan(plan->segments[i]);
-	// } else {
-
-	// }
-	// Tries to compact filter trees, and remove redundant filters.
+void _optimizePlan(ExecutionPlan *plan) {
+// Tries to compact filter trees, and remove redundant filters.
 	compactFilters(plan);
 
 	/* Scan optimizations order:
@@ -52,3 +48,13 @@ void optimizePlan(ExecutionPlan *plan) {
 	reduceCount(plan);
 }
 
+void optimizePlan(ExecutionPlan *plan) {
+	AST *ast = QueryCtx_GetAST();
+
+	/* Handle UNION if there are any. */
+	if(AST_ContainsClause(ast, CYPHER_AST_UNION)) {
+		for(uint i = 0; i < plan->segment_count; i++) _optimizePlan(plan->segments[i]);
+	} else {
+		_optimizePlan(plan);
+	}
+}

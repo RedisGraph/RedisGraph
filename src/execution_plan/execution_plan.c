@@ -734,7 +734,6 @@ ExecutionPlan *ExecutionPlan_UnionPlans(AST *ast) {
 	plan->query_graph = NULL;
 	plan->record_map = raxNew();
 	plan->connected_components = NULL;
-	array_clone(plan->column_names, plans[union_count - 1]->column_names);
 
 	OpBase *results_op = NewResultsOp(plan);
 	OpBase *parent = results_op;
@@ -861,26 +860,8 @@ ExecutionPlan *NewExecutionPlan(void) {
 	array_free(segment_indices);
 
 	ExecutionPlan *plan = segments[segment_count - 1];
-
 	// The root operation is OpResults only if the query culminates in a RETURN or CALL clause.
-	if(query_has_return) {
-		if(!connecting_op) {
-			// Set the connecting op if our query is just a RETURN.
-			assert(segment_count == 1);
-			connecting_op = ExecutionPlan_LocateFirstOp(plan->root, OPType_PROJECT | OPType_AGGREGATE);
-		}
-
-		// Prepare column names for the ResultSet.
-		plan->column_names = AST_BuildColumnNames(last_clause);
-
-		OpBase *results_op = NewResultsOp(plan);
-		_ExecutionPlan_UpdateRoot(plan, results_op);
-	} else if(last_clause_type == CYPHER_AST_CALL) {
-		assert(plan->root->type == OPType_PROC_CALL);
-		OpProcCall *last_op = (OpProcCall *)plan->root;
-		// Prepare column names for the ResultSet.
-		array_clone(plan->column_names, last_op->output);
-
+	if(query_has_return || last_clause_type == CYPHER_AST_CALL) {
 		OpBase *results_op = NewResultsOp(plan);
 		_ExecutionPlan_UpdateRoot(plan, results_op);
 	}
@@ -892,10 +873,31 @@ ExecutionPlan *NewExecutionPlan(void) {
 	return plan;
 }
 
+static void _ExecutionPlan_SetResultColumns(ExecutionPlan *plan) {
+	ResultSet *result_set = QueryCtx_GetResultSet();
+	AST *ast = QueryCtx_GetAST();
+	uint clause_count = cypher_ast_query_nclauses(ast->root);
+	const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
+	cypher_astnode_type_t last_clause_type = cypher_astnode_type(last_clause);
+	bool query_has_return = (last_clause_type == CYPHER_AST_RETURN);
+	if(query_has_return) {
+		ResultSet_SetColumns(AST_BuildColumnNames(last_clause));
+	} else if(last_clause_type == CYPHER_AST_CALL) {
+		OpBase *proc_call_base = ExecutionPlan_LocateFirstOp(plan->root, OPType_PROC_CALL);
+		assert(proc_call_base && (proc_call_base->type == OPType_PROC_CALL));
+		OpProcCall *proc_call = (OpProcCall *)proc_call_base;
+		// Prepare column names for the ResultSet.
+		const char **columns;
+		array_clone(columns, proc_call->output);
+		ResultSet_SetColumns(columns);
+	}
+}
+
 void ExecutionPlan_PreparePlan(ExecutionPlan *plan) {
+	_ExecutionPlan_SetResultColumns(plan);
 	optimizePlan(plan);
 	QueryCtx_SetLastWriter(_ExecutionPlan_FindLastWriter(plan->root));
-	if(plan->column_names) ResultSet_SetColumns(plan->column_names);
+	plan->is_exec_ready = true;
 }
 
 inline rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan) {
@@ -1081,7 +1083,6 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 	QueryGraph_Free(plan->query_graph);
 	if(plan->record_map) raxFree(plan->record_map);
 	if(plan->record_pool) ObjectPool_Free(plan->record_pool);
-	if(plan->column_names) array_free(plan->column_names);
 	rm_free(plan);
 }
 

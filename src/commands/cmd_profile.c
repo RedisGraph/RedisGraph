@@ -61,6 +61,7 @@ void Graph_Profile(void *args) {
 	}
 
 	result_set = NewResultSet(ctx, false);
+	QueryCtx_SetResultSet(result_set);
 	ExecutionPlan *plan = NewExecutionPlan();
 	/* Make sure there are no compile-time errors.
 	 * We prefer to emit the error only once the entire execution-plan

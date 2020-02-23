@@ -210,7 +210,7 @@ void ResultSet_ReportQueryRuntime(RedisModuleCtx *ctx) {
 void ResultSet_Free(ResultSet *set) {
 	if(!set) return;
 
-	array_free(set->columns);
+	if(set->columns) array_free(set->columns);
 	rm_free(set->columns_record_map);
 
 	rm_free(set);
