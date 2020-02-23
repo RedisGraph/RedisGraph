@@ -38,11 +38,6 @@ jobs:
           # name: Formatting
           # command: astyle --options=.astylerc -R "./*.c,*.h" --dry-run -Q
 
-      # Load GraphBLAS from cache if possible.
-      - restore_cache:
-          keys:
-          - GraphBLAS-{{checksum "./deps/GraphBLAS/README.md"}}
-      
       # Load libcypher-parser from cache if possible.
       - restore_cache:
           keys:
@@ -51,13 +46,7 @@ jobs:
       - run:
           name: Build
           command: make
-      
-      # Save GraphBLAS to cache.
-      - save_cache:
-          paths:
-            - deps/GraphBLAS
-          key: GraphBLAS-{{checksum "./deps/GraphBLAS/README.md"}}
-      
+
       # Save libcypher-parser to cache.
       - save_cache:
           paths:
