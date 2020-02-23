@@ -13,24 +13,18 @@
 #include "../../grouping/group_cache.h"
 #include "../../arithmetic/arithmetic_expression.h"
 
-typedef enum {
-	AGGREGATED,
-	NON_AGGREGATED,
-} ExpClassification;
-
 typedef struct {
 	OpBase op;
-	AR_ExpNode **exps;                             /* Projected expressions (including order exps). */
-	uint *record_offsets;                          /* Record IDs for exps and order_exps. */
-	AR_ExpNode **non_aggregated_expressions;       /* Array of arithmetic expression. */
-	ExpClassification *expression_classification;  /* Classifies each expression as aggregated/not. */
-	rax *groups;
-	Group *group;                                  /* Last accessed group. */
-	SIValue *group_keys;                           /* Array of values composing an aggregated group. */
-	CacheGroupIterator *group_iter;
-	Record last_record;
-	uint exp_count;                                /* Number of projected expressions. */
-	bool should_cache_records;                     /* Records should be cached if we're sorting after aggregation. */
+	uint *record_offsets;               /* Record IDs for key and aggregate exps. */
+	AR_ExpNode **key_exps;              /* Array of expressions used to calculate the group key. */
+	AR_ExpNode **aggregate_exps;        /* Array of expressions that aggregate data for each key. */
+	rax *groups;                        /* Map of all groups built by this operation. */
+	Group *group;                       /* Last accessed group. */
+	SIValue *group_keys;                /* Array of values that represent a key associated with a Group of aggregations. */
+	CacheGroupIterator *group_iter;     /* Iterator for walking all groups. */
+	uint key_count;                     /* Number of key expressions. */
+	uint aggregate_count;               /* Number of aggregating expressions. */
+	bool should_cache_records;          /* Records should be cached if we're sorting after aggregation. */
 } OpAggregate;
 
 OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should_cache_records);
