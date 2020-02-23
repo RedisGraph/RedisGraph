@@ -16,7 +16,7 @@ function s = isa (G, classname)
 % See also GrB.type, isnumeric, islogical, ischar, iscell, isstruct,
 % isfloat, isinteger, isobject, isjava, issparse, isreal, class.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (isequal (classname, 'GrB') || isequal (classname, 'numeric'))

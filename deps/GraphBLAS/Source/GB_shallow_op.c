@@ -2,7 +2,7 @@
 // GB_shallow_op:  create a shallow copy and apply a unary operator to a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -41,8 +41,8 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
     //--------------------------------------------------------------------------
 
     ASSERT (Chandle != NULL) ;
-    ASSERT_OK (GB_check (A, "A for shallow_op", GB0)) ;
-    ASSERT_OK (GB_check (op, "op for shallow_op", GB0)) ;
+    ASSERT_MATRIX_OK (A, "A for shallow_op", GB0) ;
+    ASSERT_UNARYOP_OK (op, "op for shallow_op", GB0) ;
     ASSERT (GB_Type_compatible (op->xtype, A->type)) ;
     ASSERT ((A->nzmax == 0) == (A->i == NULL && A->x == NULL)) ;
     ASSERT (!GB_PENDING (A)) ; ASSERT (!GB_ZOMBIES (A)) ;
@@ -93,7 +93,7 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
         C->x = NULL ;
         C->i_shallow = false ;
         C->x_shallow = false ;
-        ASSERT_OK (GB_check (C, "C = quick copy of empty A", GB0)) ;
+        ASSERT_MATRIX_OK (C, "C = quick copy of empty A", GB0) ;
         (*Chandle) = C ;
         return (GrB_SUCCESS) ;
     }
@@ -119,7 +119,7 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
         C->nzmax = A->nzmax ;
         C->x = A->x ;
         C->x_shallow = true ;       // C->x will not be freed when freeing C
-        ASSERT_OK (GB_check (C, "C = pure shallow (A)", GB0)) ;
+        ASSERT_MATRIX_OK (C, "C = pure shallow (A)", GB0) ;
         (*Chandle) = C ;
         return (GrB_SUCCESS) ;
     }
@@ -146,7 +146,7 @@ GrB_Info GB_shallow_op      // create shallow matrix and apply operator
     // return the result
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (C, "C = shallow (op (A))", GB0)) ;
+    ASSERT_MATRIX_OK (C, "C = shallow (op (A))", GB0) ;
     (*Chandle) = C ;
     return (GrB_SUCCESS) ;
 }

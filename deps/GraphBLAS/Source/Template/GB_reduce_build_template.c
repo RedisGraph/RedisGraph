@@ -2,7 +2,7 @@
 // GB_build_template: T=build(S), and assemble any duplicate tuples
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -31,8 +31,9 @@
         if (K_work == NULL)
         {
 
+            int tid ;
             #pragma omp parallel for num_threads(nthreads) schedule(static)
-            for (int tid = 0 ; tid < nthreads ; tid++)
+            for (tid = 0 ; tid < nthreads ; tid++)
             {
                 int64_t tstart = tstart_slice [tid] ;
                 int64_t tend   = tstart_slice [tid+1] ;
@@ -47,8 +48,9 @@
         else
         {
 
+            int tid ;
             #pragma omp parallel for num_threads(nthreads) schedule(static)
-            for (int tid = 0 ; tid < nthreads ; tid++)
+            for (tid = 0 ; tid < nthreads ; tid++)
             {
                 int64_t tstart = tstart_slice [tid] ;
                 int64_t tend   = tstart_slice [tid+1] ;
@@ -71,8 +73,9 @@
         // Entries in S must be copied into T->x, with any duplicates summed
         // via the operator.  T->i must also be constructed.
 
+        int tid ;
         #pragma omp parallel for num_threads(nthreads) schedule(static)
-        for (int tid = 0 ; tid < nthreads ; tid++)
+        for (tid = 0 ; tid < nthreads ; tid++)
         {
             int64_t my_tnz = tnz_slice [tid] ;
             int64_t tstart = tstart_slice [tid] ;

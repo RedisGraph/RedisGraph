@@ -194,9 +194,11 @@ bool QueryCtx_LockForCommit(void) {
 	return true;
 
 clean_up:
-// Unlock GIL.
+	// Free key handle.
+	RedisModule_CloseKey(key);
+	// Unlock GIL.
 	_QueryCtx_ThreadSafeContextUnlock(ctx);
-// If there is a break point for runtime exception, raise it, otherwise return false.
+	// If there is a break point for runtime exception, raise it, otherwise return false.
 	QueryCtx_RaiseRuntimeException();
 	return false;
 

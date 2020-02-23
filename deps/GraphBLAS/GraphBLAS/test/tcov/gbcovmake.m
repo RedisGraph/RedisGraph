@@ -3,7 +3,7 @@ function gbcovmake
 %
 % See also: gbcover, gbcov_edit
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if verLessThan ('matlab', '9.4')
@@ -71,6 +71,7 @@ try
             end
         end
     end
+catch
 end
 
 libraries = '-L../../../../../../build -L. -L/usr/local/lib -lgraphblas' ;
@@ -98,7 +99,7 @@ try
         % get the object file name
         ofile = cfiles(k).name ;
         objfile = [ ofile(1:end-2) '.o' ] ;
-        objlist = [ objlist ' ' objfile ] ;
+        objlist = [ objlist ' ' objfile ] ; %#ok<*AGROW>
         % compile the cfile
         mexcmd = sprintf ('mex -c %s -silent %s %s', flags, inc, cfile) ;
         fprintf ('%s\n', cfile) ;

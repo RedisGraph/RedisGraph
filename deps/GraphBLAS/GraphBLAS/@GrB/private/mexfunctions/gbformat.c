@@ -2,7 +2,7 @@
 // gbformat: get/set the matrix format to use in GraphBLAS
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -39,7 +39,7 @@ void mexFunction
         //----------------------------------------------------------------------
 
         // get the global format
-        OK (GxB_get (GxB_FORMAT, &fmt)) ;
+        OK (GxB_Global_Option_get (GxB_FORMAT, &fmt)) ;
 
     }
     else // if (nargin == 1)
@@ -54,7 +54,7 @@ void mexFunction
 
             // set the global format
             fmt = gb_mxstring_to_format (pargin [0]) ;
-            OK (GxB_set (GxB_FORMAT, fmt)) ;
+            OK (GxB_Global_Option_set (GxB_FORMAT, fmt)) ;
 
         }
         else
@@ -66,8 +66,8 @@ void mexFunction
 
             // get the format of the input matrix G
             GrB_Matrix G = gb_get_shallow (pargin [0]) ;
-            OK (GxB_get (G, GxB_FORMAT, &fmt)) ;
-            OK (GrB_free (&G)) ;
+            OK (GxB_Matrix_Option_get (G, GxB_FORMAT, &fmt)) ;
+            OK (GrB_Matrix_free (&G)) ;
         }
     }
 

@@ -1,6 +1,7 @@
 #!/bin/sh
 
-V="valgrind --error-limit=no --tool=memcheck -v --log-file=valgrind_%p.log --leak-check=full --show-leak-kinds=all"
+# V="valgrind --error-limit=no --tool=memcheck -q --log-file=valgrind_%p.log --leak-check=full --show-leak-kinds=all"
+V="valgrind --error-limit=no --tool=memcheck -q --log-file=valgrind_%p.log"
 
 $V ../build/wildtype_demo                         > wildtype_demo.out
 $V ../build/simple_demo                           > simple_demo.out

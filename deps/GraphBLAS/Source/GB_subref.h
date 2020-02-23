@@ -2,7 +2,7 @@
 // GB_subref.h: definitions for GB_subref_* functions
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -30,9 +30,9 @@ GrB_Info GB_subref              // C = A(I,J): either symbolic or numeric
 GrB_Info GB_subref_phase0
 (
     // output
-    int64_t *restrict *p_Ch,         // Ch = C->h hyperlist, or NULL standard
-    int64_t *restrict *p_Ap_start,   // A(:,kA) starts at Ap_start [kC]
-    int64_t *restrict *p_Ap_end,     // ... and ends at Ap_end [kC] - 1
+    int64_t *GB_RESTRICT *p_Ch,         // Ch = C->h hyperlist, or NULL standard
+    int64_t *GB_RESTRICT *p_Ap_start,   // A(:,kA) starts at Ap_start [kC]
+    int64_t *GB_RESTRICT *p_Ap_end,     // ... and ends at Ap_end [kC] - 1
     int64_t *p_Cnvec,       // # of vectors in C
     bool *p_need_qsort,     // true if C must be sorted
     int *p_Ikind,           // kind of I
@@ -57,12 +57,12 @@ GrB_Info GB_subref_slice
     int *p_ntasks,                  // # of tasks constructed
     int *p_nthreads,                // # of threads for subref operation
     bool *p_post_sort,              // true if a final post-sort is needed
-    int64_t *restrict *p_Mark,      // for I inverse, if needed; size avlen
-    int64_t *restrict *p_Inext,     // for I inverse, if needed; size nI
+    int64_t *GB_RESTRICT *p_Mark,      // for I inverse, if needed; size avlen
+    int64_t *GB_RESTRICT *p_Inext,     // for I inverse, if needed; size nI
     int64_t *p_nduplicates,         // # of duplicates, if I inverse computed
     // from phase0:
-    const int64_t *restrict Ap_start,   // location of A(imin:imax,kA)
-    const int64_t *restrict Ap_end,
+    const int64_t *GB_RESTRICT Ap_start,   // location of A(imin:imax,kA)
+    const int64_t *GB_RESTRICT Ap_end,
     const int64_t Cnvec,            // # of vectors of C
     const bool need_qsort,          // true if C must be sorted
     const int Ikind,                // GB_ALL, GB_RANGE, GB_STRIDE or GB_LIST
@@ -77,18 +77,18 @@ GrB_Info GB_subref_slice
 
 GrB_Info GB_subref_phase1               // count nnz in each C(:,j)
 (
-    int64_t *restrict *Cp_handle,       // output of size Cnvec+1
+    int64_t *GB_RESTRICT *Cp_handle,       // output of size Cnvec+1
     int64_t *Cnvec_nonempty,            // # of non-empty vectors in C
     // tasks from phase0b:
-    GB_task_struct *restrict TaskList,  // array of structs
+    GB_task_struct *GB_RESTRICT TaskList,  // array of structs
     const int ntasks,                   // # of tasks
     const int nthreads,                 // # of threads to use
     const int64_t *Mark,                // for I inverse buckets, size A->vlen
     const int64_t *Inext,               // for I inverse buckets, size nI
     const int64_t nduplicates,          // # of duplicates, if I inverted
     // analysis from phase0:
-    const int64_t *restrict Ap_start,
-    const int64_t *restrict Ap_end,
+    const int64_t *GB_RESTRICT Ap_start,
+    const int64_t *GB_RESTRICT Ap_end,
     const int64_t Cnvec,
     const bool need_qsort,
     const int Ikind,
@@ -105,10 +105,10 @@ GrB_Info GB_subref_phase2   // C=A(I,J)
 (
     GrB_Matrix *Chandle,    // output matrix (unallocated on input)
     // from phase1:
-    const int64_t *restrict Cp,         // vector pointers for C
+    const int64_t *GB_RESTRICT Cp,         // vector pointers for C
     const int64_t Cnvec_nonempty,       // # of non-empty vectors in C
     // from phase0b:
-    const GB_task_struct *restrict TaskList,    // array of structs
+    const GB_task_struct *GB_RESTRICT TaskList,    // array of structs
     const int ntasks,                           // # of tasks
     const int nthreads,                         // # of threads to use
     const bool post_sort,               // true if post-sort needed
@@ -116,9 +116,9 @@ GrB_Info GB_subref_phase2   // C=A(I,J)
     const int64_t *Inext,               // for I inverse buckets, size nI
     const int64_t nduplicates,          // # of duplicates, if I inverted
     // from phase0:
-    const int64_t *restrict Ch,
-    const int64_t *restrict Ap_start,
-    const int64_t *restrict Ap_end,
+    const int64_t *GB_RESTRICT Ch,
+    const int64_t *GB_RESTRICT Ap_start,
+    const int64_t *GB_RESTRICT Ap_end,
     const int64_t Cnvec,
     const bool need_qsort,
     const int Ikind,
@@ -139,8 +139,8 @@ GrB_Info GB_I_inverse           // invert the I list for C=A(I,:)
     int64_t nI,                 // length of I
     int64_t avlen,              // length of the vectors of A
     // outputs:
-    int64_t *restrict *p_Mark,  // head pointers for buckets, size avlen
-    int64_t *restrict *p_Inext, // next pointers for buckets, size nI
+    int64_t *GB_RESTRICT *p_Mark,  // head pointers for buckets, size avlen
+    int64_t *GB_RESTRICT *p_Inext, // next pointers for buckets, size nI
     int64_t *p_ndupl,           // number of duplicate entries in I
     GB_Context Context
 ) ;

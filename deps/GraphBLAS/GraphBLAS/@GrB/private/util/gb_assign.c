@@ -2,7 +2,7 @@
 // gb_assign: assign entries into a GraphBLAS matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -143,10 +143,10 @@ void gb_assign                  // gbassign or gbsubassign mexFunctions
     { 
         // A is a sparse scalar.  Expand it to an ni-by-nj sparse matrix with
         // the same type as C, with no entries, and use matrix assignment.
-        OK (GrB_free (&A)) ;
+        OK (GrB_Matrix_free (&A)) ;
         OK (GrB_Matrix_new (&A, ctype, ni, nj)) ;
-        OK (GxB_get (C, GxB_FORMAT, &fmt)) ;
-        OK (GxB_set (A, GxB_FORMAT, fmt)) ;
+        OK (GxB_Matrix_Option_get (C, GxB_FORMAT, &fmt)) ;
+        OK (GxB_Matrix_Option_set (A, GxB_FORMAT, fmt)) ;
         scalar_assignment = false ;
     }
 
@@ -163,11 +163,11 @@ void gb_assign                  // gbassign or gbsubassign mexFunctions
     {
         if (do_subassign)
         { 
-            OK (GxB_subassign (C, M, accum, A, I, ni, J, nj, desc)) ;
+            OK (GxB_Matrix_subassign (C, M, accum, A, I, ni, J, nj, desc)) ;
         }
         else
         { 
-            OK (GrB_assign (C, M, accum, A, I, ni, J, nj, desc)) ;
+            OK (GrB_Matrix_assign (C, M, accum, A, I, ni, J, nj, desc)) ;
         }
     }
 
@@ -175,9 +175,9 @@ void gb_assign                  // gbassign or gbsubassign mexFunctions
     // free shallow copies
     //--------------------------------------------------------------------------
 
-    OK (GrB_free (&M)) ;
-    OK (GrB_free (&A)) ;
-    OK (GrB_free (&desc)) ;
+    OK (GrB_Matrix_free (&M)) ;
+    OK (GrB_Matrix_free (&A)) ;
+    OK (GrB_Descriptor_free (&desc)) ;
     if (I_allocated) gb_mxfree (&I) ;
     if (J_allocated) gb_mxfree (&J) ;
 

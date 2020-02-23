@@ -1,0 +1,35 @@
+function gbtest72
+%GBTEST72 test any-pair semiring
+
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+rng ('default') ;
+dt = struct ('in0', 'transpose') ;
+ntrials = 1000 ;
+
+for n = [1 5 10 100 1000]
+    nfound = 0 ;
+    for trial = 1:ntrials
+        x = GrB.random (n, 1, 0.1, 'range', uint32 ([1 255])) ;
+        y = GrB.random (n, 1, 0.1, 'range', uint32 ([1 255])) ;
+        c1 = x'*y ;
+
+        c3 = GrB.mxm ('+.*', x, y, dt) ;
+        assert (isequal (c1, c3)) ;
+
+        c2 = GrB.mxm ('any.pair', x, y, dt) ;
+
+        c1_present = (GrB.entries (c1) == 1) ;
+        c2_present = (c2 == 1) ;
+        if (c1_present)
+            nfound = nfound + 1 ;
+        end
+        assert (c1_present == c2_present) ;
+        assert (c1_present == c2) ;
+    end
+    fprintf ('n: %4d trials: %4d found: %4d\n', n, ntrials, nfound) ;
+end
+
+fprintf ('gbtest72: all tests passed\n') ;
+

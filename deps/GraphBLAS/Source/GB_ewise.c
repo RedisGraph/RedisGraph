@@ -2,7 +2,7 @@
 // GB_ewise: C<M> = accum (C, A+B) or A.*B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -16,6 +16,7 @@
 #include "GB_emult.h"
 #include "GB_transpose.h"
 #include "GB_accum_mask.h"
+#include "GB_dense.h"
 
 #define GB_FREE_ALL         \
 {                           \
@@ -31,13 +32,14 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
     const bool C_replace,           // if true, clear C before writing to it
     const GrB_Matrix M,             // optional mask for C, unused if NULL
     const bool Mask_comp,           // if true, complement the mask M
+    const bool Mask_struct,         // if true, use the only structure of M
     const GrB_BinaryOp accum,       // optional accum for Z=accum(C,T)
     const GrB_BinaryOp op,          // defines '+' for C=A+B, or .* for A.*B
     const GrB_Matrix A,             // input matrix
     bool A_transpose,               // if true, use A' instead of A
     const GrB_Matrix B,             // input matrix
     bool B_transpose,               // if true, use B' instead of B
-    const bool eWiseAdd,            // if true, do set union (like A+B),
+    bool eWiseAdd,                  // if true, do set union (like A+B),
                                     // otherwise do intersection (like A.*B)
     GB_Context Context
 )
@@ -54,12 +56,12 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
 
     GB_RETURN_IF_FAULTY (accum) ;
 
-    ASSERT_OK (GB_check (C, "C input for GB_ewise", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_ewise", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_ewise", GB0)) ;
-    ASSERT_OK (GB_check (op, "op for GB_ewise", GB0)) ;
-    ASSERT_OK (GB_check (A, "A for GB_ewise", GB0)) ;
-    ASSERT_OK (GB_check (B, "B for GB_ewise", GB0)) ;
+    ASSERT_MATRIX_OK (C, "C input for GB_ewise", GB0) ;
+    ASSERT_MATRIX_OK_OR_NULL (M, "M for GB_ewise", GB0) ;
+    ASSERT_BINARYOP_OK_OR_NULL (accum, "accum for GB_ewise", GB0) ;
+    ASSERT_BINARYOP_OK (op, "op for GB_ewise", GB0) ;
+    ASSERT_MATRIX_OK (A, "A for GB_ewise", GB0) ;
+    ASSERT_MATRIX_OK (B, "B for GB_ewise", GB0) ;
 
     // T has the same type as the output z for z=op(a,b)
     GrB_Type T_type = op->ztype ;
@@ -150,30 +152,66 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
     }
 
     //--------------------------------------------------------------------------
+    // determine if any matrices are dense
+    //--------------------------------------------------------------------------
+
+    bool C_is_dense = GB_is_dense (C) && !GB_PENDING_OR_ZOMBIES (C) ;
+    bool A_is_dense = GB_is_dense (A) ;
+    bool B_is_dense = GB_is_dense (B) ;
+    bool M_is_dense = GB_is_dense (M) ;
+
+    if (C_is_dense) { GBBURBLE ("(C dense) ") ; }
+    if (A_is_dense) { GBBURBLE ("(A dense) ") ; }
+    if (B_is_dense) { GBBURBLE ("(B dense) ") ; }
+    if (M_is_dense) { GBBURBLE ("(M dense) ") ; }
+
+    //--------------------------------------------------------------------------
     // decide when to apply the mask
     //--------------------------------------------------------------------------
 
     // GB_add and GB_emult can apply any non-complemented mask, but it is
     // faster to exploit the mask in GB_add / GB_emult only when it is very
-    // sparse compared with A and B.
+    // sparse compared with A and B, or (in special cases) when it is easy
+    // to apply.
 
     // check the CSR/CSC format of M
     bool M_is_csc = (M == NULL) ? C_is_csc : M->is_csc ;
-
     bool mask_applied = false ;
     GrB_Matrix M1 = NULL ;
 
-    if (M != NULL && !Mask_comp && GB_MASK_VERY_SPARSE (M, A, B))
+    if (M != NULL && !Mask_comp)
     {
-        // the mask is present, not complemented, and very sparse; use it
-        // during GB_add and GB_emult to reduce memory and work.
-        M1 = M ;
-        if (C_is_csc != M_is_csc)
-        { 
-            GB_OK (GB_transpose (&MT, GrB_BOOL, C_is_csc, M, NULL, Context)) ;
-            M1 = MT ;
+        // mask is present, not complemented; see if it is quick or easy to use.
+        // it may be a structural or valued mask.
+        bool mask_is_easy = (A_is_dense || (A == M))    // A is easy
+                         && (B_is_dense || (B == M)) ;  // and B is easy
+        bool mask_is_very_sparse = GB_MASK_VERY_SPARSE (M, A, B) ;
+        if (mask_is_easy || mask_is_very_sparse)
+        {
+            // the mask is present, not complemented, and very sparse or easy
+            // to exploit ; use it during GB_add and GB_emult to reduce memory
+            // and work.
+            M1 = M ;
+            if (C_is_csc != M_is_csc)
+            { 
+                GBBURBLE ("(M transpose) ") ;
+                GB_OK (GB_transpose (&MT, GrB_BOOL, C_is_csc, M, NULL, Context));
+                M1 = MT ;
+            }
+            mask_applied = true ;
+            if (mask_is_easy)
+            { 
+                GBBURBLE ("(mask is easy) ") ;
+            }
+            else // mask_is_very_sparse
+            { 
+                GBBURBLE ("(mask applied) ") ;
+            }
         }
-        mask_applied = true ;
+        else
+        { 
+            GBBURBLE ("(mask later) ") ;
+        }
     }
 
     //--------------------------------------------------------------------------
@@ -185,6 +223,7 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
     { 
         // AT = A'
         // transpose: no typecast, no op, not in place
+        GBBURBLE ("(A transpose) ") ;
         GB_OK (GB_transpose (&AT, NULL, C_is_csc, A, NULL, Context)) ;
         A1 = AT ;
     }
@@ -198,9 +237,83 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
     { 
         // BT = B'
         // transpose: no typecast, no op, not in place
+        GBBURBLE ("(B transpose) ") ;
         GB_OK (GB_transpose (&BT, NULL, C_is_csc, B, NULL, Context)) ;
         B1 = BT ;
     }
+
+    //--------------------------------------------------------------------------
+    // special cases
+    //--------------------------------------------------------------------------
+
+    // FUTURE::: handle more special cases
+
+    if (A_is_dense && B_is_dense)
+    { 
+        // no need to use eWiseAdd if both A and B are dense
+        eWiseAdd = false ;
+    }
+
+    bool no_typecast =
+        (op->ztype == C->type)              // no typecasting of C
+        && (op->xtype == A1->type)          // no typecasting of A
+        && (op->ytype == B1->type) ;        // no typecasting of B
+
+    #ifndef GBCOMPACT
+
+        // FUTURE: for sssp12:
+        // C<A> = A+B where C is sparse and B is dense;
+        // mask is structural, not complemented, C_replace is false.
+        // C is not empty.  Use a kernel that computes T<A>=A+B
+        // where T starts out empty; just iterate over the entries in A.
+
+    if (A_is_dense                          // A and B are dense
+        && B_is_dense
+        && (M == NULL) && !Mask_comp        // no mask
+        && (C->is_csc == C_is_csc)          // no transpose of C
+        && no_typecast                      // no typecasting
+        && (op->opcode < GB_USER_opcode)    // not a user-defined operator
+        )
+    {
+
+        if (C_is_dense                      // C is dense
+        && accum == op                      // accum is same as the op
+        && (op->opcode >= GB_MIN_opcode)    // subset of binary operators
+        && (op->opcode <= GB_RDIV_opcode))
+        { 
+
+            //------------------------------------------------------------------
+            // C += A+B where all 3 matrices are dense
+            //------------------------------------------------------------------
+
+            // C_replace is ignored
+            GBBURBLE ("dense C+=A+B ") ;
+            GB_dense_ewise3_accum (C, A1, B1, op, Context) ;    // cannot fail
+            GB_FREE_ALL ;
+            ASSERT_MATRIX_OK (C, "C output for GB_ewise, dense C+=A+B", GB0) ;
+            return (GrB_SUCCESS) ;
+
+        }
+        else if (accum == NULL)             // no accum
+        { 
+
+            //------------------------------------------------------------------
+            // C = A+B where A and B are dense (C is anything)
+            //------------------------------------------------------------------
+
+            // C_replace is ignored
+            GBBURBLE ("dense C=A+B ") ;
+            info = GB_dense_ewise3_noaccum (C, C_is_dense, A1, B1, op, Context);
+            GB_FREE_ALL ;
+            if (info == GrB_SUCCESS)
+            {
+                ASSERT_MATRIX_OK (C, "C output for GB_ewise, dense C=A+B", GB0);
+            }
+            return (info) ;
+        }
+    }
+
+    #endif
 
     //--------------------------------------------------------------------------
     // T = A+B or A.*B
@@ -208,11 +321,13 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
 
     if (eWiseAdd)
     { 
-        GB_OK (GB_add (&T, T_type, C_is_csc, M1, A1, B1, op, Context)) ;
+        GB_OK (GB_add (&T, T_type, C_is_csc, M1, Mask_struct, A1, B1, op,
+            Context)) ;
     }
     else
     { 
-        GB_OK (GB_emult (&T, T_type, C_is_csc, M1, A1, B1, op, Context)) ;
+        GB_OK (GB_emult (&T, T_type, C_is_csc, M1, Mask_struct, A1, B1, op,
+            Context)) ;
     }
 
     //--------------------------------------------------------------------------
@@ -245,7 +360,7 @@ GrB_Info GB_ewise                   // C<M> = accum (C, A+B) or A.*B
         // C<M> = accum (C,T)
         // GB_accum_mask also conforms C to its desired hypersparsity
         info = GB_accum_mask (C, M, MT, accum, &T, C_replace, Mask_comp,
-            Context) ;
+            Mask_struct, Context) ;
         GB_MATRIX_FREE (&MT) ;
         return (info) ;
     }

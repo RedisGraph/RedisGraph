@@ -6,9 +6,9 @@ function X = nonzeros (G)
 % [I,J,X] = find (G) or [I,J,X] = GrB.extracttuples (G) to return those
 % entries.  This function returns the X of [I,J,X] = find (GrB.prune(G)).
 %
-% See also GrB.extracttuples, find.
+% See also GrB.extracttuples, GrB.entries, GrB.nonz, find.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 X = gbextractvalues (gbselect ('nonzero', G.opaque, struct ('kind', 'GrB'))) ;

@@ -2,7 +2,7 @@
 // GB_assign_zombie2: delete all entries in C(i,:) for GB_assign
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -24,8 +24,8 @@ void GB_assign_zombie2
     // get C
     //--------------------------------------------------------------------------
 
-    const int64_t *restrict Cp = C->p ;
-    int64_t *restrict Ci = C->i ;
+    const int64_t *GB_RESTRICT Cp = C->p ;
+    int64_t *GB_RESTRICT Ci = C->i ;
     const int64_t Cnvec = C->nvec ;
     int64_t nzombies = C->nzombies ;
     const int64_t zorig = nzombies ;
@@ -42,9 +42,10 @@ void GB_assign_zombie2
     // C(i,:) = empty
     //--------------------------------------------------------------------------
 
+    int taskid ;
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) \
         reduction(+:nzombies)
-    for (int taskid = 0 ; taskid < ntasks ; taskid++)
+    for (taskid = 0 ; taskid < ntasks ; taskid++)
     {
         int64_t kfirst, klast ;
         GB_PARTITION (kfirst, klast, Cnvec, taskid, ntasks) ;
@@ -59,7 +60,8 @@ void GB_assign_zombie2
             int64_t pC_end = Cp [k+1] ;
             int64_t pright = pC_end - 1 ;
             bool found, is_zombie ;
-            GB_BINARY_ZOMBIE (i, Ci, pC, pright, found, zorig, is_zombie) ;
+            GB_BINARY_SEARCH_ZOMBIE (i, Ci, pC, pright, found, zorig,
+                is_zombie) ;
 
             //------------------------------------------------------------------
             // if found and not a zombie, mark it as a zombie

@@ -177,15 +177,9 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromNode
 (
 	QGNode *n
 ) {
-	GrB_Matrix mat;
 	bool diagonal = true;
 	bool transpose = false;
-	Graph *g = QueryCtx_GetGraph();
-
-	if(n->labelID == GRAPH_UNKNOWN_LABEL) mat = Graph_GetZeroMatrix(g);
-	else mat = Graph_GetLabelMatrix(g, n->labelID);
-
-	return AlgebraicExpression_NewOperand(mat, diagonal, n->alias, n->alias, NULL, n->label);
+	return AlgebraicExpression_NewOperand(GrB_NULL, diagonal, n->alias, n->alias, NULL, n->label);
 }
 
 static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge

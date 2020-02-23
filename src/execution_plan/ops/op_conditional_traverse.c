@@ -191,8 +191,8 @@ static Record CondTraverseConsume(OpBase *opBase) {
 		for(op->recordsLen = 0; op->recordsLen < op->recordsCap; op->recordsLen++) {
 			Record childRecord = OpBase_Consume(child);
 			if(!childRecord) break;
-
 			// Store received record.
+			Record_PersistScalars(childRecord);
 			op->records[op->recordsLen] = childRecord;
 		}
 

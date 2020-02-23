@@ -2,7 +2,7 @@
 // GB_cast_factory: return a pointer to a typecasting function
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -10,6 +10,9 @@
 // Returns a pointer to a function f(z,x,s) that copies its input x into its
 // output z, casting as needed.  That is, it computes z = (type of z) x.
 // s is the size for user-defined types, which can only be copied.
+
+// If the operator is FIRST, SECOND, or PAIR, this function is called for the
+// cast function on the unused argument, but the result is then unused. 
 
 #include "GB.h"
 
@@ -19,14 +22,6 @@ GB_cast_function GB_cast_factory   // returns pointer to function to cast x to z
     const GB_Type_code code2       // the type of x, the input value
 )
 { 
-
-    //--------------------------------------------------------------------------
-    // check inputs
-    //--------------------------------------------------------------------------
-
-    ASSERT (GB_code_compatible (code1, code2)) ;
-    ASSERT (code1 <= GB_UDT_code) ;
-    ASSERT (code2 <= GB_UDT_code) ;
 
     //--------------------------------------------------------------------------
     // define the worker for the switch factory
@@ -48,7 +43,6 @@ GB_cast_function GB_cast_factory   // returns pointer to function to cast x to z
     // user-defined types fall through the switch factory to here
     //--------------------------------------------------------------------------
 
-    // if code1 or code2 are GB_UDT_code or GB_UCT_code
     return (&GB_copy_user_user) ;
 }
 

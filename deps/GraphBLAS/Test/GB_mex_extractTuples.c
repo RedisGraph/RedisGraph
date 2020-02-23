@@ -2,7 +2,7 @@
 // GB_mex_extractTuples: extract all tuples from a matrix or vector
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -118,7 +118,6 @@ void mexFunction
             case GB_UINT64_code : METHOD (GrB_Vector_extractTuples (I, (uint64_t *) X, &nvals, v)) ; break ;
             case GB_FP32_code   : METHOD (GrB_Vector_extractTuples (I, (float    *) X, &nvals, v)) ; break ;
             case GB_FP64_code   : METHOD (GrB_Vector_extractTuples (I, (double   *) X, &nvals, v)) ; break ;
-            case GB_UCT_code    : 
             case GB_UDT_code    : 
               METHOD (GrB_Vector_extractTuples (I, Xtemp, &nvals, v)) ; break ;
             default             : FREE_ALL ; mexErrMsgTxt ("unsupported class") ;
@@ -143,7 +142,6 @@ void mexFunction
             case GB_UINT64_code : METHOD (GrB_Matrix_extractTuples (I, J, (uint64_t *) X, &nvals, A)) ; break ;
             case GB_FP32_code   : METHOD (GrB_Matrix_extractTuples (I, J, (float    *) X, &nvals, A)) ; break ;
             case GB_FP64_code   : METHOD (GrB_Matrix_extractTuples (I, J, (double   *) X, &nvals, A)) ; break;
-            case GB_UCT_code    :
             case GB_UDT_code    :
                 METHOD (GrB_Matrix_extractTuples (I, J, Xtemp, &nvals, A)) ; break;
             default             : FREE_ALL ; mexErrMsgTxt ("unsupported class") ;

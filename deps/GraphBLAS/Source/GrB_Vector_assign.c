@@ -2,7 +2,7 @@
 // GrB_Vector_assign:    w<M>(Rows) = accum (w(Rows),u)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -28,6 +28,7 @@ GrB_Info GrB_Vector_assign          // w<M>(Rows) = accum (w(Rows),u)
     //--------------------------------------------------------------------------
 
     GB_WHERE ("GrB_Vector_assign (w, M, accum, u, Rows, nRows, desc)") ;
+    GB_BURBLE_START ("GrB_assign") ;
     GB_RETURN_IF_NULL_OR_FAULTY (w) ;
     GB_RETURN_IF_FAULTY (M) ;
     GB_RETURN_IF_NULL_OR_FAULTY (u) ;
@@ -36,26 +37,26 @@ GrB_Info GrB_Vector_assign          // w<M>(Rows) = accum (w(Rows),u)
     ASSERT (GB_VECTOR_OK (u)) ;
 
     // get the descriptor
-    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, xx1, xx2, xx3) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, Mask_struct,
+        xx1, xx2, xx3) ;
 
     //--------------------------------------------------------------------------
     // w(Rows)<M> = accum (w(Rows), u) and variations
     //--------------------------------------------------------------------------
 
-    // construct the column index list Cols = [ 0 ] of length nCols = 1
-    GrB_Index Cols [1] ;
-    Cols [0] = 0 ;
-
-    return (GB_assign (
+    info = GB_assign (
         (GrB_Matrix) w,     C_replace,  // w vector and its descriptor
-        (GrB_Matrix) M,     Mask_comp,  // mask matrix and its descriptor
+        (GrB_Matrix) M, Mask_comp, Mask_struct,  // mask and its descriptor
         false,                          // do not transpose the mask
-        accum,                          // for accum (C(Rows,Cols),A)
+        accum,                          // for accum (C(Rows,:),A)
         (GrB_Matrix) u,     false,      // u as a matrix; never transposed
         Rows, nRows,                    // row indices
-        Cols, 1,                        // one column index, nCols = 1
+        GrB_ALL, 1,                     // all column indices
         false, NULL, GB_ignore_code,    // no scalar expansion
         false, false,                   // not GrB_Col_assign nor GrB_Row_assign
-        Context)) ;
+        Context) ;
+
+    GB_BURBLE_END ;
+    return (info) ;
 }
 

@@ -2,7 +2,7 @@
 // GxB_Global_Option_set: set a global default option for all future matrices
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -66,15 +66,6 @@ GrB_Info GxB_Global_Option_set      // set a global default option
                 va_end (ap) ;
                 // if < 1, then treat it as if nthreads_max = 1
                 nthreads_max_new = GB_IMAX (1, nthreads_max_new) ;
-                if (nthreads_max_new > GxB_NTHREADS_MAX)
-                { 
-                    return (GB_ERROR (GrB_INVALID_VALUE, (GB_LOG,
-                        "nthreads_max [%d] must be < GxB_NTHREADS_MAX [%d]\n"
-                        "Recompile with a higher value of GxB_NTHREADS_MAX,\n"
-                        "using -DGxB_NTHREADS_MAX=%d (or higher, as needed)",
-                        nthreads_max_new, GxB_NTHREADS_MAX,
-                        nthreads_max_new))) ;
-                }
                 GB_Global_nthreads_max_set (nthreads_max_new) ;
             }
             break ;
@@ -86,6 +77,16 @@ GrB_Info GxB_Global_Option_set      // set a global default option
                 double chunk = va_arg (ap, double) ;
                 va_end (ap) ;
                 GB_Global_chunk_set (chunk) ;
+            }
+            break ;
+
+        case GxB_BURBLE :
+
+            {
+                va_start (ap, field) ;
+                int burble = va_arg (ap, int) ;
+                va_end (ap) ;
+                GB_Global_burble_set ((bool) burble) ;
             }
             break ;
 

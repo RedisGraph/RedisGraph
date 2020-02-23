@@ -1,4 +1,4 @@
-function [C I] = max (varargin)
+function C = max (varargin)
 %MAX Maximum elements of a GraphBLAS or MATLAB matrix.
 % C = max (G) is the largest entry in the vector G.  If G is a matrix,
 % C is a row vector with C(j) = max (G (:,j)).
@@ -17,7 +17,7 @@ function [C I] = max (varargin)
 %
 % See also min.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 G = varargin {1} ;

@@ -2,7 +2,7 @@
 // GB_subref_template: C = A(I,J), or C = pattern (A(I,J))
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -65,7 +65,7 @@
     // get A
     //--------------------------------------------------------------------------
 
-    const int64_t *restrict Ai = A->i ;
+    const int64_t *GB_RESTRICT Ai = A->i ;
     const int64_t avlen = A->vlen ;
 
     #if defined ( GB_SYMBOLIC )
@@ -73,7 +73,7 @@
     #endif
 
     #if defined ( GB_PHASE_2_OF_2 ) && defined ( GB_NUMERIC )
-    const GB_CTYPE *restrict Ax = A->x ;
+    const GB_CTYPE *GB_RESTRICT Ax = A->x ;
     const int64_t asize = A->type->size ;
     #endif
 
@@ -82,8 +82,8 @@
     //--------------------------------------------------------------------------
 
     #if defined ( GB_PHASE_2_OF_2 )
-    int64_t  *restrict Ci = C->i ;
-    GB_CTYPE *restrict Cx = C->x ;
+    int64_t  *GB_RESTRICT Ci = C->i ;
+    GB_CTYPE *GB_RESTRICT Cx = C->x ;
     #endif
 
     //--------------------------------------------------------------------------
@@ -102,8 +102,9 @@
     // phase1: count entries in each C(:,kC); phase2: compute C
     //--------------------------------------------------------------------------
 
+    int taskid ;
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-    for (int taskid = 0 ; taskid < ntasks ; taskid++)
+    for (taskid = 0 ; taskid < ntasks ; taskid++)
     {
 
         //----------------------------------------------------------------------
@@ -392,7 +393,7 @@
                         int64_t pright = pA_end - 1 ;
                         #if defined ( GB_SYMBOLIC )
                         bool is_zombie ;
-                        GB_BINARY_ZOMBIE (i, Ai, pleft, pright, found,
+                        GB_BINARY_SEARCH_ZOMBIE (i, Ai, pleft, pright, found,
                             nzombies, is_zombie) ;
                         #else
                         GB_BINARY_SEARCH (i, Ai, pleft, pright, found) ;
@@ -653,8 +654,9 @@
     #if defined ( GB_PHASE_2_OF_2 )
     if (post_sort)
     {
+        int taskid ;
         #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-        for (int taskid = 0 ; taskid < ntasks ; taskid++)
+        for (taskid = 0 ; taskid < ntasks ; taskid++)
         {
             int64_t kC = TaskList [taskid].kfirst ;
             bool do_post_sort = (TaskList [taskid].len != 0) ;

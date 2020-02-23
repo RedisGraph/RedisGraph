@@ -2,7 +2,7 @@
 // GB_unaryop:  hard-coded functions for each built-in unary operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -42,8 +42,8 @@
     z = x ;
 
 // casting
-#define GB_CASTING(z, x)   \
-    uint16_t z ; GB_CAST_UNSIGNED(z,x,16) ;
+#define GB_CASTING(z, aij) \
+    uint16_t z ; GB_CAST_UNSIGNED(z,aij,16) ;
 
 // cij = op (cast (aij))
 #define GB_CAST_OP(pC,pA)           \
@@ -51,8 +51,8 @@
     /* aij = Ax [pA] */             \
     GB_GETA (aij, Ax, pA) ;         \
     /* Cx [pC] = op (cast (aij)) */ \
-    GB_CASTING (x, aij) ;           \
-    GB_OP (GB_CX (pC), x) ;         \
+    GB_CASTING (z, aij) ;           \
+    GB_OP (GB_CX (pC), z) ;         \
 }
 
 // disable this operator and use the generic case if these conditions hold
@@ -65,8 +65,8 @@
 
 GrB_Info GB_unop__identity_uint16_fp32
 (
-    uint16_t *restrict Cx,
-    const float *restrict Ax,
+    uint16_t *Cx,       // Cx and Ax may be aliased
+    float *Ax,
     int64_t anz,
     int nthreads
 )
@@ -74,8 +74,9 @@ GrB_Info GB_unop__identity_uint16_fp32
     #if GB_DISABLE
     return (GrB_NO_VALUE) ;
     #else
+    int64_t p ;
     #pragma omp parallel for num_threads(nthreads) schedule(static)
-    for (int64_t p = 0 ; p < anz ; p++)
+    for (p = 0 ; p < anz ; p++)
     {
         GB_CAST_OP (p, p) ;
     }
@@ -91,9 +92,9 @@ GrB_Info GB_tran__identity_uint16_fp32
 (
     GrB_Matrix C,
     const GrB_Matrix A,
-    int64_t *restrict *Rowcounts,
+    int64_t *GB_RESTRICT *Rowcounts,
     GBI_single_iterator Iter,
-    const int64_t *restrict A_slice,
+    const int64_t *GB_RESTRICT A_slice,
     int naslice
 )
 { 

@@ -2,7 +2,7 @@
 // GB_control.h:  disable hard-coded functions to reduce code size
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -127,6 +127,8 @@
 
 // #define GxB_NO_FIRST     1
 // #define GxB_NO_SECOND    1
+// #define GxB_NO_PAIR      1
+// #define GxB_NO_ANY       1
 // #define GxB_NO_MIN       1
 // #define GxB_NO_MAX       1
 // #define GxB_NO_PLUS      1
@@ -198,6 +200,28 @@
 // #define GxB_NO_SECOND_FP32   1
 // #define GxB_NO_SECOND_FP64   1
 // #define GxB_NO_SECOND_BOOL   1
+
+// #define GxB_NO_PAIR_INT8     1
+// #define GxB_NO_PAIR_INT16    1
+// #define GxB_NO_PAIR_INT32    1
+// #define GxB_NO_PAIR_INT64    1
+// #define GxB_NO_PAIR_UINT8    1
+// #define GxB_NO_PAIR_UINT16   1
+// #define GxB_NO_PAIR_UINT32   1
+// #define GxB_NO_PAIR_UINT64   1
+// #define GxB_NO_PAIR_FP32     1
+// #define GxB_NO_PAIR_FP64     1
+
+// #define GxB_NO_ANY_INT8      1
+// #define GxB_NO_ANY_INT16     1
+// #define GxB_NO_ANY_INT32     1
+// #define GxB_NO_ANY_INT64     1
+// #define GxB_NO_ANY_UINT8     1
+// #define GxB_NO_ANY_UINT16    1
+// #define GxB_NO_ANY_UINT32    1
+// #define GxB_NO_ANY_UINT64    1
+// #define GxB_NO_ANY_FP32      1
+// #define GxB_NO_ANY_FP64      1
 
 // #define GxB_NO_MIN_INT8      1
 // #define GxB_NO_MIN_INT16     1
@@ -488,6 +512,10 @@
 
 // #define GxB_NO_EQ_FIRST_BOOL         1
 
+// #define GxB_NO_EQ_PAIR_BOOL          1
+
+// #define GxB_NO_EQ_ANY_BOOL           1
+
 // #define GxB_NO_EQ_GE_BOOL            1
 // #define GxB_NO_EQ_GE_FP32            1
 // #define GxB_NO_EQ_GE_FP64            1
@@ -569,6 +597,8 @@
 // #define GxB_NO_LAND_EQ_UINT8         1
 
 // #define GxB_NO_LAND_FIRST_BOOL       1
+// #define GxB_NO_LAND_PAIR_BOOL        1
+// #define GxB_NO_LAND_ANY_BOOL         1
 
 // #define GxB_NO_LAND_GE_BOOL          1
 // #define GxB_NO_LAND_GE_FP32          1
@@ -651,6 +681,8 @@
 // #define GxB_NO_LOR_EQ_UINT8          1
 
 // #define GxB_NO_LOR_FIRST_BOOL        1
+// #define GxB_NO_LOR_PAIR_BOOL         1
+// #define GxB_NO_LOR_ANY_BOOL          1
 
 // #define GxB_NO_LOR_GE_BOOL           1
 // #define GxB_NO_LOR_GE_FP32           1
@@ -732,6 +764,8 @@
 // #define GxB_NO_LXOR_EQ_UINT8         1
 
 // #define GxB_NO_LXOR_FIRST_BOOL       1
+// #define GxB_NO_LXOR_PAIR_BOOL        1
+// #define GxB_NO_LXOR_ANY_BOOL         1
 
 // #define GxB_NO_LXOR_GE_BOOL          1
 // #define GxB_NO_LXOR_GE_FP32          1
@@ -821,6 +855,28 @@
 // #define GxB_NO_MAX_FIRST_UINT32      1
 // #define GxB_NO_MAX_FIRST_UINT64      1
 // #define GxB_NO_MAX_FIRST_UINT8       1
+
+// #define GxB_NO_MAX_PAIR_FP32         1
+// #define GxB_NO_MAX_PAIR_FP64         1
+// #define GxB_NO_MAX_PAIR_INT16        1
+// #define GxB_NO_MAX_PAIR_INT32        1
+// #define GxB_NO_MAX_PAIR_INT64        1
+// #define GxB_NO_MAX_PAIR_INT8         1
+// #define GxB_NO_MAX_PAIR_UINT16       1
+// #define GxB_NO_MAX_PAIR_UINT32       1
+// #define GxB_NO_MAX_PAIR_UINT64       1
+// #define GxB_NO_MAX_PAIR_UINT8        1
+
+// #define GxB_NO_MAX_ANY_FP32          1
+// #define GxB_NO_MAX_ANY_FP64          1
+// #define GxB_NO_MAX_ANY_INT16         1
+// #define GxB_NO_MAX_ANY_INT32         1
+// #define GxB_NO_MAX_ANY_INT64         1
+// #define GxB_NO_MAX_ANY_INT8          1
+// #define GxB_NO_MAX_ANY_UINT16        1
+// #define GxB_NO_MAX_ANY_UINT32        1
+// #define GxB_NO_MAX_ANY_UINT64        1
+// #define GxB_NO_MAX_ANY_UINT8         1
 
 // #define GxB_NO_MAX_ISEQ_FP32         1
 // #define GxB_NO_MAX_ISEQ_FP64         1
@@ -1031,6 +1087,28 @@
 // #define GxB_NO_MIN_FIRST_UINT64      1
 // #define GxB_NO_MIN_FIRST_UINT8       1
 
+// #define GxB_NO_MIN_PAIR_FP32         1
+// #define GxB_NO_MIN_PAIR_FP64         1
+// #define GxB_NO_MIN_PAIR_INT16        1
+// #define GxB_NO_MIN_PAIR_INT32        1
+// #define GxB_NO_MIN_PAIR_INT64        1
+// #define GxB_NO_MIN_PAIR_INT8         1
+// #define GxB_NO_MIN_PAIR_UINT16       1
+// #define GxB_NO_MIN_PAIR_UINT32       1
+// #define GxB_NO_MIN_PAIR_UINT64       1
+// #define GxB_NO_MIN_PAIR_UINT8        1
+
+// #define GxB_NO_MIN_ANY_FP32          1
+// #define GxB_NO_MIN_ANY_FP64          1
+// #define GxB_NO_MIN_ANY_INT16         1
+// #define GxB_NO_MIN_ANY_INT32         1
+// #define GxB_NO_MIN_ANY_INT64         1
+// #define GxB_NO_MIN_ANY_INT8          1
+// #define GxB_NO_MIN_ANY_UINT16        1
+// #define GxB_NO_MIN_ANY_UINT32        1
+// #define GxB_NO_MIN_ANY_UINT64        1
+// #define GxB_NO_MIN_ANY_UINT8         1
+
 // #define GxB_NO_MIN_ISEQ_FP32         1
 // #define GxB_NO_MIN_ISEQ_FP64         1
 // #define GxB_NO_MIN_ISEQ_INT16        1
@@ -1240,6 +1318,28 @@
 // #define GxB_NO_PLUS_FIRST_UINT64     1
 // #define GxB_NO_PLUS_FIRST_UINT8      1
 
+// #define GxB_NO_PLUS_PAIR_FP32        1
+// #define GxB_NO_PLUS_PAIR_FP64        1
+// #define GxB_NO_PLUS_PAIR_INT16       1
+// #define GxB_NO_PLUS_PAIR_INT32       1
+// #define GxB_NO_PLUS_PAIR_INT64       1
+// #define GxB_NO_PLUS_PAIR_INT8        1
+// #define GxB_NO_PLUS_PAIR_UINT16      1
+// #define GxB_NO_PLUS_PAIR_UINT32      1
+// #define GxB_NO_PLUS_PAIR_UINT64      1
+// #define GxB_NO_PLUS_PAIR_UINT8       1
+
+// #define GxB_NO_PLUS_ANY_FP32         1
+// #define GxB_NO_PLUS_ANY_FP64         1
+// #define GxB_NO_PLUS_ANY_INT16        1
+// #define GxB_NO_PLUS_ANY_INT32        1
+// #define GxB_NO_PLUS_ANY_INT64        1
+// #define GxB_NO_PLUS_ANY_INT8         1
+// #define GxB_NO_PLUS_ANY_UINT16       1
+// #define GxB_NO_PLUS_ANY_UINT32       1
+// #define GxB_NO_PLUS_ANY_UINT64       1
+// #define GxB_NO_PLUS_ANY_UINT8        1
+
 // #define GxB_NO_PLUS_ISEQ_FP32        1
 // #define GxB_NO_PLUS_ISEQ_FP64        1
 // #define GxB_NO_PLUS_ISEQ_INT16       1
@@ -1448,6 +1548,28 @@
 // #define GxB_NO_TIMES_FIRST_UINT32    1
 // #define GxB_NO_TIMES_FIRST_UINT64    1
 // #define GxB_NO_TIMES_FIRST_UINT8     1
+
+// #define GxB_NO_TIMES_PAIR_FP32       1
+// #define GxB_NO_TIMES_PAIR_FP64       1
+// #define GxB_NO_TIMES_PAIR_INT16      1
+// #define GxB_NO_TIMES_PAIR_INT32      1
+// #define GxB_NO_TIMES_PAIR_INT64      1
+// #define GxB_NO_TIMES_PAIR_INT8       1
+// #define GxB_NO_TIMES_PAIR_UINT16     1
+// #define GxB_NO_TIMES_PAIR_UINT32     1
+// #define GxB_NO_TIMES_PAIR_UINT64     1
+// #define GxB_NO_TIMES_PAIR_UINT8      1
+
+// #define GxB_NO_TIMES_ANY_FP32        1
+// #define GxB_NO_TIMES_ANY_FP64        1
+// #define GxB_NO_TIMES_ANY_INT16       1
+// #define GxB_NO_TIMES_ANY_INT32       1
+// #define GxB_NO_TIMES_ANY_INT64       1
+// #define GxB_NO_TIMES_ANY_INT8        1
+// #define GxB_NO_TIMES_ANY_UINT16      1
+// #define GxB_NO_TIMES_ANY_UINT32      1
+// #define GxB_NO_TIMES_ANY_UINT64      1
+// #define GxB_NO_TIMES_ANY_UINT8       1
 
 // #define GxB_NO_TIMES_ISEQ_FP32       1
 // #define GxB_NO_TIMES_ISEQ_FP64       1

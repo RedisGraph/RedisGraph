@@ -2,7 +2,7 @@
 // GB_setElement: C(row,col) = scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -30,7 +30,7 @@
 GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
 (
     GrB_Matrix C,                   // matrix to modify
-    const void *scalar,             // scalar to set
+    void *scalar,                   // scalar to set
     const GrB_Index row,            // row index
     const GrB_Index col,            // column index
     const GB_Type_code scalar_code, // type of the scalar
@@ -75,6 +75,13 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
     // pending tuples and zombies are expected
     ASSERT (GB_PENDING_OK (C)) ; ASSERT (GB_ZOMBIES_OK (C)) ;
 
+    #if GB_BURBLE
+    bool burble = GB_Global_burble_get ( ) ;
+    double t_burble = 0 ;
+    // do not burble when waiting on scalars or empty matrices
+    burble = burble && ((C->vlen > 1) || (C->vdim > 1)) ;
+    #endif
+
     //--------------------------------------------------------------------------
     // handle the CSR/CSC format
     //--------------------------------------------------------------------------
@@ -114,7 +121,8 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
 
         // Time taken for this step is at most O(log(nnz(C(:,j))).
         const int64_t *Ci = C->i ;
-        GB_BINARY_ZOMBIE (i, Ci, pleft, pright, found, C->nzombies, is_zombie) ;
+        GB_BINARY_SEARCH_ZOMBIE (i, Ci, pleft, pright, found, C->nzombies,
+            is_zombie) ;
     }
 
     //--------------------------------------------------------------------------
@@ -134,7 +142,7 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
         // found C (i,j), assign its value
         size_t csize = ctype->size ;
         GB_void *Cx = C->x ;
-        if (scalar_code >= GB_UCT_code || scalar_code == ccode)
+        if (scalar_code >= GB_UDT_code || scalar_code == ccode)
         { 
             // copy the values without typecasting
             memcpy (Cx +(pleft*csize), scalar, csize) ;
@@ -161,7 +169,7 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
         }
 
         // the check is fine but just costly even when debugging
-        // ASSERT_OK (GB_check (C, "did C for setElement (found)", GB0)) ;
+        // ASSERT_MATRIX_OK (C, "did C for setElement (found)", GB0) ;
         return (GrB_SUCCESS) ;
     }
     else
@@ -214,8 +222,26 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
             // new tuple requires both conditions to hold.  All prior tuples
             // must be assembled before this new one can be added.
 
+            #if GB_BURBLE
+            if (burble)
+            {
+                GBBURBLE (" [ *_setElement ") ;
+                #if defined ( _OPENMP )
+                t_burble = GB_OPENMP_GET_WTIME ;
+                #endif
+            }
+            #endif
+
             // delete any lingering zombies and assemble the pending tuples
             GB_WAIT (C) ;
+
+            #if GB_BURBLE
+            if (burble)
+            {
+                GB_BURBLE_END ;
+            }
+            #endif
+
             ASSERT (C->Pending == NULL) ;
 
             // repeat the search since the C(i,j) entry may have been in
@@ -257,8 +283,30 @@ GrB_Info GB_setElement              // set a single entry, C(row,col) = scalar
         ASSERT (C->Pending->size == stype->size) ;
 
         // this assert is fine, just costly even when debugging
-        // ASSERT_OK (GB_check (C, "did C for setElement (not found)", GB0)) ;
-        return (GB_block (C, Context)) ;
+        // ASSERT_MATRIX_OK (C, "did C for setElement (not found)", GB0) ;
+
+        #if GB_BURBLE
+        // only burble if GB_wait will be called
+        burble = (burble && GB_shall_block (C)) ;
+        if (burble)
+        {
+            GBBURBLE (" [ *_setElement ") ;
+            #if defined ( _OPENMP )
+            t_burble = GB_OPENMP_GET_WTIME ;
+            #endif
+        }
+        #endif
+
+        GrB_Info info = GB_block (C, Context) ;
+
+        #if GB_BURBLE
+        if (burble)
+        {
+            GB_BURBLE_END ;
+        }
+        #endif
+
+        return (info) ;
     }
 }
 

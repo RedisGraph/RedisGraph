@@ -2,6 +2,11 @@
 // GraphBLAS/Demo/Include/usercomplex.h:  complex numbers as a user-defined type
 //------------------------------------------------------------------------------
 
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+//------------------------------------------------------------------------------
+
 #ifndef USERCOMPLEX_H
 #define USERCOMPLEX_H
 
@@ -27,7 +32,7 @@ extern
 GrB_BinaryOp Complex_first , Complex_second , Complex_min ,
              Complex_max   , Complex_plus   , Complex_minus ,
              Complex_times , Complex_div    , Complex_rdiv  ,
-             Complex_rminus ;
+             Complex_rminus, Complex_pair ;
 
 //------------------------------------------------------------------------------
 // 6 binary comparison functions, z=f(x,y), where CxC -> C
@@ -87,12 +92,7 @@ extern GrB_UnaryOp Complex_complex_real, Complex_complex_imag ;
 // Complex type, scalars, monoids, and semiring
 //------------------------------------------------------------------------------
 
-#ifdef MY_COMPLEX
-// use the pre-defined type in User/my_complex.m4
-#define Complex My_Complex
-#else
 extern GrB_Type Complex ;
-#endif
 
 extern GrB_Monoid   Complex_plus_monoid, Complex_times_monoid ;
 extern GrB_Semiring Complex_plus_times ;

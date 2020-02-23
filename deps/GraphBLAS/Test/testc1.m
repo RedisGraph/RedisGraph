@@ -1,7 +1,7 @@
 function testc1
 %TESTC1 test complex operators
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 rng 'default'
@@ -65,7 +65,7 @@ for m = [1 5 10 50 100 ]
                 op = complex_unary {k} ;
                 C1 = GB_mex_op (op, A, '',1) ;
                 [C2 tol] = GB_user_op (op, A) ;
-                GB_user_compare (C1, C2, tol) ;
+                GB_complex_compare (C1, C2, tol) ;
             end
 
             % test unary ops with real x
@@ -73,7 +73,7 @@ for m = [1 5 10 50 100 ]
                 op = complex_unary {k} ;
                 C1 = GB_mex_op (op, real (A), '',1) ;
                 [C2 tol] = GB_user_op (op, real (A)) ;
-                GB_user_compare (C1, C2, tol) ;
+                GB_complex_compare (C1, C2, tol) ;
             end
 
             for bkind = 1:6
@@ -100,7 +100,7 @@ for m = [1 5 10 50 100 ]
                     op = complex_binary {k} ;
                     C1 = GB_mex_op (op, A, B, 1) ;
                     [C2 tol] = GB_user_op (op, A, B) ;
-                    GB_user_compare (C1, C2, tol) ;
+                    GB_complex_compare (C1, C2, tol) ;
                 end
 
                 % test complex(A,B)

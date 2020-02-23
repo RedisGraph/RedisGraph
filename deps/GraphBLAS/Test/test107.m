@@ -1,6 +1,9 @@
 function test107
 %TEST107 user-defined terminal monoid
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 fprintf ('test107: reduce with built-in and  user-defined terminal monoids\n') ;
 
 rng ('default') ;
@@ -72,18 +75,18 @@ for nthreads = nthreads_list
 
     tic
     for trial = 1:ntrials
-        c2 = GB_mex_reduce_terminal (A, 1) ;    % user-defined at compile-time
+        c2 = GB_mex_reduce_terminal (A, 1) ;    % user-defined
     end
     t2 = toc ;
-    fprintf ('nthreads %3d compile-time  %g\n', nthreads, t2) ;
+    fprintf ('nthreads %3d %g\n', nthreads, t2) ;
     assert (s == c2) ;
 
     tic
     for trial = 1:ntrials
-        c3 = GB_mex_reduce_terminal (A, 2) ;        % user-defined at run-time
+        c3 = GB_mex_reduce_terminal (A, 2) ;    % user-defined
     end
     t3 = toc ;
-    fprintf ('nthreads %3d run-time      %g\n', nthreads, t3) ;
+    fprintf ('nthreads %3d %g\n', nthreads, t3) ;
     assert (s == c3) ;
 
 end
@@ -113,10 +116,10 @@ for nthreads = nthreads_list
     fprintf ('nthreads %3d built-in      %g\n', nthreads, t1) ;
     tic
     for trial = 1:ntrials
-        c2 = GB_mex_reduce_terminal (A, 1) ;    % user-defined at compile-time
+        c2 = GB_mex_reduce_terminal (A, 1) ;    % user-defined
     end
     t2 = toc ;
-    fprintf ('nthreads %3d compile-time  %g\n', nthreads, t2) ;
+    fprintf ('nthreads %3d %g\n', nthreads, t2) ;
     assert (s == c1) ;
     assert (s == c2) ;
 end
@@ -149,7 +152,7 @@ for nthreads = nthreads_list
         c2 = GB_mex_reduce_terminal (A, inf) ;
     end
     t2 = toc ;
-    fprintf ('nthreads %3d compile-time  %g\n', nthreads, t2) ;
+    fprintf ('nthreads %3d %g\n', nthreads, t2) ;
     assert (s == c1) ;
     assert (s == c2) ;
 end
@@ -182,7 +185,7 @@ for nthreads = nthreads_list
         c2 = GB_mex_reduce_terminal (A, 2) ;
     end
     t2 = toc ;
-    fprintf ('nthreads %3d compile-time  %g\n', nthreads, t2) ;
+    fprintf ('nthreads %3d %g\n', nthreads, t2) ;
     assert (s == c1) ;
     assert (s == c2) ;
 end

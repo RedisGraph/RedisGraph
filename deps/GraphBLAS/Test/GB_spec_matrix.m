@@ -65,7 +65,7 @@ function Cout = GB_spec_matrix (Cin, identity)
 % must first be passed to this function, C0=GB_spec_matrix(C0,identity) and
 % then C0 and C1 should be identical.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 % get the semiring addititive identity, if present

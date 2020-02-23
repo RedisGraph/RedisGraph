@@ -2,7 +2,7 @@
 // SuiteSparse/GraphBLAS/Demo/Source/import_test: test import/export
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -15,7 +15,7 @@
 
 #define FREE_ALL                    \
 {                                   \
-    GrB_free (C_handle) ;           \
+    GrB_Matrix_free (C_handle) ;           \
     if (Ap != NULL) free (Ap) ;     \
     if (Ah != NULL) free (Ah) ;     \
     if (Ai != NULL) free (Ai) ;     \

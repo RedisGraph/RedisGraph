@@ -1,7 +1,7 @@
 function test35
 %TEST35 test GrB_*_extractTuples
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\n test35 ---------------------- quick test of GrB_extractTuples\n') ;

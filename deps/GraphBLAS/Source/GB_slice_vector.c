@@ -2,7 +2,7 @@
 // GB_slice_vector:  slice a vector for GB_add, GB_emult, and GB_mask
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -52,14 +52,14 @@ void GB_slice_vector
     // input:
     const int64_t pM_start,         // M(:,kM) starts at pM_start in Mi,Mx
     const int64_t pM_end,           // M(:,kM) ends at pM_end-1 in Mi,Mx
-    const int64_t *restrict Mi,     // indices of M (or NULL)
+    const int64_t *GB_RESTRICT Mi,     // indices of M (or NULL)
     const int64_t pA_start,         // A(:,kA) starts at pA_start in Ai,Ax
     const int64_t pA_end,           // A(:,kA) ends at pA_end-1 in Ai,Ax
-    const int64_t *restrict Ai,     // indices of A
+    const int64_t *GB_RESTRICT Ai,     // indices of A
     const int64_t A_hfirst,         // if Ai is an implicit hyperlist
     const int64_t pB_start,         // B(:,kB) starts at pB_start in Bi,Bx
     const int64_t pB_end,           // B(:,kB) ends at pB_end-1 in Bi,Bx
-    const int64_t *restrict Bi,     // indices of B
+    const int64_t *GB_RESTRICT Bi,     // indices of B
     const int64_t vlen,             // A->vlen and B->vlen
     const double target_work        // target work
 )
@@ -87,7 +87,6 @@ void GB_slice_vector
     bool a_empty = (aknz == 0) ;
     bool b_empty = (bknz == 0) ;
     bool m_empty = (mknz == 0) ;
-    // printf ("empty a %d b %d m %d\n", a_empty, b_empty, m_empty) ;
 
     int64_t pM = (m_empty) ? -1 : pM_start ;
     int64_t pA = (a_empty) ? -1 : pA_start ;
@@ -104,8 +103,6 @@ void GB_slice_vector
         //----------------------------------------------------------------------
 
         i = (ileft + iright) / 2 ;
-        // printf ("   slice vector i "GBd" in ["GBd" to "GBd"]\n", i, ileft,
-        //     iright) ;
 
         //----------------------------------------------------------------------
         // find where i appears in A(:,kA)
@@ -151,7 +148,7 @@ void GB_slice_vector
             pA = pA_start ;
             bool afound ;
             int64_t apright = pA_end - 1 ;
-            GB_BINARY_SPLIT_SEARCH (i, Ai, pA, apright, afound) ;
+            GB_SPLIT_BINARY_SEARCH (i, Ai, pA, apright, afound) ;
             ASSERT (GB_IMPLIES (afound, GB_Ai (pA) == i)) ;
             ASSERT (pA_start <= pA && pA <= pA_end) ;
         }
@@ -189,14 +186,12 @@ void GB_slice_vector
         else
         { 
             // B(:,kB) is sparse, and not empty
-            // printf ("i is "GBd" bknz "GBd"\n", i, bknz) ;
             ASSERT (bknz > 0) ;
             pB = pB_start ;
             bool bfound ;
             int64_t bpright = pB_end - 1 ;
-            GB_BINARY_SPLIT_SEARCH (i, Bi, pB, bpright, bfound) ;
+            GB_SPLIT_BINARY_SEARCH (i, Bi, pB, bpright, bfound) ;
             ASSERT (pB_start <= pB && pB <= pB_end) ;
-            // printf ("pB "GBd" bfound %d\n", pB, bfound) ;
         }
         ASSERT (GB_IMPLIES (pB >  pB_start && pB < pB_end, (Bi [pB-1] < i))) ;
         ASSERT (GB_IMPLIES (pB >= pB_start && pB < pB_end, (Bi [pB] >= i ))) ;
@@ -219,7 +214,6 @@ void GB_slice_vector
 
         double work = (a_empty ? 0 : (pA_end - pA))
                     + (b_empty ? 0 : (pB_end - pB)) ;
-        // printf ("    work %g target %g\n", work, target_work) ;
 
         if (work < 0.9999 * target_work)
         { 
@@ -266,8 +260,6 @@ void GB_slice_vector
     // find where i appears in M(:,kM)
     //--------------------------------------------------------------------------
 
-    // printf ("sliced at i "GBd" pA "GBd" pB "GBd"\n", i, pA, pB) ;
-
     if (m_empty)
     { 
         pM = -1 ;
@@ -285,9 +277,8 @@ void GB_slice_vector
         pM = pM_start ;
         bool mfound ;
         int64_t mpright = pM_end - 1 ;
-        GB_BINARY_SPLIT_SEARCH (i, Mi, pM, mpright, mfound) ;
+        GB_SPLIT_BINARY_SEARCH (i, Mi, pM, mpright, mfound) ;
     }
-    // printf ("pM "GBd"\n", pM) ;
 
     //--------------------------------------------------------------------------
     // return result
@@ -302,9 +293,6 @@ void GB_slice_vector
     ASSERT (GB_IMPLIES ((pA >= pA_start && pA < pA_end), GB_Ai (pA  ) >= i)) ;
     ASSERT (GB_IMPLIES ((pB >  pB_start && pB < pB_end), Bi [pB-1] <  i)) ;
     ASSERT (GB_IMPLIES ((pB >= pB_start && pB < pB_end), Bi [pB  ] >= i)) ;
-
-    // printf ("sliced vector: i "GBd" pA "GBd" pB "GBd" pM "GBd"\n",
-    //     i, pA, pM, pB) ;
 
     if (p_i != NULL)
     { 

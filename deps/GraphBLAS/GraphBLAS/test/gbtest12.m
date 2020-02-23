@@ -1,7 +1,7 @@
 function gbtest12
 %GBTEST12 test GrB.eadd, GrB.emult
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 rng ('default') ;
@@ -12,7 +12,7 @@ C = A+B ;
 D = A.*B ;
 
 G = GrB.eadd ('+', A, B) ;
-err = norm (C-G, 1)
+err = norm (C-G, 1) %#ok<*NOPRT>
 assert (logical (err < 1e-12))
 
 H = GrB.emult ('*', A, B) ;
@@ -35,7 +35,7 @@ assert (logical (err < 1e-12))
 
 d.kind = 'GrB' ;
 G = GrB.eadd ('+', A, B, d) ;
-err = norm (C-G, 1)
+err = norm (C-G, 1) %#ok<*NASGU>
 
 H = GrB.emult ('*', A, B, d) ;
 err = norm (D-H, 1)
@@ -43,7 +43,7 @@ err = norm (D-H, 1)
 E = sparse (rand (2)) ;
 C = E + A+B ;
 G = GrB.eadd (E, '+', '+', A, B) ;
-C-G
+C-G %#ok<*MNEFF>
 
 F = sparse (rand (2)) ;
 D = F + A.*B ;

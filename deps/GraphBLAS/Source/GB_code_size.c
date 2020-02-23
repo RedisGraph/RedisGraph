@@ -2,7 +2,7 @@
 // GB_code_size: given a type code, return sizeof (type)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -31,7 +31,6 @@ size_t GB_code_size             // return the size of a type, given its code
         case GB_UINT64_code : return (sizeof (uint64_t)) ;
         case GB_FP32_code   : return (sizeof (float))    ;
         case GB_FP64_code   : return (sizeof (double))   ;
-        case GB_UCT_code    :
         case GB_UDT_code    : return (usize) ;
         default             : return (0) ;
     }

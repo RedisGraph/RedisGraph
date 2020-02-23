@@ -2,7 +2,7 @@
 // GB_reduce_to_scalar_template: s=reduce(A), reduce a matrix to a scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -16,7 +16,7 @@
     // get A
     //--------------------------------------------------------------------------
 
-    const GB_ATYPE *restrict Ax = A->x ;
+    const GB_ATYPE *GB_RESTRICT Ax = A->x ;
     int64_t anz = GB_NNZ (A) ;
     ASSERT (anz > 0) ;
 
@@ -51,8 +51,9 @@
 
         bool early_exit = false ;
 
+        int tid ;
         #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-        for (int tid = 0 ; tid < ntasks ; tid++)
+        for (tid = 0 ; tid < ntasks ; tid++)
         {
             int64_t pstart, pend ;
             GB_PARTITION (pstart, pend, anz, tid, ntasks) ;

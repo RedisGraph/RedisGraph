@@ -1,7 +1,7 @@
 function gbtest28
 %GBTEST28 test GrB.build
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\ngbtest28: testing GrB.build and compare with A=sparse(i,j,x)\n') ;
@@ -13,7 +13,7 @@ m = 10 ;
 n = 5 ;
 A = sprand (m, n, 0.5) ;
 
-[i j x] = find (A) ;
+[i, j, x] = find (A) ;
 
 C = GrB.build (i, j, x, m, n) ;
 
@@ -32,8 +32,8 @@ t = toc ;
 n = size (A, 1) ;
 fprintf ('%12.4f sec : A n-by-n, whth n: %g nnz: %g\n', t, n, nnz (A)) ;
 
-[i j x] = find (A) ;
-[m n] = size (A) ;
+[i, j, x] = find (A) ;
+[m, n] = size (A) ;
 
 i0 = uint64 (i) - 1 ;
 j0 = uint64 (j) - 1 ;

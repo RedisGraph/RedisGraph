@@ -2,7 +2,7 @@
 // gbeadd: sparse matrix addition
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -115,7 +115,7 @@ void mexFunction
     { 
         // get the descriptor contents to determine if A is transposed
         GrB_Desc_Value in0 ;
-        OK (GxB_get (desc, GrB_INP0, &in0)) ;
+        OK (GxB_Desc_get (desc, GrB_INP0, &in0)) ;
         bool A_transpose = (in0 == GrB_TRAN) ;
 
         // get the size of A
@@ -132,23 +132,23 @@ void mexFunction
 
         OK (GrB_Matrix_new (&C, ctype, cnrows, cncols)) ;
         fmt = gb_get_format (cnrows, cncols, A, B, fmt) ;
-        OK (GxB_set (C, GxB_FORMAT, fmt)) ;
+        OK (GxB_Matrix_Option_set (C, GxB_FORMAT, fmt)) ;
     }
 
     //--------------------------------------------------------------------------
     // compute C<M> += A+B
     //--------------------------------------------------------------------------
 
-    OK (GrB_eWiseAdd (C, M, accum, op, A, B, desc)) ;
+    OK (GrB_eWiseAdd_Matrix_BinaryOp (C, M, accum, op, A, B, desc)) ;
 
     //--------------------------------------------------------------------------
     // free shallow copies
     //--------------------------------------------------------------------------
 
-    OK (GrB_free (&M)) ;
-    OK (GrB_free (&A)) ;
-    OK (GrB_free (&B)) ;
-    OK (GrB_free (&desc)) ;
+    OK (GrB_Matrix_free (&M)) ;
+    OK (GrB_Matrix_free (&A)) ;
+    OK (GrB_Matrix_free (&B)) ;
+    OK (GrB_Descriptor_free (&desc)) ;
 
     //--------------------------------------------------------------------------
     // export the output matrix C back to MATLAB

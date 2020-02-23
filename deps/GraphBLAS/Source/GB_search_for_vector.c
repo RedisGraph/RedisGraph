@@ -2,7 +2,7 @@
 // GB_search_for_vector: find the vector k that contains p
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -15,7 +15,7 @@
 int64_t GB_search_for_vector        // return the vector k that contains p
 (
     const int64_t p,                // search for vector k that contains p
-    const int64_t *restrict Ap,     // vector pointers to search
+    const int64_t *GB_RESTRICT Ap,     // vector pointers to search
     int64_t kleft,                  // left-most k to search
     int64_t anvec                   // Ap is of size anvec+1
 )
@@ -34,7 +34,7 @@ int64_t GB_search_for_vector        // return the vector k that contains p
     int64_t k = kleft ;
     int64_t kright = anvec ;
     bool found ;
-    GB_BINARY_SPLIT_SEARCH (p, Ap, k, kright, found) ;
+    GB_SPLIT_BINARY_SEARCH (p, Ap, k, kright, found) ;
     if (found)
     {
         // Ap [k] == p has been found, but if k is an empty vector, then the

@@ -2,18 +2,22 @@
 # GraphBLAS/alternative/Makefile
 #-------------------------------------------------------------------------------
 
-#  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+#  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 #  http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 #-------------------------------------------------------------------------------
 
+VER1 = 3
+VER2 = 2
+VER3 = 0
+
 # pick your compiler:
-# CC = gcc
+  CC = gcc
 # CC = cc
 # CC = clang
 # CC = xlc
 # CC = gcc-8
-  CC = icc -mp1
+# CC = icc -mp1
 
 # note that -mp1 is essential for icc, for proper Inf and NaN behavior.
 
@@ -21,8 +25,8 @@ SRC = ../Source/*.c ../Source/Generated/*.c
 INC = ../Include/*.h ../Source/*.h ../Source/Template/* ../Source/Generated/*.h ../Source/Generator/*.h 
 SRC2 = $(notdir $(wildcard $(SRC)))
 OBJ = $(SRC2:.c=.o)
-LDFLAGS = -fopenmp
-CFLAGS = -O3 -std=c11 -fopenmp -fexceptions -fPIC
+LDFLAGS = -fopenmp -lm
+CFLAGS = -O3 -std=c11 -fopenmp -fexceptions -fPIC -DUSER_OPENMP_THREADS
 CPPFLAGS = -I../Include -I../Source -I../Source/Template -I../Source/Generated -I../Source/Generator
 SO_OPTS = $(LDFLAGS)
 
@@ -30,12 +34,16 @@ UNAME := $(shell uname)
 ifeq ($(UNAME),Darwin)
     # Mac
     CFLAGS += -fno-common
-    SO_NAME = libgraphblas.dylib
+    SO_NAME = libgraphblas.dylib.$(VER1).$(VER2).$(VER3)
+    SO_NAME0 = libgraphblas.dylib
+    SO_NAME1 = libgraphblas.dylib.$(VER1)
     SO_OPTS += -dynamiclib -shared -undefined dynamic_lookup
 else
     # Linux
-    SO_NAME = libgraphblas.so
-    SO_OPTS += -shared -Wl,-soname -Wl,$(SO_NAME) -Wl,--no-undefined
+    SO_NAME = libgraphblas.so.$(VER1).$(VER2).$(VER3)
+    SO_NAME0 = libgraphblas.so
+    SO_NAME1 = libgraphblas.so.$(VER1)
+    SO_OPTS += -shared -Wl,-soname -Wl,$(SO_NAME)
 endif
 
 %.o: ../Source/%.c $(INC)
@@ -58,8 +66,10 @@ libgraphblas.a: $(OBJ)
 	- ranlib $@
 
 install: $(SO_NAME)
-	$(CP) $(SO_NAME) /usr/local/lib
-	$(CP) ../Include/GraphBLAS.h  /usr/local/include
+	cp $(SO_NAME) /usr/local/lib
+	ln -s $(SO_NAME) /usr/local/lib/$(SO_NAME0)
+	ln -s $(SO_NAME) /usr/local/lib/$(SO_NAME1)
+	cp ../Include/GraphBLAS.h  /usr/local/include
 
 DINC = ../Demo/Include/*.h $(INC)
 DSRC = ../Demo/Source/*.c

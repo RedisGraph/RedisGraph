@@ -2,13 +2,14 @@
 // GB_apply_op: typecast and apply a unary operator to an array
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
 // Cx = op ((xtype) Ax)
 
+// Cx and Ax may be aliased.
 // Compare with GB_transpose_op.c
 
 #include "GB_apply.h"
@@ -19,11 +20,11 @@
 
 void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
 (
-    GB_void *restrict Cx,           // output array, of type op->ztype
-    const GrB_UnaryOp op,           // operator to apply
-    const GB_void *restrict Ax,     // input array, of type Atype
-    const GrB_Type Atype,           // type of Ax
-    const int64_t anz,              // size of Ax and Cx
+    GB_void *Cx,                // output array, of type op->ztype
+    const GrB_UnaryOp op,       // operator to apply
+    const GB_void *Ax,          // input array, of type Atype
+    const GrB_Type Atype,       // type of Ax
+    const int64_t anz,          // size of Ax and Cx
     GB_Context Context
 )
 {
@@ -60,7 +61,7 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
     #define GB_WORKER(op,zname,ztype,aname,atype)                           \
     {                                                                       \
         GrB_Info info = GB_unop (op,zname,aname) ((ztype *) Cx,             \
-            (const atype *) Ax, anz, nthreads) ;                            \
+            (atype *) Ax, anz, nthreads) ;                                  \
         if (info == GrB_SUCCESS) return ;                                   \
     }                                                                       \
     break ;
@@ -77,6 +78,8 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
     // generic worker: typecast and apply an operator
     //--------------------------------------------------------------------------
 
+    GB_BURBLE_N (anz, "generic ") ;
+
     size_t asize = Atype->size ;
     size_t zsize = op->ztype->size ;
     size_t xsize = op->xtype->size ;
@@ -84,11 +87,12 @@ void GB_apply_op            // apply a unary operator, Cx = op ((xtype) Ax)
         cast_A_to_X = GB_cast_factory (op->xtype->code, Atype->code) ;
     GxB_unary_function fop = op->function ;
 
+    int64_t p ;
     #pragma omp parallel for num_threads(nthreads) schedule(static)
-    for (int64_t p = 0 ; p < anz ; p++)
+    for (p = 0 ; p < anz ; p++)
     { 
         // xwork = (xtype) Ax [p]
-        GB_void xwork [GB_PGI(xsize)] ;
+        GB_void xwork [GB_VLA(xsize)] ;
         cast_A_to_X (xwork, Ax +(p*asize), asize) ;
         // Cx [p] = fop (xwork)
         fop (Cx +(p*zsize), xwork) ;

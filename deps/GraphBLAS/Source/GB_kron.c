@@ -2,7 +2,7 @@
 // GB_kron: C<M> = accum (C, kron(A,B))
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -21,6 +21,7 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     const bool C_replace,           // if true, clear C before writing to it
     const GrB_Matrix M,             // optional mask for C, unused if NULL
     const bool Mask_comp,           // if true, use !M
+    const bool Mask_struct,         // if true, use the only structure of M
     const GrB_BinaryOp accum,       // optional accum for Z=accum(C,T)
     const GrB_BinaryOp op,          // defines '*' for kron(A,B)
     const GrB_Matrix A,             // input matrix
@@ -44,12 +45,12 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     GB_RETURN_IF_NULL_OR_FAULTY (op) ;
     GB_RETURN_IF_FAULTY (accum) ;
 
-    ASSERT_OK (GB_check (C, "C input for GB_kron", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_kron", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_kron", GB0)) ;
-    ASSERT_OK (GB_check (op, "op for GB_kron", GB0)) ;
-    ASSERT_OK (GB_check (A, "A for GB_kron", GB0)) ;
-    ASSERT_OK (GB_check (B, "B for GB_kron", GB0)) ;
+    ASSERT_MATRIX_OK (C, "C input for GB_kron", GB0) ;
+    ASSERT_MATRIX_OK_OR_NULL (M, "M for GB_kron", GB0) ;
+    ASSERT_BINARYOP_OK_OR_NULL (accum, "accum for GB_kron", GB0) ;
+    ASSERT_BINARYOP_OK (op, "op for GB_kron", GB0) ;
+    ASSERT_MATRIX_OK (A, "A for GB_kron", GB0) ;
+    ASSERT_MATRIX_OK (B, "B for GB_kron", GB0) ;
 
     // check domains and dimensions for C<M> = accum (C,T)
     GrB_Info info = GB_compatible (C->type, C, M, accum, op->ztype, Context) ;
@@ -121,13 +122,14 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     {
         // AT = A' and typecast to op->xtype
         // transpose: typecast, no op, not in place
+        GBBURBLE ("(A transpose) ") ;
         info = GB_transpose (&AT, op->xtype, is_csc, A, NULL, Context) ;
         if (info != GrB_SUCCESS)
         { 
             return (info) ;
         }
-        ASSERT_OK (GB_check (A , "A after AT kron", GB0)) ;
-        ASSERT_OK (GB_check (AT, "AT kron", GB0)) ;
+        ASSERT_MATRIX_OK (A , "A after AT kron", GB0) ;
+        ASSERT_MATRIX_OK (AT, "AT kron", GB0) ;
     }
 
     GrB_Matrix BT = NULL ;
@@ -135,13 +137,14 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
     {
         // BT = B' and typecast to op->ytype
         // transpose: typecast, no op, not in place
+        GBBURBLE ("(B transpose) ") ;
         info = GB_transpose (&BT, op->ytype, is_csc, B, NULL, Context) ;
         if (info != GrB_SUCCESS)
         { 
             GB_MATRIX_FREE (&AT) ;
             return (info) ;
         }
-        ASSERT_OK (GB_check (BT, "BT kron", GB0)) ;
+        ASSERT_MATRIX_OK (BT, "BT kron", GB0) ;
     }
 
     //--------------------------------------------------------------------------
@@ -161,13 +164,13 @@ GrB_Info GB_kron                    // C<M> = accum (C, kron(A,B))
         return (info) ;
     }
 
-    ASSERT_OK (GB_check (T, "T = kron(A,B)", GB0)) ;
+    ASSERT_MATRIX_OK (T, "T = kron(A,B)", GB0) ;
 
     //--------------------------------------------------------------------------
     // C<M> = accum (C,T): accumulate the results into C via the mask
     //--------------------------------------------------------------------------
 
     return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp,
-        Context)) ;
+        Mask_struct, Context)) ;
 }
 

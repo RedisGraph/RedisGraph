@@ -2,13 +2,10 @@
 // GB_SelectOp_check: check and print a select operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
-
-// for additional diagnostics, use:
-// #define GB_DEVELOPER 1
 
 #include "GB_printf.h"
 
@@ -44,13 +41,9 @@ GrB_Info GB_SelectOp_check  // check a GraphBLAS select operator
 
     if (pr > 0)
     {
-        if (op->opcode == GB_USER_SELECT_C_opcode)
+        if (op->opcode >= GB_USER_SELECT_opcode)
         { 
-            GBPR ("(compile-time user-defined) ") ;
-        }
-        else if (op->opcode == GB_USER_SELECT_R_opcode)
-        { 
-            GBPR ("(run-time user-defined) ") ;
+            GBPR ("(user-defined) ") ;
         }
         else
         { 
@@ -60,7 +53,7 @@ GrB_Info GB_SelectOp_check  // check a GraphBLAS select operator
 
     GBPR0 ("C=%s(A,k)\n", op->name) ;
 
-    if (op->function == NULL && op->opcode >= GB_USER_SELECT_C_opcode)
+    if (op->function == NULL && op->opcode >= GB_USER_SELECT_opcode)
     { 
         GBPR0 ("    function pointer is NULL\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
@@ -68,7 +61,7 @@ GrB_Info GB_SelectOp_check  // check a GraphBLAS select operator
             GB_NAME, op->name))) ;
     }
 
-    if (op->opcode < GB_TRIL_opcode || op->opcode > GB_USER_SELECT_R_opcode)
+    if (op->opcode < GB_TRIL_opcode || op->opcode > GB_USER_SELECT_opcode)
     { 
         GBPR0 ("    invalid opcode\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,

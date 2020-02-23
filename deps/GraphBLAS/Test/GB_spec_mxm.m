@@ -43,7 +43,7 @@ function C = GB_spec_mxm (C, Mask, accum, semiring, A, B, descriptor)
 % C<Mask> = accum (C,T).  See GrB_accum_mask for a description of this
 % last step.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 %-------------------------------------------------------------------------------
@@ -57,12 +57,15 @@ end
 % Convert inputs to dense matrices with explicit patterns and classes,
 % and with where X(~X.pattern)==identity for all matrices A, B, and C.
 [multiply add identity tclass] = GB_spec_semiring (semiring) ;
+if (isempty (identity))
+    identity = 0 ;
+end
 C = GB_spec_matrix (C, identity) ;
 A = GB_spec_matrix (A, identity) ;
 B = GB_spec_matrix (B, identity) ;
-% Mask is a dense logical matrix, not a struct
-Mask = GB_spec_getmask (Mask) ;
-[C_replace Mask_comp Atrans Btrans] = GB_spec_descriptor (descriptor) ;
+[C_replace Mask_comp Atrans Btrans Mask_struct] = ...
+    GB_spec_descriptor (descriptor) ;
+Mask = GB_spec_getmask (Mask, Mask_struct) ;
 
 %-------------------------------------------------------------------------------
 % do the work via a clean MATLAB interpretation of the entire GraphBLAS spec
@@ -106,3 +109,4 @@ end
 
 % C<Mask> = accum (C,T): apply the accum, then Mask, and return the result
 C = GB_spec_accum_mask (C, Mask, accum, T, C_replace, Mask_comp, identity) ;
+

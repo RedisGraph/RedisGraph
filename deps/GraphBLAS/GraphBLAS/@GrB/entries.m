@@ -13,8 +13,8 @@ function result = entries (A, varargin)
 %
 % e = GrB.entries (A)         number of entries
 % e = GrB.entries (A, 'all')  number of entries
-% e = GrB.entries (A, 'row')  number of rows with at least one entries
-% e = GrB.entries (A, 'col')  number of columns with at least one entries
+% e = GrB.entries (A, 'row')  number of rows with at least one entry
+% e = GrB.entries (A, 'col')  number of columns with at least one entry
 %
 % X = GrB.entries (A, 'list')         list of values of unique entries
 % X = GrB.entries (A, 'all', 'list')  list of values of unique entries
@@ -49,10 +49,8 @@ function result = entries (A, varargin)
 %
 % See also GrB.nonz, nnz, GrB/nnz, nonzeros, GrB/nonzeros.
 
-% FUTURE: if A is stored by row, then the row degree can be found quickly,
-% in a mexFunction that accesses A->p and A->h.  If stored by col, then
-% the col degree is the same thing.  Write a mexFunction that computes
-% the vector degree (by row or by column).
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 % get the string arguments
 dim = 'all' ;           % 'all', 'row', or 'col'
@@ -70,14 +68,19 @@ for k = 1:nargin-1
 end
 
 if (isequal (dim, 'all'))
+
     switch kind
         case 'count'
+            % number of entries in A
+            % e = GrB.entries (A)
             if (isa (A, 'GrB'))
                 result = gbnvals (A.opaque) ;
             else
                 result = gbnvals (A) ;
             end
         case 'list'
+            % list of values of unique entries
+            % X = GrB.entries (A, 'list')
             if (isa (A, 'GrB'))
                 result = unique (gbextractvalues (A.opaque)) ;
             else
@@ -86,18 +89,34 @@ if (isequal (dim, 'all'))
         otherwise
             gb_error ('''all'' and ''degree'' cannot be combined') ;
     end
+
 else
-    desc = struct ;
-    if (isequal (dim, 'col'))
-        desc.in0 = 'transpose' ;
+
+    % get the row or column degree
+    f = GrB.format (A) ;
+    native = (isequal (f, 'by row') && isequal (dim, 'row')) || ...
+             (isequal (f, 'by col') && isequal (dim, 'col')) ;
+    if (isa (A, 'GrB'))
+        degree = GrB (gbdegree (A.opaque, native)) ;
+    else
+        degree = GrB (gbdegree (A, native)) ;
     end
-    degree = GrB.vreduce ('+', GrB.apply ('1.double', A), desc) ;
+
     switch kind
         case 'count'
-            result = GrB.entries (degree) ;
+            % number of non-empty rows/cols
+            % e = GrB.entries (A, 'row')
+            % e = GrB.entries (A, 'col')
+            result = nnz (degree) ;
         case 'list'
+            % list of non-empty rows/cols
+            % I = GrB.entries (A, 'row', 'list')
+            % J = GrB.entries (A, 'col', 'list')
             result = find (degree) ;
         case 'degree'
+            % degree of all rows/cols
+            % d = GrB.entries (A, 'row', 'degree')
+            % d = GrB.entries (A, 'col', 'degree')
             result = degree ;
     end
 end

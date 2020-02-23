@@ -116,7 +116,7 @@ static void _CommitUpdates(OpUpdate *op) {
 		} else {
 			_UpdateEdge(op, ctx);
 		}
-		SIValue_Free(&ctx->new_value);
+		SIValue_Free(ctx->new_value);
 	}
 
 	if(op->stats) op->stats->properties_set += op->pending_updates_count;

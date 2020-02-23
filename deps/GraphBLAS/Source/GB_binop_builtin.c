@@ -2,7 +2,7 @@
 // GB_binop_builtin:  determine if a binary operator is built-in
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -10,7 +10,7 @@
 // Determine if A*B uses a built-in semiring, and if so, determine the
 // opcodes and type codes of the semiring.
 
-// If the op is NULL, then it is the implicit GrB_SECOND_[A->type] operator.
+// If the op is NULL, then it is the implicit GrB_SECOND_[A_type] operator.
 // This is a built-in operator for built-in types.  This feature is only used
 // by GB_wait.
 
@@ -21,9 +21,9 @@
 bool GB_binop_builtin               // true if binary operator is builtin
 (
     // inputs:
-    const GrB_Matrix A,
+    const GrB_Type A_type,
     const bool A_is_pattern,        // true if only the pattern of A is used
-    const GrB_Matrix B,
+    const GrB_Type B_type,
     const bool B_is_pattern,        // true if only the pattern of B is used
     const GrB_BinaryOp op,          // binary operator; may be NULL
     const bool flipxy,              // true if z=op(y,x), flipping x and y
@@ -47,11 +47,11 @@ bool GB_binop_builtin               // true if binary operator is builtin
     GrB_Type op_xtype, op_ytype, op_ztype ;
     if (op == NULL)
     { 
-        ASSERT (A->type == B->type) ;
+        ASSERT (A_type == B_type) ;
         (*opcode) = GB_SECOND_opcode ;
-        op_xtype = A->type ;
-        op_ytype = A->type ;
-        op_ztype = A->type ;
+        op_xtype = A_type ;
+        op_ytype = A_type ;
+        op_ztype = A_type ;
     }
     else
     { 
@@ -66,8 +66,8 @@ bool GB_binop_builtin               // true if binary operator is builtin
     // doesn't hold, punt to the generic function.
     if (!A_is_pattern)
     {
-        if ((A->type != (flipxy ? op_ytype : op_xtype)) ||
-            (A->type->code >= GB_UCT_code))
+        if ((A_type != (flipxy ? op_ytype : op_xtype)) ||
+            (A_type->code >= GB_UDT_code))
         { 
             // A is a user-defined type, or its type does not match the input
             // to the operator
@@ -77,8 +77,8 @@ bool GB_binop_builtin               // true if binary operator is builtin
 
     if (!B_is_pattern)
     {
-        if ((B->type != (flipxy ? op_xtype : op_ytype)) ||
-            (B->type->code >= GB_UCT_code))
+        if ((B_type != (flipxy ? op_xtype : op_ytype)) ||
+            (B_type->code >= GB_UDT_code))
         { 
             // B is a user-defined type, or its type does not match the input
             // to the operator
@@ -88,14 +88,14 @@ bool GB_binop_builtin               // true if binary operator is builtin
 
     if (!A_is_pattern && !B_is_pattern)
     {
-        if (A->type != B->type)
+        if (A_type != B_type)
         { 
             // the types of A and B must match
             return (false) ;
         }
     }
 
-    if (*opcode >= GB_USER_C_opcode)
+    if (*opcode >= GB_USER_opcode)
     { 
         // the binary operator is user-defined
         return (false) ;

@@ -1,6 +1,9 @@
 function test138
 %TEST138 test assign, with coarse-only tasks in IxJ slice
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 rng ('default') ;
 
 [save_nthreads save_chunk] = nthreads_get ;
