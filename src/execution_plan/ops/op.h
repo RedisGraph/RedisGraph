@@ -52,6 +52,9 @@ typedef enum {
 	OPType_AND_APPLY_MULTIPLEXER,
 } OPType;
 
+// Bitmask matching all Apply operations.
+#define APPLY_OPS (OPType_OR_APPLY_MULTIPLEXER | OPType_AND_APPLY_MULTIPLEXER | OPType_SEMI_APPLY | OpType_ANTI_SEMI_APPLY)
+
 typedef enum {
 	OP_DEPLETED = 1,
 	OP_REFRESH = 2,

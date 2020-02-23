@@ -129,6 +129,10 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan);
 void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 									  const OpBase *upper_bound, OpBase *filter);
 
+/* Re position filter op. */
+void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
+									  const OpBase *upper_bound, OpBase *filter);
+
 // TODO: Remove this once filter are placed after their respective clause.
 /* Place filter ops*/
 void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_limit);
