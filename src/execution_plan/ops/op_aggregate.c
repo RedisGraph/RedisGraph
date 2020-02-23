@@ -142,9 +142,8 @@ static void _aggregateRecord(OpAggregate *op, Record r) {
 		AR_ExpNode *exp = group->aggregationFunctions[i];
 		AR_EXP_Aggregate(exp, r);
 	}
-
-	/* Free record, incase it is not group representative.
-	 * group representative will be freed once group is freed. */
+	
+	// Free record.
 	OpBase_DeleteRecord(r);
 }
 
