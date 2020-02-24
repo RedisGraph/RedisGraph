@@ -188,12 +188,13 @@ void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g, char **string_mapping) {
 	// #edges (N)
 	RedisModule_SaveUnsigned(rdb, Graph_EdgeCount(g));
 
-	for(int r = 0; r < array_len(g->_relations_map); r++) {
+	int relationship_count = Graph_RelationTypeCount(g);
+	for(int r = 0; r < relationship_count; r++) {
 		Edge e;
 		NodeID src;
 		NodeID dest;
 		EdgeID edgeID;
-		GrB_Matrix M = Graph_GetRelationMap(g, r);
+		GrB_Matrix M = Graph_GetRelationMatrix(g, r);
 		GxB_MatrixTupleIter *it;
 		GxB_MatrixTupleIter_new(&it, M);
 		bool depleted = false;
