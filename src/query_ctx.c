@@ -145,6 +145,11 @@ ResultSetStatistics *QueryCtx_GetResultSetStatistics(void) {
 	return &ctx->internal_exec_ctx.result_set->stats;
 }
 
+void QueryCtx_PrintQuery(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	printf("%s\n", ctx->query_data.query);
+}
+
 static void _QueryCtx_ThreadSafeContextLock(QueryCtx *ctx) {
 	if(ctx->global_exec_ctx.bc) RedisModule_ThreadSafeContextLock(ctx->global_exec_ctx.redis_ctx);
 }
