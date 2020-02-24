@@ -875,6 +875,8 @@ ExecutionPlan *NewExecutionPlan(void) {
 }
 
 void ExecutionPlan_PreparePlan(ExecutionPlan *plan) {
+	// Plan should be prepared only once.
+	assert(!plan->prepared);
 	optimizePlan(plan);
 	QueryCtx_SetLastWriter(_ExecutionPlan_FindLastWriter(plan->root));
 	plan->prepared = true;
