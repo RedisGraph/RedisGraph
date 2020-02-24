@@ -13,6 +13,7 @@ static OpResult NodeByIdSeekInit(OpBase *opBase);
 static Record NodeByIdSeekConsume(OpBase *opBase);
 static Record NodeByIdSeekConsumeFromChild(OpBase *opBase);
 static OpResult NodeByIdSeekReset(OpBase *opBase);
+static OpBase *NodeByIdSeekClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void NodeByIdSeekFree(OpBase *opBase);
 
 static inline int NodeByIdSeekToString(const OpBase *ctx, char *buf, uint buf_len) {
@@ -35,15 +36,16 @@ OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const QGNode *n, UnsignedRa
 	op->child_record = NULL;
 
 	op->minId = id_range->include_min ? id_range->min : id_range->min + 1;
-
-	// The largest possible entity ID is the same as Graph_RequiredMatrixDim.
-	NodeID maxId = id_range->include_max ? id_range->max : id_range->max - 1;
-	op->maxId = MIN(Graph_RequiredMatrixDim(op->g) - 1, maxId);
+	/* The largest possible entity ID is the same as Graph_RequiredMatrixDim.
+	 * This value will be set on Init, to allow operation clone be independent
+	 * on the current graph size.*/
+	op->maxId = id_range->include_max ? id_range->max : id_range->max - 1;
 
 	op->currentId = op->minId;
 
 	OpBase_Init((OpBase *)op, OPType_NODE_BY_ID_SEEK, "NodeByIdSeek", NodeByIdSeekInit,
-				NodeByIdSeekConsume, NodeByIdSeekReset, NodeByIdSeekToString, NULL, NodeByIdSeekFree, false, plan);
+				NodeByIdSeekConsume, NodeByIdSeekReset, NodeByIdSeekToString, NodeByIdSeekClone, NodeByIdSeekFree,
+				false, plan);
 
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 
@@ -51,6 +53,10 @@ OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const QGNode *n, UnsignedRa
 }
 
 static OpResult NodeByIdSeekInit(OpBase *opBase) {
+	assert(opBase->type == OPType_NODE_BY_ID_SEEK);
+	NodeByIdSeek *op = (NodeByIdSeek *)opBase;
+	// The largest possible entity ID is the same as Graph_RequiredMatrixDim.
+	op->maxId = MIN(Graph_RequiredMatrixDim(op->g) - 1, op->maxId);
 	if(opBase->childCount > 0) opBase->consume = NodeByIdSeekConsumeFromChild;
 	return OP_OK;
 }
@@ -128,6 +134,18 @@ static OpResult NodeByIdSeekReset(OpBase *ctx) {
 	NodeByIdSeek *op = (NodeByIdSeek *)ctx;
 	op->currentId = op->minId;
 	return OP_OK;
+}
+
+static OpBase *NodeByIdSeekClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_NODE_BY_ID_SEEK);
+	NodeByIdSeek *op = (NodeByIdSeek *)op;
+	UnsignedRange range;
+	range.min = op->minId;
+	range.max = op->maxId;
+	// The range in the original op is set during construction, the clone range is inclusive.
+	range.include_min = true;
+	range.include_max = true;
+	return NewNodeByIdSeekOp(plan, op->n, &range);
 }
 
 static void NodeByIdSeekFree(OpBase *opBase) {
