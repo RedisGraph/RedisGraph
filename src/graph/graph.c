@@ -932,9 +932,8 @@ void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		GrB_Descriptor_set(desc, GrB_OUTP, GrB_REPLACE);
 
 		for(int r = 0; r < relationCount; r++) {
-			GrB_Matrix R;
 			GrB_Matrix mask = masks[r];
-			R = Graph_GetRelationMatrix(g, r);  // Relation matrix.
+			GrB_Matrix R = Graph_GetRelationMatrix(g, r);  // Relation matrix.
 			if(mask) {
 				// Remove every entry of R marked by Mask.
 				// Desc: GrB_MASK = GrB_SCMP,  GrB_OUTP = GrB_REPLACE.
