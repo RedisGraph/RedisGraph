@@ -52,6 +52,9 @@ static Record ProjectConsume(OpBase *opBase) {
 	}
 
 	Record projection = OpBase_CreateRecord(opBase);
+	// Track the inherited Record and the newly-allocated Record so that they may be freed if execution fails.
+	OpBase_AddVolatileRecord(opBase, r);
+	OpBase_AddVolatileRecord(opBase, projection);
 
 	for(uint i = 0; i < op->exp_count; i++) {
 		AR_ExpNode *exp = op->exps[i];
@@ -66,6 +69,7 @@ static Record ProjectConsume(OpBase *opBase) {
 		Record_Add(projection, rec_idx, v);
 	}
 
+	OpBase_RemoveVolatileRecords(opBase); // No exceptions encountered, Records are not dangling.
 	OpBase_DeleteRecord(r);
 	return projection;
 }
