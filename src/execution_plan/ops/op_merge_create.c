@@ -12,6 +12,7 @@
 
 /* Forward declarations. */
 static Record MergeCreateConsume(OpBase *opBase);
+static OpBase *MergeCreateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void MergeCreateFree(OpBase *opBase);
 
 // Convert a graph entity's components into an identifying hash code.
@@ -62,7 +63,7 @@ OpBase *NewMergeCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCr
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_MERGE_CREATE, "MergeCreate", NULL, MergeCreateConsume,
-				NULL, NULL, NULL, MergeCreateFree, true, plan);
+				NULL, NULL, MergeCreateClone, MergeCreateFree, true, plan);
 
 	uint node_blueprint_count = array_len(nodes);
 	uint edge_blueprint_count = array_len(edges);
@@ -221,6 +222,16 @@ void MergeCreate_Commit(OpBase *opBase) {
 	if(opBase->childCount > 0) OpBase_PropagateFree(opBase->children[0]);
 	// Create entities.
 	CommitNewEntities(opBase, &op->pending);
+}
+
+static OpBase *MergeCreateClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_MERGE_CREATE);
+	OpMergeCreate *op = (OpMergeCreate *)opBase;
+	NodeCreateCtx *nodes;
+	EdgeCreateCtx *edges;
+	array_clone_with_cb(nodes, op->pending.nodes_to_create, NodeCreateCtx_Clone);
+	array_clone_with_cb(edges, op->pending.edges_to_create, EdgeCreateCtx_Clone);
+	return NewMergeCreateOp(plan, nodes, edges);
 }
 
 static void MergeCreateFree(OpBase *ctx) {
