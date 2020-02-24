@@ -188,8 +188,8 @@ void _RdbSaveEdges(RedisModuleIO *rdb, const Graph *g, char **string_mapping) {
 	// #edges (N)
 	RedisModule_SaveUnsigned(rdb, Graph_EdgeCount(g));
 
-	int relationship_count = Graph_RelationTypeCount(g);
-	for(int r = 0; r < relationship_count; r++) {
+	uint relationship_count = Graph_RelationTypeCount(g);
+	for(uint r = 0; r < relationship_count; r++) {
 		Edge e;
 		NodeID src;
 		NodeID dest;

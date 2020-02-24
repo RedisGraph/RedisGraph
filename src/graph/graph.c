@@ -444,8 +444,8 @@ int Graph_GetEdgeRelation(const Graph *g, Edge *e) {
 
 	// Search for relation mapping matrix M, where
 	// M[dest,src] == edge ID.
-	int relationship_count = array_len(g->relations);
-	for(int i = 0; i < relationship_count; i++) {
+	uint relationship_count = array_len(g->relations);
+	for(uint i = 0; i < relationship_count; i++) {
 		EdgeID edgeId = 0;
 		GrB_Matrix M = Graph_GetRelationMatrix(g, i);
 		GrB_Info res = GrB_Matrix_extractElement_UINT64(&edgeId, M, srcNodeID, destNodeID);
@@ -873,7 +873,7 @@ void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		NodeID src_id = Edge_GetSrcNodeID(e);
 		NodeID dest_id = Edge_GetDestNodeID(e);
 		EdgeID edge_id;
-		GrB_Matrix R = Graph_GetRelationMatrix(g, r);  // Relation mapping matrix.
+		GrB_Matrix R = Graph_GetRelationMatrix(g, r);  // Relation matrix.
 		GrB_Matrix_extractElement(&edge_id, R, src_id, dest_id);
 
 		if(SINGLE_EDGE(edge_id)) {
@@ -923,7 +923,6 @@ void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 	if(update_adj_matrices) {
 		GrB_Matrix remaining_mask;
 		GrB_Matrix_new(&remaining_mask, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
-
 		GrB_Descriptor desc;    // GraphBLAS descriptor.
 		GrB_Descriptor_new(&desc);
 		// Descriptor sets to clear entry according to mask.
@@ -935,23 +934,23 @@ void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		for(int r = 0; r < relationCount; r++) {
 			GrB_Matrix R;
 			GrB_Matrix mask = masks[r];
+			R = Graph_GetRelationMatrix(g, r);  // Relation matrix.
 			if(mask) {
-				R = Graph_GetRelationMatrix(g, r);  // Relation matrix.
 				// Remove every entry of R marked by Mask.
 				// Desc: GrB_MASK = GrB_SCMP,  GrB_OUTP = GrB_REPLACE.
 				// R = R & !mask.
 				GrB_Matrix_apply(R, mask, GrB_NULL, GrB_IDENTITY_UINT64, R, desc);
-
-				// Collect remaining edges. remaining_mask = remaining_mask + R.
-				GrB_eWiseAdd_Matrix_Semiring(remaining_mask, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, remaining_mask,
-											 mask, GrB_NULL);
-
 				GrB_free(&mask);
 			}
+			// Collect remaining edges. remaining_mask = remaining_mask + R.
+			GrB_eWiseAdd_Matrix_Semiring(remaining_mask, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, remaining_mask,
+										 R, GrB_NULL);
 		}
 
 		GrB_Matrix adj_matrix = Graph_GetAdjacencyMatrix(g);
 		GrB_Matrix t_adj_matrix = _Graph_Get_Transposed_AdjacencyMatrix(g);
+		// Set descriptor mask to default.
+		GrB_Descriptor_set(desc, GrB_MASK, GxB_DEFAULT);
 		// adj_matrix = adj_matrix & remaining_mask.
 		GrB_Matrix_apply(adj_matrix, remaining_mask, GrB_NULL, GrB_IDENTITY_BOOL, adj_matrix, desc);
 		// Transpose remaining_mask.
