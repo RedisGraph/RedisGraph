@@ -9,7 +9,7 @@
 #include "../../query_ctx.h"
 
 void _optimizePlan(ExecutionPlan *plan) {
-// Tries to compact filter trees, and remove redundant filters.
+	// Tries to compact filter trees, and remove redundant filters.
 	compactFilters(plan);
 
 	/* Scan optimizations order:
@@ -49,10 +49,8 @@ void _optimizePlan(ExecutionPlan *plan) {
 }
 
 void optimizePlan(ExecutionPlan *plan) {
-	AST *ast = QueryCtx_GetAST();
-
-	/* Handle UNION if there are any. */
-	if(AST_ContainsClause(ast, CYPHER_AST_UNION)) {
+	/* Handle UNION of execution plans. */
+	if(plan->is_union) {
 		for(uint i = 0; i < plan->segment_count; i++) _optimizePlan(plan->segments[i]);
 	} else {
 		_optimizePlan(plan);

@@ -32,8 +32,6 @@ typedef struct {
 
 ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact);
 
-void ResultSet_SetColumns(const char **columns);
-
 int ResultSet_AddRecord(ResultSet *set, Record r);
 
 void ResultSet_IndexCreated(ResultSet *set, int status_code);

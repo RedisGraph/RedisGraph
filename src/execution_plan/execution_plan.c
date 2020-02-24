@@ -734,6 +734,7 @@ ExecutionPlan *ExecutionPlan_UnionPlans(AST *ast) {
 	plan->query_graph = NULL;
 	plan->record_map = raxNew();
 	plan->connected_components = NULL;
+	plan->is_union = true;
 
 	OpBase *results_op = NewResultsOp(plan);
 	OpBase *parent = results_op;
@@ -873,31 +874,10 @@ ExecutionPlan *NewExecutionPlan(void) {
 	return plan;
 }
 
-static void _ExecutionPlan_SetResultColumns(ExecutionPlan *plan) {
-	ResultSet *result_set = QueryCtx_GetResultSet();
-	AST *ast = QueryCtx_GetAST();
-	uint clause_count = cypher_ast_query_nclauses(ast->root);
-	const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
-	cypher_astnode_type_t last_clause_type = cypher_astnode_type(last_clause);
-	bool query_has_return = (last_clause_type == CYPHER_AST_RETURN);
-	if(query_has_return) {
-		ResultSet_SetColumns(AST_BuildColumnNames(last_clause));
-	} else if(last_clause_type == CYPHER_AST_CALL) {
-		OpBase *proc_call_base = ExecutionPlan_LocateFirstOp(plan->root, OPType_PROC_CALL);
-		assert(proc_call_base && (proc_call_base->type == OPType_PROC_CALL));
-		OpProcCall *proc_call = (OpProcCall *)proc_call_base;
-		// Prepare column names for the ResultSet.
-		const char **columns;
-		array_clone(columns, proc_call->output);
-		ResultSet_SetColumns(columns);
-	}
-}
-
 void ExecutionPlan_PreparePlan(ExecutionPlan *plan) {
-	_ExecutionPlan_SetResultColumns(plan);
 	optimizePlan(plan);
 	QueryCtx_SetLastWriter(_ExecutionPlan_FindLastWriter(plan->root));
-	plan->is_exec_ready = true;
+	plan->prepared = true;
 }
 
 inline rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan) {
@@ -982,13 +962,14 @@ void ExecutionPlan_Init(ExecutionPlan *plan) {
 }
 
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
+	assert(plan->prepared);
 	/* Set an exception-handling breakpoint to capture run-time errors.
 	 * encountered_error will be set to 0 when setjmp is invoked, and will be nonzero if
 	 * a downstream exception returns us to this breakpoint. */
 	int encountered_error = SET_EXCEPTION_HANDLER();
 
 	// Encountered a run-time error - return immediately.
-	if(encountered_error) goto clean_up;
+	if(encountered_error) return QueryCtx_GetResultSet();
 
 	ExecutionPlan_Init(plan);
 
@@ -996,7 +977,6 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 	// Execute the root operation and free the processed Record until the data stream is depleted.
 	while((r = OpBase_Consume(plan->root)) != NULL) ExecutionPlan_ReturnRecord(r->owner, r);
 
-clean_up:
 	return QueryCtx_GetResultSet();
 }
 
@@ -1026,10 +1006,11 @@ static void _ExecutionPlan_FinalizeProfiling(OpBase *root) {
 	root->stats->profileExecTime *= 1000;   // Milliseconds.
 }
 
-void ExecutionPlan_Profile(ExecutionPlan *plan) {
+ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan) {
 	_ExecutionPlan_InitProfiling(plan->root);
-	ExecutionPlan_Execute(plan);
+	ResultSet *rs = ExecutionPlan_Execute(plan);
 	_ExecutionPlan_FinalizeProfiling(plan->root);
+	return rs;
 }
 
 static void _ExecutionPlan_FreeOperations(OpBase *op) {
