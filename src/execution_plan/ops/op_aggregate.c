@@ -15,6 +15,7 @@
 /* Forward declarations. */
 static Record AggregateConsume(OpBase *opBase);
 static OpResult AggregateReset(OpBase *opBase);
+static OpBase *AggregateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void AggregateFree(OpBase *opBase);
 
 /* Migrate each expression projected by this operation to either
@@ -137,7 +138,6 @@ static void _aggregateRecord(OpAggregate *op, Record r) {
 		AR_ExpNode *exp = group->aggregationFunctions[i];
 		AR_EXP_Aggregate(exp, r);
 	}
-	
 	// Free record.
 	OpBase_DeleteRecord(r);
 }
@@ -188,7 +188,7 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should
 	if(op->key_count) op->group_keys = rm_malloc(op->key_count * sizeof(SIValue));
 
 	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", NULL, AggregateConsume,
-				AggregateReset, NULL, NULL, AggregateFree, false, plan);
+				AggregateReset, NULL, AggregateClone, AggregateFree, false, plan);
 
 	// The projected record will associate values with their resolved name
 	// to ensure that space is allocated for each entry.
@@ -240,6 +240,18 @@ static OpResult AggregateReset(OpBase *opBase) {
 	op->group = NULL;
 
 	return OP_OK;
+}
+
+static OpBase *AggregateClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_AGGREGATE);
+	OpAggregate *op = (OpAggregate *)opBase;
+	uint aggregate_count =  op->aggregate_count;
+	uint key_count = op->key_count;
+	uint i;
+	AR_ExpNode **exps = array_new(AR_ExpNode *, aggregate_count + key_count);
+	for(i = 0; i < aggregate_count; i++) exps = array_append(exps, op->aggregate_exps[i]);
+	for(i = 0; i < key_count; i++) exps = array_append(exps, op->key_exps[i]);
+	return NewAggregateOp(plan, exps, op->should_cache_records);
 }
 
 static void AggregateFree(OpBase *opBase) {
