@@ -321,8 +321,6 @@ AlgebraicExpression *AlgebraicExpression_RemoveLeftmostNode
 			if(child_count == 1) {
 				AlgebraicExpression *replacement = _AlgebraicExpression_OperationRemoveRightmostChild(prev);
 				_AlgebraicExpression_InplaceRepurpose(prev, replacement);
-				// Free replacement as it has been copied.
-				rm_free(replacement);
 			} else {
 				assert("for the timebing, we should not be here" && false);
 			}
@@ -363,8 +361,6 @@ AlgebraicExpression *AlgebraicExpression_RemoveRightmostNode
 		if(child_count == 1) {
 			AlgebraicExpression *replacement = _AlgebraicExpression_OperationRemoveRightmostChild(prev);
 			_AlgebraicExpression_InplaceRepurpose(prev, replacement);
-			// Free replacement as it has been copied.
-			rm_free(replacement);
 		}
 	}
 	return current;
@@ -464,3 +460,4 @@ void AlgebraicExpression_Free
 	}
 	rm_free(root);
 }
+
