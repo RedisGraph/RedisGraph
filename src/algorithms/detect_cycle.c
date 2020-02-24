@@ -36,7 +36,7 @@ bool IsAcyclicGraph(const QueryGraph *qg) {
 	* 2. After edge_count multiplications, no cycles. */
 	for(uint i = 0; i < edge_count; i++) {
 		// c = c * m.
-		res = GrB_mxm(c, GrB_NULL, GrB_NULL, GxB_LOR_LAND_BOOL, c, m, GrB_NULL);
+		res = GrB_mxm(c, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, c, m, GrB_NULL);
 		assert(res == GrB_SUCCESS);
 
 		/*  Extract main diagonal of `c` into `t`.
