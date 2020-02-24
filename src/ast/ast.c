@@ -422,8 +422,9 @@ const char **AST_BuildCallColumnNames(const cypher_astnode_t *call_clause) {
 		assert(proc);
 		unsigned int output_count = Procedure_OutputCount(proc);
 		proc_output_columns = array_new(const char *, output_count);
-		for(uint i = 0; i < output_count; i++)
+		for(uint i = 0; i < output_count; i++) {
 			proc_output_columns = array_append(proc_output_columns, Procedure_GetOutput(proc, i));
+		}
 		Proc_Free(proc);
 	}
 	return proc_output_columns;
