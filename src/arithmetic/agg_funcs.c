@@ -581,7 +581,9 @@ int __agg_collectStep(AggCtx *ctx, SIValue *argv, int argc) {
 
 	SIValue value = argv[0];
 	if(value.type == T_NULL) return AGG_OK;
-	SIArray_Append(&ac->list, SI_ShareValue(value));
+	// Ensure that the added value may be safely accessed for the lifetime of the Collect context.
+	SIValue_Persist(&value);
+	SIArray_Append(&ac->list, value);
 	return AGG_OK;
 }
 
@@ -596,7 +598,11 @@ int __agg_collectDistinctStep(AggCtx *ctx, SIValue *argv, int argc) {
 
 int __agg_collectReduceNext(AggCtx *ctx) {
 	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
-	Agg_SetResult(ctx, ac->list);
+	/* Share the Collect context's internal list with the caller,
+	 * as the Collect context owns this allocation. The caller is responsible for
+	 * persisting the value if it will be accessed after the Collect context is freed. */
+	SIValue result = SI_ShareValue(ac->list);
+	Agg_SetResult(ctx, result);
 	return AGG_OK;
 }
 
