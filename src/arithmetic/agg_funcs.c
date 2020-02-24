@@ -581,8 +581,8 @@ int __agg_collectStep(AggCtx *ctx, SIValue *argv, int argc) {
 
 	SIValue value = argv[0];
 	if(value.type == T_NULL) return AGG_OK;
-	// Ensure that the added value may be safely accessed for the lifetime of the Collect context.
-	SIValue_Persist(&value);
+	/* SIArray_Append will clone the added value, ensuring it can be
+	 * safely accessed for the lifetime of the Collect context. */
 	SIArray_Append(&ac->list, value);
 	return AGG_OK;
 }
