@@ -96,7 +96,7 @@ void Graph_Query(void *args) {
 	QueryCtx_SetResultSet(result_set);
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
 	if(root_type == CYPHER_AST_QUERY) {  // query operation
-		ExecutionPlan *plan = NewExecutionPlan(result_set);
+		ExecutionPlan *plan = NewExecutionPlan();
 		/* Make sure there are no compile-time errors.
 		 * We prefer to emit the error only once the entire execution-plan
 		 * is constructed in-favour of the time it was encountered
@@ -112,7 +112,7 @@ void Graph_Query(void *args) {
 		}
 
 		if(!plan) goto cleanup;
-
+		ExecutionPlan_PreparePlan(plan);
 		result_set = ExecutionPlan_Execute(plan);
 		ExecutionPlan_Free(plan);
 	} else if(root_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
@@ -122,7 +122,7 @@ void Graph_Query(void *args) {
 		assert("Unhandled query type" && false);
 	}
 	QueryCtx_ForceUnlockCommit();
-	ResultSet_Replay(result_set);    // Send result-set back to client.
+	ResultSet_Reply(result_set);    // Send result-set back to client.
 
 	// Clean up.
 cleanup:

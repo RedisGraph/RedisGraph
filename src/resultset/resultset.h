@@ -23,7 +23,7 @@ typedef struct {
 	bool compact;                   /* Whether records should be returned in compact form. */
 	bool header_emitted;            /* Whether a header row has been issued to the user. */
 	const char **columns;           /* Field names for each column of results. */
-    uint *columns_record_map;       /* Mapping between column name and record index.*/
+	uint *columns_record_map;       /* Mapping between column name and record index.*/
 	size_t recordCount;             /* Number of records introduced. */
 	double timer[2];                /* Query runtime tracker. */
 	ResultSetStatistics stats;      /* ResultSet statistics. */
@@ -32,15 +32,13 @@ typedef struct {
 
 ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact);
 
-void ResultSet_SetColumns(ResultSet *set, const char **columns);
-
 int ResultSet_AddRecord(ResultSet *set, Record r);
 
 void ResultSet_IndexCreated(ResultSet *set, int status_code);
 
 void ResultSet_IndexDeleted(ResultSet *set, int status_code);
 
-void ResultSet_Replay(ResultSet *set);
+void ResultSet_Reply(ResultSet *set);
 
 void ResultSet_ReportQueryRuntime(RedisModuleCtx *ctx);
 

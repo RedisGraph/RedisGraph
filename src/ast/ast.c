@@ -369,7 +369,7 @@ const char **AST_GetProjectAll(const cypher_astnode_t *projection_clause) {
 	return cypher_astnode_get_annotation(project_all_ctx, projection_clause);
 }
 
-const char **AST_BuildColumnNames(const cypher_astnode_t *return_clause) {
+const char **AST_BuildReturnColumnNames(const cypher_astnode_t *return_clause) {
 	const char **columns;
 	if(cypher_ast_return_has_include_existing(return_clause)) {
 		// If this is a RETURN *, the column names should be retrieved from the clause annotation.
@@ -391,6 +391,43 @@ const char **AST_BuildColumnNames(const cypher_astnode_t *return_clause) {
 	}
 
 	return columns;
+}
+
+const char **AST_BuildCallColumnNames(const cypher_astnode_t *call_clause) {
+	const char **proc_output_columns = NULL;
+	uint yield_count = cypher_ast_call_nprojections(call_clause);
+	if(yield_count > 0) {
+		proc_output_columns = array_new(const char *, yield_count);
+		for(uint i = 0; i < yield_count; i ++) {
+			const cypher_astnode_t *projection = cypher_ast_call_get_projection(call_clause, i);
+			const cypher_astnode_t *ast_exp = cypher_ast_projection_get_expression(projection);
+
+			const char *identifier = NULL;
+			const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(projection);
+			if(alias_node) {
+				// The projection either has an alias (AS), is a function call, or is a property specification (e.name).
+				identifier = cypher_ast_identifier_get_name(alias_node);
+			} else {
+				// This expression did not have an alias, so it must be an identifier
+				assert(cypher_astnode_type(ast_exp) == CYPHER_AST_IDENTIFIER);
+				// Retrieve "a" from "RETURN a" or "RETURN a AS e" (theoretically; the latter case is already handled)
+				identifier = cypher_ast_identifier_get_name(ast_exp);
+			}
+			proc_output_columns = array_append(proc_output_columns, identifier);
+		}
+	} else {
+		// If the procedure call is missing its yield part, include procedure outputs.
+		const char *proc_name = cypher_ast_proc_name_get_value(cypher_ast_call_get_proc_name(call_clause));
+		ProcedureCtx *proc = Proc_Get(proc_name);
+		assert(proc);
+		unsigned int output_count = Procedure_OutputCount(proc);
+		proc_output_columns = array_new(const char *, output_count);
+		for(uint i = 0; i < output_count; i++) {
+			proc_output_columns = array_append(proc_output_columns, Procedure_GetOutput(proc, i));
+		}
+		Proc_Free(proc);
+	}
+	return proc_output_columns;
 }
 
 // Determine the maximum number of records
