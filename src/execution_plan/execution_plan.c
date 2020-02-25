@@ -845,9 +845,11 @@ ExecutionPlan *NewExecutionPlan(void) {
 		OpBase *results_op = NewResultsOp(plan);
 		_ExecutionPlan_UpdateRoot(plan, results_op);
 	}
+
 	// Disregard self.
 	plan->segment_count = segment_count - 1;
 	plan->segments = segments;
+
 	return plan;
 }
 

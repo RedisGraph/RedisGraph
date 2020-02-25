@@ -138,15 +138,6 @@ void ExecutionPlan_ReturnRecord(ExecutionPlan *plan, Record r);
 /* Prints execution plan. */
 void ExecutionPlan_Print(const ExecutionPlan *plan, RedisModuleCtx *ctx);
 
-/* Query caching enabler. For query caching execution plans are constructed without parameters values,
- * not optimized, and without setting any execution related data in the query context.
- * This method:
- * 1. Inject filters to a given execution plan template.
- * 2. Reduces arithmetic expressions.
- * 3. Optimizes the plan.
- * 4. Sets the last writer operation in query context. */
-void ExecutionPlan_PostCreationOperations(ExecutionPlan *plan);
-
 /* Initialize all operations in an ExecutionPlan. */
 void ExecutionPlan_Init(ExecutionPlan *plan);
 
