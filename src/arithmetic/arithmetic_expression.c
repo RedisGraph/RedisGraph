@@ -54,6 +54,10 @@ static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 		}
 		clone->operand.variadic.entity_prop_idx = exp->operand.variadic.entity_prop_idx;
 		break;
+	case AR_EXP_PARAM:
+		clone->operand.type = AR_EXP_PARAM;
+		clone->operand.param_name = exp->operand.param_name;
+		break;
 	default:
 		assert(false);
 		break;
@@ -158,6 +162,7 @@ AR_ExpNode *AR_EXP_NewParameterOperandNode(const char *param_name) {
 	node->type = AR_EXP_OPERAND;
 	node->operand.type = AR_EXP_PARAM;
 	node->operand.param_name = param_name;
+	return node;
 }
 
 /* Compact tree by evaluating constant expressions
@@ -279,9 +284,10 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node, const Record
 	SIValue sub_trees[node->op.child_count];
 	for(int child_idx = 0; child_idx < node->op.child_count; child_idx++) {
 		SIValue v;
-		res = _AR_EXP_Evaluate(node->op.children[child_idx], r, &v);
+		AR_EXP_Result eval_result = _AR_EXP_Evaluate(node->op.children[child_idx], r, &v);
 		// Encountered an error while evaluating a subtree.
-		if(res != EVAL_OK) goto cleanup;
+		if(eval_result == EVAL_ERR) goto cleanup;
+		if(eval_result == EVAL_FOUND_PARAM) res = EVAL_FOUND_PARAM;
 		sub_trees[child_idx] = v;
 	}
 
@@ -369,6 +375,22 @@ static AR_EXP_Result _AR_EXP_EvaluateVariadic(AR_ExpNode *node, const Record r, 
 	return EVAL_OK;
 }
 
+static AR_EXP_Result _AR_EXP_EvaluateParam(AR_ExpNode *node, SIValue *result) {
+	rax *params = QueryCtx_GetParams();
+	AR_ExpNode *param_node = raxFind(params, (unsigned char *)node->operand.param_name,
+									 strlen(node->operand.param_name));
+	if(param_node == raxNotFound) {
+		char *error;
+		asprintf(&error, "Missing parameters");
+		QueryCtx_SetError(error); // Set the query-level error.
+		return EVAL_ERR;
+	}
+	// In place replacement;
+	node->operand.type = AR_EXP_CONSTANT;
+	node->operand.constant = SI_ShareValue(param_node->operand.constant);
+	*result = node->operand.constant;
+	return EVAL_FOUND_PARAM;
+}
 /* Evaluate an expression tree, placing the calculated value in 'result' and returning
  * whether an error occurred during evaluation. */
 static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue *result) {
@@ -384,6 +406,8 @@ static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue 
 			return res;
 		case AR_EXP_VARIADIC:
 			return _AR_EXP_EvaluateVariadic(root, r, result);
+		case AR_EXP_PARAM:
+			return _AR_EXP_EvaluateParam(root, result);
 		default:
 			assert(false && "Invalid expression type");
 		}
@@ -397,10 +421,12 @@ static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue 
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 	SIValue result;
 	AR_EXP_Result res = _AR_EXP_Evaluate(root, r, &result);
-	if(res != EVAL_OK) {
+	if(res == EVAL_ERR) {
 		QueryCtx_RaiseRuntimeException();  // Raise an exception if we're in a run-time context.
 		return SI_NullVal(); // Otherwise return NULL; the query-level error will be emitted after cleanup.
 	}
+	// Found a parameter in the expression tree, try to reduce the tree.
+	if(res == EVAL_FOUND_PARAM) AR_EXP_ReduceToScalar(&root);
 	return result;
 }
 

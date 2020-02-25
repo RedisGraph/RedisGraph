@@ -77,7 +77,7 @@ static void _AST_LimitResults(AST *ast, const cypher_astnode_t *root_clause,
 /* This method extracts the query given parameters values, convert them into
  * constant arithmetic expressions and store them in a map of <name, value>
  * in the query context. */
-void AST_Extract_Params(const cypher_astnode_t *parse_result) {
+void AST_Extract_Params(const cypher_parse_result_t *parse_result) {
 	// Retrieve the AST root node from a parsed query.
 	const cypher_astnode_t *statement = cypher_parse_result_get_root(parse_result, 0);
 	// We are parsing with the CYPHER_PARSE_ONLY_STATEMENTS flag,
@@ -433,6 +433,17 @@ const char **AST_BuildCallColumnNames(const cypher_astnode_t *call_clause) {
 	return proc_output_columns;
 }
 
+const char *AST_ExtractQueryString(const cypher_parse_result_t *partial_result) {
+	// Retrieve the AST root node from a parsed query.
+	const cypher_astnode_t *statement = cypher_parse_result_get_root(partial_result, 0);
+	// We are parsing with the CYPHER_PARSE_ONLY_STATEMENTS flag,
+	// and double-checking this in AST validations
+	assert(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
+	const cypher_astnode_t *body = cypher_ast_statement_get_body(statement);
+	assert(cypher_astnode_type(body) == CYPHER_AST_STRING);
+	return cypher_ast_string_get_value(body);
+}
+
 // Determine the maximum number of records
 // which will be considered when evaluating an algebraic expression.
 int TraverseRecordCap(const AST *ast) {
@@ -457,8 +468,12 @@ void AST_Free(AST *ast) {
 	rm_free(ast);
 }
 
-cypher_parse_result_t *parse(const char *query) {
+cypher_parse_result_t *parse_query(const char *query) {
 	return cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+}
+
+cypher_parse_result_t *parse_params(const char *query) {
+	return cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_PARAMETERS);
 }
 
 void parse_result_free(cypher_parse_result_t *parse_result) {

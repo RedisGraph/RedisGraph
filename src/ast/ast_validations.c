@@ -1520,8 +1520,8 @@ static void _collect_query_parameters_names(const cypher_astnode_t *root, rax *k
 	}
 }
 
-/* This method extracts given parameters names. If a duplicate parameter is given, AST_INVALID will be returned. */
-static AST_Validation _collect_given_parameters_names(const cypher_astnode_t *statement,
+/* This method extracts input parameters names. If a duplicate parameter is given, AST_INVALID will be returned. */
+static AST_Validation _collect_input_parameters_names(const cypher_astnode_t *statement,
 													  rax *given_params_names, char **reason) {
 	uint noptions =  cypher_ast_statement_noptions(statement);
 	for(uint i = 0; i < noptions; i++) {
@@ -1540,20 +1540,9 @@ static AST_Validation _collect_given_parameters_names(const cypher_astnode_t *st
 	return AST_VALID;
 }
 
-static AST_Validation _ValidateParameters(const cypher_astnode_t *statement, char **reason) {
+static AST_Validation _ValidateInputParameters(const cypher_astnode_t *statement, char **reason) {
 	rax *given_params_names = raxNew();
-	if(_collect_given_parameters_names(statement, given_params_names, reason) == AST_INVALID) {
-		raxFree(given_params_names);
-		return AST_INVALID;
-	}
-	AST_Validation res = AST_VALID;
-	rax *query_params_names = raxNew();
-	_collect_query_parameters_names(statement, query_params_names);
-	if(!raxIsSubset(given_params_names, query_params_names)) {
-		asprintf(reason, "Missing parameters");
-		res = AST_INVALID;
-	}
-	raxFree(query_params_names);
+	AST_Validation res = _collect_input_parameters_names(statement, given_params_names, reason);
 	raxFree(given_params_names);
 	return res;
 }
@@ -1638,7 +1627,7 @@ bool AST_ContainsErrors(const cypher_parse_result_t *result) {
 	return cypher_parse_result_nerrors(result) > 0;
 }
 
-AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *result) {
+AST_Validation AST_Validate_Query(RedisModuleCtx *ctx, const cypher_parse_result_t *result) {
 	// Check for failures in libcypher-parser
 	if(AST_ContainsErrors(result)) {
 		char *errMsg = _AST_ReportErrors(result);
@@ -1674,12 +1663,6 @@ AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *re
 		return AST_INVALID;
 	}
 
-	if(_ValidateParameters(root, &reason) != AST_VALID) {
-		RedisModule_ReplyWithError(ctx, reason);
-		free(reason);
-		return AST_INVALID;
-	}
-
 	const cypher_astnode_t *body = cypher_ast_statement_get_body(root);
 	cypher_astnode_type_t body_type = cypher_astnode_type(body);
 	if(body_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
@@ -1705,3 +1688,39 @@ AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *re
 	return res;
 }
 
+AST_Validation AST_Validate_QueryParams(RedisModuleCtx *ctx, const cypher_parse_result_t *result) {
+	// Check for failures in libcypher-parser
+	if(AST_ContainsErrors(result)) {
+		char *errMsg = _AST_ReportErrors(result);
+		RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
+		RedisModule_ReplyWithError(ctx, errMsg);
+		free(errMsg);
+		return AST_INVALID;
+	}
+
+	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
+	// Check for empty query
+	if(root == NULL) {
+		RedisModule_ReplyWithError(ctx, "Error: empty query.");
+		return AST_INVALID;
+	}
+
+	char *reason;
+	cypher_astnode_type_t root_type = cypher_astnode_type(root);
+	if(root_type != CYPHER_AST_STATEMENT) {
+		// This should be unnecessary, as we're currently parsing
+		// with the CYPHER_PARSE_ONLY_STATEMENTS flag.
+		asprintf(&reason, "Encountered unsupported query type '%s'", cypher_astnode_typestr(root_type));
+		RedisModule_ReplyWithError(ctx, reason);
+		free(reason);
+		return AST_INVALID;
+	}
+
+	if(_ValidateInputParameters(root, &reason) != AST_VALID) {
+		RedisModule_ReplyWithError(ctx, reason);
+		free(reason);
+		return AST_INVALID;
+	}
+
+	return AST_VALID;
+}

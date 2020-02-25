@@ -46,6 +46,7 @@ typedef enum {
 typedef enum {
 	EVAL_OK = 0,
 	EVAL_ERR = (1 << 0),
+	EVAL_FOUND_PARAM = (1 << 1),
 } AR_EXP_Result;
 
 /* Op represents an operation applied to child args. */

@@ -27,12 +27,20 @@ void Graph_Explain(void *args) {
 	QueryCtx_BeginTimer(); // Start query timing.
 	const char *query = command_ctx->query;
 
-	// Parse the query to construct an AST
-	cypher_parse_result_t *parse_result = parse(command_ctx->query);
+	cypher_parse_result_t *params_parse_result = parse_params(command_ctx->query);
+	if(params_parse_result == NULL) goto cleanup;
+	if(AST_Validate_QueryParams(ctx, params_parse_result) != AST_VALID) goto cleanup;
+
+	// Query caching enabler.
+	AST_Extract_Params(params_parse_result);
+	const char *query_string = AST_ExtractQueryString(params_parse_result);
+
+	// Parse the query to construct an AST.
+	cypher_parse_result_t *parse_result = parse_query(query_string);
 	if(parse_result == NULL) goto cleanup;
 
 	// Perform query validations
-	if(AST_Validate(ctx, parse_result) != AST_VALID) goto cleanup;
+	if(AST_Validate_Query(ctx, parse_result) != AST_VALID) goto cleanup;
 
 	// Prepare the constructed AST for accesses from the module
 	ast = AST_Build(parse_result);
@@ -71,6 +79,7 @@ cleanup:
 	if(plan) ExecutionPlan_Free(plan);
 
 	AST_Free(ast);
+	parse_result_free(params_parse_result);
 	parse_result_free(parse_result);
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
