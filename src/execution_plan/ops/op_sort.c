@@ -14,6 +14,7 @@
 /* Forward declarations. */
 static Record SortConsume(OpBase *opBase);
 static OpResult SortReset(OpBase *opBase);
+static OpBase *SortClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void SortFree(OpBase *opBase);
 
 // Heapsort function to compare two records on a subset of fields.
@@ -85,7 +86,7 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions,
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_SORT, "Sort", NULL,
-				SortConsume, SortReset, NULL, NULL, SortFree, false, plan);
+				SortConsume, SortReset, NULL, SortClone, SortFree, false, plan);
 
 	uint comparison_count = array_len(exps);
 	op->record_offsets = array_new(uint, comparison_count);
@@ -159,6 +160,26 @@ static OpResult SortReset(OpBase *ctx) {
 	}
 
 	return OP_OK;
+}
+
+static OpBase *SortClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_SORT);
+	OpSort *op = (OpSort *)opBase;
+	OpSort *clone = rm_malloc(sizeof(OpSort));
+	clone->heap = NULL;
+	clone->buffer = NULL;
+	op->limit = op->limit;
+	array_clone(clone->directions, op->directions);
+
+	if(clone->limit) clone->heap = heap_new(_heap_elem_compare, clone);
+	else clone->buffer = array_new(Record, 32);
+
+	// Set our Op operations
+	OpBase_Init((OpBase *)clone, OPType_SORT, "Sort", NULL,
+				SortConsume, SortReset, NULL, SortClone, SortFree, false, plan);
+
+	array_clone(clone->record_offsets, op->record_offsets);
+	return (OpBase *)clone;
 }
 
 /* Frees Sort */
