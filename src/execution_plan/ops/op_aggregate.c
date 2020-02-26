@@ -65,8 +65,7 @@ static Group *_CreateGroup(OpAggregate *op, Record r) {
 	/* Create a new group
 	 * Clone group keys. */
 	SIValue *group_keys = _build_group_key(op);
-	
-	
+
 	/* Get a fresh copy of aggregation functions. */
 	AR_ExpNode **agg_exps = _build_aggregate_exps(op);
 
