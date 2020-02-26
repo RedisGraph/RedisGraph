@@ -63,11 +63,12 @@ static inline SIValue *_build_group_key(OpAggregate *op) {
 
 static Group *_CreateGroup(OpAggregate *op, Record r) {
 	/* Create a new group
-	 * Get a fresh copy of aggregation functions. */
-	AR_ExpNode **agg_exps = _build_aggregate_exps(op);
-
-	/* Clone group keys. */
+	 * Clone group keys. */
 	SIValue *group_keys = _build_group_key(op);
+	
+	
+	/* Get a fresh copy of aggregation functions. */
+	AR_ExpNode **agg_exps = _build_aggregate_exps(op);
 
 	/* There's no need to keep a reference to record if we're not sorting groups. */
 	Record cache_record = (op->should_cache_records) ? r : NULL;
