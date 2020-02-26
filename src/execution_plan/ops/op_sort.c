@@ -168,7 +168,7 @@ static OpBase *SortClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	OpSort *clone = rm_malloc(sizeof(OpSort));
 	clone->heap = NULL;
 	clone->buffer = NULL;
-	op->limit = op->limit;
+	clone->limit = op->limit;
 	array_clone(clone->directions, op->directions);
 
 	if(clone->limit) clone->heap = heap_new(_heap_elem_compare, clone);
