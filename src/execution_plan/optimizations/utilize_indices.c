@@ -13,7 +13,6 @@ static void _transformInToOrSequence(FT_FilterNode **filter) {
 	FT_FilterNode *filter_tree = *filter;
 
 	AR_ExpNode *inOp = filter_tree->exp.exp;
-	AR_ExpNode *lhs = AR_EXP_Clone(inOp->op.children[0]);
 	SIValue list = inOp->op.children[1]->operand.constant;
 	uint listLen = SIArray_Length(list);
 
@@ -28,6 +27,7 @@ static void _transformInToOrSequence(FT_FilterNode **filter) {
 		val = SIArray_Get(list, 0); // Retrieve the first array element.
 		SIValue_Persist(&val);      // Ensure the value doesn't go out of scope.
 		constant = AR_EXP_NewConstOperandNode(val);
+		AR_ExpNode *lhs = AR_EXP_Clone(inOp->op.children[0]);
 		root = FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, constant);
 
 		for(uint i = 1; i < listLen; i ++) {
