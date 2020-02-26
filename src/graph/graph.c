@@ -752,6 +752,17 @@ void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 	GrB_Matrix_new(&Mask, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
 	GrB_Matrix_new(&Nodes, GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
 
+	/* For user-defined select operators,
+	 * If Thunk is not NULL, it must be a valid GxB_Scalar. If it has no entry,
+	 * it is treated as if it had a single entry equal to zero, for built-in types (not
+	 * user-defined types).
+	 * For user-defined select operators, the entry is passed to the user-defined
+	 * select operator, with no typecasting. Its type must be identical to 'ttype' of
+	 * the select operator. */
+	GxB_Scalar thunk;
+	GxB_Scalar_new(&thunk, GrB_UINT64);
+	GxB_Scalar_setElement_UINT64(thunk, (uint64_t)g);
+
 	// Populate mask with implicit edges, take note of deleted nodes.
 	for(uint i = 0; i < node_count; i++) {
 		GrB_Index src;
@@ -804,29 +815,19 @@ void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 
 		/* Free each multi edge array entry in A
 		 * Call _select_op_free_edge on each entry of A. */
-
-		/* For user-defined select operators,
-		 * if Thunk is not NULL, then it must be a vector of length 1,
-		 * with exactly one entry.
-		 * The value of this entry is passed to the user-defined select operator,
-		 * with no typecasting. */
-
-		GxB_Scalar thunk;
-		GxB_Scalar_new(&thunk, GrB_UINT64);
-		GxB_Scalar_setElement_UINT64(thunk, (uint64_t)g);
 		GxB_select(A, GrB_NULL, GrB_NULL, selectop, A, thunk, GrB_NULL);
-		GrB_free(&thunk);
 
-		// Clear both relation matrix and its coresponding relation mapping matrix.
-		GrB_Descriptor_set(desc, GrB_MASK, GrB_SCMP);
+		// Clear the relation matrix.
+		GrB_Descriptor_set(desc, GrB_MASK, GrB_COMP);
 
 		// Remove every entry of R marked by Mask.
 		GrB_Matrix_apply(R, Mask, GrB_NULL, GrB_IDENTITY_UINT64, R, desc);
 	}
 
+
 	/* Descriptor:
-	 * GrB_MASK, GrB_SCMP */
-	GrB_Descriptor_set(desc, GrB_MASK, GrB_SCMP);
+	 * GrB_MASK, GrB_COMP */
+	GrB_Descriptor_set(desc, GrB_MASK, GrB_COMP);
 	// Update the adjacency matrix to remove deleted entries.
 	GrB_Matrix_apply(adj, Mask, GrB_NULL, GrB_IDENTITY_BOOL, adj, desc);
 
@@ -853,6 +854,7 @@ void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 	GrB_free(&A);
 	GrB_free(&desc);
 	GrB_free(&Mask);
+	GrB_free(&thunk);
 	GrB_free(&Nodes);
 	GrB_free(&selectop);
 	GxB_MatrixTupleIter_free(adj_iter);
@@ -926,7 +928,7 @@ void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		GrB_Descriptor desc;    // GraphBLAS descriptor.
 		GrB_Descriptor_new(&desc);
 		// Descriptor sets to clear entry according to mask.
-		GrB_Descriptor_set(desc, GrB_MASK, GrB_SCMP);
+		GrB_Descriptor_set(desc, GrB_MASK, GrB_COMP);
 
 		// Clear updated output matrix before assignment.
 		GrB_Descriptor_set(desc, GrB_OUTP, GrB_REPLACE);
@@ -936,7 +938,7 @@ void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 			GrB_Matrix R = Graph_GetRelationMatrix(g, r);  // Relation matrix.
 			if(mask) {
 				// Remove every entry of R marked by Mask.
-				// Desc: GrB_MASK = GrB_SCMP,  GrB_OUTP = GrB_REPLACE.
+				// Desc: GrB_MASK = GrB_COMP,  GrB_OUTP = GrB_REPLACE.
 				// R = R & !mask.
 				GrB_Matrix_apply(R, mask, GrB_NULL, GrB_IDENTITY_UINT64, R, desc);
 				GrB_free(&mask);
