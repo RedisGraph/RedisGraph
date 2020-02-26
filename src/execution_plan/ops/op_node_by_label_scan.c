@@ -164,11 +164,9 @@ static OpResult NodeByLabelScanReset(OpBase *ctx) {
 }
 
 static OpBase *NodeByLabelScanClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_NODE_BY_LABEL_SCAN || OpType_NODE_BY_LABEL_AND_ID_SCAN);
+	assert(opBase->type == OPType_NODE_BY_LABEL_SCAN);
 	NodeByLabelScan *op = (NodeByLabelScan *)opBase;
 	OpBase *clone = NewNodeByLabelScanOp(plan, op->n);
-	if(opBase->type == OpType_NODE_BY_LABEL_AND_ID_SCAN)
-		NodeByLabelScanOp_SetIDRange((NodeByLabelScan *) clone, op->id_range);
 	return clone;
 }
 
