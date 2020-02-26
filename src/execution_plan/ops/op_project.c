@@ -12,6 +12,7 @@
 
 /* Forward declarations. */
 static Record ProjectConsume(OpBase *opBase);
+static OpBase *ProjectClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void ProjectFree(OpBase *opBase);
 
 OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
@@ -23,7 +24,7 @@ OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_PROJECT, "Project", NULL, ProjectConsume,
-				NULL, NULL, NULL, ProjectFree, false, plan);
+				NULL, NULL, ProjectClone, ProjectFree, false, plan);
 
 	for(uint i = 0; i < op->exp_count; i ++) {
 		// The projected record will associate values with their resolved name
@@ -68,6 +69,14 @@ static Record ProjectConsume(OpBase *opBase) {
 
 	OpBase_DeleteRecord(r);
 	return projection;
+}
+
+static OpBase *ProjectClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_PROJECT);
+	OpProject *op = (OpProject *)opBase;
+	AR_ExpNode **exps;
+	array_clone_with_cb(exps, op->exps, AR_EXP_Clone);
+	return NewProjectOp(plan, exps);
 }
 
 static void ProjectFree(OpBase *ctx) {
