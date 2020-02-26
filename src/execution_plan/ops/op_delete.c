@@ -12,6 +12,7 @@
 
 /* Forward declarations. */
 static Record DeleteConsume(OpBase *opBase);
+static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void DeleteFree(OpBase *opBase);
 
 void _DeleteEntities(OpDelete *op) {
@@ -47,19 +48,19 @@ cleanup:
 	QueryCtx_UnlockCommit(&op->op);
 }
 
-OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps, ResultSetStatistics *stats) {
+OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	OpDelete *op = rm_malloc(sizeof(OpDelete));
 
 	op->gc = QueryCtx_GetGraphCtx();
 	op->exps = exps;
-	op->stats = stats;
+	op->stats = QueryCtx_GetResultSetStatistics();
 	op->exp_count = array_len(exps);
 	op->deleted_nodes = array_new(Node, 32);
 	op->deleted_edges = array_new(Edge, 32);
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", NULL, DeleteConsume,
-				NULL, NULL, NULL, DeleteFree, true, plan);
+				NULL, NULL, DeleteClone, DeleteFree, true, plan);
 
 	return (OpBase *)op;
 }
@@ -101,6 +102,14 @@ static Record DeleteConsume(OpBase *opBase) {
 	}
 
 	return r;
+}
+
+static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_DELETE);
+	OpDelete *op = (OpDelete *)opBase;
+	AR_ExpNode **exps;
+	array_clone_with_cb(exps, op->exps, AR_EXP_Clone);
+	return NewDeleteOp(plan, exps);
 }
 
 static void DeleteFree(OpBase *ctx) {

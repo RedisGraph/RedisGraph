@@ -85,11 +85,12 @@ static inline Record _pullFromStream(OpBase *branch) {
 }
 
 OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
-				   EntityUpdateEvalCtx *on_create, ResultSetStatistics *stats) {
+				   EntityUpdateEvalCtx *on_create) {
+
 	/* Merge is an operator with two or three children. They will be created outside of here,
 	 * as with other multi-stream operators (see CartesianProduct and ValueHashJoin). */
 	OpMerge *op = rm_calloc(1, sizeof(OpMerge));
-	op->stats = stats;
+	op->stats = QueryCtx_GetResultSetStatistics();
 	op->on_match = on_match;
 	op->on_create = on_create;
 	// Set our Op operations
