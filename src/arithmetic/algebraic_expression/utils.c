@@ -31,6 +31,8 @@ void _AlgebraicExpression_InplaceRepurpose
 
 	// Replace.
 	memcpy(exp, replacement, sizeof(AlgebraicExpression));
+	// Free the memory of the migrated replacement.
+	rm_free(replacement);
 }
 
 // Removes the rightmost direct child node of root.
@@ -240,3 +242,4 @@ void _AlgebraicExpression_FetchOperands(AlgebraicExpression *exp, const GraphCon
 		break;
 	}
 }
+
