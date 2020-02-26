@@ -15,6 +15,7 @@
 /* Forward declarations. */
 static Record ExpandIntoConsume(OpBase *opBase);
 static OpResult ExpandIntoReset(OpBase *opBase);
+static OpBase *ExpandIntoClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void ExpandIntoFree(OpBase *opBase);
 
 // String representation of operation.
@@ -106,7 +107,7 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", NULL, ExpandIntoConsume,
-				ExpandIntoReset, ExpandIntoToString, NULL, ExpandIntoFree, false, plan);
+				ExpandIntoReset, ExpandIntoToString, ExpandIntoClone, ExpandIntoFree, false, plan);
 
 	// Make sure that all entities are represented in Record
 	op->edgeIdx = IDENTIFIER_NOT_FOUND;
@@ -234,6 +235,13 @@ static OpResult ExpandIntoReset(OpBase *ctx) {
 	}
 	if(op->F != GrB_NULL) GrB_Matrix_clear(op->F);
 	return OP_OK;
+}
+
+static inline OpBase *ExpandIntoClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_EXPAND_INTO);
+	OpExpandInto *op = (OpExpandInto *)opBase;
+	return NewExpandIntoOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae),
+						   op->recordsCap);
 }
 
 /* Frees ExpandInto */

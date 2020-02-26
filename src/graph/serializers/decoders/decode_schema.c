@@ -16,6 +16,7 @@ Schema *RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 	int id = RedisModule_LoadUnsigned(rdb);
 	char *name = RedisModule_LoadStringBuffer(rdb, NULL);
 	Schema *s = Schema_New(name, id);
+	RedisModule_Free(name);
 
 	Index *idx = NULL;
 	uint index_count = RedisModule_LoadUnsigned(rdb);
@@ -24,7 +25,9 @@ Schema *RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 		char *field = RedisModule_LoadStringBuffer(rdb, NULL);
 
 		Schema_AddIndex(&idx, s, field, type);
+		RedisModule_Free(field);
 	}
 
 	return s;
 }
+
