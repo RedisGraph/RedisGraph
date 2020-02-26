@@ -87,9 +87,8 @@ static PropertyMap *PropertyMap_Clone(PropertyMap *map) {
 	clone->values = rm_malloc(prop_count * sizeof(AR_ExpNode *));
 	clone->property_count = prop_count;
 	memcpy(clone->keys, map->keys, prop_count * sizeof(Attribute_ID));
-	for(uint i = 0; i < prop_count; i++) {
-		clone->values[i] = AR_EXP_Clone(map->values[i]);
-	}
+	for(uint i = 0; i < prop_count; i++) clone->values[i] = AR_EXP_Clone(map->values[i]);
+
 	return clone;
 }
 
