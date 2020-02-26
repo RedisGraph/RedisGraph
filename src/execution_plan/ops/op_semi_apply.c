@@ -8,17 +8,18 @@
 #include "../execution_plan.h"
 
 // Forward declarations.
-void SemiApplyFree(OpBase *opBase);
-OpResult SemiApplyInit(OpBase *opBase);
-Record SemiApplyConsume(OpBase *opBase);
-Record AntiSemiApplyConsume(OpBase *opBase);
-OpResult SemiApplyReset(OpBase *opBase);
+static OpResult SemiApplyInit(OpBase *opBase);
+static Record SemiApplyConsume(OpBase *opBase);
+static Record AntiSemiApplyConsume(OpBase *opBase);
+static OpResult SemiApplyReset(OpBase *opBase);
+static OpBase *SemiApplyClone(const ExecutionPlan *plan, const OpBase *opBase);
+static void SemiApplyFree(OpBase *opBase);
 
 static inline Record _pullFromMatchStream(OpSemiApply *op) {
 	return OpBase_Consume(op->match_branch);
 }
 
-OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti) {
+OpBase *NewSemiApplyOp(const ExecutionPlan *plan, bool anti) {
 	OpSemiApply *op = rm_malloc(sizeof(OpSemiApply));
 	op->r = NULL;
 	op->op_arg = NULL;
@@ -27,15 +28,15 @@ OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti) {
 	// Set our Op operations
 	if(anti) {
 		OpBase_Init((OpBase *)op, OpType_ANTI_SEMI_APPLY, "Anti Semi Apply", SemiApplyInit,
-					AntiSemiApplyConsume, SemiApplyReset, NULL, NULL, SemiApplyFree, false, plan);
+					AntiSemiApplyConsume, SemiApplyReset, NULL, SemiApplyClone, SemiApplyFree, false, plan);
 	} else {
 		OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, "Semi Apply", SemiApplyInit, SemiApplyConsume,
-					SemiApplyReset, NULL, NULL, SemiApplyFree, false, plan);
+					SemiApplyReset, NULL, SemiApplyClone, SemiApplyFree, false, plan);
 	}
 	return (OpBase *) op;
 }
 
-OpResult SemiApplyInit(OpBase *opBase) {
+static OpResult SemiApplyInit(OpBase *opBase) {
 	assert(opBase->childCount == 2);
 
 	OpSemiApply *op = (OpSemiApply *)opBase;
@@ -54,7 +55,7 @@ OpResult SemiApplyInit(OpBase *opBase) {
 /* This function pulls a record from the op's bounded branch, set it as an argument for the op match branch
  * and consumes a record from the match branch. If there is a record from the match branch,
  * the bounded branch record is returned. */
-Record SemiApplyConsume(OpBase *opBase) {
+static Record SemiApplyConsume(OpBase *opBase) {
 	OpSemiApply *op = (OpSemiApply *)opBase;
 	while(true) {
 		// Try to get a record from bound stream.
@@ -82,7 +83,7 @@ Record SemiApplyConsume(OpBase *opBase) {
 /* This function pulls a record from the op's bounded branch, set it as an argument for the op match branch
  * and consumes a record from the match branch. If there is no record from the match branch,
  * the bounded branch record is returned. */
-Record AntiSemiApplyConsume(OpBase *opBase) {
+static Record AntiSemiApplyConsume(OpBase *opBase) {
 	OpSemiApply *op = (OpSemiApply *)opBase;
 	while(true) {
 		// Try to get a record from bound stream.
@@ -111,7 +112,7 @@ Record AntiSemiApplyConsume(OpBase *opBase) {
 	}
 }
 
-OpResult SemiApplyReset(OpBase *opBase) {
+static OpResult SemiApplyReset(OpBase *opBase) {
 	OpSemiApply *op = (OpSemiApply *)opBase;
 	if(op->r) {
 		OpBase_DeleteRecord(op->r);
@@ -120,7 +121,14 @@ OpResult SemiApplyReset(OpBase *opBase) {
 	return OP_OK;
 }
 
-void SemiApplyFree(OpBase *opBase) {
+static inline OpBase *SemiApplyClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_SEMI_APPLY || opBase->type == OpType_ANTI_SEMI_APPLY);
+	OpSemiApply *op = (OpSemiApply *)opBase;
+	bool anti = opBase->type == OpType_ANTI_SEMI_APPLY;
+	return NewSemiApplyOp(plan, anti);
+}
+
+static void SemiApplyFree(OpBase *opBase) {
 	OpSemiApply *op = (OpSemiApply *)opBase;
 
 	if(op->r) {
