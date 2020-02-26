@@ -166,13 +166,10 @@ static OpResult CondVarLenTraverseReset(OpBase *ctx) {
 }
 
 static OpBase *CondVarLenTraverseClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE ||
-		   opBase->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO);
+	assert(opBase->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE);
 	CondVarLenTraverse *op = (CondVarLenTraverse *) opBase;
 	OpBase *op_clone = NewCondVarLenTraverseOp(plan, QueryCtx_GetGraph(),
 											   AlgebraicExpression_Clone(op->ae));
-	if(opBase->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO)
-		CondVarLenTraverseOp_ExpandInto((CondVarLenTraverse *)op_clone);
 	return op_clone;
 }
 
