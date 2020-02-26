@@ -7,9 +7,10 @@
 #include "op_argument.h"
 
 // Forward declarations
-Record ArgumentConsume(OpBase *opBase);
-OpResult ArgumentReset(OpBase *opBase);
-void ArgumentFree(OpBase *opBase);
+static Record ArgumentConsume(OpBase *opBase);
+static OpResult ArgumentReset(OpBase *opBase);
+static OpBase *ArgumentClone(const ExecutionPlan *plan, const OpBase *opBase);
+static void ArgumentFree(OpBase *opBase);
 
 OpBase *NewArgumentOp(const ExecutionPlan *plan, const char **variables) {
 	Argument *op = rm_malloc(sizeof(Argument));
@@ -27,7 +28,7 @@ OpBase *NewArgumentOp(const ExecutionPlan *plan, const char **variables) {
 	return (OpBase *)op;
 }
 
-Record ArgumentConsume(OpBase *opBase) {
+static Record ArgumentConsume(OpBase *opBase) {
 	Argument *arg = (Argument *)opBase;
 
 	// Emit the record only once.
@@ -37,7 +38,7 @@ Record ArgumentConsume(OpBase *opBase) {
 	return r;
 }
 
-OpResult ArgumentReset(OpBase *opBase) {
+static OpResult ArgumentReset(OpBase *opBase) {
 	// Reset operation, freeing the Record if one is held.
 	Argument *arg = (Argument *)opBase;
 
@@ -54,7 +55,12 @@ void Argument_AddRecord(Argument *arg, Record r) {
 	arg->r = r;
 }
 
-void ArgumentFree(OpBase *opBase) {
+static inline OpBase *ArgumentClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_ARGUMENT);
+	return NewArgumentOp(plan, opBase->modifies);
+}
+
+static void ArgumentFree(OpBase *opBase) {
 	Argument *arg = (Argument *)opBase;
 	if(arg->r) {
 		OpBase_DeleteRecord(arg->r);
