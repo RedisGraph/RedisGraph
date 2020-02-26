@@ -40,9 +40,7 @@ void FreeGroup(Group *g) {
 	if(g == NULL) return;
 	if(g->r) Record_FreeEntries(g->r);  // Will be freed by Record owner.
 	if(g->keys) {
-		for(int i = 0; i < g->key_count; i ++) {
-			SIValue_Free(g->keys[i]);
-		}
+		for(int i = 0; i < g->key_count; i ++) SIValue_Free(g->keys[i]);
 		rm_free(g->keys);
 	}
 
