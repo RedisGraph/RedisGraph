@@ -44,7 +44,8 @@ ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *a
 	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
 	if(!idx) return PROCEDURE_ERR; // TODO this should cause an error to be emitted.
 
-	QueryNodeContext *pdata = rm_malloc(sizeof(QueryNodeContext));
+	ctx->privateData = rm_malloc(sizeof(QueryNodeContext));
+	QueryNodeContext *pdata = ctx->privateData;
 	pdata->idx = idx;
 	pdata->g = gc->g;
 	pdata->output = array_new(SIValue, 2);
@@ -70,7 +71,6 @@ ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *a
 	}
 	assert(pdata->iter);
 
-	ctx->privateData = pdata;
 	return PROCEDURE_OK;
 }
 

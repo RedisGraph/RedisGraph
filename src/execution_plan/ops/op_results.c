@@ -11,6 +11,7 @@
 
 /* Forward declarations. */
 static Record ResultsConsume(OpBase *opBase);
+static OpBase *ResultsClone(const ExecutionPlan *plan, const OpBase *opBase);
 
 OpBase *NewResultsOp(const ExecutionPlan *plan) {
 	Results *op = rm_malloc(sizeof(Results));
@@ -18,7 +19,7 @@ OpBase *NewResultsOp(const ExecutionPlan *plan) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_RESULTS, "Results", NULL, ResultsConsume,
-				NULL, NULL, NULL, NULL, false, plan);
+				NULL, NULL, ResultsClone, NULL, false, plan);
 
 	return (OpBase *)op;
 }
@@ -38,4 +39,9 @@ static Record ResultsConsume(OpBase *opBase) {
 	/* Append to final result set. */
 	ResultSet_AddRecord(op->result_set, r);
 	return r;
+}
+
+static inline OpBase *ResultsClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_RESULTS);
+	return NewResultsOp(plan);
 }

@@ -17,6 +17,7 @@
 static OpResult UnwindInit(OpBase *opBase);
 static Record UnwindConsume(OpBase *opBase);
 static OpResult UnwindReset(OpBase *opBase);
+static OpBase *UnwindClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void UnwindFree(OpBase *opBase);
 
 OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
@@ -29,7 +30,7 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", UnwindInit, UnwindConsume,
-				UnwindReset, NULL, NULL, UnwindFree, false, plan);
+				UnwindReset, NULL, UnwindClone, UnwindFree, false, plan);
 
 	op->unwindRecIdx = OpBase_Modifies((OpBase *)op, exp->resolved_name);
 	return (OpBase *)op;
@@ -112,6 +113,12 @@ static OpResult UnwindReset(OpBase *ctx) {
 	// Dynamic should set index to UINT_MAX, to force refetching of data.
 	else op->listIdx = INDEX_NOT_SET;
 	return OP_OK;
+}
+
+static inline OpBase *UnwindClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_SORT);
+	OpUnwind *op = (OpUnwind *)opBase;
+	return NewUnwindOp(plan, AR_EXP_Clone(op->exp));
 }
 
 static void UnwindFree(OpBase *ctx) {
