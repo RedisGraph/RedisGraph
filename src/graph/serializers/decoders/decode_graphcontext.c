@@ -22,6 +22,7 @@ static void _RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	for(uint i = 0; i < count; i ++) {
 		char *attr = RedisModule_LoadStringBuffer(rdb, NULL);
 		GraphContext_FindOrAddAttribute(gc, attr);
+		RedisModule_Free(attr);
 	}
 }
 
