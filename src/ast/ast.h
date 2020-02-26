@@ -96,7 +96,10 @@ const char *AST_GetEntityName(const AST *ast, const cypher_astnode_t *entity);
 const char **AST_GetProjectAll(const cypher_astnode_t *projection_clause);
 
 // Collect the aliases from a RETURN clause to populate ResultSet column names.
-const char **AST_BuildColumnNames(const cypher_astnode_t *return_clause);
+const char **AST_BuildReturnColumnNames(const cypher_astnode_t *return_clause);
+
+// Collect the aliases from a CALL clause to populate ResultSet column names.
+const char **AST_BuildCallColumnNames(const cypher_astnode_t *return_clause);
 
 // Determine the maximum number of records
 // which will be considered when evaluating an algebraic expression.
