@@ -12,6 +12,7 @@
 
 /* Forward declarations. */
 static Record DeleteConsume(OpBase *opBase);
+static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void DeleteFree(OpBase *opBase);
 
 void _DeleteEntities(OpDelete *op) {
@@ -59,7 +60,7 @@ OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", NULL, DeleteConsume,
-				NULL, NULL, NULL, DeleteFree, true, plan);
+				NULL, NULL, DeleteClone, DeleteFree, true, plan);
 
 	return (OpBase *)op;
 }
@@ -101,6 +102,14 @@ static Record DeleteConsume(OpBase *opBase) {
 	}
 
 	return r;
+}
+
+static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_DELETE);
+	OpDelete *op = (OpDelete *)opBase;
+	AR_ExpNode **exps;
+	array_clone_with_cb(exps, op->exps, AR_EXP_Clone);
+	return NewDeleteOp(plan, exps);
 }
 
 static void DeleteFree(OpBase *ctx) {
