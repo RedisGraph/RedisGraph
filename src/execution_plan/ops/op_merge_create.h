@@ -12,7 +12,6 @@
 #include "shared/create_functions.h"
 #include "../../graph/entities/node.h"
 #include "../../graph/entities/edge.h"
-#include "../../resultset/resultset_statistics.h"
 
 /* Create new graph entities without introducing any non-unique patterns. */
 typedef struct {
@@ -24,9 +23,7 @@ typedef struct {
 	PendingCreations pending;  // Container struct for all graph changes to be committed.
 } OpMergeCreate;
 
-OpBase *NewMergeCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
-						 NodeCreateCtx *nodes, EdgeCreateCtx *edges);
+OpBase *NewMergeCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateCtx *edges);
 
 // Commit all pending creations and switch to Record handoff mode.
 void MergeCreate_Commit(OpBase *opBase);
-

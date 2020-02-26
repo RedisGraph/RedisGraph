@@ -47,12 +47,12 @@ cleanup:
 	QueryCtx_UnlockCommit(&op->op);
 }
 
-OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps, ResultSetStatistics *stats) {
+OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	OpDelete *op = rm_malloc(sizeof(OpDelete));
 
 	op->gc = QueryCtx_GetGraphCtx();
 	op->exps = exps;
-	op->stats = stats;
+	op->stats = QueryCtx_GetResultSetStatistics();
 	op->exp_count = array_len(exps);
 	op->deleted_nodes = array_new(Node, 32);
 	op->deleted_edges = array_new(Edge, 32);

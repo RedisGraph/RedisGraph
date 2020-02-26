@@ -37,23 +37,19 @@ static void _migrate_expressions(OpAggregate *op, AR_ExpNode **exps) {
 	op->key_count = array_len(op->key_exps);
 }
 
-static AR_ExpNode **_build_aggregate_exps(OpAggregate *op) {
-	AR_ExpNode **agg_exps = array_new(AR_ExpNode *, op->aggregate_count);
+/* Clone all aggregate expression templates to associate with a new Group. */
+static inline AR_ExpNode **_build_aggregate_exps(OpAggregate *op) {
+	AR_ExpNode **agg_exps = rm_malloc(op->aggregate_count * sizeof(AR_ExpNode *));
 
 	for(uint i = 0; i < op->aggregate_count; i++) {
-		AR_ExpNode *exp = AR_EXP_Clone(op->aggregate_exps[i]);
-		agg_exps = array_append(agg_exps, exp);
+		agg_exps[i] = AR_EXP_Clone(op->aggregate_exps[i]);
 	}
 
 	return agg_exps;
 }
 
-static Group *_CreateGroup(OpAggregate *op, Record r) {
-	/* Create a new group
-	 * Get a fresh copy of aggregation functions. */
-	AR_ExpNode **agg_exps = _build_aggregate_exps(op);
-
-	/* Clone group keys. */
+/* Build a new Group key of the SIValue results of non-aggregate expressions. */
+static inline SIValue *_build_group_key(OpAggregate *op) {
 	SIValue *group_keys = rm_malloc(sizeof(SIValue) * op->key_count);
 
 	for(uint i = 0; i < op->key_count; i++) {
@@ -62,9 +58,20 @@ static Group *_CreateGroup(OpAggregate *op, Record r) {
 		group_keys[i] = key;
 	}
 
+	return group_keys;
+}
+
+static Group *_CreateGroup(OpAggregate *op, Record r) {
+	/* Create a new group
+	 * Clone group keys. */
+	SIValue *group_keys = _build_group_key(op);
+
+	/* Get a fresh copy of aggregation functions. */
+	AR_ExpNode **agg_exps = _build_aggregate_exps(op);
+
 	/* There's no need to keep a reference to record if we're not sorting groups. */
 	Record cache_record = (op->should_cache_records) ? r : NULL;
-	op->group = NewGroup(op->key_count, group_keys, agg_exps, cache_record);
+	op->group = NewGroup(group_keys, op->key_count, agg_exps, op->aggregate_count, cache_record);
 
 	return op->group;
 }
@@ -137,7 +144,7 @@ static void _aggregateRecord(OpAggregate *op, Record r) {
 		AR_ExpNode *exp = group->aggregationFunctions[i];
 		AR_EXP_Aggregate(exp, r);
 	}
-	
+
 	// Free record.
 	OpBase_DeleteRecord(r);
 }
