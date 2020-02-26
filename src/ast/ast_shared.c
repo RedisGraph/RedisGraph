@@ -80,7 +80,7 @@ PropertyMap *PropertyMap_New(GraphContext *gc, const cypher_astnode_t *props) {
 	return map;
 }
 
-static PropertyMap *PropertyMap_Clone(PropertyMap *map) {
+static PropertyMap *_PropertyMap_Clone(PropertyMap *map) {
 	PropertyMap *clone = rm_malloc(sizeof(PropertyMap));
 	uint prop_count = map->property_count;
 	clone->keys = rm_malloc(prop_count * sizeof(Attribute_ID));
@@ -117,7 +117,7 @@ NodeCreateCtx NodeCreateCtx_Clone(NodeCreateCtx ctx) {
 	NodeCreateCtx clone;
 	clone.node = ctx.node;
 	clone.node_idx = ctx.node_idx;
-	clone.properties = PropertyMap_Clone(ctx.properties);
+	clone.properties = _PropertyMap_Clone(ctx.properties);
 	return clone;
 }
 
@@ -127,6 +127,6 @@ EdgeCreateCtx EdgeCreateCtx_Clone(EdgeCreateCtx ctx) {
 	clone.src_idx = ctx.src_idx;
 	clone.dest_idx = ctx.dest_idx;
 	clone.edge_idx = ctx.edge_idx;
-	clone.properties = PropertyMap_Clone(ctx.properties);
+	clone.properties = _PropertyMap_Clone(ctx.properties);
 	return clone;
 }
