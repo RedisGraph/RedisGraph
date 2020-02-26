@@ -20,4 +20,4 @@ typedef struct {
 } Results;
 
 /* Creates a new Results operation */
-OpBase *NewResultsOp(const ExecutionPlan *plan, ResultSet *result_set);
+OpBase *NewResultsOp(const ExecutionPlan *plan);

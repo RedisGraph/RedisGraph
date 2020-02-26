@@ -7,13 +7,14 @@
 #include "op_results.h"
 #include "../../util/arr.h"
 #include "../../arithmetic/arithmetic_expression.h"
+#include "../../query_ctx.h"
 
 /* Forward declarations. */
 static Record ResultsConsume(OpBase *opBase);
 
-OpBase *NewResultsOp(const ExecutionPlan *plan, ResultSet *result_set) {
+OpBase *NewResultsOp(const ExecutionPlan *plan) {
 	Results *op = rm_malloc(sizeof(Results));
-	op->result_set = result_set;
+	op->result_set = QueryCtx_GetResultSet();
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_RESULTS, "Results", NULL, ResultsConsume,

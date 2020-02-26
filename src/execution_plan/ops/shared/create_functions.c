@@ -119,8 +119,7 @@ static void _CommitEdges(PendingCreations *pending) {
 }
 
 // Initialize all variables for storing pending creations.
-PendingCreations NewPendingCreationsContainer(ResultSetStatistics *stats, NodeCreateCtx *nodes,
-											  EdgeCreateCtx *edges) {
+PendingCreations NewPendingCreationsContainer(NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
 	PendingCreations pending;
 	pending.nodes_to_create = nodes;
 	pending.edges_to_create = edges;
@@ -128,7 +127,7 @@ PendingCreations NewPendingCreationsContainer(ResultSetStatistics *stats, NodeCr
 	pending.created_edges = array_new(Edge *, 0);
 	pending.node_properties = array_new(PendingProperties *, 0);
 	pending.edge_properties = array_new(PendingProperties *, 0);
-	pending.stats = stats;
+	pending.stats = QueryCtx_GetResultSetStatistics();
 
 	return pending;
 }
