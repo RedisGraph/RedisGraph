@@ -84,10 +84,10 @@ static inline SIValue _BulkInsert_ReadProperty(const char *data, size_t *data_id
 		*data_idx += sizeof(int64_t);
 		v = SI_LongVal(d);
 	} else if(t == BI_STRING) {
-		char *s = rm_strdup(data + *data_idx);
+		const char *s = data + *data_idx;
 		*data_idx += strlen(s) + 1;
-		// Ownership of the string will be passed to the GraphEntity properties
-		v = SI_TransferStringVal(s);
+		// The string itself will be cloned when added to the GraphEntity properties.
+		v = SI_ConstStringVal((char *)s);
 	} else {
 		assert(0);
 	}
