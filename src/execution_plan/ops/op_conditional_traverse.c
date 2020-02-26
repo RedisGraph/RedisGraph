@@ -9,10 +9,12 @@
 #include "../../util/arr.h"
 #include "../../GraphBLASExt/GxB_Delete.h"
 #include "../../arithmetic/arithmetic_expression.h"
+#include "../../query_ctx.h"
 
 /* Forward declarations. */
 static Record CondTraverseConsume(OpBase *opBase);
 static OpResult CondTraverseReset(OpBase *opBase);
+static OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void CondTraverseFree(OpBase *opBase);
 
 static void _setupTraversedRelations(CondTraverse *op, QGEdge *e) {
@@ -136,7 +138,8 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", NULL,
-				CondTraverseConsume, CondTraverseReset, CondTraverseToString, NULL, CondTraverseFree, false, plan);
+				CondTraverseConsume, CondTraverseReset, CondTraverseToString, CondTraverseClone, CondTraverseFree,
+				false, plan);
 
 	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
@@ -232,6 +235,13 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 	}
 	if(op->F != GrB_NULL) GrB_Matrix_clear(op->F);
 	return OP_OK;
+}
+
+static inline OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_CONDITIONAL_TRAVERSE);
+	CondTraverse *op = (CondTraverse *)opBase;
+	return NewCondTraverseOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae),
+							 op->recordsCap);
 }
 
 /* Frees CondTraverse */
