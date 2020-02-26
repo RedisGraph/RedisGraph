@@ -17,7 +17,6 @@ typedef struct ExecutionPlan ExecutionPlan;
 struct ExecutionPlan {
 	OpBase *root;                       // Root operation of overall ExecutionPlan.
 	rax *record_map;                    // Mapping between identifiers and record indices.
-	ResultSet *result_set;              // ResultSet populated by this query.
 	QueryGraph *query_graph;            // QueryGraph representing all graph entities in this segment.
 	FT_FilterNode *filter_tree;         // FilterTree containing filters to be applied to this segment.
 	QueryGraph **connected_components;  // Array of all connected components in this segment.
@@ -25,6 +24,8 @@ struct ExecutionPlan {
 	int segment_count;                  // Number of ExecutionPlan segments.
 	ExecutionPlan **segments;           // Partial execution plans scoped to a subset of operations.
 	ObjectPool *record_pool;
+	bool prepared;                      // Indicates if the execution plan is ready for execute.
+	bool is_union;                      // Indicates if the execution plan is a union of execution plans.
 };
 
 /* execution_plan_modify.c
@@ -88,13 +89,16 @@ OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **vars,
 /* execution_plan.c */
 
 /* Creates a new execution plan from AST */
-ExecutionPlan *NewExecutionPlan(ResultSet *result_set);
+ExecutionPlan *NewExecutionPlan(void);
+
+/* Prepare an execution plan for execution: optimize, initialize result set schema. */
+void ExecutionPlan_PreparePlan(ExecutionPlan *plan);
 
 /* Allocate a new ExecutionPlan segment. */
 ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void);
 
 /* Build a tree of operations that performs all the work required by the clauses of the current AST. */
-void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set);
+void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan);
 
 /* Re position filter op. */
 void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,

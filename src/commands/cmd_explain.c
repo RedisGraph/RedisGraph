@@ -49,7 +49,8 @@ void Graph_Explain(void *args) {
 	Graph_AcquireReadLock(gc->g);
 	lock_acquired = true;
 
-	plan = NewExecutionPlan(NULL);
+	plan = NewExecutionPlan();
+	ExecutionPlan_PreparePlan(plan);
 	/* Make sure there are no compile-time errors.
 	 * We prefer to emit the error only once the entire execution-plan
 	 * is constructed in-favour of the time it was encountered

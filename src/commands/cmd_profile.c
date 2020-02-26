@@ -61,7 +61,8 @@ void Graph_Profile(void *args) {
 	}
 
 	result_set = NewResultSet(ctx, false);
-	ExecutionPlan *plan = NewExecutionPlan(result_set);
+	QueryCtx_SetResultSet(result_set);
+	ExecutionPlan *plan = NewExecutionPlan();
 	/* Make sure there are no compile-time errors.
 	 * We prefer to emit the error only once the entire execution-plan
 	 * is constructed in-favour of the time it was encountered
@@ -77,6 +78,7 @@ void Graph_Profile(void *args) {
 	}
 
 	if(plan) {
+		ExecutionPlan_PreparePlan(plan);
 		ExecutionPlan_Profile(plan);
 		QueryCtx_ForceUnlockCommit();
 		ExecutionPlan_Print(plan, ctx);

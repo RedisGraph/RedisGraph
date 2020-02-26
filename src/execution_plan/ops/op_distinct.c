@@ -10,6 +10,7 @@
 
 /* Forward declarations. */
 static Record DistinctConsume(OpBase *opBase);
+static OpBase *DistinctClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void DistinctFree(OpBase *opBase);
 
 OpBase *NewDistinctOp(const ExecutionPlan *plan) {
@@ -17,7 +18,7 @@ OpBase *NewDistinctOp(const ExecutionPlan *plan) {
 	op->found = raxNew();
 
 	OpBase_Init((OpBase *)op, OPType_DISTINCT, "Distinct", NULL, DistinctConsume,
-				NULL, NULL, NULL, DistinctFree, false, plan);
+				NULL, NULL, DistinctClone, DistinctFree, false, plan);
 
 	return (OpBase *)op;
 }
@@ -35,6 +36,11 @@ static Record DistinctConsume(OpBase *opBase) {
 		if(is_new) return r;
 		OpBase_DeleteRecord(r);
 	}
+}
+
+static inline OpBase *DistinctClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_DISTINCT);
+	return NewDistinctOp(plan);
 }
 
 static void DistinctFree(OpBase *ctx) {

@@ -70,7 +70,6 @@ struct Graph {
 	RG_Matrix _t_adjacency_matrix;      // Transposed Adjacency matrix.
 	RG_Matrix *labels;                  // Label matrices.
 	RG_Matrix *relations;               // Relation matrices.
-	RG_Matrix *_relations_map;          // Maps from (relation, row, col) to edge id.
 	RG_Matrix _zero_matrix;             // Zero matrix.
 	pthread_mutex_t _writers_mutex;     // Mutex restrict single writer.
 	pthread_rwlock_t _rwlock;           // Read-write lock scoped to this specific graph
@@ -293,12 +292,6 @@ GrB_Matrix Graph_GetLabelMatrix(
 GrB_Matrix Graph_GetRelationMatrix(
 	const Graph *g,     // Graph from which to get adjacency matrix.
 	int relation        // Relation described by matrix.
-);
-
-// Retrieve a relation mapping matrix coresponding to relation_idx
-GrB_Matrix Graph_GetRelationMap(
-	const Graph *g,     // Graph from which to get mapping matrix.
-	int relation_idx    // Relation id
 );
 
 // Retrieves the zero matrix.
