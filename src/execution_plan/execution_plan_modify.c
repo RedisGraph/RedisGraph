@@ -318,7 +318,7 @@ OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_v
 	// Build a temporary AST holding a MATCH clause.
 	AST *match_stream_ast = AST_MockMatchPattern(ast, path);
 
-	ExecutionPlan_PopulateExecutionPlan(match_stream_plan, NULL);
+	ExecutionPlan_PopulateExecutionPlan(match_stream_plan);
 
 	AST_MockFree(match_stream_ast);
 	QueryCtx_SetAST(ast); // Reset the AST.

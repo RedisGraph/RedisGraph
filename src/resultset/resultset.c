@@ -103,6 +103,26 @@ static void _ResultSet_ReplyWithPreamble(ResultSet *set, const Record r) {
 	RedisModule_ReplyWithArray(set->ctx, REDISMODULE_POSTPONED_ARRAY_LEN);
 }
 
+static void _ResultSet_SetColumns(ResultSet *set) {
+	assert(!set->columns);
+
+	AST *ast = QueryCtx_GetAST();
+	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
+	if(root_type == CYPHER_AST_QUERY) {
+		uint clause_count = cypher_ast_query_nclauses(ast->root);
+		const cypher_astnode_t *last_clause = cypher_ast_query_get_clause(ast->root, clause_count - 1);
+		cypher_astnode_type_t last_clause_type = cypher_astnode_type(last_clause);
+		bool query_has_return = (last_clause_type == CYPHER_AST_RETURN);
+		if(query_has_return) {
+			set->columns = AST_BuildReturnColumnNames(last_clause);
+			set->column_count = array_len(set->columns);
+		} else if(last_clause_type == CYPHER_AST_CALL) {
+			set->columns = AST_BuildCallColumnNames(last_clause);
+			set->column_count = array_len(set->columns);
+		}
+	}
+}
+
 ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact) {
 	ResultSet *set = rm_malloc(sizeof(ResultSet));
 	set->ctx = ctx;
@@ -124,13 +144,9 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact) {
 	set->stats.indices_created = STAT_NOT_SET;
 	set->stats.indices_deleted = STAT_NOT_SET;
 
-	return set;
-}
+	_ResultSet_SetColumns(set);
 
-void ResultSet_SetColumns(ResultSet *set, const char **columns) {
-	assert(set && columns);
-	set->columns = columns;
-	set->column_count = array_len(columns);
+	return set;
 }
 
 int ResultSet_AddRecord(ResultSet *set, Record r) {
@@ -174,7 +190,7 @@ void ResultSet_IndexDeleted(ResultSet *set, int status_code) {
 	}
 }
 
-void ResultSet_Replay(ResultSet *set) {
+void ResultSet_Reply(ResultSet *set) {
 	if(set->header_emitted) {
 		// If we have emitted a header, set the number of elements in the preceding array.
 		RedisModule_ReplySetArrayLength(set->ctx, set->recordCount);
@@ -206,9 +222,8 @@ void ResultSet_ReportQueryRuntime(RedisModuleCtx *ctx) {
 void ResultSet_Free(ResultSet *set) {
 	if(!set) return;
 
-	array_free(set->columns);
-	rm_free(set->columns_record_map);
+	if(set->columns) array_free(set->columns);
+	if(set->columns_record_map) rm_free(set->columns_record_map);
 
 	rm_free(set);
 }
-
