@@ -521,8 +521,9 @@ bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
 	return false;
 }
 
-bool inline  AR_EXP_IsConstant(const AR_ExpNode *exp) {
-	return exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_CONSTANT;
+bool inline  AR_EXP_IsConstantOrParameter(const AR_ExpNode *exp) {
+	return exp->type == AR_EXP_OPERAND && (exp->operand.type == AR_EXP_CONSTANT ||
+										   exp->operand.type == AR_EXP_PARAM);
 }
 
 void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,

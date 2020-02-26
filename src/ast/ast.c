@@ -436,8 +436,7 @@ const char **AST_BuildCallColumnNames(const cypher_astnode_t *call_clause) {
 const char *AST_ExtractQueryString(const cypher_parse_result_t *partial_result) {
 	// Retrieve the AST root node from a parsed query.
 	const cypher_astnode_t *statement = cypher_parse_result_get_root(partial_result, 0);
-	// We are parsing with the CYPHER_PARSE_ONLY_STATEMENTS flag,
-	// and double-checking this in AST validations
+	// We are parsing with the CYPHER_PARSE_ONLY_PARAMETERS flag, so the query itself is a string that needs to be parsed again.
 	assert(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
 	const cypher_astnode_t *body = cypher_ast_statement_get_body(statement);
 	assert(cypher_astnode_type(body) == CYPHER_AST_STRING);

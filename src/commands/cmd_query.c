@@ -60,17 +60,19 @@ void Graph_Query(void *args) {
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
 
 	QueryCtx_BeginTimer(); // Start query timing.
-
+	cypher_parse_result_t *parse_result = NULL;
+	// Parse and validate parameters only.
 	cypher_parse_result_t *params_parse_result = parse_params(command_ctx->query);
 	if(params_parse_result == NULL) goto cleanup;
 	if(AST_Validate_QueryParams(ctx, params_parse_result) != AST_VALID) goto cleanup;
 
 	// Query caching enabler.
 	AST_Extract_Params(params_parse_result);
+	// Extract the query string from the partial parsed query, parse and validate.
 	const char *query_string = AST_ExtractQueryString(params_parse_result);
 
 	// Parse the query to construct an AST.
-	cypher_parse_result_t *parse_result = parse_query(query_string);
+	parse_result = parse_query(query_string);
 	if(parse_result == NULL) goto cleanup;
 
 	// Perform query validations

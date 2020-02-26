@@ -1707,14 +1707,16 @@ AST_Validation AST_Validate_QueryParams(RedisModuleCtx *ctx, const cypher_parse_
 
 	char *reason;
 	cypher_astnode_type_t root_type = cypher_astnode_type(root);
+	// Parameters parsing should yield a CYPHER_AST_STATEMENT with parameters (if any) and the query string as the body
 	if(root_type != CYPHER_AST_STATEMENT) {
-		// This should be unnecessary, as we're currently parsing
-		// with the CYPHER_PARSE_ONLY_STATEMENTS flag.
 		asprintf(&reason, "Encountered unsupported query type '%s'", cypher_astnode_typestr(root_type));
 		RedisModule_ReplyWithError(ctx, reason);
 		free(reason);
 		return AST_INVALID;
 	}
+
+	// In case of no parameters.
+	if(cypher_ast_statement_noptions(root)) return AST_VALID;
 
 	if(_ValidateInputParameters(root, &reason) != AST_VALID) {
 		RedisModule_ReplyWithError(ctx, reason);
