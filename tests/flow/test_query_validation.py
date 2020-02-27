@@ -171,3 +171,14 @@ class testQueryValidationFlow(FlowTestsBase):
         except redis.exceptions.ResponseError:
             # Expecting an error.
             pass
+
+    # Run a query in which a parsed parameter introduces a type in an unsupported context.
+    def test16_param_introduces_unhandled_type(self):
+        try:
+            query = """CYPHER props={a:1,b:2} CREATE (a:A $props)"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Encountered unhandled type" in e.message)
+            pass
