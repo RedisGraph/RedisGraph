@@ -13,6 +13,7 @@
 
 /* Forward declarations. */
 static Record CreateConsume(OpBase *opBase);
+static OpBase *CreateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void CreateFree(OpBase *opBase);
 
 OpBase *NewCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
@@ -21,7 +22,7 @@ OpBase *NewCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateC
 	op->pending = NewPendingCreationsContainer(nodes, edges); // Prepare all creation variables.
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CREATE, "Create", NULL, CreateConsume,
-				NULL, NULL, NULL, CreateFree, true, plan);
+				NULL, NULL, CreateClone, CreateFree, true, plan);
 
 	uint node_blueprint_count = array_len(nodes);
 	uint edge_blueprint_count = array_len(edges);
@@ -145,6 +146,16 @@ static Record CreateConsume(OpBase *opBase) {
 
 	// Return record.
 	return _handoff(op);
+}
+
+static OpBase *CreateClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_CREATE);
+	OpCreate *op = (OpCreate *)opBase;
+	NodeCreateCtx *nodes;
+	EdgeCreateCtx *edges;
+	array_clone_with_cb(nodes, op->pending.nodes_to_create, NodeCreateCtx_Clone);
+	array_clone_with_cb(edges, op->pending.edges_to_create, EdgeCreateCtx_Clone);
+	return NewCreateOp(plan, nodes, edges);
 }
 
 static void CreateFree(OpBase *ctx) {

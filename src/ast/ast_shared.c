@@ -80,6 +80,18 @@ PropertyMap *PropertyMap_New(GraphContext *gc, const cypher_astnode_t *props) {
 	return map;
 }
 
+static PropertyMap *_PropertyMap_Clone(PropertyMap *map) {
+	PropertyMap *clone = rm_malloc(sizeof(PropertyMap));
+	uint prop_count = map->property_count;
+	clone->keys = rm_malloc(prop_count * sizeof(Attribute_ID));
+	clone->values = rm_malloc(prop_count * sizeof(AR_ExpNode *));
+	clone->property_count = prop_count;
+	memcpy(clone->keys, map->keys, prop_count * sizeof(Attribute_ID));
+	for(uint i = 0; i < prop_count; i++) clone->values[i] = AR_EXP_Clone(map->values[i]);
+
+	return clone;
+}
+
 void PropertyMap_Free(PropertyMap *map) {
 	if(map == NULL) return;
 
@@ -89,4 +101,32 @@ void PropertyMap_Free(PropertyMap *map) {
 	rm_free(map->keys);
 	rm_free(map->values);
 	rm_free(map);
+}
+
+EntityUpdateEvalCtx EntityUpdateEvalCtx_Clone(EntityUpdateEvalCtx ctx) {
+	EntityUpdateEvalCtx clone;
+	clone.alias = ctx.alias;
+	clone.attribute = ctx.attribute;
+	clone.attribute_idx = ctx.attribute_idx;
+	clone.exp = AR_EXP_Clone(ctx.exp);
+	clone.record_idx = ctx.record_idx;
+	return clone;
+}
+
+NodeCreateCtx NodeCreateCtx_Clone(NodeCreateCtx ctx) {
+	NodeCreateCtx clone;
+	clone.node = ctx.node;
+	clone.node_idx = ctx.node_idx;
+	clone.properties = _PropertyMap_Clone(ctx.properties);
+	return clone;
+}
+
+EdgeCreateCtx EdgeCreateCtx_Clone(EdgeCreateCtx ctx) {
+	EdgeCreateCtx clone;
+	clone.edge = ctx.edge;
+	clone.src_idx = ctx.src_idx;
+	clone.dest_idx = ctx.dest_idx;
+	clone.edge_idx = ctx.edge_idx;
+	clone.properties = _PropertyMap_Clone(ctx.properties);
+	return clone;
 }

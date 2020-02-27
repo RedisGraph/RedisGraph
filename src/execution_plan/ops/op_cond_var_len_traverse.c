@@ -142,12 +142,10 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 
 	if(!op->expandInto) Record_AddNode(op->r, op->destNodeIdx, n);
 	if(op->edgesIdx >= 0) {
-		if(reused_record) {
-			// If we're returning a new path from a previously-used Record,
-			// free the previous path to avoid a memory leak.
-			SIValue old_path = Record_GetScalar(op->r, op->edgesIdx);
-			SIValue_Free(old_path);
-		}
+		// If we're returning a new path from a previously-used Record,
+		// free the previous path to avoid a memory leak.
+		if(reused_record) SIValue_Free(Record_GetScalar(op->r, op->edgesIdx));
+		// Add new path to Record.
 		Record_AddScalar(op->r, op->edgesIdx, SI_Path(p));
 	}
 
