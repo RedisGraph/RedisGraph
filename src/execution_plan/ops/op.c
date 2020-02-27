@@ -29,7 +29,6 @@ void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsu
 	op->parent = NULL;
 	op->stats = NULL;
 	op->op_initialized = false;
-	op->dangling_records = NULL;
 	op->modifies = NULL;
 	op->writer = writer;
 
@@ -126,17 +125,6 @@ Record OpBase_Profile(OpBase *op) {
 	return r;
 }
 
-void OpBase_AddVolatileRecord(OpBase *op, const Record r) {
-	if(op->dangling_records == NULL) op->dangling_records = array_new(Record, 1);
-	op->dangling_records = array_append(op->dangling_records, r);
-}
-
-void OpBase_RemoveVolatileRecords(OpBase *op) {
-	if(!op->dangling_records) return;
-
-	array_clear(op->dangling_records);
-}
-
 bool OpBase_IsWriter(OpBase *op) {
 	return op->writer;
 }
@@ -166,14 +154,6 @@ void OpBase_Free(OpBase *op) {
 	if(op->children) rm_free(op->children);
 	if(op->modifies) array_free(op->modifies);
 	if(op->stats) rm_free(op->stats);
-	// If we are storing dangling references to Records, free them now.
-	if(op->dangling_records) {
-		uint count = array_len(op->dangling_records);
-		for(uint i = 0; i < count; i ++) {
-			OpBase_DeleteRecord(op->dangling_records[i]);
-		}
-		array_free(op->dangling_records);
-	}
 	rm_free(op);
 }
 
