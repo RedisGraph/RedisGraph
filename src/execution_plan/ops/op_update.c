@@ -15,6 +15,7 @@
 static OpResult UpdateInit(OpBase *opBase);
 static Record UpdateConsume(OpBase *opBase);
 static OpResult UpdateReset(OpBase *opBase);
+static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void UpdateFree(OpBase *opBase);
 
 /* Delay updates until all entities are processed,
@@ -152,7 +153,7 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps)
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", UpdateInit, UpdateConsume,
-				UpdateReset, NULL, NULL, UpdateFree, true, plan);
+				UpdateReset, NULL, UpdateClone, UpdateFree, true, plan);
 
 	for(uint i = 0; i < op->update_expressions_count; i ++) {
 		op->update_expressions[i].record_idx = OpBase_Modifies((OpBase *)op, update_exps[i].alias);
@@ -211,6 +212,14 @@ static Record UpdateConsume(OpBase *opBase) {
 
 	op->updates_commited = true;
 	return _handoff(op);
+}
+
+static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_UPDATE);
+	OpUpdate *op = (OpUpdate *)opBase;
+	EntityUpdateEvalCtx *update_exps;
+	array_clone_with_cb(update_exps, op->update_expressions, EntityUpdateEvalCtx_Clone);
+	return NewUpdateOp(plan, update_exps);
 }
 
 static OpResult UpdateReset(OpBase *ctx) {
