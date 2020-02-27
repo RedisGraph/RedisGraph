@@ -1627,7 +1627,8 @@ bool AST_ContainsErrors(const cypher_parse_result_t *result) {
 	return cypher_parse_result_nerrors(result) > 0;
 }
 
-AST_Validation AST_Validate_Query(RedisModuleCtx *ctx, const cypher_parse_result_t *result) {
+AST_Validation _AST_Validate_ParseResultRoot(RedisModuleCtx *ctx,
+											 const cypher_parse_result_t *result) {
 	// Check for failures in libcypher-parser
 	if(AST_ContainsErrors(result)) {
 		char *errMsg = _AST_ReportErrors(result);
@@ -1645,19 +1646,28 @@ AST_Validation AST_Validate_Query(RedisModuleCtx *ctx, const cypher_parse_result
 	}
 
 	char *reason;
-	// Verify that the query does not contain any expressions not in the RedisGraph support whitelist
-	if(CypherWhitelist_ValidateQuery(root, &reason) != AST_VALID) {
-		// Unsupported expressions found; reply with error.
-		RedisModule_ReplyWithError(ctx, reason);
-		free(reason);
-		return AST_INVALID;
-	}
-
 	cypher_astnode_type_t root_type = cypher_astnode_type(root);
 	if(root_type != CYPHER_AST_STATEMENT) {
 		// This should be unnecessary, as we're currently parsing
 		// with the CYPHER_PARSE_ONLY_STATEMENTS flag.
 		asprintf(&reason, "Encountered unsupported query type '%s'", cypher_astnode_typestr(root_type));
+		RedisModule_ReplyWithError(ctx, reason);
+		free(reason);
+		return AST_INVALID;
+	}
+
+	return AST_VALID;
+}
+
+AST_Validation AST_Validate_Query(RedisModuleCtx *ctx, const cypher_parse_result_t *result) {
+	if(_AST_Validate_ParseResultRoot(ctx, result) != AST_VALID) return AST_INVALID;
+
+	char *reason;
+	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
+
+	// Verify that the query does not contain any expressions not in the RedisGraph support whitelist
+	if(CypherWhitelist_ValidateQuery(root, &reason) != AST_VALID) {
+		// Unsupported expressions found; reply with error.
 		RedisModule_ReplyWithError(ctx, reason);
 		free(reason);
 		return AST_INVALID;
@@ -1689,34 +1699,13 @@ AST_Validation AST_Validate_Query(RedisModuleCtx *ctx, const cypher_parse_result
 }
 
 AST_Validation AST_Validate_QueryParams(RedisModuleCtx *ctx, const cypher_parse_result_t *result) {
-	// Check for failures in libcypher-parser
-	if(AST_ContainsErrors(result)) {
-		char *errMsg = _AST_ReportErrors(result);
-		RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
-		RedisModule_ReplyWithError(ctx, errMsg);
-		free(errMsg);
-		return AST_INVALID;
-	}
-
-	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
-	// Check for empty query
-	if(root == NULL) {
-		RedisModule_ReplyWithError(ctx, "Error: empty query.");
-		return AST_INVALID;
-	}
+	if(_AST_Validate_ParseResultRoot(ctx, result) != AST_VALID) return AST_INVALID;
 
 	char *reason;
-	cypher_astnode_type_t root_type = cypher_astnode_type(root);
-	// Parameters parsing should yield a CYPHER_AST_STATEMENT with parameters (if any) and the query string as the body
-	if(root_type != CYPHER_AST_STATEMENT) {
-		asprintf(&reason, "Encountered unsupported query type '%s'", cypher_astnode_typestr(root_type));
-		RedisModule_ReplyWithError(ctx, reason);
-		free(reason);
-		return AST_INVALID;
-	}
+	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
 
 	// In case of no parameters.
-	if(cypher_ast_statement_noptions(root)) return AST_VALID;
+	if(cypher_ast_statement_noptions(root) == 0) return AST_VALID;
 
 	if(_ValidateInputParameters(root, &reason) != AST_VALID) {
 		RedisModule_ReplyWithError(ctx, reason);
