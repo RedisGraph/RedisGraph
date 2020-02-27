@@ -142,7 +142,12 @@ static OpBase *NodeByIdSeekClone(const ExecutionPlan *plan, const OpBase *opBase
 	UnsignedRange range;
 	range.min = op->minId;
 	range.max = op->maxId;
-	// The range in the original op is set during construction, the clone range is inclusive.
+	/* In order to clone the range set at the original op, the range must be inclusive so the clone will set the exact range as the original.
+	 * During the call to NewNodeByIdSeekOp with the range, the following lines are executed:
+	 *  op->minId = id_range->include_min ? id_range->min : id_range->min + 1;
+	 *  op->maxId = id_range->include_max ? id_range->max : id_range->max - 1;
+	 * Since the range object min equals to the origin minId, and so is the max equals to the origin maxId, and the range is inclusive
+	 * the clone will set its values to be the same as in the origin. */
 	range.include_min = true;
 	range.include_max = true;
 	return NewNodeByIdSeekOp(plan, op->n, &range);
