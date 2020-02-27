@@ -80,6 +80,7 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions,
 	op->buffer = NULL;
 	op->limit = limit;
 	op->directions = directions;
+	op->exps = exps;
 
 	if(op->limit) op->heap = heap_new(_heap_elem_compare, op);
 	else op->buffer = array_new(Record, 32);
@@ -165,21 +166,11 @@ static OpResult SortReset(OpBase *ctx) {
 static OpBase *SortClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	assert(opBase->type == OPType_SORT);
 	OpSort *op = (OpSort *)opBase;
-	OpSort *clone = rm_malloc(sizeof(OpSort));
-	clone->heap = NULL;
-	clone->buffer = NULL;
-	clone->limit = op->limit;
-	array_clone(clone->directions, op->directions);
-
-	if(clone->limit) clone->heap = heap_new(_heap_elem_compare, clone);
-	else clone->buffer = array_new(Record, 32);
-
-	// Set our Op operations
-	OpBase_Init((OpBase *)clone, OPType_SORT, "Sort", NULL,
-				SortConsume, SortReset, NULL, SortClone, SortFree, false, plan);
-
-	array_clone(clone->record_offsets, op->record_offsets);
-	return (OpBase *)clone;
+	int *directions;
+	AR_ExpNode **exps;
+	array_clone(directions, op->directions);
+	array_clone_with_cb(exps, op->exps, AR_EXP_Clone);
+	return NewSortOp(plan, exps, directions, op->limit);
 }
 
 /* Frees Sort */
@@ -214,6 +205,13 @@ static void SortFree(OpBase *ctx) {
 	if(op->directions) {
 		array_free(op->directions);
 		op->directions = NULL;
+	}
+
+	if(op->exps) {
+		uint exps_count = array_len(op->exps);
+		for(uint i = 0; i < exps_count; i++) AR_EXP_Free(op->exps[i]);
+		array_free(op->exps);
+		op->exps = NULL;
 	}
 }
 
