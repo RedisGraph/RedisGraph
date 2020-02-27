@@ -14,6 +14,7 @@
 /* Forward declarations. */
 static OpResult MergeInit(OpBase *opBase);
 static Record MergeConsume(OpBase *opBase);
+static OpBase *MergeClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void MergeFree(OpBase *opBase);
 
 //------------------------------------------------------------------------------
@@ -94,7 +95,7 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
 	op->on_match = on_match;
 	op->on_create = on_create;
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume, NULL, NULL, NULL,
+	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume, NULL, NULL, MergeClone,
 				MergeFree, true, plan);
 
 	if(op->on_match) {
@@ -305,6 +306,16 @@ static Record MergeConsume(OpBase *opBase) {
 	QueryCtx_UnlockCommit(&op->op); // Release the lock.
 
 	return _handoff(op);
+}
+
+static OpBase *MergeClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_MERGE);
+	OpMerge *op = (OpMerge *)opBase;
+	EntityUpdateEvalCtx *on_match;
+	EntityUpdateEvalCtx *on_create;
+	array_clone_with_cb(on_match, op->on_match, EntityUpdateEvalCtx_Clone);
+	array_clone_with_cb(on_create, op->on_create, EntityUpdateEvalCtx_Clone);
+	return NewMergeOp(plan, on_match, on_create);
 }
 
 static void MergeFree(OpBase *opBase) {
