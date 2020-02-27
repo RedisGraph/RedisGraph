@@ -43,7 +43,7 @@ void _edge_accum(void *_z, const void *_x, const void *_y) {
 	}
 }
 
-/* Accumulator function for GxB_Select to delete edges and free edge arrays. */
+/* GxB_select_function which delete edges and free edge arrays. */
 bool _select_op_free_edge(GrB_Index i, GrB_Index j, GrB_Index nrows, GrB_Index ncols, const void *x,
 						  const void *thunk) {
 	// K is a uint64_t pointer which points to the address of our graph.
