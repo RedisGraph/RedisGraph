@@ -93,7 +93,6 @@ struct OpBase {
 	struct OpBase **children;   // Child operations.
 	const char **modifies;      // List of entities this op modifies.
 	OpStats *stats;             // Profiling statistics.
-	Record *dangling_records;   // Records allocated by this operation that must be freed.
 	struct OpBase *parent;      // Parent operations.
 	const struct ExecutionPlan *plan; // ExecutionPlan this operation is part of.
 	bool writer;             // Indicates this is a writer operation.
@@ -111,13 +110,6 @@ Record OpBase_Profile(OpBase *op);  // Profile op.
 int OpBase_ToString(const OpBase *op, char *buff, uint buff_len);
 
 OpBase *OpBase_Clone(const struct ExecutionPlan *plan, const OpBase *op);
-
-/* If an operation holds the sole reference to a Record it is evaluating,
- * that reference should be tracked so that it may be freed in the event of a run-time error. */
-void OpBase_AddVolatileRecord(OpBase *op, const Record r);
-/* No errors were encountered while processing these Records; the references
- * may be released. */
-void OpBase_RemoveVolatileRecords(OpBase *op);
 
 /* Mark alias as being modified by operation.
  * Returns the ID associated with alias. */
