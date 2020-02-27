@@ -10,14 +10,15 @@
 static Record JoinConsume(OpBase *opBase);
 static OpResult JoinReset(OpBase *opBase);
 static OpResult JoinInit(OpBase *opBase);
+static OpBase *JoinClone(const ExecutionPlan *plan, const OpBase *opBase);
 
 OpBase *NewJoinOp(const ExecutionPlan *plan) {
 	OpJoin *op = rm_malloc(sizeof(OpJoin));
 	op->stream = NULL;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_JOIN, "Join", JoinInit, JoinConsume, NULL, NULL, NULL, NULL, false,
-				plan);
+	OpBase_Init((OpBase *)op, OPType_JOIN, "Join", JoinInit, JoinConsume, NULL, NULL, JoinClone, NULL,
+				false, plan);
 
 	return (OpBase *)op;
 }
@@ -53,4 +54,9 @@ static OpResult JoinReset(OpBase *opBase) {
 	op->streamIdx = 0;
 	op->stream = op->op.children[op->streamIdx];
 	return OP_OK;
+}
+
+static inline OpBase *JoinClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_JOIN);
+	return NewJoinOp(plan);
 }
