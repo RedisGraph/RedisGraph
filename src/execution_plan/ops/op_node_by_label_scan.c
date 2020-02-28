@@ -48,15 +48,12 @@ void NodeByLabelScanOp_SetIDRange(NodeByLabelScan *op, UnsignedRange *id_range) 
 	op->op.name = "Node By Label and ID Scan";
 }
 
-static void _ConstructIterator(NodeByLabelScan *op) {
+static GrB_Info _ConstructIterator(NodeByLabelScan *op, Schema *schema) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Schema *schema = GraphContext_GetSchema(gc, op->n->label, SCHEMA_NODE);
-	assert(schema);
 	GxB_MatrixTupleIter_new(&op->iter, Graph_GetLabelMatrix(gc->g, schema->id));
 	NodeID minId = op->id_range->include_min ? op->id_range->min : op->id_range->min + 1;
 	NodeID maxId = op->id_range->include_max ? op->id_range->max : op->id_range->max - 1 ;
-	GxB_MatrixTupleIter_iterate_range(op->iter, minId, maxId);
-
+	return GxB_MatrixTupleIter_iterate_range(op->iter, minId, maxId);
 }
 
 static OpResult NodeByLabelScanInit(OpBase *opBase) {
@@ -64,12 +61,17 @@ static OpResult NodeByLabelScanInit(OpBase *opBase) {
 	if(opBase->childCount > 0) {
 		opBase->consume = NodeByLabelScanConsumeFromChild;
 	} else {
+		// If we have no children, we can build the iterator now.
 		GraphContext *gc = QueryCtx_GetGraphCtx();
 		Schema *schema = GraphContext_GetSchema(gc, op->n->label, SCHEMA_NODE);
-		// No label matrix, just return null.
-		if(!schema) opBase->consume = NodeByLabelScanNoOp;
-		// If we have no children, we can build the iterator now.
-		else _ConstructIterator((NodeByLabelScan *)opBase);
+		if(schema) {
+			GrB_Info iterator_built = _ConstructIterator(op, schema);
+			// The iterator build may fail if the ID range does not match the matrix dimensions.
+			if(iterator_built == GrB_SUCCESS) return OP_OK;
+		}
+
+		// We either have no label matrix or invalid iterator constraints; just return null.
+		opBase->consume = NodeByLabelScanNoOp;
 	}
 
 	return OP_OK;
@@ -113,7 +115,7 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 			Schema *schema = GraphContext_GetSchema(gc, op->n->label, SCHEMA_NODE);
 			// No label matrix, it might be created in the next iteration.
 			if(!schema) continue;
-			_ConstructIterator((NodeByLabelScan *)opBase);
+			_ConstructIterator(op, schema);
 
 		} else {
 			// Iterator depleted - reset.
@@ -188,3 +190,4 @@ static void NodeByLabelScanFree(OpBase *op) {
 		nodeByLabelScan->id_range = NULL;
 	}
 }
+
