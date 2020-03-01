@@ -226,3 +226,15 @@ class testNodeByIDFlow(FlowTestsBase):
         self.env.assertNotIn("NodeByIdSeek", redis_graph.execution_plan(query))
         resultsetB = redis_graph.query(query).result_set
         self.env.assertEqual(resultsetA, resultsetB)
+
+    # Try to fetch none existing entities by ID(s).
+    def test_for_none_existing_entity_ids(self):
+        # Try to fetch an entity with a none existing ID.
+        queries = ["""MATCH (a:person) WHERE ID(a) = 999 RETURN a""",
+                    """MATCH (a:person) WHERE ID(a) > 999 RETURN a""",
+                    """MATCH (a:person) WHERE ID(a) > 800 AND ID(a) < 900 RETURN a"""]
+
+        for query in queries:
+            resultset = redis_graph.query(query).result_set        
+            self.env.assertEquals(len(resultset), 0)    # Expecting no results.
+            self.env.assertIn("Node By Label and ID Scan", redis_graph.execution_plan(query))
