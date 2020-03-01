@@ -398,7 +398,7 @@ static void _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **orde
 	for(uint i = 0; i < order_count; i ++) {
 		const char *name = order_exps[i]->resolved_name;
 		int new_name = raxTryInsert(projection_names, (unsigned char *)name, strlen(name), NULL, NULL);
-		// If it is a new projection, add to a clone to the array.
+		// If it is a new projection, add a clone to the array.
 		if(new_name) project_exps = array_append(project_exps, AR_EXP_Clone(order_exps[i]));
 	}
 
