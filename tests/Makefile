@@ -27,7 +27,7 @@ test: unit flow tck
 
 unit:
 	### unit tests
-	@$(MAKE) -j8 -C unit all
+	@$(MAKE) -C unit all
 
 flow:
 	### flow tests

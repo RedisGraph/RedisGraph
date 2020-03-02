@@ -1,6 +1,6 @@
 #!/bin/bash
 
-if FLOW_LEAKS=$(grep "definitely lost: [1-9][0-9]* bytes" flow/logs/*.valgrind.log); then
+if FLOW_LEAKS=$(grep "definitely lost: [1-9][0-9,]* bytes" flow/logs/*.valgrind.log); then
 	echo "Memory leaks introduced in flow tests:"
 	echo "$FLOW_LEAKS"
 	exit 1

@@ -16,11 +16,7 @@ commands:
 jobs:
   build:
     docker:
-      # Primary image
       - image: 'redislabsmodules/rmbuilder:latest'
-      # Secondary image
-      - image: 'jlovitz/redis-libmalloc'
-        command: [redis-server, --loadmodule src/redisgraph.so, --port 6380]
     steps:
       - checkout
       - run:
@@ -75,8 +71,9 @@ jobs:
       - run:
           name: Test for memory leaks
           command: |
-              docker start $(docker ps -qf ancestor=redis-libmalloc) # Start container
-              TEST_ARGS="--env-reuse --existing-env-addr localhost:6380" make memcheck
+              # Replace the default Redis server with one linked to libc malloc rather than jemalloc.
+              git clone https://github.com/antirez/redis.git; cd redis; git checkout 5.0.7; make valgrind; make install; cd ..
+              make memcheck # Re-run the test suite, failing if definite memory leaks have been introduced.
 
       - early_return_for_forked_pull_requests
 
