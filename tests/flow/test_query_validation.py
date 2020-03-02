@@ -182,3 +182,14 @@ class testQueryValidationFlow(FlowTestsBase):
             # Expecting an error.
             assert("Encountered unhandled type" in e.message)
             pass
+
+    # Verify that an error is emitted when a query tries to create a multi-field index.
+    def test17_composite_index_construction(self):
+        try:
+            query = """CREATE INDEX ON :A(prop1,prop2)"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("composite indexes" in e.message)
+            pass

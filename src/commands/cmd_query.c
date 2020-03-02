@@ -18,6 +18,15 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc,
 	Index *idx = NULL;
 
 	if(cypher_astnode_type(index_op) == CYPHER_AST_CREATE_NODE_PROPS_INDEX) {
+		if(cypher_ast_create_node_props_index_nprops(index_op) > 1) {
+			// Reply with error if the query specifies multiple properties to index.
+			// TODO Remove this limitation when composite indexes are added.
+			char *error;
+			asprintf(&error, "RedisGraph does not currently support composite indexes.");
+			QueryCtx_SetError(error);
+			return;
+		}
+
 		// Retrieve strings from AST node
 		const char *label = cypher_ast_label_get_name(cypher_ast_create_node_props_index_get_label(
 														  index_op));
