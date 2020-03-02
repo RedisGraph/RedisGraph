@@ -30,12 +30,12 @@ class testSlowLog(FlowTestsBase):
             redis_graph.query(q)
         A = redis_con.execute_command("GRAPH.SLOWLOG " + GRAPH_ID)
         B = redis_con.execute_command("GRAPH.SLOWLOG " + GRAPH_ID)
-        
+
         # Calling slowlog multiple times should preduce the same result.
         self.env.assertEquals(A, B)
 
         # Issue a long running query, this should replace an existing entry in the slowlog.
-        q = """MATCH (n) WHERE n.v > 0 AND n.v < 500 RETURN SUM(n.v)"""
+        q = """MATCH (n), (m) WHERE n.v > 0 AND n.v < 500 RETURN SUM(n.v + m.v)"""
         redis_graph.query(q)
         B = redis_con.execute_command("GRAPH.SLOWLOG " + GRAPH_ID)
 
