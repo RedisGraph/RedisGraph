@@ -60,11 +60,11 @@ static GrB_Info _ConstructIterator(NodeByLabelScan *op, Schema *schema) {
 
 static OpResult NodeByLabelScanInit(OpBase *opBase) {
 	NodeByLabelScan *op = (NodeByLabelScan *)opBase;
-	opBase->consume = NodeByLabelScanConsume;   // Default consume function.
+	OpBase_UpdateConsume(opBase, NodeByLabelScanConsume); // Default consume function.
 
 	// Operation has children, consume from child.
 	if(opBase->childCount > 0) {
-		opBase->consume = NodeByLabelScanConsumeFromChild;
+		OpBase_UpdateConsume(opBase, NodeByLabelScanConsumeFromChild);
 		return OP_OK;
 	}
 
@@ -72,14 +72,16 @@ static OpResult NodeByLabelScanInit(OpBase *opBase) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Schema *schema = GraphContext_GetSchema(gc, op->n->label, SCHEMA_NODE);
 	if(!schema) {
-		opBase->consume = NodeByLabelScanNoOp;  // Missing schema, use the NOP consume function.
+		// Missing schema, use the NOP consume function.
+		OpBase_UpdateConsume(opBase, NodeByLabelScanNoOp);
 		return OP_OK;
 	}
 
 	// The iterator build may fail if the ID range does not match the matrix dimensions.
 	GrB_Info iterator_built = _ConstructIterator(op, schema);
 	if(iterator_built != GrB_SUCCESS) {
-		opBase->consume = NodeByLabelScanNoOp;  // Invalid range, use the NOP consume function.
+		// Invalid range, use the NOP consume function.
+		OpBase_UpdateConsume(opBase, NodeByLabelScanNoOp);
 		return OP_OK;
 	}
 

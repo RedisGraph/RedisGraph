@@ -39,6 +39,7 @@ void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsu
 	op->toString = toString;
 	op->clone = clone;
 	op->free = free;
+	op->profile = NULL;
 }
 
 inline Record OpBase_Consume(OpBase *op) {
@@ -127,6 +128,14 @@ Record OpBase_Profile(OpBase *op) {
 
 bool OpBase_IsWriter(OpBase *op) {
 	return op->writer;
+}
+
+void OpBase_UpdateConsume(OpBase *op, fpConsume consume) {
+	assert(op);
+	/* If Operation is profiled, update profiled function.
+	 * otherwise update consume function. */
+	if(op->profile != NULL) op->profile = consume;
+	else op->consume = consume;
 }
 
 inline Record OpBase_CreateRecord(const OpBase *op) {

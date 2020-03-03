@@ -5,7 +5,7 @@
 #include "GB.h"
 
 // Sets iterator as depleted.
-static inline void _DepleteIterator
+static inline void _EmptyIterator
 (
 	GxB_MatrixTupleIter *iter   // Iterator to deplete.
 ) {
@@ -45,7 +45,7 @@ GrB_Info GxB_MatrixTupleIter_iterate_row
 	GB_RETURN_IF_NULL(iter) ;
 
 	// Deplete iterator, should caller ignore returned error.
-	_DepleteIterator(iter) ;
+	_EmptyIterator(iter) ;
 
 	if(rowIdx < 0 || rowIdx >= iter->nrows) {
 		return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "Row index out of range"))) ;
@@ -67,7 +67,7 @@ GrB_Info GxB_MatrixTupleIter_jump_to_row
 	GB_RETURN_IF_NULL(iter) ;
 
 	// Deplete iterator, should caller ignore returned error.
-	_DepleteIterator(iter) ;
+	_EmptyIterator(iter) ;
 
 	if(rowIdx < 0 || rowIdx >= iter->nrows) {
 		return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "Row index out of range"))) ;
@@ -90,7 +90,7 @@ GrB_Info GxB_MatrixTupleIter_iterate_range
 	GB_RETURN_IF_NULL(iter) ;
 
 	// Deplete iterator, should caller ignore returned error.
-	_DepleteIterator(iter) ;
+	_EmptyIterator(iter) ;
 
 	if(startRowIdx < 0 || startRowIdx >= iter->nrows) {
 		return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "Start row index out of range"))) ;

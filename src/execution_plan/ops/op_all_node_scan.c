@@ -36,7 +36,7 @@ OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const QGNode *n) {
 
 static OpResult AllNodeScanInit(OpBase *opBase) {
 	AllNodeScan *op = (AllNodeScan *)opBase;
-	if(opBase->childCount > 0) opBase->consume = AllNodeScanConsumeFromChild;
+	if(opBase->childCount > 0) OpBase_UpdateConsume(opBase, AllNodeScanConsumeFromChild);
 	else op->iter = Graph_ScanNodes(QueryCtx_GetGraph());
 	return OP_OK;
 }
