@@ -24,6 +24,20 @@ static int get_thread_id() {
 	return thread_id;
 }
 
+/* Redis prints doubles with up to 17 digits of precision, which captures
+ * the inaccuracy of many floating-point numbers (such as 0.1).
+ * By using the %g format and a precision of 5 significant digits, we avoid many
+ * awkward representations like RETURN 0.1 emitting "0.10000000000000001",
+ * though we're still subject to many of the typical issues with floating-point error. */
+static inline void _ReplyWithRoundedDouble(RedisModuleCtx *ctx, double d) {
+	// Get length required to print number
+	int len = snprintf(NULL, 0, "%.5g", d);
+	char str[len + 1];
+	sprintf(str, "%.5g", d);
+	// Output string-formatted number
+	RedisModule_ReplyWithStringBuffer(ctx, str, len);
+}
+
 static SlowLogItem *_SlowLogItem_New(const char *cmd, const char *query, double latency) {
 	SlowLogItem *item = rm_malloc(sizeof(SlowLogItem));
 	item->cmd = rm_strdup(cmd);
@@ -180,7 +194,7 @@ void SlowLog_Replay(const SlowLog *slowlog, RedisModuleCtx *ctx) {
 		RedisModule_ReplyWithDouble(ctx, item->time);
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)item->cmd, strlen(item->cmd));
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)item->query, strlen(item->query));
-		RedisModule_ReplyWithDouble(ctx, item->latency);
+		_ReplyWithRoundedDouble(ctx, item->latency);
 	}
 
 	SlowLog_Free(aggregated_slowlog);

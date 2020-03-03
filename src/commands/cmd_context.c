@@ -96,15 +96,7 @@ void CommandCtx_Free(CommandCtx *command_ctx) {
 		RedisModule_UnblockClient(command_ctx->bc, NULL);
 		RedisModule_FreeThreadSafeContext(command_ctx->ctx);
 	}
-
-	// Report command to slowlog.
-	if(command_ctx->query) {
-		GraphContext *gc = CommandCtx_GetGraphContext(command_ctx);
-		SlowLog *slowlog = GraphContext_GetSlowLog(gc);
-		SlowLog_Add(slowlog, command_ctx->command_name, command_ctx->query, QueryCtx_GetExecutionTime());
-		rm_free(command_ctx->query);
-	}
-
+	if(command_ctx->query) rm_free(command_ctx->query);
 	rm_free(command_ctx->command_name);
 	rm_free(command_ctx);
 }
