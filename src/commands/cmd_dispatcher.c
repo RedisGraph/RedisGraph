@@ -21,6 +21,8 @@ static Command_Handler get_command_handler(GRAPH_Commands cmd) {
 		return Graph_Explain;
 	case CMD_PROFILE:
 		return Graph_Profile;
+	case CMD_SLOWLOG:
+		return Graph_Slowlog;
 	default:
 		assert(false);
 	}
@@ -32,6 +34,7 @@ static GRAPH_Commands determine_command(const char *cmd_name) {
 	if(strcasecmp(cmd_name, "graph.QUERY") == 0) return CMD_QUERY;
 	if(strcasecmp(cmd_name, "graph.EXPLAIN") == 0) return CMD_EXPLAIN;
 	if(strcasecmp(cmd_name, "graph.PROFILE") == 0) return CMD_PROFILE;
+	if(strcasecmp(cmd_name, "graph.SLOWLOG") == 0) return CMD_SLOWLOG;
 
 	assert(false);
 	return CMD_UNKNOWN;
@@ -39,9 +42,11 @@ static GRAPH_Commands determine_command(const char *cmd_name) {
 
 int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	CommandCtx *context;
-	if(argc < 3) return RedisModule_WrongArity(ctx);
+	// TODO: get number of arguments form command.
+	if(argc < 2) return RedisModule_WrongArity(ctx);
 
 	RedisModuleString *graph_name = argv[1];
+	RedisModuleString *query = (argc > 2) ? argv[2] : NULL;
 	const char *command_name = RedisModule_StringPtrLen(argv[0], NULL);
 	GRAPH_Commands cmd = determine_command(command_name);
 	Command_Handler handler = get_command_handler(cmd);
@@ -57,15 +62,14 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 											REDISMODULE_CTX_FLAGS_LOADING));
 	if(execute_on_main_thread) {
 		// Run query on Redis main thread.
-		context = CommandCtx_New(ctx, NULL, command_name, gc, argv[2], argv, argc, is_replicated);
+		context = CommandCtx_New(ctx, NULL, argv[0], query, argc, argv, gc, is_replicated);
 		handler(context);
 	} else {
 		// Run query on a dedicated thread.
 		RedisModuleBlockedClient *bc = RedisModule_BlockClient(ctx, NULL, NULL, NULL, 0);
-		context = CommandCtx_New(NULL, bc, command_name, gc, argv[2], argv, argc, is_replicated);
+		context = CommandCtx_New(NULL, bc, argv[0], query, argc, argv, gc, is_replicated);
 		thpool_add_work(_thpool, handler, context);
 	}
 
 	return REDISMODULE_OK;
 }
-

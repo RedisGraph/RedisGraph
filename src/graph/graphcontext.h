@@ -11,6 +11,7 @@
 #include "../redismodule.h"
 #include "../index/index.h"
 #include "../schema/schema.h"
+#include "../slow_log/slow_log.h"
 #include "graph.h"
 
 typedef struct {
@@ -22,6 +23,7 @@ typedef struct {
 	Schema **node_schemas;      // Array of schemas for each node label
 	Schema **relation_schemas;  // Array of schemas for each relation type
 	unsigned short index_count; // Number of indicies.
+    SlowLog *slowlog;           // Slowlog associated with graph.
 } GraphContext;
 
 /* GraphContext API */
@@ -79,6 +81,9 @@ void GraphContext_RemoveFromRegistry(GraphContext *gc);
 
 // Rename a graph context.
 void GraphContext_Rename(GraphContext *gc, const char *name);
+
+/* Slowlog API */
+SlowLog* GraphContext_GetSlowLog(const GraphContext *gc);
 
 #endif
 

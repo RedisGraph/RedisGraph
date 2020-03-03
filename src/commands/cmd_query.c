@@ -133,6 +133,10 @@ cleanup:
 		else Graph_WriterLeave(gc->g);
 	}
 
+	// Log query to slowlog.
+	SlowLog *slowlog = GraphContext_GetSlowLog(gc);
+	SlowLog_Add(slowlog, command_ctx->command_name, command_ctx->query, QueryCtx_GetExecutionTime());
+
 	ResultSet_Free(result_set);
 	AST_Free(ast);
 	parse_result_free(parse_result);
