@@ -13,6 +13,7 @@
 #include "cmd_delete.h"
 #include "cmd_explain.h"
 #include "cmd_profile.h"
+#include "cmd_slowlog.h"
 #include "cmd_dispatcher.h"
 #include "cmd_bulk_insert.h"
 
@@ -22,6 +23,6 @@ typedef enum {
 	CMD_DELETE,
 	CMD_EXPLAIN,
 	CMD_PROFILE,
-	CMD_BULK_INSERT
+	CMD_BULK_INSERT,
+    CMD_SLOWLOG
 } GRAPH_Commands;
-

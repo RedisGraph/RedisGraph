@@ -43,33 +43,46 @@ OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, const QGNode *n) {
 }
 
 void NodeByLabelScanOp_SetIDRange(NodeByLabelScan *op, UnsignedRange *id_range) {
-	memcpy(op->id_range, id_range, sizeof(UnsignedRange));
+	UnsignedRange_Free(op->id_range);
+	op->id_range = UnsignedRange_Clone(id_range);
+
 	op->op.type = OpType_NODE_BY_LABEL_AND_ID_SCAN;
 	op->op.name = "Node By Label and ID Scan";
 }
 
-static void _ConstructIterator(NodeByLabelScan *op) {
+static GrB_Info _ConstructIterator(NodeByLabelScan *op, Schema *schema) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Schema *schema = GraphContext_GetSchema(gc, op->n->label, SCHEMA_NODE);
-	assert(schema);
 	GxB_MatrixTupleIter_new(&op->iter, Graph_GetLabelMatrix(gc->g, schema->id));
 	NodeID minId = op->id_range->include_min ? op->id_range->min : op->id_range->min + 1;
-	NodeID maxId = op->id_range->include_max ? op->id_range->max : op->id_range->max - 1 ;
-	GxB_MatrixTupleIter_iterate_range(op->iter, minId, maxId);
-
+	NodeID maxId = op->id_range->include_max ? op->id_range->max : op->id_range->max - 1;
+	return GxB_MatrixTupleIter_iterate_range(op->iter, minId, maxId);
 }
 
 static OpResult NodeByLabelScanInit(OpBase *opBase) {
 	NodeByLabelScan *op = (NodeByLabelScan *)opBase;
+	OpBase_UpdateConsume(opBase, NodeByLabelScanConsume); // Default consume function.
+
+	// Operation has children, consume from child.
 	if(opBase->childCount > 0) {
-		opBase->consume = NodeByLabelScanConsumeFromChild;
-	} else {
-		GraphContext *gc = QueryCtx_GetGraphCtx();
-		Schema *schema = GraphContext_GetSchema(gc, op->n->label, SCHEMA_NODE);
-		// No label matrix, just return null.
-		if(!schema) opBase->consume = NodeByLabelScanNoOp;
-		// If we have no children, we can build the iterator now.
-		else _ConstructIterator((NodeByLabelScan *)opBase);
+		OpBase_UpdateConsume(opBase, NodeByLabelScanConsumeFromChild);
+		return OP_OK;
+	}
+
+	// If we have no children, we can build the iterator now.
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Schema *schema = GraphContext_GetSchema(gc, op->n->label, SCHEMA_NODE);
+	if(!schema) {
+		// Missing schema, use the NOP consume function.
+		OpBase_UpdateConsume(opBase, NodeByLabelScanNoOp);
+		return OP_OK;
+	}
+
+	// The iterator build may fail if the ID range does not match the matrix dimensions.
+	GrB_Info iterator_built = _ConstructIterator(op, schema);
+	if(iterator_built != GrB_SUCCESS) {
+		// Invalid range, use the NOP consume function.
+		OpBase_UpdateConsume(opBase, NodeByLabelScanNoOp);
+		return OP_OK;
 	}
 
 	return OP_OK;
@@ -113,10 +126,10 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 			Schema *schema = GraphContext_GetSchema(gc, op->n->label, SCHEMA_NODE);
 			// No label matrix, it might be created in the next iteration.
 			if(!schema) continue;
-			_ConstructIterator((NodeByLabelScan *)opBase);
-
+			_ConstructIterator(op, schema); // OK to fail (invalid range) iter will be depleted.
 		} else {
 			// Iterator depleted - reset.
+			// TODO: GxB_MatrixTupleIter_reset
 			_ResetIterator(op);
 		}
 		// Try to get new NodeID.
@@ -188,3 +201,4 @@ static void NodeByLabelScanFree(OpBase *op) {
 		nodeByLabelScan->id_range = NULL;
 	}
 }
+

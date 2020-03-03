@@ -4,6 +4,15 @@
 
 #include "GB.h"
 
+// Sets iterator as depleted.
+static inline void _EmptyIterator
+(
+	GxB_MatrixTupleIter *iter   // Iterator to deplete.
+) {
+	iter->nvals = 0;
+	iter->nnz_idx = 0;
+}
+
 // Create a new iterator
 GrB_Info GxB_MatrixTupleIter_new
 (
@@ -14,7 +23,7 @@ GrB_Info GxB_MatrixTupleIter_new
 	GB_RETURN_IF_NULL_OR_FAULTY(A) ;
 
 	GrB_Index nrows;
-	GrB_Matrix_nrows(&nrows, A);
+	GrB_Matrix_nrows(&nrows, A) ;
 
 	*iter = NULL ;
 	GB_MALLOC_MEMORY(*iter, 1, sizeof(GxB_MatrixTupleIter)) ;
@@ -32,18 +41,21 @@ GrB_Info GxB_MatrixTupleIter_iterate_row
 	GxB_MatrixTupleIter *iter,
 	GrB_Index rowIdx
 ) {
-	GB_WHERE("GxB_MatrixTupleIter_iterate_row (iter, rowIdx)");
-	GB_RETURN_IF_NULL(iter);
+	GB_WHERE("GxB_MatrixTupleIter_iterate_row (iter, rowIdx)") ;
+	GB_RETURN_IF_NULL(iter) ;
+
+	// Deplete iterator, should caller ignore returned error.
+	_EmptyIterator(iter) ;
 
 	if(rowIdx < 0 || rowIdx >= iter->nrows) {
-		return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "Row index out of range")));
+		return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "Row index out of range"))) ;
 	}
 
 	iter->nvals = iter->A->p[rowIdx + 1];
 	iter->nnz_idx = iter->A->p[rowIdx];
 	iter->row_idx = rowIdx;
 	iter->p = 0;
-	return (GrB_SUCCESS);
+	return (GrB_SUCCESS) ;
 }
 
 GrB_Info GxB_MatrixTupleIter_jump_to_row
@@ -51,13 +63,17 @@ GrB_Info GxB_MatrixTupleIter_jump_to_row
 	GxB_MatrixTupleIter *iter,
 	GrB_Index rowIdx
 ) {
-	GB_WHERE("GxB_MatrixTupleIter_jump_to_row (iter, rowIdx)");
-	GB_RETURN_IF_NULL(iter);
+	GB_WHERE("GxB_MatrixTupleIter_jump_to_row (iter, rowIdx)") ;
+	GB_RETURN_IF_NULL(iter) ;
+
+	// Deplete iterator, should caller ignore returned error.
+	_EmptyIterator(iter) ;
 
 	if(rowIdx < 0 || rowIdx >= iter->nrows) {
-		return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "Row index out of range")));
+		return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "Row index out of range"))) ;
 	}
 
+	GrB_Matrix_nvals(&(iter->nvals), iter->A) ;
 	iter->nnz_idx = iter->A->p[rowIdx] ;
 	iter->row_idx = rowIdx ;
 	iter->p = 0 ;
@@ -70,15 +86,18 @@ GrB_Info GxB_MatrixTupleIter_iterate_range
 	GrB_Index startRowIdx,      // row index to start with
 	GrB_Index endRowIdx         // row index to finish with
 ) {
-	GB_WHERE("GxB_MatrixTupleIter_iterate_range (iter, startRowIdx, endRowIdx)");
-	GB_RETURN_IF_NULL(iter);
+	GB_WHERE("GxB_MatrixTupleIter_iterate_range (iter, startRowIdx, endRowIdx)") ;
+	GB_RETURN_IF_NULL(iter) ;
+
+	// Deplete iterator, should caller ignore returned error.
+	_EmptyIterator(iter) ;
 
 	if(startRowIdx < 0 || startRowIdx >= iter->nrows) {
-		return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "Start row index out of range")));
+		return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "Start row index out of range"))) ;
 	}
 
 	if(startRowIdx > endRowIdx) {
-		return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "Start row index > end row index")));
+		return (GB_ERROR(GrB_INVALID_INDEX, (GB_LOG, "Start row index > end row index"))) ;
 	}
 
 	iter->nnz_idx = iter->A->p[startRowIdx] ;
@@ -167,7 +186,7 @@ GrB_Info GxB_MatrixTupleIter_reuse
 	GB_RETURN_IF_NULL_OR_FAULTY(A) ;
 
 	GrB_Index nrows;
-	GrB_Matrix_nrows(&nrows, A);
+	GrB_Matrix_nrows(&nrows, A) ;
 
 	iter->A = A ;
 	iter->nrows = nrows ;

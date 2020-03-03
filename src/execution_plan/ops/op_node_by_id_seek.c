@@ -57,7 +57,7 @@ static OpResult NodeByIdSeekInit(OpBase *opBase) {
 	NodeByIdSeek *op = (NodeByIdSeek *)opBase;
 	// The largest possible entity ID is the same as Graph_RequiredMatrixDim.
 	op->maxId = MIN(Graph_RequiredMatrixDim(op->g) - 1, op->maxId);
-	if(opBase->childCount > 0) opBase->consume = NodeByIdSeekConsumeFromChild;
+	if(opBase->childCount > 0) OpBase_UpdateConsume(opBase, NodeByIdSeekConsumeFromChild);
 	return OP_OK;
 }
 

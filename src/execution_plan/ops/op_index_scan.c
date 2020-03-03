@@ -36,7 +36,7 @@ OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, const QGNode *n, RSI
 }
 
 static OpResult IndexScanInit(OpBase *opBase) {
-	if(opBase->childCount > 0) opBase->consume = IndexScanConsumeFromChild;
+	if(opBase->childCount > 0) OpBase_UpdateConsume(opBase, IndexScanConsumeFromChild);
 	return OP_OK;
 }
 

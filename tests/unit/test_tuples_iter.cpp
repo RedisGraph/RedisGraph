@@ -476,6 +476,9 @@ TEST_F(TuplesTest, IteratorRange) {
 	ASSERT_EQ(GrB_INVALID_INDEX, info);
 	info = GxB_MatrixTupleIter_iterate_range(iter, n - 1, 0);
 	ASSERT_EQ(GrB_INVALID_INDEX, info);
+	// Check for invalid index exception on out-of-bounds iterator.
+	info = GxB_MatrixTupleIter_iterate_range(iter, n + 5, n + 5);
+	ASSERT_EQ(GrB_INVALID_INDEX, info);
 
 	// Iterate single row.
 	info = GxB_MatrixTupleIter_iterate_range(iter, 2, 2);
@@ -522,3 +525,4 @@ TEST_F(TuplesTest, IteratorRange) {
 	GxB_MatrixTupleIter_next(iter, &row, &col, &depleted);
 	ASSERT_TRUE(depleted);
 }
+
