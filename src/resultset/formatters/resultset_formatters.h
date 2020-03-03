@@ -17,6 +17,10 @@ typedef enum {
 	FORMATTER_COMPACT = 2,
 } ResultSetFormatterType;
 
+/* Retrieves result-set formatter.
+ * Returns NULL for an unknown formatter type. */
+ResultSetFormatter* ResultSetFormatter_GetFormatter(ResultSetFormatterType t);
+
 /* Reply formater which does absolutely nothing.
  * used when profiling a query */
 static ResultSetFormatter ResultSetNOP __attribute__((used)) = {

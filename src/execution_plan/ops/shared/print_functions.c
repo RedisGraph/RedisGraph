@@ -9,10 +9,15 @@
 
 int TraversalToString(const OpBase *op, char *buf, uint buf_len, AlgebraicExpression *ae) {
 	int offset = 0;
+	if(!ae) {
+		offset += snprintf(buf, buf_len, "%s", op->name);
+		return offset;
+	}
+
+	offset += snprintf(buf, buf_len, "%s | ", op->name);
 	// This edge should be printed right-to-left if the edge matrix is transposed.
 	const char *edge = AlgebraicExpression_Edge(ae);
 	bool transpose = (edge && AlgebraicExpression_ContainsOp(ae, AL_EXP_TRANSPOSE));
-	offset += snprintf(buf, buf_len, "%s | ", op->name);
 
 	// Retrieve QueryGraph entities.
 	QGNode *src = QueryGraph_GetNodeByAlias(op->plan->query_graph, AlgebraicExpression_Source(ae));

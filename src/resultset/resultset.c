@@ -123,12 +123,12 @@ static void _ResultSet_SetColumns(ResultSet *set) {
 	}
 }
 
-ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact) {
+ResultSet *NewResultSet(RedisModuleCtx *ctx, ResultSetFormatterType format) {
 	ResultSet *set = rm_malloc(sizeof(ResultSet));
 	set->ctx = ctx;
 	set->gc = QueryCtx_GetGraphCtx();
-	set->compact = compact;
-	set->formatter = (compact) ? &ResultSetFormatterCompact : &ResultSetFormatterVerbose;
+	set->format = format;
+	set->formatter = ResultSetFormatter_GetFormatter(format);
 	set->columns = NULL;
 	set->recordCount = 0;
 	set->column_count = 0;
@@ -150,6 +150,9 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, bool compact) {
 }
 
 int ResultSet_AddRecord(ResultSet *set, Record r) {
+	// If result-set format is NOP, don't process record.
+	if(set->format == FORMATTER_NOP) return RESULTSET_OK;
+
 	// If this is the first Record encountered
 	if(set->header_emitted == false) {
 		// Map columns to record indices.
