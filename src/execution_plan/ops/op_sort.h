@@ -18,6 +18,7 @@ typedef struct {
 	Record *buffer;             // Holds all records.
 	uint limit;                 // Total number of records to produce, 0 no limit.
 	int *directions;            // Array of sort directions(ascending / desending) for each item.
+	AR_ExpNode **exps;          // Projected expressons.
 } OpSort;
 
 /* Creates a new Sort operation */

@@ -60,7 +60,7 @@ void Graph_Profile(void *args) {
 		assert("Unhandled query type" && false);
 	}
 
-	result_set = NewResultSet(ctx, false);
+	result_set = NewResultSet(ctx, FORMATTER_NOP);
 	QueryCtx_SetResultSet(result_set);
 	ExecutionPlan *plan = NewExecutionPlan();
 	/* Make sure there are no compile-time errors.
@@ -69,9 +69,6 @@ void Graph_Profile(void *args) {
 	 * for memory management considerations.
 	 * this should be revisited in order to save some time (fail fast). */
 	if(QueryCtx_EncounteredError()) {
-		/* TODO: move ExecutionPlan_Free to `cleanup`
-		 * once no all pendding operation commitment (create,delete,update)
-		 * are no performed in free callback. */
 		if(plan) ExecutionPlan_Free(plan);
 		QueryCtx_EmitException();
 		goto cleanup;
@@ -99,4 +96,3 @@ cleanup:
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 }
-
