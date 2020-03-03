@@ -129,6 +129,9 @@ void OpBase_PropagateReset(OpBase *op); // Sends reset request to each operation
 // Indicates if the operation is a writer operation.
 bool OpBase_IsWriter(OpBase *op);
 
+// Update operation consume function.
+void OpBase_UpdateConsume(OpBase *op, fpConsume consume);
+
 // Creates a new record that will be populated during execution.
 Record OpBase_CreateRecord(const OpBase *op);
 
