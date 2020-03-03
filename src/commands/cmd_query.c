@@ -74,6 +74,8 @@ void Graph_Query(void *args) {
 	ast = AST_Build(parse_result);
 
 	bool compact = _check_compact_flag(command_ctx);
+	ResultSetFormatterType resultset_format = (compact) ? FORMATTER_COMPACT : FORMATTER_VERBOSE;
+
 	// Acquire the appropriate lock.
 	if(readonly) {
 		Graph_AcquireReadLock(gc->g);
@@ -92,7 +94,7 @@ void Graph_Query(void *args) {
 
 	// Set policy after lock acquisition, avoid resetting policies between readers and writers.
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
-	result_set = NewResultSet(ctx, compact);
+	result_set = NewResultSet(ctx, resultset_format);
 	QueryCtx_SetResultSet(result_set);
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
 	if(root_type == CYPHER_AST_QUERY) {  // query operation
@@ -103,9 +105,6 @@ void Graph_Query(void *args) {
 		 * for memory management considerations.
 		 * this should be revisited in order to save some time (fail fast). */
 		if(QueryCtx_EncounteredError()) {
-			/* TODO: move ExecutionPlan_Free to `cleanup`
-			 * once no all pendding operation commitment (create,delete,update)
-			 * are no performed in free callback. */
 			if(plan) ExecutionPlan_Free(plan);
 			QueryCtx_EmitException();
 			goto cleanup;
@@ -141,4 +140,3 @@ cleanup:
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 }
-
