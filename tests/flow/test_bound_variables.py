@@ -1,6 +1,6 @@
 import os
-import re
 import sys
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -11,7 +11,7 @@ redis_graph = None
 
 class testBoundVariables(FlowTestsBase):
     def __init__(self):
-        super(testBoundVariables, self).__init__()
+        self.env = Env()
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph("G", redis_con)

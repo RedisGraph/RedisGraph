@@ -1,6 +1,7 @@
 import os
 import sys
 import redis
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -22,7 +23,7 @@ node5 = Node(label="fruit", properties={"name": "Banana", "value": 5})
 # Test over all procedure behavior in addition to procedure specifics.
 class testProcedures(FlowTestsBase):
     def __init__(self):
-        super(testProcedures, self).__init__()
+        self.env = Env()
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()

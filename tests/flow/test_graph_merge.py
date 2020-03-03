@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
 
@@ -8,7 +9,7 @@ graph_2 = None
 
 class testGraphMergeFlow(FlowTestsBase):
     def __init__(self):
-        super(testGraphMergeFlow, self).__init__()
+        self.env = Env()
         global redis_graph
         global graph_2
         redis_con = self.env.getConnection()

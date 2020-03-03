@@ -1,4 +1,5 @@
 import redis
+from RLTest import Env
 from redisgraph import Graph
 from base import FlowTestsBase
 
@@ -8,7 +9,7 @@ redis_graph = None
 
 class testSlowLog(FlowTestsBase):
     def __init__(self):
-        super(testSlowLog, self).__init__()
+        self.env = Env()
         global redis_con
         global redis_graph
 
