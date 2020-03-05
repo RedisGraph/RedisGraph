@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
 from base import FlowTestsBase
@@ -11,7 +12,7 @@ redis_graph = None
 
 class testReversedPatterns(FlowTestsBase):
     def __init__(self):
-        super(testReversedPatterns, self).__init__()
+        self.env = Env()
         global redis_graph
         global redis_con
         redis_con = self.env.getConnection()

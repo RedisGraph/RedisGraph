@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
 from base import FlowTestsBase
@@ -11,7 +12,7 @@ redis_graph = None
 
 class testGraphDeletionFlow(FlowTestsBase):
     def __init__(self):
-        super(testGraphDeletionFlow, self).__init__()
+        self.env = Env()
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)

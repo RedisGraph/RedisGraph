@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
 import redis
@@ -12,7 +13,7 @@ redis_graph = None
 class testQueryValidationFlow(FlowTestsBase):
 
     def __init__(self):
-        super(testQueryValidationFlow, self).__init__()
+        self.env = Env()
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph("G", redis_con)

@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
 
@@ -10,7 +11,7 @@ redis_graph = None
 
 class testIndexScanFlow(FlowTestsBase):
     def __init__(self):
-        super(testIndexScanFlow, self).__init__()
+        self.env = Env()
 
     def setUp(self):
         global redis_graph

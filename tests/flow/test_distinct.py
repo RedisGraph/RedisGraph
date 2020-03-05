@@ -1,3 +1,4 @@
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
 from base import FlowTestsBase
@@ -9,7 +10,7 @@ graph3 = None
 class testReturnDistinctFlow1(FlowTestsBase):
 
     def __init__(self):
-        super(testReturnDistinctFlow1, self).__init__()
+        self.env = Env()
         global graph1
         redis_con = self.env.getConnection()
         graph1 = Graph("G1", redis_con)
@@ -75,7 +76,7 @@ class testReturnDistinctFlow1(FlowTestsBase):
 class testReturnDistinctFlow2(FlowTestsBase):
 
     def __init__(self):
-        super(testReturnDistinctFlow2, self).__init__()
+        self.env = Env()
         global graph2
         redis_con = self.env.getConnection()
         graph2 = Graph("G2", redis_con)
@@ -134,7 +135,7 @@ class testReturnDistinctFlow2(FlowTestsBase):
 class testDistinct(FlowTestsBase):
     def __init__(self):
         global graph3
-        super(testDistinct, self).__init__()
+        self.env = Env()
         redis_con = self.env.getConnection()
         graph3 = Graph("G3", redis_con)
         self.populate_graph()

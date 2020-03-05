@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 from redisgraph import Graph, Node
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -12,7 +13,7 @@ redis_graph = None
 
 class testParams(FlowTestsBase):
     def __init__(self):
-        super(testParams, self).__init__()
+        self.env = Env()
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)

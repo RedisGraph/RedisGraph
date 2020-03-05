@@ -1,6 +1,7 @@
 from base import FlowTestsBase
 import os
 import sys
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
 
@@ -11,7 +12,7 @@ people = ["Roi", "Alon", "Ailon", "Boaz"]
 
 class testOptimizationsPlan(FlowTestsBase):
     def __init__(self):
-        super(testOptimizationsPlan, self).__init__()
+        self.env = Env()
         global graph
         global redis_con
         redis_con = self.env.getConnection()
