@@ -31,8 +31,8 @@ static void _removeRedundantTraversal(ExecutionPlan *plan, CondTraverse *travers
  * are already resolved, in which case replace traversal operation
  * with expand-into op. */
 void reduceTraversal(ExecutionPlan *plan) {
-	OPType t = OPType_CONDITIONAL_TRAVERSE | OPType_CONDITIONAL_VAR_LEN_TRAVERSE;
-	OpBase **traversals = ExecutionPlan_LocateOps(plan->root, t);
+	const OPType types[] = {OPType_CONDITIONAL_TRAVERSE, OPType_CONDITIONAL_VAR_LEN_TRAVERSE};
+	OpBase **traversals = ExecutionPlan_LocateOpsMatchingType(plan->root, types, 2);
 	uint traversals_count = array_len(traversals);
 
 	/* Keep track of redundant traversals which will be removed

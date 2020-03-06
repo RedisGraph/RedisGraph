@@ -57,6 +57,10 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias);
  * Returns NULL if operation wasn't found. */
 OpBase *ExecutionPlan_LocateFirstOp(OpBase *root, OPType type);
 
+/* Locate the first operation matching one of the given types in the op tree.
+ * Returns NULL if no matching operation was found. */
+OpBase *ExecutionPlan_LocateOpMatchingType(OpBase *root, const OPType *types, uint type_count);
+
 /* Locate the last operation of a given type within execution plan.
  * Returns NULL if operation wasn't found. */
 OpBase *ExecutionPlan_LocateLastOp(OpBase *root, OPType type);
@@ -64,6 +68,10 @@ OpBase *ExecutionPlan_LocateLastOp(OpBase *root, OPType type);
 /* Locate all operations of a given type within execution plan.
  * Returns an array of operations. */
 OpBase **ExecutionPlan_LocateOps(OpBase *root, OPType type);
+
+/* Locate all operations matching the given types in the op tree.
+ * Returns an array of operations. */
+OpBase **ExecutionPlan_LocateOpsMatchingType(OpBase *root, const OPType *types, uint type_count);
 
 /* Find the earliest operation above the provided recurse_limit, if any,
  * at which all references are resolved. */

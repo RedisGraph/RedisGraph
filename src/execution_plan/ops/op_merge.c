@@ -122,7 +122,7 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
 // Match and Create streams are always guaranteed to not branch (have any ops with multiple children).
 static OpBase *_LocateOp(OpBase *root, OPType type) {
 	if(!root) return NULL;
-	if(root->type & type) return root;
+	if(root->type == type) return root;
 	if(root->childCount > 0) return _LocateOp(root->children[0], type);
 	return NULL;
 }

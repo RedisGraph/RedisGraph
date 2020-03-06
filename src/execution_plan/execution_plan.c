@@ -820,8 +820,8 @@ ExecutionPlan *NewExecutionPlan(void) {
 		ExecutionPlan *current_segment = segments[i];
 
 		OpBase *prev_root = prev_segment->root;
-		connecting_op = ExecutionPlan_LocateFirstOp(current_segment->root,
-													OPType_PROJECT | OPType_AGGREGATE);
+		const OPType types[] = {OPType_PROJECT, OPType_AGGREGATE};
+		connecting_op = ExecutionPlan_LocateOpMatchingType(current_segment->root, types, 2);
 		assert(connecting_op->childCount == 0);
 
 		ExecutionPlan_AddOp(connecting_op, prev_root);

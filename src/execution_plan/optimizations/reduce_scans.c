@@ -52,9 +52,8 @@ static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
 
 void reduceScans(ExecutionPlan *plan) {
 	// Collect all SCAN operations within the execution plan.
-	OpBase **scans = ExecutionPlan_LocateOps(plan->root,
-											 (OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN |
-											  OPType_INDEX_SCAN | OPType_NODE_BY_ID_SEEK));
+	const OPType types[] = {OPType_ALL_NODE_SCAN, OPType_NODE_BY_LABEL_SCAN, OPType_INDEX_SCAN, OPType_NODE_BY_ID_SEEK};
+	OpBase **scans = ExecutionPlan_LocateOpsMatchingType(plan->root, types, 4);
 	uint scan_count = array_len(scans);
 	for(uint i = 0; i < scan_count; i++) {
 		_reduceScans(plan, scans[i]);
