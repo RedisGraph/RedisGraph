@@ -35,7 +35,7 @@ test: unit flow tck
 
 unit:
 	### unit tests
-	@$(MAKE) --jobs=$(JOBS) -C unit all
+	@$(MAKE) --jobs=$(JOBS) --max-load=$(JOBS) -C unit all
 
 flow:
 	### flow tests
