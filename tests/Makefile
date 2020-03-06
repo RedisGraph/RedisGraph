@@ -3,6 +3,14 @@ MAKEFLAGS += --no-builtin-rules
 
 .PHONY: test unit flow tck memcheck clean
 
+# Set number of threads.
+JOBS =
+ifeq ($(OS),Linux)
+	JOBS = $(shell grep -c ^processor /proc/cpuinfo)
+else
+	JOBS = $(shell sysctl -n hw.logicalcpu_max)
+endif
+
 TEST_ARGS+=--clear-logs
 
 # check verbose flag
@@ -27,7 +35,7 @@ test: unit flow tck
 
 unit:
 	### unit tests
-	@$(MAKE) -C unit all
+	@$(MAKE) --jobs=$(JOBS) -C unit all
 
 flow:
 	### flow tests
