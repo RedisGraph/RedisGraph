@@ -52,15 +52,21 @@ typedef enum {
 	OPType_AND_APPLY_MULTIPLEXER,
 } OPType;
 
-// Macro for checking whether an operation is an Apply variant.
-#define OP_IS_APPLY(op) ((op)->type == OPType_OR_APPLY_MULTIPLEXER || (op)->type == OPType_AND_APPLY_MULTIPLEXER || (op)->type == OPType_SEMI_APPLY || (op)->type == OpType_ANTI_SEMI_APPLY)
-
 typedef enum {
 	OP_DEPLETED = 1,
 	OP_REFRESH = 2,
 	OP_OK = 4,
 	OP_ERR = 8,
 } OpResult;
+
+// Macro for checking whether an operation is an Apply variant.
+#define OP_IS_APPLY(op) ((op)->type == OPType_OR_APPLY_MULTIPLEXER || (op)->type == OPType_AND_APPLY_MULTIPLEXER || (op)->type == OPType_SEMI_APPLY || (op)->type == OpType_ANTI_SEMI_APPLY)
+
+#define PROJECT_OP_COUNT 2
+static const OPType PROJECT_OPS[] = {OPType_PROJECT, OPType_AGGREGATE};
+
+#define TRAVERSE_OP_COUNT 2
+static const OPType TRAVERSE_OPS[] = {OPType_CONDITIONAL_TRAVERSE, OPType_CONDITIONAL_VAR_LEN_TRAVERSE};
 
 struct OpBase;
 struct ExecutionPlan;

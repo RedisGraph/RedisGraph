@@ -82,28 +82,6 @@ OpBase **ExecutionPlan_LocateOps(OpBase *root, OPType type) {
 	return ops;
 }
 
-static void _ExecutionPlan_LocateOpsMatchingType(OpBase *root, const OPType *types, int type_count,
-												 OpBase ***ops) {
-	for(int i = 0; i < type_count; i++) {
-		// Check to see if the op's type matches any of the types we're searching for.
-		if(root->type == types[i]) {
-			*ops = array_append(*ops, root);
-			break;
-		}
-	}
-
-	for(int i = 0; i < root->childCount; i++) {
-		// Recursively visit children.
-		_ExecutionPlan_LocateOpsMatchingType(root->children[i], types, type_count, ops);
-	}
-}
-
-OpBase **ExecutionPlan_LocateOpsMatchingType(OpBase *root, const OPType *types, uint type_count) {
-	OpBase **ops = array_new(OpBase *, 0);
-	_ExecutionPlan_LocateOpsMatchingType(root, types, type_count, &ops);
-	return ops;
-}
-
 // Introduce the new operation B between A and A's parent op.
 void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
 	if(a->parent == NULL) {
@@ -245,6 +223,28 @@ OpBase *ExecutionPlan_LocateOpMatchingType(OpBase *root, const OPType *types, ui
 	}
 
 	return NULL;
+}
+
+static void _ExecutionPlan_LocateOpsMatchingType(OpBase *root, const OPType *types, int type_count,
+												 OpBase ***ops) {
+	for(int i = 0; i < type_count; i++) {
+		// Check to see if the op's type matches any of the types we're searching for.
+		if(root->type == types[i]) {
+			*ops = array_append(*ops, root);
+			break;
+		}
+	}
+
+	for(int i = 0; i < root->childCount; i++) {
+		// Recursively visit children.
+		_ExecutionPlan_LocateOpsMatchingType(root->children[i], types, type_count, ops);
+	}
+}
+
+OpBase **ExecutionPlan_LocateOpsMatchingType(OpBase *root, const OPType *types, uint type_count) {
+	OpBase **ops = array_new(OpBase *, 0);
+	_ExecutionPlan_LocateOpsMatchingType(root, types, type_count, &ops);
+	return ops;
 }
 
 OpBase *ExecutionPlan_LocateLastOp(OpBase *root, OPType type) {
