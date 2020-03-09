@@ -107,14 +107,14 @@ void PriorityQueue_DecreasePriority(PriorityQueue *queue, void *data);
  * @param  *queue: Priority Queue pointer.
  * @param  *node: data object address inside the queue.
  */
-void PriorityQueue_MoveToHead(PriorityQueue *queue, void *data);
+void PriorityQueue_AggressiveDemotion(PriorityQueue *queue, void *data);
 
 /**
  * @brief  Moves a node to the tail of the Priority Queue.
  * @param  *queue: Priority Queue pointer.
  * @param  *node: data object address inside the queue.
  */
-void PriorityQueue_MoveToTail(PriorityQueue *queue, void *data);
+void PriorityQueue_AggressivePromotion(PriorityQueue *queue, void *data);
 
 /**
  * @brief  Removes a single data value from the queue, regardless to its priority.

@@ -35,7 +35,7 @@ inline Cache *Cache_New(size_t cacheSize, cacheValueFreeFunc freeCB) {
 inline void *Cache_GetValue(Cache *cache, const char *key, size_t keyLen) {
 	unsigned long long const hashKey = _Cache_HashKey(key, keyLen);
 	CacheData *cacheData = raxFind(cache->rt, (unsigned char *)&hashKey, HASH_KEY_LENGTH);
-	if(cacheData != raxNotFound) PriorityQueue_MoveToHead(cache->priorityQueue, cacheData);
+	if(cacheData != raxNotFound) PriorityQueue_AggressivePromotion(cache->priorityQueue, cacheData);
 	return (cacheData && cacheData != raxNotFound) ? cacheData->value : NULL;
 }
 
