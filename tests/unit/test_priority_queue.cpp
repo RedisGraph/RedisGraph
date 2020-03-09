@@ -79,7 +79,7 @@ TEST_F(PriorityQueueTest, MoveToTailFullQueue) {
 	for(i = 0; i < QUEUE_SIZE - 1; i++) PriorityQueue_Enqueue(priority_queue, &i);
 	data_ptr = (int *)PriorityQueue_Enqueue(priority_queue, &i);
 	// Queue is [0,1,2,3,4,5,6,7,8,9]
-	PriorityQueue_MoveToTail(priority_queue, data_ptr);
+	PriorityQueue_AggressiveDemotion(priority_queue, data_ptr);
 	// Queue is [9,0,1,2,3,4,5,6,7,8]
 	ASSERT_EQ(i, *(int *)PriorityQueue_Dequeue(priority_queue));
 	// Dequeue.
@@ -114,7 +114,7 @@ TEST_F(PriorityQueueTest, MoveToHeadFullQueue) {
 	data_ptr = (int *)PriorityQueue_Enqueue(priority_queue, &i);
 	for(i = 1; i < QUEUE_SIZE; i++) PriorityQueue_Enqueue(priority_queue, &i);
 	// Queue is [0,1,2,3,4,5,6,7,8,9]
-	PriorityQueue_MoveToHead(priority_queue, data_ptr);
+	PriorityQueue_AggressivePromotion(priority_queue, data_ptr);
 	// Queue is [1,2,3,4,5,6,7,8,9,0]
 	// Dequeue.
 	for(i = 1; i < QUEUE_SIZE; i++)
@@ -157,7 +157,7 @@ TEST_F(PriorityQueueTest, MoveToTailAfterRemoval) {
 	// Queue is [0,1,2,3,4,5,6,7,8,9]
 	PriorityQueue_RemoveFromQueue(priority_queue, (void *)data_ptr_removed);
 	// Queue is [1,2,3,4,5,6,7,8,9]
-	PriorityQueue_MoveToTail(priority_queue, (void *)data_ptr_modified);
+	PriorityQueue_AggressiveDemotion(priority_queue, (void *)data_ptr_modified);
 	// Queue is [9,1,2,3,4,5,6,7,8]
 	ASSERT_EQ(*data_ptr_modified, *(int *)PriorityQueue_Dequeue(priority_queue));
 	// Dequeue.
@@ -200,7 +200,7 @@ TEST_F(PriorityQueueTest, MoveToHeadAfterRemoval) {
 	// Queue is [0,1,2,3,4,5,6,7,8,9]
 	PriorityQueue_RemoveFromQueue(priority_queue, (void *)data_ptr_removed);
 	// Queue is [0,1,2,3,4,5,6,7,8]
-	PriorityQueue_MoveToHead(priority_queue, (void *)data_ptr_modified);
+	PriorityQueue_AggressivePromotion(priority_queue, (void *)data_ptr_modified);
 	// Queue is [1,2,3,4,5,6,7,8,0]
 	// Dequeue.
 	for(i = 1; i < QUEUE_SIZE - 1; i++)

@@ -84,13 +84,13 @@ void *PriorityQueue_Dequeue(PriorityQueue *queue) {
 	// For empty queue return null.
 	if(PriorityQueue_IsEmpty(queue)) return NULL;
 	// One object in the queue.
-	if(queue->head == queue->tail) queue->head = NULL;  // Nullify head.
+	if(queue->head == queue->tail) queue->tail = NULL;  // Nullify tail.
 	// Get last object.
-	QueueNode *tmp = queue->tail;
-	// Move tail one object back.
-	queue->tail = tmp->prev;
-	// If new tail is not null, make its next point to null.
-	if(queue->tail) queue->tail->next = NULL;
+	QueueNode *tmp = queue->head;
+	// Move head one object back.
+	queue->head = tmp->next;
+	// If new head is not null, make its next point to null.
+	if(queue->head) queue->head->prev = NULL;
 	// Add evicted cell to empty cells list.
 	array_append(queue->freeList, tmp);
 	// Reduce queue size.
@@ -99,15 +99,15 @@ void *PriorityQueue_Dequeue(PriorityQueue *queue) {
 }
 
 QueueNode *_PriorityQueue_SetNodeInQueue(PriorityQueue *queue, QueueNode *newNode) {
-	// New node next is the queue (previous) head.
-	newNode->next = queue->head;
+	// New node prev is the queue (previous) tail.
+	newNode->prev = queue->tail;
 	if(PriorityQueue_IsEmpty(queue)) {
 		// Empty queue - the new node is both head and tail.
 		queue->head = queue->tail = newNode;
 	} else {
-		// Non empty queue, link previous head with the new node and move head to point at node.
-		queue->head->prev = newNode;
-		queue->head = newNode;
+		// Non empty queue, link previous tail with the new node and move tail to point at node.
+		queue->tail->next = newNode;
+		queue->tail = newNode;
 	}
 	// Increase queue size.
 	queue->size++;
@@ -149,7 +149,7 @@ static inline QueueNode *_PriorityQueue_GetNodeFromData(void *data, size_t dataS
 	return node;
 }
 
-void PriorityQueue_IncreasePriority(PriorityQueue *queue, void *data) {
+void PriorityQueue_DecreasePriority(PriorityQueue *queue, void *data) {
 	QueueNode *node = _PriorityQueue_GetNodeFromData(data, queue->dataSize);
 	if(node != queue->head) {
 		// Pull node out from its place (link its prev and next).
@@ -167,7 +167,7 @@ void PriorityQueue_IncreasePriority(PriorityQueue *queue, void *data) {
 	}
 }
 
-void PriorityQueue_DecreasePriority(PriorityQueue *queue, void *data) {
+void PriorityQueue_IncreasePriority(PriorityQueue *queue, void *data) {
 	QueueNode *node = _PriorityQueue_GetNodeFromData(data, queue->dataSize);
 	if(node != queue->tail) {
 		// Pull node out from its place (link its prev and next).
@@ -185,7 +185,7 @@ void PriorityQueue_DecreasePriority(PriorityQueue *queue, void *data) {
 	}
 }
 
-void PriorityQueue_MoveToHead(PriorityQueue *queue, void *data) {
+void PriorityQueue_AggressiveDemotion(PriorityQueue *queue, void *data) {
 	QueueNode *node = _PriorityQueue_GetNodeFromData(data, queue->dataSize);
 	if(node != queue->head) {
 		// Pull node out from its place (link its prev and next).
@@ -205,7 +205,7 @@ void PriorityQueue_MoveToHead(PriorityQueue *queue, void *data) {
 	}
 }
 
-void PriorityQueue_MoveToTail(PriorityQueue *queue, void *data) {
+void PriorityQueue_AggressivePromotion(PriorityQueue *queue, void *data) {
 	QueueNode *node = _PriorityQueue_GetNodeFromData(data, queue->dataSize);
 	if(node != queue->tail) {
 		// Pull node out from its place (link its prev and next).
