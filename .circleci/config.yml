@@ -37,6 +37,11 @@ jobs:
       #- run:
           # name: Formatting
           # command: astyle --options=.astylerc -R "./*.c,*.h" --dry-run -Q
+      
+      # Load GraphBLAS from cache if possible.
+      - restore_cache:
+          keys:
+          - GraphBLAS3.2-{{checksum "./deps/GraphBLAS/README.md"}}
 
       # Load libcypher-parser from cache if possible.
       - restore_cache:
@@ -47,6 +52,12 @@ jobs:
           name: Build
           command: make
 
+      # Save GraphBLAS to cache.
+      - save_cache:
+          paths:
+            - deps/GraphBLAS
+          key: GraphBLAS3.2-{{checksum "./deps/GraphBLAS/README.md"}}
+          
       # Save libcypher-parser to cache.
       - save_cache:
           paths:
@@ -56,7 +67,6 @@ jobs:
       - run:
           name: Test
           command: make test
-      
       - early_return_for_forked_pull_requests
 
       - run:
@@ -72,6 +82,15 @@ jobs:
             - '*.so'
             - ramp.yml
             - build  
+
+      - run:
+          name: Test for memory leaks
+          command: |
+              # Replace the default Redis server with one linked to libc malloc rather than jemalloc.
+              git clone https://github.com/antirez/redis.git; cd redis; git checkout 5.0.7; make valgrind; make install; cd ..
+              make clean; DEBUG=1 make # Rebuild module at O0
+              make memcheck # Re-run the test suite, failing if definite memory leaks have been introduced.
+
   package_branch:
     docker:
       - image: 'redislabsmodules/rmbuilder:latest'

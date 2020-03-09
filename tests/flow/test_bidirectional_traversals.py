@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 
 from redisgraph import Graph, Node, Edge
 
@@ -13,7 +14,7 @@ graph_with_cycle = None
 
 class testBidirectionalTraversals(FlowTestsBase):
     def __init__(self):
-        super(testBidirectionalTraversals, self).__init__()
+        self.env = Env()
         global redis_con
         redis_con = self.env.getConnection()
         self.populate_acyclic_graph()

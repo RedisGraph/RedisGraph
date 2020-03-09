@@ -79,7 +79,7 @@ static void *_ObjectPool_ReuseItem(ObjectPool *pool) {
 	return item;
 }
 
-ObjectPool *ObjectPool_New(uint64_t itemCap, uint itemSize, fpDestructor fp) {
+ObjectPool *ObjectPool_New(uint64_t itemCap, uint itemSize, void (*fp)(void *)) {
 	ObjectPool *pool = rm_malloc(sizeof(ObjectPool));
 	pool->itemCount = 0;
 	pool->itemSize = itemSize + HEADER_SIZE; // Add extra space to accommodate the item's header.

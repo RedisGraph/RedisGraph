@@ -11,6 +11,7 @@
 #include "../../../util/arr.h"
 #include "../../../query_ctx.h"
 #include "../../../util/rmalloc.h"
+#include "../../../slow_log/slow_log.h"
 
 static void _RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
@@ -44,6 +45,7 @@ GraphContext *RdbLoadGraphContext(RedisModuleIO *rdb) {
 	gc->attributes = raxNew();
 	gc->string_mapping = array_new(char *, 64);
 	gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
+	gc->slowlog = SlowLog_New();
 
 	// Set the thread-local GraphContext, as it will be accessed if we're decoding indexes.
 	QueryCtx_SetGraphCtx(gc);

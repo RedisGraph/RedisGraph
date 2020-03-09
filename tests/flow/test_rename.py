@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -16,7 +17,7 @@ NEW_GRAPH_ID = "G2"
 
 class testGraphRename(FlowTestsBase):
     def __init__(self):
-        super(testGraphRename, self).__init__()
+        self.env = Env()
         global graph
         global redis_con
         redis_con = self.env.getConnection()

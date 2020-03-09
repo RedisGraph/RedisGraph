@@ -66,6 +66,10 @@ static Record ProjectConsume(OpBase *opBase) {
 		 * TODO This is a rare case; the logic of when to persist can be improved.  */
 		if(!(v.type & SI_GRAPHENTITY)) SIValue_Persist(&v);
 		Record_Add(op->projection, rec_idx, v);
+		/* If the value was a graph entity with its own allocation, as with a query like:
+		 * MATCH p = (src) RETURN nodes(p)[0]
+		 * Ensure that the allocation is freed here. */
+		if((v.type & SI_GRAPHENTITY)) SIValue_Free(v);
 	}
 
 	OpBase_DeleteRecord(op->r);

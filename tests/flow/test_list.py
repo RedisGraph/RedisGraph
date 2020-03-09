@@ -1,3 +1,4 @@
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
 from base import FlowTestsBase
@@ -8,7 +9,7 @@ GRAPH_ID = "G"
 
 class testList(FlowTestsBase):
     def __init__(self):
-        super(testList, self).__init__()
+        self.env = Env()
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)

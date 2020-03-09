@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -14,7 +15,7 @@ people = ["Roi", "Alon", "Ailon", "Boaz"]
 
 class testResultSetFlow(FlowTestsBase):
     def __init__(self):
-        super(testResultSetFlow, self).__init__()
+        self.env = Env()
         global graph
         global redis_con
         redis_con = self.env.getConnection()

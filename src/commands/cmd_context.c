@@ -1,16 +1,18 @@
 #include "cmd_context.h"
+#include "../query_ctx.h"
 #include "../util/rmalloc.h"
+#include "../slow_log/slow_log.h"
 #include <assert.h>
 
 CommandCtx *CommandCtx_New
 (
 	RedisModuleCtx *ctx,
 	RedisModuleBlockedClient *bc,
-	const char *command_name,
-	GraphContext *graph_ctx,
+	RedisModuleString *cmd_name,
 	RedisModuleString *query,
-	RedisModuleString **argv,
 	int argc,
+	RedisModuleString **argv,
+	GraphContext *graph_ctx,
 	bool replicated_command
 ) {
 	CommandCtx *context = rm_malloc(sizeof(CommandCtx));
@@ -18,12 +20,27 @@ CommandCtx *CommandCtx_New
 	context->ctx = ctx;
 	context->argv = argv;
 	context->argc = argc;
-	context->replicated_command = replicated_command;
+	context->query = NULL;
+	context->command_name = NULL;
 	context->graph_ctx = graph_ctx;
-	context->command_name = command_name;
+	context->replicated_command = replicated_command;
 
-	// Make a copy of query.
-	context->query = (query) ? rm_strdup(RedisModule_StringPtrLen(query, NULL)) : NULL;
+	size_t len;
+	if(cmd_name) {
+		// Make a copy of command name.
+		const char *command_name = RedisModule_StringPtrLen(cmd_name, &len);
+		context->command_name = rm_malloc(sizeof(char) * len + 1);
+		memcpy(context->command_name, command_name, len);
+		context->command_name[len] = '\0';
+	}
+
+	if(query) {
+		// Make a copy of query.
+		const char *q = RedisModule_StringPtrLen(query, &len);
+		context->query = rm_malloc(sizeof(char) * len + 1);
+		memcpy(context->query, q, len);
+		context->query[len] = '\0';
+	}
 
 	return context;
 }
@@ -79,8 +96,7 @@ void CommandCtx_Free(CommandCtx *command_ctx) {
 		RedisModule_UnblockClient(command_ctx->bc, NULL);
 		RedisModule_FreeThreadSafeContext(command_ctx->ctx);
 	}
-
 	if(command_ctx->query) rm_free(command_ctx->query);
+	rm_free(command_ctx->command_name);
 	rm_free(command_ctx);
 }
-
