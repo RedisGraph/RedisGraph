@@ -193,9 +193,9 @@ static OpResult MergeInit(OpBase *opBase) {
 
 	// Find and store references to the Argument taps for the Match and Create streams.
 	// The Match stream is populated by an Argument tap, store a reference to it.
-	op->match_argument_tap = (Argument *)ExecutionPlan_LocateFirstOp(op->match_stream, OPType_ARGUMENT);
+	op->match_argument_tap = (Argument *)ExecutionPlan_LocateOp(op->match_stream, OPType_ARGUMENT);
 	// If the create stream is populated by an Argument tap, store a reference to it.
-	op->create_argument_tap = (Argument *)ExecutionPlan_LocateFirstOp(op->create_stream,
+	op->create_argument_tap = (Argument *)ExecutionPlan_LocateOp(op->create_stream,
 																	  OPType_ARGUMENT);
 	// Set up an array to store records produced by the bound variable stream.
 	op->input_records = array_new(Record, 1);

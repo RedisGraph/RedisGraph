@@ -14,7 +14,7 @@
 #include "../ops/op_cond_var_len_traverse.h"
 
 static inline bool _isInSubExecutionPlan(OpBase *op) {
-	return ExecutionPlan_LocateFirstOp(op, OPType_ARGUMENT) != NULL;
+	return ExecutionPlan_LocateOp(op, OPType_ARGUMENT) != NULL;
 }
 
 static void _removeRedundantTraversal(ExecutionPlan *plan, CondTraverse *traverse) {
@@ -31,7 +31,7 @@ static void _removeRedundantTraversal(ExecutionPlan *plan, CondTraverse *travers
  * are already resolved, in which case replace traversal operation
  * with expand-into op. */
 void reduceTraversal(ExecutionPlan *plan) {
-	OpBase **traversals = ExecutionPlan_LocateOpsMatchingType(plan->root, TRAVERSE_OPS,
+	OpBase **traversals = ExecutionPlan_CollectOpsMatchingType(plan->root, TRAVERSE_OPS,
 															  TRAVERSE_OP_COUNT);
 	uint traversals_count = array_len(traversals);
 

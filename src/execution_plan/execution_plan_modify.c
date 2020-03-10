@@ -66,22 +66,6 @@ inline void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
 	_OpBase_AddChild(parent, newOp);
 }
 
-static void _ExecutionPlan_LocateOps(OpBase *root, OPType type, OpBase ***ops) {
-	if(!root) return;
-
-	if(root->type == type) *ops = array_append(*ops, root);
-
-	for(int i = 0; i < root->childCount; i++) {
-		_ExecutionPlan_LocateOps(root->children[i], type, ops);
-	}
-}
-
-OpBase **ExecutionPlan_LocateOps(OpBase *root, OPType type) {
-	OpBase **ops = array_new(OpBase *, 0);
-	_ExecutionPlan_LocateOps(root, type, &ops);
-	return ops;
-}
-
 // Introduce the new operation B between A and A's parent op.
 void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
 	if(a->parent == NULL) {
@@ -154,7 +138,6 @@ void ExecutionPlan_DetachOp(OpBase *op) {
 	if(op->parent == NULL) return;
 
 	// Remove op from its parent.
-	OpBase *parent = op->parent;
 	_OpBase_RemoveChild(op->parent, op);
 
 	op->parent = NULL;
@@ -180,36 +163,6 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
 	return NULL;
 }
 
-typedef enum {
-	LTR,
-	RTL
-} LocateOp_SearchDirection;
-
-static OpBase *_ExecutionPlan_LocateOp(OpBase *root, OPType type,
-									   LocateOp_SearchDirection search_direction) {
-	if(!root) return NULL;
-
-	if(root->type == type) return root;
-
-	if(search_direction == RTL) {
-		for(int i = root->childCount - 1; i >= 0; i--) {
-			OpBase *op = _ExecutionPlan_LocateOp(root->children[i], type, search_direction);
-			if(op) return op;
-		}
-	} else {
-		for(int i = 0; i < root->childCount; i++) {
-			OpBase *op = _ExecutionPlan_LocateOp(root->children[i], type, search_direction);
-			if(op) return op;
-		}
-	}
-
-	return NULL;
-}
-
-OpBase *ExecutionPlan_LocateFirstOp(OpBase *root, OPType type) {
-	return _ExecutionPlan_LocateOp(root, type, LTR);
-}
-
 OpBase *ExecutionPlan_LocateOpMatchingType(OpBase *root, const OPType *types, uint type_count) {
 	for(int i = 0; i < type_count; i++) {
 		// Return the current op if it matches any of the types we're searching for.
@@ -225,30 +178,11 @@ OpBase *ExecutionPlan_LocateOpMatchingType(OpBase *root, const OPType *types, ui
 	return NULL;
 }
 
-static void _ExecutionPlan_LocateOpsMatchingType(OpBase *root, const OPType *types, int type_count,
-												 OpBase ***ops) {
-	for(int i = 0; i < type_count; i++) {
-		// Check to see if the op's type matches any of the types we're searching for.
-		if(root->type == types[i]) {
-			*ops = array_append(*ops, root);
-			break;
-		}
-	}
+OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type) {
+	if(!root) return NULL;
 
-	for(int i = 0; i < root->childCount; i++) {
-		// Recursively visit children.
-		_ExecutionPlan_LocateOpsMatchingType(root->children[i], types, type_count, ops);
-	}
-}
-
-OpBase **ExecutionPlan_LocateOpsMatchingType(OpBase *root, const OPType *types, uint type_count) {
-	OpBase **ops = array_new(OpBase *, 0);
-	_ExecutionPlan_LocateOpsMatchingType(root, types, type_count, &ops);
-	return ops;
-}
-
-OpBase *ExecutionPlan_LocateLastOp(OpBase *root, OPType type) {
-	return _ExecutionPlan_LocateOp(root, type, RTL);
+	const OPType type_arr[1] = {type};
+	return ExecutionPlan_LocateOpMatchingType(root, type_arr, 1);
 }
 
 static OpBase *_ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
@@ -287,6 +221,36 @@ OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit
 									   rax *refs_to_resolve) {
 	OpBase *op = _ExecutionPlan_LocateReferences(root, recurse_limit, refs_to_resolve);
 	return op;
+}
+
+
+static void _ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *types, int type_count,
+												  OpBase ***ops) {
+	for(int i = 0; i < type_count; i++) {
+		// Check to see if the op's type matches any of the types we're searching for.
+		if(root->type == types[i]) {
+			*ops = array_append(*ops, root);
+			break;
+		}
+	}
+
+	for(int i = 0; i < root->childCount; i++) {
+		// Recursively visit children.
+		_ExecutionPlan_CollectOpsMatchingType(root->children[i], types, type_count, ops);
+	}
+}
+
+OpBase **ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *types, uint type_count) {
+	OpBase **ops = array_new(OpBase *, 0);
+	_ExecutionPlan_CollectOpsMatchingType(root, types, type_count, &ops);
+	return ops;
+}
+
+OpBase **ExecutionPlan_CollectOps(OpBase *root, OPType type) {
+	OpBase **ops = array_new(OpBase *, 0);
+	const OPType type_arr[1] = {type};
+	_ExecutionPlan_CollectOpsMatchingType(root, type_arr, 1, &ops);
+	return ops;
 }
 
 // Collect all aliases that have been resolved by the given tree of operations.

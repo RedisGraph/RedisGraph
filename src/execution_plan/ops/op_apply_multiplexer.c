@@ -83,7 +83,7 @@ static OpResult OpApplyMultiplexerInit(OpBase *opBase) {
 	apply_multiplexer->branch_arguments = array_new(Argument *, childCount - 1);
 	for(int i = 1; i < childCount; i++) {
 		OpBase *child = opBase->children[i];
-		Argument *arg = (Argument *)ExecutionPlan_LocateFirstOp(child, OPType_ARGUMENT);
+		Argument *arg = (Argument *)ExecutionPlan_LocateOp(child, OPType_ARGUMENT);
 		assert(arg);
 		apply_multiplexer->branch_arguments = array_append(apply_multiplexer->branch_arguments, arg);
 	}

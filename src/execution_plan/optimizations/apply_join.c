@@ -77,8 +77,8 @@ static OpBase *_build_hash_join_op(const ExecutionPlan *plan, OpBase *left_branc
 	/* The Value Hash Join will cache its left-hand stream. To reduce the cache size,
 	 * prefer to cache the stream which will produce the smallest number of records.
 	 * Our current heuristic for this is to prefer a stream which contains a filter operation. */
-	bool left_branch_filtered = (ExecutionPlan_LocateFirstOp(left_branch, OPType_FILTER) != NULL);
-	bool right_branch_filtered = (ExecutionPlan_LocateFirstOp(right_branch, OPType_FILTER) != NULL);
+	bool left_branch_filtered = (ExecutionPlan_LocateOp(left_branch, OPType_FILTER) != NULL);
+	bool right_branch_filtered = (ExecutionPlan_LocateOp(right_branch, OPType_FILTER) != NULL);
 	if(!left_branch_filtered && right_branch_filtered) {
 		// Only the RHS stream is filtered, swap the input streams and expressions.
 		value_hash_join = NewValueHashJoin(plan, rhs_join_exp, lhs_join_exp);
@@ -192,7 +192,7 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
  * one side of an EQUALS filter operation, like:
  * MATCH (a), (b) WHERE ID(a) = ID(b) */
 void applyJoin(ExecutionPlan *plan) {
-	OpBase **cps = ExecutionPlan_LocateOps(plan->root, OPType_CARTESIAN_PRODUCT);
+	OpBase **cps = ExecutionPlan_CollectOps(plan->root, OPType_CARTESIAN_PRODUCT);
 	uint cp_count = array_len(cps);
 
 	for(uint i = 0; i < cp_count; i++) {

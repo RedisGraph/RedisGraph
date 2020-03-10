@@ -318,7 +318,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 }
 
 static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
-	OpBase **filter_ops = ExecutionPlan_LocateOps(plan->root, OPType_FILTER);
+	OpBase **filter_ops = ExecutionPlan_CollectOps(plan->root, OPType_FILTER);
 	uint filter_ops_count = array_len(filter_ops);
 	for(uint i = 0; i < filter_ops_count; i++) {
 		OpFilter *op = (OpFilter *)filter_ops[i];
@@ -619,8 +619,8 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, Exec
 	// Because 't' is set using the offsetof() call, it cannot be used in switch statements.
 	if(t == CYPHER_AST_MATCH) {
 		// Only add at most one set of traversals per plan. TODO Revisit and improve this logic.
-		if(plan->root && (ExecutionPlan_LocateFirstOp(plan->root, OPType_NODE_BY_LABEL_SCAN) ||
-						  ExecutionPlan_LocateFirstOp(plan->root, OPType_ALL_NODE_SCAN))) {
+		if(plan->root && ExecutionPlan_LocateOpMatchingType(plan->root, UNOPTIMIZED_SCAN_OPS,
+															UNOPTIMIZED_SCAN_OP_COUNT)) {
 			return;
 		}
 		_ExecutionPlan_ProcessQueryGraph(plan, plan->query_graph, ast, plan->filter_tree);
@@ -628,7 +628,7 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, Exec
 		_buildCallOp(ast, plan, clause);
 	} else if(t == CYPHER_AST_CREATE) {
 		// Only add at most one Create op per plan. TODO Revisit and improve this logic.
-		if(ExecutionPlan_LocateFirstOp(plan->root, OPType_CREATE)) return;
+		if(plan->root && ExecutionPlan_LocateOp(plan->root, OPType_CREATE)) return;
 		_buildCreateOp(gc, ast, plan);
 	} else if(t == CYPHER_AST_UNWIND) {
 		_buildUnwindOp(plan, clause);
