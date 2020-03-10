@@ -628,7 +628,7 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, Exec
 		_buildCallOp(ast, plan, clause);
 	} else if(t == CYPHER_AST_CREATE) {
 		// Only add at most one Create op per plan. TODO Revisit and improve this logic.
-		if(plan->root && ExecutionPlan_LocateOp(plan->root, OPType_CREATE)) return;
+		if(ExecutionPlan_LocateOp(plan->root, OPType_CREATE)) return;
 		_buildCreateOp(gc, ast, plan);
 	} else if(t == CYPHER_AST_UNWIND) {
 		_buildUnwindOp(plan, clause);
