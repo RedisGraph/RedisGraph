@@ -6,7 +6,8 @@
 
 #pragma once
 
-#include "../util/arr.h"
+#include "arr.h"
+#include "linked_list.h"
 #include <stdbool.h>
 
 typedef void (*QueueDataFreeFunc)(void *);
@@ -14,12 +15,11 @@ typedef void (*QueueDataFreeFunc)(void *);
 /**
  * @brief  A struct that wraps cache data, for PriorityQueue usage
  */
-typedef struct QueueNode {
-	struct QueueNode *prev; // Next Node in the queue.
-	struct QueueNode *next; // Previous node in the queue.
+typedef struct QueueItem {
+	LinkedListNode linked_list_node;
 	bool isDirty;           // Indication for written entry, for memory release.
 	char data[];            // Data to be stored in a queue node.
-} QueueNode;
+} QueueItem;
 
 
 /**
@@ -29,14 +29,13 @@ typedef struct QueueNode {
  * Nodes are removed by their priority.
  */
 typedef struct PriorityQueue {
-	QueueNode *buffer;          // Array of QueueNode
+	QueueItem *buffer;          // Array of QueueItem
 	size_t size;                // Current queue size
 	size_t capacity;            // Maximum queue capacity
-	QueueNode *head;            // Queue head
-	QueueNode *tail;            // Queue tail
-	QueueNode *emptySpace;      // Next empty place in the queue
+	LinkedList linked_list;     // The underlying data structure.
+	QueueItem *emptySpace;      // Next empty place in the queue
 	bool stopLinearInsertion;   // Indication if linear insertion is possible
-	QueueNode **freeList;       // Contains previously removed nodes, for recycle.
+	QueueItem **freeList;       // Contains previously removed nodes, for recycle.
 	QueueDataFreeFunc freeCB;   // Node data free callback.
 	size_t dataSize;            // Node data size.
 } PriorityQueue;
@@ -44,7 +43,7 @@ typedef struct PriorityQueue {
 /**
  * @brief  Initialize an empty priority queue with a given capacity.
  * @param  capacity: Queue's maximal capacity
- * @param  freeCB: freeCB: callback for freeing the stored values.
+ * @param  freeCB: freeCB: callback for freeing the stored values given by the user.
  *                 Note: if the original object is a nested compound object,
  *                       supply an appropriate function to avoid double resource releasing
  * @retval Initialized Queue (pointer).
@@ -58,14 +57,14 @@ PriorityQueue *PriorityQueue_Create(size_t capacity, size_t dataSize, QueueDataF
  * @param  *queue: Priority Queue pointer.
  * @retval Returns if the given queue is full.
  */
-bool PriorityQueue_IsFull(PriorityQueue *queue);
+bool PriorityQueue_IsFull(const PriorityQueue *queue);
 
 /**
  * @brief  Returns if the given queue is empty.
  * @param  *queue: Priority Queue pointer.
  * @retval Returns if the given queue is empty.
  */
-bool PriorityQueue_IsEmpty(PriorityQueue *queue);
+bool PriorityQueue_IsEmpty(const PriorityQueue *queue);
 
 /**
  * @brief  Removes the lowest priority node from the queue.
@@ -81,12 +80,6 @@ void *PriorityQueue_Dequeue(PriorityQueue *queue);
  * @retval Pointer to the stored data item inside the queue.
  */
 void *PriorityQueue_Enqueue(PriorityQueue *queue, void *dataValue);
-
-/**
- * @brief  Empty a Priority Queue.
- * @param  *queue: PriorityQueue pointer.
- */
-void PriorityQueue_EmptyQueue(PriorityQueue *queue);
 
 /**
  * @brief  Increases the priority of a node in Priority Queue.

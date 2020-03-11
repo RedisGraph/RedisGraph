@@ -49,27 +49,6 @@ TEST_F(CacheTest, ExecutionPlanCache) {
 	// Verify that oldest entry is not exists - queue is [ 4 | 3 | 2 ].
 	ASSERT_FALSE(Cache_GetValue(cache, query1, strlen(query1)));
 
-	// Clear cache.
-	Cache_Clear(cache);
-	ASSERT_FALSE(Cache_GetValue(cache, query1, strlen(query1)));
-	ASSERT_FALSE(Cache_GetValue(cache, query2, strlen(query2)));
-	ASSERT_FALSE(Cache_GetValue(cache, query3, strlen(query3)));
-	ASSERT_FALSE(Cache_GetValue(cache, query4, strlen(query4)));
-
-	// Re-alloc since they are delted or will be deleted in the cache, ep4 will be deleted once those will be inserted.
-	ep1 = (ExecutionPlan *)rm_calloc(1, sizeof(ExecutionPlan));
-	ep2 = (ExecutionPlan *)rm_calloc(1, sizeof(ExecutionPlan));
-	ep3 = (ExecutionPlan *)rm_calloc(1, sizeof(ExecutionPlan));
-
-	Cache_SetValue(cache, query1, strlen(query1), ep1);
-	ASSERT_EQ(ep1, Cache_GetValue(cache, query1, strlen(query1)));
-	Cache_SetValue(cache, query2, strlen(query2), ep2);
-	ASSERT_EQ(ep2, Cache_GetValue(cache, query2, strlen(query2)));
-	Cache_SetValue(cache, query3, strlen(query3), ep3);
-	ASSERT_EQ(ep3, Cache_GetValue(cache, query3, strlen(query3)));
-
-	ASSERT_FALSE(Cache_GetValue(cache, query4, strlen(query4)));
-
 	Cache_Free(cache);
 }
 

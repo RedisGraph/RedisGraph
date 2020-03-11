@@ -23,6 +23,7 @@ TEST_F(PriorityQueueTest, NewQueueTest) {
 	PriorityQueue *priority_queue = PriorityQueue_New(QUEUE_SIZE, int, NULL);
 	ASSERT_TRUE(priority_queue != NULL);
 	ASSERT_TRUE(PriorityQueue_IsEmpty(priority_queue));
+	PriorityQueue_Free(priority_queue);
 }
 
 TEST_F(PriorityQueueTest, SimpleEnqueueDequeue) {
@@ -36,6 +37,8 @@ TEST_F(PriorityQueueTest, SimpleEnqueueDequeue) {
 	// Dequeue.
 	for(i = 0; i < QUEUE_SIZE; i++)
 		ASSERT_EQ(i, *(int *)PriorityQueue_Dequeue(priority_queue));
+	PriorityQueue_Free(priority_queue);
+
 }
 
 TEST_F(PriorityQueueTest, RemoveFromQueue) {
@@ -52,6 +55,7 @@ TEST_F(PriorityQueueTest, RemoveFromQueue) {
 	// Dequeue.
 	for(i = 0; i < QUEUE_SIZE - 1; i++)
 		ASSERT_EQ(i, *(int *)PriorityQueue_Dequeue(priority_queue));
+	PriorityQueue_Free(priority_queue);
 }
 
 TEST_F(PriorityQueueTest, DecreasePriorityFullQueue) {
@@ -69,6 +73,7 @@ TEST_F(PriorityQueueTest, DecreasePriorityFullQueue) {
 	// Dequeue.
 	for(i = 0; i < QUEUE_SIZE - 1; i++)
 		ASSERT_EQ(i, *(int *)PriorityQueue_Dequeue(priority_queue));
+	PriorityQueue_Free(priority_queue);
 }
 
 TEST_F(PriorityQueueTest, MoveToTailFullQueue) {
@@ -85,6 +90,7 @@ TEST_F(PriorityQueueTest, MoveToTailFullQueue) {
 	// Dequeue.
 	for(i = 0; i < QUEUE_SIZE - 1; i++)
 		ASSERT_EQ(i, *(int *)PriorityQueue_Dequeue(priority_queue));
+	PriorityQueue_Free(priority_queue);
 }
 
 TEST_F(PriorityQueueTest, IncreasePriorityFullQueue) {
@@ -103,6 +109,7 @@ TEST_F(PriorityQueueTest, IncreasePriorityFullQueue) {
 	for(i = 1; i < QUEUE_SIZE; i++)
 		ASSERT_EQ(i, *(int *)PriorityQueue_Dequeue(priority_queue));
 	ASSERT_EQ(0, *(int *)PriorityQueue_Dequeue(priority_queue));
+	PriorityQueue_Free(priority_queue);
 }
 
 TEST_F(PriorityQueueTest, MoveToHeadFullQueue) {
@@ -120,6 +127,7 @@ TEST_F(PriorityQueueTest, MoveToHeadFullQueue) {
 	for(i = 1; i < QUEUE_SIZE; i++)
 		ASSERT_EQ(i, *(int *)PriorityQueue_Dequeue(priority_queue));
 	ASSERT_EQ(0, *(int *)PriorityQueue_Dequeue(priority_queue));
+	PriorityQueue_Free(priority_queue);
 }
 
 TEST_F(PriorityQueueTest, DecreasePriorityAfterRemoval) {
@@ -142,6 +150,7 @@ TEST_F(PriorityQueueTest, DecreasePriorityAfterRemoval) {
 	// Dequeue.
 	for(i = 1; i < QUEUE_SIZE - 2; i++)
 		ASSERT_EQ(i, *(int *)PriorityQueue_Dequeue(priority_queue));
+	PriorityQueue_Free(priority_queue);
 }
 
 TEST_F(PriorityQueueTest, MoveToTailAfterRemoval) {
@@ -163,6 +172,7 @@ TEST_F(PriorityQueueTest, MoveToTailAfterRemoval) {
 	// Dequeue.
 	for(i = 1; i < QUEUE_SIZE - 2; i++)
 		ASSERT_EQ(i, *(int *)PriorityQueue_Dequeue(priority_queue));
+	PriorityQueue_Free(priority_queue);
 }
 
 TEST_F(PriorityQueueTest, IncreasePriorityAfterRemoval) {
@@ -185,6 +195,7 @@ TEST_F(PriorityQueueTest, IncreasePriorityAfterRemoval) {
 	for(i = 1; i < QUEUE_SIZE - 1; i++)
 		ASSERT_EQ(i, *(int *)PriorityQueue_Dequeue(priority_queue));
 	ASSERT_EQ(*data_ptr_modified, *(int *)PriorityQueue_Dequeue(priority_queue));
+	PriorityQueue_Free(priority_queue);
 }
 
 TEST_F(PriorityQueueTest, MoveToHeadAfterRemoval) {
@@ -206,5 +217,6 @@ TEST_F(PriorityQueueTest, MoveToHeadAfterRemoval) {
 	for(i = 1; i < QUEUE_SIZE - 1; i++)
 		ASSERT_EQ(i, *(int *)PriorityQueue_Dequeue(priority_queue));
 	ASSERT_EQ(*data_ptr_modified, *(int *)PriorityQueue_Dequeue(priority_queue));
+	PriorityQueue_Free(priority_queue);
 }
 
