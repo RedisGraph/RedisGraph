@@ -619,8 +619,7 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, Exec
 	// Because 't' is set using the offsetof() call, it cannot be used in switch statements.
 	if(t == CYPHER_AST_MATCH) {
 		// Only add at most one set of traversals per plan. TODO Revisit and improve this logic.
-		if(plan->root && ExecutionPlan_LocateOpMatchingType(plan->root, UNOPTIMIZED_SCAN_OPS,
-															UNOPTIMIZED_SCAN_OP_COUNT)) {
+		if(plan->root && ExecutionPlan_LocateOpMatchingType(plan->root, SCAN_OPS, SCAN_OP_COUNT)) {
 			return;
 		}
 		_ExecutionPlan_ProcessQueryGraph(plan, plan->query_graph, ast, plan->filter_tree);
