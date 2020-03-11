@@ -15,12 +15,8 @@
  * @param  resultSet: Node's result value (for CacheData).
  * @retval Initialized Queue node (pointer)
  */
-static QueueNode *_PriorityQueue_InitQueueNode(QueueNode *node, void *cacheValue, size_t dataSize,
+static QueueItem *_PriorityQueue_InitQueueItem(QueueItem *node, void *cacheValue, size_t dataSize,
 											   QueueDataFreeFunc freeCB) {
-	// New node - no next and prev.
-	node->next = NULL;
-	node->prev = NULL;
-
 	// If node was in use before, call its destructor.
 	if(node->isDirty) {
 		void *data = (void *)node->data;
@@ -33,93 +29,59 @@ static QueueNode *_PriorityQueue_InitQueueNode(QueueNode *node, void *cacheValue
 	return node;
 }
 
-static PriorityQueue *_PriorityQueue_InitPriorityQueue(PriorityQueue *queue, size_t capacity) {
-	// Maximal capacity.
-	queue->capacity = capacity;
-	// Initial size is 0.
-	queue->size = 0;
-	// No head or tail.
-	queue->head = NULL;
-	queue->tail = NULL;
-	// First empty space is the first place in the queue array.
-	queue->emptySpace = queue->buffer;
-	// Queue hasn't reached full capacity, a linear insertion is possible.
-	queue->stopLinearInsertion = false;
-	array_clear(queue->freeList);
-
-	return queue;
-}
-
 /**
  * @brief  Returns the size of node given a size of data value.
  * @param  dataSize:
  * @retval The size of the queue node.
  */
-static inline size_t _PriorityQueue_SizeOfQueueNode(size_t dataSize) {
-	return dataSize + 2 * sizeof(QueueNode *) + sizeof(bool);
+static inline size_t _PriorityQueue_SizeOfQueueItem(size_t dataSize) {
+	return dataSize + sizeof(LinkedListNode) + sizeof(bool);
 }
 
 PriorityQueue *PriorityQueue_Create(size_t capacity, size_t dataSize, QueueDataFreeFunc freeCB) {
 	// Memory allocations.
 	PriorityQueue *queue = rm_malloc(sizeof(PriorityQueue));
-	queue->buffer = rm_calloc(capacity, _PriorityQueue_SizeOfQueueNode(dataSize));
-	queue->freeList = array_new(QueueNode *, capacity);
+	queue->buffer = rm_calloc(capacity, _PriorityQueue_SizeOfQueueItem(dataSize));
+	queue->freeList = array_new(QueueItem *, capacity);
 	queue->dataSize = dataSize;
 	queue->freeCB = freeCB;
-	// Initialization.
-	return _PriorityQueue_InitPriorityQueue(queue, capacity);
+	// Maximal capacity.
+	queue->capacity = capacity;
+	// Initial size is 0.
+	queue->size = 0;
+	// First empty space is the first place in the queue array.
+	queue->emptySpace = queue->buffer;
+	// Queue hasn't reached full capacity, a linear insertion is possible.
+	queue->stopLinearInsertion = false;
+	LinkedList_Init(&queue->linked_list);
+	return queue;
 }
 
-inline bool PriorityQueue_IsFull(PriorityQueue *queue) {
+inline bool PriorityQueue_IsFull(const PriorityQueue *queue) {
 	// Maximal capacity reached.
 	return queue->capacity == queue->size;
 }
 
-inline bool PriorityQueue_IsEmpty(PriorityQueue *queue) {
-	// No tail - nothing inside.
-	return queue->tail == NULL;
+inline bool PriorityQueue_IsEmpty(const PriorityQueue *queue) {
+	return queue->size == 0;
 }
 
-void *PriorityQueue_Dequeue(PriorityQueue *queue) {
+inline void *PriorityQueue_Dequeue(PriorityQueue *queue) {
 	// For empty queue return null.
 	if(PriorityQueue_IsEmpty(queue)) return NULL;
-	// One object in the queue.
-	if(queue->head == queue->tail) queue->tail = NULL;  // Nullify tail.
-	// Get last object.
-	QueueNode *tmp = queue->head;
-	// Move head one object back.
-	queue->head = tmp->next;
-	// If new head is not null, make its next point to null.
-	if(queue->head) queue->head->prev = NULL;
-	// Add evicted cell to empty cells list.
-	array_append(queue->freeList, tmp);
+	LinkedListNode *head = queue->linked_list.head;
+	LinkedList_RemoveNode(&queue->linked_list, head);
+	QueueItem *queue_item = (QueueItem *) head;
+	array_append(queue->freeList, queue_item);
 	// Reduce queue size.
 	queue->size--;
-	return tmp->data;
-}
-
-QueueNode *_PriorityQueue_SetNodeInQueue(PriorityQueue *queue, QueueNode *newNode) {
-	// New node prev is the queue (previous) tail.
-	newNode->prev = queue->tail;
-	if(PriorityQueue_IsEmpty(queue)) {
-		// Empty queue - the new node is both head and tail.
-		queue->head = queue->tail = newNode;
-	} else {
-		// Non empty queue, link previous tail with the new node and move tail to point at node.
-		queue->tail->next = newNode;
-		queue->tail = newNode;
-	}
-	// Increase queue size.
-	queue->size++;
-	// Queue is full. Linear inseration is no longer an option.
-	if(PriorityQueue_IsFull(queue))queue->stopLinearInsertion = true;
-	return newNode;
+	return queue_item->data;
 }
 
 void *PriorityQueue_Enqueue(PriorityQueue *queue, void *cacheValue) {
 	if(PriorityQueue_IsFull(queue)) return NULL;
 	// Init new node
-	QueueNode *emptyNode;
+	QueueItem *emptyNode;
 	// See if nodes where removed from the queue.
 	if(array_len(queue->freeList) > 0) {
 		emptyNode = array_tail(queue->freeList);
@@ -128,116 +90,63 @@ void *PriorityQueue_Enqueue(PriorityQueue *queue, void *cacheValue) {
 		emptyNode = queue->emptySpace;
 	}
 
-	QueueNode *node = _PriorityQueue_InitQueueNode(emptyNode, cacheValue, queue->dataSize,
+	QueueItem *node = _PriorityQueue_InitQueueItem(emptyNode, cacheValue, queue->dataSize,
 												   (QueueDataFreeFunc)queue->freeCB);
 	// Will be false until array is full - for linear insertion over the array.
 	if(!queue->stopLinearInsertion && emptyNode == queue->emptySpace)
-		queue->emptySpace = (QueueNode *)((char *)queue->emptySpace + _PriorityQueue_SizeOfQueueNode(
+		queue->emptySpace = (QueueItem *)((char *)queue->emptySpace + _PriorityQueue_SizeOfQueueItem(
 											  queue->dataSize));
-	// Put node in queue.
-	return (_PriorityQueue_SetNodeInQueue(queue, node)->data);
+
+	LinkedList_AddNode(&queue->linked_list, (LinkedListNode *) node);
+	// Increase queue size.
+	queue->size++;
+	// Queue is full. Linear inseration is no longer an option.
+	if(PriorityQueue_IsFull(queue))queue->stopLinearInsertion = true;
+
+	return node->data;
 }
 
-inline void PriorityQueue_EmptyQueue(PriorityQueue *queue) {
-	// Move all pointers and meta data to their default values.
-	_PriorityQueue_InitPriorityQueue(queue, queue->capacity);
-}
-
-static inline QueueNode *_PriorityQueue_GetNodeFromData(void *data, size_t dataSize) {
-	size_t metaDataSize = _PriorityQueue_SizeOfQueueNode(dataSize) - dataSize;
-	QueueNode *node = (QueueNode *)((char *)data - metaDataSize);
+static inline QueueItem *_PriorityQueue_GetNodeFromData(void *data, size_t dataSize) {
+	size_t metaDataSize = _PriorityQueue_SizeOfQueueItem(dataSize) - dataSize;
+	QueueItem *node = (QueueItem *)((char *)data - metaDataSize);
 	return node;
 }
 
-void PriorityQueue_DecreasePriority(PriorityQueue *queue, void *data) {
-	QueueNode *node = _PriorityQueue_GetNodeFromData(data, queue->dataSize);
-	if(node != queue->head) {
-		// Pull node out from its place (link its prev and next).
-		node->prev->next = node->next;
-		// Check if node is tail (next == NULL)
-		if(node->next) node->next->prev = node->prev;
-		else queue->tail = node->prev; // In case node is tail, move tail to point at its prev.
-
-		node->next = node->prev;
-		// Originally node->prev->prev
-		node->prev = node->next->prev;
-		node->next->prev = node;
-		if(node->prev) node->prev->next = node;
-		else queue->head = node;
-	}
+inline void PriorityQueue_DecreasePriority(PriorityQueue *queue, void *data) {
+	QueueItem *node = _PriorityQueue_GetNodeFromData(data, queue->dataSize);
+	LinkedList_MoveForward(&queue->linked_list, (LinkedListNode *)node);
 }
 
-void PriorityQueue_IncreasePriority(PriorityQueue *queue, void *data) {
-	QueueNode *node = _PriorityQueue_GetNodeFromData(data, queue->dataSize);
-	if(node != queue->tail) {
-		// Pull node out from its place (link its prev and next).
-		node->next->prev = node->prev;
-		// Check if node is head (prev == NULL)
-		if(node->prev) node->prev->next = node->next;
-		else queue->head = node->next; // In case node is head, move head to point at its next.
-
-		node->prev = node->next;
-		// Originally node->next->next
-		node->next = node->prev->next;
-		node->prev->next = node;
-		if(node->next) node->next->prev = node;
-		else queue->tail = node;
-	}
+inline void PriorityQueue_IncreasePriority(PriorityQueue *queue, void *data) {
+	QueueItem *node = _PriorityQueue_GetNodeFromData(data, queue->dataSize);
+	LinkedList_MoveBack(&queue->linked_list, (LinkedListNode *)node);
 }
 
-void PriorityQueue_AggressiveDemotion(PriorityQueue *queue, void *data) {
-	QueueNode *node = _PriorityQueue_GetNodeFromData(data, queue->dataSize);
-	if(node != queue->head) {
-		// Pull node out from its place (link its prev and next).
-		node->prev->next = node->next;
-		// Check if node is tail (next == NULL)
-		if(node->next) node->next->prev = node->prev;
-		// In case node is tail,  move tail to point at its prev and nullify tail's next.
-		if(node == queue->tail) {
-			queue->tail = node->prev;
-			queue->tail->next = NULL;
-		}
-		// Put node in the head and link with previous head.
-		node->next = queue->head;
-		node->prev = NULL;
-		node->next->prev = node;
-		queue->head = node;
-	}
+inline void PriorityQueue_AggressiveDemotion(PriorityQueue *queue, void *data) {
+	QueueItem *node = _PriorityQueue_GetNodeFromData(data, queue->dataSize);
+	LinkedList_MoveToHead(&queue->linked_list, (LinkedListNode *)node);
 }
 
-void PriorityQueue_AggressivePromotion(PriorityQueue *queue, void *data) {
-	QueueNode *node = _PriorityQueue_GetNodeFromData(data, queue->dataSize);
-	if(node != queue->tail) {
-		// Pull node out from its place (link its prev and next).
-		node->next->prev = node->prev;
-		// Check if node is head (prev == NULL)
-		if(node->prev) node->prev->next = node->next;
-		else queue->head = node->next; // In case node is head, move head to point at its next.
-		// Put node in the tail and link with previous tail.
-		node->prev = queue->tail;
-		node->next = NULL;
-		node->prev->next = node;
-		queue->tail = node;
-	}
+inline void PriorityQueue_AggressivePromotion(PriorityQueue *queue, void *data) {
+	QueueItem *node = _PriorityQueue_GetNodeFromData(data, queue->dataSize);
+	LinkedList_MoveToTail(&queue->linked_list, (LinkedListNode *)node);
 }
 
-void PriorityQueue_RemoveFromQueue(PriorityQueue *queue, void *data) {
-	QueueNode *node = _PriorityQueue_GetNodeFromData(data, queue->dataSize);
-	if(node->prev) node->prev->next = node->next;
-	if(node->next)node->next->prev = node->prev;
-	if(node == queue->tail) queue->tail = node->prev;
-	if(node == queue->head) queue->head = node->next;
-
+inline void PriorityQueue_RemoveFromQueue(PriorityQueue *queue, void *data) {
+	QueueItem *node = _PriorityQueue_GetNodeFromData(data, queue->dataSize);
+	LinkedList_RemoveNode(&queue->linked_list, (LinkedListNode *)node);
 	array_append(queue->freeList, node);
 	queue->size--;
 }
 
 void PriorityQueue_Free(PriorityQueue *queue) {
 	// Go over each entry and free its result set.
-	while(queue->head != NULL) {
-		void *data = (void *)queue->head->data;
+	while(queue->linked_list.head != NULL) {
+		LinkedListNode *head = queue->linked_list.head;
+		QueueItem *queue_item = (QueueItem *)head;
+		void *data = (void *)queue_item->data;
 		if(queue->freeCB) queue->freeCB(data);
-		queue->head = queue->head->next;
+		LinkedList_RemoveNode(&queue->linked_list, head);
 	}
 
 	if(queue->freeCB)

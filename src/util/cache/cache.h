@@ -8,7 +8,6 @@
 
 #include "../priority_queue.h"
 #include "rax.h"
-#include "pthread.h"
 
 #define HASH_KEY_LENGTH 8
 
@@ -62,20 +61,6 @@ void *Cache_GetValue(Cache *cache, const char *key, size_t keyLen);
  * @param  *value: pointer with the relevant value.
  */
 void Cache_SetValue(Cache *cache, const char *key, size_t keyLen, void *value);
-
-/**
- * @brief  Removes a value from the cache according to its key.
- * @param  *cache: cache pointer.
- * @param  *key: Key to look for (bytes array).
- * @param  keyLen: key length.
- */
-void Cache_RemoveValue(Cache *cache, const char *key, size_t keyLen);
-
-/**
- * @brief  Clears the cache from entries.
- * @param  *cache: cache pointer.
- */
-void Cache_Clear(Cache *cache);
 
 /**
  * @brief  Destory a cache
