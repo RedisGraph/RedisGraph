@@ -16,11 +16,14 @@ typedef struct {
 	uint *record_offsets;       // All Record offsets containing values to sort by.
 	heap_t *heap;               // Holds top n records.
 	Record *buffer;             // Holds all records.
+	AR_ExpNode *limit_expr;     // Number of emitted records in the scope;
+	AR_ExpNode *skip_expr;      // Number of skiped records in the scope;
 	uint limit;                 // Total number of records to produce, 0 no limit.
 	int *directions;            // Array of sort directions(ascending / desending) for each item.
 	AR_ExpNode **exps;          // Projected expressons.
 } OpSort;
 
 /* Creates a new Sort operation */
-OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions, uint limit);
+OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions,
+				  AR_ExpNode *limit_expr, AR_ExpNode *skip_expr);
 

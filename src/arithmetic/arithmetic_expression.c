@@ -17,6 +17,7 @@
 #include "../graph/graphcontext.h"
 #include "../datatypes/temporal_value.h"
 #include "../datatypes/array.h"
+#include "../ast/ast_shared.h"
 
 #include <ctype.h>
 #include <assert.h>

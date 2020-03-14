@@ -12,6 +12,7 @@
 #include "../../query_ctx.h"
 
 /* Forward declarations. */
+static OpResult CondTraverseInit(OpBase *opBase);
 static Record CondTraverseConsume(OpBase *opBase);
 static OpResult CondTraverseReset(OpBase *opBase);
 static OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase *opBase);
@@ -121,7 +122,7 @@ static inline int CondTraverseToString(const OpBase *ctx, char *buf, uint buf_le
 }
 
 OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
-						  uint records_cap) {
+						  AR_ExpNode *recordsCapExpr) {
 	CondTraverse *op = rm_calloc(1, sizeof(CondTraverse));
 	op->graph = g;
 	op->ae = ae;
@@ -133,11 +134,10 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	op->recordsLen = 0;
 	op->direction = GRAPH_EDGE_DIR_OUTGOING;
 	op->edgeRelationTypes = NULL;
-	op->recordsCap = records_cap;
-	op->records = rm_calloc(op->recordsCap, sizeof(Record));
+	op->recordsCapExpr = recordsCapExpr;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", NULL,
+	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", CondTraverseInit,
 				CondTraverseConsume, CondTraverseReset, CondTraverseToString, CondTraverseClone, CondTraverseFree,
 				false, plan);
 
@@ -162,6 +162,25 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	}
 
 	return (OpBase *)op;
+}
+
+static OpResult CondTraverseInit(OpBase *opBase) {
+	CondTraverse *op = (CondTraverse *)opBase;
+	op->recordsCap = TRAVERSE_RECORDS_CAP;
+	if(op->recordsCapExpr) {
+		SIValue limit_value =  AR_EXP_Evaluate(op->recordsCapExpr, NULL);
+		if(SI_TYPE(limit_value) != T_INT64) {
+			char *error;
+			asprintf(&error, "LIMIT specified value of invalid type, must be a positive integer");
+			QueryCtx_SetError(error); // Set the query-level error.
+			QueryCtx_RaiseRuntimeException();
+			op->recordsCap = 0;
+			return OP_ERR;
+		}
+		op->recordsCap = MIN(op->recordsCap, limit_value.longval);
+	}
+	op->records = rm_calloc(op->recordsCap, sizeof(Record));
+	return OP_OK;
 }
 
 /* CondTraverseConsume next operation
@@ -241,7 +260,7 @@ static inline OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase 
 	assert(opBase->type == OPType_CONDITIONAL_TRAVERSE);
 	CondTraverse *op = (CondTraverse *)opBase;
 	return NewCondTraverseOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae),
-							 op->recordsCap);
+							 op->recordsCapExpr);
 }
 
 /* Frees CondTraverse */

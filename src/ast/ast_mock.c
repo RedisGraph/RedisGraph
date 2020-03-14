@@ -13,7 +13,7 @@ AST *AST_MockMatchPattern(AST *master_ast, const cypher_astnode_t *original_path
 	ast->referenced_entities = master_ast->referenced_entities;
 	ast->anot_ctx_collection = master_ast->anot_ctx_collection;
 	ast->free_root = true;
-	ast->limit = UNLIMITED;
+	ast->limit = NULL;
 	struct cypher_input_range range = {};
 
 	// Reuse the input path directly. We cannot clone, as this causes annotations (entity names) to be lost.

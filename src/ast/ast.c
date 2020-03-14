@@ -47,7 +47,7 @@ static void _consume_function_call_expression(const cypher_astnode_t *expression
 	}
 }
 
-static inline int _get_limit(const cypher_astnode_t *project_clause) {
+static inline AR_ExpNode *_get_limit(const cypher_astnode_t *project_clause) {
 	const cypher_astnode_t *limit_node = NULL;
 	// Retrieve the AST LIMIT node if one is specified.
 	if(cypher_astnode_type(project_clause) == CYPHER_AST_WITH) {
@@ -56,9 +56,9 @@ static inline int _get_limit(const cypher_astnode_t *project_clause) {
 		limit_node = cypher_ast_return_get_limit(project_clause);
 	}
 
-	if(limit_node == NULL) return UNLIMITED;
+	if(limit_node == NULL) return NULL;
 	// Parse the LIMIT value.
-	return AST_ParseIntegerNode(limit_node);
+	return AR_EXP_FromExpression(limit_node);
 }
 
 // If the project clause has a LIMIT modifier, set its value in the constructed AST.
@@ -249,7 +249,7 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	ast->canonical_entity_names = raxNew();
 	ast->anot_ctx_collection = AST_AnnotationCtxCollection_New();
 	ast->free_root = false;
-	ast->limit = UNLIMITED;
+	ast->limit = NULL;
 
 	// Retrieve the AST root node from a parsed query.
 	const cypher_astnode_t *statement = cypher_parse_result_get_root(parse_result, 0);
@@ -277,7 +277,7 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	ast->anot_ctx_collection = master_ast->anot_ctx_collection;
 	ast->canonical_entity_names = master_ast->canonical_entity_names;
 	ast->free_root = true;
-	ast->limit = UNLIMITED;
+	ast->limit = NULL;
 	uint n = end_offset - start_offset;
 
 	const cypher_astnode_t *clauses[n];
@@ -428,12 +428,6 @@ const char **AST_BuildCallColumnNames(const cypher_astnode_t *call_clause) {
 		Proc_Free(proc);
 	}
 	return proc_output_columns;
-}
-
-// Determine the maximum number of records
-// which will be considered when evaluating an algebraic expression.
-int TraverseRecordCap(const AST *ast) {
-	return MIN(ast->limit, 16);  // Use 16 as the default value.
 }
 
 inline AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast) {

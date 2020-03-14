@@ -11,6 +11,7 @@
 #include "../redismodule.h"
 #include "rax.h"
 #include "ast_annotations_ctx_collection.h"
+#include "../arithmetic/arithmetic_expression.h"
 
 #define IDENTIFIER_NOT_FOUND UINT_MAX
 #define UNLIMITED UINT_MAX
@@ -25,7 +26,7 @@ typedef struct {
 	rax *referenced_entities;                           // Mapping of the referenced entities.
 	AST_AnnotationCtxCollection *anot_ctx_collection;   // Holds annotations contexts.
 	rax *canonical_entity_names;                        // Storage for canonical graph entity names.
-	uint limit;                                         // The maximum number of results in this segment.
+	AR_ExpNode *limit;                                  // The number of results in this segment.
 	bool free_root;                                     // The root should only be freed if this is a sub-AST we constructed
 } AST;
 
@@ -100,10 +101,6 @@ const char **AST_BuildReturnColumnNames(const cypher_astnode_t *return_clause);
 
 // Collect the aliases from a CALL clause to populate ResultSet column names.
 const char **AST_BuildCallColumnNames(const cypher_astnode_t *return_clause);
-
-// Determine the maximum number of records
-// which will be considered when evaluating an algebraic expression.
-int TraverseRecordCap(const AST *ast);
 
 // Parse a query to construct an immutable AST.
 cypher_parse_result_t *parse(const char *query);

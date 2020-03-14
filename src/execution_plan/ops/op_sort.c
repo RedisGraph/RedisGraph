@@ -10,8 +10,11 @@
 #include "../../util/arr.h"
 #include "../../util/qsort.h"
 #include "../../util/rmalloc.h"
+#include "../../query_ctx.h"
+
 
 /* Forward declarations. */
+static OpResult SortInit(OpBase *opBase);
 static Record SortConsume(OpBase *opBase);
 static OpResult SortReset(OpBase *opBase);
 static OpBase *SortClone(const ExecutionPlan *plan, const OpBase *opBase);
@@ -74,20 +77,22 @@ static inline Record _handoff(OpSort *op) {
 	return NULL;
 }
 
-OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions, uint limit) {
+OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions,
+				  AR_ExpNode *limit_expr, AR_ExpNode *skip_expr) {
 	OpSort *op = rm_malloc(sizeof(OpSort));
 	op->heap = NULL;
 	op->buffer = NULL;
-	op->limit = limit;
+	op->limit_expr = limit_expr;
+	op->skip_expr = skip_expr;
 	op->directions = directions;
 	op->exps = exps;
 
-	if(op->limit) op->heap = heap_new(_heap_elem_compare, op);
+	if(op->limit_expr) op->heap = heap_new(_heap_elem_compare, op);
 	else op->buffer = array_new(Record, 32);
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_SORT, "Sort", NULL,
-				SortConsume, SortReset, NULL, SortClone, SortFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_SORT, "Sort", SortInit, SortConsume, SortReset, NULL, SortClone,
+				SortFree, false, plan);
 
 	uint comparison_count = array_len(exps);
 	op->record_offsets = array_new(uint, comparison_count);
@@ -99,6 +104,40 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions,
 
 	return (OpBase *)op;
 }
+
+static OpResult SortInit(OpBase *opBase) {
+	OpSort *op = (OpSort *)opBase;
+	op->limit = 0;
+	if(op->limit_expr) {
+		SIValue limit_value =  AR_EXP_Evaluate(op->limit_expr, NULL);
+		if(SI_TYPE(limit_value) != T_INT64) {
+			char *error;
+			asprintf(&error, "LIMIT specified value of invalid type, must be a positive integer");
+			QueryCtx_SetError(error); // Set the query-level error.
+			QueryCtx_RaiseRuntimeException();
+			op->limit = 0;
+			return OP_ERR;
+		}
+		op->limit += limit_value.longval;
+
+
+		if(op->skip_expr) {
+
+			SIValue skip_value =  AR_EXP_Evaluate(op->skip_expr, NULL);
+			if(SI_TYPE(skip_value) != T_INT64) {
+				char *error;
+				asprintf(&error, "SKIP specified value of invalid type, must be a positive integer");
+				QueryCtx_SetError(error); // Set the query-level error.
+				QueryCtx_RaiseRuntimeException();
+				op->limit_expr = 0;
+				return OP_ERR;
+			}
+			op->limit_expr += skip_value.longval;
+		}
+	}
+	return OP_OK;
+}
+
 
 /* `op` is an actual variable in the caller function. Using it in a
  * macro like this is rather ugly, but the macro passed to QSORT must
@@ -170,7 +209,7 @@ static OpBase *SortClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	AR_ExpNode **exps;
 	array_clone(directions, op->directions);
 	array_clone_with_cb(exps, op->exps, AR_EXP_Clone);
-	return NewSortOp(plan, exps, directions, op->limit);
+	return NewSortOp(plan, exps, directions, op->limit_expr, op->skip_expr);
 }
 
 /* Frees Sort */

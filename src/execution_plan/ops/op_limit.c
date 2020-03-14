@@ -5,22 +5,39 @@
  */
 
 #include "op_limit.h"
+#include "../../query_ctx.h"
 
 /* Forward declarations. */
+static OpResult LimitInit(OpBase *opBase);
 static Record LimitConsume(OpBase *opBase);
 static OpResult LimitReset(OpBase *opBase);
 static OpBase *LimitClone(const ExecutionPlan *plan, const OpBase *opBase);
 
-OpBase *NewLimitOp(const ExecutionPlan *plan, unsigned int l) {
+OpBase *NewLimitOp(const ExecutionPlan *plan, AR_ExpNode *limit_expr) {
 	OpLimit *op = rm_malloc(sizeof(OpLimit));
-	op->limit = l;
+	op->limit_expr = limit_expr;
 	op->consumed = 0;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_LIMIT, "Limit", NULL, LimitConsume,
-				LimitReset, NULL, LimitClone, NULL, false, plan);
+	OpBase_Init((OpBase *)op, OPType_LIMIT, "Limit", LimitInit, LimitConsume, LimitReset, NULL,
+				LimitClone, NULL, false, plan);
 
 	return (OpBase *)op;
+}
+
+static OpResult LimitInit(OpBase *opBase) {
+	OpLimit *op = (OpLimit *)opBase;
+	SIValue limit_value =  AR_EXP_Evaluate(op->limit_expr, NULL);
+	if(SI_TYPE(limit_value) != T_INT64) {
+		char *error;
+		asprintf(&error, "LIMIT specified value of invalid type, must be a positive integer");
+		QueryCtx_SetError(error); // Set the query-level error.
+		QueryCtx_RaiseRuntimeException();
+		op->limit = 0;
+		return OP_ERR;
+	}
+	op->limit = limit_value.longval;
+	return OP_OK;
 }
 
 static Record LimitConsume(OpBase *opBase) {
@@ -44,6 +61,6 @@ static OpResult LimitReset(OpBase *ctx) {
 static inline OpBase *LimitClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	assert(opBase->type == OPType_LIMIT);
 	OpLimit *op = (OpLimit *)opBase;
-	return NewLimitOp(plan, op->limit);
+	return NewLimitOp(plan, op->limit_expr);
 }
 

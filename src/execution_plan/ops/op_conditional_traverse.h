@@ -12,6 +12,9 @@
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 /* OP Traverse */
+
+#define TRAVERSE_RECORDS_CAP 16
+
 typedef struct {
 	OpBase op;
 	Graph *graph;
@@ -26,6 +29,7 @@ typedef struct {
 	Edge *edges;                // Discovered edges.
 	GxB_MatrixTupleIter *iter;  // Iterator over M.
 	int edgeRecIdx;             // Index into record.
+	AR_ExpNode *recordsCapExpr; // Expressions of max number of records to process.
 	int recordsCap;             // Max number of records to process.
 	int recordsLen;             // Number of records to process.
 	GRAPH_EDGE_DIR direction;   // The direction of the referenced edge being traversed.
@@ -35,5 +39,5 @@ typedef struct {
 
 /* Creates a new Traverse operation */
 OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
-						  uint records_cap);
+						  AR_ExpNode *recordsCapExpr);
 

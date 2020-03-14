@@ -295,7 +295,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				if(edge && QGEdge_VariableLength(edge)) {
 					root = NewCondVarLenTraverseOp(plan, gc->g, exp);
 				} else {
-					root = NewCondTraverseOp(plan, gc->g, exp, TraverseRecordCap(ast));
+					root = NewCondTraverseOp(plan, gc->g, exp, ast->limit);
 				}
 				// Insert the new traversal op at the root of the chain.
 				ExecutionPlan_AddOp(root, tail);
@@ -409,7 +409,7 @@ static void _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **orde
 // Build an aggregate or project operation and any required modifying operations.
 // This logic applies for both WITH and RETURN projections.
 static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **projections,
-									   AR_ExpNode **order_exps, uint skip,
+									   AR_ExpNode **order_exps, AR_ExpNode *skip,
 									   int *sort_directions, bool aggregate, bool distinct) {
 
 	// Merge order expressions into the projections array.
@@ -434,12 +434,11 @@ static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **project
 	}
 
 	AST *ast = QueryCtx_GetAST();
-	uint limit = ast->limit;
+	AR_ExpNode *limit = ast->limit;
 
 	if(sort_directions) {
 		// The sort operation will obey a specified limit, but must account for skipped records
-		uint sort_limit = (limit != UNLIMITED) ? limit + skip : 0;
-		OpBase *op = NewSortOp(plan, order_exps, sort_directions, sort_limit);
+		OpBase *op = NewSortOp(plan, order_exps, sort_directions, limit, skip);
 		_ExecutionPlan_UpdateRoot(plan, op);
 	}
 
@@ -448,7 +447,7 @@ static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **project
 		_ExecutionPlan_UpdateRoot(plan, op);
 	}
 
-	if(limit != UNLIMITED) {
+	if(limit) {
 		OpBase *op = NewLimitOp(plan, limit);
 		_ExecutionPlan_UpdateRoot(plan, op);
 	}
@@ -464,8 +463,8 @@ static void _buildReturnOps(ExecutionPlan *plan, const cypher_astnode_t *clause)
 
 	const cypher_astnode_t *skip_clause = cypher_ast_return_get_skip(clause);
 
-	uint skip = 0;
-	if(skip_clause) skip = AST_ParseIntegerNode(skip_clause);
+	AR_ExpNode *skip = NULL;
+	if(skip_clause) skip = AR_EXP_FromExpression(skip_clause);
 
 	int *sort_directions = NULL;
 	AR_ExpNode **order_exps = NULL;
@@ -484,9 +483,8 @@ static void _buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
 
 	const cypher_astnode_t *skip_clause = cypher_ast_with_get_skip(clause);
 
-	uint skip = 0;
-	uint limit = RESULTSET_UNLIMITED;
-	if(skip_clause) skip = AST_ParseIntegerNode(skip_clause);
+	AR_ExpNode *skip = NULL;
+	if(skip_clause) skip = AR_EXP_FromExpression(skip_clause);
 
 	int *sort_directions = NULL;
 	AR_ExpNode **order_exps = NULL;
