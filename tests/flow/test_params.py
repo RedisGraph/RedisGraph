@@ -1,5 +1,6 @@
 import os
 import sys
+import redis
 from RLTest import Env
 from redisgraph import Graph, Node
 
@@ -54,17 +55,34 @@ class testParams(FlowTestsBase):
         self._assert_resultset_equals_expected(redis_graph.query(query, params), query_info)
 
     def test_node_retrival_skip_limit(self):
-        p0 = Node(node_id=0, label="Person", properties={'name': 'a'})
-        p1 = Node(node_id=1, label="Person", properties={'name': 'b'})
-        p2 = Node(node_id=2, label="NoPerson", properties={'name': 'a'})
+        p0 = Node(label="Person", properties={'id': 0, 'name': 'a'})
+        p1 = Node(label="Person", properties={'id': 1, 'name': 'b'})
+        p2 = Node(label="NoPerson", properties={'id': 2, 'name': 'a'})
         redis_graph.add_node(p0)
         redis_graph.add_node(p1)
         redis_graph.add_node(p2)
         redis_graph.flush()
 
         params = {'skip': 1, 'limit': 1}
-        query = "MATCH (n :Person) RETURN n SKIP $skip LIMIT $limit"
-        expected_results = [[p1]]
+        query = "MATCH (n) RETURN n.id ORDER BY n.id SKIP $skip LIMIT $limit"
+        expected_results = [[1]]
             
         query_info = QueryInfo(query = query, description="Tests skip limit as params", expected_result = expected_results)
         self._assert_resultset_equals_expected(redis_graph.query(query, params), query_info)
+
+def test_bad_node_retrival_skip_limit(self):
+        p0 = Node(label="Person", properties={'name': 'a'})
+        p1 = Node(label="Person", properties={'name': 'b'})
+        p2 = Node(label="NoPerson", properties={'name': 'a'})
+        redis_graph.add_node(p0)
+        redis_graph.add_node(p1)
+        redis_graph.add_node(p2)
+        redis_graph.flush()
+
+        params = {'skip': '1', 'limit': 1}
+        query = "MATCH (n :Person) RETURN n SKIP $skip LIMIT $limit"
+        try:
+            redis_graph.query(query, params)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            pass
