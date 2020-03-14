@@ -295,7 +295,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				if(edge && QGEdge_VariableLength(edge)) {
 					root = NewCondVarLenTraverseOp(plan, gc->g, exp);
 				} else {
-					root = NewCondTraverseOp(plan, gc->g, exp, ast->limit);
+					root = NewCondTraverseOp(plan, gc->g, exp, AR_EXP_Clone(ast->limit));
 				}
 				// Insert the new traversal op at the root of the chain.
 				ExecutionPlan_AddOp(root, tail);
@@ -409,8 +409,7 @@ static void _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **orde
 // Build an aggregate or project operation and any required modifying operations.
 // This logic applies for both WITH and RETURN projections.
 static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **projections,
-									   AR_ExpNode **order_exps, AR_ExpNode *skip,
-									   int *sort_directions, bool aggregate, bool distinct) {
+									   AR_ExpNode **order_exps, int *sort_directions, bool aggregate, bool distinct) {
 
 	// Merge order expressions into the projections array.
 	if(order_exps) _combine_projection_arrays(&projections, order_exps);
@@ -435,20 +434,21 @@ static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **project
 
 	AST *ast = QueryCtx_GetAST();
 	AR_ExpNode *limit = ast->limit;
+	AR_ExpNode *skip = ast->skip;
 
 	if(sort_directions) {
 		// The sort operation will obey a specified limit, but must account for skipped records
-		OpBase *op = NewSortOp(plan, order_exps, sort_directions, limit, skip);
+		OpBase *op = NewSortOp(plan, order_exps, sort_directions, AR_EXP_Clone(limit), AR_EXP_Clone(skip));
 		_ExecutionPlan_UpdateRoot(plan, op);
 	}
 
 	if(skip) {
-		OpBase *op = NewSkipOp(plan, skip);
+		OpBase *op = NewSkipOp(plan, AR_EXP_Clone(skip));
 		_ExecutionPlan_UpdateRoot(plan, op);
 	}
 
 	if(limit) {
-		OpBase *op = NewLimitOp(plan, limit);
+		OpBase *op = NewLimitOp(plan, AR_EXP_Clone(limit));
 		_ExecutionPlan_UpdateRoot(plan, op);
 	}
 }
@@ -463,9 +463,6 @@ static void _buildReturnOps(ExecutionPlan *plan, const cypher_astnode_t *clause)
 
 	const cypher_astnode_t *skip_clause = cypher_ast_return_get_skip(clause);
 
-	AR_ExpNode *skip = NULL;
-	if(skip_clause) skip = AR_EXP_FromExpression(skip_clause);
-
 	int *sort_directions = NULL;
 	AR_ExpNode **order_exps = NULL;
 	const cypher_astnode_t *order_clause = cypher_ast_return_get_order_by(clause);
@@ -473,7 +470,7 @@ static void _buildReturnOps(ExecutionPlan *plan, const cypher_astnode_t *clause)
 		AST_PrepareSortOp(order_clause, &sort_directions);
 		order_exps = _BuildOrderExpressions(projections, order_clause);
 	}
-	_buildProjectionOps(plan, projections, order_exps, skip, sort_directions, aggregate, distinct);
+	_buildProjectionOps(plan, projections, order_exps, sort_directions, aggregate, distinct);
 }
 
 static void _buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
@@ -483,9 +480,6 @@ static void _buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
 
 	const cypher_astnode_t *skip_clause = cypher_ast_with_get_skip(clause);
 
-	AR_ExpNode *skip = NULL;
-	if(skip_clause) skip = AR_EXP_FromExpression(skip_clause);
-
 	int *sort_directions = NULL;
 	AR_ExpNode **order_exps = NULL;
 	const cypher_astnode_t *order_clause = cypher_ast_with_get_order_by(clause);
@@ -493,7 +487,7 @@ static void _buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
 		AST_PrepareSortOp(order_clause, &sort_directions);
 		order_exps = _BuildOrderExpressions(projections, order_clause);
 	}
-	_buildProjectionOps(plan, projections, order_exps, skip, sort_directions, aggregate, distinct);
+	_buildProjectionOps(plan, projections, order_exps, sort_directions, aggregate, distinct);
 }
 
 // Convert a CALL clause into a procedure call operation.

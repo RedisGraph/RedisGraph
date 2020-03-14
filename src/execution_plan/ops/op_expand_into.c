@@ -13,6 +13,7 @@
 #include "../../GraphBLASExt/GxB_Delete.h"
 
 /* Forward declarations. */
+static OpResult ExpandIntoInit(OpBase *opBase);
 static Record ExpandIntoConsume(OpBase *opBase);
 static OpResult ExpandIntoReset(OpBase *opBase);
 static OpBase *ExpandIntoClone(const ExecutionPlan *plan, const OpBase *opBase);
@@ -92,7 +93,7 @@ static void _traverse(OpExpandInto *op) {
 }
 
 OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
-						uint records_cap) {
+						AR_ExpNode *records_cap_expr) {
 	OpExpandInto *op = rm_calloc(1, sizeof(OpExpandInto));
 	op->graph = g;
 	op->ae = ae;
@@ -102,11 +103,12 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 	op->M = GrB_NULL;
 	op->recordCount = 0;
 	op->edgeRelationTypes = NULL;
-	op->recordsCap = records_cap;
+	op->recordsCapExpr = records_cap_expr;
+	op->recordsCap = 0;
 	op->records = rm_calloc(op->recordsCap, sizeof(Record));
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", NULL, ExpandIntoConsume,
+	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", ExpandIntoInit, ExpandIntoConsume,
 				ExpandIntoReset, ExpandIntoToString, ExpandIntoClone, ExpandIntoFree, false, plan);
 
 	// Make sure that all entities are represented in Record
@@ -124,6 +126,25 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 	}
 
 	return (OpBase *)op;
+}
+
+static OpResult ExpandIntoInit(OpBase *opBase) {
+	OpExpandInto *op = (OpExpandInto *)opBase;
+	op->recordsCap = TRAVERSE_RECORDS_CAP;
+	if(op->recordsCapExpr) {
+		SIValue limit_value =  AR_EXP_Evaluate(op->recordsCapExpr, NULL);
+		if(SI_TYPE(limit_value) != T_INT64) {
+			char *error;
+			asprintf(&error, "LIMIT specified value of invalid type, must be a positive integer");
+			QueryCtx_SetError(error); // Set the query-level error.
+			QueryCtx_RaiseRuntimeException();
+			op->recordsCap = 0;
+			return OP_ERR;
+		}
+		op->recordsCap = MIN(op->recordsCap, limit_value.longval);
+	}
+	op->records = rm_calloc(op->recordsCap, sizeof(Record));
+	return OP_OK;
 }
 
 /* Emits a record when possible,
@@ -241,7 +262,7 @@ static inline OpBase *ExpandIntoClone(const ExecutionPlan *plan, const OpBase *o
 	assert(opBase->type == OPType_EXPAND_INTO);
 	OpExpandInto *op = (OpExpandInto *)opBase;
 	return NewExpandIntoOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae),
-						   op->recordsCap);
+						   AR_EXP_Clone(op->recordsCapExpr));
 }
 
 /* Frees ExpandInto */
@@ -278,6 +299,11 @@ static void ExpandIntoFree(OpBase *ctx) {
 		}
 		rm_free(op->records);
 		op->records = NULL;
+	}
+
+	if(op->recordsCapExpr) {
+		AR_EXP_Free(op->recordsCapExpr);
+		op->recordsCapExpr = NULL;
 	}
 }
 

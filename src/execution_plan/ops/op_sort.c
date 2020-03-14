@@ -120,7 +120,6 @@ static OpResult SortInit(OpBase *opBase) {
 		}
 		op->limit += limit_value.longval;
 
-
 		if(op->skip_expr) {
 
 			SIValue skip_value =  AR_EXP_Evaluate(op->skip_expr, NULL);
@@ -132,7 +131,7 @@ static OpResult SortInit(OpBase *opBase) {
 				op->limit_expr = 0;
 				return OP_ERR;
 			}
-			op->limit_expr += skip_value.longval;
+			op->limit += skip_value.longval;
 		}
 	}
 	return OP_OK;
@@ -209,7 +208,7 @@ static OpBase *SortClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	AR_ExpNode **exps;
 	array_clone(directions, op->directions);
 	array_clone_with_cb(exps, op->exps, AR_EXP_Clone);
-	return NewSortOp(plan, exps, directions, op->limit_expr, op->skip_expr);
+	return NewSortOp(plan, exps, directions, AR_EXP_Clone(op->limit_expr), AR_EXP_Clone(op->skip_expr));
 }
 
 /* Frees Sort */
@@ -251,6 +250,11 @@ static void SortFree(OpBase *ctx) {
 		for(uint i = 0; i < exps_count; i++) AR_EXP_Free(op->exps[i]);
 		array_free(op->exps);
 		op->exps = NULL;
+	}
+
+	if(op->limit_expr) {
+		AR_EXP_Free(op->limit_expr);
+		op->limit_expr = NULL;
 	}
 }
 

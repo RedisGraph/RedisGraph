@@ -32,7 +32,7 @@ static void _removeRedundantTraversal(ExecutionPlan *plan, CondTraverse *travers
  * with expand-into op. */
 void reduceTraversal(ExecutionPlan *plan) {
 	OpBase **traversals = ExecutionPlan_CollectOpsMatchingType(plan->root, TRAVERSE_OPS,
-															  TRAVERSE_OP_COUNT);
+															   TRAVERSE_OP_COUNT);
 	uint traversals_count = array_len(traversals);
 
 	/* Keep track of redundant traversals which will be removed
@@ -75,7 +75,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 			CondTraverse *traverse = (CondTraverse *)op;
 			const ExecutionPlan *traverse_plan = traverse->op.plan;
 			OpBase *expand_into = NewExpandIntoOp(traverse_plan, traverse->graph, traverse->ae,
-												  traverse->recordsCap);
+												  traverse->recordsCapExpr);
 
 			// Set traverse algebraic_expression to NULL to avoid early free.
 			traverse->ae = NULL;

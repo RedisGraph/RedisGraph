@@ -27,6 +27,7 @@ typedef struct {
 	AST_AnnotationCtxCollection *anot_ctx_collection;   // Holds annotations contexts.
 	rax *canonical_entity_names;                        // Storage for canonical graph entity names.
 	AR_ExpNode *limit;                                  // The number of results in this segment.
+	AR_ExpNode *skip;                                   // The number of skips in this segment.
 	bool free_root;                                     // The root should only be freed if this is a sub-AST we constructed
 } AST;
 

@@ -12,6 +12,7 @@ static OpResult LimitInit(OpBase *opBase);
 static Record LimitConsume(OpBase *opBase);
 static OpResult LimitReset(OpBase *opBase);
 static OpBase *LimitClone(const ExecutionPlan *plan, const OpBase *opBase);
+static void LimitFree(OpBase *opBase);
 
 OpBase *NewLimitOp(const ExecutionPlan *plan, AR_ExpNode *limit_expr) {
 	OpLimit *op = rm_malloc(sizeof(OpLimit));
@@ -20,23 +21,26 @@ OpBase *NewLimitOp(const ExecutionPlan *plan, AR_ExpNode *limit_expr) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_LIMIT, "Limit", LimitInit, LimitConsume, LimitReset, NULL,
-				LimitClone, NULL, false, plan);
+				LimitClone, LimitFree, false, plan);
 
 	return (OpBase *)op;
 }
 
 static OpResult LimitInit(OpBase *opBase) {
 	OpLimit *op = (OpLimit *)opBase;
-	SIValue limit_value =  AR_EXP_Evaluate(op->limit_expr, NULL);
-	if(SI_TYPE(limit_value) != T_INT64) {
-		char *error;
-		asprintf(&error, "LIMIT specified value of invalid type, must be a positive integer");
-		QueryCtx_SetError(error); // Set the query-level error.
-		QueryCtx_RaiseRuntimeException();
-		op->limit = 0;
-		return OP_ERR;
+	op->limit = UINT_MAX;
+	if(op->limit_expr) {
+		SIValue limit_value =  AR_EXP_Evaluate(op->limit_expr, NULL);
+		if(SI_TYPE(limit_value) != T_INT64) {
+			char *error;
+			asprintf(&error, "LIMIT specified value of invalid type, must be a positive integer");
+			QueryCtx_SetError(error); // Set the query-level error.
+			QueryCtx_RaiseRuntimeException();
+			op->limit = 0;
+			return OP_ERR;
+		}
+		op->limit = limit_value.longval;
 	}
-	op->limit = limit_value.longval;
 	return OP_OK;
 }
 
@@ -61,6 +65,13 @@ static OpResult LimitReset(OpBase *ctx) {
 static inline OpBase *LimitClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	assert(opBase->type == OPType_LIMIT);
 	OpLimit *op = (OpLimit *)opBase;
-	return NewLimitOp(plan, op->limit_expr);
+	return NewLimitOp(plan, AR_EXP_Clone(op->limit_expr));
 }
 
+static inline void LimitFree(OpBase *opBase) {
+	OpLimit *op = (OpLimit *)opBase;
+	if(op->limit_expr) {
+		AR_EXP_Free(op->limit_expr);
+		op->limit_expr = NULL;
+	}
+}

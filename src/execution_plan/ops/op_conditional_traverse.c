@@ -260,7 +260,7 @@ static inline OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase 
 	assert(opBase->type == OPType_CONDITIONAL_TRAVERSE);
 	CondTraverse *op = (CondTraverse *)opBase;
 	return NewCondTraverseOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae),
-							 op->recordsCapExpr);
+							 AR_EXP_Clone(op->recordsCapExpr));
 }
 
 /* Frees CondTraverse */
@@ -300,6 +300,11 @@ static void CondTraverseFree(OpBase *ctx) {
 		for(int i = 0; i < op->recordsLen; i++) OpBase_DeleteRecord(op->records[i]);
 		rm_free(op->records);
 		op->records = NULL;
+	}
+
+	if(op->recordsCapExpr) {
+		AR_EXP_Free(op->recordsCapExpr);
+		op->recordsCapExpr = NULL;
 	}
 }
 

@@ -12,6 +12,8 @@
 #include "../../graph/entities/edge.h"
 #include "../../arithmetic/algebraic_expression.h"
 
+#define TRAVERSE_RECORDS_CAP 16
+
 typedef struct {
 	OpBase op;
 	Graph *graph;
@@ -21,11 +23,12 @@ typedef struct {
 	int *edgeRelationTypes;     // One or more relation types.
 	int edgeRelationCount;      // length of edgeRelationTypes.
 	Edge *edges;                // Discovered edges.
-    bool setEdge;               // Edge needs to be set.
+	bool setEdge;               // Edge needs to be set.
 	GxB_MatrixTupleIter *iter;  // Iterator over M.
 	int srcNodeIdx;             // Index into record.
 	int destNodeIdx;            // Index into record.
 	int edgeIdx;                // Index into record.
+	AR_ExpNode *recordsCapExpr; // Expression to initialize records cap
 	uint recordsCap;            // Max number of records to process.
 	uint recordCount;           // Number of records to process.
 	Record *records;            // Array of records.
@@ -33,5 +36,5 @@ typedef struct {
 } OpExpandInto;
 
 OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
-						uint records_cap);
+						AR_ExpNode *records_cap_expr);
 

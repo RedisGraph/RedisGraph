@@ -61,6 +61,20 @@ static inline AR_ExpNode *_get_limit(const cypher_astnode_t *project_clause) {
 	return AR_EXP_FromExpression(limit_node);
 }
 
+static inline AR_ExpNode *_get_skip(const cypher_astnode_t *project_clause) {
+	const cypher_astnode_t *skip_clause = NULL;
+	// Retrieve the AST LIMIT node if one is specified.
+	if(cypher_astnode_type(project_clause) == CYPHER_AST_WITH) {
+		skip_clause = cypher_ast_with_get_skip(project_clause);
+	} else if(cypher_astnode_type(project_clause) == CYPHER_AST_RETURN) {
+		skip_clause = cypher_ast_return_get_skip(project_clause);
+	}
+
+	if(skip_clause == NULL) return NULL;
+	// Parse the LIMIT value.
+	return AR_EXP_FromExpression(skip_clause);
+}
+
 // If the project clause has a LIMIT modifier, set its value in the constructed AST.
 static void _AST_LimitResults(AST *ast, const cypher_astnode_t *root_clause,
 							  const cypher_astnode_t *project_clause) {
@@ -68,9 +82,11 @@ static void _AST_LimitResults(AST *ast, const cypher_astnode_t *root_clause,
 	if(root_type == CYPHER_AST_RETURN || root_type == CYPHER_AST_WITH) {
 		// Use the root clause of this AST if it is a projection.
 		ast->limit = _get_limit(root_clause);
+		ast->skip = _get_skip(root_clause);
 	} else if(project_clause) {
 		// Use the subsequent projection clause (if one is provided) otherwise.
 		ast->limit = _get_limit(project_clause);
+		ast->skip = _get_skip(project_clause);
 	}
 }
 
@@ -250,6 +266,7 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	ast->anot_ctx_collection = AST_AnnotationCtxCollection_New();
 	ast->free_root = false;
 	ast->limit = NULL;
+	ast->skip = NULL;
 
 	// Retrieve the AST root node from a parsed query.
 	const cypher_astnode_t *statement = cypher_parse_result_get_root(parse_result, 0);
@@ -278,6 +295,7 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	ast->canonical_entity_names = master_ast->canonical_entity_names;
 	ast->free_root = true;
 	ast->limit = NULL;
+	ast->skip = NULL;
 	uint n = end_offset - start_offset;
 
 	const cypher_astnode_t *clauses[n];
@@ -445,6 +463,9 @@ void AST_Free(AST *ast) {
 		AST_AnnotationCtxCollection_Free(ast->anot_ctx_collection);
 		raxFreeWithCallback(ast->canonical_entity_names, rm_free);
 	}
+	if(ast->limit) AR_EXP_Free(ast->limit);
+	if(ast->skip) AR_EXP_Free(ast->skip);
+
 	rm_free(ast);
 }
 

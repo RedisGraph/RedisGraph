@@ -300,6 +300,14 @@ cleanup:
 }
 
 static bool _AR_EXP_UpdateEntityIdx(AR_OperandNode *node, const Record r) {
+	if(!r) {
+		char *error;
+		asprintf(&error,
+				 "_AR_EXP_UpdateEntityIdx: No record was given to locate a value with alias %s",
+				 node->variadic.entity_alias);
+		QueryCtx_SetError(error); // Set the query-level error.
+		return false;
+	}
 	int entry_alias_idx = Record_GetEntryIdx(r, node->variadic.entity_alias);
 	if(entry_alias_idx == INVALID_INDEX) {
 		char *error;
@@ -577,6 +585,7 @@ char *AR_EXP_BuildResolvedName(AR_ExpNode *root) {
 }
 
 AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
+	if(exp == NULL) return NULL;
 	AR_ExpNode *clone;
 	switch(exp->type) {
 	case AR_EXP_OPERAND:

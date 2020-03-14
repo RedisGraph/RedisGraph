@@ -897,6 +897,74 @@ cleanup:
 	return res;
 }
 
+// LIMIT and SKIP are not independent clauses, but modifiers that can be applied to WITH or RETURN clauses
+static AST_Validation _Validate_LIMIT_SKIP_Modifiers(const AST *ast, char **reason) {
+	// Handle modifiers on the RETURN clause
+	const cypher_astnode_t *return_clause = AST_GetClause(ast, CYPHER_AST_RETURN);
+	// Skip check if the RETURN clause does not specify a limit
+	if(return_clause) {
+		// Handle LIMIT modifier
+		const cypher_astnode_t *limit = cypher_ast_return_get_limit(return_clause);
+		if(limit) {
+			// Handle non-integer or non parameter types specified as LIMIT value
+			// The value validation of integer node or parameter node is done in run time evaluation.
+			if(cypher_astnode_type(limit) != CYPHER_AST_INTEGER &&
+			   cypher_astnode_type(limit) != CYPHER_AST_PARAMETER) {
+				asprintf(reason, "LIMIT specified value of invalid type, must be a positive integer");
+				return AST_INVALID;
+			}
+		}
+
+		// Handle SKIP modifier
+		const cypher_astnode_t *skip = cypher_ast_return_get_skip(return_clause);
+		if(skip) {
+			// Handle non-integer or non parameter types specified as skip value
+			// The value validation of integer node or parameter node is done in run time evaluation.
+			if(cypher_astnode_type(skip) != CYPHER_AST_INTEGER &&
+			   cypher_astnode_type(skip) != CYPHER_AST_PARAMETER) {
+				asprintf(reason, "SKIP specified value of invalid type, must be a positive integer");
+				return AST_INVALID;
+			}
+		}
+	}
+
+	// Handle LIMIT modifiers on all WITH clauses
+	const cypher_astnode_t **with_clauses = AST_GetClauses(ast, CYPHER_AST_WITH);
+	if(!with_clauses) return AST_VALID;
+
+	AST_Validation res = AST_VALID;
+	uint with_count = array_len(with_clauses);
+	for(uint i = 0; i < with_count; i++) {
+		const cypher_astnode_t *with_clause = with_clauses[i];
+		// Handle LIMIT modifier
+		const cypher_astnode_t *limit = cypher_ast_with_get_limit(with_clause);
+		if(limit) {
+			// Handle non-integer or non parameter types specified as LIMIT value
+			// The value validation of integer node or parameter node is done in run time evaluation.
+			if(cypher_astnode_type(limit) != CYPHER_AST_INTEGER &&
+			   cypher_astnode_type(limit) != CYPHER_AST_PARAMETER) {
+				asprintf(reason, "LIMIT specified value of invalid type, must be a positive integer");
+				return AST_INVALID;
+			}
+		}
+
+		// Handle SKIP modifier
+		const cypher_astnode_t *skip = cypher_ast_with_get_skip(with_clause);
+		if(skip) {
+			// Handle non-integer or non parameter types specified as skip value
+			// The value validation of integer node or parameter node is done in run time evaluation.
+			if(cypher_astnode_type(skip) != CYPHER_AST_INTEGER &&
+			   cypher_astnode_type(skip) != CYPHER_AST_PARAMETER) {
+				asprintf(reason, "SKIP specified value of invalid type, must be a positive integer");
+				return AST_INVALID;
+			}
+		}
+	}
+	array_free(with_clauses);
+
+	return res;
+}
+
 // A query must end in a RETURN clause, a procedure, or an updating clause
 // (CREATE, MERGE, DELETE, SET, or REMOVE once supported)
 static AST_Validation _ValidateQueryTermination(const AST *ast, char **reason) {
@@ -1316,6 +1384,10 @@ static AST_Validation _ValidateClauses(const AST *ast, char **reason) {
 		return AST_INVALID;
 	}
 
+	if(_Validate_LIMIT_SKIP_Modifiers(ast, reason) == AST_INVALID) {
+		return AST_INVALID;
+	}
+
 	if(_ValidateMaps(ast->root, reason) == AST_INVALID) {
 		return AST_INVALID;
 	}
@@ -1467,7 +1539,8 @@ static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, 
 	}
 	struct cypher_input_range range = {};
 	ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n, clauses, n, range);
-
+	ast->skip = NULL;
+	ast->limit = NULL;
 	return ast;
 }
 
