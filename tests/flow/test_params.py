@@ -52,3 +52,19 @@ class testParams(FlowTestsBase):
             
         query_info = QueryInfo(query = query, description="Tests expression on param", expected_result = expected_results)
         self._assert_resultset_equals_expected(redis_graph.query(query, params), query_info)
+
+    def test_node_retrival_skip_limit(self):
+        p0 = Node(node_id=0, label="Person", properties={'name': 'a'})
+        p1 = Node(node_id=1, label="Person", properties={'name': 'b'})
+        p2 = Node(node_id=2, label="NoPerson", properties={'name': 'a'})
+        redis_graph.add_node(p0)
+        redis_graph.add_node(p1)
+        redis_graph.add_node(p2)
+        redis_graph.flush()
+
+        params = {'skip': 1, 'limit': 1}
+        query = "MATCH (n :Person) RETURN n SKIP $skip LIMIT $limit"
+        expected_results = [[p1]]
+            
+        query_info = QueryInfo(query = query, description="Tests skip limit as params", expected_result = expected_results)
+        self._assert_resultset_equals_expected(redis_graph.query(query, params), query_info)
