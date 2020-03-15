@@ -252,6 +252,11 @@ static void SortFree(OpBase *ctx) {
 		op->exps = NULL;
 	}
 
+	if(op->skip_expr) {
+		AR_EXP_Free(op->skip_expr);
+		op->skip_expr = NULL;
+	}
+
 	if(op->limit_expr) {
 		AR_EXP_Free(op->limit_expr);
 		op->limit_expr = NULL;
