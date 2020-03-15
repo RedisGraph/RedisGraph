@@ -103,6 +103,10 @@ const char **AST_BuildReturnColumnNames(const cypher_astnode_t *return_clause);
 // Collect the aliases from a CALL clause to populate ResultSet column names.
 const char **AST_BuildCallColumnNames(const cypher_astnode_t *return_clause);
 
+// Determine the maximum number of records
+// which will be considered when evaluating an algebraic expression.
+int TraverseRecordCap(const AST *ast);
+
 // Parse a query to construct an immutable AST.
 cypher_parse_result_t *parse(const char *query);
 

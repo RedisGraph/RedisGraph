@@ -62,4 +62,3 @@ static inline OpBase *SkipClone(const ExecutionPlan *plan, const OpBase *opBase)
 	assert(opBase->type == OPType_SKIP);
 	return NewSkipOp(plan);
 }
-

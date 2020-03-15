@@ -12,7 +12,6 @@
 #include "../../util/rmalloc.h"
 #include "../../query_ctx.h"
 
-
 /* Forward declarations. */
 static OpResult SortInit(OpBase *opBase);
 static Record SortConsume(OpBase *opBase);
@@ -109,7 +108,6 @@ static OpResult SortInit(OpBase *opBase) {
 	else op->buffer = array_new(Record, 32);
 	return OP_OK;
 }
-
 
 /* `op` is an actual variable in the caller function. Using it in a
  * macro like this is rather ugly, but the macro passed to QSORT must

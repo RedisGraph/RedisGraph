@@ -448,6 +448,12 @@ const char **AST_BuildCallColumnNames(const cypher_astnode_t *call_clause) {
 	return proc_output_columns;
 }
 
+// Determine the maximum number of records
+// which will be considered when evaluating an algebraic expression.
+int TraverseRecordCap(const AST *ast) {
+	return MIN(AST_GetLimit(ast), 16);  // Use 16 as the default value.
+}
+
 inline AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast) {
 	return ast->anot_ctx_collection;
 }

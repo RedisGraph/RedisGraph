@@ -12,9 +12,6 @@
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 /* OP Traverse */
-
-#define TRAVERSE_RECORDS_CAP 16
-
 typedef struct {
 	OpBase op;
 	Graph *graph;

@@ -12,8 +12,6 @@
 #include "../../graph/entities/edge.h"
 #include "../../arithmetic/algebraic_expression.h"
 
-#define TRAVERSE_RECORDS_CAP 16
-
 typedef struct {
 	OpBase op;
 	Graph *graph;

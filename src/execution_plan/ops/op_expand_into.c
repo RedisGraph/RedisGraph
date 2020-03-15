@@ -129,7 +129,7 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 static OpResult ExpandIntoInit(OpBase *opBase) {
 	OpExpandInto *op = (OpExpandInto *)opBase;
 	AST *ast = ExecutionPlan_GetAST(opBase->plan);
-	op->recordsCap = MIN(TRAVERSE_RECORDS_CAP, AST_GetLimit(ast));
+	op->recordsCap = TraverseRecordCap(ast);
 	op->records = rm_calloc(op->recordsCap, sizeof(Record));
 	return OP_OK;
 }

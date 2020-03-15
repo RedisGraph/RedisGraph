@@ -165,7 +165,7 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 static OpResult CondTraverseInit(OpBase *opBase) {
 	CondTraverse *op = (CondTraverse *)opBase;
 	AST *ast = ExecutionPlan_GetAST(opBase->plan);
-	op->recordsCap = MIN(TRAVERSE_RECORDS_CAP, AST_GetLimit(ast));
+	op->recordsCap = TraverseRecordCap(ast);
 	op->records = rm_calloc(op->recordsCap, sizeof(Record));
 	return OP_OK;
 }
