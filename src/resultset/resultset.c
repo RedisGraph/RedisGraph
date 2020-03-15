@@ -149,12 +149,6 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, ResultSetFormatterType format) {
 	return set;
 }
 
-void ResultSet_SetColumns(ResultSet *set, const char **columns) {
-	assert(set && columns);
-	set->columns = columns;
-	set->column_count = array_len(columns);
-}
-
 int ResultSet_AddRecord(ResultSet *set, Record r) {
 	// If result-set format is NOP, don't process record.
 	if(set->format == FORMATTER_NOP) return RESULTSET_OK;
