@@ -11,9 +11,8 @@
 
 typedef struct {
 	OpBase op;
-	AR_ExpNode *skip_expr;
 	unsigned int rec_to_skip;
 	unsigned int skipped;
 } OpSkip;
 
-OpBase *NewSkipOp(const ExecutionPlan *plan, AR_ExpNode *limit_expr);
+OpBase *NewSkipOp(const ExecutionPlan *plan);

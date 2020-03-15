@@ -28,13 +28,11 @@ typedef struct {
 	int srcNodeIdx;             // Index into record.
 	int destNodeIdx;            // Index into record.
 	int edgeIdx;                // Index into record.
-	AR_ExpNode *recordsCapExpr; // Expression to initialize records cap
 	uint recordsCap;            // Max number of records to process.
 	uint recordCount;           // Number of records to process.
 	Record *records;            // Array of records.
 	Record r;                   // Current selected record.
 } OpExpandInto;
 
-OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
-						AR_ExpNode *records_cap_expr);
+OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae);
 

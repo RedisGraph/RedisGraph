@@ -29,7 +29,6 @@ typedef struct {
 	Edge *edges;                // Discovered edges.
 	GxB_MatrixTupleIter *iter;  // Iterator over M.
 	int edgeRecIdx;             // Index into record.
-	AR_ExpNode *recordsCapExpr; // Expressions of max number of records to process.
 	int recordsCap;             // Max number of records to process.
 	int recordsLen;             // Number of records to process.
 	GRAPH_EDGE_DIR direction;   // The direction of the referenced edge being traversed.
@@ -38,6 +37,5 @@ typedef struct {
 } CondTraverse;
 
 /* Creates a new Traverse operation */
-OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
-						  AR_ExpNode *recordsCapExpr);
+OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae);
 

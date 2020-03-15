@@ -74,8 +74,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 		if(op->type == OPType_CONDITIONAL_TRAVERSE) {
 			CondTraverse *traverse = (CondTraverse *)op;
 			const ExecutionPlan *traverse_plan = traverse->op.plan;
-			OpBase *expand_into = NewExpandIntoOp(traverse_plan, traverse->graph, traverse->ae,
-												  traverse->recordsCapExpr);
+			OpBase *expand_into = NewExpandIntoOp(traverse_plan, traverse->graph, traverse->ae);
 
 			// Set traverse algebraic_expression to NULL to avoid early free.
 			traverse->ae = NULL;

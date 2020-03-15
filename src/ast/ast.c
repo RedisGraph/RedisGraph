@@ -469,6 +469,38 @@ void AST_Free(AST *ast) {
 	rm_free(ast);
 }
 
+inline AR_ExpNode *AST_GetLimitExpr(const AST *ast) {
+	return ast->limit;
+}
+
+uint64_t AST_GetLimit(const AST *ast) {
+	if(!ast->limit) return UNLIMITED;
+	SIValue limit_value =  AR_EXP_Evaluate(ast->limit, NULL);
+	if(SI_TYPE(limit_value) != T_INT64) {
+		char *error;
+		asprintf(&error, "LIMIT specified value of invalid type, must be a positive integer");
+		QueryCtx_SetError(error); // Set the query-level error.
+		QueryCtx_RaiseRuntimeException();
+	}
+	return limit_value.longval;
+}
+
+inline AR_ExpNode *AST_GetSkipExpr(const AST *ast) {
+	return ast->skip;
+}
+
+uint64_t AST_GetSkip(const AST *ast) {
+	if(!ast->skip) return 0;
+	SIValue skip_value =  AR_EXP_Evaluate(ast->skip, NULL);
+	if(SI_TYPE(skip_value) != T_INT64) {
+		char *error;
+		asprintf(&error, "SKIP specified value of invalid type, must be a positive integer");
+		QueryCtx_SetError(error); // Set the query-level error.
+		QueryCtx_RaiseRuntimeException();
+	}
+	return skip_value.longval;
+}
+
 cypher_parse_result_t *parse(const char *query) {
 	return cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 }

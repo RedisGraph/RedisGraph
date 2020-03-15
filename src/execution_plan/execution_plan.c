@@ -295,7 +295,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				if(edge && QGEdge_VariableLength(edge)) {
 					root = NewCondVarLenTraverseOp(plan, gc->g, exp);
 				} else {
-					root = NewCondTraverseOp(plan, gc->g, exp, AR_EXP_Clone(ast->limit));
+					root = NewCondTraverseOp(plan, gc->g, exp);
 				}
 				// Insert the new traversal op at the root of the chain.
 				ExecutionPlan_AddOp(root, tail);
@@ -433,22 +433,20 @@ static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **project
 	}
 
 	AST *ast = QueryCtx_GetAST();
-	AR_ExpNode *limit = ast->limit;
-	AR_ExpNode *skip = ast->skip;
 
 	if(sort_directions) {
 		// The sort operation will obey a specified limit, but must account for skipped records
-		OpBase *op = NewSortOp(plan, order_exps, sort_directions, AR_EXP_Clone(limit), AR_EXP_Clone(skip));
+		OpBase *op = NewSortOp(plan, order_exps, sort_directions);
 		_ExecutionPlan_UpdateRoot(plan, op);
 	}
 
-	if(skip) {
-		OpBase *op = NewSkipOp(plan, AR_EXP_Clone(skip));
+	if(AST_GetSkipExpr(ast)) {
+		OpBase *op = NewSkipOp(plan);
 		_ExecutionPlan_UpdateRoot(plan, op);
 	}
 
-	if(limit) {
-		OpBase *op = NewLimitOp(plan, AR_EXP_Clone(limit));
+	if(AST_GetLimitExpr(ast)) {
+		OpBase *op = NewLimitOp(plan);
 		_ExecutionPlan_UpdateRoot(plan, op);
 	}
 }
@@ -641,6 +639,7 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, Exec
 void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan) {
 	AST *ast = QueryCtx_GetAST();
 	GraphContext *gc = QueryCtx_GetGraphCtx();
+	plan->ast_segment = ast;
 
 	// Initialize the plan's record mapping if necessary.
 	// It will already be set if this ExecutionPlan has been created to populate a single stream.
@@ -824,9 +823,6 @@ ExecutionPlan *NewExecutionPlan(void) {
 		prev_scope_end = prev_root; // Track the previous scope's end so filter placement doesn't overreach.
 	}
 
-	// Free all scoped ASTs.
-	for(uint i = 0; i < segment_count; i++) AST_Free(ast_segments[i]);
-
 	QueryCtx_SetAST(ast); // AST segments have been freed, set master AST in QueryCtx.
 
 	array_free(segment_indices);
@@ -843,6 +839,16 @@ ExecutionPlan *NewExecutionPlan(void) {
 	plan->segments = segments;
 
 	return plan;
+}
+
+// Sets an AST segment in the execution plan.
+inline void ExecutionPlan_SetAST(ExecutionPlan *plan, AST *ast) {
+	plan->ast_segment = ast;
+}
+
+// Gets the AST segment from the execution plan.
+inline AST *ExecutionPlan_GetAST(const ExecutionPlan *plan) {
+	return plan->ast_segment;
 }
 
 void ExecutionPlan_PreparePlan(ExecutionPlan *plan) {
@@ -1009,6 +1015,7 @@ static void _ExecutionPlan_FreeSubPlan(ExecutionPlan *plan) {
 	QueryGraph_Free(plan->query_graph);
 	if(plan->record_map) raxFree(plan->record_map);
 	if(plan->record_pool) ObjectPool_Free(plan->record_pool);
+	if(plan->ast_segment) AST_Free(plan->ast_segment);
 	rm_free(plan);
 }
 

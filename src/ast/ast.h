@@ -112,5 +112,13 @@ void parse_result_free(cypher_parse_result_t *parse_result);
 // Returns the ast annotation context collection of the AST.
 AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast);
 
+AR_ExpNode *AST_GetLimitExpr(const AST *ast);
+
+uint64_t AST_GetLimit(const AST *ast);
+
+AR_ExpNode *AST_GetSkipExpr(const AST *ast);
+
+uint64_t AST_GetSkip(const AST *ast);
+
 void AST_Free(AST *ast);
 

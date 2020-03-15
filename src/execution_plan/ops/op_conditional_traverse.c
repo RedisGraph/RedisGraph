@@ -121,8 +121,7 @@ static inline int CondTraverseToString(const OpBase *ctx, char *buf, uint buf_le
 	return TraversalToString(ctx, buf, buf_len, ((const CondTraverse *)ctx)->ae);
 }
 
-OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
-						  AR_ExpNode *recordsCapExpr) {
+OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
 	CondTraverse *op = rm_calloc(1, sizeof(CondTraverse));
 	op->graph = g;
 	op->ae = ae;
@@ -134,7 +133,6 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	op->recordsLen = 0;
 	op->direction = GRAPH_EDGE_DIR_OUTGOING;
 	op->edgeRelationTypes = NULL;
-	op->recordsCapExpr = recordsCapExpr;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", CondTraverseInit,
@@ -166,19 +164,8 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 
 static OpResult CondTraverseInit(OpBase *opBase) {
 	CondTraverse *op = (CondTraverse *)opBase;
-	op->recordsCap = TRAVERSE_RECORDS_CAP;
-	if(op->recordsCapExpr) {
-		SIValue limit_value =  AR_EXP_Evaluate(op->recordsCapExpr, NULL);
-		if(SI_TYPE(limit_value) != T_INT64) {
-			char *error;
-			asprintf(&error, "LIMIT specified value of invalid type, must be a positive integer");
-			QueryCtx_SetError(error); // Set the query-level error.
-			QueryCtx_RaiseRuntimeException();
-			op->recordsCap = 0;
-			return OP_ERR;
-		}
-		op->recordsCap = MIN(op->recordsCap, limit_value.longval);
-	}
+	AST *ast = ExecutionPlan_GetAST(opBase->plan);
+	op->recordsCap = MIN(TRAVERSE_RECORDS_CAP, AST_GetLimit(ast));
 	op->records = rm_calloc(op->recordsCap, sizeof(Record));
 	return OP_OK;
 }
@@ -259,8 +246,7 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 static inline OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	assert(opBase->type == OPType_CONDITIONAL_TRAVERSE);
 	CondTraverse *op = (CondTraverse *)opBase;
-	return NewCondTraverseOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae),
-							 AR_EXP_Clone(op->recordsCapExpr));
+	return NewCondTraverseOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae));
 }
 
 /* Frees CondTraverse */
@@ -300,11 +286,6 @@ static void CondTraverseFree(OpBase *ctx) {
 		for(int i = 0; i < op->recordsLen; i++) OpBase_DeleteRecord(op->records[i]);
 		rm_free(op->records);
 		op->records = NULL;
-	}
-
-	if(op->recordsCapExpr) {
-		AR_EXP_Free(op->recordsCapExpr);
-		op->recordsCapExpr = NULL;
 	}
 }
 

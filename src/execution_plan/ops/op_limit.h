@@ -11,9 +11,8 @@
 
 typedef struct {
 	OpBase op;
-	AR_ExpNode *limit_expr; // Runtime evaluation of record limit.
 	unsigned int limit;     // Max number of records to consume.
 	unsigned int consumed;  // Number of records consumed so far.
 } OpLimit;
 
-OpBase *NewLimitOp(const ExecutionPlan *plan, AR_ExpNode *limit_expr);
+OpBase *NewLimitOp(const ExecutionPlan *plan);

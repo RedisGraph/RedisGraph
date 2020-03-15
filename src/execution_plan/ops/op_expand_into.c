@@ -92,8 +92,7 @@ static void _traverse(OpExpandInto *op) {
 	GrB_Matrix_clear(op->F);
 }
 
-OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
-						AR_ExpNode *records_cap_expr) {
+OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
 	OpExpandInto *op = rm_calloc(1, sizeof(OpExpandInto));
 	op->graph = g;
 	op->ae = ae;
@@ -103,7 +102,6 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 	op->M = GrB_NULL;
 	op->recordCount = 0;
 	op->edgeRelationTypes = NULL;
-	op->recordsCapExpr = records_cap_expr;
 	op->recordsCap = 0;
 	op->records = rm_calloc(op->recordsCap, sizeof(Record));
 
@@ -130,19 +128,8 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 
 static OpResult ExpandIntoInit(OpBase *opBase) {
 	OpExpandInto *op = (OpExpandInto *)opBase;
-	op->recordsCap = TRAVERSE_RECORDS_CAP;
-	if(op->recordsCapExpr) {
-		SIValue limit_value =  AR_EXP_Evaluate(op->recordsCapExpr, NULL);
-		if(SI_TYPE(limit_value) != T_INT64) {
-			char *error;
-			asprintf(&error, "LIMIT specified value of invalid type, must be a positive integer");
-			QueryCtx_SetError(error); // Set the query-level error.
-			QueryCtx_RaiseRuntimeException();
-			op->recordsCap = 0;
-			return OP_ERR;
-		}
-		op->recordsCap = MIN(op->recordsCap, limit_value.longval);
-	}
+	AST *ast = ExecutionPlan_GetAST(opBase->plan);
+	op->recordsCap = MIN(TRAVERSE_RECORDS_CAP, AST_GetLimit(ast));
 	op->records = rm_calloc(op->recordsCap, sizeof(Record));
 	return OP_OK;
 }
@@ -261,8 +248,7 @@ static OpResult ExpandIntoReset(OpBase *ctx) {
 static inline OpBase *ExpandIntoClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	assert(opBase->type == OPType_EXPAND_INTO);
 	OpExpandInto *op = (OpExpandInto *)opBase;
-	return NewExpandIntoOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae),
-						   AR_EXP_Clone(op->recordsCapExpr));
+	return NewExpandIntoOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae));
 }
 
 /* Frees ExpandInto */
@@ -299,11 +285,6 @@ static void ExpandIntoFree(OpBase *ctx) {
 		}
 		rm_free(op->records);
 		op->records = NULL;
-	}
-
-	if(op->recordsCapExpr) {
-		AR_EXP_Free(op->recordsCapExpr);
-		op->recordsCapExpr = NULL;
 	}
 }
 
