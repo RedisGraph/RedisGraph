@@ -7,97 +7,91 @@
 #include "op_apply.h"
 
 /* Forward declarations. */
+static OpResult ApplyInit(OpBase *opBase);
 static Record ApplyConsume(OpBase *opBase);
 static OpResult ApplyReset(OpBase *opBase);
 static void ApplyFree(OpBase *opBase);
 
 OpBase *NewApplyOp(const ExecutionPlan *plan) {
 	Apply *op = rm_malloc(sizeof(Apply));
-	op->init = true;
-	op->rhs_idx = 0;
-	op->lhs_record = NULL;
-	op->rhs_records = array_new(Record, 32);
+	op->r = NULL;
+	op->op_arg = NULL;
+	op->bound_branch = NULL;
+	op->rhs_branch = NULL;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_APPLY, "Apply", NULL, ApplyConsume, ApplyReset, NULL, NULL,
+	OpBase_Init((OpBase *)op, OPType_APPLY, "Apply", ApplyInit, ApplyConsume, ApplyReset, NULL, NULL,
 				ApplyFree, false, plan);
 
 	return (OpBase *)op;
 }
 
+static OpResult ApplyInit(OpBase *opBase) {
+	// TODO init routine necesssary?
+	assert(opBase->childCount == 2);
+
+	Apply *op = (Apply *)opBase;
+	/* The op bounded branch and match branch are set to be the first and second child, respectively,
+	 * during the operation building procedure at execution_plan_reduce_to_apply.c */
+	op->bound_branch = opBase->children[0];
+	op->rhs_branch = opBase->children[1];
+
+	// Locate branch's Argument op tap.
+	op->op_arg = (Argument *)ExecutionPlan_LocateOp(op->rhs_branch, OPType_ARGUMENT);
+	assert(op->op_arg && op->op_arg->op.childCount == 0); // TODO maybe wrong
+	return OP_OK;
+}
+
 static Record ApplyConsume(OpBase *opBase) {
 	Apply *op = (Apply *)opBase;
 
-	assert(op->op.childCount == 2);
+	while(true) {
+		if(op->r == NULL) {
+			// Retrieve a Record from the bound branch if we're not currently holding one.
+			op->r = OpBase_Consume(op->bound_branch);
+			if(!op->r) return NULL; // Bound branch and this op are depleted.
 
-	Record rhs_record;
-
-	if(op->init) {
-		// On the first call to ApplyConsume, we'll read the entirety of the
-		// right-hand stream and buffer its outputs.
-		op->init = false;
-
-		OpBase *rhs = op->op.children[1];
-		while((rhs_record = rhs->consume(rhs))) {
-			op->rhs_records = array_append(op->rhs_records, rhs_record);
+			// Successfully pulled a new Record, propagate to the top of the RHS branch.
+			if(op->op_arg) Argument_AddRecord(op->op_arg, OpBase_CloneRecord(op->r));
 		}
+
+		// Pull a Record from the RHS branch.
+		Record rhs_record = OpBase_Consume(op->rhs_branch);
+
+		if(rhs_record == NULL) {
+			/* RHS branch depleted for the current bound Record;
+			 * free it and loop back to retrieve a new one. */
+			OpBase_DeleteRecord(op->r);
+			op->r = NULL;
+			// Reset the RHS branch.
+			OpBase_PropagateReset(op->rhs_branch);
+			continue;
+		}
+
+		// Clone the bound Record and merge the RHS Record into it.
+		Record r = OpBase_CloneRecord(op->r);
+		Record_Merge(&r, rhs_record);
+
+		return r;
 	}
 
-	uint rhs_count = array_len(op->rhs_records);
-
-	OpBase *lhs = op->op.children[0];
-	if(op->lhs_record == NULL) {
-		// No pending data from left-hand stream
-		op->rhs_idx = 0;
-		op->lhs_record = lhs->consume(lhs);
-	}
-
-	if(op->lhs_record == NULL) {
-		// Left-hand stream has been fully depleted
-		return NULL;
-	}
-
-	// Clone the left-hand record
-	Record r = OpBase_CloneRecord(op->lhs_record);
-
-	// No records were produced by the right-hand stream
-	if(rhs_count == 0) return r;
-
-	rhs_record = op->rhs_records[op->rhs_idx++];
-
-	if(op->rhs_idx == rhs_count) {
-		// We've joined all data from the right-hand stream with the current
-		// retrieval from the left-hand stream.
-		// The next call to ApplyConsume will attempt to pull new data.
-		OpBase_DeleteRecord(op->lhs_record);
-		op->lhs_record = NULL;
-		op->rhs_idx = 0;
-	}
-
-	Record_Merge(&r, rhs_record);
-
-	return r;
+	return NULL;
 }
 
 static OpResult ApplyReset(OpBase *opBase) {
 	Apply *op = (Apply *)opBase;
-	op->init = true;
+	if(op->r) {
+		OpBase_DeleteRecord(op->r);
+		op->r = NULL;
+	}
 	return OP_OK;
 }
 
 static void ApplyFree(OpBase *opBase) {
 	Apply *op = (Apply *)opBase;
-	if(op->lhs_record) {
-		OpBase_DeleteRecord(op->lhs_record);
-		op->lhs_record = NULL;
-	}
-	if(op->rhs_records) {
-		uint len = array_len(op->rhs_records);
-		for(uint i = 0; i < len; i ++) {
-			OpBase_DeleteRecord(op->rhs_records[i]);
-		}
-		array_free(op->rhs_records);
-		op->rhs_records = NULL;
+	if(op->r) {
+		OpBase_DeleteRecord(op->r);
+		op->r = NULL;
 	}
 }
 

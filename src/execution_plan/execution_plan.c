@@ -527,6 +527,32 @@ static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge
 	}
 }
 
+static void _BuildOptionalMatchOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
+	// TODO dup of _buildMergeOp logic, consider shared function.
+	// Collect the variables that are bound at this point.
+	rax *bound_vars = NULL;
+	const char **arguments = NULL;
+	if(plan->root) {
+		bound_vars = raxNew();
+		// Rather than cloning the record map, collect the bound variables along with their
+		// parser-generated constant strings.
+		ExecutionPlan_BoundVariables(plan->root, bound_vars);
+		// Collect the variable names from bound_vars to populate the Argument ops we will build.
+		arguments = (const char **)raxValues(bound_vars);
+	}
+
+	OpBase *apply_op = NewApplyOp(plan);
+	_ExecutionPlan_UpdateRoot(plan, apply_op);
+
+	OpBase *optional = NewOptionalOp(plan);
+	ExecutionPlan_AddOp(apply_op, optional);
+	OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, clause);
+	ExecutionPlan_AddOp(optional, match_stream); // Add Match stream to Merge op.
+
+	if(bound_vars) raxFree(bound_vars);
+	array_free(arguments);
+}
+
 static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 						  const cypher_astnode_t *clause) {
 	/*
@@ -608,6 +634,10 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, Exec
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
 	// Because 't' is set using the offsetof() call, it cannot be used in switch statements.
 	if(t == CYPHER_AST_MATCH) {
+		if(cypher_ast_match_is_optional(clause)) {
+			_BuildOptionalMatchOps(plan, clause);
+			return;
+		}
 		// Only add at most one set of traversals per plan. TODO Revisit and improve this logic.
 		if(plan->root && ExecutionPlan_LocateOpMatchingType(plan->root, SCAN_OPS, SCAN_OP_COUNT)) {
 			return;

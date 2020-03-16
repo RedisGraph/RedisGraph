@@ -316,7 +316,13 @@ OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_v
 
 	AST *ast = QueryCtx_GetAST();
 	// Build a temporary AST holding a MATCH clause.
-	AST *match_stream_ast = AST_MockMatchPattern(ast, path);
+	// TODO tmp
+	AST *match_stream_ast;
+	if(cypher_astnode_type(path) == CYPHER_AST_MATCH) {
+		match_stream_ast = AST_MockOptionalMatch(ast, (cypher_astnode_t *)path);
+	} else {
+		match_stream_ast = AST_MockMatchPath(ast, path);
+	}
 
 	ExecutionPlan_PopulateExecutionPlan(match_stream_plan);
 

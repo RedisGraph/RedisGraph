@@ -617,13 +617,6 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast, char **reason) {
 	uint match_count = array_len(match_clauses);
 	for(uint i = 0; i < match_count; i ++) {
 		const cypher_astnode_t *match_clause = match_clauses[i];
-		// We currently do not support optional MATCH.
-		if(cypher_ast_match_is_optional(match_clause)) {
-			asprintf(reason, "RedisGraph does not support OPTIONAL MATCH.");
-			res = AST_INVALID;
-			goto cleanup;
-		}
-
 		// Validate the pattern described by the MATCH clause
 		res = _ValidatePattern(projections, cypher_ast_match_get_pattern(match_clause), edge_aliases,
 							   reason);
