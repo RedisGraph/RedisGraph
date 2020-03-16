@@ -1520,31 +1520,26 @@ static void _collect_query_parameters_names(const cypher_astnode_t *root, rax *k
 	}
 }
 
-/* This method extracts input parameters names. If a duplicate parameter is given, AST_INVALID will be returned. */
-static AST_Validation _collect_input_parameters_names(const cypher_astnode_t *statement,
-													  rax *given_params_names, char **reason) {
-	uint noptions =  cypher_ast_statement_noptions(statement);
+static AST_Validation _ValidateDuplicateParameters(const cypher_astnode_t *statement,
+												   char **reason) {
+	rax *param_names = raxNew();
+	uint noptions = cypher_ast_statement_noptions(statement);
 	for(uint i = 0; i < noptions; i++) {
 		const cypher_astnode_t *option = cypher_ast_statement_get_option(statement, i);
 		uint nparams = cypher_ast_cypher_option_nparams(option);
 		for(uint j = 0; j < nparams; j++) {
 			const cypher_astnode_t *param = cypher_ast_cypher_option_get_param(option, j);
 			const char *paramName = cypher_ast_string_get_value(cypher_ast_cypher_option_param_get_name(param));
-			// If parameter already exists, add it the duplicated parms array.
-			if(!raxInsert(given_params_names, (unsigned char *) paramName, strlen(paramName), NULL, NULL)) {
+			// If parameter already exists return an error.
+			if(!raxInsert(param_names, (unsigned char *) paramName, strlen(paramName), NULL, NULL)) {
 				asprintf(reason, "Duplicated parameter: %s", paramName);
+				raxFree(param_names);
 				return AST_INVALID;
 			}
 		}
 	}
+	raxFree(param_names);
 	return AST_VALID;
-}
-
-static AST_Validation _ValidateInputParameters(const cypher_astnode_t *statement, char **reason) {
-	rax *given_params_names = raxNew();
-	AST_Validation res = _collect_input_parameters_names(statement, given_params_names, reason);
-	raxFree(given_params_names);
-	return res;
 }
 
 static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, uint end_offset) {
@@ -1627,8 +1622,8 @@ bool AST_ContainsErrors(const cypher_parse_result_t *result) {
 	return cypher_parse_result_nerrors(result) > 0;
 }
 
-AST_Validation _AST_Validate_ParseResultRoot(RedisModuleCtx *ctx,
-											 const cypher_parse_result_t *result) {
+static AST_Validation _AST_Validate_ParseResultRoot(RedisModuleCtx *ctx,
+													const cypher_parse_result_t *result) {
 	// Check for failures in libcypher-parser
 	if(AST_ContainsErrors(result)) {
 		char *errMsg = _AST_ReportErrors(result);
@@ -1707,7 +1702,7 @@ AST_Validation AST_Validate_QueryParams(RedisModuleCtx *ctx, const cypher_parse_
 	// In case of no parameters.
 	if(cypher_ast_statement_noptions(root) == 0) return AST_VALID;
 
-	if(_ValidateInputParameters(root, &reason) != AST_VALID) {
+	if(_ValidateDuplicateParameters(root, &reason) != AST_VALID) {
 		RedisModule_ReplyWithError(ctx, reason);
 		free(reason);
 		return AST_INVALID;

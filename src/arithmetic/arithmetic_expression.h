@@ -34,7 +34,7 @@ typedef enum {
 } AR_OPType;
 
 /* AR_OperandNodeType type of leaf node,
- * either a constant: 3, a variable: node.property, or a parameter. */
+ * either a constant: 3, a variable: node.property, or a parameter: $p. */
 typedef enum {
 	AR_EXP_OP_UNKNOWN,
 	AR_EXP_CONSTANT,
@@ -62,7 +62,7 @@ typedef struct {
 } AR_OpNode;
 
 /* OperandNode represents either a constant numeric value,
- * a graph entity property, or a parameter. */
+ * a graph entity property or a parameter. */
 typedef struct {
 	union {
 		const char *param_name;
@@ -110,7 +110,7 @@ AR_ExpNode *AR_EXP_NewParameterOperandNode(const char *param_name);
 bool AR_EXP_PerformDistinct(AR_ExpNode *op);
 
 /* Compact tree by evaluating all contained functions that can be resolved right now. */
-bool AR_EXP_ReduceToScalar(AR_ExpNode **root);
+bool AR_EXP_ReduceToScalar(AR_ExpNode *root);
 
 /* Evaluate arithmetic expression tree. */
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r);
@@ -138,8 +138,11 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str);
  * func - function name to lookup. */
 bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func);
 
-/* Returns true if an arithmetic expression node is a constant or parameter. */
-bool AR_EXP_IsConstantOrParameter(const AR_ExpNode *exp);
+/* Returns true if an arithmetic expression node is a constant. */
+bool AR_EXP_IsConstant(const AR_ExpNode *exp);
+
+/* Returns true if an arithmetic expression node is a parameter. */
+bool AR_EXP_IsParameter(const AR_ExpNode *exp);
 
 /* Generate a heap-allocated name for an arithmetic expression.
  * This routine is only used to name ORDER BY expressions. */

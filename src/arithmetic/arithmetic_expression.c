@@ -169,9 +169,9 @@ AR_ExpNode *AR_EXP_NewParameterOperandNode(const char *param_name) {
  * e.g. MINUS(X) where X is a constant number will be reduced to
  * a single node with the value -X
  * PLUS(MINUS(A), B) will be reduced to a single constant: B-A. */
-bool AR_EXP_ReduceToScalar(AR_ExpNode **root) {
-	if((*root)->type == AR_EXP_OPERAND) {
-		if((*root)->operand.type == AR_EXP_CONSTANT) {
+bool AR_EXP_ReduceToScalar(AR_ExpNode *root) {
+	if(root->type == AR_EXP_OPERAND) {
+		if(root->operand.type == AR_EXP_CONSTANT) {
 			// Root is already a constant
 			return true;
 		}
@@ -179,14 +179,14 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode **root) {
 		return false;
 	} else {
 		// root represents an operation.
-		assert((*root)->type == AR_EXP_OP);
+		assert(root->type == AR_EXP_OP);
 
-		if((*root)->op.type == AR_OP_FUNC) {
+		if(root->op.type == AR_OP_FUNC) {
 			/* See if we're able to reduce each child of root
 			 * if so we'll be able to reduce root. */
 			bool reduce_children = true;
-			for(int i = 0; i < (*root)->op.child_count; i++) {
-				if(!AR_EXP_ReduceToScalar((*root)->op.children + i)) {
+			for(int i = 0; i < root->op.child_count; i++) {
+				if(!AR_EXP_ReduceToScalar(root->op.children[i])) {
 					// Root reduce is not possible, but continue to reduce every reducable child.
 					reduce_children = false;
 				}
@@ -195,17 +195,28 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode **root) {
 			if(!reduce_children) return false;
 
 			// All child nodes are constants, make sure function is marked as reducible.
-			AR_FuncDesc *func_desc = AR_GetFunc((*root)->op.func_name);
+			AR_FuncDesc *func_desc = AR_GetFunc(root->op.func_name);
 			assert(func_desc);
 			if(!func_desc->reducible) return false;
 
 			// Evaluate function.
-			SIValue v = AR_EXP_Evaluate(*root, NULL);
+			SIValue v = AR_EXP_Evaluate(root, NULL);
 			if(SIValue_IsNull(v)) return false;
 
 			// Reduce.
-			AR_EXP_Free(*root);
-			*root = AR_EXP_NewConstOperandNode(v);
+			// Clear children and function context.
+			for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
+				AR_EXP_Free(root->op.children[child_idx]);
+			}
+			rm_free(root->op.children);
+			if(root->op.type == AR_OP_AGGREGATE) {
+				AggCtx_Free(root->op.agg_func);
+			}
+
+			// Set as constant.
+			root->type = AR_EXP_OPERAND;
+			root->operand.type = AR_EXP_CONSTANT;
+			root->operand.constant = v;
 			return true;
 		}
 		// Root is an aggregation function, can't reduce.
@@ -426,7 +437,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 		return SI_NullVal(); // Otherwise return NULL; the query-level error will be emitted after cleanup.
 	}
 	// Found a parameter in the expression tree, try to reduce the tree.
-	if(res == EVAL_FOUND_PARAM) AR_EXP_ReduceToScalar(&root);
+	if(res == EVAL_FOUND_PARAM) AR_EXP_ReduceToScalar(root);
 	return result;
 }
 
@@ -521,9 +532,12 @@ bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
 	return false;
 }
 
-bool inline  AR_EXP_IsConstantOrParameter(const AR_ExpNode *exp) {
-	return exp->type == AR_EXP_OPERAND && (exp->operand.type == AR_EXP_CONSTANT ||
-										   exp->operand.type == AR_EXP_PARAM);
+bool inline  AR_EXP_IsConstant(const AR_ExpNode *exp) {
+	return exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_CONSTANT;
+}
+
+bool inline  AR_EXP_IsParameter(const AR_ExpNode *exp) {
+	return exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_PARAM;
 }
 
 void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,

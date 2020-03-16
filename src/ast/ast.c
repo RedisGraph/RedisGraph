@@ -77,12 +77,9 @@ static void _AST_LimitResults(AST *ast, const cypher_astnode_t *root_clause,
 /* This method extracts the query given parameters values, convert them into
  * constant arithmetic expressions and store them in a map of <name, value>
  * in the query context. */
-void AST_Extract_Params(const cypher_parse_result_t *parse_result) {
+static void _AST_Extract_Params(const cypher_parse_result_t *parse_result) {
 	// Retrieve the AST root node from a parsed query.
 	const cypher_astnode_t *statement = cypher_parse_result_get_root(parse_result, 0);
-	// We are parsing with the CYPHER_PARSE_ONLY_STATEMENTS flag,
-	// and double-checking this in AST validations
-	assert(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
 	uint noptions = cypher_ast_statement_noptions(statement);
 	if(noptions == 0) return;
 	rax *params = QueryCtx_GetParams();
@@ -433,10 +430,11 @@ const char **AST_BuildCallColumnNames(const cypher_astnode_t *call_clause) {
 	return proc_output_columns;
 }
 
-const char *AST_ExtractQueryString(const cypher_parse_result_t *partial_result) {
+const char *_AST_ExtractQueryString(const cypher_parse_result_t *partial_result) {
 	// Retrieve the AST root node from a parsed query.
 	const cypher_astnode_t *statement = cypher_parse_result_get_root(partial_result, 0);
-	// We are parsing with the CYPHER_PARSE_ONLY_PARAMETERS flag, so the query itself is a string that needs to be parsed again.
+	// We are parsing with the CYPHER_PARSE_ONLY_PARAMETERS flag.
+	// Given that, only the parameters were processed. extract the actual query and return to caller.
 	assert(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
 	const cypher_astnode_t *body = cypher_ast_statement_get_body(statement);
 	assert(cypher_astnode_type(body) == CYPHER_AST_STRING);
@@ -468,11 +466,25 @@ void AST_Free(AST *ast) {
 }
 
 cypher_parse_result_t *parse_query(const char *query) {
-	return cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+	cypher_parse_result_t *result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+	if(!result) return NULL;
+	if(AST_Validate_Query(QueryCtx_GetRedisModuleCtx(), result) != AST_VALID) {
+		parse_result_free(result);
+		return NULL;
+	}
+	return result;
 }
 
-cypher_parse_result_t *parse_params(const char *query) {
-	return cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_PARAMETERS);
+cypher_parse_result_t *parse_params(const char *query, const char **query_body) {
+	cypher_parse_result_t *result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_PARAMETERS);
+	if(!result) return NULL;
+	if(AST_Validate_QueryParams(QueryCtx_GetRedisModuleCtx(), result) != AST_VALID) {
+		parse_result_free(result);
+		return NULL;
+	}
+	_AST_Extract_Params(result);
+	if(query_body) *query_body = _AST_ExtractQueryString(result);
+	return result;
 }
 
 void parse_result_free(cypher_parse_result_t *parse_result) {

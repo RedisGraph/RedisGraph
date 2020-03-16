@@ -27,26 +27,18 @@ void Graph_Explain(void *args) {
 	QueryCtx_BeginTimer(); // Start query timing.
 	const char *query = command_ctx->query;
 
-	cypher_parse_result_t *parse_result = NULL;
-	// Parse and validate parameters only.
-	cypher_parse_result_t *params_parse_result = parse_params(command_ctx->query);
+	const char *query_string;
+	cypher_parse_result_t *query_parse_result = NULL;
+	// Parse and validate parameters only. Extract query string.
+	cypher_parse_result_t *params_parse_result = parse_params(command_ctx->query, &query_string);
 	if(params_parse_result == NULL) goto cleanup;
-	if(AST_Validate_QueryParams(ctx, params_parse_result) != AST_VALID) goto cleanup;
 
-	// Query caching enabler.
-	AST_Extract_Params(params_parse_result);
-	// Extract the query string from the partial parsed query, parse and validate.
-	const char *query_string = AST_ExtractQueryString(params_parse_result);
-
-	// Parse the query to construct an AST.
-	parse_result = parse_query(query_string);
-	if(parse_result == NULL) goto cleanup;
-
-	// Perform query validations
-	if(AST_Validate_Query(ctx, parse_result) != AST_VALID) goto cleanup;
+	// Parse the query to construct an AST and validate it.
+	query_parse_result = parse_query(query_string);
+	if(query_parse_result == NULL) goto cleanup;
 
 	// Prepare the constructed AST for accesses from the module
-	ast = AST_Build(parse_result);
+	ast = AST_Build(query_parse_result);
 
 	// Handle replies for index creation/deletion
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
@@ -83,7 +75,7 @@ cleanup:
 
 	AST_Free(ast);
 	parse_result_free(params_parse_result);
-	parse_result_free(parse_result);
+	parse_result_free(query_parse_result);
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
