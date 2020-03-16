@@ -180,3 +180,28 @@ void DataBlock_Free(DataBlock *dataBlock) {
 	assert(pthread_mutex_destroy(&dataBlock->mutex) == 0);
 	rm_free(dataBlock);
 }
+
+/* --------- Out of Order interface implementation --------*/
+
+void *DataBlock_AllocateItemOutOfOrder(DataBlock *dataBlock, uint64_t idx) {
+	DataBlock_Accommodate(dataBlock, idx);
+	dataBlock->itemCount++;
+	Block *block = GET_ITEM_BLOCK(dataBlock, idx);
+	idx = ITEM_POSITION_WITHIN_BLOCK(idx);
+	DataBlockItemHeader *item_header = (DataBlockItemHeader *)block->data + (idx * block->itemSize);
+	MARK_HEADER_AS_NOT_DELETED(item_header);
+	return ITEM_DATA(item_header);
+}
+
+void DataBlock_DeleteItemOutOfOrder(DataBlock *dataBlock, uint64_t idx) {
+	DataBlock_Accommodate(dataBlock, idx);
+	// Get block.
+	uint blockIdx = ITEM_INDEX_TO_BLOCK_INDEX(idx);
+	Block *block = dataBlock->blocks[blockIdx];
+	uint blockPos = ITEM_POSITION_WITHIN_BLOCK(idx);
+	uint offset = blockPos * block->itemSize;
+	DataBlockItemHeader *item_header = (DataBlockItemHeader *)block->data + offset;
+	// Delete
+	MARK_HEADER_AS_DELETED(item_header);
+	dataBlock->deletedIdx = array_append(dataBlock->deletedIdx, idx);
+}

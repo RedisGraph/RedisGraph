@@ -81,3 +81,20 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx);
 
 // Free block.
 void DataBlock_Free(DataBlock *block);
+
+/*----------- Data Block Out of Order Building -----------*/
+
+/*
+ * Note!!!
+ * This API is to be used only during out of order re-construction of a data block.
+ * DO NOT USE THE BELOW METHODS COMBINED WITH THE NORMAL DATA BLACK API.
+ */
+
+// Return a pointer to allocated item in a given index.
+// If needed, allocates new space.
+// The values in indices smaller then idx are undefined if not allocated before.
+void *DataBlock_AllocateItemOutOfOrder(DataBlock *dataBlock, uint64_t idx);
+
+// Marks an item within a given dataBlock, in a given index as deleted. Allocates additional space if need.
+// Item distructor is not called in this call.
+void DataBlock_DeleteItemOutOfOrder(DataBlock *dataBlock, uint64_t idx);
