@@ -6,7 +6,7 @@ from base import FlowTestsBase
 GRAPH_ID = "shortest_path_test"
 graph = None
 
-class testUnion(FlowTestsBase):
+class testShortestPath(FlowTestsBase):
     def __init__(self):
         self.env = Env()
         global graph

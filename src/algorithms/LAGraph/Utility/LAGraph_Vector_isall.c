@@ -74,7 +74,6 @@ GrB_Info LAGraph_Vector_isall      // return GrB_SUCCESS if successful
 	GrB_Vector_size(&nrows2, B) ;
 	if(nrows1 != nrows2) {
 		// # of rows differ
-		// printf ("LAGraph_isall: rows differ\n") ;
 		return (GrB_SUCCESS) ;
 	}
 
@@ -83,7 +82,6 @@ GrB_Info LAGraph_Vector_isall      // return GrB_SUCCESS if successful
 	GrB_Vector_nvals(&nvals2, B) ;
 	if(nvals1 != nvals2) {
 		// # of entries differ
-		// printf ("LAGraph_isall: nvals differ\n") ;
 		return (GrB_SUCCESS) ;
 	}
 
@@ -102,7 +100,6 @@ GrB_Info LAGraph_Vector_isall      // return GrB_SUCCESS if successful
 	// result = and (C)
 	GrB_reduce(result, NULL, GxB_LAND_BOOL_MONOID, C, NULL) ;
 
-	// printf ("isall : %d\n", *result) ;
 
 	// free workspace and return result
 	GrB_free(&C) ;
