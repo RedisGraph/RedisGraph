@@ -426,7 +426,6 @@ Feature: MatchAcceptance2
       | (:B {id: 2}) |
     And no side effects
 
-@skip
   Scenario: Do not fail when predicates on optionally matched and missed nodes are invalid
     Given an empty graph
     And having executed:
@@ -538,7 +537,6 @@ Feature: MatchAcceptance2
       | b |
     And no side effects
 
-@skip
   Scenario: Variable length relationship in OPTIONAL MATCH
     Given an empty graph
     And having executed:

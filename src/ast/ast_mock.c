@@ -47,13 +47,14 @@ AST *AST_MockOptionalMatch(AST *master_ast, cypher_astnode_t *clause) {
 	const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clause);
 	const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(clause);
 	uint child_count = cypher_astnode_nchildren(clause);
-	const cypher_astnode_t *first_child = cypher_astnode_get_child(clause, 0);
-	const cypher_astnode_t **children = &first_child;
+	const cypher_astnode_t *children[child_count];
+	for(uint i = 0; i < child_count; i ++) children[i] = cypher_astnode_get_child(clause, i);
 	cypher_astnode_t *clone = cypher_ast_match(false, pattern, NULL, 0, predicate,
 											   (cypher_astnode_t **)children, child_count, range);
 
 	// TODO tmp, bad, unsafe
 	ast->root = cypher_ast_query(NULL, 0, &clone, 1, &clone, 1, range);
+	// ast->root = cypher_ast_query(NULL, 0, &clause, 1, &clause, 1, range);
 
 	QueryCtx_SetAST(ast); // Update the TLS.
 

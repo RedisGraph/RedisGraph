@@ -68,7 +68,6 @@ Feature: OptionalMatchAcceptance
       | null |
     And no side effects
 
-@skip
   Scenario: Respect predicates on the OPTIONAL MATCH
     When executing query:
       """

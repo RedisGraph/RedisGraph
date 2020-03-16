@@ -157,6 +157,7 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 		for(uint i = 0; i < match_count; i ++) {
 			// OPTIONAL MATCH clauses are handled separately.
 			if(cypher_ast_match_is_optional(match_clauses[i])) continue;
+			// if(match_count > 1 && cypher_ast_match_is_optional(match_clauses[i])) continue;
 			const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match_clauses[i]);
 			uint npaths = cypher_ast_pattern_npaths(pattern);
 			for(uint j = 0; j < npaths; j ++) {
