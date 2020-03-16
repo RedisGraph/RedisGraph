@@ -42,7 +42,6 @@ Feature: OptionalMatchAcceptance
              (b)-[:LOOP]->(b)
       """
 
-@skip
   Scenario: Return null when no matches due to inline label predicate
     When executing query:
       """
@@ -96,7 +95,6 @@ Feature: OptionalMatchAcceptance
       | null   |
     And no side effects
 
-@skip
   Scenario: MATCH after OPTIONAL MATCH
     When executing query:
       """
@@ -138,7 +136,6 @@ Feature: OptionalMatchAcceptance
       | null |
     And no side effects
 
-@skip
   Scenario: OPTIONAL MATCH and bound nodes
     When executing query:
       """
@@ -185,7 +182,6 @@ Feature: OptionalMatchAcceptance
       | null |
     And no side effects
 
-@skip
   Scenario: Variable length optional relationships
     When executing query:
       """
@@ -201,7 +197,6 @@ Feature: OptionalMatchAcceptance
       | (:C)           |
     And no side effects
 
-@skip
   Scenario: Variable length optional relationships with length predicates
     When executing query:
       """
@@ -214,7 +209,6 @@ Feature: OptionalMatchAcceptance
       | null |
     And no side effects
 
-@skip
   Scenario: Optionally matching self-loops
     When executing query:
       """
@@ -243,7 +237,6 @@ Feature: OptionalMatchAcceptance
       | null |
     And no side effects
 
-@skip
   Scenario: Variable length optional relationships with bound nodes
     When executing query:
       """
@@ -269,7 +262,6 @@ Feature: OptionalMatchAcceptance
       | null |
     And no side effects
 
-@skip
   Scenario: Longer pattern with bound nodes
     When executing query:
       """
@@ -282,7 +274,6 @@ Feature: OptionalMatchAcceptance
       | (:A {num: 42}) |
     And no side effects
 
-@skip
   Scenario: Longer pattern with bound nodes without matches
     When executing query:
       """
@@ -295,7 +286,6 @@ Feature: OptionalMatchAcceptance
       | null |
     And no side effects
 
-@skip
   Scenario: Handling correlated optional matches; first does not match implies second does not match
     When executing query:
       """

@@ -306,7 +306,6 @@ Feature: MatchAcceptance2
       | ({name: 'e'}) |
     And no side effects
 
-@skip
   Scenario: MATCH with OPTIONAL MATCH in longer pattern
     Given an empty graph
     And having executed:
@@ -646,7 +645,6 @@ Feature: MatchAcceptance2
       | null |
     And no side effects
 
-@skip
   Scenario: OPTIONAL MATCH with previously bound nodes
     Given an empty graph
     And having executed:
@@ -664,7 +662,6 @@ Feature: MatchAcceptance2
       | () | null |
     And no side effects
 
-@skip
   Scenario: `collect()` filtering nulls
     Given an empty graph
     And having executed:
@@ -1102,7 +1099,6 @@ Feature: MatchAcceptance2
       | [:T2 {id: 1}] |
     And no side effects
 
-@skip
   Scenario: Matching with LIMIT and optionally matching using a relationship that is already bound
     Given an empty graph
     And having executed:
@@ -1122,7 +1118,6 @@ Feature: MatchAcceptance2
       | (:A) | [:T] | (:B) |
     And no side effects
 
-@skip
   Scenario: Matching with LIMIT and optionally matching using a relationship and node that are both already bound
     Given an empty graph
     And having executed:
@@ -1142,7 +1137,6 @@ Feature: MatchAcceptance2
       | (:A) | [:T] | (:B) |
     And no side effects
 
-@skip
   Scenario: Matching with LIMIT, then matching again using a relationship and node that are both already bound along with an additional predicate
     Given an empty graph
     And having executed:
@@ -1239,7 +1233,6 @@ Feature: MatchAcceptance2
       | (:A)  | (:C)   |
     And no side effects
 
-@skip
   Scenario: Matching relationships into a list and matching variable length using the list, with bound nodes
     Given an empty graph
     And having executed:
@@ -1261,7 +1254,6 @@ Feature: MatchAcceptance2
       | (:A)  | (:C)   |
     And no side effects
 
-@skip
   Scenario: Matching relationships into a list and matching variable length using the list, with bound nodes, wrong direction
     Given an empty graph
     And having executed:
@@ -1282,7 +1274,6 @@ Feature: MatchAcceptance2
       | first | second |
     And no side effects
 
-@skip
   Scenario: Matching and optionally matching with bound nodes in reverse direction
     Given an empty graph
     And having executed:
@@ -1681,7 +1672,6 @@ Feature: MatchAcceptance2
       | null |
     And no side effects
 
-@skip
   Scenario: Variable length patterns and nulls
     Given an empty graph
     And having executed:
