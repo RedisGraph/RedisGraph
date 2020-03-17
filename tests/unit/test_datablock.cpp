@@ -14,6 +14,7 @@ extern "C" {
 #include <string.h>
 #include "../../src/util/arr.h"
 #include "../../src/util/datablock/datablock.h"
+#include "../../src/util/datablock/oo_datablock.h"
 #include "../../src/util/rmalloc.h"
 
 #ifdef __cplusplus
@@ -204,8 +205,9 @@ TEST_F(DataBlockTest, OutOfOrderBuilding) {
 	ASSERT_EQ(0, array_len(dataBlock->deletedIdx));
 
 	// Mark deleted values.
-	for(int i = 0; i < 2; i++)
-		DataBlock_DeleteItemOutOfOrder(dataBlock, delete_arr[i]);
+	for(int i = 0; i < 2; i++) {
+		DataBlock_MarkAsDeletedOutOfOrder(dataBlock, delete_arr[i]);
+	}
 
 	ASSERT_EQ(4, dataBlock->itemCount);
 	ASSERT_EQ(2, array_len(dataBlock->deletedIdx));

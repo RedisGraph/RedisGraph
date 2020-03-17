@@ -96,10 +96,7 @@ void *DataBlock_GetItem(const DataBlock *dataBlock, uint64_t idx) {
 
 	if(_DataBlock_IndexOutOfBounds(dataBlock, idx)) return NULL;
 
-	Block *block = GET_ITEM_BLOCK(dataBlock, idx);
-	idx = ITEM_POSITION_WITHIN_BLOCK(idx);
-
-	DataBlockItemHeader *item_header = (DataBlockItemHeader *)block->data + (idx * block->itemSize);
+	DataBlockItemHeader *item_header = DataBlock_GetItemHeader(dataBlock, idx);
 
 	// Incase item is marked as deleted, return NULL.
 	if(IS_ITEM_DELETED(item_header)) return NULL;
@@ -126,10 +123,7 @@ void *DataBlock_AllocateItem(DataBlock *dataBlock, uint64_t *idx) {
 
 	if(idx) *idx = pos;
 
-	Block *block = GET_ITEM_BLOCK(dataBlock, pos);
-	pos = ITEM_POSITION_WITHIN_BLOCK(pos);
-
-	DataBlockItemHeader *item_header = (DataBlockItemHeader *)block->data + (pos * block->itemSize);
+	DataBlockItemHeader *item_header = DataBlock_GetItemHeader(dataBlock, pos);
 	MARK_HEADER_AS_NOT_DELETED(item_header);
 
 	return ITEM_DATA(item_header);
@@ -139,15 +133,8 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
 	assert(dataBlock);
 	if(_DataBlock_IndexOutOfBounds(dataBlock, idx)) return;
 
-	// Get block.
-	uint blockIdx = ITEM_INDEX_TO_BLOCK_INDEX(idx);
-	Block *block = dataBlock->blocks[blockIdx];
-
-	uint blockPos = ITEM_POSITION_WITHIN_BLOCK(idx);
-	uint offset = blockPos * block->itemSize;
-
 	// Return if item already deleted.
-	DataBlockItemHeader *item_header = (DataBlockItemHeader *)block->data + offset;
+	DataBlockItemHeader *item_header = DataBlock_GetItemHeader(dataBlock, idx);
 	if(IS_ITEM_DELETED(item_header)) return;
 
 	// Call item destructor.
@@ -181,27 +168,10 @@ void DataBlock_Free(DataBlock *dataBlock) {
 	rm_free(dataBlock);
 }
 
-/* --------- Out of Order interface implementation --------*/
+/* --------- DataBlock Item API implementation --------*/
 
-void *DataBlock_AllocateItemOutOfOrder(DataBlock *dataBlock, uint64_t idx) {
-	DataBlock_Accommodate(dataBlock, idx);
-	dataBlock->itemCount++;
+inline DataBlockItemHeader *DataBlock_GetItemHeader(const DataBlock *dataBlock, uint64_t idx) {
 	Block *block = GET_ITEM_BLOCK(dataBlock, idx);
 	idx = ITEM_POSITION_WITHIN_BLOCK(idx);
-	DataBlockItemHeader *item_header = (DataBlockItemHeader *)block->data + (idx * block->itemSize);
-	MARK_HEADER_AS_NOT_DELETED(item_header);
-	return ITEM_DATA(item_header);
-}
-
-void DataBlock_DeleteItemOutOfOrder(DataBlock *dataBlock, uint64_t idx) {
-	DataBlock_Accommodate(dataBlock, idx);
-	// Get block.
-	uint blockIdx = ITEM_INDEX_TO_BLOCK_INDEX(idx);
-	Block *block = dataBlock->blocks[blockIdx];
-	uint blockPos = ITEM_POSITION_WITHIN_BLOCK(idx);
-	uint offset = blockPos * block->itemSize;
-	DataBlockItemHeader *item_header = (DataBlockItemHeader *)block->data + offset;
-	// Delete
-	MARK_HEADER_AS_DELETED(item_header);
-	dataBlock->deletedIdx = array_append(dataBlock->deletedIdx, idx);
+	return (DataBlockItemHeader *)block->data + (idx * block->itemSize);
 }
