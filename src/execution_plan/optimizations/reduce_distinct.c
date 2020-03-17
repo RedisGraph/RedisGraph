@@ -8,7 +8,7 @@
 
 void reduceDistinct(ExecutionPlan *plan) {
 	// Look for Distinct operations.
-	OpBase **distinct_ops = ExecutionPlan_LocateOps(plan->root, OPType_DISTINCT);
+	OpBase **distinct_ops = ExecutionPlan_CollectOps(plan->root, OPType_DISTINCT);
 
 	for(uint i = 0; i < array_len(distinct_ops); i++) {
 		OpBase *distinct = distinct_ops[i];

@@ -524,7 +524,7 @@ void utilizeIndices(ExecutionPlan *plan) {
 	if(!GraphContext_HasIndices(gc)) return;
 
 	// Collect all label scans.
-	OpBase **scanOps = ExecutionPlan_LocateOps(plan->root, OPType_NODE_BY_LABEL_SCAN);
+	OpBase **scanOps = ExecutionPlan_CollectOps(plan->root, OPType_NODE_BY_LABEL_SCAN);
 
 	int scanOpCount = array_len(scanOps);
 	for(int i = 0; i < scanOpCount; i++) {
