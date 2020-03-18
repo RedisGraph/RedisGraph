@@ -24,7 +24,7 @@
 // Forward declaration
 static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue *result);
 // Clear an op node internals, without free the node allocation itself.
-static void _AR_EXP_Free_Op(AR_ExpNode *op_node);
+static void _AR_EXP_FreeOpInternals(AR_ExpNode *op_node);
 
 /* Update arithmetic expression variable node by setting node's property index.
  * when constructing an arithmetic expression we'll delay setting graph entity
@@ -207,7 +207,7 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode *root) {
 
 			// Reduce.
 			// Clear children and function context.
-			_AR_EXP_Free_Op(root);
+			_AR_EXP_FreeOpInternals(root);
 			// In-place update, set as constant.
 			root->type = AR_EXP_OPERAND;
 			root->operand.type = AR_EXP_CONSTANT;
@@ -637,7 +637,7 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
 	return clone;
 }
 
-static inline void _AR_EXP_Free_Op(AR_ExpNode *op_node) {
+static inline void _AR_EXP_FreeOpInternals(AR_ExpNode *op_node) {
 	for(int child_idx = 0; child_idx < op_node->op.child_count; child_idx++) {
 		AR_EXP_Free(op_node->op.children[child_idx]);
 	}
@@ -649,7 +649,7 @@ static inline void _AR_EXP_Free_Op(AR_ExpNode *op_node) {
 
 inline void AR_EXP_Free(AR_ExpNode *root) {
 	if(root->type == AR_EXP_OP) {
-		_AR_EXP_Free_Op(root);
+		_AR_EXP_FreeOpInternals(root);
 	} else if(root->operand.type == AR_EXP_CONSTANT) {
 		SIValue_Free(root->operand.constant);
 	}
