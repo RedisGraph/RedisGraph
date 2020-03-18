@@ -8,12 +8,14 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from base import FlowTestsBase
 
+redis_con = None
 redis_graph = None
 
 class testQueryValidationFlow(FlowTestsBase):
 
     def __init__(self):
         self.env = Env()
+        global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph("G", redis_con)
@@ -182,4 +184,15 @@ class testQueryValidationFlow(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
             assert("Encountered unhandled type" in e.message)
+            pass
+
+    # Validate that the module fails properly with incorrect argument counts.
+    def test17_query_arity(self):
+        # Call GRAPH.QUERY with a missing query argument.
+        try:
+            res = redis_con.execute_command("GRAPH.QUERY", "G")
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("wrong number of arguments" in e.message)
             pass
