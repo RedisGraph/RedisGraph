@@ -23,6 +23,8 @@
 
 // Forward declaration
 static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue *result);
+// Clear an op node internals, without free the node allocation itself.
+static void _AR_EXP_Free_Op(AR_ExpNode *op_node);
 
 /* Update arithmetic expression variable node by setting node's property index.
  * when constructing an arithmetic expression we'll delay setting graph entity
@@ -205,15 +207,8 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode *root) {
 
 			// Reduce.
 			// Clear children and function context.
-			for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
-				AR_EXP_Free(root->op.children[child_idx]);
-			}
-			rm_free(root->op.children);
-			if(root->op.type == AR_OP_AGGREGATE) {
-				AggCtx_Free(root->op.agg_func);
-			}
-
-			// Set as constant.
+			_AR_EXP_Free_Op(root);
+			// In-place update, set as constant.
 			root->type = AR_EXP_OPERAND;
 			root->operand.type = AR_EXP_CONSTANT;
 			root->operand.constant = v;
@@ -436,7 +431,8 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 		QueryCtx_RaiseRuntimeException();  // Raise an exception if we're in a run-time context.
 		return SI_NullVal(); // Otherwise return NULL; the query-level error will be emitted after cleanup.
 	}
-	// Found a parameter in the expression tree, try to reduce the tree.
+	// At least one param node was encountered during evaluation, tree should be param node free.
+	// Try reducing the tree.
 	if(res == EVAL_FOUND_PARAM) AR_EXP_ReduceToScalar(root);
 	return result;
 }
@@ -641,15 +637,19 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
 	return clone;
 }
 
-void AR_EXP_Free(AR_ExpNode *root) {
+static inline void _AR_EXP_Free_Op(AR_ExpNode *op_node) {
+	for(int child_idx = 0; child_idx < op_node->op.child_count; child_idx++) {
+		AR_EXP_Free(op_node->op.children[child_idx]);
+	}
+	rm_free(op_node->op.children);
+	if(op_node->op.type == AR_OP_AGGREGATE) {
+		AggCtx_Free(op_node->op.agg_func);
+	}
+}
+
+inline void AR_EXP_Free(AR_ExpNode *root) {
 	if(root->type == AR_EXP_OP) {
-		for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
-			AR_EXP_Free(root->op.children[child_idx]);
-		}
-		rm_free(root->op.children);
-		if(root->op.type == AR_OP_AGGREGATE) {
-			AggCtx_Free(root->op.agg_func);
-		}
+		_AR_EXP_Free_Op(root);
 	} else if(root->operand.type == AR_EXP_CONSTANT) {
 		SIValue_Free(root->operand.constant);
 	}
