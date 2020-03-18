@@ -421,7 +421,7 @@ void FilterTree_DeMorgan(FT_FilterNode **root) {
 
 // Return if this node can be used in compression - constant expression.
 static inline bool _FilterTree_Compact_Exp(FT_FilterNode *node) {
-	return AR_EXP_IsConstant(node->exp.exp);
+	return AR_EXP_IsConstant(node->exp.exp) || AR_EXP_IsParameter(node->exp.exp);
 }
 
 // In place set an existing filter tree node to expression node.
@@ -538,7 +538,8 @@ static inline bool _FilterTree_Compact_Cond(FT_FilterNode *node) {
 // Compacts a predicate node if possible,
 static bool _FilterTree_Compact_Pred(FT_FilterNode *node) {
 	// Check both sides are constant expressions.
-	if(AR_EXP_IsConstant(node->pred.lhs) && AR_EXP_IsConstant(node->pred.rhs)) {
+	if((AR_EXP_IsConstant(node->pred.lhs) || AR_EXP_IsParameter(node->pred.lhs)) &&
+	   (AR_EXP_IsConstant(node->pred.rhs) || AR_EXP_IsParameter(node->pred.rhs))) {
 		// Evaluate expressions.
 		SIValue lhs = AR_EXP_Evaluate(node->pred.lhs, NULL);
 		SIValue rhs = AR_EXP_Evaluate(node->pred.rhs, NULL);
