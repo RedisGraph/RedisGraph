@@ -325,7 +325,6 @@ Feature: MatchAcceptance2
       | ({name: 'C'}) |
     And no side effects
 
-@skip
   Scenario: Optionally matching named paths
     Given an empty graph
     And having executed:
@@ -346,7 +345,6 @@ Feature: MatchAcceptance2
       | ({name: 'C'}) | null                                |
     And no side effects
 
-@skip
   Scenario: Optionally matching named paths with single and variable length patterns
     Given an empty graph
     And having executed:
@@ -1291,7 +1289,6 @@ Feature: MatchAcceptance2
       | (:A) | [:T] | null |
     And no side effects
 
-@skip
   Scenario: Matching and optionally matching with unbound nodes and equality predicate in reverse direction
     Given an empty graph
     And having executed:

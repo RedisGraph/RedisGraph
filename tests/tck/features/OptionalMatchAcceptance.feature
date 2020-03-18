@@ -122,7 +122,6 @@ Feature: OptionalMatchAcceptance
       | (:A {num: 42}) | (:B {num: 46}) |
     And no side effects
 
-@skip
   Scenario: Named paths in optional matches
     When executing query:
       """
@@ -168,7 +167,6 @@ Feature: OptionalMatchAcceptance
       | (:Y:Z) |
     And no side effects
 
-@skip
   Scenario: Named paths inside optional matches with node predicates
     When executing query:
       """
@@ -248,7 +246,6 @@ Feature: OptionalMatchAcceptance
       | (:C) |
     And no side effects
 
-@skip
   Scenario: Variable length optional relationships with bound nodes, no matches
     When executing query:
       """
