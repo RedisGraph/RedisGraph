@@ -497,19 +497,15 @@ cleanup:
 		RSResultsIterator *iter = RediSearch_GetResultsIterator(root, rs_idx);
 		// Build the Index Scan.
 		OpBase *indexOp = NewIndexScanOp(scan->op.plan, scan->g, scan->n, rs_idx, iter);
-		/* In place, replace the last redundant filter (highest in the op tree) with the new scan op.
-		 * This ensures that the children array of the scan's parent op does not get shuffled,
-		 * avoiding problems with stream-sensitive ops like SemiApply. */
-		OpBase *last_filter = (OpBase *)array_pop(filters);
-		filters_count--;
-		ExecutionPlan_ReplaceOp(plan, last_filter, indexOp);
-		// Free the redundant filter and scan op.
-		OpBase_Free(last_filter);
-		ExecutionPlan_RemoveOp(plan, (OpBase *)scan);
+
+		/* Replace the redundant scan op with the newly-constructed Index Scan. */
+		ExecutionPlan_ReplaceOp(plan, (OpBase *)scan, indexOp);
 		OpBase_Free((OpBase *)scan);
 	}
 
-	// Free all remaining filters.
+	/* Remove and free all now-redundant filter ops.
+	 * Since this is a chain of single-child operations, all operations are replaced in-place,
+	 * avoiding problems with stream-sensitive ops like SemiApply. */
 	for(uint i = 0; i < filters_count; i++) {
 		OpFilter *filter = filters[i];
 		ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
