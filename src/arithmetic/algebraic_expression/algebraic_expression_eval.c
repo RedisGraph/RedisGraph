@@ -88,23 +88,17 @@ static GrB_Matrix _Eval_Add(const AlgebraicExpression *exp, GrB_Matrix res) {
 		assert(false);
 	}
 
-	// Reset descriptor.
-	GrB_Descriptor_set(desc, GrB_INP0, GxB_DEFAULT);
+	// TODO: utilize descriptor for additional operands.
+	GrB_free(&desc);
 
 	uint child_count = AlgebraicExpression_ChildCount(exp);
 	// Expression has more than 2 operands, e.g. A+B+C...
 	for(uint i = 2; i < child_count; i++) {
-		// Reset descriptor.
-		GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
 		right = CHILD_AT(exp, i);
-
 		if(right->type == AL_OPERAND) {
 			b = right->operand.matrix;
 		} else {
-			if(right->operation.op == AL_EXP_TRANSPOSE) {
-				b = right->operation.children[0]->operand.matrix;
-				GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
-			} else if(inter == GrB_NULL) {
+			if(inter == GrB_NULL) {
 				// Can't use `res`, use an intermidate matrix.
 				GrB_Matrix_nrows(&nrows, res);
 				GrB_Matrix_ncols(&ncols, res);
@@ -122,7 +116,6 @@ static GrB_Matrix _Eval_Add(const AlgebraicExpression *exp, GrB_Matrix res) {
 	}
 
 	if(inter != GrB_NULL) GrB_Matrix_free(&inter);
-	GrB_free(&desc);
 	return res;
 }
 

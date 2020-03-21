@@ -274,6 +274,29 @@ bool AlgebraicExpression_DiagonalOperand
 	return op->operand.diagonal;
 }
 
+// Populates `operands` with each operand in given expression.
+// Ordering operands from left to right.
+// root = A * (B + C)
+// operands = [A, B, C]
+void AlgebraicExpression_Operands
+(
+	const AlgebraicExpression *root,    // Root of expression.
+	AlgebraicExpression ***operands      // Array of operands to populate
+) {
+	assert(root && operands);
+
+	if(root->type == AL_OPERAND) {
+		*operands = array_append(*operands, (AlgebraicExpression *)root);
+		return;
+	}
+
+	uint child_count = AlgebraicExpression_ChildCount(root);
+	for(uint i = 0; i < child_count; i++) {
+		AlgebraicExpression *child = root->operation.children[i];
+		AlgebraicExpression_Operands(child, operands);
+	}
+}
+
 //------------------------------------------------------------------------------
 // AlgebraicExpression modification functions.
 //------------------------------------------------------------------------------
@@ -436,6 +459,26 @@ void AlgebraicExpression_AddToTheRight
 															  right_most_operand->operand.dest, right_most_operand->operand.edge, NULL);
 
 	*root = _AlgebraicExpression_AddToTheRight(lhs, rhs);
+}
+
+// Set algebraic expression row domain.
+void AlgebraicExpression_SetSource
+(
+	AlgebraicExpression *exp,
+	const char *src
+) {
+	AlgebraicExpression *left_most_operand = _leftMostNode(exp);
+	left_most_operand->operand.src = src;
+}
+
+// Set algebraic expression column domain.
+void AlgebraicExpression_SetDestination
+(
+	AlgebraicExpression *exp,
+	const char *dest
+) {
+	AlgebraicExpression *right_most_operand = _rightMostNode(exp);
+	right_most_operand->operand.dest = dest;
 }
 
 //------------------------------------------------------------------------------

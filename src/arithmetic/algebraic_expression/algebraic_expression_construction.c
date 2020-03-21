@@ -240,12 +240,43 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
 			 *
 			 * ()-[:R0|R1]-()
 			 * (R0 + R1) + Transpose(R0 + R1) */
-			add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
-			AlgebraicExpression_AddChild(add, root);
 
-			AlgebraicExpression *op_transpose = AlgebraicExpression_NewOperation(AL_EXP_TRANSPOSE);
-			AlgebraicExpression_AddChild(op_transpose, AlgebraicExpression_Clone(root));
-			AlgebraicExpression_AddChild(add, op_transpose);
+
+			/* This is a special case:
+			 * although we've performed transpose, which causes
+			 * the row and column domains (src and dest) to be swapped,
+			 * we still want to maintain the original domains of the edge
+			 * in a bidirectional edge we consider the left node as the source
+			 * and the right node as the destination, as if this was a left to right edge. */
+			AlgebraicExpression *tran_root = AlgebraicExpression_Clone(root);
+			AlgebraicExpression_Transpose(tran_root);   // Swaps row/col domain.
+
+			AlgebraicExpression **root_operands = array_new(AlgebraicExpression *, 1);
+			AlgebraicExpression **tran_operands = array_new(AlgebraicExpression *, 1);
+			AlgebraicExpression_Operands(root, &root_operands);
+			AlgebraicExpression_Operands(tran_root, &tran_operands);
+
+			// Restore row/col domains in transposed expression.
+			uint operand_count = AlgebraicExpression_OperandCount(root);
+			for(uint i = 0; i < operand_count; i++) {
+				AlgebraicExpression *root_op = root_operands[i];
+				AlgebraicExpression *tran_op = tran_operands[i];
+				const char *src = AlgebraicExpression_Source(root_op);
+				const char *dest = AlgebraicExpression_Destination(root_op);
+
+				// Restore domains.
+				AlgebraicExpression_SetSource(tran_op, src);
+				AlgebraicExpression_SetDestination(tran_op, dest);
+			}
+
+			array_free(root_operands);
+			array_free(tran_operands);
+
+			// Add original expression with its transpose.
+			AlgebraicExpression *add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
+			AlgebraicExpression_AddChild(add, root);
+			AlgebraicExpression_AddChild(add, tran_root);
+
 			root = add;
 		}
 

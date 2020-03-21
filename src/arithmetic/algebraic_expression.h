@@ -147,6 +147,16 @@ bool AlgebraicExpression_DiagonalOperand
     uint operand_idx                    // Operand position (LTR, zero based).
 );
 
+// Populates `operands` with each operand in given expression.
+// Ordering operands from left to right.
+// root = A * (B + C)
+// operands = [A, B, C]
+void AlgebraicExpression_Operands
+(
+    const AlgebraicExpression *root,    // Root of expression.
+    AlgebraicExpression ***operands     // Array of operands to populate
+);
+
 //------------------------------------------------------------------------------
 // AlgebraicExpression modification functions.
 //------------------------------------------------------------------------------
@@ -210,6 +220,24 @@ void AlgebraicExpression_Transpose
 (
     AlgebraicExpression *exp    // Expression to transpose.
 );
+
+// Set algebraic expression row domain.
+void AlgebraicExpression_SetSource
+(
+    AlgebraicExpression *exp,
+    const char *src
+);
+
+// Set algebraic expression column domain.
+void AlgebraicExpression_SetDestination
+(
+    AlgebraicExpression *exp,
+    const char *dest
+);
+
+//------------------------------------------------------------------------------
+// AlgebraicExpression evaluation.
+//------------------------------------------------------------------------------
 
 // Evaluate expression tree.
 void AlgebraicExpression_Eval

@@ -278,3 +278,35 @@ class testBidirectionalTraversals(FlowTestsBase):
                            ['v3', 'v2'],
                            ['v3', 'v3']]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test11_bidirectional_multiple_edge_type(self):
+        # Construct a simple graph:
+        # (a)-[E1]->(b), (c)-[E2]->(d)
+
+        g = Graph("multi_edge_type", redis_con)
+        
+        a = Node(properties={'val': 'a'})
+        b = Node(properties={'val': 'b'})
+        c = Node(properties={'val': 'c'})
+        d = Node(properties={'val': 'd'})
+        g.add_node(a)
+        g.add_node(b)
+        g.add_node(c)
+        g.add_node(d)
+
+        ab = Edge(a, "E1", b)
+        cd = Edge(c, "E2", d)
+        g.add_edge(ab)
+        g.add_edge(cd)
+
+        g.flush()
+
+        query = """MATCH (a)-[:E1|:E2]-(z) RETURN a.val, z.val ORDER BY a.val, z.val"""
+        actual_result = g.query(query)
+
+        expected_result = [['a', 'b'],
+                           ['b', 'a'],
+                           ['c', 'd'],
+                           ['d', 'c']]
+        
+        self.env.assertEquals(actual_result.result_set, expected_result)
