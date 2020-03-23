@@ -56,6 +56,13 @@ typedef struct {
 	unsigned char deleted: 1;  // A bit indicate if the current item is deleted or not.
 } DataBlockItemHeader;
 
+/*--------- DataBlock Item API ---------*/
+
+// Returns the header of a data block item in a given index.
+DataBlockItemHeader *DataBlock_GetItemHeader(const DataBlock *dataBlock, uint64_t idx);
+
+/*--------- DataBlock API ---------*/
+
 // Create a new DataBlock
 // itemCap - number of items datablock can hold before resizing.
 // itemSize - item size in bytes.
@@ -81,7 +88,3 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx);
 
 // Free block.
 void DataBlock_Free(DataBlock *block);
-
-/*--------- DataBlock Item API ---------*/
-
-DataBlockItemHeader *DataBlock_GetItemHeader(const DataBlock *dataBlock, uint64_t idx);
