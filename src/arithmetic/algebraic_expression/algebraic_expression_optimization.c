@@ -291,7 +291,8 @@ static void _AlgebraicExpression_PushDownTranspose(AlgebraicExpression *root) {
 				 * Transpose(A + B) = Transpose(A) + Transpose(B)
 				 * Transpose(A * B) = Transpose(B) * Transpose(A) */
 				AlgebraicExpression_Transpose(child);
-				// Replace Transpose root with transposed expression.
+				/* Replace Transpose root with transposed expression.
+				 * Remove root only child. */
 				_AlgebraicExpression_OperationRemoveRightmostChild(root);
 				_AlgebraicExpression_InplaceRepurpose(root, child);
 
