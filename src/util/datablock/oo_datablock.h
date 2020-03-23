@@ -20,8 +20,9 @@
  * Retrieving such an element will return garbage. */
 void *DataBlock_AllocateItemOutOfOrder(DataBlock *dataBlock, uint64_t idx);
 
-/* Marks an item within a given dataBlock, in a given index as deleted. Allocates additional space if need.
- * The function updates the data block's free list and set the element as deleted
+/* Marks item at position index as deleted.
+ * Allocates additional space if need.
+ * The function updates the data block's free list and set the element as deleted.
  * Note:
  * 1. Item distructor is not invoked in this call.
  * 2. This call does not decrease the number of items in the data block. */
