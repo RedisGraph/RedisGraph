@@ -93,7 +93,9 @@ static void _AST_LimitResults(AST *ast, const cypher_astnode_t *root_clause,
 /* This method extracts the query given parameters values, convert them into
  * constant arithmetic expressions and store them in a map of <name, value>
  * in the query context. */
-static void _extract_params(const cypher_astnode_t *statement) {
+static void _AST_Extract_Params(const cypher_parse_result_t *parse_result) {
+	// Retrieve the AST root node from a parsed query.
+	const cypher_astnode_t *statement = cypher_parse_result_get_root(parse_result, 0);
 	uint noptions = cypher_ast_statement_noptions(statement);
 	if(noptions == 0) return;
 	rax *params = QueryCtx_GetParams();
@@ -273,8 +275,6 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	// We are parsing with the CYPHER_PARSE_ONLY_STATEMENTS flag,
 	// and double-checking this in AST validations
 	assert(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
-	// Extract the given query parameters value, and store them in query context.
-	_extract_params(statement);
 	ast->root = cypher_ast_statement_get_body(statement);
 
 	// Empty queries should be captured by AST validations
@@ -448,6 +448,17 @@ const char **AST_BuildCallColumnNames(const cypher_astnode_t *call_clause) {
 	return proc_output_columns;
 }
 
+const char *_AST_ExtractQueryString(const cypher_parse_result_t *partial_result) {
+	// Retrieve the AST root node from a parsed query.
+	const cypher_astnode_t *statement = cypher_parse_result_get_root(partial_result, 0);
+	// We are parsing with the CYPHER_PARSE_ONLY_PARAMETERS flag.
+	// Given that, only the parameters were processed. extract the actual query and return to caller.
+	assert(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
+	const cypher_astnode_t *body = cypher_ast_statement_get_body(statement);
+	assert(cypher_astnode_type(body) == CYPHER_AST_STRING);
+	return cypher_ast_string_get_value(body);
+}
+
 // Determine the maximum number of records
 // which will be considered when evaluating an algebraic expression.
 int TraverseRecordCap(const AST *ast) {
@@ -507,8 +518,26 @@ uint64_t AST_GetSkip(const AST *ast) {
 	return skip_value.longval;
 }
 
-cypher_parse_result_t *parse(const char *query) {
-	return cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+cypher_parse_result_t *parse_query(const char *query) {
+	cypher_parse_result_t *result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
+	if(!result) return NULL;
+	if(AST_Validate_Query(QueryCtx_GetRedisModuleCtx(), result) != AST_VALID) {
+		parse_result_free(result);
+		return NULL;
+	}
+	return result;
+}
+
+cypher_parse_result_t *parse_params(const char *query, const char **query_body) {
+	cypher_parse_result_t *result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_PARAMETERS);
+	if(!result) return NULL;
+	if(AST_Validate_QueryParams(QueryCtx_GetRedisModuleCtx(), result) != AST_VALID) {
+		parse_result_free(result);
+		return NULL;
+	}
+	_AST_Extract_Params(result);
+	if(query_body) *query_body = _AST_ExtractQueryString(result);
+	return result;
 }
 
 void parse_result_free(cypher_parse_result_t *parse_result) {
