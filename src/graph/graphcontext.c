@@ -17,6 +17,7 @@
 // Global array tracking all extant GraphContexts (defined in module.c)
 extern threadpool _thpool;
 extern GraphContext **graphs_in_keyspace;
+extern unsigned long entities_threshold;
 
 // Forward declarations.
 static void _GraphContext_Free(void *arg);

@@ -58,5 +58,7 @@ long long Config_GetEntitiesThreshold(RedisModuleCtx *ctx, RedisModuleString **a
 
 	// Sanity.
 	assert(threshold > 0);
+	RedisModule_Log(ctx, "notice", "Entities limit per graph meta key set to %d.", threshold);
+
 	return threshold;
 }

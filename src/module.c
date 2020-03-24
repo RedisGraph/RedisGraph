@@ -26,8 +26,9 @@
 //------------------------------------------------------------------------------
 // Module-level global variables
 //------------------------------------------------------------------------------
-GraphContext **graphs_in_keyspace; // Global array tracking all extant GraphContexts.
-bool process_is_child;             // Flag indicating whether the running process is a child.
+GraphContext **graphs_in_keyspace;  // Global array tracking all extant GraphContexts.
+bool process_is_child;              // Flag indicating whether the running process is a child.
+unsigned long entities_threshold;   // The limit of number of entities encoded at once.
 
 //------------------------------------------------------------------------------
 // Thread pool variables
@@ -55,9 +56,10 @@ static int _RegisterDataTypes(RedisModuleCtx *ctx) {
 	return REDISMODULE_OK;
 }
 
-static void _PrepareModuleGlobals() {
+static void _PrepareModuleGlobals(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	graphs_in_keyspace = array_new(GraphContext *, 1);
 	process_is_child = false;
+	entities_threshold = Config_GetEntitiesThreshold(ctx, argv, argc);
 }
 
 static void RG_ForkPrepare() {
@@ -144,7 +146,8 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	Proc_Register();         // Register procedures.
 	AR_RegisterFuncs();      // Register arithmetic functions.
 	Agg_RegisterFuncs();     // Register aggregation functions.
-	_PrepareModuleGlobals(); // Set up global lock and variables scoped to the entire module.
+	// Set up global lock and variables scoped to the entire module.
+	_PrepareModuleGlobals(ctx, argv, argc);
 	RegisterForkHooks(ctx);  // Set up hooks for renaming and forking logic to prevent bgsave deadlocks.
 	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
 

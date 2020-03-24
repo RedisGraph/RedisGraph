@@ -13,17 +13,20 @@
 #include "../schema/schema.h"
 #include "../slow_log/slow_log.h"
 #include "graph.h"
+#include "graphencodecontext.h"
 
 typedef struct {
-	Graph *g;                   // Container for all matrices and entity properties
-	int ref_count;              // Number of active references.
-	rax *attributes;            // From strings to attribute IDs
-	char *graph_name;           // String associated with graph
-	char **string_mapping;      // From attribute IDs to strings
-	Schema **node_schemas;      // Array of schemas for each node label
-	Schema **relation_schemas;  // Array of schemas for each relation type
-	unsigned short index_count; // Number of indicies.
-    SlowLog *slowlog;           // Slowlog associated with graph.
+	Graph *g;                               // Container for all matrices and entity properties
+	int ref_count;                          // Number of active references.
+	rax *attributes;                        // From strings to attribute IDs
+	char *graph_name;                       // String associated with graph
+	char **string_mapping;                  // From attribute IDs to strings
+	Schema **node_schemas;                  // Array of schemas for each node label
+	Schema **relation_schemas;              // Array of schemas for each relation type
+	unsigned short index_count;             // Number of indicies.
+	SlowLog *slowlog;                       // Slowlog associated with graph.
+	GraphEncodeContext *encoding_context;   // Encode and decode context of the graph.
+
 } GraphContext;
 
 /* GraphContext API */
@@ -79,11 +82,14 @@ void GraphContext_RegisterWithModule(GraphContext *gc);
 // Remove GraphContext from global array
 void GraphContext_RemoveFromRegistry(GraphContext *gc);
 
+// Update the keys representing the graph, if needed.
+void GraphContext_UpdateKeys(GraphContext *gc);
+
 // Rename a graph context.
 void GraphContext_Rename(GraphContext *gc, const char *name);
 
 /* Slowlog API */
-SlowLog* GraphContext_GetSlowLog(const GraphContext *gc);
+SlowLog *GraphContext_GetSlowLog(const GraphContext *gc);
 
 #endif
 
