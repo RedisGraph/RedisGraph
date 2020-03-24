@@ -376,7 +376,6 @@ static void _GraphContext_RemoveMetaKeys(GraphContext *gc, size_t delta) {
 		RedisModule_CloseKey(key);  // Free key handle.
 		free(meta_key_name);
 	}
-
 	GraphEncodeContext_DecreaseKeyCount(gc->encoding_context, delta);
 }
 
