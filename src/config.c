@@ -38,3 +38,25 @@ long long Config_GetThreadCount(RedisModuleCtx *ctx, RedisModuleString **argv, i
 
 	return threadCount;
 }
+
+long long Config_GetEntitiesThreshold(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+	// Default.
+	long long threshold = ENTITIES_THRESHOLD_NUMBER;
+
+	// Entities threshold defined in configuration?
+	// Expecting configuration to be in the form of key value pairs.
+	if(argc % 2 == 0) {
+		// Scan arguments for THREAD_COUNT.
+		for(int i = 0; i < argc; i += 2) {
+			const char *param = RedisModule_StringPtrLen(argv[i], NULL);
+			if(strcasecmp(param, ENTITIES_THRESHOLD) == 0) {
+				RedisModule_StringToLongLong(argv[i + 1], &threshold);
+				break;
+			}
+		}
+	}
+
+	// Sanity.
+	assert(threshold > 0);
+	return threshold;
+}
