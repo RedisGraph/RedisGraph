@@ -100,9 +100,13 @@ OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions)
 
 static OpResult SortInit(OpBase *opBase) {
 	OpSort *op = (OpSort *)opBase;
+	// Initialize op without limit on the return records/
 	op->limit = 0;
 	AST *ast = ExecutionPlan_GetAST(opBase->plan);
+	// Get the limit value for the current AST segment.
 	uint64_t limit = AST_GetLimit(ast);
+	// If there is LIMIT value, l,  set in the current clause, the operation must return the top l records with respect to the sorting criteria.
+	// In order to do so, it must collect the l records, but if there is a SKIP value, s, set, it must collect l+s records, sort them and return the top l.
 	if(limit != UNLIMITED) op->limit = limit + AST_GetSkip(ast);
 	if(op->limit) op->heap = heap_new(_heap_elem_compare, op);
 	else op->buffer = array_new(Record, 32);
