@@ -5,17 +5,15 @@
 */
 
 #include "../../version.h"
-#include "../graphcontext.h"
+#include "graphmeta_type.h"
 #include "encoding_version.h"
-#include "graphcontext_type.h"
-#include "encoder/encode_graphcontext.h"
-#include "decoders/decode_graphcontext.h"
-#include "decoders/prev/decode_previous.h"
+#include "../graphcontext.h"
+
 
 /* Declaration of the type for redis registration. */
-RedisModuleType *GraphContextRedisModuleType;
+RedisModuleType *GraphMetaRedisModuleType;
 
-void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
+void *GraphMetaType_RdbLoad(RedisModuleIO *rdb, int encver) {
 	GraphContext *gc = NULL;
 
 	if(encver > GRAPHCONTEXT_TYPE_ENCODING_VERSION) {
@@ -39,30 +37,29 @@ void *GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
 	return gc;
 }
 
-void GraphContextType_RdbSave(RedisModuleIO *rdb, void *value) {
+void GraphMetaType_RdbSave(RedisModuleIO *rdb, void *value) {
 	RdbSaveGraphContext(rdb, value);
 }
 
-void GraphContextType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, void *value) {
-	// TODO: implement.
+void GraphMetaType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, void *value) {
+	// No-Op in this type.
 }
 
-void GraphContextType_Free(void *value) {
-	GraphContext *gc = value;
-	GraphContext_Delete(gc);
+void GraphMetaType_Free(void *value) {
+	// No-Op in this type.
 }
 
-int GraphContextType_Register(RedisModuleCtx *ctx) {
+int GraphMetaType_Register(RedisModuleCtx *ctx) {
 	RedisModuleTypeMethods tm = {.version = REDISMODULE_TYPE_METHOD_VERSION,
-								 .rdb_load = GraphContextType_RdbLoad,
-								 .rdb_save = GraphContextType_RdbSave,
-								 .aof_rewrite = GraphContextType_AofRewrite,
-								 .free = GraphContextType_Free
+								 .rdb_load = GraphMetaType_RdbLoad,
+								 .rdb_save = GraphMetaType_RdbSave,
+								 .aof_rewrite = GraphMetaType_AofRewrite,
+								 .free = GraphMetaType_Free
 								};
 
-	GraphContextRedisModuleType = RedisModule_CreateDataType(ctx, "graphdata",
-															 GRAPHCONTEXT_TYPE_ENCODING_VERSION, &tm);
-	if(GraphContextRedisModuleType == NULL) {
+	GraphMetaRedisModuleType = RedisModule_CreateDataType(ctx, "graphmeta",
+														  GRAPHCONTEXT_TYPE_ENCODING_VERSION, &tm);
+	if(GraphMetaRedisModuleType == NULL) {
 		return REDISMODULE_ERR;
 	}
 	return REDISMODULE_OK;
