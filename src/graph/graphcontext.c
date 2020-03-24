@@ -335,6 +335,41 @@ SlowLog *GraphContext_GetSlowLog(const GraphContext *gc) {
 }
 
 //------------------------------------------------------------------------------
+// Meta keys API
+//------------------------------------------------------------------------------
+
+static void _GraphContext_RemoveKeys(GraphContext *gc, unsigned long delta) {
+
+
+
+	GraphEncodeContext_DecreaseKeyCount(gc->encoding_context, delta);
+}
+
+static void _GraphContext_AddKeys(GraphContext *gc, unsigned long delta) {
+	unsigned long current_key_count = GraphEncodeContext_GetKeyCount(gc->encoding_context);
+	for(unsigned long i = 0; i < delta; i++) {
+		unsigned long new_key_id = current_key_count + i;
+	}
+
+	GraphEncodeContext_IncreaseKeyCount(gc->encoding_context, delta);
+}
+
+void GraphContext_UpdateKeys(GraphContext *gc) {
+	unsigned long required_keys = 1;
+	required_keys += ceil(Graph_NodeCount(gc->g) / entities_threshold);
+	required_keys += ceil(Graph_EdgeCount(gc->g) / entities_threshold);
+	required_keys += ceil(Graph_DeletedNodeCount(gc->g) / entities_threshold);
+	required_keys += ceil(Graph_DeletedEdgeCount(gc->g) / entities_threshold);
+	unsigned long current_key_count = GraphEncodeContext_GetKeyCount(gc->encoding_context);
+	if(required_keys != current_key_count) {
+		if(required_keys > current_key_count)
+			_GraphContext_AddKeys(gc, required_keys - current_key_count);
+		else
+			_GraphContext_RemoveKeys(gc, current_key_count - required_keys);
+	}
+}
+
+//------------------------------------------------------------------------------
 // Free routine
 //------------------------------------------------------------------------------
 
