@@ -296,7 +296,7 @@ static void _AlgebraicExpression_PushDownTranspose(AlgebraicExpression *root) {
 				_AlgebraicExpression_OperationRemoveRightmostChild(root);
 				_AlgebraicExpression_InplaceRepurpose(root, child);
 
-				/* Note, there's need to dig deep into `root` sub-expression
+				/* Note, there's no need to dig deep into `root` sub-expression
 				 * looking for additional transpose nodes, as calling
 				 * AlgebraicExpression_Transpose will remove all of those. */
 			}
