@@ -195,6 +195,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
 
         uint exp_count = array_len(ae);
         for(uint i = 0; i < exp_count; i++) {
+            AlgebraicExpression_Optimize(ae + i);
             _AlgebraicExpression_FetchOperands(ae[i], gc, g);
         }
 
