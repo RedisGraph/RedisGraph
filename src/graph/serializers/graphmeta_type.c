@@ -15,7 +15,7 @@
 RedisModuleType *GraphMetaRedisModuleType;
 
 void *GraphMetaType_RdbLoad(RedisModuleIO *rdb, int encver) {
-	GraphContext *gc = NULL;
+	// GraphContext *gc = NULL;
 
 	if(encver > GRAPHCONTEXT_TYPE_ENCODING_VERSION) {
 		// Not forward compatible.
@@ -30,10 +30,10 @@ void *GraphMetaType_RdbLoad(RedisModuleIO *rdb, int encver) {
 		return NULL;
 	}
 
-	// Add GraphContext to global array of graphs.
-	GraphContext_RegisterWithModule(gc);
+	// // Add GraphContext to global array of graphs.
+	// GraphContext_RegisterWithModule(gc);
 
-	return gc;
+	return NULL;
 }
 
 void GraphMetaType_RdbSave(RedisModuleIO *rdb, void *value) {
