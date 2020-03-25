@@ -15,5 +15,5 @@ AST *AST_MockMatchPath(AST *master_ast, const cypher_astnode_t *original_path);
 AST *AST_MockOptionalMatch(AST *master_ast, cypher_astnode_t *clause);
 
 // Free a temporary AST.
-void AST_MockFree(AST *ast);
+void AST_MockFree(AST *ast, bool free_pattern);
 
