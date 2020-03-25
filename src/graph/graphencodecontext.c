@@ -13,6 +13,7 @@ inline GraphEncodeContext *GraphEncodeContext_New(unsigned long key_count) {
 	ctx->keys_count = key_count;
 	ctx->keys_processed = 0;
 	ctx->phase = RESET;
+	return ctx;
 }
 
 inline void GraphEncodeContext_Reset(GraphEncodeContext *ctx) {
