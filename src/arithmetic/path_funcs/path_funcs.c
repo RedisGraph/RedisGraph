@@ -26,6 +26,12 @@ SIValue AR_TOPATH(SIValue *argv, int argc) {
 	SIValue path = SIPathBuilder_New(nelements);
 	for(uint i = 0; i < nelements; i++) {
 		SIValue element = argv[i + 1];
+		if(element.type == T_NULL) {
+			// If any element of the path does not exist, the entire path is invalid and should be cleared.
+			SIPathBuilder_ClearPath(path);
+			return SI_NullVal();
+		}
+
 		if(i % 2 == 0) {
 			// Nodes are in even position.
 			SIPathBuilder_AppendNode(path, element);
@@ -55,14 +61,17 @@ SIValue AR_TOPATH(SIValue *argv, int argc) {
 }
 
 SIValue AR_PATH_NODES(SIValue *argv, int argc) {
+	if(argv[0].type == T_NULL) return SI_NullVal();
 	return SIPath_Nodes(argv[0]);
 }
 
 SIValue AR_PATH_RELATIONSHIPS(SIValue *argv, int argc) {
+	if(argv[0].type == T_NULL) return SI_NullVal();
 	return SIPath_Relationships(argv[0]);
 }
 
 SIValue AR_PATH_LENGTH(SIValue *argv, int argc) {
+	if(argv[0].type == T_NULL) return SI_NullVal();
 	return SI_LongVal(SIPath_Length(argv[0]));
 }
 
@@ -72,22 +81,23 @@ void Register_PathFuncs() {
 
 	types = array_new(SIType, 2);
 	types = array_append(types, T_PTR);
-	types = array_append(types, T_NODE | T_EDGE | T_PATH);
+	types = array_append(types, T_NULL | T_NODE | T_EDGE | T_PATH);
 	func_desc = AR_FuncDescNew("topath", AR_TOPATH, 1, VAR_ARG_LEN, types, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	types = array_append(types, T_PATH);
+	types = array_append(types, T_NULL | T_PATH);
 	func_desc = AR_FuncDescNew("nodes", AR_PATH_NODES, 1, 1, types, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	types = array_append(types, T_PATH);
+	types = array_append(types, T_NULL | T_PATH);
 	func_desc = AR_FuncDescNew("relationships", AR_PATH_RELATIONSHIPS, 1, 1, types, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	types = array_append(types, T_PATH);
+	types = array_append(types, T_NULL | T_PATH);
 	func_desc = AR_FuncDescNew("length", AR_PATH_LENGTH, 1, 1, types, false);
 	AR_RegFunc(func_desc);
 }
+

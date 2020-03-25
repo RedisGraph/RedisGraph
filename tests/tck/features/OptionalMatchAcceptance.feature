@@ -345,7 +345,6 @@ Feature: OptionalMatchAcceptance
       | [] | [42, 43, 44] |
     And no side effects
 
-@skip
   Scenario: OPTIONAL MATCH and WHERE
     And having executed:
       """
@@ -368,7 +367,6 @@ Feature: OptionalMatchAcceptance
       | (:X {val: 6}) | null          |
     And no side effects
 
-@skip
   Scenario: OPTIONAL MATCH on two relationships and WHERE
     And having executed:
       """
@@ -391,7 +389,6 @@ Feature: OptionalMatchAcceptance
       | (:X {val: 6}) | null          | null          |
     And no side effects
 
-@skip
   Scenario: Two OPTIONAL MATCH clauses and WHERE
     And having executed:
       """
