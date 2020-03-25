@@ -28,7 +28,7 @@
 //------------------------------------------------------------------------------
 GraphContext **graphs_in_keyspace;  // Global array tracking all extant GraphContexts.
 bool process_is_child;              // Flag indicating whether the running process is a child.
-unsigned long entities_threshold;   // The limit of number of entities encoded at once.
+size_t entities_threshold;   // The limit of number of entities encoded at once.
 
 //------------------------------------------------------------------------------
 // Thread pool variables

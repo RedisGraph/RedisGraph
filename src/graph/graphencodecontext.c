@@ -8,7 +8,7 @@
 #include "assert.h"
 #include "../util/rmalloc.h"
 
-inline GraphEncodeContext *GraphEncodeContext_New(unsigned long key_count) {
+inline GraphEncodeContext *GraphEncodeContext_New(size_t key_count) {
 	GraphEncodeContext *ctx = rm_malloc(sizeof(GraphEncodeContext));
 	ctx->keys_count = key_count;
 	ctx->keys_processed = 0;
@@ -32,12 +32,12 @@ inline void GraphEncodeContext_SetEncodePhase(GraphEncodeContext *ctx, EncodePha
 	ctx->phase = phase;
 }
 
-inline unsigned long GraphEncodeContext_GetKeyCount(GraphEncodeContext *ctx) {
+inline size_t GraphEncodeContext_GetKeyCount(GraphEncodeContext *ctx) {
 	assert(ctx);
 	return ctx->keys_count;
 }
 
-inline unsigned long GraphEncodeContext_GetProccessedKeyCount(GraphEncodeContext *ctx) {
+inline size_t GraphEncodeContext_GetProccessedKeyCount(GraphEncodeContext *ctx) {
 	assert(ctx);
 	return ctx->keys_processed;
 }
@@ -47,12 +47,12 @@ inline bool GraphEncodeContext_Finished(GraphEncodeContext *ctx) {
 	return ctx->keys_processed == ctx->keys_count;
 }
 
-inline void GraphEncodeContext_IncreaseKeyCount(GraphEncodeContext *ctx, unsigned long delta) {
+inline void GraphEncodeContext_IncreaseKeyCount(GraphEncodeContext *ctx, size_t delta) {
 	assert(ctx);
 	ctx->keys_count += delta;
 }
 
-inline void GraphEncodeContext_DecreaseKeyCount(GraphEncodeContext *ctx, unsigned long delta) {
+inline void GraphEncodeContext_DecreaseKeyCount(GraphEncodeContext *ctx, size_t delta) {
 	assert(ctx);
 	ctx->keys_count -= delta;
 }

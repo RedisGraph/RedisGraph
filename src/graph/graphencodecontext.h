@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "stdlib.h"
 #include "stdbool.h"
 
 // Represent a graph encoding phase.
@@ -20,13 +21,13 @@ typedef enum {
 
 // A struct that maintains the state of a graph encoding to RDB or encode from RDB.
 typedef struct {
-	unsigned long keys_count;       // The number of keys representing the graph.
-	unsigned long keys_processed;   // Count the number of procssed graph keys.
+	size_t keys_count;       // The number of keys representing the graph.
+	size_t keys_processed;   // Count the number of procssed graph keys.
 	EncodePhase phase;              // Represents the items currently encoded.
 } GraphEncodeContext;
 
 // Creates a new graph encoding context.
-GraphEncodeContext *GraphEncodeContext_New(unsigned long key_count);
+GraphEncodeContext *GraphEncodeContext_New(size_t key_count);
 
 // Resest a graph encoding context.
 void GraphEncodeContext_Reset(GraphEncodeContext *ctx);
@@ -38,19 +39,19 @@ EncodePhase GraphEncodeContext_GetEncodePhase(GraphEncodeContext *ctx);
 void GraphEncodeContext_SetEncodePhase(GraphEncodeContext *ctx, EncodePhase phase);
 
 // Retrive graph encoding context keys count.
-unsigned long GraphEncodeContext_GetKeyCount(GraphEncodeContext *ctx);
+size_t GraphEncodeContext_GetKeyCount(GraphEncodeContext *ctx);
 
 // Retrive graph encoding context proccessed key count.
-unsigned long GraphEncodeContext_GetProccessedKeyCount(GraphEncodeContext *ctx);
+size_t GraphEncodeContext_GetProccessedKeyCount(GraphEncodeContext *ctx);
 
 // Returns if the the number of processed keys is equal to the total number of graph keys.
 bool GraphEncodeContext_Finished(GraphEncodeContext *ctx);
 
 // Increases the number of keys representing the graph, by a given delta.
-void GraphEncodeContext_IncreaseKeyCount(GraphEncodeContext *ctx, unsigned long delta);
+void GraphEncodeContext_IncreaseKeyCount(GraphEncodeContext *ctx, size_t delta);
 
 // Decrease the number of key representing the graph, by a given delta.
-void GraphEncodeContext_DecreaseKeyCount(GraphEncodeContext *ctx, unsigned long delta);
+void GraphEncodeContext_DecreaseKeyCount(GraphEncodeContext *ctx, size_t delta);
 
 // Increases the number of processed graph keys.
 void GraphEncodeContext_IncreaseProcessedCount(GraphEncodeContext *ctx);
