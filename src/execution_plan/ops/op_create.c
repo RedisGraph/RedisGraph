@@ -73,6 +73,15 @@ static void _CreateEdges(OpCreate *op, Record r) {
 		/* Get specified edge to create. */
 		QGEdge *e = op->pending.edges_to_create[i].edge;
 
+		/* Verify that the endpoints of the new edge resolved properly; failing otherwise. */
+		if((Record_GetType(r, op->pending.edges_to_create[i].src_idx) != REC_TYPE_NODE) ||
+		   (Record_GetType(r, op->pending.edges_to_create[i].dest_idx) != REC_TYPE_NODE)) {
+			char *error;
+			asprintf(&error, "Failed to create relationship; endpoint was not found.");
+			QueryCtx_SetError(error);
+			QueryCtx_RaiseRuntimeException();
+		}
+
 		/* Retrieve source and dest nodes. */
 		Node *src_node = Record_GetNode(r, op->pending.edges_to_create[i].src_idx);
 		Node *dest_node = Record_GetNode(r, op->pending.edges_to_create[i].dest_idx);

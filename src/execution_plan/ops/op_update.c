@@ -181,13 +181,16 @@ static Record UpdateConsume(OpBase *opBase) {
 		 * for later execution. */
 		EntityUpdateEvalCtx *update_expression = op->update_expressions;
 		for(uint i = 0; i < op->update_expressions_count; i++, update_expression++) {
-			SIValue new_value = SI_CloneValue(AR_EXP_Evaluate(update_expression->exp, r));
-			// Make sure we're updating either a node or an edge.
+			// Get the type of the entity to update.
 			RecordEntryType t = Record_GetType(r, update_expression->record_idx);
+			// If the expected entity was not found, make no updates but do not error.
+			if(t == REC_TYPE_UNKNOWN) continue;
+			// Make sure we're updating either a node or an edge.
 			assert(t == REC_TYPE_NODE || t == REC_TYPE_EDGE);
 			GraphEntityType type = (t == REC_TYPE_NODE) ? GETYPE_NODE : GETYPE_EDGE;
-
 			GraphEntity *entity = Record_GetGraphEntity(r, update_expression->record_idx);
+
+			SIValue new_value = SI_CloneValue(AR_EXP_Evaluate(update_expression->exp, r));
 			_QueueUpdate(op, entity, type, update_expression->attribute, new_value);
 		}
 
