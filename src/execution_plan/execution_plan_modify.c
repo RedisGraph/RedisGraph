@@ -306,7 +306,7 @@ void ExecutionPlan_BindPlanToOps(ExecutionPlan *plan, OpBase *root) {
 }
 
 OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_vars,
-									   const cypher_astnode_t *path) {
+									   const cypher_astnode_t *node) {
 	// Initialize an ExecutionPlan that shares this plan's Record mapping.
 	ExecutionPlan *match_stream_plan = ExecutionPlan_NewEmptyExecutionPlan();
 	match_stream_plan->record_map = plan->record_map;
@@ -316,17 +316,13 @@ OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_v
 
 	AST *ast = QueryCtx_GetAST();
 	// Build a temporary AST holding a MATCH clause.
-	bool mock_entire_pattern = (cypher_astnode_type(path) == CYPHER_AST_MATCH);
-	AST *match_stream_ast;
-	if(mock_entire_pattern) {
-		match_stream_ast = AST_MockOptionalMatch(ast, (cypher_astnode_t *)path);
-	} else {
-		match_stream_ast = AST_MockMatchPath(ast, path);
-	}
+	cypher_astnode_type_t type = cypher_astnode_type(node);
+	bool node_is_path = (type == CYPHER_AST_PATTERN_PATH || type == CYPHER_AST_NAMED_PATH);
+	AST *match_stream_ast = AST_MockMatchClause(ast, (cypher_astnode_t *)node, node_is_path);
 
 	ExecutionPlan_PopulateExecutionPlan(match_stream_plan);
 
-	AST_MockFree(match_stream_ast, !mock_entire_pattern);
+	AST_MockFree(match_stream_ast, node_is_path);
 	QueryCtx_SetAST(ast); // Reset the AST.
 	// Add filter ops to sub-ExecutionPlan.
 	if(match_stream_plan->filter_tree) ExecutionPlan_PlaceFilterOps(match_stream_plan, NULL);

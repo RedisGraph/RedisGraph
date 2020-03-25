@@ -103,7 +103,7 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 	op->recordCount = 0;
 	op->edgeRelationTypes = NULL;
 	op->recordsCap = 0;
-	op->records = rm_calloc(op->recordsCap, sizeof(Record));
+	op->records = NULL;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", ExpandIntoInit, ExpandIntoConsume,
