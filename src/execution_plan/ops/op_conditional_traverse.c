@@ -12,6 +12,7 @@
 #include "../../query_ctx.h"
 
 /* Forward declarations. */
+static OpResult CondTraverseInit(OpBase *opBase);
 static Record CondTraverseConsume(OpBase *opBase);
 static OpResult CondTraverseReset(OpBase *opBase);
 static OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase *opBase);
@@ -120,8 +121,7 @@ static inline int CondTraverseToString(const OpBase *ctx, char *buf, uint buf_le
 	return TraversalToString(ctx, buf, buf_len, ((const CondTraverse *)ctx)->ae);
 }
 
-OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
-						  uint records_cap) {
+OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
 	CondTraverse *op = rm_calloc(1, sizeof(CondTraverse));
 	op->graph = g;
 	op->ae = ae;
@@ -133,11 +133,9 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	op->recordsLen = 0;
 	op->direction = GRAPH_EDGE_DIR_OUTGOING;
 	op->edgeRelationTypes = NULL;
-	op->recordsCap = records_cap;
-	op->records = rm_calloc(op->recordsCap, sizeof(Record));
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", NULL,
+	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", CondTraverseInit,
 				CondTraverseConsume, CondTraverseReset, CondTraverseToString, CondTraverseClone, CondTraverseFree,
 				false, plan);
 
@@ -162,6 +160,14 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	}
 
 	return (OpBase *)op;
+}
+
+static OpResult CondTraverseInit(OpBase *opBase) {
+	CondTraverse *op = (CondTraverse *)opBase;
+	AST *ast = ExecutionPlan_GetAST(opBase->plan);
+	op->recordsCap = TraverseRecordCap(ast);
+	op->records = rm_calloc(op->recordsCap, sizeof(Record));
+	return OP_OK;
 }
 
 /* CondTraverseConsume next operation
@@ -240,8 +246,7 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 static inline OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	assert(opBase->type == OPType_CONDITIONAL_TRAVERSE);
 	CondTraverse *op = (CondTraverse *)opBase;
-	return NewCondTraverseOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae),
-							 op->recordsCap);
+	return NewCondTraverseOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae));
 }
 
 /* Frees CondTraverse */

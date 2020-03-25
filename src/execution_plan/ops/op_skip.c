@@ -5,22 +5,30 @@
  */
 
 #include "op_skip.h"
+#include "../../query_ctx.h"
 
 /* Forward declarations. */
+static OpResult SkipInit(OpBase *opBase);
 static Record SkipConsume(OpBase *opBase);
 static OpResult SkipReset(OpBase *opBase);
 static OpBase *SkipClone(const ExecutionPlan *plan, const OpBase *opBase);
 
-OpBase *NewSkipOp(const ExecutionPlan *plan, unsigned int rec_to_skip) {
+OpBase *NewSkipOp(const ExecutionPlan *plan) {
 	OpSkip *op = rm_malloc(sizeof(OpSkip));
 	op->skipped = 0;
-	op->rec_to_skip = rec_to_skip;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_SKIP, "Skip", NULL, SkipConsume, SkipReset, NULL, SkipClone, NULL,
-				false, plan);
+	OpBase_Init((OpBase *)op, OPType_SKIP, "Skip", SkipInit, SkipConsume, SkipReset, NULL, SkipClone,
+				NULL, false, plan);
 
 	return (OpBase *)op;
+}
+
+static OpResult SkipInit(OpBase *opBase) {
+	OpSkip *skip = (OpSkip *)opBase;
+	AST *ast = ExecutionPlan_GetAST(opBase->plan);
+	skip->rec_to_skip = AST_GetSkip(ast);
+	return OP_OK;
 }
 
 static Record SkipConsume(OpBase *opBase) {
@@ -50,8 +58,7 @@ static OpResult SkipReset(OpBase *ctx) {
 	return OP_OK;
 }
 
-static OpBase *SkipClone(const ExecutionPlan *plan, const OpBase *opBase) {
+static inline OpBase *SkipClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	assert(opBase->type == OPType_SKIP);
-	OpSkip *op = (OpSkip *)opBase;
-	return NewSkipOp(plan, op->rec_to_skip);
+	return NewSkipOp(plan);
 }
