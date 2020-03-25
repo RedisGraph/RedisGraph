@@ -144,6 +144,8 @@ SIValue AR_SIZE(SIValue *argv, int argc) {
 		return SI_LongVal(SIArray_Length(value));
 	case T_STRING:
 		return SI_LongVal(strlen(value.stringval));
+	case T_NULL:
+		return SI_NullVal();
 	default:
 		assert(false);
 	}
@@ -227,3 +229,4 @@ void Register_ListFuncs() {
 	func_desc = AR_FuncDescNew("tail", AR_TAIL, 1, 1, types, true);
 	AR_RegFunc(func_desc);
 }
+
