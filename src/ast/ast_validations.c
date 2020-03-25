@@ -906,18 +906,11 @@ static AST_Validation _Validate_LIMIT_SKIP_Modifiers(const AST *ast, char **reas
 		// Handle LIMIT modifier
 		const cypher_astnode_t *limit = cypher_ast_return_get_limit(return_clause);
 		if(limit) {
-			// Handle non-integer types specified as LIMIT value
-			if(cypher_astnode_type(limit) != CYPHER_AST_INTEGER) {
+			// Handle non-integer or non parameter types specified as LIMIT value
+			// The value validation of integer node or parameter node is done in run time evaluation.
+			if(cypher_astnode_type(limit) != CYPHER_AST_INTEGER &&
+			   cypher_astnode_type(limit) != CYPHER_AST_PARAMETER) {
 				asprintf(reason, "LIMIT specified value of invalid type, must be a positive integer");
-				return AST_INVALID;
-			}
-
-			// Handle LIMIT strings that cannot be fully converted to integers,
-			// due to size or invalid characters
-			const char *value_str = cypher_ast_integer_get_valuestr(limit);
-			if(_ValidatePositiveInteger(value_str) != AST_VALID) {
-				asprintf(reason,
-						 "LIMIT specified value '%s', must be a positive integer in the signed 8-byte range.", value_str);
 				return AST_INVALID;
 			}
 		}
@@ -925,18 +918,11 @@ static AST_Validation _Validate_LIMIT_SKIP_Modifiers(const AST *ast, char **reas
 		// Handle SKIP modifier
 		const cypher_astnode_t *skip = cypher_ast_return_get_skip(return_clause);
 		if(skip) {
-			// Handle non-integer types specified as skip value
-			if(cypher_astnode_type(skip) != CYPHER_AST_INTEGER) {
+			// Handle non-integer or non parameter types specified as skip value
+			// The value validation of integer node or parameter node is done in run time evaluation.
+			if(cypher_astnode_type(skip) != CYPHER_AST_INTEGER &&
+			   cypher_astnode_type(skip) != CYPHER_AST_PARAMETER) {
 				asprintf(reason, "SKIP specified value of invalid type, must be a positive integer");
-				return AST_INVALID;
-			}
-
-			// Handle skip strings that cannot be fully converted to integers,
-			// due to size or invalid characters
-			const char *value_str = cypher_ast_integer_get_valuestr(skip);
-			if(_ValidatePositiveInteger(value_str) != AST_VALID) {
-				asprintf(reason,
-						 "SKIP specified value '%s', must be a positive integer in the signed 8-byte range.", value_str);
 				return AST_INVALID;
 			}
 		}
@@ -953,42 +939,24 @@ static AST_Validation _Validate_LIMIT_SKIP_Modifiers(const AST *ast, char **reas
 		// Handle LIMIT modifier
 		const cypher_astnode_t *limit = cypher_ast_with_get_limit(with_clause);
 		if(limit) {
-			// Handle non-integer types specified as LIMIT value
-			if(cypher_astnode_type(limit) != CYPHER_AST_INTEGER) {
+			// Handle non-integer or non parameter types specified as LIMIT value
+			// The value validation of integer node or parameter node is done in run time evaluation.
+			if(cypher_astnode_type(limit) != CYPHER_AST_INTEGER &&
+			   cypher_astnode_type(limit) != CYPHER_AST_PARAMETER) {
 				asprintf(reason, "LIMIT specified value of invalid type, must be a positive integer");
-				res = AST_INVALID;
-				break;
-			}
-
-			// Handle LIMIT strings that cannot be fully converted to integers,
-			// due to size or invalid characters
-			const char *value_str = cypher_ast_integer_get_valuestr(limit);
-			if(_ValidatePositiveInteger(value_str) != AST_VALID) {
-				asprintf(reason,
-						 "LIMIT specified value '%s', must be a positive integer in the signed 8-byte range.", value_str);
-				res = AST_INVALID;
-				break;
+				return AST_INVALID;
 			}
 		}
 
 		// Handle SKIP modifier
 		const cypher_astnode_t *skip = cypher_ast_with_get_skip(with_clause);
 		if(skip) {
-			// Handle non-integer types specified as skip value
-			if(cypher_astnode_type(skip) != CYPHER_AST_INTEGER) {
+			// Handle non-integer or non parameter types specified as skip value
+			// The value validation of integer node or parameter node is done in run time evaluation.
+			if(cypher_astnode_type(skip) != CYPHER_AST_INTEGER &&
+			   cypher_astnode_type(skip) != CYPHER_AST_PARAMETER) {
 				asprintf(reason, "SKIP specified value of invalid type, must be a positive integer");
-				res = AST_INVALID;
-				break;
-			}
-
-			// Handle skip strings that cannot be fully converted to integers,
-			// due to size or invalid characters
-			const char *value_str = cypher_ast_integer_get_valuestr(skip);
-			if(_ValidatePositiveInteger(value_str) != AST_VALID) {
-				asprintf(reason,
-						 "SKIP specified value '%s', must be a positive integer in the signed 8-byte range.", value_str);
-				res = AST_INVALID;
-				break;
+				return AST_INVALID;
 			}
 		}
 	}
@@ -1555,7 +1523,8 @@ static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, 
 	}
 	struct cypher_input_range range = {};
 	ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n, clauses, n, range);
-
+	ast->skip = NULL;
+	ast->limit = NULL;
 	return ast;
 }
 

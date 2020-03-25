@@ -16,6 +16,7 @@ typedef struct ExecutionPlan ExecutionPlan;
 
 struct ExecutionPlan {
 	OpBase *root;                       // Root operation of overall ExecutionPlan.
+	AST *ast_segment;                   // The segment which the current ExecutionPlan segment is built from.
 	rax *record_map;                    // Mapping between identifiers and record indices.
 	QueryGraph *query_graph;            // QueryGraph representing all graph entities in this segment.
 	FT_FilterNode *filter_tree;         // FilterTree containing filters to be applied to this segment.
@@ -108,6 +109,12 @@ OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **vars,
 
 /* Creates a new execution plan from AST */
 ExecutionPlan *NewExecutionPlan(void);
+
+// Sets an AST segment in the execution plan.
+void ExecutionPlan_SetAST(ExecutionPlan *plan, AST *ast);
+
+// Gets the AST segment from the execution plan.
+AST *ExecutionPlan_GetAST(const ExecutionPlan *plan);
 
 /* Prepare an execution plan for execution: optimize, initialize result set schema. */
 void ExecutionPlan_PreparePlan(ExecutionPlan *plan);

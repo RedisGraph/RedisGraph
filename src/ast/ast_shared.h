@@ -10,6 +10,7 @@
 #include "../graph/entities/qg_node.h"
 #include "../graph/entities/qg_edge.h"
 #include "../arithmetic/arithmetic_expression.h"
+#include "ast.h"
 
 struct AR_ExpNode;
 
