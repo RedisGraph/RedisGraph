@@ -11,6 +11,6 @@
 #include "../../../redismodule.h"
 #include "../../../schema/schema.h"
 
-void RdbSaveSchema(RedisModuleIO *rdb, Schema *s);
+void RdbSaveGraphSchema(RedisModuleIO *rdb, GraphContext *gc);
 
 #endif

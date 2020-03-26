@@ -25,7 +25,7 @@ long long Config_GetThreadCount(
 
 // Tries to fetch the number of entities to encode as part of virtual key encoding.
 // Defaults to ENTITIES_THRESHOLD_NUMBER
-long long Config_GetEntitiesThreshold(
+uint64_t Config_GetEntitiesThreshold(
 	RedisModuleCtx *ctx,
 	RedisModuleString **argv,
 	int argc);

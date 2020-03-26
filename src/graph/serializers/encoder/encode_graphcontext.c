@@ -5,7 +5,7 @@
 */
 
 #include "encode_graphcontext.h"
-#include "encode_graph.h"
+#include "encode_graph_entities.h"
 #include "encode_schema.h"
 
 extern bool process_is_child; // Global variable declared in module.c
@@ -16,65 +16,93 @@ static inline bool _shouldAcquireLocks(void) {
 	return !process_is_child;
 }
 
-static void _RdbSaveAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
-	/* Format:
-	 * #attribute keys
-	 * attribute keys
+
+
+static void _RdbSaveHeader(RedisModuleIO *rdb, GraphContext *gc) {
+	/* Header format:
+	* Graph name
+	* Number of graph keys (graph context key + meta keys)
+	* Number of processed keys (current payload index)
+	* Current payload type
 	*/
 
-	uint count = GraphContext_AttributeCount(gc);
-	RedisModule_SaveUnsigned(rdb, count);
-	for(uint i = 0; i < count; i ++) {
-		char *key = gc->string_mapping[i];
-		RedisModule_SaveStringBuffer(rdb, key, strlen(key) + 1);
+	// Graph name.
+	RedisModule_SaveStringBuffer(rdb, gc->graph_name, strlen(gc->graph_name) + 1);
+
+	// Number of keys
+	RedisModule_SaveUnsigned(rdb, GraphEncodeContext_GetKeyCount(gc->encoding_context));
+
+	// Numbder of processed keys - current payload index
+	RedisModule_SaveUnsigned(rdb, GraphEncodeContext_GetProccessedKeyCount(gc->encoding_context));
+
+	// Payload type
+	RedisModule_SaveUnsigned(rdb, GraphEncodeContext_GetEncodePhase(gc->encoding_context));
+}
+
+
+static void _SelectAndEncodeNextPhase(RedisModuleIO *rdb, GraphContext *gc) {
+	// If there are nodes
+	if(Graph_NodeCount(gc->g) > 0) {
+		GraphEncodeContext_SetEncodePhase(gc->encoding_context, NODES);
+		RdbSaveNodes(rdb, gc);
+	}
+	// If all nodes are deleted
+	else if(array_len(gc->g->nodes->deletedIdx) > 0) {
+		GraphEncodeContext_SetEncodePhase(gc->encoding_context, DELETED_NODES);
+		RdbSaveDeletedNodes(rdb, gc);
+	}
+	// No nodes and no deleted nodes => no edges or deleted edges. Only schema.
+	else {
+		GraphEncodeContext_SetEncodePhase(gc->encoding_context, GRAPH_SCHEMA);
+		RdbSaveGraphSchema(rdb, gc);
 	}
 }
 
 void RdbSaveGraphContext(RedisModuleIO *rdb, void *value) {
-	/* Format:
-	 * graph name
-	 * attribute keys (unified schema)
-	 * #node schemas
-	 * node schema X #node schemas
-	 * #relation schemas
-	 * unified relation schema
-	 * relation schema X #relation schemas
-	 * graph object
-	*/
+	/* Encoding format for graph context and graph meta key
+	 * Header
+	 * Payload - Nodes / Edges / Deleted nodes/ Deleted edges/ Graph schema
+	 *
+	 * Payloads encoding order - Nodes => Deleted nodes (if needed) => Edges => Deleted edges (if needed) => Schema.
+	 * Each encoding phase finished
+	 */
 
 	GraphContext *gc = value;
 
 	// Acquire a read lock if we're not in a thread-safe context.
 	if(_shouldAcquireLocks()) Graph_AcquireReadLock(gc->g);
 
-	// Graph name.
-	RedisModule_SaveStringBuffer(rdb, gc->graph_name, strlen(gc->graph_name) + 1);
+	// Save header
+	_RdbSaveHeader(rdb, gc);
 
-	// Serialize all attribute keys
-	_RdbSaveAttributeKeys(rdb, gc);
-
-	// #Node schemas.
-	unsigned short schema_count = GraphContext_SchemaCount(gc, SCHEMA_NODE);
-	RedisModule_SaveUnsigned(rdb, schema_count);
-
-	// Name of label X #node schemas.
-	for(int i = 0; i < schema_count; i++) {
-		Schema *s = gc->node_schemas[i];
-		RdbSaveSchema(rdb, s);
+	switch(GraphEncodeContext_GetEncodePhase(gc->encoding_context)) {
+	case RESET:
+		_SelectAndEncodeNextPhase(rdb, gc);
+		break;
+	case NODES:
+		RdbSaveNodes(rdb, gc);
+		break;
+	case DELETED_NODES:
+		RdbSaveDeletedNodes(rdb, gc);
+		break;
+	case EDGES:
+		RdbSaveEdges(rdb, gc);
+		break;
+	case DELETED_EDGES:
+		RdbSaveDeletedEdges(rdb, gc);
+		break;
+	case GRAPH_SCHEMA:
+		RdbSaveGraphSchema(rdb, gc);
+	default:
+		assert(false && "Unkown encoding phase");
+		break;
 	}
 
-	// #Relation schemas.
-	unsigned short relation_count = GraphContext_SchemaCount(gc, SCHEMA_EDGE);
-	RedisModule_SaveUnsigned(rdb, relation_count);
-
-	// Name of label X #relation schemas.
-	for(unsigned short i = 0; i < relation_count; i++) {
-		Schema *s = gc->relation_schemas[i];
-		RdbSaveSchema(rdb, s);
+	// Increase processed key count. If finished encoding, resert context.
+	GraphEncodeContext_IncreaseProcessedCount(gc->encoding_context);
+	if(GraphEncodeContext_Finished(gc->encoding_context)) {
+		GraphEncodeContext_Reset(gc->encoding_context);
 	}
-
-	// Serialize graph object
-	RdbSaveGraph(rdb, gc);
 
 	// If a lock was acquired, release it.
 	if(_shouldAcquireLocks()) Graph_ReleaseLock(gc->g);

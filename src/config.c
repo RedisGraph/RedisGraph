@@ -39,7 +39,7 @@ long long Config_GetThreadCount(RedisModuleCtx *ctx, RedisModuleString **argv, i
 	return threadCount;
 }
 
-long long Config_GetEntitiesThreshold(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+uint64_t Config_GetEntitiesThreshold(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// Default.
 	long long threshold = ENTITIES_THRESHOLD_NUMBER;
 
