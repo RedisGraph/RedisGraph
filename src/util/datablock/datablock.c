@@ -56,9 +56,8 @@ static inline bool _DataBlock_IndexOutOfBounds(const DataBlock *dataBlock, uint6
 	return (idx >= (dataBlock->itemCount + array_len(dataBlock->deletedIdx)));
 }
 
-/* --------- DataBlock Item API implementation --------*/
-
-inline DataBlockItemHeader *DataBlock_GetItemHeader(const DataBlock *dataBlock, uint64_t idx) {
+static inline DataBlockItemHeader *DataBlock_GetItemHeader(const DataBlock *dataBlock,
+														   uint64_t idx) {
 	Block *block = GET_ITEM_BLOCK(dataBlock, idx);
 	idx = ITEM_POSITION_WITHIN_BLOCK(idx);
 	return (DataBlockItemHeader *)block->data + (idx * block->itemSize);
