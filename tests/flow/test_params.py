@@ -1,5 +1,6 @@
 import os
 import sys
+import redis
 from RLTest import Env
 from redisgraph import Graph, Node
 
@@ -52,3 +53,21 @@ class testParams(FlowTestsBase):
             
         query_info = QueryInfo(query = query, description="Tests expression on param", expected_result = expected_results)
         self._assert_resultset_equals_expected(redis_graph.query(query, params), query_info)
+
+    def test_parameterized_skip_limit(self):
+
+        params = {'skip': 1, 'limit': 1}
+        query = "UNWIND [1,2,3] AS X RETURN X SKIP $skip LIMIT $limit"
+        expected_results = [[2]]
+            
+        query_info = QueryInfo(query = query, description="Tests skip limit as params", expected_result = expected_results)
+        self._assert_resultset_equals_expected(redis_graph.query(query, params), query_info)
+
+        # Set one parameter to non-integer value
+        params = {'skip': '1', 'limit': 1}
+        try:
+            redis_graph.query(query, params)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            pass
+

@@ -295,7 +295,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				if(edge && QGEdge_VariableLength(edge)) {
 					root = NewCondVarLenTraverseOp(plan, gc->g, exp);
 				} else {
-					root = NewCondTraverseOp(plan, gc->g, exp, TraverseRecordCap(ast));
+					root = NewCondTraverseOp(plan, gc->g, exp);
 				}
 				// Insert the new traversal op at the root of the chain.
 				ExecutionPlan_AddOp(root, tail);
@@ -409,8 +409,7 @@ static void _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **orde
 // Build an aggregate or project operation and any required modifying operations.
 // This logic applies for both WITH and RETURN projections.
 static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **projections,
-									   AR_ExpNode **order_exps, uint skip,
-									   int *sort_directions, bool aggregate, bool distinct) {
+									   AR_ExpNode **order_exps, int *sort_directions, bool aggregate, bool distinct) {
 
 	// Merge order expressions into the projections array.
 	if(order_exps) _combine_projection_arrays(&projections, order_exps);
@@ -434,22 +433,20 @@ static inline void _buildProjectionOps(ExecutionPlan *plan, AR_ExpNode **project
 	}
 
 	AST *ast = QueryCtx_GetAST();
-	uint limit = ast->limit;
 
 	if(sort_directions) {
 		// The sort operation will obey a specified limit, but must account for skipped records
-		uint sort_limit = (limit != UNLIMITED) ? limit + skip : 0;
-		OpBase *op = NewSortOp(plan, order_exps, sort_directions, sort_limit);
+		OpBase *op = NewSortOp(plan, order_exps, sort_directions);
 		_ExecutionPlan_UpdateRoot(plan, op);
 	}
 
-	if(skip) {
-		OpBase *op = NewSkipOp(plan, skip);
+	if(AST_GetSkipExpr(ast)) {
+		OpBase *op = NewSkipOp(plan);
 		_ExecutionPlan_UpdateRoot(plan, op);
 	}
 
-	if(limit != UNLIMITED) {
-		OpBase *op = NewLimitOp(plan, limit);
+	if(AST_GetLimitExpr(ast)) {
+		OpBase *op = NewLimitOp(plan);
 		_ExecutionPlan_UpdateRoot(plan, op);
 	}
 }
@@ -464,9 +461,6 @@ static void _buildReturnOps(ExecutionPlan *plan, const cypher_astnode_t *clause)
 
 	const cypher_astnode_t *skip_clause = cypher_ast_return_get_skip(clause);
 
-	uint skip = 0;
-	if(skip_clause) skip = AST_ParseIntegerNode(skip_clause);
-
 	int *sort_directions = NULL;
 	AR_ExpNode **order_exps = NULL;
 	const cypher_astnode_t *order_clause = cypher_ast_return_get_order_by(clause);
@@ -474,7 +468,7 @@ static void _buildReturnOps(ExecutionPlan *plan, const cypher_astnode_t *clause)
 		AST_PrepareSortOp(order_clause, &sort_directions);
 		order_exps = _BuildOrderExpressions(projections, order_clause);
 	}
-	_buildProjectionOps(plan, projections, order_exps, skip, sort_directions, aggregate, distinct);
+	_buildProjectionOps(plan, projections, order_exps, sort_directions, aggregate, distinct);
 }
 
 static void _buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
@@ -484,10 +478,6 @@ static void _buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
 
 	const cypher_astnode_t *skip_clause = cypher_ast_with_get_skip(clause);
 
-	uint skip = 0;
-	uint limit = RESULTSET_UNLIMITED;
-	if(skip_clause) skip = AST_ParseIntegerNode(skip_clause);
-
 	int *sort_directions = NULL;
 	AR_ExpNode **order_exps = NULL;
 	const cypher_astnode_t *order_clause = cypher_ast_with_get_order_by(clause);
@@ -495,7 +485,7 @@ static void _buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
 		AST_PrepareSortOp(order_clause, &sort_directions);
 		order_exps = _BuildOrderExpressions(projections, order_clause);
 	}
-	_buildProjectionOps(plan, projections, order_exps, skip, sort_directions, aggregate, distinct);
+	_buildProjectionOps(plan, projections, order_exps, sort_directions, aggregate, distinct);
 }
 
 // Convert a CALL clause into a procedure call operation.
@@ -802,7 +792,7 @@ ExecutionPlan *NewExecutionPlan(void) {
 		// Construct a new ExecutionPlanSegment.
 		ExecutionPlan *segment = ExecutionPlan_NewEmptyExecutionPlan();
 		ExecutionPlan_PopulateExecutionPlan(segment);
-
+		segment->ast_segment = ast_segment;
 		segments[i] = segment;
 		start_offset = end_offset;
 	}
@@ -832,9 +822,6 @@ ExecutionPlan *NewExecutionPlan(void) {
 		prev_scope_end = prev_root; // Track the previous scope's end so filter placement doesn't overreach.
 	}
 
-	// Free all scoped ASTs.
-	for(uint i = 0; i < segment_count; i++) AST_Free(ast_segments[i]);
-
 	QueryCtx_SetAST(ast); // AST segments have been freed, set master AST in QueryCtx.
 
 	array_free(segment_indices);
@@ -851,6 +838,16 @@ ExecutionPlan *NewExecutionPlan(void) {
 	plan->segments = segments;
 
 	return plan;
+}
+
+// Sets an AST segment in the execution plan.
+inline void ExecutionPlan_SetAST(ExecutionPlan *plan, AST *ast) {
+	plan->ast_segment = ast;
+}
+
+// Gets the AST segment from the execution plan.
+inline AST *ExecutionPlan_GetAST(const ExecutionPlan *plan) {
+	return plan->ast_segment;
 }
 
 void ExecutionPlan_PreparePlan(ExecutionPlan *plan) {
@@ -1017,6 +1014,7 @@ static void _ExecutionPlan_FreeSubPlan(ExecutionPlan *plan) {
 	QueryGraph_Free(plan->query_graph);
 	if(plan->record_map) raxFree(plan->record_map);
 	if(plan->record_pool) ObjectPool_Free(plan->record_pool);
+	if(plan->ast_segment) AST_Free(plan->ast_segment);
 	rm_free(plan);
 }
 
@@ -1045,6 +1043,7 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 	QueryGraph_Free(plan->query_graph);
 	if(plan->record_map) raxFree(plan->record_map);
 	if(plan->record_pool) ObjectPool_Free(plan->record_pool);
+	if(plan->ast_segment) AST_Free(plan->ast_segment);
 	rm_free(plan);
 }
 

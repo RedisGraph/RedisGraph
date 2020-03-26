@@ -15,4 +15,4 @@ typedef struct {
 	unsigned int skipped;
 } OpSkip;
 
-OpBase *NewSkipOp(const ExecutionPlan *plan, unsigned int rec_to_skip);
+OpBase *NewSkipOp(const ExecutionPlan *plan);
