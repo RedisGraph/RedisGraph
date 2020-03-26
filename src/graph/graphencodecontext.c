@@ -24,6 +24,8 @@ inline void GraphEncodeContext_Reset(GraphEncodeContext *ctx) {
 	ctx->processed_deleted_nodes = 0;
 	ctx->processed_deleted_edges = 0;
 	ctx->datablock_iterator = NULL;
+	ctx->current_relation_matrix_id = 0;
+	ctx->matrix_tuple_iterator = NULL;
 }
 
 inline EncodePhase GraphEncodeContext_GetEncodePhase(const GraphEncodeContext *ctx) {
@@ -97,6 +99,29 @@ inline void GraphEncodeContext_SetDatablockIterator(GraphEncodeContext *ctx,
 													DataBlockIterator *iter) {
 	assert(ctx);
 	ctx->datablock_iterator = iter;
+}
+
+inline uint GraphEncodeContex_GetCurrentRelationID(const GraphEncodeContext *ctx) {
+	assert(ctx);
+	return ctx->current_relation_matrix_id;
+}
+
+inline void GraphEncodeContex_SetCurrentRelationID(GraphEncodeContext *ctx,
+												   uint current_relation_matrix_id) {
+	assert(ctx);
+	ctx->current_relation_matrix_id = current_relation_matrix_id;
+}
+
+inline GxB_MatrixTupleIter *GraphEncodeContext_GetMatrixTupleIterator(
+	const GraphEncodeContext *ctx) {
+	assert(ctx);
+	return ctx->matrix_tuple_iterator;
+}
+
+inline void GraphEncodeContext_SetMatrixTupleIterator(GraphEncodeContext *ctx,
+													  GxB_MatrixTupleIter *iter) {
+	assert(ctx);
+	ctx->matrix_tuple_iterator = iter;
 }
 
 inline bool GraphEncodeContext_Finished(const GraphEncodeContext *ctx) {

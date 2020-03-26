@@ -211,37 +211,68 @@ void RdbSaveEdges(RedisModuleIO *rdb, GraphContext *gc) {
 	uint64_t edges_to_encode = graph_edges - encoded_edges;
 	// If the required number is bigger than the allowed entities threshold, set it to be the threshold.
 	if(edges_to_encode > entities_threshold) edges_to_encode = entities_threshold;
-	// Get datablock iterator from context, or create new one.
-	DataBlockIterator *iter = GraphEncodeContext_GetDatablockIterator(gc->encoding_context);
-	if(!iter) iter = Graph_ScanEdges(gc->g);
-	// #Nodes
+
+	// Get current relation matrix.
+	uint r = GraphEncodeContex_GetCurrentRelationID(gc->encoding_context);
+	GrB_Matrix M = Graph_GetRelationMatrix(gc->g, r);
+	// Get matrix tuple iterator from context, or create new one.
+	GxB_MatrixTupleIter *iter = GraphEncodeContext_GetMatrixTupleIterator(gc->encoding_context);
+	if(!iter) GxB_MatrixTupleIter_new(&iter, M);
+
+	// #Edges
 	RedisModule_SaveUnsigned(rdb, edges_to_encode);
+	uint relation_count = Graph_RelationTypeCount(gc->g);
 	for(uint64_t i = 0; i < edges_to_encode; i++) {
-		Edge *e = (Edge *)DataBlockIterator_Next(iter);
-		NodeID src = Edge_GetSrcNodeID(e);
-		NodeID dest = Edge_GetDestNodeID(e);
+		Edge e;
+		NodeID src;
+		NodeID dest;
+		EdgeID edgeID;
+		bool depleted = false;
+		// Try to get next tuple.
+		GxB_MatrixTupleIter_next(iter, &src, &dest, &depleted);
+		// If iterator is depleted
+		while(depleted && r < relation_count) {
+			// Free iterator
+			GxB_MatrixTupleIter_free(iter);
+			depleted = false;
+			// Proceed to next relation matrix.
+			r++;
+			// If done iterating over all the matrices, jump to finish.
+			if(r == relation_count) goto finish;
+			// Get matrix and set iterator.
+			M = Graph_GetRelationMatrix(gc->g, r);
+			GxB_MatrixTupleIter_next(iter, &src, &dest, &depleted);
+		}
 
-		// Source node ID.
-		RedisModule_SaveUnsigned(rdb, src);
+		e.srcNodeID = src;
+		e.destNodeID = dest;
 
-		// Destination node ID.
-		RedisModule_SaveUnsigned(rdb, dest);
-
-		// Relation type.
-		RedisModule_SaveUnsigned(rdb, e->relationID);
-
-		// Edge properties.
-		_RdbSaveEntity(rdb, e->entity, gc->string_mapping);
+		GrB_Matrix_extractElement_UINT64(&edgeID, M, src, dest);
+		if(SINGLE_EDGE(edgeID)) {
+			edgeID = SINGLE_EDGE_ID(edgeID);
+			Graph_GetEdge(gc->g, edgeID, &e);
+			_RdbSaveEdge(rdb, gc->g, &e, r, gc->string_mapping);
+		} else {
+			EdgeID *edgeIDs = (EdgeID *)edgeID;
+			int edgeCount = array_len(edgeIDs);
+			for(int i = 0; i < edgeCount; i++) {
+				edgeID = edgeIDs[i];
+				Graph_GetEdge(gc->g, edgeID, &e);
+				_RdbSaveEdge(rdb, gc->g, &e, r, gc->string_mapping);
+			}
+		}
 	}
 
+finish:
 	// Check if done encodeing edges.
 	if(encoded_edges + edges_to_encode == graph_edges) {
-		DataBlockIterator_Free(iter);
+		GxB_MatrixTupleIter_free(iter);
 		iter = NULL;
 	}
 
 	// Update context.
-	GraphEncodeContext_SetDatablockIterator(gc->encoding_context, iter);
+	GraphEncodeContex_SetCurrentRelationID(gc->encoding_context, r);
+	GraphEncodeContext_SetMatrixTupleIterator(gc->encoding_context, iter);
 	GraphEncodeContext_SetProcessedEdges(gc->encoding_context, encoded_edges + edges_to_encode);
 	_UpdatedEncodePhase(gc);
 }

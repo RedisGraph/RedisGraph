@@ -9,6 +9,7 @@
 #include "stdlib.h"
 #include "stdbool.h"
 #include "../util/datablock/datablock.h"
+#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 // Represent a graph encoding phase.
 typedef enum {
@@ -22,14 +23,16 @@ typedef enum {
 
 // A struct that maintains the state of a graph encoding to RDB or encode from RDB.
 typedef struct {
-	uint64_t keys_count;                    // The number of keys representing the graph.
-	uint64_t keys_processed;                // Count the number of procssed graph keys.
-	EncodePhase phase;                      // Represents the items currently encoded.
-	uint64_t processed_nodes;               // Number of encoded nodes.
-	uint64_t processed_deleted_nodes;       // Number of encoded deleted nodes.
-	uint64_t processed_edges;               // Number of encoded edges.
-	uint64_t processed_deleted_edges;       // Number of encoded deleted edges.
-	DataBlockIterator *datablock_iterator;  // Datablock iterator to be saved in the context.
+	uint64_t keys_count;                        // The number of keys representing the graph.
+	uint64_t keys_processed;                    // Count the number of procssed graph keys.
+	EncodePhase phase;                          // Represents the items currently encoded.
+	uint64_t processed_nodes;                   // Number of encoded nodes.
+	uint64_t processed_deleted_nodes;           // Number of encoded deleted nodes.
+	uint64_t processed_edges;                   // Number of encoded edges.
+	uint64_t processed_deleted_edges;           // Number of encoded deleted edges.
+	DataBlockIterator *datablock_iterator;      // Datablock iterator to be saved in the context.
+	uint current_relation_matrix_id;            // Current encoded relationship matrix.
+	GxB_MatrixTupleIter *matrix_tuple_iterator; // Matrix tuple iterator to be saved in the context.
 } GraphEncodeContext;
 
 // Creates a new graph encoding context.
@@ -79,6 +82,19 @@ DataBlockIterator *GraphEncodeContext_GetDatablockIterator(const GraphEncodeCont
 
 // Set graph encoding context datablock iterator.
 void GraphEncodeContext_SetDatablockIterator(GraphEncodeContext *ctx, DataBlockIterator *iter);
+
+// Retrive graph encoding context current encoded relation matrix id.
+uint GraphEncodeContex_GetCurrentRelationID(const GraphEncodeContext *ctx);
+
+// Set graph encoding context current encoded relation matrix id.
+void GraphEncodeContex_SetCurrentRelationID(GraphEncodeContext *ctx,
+											uint current_relation_matrix_id);
+
+// Retrive graph encoding context stored matrix tuple iterator.
+GxB_MatrixTupleIter *GraphEncodeContext_GetMatrixTupleIterator(const GraphEncodeContext *ctx);
+
+// Set graph encoding context matrix tuple iterator.
+void GraphEncodeContext_SetMatrixTupleIterator(GraphEncodeContext *ctx, GxB_MatrixTupleIter *iter);
 
 // Returns if the the number of processed keys is equal to the total number of graph keys.
 bool GraphEncodeContext_Finished(const GraphEncodeContext *ctx);
