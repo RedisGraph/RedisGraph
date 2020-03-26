@@ -242,6 +242,7 @@ void RdbSaveEdges(RedisModuleIO *rdb, GraphContext *gc) {
 	uint64_t edges_to_encode = graph_edges - encoded_edges;
 	// If the required number is bigger than the allowed entities threshold, set it to be the threshold.
 	if(edges_to_encode > entities_threshold) edges_to_encode = entities_threshold;
+	<<< <<< < HEAD
 
 	// Get current relation matrix.
 	uint r = GraphEncodeContex_GetCurrentRelationID(gc->encoding_context);
