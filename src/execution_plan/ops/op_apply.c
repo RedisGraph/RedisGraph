@@ -27,18 +27,18 @@ OpBase *NewApplyOp(const ExecutionPlan *plan) {
 }
 
 static OpResult ApplyInit(OpBase *opBase) {
-	// TODO init routine necesssary?
 	assert(opBase->childCount == 2);
 
 	Apply *op = (Apply *)opBase;
-	/* The op bounded branch and match branch are set to be the first and second child, respectively,
-	 * during the operation building procedure at execution_plan_reduce_to_apply.c */
+	/* The op's bound branch and optional match branch have already been built as
+	 * the Apply op's first and second child ops, respectively. */
 	op->bound_branch = opBase->children[0];
 	op->rhs_branch = opBase->children[1];
 
 	// Locate branch's Argument op tap.
 	op->op_arg = (Argument *)ExecutionPlan_LocateOp(op->rhs_branch, OPType_ARGUMENT);
-	assert(op->op_arg && op->op_arg->op.childCount == 0); // TODO maybe wrong
+	assert(op->op_arg && op->op_arg->op.childCount == 0);
+
 	return OP_OK;
 }
 

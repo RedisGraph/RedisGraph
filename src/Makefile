@@ -154,7 +154,7 @@ ifeq (,$(wildcard $(LIBCYPHER-PARSER)))
 	cd ../deps/libcypher-parser; \
 	./autogen.sh; \
 	./configure --disable-shared;
-	$(MAKE) CFLAGS="-g -fPIC -DYY_BUFFER_SIZE=1048576" clean check -C ../deps/libcypher-parser
+	$(MAKE) CFLAGS="-fPIC -DYY_BUFFER_SIZE=1048576" clean check -C ../deps/libcypher-parser
 endif
 .PHONY: $(LIBCYPHER-PARSER)
 

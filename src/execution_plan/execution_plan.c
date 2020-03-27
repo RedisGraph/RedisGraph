@@ -527,32 +527,6 @@ static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge
 	}
 }
 
-static void _BuildOptionalMatchOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
-	// TODO dup of _buildMergeOp logic, consider shared function.
-	// Collect the variables that are bound at this point.
-	rax *bound_vars = NULL;
-	const char **arguments = NULL;
-	if(plan->root) {
-		bound_vars = raxNew();
-		// Rather than cloning the record map, collect the bound variables along with their
-		// parser-generated constant strings.
-		ExecutionPlan_BoundVariables(plan->root, bound_vars);
-		// Collect the variable names from bound_vars to populate the Argument ops we will build.
-		arguments = (const char **)raxValues(bound_vars);
-	}
-
-	OpBase *apply_op = NewApplyOp(plan);
-	_ExecutionPlan_UpdateRoot(plan, apply_op);
-
-	OpBase *optional = NewOptionalOp(plan);
-	ExecutionPlan_AddOp(apply_op, optional);
-	OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, clause);
-	ExecutionPlan_AddOp(optional, match_stream); // Add Match stream to Merge op.
-
-	if(bound_vars) raxFree(bound_vars);
-	array_free(arguments);
-}
-
 static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 						  const cypher_astnode_t *clause) {
 	/*
@@ -617,6 +591,31 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 	array_free(arguments);
 }
 
+static void _buildOptionalMatchOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
+	// Collect the variables that are bound at this point.
+	rax *bound_vars = raxNew();
+	// Rather than cloning the record map, collect the bound variables along with their
+	// parser-generated constant strings.
+	ExecutionPlan_BoundVariables(plan->root, bound_vars);
+	// Collect the variable names from bound_vars to populate the Argument op we will build.
+	const char **arguments = (const char **)raxValues(bound_vars);
+	raxFree(bound_vars);
+
+	// Create an Apply operator and make it the new root.
+	OpBase *apply_op = NewApplyOp(plan);
+	_ExecutionPlan_UpdateRoot(plan, apply_op);
+
+	// Create an Optional op and add it as an Apply child as a right-hand stream.
+	OpBase *optional = NewOptionalOp(plan);
+	ExecutionPlan_AddOp(apply_op, optional);
+
+	// Build the new Match stream and add it to the Optional stream.
+	OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, clause);
+	ExecutionPlan_AddOp(optional, match_stream);
+
+	array_free(arguments);
+}
+
 static inline void _buildUpdateOp(ExecutionPlan *plan, const cypher_astnode_t *clause) {
 	EntityUpdateEvalCtx *update_exps = AST_PrepareUpdateOp(clause);
 	OpBase *op = NewUpdateOp(plan, update_exps);
@@ -635,7 +634,7 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, Exec
 	// Because 't' is set using the offsetof() call, it cannot be used in switch statements.
 	if(t == CYPHER_AST_MATCH) {
 		if(cypher_ast_match_is_optional(clause)) {
-			_BuildOptionalMatchOps(plan, clause);
+			_buildOptionalMatchOps(plan, clause);
 			return;
 		}
 		// Only add at most one set of traversals per plan. TODO Revisit and improve this logic.

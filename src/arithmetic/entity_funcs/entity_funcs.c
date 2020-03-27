@@ -15,6 +15,7 @@
 
 /* returns the id of a relationship or node. */
 SIValue AR_ID(SIValue *argv, int argc) {
+	if(argv[0].type == T_NULL) return SI_NullVal();
 	GraphEntity *graph_entity = (GraphEntity *)argv[0].ptrval;
 	return SI_LongVal(ENTITY_GET_ID(graph_entity));
 }
