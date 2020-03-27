@@ -89,10 +89,11 @@ static OpResult NodeByLabelScanInit(OpBase *opBase) {
 }
 
 static inline void _UpdateRecord(NodeByLabelScan *op, Record r, GrB_Index node_id) {
-	// Get a pointer to the node's allocated space within the Record.
-	Node *n = Record_GetNode(r, op->nodeRecIdx);
 	// Populate the Record with the graph entity data.
-	Graph_GetNode(op->g, node_id, n);
+	Node n = {};
+	Graph_GetNode(op->g, node_id, &n);
+	// Get a pointer to the node's allocated space within the Record.
+	Record_AddNode(r, op->nodeRecIdx, n);
 }
 
 static inline void _ResetIterator(NodeByLabelScan *op) {

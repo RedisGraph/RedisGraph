@@ -78,6 +78,7 @@ static void _populate_filter_matrix(CondTraverse *op) {
 		/* Update filter matrix F, set row i at position srcId
 		 * F[i, srcId] = true. */
 		Node *n = Record_GetNode(r, op->srcNodeIdx);
+		if(!n) continue;  // The expected entity may not be found on optional traversals.
 		NodeID srcId = ENTITY_GET_ID(n);
 		GrB_Matrix_setElement_BOOL(op->F, true, i, srcId);
 	}
@@ -213,8 +214,9 @@ static Record CondTraverseConsume(OpBase *opBase) {
 
 	/* Get node from current column. */
 	op->r = op->records[src_id];
-	Node *destNode = Record_GetNode(op->r, op->destNodeIdx);
-	Graph_GetNode(op->graph, dest_id, destNode);
+	Node destNode;
+	Graph_GetNode(op->graph, dest_id, &destNode);
+	Record_AddNode(op->r, op->destNodeIdx, destNode);
 
 	if(op->setEdge) {
 		_CondTraverse_CollectEdges(op, op->destNodeIdx, op->srcNodeIdx);

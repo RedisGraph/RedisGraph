@@ -89,17 +89,37 @@ RecordEntryType Record_GetType(const Record r, int idx) {
 }
 
 SIValue Record_GetScalar(Record r, int idx) {
-	r->entries[idx].type = REC_TYPE_SCALAR;
+	assert(r->entries[idx].type == REC_TYPE_SCALAR);
 	return r->entries[idx].value.s;
 }
 
 Node *Record_GetNode(const Record r, int idx) {
-	r->entries[idx].type = REC_TYPE_NODE;
+	switch(r->entries[idx].type) {
+	case REC_TYPE_NODE:
+		return &(r->entries[idx].value.n);
+	case REC_TYPE_UNKNOWN:
+		return NULL;
+	case REC_TYPE_SCALAR:
+		// Null scalar values are expected here; otherwise fall through.
+		if(SIValue_IsNull(r->entries[idx].value.s)) return NULL;
+	default:
+		assert("encountered unexpected type in Record; expected Node" && false);
+	}
 	return &(r->entries[idx].value.n);
 }
 
 Edge *Record_GetEdge(const Record r, int idx) {
-	r->entries[idx].type = REC_TYPE_EDGE;
+	switch(r->entries[idx].type) {
+	case REC_TYPE_EDGE:
+		return &(r->entries[idx].value.e);
+	case REC_TYPE_UNKNOWN:
+		return NULL;
+	case REC_TYPE_SCALAR:
+		// Null scalar values are expected here; otherwise fall through.
+		if(SIValue_IsNull(r->entries[idx].value.s)) return NULL;
+	default:
+		assert("encountered unexpected type in Record; expected Edge" && false);
+	}
 	return &(r->entries[idx].value.e);
 }
 
@@ -149,19 +169,22 @@ void Record_Add(Record r, int idx, SIValue v) {
 	}
 }
 
-void Record_AddScalar(Record r, int idx, SIValue v) {
+SIValue *Record_AddScalar(Record r, int idx, SIValue v) {
 	r->entries[idx].value.s = v;
 	r->entries[idx].type = REC_TYPE_SCALAR;
+	return &(r->entries[idx].value.s);
 }
 
-void Record_AddNode(Record r, int idx, Node node) {
+Node *Record_AddNode(Record r, int idx, Node node) {
 	r->entries[idx].value.n = node;
 	r->entries[idx].type = REC_TYPE_NODE;
+	return &(r->entries[idx].value.n);
 }
 
-void Record_AddEdge(Record r, int idx, Edge edge) {
+Edge *Record_AddEdge(Record r, int idx, Edge edge) {
 	r->entries[idx].value.e = edge;
 	r->entries[idx].type = REC_TYPE_EDGE;
+	return &(r->entries[idx].value.e);
 }
 
 void Record_PersistScalars(Record r) {
