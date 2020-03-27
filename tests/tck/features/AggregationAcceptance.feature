@@ -111,7 +111,6 @@ Feature: AggregationAcceptance
             | (:L) | 2        |
         And no side effects
 
-    @skip
     Scenario: Sort on aggregate function and normal property
         Given an empty graph
         And having executed:
