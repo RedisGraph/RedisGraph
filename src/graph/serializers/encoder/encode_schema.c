@@ -5,6 +5,7 @@
 */
 
 #include "encode_schema.h"
+#include "../../../schema/schema.h"
 #include "../../../util/arr.h"
 #include "../../../util/rmalloc.h"
 

@@ -73,6 +73,34 @@ static void _RdbSaveEntity(RedisModuleIO *rdb, const Entity *e,  char **attr_map
 	}
 }
 
+static void _RdbSaveEdge(RedisModuleIO *rdb, const Graph *g, const Edge *e,
+						 int r, char **string_mapping) {
+
+	/* Format:
+	* edge
+	* {
+	*  edge ID
+	*  source node ID
+	*  destination node ID
+	*  relation type
+	* }
+	* edge properties */
+
+	RedisModule_SaveUnsigned(rdb, ENTITY_GET_ID(e));
+
+	// Source node ID.
+	RedisModule_SaveUnsigned(rdb, Edge_GetSrcNodeID(e));
+
+	// Destination node ID.
+	RedisModule_SaveUnsigned(rdb, Edge_GetDestNodeID(e));
+
+	// Relation type.
+	RedisModule_SaveUnsigned(rdb, r);
+
+	// Edge properties.
+	_RdbSaveEntity(rdb, e->entity, string_mapping);
+}
+
 static void _UpdatedEncodePhase(GraphContext *gc) {
 	// Check if NODES encodeding phase is done
 	if(GraphEncodeContext_GetProccessedNodes(gc->encoding_context) == Graph_NodeCount(gc->g)) {
@@ -123,6 +151,7 @@ void RdbSaveDeletedNodes(RedisModuleIO *rdb, GraphContext *gc) {
 void RdbSaveNodes(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * #nodes
+	 *      ID
 	 *      #labels M
 	 *      (labels) X M
 	 *      #properties N
@@ -143,6 +172,8 @@ void RdbSaveNodes(RedisModuleIO *rdb, GraphContext *gc) {
 	RedisModule_SaveUnsigned(rdb, nodes_to_encode);
 	for(uint64_t i = 0; i < nodes_to_encode; i++) {
 		Entity *e = (Entity *)DataBlockIterator_Next(iter);
+		// Save ID
+		RedisModule_SaveUnsigned(rdb, e->id);
 		int l = Graph_GetNodeLabel(gc->g, e->id);
 
 		// #labels, currently only one label per node.
@@ -224,12 +255,10 @@ void RdbSaveEdges(RedisModuleIO *rdb, GraphContext *gc) {
 	uint relation_count = Graph_RelationTypeCount(gc->g);
 	for(uint64_t i = 0; i < edges_to_encode; i++) {
 		Edge e;
-		NodeID src;
-		NodeID dest;
 		EdgeID edgeID;
 		bool depleted = false;
 		// Try to get next tuple.
-		GxB_MatrixTupleIter_next(iter, &src, &dest, &depleted);
+		GxB_MatrixTupleIter_next(iter, &e.srcNodeID, &e.destNodeID, &depleted);
 		// If iterator is depleted
 		while(depleted && r < relation_count) {
 			// Free iterator
@@ -241,13 +270,10 @@ void RdbSaveEdges(RedisModuleIO *rdb, GraphContext *gc) {
 			if(r == relation_count) goto finish;
 			// Get matrix and set iterator.
 			M = Graph_GetRelationMatrix(gc->g, r);
-			GxB_MatrixTupleIter_next(iter, &src, &dest, &depleted);
+			GxB_MatrixTupleIter_next(iter, &e.srcNodeID, &e.destNodeID, &depleted);
 		}
 
-		e.srcNodeID = src;
-		e.destNodeID = dest;
-
-		GrB_Matrix_extractElement_UINT64(&edgeID, M, src, dest);
+		GrB_Matrix_extractElement_UINT64(&edgeID, M, e.srcNodeID, e.destNodeID);
 		if(SINGLE_EDGE(edgeID)) {
 			edgeID = SINGLE_EDGE_ID(edgeID);
 			Graph_GetEdge(gc->g, edgeID, &e);

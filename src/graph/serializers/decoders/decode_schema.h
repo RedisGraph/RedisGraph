@@ -8,6 +8,5 @@
 
 #include "../../graphcontext.h"
 #include "../../../redismodule.h"
-#include "../../../schema/schema.h"
 
-Schema *RdbLoadSchema(RedisModuleIO *rdb, SchemaType type);
+void RdbLoadGraphSchema(RedisModuleIO *rdb, GraphContext *gc);

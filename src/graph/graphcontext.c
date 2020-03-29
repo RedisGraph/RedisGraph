@@ -312,7 +312,23 @@ void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
 
 // Register a new GraphContext for module-level tracking
 void GraphContext_RegisterWithModule(GraphContext *gc) {
+	uint graph_count = array_len(graphs_in_keyspace);
+	for(uint i = 0; i < graph_count; i ++) {
+		if(graphs_in_keyspace[i] == gc) return;
+	}
 	graphs_in_keyspace = array_append(graphs_in_keyspace, gc);
+}
+
+GraphContext *GraphContexted_GetRegistredGraphContext(const char *graph_name) {
+	GraphContext *gc = NULL;
+	uint graph_count = array_len(graphs_in_keyspace);
+	for(uint i = 0; i < graph_count; i ++) {
+		if(strcmp(graphs_in_keyspace[i]->graph_name, graph_name) == 0) {
+			gc = graphs_in_keyspace[i];
+			break;
+		}
+	}
+	return gc;
 }
 
 // Delete a GraphContext reference from the global array

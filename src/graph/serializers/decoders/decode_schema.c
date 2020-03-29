@@ -5,8 +5,10 @@
 */
 
 #include "decode_schema.h"
+#include "../../../schema/schema.h"
+#include "../../../util/arr.h"
 
-Schema *RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
+static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 	/* Format:
 	 * id
 	 * name
@@ -31,3 +33,55 @@ Schema *RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 	return s;
 }
 
+static void _RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
+	/* Format:
+	 * #attribute keys
+	 * attribute keys
+	 */
+
+	uint count = RedisModule_LoadUnsigned(rdb);
+	for(uint i = 0; i < count; i ++) {
+		char *attr = RedisModule_LoadStringBuffer(rdb, NULL);
+		GraphContext_FindOrAddAttribute(gc, attr);
+		RedisModule_Free(attr);
+	}
+}
+
+void RdbLoadGraphSchema(RedisModuleIO *rdb, GraphContext *gc) {
+	/* Format:
+	 * attribute keys (unified schema)
+	 * #node schemas
+	 * node schema X #node schemas
+	 * #relation schemas
+	 * unified relation schema
+	 * relation schema X #relation schemas
+	 */
+
+	// Attributes, Load the full attribute mapping.
+	_RdbLoadAttributeKeys(rdb, gc);
+
+	// #Node schemas
+	uint schema_count = RedisModule_LoadUnsigned(rdb);
+
+	// Load each node schema
+	gc->node_schemas = array_new(Schema *, schema_count);
+	for(uint i = 0; i < schema_count; i ++) {
+		gc->node_schemas = array_append(gc->node_schemas, _RdbLoadSchema(rdb, SCHEMA_NODE));
+	}
+
+	// #Edge schemas
+	schema_count = RedisModule_LoadUnsigned(rdb);
+
+	// Load each edge schema
+	gc->relation_schemas = array_new(Schema *, schema_count);
+	for(uint i = 0; i < schema_count; i ++) {
+		gc->relation_schemas = array_append(gc->relation_schemas, _RdbLoadSchema(rdb, SCHEMA_EDGE));
+	}
+
+	uint node_schemas_count = array_len(gc->node_schemas);
+	for(uint i = 0; i < node_schemas_count; i++) {
+		Schema *s = gc->node_schemas[i];
+		if(s->index) Index_Construct(s->index);
+		if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
+	}
+}

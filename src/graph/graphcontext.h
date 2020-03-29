@@ -79,6 +79,8 @@ void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n);
 
 // Add GraphContext to global array
 void GraphContext_RegisterWithModule(GraphContext *gc);
+// Retrive GraphContext from the global array, by name. If no such graph is registered, NULL is returned.
+GraphContext *GraphContexted_GetRegistredGraphContext(const char *graph_name);
 // Remove GraphContext from global array
 void GraphContext_RemoveFromRegistry(GraphContext *gc);
 

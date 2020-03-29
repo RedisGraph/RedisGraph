@@ -9,34 +9,31 @@
 #include "encoding_version.h"
 #include "../graphcontext.h"
 #include "encoder/encode_graphcontext.h"
-
-
+#include "decoders/decode_graphcontext.h"
 
 /* Declaration of the type for redis registration. */
 RedisModuleType *GraphMetaRedisModuleType;
 
 void *GraphMetaType_RdbLoad(RedisModuleIO *rdb, int encver) {
-	// GraphContext *gc = NULL;
+	GraphContext *gc = NULL;
 
-	// if(encver > GRAPHCONTEXT_TYPE_ENCODING_VERSION) {
-	// 	// Not forward compatible.
-	// 	printf("Failed loading Graph, RedisGraph version (%d) is not forward compatible.\n",
-	// 		   REDISGRAPH_MODULE_VERSION);
-	// 	return NULL;
-	// } else if(encver >= DECODER_SUPPORT_MIN_V && encver <= DECODER_SUPPORT_MAX_V) {
-	// 	gc = RdbLoadGraphContext(rdb);
-	// } else if(encver >= PREV_DECODER_SUPPORT_MIN_V) {
-	// 	gc = Decode_Previous(rdb, encver);
-	// } else {
-	// 	printf("Failed loading Graph, RedisGraph version (%d) is not backward compatible with encoder version %d.\n",
-	// 		   REDISGRAPH_MODULE_VERSION, encver);
-	// 	return NULL;
-	// }
+	if(encver > GRAPHCONTEXT_TYPE_ENCODING_VERSION) {
+		// Not forward compatible.
+		printf("Failed loading Graph, RedisGraph version (%d) is not forward compatible.\n",
+			   REDISGRAPH_MODULE_VERSION);
+		return NULL;
+	} else if(encver >= DECODER_SUPPORT_MIN_V && encver <= DECODER_SUPPORT_MAX_V) {
+		gc = RdbLoadGraphContext(rdb);
+	} else {
+		printf("Problem when loading Graph, RedisGraph Meta key is not backward compatible with encoder version %d and should not try to load from it.\n",
+			   encver);
+		return NULL;
+	}
 
-	// // Add GraphContext to global array of graphs.
-	// GraphContext_RegisterWithModule(gc);
+	// Add GraphContext to global array of graphs.
+	GraphContext_RegisterWithModule(gc);
 
-	return NULL;
+	return gc;
 }
 
 void GraphMetaType_RdbSave(RedisModuleIO *rdb, void *value) {

@@ -11,6 +11,7 @@
 #include "../util/qsort.h"
 #include "../GraphBLASExt/GxB_Delete.h"
 #include "../util/rmalloc.h"
+#include "../util/datablock/oo_datablock.h"
 
 static GrB_BinaryOp _graph_edge_accum = NULL;
 // GraphBLAS Select operator to free edge arrays and delete edges.
@@ -181,7 +182,7 @@ size_t _Graph_EdgeCap(const Graph *g) {
 }
 
 // Locates edges connecting src to destination.
-void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int r, Edge **edges) {
+void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, uint r, Edge **edges) {
 	assert(g && src < Graph_RequiredMatrixDim(g) && dest < Graph_RequiredMatrixDim(g) &&
 		   r < Graph_RelationTypeCount(g));
 
@@ -403,11 +404,11 @@ size_t Graph_DeletedEdgeCount(const Graph *g) {
 	return array_len(g->edges->deletedIdx);
 }
 
-int Graph_RelationTypeCount(const Graph *g) {
+uint Graph_RelationTypeCount(const Graph *g) {
 	return array_len(g->relations);
 }
 
-int Graph_LabelTypeCount(const Graph *g) {
+uint Graph_LabelTypeCount(const Graph *g) {
 	return array_len(g->labels);
 }
 
@@ -433,10 +434,10 @@ int Graph_GetEdge(const Graph *g, EdgeID id, Edge *e) {
 	return (e->entity != NULL);
 }
 
-int Graph_GetNodeLabel(const Graph *g, NodeID nodeID) {
+uint Graph_GetNodeLabel(const Graph *g, NodeID nodeID) {
 	assert(g);
-	int label = GRAPH_NO_LABEL;
-	for(int i = 0; i < array_len(g->labels); i++) {
+	uint label = GRAPH_NO_LABEL;
+	for(uint i = 0; i < array_len(g->labels); i++) {
 		bool x = false;
 		GrB_Matrix M = Graph_GetLabelMatrix(g, i);
 		GrB_Info res = GrB_Matrix_extractElement_BOOL(&x, M, nodeID, nodeID);
@@ -449,7 +450,7 @@ int Graph_GetNodeLabel(const Graph *g, NodeID nodeID) {
 	return label;
 }
 
-int Graph_GetEdgeRelation(const Graph *g, Edge *e) {
+uint Graph_GetEdgeRelation(const Graph *g, Edge *e) {
 	assert(g && e);
 	NodeID srcNodeID = Edge_GetSrcNodeID(e);
 	NodeID destNodeID = Edge_GetDestNodeID(e);
@@ -489,7 +490,7 @@ int Graph_GetEdgeRelation(const Graph *g, Edge *e) {
 	return GRAPH_NO_RELATION;
 }
 
-void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID, int r,
+void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID, uint r,
 								   Edge **edges) {
 	assert(g && r < Graph_RelationTypeCount(g) && edges);
 
@@ -506,23 +507,14 @@ void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID, 
 		_Graph_GetEdgesConnectingNodes(g, srcID, destID, r, edges);
 	} else {
 		// Relation type missing, scan through each edge type.
-		int relationCount = Graph_RelationTypeCount(g);
-		for(int i = 0; i < relationCount; i++) {
+		uint relationCount = Graph_RelationTypeCount(g);
+		for(uint i = 0; i < relationCount; i++) {
 			_Graph_GetEdgesConnectingNodes(g, srcID, destID, i, edges);
 		}
 	}
 }
 
-void Graph_CreateNode(Graph *g, int label, Node *n) {
-	assert(g);
-
-	NodeID id;
-	Entity *en = DataBlock_AllocateItem(g->nodes, &id);
-	en->id = id;
-	en->prop_count = 0;
-	en->properties = NULL;
-	n->entity = en;
-
+static void _Graph_AddNodeToLabelMatrix(Graph *g, NodeID id, uint label) {
 	if(label != GRAPH_NO_LABEL) {
 		// Try to set matrix at position [id, id]
 		// incase of a failure, scale matrix.
@@ -536,8 +528,66 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 	}
 }
 
-int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
+void Graph_CreateNode(Graph *g, uint label, Node *n) {
+	assert(g);
+
+	NodeID id;
+	Entity *en = DataBlock_AllocateItem(g->nodes, &id);
+	en->id = id;
+	en->prop_count = 0;
+	en->properties = NULL;
+	n->entity = en;
+	_Graph_AddNodeToLabelMatrix(g, id, label);
+}
+
+static inline void _Graph_TryAddLabelMatrix(Graph *g, uint label) {
+	uint label_count = Graph_LabelTypeCount(g);
+	if(label >= label_count) {
+		for(uint i = label_count; i <= label; i++) Graph_AddLabel(g);
+	}
+}
+
+void Graph_SetNode(Graph *g, NodeID id, uint label, Node *n) {
+	assert(g);
+
+	Entity *en = DataBlock_AllocateItemOutOfOrder(g->nodes, id);
+	en->id = id;
+	en->prop_count = 0;
+	en->properties = NULL;
+	n->entity = en;
+	_Graph_TryAddLabelMatrix(g, label);
+	_Graph_AddNodeToLabelMatrix(g, id, label);
+}
+
+static void _Graph_ConnectNodesInMatrix(Graph *g, EdgeID edgeId, NodeID src, NodeID dest, uint r) {
 	GrB_Info info;
+	GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
+	GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
+	GrB_Matrix tadj = _Graph_Get_Transposed_AdjacencyMatrix(g);
+
+	// Rows represent source nodes, columns represent destination nodes.
+	GrB_Matrix_setElement_BOOL(adj, true, src, dest);
+	GrB_Matrix_setElement_BOOL(tadj, true, dest, src);
+	GrB_Index I = src;
+	GrB_Index J = dest;
+	edgeId = SET_MSB(edgeId);
+	info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
+		   (
+			   relationMat,         // input/output matrix for results
+			   GrB_NULL,            // optional mask for C(I,J), unused if NULL
+			   _graph_edge_accum,   // optional accum for Z=accum(C(I,J),x)
+			   edgeId,              // scalar to assign to C(I,J)
+			   &I,                  // row indices
+			   1,                   // number of row indices
+			   &J,                  // column indices
+			   1,                   // number of column indices
+			   GrB_NULL             // descriptor for C(I,J) and Mask
+		   );
+	assert(info == GrB_SUCCESS);
+}
+
+int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, uint r, Edge *e) {
+
 	Node srcNode;
 	Node destNode;
 
@@ -554,33 +604,35 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
 	e->relationID = r;
 	e->srcNodeID = src;
 	e->destNodeID = dest;
-
-	GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
-	GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
-	GrB_Matrix tadj = _Graph_Get_Transposed_AdjacencyMatrix(g);
-
-	// Rows represent source nodes, columns represent destination nodes.
-	GrB_Matrix_setElement_BOOL(adj, true, src, dest);
-	GrB_Matrix_setElement_BOOL(tadj, true, dest, src);
-	GrB_Index I = src;
-	GrB_Index J = dest;
-	id = SET_MSB(id);
-	info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
-		   (
-			   relationMat,         // input/output matrix for results
-			   GrB_NULL,            // optional mask for C(I,J), unused if NULL
-			   _graph_edge_accum,   // optional accum for Z=accum(C(I,J),x)
-			   id,                  // scalar to assign to C(I,J)
-			   &I,                  // row indices
-			   1,                   // number of row indices
-			   &J,                  // column indices
-			   1,                   // number of column indices
-			   GrB_NULL             // descriptor for C(I,J) and Mask
-		   );
-	assert(info == GrB_SUCCESS);
-
+	_Graph_ConnectNodesInMatrix(g, id, src, dest, r);
 	return 1;
 }
+
+static inline void _Graph_TryAddRelationMatrix(Graph *g, uint r) {
+	uint relation_count = Graph_RelationTypeCount(g);
+	if(r >= relation_count) {
+		for(uint i = relation_count; i <= r; i++) Graph_AddRelationType(g);
+	}
+}
+
+// Set a given edge in the graph - Used for deserialization of graph.
+// Returns 1 if connection is formed, 0 otherwise.
+void Graph_SetEdge(Graph *g, EdgeID edge_id, NodeID src, NodeID dest, uint r, Edge *e) {
+	GrB_Info info;
+
+	Entity *en = DataBlock_AllocateItemOutOfOrder(g->edges, edge_id);
+	en->id = edge_id;
+	en->prop_count = 0;
+	en->properties = NULL;
+	e->entity = en;
+	e->relationID = r;
+	e->srcNodeID = src;
+	e->destNodeID = dest;
+
+	_Graph_TryAddRelationMatrix(g, r);
+	_Graph_ConnectNodesInMatrix(g, edge_id, src, dest, r);
+}
+
 
 /* Retrieves all either incoming or outgoing edges
  * to/from given node N, depending on given direction. */
@@ -721,6 +773,11 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 	return 1;
 }
 
+inline void Graph_MarkEdgeDeleted(Graph *g, EdgeID id) {
+	assert(g);
+	DataBlock_MarkAsDeletedOutOfOrder(g->edges, id);
+}
+
 void Graph_DeleteNode(Graph *g, Node *n) {
 	/* Assumption, node is completely detected,
 	 * there are no incoming nor outgoing edges
@@ -735,6 +792,11 @@ void Graph_DeleteNode(Graph *g, Node *n) {
 	}
 
 	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
+}
+
+inline void Graph_MarkNodeDeleted(Graph *g, NodeID id) {
+	assert(g);
+	DataBlock_MarkAsDeletedOutOfOrder(g->nodes, id);
 }
 
 static void _Graph_FreeRelationMatrices(Graph *g) {
@@ -1069,14 +1131,14 @@ DataBlockIterator *Graph_ScanEdges(const Graph *g) {
 	return DataBlock_Scan(g->edges);
 }
 
-int Graph_AddLabel(Graph *g) {
+uint Graph_AddLabel(Graph *g) {
 	assert(g);
 	RG_Matrix m = RG_Matrix_New(GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
 	array_append(g->labels, m);
 	return array_len(g->labels) - 1;
 }
 
-int Graph_AddRelationType(Graph *g) {
+uint Graph_AddRelationType(Graph *g) {
 	assert(g);
 
 	RG_Matrix m = RG_Matrix_New(GrB_UINT64, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));

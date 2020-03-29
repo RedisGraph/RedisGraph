@@ -7,6 +7,7 @@
 #include "encode_graphcontext.h"
 #include "encode_graph_entities.h"
 #include "encode_schema.h"
+#include "../../../util/arr.h"
 
 extern bool process_is_child; // Global variable declared in module.c
 
@@ -31,9 +32,6 @@ static void _RdbSaveHeader(RedisModuleIO *rdb, GraphContext *gc) {
 
 	// Number of keys
 	RedisModule_SaveUnsigned(rdb, GraphEncodeContext_GetKeyCount(gc->encoding_context));
-
-	// Numbder of processed keys - current payload index
-	RedisModule_SaveUnsigned(rdb, GraphEncodeContext_GetProccessedKeyCount(gc->encoding_context));
 
 	// Payload type
 	RedisModule_SaveUnsigned(rdb, GraphEncodeContext_GetEncodePhase(gc->encoding_context));

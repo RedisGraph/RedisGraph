@@ -9,7 +9,6 @@
 
 #include "../../graphcontext.h"
 #include "../../../redismodule.h"
-#include "../../../schema/schema.h"
 
 void RdbSaveGraphSchema(RedisModuleIO *rdb, GraphContext *gc);
 
