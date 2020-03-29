@@ -20,6 +20,7 @@ typedef struct {
 	int ref_count;                          // Number of active references.
 	rax *attributes;                        // From strings to attribute IDs
 	char *graph_name;                       // String associated with graph
+	char *tag;                              // String associated with graph Meta keys.
 	char **string_mapping;                  // From attribute IDs to strings
 	Schema **node_schemas;                  // Array of schemas for each node label
 	Schema **relation_schemas;              // Array of schemas for each relation type

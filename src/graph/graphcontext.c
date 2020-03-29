@@ -33,6 +33,18 @@ static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 		thpool_add_work(_thpool, _GraphContext_Free, gc);
 }
 
+void _GraphContext_SetTag(GraphContext *gc) {
+	gc->tag = rm_strdup(gc->graph_name);
+	const char *left_curly_brace = strstr(gc->graph_name, "{");
+	if(left_curly_brace) {
+		const char *right_curly_brace = strstr(left_curly_brace, "}");
+		if(right_curly_brace) {
+			rm_free(gc->tag);
+			gc->tag = rm_strndup(left_curly_brace, right_curly_brace - left_curly_brace);
+		}
+	}
+}
+
 //------------------------------------------------------------------------------
 // GraphContext API
 //------------------------------------------------------------------------------
@@ -356,9 +368,9 @@ SlowLog *GraphContext_GetSlowLog(const GraphContext *gc) {
 // Meta keys API
 //------------------------------------------------------------------------------
 
-static inline char *_GraphContext_CreateGraphMetaKeyName(const char *graph_name, uint64_t id) {
+static inline char *_GraphContext_CreateGraphMetaKeyName(const GraphContext *gc, uint64_t id) {
 	char *name;
-	asprintf(&name, "%s_%llu", graph_name, id);
+	asprintf(&name, "%s_%llu{%s}", gc->graph_name, id, gc->tag);
 	return name;
 }
 
@@ -367,7 +379,7 @@ static void _GraphContext_RemoveMetaKeys(GraphContext *gc, size_t delta) {
 	uint64_t current_key_count = GraphEncodeContext_GetKeyCount(gc->encoding_context);
 	for(uint64_t i = 1; i <= delta; i++) {
 		uint64_t new_key_id = current_key_count - i;
-		char *meta_key_name = _GraphContext_CreateGraphMetaKeyName(gc->graph_name, new_key_id);
+		char *meta_key_name = _GraphContext_CreateGraphMetaKeyName(gc, new_key_id);
 		RedisModuleString *meta_rm_string = RedisModule_CreateString(ctx, meta_key_name,
 																	 strlen(meta_key_name));
 
@@ -384,7 +396,7 @@ static void _GraphContext_AddMetaKeys(GraphContext *gc, size_t delta) {
 	uint64_t current_key_count = GraphEncodeContext_GetKeyCount(gc->encoding_context);
 	for(uint64_t i = 0; i < delta; i++) {
 		uint64_t new_key_id = current_key_count + i;
-		char *meta_key_name = _GraphContext_CreateGraphMetaKeyName(gc->graph_name, new_key_id);
+		char *meta_key_name = _GraphContext_CreateGraphMetaKeyName(gc, new_key_id);
 		RedisModuleString *meta_rm_string = RedisModule_CreateString(ctx, meta_key_name,
 																	 strlen(meta_key_name));
 
@@ -421,6 +433,7 @@ static void _GraphContext_Free(void *arg) {
 	GraphContext *gc = (GraphContext *)arg;
 	uint len;
 	rm_free(gc->graph_name);
+	rm_free(gc->tag);
 
 	// Disable matrix synchronization for graph deletion.
 	Graph_SetMatrixPolicy(gc->g, DISABLED);
