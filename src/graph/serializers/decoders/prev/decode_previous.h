@@ -8,6 +8,7 @@
 
 #include "v4/decode_v4.h"
 #include "v5/decode_v5.h"
+#include "v6/decode_v6.h"
 #include "../../../graphcontext.h"
 #include "../../../../redismodule.h"
 

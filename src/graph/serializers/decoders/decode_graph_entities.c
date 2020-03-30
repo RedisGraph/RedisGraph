@@ -61,13 +61,10 @@ static void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e)
 	if(!propCount) return;
 
 	for(int i = 0; i < propCount; i++) {
-		char *attr_name = RedisModule_LoadStringBuffer(rdb, NULL);
+		Attribute_ID attr_id  = RedisModule_LoadUnsigned(rdb);
 		SIValue attr_value = _RdbLoadSIValue(rdb);
-		Attribute_ID attr_id = GraphContext_GetAttributeID(gc, attr_name);
-		assert(attr_id != ATTRIBUTE_NOTFOUND);
 		GraphEntity_AddProperty(e, attr_id, attr_value);
 		SIValue_Free(attr_value);
-		RedisModule_Free(attr_name);
 	}
 }
 

@@ -58,7 +58,7 @@ static void _RdbSaveSIArray(RedisModuleIO *rdb, const SIValue list) {
 
 }
 
-static void _RdbSaveEntity(RedisModuleIO *rdb, const Entity *e,  char **attr_map) {
+static void _RdbSaveEntity(RedisModuleIO *rdb, const Entity *e) {
 	/* Format:
 	 * #attributes N
 	 * (name, value type, value) X N  */
@@ -67,14 +67,12 @@ static void _RdbSaveEntity(RedisModuleIO *rdb, const Entity *e,  char **attr_map
 
 	for(int i = 0; i < e->prop_count; i++) {
 		EntityProperty attr = e->properties[i];
-		const char *attr_name = attr_map[attr.id];
-		RedisModule_SaveStringBuffer(rdb, attr_name, strlen(attr_name) + 1);
+		RedisModule_SaveUnsigned(rdb, attr.id);
 		_RdbSaveSIValue(rdb, &attr.value);
 	}
 }
 
-static void _RdbSaveEdge(RedisModuleIO *rdb, const Graph *g, const Edge *e,
-						 int r, char **string_mapping) {
+static void _RdbSaveEdge(RedisModuleIO *rdb, const Graph *g, const Edge *e, int r) {
 
 	/* Format:
 	* edge
@@ -98,7 +96,7 @@ static void _RdbSaveEdge(RedisModuleIO *rdb, const Graph *g, const Edge *e,
 	RedisModule_SaveUnsigned(rdb, r);
 
 	// Edge properties.
-	_RdbSaveEntity(rdb, e->entity, string_mapping);
+	_RdbSaveEntity(rdb, e->entity);
 }
 
 static void _UpdatedEncodePhase(GraphContext *gc) {
@@ -185,7 +183,7 @@ void RdbSaveNodes(RedisModuleIO *rdb, GraphContext *gc) {
 
 		// properties N
 		// (name, value type, value) X N
-		_RdbSaveEntity(rdb, e, gc->string_mapping);
+		_RdbSaveEntity(rdb, e);
 
 	}
 
@@ -276,14 +274,14 @@ void RdbSaveEdges(RedisModuleIO *rdb, GraphContext *gc) {
 		if(SINGLE_EDGE(edgeID)) {
 			edgeID = SINGLE_EDGE_ID(edgeID);
 			Graph_GetEdge(gc->g, edgeID, &e);
-			_RdbSaveEdge(rdb, gc->g, &e, r, gc->string_mapping);
+			_RdbSaveEdge(rdb, gc->g, &e, r);
 		} else {
 			EdgeID *edgeIDs = (EdgeID *)edgeID;
 			int edgeCount = array_len(edgeIDs);
 			for(int i = 0; i < edgeCount; i++) {
 				edgeID = edgeIDs[i];
 				Graph_GetEdge(gc->g, edgeID, &e);
-				_RdbSaveEdge(rdb, gc->g, &e, r, gc->string_mapping);
+				_RdbSaveEdge(rdb, gc->g, &e, r);
 			}
 		}
 	}

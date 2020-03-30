@@ -45,7 +45,8 @@ void GraphMetaType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, void *
 }
 
 void GraphMetaType_Free(void *value) {
-	// No-Op in this type.
+	GraphContext *gc = value;
+	GraphEncodeContext_DecreaseKeyCount(gc->encoding_context, 1);
 }
 
 int GraphMetaType_Register(RedisModuleCtx *ctx) {

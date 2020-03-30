@@ -37,18 +37,9 @@ GraphContext *RdbLoadGraphContext_v5(RedisModuleIO *rdb) {
 	 * graph object
 	*/
 
-	GraphContext *gc = rm_calloc(1, sizeof(GraphContext));
-	// Graph context defaults
-	gc->index_count = 0;
-	gc->attributes = raxNew();
-	gc->string_mapping = array_new(char *, 64);
-	gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
-
-	// Set the thread-local GraphContext, as it will be accessed if we're decoding indexes.
-	QueryCtx_SetGraphCtx(gc);
-
-	// Graph name
-	gc->graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
+	char *graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
+	GraphContext *gc = GraphContext_New(graph_name, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
+	RedisModule_Free(graph_name);
 
 	// Attributes, Load the full attribute mapping.
 	_RdbLoadAttributeKeys(rdb, gc);
@@ -57,7 +48,7 @@ GraphContext *RdbLoadGraphContext_v5(RedisModuleIO *rdb) {
 	uint schema_count = RedisModule_LoadUnsigned(rdb);
 
 	// Load each node schema
-	gc->node_schemas = array_new(Schema *, schema_count);
+	gc->node_schemas = array_ensure_cap(gc->node_schemas, schema_count);
 	for(uint i = 0; i < schema_count; i ++) {
 		gc->node_schemas = array_append(gc->node_schemas, RdbLoadSchema_v5(rdb, SCHEMA_NODE));
 		Graph_AddLabel(gc->g);
@@ -67,7 +58,7 @@ GraphContext *RdbLoadGraphContext_v5(RedisModuleIO *rdb) {
 	schema_count = RedisModule_LoadUnsigned(rdb);
 
 	// Load each edge schema
-	gc->relation_schemas = array_new(Schema *, schema_count);
+	gc->relation_schemas = array_ensure_cap(gc->relation_schemas, schema_count);
 	for(uint i = 0; i < schema_count; i ++) {
 		gc->relation_schemas = array_append(gc->relation_schemas, RdbLoadSchema_v5(rdb, SCHEMA_EDGE));
 		Graph_AddRelationType(gc->g);

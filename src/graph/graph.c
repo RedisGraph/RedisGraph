@@ -404,11 +404,11 @@ size_t Graph_DeletedEdgeCount(const Graph *g) {
 	return array_len(g->edges->deletedIdx);
 }
 
-uint Graph_RelationTypeCount(const Graph *g) {
+int Graph_RelationTypeCount(const Graph *g) {
 	return array_len(g->relations);
 }
 
-uint Graph_LabelTypeCount(const Graph *g) {
+int Graph_LabelTypeCount(const Graph *g) {
 	return array_len(g->labels);
 }
 
@@ -434,7 +434,7 @@ int Graph_GetEdge(const Graph *g, EdgeID id, Edge *e) {
 	return (e->entity != NULL);
 }
 
-uint Graph_GetNodeLabel(const Graph *g, NodeID nodeID) {
+int Graph_GetNodeLabel(const Graph *g, NodeID nodeID) {
 	assert(g);
 	uint label = GRAPH_NO_LABEL;
 	for(uint i = 0; i < array_len(g->labels); i++) {
@@ -450,7 +450,7 @@ uint Graph_GetNodeLabel(const Graph *g, NodeID nodeID) {
 	return label;
 }
 
-uint Graph_GetEdgeRelation(const Graph *g, Edge *e) {
+int Graph_GetEdgeRelation(const Graph *g, Edge *e) {
 	assert(g && e);
 	NodeID srcNodeID = Edge_GetSrcNodeID(e);
 	NodeID destNodeID = Edge_GetDestNodeID(e);
@@ -490,7 +490,7 @@ uint Graph_GetEdgeRelation(const Graph *g, Edge *e) {
 	return GRAPH_NO_RELATION;
 }
 
-void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID, uint r,
+void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID, int r,
 								   Edge **edges) {
 	assert(g && r < Graph_RelationTypeCount(g) && edges);
 
@@ -528,7 +528,7 @@ static void _Graph_AddNodeToLabelMatrix(Graph *g, NodeID id, uint label) {
 	}
 }
 
-void Graph_CreateNode(Graph *g, uint label, Node *n) {
+void Graph_CreateNode(Graph *g, int label, Node *n) {
 	assert(g);
 
 	NodeID id;
@@ -540,14 +540,16 @@ void Graph_CreateNode(Graph *g, uint label, Node *n) {
 	_Graph_AddNodeToLabelMatrix(g, id, label);
 }
 
-static inline void _Graph_TryAddLabelMatrix(Graph *g, uint label) {
-	uint label_count = Graph_LabelTypeCount(g);
-	if(label >= label_count) {
-		for(uint i = label_count; i <= label; i++) Graph_AddLabel(g);
+static inline void _Graph_TryAddLabelMatrix(Graph *g, int label) {
+	if(label != GRAPH_NO_LABEL) {
+		uint label_count = Graph_LabelTypeCount(g);
+		if(label >= label_count) {
+			for(uint i = label_count; i <= label; i++) Graph_AddLabel(g);
+		}
 	}
 }
 
-void Graph_SetNode(Graph *g, NodeID id, uint label, Node *n) {
+void Graph_SetNode(Graph *g, NodeID id, int label, Node *n) {
 	assert(g);
 
 	Entity *en = DataBlock_AllocateItemOutOfOrder(g->nodes, id);
@@ -559,7 +561,7 @@ void Graph_SetNode(Graph *g, NodeID id, uint label, Node *n) {
 	_Graph_AddNodeToLabelMatrix(g, id, label);
 }
 
-static void _Graph_ConnectNodesInMatrix(Graph *g, EdgeID edgeId, NodeID src, NodeID dest, uint r) {
+static void _Graph_ConnectNodesInMatrix(Graph *g, EdgeID edgeId, NodeID src, NodeID dest, int r) {
 	GrB_Info info;
 	GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
 	GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
@@ -586,7 +588,7 @@ static void _Graph_ConnectNodesInMatrix(Graph *g, EdgeID edgeId, NodeID src, Nod
 	assert(info == GrB_SUCCESS);
 }
 
-int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, uint r, Edge *e) {
+int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
 
 	Node srcNode;
 	Node destNode;
@@ -608,16 +610,18 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, uint r, Edge *e) {
 	return 1;
 }
 
-static inline void _Graph_TryAddRelationMatrix(Graph *g, uint r) {
-	uint relation_count = Graph_RelationTypeCount(g);
-	if(r >= relation_count) {
-		for(uint i = relation_count; i <= r; i++) Graph_AddRelationType(g);
+static inline void _Graph_TryAddRelationMatrix(Graph *g, int r) {
+	if(r != GRAPH_NO_RELATION) {
+		uint relation_count = Graph_RelationTypeCount(g);
+		if(r >= relation_count) {
+			for(uint i = relation_count; i <= r; i++) Graph_AddRelationType(g);
+		}
 	}
 }
 
 // Set a given edge in the graph - Used for deserialization of graph.
 // Returns 1 if connection is formed, 0 otherwise.
-void Graph_SetEdge(Graph *g, EdgeID edge_id, NodeID src, NodeID dest, uint r, Edge *e) {
+void Graph_SetEdge(Graph *g, EdgeID edge_id, NodeID src, NodeID dest, int r, Edge *e) {
 	GrB_Info info;
 
 	Entity *en = DataBlock_AllocateItemOutOfOrder(g->edges, edge_id);

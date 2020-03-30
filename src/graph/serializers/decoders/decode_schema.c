@@ -64,7 +64,7 @@ void RdbLoadGraphSchema(RedisModuleIO *rdb, GraphContext *gc) {
 	uint schema_count = RedisModule_LoadUnsigned(rdb);
 
 	// Load each node schema
-	gc->node_schemas = array_new(Schema *, schema_count);
+	gc->node_schemas = array_ensure_cap(gc->node_schemas, schema_count);
 	for(uint i = 0; i < schema_count; i ++) {
 		gc->node_schemas = array_append(gc->node_schemas, _RdbLoadSchema(rdb, SCHEMA_NODE));
 	}
@@ -73,7 +73,7 @@ void RdbLoadGraphSchema(RedisModuleIO *rdb, GraphContext *gc) {
 	schema_count = RedisModule_LoadUnsigned(rdb);
 
 	// Load each edge schema
-	gc->relation_schemas = array_new(Schema *, schema_count);
+	gc->relation_schemas = array_ensure_cap(gc->relation_schemas, schema_count);
 	for(uint i = 0; i < schema_count; i ++) {
 		gc->relation_schemas = array_append(gc->relation_schemas, _RdbLoadSchema(rdb, SCHEMA_EDGE));
 	}

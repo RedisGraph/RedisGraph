@@ -20,15 +20,7 @@ static GraphContext *_GetOrCreateGraphContext(RedisModuleIO *rdb) {
 	uint64_t key_number = RedisModule_LoadUnsigned(rdb);
 	GraphContext *gc = GraphContexted_GetRegistredGraphContext(graph_name);
 	if(!gc) {
-		gc = rm_calloc(1, sizeof(GraphContext));
-		// Graph context defaults
-		gc->index_count = 0;
-		gc->attributes = raxNew();
-		gc->string_mapping = array_new(char *, 64);
-		gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
-		gc->slowlog = SlowLog_New();
-		gc->graph_name = strdup(graph_name);
-		gc->encoding_context = GraphEncodeContext_New(key_number);
+		gc = GraphContext_New(graph_name, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 		// While loading the graph, minimize matrix realloc and synchronization calls.
 		Graph_SetMatrixPolicy(gc->g, RESIZE_TO_CAPACITY);
 	}

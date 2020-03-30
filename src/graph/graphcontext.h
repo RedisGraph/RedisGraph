@@ -31,6 +31,8 @@ typedef struct {
 } GraphContext;
 
 /* GraphContext API */
+// Creates and initializes a graph context struct.
+GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t edge_cap);
 /* Retrive the graph context according to the graph name
  * readOnly is the access mode to the graph key */
 GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *graphID, bool readOnly,
@@ -87,6 +89,8 @@ void GraphContext_RemoveFromRegistry(GraphContext *gc);
 
 // Update the keys representing the graph, if needed.
 void GraphContext_UpdateKeys(GraphContext *gc);
+// Retrive the number of keys required to represent the graph.
+uint64_t GraphContext_RequiredGraphKeys(const GraphContext *gc);
 
 // Rename a graph context.
 void GraphContext_Rename(GraphContext *gc, const char *name);

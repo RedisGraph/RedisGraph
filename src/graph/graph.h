@@ -133,7 +133,7 @@ void Graph_AllocateEdges(
 // Return newly created node.
 void Graph_CreateNode(
 	Graph *g,
-	uint label,
+	int label,
 	Node *n
 );
 
@@ -142,7 +142,7 @@ void Graph_CreateNode(
 void Graph_SetNode(
 	Graph *g,
 	NodeID id,
-	uint label,
+	int label,
 	Node *n
 );
 
@@ -152,7 +152,7 @@ int Graph_ConnectNodes(
 	Graph *g,           // Graph on which to operate.
 	NodeID src,         // Source node ID.
 	NodeID dest,        // Destination node ID.
-	uint r,              // Edge type.
+	int r,              // Edge type.
 	Edge *e
 );
 
@@ -162,7 +162,7 @@ void Graph_SetEdge(
 	EdgeID edge_id,
 	NodeID src,
 	NodeID dest,
-	uint r,
+	int r,
 	Edge *e
 );
 
@@ -246,12 +246,12 @@ size_t Graph_DeletedEdgeCount(
 );
 
 // Returns number of different edge types.
-uint Graph_RelationTypeCount(
+int Graph_RelationTypeCount(
 	const Graph *g
 );
 
 // Returns number of different node types.
-uint Graph_LabelTypeCount(
+int Graph_LabelTypeCount(
 	const Graph *g
 );
 
@@ -265,7 +265,7 @@ int Graph_GetNode(
 
 // Retrieves node label
 // Returns GRAPH_NO_LABEL if node has no label.
-uint Graph_GetNodeLabel(
+int Graph_GetNodeLabel(
 	const Graph *g,
 	NodeID nodeID
 );
@@ -280,7 +280,7 @@ int Graph_GetEdge(
 
 // Retrieves edge relation type
 // Returns GRAPH_NO_RELATION if edge has no relation type.
-uint Graph_GetEdgeRelation(
+int Graph_GetEdgeRelation(
 	const Graph *g,
 	Edge *e
 );
@@ -292,7 +292,7 @@ void Graph_GetEdgesConnectingNodes(
 	const Graph *g,     // Graph to get edges from.
 	NodeID srcID,       // Source node of edge
 	NodeID destID,      // Destination node of edge
-	uint r,              // Edge type.
+	int r,              // Edge type.
 	Edge **edges        // array_t of edges connecting src to dest of type r.
 );
 

@@ -38,21 +38,18 @@ static void _RdbSaveHeader(RedisModuleIO *rdb, GraphContext *gc) {
 }
 
 
-static void _SelectAndEncodeNextPhase(RedisModuleIO *rdb, GraphContext *gc) {
+static void _SelectFirstPhase(GraphContext *gc) {
 	// If there are nodes
 	if(Graph_NodeCount(gc->g) > 0) {
 		GraphEncodeContext_SetEncodePhase(gc->encoding_context, NODES);
-		RdbSaveNodes(rdb, gc);
 	}
 	// If all nodes are deleted
 	else if(array_len(gc->g->nodes->deletedIdx) > 0) {
 		GraphEncodeContext_SetEncodePhase(gc->encoding_context, DELETED_NODES);
-		RdbSaveDeletedNodes(rdb, gc);
 	}
 	// No nodes and no deleted nodes => no edges or deleted edges. Only schema.
 	else {
 		GraphEncodeContext_SetEncodePhase(gc->encoding_context, GRAPH_SCHEMA);
-		RdbSaveGraphSchema(rdb, gc);
 	}
 }
 
@@ -70,13 +67,15 @@ void RdbSaveGraphContext(RedisModuleIO *rdb, void *value) {
 	// Acquire a read lock if we're not in a thread-safe context.
 	if(_shouldAcquireLocks()) Graph_AcquireReadLock(gc->g);
 
+	// Verify that the number of required keys is equal to the actual number of keys representing the graph (no key was deleted).
+	assert(GraphContext_RequiredGraphKeys(gc) == GraphEncodeContext_GetKeyCount(gc->encoding_context));
+
+	if(GraphEncodeContext_GetEncodePhase(gc->encoding_context) == RESET) _SelectFirstPhase(gc);
+
 	// Save header
 	_RdbSaveHeader(rdb, gc);
 
 	switch(GraphEncodeContext_GetEncodePhase(gc->encoding_context)) {
-	case RESET:
-		_SelectAndEncodeNextPhase(rdb, gc);
-		break;
 	case NODES:
 		RdbSaveNodes(rdb, gc);
 		break;

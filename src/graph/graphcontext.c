@@ -50,7 +50,7 @@ void _GraphContext_SetTag(GraphContext *gc) {
 //------------------------------------------------------------------------------
 
 // Creates and initializes a graph context struct.
-static GraphContext *_GraphContext_New(const char *graph_name, size_t node_cap, size_t edge_cap) {
+GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t edge_cap) {
 	GraphContext *gc = rm_malloc(sizeof(GraphContext));
 
 	gc->ref_count = 0;      // No refences.
@@ -59,6 +59,7 @@ static GraphContext *_GraphContext_New(const char *graph_name, size_t node_cap, 
 	// Initialize the graph's matrices and datablock storage
 	gc->g = Graph_New(node_cap, edge_cap);
 	gc->graph_name = rm_strdup(graph_name);
+	_GraphContext_SetTag(gc);
 	// Allocate the default space for schemas and indices
 	gc->node_schemas = array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
 	gc->relation_schemas = array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
@@ -80,7 +81,7 @@ static GraphContext *_GraphContext_New(const char *graph_name, size_t node_cap, 
 static GraphContext *_GraphContext_Create(RedisModuleCtx *ctx, const char *graph_name,
 										  size_t node_cap, size_t edge_cap) {
 	// Create and initialize a graph context.
-	GraphContext *gc = _GraphContext_New(graph_name, node_cap, edge_cap);
+	GraphContext *gc = GraphContext_New(graph_name, node_cap, edge_cap);
 	RedisModuleString *graphID = RedisModule_CreateString(ctx, graph_name, strlen(graph_name));
 
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_WRITE);
@@ -384,7 +385,7 @@ static void _GraphContext_RemoveMetaKeys(GraphContext *gc, size_t delta) {
 																	 strlen(meta_key_name));
 
 		RedisModuleKey *key = RedisModule_OpenKey(ctx, meta_rm_string, REDISMODULE_WRITE);
-		RedisModule_DeleteKey(key); // Decreases graph ref count.
+		RedisModule_DeleteKey(key); // Decreases meta key count.
 		RedisModule_CloseKey(key);  // Free key handle.
 		free(meta_key_name);
 	}
@@ -409,12 +410,17 @@ static void _GraphContext_AddMetaKeys(GraphContext *gc, size_t delta) {
 	GraphEncodeContext_IncreaseKeyCount(gc->encoding_context, delta);
 }
 
-void GraphContext_UpdateKeys(GraphContext *gc) {
+uint64_t GraphContext_RequiredGraphKeys(const GraphContext *gc) {
 	uint64_t required_keys = 1;
 	required_keys += ceil(Graph_NodeCount(gc->g) / entities_threshold);
 	required_keys += ceil(Graph_EdgeCount(gc->g) / entities_threshold);
 	required_keys += ceil(Graph_DeletedNodeCount(gc->g) / entities_threshold);
 	required_keys += ceil(Graph_DeletedEdgeCount(gc->g) / entities_threshold);
+	return required_keys;
+}
+
+void GraphContext_UpdateKeys(GraphContext *gc) {
+	uint64_t required_keys = GraphContext_RequiredGraphKeys(gc);
 	uint64_t current_key_count = GraphEncodeContext_GetKeyCount(gc->encoding_context);
 	if(required_keys != current_key_count) {
 		if(required_keys > current_key_count)
@@ -432,7 +438,7 @@ void GraphContext_UpdateKeys(GraphContext *gc) {
 static void _GraphContext_Free(void *arg) {
 	GraphContext *gc = (GraphContext *)arg;
 	uint len;
-	rm_free(gc->graph_name);
+
 	rm_free(gc->tag);
 
 	// Disable matrix synchronization for graph deletion.
@@ -471,6 +477,6 @@ static void _GraphContext_Free(void *arg) {
 
 	_GraphContext_RemoveMetaKeys(gc, GraphEncodeContext_GetKeyCount(gc->encoding_context) - 1);
 	GraphEncodeContext_Free(gc->encoding_context);
-
+	rm_free(gc->graph_name);
 	rm_free(gc);
 }
