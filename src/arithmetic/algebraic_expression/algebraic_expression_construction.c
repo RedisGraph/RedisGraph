@@ -514,7 +514,6 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 		uint sub_count = array_len(sub_exps);
 		for(uint i = 0; i < sub_count; i++) {
 			AlgebraicExpression *exp = sub_exps[i];
-			AlgebraicExpression_Optimize(&exp);
 			// Add constructed expression to return value.
 			exps = array_append(exps, exp);
 		}
