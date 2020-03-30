@@ -121,18 +121,17 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		/* Get specified edge to create. */
 		QGEdge *e = op->pending.edges_to_create[i].edge;
 
+		/* Retrieve source and dest nodes. */
+		Node *src_node = Record_GetNode(r, op->pending.edges_to_create[i].src_idx);
+		Node *dest_node = Record_GetNode(r, op->pending.edges_to_create[i].dest_idx);
+
 		/* Verify that the endpoints of the new edge resolved properly; fail otherwise. */
-		if((Record_GetType(r, op->pending.edges_to_create[i].src_idx) != REC_TYPE_NODE) ||
-		   (Record_GetType(r, op->pending.edges_to_create[i].dest_idx) != REC_TYPE_NODE)) {
+		if(!src_node || !dest_node) {
 			char *error;
 			asprintf(&error, "Failed to create relationship; endpoint was not found.");
 			QueryCtx_SetError(error);
 			QueryCtx_RaiseRuntimeException();
 		}
-
-		/* Retrieve source and dest nodes. */
-		Node *src_node = Record_GetNode(r, op->pending.edges_to_create[i].src_idx);
-		Node *dest_node = Record_GetNode(r, op->pending.edges_to_create[i].dest_idx);
 
 		/* Create the actual edge. */
 		Edge newEdge = {};
