@@ -182,7 +182,7 @@ size_t _Graph_EdgeCap(const Graph *g) {
 }
 
 // Locates edges connecting src to destination.
-void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, uint r, Edge **edges) {
+void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int r, Edge **edges) {
 	assert(g && src < Graph_RequiredMatrixDim(g) && dest < Graph_RequiredMatrixDim(g) &&
 		   r < Graph_RelationTypeCount(g));
 
@@ -436,8 +436,8 @@ int Graph_GetEdge(const Graph *g, EdgeID id, Edge *e) {
 
 int Graph_GetNodeLabel(const Graph *g, NodeID nodeID) {
 	assert(g);
-	uint label = GRAPH_NO_LABEL;
-	for(uint i = 0; i < array_len(g->labels); i++) {
+	int label = GRAPH_NO_LABEL;
+	for(int i = 0; i < array_len(g->labels); i++) {
 		bool x = false;
 		GrB_Matrix M = Graph_GetLabelMatrix(g, i);
 		GrB_Info res = GrB_Matrix_extractElement_BOOL(&x, M, nodeID, nodeID);
@@ -507,14 +507,14 @@ void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID, 
 		_Graph_GetEdgesConnectingNodes(g, srcID, destID, r, edges);
 	} else {
 		// Relation type missing, scan through each edge type.
-		uint relationCount = Graph_RelationTypeCount(g);
-		for(uint i = 0; i < relationCount; i++) {
+		int relationCount = Graph_RelationTypeCount(g);
+		for(int i = 0; i < relationCount; i++) {
 			_Graph_GetEdgesConnectingNodes(g, srcID, destID, i, edges);
 		}
 	}
 }
 
-static void _Graph_AddNodeToLabelMatrix(Graph *g, NodeID id, uint label) {
+static void _Graph_AddNodeToLabelMatrix(Graph *g, NodeID id, int label) {
 	if(label != GRAPH_NO_LABEL) {
 		// Try to set matrix at position [id, id]
 		// incase of a failure, scale matrix.
@@ -542,9 +542,9 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 
 static inline void _Graph_TryAddLabelMatrix(Graph *g, int label) {
 	if(label != GRAPH_NO_LABEL) {
-		uint label_count = Graph_LabelTypeCount(g);
+		int label_count = Graph_LabelTypeCount(g);
 		if(label >= label_count) {
-			for(uint i = label_count; i <= label; i++) Graph_AddLabel(g);
+			for(int i = label_count; i <= label; i++) Graph_AddLabel(g);
 		}
 	}
 }
@@ -1135,14 +1135,14 @@ DataBlockIterator *Graph_ScanEdges(const Graph *g) {
 	return DataBlock_Scan(g->edges);
 }
 
-uint Graph_AddLabel(Graph *g) {
+int Graph_AddLabel(Graph *g) {
 	assert(g);
 	RG_Matrix m = RG_Matrix_New(GrB_BOOL, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
 	array_append(g->labels, m);
 	return array_len(g->labels) - 1;
 }
 
-uint Graph_AddRelationType(Graph *g) {
+int Graph_AddRelationType(Graph *g) {
 	assert(g);
 
 	RG_Matrix m = RG_Matrix_New(GrB_UINT64, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));

@@ -108,12 +108,12 @@ Graph *Graph_New(
 );
 
 // Creates a new label matrix, returns id given to label.
-uint Graph_AddLabel(
+int Graph_AddLabel(
 	Graph *g
 );
 
 // Creates a new relation matrix, returns id given to relation.
-uint Graph_AddRelationType(
+int Graph_AddRelationType(
 	Graph *g
 );
 
