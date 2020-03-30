@@ -592,26 +592,33 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 }
 
 static void _buildOptionalMatchOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
-	// Collect the variables that are bound at this point.
-	rax *bound_vars = raxNew();
-	// Rather than cloning the record map, collect the bound variables along with their
-	// parser-generated constant strings.
-	ExecutionPlan_BoundVariables(plan->root, bound_vars);
-	// Collect the variable names from bound_vars to populate the Argument op we will build.
-	const char **arguments = (const char **)raxValues(bound_vars);
-	raxFree(bound_vars);
-
-	// Create an Apply operator and make it the new root.
-	OpBase *apply_op = NewApplyOp(plan);
-	_ExecutionPlan_UpdateRoot(plan, apply_op);
-
-	// Create an Optional op and add it as an Apply child as a right-hand stream.
 	OpBase *optional = NewOptionalOp(plan);
-	ExecutionPlan_AddOp(apply_op, optional);
+	const char **arguments = NULL;
+	// The root will be non-null unless the first clause is an OPTIONAL MATCH.
+	if(plan->root) {
+		// Collect the variables that are bound at this point.
+		rax *bound_vars = raxNew();
+		// Rather than cloning the record map, collect the bound variables along with their
+		// parser-generated constant strings.
+		ExecutionPlan_BoundVariables(plan->root, bound_vars);
+		// Collect the variable names from bound_vars to populate the Argument op we will build.
+		arguments = (const char **)raxValues(bound_vars);
+		raxFree(bound_vars);
+
+		// Create an Apply operator and make it the new root.
+		OpBase *apply_op = NewApplyOp(plan);
+		_ExecutionPlan_UpdateRoot(plan, apply_op);
+
+		// Create an Optional op and add it as an Apply child as a right-hand stream.
+		ExecutionPlan_AddOp(apply_op, optional);
+	}
 
 	// Build the new Match stream and add it to the Optional stream.
 	OpBase *match_stream = ExecutionPlan_BuildOpsFromPath(plan, arguments, clause);
 	ExecutionPlan_AddOp(optional, match_stream);
+
+	// If no root has been set (OPTIONAL was the first clause), set it to the Optional op.
+	if(!plan->root) _ExecutionPlan_UpdateRoot(plan, optional);
 
 	array_free(arguments);
 }

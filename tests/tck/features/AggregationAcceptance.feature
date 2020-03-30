@@ -207,7 +207,6 @@ Feature: AggregationAcceptance
             | () | 1.0            |
         And no side effects
 
-    @skip
     Scenario: Distinct on unbound node
         Given an empty graph
         When executing query:

@@ -628,7 +628,6 @@ Feature: MatchAcceptance2
       | <(:B)<-[:T]-(:A)> |
     And no side effects
 
-@skip
   Scenario: Simple OPTIONAL MATCH on empty graph
     Given an empty graph
     When executing query:
@@ -920,7 +919,6 @@ Feature: MatchAcceptance2
       | [[:T]] |
     And no side effects
 
-@skip
   Scenario: Matching from null nodes should return no results owing to finding no matches
     Given an empty graph
     When executing query:
@@ -934,7 +932,6 @@ Feature: MatchAcceptance2
       | b |
     And no side effects
 
-@skip
   Scenario: Matching from null nodes should return no results owing to matches being filtered out
     Given an empty graph
     And having executed:
@@ -952,7 +949,6 @@ Feature: MatchAcceptance2
       | b |
     And no side effects
 
-@skip
   Scenario: Optionally matching from null nodes should return null
     Given an empty graph
     When executing query:
@@ -967,7 +963,6 @@ Feature: MatchAcceptance2
       | null |
     And no side effects
 
-@skip
   Scenario: OPTIONAL MATCH returns null
     Given an empty graph
     When executing query:

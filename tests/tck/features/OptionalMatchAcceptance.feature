@@ -108,7 +108,6 @@ Feature: OptionalMatchAcceptance
       | d |
     And no side effects
 
-@skip
   Scenario: WITH after OPTIONAL MATCH
     When executing query:
       """
@@ -295,7 +294,6 @@ Feature: OptionalMatchAcceptance
       | (:C) | null |
     And no side effects
 
-@skip
   Scenario: Handling optional matches between optionally matched entities
     When executing query:
       """
@@ -311,7 +309,6 @@ Feature: OptionalMatchAcceptance
       | null | (:B {num: 46}) | null |
     And no side effects
 
-@skip
   Scenario: Handling optional matches between nulls
     When executing query:
       """
@@ -326,7 +323,6 @@ Feature: OptionalMatchAcceptance
       | null | null | null |
     And no side effects
 
-@skip
   Scenario: OPTIONAL MATCH and `collect()`
     And having executed:
       """

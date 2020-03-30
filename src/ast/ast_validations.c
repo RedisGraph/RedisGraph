@@ -1012,15 +1012,6 @@ static AST_Validation _ValidateQuerySequence(const AST *ast, char **reason) {
 		return AST_INVALID;
 	}
 
-	/* Disallow queries beginning with an OPTIONAL MATCH.
-	 * Cypher does allow this construction, but it is considered an antipattern
-	 * and introduces a lot of edge cases. We can add support for this later if desired. */
-	if(cypher_astnode_type(start_clause) == CYPHER_AST_MATCH &&
-	   cypher_ast_match_is_optional(start_clause)) {
-		asprintf(reason, "RedisGraph does not support beginning a query with OPTIONAL MATCH.");
-		return AST_INVALID;
-	}
-
 	return AST_VALID;
 }
 

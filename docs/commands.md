@@ -137,8 +137,6 @@ It can be considered to fill the same role as LEFT/RIGHT JOIN does in SQL, as MA
 
 OPTIONAL MATCH clauses accept the same patterns as standard MATCH clauses, and may similarly be modified by WHERE clauses.
 
-RedisGraph does not currently support beginning a query with an OPTIONAL MATCH, as this construction is considered an antipattern in Cypher and can lead to unexpected results.
-
 Multiple MATCH and OPTIONAL MATCH clauses can be chained together, though a mandatory MATCH cannot follow an optional one.
 
 ```sh

@@ -286,7 +286,6 @@ Feature: WithAcceptance
             | (:A) | [:REL] | (:B) |
         And no side effects
 
-    @skip
     Scenario: Null handling
         Given an empty graph
         When executing query:
