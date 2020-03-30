@@ -13,7 +13,7 @@
  * If the child produces no records, Optional emits an empty Record exactly once. */
 typedef struct {
 	OpBase op;
-	bool emitted_record;
+	bool emitted_record; // True if this operation has returned at least one Record.
 } Optional;
 
 /* Creates a new Optional operation. */

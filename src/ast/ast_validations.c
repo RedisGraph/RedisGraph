@@ -1024,10 +1024,10 @@ static AST_Validation _ValidateQuerySequence(const AST *ast, char **reason) {
 	return AST_VALID;
 }
 
-// In any given query scope, reading clauses (MATCH, UNWIND, and InQueryCall)
-// cannot follow updating clauses (CREATE, MERGE, DELETE, SET, REMOVE).
-// https://s3.amazonaws.com/artifacts.opencypher.org/railroad/SinglePartQuery.html
-// Additionally, a MATCH clause cannot follow an optional MATCH clause.
+/* In any given query scope, reading clauses (MATCH, UNWIND, and InQueryCall)
+ * cannot follow updating clauses (CREATE, MERGE, DELETE, SET, REMOVE).
+ * https://s3.amazonaws.com/artifacts.opencypher.org/railroad/SinglePartQuery.html
+ * Additionally, a MATCH clause cannot follow an OPTIONAL MATCH clause. */
 static AST_Validation _ValidateClauseOrder(const AST *ast, char **reason) {
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 
@@ -1694,3 +1694,4 @@ AST_Validation AST_Validate_QueryParams(RedisModuleCtx *ctx, const cypher_parse_
 
 	return AST_VALID;
 }
+

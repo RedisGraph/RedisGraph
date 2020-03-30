@@ -25,8 +25,13 @@ OpBase *NewOptionalOp(const ExecutionPlan *plan) {
 
 static Record OptionalConsume(OpBase *opBase) {
 	Optional *op = (Optional *)opBase;
+	// Try to produce a Record from the child op.
 	Record r = OpBase_Consume(opBase->children[0]);
-	if(!r && op->emitted_record == false) r = OpBase_CreateRecord(opBase);
+
+	// Create an empty Record if the child returned NULL and this op has not yet returned data.
+	if(!r && !op->emitted_record) r = OpBase_CreateRecord(opBase);
+
+	// Don't produce multiple empty Records.
 	op->emitted_record = true;
 
 	return r;

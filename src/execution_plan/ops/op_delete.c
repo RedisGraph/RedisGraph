@@ -86,8 +86,7 @@ static Record DeleteConsume(OpBase *opBase) {
 			Edge *e = (Edge *)value.ptrval;
 			op->deleted_edges = array_append(op->deleted_edges, *e);
 		} else if(SI_TYPE(value) & T_NULL) {
-			// Ignore null values.
-			continue;
+			continue; // Ignore null values.
 		} else {
 			/* Expression evaluated to a non-graph entity type
 			 * clear pending deletions and raise an exception. */
