@@ -18,7 +18,7 @@ endif
 
 # Default CFLAGS
 CFLAGS = \
-	-Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result \
+	-fopenmp -Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result \
 	-fPIC \
 	-D_GNU_SOURCE -DREDIS_MODULE_TARGET -DREDISMODULE_EXPERIMENTAL_API -DXXH_STATIC_LINKING_ONLY
 CFLAGS += $(DEBUGFLAGS)
@@ -50,6 +50,8 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/boolean_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/numeric_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/conditional_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/algebraic_expression/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/block_matrix/Source/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/block_matrix/Source/Utility/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/bulk_insert/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/commands/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/datatypes/*.c)
