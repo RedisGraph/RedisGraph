@@ -58,6 +58,3 @@ void SIPathBuilder_AppendEdge(SIValue p, SIValue e, bool RTLEdge);
  * @param  RTLEdge: Indicates edges direction if the path (RTL in query, incoming or outgoing).
  */
 void SIPathBuilder_AppendPath(SIValue p, SIValue other, bool RTLEdge);
-
-void SIPathBuilder_ClearPath(SIValue path);
-

@@ -195,7 +195,6 @@ Feature: DeleteAcceptance
     Then the result should be empty
     And no side effects
 
-@skip
   Scenario: Delete optionally matched relationship
     Given an empty graph
     And having executed:

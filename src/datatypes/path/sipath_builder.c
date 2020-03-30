@@ -91,8 +91,3 @@ void SIPathBuilder_AppendPath(SIValue path, SIValue new_path, bool RTLEdge) {
 	}
 	SIPathBuilder_AppendEdge(path, SIPath_GetRelationship(new_path, new_path_edge_count - 1), RTLEdge);
 }
-
-void SIPathBuilder_ClearPath(SIValue path) {
-	Path_Free(path.ptrval);
-}
-
