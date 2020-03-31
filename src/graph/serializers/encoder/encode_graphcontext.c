@@ -90,6 +90,7 @@ void RdbSaveGraphContext(RedisModuleIO *rdb, void *value) {
 		break;
 	case GRAPH_SCHEMA:
 		RdbSaveGraphSchema(rdb, gc);
+		break;
 	default:
 		assert(false && "Unkown encoding phase");
 		break;

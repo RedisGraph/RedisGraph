@@ -21,6 +21,7 @@
 #include "procedures/procedure.h"
 #include "arithmetic/arithmetic_expression.h"
 #include "graph/serializers/graphcontext_type.h"
+#include "graph/serializers/graphmeta_type.h"
 #include "redisearch_api.h"
 
 //------------------------------------------------------------------------------
@@ -53,6 +54,10 @@ static int _RegisterDataTypes(RedisModuleCtx *ctx) {
 		return REDISMODULE_ERR;
 	}
 
+	if(GraphMetaType_Register(ctx) == REDISMODULE_ERR) {
+		printf("Failed to register GraphMeta type\n");
+		return REDISMODULE_ERR;
+	}
 	return REDISMODULE_OK;
 }
 

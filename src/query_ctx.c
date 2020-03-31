@@ -89,6 +89,11 @@ void QueryCtx_SetGraphCtx(GraphContext *gc) {
 	ctx->gc = gc;
 }
 
+void QueryCtx_SetRedisModuleCtx(RedisModuleCtx *redisctx) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	ctx->global_exec_ctx.redis_ctx = redisctx;
+}
+
 void QueryCtx_SetError(char *error) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	// An error is already set - free it.

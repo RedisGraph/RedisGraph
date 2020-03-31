@@ -143,6 +143,8 @@ void RdbSaveDeletedNodes(RedisModuleIO *rdb, GraphContext *gc) {
 	for(uint64_t i = encoded_deleted_nodes; i < encoded_deleted_nodes + deleted_nodes_to_encode; i++) {
 		RedisModule_SaveUnsigned(rdb, gc->g->nodes->deletedIdx[i]);
 	}
+	GraphEncodeContext_SetProcessedDeletedNodes(gc->encoding_context,
+												encoded_deleted_nodes + deleted_nodes_to_encode);
 	_UpdatedEncodePhase(gc);
 }
 
@@ -219,6 +221,8 @@ void RdbSaveDeletedEdges(RedisModuleIO *rdb, GraphContext *gc) {
 	for(uint64_t i = encoded_deleted_edges; i < encoded_deleted_edges + deleted_edges_to_encode; i++) {
 		RedisModule_SaveUnsigned(rdb, gc->g->edges->deletedIdx[i]);
 	}
+	GraphEncodeContext_SetProcessedDeletedEdges(gc->encoding_context,
+												encoded_deleted_edges + deleted_edges_to_encode);
 	_UpdatedEncodePhase(gc);
 }
 
@@ -260,6 +264,7 @@ void RdbSaveEdges(RedisModuleIO *rdb, GraphContext *gc) {
 		while(depleted && r < relation_count) {
 			// Free iterator
 			GxB_MatrixTupleIter_free(iter);
+			iter = NULL;
 			depleted = false;
 			// Proceed to next relation matrix.
 			r++;
@@ -267,6 +272,7 @@ void RdbSaveEdges(RedisModuleIO *rdb, GraphContext *gc) {
 			if(r == relation_count) goto finish;
 			// Get matrix and set iterator.
 			M = Graph_GetRelationMatrix(gc->g, r);
+			GxB_MatrixTupleIter_new(&iter, M);
 			GxB_MatrixTupleIter_next(iter, &e.srcNodeID, &e.destNodeID, &depleted);
 		}
 
@@ -289,8 +295,10 @@ void RdbSaveEdges(RedisModuleIO *rdb, GraphContext *gc) {
 finish:
 	// Check if done encodeing edges.
 	if(encoded_edges + edges_to_encode == graph_edges) {
-		GxB_MatrixTupleIter_free(iter);
-		iter = NULL;
+		if(iter) {
+			GxB_MatrixTupleIter_free(iter);
+			iter = NULL;
+		}
 	}
 
 	// Update context.

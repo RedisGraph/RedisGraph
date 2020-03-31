@@ -21,6 +21,7 @@ static GraphContext *_GetOrCreateGraphContext(RedisModuleIO *rdb) {
 	GraphContext *gc = GraphContexted_GetRegistredGraphContext(graph_name);
 	if(!gc) {
 		gc = GraphContext_New(graph_name, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
+		gc->encoding_context->keys_count = key_number;
 		// While loading the graph, minimize matrix realloc and synchronization calls.
 		Graph_SetMatrixPolicy(gc->g, RESIZE_TO_CAPACITY);
 	}

@@ -20,6 +20,7 @@ extern RedisModuleType *GraphContextRedisModuleType;
 int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(argc != 2) return RedisModule_WrongArity(ctx);
 
+	QueryCtx_SetRedisModuleCtx(ctx);
 	char *strElapsed = NULL;
 	QueryCtx_BeginTimer(); // Start deletion timing.
 
