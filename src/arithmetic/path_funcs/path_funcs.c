@@ -25,7 +25,7 @@ SIValue AR_TOPATH(SIValue *argv, int argc) {
 	assert(argc == (nelements + 1));
 	for(uint i = 1; i < argc; i++) {
 		// If any element of the path does not exist, the entire path is invalid and NULL should be returned.
-		if(argv[i].type == T_NULL) return SI_NullVal();
+		if(SI_TYPE(argv[i]) == T_NULL) return SI_NullVal();
 	}
 
 	SIValue path = SIPathBuilder_New(nelements);
@@ -39,7 +39,7 @@ SIValue AR_TOPATH(SIValue *argv, int argc) {
 			const cypher_astnode_t *ast_rel_pattern = cypher_ast_pattern_path_get_element(ast_path, i);
 			bool RTL_pattern = cypher_ast_rel_pattern_get_direction(ast_rel_pattern) == CYPHER_REL_INBOUND;
 			// Element type can be either edge, or path.
-			if(element.type == T_EDGE) SIPathBuilder_AppendEdge(path, element, RTL_pattern);
+			if(SI_TYPE(element) == T_EDGE) SIPathBuilder_AppendEdge(path, element, RTL_pattern);
 			// If element is not an edge, it is a path.
 			else {
 				/* Path with 0 edges should not be appended. Their source and destination nodes are the same,
@@ -60,17 +60,17 @@ SIValue AR_TOPATH(SIValue *argv, int argc) {
 }
 
 SIValue AR_PATH_NODES(SIValue *argv, int argc) {
-	if(argv[0].type == T_NULL) return SI_NullVal();
+	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	return SIPath_Nodes(argv[0]);
 }
 
 SIValue AR_PATH_RELATIONSHIPS(SIValue *argv, int argc) {
-	if(argv[0].type == T_NULL) return SI_NullVal();
+	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	return SIPath_Relationships(argv[0]);
 }
 
 SIValue AR_PATH_LENGTH(SIValue *argv, int argc) {
-	if(argv[0].type == T_NULL) return SI_NullVal();
+	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	return SI_LongVal(SIPath_Length(argv[0]));
 }
 

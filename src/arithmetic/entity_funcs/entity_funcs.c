@@ -15,14 +15,14 @@
 
 /* returns the id of a relationship or node. */
 SIValue AR_ID(SIValue *argv, int argc) {
-	if(argv[0].type == T_NULL) return SI_NullVal();
+	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	GraphEntity *graph_entity = (GraphEntity *)argv[0].ptrval;
 	return SI_LongVal(ENTITY_GET_ID(graph_entity));
 }
 
 /* returns a string representations the label of a node. */
 SIValue AR_LABELS(SIValue *argv, int argc) {
-	if(argv[0].type == T_NULL) return SI_NullVal();
+	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	char *label = "";
 	Node *node = argv[0].ptrval;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
@@ -34,7 +34,7 @@ SIValue AR_LABELS(SIValue *argv, int argc) {
 
 /* returns a string representation of the type of a relation. */
 SIValue AR_TYPE(SIValue *argv, int argc) {
-	if(argv[0].type == T_NULL) return SI_NullVal();
+	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	char *type = "";
 	Edge *e = argv[0].ptrval;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
@@ -54,7 +54,7 @@ SIValue AR_EXISTS(SIValue *argv, int argc) {
 }
 
 SIValue _AR_NodeDegree(SIValue *argv, int argc, GRAPH_EDGE_DIR dir) {
-	if(argv[0].type == T_NULL) return SI_NullVal();
+	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	Node *n = (Node *)argv[0].ptrval;
 	Edge *edges = array_new(Edge, 0);
 	GraphContext *gc = QueryCtx_GetGraphCtx();
@@ -83,13 +83,13 @@ SIValue _AR_NodeDegree(SIValue *argv, int argc, GRAPH_EDGE_DIR dir) {
 
 /* Returns the number of incoming edges for given node. */
 SIValue AR_INCOMEDEGREE(SIValue *argv, int argc) {
-	if(argv[0].type == T_NULL) return SI_NullVal();
+	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	return _AR_NodeDegree(argv, argc, GRAPH_EDGE_DIR_INCOMING);
 }
 
 /* Returns the number of outgoing edges for given node. */
 SIValue AR_OUTGOINGDEGREE(SIValue *argv, int argc) {
-	if(argv[0].type == T_NULL) return SI_NullVal();
+	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
 	return _AR_NodeDegree(argv, argc, GRAPH_EDGE_DIR_OUTGOING);
 }
 

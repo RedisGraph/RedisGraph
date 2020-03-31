@@ -158,7 +158,7 @@ RETURN p, w.department, ID(c) as ID"
 
 In this case, `w.department` and `ID` will be returned if the OPTIONAL MATCH was successful, and will be null otherwise.
 
-Clauses like SET, CREATE, and DELETE will ignore null inputs and perform the expected updates on real inputs. One exception to this is that attempting to create a relation with a null endpoint will cause an error:
+Clauses like SET, CREATE, MERGE, and DELETE will ignore null inputs and perform the expected updates on real inputs. One exception to this is that attempting to create a relation with a null endpoint will cause an error:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH

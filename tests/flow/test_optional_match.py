@@ -11,7 +11,7 @@ class testOptionalFlow(FlowTestsBase):
         self.env = Env()
         global redis_graph
         redis_con = self.env.getConnection()
-        redis_graph = Graph("G", redis_con)
+        redis_graph = Graph("optional_match", redis_con)
         self.populate_graph()
 
     def populate_graph(self):
@@ -31,7 +31,7 @@ class testOptionalFlow(FlowTestsBase):
         edge = Edge(nodes[1], "E2", nodes[2])
         redis_graph.add_edge(edge)
 
-        redis_graph.commit()
+        redis_graph.flush()
 
     # Optional MATCH clause that does not interact with the mandatory MATCH.
     def test01_disjoint_optional(self):
@@ -190,4 +190,16 @@ class testOptionalFlow(FlowTestsBase):
                            ['v3', 'v2', 'v1'],
                            ['v3', 'v2', 'v3'],
                            ['v4', None, None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Build a named path in an optional clause.
+    def test15_optional_named_path(self):
+        global redis_graph
+        query = """MATCH (a) OPTIONAL MATCH p = (a)-[]->(b) RETURN length(p) ORDER BY length(p)"""
+        actual_result = redis_graph.query(query)
+        # 2 nodes have outgoing edges and 2 do not, so expected 2 paths of length 1 and 2 null results.
+        expected_result = [[1],
+                           [1],
+                           [None],
+                           [None]]
         self.env.assertEquals(actual_result.result_set, expected_result)

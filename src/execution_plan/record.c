@@ -105,7 +105,6 @@ Node *Record_GetNode(const Record r, int idx) {
 	default:
 		assert("encountered unexpected type in Record; expected Node" && false);
 	}
-	return &(r->entries[idx].value.n);
 }
 
 Edge *Record_GetEdge(const Record r, int idx) {
@@ -120,7 +119,6 @@ Edge *Record_GetEdge(const Record r, int idx) {
 	default:
 		assert("encountered unexpected type in Record; expected Edge" && false);
 	}
-	return &(r->entries[idx].value.e);
 }
 
 SIValue Record_Get(Record r, int idx) {
