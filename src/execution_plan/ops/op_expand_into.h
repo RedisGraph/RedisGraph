@@ -22,7 +22,6 @@ typedef struct {
 	int edgeRelationCount;      // length of edgeRelationTypes.
 	bool setEdge;               // Edge needs to be set.
 	Edge *edges;                // Discovered edges.
-	GxB_MatrixTupleIter *iter;  // Iterator over M.
 	int srcNodeIdx;             // Index into record.
 	int destNodeIdx;            // Index into record.
 	int edgeIdx;                // Index into record.

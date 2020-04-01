@@ -245,10 +245,6 @@ static OpResult ExpandIntoReset(OpBase *ctx) {
 	op->recordCount = 0;
 
 	if(op->edges) array_clear(op->edges);
-	if(op->iter) {
-		GxB_MatrixTupleIter_free(op->iter);
-		op->iter = NULL;
-	}
 	if(op->F != GrB_NULL) GrB_Matrix_clear(op->F);
 	return OP_OK;
 }
