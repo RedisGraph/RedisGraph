@@ -101,9 +101,10 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 	op->F = GrB_NULL;
 	op->M = GrB_NULL;
 	op->recordCount = 0;
-	op->edgeRelationTypes = NULL;
-	op->recordsCap = 0;
 	op->records = NULL;
+	op->recordsCap = 0;
+	op->direction = GRAPH_EDGE_DIR_OUTGOING;
+	op->edgeRelationTypes = NULL;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", ExpandIntoInit, ExpandIntoConsume,
@@ -211,7 +212,7 @@ static Record ExpandIntoConsume(OpBase *opBase) {
 		// Ask child operations for data.
 		for(op->recordCount = 0; op->recordCount < op->recordsCap; op->recordCount++) {
 			Record childRecord = OpBase_Consume(child);
-			// Did not managed to get new data, break.
+			// Did not manage to get new data, break.
 			if(!childRecord) break;
 			if(!Record_GetNode(childRecord, op->srcNodeIdx) ||
 			   !Record_GetNode(childRecord, op->destNodeIdx)) {
@@ -223,6 +224,7 @@ static Record ExpandIntoConsume(OpBase *opBase) {
 			}
 
 			// Store received record.
+			Record_PersistScalars(childRecord);
 			op->records[op->recordCount] = childRecord;
 		}
 

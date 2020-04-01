@@ -36,7 +36,7 @@ static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
 	if(!array_len(op->edges)) return 0;
 
 	Edge *e = op->edges + (array_len(op->edges) - 1);
-	Record_AddEdge(r, op->edgeRecIdx, *e);
+	Record_AddEdge(r, op->edgeIdx, *e);
 	array_pop(op->edges);
 	return 1;
 }
@@ -73,7 +73,7 @@ static void _CondTraverse_CollectEdges(CondTraverse *op, int src, int dest) {
 }
 
 static void _populate_filter_matrix(CondTraverse *op) {
-	for(uint i = 0; i < op->recordsLen; i++) {
+	for(uint i = 0; i < op->recordCount; i++) {
 		Record r = op->records[i];
 		/* Update filter matrix F, set row i at position srcId
 		 * F[i, srcId] = true. */
@@ -130,7 +130,7 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	op->edges = NULL;
 	op->F = GrB_NULL;
 	op->M = GrB_NULL;
-	op->recordsLen = 0;
+	op->recordCount = 0;
 	op->direction = GRAPH_EDGE_DIR_OUTGOING;
 	op->edgeRelationTypes = NULL;
 
@@ -144,11 +144,11 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 
 	const char *edge = AlgebraicExpression_Edge(ae);
 	if(edge) {
+		op->setEdge = true;
 		op->edges = array_new(Edge, 32);
 		QGEdge *qg_edge = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
 		_setupTraversedRelations(op, qg_edge);
-		op->edgeRecIdx = OpBase_Modifies((OpBase *)op, edge);
-		op->setEdge = true;
+		op->edgeIdx = OpBase_Modifies((OpBase *)op, edge);
 		// Determine the edge directions we need to collect.
 		if(qg_edge->bidirectional) {
 			op->direction = GRAPH_EDGE_DIR_BOTH;
@@ -194,10 +194,10 @@ static Record CondTraverseConsume(OpBase *opBase) {
 		/* Run out of tuples, try to get new data.
 		 * Free old records. */
 		op->r = NULL;
-		for(int i = 0; i < op->recordsLen; i++) OpBase_DeleteRecord(op->records[i]);
+		for(int i = 0; i < op->recordCount; i++) OpBase_DeleteRecord(op->records[i]);
 
 		// Ask child operations for data.
-		for(op->recordsLen = 0; op->recordsLen < op->recordsCap; op->recordsLen++) {
+		for(op->recordCount = 0; op->recordCount < op->recordsCap; op->recordCount++) {
 			Record childRecord = OpBase_Consume(child);
 			// If the Record is NULL, the child has been depleted.
 			if(!childRecord) break;
@@ -208,13 +208,14 @@ static Record CondTraverseConsume(OpBase *opBase) {
 				op->recordsLen--;
 				continue;
 			}
+
 			// Store received record.
 			Record_PersistScalars(childRecord);
-			op->records[op->recordsLen] = childRecord;
+			op->records[op->recordCount] = childRecord;
 		}
 
 		// No data.
-		if(op->recordsLen == 0) return NULL;
+		if(op->recordCount == 0) return NULL;
 
 		_traverse(op);
 	}
@@ -240,8 +241,8 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 	// Do not explicitly free op->r, as the same pointer is also held
 	// in the op->records array and as such will be freed there.
 	op->r = NULL;
-	for(int i = 0; i < op->recordsLen; i++) OpBase_DeleteRecord(op->records[i]);
-	op->recordsLen = 0;
+	for(int i = 0; i < op->recordCount; i++) OpBase_DeleteRecord(op->records[i]);
+	op->recordCount = 0;
 
 	if(op->edges) array_clear(op->edges);
 	if(op->iter) {
@@ -292,7 +293,7 @@ static void CondTraverseFree(OpBase *ctx) {
 	}
 
 	if(op->records) {
-		for(int i = 0; i < op->recordsLen; i++) OpBase_DeleteRecord(op->records[i]);
+		for(int i = 0; i < op->recordCount; i++) OpBase_DeleteRecord(op->records[i]);
 		rm_free(op->records);
 		op->records = NULL;
 	}

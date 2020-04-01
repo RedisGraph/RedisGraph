@@ -20,14 +20,15 @@ typedef struct {
 	GrB_Matrix M;               // Algebraic expression result.
 	int *edgeRelationTypes;     // One or more relation types.
 	int edgeRelationCount;      // length of edgeRelationTypes.
-	Edge *edges;                // Discovered edges.
 	bool setEdge;               // Edge needs to be set.
+	Edge *edges;                // Discovered edges.
 	GxB_MatrixTupleIter *iter;  // Iterator over M.
 	int srcNodeIdx;             // Index into record.
 	int destNodeIdx;            // Index into record.
 	int edgeIdx;                // Index into record.
 	uint recordsCap;            // Max number of records to process.
 	uint recordCount;           // Number of records to process.
+	GRAPH_EDGE_DIR direction;   // The direction of the referenced edge being traversed.
 	Record *records;            // Array of records.
 	Record r;                   // Current selected record.
 } OpExpandInto;
