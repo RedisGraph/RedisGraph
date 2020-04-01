@@ -75,7 +75,7 @@ GrB_Info BlockMatrix_DotProduct
 	if(nrows != ncols) {
 		LAGRAPH_ERROR("BlockMatrix_DotProduct: Dimensions not compatible", GrB_DIMENSION_MISMATCH);
 	}
-	if(A->block_nrows != B->block_nrows || A->block_ncols != B->block_ncols) {
+	if(A->block_ncols != B->block_nrows) {
 		LAGRAPH_ERROR("BlockMatrix_DotProduct: Dimensions not compatible", GrB_DIMENSION_MISMATCH);
 	}
 	if(row >= nrows || col >= ncols) {
