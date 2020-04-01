@@ -24,65 +24,6 @@ static inline int ExpandIntoToString(const OpBase *ctx, char *buf, uint buf_len)
 	return TraversalToString(ctx, buf, buf_len, ((const OpExpandInto *)ctx)->ae);
 }
 
-/* Collects traversed edge relations.
- * e.g. [e:R0|R1]
- * op->edgeRelationTypes will hold both R0 and R1 IDs.
- * in the case where no relationship types are specified
- * op->edgeRelationTypes will contain GRAPH_NO_RELATION. */
-static void _setupTraversedRelations(OpExpandInto *op, QGEdge *e) {
-	uint reltype_count = array_len(e->reltypeIDs);
-	if(reltype_count > 0) {
-		array_clone(op->edgeRelationTypes, e->reltypeIDs);
-		op->edgeRelationCount = reltype_count;
-	} else {
-		op->edgeRelationCount = 1;
-		op->edgeRelationTypes = array_new(int, 1);
-		op->edgeRelationTypes = array_append(op->edgeRelationTypes, GRAPH_NO_RELATION);
-	}
-}
-
-// Sets traversed edge within record.
-static bool _setEdge(OpExpandInto *op) {
-	// Consumed edges connecting current source and destination nodes.
-	if(!array_len(op->edges)) return false;
-
-	Edge *e = op->edges + (array_len(op->edges) - 1);
-	Record_AddEdge(op->r, op->edgeIdx, *e);
-	array_pop(op->edges);
-	return true;
-}
-
-// Collect edges between the source and destination nodes.
-static void __ExpandInto_CollectEdges(OpExpandInto *op, int src, int dest) {
-	Node *srcNode = Record_GetNode(op->r, src);
-	Node *destNode = Record_GetNode(op->r, dest);
-	for(int i = 0; i < op->edgeRelationCount; i++) {
-		Graph_GetEdgesConnectingNodes(op->graph,
-									  ENTITY_GET_ID(srcNode),
-									  ENTITY_GET_ID(destNode),
-									  op->edgeRelationTypes[i],
-									  &op->edges);
-	}
-}
-
-// Collect edges between the source and destination nodes matching the op's traversal direction.
-static void _ExpandInto_CollectEdges(OpExpandInto *op, int src, int dest) {
-	switch(op->direction) {
-	case GRAPH_EDGE_DIR_OUTGOING:
-		__ExpandInto_CollectEdges(op, op->srcNodeIdx, op->destNodeIdx);
-		return;
-	case GRAPH_EDGE_DIR_INCOMING:
-		// If we're traversing incoming edges, swap the source and destination.
-		__ExpandInto_CollectEdges(op, op->destNodeIdx, op->srcNodeIdx);
-		return;
-	case GRAPH_EDGE_DIR_BOTH:
-		// If we're traversing in both directions, collect edges in both directions.
-		__ExpandInto_CollectEdges(op, op->srcNodeIdx, op->destNodeIdx);
-		__ExpandInto_CollectEdges(op, op->destNodeIdx, op->srcNodeIdx);
-		return;
-	}
-}
-
 static void _populate_filter_matrix(OpExpandInto *op) {
 	for(uint i = 0; i < op->recordCount; i++) {
 		Record r = op->records[i];
@@ -128,39 +69,26 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 	op->graph = g;
 	op->ae = ae;
 	op->r = NULL;
-	op->edges = NULL;
 	op->F = GrB_NULL;
 	op->M = GrB_NULL;
 	op->recordCount = 0;
 	op->records = NULL;
 	op->recordsCap = 0;
-	op->direction = GRAPH_EDGE_DIR_OUTGOING;
-	op->edgeRelationTypes = NULL;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", ExpandIntoInit, ExpandIntoConsume,
 				ExpandIntoReset, ExpandIntoToString, ExpandIntoClone, ExpandIntoFree, false, plan);
 
 	// Make sure that all entities are represented in Record
-	op->edgeIdx = IDENTIFIER_NOT_FOUND;
 	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
 	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Destination(ae), &op->destNodeIdx));
 
 	const char *edge = AlgebraicExpression_Edge(ae);
 	if(edge) {
 		op->setEdge = true;
-		op->edges = array_new(Edge, 32);
+		uint edge_idx = OpBase_Modifies((OpBase *)op, edge);
 		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
-		_setupTraversedRelations(op, e);
-		op->edgeIdx = OpBase_Modifies((OpBase *)op, edge);
-		// Determine the edge directions we need to collect.
-		if(e->bidirectional) {
-			op->direction = GRAPH_EDGE_DIR_BOTH;
-		} else if(AlgebraicExpression_ContainsOp(ae, AL_EXP_TRANSPOSE)) {
-			/* If this operation traverses a transposed edge, the source and destination nodes
-			 * will be swapped in the Record. */
-			op->direction = GRAPH_EDGE_DIR_INCOMING;
-		}
+		Traverse_NewEdgeData(&op->edge_data, ae, e, edge_idx);
 	}
 
 	return (OpBase *)op;
@@ -177,19 +105,16 @@ static OpResult ExpandIntoInit(OpBase *opBase) {
 /* Emits a record when possible,
  * Returns NULL when we've got no more records. */
 static Record _handoff(OpExpandInto *op) {
-	/* If we're required to update edge,
-	 * try to get an edge, if successful we can return quickly,
-	 * otherwise try to get a new pair of source and destination nodes. */
-	if(op->setEdge) {
-		if(_setEdge(op)) return OpBase_CloneRecord(op->r);
-	}
+	/* If we're required to update an edge and have one queued, we can return early.
+	 * Otherwise, try to get a new pair of source and destination nodes. */
+	if(op->setEdge && Traverse_SetEdge(&op->edge_data, op->r)) return OpBase_CloneRecord(op->r);
 
 	/* Find a record where both record's source and destination
 	 * nodes are connected. */
 	while(op->recordCount) {
 		op->recordCount--;
 		// Current record resides at row recordCount.
-		int rowIdx = op->recordCount;
+		uint rowIdx = op->recordCount;
 		op->r = op->records[op->recordCount];
 		Node *destNode = Record_GetNode(op->r, op->destNodeIdx);
 		NodeID destId = ENTITY_GET_ID(destNode);
@@ -198,10 +123,13 @@ static Record _handoff(OpExpandInto *op) {
 		// Src is not connected to dest.
 		if(res != GrB_SUCCESS) continue;
 
-		// If we're here src is connected to dest.
+		// If we're here, src is connected to dest.
 		if(op->setEdge) {
-			_ExpandInto_CollectEdges(op, op->destNodeIdx, op->srcNodeIdx);
-			_setEdge(op);
+			Node *srcNode = Record_GetNode(op->r, op->srcNodeIdx);
+			// Collect all appropriate edges connecting the current pair of endpoints.
+			Traverse_CollectEdges(&op->edge_data, ENTITY_GET_ID(srcNode), destId);
+			// Add an edge to the Record.
+			Traverse_SetEdge(&op->edge_data, op->r);
 			return OpBase_CloneRecord(op->r);
 		}
 
@@ -224,16 +152,10 @@ static Record ExpandIntoConsume(OpBase *opBase) {
 
 	// As long as we don't have a record to emit.
 	while((r = _handoff(op)) == NULL) {
-		/* If we're here, we didn't managed to emit a record,
-		 * clean up and try to get new data points. */
-		for(int i = 0; i < op->recordsCap; i++) {
-			if(op->records[i]) {
-				OpBase_DeleteRecord(op->records[i]);
-				op->records[i] = NULL; // TODO necessary?
-			} else {
-				break;
-			}
-		}
+		/* If we're here, we didn't manage to emit a record.
+		 * Clean up and try to get new data points. */
+		op->r = NULL;
+		for(uint i = 0; i < op->recordCount; i++) OpBase_DeleteRecord(op->records[i]);
 
 		// Ask child operations for data.
 		for(op->recordCount = 0; op->recordCount < op->recordsCap; op->recordCount++) {
@@ -265,12 +187,12 @@ static Record ExpandIntoConsume(OpBase *opBase) {
 static OpResult ExpandIntoReset(OpBase *ctx) {
 	OpExpandInto *op = (OpExpandInto *)ctx;
 	op->r = NULL;
-	for(int i = 0; i < op->recordCount; i++) {
+	for(uint i = 0; i < op->recordCount; i++) {
 		if(op->records[i]) OpBase_DeleteRecord(op->records[i]);
 	}
 	op->recordCount = 0;
 
-	if(op->edges) array_clear(op->edges);
+	if(op->setEdge) array_clear(op->edge_data.edges);
 	if(op->F != GrB_NULL) GrB_Matrix_clear(op->F);
 	return OP_OK;
 }
@@ -294,23 +216,15 @@ static void ExpandIntoFree(OpBase *ctx) {
 		op->M = GrB_NULL;
 	}
 
-	if(op->edges) {
-		array_free(op->edges);
-		op->edges = NULL;
-	}
-
-	if(op->edgeRelationTypes) {
-		array_free(op->edgeRelationTypes);
-		op->edgeRelationTypes = NULL;
-	}
-
 	if(op->ae) {
 		AlgebraicExpression_Free(op->ae);
 		op->ae = NULL;
 	}
 
+	if(op->setEdge) Traverse_FreeEdgeData(&op->edge_data);
+
 	if(op->records) {
-		for(int i = 0; i < op->recordsCap; i++) {
+		for(uint i = 0; i < op->recordsCap; i++) {
 			if(op->records[i]) OpBase_DeleteRecord(op->records[i]);
 		}
 		rm_free(op->records);
