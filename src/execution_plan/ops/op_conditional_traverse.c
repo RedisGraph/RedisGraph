@@ -146,11 +146,11 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	if(edge) {
 		op->setEdge = true;
 		op->edges = array_new(Edge, 32);
-		QGEdge *qg_edge = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
-		_setupTraversedRelations(op, qg_edge);
+		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
+		_setupTraversedRelations(op, e);
 		op->edgeIdx = OpBase_Modifies((OpBase *)op, edge);
 		// Determine the edge directions we need to collect.
-		if(qg_edge->bidirectional) {
+		if(e->bidirectional) {
 			op->direction = GRAPH_EDGE_DIR_BOTH;
 		} else if(AlgebraicExpression_ContainsOp(ae, AL_EXP_TRANSPOSE)) {
 			/* If this operation traverses a transposed edge, the source and destination nodes
