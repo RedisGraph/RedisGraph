@@ -128,6 +128,20 @@ The syntactic sugar `(person_a)<-[:KNOWS]->(person_b)` will return the same resu
 
 The bracketed edge description can be omitted if all relations should be considered: `(person_a)--(person_b)`.
 
+##### Named paths
+
+Named paths are the result of assigning a matched pattern entities into a local variable. The assignment include entities that are explicitly named in the pattern, anonymous entities (without identifier) and all the entities that are implicitly part of the pattern. Named paths are objects that can be query later by designated built in functions.
+
+Example:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH p=(charlie:actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]->(:actor)
+RETURN nodes(p) as actors"
+```
+
+Each path `p` in this query consists of an actor named Charlie Sheen as the source node (note that this is an explicitly named node), an (anonymous) actor as the destination node, and between there can all the nodes and edges which allows this connection between Charlie Sheen and the anonymous actor. The return values for the query are the resultes of the calls for the built in functio `nodes` which extract a path's nodes. In the case the results will be the actors of each path between Charlie Sheen and the anonymous actor (including them).
+
 #### WHERE
 
 This clause is not mandatory, but if you want to filter results, you can specify your predicates here.
