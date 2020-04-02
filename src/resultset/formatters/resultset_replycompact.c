@@ -238,7 +238,7 @@ void ResultSet_EmitCompactRecord(RedisModuleCtx *ctx, GraphContext *gc, const Re
 			break;
 		default:
 			RedisModule_ReplyWithArray(ctx, 2); // Reply with array with space for type and value
-			_ResultSet_CompactReplyWithSIValue(ctx, gc, Record_GetScalar(r, idx));
+			_ResultSet_CompactReplyWithSIValue(ctx, gc, Record_Get(r, idx));
 		}
 	}
 }
@@ -282,3 +282,4 @@ void ResultSet_ReplyWithCompactHeader(RedisModuleCtx *ctx, const char **columns,
 		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
 	}
 }
+

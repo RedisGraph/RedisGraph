@@ -61,9 +61,6 @@ int Record_GetEntryIdx(Record r, const char *alias);
 // Get entry type.
 RecordEntryType Record_GetType(const Record r, int idx);
 
-// Get a scalar from record at position idx.
-SIValue Record_GetScalar(const Record r, int idx);
-
 // Get a node from record at position idx.
 Node *Record_GetNode(const Record r, int idx);
 

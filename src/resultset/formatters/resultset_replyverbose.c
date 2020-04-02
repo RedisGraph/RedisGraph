@@ -180,7 +180,7 @@ void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Re
 			_ResultSet_VerboseReplyWithEdge(ctx, gc, Record_GetEdge(r, idx));
 			break;
 		default:
-			_ResultSet_VerboseReplyWithSIValue(ctx, gc, Record_GetScalar(r, idx));
+			_ResultSet_VerboseReplyWithSIValue(ctx, gc, Record_Get(r, idx));
 		}
 	}
 }
@@ -195,3 +195,4 @@ void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns,
 		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
 	}
 }
+

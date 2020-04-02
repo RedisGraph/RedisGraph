@@ -1,4 +1,5 @@
 from RLTest import Env
+import redis
 from redisgraph import Graph, Node, Edge
 
 from base import FlowTestsBase

@@ -88,11 +88,6 @@ RecordEntryType Record_GetType(const Record r, int idx) {
 	return r->entries[idx].type;
 }
 
-SIValue Record_GetScalar(Record r, int idx) {
-	assert(r->entries[idx].type == REC_TYPE_SCALAR);
-	return r->entries[idx].value.s;
-}
-
 Node *Record_GetNode(const Record r, int idx) {
 	switch(r->entries[idx].type) {
 	case REC_TYPE_NODE:
@@ -129,7 +124,7 @@ SIValue Record_Get(Record r, int idx) {
 	case REC_TYPE_EDGE:
 		return SI_Edge(Record_GetEdge(r, idx));
 	case REC_TYPE_SCALAR:
-		return Record_GetScalar(r, idx);
+		return r->entries[idx].value.s;
 	case REC_TYPE_UNKNOWN:
 		return SI_NullVal();
 	default:
@@ -145,7 +140,7 @@ GraphEntity *Record_GetGraphEntity(const Record r, int idx) {
 	case REC_TYPE_EDGE:
 		return (GraphEntity *)Record_GetEdge(r, idx);
 	case REC_TYPE_SCALAR:
-		return (GraphEntity *)(Record_GetScalar(r, idx).ptrval);
+		return (GraphEntity *)(Record_Get(r, idx).ptrval);
 	default:
 		assert(false);
 	}
@@ -241,7 +236,7 @@ unsigned long long Record_Hash64(const Record r) {
 			len = sizeof(id);
 			break;
 		case REC_TYPE_SCALAR:
-			si = Record_GetScalar(r, i);
+			si = Record_Get(r, i);
 			switch(si.type) {
 			case T_NULL:
 				data = &_null;

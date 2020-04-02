@@ -355,7 +355,7 @@ static AR_EXP_Result _AR_EXP_EvaluateProperty(AR_ExpNode *node, const Record r, 
 		/* Attempted to access a scalar value as a map.
 		 * Set an error and invoke the exception handler. */
 		char *error;
-		SIValue v = Record_GetScalar(r, node->operand.variadic.entity_alias_idx);
+		SIValue v = Record_Get(r, node->operand.variadic.entity_alias_idx);
 		asprintf(&error, "Type mismatch: expected a map but was %s", SIType_ToString(SI_TYPE(v)));
 		QueryCtx_SetError(error); // Set the query-level error.
 		return EVAL_ERR;
