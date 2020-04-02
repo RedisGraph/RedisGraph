@@ -344,12 +344,14 @@ static bool _AR_EXP_UpdateEntityIdx(AR_OperandNode *node, const Record r) {
 
 static AR_EXP_Result _AR_EXP_EvaluateProperty(AR_ExpNode *node, const Record r, SIValue *result) {
 	RecordEntryType t = Record_GetType(r, node->operand.variadic.entity_alias_idx);
-	if(t == REC_TYPE_UNKNOWN) {
-		/* If we attempt to access a null value as a graph entity (due to a
-		 * scenario like a failed OPTIONAL MATCH), return a null value. */
-		*result = SI_NullVal();
-		return EVAL_OK;
-	} else if(!(t & (REC_TYPE_NODE | REC_TYPE_EDGE))) {
+	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
+		if(t == REC_TYPE_UNKNOWN) {
+			/* If we attempt to access an unset Record entry as a graph entity
+			 * (due to a scenario like a failed OPTIONAL MATCH), return a null value. */
+			*result = SI_NullVal();
+			return EVAL_OK;
+		}
+
 		/* Attempted to access a scalar value as a map.
 		 * Set an error and invoke the exception handler. */
 		char *error;

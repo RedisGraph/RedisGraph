@@ -317,6 +317,12 @@ OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_v
 	AST *ast = QueryCtx_GetAST();
 	// Build a temporary AST holding a MATCH clause.
 	cypher_astnode_type_t type = cypher_astnode_type(node);
+
+	/* The AST node we're building a mock MATCH clause for will be a path
+	 * if we're converting a MERGE clause or WHERE filter, and we must build
+	 * and later free a CYPHER_AST_PATTERN node to contain it.
+	 * If instead we're converting an OPTIONAL MATCH, the node is itself a MATCH clause,
+	 * and we will reuse its CYPHER_AST_PATTERN node rather than building a new one. */
 	bool node_is_path = (type == CYPHER_AST_PATTERN_PATH || type == CYPHER_AST_NAMED_PATH);
 	AST *match_stream_ast = AST_MockMatchClause(ast, (cypher_astnode_t *)node, node_is_path);
 

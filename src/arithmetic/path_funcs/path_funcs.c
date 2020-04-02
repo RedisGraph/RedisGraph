@@ -23,14 +23,17 @@ SIValue AR_TOPATH(SIValue *argv, int argc) {
 	const cypher_astnode_t *ast_path = argv[0].ptrval;
 	uint nelements = cypher_ast_pattern_path_nelements(ast_path);
 	assert(argc == (nelements + 1));
-	for(uint i = 1; i < argc; i++) {
-		// If any element of the path does not exist, the entire path is invalid and NULL should be returned.
-		if(SI_TYPE(argv[i]) == T_NULL) return SI_NullVal();
-	}
 
 	SIValue path = SIPathBuilder_New(nelements);
 	for(uint i = 0; i < nelements; i++) {
 		SIValue element = argv[i + 1];
+		if(SI_TYPE(element) == T_NULL) {
+			/* If any element of the path does not exist, the entire path is invalid.
+			 * Free it and return a null value. */
+			SIValue_Free(path);
+			return SI_NullVal();
+		}
+
 		if(i % 2 == 0) {
 			// Nodes are in even position.
 			SIPathBuilder_AppendNode(path, element);

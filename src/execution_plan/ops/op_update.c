@@ -53,7 +53,7 @@ static void _UpdateIndex(EntityUpdateCtx *ctx, GraphContext *gc, Schema *s, SIVa
 	Schema_AddNodeToIndices(s, n, true);
 }
 
-static void _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
+static bool _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
 	/* Retrieve GraphEntity:
 	 * Due to Record freeing we can't maintain the original pointer to GraphEntity object,
 	 * but only a pointer to an Entity object,
@@ -71,7 +71,8 @@ static void _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
 	SIValue *old_value = GraphEntity_GetProperty((GraphEntity *)node, ctx->attr_id);
 
 	if(old_value == PROPERTY_NOTFOUND) {
-		// Add new property.
+		// Adding a new property; do nothing if its value is NULL.
+		if(SI_TYPE(ctx->new_value) == T_NULL) return false;
 		GraphEntity_AddProperty((GraphEntity *)node, ctx->attr_id, ctx->new_value);
 	} else {
 		// Update property.
@@ -80,9 +81,10 @@ static void _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
 
 	// Update index for node entities.
 	_UpdateIndex(ctx, op->gc, s, old_value, &ctx->new_value);
+	return true;
 }
 
-static void _UpdateEdge(OpUpdate *op, EntityUpdateCtx *ctx) {
+static bool _UpdateEdge(OpUpdate *op, EntityUpdateCtx *ctx) {
 	/* Retrieve GraphEntity:
 	* Due to Record freeing we can't maintain the original pointer to GraphEntity object,
 	* but only a pointer to an Entity object,
@@ -96,16 +98,19 @@ static void _UpdateEdge(OpUpdate *op, EntityUpdateCtx *ctx) {
 	SIValue *old_value = GraphEntity_GetProperty((GraphEntity *)edge, ctx->attr_id);
 
 	if(old_value == PROPERTY_NOTFOUND) {
-		// Add new property.
+		// Adding a new property; do nothing if its value is NULL.
+		if(SI_TYPE(ctx->new_value) == T_NULL) return false;
 		GraphEntity_AddProperty((GraphEntity *)edge, ctx->attr_id, ctx->new_value);
 	} else {
 		// Update property.
 		GraphEntity_SetProperty((GraphEntity *)edge, ctx->attr_id, ctx->new_value);
 	}
+	return true;
 }
 
 /* Executes delayed updates. */
 static void _CommitUpdates(OpUpdate *op) {
+	uint properties_set = 0;
 	for(uint i = 0; i < op->pending_updates_count; i++) {
 		EntityUpdateCtx *ctx = &op->pending_updates[i];
 		// Map the attribute key if it has not been encountered before
@@ -113,14 +118,14 @@ static void _CommitUpdates(OpUpdate *op) {
 			ctx->attr_id = GraphContext_FindOrAddAttribute(op->gc, ctx->attribute);
 		}
 		if(ctx->entity_type == GETYPE_NODE) {
-			_UpdateNode(op, ctx);
+			properties_set += _UpdateNode(op, ctx);
 		} else {
-			_UpdateEdge(op, ctx);
+			properties_set += _UpdateEdge(op, ctx);
 		}
 		SIValue_Free(ctx->new_value);
 	}
 
-	if(op->stats) op->stats->properties_set += op->pending_updates_count;
+	if(op->stats) op->stats->properties_set += properties_set;
 }
 
 /* We only cache records if op_update is not the last

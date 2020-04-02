@@ -1042,7 +1042,7 @@ static AST_Validation _ValidateClauseOrder(const AST *ast, char **reason) {
 		if(type == CYPHER_AST_MATCH) {
 			// Check whether this match is optional.
 			bool current_clause_is_optional = cypher_ast_match_is_optional(clause);
-			// If it is not and we have already processed an optional match, emit an error.
+			// If the current clause is non-optional but we have already encountered an optional match, emit an error.
 			if(!current_clause_is_optional && encountered_optional_match) {
 				asprintf(reason, "A WITH clause is required to introduce a MATCH clause after an OPTIONAL MATCH.");
 				return AST_INVALID;

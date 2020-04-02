@@ -78,7 +78,7 @@ static void _populate_filter_matrix(CondTraverse *op) {
 		/* Update filter matrix F, set row i at position srcId
 		 * F[i, srcId] = true. */
 		Node *n = Record_GetNode(r, op->srcNodeIdx);
-		if(!n) continue;  // The expected entity may not be found on optional traversals.
+		assert(n && "failed to resolve source node for traversal");
 		NodeID srcId = ENTITY_GET_ID(n);
 		GrB_Matrix_setElement_BOOL(op->F, true, i, srcId);
 	}
@@ -200,7 +200,15 @@ static Record CondTraverseConsume(OpBase *opBase) {
 		// Ask child operations for data.
 		for(op->recordsLen = 0; op->recordsLen < op->recordsCap; op->recordsLen++) {
 			Record childRecord = OpBase_Consume(child);
+			// If the Record is NULL, the child has been depleted.
 			if(!childRecord) break;
+			if(!Record_GetNode(childRecord, op->srcNodeIdx)) {
+				/* The child Record may not contain the source node in scenarios like
+				 * a failed OPTIONAL MATCH. In this case, delete the Record and try again. */
+				OpBase_DeleteRecord(childRecord);
+				op->recordsLen--;
+				continue;
+			}
 			// Store received record.
 			Record_PersistScalars(childRecord);
 			op->records[op->recordsLen] = childRecord;

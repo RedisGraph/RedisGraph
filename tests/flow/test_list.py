@@ -33,3 +33,68 @@ class testList(FlowTestsBase):
         expected_result = [[0], [1], [2], [3],
                            [4], [5], [6], [7], [8], [9], [10]]
         self.env.assertEquals(result_set, expected_result)
+
+    # List functions should handle null inputs appropriately.
+    def test03_null_list_function_inputs(self):
+        expected_result = [[None]]
+
+        # NULL list argument to subscript.
+        query = """WITH NULL as list RETURN list[0]"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # NULL list argument to slice.
+        query = """WITH NULL as list RETURN list[0..5]"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # NULL list argument to HEAD.
+        query = """WITH NULL as list RETURN head(list)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # NULL list argument to TAIL.
+        query = """WITH NULL as list RETURN tail(list)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # NULL list argument to IN.
+        query = """WITH NULL as list RETURN 'val' in list"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # NULL list argument to SIZE.
+        query = """WITH NULL as list RETURN size(list)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # NULL subscript argument.
+        query = """WITH ['a'] as list RETURN list[NULL]"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # NULL IN non-empty list should return NULL.
+        query = """RETURN NULL in ['val']"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # NULL arguments to slice.
+        query = """WITH ['a'] as list RETURN list[0..NULL]"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # NULL range argument should produce an error.
+        query = """RETURN range(NULL, 5)"""
+        try:
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass
+
+        # NULL IN empty list should return false.
+        query = """RETURN NULL in []"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[False]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
