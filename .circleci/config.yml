@@ -182,7 +182,11 @@ workflows:
   version: 2
   build_branch:
     jobs:
-      - build
+      - build:
+          filters:
+            tags:
+              # Ignore tagging.
+              ignore: /.*/
       - package_branch:
           requires:
             - build
@@ -199,6 +203,7 @@ workflows:
           requires:
             - deploy_to_s3     
 
+# The build_release workflow runs only against tags.
   build_release:
     jobs:
       - build:
