@@ -33,10 +33,10 @@ class testBidirectionalTraversals(FlowTestsBase):
             nodes.append(node)
             acyclic_graph.add_node(node)
 
-        edge = Edge(nodes[0], "E", nodes[1])
+        edge = Edge(nodes[0], "E", nodes[1], properties={"val": 0})
         acyclic_graph.add_edge(edge)
 
-        edge = Edge(nodes[1], "E", nodes[2])
+        edge = Edge(nodes[1], "E", nodes[2], properties={"val": 1})
         acyclic_graph.add_edge(edge)
 
         acyclic_graph.commit()
@@ -328,7 +328,7 @@ class testBidirectionalTraversals(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, traverse_result.result_set)
 
         # Test undirected traversals with a referenced edge.
-        query = """MATCH (a), (b) WITH a, b MATCH (a)-[e:E]-(b) RETURN ID(e), a.val, b.val ORDER BY ID(e), a.val, b.val"""
+        query = """MATCH (a), (b) WITH a, b MATCH (a)-[e:E]-(b) RETURN e.val, a.val, b.val ORDER BY e.val, a.val, b.val"""
         actual_result = acyclic_graph.query(query)
         expected_result = [[0, 'v1', 'v2'],
                            [0, 'v2', 'v1'],
@@ -337,6 +337,6 @@ class testBidirectionalTraversals(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
         # Verify result against the equivalent conditional traversal.
-        query = """MATCH (a)-[e:E]-(b) RETURN ID(e), a.val, b.val ORDER BY ID(e), a.val, b.val"""
+        query = """MATCH (a)-[e:E]-(b) RETURN e.val, a.val, b.val ORDER BY e.val, a.val, b.val"""
         traverse_result = acyclic_graph.query(query)
         self.env.assertEquals(actual_result.result_set, traverse_result.result_set)

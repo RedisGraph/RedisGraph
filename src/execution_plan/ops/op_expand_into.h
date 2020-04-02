@@ -19,8 +19,7 @@ typedef struct {
 	AlgebraicExpression *ae;
 	GrB_Matrix F;               // Filter matrix.
 	GrB_Matrix M;               // Algebraic expression result.
-	bool setEdge;               // Edge needs to be set in the Record.
-	EdgeTraverseData edge_data; // Edge collection data if the edge needs to be set.
+	EdgeTraverseCtx *edge_ctx;  // Edge collection data if the edge needs to be set.
 	int srcNodeIdx;             // Source node index into record.
 	int destNodeIdx;            // Destination  node index into record.
 	uint recordCount;           // Number of held records.

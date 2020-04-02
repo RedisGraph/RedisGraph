@@ -85,10 +85,11 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 
 	const char *edge = AlgebraicExpression_Edge(ae);
 	if(edge) {
-		op->setEdge = true;
+		/* This operation will populate an edge in the Record.
+		 * Prepare all necessary information for collecting matching edges. */
 		uint edge_idx = OpBase_Modifies((OpBase *)op, edge);
 		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
-		Traverse_NewEdgeData(&op->edge_data, ae, e, edge_idx);
+		op->edge_ctx = Traverse_NewEdgeCtx(ae, e, edge_idx);
 	}
 
 	return (OpBase *)op;
@@ -107,7 +108,7 @@ static OpResult ExpandIntoInit(OpBase *opBase) {
 static Record _handoff(OpExpandInto *op) {
 	/* If we're required to update an edge and have one queued, we can return early.
 	 * Otherwise, try to get a new pair of source and destination nodes. */
-	if(op->setEdge && Traverse_SetEdge(&op->edge_data, op->r)) return OpBase_CloneRecord(op->r);
+	if(op->edge_ctx && Traverse_SetEdge(op->edge_ctx, op->r)) return OpBase_CloneRecord(op->r);
 
 	/* Find a record where both record's source and destination
 	 * nodes are connected. */
@@ -123,13 +124,13 @@ static Record _handoff(OpExpandInto *op) {
 		// Src is not connected to dest.
 		if(res != GrB_SUCCESS) continue;
 
-		// If we're here, src is connected to dest.
-		if(op->setEdge) {
+		// If we're here, src is connected to dest. Update the edge if necessary.
+		if(op->edge_ctx) {
 			Node *srcNode = Record_GetNode(op->r, op->srcNodeIdx);
 			// Collect all appropriate edges connecting the current pair of endpoints.
-			Traverse_CollectEdges(&op->edge_data, ENTITY_GET_ID(srcNode), destId);
+			Traverse_CollectEdges(op->edge_ctx, ENTITY_GET_ID(srcNode), destId);
 			// Add an edge to the Record.
-			Traverse_SetEdge(&op->edge_data, op->r);
+			Traverse_SetEdge(op->edge_ctx, op->r);
 			return OpBase_CloneRecord(op->r);
 		}
 
@@ -192,7 +193,7 @@ static OpResult ExpandIntoReset(OpBase *ctx) {
 	}
 	op->recordCount = 0;
 
-	if(op->setEdge) array_clear(op->edge_data.edges);
+	if(op->edge_ctx) Traverse_ResetEdgeCtx(op->edge_ctx);
 	if(op->F != GrB_NULL) GrB_Matrix_clear(op->F);
 	return OP_OK;
 }
@@ -221,7 +222,10 @@ static void ExpandIntoFree(OpBase *ctx) {
 		op->ae = NULL;
 	}
 
-	if(op->setEdge) Traverse_FreeEdgeData(&op->edge_data);
+	if(op->edge_ctx) {
+		Traverse_FreeEdgeCtx(op->edge_ctx);
+		op->edge_ctx = NULL;
+	}
 
 	if(op->records) {
 		for(uint i = 0; i < op->recordsCap; i++) {

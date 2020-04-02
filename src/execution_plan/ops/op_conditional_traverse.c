@@ -87,12 +87,11 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 
 	const char *edge = AlgebraicExpression_Edge(ae);
 	if(edge) {
-		op->setEdge = true;
 		/* This operation will populate an edge in the Record.
 		 * Prepare all necessary information for collecting matching edges. */
 		uint edge_idx = OpBase_Modifies((OpBase *)op, edge);
 		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
-		Traverse_NewEdgeData(&op->edge_data, ae, e, edge_idx);
+		op->edge_ctx = Traverse_NewEdgeCtx(ae, e, edge_idx);
 	}
 
 	return (OpBase *)op;
@@ -115,7 +114,7 @@ static Record CondTraverseConsume(OpBase *opBase) {
 
 	/* If we're required to update an edge and have one queued, we can return early.
 	 * Otherwise, try to get a new pair of source and destination nodes. */
-	if(op->setEdge && Traverse_SetEdge(&op->edge_data, op->r)) return OpBase_CloneRecord(op->r);
+	if(op->edge_ctx && Traverse_SetEdge(op->edge_ctx, op->r)) return OpBase_CloneRecord(op->r);
 
 	bool depleted = true;
 	NodeID src_id = INVALID_ENTITY_ID;
@@ -162,12 +161,12 @@ static Record CondTraverseConsume(OpBase *opBase) {
 	Graph_GetNode(op->graph, dest_id, &destNode);
 	Record_AddNode(op->r, op->destNodeIdx, destNode);
 
-	if(op->setEdge) {
+	if(op->edge_ctx) {
 		Node *srcNode = Record_GetNode(op->r, op->srcNodeIdx);
 		// Collect all appropriate edges connecting the current pair of endpoints.
-		Traverse_CollectEdges(&op->edge_data, ENTITY_GET_ID(srcNode), ENTITY_GET_ID(destNode));
+		Traverse_CollectEdges(op->edge_ctx, ENTITY_GET_ID(srcNode), ENTITY_GET_ID(destNode));
 		// We're guaranteed to have at least one edge.
-		Traverse_SetEdge(&op->edge_data, op->r);
+		Traverse_SetEdge(op->edge_ctx, op->r);
 	}
 
 	return OpBase_CloneRecord(op->r);
@@ -182,7 +181,8 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 	for(uint i = 0; i < op->recordCount; i++) OpBase_DeleteRecord(op->records[i]);
 	op->recordCount = 0;
 
-	if(op->setEdge) array_clear(op->edge_data.edges);
+	if(op->edge_ctx) Traverse_ResetEdgeCtx(op->edge_ctx);
+
 	if(op->iter) {
 		GxB_MatrixTupleIter_free(op->iter);
 		op->iter = NULL;
@@ -220,7 +220,10 @@ static void CondTraverseFree(OpBase *ctx) {
 		op->ae = NULL;
 	}
 
-	if(op->setEdge) Traverse_FreeEdgeData(&op->edge_data);
+	if(op->edge_ctx) {
+		Traverse_FreeEdgeCtx(op->edge_ctx);
+		op->edge_ctx = NULL;
+	}
 
 	if(op->records) {
 		for(uint i = 0; i < op->recordCount; i++) OpBase_DeleteRecord(op->records[i]);

@@ -9,23 +9,27 @@
 #include "../../execution_plan.h"
 #include "../../../arithmetic/algebraic_expression.h"
 
+/* Container struct for traversing and populating referenced edges in
+ * traversal ops like CondTraverse and ExpandInto. */
 typedef struct {
 	int *edgeRelationTypes;     // The relation type IDs that should be collected.
 	Edge *edges;                // Flexible array of all matching edges for the current endpoints.
 	int edgeIdx;                // The Record index for the referenced edge.
 	GRAPH_EDGE_DIR direction;   // The direction of the referenced edge being traversed.
-} EdgeTraverseData;
+} EdgeTraverseCtx;
 
-// Initialize an EdgeTraverseData struct to populate edges appropriately for traversal operations.
-void Traverse_NewEdgeData(EdgeTraverseData *edge_data, AlgebraicExpression *ae,
-						  QGEdge *e, int idx);
+// Initialize an EdgeTraverseCtx struct to populate edges appropriately for traversal operations.
+EdgeTraverseCtx *Traverse_NewEdgeCtx(AlgebraicExpression *ae, QGEdge *e, int idx);
 
 // Collect all appropriate edges between the given endpoints.
-void Traverse_CollectEdges(EdgeTraverseData *edge_data, NodeID src, NodeID dest);
+void Traverse_CollectEdges(EdgeTraverseCtx *edge_ctx, NodeID src, NodeID dest);
 
-// If a matching edge is available, pop it and add it to the Record.
-bool Traverse_SetEdge(EdgeTraverseData *edge_data, Record r);
+// Remove a matching edge from the edges array if one is available and set it in the Record.
+bool Traverse_SetEdge(EdgeTraverseCtx *edge_ctx, Record r);
 
-// Free an EdgeTraverseData struct.
-void Traverse_FreeEdgeData(EdgeTraverseData *edge_data);
+// Reset contained edges within an EdgeTraverseCtx.
+void Traverse_ResetEdgeCtx(EdgeTraverseCtx *edge_ctx);
+
+// Free an EdgeTraverseCtx struct.
+void Traverse_FreeEdgeCtx(EdgeTraverseCtx *edge_ctx);
 

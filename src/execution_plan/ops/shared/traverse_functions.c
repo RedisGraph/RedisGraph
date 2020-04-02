@@ -8,89 +8,90 @@
 #include "../../../query_ctx.h"
 
 // Collect edges between the source and destination nodes.
-static void _Traverse_CollectEdges(EdgeTraverseData *edge_data, NodeID src, NodeID dest) {
+static void _Traverse_CollectEdges(EdgeTraverseCtx *edge_ctx, NodeID src, NodeID dest) {
 	Graph *g = QueryCtx_GetGraph();
-	uint count = array_len(edge_data->edgeRelationTypes);
+	uint count = array_len(edge_ctx->edgeRelationTypes);
 	for(uint i = 0; i < count; i++) {
 		Graph_GetEdgesConnectingNodes(g,
 									  src,
 									  dest,
-									  edge_data->edgeRelationTypes[i],
-									  &edge_data->edges);
+									  edge_ctx->edgeRelationTypes[i],
+									  &edge_ctx->edges);
 	}
 }
 
 /* Collects traversed edge relations.
  * e.g. [e:R0|R1]
- * edge_data->edgeRelationTypes will hold both R0 and R1 IDs.
+ * edge_ctx->edgeRelationTypes will hold both R0 and R1 IDs.
  * in the case where no relationship types are specified
- * edge_data->edgeRelationTypes will contain GRAPH_NO_RELATION. */
-static void _Traverse_SetRelationTypes(EdgeTraverseData *edge_data, QGEdge *e) {
+ * edge_ctx->edgeRelationTypes will contain GRAPH_NO_RELATION. */
+static void _Traverse_SetRelationTypes(EdgeTraverseCtx *edge_ctx, QGEdge *e) {
 	uint reltype_count = array_len(e->reltypeIDs);
 	if(reltype_count > 0) {
-		array_clone(edge_data->edgeRelationTypes, e->reltypeIDs);
+		array_clone(edge_ctx->edgeRelationTypes, e->reltypeIDs);
 	} else {
-		edge_data->edgeRelationTypes = array_new(int, 1);
-		edge_data->edgeRelationTypes = array_append(edge_data->edgeRelationTypes, GRAPH_NO_RELATION);
+		edge_ctx->edgeRelationTypes = array_new(int, 1);
+		edge_ctx->edgeRelationTypes = array_append(edge_ctx->edgeRelationTypes, GRAPH_NO_RELATION);
 	}
 }
 
-void Traverse_NewEdgeData(EdgeTraverseData *edge_data, AlgebraicExpression *ae,
-						  QGEdge *e, int idx) {
-	edge_data->edges = array_new(Edge, 32); // Instantiate array to collect matching edges.
-	_Traverse_SetRelationTypes(edge_data, e); // Build the array of relation type IDs.
-	edge_data->edgeIdx = idx;
+EdgeTraverseCtx *Traverse_NewEdgeCtx(AlgebraicExpression *ae, QGEdge *e, int idx) {
+	EdgeTraverseCtx *edge_ctx = rm_malloc(sizeof(EdgeTraverseCtx));
+	edge_ctx->edges = array_new(Edge, 32); // Instantiate array to collect matching edges.
+	_Traverse_SetRelationTypes(edge_ctx, e); // Build the array of relation type IDs.
+	edge_ctx->edgeIdx = idx;
 	// Determine the edge directions we need to collect.
 	if(e->bidirectional) {
 		// Bidirectional edges matching incoming and outgoing edges.
-		edge_data->direction = GRAPH_EDGE_DIR_BOTH;
+		edge_ctx->direction = GRAPH_EDGE_DIR_BOTH;
 	} else if(AlgebraicExpression_ContainsOp(ae, AL_EXP_TRANSPOSE)) {
 		/* If this operation traverses a transposed edge, the source and destination nodes
 		 * will be swapped in the Record. */
-		edge_data->direction = GRAPH_EDGE_DIR_INCOMING;
+		edge_ctx->direction = GRAPH_EDGE_DIR_INCOMING;
 	} else {
 		// The default traversal direction is outgoing.
-		edge_data->direction = GRAPH_EDGE_DIR_OUTGOING;
+		edge_ctx->direction = GRAPH_EDGE_DIR_OUTGOING;
 	}
+	return edge_ctx;
 }
 
 // Collect edges between the source and destination nodes matching the op's traversal direction.
-void Traverse_CollectEdges(EdgeTraverseData *edge_data, NodeID src, NodeID dest) {
-	switch(edge_data->direction) {
+void Traverse_CollectEdges(EdgeTraverseCtx *edge_ctx, NodeID src, NodeID dest) {
+	switch(edge_ctx->direction) {
 	case GRAPH_EDGE_DIR_OUTGOING:
-		_Traverse_CollectEdges(edge_data, src, dest);
+		_Traverse_CollectEdges(edge_ctx, src, dest);
 		return;
 	case GRAPH_EDGE_DIR_INCOMING:
 		// If we're traversing incoming edges, swap the source and destination.
-		_Traverse_CollectEdges(edge_data, dest, src);
+		_Traverse_CollectEdges(edge_ctx, dest, src);
 		return;
 	case GRAPH_EDGE_DIR_BOTH:
 		// If we're traversing in both directions, collect edges in both directions.
-		_Traverse_CollectEdges(edge_data, src, dest);
-		_Traverse_CollectEdges(edge_data, dest, src);
+		_Traverse_CollectEdges(edge_ctx, src, dest);
+		_Traverse_CollectEdges(edge_ctx, dest, src);
 		return;
 	}
 }
 
-bool Traverse_SetEdge(EdgeTraverseData *edge_data, Record r) {
+bool Traverse_SetEdge(EdgeTraverseCtx *edge_ctx, Record r) {
 	// Return false if all edges have been consumed.
-	if(!array_len(edge_data->edges)) return false;
+	if(!array_len(edge_ctx->edges)) return false;
 
 	// Pop an edge and add it to the Record.
-	Edge e = array_pop(edge_data->edges);
-	Record_AddEdge(r, edge_data->edgeIdx, e);
+	Edge e = array_pop(edge_ctx->edges);
+	Record_AddEdge(r, edge_ctx->edgeIdx, e);
 	return true;
 }
 
-void Traverse_FreeEdgeData(EdgeTraverseData *edge_data) {
-	if(edge_data->edges) {
-		array_free(edge_data->edges);
-		edge_data->edges = NULL;
-	}
+void Traverse_ResetEdgeCtx(EdgeTraverseCtx *edge_ctx) {
+	array_clear(edge_ctx->edges);
+}
 
-	if(edge_data->edgeRelationTypes) {
-		array_free(edge_data->edgeRelationTypes);
-		edge_data->edgeRelationTypes = NULL;
-	}
+void Traverse_FreeEdgeCtx(EdgeTraverseCtx *edge_ctx) {
+	if(!edge_ctx) return;
+
+	array_free(edge_ctx->edges);
+	array_free(edge_ctx->edgeRelationTypes);
+	rm_free(edge_ctx);
 }
 
