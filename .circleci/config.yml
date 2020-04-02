@@ -13,6 +13,11 @@ commands:
               circleci step halt
             fi
 
+parameters:
+  deploy_documents:
+    type: boolean
+    default: false
+
 jobs:
   build:
     docker:
@@ -133,18 +138,7 @@ jobs:
             - build
       - store_artifacts:
           path: /workspace/build
-  deploy_branch:
-    docker:
-      - image: 'redislabsmodules/rmbuilder:latest'
-    steps:
-      - attach_workspace:
-          at: /workspace
-      - run:
-          name: Deploy to S3
-          command: >-
-            aws s3 cp /workspace/build/ s3://redismodules/$PACKAGE_NAME/ --acl
-            public-read --recursive --exclude "*" --include "*.zip"
-  deploy_release:
+  deploy_to_s3:
     docker:
       - image: 'redislabsmodules/rmbuilder:latest'
     steps:
@@ -191,6 +185,28 @@ jobs:
             https://qa-automation-center.redislabs.com/processes
 workflows:
   version: 2
+  build_branch:
+    jobs:
+      - build
+      - package_branch:
+          requires:
+            - build
+          filters:
+            branches:
+              only: master
+      - deploy_to_s3:
+          requires:
+            - package_branch
+      - run_automation:
+          requires:
+            - deploy_to_s3
+      -deploy_docs:
+          requires:
+            - deploy_to_s3     
+
+
+  build_release:
+
   build_and_package:
     jobs:
       - build:
@@ -224,11 +240,11 @@ workflows:
           requires:
             - package_release
       # TODO: deploy_docs should run only when 'docs/' or 'mkdocs.yml' change
+  deploy_documentation:
+    jobs:
       - deploy_docs:
           filters:
             branches:
               only:
                 - master
-                - /^[0-9]+\.[0-9]+$/
-          requires:
-            - package_release
+                - '/^v[0-9].*/'
