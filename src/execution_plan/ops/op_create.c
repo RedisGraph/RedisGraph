@@ -89,7 +89,7 @@ static void _CreateEdges(OpCreate *op, Record r) {
 		}
 
 		/* Create the actual edge. */
-		Edge newEdge = {};
+		Edge newEdge = {0};
 		if(array_len(e->reltypes) > 0) newEdge.relationship = e->reltypes[0];
 		Edge_SetSrcNode(&newEdge, src_node);
 		Edge_SetDestNode(&newEdge, dest_node);

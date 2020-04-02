@@ -19,7 +19,7 @@ AST *AST_MockMatchClause(AST *master_ast, cypher_astnode_t *node, bool node_is_p
 	ast->skip = NULL;
 	ast->limit = NULL;
 	cypher_astnode_t *pattern;
-	struct cypher_input_range range = {};
+	struct cypher_input_range range = {0};
 	const cypher_astnode_t *predicate = NULL;
 	uint child_count = (node_is_path) ? 1 : cypher_astnode_nchildren(node);
 	cypher_astnode_t *children[child_count];
