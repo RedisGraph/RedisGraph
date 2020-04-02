@@ -13,11 +13,6 @@ commands:
               circleci step halt
             fi
 
-parameters:
-  deploy_documents:
-    type: boolean
-    default: false
-
 jobs:
   build:
     docker:
@@ -200,51 +195,24 @@ workflows:
       - run_automation:
           requires:
             - deploy_to_s3
-      -deploy_docs:
+      - deploy_docs:
           requires:
             - deploy_to_s3     
 
-
   build_release:
-
-  build_and_package:
     jobs:
       - build:
-          filters:
-            tags:
-              only: /.*/
-      - package_branch:
-          requires:
-            - build
-          filters:
-            branches:
-              only: master
-      - package_release:
-          requires:
-            - build
           filters:
             branches:
               ignore: /.*/
             tags:
               only: '/^v[0-9].*/'
-      - deploy_branch:
+      - package_release:
           requires:
-            - package_branch
-      - run_automation:
-          requires:
-            - deploy_branch
-      - deploy_release:
-          filters:
-            tags:
-              only: '/^v[0-9].*/'
+            - build
+      - deploy_to_s3:
           requires:
             - package_release
-      # TODO: deploy_docs should run only when 'docs/' or 'mkdocs.yml' change
-  deploy_documentation:
-    jobs:
       - deploy_docs:
-          filters:
-            branches:
-              only:
-                - master
-                - '/^v[0-9].*/'
+          requires:
+            - deploy_to_s3  
