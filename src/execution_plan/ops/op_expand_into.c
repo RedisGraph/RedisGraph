@@ -58,7 +58,6 @@ static void _populate_filter_matrix(OpExpandInto *op) {
 		/* Update filter matrix F, set row i at position srcId
 		 * F[i, srcId] = true. */
 		Node *n = Record_GetNode(r, op->srcNodeIdx);
-		assert(n && "failed to resolve source node for ExpandInto");
 		NodeID srcId = ENTITY_GET_ID(n);
 		GrB_Matrix_setElement_BOOL(op->F, true, i, srcId);
 	}
@@ -159,14 +158,6 @@ static Record _handoff(OpExpandInto *op) {
 		op->r = op->records[op->recordCount];
 		srcNode = Record_GetNode(op->r, op->srcNodeIdx);
 		destNode = Record_GetNode(op->r, op->destNodeIdx);
-		if(!srcNode || !destNode) {
-			// An endpoint may not resolve if an Optional op failed to match,
-			// in which case we can skip this record.
-			// Mark as NULL to avoid double free.
-			op->records[op->recordCount] = NULL;
-			continue;
-
-		}
 		srcId = ENTITY_GET_ID(srcNode);
 		destId = ENTITY_GET_ID(destNode);
 		bool x;
@@ -222,7 +213,8 @@ static Record ExpandIntoConsume(OpBase *opBase) {
 			Record childRecord = OpBase_Consume(child);
 			// Did not managed to get new data, break.
 			if(!childRecord) break;
-			if(!Record_GetNode(childRecord, op->srcNodeIdx)) {
+			if(!Record_GetNode(childRecord, op->srcNodeIdx) ||
+			   !Record_GetNode(childRecord, op->destNodeIdx)) {
 				/* The child Record may not contain the source node in scenarios like
 				 * a failed OPTIONAL MATCH. In this case, delete the Record and try again. */
 				OpBase_DeleteRecord(childRecord);

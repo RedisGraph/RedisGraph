@@ -53,7 +53,13 @@ static void _UpdateIndex(EntityUpdateCtx *ctx, GraphContext *gc, Schema *s, SIVa
 	Schema_AddNodeToIndices(s, n, true);
 }
 
-static bool _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
+/* Set a property on a node. For non-NULL values, the property
+ * will be added or updated if it is already present.
+ * For NULL values, the property will be deleted if present
+ * and nothing will be done otherwise.
+ * Relevant indexes will be updated accordingly.
+ * Returns 1 if a property was set or deleted. */
+static int _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
 	/* Retrieve GraphEntity:
 	 * Due to Record freeing we can't maintain the original pointer to GraphEntity object,
 	 * but only a pointer to an Entity object,
@@ -72,7 +78,7 @@ static bool _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
 
 	if(old_value == PROPERTY_NOTFOUND) {
 		// Adding a new property; do nothing if its value is NULL.
-		if(SI_TYPE(ctx->new_value) == T_NULL) return false;
+		if(SI_TYPE(ctx->new_value) == T_NULL) return 0;
 		GraphEntity_AddProperty((GraphEntity *)node, ctx->attr_id, ctx->new_value);
 	} else {
 		// Update property.
@@ -81,10 +87,15 @@ static bool _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
 
 	// Update index for node entities.
 	_UpdateIndex(ctx, op->gc, s, old_value, &ctx->new_value);
-	return true;
+	return 1;
 }
 
-static bool _UpdateEdge(OpUpdate *op, EntityUpdateCtx *ctx) {
+/* Set a property on an edge. For non-NULL values, the property
+ * will be added or updated if it is already present.
+ * For NULL values, the property will be deleted if present
+ * and nothing will be done otherwise.
+ * Returns 1 if a property was set or deleted. */
+static int _UpdateEdge(OpUpdate *op, EntityUpdateCtx *ctx) {
 	/* Retrieve GraphEntity:
 	* Due to Record freeing we can't maintain the original pointer to GraphEntity object,
 	* but only a pointer to an Entity object,
@@ -99,13 +110,13 @@ static bool _UpdateEdge(OpUpdate *op, EntityUpdateCtx *ctx) {
 
 	if(old_value == PROPERTY_NOTFOUND) {
 		// Adding a new property; do nothing if its value is NULL.
-		if(SI_TYPE(ctx->new_value) == T_NULL) return false;
+		if(SI_TYPE(ctx->new_value) == T_NULL) return 0;
 		GraphEntity_AddProperty((GraphEntity *)edge, ctx->attr_id, ctx->new_value);
 	} else {
 		// Update property.
 		GraphEntity_SetProperty((GraphEntity *)edge, ctx->attr_id, ctx->new_value);
 	}
-	return true;
+	return 1;
 }
 
 /* Executes delayed updates. */
@@ -191,7 +202,13 @@ static Record UpdateConsume(OpBase *opBase) {
 			// If the expected entity was not found, make no updates but do not error.
 			if(t == REC_TYPE_UNKNOWN) continue;
 			// Make sure we're updating either a node or an edge.
-			assert(t == REC_TYPE_NODE || t == REC_TYPE_EDGE);
+			if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
+				char *error;
+				asprintf(&error, "Update error: alias '%s' did not resolve to a graph entity",
+						 update_expression->alias);
+				QueryCtx_SetError(error);
+				QueryCtx_RaiseRuntimeException();
+			}
 			GraphEntityType type = (t == REC_TYPE_NODE) ? GETYPE_NODE : GETYPE_EDGE;
 			GraphEntity *entity = Record_GetGraphEntity(r, update_expression->record_idx);
 

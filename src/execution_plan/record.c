@@ -139,10 +139,8 @@ GraphEntity *Record_GetGraphEntity(const Record r, int idx) {
 		return (GraphEntity *)Record_GetNode(r, idx);
 	case REC_TYPE_EDGE:
 		return (GraphEntity *)Record_GetEdge(r, idx);
-	case REC_TYPE_SCALAR:
-		return (GraphEntity *)(Record_Get(r, idx).ptrval);
 	default:
-		assert(false);
+		assert(false && "encountered unexpected type when trying to retrieve graph entity");
 	}
 	return NULL;
 }

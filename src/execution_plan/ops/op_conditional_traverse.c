@@ -78,7 +78,6 @@ static void _populate_filter_matrix(CondTraverse *op) {
 		/* Update filter matrix F, set row i at position srcId
 		 * F[i, srcId] = true. */
 		Node *n = Record_GetNode(r, op->srcNodeIdx);
-		assert(n && "failed to resolve source node for traversal");
 		NodeID srcId = ENTITY_GET_ID(n);
 		GrB_Matrix_setElement_BOOL(op->F, true, i, srcId);
 	}
