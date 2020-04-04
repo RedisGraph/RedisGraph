@@ -54,3 +54,26 @@ void **raxValues(rax *rax) {
 	return values;
 }
 
+unsigned char **raxKeys(rax *rax) {
+	// Instantiate an array to hold all of the keys in the rax.
+	unsigned char **keys = array_new(unsigned char *, raxSize(rax));
+	raxIterator it;
+	raxStart(&it, rax);
+	// Iterate over all keys in the rax.
+	raxSeek(&it, "^", NULL, 0);
+	while(raxNext(&it)) {
+		// Copy the key into the array.
+		keys = array_append(keys, (unsigned char *)rm_strndup((const char *)it.key, (int)it.key_len));
+	}
+	raxStop(&it);
+	return keys;
+}
+
+void raxClear(rax *rax) {
+	unsigned char **keys = raxKeys(rax);
+	uint key_count = array_len(keys);
+	for(uint i = 0; i < key_count; i++) {
+		raxRemove(rax, keys[i], strlen((const char *)keys[i]), NULL);
+	}
+	array_free(keys);
+}

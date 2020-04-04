@@ -20,3 +20,8 @@ rax *raxClone(rax *orig);
 // This function assumes that each value is a pointer (or at least an 8-byte payload).
 void **raxValues(rax *rax);
 
+// Collect all keys in a rax into an array.
+unsigned char **raxKeys(rax *rax);
+
+// Clears a rax.
+void raxClear(rax *rax);

@@ -540,7 +540,7 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 	_Graph_AddNodeToLabelMatrix(g, id, label);
 }
 
-static inline void _Graph_TryAddLabelMatrix(Graph *g, int label) {
+inline void Graph_TryAddLabelMatrix(Graph *g, int label) {
 	if(label != GRAPH_NO_LABEL) {
 		int label_count = Graph_LabelTypeCount(g);
 		if(label >= label_count) {
@@ -557,7 +557,7 @@ void Graph_SetNode(Graph *g, NodeID id, int label, Node *n) {
 	en->prop_count = 0;
 	en->properties = NULL;
 	n->entity = en;
-	_Graph_TryAddLabelMatrix(g, label);
+	Graph_TryAddLabelMatrix(g, label);
 	_Graph_AddNodeToLabelMatrix(g, id, label);
 }
 

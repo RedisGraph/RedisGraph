@@ -10,6 +10,7 @@
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../redismodule.h"
+#include "../util/uuid.h"
 #include "../util/rmalloc.h"
 #include "../util/thpool/thpool.h"
 #include "serializers/graphcontext_type.h"
@@ -22,7 +23,7 @@ extern uint64_t entities_threshold;
 
 // Forward declarations.
 static void _GraphContext_Free(void *arg);
-static void _GraphContext_RemoveMetaKeys(GraphContext *gc, size_t delta);
+static void _GraphContext_RemoveMetaKeys(GraphContext *gc, size_t count);
 
 static inline void _GraphContext_IncreaseRefCount(GraphContext *gc) {
 	__atomic_fetch_add(&gc->ref_count, 1, __ATOMIC_RELAXED);
@@ -30,10 +31,8 @@ static inline void _GraphContext_IncreaseRefCount(GraphContext *gc) {
 
 static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 	// If the reference count is less than 0, the graph has been marked for deletion and no queries are active - free the graph.
-	if(__atomic_sub_fetch(&gc->ref_count, 1, __ATOMIC_RELAXED) < 0) {
-		_GraphContext_RemoveMetaKeys(gc, GraphEncodeContext_GetKeyCount(gc->encoding_context) - 1);
+	if(__atomic_sub_fetch(&gc->ref_count, 1, __ATOMIC_RELAXED) < 0)
 		thpool_add_work(_thpool, _GraphContext_Free, gc);
-	}
 }
 
 void _GraphContext_SetTag(GraphContext *gc) {
@@ -70,7 +69,7 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 	gc->string_mapping = array_new(char *, 64);
 	gc->attributes = raxNew();
 	gc->slowlog = SlowLog_New();
-	gc->encoding_context = GraphEncodeContext_New(1);
+	gc->encoding_context = GraphEncodeContext_New();
 
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 	QueryCtx_SetGraphCtx(gc);
@@ -149,6 +148,7 @@ void GraphContext_Delete(GraphContext *gc) {
 	 * Redis decided to remove keys to save some space. */
 
 	// Unregister graph object from global list.
+	GraphContext_DeleteMetaKeys(gc);
 	GraphContext_RemoveFromRegistry(gc);
 	_GraphContext_DecreaseRefCount(gc);
 }
@@ -372,48 +372,55 @@ SlowLog *GraphContext_GetSlowLog(const GraphContext *gc) {
 // Meta keys API
 //------------------------------------------------------------------------------
 
-static inline char *_GraphContext_CreateGraphMetaKeyName(const GraphContext *gc, uint64_t id) {
+static inline char *_GraphContext_CreateGraphMetaKeyName(const GraphContext *gc) {
 	char *name;
-	asprintf(&name, "%s_%llu{%s}", gc->graph_name, id, gc->tag);
+	asprintf(&name, "{%s}_%s", gc->graph_name, UUID_New());
 	return name;
 }
 
-static void _GraphContext_RemoveMetaKeys(GraphContext *gc, size_t delta) {
+static void _GraphContext_RemoveMetaKeys(GraphContext *gc, size_t count) {
 	RedisModuleCtx *ctx = QueryCtx_GetRedisModuleCtx();
-	// No module context - run from flush;
-	if(!ctx) return;
-	uint64_t current_key_count = GraphEncodeContext_GetKeyCount(gc->encoding_context);
-	for(uint64_t i = 1; i <= delta; i++) {
-		uint64_t new_key_id = current_key_count - i;
-		char *meta_key_name = _GraphContext_CreateGraphMetaKeyName(gc, new_key_id);
+	// No module context - run from flush or delete;
+	bool free_ctx = false;
+	if(!ctx) {
+		ctx = RedisModule_GetThreadSafeContext(NULL);
+		free_ctx = true;
+	}
+	unsigned char **keys = GraphEncodeContext_GetKeys(gc->encoding_context);
+	for(uint64_t i = 0; i < count; i++) {
+		char *meta_key_name = (char *)keys[i];
 		RedisModuleString *meta_rm_string = RedisModule_CreateString(ctx, meta_key_name,
 																	 strlen(meta_key_name));
 
 		RedisModuleKey *key = RedisModule_OpenKey(ctx, meta_rm_string, REDISMODULE_WRITE);
-		RedisModule_DeleteKey(key); // Decreases meta key count.
-		RedisModule_CloseKey(key);  // Free key handle.
-		free(meta_key_name);
+		if(key) {
+			RedisModule_UnlinkKey(key);
+			RedisModule_CloseKey(key);
+			GraphEncodeContext_DeleteKey(gc->encoding_context, meta_key_name); // Remove from context
+		}
+		RedisModule_FreeString(ctx, meta_rm_string);
 	}
-	GraphEncodeContext_DecreaseKeyCount(gc->encoding_context, delta);
+	if(free_ctx) RedisModule_FreeThreadSafeContext(ctx);
+	array_free(keys);
 }
 
-static void _GraphContext_AddMetaKeys(GraphContext *gc, size_t delta) {
+static void _GraphContext_AddMetaKeys(GraphContext *gc, size_t count) {
 	RedisModuleCtx *ctx = QueryCtx_GetRedisModuleCtx();
-	uint64_t current_key_count = GraphEncodeContext_GetKeyCount(gc->encoding_context);
-	for(uint64_t i = 0; i < delta; i++) {
-		uint64_t new_key_id = current_key_count + i;
-		char *meta_key_name = _GraphContext_CreateGraphMetaKeyName(gc, new_key_id);
+	for(uint64_t i = 0; i < count; i++) {
+		char *meta_key_name = _GraphContext_CreateGraphMetaKeyName(gc);
 		RedisModuleString *meta_rm_string = RedisModule_CreateString(ctx, meta_key_name,
 																	 strlen(meta_key_name));
 
 		RedisModuleKey *key = RedisModule_OpenKey(ctx, meta_rm_string, REDISMODULE_WRITE);
 		// Set value in key.
-		RedisModule_ModuleTypeSetValue(key, GraphMetaRedisModuleType, gc);
+		GraphMetaContext *meta = rm_malloc(sizeof(GraphMetaContext));
+		meta->gc = gc;
+		meta->meta_key_name = meta_key_name;
+		RedisModule_ModuleTypeSetValue(key, GraphMetaRedisModuleType, meta);
 		RedisModule_CloseKey(key);
-		free(meta_key_name);
+		GraphEncodeContext_AddKey(gc->encoding_context, meta_key_name);
+		RedisModule_FreeString(ctx, meta_rm_string);
 	}
-
-	GraphEncodeContext_IncreaseKeyCount(gc->encoding_context, delta);
 }
 
 uint64_t GraphContext_RequiredGraphKeys(const GraphContext *gc) {
@@ -434,6 +441,10 @@ void GraphContext_UpdateKeys(GraphContext *gc) {
 		else
 			_GraphContext_RemoveMetaKeys(gc, current_key_count - required_keys);
 	}
+}
+
+inline void GraphContext_DeleteMetaKeys(GraphContext *gc) {
+	_GraphContext_RemoveMetaKeys(gc, GraphEncodeContext_GetKeyCount(gc->encoding_context) - 1);
 }
 
 //------------------------------------------------------------------------------

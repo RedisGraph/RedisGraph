@@ -10,6 +10,7 @@
 #include "../graphcontext.h"
 #include "encoder/encode_graphcontext.h"
 #include "decoders/decode_graphcontext.h"
+#include "../../util/rmalloc.h"
 
 /* Declaration of the type for redis registration. */
 RedisModuleType *GraphMetaRedisModuleType;
@@ -34,10 +35,12 @@ void *GraphMetaType_RdbLoad(RedisModuleIO *rdb, int encver) {
 	// GraphContext_RegisterWithModule(gc);
 
 	return NULL;
+
 }
 
 void GraphMetaType_RdbSave(RedisModuleIO *rdb, void *value) {
-	RdbSaveGraphContext(rdb, value);
+	GraphMetaContext *meta = value;
+	RdbSaveGraphContext(rdb, meta->gc);
 }
 
 void GraphMetaType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, void *value) {
@@ -45,8 +48,10 @@ void GraphMetaType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, void *
 }
 
 void GraphMetaType_Free(void *value) {
-	GraphContext *gc = value;
-	GraphEncodeContext_DecreaseKeyCount(gc->encoding_context, 1);
+	GraphMetaContext *meta = value;
+	GraphEncodeContext_DeleteKey(meta->gc->encoding_context, meta->meta_key_name);
+	rm_free(meta->meta_key_name);
+	rm_free(meta);
 }
 
 int GraphMetaType_Register(RedisModuleCtx *ctx) {

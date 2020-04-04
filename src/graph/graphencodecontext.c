@@ -7,10 +7,11 @@
 #include "graphencodecontext.h"
 #include "assert.h"
 #include "../util/rmalloc.h"
+#include "../util/rax_extensions.h"
 
-inline GraphEncodeContext *GraphEncodeContext_New(uint64_t key_count) {
+inline GraphEncodeContext *GraphEncodeContext_New() {
 	GraphEncodeContext *ctx = rm_malloc(sizeof(GraphEncodeContext));
-	ctx->keys_count = key_count;
+	ctx->keys = raxNew();
 	GraphEncodeContext_Reset(ctx);
 	return ctx;
 }
@@ -40,7 +41,7 @@ inline void GraphEncodeContext_SetEncodePhase(GraphEncodeContext *ctx, EncodePha
 
 inline uint64_t GraphEncodeContext_GetKeyCount(const GraphEncodeContext *ctx) {
 	assert(ctx);
-	return ctx->keys_count;
+	return raxSize(ctx->keys) + 1;
 }
 
 inline uint64_t GraphEncodeContext_GetProccessedKeyCount(const GraphEncodeContext *ctx) {
@@ -126,25 +127,36 @@ inline void GraphEncodeContext_SetMatrixTupleIterator(GraphEncodeContext *ctx,
 
 inline bool GraphEncodeContext_Finished(const GraphEncodeContext *ctx) {
 	assert(ctx);
-	return ctx->keys_processed == ctx->keys_count;
+	return ctx->keys_processed == GraphEncodeContext_GetKeyCount(ctx);
 }
 
-inline void GraphEncodeContext_IncreaseKeyCount(GraphEncodeContext *ctx, uint64_t delta) {
-	assert(ctx);
-	ctx->keys_count += delta;
+inline void GraphEncodeContext_AddKey(GraphEncodeContext *ctx, const char *key) {
+	assert(ctx && key);
+	raxInsert(ctx->keys, (unsigned char *)key, strlen(key), NULL, NULL);
 }
 
-inline void GraphEncodeContext_DecreaseKeyCount(GraphEncodeContext *ctx, uint64_t delta) {
+inline void GraphEncodeContext_DeleteKey(GraphEncodeContext *ctx, const char *key) {
 	assert(ctx);
-	ctx->keys_count -= delta;
+	raxRemove(ctx->keys, (unsigned char *)key, strlen(key), NULL);
 }
 
 inline void GraphEncodeContext_IncreaseProcessedCount(GraphEncodeContext *ctx) {
 	assert(ctx);
-	assert(ctx->keys_processed < ctx->keys_count);
+	assert(ctx->keys_processed < GraphEncodeContext_GetKeyCount(ctx));
 	ctx->keys_processed++;
 }
 
+inline unsigned char **GraphEncodeContext_GetKeys(GraphEncodeContext *ctx) {
+	assert(ctx);
+	return raxKeys(ctx->keys);
+}
+
 inline void GraphEncodeContext_Free(GraphEncodeContext *ctx) {
-	if(ctx) rm_free(ctx);
+	if(ctx) {
+		if(ctx->keys) {
+			raxFree(ctx->keys);
+			ctx->keys = NULL;
+		}
+		rm_free(ctx);
+	}
 }

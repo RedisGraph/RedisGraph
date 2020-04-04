@@ -30,6 +30,11 @@ typedef struct {
 
 } GraphContext;
 
+typedef struct {
+	GraphContext *gc;
+	char *meta_key_name;
+} GraphMetaContext;
+
 /* GraphContext API */
 // Creates and initializes a graph context struct.
 GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t edge_cap);
@@ -91,6 +96,8 @@ void GraphContext_RemoveFromRegistry(GraphContext *gc);
 void GraphContext_UpdateKeys(GraphContext *gc);
 // Retrive the number of keys required to represent the graph.
 uint64_t GraphContext_RequiredGraphKeys(const GraphContext *gc);
+// Delete the meta keys.
+void GraphContext_DeleteMetaKeys(GraphContext *gc);
 
 // Rename a graph context.
 void GraphContext_Rename(GraphContext *gc, const char *name);

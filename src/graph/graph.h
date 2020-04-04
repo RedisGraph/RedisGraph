@@ -328,6 +328,9 @@ GrB_Matrix Graph_GetLabelMatrix(
 	int label           // Label described by matrix.
 );
 
+// Try adding a label matrix - used on RDB loading.
+void Graph_TryAddLabelMatrix(Graph *g, int label);
+
 // Retrieves a typed adjacency matrix.
 // Matrix is resized if its size doesn't match graph's node count.
 GrB_Matrix Graph_GetRelationMatrix(
