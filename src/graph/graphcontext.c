@@ -70,6 +70,7 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 	gc->attributes = raxNew();
 	gc->slowlog = SlowLog_New();
 	gc->encoding_context = GraphEncodeContext_New();
+	gc->decoding_context = GraphDecodeContext_New();
 
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 	QueryCtx_SetGraphCtx(gc);
@@ -491,6 +492,7 @@ static void _GraphContext_Free(void *arg) {
 	if(gc->slowlog) SlowLog_Free(gc->slowlog);
 
 	GraphEncodeContext_Free(gc->encoding_context);
+	GraphDecodeContext_Free(gc->decoding_context);
 	rm_free(gc->graph_name);
 	rm_free(gc->tag);
 	rm_free(gc);

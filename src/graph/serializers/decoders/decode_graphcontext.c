@@ -13,11 +13,8 @@
 #include "../../../util/rmalloc.h"
 #include "../../../slow_log/slow_log.h"
 
-static GraphContext *_GetOrCreateGraphContext(RedisModuleIO *rdb) {
-	// Graph name
-	char *graph_name =  RedisModule_LoadStringBuffer(rdb, NULL);
-	// Total keys representing the graph.
-	uint64_t key_number = RedisModule_LoadUnsigned(rdb);
+static GraphContext *_GetOrCreateGraphContext(char *graph_name) {
+
 	GraphContext *gc = GraphContexted_GetRegistredGraphContext(graph_name);
 	if(!gc) {
 		gc = GraphContext_New(graph_name, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
@@ -33,7 +30,12 @@ static GraphContext *_GetOrCreateGraphContext(RedisModuleIO *rdb) {
 
 GraphContext *RdbLoadGraphContext(RedisModuleIO *rdb) {
 
-	GraphContext *gc = _GetOrCreateGraphContext(rdb);
+	// Graph name
+	char *graph_name =  RedisModule_LoadStringBuffer(rdb, NULL);
+	// Total keys representing the graph.
+	uint64_t key_number = RedisModule_LoadUnsigned(rdb);
+
+	GraphContext *gc = _GetOrCreateGraphContext(graph_name);
 	EncodePhase encoded_phase =  RedisModule_LoadUnsigned(rdb);
 	switch(encoded_phase) {
 	case NODES:
@@ -55,12 +57,12 @@ GraphContext *RdbLoadGraphContext(RedisModuleIO *rdb) {
 		assert(false && "Unkown encoding");
 		break;
 	}
-	GraphEncodeContext_IncreaseProcessedCount(gc->encoding_context);
-	if(GraphEncodeContext_Finished(gc->encoding_context)) {
+	GraphDecodeContext_IncreaseProcessedCount(gc->decoding_context);
+	if(GraphDecodeContext_GetProccessedKeyCount(gc->decoding_context) == key_number) {
 		// Revert to default synchronization behavior
-		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 		Graph_ApplyAllPending(gc->g);
-		GraphEncodeContext_Reset(gc->encoding_context);
+		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+		GraphDecodeContext_Reset(gc->decoding_context);
 	}
 	QueryCtx_Free(); // Release thread-local variables.
 	return gc;

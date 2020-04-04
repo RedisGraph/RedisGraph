@@ -14,6 +14,7 @@
 #include "../slow_log/slow_log.h"
 #include "graph.h"
 #include "graphencodecontext.h"
+#include "graphdecodecontext.h"
 
 typedef struct {
 	Graph *g;                               // Container for all matrices and entity properties
@@ -26,7 +27,8 @@ typedef struct {
 	Schema **relation_schemas;              // Array of schemas for each relation type
 	unsigned short index_count;             // Number of indicies.
 	SlowLog *slowlog;                       // Slowlog associated with graph.
-	GraphEncodeContext *encoding_context;   // Encode and decode context of the graph.
+	GraphEncodeContext *encoding_context;   // Encode context of the graph.
+	GraphDecodeContext *decoding_context;   // Decode context of the graph.
 
 } GraphContext;
 
