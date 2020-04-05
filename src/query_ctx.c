@@ -225,8 +225,6 @@ void QueryCtx_UnlockCommit(OpBase *writer_op) {
 		// Replicate only in case of changes.
 		RedisModule_Replicate(redis_ctx, ctx->global_exec_ctx.command_name, "cc!", gc->graph_name,
 							  ctx->query_data.query);
-		// Update the keys representing the graph for encoding.
-		GraphContext_UpdateKeys(gc);
 	}
 	ctx->internal_exec_ctx.locked_for_commit = false;
 	// Release graph R/W lock.
@@ -249,8 +247,6 @@ void QueryCtx_ForceUnlockCommit() {
 		// Replicate only in case of changes.
 		RedisModule_Replicate(redis_ctx, ctx->global_exec_ctx.command_name, "cc!", gc->graph_name,
 							  ctx->query_data.query);
-		// Update the keys representing the graph for encoding.
-		GraphContext_UpdateKeys(gc);
 	}
 	ctx->internal_exec_ctx.locked_for_commit = false;
 	// Release graph R/W lock.
