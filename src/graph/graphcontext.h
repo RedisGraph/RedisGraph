@@ -51,6 +51,12 @@ void GraphContext_MarkWriter(RedisModuleCtx *ctx, GraphContext *gc);
 // Mark graph as deleted, reduce graph reference count by 1.
 void GraphContext_Delete(GraphContext *gc);
 
+/* GraphMeta API */
+// Create a new graph meta context.
+GraphMetaContext *GraphMetaContext_New(GraphContext *gc, char *meta_key_name);
+// Free graph meta context memory.
+void GraphMetaContext_Free(GraphMetaContext *ctx);
+
 /* Schema API */
 // Retrieve number of schemas created for given type.
 unsigned short GraphContext_SchemaCount(const GraphContext *gc, SchemaType t);
@@ -94,12 +100,12 @@ GraphContext *GraphContexted_GetRegistredGraphContext(const char *graph_name);
 // Remove GraphContext from global array
 void GraphContext_RemoveFromRegistry(GraphContext *gc);
 
-// Update the keys representing the graph, if needed.
-void GraphContext_UpdateKeys(GraphContext *gc);
 // Retrive the number of keys required to represent the graph.
 uint64_t GraphContext_RequiredGraphKeys(const GraphContext *gc);
+// Create meta keys
+void GraphContext_CreateMetaKeys(RedisModuleCtx *ctx, GraphContext *gc);
 // Delete the meta keys.
-void GraphContext_DeleteMetaKeys(GraphContext *gc);
+void GraphContext_DeleteMetaKeys(RedisModuleCtx *ctx, GraphContext *gc);
 
 // Rename a graph context.
 void GraphContext_Rename(GraphContext *gc, const char *name);

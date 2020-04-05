@@ -125,20 +125,71 @@ static int _RenameGraphHandler(RedisModuleCtx *ctx, int type, const char *event,
 	return REDISMODULE_OK;
 }
 
+static void _CreateKeySpaceMetaKeys(RedisModuleCtx *ctx) {
+	uint graphs_in_keyspace_count = array_len(graphs_in_keyspace);
+	for(uint i = 0; i < graphs_in_keyspace_count; i ++) {
+		GraphContext_CreateMetaKeys(ctx, graphs_in_keyspace[i]);
+	}
+}
+
+static void _ClearKeySpaceMetaKeys(RedisModuleCtx *ctx) {
+	uint graphs_in_keyspace_count = array_len(graphs_in_keyspace);
+	for(uint i = 0; i < graphs_in_keyspace_count; i ++) {
+		GraphContext_DeleteMetaKeys(ctx, graphs_in_keyspace[i]);
+	}
+}
+
 // Delete all meta keys before the actual flush, as the flush may be out of order
 static void _FlushDBHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
 							void *data) {
 	if(eid.id == REDISMODULE_EVENT_FLUSHDB && subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
-		uint graphs_in_keyspace_count = array_len(graphs_in_keyspace);
-		for(uint i = 0; i < graphs_in_keyspace_count; i ++) {
-			GraphContext_DeleteMetaKeys(graphs_in_keyspace[i]);
-		}
+		_ClearKeySpaceMetaKeys(ctx);
 	}
+}
+
+static bool _IsEventPersistenceStart(RedisModuleEvent eid, uint64_t subevent) {
+	return eid.id == REDISMODULE_EVENT_PERSISTENCE  &&
+		   // Normal RDB.
+		   (subevent == REDISMODULE_SUBEVENT_PERSISTENCE_RDB_START ||
+			// preamble AOF.
+			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_AOF_START ||
+			// SAVE and DEBUG RELOAD.
+			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_SYNC_RDB_START);
+}
+
+
+static bool _IsEventPersistenceEnd(RedisModuleEvent eid, uint64_t subevent) {
+	return eid.id == REDISMODULE_EVENT_PERSISTENCE &&
+		   // Save ended.
+		   (subevent == REDISMODULE_SUBEVENT_PERSISTENCE_ENDED ||
+			// Save failed.
+			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_FAILED);
+}
+
+static bool _IsEventLoadingEnd(RedisModuleEvent eid, uint64_t subevent) {
+	return eid.id == REDISMODULE_EVENT_LOADING &&
+		   // Load ended.
+		   (subevent == REDISMODULE_SUBEVENT_LOADING_ENDED ||
+			// Load failed.
+			subevent == REDISMODULE_SUBEVENT_LOADING_FAILED);
+}
+
+static void _PersistenceEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
+									 void *data) {
+	if(_IsEventPersistenceStart(eid, subevent)) _CreateKeySpaceMetaKeys(ctx);
+	else if(_IsEventPersistenceEnd(eid, subevent)) _ClearKeySpaceMetaKeys(ctx);
+}
+
+static void _LoadingEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
+								 void *data) {
+	if(_IsEventLoadingEnd(eid, subevent)) _ClearKeySpaceMetaKeys(ctx);
 }
 
 static void RegisterForkHooks(RedisModuleCtx *ctx) {
 	RedisModule_SubscribeToKeyspaceEvents(ctx, REDISMODULE_NOTIFY_GENERIC, _RenameGraphHandler);
 	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_FlushDB, _FlushDBHandler);
+	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Persistence, _PersistenceEventHandler);
+	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Loading, _LoadingEventHandler);
 	/* Register handlers to control the behavior of fork calls.
 	 * The child process does not require a handler. */
 	assert(pthread_atfork(RG_ForkPrepare, RG_AfterForkParent, RG_AfterForkChild) == 0);
