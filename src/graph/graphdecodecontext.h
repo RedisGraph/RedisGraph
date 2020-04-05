@@ -11,6 +11,7 @@
 
 // A struct that maintains the state of a graph decoding from RDB.
 typedef struct {
+	bool graph_decoding;        // Indication if the current graph is currently in decoding process.
 	uint64_t keys_processed;    // Count the number of procssed graph keys.
 } GraphDecodeContext;
 
@@ -19,6 +20,12 @@ GraphDecodeContext *GraphDecodeContext_New();
 
 // Resest a graph decoding context.
 void GraphDecodeContext_Reset(GraphDecodeContext *ctx);
+
+// Sets the decoding context to indicate about decoding in progress.
+void GraphDecodeContext_SetGraphInDecode(GraphDecodeContext *ctx);
+
+// Return if there is  decoding in progress.
+bool GraphDecodeContext_IsGraphInDecode(GraphDecodeContext *ctx);
 
 // Retrive graph decoding context proccessed key count.
 uint64_t GraphDecodeContext_GetProccessedKeyCount(const GraphDecodeContext *ctx);

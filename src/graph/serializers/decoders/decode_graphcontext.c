@@ -36,6 +36,8 @@ GraphContext *RdbLoadGraphContext(RedisModuleIO *rdb) {
 	uint64_t key_number = RedisModule_LoadUnsigned(rdb);
 
 	GraphContext *gc = _GetOrCreateGraphContext(graph_name);
+	// Indicate the graph in decode.
+	GraphContext_MarkInDecode(gc);
 	EncodePhase encoded_phase =  RedisModule_LoadUnsigned(rdb);
 	switch(encoded_phase) {
 	case NODES:

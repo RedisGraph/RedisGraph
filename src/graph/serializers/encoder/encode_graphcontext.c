@@ -67,9 +67,6 @@ void RdbSaveGraphContext(RedisModuleIO *rdb, void *value) {
 	// Acquire a read lock if we're not in a thread-safe context.
 	if(_shouldAcquireLocks()) Graph_AcquireReadLock(gc->g);
 
-	// Verify that the number of required keys is equal to the actual number of keys representing the graph (no key was deleted).
-	assert(GraphContext_RequiredGraphKeys(gc) == GraphEncodeContext_GetKeyCount(gc->encoding_context));
-
 	if(GraphEncodeContext_GetEncodePhase(gc->encoding_context) == RESET) _SelectFirstPhase(gc);
 
 	// Save header

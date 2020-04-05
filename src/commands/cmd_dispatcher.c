@@ -66,6 +66,10 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(_validate_command_arity(cmd, argc) == false) return RedisModule_WrongArity(ctx);
 	Command_Handler handler = get_command_handler(cmd);
 	GraphContext *gc = GraphContext_Retrieve(ctx, graph_name, true, true);
+	if(GraphContext_IsInDecode(gc)) {
+		RedisModule_ReplyWithError(ctx, "Graph is currently replicating");
+		return REDISMODULE_OK;
+	}
 
 	/* Determin query execution context
 	 * queries issued within a LUA script or multi exec block must

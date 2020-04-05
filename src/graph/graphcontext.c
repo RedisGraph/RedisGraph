@@ -141,6 +141,14 @@ cleanup:
 	RedisModule_FreeString(ctx, graphID);
 }
 
+inline void GraphContext_MarkInDecode(GraphContext *gc) {
+	GraphDecodeContext_SetGraphInDecode(gc->decoding_context);
+}
+
+inline bool GraphContext_IsInDecode(GraphContext *gc) {
+	return GraphDecodeContext_IsGraphInDecode(gc->decoding_context);
+}
+
 void GraphContext_Delete(GraphContext *gc) {
 	/* We're here as a result of a call to:
 	 * GRAPH.DELETE
@@ -400,8 +408,8 @@ static inline char *_GraphContext_CreateGraphMetaKeyName(const GraphContext *gc)
 	return name;
 }
 
-uint64_t GraphContext_RequiredGraphKeys(const GraphContext *gc) {
-	uint64_t required_keys = 1;
+static uint64_t _GraphContext_RequiredMetaKeys(const GraphContext *gc) {
+	uint64_t required_keys = 0;
 	required_keys += ceil((double)Graph_NodeCount(gc->g) / entities_threshold);
 	required_keys += ceil((double)Graph_EdgeCount(gc->g) / entities_threshold);
 	required_keys += ceil((double)Graph_DeletedNodeCount(gc->g) / entities_threshold);
@@ -410,7 +418,7 @@ uint64_t GraphContext_RequiredGraphKeys(const GraphContext *gc) {
 }
 
 void GraphContext_CreateMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
-	uint meta_key_count = GraphContext_RequiredGraphKeys(gc) - 1;
+	uint meta_key_count = _GraphContext_RequiredMetaKeys(gc);
 	for(uint64_t i = 0; i < meta_key_count; i++) {
 		char *meta_key_name = _GraphContext_CreateGraphMetaKeyName(gc);
 		GraphMetaContext *meta = GraphMetaContext_New(gc, meta_key_name);
