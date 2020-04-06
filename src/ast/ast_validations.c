@@ -1543,26 +1543,23 @@ static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, 
 	return ast;
 }
 
-static AST_Validation _ValidateScopes(const cypher_astnode_t *root, char **reason) {
+static AST_Validation _ValidateScopes(AST *mock_ast, char **reason) {
 	AST_Validation res = AST_VALID;
 
-	AST mock_ast; // Build a fake AST with the correct AST root
-	mock_ast.root = root;
-
 	// Verify that the RETURN clause and terminating clause do not violate scoping rules.
-	if(_ValidateQuerySequence(&mock_ast, reason) != AST_VALID) return AST_INVALID;
+	if(_ValidateQuerySequence(mock_ast, reason) != AST_VALID) return AST_INVALID;
 
 	// Validate identifiers, which may be passed between scopes
-	if(_Validate_Aliases_Defined(&mock_ast, reason) == AST_INVALID) return AST_INVALID;
+	if(_Validate_Aliases_Defined(mock_ast, reason) == AST_INVALID) return AST_INVALID;
 
 	// Aliases are scoped by the WITH clauses within the query.
 	// If we have one or more WITH clauses, MATCH validations should be performed one scope at a time.
-	uint *query_scopes = AST_GetClauseIndices(&mock_ast, CYPHER_AST_WITH);
+	uint *query_scopes = AST_GetClauseIndices(mock_ast, CYPHER_AST_WITH);
 	uint with_clause_count = array_len(query_scopes);
 
 	// Query has only one scope, no need to create sub-ASTs
 	if(with_clause_count == 0) {
-		res = _ValidateClauses(&mock_ast, reason);
+		res = _ValidateClauses(mock_ast, reason);
 		goto cleanup;
 	}
 
@@ -1572,7 +1569,7 @@ static AST_Validation _ValidateScopes(const cypher_astnode_t *root, char **reaso
 	for(uint i = 0; i < with_clause_count; i ++) {
 		scope_end = query_scopes[i] + 1; // Switching from index to bound, so add 1
 		// Make a sub-AST containing only the clauses in this scope
-		scoped_ast = _NewMockASTSegment(root, scope_start, scope_end);
+		scoped_ast = _NewMockASTSegment(mock_ast->root, scope_start, scope_end);
 
 		// Perform validations
 		res = _ValidateClauses(scoped_ast, reason);
@@ -1583,8 +1580,8 @@ static AST_Validation _ValidateScopes(const cypher_astnode_t *root, char **reaso
 	}
 
 	// Build and test the final scope (from the last WITH to the last clause)
-	scope_end = cypher_ast_query_nclauses(root);
-	scoped_ast = _NewMockASTSegment(root, scope_start, scope_end);
+	scope_end = cypher_ast_query_nclauses(mock_ast->root);
+	scoped_ast = _NewMockASTSegment(mock_ast->root, scope_start, scope_end);
 	res = _ValidateClauses(scoped_ast, reason);
 	AST_Free(scoped_ast);
 	if(res != AST_VALID) goto cleanup;
@@ -1592,13 +1589,6 @@ static AST_Validation _ValidateScopes(const cypher_astnode_t *root, char **reaso
 cleanup:
 	array_free(query_scopes);
 	return res;
-}
-
-// Performs validations across AST scopes
-static AST_Validation _ValidateGlobalScope(const cypher_astnode_t *root, char **reason) {
-	AST mock_ast; // Build a fake AST with the correct AST root
-	mock_ast.root = root;
-	return _ValidateUnion_Clauses(&mock_ast, reason);
 }
 
 // Checks to see if libcypher-parser reported any errors.
@@ -1638,6 +1628,40 @@ static AST_Validation _AST_Validate_ParseResultRoot(RedisModuleCtx *ctx,
 	return AST_VALID;
 }
 
+static AST_Validation _AST_ValidateUnionQuery(AST *mock_ast, char **reason) {
+	// Verify that the UNION clauses and the columns they join are valid.
+	AST_Validation res = _ValidateUnion_Clauses(mock_ast, reason);
+	if(res != AST_VALID) return res;
+
+	// Each self-contained query delimited by a UNION clause has its own scope.
+	uint *query_scopes = AST_GetClauseIndices(mock_ast, CYPHER_AST_UNION);
+	uint union_count = array_len(query_scopes);
+	AST *scoped_ast;
+	uint scope_end;
+	uint scope_start = 0;
+	for(uint i = 0; i < union_count; i ++) {
+		scope_end = query_scopes[i];
+		// Make a sub-AST containing only the clauses in this scope.
+		scoped_ast = _NewMockASTSegment(mock_ast->root, scope_start, scope_end);
+		res = _ValidateScopes(scoped_ast, reason);
+		AST_Free(scoped_ast);
+		if(res != AST_VALID) goto cleanup;
+
+		// Update the starting index of the scope for the next iteration..
+		scope_start = scope_end;
+	}
+
+	// Build and test the final scope (from the last UNION to the last clause)
+	scope_end = cypher_ast_query_nclauses(mock_ast->root);
+	scoped_ast = _NewMockASTSegment(mock_ast->root, scope_start, scope_end);
+	res = _ValidateScopes(scoped_ast, reason);
+	AST_Free(scoped_ast);
+
+cleanup:
+	array_free(query_scopes);
+	return res;
+}
+
 AST_Validation AST_Validate_Query(RedisModuleCtx *ctx, const cypher_parse_result_t *result) {
 	if(_AST_Validate_ParseResultRoot(ctx, result) != AST_VALID) return AST_INVALID;
 
@@ -1660,15 +1684,19 @@ AST_Validation AST_Validate_Query(RedisModuleCtx *ctx, const cypher_parse_result
 		return AST_VALID;
 	}
 
+	AST mock_ast; // Build a fake AST with the correct AST root
+	mock_ast.root = body;
+
 	// Check for invalid queries not captured by libcypher-parser
-	AST_Validation res = _ValidateScopes(body, &reason);
-	if(res != AST_VALID) {
-		RedisModule_ReplyWithError(ctx, reason);
-		free(reason);
-		return res;
+	AST_Validation res;
+	if(AST_ContainsClause(&mock_ast, CYPHER_AST_UNION)) {
+		// If the query contains a UNION clause, it has nested scopes that should be checked separately.
+		res = _AST_ValidateUnionQuery(&mock_ast, &reason);
+	} else {
+		res = _ValidateScopes(&mock_ast, &reason);
 	}
 
-	res = _ValidateGlobalScope(body, &reason);
+	// Reply with error if validations failed.
 	if(res != AST_VALID) {
 		RedisModule_ReplyWithError(ctx, reason);
 		free(reason);
