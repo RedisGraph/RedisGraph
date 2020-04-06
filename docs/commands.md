@@ -131,7 +131,10 @@ The bracketed edge description can be omitted if all relations should be conside
 
 ##### Named paths
 
-Named paths are the result of assigning a matched pattern entities into a local variable. The assignment include entities that are explicitly named in the pattern, anonymous entities (without identifier) and all the entities that are implicitly part of the pattern. Named paths are objects that can be query later by designated built in functions.
+Named path variables are created by assigning a path in a MATCH clause to a single alias with the syntax:
+`MATCH named_path = (path)-[to]->(capture)`
+
+The named path includes all entities in the path, regardless of whether they have been explicitly aliased. Named paths can be accessed using [designated built-in functions](#path-functions) or returned directly if using a language-specific client.
 
 Example:
 
@@ -141,8 +144,7 @@ GRAPH.QUERY DEMO_GRAPH
 RETURN nodes(p) as actors"
 ```
 
-Each path `p` in this query consists of an actor named Charlie Sheen as the source node (note that this is an explicitly named node), an (anonymous) actor as the destination node, and between there can all the nodes and edges which allows this connection between Charlie Sheen and the anonymous actor. The return values for the query are the resultes of the calls for the built in functio `nodes` which extract a path's nodes. In the case the results will be the actors of each path between Charlie Sheen and the anonymous actor (including them).
-
+This query will produce all the paths matching the pattern contained in the named path `p`. All of these paths will share the same starting point, the actor node representing Charlie Sheen, but will otherwise vary in length and contents. Though the variable-length traversal and `(:actor)` endpoint are not explicitly aliased, all nodes and edges traversed along the path will be included in `p`. In this case, we are only interested in the nodes of each path, which we'll collect using the built-in function `nodes()`. The returned value will contain, in order, Charlie Sheen, between 0 and 2 intermediate nodes, and the unaliased endpoint.
 
 #### OPTIONAL MATCH
 
