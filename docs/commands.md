@@ -129,6 +129,23 @@ The syntactic sugar `(person_a)<-[:KNOWS]->(person_b)` will return the same resu
 
 The bracketed edge description can be omitted if all relations should be considered: `(person_a)--(person_b)`.
 
+##### Named paths
+
+Named path variables are created by assigning a path in a MATCH clause to a single alias with the syntax:
+`MATCH named_path = (path)-[to]->(capture)`
+
+The named path includes all entities in the path, regardless of whether they have been explicitly aliased. Named paths can be accessed using [designated built-in functions](#path-functions) or returned directly if using a language-specific client.
+
+Example:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH p=(charlie:actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]->(:actor)
+RETURN nodes(p) as actors"
+```
+
+This query will produce all the paths matching the pattern contained in the named path `p`. All of these paths will share the same starting point, the actor node representing Charlie Sheen, but will otherwise vary in length and contents. Though the variable-length traversal and `(:actor)` endpoint are not explicitly aliased, all nodes and edges traversed along the path will be included in `p`. In this case, we are only interested in the nodes of each path, which we'll collect using the built-in function `nodes()`. The returned value will contain, in order, Charlie Sheen, between 0 and 2 intermediate nodes, and the unaliased endpoint.
+
 #### OPTIONAL MATCH
 
 The OPTIONAL MATCH clause is a MATCH variant that produces null values for elements that do not match successfully, rather than the all-or-nothing logic for patterns in MATCH clauses.
