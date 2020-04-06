@@ -5,6 +5,7 @@ from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
 
 redis_graph = None
+nodes = {}
 
 class testOptionalFlow(FlowTestsBase):
     def __init__(self):
@@ -15,20 +16,20 @@ class testOptionalFlow(FlowTestsBase):
         self.populate_graph()
 
     def populate_graph(self):
+        global nodes
         # Construct a graph with the form:
         # (v1)-[:E1]->(v2)-[:E2]->(v3), (v4)
         node_props = ['v1', 'v2', 'v3', 'v4']
 
-        nodes = []
         for idx, v in enumerate(node_props):
             node = Node(label="L", properties={"v": v})
-            nodes.append(node)
+            nodes[v] = node
             redis_graph.add_node(node)
 
-        edge = Edge(nodes[0], "E1", nodes[1])
+        edge = Edge(nodes['v1'], "E1", nodes['v2'])
         redis_graph.add_edge(edge)
 
-        edge = Edge(nodes[1], "E2", nodes[2])
+        edge = Edge(nodes['v2'], "E2", nodes['v3'])
         redis_graph.add_edge(edge)
 
         redis_graph.flush()
@@ -207,10 +208,10 @@ class testOptionalFlow(FlowTestsBase):
     # Return a result set with null values in the first record and non-null values in subsequent records.
     def test16_optional_null_first_result(self):
         global redis_graph
-        query = """MATCH (a) OPTIONAL MATCH (a)-[e]->(b) RETURN a.v, b.v, TYPE(e) ORDER BY EXISTS(b), a.v, b.v"""
+        query = """MATCH (a) OPTIONAL MATCH (a)-[e]->(b) RETURN a, b, TYPE(e) ORDER BY EXISTS(b), a.v, b.v"""
         actual_result = redis_graph.query(query)
-        expected_result = [['v3', None, None],
-                           ['v4', None, None],
-                           ['v1', 'v2', 'E1'],
-                           ['v2', 'v3', 'E2']]
+        expected_result = [[nodes['v3'], None, None],
+                           [nodes['v4'], None, None],
+                           [nodes['v1'], nodes['v2'], 'E1'],
+                           [nodes['v2'], nodes['v3'], 'E2']]
         self.env.assertEquals(actual_result.result_set, expected_result)
