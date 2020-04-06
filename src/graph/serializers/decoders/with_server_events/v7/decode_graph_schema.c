@@ -4,9 +4,9 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "decode_schema.h"
-#include "../../../schema/schema.h"
-#include "../../../util/arr.h"
+#include "decode_v7.h"
+#include "../../../../schema/schema.h"
+#include "../../../../util/arr.h"
 
 static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 	/* Format:
@@ -47,7 +47,7 @@ static void _RdbLoadAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	}
 }
 
-void RdbLoadGraphSchema(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbLoadGraphSchema_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * attribute keys (unified schema)
 	 * #node schemas

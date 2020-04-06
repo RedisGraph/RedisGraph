@@ -4,14 +4,9 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "decode_graphcontext.h"
 
-#include "decode_graph_entities.h"
-#include "decode_schema.h"
-#include "../../../util/arr.h"
-#include "../../../query_ctx.h"
-#include "../../../util/rmalloc.h"
-#include "../../../slow_log/slow_log.h"
+#include "decode_v7.h"
+#include "../../../../query_ctx.h"
 
 static GraphContext *_GetOrCreateGraphContext(char *graph_name) {
 

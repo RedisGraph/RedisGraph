@@ -4,10 +4,10 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "encode_schema.h"
-#include "../../../schema/schema.h"
-#include "../../../util/arr.h"
-#include "../../../util/rmalloc.h"
+#include "encode_v7.h"
+#include "../../../../schema/schema.h"
+#include "../../../../util/arr.h"
+#include "../../../../util/rmalloc.h"
 
 static void _RdbSaveAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
@@ -57,7 +57,7 @@ static void _RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
 	_RdbSaveIndexData(rdb, s->fulltextIdx);
 }
 
-void RdbSaveGraphSchema(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbSaveGraphSchema_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * attribute keys (unified schema)
 	 * #node schemas

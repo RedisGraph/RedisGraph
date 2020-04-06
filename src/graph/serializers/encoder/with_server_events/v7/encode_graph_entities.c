@@ -5,9 +5,9 @@
 */
 
 #include <assert.h>
-#include "encode_graph_entities.h"
-#include "../../../util/arr.h"
-#include "../../../datatypes/array.h"
+#include "encode_v7.h"
+#include "../../../../util/arr.h"
+#include "../../../../datatypes/array.h"
 
 extern uint64_t entities_threshold;
 
@@ -123,7 +123,7 @@ static void _UpdatedEncodePhase(GraphContext *gc) {
 	}
 }
 
-void RdbSaveDeletedNodes(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbSaveDeletedNodes_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * #deleted nodes N
 	 * node id X N */
@@ -148,7 +148,7 @@ void RdbSaveDeletedNodes(RedisModuleIO *rdb, GraphContext *gc) {
 	_UpdatedEncodePhase(gc);
 }
 
-void RdbSaveNodes(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbSaveNodes_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * #nodes
 	 *      ID
@@ -201,7 +201,7 @@ void RdbSaveNodes(RedisModuleIO *rdb, GraphContext *gc) {
 	_UpdatedEncodePhase(gc);
 }
 
-void RdbSaveDeletedEdges(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbSaveDeletedEdges_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * #deleted edges N
 	 * edge id X N */
@@ -226,7 +226,7 @@ void RdbSaveDeletedEdges(RedisModuleIO *rdb, GraphContext *gc) {
 	_UpdatedEncodePhase(gc);
 }
 
-void RdbSaveEdges(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbSaveEdges_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * #edges (N)
 	 * {

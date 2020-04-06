@@ -4,10 +4,10 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "encode_graphcontext.h"
+#include "encode_v7.h"
 #include "encode_graph_entities.h"
 #include "encode_schema.h"
-#include "../../../util/arr.h"
+#include "../../../../util/arr.h"
 
 extern bool process_is_child; // Global variable declared in module.c
 
@@ -53,7 +53,7 @@ static void _SelectFirstPhase(GraphContext *gc) {
 	}
 }
 
-void RdbSaveGraphContext(RedisModuleIO *rdb, void *value) {
+void RdbSaveGraphContext_v7(RedisModuleIO *rdb, void *value) {
 	/* Encoding format for graph context and graph meta key
 	 * Header
 	 * Payload - Nodes / Edges / Deleted nodes/ Deleted edges/ Graph schema
