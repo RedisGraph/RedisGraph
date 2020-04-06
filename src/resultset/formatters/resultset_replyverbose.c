@@ -19,7 +19,6 @@ static void _ResultSet_VerboseReplyWithPath(RedisModuleCtx *ctx, SIValue path);
  * and NULL values. */
 static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext *gc,
 											   const SIValue v) {
-	// Emit the actual value, then the value type (to facilitate client-side parsing)
 	switch(SI_TYPE(v)) {
 	case T_STRING:
 		RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));

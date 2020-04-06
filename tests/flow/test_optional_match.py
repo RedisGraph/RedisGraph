@@ -203,3 +203,14 @@ class testOptionalFlow(FlowTestsBase):
                            [None],
                            [None]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Return a result set with null values in the first record and non-null values in subsequent records.
+    def test16_optional_null_first_result(self):
+        global redis_graph
+        query = """MATCH (a) OPTIONAL MATCH (a)-[e]->(b) RETURN a.v, b.v, TYPE(e) ORDER BY EXISTS(b), a.v, b.v"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['v3', None, None],
+                           ['v4', None, None],
+                           ['v1', 'v2', 'E1'],
+                           ['v2', 'v3', 'E2']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
