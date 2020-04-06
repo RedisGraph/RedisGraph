@@ -103,7 +103,7 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 	op->recordCount = 0;
 	op->edgeRelationTypes = NULL;
 	op->recordsCap = 0;
-	op->records = rm_calloc(op->recordsCap, sizeof(Record));
+	op->records = NULL;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", ExpandIntoInit, ExpandIntoConsume,
@@ -156,8 +156,6 @@ static Record _handoff(OpExpandInto *op) {
 		// Current record resides at row recordCount.
 		int rowIdx = op->recordCount;
 		op->r = op->records[op->recordCount];
-		assert(Record_GetType(op->r, op->srcNodeIdx) == REC_TYPE_NODE);
-		assert(Record_GetType(op->r, op->destNodeIdx) == REC_TYPE_NODE);
 		srcNode = Record_GetNode(op->r, op->srcNodeIdx);
 		destNode = Record_GetNode(op->r, op->destNodeIdx);
 		srcId = ENTITY_GET_ID(srcNode);
@@ -215,6 +213,14 @@ static Record ExpandIntoConsume(OpBase *opBase) {
 			Record childRecord = OpBase_Consume(child);
 			// Did not managed to get new data, break.
 			if(!childRecord) break;
+			if(!Record_GetNode(childRecord, op->srcNodeIdx) ||
+			   !Record_GetNode(childRecord, op->destNodeIdx)) {
+				/* The child Record may not contain the source node in scenarios like
+				 * a failed OPTIONAL MATCH. In this case, delete the Record and try again. */
+				OpBase_DeleteRecord(childRecord);
+				op->recordCount--;
+				continue;
+			}
 
 			// Store received record.
 			op->records[op->recordCount] = childRecord;

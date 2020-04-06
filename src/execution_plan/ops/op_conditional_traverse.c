@@ -199,7 +199,15 @@ static Record CondTraverseConsume(OpBase *opBase) {
 		// Ask child operations for data.
 		for(op->recordsLen = 0; op->recordsLen < op->recordsCap; op->recordsLen++) {
 			Record childRecord = OpBase_Consume(child);
+			// If the Record is NULL, the child has been depleted.
 			if(!childRecord) break;
+			if(!Record_GetNode(childRecord, op->srcNodeIdx)) {
+				/* The child Record may not contain the source node in scenarios like
+				 * a failed OPTIONAL MATCH. In this case, delete the Record and try again. */
+				OpBase_DeleteRecord(childRecord);
+				op->recordsLen--;
+				continue;
+			}
 			// Store received record.
 			Record_PersistScalars(childRecord);
 			op->records[op->recordsLen] = childRecord;
@@ -213,8 +221,9 @@ static Record CondTraverseConsume(OpBase *opBase) {
 
 	/* Get node from current column. */
 	op->r = op->records[src_id];
-	Node *destNode = Record_GetNode(op->r, op->destNodeIdx);
-	Graph_GetNode(op->graph, dest_id, destNode);
+	Node destNode = {0};
+	Graph_GetNode(op->graph, dest_id, &destNode);
+	Record_AddNode(op->r, op->destNodeIdx, destNode);
 
 	if(op->setEdge) {
 		_CondTraverse_CollectEdges(op, op->destNodeIdx, op->srcNodeIdx);

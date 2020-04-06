@@ -617,13 +617,6 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast, char **reason) {
 	uint match_count = array_len(match_clauses);
 	for(uint i = 0; i < match_count; i ++) {
 		const cypher_astnode_t *match_clause = match_clauses[i];
-		// We currently do not support optional MATCH.
-		if(cypher_ast_match_is_optional(match_clause)) {
-			asprintf(reason, "RedisGraph does not support OPTIONAL MATCH.");
-			res = AST_INVALID;
-			goto cleanup;
-		}
-
 		// Validate the pattern described by the MATCH clause
 		res = _ValidatePattern(projections, cypher_ast_match_get_pattern(match_clause), edge_aliases,
 							   reason);
@@ -1022,12 +1015,14 @@ static AST_Validation _ValidateQuerySequence(const AST *ast, char **reason) {
 	return AST_VALID;
 }
 
-// In any given query scope, reading clauses (MATCH, UNWIND, and InQueryCall)
-// cannot follow updating clauses (CREATE, MERGE, DELETE, SET, REMOVE).
-// https://s3.amazonaws.com/artifacts.opencypher.org/railroad/SinglePartQuery.html
+/* In any given query scope, reading clauses (MATCH, UNWIND, and InQueryCall)
+ * cannot follow updating clauses (CREATE, MERGE, DELETE, SET, REMOVE).
+ * https://s3.amazonaws.com/artifacts.opencypher.org/railroad/SinglePartQuery.html
+ * Additionally, a MATCH clause cannot follow an OPTIONAL MATCH clause. */
 static AST_Validation _ValidateClauseOrder(const AST *ast, char **reason) {
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 
+	bool encountered_optional_match = false;
 	bool encountered_updating_clause = false;
 	for(uint i = 0; i < clause_count; i ++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
@@ -1042,6 +1037,17 @@ static AST_Validation _ValidateClauseOrder(const AST *ast, char **reason) {
 			asprintf(reason, "A WITH clause is required to introduce %s after an updating clause.",
 					 cypher_astnode_typestr(type));
 			return AST_INVALID;
+		}
+
+		if(type == CYPHER_AST_MATCH) {
+			// Check whether this match is optional.
+			bool current_clause_is_optional = cypher_ast_match_is_optional(clause);
+			// If the current clause is non-optional but we have already encountered an optional match, emit an error.
+			if(!current_clause_is_optional && encountered_optional_match) {
+				asprintf(reason, "A WITH clause is required to introduce a MATCH clause after an OPTIONAL MATCH.");
+				return AST_INVALID;
+			}
+			encountered_optional_match |= current_clause_is_optional;
 		}
 	}
 
@@ -1679,3 +1685,4 @@ AST_Validation AST_Validate_QueryParams(RedisModuleCtx *ctx, const cypher_parse_
 
 	return AST_VALID;
 }
+

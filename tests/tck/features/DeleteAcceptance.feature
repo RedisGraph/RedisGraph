@@ -195,7 +195,6 @@ Feature: DeleteAcceptance
     Then the result should be empty
     And no side effects
 
-@skip
   Scenario: Delete optionally matched relationship
     Given an empty graph
     And having executed:
@@ -212,7 +211,6 @@ Feature: DeleteAcceptance
     And the side effects should be:
       | -nodes | 1 |
 
-@skip
   Scenario: Delete on null node
     Given an empty graph
     When executing query:
@@ -223,7 +221,6 @@ Feature: DeleteAcceptance
     Then the result should be empty
     And no side effects
 
-@skip
   Scenario: Detach delete on null node
     Given an empty graph
     When executing query:
@@ -234,7 +231,6 @@ Feature: DeleteAcceptance
     Then the result should be empty
     And no side effects
 
-@skip
   Scenario: Delete on null path
     Given an empty graph
     When executing query:

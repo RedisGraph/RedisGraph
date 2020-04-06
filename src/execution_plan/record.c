@@ -88,19 +88,32 @@ RecordEntryType Record_GetType(const Record r, int idx) {
 	return r->entries[idx].type;
 }
 
-SIValue Record_GetScalar(Record r, int idx) {
-	r->entries[idx].type = REC_TYPE_SCALAR;
-	return r->entries[idx].value.s;
-}
-
 Node *Record_GetNode(const Record r, int idx) {
-	r->entries[idx].type = REC_TYPE_NODE;
-	return &(r->entries[idx].value.n);
+	switch(r->entries[idx].type) {
+	case REC_TYPE_NODE:
+		return &(r->entries[idx].value.n);
+	case REC_TYPE_UNKNOWN:
+		return NULL;
+	case REC_TYPE_SCALAR:
+		// Null scalar values are expected here; otherwise fall through.
+		if(SIValue_IsNull(r->entries[idx].value.s)) return NULL;
+	default:
+		assert("encountered unexpected type in Record; expected Node" && false);
+	}
 }
 
 Edge *Record_GetEdge(const Record r, int idx) {
-	r->entries[idx].type = REC_TYPE_EDGE;
-	return &(r->entries[idx].value.e);
+	switch(r->entries[idx].type) {
+	case REC_TYPE_EDGE:
+		return &(r->entries[idx].value.e);
+	case REC_TYPE_UNKNOWN:
+		return NULL;
+	case REC_TYPE_SCALAR:
+		// Null scalar values are expected here; otherwise fall through.
+		if(SIValue_IsNull(r->entries[idx].value.s)) return NULL;
+	default:
+		assert("encountered unexpected type in Record; expected Edge" && false);
+	}
 }
 
 SIValue Record_Get(Record r, int idx) {
@@ -111,7 +124,9 @@ SIValue Record_Get(Record r, int idx) {
 	case REC_TYPE_EDGE:
 		return SI_Edge(Record_GetEdge(r, idx));
 	case REC_TYPE_SCALAR:
-		return Record_GetScalar(r, idx);
+		return r->entries[idx].value.s;
+	case REC_TYPE_UNKNOWN:
+		return SI_NullVal();
 	default:
 		assert(false);
 	}
@@ -124,10 +139,8 @@ GraphEntity *Record_GetGraphEntity(const Record r, int idx) {
 		return (GraphEntity *)Record_GetNode(r, idx);
 	case REC_TYPE_EDGE:
 		return (GraphEntity *)Record_GetEdge(r, idx);
-	case REC_TYPE_SCALAR:
-		return (GraphEntity *)(Record_GetScalar(r, idx).ptrval);
 	default:
-		assert(false);
+		assert(false && "encountered unexpected type when trying to retrieve graph entity");
 	}
 	return NULL;
 }
@@ -147,19 +160,22 @@ void Record_Add(Record r, int idx, SIValue v) {
 	}
 }
 
-void Record_AddScalar(Record r, int idx, SIValue v) {
+SIValue *Record_AddScalar(Record r, int idx, SIValue v) {
 	r->entries[idx].value.s = v;
 	r->entries[idx].type = REC_TYPE_SCALAR;
+	return &(r->entries[idx].value.s);
 }
 
-void Record_AddNode(Record r, int idx, Node node) {
+Node *Record_AddNode(Record r, int idx, Node node) {
 	r->entries[idx].value.n = node;
 	r->entries[idx].type = REC_TYPE_NODE;
+	return &(r->entries[idx].value.n);
 }
 
-void Record_AddEdge(Record r, int idx, Edge edge) {
+Edge *Record_AddEdge(Record r, int idx, Edge edge) {
 	r->entries[idx].value.e = edge;
 	r->entries[idx].type = REC_TYPE_EDGE;
+	return &(r->entries[idx].value.e);
 }
 
 void Record_PersistScalars(Record r) {
@@ -218,7 +234,7 @@ unsigned long long Record_Hash64(const Record r) {
 			len = sizeof(id);
 			break;
 		case REC_TYPE_SCALAR:
-			si = Record_GetScalar(r, i);
+			si = Record_Get(r, i);
 			switch(si.type) {
 			case T_NULL:
 				data = &_null;
