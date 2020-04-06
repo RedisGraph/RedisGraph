@@ -61,9 +61,6 @@ int Record_GetEntryIdx(Record r, const char *alias);
 // Get entry type.
 RecordEntryType Record_GetType(const Record r, int idx);
 
-// Get a scalar from record at position idx.
-SIValue Record_GetScalar(const Record r, int idx);
-
 // Get a node from record at position idx.
 Node *Record_GetNode(const Record r, int idx);
 
@@ -79,14 +76,14 @@ GraphEntity *Record_GetGraphEntity(const Record r, int idx);
 // Add a scalar, node, or edge to the record, depending on the SIValue type.
 void Record_Add(Record r, int idx, SIValue v);
 
-// Add a scalar to record at position idx.
-void Record_AddScalar(Record r, int idx, SIValue v);
+// Add a scalar to record at position idx and return a reference to it.
+SIValue *Record_AddScalar(Record r, int idx, SIValue v);
 
-// Add a node to record at position idx.
-void Record_AddNode(Record r, int idx, Node node);
+// Add a node to record at position idx and return a reference to it.
+Node *Record_AddNode(Record r, int idx, Node node);
 
-// Add an edge to record at position idx.
-void Record_AddEdge(Record r, int idx, Edge edge);
+// Add an edge to record at position idx and return a reference to it.
+Edge *Record_AddEdge(Record r, int idx, Edge edge);
 
 // Ensure that all scalar values in record are access-safe.
 void Record_PersistScalars(Record r);

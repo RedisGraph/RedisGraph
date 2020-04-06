@@ -47,7 +47,6 @@ Feature: FunctionsAcceptance
             | 'Nobody'                  |
         And no side effects
 
-    @skip
     Scenario: Functions should return null if they get path containing unbound
         Given any graph
         When executing query:
@@ -383,7 +382,6 @@ Feature: FunctionsAcceptance
             | 'T1'     | 'T2'     |
         And no side effects
 
-    @skip
     Scenario: `type()` on null relationship
         Given an empty graph
         And having executed:
@@ -401,7 +399,6 @@ Feature: FunctionsAcceptance
             | null    |
         And no side effects
 
-    @skip
     Scenario: `type()` on mixed null and non-null relationships
         Given an empty graph
         And having executed:
