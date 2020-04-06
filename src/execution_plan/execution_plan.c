@@ -694,7 +694,7 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan) {
 	}
 }
 
-ExecutionPlan *ExecutionPlan_UnionPlans(AST *ast) {
+static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 	uint end_offset = 0;
 	uint start_offset = 0;
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
@@ -787,7 +787,7 @@ ExecutionPlan *NewExecutionPlan(void) {
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 
 	/* Handle UNION if there are any. */
-	if(AST_ContainsClause(ast, CYPHER_AST_UNION)) return ExecutionPlan_UnionPlans(ast);
+	if(AST_ContainsClause(ast, CYPHER_AST_UNION)) return _ExecutionPlan_UnionPlans(ast);
 
 	uint start_offset = 0;
 	uint end_offset = 0;
