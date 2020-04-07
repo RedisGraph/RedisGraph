@@ -9,8 +9,7 @@ min_redis_version: "5.0.7"
 min_redis_pack_version: "5.4.11"
 capabilities:
     - types
-    - hash_policy
     - failover_migrate
     - persistence_rdb
     - persistence_aof
-    - replica_of # Replication requires total memory to be at least 2x the graph's size.
+    - replica_of # Replication requires total memory to be at least 2x the graph's size, only on Redis 5.

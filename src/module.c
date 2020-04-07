@@ -30,6 +30,7 @@
 GraphContext **graphs_in_keyspace;  // Global array tracking all extant GraphContexts.
 bool process_is_child;              // Flag indicating whether the running process is a child.
 uint64_t entities_threshold;   // The limit of number of entities encoded at once.
+uint redis_major_version;
 
 //------------------------------------------------------------------------------
 // Thread pool variables
@@ -48,7 +49,7 @@ static int _Setup_ThreadPOOL(int threadCount) {
 	return 1;
 }
 
-static int _GetRedisVersion(RedisModuleCtx *ctx) {
+static void _SetRedisMajorVersion(RedisModuleCtx *ctx) {
 
 	const char *server_version;
 	int major;
@@ -60,17 +61,13 @@ static int _GetRedisVersion(RedisModuleCtx *ctx) {
 		sscanf(server_version, "%d.%d.%d", &major, &minor, &minor_minor);
 		RedisModule_FreeServerInfo(ctx, info);
 	} else {
-		RedisModuleCallReply *reply = RedisModule_Call(ctx, "INFO", "c", "server");
-		RedisModuleCallReply *server_version_reply = RedisModule_CallReplyArrayElement(reply, 0);
-		server_version = RedisModule_CallReplyStringPtr(server_version_reply, NULL);
-		sscanf(server_version, "%d.%d.%d", &major, &minor, &minor_minor);
-		RedisModule_FreeCallReply(server_version_reply);
-		RedisModule_FreeCallReply(reply);
+		// RedisModule_GetServerInfo exists only on Redis 6 and up
+		redis_major_version = 5;
 	}
 
-	if(major > 5) return major;
+	if(major > 5) redis_major_version = major;
 	// Check for Redis 6 rc versions.
-	else return major == 5 && minor == 9 ? 6 : major;
+	else redis_major_version = major == 5 && minor == 9 ? 6 : major;
 }
 
 static int _RegisterDataTypes(RedisModuleCtx *ctx) {
@@ -79,7 +76,7 @@ static int _RegisterDataTypes(RedisModuleCtx *ctx) {
 		return REDISMODULE_ERR;
 	}
 
-	if(_GetRedisVersion(ctx) > 5) {
+	if(redis_major_version > 5) {
 		if(GraphMetaType_Register(ctx) == REDISMODULE_ERR) {
 			printf("Failed to register GraphMeta type\n");
 			return REDISMODULE_ERR;
@@ -214,7 +211,7 @@ static void _LoadingEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint
 
 static void _RegisterServerEvents(RedisModuleCtx *ctx) {
 	RedisModule_SubscribeToKeyspaceEvents(ctx, REDISMODULE_NOTIFY_GENERIC, _RenameGraphHandler);
-	if(_GetRedisVersion(ctx) > 5) {
+	if(redis_major_version > 5) {
 		RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_FlushDB, _FlushDBHandler);
 		RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Persistence, _PersistenceEventHandler);
 		RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Loading, _LoadingEventHandler);
@@ -228,6 +225,8 @@ static void _RegisterForkHooks(RedisModuleCtx *ctx) {
 }
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+	// Set the server major version as a global property.
+	_SetRedisMajorVersion(ctx);
 	/* TODO: when module unloads call GrB_finalize. */
 	assert(GxB_init(GrB_NONBLOCKING, rm_malloc, rm_calloc, rm_realloc, rm_free, true) == GrB_SUCCESS);
 	GxB_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format

@@ -17,18 +17,7 @@
 /* Declaration of the type for redis registration. */
 RedisModuleType *GraphContextRedisModuleType;
 
-static int _GetRedisVersion(RedisModuleCtx *ctx) {
-	RedisModuleServerInfoData *info =  RedisModule_GetServerInfo(ctx, "Server");
-	const char *server_version = RedisModule_ServerInfoGetFieldC(info, "redis_version");
-	int major;
-	int minor;
-	int minor_minor;
-	sscanf(server_version, "%d.%d.%d", &major, &minor, &minor_minor);
-	RedisModule_FreeServerInfo(ctx, info);
-	if(major > 5) return major;
-	// Check for Redis 6 rc versions.
-	else return major == 5 && minor == 9 ? 6 : major;
-}
+extern uint redis_major_version;
 
 static void *_GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
 	GraphContext *gc = NULL;
@@ -116,6 +105,6 @@ static int _GraphContextType_RegisterWithoutServerEvents(RedisModuleCtx *ctx) {
 }
 
 int GraphContextType_Register(RedisModuleCtx *ctx) {
-	if(_GetRedisVersion(ctx) > 5) return _GraphContextType_RegisterWithServerEvents(ctx);
+	if(redis_major_version > 5) return _GraphContextType_RegisterWithServerEvents(ctx);
 	else return _GraphContextType_RegisterWithoutServerEvents(ctx);
 }

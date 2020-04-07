@@ -181,7 +181,7 @@ class testGraphPersistency(FlowTestsBase):
         g.add_node(dest)
         g.add_edge(edge1)
         g.add_edge(edge2)
-        g.commit()
+        g.flush()
 
         # Verify the new edge
         q = """MATCH (a)-[e]->(b) RETURN e.val, a.name, b.name ORDER BY e.val"""
@@ -198,3 +198,91 @@ class testGraphPersistency(FlowTestsBase):
         # Verify that the latest edge was properly saved and loaded
         actual_result = g.query(q)
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test05_tagged_graph(self):
+        graphname = "replication_test_{tagged_graph}"
+        graph = Graph(graphname, redis_con)
+        query = """CREATE (:p {strval: 'str', numval: 5.5, nullval: NULL, boolval: true, array: [1,2,3]})"""
+        actual_result = graph.query(query)
+        # Verify that node was created correctly
+        self.env.assertEquals(actual_result.nodes_created, 1)
+        self.env.assertEquals(actual_result.properties_set, 5)
+
+        # Save RDB & Load from RDB
+        redis_con.execute_command("DEBUG", "RELOAD")
+
+        query = """MATCH (p) RETURN p.boolval, p.nullval, p.numval, p.strval, p.array"""
+        actual_result = graph.query(query)
+
+        # Verify that the properties are loaded correctly.
+        # Note that the order of results is not guaranteed (currently managed by the Schema),
+        # so this may need to be updated in the future.
+        expected_result = [[True, None, 5.5, 'str', [1, 2, 3]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        src = Node(label='p', properties={'name': 'src'})
+        dest = Node(label='p', properties={'name': 'dest'})
+        edge1 = Edge(src, 'e', dest, properties={'val': 1})
+        edge2 = Edge(src, 'e', dest, properties={'val': 2})
+        graph.add_node(src)
+        graph.add_node(dest)
+        graph.add_edge(edge1)
+        graph.add_edge(edge2)
+        graph.flush()
+
+        # Verify the new edge
+        q = """MATCH (a)-[e]->(b) RETURN e.val, a.name, b.name ORDER BY e.val"""
+        actual_result = graph.query(q)
+
+        expected_result = [[edge1.properties['val'], src.properties['name'], dest.properties['name']],
+                           [edge2.properties['val'], src.properties['name'], dest.properties['name']]]
+
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Save RDB & Load from RDB
+        redis_con.execute_command("DEBUG", "RELOAD")
+
+        # Verify that the latest edge was properly saved and loaded
+        actual_result = graph.query(q)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test06_big_graph(self):
+        graphname = "replication_test_big_graph"
+        graph = Graph(graphname, redis_con)
+        graph.query("CREATE INDEX ON :n(nval)")
+        graph.query("UNWIND range (0,999999) as i MERGE (:n {nval:i})-[:R {eval:i}]->(:n {nval: i+1})")
+
+        query = """MATCH (n:n) RETURN COUNT(n)"""
+        actual_result = graph.query(query)
+        nodeCount = actual_result.result_set[0][0]
+        self.env.assertEquals(nodeCount, 2000000)
+
+        plan = graph.execution_plan("MATCH (n:n) WHERE n.nval = 1 RETURN n")
+        self.env.assertIn("Index Scan", plan)
+
+        # Save RDB & Load from RDB
+        redis_con.execute_command("DEBUG", "RELOAD")
+        actual_result = graph.query(query)
+        nodeCount = actual_result.result_set[0][0]
+        self.env.assertEquals(nodeCount, 2000000)
+
+        query = """MATCH (n:n) WHERE n.nval % 2 = 0 RETURN COUNT(n)"""
+        actual_result = graph.query(query)
+        nodeCount = actual_result.result_set[0][0]
+        self.env.assertEquals(nodeCount, 1000000)
+
+        query = """MATCH ()-[e]->() RETURN COUNT(e)"""
+        actual_result = graph.query(query)
+        nodeCount = actual_result.result_set[0][0]
+        self.env.assertEquals(nodeCount, 1000000)
+
+        plan = graph.execution_plan("MATCH (n:n) WHERE n.nval = 1 RETURN n")
+        self.env.assertIn("Index Scan", plan)
+
+        graph.query("MATCH (n) WHERE n.nval > 500000 and n.nval <= 700000 DELETE n")
+        expected_result = graph.query("MATCH (n) WHERE n.nval % 100000 = 0 RETURN DISTINCT n.nval ORDER BY n.nval")
+        self.env.assertEquals(expected_result.result_set, [[0], [100000], [200000], [300000], [400000], [500000], [800000], [900000], [1000000]])
+        # Save RDB & Load from RDB
+        redis_con.execute_command("DEBUG", "RELOAD")
+        actual_result = graph.query("MATCH (n) WHERE n.nval % 100000 = 0 RETURN DISTINCT n.nval ORDER BY n.nval")
+        self.env.assertEquals(expected_result.result_set, actual_result.result_set)
