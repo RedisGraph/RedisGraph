@@ -6,7 +6,7 @@
 
 
 #include "decode_v7.h"
-#include "../../../../query_ctx.h"
+#include "../../../../../query_ctx.h"
 
 static GraphContext *_GetOrCreateGraphContext(char *graph_name) {
 
@@ -23,7 +23,7 @@ static GraphContext *_GetOrCreateGraphContext(char *graph_name) {
 	return gc;
 }
 
-GraphContext *RdbLoadGraphContext(RedisModuleIO *rdb) {
+GraphContext *RdbLoadGraphContext_v7(RedisModuleIO *rdb) {
 
 	// Graph name
 	char *graph_name =  RedisModule_LoadStringBuffer(rdb, NULL);
@@ -36,19 +36,19 @@ GraphContext *RdbLoadGraphContext(RedisModuleIO *rdb) {
 	EncodePhase encoded_phase =  RedisModule_LoadUnsigned(rdb);
 	switch(encoded_phase) {
 	case NODES:
-		RdbLoadNodes(rdb, gc);
+		RdbLoadNodes_v7(rdb, gc);
 		break;
 	case DELETED_NODES:
-		RdbLoadDeletedNodes(rdb, gc);
+		RdbLoadDeletedNodes_v7(rdb, gc);
 		break;
 	case EDGES:
-		RdbLoadEdges(rdb, gc);
+		RdbLoadEdges_v7(rdb, gc);
 		break;
 	case DELETED_EDGES:
-		RdbLoadDeletedEdges(rdb, gc);
+		RdbLoadDeletedEdges_v7(rdb, gc);
 		break;
 	case GRAPH_SCHEMA:
-		RdbLoadGraphSchema(rdb, gc);
+		RdbLoadGraphSchema_v7(rdb, gc);
 		break;
 	default:
 		assert(false && "Unkown encoding");

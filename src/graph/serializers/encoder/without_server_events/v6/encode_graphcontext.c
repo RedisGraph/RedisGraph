@@ -4,10 +4,15 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "encode_v7.h"
-#include "../../../../../schema/schema.h"
-#include "../../../../../util/arr.h"
-#include "../../../../../util/rmalloc.h"
+#include "encode_v6.h"
+
+extern bool process_is_child; // Global variable declared in module.c
+
+// Determine whether we are in the context of a bgsave, in which case
+// the process is independent and should not acquire locks.
+static inline bool _shouldAcquireLocks(void) {
+	return !process_is_child;
+}
 
 static void _RdbSaveAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
@@ -23,42 +28,9 @@ static void _RdbSaveAttributeKeys(RedisModuleIO *rdb, GraphContext *gc) {
 	}
 }
 
-static inline void _RdbSaveIndexData(RedisModuleIO *rdb, Index *idx) {
-	if(!idx) return;
-
-	for(uint i = 0; i < idx->fields_count; i++) {
-		// Index type
-		RedisModule_SaveUnsigned(rdb, idx->type);
-		// Indexed property
-		RedisModule_SaveStringBuffer(rdb, idx->fields[i], strlen(idx->fields[i]) + 1);
-	}
-}
-
-static void _RdbSaveSchema(RedisModuleIO *rdb, Schema *s) {
+void RdbSaveGraphContext_v6(RedisModuleIO *rdb, void *value) {
 	/* Format:
-	 * id
-	 * name
-	 * #indices
-	 * (index type, indexed property) X M */
-
-	// Schema ID.
-	RedisModule_SaveUnsigned(rdb, s->id);
-
-	// Schema name.
-	RedisModule_SaveStringBuffer(rdb, s->name, strlen(s->name) + 1);
-
-	// Number of indices.
-	RedisModule_SaveUnsigned(rdb, Schema_IndexCount(s));
-
-	// Exact match indices.
-	_RdbSaveIndexData(rdb, s->index);
-
-	// Fulltext indices.
-	_RdbSaveIndexData(rdb, s->fulltextIdx);
-}
-
-void RdbSaveGraphSchema_v7(RedisModuleIO *rdb, GraphContext *gc) {
-	/* Format:
+	 * graph name
 	 * attribute keys (unified schema)
 	 * #node schemas
 	 * node schema X #node schemas
@@ -67,6 +39,14 @@ void RdbSaveGraphSchema_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	 * relation schema X #relation schemas
 	 * graph object
 	*/
+
+	GraphContext *gc = value;
+
+	// Acquire a read lock if we're not in a thread-safe context.
+	if(_shouldAcquireLocks()) Graph_AcquireReadLock(gc->g);
+
+	// Graph name.
+	RedisModule_SaveStringBuffer(rdb, gc->graph_name, strlen(gc->graph_name) + 1);
 
 	// Serialize all attribute keys
 	_RdbSaveAttributeKeys(rdb, gc);
@@ -78,7 +58,7 @@ void RdbSaveGraphSchema_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	// Name of label X #node schemas.
 	for(int i = 0; i < schema_count; i++) {
 		Schema *s = gc->node_schemas[i];
-		_RdbSaveSchema(rdb, s);
+		RdbSaveSchema_v6(rdb, s);
 	}
 
 	// #Relation schemas.
@@ -88,6 +68,12 @@ void RdbSaveGraphSchema_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	// Name of label X #relation schemas.
 	for(unsigned short i = 0; i < relation_count; i++) {
 		Schema *s = gc->relation_schemas[i];
-		_RdbSaveSchema(rdb, s);
+		RdbSaveSchema_v6(rdb, s);
 	}
+
+	// Serialize graph object
+	RdbSaveGraph_v6(rdb, gc);
+
+	// If a lock was acquired, release it.
+	if(_shouldAcquireLocks()) Graph_ReleaseLock(gc->g);
 }

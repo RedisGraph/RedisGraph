@@ -6,8 +6,8 @@
 
 #include <assert.h>
 #include "encode_v7.h"
-#include "../../../../util/arr.h"
-#include "../../../../datatypes/array.h"
+#include "../../../../../util/arr.h"
+#include "../../../../../datatypes/array.h"
 
 extern uint64_t entities_threshold;
 

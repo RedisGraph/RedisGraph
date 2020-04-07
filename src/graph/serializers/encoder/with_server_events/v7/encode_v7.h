@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../../../../graphcontext.h"
-#include "../../../../redismodule.h"
+#include "../../../../../redismodule.h"
 
 void RdbSaveGraphContext_v7(RedisModuleIO *rdb, void *value);
 void RdbSaveNodes_v7(RedisModuleIO *rdb, GraphContext *gc);

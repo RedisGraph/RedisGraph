@@ -58,7 +58,7 @@ void GraphContext_Delete(GraphContext *gc);
 
 /* GraphMeta API */
 // Create a new graph meta context.
-GraphMetaContext *GraphMetaContext_New(GraphContext *gc, char *meta_key_name);
+GraphMetaContext *GraphMetaContext_New(GraphContext *gc, const char *meta_key_name);
 // Free graph meta context memory.
 void GraphMetaContext_Free(GraphMetaContext *ctx);
 

@@ -8,23 +8,26 @@
 #include "graphmeta_type.h"
 #include "encoding_version.h"
 #include "../graphcontext.h"
-#include "encoder/encode_graphcontext.h"
-#include "decoders/decode_graphcontext.h"
+#include "encoder/with_server_events/encode_with_server_events.h"
+#include "decoders/with_server_events/decode_with_server_events.h"
 #include "../../util/rmalloc.h"
 
 /* Declaration of the type for redis registration. */
 RedisModuleType *GraphMetaRedisModuleType;
 
-void *GraphMetaType_RdbLoad(RedisModuleIO *rdb, int encver) {
-	// GraphContext *gc = NULL;
+static void *_GraphMetaType_RdbLoad(RedisModuleIO *rdb, int encver) {
+	GraphContext *gc = NULL;
 
-	if(encver > GRAPHCONTEXT_TYPE_ENCODING_VERSION) {
+	if(encver > GRAPHCONTEXT_TYPE_ENCODING_VERSION_LATEST) {
 		// Not forward compatible.
 		printf("Failed loading Graph, RedisGraph version (%d) is not forward compatible.\n",
 			   REDISGRAPH_MODULE_VERSION);
 		return NULL;
-	} else if(encver >= DECODER_SUPPORT_MIN_V && encver <= DECODER_SUPPORT_MAX_V) {
-		gc = RdbLoadGraphContext(rdb);
+		// Meta key only available on Redis with server events
+	} else if(encver % 2 == 1 &&
+			  encver >= DECODER_SUPPORT_MIN_V_WITH_SERVER_EVENTS &&
+			  encver <= DECODER_SUPPORT_MAX_V_WITH_SERVER_EVENTS) {
+		gc = RdbLoadGraphContext_WithServerEvents(rdb);
 	} else {
 		printf("Problem when loading Graph, RedisGraph Meta key is not backward compatible with encoder version %d and should not try to load from it.\n",
 			   encver);
@@ -33,23 +36,25 @@ void *GraphMetaType_RdbLoad(RedisModuleIO *rdb, int encver) {
 
 	// Add GraphContext to global array of graphs.
 	GraphContext_RegisterWithModule(gc);
+	// Add meta key to the graph context meta keys collection.
 	const RedisModuleString *meta_redis_string = RedisModule_GetKeyNameFromIO(rdb);
 	const char *meta_key_name = RedisModule_StringPtrLen(meta_redis_string, NULL);
-	GraphMetaContext *meta = GraphMetaContext_New(gc, meta_key_name);
 	GraphEncodeContext_AddKey(gc->encoding_context, meta_key_name);
+	// Create meta context.
+	GraphMetaContext *meta = GraphMetaContext_New(gc, meta_key_name);
 	return meta;
 }
 
-void GraphMetaType_RdbSave(RedisModuleIO *rdb, void *value) {
+static void _GraphMetaType_RdbSave(RedisModuleIO *rdb, void *value) {
 	GraphMetaContext *meta = value;
-	RdbSaveGraphContext(rdb, meta->gc);
+	RdbSaveGraphContext_WithServerEvents(rdb, meta->gc);
 }
 
-void GraphMetaType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, void *value) {
+static void _GraphMetaType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, void *value) {
 	// No-Op in this type.
 }
 
-void GraphMetaType_Free(void *value) {
+static void _GraphMetaType_Free(void *value) {
 	GraphMetaContext *meta = value;
 	GraphEncodeContext_DeleteKey(meta->gc->encoding_context, meta->meta_key_name);
 	GraphMetaContext_Free(meta);
@@ -57,14 +62,14 @@ void GraphMetaType_Free(void *value) {
 
 int GraphMetaType_Register(RedisModuleCtx *ctx) {
 	RedisModuleTypeMethods tm = {.version = REDISMODULE_TYPE_METHOD_VERSION,
-								 .rdb_load = GraphMetaType_RdbLoad,
-								 .rdb_save = GraphMetaType_RdbSave,
-								 .aof_rewrite = GraphMetaType_AofRewrite,
-								 .free = GraphMetaType_Free
+								 .rdb_load = _GraphMetaType_RdbLoad,
+								 .rdb_save = _GraphMetaType_RdbSave,
+								 .aof_rewrite = _GraphMetaType_AofRewrite,
+								 .free = _GraphMetaType_Free
 								};
 
 	GraphMetaRedisModuleType = RedisModule_CreateDataType(ctx, "graphmeta",
-														  GRAPHCONTEXT_TYPE_ENCODING_VERSION, &tm);
+														  GRAPHCONTEXT_TYPE_ENCODING_VERSION_WITH_SERVER_EVENTS, &tm);
 	if(GraphMetaRedisModuleType == NULL) {
 		return REDISMODULE_ERR;
 	}

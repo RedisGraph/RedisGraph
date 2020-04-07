@@ -9,4 +9,4 @@
 #include "../../../graphcontext.h"
 #include "../../../../redismodule.h"
 
-GraphContext *RdbSaveGraphContext_WithoutServerEvents(RedisModuleIO *rdb);
+void RdbSaveGraphContext_WithoutServerEvents(RedisModuleIO *rdb, void *value);

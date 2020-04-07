@@ -5,9 +5,7 @@
 */
 
 #include "encode_v7.h"
-#include "encode_graph_entities.h"
-#include "encode_schema.h"
-#include "../../../../util/arr.h"
+#include "../../../../../util/arr.h"
 
 extern bool process_is_child; // Global variable declared in module.c
 
@@ -74,19 +72,19 @@ void RdbSaveGraphContext_v7(RedisModuleIO *rdb, void *value) {
 
 	switch(GraphEncodeContext_GetEncodePhase(gc->encoding_context)) {
 	case NODES:
-		RdbSaveNodes(rdb, gc);
+		RdbSaveNodes_v7(rdb, gc);
 		break;
 	case DELETED_NODES:
-		RdbSaveDeletedNodes(rdb, gc);
+		RdbSaveDeletedNodes_v7(rdb, gc);
 		break;
 	case EDGES:
-		RdbSaveEdges(rdb, gc);
+		RdbSaveEdges_v7(rdb, gc);
 		break;
 	case DELETED_EDGES:
-		RdbSaveDeletedEdges(rdb, gc);
+		RdbSaveDeletedEdges_v7(rdb, gc);
 		break;
 	case GRAPH_SCHEMA:
-		RdbSaveGraphSchema(rdb, gc);
+		RdbSaveGraphSchema_v7(rdb, gc);
 		break;
 	default:
 		assert(false && "Unkown encoding phase");

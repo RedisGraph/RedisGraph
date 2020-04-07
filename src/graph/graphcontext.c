@@ -172,7 +172,7 @@ void GraphContext_Rename(GraphContext *gc, const char *name) {
 // GraphMetaContext API
 //------------------------------------------------------------------------------
 
-GraphMetaContext *GraphMetaContext_New(GraphContext *gc, char *meta_key_name) {
+GraphMetaContext *GraphMetaContext_New(GraphContext *gc, const char *meta_key_name) {
 	GraphMetaContext *meta = rm_malloc(sizeof(GraphMetaContext));
 	meta->gc = gc;
 	meta->meta_key_name = rm_strdup(meta_key_name);

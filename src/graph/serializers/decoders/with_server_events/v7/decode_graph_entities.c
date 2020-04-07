@@ -5,8 +5,8 @@
 */
 
 #include "decode_v7.h"
-#include "../../../graph.h"
-#include "../../../../datatypes/array.h"
+#include "../../../../graph.h"
+#include "../../../../../datatypes/array.h"
 
 // Forward declerations.
 static SIValue _RdbLoadSIArray(RedisModuleIO *rdb);
@@ -110,7 +110,7 @@ void RdbLoadDeletedNodes_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	}
 }
 
-void RdbLoadDeletedEdges_v7(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbLoadEdges_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Format:
 	 * #edges (N)
 	 * {

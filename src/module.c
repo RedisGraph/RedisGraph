@@ -48,15 +48,30 @@ static int _Setup_ThreadPOOL(int threadCount) {
 	return 1;
 }
 
+static int _GetRedisVersion(RedisModuleCtx *ctx) {
+	RedisModuleServerInfoData *info =  RedisModule_GetServerInfo(ctx, "Server");
+	const char *server_version = RedisModule_ServerInfoGetFieldC(info, "redis_version");
+	int major;
+	int minor;
+	int minor_minor;
+	sscanf(server_version, "%d.%d.%d", &major, &minor, &minor_minor);
+	RedisModule_FreeServerInfo(ctx, info);
+	if(major > 5) return major;
+	// Check for Redis 6 rc versions.
+	else return major == 5 && minor == 9 ? 6 : major;
+}
+
 static int _RegisterDataTypes(RedisModuleCtx *ctx) {
 	if(GraphContextType_Register(ctx) == REDISMODULE_ERR) {
 		printf("Failed to register GraphContext type\n");
 		return REDISMODULE_ERR;
 	}
 
-	if(GraphMetaType_Register(ctx) == REDISMODULE_ERR) {
-		printf("Failed to register GraphMeta type\n");
-		return REDISMODULE_ERR;
+	if(_GetRedisVersion(ctx) > 5) {
+		if(GraphMetaType_Register(ctx) == REDISMODULE_ERR) {
+			printf("Failed to register GraphMeta type\n");
+			return REDISMODULE_ERR;
+		}
 	}
 	return REDISMODULE_OK;
 }
@@ -185,11 +200,16 @@ static void _LoadingEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint
 	if(_IsEventLoadingEnd(eid, subevent)) _ClearKeySpaceMetaKeys(ctx);
 }
 
-static void RegisterForkHooks(RedisModuleCtx *ctx) {
+static void _RegisterServerEvents(RedisModuleCtx *ctx) {
 	RedisModule_SubscribeToKeyspaceEvents(ctx, REDISMODULE_NOTIFY_GENERIC, _RenameGraphHandler);
-	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_FlushDB, _FlushDBHandler);
-	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Persistence, _PersistenceEventHandler);
-	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Loading, _LoadingEventHandler);
+	if(_GetRedisVersion(ctx) > 5) {
+		RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_FlushDB, _FlushDBHandler);
+		RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Persistence, _PersistenceEventHandler);
+		RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Loading, _LoadingEventHandler);
+	}
+}
+
+static void _RegisterForkHooks(RedisModuleCtx *ctx) {
 	/* Register handlers to control the behavior of fork calls.
 	 * The child process does not require a handler. */
 	assert(pthread_atfork(RG_ForkPrepare, RG_AfterForkParent, RG_AfterForkChild) == 0);
@@ -215,7 +235,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	Agg_RegisterFuncs();     // Register aggregation functions.
 	// Set up global lock and variables scoped to the entire module.
 	_PrepareModuleGlobals(ctx, argv, argc);
-	RegisterForkHooks(ctx);  // Set up hooks for renaming and forking logic to prevent bgsave deadlocks.
+	_RegisterForkHooks(
+		ctx);  // Set up hooks for forking logic to prevent bgsave deadlocks.
+	_RegisterServerEvents(ctx); // Set up hooks renaming and server events on Redis 6 and up.
 	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
 
 	// Create thread local storage key.

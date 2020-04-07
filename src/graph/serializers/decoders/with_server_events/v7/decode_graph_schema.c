@@ -5,8 +5,8 @@
 */
 
 #include "decode_v7.h"
-#include "../../../../schema/schema.h"
-#include "../../../../util/arr.h"
+#include "../../../../../schema/schema.h"
+#include "../../../../../util/arr.h"
 
 static Schema *_RdbLoadSchema(RedisModuleIO *rdb, SchemaType type) {
 	/* Format:
