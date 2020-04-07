@@ -33,5 +33,8 @@ deploydocs: builddocs
 test:
 	@$(MAKE) -C ./src test
 
+memcheck:
+	@$(MAKE) -C ./src memcheck
+
 format:
 	astyle -Q --options=.astylerc -R --ignore-exclude-errors "./*.c,*.h,*.cpp"

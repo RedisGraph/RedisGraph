@@ -1,6 +1,7 @@
 from base import FlowTestsBase
 import os
 import sys
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -19,7 +20,7 @@ visits = [("Roi", "USA"), ("Alon", "Israel"),
 
 class testGraphPersistency(FlowTestsBase):
     def __init__(self):
-        super(testGraphPersistency, self).__init__()
+        self.env = Env()
         global redis_graph
         global dense_graph
         global redis_con

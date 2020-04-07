@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
 
@@ -10,7 +11,7 @@ redis_graph = None
 
 class testIndexScanFlow(FlowTestsBase):
     def __init__(self):
-        super(testIndexScanFlow, self).__init__()
+        self.env = Env()
 
     def setUp(self):
         global redis_graph
@@ -233,3 +234,15 @@ class testIndexScanFlow(FlowTestsBase):
         self.env.assertEqual(2, len(query_result.result_set))
         expected_result = [[nodes[7]], [nodes[8]]]
         self.env.assertEquals(expected_result, query_result.result_set)
+
+    # Validate placement of index scans and filter ops when not all filters can be replaced.
+    def test08_index_scan_multiple_filters(self):
+        query = "MATCH (p:person) WHERE p.age = 30 AND NOT EXISTS(p.fakeprop) RETURN p.name"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn('Index Scan', plan)
+        self.env.assertNotIn('Label Scan', plan)
+        self.env.assertIn('Filter', plan)
+
+        query_result = redis_graph.query(query)
+        expected_result = ["Lucy Yanfital"]
+        self.env.assertEquals(query_result.result_set[0], expected_result)

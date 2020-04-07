@@ -14,6 +14,7 @@
 /* Forward declarations. */
 static OpResult MergeInit(OpBase *opBase);
 static Record MergeConsume(OpBase *opBase);
+static OpBase *MergeClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void MergeFree(OpBase *opBase);
 
 //------------------------------------------------------------------------------
@@ -85,15 +86,16 @@ static inline Record _pullFromStream(OpBase *branch) {
 }
 
 OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
-				   EntityUpdateEvalCtx *on_create, ResultSetStatistics *stats) {
+				   EntityUpdateEvalCtx *on_create) {
+
 	/* Merge is an operator with two or three children. They will be created outside of here,
 	 * as with other multi-stream operators (see CartesianProduct and ValueHashJoin). */
 	OpMerge *op = rm_calloc(1, sizeof(OpMerge));
-	op->stats = stats;
+	op->stats = QueryCtx_GetResultSetStatistics();
 	op->on_match = on_match;
 	op->on_create = on_create;
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume, NULL, NULL, NULL,
+	OpBase_Init((OpBase *)op, OPType_MERGE, "Merge", MergeInit, MergeConsume, NULL, NULL, MergeClone,
 				MergeFree, true, plan);
 
 	if(op->on_match) {
@@ -120,7 +122,7 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
 // Match and Create streams are always guaranteed to not branch (have any ops with multiple children).
 static OpBase *_LocateOp(OpBase *root, OPType type) {
 	if(!root) return NULL;
-	if(root->type & type) return root;
+	if(root->type == type) return root;
 	if(root->childCount > 0) return _LocateOp(root->children[0], type);
 	return NULL;
 }
@@ -191,10 +193,9 @@ static OpResult MergeInit(OpBase *opBase) {
 
 	// Find and store references to the Argument taps for the Match and Create streams.
 	// The Match stream is populated by an Argument tap, store a reference to it.
-	op->match_argument_tap = (Argument *)ExecutionPlan_LocateFirstOp(op->match_stream, OPType_ARGUMENT);
+	op->match_argument_tap = (Argument *)ExecutionPlan_LocateOp(op->match_stream, OPType_ARGUMENT);
 	// If the create stream is populated by an Argument tap, store a reference to it.
-	op->create_argument_tap = (Argument *)ExecutionPlan_LocateFirstOp(op->create_stream,
-																	  OPType_ARGUMENT);
+	op->create_argument_tap = (Argument *)ExecutionPlan_LocateOp(op->create_stream, OPType_ARGUMENT);
 	// Set up an array to store records produced by the bound variable stream.
 	op->input_records = array_new(Record, 1);
 
@@ -304,6 +305,16 @@ static Record MergeConsume(OpBase *opBase) {
 	QueryCtx_UnlockCommit(&op->op); // Release the lock.
 
 	return _handoff(op);
+}
+
+static OpBase *MergeClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_MERGE);
+	OpMerge *op = (OpMerge *)opBase;
+	EntityUpdateEvalCtx *on_match;
+	EntityUpdateEvalCtx *on_create;
+	array_clone_with_cb(on_match, op->on_match, EntityUpdateEvalCtx_Clone);
+	array_clone_with_cb(on_create, op->on_create, EntityUpdateEvalCtx_Clone);
+	return NewMergeOp(plan, on_match, on_create);
 }
 
 static void MergeFree(OpBase *opBase) {

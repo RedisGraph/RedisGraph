@@ -21,8 +21,7 @@ static void _CreateBoundBranch(OpBase *op, ExecutionPlan *plan, const char **var
 	 * set it as the first child. */
 	ExecutionPlan_AddOp(op, arg);
 
-	if(op->type & APPLY_OPS)
-		_OpBaseSwapChildren(op, 0, op->childCount - 1);
+	if(OP_IS_APPLY(op)) _OpBaseSwapChildren(op, 0, op->childCount - 1);
 }
 
 

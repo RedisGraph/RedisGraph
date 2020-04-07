@@ -26,9 +26,11 @@ CFLAGS += $(DEBUGFLAGS)
 # Compile flags for linux / osx
 ifeq ($(uname_S),Linux)
 	SHOBJ_LDFLAGS ?= -shared -Bsymbolic -Bsymbolic-functions -ldl -lpthread -fopenmp
+	export OS = Linux
 else
 	CFLAGS += -mmacosx-version-min=10.14
 	SHOBJ_LDFLAGS ?= -mmacosx-version-min=10.14 -bundle -undefined dynamic_lookup -ldl -lpthread -fopenmp
+	export OS = Mac
 endif
 SHOBJ_LDFLAGS += $(LDFLAGS)
 export CFLAGS
@@ -72,6 +74,7 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/ast/enrichment/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/resultset/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/resultset/formatters/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/schema/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/slow_log/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/procedures/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/datablock/*.c)
@@ -185,10 +188,13 @@ test: redisgraph.so
 	# check valgrind flag is not empty
 ifneq ($(VALGRIND),)
 	# valgrind is requested, check that host's os is not Linux
-ifneq ($(uname_S),Linux)
+ifneq ($(OS),Linux)
 	@echo building docker to run valgrind on MacOS
 	@cd ../ ;\
 	docker build -f ./tests/Dockerfile -t mac_os_test_docker .;
 endif
 endif
 	@$(MAKE) -C ../tests test
+
+memcheck: redisgraph.so
+	@$(MAKE) -C ../tests memcheck

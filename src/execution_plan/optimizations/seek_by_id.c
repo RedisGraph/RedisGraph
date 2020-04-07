@@ -86,17 +86,7 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 			NodeByLabelScan *label_scan = (NodeByLabelScan *) scan_op;
 			NodeByLabelScanOp_SetIDRange(label_scan, id_range);
 		} else {
-			const QGNode *node = NULL;
-			switch(scan_op->type) {
-			case OPType_ALL_NODE_SCAN:
-				node = ((AllNodeScan *)scan_op)->n;
-				break;
-			case OPType_INDEX_SCAN:
-				node = ((IndexScan *)scan_op)->n;
-				break;
-			default:
-				assert(false);
-			}
+			const QGNode *node = ((AllNodeScan *)scan_op)->n;
 			OpBase *opNodeByIdSeek = NewNodeByIdSeekOp(scan_op->plan, node, id_range);
 
 			// Managed to reduce!
@@ -109,8 +99,9 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 
 void seekByID(ExecutionPlan *plan) {
 	assert(plan);
-	OpBase **scan_ops = ExecutionPlan_LocateOps(plan->root,
-												(OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN));
+
+	const OPType types[] = {OPType_ALL_NODE_SCAN, OPType_NODE_BY_LABEL_SCAN};
+	OpBase **scan_ops = ExecutionPlan_CollectOpsMatchingType(plan->root, types, 2);
 
 	for(int i = 0; i < array_len(scan_ops); i++) {
 		_UseIdOptimization(plan, scan_ops[i]);

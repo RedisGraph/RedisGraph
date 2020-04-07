@@ -60,20 +60,25 @@ void Graph_Query(void *args) {
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
 
 	QueryCtx_BeginTimer(); // Start query timing.
+	const char *query_string;
+	cypher_parse_result_t *query_parse_result = NULL;
+	// Parse and validate parameters only. Extract query string.
+	cypher_parse_result_t *params_parse_result = parse_params(command_ctx->query, &query_string);
+	if(params_parse_result == NULL) goto cleanup;
 
-	// Parse the query to construct an AST.
-	cypher_parse_result_t *parse_result = parse(command_ctx->query);
-	if(parse_result == NULL) goto cleanup;
+	// Parse the query to construct an AST and validate it.
+	query_parse_result = parse_query(query_string);
+	if(query_parse_result == NULL) goto cleanup;
 
-	// Perform query validations
-	if(AST_Validate(ctx, parse_result) != AST_VALID) goto cleanup;
 
-	bool readonly = AST_ReadOnly(parse_result);
+	bool readonly = AST_ReadOnly(query_parse_result);
 
 	// Prepare the constructed AST for accesses from the module
-	ast = AST_Build(parse_result);
+	ast = AST_Build(query_parse_result);
 
 	bool compact = _check_compact_flag(command_ctx);
+	ResultSetFormatterType resultset_format = (compact) ? FORMATTER_COMPACT : FORMATTER_VERBOSE;
+
 	// Acquire the appropriate lock.
 	if(readonly) {
 		Graph_AcquireReadLock(gc->g);
@@ -92,27 +97,24 @@ void Graph_Query(void *args) {
 
 	// Set policy after lock acquisition, avoid resetting policies between readers and writers.
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
-	result_set = NewResultSet(ctx, compact);
+	result_set = NewResultSet(ctx, resultset_format);
 	QueryCtx_SetResultSet(result_set);
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
 	if(root_type == CYPHER_AST_QUERY) {  // query operation
-		ExecutionPlan *plan = NewExecutionPlan(result_set);
+		ExecutionPlan *plan = NewExecutionPlan();
 		/* Make sure there are no compile-time errors.
 		 * We prefer to emit the error only once the entire execution-plan
 		 * is constructed in-favour of the time it was encountered
 		 * for memory management considerations.
 		 * this should be revisited in order to save some time (fail fast). */
 		if(QueryCtx_EncounteredError()) {
-			/* TODO: move ExecutionPlan_Free to `cleanup`
-			 * once no all pendding operation commitment (create,delete,update)
-			 * are no performed in free callback. */
 			if(plan) ExecutionPlan_Free(plan);
 			QueryCtx_EmitException();
 			goto cleanup;
 		}
 
 		if(!plan) goto cleanup;
-
+		ExecutionPlan_PreparePlan(plan);
 		result_set = ExecutionPlan_Execute(plan);
 		ExecutionPlan_Free(plan);
 	} else if(root_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
@@ -122,7 +124,7 @@ void Graph_Query(void *args) {
 		assert("Unhandled query type" && false);
 	}
 	QueryCtx_ForceUnlockCommit();
-	ResultSet_Replay(result_set);    // Send result-set back to client.
+	ResultSet_Reply(result_set);    // Send result-set back to client.
 
 	// Clean up.
 cleanup:
@@ -134,11 +136,15 @@ cleanup:
 		else Graph_WriterLeave(gc->g);
 	}
 
+	// Log query to slowlog.
+	SlowLog *slowlog = GraphContext_GetSlowLog(gc);
+	SlowLog_Add(slowlog, command_ctx->command_name, command_ctx->query, QueryCtx_GetExecutionTime());
+
 	ResultSet_Free(result_set);
 	AST_Free(ast);
-	parse_result_free(parse_result);
+	parse_result_free(params_parse_result);
+	parse_result_free(query_parse_result);
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 }
-

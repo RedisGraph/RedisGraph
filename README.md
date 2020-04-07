@@ -133,6 +133,15 @@ Once you've successfully loaded RedisGraph your Redis log should have lines simi
 ...
 ```
 
+If the server fails to launch with output similar to:
+
+```
+# Module /usr/lib/redis/modules/redisgraph.so failed to load: libgomp.so.1: cannot open shared object file: No such file or directory
+# Can't load module from /usr/lib/redis/modules/redisgraph.so: server aborting
+```
+
+The system is missing the run-time dependency OpenMP. This can be installed on Ubuntu with `apt-get install libgomp1`, on RHEL/CentOS with `yum install libgomp`, and on OSX with `brew install libomp`.
+
 ## Using RedisGraph
 
 You can call RedisGraph's commands from any Redis client.

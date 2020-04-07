@@ -51,6 +51,8 @@ static GraphContext *_GraphContext_New(const char *graph_name, size_t node_cap, 
 
 	gc->string_mapping = array_new(char *, 64);
 	gc->attributes = raxNew();
+	gc->slowlog = SlowLog_New();
+
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 	QueryCtx_SetGraphCtx(gc);
 
@@ -322,6 +324,16 @@ void GraphContext_RemoveFromRegistry(GraphContext *gc) {
 }
 
 //------------------------------------------------------------------------------
+// Slowlog API
+//------------------------------------------------------------------------------
+
+// Return slowlog associated with graph context.
+SlowLog *GraphContext_GetSlowLog(const GraphContext *gc) {
+	assert(gc);
+	return gc->slowlog;
+}
+
+//------------------------------------------------------------------------------
 // Free routine
 //------------------------------------------------------------------------------
 
@@ -363,6 +375,7 @@ static void _GraphContext_Free(void *arg) {
 		array_free(gc->string_mapping);
 	}
 
+	if(gc->slowlog) SlowLog_Free(gc->slowlog);
+
 	rm_free(gc);
 }
-

@@ -1,6 +1,7 @@
 import os
 import sys
 import threading
+from RLTest import Env
 from redisgraph import Graph
 from base import FlowTestsBase
 
@@ -22,7 +23,7 @@ def query_crud(graph, threadID):
 
 class testStressFlow(FlowTestsBase):
     def __init__(self):
-        super(testStressFlow, self).__init__()
+        self.env = Env()
         global graphs
         graphs = []
         for i in range(0, CLIENT_COUNT):

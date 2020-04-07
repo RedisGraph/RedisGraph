@@ -140,6 +140,16 @@ ResultSet *QueryCtx_GetResultSet(void) {
 	return ctx->internal_exec_ctx.result_set;
 }
 
+ResultSetStatistics *QueryCtx_GetResultSetStatistics(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	return &ctx->internal_exec_ctx.result_set->stats;
+}
+
+void QueryCtx_PrintQuery(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	printf("%s\n", ctx->query_data.query);
+}
+
 static void _QueryCtx_ThreadSafeContextLock(QueryCtx *ctx) {
 	if(ctx->global_exec_ctx.bc) RedisModule_ThreadSafeContextLock(ctx->global_exec_ctx.redis_ctx);
 }
@@ -272,4 +282,3 @@ void QueryCtx_Free(void) {
 	// NULL-set the context for reuse the next time this thread receives a query
 	pthread_setspecific(_tlsQueryCtxKey, NULL);
 }
-

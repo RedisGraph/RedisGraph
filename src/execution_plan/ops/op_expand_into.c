@@ -13,8 +13,10 @@
 #include "../../GraphBLASExt/GxB_Delete.h"
 
 /* Forward declarations. */
+static OpResult ExpandIntoInit(OpBase *opBase);
 static Record ExpandIntoConsume(OpBase *opBase);
 static OpResult ExpandIntoReset(OpBase *opBase);
+static OpBase *ExpandIntoClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void ExpandIntoFree(OpBase *opBase);
 
 // String representation of operation.
@@ -90,8 +92,7 @@ static void _traverse(OpExpandInto *op) {
 	GrB_Matrix_clear(op->F);
 }
 
-OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae,
-						uint records_cap) {
+OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
 	OpExpandInto *op = rm_calloc(1, sizeof(OpExpandInto));
 	op->graph = g;
 	op->ae = ae;
@@ -101,12 +102,12 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 	op->M = GrB_NULL;
 	op->recordCount = 0;
 	op->edgeRelationTypes = NULL;
-	op->recordsCap = records_cap;
+	op->recordsCap = 0;
 	op->records = rm_calloc(op->recordsCap, sizeof(Record));
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", NULL, ExpandIntoConsume,
-				ExpandIntoReset, ExpandIntoToString, NULL, ExpandIntoFree, false, plan);
+	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", ExpandIntoInit, ExpandIntoConsume,
+				ExpandIntoReset, ExpandIntoToString, ExpandIntoClone, ExpandIntoFree, false, plan);
 
 	// Make sure that all entities are represented in Record
 	op->edgeIdx = IDENTIFIER_NOT_FOUND;
@@ -123,6 +124,14 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 	}
 
 	return (OpBase *)op;
+}
+
+static OpResult ExpandIntoInit(OpBase *opBase) {
+	OpExpandInto *op = (OpExpandInto *)opBase;
+	AST *ast = ExecutionPlan_GetAST(opBase->plan);
+	op->recordsCap = TraverseRecordCap(ast);
+	op->records = rm_calloc(op->recordsCap, sizeof(Record));
+	return OP_OK;
 }
 
 /* Emits a record when possible,
@@ -234,6 +243,12 @@ static OpResult ExpandIntoReset(OpBase *ctx) {
 	}
 	if(op->F != GrB_NULL) GrB_Matrix_clear(op->F);
 	return OP_OK;
+}
+
+static inline OpBase *ExpandIntoClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_EXPAND_INTO);
+	OpExpandInto *op = (OpExpandInto *)opBase;
+	return NewExpandIntoOp(plan, QueryCtx_GetGraph(), AlgebraicExpression_Clone(op->ae));
 }
 
 /* Frees ExpandInto */

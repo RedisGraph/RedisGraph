@@ -1,6 +1,7 @@
 import os
 import sys
 import threading
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 from redis import ResponseError
 
@@ -67,7 +68,7 @@ def delete_graph(graph, threadID):
 
 class testConcurrentQueryFlow(FlowTestsBase):
     def __init__(self):
-        super(testConcurrentQueryFlow, self).__init__()
+        self.env = Env()
         global graphs
         graphs = []
         for i in range(0, CLIENT_COUNT):

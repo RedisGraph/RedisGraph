@@ -97,6 +97,11 @@ GraphContext *QueryCtx_GetGraphCtx(void);
 RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void);
 /* Retrive the resultset. */
 ResultSet *QueryCtx_GetResultSet(void);
+/* Retrive the resultset statistics. */
+ResultSetStatistics *QueryCtx_GetResultSetStatistics(void);
+
+/* Print the current query. */
+void QueryCtx_PrintQuery(void);
 
 /* Starts a locking flow before commiting changes in the graph and Redis keyspace.
  * Locking flow is:

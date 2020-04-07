@@ -18,6 +18,7 @@
 /* Forward declarations. */
 static Record CondVarLenTraverseConsume(OpBase *opBase);
 static OpResult CondVarLenTraverseReset(OpBase *opBase);
+static OpBase *CondVarLenTraverseClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void CondVarLenTraverseFree(OpBase *opBase);
 
 static void _setupTraversedRelations(CondVarLenTraverse *op) {
@@ -88,7 +89,7 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
 				"Conditional Variable Length Traverse", NULL, CondVarLenTraverseConsume, CondVarLenTraverseReset,
-				CondVarLenTraverseToString, NULL, CondVarLenTraverseFree, false, plan);
+				CondVarLenTraverseToString, CondVarLenTraverseClone, CondVarLenTraverseFree, false, plan);
 
 	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
@@ -141,12 +142,10 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 
 	if(!op->expandInto) Record_AddNode(op->r, op->destNodeIdx, n);
 	if(op->edgesIdx >= 0) {
-		if(reused_record) {
-			// If we're returning a new path from a previously-used Record,
-			// free the previous path to avoid a memory leak.
-			SIValue old_path = Record_GetScalar(op->r, op->edgesIdx);
-			SIValue_Free(old_path);
-		}
+		// If we're returning a new path from a previously-used Record,
+		// free the previous path to avoid a memory leak.
+		if(reused_record) SIValue_Free(Record_GetScalar(op->r, op->edgesIdx));
+		// Add new path to Record.
 		Record_AddScalar(op->r, op->edgesIdx, SI_Path(p));
 	}
 
@@ -162,6 +161,14 @@ static OpResult CondVarLenTraverseReset(OpBase *ctx) {
 	AllPathsCtx_Free(op->allPathsCtx);
 	op->allPathsCtx = NULL;
 	return OP_OK;
+}
+
+static OpBase *CondVarLenTraverseClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE);
+	CondVarLenTraverse *op = (CondVarLenTraverse *) opBase;
+	OpBase *op_clone = NewCondVarLenTraverseOp(plan, QueryCtx_GetGraph(),
+											   AlgebraicExpression_Clone(op->ae));
+	return op_clone;
 }
 
 static void CondVarLenTraverseFree(OpBase *ctx) {

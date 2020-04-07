@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
@@ -26,7 +27,7 @@ UPDATE_QUERY = "MATCH (al:person {name:'Al'}) SET al.name = 'Steve'"
 
 class testMultiExecFlow(FlowTestsBase):
     def __init__(self):
-        super(testMultiExecFlow, self).__init__()
+        self.env = Env()
         global redis_con
         redis_con = self.env.getConnection()
 

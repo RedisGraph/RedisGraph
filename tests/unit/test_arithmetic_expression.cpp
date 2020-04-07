@@ -1458,50 +1458,6 @@ TEST_F(ArithmeticTest, ReduceTest) {
 	ASSERT_EQ(T_ARRAY, rhs->operand.constant.type);
 }
 
-TEST_F(ArithmeticTest, ParamTest) {
-	const char *query;
-	AR_ExpNode *arExp;
-
-	// Validate reduce to a constant value in applicable case.
-	query = "CYPHER param=1 RETURN $param";
-	arExp = _exp_from_query(query);
-	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
-	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
-	ASSERT_EQ(0, SIValue_Compare(SI_LongVal(1), arExp->operand.constant, NULL));
-
-	query = "CYPHER param=2.3 RETURN $param";
-	arExp = _exp_from_query(query);
-	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
-	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
-	ASSERT_EQ(0, SIValue_Compare(SI_DoubleVal(2.3), arExp->operand.constant, NULL));
-
-	query = "CYPHER param=true RETURN $param";
-	arExp = _exp_from_query(query);
-	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
-	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
-	ASSERT_EQ(0, SIValue_Compare(SI_BoolVal(true), arExp->operand.constant, NULL));
-
-	query = "CYPHER param=false RETURN $param";
-	arExp = _exp_from_query(query);
-	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
-	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
-	ASSERT_EQ(0, SIValue_Compare(SI_BoolVal(false), arExp->operand.constant, NULL));
-
-	query = "CYPHER param=NULL RETURN $param";
-	arExp = _exp_from_query(query);
-	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
-	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
-	ASSERT_EQ(0, SIValue_Compare(SI_NullVal(), arExp->operand.constant, NULL));
-
-	query = "CYPHER param=[0,1,2] RETURN $param";
-	arExp = _exp_from_query(query);
-	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
-	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
-	SIValue array = SIArray_New(3);
-	for(int i = 0; i < 3; i++) SIArray_Append(&array, SI_LongVal(i));
-	ASSERT_EQ(0, SIValue_Compare(array, arExp->operand.constant, NULL));
-}
-
 TEST_F(ArithmeticTest, CoalesceTest) {
 	const char *query;
 	AR_ExpNode *arExp;

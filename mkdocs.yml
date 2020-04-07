@@ -23,18 +23,18 @@ theme:
   feature:
     tabs: false
 
-nav:
-  - 'Quickstart': index.md
-  - 'Commands': commands.md
-  - 'Clients': clients.md
-  - 'Design Documents':
-      - 'Result Set structure': result_structure.md
-      - 'Client Specification': client_spec.md
-  - 'Design': design.md
-  - 'Contributor agreement': contrib.md
-  - 'Cypher coverage': cypher_support.md
-  - 'References': References.md
-  - 'Known limitations': known_limitations.md
+pages:
+    - 'Quickstart': index.md
+    - 'Commands': commands.md
+    - 'Clients': clients.md
+    - 'Design Documents':
+        - 'Result Set structure': result_structure.md
+        - 'Client Specification': client_spec.md
+    - 'Design': design.md
+    - 'Contributor agreement': contrib.md
+    - 'Cypher coverage': cypher_support.md
+    - 'References': References.md
+    - 'Known limitations': known_limitations.md
 
 markdown_extensions:
   - admonition
