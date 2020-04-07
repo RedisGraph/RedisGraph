@@ -49,13 +49,25 @@ static int _Setup_ThreadPOOL(int threadCount) {
 }
 
 static int _GetRedisVersion(RedisModuleCtx *ctx) {
-	RedisModuleServerInfoData *info =  RedisModule_GetServerInfo(ctx, "Server");
-	const char *server_version = RedisModule_ServerInfoGetFieldC(info, "redis_version");
+
+	const char *server_version;
 	int major;
 	int minor;
 	int minor_minor;
-	sscanf(server_version, "%d.%d.%d", &major, &minor, &minor_minor);
-	RedisModule_FreeServerInfo(ctx, info);
+	if(RedisModule_GetServerInfo) {
+		RedisModuleServerInfoData *info =  RedisModule_GetServerInfo(ctx, "Server");
+		server_version = RedisModule_ServerInfoGetFieldC(info, "redis_version");
+		sscanf(server_version, "%d.%d.%d", &major, &minor, &minor_minor);
+		RedisModule_FreeServerInfo(ctx, info);
+	} else {
+		RedisModuleCallReply *reply = RedisModule_Call(ctx, "INFO", "c", "server");
+		RedisModuleCallReply *server_version_reply = RedisModule_CallReplyArrayElement(reply, 0);
+		server_version = RedisModule_CallReplyStringPtr(server_version_reply, NULL);
+		sscanf(server_version, "%d.%d.%d", &major, &minor, &minor_minor);
+		RedisModule_FreeCallReply(server_version_reply);
+		RedisModule_FreeCallReply(reply);
+	}
+
 	if(major > 5) return major;
 	// Check for Redis 6 rc versions.
 	else return major == 5 && minor == 9 ? 6 : major;
