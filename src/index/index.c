@@ -188,7 +188,8 @@ void Index_Construct
 	RSIndex *rsIdx = NULL;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	RSIndexOptions *idx_options = RediSearch_CreateIndexOptions();
-	RediSearch_IndexOptionsSetGetValueCallback(idx_options, _getNodeAttribute, gc);
+	// TODO: Remove this comment when https://github.com/RediSearch/RediSearch/issues/1100 is closed
+	// RediSearch_IndexOptionsSetGetValueCallback(idx_options, _getNodeAttribute, gc);
 	rsIdx = RediSearch_CreateIndex(idx->label, idx_options);
 	RediSearch_FreeIndexOptions(idx_options);
 

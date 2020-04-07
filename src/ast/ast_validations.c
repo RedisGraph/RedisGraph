@@ -906,18 +906,11 @@ static AST_Validation _Validate_LIMIT_SKIP_Modifiers(const AST *ast, char **reas
 		// Handle LIMIT modifier
 		const cypher_astnode_t *limit = cypher_ast_return_get_limit(return_clause);
 		if(limit) {
-			// Handle non-integer types specified as LIMIT value
-			if(cypher_astnode_type(limit) != CYPHER_AST_INTEGER) {
+			// Handle non-integer or non parameter types specified as LIMIT value
+			// The value validation of integer node or parameter node is done in run time evaluation.
+			if(cypher_astnode_type(limit) != CYPHER_AST_INTEGER &&
+			   cypher_astnode_type(limit) != CYPHER_AST_PARAMETER) {
 				asprintf(reason, "LIMIT specified value of invalid type, must be a positive integer");
-				return AST_INVALID;
-			}
-
-			// Handle LIMIT strings that cannot be fully converted to integers,
-			// due to size or invalid characters
-			const char *value_str = cypher_ast_integer_get_valuestr(limit);
-			if(_ValidatePositiveInteger(value_str) != AST_VALID) {
-				asprintf(reason,
-						 "LIMIT specified value '%s', must be a positive integer in the signed 8-byte range.", value_str);
 				return AST_INVALID;
 			}
 		}
@@ -925,18 +918,11 @@ static AST_Validation _Validate_LIMIT_SKIP_Modifiers(const AST *ast, char **reas
 		// Handle SKIP modifier
 		const cypher_astnode_t *skip = cypher_ast_return_get_skip(return_clause);
 		if(skip) {
-			// Handle non-integer types specified as skip value
-			if(cypher_astnode_type(skip) != CYPHER_AST_INTEGER) {
+			// Handle non-integer or non parameter types specified as skip value
+			// The value validation of integer node or parameter node is done in run time evaluation.
+			if(cypher_astnode_type(skip) != CYPHER_AST_INTEGER &&
+			   cypher_astnode_type(skip) != CYPHER_AST_PARAMETER) {
 				asprintf(reason, "SKIP specified value of invalid type, must be a positive integer");
-				return AST_INVALID;
-			}
-
-			// Handle skip strings that cannot be fully converted to integers,
-			// due to size or invalid characters
-			const char *value_str = cypher_ast_integer_get_valuestr(skip);
-			if(_ValidatePositiveInteger(value_str) != AST_VALID) {
-				asprintf(reason,
-						 "SKIP specified value '%s', must be a positive integer in the signed 8-byte range.", value_str);
 				return AST_INVALID;
 			}
 		}
@@ -953,42 +939,24 @@ static AST_Validation _Validate_LIMIT_SKIP_Modifiers(const AST *ast, char **reas
 		// Handle LIMIT modifier
 		const cypher_astnode_t *limit = cypher_ast_with_get_limit(with_clause);
 		if(limit) {
-			// Handle non-integer types specified as LIMIT value
-			if(cypher_astnode_type(limit) != CYPHER_AST_INTEGER) {
+			// Handle non-integer or non parameter types specified as LIMIT value
+			// The value validation of integer node or parameter node is done in run time evaluation.
+			if(cypher_astnode_type(limit) != CYPHER_AST_INTEGER &&
+			   cypher_astnode_type(limit) != CYPHER_AST_PARAMETER) {
 				asprintf(reason, "LIMIT specified value of invalid type, must be a positive integer");
-				res = AST_INVALID;
-				break;
-			}
-
-			// Handle LIMIT strings that cannot be fully converted to integers,
-			// due to size or invalid characters
-			const char *value_str = cypher_ast_integer_get_valuestr(limit);
-			if(_ValidatePositiveInteger(value_str) != AST_VALID) {
-				asprintf(reason,
-						 "LIMIT specified value '%s', must be a positive integer in the signed 8-byte range.", value_str);
-				res = AST_INVALID;
-				break;
+				return AST_INVALID;
 			}
 		}
 
 		// Handle SKIP modifier
 		const cypher_astnode_t *skip = cypher_ast_with_get_skip(with_clause);
 		if(skip) {
-			// Handle non-integer types specified as skip value
-			if(cypher_astnode_type(skip) != CYPHER_AST_INTEGER) {
+			// Handle non-integer or non parameter types specified as skip value
+			// The value validation of integer node or parameter node is done in run time evaluation.
+			if(cypher_astnode_type(skip) != CYPHER_AST_INTEGER &&
+			   cypher_astnode_type(skip) != CYPHER_AST_PARAMETER) {
 				asprintf(reason, "SKIP specified value of invalid type, must be a positive integer");
-				res = AST_INVALID;
-				break;
-			}
-
-			// Handle skip strings that cannot be fully converted to integers,
-			// due to size or invalid characters
-			const char *value_str = cypher_ast_integer_get_valuestr(skip);
-			if(_ValidatePositiveInteger(value_str) != AST_VALID) {
-				asprintf(reason,
-						 "SKIP specified value '%s', must be a positive integer in the signed 8-byte range.", value_str);
-				res = AST_INVALID;
-				break;
+				return AST_INVALID;
 			}
 		}
 	}
@@ -1520,42 +1488,26 @@ static void _collect_query_parameters_names(const cypher_astnode_t *root, rax *k
 	}
 }
 
-/* This method extracts given parameters names. If a duplicate parameter is given, AST_INVALID will be returned. */
-static AST_Validation _collect_given_parameters_names(const cypher_astnode_t *statement,
-													  rax *given_params_names, char **reason) {
-	uint noptions =  cypher_ast_statement_noptions(statement);
+static AST_Validation _ValidateDuplicateParameters(const cypher_astnode_t *statement,
+												   char **reason) {
+	rax *param_names = raxNew();
+	uint noptions = cypher_ast_statement_noptions(statement);
 	for(uint i = 0; i < noptions; i++) {
 		const cypher_astnode_t *option = cypher_ast_statement_get_option(statement, i);
 		uint nparams = cypher_ast_cypher_option_nparams(option);
 		for(uint j = 0; j < nparams; j++) {
 			const cypher_astnode_t *param = cypher_ast_cypher_option_get_param(option, j);
 			const char *paramName = cypher_ast_string_get_value(cypher_ast_cypher_option_param_get_name(param));
-			// If parameter already exists, add it the duplicated parms array.
-			if(!raxInsert(given_params_names, (unsigned char *) paramName, strlen(paramName), NULL, NULL)) {
+			// If parameter already exists return an error.
+			if(!raxInsert(param_names, (unsigned char *) paramName, strlen(paramName), NULL, NULL)) {
 				asprintf(reason, "Duplicated parameter: %s", paramName);
+				raxFree(param_names);
 				return AST_INVALID;
 			}
 		}
 	}
+	raxFree(param_names);
 	return AST_VALID;
-}
-
-static AST_Validation _ValidateParameters(const cypher_astnode_t *statement, char **reason) {
-	rax *given_params_names = raxNew();
-	if(_collect_given_parameters_names(statement, given_params_names, reason) == AST_INVALID) {
-		raxFree(given_params_names);
-		return AST_INVALID;
-	}
-	AST_Validation res = AST_VALID;
-	rax *query_params_names = raxNew();
-	_collect_query_parameters_names(statement, query_params_names);
-	if(!raxIsSubset(given_params_names, query_params_names)) {
-		asprintf(reason, "Missing parameters");
-		res = AST_INVALID;
-	}
-	raxFree(query_params_names);
-	raxFree(given_params_names);
-	return res;
 }
 
 static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, uint end_offset) {
@@ -1571,7 +1523,8 @@ static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, 
 	}
 	struct cypher_input_range range = {};
 	ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n, clauses, n, range);
-
+	ast->skip = NULL;
+	ast->limit = NULL;
 	return ast;
 }
 
@@ -1638,7 +1591,8 @@ bool AST_ContainsErrors(const cypher_parse_result_t *result) {
 	return cypher_parse_result_nerrors(result) > 0;
 }
 
-AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *result) {
+static AST_Validation _AST_Validate_ParseResultRoot(RedisModuleCtx *ctx,
+													const cypher_parse_result_t *result) {
 	// Check for failures in libcypher-parser
 	if(AST_ContainsErrors(result)) {
 		char *errMsg = _AST_ReportErrors(result);
@@ -1656,14 +1610,6 @@ AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *re
 	}
 
 	char *reason;
-	// Verify that the query does not contain any expressions not in the RedisGraph support whitelist
-	if(CypherWhitelist_ValidateQuery(root, &reason) != AST_VALID) {
-		// Unsupported expressions found; reply with error.
-		RedisModule_ReplyWithError(ctx, reason);
-		free(reason);
-		return AST_INVALID;
-	}
-
 	cypher_astnode_type_t root_type = cypher_astnode_type(root);
 	if(root_type != CYPHER_AST_STATEMENT) {
 		// This should be unnecessary, as we're currently parsing
@@ -1674,7 +1620,18 @@ AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *re
 		return AST_INVALID;
 	}
 
-	if(_ValidateParameters(root, &reason) != AST_VALID) {
+	return AST_VALID;
+}
+
+AST_Validation AST_Validate_Query(RedisModuleCtx *ctx, const cypher_parse_result_t *result) {
+	if(_AST_Validate_ParseResultRoot(ctx, result) != AST_VALID) return AST_INVALID;
+
+	char *reason;
+	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
+
+	// Verify that the query does not contain any expressions not in the RedisGraph support whitelist
+	if(CypherWhitelist_ValidateQuery(root, &reason) != AST_VALID) {
+		// Unsupported expressions found; reply with error.
 		RedisModule_ReplyWithError(ctx, reason);
 		free(reason);
 		return AST_INVALID;
@@ -1705,3 +1662,20 @@ AST_Validation AST_Validate(RedisModuleCtx *ctx, const cypher_parse_result_t *re
 	return res;
 }
 
+AST_Validation AST_Validate_QueryParams(RedisModuleCtx *ctx, const cypher_parse_result_t *result) {
+	if(_AST_Validate_ParseResultRoot(ctx, result) != AST_VALID) return AST_INVALID;
+
+	char *reason;
+	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
+
+	// In case of no parameters.
+	if(cypher_ast_statement_noptions(root) == 0) return AST_VALID;
+
+	if(_ValidateDuplicateParameters(root, &reason) != AST_VALID) {
+		RedisModule_ReplyWithError(ctx, reason);
+		free(reason);
+		return AST_INVALID;
+	}
+
+	return AST_VALID;
+}

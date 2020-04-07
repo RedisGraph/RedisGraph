@@ -1,3 +1,4 @@
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
 
@@ -11,7 +12,7 @@ max_results = 6
 
 class testVariableLengthTraversals(FlowTestsBase):
     def __init__(self):
-        super(testVariableLengthTraversals, self).__init__()
+        self.env = Env()
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()

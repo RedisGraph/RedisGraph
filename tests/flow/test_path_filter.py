@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 from collections import Counter
 
@@ -15,7 +16,7 @@ redis_graph = None
 
 class testPathFilter(FlowTestsBase):
     def __init__(self):
-        super(testPathFilter, self).__init__()
+        self.env = Env()
         global redis_con
         redis_con = self.env.getConnection()
 

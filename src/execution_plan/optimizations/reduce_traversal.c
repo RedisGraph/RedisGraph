@@ -14,7 +14,7 @@
 #include "../ops/op_cond_var_len_traverse.h"
 
 static inline bool _isInSubExecutionPlan(OpBase *op) {
-	return ExecutionPlan_LocateFirstOp(op, OPType_ARGUMENT) != NULL;
+	return ExecutionPlan_LocateOp(op, OPType_ARGUMENT) != NULL;
 }
 
 static void _removeRedundantTraversal(ExecutionPlan *plan, CondTraverse *traverse) {
@@ -31,8 +31,8 @@ static void _removeRedundantTraversal(ExecutionPlan *plan, CondTraverse *travers
  * are already resolved, in which case replace traversal operation
  * with expand-into op. */
 void reduceTraversal(ExecutionPlan *plan) {
-	OPType t = OPType_CONDITIONAL_TRAVERSE | OPType_CONDITIONAL_VAR_LEN_TRAVERSE;
-	OpBase **traversals = ExecutionPlan_LocateOps(plan->root, t);
+	OpBase **traversals = ExecutionPlan_CollectOpsMatchingType(plan->root, TRAVERSE_OPS,
+															   TRAVERSE_OP_COUNT);
 	uint traversals_count = array_len(traversals);
 
 	/* Keep track of redundant traversals which will be removed
@@ -74,8 +74,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 		if(op->type == OPType_CONDITIONAL_TRAVERSE) {
 			CondTraverse *traverse = (CondTraverse *)op;
 			const ExecutionPlan *traverse_plan = traverse->op.plan;
-			OpBase *expand_into = NewExpandIntoOp(traverse_plan, traverse->graph, traverse->ae,
-												  traverse->recordsCap);
+			OpBase *expand_into = NewExpandIntoOp(traverse_plan, traverse->graph, traverse->ae);
 
 			// Set traverse algebraic_expression to NULL to avoid early free.
 			traverse->ae = NULL;

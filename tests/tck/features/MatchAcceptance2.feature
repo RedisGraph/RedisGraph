@@ -1239,6 +1239,7 @@ Feature: MatchAcceptance2
       | (:A)  | (:C)   |
     And no side effects
 
+@skip
   Scenario: Matching relationships into a list and matching variable length using the list, with bound nodes
     Given an empty graph
     And having executed:
@@ -1260,6 +1261,7 @@ Feature: MatchAcceptance2
       | (:A)  | (:C)   |
     And no side effects
 
+@skip
   Scenario: Matching relationships into a list and matching variable length using the list, with bound nodes, wrong direction
     Given an empty graph
     And having executed:

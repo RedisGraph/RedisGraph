@@ -16,8 +16,8 @@ typedef struct ExecutionPlan ExecutionPlan;
 
 struct ExecutionPlan {
 	OpBase *root;                       // Root operation of overall ExecutionPlan.
+	AST *ast_segment;                   // The segment which the current ExecutionPlan segment is built from.
 	rax *record_map;                    // Mapping between identifiers and record indices.
-	ResultSet *result_set;              // ResultSet populated by this query.
 	QueryGraph *query_graph;            // QueryGraph representing all graph entities in this segment.
 	FT_FilterNode *filter_tree;         // FilterTree containing filters to be applied to this segment.
 	QueryGraph **connected_components;  // Array of all connected components in this segment.
@@ -25,11 +25,16 @@ struct ExecutionPlan {
 	int segment_count;                  // Number of ExecutionPlan segments.
 	ExecutionPlan **segments;           // Partial execution plans scoped to a subset of operations.
 	ObjectPool *record_pool;
+	bool prepared;                      // Indicates if the execution plan is ready for execute.
+	bool is_union;                      // Indicates if the execution plan is a union of execution plans.
 };
 
 /* execution_plan_modify.c
  * Helper functions to move and analyze operations in an ExecutionPlan. */
 
+/*
+ * API for restructuring the op tree.
+ */
 /* Removes operation from execution plan. */
 void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op);
 
@@ -48,27 +53,42 @@ void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root);
 /* Replace a with b. */
 void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b);
 
+/*
+ * ExecutionPlan_Locate API:
+ * For performing existence checks and looking up individual operations in tree.
+ */
 /* Traverse upwards until an operation that resolves the given alias is found.
  * Returns NULL if alias is not resolved. */
 OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias);
 
-/* Locate the first operation of a given type within execution plan.
- * Returns NULL if operation wasn't found. */
-OpBase *ExecutionPlan_LocateFirstOp(OpBase *root, OPType type);
+/* Locate the first operation matching one of the given types in the op tree by performing DFS.
+ * Returns NULL if no matching operation was found. */
+OpBase *ExecutionPlan_LocateOpMatchingType(OpBase *root, const OPType *types, uint type_count);
 
-/* Locate the last operation of a given type within execution plan.
+/* Convenience wrapper around ExecutionPlan_LocateOpMatchingType for lookups of a single type.
+ * Locate the first operation of a given type within execution plan by performing DFS.
  * Returns NULL if operation wasn't found. */
-OpBase *ExecutionPlan_LocateLastOp(OpBase *root, OPType type);
-
-/* Locate all operations of a given type within execution plan.
- * Returns an array of operations. */
-OpBase **ExecutionPlan_LocateOps(OpBase *root, OPType type);
+OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type);
 
 /* Find the earliest operation above the provided recurse_limit, if any,
  * at which all references are resolved. */
 OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
 									   rax *references_to_resolve);
 
+/* ExecutionPlan_Collect API:
+ * For collecting all matching operations in tree. */
+/* Collect all operations matching the given types in the op tree.
+ * Returns an array of operations. */
+OpBase **ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *types, uint type_count);
+
+/* Convenience wrapper around ExecutionPlan_LocateOpMatchingType for
+ * collecting all operations of a given type within the op tree.
+ * Returns an array of operations. */
+OpBase **ExecutionPlan_CollectOps(OpBase *root, OPType type);
+
+/*
+ * API for building and relocating operations in transient ExecutionPlans.
+ */
 /* Populate a rax with all aliases that have been resolved by the given operation
  * and its children. These are the bound variables at this point in execution, and
  * subsequent operations should not introduce them as new entities. For example, in the query:
@@ -88,13 +108,22 @@ OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **vars,
 /* execution_plan.c */
 
 /* Creates a new execution plan from AST */
-ExecutionPlan *NewExecutionPlan(ResultSet *result_set);
+ExecutionPlan *NewExecutionPlan(void);
+
+// Sets an AST segment in the execution plan.
+void ExecutionPlan_SetAST(ExecutionPlan *plan, AST *ast);
+
+// Gets the AST segment from the execution plan.
+AST *ExecutionPlan_GetAST(const ExecutionPlan *plan);
+
+/* Prepare an execution plan for execution: optimize, initialize result set schema. */
+void ExecutionPlan_PreparePlan(ExecutionPlan *plan);
 
 /* Allocate a new ExecutionPlan segment. */
 ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void);
 
 /* Build a tree of operations that performs all the work required by the clauses of the current AST. */
-void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan, ResultSet *result_set);
+void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan);
 
 /* Re position filter op. */
 void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,

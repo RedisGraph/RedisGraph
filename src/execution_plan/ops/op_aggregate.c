@@ -15,6 +15,7 @@
 /* Forward declarations. */
 static Record AggregateConsume(OpBase *opBase);
 static OpResult AggregateReset(OpBase *opBase);
+static OpBase *AggregateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void AggregateFree(OpBase *opBase);
 
 /* Migrate each expression projected by this operation to either
@@ -37,23 +38,19 @@ static void _migrate_expressions(OpAggregate *op, AR_ExpNode **exps) {
 	op->key_count = array_len(op->key_exps);
 }
 
-static AR_ExpNode **_build_aggregate_exps(OpAggregate *op) {
-	AR_ExpNode **agg_exps = array_new(AR_ExpNode *, op->aggregate_count);
+/* Clone all aggregate expression templates to associate with a new Group. */
+static inline AR_ExpNode **_build_aggregate_exps(OpAggregate *op) {
+	AR_ExpNode **agg_exps = rm_malloc(op->aggregate_count * sizeof(AR_ExpNode *));
 
 	for(uint i = 0; i < op->aggregate_count; i++) {
-		AR_ExpNode *exp = AR_EXP_Clone(op->aggregate_exps[i]);
-		agg_exps = array_append(agg_exps, exp);
+		agg_exps[i] = AR_EXP_Clone(op->aggregate_exps[i]);
 	}
 
 	return agg_exps;
 }
 
-static Group *_CreateGroup(OpAggregate *op, Record r) {
-	/* Create a new group
-	 * Get a fresh copy of aggregation functions. */
-	AR_ExpNode **agg_exps = _build_aggregate_exps(op);
-
-	/* Clone group keys. */
+/* Build a new Group key of the SIValue results of non-aggregate expressions. */
+static inline SIValue *_build_group_key(OpAggregate *op) {
 	SIValue *group_keys = rm_malloc(sizeof(SIValue) * op->key_count);
 
 	for(uint i = 0; i < op->key_count; i++) {
@@ -62,9 +59,20 @@ static Group *_CreateGroup(OpAggregate *op, Record r) {
 		group_keys[i] = key;
 	}
 
+	return group_keys;
+}
+
+static Group *_CreateGroup(OpAggregate *op, Record r) {
+	/* Create a new group
+	 * Clone group keys. */
+	SIValue *group_keys = _build_group_key(op);
+
+	/* Get a fresh copy of aggregation functions. */
+	AR_ExpNode **agg_exps = _build_aggregate_exps(op);
+
 	/* There's no need to keep a reference to record if we're not sorting groups. */
 	Record cache_record = (op->should_cache_records) ? r : NULL;
-	op->group = NewGroup(op->key_count, group_keys, agg_exps, cache_record);
+	op->group = NewGroup(group_keys, op->key_count, agg_exps, op->aggregate_count, cache_record);
 
 	return op->group;
 }
@@ -137,7 +145,7 @@ static void _aggregateRecord(OpAggregate *op, Record r) {
 		AR_ExpNode *exp = group->aggregationFunctions[i];
 		AR_EXP_Aggregate(exp, r);
 	}
-	
+
 	// Free record.
 	OpBase_DeleteRecord(r);
 }
@@ -188,7 +196,7 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should
 	if(op->key_count) op->group_keys = rm_malloc(op->key_count * sizeof(SIValue));
 
 	OpBase_Init((OpBase *)op, OPType_AGGREGATE, "Aggregate", NULL, AggregateConsume,
-				AggregateReset, NULL, NULL, AggregateFree, false, plan);
+				AggregateReset, NULL, AggregateClone, AggregateFree, false, plan);
 
 	// The projected record will associate values with their resolved name
 	// to ensure that space is allocated for each entry.
@@ -240,6 +248,18 @@ static OpResult AggregateReset(OpBase *opBase) {
 	op->group = NULL;
 
 	return OP_OK;
+}
+
+static OpBase *AggregateClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_AGGREGATE);
+	OpAggregate *op = (OpAggregate *)opBase;
+	uint key_count = op->key_count;
+	uint aggregate_count = op->aggregate_count;
+	AR_ExpNode **exps = array_new(AR_ExpNode *, aggregate_count + key_count);
+	for(uint i = 0; i < key_count; i++) exps = array_append(exps, AR_EXP_Clone(op->key_exps[i]));
+	for(uint i = 0; i < aggregate_count; i++)
+		exps = array_append(exps, AR_EXP_Clone(op->aggregate_exps[i]));
+	return NewAggregateOp(plan, exps, op->should_cache_records);
 }
 
 static void AggregateFree(OpBase *opBase) {

@@ -13,6 +13,7 @@ static OpResult AllNodeScanInit(OpBase *opBase);
 static Record AllNodeScanConsume(OpBase *opBase);
 static Record AllNodeScanConsumeFromChild(OpBase *opBase);
 static OpResult AllNodeScanReset(OpBase *opBase);
+static OpBase *AllNodeScanClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void AllNodeScanFree(OpBase *opBase);
 
 static inline int AllNodeScanToString(const OpBase *ctx, char *buf, uint buf_len) {
@@ -27,14 +28,15 @@ OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const QGNode *n) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_ALL_NODE_SCAN, "All Node Scan", AllNodeScanInit,
-				AllNodeScanConsume, AllNodeScanReset, AllNodeScanToString, NULL, AllNodeScanFree, false, plan);
+				AllNodeScanConsume, AllNodeScanReset, AllNodeScanToString, AllNodeScanClone, AllNodeScanFree, false,
+				plan);
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 	return (OpBase *)op;
 }
 
 static OpResult AllNodeScanInit(OpBase *opBase) {
 	AllNodeScan *op = (AllNodeScan *)opBase;
-	if(opBase->childCount > 0) opBase->consume = AllNodeScanConsumeFromChild;
+	if(opBase->childCount > 0) OpBase_UpdateConsume(opBase, AllNodeScanConsumeFromChild);
 	else op->iter = Graph_ScanNodes(QueryCtx_GetGraph());
 	return OP_OK;
 }
@@ -91,6 +93,12 @@ static OpResult AllNodeScanReset(OpBase *op) {
 	AllNodeScan *allNodeScan = (AllNodeScan *)op;
 	if(allNodeScan->iter) DataBlockIterator_Reset(allNodeScan->iter);
 	return OP_OK;
+}
+
+static inline OpBase *AllNodeScanClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_ALL_NODE_SCAN);
+	AllNodeScan *allNodeScan = (AllNodeScan *)opBase;
+	return NewAllNodeScanOp(plan, allNodeScan->n);
 }
 
 static void AllNodeScanFree(OpBase *ctx) {

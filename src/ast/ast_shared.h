@@ -10,6 +10,7 @@
 #include "../graph/entities/qg_node.h"
 #include "../graph/entities/qg_edge.h"
 #include "../arithmetic/arithmetic_expression.h"
+#include "ast.h"
 
 struct AR_ExpNode;
 
@@ -74,6 +75,15 @@ AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op);
 
 // Convert a map of properties from the AST into a set of attribute ID keys and AR_ExpNode values.
 PropertyMap *PropertyMap_New(GraphContext *gc, const cypher_astnode_t *props);
+
+// Clone EntityUpdateEvalCtx.
+EntityUpdateEvalCtx EntityUpdateEvalCtx_Clone(EntityUpdateEvalCtx ctx);
+
+// Clone NodeCreateCtx.
+NodeCreateCtx NodeCreateCtx_Clone(NodeCreateCtx ctx);
+
+// Clone EdgeCreateCtx.
+EdgeCreateCtx EdgeCreateCtx_Clone(EdgeCreateCtx ctx);
 
 void PropertyMap_Free(PropertyMap *map);
 

@@ -13,4 +13,4 @@ capabilities:
     - failover_migrate
     - persistence_rdb
     - persistence_aof
-    - replica_of
+    - replica_of # Replication requires total memory to be at least 2x the graph's size.

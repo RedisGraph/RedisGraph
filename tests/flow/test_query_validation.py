@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
 import redis
@@ -7,12 +8,14 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from base import FlowTestsBase
 
+redis_con = None
 redis_graph = None
 
 class testQueryValidationFlow(FlowTestsBase):
 
     def __init__(self):
-        super(testQueryValidationFlow, self).__init__()
+        self.env = Env()
+        global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph("G", redis_con)
@@ -170,4 +173,26 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError:
             # Expecting an error.
+            pass
+
+    # Run a query in which a parsed parameter introduces a type in an unsupported context.
+    def test16_param_introduces_unhandled_type(self):
+        try:
+            query = """CYPHER props={a:1,b:2} CREATE (a:A $props)"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Encountered unhandled type" in e.message)
+            pass
+
+    # Validate that the module fails properly with incorrect argument counts.
+    def test17_query_arity(self):
+        # Call GRAPH.QUERY with a missing query argument.
+        try:
+            res = redis_con.execute_command("GRAPH.QUERY", "G")
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("wrong number of arguments" in e.message)
             pass

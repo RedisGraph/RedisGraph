@@ -48,29 +48,29 @@
 // with the other.  I recommend either keeping both of each pair, or disabling
 // both.
 
-        // FIRST and SECOND
-        // LT and GT
-        // LE and GE
-        // ISLT and ISGT
-        // ISLE and ISGE
-        // DIV and RDIV
-        // MINUS and RMINUS
+// FIRST and SECOND
+// LT and GT
+// LE and GE
+// ISLT and ISGT
+// ISLE and ISGE
+// DIV and RDIV
+// MINUS and RMINUS
 
 // In addition, many of the Boolean operators are not unique, and are renamed
 // internally.  The operators listed here are just the unique ones.  In
 // particular, GrB_DIV_BOOL is identical to GrB_FIRST_BOOL, so the GrB_DIV_BOOL
 // operator is replaced internally with GrB_FIRST_BOOL.
 
-        // FIRST and DIV                        : FIRST is used for both
-        // SECOND and RDIV                      : SECOND
-        // MIN, TIMES, and LAND                 : LAND
-        // MAX, PLUS, and LOR                   : LOR
-        // ISNE, NE, MINUS, RMINUS, and LXOR    : LXOR
-        // ISEQ, EQ                             : EQ
-        // ISGT, GT                             : GT
-        // ISLT, LT                             : LT
-        // ISGE, GE                             : GE
-        // ISLE, LE                             : LE
+// FIRST and DIV                        : FIRST is used for both
+// SECOND and RDIV                      : SECOND
+// MIN, TIMES, and LAND                 : LAND
+// MAX, PLUS, and LOR                   : LOR
+// ISNE, NE, MINUS, RMINUS, and LXOR    : LXOR
+// ISEQ, EQ                             : EQ
+// ISGT, GT                             : GT
+// ISLT, LT                             : LT
+// ISGE, GE                             : GE
+// ISLE, LE                             : LE
 
 // Thus, below there is a #define GxB_NO_LAND_FIRST_BOOL, but no #define
 // GxB_NO_LAND_DIV_BOOL.

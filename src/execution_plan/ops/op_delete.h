@@ -17,12 +17,12 @@
 typedef struct {
 	OpBase op;
 	GraphContext *gc;
-    AR_ExpNode **exps;      // Expressions evaluated to an entity about to be deleted.
-    uint exp_count;         // Number of expressions.
+	AR_ExpNode **exps;      // Expressions evaluated to an entity about to be deleted.
+	uint exp_count;         // Number of expressions.
 	Node *deleted_nodes;    // Array of nodes to be removed.
 	Edge *deleted_edges;    // Array of edges to be removed.
 
 	ResultSetStatistics *stats;
 } OpDelete;
 
-OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps, ResultSetStatistics *stats);
+OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps);
