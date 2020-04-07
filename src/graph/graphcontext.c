@@ -35,18 +35,6 @@ static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 		thpool_add_work(_thpool, _GraphContext_Free, gc);
 }
 
-void _GraphContext_SetTag(GraphContext *gc) {
-	gc->tag = rm_strdup(gc->graph_name);
-	const char *left_curly_brace = strstr(gc->graph_name, "{");
-	if(left_curly_brace) {
-		const char *right_curly_brace = strstr(left_curly_brace, "}");
-		if(right_curly_brace) {
-			rm_free(gc->tag);
-			gc->tag = rm_strndup(left_curly_brace, right_curly_brace - left_curly_brace);
-		}
-	}
-}
-
 //------------------------------------------------------------------------------
 // GraphContext API
 //------------------------------------------------------------------------------
@@ -61,7 +49,6 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 	// Initialize the graph's matrices and datablock storage
 	gc->g = Graph_New(node_cap, edge_cap);
 	gc->graph_name = rm_strdup(graph_name);
-	_GraphContext_SetTag(gc);
 	// Allocate the default space for schemas and indices
 	gc->node_schemas = array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
 	gc->relation_schemas = array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
@@ -163,9 +150,7 @@ void GraphContext_Delete(GraphContext *gc) {
 
 void GraphContext_Rename(GraphContext *gc, const char *name) {
 	rm_free(gc->graph_name);
-	rm_free(gc->tag);
 	gc->graph_name = rm_strdup(name);
-	_GraphContext_SetTag(gc);
 }
 
 //------------------------------------------------------------------------------
@@ -402,9 +387,21 @@ SlowLog *GraphContext_GetSlowLog(const GraphContext *gc) {
 // Meta keys API
 //------------------------------------------------------------------------------
 
+static bool _GraphContext_NameContainsTag(const GraphContext *gc) {
+	const char *left_curly_brace = strstr(gc->graph_name, "{");
+	if(left_curly_brace) {
+		const char *right_curly_brace = strstr(left_curly_brace, "}");
+		if(right_curly_brace) {
+			return true;
+		}
+	}
+	return false;
+}
+
 static inline char *_GraphContext_CreateGraphMetaKeyName(const GraphContext *gc) {
 	char *name;
-	asprintf(&name, "{%s}%s_%s", gc->tag, gc->graph_name, UUID_New());
+	if(_GraphContext_NameContainsTag(gc)) asprintf(&name, "%s_%s", gc->graph_name, UUID_New());
+	else asprintf(&name, "{%s}%s_%s", gc->graph_name, gc->graph_name, UUID_New());
 	return name;
 }
 
@@ -502,6 +499,5 @@ static void _GraphContext_Free(void *arg) {
 	GraphEncodeContext_Free(gc->encoding_context);
 	GraphDecodeContext_Free(gc->decoding_context);
 	rm_free(gc->graph_name);
-	rm_free(gc->tag);
 	rm_free(gc);
 }
