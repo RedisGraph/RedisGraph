@@ -236,8 +236,6 @@ static void _RegisterForkHooks(RedisModuleCtx *ctx) {
 }
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-	// Set the server major version as a global property.
-	_SetRedisMajorVersion(ctx);
 	/* TODO: when module unloads call GrB_finalize. */
 	assert(GxB_init(GrB_NONBLOCKING, rm_malloc, rm_calloc, rm_realloc, rm_free, true) == GrB_SUCCESS);
 	GxB_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
@@ -251,6 +249,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	if(RediSearch_Init(ctx, REDISEARCH_INIT_LIBRARY) != REDISMODULE_OK) {
 		return REDISMODULE_ERR;
 	}
+
+	// Set the server major version as a global property.
+	_SetRedisMajorVersion(ctx);
 
 	Proc_Register();         // Register procedures.
 	AR_RegisterFuncs();      // Register arithmetic functions.
