@@ -22,6 +22,3 @@ void **raxValues(rax *rax);
 
 // Collect all keys in a rax into an array.
 unsigned char **raxKeys(rax *rax);
-
-// Clears a rax.
-void raxClear(rax *rax);

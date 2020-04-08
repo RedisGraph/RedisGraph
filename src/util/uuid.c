@@ -5,6 +5,7 @@
 */
 
 #include "rmalloc.h"
+#include "uuid.h"
 
 char *UUID_New() {
 	/* Implementation is based on https://www.cryptosys.net/pki/uuid-rfc4122.html */

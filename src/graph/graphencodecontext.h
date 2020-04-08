@@ -7,6 +7,7 @@
 #pragma once
 
 #include "stdlib.h"
+#include "stdint.h"
 #include "stdbool.h"
 #include "../util/datablock/datablock.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"

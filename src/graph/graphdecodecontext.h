@@ -8,6 +8,7 @@
 
 #include "stdlib.h"
 #include "stdbool.h"
+#include "stdint.h"
 
 // A struct that maintains the state of a graph decoding from RDB.
 typedef struct {

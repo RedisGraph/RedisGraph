@@ -68,12 +68,3 @@ unsigned char **raxKeys(rax *rax) {
 	raxStop(&it);
 	return keys;
 }
-
-void raxClear(rax *rax) {
-	unsigned char **keys = raxKeys(rax);
-	uint key_count = array_len(keys);
-	for(uint i = 0; i < key_count; i++) {
-		raxRemove(rax, keys[i], strlen((const char *)keys[i]), NULL);
-	}
-	array_free(keys);
-}

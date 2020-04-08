@@ -55,7 +55,6 @@ static void _RdbSaveSIArray(RedisModuleIO *rdb, const SIValue list) {
 		SIValue value = SIArray_Get(list, i);
 		_RdbSaveSIValue(rdb, &value);
 	}
-
 }
 
 static void _RdbSaveEntity(RedisModuleIO *rdb, const Entity *e) {
@@ -99,6 +98,7 @@ static void _RdbSaveEdge(RedisModuleIO *rdb, const Graph *g, const Edge *e, int 
 	_RdbSaveEntity(rdb, e->entity);
 }
 
+// Update the next encoding phase if needed.
 static void _UpdatedEncodePhase(GraphContext *gc) {
 	// Check if NODES encodeding phase is done
 	if(GraphEncodeContext_GetProccessedNodes(gc->encoding_context) == Graph_NodeCount(gc->g)) {

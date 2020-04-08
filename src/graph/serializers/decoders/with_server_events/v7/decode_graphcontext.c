@@ -4,7 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-
 #include "decode_v7.h"
 #include "../../../../../query_ctx.h"
 

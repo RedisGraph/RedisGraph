@@ -514,6 +514,7 @@ void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID, 
 	}
 }
 
+// Static function to add node to label matrix - used in Graph_CreateNode and Graph_SetNode.
 static void _Graph_AddNodeToLabelMatrix(Graph *g, NodeID id, int label) {
 	if(label != GRAPH_NO_LABEL) {
 		// Try to set matrix at position [id, id]
@@ -561,6 +562,7 @@ void Graph_SetNode(Graph *g, NodeID id, int label, Node *n) {
 	_Graph_AddNodeToLabelMatrix(g, id, label);
 }
 
+// Static function to connect two nodes in a matrix - used in Graph_ConnectNodes and Graph_SetEdge
 static void _Graph_ConnectNodesInMatrix(Graph *g, EdgeID edgeId, NodeID src, NodeID dest, int r) {
 	GrB_Info info;
 	GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
@@ -610,6 +612,7 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
 	return 1;
 }
 
+// Try to add relation matrix if not present - used for graph deserilization.
 static inline void _Graph_TryAddRelationMatrix(Graph *g, int r) {
 	if(r != GRAPH_NO_RELATION) {
 		uint relation_count = Graph_RelationTypeCount(g);

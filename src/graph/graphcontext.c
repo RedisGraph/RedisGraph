@@ -343,6 +343,7 @@ void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
 
 // Register a new GraphContext for module-level tracking
 void GraphContext_RegisterWithModule(GraphContext *gc) {
+	// See if the graph context is not already in the keyspace.
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i ++) {
 		if(graphs_in_keyspace[i] == gc) return;
@@ -387,6 +388,7 @@ SlowLog *GraphContext_GetSlowLog(const GraphContext *gc) {
 // Meta keys API
 //------------------------------------------------------------------------------
 
+// Checks if the graph name contains a tag between curly braces.
 static bool _GraphContext_NameContainsTag(const GraphContext *gc) {
 	const char *left_curly_brace = strstr(gc->graph_name, "{");
 	if(left_curly_brace) {
@@ -398,13 +400,17 @@ static bool _GraphContext_NameContainsTag(const GraphContext *gc) {
 	return false;
 }
 
+// Creates a graph meta key name.
 static inline char *_GraphContext_CreateGraphMetaKeyName(const GraphContext *gc) {
 	char *name;
+	// If the name already contains a tag, append UUID.
 	if(_GraphContext_NameContainsTag(gc)) asprintf(&name, "%s_%s", gc->graph_name, UUID_New());
+	// Else, create a tag which is the graph name and append the graph name and UUID.
 	else asprintf(&name, "{%s}%s_%s", gc->graph_name, gc->graph_name, UUID_New());
 	return name;
 }
 
+// Calculate how many virtual keys are needed to represent the graph.
 static uint64_t _GraphContext_RequiredMetaKeys(const GraphContext *gc) {
 	uint64_t required_keys = 0;
 	required_keys += ceil((double)Graph_NodeCount(gc->g) / entities_threshold);

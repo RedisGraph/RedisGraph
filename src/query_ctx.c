@@ -89,11 +89,6 @@ void QueryCtx_SetGraphCtx(GraphContext *gc) {
 	ctx->gc = gc;
 }
 
-void QueryCtx_SetRedisModuleCtx(RedisModuleCtx *redisctx) {
-	QueryCtx *ctx = _QueryCtx_GetCtx();
-	ctx->global_exec_ctx.redis_ctx = redisctx;
-}
-
 void QueryCtx_SetError(char *error) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	// An error is already set - free it.
@@ -221,11 +216,10 @@ void QueryCtx_UnlockCommit(OpBase *writer_op) {
 	if(!ctx->internal_exec_ctx.locked_for_commit) return;
 	RedisModuleCtx *redis_ctx = ctx->global_exec_ctx.redis_ctx;
 	GraphContext *gc = ctx->gc;
-	if(ResultSetStat_IndicateModification(ctx->internal_exec_ctx.result_set->stats)) {
+	if(ResultSetStat_IndicateModification(ctx->internal_exec_ctx.result_set->stats))
 		// Replicate only in case of changes.
 		RedisModule_Replicate(redis_ctx, ctx->global_exec_ctx.command_name, "cc!", gc->graph_name,
 							  ctx->query_data.query);
-	}
 	ctx->internal_exec_ctx.locked_for_commit = false;
 	// Release graph R/W lock.
 	Graph_ReleaseLock(gc->g);
@@ -243,11 +237,10 @@ void QueryCtx_ForceUnlockCommit() {
 	RedisModule_Log(redis_ctx, "warning",
 					"RedisGraph used forced unlocking commit flow for the query %s",
 					ctx->query_data.query);
-	if(ResultSetStat_IndicateModification(ctx->internal_exec_ctx.result_set->stats)) {
+	if(ResultSetStat_IndicateModification(ctx->internal_exec_ctx.result_set->stats))
 		// Replicate only in case of changes.
 		RedisModule_Replicate(redis_ctx, ctx->global_exec_ctx.command_name, "cc!", gc->graph_name,
 							  ctx->query_data.query);
-	}
 	ctx->internal_exec_ctx.locked_for_commit = false;
 	// Release graph R/W lock.
 	Graph_ReleaseLock(gc->g);

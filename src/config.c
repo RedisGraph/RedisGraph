@@ -46,7 +46,7 @@ uint64_t Config_GetEntitiesThreshold(RedisModuleCtx *ctx, RedisModuleString **ar
 	// Entities threshold defined in configuration?
 	// Expecting configuration to be in the form of key value pairs.
 	if(argc % 2 == 0) {
-		// Scan arguments for THREAD_COUNT.
+		// Scan arguments for ENTITIES_THRESHOLD.
 		for(int i = 0; i < argc; i += 2) {
 			const char *param = RedisModule_StringPtrLen(argv[i], NULL);
 			if(strcasecmp(param, ENTITIES_THRESHOLD) == 0) {

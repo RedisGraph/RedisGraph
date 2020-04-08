@@ -8,7 +8,6 @@
 
 #include "../../redismodule.h"
 
-
 extern RedisModuleType *GraphMetaRedisModuleType;
 
 /* Commands related to the RedisGraph module registration */

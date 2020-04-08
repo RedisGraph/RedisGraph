@@ -104,7 +104,7 @@ GraphContext *GraphContexted_GetRegistredGraphContext(const char *graph_name);
 // Remove GraphContext from global array
 void GraphContext_RemoveFromRegistry(GraphContext *gc);
 
-// Create meta keys
+// Create meta keys.
 void GraphContext_CreateMetaKeys(RedisModuleCtx *ctx, GraphContext *gc);
 // Delete the meta keys.
 void GraphContext_DeleteMetaKeys(RedisModuleCtx *ctx, GraphContext *gc);

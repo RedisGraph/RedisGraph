@@ -66,6 +66,7 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(_validate_command_arity(cmd, argc) == false) return RedisModule_WrongArity(ctx);
 	Command_Handler handler = get_command_handler(cmd);
 	GraphContext *gc = GraphContext_Retrieve(ctx, graph_name, true, true);
+	// Check if graph is in decode - The graph key has been decoded but not all the virtual keys finished.
 	if(GraphContext_IsInDecode(gc)) {
 		RedisModule_ReplyWithError(ctx, "Graph is currently replicating");
 		return REDISMODULE_OK;

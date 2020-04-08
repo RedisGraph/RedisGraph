@@ -15,8 +15,6 @@ static inline bool _shouldAcquireLocks(void) {
 	return !process_is_child;
 }
 
-
-
 static void _RdbSaveHeader(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Header format:
 	* Graph name
@@ -35,7 +33,7 @@ static void _RdbSaveHeader(RedisModuleIO *rdb, GraphContext *gc) {
 	RedisModule_SaveUnsigned(rdb, GraphEncodeContext_GetEncodePhase(gc->encoding_context));
 }
 
-
+// Select the first phase to encode.
 static void _SelectFirstPhase(GraphContext *gc) {
 	// If there are nodes
 	if(Graph_NodeCount(gc->g) > 0) {
@@ -65,6 +63,7 @@ void RdbSaveGraphContext_v7(RedisModuleIO *rdb, void *value) {
 	// Acquire a read lock if we're not in a thread-safe context.
 	if(_shouldAcquireLocks()) Graph_AcquireReadLock(gc->g);
 
+	// If it is the start of the encodeing, select the phase to start from.
 	if(GraphEncodeContext_GetEncodePhase(gc->encoding_context) == RESET) _SelectFirstPhase(gc);
 
 	// Save header
