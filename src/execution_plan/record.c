@@ -209,81 +209,30 @@ size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {
 }
 
 unsigned long long Record_Hash64(const Record r) {
-	uint rec_len = Record_length(r);
-	void *data;
-	size_t len;
-	static long long _null = 0;
-	EntityID id;
-	SIValue si;
-
-	XXH_errorcode res;
+	// Initialize the hash state.
 	XXH64_state_t state;
-
-	res = XXH64_reset(&state, 0);
+	XXH_errorcode res = XXH64_reset(&state, 0);
 	assert(res != XXH_ERROR);
 
-	for(int i = 0; i < rec_len; ++i) {
-		Entry e = r->entries[i];
-		switch(e.type) {
-		case REC_TYPE_NODE:
-		case REC_TYPE_EDGE:
-			// Since nodes and edges cannot occupy the same index within
-			// a record, we do not need to differentiate on type
-			id = ENTITY_GET_ID(Record_GetGraphEntity(r, i));
-			data = &id;
-			len = sizeof(id);
-			break;
-		case REC_TYPE_SCALAR:
-			si = Record_Get(r, i);
-			switch(si.type) {
-			case T_NULL:
-				data = &_null;
-				len = sizeof(_null);
-				break;
-
-			case T_STRING:
-				data = si.stringval;
-				len = strlen(si.stringval);
-				break;
-
-			case T_INT64:
-			case T_BOOL:
-				data = &si.longval;
-				len = sizeof(si.longval);
-				break;
-
-			case T_PTR:
-				data = &si.ptrval;
-				len = sizeof(si.ptrval);
-				break;
-
-			case T_DOUBLE:
-				data = &si.doubleval;
-				len = sizeof(si.doubleval);
-				break;
-
-			default:
-				assert(false);
-			}
-			break;
-
-		case REC_TYPE_UNKNOWN:
-			/* Record hash should be able to handle hasing of records with missing entries.
+	uint rec_len = Record_length(r);
+	for(uint i = 0; i < rec_len; i++) {
+		SIValue v;
+		if(Record_GetType(r, i) != REC_TYPE_UNKNOWN) {
+			// Retrieve all standard Record entries as SVIalues.
+			v = Record_Get(r, i);
+		} else {
+			/* Record hash should be able to handle hashing of records with missing entries.
 			 * consider: UNWIND [42] AS X WITH X WHERE X > 32 WITH DISTINCT X MERGE (a {v: Z}) RETURN a
 			 * The distinct operation is aware of both `X` and `a` as a result
 			 * when distinct perform record hashing to will access both record entries:
 			 * `X` and `a` at which point `a` is not set. */
-			data = &"REC_TYPE_UNKNOWN";
-			len = strlen("REC_TYPE_UNKNOWN");
-			break;
-		default:
-			assert("Unhandled record type" && false);
+			v = SI_ConstStringVal("UNKNOWN");
 		}
-
-		res = XXH64_update(&state, data, len);
-		assert(res != XXH_ERROR);
+		// Add the current SIValue to the hash.
+		SIValue_HashUpdate(v, &state);
 	}
 
+	// Finalize the hash.
 	unsigned long long const hash = XXH64_digest(&state);
 	return hash;
 }
