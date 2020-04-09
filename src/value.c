@@ -483,6 +483,8 @@ int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull) {
 			return ENTITY_GET_ID((GraphEntity *)a.ptrval) - ENTITY_GET_ID((GraphEntity *)b.ptrval);
 		case T_ARRAY:
 			return SIArray_Compare(a, b, disjointOrNull);
+		case T_PATH:
+			return SIPath_Compare(a, b);
 		case T_NULL:
 			break;
 		default:
@@ -627,3 +629,4 @@ void SIValue_Free(SIValue v) {
 		return;
 	}
 }
+

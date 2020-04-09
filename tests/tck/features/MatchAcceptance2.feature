@@ -95,8 +95,6 @@ Feature: MatchAcceptance2
       | (:IntNode {var: 0})       |
     And no side effects
 
-@crash
-@skip
   Scenario: Aggregation with named paths
     Given an empty graph
     And having executed:
