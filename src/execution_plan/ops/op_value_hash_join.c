@@ -237,9 +237,11 @@ static Record ValueHashJoinConsume(OpBase *opBase) {
 
 		// No intersection, discard R.
 		if(!_set_intersection_idx(op, v)) {
+			SIValue_Free(v);
 			OpBase_DeleteRecord(op->rhs_rec);
 			continue;
 		}
+		SIValue_Free(v);
 
 		// Found atleast one intersecting record.
 		l = _get_intersecting_record(op);
