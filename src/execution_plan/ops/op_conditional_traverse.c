@@ -140,7 +140,7 @@ static Record CondTraverseConsume(OpBase *opBase) {
 				/* The child Record may not contain the source node in scenarios like
 				 * a failed OPTIONAL MATCH. In this case, delete the Record and try again. */
 				OpBase_DeleteRecord(childRecord);
-				op->recordsLen--;
+				op->recordCount--;
 				continue;
 			}
 
@@ -164,7 +164,7 @@ static Record CondTraverseConsume(OpBase *opBase) {
 	if(op->edge_ctx) {
 		Node *srcNode = Record_GetNode(op->r, op->srcNodeIdx);
 		// Collect all appropriate edges connecting the current pair of endpoints.
-		Traverse_CollectEdges(op->edge_ctx, ENTITY_GET_ID(srcNode), ENTITY_GET_ID(destNode));
+		Traverse_CollectEdges(op->edge_ctx, ENTITY_GET_ID(srcNode), ENTITY_GET_ID(&destNode));
 		// We're guaranteed to have at least one edge.
 		Traverse_SetEdge(op->edge_ctx, op->r);
 	}
