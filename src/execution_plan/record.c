@@ -215,20 +215,14 @@ unsigned long long Record_Hash64(const Record r) {
 	assert(res != XXH_ERROR);
 
 	uint rec_len = Record_length(r);
-	for(uint i = 0; i < rec_len; i++) {
-		SIValue v;
-		if(Record_GetType(r, i) != REC_TYPE_UNKNOWN) {
-			// Retrieve all standard Record entries as SVIalues.
-			v = Record_Get(r, i);
-		} else {
-			/* Record hash should be able to handle hashing of records with missing entries.
-			 * consider: UNWIND [42] AS X WITH X WHERE X > 32 WITH DISTINCT X MERGE (a {v: Z}) RETURN a
-			 * The distinct operation is aware of both `X` and `a` as a result
-			 * when distinct perform record hashing to will access both record entries:
-			 * `X` and `a` at which point `a` is not set. */
-			v = SI_ConstStringVal("UNKNOWN");
-		}
-		// Add the current SIValue to the hash.
+	for(uint idx = 0; idx < rec_len; idx++) {
+		/* Retrieve the entry at 'idx' as an SIValue.
+		 * If this entry is of type REC_TYPE_UNKNOWN, it will be returned as an SI_NullVal.
+		 * As such, this hashing logic will not differentiate between implicit and explicit
+		 * NULL values, but this is an acceptable design choice as the Cypher specification
+		 * does not prescribe behavior for this scenario. */
+		SIValue v = Record_Get(r, idx);
+		// Update the hash state with the current value.
 		SIValue_HashUpdate(v, &state);
 	}
 
