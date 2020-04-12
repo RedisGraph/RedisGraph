@@ -69,6 +69,7 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// Check if graph is in decode - The graph key has been decoded but not all the virtual keys finished.
 	if(GraphContext_IsInDecode(gc)) {
 		RedisModule_ReplyWithError(ctx, "Graph is currently replicating");
+		GraphContext_Release(gc);   // Decrease graph ref count as GraphContext_Retrieve increased it.
 		return REDISMODULE_OK;
 	}
 

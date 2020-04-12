@@ -41,7 +41,7 @@ long long Config_GetThreadCount(RedisModuleCtx *ctx, RedisModuleString **argv, i
 
 uint64_t Config_GetEntitiesThreshold(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// Default.
-	long long threshold = ENTITIES_THRESHOLD_NUMBER;
+	long long threshold = ENTITIES_THRESHOLD_DEFAULT;
 
 	// Entities threshold defined in configuration?
 	// Expecting configuration to be in the form of key value pairs.
@@ -57,8 +57,8 @@ uint64_t Config_GetEntitiesThreshold(RedisModuleCtx *ctx, RedisModuleString **ar
 	}
 
 	// Sanity.
-	assert(threshold > 0);
+	assert(threshold > 0 && "A positive integer is required for the number of entities in virtual key");
 	RedisModule_Log(ctx, "notice", "Entities limit per graph meta key set to %d.", threshold);
 
-	return threshold;
+	return (uint64_t)threshold;
 }

@@ -14,6 +14,8 @@
 #include "decoders/without_server_events/decode_without_server_events.h"
 #include "decoders/prev/decode_previous.h"
 
+#define VERSION_SUPPORTS_EVENTS(encver) ((encver) % 2 == 1)
+
 /* Declaration of the type for redis registration. */
 RedisModuleType *GraphContextRedisModuleType;
 
@@ -27,7 +29,7 @@ static void *_GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
 		printf("Failed loading Graph, RedisGraph version (%d) is not forward compatible.\n",
 			   REDISGRAPH_MODULE_VERSION);
 		return NULL;
-		// Not backward comptible.
+		// Not backward compatible.
 	} else if(encver < PREV_DECODER_SUPPORT_MIN_V) {
 		printf("Failed loading Graph, RedisGraph version (%d) is not backward compatible with encoder version %d.\n",
 			   REDISGRAPH_MODULE_VERSION, encver);
@@ -36,12 +38,12 @@ static void *_GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
 	} else if(encver >= PREV_DECODER_SUPPORT_MIN_V && encver <= PREV_DECODER_SUPPORT_MAX_V) {
 		gc = Decode_Previous(rdb, encver);
 		// RDB encoded using Redis 5.
-	} else if(encver % 2 == 0 &&
+	} else if(!VERSION_SUPPORTS_EVENTS(encver) &&
 			  encver >= DECODER_SUPPORT_MIN_V_WITHOUT_SERVER_EVENTS &&
 			  encver <= DECODER_SUPPORT_MAX_V_WITHOUT_SERVER_EVENTS) {
 		gc = RdbLoadGraphContext_WithoutServerEvents(rdb);
 		// RDB encoded using Redis 6 and up.
-	} else if(encver % 2 == 1 &&
+	} else if(VERSION_SUPPORTS_EVENTS(encver) &&
 			  encver >= DECODER_SUPPORT_MIN_V_WITH_SERVER_EVENTS &&
 			  encver <= DECODER_SUPPORT_MAX_V_WITH_SERVER_EVENTS) {
 		gc = RdbLoadGraphContext_WithServerEvents(rdb);
@@ -57,7 +59,7 @@ static void _GraphContextType_RdbSaveWithoutServerEvents(RedisModuleIO *rdb, voi
 }
 
 // Save RDB for Redis 6 and up.
-static void _GraphCtonextType_RdbSaveWithServerEvents(RedisModuleIO *rdb, void *value) {
+static void _GraphContextType_RdbSaveWithServerEvents(RedisModuleIO *rdb, void *value) {
 	RdbSaveGraphContext_WithServerEvents(rdb, value);
 }
 
@@ -70,11 +72,11 @@ static void _GraphContextType_Free(void *value) {
 	GraphContext_Delete(gc);
 }
 
-// Register GraphContext type for Redis 5.
+// Register GraphContext type for Redis 6 and up.
 static int _GraphContextType_RegisterWithServerEvents(RedisModuleCtx *ctx) {
 	RedisModuleTypeMethods tm = {.version = REDISMODULE_TYPE_METHOD_VERSION,
 								 .rdb_load = _GraphContextType_RdbLoad,
-								 .rdb_save = _GraphCtonextType_RdbSaveWithServerEvents,
+								 .rdb_save = _GraphContextType_RdbSaveWithServerEvents,
 								 .aof_rewrite = _GraphContextType_AofRewrite,
 								 .free = _GraphContextType_Free
 								};
@@ -87,7 +89,7 @@ static int _GraphContextType_RegisterWithServerEvents(RedisModuleCtx *ctx) {
 	return REDISMODULE_OK;
 }
 
-// Register GraphContext type for Redis 6 and up.
+// Register GraphContext type for Redis 5.
 static int _GraphContextType_RegisterWithoutServerEvents(RedisModuleCtx *ctx) {
 	RedisModuleTypeMethods tm = {.version = REDISMODULE_TYPE_METHOD_VERSION,
 								 .rdb_load = _GraphContextType_RdbLoad,

@@ -9,7 +9,7 @@
 
 static GraphContext *_GetOrCreateGraphContext(char *graph_name) {
 
-	GraphContext *gc = GraphContexted_GetRegistredGraphContext(graph_name);
+	GraphContext *gc = GraphContext_GetRegisteredGraphContext(graph_name);
 	if(!gc) {
 		gc = GraphContext_New(graph_name, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 		// While loading the graph, minimize matrix realloc and synchronization calls.
@@ -54,7 +54,7 @@ GraphContext *RdbLoadGraphContext_v7(RedisModuleIO *rdb) {
 		break;
 	}
 	GraphDecodeContext_IncreaseProcessedCount(gc->decoding_context);
-	if(GraphDecodeContext_GetProccessedKeyCount(gc->decoding_context) == key_number) {
+	if(GraphDecodeContext_GetProcessedKeyCount(gc->decoding_context) == key_number) {
 		// Revert to default synchronization behavior
 		Graph_ApplyAllPending(gc->g);
 		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);

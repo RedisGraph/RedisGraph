@@ -25,11 +25,11 @@ void GraphDecodeContext_Reset(GraphDecodeContext *ctx);
 // Sets the decoding context to indicate about decoding in progress.
 void GraphDecodeContext_SetGraphInDecode(GraphDecodeContext *ctx);
 
-// Return if there is  decoding in progress.
+// Return if there is decoding in progress.
 bool GraphDecodeContext_IsGraphInDecode(GraphDecodeContext *ctx);
 
-// Retrive graph decoding context proccessed key count.
-uint64_t GraphDecodeContext_GetProccessedKeyCount(const GraphDecodeContext *ctx);
+// Retrive graph decoding context processed key count.
+uint64_t GraphDecodeContext_GetProcessedKeyCount(const GraphDecodeContext *ctx);
 
 // Increases the number of processed graph keys.
 void GraphDecodeContext_IncreaseProcessedCount(GraphDecodeContext *ctx);

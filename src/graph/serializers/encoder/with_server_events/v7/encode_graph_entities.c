@@ -99,7 +99,7 @@ static void _RdbSaveEdge(RedisModuleIO *rdb, const Graph *g, const Edge *e, int 
 }
 
 // Update the next encoding phase if needed.
-static void _UpdatedEncodePhase(GraphContext *gc) {
+static void _UpdateEncodePhase(GraphContext *gc) {
 	// Check if NODES encodeding phase is done
 	if(GraphEncodeContext_GetProccessedNodes(gc->encoding_context) == Graph_NodeCount(gc->g)) {
 		// Check if there is a need to encoded deleted nodes, or skip to edges.
@@ -145,7 +145,7 @@ void RdbSaveDeletedNodes_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	}
 	GraphEncodeContext_SetProcessedDeletedNodes(gc->encoding_context,
 												encoded_deleted_nodes + deleted_nodes_to_encode);
-	_UpdatedEncodePhase(gc);
+	_UpdateEncodePhase(gc);
 }
 
 void RdbSaveNodes_v7(RedisModuleIO *rdb, GraphContext *gc) {
@@ -198,7 +198,7 @@ void RdbSaveNodes_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	// Update context.
 	GraphEncodeContext_SetDatablockIterator(gc->encoding_context, iter);
 	GraphEncodeContext_SetProcessedNodes(gc->encoding_context, encoded_nodes + nodes_to_encode);
-	_UpdatedEncodePhase(gc);
+	_UpdateEncodePhase(gc);
 }
 
 void RdbSaveDeletedEdges_v7(RedisModuleIO *rdb, GraphContext *gc) {
@@ -223,7 +223,7 @@ void RdbSaveDeletedEdges_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	}
 	GraphEncodeContext_SetProcessedDeletedEdges(gc->encoding_context,
 												encoded_deleted_edges + deleted_edges_to_encode);
-	_UpdatedEncodePhase(gc);
+	_UpdateEncodePhase(gc);
 }
 
 void RdbSaveEdges_v7(RedisModuleIO *rdb, GraphContext *gc) {
@@ -305,5 +305,5 @@ finish:
 	GraphEncodeContex_SetCurrentRelationID(gc->encoding_context, r);
 	GraphEncodeContext_SetMatrixTupleIterator(gc->encoding_context, iter);
 	GraphEncodeContext_SetProcessedEdges(gc->encoding_context, encoded_edges + edges_to_encode);
-	_UpdatedEncodePhase(gc);
+	_UpdateEncodePhase(gc);
 }

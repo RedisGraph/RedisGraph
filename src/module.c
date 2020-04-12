@@ -29,8 +29,8 @@
 //------------------------------------------------------------------------------
 GraphContext **graphs_in_keyspace;  // Global array tracking all extant GraphContexts.
 bool process_is_child;              // Flag indicating whether the running process is a child.
-uint64_t entities_threshold;   		// The limit of number of entities encoded at once.
-uint redis_major_version;			// The redis server major version.
+uint64_t entities_threshold;        // The limit of number of entities encoded at once.
+uint redis_major_version;           // The redis server major version.
 
 //------------------------------------------------------------------------------
 // Thread pool variables
@@ -49,28 +49,27 @@ static int _Setup_ThreadPOOL(int threadCount) {
 	return 1;
 }
 
-// Sets the golbal variable of the redis major version
+// Sets the global variable of the redis major version
 static void _SetRedisMajorVersion(RedisModuleCtx *ctx) {
-
 	const char *server_version;
-	int major = 5;
+	int major;
 	int minor;
-	int minor_minor;
-	// Check if there is an implementation for redis module api for redis 6 an up.
+	int patch;
+	// Check if there is an implementation for redis module api for redis 6 an up, by checking the existence pf a Redis 6 API function pointer.
+	// If the function pointer is null, the server version is Redis 5.
 	if(RedisModule_GetServerInfo) {
 		// Retrive the server info.
 		RedisModuleServerInfoData *info =  RedisModule_GetServerInfo(ctx, "Server");
 		server_version = RedisModule_ServerInfoGetFieldC(info, "redis_version");
-		sscanf(server_version, "%d.%d.%d", &major, &minor, &minor_minor);
+		sscanf(server_version, "%d.%d.%d", &major, &minor, &patch);
 		RedisModule_FreeServerInfo(ctx, info);
+		if(major > 5) redis_major_version = major;
+		// Check for Redis 6 rc versions which starts with 5.0.x. Those versions support RedisModule_GetServerInfo.
+		else redis_major_version = major == 5 && minor == 9 ? 6 : major;
 	} else {
 		// RedisModule_GetServerInfo exists only on Redis 6 and up, so the current server major version is 5.
 		redis_major_version = 5;
 	}
-
-	if(major > 5) redis_major_version = major;
-	// Check for Redis 6 rc versions.
-	else redis_major_version = major == 5 && minor == 9 ? 6 : major;
 }
 
 static int _RegisterDataTypes(RedisModuleCtx *ctx) {
@@ -153,7 +152,7 @@ static int _RenameGraphHandler(RedisModuleCtx *ctx, int type, const char *event,
 	return REDISMODULE_OK;
 }
 
-// Module level function for RDB start save event - Create the meta keys for each graph.
+// Create the meta keys for each graph in the key space - used on RDB start event.
 static void _CreateKeySpaceMetaKeys(RedisModuleCtx *ctx) {
 	uint graphs_in_keyspace_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graphs_in_keyspace_count; i ++) {
@@ -161,7 +160,7 @@ static void _CreateKeySpaceMetaKeys(RedisModuleCtx *ctx) {
 	}
 }
 
-// Module level function for RDB start end or load end event - Delete the meta keys for each graph.
+// Delete the meta keys for each graph in the key space - used on RDB finish (save/load/fail) event.
 static void _ClearKeySpaceMetaKeys(RedisModuleCtx *ctx) {
 	uint graphs_in_keyspace_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graphs_in_keyspace_count; i ++) {
@@ -180,30 +179,26 @@ static void _FlushDBHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t 
 // Checks if the event is persistence start event.
 static bool _IsEventPersistenceStart(RedisModuleEvent eid, uint64_t subevent) {
 	return eid.id == REDISMODULE_EVENT_PERSISTENCE  &&
-		   // Normal RDB.
-		   (subevent == REDISMODULE_SUBEVENT_PERSISTENCE_RDB_START ||
-			// preamble AOF.
-			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_AOF_START ||
-			// SAVE and DEBUG RELOAD.
-			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_SYNC_RDB_START);
+		   (subevent == REDISMODULE_SUBEVENT_PERSISTENCE_RDB_START ||    // Normal RDB.
+			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_AOF_START ||    // Preamble AOF.
+			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_SYNC_RDB_START  // SAVE and DEBUG RELOAD.
+		   );
 }
 
 // Checks if the event is persistence end event.
 static bool _IsEventPersistenceEnd(RedisModuleEvent eid, uint64_t subevent) {
 	return eid.id == REDISMODULE_EVENT_PERSISTENCE &&
-		   // Save ended.
-		   (subevent == REDISMODULE_SUBEVENT_PERSISTENCE_ENDED ||
-			// Save failed.
-			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_FAILED);
+		   (subevent == REDISMODULE_SUBEVENT_PERSISTENCE_ENDED ||  // Save ended.
+			subevent == REDISMODULE_SUBEVENT_PERSISTENCE_FAILED    // Save failed.
+		   );
 }
 
 // Checks if the event is loading end event.
 static bool _IsEventLoadingEnd(RedisModuleEvent eid, uint64_t subevent) {
 	return eid.id == REDISMODULE_EVENT_LOADING &&
-		   // Load ended.
-		   (subevent == REDISMODULE_SUBEVENT_LOADING_ENDED ||
-			// Load failed.
-			subevent == REDISMODULE_SUBEVENT_LOADING_FAILED);
+		   (subevent == REDISMODULE_SUBEVENT_LOADING_ENDED ||  // Load ended.
+			subevent == REDISMODULE_SUBEVENT_LOADING_FAILED    // Load failed.
+		   );
 }
 
 // Server persistence event handler.

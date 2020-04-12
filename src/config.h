@@ -11,7 +11,7 @@
 
 #define THREAD_COUNT "THREAD_COUNT" // Config param, number of threads in thread pool
 #define ENTITIES_THRESHOLD "ENTITIES_THRESHOLD" // Config param, number of entities in virtual key
-#define ENTITIES_THRESHOLD_NUMBER 100000
+#define ENTITIES_THRESHOLD_DEFAULT 100000
 
 // Tries to fetch number of threads from
 // command line arguments if specified
@@ -24,7 +24,7 @@ long long Config_GetThreadCount(
 );
 
 // Tries to fetch the number of entities to encode as part of virtual key encoding.
-// Defaults to ENTITIES_THRESHOLD_NUMBER
+// Defaults to ENTITIES_THRESHOLD_DEFAULT
 uint64_t Config_GetEntitiesThreshold(
 	RedisModuleCtx *ctx,
 	RedisModuleString **argv,

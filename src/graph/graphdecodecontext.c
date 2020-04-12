@@ -31,7 +31,7 @@ inline bool GraphDecodeContext_IsGraphInDecode(GraphDecodeContext *ctx) {
 	return ctx->graph_decoding;
 }
 
-inline uint64_t GraphDecodeContext_GetProccessedKeyCount(const GraphDecodeContext *ctx) {
+inline uint64_t GraphDecodeContext_GetProcessedKeyCount(const GraphDecodeContext *ctx) {
 	assert(ctx);
 	return ctx->keys_processed;
 }

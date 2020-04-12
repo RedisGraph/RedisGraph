@@ -13,7 +13,7 @@
  * overhead during Replica-Of procedure.
  * As a result of such encodeing we are left with two encoding systems. One for Redis 5 which saves a single RDB file, and one for Redis 6 and above which
  * splits the RDB file.
- * From now until further notice, all ODD encoding versions with value >= 7 are for Redis 6 and above. All EVEN encoding encoding versions with value >=7 are for Redis 6 and up.
+ * From now until further notice, all ODD encoding versions with value >= 7 are for Redis 6 and above. All EVEN encoding encoding versions with value >=7 are for Redis 5.
  *
  * Formally, with encoding version as ENCVER:
  *

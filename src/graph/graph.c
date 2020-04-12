@@ -516,16 +516,15 @@ void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID, 
 
 // Static function to add node to label matrix - used in Graph_CreateNode and Graph_SetNode.
 static void _Graph_AddNodeToLabelMatrix(Graph *g, NodeID id, int label) {
-	if(label != GRAPH_NO_LABEL) {
-		// Try to set matrix at position [id, id]
-		// incase of a failure, scale matrix.
-		RG_Matrix matrix = g->labels[label];
-		GrB_Matrix m = RG_Matrix_Get_GrB_Matrix(matrix);
-		GrB_Info res = GrB_Matrix_setElement_BOOL(m, true, id, id);
-		if(res != GrB_SUCCESS) {
-			_MatrixResizeToCapacity(g, matrix);
-			assert(GrB_Matrix_setElement_BOOL(m, true, id, id) == GrB_SUCCESS);
-		}
+	if(label == GRAPH_NO_LABEL) return;
+	// Try to set matrix at position [id, id]
+	// incase of a failure, scale matrix.
+	RG_Matrix matrix = g->labels[label];
+	GrB_Matrix m = RG_Matrix_Get_GrB_Matrix(matrix);
+	GrB_Info res = GrB_Matrix_setElement_BOOL(m, true, id, id);
+	if(res != GrB_SUCCESS) {
+		_MatrixResizeToCapacity(g, matrix);
+		assert(GrB_Matrix_setElement_BOOL(m, true, id, id) == GrB_SUCCESS);
 	}
 }
 
@@ -542,11 +541,10 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 }
 
 inline void Graph_TryAddLabelMatrix(Graph *g, int label) {
-	if(label != GRAPH_NO_LABEL) {
-		int label_count = Graph_LabelTypeCount(g);
-		if(label >= label_count) {
-			for(int i = label_count; i <= label; i++) Graph_AddLabel(g);
-		}
+	if(label == GRAPH_NO_LABEL) return;
+	int label_count = Graph_LabelTypeCount(g);
+	if(label >= label_count) {
+		for(int i = label_count; i <= label; i++) Graph_AddLabel(g);
 	}
 }
 
@@ -591,7 +589,6 @@ static void _Graph_ConnectNodesInMatrix(Graph *g, EdgeID edgeId, NodeID src, Nod
 }
 
 int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
-
 	Node srcNode;
 	Node destNode;
 
@@ -612,18 +609,17 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
 	return 1;
 }
 
-// Try to add relation matrix if not present - used for graph deserilization.
+// Try to add relation matrix if not present. Since edges might be deserialized out of order there could be a situation where
+// an edge with the label r is deserialized before the edges with the lables r-x...r-1. This function creates, if needed, all lables matrix required until reaching r  - used for graph deserialization.
 static inline void _Graph_TryAddRelationMatrix(Graph *g, int r) {
-	if(r != GRAPH_NO_RELATION) {
-		uint relation_count = Graph_RelationTypeCount(g);
-		if(r >= relation_count) {
-			for(uint i = relation_count; i <= r; i++) Graph_AddRelationType(g);
-		}
+	if(r == GRAPH_NO_RELATION) return;
+	uint relation_count = Graph_RelationTypeCount(g);
+	if(r >= relation_count) {
+		for(uint i = relation_count; i <= r; i++) Graph_AddRelationType(g);
 	}
 }
 
 // Set a given edge in the graph - Used for deserialization of graph.
-// Returns 1 if connection is formed, 0 otherwise.
 void Graph_SetEdge(Graph *g, EdgeID edge_id, NodeID src, NodeID dest, int r, Edge *e) {
 	GrB_Info info;
 

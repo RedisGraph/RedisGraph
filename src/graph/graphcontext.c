@@ -23,7 +23,6 @@ extern uint64_t entities_threshold;
 
 // Forward declarations.
 static void _GraphContext_Free(void *arg);
-static void _GraphContext_RemoveMetaKeys(GraphContext *gc, size_t count);
 
 static inline void _GraphContext_IncreaseRefCount(GraphContext *gc) {
 	__atomic_fetch_add(&gc->ref_count, 1, __ATOMIC_RELAXED);
@@ -351,7 +350,7 @@ void GraphContext_RegisterWithModule(GraphContext *gc) {
 	graphs_in_keyspace = array_append(graphs_in_keyspace, gc);
 }
 
-GraphContext *GraphContexted_GetRegistredGraphContext(const char *graph_name) {
+GraphContext *GraphContext_GetRegisteredGraphContext(const char *graph_name) {
 	GraphContext *gc = NULL;
 	uint graph_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graph_count; i ++) {
@@ -404,9 +403,11 @@ static bool _GraphContext_NameContainsTag(const GraphContext *gc) {
 static inline char *_GraphContext_CreateGraphMetaKeyName(const GraphContext *gc) {
 	char *name;
 	// If the name already contains a tag, append UUID.
-	if(_GraphContext_NameContainsTag(gc)) asprintf(&name, "%s_%s", gc->graph_name, UUID_New());
+	char *uuid = UUID_New();
+	if(_GraphContext_NameContainsTag(gc)) asprintf(&name, "%s_%s", gc->graph_name, uuid);
 	// Else, create a tag which is the graph name and append the graph name and UUID.
-	else asprintf(&name, "{%s}%s_%s", gc->graph_name, gc->graph_name, UUID_New());
+	else asprintf(&name, "{%s}%s_%s", gc->graph_name, gc->graph_name, uuid);
+	rm_free(uuid);
 	return name;
 }
 
@@ -442,16 +443,14 @@ void GraphContext_CreateMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
 inline void GraphContext_DeleteMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
 	unsigned char **keys = GraphEncodeContext_GetKeys(gc->encoding_context);
 	uint key_count = array_len(keys);
-	for(uint64_t i = 0; i < key_count; i++) {
+	for(uint i = 0; i < key_count; i++) {
 		char *meta_key_name = (char *)keys[i];
 		RedisModuleString *meta_rm_string = RedisModule_CreateString(ctx, meta_key_name,
 																	 strlen(meta_key_name));
 
 		RedisModuleKey *key = RedisModule_OpenKey(ctx, meta_rm_string, REDISMODULE_WRITE);
-		if(key) {
-			RedisModule_DeleteKey(key);
-			RedisModule_CloseKey(key);
-		}
+		RedisModule_DeleteKey(key);
+		RedisModule_CloseKey(key);
 
 		RedisModule_FreeString(ctx, meta_rm_string);
 		// Free the name, as it will no longer be used.

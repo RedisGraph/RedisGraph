@@ -38,9 +38,8 @@ static void _SelectFirstPhase(GraphContext *gc) {
 	// If there are nodes
 	if(Graph_NodeCount(gc->g) > 0) {
 		GraphEncodeContext_SetEncodePhase(gc->encoding_context, NODES);
-	}
-	// If all nodes are deleted
-	else if(array_len(gc->g->nodes->deletedIdx) > 0) {
+	} else if(array_len(gc->g->nodes->deletedIdx) > 0) {
+		// If all nodes are deleted
 		GraphEncodeContext_SetEncodePhase(gc->encoding_context, DELETED_NODES);
 	}
 	// No nodes and no deleted nodes => no edges or deleted edges. Only schema.
@@ -54,8 +53,17 @@ void RdbSaveGraphContext_v7(RedisModuleIO *rdb, void *value) {
 	 * Header
 	 * Payload - Nodes / Edges / Deleted nodes/ Deleted edges/ Graph schema
 	 *
-	 * Payloads encoding order - Nodes => Deleted nodes (if needed) => Edges => Deleted edges (if needed) => Schema.
-	 * Each encoding phase finished
+	 * This function will encode each payload type (if needed) in the following order:
+	 * 1. Nodes
+	 * 2. Deleted nodes
+	 * 3. Edges
+	 * 4. Deleted edges
+	 * 5. Graph schema.
+	 *
+	 * Each payload type can be spread over one or more key. For example, the graph has 200,000 nodes, and the number of entities per payload
+	 * is 100,000 then there will be two nodes payload, each containing 100,000 nodes, encoded into the RDB of their keys.
+	 *
+	 * Each encoding phase finished encoded chooses the next encoding phase according to the graph's data.
 	 */
 
 	GraphContext *gc = value;
