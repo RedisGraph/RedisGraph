@@ -1,4 +1,4 @@
-FROM redis:latest as builder
+FROM redis:6.0-rc3 as builder
 
 ENV DEPS "automake peg libtool autoconf python python-setuptools python-pip wget build-essential cmake m4 libgomp1"
 
@@ -20,7 +20,7 @@ RUN set -ex;\
     make;
 
 # Package the runner
-FROM redis:latest
+FROM redis:6.0-rc3
 ENV LIBDIR /usr/lib/redis/modules
 WORKDIR /data
 RUN set -ex;\
