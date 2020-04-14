@@ -12,6 +12,7 @@
 #include "../redismodule.h"
 // Include Graph Context.
 #include "../graph/graphcontext.h"
+#include "../graph/graphmetacontext.h"
 // Include Query contxt.
 #include "../query_ctx.h"
 // Include slow log.
@@ -24,3 +25,5 @@
 #include "../util/qsort.h"
 // Non primitive data types.
 #include "../datatypes/array.h"
+// Graph extentions.
+#include "graph_extentions.h"

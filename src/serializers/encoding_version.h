@@ -28,12 +28,5 @@
 #define GRAPHCONTEXT_TYPE_ENCODING_VERSION_WITH_SERVER_EVENTS 7 // Current RDB encoding version for redis server with server events
 #define GRAPHCONTEXT_TYPE_ENCODING_VERSION_WITHOUT_SERVER_EVENTS 6 // Current RDB encoding version for redis server without server events
 
-
-#define DECODER_SUPPORT_MAX_V_WITH_SERVER_EVENTS 7      // Highest RDB version that can be decoded.
-#define DECODER_SUPPORT_MIN_V_WITH_SERVER_EVENTS 7      // Lowest version that can be decoded using the latest routine.
-
-#define DECODER_SUPPORT_MAX_V_WITHOUT_SERVER_EVENTS 6      // Highest RDB version that can be decoded.
-#define DECODER_SUPPORT_MIN_V_WITHOUT_SERVER_EVENTS 6      // Lowest version that can be decoded using the latest routine.
-
 #define PREV_DECODER_SUPPORT_MAX_V 5 // Highst version that has backwards-compatibility decoding routines.
 #define PREV_DECODER_SUPPORT_MIN_V 4 // Lowest version that has backwards-compatibility decoding routines.

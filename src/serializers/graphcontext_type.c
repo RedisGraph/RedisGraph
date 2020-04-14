@@ -37,14 +37,10 @@ static void *_GraphContextType_RdbLoad(RedisModuleIO *rdb, int encver) {
 	} else if(encver >= PREV_DECODER_SUPPORT_MIN_V && encver <= PREV_DECODER_SUPPORT_MAX_V) {
 		gc = Decode_Previous(rdb, encver);
 		// RDB encoded using Redis 5.
-	} else if(!VERSION_SUPPORTS_EVENTS(encver) &&
-			  encver >= DECODER_SUPPORT_MIN_V_WITHOUT_SERVER_EVENTS &&
-			  encver <= DECODER_SUPPORT_MAX_V_WITHOUT_SERVER_EVENTS) {
+	} else if(!VERSION_SUPPORTS_EVENTS(encver)) {
 		gc = RdbLoadGraphContext_WithoutServerEvents(rdb);
 		// RDB encoded using Redis 6 and up.
-	} else if(VERSION_SUPPORTS_EVENTS(encver) &&
-			  encver >= DECODER_SUPPORT_MIN_V_WITH_SERVER_EVENTS &&
-			  encver <= DECODER_SUPPORT_MAX_V_WITH_SERVER_EVENTS) {
+	} else if(VERSION_SUPPORTS_EVENTS(encver)) {
 		gc = RdbLoadGraphContext_WithServerEvents(rdb);
 	}
 	// Add GraphContext to global array of graphs.

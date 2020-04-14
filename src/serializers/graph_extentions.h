@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../../../serializers_include.h"
+#include "../graph/graph.h"
 
 // Sets a node in the graph
 void Graph_SetNode(Graph *g, NodeID id, int label, Node *n);

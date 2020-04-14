@@ -48,31 +48,38 @@ static void _RdbSaveEdge(RedisModuleIO *rdb, const Graph *g, const Edge *e, int 
 	RedisModule_SaveUnsigned(rdb, r);
 
 	// Edge properties.
-	RdbSaveEntity(rdb, e->entity);
+	_RdbSaveEntity(rdb, e->entity);
 }
 
 // Update the next encoding phase if needed.
 static void _UpdateEncodePhase(GraphContext *gc) {
-	// Check if NODES encodeding phase is done
-	if(GraphEncodeContext_GetProccessedNodes(gc->encoding_context) == Graph_NodeCount(gc->g)) {
+	EncodePhase current_phase = GraphEncodeContext_GetEncodePhase(gc->encoding_context);
+	switch(current_phase) {
+	case NODES:
+		// Check if NODES encodeding phase is done
+		if(GraphEncodeContext_GetProccessedNodes(gc->encoding_context) < Graph_NodeCount(gc->g)) return;
+		// We are done with nodes, set phase to DELETED_NODES and fall though to its case
+		GraphEncodeContext_SetEncodePhase(gc->encoding_context, DELETED_NODES);
+	case DELETED_NODES:
 		// Check if there is a need to encoded deleted nodes, or skip to edges.
 		if(array_len(gc->g->nodes->deletedIdx) >
-		   GraphEncodeContext_GetProccessedDeletedNodes(gc->encoding_context)) {
-			GraphEncodeContext_SetEncodePhase(gc->encoding_context, DELETED_NODES);
-		} else {
-			// No nodes or deleted nodes left. Set state to edges.
-			GraphEncodeContext_SetEncodePhase(gc->encoding_context, EDGES);
-			// Check if need to encode edges, deleted edges or skip tp schema.
-			if(GraphEncodeContext_GetProccessedEdges(gc->encoding_context) == Graph_EdgeCount(gc->g)) {
-				// Check if there is a need to encoded deleted edges, or skip to schema.
-				if(array_len(gc->g->edges->deletedIdx) >
-				   GraphEncodeContext_GetProccessedDeletedEdges(gc->encoding_context)) {
-					GraphEncodeContext_SetEncodePhase(gc->encoding_context, DELETED_EDGES);
-				} else {
-					GraphEncodeContext_SetEncodePhase(gc->encoding_context, GRAPH_SCHEMA);
-				}
-			}
-		}
+		   GraphEncodeContext_GetProccessedDeletedNodes(gc->encoding_context)) return;
+		// No deleted nodes left. Set state to EDGES and fall though to its case.
+		GraphEncodeContext_SetEncodePhase(gc->encoding_context, EDGES);
+	case EDGES:
+		// Check if need to encode edges, deleted edges or skip tp schema.
+		if(GraphEncodeContext_GetProccessedEdges(gc->encoding_context) < Graph_EdgeCount(gc->g)) return;
+		// We are done with edges, set phase to DELETED_EDGES and fall though to its case
+		GraphEncodeContext_SetEncodePhase(gc->encoding_context, DELETED_EDGES);
+	case DELETED_EDGES:
+		// Check if there is a need to encoded deleted edges, or skip to schema.
+		if(array_len(gc->g->edges->deletedIdx) >
+		   GraphEncodeContext_GetProccessedDeletedEdges(gc->encoding_context))return;
+		// No deleted edges left. Set state to GRAPH_SCHEMA and fall though to its case.
+		GraphEncodeContext_SetEncodePhase(gc->encoding_context, GRAPH_SCHEMA);
+		return;
+	default:
+		assert(false && "Unkown encode phase");
 	}
 }
 

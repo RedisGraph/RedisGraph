@@ -22,9 +22,7 @@ static void *_GraphMetaType_RdbLoad(RedisModuleIO *rdb, int encver) {
 			   REDISGRAPH_MODULE_VERSION);
 		return NULL;
 		// Meta key only available on Redis with server events
-	} else if(encver % 2 == 1 &&
-			  encver >= DECODER_SUPPORT_MIN_V_WITH_SERVER_EVENTS &&
-			  encver <= DECODER_SUPPORT_MAX_V_WITH_SERVER_EVENTS) {
+	} else if(encver == GRAPHCONTEXT_TYPE_ENCODING_VERSION_WITH_SERVER_EVENTS) {
 		gc = RdbLoadGraphContext_WithServerEvents(rdb);
 	} else {
 		printf("Problem when loading Graph, RedisGraph Meta key is not backward compatible with encoder version %d and should not try to load from it.\n",

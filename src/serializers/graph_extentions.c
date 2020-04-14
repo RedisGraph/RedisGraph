@@ -5,9 +5,16 @@
 */
 
 #include "graph_extentions.h"
-#include "../../../../util/datablock/oo_datablock.h"
+#include <assert.h>
+#include "../util/datablock/oo_datablock.h"
 
+// Extern variables - from graph.c
 extern GrB_BinaryOp graph_edge_accum;
+// Functions declerations - implemented in graph.c
+
+GrB_Matrix RG_Matrix_Get_GrB_Matrix(RG_Matrix matrix);
+void MatrixResizeToCapacity(const Graph *g, RG_Matrix m);
+GrB_Matrix Graph_Get_Transposed_AdjacencyMatrix(const Graph *g);
 
 void Graph_SetNode(Graph *g, NodeID id, int label, Node *n) {
 	assert(g);
@@ -25,7 +32,7 @@ void Graph_SetNode(Graph *g, NodeID id, int label, Node *n) {
 		GrB_Matrix m = RG_Matrix_Get_GrB_Matrix(matrix);
 		GrB_Info res = GrB_Matrix_setElement_BOOL(m, true, id, id);
 		if(res != GrB_SUCCESS) {
-			_MatrixResizeToCapacity(g, matrix);
+			MatrixResizeToCapacity(g, matrix);
 			assert(GrB_Matrix_setElement_BOOL(m, true, id, id) == GrB_SUCCESS);
 		}
 	}
@@ -57,7 +64,7 @@ void Graph_SetEdge(Graph *g, EdgeID edge_id, NodeID src, NodeID dest, int r, Edg
 	_Graph_TryAddRelationMatrix(g, r);
 	GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
 	GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
-	GrB_Matrix tadj = _Graph_Get_Transposed_AdjacencyMatrix(g);
+	GrB_Matrix tadj = Graph_Get_Transposed_AdjacencyMatrix(g);
 	// Rows represent source nodes, columns represent destination nodes.
 	GrB_Matrix_setElement_BOOL(adj, true, src, dest);
 	GrB_Matrix_setElement_BOOL(tadj, true, dest, src);

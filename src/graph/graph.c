@@ -18,7 +18,7 @@ GrB_BinaryOp graph_edge_accum = NULL;
 static GxB_SelectOp _select_delete_edges = NULL;
 
 /* ========================= Forward declarations  ========================= */
-void _MatrixResizeToCapacity(const Graph *g, RG_Matrix m);
+void MatrixResizeToCapacity(const Graph *g, RG_Matrix m);
 
 
 /* ========================= GraphBLAS functions ========================= */
@@ -98,7 +98,7 @@ static RG_Matrix RG_Matrix_New(GrB_Type data_type, GrB_Index nrows, GrB_Index nc
 }
 
 // Returns underlying GraphBLAS matrix.
-static inline GrB_Matrix RG_Matrix_Get_GrB_Matrix(RG_Matrix matrix) {
+GrB_Matrix RG_Matrix_Get_GrB_Matrix(RG_Matrix matrix) {
 	return matrix->grb_matrix;
 }
 
@@ -164,7 +164,7 @@ static inline void _Graph_ApplyPending(GrB_Matrix m) {
 /* ========================= Graph utility functions ========================= */
 
 // Get the transposed adjacency matrix.
-static GrB_Matrix _Graph_Get_Transposed_AdjacencyMatrix(const Graph *g) {
+GrB_Matrix Graph_Get_Transposed_AdjacencyMatrix(const Graph *g) {
 	assert(g);
 	RG_Matrix _t_adjacency_matrix = g->_t_adjacency_matrix;
 	g->SynchronizeMatrix(g, _t_adjacency_matrix);
@@ -279,7 +279,7 @@ void _MatrixSynchronize(const Graph *g, RG_Matrix rg_matrix) {
 }
 
 /* Resize matrix to node capacity. */
-void _MatrixResizeToCapacity(const Graph *g, RG_Matrix matrix) {
+void MatrixResizeToCapacity(const Graph *g, RG_Matrix matrix) {
 	GrB_Matrix m = RG_Matrix_Get_GrB_Matrix(matrix);
 	GrB_Index nrows;
 	GrB_Index ncols;
@@ -309,7 +309,7 @@ void Graph_SetMatrixPolicy(Graph *g, MATRIX_POLICY policy) {
 	case RESIZE_TO_CAPACITY:
 		// Bulk insertion and creation behavior; does not force pending operations
 		// and resizes matrices to the graph's current node capacity.
-		g->SynchronizeMatrix = _MatrixResizeToCapacity;
+		g->SynchronizeMatrix = MatrixResizeToCapacity;
 		break;
 	case DISABLED:
 		// Used when deleting or freeing a graph; forces no matrix updates or resizes.
@@ -531,7 +531,7 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 		GrB_Matrix m = RG_Matrix_Get_GrB_Matrix(matrix);
 		GrB_Info res = GrB_Matrix_setElement_BOOL(m, true, id, id);
 		if(res != GrB_SUCCESS) {
-			_MatrixResizeToCapacity(g, matrix);
+			MatrixResizeToCapacity(g, matrix);
 			assert(GrB_Matrix_setElement_BOOL(m, true, id, id) == GrB_SUCCESS);
 		}
 	}
@@ -558,7 +558,7 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
 
 	GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
 	GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
-	GrB_Matrix tadj = _Graph_Get_Transposed_AdjacencyMatrix(g);
+	GrB_Matrix tadj = Graph_Get_Transposed_AdjacencyMatrix(g);
 
 	// Rows represent source nodes, columns represent destination nodes.
 	GrB_Matrix_setElement_BOOL(adj, true, src, dest);
@@ -621,7 +621,7 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
 	if(dir == GRAPH_EDGE_DIR_INCOMING || dir == GRAPH_EDGE_DIR_BOTH) {
 		/* Retrieve the transposed adjacency matrix, regardless of whether or not
 		 * a relationship type is specified. */
-		M = _Graph_Get_Transposed_AdjacencyMatrix(g);
+		M = Graph_Get_Transposed_AdjacencyMatrix(g);
 
 		/* Construct an iterator to traverse the node's row, which in the transposed
 		 * adjacency matrix contains all incoming edges. */
@@ -684,7 +684,7 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 			M = Graph_GetAdjacencyMatrix(g);
 			assert(GxB_Matrix_Delete(M, src_id, dest_id) == GrB_SUCCESS);
 
-			M = _Graph_Get_Transposed_AdjacencyMatrix(g);
+			M = Graph_Get_Transposed_AdjacencyMatrix(g);
 			assert(GxB_Matrix_Delete(M, dest_id, src_id) == GrB_SUCCESS);
 		}
 	} else {
@@ -788,7 +788,7 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 
 	GrB_Descriptor_new(&desc);
 	adj = Graph_GetAdjacencyMatrix(g);
-	tadj = _Graph_Get_Transposed_AdjacencyMatrix(g);
+	tadj = Graph_Get_Transposed_AdjacencyMatrix(g);
 	GxB_MatrixTupleIter_new(&adj_iter, adj);
 	GxB_MatrixTupleIter_new(&tadj_iter, tadj);
 	GrB_Matrix_new(&A, GrB_UINT64, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
@@ -991,7 +991,7 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 		}
 
 		GrB_Matrix adj_matrix = Graph_GetAdjacencyMatrix(g);
-		GrB_Matrix t_adj_matrix = _Graph_Get_Transposed_AdjacencyMatrix(g);
+		GrB_Matrix t_adj_matrix = Graph_Get_Transposed_AdjacencyMatrix(g);
 		// Set descriptor mask to default.
 		GrB_Descriptor_set(desc, GrB_MASK, GxB_DEFAULT);
 		// adj_matrix = adj_matrix & remaining_mask.

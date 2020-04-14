@@ -20,6 +20,7 @@
 #include "arithmetic/agg_funcs.h"
 #include "procedures/procedure.h"
 #include "arithmetic/arithmetic_expression.h"
+#include "module_event_handlers.h"
 #include "serializers/graphcontext_type.h"
 #include "serializers/graphmeta_type.h"
 #include "redisearch_api.h"
@@ -117,6 +118,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	Agg_RegisterFuncs();     // Register aggregation functions.
 	// Set up global lock and variables scoped to the entire module.
 	_PrepareModuleGlobals(ctx, argv, argc);
+	RegisterEventHandlers(ctx);
 	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
 
 	// Create thread local storage key.
