@@ -13,8 +13,6 @@
 #include "../query_ctx.h"
 #include "../resultset/resultset.h"
 
-extern RedisModuleType *GraphContextRedisModuleType;
-
 /* Delete graph, removing the key from Redis and
  * freeing every resource allocated by the graph. */
 int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -27,13 +25,6 @@ int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	GraphContext *gc = GraphContext_Retrieve(ctx, graph_name, false, false);    // Increase ref count.
 	if(!gc) {
 		RedisModule_ReplyWithError(ctx, "Graph is either missing or referred key is of a different type.");
-		goto cleanup;
-	}
-
-	// Check if graph is in decode - The graph key has been decoded but not all the virtual keys finished.
-	if(GraphContext_IsInDecode(gc)) {
-		RedisModule_ReplyWithError(ctx, "Graph is currently replicating");
-		GraphContext_Release(gc);   // Decrease graph ref count as GraphContext_Retrieve increased it.
 		goto cleanup;
 	}
 

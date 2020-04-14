@@ -10,11 +10,9 @@
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../redismodule.h"
-#include "../util/uuid.h"
 #include "../util/rmalloc.h"
 #include "../util/thpool/thpool.h"
-#include "serializers/graphcontext_type.h"
-#include "serializers/graphmeta_type.h"
+#include "../serializers/graphcontext_type.h"
 
 // Global array tracking all extant GraphContexts (defined in module.c)
 extern threadpool _thpool;
@@ -150,26 +148,6 @@ void GraphContext_Delete(GraphContext *gc) {
 void GraphContext_Rename(GraphContext *gc, const char *name) {
 	rm_free(gc->graph_name);
 	gc->graph_name = rm_strdup(name);
-}
-
-//------------------------------------------------------------------------------
-// GraphMetaContext API
-//------------------------------------------------------------------------------
-
-GraphMetaContext *GraphMetaContext_New(GraphContext *gc, const char *meta_key_name) {
-	GraphMetaContext *meta = rm_malloc(sizeof(GraphMetaContext));
-	meta->gc = gc;
-	meta->meta_key_name = rm_strdup(meta_key_name);
-	return meta;
-}
-
-void GraphMetaContext_Free(GraphMetaContext *ctx) {
-	if(!ctx) return;
-	if(ctx->meta_key_name) {
-		rm_free(ctx->meta_key_name);
-		ctx->meta_key_name = NULL;
-	}
-	rm_free(ctx);
 }
 
 //------------------------------------------------------------------------------
@@ -383,81 +361,6 @@ SlowLog *GraphContext_GetSlowLog(const GraphContext *gc) {
 	return gc->slowlog;
 }
 
-//------------------------------------------------------------------------------
-// Meta keys API
-//------------------------------------------------------------------------------
-
-// Checks if the graph name contains a tag between curly braces.
-static bool _GraphContext_NameContainsTag(const GraphContext *gc) {
-	const char *left_curly_brace = strstr(gc->graph_name, "{");
-	if(left_curly_brace) {
-		const char *right_curly_brace = strstr(left_curly_brace, "}");
-		if(right_curly_brace) {
-			return true;
-		}
-	}
-	return false;
-}
-
-// Creates a graph meta key name.
-static inline char *_GraphContext_CreateGraphMetaKeyName(const GraphContext *gc) {
-	char *name;
-	// If the name already contains a tag, append UUID.
-	char *uuid = UUID_New();
-	if(_GraphContext_NameContainsTag(gc)) asprintf(&name, "%s_%s", gc->graph_name, uuid);
-	// Else, create a tag which is the graph name and append the graph name and UUID.
-	else asprintf(&name, "{%s}%s_%s", gc->graph_name, gc->graph_name, uuid);
-	rm_free(uuid);
-	return name;
-}
-
-// Calculate how many virtual keys are needed to represent the graph.
-static uint64_t _GraphContext_RequiredMetaKeys(const GraphContext *gc) {
-	uint64_t required_keys = 0;
-	required_keys += ceil((double)Graph_NodeCount(gc->g) / entities_threshold);
-	required_keys += ceil((double)Graph_EdgeCount(gc->g) / entities_threshold);
-	required_keys += ceil((double)Graph_DeletedNodeCount(gc->g) / entities_threshold);
-	required_keys += ceil((double)Graph_DeletedEdgeCount(gc->g) / entities_threshold);
-	return required_keys;
-}
-
-void GraphContext_CreateMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
-	uint meta_key_count = _GraphContext_RequiredMetaKeys(gc);
-	for(uint64_t i = 0; i < meta_key_count; i++) {
-		char *meta_key_name = _GraphContext_CreateGraphMetaKeyName(gc);
-		GraphMetaContext *meta = GraphMetaContext_New(gc, meta_key_name);
-		RedisModuleString *meta_rm_string = RedisModule_CreateString(ctx, meta_key_name,
-																	 strlen(meta_key_name));
-
-		RedisModuleKey *key = RedisModule_OpenKey(ctx, meta_rm_string, REDISMODULE_WRITE);
-		// Set value in key.
-		RedisModule_ModuleTypeSetValue(key, GraphMetaRedisModuleType, meta);
-		RedisModule_CloseKey(key);
-		GraphEncodeContext_AddKey(gc->encoding_context, meta_key_name);
-		RedisModule_FreeString(ctx, meta_rm_string);
-		// The generated name was created by asprintf and needs to be release by free. The meta context duplicated it.
-		free(meta_key_name);
-	}
-}
-
-inline void GraphContext_DeleteMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
-	unsigned char **keys = GraphEncodeContext_GetKeys(gc->encoding_context);
-	uint key_count = array_len(keys);
-	for(uint i = 0; i < key_count; i++) {
-		char *meta_key_name = (char *)keys[i];
-		RedisModuleString *meta_rm_string = RedisModule_CreateString(ctx, meta_key_name,
-																	 strlen(meta_key_name));
-
-		RedisModuleKey *key = RedisModule_OpenKey(ctx, meta_rm_string, REDISMODULE_WRITE);
-		RedisModule_DeleteKey(key);
-		RedisModule_CloseKey(key);
-
-		RedisModule_FreeString(ctx, meta_rm_string);
-		// Free the name, as it will no longer be used.
-		rm_free(meta_key_name);
-	}
-	array_free(keys);
-}
 //------------------------------------------------------------------------------
 // Free routine
 //------------------------------------------------------------------------------

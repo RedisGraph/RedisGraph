@@ -31,11 +31,6 @@ typedef struct {
 
 } GraphContext;
 
-typedef struct {
-	GraphContext *gc;
-	char *meta_key_name;
-} GraphMetaContext;
-
 /* GraphContext API */
 // Creates and initializes a graph context struct.
 GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t edge_cap);
@@ -54,12 +49,6 @@ bool GraphContext_IsInDecode(GraphContext *gc);
 
 // Mark graph as deleted, reduce graph reference count by 1.
 void GraphContext_Delete(GraphContext *gc);
-
-/* GraphMeta API */
-// Create a new graph meta context.
-GraphMetaContext *GraphMetaContext_New(GraphContext *gc, const char *meta_key_name);
-// Free graph meta context memory.
-void GraphMetaContext_Free(GraphMetaContext *ctx);
 
 /* Schema API */
 // Retrieve number of schemas created for given type.
@@ -103,11 +92,6 @@ void GraphContext_RegisterWithModule(GraphContext *gc);
 GraphContext *GraphContext_GetRegisteredGraphContext(const char *graph_name);
 // Remove GraphContext from global array
 void GraphContext_RemoveFromRegistry(GraphContext *gc);
-
-// Create meta keys.
-void GraphContext_CreateMetaKeys(RedisModuleCtx *ctx, GraphContext *gc);
-// Delete the meta keys.
-void GraphContext_DeleteMetaKeys(RedisModuleCtx *ctx, GraphContext *gc);
 
 // Rename a graph context.
 void GraphContext_Rename(GraphContext *gc, const char *name);

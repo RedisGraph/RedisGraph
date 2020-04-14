@@ -13,7 +13,7 @@
 #include "../util/rmalloc.h"
 #include "../util/datablock/oo_datablock.h"
 
-static GrB_BinaryOp _graph_edge_accum = NULL;
+GrB_BinaryOp graph_edge_accum = NULL;
 // GraphBLAS Select operator to free edge arrays and delete edges.
 static GxB_SelectOp _select_delete_edges = NULL;
 
@@ -360,9 +360,9 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 	assert(pthread_mutex_init(&g->_writers_mutex, NULL) == 0);
 
 	// Create edge accumulator binary function
-	if(!_graph_edge_accum) {
+	if(!graph_edge_accum) {
 		GrB_Info info;
-		info = GrB_BinaryOp_new(&_graph_edge_accum, _edge_accum, GrB_UINT64, GrB_UINT64, GrB_UINT64);
+		info = GrB_BinaryOp_new(&graph_edge_accum, _edge_accum, GrB_UINT64, GrB_UINT64, GrB_UINT64);
 		assert(info == GrB_SUCCESS);
 	}
 
@@ -514,20 +514,6 @@ void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID, 
 	}
 }
 
-// Static function to add node to label matrix - used in Graph_CreateNode and Graph_SetNode.
-static void _Graph_AddNodeToLabelMatrix(Graph *g, NodeID id, int label) {
-	if(label == GRAPH_NO_LABEL) return;
-	// Try to set matrix at position [id, id]
-	// incase of a failure, scale matrix.
-	RG_Matrix matrix = g->labels[label];
-	GrB_Matrix m = RG_Matrix_Get_GrB_Matrix(matrix);
-	GrB_Info res = GrB_Matrix_setElement_BOOL(m, true, id, id);
-	if(res != GrB_SUCCESS) {
-		_MatrixResizeToCapacity(g, matrix);
-		assert(GrB_Matrix_setElement_BOOL(m, true, id, id) == GrB_SUCCESS);
-	}
-}
-
 void Graph_CreateNode(Graph *g, int label, Node *n) {
 	assert(g);
 
@@ -537,58 +523,22 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 	en->prop_count = 0;
 	en->properties = NULL;
 	n->entity = en;
-	_Graph_AddNodeToLabelMatrix(g, id, label);
-}
 
-inline void Graph_TryAddLabelMatrix(Graph *g, int label) {
-	if(label == GRAPH_NO_LABEL) return;
-	int label_count = Graph_LabelTypeCount(g);
-	if(label >= label_count) {
-		for(int i = label_count; i <= label; i++) Graph_AddLabel(g);
+	if(label != GRAPH_NO_LABEL) {
+		// Try to set matrix at position [id, id]
+		// incase of a failure, scale matrix.
+		RG_Matrix matrix = g->labels[label];
+		GrB_Matrix m = RG_Matrix_Get_GrB_Matrix(matrix);
+		GrB_Info res = GrB_Matrix_setElement_BOOL(m, true, id, id);
+		if(res != GrB_SUCCESS) {
+			_MatrixResizeToCapacity(g, matrix);
+			assert(GrB_Matrix_setElement_BOOL(m, true, id, id) == GrB_SUCCESS);
+		}
 	}
 }
 
-void Graph_SetNode(Graph *g, NodeID id, int label, Node *n) {
-	assert(g);
-
-	Entity *en = DataBlock_AllocateItemOutOfOrder(g->nodes, id);
-	en->id = id;
-	en->prop_count = 0;
-	en->properties = NULL;
-	n->entity = en;
-	Graph_TryAddLabelMatrix(g, label);
-	_Graph_AddNodeToLabelMatrix(g, id, label);
-}
-
-// Static function to connect two nodes in a matrix - used in Graph_ConnectNodes and Graph_SetEdge
-static void _Graph_ConnectNodesInMatrix(Graph *g, EdgeID edgeId, NodeID src, NodeID dest, int r) {
-	GrB_Info info;
-	GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
-	GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
-	GrB_Matrix tadj = _Graph_Get_Transposed_AdjacencyMatrix(g);
-
-	// Rows represent source nodes, columns represent destination nodes.
-	GrB_Matrix_setElement_BOOL(adj, true, src, dest);
-	GrB_Matrix_setElement_BOOL(tadj, true, dest, src);
-	GrB_Index I = src;
-	GrB_Index J = dest;
-	edgeId = SET_MSB(edgeId);
-	info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
-		   (
-			   relationMat,         // input/output matrix for results
-			   GrB_NULL,            // optional mask for C(I,J), unused if NULL
-			   _graph_edge_accum,   // optional accum for Z=accum(C(I,J),x)
-			   edgeId,              // scalar to assign to C(I,J)
-			   &I,                  // row indices
-			   1,                   // number of row indices
-			   &J,                  // column indices
-			   1,                   // number of column indices
-			   GrB_NULL             // descriptor for C(I,J) and Mask
-		   );
-	assert(info == GrB_SUCCESS);
-}
-
 int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
+	GrB_Info info;
 	Node srcNode;
 	Node destNode;
 
@@ -605,37 +555,33 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
 	e->relationID = r;
 	e->srcNodeID = src;
 	e->destNodeID = dest;
-	_Graph_ConnectNodesInMatrix(g, id, src, dest, r);
+
+	GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
+	GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
+	GrB_Matrix tadj = _Graph_Get_Transposed_AdjacencyMatrix(g);
+
+	// Rows represent source nodes, columns represent destination nodes.
+	GrB_Matrix_setElement_BOOL(adj, true, src, dest);
+	GrB_Matrix_setElement_BOOL(tadj, true, dest, src);
+	GrB_Index I = src;
+	GrB_Index J = dest;
+	id = SET_MSB(id);
+	info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
+		   (
+			   relationMat,         // input/output matrix for results
+			   GrB_NULL,            // optional mask for C(I,J), unused if NULL
+			   graph_edge_accum,   // optional accum for Z=accum(C(I,J),x)
+			   id,                  // scalar to assign to C(I,J)
+			   &I,                  // row indices
+			   1,                   // number of row indices
+			   &J,                  // column indices
+			   1,                   // number of column indices
+			   GrB_NULL             // descriptor for C(I,J) and Mask
+		   );
+	assert(info == GrB_SUCCESS);
+
 	return 1;
 }
-
-// Try to add relation matrix if not present. Since edges might be deserialized out of order there could be a situation where
-// an edge with the label r is deserialized before the edges with the lables r-x...r-1. This function creates, if needed, all lables matrix required until reaching r  - used for graph deserialization.
-static inline void _Graph_TryAddRelationMatrix(Graph *g, int r) {
-	if(r == GRAPH_NO_RELATION) return;
-	uint relation_count = Graph_RelationTypeCount(g);
-	if(r >= relation_count) {
-		for(uint i = relation_count; i <= r; i++) Graph_AddRelationType(g);
-	}
-}
-
-// Set a given edge in the graph - Used for deserialization of graph.
-void Graph_SetEdge(Graph *g, EdgeID edge_id, NodeID src, NodeID dest, int r, Edge *e) {
-	GrB_Info info;
-
-	Entity *en = DataBlock_AllocateItemOutOfOrder(g->edges, edge_id);
-	en->id = edge_id;
-	en->prop_count = 0;
-	en->properties = NULL;
-	e->entity = en;
-	e->relationID = r;
-	e->srcNodeID = src;
-	e->destNodeID = dest;
-
-	_Graph_TryAddRelationMatrix(g, r);
-	_Graph_ConnectNodesInMatrix(g, edge_id, src, dest, r);
-}
-
 
 /* Retrieves all either incoming or outgoing edges
  * to/from given node N, depending on given direction. */
@@ -776,11 +722,6 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 	return 1;
 }
 
-inline void Graph_MarkEdgeDeleted(Graph *g, EdgeID id) {
-	assert(g);
-	DataBlock_MarkAsDeletedOutOfOrder(g->edges, id);
-}
-
 void Graph_DeleteNode(Graph *g, Node *n) {
 	/* Assumption, node is completely detected,
 	 * there are no incoming nor outgoing edges
@@ -795,11 +736,6 @@ void Graph_DeleteNode(Graph *g, Node *n) {
 	}
 
 	DataBlock_DeleteItem(g->nodes, ENTITY_GET_ID(n));
-}
-
-inline void Graph_MarkNodeDeleted(Graph *g, NodeID id) {
-	assert(g);
-	DataBlock_MarkAsDeletedOutOfOrder(g->nodes, id);
 }
 
 static void _Graph_FreeRelationMatrices(Graph *g) {

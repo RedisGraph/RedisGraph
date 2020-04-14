@@ -137,15 +137,6 @@ void Graph_CreateNode(
 	Node *n
 );
 
-// Sets a node in the graph - Used for deserialization of graph.
-// Return the set node.
-void Graph_SetNode(
-	Graph *g,
-	NodeID id,
-	int label,
-	Node *n
-);
-
 // Connects source node to destination node.
 // Returns 1 if connection is formed, 0 otherwise.
 int Graph_ConnectNodes(
@@ -156,38 +147,16 @@ int Graph_ConnectNodes(
 	Edge *e
 );
 
-// Set a given edge in the graph - Used for deserialization of graph.
-void Graph_SetEdge(
-	Graph *g,
-	EdgeID edge_id,
-	NodeID src,
-	NodeID dest,
-	int r,
-	Edge *e
-);
-
 // Removes node and all of its connections within the graph.
 void Graph_DeleteNode(
 	Graph *g,
 	Node *node
 );
 
-// Marks a node ID as deleted - Used for deserialization of graph.
-void Graph_MarkNodeDeleted(
-	Graph *g,
-	NodeID ID
-);
-
 // Removes an edge from Graph and updates graph relevent matrices.
 int Graph_DeleteEdge(
 	Graph *g,
 	Edge *e
-);
-
-// Marks a edge ID as deleted - Used for deserialization of graph.
-void Graph_MarkEdgeDeleted(
-	Graph *g,
-	EdgeID ID
 );
 
 // Removes both nodes and edges from graph.
@@ -327,9 +296,6 @@ GrB_Matrix Graph_GetLabelMatrix(
 	const Graph *g,     // Graph from which to get adjacency matrix.
 	int label           // Label described by matrix.
 );
-
-// Try adding a label matrix - used on RDB loading.
-void Graph_TryAddLabelMatrix(Graph *g, int label);
 
 // Retrieves a typed adjacency matrix.
 // Matrix is resized if its size doesn't match graph's node count.
