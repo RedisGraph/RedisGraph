@@ -149,7 +149,6 @@ Feature: TernaryLogicAcceptanceTest
             | null  | false | null   |
             | false | null  | null   |
 
-    @skip
     Scenario Outline: Using null in IN
         And parameters are:
             | name | value  |

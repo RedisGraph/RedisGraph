@@ -11,6 +11,7 @@
 #include "../redismodule.h"
 #include "rax.h"
 #include "ast_annotations_ctx_collection.h"
+#include "../arithmetic/arithmetic_expression.h"
 
 #define IDENTIFIER_NOT_FOUND UINT_MAX
 #define UNLIMITED UINT_MAX
@@ -25,7 +26,8 @@ typedef struct {
 	rax *referenced_entities;                           // Mapping of the referenced entities.
 	AST_AnnotationCtxCollection *anot_ctx_collection;   // Holds annotations contexts.
 	rax *canonical_entity_names;                        // Storage for canonical graph entity names.
-	uint limit;                                         // The maximum number of results in this segment.
+	AR_ExpNode *limit;                                  // The number of results in this segment.
+	AR_ExpNode *skip;                                   // The number of skips in this segment.
 	bool free_root;                                     // The root should only be freed if this is a sub-AST we constructed
 } AST;
 
@@ -119,6 +121,14 @@ void parse_result_free(cypher_parse_result_t *parse_result);
 
 // Returns the ast annotation context collection of the AST.
 AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast);
+
+AR_ExpNode *AST_GetLimitExpr(const AST *ast);
+
+uint64_t AST_GetLimit(const AST *ast);
+
+AR_ExpNode *AST_GetSkipExpr(const AST *ast);
+
+uint64_t AST_GetSkip(const AST *ast);
 
 void AST_Free(AST *ast);
 

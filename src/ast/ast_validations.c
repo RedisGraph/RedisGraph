@@ -617,13 +617,6 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast, char **reason) {
 	uint match_count = array_len(match_clauses);
 	for(uint i = 0; i < match_count; i ++) {
 		const cypher_astnode_t *match_clause = match_clauses[i];
-		// We currently do not support optional MATCH.
-		if(cypher_ast_match_is_optional(match_clause)) {
-			asprintf(reason, "RedisGraph does not support OPTIONAL MATCH.");
-			res = AST_INVALID;
-			goto cleanup;
-		}
-
 		// Validate the pattern described by the MATCH clause
 		res = _ValidatePattern(projections, cypher_ast_match_get_pattern(match_clause), edge_aliases,
 							   reason);
@@ -906,18 +899,11 @@ static AST_Validation _Validate_LIMIT_SKIP_Modifiers(const AST *ast, char **reas
 		// Handle LIMIT modifier
 		const cypher_astnode_t *limit = cypher_ast_return_get_limit(return_clause);
 		if(limit) {
-			// Handle non-integer types specified as LIMIT value
-			if(cypher_astnode_type(limit) != CYPHER_AST_INTEGER) {
+			// Handle non-integer or non parameter types specified as LIMIT value
+			// The value validation of integer node or parameter node is done in run time evaluation.
+			if(cypher_astnode_type(limit) != CYPHER_AST_INTEGER &&
+			   cypher_astnode_type(limit) != CYPHER_AST_PARAMETER) {
 				asprintf(reason, "LIMIT specified value of invalid type, must be a positive integer");
-				return AST_INVALID;
-			}
-
-			// Handle LIMIT strings that cannot be fully converted to integers,
-			// due to size or invalid characters
-			const char *value_str = cypher_ast_integer_get_valuestr(limit);
-			if(_ValidatePositiveInteger(value_str) != AST_VALID) {
-				asprintf(reason,
-						 "LIMIT specified value '%s', must be a positive integer in the signed 8-byte range.", value_str);
 				return AST_INVALID;
 			}
 		}
@@ -925,18 +911,11 @@ static AST_Validation _Validate_LIMIT_SKIP_Modifiers(const AST *ast, char **reas
 		// Handle SKIP modifier
 		const cypher_astnode_t *skip = cypher_ast_return_get_skip(return_clause);
 		if(skip) {
-			// Handle non-integer types specified as skip value
-			if(cypher_astnode_type(skip) != CYPHER_AST_INTEGER) {
+			// Handle non-integer or non parameter types specified as skip value
+			// The value validation of integer node or parameter node is done in run time evaluation.
+			if(cypher_astnode_type(skip) != CYPHER_AST_INTEGER &&
+			   cypher_astnode_type(skip) != CYPHER_AST_PARAMETER) {
 				asprintf(reason, "SKIP specified value of invalid type, must be a positive integer");
-				return AST_INVALID;
-			}
-
-			// Handle skip strings that cannot be fully converted to integers,
-			// due to size or invalid characters
-			const char *value_str = cypher_ast_integer_get_valuestr(skip);
-			if(_ValidatePositiveInteger(value_str) != AST_VALID) {
-				asprintf(reason,
-						 "SKIP specified value '%s', must be a positive integer in the signed 8-byte range.", value_str);
 				return AST_INVALID;
 			}
 		}
@@ -953,42 +932,24 @@ static AST_Validation _Validate_LIMIT_SKIP_Modifiers(const AST *ast, char **reas
 		// Handle LIMIT modifier
 		const cypher_astnode_t *limit = cypher_ast_with_get_limit(with_clause);
 		if(limit) {
-			// Handle non-integer types specified as LIMIT value
-			if(cypher_astnode_type(limit) != CYPHER_AST_INTEGER) {
+			// Handle non-integer or non parameter types specified as LIMIT value
+			// The value validation of integer node or parameter node is done in run time evaluation.
+			if(cypher_astnode_type(limit) != CYPHER_AST_INTEGER &&
+			   cypher_astnode_type(limit) != CYPHER_AST_PARAMETER) {
 				asprintf(reason, "LIMIT specified value of invalid type, must be a positive integer");
-				res = AST_INVALID;
-				break;
-			}
-
-			// Handle LIMIT strings that cannot be fully converted to integers,
-			// due to size or invalid characters
-			const char *value_str = cypher_ast_integer_get_valuestr(limit);
-			if(_ValidatePositiveInteger(value_str) != AST_VALID) {
-				asprintf(reason,
-						 "LIMIT specified value '%s', must be a positive integer in the signed 8-byte range.", value_str);
-				res = AST_INVALID;
-				break;
+				return AST_INVALID;
 			}
 		}
 
 		// Handle SKIP modifier
 		const cypher_astnode_t *skip = cypher_ast_with_get_skip(with_clause);
 		if(skip) {
-			// Handle non-integer types specified as skip value
-			if(cypher_astnode_type(skip) != CYPHER_AST_INTEGER) {
+			// Handle non-integer or non parameter types specified as skip value
+			// The value validation of integer node or parameter node is done in run time evaluation.
+			if(cypher_astnode_type(skip) != CYPHER_AST_INTEGER &&
+			   cypher_astnode_type(skip) != CYPHER_AST_PARAMETER) {
 				asprintf(reason, "SKIP specified value of invalid type, must be a positive integer");
-				res = AST_INVALID;
-				break;
-			}
-
-			// Handle skip strings that cannot be fully converted to integers,
-			// due to size or invalid characters
-			const char *value_str = cypher_ast_integer_get_valuestr(skip);
-			if(_ValidatePositiveInteger(value_str) != AST_VALID) {
-				asprintf(reason,
-						 "SKIP specified value '%s', must be a positive integer in the signed 8-byte range.", value_str);
-				res = AST_INVALID;
-				break;
+				return AST_INVALID;
 			}
 		}
 	}
@@ -1054,12 +1015,14 @@ static AST_Validation _ValidateQuerySequence(const AST *ast, char **reason) {
 	return AST_VALID;
 }
 
-// In any given query scope, reading clauses (MATCH, UNWIND, and InQueryCall)
-// cannot follow updating clauses (CREATE, MERGE, DELETE, SET, REMOVE).
-// https://s3.amazonaws.com/artifacts.opencypher.org/railroad/SinglePartQuery.html
+/* In any given query scope, reading clauses (MATCH, UNWIND, and InQueryCall)
+ * cannot follow updating clauses (CREATE, MERGE, DELETE, SET, REMOVE).
+ * https://s3.amazonaws.com/artifacts.opencypher.org/railroad/SinglePartQuery.html
+ * Additionally, a MATCH clause cannot follow an OPTIONAL MATCH clause. */
 static AST_Validation _ValidateClauseOrder(const AST *ast, char **reason) {
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 
+	bool encountered_optional_match = false;
 	bool encountered_updating_clause = false;
 	for(uint i = 0; i < clause_count; i ++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
@@ -1074,6 +1037,17 @@ static AST_Validation _ValidateClauseOrder(const AST *ast, char **reason) {
 			asprintf(reason, "A WITH clause is required to introduce %s after an updating clause.",
 					 cypher_astnode_typestr(type));
 			return AST_INVALID;
+		}
+
+		if(type == CYPHER_AST_MATCH) {
+			// Check whether this match is optional.
+			bool current_clause_is_optional = cypher_ast_match_is_optional(clause);
+			// If the current clause is non-optional but we have already encountered an optional match, emit an error.
+			if(!current_clause_is_optional && encountered_optional_match) {
+				asprintf(reason, "A WITH clause is required to introduce a MATCH clause after an OPTIONAL MATCH.");
+				return AST_INVALID;
+			}
+			encountered_optional_match |= current_clause_is_optional;
 		}
 	}
 
@@ -1555,7 +1529,8 @@ static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, 
 	}
 	struct cypher_input_range range = {};
 	ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n, clauses, n, range);
-
+	ast->skip = NULL;
+	ast->limit = NULL;
 	return ast;
 }
 
@@ -1710,3 +1685,4 @@ AST_Validation AST_Validate_QueryParams(RedisModuleCtx *ctx, const cypher_parse_
 
 	return AST_VALID;
 }
+

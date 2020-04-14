@@ -14,6 +14,7 @@ extern "C" {
 #include <string.h>
 #include "../../src/util/arr.h"
 #include "../../src/util/datablock/datablock.h"
+#include "../../src/util/datablock/oo_datablock.h"
 #include "../../src/util/rmalloc.h"
 
 #ifdef __cplusplus
@@ -184,6 +185,53 @@ TEST_F(DataBlockTest, RemoveItem) {
 	DataBlockIterator_Free(it);
 
 	// Cleanup.
+	DataBlock_Free(dataBlock);
+}
+
+TEST_F(DataBlockTest, OutOfOrderBuilding) {
+	// This test checks for a fragmented, data block out of order re-construction.
+	DataBlock *dataBlock = DataBlock_New(1, sizeof(int), NULL);
+	int insert_arr1[4] = {8, 2, 3, 6};
+	int delete_arr[2] = {4, 7};
+	int insert_arr2[4] = {9, 1, 5, 0};
+	int expected[8] = {0, 1, 2, 3, 5, 6, 8, 9};
+
+	// Insert the first array.
+	for(int i = 0; i < 4; i++) {
+		int *item = (int *)DataBlock_AllocateItemOutOfOrder(dataBlock, insert_arr1[i]);
+		*item = insert_arr1[i];
+	}
+	ASSERT_EQ(4, dataBlock->itemCount);
+	ASSERT_EQ(0, array_len(dataBlock->deletedIdx));
+
+	// Mark deleted values.
+	for(int i = 0; i < 2; i++) {
+		DataBlock_MarkAsDeletedOutOfOrder(dataBlock, delete_arr[i]);
+	}
+
+	ASSERT_EQ(4, dataBlock->itemCount);
+	ASSERT_EQ(2, array_len(dataBlock->deletedIdx));
+
+	// Add another array
+	for(int i = 0; i < 4; i++) {
+		int *item = (int *)DataBlock_AllocateItemOutOfOrder(dataBlock, insert_arr2[i]);
+		*item = insert_arr2[i];
+	}
+
+	ASSERT_EQ(8, dataBlock->itemCount);
+	ASSERT_EQ(2, array_len(dataBlock->deletedIdx));
+
+	// Validate
+	DataBlockIterator *it = DataBlock_Scan(dataBlock);
+	for(int i = 0; i < 8; i++) {
+		int *item = (int *)DataBlockIterator_Next(it);
+		ASSERT_EQ(*item, expected[i]);
+	}
+	ASSERT_FALSE(DataBlockIterator_Next(it));
+
+	ASSERT_TRUE(dataBlock->deletedIdx[0] == 4 || dataBlock->deletedIdx[0] == 7);
+	ASSERT_TRUE(dataBlock->deletedIdx[1] == 4 || dataBlock->deletedIdx[1] == 7);
+
 	DataBlock_Free(dataBlock);
 }
 
