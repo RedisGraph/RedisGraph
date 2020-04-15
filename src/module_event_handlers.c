@@ -57,18 +57,6 @@ static bool _GraphContext_NameContainsTag(const GraphContext *gc) {
 	return false;
 }
 
-// Creates a graph meta key name.
-static inline char *_GraphContext_CreateGraphMetaKeyName(const GraphContext *gc) {
-	char *name;
-	// If the name already contains a tag, append UUID.
-	char *uuid = UUID_New();
-	if(_GraphContext_NameContainsTag(gc)) asprintf(&name, "%s_%s", gc->graph_name, uuid);
-	// Else, create a tag which is the graph name and append the graph name and UUID.
-	else asprintf(&name, "{%s}%s_%s", gc->graph_name, gc->graph_name, uuid);
-	rm_free(uuid);
-	return name;
-}
-
 // Calculate how many virtual keys are needed to represent the graph.
 static uint64_t _GraphContext_RequiredMetaKeys(const GraphContext *gc) {
 	uint64_t required_keys = 0;
@@ -81,7 +69,7 @@ static uint64_t _GraphContext_RequiredMetaKeys(const GraphContext *gc) {
 
 static void _CreateGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
 	uint meta_key_count = _GraphContext_RequiredMetaKeys(gc);
-	for(uint64_t i = 0; i < meta_key_count; i++) {
+	for(uint i = 0; i < meta_key_count; i++) {
 		bool graph_name_contains_tag = _GraphContext_NameContainsTag(gc);
 		char *uuid = UUID_New();
 		size_t meta_key_name_length = strlen(uuid) + strlen(gc->graph_name) + 2; // graphname_uuid\0
@@ -94,6 +82,7 @@ static void _CreateGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
 		} else {
 			sprintf(meta_key_name, "{%s}%s_%s", gc->graph_name, gc->graph_name, uuid);
 		}
+		rm_free(uuid);
 		GraphMetaContext *meta = GraphMetaContext_New(gc, meta_key_name);
 		RedisModuleString *meta_rm_string = RedisModule_CreateString(ctx, meta_key_name,
 																	 strlen(meta_key_name));
