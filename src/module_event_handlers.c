@@ -123,6 +123,13 @@ static void _CreateKeySpaceMetaKeys(RedisModuleCtx *ctx) {
 	}
 }
 
+static void _RemoveDecodeState() {
+	uint graphs_in_keyspace_count = array_len(graphs_in_keyspace);
+	for(uint i = 0; i < graphs_in_keyspace_count; i ++) {
+
+	}
+}
+
 // Delete the meta keys for each graph in the key space - used on RDB finish (save/load/fail) event.
 static void _ClearKeySpaceMetaKeys(RedisModuleCtx *ctx) {
 	uint graphs_in_keyspace_count = array_len(graphs_in_keyspace);
@@ -135,6 +142,8 @@ static void _ClearKeySpaceMetaKeys(RedisModuleCtx *ctx) {
 static void _FlushDBHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
 							void *data) {
 	if(eid.id == REDISMODULE_EVENT_FLUSHDB && subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
+		// If a flushall occurs during replication, stop all decoding and remove meta keys.
+		_RemoveDecodeState();
 		_ClearKeySpaceMetaKeys(ctx);
 	}
 }

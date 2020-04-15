@@ -27,7 +27,11 @@ int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		RedisModule_ReplyWithError(ctx, "Graph is either missing or referred key is of a different type.");
 		goto cleanup;
 	}
-
+	// Check if graph is in decode - The graph key has been decoded but not all the virtual keys finished.
+	if(GraphContext_IsInDecode(gc)) {
+		RedisModule_ReplyWithError(ctx, "Graph is currently replicating");
+		goto cleanup;
+	}
 	// Remove graph from keyspace.
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_WRITE);
 	RedisModule_DeleteKey(key); // Decreases graph ref count.

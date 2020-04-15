@@ -66,6 +66,11 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(_validate_command_arity(cmd, argc) == false) return RedisModule_WrongArity(ctx);
 	Command_Handler handler = get_command_handler(cmd);
 	GraphContext *gc = GraphContext_Retrieve(ctx, graph_name, true, true);
+	// If gc is null - the key is populate with different data type than graph.
+	if(!gc) {
+		RedisModule_ReplyWithError(ctx, "Referred key is not a graph type.");
+		return REDISMODULE_OK;
+	}
 	// Check if graph is in decode - The graph key has been decoded but not all the virtual keys finished.
 	if(GraphContext_IsInDecode(gc)) {
 		RedisModule_ReplyWithError(ctx, "Graph is currently replicating");
