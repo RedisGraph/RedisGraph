@@ -292,8 +292,13 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node, const Record
 	for(int child_idx = 0; child_idx < node->op.child_count; child_idx++) {
 		SIValue v;
 		AR_EXP_Result eval_result = _AR_EXP_Evaluate(node->op.children[child_idx], r, &v);
-		// Encountered an error while evaluating a subtree.
-		if(eval_result == EVAL_ERR) goto cleanup;
+		if(eval_result == EVAL_ERR) {
+			/* Encountered an error while evaluating a subtree.
+			 * Free all values generated up to this point. */
+			_AR_EXP_FreeResultsArray(sub_trees, child_idx);
+			// Propagate the error upwards.
+			return eval_result;
+		}
 		if(eval_result == EVAL_FOUND_PARAM) res = EVAL_FOUND_PARAM;
 		sub_trees[child_idx] = v;
 	}
