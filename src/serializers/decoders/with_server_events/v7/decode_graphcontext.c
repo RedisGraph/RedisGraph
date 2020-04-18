@@ -29,9 +29,17 @@ GraphContext *RdbLoadGraphContext_v7(RedisModuleIO *rdb) {
 	uint64_t key_number = RedisModule_LoadUnsigned(rdb);
 
 	GraphContext *gc = _GetOrCreateGraphContext(graph_name);
-	// Indicate the graph in decode.
+	// Mark the graph as currently being in decode.
 	GraphContext_MarkInDecode(gc);
 	EncodePhase encoded_phase =  RedisModule_LoadUnsigned(rdb);
+	/* The decode process contains the decode operation of many meta keys, representing independent parts of the graph.
+	 * Each key contains data on one of the following:
+	 * 1. Nodes - The nodes that are currently valid in the graph.
+	 * 2. Deleted nodes - Nodes that were deleted and there ids can be re-used. Used for exact replication of data black state.
+	 * 3. Edges - The edges that are currently valid in the graph.
+	 * 4. Deleted edges - Edges that were deleted and there ids can be re-used. Used for exact replication of data black state.
+	 * 5. Graph schema - Propertoes, indices.
+	 * The following switch checks which part of the graph the current key holds, and decodes it accordingly. */
 	switch(encoded_phase) {
 	case NODES:
 		RdbLoadNodes_v7(rdb, gc);
@@ -49,7 +57,7 @@ GraphContext *RdbLoadGraphContext_v7(RedisModuleIO *rdb) {
 		RdbLoadGraphSchema_v7(rdb, gc);
 		break;
 	default:
-		assert(false && "Unkown encoding");
+		assert(false && "Unknown encoding");
 		break;
 	}
 	GraphDecodeContext_IncreaseProcessedCount(gc->decoding_context);

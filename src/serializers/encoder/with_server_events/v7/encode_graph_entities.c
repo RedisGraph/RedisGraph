@@ -57,24 +57,24 @@ static void _UpdateEncodePhase(GraphContext *gc) {
 	switch(current_phase) {
 	case NODES:
 		// Check if NODES encodeding phase is done
-		if(GraphEncodeContext_GetProccessedNodes(gc->encoding_context) < Graph_NodeCount(gc->g)) return;
+		if(GraphEncodeContext_GetProcessedNodesCount(gc->encoding_context) < Graph_NodeCount(gc->g)) return;
 		// We are done with nodes, set phase to DELETED_NODES and fall though to its case
 		GraphEncodeContext_SetEncodePhase(gc->encoding_context, DELETED_NODES);
 	case DELETED_NODES:
 		// Check if there is a need to encoded deleted nodes, or skip to edges.
 		if(array_len(gc->g->nodes->deletedIdx) >
-		   GraphEncodeContext_GetProccessedDeletedNodes(gc->encoding_context)) return;
+		   GraphEncodeContext_GetProcessedDeletedNodesCount(gc->encoding_context)) return;
 		// No deleted nodes left. Set state to EDGES and fall though to its case.
 		GraphEncodeContext_SetEncodePhase(gc->encoding_context, EDGES);
 	case EDGES:
 		// Check if need to encode edges, deleted edges or skip tp schema.
-		if(GraphEncodeContext_GetProccessedEdges(gc->encoding_context) < Graph_EdgeCount(gc->g)) return;
+		if(GraphEncodeContext_GetProcessedEdgesCount(gc->encoding_context) < Graph_EdgeCount(gc->g)) return;
 		// We are done with edges, set phase to DELETED_EDGES and fall though to its case
 		GraphEncodeContext_SetEncodePhase(gc->encoding_context, DELETED_EDGES);
 	case DELETED_EDGES:
 		// Check if there is a need to encoded deleted edges, or skip to schema.
 		if(array_len(gc->g->edges->deletedIdx) >
-		   GraphEncodeContext_GetProccessedDeletedEdges(gc->encoding_context))return;
+		   GraphEncodeContext_GetProcessedDeletedEdgesCount(gc->encoding_context))return;
 		// No deleted edges left. Set state to GRAPH_SCHEMA and fall though to its case.
 		GraphEncodeContext_SetEncodePhase(gc->encoding_context, GRAPH_SCHEMA);
 		return;
@@ -91,7 +91,8 @@ void RdbSaveDeletedNodes_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	// Get graph's deleted node count.
 	uint64_t deleted_nodes = array_len(gc->g->nodes->deletedIdx);
 	// Get the number of deleted nodes already encoded.
-	uint64_t encoded_deleted_nodes = GraphEncodeContext_GetProccessedDeletedNodes(gc->encoding_context);
+	uint64_t encoded_deleted_nodes = GraphEncodeContext_GetProcessedDeletedNodesCount(
+										 gc->encoding_context);
 	// Calculate the number of deleted nodes required to encode in this phase.
 	uint64_t deleted_nodes_to_encode = deleted_nodes - encoded_deleted_nodes;
 	// If the required number is bigger than the allowed entities threshold, set it to be the threshold.
@@ -103,8 +104,8 @@ void RdbSaveDeletedNodes_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	for(uint64_t i = encoded_deleted_nodes; i < encoded_deleted_nodes + deleted_nodes_to_encode; i++) {
 		RedisModule_SaveUnsigned(rdb, gc->g->nodes->deletedIdx[i]);
 	}
-	GraphEncodeContext_SetProcessedDeletedNodes(gc->encoding_context,
-												encoded_deleted_nodes + deleted_nodes_to_encode);
+	GraphEncodeContext_SetProcessedDeletedNodesCount(gc->encoding_context,
+													 encoded_deleted_nodes + deleted_nodes_to_encode);
 	_UpdateEncodePhase(gc);
 }
 
@@ -120,7 +121,7 @@ void RdbSaveNodes_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	// Get graph's node count.
 	uint64_t graph_nodes = Graph_NodeCount(gc->g);
 	// Get the number of nodes already encoded.
-	uint64_t encoded_nodes = GraphEncodeContext_GetProccessedNodes(gc->encoding_context);
+	uint64_t encoded_nodes = GraphEncodeContext_GetProcessedNodesCount(gc->encoding_context);
 	// Calculate the number of nodes required to encode in this phase.
 	uint64_t nodes_to_encode = graph_nodes - encoded_nodes;
 	// If the required number is bigger than the allowed entities threshold, set it to be the threshold.
@@ -157,7 +158,7 @@ void RdbSaveNodes_v7(RedisModuleIO *rdb, GraphContext *gc) {
 
 	// Update context.
 	GraphEncodeContext_SetDatablockIterator(gc->encoding_context, iter);
-	GraphEncodeContext_SetProcessedNodes(gc->encoding_context, encoded_nodes + nodes_to_encode);
+	GraphEncodeContext_SetProcessedNodesCount(gc->encoding_context, encoded_nodes + nodes_to_encode);
 	_UpdateEncodePhase(gc);
 }
 
@@ -169,7 +170,8 @@ void RdbSaveDeletedEdges_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	// Get graph's deleted edge count.
 	uint64_t deleted_edges = array_len(gc->g->edges->deletedIdx);
 	// Get the number of deleted edges already encoded.
-	uint64_t encoded_deleted_edges = GraphEncodeContext_GetProccessedDeletedEdges(gc->encoding_context);
+	uint64_t encoded_deleted_edges = GraphEncodeContext_GetProcessedDeletedEdgesCount(
+										 gc->encoding_context);
 	// Calculate the number of deleted edges required to encode in this phase.
 	uint64_t deleted_edges_to_encode = deleted_edges - encoded_deleted_edges;
 	// If the required number is bigger than the allowed entities threshold, set it to be the threshold.
@@ -181,8 +183,8 @@ void RdbSaveDeletedEdges_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	for(uint64_t i = encoded_deleted_edges; i < encoded_deleted_edges + deleted_edges_to_encode; i++) {
 		RedisModule_SaveUnsigned(rdb, gc->g->edges->deletedIdx[i]);
 	}
-	GraphEncodeContext_SetProcessedDeletedEdges(gc->encoding_context,
-												encoded_deleted_edges + deleted_edges_to_encode);
+	GraphEncodeContext_SetProcessedDeletedEdgesCount(gc->encoding_context,
+													 encoded_deleted_edges + deleted_edges_to_encode);
 	_UpdateEncodePhase(gc);
 }
 
@@ -199,7 +201,7 @@ void RdbSaveEdges_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	// Get graph's edge count.
 	uint64_t graph_edges = Graph_EdgeCount(gc->g);
 	// Get the number of edges already encoded.
-	uint64_t encoded_edges = GraphEncodeContext_GetProccessedEdges(gc->encoding_context);
+	uint64_t encoded_edges = GraphEncodeContext_GetProcessedEdgesCount(gc->encoding_context);
 	// Calculate the number of edges required to encode in this phase.
 	uint64_t edges_to_encode = graph_edges - encoded_edges;
 	// If the required number is bigger than the allowed entities threshold, set it to be the threshold.
@@ -264,6 +266,6 @@ finish:
 	// Update context.
 	GraphEncodeContex_SetCurrentRelationID(gc->encoding_context, r);
 	GraphEncodeContext_SetMatrixTupleIterator(gc->encoding_context, iter);
-	GraphEncodeContext_SetProcessedEdges(gc->encoding_context, encoded_edges + edges_to_encode);
+	GraphEncodeContext_SetProcessedEdgesCount(gc->encoding_context, encoded_edges + edges_to_encode);
 	_UpdateEncodePhase(gc);
 }

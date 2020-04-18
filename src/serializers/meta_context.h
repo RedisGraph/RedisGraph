@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "graphcontext.h"
+#include "../graph/graphcontext.h"
 
 typedef struct {
 	GraphContext *gc;

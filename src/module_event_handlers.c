@@ -9,7 +9,7 @@
 #include <assert.h>
 #include <stdbool.h>
 #include "graph/graphcontext.h"
-#include "graph/graphmetacontext.h"
+#include "serializers/meta_context.h"
 #include "serializers/graphcontext_type.h"
 #include "serializers/graphmeta_type.h"
 #include "util/uuid.h"
@@ -69,8 +69,8 @@ static uint64_t _GraphContext_RequiredMetaKeys(const GraphContext *gc) {
 
 static void _CreateGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
 	uint meta_key_count = _GraphContext_RequiredMetaKeys(gc);
+	bool graph_name_contains_tag = _GraphContext_NameContainsTag(gc);
 	for(uint i = 0; i < meta_key_count; i++) {
-		bool graph_name_contains_tag = _GraphContext_NameContainsTag(gc);
 		char *uuid = UUID_New();
 		size_t meta_key_name_length = strlen(uuid) + strlen(gc->graph_name) + 2; // graphname_uuid\0
 		if(!graph_name_contains_tag) {
@@ -126,7 +126,7 @@ static void _CreateKeySpaceMetaKeys(RedisModuleCtx *ctx) {
 static void _RemoveDecodeState() {
 	uint graphs_in_keyspace_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graphs_in_keyspace_count; i ++) {
-
+		GraphContext_MarkNotInDecode(graphs_in_keyspace[i]);
 	}
 }
 

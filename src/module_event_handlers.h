@@ -8,4 +8,5 @@
 
 #include "redismodule.h"
 
+// Register event handlers for Redis server, keyspace and fork events.
 void RegisterEventHandlers(RedisModuleCtx *ctx);

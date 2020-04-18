@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "graphdecodecontext.h"
+#include "decode_context.h"
 #include "assert.h"
 #include "../util/rmalloc.h"
 

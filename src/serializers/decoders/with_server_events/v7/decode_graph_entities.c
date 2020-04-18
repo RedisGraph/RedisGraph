@@ -6,7 +6,7 @@
 
 #include "decode_v7.h"
 
-// Forward declerations.
+// Forward declarations.
 static SIValue _RdbLoadSIArray(RedisModuleIO *rdb);
 
 static SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {

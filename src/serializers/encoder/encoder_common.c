@@ -8,7 +8,7 @@
 
 static void _RdbSaveSIArray(RedisModuleIO *rdb, const SIValue list) {
 	/* saves array as
-	   unsinged : array legnth
+	   unsigned : array legnth
 	   array[0]
 	   .
 	   .

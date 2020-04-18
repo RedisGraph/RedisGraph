@@ -52,20 +52,20 @@ static int _Setup_ThreadPOOL(int threadCount) {
 
 // Sets the global variable of the redis major version
 static void _SetRedisMajorVersion(RedisModuleCtx *ctx) {
-	const char *server_version;
-	int major;
-	int minor;
-	int patch;
 	// Check if there is an implementation for redis module api for redis 6 an up, by checking the existence pf a Redis 6 API function pointer.
 	// If the function pointer is null, the server version is Redis 5.
 	if(RedisModule_GetServerInfo) {
 		// Retrive the server info.
+		const char *server_version;
+		int major;
+		int minor;
+		int patch;
 		RedisModuleServerInfoData *info =  RedisModule_GetServerInfo(ctx, "Server");
 		server_version = RedisModule_ServerInfoGetFieldC(info, "redis_version");
 		sscanf(server_version, "%d.%d.%d", &major, &minor, &patch);
 		RedisModule_FreeServerInfo(ctx, info);
 		if(major > 5) redis_major_version = major;
-		// Check for Redis 6 rc versions which starts with 5.0.x. Those versions support RedisModule_GetServerInfo.
+		// Check for Redis 6 rc versions which starts with 5.9.x. Those versions support RedisModule_GetServerInfo.
 		else redis_major_version = major == 5 && minor == 9 ? 6 : major;
 	} else {
 		// RedisModule_GetServerInfo exists only on Redis 6 and up, so the current server major version is 5.
@@ -79,7 +79,7 @@ static int _RegisterDataTypes(RedisModuleCtx *ctx) {
 		return REDISMODULE_ERR;
 	}
 
-	// Register graph meta types on redis versions > 5 as the graph serialization there is diefferent.
+	// Redis versions > 5 use different serialization mechanisms; register the GraphMeta type.
 	if(redis_major_version > 5) {
 		if(GraphMetaType_Register(ctx) == REDISMODULE_ERR) {
 			printf("Failed to register GraphMeta type\n");

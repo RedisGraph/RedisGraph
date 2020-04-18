@@ -194,7 +194,7 @@ size_t Graph_NodeCount(
 );
 
 // Returns number of deleted nodes in the graph.
-size_t Graph_DeletedNodeCount(
+uint Graph_DeletedNodeCount(
 	const Graph *g
 );
 
@@ -210,7 +210,7 @@ size_t Graph_EdgeCount(
 );
 
 // Returns number of deleted edges in the graph.
-size_t Graph_DeletedEdgeCount(
+uint Graph_DeletedEdgeCount(
 	const Graph *g
 );
 

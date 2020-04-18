@@ -19,19 +19,19 @@ typedef struct {
 // Creates a new graph decoding context.
 GraphDecodeContext *GraphDecodeContext_New();
 
-// Resest a graph decoding context.
+// Reset a graph decoding context.
 void GraphDecodeContext_Reset(GraphDecodeContext *ctx);
 
-// Sets the decoding context to indicate about decoding in progress.
+// Set the graph_decoding flag to true.
 void GraphDecodeContext_SetGraphInDecode(GraphDecodeContext *ctx);
 
-// Return if there is decoding in progress.
+// Return true if decoding is in progress.
 bool GraphDecodeContext_IsGraphInDecode(GraphDecodeContext *ctx);
 
-// Retrive graph decoding context processed key count.
+// Get the number of keys decoded so far.
 uint64_t GraphDecodeContext_GetProcessedKeyCount(const GraphDecodeContext *ctx);
 
-// Increases the number of processed graph keys.
+// Increment the number of processed keys by one.
 void GraphDecodeContext_IncreaseProcessedCount(GraphDecodeContext *ctx);
 
 // Free graph decoding context.

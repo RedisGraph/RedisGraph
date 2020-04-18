@@ -13,8 +13,8 @@
 #include "../schema/schema.h"
 #include "../slow_log/slow_log.h"
 #include "graph.h"
-#include "graphencodecontext.h"
-#include "graphdecodecontext.h"
+#include "../serializers/encode_context.h"
+#include "../serializers/decode_context.h"
 
 typedef struct {
 	Graph *g;                               // Container for all matrices and entity properties
@@ -90,8 +90,10 @@ void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n);
 
 // Add GraphContext to global array
 void GraphContext_RegisterWithModule(GraphContext *gc);
+
 // Retrive GraphContext from the global array, by name. If no such graph is registered, NULL is returned.
 GraphContext *GraphContext_GetRegisteredGraphContext(const char *graph_name);
+
 // Remove GraphContext from global array
 void GraphContext_RemoveFromRegistry(GraphContext *gc);
 

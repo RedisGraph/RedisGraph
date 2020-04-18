@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "graph_extentions.h"
+#include "graph_extensions.h"
 #include <assert.h>
 #include "../util/datablock/oo_datablock.h"
 

@@ -4,7 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "graphencodecontext.h"
+#include "encode_context.h"
 #include "assert.h"
 #include "../util/rmalloc.h"
 #include "../util/rax_extensions.h"
@@ -44,49 +44,49 @@ inline uint64_t GraphEncodeContext_GetKeyCount(const GraphEncodeContext *ctx) {
 	return raxSize(ctx->keys) + 1;
 }
 
-inline uint64_t GraphEncodeContext_GetProccessedKeyCount(const GraphEncodeContext *ctx) {
+inline uint64_t GraphEncodeContext_GetProcessedKeyCount(const GraphEncodeContext *ctx) {
 	assert(ctx);
 	return ctx->keys_processed;
 }
 
-inline uint64_t GraphEncodeContext_GetProccessedNodes(const GraphEncodeContext *ctx) {
+inline uint64_t GraphEncodeContext_GetProcessedNodesCount(const GraphEncodeContext *ctx) {
 	assert(ctx);
 	return ctx->processed_nodes;
 }
 
-inline void GraphEncodeContext_SetProcessedNodes(GraphEncodeContext *ctx, uint64_t nodes) {
+inline void GraphEncodeContext_SetProcessedNodesCount(GraphEncodeContext *ctx, uint64_t nodes) {
 	assert(ctx);
 	ctx->processed_nodes = nodes;
 }
 
-inline uint64_t GraphEncodeContext_GetProccessedDeletedNodes(const GraphEncodeContext *ctx) {
+inline uint64_t GraphEncodeContext_GetProcessedDeletedNodesCount(const GraphEncodeContext *ctx) {
 	assert(ctx);
 	return ctx->processed_deleted_nodes;
 }
 
-inline void GraphEncodeContext_SetProcessedDeletedNodes(GraphEncodeContext *ctx,
-														uint64_t deleted_nodes) {
+inline void GraphEncodeContext_SetProcessedDeletedNodesCount(GraphEncodeContext *ctx,
+															 uint64_t deleted_nodes) {
 	assert(ctx);
 	ctx->processed_deleted_nodes = deleted_nodes;
 }
 
-inline uint64_t GraphEncodeContext_GetProccessedEdges(const GraphEncodeContext *ctx) {
+inline uint64_t GraphEncodeContext_GetProcessedEdgesCount(const GraphEncodeContext *ctx) {
 	assert(ctx);
 	return ctx->processed_edges;
 }
 
-inline void GraphEncodeContext_SetProcessedEdges(GraphEncodeContext *ctx, uint64_t edges) {
+inline void GraphEncodeContext_SetProcessedEdgesCount(GraphEncodeContext *ctx, uint64_t edges) {
 	assert(ctx);
 	ctx->processed_edges = edges;
 }
 
-inline uint64_t GraphEncodeContext_GetProccessedDeletedEdges(const GraphEncodeContext *ctx) {
+inline uint64_t GraphEncodeContext_GetProcessedDeletedEdgesCount(const GraphEncodeContext *ctx) {
 	assert(ctx);
 	return ctx->processed_deleted_edges;
 }
 
-inline void GraphEncodeContext_SetProcessedDeletedEdges(GraphEncodeContext *ctx,
-														uint64_t deleted_edges) {
+inline void GraphEncodeContext_SetProcessedDeletedEdgesCount(GraphEncodeContext *ctx,
+															 uint64_t deleted_edges) {
 	assert(ctx);
 	ctx->processed_deleted_edges = deleted_edges;
 }

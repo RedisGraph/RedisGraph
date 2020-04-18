@@ -382,7 +382,7 @@ size_t Graph_NodeCount(const Graph *g) {
 	return g->nodes->itemCount;
 }
 
-size_t Graph_DeletedNodeCount(const Graph *g) {
+uint Graph_DeletedNodeCount(const Graph *g) {
 	assert(g);
 	return array_len(g->nodes->deletedIdx);
 }
@@ -399,7 +399,7 @@ size_t Graph_EdgeCount(const Graph *g) {
 	return g->edges->itemCount;
 }
 
-size_t Graph_DeletedEdgeCount(const Graph *g) {
+uint Graph_DeletedEdgeCount(const Graph *g) {
 	assert(g);
 	return array_len(g->edges->deletedIdx);
 }

@@ -27,7 +27,7 @@ typedef enum {
 typedef struct {
 	uint64_t keys_processed;                    // Count the number of procssed graph keys.
 	rax *keys;                                  // The name of the meta keys representing the graph.
-	EncodePhase phase;                          // Represents the items currently encoded.
+	EncodePhase phase;                          // Represents the current encoding phase.
 	uint64_t processed_nodes;                   // Number of encoded nodes.
 	uint64_t processed_deleted_nodes;           // Number of encoded deleted nodes.
 	uint64_t processed_edges;                   // Number of encoded edges.
@@ -40,62 +40,64 @@ typedef struct {
 // Creates a new graph encoding context.
 GraphEncodeContext *GraphEncodeContext_New();
 
-// Resest a graph encoding context.
+// Reset a graph encoding context.
 void GraphEncodeContext_Reset(GraphEncodeContext *ctx);
 
-// Retrive a graph encoding context encoding phase.
+// Retrieve the graph current encoding phase.
 EncodePhase GraphEncodeContext_GetEncodePhase(const GraphEncodeContext *ctx);
 
-// Sets a graph encoding context phase.
+// Sets the graph current encoding phase.
 void GraphEncodeContext_SetEncodePhase(GraphEncodeContext *ctx, EncodePhase phase);
 
-// Retrive graph encoding context keys count.
+// Retrieve the graph representing keys count.
 uint64_t GraphEncodeContext_GetKeyCount(const GraphEncodeContext *ctx);
 
-// Retrive graph encoding context proccessed key count.
-uint64_t GraphEncodeContext_GetProccessedKeyCount(const GraphEncodeContext *ctx);
+// Retrieve graph currently processed key count - keys processed so far.
+uint64_t GraphEncodeContext_GetProcessedKeyCount(const GraphEncodeContext *ctx);
 
-// Retrive graph encoding context proccessed nodes.
-uint64_t GraphEncodeContext_GetProccessedNodes(const GraphEncodeContext *ctx);
+// Retrieve graph currently encoded nodes count - nodes encoded so far.
+uint64_t GraphEncodeContext_GetProcessedNodesCount(const GraphEncodeContext *ctx);
 
-// Set graph encoding context proccessed nodes.
-void GraphEncodeContext_SetProcessedNodes(GraphEncodeContext *ctx, uint64_t nodes);
+// Update the graph currently encoded nodes count.
+void GraphEncodeContext_SetProcessedNodesCount(GraphEncodeContext *ctx, uint64_t nodes);
 
-// Retrive graph encoding context proccessed deleted nodes.
-uint64_t GraphEncodeContext_GetProccessedDeletedNodes(const GraphEncodeContext *ctx);
+// Retrieve graph currently encoded deleted nodes count - deleted nodes encoded so far.
+uint64_t GraphEncodeContext_GetProcessedDeletedNodesCount(const GraphEncodeContext *ctx);
 
-// Set graph encoding context proccessed deleted nodes.
-void GraphEncodeContext_SetProcessedDeletedNodes(GraphEncodeContext *ctx, uint64_t deleted_nodes);
+// Update the graph currently encoded deleted nodes count.
+void GraphEncodeContext_SetProcessedDeletedNodesCount(GraphEncodeContext *ctx,
+													  uint64_t deleted_nodes);
 
-// Retrive graph encoding context proccessed edges.
-uint64_t GraphEncodeContext_GetProccessedEdges(const GraphEncodeContext *ctx);
+// Retrieve graph currently encoded edges count - edges encoded so far.
+uint64_t GraphEncodeContext_GetProcessedEdgesCount(const GraphEncodeContext *ctx);
 
-// Set graph encoding context proccessed edges.
-void GraphEncodeContext_SetProcessedEdges(GraphEncodeContext *ctx, uint64_t edges);
+// Update the graph currently encoded edges count.
+void GraphEncodeContext_SetProcessedEdgesCount(GraphEncodeContext *ctx, uint64_t edges);
 
-// Retrive graph encoding context proccessed deleted edges.
-uint64_t GraphEncodeContext_GetProccessedDeletedEdges(const GraphEncodeContext *ctx);
+// Retrieve graph currently encoded deleted edges count - deleted edges encoded so far.
+uint64_t GraphEncodeContext_GetProcessedDeletedEdgesCount(const GraphEncodeContext *ctx);
 
-// Set graph encoding context proccessed deleted edges.
-void GraphEncodeContext_SetProcessedDeletedEdges(GraphEncodeContext *ctx, uint64_t deleted_edges);
+// Update the graph currently encoded deleted edges count.
+void GraphEncodeContext_SetProcessedDeletedEdgesCount(GraphEncodeContext *ctx,
+													  uint64_t deleted_edges);
 
-// Retrive graph encoding context stored datablock iterator.
+// Retrieve stored datablock iterator.
 DataBlockIterator *GraphEncodeContext_GetDatablockIterator(const GraphEncodeContext *ctx);
 
-// Set graph encoding context datablock iterator.
+// Set graph encoding context datablock iterator - keep iterator state for further usage.
 void GraphEncodeContext_SetDatablockIterator(GraphEncodeContext *ctx, DataBlockIterator *iter);
 
-// Retrive graph encoding context current encoded relation matrix id.
+// Retrieve graph encoding context current encoded relation matrix id.
 uint GraphEncodeContex_GetCurrentRelationID(const GraphEncodeContext *ctx);
 
 // Set graph encoding context current encoded relation matrix id.
 void GraphEncodeContex_SetCurrentRelationID(GraphEncodeContext *ctx,
 											uint current_relation_matrix_id);
 
-// Retrive graph encoding context stored matrix tuple iterator.
+// Retrieve stored matrix tuple iterator.
 GxB_MatrixTupleIter *GraphEncodeContext_GetMatrixTupleIterator(const GraphEncodeContext *ctx);
 
-// Set graph encoding context matrix tuple iterator.
+// Set graph encoding context matrix tuple iterator - keep iterator state for further usage.
 void GraphEncodeContext_SetMatrixTupleIterator(GraphEncodeContext *ctx, GxB_MatrixTupleIter *iter);
 
 // Returns if the the number of processed keys is equal to the total number of graph keys.

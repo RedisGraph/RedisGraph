@@ -7,7 +7,7 @@
 #include "decode_v6.h"
 #include <assert.h>
 
-// Forward declerations.
+// Forward declarations.
 static SIValue _RdbLoadSIArray(RedisModuleIO *rdb);
 
 static SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
