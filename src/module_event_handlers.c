@@ -9,10 +9,8 @@
 #include <assert.h>
 #include <stdbool.h>
 #include "graph/graphcontext.h"
-#include "serializers/meta_context.h"
 #include "serializers/graphcontext_type.h"
 #include "serializers/graphmeta_type.h"
-#include "util/uuid.h"
 
 extern GraphContext **graphs_in_keyspace;  // Global array tracking all extant GraphContexts.
 extern bool
@@ -70,37 +68,51 @@ static uint64_t _GraphContext_RequiredMetaKeys(const GraphContext *gc) {
 static void _CreateGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
 	uint meta_key_count = _GraphContext_RequiredMetaKeys(gc);
 	bool graph_name_contains_tag = _GraphContext_NameContainsTag(gc);
-	for(uint i = 0; i < meta_key_count; i++) {
-		char *uuid = UUID_New();
-		size_t meta_key_name_length = strlen(uuid) + strlen(gc->graph_name) + 2; // graphname_uuid\0
+	for(uint i = 1; i <= meta_key_count; i++) {
+		// Represent integer in base 10 by a string takes log10 charecters.
+		size_t id_len = (i == 1 || i % 10 == 0) ? ceil(log10(i + 1)) : ceil(log10(i));
+		size_t meta_key_name_length = id_len + strlen(gc->graph_name) + 2; // graphname_id\0
 		if(!graph_name_contains_tag) {
-			meta_key_name_length += strlen(gc->graph_name) + 2; // {graphname}graphname_uuid\0
+			meta_key_name_length += strlen(gc->graph_name) + 2; // {graphname}graphname_id\0
 		}
 		char meta_key_name[meta_key_name_length];
 		if(graph_name_contains_tag) {
-			sprintf(meta_key_name, "%s_%s", gc->graph_name, uuid);
+			sprintf(meta_key_name, "%s_%u", gc->graph_name, i);
 		} else {
-			sprintf(meta_key_name, "{%s}%s_%s", gc->graph_name, gc->graph_name, uuid);
+			sprintf(meta_key_name, "{%s}%s_%u", gc->graph_name, gc->graph_name, i);
 		}
-		rm_free(uuid);
-		GraphMetaContext *meta = GraphMetaContext_New(gc, meta_key_name);
 		RedisModuleString *meta_rm_string = RedisModule_CreateString(ctx, meta_key_name,
 																	 strlen(meta_key_name));
 
 		RedisModuleKey *key = RedisModule_OpenKey(ctx, meta_rm_string, REDISMODULE_WRITE);
 		// Set value in key.
-		RedisModule_ModuleTypeSetValue(key, GraphMetaRedisModuleType, meta);
+		RedisModule_ModuleTypeSetValue(key, GraphMetaRedisModuleType, gc);
 		RedisModule_CloseKey(key);
-		GraphEncodeContext_AddKey(gc->encoding_context, meta_key_name);
 		RedisModule_FreeString(ctx, meta_rm_string);
 	}
+	GraphEncodeContext_SetMetaKeysCount(gc->encoding_context, meta_key_count);
 }
 
-static void _DeleteGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
-	unsigned char **keys = GraphEncodeContext_GetKeys(gc->encoding_context);
-	uint key_count = array_len(keys);
-	for(uint i = 0; i < key_count; i++) {
-		char *meta_key_name = (char *)keys[i];
+// Delete meta keys, upon RDB encode or decode finished event triggering. The decode flag represent the event.
+static void _DeleteGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc, bool decode) {
+	uint key_count;
+	// Get the number of meta keys required, according to the "decode" flag.
+	if(decode) key_count = GraphDecodeContext_GetKeyCount(gc->decoding_context) - 1;
+	else key_count = GraphEncodeContext_GetKeyCount(gc->encoding_context) - 1;
+	bool graph_name_contains_tag = _GraphContext_NameContainsTag(gc);
+	for(uint i = 1; i <= key_count; i++) {
+		// Represent integer in base 10 by a string takes log10 charecters.
+		size_t id_len = (i == 1 || i % 10 == 0) ? ceil(log10(i + 1)) : ceil(log10(i));
+		size_t meta_key_name_length = id_len + strlen(gc->graph_name) + 2; // graphname_id\0
+		if(!graph_name_contains_tag) {
+			meta_key_name_length += strlen(gc->graph_name) + 2; // {graphname}graphname_id\0
+		}
+		char meta_key_name[meta_key_name_length];
+		if(graph_name_contains_tag) {
+			sprintf(meta_key_name, "%s_%u", gc->graph_name, i);
+		} else {
+			sprintf(meta_key_name, "{%s}%s_%u", gc->graph_name, gc->graph_name, i);
+		}
 		RedisModuleString *meta_rm_string = RedisModule_CreateString(ctx, meta_key_name,
 																	 strlen(meta_key_name));
 
@@ -109,10 +121,7 @@ static void _DeleteGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
 		RedisModule_CloseKey(key);
 
 		RedisModule_FreeString(ctx, meta_rm_string);
-		// Free the name, as it will no longer be used.
-		rm_free(meta_key_name);
 	}
-	array_free(keys);
 }
 
 // Create the meta keys for each graph in the key space - used on RDB start event.
@@ -130,11 +139,12 @@ static void _RemoveDecodeState() {
 	}
 }
 
-// Delete the meta keys for each graph in the key space - used on RDB finish (save/load/fail) event.
-static void _ClearKeySpaceMetaKeys(RedisModuleCtx *ctx) {
+/* Delete the meta keys for each graph in the key space - used on RDB finish (save/load/fail) event.
+ * The decode flag represent if the graph is after encodeing or decodeing. */
+static void _ClearKeySpaceMetaKeys(RedisModuleCtx *ctx, bool decode) {
 	uint graphs_in_keyspace_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graphs_in_keyspace_count; i ++) {
-		_DeleteGraphMetaKeys(ctx, graphs_in_keyspace[i]);
+		_DeleteGraphMetaKeys(ctx, graphs_in_keyspace[i], decode);
 	}
 }
 
@@ -144,7 +154,7 @@ static void _FlushDBHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t 
 	if(eid.id == REDISMODULE_EVENT_FLUSHDB && subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
 		// If a flushall occurs during replication, stop all decoding and remove meta keys.
 		_RemoveDecodeState();
-		_ClearKeySpaceMetaKeys(ctx);
+		_ClearKeySpaceMetaKeys(ctx, true);
 	}
 }
 
@@ -177,13 +187,13 @@ static bool _IsEventLoadingEnd(RedisModuleEvent eid, uint64_t subevent) {
 static void _PersistenceEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
 									 void *data) {
 	if(_IsEventPersistenceStart(eid, subevent)) _CreateKeySpaceMetaKeys(ctx);
-	else if(_IsEventPersistenceEnd(eid, subevent)) _ClearKeySpaceMetaKeys(ctx);
+	else if(_IsEventPersistenceEnd(eid, subevent)) _ClearKeySpaceMetaKeys(ctx, false);
 }
 
 // Server loading event handler.
 static void _LoadingEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
 								 void *data) {
-	if(_IsEventLoadingEnd(eid, subevent)) _ClearKeySpaceMetaKeys(ctx);
+	if(_IsEventLoadingEnd(eid, subevent)) _ClearKeySpaceMetaKeys(ctx, true);
 }
 
 static void _RegisterServerEvents(RedisModuleCtx *ctx) {

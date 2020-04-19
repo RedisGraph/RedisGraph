@@ -12,7 +12,6 @@
 #include "../redismodule.h"
 // Include Graph Context.
 #include "../graph/graphcontext.h"
-#include "meta_context.h"
 // Include Query contxt.
 #include "../query_ctx.h"
 // Include slow log.

@@ -32,18 +32,11 @@ static void *_GraphMetaType_RdbLoad(RedisModuleIO *rdb, int encver) {
 
 	// Add GraphContext to global array of graphs.
 	GraphContext_RegisterWithModule(gc);
-	// Add meta key to the graph context meta keys collection.
-	const RedisModuleString *meta_redis_string = RedisModule_GetKeyNameFromIO(rdb);
-	const char *meta_key_name = RedisModule_StringPtrLen(meta_redis_string, NULL);
-	GraphEncodeContext_AddKey(gc->encoding_context, meta_key_name);
-	// Create meta context.
-	GraphMetaContext *meta = GraphMetaContext_New(gc, meta_key_name);
-	return meta;
+	return gc;
 }
 
 static void _GraphMetaType_RdbSave(RedisModuleIO *rdb, void *value) {
-	GraphMetaContext *meta = value;
-	RdbSaveGraphContext_WithServerEvents(rdb, meta->gc);
+	RdbSaveGraphContext_WithServerEvents(rdb, value);
 }
 
 static void _GraphMetaType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, void *value) {
@@ -51,9 +44,7 @@ static void _GraphMetaType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key
 }
 
 static void _GraphMetaType_Free(void *value) {
-	GraphMetaContext *meta = value;
-	GraphEncodeContext_DeleteKey(meta->gc->encoding_context, meta->meta_key_name);
-	GraphMetaContext_Free(meta);
+	// No-Op in this type.
 }
 
 int GraphMetaType_Register(RedisModuleCtx *ctx) {

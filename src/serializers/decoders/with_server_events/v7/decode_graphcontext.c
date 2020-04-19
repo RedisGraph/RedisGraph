@@ -29,6 +29,7 @@ GraphContext *RdbLoadGraphContext_v7(RedisModuleIO *rdb) {
 	uint64_t key_number = RedisModule_LoadUnsigned(rdb);
 
 	GraphContext *gc = _GetOrCreateGraphContext(graph_name);
+	GraphDecodeContext_SetKeyCount(gc->decoding_context, key_number);
 	// Mark the graph as currently being in decode.
 	GraphContext_MarkInDecode(gc);
 	EncodePhase encoded_phase =  RedisModule_LoadUnsigned(rdb);
@@ -61,7 +62,7 @@ GraphContext *RdbLoadGraphContext_v7(RedisModuleIO *rdb) {
 		break;
 	}
 	GraphDecodeContext_IncreaseProcessedCount(gc->decoding_context);
-	if(GraphDecodeContext_GetProcessedKeyCount(gc->decoding_context) == key_number) {
+	if(GraphDecodeContext_Finished(gc->decoding_context)) {
 		// Revert to default synchronization behavior
 		Graph_ApplyAllPending(gc->g);
 		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
