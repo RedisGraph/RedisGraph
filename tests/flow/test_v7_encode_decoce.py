@@ -11,6 +11,13 @@ class test_v7_encode_decode(FlowTestsBase):
         self.env = Env(moduleArgs='ENTITIES_THRESHOLD 10')
         global redis_con
         redis_con = self.env.getConnection()
+        info = redis_con.execute_command("INFO")
+        version = info['redis_version'].split('.')
+        major = int(version[0])
+        minor = int(version[1])
+        # Look for redis 6 RC versions and up
+        if major < 5 or major == 5 and minor < 9:
+            self.env.skip()
 
     def test01_nodes_over_multiple_keys(self):
         graph_name = "nodes_over_multiple_keys"
