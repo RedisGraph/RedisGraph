@@ -69,20 +69,16 @@ static void _CreateGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
 	uint meta_key_count = _GraphContext_RequiredMetaKeys(gc);
 	bool graph_name_contains_tag = _GraphContext_NameContainsTag(gc);
 	for(uint i = 1; i <= meta_key_count; i++) {
-		// Represent integer in base 10 by a string takes log10 charecters.
-		size_t id_len = (i == 1 || i % 10 == 0) ? ceil(log10(i + 1)) : ceil(log10(i));
-		size_t meta_key_name_length = id_len + strlen(gc->graph_name) + 2; // graphname_id\0
-		if(!graph_name_contains_tag) {
-			meta_key_name_length += strlen(gc->graph_name) + 2; // {graphname}graphname_id\0
-		}
-		char meta_key_name[meta_key_name_length];
+		RedisModuleString *meta_rm_string;
 		if(graph_name_contains_tag) {
-			sprintf(meta_key_name, "%s_%u", gc->graph_name, i);
+			// Graph already has a tag, create a meta key of "graph_name_i"
+			meta_rm_string = RedisModule_CreateStringPrintf(ctx, "%s_%u", gc->graph_name, i);
 		} else {
-			sprintf(meta_key_name, "{%s}%s_%u", gc->graph_name, gc->graph_name, i);
+			// Graph is untagged, one must be introduced to ensure that keys are propagated to the same node.
+			// Create a meta key of "{graph_name}graph_name_i"
+			meta_rm_string = RedisModule_CreateStringPrintf(ctx, "{%s}%s_%u", gc->graph_name,
+															gc->graph_name, i);
 		}
-		RedisModuleString *meta_rm_string = RedisModule_CreateString(ctx, meta_key_name,
-																	 strlen(meta_key_name));
 
 		RedisModuleKey *key = RedisModule_OpenKey(ctx, meta_rm_string, REDISMODULE_WRITE);
 		// Set value in key.
@@ -101,25 +97,16 @@ static void _DeleteGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc, bool dec
 	else key_count = GraphEncodeContext_GetKeyCount(gc->encoding_context) - 1;
 	bool graph_name_contains_tag = _GraphContext_NameContainsTag(gc);
 	for(uint i = 1; i <= key_count; i++) {
-		// Represent integer in base 10 by a string takes log10 charecters.
-		size_t id_len = (i == 1 || i % 10 == 0) ? ceil(log10(i + 1)) : ceil(log10(i));
-		size_t meta_key_name_length = id_len + strlen(gc->graph_name) + 2; // graphname_id\0
-		if(!graph_name_contains_tag) {
-			meta_key_name_length += strlen(gc->graph_name) + 2; // {graphname}graphname_id\0
-		}
-		char meta_key_name[meta_key_name_length];
+		RedisModuleString *meta_rm_string;
 		if(graph_name_contains_tag) {
-			sprintf(meta_key_name, "%s_%u", gc->graph_name, i);
+			meta_rm_string = RedisModule_CreateStringPrintf(ctx, "%s_%u", gc->graph_name, i);
 		} else {
-			sprintf(meta_key_name, "{%s}%s_%u", gc->graph_name, gc->graph_name, i);
+			meta_rm_string = RedisModule_CreateStringPrintf(ctx, "{%s}%s_%u", gc->graph_name,
+															gc->graph_name, i);
 		}
-		RedisModuleString *meta_rm_string = RedisModule_CreateString(ctx, meta_key_name,
-																	 strlen(meta_key_name));
-
 		RedisModuleKey *key = RedisModule_OpenKey(ctx, meta_rm_string, REDISMODULE_WRITE);
 		RedisModule_DeleteKey(key);
 		RedisModule_CloseKey(key);
-
 		RedisModule_FreeString(ctx, meta_rm_string);
 	}
 }
@@ -252,3 +239,4 @@ void RegisterEventHandlers(RedisModuleCtx *ctx) {
 	_RegisterForkHooks();       // Set up hooks for forking logic to prevent bgsave deadlocks.
 	_RegisterServerEvents(ctx); // Set up hooks renaming and server events on Redis 6 and up.
 }
+
