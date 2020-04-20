@@ -28,7 +28,6 @@ typedef struct {
 	SlowLog *slowlog;                       // Slowlog associated with graph.
 	GraphEncodeContext *encoding_context;   // Encode context of the graph.
 	GraphDecodeContext *decoding_context;   // Decode context of the graph.
-
 } GraphContext;
 
 /* GraphContext API */

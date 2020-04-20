@@ -238,7 +238,7 @@ void RdbSaveEdges_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	uint64_t encoded_edges = 0;
 
 	// Get current relation matrix.
-	uint r = GraphEncodeContex_GetCurrentRelationID(gc->encoding_context);
+	uint r = GraphEncodeContext_GetCurrentRelationID(gc->encoding_context);
 
 	GrB_Matrix M = Graph_GetRelationMatrix(gc->g, r);
 	// Get matrix tuple iterator from context, or create new one.
@@ -251,7 +251,7 @@ void RdbSaveEdges_v7(RedisModuleIO *rdb, GraphContext *gc) {
 											gc->encoding_context);
 	NodeID src = GraphEncodeContext_GetMultipleEdgesSourceNode(gc->encoding_context);
 	NodeID dest = GraphEncodeContext_GetMultipleEdgesDestinationNode(gc->encoding_context);
-// #Edges
+	// #Edges
 	RedisModule_SaveUnsigned(rdb, edges_to_encode);
 	if(multiple_edges_array) {
 		bool finished = _RdbSaveMultipleEdges(rdb, gc, r, multiple_edges_array,
@@ -312,7 +312,7 @@ void RdbSaveEdges_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	}
 
 finish:
-// Check if done encodeing edges.
+	// Check if done encoding edges.
 	if(currently_encoded_edges + edges_to_encode == graph_edges) {
 		if(iter) {
 			GxB_MatrixTupleIter_free(iter);
@@ -320,8 +320,8 @@ finish:
 		}
 	}
 
-// Update context.
-	GraphEncodeContex_SetCurrentRelationID(gc->encoding_context, r);
+	// Update context.
+	GraphEncodeContext_SetCurrentRelationID(gc->encoding_context, r);
 	GraphEncodeContext_SetMatrixTupleIterator(gc->encoding_context, iter);
 	GraphEncodeContext_SetProcessedEdgesCount(gc->encoding_context,
 											  currently_encoded_edges + edges_to_encode);

@@ -85,9 +85,7 @@ static int _GraphContextType_RegisterWithServerEvents(RedisModuleCtx *ctx) {
 
 	GraphContextRedisModuleType = RedisModule_CreateDataType(ctx, "graphdata",
 															 GRAPHCONTEXT_TYPE_ENCODING_VERSION_WITH_SERVER_EVENTS, &tm);
-	if(GraphContextRedisModuleType == NULL) {
-		return REDISMODULE_ERR;
-	}
+	if(GraphContextRedisModuleType == NULL) return REDISMODULE_ERR;
 	return REDISMODULE_OK;
 }
 
@@ -102,9 +100,7 @@ static int _GraphContextType_RegisterWithoutServerEvents(RedisModuleCtx *ctx) {
 
 	GraphContextRedisModuleType = RedisModule_CreateDataType(ctx, "graphdata",
 															 GRAPHCONTEXT_TYPE_ENCODING_VERSION_WITHOUT_SERVER_EVENTS, &tm);
-	if(GraphContextRedisModuleType == NULL) {
-		return REDISMODULE_ERR;
-	}
+	if(GraphContextRedisModuleType == NULL) return REDISMODULE_ERR;
 	return REDISMODULE_OK;
 }
 

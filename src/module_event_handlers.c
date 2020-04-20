@@ -13,8 +13,8 @@
 #include "serializers/graphmeta_type.h"
 
 extern GraphContext **graphs_in_keyspace;  // Global array tracking all extant GraphContexts.
-extern bool
-process_is_child;              // Flag indicating whether the running process is a child.
+// Flag indicating whether the running process is a child.
+extern bool process_is_child;
 extern uint64_t entities_threshold;        // The limit of number of entities encoded at once.
 extern uint redis_major_version;           // The redis server major version.
 
@@ -43,7 +43,7 @@ static int _RenameGraphHandler(RedisModuleCtx *ctx, int type, const char *event,
 // Meta keys API
 //------------------------------------------------------------------------------
 
-// Checks if the graph name contains a tag between curly braces.
+// Checks if the graph name contains a hash tag between curly braces.
 static bool _GraphContext_NameContainsTag(const GraphContext *gc) {
 	const char *left_curly_brace = strstr(gc->graph_name, "{");
 	if(left_curly_brace) {
@@ -70,6 +70,10 @@ static void _CreateGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
 	bool graph_name_contains_tag = _GraphContext_NameContainsTag(gc);
 	for(uint i = 1; i <= meta_key_count; i++) {
 		RedisModuleString *meta_rm_string;
+		/* Meta keys need to be in the exact shard/slot as the graph context key, to avoid graph sharding - we want to save all  the graph keys on the same shard.
+		 * For that, we need to that them In so their tag hash value will be the same as the graph context key hash value.
+		 * If the graph name already contains a tag, we can duplicate the graph name completely for each meta key. If not, the meta keys tag will be the graph name, so
+		 * when hashing the graphcontext key name (graph name) and the graph meta key tag (graph name) the hash values will be the same. */
 		if(graph_name_contains_tag) {
 			// Graph already has a tag, create a meta key of "graph_name_i"
 			meta_rm_string = RedisModule_CreateStringPrintf(ctx, "%s_%u", gc->graph_name, i);
@@ -139,9 +143,8 @@ static void _ClearKeySpaceMetaKeys(RedisModuleCtx *ctx, bool decode) {
 static void _FlushDBHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
 							void *data) {
 	if(eid.id == REDISMODULE_EVENT_FLUSHDB && subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
-		// If a flushall occurs during replication, stop all decoding and remove meta keys.
+		// If a flushall occurs during replication, stop all decoding.
 		_RemoveDecodeState();
-		_ClearKeySpaceMetaKeys(ctx, true);
 	}
 }
 

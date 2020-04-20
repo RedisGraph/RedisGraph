@@ -95,11 +95,11 @@ DataBlockIterator *GraphEncodeContext_GetDatablockIterator(const GraphEncodeCont
 void GraphEncodeContext_SetDatablockIterator(GraphEncodeContext *ctx, DataBlockIterator *iter);
 
 // Retrieve graph encoding context current encoded relation matrix id.
-uint GraphEncodeContex_GetCurrentRelationID(const GraphEncodeContext *ctx);
+uint GraphEncodeContext_GetCurrentRelationID(const GraphEncodeContext *ctx);
 
 // Set graph encoding context current encoded relation matrix id.
-void GraphEncodeContex_SetCurrentRelationID(GraphEncodeContext *ctx,
-											uint current_relation_matrix_id);
+void GraphEncodeContext_SetCurrentRelationID(GraphEncodeContext *ctx,
+											 uint current_relation_matrix_id);
 
 // Retrieve stored matrix tuple iterator.
 GxB_MatrixTupleIter *GraphEncodeContext_GetMatrixTupleIterator(const GraphEncodeContext *ctx);

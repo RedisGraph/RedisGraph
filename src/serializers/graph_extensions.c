@@ -5,8 +5,8 @@
 */
 
 #include "graph_extensions.h"
-#include <assert.h>
 #include "../util/datablock/oo_datablock.h"
+#include <assert.h>
 
 // Extern variables - from graph.c
 extern GrB_BinaryOp graph_edge_accum;

@@ -57,8 +57,6 @@ int GraphMetaType_Register(RedisModuleCtx *ctx) {
 
 	GraphMetaRedisModuleType = RedisModule_CreateDataType(ctx, "graphmeta",
 														  GRAPHCONTEXT_TYPE_ENCODING_VERSION_WITH_SERVER_EVENTS, &tm);
-	if(GraphMetaRedisModuleType == NULL) {
-		return REDISMODULE_ERR;
-	}
+	if(GraphMetaRedisModuleType == NULL) return REDISMODULE_ERR;
 	return REDISMODULE_OK;
 }

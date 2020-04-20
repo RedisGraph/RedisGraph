@@ -110,13 +110,13 @@ inline void GraphEncodeContext_SetDatablockIterator(GraphEncodeContext *ctx,
 	ctx->datablock_iterator = iter;
 }
 
-inline uint GraphEncodeContex_GetCurrentRelationID(const GraphEncodeContext *ctx) {
+inline uint GraphEncodeContext_GetCurrentRelationID(const GraphEncodeContext *ctx) {
 	assert(ctx);
 	return ctx->current_relation_matrix_id;
 }
 
-inline void GraphEncodeContex_SetCurrentRelationID(GraphEncodeContext *ctx,
-												   uint current_relation_matrix_id) {
+inline void GraphEncodeContext_SetCurrentRelationID(GraphEncodeContext *ctx,
+													uint current_relation_matrix_id) {
 	assert(ctx);
 	ctx->current_relation_matrix_id = current_relation_matrix_id;
 }

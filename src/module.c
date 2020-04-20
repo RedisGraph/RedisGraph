@@ -59,10 +59,9 @@ static void _SetRedisMajorVersion(RedisModuleCtx *ctx) {
 		const char *server_version;
 		int major;
 		int minor;
-		int patch;
 		RedisModuleServerInfoData *info =  RedisModule_GetServerInfo(ctx, "Server");
 		server_version = RedisModule_ServerInfoGetFieldC(info, "redis_version");
-		sscanf(server_version, "%d.%d.%d", &major, &minor, &patch);
+		sscanf(server_version, "%d.%d.%*d", &major, &minor);
 		RedisModule_FreeServerInfo(ctx, info);
 		if(major > 5) redis_major_version = major;
 		// Check for Redis 6 rc versions which starts with 5.9.x. Those versions support RedisModule_GetServerInfo.
