@@ -78,7 +78,7 @@ static Record _get_intersecting_record(OpValueHashJoin *op) {
 }
 
 /* Look up first intersecting cached record CR position.
- * Returns false if intersecting record is found. */
+ * Returns false if no intersecting record is found. */
 static bool _set_intersection_idx(OpValueHashJoin *op, SIValue v) {
 	op->intersect_idx = -1;
 	op->number_of_intersections = 0;
@@ -235,13 +235,13 @@ static Record ValueHashJoinConsume(OpBase *opBase) {
 		// Get value on which we're intersecting.
 		SIValue v = AR_EXP_Evaluate(op->rhs_exp, op->rhs_rec);
 
+		bool found_intersection = _set_intersection_idx(op, v);
+		SIValue_Free(v);
 		// No intersection, discard R.
-		if(!_set_intersection_idx(op, v)) {
-			SIValue_Free(v);
+		if(!found_intersection) {
 			OpBase_DeleteRecord(op->rhs_rec);
 			continue;
 		}
-		SIValue_Free(v);
 
 		// Found atleast one intersecting record.
 		l = _get_intersecting_record(op);
