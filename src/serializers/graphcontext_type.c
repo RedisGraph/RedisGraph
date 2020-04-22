@@ -15,6 +15,10 @@
 
 #define VERSION_SUPPORTS_EVENTS(encver) ((encver) % 2 == 1)
 
+// Forward declerations of the module event handler functions
+void ModuleEventHandler_AUXBeforeKeyspaceEvent();
+void ModuleEventHandler_AUXAfterKeyspaceEvent();
+
 /* Declaration of the type for redis registration. */
 RedisModuleType *GraphContextRedisModuleType;
 
@@ -62,6 +66,20 @@ static void _GraphContextType_AofRewrite(RedisModuleIO *aof, RedisModuleString *
 	// TODO: implement.
 }
 
+// Save a string before and after the keyspace encoding.
+static void _GraphContextType_AuxSave(RedisModuleIO *rdb, int when) {
+	const char *str = "graph";
+	RedisModule_SaveStringBuffer(rdb, str, strlen(str) + 1);
+}
+
+// Decode the strings saved before and after the keyspace values and call the module event handler.
+static int _GraphContextType_AuxLoad(RedisModuleIO *rdb, int encver, int when) {
+	rm_free(RedisModule_LoadStringBuffer(rdb, NULL));
+	if(when == REDISMODULE_AUX_BEFORE_RDB) ModuleEventHandler_AUXBeforeKeyspaceEvent();
+	else ModuleEventHandler_AUXAfterKeyspaceEvent();
+	return REDISMODULE_OK;
+};
+
 static void _GraphContextType_Free(void *value) {
 	GraphContext *gc = value;
 	// Check if graph is in decode - The graph key has been decoded but not all the virtual keys finished.
@@ -80,7 +98,10 @@ static int _GraphContextType_RegisterWithServerEvents(RedisModuleCtx *ctx) {
 								 .rdb_load = _GraphContextType_RdbLoad,
 								 .rdb_save = _GraphContextType_RdbSaveWithServerEvents,
 								 .aof_rewrite = _GraphContextType_AofRewrite,
-								 .free = _GraphContextType_Free
+								 .free = _GraphContextType_Free,
+								 .aux_save = _GraphContextType_AuxSave,
+								 .aux_load = _GraphContextType_AuxLoad,
+								 .aux_save_triggers = REDISMODULE_AUX_BEFORE_RDB | REDISMODULE_AUX_AFTER_RDB
 								};
 
 	GraphContextRedisModuleType = RedisModule_CreateDataType(ctx, "graphdata",

@@ -18,6 +18,9 @@ extern bool process_is_child;
 extern uint64_t entities_threshold;        // The limit of number of entities encoded at once.
 extern uint redis_major_version;           // The redis server major version.
 
+// Holds the number of aux fields encountered during decoding of RDB file. This field is used to represent when the module is replicating its graphs.
+uint aux_field_counter = 0 ;
+
 /* This callback invokes once rename for a graph is done. Since the key value is a graph context
  * which saves the name of the graph for later key accesses, this data must be consistent with the key name,
  * otherwise, the graph context will remain with the previous graph name, and a key access to this name might
@@ -144,6 +147,7 @@ static void _FlushDBHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t 
 							void *data) {
 	if(eid.id == REDISMODULE_EVENT_FLUSHDB && subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
 		// If a flushall occurs during replication, stop all decoding.
+		aux_field_counter = 0;
 		_RemoveDecodeState();
 	}
 }
@@ -165,25 +169,11 @@ static bool _IsEventPersistenceEnd(RedisModuleEvent eid, uint64_t subevent) {
 		   );
 }
 
-// Checks if the event is loading end event.
-static bool _IsEventLoadingEnd(RedisModuleEvent eid, uint64_t subevent) {
-	return eid.id == REDISMODULE_EVENT_LOADING &&
-		   (subevent == REDISMODULE_SUBEVENT_LOADING_ENDED ||  // Load ended.
-			subevent == REDISMODULE_SUBEVENT_LOADING_FAILED    // Load failed.
-		   );
-}
-
 // Server persistence event handler.
 static void _PersistenceEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
 									 void *data) {
 	if(_IsEventPersistenceStart(eid, subevent)) _CreateKeySpaceMetaKeys(ctx);
 	else if(_IsEventPersistenceEnd(eid, subevent)) _ClearKeySpaceMetaKeys(ctx, false);
-}
-
-// Server loading event handler.
-static void _LoadingEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
-								 void *data) {
-	if(_IsEventLoadingEnd(eid, subevent)) _ClearKeySpaceMetaKeys(ctx, true);
 }
 
 static void _RegisterServerEvents(RedisModuleCtx *ctx) {
@@ -192,7 +182,6 @@ static void _RegisterServerEvents(RedisModuleCtx *ctx) {
 	if(redis_major_version > 5) {
 		RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_FlushDB, _FlushDBHandler);
 		RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Persistence, _PersistenceEventHandler);
-		RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Loading, _LoadingEventHandler);
 	}
 }
 
@@ -236,6 +225,23 @@ static void _RegisterForkHooks() {
 	/* Register handlers to control the behavior of fork calls.
 	 * The child process does not require a handler. */
 	assert(pthread_atfork(RG_ForkPrepare, RG_AfterForkParent, RG_AfterForkChild) == 0);
+}
+
+/* Increase the number of aux fields encountered during rdb loading. There could be more than one on multiple shards scenario
+ * so each shard is saving the aux field in its own RDB file. */
+void ModuleEventHandler_AUXBeforeKeyspaceEvent() {
+	aux_field_counter++;
+}
+
+/* Decrease the number of aux fields encountered during rdb loading. There could be more than one on multiple shards scenario
+ * so each shard is saving the aux field in its own RDB file. Once the number is zero, the module finished replicating and the meta keys can be deleted. */
+void ModuleEventHandler_AUXAfterKeyspaceEvent() {
+	aux_field_counter--;
+	if(aux_field_counter == 0) {
+		RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(NULL);
+		_ClearKeySpaceMetaKeys(ctx, true);
+		RedisModule_FreeThreadSafeContext(ctx);
+	}
 }
 
 void RegisterEventHandlers(RedisModuleCtx *ctx) {
