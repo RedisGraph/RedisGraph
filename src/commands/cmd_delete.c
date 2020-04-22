@@ -25,10 +25,8 @@ int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 	RedisModuleString *graph_name = argv[1];
 	GraphContext *gc = GraphContext_Retrieve(ctx, graph_name, false, false);    // Increase ref count.
-	if(!gc) {
-		RedisModule_ReplyWithError(ctx, "Graph is either missing or referred key is of a different type.");
-		goto cleanup;
-	}
+	// If the GraphContext is null, key access failed and an error has been emitted.
+	if(!gc) return REDISMODULE_ERR;
 
 	// Remove graph from keyspace.
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_WRITE);
@@ -40,7 +38,6 @@ int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
 	RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
 
-cleanup:
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 	if(strElapsed) free(strElapsed);
 	// Delete commands should always modify slaves.
