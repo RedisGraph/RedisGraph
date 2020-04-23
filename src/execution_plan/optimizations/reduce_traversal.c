@@ -70,7 +70,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 			ExecutionPlan_BoundVariables(op->children[i], bound_vars);
 		}
 
-		const char *src = AlgebraicExpression_Destination(ae);
+		const char *src = AlgebraicExpression_Source(ae);
 		const char *dest = AlgebraicExpression_Destination(ae);
 		if(raxFind(bound_vars, (unsigned char *)src, strlen(src)) == raxNotFound ||
 		   raxFind(bound_vars, (unsigned char *)dest, strlen(dest)) == raxNotFound) {
