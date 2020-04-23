@@ -264,6 +264,10 @@ void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers) {
 		}
 	}
 
+	/* Project and Aggregate operations demarcate variable scopes,
+	 * collect their projections but do not recurse into their children. */
+	if(op->type == OPType_PROJECT || op->type == OPType_AGGREGATE) return;
+
 	for(int i = 0; i < op->childCount; i++) {
 		ExecutionPlan_BoundVariables(op->children[i], modifiers);
 	}

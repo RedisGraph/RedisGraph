@@ -325,10 +325,32 @@ class testOptimizationsPlan(FlowTestsBase):
         executionPlan = graph.execution_plan(query)
         self.env.assertNotIn("Filter", executionPlan)
 
-    def test19_test_filter_compaction_not_removing_false_filter(self):
+    def test20_test_filter_compaction_not_removing_false_filter(self):
         query = "MATCH (n) WHERE 1 > 1 RETURN n"
         executionPlan = graph.execution_plan(query)
         self.env.assertIn("Filter", executionPlan)
         resultset = graph.query(query).result_set
         expected = []
+        self.env.assertEqual(resultset, expected)
+
+    # ExpandInto should be applied where possible on projected graph entities.
+    def test21_expand_into_projected_endpoints(self):
+        query = """MATCH (a)-[]->(b) WITH a, b MATCH (a)-[e]->(b) RETURN a.val, b.val ORDER BY a.val, b.val LIMIT 3"""
+        executionPlan = graph.execution_plan(query)
+        self.env.assertIn("Expand Into", executionPlan)
+        resultset = graph.query(query).result_set
+        expected = [[0, 1],
+                    [0, 2],
+                    [0, 3]]
+        self.env.assertEqual(resultset, expected)
+
+    # Variables bound in one scope should not be used to introduce ExpandInto ops in later scopes.
+    def test22_no_expand_into_across_scopes(self):
+        query = """MATCH (a)-[e]->(b) WITH COUNT(b) as cnt MATCH (a)-[e]->(b) RETURN cnt, a.val, b.val ORDER BY a.val, b.val LIMIT 3"""
+        executionPlan = graph.execution_plan(query)
+        self.env.assertNotIn("Expand Into", executionPlan)
+        resultset = graph.query(query).result_set
+        expected = [[14, 0, 1],
+                    [14, 0, 2],
+                    [14, 0, 3]]
         self.env.assertEqual(resultset, expected)
