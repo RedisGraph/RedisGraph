@@ -265,7 +265,6 @@ Feature: WithAcceptance
             | 'B'  |
         And no side effects
 
-    @skip
     Scenario: A simple pattern with one bound endpoint
         Given an empty graph
         And having executed:
