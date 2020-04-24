@@ -17,6 +17,7 @@ Schema *RdbLoadSchema_v4(RedisModuleIO *rdb) {
 	int id = RedisModule_LoadUnsigned(rdb);
 	char *name = RedisModule_LoadStringBuffer(rdb, NULL);
 	Schema *s = Schema_New(name, id);
+	rm_free(name);
 
 	uint64_t attrCount = RedisModule_LoadUnsigned(rdb);
 
