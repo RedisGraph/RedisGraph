@@ -86,3 +86,31 @@ class testNullHandlingFlow(FlowTestsBase):
         # The path and function calls on it should return NULL, while collect() returns an empty array.
         expected_result = [[None, None, []]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Scan and traversal operations should gracefully handle NULL inputs.
+    def test07_null_graph_entity_inputs(self):
+        query = """WITH NULL AS a MATCH (a) RETURN a"""
+        actual_result = redis_graph.query(query)
+        # Expect one NULL entity to be returned.
+        expected_result = [[None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """WITH NULL AS a MATCH (a)-[e]->(b) RETURN a, e, b"""
+        plan = redis_graph.execution_plan(query)
+        # Verify that we are attempting to perform a traversal but no scan.
+        self.env.assertNotIn("Scan", plan)
+        self.env.assertIn("Conditional Traverse", plan)
+        actual_result = redis_graph.query(query)
+        # Expect no results.
+        expected_result = []
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """WITH NULL AS e MATCH (a:L)-[e]->(b) RETURN a, e, b"""
+        plan = redis_graph.execution_plan(query)
+        # Verify that we are performing a scan and traversal.
+        self.env.assertIn("Label Scan", plan)
+        self.env.assertIn("Conditional Traverse", plan)
+        actual_result = redis_graph.query(query)
+        # Expect no results.
+        expected_result = []
+        self.env.assertEquals(actual_result.result_set, expected_result)
