@@ -1,7 +1,7 @@
 <img src="images/logo.svg" alt="logo" width="200"/>
 
 # RedisGraph
-[![Mailing List](https://img.shields.io/badge/Mailing%20List-RedisGraph-blue)](https://groups.google.com/forum/#!forum/redisgraph)
+[![Forum](https://img.shields.io/badge/Forum-RedisGraph-blue)](https://forum.redislabs.com/c/modules/redisgraph)
 [![Gitter](https://badges.gitter.im/RedisLabs/RedisGraph.svg)](https://gitter.im/RedisLabs/RedisGraph?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 RedisGraph is the first queryable [Property Graph](https://github.com/opencypher/openCypher/blob/master/docs/property-graph-model.adoc) database to use [sparse matrices](https://en.wikipedia.org/wiki/Sparse_matrix) to represent the [adjacency matrix](https://en.wikipedia.org/wiki/Adjacency_matrix) in graphs and [linear algebra](http://faculty.cse.tamu.edu/davis/GraphBLAS.html) to query the graph.
@@ -164,7 +164,7 @@ The full list and links can be found on [the Clients page](clients.md).
 
 ## Mailing List / Forum
 
-Got questions? Feel free to ask at the [RedisGraph mailing list](https://groups.google.com/forum/#!forum/redisgraph).
+Got questions? Feel free to ask at the [RedisGraph forum](https://forum.redislabs.com/c/modules/redisgraph).
 
 ## License
 
