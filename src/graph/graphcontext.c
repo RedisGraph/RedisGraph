@@ -18,6 +18,7 @@
 extern threadpool _thpool;
 extern GraphContext **graphs_in_keyspace;
 extern uint64_t entities_threshold;
+extern uint aux_field_counter;
 
 // Forward declarations.
 static void _GraphContext_Free(void *arg);
@@ -82,8 +83,17 @@ static GraphContext *_GraphContext_Create(RedisModuleCtx *ctx, const char *graph
 	return gc;
 }
 
+static bool _GraphContext_IsModuleReplicating() {
+	return aux_field_counter > 0;
+}
+
 GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *graphID, bool readOnly,
 									bool shouldCreate) {
+	if(_GraphContext_IsModuleReplicating()) {
+		// The whole module is currently replicating, emit an error.
+		RedisModule_ReplyWithError(ctx, "ERR RedisGraph module is currently replicating");
+		return NULL;
+	}
 	GraphContext *gc = NULL;
 	int rwFlag = readOnly ? REDISMODULE_READ : REDISMODULE_WRITE;
 

@@ -71,12 +71,6 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		RedisModule_ReplyWithError(ctx, "Referred key is not a graph type.");
 		return REDISMODULE_OK;
 	}
-	// Check if graph is in decode - The graph key has been decoded but not all the virtual keys finished.
-	if(GraphContext_IsInDecode(gc)) {
-		RedisModule_ReplyWithError(ctx, "Graph is currently replicating");
-		GraphContext_Release(gc);   // Decrease graph ref count as GraphContext_Retrieve increased it.
-		return REDISMODULE_OK;
-	}
 
 	/* Determin query execution context
 	 * queries issued within a LUA script or multi exec block must
