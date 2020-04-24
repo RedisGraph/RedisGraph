@@ -229,7 +229,7 @@ Read the docs at [redisgraph.io](http://redisgraph.io).
 
 ## Mailing List / Forum
 
-Got questions? Feel free to ask at the [RediGraph mailing list](https://groups.google.com/forum/#!forum/redisgraph).
+Got questions? Feel free to ask at the [RediGraph forum](https://forum.redislabs.com/c/modules/redisgraph).
 
 ## License
 
