@@ -26,7 +26,10 @@ int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	RedisModuleString *graph_name = argv[1];
 	GraphContext *gc = GraphContext_Retrieve(ctx, graph_name, false, false);    // Increase ref count.
 	// If the GraphContext is null, key access failed and an error has been emitted.
-	if(!gc) return REDISMODULE_ERR;
+	if(!gc) {
+		QueryCtx_Free();
+		return REDISMODULE_ERR;
+	}
 
 	// Remove graph from keyspace.
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, graph_name, REDISMODULE_WRITE);
