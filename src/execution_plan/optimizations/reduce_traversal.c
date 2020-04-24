@@ -70,11 +70,9 @@ void reduceTraversal(ExecutionPlan *plan) {
 			ExecutionPlan_BoundVariables(op->children[i], bound_vars);
 		}
 
-		const char *src = AlgebraicExpression_Source(ae);
 		const char *dest = AlgebraicExpression_Destination(ae);
-		if(raxFind(bound_vars, (unsigned char *)src, strlen(src)) == raxNotFound ||
-		   raxFind(bound_vars, (unsigned char *)dest, strlen(dest)) == raxNotFound) {
-			// At least one of the endpoints could not be resolved, cannot optimize.
+		if(raxFind(bound_vars, (unsigned char *)dest, strlen(dest)) == raxNotFound) {
+			// The destination could not be resolved, cannot optimize.
 			raxFree(bound_vars);
 			continue;
 		}

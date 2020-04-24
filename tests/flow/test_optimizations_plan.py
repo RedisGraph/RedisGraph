@@ -346,7 +346,7 @@ class testOptimizationsPlan(FlowTestsBase):
 
     # Variables bound in one scope should not be used to introduce ExpandInto ops in later scopes.
     def test22_no_expand_into_across_scopes(self):
-        query = """MATCH (a)-[e]->(b) WITH COUNT(b) as cnt MATCH (a)-[e]->(b) RETURN cnt, a.val, b.val ORDER BY a.val, b.val LIMIT 3"""
+        query = """MATCH (reused_1)-[]->(reused_2) WITH COUNT(reused_2) as edge_count MATCH (reused_1)-[]->(reused_2) RETURN edge_count, reused_1.val, reused_2.val ORDER BY reused_1.val, reused_2.val LIMIT 3"""
         executionPlan = graph.execution_plan(query)
         self.env.assertNotIn("Expand Into", executionPlan)
         resultset = graph.query(query).result_set
