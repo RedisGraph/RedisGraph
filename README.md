@@ -1,7 +1,7 @@
 [![Release](https://img.shields.io/github/release/RedisGraph/RedisGraph.svg?sort=semver)](https://github.com/RedisGraph/RedisGraph/releases/latest)
 [![CircleCI](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master.svg?style=svg)](https://circleci.com/gh/RedisGraph/RedisGraph/tree/master)
 [![Docker Cloud Build Status](https://img.shields.io/docker/cloud/build/redislabs/redisgraph.svg)](https://hub.docker.com/r/redislabs/redisgraph/builds/)
-[![Mailing List](https://img.shields.io/badge/Mailing%20List-RedisGraph-blue)](https://groups.google.com/forum/#!forum/redisgraph)
+[![Forum](https://img.shields.io/badge/Forum-RedisGraph-blue)](https://forum.redislabs.com/c/modules/redisgraph)
 [![Gitter](https://badges.gitter.im/RedisLabs/RedisGraph.svg)](https://gitter.im/RedisLabs/RedisGraph?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
 # RedisGraph - A graph database module for Redis
@@ -229,7 +229,7 @@ Read the docs at [redisgraph.io](http://redisgraph.io).
 
 ## Mailing List / Forum
 
-Got questions? Feel free to ask at the [RediGraph mailing list](https://groups.google.com/forum/#!forum/redisgraph).
+Got questions? Feel free to ask at the [RedisGraph forum](https://forum.redislabs.com/c/modules/redisgraph).
 
 ## License
 
