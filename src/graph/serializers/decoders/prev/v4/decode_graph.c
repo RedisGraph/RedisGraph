@@ -61,7 +61,7 @@ static SIValue _RdbLoadSIValue(RedisModuleIO *rdb) {
 	}
 }
 
-static void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e) {
+static void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e, Schema *s) {
 	/* Format:
 	 * #properties N
 	 * (name, value type, value) X N
@@ -74,6 +74,7 @@ static void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e)
 		SIValue attr_value = _RdbLoadSIValue(rdb);
 		Attribute_ID attr_id = GraphContext_GetAttributeID(gc, attr_name);
 		assert(attr_id != ATTRIBUTE_NOTFOUND);
+		if(s) Schema_AddAttribute(s, attr_id);
 		GraphEntity_AddProperty(e, attr_id, attr_value);
 		RedisModule_Free(attr_name);
 	}
@@ -104,9 +105,10 @@ static void _RdbLoadNodes(RedisModuleIO *rdb, GraphContext *gc) {
 		// * (labels) x M
 		// M will currently always be 0 or 1
 		uint64_t l = (nodeLabelCount) ? RedisModule_LoadUnsigned(rdb) : GRAPH_NO_LABEL;
+		Schema *s = GraphContext_GetSchemaByID(gc, l, SCHEMA_NODE);
 		Graph_CreateNode(gc->g, l, &n);
 
-		_RdbLoadEntity(rdb, gc, (GraphEntity *)&n);
+		_RdbLoadEntity(rdb, gc, (GraphEntity *)&n, s);
 	}
 }
 
@@ -132,8 +134,9 @@ static void _RdbLoadEdges(RedisModuleIO *rdb, GraphContext *gc) {
 		NodeID srcId = RedisModule_LoadUnsigned(rdb);
 		NodeID destId = RedisModule_LoadUnsigned(rdb);
 		uint64_t relation = RedisModule_LoadUnsigned(rdb);
+		Schema *s = GraphContext_GetSchemaByID(gc, relation, SCHEMA_EDGE);
 		assert(Graph_ConnectNodes(gc->g, srcId, destId, relation, &e));
-		_RdbLoadEntity(rdb, gc, (GraphEntity *)&e);
+		_RdbLoadEntity(rdb, gc, (GraphEntity *)&e, s);
 	}
 }
 
