@@ -31,6 +31,10 @@ void Proc_Register() {
 	_procRegister("db.idx.fulltext.drop", Proc_FulltextDropIdxGen);
 	_procRegister("db.idx.fulltext.queryNodes", Proc_FulltextQueryNodeGen);
 	_procRegister("db.idx.fulltext.createNodeIndex", Proc_FulltextCreateNodeIdxGen);
+
+	// Register Schema procedures.
+	_procRegister("db.schema.nodeTypeProperties", Proc_Schema_NodeTypePropertiesCtx);
+	_procRegister("db.schema.relTypeProperties", Proc_Schema_EdgeTypePropertiesCtx);
 }
 
 ProcedureCtx *ProcCtxNew(const char *name,

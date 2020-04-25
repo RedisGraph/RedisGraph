@@ -80,6 +80,8 @@ static int _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
 		// Adding a new property; do nothing if its value is NULL.
 		if(SI_TYPE(ctx->new_value) == T_NULL) return 0;
 		GraphEntity_AddProperty((GraphEntity *)node, ctx->attr_id, ctx->new_value);
+		// Update schema attributes.
+		if(s) Schema_AddAttribute(s, ctx->attr_id);
 	} else {
 		// Update property.
 		GraphEntity_SetProperty((GraphEntity *)node, ctx->attr_id, ctx->new_value);
@@ -112,6 +114,10 @@ static int _UpdateEdge(OpUpdate *op, EntityUpdateCtx *ctx) {
 		// Adding a new property; do nothing if its value is NULL.
 		if(SI_TYPE(ctx->new_value) == T_NULL) return 0;
 		GraphEntity_AddProperty((GraphEntity *)edge, ctx->attr_id, ctx->new_value);
+
+		// Update schema attributes.
+		Schema *s = GraphContext_GetSchemaByID(op->gc, label_id, SCHEMA_EDGE);
+		Schema_AddAttribute(s, ctx->attr_id);
 	} else {
 		// Update property.
 		GraphEntity_SetProperty((GraphEntity *)edge, ctx->attr_id, ctx->new_value);

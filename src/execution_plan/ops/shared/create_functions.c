@@ -33,9 +33,16 @@ static void _CommitNodes(PendingCreations *pending) {
 
 		const char *label = node_ctx->node->label;
 		if(label) {
-			if(GraphContext_GetSchema(gc, label, SCHEMA_NODE) == NULL) {
-				Schema *s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
+			Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+			if(s == NULL) {
+				s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
 				pending->stats->labels_added++;
+			}
+			// Update schema attributes.
+			if(node_ctx->properties) {
+				for(uint j = 0; j < node_ctx->properties->property_count; j++) {
+					Schema_AddAttribute(s, node_ctx->properties->keys[j]);
+				}
 			}
 		}
 	}
@@ -78,14 +85,13 @@ static void _CommitEdges(PendingCreations *pending) {
 	for(uint i = 0; i < blueprint_edge_count; i++) {
 		EdgeCreateCtx *edge_ctx = pending->edges_to_create + i;
 
-		const char **reltypes = edge_ctx->edge->reltypes;
-		if(reltypes) {
-			uint reltype_count = array_len(reltypes);
-			for(uint j = 0; j < reltype_count; j ++) {
-				const char *reltype = reltypes[j];
-				if(GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE) == NULL) {
-					Schema *s = GraphContext_AddSchema(gc, reltype, SCHEMA_EDGE);
-				}
+		const char *reltype = edge_ctx->edge->reltypes[0];
+		Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
+		if(s == NULL) s = GraphContext_AddSchema(gc, reltype, SCHEMA_EDGE);
+		// Update schema attributes.
+		if(edge_ctx->properties) {
+			for(uint j = 0; j < edge_ctx->properties->property_count; j++) {
+				Schema_AddAttribute(s, edge_ctx->properties->keys[j]);
 			}
 		}
 	}

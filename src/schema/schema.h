@@ -11,6 +11,7 @@
 #include "rax.h"
 #include "redisearch_api.h"
 #include "../graph/entities/graph_entity.h"
+#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 typedef enum {
 	SCHEMA_NODE,
@@ -21,16 +22,27 @@ typedef enum {
  * similar to a relational table structure, our schemas are a collection
  * of attributes we've encountered overtime as entities were created or updated. */
 typedef struct {
-	int id;               // Internal ID to a matrix within the graph.
-	char *name;           // Schema name.
-	Index *index;         // Exact match index.
-	Index *fulltextIdx;   // Full-text index.
+	int id;                 // Internal ID to a matrix within the graph.
+	char *name;             // Schema name.
+	Index *index;           // Exact match index.
+	Index *fulltextIdx;     // Full-text index.
+    GrB_Vector attributes;  // List of Attribute IDs associated with schema.
 } Schema;
 
 /* Creates a new schema. */
 Schema *Schema_New(const char *label, int id);
 
 const char *Schema_GetName(const Schema *s);
+
+/* Adds attribute to schema. */
+void Schema_AddAttribute(Schema *s, Attribute_ID attr);
+
+/* Returns the number of attributes associated with schema. */
+uint Schema_AttributeCount(const Schema *s);
+
+/* Retrieves attributes associated with schema
+ * `attr` should have enough space (`attr_len`) to accommodate all attributes. */
+void Schema_GetAttributes(const Schema *s, Attribute_ID *attr, uint attr_len);
 
 /* Returns true if schema has either a full-text or exact-match index. */
 bool Schema_HasIndices(const Schema *s);

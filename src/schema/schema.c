@@ -15,14 +15,58 @@ Schema *Schema_New(const char *name, int id) {
 	Schema *schema = rm_malloc(sizeof(Schema));
 	schema->id = id;
 	schema->index = NULL;
+	schema->attributes = NULL;
 	schema->fulltextIdx = NULL;
 	schema->name = rm_strdup(name);
+	GrB_Vector_new(&schema->attributes, GrB_BOOL, 16);
+
 	return schema;
 }
 
 const char *Schema_GetName(const Schema *s) {
 	assert(s);
 	return s->name;
+}
+
+void Schema_AddAttribute(Schema *s, Attribute_ID attr) {
+	assert(s);
+
+	GrB_Info info;
+	info = GrB_Vector_setElement_BOOL(s->attributes, true, attr);
+	if(info == GrB_SUCCESS) return;
+
+	if(info == GrB_INVALID_INDEX) {
+		// Resize and insert.
+		assert(GxB_Vector_resize(s->attributes, attr + 1) == GrB_SUCCESS);
+		assert(GrB_Vector_setElement_BOOL(s->attributes, true, attr) == GrB_SUCCESS);
+	} else {
+		assert("Failed to add attribute to schema" && false);
+	}
+}
+
+uint Schema_AttributeCount(const Schema *s) {
+	assert(s);
+
+	GrB_Index count;
+	GrB_Vector_nvals(&count, s->attributes);
+	return count;
+}
+
+void Schema_GetAttributes(const Schema *s, Attribute_ID *attr, uint attr_len) {
+	assert(s);
+
+	GrB_Info info;
+	GrB_Index attr_count = Schema_AttributeCount(s);
+
+	// Make sure output buffer is big enough.
+	assert(attr_len >= attr_count);
+
+	// Create local buffer to hold vector indicies.
+	GrB_Index I[attr_count];
+	assert(GrB_Vector_extractTuples_BOOL(I, NULL, &attr_count, s->attributes) == GrB_SUCCESS);
+
+	// Cast vector indicies to attribute id.
+	for(int i = 0; i < attr_count; i++) attr[i] = (Attribute_ID)I[i];
 }
 
 bool Schema_HasIndices(const Schema *s) {
@@ -131,10 +175,11 @@ void Schema_AddNodeToIndices(const Schema *s, const Node *n, bool update) {
 
 void Schema_Free(Schema *schema) {
 	if(schema->name) rm_free(schema->name);
+	if(schema->attributes) GrB_free(&schema->attributes);
 
 	// Free indicies.
 	if(schema->index) Index_Free(schema->index);
 	if(schema->fulltextIdx) Index_Free(schema->fulltextIdx);
+
 	rm_free(schema);
 }
-

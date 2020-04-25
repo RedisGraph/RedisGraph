@@ -275,7 +275,7 @@ class testProcedures(FlowTestsBase):
 
     def test_procedure_labels(self):
         actual_resultset = redis_graph.call_procedure("db.labels").result_set
-        expected_results = [["fruit"]]        
+        expected_results = [["fruit"]]
         self.env.assertEquals(actual_resultset, expected_results)
     
     def test_procedure_relationshipTypes(self):
@@ -296,3 +296,42 @@ class testProcedures(FlowTestsBase):
         except redis.exceptions.ResponseError:
             # Expecting an error.
             pass
+
+    def test_procedure_schema_props(self):
+        actual_resultset = redis_graph.call_procedure("db.schema.nodeTypeProperties").result_set
+        expected_results = [["fruit", "name"], ["fruit", "value"]]
+        self.env.assertEquals(actual_resultset, expected_results)
+        
+        # Test procedure against an empty graph.
+        properties_graph = Graph("properties", redis_con)
+
+        # Label properties.
+        actual_resultset = properties_graph.call_procedure("db.schema.nodeTypeProperties").result_set
+        expected_results = []
+        self.env.assertEquals(actual_resultset, expected_results)
+
+        # Relation properties.
+        actual_resultset = properties_graph.call_procedure("db.schema.relTypeProperties").result_set
+        expected_results = []
+        self.env.assertEquals(actual_resultset, expected_results)
+
+        # Introduce a single node with a single property.
+        node = Node(label="L", properties={"v": 1})
+        properties_graph.add_node(node)
+        # Introduce a single edge with a single property.
+        edge = Edge(node, 'R', node, properties={"v": 1})
+        properties_graph.add_edge(edge)
+        properties_graph.flush()
+
+        # Update graph entities by introducing a second property.
+        properties_graph.query("MATCH (n)-[e]->() SET n.x = 1, e.x = 1")
+
+        # Make sure both properties are reported back.
+        actual_resultset = properties_graph.call_procedure("db.schema.nodeTypeProperties").result_set
+        expected_results = [["L", "v"], ["L", "x"]]
+        self.env.assertEquals(actual_resultset, expected_results)
+
+        # Make sure both properties are reported back.
+        actual_resultset = properties_graph.call_procedure("db.schema.relTypeProperties").result_set
+        expected_results = [["R", "v"], ["R", "x"]]
+        self.env.assertEquals(actual_resultset, expected_results)

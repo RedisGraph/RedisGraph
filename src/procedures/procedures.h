@@ -9,5 +9,7 @@
 #include "proc_relations.h"
 #include "proc_property_keys.h"
 #include "proc_fulltext_query.h"
+#include "proc_schema_node_props.h"
+#include "proc_schema_edge_props.h"
 #include "proc_fulltext_drop_index.h"
 #include "proc_fulltext_create_index.h"
