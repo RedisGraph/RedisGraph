@@ -66,6 +66,8 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(_validate_command_arity(cmd, argc) == false) return RedisModule_WrongArity(ctx);
 	Command_Handler handler = get_command_handler(cmd);
 	GraphContext *gc = GraphContext_Retrieve(ctx, graph_name, true, true);
+	// If the GraphContext is null, key access failed and an error has been emitted.
+	if(!gc) return REDISMODULE_ERR;
 
 	/* Determin query execution context
 	 * queries issued within a LUA script or multi exec block must

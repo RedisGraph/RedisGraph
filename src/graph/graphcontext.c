@@ -86,14 +86,21 @@ GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *grap
 
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, rwFlag);
 	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
-		// Key doesn't exists, create it.
 		if(shouldCreate) {
+			// Key doesn't exist, create it.
 			const char *graphName = RedisModule_StringPtrLen(graphID, NULL);
 			gc = _GraphContext_Create(ctx, graphName, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
+		} else {
+			// Key does not exist and won't be created, emit an error.
+			RedisModule_ReplyWithError(ctx, "ERR Invalid graph operation on empty key");
 		}
 	} else if(RedisModule_ModuleTypeGetType(key) == GraphContextRedisModuleType) {
 		gc = RedisModule_ModuleTypeGetValue(key);
+	} else {
+		// Key exists but is not a graph, emit an error.
+		RedisModule_ReplyWithError(ctx, REDISMODULE_ERRORMSG_WRONGTYPE);
 	}
+
 	RedisModule_CloseKey(key);
 
 	if(gc) _GraphContext_IncreaseRefCount(gc);

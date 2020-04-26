@@ -399,42 +399,15 @@ static AST_Validation _ValidatePattern(rax *projections, const cypher_astnode_t 
 	return res;
 }
 
-static bool _ValueIsConstant(const cypher_astnode_t *root) {
-	cypher_astnode_type_t type = cypher_astnode_type(root);
-	if(type == CYPHER_AST_PROPERTY_OPERATOR ||
-	   type == CYPHER_AST_IDENTIFIER
-	  ) {
-		return false;
-	}
-
-	// Recursively visit children
-	uint child_count = cypher_astnode_nchildren(root);
-	for(uint i = 0; i < child_count; i++) {
-		if(!_ValueIsConstant(cypher_astnode_get_child(root, i))) return false;
-	}
-
-	return true;
-}
-
 // Validate the property maps used in node/edge patterns in MATCH, and CREATE clauses
 static AST_Validation _ValidateInlinedProperties(const cypher_astnode_t *props, char **reason) {
 	if(cypher_astnode_type(props) != CYPHER_AST_MAP) {
-		// This should be impossible
+		// Emit an error if the properties are not presented as a map, as in:
+		// MATCH (p {invalid_property_construction}) RETURN p
 		asprintf(reason, "Encountered unhandled type in inlined properties.");
 		return AST_INVALID;
 	}
 
-	// TODO Introduce this validation, so we capture cases like:
-	// CREATE (:Clone {name: fake})
-	/*
-	for(uint i = 0; i < prop_count; i ++) {
-		const cypher_astnode_t *value = cypher_ast_map_get_value(props, i);
-		cypher_astnode_type_t value_type = cypher_astnode_type(value);
-		if(value_type == CYPHER_AST_IDENTIFIER) {
-			// If the identifier is not resolved earlier in the segment than this, emit an error.
-		}
-	}
-	*/
 	return AST_VALID;
 }
 
@@ -617,13 +590,6 @@ static AST_Validation _Validate_MATCH_Clauses(const AST *ast, char **reason) {
 	uint match_count = array_len(match_clauses);
 	for(uint i = 0; i < match_count; i ++) {
 		const cypher_astnode_t *match_clause = match_clauses[i];
-		// We currently do not support optional MATCH.
-		if(cypher_ast_match_is_optional(match_clause)) {
-			asprintf(reason, "RedisGraph does not support OPTIONAL MATCH.");
-			res = AST_INVALID;
-			goto cleanup;
-		}
-
 		// Validate the pattern described by the MATCH clause
 		res = _ValidatePattern(projections, cypher_ast_match_get_pattern(match_clause), edge_aliases,
 							   reason);
@@ -1022,12 +988,14 @@ static AST_Validation _ValidateQuerySequence(const AST *ast, char **reason) {
 	return AST_VALID;
 }
 
-// In any given query scope, reading clauses (MATCH, UNWIND, and InQueryCall)
-// cannot follow updating clauses (CREATE, MERGE, DELETE, SET, REMOVE).
-// https://s3.amazonaws.com/artifacts.opencypher.org/railroad/SinglePartQuery.html
+/* In any given query scope, reading clauses (MATCH, UNWIND, and InQueryCall)
+ * cannot follow updating clauses (CREATE, MERGE, DELETE, SET, REMOVE).
+ * https://s3.amazonaws.com/artifacts.opencypher.org/railroad/SinglePartQuery.html
+ * Additionally, a MATCH clause cannot follow an OPTIONAL MATCH clause. */
 static AST_Validation _ValidateClauseOrder(const AST *ast, char **reason) {
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 
+	bool encountered_optional_match = false;
 	bool encountered_updating_clause = false;
 	for(uint i = 0; i < clause_count; i ++) {
 		const cypher_astnode_t *clause = cypher_ast_query_get_clause(ast->root, i);
@@ -1043,9 +1011,58 @@ static AST_Validation _ValidateClauseOrder(const AST *ast, char **reason) {
 					 cypher_astnode_typestr(type));
 			return AST_INVALID;
 		}
+
+		if(type == CYPHER_AST_MATCH) {
+			// Check whether this match is optional.
+			bool current_clause_is_optional = cypher_ast_match_is_optional(clause);
+			// If the current clause is non-optional but we have already encountered an optional match, emit an error.
+			if(!current_clause_is_optional && encountered_optional_match) {
+				asprintf(reason, "A WITH clause is required to introduce a MATCH clause after an OPTIONAL MATCH.");
+				return AST_INVALID;
+			}
+			encountered_optional_match |= current_clause_is_optional;
+		}
 	}
 
 	return AST_VALID;
+}
+
+static void _AST_Path_GetDefinedIdentifiers(const cypher_astnode_t *path, rax *identifiers) {
+	/* Collect the aliases of named paths, nodes, and edges.
+	 * All more deeply-nested identifiers are referenced rather than defined,
+	 * and will not be collected. This enforces reference checking on aliases like 'fake' in:
+	 * MATCH (a {val: fake}) RETURN a */
+	if(cypher_astnode_type(path) == CYPHER_AST_NAMED_PATH) {
+		// If this is a named path, collect its alias.
+		const cypher_astnode_t *alias_node = cypher_ast_named_path_get_identifier(path);
+		const char *alias = cypher_ast_identifier_get_name(alias_node);
+		raxInsert(identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
+	}
+
+	uint path_len = cypher_ast_pattern_path_nelements(path);
+	for(uint j = 0; j < path_len; j ++) {
+		const cypher_astnode_t *elem = cypher_ast_pattern_path_get_element(path, j);
+		// Retrieve the path element's alias if one is present.
+		// Odd offsets correspond to edges, even offsets correspond to nodes.
+		const cypher_astnode_t *alias_node = (j % 2) ?
+											 cypher_ast_rel_pattern_get_identifier(elem) :
+											 cypher_ast_node_pattern_get_identifier(elem);
+		if(!alias_node) continue; // Skip unaliased entities.
+		const char *alias = cypher_ast_identifier_get_name(alias_node);
+		raxInsert(identifiers, (unsigned char *)alias, strlen(alias), NULL, NULL);
+	}
+
+}
+
+static void _AST_Pattern_GetDefinedIdentifiers(const cypher_astnode_t *pattern, rax *identifiers) {
+	/* Collect all aliases defined in a MATCH or CREATE pattern,
+	 * which is comprised of 1 or more paths. */
+	uint path_count = cypher_ast_pattern_npaths(pattern);
+	for(uint i = 0; i < path_count; i ++) {
+		const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
+		// Collect aliases defined on each path.
+		_AST_Path_GetDefinedIdentifiers(path, identifiers);
+	}
 }
 
 static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identifiers) {
@@ -1063,18 +1080,26 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identi
 		// Get alias if one is provided; otherwise use the expression identifier
 		_AST_GetProcCallAliases(node, identifiers);
 	} else if(type == CYPHER_AST_MATCH) {
-		// Only collect the identifiers from the pattern in the MATCH clause,
-		// as the WHERE predicate refers to identifiers (rather than defining them).
+		/* Collect all identifiers defined by the pattern in the MATCH clause,
+		 * ignoring references in property maps and WHERE predicates. */
 		const cypher_astnode_t *match_pattern = cypher_ast_match_get_pattern(node);
-		_AST_GetIdentifiers(match_pattern, identifiers);
+		_AST_Pattern_GetDefinedIdentifiers(match_pattern, identifiers);
 	} else if(type == CYPHER_AST_MERGE) {
-		// Only collect the identifiers from the path in the MERGE clause,
-		// as ON CREATE and ON MATCH actions refer to identifiers (rather than defining them).
+		/* Collect all identifiers defined by the path in the MERGE clause,
+		 * ignoring references in property maps and ON CREATE / ON MATCH actions. */
 		const cypher_astnode_t *merge_path = cypher_ast_merge_get_pattern_path(node);
-		_AST_GetIdentifiers(merge_path, identifiers);
-	} else if(type == CYPHER_AST_UNWIND ||
-			  type == CYPHER_AST_CREATE) {
-		_AST_GetIdentifiers(node, identifiers);
+		_AST_Path_GetDefinedIdentifiers(merge_path, identifiers);
+	} else if(type == CYPHER_AST_CREATE) {
+		/* Collect all identifiers defined by the pattern in the CREATE clause,
+		 * ignoring references in property maps.  */
+		const cypher_astnode_t *pattern = cypher_ast_create_get_pattern(node);
+		_AST_Pattern_GetDefinedIdentifiers(pattern, identifiers);
+	} else if(type == CYPHER_AST_UNWIND) {
+		/* UNWIND only defines its own alias, which is just 'defined' in the query:
+		 * UNWIND [ref_1, ref_2] AS defined RETURN defined */
+		const cypher_astnode_t *unwind_alias_node = cypher_ast_unwind_get_alias(node);
+		const char *unwind_alias = cypher_ast_identifier_get_name(unwind_alias_node);
+		raxInsert(identifiers, (unsigned char *)unwind_alias, strlen(unwind_alias), NULL, NULL);
 	} else if(type == CYPHER_AST_CALL) {
 		_AST_RegisterCallOutputs(node, identifiers);
 	} else {
@@ -1088,21 +1113,11 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identi
 
 static void _AST_GetReferredIdentifiers(const cypher_astnode_t *node, rax *identifiers) {
 	if(!node) return;
-	cypher_astnode_type_t type = cypher_astnode_type(node);
-	if(type == CYPHER_AST_MATCH) {
-		const cypher_astnode_t *where_clause = cypher_ast_match_get_predicate(node);
-		_AST_GetIdentifiers(where_clause, identifiers);
-	} else if(type == CYPHER_AST_WITH) {
+	if(cypher_astnode_type(node) == CYPHER_AST_WITH) {
+		// WITH clauses should only have their inputs collected, not their outputs.
 		_AST_GetWithReferences(node, identifiers);
-	} else if(type == CYPHER_AST_SET || type == CYPHER_AST_RETURN || type == CYPHER_AST_DELETE ||
-			  type == CYPHER_AST_ON_CREATE || type == CYPHER_AST_ON_MATCH) {
-		_AST_GetIdentifiers(node, identifiers);
 	} else {
-		uint child_count = cypher_astnode_nchildren(node);
-		for(uint c = 0; c < child_count; c ++) {
-			const cypher_astnode_t *child = cypher_astnode_get_child(node, c);
-			_AST_GetReferredIdentifiers(child, identifiers);
-		}
+		_AST_GetIdentifiers(node, identifiers);
 	}
 }
 
@@ -1679,3 +1694,4 @@ AST_Validation AST_Validate_QueryParams(RedisModuleCtx *ctx, const cypher_parse_
 
 	return AST_VALID;
 }
+

@@ -93,10 +93,13 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		QGNode *n = op->pending.nodes_to_create[i].node;
 
 		/* Create a new node. */
-		Node *newNode = Record_GetNode(r, op->pending.nodes_to_create[i].node_idx);
-		newNode->entity = NULL;
-		newNode->label = n->label;
-		newNode->labelID = n->labelID;
+		Node newNode = {
+			.entity = NULL,
+			.label = n->label,
+			.labelID = n->labelID
+		};
+		/* Add new node to Record and save a reference to it. */
+		Node *node_ref = Record_AddNode(r, op->pending.nodes_to_create[i].node_idx, newNode);
 
 		/* Convert query-level properties. */
 		PropertyMap *map = op->pending.nodes_to_create[i].properties;
@@ -107,7 +110,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		_IncrementalHashEntity(op->hash_state, n->label, converted_properties);
 
 		/* Save node for later insertion. */
-		op->pending.created_nodes = array_append(op->pending.created_nodes, newNode);
+		op->pending.created_nodes = array_append(op->pending.created_nodes, node_ref);
 
 		/* Save properties to insert with node. */
 		op->pending.node_properties = array_append(op->pending.node_properties, converted_properties);
@@ -122,11 +125,21 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		Node *src_node = Record_GetNode(r, op->pending.edges_to_create[i].src_idx);
 		Node *dest_node = Record_GetNode(r, op->pending.edges_to_create[i].dest_idx);
 
+		/* Verify that the endpoints of the new edge resolved properly; fail otherwise. */
+		if(!src_node || !dest_node) {
+			char *error;
+			asprintf(&error, "Failed to create relationship; endpoint was not found.");
+			QueryCtx_SetError(error);
+			QueryCtx_RaiseRuntimeException();
+		}
+
 		/* Create the actual edge. */
-		Edge *newEdge = Record_GetEdge(r, op->pending.edges_to_create[i].edge_idx);
-		if(array_len(e->reltypes) > 0) newEdge->relationship = e->reltypes[0];
-		Edge_SetSrcNode(newEdge, src_node);
-		Edge_SetDestNode(newEdge, dest_node);
+		Edge newEdge = {0};
+		if(array_len(e->reltypes) > 0) newEdge.relationship = e->reltypes[0];
+		Edge_SetSrcNode(&newEdge, src_node);
+		Edge_SetDestNode(&newEdge, dest_node);
+
+		Edge *edge_ref = Record_AddEdge(r, op->pending.edges_to_create[i].edge_idx, newEdge);
 
 		/* Convert query-level properties. */
 		PropertyMap *map = op->pending.edges_to_create[i].properties;
@@ -153,7 +166,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		}
 
 		/* Save edge for later insertion. */
-		op->pending.created_edges = array_append(op->pending.created_edges, newEdge);
+		op->pending.created_edges = array_append(op->pending.created_edges, edge_ref);
 
 		/* Save properties to insert with node. */
 		op->pending.edge_properties = array_append(op->pending.edge_properties, converted_properties);
