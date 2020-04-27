@@ -225,7 +225,7 @@ workflows:
           requires:
             - package_release
       # TODO: deploy_docs should run only when 'docs/' or 'mkdocs.yml' change
-      deploy_docs
+      - deploy_docs
           filters:
             branches:
               only:
