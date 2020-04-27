@@ -19,6 +19,7 @@ extern threadpool _thpool;
 extern GraphContext **graphs_in_keyspace;
 extern uint64_t entities_threshold;
 extern uint aux_field_counter;
+extern uint currently_decoding_graphs;
 
 // Forward declarations.
 static void _GraphContext_Free(void *arg);
@@ -83,8 +84,11 @@ static GraphContext *_GraphContext_Create(RedisModuleCtx *ctx, const char *graph
 	return gc;
 }
 
-static bool _GraphContext_IsModuleReplicating() {
-	return aux_field_counter > 0;
+/* In a sharded environment, there could be a race condition between the decoding of
+ * the last key, and the last aux_fields, so both counters should be zeroed in order to verify
+ * that the module replicated properly. */
+static bool _GraphContext_IsModuleReplicating(void) {
+	return aux_field_counter > 0 || currently_decoding_graphs > 0;
 }
 
 GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *graphID, bool readOnly,

@@ -18,8 +18,18 @@ extern bool process_is_child;
 extern uint64_t entities_threshold;        // The limit of number of entities encoded at once.
 extern uint redis_major_version;           // The redis server major version.
 
-// Holds the number of aux fields encountered during decoding of RDB file. This field is used to represent when the module is replicating its graphs.
+/* Both of the following fields are required to verify that the module is replicated
+ * in a successful manner. In a sharded environment, there could be a race condition between the decoding of
+ * the last key, and the last aux_fields, so both counters should be zeroed in order to verify
+ * that the module replicated properly.*/
+
+/* Holds the number of aux fields encountered during decoding of RDB file.
+ * This field is used to represent when the module is replicating its graphs. */
 uint aux_field_counter = 0 ;
+
+/* Holds the number of graphs encountered during decoding of RDB file.
+ * This field is used to represent when the module is replicating its graphs. */
+uint currently_decoding_graphs = 0;
 
 /* This callback invokes once rename for a graph is done. Since the key value is a graph context
  * which saves the name of the graph for later key accesses, this data must be consistent with the key name,
@@ -148,6 +158,7 @@ static void _FlushDBHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t 
 	if(eid.id == REDISMODULE_EVENT_FLUSHDB && subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
 		// If a flushall occurs during replication, stop all decoding.
 		aux_field_counter = 0;
+		currently_decoding_graphs = 0;
 		_RemoveDecodeState();
 	}
 }
@@ -229,21 +240,33 @@ static void _RegisterForkHooks() {
 
 /* Increase the number of aux fields encountered during rdb loading. There could be more than one on multiple shards scenario
  * so each shard is saving the aux field in its own RDB file. */
-void ModuleEventHandler_AUXBeforeKeyspaceEvent() {
+void ModuleEventHandler_AUXBeforeKeyspaceEvent(void) {
 	aux_field_counter++;
 }
 
-/* Decrease the number of aux fields encountered during rdb loading. There could be more than one on multiple shards scenario
- * so each shard is saving the aux field in its own RDB file. Once the number is zero, the module finished replicating and the meta keys can be deleted. */
-void ModuleEventHandler_AUXAfterKeyspaceEvent() {
-	aux_field_counter--;
-	if(aux_field_counter == 0) {
+static void _ModuleEventHandler_TryClearKeyspace(void) {
+	if(aux_field_counter == 0 && currently_decoding_graphs == 0) {
 		RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(NULL);
 		_ClearKeySpaceMetaKeys(ctx, true);
 		RedisModule_FreeThreadSafeContext(ctx);
 	}
 }
 
+/* Decrease the number of aux fields encountered during rdb loading. There could be more than one on multiple shards scenario
+ * so each shard is saving the aux field in its own RDB file. Once the number is zero, the module finished replicating and the meta keys can be deleted. */
+void ModuleEventHandler_AUXAfterKeyspaceEvent(void) {
+	aux_field_counter--;
+	_ModuleEventHandler_TryClearKeyspace();
+}
+
+void ModuleEventHandler_IncreaseDecodingGraphsCount() {
+	currently_decoding_graphs++;
+}
+
+void ModuleEventHandler_DecreaseDecodingGraphsCount() {
+	currently_decoding_graphs--;
+	_ModuleEventHandler_TryClearKeyspace();
+}
 void RegisterEventHandlers(RedisModuleCtx *ctx) {
 	_RegisterForkHooks();       // Set up hooks for forking logic to prevent bgsave deadlocks.
 	_RegisterServerEvents(ctx); // Set up hooks renaming and server events on Redis 6 and up.

@@ -16,8 +16,8 @@
 #define VERSION_SUPPORTS_EVENTS(encver) ((encver) % 2 == 1)
 
 // Forward declerations of the module event handler functions
-void ModuleEventHandler_AUXBeforeKeyspaceEvent();
-void ModuleEventHandler_AUXAfterKeyspaceEvent();
+void ModuleEventHandler_AUXBeforeKeyspaceEvent(void);
+void ModuleEventHandler_AUXAfterKeyspaceEvent(void);
 
 /* Declaration of the type for redis registration. */
 RedisModuleType *GraphContextRedisModuleType;
