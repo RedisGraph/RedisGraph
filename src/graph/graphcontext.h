@@ -41,12 +41,6 @@ GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *grap
 void GraphContext_Release(GraphContext *gc);
 // Mark graph key as "dirty" for Redis to pick up on.
 void GraphContext_MarkWriter(RedisModuleCtx *ctx, GraphContext *gc);
-// Mark graph key as "in-decode" mode (used in Replica-Of)
-void GraphContext_MarkInDecode(GraphContext *gc);
-// Mark graph key as "not-in-decode" mode (used in flush)
-void GraphContext_MarkNotInDecode(GraphContext *gc);
-// Checks if graph key is "in-decode" mode (used in Replica-Of)
-bool GraphContext_IsInDecode(GraphContext *gc);
 
 // Mark graph as deleted, reduce graph reference count by 1.
 void GraphContext_Delete(GraphContext *gc);

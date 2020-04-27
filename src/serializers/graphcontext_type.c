@@ -82,13 +82,6 @@ static int _GraphContextType_AuxLoad(RedisModuleIO *rdb, int encver, int when) {
 
 static void _GraphContextType_Free(void *value) {
 	GraphContext *gc = value;
-	// Check if graph is in decode - The graph key has been decoded but not all the virtual keys finished.
-	if(GraphContext_IsInDecode(gc)) {
-		RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(NULL);
-		RedisModule_ReplyWithError(ctx, "Graph is currently replicating");
-		RedisModule_FreeThreadSafeContext(ctx);
-		return;
-	}
 	GraphContext_Delete(gc);
 }
 

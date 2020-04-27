@@ -146,18 +146,6 @@ cleanup:
 	RedisModule_FreeString(ctx, graphID);
 }
 
-inline void GraphContext_MarkInDecode(GraphContext *gc) {
-	GraphDecodeContext_SetGraphInDecode(gc->decoding_context);
-}
-
-inline void GraphContext_MarkNotInDecode(GraphContext *gc) {
-	GraphDecodeContext_Reset(gc->decoding_context);
-}
-
-inline bool GraphContext_IsInDecode(GraphContext *gc) {
-	return GraphDecodeContext_IsGraphInDecode(gc->decoding_context);
-}
-
 void GraphContext_Delete(GraphContext *gc) {
 	/* We're here as a result of a call to:
 	 * GRAPH.DELETE

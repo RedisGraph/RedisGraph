@@ -36,8 +36,6 @@ GraphContext *RdbLoadGraphContext_v7(RedisModuleIO *rdb) {
 
 	GraphContext *gc = _GetOrCreateGraphContext(graph_name);
 	GraphDecodeContext_SetKeyCount(gc->decoding_context, key_number);
-	// Mark the graph as currently being in decode.
-	GraphContext_MarkInDecode(gc);
 	EncodePhase encoded_phase =  RedisModule_LoadUnsigned(rdb);
 	/* The decode process contains the decode operation of many meta keys, representing independent parts of the graph.
 	 * Each key contains data on one of the following:

@@ -139,7 +139,7 @@ static void _CreateKeySpaceMetaKeys(RedisModuleCtx *ctx) {
 static void _RemoveDecodeState() {
 	uint graphs_in_keyspace_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graphs_in_keyspace_count; i ++) {
-		GraphContext_MarkNotInDecode(graphs_in_keyspace[i]);
+		GraphDecodeContext_Reset(graphs_in_keyspace[i]->decoding_context);
 	}
 }
 
@@ -259,14 +259,15 @@ void ModuleEventHandler_AUXAfterKeyspaceEvent(void) {
 	_ModuleEventHandler_TryClearKeyspace();
 }
 
-void ModuleEventHandler_IncreaseDecodingGraphsCount() {
+void ModuleEventHandler_IncreaseDecodingGraphsCount(void) {
 	currently_decoding_graphs++;
 }
 
-void ModuleEventHandler_DecreaseDecodingGraphsCount() {
+void ModuleEventHandler_DecreaseDecodingGraphsCount(void) {
 	currently_decoding_graphs--;
 	_ModuleEventHandler_TryClearKeyspace();
 }
+
 void RegisterEventHandlers(RedisModuleCtx *ctx) {
 	_RegisterForkHooks();       // Set up hooks for forking logic to prevent bgsave deadlocks.
 	_RegisterServerEvents(ctx); // Set up hooks renaming and server events on Redis 6 and up.
