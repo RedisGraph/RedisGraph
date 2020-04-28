@@ -11,7 +11,7 @@ class test_v7_encode_decode(FlowTestsBase):
         self.env = Env(moduleArgs='ENTITIES_THRESHOLD 10')
         global redis_con
         redis_con = self.env.getConnection()
-        info = redis_con.execute_command("INFO")
+        info = redis_con.info("server")
         version = info['redis_version'].split('.')
         major = int(version[0])
         minor = int(version[1])
