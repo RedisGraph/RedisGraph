@@ -14,8 +14,6 @@
 #include "../graph/graphcontext.h"
 // Include Query contxt.
 #include "../query_ctx.h"
-// Include slow log.
-#include "../slow_log/slow_log.h"
 // Include GraphBLAS.
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 // Utils.

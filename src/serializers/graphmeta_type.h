@@ -8,7 +8,11 @@
 
 #include "serializers_include.h"
 
+/* The keys from the "graphmeta" type are virtual keys that created upon RDB save
+ * and deleted upon RDB or replication process ending.
+ * Each for those keys RDB value represent an independent part of the graph that can be encoded/decoded as is.
+ * This allows saving and replicating large graphs with small memory overhead */
+
 extern RedisModuleType *GraphMetaRedisModuleType;
 
-/* Commands related to the RedisGraph module registration */
 int GraphMetaType_Register(RedisModuleCtx *ctx);
