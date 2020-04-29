@@ -112,6 +112,8 @@ SIValue Record_Get(Record r, int idx) {
 		return SI_Edge(Record_GetEdge(r, idx));
 	case REC_TYPE_SCALAR:
 		return Record_GetScalar(r, idx);
+	case REC_TYPE_UNKNOWN:
+		return SI_NullVal();
 	default:
 		assert(false);
 	}
