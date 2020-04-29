@@ -173,3 +173,20 @@ class testDistinct(FlowTestsBase):
         actual_result = graph3.query(query)
         expected_result = [[['a', 1, 2, 3]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test_distinct_path(self):
+        global graph3
+        # Create duplicate paths using a Cartesian Product, collapse into 1 column,
+        # and unique the paths.
+        query = """MATCH p1 = ()-[]->(), p2 = ()-[]->() UNWIND [p1, p2] AS a RETURN DISTINCT a"""
+        actual_result = graph3.query(query)
+        # Only three paths should be returned, one for each edge.
+        self.env.assertEquals(len(actual_result.result_set), 3)
+
+    def test_distinct_multiple_nulls(self):
+        global graph3
+        # DISTINCT should remove multiple null values.
+        query = """UNWIND [null, null, null] AS x RETURN DISTINCT x"""
+        actual_result = graph3.query(query)
+        expected_result = [[None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
