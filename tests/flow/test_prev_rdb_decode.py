@@ -12,6 +12,9 @@ class test_prev_rdb_decode(FlowTestsBase):
         global redis_con
         redis_con = self.env.getConnection()
 
+    def tearDown(self):
+        self.env.flush()
+
     def test_v4_decode(self):
         graph_name = "v4_rdb_restore"
         # dump created with the following query (v4 supported property value: integer, double, boolean, string)
