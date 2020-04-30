@@ -8,6 +8,4 @@
 
 #include "serializers_include.h"
 
-extern RedisModuleType *GraphContextRedisModuleType;
-
 int GraphContextType_Register(RedisModuleCtx *ctx);

@@ -19,6 +19,3 @@ void Serializer_Graph_MarkNodeDeleted(Graph *g, NodeID ID);
 
 // Marks a edge ID as deleted.
 void Serializer_Graph_MarkEdgeDeleted(Graph *g, EdgeID ID);
-
-// Try adding a label matrix.
-void Serializer_Graph_TryAddLabelMatrix(Graph *g, int label);

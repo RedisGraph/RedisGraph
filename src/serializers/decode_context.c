@@ -36,9 +36,14 @@ inline bool GraphDecodeContext_Finished(const GraphDecodeContext *ctx) {
 	return ctx->keys_processed == ctx->graph_keys_count;
 }
 
-inline void GraphDecodeContext_IncreaseProcessedCount(GraphDecodeContext *ctx) {
+inline void GraphDecodeContext_IncreaseProcessedKeyCount(GraphDecodeContext *ctx) {
 	assert(ctx);
 	ctx->keys_processed++;
+}
+
+inline bool GraphDecodeContext_GetProcessedKeyCount(const GraphDecodeContext *ctx) {
+	assert(ctx);
+	return ctx->keys_processed;
 }
 
 inline void GraphDecodeContext_Free(GraphDecodeContext *ctx) {

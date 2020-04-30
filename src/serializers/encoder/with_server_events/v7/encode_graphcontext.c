@@ -16,14 +16,29 @@ static inline bool _shouldAcquireLocks(void) {
 
 static void _RdbSaveHeader(RedisModuleIO *rdb, GraphContext *gc) {
 	/* Header format:
-	* Graph name
-	* Number of graph keys (graph context key + meta keys)
-	* Number of processed keys (current payload index)
-	* Current payload type
-	*/
+	 * Graph name
+	 * Node count
+	 * Edge count
+	 * Label matrix count
+	 * Relation matrix count
+	 * Number of graph keys (graph context key + meta keys)
+	 * Current payload type
+	 */
 
 	// Graph name.
 	RedisModule_SaveStringBuffer(rdb, gc->graph_name, strlen(gc->graph_name) + 1);
+
+	// Node count.
+	RedisModule_SaveUnsigned(rdb, Graph_NodeCount(gc->g));
+
+	// Edge count.
+	RedisModule_SaveUnsigned(rdb, Graph_EdgeCount(gc->g));
+
+	// Label matrix count
+	RedisModule_SaveUnsigned(rdb, array_len(gc->g->labels));
+
+	// Relation matrix count
+	RedisModule_SaveUnsigned(rdb, array_len(gc->g->relations));
 
 	// Number of keys
 	RedisModule_SaveUnsigned(rdb, GraphEncodeContext_GetKeyCount(gc->encoding_context));

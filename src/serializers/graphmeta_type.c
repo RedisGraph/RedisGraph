@@ -25,7 +25,7 @@ static void *_GraphMetaType_RdbLoad(RedisModuleIO *rdb, int encver) {
 	} else if(encver == GRAPHCONTEXT_TYPE_ENCODING_VERSION_WITH_SERVER_EVENTS) {
 		gc = RdbLoadGraphContext_WithServerEvents(rdb);
 	} else {
-		printf("Problem when loading Graph, RedisGraph Meta key is not backward compatible.\n");
+		printf("Failed loading Graph, RedisGraph Meta key is not backward compatible.\n");
 		return NULL;
 	}
 

@@ -17,6 +17,8 @@ extern GraphContext **graphs_in_keyspace;  // Global array tracking all extant G
 extern bool process_is_child;
 extern uint64_t entities_threshold;        // The limit of number of entities encoded at once.
 extern uint redis_major_version;           // The redis server major version.
+// GraphContext type as it is registered at Redis.
+extern RedisModuleType *GraphContextRedisModuleType;
 
 /* Both of the following fields are required to verify that the module is replicated
  * in a successful manner. In a sharded environment, there could be a race condition between the decoding of

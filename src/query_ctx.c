@@ -10,6 +10,9 @@
 #include "serializers/graphcontext_type.h"
 #include <assert.h>
 
+// GraphContext type as it is registered at Redis.
+extern RedisModuleType *GraphContextRedisModuleType;
+
 pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
 
 static inline QueryCtx *_QueryCtx_GetCtx(void) {

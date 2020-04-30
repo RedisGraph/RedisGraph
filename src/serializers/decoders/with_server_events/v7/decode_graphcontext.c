@@ -27,15 +27,38 @@ static GraphContext *_GetOrCreateGraphContext(char *graph_name) {
 	return gc;
 }
 
+/* The first initialization of the graph data structure guarantees that there will be no further re-allocation
+ * of data blocks and matrices since they are all in the appropriate size. */
+static void _InitGraphDataStructure(Graph *g, uint64_t node_count, uint64_t edge_count,
+									uint64_t label_count,  uint64_t relation_count) {
+	DataBlock_Accommodate(g->nodes, node_count);
+	DataBlock_Accommodate(g->edges, edge_count);
+	for(uint64_t i = 0; i < label_count; i++) Graph_AddLabel(g);
+	for(uint64_t i = 0; i < relation_count; i++) Graph_AddRelationType(g);
+}
+
 GraphContext *RdbLoadGraphContext_v7(RedisModuleIO *rdb) {
 
 	// Graph name
 	char *graph_name =  RedisModule_LoadStringBuffer(rdb, NULL);
+
+	// Each key header contains the following: #nodes, #edges, #labels matrices, #relation matrices
+	uint64_t node_count = RedisModule_LoadUnsigned(rdb);
+	uint64_t edge_count = RedisModule_LoadUnsigned(rdb);
+	uint64_t label_count = RedisModule_LoadUnsigned(rdb);
+	uint64_t relation_count = RedisModule_LoadUnsigned(rdb);
+
 	// Total keys representing the graph.
 	uint64_t key_number = RedisModule_LoadUnsigned(rdb);
 
 	GraphContext *gc = _GetOrCreateGraphContext(graph_name);
+	// If it is the first key of this graph, allocate all the data structures, with the appropriate dimensions.
+	if(GraphDecodeContext_GetProcessedKeyCount(gc->decoding_context) == 0) {
+		_InitGraphDataStructure(gc->g, node_count, edge_count, label_count, relation_count);
+	}
+
 	GraphDecodeContext_SetKeyCount(gc->decoding_context, key_number);
+
 	EncodePhase encoded_phase =  RedisModule_LoadUnsigned(rdb);
 	/* The decode process contains the decode operation of many meta keys, representing independent parts of the graph.
 	 * Each key contains data on one of the following:
@@ -65,7 +88,7 @@ GraphContext *RdbLoadGraphContext_v7(RedisModuleIO *rdb) {
 		assert(false && "Unknown encoding");
 		break;
 	}
-	GraphDecodeContext_IncreaseProcessedCount(gc->decoding_context);
+	GraphDecodeContext_IncreaseProcessedKeyCount(gc->decoding_context);
 	if(GraphDecodeContext_Finished(gc->decoding_context)) {
 		// Revert to default synchronization behavior
 		Graph_ApplyAllPending(gc->g);

@@ -28,11 +28,14 @@ void GraphDecodeContext_SetKeyCount(GraphDecodeContext *ctx, uint64_t key_count)
 // Returns the number of keys required for decoding the graph.
 uint64_t GraphDecodeContext_GetKeyCount(const GraphDecodeContext *ctx);
 
-// Returns if the the number of processed keys is equal to the total number of graph keys.
+// Returns if the number of processed keys is equal to the total number of graph keys.
 bool GraphDecodeContext_Finished(const GraphDecodeContext *ctx);
 
 // Increment the number of processed keys by one.
-void GraphDecodeContext_IncreaseProcessedCount(GraphDecodeContext *ctx);
+void GraphDecodeContext_IncreaseProcessedKeyCount(GraphDecodeContext *ctx);
+
+// Returns the number of processed keys.
+bool GraphDecodeContext_GetProcessedKeyCount(const GraphDecodeContext *ctx);
 
 // Free graph decoding context.
 void GraphDecodeContext_Free(GraphDecodeContext *ctx);

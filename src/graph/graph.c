@@ -537,7 +537,7 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 	}
 }
 
-void Graph_SetEdgeInMatrix(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int r) {
+void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int r) {
 	GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
 	GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
 	GrB_Matrix tadj = _Graph_Get_Transposed_AdjacencyMatrix(g);
@@ -580,7 +580,7 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
 	e->relationID = r;
 	e->srcNodeID = src;
 	e->destNodeID = dest;
-	Graph_SetEdgeInMatrix(g, src, dest, id, r);
+	Graph_FormConnection(g, src, dest, id, r);
 	return 1;
 }
 
