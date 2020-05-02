@@ -10,6 +10,7 @@
 #include "linked_list.h"
 #include <stdbool.h>
 
+// Signature of callback for freeing the stored values given by the user.
 typedef void (*QueueDataFreeFunc)(void *);
 
 /**
@@ -21,15 +22,13 @@ typedef struct QueueItem {
 	char data[];            // Data to be stored in a queue node.
 } QueueItem;
 
-
 /**
  * @brief  Struct for priority queue.
  * The priority queue interface is implemented over an array of double linked list nodes.
- * The head is the node with the most priority, and the tail is the node with the lesser priority.
+ * The tail is the node with the highest priority, and the head is the node with the lowest.
  * Nodes are removed by their priority.
  */
 typedef struct PriorityQueue {
-	QueueItem *buffer;          // Array of QueueItem
 	size_t size;                // Current queue size
 	size_t capacity;            // Maximum queue capacity
 	LinkedList linked_list;     // The underlying data structure.
@@ -38,14 +37,14 @@ typedef struct PriorityQueue {
 	QueueItem **freeList;       // Contains previously removed nodes, for recycle.
 	QueueDataFreeFunc freeCB;   // Node data free callback.
 	size_t dataSize;            // Node data size.
+	QueueItem *buffer;          // Array of QueueItem
 } PriorityQueue;
 
 /**
  * @brief  Initialize an empty priority queue with a given capacity.
  * @param  capacity: Queue's maximal capacity
- * @param  freeCB: freeCB: callback for freeing the stored values given by the user.
- *                 Note: if the original object is a nested compound object,
- *                       supply an appropriate function to avoid double resource releasing
+ * @param  dataSize: The size of the stored data item.
+ * @param  freeCB: freeCB: callback for freeing a stored value.
  * @retval Initialized Queue (pointer).
  */
 PriorityQueue *PriorityQueue_Create(size_t capacity, size_t dataSize, QueueDataFreeFunc freeCB);
@@ -53,14 +52,14 @@ PriorityQueue *PriorityQueue_Create(size_t capacity, size_t dataSize, QueueDataF
 #define PriorityQueue_New(capacity, T, T_freeCB) PriorityQueue_Create(capacity, sizeof(T), T_freeCB)
 
 /**
- * @brief  Returns if the given queue is full.
+ * @brief  Returns true if the given queue is full.
  * @param  *queue: Priority Queue pointer.
  * @retval Returns if the given queue is full.
  */
 bool PriorityQueue_IsFull(const PriorityQueue *queue);
 
 /**
- * @brief  Returns if the given queue is empty.
+ * @brief  Returns true if the given queue is empty.
  * @param  *queue: Priority Queue pointer.
  * @retval Returns if the given queue is empty.
  */
@@ -69,7 +68,7 @@ bool PriorityQueue_IsEmpty(const PriorityQueue *queue);
 /**
  * @brief  Removes the lowest priority node from the queue.
  * @param  *queue: Priority Queue pointer.
- * @retval The removed item.
+ * @retval The removed item, or NULL incase the queue is empty.
  */
 void *PriorityQueue_Dequeue(PriorityQueue *queue);
 
@@ -77,7 +76,7 @@ void *PriorityQueue_Dequeue(PriorityQueue *queue);
  * @brief  Enques a new node with given value.
  * @param  *queue: Priority Queue pointer.
  * @param  dataValue: New node's value.
- * @retval Pointer to the stored data item inside the queue.
+ * @retval Pointer to the stored data item inside the queue. NULL if the queue is full.
  */
 void *PriorityQueue_Enqueue(PriorityQueue *queue, void *dataValue);
 
