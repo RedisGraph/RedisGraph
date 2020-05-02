@@ -8,12 +8,14 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from base import FlowTestsBase
 
+redis_con = None
 redis_graph = None
 
 class testQueryValidationFlow(FlowTestsBase):
 
     def __init__(self):
         self.env = Env()
+        global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph("G", redis_con)
@@ -182,4 +184,44 @@ class testQueryValidationFlow(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             # Expecting an error.
             assert("Encountered unhandled type" in e.message)
+            pass
+
+    # Validate that the module fails properly with incorrect argument counts.
+    def test17_query_arity(self):
+        # Call GRAPH.QUERY with a missing query argument.
+        try:
+            res = redis_con.execute_command("GRAPH.QUERY", "G")
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("wrong number of arguments" in e.message)
+            pass
+
+    # Run queries in which compile-time variables are accessed but not defined.
+    def test18_undefined_variable_access(self):
+        try:
+            query = """CREATE (:person{name:bar[1]})"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("not defined" in e.message)
+            pass
+
+        try:
+            query = """MATCH (a {val: undeclared}) RETURN a"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("not defined" in e.message)
+            pass
+
+        try:
+            query = """UNWIND [fake] AS ref RETURN ref"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("not defined" in e.message)
             pass

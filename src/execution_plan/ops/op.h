@@ -17,43 +17,41 @@
 #define OP_REQUIRE_NEW_DATA(opRes) (opRes & (OP_DEPLETED | OP_REFRESH)) > 0
 
 typedef enum {
-	OPType_AGGREGATE = 1,
-	OPType_ALL_NODE_SCAN = (1 << 1),
-	OPType_CONDITIONAL_TRAVERSE = (1 << 2),
-	OPType_CONDITIONAL_VAR_LEN_TRAVERSE = (1 << 3),
-	OPType_FILTER = (1 << 4),
-	OPType_NODE_BY_LABEL_SCAN = (1 << 5),
-	OPType_INDEX_SCAN = (1 << 6),
-	OPType_RESULTS = (1 << 7),
-	OPType_CREATE = (1 << 8),
-	OPType_UPDATE = (1 << 9),
-	OPType_DELETE = (1 << 10),
-	OPType_CARTESIAN_PRODUCT = (1 << 11),
-	OPType_MERGE = (1 << 12),
-	OPType_UNWIND = (1 << 13),
-	OPType_SORT = (1 << 14),
-	OPType_PROJECT = (1 << 15),
-	OPType_SKIP = (1 << 16),
-	OPType_LIMIT = (1 << 17),
-	OPType_DISTINCT = (1 << 18),
-	OPType_EXPAND_INTO = (1 << 19),
-	OPType_NODE_BY_ID_SEEK = (1 << 20),
-	OPType_PROC_CALL = (1 << 21),
-	OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO = (1 << 22),
-	OPType_VALUE_HASH_JOIN = (1 << 23),
-	OPType_APPLY = (1 << 24),
-	OPType_JOIN = (1 << 25),
-	OPType_ARGUMENT = (1 << 26),
-	OPType_MERGE_CREATE = (1 << 27),
-	OpType_NODE_BY_LABEL_AND_ID_SCAN = (1 << 28),
-	OPType_SEMI_APPLY = (1 << 29),
-	OpType_ANTI_SEMI_APPLY = (1 << 30),
-	OPType_OR_APPLY_MULTIPLEXER = (1 << 31),
-	OPType_AND_APPLY_MULTIPLEXER = (1 << 31), // TODO same value as OR_APPLY
-} OPType; // TODO Consider switching from bitmask at 1<<32
-
-// Bitmask matching all Apply operations.
-#define APPLY_OPS (OPType_OR_APPLY_MULTIPLEXER | OPType_AND_APPLY_MULTIPLEXER | OPType_SEMI_APPLY | OpType_ANTI_SEMI_APPLY)
+	OPType_ALL_NODE_SCAN,
+	OPType_NODE_BY_LABEL_SCAN,
+	OPType_INDEX_SCAN,
+	OPType_NODE_BY_ID_SEEK,
+	OpType_NODE_BY_LABEL_AND_ID_SCAN,
+	OPType_EXPAND_INTO,
+	OPType_CONDITIONAL_TRAVERSE,
+	OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
+	OPType_CONDITIONAL_VAR_LEN_TRAVERSE_EXPAND_INTO,
+	OPType_RESULTS,
+	OPType_PROJECT,
+	OPType_AGGREGATE,
+	OPType_SORT,
+	OPType_SKIP,
+	OPType_LIMIT,
+	OPType_DISTINCT,
+	OPType_MERGE,
+	OPType_MERGE_CREATE,
+	OPType_FILTER,
+	OPType_CREATE,
+	OPType_UPDATE,
+	OPType_DELETE,
+	OPType_UNWIND,
+	OPType_PROC_CALL,
+	OPType_ARGUMENT,
+	OPType_CARTESIAN_PRODUCT,
+	OPType_VALUE_HASH_JOIN,
+	OPType_APPLY,
+	OPType_JOIN,
+	OPType_SEMI_APPLY,
+	OpType_ANTI_SEMI_APPLY,
+	OPType_OR_APPLY_MULTIPLEXER,
+	OPType_AND_APPLY_MULTIPLEXER,
+	OPType_OPTIONAL,
+} OPType;
 
 typedef enum {
 	OP_DEPLETED = 1,
@@ -61,6 +59,18 @@ typedef enum {
 	OP_OK = 4,
 	OP_ERR = 8,
 } OpResult;
+
+// Macro for checking whether an operation is an Apply variant.
+#define OP_IS_APPLY(op) ((op)->type == OPType_OR_APPLY_MULTIPLEXER || (op)->type == OPType_AND_APPLY_MULTIPLEXER || (op)->type == OPType_SEMI_APPLY || (op)->type == OpType_ANTI_SEMI_APPLY)
+
+#define PROJECT_OP_COUNT 2
+static const OPType PROJECT_OPS[] = {OPType_PROJECT, OPType_AGGREGATE};
+
+#define TRAVERSE_OP_COUNT 2
+static const OPType TRAVERSE_OPS[] = {OPType_CONDITIONAL_TRAVERSE, OPType_CONDITIONAL_VAR_LEN_TRAVERSE};
+
+#define SCAN_OP_COUNT 5
+static const OPType SCAN_OPS[] = {OPType_ALL_NODE_SCAN, OPType_NODE_BY_LABEL_SCAN, OPType_INDEX_SCAN, OPType_NODE_BY_ID_SEEK, OpType_NODE_BY_LABEL_AND_ID_SCAN};
 
 struct OpBase;
 struct ExecutionPlan;

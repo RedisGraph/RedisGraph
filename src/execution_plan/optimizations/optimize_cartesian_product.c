@@ -131,7 +131,7 @@ static void _optimize_cartesian_product(ExecutionPlan *plan, OpBase *cp) {
 }
 
 void reduceCartesianProductStreamCount(ExecutionPlan *plan) {
-	OpBase **cps = ExecutionPlan_LocateOps(plan->root, OPType_CARTESIAN_PRODUCT);
+	OpBase **cps = ExecutionPlan_CollectOps(plan->root, OPType_CARTESIAN_PRODUCT);
 	uint cp_count = array_len(cps);
 
 	for(uint i = 0; i < cp_count ; i++) {

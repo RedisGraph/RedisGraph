@@ -21,8 +21,8 @@ static void ValueHashJoinFree(OpBase *opBase);
 /* Determins order between two records by inspecting
  * element stored at postion idx. */
 static bool _record_islt(Record l, Record r, uint idx) {
-	SIValue lv = Record_GetScalar(l, idx);
-	SIValue rv = Record_GetScalar(r, idx);
+	SIValue lv = Record_Get(l, idx);
+	SIValue rv = Record_Get(r, idx);
 	return SIValue_Compare(lv, rv, NULL) < 0;
 }
 
@@ -39,7 +39,7 @@ static int64_t _binarySearchLeftmost(Record *array, int join_key_idx, SIValue v)
 	int64_t right = recordCount;
 	while(left < right) {
 		pos = (right + left) / 2;
-		SIValue x = Record_GetScalar(array[pos], join_key_idx);
+		SIValue x = Record_Get(array[pos], join_key_idx);
 		if(SIValue_Compare(x, v, NULL) < 0) left = pos + 1;
 		else right = pos;
 	}
@@ -54,7 +54,7 @@ static int64_t _binarySearchRightmost(Record *array, int64_t array_len, int join
 	int64_t right = array_len;
 	while(left < right) {
 		pos = (right + left) / 2;
-		SIValue x = Record_GetScalar(array[pos], join_key_idx);
+		SIValue x = Record_Get(array[pos], join_key_idx);
 		if(SIValue_Compare(v, x, NULL) < 0) right = pos;
 		else left = pos + 1;
 	}
@@ -78,7 +78,7 @@ static Record _get_intersecting_record(OpValueHashJoin *op) {
 }
 
 /* Look up first intersecting cached record CR position.
- * Returns false if intersecting record is found. */
+ * Returns false if no intersecting record is found. */
 static bool _set_intersection_idx(OpValueHashJoin *op, SIValue v) {
 	op->intersect_idx = -1;
 	op->number_of_intersections = 0;
@@ -89,7 +89,7 @@ static bool _set_intersection_idx(OpValueHashJoin *op, SIValue v) {
 
 	// Make sure value was found.
 	Record r = op->cached_records[leftmost_idx];
-	SIValue x = Record_GetScalar(r, op->join_value_rec_idx);
+	SIValue x = Record_Get(r, op->join_value_rec_idx);
 	if(SIValue_Compare(x, v, NULL) != 0) return false; // Value wasn't found.
 
 	/* Value was found
@@ -235,8 +235,10 @@ static Record ValueHashJoinConsume(OpBase *opBase) {
 		// Get value on which we're intersecting.
 		SIValue v = AR_EXP_Evaluate(op->rhs_exp, op->rhs_rec);
 
+		bool found_intersection = _set_intersection_idx(op, v);
+		SIValue_Free(v);
 		// No intersection, discard R.
-		if(!_set_intersection_idx(op, v)) {
+		if(!found_intersection) {
 			OpBase_DeleteRecord(op->rhs_rec);
 			continue;
 		}

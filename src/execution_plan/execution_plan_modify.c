@@ -66,22 +66,6 @@ inline void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
 	_OpBase_AddChild(parent, newOp);
 }
 
-static void _ExecutionPlan_LocateOps(OpBase *root, OPType type, OpBase ***ops) {
-	if(!root) return;
-
-	if(root->type & type) *ops = array_append(*ops, root);
-
-	for(int i = 0; i < root->childCount; i++) {
-		_ExecutionPlan_LocateOps(root->children[i], type, ops);
-	}
-}
-
-OpBase **ExecutionPlan_LocateOps(OpBase *root, OPType type) {
-	OpBase **ops = array_new(OpBase *, 0);
-	_ExecutionPlan_LocateOps(root, type, &ops);
-	return ops;
-}
-
 // Introduce the new operation B between A and A's parent op.
 void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
 	if(a->parent == NULL) {
@@ -154,7 +138,6 @@ void ExecutionPlan_DetachOp(OpBase *op) {
 	if(op->parent == NULL) return;
 
 	// Remove op from its parent.
-	OpBase *parent = op->parent;
 	_OpBase_RemoveChild(op->parent, op);
 
 	op->parent = NULL;
@@ -180,39 +163,26 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
 	return NULL;
 }
 
-typedef enum {
-	LTR,
-	RTL
-} LocateOp_SearchDirection;
-
-static OpBase *_ExecutionPlan_LocateOp(OpBase *root, OPType type,
-									   LocateOp_SearchDirection search_direction) {
-	if(!root) return NULL;
-
-	if(root->type & type) { // NOTE - this will fail if OPType is later changed to not be a bitmask.
-		return root;
+OpBase *ExecutionPlan_LocateOpMatchingType(OpBase *root, const OPType *types, uint type_count) {
+	for(int i = 0; i < type_count; i++) {
+		// Return the current op if it matches any of the types we're searching for.
+		if(root->type == types[i]) return root;
 	}
-	if(search_direction == RTL) {
-		for(int i = root->childCount - 1; i >= 0; i--) {
-			OpBase *op = _ExecutionPlan_LocateOp(root->children[i], type, search_direction);
-			if(op) return op;
-		}
-	} else {
-		for(int i = 0; i < root->childCount; i++) {
-			OpBase *op = _ExecutionPlan_LocateOp(root->children[i], type, search_direction);
-			if(op) return op;
-		}
+
+	for(int i = 0; i < root->childCount; i++) {
+		// Recursively visit children.
+		OpBase *op = ExecutionPlan_LocateOpMatchingType(root->children[i], types, type_count);
+		if(op) return op;
 	}
 
 	return NULL;
 }
 
-OpBase *ExecutionPlan_LocateFirstOp(OpBase *root, OPType type) {
-	return _ExecutionPlan_LocateOp(root, type, LTR);
-}
+OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type) {
+	if(!root) return NULL;
 
-OpBase *ExecutionPlan_LocateLastOp(OpBase *root, OPType type) {
-	return _ExecutionPlan_LocateOp(root, type, RTL);
+	const OPType type_arr[1] = {type};
+	return ExecutionPlan_LocateOpMatchingType(root, type_arr, 1);
 }
 
 static OpBase *_ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
@@ -253,6 +223,36 @@ OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit
 	return op;
 }
 
+
+static void _ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *types, int type_count,
+												  OpBase ***ops) {
+	for(int i = 0; i < type_count; i++) {
+		// Check to see if the op's type matches any of the types we're searching for.
+		if(root->type == types[i]) {
+			*ops = array_append(*ops, root);
+			break;
+		}
+	}
+
+	for(int i = 0; i < root->childCount; i++) {
+		// Recursively visit children.
+		_ExecutionPlan_CollectOpsMatchingType(root->children[i], types, type_count, ops);
+	}
+}
+
+OpBase **ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *types, uint type_count) {
+	OpBase **ops = array_new(OpBase *, 0);
+	_ExecutionPlan_CollectOpsMatchingType(root, types, type_count, &ops);
+	return ops;
+}
+
+OpBase **ExecutionPlan_CollectOps(OpBase *root, OPType type) {
+	OpBase **ops = array_new(OpBase *, 0);
+	const OPType type_arr[1] = {type};
+	_ExecutionPlan_CollectOpsMatchingType(root, type_arr, 1, &ops);
+	return ops;
+}
+
 // Collect all aliases that have been resolved by the given tree of operations.
 void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers) {
 	assert(op && modifiers);
@@ -263,6 +263,12 @@ void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers) {
 			raxTryInsert(modifiers, (unsigned char *)modified, strlen(modified), (void *)modified, NULL);
 		}
 	}
+
+	/* Project and Aggregate operations demarcate variable scopes,
+	 * collect their projections but do not recurse into their children.
+	 * Note that future optimizations which operate across scopes will require different logic
+	 * than this for application. */
+	if(op->type == OPType_PROJECT || op->type == OPType_AGGREGATE) return;
 
 	for(int i = 0; i < op->childCount; i++) {
 		ExecutionPlan_BoundVariables(op->children[i], modifiers);
@@ -306,7 +312,7 @@ void ExecutionPlan_BindPlanToOps(ExecutionPlan *plan, OpBase *root) {
 }
 
 OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_vars,
-									   const cypher_astnode_t *path) {
+									   const cypher_astnode_t *node) {
 	// Initialize an ExecutionPlan that shares this plan's Record mapping.
 	ExecutionPlan *match_stream_plan = ExecutionPlan_NewEmptyExecutionPlan();
 	match_stream_plan->record_map = plan->record_map;
@@ -316,11 +322,19 @@ OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_v
 
 	AST *ast = QueryCtx_GetAST();
 	// Build a temporary AST holding a MATCH clause.
-	AST *match_stream_ast = AST_MockMatchPattern(ast, path);
+	cypher_astnode_type_t type = cypher_astnode_type(node);
+
+	/* The AST node we're building a mock MATCH clause for will be a path
+	 * if we're converting a MERGE clause or WHERE filter, and we must build
+	 * and later free a CYPHER_AST_PATTERN node to contain it.
+	 * If instead we're converting an OPTIONAL MATCH, the node is itself a MATCH clause,
+	 * and we will reuse its CYPHER_AST_PATTERN node rather than building a new one. */
+	bool node_is_path = (type == CYPHER_AST_PATTERN_PATH || type == CYPHER_AST_NAMED_PATH);
+	AST *match_stream_ast = AST_MockMatchClause(ast, (cypher_astnode_t *)node, node_is_path);
 
 	ExecutionPlan_PopulateExecutionPlan(match_stream_plan);
 
-	AST_MockFree(match_stream_ast);
+	AST_MockFree(match_stream_ast, node_is_path);
 	QueryCtx_SetAST(ast); // Reset the AST.
 	// Add filter ops to sub-ExecutionPlan.
 	if(match_stream_plan->filter_tree) ExecutionPlan_PlaceFilterOps(match_stream_plan, NULL);

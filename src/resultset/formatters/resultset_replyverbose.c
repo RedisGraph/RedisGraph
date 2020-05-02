@@ -19,7 +19,6 @@ static void _ResultSet_VerboseReplyWithPath(RedisModuleCtx *ctx, SIValue path);
  * and NULL values. */
 static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext *gc,
 											   const SIValue v) {
-	// Emit the actual value, then the value type (to facilitate client-side parsing)
 	switch(SI_TYPE(v)) {
 	case T_STRING:
 		RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
@@ -180,7 +179,7 @@ void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Re
 			_ResultSet_VerboseReplyWithEdge(ctx, gc, Record_GetEdge(r, idx));
 			break;
 		default:
-			_ResultSet_VerboseReplyWithSIValue(ctx, gc, Record_GetScalar(r, idx));
+			_ResultSet_VerboseReplyWithSIValue(ctx, gc, Record_Get(r, idx));
 		}
 	}
 }
@@ -195,3 +194,4 @@ void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns,
 		RedisModule_ReplyWithStringBuffer(ctx, columns[i], strlen(columns[i]));
 	}
 }
+

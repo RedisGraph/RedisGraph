@@ -367,6 +367,34 @@ class IMDBQueries(object):
                             ['Tim Blake Nelson']]
         )
 
+        ##################################################################
+        ### grand_budapest_hotel_cast_and_their_other_roles
+        ##################################################################
+
+        self.grand_budapest_hotel_cast_and_their_other_roles = QueryInfo(
+
+            query="""MATCH (a:actor)-[:act]->(h:movie {title: 'The Grand Budapest Hotel'})
+                     OPTIONAL MATCH (a)-[:act]->(m:movie) WHERE m <> h
+                     RETURN a.name, m.title
+                     ORDER BY a.name, m.title""",
+
+            description='All actors in The Grand Budapest Hotel and their other movies',
+            reversible=False,
+            max_run_time_ms=4,
+            expected_result=[['Adrien Brody', None],
+                             ['Bill Murray', 'The Jungle Book'],
+                             ['F. Murray Abraham', None],
+                             ['Harvey Keitel', 'The Ridiculous 6'],
+                             ['Harvey Keitel', 'Youth'],
+                             ['Jeff Goldblum', 'Independence Day: Resurgence'],
+                             ['Jude Law', 'Spy'],
+                             ['Mathieu Amalric', None],
+                             ['Ralph Fiennes', 'A Bigger Splash'],
+                             ['Ralph Fiennes', 'Spectre'],
+                             ['Willem Dafoe', 'John Wick'],
+                             ['Willem Dafoe', 'The Fault in Our Stars']]
+        )
+
         self.queries_info = [
             self.number_of_actors_query,
             self.actors_played_with_nicolas_cage_query,
@@ -384,7 +412,8 @@ class IMDBQueries(object):
             self.eighties_movies_index_scan,
             self.find_titles_starting_with_american_query,
             self.same_year_higher_rating_than_huntforthewilderpeople_query,
-            self.all_actors_named_tim
+            self.all_actors_named_tim,
+            self.grand_budapest_hotel_cast_and_their_other_roles
         ]
 
     def queries(self):

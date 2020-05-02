@@ -88,19 +88,32 @@ RecordEntryType Record_GetType(const Record r, int idx) {
 	return r->entries[idx].type;
 }
 
-SIValue Record_GetScalar(Record r, int idx) {
-	r->entries[idx].type = REC_TYPE_SCALAR;
-	return r->entries[idx].value.s;
-}
-
 Node *Record_GetNode(const Record r, int idx) {
-	r->entries[idx].type = REC_TYPE_NODE;
-	return &(r->entries[idx].value.n);
+	switch(r->entries[idx].type) {
+	case REC_TYPE_NODE:
+		return &(r->entries[idx].value.n);
+	case REC_TYPE_UNKNOWN:
+		return NULL;
+	case REC_TYPE_SCALAR:
+		// Null scalar values are expected here; otherwise fall through.
+		if(SIValue_IsNull(r->entries[idx].value.s)) return NULL;
+	default:
+		assert("encountered unexpected type in Record; expected Node" && false);
+	}
 }
 
 Edge *Record_GetEdge(const Record r, int idx) {
-	r->entries[idx].type = REC_TYPE_EDGE;
-	return &(r->entries[idx].value.e);
+	switch(r->entries[idx].type) {
+	case REC_TYPE_EDGE:
+		return &(r->entries[idx].value.e);
+	case REC_TYPE_UNKNOWN:
+		return NULL;
+	case REC_TYPE_SCALAR:
+		// Null scalar values are expected here; otherwise fall through.
+		if(SIValue_IsNull(r->entries[idx].value.s)) return NULL;
+	default:
+		assert("encountered unexpected type in Record; expected Edge" && false);
+	}
 }
 
 SIValue Record_Get(Record r, int idx) {
@@ -111,7 +124,9 @@ SIValue Record_Get(Record r, int idx) {
 	case REC_TYPE_EDGE:
 		return SI_Edge(Record_GetEdge(r, idx));
 	case REC_TYPE_SCALAR:
-		return Record_GetScalar(r, idx);
+		return r->entries[idx].value.s;
+	case REC_TYPE_UNKNOWN:
+		return SI_NullVal();
 	default:
 		assert(false);
 	}
@@ -124,10 +139,8 @@ GraphEntity *Record_GetGraphEntity(const Record r, int idx) {
 		return (GraphEntity *)Record_GetNode(r, idx);
 	case REC_TYPE_EDGE:
 		return (GraphEntity *)Record_GetEdge(r, idx);
-	case REC_TYPE_SCALAR:
-		return (GraphEntity *)(Record_GetScalar(r, idx).ptrval);
 	default:
-		assert(false);
+		assert(false && "encountered unexpected type when trying to retrieve graph entity");
 	}
 	return NULL;
 }
@@ -147,19 +160,22 @@ void Record_Add(Record r, int idx, SIValue v) {
 	}
 }
 
-void Record_AddScalar(Record r, int idx, SIValue v) {
+SIValue *Record_AddScalar(Record r, int idx, SIValue v) {
 	r->entries[idx].value.s = v;
 	r->entries[idx].type = REC_TYPE_SCALAR;
+	return &(r->entries[idx].value.s);
 }
 
-void Record_AddNode(Record r, int idx, Node node) {
+Node *Record_AddNode(Record r, int idx, Node node) {
 	r->entries[idx].value.n = node;
 	r->entries[idx].type = REC_TYPE_NODE;
+	return &(r->entries[idx].value.n);
 }
 
-void Record_AddEdge(Record r, int idx, Edge edge) {
+Edge *Record_AddEdge(Record r, int idx, Edge edge) {
 	r->entries[idx].value.e = edge;
 	r->entries[idx].type = REC_TYPE_EDGE;
+	return &(r->entries[idx].value.e);
 }
 
 void Record_PersistScalars(Record r) {
@@ -193,81 +209,24 @@ size_t Record_ToString(const Record r, char **buf, size_t *buf_cap) {
 }
 
 unsigned long long Record_Hash64(const Record r) {
-	uint rec_len = Record_length(r);
-	void *data;
-	size_t len;
-	static long long _null = 0;
-	EntityID id;
-	SIValue si;
-
-	XXH_errorcode res;
+	// Initialize the hash state.
 	XXH64_state_t state;
-
-	res = XXH64_reset(&state, 0);
+	XXH_errorcode res = XXH64_reset(&state, 0);
 	assert(res != XXH_ERROR);
 
-	for(int i = 0; i < rec_len; ++i) {
-		Entry e = r->entries[i];
-		switch(e.type) {
-		case REC_TYPE_NODE:
-		case REC_TYPE_EDGE:
-			// Since nodes and edges cannot occupy the same index within
-			// a record, we do not need to differentiate on type
-			id = ENTITY_GET_ID(Record_GetGraphEntity(r, i));
-			data = &id;
-			len = sizeof(id);
-			break;
-		case REC_TYPE_SCALAR:
-			si = Record_GetScalar(r, i);
-			switch(si.type) {
-			case T_NULL:
-				data = &_null;
-				len = sizeof(_null);
-				break;
-
-			case T_STRING:
-				data = si.stringval;
-				len = strlen(si.stringval);
-				break;
-
-			case T_INT64:
-			case T_BOOL:
-				data = &si.longval;
-				len = sizeof(si.longval);
-				break;
-
-			case T_PTR:
-				data = &si.ptrval;
-				len = sizeof(si.ptrval);
-				break;
-
-			case T_DOUBLE:
-				data = &si.doubleval;
-				len = sizeof(si.doubleval);
-				break;
-
-			default:
-				assert(false);
-			}
-			break;
-
-		case REC_TYPE_UNKNOWN:
-			/* Record hash should be able to handle hasing of records with missing entries.
-			 * consider: UNWIND [42] AS X WITH X WHERE X > 32 WITH DISTINCT X MERGE (a {v: Z}) RETURN a
-			 * The distinct operation is aware of both `X` and `a` as a result
-			 * when distinct perform record hashing to will access both record entries:
-			 * `X` and `a` at which point `a` is not set. */
-			data = &"REC_TYPE_UNKNOWN";
-			len = strlen("REC_TYPE_UNKNOWN");
-			break;
-		default:
-			assert("Unhandled record type" && false);
-		}
-
-		res = XXH64_update(&state, data, len);
-		assert(res != XXH_ERROR);
+	uint rec_len = Record_length(r);
+	for(uint idx = 0; idx < rec_len; idx++) {
+		/* Retrieve the entry at 'idx' as an SIValue.
+		 * If this entry is of type REC_TYPE_UNKNOWN, it will be returned as an SI_NullVal.
+		 * As such, this hashing logic will not differentiate between implicit and explicit
+		 * NULL values, but this is an acceptable design choice as the Cypher specification
+		 * does not prescribe behavior for this scenario. */
+		SIValue v = Record_Get(r, idx);
+		// Update the hash state with the current value.
+		SIValue_HashUpdate(v, &state);
 	}
 
+	// Finalize the hash.
 	unsigned long long const hash = XXH64_digest(&state);
 	return hash;
 }

@@ -23,6 +23,7 @@ supported.
 ### Query structure
 
 - MATCH
+- OPTIONAL MATCH
 - WHERE
 - RETURN
 - ORDER BY
@@ -127,6 +128,62 @@ Returns all pairs of people connected by a `KNOWS` relationship. Note that each 
 The syntactic sugar `(person_a)<-[:KNOWS]->(person_b)` will return the same results.
 
 The bracketed edge description can be omitted if all relations should be considered: `(person_a)--(person_b)`.
+
+##### Named paths
+
+Named path variables are created by assigning a path in a MATCH clause to a single alias with the syntax:
+`MATCH named_path = (path)-[to]->(capture)`
+
+The named path includes all entities in the path, regardless of whether they have been explicitly aliased. Named paths can be accessed using [designated built-in functions](#path-functions) or returned directly if using a language-specific client.
+
+Example:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH p=(charlie:actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]->(:actor)
+RETURN nodes(p) as actors"
+```
+
+This query will produce all the paths matching the pattern contained in the named path `p`. All of these paths will share the same starting point, the actor node representing Charlie Sheen, but will otherwise vary in length and contents. Though the variable-length traversal and `(:actor)` endpoint are not explicitly aliased, all nodes and edges traversed along the path will be included in `p`. In this case, we are only interested in the nodes of each path, which we'll collect using the built-in function `nodes()`. The returned value will contain, in order, Charlie Sheen, between 0 and 2 intermediate nodes, and the unaliased endpoint.
+
+#### OPTIONAL MATCH
+
+The OPTIONAL MATCH clause is a MATCH variant that produces null values for elements that do not match successfully, rather than the all-or-nothing logic for patterns in MATCH clauses.
+
+It can be considered to fill the same role as LEFT/RIGHT JOIN does in SQL, as MATCH entities must be resolved but nodes and edges introduced in OPTIONAL MATCH will be returned as nulls if they cannot be found.
+
+OPTIONAL MATCH clauses accept the same patterns as standard MATCH clauses, and may similarly be modified by WHERE clauses.
+
+Multiple MATCH and OPTIONAL MATCH clauses can be chained together, though a mandatory MATCH cannot follow an optional one.
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (p:Person) OPTIONAL MATCH (p)-[w:WORKS_AT]->(c:Company)
+WHERE w.start_date > 2016
+RETURN p, w, c"
+```
+
+All `Person` nodes are returned, as well as any `WORKS_AT` relations and `Company` nodes that can be resolved and satisfy the `start_date` constraint. For each `Person` that does not resolve the optional pattern, the person will be returned as normal and the non-matching elements will be returned as null.
+
+Cypher is lenient in its handling of null values, so actions like property accesses and function calls on null values will return null values rather than emit errors.
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (p:Person) OPTIONAL MATCH (p)-[w:WORKS_AT]->(c:Company)
+RETURN p, w.department, ID(c) as ID"
+```
+
+In this case, `w.department` and `ID` will be returned if the OPTIONAL MATCH was successful, and will be null otherwise.
+
+Clauses like SET, CREATE, MERGE, and DELETE will ignore null inputs and perform the expected updates on real inputs. One exception to this is that attempting to create a relation with a null endpoint will cause an error:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (p:Person) OPTIONAL MATCH (p)-[w:WORKS_AT]->(c:Company)
+CREATE (c)-[:NEW_RELATION]->(:NEW_NODE)"
+```
+
+If `c` is null for any record, this query will emit an error. In this case, no changes to the graph are committed, even if some values for `c` were resolved.
 
 #### WHERE
 

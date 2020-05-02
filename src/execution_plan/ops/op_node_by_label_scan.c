@@ -89,10 +89,11 @@ static OpResult NodeByLabelScanInit(OpBase *opBase) {
 }
 
 static inline void _UpdateRecord(NodeByLabelScan *op, Record r, GrB_Index node_id) {
-	// Get a pointer to the node's allocated space within the Record.
-	Node *n = Record_GetNode(r, op->nodeRecIdx);
 	// Populate the Record with the graph entity data.
-	Graph_GetNode(op->g, node_id, n);
+	Node n = {0};
+	Graph_GetNode(op->g, node_id, &n);
+	// Get a pointer to the node's allocated space within the Record.
+	Record_AddNode(r, op->nodeRecIdx, n);
 }
 
 static inline void _ResetIterator(NodeByLabelScan *op) {
@@ -111,11 +112,12 @@ static Record NodeByLabelScanConsumeFromChild(OpBase *opBase) {
 	/* depleted will be true in the following cases:
 	 * 1. No iterator: GxB_MatrixTupleIter_next will fail and depleted will stay true. This scenario means
 	 * that there was no consumption of a record from a child, otherwise there was an iterator.
-	 * 2. Iterator depleted - For every child record the iterator finished the entire matrix scan and it needs to restart. */
-	while(depleted) {
+	 * 2. Iterator depleted - For every child record the iterator finished the entire matrix scan and it needs to restart.
+	 * The child record will be NULL if this is the op's first invocation or it has just been reset, in which case we
+	 * should also enter this loop. */
+	while(depleted || op->child_record == NULL) {
 		// Try to get a record.
 		if(op->child_record) OpBase_DeleteRecord(op->child_record);
-		op->child_record = NULL;
 		op->child_record = OpBase_Consume(op->op.children[0]);
 		if(op->child_record == NULL) return NULL;
 

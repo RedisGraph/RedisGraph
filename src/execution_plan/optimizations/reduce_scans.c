@@ -18,7 +18,7 @@ static OpBase *_LabelScanToConditionalTraverse(NodeByLabelScan *label_scan) {
 	const QGNode *n = label_scan->n;
 	AlgebraicExpression *ae = AlgebraicExpression_NewOperand(GrB_NULL, true, n->alias, n->alias, NULL,
 															 n->label);
-	return NewCondTraverseOp(label_scan->op.plan, g, ae, TraverseRecordCap(ast));
+	return NewCondTraverseOp(label_scan->op.plan, g, ae);
 }
 
 static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
@@ -29,32 +29,30 @@ static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
 	assert(array_len(scan->modifies) == 1);
 	const char *scanned_alias = scan->modifies[0];
 
-	// Check if that alias is already bound by any of the scan's children.
+	// Collect variables bound before this operation.
+	rax *bound_vars = raxNew();
 	for(int i = 0; i < scan->childCount; i ++) {
-		if(ExecutionPlan_LocateOpResolvingAlias(scan->children[i], scanned_alias)) {
-			/* Here is the case where a node is already populated in the record when it arrived to a label scan operation.
-			 * The label scan operation here is redundent since it will re-scan the entire graph, so we will replace it with
-			 * a conditional traverse operation which will filter only the nodes with the requested labels.
-			 * The conditional traverse is done over the label matrix, and is more efficient then a filter operation. */
-			if(scan->type == OPType_NODE_BY_LABEL_SCAN) {
-				OpBase *traverse = _LabelScanToConditionalTraverse((NodeByLabelScan *)scan);
-				ExecutionPlan_ReplaceOp(plan, scan, traverse);
-				OpBase_Free(scan);
-				break;
-			}
-			// The scanned alias is already bound, remove the redundant scan op.
-			ExecutionPlan_RemoveOp(plan, scan);
-			OpBase_Free(scan);
-			break;
-		}
+		ExecutionPlan_BoundVariables(scan->children[i], bound_vars);
 	}
+
+	if(raxFind(bound_vars, (unsigned char *)scanned_alias, strlen(scanned_alias)) != raxNotFound) {
+		// If the alias the scan operates on is already bound, the scan operation is redundant.
+		if(scan->type == OPType_NODE_BY_LABEL_SCAN) {
+			// If we are performing a label scan, introduce a conditional traversal to filter by label.
+			OpBase *traverse = _LabelScanToConditionalTraverse((NodeByLabelScan *)scan);
+			ExecutionPlan_ReplaceOp(plan, scan, traverse);
+		} else {
+			// Remove the redundant scan op.
+			ExecutionPlan_RemoveOp(plan, scan);
+		}
+		OpBase_Free(scan);
+	}
+	raxFree(bound_vars);
 }
 
 void reduceScans(ExecutionPlan *plan) {
 	// Collect all SCAN operations within the execution plan.
-	OpBase **scans = ExecutionPlan_LocateOps(plan->root,
-											 (OPType_ALL_NODE_SCAN | OPType_NODE_BY_LABEL_SCAN |
-											  OPType_INDEX_SCAN | OPType_NODE_BY_ID_SEEK));
+	OpBase **scans = ExecutionPlan_CollectOpsMatchingType(plan->root, SCAN_OPS, SCAN_OP_COUNT);
 	uint scan_count = array_len(scans);
 	for(uint i = 0; i < scan_count; i++) {
 		_reduceScans(plan, scans[i]);

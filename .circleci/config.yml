@@ -37,7 +37,7 @@ jobs:
       #- run:
           # name: Formatting
           # command: astyle --options=.astylerc -R "./*.c,*.h" --dry-run -Q
-      
+
       # Load GraphBLAS from cache if possible.
       - restore_cache:
           keys:
@@ -57,7 +57,7 @@ jobs:
           paths:
             - deps/GraphBLAS
           key: GraphBLAS3.2-{{checksum "./deps/GraphBLAS/README.md"}}
-          
+
       # Save libcypher-parser to cache.
       - save_cache:
           paths:
@@ -75,13 +75,13 @@ jobs:
             strip src/$MODULE_ARTIFACT
             mkdir -p /workspace/build && cp src/$MODULE_ARTIFACT /workspace
             cp ramp.yml /workspace/
-      
+
       - persist_to_workspace:
           root: /workspace
           paths:
             - '*.so'
             - ramp.yml
-            - build  
+            - build
 
       - run:
           name: Test for memory leaks
@@ -133,18 +133,7 @@ jobs:
             - build
       - store_artifacts:
           path: /workspace/build
-  deploy_branch:
-    docker:
-      - image: 'redislabsmodules/rmbuilder:latest'
-    steps:
-      - attach_workspace:
-          at: /workspace
-      - run:
-          name: Deploy to S3
-          command: >-
-            aws s3 cp /workspace/build/ s3://redismodules/$PACKAGE_NAME/ --acl
-            public-read --recursive --exclude "*" --include "*.zip"
-  deploy_release:
+  deploy_to_s3:
     docker:
       - image: 'redislabsmodules/rmbuilder:latest'
     steps:
@@ -157,17 +146,25 @@ jobs:
             public-read --recursive --exclude "*" --include "*.zip"
   deploy_docs:
     docker:
-      - image: 'redislabsmodules/rmbuilder:latest'
+      - image: 'python:buster'
     steps:
+      - run:
+          name: Setup executor
+          command: |
+            apt-get -qq update
+            apt-get -q install -y git openssh-client curl ca-certificates gzip
+            cd ..; curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"; unzip awscliv2.zip;./aws/install
       - checkout
       - run:
-          name: Build Docs
+          name: Install dependencies
+          command: pip install -r docs/requirements.txt
+      - run:
+          name: Build docs
           command: mkdocs build
       - run:
           name: Deploy Docs to S3
-          command: >-
-            aws s3 cp site s3://oss.redislabs.com/$WEBSITE_FOLDER/ --acl
-            public-read --recursive
+          command: |
+            aws s3 cp site s3://oss.redislabs.com/$WEBSITE_FOLDER/ --acl public-read --recursive
   run_automation:
     docker:
       - image: 'redislabsmodules/rmbuilder:latest'
@@ -179,43 +176,48 @@ jobs:
             apt-get -y install curl &&
             curl -k -u $QA_AUTOMATION_USERNAME:$QA_AUTOMATION_PASS -X POST
             -H "Content-Type: application/json"
-            -d '{"service_id":"single_module_test_cycle_sanity_and_extended", "name":"redisgraph automation-testing", "properties":{"sut_version":"5.4.11", "email_recipients":"graph@redislabs.com", "sut_environments":[], "tools_environment":{}, "module_name": "RedisGraph", "module_version":"master", "cycle_environments_setup":[{"teardown":true, "name":"xenial-amd64-aws", "concurrency":1}, {"teardown":true, "name":"bionic-amd64-aws", "concurrency":1}]}}'
+            -d '{"service_id":"single_module_test_cycle_sanity_and_extended", "name":"redisgraph automation-testing", "properties":{"sut_version":"5.4.14", "email_recipients":"graph@redislabs.com", "sut_environments":[], "tools_environment":{}, "module_name": "RedisGraph", "module_version":"master", "cycle_environments_setup":[{"teardown":true, "name":"xenial-amd64-aws", "concurrency":1}, {"teardown":true, "name":"bionic-amd64-aws", "concurrency":1}]}}'
             https://qa-automation-center.redislabs.com/processes
 workflows:
   version: 2
-  build_and_package:
+  build_branch:
     jobs:
       - build:
           filters:
             tags:
-              only: /.*/      
+              # Ignore tagging.
+              ignore: /.*/
       - package_branch:
           requires:
             - build
           filters:
             branches:
-              only: master      
-      - package_release:
+              only: master
+      - deploy_to_s3:
           requires:
-            - build
+            - package_branch
+      - run_automation:
+          requires:
+            - deploy_to_s3
+      - deploy_docs:
+          requires:
+            - deploy_to_s3     
+
+# The build_release workflow runs only against tags.
+  build_release:
+    jobs:
+      - build:
           filters:
             branches:
               ignore: /.*/
             tags:
               only: '/^v[0-9].*/'
-      - deploy_branch:
+      - package_release:
           requires:
-            - package_branch
-      - run_automation:
-          requires:
-            - deploy_branch
-      - deploy_release:
-          filters:
-            tags:
-              only: '/^v[0-9].*/'
+            - build
+      - deploy_to_s3:
           requires:
             - package_release
       - deploy_docs:
-          filters:
-            branches:
-              only: master
+          requires:
+            - deploy_to_s3  

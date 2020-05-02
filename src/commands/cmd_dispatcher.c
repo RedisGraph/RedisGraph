@@ -12,6 +12,22 @@
 // Command handler function pointer.
 typedef void(*Command_Handler)(void *args);
 
+// Return true if the command has a valid number of arguments.
+static inline bool _validate_command_arity(GRAPH_Commands cmd, int arity) {
+	switch(cmd) {
+	case CMD_QUERY:
+	case CMD_EXPLAIN:
+	case CMD_PROFILE:
+		// Expect a command, graph name, a query, and optionally a "--compact" flag.
+		return arity >= 3 && arity <= 4;
+	case CMD_SLOWLOG:
+		// Expect just a command and graph name.
+		return arity == 2;
+	default:
+		assert("encountered unhandled query type" && false);
+	}
+}
+
 // Get command handler.
 static Command_Handler get_command_handler(GRAPH_Commands cmd) {
 	switch(cmd) {
@@ -42,15 +58,16 @@ static GRAPH_Commands determine_command(const char *cmd_name) {
 
 int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	CommandCtx *context;
-	// TODO: get number of arguments form command.
-	if(argc < 2) return RedisModule_WrongArity(ctx);
 
 	RedisModuleString *graph_name = argv[1];
 	RedisModuleString *query = (argc > 2) ? argv[2] : NULL;
 	const char *command_name = RedisModule_StringPtrLen(argv[0], NULL);
 	GRAPH_Commands cmd = determine_command(command_name);
+	if(_validate_command_arity(cmd, argc) == false) return RedisModule_WrongArity(ctx);
 	Command_Handler handler = get_command_handler(cmd);
 	GraphContext *gc = GraphContext_Retrieve(ctx, graph_name, true, true);
+	// If the GraphContext is null, key access failed and an error has been emitted.
+	if(!gc) return REDISMODULE_ERR;
 
 	/* Determin query execution context
 	 * queries issued within a LUA script or multi exec block must
@@ -73,3 +90,4 @@ int CommandDispatch(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 	return REDISMODULE_OK;
 }
+

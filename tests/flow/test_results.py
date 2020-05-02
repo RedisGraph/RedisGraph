@@ -101,15 +101,11 @@ class testResultSetFlow(FlowTestsBase):
     def test06_return_all(self):
         query = """MATCH (a)-[e]->(b) RETURN *"""
         result = graph.query(query)
-
-        # These definitions are duplicates of the non-public ResultSetColumnTypes values in redisgraph-py
-        COLUMN_SCALAR = 1
-        COLUMN_NODE = 2
-        COLUMN_RELATION = 3
-        # Validate the header strings and value types
+        # Validate the header strings of the 3 columns.
         # NOTE - currently, RETURN * populates values in alphabetical order, but that is subject to later change.
-        expected_header = [[COLUMN_NODE, 'a'], [COLUMN_NODE, 'b'], [COLUMN_RELATION, 'e']]
-        self.env.assertEqual(result.header, expected_header)
+        self.env.assertEqual(result.header[0][1], 'a')
+        self.env.assertEqual(result.header[1][1], 'b')
+        self.env.assertEqual(result.header[2][1], 'e')
         # Verify that 3 columns are returned
         self.env.assertEqual(len(result.result_set[0]), 3)
 
