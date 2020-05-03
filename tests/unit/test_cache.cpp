@@ -32,22 +32,22 @@ TEST_F(CacheTest, ExecutionPlanCache) {
 	char *query4 = "MATCH (d) RETURN d";
 
 	// Check for not existing key.
-	ASSERT_FALSE(Cache_GetValue(cache, query1, strlen(query1)));
+	ASSERT_FALSE(Cache_GetValue(cache, query1));
 
 	// Add single entry
-	Cache_SetValue(cache, query1, strlen(query1), ep1);
-	ASSERT_EQ(ep1, Cache_GetValue(cache, query1, strlen(query1)));
+	Cache_SetValue(cache, query1, ep1);
+	ASSERT_EQ(ep1, Cache_GetValue(cache, query1));
 
 	// Add multiple entries.
-	Cache_SetValue(cache, query2, strlen(query2), ep2);
-	ASSERT_EQ(ep2, Cache_GetValue(cache, query2, strlen(query2)));
-	Cache_SetValue(cache, query3, strlen(query3), ep3);
-	ASSERT_EQ(ep3, Cache_GetValue(cache, query3, strlen(query3)));
-	Cache_SetValue(cache, query4, strlen(query4), ep4);
-	ASSERT_EQ(ep4, Cache_GetValue(cache, query4, strlen(query4)));
+	Cache_SetValue(cache, query2, ep2);
+	ASSERT_EQ(ep2, Cache_GetValue(cache, query2));
+	Cache_SetValue(cache, query3, ep3);
+	ASSERT_EQ(ep3, Cache_GetValue(cache, query3));
+	Cache_SetValue(cache, query4, ep4);
+	ASSERT_EQ(ep4, Cache_GetValue(cache, query4));
 
 	// Verify that oldest entry is not exists - queue is [ 4 | 3 | 2 ].
-	ASSERT_FALSE(Cache_GetValue(cache, query1, strlen(query1)));
+	ASSERT_FALSE(Cache_GetValue(cache, query1));
 
 	Cache_Free(cache);
 }

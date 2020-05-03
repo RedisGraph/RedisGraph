@@ -29,7 +29,7 @@ typedef struct CacheData {
  * Stores actual copy (memcpy) of the object itself.
  */
 typedef struct Cache {
-	rax *rt;                            // Storage - Rax radix tree.
+	rax *lookup;                        // Storage - Rax radix tree.
 	PriorityQueue *priorityQueue;       // Priority Queue for maintaining eviction policy.
 	cacheValueFreeFunc cacheValueFree;  // function pointer to free cache value.
 } Cache;
@@ -48,19 +48,17 @@ Cache *Cache_New(size_t cacheSize, cacheValueFreeFunc freeCB);
  * @brief  Returns a value if it is cached, NULL otherwise.
  * @param  *cache: cache pointer.
  * @param  *key: Key to look for (bytes array).
- * @param  keyLen: key length.
  * @retval  pointer with the cached answer, NULL if the key isn't cached.
  */
-void *Cache_GetValue(Cache *cache, const char *key, size_t keyLen);
+void *Cache_GetValue(Cache *cache, const char *key);
 
 /**
- * @brief  Sotres a key and value in the cache.
+ * @brief  Stores value under key within the cache.
  * @param  *cache: cache pointer.
  * @param  *key: Key for associating with value (bytes array).
- * @param  keyLen: key length.
  * @param  *value: pointer with the relevant value.
  */
-void Cache_SetValue(Cache *cache, const char *key, size_t keyLen, void *value);
+void Cache_SetValue(Cache *cache, const char *key, void *value);
 
 /**
  * @brief  Destory a cache

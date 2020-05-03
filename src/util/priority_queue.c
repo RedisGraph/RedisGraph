@@ -9,23 +9,23 @@
 #include <stdio.h>
 
 /**
- * @brief  Initialize a Queue node, and its undelying CacheData.
- * @param  node: Node pointer.
- * @param  hashKey: Node's cache key (for CacheData).
- * @param  resultSet: Node's result value (for CacheData).
- * @retval Initialized Queue node (pointer)
+ * @brief  Initialize a queue item.
+ * @note   The data is being copied in the queue item.
+ * @param  *node: Queue node
+ * @param  *data: pointer to the data to be stored.
+ * @param  dataSize: Size of the data.
+ * @param  freeCB: Data callback.
+ * @retval The queue node with its own copy of the data.
  */
-static QueueItem *_PriorityQueue_InitQueueItem(QueueItem *node, void *cacheValue, size_t dataSize,
+static QueueItem *_PriorityQueue_InitQueueItem(QueueItem *node, void *data, size_t dataSize,
 											   QueueDataFreeFunc freeCB) {
 	// If node was in use before, call its destructor.
-	if(node->isDirty) {
-		void *data = (void *)node->data;
-		if(freeCB) freeCB(data);
+	if(node->isDirty && freeCB) {
+		freeCB((void *)node->data);
 	}
 	// Set new value and mark as used.
-	memcpy(&node->data, cacheValue, dataSize);
+	memcpy(&node->data, data, dataSize);
 	node->isDirty = true;
-
 	return node;
 }
 
@@ -35,7 +35,8 @@ static QueueItem *_PriorityQueue_InitQueueItem(QueueItem *node, void *cacheValue
  * @retval The size of the queue node.
  */
 static inline size_t _PriorityQueue_SizeOfQueueItem(size_t dataSize) {
-	return dataSize + sizeof(LinkedListNode) + sizeof(bool);
+	size_t queue_item_size = sizeof(QueueItem);
+	return dataSize + queue_item_size;
 }
 
 PriorityQueue *PriorityQueue_Create(size_t capacity, size_t dataSize, QueueDataFreeFunc freeCB) {
@@ -72,7 +73,7 @@ inline void *PriorityQueue_Dequeue(PriorityQueue *queue) {
 	LinkedListNode *head = queue->linked_list.head;
 	LinkedList_RemoveNode(&queue->linked_list, head);
 	QueueItem *queue_item = (QueueItem *) head;
-	array_append(queue->freeList, queue_item);
+	queue->freeList = array_append(queue->freeList, queue_item);
 	// Reduce queue size.
 	queue->size--;
 	return queue_item->data;
@@ -82,26 +83,28 @@ void *PriorityQueue_Enqueue(PriorityQueue *queue, void *cacheValue) {
 	if(PriorityQueue_IsFull(queue)) return NULL;
 	// Init new node
 	QueueItem *emptyNode;
-	// See if nodes where removed from the queue.
+	// Try to reuse a removed node if one is available.
 	if(array_len(queue->freeList) > 0) {
-		emptyNode = array_tail(queue->freeList);
-		array_pop(queue->freeList);
+		// If there are perviously removed elements, get one from the list.
+		emptyNode = array_pop(queue->freeList);
 	} else {
+		// There are no removed elements. We are in linear insertion mode, and queue->emptySpace is valid.
 		emptyNode = queue->emptySpace;
 	}
 
 	QueueItem *node = _PriorityQueue_InitQueueItem(emptyNode, cacheValue, queue->dataSize,
 												   (QueueDataFreeFunc)queue->freeCB);
 	// Will be false until array is full - for linear insertion over the array.
-	if(!queue->stopLinearInsertion && emptyNode == queue->emptySpace)
+	if(!queue->stopLinearInsertion && emptyNode == queue->emptySpace) {
 		queue->emptySpace = (QueueItem *)((char *)queue->emptySpace + _PriorityQueue_SizeOfQueueItem(
 											  queue->dataSize));
+	}
 
 	LinkedList_AddNode(&queue->linked_list, (LinkedListNode *) node);
 	// Increase queue size.
 	queue->size++;
 	// Queue is full. Linear inseration is no longer an option.
-	if(PriorityQueue_IsFull(queue))queue->stopLinearInsertion = true;
+	if(PriorityQueue_IsFull(queue)) queue->stopLinearInsertion = true;
 
 	return node->data;
 }
