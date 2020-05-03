@@ -16,12 +16,12 @@ typedef struct LinkedListNode {
 } LinkedListNode;
 
 /**
- * @brief  This linked list struct is managing its nodes from front to end with double linked list nodes.
- * @note   The traverse direction from front to end is with the "next" pointer. The traverse direction from end to front is with the "prev" pointer.
+ * @brief  This linked list struct is managing its nodes from head to tail with double linked list nodes.
+ * @note   The traverse direction from head to tail is with the "next" pointer. The traverse direction from tail to head is with the "prev" pointer.
  */
 typedef struct LinkedList {
-	LinkedListNode *front;
-	LinkedListNode *end;
+	LinkedListNode *head;
+	LinkedListNode *tail;
 } LinkedList;
 
 /**
@@ -31,7 +31,7 @@ typedef struct LinkedList {
 void LinkedList_Init(LinkedList *list);
 
 /**
- * @brief  Moves a linked list node towrds the front of the list.
+ * @brief  Moves a linked list node towrds the head of the list.
  * @note   If the node is not part of the list, nothing will be done.
  * @param  *list: Linked list struct.
  * @param  *node: Node in the list.
@@ -39,15 +39,15 @@ void LinkedList_Init(LinkedList *list);
 void LinkedList_MoveForward(LinkedList *list, LinkedListNode *node);
 
 /**
- * @brief  Set a linkes list node to become the front of the list.
+ * @brief  Set a linkes list node to become the head of the list.
  * @note   If the node is not part of the list, nothing will be done.
  * @param  *list: Linked list struct.
  * @param  *node: Node in the list.
  */
-void LinkedList_MoveToFront(LinkedList *list, LinkedListNode *node);
+void LinkedList_MoveToHead(LinkedList *list, LinkedListNode *node);
 
 /**
- * @brief  Moves a linked list node towrds the end of the list.
+ * @brief  Moves a linked list node towrds the tail of the list.
  * @note   If the node is not part of the list, nothing will be done.
  * @param  *list: Linked list struct.
  * @param  *node: Node in the list.
@@ -55,16 +55,16 @@ void LinkedList_MoveToFront(LinkedList *list, LinkedListNode *node);
 void LinkedList_MoveBack(LinkedList *list, LinkedListNode *node);
 
 /**
- * @brief  Set a linkes list node to become the end of the list.
+ * @brief  Set a linkes list node to become the tail of the list.
  * @note   If the node is not part of the list, nothing will be done.
  * @param  *list: Linked list struct.
  * @param  *node: Node in the list.
  */
-void LinkedList_MoveToEnd(LinkedList *list, LinkedListNode *node);
+void LinkedList_MoveToTail(LinkedList *list, LinkedListNode *node);
 
 /**
  * @brief  Adds a new node to a linked list.
- * @note   The new node will be set as the new "end". if x was the previous "end" and "y" is the new node:
+ * @note   The new node will be set as the new "tail". if x was the previous "tail" and "y" is the new node:
  *         x.next = y
  *         y.prev = x
  * @param  *list: Linked list struct.

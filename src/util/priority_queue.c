@@ -69,9 +69,9 @@ inline bool PriorityQueue_IsEmpty(const PriorityQueue *queue) {
 inline void *PriorityQueue_Dequeue(PriorityQueue *queue) {
 	// For empty queue return null.
 	if(PriorityQueue_IsEmpty(queue)) return NULL;
-	LinkedListNode *front = queue->linked_list.front;
-	LinkedList_RemoveNode(&queue->linked_list, front);
-	QueueItem *queue_item = (QueueItem *) front;
+	LinkedListNode *head = queue->linked_list.head;
+	LinkedList_RemoveNode(&queue->linked_list, head);
+	QueueItem *queue_item = (QueueItem *) head;
 	array_append(queue->freeList, queue_item);
 	// Reduce queue size.
 	queue->size--;
@@ -124,12 +124,12 @@ inline void PriorityQueue_IncreasePriority(PriorityQueue *queue, void *data) {
 
 inline void PriorityQueue_AggressiveDemotion(PriorityQueue *queue, void *data) {
 	QueueItem *node = _PriorityQueue_GetNodeFromData(data, queue->dataSize);
-	LinkedList_MoveToFront(&queue->linked_list, (LinkedListNode *)node);
+	LinkedList_MoveToHead(&queue->linked_list, (LinkedListNode *)node);
 }
 
 inline void PriorityQueue_AggressivePromotion(PriorityQueue *queue, void *data) {
 	QueueItem *node = _PriorityQueue_GetNodeFromData(data, queue->dataSize);
-	LinkedList_MoveToEnd(&queue->linked_list, (LinkedListNode *)node);
+	LinkedList_MoveToTail(&queue->linked_list, (LinkedListNode *)node);
 }
 
 inline void PriorityQueue_RemoveFromQueue(PriorityQueue *queue, void *data) {
@@ -141,12 +141,12 @@ inline void PriorityQueue_RemoveFromQueue(PriorityQueue *queue, void *data) {
 
 void PriorityQueue_Free(PriorityQueue *queue) {
 	// Go over each entry and free its result set.
-	while(queue->linked_list.front != NULL) {
-		LinkedListNode *front = queue->linked_list.front;
-		QueueItem *queue_item = (QueueItem *)front;
+	while(queue->linked_list.head != NULL) {
+		LinkedListNode *head = queue->linked_list.head;
+		QueueItem *queue_item = (QueueItem *)head;
 		void *data = (void *)queue_item->data;
 		if(queue->freeCB) queue->freeCB(data);
-		LinkedList_RemoveNode(&queue->linked_list, front);
+		LinkedList_RemoveNode(&queue->linked_list, head);
 	}
 
 	if(queue->freeCB)
