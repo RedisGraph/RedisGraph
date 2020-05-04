@@ -19,7 +19,7 @@ docker:
 	@docker build . -t redislabs/redisgraph
 
 docker_alpine:
-	@docker build . -f Dockerfile.alpine -t redislabs/redisgraph:5-alpine
+	@docker build . -f Dockerfile.alpine -t redislabs/redisgraph:alpine
 
 docker_push: docker
 	@docker push redislabs/redisgraph:latest

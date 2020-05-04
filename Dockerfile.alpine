@@ -1,6 +1,6 @@
 ###
 # Build Stage.
-FROM redis:5-alpine as builder
+FROM redis:6-alpine as builder
 
 RUN apk add --no-cache \
         build-base \
@@ -37,7 +37,7 @@ RUN set -ex;\
 
 ###
 # Package Stage.
-FROM redis:5-alpine
+FROM redis:6-alpine
 
 RUN apk add --no-cache libgomp
 COPY --from=builder /redisgraph/src/redisgraph.so /usr/lib/redis/modules/
