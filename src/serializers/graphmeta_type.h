@@ -13,6 +13,4 @@
  * Each for those keys RDB value represent an independent part of the graph that can be encoded/decoded as is.
  * This allows saving and replicating large graphs with small memory overhead */
 
-extern RedisModuleType *GraphMetaRedisModuleType;
-
 int GraphMetaType_Register(RedisModuleCtx *ctx);

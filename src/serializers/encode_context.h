@@ -13,21 +13,21 @@
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "../graph/entities/graph_entity.h"
 
-// Represent a graph encoding phase.
+// Represent a graph encoding state.
 typedef enum {
-	RESET,
+	INIT,
 	NODES,
 	DELETED_NODES,
 	EDGES,
 	DELETED_EDGES,
 	GRAPH_SCHEMA
-} EncodePhase;
+} EncodeState;
 
 // A struct that maintains the state of a graph encoding to RDB or encode from RDB.
 typedef struct {
 	uint64_t keys_processed;                    // Count the number of procssed graph keys.
 	uint64_t meta_keys_count;                   // The number of the meta keys representing the graph.
-	EncodePhase phase;                          // Represents the current encoding phase.
+	EncodeState state;                          // Represents the current encoding state.
 	uint64_t processed_nodes;                   // Number of encoded nodes.
 	uint64_t processed_deleted_nodes;           // Number of encoded deleted nodes.
 	uint64_t processed_edges;                   // Number of encoded edges.
@@ -48,10 +48,10 @@ GraphEncodeContext *GraphEncodeContext_New();
 void GraphEncodeContext_Reset(GraphEncodeContext *ctx);
 
 // Retrieve the graph current encoding phase.
-EncodePhase GraphEncodeContext_GetEncodePhase(const GraphEncodeContext *ctx);
+EncodeState GraphEncodeContext_GetEncodeState(const GraphEncodeContext *ctx);
 
 // Sets the graph current encoding phase.
-void GraphEncodeContext_SetEncodePhase(GraphEncodeContext *ctx, EncodePhase phase);
+void GraphEncodeContext_SetEncodeState(GraphEncodeContext *ctx, EncodeState phase);
 
 // Retrieve the graph representing keys count.
 uint64_t GraphEncodeContext_GetKeyCount(const GraphEncodeContext *ctx);

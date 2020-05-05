@@ -24,3 +24,5 @@
 #include "../datatypes/array.h"
 // Graph extentions.
 #include "graph_extensions.h"
+// Module configuration
+#include "../config.h"

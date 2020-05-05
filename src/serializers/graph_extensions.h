@@ -19,3 +19,9 @@ void Serializer_Graph_MarkNodeDeleted(Graph *g, NodeID ID);
 
 // Marks a edge ID as deleted.
 void Serializer_Graph_MarkEdgeDeleted(Graph *g, EdgeID ID);
+
+// Returns the graph deleted nodes list.
+uint64_t *Serializer_Graph_GetDeletedNodesList(Graph *g);
+
+// Returns the graph deleted nodes list.
+uint64_t *Serializer_Graph_GetDeletedEdgesList(Graph *g);

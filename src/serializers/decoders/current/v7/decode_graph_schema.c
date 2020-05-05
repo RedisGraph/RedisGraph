@@ -75,11 +75,4 @@ void RdbLoadGraphSchema_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	for(uint i = 0; i < schema_count; i ++) {
 		gc->relation_schemas = array_append(gc->relation_schemas, _RdbLoadSchema(rdb, SCHEMA_EDGE));
 	}
-
-	uint node_schemas_count = array_len(gc->node_schemas);
-	for(uint i = 0; i < node_schemas_count; i++) {
-		Schema *s = gc->node_schemas[i];
-		if(s->index) Index_Construct(s->index);
-		if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
-	}
 }

@@ -6,9 +6,9 @@
 
 #pragma once
 
-#include "../../../serializers_include.h"
+#include "../../serializers_include.h"
 
-void RdbSaveGraphContext_v7(RedisModuleIO *rdb, void *value);
+void RdbSaveGraph_v7(RedisModuleIO *rdb, void *value);
 void RdbSaveNodes_v7(RedisModuleIO *rdb, GraphContext *gc);
 void RdbSaveDeletedNodes_v7(RedisModuleIO *rdb, GraphContext *gc);
 void RdbSaveEdges_v7(RedisModuleIO *rdb, GraphContext *gc);

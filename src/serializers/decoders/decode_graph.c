@@ -4,8 +4,9 @@
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
-#pragma once
+#include "decode_graph.h"
+#include "current/v7/decode_v7.h"
 
-#include "../../serializers_include.h"
-
-void RdbSaveGraphContext_WithServerEvents(RedisModuleIO *rdb, void *value);
+GraphContext *RdbLoadGraph(RedisModuleIO *rdb) {
+	return RdbLoadGraph_v7(rdb);
+}

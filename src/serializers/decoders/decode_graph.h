@@ -6,6 +6,7 @@
 
 #pragma once
 
-#include "../../serializers_include.h"
+#include "../serializers_include.h"
 
-void RdbSaveGraphContext_WithoutServerEvents(RedisModuleIO *rdb, void *value);
+// Load RDB.
+GraphContext *RdbLoadGraph(RedisModuleIO *rdb);

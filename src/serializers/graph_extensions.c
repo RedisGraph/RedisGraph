@@ -48,3 +48,14 @@ void Serializer_Graph_SetEdge(Graph *g, EdgeID edge_id, NodeID src, NodeID dest,
 	e->destNodeID = dest;
 	Graph_FormConnection(g, src, dest, edge_id, r);
 }
+
+
+// Returns the graph deleted nodes list.
+uint64_t *Serializer_Graph_GetDeletedNodesList(Graph *g) {
+	return g->nodes->deletedIdx;
+}
+
+// Returns the graph deleted nodes list.
+uint64_t *Serializer_Graph_GetDeletedEdgesList(Graph *g) {
+	return g->edges->deletedIdx;
+}

@@ -17,7 +17,7 @@ inline GraphEncodeContext *GraphEncodeContext_New() {
 
 inline void GraphEncodeContext_Reset(GraphEncodeContext *ctx) {
 	assert(ctx);
-	ctx->phase = RESET;
+	ctx->state = INIT;
 	ctx->keys_processed = 0;
 	ctx->processed_nodes = 0;
 	ctx->processed_edges = 0;
@@ -32,14 +32,14 @@ inline void GraphEncodeContext_Reset(GraphEncodeContext *ctx) {
 	ctx->multiple_edges_dest_id = 0;
 }
 
-inline EncodePhase GraphEncodeContext_GetEncodePhase(const GraphEncodeContext *ctx) {
+inline EncodeState GraphEncodeContext_GetEncodeState(const GraphEncodeContext *ctx) {
 	assert(ctx);
-	return ctx->phase;
+	return ctx->state;
 }
 
-inline void GraphEncodeContext_SetEncodePhase(GraphEncodeContext *ctx, EncodePhase phase) {
+inline void GraphEncodeContext_SetEncodeState(GraphEncodeContext *ctx, EncodeState state) {
 	assert(ctx);
-	ctx->phase = phase;
+	ctx->state = state;
 }
 
 inline uint64_t GraphEncodeContext_GetKeyCount(const GraphEncodeContext *ctx) {

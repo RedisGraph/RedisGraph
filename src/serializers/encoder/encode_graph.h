@@ -8,4 +8,4 @@
 
 #include "../serializers_include.h"
 
-void RdbSaveSIValue(RedisModuleIO *rdb, const SIValue *v);
+void RdbSaveGraph(RedisModuleIO *rdb, void *value);

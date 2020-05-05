@@ -4,9 +4,9 @@
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
-#include "encode_with_server_events.h"
+#include "encode_graph.h"
 #include "v7/encode_v7.h"
 
-void RdbSaveGraphContext_WithServerEvents(RedisModuleIO *rdb, void *value) {
-	return RdbSaveGraphContext_v7(rdb, value);
+void RdbSaveGraph(RedisModuleIO *rdb, void *value) {
+	return RdbSaveGraph_v7(rdb, value);
 }

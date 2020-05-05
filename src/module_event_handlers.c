@@ -11,14 +11,16 @@
 #include "graph/graphcontext.h"
 #include "serializers/graphcontext_type.h"
 #include "serializers/graphmeta_type.h"
+#include "config.h"
 
-extern GraphContext **graphs_in_keyspace;  // Global array tracking all extant GraphContexts.
+// Global array tracking all extant GraphContexts.
+extern GraphContext **graphs_in_keyspace;
 // Flag indicating whether the running process is a child.
 extern bool process_is_child;
-extern uint64_t entities_threshold;        // The limit of number of entities encoded at once.
-extern uint redis_major_version;           // The redis server major version.
 // GraphContext type as it is registered at Redis.
 extern RedisModuleType *GraphContextRedisModuleType;
+// Graph meta keys type as it is registered at Redis.
+extern RedisModuleType *GraphMetaRedisModuleType;
 
 /* Both of the following fields are required to verify that the module is replicated
  * in a successful manner. In a sharded environment, there could be a race condition between the decoding of
@@ -73,10 +75,11 @@ static bool _GraphContext_NameContainsTag(const GraphContext *gc) {
 // Calculate how many virtual keys are needed to represent the graph.
 static uint64_t _GraphContext_RequiredMetaKeys(const GraphContext *gc) {
 	uint64_t required_keys = 0;
-	required_keys += ceil((double)Graph_NodeCount(gc->g) / entities_threshold);
-	required_keys += ceil((double)Graph_EdgeCount(gc->g) / entities_threshold);
-	required_keys += ceil((double)Graph_DeletedNodeCount(gc->g) / entities_threshold);
-	required_keys += ceil((double)Graph_DeletedEdgeCount(gc->g) / entities_threshold);
+	RG_Config config = Config_GetModuleConfig();
+	required_keys += ceil((double)Graph_NodeCount(gc->g) / config.entities_threshold);
+	required_keys += ceil((double)Graph_EdgeCount(gc->g) / config.entities_threshold);
+	required_keys += ceil((double)Graph_DeletedNodeCount(gc->g) / config.entities_threshold);
+	required_keys += ceil((double)Graph_DeletedEdgeCount(gc->g) / config.entities_threshold);
 	return required_keys;
 }
 
@@ -138,7 +141,7 @@ static void _CreateKeySpaceMetaKeys(RedisModuleCtx *ctx) {
 	}
 }
 
-static void _RemoveDecodeState() {
+static void _ResetDecodeStates() {
 	uint graphs_in_keyspace_count = array_len(graphs_in_keyspace);
 	for(uint i = 0; i < graphs_in_keyspace_count; i ++) {
 		GraphDecodeContext_Reset(graphs_in_keyspace[i]->decoding_context);
@@ -154,14 +157,13 @@ static void _ClearKeySpaceMetaKeys(RedisModuleCtx *ctx, bool decode) {
 	}
 }
 
-// Delete all meta keys before the actual flush, as the flush may be out of order
 static void _FlushDBHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, uint64_t subevent,
 							void *data) {
 	if(eid.id == REDISMODULE_EVENT_FLUSHDB && subevent == REDISMODULE_SUBEVENT_FLUSHDB_START) {
 		// If a flushall occurs during replication, stop all decoding.
 		aux_field_counter = 0;
 		currently_decoding_graphs = 0;
-		_RemoveDecodeState();
+		_ResetDecodeStates();
 	}
 }
 
@@ -191,11 +193,8 @@ static void _PersistenceEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, 
 
 static void _RegisterServerEvents(RedisModuleCtx *ctx) {
 	RedisModule_SubscribeToKeyspaceEvents(ctx, REDISMODULE_NOTIFY_GENERIC, _RenameGraphHandler);
-	// Regiseter to server events for redis 6 and up.
-	if(redis_major_version > 5) {
-		RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_FlushDB, _FlushDBHandler);
-		RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Persistence, _PersistenceEventHandler);
-	}
+	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_FlushDB, _FlushDBHandler);
+	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Persistence, _PersistenceEventHandler);
 }
 
 static void RG_ForkPrepare() {
@@ -240,18 +239,18 @@ static void _RegisterForkHooks() {
 	assert(pthread_atfork(RG_ForkPrepare, RG_AfterForkParent, RG_AfterForkChild) == 0);
 }
 
-/* Increase the number of aux fields encountered during rdb loading. There could be more than one on multiple shards scenario
- * so each shard is saving the aux field in its own RDB file. */
-void ModuleEventHandler_AUXBeforeKeyspaceEvent(void) {
-	aux_field_counter++;
-}
-
 static void _ModuleEventHandler_TryClearKeyspace(void) {
 	if(aux_field_counter == 0 && currently_decoding_graphs == 0) {
 		RedisModuleCtx *ctx = RedisModule_GetThreadSafeContext(NULL);
 		_ClearKeySpaceMetaKeys(ctx, true);
 		RedisModule_FreeThreadSafeContext(ctx);
 	}
+}
+
+/* Increase the number of aux fields encountered during rdb loading. There could be more than one on multiple shards scenario
+ * so each shard is saving the aux field in its own RDB file. */
+void ModuleEventHandler_AUXBeforeKeyspaceEvent(void) {
+	aux_field_counter++;
 }
 
 /* Decrease the number of aux fields encountered during rdb loading. There could be more than one on multiple shards scenario
@@ -272,6 +271,6 @@ void ModuleEventHandler_DecreaseDecodingGraphsCount(void) {
 
 void RegisterEventHandlers(RedisModuleCtx *ctx) {
 	_RegisterForkHooks();       // Set up hooks for forking logic to prevent bgsave deadlocks.
-	_RegisterServerEvents(ctx); // Set up hooks renaming and server events on Redis 6 and up.
+	_RegisterServerEvents(ctx); // Set up hooks for rename and server events on Redis 6 and up.
 }
 

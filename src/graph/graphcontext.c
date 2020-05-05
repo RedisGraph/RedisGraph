@@ -17,7 +17,6 @@
 extern threadpool _thpool;
 // Global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
-extern uint64_t entities_threshold;
 extern uint aux_field_counter;
 extern uint currently_decoding_graphs;
 // GraphContext type as it is registered at Redis.

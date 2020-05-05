@@ -7,8 +7,9 @@
 #include "graphmeta_type.h"
 #include "../version.h"
 #include "encoding_version.h"
-#include "encoder/with_server_events/encode_with_server_events.h"
-#include "decoders/with_server_events/decode_with_server_events.h"
+#include "encoder/encode_graph.h"
+#include "decoders/decode_graph.h"
+#include "decoders/decode_previous.h"
 
 /* Declaration of the type for redis registration. */
 RedisModuleType *GraphMetaRedisModuleType;
@@ -16,26 +17,30 @@ RedisModuleType *GraphMetaRedisModuleType;
 static void *_GraphMetaType_RdbLoad(RedisModuleIO *rdb, int encver) {
 	GraphContext *gc = NULL;
 
-	if(encver > GRAPHCONTEXT_TYPE_ENCODING_VERSION_LATEST) {
+	if(encver > GRAPH_ENCODING_VERSION_LATEST) {
 		// Not forward compatible.
 		printf("Failed loading Graph, RedisGraph version (%d) is not forward compatible.\n",
 			   REDISGRAPH_MODULE_VERSION);
 		return NULL;
-		// Meta key only available on Redis with server events
-	} else if(encver == GRAPHCONTEXT_TYPE_ENCODING_VERSION_WITH_SERVER_EVENTS) {
-		gc = RdbLoadGraphContext_WithServerEvents(rdb);
-	} else {
-		printf("Failed loading Graph, RedisGraph Meta key is not backward compatible.\n");
+		// Not backward compatible.
+	} else if(encver < GRAPHMETA_TYPE_DECODE_MIN_V) {
+		printf("Failed loading Graph, RedisGraph version (%d) is not backward compatible with encoder version %d.\n",
+			   REDISGRAPH_MODULE_VERSION, encver);
 		return NULL;
+		// Previous version.
+	} else if(encver >= GRAPHMETA_TYPE_DECODE_MIN_V && encver < GRAPH_ENCODING_VERSION_LATEST) {
+		gc = Decode_Previous(rdb, encver);
+	} else {
+		// Current version.
+		gc = RdbLoadGraph(rdb);
 	}
-
 	// Add GraphContext to global array of graphs.
 	GraphContext_RegisterWithModule(gc);
 	return gc;
 }
 
 static void _GraphMetaType_RdbSave(RedisModuleIO *rdb, void *value) {
-	RdbSaveGraphContext_WithServerEvents(rdb, value);
+	RdbSaveGraph(rdb, value);
 }
 
 static void _GraphMetaType_AofRewrite(RedisModuleIO *aof, RedisModuleString *key, void *value) {
@@ -55,7 +60,7 @@ int GraphMetaType_Register(RedisModuleCtx *ctx) {
 								};
 
 	GraphMetaRedisModuleType = RedisModule_CreateDataType(ctx, "graphmeta",
-														  GRAPHCONTEXT_TYPE_ENCODING_VERSION_WITH_SERVER_EVENTS, &tm);
+														  GRAPH_ENCODING_VERSION_LATEST, &tm);
 	if(GraphMetaRedisModuleType == NULL) return REDISMODULE_ERR;
 	return REDISMODULE_OK;
 }

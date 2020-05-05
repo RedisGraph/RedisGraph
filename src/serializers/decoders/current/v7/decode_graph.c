@@ -37,10 +37,18 @@ static void _InitGraphDataStructure(Graph *g, uint64_t node_count, uint64_t edge
 	for(uint64_t i = 0; i < relation_count; i++) Graph_AddRelationType(g);
 }
 
-GraphContext *RdbLoadGraphContext_v7(RedisModuleIO *rdb) {
+static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
+	/* Header format:
+	 * Graph name
+	 * Node count
+	 * Edge count
+	 * Label matrix count
+	 * Relation matrix count
+	 * Number of graph keys (graph context key + meta keys)
+	 */
 
 	// Graph name
-	char *graph_name =  RedisModule_LoadStringBuffer(rdb, NULL);
+	char *graph_name = RedisModule_LoadStringBuffer(rdb, NULL);
 
 	// Each key header contains the following: #nodes, #edges, #labels matrices, #relation matrices
 	uint64_t node_count = RedisModule_LoadUnsigned(rdb);
@@ -56,10 +64,19 @@ GraphContext *RdbLoadGraphContext_v7(RedisModuleIO *rdb) {
 	if(GraphDecodeContext_GetProcessedKeyCount(gc->decoding_context) == 0) {
 		_InitGraphDataStructure(gc->g, node_count, edge_count, label_count, relation_count);
 	}
-
 	GraphDecodeContext_SetKeyCount(gc->decoding_context, key_number);
+	return gc;
+}
 
-	EncodePhase encoded_phase =  RedisModule_LoadUnsigned(rdb);
+GraphContext *RdbLoadGraph_v7(RedisModuleIO *rdb) {
+
+	/* Key format:
+	 * Header
+	 * Payload(s)
+	 * */
+
+	GraphContext *gc = _DecodeHeader(rdb);
+	EncodeState encoded_state = RedisModule_LoadUnsigned(rdb);
 	/* The decode process contains the decode operation of many meta keys, representing independent parts of the graph.
 	 * Each key contains data on one of the following:
 	 * 1. Nodes - The nodes that are currently valid in the graph.
@@ -68,7 +85,7 @@ GraphContext *RdbLoadGraphContext_v7(RedisModuleIO *rdb) {
 	 * 4. Deleted edges - Edges that were deleted and there ids can be re-used. Used for exact replication of data black state.
 	 * 5. Graph schema - Propertoes, indices.
 	 * The following switch checks which part of the graph the current key holds, and decodes it accordingly. */
-	switch(encoded_phase) {
+	switch(encoded_state) {
 	case NODES:
 		RdbLoadNodes_v7(rdb, gc);
 		break;
@@ -91,8 +108,15 @@ GraphContext *RdbLoadGraphContext_v7(RedisModuleIO *rdb) {
 	GraphDecodeContext_IncreaseProcessedKeyCount(gc->decoding_context);
 	if(GraphDecodeContext_Finished(gc->decoding_context)) {
 		// Revert to default synchronization behavior
-		Graph_ApplyAllPending(gc->g);
 		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+		Graph_ApplyAllPending(gc->g);
+		// Index the nodes when decoding ends.
+		uint node_schemas_count = array_len(gc->node_schemas);
+		for(uint i = 0; i < node_schemas_count; i++) {
+			Schema *s = gc->node_schemas[i];
+			if(s->index) Index_Construct(s->index);
+			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
+		}
 		GraphDecodeContext_Reset(gc->decoding_context);
 		// Graph has finished decoding, inform the module.
 		ModuleEventHandler_DecreaseDecodingGraphsCount();

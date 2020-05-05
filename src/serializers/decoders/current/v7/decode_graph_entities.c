@@ -59,7 +59,7 @@ static void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e)
 	if(!propCount) return;
 
 	for(int i = 0; i < propCount; i++) {
-		Attribute_ID attr_id  = RedisModule_LoadUnsigned(rdb);
+		Attribute_ID attr_id = RedisModule_LoadUnsigned(rdb);
 		SIValue attr_value = _RdbLoadSIValue(rdb);
 		GraphEntity_AddProperty(e, attr_id, attr_value);
 		SIValue_Free(attr_value);
@@ -78,8 +78,6 @@ void RdbLoadNodes_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	*/
 
 	uint64_t nodeCount = RedisModule_LoadUnsigned(rdb);
-	if(nodeCount == 0) return;
-
 	for(uint64_t i = 0; i < nodeCount; i++) {
 		Node n;
 		NodeID id = RedisModule_LoadUnsigned(rdb);
@@ -122,7 +120,7 @@ void RdbLoadEdges_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	uint64_t edgeCount = RedisModule_LoadUnsigned(rdb);
 
 	// Construct connections.
-	for(int i = 0; i < edgeCount; i++) {
+	for(uint64_t i = 0; i < edgeCount; i++) {
 		Edge e;
 		EdgeID edgeId = RedisModule_LoadUnsigned(rdb);
 		NodeID srcId = RedisModule_LoadUnsigned(rdb);
@@ -131,7 +129,6 @@ void RdbLoadEdges_v7(RedisModuleIO *rdb, GraphContext *gc) {
 		Serializer_Graph_SetEdge(gc->g, edgeId, srcId, destId, relation, &e);
 		_RdbLoadEntity(rdb, gc, (GraphEntity *)&e);
 	}
-
 }
 
 void RdbLoadDeletedEdges_v7(RedisModuleIO *rdb, GraphContext *gc) {

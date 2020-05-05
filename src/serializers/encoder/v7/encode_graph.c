@@ -44,25 +44,25 @@ static void _RdbSaveHeader(RedisModuleIO *rdb, GraphContext *gc) {
 	RedisModule_SaveUnsigned(rdb, GraphEncodeContext_GetKeyCount(gc->encoding_context));
 
 	// Payload type
-	RedisModule_SaveUnsigned(rdb, GraphEncodeContext_GetEncodePhase(gc->encoding_context));
+	RedisModule_SaveUnsigned(rdb, GraphEncodeContext_GetEncodeState(gc->encoding_context));
 }
 
-// Select the first phase to encode.
-static void _SelectFirstPhase(GraphContext *gc) {
+// Select the first state to encode.
+static void _SelectFirstState(GraphContext *gc) {
 	// If there are nodes
 	if(Graph_NodeCount(gc->g) > 0) {
-		GraphEncodeContext_SetEncodePhase(gc->encoding_context, NODES);
+		GraphEncodeContext_SetEncodeState(gc->encoding_context, NODES);
 	} else if(array_len(gc->g->nodes->deletedIdx) > 0) {
 		// If all nodes are deleted
-		GraphEncodeContext_SetEncodePhase(gc->encoding_context, DELETED_NODES);
+		GraphEncodeContext_SetEncodeState(gc->encoding_context, DELETED_NODES);
 	}
 	// No nodes and no deleted nodes => no edges or deleted edges. Only schema.
 	else {
-		GraphEncodeContext_SetEncodePhase(gc->encoding_context, GRAPH_SCHEMA);
+		GraphEncodeContext_SetEncodeState(gc->encoding_context, GRAPH_SCHEMA);
 	}
 }
 
-void RdbSaveGraphContext_v7(RedisModuleIO *rdb, void *value) {
+void RdbSaveGraph_v7(RedisModuleIO *rdb, void *value) {
 	/* Encoding format for graph context and graph meta key
 	 * Header
 	 * Payload - Nodes / Edges / Deleted nodes/ Deleted edges/ Graph schema
@@ -74,8 +74,8 @@ void RdbSaveGraphContext_v7(RedisModuleIO *rdb, void *value) {
 	 * 4. Deleted edges
 	 * 5. Graph schema.
 	 *
-	 * Each payload type can be spread over one or more key. For example, the graph has 200,000 nodes, and the number of entities per payload
-	 * is 100,000 then there will be two nodes payload, each containing 100,000 nodes, encoded into the RDB of their keys.
+	 * Each payload type can spread over one or more keys. For example: A graph with 200,000 nodes, and the number of entities per payload
+	 * is 100,000 then there will be two nodes payloads, each containing 100,000 nodes, encoded into two different RDB meta keys.
 	 *
 	 * Each encoding phase finished encoded chooses the next encoding phase according to the graph's data.
 	 */
@@ -86,12 +86,12 @@ void RdbSaveGraphContext_v7(RedisModuleIO *rdb, void *value) {
 	if(_shouldAcquireLocks()) Graph_AcquireReadLock(gc->g);
 
 	// If it is the start of the encodeing, select the phase to start from.
-	if(GraphEncodeContext_GetEncodePhase(gc->encoding_context) == RESET) _SelectFirstPhase(gc);
+	if(GraphEncodeContext_GetEncodeState(gc->encoding_context) == INIT) _SelectFirstState(gc);
 
 	// Save header
 	_RdbSaveHeader(rdb, gc);
 
-	switch(GraphEncodeContext_GetEncodePhase(gc->encoding_context)) {
+	switch(GraphEncodeContext_GetEncodeState(gc->encoding_context)) {
 	case NODES:
 		RdbSaveNodes_v7(rdb, gc);
 		break;

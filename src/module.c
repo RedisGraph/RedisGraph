@@ -24,14 +24,21 @@
 #include "serializers/graphcontext_type.h"
 #include "serializers/graphmeta_type.h"
 #include "redisearch_api.h"
+#include "util/redis_version.h"
+
+//------------------------------------------------------------------------------
+// Minimal supported Redis version
+//------------------------------------------------------------------------------
+#define MIN_REDIS_VERION_MAJOR 5
+#define MIN_REDIS_VERION_MINOR 0
+#define MIN_REDIS_VERION_PATCH 7
 
 //------------------------------------------------------------------------------
 // Module-level global variables
 //------------------------------------------------------------------------------
+RG_Config config;                   // Module global configuration.
 GraphContext **graphs_in_keyspace;  // Global array tracking all extant GraphContexts.
 bool process_is_child;              // Flag indicating whether the running process is a child.
-uint64_t entities_threshold;        // The limit of number of entities encoded at once.
-uint redis_major_version;           // The redis server major version.
 
 //------------------------------------------------------------------------------
 // Thread pool variables
@@ -50,40 +57,15 @@ static int _Setup_ThreadPOOL(int threadCount) {
 	return 1;
 }
 
-// Sets the global variable of the redis major version
-static void _SetRedisMajorVersion(RedisModuleCtx *ctx) {
-	// Check if there is an implementation for redis module api for redis 6 an up, by checking the existence pf a Redis 6 API function pointer.
-	// If the function pointer is null, the server version is Redis 5.
-	if(RedisModule_GetServerInfo) {
-		// Retrive the server info.
-		const char *server_version;
-		int major;
-		int minor;
-		RedisModuleServerInfoData *info =  RedisModule_GetServerInfo(ctx, "Server");
-		server_version = RedisModule_ServerInfoGetFieldC(info, "redis_version");
-		sscanf(server_version, "%d.%d.%*d", &major, &minor);
-		RedisModule_FreeServerInfo(ctx, info);
-		if(major > 5) redis_major_version = major;
-		// Check for Redis 6 rc versions which starts with 5.9.x. Those versions support RedisModule_GetServerInfo.
-		else redis_major_version = major == 5 && minor == 9 ? 6 : major;
-	} else {
-		// RedisModule_GetServerInfo exists only on Redis 6 and up, so the current server major version is 5.
-		redis_major_version = 5;
-	}
-}
-
 static int _RegisterDataTypes(RedisModuleCtx *ctx) {
 	if(GraphContextType_Register(ctx) == REDISMODULE_ERR) {
 		printf("Failed to register GraphContext type\n");
 		return REDISMODULE_ERR;
 	}
 
-	// Redis versions > 5 use different serialization mechanisms; register the GraphMeta type.
-	if(redis_major_version > 5) {
-		if(GraphMetaType_Register(ctx) == REDISMODULE_ERR) {
-			printf("Failed to register GraphMeta type\n");
-			return REDISMODULE_ERR;
-		}
+	if(GraphMetaType_Register(ctx) == REDISMODULE_ERR) {
+		printf("Failed to register GraphMeta type\n");
+		return REDISMODULE_ERR;
 	}
 	return REDISMODULE_OK;
 }
@@ -91,7 +73,7 @@ static int _RegisterDataTypes(RedisModuleCtx *ctx) {
 static void _PrepareModuleGlobals(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	graphs_in_keyspace = array_new(GraphContext *, 1);
 	process_is_child = false;
-	entities_threshold = Config_GetEntitiesThreshold(ctx, argv, argc);
+	Config_Init(ctx, argv, argc);
 }
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -105,12 +87,17 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 		return REDISMODULE_ERR;
 	}
 
-	if(RediSearch_Init(ctx, REDISEARCH_INIT_LIBRARY) != REDISMODULE_OK) {
+	// Validate minimum redis-server version.
+	if(!Redis_Version_IsVersionCompliant(MIN_REDIS_VERION_MAJOR, MIN_REDIS_VERION_MINOR,
+										 MIN_REDIS_VERION_PATCH)) {
+		RedisModule_Log(ctx, "warning", "RedisGraph requires redis-server version %d.%d.%d and up",
+						MIN_REDIS_VERION_MAJOR, MIN_REDIS_VERION_MINOR, MIN_REDIS_VERION_PATCH);
 		return REDISMODULE_ERR;
 	}
 
-	// Set the server major version as a global property.
-	_SetRedisMajorVersion(ctx);
+	if(RediSearch_Init(ctx, REDISEARCH_INIT_LIBRARY) != REDISMODULE_OK) {
+		return REDISMODULE_ERR;
+	}
 
 	Proc_Register();         // Register procedures.
 	AR_RegisterFuncs();      // Register arithmetic functions.
@@ -123,7 +110,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	// Create thread local storage key.
 	if(!QueryCtx_Init()) return REDISMODULE_ERR;
 
-	long long threadCount = Config_GetThreadCount(ctx, argv, argc);
+	long long threadCount = config.thread_count;
 	if(!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
 	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", threadCount);
 

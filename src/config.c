@@ -8,8 +8,24 @@
 #include <unistd.h>
 #include <string.h>
 #include <assert.h>
+#include <limits.h>
+#include "util/redis_version.h"
 
-long long Config_GetThreadCount(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+
+#define THREAD_COUNT "THREAD_COUNT" // Config param, number of threads in thread pool
+#define ENTITIES_THRESHOLD "ENTITIES_THRESHOLD" // Config param, number of entities in virtual key
+#define ENTITIES_THRESHOLD_DEFAULT 100000
+#define ENTITIES_THRESHOLD_UNLIMITED UINT64_MAX
+
+extern RG_Config config; // Global module configuration.
+static bool _initialized = false;
+
+
+// Tries to fetch number of threads from
+// command line arguments if specified
+// otherwise returns thread count equals to the number
+// of cores available
+static long long _Config_GetThreadCount(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// Default.
 	int CPUCount = sysconf(_SC_NPROCESSORS_ONLN);
 	long long threadCount = (CPUCount != -1) ? CPUCount : 1;
@@ -39,7 +55,13 @@ long long Config_GetThreadCount(RedisModuleCtx *ctx, RedisModuleString **argv, i
 	return threadCount;
 }
 
-uint64_t Config_GetEntitiesThreshold(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+// Tries to fetch the number of entities to encode as part of virtual key encoding.
+// Defaults to ENTITIES_THRESHOLD_DEFAULT
+static uint64_t _Config_GetEntitiesThreshold(RedisModuleCtx *ctx, RedisModuleString **argv,
+											 int argc) {
+
+	// For redis-server versions below 6.0.0, we will not split the graph to virtual keys.
+	if(!Redis_Version_IsVersionCompliant(6, 0, 0)) return ENTITIES_THRESHOLD_UNLIMITED;
 	// Default.
 	long long threshold = ENTITIES_THRESHOLD_DEFAULT;
 
@@ -62,3 +84,15 @@ uint64_t Config_GetEntitiesThreshold(RedisModuleCtx *ctx, RedisModuleString **ar
 
 	return (uint64_t)threshold;
 }
+
+void Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+	config.entities_threshold = _Config_GetEntitiesThreshold(ctx, argv, argc);
+	config.thread_count = _Config_GetThreadCount(ctx, argv, argc);
+	_initialized = true;
+}
+
+RG_Config Config_GetModuleConfig() {
+	assert(_initialized);
+	return config;
+}
+
