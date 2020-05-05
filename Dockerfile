@@ -30,16 +30,15 @@ ADD ./ /build
 
 # Set up a build environment
 RUN set -ex ;\
-    apt-get -qq update ;\
-    apt-get install -y --no-install-recommends ca-certificates wget git;\
+	apt-get -qq update ;\
+	apt-get install -y --no-install-recommends ca-certificates wget git;\
 	apt-get install -y --no-install-recommends python python-pip python-psutil ;\
 	apt-get install -y --no-install-recommends build-essential cmake m4 automake autoconf libtool peg libgomp1 ;\
 	python -m pip install wheel ;\
 	python -m pip install setuptools --upgrade ;\
 	python -m pip install git+https://github.com/Grokzen/redis-py-cluster.git@master ;\
-    python -m pip install git+https://github.com/RedisLabsModules/RLTest.git@master ;\
-    python -m pip install git+https://github.com/RedisLabs/RAMP@master ;\
-    python -m pip install redisgraph ;\
+	python -m pip install git+https://github.com/RedisLabsModules/RLTest.git@master ;\
+	python -m pip install git+https://github.com/RedisLabs/RAMP@master ;\
 	python -m pip install -r tests/requirements.txt
 
 RUN make
@@ -49,7 +48,7 @@ ARG TEST=0
 
 RUN set -ex ;\
 	if [ "$PACK" = "1" ]; then \
-		python -m RAMP.ramp pack -m ramp.yml -o "build/redisgears.{os}-{architecture}.redisgears.zip" src/redisgraph.so ;\
+		python -m RAMP.ramp pack -m ramp.yml -o "build/redisgraph.{os}-{architecture}.{semantic_version}.zip" src/redisgraph.so ;\
 	fi
 RUN set -ex ;\
 	if [ "$TEST" = "1" ]; then TEST= make test; fi

@@ -33,10 +33,10 @@ jobs:
             apt-get install -y --no-install-recommends build-essential cmake m4 automake autoconf libtool peg libgomp1 valgrind astyle
             python -m pip install wheel
             python -m pip install setuptools --upgrade
+            # stick to strict order in the following pakcages:
             python -m pip install git+https://github.com/Grokzen/redis-py-cluster.git@master
             python -m pip install git+https://github.com/RedisLabsModules/RLTest.git@master
             python -m pip install git+https://github.com/RedisLabs/RAMP@master
-            python -m pip install redisgraph
             python -m pip install -r tests/requirements.txt
 
       # Validate source complies with formatting
