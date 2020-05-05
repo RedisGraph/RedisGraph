@@ -76,6 +76,7 @@ static void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e)
 		assert(attr_id != ATTRIBUTE_NOTFOUND);
 		GraphEntity_AddProperty(e, attr_id, attr_value);
 		RedisModule_Free(attr_name);
+		SIValue_Free(attr_value);
 	}
 }
 
@@ -168,3 +169,4 @@ void RdbLoadGraph_v4(RedisModuleIO *rdb, GraphContext *gc) {
 	// Resize and flush all pending changes to matrices.
 	Graph_ApplyAllPending(gc->g);
 }
+
