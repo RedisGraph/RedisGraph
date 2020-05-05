@@ -27,7 +27,9 @@ void _FT_Append(FT_FilterNode **root_ptr, FT_FilterNode *child) {
 			FilterTree_AppendLeftChild(root, child);
 			return;
 		}
-		if(root->cond.right == NULL) {
+
+		// NOT condition nodes should always have a NULL right child; do not replace it.
+		if(root->cond.right == NULL && root->cond.op != OP_NOT) {
 			FilterTree_AppendRightChild(root, child);
 			return;
 		}
