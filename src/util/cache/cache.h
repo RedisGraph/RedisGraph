@@ -42,7 +42,7 @@ typedef struct Cache {
  *                 supply an appropriate function to avoid double resource releasing
  * @retval cache pointer - Initialized empty cache.
  */
-Cache *Cache_New(size_t cacheSize, cacheValueFreeFunc freeCB);
+Cache *Cache_New(uint cacheSize, cacheValueFreeFunc freeCB);
 
 /**
  * @brief  Returns a value if it is cached, NULL otherwise.
@@ -61,7 +61,8 @@ void *Cache_GetValue(Cache *cache, const char *key);
 void Cache_SetValue(Cache *cache, const char *key, void *value);
 
 /**
- * @brief  Destory a cache
+ * @brief  Destroy a cache
  * @param  *cache: cache pointer
  */
 void Cache_Free(Cache *cache);
+

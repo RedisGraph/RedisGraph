@@ -29,14 +29,14 @@ typedef struct QueueItem {
  * Nodes are removed by their priority.
  */
 typedef struct PriorityQueue {
-	size_t size;                // Current queue size
-	size_t capacity;            // Maximum queue capacity
+	uint size;                  // Current queue size
+	uint capacity;              // Maximum queue capacity
 	LinkedList linked_list;     // The underlying data structure.
 	QueueItem *emptySpace;      // Next empty place in the queue
 	bool stopLinearInsertion;   // Indication if linear insertion is possible
 	QueueItem **freeList;       // Contains previously removed nodes, for recycle.
 	QueueDataFreeFunc freeCB;   // Node data free callback.
-	size_t dataSize;            // Node data size.
+	uint dataSize;              // Node data size.
 	QueueItem *buffer;          // Array of QueueItem
 } PriorityQueue;
 
@@ -47,9 +47,7 @@ typedef struct PriorityQueue {
  * @param  freeCB: freeCB: callback for freeing a stored value.
  * @retval Initialized Queue (pointer).
  */
-PriorityQueue *PriorityQueue_Create(size_t capacity, size_t dataSize, QueueDataFreeFunc freeCB);
-
-#define PriorityQueue_New(capacity, T, T_freeCB) PriorityQueue_Create(capacity, sizeof(T), T_freeCB)
+PriorityQueue *PriorityQueue_Create(uint capacity, uint dataSize, QueueDataFreeFunc freeCB);
 
 /**
  * @brief  Returns true if the given queue is full.
@@ -120,3 +118,4 @@ void PriorityQueue_RemoveFromQueue(PriorityQueue *queue, void *data);
  * @param  *queue: Priority Queue pointer.
  */
 void PriorityQueue_Free(PriorityQueue *queue);
+

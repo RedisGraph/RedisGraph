@@ -13,7 +13,7 @@
  * @param  keyLen: key length
  * @retval hash value
  */
-static inline hash_key_t _Cache_HashKey(const char *key, size_t keyLen) {
+static inline hash_key_t _Cache_HashKey(const char *key, uint keyLen) {
 	return  XXH64(key, keyLen, 0);
 }
 
@@ -22,11 +22,12 @@ static inline void _Cache_DataFree(void *voidPtr) {
 	if(cacheData->freeFunc) cacheData->freeFunc(cacheData->value);
 }
 
-inline Cache *Cache_New(size_t cacheSize, cacheValueFreeFunc freeCB) {
+Cache *Cache_New(uint cacheSize, cacheValueFreeFunc freeCB) {
 	// Memory allocations.
 	Cache *cache = rm_malloc(sizeof(Cache));
 	// Members initialization.
-	cache->priorityQueue = PriorityQueue_New(cacheSize, CacheData, (QueueDataFreeFunc)_Cache_DataFree);
+	cache->priorityQueue = PriorityQueue_Create(cacheSize, sizeof(CacheData),
+												(QueueDataFreeFunc)_Cache_DataFree);
 	cache->lookup = raxNew();
 	cache->cacheValueFree = freeCB;
 	return cache;
@@ -60,10 +61,11 @@ void Cache_SetValue(Cache *cache, const char *key, void *value) {
 			  insertedCacheData, NULL);
 }
 
-inline void Cache_Free(Cache *cache) {
+void Cache_Free(Cache *cache) {
 	// Members destructors.
 	PriorityQueue_Free(cache->priorityQueue);
 	raxFree(cache->lookup);
 	// Memory release.
 	rm_free(cache);
 }
+
