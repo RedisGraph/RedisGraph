@@ -19,7 +19,7 @@ class CacheTest:
 };
 
 TEST_F(CacheTest, ExecutionPlanCache) {
-	Cache *cache = Cache_New(3, (cacheValueFreeFunc)ExecutionPlan_Free);
+	Cache *cache = Cache_New(3, (listValueFreeFunc)ExecutionPlan_Free);
 
 	ExecutionPlan *ep1 = (ExecutionPlan *)rm_calloc(1, sizeof(ExecutionPlan));
 	ExecutionPlan *ep2 = (ExecutionPlan *)rm_calloc(1, sizeof(ExecutionPlan));

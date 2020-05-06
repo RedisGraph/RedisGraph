@@ -6,69 +6,60 @@
 
 #include "cache.h"
 #include "xxhash.h"
+#include "../rmalloc.h"
 
 /**
  * @brief  Hash a query using XXHASH into a 64 bit.
  * @param  *key - string to be hashed.
- * @param  keyLen: key length
+ * @param  len: key length
  * @retval hash value
  */
-static inline hash_key_t _Cache_HashKey(const char *key, uint keyLen) {
-	return XXH64(key, keyLen, 0);
+static inline uint64_t _Cache_HashKey(const char *key, uint len) {
+	return XXH64(key, len, 0);
 }
 
-static inline void _Cache_DataFree(void *voidPtr) {
-	CacheData *cacheData = voidPtr;
-	if(cacheData->freeFunc) cacheData->freeFunc(cacheData->value);
-}
-
-Cache *Cache_New(uint cacheSize, cacheValueFreeFunc freeCB) {
-	// Memory allocations.
+Cache *Cache_New(uint size, listValueFreeFunc freeCB) {
 	Cache *cache = rm_malloc(sizeof(Cache));
-	// Members initialization.
-	cache->priorityQueue = PriorityQueue_Create(cacheSize, sizeof(CacheData),
-												(QueueDataFreeFunc)_Cache_DataFree);
+	// Instantiate a new list to store cached values.
+	cache->list = CacheList_New(size, freeCB);
+	// Instantiate the lookup map for fast cache retrievals.
 	cache->lookup = raxNew();
-	cache->cacheValueFree = freeCB;
 	return cache;
 }
 
 inline void *Cache_GetValue(Cache *cache, const char *key) {
-	hash_key_t hashKey = _Cache_HashKey(key, strlen(key));
-	CacheData *cacheData = raxFind(cache->lookup, (unsigned char *)&hashKey, HASH_KEY_LENGTH);
-	if(cacheData == raxNotFound) return NULL;
-	assert(cacheData); // TODO tmp, delete once guaranteed non-null
-	PriorityQueue_IncreasePriority(cache->priorityQueue, cacheData);
-	return cacheData->value;
+	uint64_t hashKey = _Cache_HashKey(key, strlen(key));
+	CacheListNode *elem = raxFind(cache->lookup, (unsigned char *)&hashKey, HASH_KEY_LENGTH);
+	if(elem == raxNotFound) return NULL;
+	// Element is now the most recently used; promote it.
+	CacheList_Promote(cache->list, elem);
+	return elem->value;
 }
 
 void Cache_SetValue(Cache *cache, const char *key, void *value) {
-	CacheData cacheData = {
-		.hashKey = _Cache_HashKey(key, strlen(key)),
-		.value = value,
-		.freeFunc = cache->cacheValueFree,
-	};
-	// The value should not already be present in the cache.
-	assert(raxFind(cache->lookup, (unsigned char *)&cacheData.hashKey, HASH_KEY_LENGTH) == raxNotFound);
-	// Remove least recently used entry.
-	if(PriorityQueue_IsFull(cache->priorityQueue)) {
-		// Get cache data from queue.
-		CacheData *evictedCacheData = PriorityQueue_Dequeue(cache->priorityQueue);
-		// Remove from storage.
-		raxRemove(cache->lookup, (unsigned char *)&evictedCacheData->hashKey, HASH_KEY_LENGTH, NULL);
+	uint64_t hashval = _Cache_HashKey(key, strlen(key));
+	CacheListNode *node;
+	if(CacheList_IsFull(cache->list)) {
+		/* The list is full, evict the least-recently-used element
+		 * and reuse its space for the new entry. */
+		node = CacheList_RemoveTail(cache->list);
+		// Remove evicted element from the lookup map.
+		raxRemove(cache->lookup, (unsigned char *)&node->hashval, HASH_KEY_LENGTH, NULL);
+	} else {
+		// The list has not yet been filled, introduce a new node.
+		node = CacheList_GetUnused(cache->list);
 	}
-	// Add to PriorityQueue.
-	CacheData *insertedCacheData = (CacheData *)PriorityQueue_Enqueue(cache->priorityQueue, &cacheData);
-	// Store in storage.
-	raxInsert(cache->lookup, (unsigned char *)&insertedCacheData->hashKey, HASH_KEY_LENGTH,
-			  insertedCacheData, NULL);
+
+	// Populate the node.
+	CacheList_NewNode(cache->list, node, hashval, value);
+
+	// Add the new node to the mapping.
+	raxInsert(cache->lookup, (unsigned char *)&hashval, HASH_KEY_LENGTH, node, NULL);
 }
 
 void Cache_Free(Cache *cache) {
-	// Members destructors.
-	PriorityQueue_Free(cache->priorityQueue);
+	CacheList_Free(cache->list);
 	raxFree(cache->lookup);
-	// Memory release.
 	rm_free(cache);
 }
 
