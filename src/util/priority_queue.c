@@ -35,8 +35,9 @@ static QueueItem *_PriorityQueue_InitQueueItem(QueueItem *node, void *data, size
  * @retval The size of the queue node.
  */
 static inline size_t _PriorityQueue_SizeOfQueueItem(size_t dataSize) {
-	size_t queue_item_size = sizeof(QueueItem);
-	return dataSize + queue_item_size;
+	return dataSize + sizeof(LinkedListNode) + sizeof(bool);
+	// size_t queue_item_size = sizeof(QueueItem);
+	// return dataSize + queue_item_size;
 }
 
 PriorityQueue *PriorityQueue_Create(size_t capacity, size_t dataSize, QueueDataFreeFunc freeCB) {
@@ -160,3 +161,4 @@ void PriorityQueue_Free(PriorityQueue *queue) {
 	rm_free(queue->buffer);
 	rm_free(queue);
 }
+
