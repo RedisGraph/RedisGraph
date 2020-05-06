@@ -6,43 +6,29 @@
 
 #pragma once
 
-#include "../priority_queue.h"
-#include "rax.h"
+#include "cache_list.h"
+#include "../../deps/rax/rax.h"
 
 #define HASH_KEY_LENGTH 8
-
-typedef uint64_t hash_key_t;
-typedef void (*cacheValueFreeFunc)(void *);
-
-/**
- * @brief  Struct for holding cache data.
- */
-typedef struct CacheData {
-	hash_key_t hashKey;             // CacheData key - 64 bit hashed key.
-	void *value;                    // Value to be stored in cache.
-	cacheValueFreeFunc freeFunc;    // function to free the stored value.
-} CacheData;
-
 
 /**
  * @brief Key-value cache with hard limit of items stored. Uses LRU policy for cache eviction.
  * Stores actual copy (memcpy) of the object itself.
  */
 typedef struct Cache {
-	rax *lookup;                        // Storage - Rax radix tree.
-	PriorityQueue *priorityQueue;       // Priority Queue for maintaining eviction policy.
-	cacheValueFreeFunc cacheValueFree;  // function pointer to free cache value.
+	rax *lookup;            // Map of hash keys to cache values for fast lookups.
+	CacheList *list;        // Doubly-linked list container for cache elements.
 } Cache;
 
 /**
  * @brief  Initialize a cache.
- * @param  cacheSize: Number of entries.
+ * @param  size: Number of entries.
  * @param  freeCB: callback for freeing the stored values.
  *                 Note: if the original object is a nested compound object,
  *                 supply an appropriate function to avoid double resource releasing
  * @retval cache pointer - Initialized empty cache.
  */
-Cache *Cache_New(uint cacheSize, cacheValueFreeFunc freeCB);
+Cache *Cache_New(uint size, listValueFreeFunc freeCB);
 
 /**
  * @brief  Returns a value if it is cached, NULL otherwise.
