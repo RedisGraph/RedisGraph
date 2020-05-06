@@ -20,7 +20,7 @@ class PriorityQueueTest:
 };
 
 TEST_F(PriorityQueueTest, NewQueueTest) {
-	PriorityQueue *priority_queue = PriorityQueue_New(QUEUE_SIZE, int, NULL);
+	PriorityQueue *priority_queue = PriorityQueue_Create(QUEUE_SIZE, sizeof(int), NULL);
 	ASSERT_TRUE(priority_queue != NULL);
 	ASSERT_TRUE(PriorityQueue_IsEmpty(priority_queue));
 	PriorityQueue_Free(priority_queue);
@@ -29,7 +29,7 @@ TEST_F(PriorityQueueTest, NewQueueTest) {
 // This test validates data integrity over simple insertion and evection for the queue in FIFO manner.
 TEST_F(PriorityQueueTest, SimpleEnqueueDequeue) {
 	int i;
-	PriorityQueue *priority_queue = PriorityQueue_New(QUEUE_SIZE, int, NULL);
+	PriorityQueue *priority_queue = PriorityQueue_Create(QUEUE_SIZE, sizeof(int), NULL);
 	// Enqueue the range [0,9].
 	for(i = 0; i < QUEUE_SIZE; i++) {
 		ASSERT_EQ(i, *(int *)PriorityQueue_Enqueue(priority_queue, &i));
@@ -47,7 +47,7 @@ TEST_F(PriorityQueueTest, SimpleEnqueueDequeue) {
 TEST_F(PriorityQueueTest, RemoveFromQueue) {
 	int i;
 	int *data_ptr;
-	PriorityQueue *priority_queue = PriorityQueue_New(QUEUE_SIZE, int, NULL);
+	PriorityQueue *priority_queue = PriorityQueue_Create(QUEUE_SIZE, sizeof(int), NULL);
 	// Enqueue the range [0,9]. Save the last value in data_ptr.
 	for(i = 0; i < QUEUE_SIZE; i++) {
 		data_ptr = (int *)PriorityQueue_Enqueue(priority_queue, &i);
@@ -67,7 +67,7 @@ TEST_F(PriorityQueueTest, RemoveFromQueue) {
 TEST_F(PriorityQueueTest, DecreasePriorityFullQueue) {
 	int i;
 	int *data_ptr;
-	PriorityQueue *priority_queue = PriorityQueue_New(QUEUE_SIZE, int, NULL);
+	PriorityQueue *priority_queue = PriorityQueue_Create(QUEUE_SIZE, sizeof(int), NULL);
 	// Enqueue the range [0,9]. Save the last value in data_ptr.
 	for(i = 0; i < QUEUE_SIZE; i++) {
 		data_ptr = (int *)PriorityQueue_Enqueue(priority_queue, &i);
@@ -89,7 +89,7 @@ TEST_F(PriorityQueueTest, DecreasePriorityFullQueue) {
 TEST_F(PriorityQueueTest, AgressiveDecreasePriorityFullQueue) {
 	int i;
 	int *data_ptr;
-	PriorityQueue *priority_queue = PriorityQueue_New(QUEUE_SIZE, int, NULL);
+	PriorityQueue *priority_queue = PriorityQueue_Create(QUEUE_SIZE, sizeof(int), NULL);
 	// Enqueue the range [0,9]. Save the last value in data_ptr.
 	for(i = 0; i < QUEUE_SIZE; i++) {
 		data_ptr = (int *)PriorityQueue_Enqueue(priority_queue, &i);
@@ -109,7 +109,7 @@ TEST_F(PriorityQueueTest, AgressiveDecreasePriorityFullQueue) {
 TEST_F(PriorityQueueTest, IncreasePriorityFullQueue) {
 	int i;
 	int *data_ptr;
-	PriorityQueue *priority_queue = PriorityQueue_New(QUEUE_SIZE, int, NULL);
+	PriorityQueue *priority_queue = PriorityQueue_Create(QUEUE_SIZE, sizeof(int), NULL);
 	// Enqueue first entry and save it in data_ptr.
 	i = 0;
 	data_ptr = (int *)PriorityQueue_Enqueue(priority_queue, &i);
@@ -134,7 +134,7 @@ TEST_F(PriorityQueueTest, IncreasePriorityFullQueue) {
 TEST_F(PriorityQueueTest, AgressiveIncreasePriorityFullQueue) {
 	int i;
 	int *data_ptr;
-	PriorityQueue *priority_queue = PriorityQueue_New(QUEUE_SIZE, int, NULL);
+	PriorityQueue *priority_queue = PriorityQueue_Create(QUEUE_SIZE, sizeof(int), NULL);
 	// Enqueue first entry and save it in data_ptr.
 	i = 0;
 	data_ptr = (int *)PriorityQueue_Enqueue(priority_queue, &i);
@@ -158,7 +158,7 @@ TEST_F(PriorityQueueTest, DecreasePriorityAfterRemoval) {
 	int i;
 	int *data_ptr_removed;
 	int *data_ptr_modified;
-	PriorityQueue *priority_queue = PriorityQueue_New(QUEUE_SIZE, int, NULL);
+	PriorityQueue *priority_queue = PriorityQueue_Create(QUEUE_SIZE, sizeof(int), NULL);
 	// Enqueue first entry and save it in data_ptr_removed, for later removal.
 	i = 0;
 	data_ptr_removed = (int *)PriorityQueue_Enqueue(priority_queue, &i);
@@ -186,7 +186,7 @@ TEST_F(PriorityQueueTest, AggressiveDecreasePriorityAfterRemoval) {
 	int i;
 	int *data_ptr_removed;
 	int *data_ptr_modified;
-	PriorityQueue *priority_queue = PriorityQueue_New(QUEUE_SIZE, int, NULL);
+	PriorityQueue *priority_queue = PriorityQueue_Create(QUEUE_SIZE, sizeof(int), NULL);
 	// Enqueue first entry and save it in data_ptr_removed, for later removal.
 	i = 0;
 	data_ptr_removed = (int *)PriorityQueue_Enqueue(priority_queue, &i);
@@ -212,7 +212,7 @@ TEST_F(PriorityQueueTest, IncreasePriorityAfterRemoval) {
 	int i;
 	int *data_ptr_removed;
 	int *data_ptr_modified;
-	PriorityQueue *priority_queue = PriorityQueue_New(QUEUE_SIZE, int, NULL);
+	PriorityQueue *priority_queue = PriorityQueue_Create(QUEUE_SIZE, sizeof(int), NULL);
 	// Enqueue first entry and save it in data_ptr_modified, for later modification.
 	i = 0;
 	data_ptr_modified = (int *)PriorityQueue_Enqueue(priority_queue, &i);
@@ -241,7 +241,7 @@ TEST_F(PriorityQueueTest, AgressiveIncreasePriorityAfterRemoval) {
 	int i;
 	int *data_ptr_removed;
 	int *data_ptr_modified;
-	PriorityQueue *priority_queue = PriorityQueue_New(QUEUE_SIZE, int, NULL);
+	PriorityQueue *priority_queue = PriorityQueue_Create(QUEUE_SIZE, sizeof(int), NULL);
 	// Enqueue first entry and save it in data_ptr_modified, for later modification.
 	i = 0;
 	data_ptr_modified = (int *)PriorityQueue_Enqueue(priority_queue, &i);

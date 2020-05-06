@@ -17,7 +17,7 @@
  * @param  freeCB: Data callback.
  * @retval The queue node with its own copy of the data.
  */
-static QueueItem *_PriorityQueue_InitQueueItem(QueueItem *node, void *data, size_t dataSize,
+static QueueItem *_PriorityQueue_InitQueueItem(QueueItem *node, void *data, uint dataSize,
 											   QueueDataFreeFunc freeCB) {
 	// If node was in use before, call its destructor.
 	if(node->isDirty && freeCB) {
@@ -34,13 +34,13 @@ static QueueItem *_PriorityQueue_InitQueueItem(QueueItem *node, void *data, size
  * @param  dataSize:
  * @retval The size of the queue node.
  */
-static inline size_t _PriorityQueue_SizeOfQueueItem(size_t dataSize) {
+static inline uint _PriorityQueue_SizeOfQueueItem(uint dataSize) {
 	return dataSize + sizeof(LinkedListNode) + sizeof(bool);
-	// size_t queue_item_size = sizeof(QueueItem);
+	// uint queue_item_size = sizeof(QueueItem);
 	// return dataSize + queue_item_size;
 }
 
-PriorityQueue *PriorityQueue_Create(size_t capacity, size_t dataSize, QueueDataFreeFunc freeCB) {
+PriorityQueue *PriorityQueue_Create(uint capacity, uint dataSize, QueueDataFreeFunc freeCB) {
 	// Memory allocations.
 	PriorityQueue *queue = rm_malloc(sizeof(PriorityQueue));
 	queue->buffer = rm_calloc(capacity, _PriorityQueue_SizeOfQueueItem(dataSize));
@@ -110,8 +110,8 @@ void *PriorityQueue_Enqueue(PriorityQueue *queue, void *cacheValue) {
 	return node->data;
 }
 
-static inline QueueItem *_PriorityQueue_GetNodeFromData(void *data, size_t dataSize) {
-	size_t metaDataSize = _PriorityQueue_SizeOfQueueItem(dataSize) - dataSize;
+static inline QueueItem *_PriorityQueue_GetNodeFromData(void *data, uint dataSize) {
+	uint metaDataSize = _PriorityQueue_SizeOfQueueItem(dataSize) - dataSize;
 	QueueItem *node = (QueueItem *)((char *)data - metaDataSize);
 	return node;
 }
