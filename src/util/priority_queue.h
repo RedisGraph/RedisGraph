@@ -33,7 +33,6 @@ typedef struct PriorityQueue {
 	uint capacity;              // Maximum queue capacity
 	LinkedList linked_list;     // The underlying data structure.
 	QueueItem *emptySpace;      // Next empty place in the queue
-	bool stopLinearInsertion;   // Indication if linear insertion is possible
 	QueueItem **freeList;       // Contains previously removed nodes, for recycle.
 	QueueDataFreeFunc freeCB;   // Node data free callback.
 	uint dataSize;              // Node data size.

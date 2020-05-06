@@ -53,8 +53,6 @@ PriorityQueue *PriorityQueue_Create(uint capacity, uint dataSize, QueueDataFreeF
 	queue->size = 0;
 	// First empty space is the first place in the queue array.
 	queue->emptySpace = queue->buffer;
-	// Queue hasn't reached full capacity, a linear insertion is possible.
-	queue->stopLinearInsertion = false;
 	LinkedList_Init(&queue->linked_list);
 	return queue;
 }
@@ -81,22 +79,24 @@ inline void *PriorityQueue_Dequeue(PriorityQueue *queue) {
 }
 
 void *PriorityQueue_Enqueue(PriorityQueue *queue, void *cacheValue) {
+	// TODO consider removing; impossible scenario for cache. (tested in unit test, though)
 	if(PriorityQueue_IsFull(queue)) return NULL;
 	// Init new node
 	QueueItem *emptyNode;
 	// Try to reuse a removed node if one is available.
 	if(array_len(queue->freeList) > 0) {
-		// If there are perviously removed elements, get one from the list.
+		// If there are previously removed elements, get one from the list.
 		emptyNode = array_pop(queue->freeList);
 	} else {
 		// There are no removed elements. We are in linear insertion mode, and queue->emptySpace is valid.
+		assert(queue->emptySpace);
 		emptyNode = queue->emptySpace;
 	}
 
 	QueueItem *node = _PriorityQueue_InitQueueItem(emptyNode, cacheValue, queue->dataSize,
 												   (QueueDataFreeFunc)queue->freeCB);
 	// Will be false until array is full - for linear insertion over the array.
-	if(!queue->stopLinearInsertion && emptyNode == queue->emptySpace) {
+	if(queue->emptySpace) {
 		queue->emptySpace = (QueueItem *)((char *)queue->emptySpace + _PriorityQueue_SizeOfQueueItem(
 											  queue->dataSize));
 	}
@@ -104,8 +104,8 @@ void *PriorityQueue_Enqueue(PriorityQueue *queue, void *cacheValue) {
 	LinkedList_AddNode(&queue->linked_list, (LinkedListNode *) node);
 	// Increase queue size.
 	queue->size++;
-	// Queue is full. Linear inseration is no longer an option.
-	if(PriorityQueue_IsFull(queue)) queue->stopLinearInsertion = true;
+	// Queue is full. Linear insertion is no longer an option.
+	if(PriorityQueue_IsFull(queue)) queue->emptySpace = NULL;
 
 	return node->data;
 }

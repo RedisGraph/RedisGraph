@@ -38,7 +38,7 @@ inline void *Cache_GetValue(Cache *cache, const char *key) {
 	CacheData *cacheData = raxFind(cache->lookup, (unsigned char *)&hashKey, HASH_KEY_LENGTH);
 	if(cacheData == raxNotFound) return NULL;
 	assert(cacheData); // TODO tmp, delete once guaranteed non-null
-	PriorityQueue_AggressivePromotion(cache->priorityQueue, cacheData);
+	PriorityQueue_IncreasePriority(cache->priorityQueue, cacheData);
 	return cacheData->value;
 }
 
