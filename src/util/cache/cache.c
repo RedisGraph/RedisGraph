@@ -14,7 +14,7 @@
  * @retval hash value
  */
 static inline hash_key_t _Cache_HashKey(const char *key, uint keyLen) {
-	return  XXH64(key, keyLen, 0);
+	return XXH64(key, keyLen, 0);
 }
 
 static inline void _Cache_DataFree(void *voidPtr) {
@@ -34,23 +34,26 @@ Cache *Cache_New(uint cacheSize, cacheValueFreeFunc freeCB) {
 }
 
 inline void *Cache_GetValue(Cache *cache, const char *key) {
-	unsigned long long const hashKey = _Cache_HashKey(key, strlen(key));
+	hash_key_t hashKey = _Cache_HashKey(key, strlen(key));
 	CacheData *cacheData = raxFind(cache->lookup, (unsigned char *)&hashKey, HASH_KEY_LENGTH);
-	if(cacheData != raxNotFound) PriorityQueue_AggressivePromotion(cache->priorityQueue, cacheData);
-	return (cacheData && cacheData != raxNotFound) ? cacheData->value : NULL;
+	if(cacheData == raxNotFound) return NULL;
+	assert(cacheData); // TODO tmp, delete once guaranteed non-null
+	PriorityQueue_AggressivePromotion(cache->priorityQueue, cacheData);
+	return cacheData->value;
 }
 
 void Cache_SetValue(Cache *cache, const char *key, void *value) {
-	CacheData cacheData;
-	cacheData.hashKey = _Cache_HashKey(key, strlen(key));
-	cacheData.value = value;
-	cacheData.freeFunc = cache->cacheValueFree;
-	// See if no one managed to cache it before.
+	CacheData cacheData = {
+		.hashKey = _Cache_HashKey(key, strlen(key)),
+		.value = value,
+		.freeFunc = cache->cacheValueFree,
+	};
+	// The value should not already be present in the cache.
 	assert(raxFind(cache->lookup, (unsigned char *)&cacheData.hashKey, HASH_KEY_LENGTH) == raxNotFound);
-	// Remove less recently used entry.
+	// Remove least recently used entry.
 	if(PriorityQueue_IsFull(cache->priorityQueue)) {
 		// Get cache data from queue.
-		CacheData *evictedCacheData = (CacheData *)PriorityQueue_Dequeue(cache->priorityQueue);
+		CacheData *evictedCacheData = PriorityQueue_Dequeue(cache->priorityQueue);
 		// Remove from storage.
 		raxRemove(cache->lookup, (unsigned char *)&evictedCacheData->hashKey, HASH_KEY_LENGTH, NULL);
 	}
