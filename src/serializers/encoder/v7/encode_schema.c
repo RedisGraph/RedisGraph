@@ -60,9 +60,7 @@ void RdbSaveGraphSchema_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	 * #node schemas
 	 * node schema X #node schemas
 	 * #relation schemas
-	 * unified relation schema
 	 * relation schema X #relation schemas
-	 * graph object
 	*/
 
 	// Serialize all attribute keys

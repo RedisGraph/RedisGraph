@@ -28,10 +28,7 @@ typedef struct {
 	uint64_t keys_processed;                    // Count the number of procssed graph keys.
 	uint64_t meta_keys_count;                   // The number of the meta keys representing the graph.
 	EncodeState state;                          // Represents the current encoding state.
-	uint64_t processed_nodes;                   // Number of encoded nodes.
-	uint64_t processed_deleted_nodes;           // Number of encoded deleted nodes.
-	uint64_t processed_edges;                   // Number of encoded edges.
-	uint64_t processed_deleted_edges;           // Number of encoded deleted edges.
+	uint64_t processed_entities;                // Number of encoded entities in the current state.
 	DataBlockIterator *datablock_iterator;      // Datablock iterator to be saved in the context.
 	uint current_relation_matrix_id;            // Current encoded relationship matrix.
 	GxB_MatrixTupleIter *matrix_tuple_iterator; // Matrix tuple iterator to be saved in the context.
@@ -62,31 +59,12 @@ void GraphEncodeContext_SetMetaKeysCount(GraphEncodeContext *ctx, uint64_t meta_
 // Retrieve graph currently processed key count - keys processed so far.
 uint64_t GraphEncodeContext_GetProcessedKeyCount(const GraphEncodeContext *ctx);
 
-// Retrieve graph currently encoded nodes count - nodes encoded so far.
-uint64_t GraphEncodeContext_GetProcessedNodesCount(const GraphEncodeContext *ctx);
+// Retrieve graph entities encoded so far in the current state.
+uint64_t GraphEncodeContext_GetProcessedEntitiesCount(const GraphEncodeContext *ctx);
 
-// Update the graph currently encoded nodes count.
-void GraphEncodeContext_SetProcessedNodesCount(GraphEncodeContext *ctx, uint64_t nodes);
-
-// Retrieve graph currently encoded deleted nodes count - deleted nodes encoded so far.
-uint64_t GraphEncodeContext_GetProcessedDeletedNodesCount(const GraphEncodeContext *ctx);
-
-// Update the graph currently encoded deleted nodes count.
-void GraphEncodeContext_SetProcessedDeletedNodesCount(GraphEncodeContext *ctx,
-													  uint64_t deleted_nodes);
-
-// Retrieve graph currently encoded edges count - edges encoded so far.
-uint64_t GraphEncodeContext_GetProcessedEdgesCount(const GraphEncodeContext *ctx);
-
-// Update the graph currently encoded edges count.
-void GraphEncodeContext_SetProcessedEdgesCount(GraphEncodeContext *ctx, uint64_t edges);
-
-// Retrieve graph currently encoded deleted edges count - deleted edges encoded so far.
-uint64_t GraphEncodeContext_GetProcessedDeletedEdgesCount(const GraphEncodeContext *ctx);
-
-// Update the graph currently encoded deleted edges count.
-void GraphEncodeContext_SetProcessedDeletedEdgesCount(GraphEncodeContext *ctx,
-													  uint64_t deleted_edges);
+// Update the graph graph entities encoded so far in the current state.
+void GraphEncodeContext_SetProcessedEntitiesCount(GraphEncodeContext *ctx,
+												  uint64_t processed_entities);
 
 // Retrieve stored datablock iterator.
 DataBlockIterator *GraphEncodeContext_GetDatablockIterator(const GraphEncodeContext *ctx);

@@ -26,3 +26,10 @@
 #include "graph_extensions.h"
 // Module configuration
 #include "../config.h"
+
+// This struct is for encoding version 7 and up to declare or infer the payload of the key.
+// It contains the type that was encoded and the number of entities.
+typedef struct {
+	EncodeState state;        // Payload contents.
+	uint64_t entities_count;  // Number of entities in the payload.
+} PayloadInfo;

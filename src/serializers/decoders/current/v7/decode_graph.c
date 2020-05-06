@@ -68,43 +68,73 @@ static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
 	return gc;
 }
 
+static PayloadInfo *_RdbLoadKeySchema(RedisModuleIO *rdb) {
+	/* Format:
+	*  #Number of payloads info - N
+	*  N * Payload info:
+	*      Encode state
+	*      Number of entities encoded in this state.
+	*/
+
+	uint64_t payloads_count = RedisModule_LoadUnsigned(rdb);
+	PayloadInfo *payloads = array_new(PayloadInfo, payloads_count);
+
+	for(uint i = 0; i < payloads_count; i++) {
+		// For each payload, load its type and the number of entities it contains.
+		PayloadInfo payload_info;
+		payload_info.state =  RedisModule_LoadUnsigned(rdb);
+		payload_info.entities_count =  RedisModule_LoadUnsigned(rdb);
+		payloads = array_append(payloads, payload_info);
+	}
+	return payloads;
+}
+
 GraphContext *RdbLoadGraph_v7(RedisModuleIO *rdb) {
 
 	/* Key format:
 	 * Header
+	 * Key schema
 	 * Payload(s)
 	 * */
 
 	GraphContext *gc = _DecodeHeader(rdb);
-	EncodeState encoded_state = RedisModule_LoadUnsigned(rdb);
+	// Load the key schema.
+	PayloadInfo *key_schema = _RdbLoadKeySchema(rdb);
+
 	/* The decode process contains the decode operation of many meta keys, representing independent parts of the graph.
-	 * Each key contains data on one of the following:
+	 * Each key contains data on one or more of the following:
 	 * 1. Nodes - The nodes that are currently valid in the graph.
 	 * 2. Deleted nodes - Nodes that were deleted and there ids can be re-used. Used for exact replication of data black state.
 	 * 3. Edges - The edges that are currently valid in the graph.
 	 * 4. Deleted edges - Edges that were deleted and there ids can be re-used. Used for exact replication of data black state.
 	 * 5. Graph schema - Propertoes, indices.
 	 * The following switch checks which part of the graph the current key holds, and decodes it accordingly. */
-	switch(encoded_state) {
-	case NODES:
-		RdbLoadNodes_v7(rdb, gc);
-		break;
-	case DELETED_NODES:
-		RdbLoadDeletedNodes_v7(rdb, gc);
-		break;
-	case EDGES:
-		RdbLoadEdges_v7(rdb, gc);
-		break;
-	case DELETED_EDGES:
-		RdbLoadDeletedEdges_v7(rdb, gc);
-		break;
-	case GRAPH_SCHEMA:
-		RdbLoadGraphSchema_v7(rdb, gc);
-		break;
-	default:
-		assert(false && "Unknown encoding");
-		break;
+	uint payloads_count = array_len(key_schema);
+	for(uint i = 0; i < payloads_count; i++) {
+		PayloadInfo payload = key_schema[i];
+		switch(payload.state) {
+		case NODES:
+			RdbLoadNodes_v7(rdb, gc, payload.entities_count);
+			break;
+		case DELETED_NODES:
+			RdbLoadDeletedNodes_v7(rdb, gc, payload.entities_count);
+			break;
+		case EDGES:
+			RdbLoadEdges_v7(rdb, gc, payload.entities_count);
+			break;
+		case DELETED_EDGES:
+			RdbLoadDeletedEdges_v7(rdb, gc, payload.entities_count);
+			break;
+		case GRAPH_SCHEMA:
+			RdbLoadGraphSchema_v7(rdb, gc);
+			break;
+		default:
+			assert(false && "Unknown encoding");
+			break;
+		}
 	}
+	array_free(key_schema);
+
 	GraphDecodeContext_IncreaseProcessedKeyCount(gc->decoding_context);
 	if(GraphDecodeContext_Finished(gc->decoding_context)) {
 		// Revert to default synchronization behavior

@@ -67,18 +67,16 @@ static void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e)
 }
 
 
-void RdbLoadNodes_v7(RedisModuleIO *rdb, GraphContext *gc) {
-	/* Format:
-	 * #nodes
+void RdbLoadNodes_v7(RedisModuleIO *rdb, GraphContext *gc, uint64_t node_count) {
+	/* Node Format:
 	 *      ID
 	 *      #labels M
 	 *      (labels) X M
 	 *      #properties N
 	 *      (name, value type, value) X N
-	*/
+	 */
 
-	uint64_t nodeCount = RedisModule_LoadUnsigned(rdb);
-	for(uint64_t i = 0; i < nodeCount; i++) {
+	for(uint64_t i = 0; i < node_count; i++) {
 		Node n;
 		NodeID id = RedisModule_LoadUnsigned(rdb);
 
@@ -95,20 +93,17 @@ void RdbLoadNodes_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	}
 }
 
-void RdbLoadDeletedNodes_v7(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbLoadDeletedNodes_v7(RedisModuleIO *rdb, GraphContext *gc, uint64_t deleted_node_count) {
 	/* Format:
-	* #deleted nodes N
 	* node id X N */
-	uint64_t deleted_node_count = RedisModule_LoadUnsigned(rdb);
 	for(uint64_t i = 0; i < deleted_node_count; i++) {
 		NodeID id = RedisModule_LoadUnsigned(rdb);
 		Serializer_Graph_MarkNodeDeleted(gc->g, id);
 	}
 }
 
-void RdbLoadEdges_v7(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbLoadEdges_v7(RedisModuleIO *rdb, GraphContext *gc, uint64_t edge_count) {
 	/* Format:
-	 * #edges (N)
 	 * {
 	 *  edge ID
 	 *  source node ID
@@ -117,10 +112,8 @@ void RdbLoadEdges_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	 * } X N
 	 * edge properties X N */
 
-	uint64_t edgeCount = RedisModule_LoadUnsigned(rdb);
-
 	// Construct connections.
-	for(uint64_t i = 0; i < edgeCount; i++) {
+	for(uint64_t i = 0; i < edge_count; i++) {
 		Edge e;
 		EdgeID edgeId = RedisModule_LoadUnsigned(rdb);
 		NodeID srcId = RedisModule_LoadUnsigned(rdb);
@@ -131,11 +124,9 @@ void RdbLoadEdges_v7(RedisModuleIO *rdb, GraphContext *gc) {
 	}
 }
 
-void RdbLoadDeletedEdges_v7(RedisModuleIO *rdb, GraphContext *gc) {
+void RdbLoadDeletedEdges_v7(RedisModuleIO *rdb, GraphContext *gc, uint64_t deleted_edge_count) {
 	/* Format:
-	 * #deleted edges N
 	 * edge id X N */
-	uint64_t deleted_edge_count = RedisModule_LoadUnsigned(rdb);
 	for(uint64_t i = 0; i < deleted_edge_count; i++) {
 		EdgeID id = RedisModule_LoadUnsigned(rdb);
 		Serializer_Graph_MarkEdgeDeleted(gc->g, id);

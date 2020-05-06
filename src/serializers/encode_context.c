@@ -19,10 +19,7 @@ inline void GraphEncodeContext_Reset(GraphEncodeContext *ctx) {
 	assert(ctx);
 	ctx->state = INIT;
 	ctx->keys_processed = 0;
-	ctx->processed_nodes = 0;
-	ctx->processed_edges = 0;
-	ctx->processed_deleted_nodes = 0;
-	ctx->processed_deleted_edges = 0;
+	ctx->processed_entities = 0;
 	ctx->datablock_iterator = NULL;
 	ctx->current_relation_matrix_id = 0;
 	ctx->matrix_tuple_iterator = NULL;
@@ -57,46 +54,15 @@ inline uint64_t GraphEncodeContext_GetProcessedKeyCount(const GraphEncodeContext
 	return ctx->keys_processed;
 }
 
-inline uint64_t GraphEncodeContext_GetProcessedNodesCount(const GraphEncodeContext *ctx) {
+inline uint64_t GraphEncodeContext_GetProcessedEntitiesCount(const GraphEncodeContext *ctx) {
 	assert(ctx);
-	return ctx->processed_nodes;
+	return ctx->processed_entities;
 }
 
-inline void GraphEncodeContext_SetProcessedNodesCount(GraphEncodeContext *ctx, uint64_t nodes) {
+inline void GraphEncodeContext_SetProcessedEntitiesCount(GraphEncodeContext *ctx,
+														 uint64_t processed_entities) {
 	assert(ctx);
-	ctx->processed_nodes = nodes;
-}
-
-inline uint64_t GraphEncodeContext_GetProcessedDeletedNodesCount(const GraphEncodeContext *ctx) {
-	assert(ctx);
-	return ctx->processed_deleted_nodes;
-}
-
-inline void GraphEncodeContext_SetProcessedDeletedNodesCount(GraphEncodeContext *ctx,
-															 uint64_t deleted_nodes) {
-	assert(ctx);
-	ctx->processed_deleted_nodes = deleted_nodes;
-}
-
-inline uint64_t GraphEncodeContext_GetProcessedEdgesCount(const GraphEncodeContext *ctx) {
-	assert(ctx);
-	return ctx->processed_edges;
-}
-
-inline void GraphEncodeContext_SetProcessedEdgesCount(GraphEncodeContext *ctx, uint64_t edges) {
-	assert(ctx);
-	ctx->processed_edges = edges;
-}
-
-inline uint64_t GraphEncodeContext_GetProcessedDeletedEdgesCount(const GraphEncodeContext *ctx) {
-	assert(ctx);
-	return ctx->processed_deleted_edges;
-}
-
-inline void GraphEncodeContext_SetProcessedDeletedEdgesCount(GraphEncodeContext *ctx,
-															 uint64_t deleted_edges) {
-	assert(ctx);
-	ctx->processed_deleted_edges = deleted_edges;
+	ctx->processed_entities = processed_entities;
 }
 
 inline DataBlockIterator *GraphEncodeContext_GetDatablockIterator(const GraphEncodeContext *ctx) {

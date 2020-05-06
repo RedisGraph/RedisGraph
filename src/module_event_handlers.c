@@ -75,13 +75,14 @@ static bool _GraphContext_NameContainsTag(const GraphContext *gc) {
 
 // Calculate how many virtual keys are needed to represent the graph.
 static uint64_t _GraphContext_RequiredMetaKeys(const GraphContext *gc) {
-	uint64_t required_keys = 0;
 	RG_Config config = Config_GetModuleConfig();
-	required_keys += ceil((double)Graph_NodeCount(gc->g) / config.entities_threshold);
-	required_keys += ceil((double)Graph_EdgeCount(gc->g) / config.entities_threshold);
-	required_keys += ceil((double)Graph_DeletedNodeCount(gc->g) / config.entities_threshold);
-	required_keys += ceil((double)Graph_DeletedEdgeCount(gc->g) / config.entities_threshold);
-	return required_keys;
+	// If no limitation, return 0. The graph can be encoded in a single key.
+	if(config.entities_threshold == UNLIMITED) return 0;
+	uint64_t entities_count = Graph_NodeCount(gc->g) + Graph_EdgeCount(gc->g) + Graph_DeletedNodeCount(
+								  gc->g) + Graph_DeletedEdgeCount(gc->g);
+	if(entities_count == 0) return 0;
+	uint64_t key_count = ceil((double)entities_count / config.entities_threshold) - 1;
+	return key_count >= 0 ? key_count : 0;
 }
 
 static void _CreateGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
