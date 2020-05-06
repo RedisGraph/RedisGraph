@@ -81,7 +81,7 @@ int GraphContextType_Register(RedisModuleCtx *ctx) {
 								 .free = _GraphContextType_Free,
 								};
 
-	if(Redis_Version_IsVersionCompliant(6, 0, 0)) {
+	if(Redis_Version_GreaterOrEqual(6, 0, 0)) {
 		tm.aux_save = _GraphContextType_AuxSave;
 		tm.aux_load = _GraphContextType_AuxLoad;
 		tm.aux_save_triggers = REDISMODULE_AUX_BEFORE_RDB | REDISMODULE_AUX_AFTER_RDB;

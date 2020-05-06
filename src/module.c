@@ -88,8 +88,8 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	}
 
 	// Validate minimum redis-server version.
-	if(!Redis_Version_IsVersionCompliant(MIN_REDIS_VERION_MAJOR, MIN_REDIS_VERION_MINOR,
-										 MIN_REDIS_VERION_PATCH)) {
+	if(!Redis_Version_GreaterOrEqual(MIN_REDIS_VERION_MAJOR, MIN_REDIS_VERION_MINOR,
+									 MIN_REDIS_VERION_PATCH)) {
 		RedisModule_Log(ctx, "warning", "RedisGraph requires redis-server version %d.%d.%d and up",
 						MIN_REDIS_VERION_MAJOR, MIN_REDIS_VERION_MINOR, MIN_REDIS_VERION_PATCH);
 		return REDISMODULE_ERR;

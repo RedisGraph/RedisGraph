@@ -19,4 +19,4 @@ typedef struct {
 Redis_Version RG_GetRedisVersion();
 
 // Checks if the current redis server version is compliant (grater or equal) to a given version.
-bool Redis_Version_IsVersionCompliant(uint major, uint minor, uint patch);
+bool Redis_Version_GreaterOrEqual(uint major, uint minor, uint patch);

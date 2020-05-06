@@ -12,6 +12,7 @@
 #include "serializers/graphcontext_type.h"
 #include "serializers/graphmeta_type.h"
 #include "config.h"
+#include "util/redis_version.h"
 
 // Global array tracking all extant GraphContexts.
 extern GraphContext **graphs_in_keyspace;
@@ -193,8 +194,10 @@ static void _PersistenceEventHandler(RedisModuleCtx *ctx, RedisModuleEvent eid, 
 
 static void _RegisterServerEvents(RedisModuleCtx *ctx) {
 	RedisModule_SubscribeToKeyspaceEvents(ctx, REDISMODULE_NOTIFY_GENERIC, _RenameGraphHandler);
-	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_FlushDB, _FlushDBHandler);
-	RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Persistence, _PersistenceEventHandler);
+	if(Redis_Version_GreaterOrEqual(6, 0, 0)) {
+		RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_FlushDB, _FlushDBHandler);
+		RedisModule_SubscribeToServerEvent(ctx, RedisModuleEvent_Persistence, _PersistenceEventHandler);
+	}
 }
 
 static void RG_ForkPrepare() {

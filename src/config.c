@@ -61,7 +61,7 @@ static uint64_t _Config_GetEntitiesThreshold(RedisModuleCtx *ctx, RedisModuleStr
 											 int argc) {
 
 	// For redis-server versions below 6.0.0, we will not split the graph to virtual keys.
-	if(!Redis_Version_IsVersionCompliant(6, 0, 0)) return ENTITIES_THRESHOLD_UNLIMITED;
+	if(!Redis_Version_GreaterOrEqual(6, 0, 0)) return ENTITIES_THRESHOLD_UNLIMITED;
 	// Default.
 	long long threshold = ENTITIES_THRESHOLD_DEFAULT;
 
