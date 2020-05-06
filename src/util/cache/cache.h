@@ -11,7 +11,7 @@
 
 #define HASH_KEY_LENGTH 8
 
-typedef unsigned long long hash_key_t;
+typedef uint64_t hash_key_t;
 typedef void (*cacheValueFreeFunc)(void *);
 
 /**
