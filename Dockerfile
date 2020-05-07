@@ -13,8 +13,10 @@ ARG ARCH=x64
 
 #----------------------------------------------------------------------------------------------
 FROM redisfab/redis:${REDIS_VER}-${ARCH}-${OSNICK} AS redis
+# Build based on ${OS} (i.e., 'builder'), redis files are copies from 'redis'
 FROM ${OS} AS builder
 
+# Re-introducude arguments to this image
 ARG OSNICK
 ARG OS
 ARG ARCH
@@ -43,15 +45,15 @@ RUN set -ex ;\
 
 RUN make
 
-ARG PACK=0
 ARG TEST=0
+ARG PACK=0
 
+RUN set -ex ;\
+	if [ "$TEST" = "1" ]; then TEST= make test; fi
 RUN set -ex ;\
 	if [ "$PACK" = "1" ]; then \
 		python -m RAMP.ramp pack -m ramp.yml -o "build/redisgraph.{os}-{architecture}.{semantic_version}.zip" src/redisgraph.so ;\
 	fi
-RUN set -ex ;\
-	if [ "$TEST" = "1" ]; then TEST= make test; fi
 
 #---------------------------------------------------------------------------------------------- 
 FROM redisfab/redis:${REDIS_VER}-${ARCH}-${OSNICK}
