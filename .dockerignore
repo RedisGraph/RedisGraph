@@ -1,0 +1,7 @@
+/bin/
+.venv/
+__pycache__/
+*.o
+*.d
+*.so
+*.pyc
