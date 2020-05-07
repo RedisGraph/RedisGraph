@@ -46,5 +46,5 @@ Redis_Version RG_GetRedisVersion() {
 inline bool Redis_Version_GreaterOrEqual(uint major, uint minor, uint patch) {
 	if(!_initialized) RG_GetRedisVersion();
 	return _SemanticVersion(major, minor, patch) <=
-		   _SemanticVersion(_redis_version.major, _redis_version.major, _redis_version.patch);
+		   _SemanticVersion(_redis_version.major, _redis_version.minor, _redis_version.patch);
 }
