@@ -150,6 +150,8 @@ GraphContext *RdbLoadGraph_v7(RedisModuleIO *rdb) {
 		GraphDecodeContext_Reset(gc->decoding_context);
 		// Graph has finished decoding, inform the module.
 		ModuleEventHandler_DecreaseDecodingGraphsCount();
+		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
+		RedisModule_Log(ctx, "notice", "Done decoding graph %s", gc->graph_name);
 	}
 	QueryCtx_Free(); // Release thread-local variables.
 	return gc;

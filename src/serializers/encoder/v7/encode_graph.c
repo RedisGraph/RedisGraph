@@ -44,21 +44,6 @@ static void _RdbSaveHeader(RedisModuleIO *rdb, GraphContext *gc) {
 
 }
 
-// Select the first state to encode.
-static void _SelectFirstState(GraphContext *gc) {
-	// If there are nodes
-	if(Graph_NodeCount(gc->g) > 0) {
-		GraphEncodeContext_SetEncodeState(gc->encoding_context, NODES);
-	} else if(array_len(gc->g->nodes->deletedIdx) > 0) {
-		// If all nodes are deleted
-		GraphEncodeContext_SetEncodeState(gc->encoding_context, DELETED_NODES);
-	}
-	// No nodes and no deleted nodes => no edges or deleted edges. Only schema.
-	else {
-		GraphEncodeContext_SetEncodeState(gc->encoding_context, GRAPH_SCHEMA);
-	}
-}
-
 // Returns the a state information regarding the number of entities required to encode in this state.
 static PayloadInfo _StatePayloadInfo(GraphContext *gc, EncodeState state,
 									 uint64_t offset, uint64_t entities_to_encode) {
@@ -209,6 +194,8 @@ void RdbSaveGraph_v7(RedisModuleIO *rdb, void *value) {
 	GraphEncodeContext_IncreaseProcessedCount(gc->encoding_context);
 	if(GraphEncodeContext_Finished(gc->encoding_context)) {
 		GraphEncodeContext_Reset(gc->encoding_context);
+		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
+		RedisModule_Log(ctx, "notice", "Done encoding graph %s", gc->graph_name);
 	}
 
 	// If a lock was acquired, release it.

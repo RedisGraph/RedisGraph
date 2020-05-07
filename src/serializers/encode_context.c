@@ -11,6 +11,7 @@
 
 inline GraphEncodeContext *GraphEncodeContext_New() {
 	GraphEncodeContext *ctx = rm_malloc(sizeof(GraphEncodeContext));
+	ctx->meta_keys_count = 0;
 	GraphEncodeContext_Reset(ctx);
 	return ctx;
 }

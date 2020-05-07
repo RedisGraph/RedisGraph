@@ -110,6 +110,8 @@ static void _CreateGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
 		RedisModule_CloseKey(key);
 		RedisModule_FreeString(ctx, meta_rm_string);
 	}
+	RedisModule_Log(ctx, "notice", "Created %d virtual keys for graph %s", meta_key_count,
+					gc->graph_name);
 	GraphEncodeContext_SetMetaKeysCount(gc->encoding_context, meta_key_count);
 }
 
@@ -133,6 +135,7 @@ static void _DeleteGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc, bool dec
 		RedisModule_CloseKey(key);
 		RedisModule_FreeString(ctx, meta_rm_string);
 	}
+	RedisModule_Log(ctx, "notice", "Deleted %d virtual keys for graph %s", key_count, gc->graph_name);
 }
 
 // Create the meta keys for each graph in the key space - used on RDB start event.
