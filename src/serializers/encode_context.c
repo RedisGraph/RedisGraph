@@ -11,7 +11,7 @@
 
 inline GraphEncodeContext *GraphEncodeContext_New() {
 	GraphEncodeContext *ctx = rm_malloc(sizeof(GraphEncodeContext));
-	ctx->meta_keys_count = 0;
+	ctx->meta_keys = raxNew();
 	GraphEncodeContext_Reset(ctx);
 	return ctx;
 }
@@ -42,12 +42,22 @@ inline void GraphEncodeContext_SetEncodeState(GraphEncodeContext *ctx, EncodeSta
 
 inline uint64_t GraphEncodeContext_GetKeyCount(const GraphEncodeContext *ctx) {
 	assert(ctx);
-	return ctx->meta_keys_count + 1;
+	return raxSize(ctx->meta_keys) + 1;
 }
 
-void GraphEncodeContext_SetMetaKeysCount(GraphEncodeContext *ctx, uint64_t meta_keys_count) {
+inline void GraphEncodeContext_AddMetaKey(GraphEncodeContext *ctx, const char *key) {
 	assert(ctx);
-	ctx->meta_keys_count = meta_keys_count;
+	raxInsert(ctx->meta_keys, (unsigned char *)key, strlen(key), NULL, NULL);
+}
+
+inline unsigned char **GraphEncodeContext_GetMetaKeys(const GraphEncodeContext *ctx) {
+	assert(ctx);
+	return raxKeys(ctx->meta_keys);
+}
+
+inline void GraphEncodeContext_ClearMetaKeys(GraphEncodeContext *ctx) {
+	assert(ctx);
+	raxClear(ctx->meta_keys);
 }
 
 inline uint64_t GraphEncodeContext_GetProcessedKeyCount(const GraphEncodeContext *ctx) {
@@ -142,5 +152,8 @@ inline void GraphEncodeContext_IncreaseProcessedCount(GraphEncodeContext *ctx) {
 }
 
 inline void GraphEncodeContext_Free(GraphEncodeContext *ctx) {
-	if(ctx) rm_free(ctx);
+	if(ctx) {
+		raxFree(ctx->meta_keys);
+		rm_free(ctx);
+	}
 }

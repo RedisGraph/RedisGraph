@@ -135,7 +135,16 @@ GraphContext *RdbLoadGraph_v7(RedisModuleIO *rdb) {
 	}
 	array_free(key_schema);
 
+	// Update decode context.
 	GraphDecodeContext_IncreaseProcessedKeyCount(gc->decoding_context);
+	// Before finalizing keep encountered meta keys names, for future deletion.
+	const RedisModuleString *rm_key_name = RedisModule_GetKeyNameFromIO(rdb);
+	const char *key_name = RedisModule_StringPtrLen(rm_key_name, NULL);
+	// The virtual key name is not equal the graph name.
+	if(strcmp(key_name, gc->graph_name) != 0) {
+		GraphDecodeContext_AddMetaKey(gc->decoding_context, key_name);
+	}
+
 	if(GraphDecodeContext_Finished(gc->decoding_context)) {
 		// Revert to default synchronization behavior
 		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);

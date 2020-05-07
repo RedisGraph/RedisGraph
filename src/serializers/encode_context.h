@@ -12,6 +12,7 @@
 #include "../util/datablock/datablock.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "../graph/entities/graph_entity.h"
+#include "rax.h"
 
 // Represent a graph encoding state.
 typedef enum {
@@ -26,7 +27,7 @@ typedef enum {
 // A struct that maintains the state of a graph encoding to RDB or encode from RDB.
 typedef struct {
 	uint64_t keys_processed;                    // Count the number of procssed graph keys.
-	uint64_t meta_keys_count;                   // The number of the meta keys representing the graph.
+	rax *meta_keys;                             // The holds the names of meta keys representing the graph.
 	EncodeState state;                          // Represents the current encoding state.
 	uint64_t processed_entities;                // Number of encoded entities in the current state.
 	DataBlockIterator *datablock_iterator;      // Datablock iterator to be saved in the context.
@@ -53,8 +54,14 @@ void GraphEncodeContext_SetEncodeState(GraphEncodeContext *ctx, EncodeState phas
 // Retrieve the graph representing keys count.
 uint64_t GraphEncodeContext_GetKeyCount(const GraphEncodeContext *ctx);
 
-// Sets the number of meta keys required for encodeing the graph.
-void GraphEncodeContext_SetMetaKeysCount(GraphEncodeContext *ctx, uint64_t meta_keys_count);
+// Add a meta key name, required for encoding the graph.
+void GraphEncodeContext_AddMetaKey(GraphEncodeContext *ctx, const char *key);
+
+// Returns a dynamic array with copies of the meta key names.
+unsigned char **GraphEncodeContext_GetMetaKeys(const GraphEncodeContext *ctx);
+
+// Removes the stored meta key names from the context.
+void GraphEncodeContext_ClearMetaKeys(GraphEncodeContext *ctx);
 
 // Retrieve graph currently processed key count - keys processed so far.
 uint64_t GraphEncodeContext_GetProcessedKeyCount(const GraphEncodeContext *ctx);

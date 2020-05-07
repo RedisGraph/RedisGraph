@@ -13,6 +13,7 @@
 #include "serializers/graphmeta_type.h"
 #include "config.h"
 #include "util/redis_version.h"
+#include "util/uuid.h"
 
 // Global array tracking all extant GraphContexts.
 extern GraphContext **graphs_in_keyspace;
@@ -89,52 +90,54 @@ static void _CreateGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
 	uint meta_key_count = _GraphContext_RequiredMetaKeys(gc);
 	bool graph_name_contains_tag = _GraphContext_NameContainsTag(gc);
 	for(uint i = 1; i <= meta_key_count; i++) {
+		char *uuid = UUID_New();
 		RedisModuleString *meta_rm_string;
 		/* Meta keys need to be in the exact shard/slot as the graph context key, to avoid graph sharding - we want to save all  the graph keys on the same shard.
 		 * For that, we need to that them In so their tag hash value will be the same as the graph context key hash value.
 		 * If the graph name already contains a tag, we can duplicate the graph name completely for each meta key. If not, the meta keys tag will be the graph name, so
 		 * when hashing the graphcontext key name (graph name) and the graph meta key tag (graph name) the hash values will be the same. */
 		if(graph_name_contains_tag) {
-			// Graph already has a tag, create a meta key of "graph_name_i"
-			meta_rm_string = RedisModule_CreateStringPrintf(ctx, "%s_%u", gc->graph_name, i);
+			// Graph already has a tag, create a meta key of "graph_name_uuid"
+			meta_rm_string = RedisModule_CreateStringPrintf(ctx, "%s_%s", gc->graph_name, uuid);
 		} else {
 			// Graph is untagged, one must be introduced to ensure that keys are propagated to the same node.
 			// Create a meta key of "{graph_name}graph_name_i"
-			meta_rm_string = RedisModule_CreateStringPrintf(ctx, "{%s}%s_%u", gc->graph_name,
-															gc->graph_name, i);
+			meta_rm_string = RedisModule_CreateStringPrintf(ctx, "{%s}%s_%s", gc->graph_name,
+															gc->graph_name, uuid);
 		}
-
+		const char *key_name = RedisModule_StringPtrLen(meta_rm_string, NULL);
+		GraphEncodeContext_AddMetaKey(gc->encoding_context, key_name);
 		RedisModuleKey *key = RedisModule_OpenKey(ctx, meta_rm_string, REDISMODULE_WRITE);
 		// Set value in key.
 		RedisModule_ModuleTypeSetValue(key, GraphMetaRedisModuleType, gc);
 		RedisModule_CloseKey(key);
 		RedisModule_FreeString(ctx, meta_rm_string);
+		rm_free(uuid);
 	}
 	RedisModule_Log(ctx, "notice", "Created %d virtual keys for graph %s", meta_key_count,
 					gc->graph_name);
-	GraphEncodeContext_SetMetaKeysCount(gc->encoding_context, meta_key_count);
 }
 
 // Delete meta keys, upon RDB encode or decode finished event triggering. The decode flag represent the event.
 static void _DeleteGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc, bool decode) {
+	unsigned char **keys;
 	uint key_count;
-	// Get the number of meta keys required, according to the "decode" flag.
-	if(decode) key_count = GraphDecodeContext_GetKeyCount(gc->decoding_context) - 1;
-	else key_count = GraphEncodeContext_GetKeyCount(gc->encoding_context) - 1;
-	bool graph_name_contains_tag = _GraphContext_NameContainsTag(gc);
-	for(uint i = 1; i <= key_count; i++) {
-		RedisModuleString *meta_rm_string;
-		if(graph_name_contains_tag) {
-			meta_rm_string = RedisModule_CreateStringPrintf(ctx, "%s_%u", gc->graph_name, i);
-		} else {
-			meta_rm_string = RedisModule_CreateStringPrintf(ctx, "{%s}%s_%u", gc->graph_name,
-															gc->graph_name, i);
-		}
+	// Get the meta keys required, according to the "decode" flag.
+	if(decode) keys = GraphDecodeContext_GetMetaKeys(gc->decoding_context);
+	else keys = GraphEncodeContext_GetMetaKeys(gc->encoding_context);
+	key_count = array_len(keys);
+	for(uint i = 0; i < key_count; i++) {
+		RedisModuleString *meta_rm_string = RedisModule_CreateStringPrintf(ctx, "%s", keys[i]);
 		RedisModuleKey *key = RedisModule_OpenKey(ctx, meta_rm_string, REDISMODULE_WRITE);
 		RedisModule_DeleteKey(key);
 		RedisModule_CloseKey(key);
 		RedisModule_FreeString(ctx, meta_rm_string);
+		rm_free(keys[i]);
 	}
+	array_free(keys);
+	// Clear the relevant context meta keys as they are no longer valid.
+	if(decode) GraphDecodeContext_ClearMetaKeys(gc->decoding_context);
+	else GraphEncodeContext_ClearMetaKeys(gc->encoding_context);
 	RedisModule_Log(ctx, "notice", "Deleted %d virtual keys for graph %s", key_count, gc->graph_name);
 }
 
