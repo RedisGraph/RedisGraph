@@ -76,14 +76,15 @@ static bool _GraphContext_NameContainsTag(const GraphContext *gc) {
 
 // Calculate how many virtual keys are needed to represent the graph.
 static uint64_t _GraphContext_RequiredMetaKeys(const GraphContext *gc) {
-	RG_Config config = Config_GetModuleConfig();
+	uint64_t vkey_entity_count = Confic_GetVirtualKeyEntityCount();
 	// If no limitation, return 0. The graph can be encoded in a single key.
-	if(config.entities_threshold == UNLIMITED) return 0;
+	if(vkey_entity_count == UNLIMITED) return 0;
 	uint64_t entities_count = Graph_NodeCount(gc->g) + Graph_EdgeCount(gc->g) + Graph_DeletedNodeCount(
 								  gc->g) + Graph_DeletedEdgeCount(gc->g);
 	if(entities_count == 0) return 0;
-	uint64_t key_count = ceil((double)entities_count / config.entities_threshold) - 1;
-	return key_count >= 0 ? key_count : 0;
+	// Calculate the required keys and substruct one since there also the graph context key.
+	uint64_t key_count = ceil((double)entities_count / vkey_entity_count) - 1;
+	return MAX(key_count, 0);
 }
 
 static void _CreateGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
@@ -92,7 +93,7 @@ static void _CreateGraphMetaKeys(RedisModuleCtx *ctx, GraphContext *gc) {
 	for(uint i = 1; i <= meta_key_count; i++) {
 		char *uuid = UUID_New();
 		RedisModuleString *meta_rm_string;
-		/* Meta keys need to be in the exact shard/slot as the graph context key, to avoid graph sharding - we want to save all  the graph keys on the same shard.
+		/* Meta keys need to be in the exact shard/slot as the graph context key, to avoid graph sharding at the target db - we want to save all the graph keys on the same shard.
 		 * For that, we need to that them In so their tag hash value will be the same as the graph context key hash value.
 		 * If the graph name already contains a tag, we can duplicate the graph name completely for each meta key. If not, the meta keys tag will be the graph name, so
 		 * when hashing the graphcontext key name (graph name) and the graph meta key tag (graph name) the hash values will be the same. */

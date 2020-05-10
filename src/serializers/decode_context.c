@@ -44,7 +44,8 @@ inline unsigned char **GraphDecodeContext_GetMetaKeys(const GraphDecodeContext *
 
 inline void GraphDecodeContext_ClearMetaKeys(GraphDecodeContext *ctx) {
 	assert(ctx);
-	raxClear(ctx->meta_keys);
+	raxFree(ctx->meta_keys);
+	ctx->meta_keys = raxNew();
 }
 
 // Returns if the the number of processed keys is equal to the total number of graph keys.

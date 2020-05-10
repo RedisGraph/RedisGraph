@@ -113,19 +113,19 @@ GraphContext *RdbLoadGraph_v7(RedisModuleIO *rdb) {
 	for(uint i = 0; i < payloads_count; i++) {
 		PayloadInfo payload = key_schema[i];
 		switch(payload.state) {
-		case NODES:
+		case ENCODE_STATE_NODES:
 			RdbLoadNodes_v7(rdb, gc, payload.entities_count);
 			break;
-		case DELETED_NODES:
+		case ENCODE_STATE_DELETED_NODES:
 			RdbLoadDeletedNodes_v7(rdb, gc, payload.entities_count);
 			break;
-		case EDGES:
+		case ENCODE_STATE_EDGES:
 			RdbLoadEdges_v7(rdb, gc, payload.entities_count);
 			break;
-		case DELETED_EDGES:
+		case ENCODE_STATE_DELETED_EDGES:
 			RdbLoadDeletedEdges_v7(rdb, gc, payload.entities_count);
 			break;
-		case GRAPH_SCHEMA:
+		case ENCODE_STATE_GRAPH_SCHEMA:
 			RdbLoadGraphSchema_v7(rdb, gc);
 			break;
 		default:

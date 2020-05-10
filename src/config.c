@@ -13,9 +13,9 @@
 
 
 #define THREAD_COUNT "THREAD_COUNT" // Config param, number of threads in thread pool
-#define ENTITIES_THRESHOLD "ENTITIES_THRESHOLD" // Config param, number of entities in virtual key
-#define ENTITIES_THRESHOLD_DEFAULT 100000
-#define ENTITIES_THRESHOLD_UNLIMITED UINT64_MAX
+#define VKEY_ENTITY_COUNT "VKEY_ENTITY_COUNT" // Config param, number of entities in virtual key
+#define VKEY_ENTITY_COUNT_DEFAULT 100000
+#define VKEY_ENTITY_COUNT_UNLIMITED UINT64_MAX
 
 extern RG_Config config; // Global module configuration.
 static bool _initialized = false;
@@ -56,22 +56,23 @@ static long long _Config_GetThreadCount(RedisModuleCtx *ctx, RedisModuleString *
 }
 
 // Tries to fetch the number of entities to encode as part of virtual key encoding.
-// Defaults to ENTITIES_THRESHOLD_DEFAULT
-static uint64_t _Config_GetEntitiesThreshold(RedisModuleCtx *ctx, RedisModuleString **argv,
-											 int argc) {
+// Defaults to VKEY_ENTITY_COUNT_DEFAULT
+static uint64_t _Config_GetVirtualKeyEntitiesThreshold(RedisModuleCtx *ctx,
+													   RedisModuleString **argv,
+													   int argc) {
 
 	// For redis-server versions below 6.0.0, we will not split the graph to virtual keys.
-	if(!Redis_Version_GreaterOrEqual(6, 0, 0)) return ENTITIES_THRESHOLD_UNLIMITED;
+	if(!Redis_Version_GreaterOrEqual(6, 0, 0)) return VKEY_ENTITY_COUNT_UNLIMITED;
 	// Default.
-	long long threshold = ENTITIES_THRESHOLD_DEFAULT;
+	long long threshold = VKEY_ENTITY_COUNT_DEFAULT;
 
 	// Entities threshold defined in configuration?
 	// Expecting configuration to be in the form of key value pairs.
 	if(argc % 2 == 0) {
-		// Scan arguments for ENTITIES_THRESHOLD.
+		// Scan arguments for VKEY_ENTITY_COUNT.
 		for(int i = 0; i < argc; i += 2) {
 			const char *param = RedisModule_StringPtrLen(argv[i], NULL);
-			if(strcasecmp(param, ENTITIES_THRESHOLD) == 0) {
+			if(strcasecmp(param, VKEY_ENTITY_COUNT) == 0) {
 				RedisModule_StringToLongLong(argv[i + 1], &threshold);
 				break;
 			}
@@ -86,13 +87,26 @@ static uint64_t _Config_GetEntitiesThreshold(RedisModuleCtx *ctx, RedisModuleStr
 }
 
 void Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-	config.entities_threshold = _Config_GetEntitiesThreshold(ctx, argv, argc);
+	config.vkey_entity_count = _Config_GetVirtualKeyEntitiesThreshold(ctx, argv, argc);
 	config.thread_count = _Config_GetThreadCount(ctx, argv, argc);
 	_initialized = true;
 }
 
-RG_Config Config_GetModuleConfig() {
-	assert(_initialized);
+/* Static function for:
+ * 1. Validation of the configuration object.
+ * 2. Future proofing retrival calls to the configuration object from withing config.c.
+ * 3. Futute proofing retrival calls to the configuration object outside config.c.
+ */
+static inline RG_Config _Config_GetModuleConfig() {
+	assert(_initialized && "Module configuration was not initialized");
 	return config;
+}
+
+long long Config_GetThreadCount() {
+	return _Config_GetModuleConfig().thread_count;
+}
+
+uint64_t Confic_GetVirtualKeyEntityCount() {
+	return _Config_GetModuleConfig().vkey_entity_count;
 }
 

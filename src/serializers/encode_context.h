@@ -16,12 +16,13 @@
 
 // Represent a graph encoding state.
 typedef enum {
-	INIT,
-	NODES,
-	DELETED_NODES,
-	EDGES,
-	DELETED_EDGES,
-	GRAPH_SCHEMA
+	ENCODE_STATE_INIT,
+	ENCODE_STATE_NODES,
+	ENCODE_STATE_DELETED_NODES,
+	ENCODE_STATE_EDGES,
+	ENCODE_STATE_DELETED_EDGES,
+	ENCODE_STATE_GRAPH_SCHEMA,
+	ENCODE_STATE_FINISH
 } EncodeState;
 
 // A struct that maintains the state of a graph encoding to RDB or encode from RDB.
@@ -29,7 +30,7 @@ typedef struct {
 	uint64_t keys_processed;                    // Count the number of procssed graph keys.
 	rax *meta_keys;                             // The holds the names of meta keys representing the graph.
 	EncodeState state;                          // Represents the current encoding state.
-	uint64_t processed_entities;                // Number of encoded entities in the current state.
+	uint64_t offset;                            // Number of encoded entities in the current state.
 	DataBlockIterator *datablock_iterator;      // Datablock iterator to be saved in the context.
 	uint current_relation_matrix_id;            // Current encoded relationship matrix.
 	GxB_MatrixTupleIter *matrix_tuple_iterator; // Matrix tuple iterator to be saved in the context.
@@ -67,11 +68,10 @@ void GraphEncodeContext_ClearMetaKeys(GraphEncodeContext *ctx);
 uint64_t GraphEncodeContext_GetProcessedKeyCount(const GraphEncodeContext *ctx);
 
 // Retrieve graph entities encoded so far in the current state.
-uint64_t GraphEncodeContext_GetProcessedEntitiesCount(const GraphEncodeContext *ctx);
+uint64_t GraphEncodeContext_GetProcessedEntitiesOffset(const GraphEncodeContext *ctx);
 
-// Update the graph graph entities encoded so far in the current state.
-void GraphEncodeContext_SetProcessedEntitiesCount(GraphEncodeContext *ctx,
-												  uint64_t processed_entities);
+// Update the graph entities encoded so far in the current state.
+void GraphEncodeContext_SetProcessedEntitiesOffset(GraphEncodeContext *ctx, uint64_t offset);
 
 // Retrieve stored datablock iterator.
 DataBlockIterator *GraphEncodeContext_GetDatablockIterator(const GraphEncodeContext *ctx);
@@ -112,7 +112,7 @@ NodeID GraphEncodeContext_GetMultipleEdgesDestinationNode(const GraphEncodeConte
 bool GraphEncodeContext_Finished(const GraphEncodeContext *ctx);
 
 // Increases the number of processed graph keys.
-void GraphEncodeContext_IncreaseProcessedCount(GraphEncodeContext *ctx);
+void GraphEncodeContext_IncreaseProcessedKeyCount(GraphEncodeContext *ctx);
 
 // Free graph encoding context.
 void GraphEncodeContext_Free(GraphEncodeContext *ctx);

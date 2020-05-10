@@ -27,7 +27,7 @@
 // Module configuration
 #include "../config.h"
 
-// This struct is for encoding version 7 and up to declare or infer the payload of the key.
+// This struct is used for to informing a payload content of a key.
 // It contains the type that was encoded and the number of entities.
 typedef struct {
 	EncodeState state;        // Payload contents.

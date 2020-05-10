@@ -110,7 +110,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	// Create thread local storage key.
 	if(!QueryCtx_Init()) return REDISMODULE_ERR;
 
-	long long threadCount = config.thread_count;
+	long long threadCount = Config_GetThreadCount();
 	if(!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
 	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", threadCount);
 

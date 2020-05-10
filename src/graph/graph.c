@@ -384,7 +384,7 @@ size_t Graph_NodeCount(const Graph *g) {
 
 uint Graph_DeletedNodeCount(const Graph *g) {
 	assert(g);
-	return array_len(g->nodes->deletedIdx);
+	return DataBlock_DeletedItemsCount(g->nodes);
 }
 
 size_t Graph_LabeledNodeCount(const Graph *g, int label) {
@@ -401,7 +401,7 @@ size_t Graph_EdgeCount(const Graph *g) {
 
 uint Graph_DeletedEdgeCount(const Graph *g) {
 	assert(g);
-	return array_len(g->edges->deletedIdx);
+	return DataBlock_DeletedItemsCount(g->edges);
 }
 
 int Graph_RelationTypeCount(const Graph *g) {
