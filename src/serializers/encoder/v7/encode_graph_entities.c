@@ -152,7 +152,7 @@ void RdbSaveDeletedEdges_v7(RedisModuleIO *rdb, GraphContext *gc,
 
 void RdbSaveNodes_v7(RedisModuleIO *rdb, GraphContext *gc, uint64_t nodes_to_encode) {
 	/* Format:
-	 * Sequence of nodes, with length of nodes_to_encode:
+	 * Node Format * nodes_to_encode:
 	 *  ID
 	 *  #labels M
 	 *  (labels) X M
@@ -219,7 +219,7 @@ static void _RdbSaveMultipleEdges(RedisModuleIO *rdb,                  // RDB IO
 
 void RdbSaveEdges_v7(RedisModuleIO *rdb, GraphContext *gc, uint64_t edges_to_encode) {
 	/* Format:
-	 * Sequence of edges, with length of edges_to_encode:
+	 * Edge format * edges_to_encode:
 	 *  edge ID
 	 *  source node ID
 	 *  destination node ID

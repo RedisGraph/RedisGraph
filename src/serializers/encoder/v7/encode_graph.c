@@ -62,7 +62,7 @@ static PayloadInfo _StatePayloadInfo(GraphContext *gc, EncodeState state,
 		required_entities_count = Graph_DeletedEdgeCount(gc->g);
 		break;
 	case ENCODE_STATE_GRAPH_SCHEMA:
-		required_entities_count = 0;
+		required_entities_count = 1;
 		break;
 	default:
 		assert(false && "Unkown encoding state in _CurrentStatePayloadInfo");
@@ -90,29 +90,24 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 	if(current_state == ENCODE_STATE_INIT) current_state = ENCODE_STATE_NODES;
 	uint64_t remaining_entities = Confic_GetVirtualKeyEntityCount();
 	// No limit on the entities, the graph is encoded in one key.
-	if(remaining_entities == UNLIMITED) {
-		PayloadInfo nodes_info = {.state = ENCODE_STATE_NODES, .entities_count = Graph_NodeCount(gc->g)};
-		PayloadInfo deleted_nodes_info = {.state = ENCODE_STATE_DELETED_NODES, .entities_count = Graph_DeletedNodeCount(gc->g)};
-		PayloadInfo edges_info = {.state = ENCODE_STATE_EDGES, .entities_count = Graph_EdgeCount(gc->g)};
-		PayloadInfo deleted_edges_info = {.state = ENCODE_STATE_DELETED_EDGES, .entities_count = Graph_DeletedEdgeCount(gc->g)};
-		PayloadInfo graph_schema_info = {.state = ENCODE_STATE_GRAPH_SCHEMA};
-		payloads = array_append(payloads, nodes_info);
-		payloads = array_append(payloads, deleted_nodes_info);
-		payloads = array_append(payloads, edges_info);
-		payloads = array_append(payloads, deleted_edges_info);
-		payloads = array_append(payloads, graph_schema_info);
+	if(remaining_entities == VKEY_ENTITY_COUNT_UNLIMITED) {
+		for(uint state = ENCODE_STATE_NODES; state < ENCODE_STATE_FINAL; state++) {
+			payloads = array_append(payloads, _StatePayloadInfo(gc, state, 0, VKEY_ENTITY_COUNT_UNLIMITED));
+		}
 	} else {
 		// Get the current state encoded entities count.
 		uint64_t offset = GraphEncodeContext_GetProcessedEntitiesOffset(gc->encoding_context);
 		// While there are still remaining entities to encode in this key and the state is valid.
-		while(remaining_entities > 0 && current_state < ENCODE_STATE_FINISH) {
+		while(remaining_entities > 0 && current_state < ENCODE_STATE_FINAL) {
 			// Get the current state payload info, with respect to offset.
 			PayloadInfo current_state_payload_info = _StatePayloadInfo(gc, current_state, offset,
 																	   remaining_entities);
 			payloads = array_append(payloads, current_state_payload_info);
 			remaining_entities -= current_state_payload_info.entities_count;
-			current_state++; // Advance in the states.
-			offset = 0; // New state offset is 0.
+			if(remaining_entities > 0) {
+				offset = 0; // New state offset is 0.
+				current_state++; // Advance in the states.
+			}
 		}
 	}
 
@@ -129,10 +124,13 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 }
 
 void RdbSaveGraph_v7(RedisModuleIO *rdb, void *value) {
-	/* Encoding format for graph context and graph meta key
-	 * Header
-	 * Key content schema
-	 * Payload(s) - Nodes / Edges / Deleted nodes/ Deleted edges/ Graph schema
+	/* Encoding format for graph context and graph meta key:
+	 *  Header
+	 *  Payload(s) count: N
+	 *  Key content X N:
+	 *      Payload type (Nodes / Edges / Deleted nodes/ Deleted edges/ Graph schema)
+	 *      Entities in payload
+	 *  Payload(s) X N
 	 *
 	 * This function will encode each payload type (if needed) in the following order:
 	 * 1. Nodes
@@ -143,8 +141,6 @@ void RdbSaveGraph_v7(RedisModuleIO *rdb, void *value) {
 	 *
 	 * Each payload type can spread over one or more keys. For example: A graph with 200,000 nodes, and the number of entities per payload
 	 * is 100,000 then there will be two nodes payloads, each containing 100,000 nodes, encoded into two different RDB meta keys.
-	 *
-	 * Each encoding phase finished encoded chooses the next encoding phase according to the graph's data.
 	 */
 
 	GraphContext *gc = value;

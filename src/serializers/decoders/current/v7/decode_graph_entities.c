@@ -56,7 +56,6 @@ static void _RdbLoadEntity(RedisModuleIO *rdb, GraphContext *gc, GraphEntity *e)
 	 * (name, value type, value) X N
 	*/
 	uint64_t propCount = RedisModule_LoadUnsigned(rdb);
-	if(!propCount) return;
 
 	for(int i = 0; i < propCount; i++) {
 		Attribute_ID attr_id = RedisModule_LoadUnsigned(rdb);

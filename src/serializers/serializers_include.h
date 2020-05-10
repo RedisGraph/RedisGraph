@@ -27,9 +27,9 @@
 // Module configuration
 #include "../config.h"
 
-// This struct is used for to informing a payload content of a key.
-// It contains the type that was encoded and the number of entities.
+// This struct is used to describe the payload content of a key.
+// It contains the type and the number of entities that were encoded.
 typedef struct {
-	EncodeState state;        // Payload contents.
+	EncodeState state;        // Payload type.
 	uint64_t entities_count;  // Number of entities in the payload.
 } PayloadInfo;

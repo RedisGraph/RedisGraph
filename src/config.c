@@ -13,9 +13,8 @@
 
 
 #define THREAD_COUNT "THREAD_COUNT" // Config param, number of threads in thread pool
-#define VKEY_ENTITY_COUNT "VKEY_ENTITY_COUNT" // Config param, number of entities in virtual key
-#define VKEY_ENTITY_COUNT_DEFAULT 100000
-#define VKEY_ENTITY_COUNT_UNLIMITED UINT64_MAX
+#define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT" // Config param, number of entities in virtual key
+#define VKEY_MAX_ENTITY_COUNT_DEFAULT 100000
 
 extern RG_Config config; // Global module configuration.
 static bool _initialized = false;
@@ -56,7 +55,7 @@ static long long _Config_GetThreadCount(RedisModuleCtx *ctx, RedisModuleString *
 }
 
 // Tries to fetch the number of entities to encode as part of virtual key encoding.
-// Defaults to VKEY_ENTITY_COUNT_DEFAULT
+// Defaults to VKEY_MAX_ENTITY_COUNT_DEFAULT
 static uint64_t _Config_GetVirtualKeyEntitiesThreshold(RedisModuleCtx *ctx,
 													   RedisModuleString **argv,
 													   int argc) {
@@ -64,15 +63,15 @@ static uint64_t _Config_GetVirtualKeyEntitiesThreshold(RedisModuleCtx *ctx,
 	// For redis-server versions below 6.0.0, we will not split the graph to virtual keys.
 	if(!Redis_Version_GreaterOrEqual(6, 0, 0)) return VKEY_ENTITY_COUNT_UNLIMITED;
 	// Default.
-	long long threshold = VKEY_ENTITY_COUNT_DEFAULT;
+	long long threshold = VKEY_MAX_ENTITY_COUNT_DEFAULT;
 
 	// Entities threshold defined in configuration?
 	// Expecting configuration to be in the form of key value pairs.
 	if(argc % 2 == 0) {
-		// Scan arguments for VKEY_ENTITY_COUNT.
+		// Scan arguments for VKEY_MAX_ENTITY_COUNT.
 		for(int i = 0; i < argc; i += 2) {
 			const char *param = RedisModule_StringPtrLen(argv[i], NULL);
-			if(strcasecmp(param, VKEY_ENTITY_COUNT) == 0) {
+			if(strcasecmp(param, VKEY_MAX_ENTITY_COUNT) == 0) {
 				RedisModule_StringToLongLong(argv[i + 1], &threshold);
 				break;
 			}

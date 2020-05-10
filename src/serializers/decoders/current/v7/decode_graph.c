@@ -22,8 +22,7 @@ static GraphContext *_GetOrCreateGraphContext(char *graph_name) {
 	}
 	// Free the name string, as it either not in used or copied.
 	RedisModule_Free(graph_name);
-	// Set the thread-local GraphContext, as it will be accessed if we're decoding indexes.
-	QueryCtx_SetGraphCtx(gc);
+
 	return gc;
 }
 
@@ -63,8 +62,8 @@ static GraphContext *_DecodeHeader(RedisModuleIO *rdb) {
 	// If it is the first key of this graph, allocate all the data structures, with the appropriate dimensions.
 	if(GraphDecodeContext_GetProcessedKeyCount(gc->decoding_context) == 0) {
 		_InitGraphDataStructure(gc->g, node_count, edge_count, label_count, relation_count);
+		GraphDecodeContext_SetKeyCount(gc->decoding_context, key_number);
 	}
-	GraphDecodeContext_SetKeyCount(gc->decoding_context, key_number);
 	return gc;
 }
 
@@ -92,9 +91,12 @@ static PayloadInfo *_RdbLoadKeySchema(RedisModuleIO *rdb) {
 GraphContext *RdbLoadGraph_v7(RedisModuleIO *rdb) {
 
 	/* Key format:
-	 * Header
-	 * Key schema
-	 * Payload(s)
+	 *  Header
+	 *  Payload(s) count: N
+	 *  Key content X N:
+	 *      Payload type (Nodes / Edges / Deleted nodes/ Deleted edges/ Graph schema)
+	 *      Entities in payload
+	 *  Payload(s) X N
 	 * */
 
 	GraphContext *gc = _DecodeHeader(rdb);
@@ -149,6 +151,8 @@ GraphContext *RdbLoadGraph_v7(RedisModuleIO *rdb) {
 		// Revert to default synchronization behavior
 		Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 		Graph_ApplyAllPending(gc->g);
+		// Set the thread-local GraphContext, as it will be accessed when creating indexes.
+		QueryCtx_SetGraphCtx(gc);
 		// Index the nodes when decoding ends.
 		uint node_schemas_count = array_len(gc->node_schemas);
 		for(uint i = 0; i < node_schemas_count; i++) {
@@ -156,13 +160,13 @@ GraphContext *RdbLoadGraph_v7(RedisModuleIO *rdb) {
 			if(s->index) Index_Construct(s->index);
 			if(s->fulltextIdx) Index_Construct(s->fulltextIdx);
 		}
+		QueryCtx_Free(); // Release thread-local variables.
 		GraphDecodeContext_Reset(gc->decoding_context);
 		// Graph has finished decoding, inform the module.
 		ModuleEventHandler_DecreaseDecodingGraphsCount();
 		RedisModuleCtx *ctx = RedisModule_GetContextFromIO(rdb);
 		RedisModule_Log(ctx, "notice", "Done decoding graph %s", gc->graph_name);
 	}
-	QueryCtx_Free(); // Release thread-local variables.
 	return gc;
 }
 

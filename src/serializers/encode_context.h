@@ -22,7 +22,7 @@ typedef enum {
 	ENCODE_STATE_EDGES,
 	ENCODE_STATE_DELETED_EDGES,
 	ENCODE_STATE_GRAPH_SCHEMA,
-	ENCODE_STATE_FINISH
+	ENCODE_STATE_FINAL
 } EncodeState;
 
 // A struct that maintains the state of a graph encoding to RDB or encode from RDB.

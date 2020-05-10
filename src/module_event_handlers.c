@@ -82,7 +82,7 @@ static uint64_t _GraphContext_RequiredMetaKeys(const GraphContext *gc) {
 	uint64_t entities_count = Graph_NodeCount(gc->g) + Graph_EdgeCount(gc->g) + Graph_DeletedNodeCount(
 								  gc->g) + Graph_DeletedEdgeCount(gc->g);
 	if(entities_count == 0) return 0;
-	// Calculate the required keys and substruct one since there also the graph context key.
+	// Calculate the required keys and substruct one since there is also the graph context key.
 	uint64_t key_count = ceil((double)entities_count / vkey_entity_count) - 1;
 	return MAX(key_count, 0);
 }

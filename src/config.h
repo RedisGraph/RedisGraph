@@ -7,6 +7,7 @@
 #pragma once
 
 #include "redismodule.h"
+#define VKEY_ENTITY_COUNT_UNLIMITED UINT64_MAX
 
 typedef struct {
 	long long thread_count;      // Thread count for thread pool.
