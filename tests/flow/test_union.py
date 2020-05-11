@@ -77,9 +77,8 @@ class testUnion(FlowTestsBase):
         union_result = redis_graph.query(union_query)
         self.env.assertEquals(union_result.result_set, non_union_result.result_set)
 
-    # Verify that edge alias reuse is allowed as intended.
-    def test04_union_referenced_edge(self):
-        # A syntax error should be raised on edge alias reuse in one side of a union.
+    # A syntax error should be raised on edge alias reuse in one side of a union.
+    def test04_union_invalid_reused_edge(self):
         try:
             query = """MATCH ()-[e]->()-[e]->() RETURN e
                        UNION
@@ -90,7 +89,8 @@ class testUnion(FlowTestsBase):
             # Expecting an error.
             pass
 
-        # Using the same edge alias once per UNION side is expected.
+    # An edge alias appearing on both sides of a UNION is expected.
+    def test05_union_valid_reused_edge(self):
         query = """MATCH ()-[e]->() RETURN e.v ORDER BY e.v
                    UNION
                    MATCH ()-[e]->() RETURN e.v ORDER BY e.v
@@ -103,7 +103,7 @@ class testUnion(FlowTestsBase):
         self.env.assertEquals(result.result_set, expected_result)
 
     # Union should be capable of collating nodes and edges in a single column.
-    def test05_union_nodes_with_edges(self):
+    def test06_union_nodes_with_edges(self):
         query = """MATCH ()-[e]->() RETURN e
                    UNION
                    MATCH (e) RETURN e"""
