@@ -22,12 +22,15 @@
 #include "arithmetic/arithmetic_expression.h"
 #include "graph/serializers/graphcontext_type.h"
 #include "redisearch_api.h"
+#include "execution_plan/execution_plan.h" // TODO only needed to get free signature, other options?
+#include "util/cache/cache.h"
 
 //------------------------------------------------------------------------------
 // Module-level global variables
 //------------------------------------------------------------------------------
 GraphContext **graphs_in_keyspace; // Global array tracking all extant GraphContexts.
 bool process_is_child;             // Flag indicating whether the running process is a child.
+Cache *query_cache = NULL;         // LRU cache for execution plans.
 
 //------------------------------------------------------------------------------
 // Thread pool variables
@@ -55,12 +58,12 @@ static int _RegisterDataTypes(RedisModuleCtx *ctx) {
 	return REDISMODULE_OK;
 }
 
-static void _PrepareModuleGlobals() {
+static void _PrepareModuleGlobals(void) {
 	graphs_in_keyspace = array_new(GraphContext *, 1);
 	process_is_child = false;
 }
 
-static void RG_ForkPrepare() {
+static void RG_ForkPrepare(void) {
 	/* At this point, a fork call has been issued. (We assume that this is because BGSave was called.)
 	 * Acquire the read-write lock of each graph to ensure that no graph is being modified, or else
 	 * the child process will deadlock when attempting to acquire that lock.
@@ -74,7 +77,7 @@ static void RG_ForkPrepare() {
 	}
 }
 
-static void RG_AfterForkParent() {
+static void RG_AfterForkParent(void) {
 	/* The process has forked, and the parent process is continuing.
 	 * Release all locks. */
 
@@ -86,7 +89,7 @@ static void RG_AfterForkParent() {
 
 }
 
-static void RG_AfterForkChild() {
+static void RG_AfterForkChild(void) {
 	/* Restrict GraphBLAS to use a single thread this is done for 2 reasons:
 	 * 1. save resources.
 	 * 2. avoid a bug in GNU OpenMP which hangs when performing parallel loop in forked process. */
@@ -148,6 +151,10 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	RegisterForkHooks(ctx);  // Set up hooks for renaming and forking logic to prevent bgsave deadlocks.
 	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
 
+	// Build the LRU cache for storing execution plans.
+	// TODO make cache size configurable, do not build if 0.
+	query_cache = Cache_New(16, (listValueFreeFunc)ExecutionPlan_Free);
+
 	// Create thread local storage key.
 	if(!QueryCtx_Init()) return REDISMODULE_ERR;
 
@@ -189,3 +196,4 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
 	return REDISMODULE_OK;
 }
+

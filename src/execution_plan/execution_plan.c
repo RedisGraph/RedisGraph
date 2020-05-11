@@ -958,7 +958,7 @@ static inline void _ExecutionPlan_InitRecordPool(ExecutionPlan *plan) {
 	plan->record_pool = ObjectPool_New(256, rec_size, (fpDestructor)Record_FreeEntries);
 }
 
-void _ExecutionPlanInit(OpBase *root) {
+static void _ExecutionPlanInit(OpBase *root) {
 	// If the ExecutionPlan associated with this op hasn't built a record pool yet, do so now.
 	_ExecutionPlan_InitRecordPool((ExecutionPlan *)root->plan);
 
@@ -1025,6 +1025,11 @@ ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan) {
 	ResultSet *rs = ExecutionPlan_Execute(plan);
 	_ExecutionPlan_FinalizeProfiling(plan->root);
 	return rs;
+}
+
+ExecutionPlan *ExecutionPlan_Clone(const ExecutionPlan *plan) {
+	// TODO
+	return NULL;
 }
 
 static void _ExecutionPlan_FreeOperations(OpBase *op) {

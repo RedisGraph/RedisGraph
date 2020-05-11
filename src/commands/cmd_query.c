@@ -11,7 +11,10 @@
 #include "../query_ctx.h"
 #include "../graph/graph.h"
 #include "../util/rmalloc.h"
+#include "../util/cache/cache.h"
 #include "../execution_plan/execution_plan.h"
+
+extern Cache *query_cache;
 
 static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc,
 							 const cypher_astnode_t *index_op) {
@@ -53,6 +56,7 @@ static inline bool _check_compact_flag(CommandCtx *command_ctx) {
 void Graph_Query(void *args) {
 	AST *ast = NULL;
 	bool lockAcquired = false;
+	ExecutionPlan *plan = NULL;
 	ResultSet *result_set = NULL;
 	CommandCtx *command_ctx = (CommandCtx *)args;
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(command_ctx);
@@ -65,6 +69,10 @@ void Graph_Query(void *args) {
 	// Parse and validate parameters only. Extract query string.
 	cypher_parse_result_t *params_parse_result = parse_params(command_ctx->query, &query_string);
 	if(params_parse_result == NULL) goto cleanup;
+
+	// Check the LRU cache to see if we already have a plan for this query.
+	plan = Cache_GetValue(query_cache, query_string);
+	if(plan) goto execute;
 
 	// Parse the query to construct an AST and validate it.
 	query_parse_result = parse_query(query_string);
@@ -101,7 +109,7 @@ void Graph_Query(void *args) {
 	QueryCtx_SetResultSet(result_set);
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
 	if(root_type == CYPHER_AST_QUERY) {  // query operation
-		ExecutionPlan *plan = NewExecutionPlan();
+		plan = NewExecutionPlan();
 		/* Make sure there are no compile-time errors.
 		 * We prefer to emit the error only once the entire execution-plan
 		 * is constructed in-favour of the time it was encountered
@@ -114,6 +122,7 @@ void Graph_Query(void *args) {
 		}
 
 		if(!plan) goto cleanup;
+execute: // TODO ugly jump, consider alternatives
 		ExecutionPlan_PreparePlan(plan);
 		result_set = ExecutionPlan_Execute(plan);
 		ExecutionPlan_Free(plan);
@@ -148,3 +157,4 @@ cleanup:
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 }
+
