@@ -168,6 +168,10 @@ void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
 	pthread_mutex_unlock(&dataBlock->mutex);
 }
 
+uint DataBlock_DeletedItemsCount(const DataBlock *dataBlock) {
+	return array_len(dataBlock->deletedIdx);
+}
+
 void DataBlock_Free(DataBlock *dataBlock) {
 	for(uint i = 0; i < dataBlock->blockCount; i++) Block_Free(dataBlock->blocks[i]);
 

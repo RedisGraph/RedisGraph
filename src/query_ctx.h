@@ -77,8 +77,6 @@ void QueryCtx_SetAST(AST *ast);
 void QueryCtx_SetError(char *error);
 /* Set the provided GraphCtx for access through the QueryCtx. */
 void QueryCtx_SetGraphCtx(GraphContext *gc);
-/* Set the Redis module context. */
-void QueryCtx_SetRedisModuleCtx(RedisModuleCtx *redisctx);
 /* Set the resultset. */
 void QueryCtx_SetResultSet(ResultSet *result_set);
 /* Set the last writer which needs to commit */

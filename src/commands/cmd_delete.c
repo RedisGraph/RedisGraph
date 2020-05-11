@@ -13,8 +13,6 @@
 #include "../query_ctx.h"
 #include "../resultset/resultset.h"
 
-extern RedisModuleType *GraphContextRedisModuleType;
-
 /* Delete graph, removing the key from Redis and
  * freeing every resource allocated by the graph. */
 int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
