@@ -7,8 +7,11 @@
 #include "query_ctx.h"
 #include "util/simple_timer.h"
 #include "arithmetic/arithmetic_expression.h"
-#include "graph/serializers/graphcontext_type.h"
+#include "serializers/graphcontext_type.h"
 #include <assert.h>
+
+// GraphContext type as it is registered at Redis.
+extern RedisModuleType *GraphContextRedisModuleType;
 
 pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
 

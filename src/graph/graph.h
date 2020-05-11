@@ -193,6 +193,11 @@ size_t Graph_NodeCount(
 	const Graph *g
 );
 
+// Returns number of deleted nodes in the graph.
+uint Graph_DeletedNodeCount(
+	const Graph *g
+);
+
 // Returns number of nodes with given label.
 size_t Graph_LabeledNodeCount(
 	const Graph *g,
@@ -201,6 +206,11 @@ size_t Graph_LabeledNodeCount(
 
 // Returns number of edges in the graph.
 size_t Graph_EdgeCount(
+	const Graph *g
+);
+
+// Returns number of deleted edges in the graph.
+uint Graph_DeletedEdgeCount(
 	const Graph *g
 );
 
