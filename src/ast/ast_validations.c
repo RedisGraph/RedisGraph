@@ -1635,14 +1635,14 @@ static AST_Validation _AST_ValidateUnionQuery(AST *mock_ast, char **reason) {
 
 	// Each self-contained query delimited by a UNION clause has its own scope.
 	uint *query_scopes = AST_GetClauseIndices(mock_ast, CYPHER_AST_UNION);
-	uint union_count = array_len(query_scopes);
-	AST *scoped_ast;
-	uint scope_end;
+	// Append the clause count to check the final scope (from the last UNION to the last clause)
+	query_scopes = array_append(query_scopes, cypher_ast_query_nclauses(mock_ast->root));
+	uint scope_count = array_len(query_scopes);
 	uint scope_start = 0;
-	for(uint i = 0; i < union_count; i ++) {
-		scope_end = query_scopes[i];
+	for(uint i = 0; i < scope_count; i ++) {
+		uint scope_end = query_scopes[i];
 		// Make a sub-AST containing only the clauses in this scope.
-		scoped_ast = _NewMockASTSegment(mock_ast->root, scope_start, scope_end);
+		AST *scoped_ast = _NewMockASTSegment(mock_ast->root, scope_start, scope_end);
 		res = _ValidateScopes(scoped_ast, reason);
 		AST_Free(scoped_ast);
 		if(res != AST_VALID) goto cleanup;
@@ -1650,12 +1650,6 @@ static AST_Validation _AST_ValidateUnionQuery(AST *mock_ast, char **reason) {
 		// Update the starting index of the scope for the next iteration..
 		scope_start = scope_end;
 	}
-
-	// Build and test the final scope (from the last UNION to the last clause)
-	scope_end = cypher_ast_query_nclauses(mock_ast->root);
-	scoped_ast = _NewMockASTSegment(mock_ast->root, scope_start, scope_end);
-	res = _ValidateScopes(scoped_ast, reason);
-	AST_Free(scoped_ast);
 
 cleanup:
 	array_free(query_scopes);

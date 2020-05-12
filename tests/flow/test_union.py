@@ -26,10 +26,10 @@ class testUnion(FlowTestsBase):
             nodes[v] = node
             redis_graph.add_node(node)
 
-        edge = Edge(nodes['v1'], "E1", nodes['v2'], properties={"v": True})
+        edge = Edge(nodes['v1'], "E1", nodes['v2'], properties={"v": "v1_v2"})
         redis_graph.add_edge(edge)
 
-        edge = Edge(nodes['v2'], "E2", nodes['v3'], properties={"v": False})
+        edge = Edge(nodes['v2'], "E2", nodes['v3'], properties={"v": "v2_v3"})
         redis_graph.add_edge(edge)
 
         redis_graph.flush()
@@ -58,7 +58,7 @@ class testUnion(FlowTestsBase):
     def test02_invalid_union(self):
         try:
             # projection must be exactly the same.
-            q = """RETURN 1 as one UNION RETURN 1 as two""" 
+            q = """RETURN 1 as one UNION RETURN 1 as two"""
             redis_graph.query(q)
             assert(False)
         except redis.exceptions.ResponseError:
@@ -98,8 +98,8 @@ class testUnion(FlowTestsBase):
                    MATCH ()-[e]->() RETURN e.v ORDER BY e.v"""
         result = redis_graph.query(query)
 
-        expected_result = [[False],
-                           [True]]
+        expected_result = [["v1_v2"],
+                           ["v2_v3"]]
         self.env.assertEquals(result.result_set, expected_result)
 
     # Union should be capable of collating nodes and edges in a single column.
