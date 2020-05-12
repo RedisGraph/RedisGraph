@@ -13,20 +13,26 @@
 #include "../schema/schema.h"
 #include "../slow_log/slow_log.h"
 #include "graph.h"
+#include "../serializers/encode_context.h"
+#include "../serializers/decode_context.h"
 
 typedef struct {
-	Graph *g;                   // Container for all matrices and entity properties
-	int ref_count;              // Number of active references.
-	rax *attributes;            // From strings to attribute IDs
-	char *graph_name;           // String associated with graph
-	char **string_mapping;      // From attribute IDs to strings
-	Schema **node_schemas;      // Array of schemas for each node label
-	Schema **relation_schemas;  // Array of schemas for each relation type
-	unsigned short index_count; // Number of indicies.
-    SlowLog *slowlog;           // Slowlog associated with graph.
+	Graph *g;                               // Container for all matrices and entity properties
+	int ref_count;                          // Number of active references.
+	rax *attributes;                        // From strings to attribute IDs
+	char *graph_name;                       // String associated with graph
+	char **string_mapping;                  // From attribute IDs to strings
+	Schema **node_schemas;                  // Array of schemas for each node label
+	Schema **relation_schemas;              // Array of schemas for each relation type
+	unsigned short index_count;             // Number of indicies.
+	SlowLog *slowlog;                       // Slowlog associated with graph.
+	GraphEncodeContext *encoding_context;   // Encode context of the graph.
+	GraphDecodeContext *decoding_context;   // Decode context of the graph.
 } GraphContext;
 
 /* GraphContext API */
+// Creates and initializes a graph context struct.
+GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t edge_cap);
 /* Retrive the graph context according to the graph name
  * readOnly is the access mode to the graph key */
 GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *graphID, bool readOnly,
@@ -35,6 +41,7 @@ GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *grap
 void GraphContext_Release(GraphContext *gc);
 // Mark graph key as "dirty" for Redis to pick up on.
 void GraphContext_MarkWriter(RedisModuleCtx *ctx, GraphContext *gc);
+
 // Mark graph as deleted, reduce graph reference count by 1.
 void GraphContext_Delete(GraphContext *gc);
 
@@ -76,6 +83,10 @@ void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n);
 
 // Add GraphContext to global array
 void GraphContext_RegisterWithModule(GraphContext *gc);
+
+// Retrive GraphContext from the global array, by name. If no such graph is registered, NULL is returned.
+GraphContext *GraphContext_GetRegisteredGraphContext(const char *graph_name);
+
 // Remove GraphContext from global array
 void GraphContext_RemoveFromRegistry(GraphContext *gc);
 
@@ -83,7 +94,7 @@ void GraphContext_RemoveFromRegistry(GraphContext *gc);
 void GraphContext_Rename(GraphContext *gc, const char *name);
 
 /* Slowlog API */
-SlowLog* GraphContext_GetSlowLog(const GraphContext *gc);
+SlowLog *GraphContext_GetSlowLog(const GraphContext *gc);
 
 #endif
 
