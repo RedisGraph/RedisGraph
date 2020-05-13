@@ -7,6 +7,7 @@
 #include "ast.h"
 #include "ast_shared.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "cypher_whitelist.h"
 #include "../procedures/procedure.h"
 #include "../arithmetic/repository.h"
@@ -41,6 +42,11 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 
 	if(cypher_astnode_type(node) == CYPHER_AST_IDENTIFIER) {
 		const char *identifier = cypher_ast_identifier_get_name(node);
+		raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
+	}
+
+	if(cypher_astnode_type(node) == CYPHER_AST_PARAMETER) {
+		const char *identifier = cypher_ast_parameter_get_name(node);
 		raxInsert(identifiers, (unsigned char *)identifier, strlen(identifier), NULL, NULL);
 	}
 
@@ -1065,7 +1071,7 @@ static void _AST_Pattern_GetDefinedIdentifiers(const cypher_astnode_t *pattern, 
 	}
 }
 
-static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identifiers) {
+static void __AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identifiers) {
 	if(!node) return;
 	cypher_astnode_type_t type = cypher_astnode_type(node);
 
@@ -1106,9 +1112,26 @@ static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identi
 		uint child_count = cypher_astnode_nchildren(node);
 		for(uint c = 0; c < child_count; c ++) {
 			const cypher_astnode_t *child = cypher_astnode_get_child(node, c);
-			_AST_GetDefinedIdentifiers(child, identifiers);
+			__AST_GetDefinedIdentifiers(child, identifiers);
 		}
 	}
+}
+
+static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identifiers) {
+	/* Query parameters are also considered identifiers
+	 * Consider query such as:
+	 * CYPHER V=2 RETURN $x
+	 * $V is an identifer.
+	 *
+	 * Introduce query parameters into identifiers map. */
+	rax *params = QueryCtx_GetParams();
+	raxIterator it;
+	raxStart(&it, params);
+	raxSeek(&it, "^", NULL, 0);
+	while(raxNext(&it)) raxInsert(identifiers, it.key, it.key_len, it.data, NULL);
+	raxStop(&it);
+
+	return __AST_GetDefinedIdentifiers(node, identifiers);
 }
 
 static void _AST_GetReferredIdentifiers(const cypher_astnode_t *node, rax *identifiers) {

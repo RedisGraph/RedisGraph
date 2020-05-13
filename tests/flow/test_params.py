@@ -70,4 +70,37 @@ class testParams(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError as e:
             pass
+    
+    def test_missing_parameter(self):
+        # Make sure missing parameters are reported back as an error.
+        query = "RETURN $missing"
+        try:
+            redis_graph.query(query)
+            assert(False)
+        except:
+            # Expecting an error.
+            pass
 
+        query = "MATCH (a) WHERE a.v = $missing RETURN a"
+        try:
+            redis_graph.query(query)
+            assert(False)
+        except:
+            # Expecting an error.
+            pass
+
+        query = "MATCH (a) SET a.v = $missing RETURN a"
+        try:
+            redis_graph.query(query)
+            assert(False)
+        except:
+            # Expecting an error.
+            pass
+
+        query = "MERGE (a {v:$missing})"
+        try:
+            redis_graph.query(query)
+            assert(False)
+        except:
+            # Expecting an error.
+            pass
