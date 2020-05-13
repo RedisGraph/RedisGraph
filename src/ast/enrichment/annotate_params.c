@@ -53,12 +53,13 @@ static void _annotate_params(AST *ast) {
 		const char *key = (const char *)iter.key;
 		const cypher_astnode_t **exp_arr = iter.data;
 		const cypher_astnode_t *param_value = raxFind(params_values, (unsigned char *) key, iter.key_len);
-		assert(param_value != raxNotFound);
+		/* if param_value is missing we'll throw a run-time error
+		 * on first access, in the meanwhile we can simply ignore it. */
+		if(param_value != raxNotFound) continue;
 		uint array_length = array_len(exp_arr);
 		for(uint i = 0; i < array_length; i++) {
 			cypher_astnode_attach_annotation(params_ctx, exp_arr[i], (void *)param_value, NULL);
 		}
-
 	}
 	raxStop(&iter);
 	raxFreeWithCallback(query_params_map, array_free);
