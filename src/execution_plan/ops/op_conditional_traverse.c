@@ -6,9 +6,6 @@
 
 #include "op_conditional_traverse.h"
 #include "shared/print_functions.h"
-#include "../../util/arr.h"
-#include "../../GraphBLASExt/GxB_Delete.h"
-#include "../../arithmetic/arithmetic_expression.h"
 #include "../../query_ctx.h"
 
 /* Forward declarations. */
@@ -18,7 +15,7 @@ static OpResult CondTraverseReset(OpBase *opBase);
 static OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void CondTraverseFree(OpBase *opBase);
 
-static inline int CondTraverseToString(const OpBase *ctx, char *buf, uint buf_len) {
+static int CondTraverseToString(const OpBase *ctx, char *buf, uint buf_len) {
 	return TraversalToString(ctx, buf, buf_len, ((const CondTraverse *)ctx)->ae);
 }
 
@@ -68,14 +65,17 @@ void _traverse(CondTraverse *op) {
 }
 
 OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
-	CondTraverse *op = rm_calloc(1, sizeof(CondTraverse));
+	CondTraverse *op = rm_malloc(sizeof(CondTraverse));
 	op->graph = g;
 	op->ae = ae;
 	op->r = NULL;
 	op->iter = NULL;
 	op->F = GrB_NULL;
 	op->M = GrB_NULL;
+	op->records = NULL;
+	op->recordsCap = 0;
 	op->recordCount = 0;
+	op->edge_ctx = NULL;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", CondTraverseInit,

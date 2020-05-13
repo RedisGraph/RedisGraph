@@ -6,11 +6,7 @@
 
 #include "op_expand_into.h"
 #include "shared/print_functions.h"
-#include "../../ast/ast.h"
-#include "../../util/arr.h"
-#include "../../util/rmalloc.h"
 #include "../../query_ctx.h"
-#include "../../GraphBLASExt/GxB_Delete.h"
 
 /* Forward declarations. */
 static OpResult ExpandIntoInit(OpBase *opBase);
@@ -65,15 +61,16 @@ static void _traverse(OpExpandInto *op) {
 }
 
 OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
-	OpExpandInto *op = rm_calloc(1, sizeof(OpExpandInto));
+	OpExpandInto *op = rm_malloc(sizeof(OpExpandInto));
 	op->graph = g;
 	op->ae = ae;
 	op->r = NULL;
 	op->F = GrB_NULL;
 	op->M = GrB_NULL;
-	op->recordCount = 0;
 	op->records = NULL;
 	op->recordsCap = 0;
+	op->recordCount = 0;
+	op->edge_ctx = NULL;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", ExpandIntoInit, ExpandIntoConsume,

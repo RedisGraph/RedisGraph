@@ -35,27 +35,30 @@ static void _Traverse_SetRelationTypes(EdgeTraverseCtx *edge_ctx, QGEdge *e) {
 	}
 }
 
+// Determine the edge directions we need to collect.
+static GRAPH_EDGE_DIR _Traverse_SetDirection(const AlgebraicExpression *ae, const QGEdge *e) {
+	// Bidirectional traversals should match both incoming and outgoing edges.
+	if(e->bidirectional) return GRAPH_EDGE_DIR_BOTH;
+
+	/* If this operation traverses a transposed edge, the source and destination
+	 * nodes will be swapped in the Record. */
+	if(AlgebraicExpression_ContainsOp(ae, AL_EXP_TRANSPOSE)) return GRAPH_EDGE_DIR_INCOMING;
+
+	// The default traversal direction is outgoing.
+	return GRAPH_EDGE_DIR_OUTGOING;
+}
+
 EdgeTraverseCtx *Traverse_NewEdgeCtx(AlgebraicExpression *ae, QGEdge *e, int idx) {
 	EdgeTraverseCtx *edge_ctx = rm_malloc(sizeof(EdgeTraverseCtx));
 	edge_ctx->edges = array_new(Edge, 32); // Instantiate array to collect matching edges.
 	_Traverse_SetRelationTypes(edge_ctx, e); // Build the array of relation type IDs.
-	edge_ctx->edgeIdx = idx;
-	// Determine the edge directions we need to collect.
-	if(e->bidirectional) {
-		// Bidirectional edges matching incoming and outgoing edges.
-		edge_ctx->direction = GRAPH_EDGE_DIR_BOTH;
-	} else if(AlgebraicExpression_ContainsOp(ae, AL_EXP_TRANSPOSE)) {
-		/* If this operation traverses a transposed edge, the source and destination nodes
-		 * will be swapped in the Record. */
-		edge_ctx->direction = GRAPH_EDGE_DIR_INCOMING;
-	} else {
-		// The default traversal direction is outgoing.
-		edge_ctx->direction = GRAPH_EDGE_DIR_OUTGOING;
-	}
+	edge_ctx->edgeRecIdx = idx;
+	edge_ctx->direction = _Traverse_SetDirection(ae, e);
 	return edge_ctx;
 }
 
-// Collect edges between the source and destination nodes matching the op's traversal direction.
+/* Populate the traverse context's edges array with all edges of the appropriate
+ * direction connecting the source and destination nodes. */
 void Traverse_CollectEdges(EdgeTraverseCtx *edge_ctx, NodeID src, NodeID dest) {
 	switch(edge_ctx->direction) {
 	case GRAPH_EDGE_DIR_OUTGOING:
@@ -79,7 +82,7 @@ bool Traverse_SetEdge(EdgeTraverseCtx *edge_ctx, Record r) {
 
 	// Pop an edge and add it to the Record.
 	Edge e = array_pop(edge_ctx->edges);
-	Record_AddEdge(r, edge_ctx->edgeIdx, e);
+	Record_AddEdge(r, edge_ctx->edgeRecIdx, e);
 	return true;
 }
 

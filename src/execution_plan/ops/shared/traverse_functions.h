@@ -14,7 +14,7 @@
 typedef struct {
 	int *edgeRelationTypes;     // The relation type IDs that should be collected.
 	Edge *edges;                // Flexible array of all matching edges for the current endpoints.
-	int edgeIdx;                // The Record index for the referenced edge.
+	int edgeRecIdx;             // The Record index for the referenced edge.
 	GRAPH_EDGE_DIR direction;   // The direction of the referenced edge being traversed.
 } EdgeTraverseCtx;
 
