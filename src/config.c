@@ -11,10 +11,12 @@
 #include "util/redis_version.h"
 #include "../deps/GraphBLAS/Include/GraphBLAS.h"
 
+#define CACHE_SIZE "CACHE_SIZE"  // Config param, the size of each thread cache size, per graph.
 #define THREAD_COUNT "THREAD_COUNT" // Config param, number of threads in thread pool
 #define OMP_THREAD_COUNT "OMP_THREAD_COUNT" // Config param, max number of OpenMP threads
 #define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT" // Config param, max number of entities in each virtual key
 #define MAINTAIN_TRANSPOSED_MATRICES "MAINTAIN_TRANSPOSED_MATRICES" // Whether the module should maintain transposed relationship matrices
+#define CACHE_SIZE_DEFAULT 25
 #define VKEY_MAX_ENTITY_COUNT_DEFAULT 100000
 
 extern RG_Config config; // Global module configuration.
@@ -111,6 +113,30 @@ static int _Config_BuildTransposedMatrices(RedisModuleCtx *ctx, RedisModuleStrin
 	return REDISMODULE_OK;
 }
 
+// If the user has specified the cache size for each thread per each graph, update the configuration.
+// Returns REDISMODULE_OK on success and REDISMODULE_ERR if the argument was invalid.
+static int _Config_SetCacheSize(RedisModuleCtx *ctx, RedisModuleString *cache_size_str) {
+	long long cache_size;
+	int res = _Config_ParsePositiveInteger(cache_size_str, &cache_size);
+	// Exit with error if integer parsing fails.
+	if(res != REDISMODULE_OK) {
+		const char *invalid_arg = RedisModule_StringPtrLen(cache_size_str, NULL);
+		RedisModule_Log(ctx, "warning", "Could not parse cache size argument '%s' as an integer",
+						invalid_arg);
+		return REDISMODULE_ERR;
+	}
+
+	// Log the new entity threshold.
+	RedisModule_Log(ctx, "notice", "Cache size per each execution thread in each graph is set to %lld.",
+					cache_size);
+
+	// Update the entity count in the configuration.
+	config.cache_size = cache_size;
+
+	return REDISMODULE_OK;
+}
+
+
 // Initialize every module-level configuration to its default value.
 static void _Config_SetToDefaults(void) {
 	// The thread pool's default size is equal to the system's number of cores.
@@ -130,6 +156,7 @@ static void _Config_SetToDefaults(void) {
 
 	// Always build transposed matrices by default.
 	config.maintain_transposed_matrices = true;
+	config.cache_size = CACHE_SIZE_DEFAULT;
 }
 
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -161,6 +188,8 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		} else if(!strcasecmp(param, MAINTAIN_TRANSPOSED_MATRICES)) {
 			// User specified whether or not to maintain transposed matrices.
 			res = _Config_BuildTransposedMatrices(ctx, val);
+		} else if(!(strcasecmp(param, CACHE_SIZE))) {
+			res = _Config_SetCacheSize(ctx, val);
 		} else {
 			RedisModule_Log(ctx, "warning", "Encountered unknown module argument '%s'", param);
 			return REDISMODULE_ERR;
@@ -189,3 +218,6 @@ inline bool Config_MaintainTranspose() {
 	return config.maintain_transposed_matrices;
 }
 
+uint64_t Config_GetCacheSize() {
+	return config.cache_size;
+}
