@@ -205,6 +205,7 @@ Feature: OptionalMatchAcceptance
       | null |
     And no side effects
 
+@skip
   Scenario: Optionally matching self-loops
     When executing query:
       """
