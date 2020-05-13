@@ -15,6 +15,7 @@
 #include "graph.h"
 #include "../serializers/encode_context.h"
 #include "../serializers/decode_context.h"
+#include "../util/cache/cache.h"
 
 typedef struct {
 	Graph *g;                               // Container for all matrices and entity properties
@@ -28,6 +29,7 @@ typedef struct {
 	SlowLog *slowlog;                       // Slowlog associated with graph.
 	GraphEncodeContext *encoding_context;   // Encode context of the graph.
 	GraphDecodeContext *decoding_context;   // Decode context of the graph.
+	Cache **cache_pool;                     // Pool of execution plan caches, one per thread.
 } GraphContext;
 
 /* GraphContext API */
@@ -95,6 +97,9 @@ void GraphContext_Rename(GraphContext *gc, const char *name);
 
 /* Slowlog API */
 SlowLog *GraphContext_GetSlowLog(const GraphContext *gc);
+
+/* Cache API - Return cache associated with graph context and current thread id. */
+Cache *GraphContext_GetCache(const GraphContext *gc)
 
 #endif
 

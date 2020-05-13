@@ -13,8 +13,9 @@
 #include "../util/rmalloc.h"
 #include "../util/thpool/thpool.h"
 #include "../serializers/graphcontext_type.h"
+#include "../execution_plan/execution_plan.h"
 
-extern threadpool _thpool;
+extern threadpool _thpool; // Declared in module.c
 // Global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
 extern uint aux_field_counter;
@@ -33,6 +34,15 @@ static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 	// If the reference count is less than 0, the graph has been marked for deletion and no queries are active - free the graph.
 	if(__atomic_sub_fetch(&gc->ref_count, 1, __ATOMIC_RELAXED) < 0)
 		thpool_add_work(_thpool, _GraphContext_Free, gc);
+}
+
+// Returns thread id, with consdiration of redis main thread.
+static int get_thread_id() {
+	/* thpool_get_thread_id returns -1 if pthread_self isn't in the thread pool
+	 * most likely Redis main thread */
+	int thread_id = thpool_get_thread_id(_thpool, pthread_self());
+	thread_id += 1; // +1 to compensate for Redis main thread.
+	return thread_id;
 }
 
 //------------------------------------------------------------------------------
@@ -58,6 +68,17 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 	gc->slowlog = SlowLog_New();
 	gc->encoding_context = GraphEncodeContext_New();
 	gc->decoding_context = GraphDecodeContext_New();
+
+
+	/* Build the cache pool. The cache pool contains a cache for each thread in the thread pool, to avoid congestion.
+	 * Each thread is getting its cache by its thread id. */
+	uint64_t thread_count = Config_GetThreadCount() + 1; // Add 1 for redis main thread.
+	uint64_t cache_size = Config_GetCacheSize();
+	gc->cache_pool = array_new(Cache *, thread_count);
+
+	for(uint i = 0; i < thread_count; i++) {
+		gc->cache_pool = array_append(gc->cache_pool, Cache_New(cache_size, ExecutionPlan_Free));
+	}
 
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 	QueryCtx_SetGraphCtx(gc);
@@ -376,6 +397,16 @@ SlowLog *GraphContext_GetSlowLog(const GraphContext *gc) {
 }
 
 //------------------------------------------------------------------------------
+// Cache API
+//------------------------------------------------------------------------------
+
+// Return cache associated with graph context and current thread id.
+Cache *GraphContext_GetCache(const GraphContext *gc) {
+	assert(gc);
+	return gc->cache_pool[get_thread_id()];
+}
+
+//------------------------------------------------------------------------------
 // Free routine
 //------------------------------------------------------------------------------
 
@@ -417,6 +448,15 @@ static void _GraphContext_Free(void *arg) {
 	}
 
 	if(gc->slowlog) SlowLog_Free(gc->slowlog);
+
+	// Clear cache
+	if(gc->cache_pool) {
+		len = array_len(gc->cache_pool);
+		for(uint i = 0; i < len; i++) {
+			Cache_Free(gc->cache_pool[i]);
+		}
+		array_free(gc->cache_pool);
+	}
 
 	GraphEncodeContext_Free(gc->encoding_context);
 	GraphDecodeContext_Free(gc->decoding_context);
