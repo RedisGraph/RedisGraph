@@ -341,6 +341,181 @@ TEST_F(AlgebraicExpressionTest, AlgebraicExpression_New) {
     AlgebraicExpression_Free(operation);
 }
 
+TEST_F(AlgebraicExpressionTest, AlgebraicExpression_Domains) {	
+	GrB_Matrix A;
+	GrB_Matrix B;
+    const char *src_domain;     // Row domain of expression
+    const char *dest_domain;    // Column domain of expression
+    AlgebraicExpression *exp;
+    
+    GrB_Matrix_new(&A, GrB_BOOL, 2, 2);	
+    GrB_Matrix_new(&B, GrB_BOOL, 2, 2);
+
+    rax *matrices = raxNew();
+    raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
+    raxInsert(matrices, (unsigned char *)"B", strlen("B"), B, NULL);
+
+    /* Note: addition is performed over matrices with the same source and destination domain
+     * While multiplication takes on source domain of first operand, and destination domain of its last operand
+     * For a given operand A both its source and destination domains are 'A' */
+
+    // A
+    // Source(A) = A.
+    // Destination(A) = A.
+    exp = AlgebraicExpression_FromString("A", matrices);
+    src_domain = AlgebraicExpression_Source(exp);
+    dest_domain = AlgebraicExpression_Destination(exp);
+    ASSERT_STREQ(src_domain, "A");
+    ASSERT_STREQ(dest_domain, "A");
+    AlgebraicExpression_Free(exp);
+
+    // A+B
+    // Addition doesn't modifies column domain.
+    // Source(A+B) = A.
+    // Destination(A+B) = A.
+    exp = AlgebraicExpression_FromString("A+B", matrices);    
+    src_domain = AlgebraicExpression_Source(exp);
+    dest_domain = AlgebraicExpression_Destination(exp);
+    ASSERT_STREQ(src_domain, "A");
+    ASSERT_STREQ(dest_domain, "A");
+    AlgebraicExpression_Free(exp);
+
+    // B+A
+    // Addition doesn't modifies column domain.
+    // Source(B+A) = B.
+    // Destination(B+A) = B.
+    exp = AlgebraicExpression_FromString("B+A", matrices);
+    src_domain = AlgebraicExpression_Source(exp);
+    dest_domain = AlgebraicExpression_Destination(exp);
+    ASSERT_STREQ(src_domain, "B");
+    ASSERT_STREQ(dest_domain, "B");
+    AlgebraicExpression_Free(exp);
+
+    // A*B
+    // Source(A*B) = A.
+    // Destination(A*B) = B.
+    exp = AlgebraicExpression_FromString("A*B", matrices);
+    src_domain = AlgebraicExpression_Source(exp);
+    dest_domain = AlgebraicExpression_Destination(exp);
+    ASSERT_STREQ(src_domain, "A");
+    ASSERT_STREQ(dest_domain, "B");
+    AlgebraicExpression_Free(exp);
+
+    // B*A
+    // Source(B*A) = B.
+    // Destination(B*A) = A.
+    exp = AlgebraicExpression_FromString("B*A", matrices);
+    src_domain = AlgebraicExpression_Source(exp);
+    dest_domain = AlgebraicExpression_Destination(exp);
+    ASSERT_STREQ(src_domain, "B");
+    ASSERT_STREQ(dest_domain, "A");
+    AlgebraicExpression_Free(exp);
+
+    // Transpose(A)
+    // Source(Transpose(A)) = A.
+    // Destination(Transpose(A)) = A.
+    exp = AlgebraicExpression_FromString("T(A)", matrices);
+    src_domain = AlgebraicExpression_Source(exp);
+    dest_domain = AlgebraicExpression_Destination(exp);
+    ASSERT_STREQ(src_domain, "A");
+    ASSERT_STREQ(dest_domain, "A");
+    AlgebraicExpression_Free(exp);
+
+    // Transpose((A+B))
+    // Source(Transpose((A+B))) = A.
+    // Destination(Transpose((A+B))) = A.
+    exp = AlgebraicExpression_FromString("T(A+B)", matrices);
+    src_domain = AlgebraicExpression_Source(exp);
+    dest_domain = AlgebraicExpression_Destination(exp);
+    ASSERT_STREQ(src_domain, "A");
+    ASSERT_STREQ(dest_domain, "A");
+    AlgebraicExpression_Free(exp);
+
+    // Transpose((B+A))
+    // Source(Transpose((B+A))) = B.
+    // Destination(Transpose((B+A))) = B.
+    exp = AlgebraicExpression_FromString("T(B+A)", matrices);
+    src_domain = AlgebraicExpression_Source(exp);
+    dest_domain = AlgebraicExpression_Destination(exp);
+    ASSERT_STREQ(src_domain, "B");
+    ASSERT_STREQ(dest_domain, "B");
+    AlgebraicExpression_Free(exp);
+
+    // Transpose((A*B))
+    // Source(Transpose((A*B))) = B.
+    // Destination(Transpose((A*B))) = A.
+    exp = AlgebraicExpression_FromString("T(A*B)", matrices);
+    src_domain = AlgebraicExpression_Source(exp);
+    dest_domain = AlgebraicExpression_Destination(exp);
+    ASSERT_STREQ(src_domain, "B");
+    ASSERT_STREQ(dest_domain, "A");
+    AlgebraicExpression_Free(exp);
+
+    // Transpose((B*A))
+    // Source(Transpose((B*A))) = A.
+    // Destination(Transpose((B*A))) = B.
+    exp = AlgebraicExpression_FromString("T(B*A)", matrices);
+    src_domain = AlgebraicExpression_Source(exp);
+    dest_domain = AlgebraicExpression_Destination(exp);
+    ASSERT_STREQ(src_domain, "A");
+    ASSERT_STREQ(dest_domain, "B");
+    AlgebraicExpression_Free(exp);
+
+    // Transpose(Transpose(A)) = A
+    // Source(Transpose(Transpose(A)) = A.
+    // Destination(Transpose(Transpose(A)) = A.
+    exp = AlgebraicExpression_FromString("T(T(A))", matrices);
+    src_domain = AlgebraicExpression_Source(exp);
+    dest_domain = AlgebraicExpression_Destination(exp);
+    ASSERT_STREQ(src_domain, "A");
+    ASSERT_STREQ(dest_domain, "A");
+    AlgebraicExpression_Free(exp);
+
+    // Transpose(Transpose((A+B))) = A+B
+    // Source(Transpose(Transpose((A+B)))) = A.
+    // Destination(Transpose(Transpose((A+B))) = A.
+    exp = AlgebraicExpression_FromString("T(T(A+B))", matrices);
+    src_domain = AlgebraicExpression_Source(exp);
+    dest_domain = AlgebraicExpression_Destination(exp);
+    ASSERT_STREQ(src_domain, "A");
+    ASSERT_STREQ(dest_domain, "A");
+    AlgebraicExpression_Free(exp);
+
+    // Transpose(Transpose((B+A))) = B+A
+    // Source(Transpose(Transpose((B+A))) = B.
+    // Destination(Transpose(Transpose((B+A))) = B.
+    exp = AlgebraicExpression_FromString("T(T(B+A))", matrices);
+    src_domain = AlgebraicExpression_Source(exp);
+    dest_domain = AlgebraicExpression_Destination(exp);
+    ASSERT_STREQ(src_domain, "B");
+    ASSERT_STREQ(dest_domain, "B");
+    AlgebraicExpression_Free(exp);
+
+    // Transpose(Transpose((A*B))) = A*B
+    // Source(Transpose(Transpose((A*B))) = A.
+    // Destination(Transpose(Transpose((A*B))) = B.
+    exp = AlgebraicExpression_FromString("T(T(A*B))", matrices);
+    src_domain = AlgebraicExpression_Source(exp);
+    dest_domain = AlgebraicExpression_Destination(exp);
+    ASSERT_STREQ(src_domain, "A");
+    ASSERT_STREQ(dest_domain, "B");
+    AlgebraicExpression_Free(exp);
+
+    // Transpose(Transpose((B*A)) = B*A
+    // Source(Transpose(Transpose((B*A))) = B.
+    // Destination(Transpose(Transpose((B*A))) = A.
+    exp = AlgebraicExpression_FromString("T(T(B*A))", matrices);
+    src_domain = AlgebraicExpression_Source(exp);
+    dest_domain = AlgebraicExpression_Destination(exp);
+    ASSERT_STREQ(src_domain, "B");
+    ASSERT_STREQ(dest_domain, "A");
+    AlgebraicExpression_Free(exp);
+
+    raxFree(matrices);
+	GrB_Matrix_free(&A);
+	GrB_Matrix_free(&B);
+}
+
 TEST_F(AlgebraicExpressionTest, AlgebraicExpression_Clone) {
     AlgebraicExpression *exp = NULL;
     AlgebraicExpression *clone = NULL;
@@ -365,9 +540,12 @@ TEST_F(AlgebraicExpressionTest, AlgebraicExpression_Transpose) {
 
     for(uint i = 0; i < 6; i++) {
         exp = AlgebraicExpression_FromString(expressions[i], NULL);
-        AlgebraicExpression_Transpose(exp);        
+        AlgebraicExpression_Transpose(&exp);
+	    AlgebraicExpression_Optimize(&exp); // Performs transpose pushdown.
+
         transposed_exp = AlgebraicExpression_FromString(transposed_expressions[i], NULL);
         compare_algebraic_expression(exp, transposed_exp);
+
         AlgebraicExpression_Free(exp);
         AlgebraicExpression_Free(transposed_exp);
     }
