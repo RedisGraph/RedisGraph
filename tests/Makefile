@@ -39,7 +39,7 @@ tck:
 
 memcheck:
 	# Allow RediSearch global destructors.
-	EXPORT RS_GLOBAL_DTORS=1
+	@export RS_GLOBAL_DTORS=1
 	@$(MAKE) -C flow TEST_ARGS="$(MEMCHECK_ARGS)"
 	@$(MAKE) -C tck TEST_ARGS="$(MEMCHECK_ARGS)"
 	./memcheck.sh
