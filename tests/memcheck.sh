@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# Allow RediSearch global destructors.
-EXPORT RS_GLOBAL_DTORS=1
 # Collect name of each flow log that contains leaks.
 if FLOW_FILES_WITH_LEAKS=$(grep -l "definitely lost: [1-9][0-9,]* bytes" flow/logs/*.valgrind.log); then
 	echo "Memory leaks introduced in flow tests."
