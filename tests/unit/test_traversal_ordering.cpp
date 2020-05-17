@@ -224,7 +224,8 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	filters = build_filter_tree_from_query("MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE B.val = 1 RETURN *");
 
 	orderExpressions(qg, set, 3, filters, NULL);
-	ASSERT_TRUE(set[0] == ExpAB || set[0] == ExpBC);
+    
+    ASSERT_STREQ(AlgebraicExpression_Source(set[0]), "B");
 
 	FilterTree_Free(filters);
 
@@ -236,7 +237,7 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	filters = build_filter_tree_from_query("MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE C.val = 1 RETURN *");
 
 	orderExpressions(qg, set, 3, filters, NULL);
-	ASSERT_TRUE(set[0] == ExpBC || set[0] == ExpCD);
+    ASSERT_STREQ(AlgebraicExpression_Source(set[0]), "C");
 
 	FilterTree_Free(filters);
 
@@ -249,9 +250,7 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 
 	orderExpressions(qg, set, 3, filters, NULL);
 
-	ASSERT_EQ(set[0], ExpCD);
-	ASSERT_EQ(set[1], ExpBC);
-	ASSERT_EQ(set[2], ExpAB);
+	ASSERT_STREQ(AlgebraicExpression_Source(set[0]), "D");
 
 	// Clean up.
 	FilterTree_Free(filters);
