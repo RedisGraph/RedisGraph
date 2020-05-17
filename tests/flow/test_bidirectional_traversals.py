@@ -340,3 +340,15 @@ class testBidirectionalTraversals(FlowTestsBase):
         query = """MATCH (a)-[e:E]-(b) RETURN e.val, a.val, b.val ORDER BY e.val, a.val, b.val"""
         traverse_result = acyclic_graph.query(query)
         self.env.assertEquals(actual_result.result_set, traverse_result.result_set)
+
+    def test13_multiple_bidirectional_edges(self):
+        # Traverse over 2 bidirectional edges.
+        query = """MATCH (a)-[]-()-[]-(c) RETURN a.val, c.val ORDER BY a.val, c.val"""
+
+        actual_result = acyclic_graph.query(query)
+        expected_result = [['v1', 'v1'],
+                           ['v1', 'v3'],
+                           ['v2', 'v2'],
+                           ['v3', 'v1'],
+                           ['v3', 'v3']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
