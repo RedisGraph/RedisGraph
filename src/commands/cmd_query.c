@@ -14,8 +14,6 @@
 #include "../util/cache/cache.h"
 #include "../execution_plan/execution_plan.h"
 
-extern Cache *query_cache;
-
 static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc,
 							 const cypher_astnode_t *index_op) {
 	Index *idx = NULL;

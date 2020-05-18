@@ -113,10 +113,6 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	RegisterEventHandlers(ctx);
 	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
 
-	// Build the LRU cache for storing execution plans.
-	// TODO make cache size configurable, do not build if 0.
-	query_cache = Cache_New(16, (listValueFreeFunc)ExecutionPlan_Free);
-
 	// Create thread local storage key.
 	if(!QueryCtx_Init()) return REDISMODULE_ERR;
 
