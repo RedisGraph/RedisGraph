@@ -1027,9 +1027,84 @@ ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan) {
 	return rs;
 }
 
-ExecutionPlan *ExecutionPlan_Clone(const ExecutionPlan *plan) {
-	// TODO
-	return NULL;
+// Clones an execution plan operation and its children, with respect to their original execution plan.
+static OpBase *_ExecutionPlan_CloneOp(const ExecutionPlan *orig_plan, ExecutionPlan *clone_plan,
+									  const OpBase *orig_op) {
+	// If there is no op, or the op is a part of a different plan, return NULL.
+	if(!orig_op || orig_op->plan != orig_plan) return NULL;
+	// Clone the op.
+	OpBase *clone = OpBase_Clone(clone_plan, orig_op);
+	// Clone the op's children and add them the clone op children array.
+	for(uint i = 0; i < orig_op->childCount; i++) {
+		ExecutionPlan_AddOp(clone, _ExecutionPlan_CloneOp(orig_plan, clone_plan, orig_op->children[i]));
+	}
+	return clone;
+}
+
+static void _ExecutionPlan_CloneOperations(const ExecutionPlan *template, ExecutionPlan *clone) {
+	clone->root = _ExecutionPlan_CloneOp(template, clone, template->root);
+}
+
+// Merge cloned execution plan segments, with respect to the plan type (union or not).
+static void _ExecutionPlan_MergeSegments(ExecutionPlan *plan) {
+	// No need to merge segments if there aren't any.
+	if(plan->segment_count == 0) return;
+
+	if(plan->is_union) {
+		// Locate the join operation.
+		OpBase *join_op = ExecutionPlan_LocateOp(plan->root, OPType_JOIN);
+		assert(join_op);
+		// Each segment is a sub execution plan that needs to be joined.
+		for(int i = 0; i < plan->segment_count; i++) {
+			ExecutionPlan *sub_plan = plan->segments[i];
+			ExecutionPlan_AddOp(join_op, sub_plan->root);
+		}
+	} else {
+		// Plan is not union, concatenate the segments.
+		OpBase *connecting_op;
+		OpBase *prev_root = plan->segments[0]->root;
+		for(uint i = 1; i < plan->segment_count; i++) {
+			ExecutionPlan *current_segment = plan->segments[i];
+			OpBase *connecting_op = ExecutionPlan_LocateOpMatchingType(current_segment->root, PROJECT_OPS,
+																	   PROJECT_OP_COUNT);
+			assert(connecting_op->childCount == 0);
+			ExecutionPlan_AddOp(connecting_op, prev_root);
+			OpBase *prev_root = current_segment->root;
+		}
+		// Connect the plan operations to the last segment root.
+		OpBase *connecting_op = ExecutionPlan_LocateOpMatchingType(plan->root, PROJECT_OPS,
+																   PROJECT_OP_COUNT);
+		assert(connecting_op->childCount == 0);
+		ExecutionPlan_AddOp(connecting_op, prev_root);
+	}
+}
+
+ExecutionPlan *ExecutionPlan_Clone(const ExecutionPlan *template) {
+	if(template == NULL) return NULL;
+	// Verify that the execution plan template is not prepared yet.
+	assert(template->prepared == false && "Execution plan cloning should be only on templates");
+	// Allocate an empty execution plan.
+	ExecutionPlan *clone = ExecutionPlan_NewEmptyExecutionPlan();
+
+	// Shallow copy shared values from template.
+	clone->is_union = template->is_union;
+	clone->ast_segment = template->ast_segment;
+	clone->query_graph = template->query_graph;
+	clone->segment_count = template->segment_count;
+	clone->connected_components = template->connected_components;
+
+	// Deep clone execution specific values:
+	clone->record_map = raxClone(template->record_map);
+	clone->filter_tree = template->filter_tree ? FilterTree_Clone(template->filter_tree) : NULL;
+	// Clone each operation in the template relevant segment
+	_ExecutionPlan_CloneOperations(template, clone);
+	clone->segments = array_new(ExecutionPlan *, clone->segment_count);
+	for(uint i = 0; i < clone->segment_count; i++) {
+		clone->segments = array_append(clone->segments, ExecutionPlan_Clone(template->segments[i]));
+	}
+	// Merge the segments
+	_ExecutionPlan_MergeSegments(clone);
+	return clone;
 }
 
 static void _ExecutionPlan_FreeOperations(OpBase *op) {
