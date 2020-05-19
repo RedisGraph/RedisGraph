@@ -213,14 +213,14 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 
 	// If type is specified, count only labeled entities.
 	CondTraverse *condTraverse = (CondTraverse *)opTraverse;
-	int edgeRelationCount = condTraverse->edgeRelationCount;
-
 	// The traversal op doesn't contain information about the traversed edge, cannot apply optimization.
-	if(edgeRelationCount == 0) return;
+	if(!condTraverse->edge_ctx) return;
+
+	uint edgeRelationCount = array_len(condTraverse->edge_ctx->edgeRelationTypes);
 
 	uint64_t edges = 0;
-	for(int i = 0; i < edgeRelationCount; i++) {
-		int relType = condTraverse->edgeRelationTypes[i];
+	for(uint i = 0; i < edgeRelationCount; i++) {
+		int relType = condTraverse->edge_ctx->edgeRelationTypes[i];
 		switch(relType) {
 		case GRAPH_NO_RELATION:
 			// Should be the only relationship type mentioned, -[]->

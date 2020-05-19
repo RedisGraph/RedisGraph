@@ -79,5 +79,8 @@ void *DataBlock_AllocateItem(DataBlock *dataBlock, uint64_t *idx);
 // Removes item at position idx.
 void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx);
 
+// Returns the number of deleted items.
+uint DataBlock_DeletedItemsCount(const DataBlock *dataBlock);
+
 // Free block.
 void DataBlock_Free(DataBlock *block);

@@ -16,7 +16,7 @@ commands:
 jobs:
   build:
     docker:
-      - image: 'redislabsmodules/rmbuilder:latest'
+      - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
     steps:
       - checkout
       - run:
@@ -26,12 +26,18 @@ jobs:
 
       - run:
           name: Install prerequisite
-          command: >-
-            pip install git+https://github.com/RedisGraph/redisgraph-py.git@master &&
-            pip install psutil behave &&
-            pip install redis-py-cluster &&
-            pip install git+https://github.com/RedisLabsModules/RLTest.git@master &&
-            apt-get update; apt-get install -y automake peg libtool autoconf cmake valgrind astyle
+          command: |
+            apt-get -qq update
+            apt-get install -y --no-install-recommends ca-certificates wget git
+            apt-get install -y --no-install-recommends python python-pip python-psutil
+            apt-get install -y --no-install-recommends build-essential cmake m4 automake autoconf libtool peg libgomp1 valgrind astyle
+            python -m pip install wheel
+            python -m pip install setuptools --upgrade
+            # stick to strict order in the following pakcages:
+            python -m pip install git+https://github.com/Grokzen/redis-py-cluster.git@master
+            python -m pip install git+https://github.com/RedisLabsModules/RLTest.git@master
+            python -m pip install git+https://github.com/RedisLabs/RAMP@master
+            python -m pip install -r tests/requirements.txt
 
       # Validate source complies with formatting
       #- run:
@@ -57,7 +63,7 @@ jobs:
           paths:
             - deps/GraphBLAS
           key: GraphBLAS3.2-{{checksum "./deps/GraphBLAS/README.md"}}
-          
+
       # Save libcypher-parser to cache.
       - save_cache:
           paths:
@@ -81,26 +87,29 @@ jobs:
           paths:
             - '*.so'
             - ramp.yml
-            - build  
+            - build
 
       - run:
           name: Test for memory leaks
           command: |
               # Replace the default Redis server with one linked to libc malloc rather than jemalloc.
-              git clone https://github.com/antirez/redis.git; cd redis; git checkout 5.0.7; make valgrind; make install; cd ..
-              make clean; DEBUG=1 make # Rebuild module at O0
+              git clone https://github.com/antirez/redis.git; cd redis; git checkout 6.0.1; make valgrind; make install; cd ..
+              make clean; make DEBUG=1 # Rebuild module at O0
               make memcheck # Re-run the test suite, failing if definite memory leaks have been introduced.
+          # Allow RediSearch global destructors.
+          environment:
+            RS_GLOBAL_DTORS: 1
 
   package_branch:
     docker:
-      - image: 'redislabsmodules/rmbuilder:latest'
+      - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
     steps:
       - attach_workspace:
           at: /workspace
       - run:
           name: Package
           command: >-
-            ramp pack -m /workspace/ramp.yml -o
+            python -m RAMP.ramp pack -m /workspace/ramp.yml -o
             /workspace/build/$PACKAGE_NAME.{os}-{architecture}.$CIRCLE_BRANCH.zip
             /workspace/$MODULE_ARTIFACT
       - persist_to_workspace:
@@ -111,20 +120,20 @@ jobs:
           path: /workspace/build
   package_release:
     docker:
-      - image: 'redislabsmodules/rmbuilder:latest'
+      - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
     steps:
       - attach_workspace:
           at: /workspace
       - run:
           name: Package
           command: >-
-            ramp pack -m /workspace/ramp.yml -o
+            python -m RAMP.ramp pack -m /workspace/ramp.yml -o
             /workspace/build/$PACKAGE_NAME.{os}-{architecture}.{semantic_version}.zip
             /workspace/$MODULE_ARTIFACT
       - run:
           name: Package
           command: >-
-            ramp pack -m /workspace/ramp.yml -o
+            python -m RAMP.ramp pack -m /workspace/ramp.yml -o
             /workspace/build/$PACKAGE_NAME.{os}-{architecture}.latest.zip
             /workspace/$MODULE_ARTIFACT
       - persist_to_workspace:
@@ -133,20 +142,9 @@ jobs:
             - build
       - store_artifacts:
           path: /workspace/build
-  deploy_branch:
+  deploy_to_s3:
     docker:
-      - image: 'redislabsmodules/rmbuilder:latest'
-    steps:
-      - attach_workspace:
-          at: /workspace
-      - run:
-          name: Deploy to S3
-          command: >-
-            aws s3 cp /workspace/build/ s3://redismodules/$PACKAGE_NAME/ --acl
-            public-read --recursive --exclude "*" --include "*.zip"
-  deploy_release:
-    docker:
-      - image: 'redislabsmodules/rmbuilder:latest'
+      - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
     steps:
       - attach_workspace:
           at: /workspace
@@ -178,7 +176,7 @@ jobs:
             aws s3 cp site s3://oss.redislabs.com/$WEBSITE_FOLDER/ --acl public-read --recursive
   run_automation:
     docker:
-      - image: 'redislabsmodules/rmbuilder:latest'
+      - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
     steps:
       - run:
           name: Run QA Automation
@@ -192,42 +190,45 @@ jobs:
 
 workflows:
   version: 2
-  build_and_package:
+  build_branch:
     jobs:
       - build:
           filters:
             tags:
-              only: /.*/
+              # Ignore tagging.
+              ignore: /.*/
       - package_branch:
           requires:
             - build
           filters:
             branches:
               only: master
-      - package_release:
+      - deploy_to_s3:
           requires:
-            - build
+            - package_branch
+      - run_automation:
+          requires:
+            - deploy_to_s3
+      - deploy_docs:
+          requires:
+            - deploy_to_s3     
+
+# The build_release workflow runs only against tags.
+  build_release:
+    jobs:
+      - build:
           filters:
             branches:
               ignore: /.*/
             tags:
               only: '/^v[0-9].*/'
-      - deploy_branch:
+      - package_release:
           requires:
-            - package_branch
-      - run_automation:
-          requires:
-            - deploy_branch
-      - deploy_release:
-          filters:
-            tags:
-              only: '/^v[0-9].*/'
+            - build
+      - deploy_to_s3:
           requires:
             - package_release
       # TODO: deploy_docs should run only when 'docs/' or 'mkdocs.yml' change
       - deploy_docs:
-          filters:
-            branches:
-              only:
-                - master
-                - /^[0-9]+\.[0-9]+$/
+          requires:
+            - deploy_to_s3  

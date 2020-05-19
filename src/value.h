@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
+#include <sys/types.h>
 #include "xxhash.h"
 
 /* Type defines the supported types by the indexing system. The types are powers
