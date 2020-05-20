@@ -5,6 +5,7 @@
 */
 
 #include "enrichment/annotate_entities.h"
+#include "enrichment/annotate_params.h"
 #include "enrichment/annotate_project_all.h"
 #include "enrichment/annotate_projected_named_paths.h"
 
@@ -19,5 +20,6 @@ void AST_Enrich(AST *ast) {
 	AST_AnnotateEntities(ast);
 	AST_AnnotateProjectAll(ast);
 	AST_AnnotateNamedPaths(ast);
+	AST_AnnotateParams(ast);
 }
 

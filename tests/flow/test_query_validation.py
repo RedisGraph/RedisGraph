@@ -196,32 +196,3 @@ class testQueryValidationFlow(FlowTestsBase):
             # Expecting an error.
             assert("wrong number of arguments" in e.message)
             pass
-
-    # Run queries in which compile-time variables are accessed but not defined.
-    def test18_undefined_variable_access(self):
-        try:
-            query = """CREATE (:person{name:bar[1]})"""
-            redis_graph.query(query)
-            assert(False)
-        except redis.exceptions.ResponseError as e:
-            # Expecting an error.
-            assert("not defined" in e.message)
-            pass
-
-        try:
-            query = """MATCH (a {val: undeclared}) RETURN a"""
-            redis_graph.query(query)
-            assert(False)
-        except redis.exceptions.ResponseError as e:
-            # Expecting an error.
-            assert("not defined" in e.message)
-            pass
-
-        try:
-            query = """UNWIND [fake] AS ref RETURN ref"""
-            redis_graph.query(query)
-            assert(False)
-        except redis.exceptions.ResponseError as e:
-            # Expecting an error.
-            assert("not defined" in e.message)
-            pass

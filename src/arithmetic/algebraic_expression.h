@@ -203,10 +203,12 @@ void AlgebraicExpression_AddToTheRight
 );
 
 // Transpose expression
-// By wrapping exp in a transpose root node.
+// T(T(A)) = A
+// T(A + B) = T(A) + T(B)
+// T(A * B) = T(B) * T(B)
 void AlgebraicExpression_Transpose
 (
-    AlgebraicExpression **exp    // Expression to transpose.
+    AlgebraicExpression *exp    // Expression to transpose.
 );
 
 // Evaluate expression tree.

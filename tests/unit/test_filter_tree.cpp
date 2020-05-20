@@ -301,29 +301,25 @@ TEST_F(FilterTreeTest, CollectModified) {
 }
 
 TEST_F(FilterTreeTest, NOTReduction) {
-	const char *filters[8] {
+	const char *filters[6] {
 		"MATCH (n) WHERE NOT n.v = 1 RETURN n",
 		"MATCH (n) WHERE NOT NOT n.v = 1 RETURN n",
 		"MATCH (n) WHERE NOT (n.v > 5 AND n.v < 20) RETURN n",
 		"MATCH (n) WHERE NOT (n.v <= 5 OR n.v <> 20) RETURN n",
 		"MATCH (n) WHERE NOT( NOT( NOT( n.v >= 1 AND (n.v < 5 OR n.v <> 3) ) ) ) RETURN n",
 		"MATCH (n) WHERE n.v = 2 AND NOT n.x > 4 RETURN n",
-		"MATCH (n) WHERE NOT n.v = 1 MATCH (n2) WHERE ID(n2) = ID(n) RETURN n",
-		"MATCH (n) WHERE NOT NOT n.v = 1 MATCH (n2) WHERE ID(n2) = ID(n) RETURN n",
 	};
 
-	const char *expected[8] {
+	const char *expected[6] {
 		"MATCH (n) WHERE n.v <> 1 RETURN n",
 		"MATCH (n) WHERE n.v = 1 RETURN n",
 		"MATCH (n) WHERE n.v <= 5 OR n.v >= 20 RETURN n",
 		"MATCH (n) WHERE n.v > 5 AND n.v = 20 RETURN n",
 		"MATCH (n) WHERE (n.v < 1 OR (n.v >= 5 AND n.v = 3)) RETURN n",
 		"MATCH (n) WHERE n.v = 2 AND n.x <= 4 RETURN n",
-		"MATCH (n) WHERE n.v <> 1 MATCH (n2) WHERE ID(n2) = ID(n) RETURN n",
-		"MATCH (n) WHERE n.v = 1 MATCH (n2) WHERE ID(n2) = ID(n) RETURN n",
 	};
 
-	for(int i = 0; i < 8; i++) {
+	for(int i = 0; i < 6; i++) {
 		const char *actual = filters[i];
 		const char *expected_q = expected[i];
 
@@ -489,4 +485,3 @@ TEST_F(FilterTreeTest, FilterTree_Compact) {
 	FilterTree_Free(actual);
 	FilterTree_Free(expected);
 }
-

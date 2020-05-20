@@ -356,6 +356,7 @@ Feature: MergeRelationshipAcceptance
       | +relationships | 1 |
       | +properties    | 2 |
 
+@skip
   Scenario: Match outgoing relationship when direction unspecified
     Given an empty graph
     And having executed:
@@ -374,6 +375,7 @@ Feature: MergeRelationshipAcceptance
       | [:KNOWS] |
     And no side effects
 
+@skip
   Scenario: Match both incoming and outgoing relationships when direction unspecified
     Given an empty graph
     And having executed:

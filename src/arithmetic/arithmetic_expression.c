@@ -292,13 +292,8 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node, const Record
 	for(int child_idx = 0; child_idx < node->op.child_count; child_idx++) {
 		SIValue v;
 		AR_EXP_Result eval_result = _AR_EXP_Evaluate(node->op.children[child_idx], r, &v);
-		if(eval_result == EVAL_ERR) {
-			/* Encountered an error while evaluating a subtree.
-			 * Free all values generated up to this point. */
-			_AR_EXP_FreeResultsArray(sub_trees, child_idx);
-			// Propagate the error upwards.
-			return eval_result;
-		}
+		// Encountered an error while evaluating a subtree.
+		if(eval_result == EVAL_ERR) goto cleanup;
 		if(eval_result == EVAL_FOUND_PARAM) res = EVAL_FOUND_PARAM;
 		sub_trees[child_idx] = v;
 	}
@@ -349,18 +344,12 @@ static bool _AR_EXP_UpdateEntityIdx(AR_OperandNode *node, const Record r) {
 
 static AR_EXP_Result _AR_EXP_EvaluateProperty(AR_ExpNode *node, const Record r, SIValue *result) {
 	RecordEntryType t = Record_GetType(r, node->operand.variadic.entity_alias_idx);
-	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
-		if(t == REC_TYPE_UNKNOWN) {
-			/* If we attempt to access an unset Record entry as a graph entity
-			 * (due to a scenario like a failed OPTIONAL MATCH), return a null value. */
-			*result = SI_NullVal();
-			return EVAL_OK;
-		}
-
+	// Property requested on a scalar value.
+	if(!(t & (REC_TYPE_NODE | REC_TYPE_EDGE))) {
 		/* Attempted to access a scalar value as a map.
 		 * Set an error and invoke the exception handler. */
 		char *error;
-		SIValue v = Record_Get(r, node->operand.variadic.entity_alias_idx);
+		SIValue v = Record_GetScalar(r, node->operand.variadic.entity_alias_idx);
 		asprintf(&error, "Type mismatch: expected a map but was %s", SIType_ToString(SI_TYPE(v)));
 		QueryCtx_SetError(error); // Set the query-level error.
 		return EVAL_ERR;

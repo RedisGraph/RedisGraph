@@ -13,20 +13,20 @@
 #include "../query_ctx.h"
 #include "../resultset/resultset.h"
 
+extern RedisModuleType *GraphContextRedisModuleType;
+
 /* Delete graph, removing the key from Redis and
  * freeing every resource allocated by the graph. */
 int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	if(argc != 2) return RedisModule_WrongArity(ctx);
 
-	int res = REDISMODULE_OK;
 	char *strElapsed = NULL;
 	QueryCtx_BeginTimer(); // Start deletion timing.
 
 	RedisModuleString *graph_name = argv[1];
 	GraphContext *gc = GraphContext_Retrieve(ctx, graph_name, false, false);    // Increase ref count.
-	// If the GraphContext is null, key access failed and an error has been emitted.
 	if(!gc) {
-		res = REDISMODULE_ERR;
+		RedisModule_ReplyWithError(ctx, "Graph is either missing or referred key is of a different type.");
 		goto cleanup;
 	}
 
@@ -39,13 +39,12 @@ int MGraph_Delete(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	double t = QueryCtx_GetExecutionTime();
 	asprintf(&strElapsed, "Graph removed, internal execution time: %.6f milliseconds", t);
 	RedisModule_ReplyWithStringBuffer(ctx, strElapsed, strlen(strElapsed));
-	
-	// Delete commands should always modify slaves.
-	RedisModule_ReplicateVerbatim(ctx);
 
 cleanup:
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 	if(strElapsed) free(strElapsed);
-	return res;
+	// Delete commands should always modify slaves.
+	RedisModule_ReplicateVerbatim(ctx);
+	return REDISMODULE_OK;
 }
 

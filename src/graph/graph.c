@@ -11,7 +11,6 @@
 #include "../util/qsort.h"
 #include "../GraphBLASExt/GxB_Delete.h"
 #include "../util/rmalloc.h"
-#include "../util/datablock/oo_datablock.h"
 
 static GrB_BinaryOp _graph_edge_accum = NULL;
 // GraphBLAS Select operator to free edge arrays and delete edges.
@@ -382,11 +381,6 @@ size_t Graph_NodeCount(const Graph *g) {
 	return g->nodes->itemCount;
 }
 
-uint Graph_DeletedNodeCount(const Graph *g) {
-	assert(g);
-	return DataBlock_DeletedItemsCount(g->nodes);
-}
-
 size_t Graph_LabeledNodeCount(const Graph *g, int label) {
 	GrB_Index nvals = 0;
 	GrB_Matrix m = Graph_GetLabelMatrix(g, label);
@@ -397,11 +391,6 @@ size_t Graph_LabeledNodeCount(const Graph *g, int label) {
 size_t Graph_EdgeCount(const Graph *g) {
 	assert(g);
 	return g->edges->itemCount;
-}
-
-uint Graph_DeletedEdgeCount(const Graph *g) {
-	assert(g);
-	return DataBlock_DeletedItemsCount(g->edges);
 }
 
 int Graph_RelationTypeCount(const Graph *g) {
@@ -537,33 +526,8 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 	}
 }
 
-void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int r) {
-	GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
-	GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
-	GrB_Matrix tadj = _Graph_Get_Transposed_AdjacencyMatrix(g);
-
-	// Rows represent source nodes, columns represent destination nodes.
-	GrB_Matrix_setElement_BOOL(adj, true, src, dest);
-	GrB_Matrix_setElement_BOOL(tadj, true, dest, src);
-	GrB_Index I = src;
-	GrB_Index J = dest;
-	edge_id = SET_MSB(edge_id);
-	GrB_Info info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
-					(
-						relationMat,         // input/output matrix for results
-						GrB_NULL,            // optional mask for C(I,J), unused if NULL
-						_graph_edge_accum,    // optional accum for Z=accum(C(I,J),x)
-						edge_id,             // scalar to assign to C(I,J)
-						&I,                  // row indices
-						1,                   // number of row indices
-						&J,                  // column indices
-						1,                   // number of column indices
-						GrB_NULL             // descriptor for C(I,J) and Mask
-					);
-	assert(info == GrB_SUCCESS);
-}
-
 int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
+	GrB_Info info;
 	Node srcNode;
 	Node destNode;
 
@@ -580,7 +544,31 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
 	e->relationID = r;
 	e->srcNodeID = src;
 	e->destNodeID = dest;
-	Graph_FormConnection(g, src, dest, id, r);
+
+	GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
+	GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
+	GrB_Matrix tadj = _Graph_Get_Transposed_AdjacencyMatrix(g);
+
+	// Rows represent source nodes, columns represent destination nodes.
+	GrB_Matrix_setElement_BOOL(adj, true, src, dest);
+	GrB_Matrix_setElement_BOOL(tadj, true, dest, src);
+	GrB_Index I = src;
+	GrB_Index J = dest;
+	id = SET_MSB(id);
+	info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
+		   (
+			   relationMat,         // input/output matrix for results
+			   GrB_NULL,            // optional mask for C(I,J), unused if NULL
+			   _graph_edge_accum,   // optional accum for Z=accum(C(I,J),x)
+			   id,                  // scalar to assign to C(I,J)
+			   &I,                  // row indices
+			   1,                   // number of row indices
+			   &J,                  // column indices
+			   1,                   // number of column indices
+			   GrB_NULL             // descriptor for C(I,J) and Mask
+		   );
+	assert(info == GrB_SUCCESS);
+
 	return 1;
 }
 

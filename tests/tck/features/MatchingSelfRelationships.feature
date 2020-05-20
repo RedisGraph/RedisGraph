@@ -63,7 +63,6 @@ Feature: MatchingSelfRelationships
       | 1        |
     And no side effects
 
-@skip
   Scenario: Undirected match of self-relationship in self-relationship graph
     Given an empty graph
     And having executed:
@@ -193,7 +192,6 @@ Feature: MatchingSelfRelationships
       | 1        |
     And no side effects
 
-@skip
   Scenario: Counting undirected self-relationships in self-relationship graph
     Given an empty graph
     And having executed:

@@ -138,7 +138,7 @@ static OpResult NodeByIdSeekReset(OpBase *ctx) {
 
 static OpBase *NodeByIdSeekClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	assert(opBase->type == OPType_NODE_BY_ID_SEEK);
-	NodeByIdSeek *op = (NodeByIdSeek *)opBase;
+	NodeByIdSeek *op = (NodeByIdSeek *)op;
 	UnsignedRange range;
 	range.min = op->minId;
 	range.max = op->maxId;

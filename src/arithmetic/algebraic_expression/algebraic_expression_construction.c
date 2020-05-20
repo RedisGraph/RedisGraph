@@ -196,10 +196,8 @@ static AlgebraicExpression *_AlgebraicExpression_OperandFromEdge
 
 	QGNode *src_node = e->src;
 	QGNode *dest_node = e->dest;
-
-	// Use original `src` and `dest` for algebraic operands.
-	const char *src = (transpose) ? dest_node->alias : src_node->alias;
-	const char *dest = (transpose) ? src_node->alias : dest_node->alias;
+	const char *src = src_node->alias;
+	const char *dest = dest_node->alias;
 	const char *edge = _should_populate_edge(e) ? e->alias : NULL;
 	bool var_len_traversal = QGEdge_VariableLength(e);
 

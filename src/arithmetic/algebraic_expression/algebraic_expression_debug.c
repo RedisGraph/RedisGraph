@@ -50,7 +50,7 @@ AlgebraicExpression *_AlgebraicExpression_FromString
 			break;
 		case 'T':
 			root = _AlgebraicExpression_FromString(exp, matrices);
-			AlgebraicExpression_Transpose(&root);
+			AlgebraicExpression_Transpose(root);
 			break;
 		default:
 			// Operand.

@@ -36,5 +36,3 @@
 #include "op_merge_create.h"
 #include "op_semi_apply.h"
 #include "op_apply_multiplexer.h"
-#include "op_optional.h"
-

@@ -50,7 +50,6 @@ typedef enum {
 	OpType_ANTI_SEMI_APPLY,
 	OPType_OR_APPLY_MULTIPLEXER,
 	OPType_AND_APPLY_MULTIPLEXER,
-	OPType_OPTIONAL,
 } OPType;
 
 typedef enum {
