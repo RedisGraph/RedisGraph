@@ -111,6 +111,7 @@ Feature: AggregationAcceptance
             | (:L) | 2        |
         And no side effects
 
+    @skip
     Scenario: Sort on aggregate function and normal property
         Given an empty graph
         And having executed:
@@ -207,6 +208,7 @@ Feature: AggregationAcceptance
             | () | 1.0            |
         And no side effects
 
+    @skip
     Scenario: Distinct on unbound node
         Given an empty graph
         When executing query:

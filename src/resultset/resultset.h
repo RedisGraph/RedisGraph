@@ -26,7 +26,7 @@ typedef struct {
 	size_t recordCount;             /* Number of records introduced. */
 	double timer[2];                /* Query runtime tracker. */
 	ResultSetStatistics stats;      /* ResultSet statistics. */
-    ResultSetFormatterType format;  /* Result-set format; compact/verbose/nop. */
+	ResultSetFormatterType format;  /* Result-set format; compact/verbose/nop. */
 	ResultSetFormatter *formatter;  /* ResultSet data formatter. */
 } ResultSet;
 

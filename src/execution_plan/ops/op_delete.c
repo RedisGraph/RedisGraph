@@ -78,16 +78,13 @@ static Record DeleteConsume(OpBase *opBase) {
 	for(int i = 0; i < op->exp_count; i++) {
 		AR_ExpNode *exp = op->exps[i];
 		SIValue value = AR_EXP_Evaluate(exp, r);
-		SIType type = SI_TYPE(value);
 		/* Enqueue entities for deletion. */
-		if(type & T_NODE) {
+		if(SI_TYPE(value) & T_NODE) {
 			Node *n = (Node *)value.ptrval;
 			op->deleted_nodes = array_append(op->deleted_nodes, *n);
-		} else if(type & T_EDGE) {
+		} else if(SI_TYPE(value) & T_EDGE) {
 			Edge *e = (Edge *)value.ptrval;
 			op->deleted_edges = array_append(op->deleted_edges, *e);
-		} else if(type & T_NULL) {
-			continue; // Ignore null values.
 		} else {
 			/* Expression evaluated to a non-graph entity type
 			 * clear pending deletions and raise an exception. */

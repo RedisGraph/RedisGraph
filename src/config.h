@@ -4,20 +4,21 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#pragma once
+#ifndef _REDISGRAPH_CONFIG_
+#define _REDISGRAPH_CONFIG_
 
 #include "redismodule.h"
-#define VKEY_ENTITY_COUNT_UNLIMITED UINT64_MAX
 
-typedef struct {
-	long long thread_count;      // Thread count for thread pool.
-	uint64_t vkey_entity_count;  // The limit of number of entities encoded at once for each RDB key.
-} RG_Config;
+#define THREAD_COUNT "THREAD_COUNT" // Config param, number of threads in thread pool
 
-void Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
+// Tries to fetch number of threads from
+// command line arguments if specified
+// otherwise returns thread count equals to the number
+// of cores available.
+long long Config_GetThreadCount(
+	RedisModuleCtx *ctx,
+	RedisModuleString **argv,
+	int argc
+);
 
-// Return the module thread pool size.
-long long Config_GetThreadCount();
-
-// Return the module virtual key entity limit.
-uint64_t Confic_GetVirtualKeyEntityCount();
+#endif

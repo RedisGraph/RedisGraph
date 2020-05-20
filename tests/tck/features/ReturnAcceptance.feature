@@ -108,6 +108,7 @@ Feature: ReturnAcceptanceTest
       | ({name: 'E'}) |
     And no side effects
 
+@skip
   Scenario: Start the result from the second row by param
     Given an empty graph
     And having executed:
@@ -159,6 +160,7 @@ Feature: ReturnAcceptanceTest
       | ({name: 'D'}) |
     And no side effects
 
+@skip
   Scenario: Get rows in the middle by param
     Given an empty graph
     And having executed:

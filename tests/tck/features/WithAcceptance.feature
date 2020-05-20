@@ -265,6 +265,7 @@ Feature: WithAcceptance
             | 'B'  |
         And no side effects
 
+    @skip
     Scenario: A simple pattern with one bound endpoint
         Given an empty graph
         And having executed:
@@ -285,6 +286,7 @@ Feature: WithAcceptance
             | (:A) | [:REL] | (:B) |
         And no side effects
 
+    @skip
     Scenario: Null handling
         Given an empty graph
         When executing query:

@@ -61,14 +61,11 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/execution_plan/optimizations/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/filter_tree/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/entities/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/encoder/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/encoder/*/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/decoders/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/decoders/current/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/decoders/current/*/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/decoders/prev/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/decoders/prev/*/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/serializers/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/serializers/encoder/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/serializers/decoders/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/serializers/decoders/prev/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/serializers/decoders/prev/*/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/GraphBLASExt/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/grouping/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/index/*.c)
@@ -155,7 +152,7 @@ endif
 $(LIBCYPHER-PARSER):
 ifeq (,$(wildcard $(LIBCYPHER-PARSER)))
 	cd ../deps/libcypher-parser; \
-	sh ./autogen.sh; \
+	./autogen.sh; \
 	./configure --disable-shared;
 	$(MAKE) CFLAGS="-fPIC -DYY_BUFFER_SIZE=1048576" clean check -C ../deps/libcypher-parser
 endif

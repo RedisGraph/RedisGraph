@@ -172,13 +172,15 @@ class testWithClause(FlowTestsBase):
         query = """MATCH (a)-[e]->(b) WITH a, e, b.b_val AS b_val ORDER BY a.a_val LIMIT 2 RETURN *"""
         actual_result = redis_graph.query(query)
 
-        # Validate the header strings of the 3 columns.
+        # These definitions are duplicates of the non-public ResultSetColumnTypes values in redisgraph-py
+        COLUMN_SCALAR = 1
+        COLUMN_NODE = 2
+        COLUMN_RELATION = 3
+        # Validate the header strings and value types
         # NOTE - currently, RETURN * populates values in alphabetical order, but that is subject to later change.
-        self.env.assertEqual(actual_result.header[0][1], 'a')
-        self.env.assertEqual(actual_result.header[1][1], 'b_val')
-        self.env.assertEqual(actual_result.header[2][1], 'e')
-
-        # Verify that 2 rows and 3 columns are returned.
+        expected_header = [[COLUMN_NODE, 'a'], [COLUMN_SCALAR, 'b_val'], [COLUMN_RELATION, 'e']]
+        self.env.assertEqual(actual_result.header, expected_header)
+        # Verify that 2 rows and 3 columns are returned
         self.env.assertEqual(len(actual_result.result_set), 2)
         self.env.assertEqual(len(actual_result.result_set[0]), 3)
 

@@ -7,7 +7,6 @@
 #pragma once
 
 #include "op.h"
-#include "shared/traverse_functions.h"
 #include "../execution_plan.h"
 #include "../../graph/graph.h"
 #include "../../graph/entities/edge.h"
@@ -19,13 +18,18 @@ typedef struct {
 	AlgebraicExpression *ae;
 	GrB_Matrix F;               // Filter matrix.
 	GrB_Matrix M;               // Algebraic expression result.
-	EdgeTraverseCtx *edge_ctx;  // Edge collection data if the edge needs to be set.
-	int srcNodeIdx;             // Source node index into record.
-	int destNodeIdx;            // Destination node index into record.
-	uint recordCount;           // Number of held records.
+	int *edgeRelationTypes;     // One or more relation types.
+	int edgeRelationCount;      // length of edgeRelationTypes.
+	Edge *edges;                // Discovered edges.
+	bool setEdge;               // Edge needs to be set.
+	GxB_MatrixTupleIter *iter;  // Iterator over M.
+	int srcNodeIdx;             // Index into record.
+	int destNodeIdx;            // Index into record.
+	int edgeIdx;                // Index into record.
 	uint recordsCap;            // Max number of records to process.
+	uint recordCount;           // Number of records to process.
 	Record *records;            // Array of records.
-	Record r;                   // Currently selected record.
+	Record r;                   // Current selected record.
 } OpExpandInto;
 
 OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae);
