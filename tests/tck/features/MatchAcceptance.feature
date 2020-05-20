@@ -272,7 +272,6 @@ Feature: MatchAcceptance
       | (:A {num: 1}) | (:B {num: 2}) |
     And no side effects
 
-@skip
   Scenario: Return two subgraphs with bound undirected relationship and optional relationship
     Given an empty graph
     And having executed:

@@ -41,10 +41,11 @@ static OpResult IndexScanInit(OpBase *opBase) {
 }
 
 static inline void _UpdateRecord(IndexScan *op, Record r, EntityID node_id) {
-	// Get a pointer to a heap allocated node.
-	Node *n = Record_GetNode(r, op->nodeRecIdx);
-	// Update node's internal entity pointer.
-	assert(Graph_GetNode(op->g, node_id, n));
+	// Populate the Record with the graph entity data.
+	Node n = {0};
+	assert(Graph_GetNode(op->g, node_id, &n));
+	// Get a pointer to the node's allocated space within the Record.
+	Record_AddNode(r, op->nodeRecIdx, n);
 }
 
 static Record IndexScanConsumeFromChild(OpBase *opBase) {

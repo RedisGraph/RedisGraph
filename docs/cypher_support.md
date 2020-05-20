@@ -42,11 +42,7 @@ We do not support any of these properties at the type level, meaning nodes and r
 ## Clauses
 ### Reading Clauses
 + MATCH
-
-  **Unsupported:**
-
-- OPTIONAL MATCH
-- MANDATORY MATCH
++ OPTIONAL MATCH
 
 ### Projecting Clauses
 + RETURN

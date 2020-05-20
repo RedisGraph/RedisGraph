@@ -1,0 +1,48 @@
+FROM centos:7 AS builder
+
+# Install prerequisite
+RUN yum install -y build-base musl-dev automake make cmake autoconf libtool wget git m4 libgomp
+
+# Install PEG manually
+RUN wget https://www.piumarta.com/software/peg/peg-0.1.18.tar.gz;\
+    tar xzf peg-0.1.18.tar.gz;\
+    cd peg-0.1.18;\
+    make; make install
+
+# Clone RedisGraph
+RUN cd /
+RUN git clone --recurse-submodules https://github.com/RedisGraph/RedisGraph.git
+
+WORKDIR /RedisGraph
+
+# Upgrade GCC & Build RedisGraph
+RUN yum install -y centos-release-scl devtoolset-7 scl-utils
+RUN yum install -y devtoolset-7
+RUN source scl_source enable devtoolset-7;\
+    make clean; \
+    make
+
+# Build redis
+WORKDIR /
+RUN wget http://download.redis.io/releases/redis-5.0.8.tar.gz;\
+    tar xzf redis-5.0.8.tar.gz;\
+    cd redis-5.0.8;\
+    make
+
+FROM centos:7
+
+ENV LIBDIR /usr/lib/redis/modules
+
+# Install prerequisite
+RUN yum install -y libgomp
+
+# Copy redis over from builder
+COPY --from=builder /redis-5.0.8/src/redis-server /usr/bin
+
+# Copy redisgraph.so over from builder
+RUN mkdir -p "$LIBDIR"
+COPY --from=builder /RedisGraph/src/redisgraph.so "$LIBDIR"
+
+# Run redis with RedisGraph
+EXPOSE 6379
+CMD ["redis-server", "--loadmodule", "/usr/lib/redis/modules/redisgraph.so"]

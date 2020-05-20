@@ -6,9 +6,6 @@
 
 #include "op_conditional_traverse.h"
 #include "shared/print_functions.h"
-#include "../../util/arr.h"
-#include "../../GraphBLASExt/GxB_Delete.h"
-#include "../../arithmetic/arithmetic_expression.h"
 #include "../../query_ctx.h"
 
 /* Forward declarations. */
@@ -18,62 +15,12 @@ static OpResult CondTraverseReset(OpBase *opBase);
 static OpBase *CondTraverseClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void CondTraverseFree(OpBase *opBase);
 
-static void _setupTraversedRelations(CondTraverse *op, QGEdge *e) {
-	uint reltype_count = array_len(e->reltypeIDs);
-	if(reltype_count > 0) {
-		array_clone(op->edgeRelationTypes, e->reltypeIDs);
-		op->edgeRelationCount = reltype_count;
-	} else {
-		op->edgeRelationCount = 1;
-		op->edgeRelationTypes = array_new(int, 1);
-		op->edgeRelationTypes = array_append(op->edgeRelationTypes, GRAPH_NO_RELATION);
-	}
-}
-
-// Updates query graph edge.
-static int _CondTraverse_SetEdge(CondTraverse *op, Record r) {
-	// Consumed edges connecting current source and destination nodes.
-	if(!array_len(op->edges)) return 0;
-
-	Edge *e = op->edges + (array_len(op->edges) - 1);
-	Record_AddEdge(r, op->edgeRecIdx, *e);
-	array_pop(op->edges);
-	return 1;
-}
-
-// Collect edges between the source and destination nodes.
-static void __CondTraverse_CollectEdges(CondTraverse *op, int src, int dest) {
-	Node *srcNode = Record_GetNode(op->r, src);
-	Node *destNode = Record_GetNode(op->r, dest);
-	for(int i = 0; i < op->edgeRelationCount; i++) {
-		Graph_GetEdgesConnectingNodes(op->graph,
-									  ENTITY_GET_ID(srcNode),
-									  ENTITY_GET_ID(destNode),
-									  op->edgeRelationTypes[i],
-									  &op->edges);
-	}
-}
-
-// Collect edges between the source and destination nodes matching the op's traversal direction.
-static void _CondTraverse_CollectEdges(CondTraverse *op, int src, int dest) {
-	switch(op->direction) {
-	case GRAPH_EDGE_DIR_OUTGOING:
-		__CondTraverse_CollectEdges(op, op->srcNodeIdx, op->destNodeIdx);
-		return;
-	case GRAPH_EDGE_DIR_INCOMING:
-		// If we're traversing incoming edges, swap the source and destination.
-		__CondTraverse_CollectEdges(op, op->destNodeIdx, op->srcNodeIdx);
-		return;
-	case GRAPH_EDGE_DIR_BOTH:
-		// If we're traversing in both directions, collect edges in both directions.
-		__CondTraverse_CollectEdges(op, op->srcNodeIdx, op->destNodeIdx);
-		__CondTraverse_CollectEdges(op, op->destNodeIdx, op->srcNodeIdx);
-		return;
-	}
+static int CondTraverseToString(const OpBase *ctx, char *buf, uint buf_len) {
+	return TraversalToString(ctx, buf, buf_len, ((const CondTraverse *)ctx)->ae);
 }
 
 static void _populate_filter_matrix(CondTraverse *op) {
-	for(uint i = 0; i < op->recordsLen; i++) {
+	for(uint i = 0; i < op->recordCount; i++) {
 		Record r = op->records[i];
 		/* Update filter matrix F, set row i at position srcId
 		 * F[i, srcId] = true. */
@@ -117,22 +64,18 @@ void _traverse(CondTraverse *op) {
 	GrB_Matrix_clear(op->F);
 }
 
-static inline int CondTraverseToString(const OpBase *ctx, char *buf, uint buf_len) {
-	return TraversalToString(ctx, buf, buf_len, ((const CondTraverse *)ctx)->ae);
-}
-
 OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression *ae) {
-	CondTraverse *op = rm_calloc(1, sizeof(CondTraverse));
+	CondTraverse *op = rm_malloc(sizeof(CondTraverse));
 	op->graph = g;
 	op->ae = ae;
 	op->r = NULL;
 	op->iter = NULL;
-	op->edges = NULL;
 	op->F = GrB_NULL;
 	op->M = GrB_NULL;
-	op->recordsLen = 0;
-	op->direction = GRAPH_EDGE_DIR_OUTGOING;
-	op->edgeRelationTypes = NULL;
+	op->records = NULL;
+	op->recordsCap = 0;
+	op->recordCount = 0;
+	op->edge_ctx = NULL;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", CondTraverseInit,
@@ -144,19 +87,11 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 
 	const char *edge = AlgebraicExpression_Edge(ae);
 	if(edge) {
-		op->edges = array_new(Edge, 32);
-		QGEdge *qg_edge = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
-		_setupTraversedRelations(op, qg_edge);
-		op->edgeRecIdx = OpBase_Modifies((OpBase *)op, edge);
-		op->setEdge = true;
-		// Determine the edge directions we need to collect.
-		if(qg_edge->bidirectional) {
-			op->direction = GRAPH_EDGE_DIR_BOTH;
-		} else if(AlgebraicExpression_ContainsOp(ae, AL_EXP_TRANSPOSE)) {
-			/* If this operation traverses a transposed edge, the source and destination nodes
-			 * will be swapped in the Record. */
-			op->direction = GRAPH_EDGE_DIR_INCOMING;
-		}
+		/* This operation will populate an edge in the Record.
+		 * Prepare all necessary information for collecting matching edges. */
+		uint edge_idx = OpBase_Modifies((OpBase *)op, edge);
+		QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, edge);
+		op->edge_ctx = Traverse_NewEdgeCtx(ae, e, edge_idx);
 	}
 
 	return (OpBase *)op;
@@ -170,16 +105,16 @@ static OpResult CondTraverseInit(OpBase *opBase) {
 	return OP_OK;
 }
 
-/* CondTraverseConsume next operation
- * each call will update the graph
- * returns OP_DEPLETED when no additional updates are available */
+/* Each call to CondTraverseConsume emits a Record containing the
+ * traversal's endpoints and, if required, an edge.
+ * Returns NULL once all traversals have been performed. */
 static Record CondTraverseConsume(OpBase *opBase) {
 	CondTraverse *op = (CondTraverse *)opBase;
 	OpBase *child = op->op.children[0];
 
 	/* If we're required to update an edge and have one queued, we can return early.
 	 * Otherwise, try to get a new pair of source and destination nodes. */
-	if(op->setEdge && _CondTraverse_SetEdge(op, op->r)) return OpBase_CloneRecord(op->r);
+	if(op->edge_ctx && Traverse_SetEdge(op->edge_ctx, op->r)) return OpBase_CloneRecord(op->r);
 
 	bool depleted = true;
 	NodeID src_id = INVALID_ENTITY_ID;
@@ -194,32 +129,44 @@ static Record CondTraverseConsume(OpBase *opBase) {
 		/* Run out of tuples, try to get new data.
 		 * Free old records. */
 		op->r = NULL;
-		for(int i = 0; i < op->recordsLen; i++) OpBase_DeleteRecord(op->records[i]);
+		for(uint i = 0; i < op->recordCount; i++) OpBase_DeleteRecord(op->records[i]);
 
 		// Ask child operations for data.
-		for(op->recordsLen = 0; op->recordsLen < op->recordsCap; op->recordsLen++) {
+		for(op->recordCount = 0; op->recordCount < op->recordsCap; op->recordCount++) {
 			Record childRecord = OpBase_Consume(child);
+			// If the Record is NULL, the child has been depleted.
 			if(!childRecord) break;
+			if(!Record_GetNode(childRecord, op->srcNodeIdx)) {
+				/* The child Record may not contain the source node in scenarios like
+				 * a failed OPTIONAL MATCH. In this case, delete the Record and try again. */
+				OpBase_DeleteRecord(childRecord);
+				op->recordCount--;
+				continue;
+			}
+
 			// Store received record.
 			Record_PersistScalars(childRecord);
-			op->records[op->recordsLen] = childRecord;
+			op->records[op->recordCount] = childRecord;
 		}
 
 		// No data.
-		if(op->recordsLen == 0) return NULL;
+		if(op->recordCount == 0) return NULL;
 
 		_traverse(op);
 	}
 
 	/* Get node from current column. */
 	op->r = op->records[src_id];
-	Node *destNode = Record_GetNode(op->r, op->destNodeIdx);
-	Graph_GetNode(op->graph, dest_id, destNode);
+	Node destNode = {0};
+	Graph_GetNode(op->graph, dest_id, &destNode);
+	Record_AddNode(op->r, op->destNodeIdx, destNode);
 
-	if(op->setEdge) {
-		_CondTraverse_CollectEdges(op, op->destNodeIdx, op->srcNodeIdx);
+	if(op->edge_ctx) {
+		Node *srcNode = Record_GetNode(op->r, op->srcNodeIdx);
+		// Collect all appropriate edges connecting the current pair of endpoints.
+		Traverse_CollectEdges(op->edge_ctx, ENTITY_GET_ID(srcNode), ENTITY_GET_ID(&destNode));
 		// We're guaranteed to have at least one edge.
-		_CondTraverse_SetEdge(op, op->r);
+		Traverse_SetEdge(op->edge_ctx, op->r);
 	}
 
 	return OpBase_CloneRecord(op->r);
@@ -231,10 +178,11 @@ static OpResult CondTraverseReset(OpBase *ctx) {
 	// Do not explicitly free op->r, as the same pointer is also held
 	// in the op->records array and as such will be freed there.
 	op->r = NULL;
-	for(int i = 0; i < op->recordsLen; i++) OpBase_DeleteRecord(op->records[i]);
-	op->recordsLen = 0;
+	for(uint i = 0; i < op->recordCount; i++) OpBase_DeleteRecord(op->records[i]);
+	op->recordCount = 0;
 
-	if(op->edges) array_clear(op->edges);
+	if(op->edge_ctx) Traverse_ResetEdgeCtx(op->edge_ctx);
+
 	if(op->iter) {
 		GxB_MatrixTupleIter_free(op->iter);
 		op->iter = NULL;
@@ -267,23 +215,18 @@ static void CondTraverseFree(OpBase *ctx) {
 		op->M = GrB_NULL;
 	}
 
-	if(op->edges) {
-		array_free(op->edges);
-		op->edges = NULL;
-	}
-
 	if(op->ae) {
 		AlgebraicExpression_Free(op->ae);
 		op->ae = NULL;
 	}
 
-	if(op->edgeRelationTypes) {
-		array_free(op->edgeRelationTypes);
-		op->edgeRelationTypes = NULL;
+	if(op->edge_ctx) {
+		Traverse_FreeEdgeCtx(op->edge_ctx);
+		op->edge_ctx = NULL;
 	}
 
 	if(op->records) {
-		for(int i = 0; i < op->recordsLen; i++) OpBase_DeleteRecord(op->records[i]);
+		for(uint i = 0; i < op->recordCount; i++) OpBase_DeleteRecord(op->records[i]);
 		rm_free(op->records);
 		op->records = NULL;
 	}

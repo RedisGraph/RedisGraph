@@ -304,7 +304,6 @@ Feature: MatchAcceptance2
       | ({name: 'e'}) |
     And no side effects
 
-@skip
   Scenario: MATCH with OPTIONAL MATCH in longer pattern
     Given an empty graph
     And having executed:
@@ -324,7 +323,6 @@ Feature: MatchAcceptance2
       | ({name: 'C'}) |
     And no side effects
 
-@skip
   Scenario: Optionally matching named paths
     Given an empty graph
     And having executed:
@@ -345,7 +343,6 @@ Feature: MatchAcceptance2
       | ({name: 'C'}) | null                                |
     And no side effects
 
-@skip
   Scenario: Optionally matching named paths with single and variable length patterns
     Given an empty graph
     And having executed:
@@ -425,7 +422,6 @@ Feature: MatchAcceptance2
       | (:B {id: 2}) |
     And no side effects
 
-@skip
   Scenario: Do not fail when predicates on optionally matched and missed nodes are invalid
     Given an empty graph
     And having executed:
@@ -537,7 +533,6 @@ Feature: MatchAcceptance2
       | b |
     And no side effects
 
-@skip
   Scenario: Variable length relationship in OPTIONAL MATCH
     Given an empty graph
     And having executed:
@@ -631,7 +626,6 @@ Feature: MatchAcceptance2
       | <(:B)<-[:T]-(:A)> |
     And no side effects
 
-@skip
   Scenario: Simple OPTIONAL MATCH on empty graph
     Given an empty graph
     When executing query:
@@ -644,7 +638,6 @@ Feature: MatchAcceptance2
       | null |
     And no side effects
 
-@skip
   Scenario: OPTIONAL MATCH with previously bound nodes
     Given an empty graph
     And having executed:
@@ -662,7 +655,6 @@ Feature: MatchAcceptance2
       | () | null |
     And no side effects
 
-@skip
   Scenario: `collect()` filtering nulls
     Given an empty graph
     And having executed:
@@ -925,7 +917,6 @@ Feature: MatchAcceptance2
       | [[:T]] |
     And no side effects
 
-@skip
   Scenario: Matching from null nodes should return no results owing to finding no matches
     Given an empty graph
     When executing query:
@@ -939,7 +930,6 @@ Feature: MatchAcceptance2
       | b |
     And no side effects
 
-@skip
   Scenario: Matching from null nodes should return no results owing to matches being filtered out
     Given an empty graph
     And having executed:
@@ -957,7 +947,6 @@ Feature: MatchAcceptance2
       | b |
     And no side effects
 
-@skip
   Scenario: Optionally matching from null nodes should return null
     Given an empty graph
     When executing query:
@@ -972,7 +961,6 @@ Feature: MatchAcceptance2
       | null |
     And no side effects
 
-@skip
   Scenario: OPTIONAL MATCH returns null
     Given an empty graph
     When executing query:
@@ -1100,7 +1088,6 @@ Feature: MatchAcceptance2
       | [:T2 {id: 1}] |
     And no side effects
 
-@skip
   Scenario: Matching with LIMIT and optionally matching using a relationship that is already bound
     Given an empty graph
     And having executed:
@@ -1120,7 +1107,6 @@ Feature: MatchAcceptance2
       | (:A) | [:T] | (:B) |
     And no side effects
 
-@skip
   Scenario: Matching with LIMIT and optionally matching using a relationship and node that are both already bound
     Given an empty graph
     And having executed:
@@ -1140,7 +1126,6 @@ Feature: MatchAcceptance2
       | (:A) | [:T] | (:B) |
     And no side effects
 
-@skip
   Scenario: Matching with LIMIT, then matching again using a relationship and node that are both already bound along with an additional predicate
     Given an empty graph
     And having executed:
@@ -1280,7 +1265,6 @@ Feature: MatchAcceptance2
       | first | second |
     And no side effects
 
-@skip
   Scenario: Matching and optionally matching with bound nodes in reverse direction
     Given an empty graph
     And having executed:
@@ -1300,7 +1284,6 @@ Feature: MatchAcceptance2
       | (:A) | [:T] | null |
     And no side effects
 
-@skip
   Scenario: Matching and optionally matching with unbound nodes and equality predicate in reverse direction
     Given an empty graph
     And having executed:
@@ -1679,7 +1662,6 @@ Feature: MatchAcceptance2
       | null |
     And no side effects
 
-@skip
   Scenario: Variable length patterns and nulls
     Given an empty graph
     And having executed:

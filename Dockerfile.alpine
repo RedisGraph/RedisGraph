@@ -1,0 +1,44 @@
+###
+# Build Stage.
+FROM redis:6-alpine as builder
+
+RUN apk add --no-cache \
+        build-base \
+        musl-dev \
+        automake \
+        make \
+        cmake \
+        autoconf \
+        libtool \
+        wget \
+        g++ \
+        m4 \
+        libgomp \
+        python \
+        py-setuptools \
+        py-pip \
+        ;\
+    pip install rmtest;\
+    pip install redisgraph;
+
+# Install PEG manually (because there is no Alpine package for it).
+RUN wget https://www.piumarta.com/software/peg/peg-0.1.18.tar.gz;\
+    tar xzf peg-0.1.18.tar.gz;\
+    cd peg-0.1.18;\
+    make; make install
+
+# Build RedisGraph.
+ADD ./ /redisgraph
+WORKDIR /redisgraph
+RUN set -ex;\
+    make clean; \
+    make;
+
+
+###
+# Package Stage.
+FROM redis:6-alpine
+
+RUN apk add --no-cache libgomp
+COPY --from=builder /redisgraph/src/redisgraph.so /usr/lib/redis/modules/
+CMD ["redis-server", "--loadmodule", "/usr/lib/redis/modules/redisgraph.so"]
