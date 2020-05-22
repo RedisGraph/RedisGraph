@@ -68,8 +68,6 @@ static inline SIValue _BulkInsert_ReadProperty(const char *data, size_t *data_id
 	TYPE t = data[*data_idx];
 	*data_idx += 1;
 	if(t == BI_NULL) {
-		// TODO This property will currently get entered with a NULL key.
-		// Update so that the entire key-value pair is omitted from the node
 		v = SI_NullVal();
 	} else if(t == BI_BOOL) {
 		bool b = data[*data_idx];
@@ -108,6 +106,7 @@ int _BulkInsert_ProcessNodeFile(RedisModuleCtx *ctx, GraphContext *gc, const cha
 		Graph_CreateNode(gc->g, label_id, &n);
 		for(unsigned int i = 0; i < prop_count; i++) {
 			SIValue value = _BulkInsert_ReadProperty(data, &data_idx);
+			if (SI_TYPE(value) == T_NULL) continue; // Don't insert null values.
 			GraphEntity_AddProperty((GraphEntity *)&n, prop_indicies[i], value);
 		}
 	}
