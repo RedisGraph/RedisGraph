@@ -13,12 +13,13 @@
 #include "../util/rmalloc.h"
 #include "../util/cache/cache.h"
 #include "../execution_plan/execution_plan.h"
+#include "execution_ctx.h"
 
-static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc,
-							 const cypher_astnode_t *index_op) {
+static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
+							 ExecutionType exec_type) {
 	Index *idx = NULL;
-
-	if(cypher_astnode_type(index_op) == CYPHER_AST_CREATE_NODE_PROPS_INDEX) {
+	const cypher_astnode_t *index_op = ast->root;
+	if(exec_type == EXECUTION_TYPE_INDEX_CREATE) {
 		// Retrieve strings from AST node
 		const char *label = cypher_ast_label_get_name(cypher_ast_create_node_props_index_get_label(
 														  index_op));
@@ -52,9 +53,7 @@ static inline bool _check_compact_flag(CommandCtx *command_ctx) {
 }
 
 void Graph_Query(void *args) {
-	AST *ast = NULL;
 	bool lockAcquired = false;
-	ExecutionPlan *plan = NULL;
 	ResultSet *result_set = NULL;
 	CommandCtx *command_ctx = (CommandCtx *)args;
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(command_ctx);
@@ -62,26 +61,24 @@ void Graph_Query(void *args) {
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
 
 	QueryCtx_BeginTimer(); // Start query timing.
-	const char *query_string;
-	cypher_parse_result_t *query_parse_result = NULL;
-	// Parse and validate parameters only. Extract query string.
-	cypher_parse_result_t *params_parse_result = parse_params(command_ctx->query, &query_string);
-	if(params_parse_result == NULL) goto cleanup;
+	/* Retrive the required execution items and information:
+	 * 1. AST
+	 * 2. Execution plan (if any)
+	 * 3. Execution type (query, index operation, invalid execution due to error)
+	 * 4. Was the retrived items above where cached or not    */
+	AST *ast = NULL;
+	ExecutionPlan *plan = NULL;
+	ExecutionType exec_type = EXECUTION_TYPE_INVALID;
+	bool cached = false;
+	ExecutionInformation_FromQuery(command_ctx->query, &plan, &ast, &exec_type, &cached);
+	// See if there were any query compile time errors
+	if(QueryCtx_EncounteredError()) {
+		QueryCtx_EmitException();
+		goto cleanup;
+	}
+	if(exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
 
-	// Check the LRU cache to see if we already have a plan for this query.
-	plan = Cache_GetValue(query_cache, query_string);
-	if(plan) goto execute;
-
-	// Parse the query to construct an AST and validate it.
-	query_parse_result = parse_query(query_string);
-	if(query_parse_result == NULL) goto cleanup;
-
-
-	bool readonly = AST_ReadOnly(query_parse_result);
-
-	// Prepare the constructed AST for accesses from the module
-	ast = AST_Build(query_parse_result);
-
+	bool readonly = AST_ReadOnly(ast->root);
 	bool compact = _check_compact_flag(command_ctx);
 	ResultSetFormatterType resultset_format = (compact) ? FORMATTER_COMPACT : FORMATTER_VERBOSE;
 
@@ -104,29 +101,16 @@ void Graph_Query(void *args) {
 	// Set policy after lock acquisition, avoid resetting policies between readers and writers.
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 	result_set = NewResultSet(ctx, resultset_format);
-	QueryCtx_SetResultSet(result_set);
-	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
-	if(root_type == CYPHER_AST_QUERY) {  // query operation
-		plan = NewExecutionPlan();
-		/* Make sure there are no compile-time errors.
-		 * We prefer to emit the error only once the entire execution-plan
-		 * is constructed in-favour of the time it was encountered
-		 * for memory management considerations.
-		 * this should be revisited in order to save some time (fail fast). */
-		if(QueryCtx_EncounteredError()) {
-			if(plan) ExecutionPlan_Free(plan);
-			QueryCtx_EmitException();
-			goto cleanup;
-		}
+	// Indicate a cached execution.
+	if(cached) ResultSet_CachedExecution(result_set);
 
-		if(!plan) goto cleanup;
-execute: // TODO ugly jump, consider alternatives
+	QueryCtx_SetResultSet(result_set);
+	if(exec_type == EXECUTION_TYPE_QUERY) {  // query operation
 		ExecutionPlan_PreparePlan(plan);
 		result_set = ExecutionPlan_Execute(plan);
-		ExecutionPlan_Free(plan);
-	} else if(root_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
-			  root_type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {
-		_index_operation(ctx, gc, ast->root);
+	} else if(exec_type == EXECUTION_TYPE_INDEX_CREATE ||
+			  exec_type == EXECUTION_TYPE_INDEX_DROP) {
+		_index_operation(ctx, gc, ast, exec_type);
 	} else {
 		assert("Unhandled query type" && false);
 	}
@@ -148,9 +132,8 @@ cleanup:
 	SlowLog_Add(slowlog, command_ctx->command_name, command_ctx->query, QueryCtx_GetExecutionTime());
 
 	ResultSet_Free(result_set);
+	ExecutionPlan_Free(plan);
 	AST_Free(ast);
-	parse_result_free(params_parse_result);
-	parse_result_free(query_parse_result);
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.

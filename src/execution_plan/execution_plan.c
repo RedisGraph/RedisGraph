@@ -1072,8 +1072,8 @@ static void _ExecutionPlan_MergeSegments(ExecutionPlan *plan) {
 			OpBase *prev_root = current_segment->root;
 		}
 		// Connect the plan operations to the last segment root.
-		OpBase *connecting_op = ExecutionPlan_LocateOpMatchingType(plan->root, PROJECT_OPS,
-																   PROJECT_OP_COUNT);
+		connecting_op = ExecutionPlan_LocateOpMatchingType(plan->root, PROJECT_OPS,
+														   PROJECT_OP_COUNT);
 		assert(connecting_op->childCount == 0);
 		ExecutionPlan_AddOp(connecting_op, prev_root);
 	}
@@ -1086,14 +1086,16 @@ ExecutionPlan *ExecutionPlan_Clone(const ExecutionPlan *template) {
 	// Allocate an empty execution plan.
 	ExecutionPlan *clone = ExecutionPlan_NewEmptyExecutionPlan();
 
-	// Shallow copy shared values from template.
 	clone->is_union = template->is_union;
-	clone->ast_segment = template->ast_segment;
-	clone->query_graph = template->query_graph;
 	clone->segment_count = template->segment_count;
-	clone->connected_components = template->connected_components;
-
-	// Deep clone execution specific values:
+	clone->ast_segment = AST_Clone(template->ast_segment);
+	clone->query_graph = QueryGraph_Clone(template->query_graph);
+	uint connected_componenets_count = array_len(template->connected_components);
+	clone->connected_components = array_new(QueryGraph *, connected_componenets_count);
+	for(uint i = 0; i < connected_componenets_count; i++) {
+		clone->connected_components = array_append(clone->connected_components,
+												   QueryGraph_Clone(template->connected_components[i]));
+	}
 	clone->record_map = raxClone(template->record_map);
 	clone->filter_tree = template->filter_tree ? FilterTree_Clone(template->filter_tree) : NULL;
 	// Clone each operation in the template relevant segment

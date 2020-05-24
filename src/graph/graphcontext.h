@@ -99,7 +99,7 @@ void GraphContext_Rename(GraphContext *gc, const char *name);
 SlowLog *GraphContext_GetSlowLog(const GraphContext *gc);
 
 /* Cache API - Return cache associated with graph context and current thread id. */
-Cache *GraphContext_GetCache(const GraphContext *gc)
+Cache *GraphContext_GetCache(const GraphContext *gc);
 
 #endif
 

@@ -112,8 +112,9 @@ static void _AST_Extract_Params(const cypher_parse_result_t *parse_result) {
 	}
 }
 
-static bool _AST_ReadOnly(const cypher_astnode_t *root) {
-	if(!root) return false;
+bool AST_ReadOnly(const cypher_astnode_t *root) {
+	// Check for empty query
+	if(root == NULL) return true;
 	cypher_astnode_type_t type = cypher_astnode_type(root);
 	if(type == CYPHER_AST_CREATE                      ||
 	   type == CYPHER_AST_MERGE                  ||
@@ -131,23 +132,9 @@ static bool _AST_ReadOnly(const cypher_astnode_t *root) {
 	uint num_children = cypher_astnode_nchildren(root);
 	for(uint i = 0; i < num_children; i ++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(root, i);
-		if(!_AST_ReadOnly(child)) return false;
+		if(!AST_ReadOnly(child)) return false;
 	}
 	return true;
-}
-
-bool AST_ReadOnly(const cypher_parse_result_t *result) {
-	// A lot of these steps will be unnecessary once we move
-	// parsing into the subthread (and can thus perform this check
-	// after validations).
-
-	// Check for failures in libcypher-parser
-	if(AST_ContainsErrors(result)) return true;
-
-	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
-	// Check for empty query
-	if(root == NULL) return true;
-	return _AST_ReadOnly(root);
 }
 
 inline bool AST_ContainsClause(const AST *ast, cypher_astnode_type_t clause) {
@@ -230,8 +217,6 @@ const cypher_astnode_t **AST_GetClauses(const AST *ast, cypher_astnode_type_t ty
 	return found;
 }
 
-
-
 static void _AST_GetTypedNodes(const cypher_astnode_t  ***nodes, const cypher_astnode_t *root,
 							   cypher_astnode_type_t type) {
 	if(cypher_astnode_type(root) == type) *nodes = array_append(*nodes, root);
@@ -269,6 +254,9 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	ast->free_root = false;
 	ast->limit = NULL;
 	ast->skip = NULL;
+	ast->ref_count = 1;
+	ast->parse_result = parse_result;
+	ast->params_parse_result = NULL;
 
 	// Retrieve the AST root node from a parsed query.
 	const cypher_astnode_t *statement = cypher_parse_result_get_root(parse_result, 0);
@@ -296,6 +284,9 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	ast->free_root = true;
 	ast->limit = NULL;
 	ast->skip = NULL;
+	ast->ref_count = 1;
+	ast->parse_result = NULL;
+	ast->params_parse_result = NULL;
 	uint n = end_offset - start_offset;
 
 	const cypher_astnode_t *clauses[n];
@@ -330,6 +321,17 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset) {
 	AST_BuildReferenceMap(ast, project_clause);
 
 	return ast;
+}
+
+void AST_SetParamsParseResult(AST *ast, cypher_parse_result_t *params_parse_result) {
+	// When setting this value in AST, the ast should no hold invalid pointers or leftovers from previous executions.
+	assert(ast->params_parse_result == NULL);
+	ast->params_parse_result = params_parse_result;
+}
+
+AST *AST_Clone(AST *orig) {
+	orig->ref_count++;
+	return orig;
 }
 
 inline bool AST_AliasIsReferenced(AST *ast, const char *alias) {
@@ -471,19 +473,28 @@ inline AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast) {
 
 void AST_Free(AST *ast) {
 	if(ast == NULL) return;
-	if(ast->referenced_entities) raxFree(ast->referenced_entities);
-	if(ast->free_root) {
-		// This is a generated AST, free its root node.
-		cypher_astnode_free((cypher_astnode_t *)ast->root);
-	} else {
-		// This is the master AST, free the annotation contexts that have been constructed.
-		AST_AnnotationCtxCollection_Free(ast->anot_ctx_collection);
-		raxFreeWithCallback(ast->canonical_entity_names, rm_free);
+	ast->ref_count--;
+	// Free and nullify parameters parse result if needed, after execution.
+	if(ast->params_parse_result) {
+		parse_result_free(ast->params_parse_result);
+		ast->params_parse_result = NULL;
 	}
-	if(ast->limit) AR_EXP_Free(ast->limit);
-	if(ast->skip) AR_EXP_Free(ast->skip);
+	if(ast->ref_count == 0) {
+		if(ast->referenced_entities) raxFree(ast->referenced_entities);
+		if(ast->free_root) {
+			// This is a generated AST, free its root node.
+			cypher_astnode_free((cypher_astnode_t *)ast->root);
+		} else {
+			// This is the master AST, free the annotation contexts that have been constructed.
+			AST_AnnotationCtxCollection_Free(ast->anot_ctx_collection);
+			raxFreeWithCallback(ast->canonical_entity_names, rm_free);
+			parse_result_free(ast->parse_result);
+		}
+		if(ast->limit) AR_EXP_Free(ast->limit);
+		if(ast->skip) AR_EXP_Free(ast->skip);
 
-	rm_free(ast);
+		rm_free(ast);
+	}
 }
 
 inline AR_ExpNode *AST_GetLimitExpr(const AST *ast) {

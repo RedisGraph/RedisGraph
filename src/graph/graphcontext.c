@@ -13,7 +13,7 @@
 #include "../util/rmalloc.h"
 #include "../util/thpool/thpool.h"
 #include "../serializers/graphcontext_type.h"
-#include "../execution_plan/execution_plan.h"
+#include "../commands/execution_ctx.h"
 
 extern threadpool _thpool; // Declared in module.c
 // Global array tracking all extant GraphContexts (defined in module.c)
@@ -77,7 +77,8 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 	gc->cache_pool = array_new(Cache *, thread_count);
 
 	for(uint i = 0; i < thread_count; i++) {
-		gc->cache_pool = array_append(gc->cache_pool, Cache_New(cache_size, ExecutionPlan_Free));
+		gc->cache_pool = array_append(gc->cache_pool, Cache_New(cache_size,
+																(listValueFreeFunc)ExecutionCtx_Free));
 	}
 
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
