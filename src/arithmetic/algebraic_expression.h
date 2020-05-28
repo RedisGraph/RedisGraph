@@ -254,6 +254,11 @@ void AlgebraicExpression_Optimize
 	AlgebraicExpression **exp   // Expression to optimize.
 );
 
+void AlgebraicExpression_InitialOptimize
+(
+	AlgebraicExpression **exp   // Expression to optimize.
+);
+
 //------------------------------------------------------------------------------
 // AlgebraicExpression free
 //------------------------------------------------------------------------------

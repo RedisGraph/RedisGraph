@@ -108,7 +108,7 @@ AlgebraicExpression *AlgebraicExpression_Clone
 		return _AlgebraicExpression_CloneOperand(exp);
 		break;
 	default:
-		assert("Unknow algebraic expression node type" && false);
+		assert("Unknown algebraic expression node type" && false);
 		break;
 	}
 	return NULL;
@@ -373,7 +373,7 @@ AlgebraicExpression *AlgebraicExpression_RemoveLeftmostNode
 				AlgebraicExpression *replacement = _AlgebraicExpression_OperationRemoveRightmostChild(prev);
 				_AlgebraicExpression_InplaceRepurpose(prev, replacement);
 			} else {
-				assert("for the timebing, we should not be here" && false);
+				assert("for the time being, we should not be here" && false);
 			}
 		}
 	}
