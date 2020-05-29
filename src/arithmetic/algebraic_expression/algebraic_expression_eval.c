@@ -229,7 +229,8 @@ void AlgebraicExpression_Initialize(AlgebraicExpression **exp, GrB_Matrix filter
 
 	// Add placeholder operand to hold filter matrix as leftmost multiplication.
 	AlgebraicExpression_MultiplyToTheLeft(exp, filter_matrix);
-	// Perform one-time optimization of expression.
-	AlgebraicExpression_InitialOptimize(exp);
+
+	// Optimize the expression tree.
+	AlgebraicExpression_Optimize(exp);
 }
 

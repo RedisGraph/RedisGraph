@@ -53,10 +53,8 @@ static AlgebraicExpression *_AlgebraicExpression_CloneOperand
 (
 	const AlgebraicExpression *exp
 ) {
-	AlgebraicExpression *clone = AlgebraicExpression_NewOperand(exp->operand.matrix,
-																exp->operand.diagonal, exp->operand.src,
-																exp->operand.dest, exp->operand.edge, exp->operand.label);
-	clone->operand.should_free = exp->operand.should_free;
+	AlgebraicExpression *clone = rm_malloc(sizeof(AlgebraicExpression));
+	memcpy(clone, exp, sizeof(AlgebraicExpression));
 	return clone;
 }
 

@@ -23,8 +23,8 @@ typedef enum {
 
 // Type of node within an algebraic expression
 typedef enum {
-	AL_OPERAND,
-	AL_OPERATION,
+	AL_OPERAND = 1,
+	AL_OPERATION  = (1 << 1),
 } AlgebraicExpressionType;
 
 /* Forward declarations. */
@@ -34,7 +34,7 @@ struct AlgebraicExpression {
 	union {
 		struct {
 			bool diagonal;          // Diagonal matrix.
-			bool should_free; // TODO use or delete
+			bool should_free;       // If the matrix is scoped to this expression, it should be freed with it.
 			GrB_Matrix matrix;      // Matrix operand.
 			const char *src;        // Alias given to operand's rows (src node).
 			const char *dest;       // Alias given to operand's columns (destination node).
@@ -256,11 +256,6 @@ char *AlgebraicExpression_ToString
 // AlgebraicExpression optimizations
 //------------------------------------------------------------------------------
 void AlgebraicExpression_Optimize
-(
-	AlgebraicExpression **exp   // Expression to optimize.
-);
-
-void AlgebraicExpression_InitialOptimize
 (
 	AlgebraicExpression **exp   // Expression to optimize.
 );
