@@ -149,31 +149,6 @@ static const char *_AlgebraicExpression_Operation_Source
 	}
 }
 
-/*
-// Returns the source entity alias, row domain.
-const char *AlgebraicExpression_Source
-(
-	AlgebraicExpression *root   // Root of expression.
-) {
-	assert(root);
-	while(root->type != AL_OPERAND) {
-		root = FIRST_CHILD(root);
-	}
-	return root->operand.src;
-}
-
-// Returns the destination entity alias represented by the right-most operand column domain.
-const char *AlgebraicExpression_Destination
-(
-	AlgebraicExpression *root   // Root of expression.
-) {
-	assert(root);
-	while(root->type != AL_OPERAND) {
-		root = LAST_CHILD(root);
-	}
-	return root->operand.dest;
-}
-*/
 // Returns the source entity alias (row domain)
 // Taking into consideration transpose
 static const char *_AlgebraicExpression_Operand_Source
@@ -198,7 +173,7 @@ static const char *_AlgebraicExpression_Source
 	case AL_OPERAND:
 		return _AlgebraicExpression_Operand_Source(root, transposed);
 	default:
-		assert("Unknow algebraic expression node type" && false);
+		assert("Unknown algebraic expression node type" && false);
 	}
 }
 

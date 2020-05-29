@@ -237,8 +237,36 @@ static void _AlgebraicExpression_FlattenMultiplications(AlgebraicExpression *roo
 }
 
 //------------------------------------------------------------------------------
-// Transpose pushdown
+// Transpose pushdown and in-place matrix replacement
 //------------------------------------------------------------------------------
+// Transpose an operand matrix and update the expression accordingly.
+static void _AlgebraicExpression_TransposeOperand(AlgebraicExpression *operand) {
+	if(operand->operand.diagonal == true) return;  // No need to transpose diagonal matrix.
+	GrB_Type type;
+	GrB_Index nrows;
+	GrB_Matrix replacement;
+	// Create a new empty matrix with the type and dimensions of the original.
+	GrB_Matrix_nrows(&nrows, operand->operand.matrix);
+	GxB_Matrix_type(&type, operand->operand.matrix);
+	GrB_Matrix_new(&replacement, type, nrows, nrows);
+
+	// Populate the replacement with the transposed contents of the original.
+	GrB_Info info = GrB_transpose(replacement, GrB_NULL, GrB_NULL, operand->operand.matrix, GrB_NULL);
+	if(info != GrB_SUCCESS) {
+		fprintf(stderr, "%s", GrB_error());
+		assert(false);
+	}
+
+	// Update the matrix pointer.
+	operand->operand.matrix = replacement;
+	// As this matrix was constructed, it must ultimately be freed.
+	operand->operand.should_free = true;
+
+	// Swap the row and column domains of the operand.
+	const char *tmp = operand->operand.dest;
+	operand->operand.src = operand->operand.dest;
+	operand->operand.dest = tmp;
+}
 
 // Forward declaration.
 static void _Pushdown_TransposeExp(AlgebraicExpression *exp);
@@ -302,26 +330,6 @@ static void _Pushdown_TransposeOperation
 	}
 }
 
-static void _TransposeOperand(AlgebraicExpression *operand) {
-	if(operand->operand.diagonal == true) return;  // No need to transpose diagonal matrix.
-	GrB_Type type;
-	GrB_Index nrows;
-	GrB_Matrix replacement;
-	// Create a new empty matrix with the type and dimensions of the original.
-	GrB_Matrix_nrows(&nrows, operand->operand.matrix);
-	GxB_Matrix_type(&type, operand->operand.matrix);
-	GrB_Matrix_new(&replacement, type, nrows, nrows);
-
-	// Populate the replacement with the transposed contents of the original.
-	GrB_Info info = GrB_transpose(replacement, GrB_NULL, GrB_NULL, operand->operand.matrix, GrB_NULL);
-	assert(info == GrB_SUCCESS);
-
-	// Update the matrix pointer.
-	operand->operand.matrix = replacement;
-	// As this matrix was constructed, it must ultimately be freed.
-	operand->operand.should_free = true;
-}
-
 static void _Pushdown_TransposeExp
 (
 	AlgebraicExpression *exp
@@ -331,7 +339,7 @@ static void _Pushdown_TransposeExp
 		_Pushdown_TransposeOperation(exp);
 		break;
 	case AL_OPERAND:
-		_TransposeOperand(exp);
+		_AlgebraicExpression_TransposeOperand(exp);
 		break;
 	default:
 		assert("unknown algebraic expression node type" && false);
@@ -367,7 +375,7 @@ static void _Pushdown_TransposeExp
  *                (*)
  *          (B')       (A')
  */
-static void _AlgebraicExpression_PushDownTranspose(AlgebraicExpression **root) {
+static void AlgebraicExpression_PerformTranspose(AlgebraicExpression **root) {
 	uint child_count = 0;
 	AlgebraicExpression *child = NULL;
 
@@ -383,7 +391,7 @@ static void _AlgebraicExpression_PushDownTranspose(AlgebraicExpression **root) {
 			child_count = AlgebraicExpression_ChildCount(*root);
 			for(uint i = 0; i < child_count; i++) {
 				AlgebraicExpression *child = (*root)->operation.children[i];
-				_AlgebraicExpression_PushDownTranspose(&child);
+				AlgebraicExpression_PerformTranspose(&child);
 			}
 			break;
 
@@ -401,12 +409,12 @@ static void _AlgebraicExpression_PushDownTranspose(AlgebraicExpression **root) {
 
 				/* It is possible for `root` to contain a transpose subexpression
 				 * push it further down. */
-				_AlgebraicExpression_PushDownTranspose(root);
+				AlgebraicExpression_PerformTranspose(root);
 			} else { // AL_OPERAND
 				/* We have a transpose operation with an operand child.
 				 * Create a new transposed matrix and replace this operation with it. */
 				child = _AlgebraicExpression_OperationRemoveLeftmostChild(*root);
-				_TransposeOperand(child);
+				_AlgebraicExpression_TransposeOperand(child);
 				_AlgebraicExpression_InplaceRepurpose(*root, child);
 			}
 			break;
@@ -427,7 +435,7 @@ void AlgebraicExpression_Optimize
 	AlgebraicExpression **exp
 ) {
 	assert(exp);
-	_AlgebraicExpression_PushDownTranspose(exp);
+	AlgebraicExpression_PerformTranspose(exp);
 	_AlgebraicExpression_MulOverSum(exp);
 	_AlgebraicExpression_FlattenMultiplications(*exp);
 }
