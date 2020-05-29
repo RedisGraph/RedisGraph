@@ -3,9 +3,10 @@
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
-#include "../algebraic_expression.h"
 #include "utils.h"
 #include "../../util/arr.h"
+#include "../../query_ctx.h"
+#include "../algebraic_expression.h"
 
 static inline bool _AlgebraicExpression_IsMultiplicationNode(const AlgebraicExpression *node) {
 	return (node->type == AL_OPERATION && node->operation.op == AL_EXP_MUL);
@@ -365,7 +366,6 @@ static void _Pushdown_TransposeExp
  *         (B)            (A)
  * */
 static void _AlgebraicExpression_PushDownTranspose(AlgebraicExpression *root) {
-	uint i = 0;
 	uint child_count = 0;
 	AlgebraicExpression *child = NULL;
 
@@ -379,7 +379,7 @@ static void _AlgebraicExpression_PushDownTranspose(AlgebraicExpression *root) {
 		case AL_EXP_MUL:    // Fall through.
 		case AL_EXP_POW:    // Fall through.
 			child_count = AlgebraicExpression_ChildCount(root);
-			for(; i < child_count; i++) {
+			for(uint i = 0; i < child_count; i++) {
 				AlgebraicExpression *child = root->operation.children[i];
 				_AlgebraicExpression_PushDownTranspose(child);
 			}
@@ -411,6 +411,63 @@ static void _AlgebraicExpression_PushDownTranspose(AlgebraicExpression *root) {
 	}
 }
 
+static void _AlgebraicExpression_TransposeOperands(AlgebraicExpression *root) {
+	uint child_count = 0;
+	AlgebraicExpression *child = NULL;
+
+	switch(root->type) {
+	case AL_OPERAND:
+		break;  // Nothing to be done.
+
+	case AL_OPERATION:
+		switch(root->operation.op) {
+		case AL_EXP_ADD:    // Fall through.
+		case AL_EXP_MUL:    // Fall through.
+		case AL_EXP_POW:    // Fall through.
+			child_count = AlgebraicExpression_ChildCount(root);
+			for(uint i = 0; i < child_count; i++) {
+				AlgebraicExpression *child = root->operation.children[i];
+				_AlgebraicExpression_TransposeOperands(child);
+			}
+			break;
+
+		case AL_EXP_TRANSPOSE:
+			child = root->operation.children[0]; // TODO delete
+			if(child->type == AL_OPERATION) {
+				assert(false && "reachable?");
+			} else {
+				assert(AlgebraicExpression_ChildCount(root) == 1);
+				// child = _AlgebraicExpression_OperationRemoveLeftmostChild(root);
+				// Transpose operand.
+				GrB_Type type;
+				GrB_Index nrows;
+				GrB_Matrix replacement;
+				GrB_Matrix_nrows(&nrows, child->operand.matrix);
+				GxB_Matrix_type(&type, child->operand.matrix);
+				GrB_Matrix_new(&replacement, type, nrows, nrows);
+				GrB_Info info = GrB_transpose(replacement, GrB_NULL, GrB_NULL, child->operand.matrix, GrB_NULL);
+				assert(info == GrB_SUCCESS);
+				child->operand.matrix = replacement;
+				// Swap names of src and dest
+				// const char *tmp = ae->operand.src;
+				// ae->operand.src = ae->operand.dest;
+				// ae->operand.dest = tmp;
+				// Replace self with transposed operand.
+				// _AlgebraicExpression_InplaceRepurpose(root, child); // TODO Consider
+				// root->operand.should_free = true;
+				child->operand.should_free = true;
+			}
+			break;
+		default:
+			assert("Unknown operation" && false);
+		}
+		break;  // Break out of case AL_OPERATION.
+	default:
+		assert("Unknown algebraic expression node type" && false);
+	}
+
+}
+
 //------------------------------------------------------------------------------
 // AlgebraicExpression optimizations
 //------------------------------------------------------------------------------
@@ -422,5 +479,11 @@ void AlgebraicExpression_Optimize
 	_AlgebraicExpression_PushDownTranspose(*exp);
 	_AlgebraicExpression_MulOverSum(exp);
 	_AlgebraicExpression_FlattenMultiplications(*exp);
+}
+
+void AlgebraicExpression_InitialOptimize(AlgebraicExpression **exp) {
+	AlgebraicExpression_Optimize(exp);
+
+	_AlgebraicExpression_TransposeOperands(*exp);
 }
 

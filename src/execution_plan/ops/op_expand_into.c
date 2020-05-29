@@ -44,6 +44,12 @@ static void _traverse(OpExpandInto *op) {
 		GrB_Matrix_new(&op->F, GrB_BOOL, op->recordsCap, required_dim);
 	}
 
+	// If this is the first evaluation, initialize the expression.
+	if(!op->exp_initialized) {
+		AlgebraicExpression_Initialize(&op->ae);
+		op->exp_initialized = true;
+	}
+
 	// Populate filter matrix.
 	_populate_filter_matrix(op);
 	// Clone expression, as we're about to modify the structure with Optimize.
@@ -71,6 +77,7 @@ OpBase *NewExpandIntoOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpression
 	op->recordsCap = 0;
 	op->recordCount = 0;
 	op->edge_ctx = NULL;
+	op->exp_initialized = false;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_EXPAND_INTO, "Expand Into", ExpandIntoInit, ExpandIntoConsume,

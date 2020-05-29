@@ -34,6 +34,7 @@ struct AlgebraicExpression {
 	union {
 		struct {
 			bool diagonal;          // Diagonal matrix.
+			bool should_free; // TODO use or delete
 			GrB_Matrix matrix;      // Matrix operand.
 			const char *src;        // Alias given to operand's rows (src node).
 			const char *dest;       // Alias given to operand's columns (destination node).
@@ -214,6 +215,10 @@ void AlgebraicExpression_Eval
 (
 	const AlgebraicExpression *exp, // Root node.
 	GrB_Matrix res                  // Result output.
+);
+
+void AlgebraicExpression_Initialize(
+	AlgebraicExpression **exp       // Expression to prep for evaluation.
 );
 
 //------------------------------------------------------------------------------

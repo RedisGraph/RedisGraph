@@ -17,6 +17,7 @@ typedef struct {
 	OpBase op;
 	Graph *graph;
 	AlgebraicExpression *ae;
+	bool exp_initialized;       // False until the expression has been evaluated once.
 	GrB_Matrix F;               // Filter matrix.
 	GrB_Matrix M;               // Algebraic expression result.
 	EdgeTraverseCtx *edge_ctx;  // Edge collection data if the edge needs to be set.
