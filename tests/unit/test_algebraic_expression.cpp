@@ -174,30 +174,30 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		mat_id = GraphContext_GetSchema(gc, "war", SCHEMA_EDGE)->id;
 		mat_ew = Graph_GetRelationMatrix(g, mat_id);
 
-        _matrices = raxNew();
-        raxInsert(_matrices, (unsigned char *)"p", strlen("p"), mat_p, NULL);
-        raxInsert(_matrices, (unsigned char *)"f", strlen("f"), mat_f, NULL);
-        raxInsert(_matrices, (unsigned char *)"c", strlen("c"), mat_c, NULL);
-        raxInsert(_matrices, (unsigned char *)"e", strlen("e"), mat_e, NULL);
-        raxInsert(_matrices, (unsigned char *)"F", strlen("F"), mat_ef, NULL);
-        raxInsert(_matrices, (unsigned char *)"V", strlen("V"), mat_ev, NULL);
-        raxInsert(_matrices, (unsigned char *)"W", strlen("W"), mat_ew, NULL);
+		_matrices = raxNew();
+		raxInsert(_matrices, (unsigned char *)"p", strlen("p"), mat_p, NULL);
+		raxInsert(_matrices, (unsigned char *)"f", strlen("f"), mat_f, NULL);
+		raxInsert(_matrices, (unsigned char *)"c", strlen("c"), mat_c, NULL);
+		raxInsert(_matrices, (unsigned char *)"e", strlen("e"), mat_e, NULL);
+		raxInsert(_matrices, (unsigned char *)"F", strlen("F"), mat_ef, NULL);
+		raxInsert(_matrices, (unsigned char *)"V", strlen("V"), mat_ev, NULL);
+		raxInsert(_matrices, (unsigned char *)"W", strlen("W"), mat_ew, NULL);
 	}
 
 	AlgebraicExpression **build_algebraic_expression(const char *query) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
-        Graph *g = QueryCtx_GetGraph();
+		Graph *g = QueryCtx_GetGraph();
 		cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 		AST *master_ast = AST_Build(parse_result);
 		AST *ast = AST_NewSegment(master_ast, 0, cypher_ast_query_nclauses(master_ast->root));
 		QueryGraph *qg = BuildQueryGraph(gc, ast);
 		AlgebraicExpression **ae = AlgebraicExpression_FromQueryGraph(qg);
 
-        uint exp_count = array_len(ae);
-        for(uint i = 0; i < exp_count; i++) {
-            AlgebraicExpression_Optimize(ae + i);
-            _AlgebraicExpression_FetchOperands(ae[i], gc, g);
-        }
+		uint exp_count = array_len(ae);
+		for(uint i = 0; i < exp_count; i++) {
+			AlgebraicExpression_Optimize(ae + i);
+			_AlgebraicExpression_FetchOperands(ae[i], gc, g);
+		}
 
 		return ae;
 	}
@@ -263,8 +263,8 @@ class AlgebraicExpressionTest: public ::testing::Test {
 	}
 
 	void _compare_algebraic_operand(AlgebraicExpression *a, AlgebraicExpression *b) {
-        ASSERT_TRUE(a->type == AL_OPERAND);
-        ASSERT_TRUE(b->type == AL_OPERAND);
+		ASSERT_TRUE(a->type == AL_OPERAND);
+		ASSERT_TRUE(b->type == AL_OPERAND);
 		// ASSERT_EQ(a->operand.free, b->operand.free);
 		ASSERT_EQ(a->operand.matrix, b->operand.matrix);
 		// ASSERT_EQ(a->operand.diagonal, b->operand.diagonal);
@@ -275,10 +275,10 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		ASSERT_EQ(AlgebraicExpression_ChildCount(a), AlgebraicExpression_ChildCount(b));
 		ASSERT_EQ(AlgebraicExpression_OperandCount(a), AlgebraicExpression_OperandCount(b));
 		// ASSERT_EQ(AlgebraicExpression_OperationCount(a, AL_EXP_ALL), AlgebraicExpression_OperationCount(b, AL_EXP_ALL));
-        if(a->type == AL_OPERAND) _compare_algebraic_operand(a, b);
+		if(a->type == AL_OPERAND) _compare_algebraic_operand(a, b);
 
-        uint child_count = AlgebraicExpression_ChildCount(a);
-        for(uint i = 0; i < child_count; i++) {
+		uint child_count = AlgebraicExpression_ChildCount(a);
+		for(uint i = 0; i < child_count; i++) {
 			compare_algebraic_expression(a->operation.children[i], b->operation.children[i]);
 		}
 	}
@@ -299,256 +299,258 @@ class AlgebraicExpressionTest: public ::testing::Test {
 };
 
 TEST_F(AlgebraicExpressionTest, AlgebraicExpression_New) {
-    GrB_Matrix matrix = GrB_NULL;
-    bool diagonal = false;
-    const char *src = "src";
-    const char *dest = "dest";
-    const char *edge = "edge";
-    const char *label = "label";
+	GrB_Matrix matrix = GrB_NULL;
+	bool diagonal = false;
+	const char *src = "src";
+	const char *dest = "dest";
+	const char *edge = "edge";
+	const char *label = "label";
 
-    AlgebraicExpression *operand = AlgebraicExpression_NewOperand(matrix, diagonal, src, dest, edge, label);
-    ASSERT_EQ(operand->type, AL_OPERAND);
-    ASSERT_EQ(operand->operand.matrix, matrix);
-    ASSERT_EQ(operand->operand.diagonal, diagonal);
-    ASSERT_EQ(operand->operand.src, src);
-    ASSERT_EQ(operand->operand.dest, dest);
-    ASSERT_EQ(operand->operand.edge, edge);
-    ASSERT_EQ(operand->operand.label, label);
+	AlgebraicExpression *operand = AlgebraicExpression_NewOperand(matrix, diagonal, src, dest, edge,
+																  label);
+	ASSERT_EQ(operand->type, AL_OPERAND);
+	ASSERT_EQ(operand->operand.matrix, matrix);
+	ASSERT_EQ(operand->operand.diagonal, diagonal);
+	ASSERT_EQ(operand->operand.src, src);
+	ASSERT_EQ(operand->operand.dest, dest);
+	ASSERT_EQ(operand->operand.edge, edge);
+	ASSERT_EQ(operand->operand.label, label);
 
-    ASSERT_EQ(AlgebraicExpression_Source(operand), src);
-    ASSERT_EQ(AlgebraicExpression_Destination(operand), dest);
-    ASSERT_EQ(AlgebraicExpression_Edge(operand), edge);
-    ASSERT_EQ(AlgebraicExpression_ChildCount(operand), 0);
-    ASSERT_EQ(AlgebraicExpression_OperandCount(operand), 1);
-    ASSERT_EQ(AlgebraicExpression_Transposed(operand), false);
+	ASSERT_EQ(AlgebraicExpression_Source(operand), src);
+	ASSERT_EQ(AlgebraicExpression_Destination(operand), dest);
+	ASSERT_EQ(AlgebraicExpression_Edge(operand), edge);
+	ASSERT_EQ(AlgebraicExpression_ChildCount(operand), 0);
+	ASSERT_EQ(AlgebraicExpression_OperandCount(operand), 1);
+	ASSERT_EQ(AlgebraicExpression_Transposed(operand), false);
 
-    AL_EXP_OP op = AL_EXP_ADD;
-    AlgebraicExpression *operation = AlgebraicExpression_NewOperation(op);
-    AlgebraicExpression_AddChild(operation, operand);
+	AL_EXP_OP op = AL_EXP_ADD;
+	AlgebraicExpression *operation = AlgebraicExpression_NewOperation(op);
+	AlgebraicExpression_AddChild(operation, operand);
 
-    ASSERT_EQ(operation->type, AL_OPERATION);
-    ASSERT_EQ(operation->operation.op, op);
-    ASSERT_EQ(array_len(operation->operation.children), 1);
+	ASSERT_EQ(operation->type, AL_OPERATION);
+	ASSERT_EQ(operation->operation.op, op);
+	ASSERT_EQ(array_len(operation->operation.children), 1);
 
-    ASSERT_EQ(AlgebraicExpression_Source(operation), src);
-    ASSERT_EQ(AlgebraicExpression_Destination(operation), dest);
-    ASSERT_EQ(AlgebraicExpression_Edge(operation), edge);
-    ASSERT_EQ(AlgebraicExpression_ChildCount(operation), 1);
-    ASSERT_EQ(AlgebraicExpression_OperandCount(operation), 1);
-    ASSERT_EQ(AlgebraicExpression_Transposed(operation), false);
+	ASSERT_EQ(AlgebraicExpression_Source(operation), src);
+	ASSERT_EQ(AlgebraicExpression_Destination(operation), dest);
+	ASSERT_EQ(AlgebraicExpression_Edge(operation), edge);
+	ASSERT_EQ(AlgebraicExpression_ChildCount(operation), 1);
+	ASSERT_EQ(AlgebraicExpression_OperandCount(operation), 1);
+	ASSERT_EQ(AlgebraicExpression_Transposed(operation), false);
 
-    // Will free `operand` aswell.
-    AlgebraicExpression_Free(operation);
+	// Will free `operand` aswell.
+	AlgebraicExpression_Free(operation);
 }
 
-TEST_F(AlgebraicExpressionTest, AlgebraicExpression_Domains) {	
+TEST_F(AlgebraicExpressionTest, AlgebraicExpression_Domains) {
 	GrB_Matrix A;
 	GrB_Matrix B;
-    const char *src_domain;     // Row domain of expression
-    const char *dest_domain;    // Column domain of expression
-    AlgebraicExpression *exp;
-    
-    GrB_Matrix_new(&A, GrB_BOOL, 2, 2);	
-    GrB_Matrix_new(&B, GrB_BOOL, 2, 2);
+	const char *src_domain;     // Row domain of expression
+	const char *dest_domain;    // Column domain of expression
+	AlgebraicExpression *exp;
 
-    rax *matrices = raxNew();
-    raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
-    raxInsert(matrices, (unsigned char *)"B", strlen("B"), B, NULL);
+	GrB_Matrix_new(&A, GrB_BOOL, 2, 2);
+	GrB_Matrix_new(&B, GrB_BOOL, 2, 2);
 
-    /* Note: addition is performed over matrices with the same source and destination domain
-     * While multiplication takes on source domain of first operand, and destination domain of its last operand
-     * For a given operand A both its source and destination domains are 'A' */
+	rax *matrices = raxNew();
+	raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
+	raxInsert(matrices, (unsigned char *)"B", strlen("B"), B, NULL);
 
-    // A
-    // Source(A) = A.
-    // Destination(A) = A.
-    exp = AlgebraicExpression_FromString("A", matrices);
-    src_domain = AlgebraicExpression_Source(exp);
-    dest_domain = AlgebraicExpression_Destination(exp);
-    ASSERT_STREQ(src_domain, "A");
-    ASSERT_STREQ(dest_domain, "A");
-    AlgebraicExpression_Free(exp);
+	/* Note: addition is performed over matrices with the same source and destination domain
+	 * While multiplication takes on source domain of first operand, and destination domain of its last operand
+	 * For a given operand A both its source and destination domains are 'A' */
 
-    // A+B
-    // Addition doesn't modifies column domain.
-    // Source(A+B) = A.
-    // Destination(A+B) = A.
-    exp = AlgebraicExpression_FromString("A+B", matrices);    
-    src_domain = AlgebraicExpression_Source(exp);
-    dest_domain = AlgebraicExpression_Destination(exp);
-    ASSERT_STREQ(src_domain, "A");
-    ASSERT_STREQ(dest_domain, "A");
-    AlgebraicExpression_Free(exp);
+	// A
+	// Source(A) = A.
+	// Destination(A) = A.
+	exp = AlgebraicExpression_FromString("A", matrices);
+	src_domain = AlgebraicExpression_Source(exp);
+	dest_domain = AlgebraicExpression_Destination(exp);
+	ASSERT_STREQ(src_domain, "A");
+	ASSERT_STREQ(dest_domain, "A");
+	AlgebraicExpression_Free(exp);
 
-    // B+A
-    // Addition doesn't modifies column domain.
-    // Source(B+A) = B.
-    // Destination(B+A) = B.
-    exp = AlgebraicExpression_FromString("B+A", matrices);
-    src_domain = AlgebraicExpression_Source(exp);
-    dest_domain = AlgebraicExpression_Destination(exp);
-    ASSERT_STREQ(src_domain, "B");
-    ASSERT_STREQ(dest_domain, "B");
-    AlgebraicExpression_Free(exp);
+	// A+B
+	// Addition doesn't modifies column domain.
+	// Source(A+B) = A.
+	// Destination(A+B) = A.
+	exp = AlgebraicExpression_FromString("A+B", matrices);
+	src_domain = AlgebraicExpression_Source(exp);
+	dest_domain = AlgebraicExpression_Destination(exp);
+	ASSERT_STREQ(src_domain, "A");
+	ASSERT_STREQ(dest_domain, "A");
+	AlgebraicExpression_Free(exp);
 
-    // A*B
-    // Source(A*B) = A.
-    // Destination(A*B) = B.
-    exp = AlgebraicExpression_FromString("A*B", matrices);
-    src_domain = AlgebraicExpression_Source(exp);
-    dest_domain = AlgebraicExpression_Destination(exp);
-    ASSERT_STREQ(src_domain, "A");
-    ASSERT_STREQ(dest_domain, "B");
-    AlgebraicExpression_Free(exp);
+	// B+A
+	// Addition doesn't modifies column domain.
+	// Source(B+A) = B.
+	// Destination(B+A) = B.
+	exp = AlgebraicExpression_FromString("B+A", matrices);
+	src_domain = AlgebraicExpression_Source(exp);
+	dest_domain = AlgebraicExpression_Destination(exp);
+	ASSERT_STREQ(src_domain, "B");
+	ASSERT_STREQ(dest_domain, "B");
+	AlgebraicExpression_Free(exp);
 
-    // B*A
-    // Source(B*A) = B.
-    // Destination(B*A) = A.
-    exp = AlgebraicExpression_FromString("B*A", matrices);
-    src_domain = AlgebraicExpression_Source(exp);
-    dest_domain = AlgebraicExpression_Destination(exp);
-    ASSERT_STREQ(src_domain, "B");
-    ASSERT_STREQ(dest_domain, "A");
-    AlgebraicExpression_Free(exp);
+	// A*B
+	// Source(A*B) = A.
+	// Destination(A*B) = B.
+	exp = AlgebraicExpression_FromString("A*B", matrices);
+	src_domain = AlgebraicExpression_Source(exp);
+	dest_domain = AlgebraicExpression_Destination(exp);
+	ASSERT_STREQ(src_domain, "A");
+	ASSERT_STREQ(dest_domain, "B");
+	AlgebraicExpression_Free(exp);
 
-    // Transpose(A)
-    // Source(Transpose(A)) = A.
-    // Destination(Transpose(A)) = A.
-    exp = AlgebraicExpression_FromString("T(A)", matrices);
-    src_domain = AlgebraicExpression_Source(exp);
-    dest_domain = AlgebraicExpression_Destination(exp);
-    ASSERT_STREQ(src_domain, "A");
-    ASSERT_STREQ(dest_domain, "A");
-    AlgebraicExpression_Free(exp);
+	// B*A
+	// Source(B*A) = B.
+	// Destination(B*A) = A.
+	exp = AlgebraicExpression_FromString("B*A", matrices);
+	src_domain = AlgebraicExpression_Source(exp);
+	dest_domain = AlgebraicExpression_Destination(exp);
+	ASSERT_STREQ(src_domain, "B");
+	ASSERT_STREQ(dest_domain, "A");
+	AlgebraicExpression_Free(exp);
 
-    // Transpose((A+B))
-    // Source(Transpose((A+B))) = A.
-    // Destination(Transpose((A+B))) = A.
-    exp = AlgebraicExpression_FromString("T(A+B)", matrices);
-    src_domain = AlgebraicExpression_Source(exp);
-    dest_domain = AlgebraicExpression_Destination(exp);
-    ASSERT_STREQ(src_domain, "A");
-    ASSERT_STREQ(dest_domain, "A");
-    AlgebraicExpression_Free(exp);
+	// Transpose(A)
+	// Source(Transpose(A)) = A.
+	// Destination(Transpose(A)) = A.
+	exp = AlgebraicExpression_FromString("T(A)", matrices);
+	src_domain = AlgebraicExpression_Source(exp);
+	dest_domain = AlgebraicExpression_Destination(exp);
+	ASSERT_STREQ(src_domain, "A");
+	ASSERT_STREQ(dest_domain, "A");
+	AlgebraicExpression_Free(exp);
 
-    // Transpose((B+A))
-    // Source(Transpose((B+A))) = B.
-    // Destination(Transpose((B+A))) = B.
-    exp = AlgebraicExpression_FromString("T(B+A)", matrices);
-    src_domain = AlgebraicExpression_Source(exp);
-    dest_domain = AlgebraicExpression_Destination(exp);
-    ASSERT_STREQ(src_domain, "B");
-    ASSERT_STREQ(dest_domain, "B");
-    AlgebraicExpression_Free(exp);
+	// Transpose((A+B))
+	// Source(Transpose((A+B))) = A.
+	// Destination(Transpose((A+B))) = A.
+	exp = AlgebraicExpression_FromString("T(A+B)", matrices);
+	src_domain = AlgebraicExpression_Source(exp);
+	dest_domain = AlgebraicExpression_Destination(exp);
+	ASSERT_STREQ(src_domain, "A");
+	ASSERT_STREQ(dest_domain, "A");
+	AlgebraicExpression_Free(exp);
 
-    // Transpose((A*B))
-    // Source(Transpose((A*B))) = B.
-    // Destination(Transpose((A*B))) = A.
-    exp = AlgebraicExpression_FromString("T(A*B)", matrices);
-    src_domain = AlgebraicExpression_Source(exp);
-    dest_domain = AlgebraicExpression_Destination(exp);
-    ASSERT_STREQ(src_domain, "B");
-    ASSERT_STREQ(dest_domain, "A");
-    AlgebraicExpression_Free(exp);
+	// Transpose((B+A))
+	// Source(Transpose((B+A))) = B.
+	// Destination(Transpose((B+A))) = B.
+	exp = AlgebraicExpression_FromString("T(B+A)", matrices);
+	src_domain = AlgebraicExpression_Source(exp);
+	dest_domain = AlgebraicExpression_Destination(exp);
+	ASSERT_STREQ(src_domain, "B");
+	ASSERT_STREQ(dest_domain, "B");
+	AlgebraicExpression_Free(exp);
 
-    // Transpose((B*A))
-    // Source(Transpose((B*A))) = A.
-    // Destination(Transpose((B*A))) = B.
-    exp = AlgebraicExpression_FromString("T(B*A)", matrices);
-    src_domain = AlgebraicExpression_Source(exp);
-    dest_domain = AlgebraicExpression_Destination(exp);
-    ASSERT_STREQ(src_domain, "A");
-    ASSERT_STREQ(dest_domain, "B");
-    AlgebraicExpression_Free(exp);
+	// Transpose((A*B))
+	// Source(Transpose((A*B))) = B.
+	// Destination(Transpose((A*B))) = A.
+	exp = AlgebraicExpression_FromString("T(A*B)", matrices);
+	src_domain = AlgebraicExpression_Source(exp);
+	dest_domain = AlgebraicExpression_Destination(exp);
+	ASSERT_STREQ(src_domain, "B");
+	ASSERT_STREQ(dest_domain, "A");
+	AlgebraicExpression_Free(exp);
 
-    // Transpose(Transpose(A)) = A
-    // Source(Transpose(Transpose(A)) = A.
-    // Destination(Transpose(Transpose(A)) = A.
-    exp = AlgebraicExpression_FromString("T(T(A))", matrices);
-    src_domain = AlgebraicExpression_Source(exp);
-    dest_domain = AlgebraicExpression_Destination(exp);
-    ASSERT_STREQ(src_domain, "A");
-    ASSERT_STREQ(dest_domain, "A");
-    AlgebraicExpression_Free(exp);
+	// Transpose((B*A))
+	// Source(Transpose((B*A))) = A.
+	// Destination(Transpose((B*A))) = B.
+	exp = AlgebraicExpression_FromString("T(B*A)", matrices);
+	src_domain = AlgebraicExpression_Source(exp);
+	dest_domain = AlgebraicExpression_Destination(exp);
+	ASSERT_STREQ(src_domain, "A");
+	ASSERT_STREQ(dest_domain, "B");
+	AlgebraicExpression_Free(exp);
 
-    // Transpose(Transpose((A+B))) = A+B
-    // Source(Transpose(Transpose((A+B)))) = A.
-    // Destination(Transpose(Transpose((A+B))) = A.
-    exp = AlgebraicExpression_FromString("T(T(A+B))", matrices);
-    src_domain = AlgebraicExpression_Source(exp);
-    dest_domain = AlgebraicExpression_Destination(exp);
-    ASSERT_STREQ(src_domain, "A");
-    ASSERT_STREQ(dest_domain, "A");
-    AlgebraicExpression_Free(exp);
+	// Transpose(Transpose(A)) = A
+	// Source(Transpose(Transpose(A)) = A.
+	// Destination(Transpose(Transpose(A)) = A.
+	exp = AlgebraicExpression_FromString("T(T(A))", matrices);
+	src_domain = AlgebraicExpression_Source(exp);
+	dest_domain = AlgebraicExpression_Destination(exp);
+	ASSERT_STREQ(src_domain, "A");
+	ASSERT_STREQ(dest_domain, "A");
+	AlgebraicExpression_Free(exp);
 
-    // Transpose(Transpose((B+A))) = B+A
-    // Source(Transpose(Transpose((B+A))) = B.
-    // Destination(Transpose(Transpose((B+A))) = B.
-    exp = AlgebraicExpression_FromString("T(T(B+A))", matrices);
-    src_domain = AlgebraicExpression_Source(exp);
-    dest_domain = AlgebraicExpression_Destination(exp);
-    ASSERT_STREQ(src_domain, "B");
-    ASSERT_STREQ(dest_domain, "B");
-    AlgebraicExpression_Free(exp);
+	// Transpose(Transpose((A+B))) = A+B
+	// Source(Transpose(Transpose((A+B)))) = A.
+	// Destination(Transpose(Transpose((A+B))) = A.
+	exp = AlgebraicExpression_FromString("T(T(A+B))", matrices);
+	src_domain = AlgebraicExpression_Source(exp);
+	dest_domain = AlgebraicExpression_Destination(exp);
+	ASSERT_STREQ(src_domain, "A");
+	ASSERT_STREQ(dest_domain, "A");
+	AlgebraicExpression_Free(exp);
 
-    // Transpose(Transpose((A*B))) = A*B
-    // Source(Transpose(Transpose((A*B))) = A.
-    // Destination(Transpose(Transpose((A*B))) = B.
-    exp = AlgebraicExpression_FromString("T(T(A*B))", matrices);
-    src_domain = AlgebraicExpression_Source(exp);
-    dest_domain = AlgebraicExpression_Destination(exp);
-    ASSERT_STREQ(src_domain, "A");
-    ASSERT_STREQ(dest_domain, "B");
-    AlgebraicExpression_Free(exp);
+	// Transpose(Transpose((B+A))) = B+A
+	// Source(Transpose(Transpose((B+A))) = B.
+	// Destination(Transpose(Transpose((B+A))) = B.
+	exp = AlgebraicExpression_FromString("T(T(B+A))", matrices);
+	src_domain = AlgebraicExpression_Source(exp);
+	dest_domain = AlgebraicExpression_Destination(exp);
+	ASSERT_STREQ(src_domain, "B");
+	ASSERT_STREQ(dest_domain, "B");
+	AlgebraicExpression_Free(exp);
 
-    // Transpose(Transpose((B*A)) = B*A
-    // Source(Transpose(Transpose((B*A))) = B.
-    // Destination(Transpose(Transpose((B*A))) = A.
-    exp = AlgebraicExpression_FromString("T(T(B*A))", matrices);
-    src_domain = AlgebraicExpression_Source(exp);
-    dest_domain = AlgebraicExpression_Destination(exp);
-    ASSERT_STREQ(src_domain, "B");
-    ASSERT_STREQ(dest_domain, "A");
-    AlgebraicExpression_Free(exp);
+	// Transpose(Transpose((A*B))) = A*B
+	// Source(Transpose(Transpose((A*B))) = A.
+	// Destination(Transpose(Transpose((A*B))) = B.
+	exp = AlgebraicExpression_FromString("T(T(A*B))", matrices);
+	src_domain = AlgebraicExpression_Source(exp);
+	dest_domain = AlgebraicExpression_Destination(exp);
+	ASSERT_STREQ(src_domain, "A");
+	ASSERT_STREQ(dest_domain, "B");
+	AlgebraicExpression_Free(exp);
 
-    raxFree(matrices);
+	// Transpose(Transpose((B*A)) = B*A
+	// Source(Transpose(Transpose((B*A))) = B.
+	// Destination(Transpose(Transpose((B*A))) = A.
+	exp = AlgebraicExpression_FromString("T(T(B*A))", matrices);
+	src_domain = AlgebraicExpression_Source(exp);
+	dest_domain = AlgebraicExpression_Destination(exp);
+	ASSERT_STREQ(src_domain, "B");
+	ASSERT_STREQ(dest_domain, "A");
+	AlgebraicExpression_Free(exp);
+
+	raxFree(matrices);
 	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&B);
 }
 
 TEST_F(AlgebraicExpressionTest, AlgebraicExpression_Clone) {
-    AlgebraicExpression *exp = NULL;
-    AlgebraicExpression *clone = NULL;
-    const char *expressions[13] = {"A", "A*B", "A*B*C", "A+B", "A+B+C", "A*B+C", "A+B*C",
-    "T(A)", "T(A*B)", "T(A*B*C)", "T(A+B)", "T(A+B+C)", "T(T(A))"};
+	AlgebraicExpression *exp = NULL;
+	AlgebraicExpression *clone = NULL;
+	const char *expressions[13] = {"A", "A*B", "A*B*C", "A+B", "A+B+C", "A*B+C", "A+B*C",
+								   "T(A)", "T(A*B)", "T(A*B*C)", "T(A+B)", "T(A+B+C)", "T(T(A))"
+								  };
 
-    for(uint i = 0; i < 13; i++) {        
-        exp = AlgebraicExpression_FromString(expressions[i], NULL);
-        clone = AlgebraicExpression_Clone(exp);
-        compare_algebraic_expression(exp, clone);
-        AlgebraicExpression_Free(clone);
-        AlgebraicExpression_Free(exp);
-    }
+	for(uint i = 0; i < 13; i++) {
+		exp = AlgebraicExpression_FromString(expressions[i], NULL);
+		clone = AlgebraicExpression_Clone(exp);
+		compare_algebraic_expression(exp, clone);
+		AlgebraicExpression_Free(clone);
+		AlgebraicExpression_Free(exp);
+	}
 }
 
 TEST_F(AlgebraicExpressionTest, AlgebraicExpression_Transpose) {
-    AlgebraicExpression *exp = NULL;
-    AlgebraicExpression *transposed_exp = NULL;
+	AlgebraicExpression *exp = NULL;
+	AlgebraicExpression *transposed_exp = NULL;
 
-    const char *expressions[6] = {"A", "A*B", "A*B*C", "A+B", "A+B+C", "T(A)"};
-    const char *transposed_expressions[6] = {"T(A)", "T(B)*T(A)", "T(C)*T(B)*T(A)", "T(A)+T(B)", "T(A)+T(B)+T(C)", "A"};
+	const char *expressions[6] = {"A", "A*B", "A*B*C", "A+B", "A+B+C", "T(A)"};
+	const char *transposed_expressions[6] = {"T(A)", "T(B)*T(A)", "T(C)*T(B)*T(A)", "T(A)+T(B)", "T(A)+T(B)+T(C)", "A"};
 
-    for(uint i = 0; i < 6; i++) {
-        exp = AlgebraicExpression_FromString(expressions[i], NULL);
-        AlgebraicExpression_Transpose(&exp);
-	    AlgebraicExpression_Optimize(&exp); // Performs transpose pushdown.
+	for(uint i = 0; i < 6; i++) {
+		exp = AlgebraicExpression_FromString(expressions[i], NULL);
+		AlgebraicExpression_Transpose(&exp);
+		AlgebraicExpression_Optimize(&exp); // Performs transpose pushdown.
 
-        transposed_exp = AlgebraicExpression_FromString(transposed_expressions[i], NULL);
-        compare_algebraic_expression(exp, transposed_exp);
+		transposed_exp = AlgebraicExpression_FromString(transposed_expressions[i], NULL);
+		compare_algebraic_expression(exp, transposed_exp);
 
-        AlgebraicExpression_Free(exp);
-        AlgebraicExpression_Free(transposed_exp);
-    }
+		AlgebraicExpression_Free(exp);
+		AlgebraicExpression_Free(transposed_exp);
+	}
 }
 
 TEST_F(AlgebraicExpressionTest, Exp_OP_ADD) {
@@ -582,10 +584,10 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_ADD) {
 	GrB_Matrix_setElement_BOOL(C, true, 1, 0);
 	GrB_Matrix_setElement_BOOL(C, true, 1, 1);
 
-    rax *matrices = raxNew();
-    raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
-    raxInsert(matrices, (unsigned char *)"B", strlen("B"), B, NULL);
-    AlgebraicExpression *exp = AlgebraicExpression_FromString("A+B", matrices);
+	rax *matrices = raxNew();
+	raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
+	raxInsert(matrices, (unsigned char *)"B", strlen("B"), B, NULL);
+	AlgebraicExpression *exp = AlgebraicExpression_FromString("A+B", matrices);
 
 	// Matrix used for intermidate computations of AlgebraicExpression_Eval
 	// but also contains the result of expression evaluation.
@@ -596,12 +598,12 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_ADD) {
 	// A + B = C.
 	ASSERT_TRUE(_compare_matrices(res, C));
 
-    raxFree(matrices);
+	raxFree(matrices);
 	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&C);
 	GrB_Matrix_free(&res);
-    AlgebraicExpression_Free(exp);
+	AlgebraicExpression_Free(exp);
 }
 
 TEST_F(AlgebraicExpressionTest, Exp_OP_MUL) {
@@ -624,10 +626,10 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_MUL) {
 	GrB_Matrix_setElement_BOOL(I, true, 0, 0);
 	GrB_Matrix_setElement_BOOL(I, true, 1, 1);
 
-    rax *matrices = raxNew();
-    raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
-    raxInsert(matrices, (unsigned char *)"I", strlen("I"), I, NULL);
-    AlgebraicExpression *exp = AlgebraicExpression_FromString("A*I", matrices);
+	rax *matrices = raxNew();
+	raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
+	raxInsert(matrices, (unsigned char *)"I", strlen("I"), I, NULL);
+	AlgebraicExpression *exp = AlgebraicExpression_FromString("A*I", matrices);
 
 	// Matrix used for intermidate computations of AlgebraicExpression_Eval
 	// but also contains the result of expression evaluation.
@@ -638,11 +640,11 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_MUL) {
 	// A * I = A.
 	ASSERT_TRUE(_compare_matrices(res, A));
 
-    raxFree(matrices);
-    GrB_Matrix_free(&A);
+	raxFree(matrices);
+	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&I);
 	GrB_Matrix_free(&res);
-    AlgebraicExpression_Free(exp);
+	AlgebraicExpression_Free(exp);
 }
 
 TEST_F(AlgebraicExpressionTest, Exp_OP_ADD_Transpose) {
@@ -670,21 +672,21 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_ADD_Transpose) {
 	// but also contains the result of expression evaluation.
 	GrB_Matrix_new(&res, GrB_BOOL, 2, 2);
 
-	// A + Transpose(A)	
-    rax *matrices = raxNew();
-    raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
-    AlgebraicExpression *exp = AlgebraicExpression_FromString("A+T(A)", matrices);	
+	// A + Transpose(A)
+	rax *matrices = raxNew();
+	raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
+	AlgebraicExpression *exp = AlgebraicExpression_FromString("A+T(A)", matrices);
 	AlgebraicExpression_Eval(exp, res);
 
 	// Using the A matrix described above,
 	// A + Transpose(A) = B.
 	ASSERT_TRUE(_compare_matrices(res, B));
 
-    raxFree(matrices);
+	raxFree(matrices);
 	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&res);
-    AlgebraicExpression_Free(exp);
+	AlgebraicExpression_Free(exp);
 }
 
 TEST_F(AlgebraicExpressionTest, Exp_OP_MUL_Transpose) {
@@ -711,20 +713,20 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_MUL_Transpose) {
 	GrB_Matrix_new(&res, GrB_BOOL, 2, 2);
 
 	// Transpose(A) * A
-    rax *matrices = raxNew();
-    raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
-    AlgebraicExpression *exp = AlgebraicExpression_FromString("A*T(A)", matrices);
+	rax *matrices = raxNew();
+	raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
+	AlgebraicExpression *exp = AlgebraicExpression_FromString("A*T(A)", matrices);
 	AlgebraicExpression_Eval(exp, res);
 
 	// Using the A matrix described above,
 	// Transpose(A) * A = B.
 	ASSERT_TRUE(_compare_matrices(res, B));
 
-    raxFree(matrices);
+	raxFree(matrices);
 	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&res);
-    AlgebraicExpression_Free(exp);
+	AlgebraicExpression_Free(exp);
 }
 
 TEST_F(AlgebraicExpressionTest, Exp_OP_A_MUL_B_Plus_C) {
@@ -758,21 +760,21 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_A_MUL_B_Plus_C) {
 	GrB_Matrix_new(&res, GrB_BOOL, 2, 2);
 
 	// A * (B+C) = A.rax *matrices = raxNew();
-    rax *matrices = raxNew();
-    raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
-    raxInsert(matrices, (unsigned char *)"B", strlen("B"), B, NULL);
-    raxInsert(matrices, (unsigned char *)"C", strlen("C"), C, NULL);
-    AlgebraicExpression *exp = AlgebraicExpression_FromString("A*(B+C)", matrices);
-	AlgebraicExpression_Eval(exp, res);	
-	
-    ASSERT_TRUE(_compare_matrices(res, A));
+	rax *matrices = raxNew();
+	raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
+	raxInsert(matrices, (unsigned char *)"B", strlen("B"), B, NULL);
+	raxInsert(matrices, (unsigned char *)"C", strlen("C"), C, NULL);
+	AlgebraicExpression *exp = AlgebraicExpression_FromString("A*(B+C)", matrices);
+	AlgebraicExpression_Eval(exp, res);
 
-    raxFree(matrices);
+	ASSERT_TRUE(_compare_matrices(res, A));
+
+	raxFree(matrices);
 	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&C);
 	GrB_Matrix_free(&res);
-    AlgebraicExpression_Free(exp);
+	AlgebraicExpression_Free(exp);
 }
 
 TEST_F(AlgebraicExpressionTest, ExpTransform_A_Times_B_Plus_C) {
@@ -786,24 +788,24 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_A_Times_B_Plus_C) {
 	GrB_Matrix_new(&B, GrB_BOOL, 2, 2);
 	GrB_Matrix_new(&C, GrB_BOOL, 2, 2);
 
-    rax *matrices = raxNew();
-    raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
-    raxInsert(matrices, (unsigned char *)"B", strlen("B"), B, NULL);
-    raxInsert(matrices, (unsigned char *)"C", strlen("C"), C, NULL);
-    AlgebraicExpression *exp = AlgebraicExpression_FromString("A*(B+C)", matrices);
-    
-    // Verifications
+	rax *matrices = raxNew();
+	raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
+	raxInsert(matrices, (unsigned char *)"B", strlen("B"), B, NULL);
+	raxInsert(matrices, (unsigned char *)"C", strlen("C"), C, NULL);
+	AlgebraicExpression *exp = AlgebraicExpression_FromString("A*(B+C)", matrices);
+
+	// Verifications
 	// (A*B)+(A*C)
 	ASSERT_TRUE(exp->type == AL_OPERATION && exp->operation.op == AL_EXP_ADD);
 
 	AlgebraicExpression *rootLeftChild = exp->operation.children[0];
 	AlgebraicExpression *rootRightChild = exp->operation.children[1];
-    ASSERT_TRUE(rootLeftChild && rootLeftChild->type == AL_OPERATION &&
+	ASSERT_TRUE(rootLeftChild && rootLeftChild->type == AL_OPERATION &&
 				rootLeftChild->operation.op == AL_EXP_MUL);
 	ASSERT_TRUE(rootRightChild && rootRightChild->type == AL_OPERATION &&
 				rootRightChild->operation.op == AL_EXP_MUL);
 
-    AlgebraicExpression *leftLeft = rootLeftChild->operation.children[0];
+	AlgebraicExpression *leftLeft = rootLeftChild->operation.children[0];
 	ASSERT_TRUE(leftLeft->type == AL_OPERAND && leftLeft->operand.matrix == A);
 
 	AlgebraicExpression *leftRight = rootLeftChild->operation.children[1];
@@ -815,11 +817,11 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_A_Times_B_Plus_C) {
 	AlgebraicExpression *rightRight = rootRightChild->operation.children[1];
 	ASSERT_TRUE(rightRight->type == AL_OPERAND && rightRight->operand.matrix == C);
 
-    raxFree(matrices);
+	raxFree(matrices);
 	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&C);
-    AlgebraicExpression_Free(exp);
+	AlgebraicExpression_Free(exp);
 }
 
 TEST_F(AlgebraicExpressionTest, ExpTransform_AB_Times_C_Plus_D) {
@@ -835,13 +837,13 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_AB_Times_C_Plus_D) {
 	GrB_Matrix_new(&C, GrB_BOOL, 2, 2);
 	GrB_Matrix_new(&D, GrB_BOOL, 2, 2);
 
-    // A*B*(C+D) -> A*B*C + A*B*D
+	// A*B*(C+D) -> A*B*C + A*B*D
 	AlgebraicExpression *exp = AlgebraicExpression_NewOperand(C, false, NULL, NULL, NULL, NULL);
 
 	// A*B*(C+D)
 	AlgebraicExpression_AddToTheRight(&exp, D);
-    AlgebraicExpression_MultiplyToTheLeft(&exp, B);
-    AlgebraicExpression_MultiplyToTheLeft(&exp, A);
+	AlgebraicExpression_MultiplyToTheLeft(&exp, B);
+	AlgebraicExpression_MultiplyToTheLeft(&exp, A);
 	AlgebraicExpression_Optimize(&exp);
 
 	// Verifications
@@ -865,7 +867,7 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_AB_Times_C_Plus_D) {
 	AlgebraicExpression *leftchild_2 = rootLeftChild->operation.children[2];
 	ASSERT_TRUE(leftchild_2->type == AL_OPERAND && leftchild_2->operand.matrix == C);
 
-    AlgebraicExpression *rightchild_0 = rootRightChild->operation.children[0];
+	AlgebraicExpression *rightchild_0 = rootRightChild->operation.children[0];
 	ASSERT_TRUE(rightchild_0->type == AL_OPERAND && rightchild_0->operand.matrix == A);
 
 	AlgebraicExpression *rightchild_1 = rootRightChild->operation.children[1];
@@ -879,7 +881,7 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_AB_Times_C_Plus_D) {
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&C);
 	GrB_Matrix_free(&D);
-    AlgebraicExpression_Free(exp);
+	AlgebraicExpression_Free(exp);
 }
 
 TEST_F(AlgebraicExpressionTest, ExpTransform_A_Plus_B_Times_C_Plus_D) {
@@ -889,66 +891,66 @@ TEST_F(AlgebraicExpressionTest, ExpTransform_A_Plus_B_Times_C_Plus_D) {
 	GrB_Matrix B;
 	GrB_Matrix C;
 	GrB_Matrix D;
-    GrB_Matrix_new(&A, GrB_BOOL, 2, 2);
+	GrB_Matrix_new(&A, GrB_BOOL, 2, 2);
 	GrB_Matrix_new(&B, GrB_BOOL, 2, 2);
 	GrB_Matrix_new(&C, GrB_BOOL, 2, 2);
 	GrB_Matrix_new(&D, GrB_BOOL, 2, 2);
 
-    rax *matrices = raxNew();
-    raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
-    raxInsert(matrices, (unsigned char *)"B", strlen("B"), B, NULL);
-    raxInsert(matrices, (unsigned char *)"C", strlen("C"), C, NULL);
-    raxInsert(matrices, (unsigned char *)"D", strlen("D"), D, NULL);
+	rax *matrices = raxNew();
+	raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
+	raxInsert(matrices, (unsigned char *)"B", strlen("B"), B, NULL);
+	raxInsert(matrices, (unsigned char *)"C", strlen("C"), C, NULL);
+	raxInsert(matrices, (unsigned char *)"D", strlen("D"), D, NULL);
 
-    // (A+B)*(C+D) -> A*C + A*D + B*C + B*D.
+	// (A+B)*(C+D) -> A*C + A*D + B*C + B*D.
 	AlgebraicExpression *exp = AlgebraicExpression_FromString("(A+B)*(C+D)", matrices);
-    char *exp_str = AlgebraicExpression_ToString(exp);
-    /* Verifications
+	char *exp_str = AlgebraicExpression_ToString(exp);
+	/* Verifications
 	 * (A*C) + (A*D) + (B*C) + (B*D).
-     *    +
-     *       +
-     *           +
-     *               *
-     *                   A
-     *                   C
-     *               *
-     *                   A
-     *                   D
-     *           *
-     *               B
-     *               C
-     *       *
-     *           B
-     *           D
-     * */
+	 *    +
+	 *       +
+	 *           +
+	 *               *
+	 *                   A
+	 *                   C
+	 *               *
+	 *                   A
+	 *                   D
+	 *           *
+	 *               B
+	 *               C
+	 *       *
+	 *           B
+	 *           D
+	 * */
 
-    ASSERT_STREQ("(((A * C + A * D) + B * C) + B * D)", exp_str);
-    rm_free(exp_str);
-    raxFree(matrices);
+	ASSERT_STREQ("(((A * C + A * D) + B * C) + B * D)", exp_str);
+	rm_free(exp_str);
+	raxFree(matrices);
 	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&C);
 	GrB_Matrix_free(&D);
-    AlgebraicExpression_Free(exp);
+	AlgebraicExpression_Free(exp);
 }
 
-TEST_F(AlgebraicExpressionTest, MultipleIntermidateReturnNodes) {	
-    // "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, f, c, e";
+TEST_F(AlgebraicExpressionTest, MultipleIntermidateReturnNodes) {
+	// "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, f, c, e";
 	const char *q = query_multiple_intermidate_return_nodes;
 	AlgebraicExpression **actual = build_algebraic_expression(q);
-    uint exp_count = array_len(actual);
+	uint exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 3);
 
-    AlgebraicExpression *expected[3];
-    
-    // P * EF * F
-    expected[0] = AlgebraicExpression_FromString("p*F*f", _matrices);    
+	AlgebraicExpression *expected[3];
+
+	// P * EF * F
+	expected[0] = AlgebraicExpression_FromString("p*F*f", _matrices);
 
 	// EV * C
-    expected[1] = AlgebraicExpression_FromString("V*c", _matrices);    
+	expected[1] = AlgebraicExpression_FromString("V*c", _matrices);
 
 	// EW * E
-    expected[2] = AlgebraicExpression_FromString("W*e", _matrices);
+	expected[2] = AlgebraicExpression_FromString("W*e", _matrices);
 
 	compare_algebraic_expressions(actual, expected, 3);
 
@@ -961,16 +963,16 @@ TEST_F(AlgebraicExpressionTest, MultipleIntermidateReturnNodes) {
 TEST_F(AlgebraicExpressionTest, OneIntermidateReturnNode) {
 	const char *q = query_one_intermidate_return_nodes;
 	AlgebraicExpression **actual = build_algebraic_expression(q);
-    uint exp_count = array_len(actual);
+	uint exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 2);
 
 	AlgebraicExpression *expected[2];
-	
-    // p*F*f*V*c
-    expected[0] = AlgebraicExpression_FromString("p*F*f*V*c", _matrices);
+
+	// p*F*f*V*c
+	expected[0] = AlgebraicExpression_FromString("p*F*f*V*c", _matrices);
 
 	// W*e
-    expected[1] = AlgebraicExpression_FromString("W*e", _matrices);
+	expected[1] = AlgebraicExpression_FromString("W*e", _matrices);
 
 	compare_algebraic_expressions(actual, expected, 2);
 
@@ -983,11 +985,11 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnNode) {
 TEST_F(AlgebraicExpressionTest, NoIntermidateReturnNodes) {
 	const char *q = query_no_intermidate_return_nodes;
 	AlgebraicExpression **actual = build_algebraic_expression(q);
-    uint exp_count = array_len(actual);
+	uint exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 1);
 
 	AlgebraicExpression *expected[1];
-    // p*F*f*V*c*W*e
+	// p*F*f*V*c*W*e
 	expected[0] = AlgebraicExpression_FromString("p*F*f*V*c*W*e", _matrices);
 	compare_algebraic_expressions(actual, expected, 1);
 
@@ -1007,12 +1009,12 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
 
 	q = query_return_first_edge;
 	actual = build_algebraic_expression(q);
-    uint exp_count = array_len(actual);
+	uint exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 2);
 
 	AlgebraicExpression *expected[3];
 	expected[0] = AlgebraicExpression_FromString("p*F*f", _matrices);
-    expected[1] = AlgebraicExpression_FromString("V*c*W*e", _matrices);
+	expected[1] = AlgebraicExpression_FromString("V*c*W*e", _matrices);
 	compare_algebraic_expressions(actual, expected, 2);
 
 	// Clean up.
@@ -1025,13 +1027,13 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
 	//==============================================================================================
 	q = query_return_intermidate_edge;
 	actual = build_algebraic_expression(q);
-    exp_count = array_len(actual);
+	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 3);
 
 	expected[0] = AlgebraicExpression_FromString("p*F*f", _matrices);
-    expected[1] = AlgebraicExpression_FromString("V*c", _matrices);
-    expected[2] = AlgebraicExpression_FromString("W*e", _matrices);
-    compare_algebraic_expressions(actual, expected, 3);
+	expected[1] = AlgebraicExpression_FromString("V*c", _matrices);
+	expected[2] = AlgebraicExpression_FromString("W*e", _matrices);
+	compare_algebraic_expressions(actual, expected, 3);
 
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
@@ -1043,13 +1045,13 @@ TEST_F(AlgebraicExpressionTest, OneIntermidateReturnEdge) {
 	//==============================================================================================
 	q = query_return_last_edge;
 	actual = build_algebraic_expression(q);
-    exp_count = array_len(actual);
+	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 2);
 
-	
-    expected[0] = AlgebraicExpression_FromString("p*F*f*V*c", _matrices);
-    expected[1] = AlgebraicExpression_FromString("W*e", _matrices);
-    compare_algebraic_expressions(actual, expected, 2);
+
+	expected[0] = AlgebraicExpression_FromString("p*F*f*V*c", _matrices);
+	expected[1] = AlgebraicExpression_FromString("W*e", _matrices);
+	compare_algebraic_expressions(actual, expected, 2);
 
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
@@ -1061,7 +1063,7 @@ TEST_F(AlgebraicExpressionTest, BothDirections) {
 	const char *q =
 		"MATCH (p:Person)-[ef:friend]->(f:Person)<-[ev:visit]-(c:City)-[ew:war]->(e:City) RETURN p,e";
 	AlgebraicExpression **actual = build_algebraic_expression(q);
-    uint exp_count = array_len(actual);
+	uint exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 1);
 
 	AlgebraicExpression *expected[1];
@@ -1077,7 +1079,7 @@ TEST_F(AlgebraicExpressionTest, BothDirections) {
 TEST_F(AlgebraicExpressionTest, SingleNode) {
 	const char *q = "MATCH (p:Person) RETURN p";
 	AlgebraicExpression **actual = build_algebraic_expression(q);
-    uint exp_count = array_len(actual);
+	uint exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 0);
 
 	AlgebraicExpression **expected = NULL;
@@ -1093,12 +1095,12 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	const char *q =
 		"MATCH (p:Person)-[ef:friend]->(f:Person) MATCH (f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p,e";
 	AlgebraicExpression **actual = build_algebraic_expression(q);
-    uint exp_count = array_len(actual);
+	uint exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 1);
 
 	AlgebraicExpression *expected[8];
 	expected[0] = AlgebraicExpression_FromString("p*F*f*V*c*W*e", _matrices);
-    compare_algebraic_expressions(actual, expected, 1);
+	compare_algebraic_expressions(actual, expected, 1);
 
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
@@ -1108,11 +1110,11 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	exp_count = 0;
 	q = "MATCH (p:Person)-[ef:friend]->(f:Person) MATCH (f:Person)<-[ev:visit]-(c:City)<-[ew:war]-(e:City) RETURN p,e";
 	actual = build_algebraic_expression(q);
-    exp_count = array_len(actual);
+	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 1);
 
 	expected[0] = AlgebraicExpression_FromString("e*W*c*V*f*T(F)*p", _matrices);
-    compare_algebraic_expressions(actual, expected, 1);
+	compare_algebraic_expressions(actual, expected, 1);
 
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
@@ -1122,11 +1124,11 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	exp_count = 0;
 	q = "MATCH (p:Person)-[ef:friend]->(f:Person) MATCH (f:Person)-[ev:visit]->(c:City) MATCH (c:City)-[ew:war]->(e:City) RETURN p,e";
 	actual = build_algebraic_expression(q);
-    exp_count = array_len(actual);
+	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 1);
 
 	expected[0] = AlgebraicExpression_FromString("p*F*f*V*c*W*e", _matrices);
-    compare_algebraic_expressions(actual, expected, 1);
+	compare_algebraic_expressions(actual, expected, 1);
 
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
@@ -1136,7 +1138,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	exp_count = 0;
 	q = "MATCH (a:Person)-[:friend]->(f:Person) MATCH (b:Person)-[:friend]->(f:Person) RETURN a,b";
 	actual = build_algebraic_expression(q);
-    exp_count = array_len(actual);
+	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 1);
 
 	expected[0] = AlgebraicExpression_FromString("p*F*p*T(F)*p", _matrices);
@@ -1151,12 +1153,12 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	exp_count = 0;
 	q = "MATCH (a:Person)-[:friend]->(d:Person) MATCH (b:Person)-[:friend]->(d:Person) MATCH (c:Person)-[:friend]->(d:Person) RETURN a";
 	actual = build_algebraic_expression(q);
-    exp_count = array_len(actual);
+	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 3);
 
 	expected[0] = AlgebraicExpression_FromString("p*F*p", _matrices);
 	expected[1] = AlgebraicExpression_FromString("T(F)*p", _matrices);
-    expected[2] = AlgebraicExpression_FromString("p*F*p", _matrices);
+	expected[2] = AlgebraicExpression_FromString("p*F*p", _matrices);
 	compare_algebraic_expressions(actual, expected, 3);
 
 	// Clean up.
@@ -1168,13 +1170,13 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	exp_count = 0;
 	q = "MATCH (a:Person)-[:friend]->(b:Person) MATCH (a:Person)-[:friend]->(c:Person) MATCH (a:Person)-[:friend]->(d:Person) RETURN a";
 	actual = build_algebraic_expression(q);
-    exp_count = array_len(actual);
+	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 3);
 
 	expected[0] = AlgebraicExpression_FromString("p*T(F)*p", _matrices);
 	expected[1] = AlgebraicExpression_FromString("F*p", _matrices);
-    expected[2] = AlgebraicExpression_FromString("p*F*p", _matrices);
-    compare_algebraic_expressions(actual, expected, 3);
+	expected[2] = AlgebraicExpression_FromString("p*F*p", _matrices);
+	compare_algebraic_expressions(actual, expected, 3);
 
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
@@ -1189,11 +1191,11 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	exp_count = 0;
 	q = "MATCH (a:Person)-[:friend]->(b:Person)-[:friend]->(a:Person) RETURN a";
 	actual = build_algebraic_expression(q);
-    exp_count = array_len(actual);
+	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 1);
 
 	expected[0] = AlgebraicExpression_FromString("p*F*p*F*p", _matrices);
-    compare_algebraic_expressions(actual, expected, 1);
+	compare_algebraic_expressions(actual, expected, 1);
 
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
@@ -1204,11 +1206,11 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	exp_count = 0;
 	q = "MATCH (a:Person)-[:friend]->(b:Person)-[:friend]->(c:Person)-[:friend]->(a:Person) RETURN a";
 	actual = build_algebraic_expression(q);
-    exp_count = array_len(actual);
+	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 1);
 
 	expected[0] = AlgebraicExpression_FromString("p*F*p*F*p*F*p", _matrices);
-    compare_algebraic_expressions(actual, expected, 1);
+	compare_algebraic_expressions(actual, expected, 1);
 
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
@@ -1219,7 +1221,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	exp_count = 0;
 	q = "MATCH (a:Person)-[:friend]->(a) RETURN a";
 	actual = build_algebraic_expression(q);
-    exp_count = array_len(actual);
+	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 1);
 
 	expected[0] = AlgebraicExpression_FromString("p*F*p", _matrices);
@@ -1234,13 +1236,13 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	exp_count = 0;
 	q = "MATCH (p1)-[:friend]->(p2)-[:friend]->(p3)-[:friend]->(p2)-[:friend]->(p4)-[:friend]->(p5) RETURN p1";
 	actual = build_algebraic_expression(q);
-    exp_count = array_len(actual);
+	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 3);
 
 	expected[0] = AlgebraicExpression_FromString("F", _matrices);
-    expected[1] = AlgebraicExpression_FromString("F*F", _matrices);	
-    expected[2] = AlgebraicExpression_FromString("F*F", _matrices);
-    compare_algebraic_expressions(actual, expected, 3);
+	expected[1] = AlgebraicExpression_FromString("F*F", _matrices);
+	expected[2] = AlgebraicExpression_FromString("F*F", _matrices);
+	compare_algebraic_expressions(actual, expected, 3);
 
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
@@ -1251,15 +1253,15 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	exp_count = 0;
 	q = "MATCH (p1)-[:friend]->(p2)-[:friend]->(p3)-[:friend]->(p2)-[:friend]->(p4)-[:friend]->(p5) RETURN p1,p2,p3,p4,p5";
 	actual = build_algebraic_expression(q);
-    exp_count = array_len(actual);
+	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 5);
 
 	expected[0] = AlgebraicExpression_FromString("F", _matrices);
-    expected[1] = AlgebraicExpression_FromString("F", _matrices);
-    expected[2] = AlgebraicExpression_FromString("F", _matrices);
+	expected[1] = AlgebraicExpression_FromString("F", _matrices);
+	expected[2] = AlgebraicExpression_FromString("F", _matrices);
 	expected[3] = AlgebraicExpression_FromString("F", _matrices);
-    expected[4] = AlgebraicExpression_FromString("F", _matrices);
-    compare_algebraic_expressions(actual, expected, 5);
+	expected[4] = AlgebraicExpression_FromString("F", _matrices);
+	compare_algebraic_expressions(actual, expected, 5);
 
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
@@ -1270,14 +1272,14 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	exp_count = 0;
 	q = "MATCH (p1)-[:friend]->(p2)-[:friend]->(p3)-[:friend]->(p4)-[:friend]->(p5)-[:friend]->(p2)-[:friend]->(p6)-[:friend]->(p7)-[:friend]->(p3) RETURN p1";
 	actual = build_algebraic_expression(q);
-    exp_count = array_len(actual);
+	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 4);
 
 	expected[0] = AlgebraicExpression_FromString("F", _matrices);
-    expected[1] = AlgebraicExpression_FromString("F*F*F", _matrices);
-    expected[2] = AlgebraicExpression_FromString("F*F*F", _matrices);
-    expected[3] = AlgebraicExpression_FromString("F", _matrices);
-    compare_algebraic_expressions(actual, expected, 4);
+	expected[1] = AlgebraicExpression_FromString("F*F*F", _matrices);
+	expected[2] = AlgebraicExpression_FromString("F*F*F", _matrices);
+	expected[3] = AlgebraicExpression_FromString("F", _matrices);
+	compare_algebraic_expressions(actual, expected, 4);
 
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
@@ -1288,7 +1290,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	exp_count = 0;
 	q = "MATCH (p1)-[:friend]->(p2)-[:friend]->(p3)-[:friend]->(p4)-[:friend]->(p5)-[:friend]->(p2)-[:friend]->(p6)-[:friend]->(p7)-[:friend]->(p3) RETURN p1,p2,p3,p4,p5,p6,p7";
 	actual = build_algebraic_expression(q);
-    exp_count = array_len(actual);
+	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 8);
 
 	expected[0] = AlgebraicExpression_FromString("F", _matrices);
@@ -1310,14 +1312,14 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	exp_count = 0;
 	q = "MATCH (p1)-[:friend]->(p2)-[:friend]->(p3)-[:friend]->(p4)-[:friend]->(p1)-[:friend]->(p4)-[:friend]->(p5) RETURN p1";
 	actual = build_algebraic_expression(q);
-    exp_count = array_len(actual);
+	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 4);
-	
+
 	expected[0] = AlgebraicExpression_FromString("T(F)", _matrices);
 	expected[1] = AlgebraicExpression_FromString("F", _matrices);
 	expected[2] = AlgebraicExpression_FromString("F*F*F", _matrices);
 	expected[3] = AlgebraicExpression_FromString("F", _matrices);
-    compare_algebraic_expressions(actual, expected, 4);
+	compare_algebraic_expressions(actual, expected, 4);
 
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
@@ -1328,17 +1330,17 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	exp_count = 0;
 	q = "MATCH (p1)-[:friend]->(p2)-[:friend]->(p3)-[:friend]->(p4)-[:friend]->(p1)-[:friend]->(p4)-[:friend]->(p5) RETURN p1,p2,p3,p4,p5";
 	actual = build_algebraic_expression(q);
-    exp_count = array_len(actual);
+	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 6);
 
-	
+
 	expected[0] = AlgebraicExpression_FromString("T(F)", _matrices);
-    expected[1] = AlgebraicExpression_FromString("F", _matrices);
-    expected[2] = AlgebraicExpression_FromString("F", _matrices);
-    expected[3] = AlgebraicExpression_FromString("F", _matrices);
+	expected[1] = AlgebraicExpression_FromString("F", _matrices);
+	expected[2] = AlgebraicExpression_FromString("F", _matrices);
+	expected[3] = AlgebraicExpression_FromString("F", _matrices);
 	expected[4] = AlgebraicExpression_FromString("F", _matrices);
 	expected[5] = AlgebraicExpression_FromString("F", _matrices);
-    compare_algebraic_expressions(actual, expected, 6);
+	compare_algebraic_expressions(actual, expected, 6);
 
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
@@ -1350,14 +1352,14 @@ TEST_F(AlgebraicExpressionTest, VariableLength) {
 	const char *q =
 		"MATCH (p:Person)-[ef:friend]->(f:Person)-[:visit*1..3]->(c:City)-[ew:war]->(e:City) RETURN p,e";
 	AlgebraicExpression **actual = build_algebraic_expression(q);
-    uint exp_count = array_len(actual);
+	uint exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 3);
-    
+
 	AlgebraicExpression *expected[3];
 	expected[0] = AlgebraicExpression_FromString("p*F*f", _matrices);
 	expected[1] = AlgebraicExpression_FromString("V", _matrices);
 	expected[2] = AlgebraicExpression_FromString("c*W*e", _matrices);
-    compare_algebraic_expressions(actual, expected, 3);
+	compare_algebraic_expressions(actual, expected, 3);
 
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
@@ -1368,13 +1370,13 @@ TEST_F(AlgebraicExpressionTest, VariableLength) {
 	exp_count = 0;
 	q = "MATCH (p:Person)-[ef:friend]->(f:Person)<-[:visit*1..3]-(c:City)-[ew:war]->(e:City) RETURN p,e";
 	actual = build_algebraic_expression(q);
-    exp_count = array_len(actual);
+	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 3);
-    
-    expected[0] = AlgebraicExpression_FromString("p*F*f", _matrices);
-    expected[1] = AlgebraicExpression_FromString("T(V)", _matrices);
-    expected[2] = AlgebraicExpression_FromString("c*W*e", _matrices);
-    compare_algebraic_expressions(actual, expected, 3);
+
+	expected[0] = AlgebraicExpression_FromString("p*F*f", _matrices);
+	expected[1] = AlgebraicExpression_FromString("T(V)", _matrices);
+	expected[2] = AlgebraicExpression_FromString("c*W*e", _matrices);
+	compare_algebraic_expressions(actual, expected, 3);
 
 	// Clean up.
 	free_algebraic_expressions(actual, exp_count);
@@ -1386,11 +1388,11 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Graph *g = gc->g;
 
-    // "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, e"
+	// "MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, e"
 	const char *q = query_no_intermidate_return_nodes;
 	AlgebraicExpression **ae = build_algebraic_expression(q);
-    uint exp_count = array_len(ae);
-    ASSERT_EQ(exp_count, 1);
+	uint exp_count = array_len(ae);
+	ASSERT_EQ(exp_count, 1);
 
 	AlgebraicExpression *exp = ae[0];
 	ASSERT_STREQ(AlgebraicExpression_Source(exp), "p");
@@ -1422,5 +1424,6 @@ TEST_F(AlgebraicExpressionTest, ExpressionExecute) {
 	GrB_Matrix_free(&res);
 	GrB_Matrix_free(&expected);
 	free_algebraic_expressions(ae, exp_count);
-    array_free(ae);
+	array_free(ae);
 }
+
