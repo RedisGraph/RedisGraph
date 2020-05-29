@@ -149,6 +149,11 @@ void _AlgebraicExpression_FreeOperation
 ) {
 	assert(node && node->type == AL_OPERATION);
 
+	// if(node->operation.op == AL_EXP_TRANSPOSE) {
+	// AlgebraicExpression *child = node->operation.children[0];
+	// if(child->operand.should_free) GrB_Matrix_free(&child->operand.matrix);
+	// }
+
 	if(node->operation.children) {
 		uint child_count = AlgebraicExpression_ChildCount(node);
 		for(uint i = 0; i < child_count; i++) {

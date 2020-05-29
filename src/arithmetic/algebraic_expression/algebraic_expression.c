@@ -53,8 +53,11 @@ static AlgebraicExpression *_AlgebraicExpression_CloneOperand
 (
 	const AlgebraicExpression *exp
 ) {
-	return AlgebraicExpression_NewOperand(exp->operand.matrix, exp->operand.diagonal, exp->operand.src,
-										  exp->operand.dest, exp->operand.edge, exp->operand.label);
+	AlgebraicExpression *clone = AlgebraicExpression_NewOperand(exp->operand.matrix,
+																exp->operand.diagonal, exp->operand.src,
+																exp->operand.dest, exp->operand.edge, exp->operand.label);
+	clone->operand.should_free = exp->operand.should_free;
+	return clone;
 }
 
 //------------------------------------------------------------------------------
@@ -87,6 +90,7 @@ AlgebraicExpression *AlgebraicExpression_NewOperand
 	node->type = AL_OPERAND;
 	node->operand.matrix = mat;
 	node->operand.diagonal = diagonal;
+	node->operand.should_free = false;
 	node->operand.src = src;
 	node->operand.dest = dest;
 	node->operand.edge = edge;
@@ -147,6 +151,31 @@ static const char *_AlgebraicExpression_Operation_Source
 	}
 }
 
+/*
+// Returns the source entity alias, row domain.
+const char *AlgebraicExpression_Source
+(
+	AlgebraicExpression *root   // Root of expression.
+) {
+	assert(root);
+	while(root->type != AL_OPERAND) {
+		root = FIRST_CHILD(root);
+	}
+	return root->operand.src;
+}
+
+// Returns the destination entity alias represented by the right-most operand column domain.
+const char *AlgebraicExpression_Destination
+(
+	AlgebraicExpression *root   // Root of expression.
+) {
+	assert(root);
+	while(root->type != AL_OPERAND) {
+		root = LAST_CHILD(root);
+	}
+	return root->operand.dest;
+}
+*/
 // Returns the source entity alias (row domain)
 // Taking into consideration transpose
 static const char *_AlgebraicExpression_Operand_Source
