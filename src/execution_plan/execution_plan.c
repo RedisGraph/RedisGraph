@@ -705,13 +705,13 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 
 	/* Placeholder for each execution plan, these all will be joined
 	 * via a single UNION operation. */
-	ExecutionPlan **plans = rm_malloc(union_count * sizeof(ExecutionPlan *));
+	ExecutionPlan **plans = array_new(ExecutionPlan *, union_count);
 
 	for(int i = 0; i < union_count; i++) {
 		// Create an AST segment from which we will build an execution plan.
 		end_offset = union_indices[i];
 		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
-		plans[i] = NewExecutionPlan();
+		plans = array_append(plans, NewExecutionPlan());
 		AST_Free(ast_segment); // Free the AST segment.
 
 		// Next segment starts where this one ends.
@@ -735,7 +735,6 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 	ExecutionPlan *plan = rm_calloc(1, sizeof(ExecutionPlan));
 	plan->root = NULL;
 	plan->segments = plans;
-	plan->segment_count = union_count;
 	plan->query_graph = NULL;
 	plan->record_map = raxNew();
 	plan->connected_components = NULL;
@@ -817,7 +816,7 @@ ExecutionPlan *NewExecutionPlan(void) {
 	segment_indices = array_append(segment_indices, clause_count);
 
 	uint segment_count = array_len(segment_indices);
-	ExecutionPlan **segments = rm_malloc(segment_count * sizeof(ExecutionPlan *));
+	ExecutionPlan **segments = array_new(ExecutionPlan *, segment_count);
 	AST *ast_segments[segment_count];
 	start_offset = 0;
 	for(int i = 0; i < segment_count; i++) {
@@ -829,7 +828,7 @@ ExecutionPlan *NewExecutionPlan(void) {
 		ExecutionPlan *segment = ExecutionPlan_NewEmptyExecutionPlan();
 		ExecutionPlan_PopulateExecutionPlan(segment);
 		segment->ast_segment = ast_segment;
-		segments[i] = segment;
+		segments = array_append(segments, segment);
 		start_offset = end_offset;
 	}
 
@@ -862,15 +861,13 @@ ExecutionPlan *NewExecutionPlan(void) {
 
 	array_free(segment_indices);
 
-	ExecutionPlan *plan = segments[segment_count - 1];
+	ExecutionPlan *plan = array_pop(segments);
 	// The root operation is OpResults only if the query culminates in a RETURN or CALL clause.
 	if(query_has_return || last_clause_type == CYPHER_AST_CALL) {
 		OpBase *results_op = NewResultsOp(plan);
 		_ExecutionPlan_UpdateRoot(plan, results_op);
 	}
 
-	// Disregard self.
-	plan->segment_count = segment_count - 1;
 	plan->segments = segments;
 
 	return plan;
@@ -1036,7 +1033,8 @@ static OpBase *_ExecutionPlan_CloneOp(const ExecutionPlan *orig_plan, ExecutionP
 	OpBase *clone = OpBase_Clone(clone_plan, orig_op);
 	// Clone the op's children and add them the clone op children array.
 	for(uint i = 0; i < orig_op->childCount; i++) {
-		ExecutionPlan_AddOp(clone, _ExecutionPlan_CloneOp(orig_plan, clone_plan, orig_op->children[i]));
+		OpBase *cloned_child = _ExecutionPlan_CloneOp(orig_plan, clone_plan, orig_op->children[i]);
+		if(cloned_child) ExecutionPlan_AddOp(clone, cloned_child);
 	}
 	return clone;
 }
@@ -1048,14 +1046,15 @@ static void _ExecutionPlan_CloneOperations(const ExecutionPlan *template, Execut
 // Merge cloned execution plan segments, with respect to the plan type (union or not).
 static void _ExecutionPlan_MergeSegments(ExecutionPlan *plan) {
 	// No need to merge segments if there aren't any.
-	if(plan->segment_count == 0) return;
+	uint segment_count = array_len(plan->segments);
+	if(segment_count == 0) return;
 
 	if(plan->is_union) {
 		// Locate the join operation.
 		OpBase *join_op = ExecutionPlan_LocateOp(plan->root, OPType_JOIN);
 		assert(join_op);
 		// Each segment is a sub execution plan that needs to be joined.
-		for(int i = 0; i < plan->segment_count; i++) {
+		for(int i = 0; i < segment_count; i++) {
 			ExecutionPlan *sub_plan = plan->segments[i];
 			ExecutionPlan_AddOp(join_op, sub_plan->root);
 		}
@@ -1063,11 +1062,15 @@ static void _ExecutionPlan_MergeSegments(ExecutionPlan *plan) {
 		// Plan is not union, concatenate the segments.
 		OpBase *connecting_op;
 		OpBase *prev_root = plan->segments[0]->root;
-		for(uint i = 1; i < plan->segment_count; i++) {
+		for(uint i = 1; i < segment_count; i++) {
 			ExecutionPlan *current_segment = plan->segments[i];
 			OpBase *connecting_op = ExecutionPlan_LocateOpMatchingType(current_segment->root, PROJECT_OPS,
 																	   PROJECT_OP_COUNT);
-			assert(connecting_op->childCount == 0);
+			/* In case of queries "MATCH (n) WITH n AS m WHERE n.val < 5 RETURN m" the WITH projection op has one child
+			 * which is the filter op, which is being placed after the segment is created, so we need to find the last op in this chain. */
+			while(connecting_op->children && connecting_op->childCount != 0) {
+				connecting_op = connecting_op->children[0];
+			}
 			ExecutionPlan_AddOp(connecting_op, prev_root);
 			OpBase *prev_root = current_segment->root;
 		}
@@ -1087,23 +1090,27 @@ ExecutionPlan *ExecutionPlan_Clone(const ExecutionPlan *template) {
 	ExecutionPlan *clone = ExecutionPlan_NewEmptyExecutionPlan();
 
 	clone->is_union = template->is_union;
-	clone->segment_count = template->segment_count;
-	clone->ast_segment = AST_Clone(template->ast_segment);
-	clone->query_graph = QueryGraph_Clone(template->query_graph);
-	uint connected_componenets_count = array_len(template->connected_components);
-	clone->connected_components = array_new(QueryGraph *, connected_componenets_count);
-	for(uint i = 0; i < connected_componenets_count; i++) {
-		clone->connected_components = array_append(clone->connected_components,
-												   QueryGraph_Clone(template->connected_components[i]));
+	// Union execution plan do not store ast, query graph
+	if(!clone->is_union) {
+		clone->ast_segment = AST_Clone(template->ast_segment);
+		clone->query_graph = QueryGraph_Clone(template->query_graph);
+		uint connected_componenets_count = array_len(template->connected_components);
+		clone->connected_components = array_new(QueryGraph *, connected_componenets_count);
+		for(uint i = 0; i < connected_componenets_count; i++) {
+			clone->connected_components = array_append(clone->connected_components,
+													   QueryGraph_Clone(template->connected_components[i]));
+		}
 	}
 	clone->record_map = raxClone(template->record_map);
 	clone->filter_tree = template->filter_tree ? FilterTree_Clone(template->filter_tree) : NULL;
+	// The execution plan segment clone requires the specific AST segment for referenced entities.
+	AST *master_ast = QueryCtx_GetAST();
+	QueryCtx_SetAST(clone->ast_segment);
 	// Clone each operation in the template relevant segment
 	_ExecutionPlan_CloneOperations(template, clone);
-	clone->segments = array_new(ExecutionPlan *, clone->segment_count);
-	for(uint i = 0; i < clone->segment_count; i++) {
-		clone->segments = array_append(clone->segments, ExecutionPlan_Clone(template->segments[i]));
-	}
+	// After clone, restore master ast.
+	QueryCtx_SetAST(master_ast);
+	array_clone_with_cb(clone->segments, template->segments, ExecutionPlan_Clone);
 	// Merge the segments
 	_ExecutionPlan_MergeSegments(clone);
 	return clone;
@@ -1119,8 +1126,11 @@ static void _ExecutionPlan_FreeOperations(OpBase *op) {
 static void _ExecutionPlan_FreeSubPlan(ExecutionPlan *plan) {
 	if(plan == NULL) return;
 
-	for(int i = 0; i < plan->segment_count; i++) _ExecutionPlan_FreeSubPlan(plan->segments[i]);
-	if(plan->segments) rm_free(plan->segments);
+	if(plan->segments) {
+		uint segment_count = array_len(plan->segments);
+		for(int i = 0; i < segment_count; i++) _ExecutionPlan_FreeSubPlan(plan->segments[i]);
+		array_free(plan->segments);
+	}
 
 	if(plan->connected_components) {
 		uint connected_component_count = array_len(plan->connected_components);
@@ -1148,8 +1158,11 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 	 * their operation chain freed.
 	 * The last segment is the actual plan passed as an argument to this function.
 	 * TODO this logic isn't ideal, try to improve. */
-	for(int i = 0; i < plan->segment_count; i++) _ExecutionPlan_FreeSubPlan(plan->segments[i]);
-	if(plan->segments) rm_free(plan->segments);
+	if(plan->segments) {
+		uint segment_count = array_len(plan->segments);
+		for(int i = 0; i < segment_count; i++) _ExecutionPlan_FreeSubPlan(plan->segments[i]);
+		array_free(plan->segments);
+	}
 
 	if(plan->connected_components) {
 		uint connected_component_count = array_len(plan->connected_components);

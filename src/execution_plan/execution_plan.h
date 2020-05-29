@@ -21,8 +21,6 @@ struct ExecutionPlan {
 	QueryGraph *query_graph;            // QueryGraph representing all graph entities in this segment.
 	FT_FilterNode *filter_tree;         // FilterTree containing filters to be applied to this segment.
 	QueryGraph **connected_components;  // Array of all connected components in this segment.
-	// NOTE - segments and segment_count are only stored for proper freeing.
-	int segment_count;                  // Number of ExecutionPlan segments.
 	ExecutionPlan **segments;           // Partial execution plans scoped to a subset of operations.
 	ObjectPool *record_pool;
 	bool prepared;                      // Indicates if the execution plan is ready for execute.
