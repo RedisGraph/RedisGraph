@@ -223,10 +223,12 @@ void AlgebraicExpression_Eval(const AlgebraicExpression *exp, GrB_Matrix res) {
 	_AlgebraicExpression_Eval(exp, res);
 }
 
-void AlgebraicExpression_Initialize(AlgebraicExpression **exp) {
+void AlgebraicExpression_Initialize(AlgebraicExpression **exp, GrB_Matrix filter_matrix) {
 	// On first evaluation we need to fetch operands.
 	_AlgebraicExpression_FetchOperands(*exp, QueryCtx_GetGraphCtx(), QueryCtx_GetGraph());
 
+	// Add placeholder operand to hold filter matrix as leftmost multiplication.
+	AlgebraicExpression_MultiplyToTheLeft(exp, filter_matrix);
 	// Perform one-time optimization of expression.
 	AlgebraicExpression_InitialOptimize(exp);
 }

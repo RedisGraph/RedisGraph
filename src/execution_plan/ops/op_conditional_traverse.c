@@ -37,31 +37,23 @@ static void _populate_filter_matrix(CondTraverse *op) {
  * removed filter matrix from original expression
  * clears filter matrix. */
 void _traverse(CondTraverse *op) {
-	// Create both filter and result matrices.
+	// If op->F is null, this is the first time we are traversing.
 	if(op->F == GrB_NULL) {
+		// Create both filter and result matrices.
 		size_t required_dim = Graph_RequiredMatrixDim(op->graph);
 		GrB_Matrix_new(&op->M, GrB_BOOL, op->recordsCap, required_dim);
 		GrB_Matrix_new(&op->F, GrB_BOOL, op->recordsCap, required_dim);
-	}
 
-	// If this is the first evaluation, initialize the expression.
-	if(!op->exp_initialized) {
-		AlgebraicExpression_Initialize(&op->ae);
-		op->exp_initialized = true;
+		// Initialize the algebraic expression and
+		// prepend the filter matrix to the multiplication.
+		AlgebraicExpression_Initialize(&op->ae, op->F);
 	}
 
 	// Populate filter matrix.
 	_populate_filter_matrix(op);
-	// Clone expression, as we're about to modify the structure with Optimize.
-	AlgebraicExpression *clone = AlgebraicExpression_Clone(op->ae);
-	// Prepend matrix to algebraic expression, as the left most operand.
-	AlgebraicExpression_MultiplyToTheLeft(&clone, op->F);
-	// TODO: consider performing optimization as part of evaluation.
-	AlgebraicExpression_Optimize(&clone);
+
 	// Evaluate expression.
-	AlgebraicExpression_Eval(clone, op->M);
-	// Free clone.
-	AlgebraicExpression_Free(clone);
+	AlgebraicExpression_Eval(op->ae, op->M);
 
 	if(op->iter == NULL) GxB_MatrixTupleIter_new(&op->iter, op->M);
 	else GxB_MatrixTupleIter_reuse(op->iter, op->M);
@@ -82,7 +74,6 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	op->recordsCap = 0;
 	op->recordCount = 0;
 	op->edge_ctx = NULL;
-	op->exp_initialized = false;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_TRAVERSE, "Conditional Traverse", CondTraverseInit,

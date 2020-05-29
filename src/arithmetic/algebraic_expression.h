@@ -218,7 +218,8 @@ void AlgebraicExpression_Eval
 );
 
 void AlgebraicExpression_Initialize(
-	AlgebraicExpression **exp       // Expression to prep for evaluation.
+	AlgebraicExpression **exp,      // Expression to prep for evaluation.
+	GrB_Matrix filter_matrix       // Filter matrix for leftmost multiplication.
 );
 
 //------------------------------------------------------------------------------
