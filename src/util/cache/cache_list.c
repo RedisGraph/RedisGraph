@@ -31,7 +31,7 @@ void CacheList_Promote(CacheList *list, CacheListNode *node) {
 	CacheListNode *prev = node->prev;
 	// Current node was not the tail, connect prev to the next element.
 	if(prev != NULL) prev->next = node->next;
-	node->next->prev = prev;
+	if(node->next) node->next->prev = prev;
 
 	/* Move this node to the head. */
 	node->next = list->head;

@@ -39,19 +39,19 @@ void ExecutionInformation_FromQuery(const char *query, ExecutionPlan **plan, AST
 	if(exec_ctx) {
 		// Clone ast and plan. Set the execution type for query execution and indicate a cache hit.
 		*ast = AST_Clone(exec_ctx->ast);
+		// Set AST as it is retrived from cache.
+		QueryCtx_SetAST(exec_ctx->ast);
 		*plan = ExecutionPlan_Clone(exec_ctx->exec_plan_template);
 		*exec_type = EXECUTION_TYPE_QUERY;
 		*cached = true;
 		// Set parameters parse result in the execution ast.
 		AST_SetParamsParseResult(*ast, params_parse_result);
-		// Set AST as it is retrived from cache.
-		QueryCtx_SetAST(exec_ctx->ast);
 		return;
 	}
 	// No cache execution plan, try to parse the query.
 	cypher_parse_result_t *query_parse_result = parse_query(query_string);
 	// If no output from the parser, the query is not valid.
-	if(query_parse_result) {
+	if(!query_parse_result) {
 		parse_result_free(params_parse_result);
 		return;
 	}
@@ -70,10 +70,10 @@ void ExecutionInformation_FromQuery(const char *query, ExecutionPlan **plan, AST
 	AST_SetParamsParseResult(*ast, params_parse_result);
 	if(exec_plan_template) {
 		exec_ctx->exec_plan_template = exec_plan_template;
-		// Cache execution context.
-		Cache_SetValue(cache, query_string, exec_ctx);
 		// Clone execution plan.
 		*plan = ExecutionPlan_Clone(exec_plan_template);
+		// Cache execution context.
+		Cache_SetValue(cache, query_string, exec_ctx);
 	}
 }
 

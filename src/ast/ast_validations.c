@@ -1540,6 +1540,8 @@ static AST *_NewMockASTSegment(const cypher_astnode_t *root, uint start_offset, 
 	ast->root = cypher_ast_query(NULL, 0, (cypher_astnode_t *const *)clauses, n, clauses, n, range);
 	ast->skip = NULL;
 	ast->limit = NULL;
+	ast->params_parse_result = NULL;
+	ast->parse_result = NULL;
 	return ast;
 }
 
