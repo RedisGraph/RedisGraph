@@ -174,6 +174,8 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		mat_id = GraphContext_GetSchema(gc, "war", SCHEMA_EDGE)->id;
 		mat_ew = Graph_GetRelationMatrix(g, mat_id);
 
+		GrB_Matrix dummy_matrix;
+		GrB_Matrix_new(&dummy_matrix, GrB_BOOL, 2, 2);
 		_matrices = raxNew();
 		raxInsert(_matrices, (unsigned char *)"p", strlen("p"), mat_p, NULL);
 		raxInsert(_matrices, (unsigned char *)"f", strlen("f"), mat_f, NULL);
@@ -182,6 +184,9 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		raxInsert(_matrices, (unsigned char *)"F", strlen("F"), mat_ef, NULL);
 		raxInsert(_matrices, (unsigned char *)"V", strlen("V"), mat_ev, NULL);
 		raxInsert(_matrices, (unsigned char *)"W", strlen("W"), mat_ew, NULL);
+		raxInsert(_matrices, (unsigned char *)"A", strlen("A"), dummy_matrix, NULL);
+		raxInsert(_matrices, (unsigned char *)"B", strlen("B"), dummy_matrix, NULL);
+		raxInsert(_matrices, (unsigned char *)"C", strlen("C"), dummy_matrix, NULL);
 	}
 
 	AlgebraicExpression **build_algebraic_expression(const char *query) {
@@ -195,8 +200,8 @@ class AlgebraicExpressionTest: public ::testing::Test {
 
 		uint exp_count = array_len(ae);
 		for(uint i = 0; i < exp_count; i++) {
-			AlgebraicExpression_Optimize(ae + i);
 			_AlgebraicExpression_FetchOperands(ae[i], gc, g);
+			AlgebraicExpression_Optimize(ae + i);
 		}
 
 		return ae;
@@ -265,9 +270,8 @@ class AlgebraicExpressionTest: public ::testing::Test {
 	void _compare_algebraic_operand(AlgebraicExpression *a, AlgebraicExpression *b) {
 		ASSERT_TRUE(a->type == AL_OPERAND);
 		ASSERT_TRUE(b->type == AL_OPERAND);
-		// ASSERT_EQ(a->operand.free, b->operand.free);
-		ASSERT_EQ(a->operand.matrix, b->operand.matrix);
-		// ASSERT_EQ(a->operand.diagonal, b->operand.diagonal);
+		// Can't compare matrix pointers, as transpose ops will have rewritten them
+		// ASSERT_EQ(a->operand.matrix, b->operand.matrix);
 	}
 
 	void compare_algebraic_expression(AlgebraicExpression *a, AlgebraicExpression *b) {
@@ -525,7 +529,7 @@ TEST_F(AlgebraicExpressionTest, AlgebraicExpression_Clone) {
 								  };
 
 	for(uint i = 0; i < 13; i++) {
-		exp = AlgebraicExpression_FromString(expressions[i], NULL);
+		exp = AlgebraicExpression_FromString(expressions[i], _matrices);
 		clone = AlgebraicExpression_Clone(exp);
 		compare_algebraic_expression(exp, clone);
 		AlgebraicExpression_Free(clone);
@@ -541,11 +545,11 @@ TEST_F(AlgebraicExpressionTest, AlgebraicExpression_Transpose) {
 	const char *transposed_expressions[6] = {"T(A)", "T(B)*T(A)", "T(C)*T(B)*T(A)", "T(A)+T(B)", "T(A)+T(B)+T(C)", "A"};
 
 	for(uint i = 0; i < 6; i++) {
-		exp = AlgebraicExpression_FromString(expressions[i], NULL);
+		exp = AlgebraicExpression_FromString(expressions[i], _matrices);
 		AlgebraicExpression_Transpose(&exp);
-		AlgebraicExpression_Optimize(&exp); // Performs transpose pushdown.
+		AlgebraicExpression_Optimize(&exp); // Perform transpose optimizations.
 
-		transposed_exp = AlgebraicExpression_FromString(transposed_expressions[i], NULL);
+		transposed_exp = AlgebraicExpression_FromString(transposed_expressions[i], _matrices);
 		compare_algebraic_expression(exp, transposed_exp);
 
 		AlgebraicExpression_Free(exp);
