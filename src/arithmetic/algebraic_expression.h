@@ -34,7 +34,7 @@ struct AlgebraicExpression {
 	union {
 		struct {
 			bool diagonal;          // Diagonal matrix.
-			bool should_free;       // If the matrix is scoped to this expression, it should be freed with it.
+			bool bfree;             // If the matrix is scoped to this expression, it should be freed with it.
 			GrB_Matrix matrix;      // Matrix operand.
 			const char *src;        // Alias given to operand's rows (src node).
 			const char *dest;       // Alias given to operand's columns (destination node).
@@ -42,7 +42,7 @@ struct AlgebraicExpression {
 			const char *label;      // Label attached to matrix.
 		} operand;
 		struct {
-			AL_EXP_OP op;                       // Operation: `*`,`+`,`transpose`
+			AL_EXP_OP op;                   // Operation: `*`,`+`,`transpose`
 			AlgebraicExpression **children; // Child nodes.
 		} operation;
 	};
@@ -215,11 +215,6 @@ void AlgebraicExpression_Eval
 (
 	const AlgebraicExpression *exp, // Root node.
 	GrB_Matrix res                  // Result output.
-);
-
-void AlgebraicExpression_Initialize(
-	AlgebraicExpression **exp,      // Expression to prep for evaluation.
-	GrB_Matrix filter_matrix       // Filter matrix for leftmost multiplication.
 );
 
 //------------------------------------------------------------------------------

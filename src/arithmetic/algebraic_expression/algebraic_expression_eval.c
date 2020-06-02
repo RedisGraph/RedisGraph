@@ -179,9 +179,6 @@ GrB_Matrix _AlgebraicExpression_Eval(const AlgebraicExpression *exp, GrB_Matrix 
 			break;
 
 		case AL_EXP_TRANSPOSE:
-			// Transpose operations should have been replaced by transposed operands by this point.
-			assert("Encountered unexpected transpose operation." && false);
-			// TODO consider what to do about unused code paths
 			res = _Eval_Transpose(exp, res);
 			break;
 
@@ -202,16 +199,5 @@ GrB_Matrix _AlgebraicExpression_Eval(const AlgebraicExpression *exp, GrB_Matrix 
 void AlgebraicExpression_Eval(const AlgebraicExpression *exp, GrB_Matrix res) {
 	assert(exp && exp->type == AL_OPERATION);
 	_AlgebraicExpression_Eval(exp, res);
-}
-
-void AlgebraicExpression_Initialize(AlgebraicExpression **exp, GrB_Matrix filter_matrix) {
-	// On first evaluation we need to fetch operands.
-	_AlgebraicExpression_FetchOperands(*exp, QueryCtx_GetGraphCtx(), QueryCtx_GetGraph());
-
-	// Add placeholder operand to hold filter matrix as leftmost multiplication.
-	AlgebraicExpression_MultiplyToTheLeft(exp, filter_matrix);
-
-	// Optimize the expression tree.
-	AlgebraicExpression_Optimize(exp);
 }
 

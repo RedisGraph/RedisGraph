@@ -88,7 +88,7 @@ AlgebraicExpression *AlgebraicExpression_NewOperand
 	node->type = AL_OPERAND;
 	node->operand.matrix = mat;
 	node->operand.diagonal = diagonal;
-	node->operand.should_free = false;
+	node->operand.bfree = false;
 	node->operand.src = src;
 	node->operand.dest = dest;
 	node->operand.edge = edge;

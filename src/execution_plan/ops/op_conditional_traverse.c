@@ -44,9 +44,11 @@ void _traverse(CondTraverse *op) {
 		GrB_Matrix_new(&op->M, GrB_BOOL, op->recordsCap, required_dim);
 		GrB_Matrix_new(&op->F, GrB_BOOL, op->recordsCap, required_dim);
 
-		// Initialize the algebraic expression and
-		// prepend the filter matrix to the multiplication.
-		AlgebraicExpression_Initialize(&op->ae, op->F);
+		// Prepend the filter matrix to algebraic expression as the leftmost operand.
+		AlgebraicExpression_MultiplyToTheLeft(&op->ae, op->F);
+
+		// Optimize the expression tree.
+		AlgebraicExpression_Optimize(&op->ae);
 	}
 
 	// Populate filter matrix.
