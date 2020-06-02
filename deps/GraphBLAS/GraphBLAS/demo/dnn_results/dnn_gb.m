@@ -14,7 +14,7 @@ function Y = dnn_gb (W, bias, Y0)
 %
 % See also dnn_matlab, dnn_mat2gb.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 Y = Y0 ;

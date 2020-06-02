@@ -11,7 +11,10 @@ function v = bfs_matlab (A, s)
 % kth level, where the shortest path (in terms of # of edges) from  s to j has
 % length k+1.  The source node s defaults to 1.
 
-[m n] = size (A) ;
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+[m, n] = size (A) ;
 if (m ~= n)
     error ('A must be square') ;
 end
@@ -37,7 +40,7 @@ for level = 1:n
     qnew = spones (AT * q) ;
 
     % discard nodes in qnew that are already seen
-    qnew (v ~= 0) = 0 ;
+    qnew (v ~= 0) = 0 ;         %#ok
 
     % move to the new level
     q = qnew ;

@@ -1,12 +1,12 @@
 function gbtest55
 %GBTEST55 test disp
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 rng ('default') ;
 
-H = GrB (rand (6))
+H = GrB (rand (6)) %#ok<*NOPRT>
 
 fprintf ('default:\n') ;
 disp (H) ;

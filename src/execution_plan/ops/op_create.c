@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -13,16 +13,16 @@
 
 /* Forward declarations. */
 static Record CreateConsume(OpBase *opBase);
+static OpBase *CreateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void CreateFree(OpBase *opBase);
 
-OpBase *NewCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats, NodeCreateCtx *nodes,
-					EdgeCreateCtx *edges) {
+OpBase *NewCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
 	OpCreate *op = rm_calloc(1, sizeof(OpCreate));
 	op->records = NULL;
-	op->pending = NewPendingCreationsContainer(stats, nodes, edges); // Prepare all creation variables.
+	op->pending = NewPendingCreationsContainer(nodes, edges); // Prepare all creation variables.
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_CREATE, "Create", NULL, CreateConsume,
-				NULL, NULL, CreateFree, true, plan);
+				NULL, NULL, CreateClone, CreateFree, true, plan);
 
 	uint node_blueprint_count = array_len(nodes);
 	uint edge_blueprint_count = array_len(edges);
@@ -48,10 +48,14 @@ static void _CreateNodes(OpCreate *op, Record r) {
 		QGNode *n = op->pending.nodes_to_create[i].node;
 
 		/* Create a new node. */
-		Node *newNode = Record_GetNode(r, op->pending.nodes_to_create[i].node_idx);
-		newNode->entity = NULL;
-		newNode->label = n->label;
-		newNode->labelID = n->labelID;
+		Node newNode = {
+			.entity = NULL,
+			.label = n->label,
+			.labelID = n->labelID
+		};
+
+		/* Add new node to Record and save a reference to it. */
+		Node *node_ref = Record_AddNode(r, op->pending.nodes_to_create[i].node_idx, newNode);
 
 		/* Convert query-level properties. */
 		PropertyMap *map = op->pending.nodes_to_create[i].properties;
@@ -59,7 +63,7 @@ static void _CreateNodes(OpCreate *op, Record r) {
 		if(map) converted_properties = ConvertPropertyMap(r, map);
 
 		/* Save node for later insertion. */
-		op->pending.created_nodes = array_append(op->pending.created_nodes, newNode);
+		op->pending.created_nodes = array_append(op->pending.created_nodes, node_ref);
 
 		/* Save properties to insert with node. */
 		op->pending.node_properties = array_append(op->pending.node_properties, converted_properties);
@@ -76,12 +80,20 @@ static void _CreateEdges(OpCreate *op, Record r) {
 		/* Retrieve source and dest nodes. */
 		Node *src_node = Record_GetNode(r, op->pending.edges_to_create[i].src_idx);
 		Node *dest_node = Record_GetNode(r, op->pending.edges_to_create[i].dest_idx);
+		/* Verify that the endpoints of the new edge resolved properly; fail otherwise. */
+		if(!src_node || !dest_node) {
+			char *error;
+			asprintf(&error, "Failed to create relationship; endpoint was not found.");
+			QueryCtx_SetError(error);
+			QueryCtx_RaiseRuntimeException();
+		}
 
 		/* Create the actual edge. */
-		Edge *newEdge = Record_GetEdge(r, op->pending.edges_to_create[i].edge_idx);
-		if(array_len(e->reltypes) > 0) newEdge->relationship = e->reltypes[0];
-		Edge_SetSrcNode(newEdge, src_node);
-		Edge_SetDestNode(newEdge, dest_node);
+		Edge newEdge = {0};
+		if(array_len(e->reltypes) > 0) newEdge.relationship = e->reltypes[0];
+		Edge_SetSrcNode(&newEdge, src_node);
+		Edge_SetDestNode(&newEdge, dest_node);
+		Edge *edge_ref = Record_AddEdge(r, op->pending.edges_to_create[i].edge_idx, newEdge);
 
 		/* Convert query-level properties. */
 		PropertyMap *map = op->pending.edges_to_create[i].properties;
@@ -89,7 +101,7 @@ static void _CreateEdges(OpCreate *op, Record r) {
 		if(map) converted_properties = ConvertPropertyMap(r, map);
 
 		/* Save edge for later insertion. */
-		op->pending.created_edges = array_append(op->pending.created_edges, newEdge);
+		op->pending.created_edges = array_append(op->pending.created_edges, edge_ref);
 
 		/* Save properties to insert with node. */
 		op->pending.edge_properties = array_append(op->pending.edge_properties, converted_properties);
@@ -148,12 +160,22 @@ static Record CreateConsume(OpBase *opBase) {
 	return _handoff(op);
 }
 
+static OpBase *CreateClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_CREATE);
+	OpCreate *op = (OpCreate *)opBase;
+	NodeCreateCtx *nodes;
+	EdgeCreateCtx *edges;
+	array_clone_with_cb(nodes, op->pending.nodes_to_create, NodeCreateCtx_Clone);
+	array_clone_with_cb(edges, op->pending.edges_to_create, EdgeCreateCtx_Clone);
+	return NewCreateOp(plan, nodes, edges);
+}
+
 static void CreateFree(OpBase *ctx) {
 	OpCreate *op = (OpCreate *)ctx;
 
 	if(op->records) {
 		uint rec_count = array_len(op->records);
-		for(uint i = 0; i < rec_count; i++) Record_Free(op->records[i]);
+		for(uint i = 0; i < rec_count; i++) OpBase_DeleteRecord(op->records[i]);
 		array_free(op->records);
 		op->records = NULL;
 	}

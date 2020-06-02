@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -155,6 +155,8 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 	if(match_clauses) {
 		uint match_count = array_len(match_clauses);
 		for(uint i = 0; i < match_count; i ++) {
+			// OPTIONAL MATCH clauses are handled separately.
+			if(cypher_ast_match_is_optional(match_clauses[i])) continue;
 			const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match_clauses[i]);
 			uint npaths = cypher_ast_pattern_npaths(pattern);
 			for(uint j = 0; j < npaths; j ++) {
@@ -166,6 +168,36 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 	}
 
 	return qg;
+}
+
+void QueryGraph_MergeGraphs(QueryGraph *to, QueryGraph *from) {
+	uint node_count = QueryGraph_NodeCount(from);
+	uint edge_count = QueryGraph_EdgeCount(from);
+
+	for(uint i = 0; i < node_count; i++) {
+		QGNode *n = from->nodes[i];
+		/* If the entity already exists in the "to" graph, do nothing.
+		 * We could have more complex logic to merge entity data, but this is not
+		 * currently necessary as this logic only benefits toString calls like EXPLAIN. */
+		if(QueryGraph_GetNodeByAlias(to, n->alias)) continue;
+		// New entity, clone and add it.
+		QueryGraph_AddNode(to, QGNode_Clone(n));
+	}
+
+	for(uint i = 0; i < edge_count; i++) {
+		QGEdge *e = from->edges[i];
+		/* If the entity already exists in the "to" graph, do nothing.
+		 * We could have more complex logic to merge entity data, but this is not
+		 * currently necessary as this logic only benefits toString calls like EXPLAIN. */
+		if(QueryGraph_GetEdgeByAlias(to, e->alias)) continue;
+
+		// Retrieve the edge's endpoints in the "to" graph.
+		QGNode *src = QueryGraph_GetNodeByAlias(to, e->src->alias);
+		QGNode *dest = QueryGraph_GetNodeByAlias(to, e->dest->alias);
+		// Clone and add the unmatched edge.
+		QGEdge *clone_edge = QGEdge_Clone(e);
+		QueryGraph_ConnectNodes(to, src, dest, clone_edge);
+	}
 }
 
 QGNode *QueryGraph_GetNodeByAlias(const QueryGraph *qg, const char *alias) {

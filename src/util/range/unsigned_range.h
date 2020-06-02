@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -18,6 +18,7 @@ typedef struct {
 } UnsignedRange;
 
 UnsignedRange *UnsignedRange_New(void);
+UnsignedRange *UnsignedRange_Clone(const UnsignedRange *range);
 bool UnsignedRange_IsValid(const UnsignedRange *range);
 bool UnsignedRange_ContainsValue(const UnsignedRange *range, uint64_t v);
 void UnsignedRange_TightenRange(UnsignedRange *range, int op, uint64_t v);

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -64,5 +64,5 @@ ProcedureCtx *ProcCtxNew(
 	ProcInvoke fInvoke,         // Procedure Invoke function.
 	ProcFree fFree,             // Procedure Free function.
 	void *privateData,          // Procedure private data.
-	bool isWriteProcedure       // Indicates if the procedure is able to mutate the graph.
+	bool readOnly               // Indicates if the procedure is able to mutate the graph.
 );

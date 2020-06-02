@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -17,6 +17,7 @@
 static OpResult UnwindInit(OpBase *opBase);
 static Record UnwindConsume(OpBase *opBase);
 static OpResult UnwindReset(OpBase *opBase);
+static OpBase *UnwindClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void UnwindFree(OpBase *opBase);
 
 OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
@@ -29,7 +30,7 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_UNWIND, "Unwind", UnwindInit, UnwindConsume,
-				UnwindReset, NULL, UnwindFree, false, plan);
+				UnwindReset, NULL, UnwindClone, UnwindFree, false, plan);
 
 	op->unwindRecIdx = OpBase_Modifies((OpBase *)op, exp->resolved_name);
 	return (OpBase *)op;
@@ -70,7 +71,7 @@ static OpResult UnwindInit(OpBase *opBase) {
 Record _handoff(OpUnwind *op) {
 	// If there is a new value ready, return it.
 	if(op->listIdx < SIArray_Length(op->list)) {
-		Record r = Record_Clone(op->currentRecord);
+		Record r = OpBase_CloneRecord(op->currentRecord);
 		Record_Add(r, op->unwindRecIdx, SIArray_Get(op->list, op->listIdx));
 		op->listIdx++;
 		return r;
@@ -92,10 +93,10 @@ static Record UnwindConsume(OpBase *opBase) {
 	// Did we managed to get new data?
 	if((r = OpBase_Consume(child))) {
 		// Free current record to accommodate new record.
-		Record_Free(op->currentRecord);
+		OpBase_DeleteRecord(op->currentRecord);
 		op->currentRecord = r;
 		// Free old list.
-		SIValue_Free(&op->list);
+		SIValue_Free(op->list);
 
 		// Reset index and set list.
 		op->listIdx = 0;
@@ -114,9 +115,15 @@ static OpResult UnwindReset(OpBase *ctx) {
 	return OP_OK;
 }
 
+static inline OpBase *UnwindClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_SORT);
+	OpUnwind *op = (OpUnwind *)opBase;
+	return NewUnwindOp(plan, AR_EXP_Clone(op->exp));
+}
+
 static void UnwindFree(OpBase *ctx) {
 	OpUnwind *op = (OpUnwind *)ctx;
-	SIValue_Free(&op->list);
+	SIValue_Free(op->list);
 	op->list = SI_NullVal();
 
 	if(op->exp) {
@@ -125,7 +132,7 @@ static void UnwindFree(OpBase *ctx) {
 	}
 
 	if(op->currentRecord) {
-		Record_Free(op->currentRecord);
+		OpBase_DeleteRecord(op->currentRecord);
 		op->currentRecord = NULL;
 	}
 }

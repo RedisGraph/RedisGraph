@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -149,7 +149,7 @@ void Register_NumericFuncs() {
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
-	types = array_append(types, (T_INT64 | T_NULL));
+	types = array_append(types, (SI_NUMERIC | T_NULL));
 	func_desc = AR_FuncDescNew("mod", AR_MODULO, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
@@ -187,3 +187,4 @@ void Register_NumericFuncs() {
 	func_desc = AR_FuncDescNew("tointeger", AR_TOINTEGER, 1, 1, types, true);
 	AR_RegFunc(func_desc);
 }
+

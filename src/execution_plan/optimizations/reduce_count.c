@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -25,10 +25,9 @@ static int _identifyResultAndAggregateOps(OpBase *root, OpResult **opResult,
 
 	// Expecting a single aggregation, without ordering.
 	*opAggregate = (OpAggregate *)op;
-	uint exp_count = array_len((*opAggregate)->exps);
-	if(exp_count != 1) return 0;
+	if((*opAggregate)->aggregate_count != 1 || (*opAggregate)->key_count != 0) return 0;
 
-	AR_ExpNode *exp = (*opAggregate)->exps[0];
+	AR_ExpNode *exp = (*opAggregate)->aggregate_exps[0];
 
 	// Make sure aggregation performs counting.
 	if(exp->type != AR_EXP_OP ||
@@ -77,7 +76,7 @@ static int _identifyNodeCountPattern(OpBase *root, OpResult **opResult, OpAggreg
 
 bool _reduceNodeCount(ExecutionPlan *plan) {
 	/* We'll only modify execution plan if it is structured as follows:
-	     * "Scan -> Aggregate -> Results" */
+	 * "Scan -> Aggregate -> Results" */
 	const char *label;
 	OpBase *opScan;
 	OpResult *opResult;
@@ -106,7 +105,7 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 	 * projection operation. */
 	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(nodeCount);
 	// The new expression must be aliased to populate the Record.
-	exp->resolved_name = opAggregate->exps[0]->resolved_name;
+	exp->resolved_name = opAggregate->aggregate_exps[0]->resolved_name;
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 	exps = array_append(exps, exp);
 
@@ -214,14 +213,14 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 
 	// If type is specified, count only labeled entities.
 	CondTraverse *condTraverse = (CondTraverse *)opTraverse;
-	int edgeRelationCount = condTraverse->edgeRelationCount;
-
 	// The traversal op doesn't contain information about the traversed edge, cannot apply optimization.
-	if(edgeRelationCount == 0) return;
+	if(!condTraverse->edge_ctx) return;
+
+	uint edgeRelationCount = array_len(condTraverse->edge_ctx->edgeRelationTypes);
 
 	uint64_t edges = 0;
-	for(int i = 0; i < edgeRelationCount; i++) {
-		int relType = condTraverse->edgeRelationTypes[i];
+	for(uint i = 0; i < edgeRelationCount; i++) {
+		int relType = condTraverse->edge_ctx->edgeRelationTypes[i];
 		switch(relType) {
 		case GRAPH_NO_RELATION:
 			// Should be the only relationship type mentioned, -[]->
@@ -231,7 +230,7 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 			// No change to current count, -[:none_existing]->
 			break;
 		default:
-			edges += _countRelationshipEdges(Graph_GetRelationMap(g, relType));
+			edges += _countRelationshipEdges(Graph_GetRelationMatrix(g, relType));
 		}
 	}
 	edgeCount = SI_LongVal(edges);
@@ -240,7 +239,7 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	 * projection operation. */
 	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(edgeCount);
 	// The new expression must be aliased to populate the Record.
-	exp->resolved_name = opAggregate->exps[0]->resolved_name;
+	exp->resolved_name = opAggregate->aggregate_exps[0]->resolved_name;
 	AR_ExpNode **exps = array_new(AR_ExpNode *, 1);
 	exps = array_append(exps, exp);
 
@@ -267,3 +266,4 @@ void reduceCount(ExecutionPlan *plan) {
 	 * then edge count will be tried to be executed upon the same execution plan */
 	if(!_reduceNodeCount(plan)) _reduceEdgeCount(plan);
 }
+

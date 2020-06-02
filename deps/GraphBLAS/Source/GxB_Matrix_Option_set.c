@@ -2,7 +2,7 @@
 // GxB_Matrix_Option_set: set an option in a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -22,8 +22,9 @@ GrB_Info GxB_Matrix_Option_set      // set an option in a matrix
     //--------------------------------------------------------------------------
 
     GB_WHERE ("GxB_Matrix_Option_set (A, field, value)") ;
+    GB_BURBLE_START ("GxB_set") ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
-    ASSERT_OK (GB_check (A, "A to set option", GB0)) ;
+    ASSERT_MATRIX_OK (A, "A to set option", GB0) ;
 
     GB_WAIT (A) ;
 
@@ -70,6 +71,7 @@ GrB_Info GxB_Matrix_Option_set      // set an option in a matrix
                 { 
                     // A = A', done in place, and change to the new format.
                     // transpose: no typecast, no op, in place of A
+                    GBBURBLE ("(transpose) ") ;
                     info = GB_transpose (NULL, NULL, new_csc, A, NULL, Context);
                     ASSERT (GB_IMPLIES (info == GrB_SUCCESS,
                         A->is_csc == new_csc)) ;
@@ -86,6 +88,7 @@ GrB_Info GxB_Matrix_Option_set      // set an option in a matrix
 
     }
 
+    GB_BURBLE_END ;
     return (info) ;
 }
 

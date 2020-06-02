@@ -2,7 +2,7 @@
 // gb_export_to_mxsparse: export a GrB_Matrix to a MATLAB sparse matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -34,7 +34,7 @@ mxArray *gb_export_to_mxsparse  // return exported MATLAB sparse matrix S
     GrB_Type type ;
     OK (GxB_Matrix_type (&type, *A_handle)) ;
     GxB_Format_Value fmt ;
-    OK (GxB_get (*A_handle, GxB_FORMAT, &fmt)) ;
+    OK (GxB_Matrix_Option_get (*A_handle, GxB_FORMAT, &fmt)) ;
 
     if (fmt == GxB_BY_COL && (type == GrB_BOOL || type == GrB_FP64
         #ifdef GB_COMPLEX_TYPE
@@ -51,7 +51,7 @@ mxArray *gb_export_to_mxsparse  // return exported MATLAB sparse matrix S
         { 
             // A is shallow so make a deep copy
             OK (GrB_Matrix_dup (&T, *A_handle)) ;
-            OK (GrB_free (A_handle)) ;
+            OK (GrB_Matrix_free (A_handle)) ;
         }
         else
         { 
@@ -74,7 +74,7 @@ mxArray *gb_export_to_mxsparse  // return exported MATLAB sparse matrix S
         // converted to CSC format if not already in that format.
 
         T = gb_typecast (GrB_FP64, GxB_BY_COL, *A_handle) ;
-        OK (GrB_free (A_handle)) ;
+        OK (GrB_Matrix_free (A_handle)) ;
     }
 
     // ensure T is deep
@@ -84,7 +84,7 @@ mxArray *gb_export_to_mxsparse  // return exported MATLAB sparse matrix S
     // drop zeros from T
     //--------------------------------------------------------------------------
 
-    OK (GxB_select (T, NULL, NULL, GxB_NONZERO, T, NULL, NULL)) ;
+    OK (GxB_Matrix_select (T, NULL, NULL, GxB_NONZERO, T, NULL, NULL)) ;
 
     //--------------------------------------------------------------------------
     // create the new MATLAB sparse matrix

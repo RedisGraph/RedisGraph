@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -15,13 +15,14 @@
 static OpResult ValueHashJoinInit(OpBase *opBase);
 static Record ValueHashJoinConsume(OpBase *opBase);
 static OpResult ValueHashJoinReset(OpBase *opBase);
+static OpBase *ValueHashJoinClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void ValueHashJoinFree(OpBase *opBase);
 
 /* Determins order between two records by inspecting
  * element stored at postion idx. */
 static bool _record_islt(Record l, Record r, uint idx) {
-	SIValue lv = Record_GetScalar(l, idx);
-	SIValue rv = Record_GetScalar(r, idx);
+	SIValue lv = Record_Get(l, idx);
+	SIValue rv = Record_Get(r, idx);
 	return SIValue_Compare(lv, rv, NULL) < 0;
 }
 
@@ -38,7 +39,7 @@ static int64_t _binarySearchLeftmost(Record *array, int join_key_idx, SIValue v)
 	int64_t right = recordCount;
 	while(left < right) {
 		pos = (right + left) / 2;
-		SIValue x = Record_GetScalar(array[pos], join_key_idx);
+		SIValue x = Record_Get(array[pos], join_key_idx);
 		if(SIValue_Compare(x, v, NULL) < 0) left = pos + 1;
 		else right = pos;
 	}
@@ -53,7 +54,7 @@ static int64_t _binarySearchRightmost(Record *array, int64_t array_len, int join
 	int64_t right = array_len;
 	while(left < right) {
 		pos = (right + left) / 2;
-		SIValue x = Record_GetScalar(array[pos], join_key_idx);
+		SIValue x = Record_Get(array[pos], join_key_idx);
 		if(SIValue_Compare(v, x, NULL) < 0) right = pos;
 		else left = pos + 1;
 	}
@@ -77,7 +78,7 @@ static Record _get_intersecting_record(OpValueHashJoin *op) {
 }
 
 /* Look up first intersecting cached record CR position.
- * Returns false if intersecting record is found. */
+ * Returns false if no intersecting record is found. */
 static bool _set_intersection_idx(OpValueHashJoin *op, SIValue v) {
 	op->intersect_idx = -1;
 	op->number_of_intersections = 0;
@@ -88,7 +89,7 @@ static bool _set_intersection_idx(OpValueHashJoin *op, SIValue v) {
 
 	// Make sure value was found.
 	Record r = op->cached_records[leftmost_idx];
-	SIValue x = Record_GetScalar(r, op->join_value_rec_idx);
+	SIValue x = Record_Get(r, op->join_value_rec_idx);
 	if(SIValue_Compare(x, v, NULL) != 0) return false; // Value wasn't found.
 
 	/* Value was found
@@ -129,13 +130,9 @@ void _cache_records(OpValueHashJoin *op) {
 	Record r = left_child->consume(left_child);
 	if(!r) return;
 
-	op->join_value_rec_idx = Record_length(r);
-	int extended_rec_len = Record_length(r) + 1;
-
 	// As long as there's data coming in from left branch.
 	do {
 		// Add joined value to record.
-		Record_Extend(&r, extended_rec_len); // Cache record.
 		op->cached_records = array_append(op->cached_records, r);
 
 		// Evaluate joined expression.
@@ -174,14 +171,14 @@ OpBase *NewValueHashJoin(const ExecutionPlan *plan, AR_ExpNode *lhs_exp, AR_ExpN
 	op->rhs_exp = rhs_exp;
 	op->intersect_idx = -1;
 	op->cached_records = NULL;
-	op->join_value_rec_idx = -1;
 	op->number_of_intersections = 0;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_VALUE_HASH_JOIN, "Value Hash Join", ValueHashJoinInit,
-				ValueHashJoinConsume, ValueHashJoinReset, ValueHashJoinToString,
+				ValueHashJoinConsume, ValueHashJoinReset, ValueHashJoinToString, ValueHashJoinClone,
 				ValueHashJoinFree, false, plan);
 
+	op->join_value_rec_idx = OpBase_Modifies((OpBase *)op, "pivot");
 	return (OpBase *)op;
 }
 
@@ -219,14 +216,14 @@ static Record ValueHashJoinConsume(OpBase *opBase) {
 			/* Merge into cached records to avoid
 			 * record extension */
 			Record_Merge(&l, op->rhs_rec);
-			return Record_Clone(l);
+			return OpBase_CloneRecord(l);
 		}
 	}
 
 	/* If we're here there are no more
 	 * left hand side records which intersect with R
 	 * discard R. */
-	if(op->rhs_rec) Record_Free(op->rhs_rec);
+	if(op->rhs_rec) OpBase_DeleteRecord(op->rhs_rec);
 
 	/* Try to get new right hand side record
 	 * which intersect with a left hand side record. */
@@ -238,16 +235,18 @@ static Record ValueHashJoinConsume(OpBase *opBase) {
 		// Get value on which we're intersecting.
 		SIValue v = AR_EXP_Evaluate(op->rhs_exp, op->rhs_rec);
 
+		bool found_intersection = _set_intersection_idx(op, v);
+		SIValue_Free(v);
 		// No intersection, discard R.
-		if(!_set_intersection_idx(op, v)) {
-			Record_Free(op->rhs_rec);
+		if(!found_intersection) {
+			OpBase_DeleteRecord(op->rhs_rec);
 			continue;
 		}
 
 		// Found atleast one intersecting record.
 		l = _get_intersecting_record(op);
 		Record_Merge(&l, op->rhs_rec);
-		return Record_Clone(l);
+		return OpBase_CloneRecord(l);
 	}
 }
 
@@ -258,7 +257,7 @@ static OpResult ValueHashJoinReset(OpBase *ctx) {
 
 	// Clear cached records.
 	if(op->rhs_rec) {
-		Record_Free(op->rhs_rec);
+		OpBase_DeleteRecord(op->rhs_rec);
 		op->rhs_rec = NULL;
 	}
 
@@ -266,7 +265,7 @@ static OpResult ValueHashJoinReset(OpBase *ctx) {
 		uint record_count = array_len(op->cached_records);
 		for(uint i = 0; i < record_count; i++) {
 			Record r = op->cached_records[i];
-			Record_Free(r);
+			OpBase_DeleteRecord(r);
 		}
 		array_free(op->cached_records);
 		op->cached_records = NULL;
@@ -275,12 +274,18 @@ static OpResult ValueHashJoinReset(OpBase *ctx) {
 	return OP_OK;
 }
 
+static inline OpBase *ValueHashJoinClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_VALUE_HASH_JOIN);
+	OpValueHashJoin *op = (OpValueHashJoin *)opBase;
+	return NewValueHashJoin(plan, AR_EXP_Clone(op->lhs_exp), AR_EXP_Clone(op->rhs_exp));
+}
+
 /* Frees ValueHashJoin */
 static void ValueHashJoinFree(OpBase *ctx) {
 	OpValueHashJoin *op = (OpValueHashJoin *)ctx;
 	// Free cached records.
 	if(op->rhs_rec) {
-		Record_Free(op->rhs_rec);
+		OpBase_DeleteRecord(op->rhs_rec);
 		op->rhs_rec = NULL;
 	}
 
@@ -288,7 +293,7 @@ static void ValueHashJoinFree(OpBase *ctx) {
 		uint record_count = array_len(op->cached_records);
 		for(uint i = 0; i < record_count; i++) {
 			Record r = op->cached_records[i];
-			Record_Free(r);
+			OpBase_DeleteRecord(r);
 		}
 		array_free(op->cached_records);
 		op->cached_records = NULL;

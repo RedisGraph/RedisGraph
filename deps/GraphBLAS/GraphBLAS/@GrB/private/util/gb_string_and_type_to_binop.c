@@ -2,7 +2,7 @@
 // gb_string_and_type_to_binop: get a GraphBLAS operator from a string and type
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -10,7 +10,7 @@
 #include "gb_matlab.h"
 
 // op_name: a MATLAB string defining the operator name (25 kinds):
-// 10: 1st, 2nd, min, max, +, -, rminus, *, /, \
+// 11: 1st, 2nd, pair, min, max, +, -, rminus, *, /, \
 //  6: iseq, isne, isgt, islt, isge, isle,
 //  6: ==, ~=, >, <, >=, <=,
 //  3: ||, &&, xor
@@ -19,6 +19,7 @@
 //
 //      1st   first
 //      2nd   second
+//      pair
 //      +     plus
 //      -     minus
 //      *     times
@@ -34,7 +35,7 @@
 //      &&    &     and land
 //      xor   lxor
 
-// Total # of ops: 25*11 = 275, not including GrB_LOR, GrB_LAND, GrB_XOR,
+// Total # of ops: 26*11 = 286, not including GrB_LOR, GrB_LAND, GrB_XOR,
 // which are equivalent to the GxB_*_BOOL versions.
 
 // FUTURE: add complex operators
@@ -83,6 +84,44 @@ GrB_BinaryOp gb_string_and_type_to_binop    // return op from string and type
         if (type == GrB_FP64  ) return (GrB_SECOND_FP64  ) ;
         #ifdef GB_COMPLEX_TYPE
         if (type == gb_complex_type) return (...) ;
+        #endif
+
+    }
+    else if (MATCH (op_name, "pair"))
+    { 
+
+        if (type == GrB_BOOL  ) return (GxB_PAIR_BOOL  ) ;
+        if (type == GrB_INT8  ) return (GxB_PAIR_INT8  ) ;
+        if (type == GrB_INT16 ) return (GxB_PAIR_INT16 ) ;
+        if (type == GrB_INT32 ) return (GxB_PAIR_INT32 ) ;
+        if (type == GrB_INT64 ) return (GxB_PAIR_INT64 ) ;
+        if (type == GrB_UINT8 ) return (GxB_PAIR_UINT8 ) ;
+        if (type == GrB_UINT16) return (GxB_PAIR_UINT16) ;
+        if (type == GrB_UINT32) return (GxB_PAIR_UINT32) ;
+        if (type == GrB_UINT64) return (GxB_PAIR_UINT64) ;
+        if (type == GrB_FP32  ) return (GxB_PAIR_FP32  ) ;
+        if (type == GrB_FP64  ) return (GxB_PAIR_FP64  ) ;
+        #ifdef GB_COMPLEX_TYPE
+        if (type == gb_complex_type) return (... ) ;
+        #endif
+
+    }
+    else if (MATCH (op_name, "any"))
+    { 
+
+        if (type == GrB_BOOL  ) return (GxB_ANY_BOOL  ) ;
+        if (type == GrB_INT8  ) return (GxB_ANY_INT8  ) ;
+        if (type == GrB_INT16 ) return (GxB_ANY_INT16 ) ;
+        if (type == GrB_INT32 ) return (GxB_ANY_INT32 ) ;
+        if (type == GrB_INT64 ) return (GxB_ANY_INT64 ) ;
+        if (type == GrB_UINT8 ) return (GxB_ANY_UINT8 ) ;
+        if (type == GrB_UINT16) return (GxB_ANY_UINT16) ;
+        if (type == GrB_UINT32) return (GxB_ANY_UINT32) ;
+        if (type == GrB_UINT64) return (GxB_ANY_UINT64) ;
+        if (type == GrB_FP32  ) return (GxB_ANY_FP32  ) ;
+        if (type == GrB_FP64  ) return (GxB_ANY_FP64  ) ;
+        #ifdef GB_COMPLEX_TYPE
+        if (type == gb_complex_type) return (... ) ;
         #endif
 
     }

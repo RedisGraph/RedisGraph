@@ -43,7 +43,7 @@ for trial = 1:40
             % and GraphBLAS, and all these uses work:
 
             C1 = C ;
-            C1 (M) = A (M) ;        % C1(M) is MATLAB, A(M) is MATLAB
+            C1 (M) = A (M) ;%#ok<*SPRIX> % C1(M) is MATLAB, A(M) is MATLAB
 
             C2 = GrB (C) ;
             C2 (M) = A (M) ;        % C2(M) is GrB, A(M) is MATLAB

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -8,6 +8,7 @@
 
 #include "../../execution_plan.h"
 #include "../../../ast/ast_shared.h"
+#include "../../../resultset/resultset_statistics.h"
 
 // Container struct for properties to be added to a new graph entity
 typedef struct {
@@ -29,8 +30,7 @@ typedef struct {
 } PendingCreations;
 
 // Initialize all variables for storing pending creations.
-PendingCreations NewPendingCreationsContainer(ResultSetStatistics *stats, NodeCreateCtx *nodes,
-											  EdgeCreateCtx *edges);
+PendingCreations NewPendingCreationsContainer(NodeCreateCtx *nodes, EdgeCreateCtx *edges);
 
 // Lock the graph and commit all changes introduced by the operation.
 void CommitNewEntities(OpBase *op, PendingCreations *pending);

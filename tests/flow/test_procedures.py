@@ -1,6 +1,7 @@
 import os
 import sys
 import redis
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -22,7 +23,7 @@ node5 = Node(label="fruit", properties={"name": "Banana", "value": 5})
 # Test over all procedure behavior in addition to procedure specifics.
 class testProcedures(FlowTestsBase):
     def __init__(self):
-        super(testProcedures, self).__init__()
+        self.env = Env()
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
@@ -286,4 +287,12 @@ class testProcedures(FlowTestsBase):
         actual_resultset = redis_graph.call_procedure("db.propertyKeys").result_set
         expected_results = [["name"], ["value"]]
         self.env.assertEquals(actual_resultset, expected_results)
-    
+
+    def test_procedure_fulltext_syntax_error(self):
+        try:
+            query = """CALL db.idx.fulltext.queryNodes('fruit', 'Orange || Apple') YIELD node RETURN node"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass

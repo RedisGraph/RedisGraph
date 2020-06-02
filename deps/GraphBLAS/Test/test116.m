@@ -1,6 +1,9 @@
 function test116
 %TEST116 performance tests for GrB_assign
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 fprintf ('test116:---------------- C(I,J)=A and C=A(I,J) performance\n') ;
 
 [save save_chunk] = nthreads_get ;

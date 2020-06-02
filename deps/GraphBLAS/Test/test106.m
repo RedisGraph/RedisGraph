@@ -1,6 +1,9 @@
 function test106
 %TEST106 GxB_subassign with alias
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 rng 'default'
 fprintf ('\ntest106: GxB_subassign with alias\n') ;
 

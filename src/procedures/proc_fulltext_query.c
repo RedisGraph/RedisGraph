@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -44,7 +44,8 @@ ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *a
 	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
 	if(!idx) return PROCEDURE_ERR; // TODO this should cause an error to be emitted.
 
-	QueryNodeContext *pdata = rm_malloc(sizeof(QueryNodeContext));
+	ctx->privateData = rm_malloc(sizeof(QueryNodeContext));
+	QueryNodeContext *pdata = ctx->privateData;
 	pdata->idx = idx;
 	pdata->g = gc->g;
 	pdata->output = array_new(SIValue, 2);
@@ -55,9 +56,21 @@ ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *a
 
 	// Execute query
 	pdata->iter = Index_Query(pdata->idx, query, &err);
+	// Raise runtime exception if err != NULL.
+	if(err) {
+		/* RediSearch error message is allocated using `rm_strdup`
+		 * QueryCtx is expecting to free `error` using `free`
+		 * in which case we have no option but to clone error. */
+		char *error;
+		asprintf(&error, "RediSearch: %s", err);
+		rm_free(err);
+		QueryCtx_SetError(error);
+		/* Raise the exception, we expect an exception handler to be set.
+		 * as procedure invocation is done at runtime. */
+		QueryCtx_RaiseRuntimeException();
+	}
 	assert(pdata->iter);
 
-	ctx->privateData = pdata;
 	return PROCEDURE_OK;
 }
 

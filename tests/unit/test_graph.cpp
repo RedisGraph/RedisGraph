@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -311,10 +311,10 @@ TEST_F(GraphTest, NewGraph) {
 	GrB_Index ncols, nrows, nvals;
 	Graph *g = Graph_New(GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 	Graph_AcquireWriteLock(g);
-
-	ASSERT_EQ(GrB_Matrix_ncols(&ncols, g->adjacency_matrix), GrB_SUCCESS);
-	ASSERT_EQ(GrB_Matrix_nrows(&nrows, g->adjacency_matrix), GrB_SUCCESS);
-	ASSERT_EQ(GrB_Matrix_nvals(&nvals, g->adjacency_matrix), GrB_SUCCESS);
+	GrB_Matrix adj_matrix = g->adjacency_matrix->grb_matrix;
+	ASSERT_EQ(GrB_Matrix_ncols(&ncols, adj_matrix), GrB_SUCCESS);
+	ASSERT_EQ(GrB_Matrix_nrows(&nrows, adj_matrix), GrB_SUCCESS);
+	ASSERT_EQ(GrB_Matrix_nvals(&nvals, adj_matrix), GrB_SUCCESS);
 
 	ASSERT_TRUE(g->nodes != NULL);
 	ASSERT_TRUE(g->relations != NULL);

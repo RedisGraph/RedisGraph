@@ -1,6 +1,6 @@
 import os
 import sys
-
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -13,7 +13,7 @@ GRAPH_ID = "G"
 
 class testRelationPattern(FlowTestsBase):
     def __init__(self):
-        super(testRelationPattern, self).__init__()
+        self.env = Env()
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
@@ -226,4 +226,38 @@ class testRelationPattern(FlowTestsBase):
         # Verify results.
         actual_result = redis_graph.query(query)
         expected_result = [[1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test07_transposed_multi_hop(self):
+        redis_con = self.env.getConnection()
+        g = Graph("tran_multi_hop", redis_con)
+
+        # (a)-[R]->(b)-[R]->(c)<-[R]-(d)<-[R]-(e)
+        a = Node(properties={"val": 'a'})
+        b = Node(properties={"val": 'b'})
+        c = Node(properties={"val": 'c'})
+        d = Node(properties={"val": 'd'})
+        e = Node(properties={"val": 'e'})
+        
+        g.add_node(a)
+        g.add_node(b)
+        g.add_node(c)
+        g.add_node(d)
+        g.add_node(e)
+
+        ab = Edge(a, "R", b)
+        bc = Edge(b, "R", c)
+        ed = Edge(e, "R", d)
+        dc = Edge(d, "R", c)
+
+        g.add_edge(ab)
+        g.add_edge(bc)
+        g.add_edge(ed)
+        g.add_edge(dc)
+
+        g.flush()
+
+        q = """MATCH (a)-[*2]->(b)<-[*2]-(c) RETURN a.val, b.val, c.val ORDER BY a.val, b.val, c.val"""
+        actual_result = g.query(q)
+        expected_result = [['a', 'c', 'a'], ['a', 'c', 'e'], ['e', 'c', 'a'], ['e', 'c', 'e']]
         self.env.assertEquals(actual_result.result_set, expected_result)

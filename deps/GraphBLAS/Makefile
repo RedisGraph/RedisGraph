@@ -2,7 +2,7 @@
 # GraphBLAS/Makefile
 #-------------------------------------------------------------------------------
 
-# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 # http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 #-------------------------------------------------------------------------------
@@ -21,7 +21,7 @@ endif
 
 default: library
 
-# just build the static and dynamic libraries; do not run the demo
+# just build the dynamic library; do not run the demo
 library:
 	( cd build ; cmake $(CMAKE_OPTIONS) .. ; $(MAKE) --jobs=$(JOBS) )
 
@@ -37,7 +37,7 @@ remake:
 cmake:
 	( cd build ; cmake $(CMAKE_OPTIONS) .. ; )
 
-# the same as "make library"
+# build both the static and dynamic libraries do not run the demo
 static:
 	( cd build ; cmake $(CMAKE_OPTIONS) -DBUILD_GRB_STATIC_LIBRARY=1 .. ; $(MAKE) --jobs=$(JOBS) )
 
@@ -71,4 +71,5 @@ distclean:
 	( cd Test ; $(MAKE) distclean )
 	( cd Tcov ; $(MAKE) distclean )
 	( cd Doc  ; $(MAKE) distclean )
+	( cd alternative  ; $(MAKE) distclean )
 

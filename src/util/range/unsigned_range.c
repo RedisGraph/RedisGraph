@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -13,11 +13,21 @@
 UnsignedRange *UnsignedRange_New(void) {
 	UnsignedRange *range = rm_malloc(sizeof(UnsignedRange));
 	range->valid = true;
-	range->max = UINT64_MAX;
 	range->min = 0;
+	range->max = UINT64_MAX;
 	range->include_min = true;
 	range->include_max = true;
 	return range;
+}
+
+UnsignedRange *UnsignedRange_Clone(const UnsignedRange *range) {
+	UnsignedRange *clone = rm_malloc(sizeof(UnsignedRange));
+	clone->min = range->min;
+	clone->max = range->max;
+	clone->valid = range->valid;
+	clone->include_min = range->include_min;
+	clone->include_max = range->include_max;
+	return clone;
 }
 
 bool UnsignedRange_IsValid(const UnsignedRange *range) {

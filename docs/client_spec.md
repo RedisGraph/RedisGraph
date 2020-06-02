@@ -25,9 +25,9 @@ Instructions on how to efficiently convert these IDs in the [Procedure Calls](#p
 
 Additionally, two enums are exposed:
 
-[ColumnType](https://github.com/RedisGraph/RedisGraph/blob/ff108d7e21061025166a35d29be1a1cb5bac6d55/src/resultset/formatters/resultset_formatter.h#L14-L19) indicates what type of value is held in each column (more formally, that offset into each row of the result set). Each entry in the header row will be a 2-array, with this enum in the first position and the column name string in the second.
+[ColumnType](https://github.com/RedisGraph/RedisGraph/blob/ff108d7e21061025166a35d29be1a1cb5bac6d55/src/resultset/formatters/resultset_formatter.h#L14-L19), which as of RedisGraph v2.1.0 will always be `COLUMN_SCALAR`. This enum is retained for backwards compatibility, and may be ignored by the client unless RedisGraph versions older than v2.1.0 must be supported.
 
-[PropertyType](https://github.com/RedisGraph/RedisGraph/blob/ff108d7e21061025166a35d29be1a1cb5bac6d55/src/resultset/formatters/resultset_formatter.h#L21-L28) indicates the data type (such as integer or string) of each returned scalar value. Each scalar values is emitted as a 2-array, with this enum in the first position and the actual value in the second. A column can consist exclusively of scalar values, such as both of the columns created by `RETURN a.value, 'this literal string'`. Each property on a graph entity also has a scalar as its value, so this construction is nested in each value of the properties array when a column contains a node or relationship.
+[ValueType](https://github.com/RedisGraph/RedisGraph/blob/ff108d7e21061025166a35d29be1a1cb5bac6d55/src/resultset/formatters/resultset_formatter.h#L21-L28) indicates the data type (such as Node, integer, or string) of each returned value. Each value is emitted as a 2-array, with this enum in the first position and the actual value in the second. Each property on a graph entity also has a scalar as its value, so this construction is nested in each value of the properties array when a column contains a node or relationship.
 
 ## Decoding the result set
 
@@ -69,24 +69,26 @@ Verbose (default):
 Compact:
 ```sh
 127.0.0.1:6379> GRAPH.QUERY demo "MATCH (a)-[e]->(b) RETURN a, e, b.name" --compact
-1) 1) 1) (integer) 2
+1) 1) 1) (integer) 1
       2) "a"
-   2) 1) (integer) 3
+   2) 1) (integer) 1
       2) "e"
    3) 1) (integer) 1
       2) "b.name"
-2) 1) 1) 1) (integer) 0
+2) 1) 1) 1) (integer) 8
          2) 1) (integer) 0
-         3) 1) 1) (integer) 0
-               2) (integer) 2
-               3) "Tree"
-      2) 1) (integer) 0
-         2) (integer) 0
-         3) (integer) 0
-         4) (integer) 1
-         5) 1) 1) (integer) 1
-               2) (integer) 2
-               3) "Autumn"
+            2) 1) (integer) 0
+            3) 1) 1) (integer) 0
+                  2) (integer) 2
+                  3) "Tree"
+      2) 1) (integer) 7
+         2) 1) (integer) 0
+            2) (integer) 0
+            3) (integer) 0
+            4) (integer) 1
+            5) 1) 1) (integer) 1
+                  2) (integer) 2
+                  3) "Autumn"
       3) 1) (integer) 2
          2) "Apple"
 3) 1) "Query internal execution time: 1.085412 milliseconds"
@@ -119,15 +121,15 @@ Rather than introspecting on the query being emitted, the client implementation 
 
 Our sample query `MATCH (a)-[e]->(b) RETURN a, e, b.name` generated the header:
 ```sh
-1) 1) (integer) 2
+1) 1) (integer) 1
    2) "a"
-2) 1) (integer) 3
-   2) "e"
 3) 1) (integer) 1
-   2) "b.name"
+   3) "e"
+4) 1) (integer) 1
+   3) "b.name"
 ```
 
-The 3 array members correspond, in order, to the 3 entities described in the RETURN clause.
+The 4 array members correspond, in order, to the 3 entities described in the RETURN clause.
 
 Each is emitted as a 2-array:
 ```sh
@@ -135,9 +137,7 @@ Each is emitted as a 2-array:
 2) column name (string)
 ```
 
-It is the client's responsibility to store [ColumnType enum](https://github.com/RedisGraph/RedisGraph/blob/ff108d7e21061025166a35d29be1a1cb5bac6d55/src/resultset/formatters/resultset_formatter.h#L14-L19). RedisGraph guarantees that this enum may be extended in the future, but the existing values will not be altered.
-
-In this case, `a` corresponds to a Node column, `e` corresponds to a Relation column, and `b.name` corresponds to a Scalar column. No other column types are currently supported.
+The first element is the [ColumnType enum](https://github.com/RedisGraph/RedisGraph/blob/master/src/resultset/formatters/resultset_formatter.h#L14-L19), which as of RedisGraph v2.1.0 will always be `COLUMN_SCALAR`. This element is retained for backwards compatibility, and may be ignored by the client unless RedisGraph versions older than v2.1.0 must be supported.
 
 ### Reading result rows
 
@@ -145,37 +145,42 @@ The entity representations in this section will closely resemble those found in 
 
 Our query produced one row of results with 3 columns (as described by the header):
 ```sh
-1) 1) 1) (integer) 0
+1) 1) 1) (integer) 8
       2) 1) (integer) 0
-      3) 1) 1) (integer) 0
-            2) (integer) 2
-            3) "Tree"
-   2) 1) (integer) 0
-      2) (integer) 0
-      3) (integer) 0
-      4) (integer) 1
-      5) 1) 1) (integer) 1
-            2) (integer) 2
-            3) "Autumn"
+         2) 1) (integer) 0
+         3) 1) 1) (integer) 0
+               2) (integer) 2
+               3) "Tree"
+   2) 1) (integer) 7
+      2) 1) (integer) 0
+         2) (integer) 0
+         3) (integer) 0
+         4) (integer) 1
+         5) 1) 1) (integer) 1
+               2) (integer) 2
+               3) "Autumn"
    3) 1) (integer) 2
       2) "Apple"
 ```
+Each element is emitted as a 2-array - [`ValueType`, value].
 
-We know the first column to contain nodes. The node representation contains 3 top-level elements:
+It is the client's responsibility to store the [ValueType enum](https://github.com/RedisGraph/RedisGraph/blob/master/src/resultset/formatters/resultset_formatter.h#L21-L28). RedisGraph guarantees that this enum may be extended in the future, but the existing values will not be altered.
+
+The `ValueType` for the first entry is `VALUE_NODE`. The node representation contains 3 top-level elements:
 
 1. The node's internal ID.
 2. An array of all label IDs associated with the node (currently, each node can have either 0 or 1 labels, though this restriction may be lifted in the future).
-3. An array of all properties the node contains. Properties are represented as 3-arrays - [property key ID, `PropertyType` enum, value].
+3. An array of all properties the node contains. Properties are represented as 3-arrays - [property key ID, `ValueType`, value].
 
 ```sh
 [	
     Node ID (integer),
     [label ID (integer) X label count]
-    [[property key ID (integer), PropertyType (enum), value (scalar)] X property count]
+    [[property key ID (integer), ValueType (enum), value (scalar)] X property count]
 ]
 ```
 
-The second column contains relations. The relation representation differs from the node representation in two respects:
+The `ValueType` for the first entry is `VALUE_EDGE`. The edge representation differs from the node representation in two respects:
 
 - Each relation has exactly one type, rather than the 0+ labels a node may have.
 - A relation is emitted with the IDs of its source and destination nodes.
@@ -194,13 +199,11 @@ As such, the complete representation is as follows:
     type ID (integer),
     source node ID (integer),
     destination node ID (integer),
-    [[property key ID (integer), PropertyType (enum), value (scalar)] X property count]
+    [[property key ID (integer), ValueType (enum), value (scalar)] X property count]
 ]
 ```
 
-The third column contains a scalar. Each scalar is emitted as a 2-array - [`PropertyType` enum, value].
-
-As with ColumnType, it is the client's responsibility to store the [PropertyType enum](https://github.com/RedisGraph/RedisGraph/blob/ff108d7e21061025166a35d29be1a1cb5bac6d55/src/resultset/formatters/resultset_formatter.h#L21-L28). RedisGraph guarantees that this enum may be extended in the future, but the existing values will not be altered.
+The `ValueType` for the third entry is `VALUE_STRING`, and the other element in the array is the actual value, "Apple".
 
 ### Reading statistics
 

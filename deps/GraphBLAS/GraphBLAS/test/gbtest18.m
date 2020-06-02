@@ -1,7 +1,7 @@
 function gbtest18
 %GBTEST18 test comparators (and, or, >, ...)
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 rng ('default') ;
@@ -17,7 +17,7 @@ for trial = 1:21
         n = 5 ;
     end
 
-    MA = sprand (m,n, 0.5) ;    A (2,2) = 2 ;
+    MA = sprand (m,n, 0.5) ;    A (2,2) = 2 ; %#ok<*NASGU>
     MB = sprand (m,n, 0.5) ;    B (2,2) = 2 ;
 
     if (rand < 0.1)

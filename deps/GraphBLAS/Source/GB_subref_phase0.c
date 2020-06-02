@@ -2,7 +2,7 @@
 // GB_subref_phase0: find vectors of C = A(I,J) and determine I,J properties
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -25,16 +25,16 @@ static inline void GB_find_Ap_start_end
 (
     // input, not modified
     const int64_t kA,
-    const int64_t *restrict Ap,
-    const int64_t *restrict Ai,
+    const int64_t *GB_RESTRICT Ap,
+    const int64_t *GB_RESTRICT Ai,
     const int64_t avlen,
     const int64_t imin,
     const int64_t imax,
     const int64_t kC,
     const int64_t nzombies,
     // output: Ap_start [kC] and Ap_end [kC]:
-    int64_t *restrict Ap_start,
-    int64_t *restrict Ap_end
+    int64_t *GB_RESTRICT Ap_start,
+    int64_t *GB_RESTRICT Ap_end
 )
 {
 
@@ -83,8 +83,8 @@ static inline void GB_find_Ap_start_end
         { 
             bool found, is_zombie ;
             int64_t pright = pA_end - 1 ;
-            GB_BINARY_SPLIT_ZOMBIE (imin, Ai, pA, pright, found, nzombies,
-                is_zombie) ;
+            GB_SPLIT_BINARY_SEARCH_ZOMBIE (imin, Ai,
+                pA, pright, found, nzombies, is_zombie) ;
         }
 
         // trim the trailing part of A (:,kA)
@@ -107,8 +107,8 @@ static inline void GB_find_Ap_start_end
             bool found, is_zombie ;
             int64_t pleft = pA ;
             int64_t pright = pA_end - 1 ;
-            GB_BINARY_SPLIT_ZOMBIE (imax, Ai, pleft, pright, found, nzombies,
-                is_zombie) ;
+            GB_SPLIT_BINARY_SEARCH_ZOMBIE (imax, Ai,
+                pleft, pright, found, nzombies, is_zombie) ;
             pA_end = (found) ? (pleft + 1) : pleft ;
         }
 
@@ -146,9 +146,9 @@ static inline void GB_find_Ap_start_end
 GrB_Info GB_subref_phase0
 (
     // output
-    int64_t *restrict *p_Ch,         // Ch = C->h hyperlist, or NULL standard
-    int64_t *restrict *p_Ap_start,   // A(:,kA) starts at Ap_start [kC]
-    int64_t *restrict *p_Ap_end,     // ... and ends at Ap_end [kC] - 1
+    int64_t *GB_RESTRICT *p_Ch,         // Ch = C->h hyperlist, or NULL standard
+    int64_t *GB_RESTRICT *p_Ap_start,   // A(:,kA) starts at Ap_start [kC]
+    int64_t *GB_RESTRICT *p_Ap_end,     // ... and ends at Ap_end [kC] - 1
     int64_t *p_Cnvec,       // # of vectors in C
     bool *p_need_qsort,     // true if C must be sorted
     int *p_Ikind,           // kind of I
@@ -181,7 +181,7 @@ GrB_Info GB_subref_phase0
     ASSERT (p_nI != NULL) ;
     ASSERT (Icolon != NULL) ;
 
-    ASSERT_OK (GB_check (A, "A for subref phase 0", GB0)) ;
+    ASSERT_MATRIX_OK (A, "A for subref phase 0", GB0) ;
     ASSERT (I != NULL) ;
     ASSERT (J != NULL) ;
 
@@ -200,9 +200,9 @@ GrB_Info GB_subref_phase0
     // get A
     //--------------------------------------------------------------------------
 
-    int64_t *restrict Ap = A->p ;   // Ap (but not A->p) may be trimmed
-    int64_t *restrict Ah = A->h ;   // Ah (but not A->h) may be trimmed
-    int64_t *restrict Ai = A->i ;
+    int64_t *GB_RESTRICT Ap = A->p ;   // Ap (but not A->p) may be trimmed
+    int64_t *GB_RESTRICT Ah = A->h ;   // Ah (but not A->h) may be trimmed
+    int64_t *GB_RESTRICT Ai = A->i ;
     int64_t anvec = A->nvec ;       // may be trimmed
     int64_t avlen = A->vlen ;
     int64_t avdim = A->vdim ;
@@ -278,7 +278,7 @@ GrB_Info GB_subref_phase0
             bool found ;
             int64_t kleft = 0 ;
             int64_t kright = anvec-1 ;
-            GB_BINARY_SPLIT_SEARCH (jmin, Ah, kleft, kright, found) ;
+            GB_SPLIT_BINARY_SEARCH (jmin, Ah, kleft, kright, found) ;
             Ah += kleft ;
             Ap += kleft ;
             anvec -= kleft ;
@@ -293,7 +293,7 @@ GrB_Info GB_subref_phase0
             bool found ;
             int64_t kleft = 0 ;
             int64_t kright = anvec-1 ;
-            GB_BINARY_SPLIT_SEARCH (jmax, Ah, kleft, kright, found) ;
+            GB_SPLIT_BINARY_SEARCH (jmax, Ah, kleft, kright, found) ;
             anvec = (found) ? (kleft + 1) : kleft ;
         }
 
@@ -311,7 +311,7 @@ GrB_Info GB_subref_phase0
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
     int nthreads = 1, ntasks = 1 ;
     int max_ntasks = nthreads_max * 8 ;
-    int64_t *restrict Count = NULL ;        // size max_ntasks+1
+    int64_t *GB_RESTRICT Count = NULL ;        // size max_ntasks+1
 
     #define GB_GET_NTHREADS_AND_NTASKS(work)                    \
     {                                                           \
@@ -340,9 +340,9 @@ GrB_Info GB_subref_phase0
     // if C(:,jC) is the (kC)th vector of C.  If NULL, then C is standard, and
     // jC == kC.  jC is in the range 0 to nJ-1.
 
-    int64_t *restrict Ch = NULL ;
-    int64_t *restrict Ap_start = NULL ;
-    int64_t *restrict Ap_end   = NULL ;
+    int64_t *GB_RESTRICT Ch = NULL ;
+    int64_t *GB_RESTRICT Ap_start = NULL ;
+    int64_t *GB_RESTRICT Ap_end   = NULL ;
     int64_t Cnvec = 0 ;
 
     int64_t jbegin = Jcolon [GxB_BEGIN] ;
@@ -404,8 +404,9 @@ GrB_Info GB_subref_phase0
         GB_GET_NTHREADS_AND_NTASKS (anvec) ;
 
         // scan all of Ah and check each entry if it appears in J
+        int tid ;
         #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-        for (int tid = 0 ; tid < ntasks ; tid++)
+        for (tid = 0 ; tid < ntasks ; tid++)
         {
             int64_t kA_start, kA_end, my_Cnvec = 0 ;
             GB_PARTITION (kA_start, kA_end, anvec,
@@ -440,8 +441,9 @@ GrB_Info GB_subref_phase0
         GB_GET_NTHREADS_AND_NTASKS (nJ) ;
 
         // scan all of J and check each entry if it appears in Ah
+        int tid ;
         #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-        for (int tid = 0 ; tid < ntasks ; tid++)
+        for (tid = 0 ; tid < ntasks ; tid++)
         {
             int64_t jC_start, jC_end, my_Cnvec = 0 ;
             GB_PARTITION (jC_start, jC_end, nJ, tid, ntasks) ;
@@ -520,8 +522,9 @@ GrB_Info GB_subref_phase0
         // both C and A are standard matrices
         //----------------------------------------------------------------------
 
+        int64_t jC ;
         #pragma omp parallel for num_threads(nthreads) schedule(static)
-        for (int64_t jC = 0 ; jC < nJ ; jC++)
+        for (jC = 0 ; jC < nJ ; jC++)
         { 
             int64_t jA = GB_ijlist (J, jC, Jkind, Jcolon) ;
             GB_find_Ap_start_end (jA, Ap, Ai, avlen, imin, imax,
@@ -539,8 +542,9 @@ GrB_Info GB_subref_phase0
         // C and A are both hypersparse.  Ch is a shifted copy of the trimmed
         // Ah, of length Cnvec = anvec.  so kA = kC.  Ap has also been trimmed.
 
+        int64_t kC ;
         #pragma omp parallel for num_threads(nthreads) schedule(static)
-        for (int64_t kC = 0 ; kC < Cnvec ; kC++)
+        for (kC = 0 ; kC < Cnvec ; kC++)
         { 
             int64_t kA = kC ;
             int64_t jA = Ah [kA] ;
@@ -564,8 +568,9 @@ GrB_Info GB_subref_phase0
 
         if (jinc > 0)
         {
+            int tid ;
             #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-            for (int tid = 0 ; tid < ntasks ; tid++)
+            for (tid = 0 ; tid < ntasks ; tid++)
             {
                 int64_t kA_start, kA_end ;
                 GB_PARTITION (kA_start, kA_end, anvec, tid, ntasks) ;
@@ -586,8 +591,9 @@ GrB_Info GB_subref_phase0
         }
         else
         {
+            int tid;
             #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-            for (int tid = 0 ; tid < ntasks ; tid++)
+            for (tid = 0 ; tid < ntasks ; tid++)
             {
                 int64_t kA_start, kA_end ;
                 GB_PARTITION (kA_start, kA_end, anvec, ntasks-tid-1, ntasks) ;
@@ -619,8 +625,9 @@ GrB_Info GB_subref_phase0
         // list J, or the entire jbegin:jinc:jend sequence.  Each vector is
         // then found in Ah, via binary search.
 
+        int tid ;
         #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-        for (int tid = 0 ; tid < ntasks ; tid++)
+        for (tid = 0 ; tid < ntasks ; tid++)
         {
             int64_t jC_start, jC_end ;
             GB_PARTITION (jC_start, jC_end, nJ, tid, ntasks) ;

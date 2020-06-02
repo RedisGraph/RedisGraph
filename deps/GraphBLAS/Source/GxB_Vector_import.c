@@ -2,7 +2,7 @@
 // GxB_Vector_import: import a vector in CSR/CSC format
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -29,6 +29,7 @@ GrB_Info GxB_Vector_import  // import a vector in CSC format
     //--------------------------------------------------------------------------
 
     GB_WHERE ("GxB_Vector_import (&v, type, n, nvals, &vi, &vx, desc)") ;
+    GB_BURBLE_START ("GxB_Vector_import") ;
     GB_RETURN_IF_NULL (v) ;
     (*v) = NULL ;
     GB_RETURN_IF_NULL_OR_FAULTY (type) ;
@@ -94,7 +95,8 @@ GrB_Info GxB_Vector_import  // import a vector in CSC format
 
     ASSERT (*vi == NULL) ;
     ASSERT (*vx == NULL) ;
-    ASSERT_OK (GB_check (*v, "v imported", GB0)) ;
+    ASSERT_VECTOR_OK (*v, "v imported", GB0) ;
+    GB_BURBLE_END ;
     return (GrB_SUCCESS) ;
 }
 

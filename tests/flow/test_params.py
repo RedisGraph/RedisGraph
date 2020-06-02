@@ -1,5 +1,7 @@
 import os
 import sys
+import redis
+from RLTest import Env
 from redisgraph import Graph, Node
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -12,7 +14,7 @@ redis_graph = None
 
 class testParams(FlowTestsBase):
     def __init__(self):
-        super(testParams, self).__init__()
+        self.env = Env()
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
@@ -51,3 +53,45 @@ class testParams(FlowTestsBase):
             
         query_info = QueryInfo(query = query, description="Tests expression on param", expected_result = expected_results)
         self._assert_resultset_equals_expected(redis_graph.query(query, params), query_info)
+
+    def test_parameterized_skip_limit(self):
+        params = {'skip': 1, 'limit': 1}
+        query = "UNWIND [1,2,3] AS X RETURN X SKIP $skip LIMIT $limit"
+        expected_results = [[2]]
+            
+        query_info = QueryInfo(query = query, description="Tests skip limit as params", expected_result = expected_results)
+        self._assert_resultset_equals_expected(redis_graph.query(query, params), query_info)
+
+        # Set one parameter to non-integer value
+        params = {'skip': '1', 'limit': 1}
+        try:
+            redis_graph.query(query, params)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            pass
+
+    def test_missing_parameter(self):
+        # Make sure missing parameters are reported back as an error.
+        query = "RETURN $missing"
+        try:
+            redis_graph.query(query)
+            assert(False)
+        except:
+            # Expecting an error.
+            pass
+
+        query = "MATCH (a) WHERE a.v = $missing RETURN a"
+        try:
+            redis_graph.query(query)
+            assert(False)
+        except:
+            # Expecting an error.
+            pass
+
+        query = "MATCH (a) SET a.v = $missing RETURN a"
+        try:
+            redis_graph.query(query)
+            assert(False)
+        except:
+            # Expecting an error.
+            pass

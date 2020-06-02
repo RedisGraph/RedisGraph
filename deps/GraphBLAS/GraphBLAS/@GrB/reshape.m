@@ -3,8 +3,10 @@ function C = reshape (G, arg1, arg2)
 % C = reshape (G, m, n) or C = reshape (G, [m n]) returns the m-by-n
 % matrix whose elements are taken columnwise from G.  The matrix G must
 % have numel (G) == m*n.  That is numel (G) == numel (C) must be true.
+%
+% See also numel, squeeze.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 [mold, nold] = size (G) ;

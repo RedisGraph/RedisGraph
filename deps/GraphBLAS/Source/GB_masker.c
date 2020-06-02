@@ -2,7 +2,7 @@
 // GB_masker: R = masker (M, C, Z)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -55,6 +55,7 @@ GrB_Info GB_masker          // R = masker (M, C, Z)
     const bool R_is_csc,    // format of output matrix R
     const GrB_Matrix M,     // required input mask
     const bool Mask_comp,   // descriptor for M
+    const bool Mask_struct, // if true, use the only structure of M
     const GrB_Matrix C,     // input C matrix
     const GrB_Matrix Z,     // input Z matrix
     GB_Context Context
@@ -65,10 +66,12 @@ GrB_Info GB_masker          // R = masker (M, C, Z)
     // check inputs
     //--------------------------------------------------------------------------
 
+    GBBURBLE ("mask ") ;
+
     ASSERT (Rhandle != NULL) ;
-    ASSERT_OK (GB_check (M, "M for masker", GB0)) ;
-    ASSERT_OK (GB_check (C, "C for masker", GB0)) ;
-    ASSERT_OK (GB_check (Z, "Z for masker", GB0)) ;
+    ASSERT_MATRIX_OK (M, "M for masker", GB0) ;
+    ASSERT_MATRIX_OK (C, "C for masker", GB0) ;
+    ASSERT_MATRIX_OK (Z, "Z for masker", GB0) ;
     ASSERT (C->vdim == Z->vdim && C->vlen == Z->vlen) ;
     ASSERT (C->vdim == M->vdim && C->vlen == M->vlen) ;
     ASSERT (!GB_PENDING (M)) ; ASSERT (!GB_ZOMBIES (M)) ;
@@ -139,7 +142,7 @@ GrB_Info GB_masker          // R = masker (M, C, Z)
         // from phase0:
         Rnvec, Rh, R_to_M, R_to_C, R_to_Z,
         // original input:
-        M, Mask_comp, C, Z, Context) ;
+        M, Mask_comp, Mask_struct, C, Z, Context) ;
 
     if (info != GrB_SUCCESS)
     { 
@@ -169,7 +172,7 @@ GrB_Info GB_masker          // R = masker (M, C, Z)
         // from phase0:
         Rnvec, Rh, R_to_M, R_to_C, R_to_Z,
         // original input:
-        M, Mask_comp, C, Z, Context) ;
+        M, Mask_comp, Mask_struct, C, Z, Context) ;
 
     // free workspace
     GB_FREE_MEMORY (TaskList, max_ntasks+1, sizeof (GB_task_struct)) ;
@@ -189,7 +192,7 @@ GrB_Info GB_masker          // R = masker (M, C, Z)
     // return result
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (R, "R output for masker", GB0)) ;
+    ASSERT_MATRIX_OK (R, "R output for masker", GB0) ;
     (*Rhandle) = R ;
     return (GrB_SUCCESS) ;
 }

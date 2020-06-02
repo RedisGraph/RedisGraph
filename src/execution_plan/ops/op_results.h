@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -20,4 +20,4 @@ typedef struct {
 } Results;
 
 /* Creates a new Results operation */
-OpBase *NewResultsOp(const ExecutionPlan *plan, ResultSet *result_set);
+OpBase *NewResultsOp(const ExecutionPlan *plan);

@@ -1,6 +1,9 @@
 function test86
 %TEST86 performance test of of GrB_Matrix_extract
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 fprintf ('test86: performance test of of GrB_Matrix_extract\n') ;
 
 [save save_chunk] = nthreads_get ;

@@ -19,16 +19,18 @@ endif
 # Default CFLAGS
 CFLAGS = \
 	-Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result \
-	-fPIC -std=gnu99 \
+	-fPIC \
 	-D_GNU_SOURCE -DREDIS_MODULE_TARGET -DREDISMODULE_EXPERIMENTAL_API -DXXH_STATIC_LINKING_ONLY
 CFLAGS += $(DEBUGFLAGS)
 
 # Compile flags for linux / osx
 ifeq ($(uname_S),Linux)
 	SHOBJ_LDFLAGS ?= -shared -Bsymbolic -Bsymbolic-functions -ldl -lpthread -fopenmp
+	export OS = Linux
 else
 	CFLAGS += -mmacosx-version-min=10.14
 	SHOBJ_LDFLAGS ?= -mmacosx-version-min=10.14 -bundle -undefined dynamic_lookup -ldl -lpthread -fopenmp
+	export OS = Mac
 endif
 SHOBJ_LDFLAGS += $(LDFLAGS)
 export CFLAGS
@@ -59,11 +61,14 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/execution_plan/optimizations/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/filter_tree/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/entities/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/serializers/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/serializers/encoder/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/serializers/decoders/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/serializers/decoders/prev/*.c)
-CC_SOURCES += $(wildcard $(SOURCEDIR)/graph/serializers/decoders/prev/*/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/encoder/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/encoder/*/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/decoders/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/decoders/current/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/decoders/current/*/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/decoders/prev/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/serializers/decoders/prev/*/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/GraphBLASExt/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/grouping/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/index/*.c)
@@ -72,9 +77,11 @@ CC_SOURCES += $(wildcard $(SOURCEDIR)/ast/enrichment/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/resultset/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/resultset/formatters/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/schema/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/slow_log/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/procedures/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/datablock/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/util/object_pool/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/thpool/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/util/range/*.c)
 
@@ -130,7 +137,7 @@ $(LIBXXHASH):
 # Build GraphBLAS only if library does not already exists.
 $(GRAPHBLAS):
 ifeq (,$(wildcard $(GRAPHBLAS)))
-	@$(MAKE) -C ../deps/GraphBLAS CMAKE_OPTIONS="-DCMAKE_C_COMPILER='$(CC)' -DCMAKE_CXX_COMPILER='$(CXX)'" static_only
+	@$(MAKE) -C ../deps/GraphBLAS CMAKE_OPTIONS="-DCMAKE_C_COMPILER='$(CC)'" static_only
 endif
 .PHONY: $(GRAPHBLAS)
 
@@ -148,7 +155,7 @@ endif
 $(LIBCYPHER-PARSER):
 ifeq (,$(wildcard $(LIBCYPHER-PARSER)))
 	cd ../deps/libcypher-parser; \
-	./autogen.sh; \
+	sh ./autogen.sh; \
 	./configure --disable-shared;
 	$(MAKE) CFLAGS="-fPIC -DYY_BUFFER_SIZE=1048576" clean check -C ../deps/libcypher-parser
 endif
@@ -171,8 +178,8 @@ ifeq ($(ALL),1)
 	@$(MAKE) -C ../deps/rax clean
 	@$(MAKE) -C ../deps/xxHash clean
 	@$(MAKE) -C ../deps/GraphBLAS clean
-	@$(MAKE) -C ../deps/RediSearch clean
 	@$(MAKE) -C ../deps/libcypher-parser clean
+	rm -rf ../deps/RediSearch/build/      # Directly delete the RediSearch build artifacts
 endif
 	@$(MAKE) -C ../tests clean
 
@@ -184,10 +191,13 @@ test: redisgraph.so
 	# check valgrind flag is not empty
 ifneq ($(VALGRIND),)
 	# valgrind is requested, check that host's os is not Linux
-ifneq ($(uname_S),Linux)
+ifneq ($(OS),Linux)
 	@echo building docker to run valgrind on MacOS
 	@cd ../ ;\
 	docker build -f ./tests/Dockerfile -t mac_os_test_docker .;
 endif
 endif
 	@$(MAKE) -C ../tests test
+
+memcheck: redisgraph.so
+	@$(MAKE) -C ../tests memcheck

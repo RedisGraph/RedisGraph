@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -14,7 +14,7 @@
 typedef struct {
 	char *query;                    // Query string.
 	RedisModuleCtx *ctx;            // Redis module context.
-	const char *command_name;       // Command to execute.
+	char *command_name;             // Command to execute.
 	GraphContext *graph_ctx;        // Graph context.
 	RedisModuleString **argv;       // Arguments.
 	RedisModuleBlockedClient *bc;   // Blocked client.
@@ -27,11 +27,11 @@ CommandCtx *CommandCtx_New
 (
 	RedisModuleCtx *ctx,            // Redis module context.
 	RedisModuleBlockedClient *bc,   // Blocked client.
-	const char *command_name,       // Command to execute.
-	GraphContext *graph_ctx,        // Graph context.
+	RedisModuleString *cmd_name,    // Command to execute.
 	RedisModuleString *query,       // Query string.
-	RedisModuleString **argv,       // Arguments.
 	int argc,                       // Argument count.
+	RedisModuleString **argv,       // Arguments.
+	GraphContext *graph_ctx,        // Graph context.
 	bool replicated_command         // Whether this instance was spawned by a replication command.
 );
 

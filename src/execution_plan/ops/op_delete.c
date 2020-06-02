@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -12,6 +12,7 @@
 
 /* Forward declarations. */
 static Record DeleteConsume(OpBase *opBase);
+static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void DeleteFree(OpBase *opBase);
 
 void _DeleteEntities(OpDelete *op) {
@@ -22,7 +23,7 @@ void _DeleteEntities(OpDelete *op) {
 	uint edge_count = array_len(op->deleted_edges);
 
 	/* Nothing to delete, quickly return. */
-	if((node_count + edge_count) == 0) return;
+	if((node_count + edge_count) == 0) goto cleanup;
 
 	/* Lock everything. */
 	QueryCtx_LockForCommit();
@@ -41,23 +42,25 @@ void _DeleteEntities(OpDelete *op) {
 		op->stats->nodes_deleted += node_deleted;
 		op->stats->relationships_deleted += relationships_deleted;
 	}
-	/* Release lock. */
+
+cleanup:
+	/* Release lock, no harm in trying to release an unlocked lock. */
 	QueryCtx_UnlockCommit(&op->op);
 }
 
-OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps, ResultSetStatistics *stats) {
+OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	OpDelete *op = rm_malloc(sizeof(OpDelete));
 
 	op->gc = QueryCtx_GetGraphCtx();
 	op->exps = exps;
-	op->stats = stats;
+	op->stats = QueryCtx_GetResultSetStatistics();
 	op->exp_count = array_len(exps);
 	op->deleted_nodes = array_new(Node, 32);
 	op->deleted_edges = array_new(Edge, 32);
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", NULL, DeleteConsume,
-				NULL, NULL, DeleteFree, true, plan);
+				NULL, NULL, DeleteClone, DeleteFree, true, plan);
 
 	return (OpBase *)op;
 }
@@ -75,18 +78,23 @@ static Record DeleteConsume(OpBase *opBase) {
 	for(int i = 0; i < op->exp_count; i++) {
 		AR_ExpNode *exp = op->exps[i];
 		SIValue value = AR_EXP_Evaluate(exp, r);
+		SIType type = SI_TYPE(value);
 		/* Enqueue entities for deletion. */
-		if(SI_TYPE(value) & T_NODE) {
+		if(type & T_NODE) {
 			Node *n = (Node *)value.ptrval;
 			op->deleted_nodes = array_append(op->deleted_nodes, *n);
-		} else if(SI_TYPE(value) & T_EDGE) {
+		} else if(type & T_EDGE) {
 			Edge *e = (Edge *)value.ptrval;
 			op->deleted_edges = array_append(op->deleted_edges, *e);
+		} else if(type & T_NULL) {
+			continue; // Ignore null values.
 		} else {
-			/* Expression evaluated to a none graph entity type
+			/* Expression evaluated to a non-graph entity type
 			 * clear pending deletions and raise an exception. */
 			array_clear(op->deleted_nodes);
 			array_clear(op->deleted_edges);
+			// If evaluating the expression allocated any memory, free it.
+			SIValue_Free(value);
 
 			char *error;
 			asprintf(&error, "Delete type mismatch, expecting either Node or Relationship.");
@@ -99,10 +107,18 @@ static Record DeleteConsume(OpBase *opBase) {
 	return r;
 }
 
+static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_DELETE);
+	OpDelete *op = (OpDelete *)opBase;
+	AR_ExpNode **exps;
+	array_clone_with_cb(exps, op->exps, AR_EXP_Clone);
+	return NewDeleteOp(plan, exps);
+}
+
 static void DeleteFree(OpBase *ctx) {
 	OpDelete *op = (OpDelete *)ctx;
 
-	if(op->deleted_nodes || op->deleted_edges) _DeleteEntities(op);
+	_DeleteEntities(op);
 
 	if(op->deleted_nodes) {
 		array_free(op->deleted_nodes);
@@ -120,3 +136,4 @@ static void DeleteFree(OpBase *ctx) {
 		op->exps = NULL;
 	}
 }
+

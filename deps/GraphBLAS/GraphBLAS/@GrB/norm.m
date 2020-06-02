@@ -17,53 +17,20 @@ function s = norm (G,kind)
 %   norm (G,inf) is the maximum of abs (G)
 %   norm (G,-inf) is the minimum of abs (G)
 %
-% See also GrB.reduce.
+% See also GrB.reduce, GrB.normdiff.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% FUTURE: the p-norm is not yet supported.
+
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin == 1)
     kind = 2 ;
 end
-if (kind == 0)
-    gb_error ('unknown norm') ;
+
+if (isa (G, 'GrB'))
+    G = G.opaque ;
 end
 
-if (ischar (kind))
-    if (isequal (kind, 'fro'))
-        kind = 0 ;
-    else
-        gb_error ('unknown norm') ;
-    end
-end
-
-if (isvector (G))
-    if (kind == 1)
-        s = sum (abs (G)) ;
-    elseif (kind == 2 || kind == 0)
-        s = sqrt (sum (G.^2)) ;
-    elseif (kind == inf)
-        s = max (abs (G)) ;
-    elseif (kind == -inf)
-        s = min (abs (G)) ;
-    else
-        gb_error ('unknown norm') ;
-    end
-else
-    if (kind == 1)
-        s = max (sum (abs (G))) ;
-    elseif (kind == 2)
-        gb_error ('Sparse norm (G,2) is not available.') ;
-    elseif (kind == 0)
-        s = sqrt (sum (G.^2, 'all')) ;
-    elseif (kind == inf)
-        s = max (sum (abs (G), 2)) ;
-    elseif (kind == -inf)
-        gb_error ('Sparse norm(G,-inf) is not available.') ;
-    else
-        gb_error ('unknown norm') ;
-    end
-end
-
-s = full (double (s)) ;
+s = gbnorm (G, kind) ;
 

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -9,7 +9,7 @@
 #include <sys/types.h>
 #include "../value.h"
 
-#define VAR_ARG_LEN UINT8_MAX
+#define VAR_ARG_LEN UINT_MAX
 
 /* AR_Func - Function pointer to an operation with an arithmetic expression */
 typedef SIValue(*AR_Func)(SIValue *argv, int argc);

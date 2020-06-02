@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -19,7 +19,6 @@ static void _ResultSet_VerboseReplyWithPath(RedisModuleCtx *ctx, SIValue path);
  * and NULL values. */
 static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext *gc,
 											   const SIValue v) {
-	// Emit the actual value, then the value type (to facilitate client-side parsing)
 	switch(SI_TYPE(v)) {
 	case T_STRING:
 		RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
@@ -162,31 +161,32 @@ static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, SIValue array)
 static void _ResultSet_VerboseReplyWithPath(RedisModuleCtx *ctx, SIValue path) {
 	SIValue path_array = SIPath_ToList(path);
 	_ResultSet_VerboseReplyWithArray(ctx, path_array);
-	SIValue_Free(&path_array);
+	SIValue_Free(path_array);
 }
 
 void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
-								 uint numcols) {
+								 uint numcols, uint *col_rec_map) {
 	// Prepare return array sized to the number of RETURN entities
 	RedisModule_ReplyWithArray(ctx, numcols);
 
 	for(int i = 0; i < numcols; i++) {
-		switch(Record_GetType(r, i)) {
+		uint idx = col_rec_map[i];
+		switch(Record_GetType(r, idx)) {
 		case REC_TYPE_NODE:
-			_ResultSet_VerboseReplyWithNode(ctx, gc, Record_GetNode(r, i));
+			_ResultSet_VerboseReplyWithNode(ctx, gc, Record_GetNode(r, idx));
 			break;
 		case REC_TYPE_EDGE:
-			_ResultSet_VerboseReplyWithEdge(ctx, gc, Record_GetEdge(r, i));
+			_ResultSet_VerboseReplyWithEdge(ctx, gc, Record_GetEdge(r, idx));
 			break;
 		default:
-			_ResultSet_VerboseReplyWithSIValue(ctx, gc, Record_GetScalar(r, i));
+			_ResultSet_VerboseReplyWithSIValue(ctx, gc, Record_Get(r, idx));
 		}
 	}
 }
 
 // Emit the alias or descriptor for each column in the header.
 void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns,
-									  const Record unused) {
+									  const Record unused, uint *col_rec_map) {
 	uint columns_len = array_len(columns);
 	RedisModule_ReplyWithArray(ctx, columns_len);
 	for(uint i = 0; i < columns_len; i++) {

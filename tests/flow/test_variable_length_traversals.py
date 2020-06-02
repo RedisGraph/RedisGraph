@@ -1,3 +1,4 @@
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
 
@@ -11,7 +12,7 @@ max_results = 6
 
 class testVariableLengthTraversals(FlowTestsBase):
     def __init__(self):
-        super(testVariableLengthTraversals, self).__init__()
+        self.env = Env()
         global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
@@ -86,3 +87,9 @@ class testVariableLengthTraversals(FlowTestsBase):
         actual_result = redis_graph.query(query)
         # The undirected traversal should represent every combination twice.
         self.env.assertEquals(len(actual_result.result_set), max_results * 2)
+
+    def test07_non_existing_edge_traversal_with_zero_length(self):
+        # Verify that zero length traversals always return source, even for non existing edges.
+        query = """MATCH (a)-[:not_knows*0..1]->(b) RETURN a"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(len(actual_result.result_set), 4)

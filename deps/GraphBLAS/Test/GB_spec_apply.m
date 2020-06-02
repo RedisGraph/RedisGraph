@@ -4,7 +4,7 @@ function C = GB_spec_apply (C, Mask, accum, op, A, descriptor)
 % Usage:
 % C = GB_spec_apply (C, Mask, accum, op, A, descriptor)
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 %-------------------------------------------------------------------------------
@@ -18,8 +18,9 @@ end
 C = GB_spec_matrix (C) ;
 A = GB_spec_matrix (A) ;
 [opname xyclass zclass] = GB_spec_operator (op, C.class) ;
-Mask = GB_spec_getmask (Mask) ;
-[C_replace Mask_comp Atrans ~] = GB_spec_descriptor (descriptor) ;
+[C_replace Mask_comp Atrans Btrans Mask_struct] = ...
+    GB_spec_descriptor (descriptor) ;
+Mask = GB_spec_getmask (Mask, Mask_struct) ;
 
 %-------------------------------------------------------------------------------
 % do the work via a clean MATLAB interpretation of the entire GraphBLAS spec

@@ -8,6 +8,9 @@ function C = edges_to_adj (E)
 %
 % C is a symmetric binary matrix with no self edges.
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 % check input E
 [i j x] = find (E) ;
 if (any (x ~= 1))

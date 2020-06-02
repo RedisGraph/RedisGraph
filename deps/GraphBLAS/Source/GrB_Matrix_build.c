@@ -2,7 +2,7 @@
 // GrB_Matrix_build: build a sparse GraphBLAS matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -21,9 +21,12 @@ GrB_Info GrB_Matrix_build_ ## T     /* build a matrix from (I,J,X) tuples */  \
 )                                                                             \
 {                                                                             \
     GB_WHERE ("GrB_Matrix_build_" GB_STR(T) " (C, I, J, X, nvals, dup)") ;    \
+    GB_BURBLE_START ("GrB_Matrix_build") ;                                    \
     GB_RETURN_IF_NULL_OR_FAULTY (C) ;                                         \
-    return (GB_matvec_build (C, I, J, X, nvals, dup, GB_ ## T ## _code, true, \
-        Context)) ;                                                           \
+    GrB_Info info = GB_matvec_build (C, I, J, X, nvals, dup,                  \
+        GB_ ## T ## _code, true, Context) ;                                   \
+    GB_BURBLE_END ;                                                           \
+    return (info) ;                                                           \
 }
 
 GB_MATRIX_BUILD (bool     , BOOL   )

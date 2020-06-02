@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
 from base import FlowTestsBase
@@ -11,7 +12,7 @@ redis_graph = None
 
 class testGraphDeletionFlow(FlowTestsBase):
     def __init__(self):
-        super(testGraphDeletionFlow, self).__init__()
+        self.env = Env()
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
@@ -244,3 +245,40 @@ class testGraphDeletionFlow(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.nodes_deleted, 1)
         self.env.assertEquals(actual_result.relationships_deleted, 1)
+
+    # Verify that variable-length traversals in each direction produce the correct results after deletion.
+    def test14_post_deletion_traversal_directions(self):
+        self.env.flush()
+        redis_con = self.env.getConnection()
+        redis_graph = Graph("G", redis_con)
+
+        nodes = {}
+        # Create entities.
+        labels = ["Dest", "Src", "Src2"]
+        for idx, l in enumerate(labels):
+            node = Node(label=l, properties={"val": idx})
+            redis_graph.add_node(node)
+            nodes[l] = node
+
+        edge = Edge(nodes["Src"], "R", nodes["Dest"])
+        redis_graph.add_edge(edge)
+        edge = Edge(nodes["Src2"], "R", nodes["Dest"])
+        redis_graph.add_edge(edge)
+        redis_graph.commit()
+
+        # Delete a node.
+        query = """MATCH (n:Src2) DELETE n"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.nodes_deleted, 1)
+        self.env.assertEquals(actual_result.relationships_deleted, 1)
+
+        query = """MATCH (n1:Src)-[*]->(n2:Dest) RETURN COUNT(*)"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Perform the same traversal, this time traveling from destination to source.
+        query = """MATCH (n1:Src)-[*]->(n2:Dest {val: 0}) RETURN COUNT(*)"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)

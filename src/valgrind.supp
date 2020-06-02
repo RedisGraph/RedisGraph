@@ -26,3 +26,52 @@
    Memcheck:Value8
    fun:lzf_compress
 }
+
+{
+   <RLTest race: freed in _GraphContext_Free on worker thread>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   ...
+   fun:GraphContext_FindOrAddAttribute
+}
+
+{
+   <RLTest race: freed in _GraphContext_Free on worker thread>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   ...
+   fun:GraphContext_AddSchema
+}
+
+{
+   <RLTest race: freed in _GraphContext_Free on worker thread>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   ...
+   fun:GraphEntity_AddProperty
+}
+
+{
+   <RLTest race: freed in _GraphContext_Free on worker thread>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   ...
+   fun:GraphContext_AddIndex
+}
+
+{
+   <RLTest race: freed in _GraphContext_Free on worker thread>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   ...
+   fun:Indexer_Add
+}
+
+{
+   <RLTest race: ignore leaks in _GraphContext_Free caused by DEBUG RELOAD>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   ...
+   fun:rdbLoad
+   fun:debugCommand
+}

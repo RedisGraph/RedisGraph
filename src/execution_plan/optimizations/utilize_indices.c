@@ -13,7 +13,6 @@ static void _transformInToOrSequence(FT_FilterNode **filter) {
 	FT_FilterNode *filter_tree = *filter;
 
 	AR_ExpNode *inOp = filter_tree->exp.exp;
-	AR_ExpNode *lhs = AR_EXP_Clone(inOp->op.children[0]);
 	SIValue list = inOp->op.children[1]->operand.constant;
 	uint listLen = SIArray_Length(list);
 
@@ -28,6 +27,7 @@ static void _transformInToOrSequence(FT_FilterNode **filter) {
 		val = SIArray_Get(list, 0); // Retrieve the first array element.
 		SIValue_Persist(&val);      // Ensure the value doesn't go out of scope.
 		constant = AR_EXP_NewConstOperandNode(val);
+		AR_ExpNode *lhs = AR_EXP_Clone(inOp->op.children[0]);
 		root = FilterTree_CreatePredicateFilter(OP_EQUAL, lhs, constant);
 
 		for(uint i = 1; i < listLen; i ++) {
@@ -491,22 +491,27 @@ cleanup:
 	if(numeric_ranges) raxFreeWithCallback(numeric_ranges, (void(*)(void *))NumericRange_Free);
 	if(rsqnodes) array_free(rsqnodes);
 
-	if(filters) {
-		for(uint i = 0; i < filters_count; i++) {
-			OpFilter *filter = filters[i];
-			ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
-			OpBase_Free((OpBase *)filter);
-		}
-		array_free(filters);
-	}
-
 	if(root) {
-		// Pass ownership of root to iterator.
+		/* We've successfully created a RediSearch query node that may be used to populate an Index Scan.
+		 * Pass ownership of the root node to the iterator. */
 		RSResultsIterator *iter = RediSearch_GetResultsIterator(root, rs_idx);
+		// Build the Index Scan.
 		OpBase *indexOp = NewIndexScanOp(scan->op.plan, scan->g, scan->n, rs_idx, iter);
+
+		/* Replace the redundant scan op with the newly-constructed Index Scan. */
 		ExecutionPlan_ReplaceOp(plan, (OpBase *)scan, indexOp);
 		OpBase_Free((OpBase *)scan);
 	}
+
+	/* Remove and free all now-redundant filter ops.
+	 * Since this is a chain of single-child operations, all operations are replaced in-place,
+	 * avoiding problems with stream-sensitive ops like SemiApply. */
+	for(uint i = 0; i < filters_count; i++) {
+		OpFilter *filter = filters[i];
+		ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
+		OpBase_Free((OpBase *)filter);
+	}
+	array_free(filters);
 }
 
 void utilizeIndices(ExecutionPlan *plan) {
@@ -515,7 +520,7 @@ void utilizeIndices(ExecutionPlan *plan) {
 	if(!GraphContext_HasIndices(gc)) return;
 
 	// Collect all label scans.
-	OpBase **scanOps = ExecutionPlan_LocateOps(plan->root, OPType_NODE_BY_LABEL_SCAN);
+	OpBase **scanOps = ExecutionPlan_CollectOps(plan->root, OPType_NODE_BY_LABEL_SCAN);
 
 	int scanOpCount = array_len(scanOps);
 	for(int i = 0; i < scanOpCount; i++) {

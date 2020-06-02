@@ -9,7 +9,7 @@ function C = vertcat (varargin)
 % FUTURE: this will be much faster when it is a mexFunction.
 % The version below requires a sort in GrB.build.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 % determine the size of each matrix and the size of the result

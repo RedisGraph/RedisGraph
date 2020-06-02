@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -12,11 +12,15 @@
 #include "../redismodule.h"
 #include "../util/rmalloc.h"
 #include "../util/thpool/thpool.h"
-#include "serializers/graphcontext_type.h"
+#include "../serializers/graphcontext_type.h"
 
-// Global array tracking all extant GraphContexts (defined in module.c)
 extern threadpool _thpool;
+// Global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
+extern uint aux_field_counter;
+extern uint currently_decoding_graphs;
+// GraphContext type as it is registered at Redis.
+extern RedisModuleType *GraphContextRedisModuleType;
 
 // Forward declarations.
 static void _GraphContext_Free(void *arg);
@@ -36,7 +40,7 @@ static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 //------------------------------------------------------------------------------
 
 // Creates and initializes a graph context struct.
-static GraphContext *_GraphContext_New(const char *graph_name, size_t node_cap, size_t edge_cap) {
+GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t edge_cap) {
 	GraphContext *gc = rm_malloc(sizeof(GraphContext));
 
 	gc->ref_count = 0;      // No refences.
@@ -51,6 +55,10 @@ static GraphContext *_GraphContext_New(const char *graph_name, size_t node_cap, 
 
 	gc->string_mapping = array_new(char *, 64);
 	gc->attributes = raxNew();
+	gc->slowlog = SlowLog_New();
+	gc->encoding_context = GraphEncodeContext_New();
+	gc->decoding_context = GraphDecodeContext_New();
+
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 	QueryCtx_SetGraphCtx(gc);
 
@@ -63,7 +71,7 @@ static GraphContext *_GraphContext_New(const char *graph_name, size_t node_cap, 
 static GraphContext *_GraphContext_Create(RedisModuleCtx *ctx, const char *graph_name,
 										  size_t node_cap, size_t edge_cap) {
 	// Create and initialize a graph context.
-	GraphContext *gc = _GraphContext_New(graph_name, node_cap, edge_cap);
+	GraphContext *gc = GraphContext_New(graph_name, node_cap, edge_cap);
 	RedisModuleString *graphID = RedisModule_CreateString(ctx, graph_name, strlen(graph_name));
 
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_WRITE);
@@ -77,21 +85,40 @@ static GraphContext *_GraphContext_Create(RedisModuleCtx *ctx, const char *graph
 	return gc;
 }
 
+/* In a sharded environment, there could be a race condition between the decoding of
+ * the last key, and the last aux_fields, so both counters should be zeroed in order to verify
+ * that the module replicated properly. */
+static bool _GraphContext_IsModuleReplicating(void) {
+	return aux_field_counter > 0 || currently_decoding_graphs > 0;
+}
+
 GraphContext *GraphContext_Retrieve(RedisModuleCtx *ctx, RedisModuleString *graphID, bool readOnly,
 									bool shouldCreate) {
+	if(_GraphContext_IsModuleReplicating()) {
+		// The whole module is currently replicating, emit an error.
+		RedisModule_ReplyWithError(ctx, "ERR RedisGraph module is currently replicating");
+		return NULL;
+	}
 	GraphContext *gc = NULL;
 	int rwFlag = readOnly ? REDISMODULE_READ : REDISMODULE_WRITE;
 
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, rwFlag);
 	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
-		// Key doesn't exists, create it.
 		if(shouldCreate) {
+			// Key doesn't exist, create it.
 			const char *graphName = RedisModule_StringPtrLen(graphID, NULL);
 			gc = _GraphContext_Create(ctx, graphName, GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
+		} else {
+			// Key does not exist and won't be created, emit an error.
+			RedisModule_ReplyWithError(ctx, "ERR Invalid graph operation on empty key");
 		}
 	} else if(RedisModule_ModuleTypeGetType(key) == GraphContextRedisModuleType) {
 		gc = RedisModule_ModuleTypeGetValue(key);
+	} else {
+		// Key exists but is not a graph, emit an error.
+		RedisModule_ReplyWithError(ctx, REDISMODULE_ERRORMSG_WRONGTYPE);
 	}
+
 	RedisModule_CloseKey(key);
 
 	if(gc) _GraphContext_IncreaseRefCount(gc);
@@ -110,6 +137,7 @@ void GraphContext_MarkWriter(RedisModuleCtx *ctx, GraphContext *gc) {
 	// Reopen only if key exists (do not re-create) make sure key still exists.
 	RedisModuleKey *key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_READ);
 	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) goto cleanup;
+	RedisModule_CloseKey(key);
 
 	// Mark as writer.
 	key = RedisModule_OpenKey(ctx, graphID, REDISMODULE_WRITE);
@@ -306,7 +334,24 @@ void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
 
 // Register a new GraphContext for module-level tracking
 void GraphContext_RegisterWithModule(GraphContext *gc) {
+	// See if the graph context is not already in the keyspace.
+	uint graph_count = array_len(graphs_in_keyspace);
+	for(uint i = 0; i < graph_count; i ++) {
+		if(graphs_in_keyspace[i] == gc) return;
+	}
 	graphs_in_keyspace = array_append(graphs_in_keyspace, gc);
+}
+
+GraphContext *GraphContext_GetRegisteredGraphContext(const char *graph_name) {
+	GraphContext *gc = NULL;
+	uint graph_count = array_len(graphs_in_keyspace);
+	for(uint i = 0; i < graph_count; i ++) {
+		if(strcmp(graphs_in_keyspace[i]->graph_name, graph_name) == 0) {
+			gc = graphs_in_keyspace[i];
+			break;
+		}
+	}
+	return gc;
 }
 
 // Delete a GraphContext reference from the global array
@@ -321,6 +366,16 @@ void GraphContext_RemoveFromRegistry(GraphContext *gc) {
 }
 
 //------------------------------------------------------------------------------
+// Slowlog API
+//------------------------------------------------------------------------------
+
+// Return slowlog associated with graph context.
+SlowLog *GraphContext_GetSlowLog(const GraphContext *gc) {
+	assert(gc);
+	return gc->slowlog;
+}
+
+//------------------------------------------------------------------------------
 // Free routine
 //------------------------------------------------------------------------------
 
@@ -328,7 +383,6 @@ void GraphContext_RemoveFromRegistry(GraphContext *gc) {
 static void _GraphContext_Free(void *arg) {
 	GraphContext *gc = (GraphContext *)arg;
 	uint len;
-	rm_free(gc->graph_name);
 
 	// Disable matrix synchronization for graph deletion.
 	Graph_SetMatrixPolicy(gc->g, DISABLED);
@@ -362,5 +416,11 @@ static void _GraphContext_Free(void *arg) {
 		array_free(gc->string_mapping);
 	}
 
+	if(gc->slowlog) SlowLog_Free(gc->slowlog);
+
+	GraphEncodeContext_Free(gc->encoding_context);
+	GraphDecodeContext_Free(gc->decoding_context);
+	rm_free(gc->graph_name);
 	rm_free(gc);
 }
+

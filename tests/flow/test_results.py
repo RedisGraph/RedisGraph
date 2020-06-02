@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -14,7 +15,7 @@ people = ["Roi", "Alon", "Ailon", "Boaz"]
 
 class testResultSetFlow(FlowTestsBase):
     def __init__(self):
-        super(testResultSetFlow, self).__init__()
+        self.env = Env()
         global graph
         global redis_con
         redis_con = self.env.getConnection()
@@ -80,7 +81,6 @@ class testResultSetFlow(FlowTestsBase):
         self.env.assertEquals(len(result.result_set), 12) # 12 relations (fully connected graph)
         self.env.assertEquals(len(result.header), 3) # 3 columns in result set
 
-
     # Verify that the DISTINCT operator works with full entity returns
     def test05_distinct_full_entities(self):
         graph2 = Graph("H", redis_con)
@@ -101,15 +101,11 @@ class testResultSetFlow(FlowTestsBase):
     def test06_return_all(self):
         query = """MATCH (a)-[e]->(b) RETURN *"""
         result = graph.query(query)
-
-        # These definitions are duplicates of the non-public ResultSetColumnTypes values in redisgraph-py
-        COLUMN_SCALAR = 1
-        COLUMN_NODE = 2
-        COLUMN_RELATION = 3
-        # Validate the header strings and value types
+        # Validate the header strings of the 3 columns.
         # NOTE - currently, RETURN * populates values in alphabetical order, but that is subject to later change.
-        expected_header = [[COLUMN_NODE, 'a'], [COLUMN_NODE, 'b'], [COLUMN_RELATION, 'e']]
-        self.env.assertEqual(result.header, expected_header)
+        self.env.assertEqual(result.header[0][1], 'a')
+        self.env.assertEqual(result.header[1][1], 'b')
+        self.env.assertEqual(result.header[2][1], 'e')
         # Verify that 3 columns are returned
         self.env.assertEqual(len(result.result_set[0]), 3)
 
@@ -155,3 +151,21 @@ class testResultSetFlow(FlowTestsBase):
         query = """MATCH (a) return percentileDisc(a.missing_field, 0.1)"""
         result = graph.query(query)
         self.env.assertEqual(None, result.result_set[0][0])
+
+    # Test returning multiple occurrence of an expression.
+    def test08_return_duplicate_expression(self):
+        query = """MATCH (a) RETURN max(a.val), max(a.val)"""
+        result = graph.query(query)
+        self.env.assertEqual(result.result_set[0][0], result.result_set[0][1])
+
+        query = """MATCH (a) return max(a.val) as x, max(a.val) as x"""
+        result = graph.query(query)
+        self.env.assertEqual(result.result_set[0][0], result.result_set[0][1])
+
+        query = """MATCH (a) RETURN a.val, a.val LIMIT 1"""
+        result = graph.query(query)
+        self.env.assertEqual(result.result_set[0][0], result.result_set[0][1])
+
+        query = """MATCH (a) return a.val as x, a.val as x LIMIT 1"""
+        result = graph.query(query)
+        self.env.assertEqual(result.result_set[0][0], result.result_set[0][1])

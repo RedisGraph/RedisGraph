@@ -1,7 +1,7 @@
 function gbtest14
 %GBTEST14 test kron and GrB.kronecker
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 rng ('default') ;
@@ -33,6 +33,7 @@ assert (err < 1e-12)
 d.kind = 'GrB' ;
 G = GrB.kronecker ('*', A, B, d) ;
 err = norm (C-G, 1) ;
+assert (err < 1e-12) ;
 
 d2 = d ;
 d2.in1 = 'transpose' ;

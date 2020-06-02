@@ -10,7 +10,7 @@ values = ["str1", "str2", False, True, 5, 10.5]
 
 class testValueComparison(FlowTestsBase):
     def __init__(self):
-        super(testValueComparison, self).__init__()
+        self.env = Env()
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph("G", redis_con)

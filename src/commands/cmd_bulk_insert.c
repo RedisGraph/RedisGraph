@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -103,7 +103,7 @@ int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	CommandCtx *context;
 	// Bulk commands should always modify slaves.
 	bool is_replicated = false;
-	context = CommandCtx_New(ctx, NULL, NULL, NULL, NULL, argv, argc, is_replicated);
+	context = CommandCtx_New(ctx, NULL, NULL, NULL, argc, argv, NULL, is_replicated);
 	_MGraph_BulkInsert(context);
 	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;

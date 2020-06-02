@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -18,10 +18,11 @@
 /* Forward declarations. */
 static Record CondVarLenTraverseConsume(OpBase *opBase);
 static OpResult CondVarLenTraverseReset(OpBase *opBase);
+static OpBase *CondVarLenTraverseClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void CondVarLenTraverseFree(OpBase *opBase);
 
 static void _setupTraversedRelations(CondVarLenTraverse *op) {
-	QGEdge *e = QueryGraph_GetEdgeByAlias(op->qg, AlgebraicExpression_Edge(op->ae));
+	QGEdge *e = QueryGraph_GetEdgeByAlias(op->op.plan->query_graph, AlgebraicExpression_Edge(op->ae));
 	assert(e->minHops <= e->maxHops);
 	op->minHops = e->minHops;
 	op->maxHops = e->maxHops;
@@ -84,19 +85,18 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	op->r = NULL;
 	op->expandInto = false;
 	op->allPathsCtx = NULL;
-	op->qg = plan->query_graph;
 	op->edgeRelationTypes = NULL;
 
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
 				"Conditional Variable Length Traverse", NULL, CondVarLenTraverseConsume, CondVarLenTraverseReset,
-				CondVarLenTraverseToString, CondVarLenTraverseFree, false, plan);
+				CondVarLenTraverseToString, CondVarLenTraverseClone, CondVarLenTraverseFree, false, plan);
 
 	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
 
 	// Populate edge value in record only if it is referenced.
 	AST *ast = QueryCtx_GetAST();
-	QGEdge *e = QueryGraph_GetEdgeByAlias(op->qg, AlgebraicExpression_Edge(op->ae));
+	QGEdge *e = QueryGraph_GetEdgeByAlias(plan->query_graph, AlgebraicExpression_Edge(op->ae));
 	op->edgesIdx = AST_AliasIsReferenced(ast, e->alias) ? OpBase_Modifies((OpBase *)op, e->alias) : -1;
 	_setTraverseDirection(op, e);
 
@@ -106,22 +106,25 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 static Record CondVarLenTraverseConsume(OpBase *opBase) {
 	CondVarLenTraverse *op = (CondVarLenTraverse *)opBase;
 	OpBase *child = op->op.children[0];
+	bool reused_record = true;
 	Path *p = NULL;
 
 	while(!(p = AllPathsCtx_NextPath(op->allPathsCtx))) {
+		reused_record = false;
 		Record childRecord = OpBase_Consume(child);
 		if(!childRecord) return NULL;
 
-		if(op->r) Record_Free(op->r);
+		if(op->r) OpBase_DeleteRecord(op->r);
 		op->r = childRecord;
 
 		// Create edge relation type array on first call to consume.
 		if(!op->edgeRelationTypes) {
 			_setupTraversedRelations(op);
-			/* Incase we don't have any relations to traverse we can return quickly
+			/* Incase we don't have any relations to traverse and minimal traversal is at least one hop
+			 * we can return quickly.
 			 * Consider: MATCH (S)-[:L*]->(M) RETURN M
 			 * where label L does not exists. */
-			if(op->edgeRelationCount == 0) return NULL;
+			if(op->edgeRelationCount == 0 && op->minHops > 0) return NULL;
 		}
 
 		Node *destNode = NULL;
@@ -138,21 +141,34 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 	Node n = Path_Head(p);
 
 	if(!op->expandInto) Record_AddNode(op->r, op->destNodeIdx, n);
+	if(op->edgesIdx >= 0) {
+		// If we're returning a new path from a previously-used Record,
+		// free the previous path to avoid a memory leak.
+		if(reused_record) SIValue_Free(Record_Get(op->r, op->edgesIdx));
+		// Add new path to Record.
+		Record_AddScalar(op->r, op->edgesIdx, SI_Path(p));
+	}
 
-	if(op->edgesIdx >= 0) Record_AddScalar(op->r, op->edgesIdx, SI_Path(p));
-
-	return Record_Clone(op->r);
+	return OpBase_CloneRecord(op->r);
 }
 
 static OpResult CondVarLenTraverseReset(OpBase *ctx) {
 	CondVarLenTraverse *op = (CondVarLenTraverse *)ctx;
 	if(op->r) {
-		Record_Free(op->r);
+		OpBase_DeleteRecord(op->r);
 		op->r = NULL;
 	}
 	AllPathsCtx_Free(op->allPathsCtx);
 	op->allPathsCtx = NULL;
 	return OP_OK;
+}
+
+static OpBase *CondVarLenTraverseClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_CONDITIONAL_VAR_LEN_TRAVERSE);
+	CondVarLenTraverse *op = (CondVarLenTraverse *) opBase;
+	OpBase *op_clone = NewCondVarLenTraverseOp(plan, QueryCtx_GetGraph(),
+											   AlgebraicExpression_Clone(op->ae));
+	return op_clone;
 }
 
 static void CondVarLenTraverseFree(OpBase *ctx) {
@@ -169,7 +185,7 @@ static void CondVarLenTraverseFree(OpBase *ctx) {
 	}
 
 	if(op->r) {
-		Record_Free(op->r);
+		OpBase_DeleteRecord(op->r);
 		op->r = NULL;
 	}
 

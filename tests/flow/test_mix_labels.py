@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -12,7 +13,7 @@ female = ["Hila", "Lucy"]
 
 class testGraphMixLabelsFlow(FlowTestsBase):
     def __init__(self):
-        super(testGraphMixLabelsFlow, self).__init__()
+        self.env = Env()
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph("G", redis_con)

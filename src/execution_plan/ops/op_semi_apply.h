@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -28,4 +28,4 @@ typedef struct OpSemiApply {
 	Argument *op_arg;               // Match branch tap.
 } OpSemiApply;
 
-OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti);
+OpBase *NewSemiApplyOp(const ExecutionPlan *plan, bool anti);

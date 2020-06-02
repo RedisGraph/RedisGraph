@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -8,19 +8,18 @@
 #include "../execution_plan.h"
 
 // Forward declarations.
-void SemiApplyFree(OpBase *opBase);
-OpResult SemiApplyInit(OpBase *opBase);
-Record SemiApplyConsume(OpBase *opBase);
-Record AntiSemiApplyConsume(OpBase *opBase);
-OpResult SemiApplyReset(OpBase *opBase);
+static OpResult SemiApplyInit(OpBase *opBase);
+static Record SemiApplyConsume(OpBase *opBase);
+static Record AntiSemiApplyConsume(OpBase *opBase);
+static OpResult SemiApplyReset(OpBase *opBase);
+static OpBase *SemiApplyClone(const ExecutionPlan *plan, const OpBase *opBase);
+static void SemiApplyFree(OpBase *opBase);
 
-static Record _pullFromMatchStream(OpSemiApply *op) {
-	// Propegate record to the top of the match stream.
-	if(op->op_arg) Argument_AddRecord(op->op_arg, Record_Clone(op->r));
+static inline Record _pullFromMatchStream(OpSemiApply *op) {
 	return OpBase_Consume(op->match_branch);
 }
 
-OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti) {
+OpBase *NewSemiApplyOp(const ExecutionPlan *plan, bool anti) {
 	OpSemiApply *op = rm_malloc(sizeof(OpSemiApply));
 	op->r = NULL;
 	op->op_arg = NULL;
@@ -29,15 +28,15 @@ OpBase *NewSemiApplyOp(ExecutionPlan *plan, bool anti) {
 	// Set our Op operations
 	if(anti) {
 		OpBase_Init((OpBase *)op, OpType_ANTI_SEMI_APPLY, "Anti Semi Apply", SemiApplyInit,
-					AntiSemiApplyConsume, SemiApplyReset, NULL, SemiApplyFree, false, plan);
+					AntiSemiApplyConsume, SemiApplyReset, NULL, SemiApplyClone, SemiApplyFree, false, plan);
 	} else {
 		OpBase_Init((OpBase *)op, OPType_SEMI_APPLY, "Semi Apply", SemiApplyInit, SemiApplyConsume,
-					SemiApplyReset, NULL, SemiApplyFree, false, plan);
+					SemiApplyReset, NULL, SemiApplyClone, SemiApplyFree, false, plan);
 	}
 	return (OpBase *) op;
 }
 
-OpResult SemiApplyInit(OpBase *opBase) {
+static OpResult SemiApplyInit(OpBase *opBase) {
 	assert(opBase->childCount == 2);
 
 	OpSemiApply *op = (OpSemiApply *)opBase;
@@ -48,7 +47,7 @@ OpResult SemiApplyInit(OpBase *opBase) {
 	assert(op->bound_branch && op->match_branch);
 
 	// Locate branch's Argument op tap.
-	op->op_arg = (Argument *)ExecutionPlan_LocateFirstOp(op->match_branch, OPType_ARGUMENT);
+	op->op_arg = (Argument *)ExecutionPlan_LocateOp(op->match_branch, OPType_ARGUMENT);
 	assert(op->op_arg && op->op_arg->op.childCount == 0);
 	return OP_OK;
 }
@@ -56,47 +55,54 @@ OpResult SemiApplyInit(OpBase *opBase) {
 /* This function pulls a record from the op's bounded branch, set it as an argument for the op match branch
  * and consumes a record from the match branch. If there is a record from the match branch,
  * the bounded branch record is returned. */
-Record SemiApplyConsume(OpBase *opBase) {
+static Record SemiApplyConsume(OpBase *opBase) {
 	OpSemiApply *op = (OpSemiApply *)opBase;
 	while(true) {
 		// Try to get a record from bound stream.
 		op->r = OpBase_Consume(op->bound_branch);
 		if(!op->r) return NULL; // Depleted.
+		// Propagate Record to the top of the Match stream.
+		if(op->op_arg) Argument_AddRecord(op->op_arg, OpBase_CloneRecord(op->r));
 
-		// Try to get a record from match stream.
-		Record righthand_record = _pullFromMatchStream(op);
-		if(righthand_record) {
-			// Don't care about matched record.
-			Record_Free(righthand_record);
+		Record rhs_record = _pullFromMatchStream(op);
+		// Reset the match branch to maintain parity with the bound branch.
+		OpBase_PropagateReset(op->match_branch);
+		if(rhs_record) {
+			/* Successfully retrieved a Record from the match stream,
+			 * free it and return the bound Record. */
+			OpBase_DeleteRecord(rhs_record);
 			Record r = op->r;
 			op->r = NULL;   // Null to avoid double free.
 			return r;
 		}
-		// Did not managed to get a record from right-hand side, loop back and restart.
-		Record_Free(op->r);
-		op->r = NULL;
+		// Did not manage to get a record from right-hand side, loop back and restart.
+		OpBase_DeleteRecord(op->r);
 	}
 }
 
 /* This function pulls a record from the op's bounded branch, set it as an argument for the op match branch
  * and consumes a record from the match branch. If there is no record from the match branch,
  * the bounded branch record is returned. */
-Record AntiSemiApplyConsume(OpBase *opBase) {
+static Record AntiSemiApplyConsume(OpBase *opBase) {
 	OpSemiApply *op = (OpSemiApply *)opBase;
 	while(true) {
 		// Try to get a record from bound stream.
 		op->r = OpBase_Consume(op->bound_branch);
 		if(!op->r) return NULL; // Depleted.
 
-		/* Try pulling right stream
-		 * return bounded stream record if match stream returns NULL. */
-		Record righthand_record = _pullFromMatchStream(op);
-		if(righthand_record) {
-			/* managed to get a record from match stream,
-			 * free it and pull again from left handside. */
-			Record_Free(righthand_record);
-			Record_Free(op->r);
-			op->r = NULL;
+		// Propagate record to the top of the Match stream.
+		// (Must clone the Record, as it will be freed in the Match stream.)
+		if(op->op_arg) Argument_AddRecord(op->op_arg, OpBase_CloneRecord(op->r));
+		/* Try to pull data from the right stream,
+		 * returning the bound stream record if unsuccessful. */
+		Record rhs_record = _pullFromMatchStream(op);
+		// Reset the match branch to maintain parity with the bound branch.
+		OpBase_PropagateReset(op->match_branch);
+		if(rhs_record) {
+			/* Successfully retrieved a Record from the match stream,
+			 * free it and pull again from the bound stream. */
+			OpBase_DeleteRecord(rhs_record);
+			OpBase_DeleteRecord(op->r);
 		} else {
 			// Right stream returned NULL, return left handside record.
 			Record r = op->r;
@@ -106,20 +112,28 @@ Record AntiSemiApplyConsume(OpBase *opBase) {
 	}
 }
 
-OpResult SemiApplyReset(OpBase *opBase) {
+static OpResult SemiApplyReset(OpBase *opBase) {
 	OpSemiApply *op = (OpSemiApply *)opBase;
 	if(op->r) {
-		Record_Free(op->r);
+		OpBase_DeleteRecord(op->r);
 		op->r = NULL;
 	}
 	return OP_OK;
 }
 
-void SemiApplyFree(OpBase *opBase) {
+static inline OpBase *SemiApplyClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_SEMI_APPLY || opBase->type == OpType_ANTI_SEMI_APPLY);
+	OpSemiApply *op = (OpSemiApply *)opBase;
+	bool anti = opBase->type == OpType_ANTI_SEMI_APPLY;
+	return NewSemiApplyOp(plan, anti);
+}
+
+static void SemiApplyFree(OpBase *opBase) {
 	OpSemiApply *op = (OpSemiApply *)opBase;
 
 	if(op->r) {
-		Record_Free(op->r);
+		OpBase_DeleteRecord(op->r);
 		op->r = NULL;
 	}
 }
+

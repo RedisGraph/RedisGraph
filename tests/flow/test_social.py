@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 from redisgraph import Graph
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../demo/social/')
@@ -15,7 +16,7 @@ redis_graph = None
 class testSocialFlow(FlowTestsBase):
 
     def __init__(self):
-        super(testSocialFlow, self).__init__()
+        self.env = Env()
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph(social_utils.graph_name, redis_con)

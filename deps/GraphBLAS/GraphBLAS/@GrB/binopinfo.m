@@ -16,9 +16,9 @@ function binopinfo (op, type)
 % GrB.binopinfo ('+.double'), or in the second argument, GrB.binopinfo
 % ('+', 'double').
 %
-% The MATLAB interface to GraphBLAS provides for 25 different binary
+% The MATLAB interface to GraphBLAS provides for 27 different binary
 % operators, each of which may be used with any of the 11 types, for
-% a total of 25*11 = 275 valid binary operators.  Binary operators
+% a total of 27*11 = 297 valid binary operators.  Binary operators
 % are defined by a string of the form 'op.type', or just 'op'.  In
 % the latter case, the type defaults to the type of the matrix inputs
 % to the GraphBLAS operation.
@@ -56,6 +56,7 @@ function binopinfo (op, type)
 %   |   || or  lor   x | y          |   >=  ge           x >= y
 %   &   && and land  x & y          |   <=  le           x <= y
 %   xor lxor         xor(x,y)       |
+%   pair             1              |   any              x, or y
 %
 % The three logical operators, lor, land, and lxor, also come in 11
 % types.  z = lor.double (x,y) tests the condition (x~=0) || (y~=0),
@@ -75,7 +76,7 @@ function binopinfo (op, type)
 
 % FUTURE: add complex binary operators
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (nargin == 0)

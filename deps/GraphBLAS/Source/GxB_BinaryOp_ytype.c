@@ -2,7 +2,7 @@
 // GxB_BinaryOp_ytype: return the type of y for z=f(x,y)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -23,7 +23,7 @@ GrB_Info GxB_BinaryOp_ytype         // return the type of y
     GB_WHERE ("GxB_BinaryOp_ytype (&ytype, binaryop)") ;
     GB_RETURN_IF_NULL (ytype) ;
     GB_RETURN_IF_NULL_OR_FAULTY (binaryop) ;
-    ASSERT_OK (GB_check (binaryop, "binaryop for ytype", GB0)) ;
+    ASSERT_BINARYOP_OK (binaryop, "binaryop for ytype", GB0) ;
 
     //--------------------------------------------------------------------------
     // return the ytype

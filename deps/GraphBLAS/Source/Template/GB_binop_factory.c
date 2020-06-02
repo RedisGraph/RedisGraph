@@ -2,7 +2,7 @@
 // GB_binop_factory: switch factory for built-in methods for C=binop(A,B)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -18,6 +18,8 @@
     switch (opcode)
     {
 
+#ifndef GB_BINOP_SUBSET
+
         //----------------------------------------------------------------------
         case GB_FIRST_opcode   :    // z = x
         //----------------------------------------------------------------------
@@ -28,11 +30,22 @@
 
         //----------------------------------------------------------------------
         case GB_SECOND_opcode  :    // z = y
+        case GB_ANY_opcode  :       // z = y
         //----------------------------------------------------------------------
 
             #define GB_BINOP_NAME _second
             #include "GB_binop_type_factory.c"
             break ;
+
+        //----------------------------------------------------------------------
+        case GB_PAIR_opcode   :    // z = 1
+        //----------------------------------------------------------------------
+
+            #define GB_BINOP_NAME _pair
+            #include "GB_binop_type_factory.c"
+            break ;
+
+#endif
 
         //----------------------------------------------------------------------
         case GB_MIN_opcode     :    // z = min(x,y)
@@ -113,6 +126,8 @@
             #define GB_BINOP_NAME _rdiv
             #include "GB_binop_type_factory.c"
             break ;
+
+#ifndef GB_BINOP_SUBSET
 
         //----------------------------------------------------------------------
         case GB_ISEQ_opcode    :    // z = (x == y)
@@ -247,6 +262,7 @@
             #define GB_BINOP_NAME _lxor
             #include "GB_binop_type_factory.c"
             break ;
+#endif
 
         default: ;
     }

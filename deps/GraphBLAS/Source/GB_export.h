@@ -2,7 +2,7 @@
 // GB_export.h: definitions for import/export
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -38,12 +38,12 @@
             nvals, GB_INDEX_MAX))) ;                            \
     }                                                           \
     /* get the descriptor */                                    \
-    GB_GET_DESCRIPTOR (info, desc, xx1, xx2, xx3, xx4, xx5) ;
+    GB_GET_DESCRIPTOR (info, desc, xx1, xx2, xx3, xx4, xx5, xx6) ;
 
 #define GB_EXPORT_CHECK                                         \
     GB_RETURN_IF_NULL (A) ;                                     \
     GB_RETURN_IF_NULL_OR_FAULTY (*A) ;                          \
-    ASSERT_OK (GB_check (*A, "A to export", GB0)) ;             \
+    ASSERT_MATRIX_OK (*A, "A to export", GB0) ;                 \
     /* finish any pending work */                               \
     GB_WAIT (*A) ;                                              \
     /* check these after forcing completion */                  \
@@ -53,7 +53,7 @@
     GB_RETURN_IF_NULL (nvals) ;                                 \
     GB_RETURN_IF_NULL (nonempty) ;                              \
     /* get the descriptor */                                    \
-    GB_GET_DESCRIPTOR (info, desc, xx1, xx2, xx3, xx4, xx5) ;   \
+    GB_GET_DESCRIPTOR (info, desc, xx1, xx2, xx3, xx4, xx5, xx6) ; \
     /* export basic attributes */                               \
     (*type) = (*A)->type ;                                      \
     (*nrows) = GB_NROWS (*A) ;                                  \

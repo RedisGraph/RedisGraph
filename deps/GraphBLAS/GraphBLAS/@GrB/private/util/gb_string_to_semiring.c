@@ -2,7 +2,7 @@
 // gb_string_to_semiring: convert a string to a GraphBLAS semiring
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -60,7 +60,7 @@ GrB_Semiring gb_string_to_semiring      // return a semiring from a string
     }
 
     GrB_BinaryOp mult = gb_string_and_type_to_binop (mult_name, mult_type) ;
-    CHECK_ERROR (mult == NULL, "invalid semiring") ;
+    CHECK_ERROR (mult == NULL, "invalid semiring (unknown multipy operator)") ;
 
     //--------------------------------------------------------------------------
     // get the add operator
@@ -69,7 +69,7 @@ GrB_Semiring gb_string_to_semiring      // return a semiring from a string
     GrB_Type add_type = mult->ztype ;
 
     GrB_BinaryOp add = gb_string_and_type_to_binop (add_name, add_type) ;
-    CHECK_ERROR (add == NULL, "invalid semiring") ;
+    CHECK_ERROR (add == NULL, "invalid semiring (unknown add operator)") ;
 
     //--------------------------------------------------------------------------
     // convert the add and mult operators to a semiring

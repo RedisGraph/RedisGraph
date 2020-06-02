@@ -1,7 +1,7 @@
 function test48
 %TEST48 performance test of GrB_mxm
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 [save save_chunk] = nthreads_get ;
@@ -15,22 +15,22 @@ rng ('default') ;
 dt_auto = struct ('inp0', 'tran') ;
 dt_dot  = struct ('inp0', 'tran', 'axb', 'dot') ;
 dt_gus  = struct ('inp0', 'tran', 'axb', 'gustavson') ;
-dt_heap = struct ('inp0', 'tran', 'axb', 'heap') ;
+dt_hash = struct ('inp0', 'tran', 'axb', 'hash') ;
 
 da_auto = struct ;
 da_dot  = struct ('axb', 'dot') ;
 da_gus  = struct ('axb', 'gustavson') ;
-da_heap = struct ('axb', 'heap') ;
+da_hash = struct ('axb', 'hash') ;
 
 dtn_auto = struct ('inp0', 'tran') ;
 dtn_dot  = struct ('inp0', 'tran', 'axb', 'dot') ;
 dtn_gus  = struct ('inp0', 'tran', 'axb', 'gustavson') ;
-dtn_heap = struct ('inp0', 'tran', 'axb', 'heap') ;
+dtn_hash = struct ('inp0', 'tran', 'axb', 'hash') ;
 
 dtt_auto = struct ('inp0', 'tran', 'inp1', 'tran') ;
 dtt_dot  = struct ('inp0', 'tran', 'inp1', 'tran', 'axb', 'dot') ;
 dtt_gus  = struct ('inp0', 'tran', 'inp1', 'tran', 'axb', 'gustavson') ;
-dtt_heap = struct ('inp0', 'tran', 'inp1', 'tran', 'axb', 'heap') ;
+dtt_hash = struct ('inp0', 'tran', 'inp1', 'tran', 'axb', 'hash') ;
 
 semiring.multiply = 'times' ;
 semiring.add = 'plus' ;
@@ -88,10 +88,10 @@ for pp = 0:2
             assert (isequal (method, 'Gustavson')) ;
 
             % tic
-            ch = GB_mex_mxm (w, [],[], semiring, A, x, dt_heap) ;
+            ch = GB_mex_mxm (w, [],[], semiring, A, x, dt_hash) ;
             % t = toc ;
             [th method] = grbresults ;
-            assert (isequal (method, 'heap')) ;
+            assert (isequal (method, 'hash')) ;
 
             tic
             c0 = A'*x ;
@@ -103,9 +103,9 @@ for pp = 0:2
             assert (isequal_roundoff (c0, ch.matrix)) ;
 
             fprintf ('%8d : ', nnz (x)) ;
-            fprintf ('auto: %10.4f(%s) dot: %10.4f gus: %10.4f heap: %10.4f MATLAB %10.4f', ...
+            fprintf ('auto: %10.4f(%s) dot: %10.4f gus: %10.4f hash: %10.4f MATLAB %10.4f', ...
                 ta, auto_method(1), t, tg, th, t2) ;
-            fprintf (' speedup auto: %10.2f dot: %10.2f gus: %10.2f heap: %10.2f\n', ...
+            fprintf (' speedup auto: %10.2f dot: %10.2f gus: %10.2f hash: %10.2f\n', ...
                 t2/ta, t2/t, t2/tg, t2/th) ;
 
         end
@@ -144,10 +144,10 @@ for pp = 0:2
             assert (isequal (method, 'Gustavson')) ;
 
             % tic
-            ch = GB_mex_mxm (w, [],[], semiring, A, x, da_heap) ;
+            ch = GB_mex_mxm (w, [],[], semiring, A, x, da_hash) ;
             % t = toc ;
             [th method] = grbresults ;
-            assert (isequal (method, 'heap')) ;
+            assert (isequal (method, 'hash')) ;
 
             tic
             c0 = A*x ;
@@ -159,9 +159,9 @@ for pp = 0:2
             assert (isequal_roundoff (c0, ch.matrix)) ;
 
             fprintf ('%8d : ', nnz (x)) ;
-            fprintf ('auto: %10.4f(%s) dot: %10.4f gus: %10.4f heap: %10.4f MATLAB %10.4f', ...
+            fprintf ('auto: %10.4f(%s) dot: %10.4f gus: %10.4f hash: %10.4f MATLAB %10.4f', ...
                 ta, auto_method(1), t, tg, th, t2) ;
-            fprintf (' speedup auto: %10.2f dot: %10.2f gus: %10.2f heap: %10.2f\n', ...
+            fprintf (' speedup auto: %10.2f dot: %10.2f gus: %10.2f hash: %10.2f\n', ...
                 t2/ta, t2/t, t2/tg, t2/th) ;
 
         end
@@ -202,10 +202,10 @@ for pp = 0:2
             assert (isequal (method, 'Gustavson')) ;
 
             % tic
-            ch = GB_mex_mxm (w, [],[], semiring, x, A, dtn_heap) ;
+            ch = GB_mex_mxm (w, [],[], semiring, x, A, dtn_hash) ;
             % t = toc ;
             [th method] = grbresults ;
-            assert (isequal (method, 'heap')) ;
+            assert (isequal (method, 'hash')) ;
 
             tic
             c0 = x'*A ;
@@ -218,9 +218,9 @@ for pp = 0:2
             assert (isequal_roundoff (c0, ch.matrix)) ;
 
             fprintf ('%8d : ', nnz (x)) ;
-            fprintf ('auto: %10.4f(%s) dot: %10.4f gus: %10.4f heap: %10.4f MATLAB %10.4f', ...
+            fprintf ('auto: %10.4f(%s) dot: %10.4f gus: %10.4f hash: %10.4f MATLAB %10.4f', ...
                 ta, auto_method(1), t, tg, th, t2) ;
-            fprintf (' speedup auto: %10.2f dot: %10.2f gus: %10.2f heap: %10.2f\n', ...
+            fprintf (' speedup auto: %10.2f dot: %10.2f gus: %10.2f hash: %10.2f\n', ...
                 t2/ta, t2/t, t2/tg, t2/th) ;
 
         end
@@ -259,10 +259,10 @@ for pp = 0:2
             assert (isequal (method, 'Gustavson')) ;
 
             % tic
-            ch = GB_mex_mxm (w, [],[], semiring, x, A, dtt_heap) ;
+            ch = GB_mex_mxm (w, [],[], semiring, x, A, dtt_hash) ;
             % t = toc ;
             [th method] = grbresults ;
-            assert (isequal (method, 'heap')) ;
+            assert (isequal (method, 'hash')) ;
 
             tic
             c0 = x'*A' ;
@@ -274,9 +274,9 @@ for pp = 0:2
             assert (isequal_roundoff (c0, ch.matrix)) ;
 
             fprintf ('%8d : ', nnz (x)) ;
-            fprintf ('auto: %10.4f(%s) dot: %10.4f gus: %10.4f heap: %10.4f MATLAB %10.4f', ...
+            fprintf ('auto: %10.4f(%s) dot: %10.4f gus: %10.4f hash: %10.4f MATLAB %10.4f', ...
                 ta, auto_method(1), t, tg, th, t2) ;
-            fprintf (' speedup auto: %10.2f dot: %10.2f gus: %10.2f heap: %10.2f\n', ...
+            fprintf (' speedup auto: %10.2f dot: %10.2f gus: %10.2f hash: %10.2f\n', ...
                 t2/ta, t2/t, t2/tg, t2/th) ;
 
         end
@@ -318,10 +318,10 @@ for pp = 0:2
             assert (isequal (method, 'Gustavson')) ;
 
             % tic
-            ch = GB_mex_mxm (w, [],[], semiring, A, x, dtt_heap) ;
+            ch = GB_mex_mxm (w, [],[], semiring, A, x, dtt_hash) ;
             % t = toc ;
             [th method] = grbresults ;
-            assert (isequal (method, 'heap')) ;
+            assert (isequal (method, 'hash')) ;
 
             tic
             c0 = A'*x' ;
@@ -333,9 +333,9 @@ for pp = 0:2
             assert (isequal_roundoff (c0, ch.matrix)) ;
 
             fprintf ('%8d : ', nnz (x)) ;
-            fprintf ('auto: %10.4f(%s) dot: %10.4f gus: %10.4f heap: %10.4f MATLAB %10.4f', ...
+            fprintf ('auto: %10.4f(%s) dot: %10.4f gus: %10.4f hash: %10.4f MATLAB %10.4f', ...
                 ta, auto_method(1), t, tg, th, t2) ;
-            fprintf (' speedup auto: %10.2f dot: %10.2f gus: %10.2f heap: %10.2f\n', ...
+            fprintf (' speedup auto: %10.2f dot: %10.2f gus: %10.2f hash: %10.2f\n', ...
                 t2/ta, t2/t, t2/tg, t2/th) ;
 
         end

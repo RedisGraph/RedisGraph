@@ -8,7 +8,7 @@ function C = eq (A, B)
 %
 % See also GrB/lt, GrB/le, GrB/gt, GrB/ge, GrB/ne.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 % The pattern of C depends on the type of inputs:

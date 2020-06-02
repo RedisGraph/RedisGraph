@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -29,22 +29,23 @@ OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, const QGNode *n, RSI
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_INDEX_SCAN, "Index Scan", IndexScanInit, IndexScanConsume,
-				IndexScanReset, IndexScanToString, IndexScanFree, false, plan);
+				IndexScanReset, IndexScanToString, NULL, IndexScanFree, false, plan);
 
 	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
 	return (OpBase *)op;
 }
 
 static OpResult IndexScanInit(OpBase *opBase) {
-	if(opBase->childCount > 0) opBase->consume = IndexScanConsumeFromChild;
+	if(opBase->childCount > 0) OpBase_UpdateConsume(opBase, IndexScanConsumeFromChild);
 	return OP_OK;
 }
 
 static inline void _UpdateRecord(IndexScan *op, Record r, EntityID node_id) {
-	// Get a pointer to a heap allocated node.
-	Node *n = Record_GetNode(r, op->nodeRecIdx);
-	// Update node's internal entity pointer.
-	assert(Graph_GetNode(op->g, node_id, n));
+	// Populate the Record with the graph entity data.
+	Node n = {0};
+	assert(Graph_GetNode(op->g, node_id, &n));
+	// Get a pointer to the node's allocated space within the Record.
+	Record_AddNode(r, op->nodeRecIdx, n);
 }
 
 static Record IndexScanConsumeFromChild(OpBase *opBase) {
@@ -58,7 +59,7 @@ static Record IndexScanConsumeFromChild(OpBase *opBase) {
 
 	const EntityID *nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL);
 	if(!nodeId) { // Index scan depleted.
-		Record_Free(op->child_record); // Free old record.
+		OpBase_DeleteRecord(op->child_record); // Free old record.
 		// Pull a new record from child.
 		op->child_record = OpBase_Consume(op->op.children[0]);
 		if(op->child_record == NULL) return NULL; // Child depleted.
@@ -70,7 +71,7 @@ static Record IndexScanConsumeFromChild(OpBase *opBase) {
 	}
 
 	// Clone the held Record, as it will be freed upstream.
-	Record r = Record_Clone(op->child_record);
+	Record r = OpBase_CloneRecord(op->child_record);
 
 	// Populate the Record with the actual node.
 	_UpdateRecord(op, r, *nodeId);
@@ -109,7 +110,7 @@ static void IndexScanFree(OpBase *opBase) {
 	}
 
 	if(op->child_record) {
-		Record_Free(op->child_record);
+		OpBase_DeleteRecord(op->child_record);
 		op->child_record = NULL;
 	}
 }

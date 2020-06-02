@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -236,6 +236,182 @@ static void _AlgebraicExpression_FlattenMultiplications(AlgebraicExpression *roo
 }
 
 //------------------------------------------------------------------------------
+// Transpose pushdown
+//------------------------------------------------------------------------------
+
+// Forward declaration.
+static void _Pushdown_TransposeExp(AlgebraicExpression *exp);
+
+// Transpose addition.
+static void _Pushdown_TransposeAddition
+(
+	AlgebraicExpression *exp
+) {
+	// T(A + B) = T(A) + T(B)
+	// Transpose children.
+	uint child_count = AlgebraicExpression_ChildCount(exp);
+	for(uint i = 0; i < child_count; i++) _Pushdown_TransposeExp(exp->operation.children[i]);
+}
+
+// Transpose multiplication.
+static void _Pushdown_TransposeMultiplication
+(
+	AlgebraicExpression *exp
+) {
+	// Swap children, Transpose(A * B) = Transpose(B) * Transpose(A)
+	array_reverse(exp->operation.children);
+	// Transpose children.
+	uint child_count = AlgebraicExpression_ChildCount(exp);
+	for(uint i = 0; i < child_count; i++) _Pushdown_TransposeExp(exp->operation.children[i]);
+}
+
+// Transpose transpose.
+static void _Pushdown_TransposeTranspose
+(
+	AlgebraicExpression *exp
+) {
+	// T(T(A)) = A
+	// Expecting just a single operand.
+	assert(AlgebraicExpression_ChildCount(exp) == 1);
+	AlgebraicExpression *only_child = _AlgebraicExpression_OperationRemoveRightmostChild(exp);
+
+	// Replace Transpose operation with its child.
+	_AlgebraicExpression_InplaceRepurpose(exp, only_child);
+}
+
+// Transpose operation.
+static void _Pushdown_TransposeOperation
+(
+	AlgebraicExpression *exp
+) {
+	switch(exp->operation.op) {
+	case AL_EXP_ADD:
+		// T(A + B) = T(A) + T(B)
+		_Pushdown_TransposeAddition(exp);
+		break;
+	case AL_EXP_MUL:
+		_Pushdown_TransposeMultiplication(exp);
+		break;
+	case AL_EXP_TRANSPOSE:
+		_Pushdown_TransposeTranspose(exp);
+		break;
+	default:
+		assert("Unknown algebraic expression operation");
+		break;
+	}
+}
+
+// Transpose operand.
+static void _Pushdown_TransposeOperand
+(
+	AlgebraicExpression *exp
+) {
+	// No need to transpose a diagonal matrix.
+	if(exp->operand.diagonal) return;
+
+	// A -> Transpose(A)
+	// We're going to repourpose exp, make a clone.
+	AlgebraicExpression *operand = AlgebraicExpression_Clone(exp);
+	_InplaceRepurposeOperandToOperation(exp, AL_EXP_TRANSPOSE);
+
+	/* Add original operand as a child of exp (which is now a transpose operation).
+	 * Transpose(A) */
+	AlgebraicExpression_AddChild(exp, operand);
+}
+
+static void _Pushdown_TransposeExp
+(
+	AlgebraicExpression *exp
+) {
+	switch(exp->type) {
+	case AL_OPERATION:
+		_Pushdown_TransposeOperation(exp);
+		break;
+	case AL_OPERAND:
+		_Pushdown_TransposeOperand(exp);
+		break;
+	default:
+		assert("unknown algebraic expression node type" && false);
+		break;
+	}
+}
+
+/* Push down transpose operations to the point where they are applied to individual operands
+ * once this optimization is applied there shouldn't be instances of transpose acting on
+ * operation nodes such as multiplication and addition.
+ *
+ * Consider Exp = Transpose(A + B)
+ *
+ *           (transpose)
+ *               (+)
+ *         (A)          (B)
+ *
+ * PushDownTranspose will transform Exp to: Transpose(A) + Transpose(B)
+ *
+ *                (+)
+ *    (transpose)     (transpose)
+ *         (A)            (B)
+ *
+ * Another example, Exp = Transpose(A * B)
+ *
+ *           (transpose)
+ *               (*)
+ *         (A)          (B)
+ *
+ * Would become Transpose(B) * Transpose(A)
+ *
+ *                (*)
+ *    (transpose)     (transpose)
+ *         (B)            (A)
+ * */
+static void _AlgebraicExpression_PushDownTranspose(AlgebraicExpression *root) {
+	uint i = 0;
+	uint child_count = 0;
+	AlgebraicExpression *child = NULL;
+
+	switch(root->type) {
+	case AL_OPERAND:
+		break;  // Nothing to be done.
+
+	case AL_OPERATION:
+		switch(root->operation.op) {
+		case AL_EXP_ADD:    // Fall through.
+		case AL_EXP_MUL:    // Fall through.
+		case AL_EXP_POW:    // Fall through.
+			child_count = AlgebraicExpression_ChildCount(root);
+			for(; i < child_count; i++) {
+				AlgebraicExpression *child = root->operation.children[i];
+				_AlgebraicExpression_PushDownTranspose(child);
+			}
+			break;
+
+		case AL_EXP_TRANSPOSE:
+			child = root->operation.children[0];
+			if(child->type == AL_OPERATION) {
+				/* Transpose operation:
+				 * Transpose(A + B) = Transpose(A) + Transpose(B)
+				 * Transpose(A * B) = Transpose(B) * Transpose(A) */
+				_Pushdown_TransposeExp(child);
+				/* Replace Transpose root with transposed expression.
+				 * Remove root only child. */
+				_AlgebraicExpression_OperationRemoveRightmostChild(root);
+				_AlgebraicExpression_InplaceRepurpose(root, child);
+
+				/* It is possible for `root` to contain a transpose subexpression
+				 * push it further down. */
+				_AlgebraicExpression_PushDownTranspose(root);
+			}
+			break;
+		default:
+			assert("Unknown operation" && false);
+		}
+		break;  // Break out of case AL_OPERATION.
+	default:
+		assert("Unknown algebraic expression node type" && false);
+	}
+}
+
+//------------------------------------------------------------------------------
 // AlgebraicExpression optimizations
 //------------------------------------------------------------------------------
 void AlgebraicExpression_Optimize
@@ -243,6 +419,7 @@ void AlgebraicExpression_Optimize
 	AlgebraicExpression **exp
 ) {
 	assert(exp);
+	_AlgebraicExpression_PushDownTranspose(*exp);
 	_AlgebraicExpression_MulOverSum(exp);
 	_AlgebraicExpression_FlattenMultiplications(*exp);
 }

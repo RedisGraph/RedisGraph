@@ -2,7 +2,7 @@
 // GB_select: apply a select operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -23,6 +23,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
     const bool C_replace,           // C descriptor
     const GrB_Matrix M,             // optional mask for C, unused if NULL
     const bool Mask_comp,           // descriptor for M
+    const bool Mask_struct,         // if true, use the only structure of M
     const GrB_BinaryOp accum,       // optional accum for Z=accum(C,T)
     const GxB_SelectOp op,          // operator to select the entries
     const GrB_Matrix A,             // input matrix
@@ -42,12 +43,12 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
     GB_RETURN_IF_FAULTY (Thunk_in) ;
     GB_RETURN_IF_NULL_OR_FAULTY (op) ;
 
-    ASSERT_OK (GB_check (C, "C input for GB_select", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (M, "M for GB_select", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (accum, "accum for GB_select", GB0)) ;
-    ASSERT_OK (GB_check (op, "selectop for GB_select", GB0)) ;
-    ASSERT_OK (GB_check (A, "A input for GB_select", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (Thunk_in, "Thunk_in for GB_select", GB0)) ;
+    ASSERT_MATRIX_OK (C, "C input for GB_select", GB0) ;
+    ASSERT_MATRIX_OK_OR_NULL (M, "M for GB_select", GB0) ;
+    ASSERT_BINARYOP_OK_OR_NULL (accum, "accum for GB_select", GB0) ;
+    ASSERT_SELECTOP_OK (op, "selectop for GB_select", GB0) ;
+    ASSERT_MATRIX_OK (A, "A input for GB_select", GB0) ;
+    ASSERT_SCALAR_OK_OR_NULL (Thunk_in, "Thunk_in for GB_select", GB0) ;
 
     GrB_Matrix T = NULL ;
 
@@ -69,7 +70,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
         opcode == GB_LT_ZERO_opcode || opcode == GB_LT_THUNK_opcode ||
         opcode == GB_LE_ZERO_opcode || opcode == GB_LE_THUNK_opcode ;
 
-    if (typecode >= GB_UCT_code && op_is_ordered_comparator)
+    if (typecode >= GB_UDT_code && op_is_ordered_comparator)
     { 
         // built-in GT, GE, LT, and LE operators cannot be used with
         // user-defined types
@@ -110,7 +111,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
         (opcode >= GB_TRIL_opcode && opcode <= GB_OFFDIAG_opcode) ;
 
     // check if op is user-defined
-    bool op_is_user_defined = (opcode >= GB_USER_SELECT_C_opcode) ;
+    bool op_is_user_defined = (opcode >= GB_USER_SELECT_opcode) ;
 
     int64_t nz_thunk = 0 ;
 
@@ -126,7 +127,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
         { 
             // Thunk present, but empty, or wrong dimensions
             return (GB_ERROR (GrB_DIMENSION_MISMATCH, (GB_LOG,
-                "Thunk must be a vector of length 1"))) ;
+                "Thunk must be a GrB_Scalar"))) ;
         }
 
         // if op is TRIL, TRIU, DIAG, or OFFDIAG, Thunk_in must be
@@ -229,7 +230,7 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
 
     bool flipij = !A_csc ;
 
-    ASSERT_OK_OR_NULL (GB_check (Thunk_in, "Thunk_in now GB_select", GB0)) ;
+    ASSERT_SCALAR_OK_OR_NULL (Thunk_in, "Thunk_in now GB_select", GB0) ;
 
     // if A is boolean, get the value of Thunk typecasted to boolean
     bool bthunk = false ;
@@ -478,14 +479,14 @@ GrB_Info GB_select          // C<M> = accum (C, select(A,k)) or select(A',k)
     }
 
     T->is_csc = A_csc ;
-    ASSERT_OK (GB_check (T, "T=select(A,Thunk) output", GB0)) ;
-    ASSERT_OK (GB_check (C, "C for accum; T=select(A,Thunk) output", GB0)) ;
+    ASSERT_MATRIX_OK (T, "T=select(A,Thunk) output", GB0) ;
+    ASSERT_MATRIX_OK (C, "C for accum; T=select(A,Thunk) output", GB0) ;
 
     //--------------------------------------------------------------------------
     // C<M> = accum (C,T): accumulate the results into C via the mask
     //--------------------------------------------------------------------------
 
     return (GB_accum_mask (C, M, NULL, accum, &T, C_replace, Mask_comp,
-        Context)) ;
+        Mask_struct, Context)) ;
 }
 

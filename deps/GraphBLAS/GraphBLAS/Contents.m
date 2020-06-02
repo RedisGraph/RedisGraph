@@ -61,6 +61,7 @@
 % Static Methods: used as GrB.method; inputs can be any GraphBLAS or
 % MATLAB matrix, in any combination.
 %
+%   init            finalize        burble
 %   apply           emult           kronecker       select          
 %   assign          entries         ktruss          selectopinfo    
 %   bfs             expand          laplacian       semiringinfo    
@@ -72,7 +73,7 @@
 %   descriptorinfo  isbycol         pagerank        type            
 %   dnn             isbyrow         prune           unopinfo        
 %   eadd            isfull          random          vreduce         
-%   empty           issigned        reduce          
+%   empty           issigned        reduce 
 %
 % Tim Davis, Texas A&M University, http://faculty.cse.tamu.edu/davis/GraphBLAS
 

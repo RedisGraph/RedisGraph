@@ -2,7 +2,7 @@
 // GrB_wait: finish all pending computations
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -41,6 +41,7 @@ GrB_Info GrB_wait ( )       // finish all pending computations
     //--------------------------------------------------------------------------
 
     GB_WHERE ("GrB_wait ( )") ;
+    GB_BURBLE_START ("GrB_wait") ;
 
     //--------------------------------------------------------------------------
     // assemble all matrices with lingering zombies and/or pending tuples
@@ -52,8 +53,8 @@ GrB_Info GrB_wait ( )       // finish all pending computations
         GB_CRITICAL (GB_queue_remove_head (&A)) ;
         if (A == NULL) break ;
         // A has been removed from the head of the queue but it still has
-        // pending operations.  GB_check expects it to be in the queue.
-        // ASSERT_OK (GB_check (A, "to assemble in GrB_wait", GB0)) ;
+        // pending operations.  GB_Matrix_check expects it to be in the queue.
+        // ASSERT_MATRIX_OK (A, "to assemble in GrB_wait", GB0) ;
         // FUTURE:: allow matrices with no pending operations to be in the
         // queue; this may help avoid thrashing the critical section.
         ASSERT (GB_PENDING (A) || GB_ZOMBIES (A)) ;
@@ -61,6 +62,7 @@ GrB_Info GrB_wait ( )       // finish all pending computations
         GB_WAIT (A) ;
     }
 
+    GB_BURBLE_END ;
     return (GrB_SUCCESS) ;
 }
 

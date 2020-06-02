@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
 
@@ -8,7 +9,7 @@ graph_2 = None
 
 class testGraphMergeFlow(FlowTestsBase):
     def __init__(self):
-        super(testGraphMergeFlow, self).__init__()
+        self.env = Env()
         global redis_graph
         global graph_2
         redis_con = self.env.getConnection()
@@ -479,3 +480,27 @@ class testGraphMergeFlow(FlowTestsBase):
         self.env.assertEquals(result.nodes_created, 0)
         self.env.assertEquals(result.relationships_created, 0)
         self.env.assertEquals(result.properties_set, 0)
+
+    def test24_merge_merge_delete(self):
+        redis_con = self.env.getConnection()
+        graph = Graph("M", redis_con)
+        
+        # Merge followed by an additional merge and ending with a deletion
+        # which doesn't have any data to operate on,
+        # this used to trigger force lock release, as the delete didn't tried to acquire/release the lock
+        self.env.flush()
+        query = """MERGE (user:User {name:'Sceat'}) WITH user UNWIND [1,2,3] AS sessionHash MERGE (user)-[:HAS_SESSION]->(newSession:Session {hash:sessionHash}) WITH DISTINCT user, collect(newSession.hash) as newSessionHash MATCH (user)-->(s:Session) WHERE NOT s.hash IN newSessionHash DELETE s"""
+        result = graph.query(query)
+        
+        # Verify that every entity was created.
+        self.env.assertEquals(result.nodes_created, 4)
+        self.env.assertEquals(result.properties_set, 4)
+        self.env.assertEquals(result.relationships_created, 3)
+
+        # Repeat the query.
+        result = graph.query(query)
+
+        # Verify that no data was modified.
+        self.env.assertEquals(result.nodes_created, 0)
+        self.env.assertEquals(result.properties_set, 0)
+        self.env.assertEquals(result.relationships_created, 0)

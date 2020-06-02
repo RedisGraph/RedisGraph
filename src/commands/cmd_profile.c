@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -22,18 +22,20 @@ void Graph_Profile(void *args) {
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
 
 	QueryCtx_BeginTimer(); // Start query timing.
+	const char *query_string;
+	cypher_parse_result_t *query_parse_result = NULL;
+	// Parse and validate parameters only. Extract query string.
+	cypher_parse_result_t *params_parse_result = parse_params(command_ctx->query, &query_string);
+	if(params_parse_result == NULL) goto cleanup;
 
-	// Parse the query to construct an AST
-	cypher_parse_result_t *parse_result = parse(command_ctx->query);
-	if(parse_result == NULL) goto cleanup;
+	// Parse the query to construct an AST and validate it.
+	query_parse_result = parse_query(query_string);
+	if(query_parse_result == NULL) goto cleanup;
 
-	bool readonly = AST_ReadOnly(parse_result);
-
-	// Perform query validations
-	if(AST_Validate(ctx, parse_result) != AST_VALID) goto cleanup;
+	bool readonly = AST_ReadOnly(query_parse_result);
 
 	// Prepare the constructed AST for accesses from the module
-	ast = AST_Build(parse_result);
+	ast = AST_Build(query_parse_result);
 
 	// Acquire the appropriate lock.
 	if(readonly) {
@@ -60,23 +62,22 @@ void Graph_Profile(void *args) {
 		assert("Unhandled query type" && false);
 	}
 
-	result_set = NewResultSet(ctx, false);
-	ExecutionPlan *plan = NewExecutionPlan(result_set);
+	result_set = NewResultSet(ctx, FORMATTER_NOP);
+	QueryCtx_SetResultSet(result_set);
+	ExecutionPlan *plan = NewExecutionPlan();
 	/* Make sure there are no compile-time errors.
 	 * We prefer to emit the error only once the entire execution-plan
 	 * is constructed in-favour of the time it was encountered
 	 * for memory management considerations.
 	 * this should be revisited in order to save some time (fail fast). */
 	if(QueryCtx_EncounteredError()) {
-		/* TODO: move ExecutionPlan_Free to `cleanup`
-		 * once no all pendding operation commitment (create,delete,update)
-		 * are no performed in free callback. */
 		if(plan) ExecutionPlan_Free(plan);
 		QueryCtx_EmitException();
 		goto cleanup;
 	}
 
 	if(plan) {
+		ExecutionPlan_PreparePlan(plan);
 		ExecutionPlan_Profile(plan);
 		QueryCtx_ForceUnlockCommit();
 		ExecutionPlan_Print(plan, ctx);
@@ -92,9 +93,9 @@ cleanup:
 
 	ResultSet_Free(result_set);
 	AST_Free(ast);
-	parse_result_free(parse_result);
+	parse_result_free(params_parse_result);
+	parse_result_free(query_parse_result);
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 }
-

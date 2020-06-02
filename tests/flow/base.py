@@ -1,13 +1,8 @@
 import os
 import warnings
-from RLTest import Env 
 
 class FlowTestsBase(object):
-    def __init__(self):
-        self.env = Env()
-        redis_con = self.env.getConnection()
-        redis_con.execute_command("FLUSHALL")
-    
+
     def _assert_equalish(self, a, b, e=0.05):
         delta = a * e
         diff = abs(a-b)

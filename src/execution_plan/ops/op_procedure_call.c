@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -12,6 +12,7 @@
 /* Forward declarations. */
 static Record ProcCallConsume(OpBase *opBase);
 static OpResult ProcCallReset(OpBase *opBase);
+static OpBase *ProcCallClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void ProcCallFree(OpBase *opBase);
 
 static Record _yield(OpProcCall *op) {
@@ -36,7 +37,7 @@ static Record _yield(OpProcCall *op) {
 		}
 	}
 
-	Record clone = Record_Clone(op->r);
+	Record clone = OpBase_CloneRecord(op->r);
 	for(uint i = 0; i < array_len(op->output); i++) {
 		int idx = op->yield_map[i].rec_idx;
 		uint proc_out_idx = op->yield_map[i].proc_out_idx;
@@ -84,7 +85,7 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNo
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_PROC_CALL, "ProcedureCall", NULL, ProcCallConsume,
-				ProcCallReset, NULL, ProcCallFree, !op->procedure->readOnly, plan);
+				ProcCallReset, NULL, ProcCallClone, ProcCallFree, !op->procedure->readOnly, plan);
 
 	// Set modifiers.
 	for(uint i = 0; i < yield_count; i ++) {
@@ -106,7 +107,7 @@ static Record ProcCallConsume(OpBase *opBase) {
 	while(!(yield_record = _yield(op))) {
 		// Free old record.
 		if(op->r) {
-			Record_Free(op->r);
+			OpBase_DeleteRecord(op->r);
 			op->r = NULL;
 		}
 
@@ -123,7 +124,7 @@ static Record ProcCallConsume(OpBase *opBase) {
 
 		// Evaluate arguments, free args from previous call.
 		uint arg_count = array_len(op->args);
-		for(uint i = 0; i < arg_count; i++) SIValue_Free(op->args + i);
+		for(uint i = 0; i < arg_count; i++) SIValue_Free(op->args[i]);
 
 		array_clear(op->args);
 		for(uint i = 0; i < op->arg_count; i++) {
@@ -150,11 +151,21 @@ static OpResult ProcCallReset(OpBase *ctx) {
 	return OP_OK;
 }
 
+static OpBase *ProcCallClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_PROC_CALL);
+	OpProcCall *op = (OpProcCall *)opBase;
+	AR_ExpNode **args_exp;
+	AR_ExpNode **yield_exps;
+	array_clone_with_cb(args_exp, op->arg_exps, AR_EXP_Clone);
+	array_clone_with_cb(yield_exps, op->yield_exps, AR_EXP_Clone);
+	return NewProcCallOp(plan, op->procedure->name, args_exp, yield_exps);
+}
+
 static void ProcCallFree(OpBase *ctx) {
 	OpProcCall *op = (OpProcCall *)ctx;
 
 	if(op->r) {
-		Record_Free(op->r);
+		OpBase_DeleteRecord(op->r);
 		op->r = NULL;
 	}
 
@@ -170,7 +181,7 @@ static void ProcCallFree(OpBase *ctx) {
 
 	if(op->args) {
 		uint arg_count = array_len(op->args);
-		for(uint i = 0; i < arg_count; i++) SIValue_Free(op->args + i);
+		for(uint i = 0; i < arg_count; i++) SIValue_Free(op->args[i]);
 		array_free(op->args);
 		op->args = NULL;
 	}
@@ -193,3 +204,4 @@ static void ProcCallFree(OpBase *ctx) {
 		op->yield_exps = NULL;
 	}
 }
+

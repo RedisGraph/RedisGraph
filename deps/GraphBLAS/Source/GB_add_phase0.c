@@ -2,7 +2,7 @@
 // GB_add_phase0: find vectors of C to compute for C=A+B or C<M>=A+B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -72,10 +72,10 @@
 static inline bool GB_allocate_result
 (
     int64_t Cnvec,
-    int64_t *restrict *Ch_handle,
-    int64_t *restrict *C_to_M_handle,
-    int64_t *restrict *C_to_A_handle,
-    int64_t *restrict *C_to_B_handle
+    int64_t *GB_RESTRICT *Ch_handle,
+    int64_t *GB_RESTRICT *C_to_M_handle,
+    int64_t *GB_RESTRICT *C_to_A_handle,
+    int64_t *GB_RESTRICT *C_to_B_handle
 )
 {
     bool ok = true ;
@@ -130,10 +130,10 @@ static inline bool GB_allocate_result
 GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
 (
     int64_t *p_Cnvec,           // # of vectors to compute in C
-    int64_t *restrict *Ch_handle,        // Ch: size Cnvec, or NULL
-    int64_t *restrict *C_to_M_handle,    // C_to_M: size Cnvec, or NULL
-    int64_t *restrict *C_to_A_handle,    // C_to_A: size Cnvec, or NULL
-    int64_t *restrict *C_to_B_handle,    // C_to_B: of size Cnvec, or NULL
+    int64_t *GB_RESTRICT *Ch_handle,        // Ch: size Cnvec, or NULL
+    int64_t *GB_RESTRICT *C_to_M_handle,    // C_to_M: size Cnvec, or NULL
+    int64_t *GB_RESTRICT *C_to_A_handle,    // C_to_A: size Cnvec, or NULL
+    int64_t *GB_RESTRICT *C_to_B_handle,    // C_to_B: of size Cnvec, or NULL
     bool *p_Ch_is_Mh,           // if true, then Ch == Mh
     const GrB_Matrix M,         // optional mask, may be NULL; not complemented
     const GrB_Matrix A,         // standard, hypersparse, slice, or hyperslice
@@ -150,9 +150,9 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
     ASSERT (Ch_handle != NULL) ;
     ASSERT (C_to_A_handle != NULL) ;
     ASSERT (C_to_B_handle != NULL) ;
-    ASSERT_OK (GB_check (A, "A for add phase0", GB0)) ;
-    ASSERT_OK (GB_check (B, "B for add phase0", GB0)) ;
-    ASSERT_OK_OR_NULL (GB_check (M, "M for add phase0", GB0)) ;
+    ASSERT_MATRIX_OK (A, "A for add phase0", GB0) ;
+    ASSERT_MATRIX_OK (B, "B for add phase0", GB0) ;
+    ASSERT_MATRIX_OK_OR_NULL (M, "M for add phase0", GB0) ;
     ASSERT (A->vdim == B->vdim) ;
     ASSERT (GB_IMPLIES (M != NULL, A->vdim == M->vdim)) ;
 
@@ -160,10 +160,10 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
     // initializations
     //--------------------------------------------------------------------------
 
-    int64_t *restrict Ch = NULL ;
-    int64_t *restrict C_to_M = NULL ;
-    int64_t *restrict C_to_A = NULL ;
-    int64_t *restrict C_to_B = NULL ;
+    int64_t *GB_RESTRICT Ch = NULL ;
+    int64_t *GB_RESTRICT C_to_M = NULL ;
+    int64_t *GB_RESTRICT C_to_A = NULL ;
+    int64_t *GB_RESTRICT C_to_B = NULL ;
 
     (*Ch_handle) = NULL ;
     (*C_to_A_handle) = NULL ;
@@ -173,9 +173,9 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
         (*C_to_M_handle) = NULL ;
     }
 
-    int64_t *restrict kA_start = NULL ;
-    int64_t *restrict kB_start = NULL ;
-    int64_t *restrict kC_start = NULL ;
+    int64_t *GB_RESTRICT kA_start = NULL ;
+    int64_t *GB_RESTRICT kB_start = NULL ;
+    int64_t *GB_RESTRICT kC_start = NULL ;
     int ntasks = 0 ;
 
     //--------------------------------------------------------------------------
@@ -195,20 +195,20 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
     int64_t Anvec = A->nvec ;
     bool A_is_hyper = A->is_hyper ;
     bool A_is_slice = A->is_slice ;
-    const int64_t *restrict Ap = A->p ;
-    const int64_t *restrict Ah = (A_is_hyper) ? A->h : NULL ;
+    const int64_t *GB_RESTRICT Ap = A->p ;
+    const int64_t *GB_RESTRICT Ah = (A_is_hyper) ? A->h : NULL ;
     const int64_t A_hfirst = A->hfirst ;
     #define GB_Ah(k) (A_is_hyper ? Ah [k] : (A_hfirst + (k)))
 
     int64_t Bnvec = B->nvec ;
-    const int64_t *restrict Bp = B->p ;
-    const int64_t *restrict Bh = B->h ;
+    const int64_t *GB_RESTRICT Bp = B->p ;
+    const int64_t *GB_RESTRICT Bh = B->h ;
     bool B_is_hyper = B->is_hyper ;
     ASSERT (!B->is_slice) ;
 
     int64_t Mnvec = 0 ;
-    const int64_t *restrict Mp = NULL ;
-    const int64_t *restrict Mh = NULL ;
+    const int64_t *GB_RESTRICT Mp = NULL ;
+    const int64_t *GB_RESTRICT Mh = NULL ;
     bool M_is_hyper = false ;
     if (M != NULL)
     { 
@@ -258,8 +258,9 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
         // construct the mapping from C to A and B, if they are hypersparse
         if (A_is_hyper || B_is_hyper)
         {
+            int64_t k ;
             #pragma omp parallel for num_threads(nthreads) schedule(static)
-            for (int64_t k = 0 ; k < Cnvec ; k++)
+            for (k = 0 ; k < Cnvec ; k++)
             {
                 int64_t j = Ch [k] ;
                 if (A_is_hyper)
@@ -333,8 +334,9 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
         // phase 1: count the entries in the result of each task
         //----------------------------------------------------------------------
 
+        int taskid ;
         #pragma omp parallel for num_threads(nthreads) schedule (dynamic,1)
-        for (int taskid = 0 ; taskid < ntasks ; taskid++)
+        for (taskid = 0 ; taskid < ntasks ; taskid++)
         {
             // merge Ah and Bh into Ch
             int64_t kA = kA_start [taskid] ;
@@ -393,7 +395,7 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
         //----------------------------------------------------------------------
 
         #pragma omp parallel for num_threads(nthreads) schedule (dynamic,1)
-        for (int taskid = 0 ; taskid < ntasks ; taskid++)
+        for (taskid = 0 ; taskid < ntasks ; taskid++)
         {
             // merge Ah and Bh into Ch
             int64_t kA = kA_start [taskid] ;
@@ -539,15 +541,17 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
             return (GB_OUT_OF_MEMORY) ;
         }
 
+        int64_t j ;
         #pragma omp parallel for num_threads(nthreads) schedule(static)
-        for (int64_t j = 0 ; j < n ; j++)
+        for (j = 0 ; j < n ; j++)
         { 
             C_to_A [j] = -1 ;
         }
 
         // scatter Ah into C_to_A
+        int64_t kA ;
         #pragma omp parallel for num_threads(nthreads) schedule(static)
-        for (int64_t kA = 0 ; kA < Anvec ; kA++)
+        for (kA = 0 ; kA < Anvec ; kA++)
         { 
             int64_t jA = GB_Ah (kA) ;
             C_to_A [jA] = kA ;
@@ -574,15 +578,17 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
             return (GB_OUT_OF_MEMORY) ;
         }
 
+        int64_t j ;
         #pragma omp parallel for num_threads(nthreads) schedule(static)
-        for (int64_t j = 0 ; j < n ; j++)
+        for (j = 0 ; j < n ; j++)
         { 
             C_to_B [j] = -1 ;
         }
 
         // scatter Bh into C_to_B
+        int64_t kB ;
         #pragma omp parallel for num_threads(nthreads) schedule(static)
-        for (int64_t kB = 0 ; kB < Bnvec ; kB++)
+        for (kB = 0 ; kB < Bnvec ; kB++)
         { 
             int64_t jB = Bh [kB] ;
             C_to_B [jB] = kB ;
@@ -620,8 +626,9 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
         if (Ch != NULL)
         {
             // C is hypersparse
+            int64_t k ;
             #pragma omp parallel for num_threads(nthreads) schedule(static)
-            for (int64_t k = 0 ; k < Cnvec ; k++)
+            for (k = 0 ; k < Cnvec ; k++)
             { 
                 int64_t j = Ch [k] ;
                 // C_to_M [k] = kM if Mh [kM] == j and M(:,j) is non-empty
@@ -633,14 +640,16 @@ GrB_Info GB_add_phase0          // find vectors in C for C=A+B or C<M>=A+B
         else
         {
             // C is standard
+            int64_t j ;
             #pragma omp parallel for num_threads(nthreads) schedule(static)
-            for (int64_t j = 0 ; j < n ; j++)
+            for (j = 0 ; j < n ; j++)
             { 
                 C_to_M [j] = -1 ;
             }
             // scatter Mh into C_to_M
+            int64_t kM ;
             #pragma omp parallel for num_threads(nthreads) schedule(static)
-            for (int64_t kM = 0 ; kM < Mnvec ; kM++)
+            for (kM = 0 ; kM < Mnvec ; kM++)
             { 
                 int64_t jM = Mh [kM] ;
                 C_to_M [jM] = kM ;

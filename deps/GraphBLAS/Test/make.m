@@ -14,7 +14,7 @@ function make (what)
 % GraphBLAS requires an ANSI C11 compliant compiler.  On the Mac, clang 8.0
 % suffices.  gcc should be version 4.9.3 or later
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 if (isempty (strfind (pwd, 'GraphBLAS/Test')))
@@ -39,10 +39,8 @@ end
 
 make_all = (isequal (what, 'all')) ;
 
-%  flags = '-g' ;
-   flags = '-O' ;
-
-flags = [flags ' -largeArrayDims'] ;
+% flags = '-g' ;
+  flags = '-O' ;
 
 try
     if (strncmp (computer, 'GLNX', 4))
@@ -63,6 +61,7 @@ try
             end
         end
     end
+catch
 end
 
 mexfunctions = dir ('GB_mex_*.c') ;
@@ -100,6 +99,8 @@ else
     flags = [ flags ' CXXFLAGS="$CXXFLAGS -fopenmp -fPIC -Wno-pragmas" '] ;
     flags = [ flags  ' LDFLAGS="$LDFLAGS  -fopenmp -fPIC" '] ;
 end
+
+flags = [flags ' -largeArrayDims'] ;
 
 %-------------------------------------------------------------------------------
 

@@ -1,7 +1,9 @@
 #include "execution_plan.h"
 #include "ops/ops.h"
+#include "../query_ctx.h"
+#include "../ast/ast_mock.h"
 
-void _OpBase_AddChild(OpBase *parent, OpBase *child) {
+static void _OpBase_AddChild(OpBase *parent, OpBase *child) {
 	// Add child to parent
 	if(parent->children == NULL) {
 		parent->children = rm_malloc(sizeof(OpBase *));
@@ -14,9 +16,27 @@ void _OpBase_AddChild(OpBase *parent, OpBase *child) {
 	child->parent = parent;
 }
 
+/* Remove the operation old_child from its parent and replace it
+ * with the new child without reordering elements. */
+static void _ExecutionPlan_ParentReplaceChild(OpBase *parent, OpBase *old_child,
+											  OpBase *new_child) {
+	assert(parent->childCount > 0);
+
+	for(int i = 0; i < parent->childCount; i ++) {
+		/* Scan the children array to find the op being replaced. */
+		if(parent->children[i] != old_child) continue;
+		/* Replace the original child with the new one. */
+		parent->children[i] = new_child;
+		new_child->parent = parent;
+		return;
+	}
+
+	assert(false && "failed to locate the operation to be replaced");
+}
+
 /* Removes node b from a and update child parent lists
  * Assuming B is a child of A. */
-void _OpBase_RemoveNode(OpBase *parent, OpBase *child) {
+static void _OpBase_RemoveChild(OpBase *parent, OpBase *child) {
 	// Remove child from parent.
 	int i = 0;
 	for(; i < parent->childCount; i++) {
@@ -42,28 +62,8 @@ void _OpBase_RemoveNode(OpBase *parent, OpBase *child) {
 	child->parent = NULL;
 }
 
-void _OpBase_RemoveChild(OpBase *parent, OpBase *child) {
-	_OpBase_RemoveNode(parent, child);
-}
-
-void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
+inline void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
 	_OpBase_AddChild(parent, newOp);
-}
-
-void _ExecutionPlan_LocateOps(OpBase *root, OPType type, OpBase ***ops) {
-	if(!root) return;
-
-	if(root->type & type) *ops = array_append(*ops, root);
-
-	for(int i = 0; i < root->childCount; i++) {
-		_ExecutionPlan_LocateOps(root->children[i], type, ops);
-	}
-}
-
-OpBase **ExecutionPlan_LocateOps(OpBase *root, OPType type) {
-	OpBase **ops = array_new(OpBase *, 0);
-	_ExecutionPlan_LocateOps(root, type, &ops);
-	return ops;
 }
 
 // Introduce the new operation B between A and A's parent op.
@@ -74,14 +74,8 @@ void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
 		return;
 	}
 
-	/* Replace A's former parent. */
-	OpBase *a_former_parent = a->parent;
-
-	/* Disconnect A from its former parent. */
-	_OpBase_RemoveChild(a_former_parent, a);
-
-	/* Add A's former parent as parent of B. */
-	_OpBase_AddChild(a_former_parent, b);
+	/* Disconnect A from its parent and replace it with B. */
+	_ExecutionPlan_ParentReplaceChild(a->parent, a, b);
 
 	/* Add A as a child of B. */
 	_OpBase_AddChild(b, a);
@@ -120,13 +114,15 @@ void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
 		// Remove new root's parent pointer.
 		plan->root->parent = NULL;
 	} else {
-		// Remove op from its parent.
 		OpBase *parent = op->parent;
-		_OpBase_RemoveChild(op->parent, op);
-
-		// Add each of op's children as a child of op's parent.
-		for(int i = 0; i < op->childCount; i++) {
-			_OpBase_AddChild(parent, op->children[i]);
+		if(op->childCount > 0) {
+			// In place replacement of the op first branch instead of op.
+			_ExecutionPlan_ParentReplaceChild(op->parent, op, op->children[0]);
+			// Add each of op's children as a child of op's parent.
+			for(int i = 1; i < op->childCount; i++) _OpBase_AddChild(parent, op->children[i]);
+		} else {
+			// Remove op from its parent.
+			_OpBase_RemoveChild(op->parent, op);
 		}
 	}
 
@@ -142,7 +138,6 @@ void ExecutionPlan_DetachOp(OpBase *op) {
 	if(op->parent == NULL) return;
 
 	// Remove op from its parent.
-	OpBase *parent = op->parent;
 	_OpBase_RemoveChild(op->parent, op);
 
 	op->parent = NULL;
@@ -151,7 +146,7 @@ void ExecutionPlan_DetachOp(OpBase *op) {
 OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
 	if(!root) return NULL;
 
-	uint count = (root->modifies) ? array_len(root->modifies) : 0;
+	uint count = array_len(root->modifies);
 
 	for(uint i = 0; i < count; i++) {
 		const char *resolved_alias = root->modifies[i];
@@ -168,43 +163,30 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
 	return NULL;
 }
 
-typedef enum {
-	LTR,
-	RTL
-} LocateOp_SearchDirection;
-
-OpBase *_ExecutionPlan_LocateOp(OpBase *root, OPType type,
-								LocateOp_SearchDirection search_direction) {
-	if(!root) return NULL;
-
-	if(root->type & type) { // NOTE - this will fail if OPType is later changed to not be a bitmask.
-		return root;
+OpBase *ExecutionPlan_LocateOpMatchingType(OpBase *root, const OPType *types, uint type_count) {
+	for(int i = 0; i < type_count; i++) {
+		// Return the current op if it matches any of the types we're searching for.
+		if(root->type == types[i]) return root;
 	}
-	if(search_direction == RTL) {
-		for(int i = root->childCount - 1; i >= 0; i--) {
-			OpBase *op = _ExecutionPlan_LocateOp(root->children[i], type, search_direction);
-			if(op) return op;
-		}
-	} else {
-		for(int i = 0; i < root->childCount; i++) {
-			OpBase *op = _ExecutionPlan_LocateOp(root->children[i], type, search_direction);
-			if(op) return op;
-		}
+
+	for(int i = 0; i < root->childCount; i++) {
+		// Recursively visit children.
+		OpBase *op = ExecutionPlan_LocateOpMatchingType(root->children[i], types, type_count);
+		if(op) return op;
 	}
 
 	return NULL;
 }
 
-OpBase *ExecutionPlan_LocateFirstOp(OpBase *root, OPType type) {
-	return _ExecutionPlan_LocateOp(root, type, LTR);
+OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type) {
+	if(!root) return NULL;
+
+	const OPType type_arr[1] = {type};
+	return ExecutionPlan_LocateOpMatchingType(root, type_arr, 1);
 }
 
-OpBase *ExecutionPlan_LocateLastOp(OpBase *root, OPType type) {
-	return _ExecutionPlan_LocateOp(root, type, RTL);
-}
-
-OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
-									   rax *refs_to_resolve) {
+static OpBase *_ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
+											   rax *refs_to_resolve) {
 	if(root == recurse_limit) return NULL; // Don't traverse into earlier ExecutionPlan scopes.
 
 	int dependency_count = 0;
@@ -212,17 +194,15 @@ OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit
 	bool all_refs_resolved = false;
 	for(int i = 0; i < root->childCount && !all_refs_resolved; i++) {
 		// Visit each child and try to resolve references, storing a pointer to the child if successful.
-		resolving_op = ExecutionPlan_LocateReferences(root->children[i], recurse_limit, refs_to_resolve);
-		if(resolving_op) dependency_count ++; // Count how many children resolved references.
+		OpBase *tmp_op = _ExecutionPlan_LocateReferences(root->children[i], recurse_limit, refs_to_resolve);
+		if(tmp_op) dependency_count ++; // Count how many children resolved references.
+		// If there is more than one child resolving an op, set the root as the resolver.
+		resolving_op = resolving_op ? root : tmp_op;
 		all_refs_resolved = (raxSize(refs_to_resolve) == 0); // We're done when the rax is empty.
 	}
 
 	// If we've resolved all references, our work is done.
-	if(all_refs_resolved) {
-		/* Return the stored child if it resolved all references, or
-		 * the current op if multiple children resolved references. */
-		return (dependency_count == 1) ? resolving_op : root;
-	}
+	if(all_refs_resolved) return resolving_op;
 
 	// Try to resolve references in the current operation.
 	bool refs_resolved = false;
@@ -237,6 +217,42 @@ OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit
 	return resolving_op;
 }
 
+OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
+									   rax *refs_to_resolve) {
+	OpBase *op = _ExecutionPlan_LocateReferences(root, recurse_limit, refs_to_resolve);
+	return op;
+}
+
+
+static void _ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *types, int type_count,
+												  OpBase ***ops) {
+	for(int i = 0; i < type_count; i++) {
+		// Check to see if the op's type matches any of the types we're searching for.
+		if(root->type == types[i]) {
+			*ops = array_append(*ops, root);
+			break;
+		}
+	}
+
+	for(int i = 0; i < root->childCount; i++) {
+		// Recursively visit children.
+		_ExecutionPlan_CollectOpsMatchingType(root->children[i], types, type_count, ops);
+	}
+}
+
+OpBase **ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *types, uint type_count) {
+	OpBase **ops = array_new(OpBase *, 0);
+	_ExecutionPlan_CollectOpsMatchingType(root, types, type_count, &ops);
+	return ops;
+}
+
+OpBase **ExecutionPlan_CollectOps(OpBase *root, OPType type) {
+	OpBase **ops = array_new(OpBase *, 0);
+	const OPType type_arr[1] = {type};
+	_ExecutionPlan_CollectOpsMatchingType(root, type_arr, 1, &ops);
+	return ops;
+}
+
 // Collect all aliases that have been resolved by the given tree of operations.
 void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers) {
 	assert(op && modifiers);
@@ -248,24 +264,15 @@ void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers) {
 		}
 	}
 
+	/* Project and Aggregate operations demarcate variable scopes,
+	 * collect their projections but do not recurse into their children.
+	 * Note that future optimizations which operate across scopes will require different logic
+	 * than this for application. */
+	if(op->type == OPType_PROJECT || op->type == OPType_AGGREGATE) return;
+
 	for(int i = 0; i < op->childCount; i++) {
 		ExecutionPlan_BoundVariables(op->children[i], modifiers);
 	}
-}
-
-// Build an array of const strings to populate the 'modifies' arrays of Argument ops.
-inline const char **ExecutionPlan_BuildArgumentModifiesArray(rax *bound_vars) {
-	const char **arguments = array_new(const char *, raxSize(bound_vars));
-	raxIterator it;
-	raxStart(&it, bound_vars);
-	raxSeek(&it, "^", NULL, 0);
-	while(raxNext(&it)) { // For each bound variable
-		// Copy the const string variable name into the array.
-		arguments = array_append(arguments, it.data);
-	}
-	raxStop(&it);
-
-	return arguments;
 }
 
 // For all ops that refer to QG entities, rebind them with the matching entity
@@ -292,6 +299,11 @@ static void _RebindQueryGraphReferences(OpBase *op, const QueryGraph *qg) {
 
 void ExecutionPlan_BindPlanToOps(ExecutionPlan *plan, OpBase *root) {
 	if(!root) return;
+	// If the temporary execution plan has added new QueryGraph entities,
+	// migrate them to the master plan's QueryGraph.
+	// (This is only necessary for producing EXPLAIN outputs.)
+	QueryGraph_MergeGraphs(plan->query_graph, root->plan->query_graph);
+
 	root->plan = plan;
 	_RebindQueryGraphReferences(root, plan->query_graph);
 	for(int i = 0; i < root->childCount; i ++) {
@@ -299,10 +311,45 @@ void ExecutionPlan_BindPlanToOps(ExecutionPlan *plan, OpBase *root) {
 	}
 }
 
-void ExecutionPlan_AppendSubExecutionPlan(ExecutionPlan *master_plan, ExecutionPlan *sub_plan) {
-	if(!master_plan->sub_execution_plans)
-		master_plan->sub_execution_plans = array_new(ExecutionPlan *, 1);
-	if(sub_plan->record_map) raxFree(sub_plan->record_map);
-	sub_plan->record_map = master_plan->record_map;
-	master_plan->sub_execution_plans = array_append(master_plan->sub_execution_plans, sub_plan);
+OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_vars,
+									   const cypher_astnode_t *node) {
+	// Initialize an ExecutionPlan that shares this plan's Record mapping.
+	ExecutionPlan *match_stream_plan = ExecutionPlan_NewEmptyExecutionPlan();
+	match_stream_plan->record_map = plan->record_map;
+
+	// If we have bound variables, build an Argument op that represents them.
+	if(bound_vars) match_stream_plan->root = NewArgumentOp(plan, bound_vars);
+
+	AST *ast = QueryCtx_GetAST();
+	// Build a temporary AST holding a MATCH clause.
+	cypher_astnode_type_t type = cypher_astnode_type(node);
+
+	/* The AST node we're building a mock MATCH clause for will be a path
+	 * if we're converting a MERGE clause or WHERE filter, and we must build
+	 * and later free a CYPHER_AST_PATTERN node to contain it.
+	 * If instead we're converting an OPTIONAL MATCH, the node is itself a MATCH clause,
+	 * and we will reuse its CYPHER_AST_PATTERN node rather than building a new one. */
+	bool node_is_path = (type == CYPHER_AST_PATTERN_PATH || type == CYPHER_AST_NAMED_PATH);
+	AST *match_stream_ast = AST_MockMatchClause(ast, (cypher_astnode_t *)node, node_is_path);
+
+	ExecutionPlan_PopulateExecutionPlan(match_stream_plan);
+
+	AST_MockFree(match_stream_ast, node_is_path);
+	QueryCtx_SetAST(ast); // Reset the AST.
+	// Add filter ops to sub-ExecutionPlan.
+	if(match_stream_plan->filter_tree) ExecutionPlan_PlaceFilterOps(match_stream_plan, NULL);
+
+	OpBase *match_stream_root = match_stream_plan->root;
+
+	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
+	ExecutionPlan_BindPlanToOps(plan, match_stream_root);
+
+	// NULL-set variables shared between the match_stream_plan and the overall plan.
+	match_stream_plan->root = NULL;
+	match_stream_plan->record_map = NULL;
+	// Free the temporary plan.
+	ExecutionPlan_Free(match_stream_plan);
+
+	return match_stream_root;
 }
+

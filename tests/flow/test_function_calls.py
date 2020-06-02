@@ -1,6 +1,7 @@
 import redis
 import os
 import sys
+from RLTest import Env
 from base import FlowTestsBase
 from redisgraph import Graph, Node, Edge
 
@@ -11,7 +12,7 @@ people = ["Roi", "Alon", "Ailon", "Boaz"]
 
 class testFunctionCallsFlow(FlowTestsBase):
     def __init__(self):
-        super(testFunctionCallsFlow, self).__init__()
+        self.env = Env()
         global graph
         global redis_con
         redis_con = self.env.getConnection()
@@ -165,4 +166,79 @@ class testFunctionCallsFlow(FlowTestsBase):
         query = "RETURN min(3)"
         actual_result = graph.query(query)
         expected_result = [[3]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test10_modulo_inputs(self):
+        # Validate modulo with integer inputs.
+        query = "RETURN 5 % 2"
+        actual_result = graph.query(query)
+        expected_result = [[1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate modulo with a floating-point dividend.
+        query = "RETURN 5.5 % 2"
+        actual_result = graph.query(query)
+        expected_result = [[1.5]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate modulo with a floating-point divisor.
+        query = "RETURN 5 % 2.5"
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate modulo with both a floating-point dividen and a floating-point divisor.
+        query = "RETURN 5.5 % 2.5"
+        actual_result = graph.query(query)
+        expected_result = [[0.5]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate modulo with negative integer inputs.
+        query = "RETURN -5 % -2"
+        actual_result = graph.query(query)
+        expected_result = [[-1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate modulo with negative floating-point inputs.
+        query = "RETURN -5.5 % -2.5"
+        actual_result = graph.query(query)
+        expected_result = [[-0.5]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Aggregate functions should handle null inputs appropriately.
+    def test11_null_aggregate_function_inputs(self):
+        # SUM should sum all non-null inputs.
+        query = """UNWIND [1, NULL, 3] AS a RETURN sum(a)"""
+        actual_result = graph.query(query)
+        expected_result = [[4]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # SUM should return 0 given a fully NULL input.
+        query = """WITH NULL AS a RETURN sum(a)"""
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # COUNT should count all non-null inputs.
+        query = """UNWIND [1, NULL, 3] AS a RETURN count(a)"""
+        actual_result = graph.query(query)
+        expected_result = [[2]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # COUNT should return 0 given a fully NULL input.
+        query = """WITH NULL AS a RETURN count(a)"""
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # COLLECT should ignore null inputs.
+        query = """UNWIND [1, NULL, 3] AS a RETURN collect(a)"""
+        actual_result = graph.query(query)
+        expected_result = [[[1, 3]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # COLLECT should return an empty array on all null inputs.
+        query = """WITH NULL AS a RETURN collect(a)"""
+        actual_result = graph.query(query)
+        expected_result = [[[]]]
         self.env.assertEquals(actual_result.result_set, expected_result)

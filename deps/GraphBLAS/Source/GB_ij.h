@@ -2,7 +2,7 @@
 // GB_ij.h: definitions for I and J index lists
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -18,6 +18,7 @@
 #define GB_STRIDE 2
 #define GB_LIST 4
 
+GB_PUBLIC   // accessed by the MATLAB interface only
 void GB_ijlength            // get the length and kind of an index list I
 (
     const GrB_Index *I,     // list of indices (actual or implicit)
@@ -50,11 +51,11 @@ GrB_Info GB_ijproperties        // check I and determine its properties
 
 GrB_Info GB_ijsort
 (
-    const GrB_Index *restrict I, // size ni, where ni > 1 always holds
-    int64_t *restrict p_ni,      // : size of I, output: # of indices in I2
-    GrB_Index *restrict *p_I2,   // size ni2, where I2 [0..ni2-1]
+    const GrB_Index *GB_RESTRICT I, // size ni, where ni > 1 always holds
+    int64_t *GB_RESTRICT p_ni,      // : size of I, output: # of indices in I2
+    GrB_Index *GB_RESTRICT *p_I2,   // size ni2, where I2 [0..ni2-1]
                         // contains the sorted indices with duplicates removed.
-    GrB_Index *restrict *p_I2k,  // output array of size ni2
+    GrB_Index *GB_RESTRICT *p_I2k,  // output array of size ni2
     GB_Context Context
 ) ;
 

@@ -2,7 +2,7 @@
 // GB_mex_reduce_to_vector: c = accum(c,reduce_to_vector(A))
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -131,11 +131,6 @@ void mexFunction
 
     // w<mask> = accum (w, reduce_to_vector (A))
     METHOD (GrB_reduce (w, mask, accum, reduce, A, desc)) ;
-
-    // again, for timing
-//  FREE_DEEP_COPY ;
-//  GET_DEEP_COPY ;
-//  METHOD (GrB_reduce (w, mask, accum, reduce, A, desc)) ;
 
     // return w to MATLAB as a struct and free the GraphBLAS w
     pargout [0] = GB_mx_Vector_to_mxArray (&w, "w output", true) ;

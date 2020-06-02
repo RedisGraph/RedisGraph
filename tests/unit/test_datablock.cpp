@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -14,6 +14,7 @@ extern "C" {
 #include <string.h>
 #include "../../src/util/arr.h"
 #include "../../src/util/datablock/datablock.h"
+#include "../../src/util/datablock/oo_datablock.h"
 #include "../../src/util/rmalloc.h"
 
 #ifdef __cplusplus
@@ -37,8 +38,8 @@ TEST_F(DataBlockTest, New) {
 
 	ASSERT_EQ(dataBlock->itemCount, 0);     // No items were added.
 	ASSERT_GE(dataBlock->itemCap, 1024);
-	ASSERT_EQ(dataBlock->itemSize, itemSize);
-	ASSERT_GE(dataBlock->blockCount, 1024 / BLOCK_CAP);
+	ASSERT_EQ(dataBlock->itemSize, itemSize + ITEM_HEADER_SIZE);
+	ASSERT_GE(dataBlock->blockCount, 1024 / DATABLOCK_BLOCK_CAP);
 
 	for(int i = 0; i < dataBlock->blockCount; i++) {
 		Block *block = dataBlock->blocks[i];
@@ -150,12 +151,12 @@ TEST_F(DataBlockTest, RemoveItem) {
 	ASSERT_EQ(*item, 0);
 
 	// Remove item at position 0 and perform validations
-	// A DELETED_MARKER should mark cell as deleted
 	// Index 0 should be added to datablock deletedIdx array.
 	DataBlock_DeleteItem(dataBlock, 0);
 	ASSERT_EQ(dataBlock->itemCount, itemCount - 1);
 	ASSERT_EQ(array_len(dataBlock->deletedIdx), 1);
-	ASSERT_TRUE((char)dataBlock->blocks[0]->data[0] && (char)DELETED_MARKER);
+	DataBlockItemHeader *header = (DataBlockItemHeader *)dataBlock->blocks[0]->data;
+	ASSERT_TRUE(IS_ITEM_DELETED(header));
 
 	// Try to get item from deleted cell.
 	item = (int *)DataBlock_GetItem(dataBlock, 0);
@@ -175,7 +176,7 @@ TEST_F(DataBlockTest, RemoveItem) {
 	int *newItem = (int *)DataBlock_AllocateItem(dataBlock, NULL);
 	ASSERT_EQ(dataBlock->itemCount, itemCount);
 	ASSERT_EQ(array_len(dataBlock->deletedIdx), 0);
-	ASSERT_TRUE((void *)newItem == (void *)(&dataBlock->blocks[0]->data));
+	ASSERT_TRUE((void *)newItem == (void *)((dataBlock->blocks[0]->data) + ITEM_HEADER_SIZE));
 
 	it = DataBlock_Scan(dataBlock);
 	counter = 0;
@@ -186,3 +187,51 @@ TEST_F(DataBlockTest, RemoveItem) {
 	// Cleanup.
 	DataBlock_Free(dataBlock);
 }
+
+TEST_F(DataBlockTest, OutOfOrderBuilding) {
+	// This test checks for a fragmented, data block out of order re-construction.
+	DataBlock *dataBlock = DataBlock_New(1, sizeof(int), NULL);
+	int insert_arr1[4] = {8, 2, 3, 6};
+	int delete_arr[2] = {4, 7};
+	int insert_arr2[4] = {9, 1, 5, 0};
+	int expected[8] = {0, 1, 2, 3, 5, 6, 8, 9};
+
+	// Insert the first array.
+	for(int i = 0; i < 4; i++) {
+		int *item = (int *)DataBlock_AllocateItemOutOfOrder(dataBlock, insert_arr1[i]);
+		*item = insert_arr1[i];
+	}
+	ASSERT_EQ(4, dataBlock->itemCount);
+	ASSERT_EQ(0, array_len(dataBlock->deletedIdx));
+
+	// Mark deleted values.
+	for(int i = 0; i < 2; i++) {
+		DataBlock_MarkAsDeletedOutOfOrder(dataBlock, delete_arr[i]);
+	}
+
+	ASSERT_EQ(4, dataBlock->itemCount);
+	ASSERT_EQ(2, array_len(dataBlock->deletedIdx));
+
+	// Add another array
+	for(int i = 0; i < 4; i++) {
+		int *item = (int *)DataBlock_AllocateItemOutOfOrder(dataBlock, insert_arr2[i]);
+		*item = insert_arr2[i];
+	}
+
+	ASSERT_EQ(8, dataBlock->itemCount);
+	ASSERT_EQ(2, array_len(dataBlock->deletedIdx));
+
+	// Validate
+	DataBlockIterator *it = DataBlock_Scan(dataBlock);
+	for(int i = 0; i < 8; i++) {
+		int *item = (int *)DataBlockIterator_Next(it);
+		ASSERT_EQ(*item, expected[i]);
+	}
+	ASSERT_FALSE(DataBlockIterator_Next(it));
+
+	ASSERT_TRUE(dataBlock->deletedIdx[0] == 4 || dataBlock->deletedIdx[0] == 7);
+	ASSERT_TRUE(dataBlock->deletedIdx[1] == 4 || dataBlock->deletedIdx[1] == 7);
+
+	DataBlock_Free(dataBlock);
+}
+

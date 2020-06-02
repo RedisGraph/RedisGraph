@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -7,8 +7,11 @@
 #include "query_ctx.h"
 #include "util/simple_timer.h"
 #include "arithmetic/arithmetic_expression.h"
-#include "graph/serializers/graphcontext_type.h"
+#include "serializers/graphcontext_type.h"
 #include <assert.h>
+
+// GraphContext type as it is registered at Redis.
+extern RedisModuleType *GraphContextRedisModuleType;
 
 pthread_key_t _tlsQueryCtxKey;  // Thread local storage query context key.
 
@@ -91,9 +94,9 @@ void QueryCtx_SetGraphCtx(GraphContext *gc) {
 
 void QueryCtx_SetError(char *error) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	// An error is already set.
-	if(ctx->internal_exec_ctx.error) free(error);
-
+	// An error is already set - free it.
+	if(ctx->internal_exec_ctx.error) free(ctx->internal_exec_ctx.error);
+	// Set the new error.
 	ctx->internal_exec_ctx.error = error;
 }
 
@@ -138,6 +141,16 @@ RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void) {
 ResultSet *QueryCtx_GetResultSet(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	return ctx->internal_exec_ctx.result_set;
+}
+
+ResultSetStatistics *QueryCtx_GetResultSetStatistics(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	return &ctx->internal_exec_ctx.result_set->stats;
+}
+
+void QueryCtx_PrintQuery(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	printf("%s\n", ctx->query_data.query);
 }
 
 static void _QueryCtx_ThreadSafeContextLock(QueryCtx *ctx) {
@@ -189,9 +202,11 @@ bool QueryCtx_LockForCommit(void) {
 	return true;
 
 clean_up:
-// Unlock GIL.
+	// Free key handle.
+	RedisModule_CloseKey(key);
+	// Unlock GIL.
 	_QueryCtx_ThreadSafeContextUnlock(ctx);
-// If there is a break point for runtime exception, raise it, otherwise return false.
+	// If there is a break point for runtime exception, raise it, otherwise return false.
 	QueryCtx_RaiseRuntimeException();
 	return false;
 
@@ -270,4 +285,3 @@ void QueryCtx_Free(void) {
 	// NULL-set the context for reuse the next time this thread receives a query
 	pthread_setspecific(_tlsQueryCtxKey, NULL);
 }
-

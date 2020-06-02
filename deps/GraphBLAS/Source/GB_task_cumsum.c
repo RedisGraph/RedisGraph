@@ -2,7 +2,7 @@
 // GB_task_cumsum: cumulative sum of Cp and fine tasks in TaskList
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -14,7 +14,7 @@ void GB_task_cumsum
     int64_t *Cp,                        // size Cnvec+1
     const int64_t Cnvec,
     int64_t *Cnvec_nonempty,            // # of non-empty vectors in C
-    GB_task_struct *restrict TaskList,  // array of structs
+    GB_task_struct *GB_RESTRICT TaskList,  // array of structs
     const int ntasks,                   // # of tasks
     const int nthreads                  // # of threads
 )
@@ -101,13 +101,11 @@ void GB_task_cumsum
     //--------------------------------------------------------------------------
 
     #ifdef GB_DEBUG
-    // printf ("\nnthreads %d ntasks %d Cnvec "GBd"\n",
     // nthreads, ntasks, Cnvec) ;
     for (int t = 0 ; t < ntasks ; t++)
     {
         int64_t k = TaskList [t].kfirst ;
         int64_t klast = TaskList [t].klast ;
-        // printf ("Task %d: kfirst "GBd" klast "GBd" ", t, k, klast) ;
         if (klast < 0)
         {
             // this is a fine task for vector k
@@ -119,9 +117,6 @@ void GB_task_cumsum
             int64_t pC_end = TaskList [t+1].pC ;
             int64_t pM     = TaskList [t].pM ;
             int64_t pM_end = TaskList [t].pM_end ;
-            // printf ("pA ["GBd":"GBd"-1] pB ["GBd":"GBd"-1] pC ["GBd":"GBd
-            // "-1] pM ["GBd":"GBd"-1] len "GBd"\n", pA, pA_end, pB, pB_end,
-            // pC, pC_end, pM, pM_end, TaskList [t].len) ;
             ASSERT (k >= 0 && k < Cnvec) ;
             // pA:(pA_end-1) must reside inside A(:,j), and pB:(pB_end-1) must
             // reside inside B(:,j), but these cannot be checked here since A
@@ -136,7 +131,6 @@ void GB_task_cumsum
         else
         {
             // this is a coarse task for vectors k:klast, inclusive
-            // printf ("\n") ;
             ASSERT (k >= 0 && k < Cnvec) ;
             ASSERT (klast >= 0 && klast <= Cnvec) ;
             ASSERT (k <= klast) ;

@@ -19,8 +19,10 @@ function C = prod (G, option)
 % products to be computed, and the NaN behavior can be specified.  The
 % GraphBLAS prod (G,...) uses only a type of 'native', and a nanflag of
 % 'includenan'.  See 'help prod' for more details.
+%
+% See also GrB/max, GrB/min, GrB/sum.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 [m, n] = size (G) ;

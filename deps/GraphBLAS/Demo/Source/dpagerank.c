@@ -2,6 +2,11 @@
 // SuiteSparse/GraphBLAS/Demo/Source/dpagerank: pagerank using a real semiring
 //------------------------------------------------------------------------------
 
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+//------------------------------------------------------------------------------
+
 // A is a square unsymmetric binary matrix of size n-by-n, where A(i,j) is the
 // edge (i,j).  Self-edges are OK.  A can be of any built-in type.
 
@@ -20,12 +25,12 @@
 // free all workspace
 #define FREEWORK                \
 {                               \
-    GrB_free (&C) ;             \
-    GrB_free (&r) ;             \
+    GrB_Matrix_free (&C) ;      \
+    GrB_Matrix_free (&r) ;             \
     if (I != NULL) free (I) ;   \
     if (X != NULL) free (X) ;   \
-    GrB_free (&op_scale) ;      \
-    GrB_free (&op_div) ;        \
+    GrB_UnaryOp_free (&op_scale) ;      \
+    GrB_UnaryOp_free (&op_div) ;        \
 }
 
 // error handler: free output P and all workspace (used by CHECK and OK macros)
@@ -114,7 +119,7 @@ GrB_Info dpagerank          // GrB_SUCCESS or error condition
         // double x = simple_rand_x ( ) ;
         // this is not portable:
         double x = ((double) rand ( )) / (double) RAND_MAX ;
-        OK (GrB_Vector_setElement (r, x, i)) ;
+        OK (GrB_Vector_setElement_FP64 (r, x, i)) ;
     }
 
     // skip this (see dpagerank.m and compare with ipagerank.m):
@@ -137,17 +142,18 @@ GrB_Info dpagerank          // GrB_SUCCESS or error condition
         // r = ((c*r) * C) + (a * sum (r)) ;
 
         // s = a * sum (r) ;
-        OK (GrB_reduce (&s, NULL, GxB_PLUS_FP64_MONOID, r, NULL)) ;
+        OK (GrB_Vector_reduce_FP64 (&s, NULL, GxB_PLUS_FP64_MONOID, r, NULL)) ;
         s *= a ;
 
         // r = c * r
-        OK (GrB_apply (r, NULL, NULL, op_scale, r, NULL)) ;
+        OK (GrB_Vector_apply (r, NULL, NULL, op_scale, r, NULL)) ;
 
         // r = r * C
         OK (GrB_vxm (r, NULL, NULL, GxB_PLUS_TIMES_FP64, r, C, NULL)) ;
 
         // r = r + s
-        OK (GrB_assign (r, NULL, GrB_PLUS_FP64, s, GrB_ALL, n, NULL)) ;
+        OK (GrB_Vector_assign_FP64 (r, NULL, GrB_PLUS_FP64, s,
+            GrB_ALL, n, NULL)) ;
     }
 
     //--------------------------------------------------------------------------
@@ -155,10 +161,10 @@ GrB_Info dpagerank          // GrB_SUCCESS or error condition
     //--------------------------------------------------------------------------
 
     // s = sum (r)
-    OK (GrB_reduce (&s, NULL, GxB_PLUS_FP64_MONOID, r, NULL)) ;
+    OK (GrB_Vector_reduce_FP64 (&s, NULL, GxB_PLUS_FP64_MONOID, r, NULL)) ;
 
     // r = r / s
-    OK (GrB_apply (r, NULL, NULL, op_div, r, NULL)) ;
+    OK (GrB_Vector_apply (r, NULL, NULL, op_div, r, NULL)) ;
 
     //--------------------------------------------------------------------------
     // sort the nodes by pagerank
@@ -171,13 +177,13 @@ GrB_Info dpagerank          // GrB_SUCCESS or error condition
     I = malloc (n * sizeof (GrB_Index)) ;
     CHECK (I != NULL && X != NULL, GrB_OUT_OF_MEMORY) ;
     GrB_Index nvals = n ;
-    OK (GrB_Vector_extractTuples (I, X, &nvals, r)) ;
+    OK (GrB_Vector_extractTuples_FP64 (I, X, &nvals, r)) ;
 
     // this will always be true since r is dense, but double-check anyway:
     CHECK (nvals == n, GrB_PANIC) ;
 
     // r no longer needed
-    GrB_free (&r) ;
+    GrB_Vector_free (&r) ;
 
     // P = struct (X,I)
     P = malloc (n * sizeof (PageRank)) ;

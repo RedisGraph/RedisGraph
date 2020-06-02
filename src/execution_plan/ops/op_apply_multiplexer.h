@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -52,4 +52,4 @@ typedef struct OpApplyMultiplexer {
 	AST_Operator boolean_operator;  // Defines the operation logic - OR/AND.
 } OpApplyMultiplexer;
 
-OpBase *NewApplyMultiplexerOp(ExecutionPlan *plan, AST_Operator boolean_operator);
+OpBase *NewApplyMultiplexerOp(const ExecutionPlan *plan, AST_Operator boolean_operator);

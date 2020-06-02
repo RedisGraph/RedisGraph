@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -77,8 +77,6 @@ void QueryCtx_SetAST(AST *ast);
 void QueryCtx_SetError(char *error);
 /* Set the provided GraphCtx for access through the QueryCtx. */
 void QueryCtx_SetGraphCtx(GraphContext *gc);
-/* Set the Redis module context. */
-void QueryCtx_SetRedisModuleCtx(RedisModuleCtx *redisctx);
 /* Set the resultset. */
 void QueryCtx_SetResultSet(ResultSet *result_set);
 /* Set the last writer which needs to commit */
@@ -97,6 +95,11 @@ GraphContext *QueryCtx_GetGraphCtx(void);
 RedisModuleCtx *QueryCtx_GetRedisModuleCtx(void);
 /* Retrive the resultset. */
 ResultSet *QueryCtx_GetResultSet(void);
+/* Retrive the resultset statistics. */
+ResultSetStatistics *QueryCtx_GetResultSetStatistics(void);
+
+/* Print the current query. */
+void QueryCtx_PrintQuery(void);
 
 /* Starts a locking flow before commiting changes in the graph and Redis keyspace.
  * Locking flow is:

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -54,7 +54,7 @@ TEST_F(ValueTest, TestNumerics) {
 	ASSERT_TRUE(v.type == T_DOUBLE);
 	ASSERT_EQ(v.doubleval, 10);
 
-	SIValue_Free(&v);
+	SIValue_Free(v);
 }
 
 TEST_F(ValueTest, TestStrings) {
@@ -64,14 +64,14 @@ TEST_F(ValueTest, TestStrings) {
 	v = SIValue_FromString(str);
 	ASSERT_TRUE(v.type == T_STRING);
 	ASSERT_STREQ(v.stringval, "Test!");
-	SIValue_Free(&v);
+	SIValue_Free(v);
 
 	/* Out of double range */
 	str = "1.0001e10001";
 	v = SIValue_FromString(str);
 	ASSERT_TRUE(v.type == T_STRING);
 	ASSERT_STREQ(v.stringval, "1.0001e10001");
-	SIValue_Free(&v);
+	SIValue_Free(v);
 }
 
 // Idempotence and correctness tests for null, bool, long, double, edge, node, array.
@@ -338,3 +338,4 @@ TEST_F(ValueTest, TestSet) {
 	ASSERT_EQ(Set_Size(set), 0);
 	Set_Free(set);
 }
+

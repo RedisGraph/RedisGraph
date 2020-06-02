@@ -2,7 +2,7 @@
 // GB_mex_clear: clear a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -51,14 +51,11 @@ void mexFunction
     }
     mxClassID aclass = GB_mx_Type_to_classID (A->type) ;
 
-    GxB_print (A,3) ;
-
     // output matrix has same type as input matrix
     GrB_Type ctype = A->type ;
 
     // copy A into C
     GrB_Matrix_dup (&C, A) ;
-    GxB_print (C,3) ;
 
     // clear C
     METHOD (GrB_Matrix_clear (C)) ;

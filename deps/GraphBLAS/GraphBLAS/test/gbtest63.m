@@ -1,7 +1,7 @@
 function gbtest63
 %GBTEST63 test GrB.incidence
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 rng ('default') ;
@@ -24,7 +24,7 @@ for trial = 1:2
         2 7 ] ;
         W = sparse (ij (:,1), ij (:,2), ones (12,1), 8, 8) ;
     else
-        load west0479 ;
+        load west0479 ; %#ok<*LOAD>
         W = west0479 ;
     end
 

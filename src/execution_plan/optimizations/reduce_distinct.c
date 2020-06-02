@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -8,7 +8,7 @@
 
 void reduceDistinct(ExecutionPlan *plan) {
 	// Look for Distinct operations.
-	OpBase **distinct_ops = ExecutionPlan_LocateOps(plan->root, OPType_DISTINCT);
+	OpBase **distinct_ops = ExecutionPlan_CollectOps(plan->root, OPType_DISTINCT);
 
 	for(uint i = 0; i < array_len(distinct_ops); i++) {
 		OpBase *distinct = distinct_ops[i];

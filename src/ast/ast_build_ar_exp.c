@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -369,6 +369,11 @@ static AR_ExpNode *_AR_ExpNodeFromGraphEntity(const cypher_astnode_t *entity) {
 	return AR_EXP_NewVariableOperandNode(alias, NULL);
 }
 
+static AR_ExpNode *_AR_ExpNodeFromParameter(const cypher_astnode_t *param) {
+	const char *identifier = cypher_ast_parameter_get_name(param);
+	return AR_EXP_NewParameterOperandNode(identifier);
+}
+
 static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 
 	const cypher_astnode_type_t type = cypher_astnode_type(expr);
@@ -427,10 +432,7 @@ static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 	} else if(type == CYPHER_AST_NODE_PATTERN || type == CYPHER_AST_REL_PATTERN) {
 		return _AR_ExpNodeFromGraphEntity(expr);
 	} else if(type == CYPHER_AST_PARAMETER) {
-		AST *ast = QueryCtx_GetAST();
-		AnnotationCtx *params_ctx = AST_AnnotationCtxCollection_GetParamsCtx(ast->anot_ctx_collection);
-		AR_ExpNode *param_value = cypher_astnode_get_annotation(params_ctx, expr);
-		return AR_EXP_Clone(param_value);
+		return _AR_ExpNodeFromParameter(expr);
 	} else {
 		/*
 		   Unhandled types:
@@ -441,8 +443,11 @@ static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 		   CYPHER_AST_PATTERN_COMPREHENSION
 		   CYPHER_AST_REDUCE
 		*/
-		printf("Encountered unhandled type '%s'\n", cypher_astnode_typestr(type));
-		assert(false);
+		const char *type_str = cypher_astnode_typestr(type);
+		char *error;
+		asprintf(&error, "RedisGraph does not currently support the type '%s'", type_str);
+		QueryCtx_SetError(error);
+		return AR_EXP_NewConstOperandNode(SI_NullVal());
 	}
 
 	assert(false);
@@ -451,7 +456,7 @@ static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 
 AR_ExpNode *AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 	AR_ExpNode *root = _AR_EXP_FromExpression(expr);
-	AR_EXP_ReduceToScalar(&root);
+	AR_EXP_ReduceToScalar(root);
 
 	/* Make sure expression doesn't contains nested aggregation functions
 	 * count(max(n.v)) */

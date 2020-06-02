@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 from redisgraph import Graph
 from base import FlowTestsBase
 
@@ -16,7 +17,7 @@ redis_graph = None
 
 class testImdbFlow(FlowTestsBase):
     def __init__(self):
-        super(testImdbFlow, self).__init__()        
+        self.env = Env()
 
     def setUp(self):
         global imdb

@@ -2,7 +2,7 @@
 // GB_emult_template:  phase1 and phase2 for C=A.*B, C<M>=A.*B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -20,53 +20,52 @@
 
 {
 
-    // iB_first is unused if the operator is FIRST
+    // iB_first is unused if the operator is FIRST or PAIR
     #include "GB_unused.h"
 
     //--------------------------------------------------------------------------
     // get A, B, M, and C
     //--------------------------------------------------------------------------
 
-    const int64_t *restrict Ap = A->p ;
-    const int64_t *restrict Ah = A->h ;
-    const int64_t *restrict Ai = A->i ;
+    const int64_t *GB_RESTRICT Ap = A->p ;
+    const int64_t *GB_RESTRICT Ah = A->h ;
+    const int64_t *GB_RESTRICT Ai = A->i ;
     const int64_t vlen = A->vlen ;
 
-    const int64_t *restrict Bp = B->p ;
-    const int64_t *restrict Bh = B->h ;
-    const int64_t *restrict Bi = B->i ;
+    const int64_t *GB_RESTRICT Bp = B->p ;
+    const int64_t *GB_RESTRICT Bh = B->h ;
+    const int64_t *GB_RESTRICT Bi = B->i ;
 
-    const int64_t *restrict Mp = NULL ;
-    const int64_t *restrict Mh = NULL ;
-    const int64_t *restrict Mi = NULL ;
-    const GB_void *restrict Mx = NULL ;
-    GB_cast_function cast_M = NULL ;
+    const int64_t *GB_RESTRICT Mp = NULL ;
+    const int64_t *GB_RESTRICT Mh = NULL ;
+    const int64_t *GB_RESTRICT Mi = NULL ;
+    const GB_void *GB_RESTRICT Mx = NULL ;
     size_t msize = 0 ;
     if (M != NULL)
     { 
         Mp = M->p ;
         Mh = M->h ;
         Mi = M->i ;
-        Mx = M->x ;
-        cast_M = GB_cast_factory (GB_BOOL_code, M->type->code) ;
+        Mx = (Mask_struct ? NULL : (M->x)) ;
         msize = M->type->size ;
     }
 
     #if defined ( GB_PHASE_2_OF_2 )
-    const GB_ATYPE *restrict Ax = A->x ;
-    const GB_ATYPE *restrict Bx = B->x ;
-    const int64_t  *restrict Cp = C->p ;
-    const int64_t  *restrict Ch = C->h ;
-          int64_t  *restrict Ci = C->i ;
-          GB_CTYPE *restrict Cx = C->x ;
+    const GB_ATYPE *GB_RESTRICT Ax = A->x ;
+    const GB_ATYPE *GB_RESTRICT Bx = B->x ;
+    const int64_t  *GB_RESTRICT Cp = C->p ;
+    const int64_t  *GB_RESTRICT Ch = C->h ;
+          int64_t  *GB_RESTRICT Ci = C->i ;
+          GB_CTYPE *GB_RESTRICT Cx = C->x ;
     #endif
 
     //--------------------------------------------------------------------------
     // phase1: count entries in each C(:,j); phase2: compute C
     //--------------------------------------------------------------------------
 
+    int taskid ;
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-    for (int taskid = 0 ; taskid < ntasks ; taskid++)
+    for (taskid = 0 ; taskid < ntasks ; taskid++)
     {
 
         //----------------------------------------------------------------------
@@ -146,6 +145,7 @@
 
             int64_t ajnz = pA_end - pA ;        // nnz in A(:,j) for this slice
             bool adense = (ajnz == len) ;
+            int64_t pA_start = pA ;
 
             // get the first and last indices in A(:,j) for this vector
             int64_t iA_first = -1 ;
@@ -187,6 +187,7 @@
 
             int64_t bjnz = pB_end - pB ;        // nnz in B(:,j) for this slice
             bool bdense = (bjnz == len) ;
+            int64_t pB_start = pB ;
 
             // get the first and last indices in B(:,j) for this vector
             int64_t iB_first = -1 ;
@@ -458,34 +459,53 @@
                 //--------------------------------------------------------------
 
                 for ( ; pM < pM_end ; pM++)
-                { 
+                {
 
                     //----------------------------------------------------------
                     // get M(i,j) for A(i,j) .* B (i,j)
                     //----------------------------------------------------------
 
                     int64_t i = Mi [pM] ;
-                    bool mij ;
-                    cast_M (&mij, Mx +(pM*msize), 0) ;
+                    bool mij = GB_mcast (Mx, pM, msize) ;
                     if (!mij) continue ;
 
                     //----------------------------------------------------------
                     // get A(i,j)
                     //----------------------------------------------------------
 
-                    int64_t apright = pA_end - 1 ;
-                    bool afound ;
-                    GB_BINARY_SEARCH (i, Ai, pA, apright, afound) ;
-                    if (!afound) continue ;
+                    if (adense)
+                    { 
+                        // A(:,j) is dense; use direct lookup for A(i,j)
+                        pA = pA_start + i - iA_first ;
+                    }
+                    else
+                    { 
+                        // A(:,j) is sparse; use binary search for A(i,j)
+                        int64_t apright = pA_end - 1 ;
+                        bool afound ;
+                        GB_BINARY_SEARCH (i, Ai, pA, apright, afound) ;
+                        if (!afound) continue ;
+                    }
+                    ASSERT (Ai [pA] == i) ;
 
                     //----------------------------------------------------------
                     // get B(i,j)
                     //----------------------------------------------------------
 
-                    int64_t bpright = pB_end - 1 ;
-                    bool bfound ;
-                    GB_BINARY_SEARCH (i, Bi, pB, bpright, bfound) ;
-                    if (!bfound) continue ;
+                    if (bdense)
+                    { 
+                        // B(:,j) is dense; use direct lookup for B(i,j)
+                        pB = pB_start + i - iB_first ;
+                    }
+                    else
+                    { 
+                        // B(:,j) is sparse; use binary search for B(i,j)
+                        int64_t bpright = pB_end - 1 ;
+                        bool bfound ;
+                        GB_BINARY_SEARCH (i, Bi, pB, bpright, bfound) ;
+                        if (!bfound) continue ;
+                    }
+                    ASSERT (Bi [pB] == i) ;
 
                     //----------------------------------------------------------
                     // C(i,j) = A(i,j) .* B(i,j)

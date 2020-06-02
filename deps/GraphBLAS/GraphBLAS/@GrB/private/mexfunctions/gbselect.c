@@ -2,12 +2,12 @@
 // gbselect: select entries from a GraphBLAS matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
-// gbselect is an interface to GxB_select.
+// gbselect is an interface to GxB_Matrix_select.
 
 // Usage:
 
@@ -194,7 +194,7 @@ void mexFunction
     { 
         // get the descriptor contents to determine if A is transposed
         GrB_Desc_Value in0 ;
-        OK (GxB_get (desc, GrB_INP0, &in0)) ;
+        OK (GxB_Desc_get (desc, GrB_INP0, &in0)) ;
         bool A_transpose = (in0 == GrB_TRAN) ;
 
         // get the size of A
@@ -211,7 +211,7 @@ void mexFunction
 
         OK (GrB_Matrix_new (&C, ctype, cnrows, cncols)) ;
         fmt = gb_get_format (cnrows, cncols, A, NULL, fmt) ;
-        OK (GxB_set (C, GxB_FORMAT, fmt)) ;
+        OK (GxB_Matrix_Option_set (C, GxB_FORMAT, fmt)) ;
     }
 
     //--------------------------------------------------------------------------
@@ -230,13 +230,13 @@ void mexFunction
         if (b_type == GrB_FP32)
         { 
             float b_value = 0 ;
-            OK (GrB_Matrix_extractElement (&b_value, b, 0, 0)) ;
+            OK (GrB_Matrix_extractElement_FP32 (&b_value, b, 0, 0)) ;
             b_is_nan = isnan (b_value) ;
         }
         else if (b_type == GrB_FP64)
         { 
             double b_value = 0 ;
-            OK (GrB_Matrix_extractElement (&b_value, b, 0, 0)) ;
+            OK (GrB_Matrix_extractElement_FP64 (&b_value, b, 0, 0)) ;
             b_is_nan = isnan (b_value) ;
         }
 
@@ -278,17 +278,17 @@ void mexFunction
     // compute C<M> += select (A, b2)
     //--------------------------------------------------------------------------
 
-    OK (GxB_select (C, M, accum, op, A, b2, desc)) ;
+    OK (GxB_Matrix_select (C, M, accum, op, A, b2, desc)) ;
 
     //--------------------------------------------------------------------------
     // free shallow copies
     //--------------------------------------------------------------------------
 
-    OK (GrB_free (&M)) ;
-    OK (GrB_free (&A)) ;
-    OK (GrB_free (&b)) ;
-    OK (GrB_free (&desc)) ;
-    OK (GrB_free (&nan_test)) ;
+    OK (GrB_Matrix_free (&M)) ;
+    OK (GrB_Matrix_free (&A)) ;
+    OK (GrB_Matrix_free (&b)) ;
+    OK (GrB_Descriptor_free (&desc)) ;
+    OK (GrB_BinaryOp_free (&nan_test)) ;
 
     //--------------------------------------------------------------------------
     // export the output matrix C back to MATLAB

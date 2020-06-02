@@ -2,7 +2,7 @@
 // GB_ix_resize:  reallocate a matrix with some slack for future growth
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -25,7 +25,7 @@ GrB_Info GB_ix_resize           // resize a matrix
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (A, "A to resize", GB0)) ;
+    ASSERT_MATRIX_OK (A, "A to resize", GB0) ;
 
     GrB_Info info ;
     int64_t anzmax_orig = A->nzmax ;
@@ -54,7 +54,7 @@ GrB_Info GB_ix_resize           // resize a matrix
 
         info = GB_ix_realloc (A, anzmax_new, true, Context) ;
         ASSERT (info == GrB_SUCCESS) ;
-        ASSERT_OK (GB_check (A, "A trimmed in size", GB0)) ;
+        ASSERT_MATRIX_OK (A, "A trimmed in size", GB0) ;
 
     }
     else if (anz_new > anzmax_orig)
@@ -80,7 +80,7 @@ GrB_Info GB_ix_resize           // resize a matrix
             GB_PHIX_FREE (A) ;
             return (info) ;
         }
-        ASSERT_OK (GB_check (A, "A increased in size", GB0)) ;
+        ASSERT_MATRIX_OK (A, "A increased in size", GB0) ;
 
     }
     else
@@ -93,7 +93,7 @@ GrB_Info GB_ix_resize           // resize a matrix
         // nnz(A) has changed but the old space is enough to use as-is;
         // do nothing
         ASSERT (anz_new <= anzmax_orig) ;
-        ASSERT_OK (GB_check (A, "A left as-is", GB0)) ;
+        ASSERT_MATRIX_OK (A, "A left as-is", GB0) ;
     }
 
     //--------------------------------------------------------------------------

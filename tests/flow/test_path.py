@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 from redisgraph import Graph, Node, Edge, Path
 from collections import Counter
 
@@ -14,7 +15,7 @@ redis_graph = None
 
 class testPath(FlowTestsBase):
     def __init__(self):
-        super(testPath, self).__init__()
+        self.env = Env()
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
@@ -158,4 +159,38 @@ class testPath(FlowTestsBase):
 
         query_info = QueryInfo(query = query, description="Tests path with zero length variable length paths", \
                                         expected_result = expected_results)
+        self._assert_resultset_and_expected_mutually_included(redis_graph.query(query), query_info)
+
+    def test_path_comparison(self):
+        node0 = Node(node_id=0, label="L1")
+        node1 = Node(node_id=1, label="L1")
+        node2 = Node(node_id=2, label="L1")
+        edge01 = Edge(node0, "R1", node1, edge_id=0, properties={'value': 1})
+        edge12 = Edge(node1, "R1", node2, edge_id=1, properties={'value': 2})
+
+        redis_graph.add_node(node0)
+        redis_graph.add_node(node1)
+        redis_graph.add_node(node2)
+        redis_graph.add_edge(edge01)
+        redis_graph.add_edge(edge12)
+
+        redis_graph.flush()
+
+        path01 = Path.new_empty_path().add_node(node0).add_edge(edge01).add_node(node1)
+        path12 = Path.new_empty_path().add_node(node1).add_edge(edge12).add_node(node2)
+
+        # Test a path equality filter
+        query = "MATCH p1 = (:L1)-[:R1]->(:L1) MATCH p2 = (:L1)-[:R1]->(:L1) WHERE p1 = p2 RETURN p1"
+        expected_results = [[path01],
+                            [path12]]
+
+        query_info = QueryInfo(query=query, description="Test path equality", expected_result=expected_results)
+        self._assert_resultset_and_expected_mutually_included(redis_graph.query(query), query_info)
+
+        # Test a path inequality filter
+        query = "MATCH p1 = (:L1)-[:R1]->(:L1) MATCH p2 = (:L1)-[:R1]->(:L1) WHERE p1 <> p2 RETURN DISTINCT p1, p2"
+        expected_results = [[path01, path12],
+                            [path12, path01]]
+
+        query_info = QueryInfo(query=query, description="Test path inequality", expected_result=expected_results)
         self._assert_resultset_and_expected_mutually_included(redis_graph.query(query), query_info)

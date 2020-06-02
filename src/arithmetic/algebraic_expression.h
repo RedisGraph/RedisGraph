@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -203,12 +203,10 @@ void AlgebraicExpression_AddToTheRight
 );
 
 // Transpose expression
-// T(T(A)) = A
-// T(A + B) = T(A) + T(B)
-// T(A * B) = T(B) * T(B)
+// By wrapping exp in a transpose root node.
 void AlgebraicExpression_Transpose
 (
-    AlgebraicExpression *exp    // Expression to transpose.
+    AlgebraicExpression **exp    // Expression to transpose.
 );
 
 // Evaluate expression tree.

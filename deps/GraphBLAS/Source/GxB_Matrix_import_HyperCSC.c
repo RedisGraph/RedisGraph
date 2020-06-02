@@ -2,7 +2,7 @@
 // GxB_Matrix_import_HyperCSC: import a matrix in hypersparse CSC format
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -34,6 +34,7 @@ GrB_Info GxB_Matrix_import_HyperCSC     // import a hypersparse CSC matrix
 
     GB_WHERE ("GxB_Matrix_import_HyperCSC (&A, type, nrows, ncols, nvals,"
         " nonempty, nvec, &Ah, &Ap, &Ai, &Ax, desc)") ;
+    GB_BURBLE_START ("GxB_Matrix_import_HyperCSC") ;
     GB_IMPORT_CHECK ;
 
     GB_RETURN_IF_NULL (Ah) ;
@@ -100,7 +101,8 @@ GrB_Info GxB_Matrix_import_HyperCSC     // import a hypersparse CSC matrix
     ASSERT (*Ap == NULL) ;
     ASSERT (*Ai == NULL) ;
     ASSERT (*Ax == NULL) ;
-    ASSERT_OK (GB_check (*A, "A hyper CSC imported", GB0)) ;
+    ASSERT_MATRIX_OK (*A, "A hyper CSC imported", GB0) ;
+    GB_BURBLE_END ;
     return (GrB_SUCCESS) ;
 }
 

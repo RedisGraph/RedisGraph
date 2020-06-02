@@ -23,6 +23,7 @@ supported.
 ### Query structure
 
 - MATCH
+- OPTIONAL MATCH
 - WHERE
 - RETURN
 - ORDER BY
@@ -128,6 +129,62 @@ The syntactic sugar `(person_a)<-[:KNOWS]->(person_b)` will return the same resu
 
 The bracketed edge description can be omitted if all relations should be considered: `(person_a)--(person_b)`.
 
+##### Named paths
+
+Named path variables are created by assigning a path in a MATCH clause to a single alias with the syntax:
+`MATCH named_path = (path)-[to]->(capture)`
+
+The named path includes all entities in the path, regardless of whether they have been explicitly aliased. Named paths can be accessed using [designated built-in functions](#path-functions) or returned directly if using a language-specific client.
+
+Example:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH p=(charlie:actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]->(:actor)
+RETURN nodes(p) as actors"
+```
+
+This query will produce all the paths matching the pattern contained in the named path `p`. All of these paths will share the same starting point, the actor node representing Charlie Sheen, but will otherwise vary in length and contents. Though the variable-length traversal and `(:actor)` endpoint are not explicitly aliased, all nodes and edges traversed along the path will be included in `p`. In this case, we are only interested in the nodes of each path, which we'll collect using the built-in function `nodes()`. The returned value will contain, in order, Charlie Sheen, between 0 and 2 intermediate nodes, and the unaliased endpoint.
+
+#### OPTIONAL MATCH
+
+The OPTIONAL MATCH clause is a MATCH variant that produces null values for elements that do not match successfully, rather than the all-or-nothing logic for patterns in MATCH clauses.
+
+It can be considered to fill the same role as LEFT/RIGHT JOIN does in SQL, as MATCH entities must be resolved but nodes and edges introduced in OPTIONAL MATCH will be returned as nulls if they cannot be found.
+
+OPTIONAL MATCH clauses accept the same patterns as standard MATCH clauses, and may similarly be modified by WHERE clauses.
+
+Multiple MATCH and OPTIONAL MATCH clauses can be chained together, though a mandatory MATCH cannot follow an optional one.
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (p:Person) OPTIONAL MATCH (p)-[w:WORKS_AT]->(c:Company)
+WHERE w.start_date > 2016
+RETURN p, w, c"
+```
+
+All `Person` nodes are returned, as well as any `WORKS_AT` relations and `Company` nodes that can be resolved and satisfy the `start_date` constraint. For each `Person` that does not resolve the optional pattern, the person will be returned as normal and the non-matching elements will be returned as null.
+
+Cypher is lenient in its handling of null values, so actions like property accesses and function calls on null values will return null values rather than emit errors.
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (p:Person) OPTIONAL MATCH (p)-[w:WORKS_AT]->(c:Company)
+RETURN p, w.department, ID(c) as ID"
+```
+
+In this case, `w.department` and `ID` will be returned if the OPTIONAL MATCH was successful, and will be null otherwise.
+
+Clauses like SET, CREATE, MERGE, and DELETE will ignore null inputs and perform the expected updates on real inputs. One exception to this is that attempting to create a relation with a null endpoint will cause an error:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (p:Person) OPTIONAL MATCH (p)-[w:WORKS_AT]->(c:Company)
+CREATE (c)-[:NEW_RELATION]->(:NEW_NODE)"
+```
+
+If `c` is null for any record, this query will emit an error. In this case, no changes to the graph are committed, even if some values for `c` were resolved.
+
 #### WHERE
 
 This clause is not mandatory, but if you want to filter results, you can specify your predicates here.
@@ -151,17 +208,17 @@ Be sure to wrap predicates within parentheses to control precedence.
 
 Examples:
 
-```sh
+```
 WHERE (actor.name = "john doe" OR movie.rating > 8.8) AND movie.votes <= 250)
 ```
 
-```sh
+```
 WHERE actor.age >= director.age AND actor.age > 32
 ```
 
 It is also possible to specify equality predicates within nodes using the curly braces as such:
 
-```sh
+```
 (:president {name:"Jed Bartlett"})-[:won]->(:state)
 ```
 
@@ -244,13 +301,14 @@ Order by specifies that the output be sorted and how.
 
 You can order by multiple properties by stating each variable in the ORDER BY clause.
 
+Each property may specify its sort order with `ASC`/`ASCENDING` or `DESC`/`DESCENDING`. If no order is specified, it defaults to ascending.
+
 The result will be sorted by the first variable listed.
 
-For equal values, it will go to the next property in the ORDER BY
-clause, and so on.
+For equal values, it will go to the next property in the ORDER BY clause, and so on.
 
 ```sh
-ORDER BY <alias.property list> [ASC/DESC]
+ORDER BY <alias.property [ASC/DESC] list>
 ```
 
 Below we sort our friends by height. For equal heights, weight is used to break ties.
@@ -278,7 +336,7 @@ GRAPH.QUERY DEMO_GRAPH "MATCH (p:person) RETURN p ORDER BY p.name SKIP 100 LIMIT
 Although not mandatory, you can use the limit clause
 to limit the number of records returned by a query:
 
-```sh
+```
 LIMIT <max records to return>
 ```
 
@@ -659,7 +717,7 @@ GRAPH.QUERY DEMO_GRAPH "DROP INDEX ON :person(age)"
 
 ## Full-text indexes
 
-RedisGraph leverages the indexing capabilities of RediSearch to provide full-text indexes through procedure calls. To construct a full-text index on the `title` property of all nodes with label `movie`, use the syntax:
+RedisGraph leverages the indexing capabilities of [RediSearch](https://oss.redislabs.com/redisearch/index.html) to provide full-text indices through procedure calls. To construct a full-text index on the `title` property of all nodes with label `movie`, use the syntax:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('movie', 'title')"
@@ -734,4 +792,26 @@ Returns: `String representation of a query execution plan`
 
 ```sh
 GRAPH.EXPLAIN us_government "MATCH (p:president)-[:born]->(h:state {name:'Hawaii'}) RETURN p"
+```
+
+## GRAPH.SLOWLOG
+
+Returns a list containing up to 10 of the slowest queries issued against given graph id.
+
+Each item in the list has the following structure:
+1. A unix timestamp at which the logged was processed.
+2. The issued command.
+3. The issued query.
+4. The amount of time needed for its execution, in milliseconds.
+
+```sh
+GRAPH.SLOWLOG graph_id
+ 1) 1) "1581932396"
+    2) "GRAPH.QUERY"
+    3) "MATCH (a:person)-[:friend]->(e) RETURN e.name"
+    4) "0.831"
+ 2) 1) "1581932396"
+    2) "GRAPH.QUERY"
+    3) "MATCH (ME:person)-[:friend]->(:person)-[:friend]->(fof:person) RETURN fof.name"
+    4) "0.288"
 ```

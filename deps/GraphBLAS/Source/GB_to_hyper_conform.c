@@ -2,7 +2,7 @@
 // GB_to_hyper_conform: conform a matrix to its desired hypersparse format
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -27,7 +27,7 @@ GrB_Info GB_to_hyper_conform    // conform a matrix to its desired format
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT_OK_OR_JUMBLED (GB_check (A, "A to conform", GB0)) ;
+    ASSERT_MATRIX_OK_OR_JUMBLED (A, "A to conform", GB0) ;
     ASSERT (GB_ZOMBIES_OK (A)) ;
     ASSERT (!GB_PENDING (A)) ;
 
@@ -67,7 +67,7 @@ GrB_Info GB_to_hyper_conform    // conform a matrix to its desired format
     // return result
     //--------------------------------------------------------------------------
 
-    ASSERT_OK_OR_JUMBLED (GB_check (A, "A conformed", GB0)) ;
+    ASSERT_MATRIX_OK_OR_JUMBLED (A, "A conformed", GB0) ;
     return (GrB_SUCCESS) ;
 }
 

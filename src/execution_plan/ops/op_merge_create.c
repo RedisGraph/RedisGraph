@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -12,6 +12,7 @@
 
 /* Forward declarations. */
 static Record MergeCreateConsume(OpBase *opBase);
+static OpBase *MergeCreateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void MergeCreateFree(OpBase *opBase);
 
 // Convert a graph entity's components into an identifying hash code.
@@ -51,16 +52,18 @@ static void _RollbackPendingCreations(OpMergeCreate *op) {
 	}
 }
 
-OpBase *NewMergeCreateOp(const ExecutionPlan *plan, ResultSetStatistics *stats,
-						 NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
+OpBase *NewMergeCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCreateCtx *edges) {
 	OpMergeCreate *op = rm_calloc(1, sizeof(OpMergeCreate));
 	op->unique_entities = raxNew();       // Create a map to unique pending creations.
 	op->hash_state = XXH64_createState(); // Create a hash state.
-	op->pending = NewPendingCreationsContainer(stats, nodes, edges); // Prepare all creation variables.
+
+	op->pending = NewPendingCreationsContainer(nodes, edges); // Prepare all creation variables.
+	op->handoff_mode = false;
+	op->records = array_new(Record, 32);
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_MERGE_CREATE, "MergeCreate", NULL, MergeCreateConsume,
-				NULL, NULL, MergeCreateFree, true, plan);
+				NULL, NULL, MergeCreateClone, MergeCreateFree, true, plan);
 
 	uint node_blueprint_count = array_len(nodes);
 	uint edge_blueprint_count = array_len(edges);
@@ -90,10 +93,13 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		QGNode *n = op->pending.nodes_to_create[i].node;
 
 		/* Create a new node. */
-		Node *newNode = Record_GetNode(r, op->pending.nodes_to_create[i].node_idx);
-		newNode->entity = NULL;
-		newNode->label = n->label;
-		newNode->labelID = n->labelID;
+		Node newNode = {
+			.entity = NULL,
+			.label = n->label,
+			.labelID = n->labelID
+		};
+		/* Add new node to Record and save a reference to it. */
+		Node *node_ref = Record_AddNode(r, op->pending.nodes_to_create[i].node_idx, newNode);
 
 		/* Convert query-level properties. */
 		PropertyMap *map = op->pending.nodes_to_create[i].properties;
@@ -104,7 +110,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		_IncrementalHashEntity(op->hash_state, n->label, converted_properties);
 
 		/* Save node for later insertion. */
-		op->pending.created_nodes = array_append(op->pending.created_nodes, newNode);
+		op->pending.created_nodes = array_append(op->pending.created_nodes, node_ref);
 
 		/* Save properties to insert with node. */
 		op->pending.node_properties = array_append(op->pending.node_properties, converted_properties);
@@ -119,11 +125,21 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		Node *src_node = Record_GetNode(r, op->pending.edges_to_create[i].src_idx);
 		Node *dest_node = Record_GetNode(r, op->pending.edges_to_create[i].dest_idx);
 
+		/* Verify that the endpoints of the new edge resolved properly; fail otherwise. */
+		if(!src_node || !dest_node) {
+			char *error;
+			asprintf(&error, "Failed to create relationship; endpoint was not found.");
+			QueryCtx_SetError(error);
+			QueryCtx_RaiseRuntimeException();
+		}
+
 		/* Create the actual edge. */
-		Edge *newEdge = Record_GetEdge(r, op->pending.edges_to_create[i].edge_idx);
-		if(array_len(e->reltypes) > 0) newEdge->relationship = e->reltypes[0];
-		Edge_SetSrcNode(newEdge, src_node);
-		Edge_SetDestNode(newEdge, dest_node);
+		Edge newEdge = {0};
+		if(array_len(e->reltypes) > 0) newEdge.relationship = e->reltypes[0];
+		Edge_SetSrcNode(&newEdge, src_node);
+		Edge_SetDestNode(&newEdge, dest_node);
+
+		Edge *edge_ref = Record_AddEdge(r, op->pending.edges_to_create[i].edge_idx, newEdge);
 
 		/* Convert query-level properties. */
 		PropertyMap *map = op->pending.edges_to_create[i].properties;
@@ -150,7 +166,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		}
 
 		/* Save edge for later insertion. */
-		op->pending.created_edges = array_append(op->pending.created_edges, newEdge);
+		op->pending.created_edges = array_append(op->pending.created_edges, edge_ref);
 
 		/* Save properties to insert with node. */
 		op->pending.edge_properties = array_append(op->pending.edge_properties, converted_properties);
@@ -179,12 +195,9 @@ static Record MergeCreateConsume(OpBase *opBase) {
 	Record r;
 
 	// Return mode, all data was consumed.
-	if(op->records) return _handoff(op);
+	if(op->handoff_mode) return _handoff(op);
 
 	// Consume mode.
-	op->records = array_new(Record, 32);
-
-	OpBase *child = NULL;
 	if(!opBase->childCount) {
 		// No child operation to call.
 		r = OpBase_CreateRecord(opBase);
@@ -196,28 +209,42 @@ static Record MergeCreateConsume(OpBase *opBase) {
 		// Save record for later use.
 		op->records = array_append(op->records, r);
 	} else {
-		// Pull data until child is depleted.
-		child = opBase->children[0];
-		while((r = OpBase_Consume(child))) {
+		// Pull record from child.
+		r = OpBase_Consume(opBase->children[0]);
+		if(r) {
 			/* Create entities. */
 			if(_CreateEntities(op, r)) {
 				// Save record for later use.
 				op->records = array_append(op->records, r);
 			} else {
-				Record_Free(r);
+				OpBase_DeleteRecord(r);
 			}
 		}
 	}
 
+	// MergeCreate returns no data while in creation mode.
+	return NULL;
+}
+
+void MergeCreate_Commit(OpBase *opBase) {
+	OpMergeCreate *op = (OpMergeCreate *)opBase;
+	op->handoff_mode = true;
 	/* Done reading, we're not going to call consume any longer
 	 * there might be operations e.g. index scan that need to free
 	 * index R/W lock, as such free all execution plan operation up the chain. */
-	if(child) OpBase_PropagateFree(child);
-
+	if(opBase->childCount > 0) OpBase_PropagateFree(opBase->children[0]);
 	// Create entities.
 	CommitNewEntities(opBase, &op->pending);
-	// Return record.
-	return _handoff(op);
+}
+
+static OpBase *MergeCreateClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_MERGE_CREATE);
+	OpMergeCreate *op = (OpMergeCreate *)opBase;
+	NodeCreateCtx *nodes;
+	EdgeCreateCtx *edges;
+	array_clone_with_cb(nodes, op->pending.nodes_to_create, NodeCreateCtx_Clone);
+	array_clone_with_cb(edges, op->pending.edges_to_create, EdgeCreateCtx_Clone);
+	return NewMergeCreateOp(plan, nodes, edges);
 }
 
 static void MergeCreateFree(OpBase *ctx) {
@@ -225,7 +252,7 @@ static void MergeCreateFree(OpBase *ctx) {
 
 	if(op->records) {
 		uint rec_count = array_len(op->records);
-		for(uint i = 0; i < rec_count; i++) Record_Free(op->records[i]);
+		for(uint i = 0; i < rec_count; i++) OpBase_DeleteRecord(op->records[i]);
 		array_free(op->records);
 		op->records = NULL;
 	}

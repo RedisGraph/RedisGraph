@@ -2,9 +2,17 @@
 // GraphBLAS/Demo/Source/mis_score.c: set random score
 //------------------------------------------------------------------------------
 
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+//------------------------------------------------------------------------------
+
 // Modified from the GraphBLAS C API Specification, by Aydin Buluc, Timothy
 // Mattson, Scott McMillan, Jose' Moreira, Carl Yang.  Based on "GraphBLAS
 // Mathematics" by Jeremy Kepner.
+
+// No copyright claim is made for this particular file; the above copyright
+// applies to all of SuiteSparse:GraphBLAS, not this file.
 
 #include "demos.h"
 

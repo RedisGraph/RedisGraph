@@ -2,7 +2,7 @@
 // GB_Monoid_new: create a GrB_Monoid
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -37,9 +37,8 @@ GrB_Info GB_Monoid_new          // create a monoid
     GB_RETURN_IF_NULL_OR_FAULTY (op) ;
     ASSERT (identity != NULL) ;
 
-    ASSERT_OK (GB_check (op, "op for monoid", GB0)) ;
+    ASSERT_BINARYOP_OK (op, "op for monoid", GB0) ;
     ASSERT (idcode <= GB_UDT_code) ;
-    ASSERT (idcode != GB_UCT_code) ;
 
     //--------------------------------------------------------------------------
     // rename built-in binary operators
@@ -120,15 +119,11 @@ GrB_Info GB_Monoid_new          // create a monoid
     // and this can be rigourously checked.  For all user-defined types,
     // identity is a mere void * pointer, and its actual type cannot be
     // compared with the input op->ztype parameter.  Only the type code,
-    // GB_UDT_code or GB_UCT_code, can be checked to see if it matches.  In
+    // GB_UDT_code, can be checked to see if it matches.  In
     // that case, all that is known is that identity is a void * pointer that
     // points to something, hopefully a scalar of the proper user-defined type.
 
-    // UCT code is treated as UDT, since GB_Monoid_new is never called with
-    // an idcode of UCT.
     GB_Type_code zcode = op->ztype->code ;
-    if (zcode == GB_UCT_code) zcode = GB_UDT_code ;
-
     if (idcode != zcode)
     { 
         return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
@@ -356,7 +351,7 @@ GrB_Info GB_Monoid_new          // create a monoid
         }
     }
 
-    ASSERT_OK (GB_check (mon, "new monoid", GB0)) ;
+    ASSERT_MONOID_OK (mon, "new monoid", GB0) ;
     return (GrB_SUCCESS) ;
 }
 

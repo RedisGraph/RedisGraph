@@ -2,7 +2,7 @@
 // GB_mex_setElement: MATLAB interface for A(i,j) = x
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -236,7 +236,6 @@ void mexFunction
             case GB_UINT64_code : METHOD (vset_UINT64 (A, Y, I, ni)) ; break ;
             case GB_FP32_code   : METHOD (vset_FP32   (A, Y, I, ni)) ; break ;
             case GB_FP64_code   : METHOD (vset_FP64   (A, Y, I, ni)) ; break ;
-            case GB_UCT_code    :
             case GB_UDT_code    : METHOD (vset_UDT    (A, Y, I, ni)) ; break ;
             default:
                 FREE_ALL ;
@@ -259,7 +258,6 @@ void mexFunction
             case GB_UINT64_code : METHOD (set_UINT64 (A, Y, I, J, ni)) ; break ;
             case GB_FP32_code   : METHOD (set_FP32   (A, Y, I, J, ni)) ; break ;
             case GB_FP64_code   : METHOD (set_FP64   (A, Y, I, J, ni)) ; break ;
-            case GB_UCT_code    :
             case GB_UDT_code    : METHOD (set_UDT    (A, Y, I, J, ni)) ; break ;
             default:
                 FREE_ALL ;
@@ -268,7 +266,7 @@ void mexFunction
     }
 
     // only do debug checks after adding lots of tuples
-    if (ni > 1000) ASSERT_OK (GB_check (A, "A added pending tuples", GB0)) ;
+    if (ni > 1000) ASSERT_MATRIX_OK (A, "A added pending tuples", GB0) ;
 
     // return A to MATLAB as a struct and free the GraphBLAS A
     pargout [0] = GB_mx_Matrix_to_mxArray (&A, "A output", true) ;

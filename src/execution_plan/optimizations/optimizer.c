@@ -1,13 +1,17 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
 #include "./optimizer.h"
 #include "./optimizations.h"
+#include "../../query_ctx.h"
 
-void optimizePlan(ExecutionPlan *plan) {
+void _optimizePlan(ExecutionPlan *plan) {
+	// Tries to compact filter trees, and remove redundant filters.
+	compactFilters(plan);
+
 	/* Scan optimizations order:
 	 * 1. First try to use the indices. Given a label scan and an indexed property, apply index scan.
 	 * 2. Given a filter which checks id condition, and full or label scan, reduce it to id scan or label with id scan.
@@ -23,6 +27,9 @@ void optimizePlan(ExecutionPlan *plan) {
 
 	/* Remove redundant SCAN operations. */
 	reduceScans(plan);
+
+	/* Try to optimize cartesian product */
+	reduceCartesianProductStreamCount(plan);
 
 	/* Try to match disjoint entities by applying a join */
 	applyJoin(plan);
@@ -41,3 +48,11 @@ void optimizePlan(ExecutionPlan *plan) {
 	reduceCount(plan);
 }
 
+void optimizePlan(ExecutionPlan *plan) {
+	/* Handle UNION of execution plans. */
+	if(plan->is_union) {
+		for(uint i = 0; i < plan->segment_count; i++) _optimizePlan(plan->segments[i]);
+	} else {
+		_optimizePlan(plan);
+	}
+}

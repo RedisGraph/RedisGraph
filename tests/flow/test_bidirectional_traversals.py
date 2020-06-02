@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 
 from redisgraph import Graph, Node, Edge
 
@@ -13,7 +14,7 @@ graph_with_cycle = None
 
 class testBidirectionalTraversals(FlowTestsBase):
     def __init__(self):
-        super(testBidirectionalTraversals, self).__init__()
+        self.env = Env()
         global redis_con
         redis_con = self.env.getConnection()
         self.populate_acyclic_graph()
@@ -32,10 +33,10 @@ class testBidirectionalTraversals(FlowTestsBase):
             nodes.append(node)
             acyclic_graph.add_node(node)
 
-        edge = Edge(nodes[0], "E", nodes[1])
+        edge = Edge(nodes[0], "E", nodes[1], properties={"val": 0})
         acyclic_graph.add_edge(edge)
 
-        edge = Edge(nodes[1], "E", nodes[2])
+        edge = Edge(nodes[1], "E", nodes[2], properties={"val": 1})
         acyclic_graph.add_edge(edge)
 
         acyclic_graph.commit()
@@ -275,5 +276,79 @@ class testBidirectionalTraversals(FlowTestsBase):
                            ['v2', 'v2'],
                            ['v2', 'v3'],
                            ['v3', 'v2'],
+                           ['v3', 'v3']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test11_bidirectional_multiple_edge_type(self):
+        # Construct a simple graph:
+        # (a)-[E1]->(b), (c)-[E2]->(d)
+
+        g = Graph("multi_edge_type", redis_con)
+
+        a = Node(properties={'val': 'a'})
+        b = Node(properties={'val': 'b'})
+        c = Node(properties={'val': 'c'})
+        d = Node(properties={'val': 'd'})
+        g.add_node(a)
+        g.add_node(b)
+        g.add_node(c)
+        g.add_node(d)
+
+        ab = Edge(a, "E1", b)
+        cd = Edge(c, "E2", d)
+        g.add_edge(ab)
+        g.add_edge(cd)
+
+        g.flush()
+
+        query = """MATCH (a)-[:E1|:E2]-(z) RETURN a.val, z.val ORDER BY a.val, z.val"""
+        actual_result = g.query(query)
+
+        expected_result = [['a', 'b'],
+                           ['b', 'a'],
+                           ['c', 'd'],
+                           ['d', 'c']]
+
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Test bidirectional traversals resolved by an ExpandInto op.
+    def test12_bidirectional_expand_into(self):
+        query = """MATCH (a), (b) WITH a, b MATCH (a)-[e:E]-(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        actual_result = acyclic_graph.query(query)
+        # Each relation should appear twice with the source and destination swapped in the second result.
+        expected_result = [['v1', 'v2'],
+                           ['v2', 'v1'],
+                           ['v2', 'v3'],
+                           ['v3', 'v2']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Verify result against the equivalent conditional traversal.
+        query = """MATCH (a)-[:E]-(b) RETURN a.val, b.val ORDER BY a.val, b.val"""
+        traverse_result = acyclic_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, traverse_result.result_set)
+
+        # Test undirected traversals with a referenced edge.
+        query = """MATCH (a), (b) WITH a, b MATCH (a)-[e:E]-(b) RETURN e.val, a.val, b.val ORDER BY e.val, a.val, b.val"""
+        actual_result = acyclic_graph.query(query)
+        expected_result = [[0, 'v1', 'v2'],
+                           [0, 'v2', 'v1'],
+                           [1, 'v2', 'v3'],
+                           [1, 'v3', 'v2']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Verify result against the equivalent conditional traversal.
+        query = """MATCH (a)-[e:E]-(b) RETURN e.val, a.val, b.val ORDER BY e.val, a.val, b.val"""
+        traverse_result = acyclic_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, traverse_result.result_set)
+
+    def test13_multiple_bidirectional_edges(self):
+        # Traverse over 2 bidirectional edges.
+        query = """MATCH (a)-[]-()-[]-(c) RETURN a.val, c.val ORDER BY a.val, c.val"""
+
+        actual_result = acyclic_graph.query(query)
+        expected_result = [['v1', 'v1'],
+                           ['v1', 'v3'],
+                           ['v2', 'v2'],
+                           ['v3', 'v1'],
                            ['v3', 'v3']]
         self.env.assertEquals(actual_result.result_set, expected_result)

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -36,3 +36,5 @@
 #include "op_merge_create.h"
 #include "op_semi_apply.h"
 #include "op_apply_multiplexer.h"
+#include "op_optional.h"
+

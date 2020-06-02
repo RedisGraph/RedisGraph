@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -118,17 +118,71 @@ AlgebraicExpression *AlgebraicExpression_Clone
 // AlgebraicExpression attributes.
 //------------------------------------------------------------------------------
 
-// Returns the source entity alias represented by the left-most operand row domain.
+// Forward declaration.
+static const char *_AlgebraicExpression_Source(AlgebraicExpression *root, bool transposed);
+
+// Returns the source entity alias (row domain)
+// Taking into consideration transpose
+static const char *_AlgebraicExpression_Operation_Source
+(
+	AlgebraicExpression *root,  // Root of expression.
+	bool transposed             // Is root transposed
+) {
+	switch(root->operation.op) {
+	case AL_EXP_ADD:
+		// Src (A+B) = Src(A)
+		// Src (Transpose(A+B)) = Src (Transpose(A)+Transpose(B)) = Src (Transpose(A))
+		return _AlgebraicExpression_Source(FIRST_CHILD(root), transposed);
+	case AL_EXP_MUL:
+		// Src (A*B) = Src(A)
+		// Src (Transpose(A*B)) = Src (Transpose(B)*Transpose(A)) = Src (Transpose(B))
+		if(transposed) return _AlgebraicExpression_Source(LAST_CHILD(root), transposed);
+		else return _AlgebraicExpression_Source(FIRST_CHILD(root), transposed);
+	case AL_EXP_TRANSPOSE:
+		// Src (Transpose(Transpose(A))) = Src(A)
+		// Negate transpose.
+		return _AlgebraicExpression_Source(FIRST_CHILD(root), !transposed);
+	default:
+		assert("Unknown algebraic expression operation" && false);
+	}
+}
+
+// Returns the source entity alias (row domain)
+// Taking into consideration transpose
+static const char *_AlgebraicExpression_Operand_Source
+(
+	AlgebraicExpression *root,  // Root of expression.
+	bool transposed             // Is root transposed
+) {
+	return (transposed) ? root->operand.dest : root->operand.src;
+}
+
+// Returns the source entity alias (row domain)
+// Taking into consideration transpose
+static const char *_AlgebraicExpression_Source
+(
+	AlgebraicExpression *root,  // Root of expression.
+	bool transposed             // Is root transposed
+) {
+	assert(root);
+	switch(root->type) {
+	case AL_OPERATION:
+		return _AlgebraicExpression_Operation_Source(root, transposed);
+	case AL_OPERAND:
+		return _AlgebraicExpression_Operand_Source(root, transposed);
+	default:
+		assert("Unknow algebraic expression node type" && false);
+	}
+}
+
+// Returns the source entity alias, row domain.
 const char *AlgebraicExpression_Source
 (
 	AlgebraicExpression *root   // Root of expression.
 ) {
 	assert(root);
-	while(root->type == AL_OPERATION) {
-		root = root->operation.children[0];
-	}
+	return _AlgebraicExpression_Source(root, false);
 
-	return root->operand.src;
 }
 
 // Returns the destination entity alias represented by the right-most operand column domain.
@@ -137,12 +191,9 @@ const char *AlgebraicExpression_Destination
 	AlgebraicExpression *root   // Root of expression.
 ) {
 	assert(root);
-	while(root->type == AL_OPERATION) {
-		uint child_count = AlgebraicExpression_ChildCount(root);
-		root = root->operation.children[child_count - 1];
-	}
-
-	return root->operand.dest;
+	// Dest(exp) = Src(Transpose(exp))
+	// Gotta love it!
+	return _AlgebraicExpression_Source(root, true);
 }
 
 /* Returns the first edge alias encountered.
@@ -321,8 +372,6 @@ AlgebraicExpression *AlgebraicExpression_RemoveLeftmostNode
 			if(child_count == 1) {
 				AlgebraicExpression *replacement = _AlgebraicExpression_OperationRemoveRightmostChild(prev);
 				_AlgebraicExpression_InplaceRepurpose(prev, replacement);
-				// Free replacement as it has been copied.
-				rm_free(replacement);
 			} else {
 				assert("for the timebing, we should not be here" && false);
 			}
@@ -363,8 +412,6 @@ AlgebraicExpression *AlgebraicExpression_RemoveRightmostNode
 		if(child_count == 1) {
 			AlgebraicExpression *replacement = _AlgebraicExpression_OperationRemoveRightmostChild(prev);
 			_AlgebraicExpression_InplaceRepurpose(prev, replacement);
-			// Free replacement as it has been copied.
-			rm_free(replacement);
 		}
 	}
 	return current;
@@ -464,3 +511,4 @@ void AlgebraicExpression_Free
 	}
 	rm_free(root);
 }
+

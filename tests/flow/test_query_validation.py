@@ -1,5 +1,6 @@
 import os
 import sys
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
 import redis
@@ -7,12 +8,14 @@ sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 
 from base import FlowTestsBase
 
+redis_con = None
 redis_graph = None
 
 class testQueryValidationFlow(FlowTestsBase):
 
     def __init__(self):
-        super(testQueryValidationFlow, self).__init__()
+        self.env = Env()
+        global redis_con
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph("G", redis_con)
@@ -151,4 +154,74 @@ class testQueryValidationFlow(FlowTestsBase):
             assert(False)
         except redis.exceptions.ResponseError:
             # Expecting an error.
+            pass
+
+    def test14_treat_path_as_entity(self):
+        redis_graph.query("CREATE ()-[:R]->()")
+        try:
+            query= """MATCH x=()-[]->() RETURN x.name"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass
+
+    def test15_dont_crash_on_multiple_errors(self):
+        try:
+            query = """MATCH (a) where id(a) IN range(0) OR id(a) in range(1)"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass
+
+    # Run a query in which a parsed parameter introduces a type in an unsupported context.
+    def test16_param_introduces_unhandled_type(self):
+        try:
+            query = """CYPHER props={a:1,b:2} CREATE (a:A $props)"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Encountered unhandled type" in e.message)
+            pass
+
+    # Validate that the module fails properly with incorrect argument counts.
+    def test17_query_arity(self):
+        # Call GRAPH.QUERY with a missing query argument.
+        try:
+            res = redis_con.execute_command("GRAPH.QUERY", "G")
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("wrong number of arguments" in e.message)
+            pass
+
+    # Run queries in which compile-time variables are accessed but not defined.
+    def test18_undefined_variable_access(self):
+        try:
+            query = """CREATE (:person{name:bar[1]})"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("not defined" in e.message)
+            pass
+
+        try:
+            query = """MATCH (a {val: undeclared}) RETURN a"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("not defined" in e.message)
+            pass
+
+        try:
+            query = """UNWIND [fake] AS ref RETURN ref"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("not defined" in e.message)
             pass

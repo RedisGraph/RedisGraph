@@ -2,7 +2,7 @@
 // GB_qsort_3: sort a 3-by-n list of integers, using A[0:2][] as the key
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -23,9 +23,9 @@
 
 // argument list for defining a function
 #define GB_args(A)                      \
-    int64_t *restrict A ## _0,          \
-    int64_t *restrict A ## _1,          \
-    int64_t *restrict A ## _2
+    int64_t *GB_RESTRICT A ## _0,          \
+    int64_t *GB_RESTRICT A ## _1,          \
+    int64_t *GB_RESTRICT A ## _2
 
 // each entry has a 3-integer key
 #define GB_K 3
@@ -45,9 +45,9 @@
 
 void GB_qsort_3     // sort array A of size 3-by-n, using 3 keys (A [0:2][])
 (
-    int64_t *restrict A_0,      // size n array
-    int64_t *restrict A_1,      // size n array
-    int64_t *restrict A_2,      // size n array
+    int64_t *GB_RESTRICT A_0,      // size n array
+    int64_t *GB_RESTRICT A_1,      // size n array
+    int64_t *GB_RESTRICT A_2,      // size n array
     const int64_t n
 )
 { 

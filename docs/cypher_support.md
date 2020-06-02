@@ -42,11 +42,7 @@ We do not support any of these properties at the type level, meaning nodes and r
 ## Clauses
 ### Reading Clauses
 + MATCH
-
-  **Unsupported:**
-
-- OPTIONAL MATCH
-- MANDATORY MATCH
++ OPTIONAL MATCH
 
 ### Projecting Clauses
 + RETURN
@@ -57,7 +53,6 @@ We do not support any of these properties at the type level, meaning nodes and r
 ### Reading sub-clauses
 + WHERE
 + ORDER BY
-    - ASC and DESC are supported at the level of the sub-clause, but not for individual properties (issue #96)
 + SKIP
 + LIMIT
 
@@ -91,9 +86,9 @@ We do not support any of these properties at the type level, meaning nodes and r
 
   **Unsupported:**
 
-- Casting functions (toBoolean, toFloat, toInteger)
-- Relationship functions (startNode, endNode, type)
-- Temporal arithmetics 
+- Some casting functions (toBoolean, toFloat)
+- Relationship functions (startNode, endNode)
+- Temporal arithmetic functions
 
 ### Aggregating functions
 + avg
@@ -108,11 +103,11 @@ We do not support any of these properties at the type level, meaning nodes and r
 + sum
 
 ### List functions
-+ head 
++ head
 + range
 + reverse
 + size
-+ tail 
++ tail
 
 ### Math functions - numeric
 + abs
@@ -163,8 +158,9 @@ We do not support any of these properties at the type level, meaning nodes and r
 
 ### String operators
 + String operators (STARTS WITH, ENDS WITH, CONTAINS) are supported.
-  
+
   **Unsupported:**
+
 - Regex operator
 
 
@@ -173,6 +169,13 @@ We do not support any of these properties at the type level, meaning nodes and r
 + OR
 + NOT
 + XOR
+
+## Parameters
+Parameters may be specified to allow for more flexible query construction:
+```sh
+MATCH (p:Person {name: $name_param}) RETURN p
+```
+Each RedisGraph client introduces a language-appropriate method for setting parameters, and is described in their documentation.
 
 ## Non-Cypher queries
 + RedisGraph provides the `GRAPH.EXPLAIN` command to print the execution plan of a provided query.

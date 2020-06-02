@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -16,6 +16,10 @@ typedef enum {
 	FORMATTER_VERBOSE = 1,
 	FORMATTER_COMPACT = 2,
 } ResultSetFormatterType;
+
+/* Retrieves result-set formatter.
+ * Returns NULL for an unknown formatter type. */
+ResultSetFormatter* ResultSetFormatter_GetFormatter(ResultSetFormatterType t);
 
 /* Reply formater which does absolutely nothing.
  * used when profiling a query */

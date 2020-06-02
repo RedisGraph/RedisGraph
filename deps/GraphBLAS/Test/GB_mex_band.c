@@ -2,7 +2,7 @@
 // GB_mex_band: C = tril (triu (A,lo), hi), or with A'
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -11,7 +11,7 @@
 
 #include "GB_mex.h"
 
-#define USAGE "C = GB_mex_band (A, lo, hi, atranspose, pre)"
+#define USAGE "C = GB_mex_band (A, lo, hi, atranspose)"
 
 #define FREE_ALL                        \
 {                                       \
@@ -77,7 +77,7 @@ void mexFunction
 
     // check inputs
     GB_WHERE (USAGE) ;
-    if (nargout > 1 || nargin < 3 || nargin > 5)
+    if (nargout > 1 || nargin < 3 || nargin > 4)
     {
         mexErrMsgTxt ("Usage: " USAGE) ;
     }
@@ -91,13 +91,8 @@ void mexFunction
     }
 
     // create the Thunk
-    #ifdef MY_BAND
-    Thunk_type = My_bandwidth_type ;
-    my_bandwidth_type bandwidth ;
-    #else
     LoHi_type bandwidth  ;
     OK (GrB_Type_new (&Thunk_type, sizeof (LoHi_type))) ;
-    #endif
 
     // get lo and hi
     bandwidth.lo = (int64_t) mxGetScalar (pargin [1]) ;
@@ -107,7 +102,6 @@ void mexFunction
     OK (GxB_Scalar_setElement_UDT (Thunk, (void *) &bandwidth)) ;
     GrB_Index ignore ;
     OK (GxB_Scalar_nvals (&ignore, Thunk)) ;
-    // GxB_print (Thunk, 3) ;
 
     // get atranspose
     bool atranspose = false ;
@@ -118,25 +112,11 @@ void mexFunction
         OK (GxB_set (desc, GrB_INP0, GrB_TRAN)) ;
     }
 
-    // get the pre/run-time option
-    int GET_SCALAR (4, int, pre, 0) ;
-
     GB_MEX_TIC ;
 
     // create operator
-    op = NULL ;
-    if (pre)
-    {
-        // use the compile-time defined operator, My_band
-        #ifdef MY_BAND
-        op = My_band ;
-        #endif
-    }
-    if (op == NULL)
-    {
-        // use the run-time defined operator, from the band function
-        METHOD (GxB_SelectOp_new (&op, band, NULL, Thunk_type)) ;
-    }
+    // use the user-defined operator, from the band function
+    METHOD (GxB_SelectOp_new (&op, band, NULL, Thunk_type)) ;
 
     // create result matrix C
     if (atranspose)
