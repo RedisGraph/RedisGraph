@@ -312,7 +312,7 @@ static void _Pushdown_TransposeOperand
 	if(exp->operand.diagonal) return;
 
 	// A -> Transpose(A)
-	// We're going to repourpose exp, make a clone.
+	// We're going to repurpose exp, make a clone.
 	AlgebraicExpression *operand = AlgebraicExpression_Clone(exp);
 	_InplaceRepurposeOperandToOperation(exp, AL_EXP_TRANSPOSE);
 
@@ -418,7 +418,14 @@ static void _AlgebraicExpression_PushDownTranspose(AlgebraicExpression *root) {
 //------------------------------------------------------------------------------
 // Transpose an operand matrix and update the expression accordingly.
 static void _AlgebraicExpression_TransposeOperand(AlgebraicExpression *operand) {
-	if(operand->operand.diagonal == true) return;  // No need to transpose diagonal matrix.
+	// Swap the row and column domains of the operand.
+	const char *tmp = operand->operand.dest;
+	operand->operand.src = operand->operand.dest;
+	operand->operand.dest = tmp;
+
+	// Diagonal matrices do not need to be transposed.
+	if(operand->operand.diagonal == true) return;
+
 	GrB_Type type;
 	GrB_Index nrows;
 	GrB_Index ncols;
@@ -444,11 +451,6 @@ static void _AlgebraicExpression_TransposeOperand(AlgebraicExpression *operand) 
 	operand->operand.matrix = replacement;
 	// As this matrix was constructed, it must ultimately be freed.
 	operand->operand.bfree = true;
-
-	// Swap the row and column domains of the operand.
-	const char *tmp = operand->operand.dest;
-	operand->operand.src = operand->operand.dest;
-	operand->operand.dest = tmp;
 }
 
 /* Find transpose operations with an operand child and replace them with an actual transposed
@@ -474,7 +476,7 @@ static void _AlgebraicExpression_TransposeOperand(AlgebraicExpression *operand) 
  *                (*)
  *           (B')     (A')
  */
-static void _AlgebraicExpression_PerformTranspose(AlgebraicExpression *root) {
+static void _AlgebraicExpression_ApplyTranspose(AlgebraicExpression *root) {
 	uint child_count = 0;
 	AlgebraicExpression *child = NULL;
 
@@ -490,7 +492,7 @@ static void _AlgebraicExpression_PerformTranspose(AlgebraicExpression *root) {
 			child_count = AlgebraicExpression_ChildCount(root);
 			for(uint i = 0; i < child_count; i++) {
 				AlgebraicExpression *child = root->operation.children[i];
-				_AlgebraicExpression_PerformTranspose(child);
+				_AlgebraicExpression_ApplyTranspose(child);
 			}
 			break;
 
@@ -523,14 +525,14 @@ void AlgebraicExpression_Optimize
 ) {
 	assert(exp);
 
+	// Fetch the operand matrices now, as the ApplyTranspose optimization will utilize them.
+	_AlgebraicExpression_FetchOperands(*exp, QueryCtx_GetGraphCtx(), QueryCtx_GetGraph());
+
 	_AlgebraicExpression_PushDownTranspose(*exp);
 	_AlgebraicExpression_MulOverSum(exp);
 	_AlgebraicExpression_FlattenMultiplications(*exp);
 
-	// We need to fetch operand matrices now, as the PerformTranspose optimization will utilize them.
-	_AlgebraicExpression_FetchOperands(*exp, QueryCtx_GetGraphCtx(), QueryCtx_GetGraph());
-
 	// Replace transpose operators with actual transposed operands.
-	_AlgebraicExpression_PerformTranspose(*exp);
+	_AlgebraicExpression_ApplyTranspose(*exp);
 }
 

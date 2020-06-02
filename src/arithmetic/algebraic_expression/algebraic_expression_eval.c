@@ -35,6 +35,7 @@ static GrB_Matrix _Eval_Add(const AlgebraicExpression *exp, GrB_Matrix res) {
 	GrB_Matrix a = GrB_NULL;        // Left operand.
 	GrB_Matrix b = GrB_NULL;        // Right operand.
 	GrB_Matrix inter = GrB_NULL;    // Intermediate matrix.
+	GrB_Descriptor desc = GrB_NULL; // Descriptor used for transposing operands (currently unused).
 	bool res_in_use = false;        // Can we use `res` for intermediate evaluation.
 
 	// Get left and right operands.
@@ -46,46 +47,67 @@ static GrB_Matrix _Eval_Add(const AlgebraicExpression *exp, GrB_Matrix res) {
 	if(left->type == AL_OPERAND) {
 		a = left->operand.matrix;
 	} else {
-		a = _AlgebraicExpression_Eval(left, res);
-		res_in_use = true;
+		if(left->operation.op == AL_EXP_TRANSPOSE) {
+			a = left->operation.children[0]->operand.matrix;
+			if(desc == GrB_NULL) GrB_Descriptor_new(&desc);
+			GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
+		} else {
+			a = _AlgebraicExpression_Eval(left, res);
+			res_in_use = true;
+		}
 	}
 
 	/* If right operand is a matrix, simply get it.
 	 * Otherwise evaluate right hand side using `res` if free or create an additional matrix to store RHS value. */
 	if(right->type == AL_OPERAND) {
 		b = right->operand.matrix;
-	} else if(res_in_use) {
-		// `res` is in use, create an additional matrix.
-		GrB_Matrix_nrows(&nrows, a);
-		GrB_Matrix_ncols(&ncols, a);
-		info = GrB_Matrix_new(&inter, GrB_BOOL, nrows, ncols);
-		if(info != GrB_SUCCESS) {
-			fprintf(stderr, "%s", GrB_error());
-			assert(false);
-		}
-		b = _AlgebraicExpression_Eval(right, inter);
 	} else {
-		// `res` is not used just yet, use it for RHS evaluation.
-		b = _AlgebraicExpression_Eval(right, res);
+		if(right->operation.op == AL_EXP_TRANSPOSE) {
+			b = right->operation.children[0]->operand.matrix;
+			if(desc == GrB_NULL) GrB_Descriptor_new(&desc);
+			GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
+		} else if(res_in_use) {
+			// `res` is in use, create an additional matrix.
+			GrB_Matrix_nrows(&nrows, a);
+			GrB_Matrix_ncols(&ncols, a);
+			info = GrB_Matrix_new(&inter, GrB_BOOL, nrows, ncols);
+			if(info != GrB_SUCCESS) {
+				fprintf(stderr, "%s", GrB_error());
+				assert(false);
+			}
+			b = _AlgebraicExpression_Eval(right, inter);
+		} else {
+			// `res` is not used just yet, use it for RHS evaluation.
+			b = _AlgebraicExpression_Eval(right, res);
+		}
 	}
 
 	// Perform addition.
 	if(GrB_eWiseAdd_Matrix_Semiring(res, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, a, b,
-									GrB_NULL) != GrB_SUCCESS) {
+									desc) != GrB_SUCCESS) {
 		printf("Failed adding operands, error:%s\n", GrB_error());
 		assert(false);
 	}
 
+	// Reset descriptor if non-null.
+	if(desc != GrB_NULL) GrB_Descriptor_set(desc, GrB_INP0, GxB_DEFAULT);
+
 	uint child_count = AlgebraicExpression_ChildCount(exp);
 	// Expression has more than 2 operands, e.g. A+B+C...
 	for(uint i = 2; i < child_count; i++) {
+		// Reset descriptor if non-null.
+		if(desc != GrB_NULL) GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
 		right = CHILD_AT(exp, i);
 
 		if(right->type == AL_OPERAND) {
 			b = right->operand.matrix;
 		} else {
-			if(inter == GrB_NULL) {
-				// Can't use `res`, use an intermediate matrix.
+			if(right->operation.op == AL_EXP_TRANSPOSE) {
+				b = right->operation.children[0]->operand.matrix;
+				if(desc == GrB_NULL) GrB_Descriptor_new(&desc);
+				GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
+			} else if(inter == GrB_NULL) {
+				// Can't use `res`, use an intermidate matrix.
 				GrB_Matrix_nrows(&nrows, res);
 				GrB_Matrix_ncols(&ncols, res);
 				GrB_Matrix_new(&inter, GrB_BOOL, nrows, ncols);
@@ -102,6 +124,7 @@ static GrB_Matrix _Eval_Add(const AlgebraicExpression *exp, GrB_Matrix res) {
 	}
 
 	if(inter != GrB_NULL) GrB_Matrix_free(&inter);
+	if(desc != GrB_NULL) GrB_free(&desc);
 	return res;
 }
 
@@ -114,16 +137,29 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 	GrB_Matrix B;
 	GrB_Info info;
 	GrB_Index nvals;
+	GrB_Descriptor desc = GrB_NULL;
 	AlgebraicExpression *left = CHILD_AT(exp, 0);
 	AlgebraicExpression *right = CHILD_AT(exp, 1);
 
-	assert(left->type == AL_OPERAND && right->type == AL_OPERAND);
+	if(left->type == AL_OPERATION) {
+		assert(left->operation.op == AL_EXP_TRANSPOSE);
+		if(desc == GrB_NULL) GrB_Descriptor_new(&desc);
+		GrB_Descriptor_set(desc, GrB_INP0, GrB_TRAN);
+		left = CHILD_AT(left, 0);
+	}
 	A = left->operand.matrix;
+
+	if(right->type == AL_OPERATION) {
+		assert(right->operation.op == AL_EXP_TRANSPOSE);
+		if(desc == GrB_NULL) GrB_Descriptor_new(&desc);
+		GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
+		right = CHILD_AT(right, 0);
+	}
 	B = right->operand.matrix;
 
 	if(B == IDENTITY_MATRIX) {
 		// B is the identity matrix, Perform A * I.
-		info = GrB_Matrix_apply(res, GrB_NULL, GrB_NULL, GrB_IDENTITY_BOOL, A, GrB_NULL);
+		info = GrB_Matrix_apply(res, GrB_NULL, GrB_NULL, GrB_IDENTITY_BOOL, A, desc);
 		if(info != GrB_SUCCESS) {
 			// If the multiplication failed, print error info to stderr and exit.
 			fprintf(stderr, "Encountered an error in matrix multiplication:\n%s\n", GrB_error());
@@ -131,7 +167,7 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 		}
 	} else {
 		// Perform multiplication.
-		info = GrB_mxm(res, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, A, B, GrB_NULL);
+		info = GrB_mxm(res, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, A, B, desc);
 		if(info != GrB_SUCCESS) {
 			// If the multiplication failed, print error info to stderr and exit.
 			fprintf(stderr, "Encountered an error in matrix multiplication:\n%s\n", GrB_error());
@@ -141,15 +177,26 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 
 	GrB_Matrix_nvals(&nvals, res);
 
+	// Reset descriptor if non-null.
+	if(desc != GrB_NULL) GrB_Descriptor_set(desc, GrB_INP0, GxB_DEFAULT);
+
 	uint child_count = AlgebraicExpression_ChildCount(exp);
 	for(uint i = 2; i < child_count; i++) {
+		// Reset descriptor if non-null.
+		if(desc != GrB_NULL) GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
+
 		right = CHILD_AT(exp, i);
-		assert(right->type == AL_OPERAND);
+		if(right->type == AL_OPERATION) {
+			assert(right->operation.op == AL_EXP_TRANSPOSE);
+			if(desc == GrB_NULL) GrB_Descriptor_new(&desc);
+			GrB_Descriptor_set(desc, GrB_INP1, GrB_TRAN);
+			right = CHILD_AT(right, 0);
+		}
 		B = right->operand.matrix;
 
 		if(B != IDENTITY_MATRIX) {
 			// Perform multiplication.
-			info = GrB_mxm(res, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, res, B, GrB_NULL);
+			info = GrB_mxm(res, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, res, B, desc);
 			if(info != GrB_SUCCESS) {
 				// If the multiplication failed, print error info to stderr and exit.
 				fprintf(stderr, "Encountered an error in matrix multiplication:\n%s\n", GrB_error());
@@ -159,6 +206,8 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 		GrB_Matrix_nvals(&nvals, res);
 		if(nvals == 0) break;
 	}
+
+	if(desc != GrB_NULL) GrB_free(&desc);
 
 	return res;
 }
