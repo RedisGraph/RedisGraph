@@ -35,8 +35,8 @@ static GrB_Matrix _Eval_Add(const AlgebraicExpression *exp, GrB_Matrix res) {
 	GrB_Matrix a = GrB_NULL;        // Left operand.
 	GrB_Matrix b = GrB_NULL;        // Right operand.
 	GrB_Matrix inter = GrB_NULL;    // Intermediate matrix.
-	GrB_Descriptor desc = GrB_NULL; // Descriptor used for transposing operands (currently unused).
 	bool res_in_use = false;        // Can we use `res` for intermediate evaluation.
+	GrB_Descriptor desc = GrB_NULL; // Descriptor used for transposing operands (currently unused).
 
 	// Get left and right operands.
 	AlgebraicExpression *left = CHILD_AT(exp, 0);
@@ -158,6 +158,8 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 	B = right->operand.matrix;
 
 	if(B == IDENTITY_MATRIX) {
+		// Reset descriptor, as the identity matrix does not need to be transposed.
+		if(desc != GrB_NULL) GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
 		// B is the identity matrix, Perform A * I.
 		info = GrB_Matrix_apply(res, GrB_NULL, GrB_NULL, GrB_IDENTITY_BOOL, A, desc);
 		if(info != GrB_SUCCESS) {
@@ -195,6 +197,8 @@ static GrB_Matrix _Eval_Mul(const AlgebraicExpression *exp, GrB_Matrix res) {
 		B = right->operand.matrix;
 
 		if(B != IDENTITY_MATRIX) {
+			// Reset descriptor, as the identity matrix does not need to be transposed.
+			if(desc != GrB_NULL) GrB_Descriptor_set(desc, GrB_INP1, GxB_DEFAULT);
 			// Perform multiplication.
 			info = GrB_mxm(res, GrB_NULL, GrB_NULL, GxB_ANY_PAIR_BOOL, res, B, desc);
 			if(info != GrB_SUCCESS) {

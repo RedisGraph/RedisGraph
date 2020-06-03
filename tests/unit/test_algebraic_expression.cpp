@@ -271,6 +271,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		ASSERT_TRUE(a->type == AL_OPERAND);
 		ASSERT_TRUE(b->type == AL_OPERAND);
 		// Can't compare matrix pointers, as transpose ops will have rewritten them
+		// TODO re-enable this after introducing persistent transposed adjacency matrices.
 		// ASSERT_EQ(a->operand.matrix, b->operand.matrix);
 	}
 
