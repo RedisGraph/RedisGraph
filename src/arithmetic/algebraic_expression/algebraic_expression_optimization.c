@@ -491,19 +491,37 @@ static void _AlgebraicExpression_ApplyTranspose(AlgebraicExpression *root) {
 		case AL_EXP_POW:    // Fall through.
 			child_count = AlgebraicExpression_ChildCount(root);
 			for(uint i = 0; i < child_count; i++) {
-				AlgebraicExpression *child = root->operation.children[i];
+				child = root->operation.children[i];
 				_AlgebraicExpression_ApplyTranspose(child);
 			}
 			break;
 
 		case AL_EXP_TRANSPOSE:
 			// Transpose operands will currently always have an operand child, but
-			// since evalution can perform transposition we don't need to assert here.
-			if(root->operation.children[0]->type != AL_OPERAND) break;
+			// for future-proofing we will handle the operation case here.
+			child = root->operation.children[0];
+			if(child->type == AL_OPERATION) {
+				if(child->operation.op == AL_EXP_TRANSPOSE) {
+					/* If the child op is a transpose, we do not need to transpose anything, as
+					 * T(T(A)) == A */
+					// Disconnect the intermediate transpose op and its child.
+					child = _AlgebraicExpression_OperationRemoveRightmostChild(root);
+					AlgebraicExpression *grandchild = _AlgebraicExpression_OperationRemoveRightmostChild(root);
+					// Replace the current op with the grandchild.
+					_AlgebraicExpression_InplaceRepurpose(root, grandchild);
+					// Free the disconnected intermediate operation.
+					AlgebraicExpression_Free(child);
+					child = grandchild;
+				}
+
+				// Continue seeking transpose ops.
+				_AlgebraicExpression_ApplyTranspose(child);
+				break;
+			}
 
 			/* We have a transpose operation with an operand child.
 			 * Create a new transposed matrix and replace this operation with it. */
-			child = _AlgebraicExpression_OperationRemoveLeftmostChild(root);
+			child = _AlgebraicExpression_OperationRemoveRightmostChild(root);
 			_AlgebraicExpression_TransposeOperand(child);
 			_AlgebraicExpression_InplaceRepurpose(root, child);
 			break;

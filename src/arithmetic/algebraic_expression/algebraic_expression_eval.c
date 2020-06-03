@@ -32,10 +32,10 @@ static GrB_Matrix _Eval_Add(const AlgebraicExpression *exp, GrB_Matrix res) {
 	GrB_Info info;
 	GrB_Index nrows;                // Number of rows of operand.
 	GrB_Index ncols;                // Number of columns of operand.
+	bool res_in_use = false;        // Can we use `res` for intermediate evaluation.
 	GrB_Matrix a = GrB_NULL;        // Left operand.
 	GrB_Matrix b = GrB_NULL;        // Right operand.
 	GrB_Matrix inter = GrB_NULL;    // Intermediate matrix.
-	bool res_in_use = false;        // Can we use `res` for intermediate evaluation.
 	GrB_Descriptor desc = GrB_NULL; // Descriptor used for transposing operands (currently unused).
 
 	// Get left and right operands.
