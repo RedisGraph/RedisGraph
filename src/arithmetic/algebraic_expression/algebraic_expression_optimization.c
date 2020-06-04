@@ -506,12 +506,14 @@ static void _AlgebraicExpression_ApplyTranspose(AlgebraicExpression *root) {
 					 * T(T(A)) == A */
 					// Disconnect the intermediate transpose op and its child.
 					child = _AlgebraicExpression_OperationRemoveRightmostChild(root);
-					AlgebraicExpression *grandchild = _AlgebraicExpression_OperationRemoveRightmostChild(root);
+					AlgebraicExpression *grandchild = _AlgebraicExpression_OperationRemoveRightmostChild(child);
 					// Replace the current op with the grandchild.
 					_AlgebraicExpression_InplaceRepurpose(root, grandchild);
 					// Free the disconnected intermediate operation.
 					AlgebraicExpression_Free(child);
-					child = grandchild;
+					// The root has been replaced with the grandchild, and the intermediates have been freeed.
+					// Set the child pointer to root so that we can recurse properly.
+					child = root;
 				}
 
 				// Continue seeking transpose ops.
