@@ -206,63 +206,8 @@ AlgebraicExpression *_AlgebraicExpression_GetOperand
 	return __AlgebraicExpression_GetOperand(root, operand_idx, &current_operand_idx);
 }
 
-static void _AlgebraicExpression_UseTransposedMatrices(AlgebraicExpression *root,
-													   const GraphContext *gc,
-													   Graph *g) {
-	assert(root);
-	Schema *s = NULL;
-	uint child_count = 0;
-	GrB_Matrix M = GrB_NULL;
-	const char *label = NULL;
-	AlgebraicExpression *operand = NULL;
-
-	if(root->type == AL_OPERATION) {
-		switch(root->operation.op) {
-		case AL_EXP_ADD:
-		case AL_EXP_MUL:
-			// Keep searching for a transpose operation.
-			child_count = AlgebraicExpression_ChildCount(root);
-			for(int i = 0; i < child_count; i++) {
-				_AlgebraicExpression_UseTransposedMatrices(CHILD_AT(root, i), gc, g);
-			}
-			break;
-
-		case AL_EXP_TRANSPOSE:
-			/* Get transposed matrix out of the graph object
-			 * if transposed operand is NULL used transposed adjacency matrix.
-			 * othewise get transposed relationship matrix if exists
-			 * otherwise use the zero matrix. */
-			assert(AlgebraicExpression_ChildCount(root) == 1);
-			operand = _AlgebraicExpression_OperationRemoveRightmostChild(root);
-			assert(operand->type == AL_OPERAND);
-
-			/* Do not update matrix if already set.
-			 * algebraic expression test relies on this behavior. */
-			if(operand->operand.matrix != GrB_NULL) return;
-
-			label = operand->operand.label;
-			if(!label) {
-				// Use transposed adjacency matrix.
-				M = Graph_GetTransposedAdjacencyMatrix(g);
-			} else {
-				s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
-				M = (s) ? Graph_GetTransposedRelationMatrix(g, s->id) : Graph_GetZeroMatrix(g);
-			}
-
-			// Replace transposed operation with an operand.
-			operand->operand.matrix = M;
-			_AlgebraicExpression_InplaceRepurpose(root, operand);
-			AlgebraicExpression_Free(operand);
-			break;
-		default:
-			assert("Unknown algebraic operation type" && false);
-			break;
-		}
-	}
-}
-
-void __AlgebraicExpression_FetchOperands(AlgebraicExpression *exp, const GraphContext *gc,
-										 Graph *g) {
+void _AlgebraicExpression_FetchOperands(AlgebraicExpression *exp, const GraphContext *gc,
+										Graph *g) {
 	Schema *s = NULL;
 	uint child_count = 0;
 	GrB_Matrix m = GrB_NULL;
@@ -272,7 +217,7 @@ void __AlgebraicExpression_FetchOperands(AlgebraicExpression *exp, const GraphCo
 	case AL_OPERATION:
 		child_count = AlgebraicExpression_ChildCount(exp);
 		for(uint i = 0; i < child_count; i++) {
-			__AlgebraicExpression_FetchOperands(CHILD_AT(exp, i), gc, g);
+			_AlgebraicExpression_FetchOperands(CHILD_AT(exp, i), gc, g);
 		}
 		break;
 	case AL_OPERAND:
@@ -293,15 +238,8 @@ void __AlgebraicExpression_FetchOperands(AlgebraicExpression *exp, const GraphCo
 		}
 		break;
 	default:
-		assert("Unknow algebraic expression node type" && false);
+		assert("Unknown algebraic expression node type" && false);
 		break;
 	}
-}
-
-void _AlgebraicExpression_FetchOperands(AlgebraicExpression *exp, const GraphContext *gc,
-										Graph *g) {
-
-	_AlgebraicExpression_UseTransposedMatrices(exp, gc, g);
-	__AlgebraicExpression_FetchOperands(exp, gc, g);
 }
 
