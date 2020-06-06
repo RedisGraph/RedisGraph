@@ -24,7 +24,7 @@ void _InplaceRepurposeOperandToOperation
 // exp mustn't contain any children.
 void _AlgebraicExpression_InplaceRepurpose
 (
-    AlgebraicExpression *exp,           // Expression to repurpose.
+	AlgebraicExpression *exp,           // Expression to repurpose.
 	AlgebraicExpression *replacement    // Replacement expression taking over `exp`.
 );
 
@@ -106,7 +106,7 @@ AlgebraicExpression *_AlgebraicExpression_GetOperand
 // Resolves all missing operands.
 void _AlgebraicExpression_FetchOperands
 (
-    AlgebraicExpression *exp,   // Expression to resolve operands for.
-    const GraphContext *gc,     // Graph context.
-    Graph *g                    // Graph object.
+	AlgebraicExpression *exp,   // Expression to resolve operands for.
+	const GraphContext *gc,     // Graph context.
+	Graph *g                    // Graph object.
 );

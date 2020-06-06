@@ -53,8 +53,9 @@ static AlgebraicExpression *_AlgebraicExpression_CloneOperand
 (
 	const AlgebraicExpression *exp
 ) {
-	return AlgebraicExpression_NewOperand(exp->operand.matrix, exp->operand.diagonal, exp->operand.src,
-										  exp->operand.dest, exp->operand.edge, exp->operand.label);
+	AlgebraicExpression *clone = rm_malloc(sizeof(AlgebraicExpression));
+	memcpy(clone, exp, sizeof(AlgebraicExpression));
+	return clone;
 }
 
 //------------------------------------------------------------------------------
@@ -87,6 +88,7 @@ AlgebraicExpression *AlgebraicExpression_NewOperand
 	node->type = AL_OPERAND;
 	node->operand.matrix = mat;
 	node->operand.diagonal = diagonal;
+	node->operand.bfree = false;
 	node->operand.src = src;
 	node->operand.dest = dest;
 	node->operand.edge = edge;
@@ -108,7 +110,7 @@ AlgebraicExpression *AlgebraicExpression_Clone
 		return _AlgebraicExpression_CloneOperand(exp);
 		break;
 	default:
-		assert("Unknow algebraic expression node type" && false);
+		assert("Unknown algebraic expression node type" && false);
 		break;
 	}
 	return NULL;
@@ -171,7 +173,7 @@ static const char *_AlgebraicExpression_Source
 	case AL_OPERAND:
 		return _AlgebraicExpression_Operand_Source(root, transposed);
 	default:
-		assert("Unknow algebraic expression node type" && false);
+		assert("Unknown algebraic expression node type" && false);
 	}
 }
 
@@ -373,7 +375,7 @@ AlgebraicExpression *AlgebraicExpression_RemoveLeftmostNode
 				AlgebraicExpression *replacement = _AlgebraicExpression_OperationRemoveRightmostChild(prev);
 				_AlgebraicExpression_InplaceRepurpose(prev, replacement);
 			} else {
-				assert("for the timebing, we should not be here" && false);
+				assert("for the time being, we should not be here" && false);
 			}
 		}
 	}

@@ -37,25 +37,26 @@ static void _populate_filter_matrix(OpExpandInto *op) {
  * removed filter matrix from original expression
  * clears filter matrix. */
 static void _traverse(OpExpandInto *op) {
-	// Create both filter and result matrices.
+	// If op->F is null, this is the first time we are traversing.
 	if(op->F == GrB_NULL) {
+		// Create both filter and result matrices.
 		size_t required_dim = Graph_RequiredMatrixDim(op->graph);
 		GrB_Matrix_new(&op->M, GrB_BOOL, op->recordsCap, required_dim);
 		GrB_Matrix_new(&op->F, GrB_BOOL, op->recordsCap, required_dim);
+
+		// Prepend the filter matrix to algebraic expression as the leftmost operand.
+		AlgebraicExpression_MultiplyToTheLeft(&op->ae, op->F);
+
+		// Optimize the expression tree.
+		AlgebraicExpression_Optimize(&op->ae);
 	}
 
 	// Populate filter matrix.
 	_populate_filter_matrix(op);
-	// Clone expression, as we're about to modify the structure with Optimize.
-	AlgebraicExpression *clone = AlgebraicExpression_Clone(op->ae);
-	// Append filter matrix to algebraic expression, as the left most operand.
-	AlgebraicExpression_MultiplyToTheLeft(&clone, op->F);
-	// TODO: consider performing optimization as part of evaluation.
-	AlgebraicExpression_Optimize(&clone);
+
 	// Evaluate expression.
-	AlgebraicExpression_Eval(clone, op->M);
-	// Free clone.
-	AlgebraicExpression_Free(clone);
+	AlgebraicExpression_Eval(op->ae, op->M);
+
 	// Clear filter matrix.
 	GrB_Matrix_clear(op->F);
 }

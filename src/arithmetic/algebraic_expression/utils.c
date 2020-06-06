@@ -148,7 +148,6 @@ void _AlgebraicExpression_FreeOperation
 	AlgebraicExpression *node
 ) {
 	assert(node && node->type == AL_OPERATION);
-
 	if(node->operation.children) {
 		uint child_count = AlgebraicExpression_ChildCount(node);
 		for(uint i = 0; i < child_count; i++) {
@@ -164,6 +163,7 @@ void _AlgebraicExpression_FreeOperand
 	AlgebraicExpression *node
 ) {
 	assert(node && node->type == AL_OPERAND);
+	if(node->operand.bfree) GrB_Matrix_free(&node->operand.matrix);
 }
 
 // Locate operand at position `operand_idx` counting from left to right.
