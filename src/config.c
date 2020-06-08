@@ -13,6 +13,7 @@
 
 
 #define THREAD_COUNT "THREAD_COUNT" // Config param, number of threads in thread pool
+#define OMP_THREAD_COUNT "OMP_THREAD_COUNT" // Config param, max number of OpenMP threads
 #define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT" // Config param, number of entities in virtual key
 #define VKEY_MAX_ENTITY_COUNT_DEFAULT 100000
 
@@ -24,7 +25,7 @@ static bool _initialized = false;
 // command line arguments if specified
 // otherwise returns thread count equals to the number
 // of cores available
-static long long _Config_GetThreadCount(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+static long long _Config_SetThreadCount(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// Default.
 	int CPUCount = sysconf(_SC_NPROCESSORS_ONLN);
 	long long threadCount = (CPUCount != -1) ? CPUCount : 1;
@@ -54,9 +55,32 @@ static long long _Config_GetThreadCount(RedisModuleCtx *ctx, RedisModuleString *
 	return threadCount;
 }
 
+static int _Config_SetOMPThreadCount(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
+	// Scan module arguments for OMP_THREAD_COUNT and extract the value if found.
+	for(int i = 0; i < argc; i += 2) {
+		const char *param = RedisModule_StringPtrLen(argv[i], NULL);
+		if(strcasecmp(param, OMP_THREAD_COUNT)) continue;
+
+		long long omp_thread_count;
+		RedisModule_StringToLongLong(argv[i + 1], &omp_thread_count);
+		if(omp_thread_count < 1 || omp_thread_count > INT_MAX) {
+			// The acceptable range for max OpenMP threads is 1 to INT_MAX.
+			RedisModule_Log(ctx, "warning",
+							"Specified invalid maximum %d for OpenMP threads",
+							omp_thread_count);
+			break;
+		}
+		// A valid maximum was specified, return it.
+		return omp_thread_count;
+	}
+
+	// Return -1 in the default case or if an invalid configuration was specified.
+	return -1;
+}
+
 // Tries to fetch the number of entities to encode as part of virtual key encoding.
 // Defaults to VKEY_MAX_ENTITY_COUNT_DEFAULT
-static uint64_t _Config_GetVirtualKeyEntitiesThreshold(RedisModuleCtx *ctx,
+static uint64_t _Config_SetVirtualKeyEntitiesThreshold(RedisModuleCtx *ctx,
 													   RedisModuleString **argv,
 													   int argc) {
 
@@ -86,8 +110,9 @@ static uint64_t _Config_GetVirtualKeyEntitiesThreshold(RedisModuleCtx *ctx,
 }
 
 void Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
-	config.vkey_entity_count = _Config_GetVirtualKeyEntitiesThreshold(ctx, argv, argc);
-	config.thread_count = _Config_GetThreadCount(ctx, argv, argc);
+	config.vkey_entity_count = _Config_SetVirtualKeyEntitiesThreshold(ctx, argv, argc);
+	config.thread_count = _Config_SetThreadCount(ctx, argv, argc);
+	config.omp_thread_count = _Config_SetOMPThreadCount(ctx, argv, argc);
 	_initialized = true;
 }
 
@@ -105,7 +130,11 @@ long long Config_GetThreadCount() {
 	return _Config_GetModuleConfig().thread_count;
 }
 
-uint64_t Confic_GetVirtualKeyEntityCount() {
+int Config_GetOMPThreadCount() {
+	return _Config_GetModuleConfig().omp_thread_count;
+}
+
+uint64_t Config_GetVirtualKeyEntityCount() {
 	return _Config_GetModuleConfig().vkey_entity_count;
 }
 

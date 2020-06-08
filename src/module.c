@@ -114,6 +114,12 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	if(!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
 	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", threadCount);
 
+	int ompThreadCount = Config_GetOMPThreadCount();
+	if(ompThreadCount > 0) {
+		GxB_set(GxB_NTHREADS, ompThreadCount);
+		RedisModule_Log(ctx, "notice", "Max number of OpenMP threads set to %d", ompThreadCount);
+	}
+
 	if(_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
 
 	if(RedisModule_CreateCommand(ctx, "graph.QUERY", CommandDispatch, "write deny-oom", 1, 1,
@@ -148,3 +154,4 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 
 	return REDISMODULE_OK;
 }
+
