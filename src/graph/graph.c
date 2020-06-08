@@ -537,8 +537,9 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 
 void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int r) {
 	GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
-	GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
 	GrB_Matrix tadj = Graph_GetTransposedAdjacencyMatrix(g);
+	GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
+	GrB_Matrix t_relationMat = Graph_GetTransposedRelationMatrix(g, r);
 
 	// Rows represent source nodes, columns represent destination nodes.
 	GrB_Matrix_setElement_BOOL(adj, true, src, dest);
@@ -558,6 +559,24 @@ void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int
 						1,                   // number of column indices
 						GrB_NULL             // descriptor for C(I,J) and Mask
 					);
+	assert(info == GrB_SUCCESS);
+
+	// Retrieve the entry we just built.
+	EdgeID extracted_id;
+	info = GrB_Matrix_extractElement_UINT64(&extracted_id, relationMat, I, J);
+	assert(info == GrB_SUCCESS);
+	info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
+		   (
+			   t_relationMat,         // input/output matrix for results
+			   GrB_NULL,            // optional mask for C(I,J), unused if NULL
+			   GrB_NULL,            // optional accum for Z=accum(C(I,J),x)
+			   extracted_id,        // scalar to assign to C(I,J)
+			   &J,                  // row indices
+			   1,                   // number of row indices
+			   &I,                  // column indices
+			   1,                   // number of column indices
+			   GrB_NULL             // descriptor for C(I,J) and Mask
+		   );
 	assert(info == GrB_SUCCESS);
 }
 
@@ -579,38 +598,6 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
 	e->srcNodeID = src;
 	e->destNodeID = dest;
 	Graph_FormConnection(g, src, dest, id, r);
-
-	// TODO should be unnecessary, delete once proven
-	/*
-	GrB_Matrix adj = Graph_GetAdjacencyMatrix(g);
-	GrB_Matrix tadj = Graph_GetTransposedAdjacencyMatrix(g);
-	GrB_Matrix relationMat = Graph_GetRelationMatrix(g, r);
-	GrB_Matrix tRelationMat = Graph_GetTransposedRelationMatrix(g, r);
-	GrB_Matrix relationMapMat = Graph_GetRelationMap(g, r);
-
-	// Rows represent source nodes, columns represent destination nodes.
-	GrB_Matrix_setElement_BOOL(adj, true, src, dest);
-	GrB_Matrix_setElement_BOOL(tadj, true, dest, src);
-	GrB_Matrix_setElement_BOOL(relationMat, true, src, dest);
-	GrB_Matrix_setElement_BOOL(tRelationMat, true, dest, src);
-
-	GrB_Index I = src;
-	GrB_Index J = dest;
-	id = SET_MSB(id);
-	info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
-		   (
-			   relationMapMat,     // input/output matrix for results
-			   GrB_NULL,           // optional mask for C(I,J), unused if NULL
-			   _graph_edge_accum,  // optional accum for Z=accum(C(I,J),x)
-			   id,                 // scalar to assign to C(I,J)
-			   &I,                 // row indices
-			   1,                  // number of row indices
-			   &J,                 // column indices
-			   1,                  // number of column indices
-			   GrB_NULL            // descriptor for C(I,J) and Mask
-		   );
-	assert(info == GrB_SUCCESS);
-	*/
 
 	return 1;
 }
@@ -795,7 +782,9 @@ static void _Graph_FreeRelationMatrices(Graph *g) {
 		RG_Matrix_Free(M);
 
 		// Free the transposed matrix.
-		RG_Matrix_Free(g->t_relations[i]);
+		// Since the actual entries are shared, all edge arrays have already been freed.
+		RG_Matrix TM = g->t_relations[i];
+		RG_Matrix_Free(TM);
 	}
 
 	GrB_free(&thunk);

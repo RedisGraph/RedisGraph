@@ -209,7 +209,6 @@ class AlgebraicExpressionTest: public ::testing::Test {
 
 		uint exp_count = array_len(ae);
 		for(uint i = 0; i < exp_count; i++) {
-			_AlgebraicExpression_FetchOperands(ae[i], gc, g);
 			AlgebraicExpression_Optimize(ae + i);
 		}
 
@@ -279,9 +278,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
 	void _compare_algebraic_operand(AlgebraicExpression *a, AlgebraicExpression *b) {
 		ASSERT_TRUE(a->type == AL_OPERAND);
 		ASSERT_TRUE(b->type == AL_OPERAND);
-		// Can't compare matrix pointers, as transpose ops will have rewritten them
-		// TODO re-enable this after introducing persistent transposed adjacency matrices.
-		// ASSERT_EQ(a->operand.matrix, b->operand.matrix);
+		ASSERT_EQ(a->operand.matrix, b->operand.matrix);
 	}
 
 	void compare_algebraic_expression(AlgebraicExpression *a, AlgebraicExpression *b) {

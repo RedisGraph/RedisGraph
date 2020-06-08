@@ -8,6 +8,8 @@
 #include "../../query_ctx.h"
 #include "../algebraic_expression.h"
 
+bool have_transpose_matrices; // TODO move
+
 static inline bool _AlgebraicExpression_IsMultiplicationNode(const AlgebraicExpression *node) {
 	return (node->type == AL_OPERATION && node->operation.op == AL_EXP_MUL);
 }
@@ -416,6 +418,33 @@ static void _AlgebraicExpression_PushDownTranspose(AlgebraicExpression *root) {
 //------------------------------------------------------------------------------
 // Replace transpose ops with transposed operands.
 //------------------------------------------------------------------------------
+static void _AlgebraicExpression_FetchTransposedMatrix(AlgebraicExpression *operand) {
+	// Swap the row and column domains of the operand.
+	const char *tmp = operand->operand.dest;
+	operand->operand.src = operand->operand.dest;
+	operand->operand.dest = tmp;
+	/* Do not update matrix if already set.
+	 * algebraic expression test relies on this behavior. */
+	if(operand->operand.matrix != GrB_NULL) return;
+	// TODO move
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	GrB_Matrix m = GrB_NULL;
+
+	const char *label = operand->operand.label;
+	if(label == NULL) {
+		m = Graph_GetTransposedAdjacencyMatrix(gc->g);
+	} else if(operand->operand.diagonal) {
+		Schema *s = GraphContext_GetSchema(gc, operand->operand.label, SCHEMA_NODE);
+		if(!s) m = Graph_GetZeroMatrix(gc->g);
+		else m = Graph_GetTransposedRelationMatrix(gc->g, s->id);
+	} else {
+		Schema *s = GraphContext_GetSchema(gc, operand->operand.label, SCHEMA_EDGE);
+		if(!s) m = Graph_GetZeroMatrix(gc->g);
+		else m = Graph_GetTransposedRelationMatrix(gc->g, s->id);
+	}
+	operand->operand.matrix = m;
+}
+
 // Transpose an operand matrix and update the expression accordingly.
 static void _AlgebraicExpression_TransposeOperand(AlgebraicExpression *operand) {
 	// Swap the row and column domains of the operand.
@@ -497,34 +526,18 @@ static void _AlgebraicExpression_ApplyTranspose(AlgebraicExpression *root) {
 			break;
 
 		case AL_EXP_TRANSPOSE:
-			// Transpose operands will currently always have an operand child, but
-			// for future-proofing we will handle the operation case here.
-			child = root->operation.children[0];
-			if(child->type == AL_OPERATION) {
-				if(child->operation.op == AL_EXP_TRANSPOSE) {
-					/* If the child op is a transpose, we do not need to transpose anything, as
-					 * T(T(A)) == A */
-					// Disconnect the intermediate transpose op and its child.
-					child = _AlgebraicExpression_OperationRemoveRightmostChild(root);
-					AlgebraicExpression *grandchild = _AlgebraicExpression_OperationRemoveRightmostChild(child);
-					// Replace the current op with the grandchild.
-					_AlgebraicExpression_InplaceRepurpose(root, grandchild);
-					// Free the disconnected intermediate operation.
-					AlgebraicExpression_Free(child);
-					// The root has been replaced with the grandchild, and the intermediates have been freeed.
-					// Set the child pointer to root so that we can recurse properly.
-					child = root;
-				}
-
-				// Continue seeking transpose ops.
-				_AlgebraicExpression_ApplyTranspose(child);
-				break;
-			}
+			child = _AlgebraicExpression_OperationRemoveRightmostChild(root);
+			// Transpose operands will currently always have an operand child.
+			assert(child->type != AL_OPERATION && "encountered unexpected operation as transpose child");
 
 			/* We have a transpose operation with an operand child.
-			 * Create a new transposed matrix and replace this operation with it. */
-			child = _AlgebraicExpression_OperationRemoveRightmostChild(root);
-			_AlgebraicExpression_TransposeOperand(child);
+			 * Fetch a persistent transposed matrix if we have one or
+			 * create a new transposed matrix and replace this operation with it. */
+			if(!have_transpose_matrices) {
+				_AlgebraicExpression_TransposeOperand(child);
+			} else {
+				_AlgebraicExpression_FetchTransposedMatrix(child);
+			}
 			_AlgebraicExpression_InplaceRepurpose(root, child);
 			break;
 		default:
@@ -545,8 +558,12 @@ void AlgebraicExpression_Optimize
 ) {
 	assert(exp);
 
-	// Fetch the operand matrices now, as the ApplyTranspose optimization will utilize them.
-	_AlgebraicExpression_FetchOperands(*exp, QueryCtx_GetGraphCtx(), QueryCtx_GetGraph());
+	have_transpose_matrices = true;
+
+	if(!have_transpose_matrices) {
+		// Fetch the operand matrices now, as the ApplyTranspose optimization will utilize them.
+		_AlgebraicExpression_FetchOperands(*exp, QueryCtx_GetGraphCtx(), QueryCtx_GetGraph());
+	}
 
 	_AlgebraicExpression_PushDownTranspose(*exp);
 	_AlgebraicExpression_MulOverSum(exp);
@@ -554,4 +571,7 @@ void AlgebraicExpression_Optimize
 
 	// Replace transpose operators with actual transposed operands.
 	_AlgebraicExpression_ApplyTranspose(*exp);
+
+	_AlgebraicExpression_FetchOperands(*exp, QueryCtx_GetGraphCtx(), QueryCtx_GetGraph());
 }
+

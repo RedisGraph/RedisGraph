@@ -83,7 +83,7 @@ AlgebraicExpression *_AlgebraicExpression_FromString
 			m = GrB_NULL;
 			if(matrices) {
 				m = (GrB_Matrix)raxFind(matrices, (unsigned char *)alias, strlen(alias));
-				assert(m && "Missing matrix");
+				assert(m != raxNotFound && "Missing matrix");
 			}
 			root = AlgebraicExpression_NewOperand(m, false, alias, alias, NULL, NULL);
 
@@ -274,3 +274,4 @@ char *AlgebraicExpression_ToString
 	_AlgebraicExpression_ToString(exp, buff);
 	return buff;
 }
+
