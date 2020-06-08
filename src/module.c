@@ -73,7 +73,6 @@ static int _RegisterDataTypes(RedisModuleCtx *ctx) {
 static void _PrepareModuleGlobals(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	graphs_in_keyspace = array_new(GraphContext *, 1);
 	process_is_child = false;
-	Config_Init(ctx, argv, argc);
 }
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -104,19 +103,27 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	Agg_RegisterFuncs();     // Register aggregation functions.
 	// Set up global lock and variables scoped to the entire module.
 	_PrepareModuleGlobals(ctx, argv, argc);
+
+	// Set up the module's configurable variables, using user-defined values where provided.
+	if(Config_Init(ctx, argv, argc) != REDISMODULE_OK) return REDISMODULE_ERR;
+
 	RegisterEventHandlers(ctx);
 	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
 
 	// Create thread local storage key.
 	if(!QueryCtx_Init()) return REDISMODULE_ERR;
 
-	long long threadCount = Config_GetThreadCount();
+	int threadCount = Config_GetThreadCount();
 	if(!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
 	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", threadCount);
 
 	int ompThreadCount = Config_GetOMPThreadCount();
 	if(ompThreadCount > 0) {
-		GxB_set(GxB_NTHREADS, ompThreadCount);
+		GrB_Info res = GxB_set(GxB_NTHREADS, ompThreadCount);
+		if(res != GrB_SUCCESS) {
+			RedisModule_Log(ctx, "warning", "Failed to set OpenMP thread count to %d", ompThreadCount);
+			return REDISMODULE_ERR;
+		}
 		RedisModule_Log(ctx, "notice", "Maximum number of OpenMP threads set to %d", ompThreadCount);
 	}
 
