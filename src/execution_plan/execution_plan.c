@@ -852,7 +852,10 @@ ExecutionPlan *NewExecutionPlan(void) {
 
 		// Place filter ops required by current segment.
 		QueryCtx_SetAST(ast_segments[i]);
-		if(current_segment->filter_tree) ExecutionPlan_PlaceFilterOps(current_segment, prev_scope_end);
+		if(current_segment->filter_tree) {
+			ExecutionPlan_PlaceFilterOps(current_segment, prev_scope_end);
+			current_segment->filter_tree = NULL;
+		}
 
 		prev_scope_end = prev_root; // Track the previous scope's end so filter placement doesn't overreach.
 	}
@@ -1102,7 +1105,6 @@ ExecutionPlan *ExecutionPlan_Clone(const ExecutionPlan *template) {
 		}
 	}
 	clone->record_map = raxClone(template->record_map);
-	clone->filter_tree = template->filter_tree ? FilterTree_Clone(template->filter_tree) : NULL;
 	// The execution plan segment clone requires the specific AST segment for referenced entities.
 	AST *master_ast = QueryCtx_GetAST();
 	QueryCtx_SetAST(clone->ast_segment);

@@ -27,16 +27,28 @@ void CacheList_Promote(CacheList *list, CacheListNode *node) {
 	// Node was already head, do nothing.
 	if(list->head == node) return;
 
-	/* Detach this node and connect its previous and next pointers. */
-	CacheListNode *prev = node->prev;
-	// Current node was not the tail, connect prev to the next element.
-	if(prev != NULL) prev->next = node->next;
-	if(node->next) node->next->prev = prev;
+	// Check for tail
+	if(list->tail == node) {
+		// Update tail.
+		list->tail = node->prev;
+	} else {
+		// Node is not the tail, it has a next.
+		node->next->prev = node->prev;
+	}
+	// Node is not head, it will always has a prev.
+	node->prev->next = node->next;
+
+	// /* Detach this node and connect its previous and next pointers. */
+	// CacheListNode *prev = node->prev;
+	// // Current node was not the tail, connect prev to the next element.
+	// if(prev != NULL) prev->next = node->next;
+	// if(node->next) node->next->prev = prev;
+	// if(node == list->tail) list->tail = node->prev;
 
 	/* Move this node to the head. */
 	node->next = list->head;
 	node->prev = NULL; // The head node has no previous element.
-	list->head->next = node;
+	list->head->prev = node;
 	list->head = node;
 }
 
@@ -46,7 +58,7 @@ CacheListNode *CacheList_RemoveTail(CacheList *list) {
 
 	// Update the tail to point to the new last element.
 	list->tail = tail->prev;
-	tail->prev->next = NULL; // The tail node has no next element.
+	list->tail->next = NULL; // The tail node has no next element.
 
 	/* TODO consider replacing this with a rax callback that frees node->value.
 	 * This may not be possible while remaining data-agnostic,

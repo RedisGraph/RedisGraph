@@ -84,10 +84,9 @@ class ExecutionPlanCloneTest: public ::testing::Test {
 	/* Execution plan cloning clones the following:
 	 * 1. Plan segments
 	 * 2. Plan operations
-	 * 3. Plan filter tree
-	 * 4. Plan record mapping
-	 * 5. Query graph and connected components.
-	 * As query graph cloning, filter tree cloning and rax cloning are tested and proven, this function
+	 * 3. Plan record mapping
+	 * 4. Query graph and connected components.
+	 * As query graph cloning and rax cloning are tested and proven, this function
 	 * tests only the segments and operations cloning. */
 	static void ExecutionPlan_Equal(const ExecutionPlan *plan_a, const ExecutionPlan *plan_b) {
 
