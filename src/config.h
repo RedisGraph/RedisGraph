@@ -20,7 +20,7 @@ void Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc);
 // Return the module thread pool size.
 long long Config_GetThreadCount(void);
 
-// Return the max number of OpenMP threads or -1 if the default.
+// Return the max number of OpenMP threads or -1 if using the default value.
 int Config_GetOMPThreadCount(void);
 
 // Return the module virtual key entity limit.

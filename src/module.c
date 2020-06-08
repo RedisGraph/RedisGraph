@@ -117,7 +117,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	int ompThreadCount = Config_GetOMPThreadCount();
 	if(ompThreadCount > 0) {
 		GxB_set(GxB_NTHREADS, ompThreadCount);
-		RedisModule_Log(ctx, "notice", "Max number of OpenMP threads set to %d", ompThreadCount);
+		RedisModule_Log(ctx, "notice", "Maximum number of OpenMP threads set to %d", ompThreadCount);
 	}
 
 	if(_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;

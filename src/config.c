@@ -55,6 +55,8 @@ static long long _Config_SetThreadCount(RedisModuleCtx *ctx, RedisModuleString *
 	return threadCount;
 }
 
+// Scans the LOADMODULE arguments for a user-defined maximum number of OpenMP threads.
+// Returns to -1 and does not override default behavior if no such valid argument was found.
 static int _Config_SetOMPThreadCount(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// Scan module arguments for OMP_THREAD_COUNT and extract the value if found.
 	for(int i = 0; i < argc; i += 2) {
