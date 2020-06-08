@@ -118,8 +118,8 @@ void Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 
 /* Static function for:
  * 1. Validation of the configuration object.
- * 2. Future proofing retrival calls to the configuration object from withing config.c.
- * 3. Futute proofing retrival calls to the configuration object outside config.c.
+ * 2. Future proofing retrieval calls to the configuration object from within config.c.
+ * 3. Future proofing retrieval calls to the configuration object outside config.c.
  */
 static inline RG_Config _Config_GetModuleConfig() {
 	assert(_initialized && "Module configuration was not initialized");
