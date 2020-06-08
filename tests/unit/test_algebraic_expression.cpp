@@ -200,7 +200,6 @@ class AlgebraicExpressionTest: public ::testing::Test {
 
 	AlgebraicExpression **build_algebraic_expression(const char *query) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
-		Graph *g = QueryCtx_GetGraph();
 		cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 		AST *master_ast = AST_Build(parse_result);
 		AST *ast = AST_NewSegment(master_ast, 0, cypher_ast_query_nclauses(master_ast->root));
@@ -660,41 +659,47 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_MUL) {
 
 TEST_F(AlgebraicExpressionTest, Exp_OP_ADD_Transpose) {
 	// Exp = A + Transpose(A)
-	GrB_Matrix A;
 	GrB_Matrix B;
 	GrB_Matrix res;
+	/* We must use matrices that we've added to the graph, or else
+	 * the transpose optimization will erroneously use the adjacency matrix
+	 * (since there is no schema associated with the operands).
 
-	// A
-	// 1 1
-	// 0 0
-	GrB_Matrix_new(&A, GrB_BOOL, 2, 2);
-	GrB_Matrix_setElement_BOOL(A, true, 0, 0);
-	GrB_Matrix_setElement_BOOL(A, true, 0, 1);
-
-	// B
-	// 1 1
-	// 1 0
-	GrB_Matrix_new(&B, GrB_BOOL, 2, 2);
-	GrB_Matrix_setElement_BOOL(B, true, 0, 0);
-	GrB_Matrix_setElement_BOOL(B, true, 0, 1);
-	GrB_Matrix_setElement_BOOL(B, true, 1, 0);
-
+	 * The 'visit' matrix represented by V has the form:
+	 * 0 0 1 1
+	 * 0 0 1 0
+	 * 0 0 0 0
+	 * 0 0 0 0
+	 *
+	 * Its transpose, TV, has the form:
+	 * 0 0 0 0
+	 * 0 0 0 0
+	 * 1 1 0 0
+	 * 1 0 0 0
+	 *
+	 * The expected result of the addition is:
+	 * 0 0 1 1
+	 * 0 0 1 0
+	 * 1 1 0 0
+	 * 1 0 0 0
+	 */
+	GrB_Matrix_new(&B, GrB_BOOL, 4, 4);
+	GrB_Matrix_setElement_BOOL(B, true, 0, 2);
+	GrB_Matrix_setElement_BOOL(B, true, 0, 3);
+	GrB_Matrix_setElement_BOOL(B, true, 1, 2);
+	GrB_Matrix_setElement_BOOL(B, true, 2, 0);
+	GrB_Matrix_setElement_BOOL(B, true, 2, 1);
+	GrB_Matrix_setElement_BOOL(B, true, 3, 0);
 	// Matrix used for intermidate computations of AlgebraicExpression_Eval
 	// but also contains the result of expression evaluation.
-	GrB_Matrix_new(&res, GrB_BOOL, 2, 2);
-
-	// A + Transpose(A)
-	rax *matrices = raxNew();
-	raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
-	AlgebraicExpression *exp = AlgebraicExpression_FromString("A+T(A)", matrices);
+	GrB_Matrix_new(&res, GrB_BOOL, 4, 4);
+	AlgebraicExpression *exp = AlgebraicExpression_FromString("V+tV", _matrices);
 	AlgebraicExpression_Eval(exp, res);
 
 	// Using the A matrix described above,
 	// A + Transpose(A) = B.
 	ASSERT_TRUE(_compare_matrices(res, B));
 
-	raxFree(matrices);
-	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&res);
 	AlgebraicExpression_Free(exp);
@@ -702,39 +707,49 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_ADD_Transpose) {
 
 TEST_F(AlgebraicExpressionTest, Exp_OP_MUL_Transpose) {
 	// Exp = Transpose(A) * A
-	GrB_Matrix A;
 	GrB_Matrix B;
 	GrB_Matrix res;
 
-	// A
-	// 1 1
-	// 0 0
-	GrB_Matrix_new(&A, GrB_BOOL, 2, 2);
-	GrB_Matrix_setElement_BOOL(A, true, 0, 0);
-	GrB_Matrix_setElement_BOOL(A, true, 0, 1);
+	/* We must use matrices that we've added to the graph, or else
+	 * the transpose optimization will erroneously use the adjacency matrix
+	 * (since there is no schema associated with the operands).
 
-	// B
-	// 1 0
-	// 0 0
-	GrB_Matrix_new(&B, GrB_BOOL, 2, 2);
+	 * The 'visit' matrix represented by V has the form:
+	 * 0 0 1 1
+	 * 0 0 1 0
+	 * 0 0 0 0
+	 * 0 0 0 0
+	 *
+	 * Its transpose, TV, has the form:
+	 * 0 0 0 0
+	 * 0 0 0 0
+	 * 1 1 0 0
+	 * 1 0 0 0
+	 *
+	 * The expected result of the multiplication is:
+	 * 1 1 0 0
+	 * 1 1 0 0
+	 * 1 0 0 0
+	 * 1 0 0 0
+	 */
+	GrB_Matrix_new(&B, GrB_BOOL, 4, 4);
 	GrB_Matrix_setElement_BOOL(B, true, 0, 0);
+	GrB_Matrix_setElement_BOOL(B, true, 0, 1);
+	GrB_Matrix_setElement_BOOL(B, true, 1, 0);
+	GrB_Matrix_setElement_BOOL(B, true, 1, 1);
 
 	// Matrix used for intermidate computations of AlgebraicExpression_Eval
 	// but also contains the result of expression evaluation.
-	GrB_Matrix_new(&res, GrB_BOOL, 2, 2);
+	GrB_Matrix_new(&res, GrB_BOOL, 4, 4);
 
 	// Transpose(A) * A
-	rax *matrices = raxNew();
-	raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
-	AlgebraicExpression *exp = AlgebraicExpression_FromString("A*T(A)", matrices);
+	AlgebraicExpression *exp = AlgebraicExpression_FromString("V*tV", _matrices);
 	AlgebraicExpression_Eval(exp, res);
 
 	// Using the A matrix described above,
 	// Transpose(A) * A = B.
 	ASSERT_TRUE(_compare_matrices(res, B));
 
-	raxFree(matrices);
-	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&res);
 	AlgebraicExpression_Free(exp);
