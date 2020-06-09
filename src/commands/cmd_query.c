@@ -108,6 +108,7 @@ void Graph_Query(void *args) {
 	if(exec_type == EXECUTION_TYPE_QUERY) {  // query operation
 		ExecutionPlan_PreparePlan(plan);
 		result_set = ExecutionPlan_Execute(plan);
+		ExecutionPlan_Free(plan);
 	} else if(exec_type == EXECUTION_TYPE_INDEX_CREATE ||
 			  exec_type == EXECUTION_TYPE_INDEX_DROP) {
 		_index_operation(ctx, gc, ast, exec_type);
@@ -132,7 +133,6 @@ cleanup:
 	SlowLog_Add(slowlog, command_ctx->command_name, command_ctx->query, QueryCtx_GetExecutionTime());
 
 	ResultSet_Free(result_set);
-	ExecutionPlan_Free(plan);
 	AST_Free(ast);
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);

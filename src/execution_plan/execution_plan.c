@@ -361,8 +361,17 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 		// This is a new filter.
 		ExecutionPlan_PushBelow(op, (OpBase *)filter);
 	}
+
 	// Re set the plan root if needed.
-	if(op == plan->root) plan->root = filter;
+	if(op == plan->root) {
+		plan->root = filter;
+		filter->plan = plan;
+	}
+
+	if(filter->parent && op->plan == filter->parent->plan) {
+		filter->plan = filter->parent->plan;
+	}
+
 	raxFree(references);
 }
 
@@ -1075,7 +1084,7 @@ static void _ExecutionPlan_MergeSegments(ExecutionPlan *plan) {
 				connecting_op = connecting_op->children[0];
 			}
 			ExecutionPlan_AddOp(connecting_op, prev_root);
-			OpBase *prev_root = current_segment->root;
+			prev_root = current_segment->root;
 		}
 		// Connect the plan operations to the last segment root.
 		connecting_op = ExecutionPlan_LocateOpMatchingType(plan->root, PROJECT_OPS,
@@ -1097,12 +1106,7 @@ ExecutionPlan *ExecutionPlan_Clone(const ExecutionPlan *template) {
 	if(!clone->is_union) {
 		clone->ast_segment = AST_Clone(template->ast_segment);
 		clone->query_graph = QueryGraph_Clone(template->query_graph);
-		uint connected_componenets_count = array_len(template->connected_components);
-		clone->connected_components = array_new(QueryGraph *, connected_componenets_count);
-		for(uint i = 0; i < connected_componenets_count; i++) {
-			clone->connected_components = array_append(clone->connected_components,
-													   QueryGraph_Clone(template->connected_components[i]));
-		}
+		array_clone_with_cb(clone->connected_components, template->connected_components, QueryGraph_Clone);
 	}
 	clone->record_map = raxClone(template->record_map);
 	// The execution plan segment clone requires the specific AST segment for referenced entities.
