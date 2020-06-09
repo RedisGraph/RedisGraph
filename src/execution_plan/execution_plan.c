@@ -1106,7 +1106,9 @@ ExecutionPlan *ExecutionPlan_Clone(const ExecutionPlan *template) {
 	if(!clone->is_union) {
 		clone->ast_segment = AST_Clone(template->ast_segment);
 		clone->query_graph = QueryGraph_Clone(template->query_graph);
-		array_clone_with_cb(clone->connected_components, template->connected_components, QueryGraph_Clone);
+		if(template->connected_components) {
+			array_clone_with_cb(clone->connected_components, template->connected_components, QueryGraph_Clone);
+		}
 	}
 	clone->record_map = raxClone(template->record_map);
 	// The execution plan segment clone requires the specific AST segment for referenced entities.
@@ -1116,7 +1118,9 @@ ExecutionPlan *ExecutionPlan_Clone(const ExecutionPlan *template) {
 	_ExecutionPlan_CloneOperations(template, clone);
 	// After clone, restore master ast.
 	QueryCtx_SetAST(master_ast);
-	array_clone_with_cb(clone->segments, template->segments, ExecutionPlan_Clone);
+	if(template->segments) {
+		array_clone_with_cb(clone->segments, template->segments, ExecutionPlan_Clone);
+	}
 	// Merge the segments
 	_ExecutionPlan_MergeSegments(clone);
 	return clone;
