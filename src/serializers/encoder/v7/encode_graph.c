@@ -88,7 +88,7 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 	EncodeState current_state = GraphEncodeContext_GetEncodeState(gc->encoding_context);
 	// If it is the start of the encodeing, set the state to be NODES.
 	if(current_state == ENCODE_STATE_INIT) current_state = ENCODE_STATE_NODES;
-	uint64_t remaining_entities = Confic_GetVirtualKeyEntityCount();
+	uint64_t remaining_entities = Config_GetVirtualKeyEntityCount();
 	// No limit on the entities, the graph is encoded in one key.
 	if(remaining_entities == VKEY_ENTITY_COUNT_UNLIMITED) {
 		for(uint state = ENCODE_STATE_NODES; state < ENCODE_STATE_FINAL; state++) {
@@ -198,3 +198,4 @@ void RdbSaveGraph_v7(RedisModuleIO *rdb, void *value) {
 	// If a lock was acquired, release it.
 	if(_shouldAcquireLocks()) Graph_ReleaseLock(gc->g);
 }
+
