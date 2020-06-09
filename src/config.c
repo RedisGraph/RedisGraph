@@ -124,7 +124,7 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	}
 
 	int res = REDISMODULE_OK;
-	for(int cur = 0; cur < argc - 1; cur += 2) {
+	for(int cur = 0; cur < argc; cur += 2) {
 		// Each configuration is a key-value pair.
 		const char *param = RedisModule_StringPtrLen(argv[cur], NULL);
 		RedisModuleString *val = argv[cur + 1];
