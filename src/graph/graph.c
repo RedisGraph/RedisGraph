@@ -561,22 +561,13 @@ void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int
 					);
 	assert(info == GrB_SUCCESS);
 
-	// Retrieve the entry we just built.
+	// Retrieve the entry we just built, as it may now be a scalar ID or an array of edges.
 	EdgeID extracted_id;
 	info = GrB_Matrix_extractElement_UINT64(&extracted_id, relationMat, I, J);
 	assert(info == GrB_SUCCESS);
-	info = GxB_Matrix_subassign_UINT64   // C(I,J)<Mask> = accum (C(I,J),x)
-		   (
-			   t_relationMat,         // input/output matrix for results
-			   GrB_NULL,            // optional mask for C(I,J), unused if NULL
-			   GrB_NULL,            // optional accum for Z=accum(C(I,J),x)
-			   extracted_id,        // scalar to assign to C(I,J)
-			   &J,                  // row indices
-			   1,                   // number of row indices
-			   &I,                  // column indices
-			   1,                   // number of column indices
-			   GrB_NULL             // descriptor for C(I,J) and Mask
-		   );
+
+	// Perform a simple assignment of the extracted entry into the transpose matrix.
+	info = GrB_Matrix_setElement_UINT64(t_relationMat, extracted_id, J, I);
 	assert(info == GrB_SUCCESS);
 }
 
@@ -598,7 +589,6 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
 	e->srcNodeID = src;
 	e->destNodeID = dest;
 	Graph_FormConnection(g, src, dest, id, r);
-
 	return 1;
 }
 
@@ -668,24 +658,24 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 	uint64_t x;
 	GrB_Matrix R;
 	GrB_Matrix M;
-	GrB_Matrix TM;
+	GrB_Matrix TR;
 	GrB_Info info;
 	EdgeID edge_id;
 	int r = Edge_GetRelationID(e);
 	NodeID src_id = Edge_GetSrcNodeID(e);
 	NodeID dest_id = Edge_GetDestNodeID(e);
 
-	// Test to see if edge exists.
 	R = Graph_GetRelationMatrix(g, r);
-	TM = Graph_GetTransposedRelationMatrix(g, r);
+	TR = Graph_GetTransposedRelationMatrix(g, r);
 
+	// Test to see if edge exists.
 	info = GrB_Matrix_extractElement(&edge_id, R, src_id, dest_id);
 	if(info != GrB_SUCCESS) return 0;
 
 	if(SINGLE_EDGE(edge_id)) {
 		// Single edge of type R connecting src to dest, delete entry.
 		assert(GxB_Matrix_Delete(R, src_id, dest_id) == GrB_SUCCESS);
-		assert(GxB_Matrix_Delete(TM, dest_id, src_id) == GrB_SUCCESS);
+		assert(GxB_Matrix_Delete(TR, dest_id, src_id) == GrB_SUCCESS);
 
 		// See if source is connected to destination with additional edges.
 		bool connected = false;
@@ -1122,9 +1112,10 @@ int Graph_AddLabel(Graph *g) {
 int Graph_AddRelationType(Graph *g) {
 	assert(g);
 
-	RG_Matrix m = RG_Matrix_New(GrB_UINT64, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
+	size_t dims = Graph_RequiredMatrixDim(g);
+	RG_Matrix m = RG_Matrix_New(GrB_UINT64, dims, dims);
 	g->relations = array_append(g->relations, m);
-	RG_Matrix tm = RG_Matrix_New(GrB_UINT64, Graph_RequiredMatrixDim(g), Graph_RequiredMatrixDim(g));
+	RG_Matrix tm = RG_Matrix_New(GrB_UINT64, dims, dims);
 	g->t_relations = array_append(g->t_relations, tm);
 
 	int relationID = Graph_RelationTypeCount(g) - 1;
