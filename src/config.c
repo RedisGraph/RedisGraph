@@ -112,33 +112,32 @@ static void _Config_SetToDefaults(void) {
 	}
 }
 
-// If an argument is a key-value pair, emit an error if we try to read past the end of the argv array.
-#define VALIDATE_KEYVAL_ARGC { \
-	if (cur >= argc) { \
-		RedisModule_Log(ctx, "warning", "Module parameter '%s' requires a value", param); \
-		return REDISMODULE_ERR; \
-	} \
-}
-
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// Initialize the configuration to its default values.
 	_Config_SetToDefaults();
 
+	if(argc % 2) {
+		// Emit an error if we received an odd number of arguments, as this indicates an invalid configuration.
+		RedisModule_Log(ctx, "warning",
+						"RedisGraph received %d arguments, all configurations should be key-value pairs", argc);
+		return REDISMODULE_ERR;
+	}
+
 	int res = REDISMODULE_OK;
-	for(int cur = 0; cur < argc; cur ++) {
+	for(int cur = 0; cur < argc - 1; cur += 2) {
+		// Each configuration is a key-value pair.
 		const char *param = RedisModule_StringPtrLen(argv[cur], NULL);
+		RedisModuleString *val = argv[cur + 1];
+
 		if(!strcasecmp(param, THREAD_COUNT)) {
-			cur++; // Argument is a key-value pair, increment the counter.
-			VALIDATE_KEYVAL_ARGC; // Error if we try to read past the end of the argv array.
-			res = _Config_SetThreadCount(ctx, argv[cur]);
+			// User defined size of thread pool.
+			res = _Config_SetThreadCount(ctx, val);
 		} else if(!strcasecmp(param, OMP_THREAD_COUNT)) {
-			cur++; // Argument is a key-value pair, increment the counter.
-			VALIDATE_KEYVAL_ARGC; // Error if we try to read past the end of the argv array.
-			res = _Config_SetOMPThreadCount(ctx, argv[cur]);
+			// User defined maximum number of OpenMP threads.
+			res = _Config_SetOMPThreadCount(ctx, val);
 		} else if(!strcasecmp(param, VKEY_MAX_ENTITY_COUNT)) {
-			cur++; // Argument is a key-value pair, increment the counter.
-			VALIDATE_KEYVAL_ARGC; // Error if we try to read past the end of the argv array.
-			res = _Config_SetVirtualKeyEntitiesThreshold(ctx, argv[cur]);
+			// User defined maximum number of entities per virtual key.
+			res = _Config_SetVirtualKeyEntitiesThreshold(ctx, val);
 		} else {
 			RedisModule_Log(ctx, "warning", "Encountered unknown module argument '%s'", param);
 		}
