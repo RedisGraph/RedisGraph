@@ -9,6 +9,7 @@
 #include <string.h>
 #include <limits.h>
 #include "util/redis_version.h"
+#include "../deps/GraphBLAS/Include/GraphBLAS.h"
 
 #define THREAD_COUNT "THREAD_COUNT" // Config param, number of threads in thread pool
 #define OMP_THREAD_COUNT "OMP_THREAD_COUNT" // Config param, max number of OpenMP threads
@@ -37,10 +38,10 @@ static int _Config_SetThreadCount(RedisModuleCtx *ctx, RedisModuleString *count_
 		return REDISMODULE_ERR;
 	}
 
-	// Emit warning but do not fail if the specified thread count is greater than the system's
+	// Emit notice but do not fail if the specified thread count is greater than the system's
 	// number of cores (which is already set as the default value).
 	if(thread_count > config.thread_count) {
-		RedisModule_Log(ctx, "warning", "Number of threads: %d greater then number of cores: %d.",
+		RedisModule_Log(ctx, "notice", "Number of threads: %d greater then number of cores: %d.",
 						thread_count, config.thread_count);
 	}
 
@@ -99,15 +100,15 @@ static void _Config_SetToDefaults(void) {
 	int CPUCount = sysconf(_SC_NPROCESSORS_ONLN);
 	config.thread_count = (CPUCount != -1) ? CPUCount : 1;
 
-	// Allow GraphBLAS to set the OpenMP thread count by default.
-	config.omp_thread_count = -1;
+	// Use the GraphBLAS-defined number of OpenMP threads by default.
+	GxB_get(GxB_NTHREADS, &config.omp_thread_count);
 
-	if(!Redis_Version_GreaterOrEqual(6, 0, 0)) {
-		// For redis-server versions below 6.0.0, we will not split the graph into virtual keys.
-		config.vkey_entity_count = VKEY_ENTITY_COUNT_UNLIMITED;
-	} else {
+	if(Redis_Version_GreaterOrEqual(6, 0, 0)) {
 		// The default entity count of virtual keys for server versions >= 6 is set by macro.
 		config.vkey_entity_count = VKEY_MAX_ENTITY_COUNT_DEFAULT;
+	} else {
+		// For redis-server versions below 6.0.0, we will not split the graph into virtual keys.
+		config.vkey_entity_count = VKEY_ENTITY_COUNT_UNLIMITED;
 	}
 }
 

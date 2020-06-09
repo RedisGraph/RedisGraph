@@ -5,7 +5,6 @@
 */
 
 #include <unistd.h>
-#include <assert.h>
 #include <pthread.h>
 #include "redismodule.h"
 #include "config.h"
@@ -77,7 +76,11 @@ static void _PrepareModuleGlobals(RedisModuleCtx *ctx, RedisModuleString **argv,
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	/* TODO: when module unloads call GrB_finalize. */
-	assert(GxB_init(GrB_NONBLOCKING, rm_malloc, rm_calloc, rm_realloc, rm_free, true) == GrB_SUCCESS);
+	GrB_Info res = GxB_init(GrB_NONBLOCKING, rm_malloc, rm_calloc, rm_realloc, rm_free, true);
+	if(res != GrB_SUCCESS) {
+		RedisModule_Log(ctx, "warning", "Encountered error initializing GraphBLAS: '%s'", GrB_error());
+		return REDISMODULE_ERR;
+	}
 	GxB_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
 	GxB_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
 
@@ -118,14 +121,12 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", threadCount);
 
 	int ompThreadCount = Config_GetOMPThreadCount();
-	if(ompThreadCount > 0) {
-		GrB_Info res = GxB_set(GxB_NTHREADS, ompThreadCount);
-		if(res != GrB_SUCCESS) {
-			RedisModule_Log(ctx, "warning", "Failed to set OpenMP thread count to %d", ompThreadCount);
-			return REDISMODULE_ERR;
-		}
-		RedisModule_Log(ctx, "notice", "Maximum number of OpenMP threads set to %d", ompThreadCount);
+	res = GxB_set(GxB_NTHREADS, ompThreadCount);
+	if(res != GrB_SUCCESS) {
+		RedisModule_Log(ctx, "warning", "Failed to set OpenMP thread count to %d", ompThreadCount);
+		return REDISMODULE_ERR;
 	}
+	RedisModule_Log(ctx, "notice", "Maximum number of OpenMP threads set to %d", ompThreadCount);
 
 	if(_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
 
