@@ -5,7 +5,6 @@
 */
 
 #include <unistd.h>
-#include <assert.h>
 #include <pthread.h>
 #include "redismodule.h"
 #include "config.h"
@@ -26,6 +25,7 @@
 //------------------------------------------------------------------------------
 // Module-level global variables
 //------------------------------------------------------------------------------
+RG_Config config;                  // Module global configuration.
 GraphContext **graphs_in_keyspace; // Global array tracking all extant GraphContexts.
 bool process_is_child;             // Flag indicating whether the running process is a child.
 
@@ -128,7 +128,11 @@ static void RegisterForkHooks(RedisModuleCtx *ctx) {
 
 int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	/* TODO: when module unloads call GrB_finalize. */
-	assert(GxB_init(GrB_NONBLOCKING, rm_malloc, rm_calloc, rm_realloc, rm_free, true) == GrB_SUCCESS);
+	GrB_Info res = GxB_init(GrB_NONBLOCKING, rm_malloc, rm_calloc, rm_realloc, rm_free, true);
+	if(res != GrB_SUCCESS) {
+		RedisModule_Log(ctx, "warning", "Encountered error initializing GraphBLAS: '%s'", GrB_error());
+		return REDISMODULE_ERR;
+	}
 	GxB_set(GxB_FORMAT, GxB_BY_ROW); // all matrices in CSR format
 	GxB_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
 
@@ -146,14 +150,23 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	Agg_RegisterFuncs();     // Register aggregation functions.
 	_PrepareModuleGlobals(); // Set up global lock and variables scoped to the entire module.
 	RegisterForkHooks(ctx);  // Set up hooks for renaming and forking logic to prevent bgsave deadlocks.
+	// Set up the module's configurable variables, using user-defined values where provided.
+	if(Config_Init(ctx, argv, argc) != REDISMODULE_OK) return REDISMODULE_ERR;
 	CypherWhitelist_Build(); // Build whitelist of supported Cypher elements.
 
 	// Create thread local storage key.
 	if(!QueryCtx_Init()) return REDISMODULE_ERR;
 
-	long long threadCount = Config_GetThreadCount(ctx, argv, argc);
+	int threadCount = Config_GetThreadCount();
 	if(!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
 	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", threadCount);
+
+	int ompThreadCount = Config_GetOMPThreadCount();
+	if(GxB_set(GxB_NTHREADS, ompThreadCount) != GrB_SUCCESS) {
+		RedisModule_Log(ctx, "warning", "Failed to set OpenMP thread count to %d", ompThreadCount);
+		return REDISMODULE_ERR;
+	}
+	RedisModule_Log(ctx, "notice", "Maximum number of OpenMP threads set to %d", ompThreadCount);
 
 	if(_RegisterDataTypes(ctx) != REDISMODULE_OK) return REDISMODULE_ERR;
 
