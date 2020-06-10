@@ -38,13 +38,6 @@ void CacheList_Promote(CacheList *list, CacheListNode *node) {
 	// Node is not head, it will always has a prev.
 	node->prev->next = node->next;
 
-	// /* Detach this node and connect its previous and next pointers. */
-	// CacheListNode *prev = node->prev;
-	// // Current node was not the tail, connect prev to the next element.
-	// if(prev != NULL) prev->next = node->next;
-	// if(node->next) node->next->prev = prev;
-	// if(node == list->tail) list->tail = node->prev;
-
 	/* Move this node to the head. */
 	node->next = list->head;
 	node->prev = NULL; // The head node has no previous element.
