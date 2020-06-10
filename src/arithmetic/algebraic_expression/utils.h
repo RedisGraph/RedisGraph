@@ -107,6 +107,6 @@ AlgebraicExpression *_AlgebraicExpression_GetOperand
 void _AlgebraicExpression_FetchOperands
 (
 	AlgebraicExpression *exp,   // Expression to resolve operands for.
-	const GraphContext *gc,     // Graph context.
-	Graph *g                    // Graph object.
+	const GraphContext *gc      // Graph context.
 );
+

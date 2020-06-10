@@ -206,8 +206,8 @@ AlgebraicExpression *_AlgebraicExpression_GetOperand
 	return __AlgebraicExpression_GetOperand(root, operand_idx, &current_operand_idx);
 }
 
-void _AlgebraicExpression_FetchOperands(AlgebraicExpression *exp, const GraphContext *gc,
-										Graph *g) {
+// TODO this function is only used within AlgebraicExpression_Optimize, consider moving it.
+void _AlgebraicExpression_FetchOperands(AlgebraicExpression *exp, const GraphContext *gc) {
 	Schema *s = NULL;
 	uint child_count = 0;
 	GrB_Matrix m = GrB_NULL;
@@ -217,22 +217,22 @@ void _AlgebraicExpression_FetchOperands(AlgebraicExpression *exp, const GraphCon
 	case AL_OPERATION:
 		child_count = AlgebraicExpression_ChildCount(exp);
 		for(uint i = 0; i < child_count; i++) {
-			_AlgebraicExpression_FetchOperands(CHILD_AT(exp, i), gc, g);
+			_AlgebraicExpression_FetchOperands(CHILD_AT(exp, i), gc);
 		}
 		break;
 	case AL_OPERAND:
 		if(exp->operand.matrix == GrB_NULL) {
 			label = exp->operand.label;
 			if(label == NULL) {
-				m = Graph_GetAdjacencyMatrix(g);
+				m = Graph_GetAdjacencyMatrix(gc->g);
 			} else if(exp->operand.diagonal) {
 				s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-				if(!s) m = Graph_GetZeroMatrix(g);
-				else m = Graph_GetLabelMatrix(g, s->id);
+				if(!s) m = Graph_GetZeroMatrix(gc->g);
+				else m = Graph_GetLabelMatrix(gc->g, s->id);
 			} else {
 				s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
-				if(!s) m = Graph_GetZeroMatrix(g);
-				else m = Graph_GetRelationMatrix(g, s->id);
+				if(!s) m = Graph_GetZeroMatrix(gc->g);
+				else m = Graph_GetRelationMatrix(gc->g, s->id);
 			}
 			exp->operand.matrix = m;
 		}

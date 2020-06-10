@@ -419,6 +419,7 @@ static void _AlgebraicExpression_PushDownTranspose(AlgebraicExpression *root) {
 //------------------------------------------------------------------------------
 // Replace transpose ops with transposed operands.
 //------------------------------------------------------------------------------
+// Retrieve a persistent transposed matrix.
 static void _AlgebraicExpression_FetchTransposedMatrix(AlgebraicExpression *operand) {
 	// Swap the row and column domains of the operand.
 	const char *tmp = operand->operand.dest;
@@ -427,7 +428,6 @@ static void _AlgebraicExpression_FetchTransposedMatrix(AlgebraicExpression *oper
 	/* Do not update matrix if already set.
 	 * algebraic expression test relies on this behavior. */
 	if(operand->operand.matrix != GrB_NULL) return;
-	// TODO move
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	GrB_Matrix m = GrB_NULL;
 
@@ -537,7 +537,7 @@ static void _AlgebraicExpression_ApplyTranspose(AlgebraicExpression *root) {
 			if(config.build_transposed_matrices) {
 				_AlgebraicExpression_FetchTransposedMatrix(child);
 			} else {
-				_AlgebraicExpression_FetchOperands(child, QueryCtx_GetGraphCtx(), QueryCtx_GetGraph());
+				_AlgebraicExpression_FetchOperands(child, QueryCtx_GetGraphCtx());
 				_AlgebraicExpression_TransposeOperand(child);
 			}
 			_AlgebraicExpression_InplaceRepurpose(root, child);
@@ -567,6 +567,7 @@ void AlgebraicExpression_Optimize
 	// Replace transpose operators with actual transposed operands.
 	_AlgebraicExpression_ApplyTranspose(*exp);
 
-	_AlgebraicExpression_FetchOperands(*exp, QueryCtx_GetGraphCtx(), QueryCtx_GetGraph());
+	// Retrieve all operand matrices that were not populated by the transpose optimization.
+	_AlgebraicExpression_FetchOperands(*exp, QueryCtx_GetGraphCtx());
 }
 
