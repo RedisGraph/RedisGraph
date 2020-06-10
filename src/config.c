@@ -8,13 +8,10 @@
 #include <unistd.h>
 #include <string.h>
 #include <limits.h>
-#include "util/redis_version.h"
 #include "../deps/GraphBLAS/Include/GraphBLAS.h"
 
 #define THREAD_COUNT "THREAD_COUNT" // Config param, number of threads in thread pool
 #define OMP_THREAD_COUNT "OMP_THREAD_COUNT" // Config param, max number of OpenMP threads
-#define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT" // Config param, max number of entities in each virtual key
-#define VKEY_MAX_ENTITY_COUNT_DEFAULT 100000
 
 extern RG_Config config; // Global module configuration.
 
@@ -70,30 +67,6 @@ static int _Config_SetOMPThreadCount(RedisModuleCtx *ctx, RedisModuleString *cou
 	return REDISMODULE_OK;
 }
 
-// If the user has specified a maximum number of entities per virtual key, update the configuration.
-// Returns REDISMODULE_OK on success and REDISMODULE_ERR if the argument was invalid.
-static int _Config_SetVirtualKeyEntitiesThreshold(RedisModuleCtx *ctx,
-												  RedisModuleString *entity_count_str) {
-	long long entity_count;
-	int res = _Config_ParsePositiveInteger(entity_count_str, &entity_count);
-	// Exit with error if integer parsing fails.
-	if(res != REDISMODULE_OK) {
-		const char *invalid_arg = RedisModule_StringPtrLen(entity_count_str, NULL);
-		RedisModule_Log(ctx, "warning", "Could not parse virtual key size argument '%s' as an integer",
-						invalid_arg);
-		return REDISMODULE_ERR;
-	}
-
-	// Log the new entity threshold.
-	RedisModule_Log(ctx, "notice", "Max number of entities per graph meta key set to %lld.",
-					entity_count);
-
-	// Update the entity count in the configuration.
-	config.vkey_entity_count = entity_count;
-
-	return REDISMODULE_OK;
-}
-
 // Initialize every module-level configuration to its default value.
 static void _Config_SetToDefaults(void) {
 	// The thread pool's default size is equal to the system's number of cores.
@@ -102,14 +75,6 @@ static void _Config_SetToDefaults(void) {
 
 	// Use the GraphBLAS-defined number of OpenMP threads by default.
 	GxB_get(GxB_NTHREADS, &config.omp_thread_count);
-
-	if(Redis_Version_GreaterOrEqual(6, 0, 0)) {
-		// The default entity count of virtual keys for server versions >= 6 is set by macro.
-		config.vkey_entity_count = VKEY_MAX_ENTITY_COUNT_DEFAULT;
-	} else {
-		// For redis-server versions below 6.0.0, we will not split the graph into virtual keys.
-		config.vkey_entity_count = VKEY_ENTITY_COUNT_UNLIMITED;
-	}
 }
 
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -135,9 +100,6 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		} else if(!strcasecmp(param, OMP_THREAD_COUNT)) {
 			// User defined maximum number of OpenMP threads.
 			res = _Config_SetOMPThreadCount(ctx, val);
-		} else if(!strcasecmp(param, VKEY_MAX_ENTITY_COUNT)) {
-			// User defined maximum number of entities per virtual key.
-			res = _Config_SetVirtualKeyEntitiesThreshold(ctx, val);
 		} else {
 			RedisModule_Log(ctx, "warning", "Encountered unknown module argument '%s'", param);
 		}
@@ -155,9 +117,5 @@ inline int Config_GetThreadCount() {
 
 inline int Config_GetOMPThreadCount() {
 	return config.omp_thread_count;
-}
-
-inline uint64_t Config_GetVirtualKeyEntityCount() {
-	return config.vkey_entity_count;
 }
 

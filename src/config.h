@@ -12,7 +12,6 @@
 typedef struct {
 	int omp_thread_count;        // Maximum number of OpenMP threads.
 	int thread_count;            // Thread count for thread pool.
-	uint64_t vkey_entity_count;  // The limit of number of entities encoded at once for each RDB key.
 } RG_Config;
 
 // Set module-level configurations to defaults or to user arguments where provided.
@@ -25,6 +24,4 @@ int Config_GetThreadCount(void);
 // Return the max number of OpenMP threads or -1 if using the default value.
 int Config_GetOMPThreadCount(void);
 
-// Return the module virtual key entity limit.
-uint64_t Config_GetVirtualKeyEntityCount(void);
-
+#endif
