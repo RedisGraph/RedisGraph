@@ -163,6 +163,7 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 			res = _Config_BuildTransposedMatrices(ctx, val);
 		} else {
 			RedisModule_Log(ctx, "warning", "Encountered unknown module argument '%s'", param);
+			return REDISMODULE_ERR;
 		}
 
 		// Exit if we encountered an error.
