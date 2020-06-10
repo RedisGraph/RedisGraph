@@ -60,15 +60,14 @@ void ExecutionInformation_FromQuery(const char *query, ExecutionPlan **plan, AST
 	AST *ast_template = AST_Build(query_parse_result);
 	*exec_type = _GetExecutionTypeFromAST(ast_template);
 	ExecutionPlan *exec_plan_template = NULL;
-	if(*exec_type == EXECUTION_TYPE_QUERY) exec_plan_template = NewExecutionPlan();
-	// Created new valid execution context.
-	exec_ctx = rm_calloc(1, sizeof(ExecutionCtx));
-	exec_ctx->ast = ast_template;
-	// Clone ast.
-	*ast = AST_Clone(ast_template);
+	if(*exec_type == EXECUTION_TYPE_QUERY) exec_plan_template = NewExecutionPlan();	
+	*ast = ast_template;
 	// Set parameters parse result in the execution ast.
 	AST_SetParamsParseResult(*ast, params_parse_result);
 	if(exec_plan_template) {
+		// Created new valid execution context.
+		exec_ctx = rm_calloc(1, sizeof(ExecutionCtx));
+		exec_ctx->ast = AST_Clone(ast_template);
 		exec_ctx->exec_plan_template = exec_plan_template;
 		// Clone execution plan.
 		*plan = ExecutionPlan_Clone(exec_plan_template);
