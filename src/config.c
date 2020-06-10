@@ -14,6 +14,7 @@
 #define THREAD_COUNT "THREAD_COUNT" // Config param, number of threads in thread pool
 #define OMP_THREAD_COUNT "OMP_THREAD_COUNT" // Config param, max number of OpenMP threads
 #define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT" // Config param, max number of entities in each virtual key
+#define BUILD_TRANSPOSED_MATRICES "BUILD_TRANSPOSED_MATRICES" // Whether the module should maintain transposed relationship matrices
 #define VKEY_MAX_ENTITY_COUNT_DEFAULT 100000
 
 extern RG_Config config; // Global module configuration.
@@ -93,6 +94,22 @@ static int _Config_SetVirtualKeyEntitiesThreshold(RedisModuleCtx *ctx,
 
 	return REDISMODULE_OK;
 }
+static int _Config_BuildTransposedMatrices(RedisModuleCtx *ctx, RedisModuleString *build_str) {
+	const char *should_build = RedisModule_StringPtrLen(build_str, NULL);
+	if(!strcasecmp(should_build, "yes")) {
+		config.build_transposed_matrices = true;
+		RedisModule_Log(ctx, "notice", "Maintaining transposed copies of relationship matrices.");
+	} else if(!strcasecmp(should_build, "no")) {
+		config.build_transposed_matrices = false;
+		RedisModule_Log(ctx, "notice", "Not maintaining transposed copies of relationship matrices.");
+	} else {
+		// Exit with error if argument was not "yes" or "no".
+		RedisModule_Log(ctx, "warning",
+						"Invalid argument '%s' for BUILD_TRANSPOSED_MATRICES, expected 'yes' or 'no'", should_build);
+		return REDISMODULE_ERR;
+	}
+	return REDISMODULE_OK;
+}
 
 // Initialize every module-level configuration to its default value.
 static void _Config_SetToDefaults(void) {
@@ -110,6 +127,9 @@ static void _Config_SetToDefaults(void) {
 		// For redis-server versions below 6.0.0, we will not split the graph into virtual keys.
 		config.vkey_entity_count = VKEY_ENTITY_COUNT_UNLIMITED;
 	}
+
+	// Always build transposed matrices by default.
+	config.build_transposed_matrices = true;
 }
 
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -138,6 +158,9 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		} else if(!strcasecmp(param, VKEY_MAX_ENTITY_COUNT)) {
 			// User defined maximum number of entities per virtual key.
 			res = _Config_SetVirtualKeyEntitiesThreshold(ctx, val);
+		} else if(!strcasecmp(param, BUILD_TRANSPOSED_MATRICES)) {
+			// User specified whether or not to maintain transposed matrices.
+			res = _Config_BuildTransposedMatrices(ctx, val);
 		} else {
 			RedisModule_Log(ctx, "warning", "Encountered unknown module argument '%s'", param);
 		}

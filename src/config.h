@@ -6,13 +6,15 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include "redismodule.h"
 #define VKEY_ENTITY_COUNT_UNLIMITED UINT64_MAX
 
 typedef struct {
-	int omp_thread_count;        // Maximum number of OpenMP threads.
-	int thread_count;            // Thread count for thread pool.
-	uint64_t vkey_entity_count;  // The limit of number of entities encoded at once for each RDB key.
+	int omp_thread_count;           // Maximum number of OpenMP threads.
+	int thread_count;               // Thread count for thread pool.
+	uint64_t vkey_entity_count;     // The limit of number of entities encoded at once for each RDB key.
+	bool build_transposed_matrices; // If true, maintain a transposed version of each relationship matrix.
 } RG_Config;
 
 // Set module-level configurations to defaults or to user arguments where provided.
