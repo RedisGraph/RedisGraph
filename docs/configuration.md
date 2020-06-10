@@ -20,7 +20,7 @@ $ redis-server --loadmodule ./redisgraph.so OPT1 OPT2
 
 # RedisGraph configuration options
 
-## THREAD_COUNT 
+## THREAD_COUNT
 
 The number of threads in RedisGraph's thread pool. This is equivalent to the maximum number of queries that can be processed concurrently.
 
@@ -31,12 +31,12 @@ The number of threads in RedisGraph's thread pool. This is equivalent to the max
 ### Example
 
 ```
-$ redis-server --loadmodule ./redisgraph.so THREAD_COUNT 4 
+$ redis-server --loadmodule ./redisgraph.so THREAD_COUNT 4
 ```
 
 ---
 
-## OMP_THREAD_COUNT 
+## OMP_THREAD_COUNT
 
 The maximum number of threads that OpenMP may use for computation. These threads are used for parallelizing GraphBLAS computations, so may be considered to control concurrency within the execution of individual queries.
 
@@ -47,5 +47,21 @@ The maximum number of threads that OpenMP may use for computation. These threads
 ### Example
 
 ```
-$ redis-server --loadmodule ./redisgraph.so OMP_THREAD_COUNT 1 
+$ redis-server --loadmodule ./redisgraph.so OMP_THREAD_COUNT 1
+```
+
+---
+
+## BUILD_TRANSPOSED_MATRICES
+
+If enabled, RedisGraph will maintain transposed copies of relationship matrices. This improves the performance of traversing edges from destination to source, but has a higher memory overhead and requires more write operations when updating edges.
+
+### Default
+
+`BUILD_TRANSPOSED_MATRICES` is on by default (config value of `yes`).
+
+### Example
+
+```
+$ redis-server --loadmodule ./redisgraph.so BUILD_TRANSPOSED_MATRICES no
 ```
