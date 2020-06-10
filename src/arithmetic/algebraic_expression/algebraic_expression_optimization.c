@@ -7,8 +7,9 @@
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../algebraic_expression.h"
+#include "../../config.h"
 
-bool have_transpose_matrices; // TODO move
+extern RG_Config config; // Global module configuration.
 
 static inline bool _AlgebraicExpression_IsMultiplicationNode(const AlgebraicExpression *node) {
 	return (node->type == AL_OPERATION && node->operation.op == AL_EXP_MUL);
@@ -533,10 +534,11 @@ static void _AlgebraicExpression_ApplyTranspose(AlgebraicExpression *root) {
 			/* We have a transpose operation with an operand child.
 			 * Fetch a persistent transposed matrix if we have one or
 			 * create a new transposed matrix and replace this operation with it. */
-			if(!have_transpose_matrices) {
-				_AlgebraicExpression_TransposeOperand(child);
-			} else {
+			if(config.build_transposed_matrices) {
 				_AlgebraicExpression_FetchTransposedMatrix(child);
+			} else {
+				_AlgebraicExpression_FetchOperands(child, QueryCtx_GetGraphCtx(), QueryCtx_GetGraph());
+				_AlgebraicExpression_TransposeOperand(child);
 			}
 			_AlgebraicExpression_InplaceRepurpose(root, child);
 			break;
@@ -557,13 +559,6 @@ void AlgebraicExpression_Optimize
 	AlgebraicExpression **exp
 ) {
 	assert(exp);
-
-	have_transpose_matrices = true;
-
-	if(!have_transpose_matrices) {
-		// Fetch the operand matrices now, as the ApplyTranspose optimization will utilize them.
-		_AlgebraicExpression_FetchOperands(*exp, QueryCtx_GetGraphCtx(), QueryCtx_GetGraph());
-	}
 
 	_AlgebraicExpression_PushDownTranspose(*exp);
 	_AlgebraicExpression_MulOverSum(exp);
