@@ -44,7 +44,7 @@ class GraphTest : public ::testing::Test {
 		Alloc_Reset();
 
 		// Set global variables
-		config.build_transposed_matrices = true; // Ensure that transposed matrices are constructed.
+		config.maintain_transposed_matrices = true; // Ensure that transposed matrices are constructed.
 
 		// Initialize GraphBLAS.
 		GrB_init(GrB_NONBLOCKING);

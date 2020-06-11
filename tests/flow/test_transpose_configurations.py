@@ -15,7 +15,6 @@ class testTransposeConfigurations(FlowTestsBase):
         # At the start of each test, instantiate a server with default configurations and build the graph.
         global default_graph
         self.env = Env()
-        self.env.cmd('set', 'foo', 'bar')
         redis_con = self.env.getConnection()
         default_graph = Graph(GRAPH_ID, redis_con)
         self.populate_graph(default_graph)
@@ -66,7 +65,7 @@ class testTransposeConfigurations(FlowTestsBase):
         self.env.stop()
 
         # Instantiate a new server without transposed matrices
-        configured_env = Env(moduleArgs="BUILD_TRANSPOSED_MATRICES no")
+        configured_env = Env(moduleArgs="MAINTAIN_TRANSPOSED_MATRICES no")
         configured_graph = Graph(GRAPH_ID, configured_env.getConnection())
         # Repopulate the graph
         self.populate_graph(configured_graph)
@@ -107,7 +106,7 @@ class testTransposeConfigurations(FlowTestsBase):
         self.env.stop()
 
         # Instantiate a new server without transposed matrices
-        configured_env = Env(moduleArgs="BUILD_TRANSPOSED_MATRICES no")
+        configured_env = Env(moduleArgs="MAINTAIN_TRANSPOSED_MATRICES no")
         configured_graph = Graph(GRAPH_ID, configured_env.getConnection())
         # Repopulate the graph
         self.populate_graph(configured_graph)
@@ -139,7 +138,7 @@ class testTransposeConfigurations(FlowTestsBase):
         self.env.stop()
 
         # Instantiate a new server without transposed matrices
-        configured_env = Env(moduleArgs="BUILD_TRANSPOSED_MATRICES no")
+        configured_env = Env(moduleArgs="MAINTAIN_TRANSPOSED_MATRICES no")
         configured_graph = Graph(GRAPH_ID, configured_env.getConnection())
         # Repopulate the graph
         self.populate_graph(configured_graph)

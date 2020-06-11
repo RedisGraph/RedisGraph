@@ -14,11 +14,6 @@
 #include "../util/rmalloc.h"
 #include "../util/datablock/oo_datablock.h"
 
-// Macro that evaluates to true if we're maintaining transpose matrices.
-#define UPDATE_TRANSPOSE_MATRICES(g) ((g)->t_relations != NULL)
-
-extern RG_Config config; // Global module configuration.
-
 static GrB_BinaryOp _graph_edge_accum = NULL;
 // GraphBLAS Select operator to free edge arrays and delete edges.
 static GxB_SelectOp _select_delete_edges = NULL;
@@ -332,7 +327,7 @@ void Graph_ApplyAllPending(Graph *g) {
 		g->SynchronizeMatrix(g, M);
 	}
 
-	if(UPDATE_TRANSPOSE_MATRICES(g)) {
+	if(Config_MaintainTranspose()) {
 		for(int i = 0; i < array_len(g->t_relations); i ++) {
 			M = g->t_relations[i];
 			g->SynchronizeMatrix(g, M);
@@ -354,7 +349,7 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 	g->_t_adjacency_matrix = RG_Matrix_New(GrB_BOOL, node_cap, node_cap);
 	g->_zero_matrix = RG_Matrix_New(GrB_BOOL, node_cap, node_cap);
 	// If we're maintaining transposed relation matrices, allocate a new array, otherwise NULL-set the pointer.
-	g->t_relations = config.build_transposed_matrices ?
+	g->t_relations = Config_MaintainTranspose() ?
 					 array_new(RG_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP) : NULL;
 
 	// Initialize a read-write lock scoped to the individual graph
@@ -570,12 +565,13 @@ void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int
 					);
 	assert(info == GrB_SUCCESS);
 
-	// Retrieve the entry we just built, as it may now be a scalar ID or an array of edges.
-	EdgeID extracted_id;
-	info = GrB_Matrix_extractElement_UINT64(&extracted_id, relationMat, I, J);
-	assert(info == GrB_SUCCESS);
+	// Update the transposed matrix if one is present.
+	if(Config_MaintainTranspose()) {
+		// Retrieve the entry we just built, as it may now be a scalar ID or an array of edges.
+		EdgeID extracted_id;
+		info = GrB_Matrix_extractElement_UINT64(&extracted_id, relationMat, I, J);
+		assert(info == GrB_SUCCESS);
 
-	if(UPDATE_TRANSPOSE_MATRICES(g)) {
 		// Perform a simple assignment of the extracted entry into the transpose matrix.
 		GrB_Matrix t_relationMat = Graph_GetTransposedRelationMatrix(g, r);
 		info = GrB_Matrix_setElement_UINT64(t_relationMat, extracted_id, J, I);
@@ -672,13 +668,13 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 	GrB_Matrix M;
 	GrB_Info info;
 	EdgeID edge_id;
-	GrB_Matrix TR = NULL;
+	GrB_Matrix TR = GrB_NULL;
 	int r = Edge_GetRelationID(e);
 	NodeID src_id = Edge_GetSrcNodeID(e);
 	NodeID dest_id = Edge_GetDestNodeID(e);
 
 	R = Graph_GetRelationMatrix(g, r);
-	if(UPDATE_TRANSPOSE_MATRICES(g)) TR = Graph_GetTransposedRelationMatrix(g, r);
+	if(Config_MaintainTranspose()) TR = Graph_GetTransposedRelationMatrix(g, r);
 
 	// Test to see if edge exists.
 	info = GrB_Matrix_extractElement(&edge_id, R, src_id, dest_id);
@@ -784,7 +780,7 @@ static void _Graph_FreeRelationMatrices(Graph *g) {
 		RG_Matrix_Free(M);
 	}
 
-	if(UPDATE_TRANSPOSE_MATRICES(g)) {
+	if(Config_MaintainTranspose()) {
 		// If we're maintaining transposed matrices, free them.
 		// Since the actual entries are shared, all edge arrays have already been freed.
 		for(uint i = 0; i < relationCount; i++) RG_Matrix_Free(g->t_relations[i]);
@@ -912,7 +908,7 @@ static void _BulkDeleteNodes(Graph *g, Node *nodes, uint node_count,
 	GrB_Matrix_apply(tadj, Mask, GrB_NULL, GrB_IDENTITY_BOOL, tadj, desc);
 
 	// Update the individual transposed matrices if present.
-	if(UPDATE_TRANSPOSE_MATRICES(g)) {
+	if(Config_MaintainTranspose()) {
 		for(int i = 0; i < relation_count; i++) {
 			// Remove every entry of TR marked by Mask.
 			GrB_Matrix TR = Graph_GetTransposedRelationMatrix(g, i);
@@ -1023,7 +1019,7 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 				// Desc: GrB_MASK = GrB_COMP,  GrB_OUTP = GrB_REPLACE.
 				// R = R & !mask.
 				GrB_Matrix_apply(R, mask, GrB_NULL, GrB_IDENTITY_UINT64, R, desc);
-				if(UPDATE_TRANSPOSE_MATRICES(g)) {
+				if(Config_MaintainTranspose()) {
 					GrB_Matrix tM = Graph_GetTransposedRelationMatrix(g, r);  // Transposed relation mapping matrix.
 					// Transpose mask (this cannot be done by descriptor).
 					GrB_transpose(mask, GrB_NULL, GrB_NULL, mask, GrB_NULL);
@@ -1132,7 +1128,7 @@ int Graph_AddRelationType(Graph *g) {
 	size_t dims = Graph_RequiredMatrixDim(g);
 	RG_Matrix m = RG_Matrix_New(GrB_UINT64, dims, dims);
 	g->relations = array_append(g->relations, m);
-	if(UPDATE_TRANSPOSE_MATRICES(g)) {
+	if(Config_MaintainTranspose()) {
 		RG_Matrix tm = RG_Matrix_New(GrB_UINT64, dims, dims);
 		g->t_relations = array_append(g->t_relations, tm);
 	}

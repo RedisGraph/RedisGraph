@@ -52,16 +52,16 @@ $ redis-server --loadmodule ./redisgraph.so OMP_THREAD_COUNT 1
 
 ---
 
-## BUILD_TRANSPOSED_MATRICES
+## MAINTAIN_TRANSPOSED_MATRICES
 
 If enabled, RedisGraph will maintain transposed copies of relationship matrices. This improves the performance of traversing edges from destination to source, but has a higher memory overhead and requires more write operations when updating edges.
 
 ### Default
 
-`BUILD_TRANSPOSED_MATRICES` is on by default (config value of `yes`).
+`MAINTAIN_TRANSPOSED_MATRICES` is on by default (config value of `yes`).
 
 ### Example
 
 ```
-$ redis-server --loadmodule ./redisgraph.so BUILD_TRANSPOSED_MATRICES no
+$ redis-server --loadmodule ./redisgraph.so MAINTAIN_TRANSPOSED_MATRICES no
 ```

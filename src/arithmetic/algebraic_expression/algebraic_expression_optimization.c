@@ -9,8 +9,6 @@
 #include "../algebraic_expression.h"
 #include "../../config.h"
 
-extern RG_Config config; // Global module configuration.
-
 static inline bool _AlgebraicExpression_IsMultiplicationNode(const AlgebraicExpression *node) {
 	return (node->type == AL_OPERATION && node->operation.op == AL_EXP_MUL);
 }
@@ -425,6 +423,10 @@ static void _AlgebraicExpression_FetchTransposedMatrix(AlgebraicExpression *oper
 	const char *tmp = operand->operand.dest;
 	operand->operand.src = operand->operand.dest;
 	operand->operand.dest = tmp;
+
+	// Diagonal matrices do not need to be transposed.
+	if(operand->operand.diagonal == true) return;
+
 	/* Do not update matrix if already set.
 	 * algebraic expression test relies on this behavior. */
 	if(operand->operand.matrix != GrB_NULL) return;
@@ -434,10 +436,6 @@ static void _AlgebraicExpression_FetchTransposedMatrix(AlgebraicExpression *oper
 	const char *label = operand->operand.label;
 	if(label == NULL) {
 		m = Graph_GetTransposedAdjacencyMatrix(gc->g);
-	} else if(operand->operand.diagonal) {
-		Schema *s = GraphContext_GetSchema(gc, operand->operand.label, SCHEMA_NODE);
-		if(!s) m = Graph_GetZeroMatrix(gc->g);
-		else m = Graph_GetTransposedRelationMatrix(gc->g, s->id);
 	} else {
 		Schema *s = GraphContext_GetSchema(gc, operand->operand.label, SCHEMA_EDGE);
 		if(!s) m = Graph_GetZeroMatrix(gc->g);
@@ -529,12 +527,12 @@ static void _AlgebraicExpression_ApplyTranspose(AlgebraicExpression *root) {
 		case AL_EXP_TRANSPOSE:
 			child = _AlgebraicExpression_OperationRemoveRightmostChild(root);
 			// Transpose operands will currently always have an operand child.
-			assert(child->type != AL_OPERATION && "encountered unexpected operation as transpose child");
+			assert(child->type == AL_OPERAND && "encountered unexpected operation as transpose child");
 
 			/* We have a transpose operation with an operand child.
 			 * Fetch a persistent transposed matrix if we have one or
 			 * create a new transposed matrix and replace this operation with it. */
-			if(config.build_transposed_matrices) {
+			if(Config_MaintainTranspose()) {
 				_AlgebraicExpression_FetchTransposedMatrix(child);
 			} else {
 				_AlgebraicExpression_FetchOperands(child, QueryCtx_GetGraphCtx());
