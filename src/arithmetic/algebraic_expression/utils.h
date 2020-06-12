@@ -103,7 +103,8 @@ AlgebraicExpression *_AlgebraicExpression_GetOperand
 	uint operand_idx                    // Operand position (LTR, zero based).
 );
 
-// Resolves all missing operands.
+// Resolves all missing operands, replacing transpose operations with
+// transposed operands if they are available.
 void _AlgebraicExpression_FetchOperands
 (
 	AlgebraicExpression *exp,   // Expression to resolve operands for.
