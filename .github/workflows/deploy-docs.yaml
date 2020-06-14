@@ -15,6 +15,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
+    - name: Get all tags
+      run: git fetch -t
     - name: Set up Python 3.x
       uses: actions/setup-python@v1
       with:
@@ -27,7 +29,7 @@ jobs:
       run: mkdocs build
     - uses: jakejarvis/s3-sync-action@master
       with:
-        args: --acl public-read --follow-symlinks --delete
+        args: --acl public-read --follow-symlinks
       env:
         AWS_S3_BUCKET: ${{ secrets.DOCS_AWS_S3_BUCKET }}
         AWS_ACCESS_KEY_ID: ${{ secrets.DOCS_AWS_ACCESS_KEY_ID }}
