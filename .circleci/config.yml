@@ -165,6 +165,9 @@ jobs:
             cd ..; curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"; unzip awscliv2.zip;./aws/install
       - checkout
       - run:
+          name: Fetch entire project
+          command: git fetch -t
+      - run:
           name: Install dependencies
           command: pip install -r docs/requirements.txt
       - run:
