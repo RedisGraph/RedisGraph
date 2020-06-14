@@ -27,6 +27,7 @@ pages:
     - 'Quickstart': index.md
     - 'Commands': commands.md
     - 'Clients': clients.md
+    - 'Configuration': configuration.md 
     - 'Design Documents':
         - 'Result Set structure': result_structure.md
         - 'Client Specification': client_spec.md
