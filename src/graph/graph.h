@@ -70,6 +70,7 @@ struct Graph {
 	RG_Matrix _t_adjacency_matrix;      // Transposed Adjacency matrix.
 	RG_Matrix *labels;                  // Label matrices.
 	RG_Matrix *relations;               // Relation matrices.
+	RG_Matrix *t_relations;             // Transposed relation matrices.
 	RG_Matrix _zero_matrix;             // Zero matrix.
 	pthread_mutex_t _writers_mutex;     // Mutex restrict single writer.
 	pthread_rwlock_t _rwlock;           // Read-write lock scoped to this specific graph
@@ -290,6 +291,12 @@ GrB_Matrix Graph_GetAdjacencyMatrix(
 	const Graph *g
 );
 
+// Retrieves the transposed adjacency matrix.
+// Matrix is resized if its size doesn't match graph's node count.
+GrB_Matrix Graph_GetTransposedAdjacencyMatrix(
+	const Graph *g
+);
+
 // Retrieves a label matrix.
 // Matrix is resized if its size doesn't match graph's node count.
 GrB_Matrix Graph_GetLabelMatrix(
@@ -300,6 +307,13 @@ GrB_Matrix Graph_GetLabelMatrix(
 // Retrieves a typed adjacency matrix.
 // Matrix is resized if its size doesn't match graph's node count.
 GrB_Matrix Graph_GetRelationMatrix(
+	const Graph *g,     // Graph from which to get adjacency matrix.
+	int relation        // Relation described by matrix.
+);
+
+// Retrieves a transposed typed adjacency matrix.
+// Matrix is resized if its size doesn't match graph's node count.
+GrB_Matrix Graph_GetTransposedRelationMatrix(
 	const Graph *g,     // Graph from which to get adjacency matrix.
 	int relation        // Relation described by matrix.
 );
@@ -315,3 +329,4 @@ void Graph_Free(
 );
 
 #endif
+

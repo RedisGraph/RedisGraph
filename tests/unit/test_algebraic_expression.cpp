@@ -11,6 +11,7 @@ extern "C" {
 #endif
 
 #include "assert.h"
+#include "../../src/config.h"
 #include "../../src/value.h"
 #include "../../src/util/arr.h"
 #include "../../src/query_ctx.h"
@@ -35,12 +36,17 @@ QueryGraph *qg;
 // Matrices.
 GrB_Matrix mat_p;
 GrB_Matrix mat_ef;
+GrB_Matrix mat_tef;
 GrB_Matrix mat_f;
 GrB_Matrix mat_ev;
+GrB_Matrix mat_tev;
 GrB_Matrix mat_c;
 GrB_Matrix mat_ew;
+GrB_Matrix mat_tew;
 GrB_Matrix mat_e;
 rax *_matrices;
+
+RG_Config config; // Global module configuration
 
 const char *query_no_intermidate_return_nodes =
 	"MATCH (p:Person)-[ef:friend]->(f:Person)-[ev:visit]->(c:City)-[ew:war]->(e:City) RETURN p, e";
@@ -60,6 +66,9 @@ class AlgebraicExpressionTest: public ::testing::Test {
 	static void SetUpTestCase() {
 		// Use the malloc family for allocations
 		Alloc_Reset();
+
+		// Set global variables
+		config.maintain_transposed_matrices = true; // Ensure that transposed matrices are constructed.
 
 		// Initialize GraphBLAS.
 		GrB_init(GrB_NONBLOCKING);
@@ -167,12 +176,15 @@ class AlgebraicExpressionTest: public ::testing::Test {
 
 		mat_id = GraphContext_GetSchema(gc, "friend", SCHEMA_EDGE)->id;
 		mat_ef = Graph_GetRelationMatrix(g, mat_id);
+		mat_tef = Graph_GetTransposedRelationMatrix(g, mat_id);
 
 		mat_id = GraphContext_GetSchema(gc, "visit", SCHEMA_EDGE)->id;
 		mat_ev = Graph_GetRelationMatrix(g, mat_id);
+		mat_tev = Graph_GetTransposedRelationMatrix(g, mat_id);
 
 		mat_id = GraphContext_GetSchema(gc, "war", SCHEMA_EDGE)->id;
 		mat_ew = Graph_GetRelationMatrix(g, mat_id);
+		mat_tew = Graph_GetTransposedRelationMatrix(g, mat_id);
 
 		GrB_Matrix dummy_matrix;
 		GrB_Matrix_new(&dummy_matrix, GrB_BOOL, 2, 2);
@@ -184,6 +196,9 @@ class AlgebraicExpressionTest: public ::testing::Test {
 		raxInsert(_matrices, (unsigned char *)"F", strlen("F"), mat_ef, NULL);
 		raxInsert(_matrices, (unsigned char *)"V", strlen("V"), mat_ev, NULL);
 		raxInsert(_matrices, (unsigned char *)"W", strlen("W"), mat_ew, NULL);
+		raxInsert(_matrices, (unsigned char *)"tF", strlen("tF"), mat_tef, NULL);
+		raxInsert(_matrices, (unsigned char *)"tV", strlen("tV"), mat_tev, NULL);
+		raxInsert(_matrices, (unsigned char *)"tW", strlen("tW"), mat_tew, NULL);
 		raxInsert(_matrices, (unsigned char *)"A", strlen("A"), dummy_matrix, NULL);
 		raxInsert(_matrices, (unsigned char *)"B", strlen("B"), dummy_matrix, NULL);
 		raxInsert(_matrices, (unsigned char *)"C", strlen("C"), dummy_matrix, NULL);
@@ -191,7 +206,6 @@ class AlgebraicExpressionTest: public ::testing::Test {
 
 	AlgebraicExpression **build_algebraic_expression(const char *query) {
 		GraphContext *gc = QueryCtx_GetGraphCtx();
-		Graph *g = QueryCtx_GetGraph();
 		cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 		AST *master_ast = AST_Build(parse_result);
 		AST *ast = AST_NewSegment(master_ast, 0, cypher_ast_query_nclauses(master_ast->root));
@@ -200,7 +214,6 @@ class AlgebraicExpressionTest: public ::testing::Test {
 
 		uint exp_count = array_len(ae);
 		for(uint i = 0; i < exp_count; i++) {
-			_AlgebraicExpression_FetchOperands(ae[i], gc, g);
 			AlgebraicExpression_Optimize(ae + i);
 		}
 
@@ -270,9 +283,7 @@ class AlgebraicExpressionTest: public ::testing::Test {
 	void _compare_algebraic_operand(AlgebraicExpression *a, AlgebraicExpression *b) {
 		ASSERT_TRUE(a->type == AL_OPERAND);
 		ASSERT_TRUE(b->type == AL_OPERAND);
-		// Can't compare matrix pointers, as transpose ops will have rewritten them
-		// TODO re-enable this after introducing persistent transposed adjacency matrices.
-		// ASSERT_EQ(a->operand.matrix, b->operand.matrix);
+		ASSERT_EQ(a->operand.matrix, b->operand.matrix);
 	}
 
 	void compare_algebraic_expression(AlgebraicExpression *a, AlgebraicExpression *b) {
@@ -654,41 +665,47 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_MUL) {
 
 TEST_F(AlgebraicExpressionTest, Exp_OP_ADD_Transpose) {
 	// Exp = A + Transpose(A)
-	GrB_Matrix A;
 	GrB_Matrix B;
 	GrB_Matrix res;
+	/* We must use matrices that we've added to the graph, or else
+	 * the transpose optimization will erroneously use the adjacency matrix
+	 * (since there is no schema associated with the operands).
 
-	// A
-	// 1 1
-	// 0 0
-	GrB_Matrix_new(&A, GrB_BOOL, 2, 2);
-	GrB_Matrix_setElement_BOOL(A, true, 0, 0);
-	GrB_Matrix_setElement_BOOL(A, true, 0, 1);
-
-	// B
-	// 1 1
-	// 1 0
-	GrB_Matrix_new(&B, GrB_BOOL, 2, 2);
-	GrB_Matrix_setElement_BOOL(B, true, 0, 0);
-	GrB_Matrix_setElement_BOOL(B, true, 0, 1);
-	GrB_Matrix_setElement_BOOL(B, true, 1, 0);
-
+	 * The 'visit' matrix represented by V has the form:
+	 * 0 0 1 1
+	 * 0 0 1 0
+	 * 0 0 0 0
+	 * 0 0 0 0
+	 *
+	 * Its transpose, TV, has the form:
+	 * 0 0 0 0
+	 * 0 0 0 0
+	 * 1 1 0 0
+	 * 1 0 0 0
+	 *
+	 * The expected result of the addition is:
+	 * 0 0 1 1
+	 * 0 0 1 0
+	 * 1 1 0 0
+	 * 1 0 0 0
+	 */
+	GrB_Matrix_new(&B, GrB_BOOL, 4, 4);
+	GrB_Matrix_setElement_BOOL(B, true, 0, 2);
+	GrB_Matrix_setElement_BOOL(B, true, 0, 3);
+	GrB_Matrix_setElement_BOOL(B, true, 1, 2);
+	GrB_Matrix_setElement_BOOL(B, true, 2, 0);
+	GrB_Matrix_setElement_BOOL(B, true, 2, 1);
+	GrB_Matrix_setElement_BOOL(B, true, 3, 0);
 	// Matrix used for intermidate computations of AlgebraicExpression_Eval
 	// but also contains the result of expression evaluation.
-	GrB_Matrix_new(&res, GrB_BOOL, 2, 2);
-
-	// A + Transpose(A)
-	rax *matrices = raxNew();
-	raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
-	AlgebraicExpression *exp = AlgebraicExpression_FromString("A+T(A)", matrices);
+	GrB_Matrix_new(&res, GrB_BOOL, 4, 4);
+	AlgebraicExpression *exp = AlgebraicExpression_FromString("V+tV", _matrices);
 	AlgebraicExpression_Eval(exp, res);
 
 	// Using the A matrix described above,
 	// A + Transpose(A) = B.
 	ASSERT_TRUE(_compare_matrices(res, B));
 
-	raxFree(matrices);
-	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&res);
 	AlgebraicExpression_Free(exp);
@@ -696,39 +713,49 @@ TEST_F(AlgebraicExpressionTest, Exp_OP_ADD_Transpose) {
 
 TEST_F(AlgebraicExpressionTest, Exp_OP_MUL_Transpose) {
 	// Exp = Transpose(A) * A
-	GrB_Matrix A;
 	GrB_Matrix B;
 	GrB_Matrix res;
 
-	// A
-	// 1 1
-	// 0 0
-	GrB_Matrix_new(&A, GrB_BOOL, 2, 2);
-	GrB_Matrix_setElement_BOOL(A, true, 0, 0);
-	GrB_Matrix_setElement_BOOL(A, true, 0, 1);
+	/* We must use matrices that we've added to the graph, or else
+	 * the transpose optimization will erroneously use the adjacency matrix
+	 * (since there is no schema associated with the operands).
 
-	// B
-	// 1 0
-	// 0 0
-	GrB_Matrix_new(&B, GrB_BOOL, 2, 2);
+	 * The 'visit' matrix represented by V has the form:
+	 * 0 0 1 1
+	 * 0 0 1 0
+	 * 0 0 0 0
+	 * 0 0 0 0
+	 *
+	 * Its transpose, TV, has the form:
+	 * 0 0 0 0
+	 * 0 0 0 0
+	 * 1 1 0 0
+	 * 1 0 0 0
+	 *
+	 * The expected result of the multiplication is:
+	 * 1 1 0 0
+	 * 1 1 0 0
+	 * 1 0 0 0
+	 * 1 0 0 0
+	 */
+	GrB_Matrix_new(&B, GrB_BOOL, 4, 4);
 	GrB_Matrix_setElement_BOOL(B, true, 0, 0);
+	GrB_Matrix_setElement_BOOL(B, true, 0, 1);
+	GrB_Matrix_setElement_BOOL(B, true, 1, 0);
+	GrB_Matrix_setElement_BOOL(B, true, 1, 1);
 
 	// Matrix used for intermidate computations of AlgebraicExpression_Eval
 	// but also contains the result of expression evaluation.
-	GrB_Matrix_new(&res, GrB_BOOL, 2, 2);
+	GrB_Matrix_new(&res, GrB_BOOL, 4, 4);
 
 	// Transpose(A) * A
-	rax *matrices = raxNew();
-	raxInsert(matrices, (unsigned char *)"A", strlen("A"), A, NULL);
-	AlgebraicExpression *exp = AlgebraicExpression_FromString("A*T(A)", matrices);
+	AlgebraicExpression *exp = AlgebraicExpression_FromString("V*tV", _matrices);
 	AlgebraicExpression_Eval(exp, res);
 
 	// Using the A matrix described above,
 	// Transpose(A) * A = B.
 	ASSERT_TRUE(_compare_matrices(res, B));
 
-	raxFree(matrices);
-	GrB_Matrix_free(&A);
 	GrB_Matrix_free(&B);
 	GrB_Matrix_free(&res);
 	AlgebraicExpression_Free(exp);
@@ -1072,7 +1099,7 @@ TEST_F(AlgebraicExpressionTest, BothDirections) {
 	ASSERT_EQ(exp_count, 1);
 
 	AlgebraicExpression *expected[1];
-	expected[0] = AlgebraicExpression_FromString("p*F*f*T(V)*c*W*e", _matrices);
+	expected[0] = AlgebraicExpression_FromString("p*F*f*tV*c*W*e", _matrices);
 	compare_algebraic_expressions(actual, expected, 1);
 
 	// Clean up.
@@ -1118,7 +1145,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 1);
 
-	expected[0] = AlgebraicExpression_FromString("e*W*c*V*f*T(F)*p", _matrices);
+	expected[0] = AlgebraicExpression_FromString("e*W*c*V*f*tF*p", _matrices);
 	compare_algebraic_expressions(actual, expected, 1);
 
 	// Clean up.
@@ -1146,7 +1173,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 1);
 
-	expected[0] = AlgebraicExpression_FromString("p*F*p*T(F)*p", _matrices);
+	expected[0] = AlgebraicExpression_FromString("p*F*p*tF*p", _matrices);
 	compare_algebraic_expressions(actual, expected, 1);
 
 	// Clean up.
@@ -1162,7 +1189,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	ASSERT_EQ(exp_count, 3);
 
 	expected[0] = AlgebraicExpression_FromString("p*F*p", _matrices);
-	expected[1] = AlgebraicExpression_FromString("T(F)*p", _matrices);
+	expected[1] = AlgebraicExpression_FromString("tF*p", _matrices);
 	expected[2] = AlgebraicExpression_FromString("p*F*p", _matrices);
 	compare_algebraic_expressions(actual, expected, 3);
 
@@ -1178,7 +1205,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 3);
 
-	expected[0] = AlgebraicExpression_FromString("p*T(F)*p", _matrices);
+	expected[0] = AlgebraicExpression_FromString("p*tF*p", _matrices);
 	expected[1] = AlgebraicExpression_FromString("F*p", _matrices);
 	expected[2] = AlgebraicExpression_FromString("p*F*p", _matrices);
 	compare_algebraic_expressions(actual, expected, 3);
@@ -1320,7 +1347,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 4);
 
-	expected[0] = AlgebraicExpression_FromString("T(F)", _matrices);
+	expected[0] = AlgebraicExpression_FromString("tF", _matrices);
 	expected[1] = AlgebraicExpression_FromString("F", _matrices);
 	expected[2] = AlgebraicExpression_FromString("F*F*F", _matrices);
 	expected[3] = AlgebraicExpression_FromString("F", _matrices);
@@ -1338,8 +1365,7 @@ TEST_F(AlgebraicExpressionTest, ShareableEntity) {
 	exp_count = array_len(actual);
 	ASSERT_EQ(exp_count, 6);
 
-
-	expected[0] = AlgebraicExpression_FromString("T(F)", _matrices);
+	expected[0] = AlgebraicExpression_FromString("tF", _matrices);
 	expected[1] = AlgebraicExpression_FromString("F", _matrices);
 	expected[2] = AlgebraicExpression_FromString("F", _matrices);
 	expected[3] = AlgebraicExpression_FromString("F", _matrices);
@@ -1379,7 +1405,7 @@ TEST_F(AlgebraicExpressionTest, VariableLength) {
 	ASSERT_EQ(exp_count, 3);
 
 	expected[0] = AlgebraicExpression_FromString("p*F*f", _matrices);
-	expected[1] = AlgebraicExpression_FromString("T(V)", _matrices);
+	expected[1] = AlgebraicExpression_FromString("tV", _matrices);
 	expected[2] = AlgebraicExpression_FromString("c*W*e", _matrices);
 	compare_algebraic_expressions(actual, expected, 3);
 

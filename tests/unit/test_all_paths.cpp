@@ -11,6 +11,7 @@ extern "C"
 {
 #endif
 
+#include "../../src/config.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/algorithms/algorithms.h"
 
@@ -18,11 +19,16 @@ extern "C"
 }
 #endif
 
+RG_Config config; // Global module configuration
+
 class AllPathsTest : public ::testing::Test {
   protected:
 	static void SetUpTestCase() {
 		// Use the malloc family for allocations
 		Alloc_Reset();
+
+		// Set global variables
+		config.maintain_transposed_matrices = true; // Ensure that transposed matrices are constructed.
 
 		// Initialize GraphBLAS.
 		GrB_init(GrB_NONBLOCKING);
@@ -305,3 +311,4 @@ TEST_F(AllPathsTest, DestinationSpecificPaths) {
 	AllPathsCtx_Free(ctx);
 	Graph_Free(g);
 }
+

@@ -103,10 +103,11 @@ AlgebraicExpression *_AlgebraicExpression_GetOperand
 	uint operand_idx                    // Operand position (LTR, zero based).
 );
 
-// Resolves all missing operands.
-void _AlgebraicExpression_FetchOperands
+// Resolves all missing operands, replacing transpose operations with
+// transposed operands if they are available.
+void _AlgebraicExpression_PopulateOperands
 (
 	AlgebraicExpression *exp,   // Expression to resolve operands for.
-	const GraphContext *gc,     // Graph context.
-	Graph *g                    // Graph object.
+	const GraphContext *gc      // Graph context.
 );
+
