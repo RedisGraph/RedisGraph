@@ -105,7 +105,7 @@ AlgebraicExpression *_AlgebraicExpression_GetOperand
 
 // Resolves all missing operands, replacing transpose operations with
 // transposed operands if they are available.
-void _AlgebraicExpression_FetchOperands
+void _AlgebraicExpression_PopulateOperands
 (
 	AlgebraicExpression *exp,   // Expression to resolve operands for.
 	const GraphContext *gc      // Graph context.

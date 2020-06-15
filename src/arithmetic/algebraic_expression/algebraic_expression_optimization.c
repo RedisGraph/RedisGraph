@@ -52,7 +52,7 @@ static void _AlgebraicExpression_CollectOperands(AlgebraicExpression *root,
 	}
 }
 
-static bool __AlgebraicExpression_MulOverSum(AlgebraicExpression **root) {
+static bool __AlgebraicExpression_MulOverAdd(AlgebraicExpression **root) {
 	if(_AlgebraicExpression_IsMultiplicationNode(*root)) {
 		AlgebraicExpression *l = CHILD_AT((*root), 0);
 		AlgebraicExpression *r = CHILD_AT((*root), 1);
@@ -166,7 +166,7 @@ static bool __AlgebraicExpression_MulOverSum(AlgebraicExpression **root) {
 	// Recurse.
 	uint child_count = AlgebraicExpression_ChildCount(*root);
 	for(uint i = 0; i < child_count; i++) {
-		if(__AlgebraicExpression_MulOverSum((*root)->operation.children + i)) return true;
+		if(__AlgebraicExpression_MulOverAdd((*root)->operation.children + i)) return true;
 	}
 	return false;
 }
@@ -190,9 +190,9 @@ static bool __AlgebraicExpression_MulOverSum(AlgebraicExpression **root) {
 // operation with an addition operation with two multiplication operations
 // one for each child of the original addition operation, as can be seen above.
 // we'll want to reuse the left handside of the multiplication.
-static void _AlgebraicExpression_MulOverSum(AlgebraicExpression **root) {
+static void _AlgebraicExpression_MulOverAdd(AlgebraicExpression **root) {
 	// As long as the tree changes keep modifying.
-	while(__AlgebraicExpression_MulOverSum(root));
+	while(__AlgebraicExpression_MulOverAdd(root));
 }
 
 /* Collapse multiplication operation under a single multiplication op
@@ -432,10 +432,11 @@ static void _AlgebraicExpression_TransposeOperand(AlgebraicExpression *operand) 
 	GrB_Index nrows;
 	GrB_Index ncols;
 	GrB_Matrix replacement;
+	GrB_Matrix A = operand->operand.matrix;
 	// Create a new empty matrix with the type and dimensions of the original.
-	GrB_Matrix_nrows(&nrows, operand->operand.matrix);
-	GrB_Matrix_ncols(&ncols, operand->operand.matrix);
-	GxB_Matrix_type(&type, operand->operand.matrix);
+	GrB_Matrix_nrows(&nrows, A);
+	GrB_Matrix_ncols(&ncols, A);
+	GxB_Matrix_type(&type, A);
 	GrB_Info info = GrB_Matrix_new(&replacement, type, nrows, ncols);
 	if(info != GrB_SUCCESS) {
 		fprintf(stderr, "%s", GrB_error());
@@ -443,7 +444,7 @@ static void _AlgebraicExpression_TransposeOperand(AlgebraicExpression *operand) 
 	}
 
 	// Populate the replacement with the transposed contents of the original.
-	info = GrB_transpose(replacement, GrB_NULL, GrB_NULL, operand->operand.matrix, GrB_NULL);
+	info = GrB_transpose(replacement, GrB_NULL, GrB_NULL, A, GrB_NULL);
 	if(info != GrB_SUCCESS) {
 		fprintf(stderr, "%s", GrB_error());
 		assert(false);
@@ -499,6 +500,8 @@ static void _AlgebraicExpression_ApplyTranspose(AlgebraicExpression *root) {
 			break;
 
 		case AL_EXP_TRANSPOSE:
+			assert(AlgebraicExpression_ChildCount(root) == 1 &&
+				   "transpose operation had invalid number of children");
 			child = _AlgebraicExpression_OperationRemoveRightmostChild(root);
 			// Transpose operands will currently always have an operand child.
 			assert(child->type == AL_OPERAND && "encountered unexpected operation as transpose child");
@@ -526,11 +529,11 @@ void AlgebraicExpression_Optimize
 	assert(exp);
 
 	_AlgebraicExpression_PushDownTranspose(*exp);
-	_AlgebraicExpression_MulOverSum(exp);
+	_AlgebraicExpression_MulOverAdd(exp);
 	_AlgebraicExpression_FlattenMultiplications(*exp);
 
 	// Retrieve all operands now that they are guaranteed to be leaves.
-	_AlgebraicExpression_FetchOperands(*exp, QueryCtx_GetGraphCtx());
+	_AlgebraicExpression_PopulateOperands(*exp, QueryCtx_GetGraphCtx());
 
 	// If we are maintaining transposed matrices, all transpose operations have already been replaced.
 	if(Config_MaintainTranspose() == false) {
