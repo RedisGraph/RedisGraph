@@ -6,8 +6,8 @@
 
 #include "cmd_explain.h"
 #include "cmd_context.h"
-#include "execution_ctx.h"
 #include "../query_ctx.h"
+#include "execution_ctx.h"
 #include "../index/index.h"
 #include "../util/rmalloc.h"
 #include "../execution_plan/execution_plan.h"
@@ -25,11 +25,11 @@ void Graph_Explain(void *args) {
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
 	QueryCtx_BeginTimer(); // Start query timing.
 
-	/* Retrive the required execution items and information:
+	/* Retrieve the required execution items and information:
 	 * 1. AST
 	 * 2. Execution plan (if any)
 	 * 3. Execution type (query, index operation, invalid execution due to error)
-	 * 4. Was the retrived items above where cached or not    */
+	 * 4. Whether these items were cached or not */
 	AST *ast = NULL;
 	ExecutionPlan *plan = NULL;
 	ExecutionType exec_type = EXECUTION_TYPE_INVALID;
@@ -43,8 +43,6 @@ void Graph_Explain(void *args) {
 	}
 	if(exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
 
-	// Handle replies for index creation/deletion
-	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
 	if(exec_type == EXECUTION_TYPE_INDEX_CREATE) {
 		RedisModule_ReplyWithSimpleString(ctx, "Create Index");
 		goto cleanup;

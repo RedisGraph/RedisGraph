@@ -83,8 +83,8 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset);
 // Sets a parameter parsing result in the ast.
 void AST_SetParamsParseResult(AST *ast, cypher_parse_result_t *params_parse_result);
 
-// Returns a shallow clone (ref counter increase) of the original AST.
-AST *AST_Clone(AST *orig);
+// Returns a shallow copy of the original AST  pointer with ref counter increased.
+AST *AST_ShallowCopy(AST *orig);
 
 // Populate the AST's map of all referenced aliases.
 void AST_BuildReferenceMap(AST *ast, const cypher_astnode_t *project_clause);

@@ -153,7 +153,6 @@ inline void OpBase_DeleteRecord(Record r) {
 }
 
 OpBase *OpBase_Clone(const struct ExecutionPlan *plan, const OpBase *op) {
-	// TODO make recursive, clone entire tree.
 	return op->clone(plan, op);
 }
 

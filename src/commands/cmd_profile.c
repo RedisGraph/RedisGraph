@@ -6,10 +6,10 @@
 
 #include "cmd_profile.h"
 #include "cmd_context.h"
-#include "execution_ctx.h"
-#include "../query_ctx.h"
-#include "../graph/graph.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
+#include "execution_ctx.h"
+#include "../graph/graph.h"
 #include "../util/rmalloc.h"
 #include "../execution_plan/execution_plan.h"
 
@@ -27,7 +27,7 @@ void Graph_Profile(void *args) {
 	* 1. AST
 	* 2. Execution plan (if any)
 	* 3. Execution type (query, index operation, invalid execution due to error)
-	* 4. Was the retrived items above where cached or not    */
+	* 4. Whether these items were cached or not */
 	AST *ast = NULL;
 	ExecutionPlan *plan = NULL;
 	ExecutionType exec_type = EXECUTION_TYPE_INVALID;

@@ -1102,9 +1102,9 @@ ExecutionPlan *ExecutionPlan_Clone(const ExecutionPlan *template) {
 	ExecutionPlan *clone = ExecutionPlan_NewEmptyExecutionPlan();
 
 	clone->is_union = template->is_union;
-	// Union execution plan do not store ast, query graph
+	// Non-Union execution plan segments store ast, query graph
 	if(!clone->is_union) {
-		clone->ast_segment = AST_Clone(template->ast_segment);
+		clone->ast_segment = AST_ShallowCopy(template->ast_segment);
 		clone->query_graph = QueryGraph_Clone(template->query_graph);
 		if(template->connected_components) {
 			array_clone_with_cb(clone->connected_components, template->connected_components, QueryGraph_Clone);

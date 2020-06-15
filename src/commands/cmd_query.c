@@ -65,7 +65,7 @@ void Graph_Query(void *args) {
 	 * 1. AST
 	 * 2. Execution plan (if any)
 	 * 3. Execution type (query, index operation, invalid execution due to error)
-	 * 4. Was the retrived items above where cached or not    */
+	 * 4. Whether these items were cached or not */
 	AST *ast = NULL;
 	ExecutionPlan *plan = NULL;
 	ExecutionType exec_type = EXECUTION_TYPE_INVALID;

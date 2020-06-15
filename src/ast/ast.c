@@ -248,15 +248,15 @@ void AST_CollectAliases(const char ***aliases, const cypher_astnode_t *entity) {
 
 AST *AST_Build(cypher_parse_result_t *parse_result) {
 	AST *ast = rm_malloc(sizeof(AST));
+	ast->skip = NULL;
+	ast->limit = NULL;
+	ast->ref_count = 1;
+	ast->free_root = false;
+	ast->params_parse_result = NULL;
 	ast->referenced_entities = NULL;
+	ast->parse_result = parse_result;
 	ast->canonical_entity_names = raxNew();
 	ast->anot_ctx_collection = AST_AnnotationCtxCollection_New();
-	ast->free_root = false;
-	ast->limit = NULL;
-	ast->skip = NULL;
-	ast->ref_count = 1;
-	ast->parse_result = parse_result;
-	ast->params_parse_result = NULL;
 
 	// Retrieve the AST root node from a parsed query.
 	const cypher_astnode_t *statement = cypher_parse_result_get_root(parse_result, 0);
@@ -329,7 +329,7 @@ void AST_SetParamsParseResult(AST *ast, cypher_parse_result_t *params_parse_resu
 	ast->params_parse_result = params_parse_result;
 }
 
-AST *AST_Clone(AST *orig) {
+AST *AST_ShallowCopy(AST *orig) {
 	orig->ref_count++;
 	return orig;
 }
@@ -479,22 +479,24 @@ void AST_Free(AST *ast) {
 		parse_result_free(ast->params_parse_result);
 		ast->params_parse_result = NULL;
 	}
-	if(ast->ref_count == 0) {
-		if(ast->referenced_entities) raxFree(ast->referenced_entities);
-		if(ast->free_root) {
-			// This is a generated AST, free its root node.
-			cypher_astnode_free((cypher_astnode_t *)ast->root);
-		} else {
-			// This is the master AST, free the annotation contexts that have been constructed.
-			AST_AnnotationCtxCollection_Free(ast->anot_ctx_collection);
-			raxFreeWithCallback(ast->canonical_entity_names, rm_free);
-			parse_result_free(ast->parse_result);
-		}
-		if(ast->limit) AR_EXP_Free(ast->limit);
-		if(ast->skip) AR_EXP_Free(ast->skip);
-
-		rm_free(ast);
+	// Check if the ast is still referenced.
+	if(ast->ref_count > 0) return;
+	// No valied references - the struct can be disposed completely.
+	if(ast->referenced_entities) raxFree(ast->referenced_entities);
+	if(ast->free_root) {
+		// This is a generated AST, free its root node.
+		cypher_astnode_free((cypher_astnode_t *)ast->root);
+	} else {
+		// This is the master AST, free the annotation contexts that have been constructed.
+		AST_AnnotationCtxCollection_Free(ast->anot_ctx_collection);
+		raxFreeWithCallback(ast->canonical_entity_names, rm_free);
+		parse_result_free(ast->parse_result);
 	}
+	if(ast->limit) AR_EXP_Free(ast->limit);
+	if(ast->skip) AR_EXP_Free(ast->skip);
+
+	rm_free(ast);
+
 }
 
 inline AR_ExpNode *AST_GetLimitExpr(const AST *ast) {
