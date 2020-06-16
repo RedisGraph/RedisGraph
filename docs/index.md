@@ -73,6 +73,10 @@ How many riders represent team Ducati?
 3) 1) "Query internal execution time: 0.624435 milliseconds"
 ```
 
+## Download
+
+A pre-compiled version can be downloaded from [RedisLabs download center](https://redislabs.com/download-center/modules/).
+
 ## Building
 
 Requirements:
