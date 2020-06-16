@@ -5,11 +5,13 @@ from base import FlowTestsBase
 
 redis_con = None
 
+CACHE_SIZE = 3
+
 class testCache(FlowTestsBase):
 
     def __init__(self):
         # Have only one thread handling queries
-        self.env = Env(moduleArgs='THREAD_COUNT 1 CACHE_SIZE 3')
+        self.env = Env(moduleArgs='THREAD_COUNT 1 CACHE_SIZE {CACHE_SIZE}'.format(CACHE_SIZE = CACHE_SIZE))
         global redis_con
         redis_con = self.env.getConnection()
 
@@ -23,11 +25,11 @@ class testCache(FlowTestsBase):
 
     def test_sanity_check(self):
         graph = Graph('Cache_Sanity_Check', redis_con)
-        for i in range(4):
+        for i in range(CACHE_SIZE + 1):
             result = graph.query("MATCH (n) WHERE n.value = {val} RETURN n".format(val=i))
             self.env.assertFalse(result.cached_execution)
         
-        for i in range(1,4):
+        for i in range(1,CACHE_SIZE + 1):
             result = graph.query("MATCH (n) WHERE n.value = {val} RETURN n".format(val=i))
             self.env.assertTrue(result.cached_execution)
         
@@ -153,24 +155,7 @@ class testCache(FlowTestsBase):
         graph.delete()
 
 
-    def test08_test_optimizations_id_scan(self):
-        graph = Graph('Cache_Test_ID_Scan', redis_con)
-        query = "CREATE (), ()"
-        graph.query(query)
-        query = "MATCH (n) WHERE ID(n)=$id RETURN id(n)"
-        self.compare_uncached_to_cached_query_plans(query)
-        params = {'id':0}
-        uncached_result = graph.query(query, params)
-        params = {'id':1}
-        cached_result = graph.query(query, params)
-        self.env.assertFalse(uncached_result.cached_execution)
-        self.env.assertTrue(cached_result.cached_execution)
-        self.env.assertEqual([[0]], uncached_result.result_set)
-        self.env.assertEqual([[1]], cached_result.result_set)
-        graph.delete()
-
-
-    def test09_test_join(self):
+    def test08_test_join(self):
         graph = Graph('Cache_Test_Join', redis_con)
         query = "CREATE ({val:1}), ({val:2}), ({val:3}),({val:4})"
         graph.query(query)

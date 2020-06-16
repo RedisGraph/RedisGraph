@@ -43,8 +43,7 @@ class ExecutionPlanCloneTest: public ::testing::Test {
 		_fake_graph_context();
 	}
 
-	static void parse_query(const char *query, AST **ast, ExecutionPlan **plan) {
-
+	static void build_ast_and_plan(const char *query, AST **ast, ExecutionPlan **plan) {
 		cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 		*ast = AST_Build(parse_result);
 		*plan = NewExecutionPlan();
@@ -67,10 +66,8 @@ class ExecutionPlanCloneTest: public ::testing::Test {
 									   const OpBase *op_a, const OpBase *op_b) {
 		// If both ops are NULL, there is nothing to compare.
 		if(op_a == NULL && op_b == NULL) return;
-		// In case on of the ops is NULL.
-		if((op_a && !op_b) || (!op_a && op_b)) {
-			ASSERT_TRUE(false);
-		}
+		// In case one of the ops is NULL.
+		ASSERT_TRUE(op_a && op_b);
 		// In case both ops are not in their respective segment, there is nothing to compare.
 		if(op_a->plan != plan_a && op_b->plan != plan_b) return;
 		ASSERT_TRUE(op_a->plan == plan_a && op_b->plan == plan_b);
@@ -99,6 +96,23 @@ class ExecutionPlanCloneTest: public ::testing::Test {
 		}
 		ExecutionPlan_OpsEqual(plan_a, plan_b, plan_a->root, plan_b->root);
 	}
+
+	static void validate_query_plans_clone(const char **queries) {
+		uint query_count = array_len(queries);
+		for(uint i = 0; i < query_count; i++) {
+			const char *query = queries[i];
+			AST *ast = NULL;
+			ExecutionPlan *plan = NULL;
+			build_ast_and_plan(query, &ast, &plan);
+			ASSERT_TRUE(ast);
+			ASSERT_TRUE(plan);
+			ExecutionPlan *clone = ExecutionPlan_Clone(plan);
+			ExecutionPlan_Equal(plan, clone);
+			AST_Free(ast);
+			ExecutionPlan_Free(clone);
+			ExecutionPlan_Free(plan);
+		}
+	}
 };
 
 TEST_F(ExecutionPlanCloneTest, TestCreateClause) {
@@ -120,20 +134,7 @@ TEST_F(ExecutionPlanCloneTest, TestCreateClause) {
 	queries = array_append(queries, "CREATE ()-[e]->() RETURN e");
 	queries = array_append(queries, "CREATE ()-[e:E]->() RETURN e");
 	queries = array_append(queries, "CREATE ()-[e:E {val:1}]->()");
-	uint query_count = array_len(queries);
-	for(uint i = 0; i < query_count; i++) {
-		const char *query = queries[i];
-		AST *ast = NULL;
-		ExecutionPlan *plan = NULL;
-		parse_query(query, &ast, &plan);
-		ASSERT_TRUE(ast);
-		ASSERT_TRUE(plan);
-		ExecutionPlan *clone = ExecutionPlan_Clone(plan);
-		ExecutionPlan_Equal(plan, clone);
-		AST_Free(ast);
-		ExecutionPlan_Free(clone);
-		ExecutionPlan_Free(plan);
-	}
+	validate_query_plans_clone(queries);
 	array_free(queries);
 }
 
@@ -155,20 +156,7 @@ TEST_F(ExecutionPlanCloneTest, TestMatchClause) {
 	queries = array_append(queries,
 						   "MATCH (n) WHERE (n)-[:R]->() AND NOT (n)-[:R2)->() RETURN n");   // Apply ops.
 
-	uint query_count = array_len(queries);
-	for(uint i = 0; i < query_count; i++) {
-		const char *query = queries[i];
-		AST *ast = NULL;
-		ExecutionPlan *plan = NULL;
-		parse_query(query, &ast, &plan);
-		ASSERT_TRUE(ast);
-		ASSERT_TRUE(plan);
-		ExecutionPlan *clone = ExecutionPlan_Clone(plan);
-		ExecutionPlan_Equal(plan, clone);
-		AST_Free(ast);
-		ExecutionPlan_Free(clone);
-		ExecutionPlan_Free(plan);
-	}
+	validate_query_plans_clone(queries);
 	array_free(queries);
 }
 
@@ -177,20 +165,7 @@ TEST_F(ExecutionPlanCloneTest, TestUpdateClause) {
 	queries = array_append(queries, "MATCH (n) SET n.v = 1");
 	queries = array_append(queries, "MATCH ()-[e]->() SET e.v = 1");
 
-	uint query_count = array_len(queries);
-	for(uint i = 0; i < query_count; i++) {
-		const char *query = queries[i];
-		AST *ast = NULL;
-		ExecutionPlan *plan = NULL;
-		parse_query(query, &ast, &plan);
-		ASSERT_TRUE(ast);
-		ASSERT_TRUE(plan);
-		ExecutionPlan *clone = ExecutionPlan_Clone(plan);
-		ExecutionPlan_Equal(plan, clone);
-		AST_Free(ast);
-		ExecutionPlan_Free(clone);
-		ExecutionPlan_Free(plan);
-	}
+	validate_query_plans_clone(queries);
 	array_free(queries);
 }
 
@@ -199,21 +174,7 @@ TEST_F(ExecutionPlanCloneTest, TestDeleteClause) {
 	queries = array_append(queries, "MATCH (n) DELETE n");
 	queries = array_append(queries, "MATCH ()-[e]->() DELETE e");
 
-
-	uint query_count = array_len(queries);
-	for(uint i = 0; i < query_count; i++) {
-		const char *query = queries[i];
-		AST *ast = NULL;
-		ExecutionPlan *plan = NULL;
-		parse_query(query, &ast, &plan);
-		ASSERT_TRUE(ast);
-		ASSERT_TRUE(plan);
-		ExecutionPlan *clone = ExecutionPlan_Clone(plan);
-		ExecutionPlan_Equal(plan, clone);
-		AST_Free(ast);
-		ExecutionPlan_Free(clone);
-		ExecutionPlan_Free(plan);
-	}
+	validate_query_plans_clone(queries);
 	array_free(queries);
 }
 
@@ -231,20 +192,7 @@ TEST_F(ExecutionPlanCloneTest, TestMergeClause) {
 	queries = array_append(queries, "MERGE (n:N) ON CREATE SET n.val2 = 2");
 	queries = array_append(queries, "MERGE (n:N {val:1}) ON CREATE SET n.val2 = 2");
 
-	uint query_count = array_len(queries);
-	for(uint i = 0; i < query_count; i++) {
-		const char *query = queries[i];
-		AST *ast = NULL;
-		ExecutionPlan *plan = NULL;
-		parse_query(query, &ast, &plan);
-		ASSERT_TRUE(ast);
-		ASSERT_TRUE(plan);
-		ExecutionPlan *clone = ExecutionPlan_Clone(plan);
-		ExecutionPlan_Equal(plan, clone);
-		AST_Free(ast);
-		ExecutionPlan_Free(clone);
-		ExecutionPlan_Free(plan);
-	}
+	validate_query_plans_clone(queries);
 	array_free(queries);
 }
 
@@ -252,20 +200,7 @@ TEST_F(ExecutionPlanCloneTest, TestCartesianProduct) {
 	const char **queries = array_new(const char *, 1);
 	queries = array_append(queries, "MATCH (a), (b) RETURN a, b");
 
-	uint query_count = array_len(queries);
-	for(uint i = 0; i < query_count; i++) {
-		const char *query = queries[i];
-		AST *ast = NULL;
-		ExecutionPlan *plan = NULL;
-		parse_query(query, &ast, &plan);
-		ASSERT_TRUE(ast);
-		ASSERT_TRUE(plan);
-		ExecutionPlan *clone = ExecutionPlan_Clone(plan);
-		ExecutionPlan_Equal(plan, clone);
-		AST_Free(ast);
-		ExecutionPlan_Free(clone);
-		ExecutionPlan_Free(plan);
-	}
+	validate_query_plans_clone(queries);
 	array_free(queries);
 }
 
@@ -277,20 +212,7 @@ TEST_F(ExecutionPlanCloneTest, TestSkipLimitSort) {
 	queries = array_append(queries, "MATCH (n) RETURN n ORDER BY n.val");
 	queries = array_append(queries, "MATCH (n) RETURN n ORDER BY n.val SKIP 5 LIMIT 5");
 
-	uint query_count = array_len(queries);
-	for(uint i = 0; i < query_count; i++) {
-		const char *query = queries[i];
-		AST *ast = NULL;
-		ExecutionPlan *plan = NULL;
-		parse_query(query, &ast, &plan);
-		ASSERT_TRUE(ast);
-		ASSERT_TRUE(plan);
-		ExecutionPlan *clone = ExecutionPlan_Clone(plan);
-		ExecutionPlan_Equal(plan, clone);
-		AST_Free(ast);
-		ExecutionPlan_Free(clone);
-		ExecutionPlan_Free(plan);
-	}
+	validate_query_plans_clone(queries);
 	array_free(queries);
 }
 
@@ -300,20 +222,7 @@ TEST_F(ExecutionPlanCloneTest, TestOptionalMatch) {
 	queries = array_append(queries, "MATCH (a) OPTIONAL MATCH (b) RETURN a, b");
 	queries = array_append(queries, "MATCH (a) OPTIONAL MATCH (a)-[e]->(b) RETURN a, e, b");
 
-	uint query_count = array_len(queries);
-	for(uint i = 0; i < query_count; i++) {
-		const char *query = queries[i];
-		AST *ast = NULL;
-		ExecutionPlan *plan = NULL;
-		parse_query(query, &ast, &plan);
-		ASSERT_TRUE(ast);
-		ASSERT_TRUE(plan);
-		ExecutionPlan *clone = ExecutionPlan_Clone(plan);
-		ExecutionPlan_Equal(plan, clone);
-		AST_Free(ast);
-		ExecutionPlan_Free(clone);
-		ExecutionPlan_Free(plan);
-	}
+	validate_query_plans_clone(queries);
 	array_free(queries);
 }
 
@@ -322,20 +231,7 @@ TEST_F(ExecutionPlanCloneTest, TestProcCall) {
 	queries = array_append(queries,
 						   "CALL db.idx.fulltext.queryNodes('fruit', 'Orange*') YIELD node RETURN node");
 
-	uint query_count = array_len(queries);
-	for(uint i = 0; i < query_count; i++) {
-		const char *query = queries[i];
-		AST *ast = NULL;
-		ExecutionPlan *plan = NULL;
-		parse_query(query, &ast, &plan);
-		ASSERT_TRUE(ast);
-		ASSERT_TRUE(plan);
-		ExecutionPlan *clone = ExecutionPlan_Clone(plan);
-		ExecutionPlan_Equal(plan, clone);
-		AST_Free(ast);
-		ExecutionPlan_Free(clone);
-		ExecutionPlan_Free(plan);
-	}
+	validate_query_plans_clone(queries);
 	array_free(queries);
 }
 
@@ -344,20 +240,7 @@ TEST_F(ExecutionPlanCloneTest, TestUnwind) {
 	queries = array_append(queries,
 						   "UNWIND [1,2,3] as x RETURN x");
 
-	uint query_count = array_len(queries);
-	for(uint i = 0; i < query_count; i++) {
-		const char *query = queries[i];
-		AST *ast = NULL;
-		ExecutionPlan *plan = NULL;
-		parse_query(query, &ast, &plan);
-		ASSERT_TRUE(ast);
-		ASSERT_TRUE(plan);
-		ExecutionPlan *clone = ExecutionPlan_Clone(plan);
-		ExecutionPlan_Equal(plan, clone);
-		AST_Free(ast);
-		ExecutionPlan_Free(clone);
-		ExecutionPlan_Free(plan);
-	}
+	validate_query_plans_clone(queries);
 	array_free(queries);
 }
 
@@ -375,20 +258,8 @@ TEST_F(ExecutionPlanCloneTest, TestWith) {
 						   "MATCH (n) WITH n AS m ORDER BY n.val RETURN m");
 	queries = array_append(queries,
 						   "MATCH (n) WITH n AS m WHERE n.val < 5 RETURN m");
-	uint query_count = array_len(queries);
-	for(uint i = 0; i < query_count; i++) {
-		const char *query = queries[i];
-		AST *ast = NULL;
-		ExecutionPlan *plan = NULL;
-		parse_query(query, &ast, &plan);
-		ASSERT_TRUE(ast);
-		ASSERT_TRUE(plan);
-		ExecutionPlan *clone = ExecutionPlan_Clone(plan);
-		ExecutionPlan_Equal(plan, clone);
-		AST_Free(ast);
-		ExecutionPlan_Free(clone);
-		ExecutionPlan_Free(plan);
-	}
+
+	validate_query_plans_clone(queries);
 	array_free(queries);
 }
 
@@ -397,20 +268,7 @@ TEST_F(ExecutionPlanCloneTest, TestUnion) {
 	queries = array_append(queries,
 						   "MATCH (n) RETURN n UNION MATCH (n) RETURN n");
 
-	uint query_count = array_len(queries);
-	for(uint i = 0; i < query_count; i++) {
-		const char *query = queries[i];
-		AST *ast = NULL;
-		ExecutionPlan *plan = NULL;
-		parse_query(query, &ast, &plan);
-		ASSERT_TRUE(ast);
-		ASSERT_TRUE(plan);
-		ExecutionPlan *clone = ExecutionPlan_Clone(plan);
-		ExecutionPlan_Equal(plan, clone);
-		AST_Free(ast);
-		ExecutionPlan_Free(clone);
-		ExecutionPlan_Free(plan);
-	}
+	validate_query_plans_clone(queries);
 	array_free(queries);
 }
 

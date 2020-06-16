@@ -474,14 +474,14 @@ inline AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast) {
 void AST_Free(AST *ast) {
 	if(ast == NULL) return;
 	ast->ref_count--;
-	// Free and nullify parameters parse result if needed, after execution.
+	// Free and nullify parameters parse result if needed, after execution, as they are only save for the execution lifetime.
 	if(ast->params_parse_result) {
 		parse_result_free(ast->params_parse_result);
 		ast->params_parse_result = NULL;
 	}
 	// Check if the ast is still referenced.
 	if(ast->ref_count > 0) return;
-	// No valied references - the struct can be disposed completely.
+	// No valid references - the struct can be disposed completely.
 	if(ast->referenced_entities) raxFree(ast->referenced_entities);
 	if(ast->free_root) {
 		// This is a generated AST, free its root node.

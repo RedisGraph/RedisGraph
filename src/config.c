@@ -16,6 +16,7 @@
 #define OMP_THREAD_COUNT "OMP_THREAD_COUNT" // Config param, max number of OpenMP threads
 #define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT" // Config param, max number of entities in each virtual key
 #define MAINTAIN_TRANSPOSED_MATRICES "MAINTAIN_TRANSPOSED_MATRICES" // Whether the module should maintain transposed relationship matrices
+
 #define CACHE_SIZE_DEFAULT 25
 #define VKEY_MAX_ENTITY_COUNT_DEFAULT 100000
 
@@ -113,7 +114,7 @@ static int _Config_BuildTransposedMatrices(RedisModuleCtx *ctx, RedisModuleStrin
 	return REDISMODULE_OK;
 }
 
-// If the user has specified the cache size for each thread per each graph, update the configuration.
+// If the user has specified the cache size, update the configuration.
 // Returns REDISMODULE_OK on success and REDISMODULE_ERR if the argument was invalid.
 static int _Config_SetCacheSize(RedisModuleCtx *ctx, RedisModuleString *cache_size_str) {
 	long long cache_size;
@@ -126,16 +127,15 @@ static int _Config_SetCacheSize(RedisModuleCtx *ctx, RedisModuleString *cache_si
 		return REDISMODULE_ERR;
 	}
 
-	// Log the new entity threshold.
-	RedisModule_Log(ctx, "notice", "Cache size per each execution thread in each graph is set to %lld.",
+	// Log the cache size.
+	RedisModule_Log(ctx, "notice", "Cache size is set to %lld.",
 					cache_size);
 
-	// Update the entity count in the configuration.
+	// Update the cache size in the configuration.
 	config.cache_size = cache_size;
 
 	return REDISMODULE_OK;
 }
-
 
 // Initialize every module-level configuration to its default value.
 static void _Config_SetToDefaults(void) {
@@ -221,3 +221,4 @@ inline bool Config_MaintainTranspose() {
 uint64_t Config_GetCacheSize() {
 	return config.cache_size;
 }
+

@@ -68,7 +68,7 @@ static void _ResultSet_ReplayStats(RedisModuleCtx *ctx, ResultSet *set) {
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
 
-	buflen = sprintf(buff, "Cached execution: %s", set->stats.cached ? "true" : "false");
+	buflen = sprintf(buff, "Cached execution: %d", set->stats.cached ? 1 : 0);
 	RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 
 	// Emit query execution time.

@@ -26,13 +26,11 @@ void Graph_Profile(void *args) {
 	/* Retrive the required execution items and information:
 	* 1. AST
 	* 2. Execution plan (if any)
-	* 3. Execution type (query, index operation, invalid execution due to error)
-	* 4. Whether these items were cached or not */
+	* 3. Whether these items were cached or not */
 	AST *ast = NULL;
 	ExecutionPlan *plan = NULL;
-	ExecutionType exec_type = EXECUTION_TYPE_INVALID;
 	bool cached = false;
-	ExecutionInformation_FromQuery(command_ctx->query, &plan, &ast, &exec_type, &cached);
+	ExecutionType exec_type = ExecutionInformation_FromQuery(command_ctx->query, &plan, &ast, &cached);
 	// See if there were any query compile time errors
 	if(QueryCtx_EncounteredError()) {
 		QueryCtx_EmitException();

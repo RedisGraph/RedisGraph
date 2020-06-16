@@ -13,7 +13,7 @@ extern "C" {
 class CacheTest:
 	public ::testing::Test {
   protected:
-	static void SetUpTestCase() {// Use the malloc family for allocations
+	static void SetUpTestCase() { // Use the malloc family for allocations
 		Alloc_Reset();
 	}
 };
@@ -46,7 +46,7 @@ TEST_F(CacheTest, ExecutionPlanCache) {
 	Cache_SetValue(cache, query4, ep4);
 	ASSERT_EQ(ep4, Cache_GetValue(cache, query4));
 
-	// Verify that oldest entry is not exists - queue is [ 4 | 3 | 2 ].
+	// Verify that oldest entry do not exists - queue is [ 4 | 3 | 2 ].
 	ASSERT_FALSE(Cache_GetValue(cache, query1));
 
 	Cache_Free(cache);

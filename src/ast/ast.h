@@ -30,10 +30,8 @@ typedef struct {
 	AR_ExpNode *skip;                                   // The number of skips in this segment.
 	bool free_root;                                     // The root should only be freed if this is a sub-AST we constructed
 	uint ref_count;                                     // Reference counter for deletion.
-	// Query parsing output. Saved throughout AST lifespan.
-	cypher_parse_result_t *parse_result;
-	// Parameters parsing output. Saved throughout single execution lifespan.
-	cypher_parse_result_t *params_parse_result;
+	cypher_parse_result_t *parse_result;                // Query parsing output.
+	cypher_parse_result_t *params_parse_result;         // Parameters parsing output.
 } AST;
 
 // Checks to see if libcypher-parser reported any errors.
@@ -83,7 +81,7 @@ AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset);
 // Sets a parameter parsing result in the ast.
 void AST_SetParamsParseResult(AST *ast, cypher_parse_result_t *params_parse_result);
 
-// Returns a shallow copy of the original AST  pointer with ref counter increased.
+// Returns a shallow copy of the original AST pointer with ref counter increased.
 AST *AST_ShallowCopy(AST *orig);
 
 // Populate the AST's map of all referenced aliases.

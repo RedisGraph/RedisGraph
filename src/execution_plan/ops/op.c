@@ -153,7 +153,8 @@ inline void OpBase_DeleteRecord(Record r) {
 }
 
 OpBase *OpBase_Clone(const struct ExecutionPlan *plan, const OpBase *op) {
-	return op->clone(plan, op);
+	if(op->clone) return op->clone(plan, op);
+	return NULL;
 }
 
 void OpBase_Free(OpBase *op) {

@@ -36,15 +36,6 @@ static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 		thpool_add_work(_thpool, _GraphContext_Free, gc);
 }
 
-// Returns thread id, with consdiration of redis main thread.
-static int get_thread_id() {
-	/* thpool_get_thread_id returns -1 if pthread_self isn't in the thread pool
-	 * most likely Redis main thread */
-	int thread_id = thpool_get_thread_id(_thpool, pthread_self());
-	thread_id += 1; // +1 to compensate for Redis main thread.
-	return thread_id;
-}
-
 //------------------------------------------------------------------------------
 // GraphContext API
 //------------------------------------------------------------------------------
@@ -404,7 +395,11 @@ SlowLog *GraphContext_GetSlowLog(const GraphContext *gc) {
 // Return cache associated with graph context and current thread id.
 Cache *GraphContext_GetCache(const GraphContext *gc) {
 	assert(gc);
-	return gc->cache_pool[get_thread_id()];
+	/* thpool_get_thread_id returns -1 if pthread_self isn't in the thread pool
+	* most likely Redis main thread */
+	int thread_id = thpool_get_thread_id(_thpool, pthread_self());
+	thread_id += 1; // +1 to compensate for Redis main thread.
+	return gc->cache_pool[thread_id];
 }
 
 //------------------------------------------------------------------------------
@@ -453,9 +448,7 @@ static void _GraphContext_Free(void *arg) {
 	// Clear cache
 	if(gc->cache_pool) {
 		len = array_len(gc->cache_pool);
-		for(uint i = 0; i < len; i++) {
-			Cache_Free(gc->cache_pool[i]);
-		}
+		for(uint i = 0; i < len; i++) Cache_Free(gc->cache_pool[i]);
 		array_free(gc->cache_pool);
 	}
 

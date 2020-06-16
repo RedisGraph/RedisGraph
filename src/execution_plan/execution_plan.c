@@ -368,6 +368,10 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 		filter->plan = plan;
 	}
 
+	/* A filter is created within a specific execution plan segment and can be placed either in this segment or its preceeding segment,
+	 *  during this initial placement.
+	 * The filter can be placed between two operations from the preceeding segment, so it is logically "moved" a segment and needs to be
+	 * bound to it. */
 	if(filter->parent && op->plan == filter->parent->plan) {
 		filter->plan = filter->parent->plan;
 	}
@@ -1037,22 +1041,24 @@ ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan) {
 }
 
 // Clones an execution plan operation and its children, with respect to their original execution plan.
-static OpBase *_ExecutionPlan_CloneOp(const ExecutionPlan *orig_plan, ExecutionPlan *clone_plan,
-									  const OpBase *orig_op) {
+static OpBase *_ExecutionPlan_RecursiveCloneOperations(const ExecutionPlan *orig_plan,
+													   ExecutionPlan *clone_plan,
+													   const OpBase *orig_op) {
 	// If there is no op, or the op is a part of a different plan, return NULL.
 	if(!orig_op || orig_op->plan != orig_plan) return NULL;
 	// Clone the op.
 	OpBase *clone = OpBase_Clone(clone_plan, orig_op);
 	// Clone the op's children and add them the clone op children array.
 	for(uint i = 0; i < orig_op->childCount; i++) {
-		OpBase *cloned_child = _ExecutionPlan_CloneOp(orig_plan, clone_plan, orig_op->children[i]);
+		OpBase *cloned_child = _ExecutionPlan_RecursiveCloneOperations(orig_plan, clone_plan,
+																	   orig_op->children[i]);
 		if(cloned_child) ExecutionPlan_AddOp(clone, cloned_child);
 	}
 	return clone;
 }
 
 static void _ExecutionPlan_CloneOperations(const ExecutionPlan *template, ExecutionPlan *clone) {
-	clone->root = _ExecutionPlan_CloneOp(template, clone, template->root);
+	clone->root = _ExecutionPlan_RecursiveCloneOperations(template, clone, template->root);
 }
 
 // Merge cloned execution plan segments, with respect to the plan type (union or not).
@@ -1094,6 +1100,11 @@ static void _ExecutionPlan_MergeSegments(ExecutionPlan *plan) {
 	}
 }
 
+/* This function clones execution plan by cloning each segment in the execution plan as a unit.
+ * Each segment has its own filter tree, record mapping, query graphs and ast segment, that compose
+ * * a single logic execution unit, together with the segment operations.
+ * The ast segment is shallow copied while all the other objects are deep cloned.
+ */
 ExecutionPlan *ExecutionPlan_Clone(const ExecutionPlan *template) {
 	if(template == NULL) return NULL;
 	// Verify that the execution plan template is not prepared yet.

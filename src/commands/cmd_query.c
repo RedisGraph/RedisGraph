@@ -28,7 +28,7 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 		QueryCtx_LockForCommit();
 		if(GraphContext_AddIndex(&idx, gc, label, prop, IDX_EXACT_MATCH) == INDEX_OK) Index_Construct(idx);
 		QueryCtx_UnlockCommit(NULL);
-	} else {
+	} else if(exec_type == EXECUTION_TYPE_INDEX_DROP) {
 		// Retrieve strings from AST node
 		const char *label = cypher_ast_label_get_name(cypher_ast_drop_node_props_index_get_label(index_op));
 		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_drop_node_props_index_get_prop_name(
@@ -42,6 +42,10 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 			asprintf(&error, "ERR Unable to drop index on :%s(%s): no such index.", label, prop);
 			QueryCtx_SetError(error);
 		}
+	} else {
+		char *error;
+		asprintf(&error, "ERR Encountered unknown query execution type.");
+		QueryCtx_SetError(error);
 	}
 }
 
@@ -64,13 +68,11 @@ void Graph_Query(void *args) {
 	/* Retrive the required execution items and information:
 	 * 1. AST
 	 * 2. Execution plan (if any)
-	 * 3. Execution type (query, index operation, invalid execution due to error)
-	 * 4. Whether these items were cached or not */
+	 * 3. Whether these items were cached or not */
 	AST *ast = NULL;
-	ExecutionPlan *plan = NULL;
-	ExecutionType exec_type = EXECUTION_TYPE_INVALID;
 	bool cached = false;
-	ExecutionInformation_FromQuery(command_ctx->query, &plan, &ast, &exec_type, &cached);
+	ExecutionPlan *plan = NULL;
+	ExecutionType exec_type = ExecutionInformation_FromQuery(command_ctx->query, &plan, &ast, &cached);
 	// See if there were any query compile time errors
 	if(QueryCtx_EncounteredError()) {
 		QueryCtx_EmitException();
