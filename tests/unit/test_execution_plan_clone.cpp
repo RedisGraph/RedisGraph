@@ -12,13 +12,13 @@ extern "C" {
 
 #include <stdio.h>
 #include <string.h>
+#include "../../src/util/arr.h"
 #include "../../src/query_ctx.h"
 #include "../../src/util/rmalloc.h"
-#include "../../src/util/arr.h"
-#include "../../src/execution_plan/execution_plan.h"
-#include "../../src/arithmetic/agg_funcs.h"
 #include "../../src/arithmetic/funcs.h"
+#include "../../src/arithmetic/agg_funcs.h"
 #include "../../src/procedures/procedure.h"
+#include "../../src/execution_plan/execution_plan_clone.h"
 
 #ifdef __cplusplus
 }
