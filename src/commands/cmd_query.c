@@ -73,17 +73,18 @@ void Graph_Query(void *args) {
 	bool cached = false;
 	ExecutionPlan *plan = NULL;
 	ExecutionCtx exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
+
+	ast = exec_ctx.ast;
+	plan = exec_ctx.plan;
+	cached = exec_ctx.cached;
+	ExecutionType exec_type = exec_ctx.exec_type;
 	// See if there were any query compile time errors
 	if(QueryCtx_EncounteredError()) {
 		QueryCtx_EmitException();
 		goto cleanup;
 	}
-	ExecutionType exec_type = exec_ctx.exec_type;
 	if(exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
 
-	ast = exec_ctx.ast;
-	plan = exec_ctx.plan;
-	cached = exec_ctx.cached;
 	bool readonly = AST_ReadOnly(ast->root);
 	bool compact = _check_compact_flag(command_ctx);
 	ResultSetFormatterType resultset_format = (compact) ? FORMATTER_COMPACT : FORMATTER_VERBOSE;

@@ -33,17 +33,17 @@ void Graph_Explain(void *args) {
 	bool cached = false;
 	ExecutionPlan *plan = NULL;
 	ExecutionCtx exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
-
+	
+	ExecutionType exec_type = exec_ctx.exec_type;
+	ast = exec_ctx.ast;
+	plan = exec_ctx.plan;
 	// See if there were any query compile time errors
 	if(QueryCtx_EncounteredError()) {
 		QueryCtx_EmitException();
 		goto cleanup;
 	}
-	ExecutionType exec_type = exec_ctx.exec_type;
 	if(exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
 
-	ast = exec_ctx.ast;
-	plan = exec_ctx.plan;
 	if(exec_type == EXECUTION_TYPE_INDEX_CREATE) {
 		RedisModule_ReplyWithSimpleString(ctx, "Create Index");
 		goto cleanup;
