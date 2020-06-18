@@ -40,14 +40,12 @@ static ExecutionCtx *_ExecutionCtx_FromCache(Cache *cache, const char *query_str
 		// Cache hit - Clone the execution context. Set the execution type for query execution and indicate a cache hit.
 		// Set AST as it is retrived from cache and it is required for execution plan clone.
 		QueryCtx_SetAST(cached_exec_ctx->ast);
-		// Set parameters parse result in the execution ast.
-		AST_SetParamsParseResult(cached_exec_ctx->ast, params_parse_result);
 	}
 	return cached_exec_ctx;
 }
 
-static AST  *_ExecutionCtx_ParseAST(const char *query_string,
-									cypher_parse_result_t *params_parse_result) {
+static AST *_ExecutionCtx_ParseAST(const char *query_string,
+								   cypher_parse_result_t *params_parse_result) {
 	cypher_parse_result_t *query_parse_result = parse_query(query_string);
 	// If no output from the parser, the query is not valid.
 	if(!query_parse_result) {
@@ -64,7 +62,7 @@ static AST  *_ExecutionCtx_ParseAST(const char *query_string,
 
 ExecutionCtx ExecutionCtx_FromQuery(const char *query) {
 	// Have an invalid ctx for errors.
-	ExecutionCtx invalid_ctx = {0};
+	ExecutionCtx invalid_ctx = {.ast = NULL, .plan = NULL, .cached = false, .exec_type = EXECUTION_TYPE_INVALID};
 	const char *query_string;
 	// Parse and validate parameters only. Extract query string.
 	cypher_parse_result_t *params_parse_result = parse_params(query, &query_string);
@@ -77,6 +75,8 @@ ExecutionCtx ExecutionCtx_FromQuery(const char *query) {
 	ExecutionCtx *cached_exec_ctx = _ExecutionCtx_FromCache(cache, query_string, params_parse_result);
 	if(cached_exec_ctx) {
 		ExecutionCtx ctx = _ExecutionCtx_Clone(*cached_exec_ctx);
+		// Set parameters parse result in the execution ast.
+		AST_SetParamsParseResult(ctx.ast, params_parse_result);
 		ctx.cached = true;
 		return ctx;
 	}
@@ -95,7 +95,7 @@ ExecutionCtx ExecutionCtx_FromQuery(const char *query) {
 		ExecutionCtx *exec_ctx_to_cache = _ExecutionCtx_New(ast, plan, exec_type);
 		// Cache execution context.
 		Cache_SetValue(cache, query_string, exec_ctx_to_cache);
-		// Clone execution plan and plan to be used in the execution.
+		// Clone execution plan and ast that will be used in the current execution.
 		plan = ExecutionPlan_Clone(plan);
 		ast = AST_ShallowCopy(ast);
 	}

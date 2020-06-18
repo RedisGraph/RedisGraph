@@ -10,3 +10,4 @@
 
 /* Clones an execution plan */
 ExecutionPlan *ExecutionPlan_Clone(const ExecutionPlan *plan);
+
