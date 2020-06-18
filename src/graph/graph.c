@@ -1076,6 +1076,13 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 				// Desc: GrB_MASK = GrB_COMP,  GrB_OUTP = GrB_REPLACE.
 				// R = R & !mask.
 				GrB_Matrix_apply(R, mask, GrB_NULL, GrB_IDENTITY_UINT64, R, desc);
+				if(Config_MaintainTranspose()) {
+					GrB_Matrix tM = Graph_GetTransposedRelationMatrix(g, r);  // Transposed relation mapping matrix.
+					// Transpose mask (this cannot be done by descriptor).
+					GrB_transpose(mask, GrB_NULL, GrB_NULL, mask, GrB_NULL);
+					// tM = tM & !mask.
+					GrB_Matrix_apply(tM, mask, GrB_NULL, GrB_IDENTITY_UINT64, tM, desc);
+				}
 				GrB_free(&mask);
 			}
 
