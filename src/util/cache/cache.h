@@ -28,7 +28,7 @@ typedef struct Cache {
  *                 supply an appropriate function to avoid double resource releasing
  * @retval cache pointer - Initialized empty cache.
  */
-Cache *Cache_New(uint size, listValueFreeFunc freeCB);
+Cache *Cache_New(uint size, CacheItemFreeFunc freeCB);
 
 /**
  * @brief  Returns a value if it is cached, NULL otherwise.
@@ -36,10 +36,11 @@ Cache *Cache_New(uint size, listValueFreeFunc freeCB);
  * @param  *key: Key to look for (bytes array).
  * @retval  pointer with the cached answer, NULL if the key isn't cached.
  */
-void *Cache_GetValue(Cache *cache, const char *key);
+void *Cache_GetValue(const Cache *cache, const char *key);
 
 /**
  * @brief  Stores value under key within the cache.
+ * @note   In case the cache is full, this operation causes a cache eviction.
  * @param  *cache: cache pointer.
  * @param  *key: Key for associating with value (bytes array).
  * @param  *value: pointer with the relevant value.
@@ -47,7 +48,7 @@ void *Cache_GetValue(Cache *cache, const char *key);
 void Cache_SetValue(Cache *cache, const char *key, void *value);
 
 /**
- * @brief  Destroy a cache
+ * @brief  Destroy a cache and free all of the stored items.
  * @param  *cache: cache pointer
  */
 void Cache_Free(Cache *cache);

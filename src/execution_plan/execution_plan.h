@@ -152,9 +152,6 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan);
 /* Profile executes plan */
 ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan);
 
-/* Clones an execution plan */
-ExecutionPlan *ExecutionPlan_Clone(const ExecutionPlan *plan);
-
 /* Free execution plan */
 void ExecutionPlan_Free(ExecutionPlan *plan);
 

@@ -9,7 +9,7 @@
 #include "../rmalloc.h"
 
 /**
- * @brief  Hash a query using XXHASH into a 64 bit.
+ * @brief  Hash a key using XXHASH into a 64 bit.
  * @param  *key - string to be hashed.
  * @param  len: key length
  * @retval hash value
@@ -18,7 +18,7 @@ static inline uint64_t _Cache_HashKey(const char *key, uint len) {
 	return XXH64(key, len, 0);
 }
 
-Cache *Cache_New(uint size, listValueFreeFunc freeCB) {
+Cache *Cache_New(uint size, CacheItemFreeFunc freeCB) {
 	Cache *cache = rm_malloc(sizeof(Cache));
 	// Instantiate a new list to store cached values.
 	cache->list = CacheList_New(size, freeCB);
@@ -27,10 +27,11 @@ Cache *Cache_New(uint size, listValueFreeFunc freeCB) {
 	return cache;
 }
 
-inline void *Cache_GetValue(Cache *cache, const char *key) {
+inline void *Cache_GetValue(const Cache *cache, const char *key) {
 	uint64_t hashKey = _Cache_HashKey(key, strlen(key));
 	CacheListNode *elem = raxFind(cache->lookup, (unsigned char *)&hashKey, HASH_KEY_LENGTH);
 	if(elem == raxNotFound) return NULL;
+
 	// Element is now the most recently used; promote it.
 	CacheList_Promote(cache->list, elem);
 	return elem->value;
@@ -51,7 +52,7 @@ void Cache_SetValue(Cache *cache, const char *key, void *value) {
 	}
 
 	// Populate the node.
-	CacheList_NewNode(cache->list, node, hashval, value);
+	CacheList_PopulateNode(cache->list, node, hashval, value);
 
 	// Add the new node to the mapping.
 	raxInsert(cache->lookup, (unsigned char *)&hashval, HASH_KEY_LENGTH, node, NULL);

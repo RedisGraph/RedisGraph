@@ -362,18 +362,14 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 		ExecutionPlan_PushBelow(op, (OpBase *)filter);
 	}
 
-	// Re set the plan root if needed.
-	if(op == plan->root) {
-		plan->root = filter;
-		filter->plan = plan;
-	}
-
-	/* A filter is created within a specific execution plan segment and can be placed either in this segment or its preceeding segment,
-	 *  during this initial placement.
-	 * The filter can be placed between two operations from the preceeding segment, so it is logically "moved" a segment and needs to be
-	 * bound to it. */
-	if(filter->parent && op->plan == filter->parent->plan) {
-		filter->plan = filter->parent->plan;
+	/* Filter may have migrated a segment, update the filter segment
+	 * and check if the segment root needs to be updated.
+	 * The filter should be associated with the op's segment. */
+	filter->plan = op->plan;
+	// Re-set the segment root if needed.
+	if(op == op->plan->root) {
+		ExecutionPlan *segment = (ExecutionPlan *)op->plan;
+		segment->root = filter;
 	}
 
 	raxFree(references);
@@ -1038,103 +1034,6 @@ ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan) {
 	ResultSet *rs = ExecutionPlan_Execute(plan);
 	_ExecutionPlan_FinalizeProfiling(plan->root);
 	return rs;
-}
-
-// Clones an execution plan operation and its children, with respect to their original execution plan.
-static OpBase *_ExecutionPlan_RecursiveCloneOperations(const ExecutionPlan *orig_plan,
-													   ExecutionPlan *clone_plan,
-													   const OpBase *orig_op) {
-	// If there is no op, or the op is a part of a different plan, return NULL.
-	if(!orig_op || orig_op->plan != orig_plan) return NULL;
-	// Clone the op.
-	OpBase *clone = OpBase_Clone(clone_plan, orig_op);
-	// Clone the op's children and add them the clone op children array.
-	for(uint i = 0; i < orig_op->childCount; i++) {
-		OpBase *cloned_child = _ExecutionPlan_RecursiveCloneOperations(orig_plan, clone_plan,
-																	   orig_op->children[i]);
-		if(cloned_child) ExecutionPlan_AddOp(clone, cloned_child);
-	}
-	return clone;
-}
-
-static void _ExecutionPlan_CloneOperations(const ExecutionPlan *template, ExecutionPlan *clone) {
-	clone->root = _ExecutionPlan_RecursiveCloneOperations(template, clone, template->root);
-}
-
-// Merge cloned execution plan segments, with respect to the plan type (union or not).
-static void _ExecutionPlan_MergeSegments(ExecutionPlan *plan) {
-	// No need to merge segments if there aren't any.
-	uint segment_count = array_len(plan->segments);
-	if(segment_count == 0) return;
-
-	if(plan->is_union) {
-		// Locate the join operation.
-		OpBase *join_op = ExecutionPlan_LocateOp(plan->root, OPType_JOIN);
-		assert(join_op);
-		// Each segment is a sub execution plan that needs to be joined.
-		for(int i = 0; i < segment_count; i++) {
-			ExecutionPlan *sub_plan = plan->segments[i];
-			ExecutionPlan_AddOp(join_op, sub_plan->root);
-		}
-	} else {
-		// Plan is not union, concatenate the segments.
-		OpBase *connecting_op;
-		OpBase *prev_root = plan->segments[0]->root;
-		for(uint i = 1; i < segment_count; i++) {
-			ExecutionPlan *current_segment = plan->segments[i];
-			OpBase *connecting_op = ExecutionPlan_LocateOpMatchingType(current_segment->root, PROJECT_OPS,
-																	   PROJECT_OP_COUNT);
-			/* In case of queries "MATCH (n) WITH n AS m WHERE n.val < 5 RETURN m" the WITH projection op has one child
-			 * which is the filter op, which is being placed after the segment is created, so we need to find the last op in this chain. */
-			while(connecting_op->children && connecting_op->childCount != 0) {
-				connecting_op = connecting_op->children[0];
-			}
-			ExecutionPlan_AddOp(connecting_op, prev_root);
-			prev_root = current_segment->root;
-		}
-		// Connect the plan operations to the last segment root.
-		connecting_op = ExecutionPlan_LocateOpMatchingType(plan->root, PROJECT_OPS,
-														   PROJECT_OP_COUNT);
-		assert(connecting_op->childCount == 0);
-		ExecutionPlan_AddOp(connecting_op, prev_root);
-	}
-}
-
-/* This function clones execution plan by cloning each segment in the execution plan as a unit.
- * Each segment has its own filter tree, record mapping, query graphs and ast segment, that compose
- * * a single logic execution unit, together with the segment operations.
- * The ast segment is shallow copied while all the other objects are deep cloned.
- */
-ExecutionPlan *ExecutionPlan_Clone(const ExecutionPlan *template) {
-	if(template == NULL) return NULL;
-	// Verify that the execution plan template is not prepared yet.
-	assert(template->prepared == false && "Execution plan cloning should be only on templates");
-	// Allocate an empty execution plan.
-	ExecutionPlan *clone = ExecutionPlan_NewEmptyExecutionPlan();
-
-	clone->is_union = template->is_union;
-	// Non-Union execution plan segments store ast, query graph
-	if(!clone->is_union) {
-		clone->ast_segment = AST_ShallowCopy(template->ast_segment);
-		clone->query_graph = QueryGraph_Clone(template->query_graph);
-		if(template->connected_components) {
-			array_clone_with_cb(clone->connected_components, template->connected_components, QueryGraph_Clone);
-		}
-	}
-	clone->record_map = raxClone(template->record_map);
-	// The execution plan segment clone requires the specific AST segment for referenced entities.
-	AST *master_ast = QueryCtx_GetAST();
-	QueryCtx_SetAST(clone->ast_segment);
-	// Clone each operation in the template relevant segment
-	_ExecutionPlan_CloneOperations(template, clone);
-	// After clone, restore master ast.
-	QueryCtx_SetAST(master_ast);
-	if(template->segments) {
-		array_clone_with_cb(clone->segments, template->segments, ExecutionPlan_Clone);
-	}
-	// Merge the segments
-	_ExecutionPlan_MergeSegments(clone);
-	return clone;
 }
 
 static void _ExecutionPlan_FreeOperations(OpBase *op) {

@@ -6,6 +6,7 @@
 
 #include "execution_ctx.h"
 #include "../query_ctx.h"
+#include "../execution_plan/execution_plan_clone.h"
 
 static ExecutionType _GetExecutionTypeFromAST(AST *ast) {
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
@@ -15,74 +16,97 @@ static ExecutionType _GetExecutionTypeFromAST(AST *ast) {
 	assert(false && "Uknown execution type");
 }
 
-static ExecutionCtx *_ExecutionCtx_New(AST *ast, ExecutionPlan *plan) {
+static ExecutionCtx *_ExecutionCtx_New(AST *ast, ExecutionPlan *plan, ExecutionType exec_type) {
 	ExecutionCtx *exec_ctx = rm_calloc(1, sizeof(ExecutionCtx));
 	exec_ctx->ast = ast;
-	exec_ctx->exec_plan_template = plan;
+	exec_ctx->plan = plan;
+	exec_ctx->exec_type = exec_type;
 	return exec_ctx;
 }
 
-ExecutionType ExecutionInformation_FromQuery(const char *query, ExecutionPlan **plan, AST **ast,
-											 bool *cached) {
-	// Set everything to mark an invalid execution.
-	*ast = NULL;
-	*plan = NULL;
-	*cached = false;
-	ExecutionType exec_type = EXECUTION_TYPE_INVALID;
+static ExecutionCtx _ExecutionCtx_Clone(const ExecutionCtx orig) {
+	ExecutionCtx ctx = {0};
+	ctx.ast = AST_ShallowCopy(orig.ast);
+	ctx.plan = ExecutionPlan_Clone(orig.plan);
+	ctx.exec_type = orig.exec_type;
+	return ctx;
+}
 
-	const char *query_string;
-	// Parse and validate parameters only. Extract query string.
-	cypher_parse_result_t *params_parse_result = parse_params(query, &query_string);
-	// Return if there isn't a parser result.
-	if(params_parse_result == NULL) return exec_type;
-
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Cache *cache = GraphContext_GetCache(gc);
+static ExecutionCtx *_ExecutionCtx_FromCache(Cache *cache, const char *query_string,
+											 cypher_parse_result_t *params_parse_result) {
 	// Check the cache to see if we already have a cached context for this query.
-	ExecutionCtx *exec_ctx = Cache_GetValue(cache, query_string);
-	if(exec_ctx) {
-		// Cache hit - Clone ast and plan. Set the execution type for query execution and indicate a cache hit.
-		*ast = AST_ShallowCopy(exec_ctx->ast);
-		// Set AST as it is retrived from cache.
-		QueryCtx_SetAST(exec_ctx->ast);
-		*plan = ExecutionPlan_Clone(exec_ctx->exec_plan_template);
-		exec_type = EXECUTION_TYPE_QUERY;
-		*cached = true;
+	ExecutionCtx *cached_exec_ctx = Cache_GetValue(cache, query_string);
+	if(cached_exec_ctx) {
+		// Cache hit - Clone the execution context. Set the execution type for query execution and indicate a cache hit.
+		// Set AST as it is retrived from cache and it is required for execution plan clone.
+		QueryCtx_SetAST(cached_exec_ctx->ast);
 		// Set parameters parse result in the execution ast.
-		AST_SetParamsParseResult(*ast, params_parse_result);
-		return exec_type;
+		AST_SetParamsParseResult(cached_exec_ctx->ast, params_parse_result);
 	}
-	// No cached execution plan, try to parse the query.
+	return cached_exec_ctx;
+}
+
+static AST  *_ExecutionCtx_ParseAST(const char *query_string,
+									cypher_parse_result_t *params_parse_result) {
 	cypher_parse_result_t *query_parse_result = parse_query(query_string);
 	// If no output from the parser, the query is not valid.
 	if(!query_parse_result) {
 		parse_result_free(params_parse_result);
-		return exec_type;
+		return NULL;
 	}
 
-	// Prepare the constructed AST for accesses from the module
-	AST *ast_template = AST_Build(query_parse_result);
-	exec_type = _GetExecutionTypeFromAST(ast_template);
-	*ast = ast_template;
+	// Prepare the constructed AST.
+	AST *ast = AST_Build(query_parse_result);
 	// Set parameters parse result in the execution ast.
-	AST_SetParamsParseResult(*ast, params_parse_result);
-	// In case of valid query, create execution plan, cache it, and return a clone.
-	if(exec_type == EXECUTION_TYPE_QUERY) {
-		ExecutionPlan *exec_plan_template = NewExecutionPlan();
-		// Created new valid execution context.
-		exec_ctx = _ExecutionCtx_New(AST_ShallowCopy(ast_template), exec_plan_template);
-		// Cache execution context.
-		Cache_SetValue(cache, query_string, exec_ctx);
-		// Clone execution plan.
-		*plan = ExecutionPlan_Clone(exec_plan_template);
+	AST_SetParamsParseResult(ast, params_parse_result);
+	return ast;
+}
+
+ExecutionCtx ExecutionCtx_FromQuery(const char *query) {
+	// Have an invalid ctx for errors.
+	ExecutionCtx invalid_ctx = {0};
+	const char *query_string;
+	// Parse and validate parameters only. Extract query string.
+	cypher_parse_result_t *params_parse_result = parse_params(query, &query_string);
+	// Return invalid execution context if there isn't a parser result.
+	if(params_parse_result == NULL) return invalid_ctx;
+
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Cache *cache = GraphContext_GetCache(gc);
+	// Check the cache to see if we already have a cached context for this query.
+	ExecutionCtx *cached_exec_ctx = _ExecutionCtx_FromCache(cache, query_string, params_parse_result);
+	if(cached_exec_ctx) {
+		ExecutionCtx ctx = _ExecutionCtx_Clone(*cached_exec_ctx);
+		ctx.cached = true;
+		return ctx;
 	}
-	return exec_type;
+
+	// No cached execution plan, try to parse the query.
+	AST *ast = _ExecutionCtx_ParseAST(query_string, params_parse_result);
+	// Invalid query, return invalid execution context.
+	if(!ast) return invalid_ctx;
+
+	ExecutionPlan *plan = NULL;
+	ExecutionType exec_type = _GetExecutionTypeFromAST(ast);
+	// In case of valid query, create execution plan, and cache it and the AST.
+	if(exec_type == EXECUTION_TYPE_QUERY) {
+		plan = NewExecutionPlan();
+		// Created new valid execution context.
+		ExecutionCtx *exec_ctx_to_cache = _ExecutionCtx_New(ast, plan, exec_type);
+		// Cache execution context.
+		Cache_SetValue(cache, query_string, exec_ctx_to_cache);
+		// Clone execution plan and plan to be used in the execution.
+		plan = ExecutionPlan_Clone(plan);
+		ast = AST_ShallowCopy(ast);
+	}
+	ExecutionCtx ctx = {.ast = ast, .plan = plan, .exec_type = exec_type, .cached = false};
+	return ctx;
 }
 
 void ExecutionCtx_Free(ExecutionCtx *ctx) {
 	if(!ctx) return;
 	if(ctx->ast) AST_Free(ctx->ast);
-	if(ctx->exec_plan_template) ExecutionPlan_Free(ctx->exec_plan_template);
+	if(ctx->plan) ExecutionPlan_Free(ctx->plan);
 	rm_free(ctx);
 }
 

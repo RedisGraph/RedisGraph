@@ -69,7 +69,7 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 
 	for(uint i = 0; i < thread_count; i++) {
 		gc->cache_pool = array_append(gc->cache_pool, Cache_New(cache_size,
-																(listValueFreeFunc)ExecutionCtx_Free));
+																(CacheItemFreeFunc)ExecutionCtx_Free));
 	}
 
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);

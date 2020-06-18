@@ -30,18 +30,23 @@ void Graph_Profile(void *args) {
 	AST *ast = NULL;
 	ExecutionPlan *plan = NULL;
 	bool cached = false;
-	ExecutionType exec_type = ExecutionInformation_FromQuery(command_ctx->query, &plan, &ast, &cached);
+	ExecutionCtx exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
+
 	// See if there were any query compile time errors
 	if(QueryCtx_EncounteredError()) {
 		QueryCtx_EmitException();
 		goto cleanup;
 	}
+	ExecutionType exec_type = exec_ctx.exec_type;
 	if(exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
 	if(exec_type == EXECUTION_TYPE_INDEX_CREATE ||
 	   exec_type == EXECUTION_TYPE_INDEX_DROP) {
 		RedisModule_ReplyWithError(ctx, "Can't profile index operations.");
 		goto cleanup;
 	}
+
+	ast = exec_ctx.ast;
+	plan = exec_ctx.plan;
 
 	bool readonly = AST_ReadOnly(ast->root);
 

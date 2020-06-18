@@ -23,21 +23,19 @@ typedef enum {
  * @brief  A struct for saving execution objects in cache.
  */
 typedef struct {
-	AST *ast;
-	ExecutionPlan *exec_plan_template;
+	AST *ast;                   // AST relevant for the current execution context.
+	bool cached;                // Indicate if this struct was returned from cache.
+	ExecutionPlan *plan;        // Execution plan relevant for the current execution context.
+	ExecutionType exec_type;
 } ExecutionCtx;
 
 /**
  * @brief  Returns the objects and information required for query execution.
- * @note   If the query contains error, the AST and Execution plan objects will be NULL and EXECUTION_TYPE_INVALID is returned.
+ * @note   If the query contains error, a ExecutionCtx struct with the AST and Execution plan objects will be NULL and EXECUTION_TYPE_INVALID is returned.
  * @param  *query: String representing the query.
- * @param  **plan: Out-By-Ref Execution plan object generated from the query.
- * @param  **ast: Out-By-Ref AST object.
- * @param  *cached: Out-By-Ref indication if the ast and execution plan were extracted from cache.
- * @retval Execution type
+ * @retval ExecutionCtx populated with the current execution relevant objects.
  */
-ExecutionType ExecutionInformation_FromQuery(const char *query, ExecutionPlan **plan, AST **ast,
-											 bool *cached);
+ExecutionCtx ExecutionCtx_FromQuery(const char *query);
 
 /**
  * @brief  Free an ExecutionCTX struct
