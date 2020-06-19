@@ -21,7 +21,7 @@ ifneq ($(VALGRIND),)
 endif
 
 # Set the RLTest arguments to check for memory leaks.
-MEMCHECK_ARGS = --module-args ASYNC_DELETE NO $(TEST_ARGS) --vg --vg-no-fail-on-errors --vg-suppressions=$(shell pwd)/../src/valgrind.supp
+MEMCHECK_ARGS = --module-args ASYNC_DELETE --module-args NO $(TEST_ARGS) --vg --vg-no-fail-on-errors --vg-suppressions=$(shell pwd)/../src/valgrind.supp
 
 test: unit flow tck
 

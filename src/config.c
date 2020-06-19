@@ -211,7 +211,7 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		} else if(!(strcasecmp(param, CACHE_SIZE))) {
 			res = _Config_SetCacheSize(ctx, val);
 		} else if(!(strcasecmp(param, ASYNC_DELETE))) {
-
+			res = _Config_AsyncDelete(ctx, val);
 		} else {
 			RedisModule_Log(ctx, "warning", "Encountered unknown module argument '%s'", param);
 			return REDISMODULE_ERR;
