@@ -27,9 +27,6 @@ class testGraphBulkInsertFlow(FlowTestsBase):
         port = self.env.envRunner.port
         redis_graph = Graph("graph", redis_con)
 
-    def tearDown(self):
-        self.env.cmd('flushall')
-
     # Run bulk loader script and validate terminal output
     def test01_run_script(self):
         graphname = "graph"
