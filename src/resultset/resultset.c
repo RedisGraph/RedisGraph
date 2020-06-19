@@ -14,7 +14,7 @@
 
 static void _ResultSet_ReplayStats(RedisModuleCtx *ctx, ResultSet *set) {
 	char buff[512] = {0};
-	size_t resultset_size = 1; /* query execution time. */
+	size_t resultset_size = 2; /* query execution time and cached execution. */
 	int buflen;
 
 	if(set->stats.labels_added > 0) resultset_size++;
@@ -67,6 +67,9 @@ static void _ResultSet_ReplayStats(RedisModuleCtx *ctx, ResultSet *set) {
 		buflen = sprintf(buff, "Indices deleted: %d", set->stats.indices_deleted);
 		RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 	}
+
+	buflen = sprintf(buff, "Cached execution: %d", set->stats.cached ? 1 : 0);
+	RedisModule_ReplyWithStringBuffer(ctx, (const char *)buff, buflen);
 
 	// Emit query execution time.
 	ResultSet_ReportQueryRuntime(ctx);
@@ -143,6 +146,7 @@ ResultSet *NewResultSet(RedisModuleCtx *ctx, ResultSetFormatterType format) {
 	set->stats.relationships_deleted = 0;
 	set->stats.indices_created = STAT_NOT_SET;
 	set->stats.indices_deleted = STAT_NOT_SET;
+	set->stats.cached = false;
 
 	_ResultSet_SetColumns(set);
 
@@ -191,6 +195,10 @@ void ResultSet_IndexDeleted(ResultSet *set, int status_code) {
 	} else if(set->stats.indices_deleted == STAT_NOT_SET) {
 		set->stats.indices_deleted = 0;
 	}
+}
+
+void ResultSet_CachedExecution(ResultSet *set) {
+	set->stats.cached = true;
 }
 
 void ResultSet_Reply(ResultSet *set) {

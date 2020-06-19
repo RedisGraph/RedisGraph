@@ -2,6 +2,7 @@
 import os
 import sys
 import csv
+import time
 import click
 from RLTest import Env
 from click.testing import CliRunner
@@ -27,6 +28,8 @@ class testGraphBulkInsertFlow(FlowTestsBase):
         port = self.env.envRunner.port
         redis_graph = Graph("graph", redis_con)
 
+    def tearDown(self):
+        time.sleep(1)
 
     # Run bulk loader script and validate terminal output
     def test01_run_script(self):

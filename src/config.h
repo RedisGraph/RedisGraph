@@ -12,6 +12,7 @@
 
 typedef struct {
 	int thread_count;                  // Thread count for thread pool.
+	uint64_t cache_size;               // The cache size for each thread, per graph.
 	int omp_thread_count;              // Maximum number of OpenMP threads.
 	uint64_t vkey_entity_count;        // The limit of number of entities encoded at once for each RDB key.
 	bool maintain_transposed_matrices; // If true, maintain a transposed version of each relationship matrix.
@@ -32,4 +33,7 @@ uint64_t Config_GetVirtualKeyEntityCount(void);
 
 // Return true if we are maintaining persistent transposed matrices.
 bool Config_MaintainTranspose(void);
+
+// Return the cache size.
+uint64_t Config_GetCacheSize(void);
 

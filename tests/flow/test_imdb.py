@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 from RLTest import Env
 from redisgraph import Graph
 from base import FlowTestsBase
@@ -31,6 +32,7 @@ class testImdbFlow(FlowTestsBase):
 
     def tearDown(self):
         self.env.cmd('flushall')
+        time.sleep(1)
 
     def assert_reversed_pattern(self, query, resultset):
         # Test reversed pattern query.
