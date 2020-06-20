@@ -12,7 +12,6 @@
 #include "../deps/GraphBLAS/Include/GraphBLAS.h"
 
 #define CACHE_SIZE "CACHE_SIZE"  // Config param, the size of each thread cache size, per graph.
-#define ASYNC_DELETE "ASYNC_DELETE" // Config param for asynchronous graph delete.
 #define THREAD_COUNT "THREAD_COUNT" // Config param, number of threads in thread pool
 #define OMP_THREAD_COUNT "OMP_THREAD_COUNT" // Config param, max number of OpenMP threads
 #define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT" // Config param, max number of entities in each virtual key
@@ -115,23 +114,6 @@ static int _Config_BuildTransposedMatrices(RedisModuleCtx *ctx, RedisModuleStrin
 	return REDISMODULE_OK;
 }
 
-static int _Config_AsyncDelete(RedisModuleCtx *ctx, RedisModuleString *build_str) {
-	const char *async_delete = RedisModule_StringPtrLen(build_str, NULL);
-	if(!strcasecmp(async_delete, "yes")) {
-		config.async_delete = true;
-		RedisModule_Log(ctx, "notice", "Graph deletion will be done asynchronously.");
-	} else if(!strcasecmp(async_delete, "no")) {
-		config.async_delete = false;
-		RedisModule_Log(ctx, "notice", "Graph deletion will be done synchronously.");
-	} else {
-		// Exit with error if argument was not "yes" or "no".
-		RedisModule_Log(ctx, "warning",
-						"Invalid argument '%s' for async_delete, expected 'yes' or 'no'", async_delete);
-		return REDISMODULE_ERR;
-	}
-	return REDISMODULE_OK;
-}
-
 // If the user has specified the cache size, update the configuration.
 // Returns REDISMODULE_OK on success and REDISMODULE_ERR if the argument was invalid.
 static int _Config_SetCacheSize(RedisModuleCtx *ctx, RedisModuleString *cache_size_str) {
@@ -156,7 +138,7 @@ static int _Config_SetCacheSize(RedisModuleCtx *ctx, RedisModuleString *cache_si
 }
 
 // Initialize every module-level configuration to its default value.
-static void _Config_SetToDefaults(void) {
+static void _Config_SetToDefaults(RedisModuleCtx *ctx) {
 	// The thread pool's default size is equal to the system's number of cores.
 	int CPUCount = sysconf(_SC_NPROCESSORS_ONLN);
 	config.thread_count = (CPUCount != -1) ? CPUCount : 1;
@@ -172,8 +154,16 @@ static void _Config_SetToDefaults(void) {
 		config.vkey_entity_count = VKEY_ENTITY_COUNT_UNLIMITED;
 	}
 
-	// Always perform async delete.
-	config.async_delete = true;
+	// MEMCHECK compile flag;
+	#ifdef MEMCHECK
+		// Disable async delete during memcheck.
+		config.async_delete = false;
+		RedisModule_Log(ctx, "notice", "Graph deletion will be done synchronously.");
+	#else
+		// Always perform async delete when no checking for memory issues.
+		config.async_delete = true;
+		RedisModule_Log(ctx, "notice", "Graph deletion will be done asynchronously.");
+	#endif
 	// Always build transposed matrices by default.
 	config.maintain_transposed_matrices = true;
 	config.cache_size = CACHE_SIZE_DEFAULT;
@@ -181,7 +171,7 @@ static void _Config_SetToDefaults(void) {
 
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// Initialize the configuration to its default values.
-	_Config_SetToDefaults();
+	_Config_SetToDefaults(ctx);
 
 	if(argc % 2) {
 		// Emit an error if we received an odd number of arguments, as this indicates an invalid configuration.
@@ -210,8 +200,6 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 			res = _Config_BuildTransposedMatrices(ctx, val);
 		} else if(!(strcasecmp(param, CACHE_SIZE))) {
 			res = _Config_SetCacheSize(ctx, val);
-		} else if(!(strcasecmp(param, ASYNC_DELETE))) {
-			res = _Config_AsyncDelete(ctx, val);
 		} else {
 			RedisModule_Log(ctx, "warning", "Encountered unknown module argument '%s'", param);
 			return REDISMODULE_ERR;
