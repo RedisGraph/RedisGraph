@@ -76,7 +76,7 @@ static bool _GraphContext_NameContainsTag(const GraphContext *gc) {
 
 // Calculate how many virtual keys are needed to represent the graph.
 static uint64_t _GraphContext_RequiredMetaKeys(const GraphContext *gc) {
-	uint64_t vkey_entity_count = Confic_GetVirtualKeyEntityCount();
+	uint64_t vkey_entity_count = Config_GetVirtualKeyEntityCount();
 	// If no limitation, return 0. The graph can be encoded in a single key.
 	if(vkey_entity_count == UNLIMITED) return 0;
 	uint64_t entities_count = Graph_NodeCount(gc->g) + Graph_EdgeCount(gc->g) + Graph_DeletedNodeCount(

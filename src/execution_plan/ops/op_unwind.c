@@ -116,7 +116,7 @@ static OpResult UnwindReset(OpBase *ctx) {
 }
 
 static inline OpBase *UnwindClone(const ExecutionPlan *plan, const OpBase *opBase) {
-	assert(opBase->type == OPType_SORT);
+	assert(opBase->type == OPType_UNWIND);
 	OpUnwind *op = (OpUnwind *)opBase;
 	return NewUnwindOp(plan, AR_EXP_Clone(op->exp));
 }

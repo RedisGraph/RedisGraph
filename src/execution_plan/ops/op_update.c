@@ -158,7 +158,6 @@ static Record _handoff(OpUpdate *op) {
 OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps) {
 	OpUpdate *op = rm_calloc(1, sizeof(OpUpdate));
 	op->gc = QueryCtx_GetGraphCtx();
-	op->stats = QueryCtx_GetResultSetStatistics();
 	op->records = NULL;
 	op->updates_commited = false;
 	op->pending_updates_cap = 16; /* 16 seems reasonable number to start with. */
@@ -180,6 +179,7 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps)
 
 static OpResult UpdateInit(OpBase *opBase) {
 	OpUpdate *op = (OpUpdate *)opBase;
+	op->stats = QueryCtx_GetResultSetStatistics();
 	if(_ShouldCacheRecord(op)) op->records = array_new(Record, 64);
 	return OP_OK;
 }

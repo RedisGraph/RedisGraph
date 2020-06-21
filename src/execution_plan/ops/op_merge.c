@@ -91,7 +91,7 @@ OpBase *NewMergeOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *on_match,
 	/* Merge is an operator with two or three children. They will be created outside of here,
 	 * as with other multi-stream operators (see CartesianProduct and ValueHashJoin). */
 	OpMerge *op = rm_calloc(1, sizeof(OpMerge));
-	op->stats = QueryCtx_GetResultSetStatistics();
+	op->stats = NULL;
 	op->on_match = on_match;
 	op->on_create = on_create;
 	// Set our Op operations
@@ -134,6 +134,7 @@ static OpResult MergeInit(OpBase *opBase) {
 	 * - The last creates the pattern. */
 	assert(opBase->childCount == 2 || opBase->childCount == 3);
 	OpMerge *op = (OpMerge *)opBase;
+	op->stats = QueryCtx_GetResultSetStatistics();
 	if(opBase->childCount == 2) {
 		// If we only have 2 streams, we simply need to determine which has a MergeCreate op.
 		if(_LocateOp(opBase->children[0], OPType_MERGE_CREATE)) {
@@ -196,7 +197,7 @@ static OpResult MergeInit(OpBase *opBase) {
 	op->match_argument_tap = (Argument *)ExecutionPlan_LocateOp(op->match_stream, OPType_ARGUMENT);
 	// If the create stream is populated by an Argument tap, store a reference to it.
 	op->create_argument_tap = (Argument *)ExecutionPlan_LocateOp(op->create_stream,
-																	  OPType_ARGUMENT);
+																 OPType_ARGUMENT);
 	// Set up an array to store records produced by the bound variable stream.
 	op->input_records = array_new(Record, 1);
 

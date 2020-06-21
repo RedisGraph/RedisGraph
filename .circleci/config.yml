@@ -94,8 +94,11 @@ jobs:
           command: |
               # Replace the default Redis server with one linked to libc malloc rather than jemalloc.
               git clone https://github.com/antirez/redis.git; cd redis; git checkout 6.0.1; make valgrind; make install; cd ..
-              make clean; make DEBUG=1 # Rebuild module at O0
+              make clean;
               make memcheck # Re-run the test suite, failing if definite memory leaks have been introduced.
+          # Allow RediSearch global destructors.
+          environment:
+            RS_GLOBAL_DTORS: 1
 
   package_branch:
     docker:
@@ -150,6 +153,7 @@ jobs:
           command: >-
             aws s3 cp /workspace/build/ s3://redismodules/$PACKAGE_NAME/ --acl
             public-read --recursive --exclude "*" --include "*.zip"
+
   run_automation:
     docker:
       - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
@@ -161,7 +165,7 @@ jobs:
             apt-get -y install curl &&
             curl -k -u $QA_AUTOMATION_USERNAME:$QA_AUTOMATION_PASS -X POST
             -H "Content-Type: application/json"
-            -d '{"service_id":"single_module_test_cycle_sanity_and_extended", "name":"redisgraph automation-testing", "properties":{"sut_version":"5.4.14", "email_recipients":"graph@redislabs.com", "sut_environments":[], "tools_environment":{}, "module_name": "RedisGraph", "module_version":"master", "cycle_environments_setup":[{"teardown":true, "name":"xenial-amd64-aws", "concurrency":1}, {"teardown":true, "name":"bionic-amd64-aws", "concurrency":1}]}}'
+            -d '{"service_id":"single_module_test_cycle_sanity_and_extended", "name":"redisgraph automation-testing", "properties":{"sut_version":"5.6.0", "email_recipients":"graph@redislabs.com", "sut_environments":[], "tools_environment":{}, "module_name": "RedisGraph", "module_version":"master", "cycle_environments_setup":[{"teardown":true, "name":"rhel7.5-x86_64-aws", "concurrency":1}, {"teardown":true, "name":"bionic-amd64-aws", "concurrency":1}]}}'
             https://qa-automation-center.redislabs.com/processes
 workflows:
   version: 2
@@ -183,7 +187,7 @@ workflows:
             - package_branch
       - run_automation:
           requires:
-            - deploy_to_s3   
+            - deploy_to_s3    
 
 # The build_release workflow runs only against tags.
   build_release:

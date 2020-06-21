@@ -114,19 +114,19 @@ EntityUpdateEvalCtx EntityUpdateEvalCtx_Clone(EntityUpdateEvalCtx ctx) {
 }
 
 NodeCreateCtx NodeCreateCtx_Clone(NodeCreateCtx ctx) {
-	NodeCreateCtx clone;
+	NodeCreateCtx clone = {0};
 	clone.node = ctx.node;
 	clone.node_idx = ctx.node_idx;
-	clone.properties = _PropertyMap_Clone(ctx.properties);
+	if(ctx.properties) clone.properties = _PropertyMap_Clone(ctx.properties);
 	return clone;
 }
 
 EdgeCreateCtx EdgeCreateCtx_Clone(EdgeCreateCtx ctx) {
-	EdgeCreateCtx clone;
+	EdgeCreateCtx clone = {0};
 	clone.edge = ctx.edge;
 	clone.src_idx = ctx.src_idx;
 	clone.dest_idx = ctx.dest_idx;
 	clone.edge_idx = ctx.edge_idx;
-	clone.properties = _PropertyMap_Clone(ctx.properties);
+	if(ctx.properties) clone.properties = _PropertyMap_Clone(ctx.properties);
 	return clone;
 }

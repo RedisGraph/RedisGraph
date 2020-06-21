@@ -26,7 +26,7 @@ typedef struct {
 	size_t recordCount;             /* Number of records introduced. */
 	double timer[2];                /* Query runtime tracker. */
 	ResultSetStatistics stats;      /* ResultSet statistics. */
-    ResultSetFormatterType format;  /* Result-set format; compact/verbose/nop. */
+	ResultSetFormatterType format;  /* Result-set format; compact/verbose/nop. */
 	ResultSetFormatter *formatter;  /* ResultSet data formatter. */
 } ResultSet;
 
@@ -37,6 +37,8 @@ int ResultSet_AddRecord(ResultSet *set, Record r);
 void ResultSet_IndexCreated(ResultSet *set, int status_code);
 
 void ResultSet_IndexDeleted(ResultSet *set, int status_code);
+
+void ResultSet_CachedExecution(ResultSet *set);
 
 void ResultSet_Reply(ResultSet *set);
 

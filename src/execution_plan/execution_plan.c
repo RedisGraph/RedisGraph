@@ -361,8 +361,17 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 		// This is a new filter.
 		ExecutionPlan_PushBelow(op, (OpBase *)filter);
 	}
-	// Re set the plan root if needed.
-	if(op == plan->root) plan->root = filter;
+
+	/* Filter may have migrated a segment, update the filter segment
+	 * and check if the segment root needs to be updated.
+	 * The filter should be associated with the op's segment. */
+	filter->plan = op->plan;
+	// Re-set the segment root if needed.
+	if(op == op->plan->root) {
+		ExecutionPlan *segment = (ExecutionPlan *)op->plan;
+		segment->root = filter;
+	}
+
 	raxFree(references);
 }
 
@@ -694,7 +703,7 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan) {
 	}
 }
 
-ExecutionPlan *ExecutionPlan_UnionPlans(AST *ast) {
+static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 	uint end_offset = 0;
 	uint start_offset = 0;
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
@@ -705,13 +714,13 @@ ExecutionPlan *ExecutionPlan_UnionPlans(AST *ast) {
 
 	/* Placeholder for each execution plan, these all will be joined
 	 * via a single UNION operation. */
-	ExecutionPlan **plans = rm_malloc(union_count * sizeof(ExecutionPlan *));
+	ExecutionPlan **plans = array_new(ExecutionPlan *, union_count);
 
 	for(int i = 0; i < union_count; i++) {
 		// Create an AST segment from which we will build an execution plan.
 		end_offset = union_indices[i];
 		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
-		plans[i] = NewExecutionPlan();
+		plans = array_append(plans, NewExecutionPlan());
 		AST_Free(ast_segment); // Free the AST segment.
 
 		// Next segment starts where this one ends.
@@ -735,7 +744,6 @@ ExecutionPlan *ExecutionPlan_UnionPlans(AST *ast) {
 	ExecutionPlan *plan = rm_calloc(1, sizeof(ExecutionPlan));
 	plan->root = NULL;
 	plan->segments = plans;
-	plan->segment_count = union_count;
 	plan->query_graph = NULL;
 	plan->record_map = raxNew();
 	plan->connected_components = NULL;
@@ -787,7 +795,7 @@ ExecutionPlan *NewExecutionPlan(void) {
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 
 	/* Handle UNION if there are any. */
-	if(AST_ContainsClause(ast, CYPHER_AST_UNION)) return ExecutionPlan_UnionPlans(ast);
+	if(AST_ContainsClause(ast, CYPHER_AST_UNION)) return _ExecutionPlan_UnionPlans(ast);
 
 	uint start_offset = 0;
 	uint end_offset = 0;
@@ -817,7 +825,7 @@ ExecutionPlan *NewExecutionPlan(void) {
 	segment_indices = array_append(segment_indices, clause_count);
 
 	uint segment_count = array_len(segment_indices);
-	ExecutionPlan **segments = rm_malloc(segment_count * sizeof(ExecutionPlan *));
+	ExecutionPlan **segments = array_new(ExecutionPlan *, segment_count);
 	AST *ast_segments[segment_count];
 	start_offset = 0;
 	for(int i = 0; i < segment_count; i++) {
@@ -829,7 +837,7 @@ ExecutionPlan *NewExecutionPlan(void) {
 		ExecutionPlan *segment = ExecutionPlan_NewEmptyExecutionPlan();
 		ExecutionPlan_PopulateExecutionPlan(segment);
 		segment->ast_segment = ast_segment;
-		segments[i] = segment;
+		segments = array_append(segments, segment);
 		start_offset = end_offset;
 	}
 
@@ -853,7 +861,10 @@ ExecutionPlan *NewExecutionPlan(void) {
 
 		// Place filter ops required by current segment.
 		QueryCtx_SetAST(ast_segments[i]);
-		if(current_segment->filter_tree) ExecutionPlan_PlaceFilterOps(current_segment, prev_scope_end);
+		if(current_segment->filter_tree) {
+			ExecutionPlan_PlaceFilterOps(current_segment, prev_scope_end);
+			current_segment->filter_tree = NULL;
+		}
 
 		prev_scope_end = prev_root; // Track the previous scope's end so filter placement doesn't overreach.
 	}
@@ -862,15 +873,13 @@ ExecutionPlan *NewExecutionPlan(void) {
 
 	array_free(segment_indices);
 
-	ExecutionPlan *plan = segments[segment_count - 1];
+	ExecutionPlan *plan = array_pop(segments);
 	// The root operation is OpResults only if the query culminates in a RETURN or CALL clause.
 	if(query_has_return || last_clause_type == CYPHER_AST_CALL) {
 		OpBase *results_op = NewResultsOp(plan);
 		_ExecutionPlan_UpdateRoot(plan, results_op);
 	}
 
-	// Disregard self.
-	plan->segment_count = segment_count - 1;
 	plan->segments = segments;
 
 	return plan;
@@ -958,7 +967,7 @@ static inline void _ExecutionPlan_InitRecordPool(ExecutionPlan *plan) {
 	plan->record_pool = ObjectPool_New(256, rec_size, (fpDestructor)Record_FreeEntries);
 }
 
-void _ExecutionPlanInit(OpBase *root) {
+static void _ExecutionPlanInit(OpBase *root) {
 	// If the ExecutionPlan associated with this op hasn't built a record pool yet, do so now.
 	_ExecutionPlan_InitRecordPool((ExecutionPlan *)root->plan);
 
@@ -1037,8 +1046,11 @@ static void _ExecutionPlan_FreeOperations(OpBase *op) {
 static void _ExecutionPlan_FreeSubPlan(ExecutionPlan *plan) {
 	if(plan == NULL) return;
 
-	for(int i = 0; i < plan->segment_count; i++) _ExecutionPlan_FreeSubPlan(plan->segments[i]);
-	if(plan->segments) rm_free(plan->segments);
+	if(plan->segments) {
+		uint segment_count = array_len(plan->segments);
+		for(int i = 0; i < segment_count; i++) _ExecutionPlan_FreeSubPlan(plan->segments[i]);
+		array_free(plan->segments);
+	}
 
 	if(plan->connected_components) {
 		uint connected_component_count = array_len(plan->connected_components);
@@ -1066,8 +1078,11 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 	 * their operation chain freed.
 	 * The last segment is the actual plan passed as an argument to this function.
 	 * TODO this logic isn't ideal, try to improve. */
-	for(int i = 0; i < plan->segment_count; i++) _ExecutionPlan_FreeSubPlan(plan->segments[i]);
-	if(plan->segments) rm_free(plan->segments);
+	if(plan->segments) {
+		uint segment_count = array_len(plan->segments);
+		for(int i = 0; i < segment_count; i++) _ExecutionPlan_FreeSubPlan(plan->segments[i]);
+		array_free(plan->segments);
+	}
 
 	if(plan->connected_components) {
 		uint connected_component_count = array_len(plan->connected_components);
