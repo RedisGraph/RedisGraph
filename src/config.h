@@ -4,14 +4,15 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef _REDISGRAPH_CONFIG_
-#define _REDISGRAPH_CONFIG_
+#pragma once
 
+#include <stdbool.h>
 #include "redismodule.h"
 
 typedef struct {
+	int thread_count;            // Thread count for thread pool.                 // Thread count for thread pool.
+	bool async_delete;           // If true, graph deletion is done asynchronously.
 	int omp_thread_count;        // Maximum number of OpenMP threads.
-	int thread_count;            // Thread count for thread pool.
 } RG_Config;
 
 // Set module-level configurations to defaults or to user arguments where provided.
@@ -24,4 +25,5 @@ int Config_GetThreadCount(void);
 // Return the max number of OpenMP threads or -1 if using the default value.
 int Config_GetOMPThreadCount(void);
 
-#endif
+// Return true if graph deletion is done asynchronously.
+bool Config_GetAsyncDelete(void);
