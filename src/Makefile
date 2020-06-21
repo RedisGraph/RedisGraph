@@ -200,5 +200,6 @@ endif
 endif
 	@$(MAKE) -C ../tests test
 
+memcheck: CFLAGS += -fno-omit-frame-pointer -g -ggdb -O0 -D MEMCHECK
 memcheck: redisgraph.so
 	@$(MAKE) -C ../tests memcheck

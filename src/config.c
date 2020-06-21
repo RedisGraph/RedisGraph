@@ -138,7 +138,7 @@ static int _Config_SetCacheSize(RedisModuleCtx *ctx, RedisModuleString *cache_si
 }
 
 // Initialize every module-level configuration to its default value.
-static void _Config_SetToDefaults(void) {
+static void _Config_SetToDefaults(RedisModuleCtx *ctx) {
 	// The thread pool's default size is equal to the system's number of cores.
 	int CPUCount = sysconf(_SC_NPROCESSORS_ONLN);
 	config.thread_count = (CPUCount != -1) ? CPUCount : 1;
@@ -154,6 +154,16 @@ static void _Config_SetToDefaults(void) {
 		config.vkey_entity_count = VKEY_ENTITY_COUNT_UNLIMITED;
 	}
 
+	// MEMCHECK compile flag;
+	#ifdef MEMCHECK
+		// Disable async delete during memcheck.
+		config.async_delete = false;
+		RedisModule_Log(ctx, "notice", "Graph deletion will be done synchronously.");
+	#else
+		// Always perform async delete when no checking for memory issues.
+		config.async_delete = true;
+		RedisModule_Log(ctx, "notice", "Graph deletion will be done asynchronously.");
+	#endif
 	// Always build transposed matrices by default.
 	config.maintain_transposed_matrices = true;
 	config.cache_size = CACHE_SIZE_DEFAULT;
@@ -161,7 +171,7 @@ static void _Config_SetToDefaults(void) {
 
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	// Initialize the configuration to its default values.
-	_Config_SetToDefaults();
+	_Config_SetToDefaults(ctx);
 
 	if(argc % 2) {
 		// Emit an error if we received an odd number of arguments, as this indicates an invalid configuration.
@@ -222,3 +232,6 @@ uint64_t Config_GetCacheSize() {
 	return config.cache_size;
 }
 
+bool Config_GetAsyncDelete(void) {
+	return config.async_delete;
+}

@@ -32,8 +32,15 @@ static inline void _GraphContext_IncreaseRefCount(GraphContext *gc) {
 
 static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 	// If the reference count is less than 0, the graph has been marked for deletion and no queries are active - free the graph.
-	if(__atomic_sub_fetch(&gc->ref_count, 1, __ATOMIC_RELAXED) < 0)
-		thpool_add_work(_thpool, _GraphContext_Free, gc);
+	if(__atomic_sub_fetch(&gc->ref_count, 1, __ATOMIC_RELAXED) < 0) {
+		if(Config_GetAsyncDelete()) {
+			// Async delete
+			thpool_add_work(_thpool, _GraphContext_Free, gc);
+		} else {
+			// Sync delete
+			_GraphContext_Free(gc);
+		}
+	}
 }
 
 //------------------------------------------------------------------------------
