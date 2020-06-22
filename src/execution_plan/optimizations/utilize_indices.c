@@ -239,19 +239,23 @@ bool _simple_predicates(const FT_FilterNode *filter) {
 	switch(filter->t) {
 	case FT_N_PRED:
 		if(filter->pred.rhs->type == AR_EXP_OPERAND &&
-		   filter->pred.lhs->type == AR_EXP_OPERAND &&
-		   (filter->pred.lhs->operand.type == AR_EXP_CONSTANT ||
-			filter->pred.rhs->operand.type == AR_EXP_CONSTANT) &&
-		   (filter->pred.lhs->operand.type == AR_EXP_VARIADIC ||
-			filter->pred.lhs->operand.type == AR_EXP_VARIADIC)) {
+		   filter->pred.lhs->type == AR_EXP_OPERAND) {
+			// In case of parameters, evalation will transform them into constants (in-place replacement).
+			if(AR_EXP_IsParameter(filter->pred.lhs)) AR_EXP_Evaluate(filter->pred.lhs, NULL);
+			if(AR_EXP_IsParameter(filter->pred.rhs)) AR_EXP_Evaluate(filter->pred.rhs, NULL);
+			if((filter->pred.lhs->operand.type == AR_EXP_CONSTANT ||
+				filter->pred.rhs->operand.type == AR_EXP_CONSTANT) &&
+			   (filter->pred.lhs->operand.type == AR_EXP_VARIADIC ||
+				filter->pred.lhs->operand.type == AR_EXP_VARIADIC)) {
 
-			// Validate constant type.
-			SIValue c = SI_NullVal();
-			if(filter->pred.lhs->operand.type == AR_EXP_CONSTANT) c = filter->pred.lhs->operand.constant;
-			if(filter->pred.rhs->operand.type == AR_EXP_CONSTANT) c = filter->pred.rhs->operand.constant;
-			SIType t = SI_TYPE(c);
+				// Validate constant type.
+				SIValue c = SI_NullVal();
+				if(filter->pred.lhs->operand.type == AR_EXP_CONSTANT) c = filter->pred.lhs->operand.constant;
+				if(filter->pred.rhs->operand.type == AR_EXP_CONSTANT) c = filter->pred.rhs->operand.constant;
+				SIType t = SI_TYPE(c);
 
-			res = (t & (SI_NUMERIC | T_STRING | T_BOOL));
+				res = (t & (SI_NUMERIC | T_STRING | T_BOOL));
+			}
 		}
 		break;
 	case FT_N_EXP:
