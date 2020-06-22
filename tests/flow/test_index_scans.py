@@ -246,3 +246,14 @@ class testIndexScanFlow(FlowTestsBase):
         query_result = redis_graph.query(query)
         expected_result = ["Lucy Yanfital"]
         self.env.assertEquals(query_result.result_set[0], expected_result)
+
+    def test09_index_scan_with_params(self):
+        query = "MATCH (p:person) WHERE p.age = $age RETURN p.name"
+        params = {'age':30}
+        query = redis_graph.build_params_header(params) + query
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn('Index Scan', plan)
+        query_result = redis_graph.query(query)
+        expected_result = ["Lucy Yanfital"]
+        self.env.assertEquals(query_result.result_set[0], expected_result)
+
