@@ -279,6 +279,7 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 		gc->string_mapping = array_append(gc->string_mapping, rm_strdup(attribute));
 	}
 
+	// Release the temporary lock.
 	if(!in_critical_region) Graph_ReleaseTemporaryLock(gc->g);
 	return attribute_id;
 }
@@ -289,7 +290,15 @@ const char *GraphContext_GetAttributeString(const GraphContext *gc, Attribute_ID
 }
 
 Attribute_ID GraphContext_GetAttributeID(const GraphContext *gc, const char *attribute) {
+	// If we are already a writer in a critical region, no further locking should be done in this function.
+	bool in_critical_region = gc->g->_writelocked;
+	// Otherwise, acquire a read lock to ensure the attribute map is not being modified.
+	if(!in_critical_region) Graph_AcquireReadLock(gc->g);
+	// Look up the attribute ID.
 	Attribute_ID *id = raxFind(gc->attributes, (unsigned char *)attribute, strlen(attribute));
+	// Release the lock if acquired.
+	if(!in_critical_region) Graph_ReleaseTemporaryLock(gc->g);
+
 	if(id == raxNotFound) return ATTRIBUTE_NOTFOUND;
 	return *id;
 }
