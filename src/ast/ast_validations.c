@@ -13,6 +13,7 @@
 #include "../arithmetic/arithmetic_expression.h"
 #include <assert.h>
 #include "../util/rax_extensions.h"
+#include "../query_ctx.h"
 
 // Forward declaration
 static void _AST_GetDefinedIdentifiers(const cypher_astnode_t *node, rax *identifiers);
@@ -1599,32 +1600,27 @@ bool AST_ContainsErrors(const cypher_parse_result_t *result) {
 	return cypher_parse_result_nerrors(result) > 0;
 }
 
-static AST_Validation _AST_Validate_ParseResultRoot(RedisModuleCtx *ctx,
-													const cypher_parse_result_t *result) {
+static AST_Validation _AST_Validate_ParseResultRoot(const cypher_parse_result_t *result,
+													char **err) {
+	*err = NULL;
 	// Check for failures in libcypher-parser
 	if(AST_ContainsErrors(result)) {
-		char *errMsg = _AST_ReportErrors(result);
-		RedisModule_Log(ctx, "debug", "Error parsing query: %s", errMsg);
-		RedisModule_ReplyWithError(ctx, errMsg);
-		free(errMsg);
+		*err = _AST_ReportErrors(result);
 		return AST_INVALID;
 	}
 
 	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
 	// Check for empty query
 	if(root == NULL) {
-		RedisModule_ReplyWithError(ctx, "Error: empty query.");
+		asprintf(err, "Error: empty query.");
 		return AST_INVALID;
 	}
 
-	char *reason;
 	cypher_astnode_type_t root_type = cypher_astnode_type(root);
 	if(root_type != CYPHER_AST_STATEMENT) {
 		// This should be unnecessary, as we're currently parsing
 		// with the CYPHER_PARSE_ONLY_STATEMENTS flag.
-		asprintf(&reason, "Encountered unsupported query type '%s'", cypher_astnode_typestr(root_type));
-		RedisModule_ReplyWithError(ctx, reason);
-		free(reason);
+		asprintf(err, "Encountered unsupported query type '%s'", cypher_astnode_typestr(root_type));
 		return AST_INVALID;
 	}
 
@@ -1659,17 +1655,19 @@ cleanup:
 	return res;
 }
 
-AST_Validation AST_Validate_Query(RedisModuleCtx *ctx, const cypher_parse_result_t *result) {
-	if(_AST_Validate_ParseResultRoot(ctx, result) != AST_VALID) return AST_INVALID;
+AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
+	char *err = NULL;
+	if(_AST_Validate_ParseResultRoot(result, &err) != AST_VALID) {
+		QueryCtx_SetError(err);
+		return AST_INVALID;
+	}
 
-	char *reason;
 	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
 
 	// Verify that the query does not contain any expressions not in the RedisGraph support whitelist
-	if(CypherWhitelist_ValidateQuery(root, &reason) != AST_VALID) {
-		// Unsupported expressions found; reply with error.
-		RedisModule_ReplyWithError(ctx, reason);
-		free(reason);
+	if(CypherWhitelist_ValidateQuery(root, &err) != AST_VALID) {
+		// Unsupported expressions found; set error.
+		QueryCtx_SetError(err);
 		return AST_INVALID;
 	}
 
@@ -1688,32 +1686,31 @@ AST_Validation AST_Validate_Query(RedisModuleCtx *ctx, const cypher_parse_result
 	AST_Validation res;
 	if(AST_ContainsClause(&mock_ast, CYPHER_AST_UNION)) {
 		// If the query contains a UNION clause, it has nested scopes that should be checked separately.
-		res = _AST_ValidateUnionQuery(&mock_ast, &reason);
+		res = _AST_ValidateUnionQuery(&mock_ast, &err);
 	} else {
-		res = _ValidateScopes(&mock_ast, &reason);
+		res = _ValidateScopes(&mock_ast, &err);
 	}
 
-	// Reply with error if validations failed.
-	if(res != AST_VALID) {
-		RedisModule_ReplyWithError(ctx, reason);
-		free(reason);
-	}
+	// Set error in query context if validations failed.
+	if(res != AST_VALID) QueryCtx_SetError(err);
 
 	return res;
 }
 
-AST_Validation AST_Validate_QueryParams(RedisModuleCtx *ctx, const cypher_parse_result_t *result) {
-	if(_AST_Validate_ParseResultRoot(ctx, result) != AST_VALID) return AST_INVALID;
+AST_Validation AST_Validate_QueryParams(const cypher_parse_result_t *result) {
+	char *err;
+	if(_AST_Validate_ParseResultRoot(result, &err) != AST_VALID) {
+		QueryCtx_SetError(err);
+		return AST_INVALID;
+	}
 
-	char *reason;
 	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
 
 	// In case of no parameters.
 	if(cypher_ast_statement_noptions(root) == 0) return AST_VALID;
 
-	if(_ValidateDuplicateParameters(root, &reason) != AST_VALID) {
-		RedisModule_ReplyWithError(ctx, reason);
-		free(reason);
+	if(_ValidateDuplicateParameters(root, &err) != AST_VALID) {
+		QueryCtx_SetError(err);
 		return AST_INVALID;
 	}
 
