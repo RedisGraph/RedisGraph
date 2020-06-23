@@ -115,7 +115,7 @@ void AST_PrepareSortOp(const cypher_astnode_t *order_clause, int **sort_directio
 		directions = array_append(directions, direction);
 	}
 
-  	*sort_directions = directions;
+	*sort_directions = directions;
 }
 
 AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause) {
@@ -219,7 +219,6 @@ AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, QueryG
 //------------------------------------------------------------------------------
 AST_CreateContext AST_PrepareCreateOp(QueryGraph *qg, rax *bound_vars) {
 	AST *ast = QueryCtx_GetAST();
-	GraphContext *gc = QueryCtx_GetGraphCtx();
 
 	// Shouldn't operate on the original bound variables map, as this function may insert aliases.
 	rax *bound_and_introduced_entities = raxClone(bound_vars);
