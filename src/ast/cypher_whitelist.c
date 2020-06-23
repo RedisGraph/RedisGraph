@@ -8,6 +8,7 @@
 #include "../../deps/libcypher-parser/lib/src/operators.h" // TODO safe?
 #include "rax.h"
 #include <assert.h>
+#include "../query_ctx.h"
 
 /* Whitelist of all accepted cypher_astnode types:
  * Includes entities like CREATE clauses and node patterns,
@@ -199,12 +200,14 @@ static void _buildOperatorsWhitelist(void) {
 
 }
 
-static AST_Validation _CypherWhitelist_ValidateQuery(const cypher_astnode_t *elem, char **reason) {
+static AST_Validation _CypherWhitelist_ValidateQuery(const cypher_astnode_t *elem) {
 	if(elem == NULL) return AST_VALID;
+	char *err = NULL;
 	cypher_astnode_type_t type = cypher_astnode_type(elem);
 	// Validate the type of the AST node
 	if(raxFind(_astnode_type_whitelist, (unsigned char *)&type, sizeof(type)) == raxNotFound) {
-		asprintf(reason, "RedisGraph does not currently support %s", cypher_astnode_typestr(type));
+		asprintf(&err, "RedisGraph does not currently support %s", cypher_astnode_typestr(type));
+		QueryCtx_SetError(err);
 		return AST_INVALID;
 	}
 
@@ -220,7 +223,8 @@ static AST_Validation _CypherWhitelist_ValidateQuery(const cypher_astnode_t *ele
 	}
 	if(operator) {
 		if(raxFind(_operator_whitelist, (unsigned char *)operator, sizeof(*operator)) == raxNotFound) {
-			asprintf(reason, "RedisGraph does not currently support %s", operator->str);
+			asprintf(&err, "RedisGraph does not currently support %s", operator->str);
+			QueryCtx_SetError(err);
 			return AST_INVALID;
 		}
 	}
@@ -228,7 +232,7 @@ static AST_Validation _CypherWhitelist_ValidateQuery(const cypher_astnode_t *ele
 	// Recursively visit children
 	uint nchildren = cypher_astnode_nchildren(elem);
 	for(uint i = 0; i < nchildren; i ++) {
-		if(CypherWhitelist_ValidateQuery(cypher_astnode_get_child(elem, i), reason) != AST_VALID) {
+		if(CypherWhitelist_ValidateQuery(cypher_astnode_get_child(elem, i)) != AST_VALID) {
 			return AST_INVALID;
 		}
 	}
@@ -236,8 +240,8 @@ static AST_Validation _CypherWhitelist_ValidateQuery(const cypher_astnode_t *ele
 	return AST_VALID;
 }
 
-AST_Validation CypherWhitelist_ValidateQuery(const cypher_astnode_t *root, char **reason) {
-	return _CypherWhitelist_ValidateQuery(root, reason);
+AST_Validation CypherWhitelist_ValidateQuery(const cypher_astnode_t *root) {
+	return _CypherWhitelist_ValidateQuery(root);
 }
 
 void CypherWhitelist_Build() {
