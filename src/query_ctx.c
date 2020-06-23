@@ -166,7 +166,10 @@ static void _QueryCtx_ThreadSafeContextUnlock(QueryCtx *ctx) {
 
 bool QueryCtx_IsLocked(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	return ctx->internal_exec_ctx.locked_for_commit;
+	/* If the context is locked, return true.
+	 * Also return true if the command name is NULL, as that indicates we're in
+	 * a globally blocked context like bulk insertion. */
+	return ctx->internal_exec_ctx.locked_for_commit || !ctx->global_exec_ctx.command_name;
 }
 
 bool QueryCtx_LockForCommit(void) {
