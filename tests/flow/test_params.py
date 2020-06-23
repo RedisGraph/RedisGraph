@@ -95,3 +95,15 @@ class testParams(FlowTestsBase):
         except:
             # Expecting an error.
             pass
+
+    def test_id_scan(self):
+        redis_graph.query("CREATE ({val:1})")
+        expected_results=[[1]]
+        params = {'id' : 0}
+        query = "MATCH (n) WHERE id(n)=$id return n.val"
+        query_info = QueryInfo(query = query, description="Test id scan with params", expected_result = expected_results)
+        self._assert_resultset_equals_expected(redis_graph.query(query, params), query_info)
+        query = redis_graph.build_params_header(params) + query
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn('NodeByIdSeek', plan)
+

@@ -24,6 +24,10 @@ static bool _idFilter(FT_FilterNode *f, AST_Operator *rel, EntityID *id, bool *r
 	AR_ExpNode *rhs = f->pred.rhs;
 	*rel = f->pred.op;
 
+	// In case of parameter, evalute it so it will in-place become constant.
+	if(AR_EXP_IsParameter(lhs)) AR_EXP_Evaluate(lhs, NULL);
+	if(AR_EXP_IsParameter(rhs)) AR_EXP_Evaluate(rhs, NULL);
+
 	/* Either ID(N) compare const
 	 * OR
 	 * const compare ID(N) */
