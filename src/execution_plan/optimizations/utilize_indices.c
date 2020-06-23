@@ -218,6 +218,8 @@ static bool _validateInExpression(AR_ExpNode *exp) {
 	assert(exp->op.child_count == 2);
 
 	AR_ExpNode *list = exp->op.children[1];
+	// In case the array is a parameter such as "WHERE x IN $arr", evaluate the parameter for in-place replacement.
+	if(AR_EXP_IsParameter(list)) AR_EXP_Evaluate(list, NULL);
 	if(list->operand.type != AR_EXP_CONSTANT || list->operand.constant.type != T_ARRAY) return false;
 
 	SIValue listValue = list->operand.constant;
