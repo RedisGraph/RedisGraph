@@ -87,14 +87,20 @@ void Graph_AcquireReadLock(Graph *g);
 /* Acquire a lock for exclusive access to this graph's data */
 void Graph_AcquireWriteLock(Graph *g);
 
+/* Release a read lock and acquire a write lock without modifying the '_writelocked' flag. */
+void Graph_UpgradeTemporaryLock(Graph *g);
+
+/* Release the held lock */
+void Graph_ReleaseLock(Graph *g);
+
+/* Release the held lock without modifying the '_writelocked' flag.  */
+void Graph_ReleaseTemporaryLock(Graph *g);
+
 /* Writer request access to graph. */
 void Graph_WriterEnter(Graph *g);
 
 /* Writer release access to graph. */
 void Graph_WriterLeave(Graph *g);
-
-/* Release the held lock */
-void Graph_ReleaseLock(Graph *g);
 
 /* Choose the current matrix synchronization policy. */
 void Graph_SetMatrixPolicy(Graph *g, MATRIX_POLICY policy);

@@ -133,6 +133,14 @@ void Graph_AcquireWriteLock(Graph *g) {
 	g->_writelocked = true;
 }
 
+/* Release a read lock and re-acquire it for writing. */
+void Graph_UpgradeTemporaryLock(Graph *g) {
+	// We are already holding a read lock; release it.
+	pthread_rwlock_unlock(&g->_rwlock);
+	// Acquire a write lock.
+	pthread_rwlock_wrlock(&g->_rwlock);
+}
+
 /* Release the held lock */
 void Graph_ReleaseLock(Graph *g) {
 	/* Set _writelocked to false BEFORE unlocking
@@ -143,6 +151,14 @@ void Graph_ReleaseLock(Graph *g) {
 	 * underline matrices, consider a context switch after unlocking `_rwlock` but
 	 * before setting `_writelocked` to false. */
 	g->_writelocked = false;
+	pthread_rwlock_unlock(&g->_rwlock);
+}
+
+void Graph_ReleaseTemporaryLock(Graph *g) {
+	/* Like Graph_ReleaseLock, this function will release the held lock
+	 * regardless of whether it is a read or write lock.
+	 * However, it does not modify the accompanying _writelocked flag, as
+	 * this temporary lock does not indicate whether we're in a single-thread context. */
 	pthread_rwlock_unlock(&g->_rwlock);
 }
 

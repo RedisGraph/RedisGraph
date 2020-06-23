@@ -250,11 +250,23 @@ uint GraphContext_AttributeCount(GraphContext *gc) {
 }
 
 Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attribute) {
+	// If we are already a writer in a critical region, no further locking should be done in this function.
+	bool in_critical_region = gc->g->_writelocked;
+
 	// See if attribute already exists.
 	Attribute_ID *pAttribute_id = NULL;
+	/* If we are not already in a critical region, acquire a read lock.
+	 * Reader threads may acquire a read lock multiple times as long
+	 * as they release the lock the same number of times.
+	 * Writer threads that have not yet entered the critical region will hold no lock at this point,
+	 * while writer threads within the critical region are guaranteed to be the only running thread. */
+	if(!in_critical_region) Graph_AcquireReadLock(gc->g);
 	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, attribute);
 
 	if(attribute_id == ATTRIBUTE_NOTFOUND) {
+		/* We are writing to the shared GraphContext; re-acquire the held lock as a write lock. */
+		if(!in_critical_region) Graph_UpgradeTemporaryLock(gc->g);
+
 		attribute_id = raxSize(gc->attributes);
 		pAttribute_id = rm_malloc(sizeof(Attribute_ID));
 		*pAttribute_id = attribute_id;
@@ -267,6 +279,7 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 		gc->string_mapping = array_append(gc->string_mapping, rm_strdup(attribute));
 	}
 
+	if(!in_critical_region) Graph_ReleaseTemporaryLock(gc->g);
 	return attribute_id;
 }
 
