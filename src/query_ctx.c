@@ -164,6 +164,11 @@ static void _QueryCtx_ThreadSafeContextUnlock(QueryCtx *ctx) {
 	if(ctx->global_exec_ctx.bc) RedisModule_ThreadSafeContextUnlock(ctx->global_exec_ctx.redis_ctx);
 }
 
+bool QueryCtx_IsLocked(void) {
+	QueryCtx *ctx = _QueryCtx_GetCtx();
+	return ctx->internal_exec_ctx.locked_for_commit;
+}
+
 bool QueryCtx_LockForCommit(void) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
 	if(ctx->internal_exec_ctx.locked_for_commit) return true;
@@ -173,6 +178,7 @@ bool QueryCtx_LockForCommit(void) {
 	RedisModuleString *graphID = RedisModule_CreateString(redis_ctx, gc->graph_name,
 														  strlen(gc->graph_name));
 	_QueryCtx_ThreadSafeContextLock(ctx);
+	ctx->internal_exec_ctx.locked_for_commit = true;
 	// Open key and verify.
 	RedisModuleKey *key = RedisModule_OpenKey(redis_ctx, graphID, REDISMODULE_WRITE);
 	RedisModule_FreeString(redis_ctx, graphID);
@@ -192,7 +198,6 @@ bool QueryCtx_LockForCommit(void) {
 	ctx->internal_exec_ctx.key = key;
 	// Acquire graph write lock.
 	Graph_AcquireWriteLock(gc->g);
-	ctx->internal_exec_ctx.locked_for_commit = true;
 
 	return true;
 
@@ -218,11 +223,11 @@ void QueryCtx_UnlockCommit(OpBase *writer_op) {
 		// Replicate only in case of changes.
 		RedisModule_Replicate(redis_ctx, ctx->global_exec_ctx.command_name, "cc!", gc->graph_name,
 							  ctx->query_data.query);
-	ctx->internal_exec_ctx.locked_for_commit = false;
 	// Release graph R/W lock.
 	Graph_ReleaseLock(gc->g);
 	// Close Key.
 	RedisModule_CloseKey(ctx->internal_exec_ctx.key);
+	ctx->internal_exec_ctx.locked_for_commit = false;
 	// Unlock GIL.
 	_QueryCtx_ThreadSafeContextUnlock(ctx);
 }
@@ -239,11 +244,11 @@ void QueryCtx_ForceUnlockCommit() {
 		// Replicate only in case of changes.
 		RedisModule_Replicate(redis_ctx, ctx->global_exec_ctx.command_name, "cc!", gc->graph_name,
 							  ctx->query_data.query);
-	ctx->internal_exec_ctx.locked_for_commit = false;
 	// Release graph R/W lock.
 	Graph_ReleaseLock(gc->g);
 	// Close Key.
 	RedisModule_CloseKey(ctx->internal_exec_ctx.key);
+	ctx->internal_exec_ctx.locked_for_commit = false;
 	// Unlock GIL.
 	_QueryCtx_ThreadSafeContextUnlock(ctx);
 }
@@ -280,3 +285,4 @@ void QueryCtx_Free(void) {
 	// NULL-set the context for reuse the next time this thread receives a query
 	pthread_setspecific(_tlsQueryCtxKey, NULL);
 }
+

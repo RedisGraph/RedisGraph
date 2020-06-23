@@ -250,8 +250,8 @@ uint GraphContext_AttributeCount(GraphContext *gc) {
 }
 
 Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attribute) {
-	// If we are already a writer in a critical region, no further locking should be done in this function.
-	bool in_critical_region = gc->g->_writelocked;
+	// If we are already in a critical region, no further locking should be done in this function.
+	bool in_critical_region = QueryCtx_IsLocked();
 
 	/* If we are not already in a critical region, acquire a read lock.
 	 * Reader threads may acquire a read lock multiple times as long
@@ -261,24 +261,24 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 	if(!in_critical_region) Graph_AcquireReadLock(gc->g);
 
 	// See if attribute already exists.
-	uintptr_t attribute_id = GraphContext_GetAttributeID(gc, attribute);
+	void *attribute_id = raxFind(gc->attributes, (unsigned char *)attribute, strlen(attribute));
 
-	if(attribute_id == ATTRIBUTE_NOTFOUND) {
+	if(attribute_id == raxNotFound) {
 		/* We are writing to the shared GraphContext; re-acquire the held lock as a write lock. */
 		if(!in_critical_region) Graph_UpgradeTemporaryLock(gc->g);
 
-		attribute_id = raxSize(gc->attributes);
+		attribute_id = (void *)raxSize(gc->attributes);
 		raxInsert(gc->attributes,
 				  (unsigned char *)attribute,
 				  strlen(attribute),
-				  (void *)attribute_id,
+				  attribute_id,
 				  NULL);
 		gc->string_mapping = array_append(gc->string_mapping, rm_strdup(attribute));
 	}
 
 	// Release the temporary lock.
 	if(!in_critical_region) Graph_ReleaseTemporaryLock(gc->g);
-	return attribute_id;
+	return (uintptr_t)attribute_id;
 }
 
 const char *GraphContext_GetAttributeString(const GraphContext *gc, Attribute_ID id) {
@@ -287,8 +287,8 @@ const char *GraphContext_GetAttributeString(const GraphContext *gc, Attribute_ID
 }
 
 Attribute_ID GraphContext_GetAttributeID(const GraphContext *gc, const char *attribute) {
-	// If we are already a writer in a critical region, no further locking should be done in this function.
-	bool in_critical_region = gc->g->_writelocked;
+	// If we are already in a critical region, no further locking should be done in this function.
+	bool in_critical_region = QueryCtx_IsLocked();
 	// Otherwise, acquire a read lock to ensure the attribute map is not being modified.
 	if(!in_critical_region) Graph_AcquireReadLock(gc->g);
 	// Look up the attribute ID.

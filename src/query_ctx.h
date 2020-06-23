@@ -101,6 +101,9 @@ ResultSetStatistics *QueryCtx_GetResultSetStatistics(void);
 /* Print the current query. */
 void QueryCtx_PrintQuery(void);
 
+/* Returns true if we are currently the only unblocked thread, in the middle of a commit flow. */
+bool QueryCtx_IsLocked(void);
+
 /* Starts a locking flow before commiting changes in the graph and Redis keyspace.
  * Locking flow is:
  * 1. LOCK GIL
