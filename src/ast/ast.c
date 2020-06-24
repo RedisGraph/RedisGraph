@@ -507,9 +507,7 @@ uint64_t AST_GetLimit(const AST *ast) {
 	if(!ast->limit) return UNLIMITED;
 	SIValue limit_value =  AR_EXP_Evaluate(ast->limit, NULL);
 	if(SI_TYPE(limit_value) != T_INT64) {
-		char *error;
-		asprintf(&error, "LIMIT specified value of invalid type, must be a positive integer");
-		QueryCtx_SetError(error); // Set the query-level error.
+		QueryCtx_SetError("LIMIT specified value of invalid type, must be a positive integer"); // Set the query-level error.
 		QueryCtx_RaiseRuntimeException();
 	}
 	return limit_value.longval;
@@ -523,9 +521,7 @@ uint64_t AST_GetSkip(const AST *ast) {
 	if(!ast->skip) return 0;
 	SIValue skip_value =  AR_EXP_Evaluate(ast->skip, NULL);
 	if(SI_TYPE(skip_value) != T_INT64) {
-		char *error;
-		asprintf(&error, "SKIP specified value of invalid type, must be a positive integer");
-		QueryCtx_SetError(error); // Set the query-level error.
+		QueryCtx_SetError("SKIP specified value of invalid type, must be a positive integer"); // Set the query-level error.
 		QueryCtx_RaiseRuntimeException();
 	}
 	return skip_value.longval;
@@ -534,7 +530,7 @@ uint64_t AST_GetSkip(const AST *ast) {
 cypher_parse_result_t *parse_query(const char *query) {
 	cypher_parse_result_t *result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 	if(!result) return NULL;
-	if(AST_Validate_Query(QueryCtx_GetRedisModuleCtx(), result) != AST_VALID) {
+	if(AST_Validate_Query(result) != AST_VALID) {
 		parse_result_free(result);
 		return NULL;
 	}
@@ -544,7 +540,7 @@ cypher_parse_result_t *parse_query(const char *query) {
 cypher_parse_result_t *parse_params(const char *query, const char **query_body) {
 	cypher_parse_result_t *result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_PARAMETERS);
 	if(!result) return NULL;
-	if(AST_Validate_QueryParams(QueryCtx_GetRedisModuleCtx(), result) != AST_VALID) {
+	if(AST_Validate_QueryParams(result) != AST_VALID) {
 		parse_result_free(result);
 		return NULL;
 	}

@@ -38,10 +38,10 @@ typedef struct {
 bool AST_ContainsErrors(const cypher_parse_result_t *result);
 
 // Make sure the parse result and the AST tree pass all validations.
-AST_Validation AST_Validate_Query(RedisModuleCtx *ctx, const cypher_parse_result_t *result);
+AST_Validation AST_Validate_Query(const cypher_parse_result_t *result);
 
 // Validate query parameters parsing only.
-AST_Validation AST_Validate_QueryParams(RedisModuleCtx *ctx, const cypher_parse_result_t *result);
+AST_Validation AST_Validate_QueryParams(const cypher_parse_result_t *result);
 
 // Checks if the parse result represents a read-only query.
 bool AST_ReadOnly(const cypher_astnode_t *root);
