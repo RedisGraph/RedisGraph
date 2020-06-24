@@ -353,10 +353,7 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 
 	if(!FilterTree_Valid(filter_tree)) {
 		// Invalid filter tree structure, set a compile-time error.
-		char *error;
-		asprintf(&error, "Invalid filter statement.");
-		QueryCtx_SetError(error);
-
+		QueryCtx_SetError("Invalid filter statement.");
 		FilterTree_Free(filter_tree);
 		return NULL;
 	}

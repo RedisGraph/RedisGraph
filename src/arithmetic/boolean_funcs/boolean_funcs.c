@@ -79,10 +79,8 @@ SIValue AR_GT(SIValue *argv, int argc) {
 		return SI_NullVal();
 	} else if(disjointOrNull == DISJOINT) {
 		// Emit error when attempting to compare invalid types
-		char *error;
-		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
-				 SIType_ToString(SI_TYPE(b)));
-		QueryCtx_SetError(error);
+		QueryCtx_SetError("Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
+						  SIType_ToString(SI_TYPE(b)));
 		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
 
@@ -95,10 +93,8 @@ SIValue AR_GE(SIValue *argv, int argc) {
 
 	// Emit error when attempting to compare invalid types
 	if(!SI_VALUES_ARE_COMPARABLE(a, b)) {
-		char *error;
-		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
-				 SIType_ToString(SI_TYPE(b)));
-		QueryCtx_SetError(error);
+		QueryCtx_SetError("Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
+						  SIType_ToString(SI_TYPE(b)));
 		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
 
@@ -121,10 +117,8 @@ SIValue AR_LT(SIValue *argv, int argc) {
 		return SI_NullVal();
 	} else if(disjointOrNull == DISJOINT) {
 		// Emit error when attempting to compare invalid types
-		char *error;
-		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
-				 SIType_ToString(SI_TYPE(b)));
-		QueryCtx_SetError(error);
+		QueryCtx_SetError("Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
+						  SIType_ToString(SI_TYPE(b)));
 		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
 
@@ -142,10 +136,8 @@ SIValue AR_LE(SIValue *argv, int argc) {
 		return SI_NullVal();
 	} else if(disjointOrNull == DISJOINT) {
 		// Emit error when attempting to compare invalid types
-		char *error;
-		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
-				 SIType_ToString(SI_TYPE(b)));
-		QueryCtx_SetError(error);
+		QueryCtx_SetError("Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
+						  SIType_ToString(SI_TYPE(b)));
 		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
 

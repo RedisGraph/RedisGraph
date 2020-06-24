@@ -203,10 +203,8 @@ static Record UpdateConsume(OpBase *opBase) {
 			if(t == REC_TYPE_UNKNOWN) continue;
 			// Make sure we're updating either a node or an edge.
 			if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
-				char *error;
-				asprintf(&error, "Update error: alias '%s' did not resolve to a graph entity",
-						 update_expression->alias);
-				QueryCtx_SetError(error);
+				QueryCtx_SetError("Update error: alias '%s' did not resolve to a graph entity",
+								  update_expression->alias);
 				QueryCtx_RaiseRuntimeException();
 			}
 			GraphEntityType type = (t == REC_TYPE_NODE) ? GETYPE_NODE : GETYPE_EDGE;

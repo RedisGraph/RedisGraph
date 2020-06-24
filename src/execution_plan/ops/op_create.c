@@ -82,9 +82,7 @@ static void _CreateEdges(OpCreate *op, Record r) {
 		Node *dest_node = Record_GetNode(r, op->pending.edges_to_create[i].dest_idx);
 		/* Verify that the endpoints of the new edge resolved properly; fail otherwise. */
 		if(!src_node || !dest_node) {
-			char *error;
-			asprintf(&error, "Failed to create relationship; endpoint was not found.");
-			QueryCtx_SetError(error);
+			QueryCtx_SetError("Failed to create relationship; endpoint was not found.");
 			QueryCtx_RaiseRuntimeException();
 		}
 
