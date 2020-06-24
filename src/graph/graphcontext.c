@@ -263,16 +263,20 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 		pthread_rwlock_unlock(&gc->_attribute_rwlock);
 		pthread_rwlock_wrlock(&gc->_attribute_rwlock);
 
-		attribute_id = (void *)raxSize(gc->attributes);
-		/* rc will be 1 if the insertion was successful and 0 if the rax was not updated,
-		 * which could occur if 2 threads try to retrieve the same attribute simultaneously.
-		 * In this case the second thread will not modify the rax or the string mapping. */
-		int rc = raxTryInsert(gc->attributes,
-							  (unsigned char *)attribute,
-							  strlen(attribute),
-							  attribute_id,
-							  NULL);
-		if(rc) gc->string_mapping = array_append(gc->string_mapping, rm_strdup(attribute));
+		// Lookup the attribute again now that we are in a critical region.
+		attribute_id = raxFind(gc->attributes, (unsigned char *)attribute, strlen(attribute));
+		// If it has been set by another thread, use the retrieved value.
+		if(attribute_id == raxNotFound) {
+			// Otherwise, it will be assigned an ID equal to the current mapping size.
+			attribute_id = (void *)raxSize(gc->attributes);
+			// Insert the new attribute key and ID.
+			raxInsert(gc->attributes,
+					  (unsigned char *)attribute,
+					  strlen(attribute),
+					  attribute_id,
+					  NULL);
+			gc->string_mapping = array_append(gc->string_mapping, rm_strdup(attribute));
+		}
 	}
 
 	// Release the lock.
