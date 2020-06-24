@@ -67,6 +67,8 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 	gc->encoding_context = GraphEncodeContext_New();
 	gc->decoding_context = GraphDecodeContext_New();
 
+	// Initialize the read-write lock to protect access to the attributes rax.
+	assert(pthread_rwlock_init(&gc->_attribute_rwlock, NULL) == 0);
 
 	/* Build the cache pool. The cache pool contains a cache for each thread in the thread pool, to avoid congestion.
 	 * Each thread is getting its cache by its thread id. */
@@ -250,22 +252,16 @@ uint GraphContext_AttributeCount(GraphContext *gc) {
 }
 
 Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attribute) {
-	// If we are already in a critical region, no further locking should be done in this function.
-	bool in_critical_region = QueryCtx_IsLocked();
-
-	/* If we are not already in a critical region, acquire a read lock.
-	 * Reader threads may acquire a read lock multiple times as long
-	 * as they release the lock the same number of times.
-	 * Writer threads that have not yet entered the critical region will hold no lock at this point,
-	 * while writer threads within the critical region are guaranteed to be the only running thread. */
-	if(!in_critical_region) Graph_AcquireReadLock(gc->g);
+	// Acquire a read lock for looking up the attribute.
+	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
 
 	// See if attribute already exists.
 	void *attribute_id = raxFind(gc->attributes, (unsigned char *)attribute, strlen(attribute));
 
 	if(attribute_id == raxNotFound) {
-		/* We are writing to the shared GraphContext; re-acquire the held lock as a write lock. */
-		if(!in_critical_region) Graph_UpgradeTemporaryLock(gc->g);
+		// We are writing to the shared GraphContext; release the held lock and re-acquire as a writer.
+		pthread_rwlock_unlock(&gc->_attribute_rwlock);
+		pthread_rwlock_wrlock(&gc->_attribute_rwlock);
 
 		attribute_id = (void *)raxSize(gc->attributes);
 		raxInsert(gc->attributes,
@@ -276,8 +272,8 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 		gc->string_mapping = array_append(gc->string_mapping, rm_strdup(attribute));
 	}
 
-	// Release the temporary lock.
-	if(!in_critical_region) Graph_ReleaseTemporaryLock(gc->g);
+	// Release the lock.
+	pthread_rwlock_unlock(&gc->_attribute_rwlock);
 	return (uintptr_t)attribute_id;
 }
 
@@ -286,15 +282,13 @@ const char *GraphContext_GetAttributeString(const GraphContext *gc, Attribute_ID
 	return gc->string_mapping[id];
 }
 
-Attribute_ID GraphContext_GetAttributeID(const GraphContext *gc, const char *attribute) {
-	// If we are already in a critical region, no further locking should be done in this function.
-	bool in_critical_region = QueryCtx_IsLocked();
-	// Otherwise, acquire a read lock to ensure the attribute map is not being modified.
-	if(!in_critical_region) Graph_AcquireReadLock(gc->g);
+Attribute_ID GraphContext_GetAttributeID(GraphContext *gc, const char *attribute) {
+	// Acquire a read lock for looking up the attribute.
+	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
 	// Look up the attribute ID.
 	void *id = raxFind(gc->attributes, (unsigned char *)attribute, strlen(attribute));
-	// Release the lock if acquired.
-	if(!in_critical_region) Graph_ReleaseTemporaryLock(gc->g);
+	// Release the lock.
+	pthread_rwlock_unlock(&gc->_attribute_rwlock);
 
 	if(id == raxNotFound) return ATTRIBUTE_NOTFOUND;
 
@@ -469,6 +463,7 @@ static void _GraphContext_Free(void *arg) {
 		}
 		array_free(gc->string_mapping);
 	}
+	assert(pthread_rwlock_destroy(&gc->_attribute_rwlock) == 0);
 
 	if(gc->slowlog) SlowLog_Free(gc->slowlog);
 
