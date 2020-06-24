@@ -104,8 +104,19 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 																	   remaining_entities);
 			payloads = array_append(payloads, current_state_payload_info);
 			remaining_entities -= current_state_payload_info.entities_count;
-			if(remaining_entities > 0) {
+			if(remaining_entities >= 0) {
 				offset = 0; // New state offset is 0.
+				current_state++; // Advance in the states.
+			}
+		}
+		// Check if this is the last key
+		if(GraphEncodeContext_GetProcessedKeyCount(gc->encoding_context) ==
+		   GraphEncodeContext_GetKeyCount(gc->encoding_context) - 1) {
+			// This is the last key, no more entities to encode. Encode "empty" states + schema state.
+			while(current_state < ENCODE_STATE_FINAL) {
+				PayloadInfo current_state_payload_info = _StatePayloadInfo(gc, current_state, offset,
+																		   remaining_entities);
+				payloads = array_append(payloads, current_state_payload_info);
 				current_state++; // Advance in the states.
 			}
 		}
