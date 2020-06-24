@@ -40,9 +40,9 @@ static bool _idFilter(FT_FilterNode *f, AST_Operator *rel, EntityID *id, bool *r
 	}
 
 	// Make sure ID is compared to a constant int64.
-	SIValue val = SI_NullVal();
-	bool constant_id = AR_EXP_ReduceToScalar(expr, true, &val);
-	if(!constant_id) return false;
+	SIValue val;
+	bool reduced = AR_EXP_ReduceToScalar(expr, true, &val);
+	if(!reduced) return false;
 	if(SI_TYPE(val) != T_INT64) return false;
 	*id = SI_GET_NUMERIC(val);
 

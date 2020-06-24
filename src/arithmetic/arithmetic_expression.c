@@ -172,10 +172,11 @@ AR_ExpNode *AR_EXP_NewParameterOperandNode(const char *param_name) {
  * e.g. MINUS(X) where X is a constant number will be reduced to
  * a single node with the value -X
  * PLUS(MINUS(A), B) will be reduced to a single constant: B-A. */
-bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool runtime, SIValue *val) {
+bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val) {
+	if(val != NULL) *val = SI_NullVal();
 	if(root->type == AR_EXP_OPERAND) {
 		// In runtime, parameters are set so they can be evaluated
-		if(runtime && AR_EXP_IsParameter(root)) {
+		if(reduce_params && AR_EXP_IsParameter(root)) {
 			SIValue v = AR_EXP_Evaluate(root, NULL);
 			if(val != NULL) *val = v;
 			return true;
@@ -196,7 +197,7 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool runtime, SIValue *val) {
 			 * if so we'll be able to reduce root. */
 			bool reduce_children = true;
 			for(int i = 0; i < root->op.child_count; i++) {
-				if(!AR_EXP_ReduceToScalar(root->op.children[i], runtime, NULL)) {
+				if(!AR_EXP_ReduceToScalar(root->op.children[i], reduce_params, NULL)) {
 					// Root reduce is not possible, but continue to reduce every reducable child.
 					reduce_children = false;
 				}
