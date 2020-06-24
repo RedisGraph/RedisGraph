@@ -127,9 +127,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 
 		/* Verify that the endpoints of the new edge resolved properly; fail otherwise. */
 		if(!src_node || !dest_node) {
-			char *error;
-			asprintf(&error, "Failed to create relationship; endpoint was not found.");
-			QueryCtx_SetError(error);
+			QueryCtx_SetError("Failed to create relationship; endpoint was not found.");
 			QueryCtx_RaiseRuntimeException();
 		}
 

@@ -507,9 +507,7 @@ uint64_t AST_GetLimit(const AST *ast) {
 	if(!ast->limit) return UNLIMITED;
 	SIValue limit_value =  AR_EXP_Evaluate(ast->limit, NULL);
 	if(SI_TYPE(limit_value) != T_INT64) {
-		char *error;
-		asprintf(&error, "LIMIT specified value of invalid type, must be a positive integer");
-		QueryCtx_SetError(error); // Set the query-level error.
+		QueryCtx_SetError("LIMIT specified value of invalid type, must be a positive integer"); // Set the query-level error.
 		QueryCtx_RaiseRuntimeException();
 	}
 	return limit_value.longval;
@@ -523,9 +521,7 @@ uint64_t AST_GetSkip(const AST *ast) {
 	if(!ast->skip) return 0;
 	SIValue skip_value =  AR_EXP_Evaluate(ast->skip, NULL);
 	if(SI_TYPE(skip_value) != T_INT64) {
-		char *error;
-		asprintf(&error, "SKIP specified value of invalid type, must be a positive integer");
-		QueryCtx_SetError(error); // Set the query-level error.
+		QueryCtx_SetError("SKIP specified value of invalid type, must be a positive integer"); // Set the query-level error.
 		QueryCtx_RaiseRuntimeException();
 	}
 	return skip_value.longval;

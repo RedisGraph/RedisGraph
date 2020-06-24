@@ -202,12 +202,10 @@ static void _buildOperatorsWhitelist(void) {
 
 static AST_Validation _CypherWhitelist_ValidateQuery(const cypher_astnode_t *elem) {
 	if(elem == NULL) return AST_VALID;
-	char *err = NULL;
 	cypher_astnode_type_t type = cypher_astnode_type(elem);
 	// Validate the type of the AST node
 	if(raxFind(_astnode_type_whitelist, (unsigned char *)&type, sizeof(type)) == raxNotFound) {
-		asprintf(&err, "RedisGraph does not currently support %s", cypher_astnode_typestr(type));
-		QueryCtx_SetError(err);
+		QueryCtx_SetError("RedisGraph does not currently support %s", cypher_astnode_typestr(type));
 		return AST_INVALID;
 	}
 
@@ -223,8 +221,7 @@ static AST_Validation _CypherWhitelist_ValidateQuery(const cypher_astnode_t *ele
 	}
 	if(operator) {
 		if(raxFind(_operator_whitelist, (unsigned char *)operator, sizeof(*operator)) == raxNotFound) {
-			asprintf(&err, "RedisGraph does not currently support %s", operator->str);
-			QueryCtx_SetError(err);
+			QueryCtx_SetError("RedisGraph does not currently support %s", operator->str);
 			return AST_INVALID;
 		}
 	}

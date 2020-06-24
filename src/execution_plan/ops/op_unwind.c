@@ -41,9 +41,7 @@ OpBase *NewUnwindOp(const ExecutionPlan *plan, AR_ExpNode *exp) {
 static void _initList(OpUnwind *op) {
 	op->list = AR_EXP_Evaluate(op->exp, op->currentRecord);
 	if(op->list.type != T_ARRAY) {
-		char *error;
-		asprintf(&error, "Type mismatch: expected List but was %s", SIType_ToString(op->list.type));
-		QueryCtx_SetError(error);
+		QueryCtx_SetError("Type mismatch: expected List but was %s", SIType_ToString(op->list.type));
 		QueryCtx_RaiseRuntimeException();
 	}
 }
