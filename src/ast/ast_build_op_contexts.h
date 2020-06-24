@@ -35,7 +35,7 @@ typedef struct {
 PropertyMap *AST_ConvertPropertiesMap(const cypher_astnode_t *props);
 
 // Extract the necessary information to populate an update operation from a SET clause.
-EntityUpdateEvalCtx *AST_PrepareUpdateOp(const cypher_astnode_t *set_clause);
+EntityUpdateEvalCtx *AST_PrepareUpdateOp(GraphContext *gc, const cypher_astnode_t *set_clause);
 
 // Extract the necessary information to populate a delete operation from a DELETE clause.
 AR_ExpNode **AST_PrepareDeleteOp(const cypher_astnode_t *delete_clause);
@@ -50,8 +50,8 @@ void AST_PreparePathCreation(const cypher_astnode_t *path, QueryGraph *qg, rax *
 							 NodeCreateCtx **nodes, EdgeCreateCtx **edges);
 
 // Extract the necessary information to populate a merge operation from a MERGE clause.
-AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, QueryGraph *qg,
-									rax *bound_vars);
+AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, GraphContext *gc,
+									QueryGraph *qg, rax *bound_vars);
 
 // Extract the necessary information to populate a create operation from all CREATE clauses.
 AST_CreateContext AST_PrepareCreateOp(QueryGraph *qg, rax *bound_vars);
