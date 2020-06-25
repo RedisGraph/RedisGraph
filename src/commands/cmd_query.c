@@ -38,14 +38,10 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 		QueryCtx_UnlockCommit(NULL);
 
 		if(res != INDEX_OK) {
-			char *error;
-			asprintf(&error, "ERR Unable to drop index on :%s(%s): no such index.", label, prop);
-			QueryCtx_SetError(error);
+			QueryCtx_SetError("ERR Unable to drop index on :%s(%s): no such index.", label, prop);
 		}
 	} else {
-		char *error;
-		asprintf(&error, "ERR Encountered unknown query execution type.");
-		QueryCtx_SetError(error);
+		QueryCtx_SetError("ERR Encountered unknown query execution type.");
 	}
 }
 

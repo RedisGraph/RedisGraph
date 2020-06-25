@@ -21,6 +21,7 @@ typedef struct {
 	Graph *g;                               // Container for all matrices and entity properties
 	int ref_count;                          // Number of active references.
 	rax *attributes;                        // From strings to attribute IDs
+	pthread_rwlock_t _attribute_rwlock;     // Read-write lock to protect access to the attribute maps.
 	char *graph_name;                       // String associated with graph
 	char **string_mapping;                  // From attribute IDs to strings
 	Schema **node_schemas;                  // Array of schemas for each node label
@@ -67,7 +68,7 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 // Retrieve an attribute string given an ID
 const char *GraphContext_GetAttributeString(const GraphContext *gc, Attribute_ID id);
 // Retrieve an attribute ID given a string, or ATTRIBUTE_NOTFOUND if attribute doesn't exist.
-Attribute_ID GraphContext_GetAttributeID(const GraphContext *gc, const char *str);
+Attribute_ID GraphContext_GetAttributeID(GraphContext *gc, const char *str);
 
 /* Index API */
 bool GraphContext_HasIndices(GraphContext *gc);

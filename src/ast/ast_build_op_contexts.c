@@ -43,7 +43,7 @@ static inline NodeCreateCtx _NewNodeCreateCtx(GraphContext *gc, const QueryGraph
 	return new_node;
 }
 
-static EntityUpdateEvalCtx _NewUpdateCtx(const cypher_astnode_t *set_item) {
+static EntityUpdateEvalCtx _NewUpdateCtx(GraphContext *gc, const cypher_astnode_t *set_item) {
 	const cypher_astnode_type_t type = cypher_astnode_type(set_item);
 	// TODO Add handling for when we're setting labels (CYPHER_AST_SET_LABELS)
 	// or all properties (CYPHER_AST_SET_ALL_PROPERTIES)
@@ -66,24 +66,25 @@ static EntityUpdateEvalCtx _NewUpdateCtx(const cypher_astnode_t *set_item) {
 	/* Track all required information to perform an update. */
 	const char *alias = entity->operand.variadic.entity_alias;
 	const char *attribute = cypher_ast_prop_name_get_value(prop);
+	Attribute_ID attribute_id = GraphContext_FindOrAddAttribute(gc, attribute);
 	AR_ExpNode *exp = AR_EXP_FromExpression(val_to_set);
 
 	AR_EXP_Free(entity);
 
 	EntityUpdateEvalCtx update_ctx = { .alias = alias,
-									   .attribute = attribute,
+									   .attribute_id = attribute_id,
 									   .exp = exp
 									 };
 	return update_ctx;
 }
 
-EntityUpdateEvalCtx *AST_PrepareUpdateOp(const cypher_astnode_t *set_clause) {
+EntityUpdateEvalCtx *AST_PrepareUpdateOp(GraphContext *gc, const cypher_astnode_t *set_clause) {
 	uint nitems = cypher_ast_set_nitems(set_clause);
 	EntityUpdateEvalCtx *update_expressions = array_new(EntityUpdateEvalCtx, nitems);
 
 	for(uint i = 0; i < nitems; i++) {
 		const cypher_astnode_t *set_item = cypher_ast_set_get_item(set_clause, i);
-		update_expressions = array_append(update_expressions, _NewUpdateCtx(set_item));
+		update_expressions = array_append(update_expressions, _NewUpdateCtx(gc, set_item));
 	}
 
 	return update_expressions;
@@ -115,7 +116,7 @@ void AST_PrepareSortOp(const cypher_astnode_t *order_clause, int **sort_directio
 		directions = array_append(directions, direction);
 	}
 
-  	*sort_directions = directions;
+	*sort_directions = directions;
 }
 
 AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause) {
@@ -157,8 +158,8 @@ void AST_PreparePathCreation(const cypher_astnode_t *path, QueryGraph *qg, rax *
 	}
 }
 
-AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, QueryGraph *qg,
-									rax *bound_vars) {
+AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, GraphContext *gc,
+									QueryGraph *qg, rax *bound_vars) {
 	AST_MergeContext merge_ctx = { .nodes_to_merge = NULL,
 								   .edges_to_merge = NULL,
 								   .on_match = NULL,
@@ -194,14 +195,14 @@ AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, QueryG
 			if(on_create_items == NULL) on_create_items = array_new(EntityUpdateEvalCtx, create_prop_count);
 			for(uint j = 0; j < create_prop_count; j ++) {
 				const cypher_astnode_t *create_item = cypher_ast_on_create_get_item(directive, j);
-				on_create_items = array_append(on_create_items, _NewUpdateCtx(create_item));
+				on_create_items = array_append(on_create_items, _NewUpdateCtx(gc, create_item));
 			}
 		} else if(type == CYPHER_AST_ON_MATCH) {
 			uint match_prop_count = cypher_ast_on_match_nitems(directive);
 			if(on_match_items == NULL) on_match_items = array_new(EntityUpdateEvalCtx, match_prop_count);
 			for(uint j = 0; j < match_prop_count; j ++) {
 				const cypher_astnode_t *match_item = cypher_ast_on_match_get_item(directive, j);
-				on_match_items = array_append(on_match_items, _NewUpdateCtx(match_item));
+				on_match_items = array_append(on_match_items, _NewUpdateCtx(gc, match_item));
 			}
 		} else {
 			assert(false);
@@ -219,7 +220,6 @@ AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, QueryG
 //------------------------------------------------------------------------------
 AST_CreateContext AST_PrepareCreateOp(QueryGraph *qg, rax *bound_vars) {
 	AST *ast = QueryCtx_GetAST();
-	GraphContext *gc = QueryCtx_GetGraphCtx();
 
 	// Shouldn't operate on the original bound variables map, as this function may insert aliases.
 	rax *bound_and_introduced_entities = raxClone(bound_vars);

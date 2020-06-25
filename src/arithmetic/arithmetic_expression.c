@@ -22,6 +22,9 @@
 #include <ctype.h>
 #include <assert.h>
 
+// Property keys in variadic expressions will be ATTRIBUTE_UNSET until the first lookup.
+#define ATTRIBUTE_UNSET (ATTRIBUTE_NOTFOUND - 1)
+
 // Forward declaration
 static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue *result);
 // Clear an op node internals, without free the node allocation itself.
@@ -145,7 +148,7 @@ AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias, const char *prop) {
 	node->operand.variadic.entity_alias = alias;
 	node->operand.variadic.entity_alias_idx = IDENTIFIER_NOT_FOUND;
 	node->operand.variadic.entity_prop = prop;
-	node->operand.variadic.entity_prop_idx = ATTRIBUTE_NOTFOUND;
+	node->operand.variadic.entity_prop_idx = ATTRIBUTE_UNSET;
 
 	return node;
 }
@@ -172,10 +175,18 @@ AR_ExpNode *AR_EXP_NewParameterOperandNode(const char *param_name) {
  * e.g. MINUS(X) where X is a constant number will be reduced to
  * a single node with the value -X
  * PLUS(MINUS(A), B) will be reduced to a single constant: B-A. */
-bool AR_EXP_ReduceToScalar(AR_ExpNode *root) {
+bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val) {
+	if(val != NULL) *val = SI_NullVal();
 	if(root->type == AR_EXP_OPERAND) {
-		if(root->operand.type == AR_EXP_CONSTANT) {
+		// In runtime, parameters are set so they can be evaluated
+		if(reduce_params && AR_EXP_IsParameter(root)) {
+			SIValue v = AR_EXP_Evaluate(root, NULL);
+			if(val != NULL) *val = v;
+			return true;
+		}
+		if(AR_EXP_IsConstant(root)) {
 			// Root is already a constant
+			if(val != NULL) *val = root->operand.constant;
 			return true;
 		}
 		// Root is variadic, no way to reduce.
@@ -189,7 +200,7 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode *root) {
 			 * if so we'll be able to reduce root. */
 			bool reduce_children = true;
 			for(int i = 0; i < root->op.child_count; i++) {
-				if(!AR_EXP_ReduceToScalar(root->op.children[i])) {
+				if(!AR_EXP_ReduceToScalar(root->op.children[i], reduce_params, NULL)) {
 					// Root reduce is not possible, but continue to reduce every reducable child.
 					reduce_children = false;
 				}
@@ -204,6 +215,7 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode *root) {
 
 			// Evaluate function.
 			SIValue v = AR_EXP_Evaluate(root, NULL);
+			if(val != NULL) *val = v;
 			if(SIValue_IsNull(v)) return false;
 
 			// Reduce.
@@ -226,18 +238,16 @@ static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint a
 
 	// Make sure number of arguments is as expected.
 	if(fdesc->min_argc > argc) {
-		char *error;
-		asprintf(&error, "Received %d arguments to function '%s', expected at least %d", argc, fdesc->name,
-				 fdesc->min_argc);
-		QueryCtx_SetError(error); // Set the query-level error.
+		// Set the query-level error.
+		QueryCtx_SetError("Received %d arguments to function '%s', expected at least %d", argc, fdesc->name,
+						  fdesc->min_argc);
 		return false;
 	}
 
 	if(fdesc->max_argc < argc) {
-		char *error;
-		asprintf(&error, "Received %d arguments to function '%s', expected at most %d", argc, fdesc->name,
-				 fdesc->max_argc);
-		QueryCtx_SetError(error); // Set the query-level error.
+		// Set the query-level error.
+		QueryCtx_SetError("Received %d arguments to function '%s', expected at most %d", argc, fdesc->name,
+						  fdesc->max_argc);
 		return false;
 	}
 
@@ -252,12 +262,11 @@ static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint a
 		if(!(actual_type & expected_type)) {
 			const char *actual_type_str = SIType_ToString(actual_type);
 			const char *expected_type_str = SIType_ToString(expected_type);
-			char *error;
 			/* TODO extend string-building logic to better express multiple acceptable types, like:
 			 * RETURN 'a' * 2
 			 * "Type mismatch: expected Float, Integer or Duration but was String" */
-			asprintf(&error, "Type mismatch: expected %s but was %s", expected_type_str, actual_type_str);
-			QueryCtx_SetError(error); // Set the query-level error.
+			// Set the query-level error.
+			QueryCtx_SetError("Type mismatch: expected %s but was %s", expected_type_str, actual_type_str);
 			return false;
 		}
 	}
@@ -326,20 +335,16 @@ cleanup:
 
 static bool _AR_EXP_UpdateEntityIdx(AR_OperandNode *node, const Record r) {
 	if(!r) {
-		char *error;
-		asprintf(&error,
-				 "_AR_EXP_UpdateEntityIdx: No record was given to locate a value with alias %s",
-				 node->variadic.entity_alias);
-		QueryCtx_SetError(error); // Set the query-level error.
+// Set the query-level error.
+		QueryCtx_SetError("_AR_EXP_UpdateEntityIdx: No record was given to locate a value with alias %s",
+						  node->variadic.entity_alias);
 		return false;
 	}
 	int entry_alias_idx = Record_GetEntryIdx(r, node->variadic.entity_alias);
 	if(entry_alias_idx == INVALID_INDEX) {
-		char *error;
-		asprintf(&error,
-				 "_AR_EXP_UpdateEntityIdx: Unable to locate a value with alias %s within the record",
-				 node->variadic.entity_alias);
-		QueryCtx_SetError(error); // Set the query-level error.
+		// Set the query-level error.
+		QueryCtx_SetError("_AR_EXP_UpdateEntityIdx: Unable to locate a value with alias %s within the record",
+						  node->variadic.entity_alias);
 		return false;
 	} else {
 		node->variadic.entity_alias_idx = entry_alias_idx;
@@ -359,15 +364,14 @@ static AR_EXP_Result _AR_EXP_EvaluateProperty(AR_ExpNode *node, const Record r, 
 
 		/* Attempted to access a scalar value as a map.
 		 * Set an error and invoke the exception handler. */
-		char *error;
 		SIValue v = Record_Get(r, node->operand.variadic.entity_alias_idx);
-		asprintf(&error, "Type mismatch: expected a map but was %s", SIType_ToString(SI_TYPE(v)));
-		QueryCtx_SetError(error); // Set the query-level error.
+		// Set the query-level error.
+		QueryCtx_SetError("Type mismatch: expected a map but was %s", SIType_ToString(SI_TYPE(v)));
 		return EVAL_ERR;
 	}
 
 	GraphEntity *ge = Record_GetGraphEntity(r, node->operand.variadic.entity_alias_idx);
-	if(node->operand.variadic.entity_prop_idx == ATTRIBUTE_NOTFOUND) {
+	if(node->operand.variadic.entity_prop_idx == ATTRIBUTE_UNSET) {
 		_AR_EXP_UpdatePropIdx(node, NULL);
 	}
 
@@ -406,9 +410,8 @@ static AR_EXP_Result _AR_EXP_EvaluateParam(AR_ExpNode *node, SIValue *result) {
 	AR_ExpNode *param_node = raxFind(params, (unsigned char *)node->operand.param_name,
 									 strlen(node->operand.param_name));
 	if(param_node == raxNotFound) {
-		char *error;
-		asprintf(&error, "Missing parameters");
-		QueryCtx_SetError(error); // Set the query-level error.
+		// Set the query-level error.
+		QueryCtx_SetError("Missing parameters");
 		return EVAL_ERR;
 	}
 	// In place replacement;
@@ -453,7 +456,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 	}
 	// At least one param node was encountered during evaluation, tree should be param node free.
 	// Try reducing the tree.
-	if(res == EVAL_FOUND_PARAM) AR_EXP_ReduceToScalar(root);
+	if(res == EVAL_FOUND_PARAM) AR_EXP_ReduceToScalar(root, true, NULL);
 	return result;
 }
 
