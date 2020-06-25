@@ -19,13 +19,14 @@ static int IndexScanToString(const OpBase *ctx, char *buf, uint buf_len) {
 }
 
 OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, const QGNode *n, RSIndex *idx,
-					   RSResultsIterator *iter) {
+					   RSQNode *iter_populator) {
 	IndexScan *op = rm_malloc(sizeof(IndexScan));
 	op->g = g;
 	op->n = n;
 	op->idx = idx;
-	op->iter = iter;
+	op->iter = NULL;
 	op->child_record = NULL;
+	op->iter_populator = iter_populator;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_INDEX_SCAN, "Index Scan", IndexScanInit, IndexScanConsume,
@@ -50,6 +51,14 @@ static inline void _UpdateRecord(IndexScan *op, Record r, EntityID node_id) {
 
 static Record IndexScanConsumeFromChild(OpBase *opBase) {
 	IndexScan *op = (IndexScan *)opBase;
+
+	if(op->iter == NULL) {
+		/* On the first execution of IndexScanConsumeFromChild, use the RediSearch query node
+		 * to populate an index iterator. This causes the index to acquire a read lock. */
+		op->iter = RediSearch_GetResultsIterator(op->iter_populator, op->idx);
+		// The query node is now part of the iterator, explicitly NULL-set it to prevent a double free.
+		op->iter_populator = NULL;
+	}
 
 	if(op->child_record == NULL) {
 		op->child_record = OpBase_Consume(op->op.children[0]);
@@ -81,6 +90,14 @@ static Record IndexScanConsumeFromChild(OpBase *opBase) {
 
 static Record IndexScanConsume(OpBase *opBase) {
 	IndexScan *op = (IndexScan *)opBase;
+	if(op->iter == NULL) {
+		/* On the first execution of IndexScanConsume, use the RediSearch query node
+		 * to populate an index iterator. This causes the index to acquire a read lock. */
+		op->iter = RediSearch_GetResultsIterator(op->iter_populator, op->idx);
+		// The query node is now part of the iterator, explicitly NULL-set it to prevent a double free.
+		op->iter_populator = NULL;
+	}
+
 	const EntityID *nodeId = RediSearch_ResultsIteratorNext(op->iter, op->idx, NULL);
 	if(!nodeId) return NULL;
 
@@ -107,6 +124,11 @@ static void IndexScanFree(OpBase *opBase) {
 	if(op->iter) {
 		RediSearch_ResultsIteratorFree(op->iter);
 		op->iter = NULL;
+	}
+
+	if(op->iter_populator) {
+		RediSearch_QueryNodeFree(op->iter_populator);
+		op->iter_populator = NULL;
 	}
 
 	if(op->child_record) {
