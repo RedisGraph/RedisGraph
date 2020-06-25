@@ -107,8 +107,11 @@ AR_ExpNode *AR_EXP_NewParameterOperandNode(const char *param_name);
 /* Returns if the operation is distinct aggregation */
 bool AR_EXP_PerformDistinct(AR_ExpNode *op);
 
-/* Compact tree by evaluating all contained functions that can be resolved right now. */
-bool AR_EXP_ReduceToScalar(AR_ExpNode *root);
+/* Compact tree by evaluating all contained functions that can be resolved right now.
+ * The function returns true if it managed to compact the expression.
+ * The reduce_params flag indicates if parameters should be evaluated.
+ * The val pointer is out-by-ref returned computation. */
+bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val);
 
 /* Evaluate arithmetic expression tree. */
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r);
