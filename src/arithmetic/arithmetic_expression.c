@@ -175,10 +175,18 @@ AR_ExpNode *AR_EXP_NewParameterOperandNode(const char *param_name) {
  * e.g. MINUS(X) where X is a constant number will be reduced to
  * a single node with the value -X
  * PLUS(MINUS(A), B) will be reduced to a single constant: B-A. */
-bool AR_EXP_ReduceToScalar(AR_ExpNode *root) {
+bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val) {
+	if(val != NULL) *val = SI_NullVal();
 	if(root->type == AR_EXP_OPERAND) {
-		if(root->operand.type == AR_EXP_CONSTANT) {
+		// In runtime, parameters are set so they can be evaluated
+		if(reduce_params && AR_EXP_IsParameter(root)) {
+			SIValue v = AR_EXP_Evaluate(root, NULL);
+			if(val != NULL) *val = v;
+			return true;
+		}
+		if(AR_EXP_IsConstant(root)) {
 			// Root is already a constant
+			if(val != NULL) *val = root->operand.constant;
 			return true;
 		}
 		// Root is variadic, no way to reduce.
@@ -192,7 +200,7 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode *root) {
 			 * if so we'll be able to reduce root. */
 			bool reduce_children = true;
 			for(int i = 0; i < root->op.child_count; i++) {
-				if(!AR_EXP_ReduceToScalar(root->op.children[i])) {
+				if(!AR_EXP_ReduceToScalar(root->op.children[i], reduce_params, NULL)) {
 					// Root reduce is not possible, but continue to reduce every reducable child.
 					reduce_children = false;
 				}
@@ -207,6 +215,7 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode *root) {
 
 			// Evaluate function.
 			SIValue v = AR_EXP_Evaluate(root, NULL);
+			if(val != NULL) *val = v;
 			if(SIValue_IsNull(v)) return false;
 
 			// Reduce.
@@ -447,7 +456,7 @@ SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 	}
 	// At least one param node was encountered during evaluation, tree should be param node free.
 	// Try reducing the tree.
-	if(res == EVAL_FOUND_PARAM) AR_EXP_ReduceToScalar(root);
+	if(res == EVAL_FOUND_PARAM) AR_EXP_ReduceToScalar(root, true, NULL);
 	return result;
 }
 
