@@ -493,10 +493,8 @@ cleanup:
 
 	if(root) {
 		/* We've successfully created a RediSearch query node that may be used to populate an Index Scan.
-		 * Pass ownership of the root node to the iterator. */
-		RSResultsIterator *iter = RediSearch_GetResultsIterator(root, rs_idx);
-		// Build the Index Scan.
-		OpBase *indexOp = NewIndexScanOp(scan->op.plan, scan->g, scan->n, rs_idx, iter);
+		 * Build a new Index Scan and pass ownership of the query node to it. */
+		OpBase *indexOp = NewIndexScanOp(scan->op.plan, scan->g, scan->n, rs_idx, root);
 
 		/* Replace the redundant scan op with the newly-constructed Index Scan. */
 		ExecutionPlan_ReplaceOp(plan, (OpBase *)scan, indexOp);
