@@ -67,6 +67,7 @@ static EntityUpdateEvalCtx _NewUpdateCtx(GraphContext *gc, const cypher_astnode_
 	const char *alias = entity->operand.variadic.entity_alias;
 	const char *attribute = cypher_ast_prop_name_get_value(prop);
 	Attribute_ID attribute_id = GraphContext_FindOrAddAttribute(gc, attribute);
+	assert(attribute_id != ATTRIBUTE_NOTFOUND);
 	AR_ExpNode *exp = AR_EXP_FromExpression(val_to_set);
 
 	AR_EXP_Free(entity);

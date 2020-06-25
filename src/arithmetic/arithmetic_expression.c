@@ -23,7 +23,7 @@
 #include <assert.h>
 
 // Property keys in variadic expressions will be ATTRIBUTE_UNSET until the first lookup.
-#define ATTRIBUTE_UNSET (USHRT_MAX - 1)
+#define ATTRIBUTE_UNSET (ATTRIBUTE_NOTFOUND - 1)
 
 // Forward declaration
 static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue *result);

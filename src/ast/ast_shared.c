@@ -104,11 +104,8 @@ void PropertyMap_Free(PropertyMap *map) {
 }
 
 EntityUpdateEvalCtx EntityUpdateEvalCtx_Clone(EntityUpdateEvalCtx ctx) {
-	EntityUpdateEvalCtx clone;
-	clone.alias = ctx.alias;
-	clone.attribute_id = ctx.attribute_id;
+	EntityUpdateEvalCtx clone = ctx;
 	clone.exp = AR_EXP_Clone(ctx.exp);
-	clone.record_idx = ctx.record_idx;
 	return clone;
 }
 
