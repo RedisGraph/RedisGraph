@@ -17,8 +17,9 @@ typedef struct {
 	int relationships_created;  /* Number of edges created as part of a create query. */
 	int nodes_deleted;          /* Number of nodes removed as part of a delete query.*/
 	int relationships_deleted;  /* Number of edges removed as part of a delete query.*/
-	int indices_created;       /* Number of indices created. */
-	int indices_deleted;       /* Number of indices deleted. */
+	int indices_created;        /* Number of indices created. */
+	int indices_deleted;        /* Number of indices deleted. */
+	bool cached;                /* Indication for a cached query execution. */
 } ResultSetStatistics;
 
 /* Checks to see if resultset-statistics indicate that a modification was made. */

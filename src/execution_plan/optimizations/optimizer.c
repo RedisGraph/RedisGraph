@@ -51,7 +51,8 @@ void _optimizePlan(ExecutionPlan *plan) {
 void optimizePlan(ExecutionPlan *plan) {
 	/* Handle UNION of execution plans. */
 	if(plan->is_union) {
-		for(uint i = 0; i < plan->segment_count; i++) _optimizePlan(plan->segments[i]);
+		uint segment_count = array_len(plan->segments);
+		for(uint i = 0; i < segment_count; i++) _optimizePlan(plan->segments[i]);
 	} else {
 		_optimizePlan(plan);
 	}

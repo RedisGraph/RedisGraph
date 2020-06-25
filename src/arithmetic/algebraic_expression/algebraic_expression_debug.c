@@ -11,22 +11,35 @@
 // AlgebraicExpression debugging utilities.
 //------------------------------------------------------------------------------
 
+static char keywords[5] = {'+', '*', '(', ')', 'T'};
+
+bool _is_keyword(const char c) {
+	for(int i = 0; i < sizeof(keywords); i++) {
+		if(c == keywords[i]) return true;
+	}
+	return false;
+}
+
 AlgebraicExpression *_AlgebraicExpression_FromString
 (
 	const char **exp,   // String representation of expression.
 	rax *matrices       // Map of matrices referred to in expression.
 ) {
+	int i = 0;
+	int len = 0;
 	char *alias;
+	const char *operand;
 	GrB_Matrix m;
 	AlgebraicExpression *op;
 	AlgebraicExpression *rhs;
 	AlgebraicExpression *root = NULL;
+
 	while(*exp[0] != '\0') {
 		char c = (*exp)[0];
-		*exp = *exp + 1; // Advance.
 
 		switch(c) {
 		case '+':
+			*exp = *exp + 1; // Advance.
 			op = AlgebraicExpression_NewOperation(AL_EXP_ADD);
 			rhs = _AlgebraicExpression_FromString(exp, matrices);
 			AlgebraicExpression_AddChild(op, root);
@@ -34,6 +47,7 @@ AlgebraicExpression *_AlgebraicExpression_FromString
 			root = op;
 			break;
 		case '*':
+			*exp = *exp + 1; // Advance.
 			op = AlgebraicExpression_NewOperation(AL_EXP_MUL);
 			rhs = _AlgebraicExpression_FromString(exp, matrices);
 			AlgebraicExpression_AddChild(op, root);
@@ -41,29 +55,41 @@ AlgebraicExpression *_AlgebraicExpression_FromString
 			root = op;
 			break;
 		case '(':
+			*exp = *exp + 1; // Advance.
 			// Beginning of sub expression.
 			return _AlgebraicExpression_FromString(exp, matrices);
 			break;
 		case ')':
+			*exp = *exp + 1; // Advance.
 			// End of sub expression.
 			return root;
 			break;
 		case 'T':
+			*exp = *exp + 1; // Advance.
 			root = _AlgebraicExpression_FromString(exp, matrices);
-			AlgebraicExpression_Transpose(root);
+			AlgebraicExpression_Transpose(&root);
 			break;
 		default:
-			// Operand.
-			alias = (char *)malloc(sizeof(char) * 2);
-			alias[0] = c;
-			alias[1] = '\0';
+			// Operand, consume operand name.
+			operand = *exp;
+			len = strlen(operand);
+			while(i < len && !_is_keyword(operand[i])) i++;
+
+			alias = (char *)malloc(sizeof(char) * i + 1);
+			memcpy(alias, *exp, i);
+			alias[i] = '\0';
+			*exp = *exp + i; // Advance.
 
 			m = GrB_NULL;
 			if(matrices) {
 				m = (GrB_Matrix)raxFind(matrices, (unsigned char *)alias, strlen(alias));
-				assert(m && "Missing matrix");
+				assert(m != raxNotFound && "Missing matrix");
 			}
 			root = AlgebraicExpression_NewOperand(m, false, alias, alias, NULL, NULL);
+
+			// Clear
+			i = 0;
+			len = 0;
 			break;
 		}
 	}
@@ -248,3 +274,4 @@ char *AlgebraicExpression_ToString
 	_AlgebraicExpression_ToString(exp, buff);
 	return buff;
 }
+

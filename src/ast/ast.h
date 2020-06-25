@@ -29,19 +29,22 @@ typedef struct {
 	AR_ExpNode *limit;                                  // The number of results in this segment.
 	AR_ExpNode *skip;                                   // The number of skips in this segment.
 	bool free_root;                                     // The root should only be freed if this is a sub-AST we constructed
+	uint ref_count;                                     // Reference counter for deletion.
+	cypher_parse_result_t *parse_result;                // Query parsing output.
+	cypher_parse_result_t *params_parse_result;         // Parameters parsing output.
 } AST;
 
 // Checks to see if libcypher-parser reported any errors.
 bool AST_ContainsErrors(const cypher_parse_result_t *result);
 
 // Make sure the parse result and the AST tree pass all validations.
-AST_Validation AST_Validate_Query(RedisModuleCtx *ctx, const cypher_parse_result_t *result);
+AST_Validation AST_Validate_Query(const cypher_parse_result_t *result);
 
 // Validate query parameters parsing only.
-AST_Validation AST_Validate_QueryParams(RedisModuleCtx *ctx, const cypher_parse_result_t *result);
+AST_Validation AST_Validate_QueryParams(const cypher_parse_result_t *result);
 
 // Checks if the parse result represents a read-only query.
-bool AST_ReadOnly(const cypher_parse_result_t *result);
+bool AST_ReadOnly(const cypher_astnode_t *root);
 
 // Checks to see if AST contains specified clause.
 bool AST_ContainsClause(const AST *ast, cypher_astnode_type_t clause);
@@ -74,6 +77,12 @@ void AST_CollectAliases(const char ***aliases, const cypher_astnode_t *entity);
 AST *AST_Build(cypher_parse_result_t *parse_result);
 
 AST *AST_NewSegment(AST *master_ast, uint start_offset, uint end_offset);
+
+// Sets a parameter parsing result in the ast.
+void AST_SetParamsParseResult(AST *ast, cypher_parse_result_t *params_parse_result);
+
+// Returns a shallow copy of the original AST pointer with ref counter increased.
+AST *AST_ShallowCopy(AST *orig);
 
 // Populate the AST's map of all referenced aliases.
 void AST_BuildReferenceMap(AST *ast, const cypher_astnode_t *project_clause);

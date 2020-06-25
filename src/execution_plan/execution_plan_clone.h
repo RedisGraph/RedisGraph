@@ -6,6 +6,8 @@
 
 #pragma once
 
-#include "../ast.h"
+#include "execution_plan.h"
 
-void AST_AnnotateParams(AST *ast);
+/* Clones an execution plan */
+ExecutionPlan *ExecutionPlan_Clone(const ExecutionPlan *plan);
+

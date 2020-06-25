@@ -104,29 +104,26 @@ void PropertyMap_Free(PropertyMap *map) {
 }
 
 EntityUpdateEvalCtx EntityUpdateEvalCtx_Clone(EntityUpdateEvalCtx ctx) {
-	EntityUpdateEvalCtx clone;
-	clone.alias = ctx.alias;
-	clone.attribute = ctx.attribute;
-	clone.attribute_idx = ctx.attribute_idx;
+	EntityUpdateEvalCtx clone = ctx;
 	clone.exp = AR_EXP_Clone(ctx.exp);
-	clone.record_idx = ctx.record_idx;
 	return clone;
 }
 
 NodeCreateCtx NodeCreateCtx_Clone(NodeCreateCtx ctx) {
-	NodeCreateCtx clone;
+	NodeCreateCtx clone = {0};
 	clone.node = ctx.node;
 	clone.node_idx = ctx.node_idx;
-	clone.properties = _PropertyMap_Clone(ctx.properties);
+	if(ctx.properties) clone.properties = _PropertyMap_Clone(ctx.properties);
 	return clone;
 }
 
 EdgeCreateCtx EdgeCreateCtx_Clone(EdgeCreateCtx ctx) {
-	EdgeCreateCtx clone;
+	EdgeCreateCtx clone = {0};
 	clone.edge = ctx.edge;
 	clone.src_idx = ctx.src_idx;
 	clone.dest_idx = ctx.dest_idx;
 	clone.edge_idx = ctx.edge_idx;
-	clone.properties = _PropertyMap_Clone(ctx.properties);
+	if(ctx.properties) clone.properties = _PropertyMap_Clone(ctx.properties);
 	return clone;
 }
+

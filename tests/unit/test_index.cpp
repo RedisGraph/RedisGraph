@@ -44,6 +44,7 @@ class IndexTest: public ::testing::Test {
 		gc->index_count = 0;
 		gc->graph_name = strdup("G");
 		gc->attributes = raxNew();
+		pthread_rwlock_init(&gc->_attribute_rwlock, NULL);
 		gc->string_mapping = (char **)array_new(char *, 64);
 		gc->node_schemas = (Schema **)array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
 		gc->relation_schemas = (Schema **)array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);

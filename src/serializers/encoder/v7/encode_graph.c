@@ -88,13 +88,17 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 	EncodeState current_state = GraphEncodeContext_GetEncodeState(gc->encoding_context);
 	// If it is the start of the encodeing, set the state to be NODES.
 	if(current_state == ENCODE_STATE_INIT) current_state = ENCODE_STATE_NODES;
-	uint64_t remaining_entities = Confic_GetVirtualKeyEntityCount();
+	uint64_t remaining_entities = Config_GetVirtualKeyEntityCount();
 	// No limit on the entities, the graph is encoded in one key.
 	if(remaining_entities == VKEY_ENTITY_COUNT_UNLIMITED) {
 		for(uint state = ENCODE_STATE_NODES; state < ENCODE_STATE_FINAL; state++) {
 			payloads = array_append(payloads, _StatePayloadInfo(gc, state, 0, VKEY_ENTITY_COUNT_UNLIMITED));
 		}
 	} else {
+		// Check if this is the last key
+		bool last_key = GraphEncodeContext_GetProcessedKeyCount(gc->encoding_context) ==
+						(GraphEncodeContext_GetKeyCount(gc->encoding_context) - 1);
+		if(last_key) remaining_entities = VKEY_ENTITY_COUNT_UNLIMITED;
 		// Get the current state encoded entities count.
 		uint64_t offset = GraphEncodeContext_GetProcessedEntitiesOffset(gc->encoding_context);
 		// While there are still remaining entities to encode in this key and the state is valid.
@@ -103,7 +107,7 @@ static PayloadInfo *_RdbSaveKeySchema(RedisModuleIO *rdb, GraphContext *gc) {
 			PayloadInfo current_state_payload_info = _StatePayloadInfo(gc, current_state, offset,
 																	   remaining_entities);
 			payloads = array_append(payloads, current_state_payload_info);
-			remaining_entities -= current_state_payload_info.entities_count;
+			if(!last_key) remaining_entities -= current_state_payload_info.entities_count;
 			if(remaining_entities > 0) {
 				offset = 0; // New state offset is 0.
 				current_state++; // Advance in the states.
@@ -198,3 +202,4 @@ void RdbSaveGraph_v7(RedisModuleIO *rdb, void *value) {
 	// If a lock was acquired, release it.
 	if(_shouldAcquireLocks()) Graph_ReleaseLock(gc->g);
 }
+

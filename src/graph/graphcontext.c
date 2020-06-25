@@ -13,8 +13,9 @@
 #include "../util/rmalloc.h"
 #include "../util/thpool/thpool.h"
 #include "../serializers/graphcontext_type.h"
+#include "../commands/execution_ctx.h"
 
-extern threadpool _thpool;
+extern threadpool _thpool; // Declared in module.c
 // Global array tracking all extant GraphContexts (defined in module.c)
 extern GraphContext **graphs_in_keyspace;
 extern uint aux_field_counter;
@@ -31,8 +32,15 @@ static inline void _GraphContext_IncreaseRefCount(GraphContext *gc) {
 
 static inline void _GraphContext_DecreaseRefCount(GraphContext *gc) {
 	// If the reference count is less than 0, the graph has been marked for deletion and no queries are active - free the graph.
-	if(__atomic_sub_fetch(&gc->ref_count, 1, __ATOMIC_RELAXED) < 0)
-		thpool_add_work(_thpool, _GraphContext_Free, gc);
+	if(__atomic_sub_fetch(&gc->ref_count, 1, __ATOMIC_RELAXED) < 0) {
+		if(Config_GetAsyncDelete()) {
+			// Async delete
+			thpool_add_work(_thpool, _GraphContext_Free, gc);
+		} else {
+			// Sync delete
+			_GraphContext_Free(gc);
+		}
+	}
 }
 
 //------------------------------------------------------------------------------
@@ -58,6 +66,20 @@ GraphContext *GraphContext_New(const char *graph_name, size_t node_cap, size_t e
 	gc->slowlog = SlowLog_New();
 	gc->encoding_context = GraphEncodeContext_New();
 	gc->decoding_context = GraphDecodeContext_New();
+
+	// Initialize the read-write lock to protect access to the attributes rax.
+	assert(pthread_rwlock_init(&gc->_attribute_rwlock, NULL) == 0);
+
+	/* Build the cache pool. The cache pool contains a cache for each thread in the thread pool, to avoid congestion.
+	 * Each thread is getting its cache by its thread id. */
+	uint64_t thread_count = Config_GetThreadCount() + 1; // Add 1 for redis main thread.
+	uint64_t cache_size = Config_GetCacheSize();
+	gc->cache_pool = array_new(Cache *, thread_count);
+
+	for(uint i = 0; i < thread_count; i++) {
+		gc->cache_pool = array_append(gc->cache_pool, Cache_New(cache_size,
+																(CacheItemFreeFunc)ExecutionCtx_Free));
+	}
 
 	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
 	QueryCtx_SetGraphCtx(gc);
@@ -230,24 +252,36 @@ uint GraphContext_AttributeCount(GraphContext *gc) {
 }
 
 Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attribute) {
+	// Acquire a read lock for looking up the attribute.
+	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
+
 	// See if attribute already exists.
-	Attribute_ID *pAttribute_id = NULL;
-	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, attribute);
+	void *attribute_id = raxFind(gc->attributes, (unsigned char *)attribute, strlen(attribute));
 
-	if(attribute_id == ATTRIBUTE_NOTFOUND) {
-		attribute_id = raxSize(gc->attributes);
-		pAttribute_id = rm_malloc(sizeof(Attribute_ID));
-		*pAttribute_id = attribute_id;
+	if(attribute_id == raxNotFound) {
+		// We are writing to the shared GraphContext; release the held lock and re-acquire as a writer.
+		pthread_rwlock_unlock(&gc->_attribute_rwlock);
+		pthread_rwlock_wrlock(&gc->_attribute_rwlock);
 
-		raxInsert(gc->attributes,
-				  (unsigned char *)attribute,
-				  strlen(attribute),
-				  pAttribute_id,
-				  NULL);
-		gc->string_mapping = array_append(gc->string_mapping, rm_strdup(attribute));
+		// Lookup the attribute again now that we are in a critical region.
+		attribute_id = raxFind(gc->attributes, (unsigned char *)attribute, strlen(attribute));
+		// If it has been set by another thread, use the retrieved value.
+		if(attribute_id == raxNotFound) {
+			// Otherwise, it will be assigned an ID equal to the current mapping size.
+			attribute_id = (void *)raxSize(gc->attributes);
+			// Insert the new attribute key and ID.
+			raxInsert(gc->attributes,
+					  (unsigned char *)attribute,
+					  strlen(attribute),
+					  attribute_id,
+					  NULL);
+			gc->string_mapping = array_append(gc->string_mapping, rm_strdup(attribute));
+		}
 	}
 
-	return attribute_id;
+	// Release the lock.
+	pthread_rwlock_unlock(&gc->_attribute_rwlock);
+	return (uintptr_t)attribute_id;
 }
 
 const char *GraphContext_GetAttributeString(const GraphContext *gc, Attribute_ID id) {
@@ -255,10 +289,17 @@ const char *GraphContext_GetAttributeString(const GraphContext *gc, Attribute_ID
 	return gc->string_mapping[id];
 }
 
-Attribute_ID GraphContext_GetAttributeID(const GraphContext *gc, const char *attribute) {
-	Attribute_ID *id = raxFind(gc->attributes, (unsigned char *)attribute, strlen(attribute));
+Attribute_ID GraphContext_GetAttributeID(GraphContext *gc, const char *attribute) {
+	// Acquire a read lock for looking up the attribute.
+	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
+	// Look up the attribute ID.
+	void *id = raxFind(gc->attributes, (unsigned char *)attribute, strlen(attribute));
+	// Release the lock.
+	pthread_rwlock_unlock(&gc->_attribute_rwlock);
+
 	if(id == raxNotFound) return ATTRIBUTE_NOTFOUND;
-	return *id;
+
+	return (uintptr_t)id;
 }
 
 //------------------------------------------------------------------------------
@@ -376,6 +417,20 @@ SlowLog *GraphContext_GetSlowLog(const GraphContext *gc) {
 }
 
 //------------------------------------------------------------------------------
+// Cache API
+//------------------------------------------------------------------------------
+
+// Return cache associated with graph context and current thread id.
+Cache *GraphContext_GetCache(const GraphContext *gc) {
+	assert(gc);
+	/* thpool_get_thread_id returns -1 if pthread_self isn't in the thread pool
+	* most likely Redis main thread */
+	int thread_id = thpool_get_thread_id(_thpool, pthread_self());
+	thread_id += 1; // +1 to compensate for Redis main thread.
+	return gc->cache_pool[thread_id];
+}
+
+//------------------------------------------------------------------------------
 // Free routine
 //------------------------------------------------------------------------------
 
@@ -407,7 +462,7 @@ static void _GraphContext_Free(void *arg) {
 	}
 
 	// Free attribute mappings
-	if(gc->attributes) raxFreeWithCallback(gc->attributes, rm_free);
+	if(gc->attributes) raxFree(gc->attributes);
 	if(gc->string_mapping) {
 		len = array_len(gc->string_mapping);
 		for(uint32_t i = 0; i < len; i ++) {
@@ -415,8 +470,16 @@ static void _GraphContext_Free(void *arg) {
 		}
 		array_free(gc->string_mapping);
 	}
+	assert(pthread_rwlock_destroy(&gc->_attribute_rwlock) == 0);
 
 	if(gc->slowlog) SlowLog_Free(gc->slowlog);
+
+	// Clear cache
+	if(gc->cache_pool) {
+		len = array_len(gc->cache_pool);
+		for(uint i = 0; i < len; i++) Cache_Free(gc->cache_pool[i]);
+		array_free(gc->cache_pool);
+	}
 
 	GraphEncodeContext_Free(gc->encoding_context);
 	GraphDecodeContext_Free(gc->decoding_context);

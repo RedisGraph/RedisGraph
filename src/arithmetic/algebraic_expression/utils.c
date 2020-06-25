@@ -1,4 +1,5 @@
 #include "utils.h"
+#include "../../config.h"
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
 
@@ -148,7 +149,6 @@ void _AlgebraicExpression_FreeOperation
 	AlgebraicExpression *node
 ) {
 	assert(node && node->type == AL_OPERATION);
-
 	if(node->operation.children) {
 		uint child_count = AlgebraicExpression_ChildCount(node);
 		for(uint i = 0; i < child_count; i++) {
@@ -164,6 +164,7 @@ void _AlgebraicExpression_FreeOperand
 	AlgebraicExpression *node
 ) {
 	assert(node && node->type == AL_OPERAND);
+	if(node->operand.bfree) GrB_Matrix_free(&node->operand.matrix);
 }
 
 // Locate operand at position `operand_idx` counting from left to right.
@@ -206,39 +207,82 @@ AlgebraicExpression *_AlgebraicExpression_GetOperand
 	return __AlgebraicExpression_GetOperand(root, operand_idx, &current_operand_idx);
 }
 
-void _AlgebraicExpression_FetchOperands(AlgebraicExpression *exp, const GraphContext *gc,
-										Graph *g) {
-	Schema *s = NULL;
-	uint child_count = 0;
-	GrB_Matrix m = GrB_NULL;
-	const char *label = NULL;
+// Populate an operand with a standard matrix.
+static void _AlgebraicExpression_PopulateOperand(AlgebraicExpression *operand,
+												 const GraphContext *gc) {
+	/* Do not update matrix if already set, as algebraic expression test depends on this behavior.
+	 * TODO Redesign _AlgebraicExpression_FromString to remove this condition. */
+	if(operand->operand.matrix != GrB_NULL) return;
 
-	switch(exp->type) {
+	GrB_Matrix m = GrB_NULL;
+	const char *label = operand->operand.label;
+	if(label == NULL) {
+		m = Graph_GetAdjacencyMatrix(gc->g);
+	} else if(operand->operand.diagonal) {
+		Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+		if(!s) m = Graph_GetZeroMatrix(gc->g);
+		else m = Graph_GetLabelMatrix(gc->g, s->id);
+	} else {
+		Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
+		if(!s) m = Graph_GetZeroMatrix(gc->g);
+		else m = Graph_GetRelationMatrix(gc->g, s->id);
+	}
+	operand->operand.matrix = m;
+}
+
+// Populate a transposed operand with a transposed relationship matrix and swap the row/col domains.
+static void _AlgebraicExpression_PopulateTransposedOperand(AlgebraicExpression *operand,
+														   const GraphContext *gc) {
+	// Swap the row and column domains of the operand.
+	const char *tmp = operand->operand.dest;
+	operand->operand.src = operand->operand.dest;
+	operand->operand.dest = tmp;
+
+	// Diagonal matrices do not need to be transposed.
+	if(operand->operand.diagonal == true) return;
+
+	/* Do not update matrix if already set, as algebraic expression test depends on this behavior.
+	 * TODO Redesign _AlgebraicExpression_FromString to remove this condition. */
+	if(operand->operand.matrix != GrB_NULL) return;
+
+	GrB_Matrix m = GrB_NULL;
+	const char *label = operand->operand.label;
+	if(label == NULL) {
+		m = Graph_GetTransposedAdjacencyMatrix(gc->g);
+	} else {
+		Schema *s = GraphContext_GetSchema(gc, operand->operand.label, SCHEMA_EDGE);
+		if(!s) m = Graph_GetZeroMatrix(gc->g);
+		else m = Graph_GetTransposedRelationMatrix(gc->g, s->id);
+	}
+	operand->operand.matrix = m;
+}
+
+// TODO this function is only used within AlgebraicExpression_Optimize, consider moving it.
+// Fetch all operands, replacing transpose operations with transposed operands if they are available.
+void _AlgebraicExpression_PopulateOperands(AlgebraicExpression *root, const GraphContext *gc) {
+	uint child_count = 0;
+	switch(root->type) {
 	case AL_OPERATION:
-		child_count = AlgebraicExpression_ChildCount(exp);
+		child_count = AlgebraicExpression_ChildCount(root);
+		// If we are maintaining transposed matrices, it can be retrieved now.
+		if(root->operation.op == AL_EXP_TRANSPOSE && Config_MaintainTranspose()) {
+			assert(child_count == 1 && "Transpose operation had invalid number of children");
+			AlgebraicExpression *child = _AlgebraicExpression_OperationRemoveRightmostChild(root);
+			// Fetch the transposed matrix and update the operand.
+			_AlgebraicExpression_PopulateTransposedOperand(child, gc);
+			// Replace this operation with the transposed operand.
+			_AlgebraicExpression_InplaceRepurpose(root, child);
+			break;
+		}
 		for(uint i = 0; i < child_count; i++) {
-			_AlgebraicExpression_FetchOperands(CHILD_AT(exp, i), gc, g);
+			_AlgebraicExpression_PopulateOperands(CHILD_AT(root, i), gc);
 		}
 		break;
 	case AL_OPERAND:
-		if(exp->operand.matrix == GrB_NULL) {
-			label = exp->operand.label;
-			if(label == NULL) {
-				m = Graph_GetAdjacencyMatrix(g);
-			} else if(exp->operand.diagonal) {
-				s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-				if(!s) m = Graph_GetZeroMatrix(g);
-				else m = Graph_GetLabelMatrix(g, s->id);
-			} else {
-				s = GraphContext_GetSchema(gc, label, SCHEMA_EDGE);
-				if(!s) m = Graph_GetZeroMatrix(g);
-				else m = Graph_GetRelationMatrix(g, s->id);
-			}
-			exp->operand.matrix = m;
-		}
+		_AlgebraicExpression_PopulateOperand(root, gc);
 		break;
 	default:
-		assert("Unknow algebraic expression node type" && false);
+		assert("Unknown algebraic expression node type" && false);
 		break;
 	}
 }

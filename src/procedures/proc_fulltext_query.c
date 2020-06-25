@@ -61,10 +61,8 @@ ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *a
 		/* RediSearch error message is allocated using `rm_strdup`
 		 * QueryCtx is expecting to free `error` using `free`
 		 * in which case we have no option but to clone error. */
-		char *error;
-		asprintf(&error, "RediSearch: %s", err);
+		QueryCtx_SetError("RediSearch: %s", err);
 		rm_free(err);
-		QueryCtx_SetError(error);
 		/* Raise the exception, we expect an exception handler to be set.
 		 * as procedure invocation is done at runtime. */
 		QueryCtx_RaiseRuntimeException();

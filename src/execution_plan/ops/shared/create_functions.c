@@ -127,7 +127,7 @@ PendingCreations NewPendingCreationsContainer(NodeCreateCtx *nodes, EdgeCreateCt
 	pending.created_edges = array_new(Edge *, 0);
 	pending.node_properties = array_new(PendingProperties *, 0);
 	pending.edge_properties = array_new(PendingProperties *, 0);
-	pending.stats = QueryCtx_GetResultSetStatistics();
+	pending.stats = NULL;
 
 	return pending;
 }
@@ -137,6 +137,7 @@ void CommitNewEntities(OpBase *op, PendingCreations *pending) {
 	Graph *g = QueryCtx_GetGraph();
 	uint node_count = array_len(pending->created_nodes);
 	uint edge_count = array_len(pending->created_edges);
+	if(!pending->stats) pending->stats = QueryCtx_GetResultSetStatistics();
 	// Lock everything.
 	QueryCtx_LockForCommit();
 

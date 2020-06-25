@@ -12,6 +12,7 @@
 
 /* Forward declarations. */
 static Record DeleteConsume(OpBase *opBase);
+static OpResult DeleteInit(OpBase *opBase);
 static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void DeleteFree(OpBase *opBase);
 
@@ -53,16 +54,22 @@ OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 
 	op->gc = QueryCtx_GetGraphCtx();
 	op->exps = exps;
-	op->stats = QueryCtx_GetResultSetStatistics();
+	op->stats = NULL;
 	op->exp_count = array_len(exps);
 	op->deleted_nodes = array_new(Node, 32);
 	op->deleted_edges = array_new(Edge, 32);
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", NULL, DeleteConsume,
+	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", DeleteInit, DeleteConsume,
 				NULL, NULL, DeleteClone, DeleteFree, true, plan);
 
 	return (OpBase *)op;
+}
+
+static OpResult DeleteInit(OpBase *opBase) {
+	OpDelete *op = (OpDelete *)opBase;
+	op->stats = QueryCtx_GetResultSetStatistics();
+	return OP_OK;
 }
 
 static Record DeleteConsume(OpBase *opBase) {
@@ -96,9 +103,7 @@ static Record DeleteConsume(OpBase *opBase) {
 			// If evaluating the expression allocated any memory, free it.
 			SIValue_Free(value);
 
-			char *error;
-			asprintf(&error, "Delete type mismatch, expecting either Node or Relationship.");
-			QueryCtx_SetError(error);
+			QueryCtx_SetError("Delete type mismatch, expecting either Node or Relationship.");
 			QueryCtx_RaiseRuntimeException();
 			break;
 		}

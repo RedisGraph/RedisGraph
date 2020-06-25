@@ -48,3 +48,4 @@ int ScanToString(const OpBase *op, char *buf, uint buf_len, const QGNode *n) {
 	offset += QGNode_ToString(n, buf + offset, buf_len - offset);
 	return offset;
 }
+

@@ -11,12 +11,13 @@ extern "C"
 {
 #endif
 
-#include "../../src/graph/graph.h"
+#include "../../src/config.h"
 #include "../../src/util/arr.h"
+#include "../../src/graph/graph.h"
+#include "../../src/util/rmalloc.h"
 #include "../../src/util/simple_timer.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "../../src/util/datablock/datablock_iterator.h"
-#include "../../src/util/rmalloc.h"
 
 #ifdef __cplusplus
 }
@@ -26,6 +27,8 @@ extern "C"
 #define KGRN "\x1B[32m"
 #define KRED "\x1B[31m"
 #define KNRM "\x1B[0m"
+
+RG_Config config; // Global module configuration
 
 // Encapsulate the essence of an edge.
 typedef struct {
@@ -39,6 +42,9 @@ class GraphTest : public ::testing::Test {
 	static void SetUpTestCase() {
 		// Use the malloc family for allocations
 		Alloc_Reset();
+
+		// Set global variables
+		config.maintain_transposed_matrices = true; // Ensure that transposed matrices are constructed.
 
 		// Initialize GraphBLAS.
 		GrB_init(GrB_NONBLOCKING);
@@ -881,3 +887,4 @@ TEST_F(GraphTest, BulkDelete) {
 	// Clean up.
 	Graph_Free(g);
 }
+

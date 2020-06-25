@@ -21,7 +21,7 @@ static void UpdateFree(OpBase *opBase);
 /* Delay updates until all entities are processed,
  * _QueueUpdate will queue up all information necessary to perform an update. */
 static void _QueueUpdate(OpUpdate *op, GraphEntity *entity, GraphEntityType type,
-						 const char *attribute, SIValue new_value) {
+						 Attribute_ID attr_id, SIValue new_value) {
 	/* Make sure we've got enough room in queue. */
 	if(op->pending_updates_count == op->pending_updates_cap) {
 		op->pending_updates_cap *= 2;
@@ -31,8 +31,7 @@ static void _QueueUpdate(OpUpdate *op, GraphEntity *entity, GraphEntityType type
 
 	uint i = op->pending_updates_count;
 	op->pending_updates[i].new_value = new_value;
-	op->pending_updates[i].attribute = attribute;
-	op->pending_updates[i].attr_id = GraphContext_GetAttributeID(op->gc, attribute);
+	op->pending_updates[i].attr_id = attr_id;
 	op->pending_updates[i].entity_type = type;
 	// Copy updated entity.
 	if(type == GETYPE_NODE) {
@@ -124,10 +123,6 @@ static void _CommitUpdates(OpUpdate *op) {
 	uint properties_set = 0;
 	for(uint i = 0; i < op->pending_updates_count; i++) {
 		EntityUpdateCtx *ctx = &op->pending_updates[i];
-		// Map the attribute key if it has not been encountered before
-		if(ctx->attr_id == ATTRIBUTE_NOTFOUND) {
-			ctx->attr_id = GraphContext_FindOrAddAttribute(op->gc, ctx->attribute);
-		}
 		if(ctx->entity_type == GETYPE_NODE) {
 			properties_set += _UpdateNode(op, ctx);
 		} else {
@@ -158,7 +153,6 @@ static Record _handoff(OpUpdate *op) {
 OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps) {
 	OpUpdate *op = rm_calloc(1, sizeof(OpUpdate));
 	op->gc = QueryCtx_GetGraphCtx();
-	op->stats = QueryCtx_GetResultSetStatistics();
 	op->records = NULL;
 	op->updates_commited = false;
 	op->pending_updates_cap = 16; /* 16 seems reasonable number to start with. */
@@ -180,6 +174,7 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps)
 
 static OpResult UpdateInit(OpBase *opBase) {
 	OpUpdate *op = (OpUpdate *)opBase;
+	op->stats = QueryCtx_GetResultSetStatistics();
 	if(_ShouldCacheRecord(op)) op->records = array_new(Record, 64);
 	return OP_OK;
 }
@@ -203,17 +198,15 @@ static Record UpdateConsume(OpBase *opBase) {
 			if(t == REC_TYPE_UNKNOWN) continue;
 			// Make sure we're updating either a node or an edge.
 			if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
-				char *error;
-				asprintf(&error, "Update error: alias '%s' did not resolve to a graph entity",
-						 update_expression->alias);
-				QueryCtx_SetError(error);
+				QueryCtx_SetError("Update error: alias '%s' did not resolve to a graph entity",
+								  update_expression->alias);
 				QueryCtx_RaiseRuntimeException();
 			}
 			GraphEntityType type = (t == REC_TYPE_NODE) ? GETYPE_NODE : GETYPE_EDGE;
 			GraphEntity *entity = Record_GetGraphEntity(r, update_expression->record_idx);
 
 			SIValue new_value = SI_CloneValue(AR_EXP_Evaluate(update_expression->exp, r));
-			_QueueUpdate(op, entity, type, update_expression->attribute, new_value);
+			_QueueUpdate(op, entity, type, update_expression->attribute_id, new_value);
 		}
 
 		if(_ShouldCacheRecord(op)) {

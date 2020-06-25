@@ -218,9 +218,10 @@ static bool _validateInExpression(AR_ExpNode *exp) {
 	assert(exp->op.child_count == 2);
 
 	AR_ExpNode *list = exp->op.children[1];
-	if(list->operand.type != AR_EXP_CONSTANT || list->operand.constant.type != T_ARRAY) return false;
+	SIValue listValue = SI_NullVal();
+	AR_EXP_ReduceToScalar(list, true, &listValue);
+	if(SI_TYPE(listValue) != T_ARRAY) return false;
 
-	SIValue listValue = list->operand.constant;
 	uint listLen = SIArray_Length(listValue);
 	for(uint i = 0; i < listLen; i++) {
 		SIValue v = SIArray_Get(listValue, i);
@@ -239,19 +240,18 @@ bool _simple_predicates(const FT_FilterNode *filter) {
 	switch(filter->t) {
 	case FT_N_PRED:
 		if(filter->pred.rhs->type == AR_EXP_OPERAND &&
-		   filter->pred.lhs->type == AR_EXP_OPERAND &&
-		   (filter->pred.lhs->operand.type == AR_EXP_CONSTANT ||
-			filter->pred.rhs->operand.type == AR_EXP_CONSTANT) &&
-		   (filter->pred.lhs->operand.type == AR_EXP_VARIADIC ||
-			filter->pred.lhs->operand.type == AR_EXP_VARIADIC)) {
-
-			// Validate constant type.
-			SIValue c = SI_NullVal();
-			if(filter->pred.lhs->operand.type == AR_EXP_CONSTANT) c = filter->pred.lhs->operand.constant;
-			if(filter->pred.rhs->operand.type == AR_EXP_CONSTANT) c = filter->pred.rhs->operand.constant;
-			SIType t = SI_TYPE(c);
-
-			res = (t & (SI_NUMERIC | T_STRING | T_BOOL));
+		   filter->pred.lhs->type == AR_EXP_OPERAND) {
+			SIValue v_lhs = SI_NullVal();
+			SIValue v_rhs = SI_NullVal();
+			bool lhs_scalar = AR_EXP_ReduceToScalar(filter->pred.lhs, true, &v_lhs);
+			bool rhs_scalar = AR_EXP_ReduceToScalar(filter->pred.rhs, true, &v_rhs);
+			// Predicate should be in the form of variable=scalar or scalar=variadic
+			if((lhs_scalar && !rhs_scalar) || (!lhs_scalar && rhs_scalar)) {
+				// Validate constant type.
+				SIValue c = lhs_scalar ? v_lhs : v_rhs;
+				SIType t = SI_TYPE(c);
+				res = (t & (SI_NUMERIC | T_STRING | T_BOOL));
+			}
 		}
 		break;
 	case FT_N_EXP:
@@ -493,10 +493,8 @@ cleanup:
 
 	if(root) {
 		/* We've successfully created a RediSearch query node that may be used to populate an Index Scan.
-		 * Pass ownership of the root node to the iterator. */
-		RSResultsIterator *iter = RediSearch_GetResultsIterator(root, rs_idx);
-		// Build the Index Scan.
-		OpBase *indexOp = NewIndexScanOp(scan->op.plan, scan->g, scan->n, rs_idx, iter);
+		 * Build a new Index Scan and pass ownership of the query node to it. */
+		OpBase *indexOp = NewIndexScanOp(scan->op.plan, scan->g, scan->n, rs_idx, root);
 
 		/* Replace the redundant scan op with the newly-constructed Index Scan. */
 		ExecutionPlan_ReplaceOp(plan, (OpBase *)scan, indexOp);

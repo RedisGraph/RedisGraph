@@ -92,12 +92,15 @@ void QueryCtx_SetGraphCtx(GraphContext *gc) {
 	ctx->gc = gc;
 }
 
-void QueryCtx_SetError(char *error) {
+void QueryCtx_SetError(char *err_fmt, ...) {
 	QueryCtx *ctx = _QueryCtx_GetCtx();
-	// An error is already set - free it.
+	// An error is already set - free it
 	if(ctx->internal_exec_ctx.error) free(ctx->internal_exec_ctx.error);
-	// Set the new error.
-	ctx->internal_exec_ctx.error = error;
+	// Set the new error
+	va_list valist;
+	va_start(valist, err_fmt);
+	vasprintf(&ctx->internal_exec_ctx.error, err_fmt, valist);
+	va_end(valist);
 }
 
 void QueryCtx_SetResultSet(ResultSet *result_set) {
@@ -169,29 +172,21 @@ bool QueryCtx_LockForCommit(void) {
 	GraphContext *gc = ctx->gc;
 	RedisModuleString *graphID = RedisModule_CreateString(redis_ctx, gc->graph_name,
 														  strlen(gc->graph_name));
-	char *error;
 	_QueryCtx_ThreadSafeContextLock(ctx);
 	// Open key and verify.
 	RedisModuleKey *key = RedisModule_OpenKey(redis_ctx, graphID, REDISMODULE_WRITE);
 	RedisModule_FreeString(redis_ctx, graphID);
 	if(RedisModule_KeyType(key) == REDISMODULE_KEYTYPE_EMPTY) {
-		asprintf(&error, "Encountered an empty key when opened key %s",
-				 ctx->gc->graph_name);
-		QueryCtx_SetError(error);
-
+		QueryCtx_SetError("Encountered an empty key when opened key %s", ctx->gc->graph_name);
 		goto clean_up;
 	}
 	if(RedisModule_ModuleTypeGetType(key) != GraphContextRedisModuleType) {
-		asprintf(&error, "Encountered a non-graph value type when opened key %s",
-				 ctx->gc->graph_name);
-		QueryCtx_SetError(error);
+		QueryCtx_SetError("Encountered a non-graph value type when opened key %s", ctx->gc->graph_name);
 		goto clean_up;
 
 	}
 	if(gc != RedisModule_ModuleTypeGetValue(key)) {
-		asprintf(&error, "Encountered different graph value when opened key %s",
-				 ctx->gc->graph_name);
-		QueryCtx_SetError(error);
+		QueryCtx_SetError("Encountered different graph value when opened key %s", ctx->gc->graph_name);
 		goto clean_up;
 	}
 	ctx->internal_exec_ctx.key = key;

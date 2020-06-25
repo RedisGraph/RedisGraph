@@ -124,10 +124,15 @@ static bool _valid_arrangement(const Arrangement arrangement, uint exps_count, Q
 		// Scan previous expressions.
 		for(; j >= 0; j--) {
 			AlgebraicExpression *prev_exp = arrangement[j];
-			if(!RG_STRCMP(AlgebraicExpression_Source(prev_exp), AlgebraicExpression_Source(exp))     ||
-			   !RG_STRCMP(AlgebraicExpression_Destination(prev_exp), AlgebraicExpression_Source(exp))    ||
-			   !RG_STRCMP(AlgebraicExpression_Source(prev_exp), AlgebraicExpression_Destination(exp))    ||
-			   !RG_STRCMP(AlgebraicExpression_Destination(prev_exp), AlgebraicExpression_Destination(exp))) break;
+			const char *exp_src = AlgebraicExpression_Source(exp);
+			const char *exp_dest = AlgebraicExpression_Destination(exp);
+			const char *prev_exp_src = AlgebraicExpression_Source(prev_exp);
+			const char *prev_exp_dest = AlgebraicExpression_Destination(prev_exp);
+
+			if(!RG_STRCMP(prev_exp_src, exp_src)     ||
+			   !RG_STRCMP(prev_exp_dest, exp_src)    ||
+			   !RG_STRCMP(prev_exp_src, exp_dest)    ||
+			   !RG_STRCMP(prev_exp_dest, exp_dest)) break;
 		}
 		/* Nither src or dest nodes are mentioned in previous expressions
 		 * as such the arrangement is invalid. */
@@ -242,7 +247,7 @@ static void _resolve_winning_sequence(AlgebraicExpression **exps, uint exp_count
 				break;
 			}
 		}
-		if(!src_resolved) AlgebraicExpression_Transpose(exp);
+		if(!src_resolved) AlgebraicExpression_Transpose(exps + i);
 	}
 }
 
@@ -252,39 +257,39 @@ static void _resolve_winning_sequence(AlgebraicExpression **exps, uint exp_count
  * If neither are bounded, we fall back to label and filter heuristics.
  * We'll choose to transpose if the destination is filtered and the source is not, or
  * if neither is filtered, if the destination is labeled and the source is not. */
-static void _select_entry_point(QueryGraph *qg, AlgebraicExpression *ae, rax *filtered_entities,
+static void _select_entry_point(QueryGraph *qg, AlgebraicExpression **ae, rax *filtered_entities,
 								rax *bound_vars) {
-	if(AlgebraicExpression_OperandCount(ae) == 1 &&
-	   !RG_STRCMP(AlgebraicExpression_Source(ae), AlgebraicExpression_Destination(ae))) return;
+	if(AlgebraicExpression_OperandCount(*ae) == 1 &&
+	   !RG_STRCMP(AlgebraicExpression_Source(*ae), AlgebraicExpression_Destination(*ae))) return;
 
 	// Always start at a bound variable if one is present.
 	if(bound_vars) {
-		if(raxFind(bound_vars, (unsigned char *)AlgebraicExpression_Source(ae),
-				   strlen(AlgebraicExpression_Source(ae))) != raxNotFound) return;
+		if(raxFind(bound_vars, (unsigned char *)AlgebraicExpression_Source(*ae),
+				   strlen(AlgebraicExpression_Source(*ae))) != raxNotFound) return;
 
-		if(raxFind(bound_vars, (unsigned char *)AlgebraicExpression_Destination(ae),
-				   strlen(AlgebraicExpression_Destination(ae))) != raxNotFound) {
+		if(raxFind(bound_vars, (unsigned char *)AlgebraicExpression_Destination(*ae),
+				   strlen(AlgebraicExpression_Destination(*ae))) != raxNotFound) {
 			AlgebraicExpression_Transpose(ae);
 			return;
 		}
 	}
 
 	// See if either source or destination nodes are filtered.
-	if(raxFind(filtered_entities, (unsigned char *)AlgebraicExpression_Source(ae),
-			   strlen(AlgebraicExpression_Source(ae))) != raxNotFound) {
+	if(raxFind(filtered_entities, (unsigned char *)AlgebraicExpression_Source(*ae),
+			   strlen(AlgebraicExpression_Source(*ae))) != raxNotFound) {
 		return; // The source node is filtered, making the current order most appealing.
 	}
 
-	if(raxFind(filtered_entities, (unsigned char *)AlgebraicExpression_Destination(ae),
-			   strlen(AlgebraicExpression_Destination(ae))) != raxNotFound) {
+	if(raxFind(filtered_entities, (unsigned char *)AlgebraicExpression_Destination(*ae),
+			   strlen(AlgebraicExpression_Destination(*ae))) != raxNotFound) {
 		AlgebraicExpression_Transpose(ae); // The destination is filtered and the source is not, transpose.
 		return;
 	}
 
 	/* Prefer filter over label
 	 * if no filters are applied prefer labeled entity. */
-	QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(ae));
-	QGNode *dest = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Destination(ae));
+	QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(*ae));
+	QGNode *dest = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Destination(*ae));
 	bool srcLabeled = src->label != NULL;
 	bool destLabeled = dest->label != NULL;
 
@@ -316,7 +321,6 @@ void orderExpressions(QueryGraph *qg, AlgebraicExpression **exps, uint exp_count
 
 	// Collect all filtered aliases.
 	rax *filtered_entities = FilterTree_CollectModified(filters);
-
 	// Compute all possible permutations of algebraic expressions.
 	Arrangement *arrangements = _permutations(exps, exp_count);
 	uint arrangement_count = array_len(arrangements);
@@ -362,7 +366,7 @@ void orderExpressions(QueryGraph *qg, AlgebraicExpression **exps, uint exp_count
 
 select_entry_point:
 	// Transpose the winning expression if the destination node is a more efficient starting place.
-	_select_entry_point(qg, exps[0], filtered_entities, bound_vars);
+	_select_entry_point(qg, exps + 0, filtered_entities, bound_vars);
 
 	raxFree(filtered_entities);
 	for(uint i = 0; i < arrangement_count; i++) _Arrangement_Free(arrangements[i]);
