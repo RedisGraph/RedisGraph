@@ -218,10 +218,9 @@ static bool _validateInExpression(AR_ExpNode *exp) {
 	assert(exp->op.child_count == 2);
 
 	AR_ExpNode *list = exp->op.children[1];
-	SIValue listValue;
-	bool reduced = AR_EXP_ReduceToScalar(list, true, &listValue);
-	if(AR_EXP_IsParameter(list)) AR_EXP_Evaluate(list, NULL);
-	if(!reduced || SI_TYPE(listValue) != T_ARRAY) return false;
+	SIValue listValue = SI_NullVal();
+	AR_EXP_ReduceToScalar(list, true, &listValue);
+	if(SI_TYPE(listValue) != T_ARRAY) return false;
 
 	uint listLen = SIArray_Length(listValue);
 	for(uint i = 0; i < listLen; i++) {
