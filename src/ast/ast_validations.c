@@ -249,6 +249,17 @@ static AST_Validation _VisitFunctions(const cypher_astnode_t *node, rax *func_na
 		raxInsert(func_names, (unsigned char *)func_name, strlen(func_name), NULL, NULL);
 	}
 
+	if(type == CYPHER_AST_LABELS_OPERATOR) {
+		uint label_count = cypher_ast_labels_operator_nlabels(node);
+		if(label_count != 1) {
+			// Encountered a construction of the form:
+			// MATCH (a) WHERE a:A:B
+			QueryCtx_SetError("RedisGraph does not currently support multiple labels on a node");
+			return AST_INVALID;
+		}
+		return AST_VALID;
+	}
+
 	uint child_count = cypher_astnode_nchildren(node);
 	for(uint i = 0; i < child_count; i ++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(node, i);

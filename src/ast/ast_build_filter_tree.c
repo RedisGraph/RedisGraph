@@ -134,6 +134,23 @@ static FT_FilterNode *_convertIntegerOperator(const cypher_astnode_t *expr) {
 	return FilterTree_CreateExpressionFilter(exp);
 }
 
+static FT_FilterNode *_convertLabelsOperator(const cypher_astnode_t *expr) {
+	// Convert the node reference in the operator to an expression node.
+	const cypher_astnode_t *ast_node = cypher_ast_labels_operator_get_expression(expr);
+	AR_ExpNode *node_exp = AR_EXP_FromExpression(ast_node);
+	// Generate a new labels() function node and add the node reference as a child.
+	AR_ExpNode *labels_func = AR_EXP_NewOpNode("labels", 1);
+	labels_func->op.children[0] = node_exp;
+
+	// Retrieve the label string from the operator.
+	const cypher_astnode_t *ast_label = cypher_ast_labels_operator_get_label(expr, 0);
+	char *label = (char *)cypher_ast_label_get_name(ast_label);
+	AR_ExpNode *label_exp = AR_EXP_NewConstOperandNode(SI_ConstStringVal((label)));
+
+	// Return an equality filter between the label string and the labels() function call.
+	return FilterTree_CreatePredicateFilter(OP_EQUAL, label_exp, labels_func);
+}
+
 /* A comparison node contains two arrays - one of operators, and one of expressions.
  * Most comparisons will only have one operator and two expressions, but Cypher
  * allows more complex formulations like "x < y <= z".
@@ -246,6 +263,8 @@ FT_FilterNode *_FilterNode_FromAST(const cypher_astnode_t *expr) {
 		return _convertIntegerOperator(expr);
 	} else if(type == CYPHER_AST_PATTERN_PATH) {
 		return _convertPatternPath(expr);
+	} else if(type == CYPHER_AST_LABELS_OPERATOR) {
+		return _convertLabelsOperator(expr);
 	} else {
 		/* Probably an invalid query
 		 * e.g. MATCH (u) where u.v NOT NULL RETURN u
@@ -304,6 +323,8 @@ void _AST_ConvertFilters(const AST *ast, FT_FilterNode **root, const cypher_astn
 		node = _convertFalseOperator();
 	} else if(type == CYPHER_AST_INTEGER) {
 		node = _convertIntegerOperator(entity);
+	} else if(type == CYPHER_AST_LABELS_OPERATOR) {
+		node = _convertLabelsOperator(entity);
 	} else {
 		uint child_count = cypher_astnode_nchildren(entity);
 		for(uint i = 0; i < child_count; i++) {

@@ -432,7 +432,6 @@ static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 	} else {
 		/*
 		   Unhandled types:
-		   CYPHER_AST_LABELS_OPERATOR
 		   CYPHER_AST_LIST_COMPREHENSION
 		   CYPHER_AST_MAP
 		   CYPHER_AST_MAP_PROJECTION
