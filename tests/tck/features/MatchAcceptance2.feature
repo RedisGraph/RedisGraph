@@ -672,7 +672,6 @@ Feature: MatchAcceptance2
       | () | []         |
     And no side effects
 
-@skip
   Scenario: Multiple anonymous nodes in a pattern
     Given an empty graph
     And having executed:

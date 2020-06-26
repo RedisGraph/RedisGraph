@@ -54,7 +54,6 @@ Feature: OptionalMatchAcceptance
       | null |
     And no side effects
 
-@skip
   Scenario: Return null when no matches due to label predicate in WHERE
     When executing query:
       """
@@ -218,7 +217,6 @@ Feature: OptionalMatchAcceptance
       | [:LOOP] |
     And no side effects
 
-@skip
   Scenario: Optionally matching self-loops without matches
     When executing query:
       """
