@@ -13,7 +13,6 @@
 #include <assert.h>
 
 static void _BuildQueryGraphAddNode(QueryGraph *qg, const cypher_astnode_t *ast_entity) {
-	GraphContext *gc = QueryCtx_GetGraphCtx();
 	AST *ast = QueryCtx_GetAST();
 	const char *alias = AST_GetEntityName(ast, ast_entity);
 
@@ -36,14 +35,7 @@ static void _BuildQueryGraphAddNode(QueryGraph *qg, const cypher_astnode_t *ast_
 	// Set node label ID if one has not already been set.
 	if(n->labelID == GRAPH_NO_LABEL) {
 		if(label) {
-			Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
-			uint label_id = GRAPH_UNKNOWN_LABEL;
-			// If a schema is found, the AST refers to a real label.
-			if(s) label_id = s->id;
-			n->label = label;
-			n->labelID = label_id;
-		} else {
-			n->labelID = GRAPH_NO_LABEL;
+			QueryGraph_SetNodeLabel(n, label);
 		}
 	}
 }
@@ -103,6 +95,16 @@ QueryGraph *QueryGraph_New(uint node_cap, uint edge_cap) {
 
 void QueryGraph_AddNode(QueryGraph *qg, QGNode *n) {
 	qg->nodes = array_append(qg->nodes, n);
+}
+
+void QueryGraph_SetNodeLabel(QGNode *n, const char *label) {
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
+	uint label_id = GRAPH_UNKNOWN_LABEL;
+	// If a schema is found, the AST refers to a real label.
+	if(s) label_id = s->id;
+	n->label = label;
+	n->labelID = label_id;
 }
 
 void QueryGraph_ConnectNodes(QueryGraph *qg, QGNode *src, QGNode *dest, QGEdge *e) {

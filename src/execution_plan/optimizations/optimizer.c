@@ -25,6 +25,9 @@ void _optimizePlan(ExecutionPlan *plan) {
 	// Try to reduce SCAN + FILTER to a node seek operation.
 	seekByID(plan);
 
+	/* Replace AllNodeScans with label filters with label scans. */
+	convertAllNodeScans(plan);
+
 	/* Remove redundant SCAN operations. */
 	reduceScans(plan);
 
@@ -57,3 +60,4 @@ void optimizePlan(ExecutionPlan *plan) {
 		_optimizePlan(plan);
 	}
 }
+

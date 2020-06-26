@@ -33,6 +33,9 @@ QueryGraph *QueryGraph_New(uint node_cap, uint edge_cap);
 /* Adds a new node to the graph */
 void QueryGraph_AddNode(QueryGraph *g, QGNode *n);
 
+/* Set the label and associated data on a QueryGraph node. */
+void QueryGraph_SetNodeLabel(QGNode *n, const char *label);
+
 /* Adds a new edge to the graph */
 void QueryGraph_ConnectNodes(QueryGraph *qg, QGNode *src, QGNode *dest, QGEdge *e);
 
