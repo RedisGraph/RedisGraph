@@ -142,7 +142,7 @@ jobs:
             - build
       - store_artifacts:
           path: /workspace/build
-  deploy_to_s3:
+  deploy_branch:
     docker:
       - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
     steps:
@@ -154,6 +154,18 @@ jobs:
             aws s3 cp /workspace/build/ s3://redismodules/$PACKAGE_NAME/ --acl
             public-read --recursive --exclude "*" --include "*.zip"
 
+  deploy_release:
+    docker:
+      - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
+    steps:
+      - attach_workspace:
+          at: /workspace
+      - run:
+          name: Deploy to S3
+          command: >-
+            aws s3 cp /workspace/build/ s3://redismodules/$PACKAGE_NAME/ --acl
+            public-read --recursive --exclude "*" --include "*.zip"
+            
   run_automation:
     docker:
       - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
@@ -167,44 +179,38 @@ jobs:
             -H "Content-Type: application/json"
             -d '{"service_id":"single_module_test_cycle_sanity_and_extended", "name":"redisgraph automation-testing", "properties":{"sut_version":"5.6.0", "email_recipients":"graph@redislabs.com", "sut_environments":[], "tools_environment":{}, "module_name": "RedisGraph", "module_version":"master", "cycle_environments_setup":[{"teardown":true, "name":"rhel7.5-x86_64-aws", "concurrency":1}, {"teardown":true, "name":"bionic-amd64-aws", "concurrency":1}]}}'
             https://qa-automation-center.redislabs.com/processes
+
 workflows:
   version: 2
-  build_branch:
+  build_and_package:
     jobs:
       - build:
-          name: branch_build
           filters:
             tags:
-              # Ignore tagging.
-              ignore: /.*/
+              only: /.*/
       - package_branch:
           requires:
-            - branch_build
+            - build
           filters:
             branches:
               only: master
-      - deploy_to_s3:
-          name: deploy_branch
+      - package_release:
           requires:
-            - package_branch
-      - run_automation:
-          requires:
-            - deploy_branch    
-
-# The build_release workflow runs only against tags.
-  build_release:
-    jobs:
-      - build:
-          name: release_build
+            - build
           filters:
             branches:
               ignore: /.*/
             tags:
               only: '/^v[0-9].*/'
-      - package_release:
+      - deploy_branch:
           requires:
-            - release_build
-      - deploy_to_s3:
-          name: deploy_release
+            - package_branch
+      - run_automation:
+          requires:
+            - deploy_branch
+      - deploy_release:
+          filters:
+            tags:
+              only: '/^v[0-9].*/'
           requires:
             - package_release
