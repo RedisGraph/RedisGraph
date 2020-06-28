@@ -43,7 +43,7 @@ jobs:
       #- run:
           # name: Formatting
           # command: astyle --options=.astylerc -R "./*.c,*.h" --dry-run -Q
-      
+
       # Load GraphBLAS from cache if possible.
       - restore_cache:
           keys:
@@ -172,13 +172,14 @@ workflows:
   build_branch:
     jobs:
       - build:
+          name: branch_build
           filters:
             tags:
               # Ignore tagging.
               ignore: /.*/
       - package_branch:
           requires:
-            - build
+            - branch_build
           filters:
             branches:
               only: master
@@ -193,6 +194,7 @@ workflows:
   build_release:
     jobs:
       - build:
+          name: release_build
           filters:
             branches:
               ignore: /.*/
@@ -200,7 +202,7 @@ workflows:
               only: '/^v[0-9].*/'
       - package_release:
           requires:
-            - build
+            - release_build
       - deploy_to_s3:
           requires:
             - package_release
