@@ -50,14 +50,14 @@ We'll construct our graph in one command:
 graph.QUERY IMDB 'CREATE (aldis:actor {name: "Aldis Hodge", birth_year: 1986}),
                          (oshea:actor {name: "OShea Jackson", birth_year: 1991}),
                          (corey:actor {name: "Corey Hawkins", birth_year: 1988}),
-                         (neil:actor {name: "Neil Brown", birthyear: 1980}),
+                         (neil:actor {name: "Neil Brown", birth_year: 1980}),
                          (compton:movie {title: "Straight Outta Compton", genre: "Biography", votes: 127258, rating: 7.9, year: 2015}),
                          (neveregoback:movie {title: "Never Go Back", genre: "Action", votes: 15821, rating: 6.4, year: 2016}),
-                         (aldis)-[act]->(neveregoback),
-                         (aldis)-[act]->(compton),
-                         (oshea)-[act]->(compton),
-                         (corey)-[act]->(compton),
-                         (neil)-[act]->(compton)'
+                         (aldis)-[:act]->(neveregoback),
+                         (aldis)-[:act]->(compton),
+                         (oshea)-[:act]->(compton),
+                         (corey)-[:act]->(compton),
+                         (neil)-[:act]->(compton)'
 ```
 
 ### Querying the graph
@@ -75,15 +75,23 @@ Let's execute a number of queries against our movies graph.
 Find the sum, max, min and avg age of the 'Straight Outta Compton' cast:
 
 ```sh
-GRAPH.QUERY IMDB "MATCH (a:actor)-[act]->(m:movie {title:\"Straight Outta Compton\"})
-RETURN m.title, SUM(a.age), MAX(a.age), MIN(a.age), AVG(a.age)"
+GRAPH.QUERY IMDB 'MATCH (a:actor)-[:act]->(m:movie {title:"Straight Outta Compton"})
+RETURN m.title, SUM(2020-a.birth_year), MAX(2020-a.birth_year), MIN(2020-a.birth_year), AVG(2020-a.birth_year)'
 ```
 
 RedisGraph will reply with:
 
 ```sh
-1) "m.title, SUM(a.age), MAX(a.age), MIN(a.age), AVG(a.age)"
-2) "Straight Outta Compton,123.000000,37.000000,26.000000,30.750000"
+1) 1) "m.title"
+   2) "SUM(2020-a.birth_year)"
+   3) "MAX(2020-a.birth_year)"
+   4) "MIN(2020-a.birth_year)"
+   5) "AVG(2020-a.birth_year)"
+2) 1) 1) "Straight Outta Compton"
+      2) "135"
+      3) (integer) 40
+      4) (integer) 29
+      5) "33.75"
 ```
 
 * The first row is our result-set header which names each column according to the return clause.
@@ -92,7 +100,7 @@ RedisGraph will reply with:
 Let's try another query. This time, we'll find out how many movies each actor played in.
 
 ```sh
-GRAPH.QUERY IMDB "MATCH (actor)-[act]->(movie) RETURN actor.name, COUNT(movie.title) AS movies_count ORDER BY
+GRAPH.QUERY IMDB "MATCH (actor)-[:act]->(movie) RETURN actor.name, COUNT(movie.title) AS movies_count ORDER BY
 movies_count DESC"
 
 1) "actor.name, movies_count"
@@ -167,7 +175,7 @@ Let's review the steps RedisGraph takes when executing a query.
 Consider this query that finds all actors who played alongside Aldis Hodge and are over 30 years old:
 
 ```sh
-MATCH (aldis::actor {name:"Aldis Hodge"})-[act]->(m:movie)<-[act]-(a:actor) WHERE a.age > 30 RETURN m.title, a.name
+MATCH (aldis::actor {name:"Aldis Hodge"})-[:act]->(m:movie)<-[:act]-(a:actor) WHERE a.age > 30 RETURN m.title, a.name
 ```
 
 RedisGraph will:
