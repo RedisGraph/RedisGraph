@@ -184,11 +184,12 @@ workflows:
             branches:
               only: master
       - deploy_to_s3:
+          name: deploy_branch
           requires:
             - package_branch
       - run_automation:
           requires:
-            - deploy_to_s3    
+            - deploy_branch    
 
 # The build_release workflow runs only against tags.
   build_release:
@@ -204,5 +205,6 @@ workflows:
           requires:
             - release_build
       - deploy_to_s3:
+          name: deploy_release
           requires:
             - package_release
