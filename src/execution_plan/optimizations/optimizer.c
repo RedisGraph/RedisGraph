@@ -18,15 +18,15 @@ void _optimizePlan(ExecutionPlan *plan) {
 	 *    Note: Due to the scan optimization order, label scan will be replaced with index scan when possible, so the id filter remains.
 	 * 3. Remove redundant scans which checks for the same node. */
 
+	/* Replace AllNodeScans with label filters with label scans. */
+	convertAllNodeScans(plan);
+
 	/* When possible, replace label scan and filter ops
 	 * with index scans. */
 	utilizeIndices(plan);
 
 	// Try to reduce SCAN + FILTER to a node seek operation.
 	seekByID(plan);
-
-	/* Replace AllNodeScans with label filters with label scans. */
-	convertAllNodeScans(plan);
 
 	/* Remove redundant SCAN operations. */
 	reduceScans(plan);
