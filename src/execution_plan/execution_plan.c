@@ -290,9 +290,10 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				if(AlgebraicExpression_OperandCount(exp) == 0) continue;
 
 				QGEdge *edge = NULL;
-				if(AlgebraicExpression_Edge(exp)) edge = QueryGraph_GetEdgeByAlias(qg,
-																					   AlgebraicExpression_Edge(exp));
-				if(edge && QGEdge_VariableLength(edge)) {
+				const char *alias = AlgebraicExpression_Edge(exp);
+				if(AlgebraicExpression_Edge(exp)) edge = QueryGraph_GetEdgeByAlias(qg, alias);
+				if(edge && (QGEdge_VariableLength(edge) ||
+							AST_AliasReferencReasons(ast, alias, REFERENCED_ENTITY_PART_OF_NAMED_PATH))) {
 					root = NewCondVarLenTraverseOp(plan, gc->g, exp);
 				} else {
 					root = NewCondTraverseOp(plan, gc->g, exp);

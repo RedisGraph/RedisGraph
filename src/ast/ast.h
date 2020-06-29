@@ -16,6 +16,13 @@
 #define IDENTIFIER_NOT_FOUND UINT_MAX
 #define UNLIMITED UINT_MAX
 
+// Referenced entities reason
+#define REFERENCED_ENTITY_HAS_IDENTIFIER (1 << 0)
+#define REFERENCED_ENTITY_IS_PROPERTY_VALUE (1 << 1)
+#define REFERENCED_ENTITY_PROJECTED (1 << 2)
+#define REFERENCED_ENTITY_PART_OF_NAMED_PATH (1 << 3)
+#define REFERENCED_ENTITY_FILTERED_INLINE (1 << 4)
+
 typedef enum {
 	AST_VALID,
 	AST_INVALID
@@ -95,6 +102,9 @@ void AST_AttachName(AST *ast, const cypher_astnode_t *node, const char *name);
 
 // Returns true if the given alias is referenced within this AST segment.
 bool AST_AliasIsReferenced(AST *ast, const char *alias);
+
+// Returns true if the given alias is referenced within this AST segment, with the reasons in the mask.
+bool AST_AliasReferencReasons(AST *, const char *alias, uint64_t reasons_mask);
 
 // Convert an AST integer node (which is stored internally as a string) into an integer.
 long AST_ParseIntegerNode(const cypher_astnode_t *int_node);
