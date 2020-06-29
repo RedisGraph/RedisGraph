@@ -280,7 +280,7 @@ class testIndexScanFlow(FlowTestsBase):
     def test12_has_label_to_index_scan(self):
         query = "MATCH (p) WHERE p:person AND p.age = 30 RETURN p.name"
         plan = redis_graph.execution_plan(query)
-        # Two index scans should be performed.
+        # The All Node Scan should have been replaced by an Index Scan.
         self.env.assertIn("Index Scan", plan)
 
         query_result = redis_graph.query(query)

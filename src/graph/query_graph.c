@@ -33,11 +33,7 @@ static void _BuildQueryGraphAddNode(QueryGraph *qg, const cypher_astnode_t *ast_
 																	  ast_entity, 0)) : NULL;
 
 	// Set node label ID if one has not already been set.
-	if(n->labelID == GRAPH_NO_LABEL) {
-		if(label) {
-			QueryGraph_SetNodeLabel(n, label);
-		}
-	}
+	if(n->labelID == GRAPH_NO_LABEL && label) QueryGraph_SetNodeLabel(n, label);
 }
 
 static void _BuildQueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_entity,
