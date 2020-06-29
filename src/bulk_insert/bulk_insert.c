@@ -85,7 +85,7 @@ static inline SIValue _BulkInsert_ReadProperty(const char *data, size_t *data_id
 		const char *s = data + *data_idx;
 		*data_idx += strlen(s) + 1;
 		// The string itself will be cloned when added to the GraphEntity properties.
-		v = SI_ConstStringVal((char *)s);
+		v = SI_TransferStringVal((char *)s);
 	} else {
 		assert(0);
 	}
