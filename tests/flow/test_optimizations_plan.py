@@ -354,3 +354,28 @@ class testOptimizationsPlan(FlowTestsBase):
                     [14, 0, 2],
                     [14, 0, 3]]
         self.env.assertEqual(resultset, expected)
+
+    # Constructions of the form:
+    # MATCH (a) WHERE a:A
+    # should utilize a Label Scan rather than an All Node Scan.
+    def test23_has_label_to_label_scan(self):
+        # Verify that the optimization is applied properly.
+        query = """MATCH (a) WHERE a:person RETURN a.val ORDER BY a.val LIMIT 3"""
+        executionPlan = graph.execution_plan(query)
+        self.env.assertNotIn("All Node Scan", executionPlan)
+        self.env.assertIn("Label Scan", executionPlan)
+        resultset = graph.query(query).result_set
+        expected = [[0],
+                    [1],
+                    [2]]
+        self.env.assertEqual(resultset, expected)
+
+        # The optimization is not valid for OR-specified multiple labels.
+        query = """MATCH (a) WHERE a:person or a:FakeLabel RETURN a.val ORDER BY a.val LIMIT 3"""
+        executionPlan = graph.execution_plan(query)
+        self.env.assertIn("All Node Scan", executionPlan)
+        resultset = graph.query(query).result_set
+        expected = [[0],
+                    [1],
+                    [2]]
+        self.env.assertEqual(resultset, expected)

@@ -276,3 +276,13 @@ class testIndexScanFlow(FlowTestsBase):
         query_result = redis_graph.query(query)
         # Two new nodes should be created.
         self.env.assertEquals(query_result.nodes_created, 2)
+
+    def test12_has_label_to_index_scan(self):
+        query = "MATCH (p) WHERE p:person AND p.age = 30 RETURN p.name"
+        plan = redis_graph.execution_plan(query)
+        # Two index scans should be performed.
+        self.env.assertIn("Index Scan", plan)
+
+        query_result = redis_graph.query(query)
+        expected_result = ["Lucy Yanfital"]
+        self.env.assertEquals(query_result.result_set[0], expected_result)
