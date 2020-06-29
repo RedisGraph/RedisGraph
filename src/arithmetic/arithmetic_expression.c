@@ -49,7 +49,7 @@ static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 	switch(exp->operand.type) {
 	case AR_EXP_CONSTANT:
 		clone->operand.type = AR_EXP_CONSTANT;
-		clone->operand.constant = SI_CloneValue(exp->operand.constant);
+		clone->operand.constant = SI_CloneNonConstantValue(exp->operand.constant);
 		break;
 	case AR_EXP_VARIADIC:
 		clone->operand.type = exp->operand.type;

@@ -110,6 +110,10 @@ SIValue SI_ShareValue(const SIValue v);
 // SI_CloneValue creates an SIValue that duplicates all of the original's allocations.
 SIValue SI_CloneValue(const SIValue v);
 
+// SI_CloneValue creates an SIValue that duplicates the original's allocations if they are not constant
+// over the query lifetime.
+SIValue SI_CloneNonConstantValue(const SIValue v);
+
 // SI_ConstValue creates an SIValue that shares the original's allocations, but does not need to persist them.
 SIValue SI_ConstValue(const SIValue v);
 
