@@ -107,36 +107,3 @@ class testParams(FlowTestsBase):
         plan = redis_graph.execution_plan(query)
         self.env.assertIn('NodeByIdSeek', plan)
 
-    def test_invalid_cypher_options(self):
-        query = "EXPLAIN MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
-        try:
-            redis_graph.query(query)
-            assert(False)
-        except:
-            # Expecting an error.
-            pass
-
-        query = "PROFILE MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
-        try:
-            redis_graph.query(query)
-            assert(False)
-        except:
-            # Expecting an error.
-            pass
-
-        query = "CYPHER val=1 EXPLAIN MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
-        try:
-            redis_graph.query(query)
-            assert(False)
-        except:
-            # Expecting an error.
-            pass
-
-        query = "CYPHER val=1 PROFILE MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
-        try:
-            redis_graph.query(query)
-            assert(False)
-        except:
-            # Expecting an error.
-            pass
-
