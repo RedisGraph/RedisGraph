@@ -47,6 +47,9 @@ class testPath(FlowTestsBase):
         expected_results = [[path01], [path12]]
 
         query = "MATCH p=(:L1)-[:R1]->(:L1) RETURN p"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn("Conditional Traverse", plan)
+
         query_info = QueryInfo(query = query, description="Tests simple paths", expected_result = expected_results)
         self._assert_resultset_and_expected_mutually_included(redis_graph.query(query), query_info)
 
@@ -72,6 +75,8 @@ class testPath(FlowTestsBase):
         expected_results=[[path01], [path12], [path02]]
 
         query = "MATCH p=(:L1)-[:R1*]->(:L1) RETURN p"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn("Conditional Variable Length Traverse", plan)
         query_info = QueryInfo(query = query, description="Tests variable length paths", expected_result = expected_results)
         self._assert_resultset_and_expected_mutually_included(redis_graph.query(query), query_info)
 
@@ -105,7 +110,8 @@ class testPath(FlowTestsBase):
         expected_results=[[path010], [path0121], [path01210], [path121], [path1210]]
        
         query = "MATCH p=(:L1)-[:R1*]->(:L1)<-[:R1*]-() RETURN p"
-
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn("Conditional Variable Length Traverse", plan)
         query_info = QueryInfo(query = query, description="Tests bi directional variable length paths", \
                                 expected_result = expected_results)
         self._assert_resultset_and_expected_mutually_included(redis_graph.query(query), query_info)
@@ -136,7 +142,8 @@ class testPath(FlowTestsBase):
                         [[node1, node2, node1, node0], [edge12, edge21, edge10], 3]]
 
         query = "MATCH p=(:L1)-[:R1*]->(:L1)<-[:R1*]-() RETURN nodes(p), relationships(p), length(p)"
-
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn("Conditional Variable Length Traverse", plan)
         query_info = QueryInfo(query = query, description="Tests path functions over bi directional variable length paths", \
                                         expected_result = expected_results)
         self._assert_resultset_and_expected_mutually_included(redis_graph.query(query), query_info)
@@ -156,11 +163,74 @@ class testPath(FlowTestsBase):
         expected_results=[[path01]]
 
         query = "MATCH p=(:L1)-[*0..]->()-[]->(:L2) RETURN p"
-
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn("Conditional Variable Length Traverse", plan)
+        self.env.assertIn("Conditional Traverse", plan)
         query_info = QueryInfo(query = query, description="Tests path with zero length variable length paths", \
                                         expected_result = expected_results)
         self._assert_resultset_and_expected_mutually_included(redis_graph.query(query), query_info)
 
+    def test_fixed_size_single_hop_traverse(self):
+        node0 = Node(node_id=0, label="L1")
+        node1 = Node(node_id=1, label="L1")
+        node2 = Node(node_id=2, label="L1")
+        edge01 = Edge(node0, "R1", node1, edge_id=0, properties={'value': 1})
+        edge12 = Edge(node1, "R1", node2, edge_id=1, properties={'value': 2})
+
+        redis_graph.add_node(node0)
+        redis_graph.add_node(node1)
+        redis_graph.add_node(node2)
+        redis_graph.add_edge(edge01)
+        redis_graph.add_edge(edge12)
+
+        redis_graph.flush()
+        
+        path01 = Path.new_empty_path().add_node(node0).add_edge(edge01).add_node(node1)
+        path12 = Path.new_empty_path().add_node(node1).add_edge(edge12).add_node(node2)
+        expected_results=[[path01], [path12]]
+
+        query = "MATCH p=(:L1)-[:R1*1]->(:L1) RETURN p"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn("Conditional Traverse", plan)
+        query_info = QueryInfo(query = query, description="Tests variable length paths", expected_result = expected_results)
+        self._assert_resultset_and_expected_mutually_included(redis_graph.query(query), query_info)
+
+        query = "MATCH p=(:L1)-[:R1*1..1]->(:L1) RETURN p"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn("Conditional Traverse", plan)
+        query_info = QueryInfo(query = query, description="Tests variable length paths", expected_result = expected_results)
+        self._assert_resultset_and_expected_mutually_included(redis_graph.query(query), query_info)
+    
+    def test_fixed_size_multi_hop_traverse(self):
+        node0 = Node(node_id=0, label="L1")
+        node1 = Node(node_id=1, label="L1")
+        node2 = Node(node_id=2, label="L1")
+        edge01 = Edge(node0, "R1", node1, edge_id=0, properties={'value': 1})
+        edge12 = Edge(node1, "R1", node2, edge_id=1, properties={'value': 2})
+
+        redis_graph.add_node(node0)
+        redis_graph.add_node(node1)
+        redis_graph.add_node(node2)
+        redis_graph.add_edge(edge01)
+        redis_graph.add_edge(edge12)
+
+        redis_graph.flush()
+        
+        path02 = Path.new_empty_path().add_node(node0).add_edge(edge01).add_node(node1).add_edge(edge12).add_node(node2)
+        expected_results=[[path02]]
+
+        query = "MATCH p=(:L1)-[:R1*2]->(:L1) RETURN p"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn("Conditional Variable Length Traverse", plan)
+        query_info = QueryInfo(query = query, description="Tests variable length paths", expected_result = expected_results)
+        self._assert_resultset_and_expected_mutually_included(redis_graph.query(query), query_info)
+
+        query = "MATCH p=(:L1)-[:R1*2..2]->(:L1) RETURN p"
+        plan = redis_graph.execution_plan(query)
+        self.env.assertIn("Conditional Variable Length Traverse", plan)
+        query_info = QueryInfo(query = query, description="Tests variable length paths", expected_result = expected_results)
+        self._assert_resultset_and_expected_mutually_included(redis_graph.query(query), query_info)
+    
     def test_path_comparison(self):
         node0 = Node(node_id=0, label="L1")
         node1 = Node(node_id=1, label="L1")

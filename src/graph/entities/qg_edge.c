@@ -43,6 +43,11 @@ bool QGEdge_VariableLength(const QGEdge *e) {
 	return (e->minHops != e->maxHops);
 }
 
+bool QGEdge_MultipleHops(const QGEdge *e) {
+	assert(e);
+	return e->minHops > 1;
+}
+
 void QGEdge_Reverse(QGEdge *e) {
 	QGNode *src = e->src;
 	QGNode *dest = e->dest;

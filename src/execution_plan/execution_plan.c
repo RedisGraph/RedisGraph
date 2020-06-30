@@ -293,7 +293,9 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				const char *alias = AlgebraicExpression_Edge(exp);
 				if(AlgebraicExpression_Edge(exp)) edge = QueryGraph_GetEdgeByAlias(qg, alias);
 				if(edge && (QGEdge_VariableLength(edge) ||
-							AST_AliasReferencReasons(ast, alias, REFERENCED_ENTITY_PART_OF_NAMED_PATH))) {
+							(QGEdge_MultipleHops(edge) &&
+							 AST_AliasReferencReasons(ast, alias, REFERENCED_ENTITY_PART_OF_NAMED_PATH)))) {
+					// Edge is either variable length, or multiple hops edge (e.g. [:R*8]) that is part of a named path.
 					root = NewCondVarLenTraverseOp(plan, gc->g, exp);
 				} else {
 					root = NewCondTraverseOp(plan, gc->g, exp);

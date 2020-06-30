@@ -12,6 +12,7 @@
 // Append given 'node' to given 'level' array.
 static void _AllPathsCtx_AddConnectionToLevel(AllPathsCtx *ctx, uint level, Node *node,
 											  Edge *edge) {
+	if(!node) return;
 	while(array_len(ctx->levels) <= level) {
 		ctx->levels = array_append(ctx->levels, array_new(LevelConnection, 1));
 	}
@@ -62,8 +63,6 @@ static void _addNeighbors(AllPathsCtx *ctx, LevelConnection *frontier, uint32_t 
 
 AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs, int relationCount,
 							 GRAPH_EDGE_DIR dir, unsigned int minLen, unsigned int maxLen) {
-	assert(src);
-
 	AllPathsCtx *ctx = rm_malloc(sizeof(AllPathsCtx));
 	ctx->g = g;
 	ctx->dir = dir;
