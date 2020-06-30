@@ -1468,6 +1468,14 @@ static AST_Validation _ValidateDuplicateParameters(const cypher_astnode_t *state
 	uint noptions = cypher_ast_statement_noptions(statement);
 	for(uint i = 0; i < noptions; i++) {
 		const cypher_astnode_t *option = cypher_ast_statement_get_option(statement, i);
+		const cypher_astnode_type_t type = cypher_astnode_type(option);
+		if((type == CYPHER_AST_EXPLAIN_OPTION) || (type == CYPHER_AST_PROFILE_OPTION)) {
+			const char *invalid_option_name = cypher_astnode_typestr(type);
+			QueryCtx_SetError("The %s option should be used in GRAPH.%s command", invalid_option_name,
+							  invalid_option_name);
+			raxFree(param_names);
+			return AST_INVALID;
+		}
 		uint nparams = cypher_ast_cypher_option_nparams(option);
 		for(uint j = 0; j < nparams; j++) {
 			const cypher_astnode_t *param = cypher_ast_cypher_option_get_param(option, j);
