@@ -1462,20 +1462,27 @@ static void _collect_query_parameters_names(const cypher_astnode_t *root, rax *k
 	}
 }
 
-static AST_Validation _ValidateDuplicateParameters(const cypher_astnode_t *statement) {
-	char *err = NULL;
-	rax *param_names = raxNew();
+static AST_Validation _ValidateParamsOnly(const cypher_astnode_t *statement) {
 	uint noptions = cypher_ast_statement_noptions(statement);
 	for(uint i = 0; i < noptions; i++) {
 		const cypher_astnode_t *option = cypher_ast_statement_get_option(statement, i);
 		const cypher_astnode_type_t type = cypher_astnode_type(option);
 		if((type == CYPHER_AST_EXPLAIN_OPTION) || (type == CYPHER_AST_PROFILE_OPTION)) {
 			const char *invalid_option_name = cypher_astnode_typestr(type);
-			QueryCtx_SetError("The %s option should be used in GRAPH.%s command", invalid_option_name,
-							  invalid_option_name);
-			raxFree(param_names);
+			QueryCtx_SetError("Please use GRAPH.%s 'key' 'query' command instead of GRAPH.QUERY 'key' '%s query'",
+							  invalid_option_name, invalid_option_name);
 			return AST_INVALID;
 		}
+	}
+	return AST_VALID;
+}
+
+static AST_Validation _ValidateDuplicateParameters(const cypher_astnode_t *statement) {
+	char *err = NULL;
+	rax *param_names = raxNew();
+	uint noptions = cypher_ast_statement_noptions(statement);
+	for(uint i = 0; i < noptions; i++) {
+		const cypher_astnode_t *option = cypher_ast_statement_get_option(statement, i);
 		uint nparams = cypher_ast_cypher_option_nparams(option);
 		for(uint j = 0; j < nparams; j++) {
 			const cypher_astnode_t *param = cypher_ast_cypher_option_get_param(option, j);
@@ -1661,6 +1668,7 @@ AST_Validation AST_Validate_QueryParams(const cypher_parse_result_t *result) {
 	// In case of no parameters.
 	if(cypher_ast_statement_noptions(root) == 0) return AST_VALID;
 
+	if(_ValidateParamsOnly(root) != AST_VALID) return AST_INVALID;
 	if(_ValidateDuplicateParameters(root) != AST_VALID) return AST_INVALID;
 
 	return AST_VALID;
