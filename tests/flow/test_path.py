@@ -329,4 +329,3 @@ class testPath(FlowTestsBase):
         query_info = QueryInfo(query=query, description="Test non existing var len path in optional match", expected_result=expected_results)
         self._assert_resultset_and_expected_mutually_included(redis_graph.query(query), query_info)
 
-        

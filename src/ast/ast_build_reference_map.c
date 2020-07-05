@@ -6,12 +6,18 @@
 static void _AST_MapReferencedEntitiesInPath(AST *ast, const cypher_astnode_t *path);
 
 // Adds an identifier or an alias to the reference map.
-static inline void _AST_UpdateRefMap(AST *ast, const char *name, uint64_t reason) {
+static inline void _AST_UpdateRefMap(AST *ast, const char *name,
+									 AST_Referenced_Entity_Reason reason) {
 
-	uint64_t current_reason = (uint64_t)raxFind(ast->referenced_entities, (unsigned char *) name,
-												strlen(name));
-	current_reason = (current_reason == (uint64_t)raxNotFound) ? reason : (current_reason |= reason);
-	raxInsert(ast->referenced_entities, (unsigned char *)name, strlen(name), (void *) current_reason,
+	// Lookup result should return the previously stored reasons, if there are any.
+	void *lookup_result = raxFind(ast->referenced_entities, (unsigned char *) name,
+								  strlen(name));
+	AST_Referenced_Entity_Reason reasons;
+	// No previously stored reasons.
+	if(lookup_result == raxNotFound) reasons = reason;
+	// There are previously stored reasons, add the new reason to them.
+	else reasons = (AST_Referenced_Entity_Reason)lookup_result | reason;
+	raxInsert(ast->referenced_entities, (unsigned char *)name, strlen(name), (void *) reasons,
 			  NULL);
 }
 
@@ -22,13 +28,13 @@ static void _AST_MapExpression(AST *ast, const cypher_astnode_t *exp) {
 	// In case of identifier.
 	if(type == CYPHER_AST_IDENTIFIER) {
 		const char *identifier_name = cypher_ast_identifier_get_name(exp);
-		_AST_UpdateRefMap(ast, identifier_name, REFERENCED_ENTITY_HAS_IDENTIFIER);
+		_AST_UpdateRefMap(ast, identifier_name, REFERENCED_ENTITY_HAS_PROPERTY);
 	} else if(type == CYPHER_AST_PROPERTY_OPERATOR) {
 		// In case of property.
 		exp = cypher_ast_property_operator_get_expression(exp);
 		assert(cypher_astnode_type(exp) == CYPHER_AST_IDENTIFIER);
 		const char *identifier_name = cypher_ast_identifier_get_name(exp);
-		_AST_UpdateRefMap(ast, identifier_name, REFERENCED_ENTITY_IS_PROPERTY_VALUE);
+		_AST_UpdateRefMap(ast, identifier_name, REFERENCED_ENTITY_HAS_PROPERTY);
 	} else if(type == CYPHER_AST_PATTERN_PATH) {
 		// In case of pattern filter.
 		_AST_MapReferencedEntitiesInPath(ast, exp);
@@ -76,7 +82,7 @@ static void _AST_MapReferencedNode(AST *ast, const cypher_astnode_t *node, bool 
 	// A node with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
 	if(properties) {
-		_AST_UpdateRefMap(ast, alias, REFERENCED_ENTITY_FILTERED_INLINE);
+		_AST_UpdateRefMap(ast, alias, REFERENCED_ENTITY_FILTERED);
 		// Map any references within the properties map, such as 'b' in:
 		// ({val: ID(b)})
 		_AST_MapExpression(ast, properties);
@@ -93,7 +99,7 @@ static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge, bool 
 	// An edge with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
 	if(properties) {
-		_AST_UpdateRefMap(ast, alias, REFERENCED_ENTITY_FILTERED_INLINE);
+		_AST_UpdateRefMap(ast, alias, REFERENCED_ENTITY_FILTERED);
 		// Map any references within the properties map, such as 'b' in:
 		// ({val: ID(b)})
 		_AST_MapExpression(ast, properties);
@@ -146,7 +152,7 @@ static void _AST_MapSetPropertyReferences(AST *ast, const cypher_astnode_t *set_
 	assert(cypher_astnode_type(ast_entity) == CYPHER_AST_IDENTIFIER);
 
 	const char *alias = cypher_ast_identifier_get_name(ast_entity);
-	_AST_UpdateRefMap(ast, alias, REFERENCED_ENTITY_HAS_IDENTIFIER);
+	_AST_UpdateRefMap(ast, alias, REFERENCED_ENTITY_HAS_PROPERTY);
 
 	// Map expression right hand side, e.g. a.v = 1, a.x = b.x
 	const cypher_astnode_t *set_exp = cypher_ast_set_property_get_expression(set_item);
