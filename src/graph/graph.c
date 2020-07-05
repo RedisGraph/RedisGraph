@@ -669,15 +669,19 @@ void Graph_GetNodeEdges(const Graph *g, const Node *n, GRAPH_EDGE_DIR dir, int e
 
 /* Removes an edge from Graph and updates graph relevent matrices. */
 int Graph_DeleteEdge(Graph *g, Edge *e) {
-	uint64_t x;
-	GrB_Matrix R;
-	GrB_Matrix M;
-	GrB_Info info;
-	EdgeID edge_id;
-	GrB_Matrix TR = GrB_NULL;
-	int r = Edge_GetRelationID(e);
-	NodeID src_id = Edge_GetSrcNodeID(e);
-	NodeID dest_id = Edge_GetDestNodeID(e);
+	uint64_t    x;
+	GrB_Info    info;
+	GrB_Matrix  R        =  GrB_NULL;
+	GrB_Matrix  M        =  GrB_NULL;
+	GrB_Matrix  TR       =  GrB_NULL;
+	EdgeID      edge_id  =  INVALID_ENTITY_ID;
+
+	assert(g != NULL);
+	assert(e != NULL);
+
+	int         r        =  Edge_GetRelationID(e);
+	NodeID      src_id   =  Edge_GetSrcNodeID(e);
+	NodeID      dest_id  =  Edge_GetDestNodeID(e);
 
 	R = Graph_GetRelationMatrix(g, r);
 	if(Config_MaintainTranspose()) TR = Graph_GetTransposedRelationMatrix(g, r);
@@ -730,7 +734,7 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 
 		/* Remove edge from edge array
 		 * migrate last edge ID and reduce array size.
-		 * TODO: reallocate array of size / capacity ratio is high. */
+		 * TODO: reallocate array when size/capacity is considerably small. */
 		edges[i] = edges[edge_count - 1];
 		array_pop(edges);
 
@@ -745,8 +749,10 @@ int Graph_DeleteEdge(Graph *g, Edge *e) {
 		if(TR) {
 			/* We must make the matching updates to the transposed matrix.
 			 * First, extract the element that is known to be an edge array. */
-			info = GrB_Matrix_extractElement(edges, TR, dest_id, src_id);
+			info = GrB_Matrix_extractElement(&edge_id, TR, dest_id, src_id);
 			assert(info == GrB_SUCCESS);
+			edges = (EdgeID *)edge_id;
+
 			// Replace the deleted edge with the last edge in the matrix.
 			edges[i] = edges[edge_count - 1];
 			array_pop(edges);
@@ -1109,14 +1115,16 @@ static void _BulkDeleteEdges(Graph *g, Edge *edges, size_t edge_count) {
 }
 
 /* Removes both nodes and edges from graph. */
-void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges, uint edge_count,
-					  uint *node_deleted, uint *edge_deleted) {
+void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges,
+		uint edge_count, uint *node_deleted, uint *edge_deleted) {
 	assert(g);
 
-	*edge_deleted = 0;
-	*node_deleted = 0;
+	uint _edge_deleted = 0;
+	uint _node_deleted = 0;
 
-	if(node_count) _BulkDeleteNodes(g, nodes, node_count, node_deleted, edge_deleted);
+	if(node_count) {
+		_BulkDeleteNodes(g, nodes, node_count, &_node_deleted, &_edge_deleted);
+	}
 
 	if(edge_count) {
 		// Filter out explicit edges which were removed by _BulkDeleteNodes.
@@ -1127,8 +1135,8 @@ void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges, uint 
 				NodeID dest = Edge_GetDestNodeID(e);
 
 				if(!DataBlock_GetItem(g->nodes, src) || !DataBlock_GetItem(g->nodes, dest)) {
-					/* Edge already removed due to node removal.
-					* Replace current edge with last edge. */
+					// Edge already removed due to node removal.
+					// Replace current edge with last edge.
 					edges[i] = edges[edge_count - 1];
 
 					// Update indices.
@@ -1138,12 +1146,8 @@ void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges, uint 
 			}
 		}
 
-		/* it might be that edge_count dropped to 0
-		 * due to implicit edge deletion. */
-		if(edge_count == 0) return;
-
 		// Removing duplicates.
-#define is_edge_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
+		#define is_edge_lt(a, b) (ENTITY_GET_ID((a)) < ENTITY_GET_ID((b)))
 		QSORT(Edge, edges, edge_count, is_edge_lt);
 
 		size_t uniqueIdx = 0;
@@ -1156,10 +1160,13 @@ void Graph_BulkDelete(Graph *g, Node *nodes, uint node_count, Edge *edges, uint 
 		}
 
 		edge_count = uniqueIdx;
-		_BulkDeleteEdges(g, edges, edge_count);
+		if(edge_count > 0) _BulkDeleteEdges(g, edges, edge_count);
 	}
 
-	*edge_deleted += edge_count;
+	_edge_deleted += edge_count;
+
+	if(node_deleted != NULL) *node_deleted = _node_deleted;
+	if(edge_deleted != NULL) *edge_deleted = _edge_deleted;
 }
 
 DataBlockIterator *Graph_ScanNodes(const Graph *g) {
