@@ -20,7 +20,7 @@ To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGr
 
 ## Quickstart
 
-1. [Redis Cloud](#rediscloud)
+1. [Redis Cloud](#redis-cloud)
 1. [Docker](#docker)
 1. [Build](#building)
 1. [Start](#loading-redisgraph-into-redis)
