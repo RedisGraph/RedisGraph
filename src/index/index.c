@@ -190,6 +190,10 @@ void Index_Construct
 	RSIndexOptions *idx_options = RediSearch_CreateIndexOptions();
 	// TODO: Remove this comment when https://github.com/RediSearch/RediSearch/issues/1100 is closed
 	// RediSearch_IndexOptionsSetGetValueCallback(idx_options, _getNodeAttribute, gc);
+
+	// enable GC, every 30 seconds gc will check if there's garbage
+	// if there are over 100 docs to remove GC will perform clean up
+	RediSearch_IndexOptionsSetGCPolicy(idx_options, GC_POLICY_FORK);
 	rsIdx = RediSearch_CreateIndex(idx->label, idx_options);
 	RediSearch_FreeIndexOptions(idx_options);
 
