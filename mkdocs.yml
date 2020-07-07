@@ -28,6 +28,7 @@ nav:
   - 'Commands': commands.md
   - 'Clients': clients.md
   - 'Configuration': configuration.md
+  - 'Administration': administration.md
   - 'Design Documents':
       - 'Result Set structure': result_structure.md
       - 'Client Specification': client_spec.md
