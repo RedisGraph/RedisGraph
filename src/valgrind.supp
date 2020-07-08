@@ -66,3 +66,12 @@
    ...
    fun:Indexer_Add
 }
+
+{
+   <RLTest race: ignore leaks in _GraphContext_Free caused by DEBUG RELOAD>
+   Memcheck:Leak
+   match-leak-kinds: definite
+   ...
+   fun:rdbLoad
+   fun:debugCommand
+}
