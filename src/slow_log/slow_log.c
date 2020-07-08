@@ -38,12 +38,18 @@ static inline void _ReplyWithRoundedDouble(RedisModuleCtx *ctx, double d) {
 	RedisModule_ReplyWithStringBuffer(ctx, str, len);
 }
 
-static SlowLogItem *_SlowLogItem_New(const char *cmd, const char *query, double latency) {
+static SlowLogItem *_SlowLogItem_New
+(
+	const char *cmd,
+	const char *query,
+	double latency,
+	time_t t
+) {
 	SlowLogItem *item = rm_malloc(sizeof(SlowLogItem));
+	item->time = t;
+	item->latency = latency;
 	item->cmd = rm_strdup(cmd);
 	item->query = rm_strdup(query);
-	item->latency = latency;
-	time(&(item->time));
 	return item;
 }
 
@@ -109,15 +115,19 @@ SlowLog *SlowLog_New() {
 }
 
 void SlowLog_Add(SlowLog *slowlog, const char *cmd, const char *query,
-				 double latency) {
+				 double latency, time_t *t) {
 	assert(slowlog && cmd && query && latency >= 0);
 
 	char *key;
+	time_t _time;
 	SlowLogItem *existing_item;
 	int t_id = get_thread_id();
 	rax *lookup = slowlog->lookup[t_id];
 	heap_t *heap = slowlog->min_heap[t_id];
 	pthread_mutex_t *lock = slowlog->locks + t_id;
+
+	// initialise time
+	(t) ? _time = *t: time(&_time);
 
 	if(pthread_mutex_lock(lock) != 0) {
 		// Failed to lock, skip logging.
@@ -131,7 +141,10 @@ void SlowLog_Add(SlowLog *slowlog, const char *cmd, const char *query,
 
 		if(exists) {
 			// A similar item already exists, see if we need to update its latency.
-			if(existing_item->latency < latency) existing_item->latency = latency;
+			if(existing_item->latency < latency) {
+				existing_item->time = _time;
+				existing_item->latency = latency;
+			}
 			goto cleanup;
 		}
 
@@ -152,7 +165,7 @@ void SlowLog_Add(SlowLog *slowlog, const char *cmd, const char *query,
 		}
 
 		if(introduce_item) {
-			SlowLogItem *item = _SlowLogItem_New(cmd, query, latency);
+			SlowLogItem *item = _SlowLogItem_New(cmd, query, latency, _time);
 			heap_offer(slowlog->min_heap + t_id, item);
 			raxInsert(lookup, (unsigned char *)key, key_len, item, NULL);
 		}
@@ -177,7 +190,8 @@ void SlowLog_Replay(const SlowLog *slowlog, RedisModuleCtx *ctx) {
 			raxSeek(&iter, "^", NULL, 0);
 			while(raxNext(&iter)) {
 				SlowLogItem *item = iter.data;
-				SlowLog_Add(aggregated_slowlog, item->cmd, item->query, item->latency);
+				SlowLog_Add(aggregated_slowlog, item->cmd, item->query,
+						item->latency, &item->time);
 			}
 			raxStop(&iter);
 			// End of critical section.

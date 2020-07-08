@@ -134,7 +134,8 @@ cleanup:
 
 	// Log query to slowlog.
 	SlowLog *slowlog = GraphContext_GetSlowLog(gc);
-	SlowLog_Add(slowlog, command_ctx->command_name, command_ctx->query, QueryCtx_GetExecutionTime());
+	SlowLog_Add(slowlog, command_ctx->command_name, command_ctx->query,
+			QueryCtx_GetExecutionTime(), NULL);
 	ExecutionPlan_Free(plan);
 	ResultSet_Free(result_set);
 	AST_Free(ast);
