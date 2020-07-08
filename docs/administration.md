@@ -17,10 +17,10 @@ appendonly yes
 aof-use-rdb-preamble yes
 ``` 
 
-## Master/Slave Replication
+## Replication
 
-RedisGraph supports replication inherently, and using a master/slave set-up, you can use slaves for high availability. On top of that, slaves can be used for querying, to load-balance read traffic. 
+RedisGraph supports replication inherently, and using a master-replica set-up, you can use replicas for high availability. On top of that, replicas can be used for querying, to load-balance read traffic. 
 
 ## Cluster Support
 
-RedisGraph does not support clustering, in the current release a graph can not be distributed on multiple nodes.
+When creating multiple graphs in RedisGraph running on a Redis cluster, the graphs will be distributed across the cluster. RedisGraph does not support sharded graph.
