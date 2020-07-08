@@ -43,7 +43,6 @@ void reduceTraversal(ExecutionPlan *plan) {
 	for(uint i = 0; i < traversals_count; i++) {
 		OpBase *op = traversals[i];
 		AlgebraicExpression *ae;
-
 		if(op->type == OPType_CONDITIONAL_TRAVERSE) {
 			CondTraverse *traverse = (CondTraverse *)op;
 			ae = traverse->ae;
@@ -65,9 +64,18 @@ void reduceTraversal(ExecutionPlan *plan) {
 		   AlgebraicExpression_OperandCount(ae) == 1 &&
 		   AlgebraicExpression_DiagonalOperand(ae, 0)) continue;
 
-		/* Search to see if dest is already resolved */
-		if(!ExecutionPlan_LocateOpResolvingAlias(op->children[0],
-												 AlgebraicExpression_Destination(ae))) continue;
+		// Collect variables bound before this op.
+		rax *bound_vars = raxNew();
+		for(int i = 0; i < op->childCount; i ++) {
+			ExecutionPlan_BoundVariables(op->children[i], bound_vars);
+		}
+
+		const char *dest = AlgebraicExpression_Destination(ae);
+		if(raxFind(bound_vars, (unsigned char *)dest, strlen(dest)) == raxNotFound) {
+			// The destination could not be resolved, cannot optimize.
+			raxFree(bound_vars);
+			continue;
+		}
 
 		/* Both src and dest are already known
 		 * perform expand into instaed of traverse. */
@@ -108,6 +116,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 				}
 			}
 		}
+		raxFree(bound_vars);
 	}
 
 	// Remove redundant traversals

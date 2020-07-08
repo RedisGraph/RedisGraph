@@ -97,7 +97,6 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: NoExpressionAlias
 
-@skip
   Scenario: Failing when using undefined variable in pattern
     When executing query:
       """
