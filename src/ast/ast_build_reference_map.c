@@ -6,8 +6,8 @@
 static void _AST_MapReferencedEntitiesInPath(AST *ast, const cypher_astnode_t *path);
 
 // Adds an identifier or an alias to the reference map.
-static inline void _AST_UpdateRefMap(AST *ast, const char *name,
-									 AST_Referenced_Entity_Reason reason) {
+static void _AST_UpdateRefMap(AST *ast, const char *name,
+							  AST_Referenced_Entity_Reason reason) {
 
 	// Lookup result should return the previously stored reasons, if there are any.
 	void *lookup_result = raxFind(ast->referenced_entities, (unsigned char *) name,

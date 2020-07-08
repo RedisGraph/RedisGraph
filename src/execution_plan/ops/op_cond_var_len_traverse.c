@@ -133,6 +133,7 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 		if(op->expandInto) destNode = Record_GetNode(op->r, op->destNodeIdx);
 
 		AllPathsCtx_Free(op->allPathsCtx);
+		if(!srcNode) return OpBase_CloneRecord(op->r);
 		op->allPathsCtx = AllPathsCtx_New(srcNode, destNode, op->g, op->edgeRelationTypes,
 										  op->edgeRelationCount, op->traverseDir, op->minHops, op->maxHops);
 

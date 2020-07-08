@@ -63,7 +63,7 @@ static void _addNeighbors(AllPathsCtx *ctx, LevelConnection *frontier, uint32_t 
 
 AllPathsCtx *AllPathsCtx_New(Node *src, Node *dst, Graph *g, int *relationIDs, int relationCount,
 							 GRAPH_EDGE_DIR dir, unsigned int minLen, unsigned int maxLen) {
-	if(!src) return NULL;
+	assert(src);
 	AllPathsCtx *ctx = rm_malloc(sizeof(AllPathsCtx));
 	ctx->g = g;
 	ctx->dir = dir;
