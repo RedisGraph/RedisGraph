@@ -133,6 +133,7 @@ void _cache_records(OpValueHashJoin *op) {
 	// As long as there's data coming in from left branch.
 	do {
 		// Add joined value to record.
+		Record_PersistScalars(r);
 		op->cached_records = array_append(op->cached_records, r);
 
 		// Evaluate joined expression.

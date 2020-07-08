@@ -19,7 +19,7 @@ struct QGEdge {
 	QGNode *dest;           /* Pointer to destination node. */
 	uint minHops;           /* Minimum number of hops this edge represents. */
 	uint maxHops;           /* Maximum number of hops this edge represents. */
-    bool bidirectional;     /* Edge doesn't have a direction. */
+	bool bidirectional;     /* Edge doesn't have a direction. */
 };
 
 typedef struct QGEdge QGEdge;
@@ -32,6 +32,9 @@ QGEdge *QGEdge_Clone(const QGEdge *orig);
 
 /* Determine whether this is a variable length edge. */
 bool QGEdge_VariableLength(const QGEdge *e);
+
+/* Determine whether this edges represents multiple hops in the graph */
+bool QGEdge_MultipleHops(const QGEdge *e);
 
 /* Reverse edge direction. */
 void QGEdge_Reverse(QGEdge *e);

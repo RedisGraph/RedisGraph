@@ -338,6 +338,11 @@ inline bool AST_AliasIsReferenced(AST *ast, const char *alias) {
 	return (raxFind(ast->referenced_entities, (unsigned char *)alias, strlen(alias)) != raxNotFound);
 }
 
+AST_Referenced_Entity_Reason AST_AliasReferencReasons(AST *ast, const char *alias) {
+	void *reasons = raxFind(ast->referenced_entities, (unsigned char *)alias, strlen(alias));
+	return reasons == raxNotFound ? ENTITY_NOT_REFERENCED : (AST_Referenced_Entity_Reason)reasons;
+}
+
 // TODO Consider augmenting libcypher-parser so that we don't need to perform this
 // work in-module.
 inline long AST_ParseIntegerNode(const cypher_astnode_t *int_node) {
