@@ -20,10 +20,17 @@ To see RedisGraph in action, visit [Demos](https://github.com/RedisGraph/RedisGr
 
 ## Quickstart
 
+1. [Redis Cloud](#redis-cloud)
 1. [Docker](#docker)
-2. [Build](#building)
-3. [Start](#loading-redisgraph-into-redis)
-4. [Use from any client](#using-redisgraph)
+1. [Build](#building)
+1. [Start](#loading-redisgraph-into-redis)
+1. [Use from any client](#using-redisgraph)
+
+## Redis Cloud
+
+RedisGraph is available on all Redis Cloud managed services.  Redis Cloud Essentials offers a completely free managed databbases up to 30MB.
+
+[Get started here](https://redislabs.com/redis-enterprise-cloud/).
 
 ## Docker
 
