@@ -19,7 +19,7 @@ static bool _idFilter(FT_FilterNode *f, AST_Operator *rel, EntityID *id, bool *r
 	if(f->pred.op == OP_NEQUAL) return false;
 
 	AR_OpNode *op;
-	AR_OperandNode *operand;
+	AR_ExpNode *expr;
 	AR_ExpNode *lhs = f->pred.lhs;
 	AR_ExpNode *rhs = f->pred.rhs;
 	*rel = f->pred.op;
@@ -29,20 +29,22 @@ static bool _idFilter(FT_FilterNode *f, AST_Operator *rel, EntityID *id, bool *r
 	 * const compare ID(N) */
 	if(lhs->type == AR_EXP_OPERAND && rhs->type == AR_EXP_OP) {
 		op = &rhs->op;
-		operand = &lhs->operand;
+		expr = lhs;
 		*reverse = true;
 	} else if(lhs->type == AR_EXP_OP && rhs->type == AR_EXP_OPERAND) {
 		op = &lhs->op;
-		operand = &rhs->operand;
+		expr = rhs;
 		*reverse = false;
 	} else {
 		return false;
 	}
 
-	// Make sure ID is compared to a constant.
-	if(operand->type != AR_EXP_CONSTANT) return false;
-	if(SI_TYPE(operand->constant) != T_INT64) return false;
-	*id = SI_GET_NUMERIC(operand->constant);
+	// Make sure ID is compared to a constant int64.
+	SIValue val;
+	bool reduced = AR_EXP_ReduceToScalar(expr, true, &val);
+	if(!reduced) return false;
+	if(SI_TYPE(val) != T_INT64) return false;
+	*id = SI_GET_NUMERIC(val);
 
 	// Make sure applied function is ID.
 	if(strcasecmp(op->func_name, "id")) return false;
