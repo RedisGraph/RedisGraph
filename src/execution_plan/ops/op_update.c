@@ -19,22 +19,8 @@ static OpResult UpdateReset(OpBase *opBase);
 static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void UpdateFree(OpBase *opBase);
 
-/* Delay updates until all entities are processed,
- * _QueueUpdate will queue up all information necessary to perform an update. */
-static void _QueueUpdate(OpUpdate *op, GraphEntity *entity, GraphEntityType type,
-						 Attribute_ID attr_id, SIValue new_value) {
-	op->pending_updates[i].new_value = new_value;
-	op->pending_updates[i].attr_id = attr_id;
-	// Copy updated entity.
-	if(type == GETYPE_NODE) {
-		op->pending_updates[i].n = *((Node *)entity);
-	} else {
-		op->pending_updates[i].e = *((Edge *)entity);
-	}
-}
-
 /* Introduce updated entity to index. */
-static void _UpdateIndex(EntityUpdateCtx *ctx, GraphContext *gc, Schema *s, SIValue *old_value,
+static void _UpdateIndex(PendingUpdateCtx *ctx, GraphContext *gc, Schema *s, SIValue *old_value,
 						 SIValue *new_value) {
 	Node *n = &ctx->n;
 	EntityID node_id = ENTITY_GET_ID(n);
@@ -49,7 +35,7 @@ static void _UpdateIndex(EntityUpdateCtx *ctx, GraphContext *gc, Schema *s, SIVa
  * and nothing will be done otherwise.
  * Relevant indexes will be updated accordingly.
  * Returns 1 if a property was set or deleted. */
-static int _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
+static int _UpdateNode(OpUpdate *op, PendingUpdateCtx *ctx) {
 	/* Retrieve GraphEntity:
 	 * Due to Record freeing we can't maintain the original pointer to GraphEntity object,
 	 * but only a pointer to an Entity object,
@@ -85,7 +71,7 @@ static int _UpdateNode(OpUpdate *op, EntityUpdateCtx *ctx) {
  * For NULL values, the property will be deleted if present
  * and nothing will be done otherwise.
  * Returns 1 if a property was set or deleted. */
-static int _UpdateEdge(OpUpdate *op, EntityUpdateCtx *ctx) {
+static int _UpdateEdge(OpUpdate *op, PendingUpdateCtx *ctx) {
 	/* Retrieve GraphEntity:
 	* Due to Record freeing we can't maintain the original pointer to GraphEntity object,
 	* but only a pointer to an Entity object,
@@ -112,14 +98,19 @@ static int _UpdateEdge(OpUpdate *op, EntityUpdateCtx *ctx) {
 /* Executes delayed updates. */
 static void _CommitUpdates(OpUpdate *op) {
 	uint properties_set = 0;
-	for(uint i = 0; i < op->pending_updates_count; i++) {
-		EntityUpdateCtx *ctx = &op->pending_updates[i];
-		if(ctx->entity_type == GETYPE_NODE) {
-			properties_set += _UpdateNode(op, ctx);
-		} else {
-			properties_set += _UpdateEdge(op, ctx);
+	uint entity_count = array_len(op->update_ctxs);
+	for(uint i = 0; i < entity_count; i++) {
+		EntityUpdateCtx *entity_ctx = &op->update_ctxs[i];
+		uint entity_update_count = array_len(entity_ctx->updates);
+		for(uint j = 0; j < entity_update_count; j ++) {
+			PendingUpdateCtx *ctx = &entity_ctx->updates[j];
+			if(ctx->entity_type == GETYPE_NODE) {
+				properties_set += _UpdateNode(op, ctx);
+			} else {
+				properties_set += _UpdateEdge(op, ctx);
+			}
+			SIValue_Free(ctx->new_value);
 		}
-		SIValue_Free(ctx->new_value);
 	}
 
 	if(op->stats) op->stats->properties_set += properties_set;
@@ -143,44 +134,39 @@ static Record _handoff(OpUpdate *op) {
 
 static void _groupUpdateExps(OpUpdate *op, EntityUpdateEvalCtx *update_ctxs) {
 	// sort update contexts on updated entity
-	#define islt(a,b) (strcmp((*a).alias,(*b).alias)<0)
+// #define islt(a,b) (strcmp((*a).alias,(*b).alias)<0)
+#define islt(a,b) (a->record_idx < b->record_idx)
 
 	int n = array_len(update_ctxs);
 	QSORT(EntityUpdateEvalCtx, update_ctxs, n, islt);
 
+	/* Each OpUpdate is initialized with a flex array of EvalCtx structs, which describe
+	 * the entity and property being updated as well as an AR_ExpNode to represent the new property value. */
 	// group expression by modified entity
-	EntityUpdateCtx entity_ctx;
-	entity_ctx.alias = update_ctxs[0].alias;
-	entity_ctx.record_idx = update_ctxs[0].record_idx;
-	entity_ctx.updates = array_new(PendingUpdateCtx, 1);
-	entity_ctx.exps = array_new(EntityUpdateEvalCtx, 1);
-	entity_ctx.exps = array_append(entity_ctx.exps, update_ctxs[0]);
-
 	EntityUpdateCtx *groups = array_new(EntityUpdateCtx, 1);
-	group = array_append(group, entity_ctx);
 
-	for(int i = 1; i < n; i++) {
-		EntityUpdateEvalCtx  next     =  update_ctxs[i];
-		EntityUpdateEvalCtx  current  =  entity_ctx.exps[0];
+	EntityUpdateEvalCtx *prev = NULL;
+	EntityUpdateCtx *entity_ctx = NULL;
+	for(int i = 0; i < n; i++) {
+		EntityUpdateEvalCtx *current = &update_ctxs[i];
+		if(!prev || current->record_idx != prev->record_idx) {
+			// Encountered new entity or are the first, create new context.
+			EntityUpdateCtx new_ctx = { 0 };
+			groups = array_append(groups, new_ctx);
+			entity_ctx = &groups[array_len(groups) - 1];
 
-		if(strcmp(next.alias, current.alias)) {
-			// encounter new entity, save current ctx and create new one
-			entity_ctx.nexp = array_len(entity_ctx.exps);
-			groups = array_append(groups, entity_ctx);
+			entity_ctx->alias = current->alias;
+			entity_ctx->record_idx = current->record_idx;
+			entity_ctx->updates = array_new(PendingUpdateCtx, 1);
+			entity_ctx->nexp = 0;
+			entity_ctx->exps = array_new(EntityUpdateEvalCtx, 1);
 
-			entity_ctx.alias = next.alias;
-			entity_ctx.record_idx = next.record_idx;
-			entity_ctx.updates = array_new(PendingUpdateCtx, 1);
-			entity_ctx.exps = array_new(EntityUpdateEvalCtx, 1);
+			prev = current;
 		}
 
-		// add expression to group
-		entity_ctx.exps = array_append(entity_ctx.exps, next);
+		entity_ctx->exps = array_append(entity_ctx->exps, *current);
+		entity_ctx->nexp ++;
 	}
-
-	// save last group
-	entity_ctx.nexp = array_len(entity_ctx.exps);
-	groups = array_append(groups, entity_ctx);
 
 	op->update_ctxs = groups;
 }
@@ -190,10 +176,7 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps)
 	op->gc                     =  QueryCtx_GetGraphCtx();
 	op->records                =  NULL;
 	op->updates_commited       =  false;
-	op->pending_updates_cap    =  16;		// 16 seems reasonable number to start with
-	op->pending_updates_count  =  0;
-	op->pending_updates        =  NULL;
-	op->update_ctxs            =  NULL:
+	op->update_ctxs            =  NULL;
 
 	// set our Op operations
 	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", UpdateInit, UpdateConsume,
@@ -215,40 +198,38 @@ static OpResult UpdateInit(OpBase *opBase) {
 	OpUpdate *op = (OpUpdate *)opBase;
 	op->stats = QueryCtx_GetResultSetStatistics();
 	if(_ShouldCacheRecord(op)) op->records = array_new(Record, 64);
+	return OP_OK;
 }
 
 static void _EvalEntityUpdates(EntityUpdateCtx *ctx, Record r) {
 	// get the type of the entity to update
 	// if the expected entity was not found
 	// make no updates but do not error
-	RecordEntryType t = Record_GetType(r, ctx.record_idx);
-	if(t == REC_TYPE_UNKNOWN) continue;
+	RecordEntryType t = Record_GetType(r, ctx->record_idx);
+	if(t == REC_TYPE_UNKNOWN) return;
 
 	// make sure we're updating either a node or an edge
 	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
-		QueryCtx_SetError("Update error: alias '%s' did not resolve to
-				a graph entity", update_expression->alias);
+		QueryCtx_SetError("Update error: alias '%s' did not resolve to a graph entity",
+						  ctx->alias);
 		QueryCtx_RaiseRuntimeException();
 	}
 
-	GraphEntityType type;
-	(t == REC_TYPE_NODE) ? type GETYPE_NODE: GETYPE_EDGE;
-	GraphEntity *entity = Record_GetGraphEntity(r, ctx.record_idx);
+	GraphEntityType type = (t == REC_TYPE_NODE) ? GETYPE_NODE : GETYPE_EDGE;
+	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
 
-	for(uint j = 0; j < ctx.nexp; j++) {
-		SIValue new_value = SI_CloneValue(AR_EXP_Evaluate(ctx.exps[j].exp, r));
+	for(uint i = 0; i < ctx->nexp; i++) {
+		SIValue new_value = SI_CloneValue(AR_EXP_Evaluate(ctx->exps[i].exp, r));
 
-		PndingUpdateCtx update;
-		update.
-			pending_updates[i].new_value = new_value;
-		pending_updates[i].attr_id = attr_id;
-		ctx.updates = array_append(ctx.updates, );
-		_QueueUpdate(op, entity, type, update_expression->attribute_id, new_value);
+		PendingUpdateCtx update = {
+			.new_value = new_value,
+			.attr_id = ctx->exps[i].attribute_id,
+			.entity_type = type,
+		};
+		if(type == GETYPE_NODE) update.n = *((Node *)entity);
+		else update.e = *((Edge *)entity);
+		ctx->updates = array_append(ctx->updates, update);
 	}
-
-	pending_update->entity_type = type;
-	if(type == GETYPE_NODE) pending_updates.n = *((Node *)entity);
-	else pending_updates.e = *((Edge *)entity);
 }
 
 static Record UpdateConsume(OpBase *opBase) {
@@ -293,46 +274,57 @@ static Record UpdateConsume(OpBase *opBase) {
 static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	assert(opBase->type == OPType_UPDATE);
 	OpUpdate *op = (OpUpdate *)opBase;
-	EntityUpdateEvalCtx *update_exps;
-	array_clone_with_cb(update_exps, op->update_expressions, EntityUpdateEvalCtx_Clone);
+	uint ctx_count = array_len(op->update_ctxs);
+	EntityUpdateEvalCtx *update_exps = array_new(EntityUpdateEvalCtx, ctx_count);
+	// TODO tmp
+	for(uint i = 0; i < ctx_count; i ++) {
+		EntityUpdateCtx *ctx = &op->update_ctxs[i];
+		uint entity_update_count = array_len(ctx->exps);
+		for(uint j = 0; j < entity_update_count; j ++) {
+			update_exps = array_append(update_exps, ctx->exps[j]);
+		}
+	}
+	// array_clone_with_cb(update_exps, op->update_expressions, EntityUpdateEvalCtx_Clone);
 	return NewUpdateOp(plan, update_exps);
 }
 
 static OpResult UpdateReset(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 	// Reset all pending updates.
-	op->pending_updates_count = 0;
-	op->pending_updates_cap = 16; /* 16 seems reasonable number to start with. */
-	op->pending_updates = rm_realloc(op->pending_updates,
-									 op->pending_updates_cap * sizeof(EntityUpdateCtx));
+	// TODO
+	// op->pending_updates_count = 0;
+	// op->pending_updates_cap = 16; [> 16 seems reasonable number to start with. <]
+	// op->pending_updates = rm_realloc(op->pending_updates,
+	// op->pending_updates_cap * sizeof(EntityUpdateCtx));
 	return OP_OK;
 }
 
 static void UpdateFree(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 	/* Free each update context. */
-	if(op->update_expressions_count) {
-		for(uint i = 0; i < op->update_expressions_count; i++) {
-			AR_EXP_Free(op->update_expressions[i].exp);
-		}
-		op->update_expressions_count = 0;
-	}
+	// TODO
+	// if(op->update_expressions_count) {
+	// for(uint i = 0; i < op->update_expressions_count; i++) {
+	// AR_EXP_Free(op->update_expressions[i].exp);
+	// }
+	// op->update_expressions_count = 0;
+	// }
 
-	if(op->records) {
-		uint records_count = array_len(op->records);
-		for(uint i = 0; i < records_count; i++) OpBase_DeleteRecord(op->records[i]);
-		array_free(op->records);
-		op->records = NULL;
-	}
+	// if(op->records) {
+	// uint records_count = array_len(op->records);
+	// for(uint i = 0; i < records_count; i++) OpBase_DeleteRecord(op->records[i]);
+	// array_free(op->records);
+	// op->records = NULL;
+	// }
 
-	if(op->update_expressions) {
-		array_free(op->update_expressions);
-		op->update_expressions = NULL;
-	}
+	// if(op->update_expressions) {
+	// array_free(op->update_expressions);
+	// op->update_expressions = NULL;
+	// }
 
-	if(op->pending_updates) {
-		rm_free(op->pending_updates);
-		op->pending_updates = NULL;
-	}
+	// if(op->pending_updates) {
+	// rm_free(op->pending_updates);
+	// op->pending_updates = NULL;
+	// }
 }
 
