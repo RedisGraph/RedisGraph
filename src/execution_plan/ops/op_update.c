@@ -61,8 +61,9 @@ static int _UpdateNode(OpUpdate *op, PendingUpdateCtx *ctx) {
 		GraphEntity_SetProperty((GraphEntity *)node, ctx->attr_id, ctx->new_value);
 	}
 
-	// Update index for node entities.
-	_UpdateIndex(ctx, op->gc, s, old_value, &ctx->new_value);
+	// Update index for node entities if they are modified.
+	// TODO only required once per node after all updates are committed, not per update.
+	if(ctx->update_index) _UpdateIndex(ctx, op->gc, s, old_value, &ctx->new_value);
 	return 1;
 }
 
@@ -134,10 +135,9 @@ static Record _handoff(OpUpdate *op) {
 
 static void _groupUpdateExps(OpUpdate *op, EntityUpdateEvalCtx *update_ctxs) {
 	// sort update contexts on updated entity
-// #define islt(a,b) (strcmp((*a).alias,(*b).alias)<0)
 #define islt(a,b) (a->record_idx < b->record_idx)
 
-	int n = array_len(update_ctxs);
+	uint n = array_len(update_ctxs);
 	QSORT(EntityUpdateEvalCtx, update_ctxs, n, islt);
 
 	/* Each OpUpdate is initialized with a flex array of EvalCtx structs, which describe
@@ -147,7 +147,7 @@ static void _groupUpdateExps(OpUpdate *op, EntityUpdateEvalCtx *update_ctxs) {
 
 	EntityUpdateEvalCtx *prev = NULL;
 	EntityUpdateCtx *entity_ctx = NULL;
-	for(int i = 0; i < n; i++) {
+	for(uint i = 0; i < n; i++) {
 		EntityUpdateEvalCtx *current = &update_ctxs[i];
 		if(!prev || current->record_idx != prev->record_idx) {
 			// Encountered new entity or are the first, create new context.
@@ -158,14 +158,12 @@ static void _groupUpdateExps(OpUpdate *op, EntityUpdateEvalCtx *update_ctxs) {
 			entity_ctx->alias = current->alias;
 			entity_ctx->record_idx = current->record_idx;
 			entity_ctx->updates = array_new(PendingUpdateCtx, 1);
-			entity_ctx->nexp = 0;
 			entity_ctx->exps = array_new(EntityUpdateEvalCtx, 1);
 
 			prev = current;
 		}
 
 		entity_ctx->exps = array_append(entity_ctx->exps, *current);
-		entity_ctx->nexp ++;
 	}
 
 	op->update_ctxs = groups;
@@ -183,8 +181,8 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps)
 				UpdateReset, NULL, UpdateClone, UpdateFree, true, plan);
 
 	// set updated entity record entry index
-	uint nexp = array_len(update_exps);
-	for(uint i = 0; i < nexp; i++) {
+	uint exp_count = array_len(update_exps);
+	for(uint i = 0; i < exp_count; i++) {
 		update_exps[i].record_idx = OpBase_Modifies((OpBase *)op, update_exps[i].alias);
 	}
 
@@ -218,16 +216,59 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, Record r) {
 	GraphEntityType type = (t == REC_TYPE_NODE) ? GETYPE_NODE : GETYPE_EDGE;
 	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
 
-	for(uint i = 0; i < ctx->nexp; i++) {
+	bool update_index = false; // Will be false until encountering an indexed field.
+	bool label_searched = false;
+	uint exp_count = array_len(ctx->exps);
+	for(uint i = 0; i < exp_count; i++) {
 		SIValue new_value = SI_CloneValue(AR_EXP_Evaluate(ctx->exps[i].exp, r));
 
 		PendingUpdateCtx update = {
 			.new_value = new_value,
 			.attr_id = ctx->exps[i].attribute_id,
 			.entity_type = type,
+			.update_index = update_index,
 		};
-		if(type == GETYPE_NODE) update.n = *((Node *)entity);
-		else update.e = *((Edge *)entity);
+		if(type == GETYPE_EDGE) {
+			// Add the edge to the update context.
+			update.e = *((Edge *)entity);
+		} else {
+			// Add the node to the update context.
+			update.n = *((Node *)entity);
+			// Determine whether we must update the index for this set of updates.
+			if(label_searched == false) {
+				label_searched = true; // Only seek each label once.
+				GraphContext *gc = QueryCtx_GetGraphCtx();
+				const char *label = update.n.label; // Will be set if specified in query string.
+				if(label == NULL) {
+					int label_id = Graph_GetNodeLabel(gc->g, ENTITY_GET_ID(&update.n));
+					Schema *s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
+					if(s) {
+						label = Schema_GetName(s);
+						update.n.labelID = label_id;
+						update.n.label = label;
+					}
+				}
+				if(label) {
+					const char *field = GraphContext_GetAttributeString(gc, update.attr_id);
+					update_index = GraphContext_GetIndex(gc, label, field, IDX_ANY);
+					if(update_index) {
+						// Updating an indexed field.
+						update.update_index = true;
+						// Retroactively set the update_index property on all queued updates for this node.
+						for(uint j = 0; j < i; j++) ctx->updates[j].update_index = true;
+						if(i > 0) {
+							// Swap the current PendingUpdateCtx with the first one so that subsequent searches
+							// will find the index immediately.
+							PendingUpdateCtx first = ctx->updates[0];
+							ctx->updates[0] = update;
+							update = first; // The disconnected first update will be re-added at the end of this loop iteration.
+						}
+					}
+				}
+			}
+		}
+
+		// Enqueue the current update.
 		ctx->updates = array_append(ctx->updates, update);
 	}
 }

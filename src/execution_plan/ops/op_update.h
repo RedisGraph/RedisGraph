@@ -29,7 +29,6 @@ typedef struct {
 typedef struct {
 	int record_idx;             // record offset this entity is stored at
 	const char *alias;			// updated entity alias
-	uint nexp;					// number of update expressions
 	EntityUpdateEvalCtx *exps;	// list of update expressions
 	PendingUpdateCtx *updates;	// list of pending updates
 } EntityUpdateCtx;
