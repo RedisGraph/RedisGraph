@@ -456,7 +456,7 @@ static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 
 AR_ExpNode *AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 	AR_ExpNode *root = _AR_EXP_FromExpression(expr);
-	AR_EXP_ReduceToScalar(root);
+	AR_EXP_ReduceToScalar(root, false, NULL);
 
 	/* Make sure expression doesn't contains nested aggregation functions
 	 * count(max(n.v)) */
