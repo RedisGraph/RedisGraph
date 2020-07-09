@@ -14,15 +14,24 @@
 #include "../../arithmetic/arithmetic_expression.h"
 #include "../../ast/ast_build_op_contexts.h"
 
-// Context describing a pending update to perform.
+// Context grouping a set of updates to perform on a single entity
 typedef struct {
-	Attribute_ID attr_id;               /* ID of attribute to update. */
 	union {
-		Node n;                         /* Node to update if indicated by entity_type. */
-		Edge e;                         /* Edge to update if indicated by entity_type. */
-	};
-	GraphEntityType entity_type;        /* Graph entity type. */
-	SIValue new_value;                  /* Constant value to set. */
+		Node n;
+		Edge e;
+	};								// updated entity
+	GraphEntityType entity_type;	// type of updated entity
+	bool update_index;				// does index effected by update
+	SIValue new_value;              // constant value to set
+	Attribute_ID attr_id;			// id of attribute to update
+} PendingUpdateCtx;
+
+typedef struct {
+	int record_idx;             // record offset this entity is stored at
+	const char *alias;			// updated entity alias
+	uint nexp;					// number of update expressions
+	EntityUpdateEvalCtx *exps;	// list of update expressions
+	PendingUpdateCtx *updates;	// list of pending updates
 } EntityUpdateCtx;
 
 typedef struct {
@@ -30,16 +39,9 @@ typedef struct {
 	GraphContext *gc;
 	ResultSetStatistics *stats;
 
-	uint update_expressions_count;
-	EntityUpdateEvalCtx
-	*update_expressions;    /* List of entities to update and their arithmetic expressions. */
-
-	uint pending_updates_cap;
-	uint pending_updates_count;
-	EntityUpdateCtx
-	*pending_updates;           /* List of entities to update and their actual new value. */
-	Record *records;                            /* Updated records, used only when query inspects updated entities. */
-	bool updates_commited;                      /* Updates performed? */
+	EntityUpdateCtx *update_ctxs;	// List of entities to update and their arithmetic expressions
+	Record *records;                // Updated records, used only when query inspects updated entities
+	bool updates_commited;          // Updates performed?
 } OpUpdate;
 
 OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps);

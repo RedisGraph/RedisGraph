@@ -7,6 +7,7 @@
 #include "op_update.h"
 #include "../../query_ctx.h"
 #include "../../util/arr.h"
+#include "../../util/qsort.h"
 #include "../../util/rmalloc.h"
 #include "../../arithmetic/arithmetic_expression.h"
 #include "../../query_ctx.h"
@@ -22,24 +23,14 @@ static void UpdateFree(OpBase *opBase);
  * _QueueUpdate will queue up all information necessary to perform an update. */
 static void _QueueUpdate(OpUpdate *op, GraphEntity *entity, GraphEntityType type,
 						 Attribute_ID attr_id, SIValue new_value) {
-	/* Make sure we've got enough room in queue. */
-	if(op->pending_updates_count == op->pending_updates_cap) {
-		op->pending_updates_cap *= 2;
-		op->pending_updates = rm_realloc(op->pending_updates,
-										 op->pending_updates_cap * sizeof(EntityUpdateCtx));
-	}
-
-	uint i = op->pending_updates_count;
 	op->pending_updates[i].new_value = new_value;
 	op->pending_updates[i].attr_id = attr_id;
-	op->pending_updates[i].entity_type = type;
 	// Copy updated entity.
 	if(type == GETYPE_NODE) {
 		op->pending_updates[i].n = *((Node *)entity);
 	} else {
 		op->pending_updates[i].e = *((Edge *)entity);
 	}
-	op->pending_updates_count++;
 }
 
 /* Introduce updated entity to index. */
@@ -150,24 +141,72 @@ static Record _handoff(OpUpdate *op) {
 	return NULL;
 }
 
+static void _groupUpdateExps(OpUpdate *op, EntityUpdateEvalCtx *update_ctxs) {
+	// sort update contexts on updated entity
+	#define islt(a,b) (strcmp((*a).alias,(*b).alias)<0)
+
+	int n = array_len(update_ctxs);
+	QSORT(EntityUpdateEvalCtx, update_ctxs, n, islt);
+
+	// group expression by modified entity
+	EntityUpdateCtx entity_ctx;
+	entity_ctx.alias = update_ctxs[0].alias;
+	entity_ctx.record_idx = update_ctxs[0].record_idx;
+	entity_ctx.updates = array_new(PendingUpdateCtx, 1);
+	entity_ctx.exps = array_new(EntityUpdateEvalCtx, 1);
+	entity_ctx.exps = array_append(entity_ctx.exps, update_ctxs[0]);
+
+	EntityUpdateCtx *groups = array_new(EntityUpdateCtx, 1);
+	group = array_append(group, entity_ctx);
+
+	for(int i = 1; i < n; i++) {
+		EntityUpdateEvalCtx  next     =  update_ctxs[i];
+		EntityUpdateEvalCtx  current  =  entity_ctx.exps[0];
+
+		if(strcmp(next.alias, current.alias)) {
+			// encounter new entity, save current ctx and create new one
+			entity_ctx.nexp = array_len(entity_ctx.exps);
+			groups = array_append(groups, entity_ctx);
+
+			entity_ctx.alias = next.alias;
+			entity_ctx.record_idx = next.record_idx;
+			entity_ctx.updates = array_new(PendingUpdateCtx, 1);
+			entity_ctx.exps = array_new(EntityUpdateEvalCtx, 1);
+		}
+
+		// add expression to group
+		entity_ctx.exps = array_append(entity_ctx.exps, next);
+	}
+
+	// save last group
+	entity_ctx.nexp = array_len(entity_ctx.exps);
+	groups = array_append(groups, entity_ctx);
+
+	op->update_ctxs = groups;
+}
+
 OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps) {
 	OpUpdate *op = rm_calloc(1, sizeof(OpUpdate));
-	op->gc = QueryCtx_GetGraphCtx();
-	op->records = NULL;
-	op->updates_commited = false;
-	op->pending_updates_cap = 16; /* 16 seems reasonable number to start with. */
-	op->pending_updates_count = 0;
-	op->update_expressions = update_exps;
-	op->update_expressions_count = array_len(update_exps);
-	op->pending_updates = rm_malloc(sizeof(EntityUpdateCtx) * op->pending_updates_cap);
+	op->gc                     =  QueryCtx_GetGraphCtx();
+	op->records                =  NULL;
+	op->updates_commited       =  false;
+	op->pending_updates_cap    =  16;		// 16 seems reasonable number to start with
+	op->pending_updates_count  =  0;
+	op->pending_updates        =  NULL;
+	op->update_ctxs            =  NULL:
 
-	// Set our Op operations
+	// set our Op operations
 	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", UpdateInit, UpdateConsume,
 				UpdateReset, NULL, UpdateClone, UpdateFree, true, plan);
 
-	for(uint i = 0; i < op->update_expressions_count; i ++) {
-		op->update_expressions[i].record_idx = OpBase_Modifies((OpBase *)op, update_exps[i].alias);
+	// set updated entity record entry index
+	uint nexp = array_len(update_exps);
+	for(uint i = 0; i < nexp; i++) {
+		update_exps[i].record_idx = OpBase_Modifies((OpBase *)op, update_exps[i].alias);
 	}
+
+	// group update expression by entity
+	_groupUpdateExps(op, update_exps);
 
 	return (OpBase *)op;
 }
@@ -176,7 +215,40 @@ static OpResult UpdateInit(OpBase *opBase) {
 	OpUpdate *op = (OpUpdate *)opBase;
 	op->stats = QueryCtx_GetResultSetStatistics();
 	if(_ShouldCacheRecord(op)) op->records = array_new(Record, 64);
-	return OP_OK;
+}
+
+static void _EvalEntityUpdates(EntityUpdateCtx *ctx, Record r) {
+	// get the type of the entity to update
+	// if the expected entity was not found
+	// make no updates but do not error
+	RecordEntryType t = Record_GetType(r, ctx.record_idx);
+	if(t == REC_TYPE_UNKNOWN) continue;
+
+	// make sure we're updating either a node or an edge
+	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
+		QueryCtx_SetError("Update error: alias '%s' did not resolve to
+				a graph entity", update_expression->alias);
+		QueryCtx_RaiseRuntimeException();
+	}
+
+	GraphEntityType type;
+	(t == REC_TYPE_NODE) ? type GETYPE_NODE: GETYPE_EDGE;
+	GraphEntity *entity = Record_GetGraphEntity(r, ctx.record_idx);
+
+	for(uint j = 0; j < ctx.nexp; j++) {
+		SIValue new_value = SI_CloneValue(AR_EXP_Evaluate(ctx.exps[j].exp, r));
+
+		PndingUpdateCtx update;
+		update.
+			pending_updates[i].new_value = new_value;
+		pending_updates[i].attr_id = attr_id;
+		ctx.updates = array_append(ctx.updates, );
+		_QueueUpdate(op, entity, type, update_expression->attribute_id, new_value);
+	}
+
+	pending_update->entity_type = type;
+	if(type == GETYPE_NODE) pending_updates.n = *((Node *)entity);
+	else pending_updates.e = *((Edge *)entity);
 }
 
 static Record UpdateConsume(OpBase *opBase) {
@@ -187,26 +259,12 @@ static Record UpdateConsume(OpBase *opBase) {
 	// Updates already performed.
 	if(op->updates_commited) return _handoff(op);
 
-	while((r = OpBase_Consume(child))) {
-		/* Evaluate each update expression and store result
-		 * for later execution. */
-		EntityUpdateEvalCtx *update_expression = op->update_expressions;
-		for(uint i = 0; i < op->update_expressions_count; i++, update_expression++) {
-			// Get the type of the entity to update.
-			RecordEntryType t = Record_GetType(r, update_expression->record_idx);
-			// If the expected entity was not found, make no updates but do not error.
-			if(t == REC_TYPE_UNKNOWN) continue;
-			// Make sure we're updating either a node or an edge.
-			if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
-				QueryCtx_SetError("Update error: alias '%s' did not resolve to a graph entity",
-								  update_expression->alias);
-				QueryCtx_RaiseRuntimeException();
-			}
-			GraphEntityType type = (t == REC_TYPE_NODE) ? GETYPE_NODE : GETYPE_EDGE;
-			GraphEntity *entity = Record_GetGraphEntity(r, update_expression->record_idx);
+	uint nctx = array_len(op->update_ctxs);
 
-			SIValue new_value = SI_CloneValue(AR_EXP_Evaluate(update_expression->exp, r));
-			_QueueUpdate(op, entity, type, update_expression->attribute_id, new_value);
+	while((r = OpBase_Consume(child))) {
+		// evaluate update expressions
+		for(uint i = 0; i < nctx; i++) {
+			_EvalEntityUpdates(op->update_ctxs + i, r);
 		}
 
 		if(_ShouldCacheRecord(op)) {
