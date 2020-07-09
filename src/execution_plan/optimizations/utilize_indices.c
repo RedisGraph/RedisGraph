@@ -218,11 +218,10 @@ static bool _validateInExpression(AR_ExpNode *exp) {
 	assert(exp->op.child_count == 2);
 
 	AR_ExpNode *list = exp->op.children[1];
-	// In case the array is a parameter such as "WHERE x IN $arr", evaluate the parameter for in-place replacement.
-	if(AR_EXP_IsParameter(list)) AR_EXP_Evaluate(list, NULL);
-	if(list->operand.type != AR_EXP_CONSTANT || list->operand.constant.type != T_ARRAY) return false;
+	SIValue listValue = SI_NullVal();
+	AR_EXP_ReduceToScalar(list, true, &listValue);
+	if(SI_TYPE(listValue) != T_ARRAY) return false;
 
-	SIValue listValue = list->operand.constant;
 	uint listLen = SIArray_Length(listValue);
 	for(uint i = 0; i < listLen; i++) {
 		SIValue v = SIArray_Get(listValue, i);
@@ -242,20 +241,15 @@ bool _simple_predicates(const FT_FilterNode *filter) {
 	case FT_N_PRED:
 		if(filter->pred.rhs->type == AR_EXP_OPERAND &&
 		   filter->pred.lhs->type == AR_EXP_OPERAND) {
-			// In case of parameters, evalation will transform them into constants (in-place replacement).
-			if(AR_EXP_IsParameter(filter->pred.lhs)) AR_EXP_Evaluate(filter->pred.lhs, NULL);
-			if(AR_EXP_IsParameter(filter->pred.rhs)) AR_EXP_Evaluate(filter->pred.rhs, NULL);
-			if((filter->pred.lhs->operand.type == AR_EXP_CONSTANT ||
-				filter->pred.rhs->operand.type == AR_EXP_CONSTANT) &&
-			   (filter->pred.lhs->operand.type == AR_EXP_VARIADIC ||
-				filter->pred.lhs->operand.type == AR_EXP_VARIADIC)) {
-
+			SIValue v_lhs = SI_NullVal();
+			SIValue v_rhs = SI_NullVal();
+			bool lhs_scalar = AR_EXP_ReduceToScalar(filter->pred.lhs, true, &v_lhs);
+			bool rhs_scalar = AR_EXP_ReduceToScalar(filter->pred.rhs, true, &v_rhs);
+			// Predicate should be in the form of variable=scalar or scalar=variadic
+			if((lhs_scalar && !rhs_scalar) || (!lhs_scalar && rhs_scalar)) {
 				// Validate constant type.
-				SIValue c = SI_NullVal();
-				if(filter->pred.lhs->operand.type == AR_EXP_CONSTANT) c = filter->pred.lhs->operand.constant;
-				if(filter->pred.rhs->operand.type == AR_EXP_CONSTANT) c = filter->pred.rhs->operand.constant;
+				SIValue c = lhs_scalar ? v_lhs : v_rhs;
 				SIType t = SI_TYPE(c);
-
 				res = (t & (SI_NUMERIC | T_STRING | T_BOOL));
 			}
 		}
