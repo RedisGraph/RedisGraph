@@ -14,15 +14,23 @@
 #include "../../arithmetic/arithmetic_expression.h"
 #include "../../ast/ast_build_op_contexts.h"
 
-// Context describing a pending update to perform.
+// Context grouping a set of updates to perform on a single entity
 typedef struct {
-	Attribute_ID attr_id;               /* ID of attribute to update. */
 	union {
-		Node n;                         /* Node to update if indicated by entity_type. */
-		Edge e;                         /* Edge to update if indicated by entity_type. */
-	};
-	GraphEntityType entity_type;        /* Graph entity type. */
-	SIValue new_value;                  /* Constant value to set. */
+		Node n;
+		Edge e;
+	};                              // Updated entity.
+	GraphEntityType entity_type;    // Type of updated entity.
+	bool update_index;              // Does index effected by update.
+	SIValue new_value;              // Constant value to set.
+	Attribute_ID attr_id;           // Id of attribute to update.
+} PendingUpdateCtx;
+
+typedef struct {
+	int record_idx;             // Record offset this entity is stored at.
+	const char *alias;          // Updated entity alias.
+	EntityUpdateEvalCtx *exps;  // List of update expressions converted from the AST.
+	PendingUpdateCtx *updates;  // List of pending updates for this op to commit.
 } EntityUpdateCtx;
 
 typedef struct {
@@ -30,16 +38,9 @@ typedef struct {
 	GraphContext *gc;
 	ResultSetStatistics *stats;
 
-	uint update_expressions_count;
-	EntityUpdateEvalCtx
-	*update_expressions;    /* List of entities to update and their arithmetic expressions. */
-
-	uint pending_updates_cap;
-	uint pending_updates_count;
-	EntityUpdateCtx
-	*pending_updates;           /* List of entities to update and their actual new value. */
-	Record *records;                            /* Updated records, used only when query inspects updated entities. */
-	bool updates_commited;                      /* Updates performed? */
+	EntityUpdateCtx *update_ctxs;   // List of entities to update and their arithmetic expressions.
+	Record *records;                // Updated records, used only when query hands off records after updates.
+	bool updates_commited;          // True if we've already committed updates and are now in handoff mode.
 } OpUpdate;
 
 OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps);
