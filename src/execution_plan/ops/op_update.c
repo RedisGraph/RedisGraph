@@ -134,7 +134,7 @@ static void _CommitEntityUpdates(OpUpdate *op, EntityUpdateCtx *ctx) {
 		}
 	}
 
-	if(op->stats) op->stats->properties_set += op->pending_updates_count;
+	if(op->stats) op->stats->properties_set += properties_set;
 }
 
 // Executes delayed updates
@@ -201,6 +201,7 @@ static void _groupUpdateExps(OpUpdate *op, EntityUpdateEvalCtx *update_ctxs) {
 
 OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps) {
 	OpUpdate *op = rm_calloc(1, sizeof(OpUpdate));
+	op->stats = QueryCtx_GetResultSetStatistics();
 	op->gc                     =  QueryCtx_GetGraphCtx();
 	op->records                =  NULL;
 	op->updates_commited       =  false;
@@ -245,10 +246,7 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, Record r) {
 	if(t == REC_TYPE_UNKNOWN) return;
 
 	// Make sure we're updating either a node or an edge.
-	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
-		QueryCtx_SetError("Update error: alias '%s' did not resolve to a graph entity", ctx->alias);
-		QueryCtx_RaiseRuntimeException();
-	}
+	assert(t == REC_TYPE_NODE || t == REC_TYPE_EDGE);
 
 	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
 	GraphEntityType type = (t == REC_TYPE_NODE) ? GETYPE_NODE : GETYPE_EDGE;

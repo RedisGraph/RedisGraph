@@ -106,6 +106,10 @@ int Schema_RemoveIndex(Schema *s, const char *field, IndexType type) {
 		case IDX_FULLTEXT:
 			s->fulltextIdx = NULL;
 			break;
+		case IDX_ANY:
+			s->index = NULL;
+			s->fulltextIdx = NULL;
+			break;
 		}
 	}
 
