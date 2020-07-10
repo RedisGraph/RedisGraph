@@ -19,13 +19,10 @@ static OpResult UpdateReset(OpBase *opBase);
 static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void UpdateFree(OpBase *opBase);
 
-/* Introduce updated entity to index. */
-static void _UpdateIndex(PendingUpdateCtx *ctx, GraphContext *gc, Schema *s, SIValue *old_value,
-						 SIValue *new_value) {
-	Node *n = &ctx->n;
+// introduce updated entity to index
+static void _UpdateIndex(Node *n, Schema *s) {
+	// reindex
 	EntityID node_id = ENTITY_GET_ID(n);
-
-	// Reindex.
 	Schema_AddNodeToIndices(s, n, true);
 }
 
@@ -71,12 +68,14 @@ static int _UpdateNode(OpUpdate *op, PendingUpdateCtx *ctx, uint nupdates) {
 	// to use the GraphEntity_Get, GraphEntity_Add functions we'll use a place holder
 	// to hold our entity
 
+	int attributes_set = 0;
 	Node *node = &(ctx[0].n);
+	bool update_index = false;
 
 	for(uint i = 0; i < nupdates; i++) {
-		PendingUpdateCtx *update = ctx + i;
-		Attribute_ID attr_id = update->attr_id;
-		SIValue new_value = update->new_value;
+		PendingUpdateCtx  *update    =  ctx + i;
+		Attribute_ID      attr_id    =  update->attr_id;
+		SIValue           new_value  =  update->new_value;
 
 		// try to get current property value
 		SIValue *old_value = GraphEntity_GetProperty((GraphEntity *)node,
@@ -90,24 +89,32 @@ static int _UpdateNode(OpUpdate *op, PendingUpdateCtx *ctx, uint nupdates) {
 			// Update property.
 			GraphEntity_SetProperty((GraphEntity *)node, attr_id, new_value);
 		}
+
+		attributes_set++;
+
+		// do we need to notify an index ?
+		update_index |= update->update_index;
 	}
 
-	int label_id = n->labelID;
-	Schema *s = GraphContext_GetSchemaByID(op->gc, label_id, SCHEMA_NODE);
-	// Update index for node entities if they are modified.
-	// TODO only required once per node after all updates are committed, not per update.
-	if(ctx->update_index) _UpdateIndex(ctx, op->gc, s, old_value, &ctx->new_value);
-	return 1;
+	// update index for node entities if they are modified
+	if(update_index) {
+		int label_id = n->labelID;
+		Schema *s = GraphContext_GetSchemaByID(op->gc, label_id, SCHEMA_NODE);
+		if(ctx->update_index) _UpdateIndex(node, s);
+	}
+
+	return attributes_set;
 }
 
 static void _CommitEntityUpdates(OpUpdate *op, EntityUpdateCtx *ctx) {
+	uint  properties_set  =  0;
 	uint nexp = array_len(ctx->exps);
 	uint nupdates = array_len(ctx->updates);
 
 	for(uint i = 0; i < nupdates; i+= nexp) {
 		PendingUpdateCtx *update_ctx = ctx->updates + i;
 		if(update_ctx->entity_type == GETYPE_NODE) {
-			properties_set += _UpdateNode(op, update_ctx, nupdates);
+			properties_set += _UpdateNode(op, update_ctx, nexp);
 		} else {
 			properties_set += _UpdateEdge(op, ctx);
 		}
@@ -125,7 +132,6 @@ static void _CommitEntityUpdates(OpUpdate *op, EntityUpdateCtx *ctx) {
 
 // Executes delayed updates
 static void _CommitUpdates(OpUpdate *op) {
-	uint  properties_set  =  0;
 	uint  entity_count    =  array_len(op->update_ctxs);
 
 	for(uint i = 0; i < entity_count; i++) {
