@@ -18,11 +18,12 @@ typedef struct {
 	RSIndex *idx;
 	const QGNode *n;
 	uint nodeRecIdx;
-	RSResultsIterator *iter;
+	RSQNode *rs_query_node;     /* RediSearch query node used to construct iterator. */
+	RSResultsIterator *iter;    /* RediSearch iterator over an index with the appropriate filters. */
 	Record child_record;        /* The Record this op acts on if it is not a tap. */
 } IndexScan;
 
 /* Creates a new IndexScan operation */
 OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, const QGNode *n, RSIndex *idx,
-					   RSResultsIterator *iter);
+					   RSQNode *rs_query_node);
 

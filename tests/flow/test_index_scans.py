@@ -267,3 +267,12 @@ class testIndexScanFlow(FlowTestsBase):
         expected_result = ["Lucy Yanfital"]
         self.env.assertEquals(query_result.result_set[0], expected_result)
 
+    def test11_single_index_multiple_scans(self):
+        query = "MERGE (p1:person {age: 40}) MERGE (p2:person {age: 41})"
+        plan = redis_graph.execution_plan(query)
+        # Two index scans should be performed.
+        self.env.assertEqual(plan.count("Index Scan"), 2)
+
+        query_result = redis_graph.query(query)
+        # Two new nodes should be created.
+        self.env.assertEquals(query_result.nodes_created, 2)
