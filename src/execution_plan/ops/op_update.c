@@ -348,60 +348,57 @@ static Record UpdateConsume(OpBase *opBase) {
 	return _handoff(op);
 }
 
+static EntityUpdateCtx _EntityUpdateCtx_Clone(EntityUpdateCtx ctx) {
+	EntityUpdateCtx clone = ctx;
+	array_clone(clone.updates, ctx.updates);
+	array_clone_with_cb(clone.exps, ctx.exps, EntityUpdateEvalCtx_Clone);
+	return clone;
+}
+
 static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	assert(opBase->type == OPType_UPDATE);
 	OpUpdate *op = (OpUpdate *)opBase;
-	uint ctx_count = array_len(op->update_ctxs);
-	EntityUpdateEvalCtx *update_exps = array_new(EntityUpdateEvalCtx, ctx_count);
-	// TODO tmp
-	for(uint i = 0; i < ctx_count; i ++) {
-		EntityUpdateCtx *ctx = &op->update_ctxs[i];
-		uint entity_update_count = array_len(ctx->exps);
-		for(uint j = 0; j < entity_update_count; j ++) {
-			update_exps = array_append(update_exps, ctx->exps[j]);
-		}
-	}
-	// array_clone_with_cb(update_exps, op->update_expressions, EntityUpdateEvalCtx_Clone);
-	return NewUpdateOp(plan, update_exps);
+
+	OpUpdate *clone = rm_calloc(1, sizeof(OpUpdate));
+	// set our Op operations
+	OpBase_Init((OpBase *)clone, OPType_UPDATE, "Update", UpdateInit, UpdateConsume,
+				UpdateReset, NULL, UpdateClone, UpdateFree, true, plan);
+	clone->gc = QueryCtx_GetGraphCtx();
+
+	array_clone_with_cb(clone->update_ctxs, op->update_ctxs, _EntityUpdateCtx_Clone);
+
+	return (OpBase *)clone;
 }
 
 static OpResult UpdateReset(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
-	// Reset all pending updates.
-	// TODO
-	// op->pending_updates_count = 0;
-	// op->pending_updates_cap = 16; [> 16 seems reasonable number to start with. <]
-	// op->pending_updates = rm_realloc(op->pending_updates,
-	// op->pending_updates_cap * sizeof(EntityUpdateCtx));
 	return OP_OK;
 }
 
 static void UpdateFree(OpBase *ctx) {
 	OpUpdate *op = (OpUpdate *)ctx;
 	/* Free each update context. */
-	// TODO
-	// if(op->update_expressions_count) {
-	// for(uint i = 0; i < op->update_expressions_count; i++) {
-	// AR_EXP_Free(op->update_expressions[i].exp);
-	// }
-	// op->update_expressions_count = 0;
-	// }
+	if(op->update_ctxs) {
+		uint ctx_count = array_len(op->update_ctxs);
+		for(uint i = 0; i < ctx_count; i ++) {
+			EntityUpdateCtx update_ctx = op->update_ctxs[i];
+			if(update_ctx.exps) {
+				uint eval_ctx_count = array_len(update_ctx.exps);
+				for(uint j = 0; j < eval_ctx_count; j ++) AR_EXP_Free(update_ctx.exps[j].exp);
+				array_free(update_ctx.exps);
+			}
+			if(update_ctx.updates) array_free(update_ctx.updates);
+		}
 
-	// if(op->records) {
-	// uint records_count = array_len(op->records);
-	// for(uint i = 0; i < records_count; i++) OpBase_DeleteRecord(op->records[i]);
-	// array_free(op->records);
-	// op->records = NULL;
-	// }
+		array_free(op->update_ctxs);
+		op->update_ctxs = NULL;
+	}
 
-	// if(op->update_expressions) {
-	// array_free(op->update_expressions);
-	// op->update_expressions = NULL;
-	// }
-
-	// if(op->pending_updates) {
-	// rm_free(op->pending_updates);
-	// op->pending_updates = NULL;
-	// }
+	if(op->records) {
+		uint records_count = array_len(op->records);
+		for(uint i = 0; i < records_count; i++) OpBase_DeleteRecord(op->records[i]);
+		array_free(op->records);
+		op->records = NULL;
+	}
 }
 

@@ -19,18 +19,18 @@ typedef struct {
 	union {
 		Node n;
 		Edge e;
-	};								// updated entity
-	GraphEntityType entity_type;	// type of updated entity
-	bool update_index;				// does index effected by update
+	};                              // updated entity
+	GraphEntityType entity_type;    // type of updated entity
+	bool update_index;              // does index effected by update
 	SIValue new_value;              // constant value to set
-	Attribute_ID attr_id;			// id of attribute to update
+	Attribute_ID attr_id;           // id of attribute to update
 } PendingUpdateCtx;
 
 typedef struct {
 	int record_idx;             // record offset this entity is stored at
-	const char *alias;			// updated entity alias
-	EntityUpdateEvalCtx *exps;	// list of update expressions
-	PendingUpdateCtx *updates;	// list of pending updates
+	const char *alias;          // updated entity alias
+	EntityUpdateEvalCtx *exps;  // list of update expressions
+	PendingUpdateCtx *updates;  // list of pending updates
 } EntityUpdateCtx;
 
 typedef struct {
@@ -38,7 +38,7 @@ typedef struct {
 	GraphContext *gc;
 	ResultSetStatistics *stats;
 
-	EntityUpdateCtx *update_ctxs;	// List of entities to update and their arithmetic expressions
+	EntityUpdateCtx *update_ctxs;   // List of entities to update and their arithmetic expressions
 	Record *records;                // Updated records, used only when query inspects updated entities
 	bool updates_commited;          // Updates performed?
 } OpUpdate;
