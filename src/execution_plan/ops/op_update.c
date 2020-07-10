@@ -98,8 +98,9 @@ static int _UpdateEdge(OpUpdate *op, PendingUpdateCtx *ctx) {
 
 /* Executes delayed updates. */
 static void _CommitUpdates(OpUpdate *op) {
-	uint properties_set = 0;
-	uint entity_count = array_len(op->update_ctxs);
+	uint  properties_set  =  0;
+	uint  entity_count    =  array_len(op->update_ctxs);
+
 	for(uint i = 0; i < entity_count; i++) {
 		EntityUpdateCtx *entity_ctx = &op->update_ctxs[i];
 		uint entity_update_count = array_len(entity_ctx->updates);
@@ -135,18 +136,19 @@ static Record _handoff(OpUpdate *op) {
 
 static void _groupUpdateExps(OpUpdate *op, EntityUpdateEvalCtx *update_ctxs) {
 	// sort update contexts on updated entity
-#define islt(a,b) (a->record_idx < b->record_idx)
+	#define islt(a,b) (a->record_idx < b->record_idx)
 
 	uint n = array_len(update_ctxs);
 	QSORT(EntityUpdateEvalCtx, update_ctxs, n, islt);
 
-	/* Each OpUpdate is initialized with a flex array of EvalCtx structs, which describe
-	 * the entity and property being updated as well as an AR_ExpNode to represent the new property value. */
+	// each OpUpdate is initialized with a flex array of EvalCtx structs, which describe
+	// the entity and property being updated as well as an AR_ExpNode to represent the new property value. */
 	// group expression by modified entity
 	EntityUpdateCtx *groups = array_new(EntityUpdateCtx, 1);
 
-	EntityUpdateEvalCtx *prev = NULL;
-	EntityUpdateCtx *entity_ctx = NULL;
+	EntityUpdateEvalCtx  *prev        =  NULL;
+	EntityUpdateCtx      *entity_ctx  =  NULL;
+
 	for(uint i = 0; i < n; i++) {
 		EntityUpdateEvalCtx *current = &update_ctxs[i];
 		if(!prev || current->record_idx != prev->record_idx) {
@@ -200,6 +202,14 @@ static OpResult UpdateInit(OpBase *opBase) {
 }
 
 static void _EvalEntityUpdates(EntityUpdateCtx *ctx, Record r) {
+	Node          *n            =  NULL;
+	Edge          *e            =  NULL;
+	Schema        *s            =  NULL;
+	const char    *label        =  NULL;
+	bool          update_index  =  false;
+	int           label_id      =  GRAPH_NO_LABEL;
+	GraphContext  *gc           =  QueryCtx_GetGraphCtx();
+
 	// get the type of the entity to update
 	// if the expected entity was not found
 	// make no updates but do not error
@@ -213,59 +223,57 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, Record r) {
 		QueryCtx_RaiseRuntimeException();
 	}
 
-	GraphEntityType type = (t == REC_TYPE_NODE) ? GETYPE_NODE : GETYPE_EDGE;
 	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
+	GraphEntityType type = (t == REC_TYPE_NODE) ? GETYPE_NODE : GETYPE_EDGE;
 
-	bool update_index = false; // Will be false until encountering an indexed field.
-	bool label_searched = false;
+	if(type == GETYPE_EDGE) {
+		e = (Edge *)entity;
+	} else {
+		n      =  (Node *)entity;
+		label  =  n->label; // will be set if specified in query string
+
+		if(label == NULL) {
+			label_id = Graph_GetNodeLabel(gc->g, ENTITY_GET_ID(entity));
+			s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
+			if(s) label = Schema_GetName(s);
+		}
+
+		n->label = label;
+		n->labelID = label_id;
+	}
+
 	uint exp_count = array_len(ctx->exps);
 	for(uint i = 0; i < exp_count; i++) {
-		SIValue new_value = SI_CloneValue(AR_EXP_Evaluate(ctx->exps[i].exp, r));
+		EntityUpdateEvalCtx *update_ctx = ctx->exps + i;
+		SIValue new_value = SI_CloneValue(AR_EXP_Evaluate(update_ctx->exp, r));
+
+		// determine whether we must update the index for this set of updates
+		if(!update_index && label) {
+			Attribute_ID attr_id = update_ctx->attribute_id;
+			const char *field = GraphContext_GetAttributeString(gc, attr_id);
+			update_index = GraphContext_GetIndex(gc, label, field, IDX_ANY);
+			if(update_index && i > 0) {
+				// swap the current update expression with the first one
+				// so that subsequent searches will find the index immediately
+				EntityUpdateEvalCtx first = ctx->exps[0];
+				ctx->exps[0] = ctx->exps[i];
+				ctx->exps[i] = first;
+			}
+		}
 
 		PendingUpdateCtx update = {
-			.new_value = new_value,
-			.attr_id = ctx->exps[i].attribute_id,
 			.entity_type = type,
+			.new_value = new_value,
 			.update_index = update_index,
+			.attr_id = update_ctx->attribute_id,
 		};
+
 		if(type == GETYPE_EDGE) {
-			// Add the edge to the update context.
+			// add the edge to the update context
 			update.e = *((Edge *)entity);
 		} else {
-			// Add the node to the update context.
+			// add the node to the update context
 			update.n = *((Node *)entity);
-			// Determine whether we must update the index for this set of updates.
-			if(label_searched == false) {
-				label_searched = true; // Only seek each label once.
-				GraphContext *gc = QueryCtx_GetGraphCtx();
-				const char *label = update.n.label; // Will be set if specified in query string.
-				if(label == NULL) {
-					int label_id = Graph_GetNodeLabel(gc->g, ENTITY_GET_ID(&update.n));
-					Schema *s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
-					if(s) {
-						label = Schema_GetName(s);
-						update.n.labelID = label_id;
-						update.n.label = label;
-					}
-				}
-				if(label) {
-					const char *field = GraphContext_GetAttributeString(gc, update.attr_id);
-					update_index = GraphContext_GetIndex(gc, label, field, IDX_ANY);
-					if(update_index) {
-						// Updating an indexed field.
-						update.update_index = true;
-						// Retroactively set the update_index property on all queued updates for this node.
-						for(uint j = 0; j < i; j++) ctx->updates[j].update_index = true;
-						if(i > 0) {
-							// Swap the current PendingUpdateCtx with the first one so that subsequent searches
-							// will find the index immediately.
-							PendingUpdateCtx first = ctx->updates[0];
-							ctx->updates[0] = update;
-							update = first; // The disconnected first update will be re-added at the end of this loop iteration.
-						}
-					}
-				}
-			}
 		}
 
 		// Enqueue the current update.
