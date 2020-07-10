@@ -31,28 +31,39 @@ static void _UpdateIndex(Node *n, Schema *s) {
  * For NULL values, the property will be deleted if present
  * and nothing will be done otherwise.
  * Returns 1 if a property was set or deleted. */
-static int _UpdateEdge(OpUpdate *op, PendingUpdateCtx *ctx) {
+static int _UpdateEdge(OpUpdate *op, PendingUpdateCtx *updates, uint update_count) {
 	/* Retrieve GraphEntity:
 	* Due to Record freeing we can't maintain the original pointer to GraphEntity object,
 	* but only a pointer to an Entity object,
 	* to use the GraphEntity_Get, GraphEntity_Add functions we'll use a place holder
 	* to hold our entity. */
-	Edge *edge = &ctx->e;
+	int attributes_set = 0;
+	GraphEntity *ge = (GraphEntity *)&updates->e;
 
-	int label_id = Graph_GetEdgeRelation(op->gc->g, edge);
+	for(uint i = 0; i < update_count; i++) {
+		PendingUpdateCtx  *update    =  updates + i;
+		Attribute_ID      attr_id    =  update->attr_id;
+		SIValue           new_value  =  update->new_value;
 
-	// Try to get current property value.
-	SIValue *old_value = GraphEntity_GetProperty((GraphEntity *)edge, ctx->attr_id);
+		// Try to get current property value.
+		SIValue *old_value = GraphEntity_GetProperty(ge, attr_id);
 
-	if(old_value == PROPERTY_NOTFOUND) {
-		// Adding a new property; do nothing if its value is NULL.
-		if(SI_TYPE(ctx->new_value) == T_NULL) return 0;
-		GraphEntity_AddProperty((GraphEntity *)edge, ctx->attr_id, ctx->new_value);
-	} else {
-		// Update property.
-		GraphEntity_SetProperty((GraphEntity *)edge, ctx->attr_id, ctx->new_value);
+		if(old_value == PROPERTY_NOTFOUND) {
+			// Adding a new property; do nothing if its value is NULL.
+			if(SI_TYPE(new_value) == T_NULL) {
+				SIValue_Free(new_value);
+				continue;
+			}
+			GraphEntity_AddProperty(ge, attr_id, new_value);
+		} else {
+			// Update property.
+			GraphEntity_SetProperty(ge, attr_id, new_value);
+		}
+		SIValue_Free(new_value);
+		attributes_set++;
 	}
-	return 1;
+
+	return attributes_set;
 }
 
 // set a property on a node. For non-NULL values, the property
@@ -61,7 +72,7 @@ static int _UpdateEdge(OpUpdate *op, PendingUpdateCtx *ctx) {
 // and nothing will be done otherwise
 // relevant indexes will be updated accordingly
 // returns 1 if a property was set or deleted
-static int _UpdateNode(OpUpdate *op, PendingUpdateCtx *ctx, uint nupdates) {
+static int _UpdateNode(OpUpdate *op, PendingUpdateCtx *updates, uint update_count) {
 	// retrieve GraphEntity:
 	// due to Record freeing we can't maintain the original pointer to GraphEntity object,
 	// but only a pointer to an Entity object,
@@ -69,27 +80,29 @@ static int _UpdateNode(OpUpdate *op, PendingUpdateCtx *ctx, uint nupdates) {
 	// to hold our entity
 
 	int attributes_set = 0;
-	Node *node = &(ctx[0].n);
+	Node *node = &updates->n;
 	bool update_index = false;
 
-	for(uint i = 0; i < nupdates; i++) {
-		PendingUpdateCtx  *update    =  ctx + i;
+	for(uint i = 0; i < update_count; i++) {
+		PendingUpdateCtx  *update    =  updates + i;
 		Attribute_ID      attr_id    =  update->attr_id;
 		SIValue           new_value  =  update->new_value;
 
 		// try to get current property value
-		SIValue *old_value = GraphEntity_GetProperty((GraphEntity *)node,
-				attr_id);
+		SIValue *old_value = GraphEntity_GetProperty((GraphEntity *)node, attr_id);
 
 		if(old_value == PROPERTY_NOTFOUND) {
 			// adding a new property; do nothing if its value is NULL
-			if(SI_TYPE(new_value) == T_NULL) continue;
+			if(SI_TYPE(new_value) == T_NULL) {
+				SIValue_Free(new_value);
+				continue;
+			}
 			GraphEntity_AddProperty((GraphEntity *)node, attr_id, new_value);
 		} else {
 			// Update property.
 			GraphEntity_SetProperty((GraphEntity *)node, attr_id, new_value);
 		}
-
+		SIValue_Free(new_value);
 		attributes_set++;
 
 		// do we need to notify an index ?
@@ -98,32 +111,27 @@ static int _UpdateNode(OpUpdate *op, PendingUpdateCtx *ctx, uint nupdates) {
 
 	// update index for node entities if they are modified
 	if(update_index) {
-		int label_id = n->labelID;
+		int label_id = node->labelID;
 		Schema *s = GraphContext_GetSchemaByID(op->gc, label_id, SCHEMA_NODE);
-		if(ctx->update_index) _UpdateIndex(node, s);
+		if(updates->update_index) _UpdateIndex(node, s);
 	}
 
 	return attributes_set;
 }
 
 static void _CommitEntityUpdates(OpUpdate *op, EntityUpdateCtx *ctx) {
-	uint  properties_set  =  0;
-	uint nexp = array_len(ctx->exps);
-	uint nupdates = array_len(ctx->updates);
+	uint properties_set = 0;
+	uint updates_per_entity = array_len(ctx->exps);
+	uint total_updates = array_len(ctx->updates);
 
-	for(uint i = 0; i < nupdates; i+= nexp) {
+	// For each iteration of this loop, perform all updates enqueued for a single entity.
+	for(uint i = 0; i < total_updates; i += updates_per_entity) {
+		// Set a pointer to the first update context for this entity.
 		PendingUpdateCtx *update_ctx = ctx->updates + i;
 		if(update_ctx->entity_type == GETYPE_NODE) {
-			properties_set += _UpdateNode(op, update_ctx, nexp);
+			properties_set += _UpdateNode(op, update_ctx, updates_per_entity);
 		} else {
-			properties_set += _UpdateEdge(op, ctx);
-		}
-
-		// TODO: move to node/edge update clean up
-		uint entity_update_count = array_len(entity_ctx->updates);
-		for(uint j = 0; j < entity_update_count; j ++) {
-			PendingUpdateCtx *ctx = &entity_ctx->updates[j];
-			SIValue_Free(ctx->new_value);
+			properties_set += _UpdateEdge(op, update_ctx, updates_per_entity);
 		}
 	}
 
@@ -132,11 +140,10 @@ static void _CommitEntityUpdates(OpUpdate *op, EntityUpdateCtx *ctx) {
 
 // Executes delayed updates
 static void _CommitUpdates(OpUpdate *op) {
-	uint  entity_count    =  array_len(op->update_ctxs);
-
+	uint entity_count = array_len(op->update_ctxs);
 	for(uint i = 0; i < entity_count; i++) {
 		EntityUpdateCtx *entity_ctx = &op->update_ctxs[i];
-		_CommitEntityUpdates(entity_ctx);
+		_CommitEntityUpdates(op, entity_ctx);
 	}
 }
 
@@ -158,7 +165,7 @@ static Record _handoff(OpUpdate *op) {
 
 static void _groupUpdateExps(OpUpdate *op, EntityUpdateEvalCtx *update_ctxs) {
 	// sort update contexts on updated entity
-	#define islt(a,b) (a->record_idx < b->record_idx)
+#define islt(a,b) (a->record_idx < b->record_idx)
 
 	uint n = array_len(update_ctxs);
 	QSORT(EntityUpdateEvalCtx, update_ctxs, n, islt);
@@ -224,8 +231,6 @@ static OpResult UpdateInit(OpBase *opBase) {
 }
 
 static void _EvalEntityUpdates(EntityUpdateCtx *ctx, Record r) {
-	Node          *n            =  NULL;
-	Edge          *e            =  NULL;
 	Schema        *s            =  NULL;
 	const char    *label        =  NULL;
 	bool          update_index  =  false;
@@ -243,18 +248,16 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, Record r) {
 
 	// make sure we're updating either a node or an edge
 	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
-		QueryCtx_SetError("Update error: alias '%s' did not resolve to a graph
-				entity", ctx->alias);
+		QueryCtx_SetError("Update error: alias '%s' did not resolve to a graph entity", ctx->alias);
 		QueryCtx_RaiseRuntimeException();
 	}
 
 	GraphEntity *entity = Record_GetGraphEntity(r, ctx->record_idx);
 	GraphEntityType type = (t == REC_TYPE_NODE) ? GETYPE_NODE : GETYPE_EDGE;
 
-	if(type == GETYPE_EDGE) {
-		e = (Edge *)entity;
-	} else {
-		n      =  (Node *)entity;
+	// If the entity is a node, set its label if possible.
+	if(type == GETYPE_NODE) {
+		Node *n      = (Node *)entity;
 		label  =  n->label; // will be set if specified in query string
 
 		if(label == NULL) {
