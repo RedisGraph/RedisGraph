@@ -19,18 +19,18 @@ typedef struct {
 	union {
 		Node n;
 		Edge e;
-	};                              // updated entity
-	GraphEntityType entity_type;    // type of updated entity
-	bool update_index;              // does index effected by update
-	SIValue new_value;              // constant value to set
-	Attribute_ID attr_id;           // id of attribute to update
+	};                              // Updated entity.
+	GraphEntityType entity_type;    // Type of updated entity.
+	bool update_index;              // Does index effected by update.
+	SIValue new_value;              // Constant value to set.
+	Attribute_ID attr_id;           // Id of attribute to update.
 } PendingUpdateCtx;
 
 typedef struct {
-	int record_idx;             // record offset this entity is stored at
-	const char *alias;          // updated entity alias
-	EntityUpdateEvalCtx *exps;  // list of update expressions
-	PendingUpdateCtx *updates;  // list of pending updates
+	int record_idx;             // Record offset this entity is stored at.
+	const char *alias;          // Updated entity alias.
+	EntityUpdateEvalCtx *exps;  // List of update expressions converted from the AST.
+	PendingUpdateCtx *updates;  // List of pending updates for this op to commit.
 } EntityUpdateCtx;
 
 typedef struct {
@@ -38,9 +38,9 @@ typedef struct {
 	GraphContext *gc;
 	ResultSetStatistics *stats;
 
-	EntityUpdateCtx *update_ctxs;   // List of entities to update and their arithmetic expressions
-	Record *records;                // Updated records, used only when query inspects updated entities
-	bool updates_commited;          // Updates performed?
+	EntityUpdateCtx *update_ctxs;   // List of entities to update and their arithmetic expressions.
+	Record *records;                // Updated records, used only when query hands off records after updates.
+	bool updates_commited;          // True if we've already committed updates and are now in handoff mode.
 } OpUpdate;
 
 OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps);

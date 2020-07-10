@@ -33,10 +33,10 @@ static void _UpdateIndex(Node *n, Schema *s) {
  * Returns 1 if a property was set or deleted. */
 static int _UpdateEdge(OpUpdate *op, PendingUpdateCtx *updates, uint update_count) {
 	/* Retrieve GraphEntity:
-	* Due to Record freeing we can't maintain the original pointer to GraphEntity object,
-	* but only a pointer to an Entity object,
-	* to use the GraphEntity_Get, GraphEntity_Add functions we'll use a place holder
-	* to hold our entity. */
+	 * Due to Record freeing we can't maintain the original pointer to GraphEntity object,
+	 * but only a pointer to an Entity object,
+	 * to use the GraphEntity_Get, GraphEntity_Add functions we'll use a place holder
+	 * to hold our entity. */
 	int attributes_set = 0;
 	GraphEntity *ge = (GraphEntity *)&updates->e;
 
@@ -66,19 +66,18 @@ static int _UpdateEdge(OpUpdate *op, PendingUpdateCtx *updates, uint update_coun
 	return attributes_set;
 }
 
-// set a property on a node. For non-NULL values, the property
-// will be added or updated if it is already present
-// for NULL values, the property will be deleted if present
-// and nothing will be done otherwise
-// relevant indexes will be updated accordingly
-// returns 1 if a property was set or deleted
+/* Set a property on an edge. For non-NULL values, the property
+ * will be added or updated if it is already present.
+ * For NULL values, the property will be deleted if present
+ * and nothing will be done otherwise.
+ * Relevant indexes will be updated if required.
+ * Returns 1 if a property was set or deleted. */
 static int _UpdateNode(OpUpdate *op, PendingUpdateCtx *updates, uint update_count) {
-	// retrieve GraphEntity:
-	// due to Record freeing we can't maintain the original pointer to GraphEntity object,
-	// but only a pointer to an Entity object,
-	// to use the GraphEntity_Get, GraphEntity_Add functions we'll use a place holder
-	// to hold our entity
-
+	/* Retrieve GraphEntity:
+	 * Due to Record freeing we can't maintain the original pointer to GraphEntity object,
+	 * but only a pointer to an Entity object,
+	 * to use the GraphEntity_Get, GraphEntity_Add functions we'll use a place holder
+	 * to hold our entity. */
 	int attributes_set = 0;
 	Node *node = &updates->n;
 	bool update_index = false;
@@ -105,11 +104,11 @@ static int _UpdateNode(OpUpdate *op, PendingUpdateCtx *updates, uint update_coun
 		SIValue_Free(new_value);
 		attributes_set++;
 
-		// do we need to notify an index ?
+		// Do we need to update an index for this property?
 		update_index |= update->update_index;
 	}
 
-	// update index for node entities if they are modified
+	// Update index for node entities if indexed fields have been modified.
 	if(update_index) {
 		int label_id = node->labelID;
 		Schema *s = GraphContext_GetSchemaByID(op->gc, label_id, SCHEMA_NODE);
@@ -164,15 +163,15 @@ static Record _handoff(OpUpdate *op) {
 }
 
 static void _groupUpdateExps(OpUpdate *op, EntityUpdateEvalCtx *update_ctxs) {
-	// sort update contexts on updated entity
+	// Sort update contexts by unique Record ID
 #define islt(a,b) (a->record_idx < b->record_idx)
 
 	uint n = array_len(update_ctxs);
 	QSORT(EntityUpdateEvalCtx, update_ctxs, n, islt);
 
-	// each OpUpdate is initialized with a flex array of EvalCtx structs, which describe
+	// Each OpUpdate is initialized with a flex array of EvalCtx structs, which describe
 	// the entity and property being updated as well as an AR_ExpNode to represent the new property value. */
-	// group expression by modified entity
+	// Group expressions by each entity being updated.
 	EntityUpdateCtx *groups = array_new(EntityUpdateCtx, 1);
 
 	EntityUpdateEvalCtx  *prev        =  NULL;
@@ -241,12 +240,12 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, Record r) {
 	// entity type validation
 	//--------------------------------------------------------------------------
 
-	// get the type of the entity to update if the expected entity was not
-	// found make no updates but do not error
+	/* Get the type of the entity to update. If the expected entity was not
+	 * found make no updates but do not error. */
 	RecordEntryType t = Record_GetType(r, ctx->record_idx);
 	if(t == REC_TYPE_UNKNOWN) return;
 
-	// make sure we're updating either a node or an edge
+	// Make sure we're updating either a node or an edge.
 	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
 		QueryCtx_SetError("Update error: alias '%s' did not resolve to a graph entity", ctx->alias);
 		QueryCtx_RaiseRuntimeException();
@@ -348,6 +347,7 @@ static Record UpdateConsume(OpBase *opBase) {
 	return _handoff(op);
 }
 
+// Clone routine for OpUpdate internal contexts
 static EntityUpdateCtx _EntityUpdateCtx_Clone(EntityUpdateCtx ctx) {
 	EntityUpdateCtx clone = ctx;
 	array_clone(clone.updates, ctx.updates);
