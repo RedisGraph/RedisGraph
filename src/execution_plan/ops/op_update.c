@@ -29,44 +29,6 @@ static void _UpdateIndex(PendingUpdateCtx *ctx, GraphContext *gc, Schema *s, SIV
 	Schema_AddNodeToIndices(s, n, true);
 }
 
-/* Set a property on a node. For non-NULL values, the property
- * will be added or updated if it is already present.
- * For NULL values, the property will be deleted if present
- * and nothing will be done otherwise.
- * Relevant indexes will be updated accordingly.
- * Returns 1 if a property was set or deleted. */
-static int _UpdateNode(OpUpdate *op, PendingUpdateCtx *ctx) {
-	/* Retrieve GraphEntity:
-	 * Due to Record freeing we can't maintain the original pointer to GraphEntity object,
-	 * but only a pointer to an Entity object,
-	 * to use the GraphEntity_Get, GraphEntity_Add functions we'll use a place holder
-	 * to hold our entity. */
-	Schema *s = NULL;
-	Node *node = &ctx->n;
-
-	int label_id = Graph_GetNodeLabel(op->gc->g, ENTITY_GET_ID(node));
-	if(label_id != GRAPH_NO_LABEL) {
-		s = GraphContext_GetSchemaByID(op->gc, label_id, SCHEMA_NODE);
-	}
-
-	// Try to get current property value.
-	SIValue *old_value = GraphEntity_GetProperty((GraphEntity *)node, ctx->attr_id);
-
-	if(old_value == PROPERTY_NOTFOUND) {
-		// Adding a new property; do nothing if its value is NULL.
-		if(SI_TYPE(ctx->new_value) == T_NULL) return 0;
-		GraphEntity_AddProperty((GraphEntity *)node, ctx->attr_id, ctx->new_value);
-	} else {
-		// Update property.
-		GraphEntity_SetProperty((GraphEntity *)node, ctx->attr_id, ctx->new_value);
-	}
-
-	// Update index for node entities if they are modified.
-	// TODO only required once per node after all updates are committed, not per update.
-	if(ctx->update_index) _UpdateIndex(ctx, op->gc, s, old_value, &ctx->new_value);
-	return 1;
-}
-
 /* Set a property on an edge. For non-NULL values, the property
  * will be added or updated if it is already present.
  * For NULL values, the property will be deleted if present
@@ -96,26 +58,80 @@ static int _UpdateEdge(OpUpdate *op, PendingUpdateCtx *ctx) {
 	return 1;
 }
 
-/* Executes delayed updates. */
+// set a property on a node. For non-NULL values, the property
+// will be added or updated if it is already present
+// for NULL values, the property will be deleted if present
+// and nothing will be done otherwise
+// relevant indexes will be updated accordingly
+// returns 1 if a property was set or deleted
+static int _UpdateNode(OpUpdate *op, PendingUpdateCtx *ctx, uint nupdates) {
+	// retrieve GraphEntity:
+	// due to Record freeing we can't maintain the original pointer to GraphEntity object,
+	// but only a pointer to an Entity object,
+	// to use the GraphEntity_Get, GraphEntity_Add functions we'll use a place holder
+	// to hold our entity
+
+	Node *node = &(ctx[0].n);
+
+	for(uint i = 0; i < nupdates; i++) {
+		PendingUpdateCtx *update = ctx + i;
+		Attribute_ID attr_id = update->attr_id;
+		SIValue new_value = update->new_value;
+
+		// try to get current property value
+		SIValue *old_value = GraphEntity_GetProperty((GraphEntity *)node,
+				attr_id);
+
+		if(old_value == PROPERTY_NOTFOUND) {
+			// adding a new property; do nothing if its value is NULL
+			if(SI_TYPE(new_value) == T_NULL) continue;
+			GraphEntity_AddProperty((GraphEntity *)node, attr_id, new_value);
+		} else {
+			// Update property.
+			GraphEntity_SetProperty((GraphEntity *)node, attr_id, new_value);
+		}
+	}
+
+	int label_id = n->labelID;
+	Schema *s = GraphContext_GetSchemaByID(op->gc, label_id, SCHEMA_NODE);
+	// Update index for node entities if they are modified.
+	// TODO only required once per node after all updates are committed, not per update.
+	if(ctx->update_index) _UpdateIndex(ctx, op->gc, s, old_value, &ctx->new_value);
+	return 1;
+}
+
+static void _CommitEntityUpdates(OpUpdate *op, EntityUpdateCtx *ctx) {
+	uint nexp = array_len(ctx->exps);
+	uint nupdates = array_len(ctx->updates);
+
+	for(uint i = 0; i < nupdates; i+= nexp) {
+		PendingUpdateCtx *update_ctx = ctx->updates + i;
+		if(update_ctx->entity_type == GETYPE_NODE) {
+			properties_set += _UpdateNode(op, update_ctx, nupdates);
+		} else {
+			properties_set += _UpdateEdge(op, ctx);
+		}
+
+		// TODO: move to node/edge update clean up
+		uint entity_update_count = array_len(entity_ctx->updates);
+		for(uint j = 0; j < entity_update_count; j ++) {
+			PendingUpdateCtx *ctx = &entity_ctx->updates[j];
+			SIValue_Free(ctx->new_value);
+		}
+	}
+
+	if(op->stats) op->stats->properties_set += properties_set;
+}
+
+// Executes delayed updates
 static void _CommitUpdates(OpUpdate *op) {
 	uint  properties_set  =  0;
 	uint  entity_count    =  array_len(op->update_ctxs);
 
 	for(uint i = 0; i < entity_count; i++) {
 		EntityUpdateCtx *entity_ctx = &op->update_ctxs[i];
-		uint entity_update_count = array_len(entity_ctx->updates);
-		for(uint j = 0; j < entity_update_count; j ++) {
-			PendingUpdateCtx *ctx = &entity_ctx->updates[j];
-			if(ctx->entity_type == GETYPE_NODE) {
-				properties_set += _UpdateNode(op, ctx);
-			} else {
-				properties_set += _UpdateEdge(op, ctx);
-			}
-			SIValue_Free(ctx->new_value);
-		}
+		_CommitEntityUpdates(entity_ctx);
 	}
-
-	if(op->stats) op->stats->properties_set += properties_set;
 }
 
 /* We only cache records if op_update is not the last
@@ -210,16 +226,19 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, Record r) {
 	int           label_id      =  GRAPH_NO_LABEL;
 	GraphContext  *gc           =  QueryCtx_GetGraphCtx();
 
-	// get the type of the entity to update
-	// if the expected entity was not found
-	// make no updates but do not error
+	//--------------------------------------------------------------------------
+	// entity type validation
+	//--------------------------------------------------------------------------
+
+	// get the type of the entity to update if the expected entity was not
+	// found make no updates but do not error
 	RecordEntryType t = Record_GetType(r, ctx->record_idx);
 	if(t == REC_TYPE_UNKNOWN) return;
 
 	// make sure we're updating either a node or an edge
 	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
-		QueryCtx_SetError("Update error: alias '%s' did not resolve to a graph entity",
-						  ctx->alias);
+		QueryCtx_SetError("Update error: alias '%s' did not resolve to a graph
+				entity", ctx->alias);
 		QueryCtx_RaiseRuntimeException();
 	}
 
