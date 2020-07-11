@@ -16,10 +16,11 @@
 
 // Context describing a pending update to perform.
 typedef struct {
-	const char *attribute;              /* Attribute name to update. */
 	Attribute_ID attr_id;               /* ID of attribute to update. */
-	Node n;
-	Edge e;
+	union {
+		Node n;                         /* Node to update if indicated by entity_type. */
+		Edge e;                         /* Edge to update if indicated by entity_type. */
+	};
 	GraphEntityType entity_type;        /* Graph entity type. */
 	SIValue new_value;                  /* Constant value to set. */
 } EntityUpdateCtx;
@@ -42,3 +43,4 @@ typedef struct {
 } OpUpdate;
 
 OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps);
+

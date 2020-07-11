@@ -36,14 +36,14 @@ static void _UpdateProperty(Record r, GraphEntity *ge, EntityUpdateEvalCtx *upda
 	SIValue new_value = AR_EXP_Evaluate(update_ctx->exp, r);
 
 	// Try to get current property value.
-	SIValue *old_value = GraphEntity_GetProperty(ge, update_ctx->attribute_idx);
+	SIValue *old_value = GraphEntity_GetProperty(ge, update_ctx->attribute_id);
 
 	if(old_value == PROPERTY_NOTFOUND) {
 		// Add new property.
-		GraphEntity_AddProperty(ge, update_ctx->attribute_idx, new_value);
+		GraphEntity_AddProperty(ge, update_ctx->attribute_id, new_value);
 	} else {
 		// Update property.
-		GraphEntity_SetProperty(ge, update_ctx->attribute_idx, new_value);
+		GraphEntity_SetProperty(ge, update_ctx->attribute_id, new_value);
 	}
 }
 
@@ -55,10 +55,6 @@ static void _UpdateProperties(ResultSetStatistics *stats, EntityUpdateEvalCtx *u
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	// Lock everything.
 	QueryCtx_LockForCommit();
-	// Iterate over all update contexts, converting property keys to IDs.
-	for(uint i = 0; i < update_count; i ++) {
-		updates[i].attribute_idx = GraphContext_FindOrAddAttribute(gc, updates[i].attribute);
-	}
 
 	for(uint i = 0; i < record_count; i ++) {  // For each record to update
 		Record r = records[i];
