@@ -22,6 +22,9 @@
 #include <ctype.h>
 #include <assert.h>
 
+// Property keys in variadic expressions will be ATTRIBUTE_UNSET until the first lookup.
+#define ATTRIBUTE_UNSET (ATTRIBUTE_NOTFOUND - 1)
+
 // Forward declaration
 static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue *result);
 // Clear an op node internals, without free the node allocation itself.
@@ -145,7 +148,7 @@ AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias, const char *prop) {
 	node->operand.variadic.entity_alias = alias;
 	node->operand.variadic.entity_alias_idx = IDENTIFIER_NOT_FOUND;
 	node->operand.variadic.entity_prop = prop;
-	node->operand.variadic.entity_prop_idx = ATTRIBUTE_NOTFOUND;
+	node->operand.variadic.entity_prop_idx = ATTRIBUTE_UNSET;
 
 	return node;
 }
@@ -370,7 +373,7 @@ static AR_EXP_Result _AR_EXP_EvaluateProperty(AR_ExpNode *node, const Record r, 
 	}
 
 	GraphEntity *ge = Record_GetGraphEntity(r, node->operand.variadic.entity_alias_idx);
-	if(node->operand.variadic.entity_prop_idx == ATTRIBUTE_NOTFOUND) {
+	if(node->operand.variadic.entity_prop_idx == ATTRIBUTE_UNSET) {
 		_AR_EXP_UpdatePropIdx(node, NULL);
 	}
 
