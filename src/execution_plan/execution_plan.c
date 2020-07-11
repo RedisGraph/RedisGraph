@@ -570,7 +570,7 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 	}
 
 	// Convert all the AST data required to populate our operations tree.
-	AST_MergeContext merge_ctx = AST_PrepareMergeOp(clause, plan->query_graph, bound_vars);
+	AST_MergeContext merge_ctx = AST_PrepareMergeOp(clause, gc, plan->query_graph, bound_vars);
 
 	// Create a Merge operation. It will store no information at this time except for any graph updates
 	// it should make due to ON MATCH and ON CREATE SET directives in the query.
@@ -591,8 +591,9 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 	array_free(arguments);
 }
 
-static inline void _buildUpdateOp(ExecutionPlan *plan, const cypher_astnode_t *clause) {
-	EntityUpdateEvalCtx *update_exps = AST_PrepareUpdateOp(clause);
+static inline void _buildUpdateOp(GraphContext *gc, ExecutionPlan *plan,
+								  const cypher_astnode_t *clause) {
+	EntityUpdateEvalCtx *update_exps = AST_PrepareUpdateOp(gc, clause);
 	OpBase *op = NewUpdateOp(plan, update_exps);
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
@@ -624,7 +625,7 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, Exec
 	} else if(t == CYPHER_AST_MERGE) {
 		_buildMergeOp(gc, ast, plan, clause);
 	} else if(t == CYPHER_AST_SET) {
-		_buildUpdateOp(plan, clause);
+		_buildUpdateOp(gc, plan, clause);
 	} else if(t == CYPHER_AST_DELETE) {
 		_buildDeleteOp(plan, clause);
 	} else if(t == CYPHER_AST_RETURN) {

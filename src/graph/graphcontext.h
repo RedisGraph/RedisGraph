@@ -15,15 +15,16 @@
 #include "graph.h"
 
 typedef struct {
-	Graph *g;                   // Container for all matrices and entity properties
-	int ref_count;              // Number of active references.
-	rax *attributes;            // From strings to attribute IDs
-	char *graph_name;           // String associated with graph
-	char **string_mapping;      // From attribute IDs to strings
-	Schema **node_schemas;      // Array of schemas for each node label
-	Schema **relation_schemas;  // Array of schemas for each relation type
-	unsigned short index_count; // Number of indicies.
-    SlowLog *slowlog;           // Slowlog associated with graph.
+	Graph *g;                               // Container for all matrices and entity properties
+	int ref_count;                          // Number of active references.
+	rax *attributes;                        // From strings to attribute IDs
+	pthread_rwlock_t _attribute_rwlock;     // Read-write lock to protect access to the attribute maps.
+	char *graph_name;                       // String associated with graph
+	char **string_mapping;                  // From attribute IDs to strings
+	Schema **node_schemas;                  // Array of schemas for each node label
+	Schema **relation_schemas;              // Array of schemas for each relation type
+	unsigned short index_count;             // Number of indicies.
+	SlowLog *slowlog;                       // Slowlog associated with graph.
 } GraphContext;
 
 /* GraphContext API */
@@ -58,7 +59,7 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 // Retrieve an attribute string given an ID
 const char *GraphContext_GetAttributeString(const GraphContext *gc, Attribute_ID id);
 // Retrieve an attribute ID given a string, or ATTRIBUTE_NOTFOUND if attribute doesn't exist.
-Attribute_ID GraphContext_GetAttributeID(const GraphContext *gc, const char *str);
+Attribute_ID GraphContext_GetAttributeID(GraphContext *gc, const char *str);
 
 /* Index API */
 bool GraphContext_HasIndices(GraphContext *gc);
@@ -83,7 +84,7 @@ void GraphContext_RemoveFromRegistry(GraphContext *gc);
 void GraphContext_Rename(GraphContext *gc, const char *name);
 
 /* Slowlog API */
-SlowLog* GraphContext_GetSlowLog(const GraphContext *gc);
+SlowLog *GraphContext_GetSlowLog(const GraphContext *gc);
 
 #endif
 

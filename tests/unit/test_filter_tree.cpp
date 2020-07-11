@@ -45,6 +45,7 @@ class FilterTreeTest: public ::testing::Test {
 		 * accessible via thread local storage, as such we're creating a
 		 * fake graph context and placing it within thread local storage. */
 		GraphContext *gc = (GraphContext *)malloc(sizeof(GraphContext));
+		pthread_rwlock_init(&gc->_attribute_rwlock, NULL);
 
 		// No indicies.
 		gc->index_count = 0;
