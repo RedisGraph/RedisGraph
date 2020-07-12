@@ -7,7 +7,7 @@
 --pad-oper
 --unpad-paren
 --align-pointer=name
---max-code-length=100
+--max-code-length=80
 --max-continuation-indent=80
 --min-conditional-indent=0
 --break-after-logical
