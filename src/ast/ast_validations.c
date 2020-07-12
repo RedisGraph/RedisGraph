@@ -673,6 +673,9 @@ static AST_Validation _ValidateMergeRelation(const cypher_astnode_t *entity, rax
 		return AST_INVALID;
 	}
 
+	// We don't need to validate the MERGE edge's direction, as an undirected edge in MERGE
+	// should cause a single outgoing edge to be created.
+
 	return AST_VALID;
 }
 
@@ -776,6 +779,12 @@ static AST_Validation _Validate_CREATE_Entities(const cypher_astnode_t *clause,
 			uint reltype_count = cypher_ast_rel_pattern_nreltypes(rel);
 			if(reltype_count != 1) {
 				asprintf(reason, "Exactly one relationship type must be specified for CREATE");
+				return AST_INVALID;
+			}
+
+			// Validate that each relation being created is directed.
+			if(cypher_ast_rel_pattern_get_direction(rel) == CYPHER_REL_BIDIRECTIONAL) {
+				QueryCtx_SetError("Only directed relationships are supported in CREATE");
 				return AST_INVALID;
 			}
 		}
