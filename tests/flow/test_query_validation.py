@@ -226,7 +226,7 @@ class testQueryValidationFlow(FlowTestsBase):
             assert("not defined" in e.message)
             pass
 
-    def test_invalid_cypher_options(self):
+    def test19_invalid_cypher_options(self):
         query = "EXPLAIN MATCH (p:president)-[:born]->(:state {name:'Hawaii'}) RETURN p"
         try:
             redis_graph.query(query)
@@ -259,3 +259,13 @@ class testQueryValidationFlow(FlowTestsBase):
             # Expecting an error.
             pass
 
+    # Undirected edges are not allowed in CREATE clauses.
+    def test20_undirected_edge_creation(self):
+        try:
+            query = """CREATE (:Endpoint)-[:R]-(:Endpoint)"""
+            redis_graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting an error.
+            assert("Only directed relationships" in e.message)
+            pass
