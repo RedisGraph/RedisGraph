@@ -28,8 +28,7 @@ static void _UpdateIndices(GraphContext *gc, Node *n) {
 	Schema *s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
 	if(!Schema_HasIndices(s)) return; // No indices, no need to update.
 
-	Schema_AddNodeToIndices(s, n, true);
-
+	Schema_AddNodeToIndices(s, n);
 }
 
 // Update the appropriate property on a graph entity.
