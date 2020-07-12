@@ -61,7 +61,7 @@ static void _CommitNodes(PendingCreations *pending) {
 		if(pending->node_properties[i]) _AddProperties(pending->stats, (GraphEntity *)n,
 														   pending->node_properties[i]);
 
-		if(s && Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n, false);
+		if(s && Schema_HasIndices(s)) Schema_AddNodeToIndices(s, n);
 	}
 }
 
