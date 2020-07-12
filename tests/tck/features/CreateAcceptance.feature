@@ -508,7 +508,6 @@ Feature: CreateAcceptance
       | +nodes         | 2 |
       | +relationships | 2 |
 
-@skip
   Scenario: Fail when trying to create using an undirected relationship pattern
     Given any graph
     When executing query:
