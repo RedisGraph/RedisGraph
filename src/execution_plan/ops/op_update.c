@@ -46,10 +46,9 @@ static void _QueueUpdate(OpUpdate *op, GraphEntity *entity, GraphEntityType type
 static void _UpdateIndex(EntityUpdateCtx *ctx, GraphContext *gc, Schema *s, SIValue *old_value,
 						 SIValue *new_value) {
 	Node *n = &ctx->n;
-	EntityID node_id = ENTITY_GET_ID(n);
 
-	// Reindex.
-	Schema_AddNodeToIndices(s, n, true);
+	// reindex
+	Schema_AddNodeToIndices(s, n);
 }
 
 /* Set a property on a node. For non-NULL values, the property
