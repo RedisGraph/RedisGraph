@@ -49,8 +49,7 @@ typedef struct {
 // Context describing an update expression.
 typedef struct {
 	const char *alias;          /* Alias of entity being updated. */
-	const char *attribute;      /* Attribute name to update. */
-	Attribute_ID attribute_idx; /* Attribute internal ID. */
+	Attribute_ID attribute_id;  /* ID of attribute to update. */
 	int record_idx;             /* Record offset this entity is stored at. */
 	struct AR_ExpNode *exp;     /* Expression to evaluate. */
 } EntityUpdateEvalCtx;
