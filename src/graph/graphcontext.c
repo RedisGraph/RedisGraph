@@ -319,11 +319,7 @@ Index *GraphContext_GetIndex(const GraphContext *gc, const char *label, const ch
 	Schema *schema = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(schema == NULL) return NULL;
 
-	if(type != IDX_ANY) return Schema_GetIndex(schema, field, type);
-
-	Index *idx = Schema_GetIndex(schema, field, IDX_FULLTEXT);
-	if(idx) return idx;
-	return Schema_GetIndex(schema, field, IDX_EXACT_MATCH);
+	return Schema_GetIndex(schema, field, type);
 }
 
 int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label, const char *field,

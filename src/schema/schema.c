@@ -43,8 +43,14 @@ unsigned short Schema_IndexCount(const Schema *s) {
 Index *Schema_GetIndex(const Schema *s, const char *field, IndexType type) {
 	Index *idx = NULL;
 
-	if(type == IDX_EXACT_MATCH) idx = s->index;
-	else idx = s->fulltextIdx;
+	if(type == IDX_EXACT_MATCH) {
+		idx = s->index;
+	} else if(type ==  IDX_FULLTEXT) {
+		idx = s->fulltextIdx;
+	} else {
+		// If type is unspecified, use the first index that exists.
+		idx = s->index ? : s->fulltextIdx;
+	}
 
 	if(!idx) return NULL;
 
@@ -104,6 +110,10 @@ int Schema_RemoveIndex(Schema *s, const char *field, IndexType type) {
 			s->index = NULL;
 			break;
 		case IDX_FULLTEXT:
+			s->fulltextIdx = NULL;
+			break;
+		case IDX_ANY:
+			s->index = NULL;
 			s->fulltextIdx = NULL;
 			break;
 		}
