@@ -19,11 +19,7 @@ static OpResult UpdateReset(OpBase *opBase);
 static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void UpdateFree(OpBase *opBase);
 
-static int _UpdateEntity
-(
-	GraphEntity *ge,
-	PendingUpdateCtx *update
-) {
+static int _UpdateEntity(GraphEntity *ge, PendingUpdateCtx *update) {
 	int res = 1;
 	SIValue new_value = update->new_value;
 	Attribute_ID attr_id = update->attr_id;
@@ -53,12 +49,8 @@ cleanup:
  * For NULL values, the property will be deleted if present
  * and nothing will be done otherwise.
  * Returns 1 if a property was set or deleted. */
-static int _UpdateEdge
-(
-	OpUpdate *op,
-	PendingUpdateCtx *updates,
-	uint update_count
-) {
+static int _UpdateEdge(OpUpdate *op, PendingUpdateCtx *updates,
+					   uint update_count) {
 	/* Retrieve GraphEntity:
 	 * Due to Record freeing we can't maintain the original pointer to
 	 * GraphEntity object, but only a pointer to an Entity object, to use the
@@ -81,12 +73,8 @@ static int _UpdateEdge
  * and nothing will be done otherwise.
  * Relevant indexes will be updated if required.
  * Returns 1 if a property was set or deleted.  */
-static int _UpdateNode
-(
-	OpUpdate *op,
-	PendingUpdateCtx *updates,
-	uint update_count
-) {
+static int _UpdateNode(OpUpdate *op, PendingUpdateCtx *updates,
+					   uint update_count) {
 	/* Retrieve GraphEntity:
 	 * Due to Record freeing we can't maintain the original pointer to
 	 * GraphEntity object, but only a pointer to an Entity object, to use the
@@ -98,7 +86,7 @@ static int _UpdateNode
 	GraphEntity *ge = (GraphEntity *)node;
 
 	for(uint i = 0; i < update_count; i++) {
-		PendingUpdateCtx  *update    =  updates + i;
+		PendingUpdateCtx *update = updates + i;
 		attributes_set += _UpdateEntity(ge, update);
 		// Do we need to update an index for this property?
 		update_index |= update->update_index;
@@ -118,7 +106,7 @@ static int _UpdateNode
 static void _CommitEntityUpdates(OpUpdate *op, EntityUpdateCtx *ctx) {
 	uint properties_set = 0;
 	uint updates_per_entity = array_len(ctx->exps);
-	// total_updates = updates_per_entity * number of entities being updated.
+	// Total_updates = updates_per_entity * number of entities being updated.
 	uint total_updates = array_len(ctx->updates);
 
 	/* For each iteration of this loop, perform all updates
@@ -216,7 +204,7 @@ OpBase *NewUpdateOp(const ExecutionPlan *plan,
 		update_exps[i].record_idx = OpBase_Modifies((OpBase *)op, update_exps[i].alias);
 	}
 
-	// group update expression by entity
+	// Group update expression by entity.
 	_groupUpdateExps(op, update_exps);
 
 	return (OpBase *)op;
@@ -276,8 +264,9 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 		if(!update_index && label) {
 			Attribute_ID attr_id = update_ctx->attribute_id;
 			const char *field = GraphContext_GetAttributeString(gc, attr_id);
+			// If the label-index combination has an index, we must reindex this entity.
 			update_index = GraphContext_GetIndex(gc, label, field, IDX_ANY);
-			if(update_index && i > 0) {
+			if(update_index && (i > 0)) {
 				/* Swap the current update expression with the first one
 				 * so that subsequent searches will find the index immediately. */
 				EntityUpdateEvalCtx first = ctx->exps[0];
