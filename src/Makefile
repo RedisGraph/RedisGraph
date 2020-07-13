@@ -201,5 +201,6 @@ endif
 	@$(MAKE) -C ../tests test
 
 memcheck: CFLAGS += -fno-omit-frame-pointer -g -ggdb -O0 -D MEMCHECK
+memcheck: SHOBJ_LDFLAGS += -u RediSearch_CleanupModule
 memcheck: redisgraph.so
 	@$(MAKE) -C ../tests memcheck
