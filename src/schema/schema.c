@@ -123,20 +123,15 @@ int Schema_RemoveIndex(Schema *s, const char *field, IndexType type) {
 }
 
 // Index node under all shcema indicies.
-void Schema_AddNodeToIndices(const Schema *s, const Node *n, bool update) {
+void Schema_AddNodeToIndices(const Schema *s, const Node *n) {
 	if(!s) return;
+	Index *idx = NULL;
 
-	Index *idx = s->fulltextIdx;
-	if(idx) {
-		if(update) Index_RemoveNode(idx, n);
-		Index_IndexNode(idx, n);
-	}
+	idx = s->fulltextIdx;
+	if(idx) Index_IndexNode(idx, n);
 
 	idx = s->index;
-	if(!idx) return;
-
-	if(update) Index_RemoveNode(idx, n);
-	Index_IndexNode(idx, n);
+	if(idx) Index_IndexNode(idx, n);
 }
 
 void Schema_Free(Schema *schema) {

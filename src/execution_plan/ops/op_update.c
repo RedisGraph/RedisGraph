@@ -19,13 +19,6 @@ static OpResult UpdateReset(OpBase *opBase);
 static OpBase *UpdateClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void UpdateFree(OpBase *opBase);
 
-// Introduce updated entity to index.
-static void _UpdateIndex(Node *n, Schema *s) {
-	// Reindex.
-	EntityID node_id = ENTITY_GET_ID(n);
-	Schema_AddNodeToIndices(s, n, true);
-}
-
 static int _UpdateEntity
 (
 	GraphEntity *ge,
@@ -115,7 +108,8 @@ static int _UpdateNode
 	if(update_index) {
 		int label_id = node->labelID;
 		Schema *s = GraphContext_GetSchemaByID(op->gc, label_id, SCHEMA_NODE);
-		_UpdateIndex(node, s);
+		// Introduce updated entity to index.
+		Schema_AddNodeToIndices(s, node);
 	}
 
 	return attributes_set;
