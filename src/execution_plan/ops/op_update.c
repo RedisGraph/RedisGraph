@@ -188,15 +188,14 @@ static void _groupUpdateExps(OpUpdate *op, EntityUpdateEvalCtx *update_ctxs) {
 	}
 }
 
-OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx
-					*update_exps) {
+OpBase *NewUpdateOp(const ExecutionPlan *plan,
+					EntityUpdateEvalCtx *update_exps) {
 	OpUpdate *op = rm_calloc(1, sizeof(OpUpdate));
-	op->gc = QueryCtx_GetGraphCtx();
-	op->stats = QueryCtx_GetResultSetStatistics();
 	op->records = NULL;
 	op->update_ctxs = NULL;
 	op->updates_commited = false;
 	op->gc = QueryCtx_GetGraphCtx();
+	op->stats = QueryCtx_GetResultSetStatistics();
 
 	// Set our Op operations.
 	OpBase_Init((OpBase *)op, OPType_UPDATE, "Update", UpdateInit, UpdateConsume,
@@ -234,8 +233,9 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 
 	// Make sure we're updating either a node or an edge.
 	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
-		char *error;
-		asprintf(&error, "Update error: alias '%s' did not resolve to a graph entity",
+		char *error = NULL;
+		asprintf(&error,
+				 "Update error: alias '%s' did not resolve to a graph entity",
 				 ctx->alias);
 		QueryCtx_SetError(error);
 		QueryCtx_RaiseRuntimeException();

@@ -37,7 +37,6 @@ typedef struct {
 	OpBase op;
 	GraphContext *gc;
 	ResultSetStatistics *stats;
-
 	EntityUpdateCtx *update_ctxs;   // Entities to update and their expressions.
 	Record *records;                // Updated records, used only when query hands off records after updates.
 	bool updates_commited;          // True if we've already committed updates and are now in handoff mode.
