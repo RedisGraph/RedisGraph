@@ -43,6 +43,9 @@ GraphContext *RdbLoadGraphContext_v5(RedisModuleIO *rdb) {
 	gc->attributes = raxNew();
 	gc->string_mapping = array_new(char *, 64);
 	gc->g = Graph_New(GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
+	gc->slowlog = SlowLog_New();
+	// Initialize the read-write lock to protect access to the attributes rax.
+	assert(pthread_rwlock_init(&gc->_attribute_rwlock, NULL) == 0);
 
 	// Set the thread-local GraphContext, as it will be accessed if we're decoding indexes.
 	QueryCtx_SetGraphCtx(gc);
