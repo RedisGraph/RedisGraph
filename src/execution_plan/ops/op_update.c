@@ -151,7 +151,7 @@ static Record _handoff(OpUpdate *op) {
 
 static void _groupUpdateExps(OpUpdate *op, EntityUpdateEvalCtx *update_ctxs) {
 	// Sort update contexts by unique Record ID.
-#define islt(a,b) (a->record_idx < b->record_idx)
+	#define islt(a,b) (a->record_idx < b->record_idx)
 
 	uint n = array_len(update_ctxs);
 	QSORT(EntityUpdateEvalCtx, update_ctxs, n, islt);
@@ -172,8 +172,10 @@ static void _groupUpdateExps(OpUpdate *op, EntityUpdateEvalCtx *update_ctxs) {
 										.updates = array_new(PendingUpdateCtx, 1),
 										.exps = array_new(EntityUpdateEvalCtx, 1),
 									  };
+
 			// Append the new context to the array of contexts.
 			op->update_ctxs = array_append(op->update_ctxs, new_ctx);
+
 			// Update the entity_ctx pointer to reference the new context.
 			uint latest_group_idx = array_len(op->update_ctxs) - 1;
 			entity_ctx = &op->update_ctxs[latest_group_idx];
@@ -186,8 +188,8 @@ static void _groupUpdateExps(OpUpdate *op, EntityUpdateEvalCtx *update_ctxs) {
 	}
 }
 
-OpBase *NewUpdateOp(const ExecutionPlan *plan,
-					EntityUpdateEvalCtx *update_exps) {
+OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx
+		*update_exps) {
 	OpUpdate *op = rm_calloc(1, sizeof(OpUpdate));
 	op->records = NULL;
 	op->update_ctxs = NULL;
@@ -242,12 +244,11 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 	// If the entity is a node, set its label if possible.
 	if(type == GETYPE_NODE) {
 		Node *n = (Node *)entity;
-		label = n->label;  // n->label will be set if specified in query string.
+		label_id = Graph_GetNodeLabel(gc->g, ENTITY_GET_ID(entity));
 
-		if(label == NULL) {
-			label_id = Graph_GetNodeLabel(gc->g, ENTITY_GET_ID(entity));
+		if(label_id != GRAPH_NO_LABEL) {
 			s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
-			if(s) label = Schema_GetName(s);
+			label = Schema_GetName(s);
 		}
 
 		n->label = label;
@@ -265,7 +266,7 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 			Attribute_ID attr_id = update_ctx->attribute_id;
 			const char *field = GraphContext_GetAttributeString(gc, attr_id);
 			// If the label-index combination has an index, we must reindex this entity.
-			update_index = GraphContext_GetIndex(gc, label, field, IDX_ANY);
+			update_index = GraphContext_GetIndex(gc, label, field, IDX_ANY) != NULL;
 			if(update_index && (i > 0)) {
 				/* Swap the current update expression with the first one
 				 * so that subsequent searches will find the index immediately. */

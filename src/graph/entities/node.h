@@ -21,9 +21,6 @@ typedef struct {
 /* Creates a new node. */
 Node *Node_New(const char *label);
 
-/* Sets node relation type. */
-void Node_SetLabelID(Node *n, int labelID); // QG only
-
 /* Retrieves node matrix. */
 GrB_Matrix Node_GetMatrix(Node *n); // AE
 
