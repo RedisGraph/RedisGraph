@@ -87,8 +87,8 @@ jobs:
           name: Test for memory leaks
           command: |
               # Replace the default Redis server with one linked to libc malloc rather than jemalloc.
-              git clone https://github.com/antirez/redis.git; cd redis; git checkout 5.0.7; make valgrind; make install; cd ..
-              make clean; DEBUG=1 make # Rebuild module at O0
+              git clone https://github.com/antirez/redis.git; cd redis; git checkout 6.0.1; make valgrind; make install; cd ..
+              make clean;
               make memcheck # Re-run the test suite, failing if definite memory leaks have been introduced.
           # Allow RediSearch global destructors.
           environment:
