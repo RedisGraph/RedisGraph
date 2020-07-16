@@ -255,6 +255,14 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 	// Acquire a read lock for looking up the attribute.
 	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
 
+	// If we're decoding an RDB file, we can reach this point without fear of competing threads.
+	if(GraphDecodeContext_Finished(gc->decoding_context)) {
+		/* This point should only be reachable by writer threads, which we can verify by ensuring
+		 * that the writer's mutex is held at present. */
+		assert(pthread_mutex_trylock(&gc->g->_writers_mutex) == EBUSY &&
+			   "reader thread attempted to update attribute map");
+	}
+
 	// See if attribute already exists.
 	void *attribute_id = raxFind(gc->attributes, (unsigned char *)attribute, strlen(attribute));
 
