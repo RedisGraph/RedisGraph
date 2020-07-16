@@ -92,6 +92,8 @@ static inline void _UpdateRecord(NodeByLabelScan *op, Record r, GrB_Index node_i
 	// Populate the Record with the graph entity data.
 	Node n = Node_New();
 	Graph_GetNode(op->g, node_id, &n);
+	// Add label data to the node.
+	Node_SetLabel(&n, op->n->label, op->n->labelID);
 	// Get a pointer to the node's allocated space within the Record.
 	Record_AddNode(r, op->nodeRecIdx, n);
 }
