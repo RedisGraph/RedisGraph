@@ -90,9 +90,9 @@ static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	RedisModule_ReplyWithArray(ctx, 2);
 	RedisModule_ReplyWithStringBuffer(ctx, "labels", 6);
 	// Print label in nested array for multi-label support
-	// Retrieve label
+	// Retrieve label if it is not set on the node.
 	// TODO Make a more efficient lookup for this string
-	const char *label = GraphContext_GetNodeLabel(gc, n);
+	const char *label = n->label ? n->label : GraphContext_GetNodeLabel(gc, n);
 	if(label == NULL) {
 		// Emit an empty array for unlabeled nodes
 		RedisModule_ReplyWithArray(ctx, 0);

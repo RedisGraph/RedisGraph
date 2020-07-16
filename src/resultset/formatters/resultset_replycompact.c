@@ -117,8 +117,8 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 
 	// [label string index]
 	// Print label in nested array for multi-label support
-	// Retrieve label
-	int label_id = Graph_GetNodeLabel(gc->g, id);
+	// Retrieve label if it is not set on the node.
+	int label_id = n->labelID != GRAPH_NO_LABEL ? n->labelID : Graph_GetNodeLabel(gc->g, id);
 	if(label_id == GRAPH_NO_LABEL) {
 		// Emit an empty array for unlabeled nodes
 		RedisModule_ReplyWithArray(ctx, 0);
