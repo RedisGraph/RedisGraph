@@ -43,8 +43,14 @@ unsigned short Schema_IndexCount(const Schema *s) {
 Index *Schema_GetIndex(const Schema *s, const char *field, IndexType type) {
 	Index *idx = NULL;
 
-	if(type == IDX_EXACT_MATCH) idx = s->index;
-	else idx = s->fulltextIdx;
+	if(type == IDX_EXACT_MATCH) {
+		idx = s->index;
+	} else if(type ==  IDX_FULLTEXT) {
+		idx = s->fulltextIdx;
+	} else {
+		// If type is unspecified, use the first index that exists.
+		idx = s->index ? : s->fulltextIdx;
+	}
 
 	if(!idx) return NULL;
 
@@ -84,28 +90,22 @@ int Schema_RemoveIndex(Schema *s, const char *field, IndexType type) {
 	Index *idx = Schema_GetIndex(s, field, type);
 	if(idx == NULL) return INDEX_FAIL;
 
-	/* Currently dropping a full-text index
-	 * doesn't take into account fields. */
+	type = idx->type;
+
+	// Currently dropping a full-text index doesn't take into account fields.
 	if(type == IDX_FULLTEXT) {
 		assert(field == NULL);
 		Index_Free(idx);
 		s->fulltextIdx = NULL;
-		return INDEX_OK;
-	}
+	} else {
+		// Index is of type IDX_EXACT_MATCH
+		assert(type == IDX_EXACT_MATCH);
+		Index_RemoveField(idx, field);
 
-	Index_RemoveField(idx, field);
-
-	/* If index field count dropped to 0
-	 * remove index from schema. */
-	if(Index_FieldsCount(idx) == 0) {
-		Index_Free(idx);
-		switch(type) {
-		case IDX_EXACT_MATCH:
+		// If index field count dropped to 0, remove index from schema.
+		if(Index_FieldsCount(idx) == 0) {
+			Index_Free(idx);
 			s->index = NULL;
-			break;
-		case IDX_FULLTEXT:
-			s->fulltextIdx = NULL;
-			break;
 		}
 	}
 
@@ -113,20 +113,15 @@ int Schema_RemoveIndex(Schema *s, const char *field, IndexType type) {
 }
 
 // Index node under all shcema indicies.
-void Schema_AddNodeToIndices(const Schema *s, const Node *n, bool update) {
+void Schema_AddNodeToIndices(const Schema *s, const Node *n) {
 	if(!s) return;
+	Index *idx = NULL;
 
-	Index *idx = s->fulltextIdx;
-	if(idx) {
-		if(update) Index_RemoveNode(idx, n);
-		Index_IndexNode(idx, n);
-	}
+	idx = s->fulltextIdx;
+	if(idx) Index_IndexNode(idx, n);
 
 	idx = s->index;
-	if(!idx) return;
-
-	if(update) Index_RemoveNode(idx, n);
-	Index_IndexNode(idx, n);
+	if(idx) Index_IndexNode(idx, n);
 }
 
 void Schema_Free(Schema *schema) {
