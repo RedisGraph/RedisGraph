@@ -70,7 +70,8 @@ static Record AllNodeScanConsumeFromChild(OpBase *opBase) {
 	Record r = OpBase_CloneRecord(op->child_record);
 
 	// Populate the Record with the graph entity data.
-	Node n = { .entity = en };
+	Node n = Node_New();
+	n.entity = en;
 	Record_AddNode(r, op->nodeRecIdx, n);
 
 	return r;
@@ -83,7 +84,8 @@ static Record AllNodeScanConsume(OpBase *opBase) {
 	if(en == NULL) return NULL;
 
 	Record r = OpBase_CreateRecord((OpBase *)op);
-	Node n = { .entity = en };
+	Node n = Node_New();
+	n.entity = en;
 	Record_AddNode(r, op->nodeRecIdx, n);
 
 	return r;

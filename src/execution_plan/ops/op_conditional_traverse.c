@@ -157,7 +157,7 @@ static Record CondTraverseConsume(OpBase *opBase) {
 
 	/* Get node from current column. */
 	op->r = op->records[src_id];
-	Node destNode = {0};
+	Node destNode = Node_New();
 	Graph_GetNode(op->graph, dest_id, &destNode);
 	Record_AddNode(op->r, op->destNodeIdx, destNode);
 
