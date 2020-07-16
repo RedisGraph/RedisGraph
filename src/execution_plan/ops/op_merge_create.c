@@ -7,7 +7,6 @@
 #include "op_merge_create.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
-#include "../../schema/schema.h"
 #include <assert.h>
 
 /* Forward declarations. */

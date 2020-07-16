@@ -144,7 +144,6 @@ static Record _handoff(OpExpandInto *op) {
 /* ExpandIntoConsume next operation
  * returns OP_DEPLETED when no additional updates are available */
 static Record ExpandIntoConsume(OpBase *opBase) {
-	Node *n;
 	Record r;
 	OpExpandInto *op = (OpExpandInto *)opBase;
 	OpBase *child = op->op.children[0];

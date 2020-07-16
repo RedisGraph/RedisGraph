@@ -8,7 +8,7 @@
 
 static int _getNodeAttribute(void *ctx, const char *fieldName, const void *id, char **strVal,
 							 double *doubleVal) {
-	Node n;
+	Node n = Node_New();
 	NodeID nId = *(NodeID *)id;
 	GraphContext *gc = (GraphContext *)ctx;
 	Graph *g = gc->g;
@@ -42,7 +42,7 @@ static void _populateIndex
 	// Label doesn't exists.
 	if(s == NULL) return;
 
-	Node node;
+	Node node = Node_New();
 	NodeID node_id;
 	Graph *g = gc->g;
 	int label_id = s->id;
