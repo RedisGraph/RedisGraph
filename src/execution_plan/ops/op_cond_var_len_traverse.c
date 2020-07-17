@@ -86,13 +86,22 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 	op->expandInto = false;
 	op->allPathsCtx = NULL;
 	op->edgeRelationTypes = NULL;
+	op->dest_label = NULL;
+	op->dest_label_id = GRAPH_NO_LABEL;
 
 	OpBase_Init((OpBase *)op, OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
 				"Conditional Variable Length Traverse", NULL, CondVarLenTraverseConsume, CondVarLenTraverseReset,
 				CondVarLenTraverseToString, CondVarLenTraverseClone, CondVarLenTraverseFree, false, plan);
 
 	assert(OpBase_Aware((OpBase *)op, AlgebraicExpression_Source(ae), &op->srcNodeIdx));
-	op->destNodeIdx = OpBase_Modifies((OpBase *)op, AlgebraicExpression_Destination(ae));
+	const char *dest = AlgebraicExpression_Destination(ae);
+	op->destNodeIdx = OpBase_Modifies((OpBase *)op, dest);
+	// Check the QueryGraph node and retrieve label data if possible.
+	QGNode *dest_node = QueryGraph_GetNodeByAlias(plan->query_graph, dest);
+	if(dest_node->labelID != GRAPH_NO_LABEL) {
+		op->dest_label = dest_node->label;
+		op->dest_label_id = dest_node->labelID;
+	}
 
 	// Populate edge value in record only if it is referenced.
 	AST *ast = QueryCtx_GetAST();
@@ -140,7 +149,11 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 
 	Node n = Path_Head(p);
 
-	if(!op->expandInto) Record_AddNode(op->r, op->destNodeIdx, n);
+	if(!op->expandInto) {
+		// Populate destination node with label data if known.
+		if(op->dest_label) Node_SetLabel(&n, op->dest_label, op->dest_label_id);
+		Record_AddNode(op->r, op->destNodeIdx, n);
+	}
 	if(op->edgesIdx >= 0) {
 		// If we're returning a new path from a previously-used Record,
 		// free the previous path to avoid a memory leak.
