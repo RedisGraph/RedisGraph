@@ -92,8 +92,8 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		QGNode *n = op->pending.nodes_to_create[i].node;
 
 		/* Create a new node. */
-		Node newNode = Node_New();
-		Node_SetLabel(&newNode, n->label, n->labelID);
+		Node newNode = Node_NewLabeledNode(n->label, n->labelID);
+
 		/* Add new node to Record and save a reference to it. */
 		Node *node_ref = Record_AddNode(r, op->pending.nodes_to_create[i].node_idx, newNode);
 

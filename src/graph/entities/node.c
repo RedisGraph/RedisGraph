@@ -22,9 +22,13 @@ inline Node Node_New() {
 	return n;
 }
 
-inline void Node_SetLabel(Node *n, const char *label, int label_id) {
-	n->label = label;
-	n->labelID = label_id;
+inline Node Node_NewLabeledNode(const char *label, int label_id) {
+	Node n = {
+		.entity = NULL,
+		.label = label,
+		.labelID = label_id,
+	};
+	return n;
 }
 
 void Node_ToString(const Node *n, char **buffer, size_t *bufferLen, size_t *bytesWritten,

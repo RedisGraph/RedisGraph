@@ -19,8 +19,8 @@ typedef struct {
 /* Instantiate a new unpopulated node. */
 Node Node_New(void);
 
-/* Set the label and associated ID of the given node. */
-void Node_SetLabel(Node *n, const char *label, int label_id);
+/* Instantiate a new node with label data. */
+Node Node_NewLabeledNode(const char *label, int label_id);
 
 /* Prints a string representation of the node to buffer, return the string length. */
 void Node_ToString(const Node *n, char **buffer, size_t *bufferLen, size_t *bytesWritten,

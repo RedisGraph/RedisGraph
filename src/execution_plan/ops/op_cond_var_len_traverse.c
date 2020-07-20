@@ -151,7 +151,10 @@ static Record CondVarLenTraverseConsume(OpBase *opBase) {
 
 	if(!op->expandInto) {
 		// Populate destination node with label data if known.
-		if(op->dest_label) Node_SetLabel(&n, op->dest_label, op->dest_label_id);
+		if(op->dest_label) {
+			n.label = op->dest_label;
+			n.labelID = op->dest_label_id;
+		}
 		Record_AddNode(op->r, op->destNodeIdx, n);
 	}
 	if(op->edgesIdx >= 0) {
