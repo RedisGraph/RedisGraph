@@ -7,7 +7,6 @@ from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
 
 GRAPH_ID = "replication"
-redis_graph = None
 
 # test to see if replication works as expected
 # RedisGraph should replicate all write queries which had an effect on the
@@ -16,17 +15,15 @@ redis_graph = None
 
 class testReplication(FlowTestsBase):
     def __init__(self):
+        # skip test if we're running under Valgrind
+        if Env().envRunner.debugger is not None:
+            Env().skip() # valgrind is not working correctly with replication
+
         self.env = Env(env='oss', useSlaves=True)
-        global redis_graph
 
     def test_CRUD_replication(self):
         # create a simple graph
         env = self.env
-
-        # skip test if we're running under Valgrind
-        if env.envRunner.debugger is not None:
-            env.skip() # valgrind is not working correctly with replication
-
         source_con = env.getConnection()
         replica_con = env.getSlaveConnection()
 
