@@ -14,6 +14,7 @@
 #define INDEX_FAIL 0
 
 typedef enum {
+	IDX_ANY,
 	IDX_EXACT_MATCH,
 	IDX_FULLTEXT,
 } IndexType;
