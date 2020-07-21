@@ -66,7 +66,7 @@ uint GraphContext_AttributeCount(GraphContext *gc);
 // Retrieve an attribute ID given a string, creating one if not found
 Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attribute);
 // Retrieve an attribute string given an ID
-const char *GraphContext_GetAttributeString(const GraphContext *gc, Attribute_ID id);
+const char *GraphContext_GetAttributeString(GraphContext *gc, Attribute_ID id);
 // Retrieve an attribute ID given a string, or ATTRIBUTE_NOTFOUND if attribute doesn't exist.
 Attribute_ID GraphContext_GetAttributeID(GraphContext *gc, const char *str);
 

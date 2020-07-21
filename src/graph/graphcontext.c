@@ -248,7 +248,10 @@ const char *GraphContext_GetEdgeRelationType(const GraphContext *gc, Edge *e) {
 }
 
 uint GraphContext_AttributeCount(GraphContext *gc) {
-	return raxSize(gc->attributes);
+	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
+	uint size = raxSize(gc->attributes);
+	pthread_rwlock_unlock(&gc->_attribute_rwlock);
+	return size;
 }
 
 Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attribute) {
@@ -284,9 +287,12 @@ Attribute_ID GraphContext_FindOrAddAttribute(GraphContext *gc, const char *attri
 	return (uintptr_t)attribute_id;
 }
 
-const char *GraphContext_GetAttributeString(const GraphContext *gc, Attribute_ID id) {
+const char *GraphContext_GetAttributeString(GraphContext *gc, Attribute_ID id) {
+	pthread_rwlock_rdlock(&gc->_attribute_rwlock);
 	assert(id < array_len(gc->string_mapping));
-	return gc->string_mapping[id];
+	const char *name = gc->string_mapping[id];
+	pthread_rwlock_unlock(&gc->_attribute_rwlock);
+	return name;
 }
 
 Attribute_ID GraphContext_GetAttributeID(GraphContext *gc, const char *attribute) {
