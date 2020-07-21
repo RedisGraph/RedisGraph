@@ -1,4 +1,4 @@
-#include "convert_all_node_scans.h"
+#include "full_scan_to_label_scan.h"
 
 static inline bool _isLabelFunc(const AR_ExpNode *exp) {
 	return exp->type == AR_EXP_OP && !strcasecmp(exp->op.func_name, "labels");
@@ -9,7 +9,8 @@ static inline bool _isNodeOperand(const AR_ExpNode *exp) {
 		   !exp->operand.variadic.entity_prop;
 }
 
-static inline bool _isMatchingLabelFunc(const AR_ExpNode *exp, const char *alias) {
+static inline bool _isMatchingLabelFunc(const AR_ExpNode *exp,
+										const char *alias) {
 	// We are only interested in labels() function calls.
 	if(!_isLabelFunc(exp)) return false;
 
@@ -26,7 +27,8 @@ static inline bool _isStringConstant(const AR_ExpNode *exp) {
 		   exp->operand.constant.type == T_STRING;
 }
 
-static void _ReplaceOpsWithLabelScan(ExecutionPlan *plan, OpBase *filter, AllNodeScan *scan,
+static void _ReplaceOpsWithLabelScan(ExecutionPlan *plan, OpBase *filter,
+									 AllNodeScan *scan,
 									 const char *label) {
 	// Update the scan's inner node with the label.
 	QueryGraph_SetNodeLabel((QGNode *)scan->n, label);
@@ -54,14 +56,16 @@ static void _label_scan_from_filter(ExecutionPlan *plan, AllNodeScan *scan) {
 		// Reject all filter nodes that aren't equality predicates.
 		if(!IsNodePredicate(ft) || ft->pred.op != OP_EQUAL) continue;
 
-		if(_isMatchingLabelFunc(ft->pred.lhs, alias) && _isStringConstant(ft->pred.rhs)) {
+		if(_isMatchingLabelFunc(ft->pred.lhs, alias) &&
+		   _isStringConstant(ft->pred.rhs)) {
 			/* If the LHS is a label functions and the RHS is a string constant,
 			 * we can replace the AllNodeScan. */
 			const char *label = ft->pred.lhs->operand.constant.stringval;
 			// Replace the AllNodeScan and the Filter op with a label scan.
 			_ReplaceOpsWithLabelScan(plan, (OpBase *)filter, scan, label);
 			return;
-		} else if(_isMatchingLabelFunc(ft->pred.rhs, alias) && _isStringConstant(ft->pred.lhs)) {
+		} else if(_isMatchingLabelFunc(ft->pred.rhs, alias) &&
+				  _isStringConstant(ft->pred.lhs)) {
 			/* If the RHS is a label functions and the LHS is a string constant,
 			 * we can replace the AllNodeScan. */
 			const char *label = ft->pred.lhs->operand.constant.stringval;
@@ -72,7 +76,7 @@ static void _label_scan_from_filter(ExecutionPlan *plan, AllNodeScan *scan) {
 	}
 }
 
-void convertAllNodeScans(ExecutionPlan *plan) {
+void fullScantoLabelScan(ExecutionPlan *plan) {
 	// Collect all AllNodeScan ops.
 	OpBase **scan_ops = ExecutionPlan_CollectOps(plan->root, OPType_ALL_NODE_SCAN);
 

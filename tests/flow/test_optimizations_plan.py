@@ -370,6 +370,15 @@ class testOptimizationsPlan(FlowTestsBase):
                     [2]]
         self.env.assertEqual(resultset, expected)
 
+        # The optimization should apply when one of multiple AND-related filters is a label specification.
+        query = """MATCH (a) WHERE a:person AND a.val = 0 RETURN a.val ORDER BY a.val LIMIT 3"""
+        executionPlan = graph.execution_plan(query)
+        self.env.assertNotIn("All Node Scan", executionPlan)
+        self.env.assertIn("Label Scan", executionPlan)
+        resultset = graph.query(query).result_set
+        expected = [[0]]
+        self.env.assertEqual(resultset, expected)
+
         # The optimization is not valid for OR-specified multiple labels.
         query = """MATCH (a) WHERE a:person or a:FakeLabel RETURN a.val ORDER BY a.val LIMIT 3"""
         executionPlan = graph.execution_plan(query)

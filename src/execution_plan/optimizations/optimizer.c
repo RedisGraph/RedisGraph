@@ -19,7 +19,7 @@ void _optimizePlan(ExecutionPlan *plan) {
 	 * 3. Remove redundant scans which checks for the same node. */
 
 	/* Replace AllNodeScans with label filters with label scans. */
-	convertAllNodeScans(plan);
+	fullScantoLabelScan(plan);
 
 	/* When possible, replace label scan and filter ops
 	 * with index scans. */
