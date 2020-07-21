@@ -44,13 +44,12 @@ class DFSTest: public ::testing::Test {
 		size_t edge_cap = 3;
 
 		// Create nodes.
-		const char *label = "L";
 		const char *relation = "R";
 
-		A = QGNode_New(label, "A");
-		B = QGNode_New(label, "B");
-		C = QGNode_New(label, "C");
-		D = QGNode_New(label, "D");
+		A = QGNode_New("A");
+		B = QGNode_New("B");
+		C = QGNode_New("C");
+		D = QGNode_New("D");
 
 		AB = QGEdge_New(A, B, relation, "AB");
 		BC = QGEdge_New(B, C, relation, "BC");
@@ -127,3 +126,4 @@ QGNode *DFSTest::D;
 QGEdge *DFSTest::AB;
 QGEdge *DFSTest::BC;
 QGEdge *DFSTest::CD;
+
