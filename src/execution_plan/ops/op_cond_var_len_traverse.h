@@ -24,8 +24,6 @@ typedef struct {
 	bool expandInto;                /* Both src and dest already resolved. */
 	unsigned int minHops;           /* Maximum number of hops to perform. */
 	unsigned int maxHops;           /* Maximum number of hops to perform. */
-	NodeID dest_label_id;           /* ID of destination node label if known. */
-	const char *dest_label;         /* Label of destination node if known. */
 	int edgeRelationCount;          /* Length of edgeRelationTypes. */
 	int *edgeRelationTypes;         /* Relation(s) we're traversing. */
 	AllPathsCtx *allPathsCtx;

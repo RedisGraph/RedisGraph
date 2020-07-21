@@ -22,7 +22,7 @@ typedef struct {
 } QGNode;
 
 /* Creates a new node. */
-QGNode *QGNode_New(const char *label, const char *alias);
+QGNode *QGNode_New(const char *alias);
 
 /* Returns number of edges pointing into node. */
 int QGNode_IncomeDegree(const QGNode *n);
@@ -50,3 +50,4 @@ int QGNode_ToString(const QGNode *n, char *buff, int buff_len);
 
 /* Frees allocated space by given node. */
 void QGNode_Free(QGNode *node);
+
