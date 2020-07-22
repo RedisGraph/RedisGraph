@@ -383,6 +383,14 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_lim
 	for(int i = 0; i < Vector_Size(sub_trees); i++) {
 		FT_FilterNode *tree;
 		Vector_Get(sub_trees, i, &tree);
+		// Update the ExecutionPlan mapping with the list comprehension's local variable.
+		// TODO come up with better
+		FT_FilterNode *list_comp_node;
+		if(FilterTree_ContainsFunc(tree, "LIST_COMPREHENSION", &list_comp_node)) {
+			AR_ExpNode *comprehension = AR_EXP_SeekFunc(list_comp_node->exp.exp, "LIST_COMPREHENSION");
+			const char *variable = comprehension->op.children[0]->operand.constant.stringval;
+			ExecutionPlan_AddToMapping(plan, variable);
+		}
 		OpBase *filter_op = NewFilterOp(plan, tree);
 		ExecutionPlan_RePositionFilterOp(plan, plan->root, recurse_limit, filter_op);
 	}
@@ -413,6 +421,18 @@ static void _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **orde
 
 	raxFree(projection_names);
 	*exps_ptr = project_exps;
+}
+
+// TODO move somewhere, maybe not ar_exp because it is not aware of ExecutionPlan
+void AR_EXP_MapIdentifier(const ExecutionPlan *plan, AR_ExpNode *exp) {
+	AR_ExpNode *comprehension = AR_EXP_SeekFunc(exp, "LIST_COMPREHENSION");
+	if(comprehension) {
+		// TODO tmp
+		AR_ExpNode *variable_exp = comprehension->op.children[0];
+		const char *name = variable_exp->operand.constant.stringval;
+		// variable_exp->operand.variadic.entity_alias_idx = ExecutionPlan_AddToMapping(plan, name);
+		ExecutionPlan_AddToMapping(plan, name);
+	}
 }
 
 // Build an aggregate or project operation and any required modifying operations.
@@ -792,6 +812,39 @@ static OpBase *_ExecutionPlan_FindLastWriter(OpBase *root) {
 	return NULL;
 }
 
+void _ProjectOpExtendMapping(OpBase *opBase) {
+	const ExecutionPlan *plan_to_extend;
+
+	if(opBase->type == OPType_PROJECT) {
+		// If the Project op has a child, the child's record map should be extended.
+		if(opBase->childCount == 0) plan_to_extend = opBase->plan;
+		else plan_to_extend = opBase->children[0]->plan;
+		OpProject *op = (OpProject *)opBase;
+		uint exp_count = array_len(op->exps);
+		for(uint i = 0; i < exp_count; i ++) {
+			AR_ExpNode *exp = op->exps[i];
+			AR_EXP_MapIdentifier(plan_to_extend, exp);
+		}
+	} else {
+		// Aggregate ops should always extend their own plan.
+		// TODO this will be untrue if we disambiguate aggregate+project ops better, as in:
+		// MATCH p=()-[*]->() RETURN [n IN nodes(p) WHERE n.v <> 'b' | n.v]
+		plan_to_extend = opBase->plan;
+		OpAggregate *op = (OpAggregate *)opBase;
+
+		for(uint i = 0; i < op->key_count; i ++) {
+			AR_ExpNode *exp = op->key_exps[i];
+			AR_EXP_MapIdentifier(plan_to_extend, exp);
+		}
+
+		for(uint i = 0; i < op->aggregate_count; i ++) {
+			AR_ExpNode *exp = op->aggregate_exps[i];
+			AR_EXP_MapIdentifier(plan_to_extend, exp);
+		}
+	}
+
+}
+
 ExecutionPlan *NewExecutionPlan(void) {
 	AST *ast = QueryCtx_GetAST();
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
@@ -861,6 +914,8 @@ ExecutionPlan *NewExecutionPlan(void) {
 
 		ExecutionPlan_AddOp(connecting_op, prev_root);
 
+		_ProjectOpExtendMapping(connecting_op);
+
 		// Place filter ops required by current segment.
 		QueryCtx_SetAST(ast_segments[i]);
 		if(current_segment->filter_tree) {
@@ -908,6 +963,19 @@ void ExecutionPlan_PreparePlan(ExecutionPlan *plan) {
 inline rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan) {
 	assert(plan && plan->record_map);
 	return plan->record_map;
+}
+
+int ExecutionPlan_AddToMapping(const ExecutionPlan *plan, const char *alias) {
+	/* Make sure alias has an entry associated with it
+	 * within the record mapping. */
+	rax *mapping = ExecutionPlan_GetMappings(plan);
+
+	void *id = raxFind(mapping, (unsigned char *)alias, strlen(alias));
+	if(id == raxNotFound) {
+		id = (void *)raxSize(mapping);
+		raxInsert(mapping, (unsigned char *)alias, strlen(alias), id, NULL);
+	}
+	return (intptr_t)id;
 }
 
 Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan) {

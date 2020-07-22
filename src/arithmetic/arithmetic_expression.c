@@ -365,7 +365,10 @@ static bool _AR_EXP_UpdateEntityIdx(AR_OperandNode *node, const Record r) {
 
 static AR_EXP_Result _AR_EXP_EvaluateProperty(AR_ExpNode *node, const Record r, SIValue *result) {
 	RecordEntryType t = Record_GetType(r, node->operand.variadic.entity_alias_idx);
-	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
+	GraphEntity *ge = NULL;
+	if(t == REC_TYPE_NODE && t == REC_TYPE_EDGE) {
+		ge = Record_GetGraphEntity(r, node->operand.variadic.entity_alias_idx);
+	} else {
 		if(t == REC_TYPE_UNKNOWN) {
 			/* If we attempt to access an unset Record entry as a graph entity
 			 * (due to a scenario like a failed OPTIONAL MATCH), return a null value. */
@@ -373,15 +376,18 @@ static AR_EXP_Result _AR_EXP_EvaluateProperty(AR_ExpNode *node, const Record r, 
 			return EVAL_OK;
 		}
 
-		/* Attempted to access a scalar value as a map.
-		 * Set an error and invoke the exception handler. */
 		SIValue v = Record_Get(r, node->operand.variadic.entity_alias_idx);
-		// Set the query-level error.
-		QueryCtx_SetError("Type mismatch: expected a map but was %s", SIType_ToString(SI_TYPE(v)));
-		return EVAL_ERR;
+		if(!(SI_TYPE(v) & (T_NODE | T_EDGE))) {
+			/* Attempted to access a scalar value as a map.
+			 * Set an error and invoke the exception handler. */
+			QueryCtx_SetError("Type mismatch: expected a map but was %s", SIType_ToString(SI_TYPE(v)));
+			return EVAL_ERR;
+		}
+
+		// Node or Edge SIValue; the pointer can be accessed as a graph entity.
+		ge = (GraphEntity *)v.ptrval;
 	}
 
-	GraphEntity *ge = Record_GetGraphEntity(r, node->operand.variadic.entity_alias_idx);
 	if(node->operand.variadic.entity_prop_idx == ATTRIBUTE_UNSET) {
 		_AR_EXP_UpdatePropIdx(node, NULL);
 	}
@@ -566,11 +572,22 @@ bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
 	return false;
 }
 
-bool inline  AR_EXP_IsConstant(const AR_ExpNode *exp) {
+AR_ExpNode *AR_EXP_SeekFunc(AR_ExpNode *root, const char *func) {
+	if(root->type == AR_EXP_OP) {
+		if(strcasecmp(root->op.func_name, func) == 0) return root;
+		for(int i = 0; i < root->op.child_count; i++) {
+			AR_ExpNode *exp = AR_EXP_SeekFunc(root->op.children[i], func);
+			if(exp) return exp;
+		}
+	}
+	return NULL;
+}
+
+bool inline AR_EXP_IsConstant(const AR_ExpNode *exp) {
 	return exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_CONSTANT;
 }
 
-bool inline  AR_EXP_IsParameter(const AR_ExpNode *exp) {
+bool inline AR_EXP_IsParameter(const AR_ExpNode *exp) {
 	return exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_PARAM;
 }
 
@@ -677,6 +694,9 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
 }
 
 static inline void _AR_EXP_FreeOpInternals(AR_ExpNode *op_node) {
+	if(op_node->op.type == AR_OP_FUNC && op_node->op.f->bfree) {
+		op_node->op.f->bfree(op_node);
+	}
 	for(int child_idx = 0; child_idx < op_node->op.child_count; child_idx++) {
 		AR_EXP_Free(op_node->op.children[child_idx]);
 	}

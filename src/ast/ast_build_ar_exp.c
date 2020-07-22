@@ -370,6 +370,60 @@ static AR_ExpNode *_AR_ExpNodeFromParameter(const cypher_astnode_t *param) {
 	return AR_EXP_NewParameterOperandNode(identifier);
 }
 
+static AR_ExpNode *_AR_ExpNodeFromListComprehension(const cypher_astnode_t *comp_exp) {
+	const char *func_name = "LIST_COMPREHENSION";
+	// Build an operation node to represent the list comprehension.
+	AR_ExpNode *op = AR_EXP_NewOpNode(func_name, 5);
+
+	/* Retrieve the variable or alias of the list expression this comprehension operates on.
+	 * In the query:
+	 * WITH [1,2,3] AS arr RETURN [val IN arr WHERE val % 2 = 1 | val * 2] AS comp
+	 */
+
+	/* Retrieve the variable name introduced in this context to iterate over list elements.
+	 * In the above query, this is 'val'. */
+	const cypher_astnode_t *variable_node = cypher_ast_list_comprehension_get_identifier(comp_exp);
+	assert(cypher_astnode_type(variable_node) == CYPHER_AST_IDENTIFIER);
+	// The variable string is the function's first child.
+	const char *variable = cypher_ast_identifier_get_name(variable_node);
+	op->op.children[0] = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char *)variable));
+	// op->op.children[0] = _AR_EXP_FromExpression(variable_node);
+
+	/* 'arr' is the list expression.
+	 * Note that this value could resolve to an alias, a literal array, a function call, and so on. */
+	const cypher_astnode_t *list_node = cypher_ast_list_comprehension_get_expression(comp_exp);
+	AR_ExpNode *list = _AR_EXP_FromExpression(list_node);
+	// The list expression is the function's second child.
+	op->op.children[1] = list;
+
+	/* The predicate node is the set of WHERE conditions in the comprehension, if any. */
+	const cypher_astnode_t *predicate_node = cypher_ast_list_comprehension_get_predicate(comp_exp);
+	if(predicate_node) {
+		// TODO consider using _AST_ConvertFilters instead to build FilterTree.
+		AR_ExpNode *predicate = _AR_EXP_FromExpression(predicate_node);
+		// Store the predicate as a pointer value so it does not get prematurely evaluated.
+		op->op.children[2] = AR_EXP_NewConstOperandNode(SI_PtrVal(predicate));
+	} else {
+		op->op.children[2] = AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
+
+	/* Construct the operator node that will generate updated values, if one is provided.
+	 * In the above query, this will be an operation node representing "val * 2". */
+	const cypher_astnode_t *eval_node = cypher_ast_list_comprehension_get_eval(comp_exp);
+	if(eval_node) {
+		AR_ExpNode *eval = _AR_EXP_FromExpression(eval_node);
+		// Store the predicate as a pointer value so it does not get prematurely evaluated.
+		op->op.children[3] = AR_EXP_NewConstOperandNode(SI_PtrVal(eval));
+	} else {
+		op->op.children[3] = AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
+
+	// The function's last child will be a pointer to the Record being evaluated.
+	op->op.children[4] = AR_EXP_NewRecordNode();
+
+	return op;
+}
+
 static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 
 	const cypher_astnode_type_t type = cypher_astnode_type(expr);
@@ -429,11 +483,12 @@ static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 		return _AR_ExpNodeFromGraphEntity(expr);
 	} else if(type == CYPHER_AST_PARAMETER) {
 		return _AR_ExpNodeFromParameter(expr);
+	} else if(type == CYPHER_AST_LIST_COMPREHENSION) {
+		return _AR_ExpNodeFromListComprehension(expr);
 	} else {
 		/*
 		   Unhandled types:
 		   CYPHER_AST_LABELS_OPERATOR
-		   CYPHER_AST_LIST_COMPREHENSION
 		   CYPHER_AST_MAP
 		   CYPHER_AST_MAP_PROJECTION
 		   CYPHER_AST_PATTERN_COMPREHENSION

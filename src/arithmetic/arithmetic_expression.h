@@ -146,6 +146,8 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str);
  * func - function name to lookup. */
 bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func);
 
+AR_ExpNode *AR_EXP_SeekFunc(AR_ExpNode *root, const char *func);
+
 /* Returns true if an arithmetic expression node is a constant. */
 bool AR_EXP_IsConstant(const AR_ExpNode *exp);
 

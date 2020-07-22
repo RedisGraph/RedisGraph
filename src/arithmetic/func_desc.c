@@ -31,6 +31,7 @@ AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint min_argc, uint 
 	AR_FuncDesc *desc = rm_malloc(sizeof(AR_FuncDesc));
 	desc->name = name;
 	desc->func = func;
+	desc->bfree = NULL;
 	desc->min_argc = min_argc;
 	desc->max_argc = max_argc;
 	desc->types = types;

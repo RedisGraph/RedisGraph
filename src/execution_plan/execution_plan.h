@@ -134,6 +134,9 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_lim
 /* Retrieve the map of aliases to Record offsets in this ExecutionPlan segment. */
 rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan);
 
+/* Add or retrieve a Record ID for the given alias. */
+int ExecutionPlan_AddToMapping(const ExecutionPlan *plan, const char *alias);
+
 /* Retrieves a Record from the ExecutionPlan's Record pool. */
 Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan);
 

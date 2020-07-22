@@ -14,6 +14,7 @@
 Record ExecutionPlan_BorrowRecord(struct ExecutionPlan *plan);
 rax *ExecutionPlan_GetMappings(const struct ExecutionPlan *plan);
 void ExecutionPlan_ReturnRecord(struct ExecutionPlan *plan, Record r);
+int ExecutionPlan_AddToMapping(const struct ExecutionPlan *plan, const char *alias);
 
 void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsume consume,
 				 fpReset reset, fpToString toString, fpClone clone, fpFree free, bool writer,
@@ -50,17 +51,7 @@ int OpBase_Modifies(OpBase *op, const char *alias) {
 	if(!op->modifies) op->modifies = array_new(const char *, 1);
 	op->modifies = array_append(op->modifies, alias);
 
-	/* Make sure alias has an entry associated with it
-	 * within the record mapping. */
-	rax *mapping = ExecutionPlan_GetMappings(op->plan);
-
-	void *id = raxFind(mapping, (unsigned char *)alias, strlen(alias));
-	if(id == raxNotFound) {
-		id = (void *)raxSize(mapping);
-		raxInsert(mapping, (unsigned char *)alias, strlen(alias), id, NULL);
-	}
-
-	return (intptr_t)id;
+	return ExecutionPlan_AddToMapping(op->plan, alias);
 }
 
 int OpBase_AliasModifier(OpBase *op, const char *modifier, const char *alias) {
