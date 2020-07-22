@@ -90,7 +90,9 @@ static bool _set_intersection_idx(OpValueHashJoin *op, SIValue v) {
 	// Make sure value was found.
 	Record r = op->cached_records[leftmost_idx];
 	SIValue x = Record_Get(r, op->join_value_rec_idx);
-	if(SIValue_Compare(x, v, NULL) != 0) return false; // Value wasn't found.
+	int disjointOrNull = 0;
+	// Return false if the value wasn't found or evaluated to NULL.
+	if(SIValue_Compare(x, v, &disjointOrNull) != 0 || disjointOrNull == COMPARED_NULL) return false;
 
 	/* Value was found
 	 * idx points to the first intersecting record.
@@ -132,12 +134,17 @@ void _cache_records(OpValueHashJoin *op) {
 
 	// As long as there's data coming in from left branch.
 	do {
-		// Add joined value to record.
-		op->cached_records = array_append(op->cached_records, r);
-
 		// Evaluate joined expression.
 		SIValue v = AR_EXP_Evaluate(op->lhs_exp, r);
+
+		// If the joined value is NULL, it cannot be compared to other values - skip this record.
+		if(SIValue_IsNull(v)) continue;
+
+		// Add joined value to record.
 		Record_AddScalar(r, op->join_value_rec_idx, v);
+
+		// Cache the record.
+		op->cached_records = array_append(op->cached_records, r);
 	} while((r = left_child->consume(left_child)));
 }
 
