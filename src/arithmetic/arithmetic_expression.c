@@ -64,6 +64,9 @@ static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 		clone->operand.type = AR_EXP_PARAM;
 		clone->operand.param_name = exp->operand.param_name;
 		break;
+	case AR_EXP_BORROW_RECORD:
+		clone->operand.type = AR_EXP_BORROW_RECORD;
+		break;
 	default:
 		assert(false);
 		break;
@@ -168,6 +171,14 @@ AR_ExpNode *AR_EXP_NewParameterOperandNode(const char *param_name) {
 	node->type = AR_EXP_OPERAND;
 	node->operand.type = AR_EXP_PARAM;
 	node->operand.param_name = param_name;
+	return node;
+}
+
+AR_ExpNode *AR_EXP_NewRecordNode() {
+	AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
+	node->resolved_name = NULL;
+	node->type = AR_EXP_OPERAND;
+	node->operand.type = AR_EXP_BORROW_RECORD;
 	return node;
 }
 
@@ -437,6 +448,10 @@ static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue 
 			return _AR_EXP_EvaluateVariadic(root, r, result);
 		case AR_EXP_PARAM:
 			return _AR_EXP_EvaluateParam(root, result);
+		case AR_EXP_BORROW_RECORD:
+			// Wrap the current Record in an SI pointer.
+			*result = SI_PtrVal(r);
+			return res;
 		default:
 			assert(false && "Invalid expression type");
 		}

@@ -31,13 +31,17 @@ typedef enum {
 	AR_OP_FUNC,
 } AR_OPType;
 
-/* AR_OperandNodeType type of leaf node,
- * either a constant: 3, a variable: node.property, or a parameter: $p. */
+/* AR_OperandNodeType - Type of an expression tree's leaf node. Can be:
+ * A constant, e.g. 3
+ * A variable, e.g. node.property
+ * A parameter, e.g. $p.
+ * A directive to store the current record. */
 typedef enum {
 	AR_EXP_OP_UNKNOWN,
 	AR_EXP_CONSTANT,
 	AR_EXP_VARIADIC,
-	AR_EXP_PARAM
+	AR_EXP_PARAM,
+	AR_EXP_BORROW_RECORD
 } AR_OperandNodeType;
 
 /* Success of an evaluation. */
@@ -104,6 +108,9 @@ AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant);
 /* Creates a new Arithmetic expression parameter operand node. */
 AR_ExpNode *AR_EXP_NewParameterOperandNode(const char *param_name);
 
+/* Creates a new Arithmetic expression that will resolve to the current Record. */
+AR_ExpNode *AR_EXP_NewRecordNode(void);
+
 /* Returns if the operation is distinct aggregation */
 bool AR_EXP_PerformDistinct(AR_ExpNode *op);
 
@@ -154,3 +161,4 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp);
 
 /* Free arithmetic expression tree. */
 void AR_EXP_Free(AR_ExpNode *root);
+
