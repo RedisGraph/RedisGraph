@@ -48,7 +48,7 @@ ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *a
 	QueryNodeContext *pdata = ctx->privateData;
 	pdata->idx = idx;
 	pdata->g = gc->g;
-	pdata->n = Node_New();
+	pdata->n = NEW_NODE();
 	pdata->output = array_new(SIValue, 2);
 	pdata->output = array_append(pdata->output, SI_ConstStringVal("node"));
 	pdata->output = array_append(pdata->output, SI_Node(&pdata->n));

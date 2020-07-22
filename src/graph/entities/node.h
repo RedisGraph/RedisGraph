@@ -17,10 +17,10 @@ typedef struct {
 } Node;
 
 /* Instantiate a new unpopulated node. */
-Node Node_New(void);
+#define NEW_NODE() (Node){.entity = NULL, .label = NULL, .labelID = GRAPH_NO_LABEL}
 
 /* Instantiate a new node with label data. */
-Node Node_NewLabeledNode(const char *label, int label_id);
+#define NEW_LABELED_NODE(l_str, l_id) (Node){.entity = NULL, .label = (l_str), .labelID = (l_id)}
 
 /* Prints a string representation of the node to buffer, return the string length. */
 void Node_ToString(const Node *n, char **buffer, size_t *bufferLen, size_t *bytesWritten,

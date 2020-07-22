@@ -501,8 +501,8 @@ void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID, 
 	// MATCH ()-[:real_type|fake_type]->()
 	if(r == GRAPH_UNKNOWN_RELATION) return;
 
-	Node srcNode = Node_New();
-	Node destNode = Node_New();
+	Node srcNode = NEW_NODE();
+	Node destNode = NEW_NODE();
 	assert(Graph_GetNode(g, srcID, &srcNode));
 	assert(Graph_GetNode(g, destID, &destNode));
 
@@ -586,8 +586,8 @@ void Graph_FormConnection(Graph *g, NodeID src, NodeID dest, EdgeID edge_id, int
 }
 
 int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
-	Node srcNode = Node_New();
-	Node destNode = Node_New();
+	Node srcNode = NEW_NODE();
+	Node destNode = NEW_NODE();
 
 	assert(Graph_GetNode(g, src, &srcNode));
 	assert(Graph_GetNode(g, dest, &destNode));
