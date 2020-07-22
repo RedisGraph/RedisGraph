@@ -12,6 +12,7 @@
 
 #define INDEX_OK 1
 #define INDEX_FAIL 0
+#define NO_ATTRIBUTE USHRT_MAX
 
 typedef enum {
 	IDX_ANY,
@@ -44,11 +45,11 @@ Index *Index_New(const char *label, IndexType type);
 void Index_AddField(Index *idx, const char *field);
 
 /**
- * @brief  Removes fields from index.
- * @param  *idx:
- * @param  *field:
+ * @brief  Removes attribute from index.
+ * @param  *idx: Index
+ * @param  attribute_id: Attribute to remove
  */
-void Index_RemoveField(Index *idx, const char *field);
+void Index_RemoveField(Index *idx, Attribute_ID attribute_id);
 
 /**
  * @brief  Index node.
@@ -108,6 +109,14 @@ const char **Index_GetFields(const Index *idx);
  * @retval True if the field is indexed.
  */
 bool Index_ContainsField(const Index *idx, const char *field);
+
+/**
+ * @brief  Checks if given attribute is indexed.
+ * @param  *idx: Index to perform the check.
+ * @param  attribute_id: Attribute id to search.
+ * @retval True if the attribute is indexed.
+ */
+bool Index_ContainsAttribute(const Index *idx, Attribute_ID attribute_id);
 
 /**
  * @brief  Free fulltext index.

@@ -319,13 +319,13 @@ bool GraphContext_HasIndices(GraphContext *gc) {
 	return false;
 }
 
-Index *GraphContext_GetIndex(const GraphContext *gc, const char *label, const char *field,
+Index *GraphContext_GetIndex(const GraphContext *gc, const char *label, Attribute_ID attribute_id,
 							 IndexType type) {
 	// Retrieve the schema for this label
 	Schema *schema = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(schema == NULL) return NULL;
 
-	return Schema_GetIndex(schema, field, type);
+	return Schema_GetIndex(schema, attribute_id, type);
 }
 
 int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label, const char *field,
@@ -346,7 +346,10 @@ int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *fi
 	// Retrieve the schema for this label
 	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	int res = INDEX_FAIL;
-	if(s != NULL) res = Schema_RemoveIndex(s, field, type);
+	if(s != NULL) {
+		Attribute_ID attr_id = GraphContext_GetAttributeID(gc, field);
+		res = Schema_RemoveIndex(s, attr_id, type);
+	}
 	ResultSet *result_set = QueryCtx_GetResultSet();
 	ResultSet_IndexDeleted(result_set, res);
 	return res;
@@ -369,9 +372,9 @@ void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
 	}
 
 	// Update any indices this entity is represented in
-	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
+	Index *idx = Schema_GetIndex(s, NO_ATTRIBUTE, IDX_FULLTEXT);
 	if(idx) Index_RemoveNode(idx, n);
-	idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
+	idx = Schema_GetIndex(s, NO_ATTRIBUTE, IDX_EXACT_MATCH);
 	if(idx) Index_RemoveNode(idx, n);
 }
 

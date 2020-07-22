@@ -99,13 +99,17 @@ TEST_F(IndexTest, Index_New) {
 	ASSERT_STREQ(fields[0], "name");
 	ASSERT_STREQ(fields[1], "age");
 
-	Index_RemoveField(idx, "age");
-	Index_RemoveField(idx, "age");
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Attribute_ID age_id = GraphContext_GetAttributeID(gc, "age");
+	Attribute_ID name_id = GraphContext_GetAttributeID(gc, "name");
+
+	Index_RemoveField(idx, age_id);
+	Index_RemoveField(idx, age_id);
 	ASSERT_FALSE(Index_ContainsField(idx, "age"));
 	ASSERT_TRUE(Index_ContainsField(idx, "name"));
 
-	Index_RemoveField(idx, "name");
-	Index_RemoveField(idx, "name");
+	Index_RemoveField(idx, name_id);
+	Index_RemoveField(idx, name_id);
 	ASSERT_FALSE(Index_ContainsField(idx, "age"));
 	ASSERT_FALSE(Index_ContainsField(idx, "name"));
 

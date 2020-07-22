@@ -32,10 +32,7 @@ static int _getNodeAttribute(void *ctx, const char *fieldName, const void *id, c
 	return ret;
 }
 
-static void _populateIndex
-(
-	Index *idx
-) {
+static void _populateIndex(Index *idx) {
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Schema *s = GraphContext_GetSchema(gc, idx->label, SCHEMA_NODE);
 
@@ -63,11 +60,7 @@ static void _populateIndex
 }
 
 // Create a new index.
-Index *Index_New
-(
-	const char *label,  // Indexed label
-	IndexType type    // Index type exact-match / fulltext.
-) {
+Index *Index_New(const char *label, IndexType type) {
 	Index *idx = rm_malloc(sizeof(Index));
 	idx->idx = NULL;
 	idx->fields_count = 0;
@@ -79,11 +72,7 @@ Index *Index_New
 }
 
 // Adds field to index.
-void Index_AddField
-(
-	Index *idx,
-	const char *field
-) {
+void Index_AddField(Index *idx, const char *field) {
 	assert(idx);
 	if(Index_ContainsField(idx, field)) return;
 
@@ -96,16 +85,12 @@ void Index_AddField
 }
 
 // Removes fields from index.
-void Index_RemoveField
-(
-	Index *idx,
-	const char *field
-) {
+void Index_RemoveField(Index *idx, Attribute_ID attribute_id) {
 	assert(idx);
-	if(!Index_ContainsField(idx, field)) return;
+	if(!Index_ContainsAttribute(idx, attribute_id)) return;
 
 	for(uint i = 0; i < idx->fields_count; i++) {
-		if(strcmp(idx->fields[i], field) == 0) {
+		if(idx->fields_ids[i] == attribute_id) {
 			idx->fields_count--;
 			rm_free(idx->fields[i]);
 			array_del_fast(idx->fields, i);
@@ -115,11 +100,7 @@ void Index_RemoveField
 	}
 }
 
-void Index_IndexNode
-(
-	Index *idx,
-	const Node *n
-) {
+void Index_IndexNode(Index *idx, const Node *n) {
 	double score = 0;           // Default score.
 	const char *lang = NULL;    // Default language.
 	RSIndex *rsIdx = idx->idx;
@@ -161,21 +142,14 @@ void Index_IndexNode
 	else RediSearch_FreeDocument(doc);
 }
 
-void Index_RemoveNode
-(
-	Index *idx,     // Index to use
-	const Node *n   // Node to remove
-) {
+void Index_RemoveNode(Index *idx, const Node *n) {
 	assert(idx && n);
 	NodeID node_id = ENTITY_GET_ID(n);
 	RediSearch_DeleteDocument(idx->idx, &node_id, sizeof(EntityID));
 }
 
 // Constructs index.
-void Index_Construct
-(
-	Index *idx
-) {
+void Index_Construct(Index *idx) {
 	assert(idx);
 
 	/* RediSearch index already exists
@@ -218,49 +192,31 @@ void Index_Construct
 }
 
 // Query index.
-RSResultsIterator *Index_Query
-(
-	const Index *idx,
-	const char *query,           // Query to execute
-	char **err
-) {
+RSResultsIterator *Index_Query(const Index *idx, const char *query, char **err) {
 	assert(idx && query);
 	return RediSearch_IterateQuery(idx->idx, query, strlen(query), err);
 }
 
 // Return indexed label.
-const char *Index_GetLabel
-(
-	const Index *idx
-) {
+const char *Index_GetLabel(const Index *idx) {
 	assert(idx);
 	return (const char *)idx->label;
 }
 
 // Returns number of fields indexed.
-uint Index_FieldsCount
-(
-	const Index *idx
-) {
+uint Index_FieldsCount(const Index *idx) {
 	assert(idx);
 	return idx->fields_count;
 }
 
 // Returns indexed fields.
-const char **Index_GetFields
-(
-	const Index *idx
-) {
+const char **Index_GetFields(const Index *idx) {
 	assert(idx);
 	return (const char **)idx->fields;
 }
 
 // Checks if given field is indexed.
-bool Index_ContainsField
-(
-	const Index *idx,
-	const char *field
-) {
+bool Index_ContainsField(const Index *idx, const char *field) {
 	assert(idx && field);
 
 	for(uint i = 0; i < idx->fields_count; i++) {
@@ -270,11 +226,18 @@ bool Index_ContainsField
 	return false;
 }
 
+bool Index_ContainsAttribute(const Index *idx, Attribute_ID attribute_id) {
+	assert(idx);
+
+	for(uint i = 0; i < idx->fields_count; i++) {
+		if(idx->fields_ids[i] == attribute_id) return true;
+	}
+
+	return false;
+}
+
 // Free index.
-void Index_Free
-(
-	Index *idx
-) {
+void Index_Free(Index *idx) {
 	assert(idx);
 	if(idx->idx) RediSearch_DropIndex(idx->idx);
 

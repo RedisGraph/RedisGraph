@@ -40,7 +40,7 @@ unsigned short Schema_IndexCount(const Schema *s) {
 	return n;
 }
 
-Index *Schema_GetIndex(const Schema *s, const char *field, IndexType type) {
+Index *Schema_GetIndex(const Schema *s, Attribute_ID attribute_id, IndexType type) {
 	Index *idx = NULL;
 
 	if(type == IDX_EXACT_MATCH) {
@@ -55,8 +55,8 @@ Index *Schema_GetIndex(const Schema *s, const char *field, IndexType type) {
 	if(!idx) return NULL;
 
 	// Make sure field is indexed.
-	if(field) {
-		if(!Index_ContainsField(idx, field)) return NULL;
+	if(attribute_id != NO_ATTRIBUTE) {
+		if(!Index_ContainsAttribute(idx, attribute_id)) return NULL;
 	}
 
 	return idx;
@@ -66,7 +66,7 @@ int Schema_AddIndex(Index **idx, Schema *s, const char *field, IndexType type) {
 	assert(field);
 
 	*idx = NULL;
-	Index *_idx = Schema_GetIndex(s, NULL, type);
+	Index *_idx = Schema_GetIndex(s, NO_ATTRIBUTE, type);
 
 	// Index exists, make sure attribute isn't already indexed.
 	if(_idx != NULL) {
@@ -86,21 +86,21 @@ int Schema_AddIndex(Index **idx, Schema *s, const char *field, IndexType type) {
 	return INDEX_OK;
 }
 
-int Schema_RemoveIndex(Schema *s, const char *field, IndexType type) {
-	Index *idx = Schema_GetIndex(s, field, type);
+int Schema_RemoveIndex(Schema *s, Attribute_ID attribute_id, IndexType type) {
+	Index *idx = Schema_GetIndex(s, attribute_id, type);
 	if(idx == NULL) return INDEX_FAIL;
 
 	type = idx->type;
 
 	// Currently dropping a full-text index doesn't take into account fields.
 	if(type == IDX_FULLTEXT) {
-		assert(field == NULL);
+		assert(attribute_id == NO_ATTRIBUTE);
 		Index_Free(idx);
 		s->fulltextIdx = NULL;
 	} else {
 		// Index is of type IDX_EXACT_MATCH
 		assert(type == IDX_EXACT_MATCH);
-		Index_RemoveField(idx, field);
+		Index_RemoveField(idx, attribute_id);
 
 		// If index field count dropped to 0, remove index from schema.
 		if(Index_FieldsCount(idx) == 0) {

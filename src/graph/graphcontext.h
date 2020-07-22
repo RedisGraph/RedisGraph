@@ -73,7 +73,7 @@ Attribute_ID GraphContext_GetAttributeID(GraphContext *gc, const char *str);
 /* Index API */
 bool GraphContext_HasIndices(GraphContext *gc);
 // Attempt to retrieve an index on the given label and attribute
-Index *GraphContext_GetIndex(const GraphContext *gc, const char *label, const char *field,
+Index *GraphContext_GetIndex(const GraphContext *gc, const char *label, Attribute_ID attribute_id,
 							 IndexType type);
 // Create an index for the given label and attribute
 int GraphContext_AddIndex(Index **idx, GraphContext *gc, const char *label, const char *field,
