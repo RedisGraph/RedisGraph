@@ -32,33 +32,54 @@ static bool _record_islt(Record l, Record r, uint idx) {
 #define RECORD_SORT_ON_ENTRY(a, b) (_record_islt((*a), (*b), idx))
 
 // Performs binary search, returns the leftmost index of a match.
-static int64_t _binarySearchLeftmost(Record *array, int join_key_idx, SIValue v) {
-	int64_t recordCount = array_len(array);
-	int64_t pos;
-	int64_t left = 0;
-	int64_t right = recordCount;
+static bool _binarySearchLeftmost(int64_t *idx, Record *array, int join_key_idx, SIValue v) {
+	assert(idx != NULL);
+
+	SIValue  x;
+	int64_t  len    =  array_len(array);
+	int64_t  pos    =  0;
+	int64_t  left   =  0;
+	int64_t  right  =  len;
+
 	while(left < right) {
 		pos = (right + left) / 2;
-		SIValue x = Record_Get(array[pos], join_key_idx);
+		x = Record_Get(array[pos], join_key_idx);
 		if(SIValue_Compare(x, v, NULL) < 0) left = pos + 1;
 		else right = pos;
 	}
-	return left;
+
+	// Make sure value was found.
+	*idx = left;
+	int disjointOrNull = 0;
+
+	if(left == len) return false;
+
+	x = Record_Get(array[*idx], join_key_idx);
+	// Return false if the value wasn't found or evaluated to NULL.
+	return (SIValue_Compare(x, v, &disjointOrNull) == 0 &&
+			disjointOrNull != COMPARED_NULL);
 }
 
 // Performs binary search, returns the rightmost index of a match.
-static int64_t _binarySearchRightmost(Record *array, int64_t array_len, int join_key_idx,
+// assuming 'v' exists in 'array'
+static bool _binarySearchRightmost(int64_t *idx, Record *array, int64_t array_len, int join_key_idx,
 									  SIValue v) {
-	int64_t pos;
-	int64_t left = 0;
-	int64_t right = array_len;
+	assert(idx != NULL);
+
+	SIValue  x;
+	int64_t  pos    =  0;
+	int64_t  left   =  0;
+	int64_t  right  =  array_len;
+
 	while(left < right) {
 		pos = (right + left) / 2;
-		SIValue x = Record_Get(array[pos], join_key_idx);
+		x = Record_Get(array[pos], join_key_idx);
 		if(SIValue_Compare(v, x, NULL) < 0) right = pos;
 		else left = pos + 1;
 	}
-	return right - 1;
+
+	*idx = right - 1;
+	return true;
 }
 
 /* Retrive the next intersecting record
@@ -84,15 +105,11 @@ static bool _set_intersection_idx(OpValueHashJoin *op, SIValue v) {
 	op->number_of_intersections = 0;
 	uint record_count = array_len(op->cached_records);
 
-	int64_t leftmost_idx = _binarySearchLeftmost(op->cached_records, op->join_value_rec_idx, v);
-	if(leftmost_idx >= record_count) return false;
+	int64_t leftmost_idx = 0;
+	int64_t rightmost_idx = 0;
 
-	// Make sure value was found.
-	Record r = op->cached_records[leftmost_idx];
-	SIValue x = Record_Get(r, op->join_value_rec_idx);
-	int disjointOrNull = 0;
-	// Return false if the value wasn't found or evaluated to NULL.
-	if(SIValue_Compare(x, v, &disjointOrNull) != 0 || disjointOrNull == COMPARED_NULL) return false;
+	if(!_binarySearchLeftmost(&leftmost_idx, op->cached_records,
+				op->join_value_rec_idx, v)) return false;
 
 	/* Value was found
 	 * idx points to the first intersecting record.
@@ -102,10 +119,10 @@ static bool _set_intersection_idx(OpValueHashJoin *op, SIValue v) {
 
 	/* Count how many records share the same node.
 	 * reduce search space by truncating left bound */
-	int64_t rightmost_idx = _binarySearchRightmost(op->cached_records + leftmost_idx,
-												   record_count - leftmost_idx,
-												   op->join_value_rec_idx,
-												   v);
+	assert(_binarySearchRightmost(&rightmost_idx, op->cached_records +
+				leftmost_idx, record_count - leftmost_idx,
+				op->join_value_rec_idx, v) == true);
+
 	// Compensate index.
 	rightmost_idx += leftmost_idx;
 	// +1 consider rightmost_idx == leftmost_idx.
@@ -220,10 +237,10 @@ static Record ValueHashJoinConsume(OpBase *opBase) {
 	Record l;
 	if(op->number_of_intersections > 0) {
 		while((l = _get_intersecting_record(op))) {
-			/* Merge into cached records to avoid
-			 * record extension */
-			Record_Merge(&l, op->rhs_rec);
-			return OpBase_CloneRecord(l);
+			// Clone cached record before merging rhs.
+			Record c = OpBase_CloneRecord(l);
+			Record_Merge(&c, op->rhs_rec);
+			return c;
 		}
 	}
 
@@ -252,8 +269,12 @@ static Record ValueHashJoinConsume(OpBase *opBase) {
 
 		// Found atleast one intersecting record.
 		l = _get_intersecting_record(op);
-		Record_Merge(&l, op->rhs_rec);
-		return OpBase_CloneRecord(l);
+
+		// Clone cached record before merging rhs.
+		Record c = OpBase_CloneRecord(l);
+		Record_Merge(&c, op->rhs_rec);
+
+		return c;
 	}
 }
 
