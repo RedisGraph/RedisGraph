@@ -185,7 +185,6 @@ Feature: SetAcceptance
     And the side effects should be:
       | +labels | 1 |
 
-@skip
   Scenario: Adding a list property
     Given an empty graph
     And having executed:

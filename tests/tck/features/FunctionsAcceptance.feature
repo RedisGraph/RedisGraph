@@ -435,7 +435,6 @@ Feature: FunctionsAcceptance
             | 'T'           |
         And no side effects
 
-    @skip
     Scenario Outline: `type()` failing on invalid arguments
         Given an empty graph
         And having executed:
