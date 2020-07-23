@@ -67,9 +67,10 @@ void Record_Clone(const Record r, Record clone) {
 }
 
 void Record_Merge(Record *a, const Record b) {
-	uint len = Record_length(b);
+	assert((*a)->owner == b->owner);
+	uint len = Record_length(*a);
 	for(uint i = 0; i < len; i++) {
-		if(b->entries[i].type != REC_TYPE_UNKNOWN) {
+		if((*a)->entries[i].type == REC_TYPE_UNKNOWN) {
 			(*a)->entries[i] = b->entries[i];
 		}
 	}
