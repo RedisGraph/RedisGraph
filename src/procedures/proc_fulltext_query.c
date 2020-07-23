@@ -41,7 +41,7 @@ ProcedureResult Proc_FulltextQueryNodeInvoke(ProcedureCtx *ctx, const SIValue *a
 	// Get full-text index from schema.
 	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	if(s == NULL) return PROCEDURE_OK;
-	Index *idx = Schema_GetIndex(s, NO_ATTRIBUTE, IDX_FULLTEXT);
+	Index *idx = Schema_GetIndex(s, ATTRIBUTE_NOTFOUND, IDX_FULLTEXT);
 	if(!idx) return PROCEDURE_ERR; // TODO this should cause an error to be emitted.
 
 	ctx->privateData = rm_malloc(sizeof(QueryNodeContext));

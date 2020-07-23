@@ -372,9 +372,9 @@ void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
 	}
 
 	// Update any indices this entity is represented in
-	Index *idx = Schema_GetIndex(s, NO_ATTRIBUTE, IDX_FULLTEXT);
+	Index *idx = Schema_GetIndex(s, ATTRIBUTE_NOTFOUND, IDX_FULLTEXT);
 	if(idx) Index_RemoveNode(idx, n);
-	idx = Schema_GetIndex(s, NO_ATTRIBUTE, IDX_EXACT_MATCH);
+	idx = Schema_GetIndex(s, ATTRIBUTE_NOTFOUND, IDX_EXACT_MATCH);
 	if(idx) Index_RemoveNode(idx, n);
 }
 

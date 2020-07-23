@@ -33,7 +33,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx, const SIValu
 	const SIValue *fields = args + 1; // Skip index name.
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Index *idx = GraphContext_GetIndex(gc, label, NO_ATTRIBUTE, IDX_FULLTEXT);
+	Index *idx = GraphContext_GetIndex(gc, label, ATTRIBUTE_NOTFOUND, IDX_FULLTEXT);
 
 	// Index doesn't exists, create.
 	if(idx == NULL) {

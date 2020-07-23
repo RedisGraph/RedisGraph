@@ -55,7 +55,7 @@ Index *Schema_GetIndex(const Schema *s, Attribute_ID attribute_id, IndexType typ
 	if(!idx) return NULL;
 
 	// Make sure field is indexed.
-	if(attribute_id != NO_ATTRIBUTE) {
+	if(attribute_id != ATTRIBUTE_NOTFOUND) {
 		if(!Index_ContainsAttribute(idx, attribute_id)) return NULL;
 	}
 
@@ -66,7 +66,7 @@ int Schema_AddIndex(Index **idx, Schema *s, const char *field, IndexType type) {
 	assert(field);
 
 	*idx = NULL;
-	Index *_idx = Schema_GetIndex(s, NO_ATTRIBUTE, type);
+	Index *_idx = Schema_GetIndex(s, ATTRIBUTE_NOTFOUND, type);
 
 	// Index exists, make sure attribute isn't already indexed.
 	if(_idx != NULL) {
@@ -94,7 +94,7 @@ int Schema_RemoveIndex(Schema *s, Attribute_ID attribute_id, IndexType type) {
 
 	// Currently dropping a full-text index doesn't take into account fields.
 	if(type == IDX_FULLTEXT) {
-		assert(attribute_id == NO_ATTRIBUTE);
+		assert(attribute_id == ATTRIBUTE_NOTFOUND);
 		Index_Free(idx);
 		s->fulltextIdx = NULL;
 	} else {

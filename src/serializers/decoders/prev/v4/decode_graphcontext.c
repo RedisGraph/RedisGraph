@@ -110,7 +110,7 @@ GraphContext *RdbLoadGraphContext_v4(RedisModuleIO *rdb) {
 	for(unsigned short i = 0; i < schema_count; i++) {
 		Schema *s = GraphContext_GetSchemaByID(gc, i, SCHEMA_NODE);
 		assert(s);
-		Index *idx = Schema_GetIndex(s, NO_ATTRIBUTE, IDX_EXACT_MATCH);
+		Index *idx = Schema_GetIndex(s, ATTRIBUTE_NOTFOUND, IDX_EXACT_MATCH);
 		if(idx) Index_Construct(idx);
 	}
 

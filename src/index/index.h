@@ -12,7 +12,6 @@
 
 #define INDEX_OK 1
 #define INDEX_FAIL 0
-#define NO_ATTRIBUTE USHRT_MAX
 
 typedef enum {
 	IDX_ANY,
