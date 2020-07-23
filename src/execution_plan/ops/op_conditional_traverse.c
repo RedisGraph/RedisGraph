@@ -164,8 +164,10 @@ static Record CondTraverseConsume(OpBase *opBase) {
 
 	/* Get node from current column. */
 	op->r = op->records[src_id];
-	const char *label = op->dest_label; // label will be NULL if unknown.
-	Node destNode = (label) ? GE_NEW_LABELED_NODE(label, op->dest_label_id) : GE_NEW_NODE();
+	/* Populate the destination node and add it to the Record.
+	 * Note that if the node's label is unknown, this will correctly
+	 * create an unlabeled node. */
+	Node destNode = GE_NEW_LABELED_NODE(op->dest_label, op->dest_label_id);
 	Graph_GetNode(op->graph, dest_id, &destNode);
 	Record_AddNode(op->r, op->destNodeIdx, destNode);
 
