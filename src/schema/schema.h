@@ -47,7 +47,7 @@ Index *Schema_GetIndex(const Schema *s, Attribute_ID attribute_id, IndexType typ
 int Schema_AddIndex(Index **idx, Schema *s, const char *field, IndexType type);
 
 /* Removes index. */
-int Schema_RemoveIndex(Schema *s, Attribute_ID attribute_id, IndexType type);
+int Schema_RemoveIndex(Schema *s, const char *field, IndexType type);
 
 /* Introduce node schema indicies */
 void Schema_AddNodeToIndices(const Schema *s, const Node *n);

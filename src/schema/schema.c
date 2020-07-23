@@ -70,7 +70,9 @@ int Schema_AddIndex(Index **idx, Schema *s, const char *field, IndexType type) {
 
 	// Index exists, make sure attribute isn't already indexed.
 	if(_idx != NULL) {
-		if(Index_ContainsField(_idx, field)) return INDEX_FAIL;
+		GraphContext *gc = QueryCtx_GetGraphCtx();
+		Attribute_ID fieldID = GraphContext_FindOrAddAttribute(gc, field);
+		if(Index_ContainsAttribute(_idx, fieldID)) return INDEX_FAIL;
 	}
 
 	// Index doesn't exists, create it.
@@ -86,7 +88,9 @@ int Schema_AddIndex(Index **idx, Schema *s, const char *field, IndexType type) {
 	return INDEX_OK;
 }
 
-int Schema_RemoveIndex(Schema *s, Attribute_ID attribute_id, IndexType type) {
+int Schema_RemoveIndex(Schema *s, const char *field, IndexType type) {
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Attribute_ID attribute_id = GraphContext_GetAttributeID(gc, field);
 	Index *idx = Schema_GetIndex(s, attribute_id, type);
 	if(idx == NULL) return INDEX_FAIL;
 
@@ -94,13 +98,13 @@ int Schema_RemoveIndex(Schema *s, Attribute_ID attribute_id, IndexType type) {
 
 	// Currently dropping a full-text index doesn't take into account fields.
 	if(type == IDX_FULLTEXT) {
-		assert(attribute_id == ATTRIBUTE_NOTFOUND);
+		assert(field == NULL);
 		Index_Free(idx);
 		s->fulltextIdx = NULL;
 	} else {
 		// Index is of type IDX_EXACT_MATCH
 		assert(type == IDX_EXACT_MATCH);
-		Index_RemoveField(idx, attribute_id);
+		Index_RemoveField(idx, field);
 
 		// If index field count dropped to 0, remove index from schema.
 		if(Index_FieldsCount(idx) == 0) {

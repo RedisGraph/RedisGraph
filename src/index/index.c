@@ -74,19 +74,20 @@ Index *Index_New(const char *label, IndexType type) {
 // Adds field to index.
 void Index_AddField(Index *idx, const char *field) {
 	assert(idx);
-	if(Index_ContainsField(idx, field)) return;
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Attribute_ID fieldID = GraphContext_FindOrAddAttribute(gc, field);
+	if(Index_ContainsAttribute(idx, fieldID)) return;
 
 	idx->fields_count++;
 	idx->fields = array_append(idx->fields, rm_strdup(field));
-
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	Attribute_ID fieldID = GraphContext_FindOrAddAttribute(gc, field);
 	idx->fields_ids = array_append(idx->fields_ids, fieldID);
 }
 
 // Removes fields from index.
-void Index_RemoveField(Index *idx, Attribute_ID attribute_id) {
+void Index_RemoveField(Index *idx, const char *field) {
 	assert(idx);
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	Attribute_ID attribute_id = GraphContext_FindOrAddAttribute(gc, field);
 	if(!Index_ContainsAttribute(idx, attribute_id)) return;
 
 	for(uint i = 0; i < idx->fields_count; i++) {
@@ -213,17 +214,6 @@ uint Index_FieldsCount(const Index *idx) {
 const char **Index_GetFields(const Index *idx) {
 	assert(idx);
 	return (const char **)idx->fields;
-}
-
-// Checks if given field is indexed.
-bool Index_ContainsField(const Index *idx, const char *field) {
-	assert(idx && field);
-
-	for(uint i = 0; i < idx->fields_count; i++) {
-		if(strcmp(idx->fields[i], field) == 0) return true;
-	}
-
-	return false;
 }
 
 bool Index_ContainsAttribute(const Index *idx, Attribute_ID attribute_id) {

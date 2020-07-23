@@ -44,11 +44,11 @@ Index *Index_New(const char *label, IndexType type);
 void Index_AddField(Index *idx, const char *field);
 
 /**
- * @brief  Removes attribute from index.
+ * @brief  Removes field from index.
  * @param  *idx: Index
- * @param  attribute_id: Attribute to remove
+ * @param  *field: Field to remove.
  */
-void Index_RemoveField(Index *idx, Attribute_ID attribute_id);
+void Index_RemoveField(Index *idx, const char *field);
 
 /**
  * @brief  Index node.
@@ -100,14 +100,6 @@ uint Index_FieldsCount(const Index *idx);
  * @retval Array with the indexed fields.
  */
 const char **Index_GetFields(const Index *idx);
-
-/**
- * @brief  Checks if given field is indexed.
- * @param  *idx: Index to perform the check.
- * @param  *field: Field name to search.
- * @retval True if the field is indexed.
- */
-bool Index_ContainsField(const Index *idx, const char *field);
 
 /**
  * @brief  Checks if given attribute is indexed.

@@ -346,10 +346,7 @@ int GraphContext_DeleteIndex(GraphContext *gc, const char *label, const char *fi
 	// Retrieve the schema for this label
 	Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 	int res = INDEX_FAIL;
-	if(s != NULL) {
-		Attribute_ID attr_id = GraphContext_GetAttributeID(gc, field);
-		res = Schema_RemoveIndex(s, attr_id, type);
-	}
+	if(s != NULL) res = Schema_RemoveIndex(s, field, type);
 	ResultSet *result_set = QueryCtx_GetResultSet();
 	ResultSet_IndexDeleted(result_set, res);
 	return res;

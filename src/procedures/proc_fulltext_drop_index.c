@@ -28,7 +28,7 @@ ProcedureResult Proc_FulltextDropIndexInvoke(ProcedureCtx *ctx, const SIValue *a
 	// Schema doesn't exists, TODO: report error.
 	if(!s) return PROCEDURE_ERR;
 
-	if(Schema_RemoveIndex(s, ATTRIBUTE_NOTFOUND, IDX_FULLTEXT) == INDEX_FAIL) return PROCEDURE_OK;
+	if(Schema_RemoveIndex(s, NULL, IDX_FULLTEXT) == INDEX_FAIL) return PROCEDURE_OK;
 
 	return PROCEDURE_ERR;
 }
