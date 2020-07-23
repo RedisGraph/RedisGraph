@@ -63,7 +63,7 @@ static bool _binarySearchLeftmost(int64_t *idx, Record *array, int join_key_idx,
 // Performs binary search, returns the rightmost index of a match.
 // assuming 'v' exists in 'array'
 static bool _binarySearchRightmost(int64_t *idx, Record *array, int64_t array_len, int join_key_idx,
-									  SIValue v) {
+								   SIValue v) {
 	assert(idx != NULL);
 
 	SIValue  x;
@@ -109,7 +109,7 @@ static bool _set_intersection_idx(OpValueHashJoin *op, SIValue v) {
 	int64_t rightmost_idx = 0;
 
 	if(!_binarySearchLeftmost(&leftmost_idx, op->cached_records,
-				op->join_value_rec_idx, v)) return false;
+							  op->join_value_rec_idx, v)) return false;
 
 	/* Value was found
 	 * idx points to the first intersecting record.
@@ -120,8 +120,8 @@ static bool _set_intersection_idx(OpValueHashJoin *op, SIValue v) {
 	/* Count how many records share the same node.
 	 * reduce search space by truncating left bound */
 	assert(_binarySearchRightmost(&rightmost_idx, op->cached_records +
-				leftmost_idx, record_count - leftmost_idx,
-				op->join_value_rec_idx, v) == true);
+								  leftmost_idx, record_count - leftmost_idx,
+								  op->join_value_rec_idx, v) == true);
 
 	// Compensate index.
 	rightmost_idx += leftmost_idx;

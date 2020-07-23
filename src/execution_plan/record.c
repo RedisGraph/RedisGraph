@@ -71,7 +71,7 @@ void Record_Merge(Record *a, const Record b) {
 	uint len = Record_length(*a);
 	for(uint i = 0; i < len; i++) {
 		if((*a)->entries[i].type == REC_TYPE_UNKNOWN) {
-			(*a)->entries[i] = b->entries[i];
+			_RecordPropagateEntry(*a, b, i);
 		}
 	}
 }
