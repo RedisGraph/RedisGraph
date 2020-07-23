@@ -43,7 +43,7 @@ static void _addNeighbors(AllPathsCtx *ctx, LevelConnection *frontier, uint32_t 
 		// Don't follow the frontier edge again.
 		if(frontierId == ENTITY_GET_ID(ctx->neighbors + i)) continue;
 		// Set the neighbor by following the edge in the correct directoin.
-		Node neighbor = NEW_NODE();
+		Node neighbor = GE_NEW_NODE();
 		switch(dir) {
 		case GRAPH_EDGE_DIR_OUTGOING:
 			Graph_GetNode(ctx->g, Edge_GetDestNodeID(ctx->neighbors + i), &neighbor);

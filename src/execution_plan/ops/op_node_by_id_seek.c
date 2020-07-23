@@ -62,7 +62,7 @@ static OpResult NodeByIdSeekInit(OpBase *opBase) {
 }
 
 static inline Node _SeekNextNode(NodeByIdSeek *op) {
-	Node n = NEW_NODE();
+	Node n = GE_NEW_NODE();
 
 	/* As long as we're within range bounds
 	 * and we've yet to get a node. */

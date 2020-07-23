@@ -89,10 +89,8 @@ OpBase *NewCondTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicExpressi
 	op->destNodeIdx = OpBase_Modifies((OpBase *)op, dest);
 	// Check the QueryGraph node and retrieve label data if possible.
 	QGNode *dest_node = QueryGraph_GetNodeByAlias(plan->query_graph, dest);
-	if(dest_node->labelID != GRAPH_NO_LABEL) {
-		op->dest_label = dest_node->label;
-		op->dest_label_id = dest_node->labelID;
-	}
+	op->dest_label = dest_node->label;
+	op->dest_label_id = dest_node->labelID;
 
 	const char *edge = AlgebraicExpression_Edge(ae);
 	if(edge) {
@@ -167,7 +165,7 @@ static Record CondTraverseConsume(OpBase *opBase) {
 	/* Get node from current column. */
 	op->r = op->records[src_id];
 	const char *label = op->dest_label; // label will be NULL if unknown.
-	Node destNode = (label) ? NEW_LABELED_NODE(label, op->dest_label_id) : NEW_NODE();
+	Node destNode = (label) ? GE_NEW_LABELED_NODE(label, op->dest_label_id) : GE_NEW_NODE();
 	Graph_GetNode(op->graph, dest_id, &destNode);
 	Record_AddNode(op->r, op->destNodeIdx, destNode);
 
