@@ -252,7 +252,6 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 			s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
 			label = Schema_GetName(s);
 			n->label = label;
-			n->labelID = label_id;
 		}
 	}
 
