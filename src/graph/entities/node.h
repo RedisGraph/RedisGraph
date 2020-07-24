@@ -25,9 +25,11 @@ typedef struct {
 /* Resolves to the label string of the given Node. */
 #define NODE_GET_LABEL(n) (n)->label
 
-/* Resolves to the label ID of the given Node. */
-#define NODE_GET_LABEL_ID(n) (n)->labelID
-
+/* Resolves to the label ID of the given Node.
+ * We first attempt to retrieve it from the local entity, then check the graph if not found.
+ * If the Node is unlabeled, the return value will be GRAPH_NO_LABEL. */
+#define NODE_GET_LABEL_ID(n, g) ((n)->labelID != GRAPH_NO_LABEL) ? (n)->labelID \
+												 : Graph_GetNodeLabel((g), ENTITY_GET_ID(n))
 
 /* Prints a string representation of the node to buffer, return the string length. */
 void Node_ToString(const Node *n, char **buffer, size_t *bufferLen, size_t *bytesWritten,

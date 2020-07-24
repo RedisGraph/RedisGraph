@@ -116,9 +116,7 @@ static void _ResultSet_CompactReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	RedisModule_ReplyWithLongLong(ctx, id);
 
 	// [label string index]
-	int label_id = NODE_GET_LABEL_ID(n);
-	// Retrieve label if it is not set on the node.
-	if(label_id == GRAPH_NO_LABEL) label_id = Graph_GetNodeLabel(gc->g, id);
+	int label_id = NODE_GET_LABEL_ID(n, gc->g);
 	if(label_id == GRAPH_NO_LABEL) {
 		// Emit an empty array for unlabeled nodes.
 		RedisModule_ReplyWithArray(ctx, 0);
