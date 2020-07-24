@@ -66,12 +66,16 @@ void Record_Clone(const Record r, Record clone) {
 	}
 }
 
-void Record_Merge(Record *a, const Record b) {
-	assert((*a)->owner == b->owner);
-	uint len = Record_length(*a);
+void Record_Merge(Record a, const Record b) {
+	assert(a->owner == b->owner);
+	uint len = Record_length(a);
+
 	for(uint i = 0; i < len; i++) {
-		if((*a)->entries[i].type == REC_TYPE_UNKNOWN) {
-			_RecordPropagateEntry(*a, b, i);
+		RecordEntryType a_type = a->entries[i].type;
+		RecordEntryType b_type = b->entries[i].type;
+
+		if(a_type == REC_TYPE_UNKNOWN && b_type != REC_TYPE_UNKNOWN) {
+			_RecordPropagateEntry(a, b, i);
 		}
 	}
 }

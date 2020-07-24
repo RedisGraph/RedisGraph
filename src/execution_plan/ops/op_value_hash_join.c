@@ -239,7 +239,7 @@ static Record ValueHashJoinConsume(OpBase *opBase) {
 		while((l = _get_intersecting_record(op))) {
 			// Clone cached record before merging rhs.
 			Record c = OpBase_CloneRecord(l);
-			Record_Merge(&c, op->rhs_rec);
+			Record_Merge(c, op->rhs_rec);
 			return c;
 		}
 	}
@@ -272,7 +272,7 @@ static Record ValueHashJoinConsume(OpBase *opBase) {
 
 		// Clone cached record before merging rhs.
 		Record c = OpBase_CloneRecord(l);
-		Record_Merge(&c, op->rhs_rec);
+		Record_Merge(c, op->rhs_rec);
 
 		return c;
 	}
