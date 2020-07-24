@@ -12,8 +12,10 @@ LIBCYPHER-PARSER_DIR = ../deps/libcypher-parser/lib/src
 
 # if DEBUG env var is set, we compile with "debug" cflags
 DEBUGFLAGS = -g -ggdb -O3 
+GRAPHBLAS_CMAKE_OPTIONS ="-DCMAKE_C_COMPILER='$(CC)'"
 ifeq ($(DEBUG), 1)
 	DEBUGFLAGS = -fno-omit-frame-pointer -g -ggdb -O0
+	GRAPHBLAS_CMAKE_OPTIONS += " -DCMAKE_BUILD_TYPE=Debug"
 endif
 
 # Default CFLAGS
@@ -138,7 +140,7 @@ $(LIBXXHASH):
 # Build GraphBLAS only if library does not already exists.
 $(GRAPHBLAS):
 ifeq (,$(wildcard $(GRAPHBLAS)))
-	@$(MAKE) -C ../deps/GraphBLAS CMAKE_OPTIONS="-DCMAKE_C_COMPILER='$(CC)'" static_only
+	@$(MAKE) -C ../deps/GraphBLAS CMAKE_OPTIONS=$(GRAPHBLAS_CMAKE_OPTIONS) static_only
 endif
 .PHONY: $(GRAPHBLAS)
 
