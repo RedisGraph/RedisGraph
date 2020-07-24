@@ -62,7 +62,7 @@ static OpResult NodeByIdSeekInit(OpBase *opBase) {
 }
 
 static inline Node _SeekNextNode(NodeByIdSeek *op) {
-	Node n = { .entity = NULL };
+	Node n = GE_NEW_NODE();
 
 	/* As long as we're within range bounds
 	 * and we've yet to get a node. */
@@ -73,12 +73,6 @@ static inline Node _SeekNextNode(NodeByIdSeek *op) {
 
 	// Advance id for next consume call.
 	op->currentId++;
-
-	// Did we manage to get an entity?
-	if(!n.entity) return n;
-	// Null-set the label in case an operation (like op_delete) accesses it.
-	// TODO If we're replacing a label scan, the correct label can be populated now.
-	n.label = NULL;
 
 	return n;
 }

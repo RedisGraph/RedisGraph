@@ -151,7 +151,7 @@ static Record _handoff(OpUpdate *op) {
 
 static void _groupUpdateExps(OpUpdate *op, EntityUpdateEvalCtx *update_ctxs) {
 	// Sort update contexts by unique Record ID.
-	#define islt(a,b) (a->record_idx < b->record_idx)
+#define islt(a,b) (a->record_idx < b->record_idx)
 
 	uint n = array_len(update_ctxs);
 	QSORT(EntityUpdateEvalCtx, update_ctxs, n, islt);
@@ -188,8 +188,7 @@ static void _groupUpdateExps(OpUpdate *op, EntityUpdateEvalCtx *update_ctxs) {
 	}
 }
 
-OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx
-		*update_exps) {
+OpBase *NewUpdateOp(const ExecutionPlan *plan, EntityUpdateEvalCtx *update_exps) {
 	OpUpdate *op = rm_calloc(1, sizeof(OpUpdate));
 	op->records = NULL;
 	op->update_ctxs = NULL;
@@ -244,15 +243,16 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 	// If the entity is a node, set its label if possible.
 	if(type == GETYPE_NODE) {
 		Node *n = (Node *)entity;
-		label_id = Graph_GetNodeLabel(gc->g, ENTITY_GET_ID(entity));
-
-		if(label_id != GRAPH_NO_LABEL) {
+		// Retrieve the node's local label if present.
+		label = NODE_GET_LABEL(n);
+		// Retrieve the node's Label ID from a local member or the graph.
+		label_id = NODE_GET_LABEL_ID(n, gc->g);
+		if((label == NULL) && (label_id != GRAPH_NO_LABEL)) {
+			// Label ID has been found but its name is unknown, retrieve its name and update the node.
 			s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
 			label = Schema_GetName(s);
+			n->label = label;
 		}
-
-		n->label = label;
-		n->labelID = label_id;
 	}
 
 	uint exp_count = array_len(ctx->exps);

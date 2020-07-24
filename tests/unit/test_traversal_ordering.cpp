@@ -73,10 +73,10 @@ TEST_F(TraversalOrderingTest, TransposeFree) {
 	 * Arrangement { [AB], [BC], [CD] }
 	 * Is the only one that doesn't requires any transposes. */
 
-	QGNode *A = QGNode_New(NULL, "A");
-	QGNode *B = QGNode_New(NULL, "B");
-	QGNode *C = QGNode_New(NULL, "C");
-	QGNode *D = QGNode_New(NULL, "D");
+	QGNode *A = QGNode_New("A");
+	QGNode *B = QGNode_New("B");
+	QGNode *C = QGNode_New("C");
+	QGNode *D = QGNode_New("D");
 
 	QGEdge *AB = QGEdge_New(A, B, "E", "AB");
 	QGEdge *BC = QGEdge_New(B, C, "E", "BC");
@@ -177,10 +177,10 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	 * { [CD], [CB], [BA] } (A)<-(B)<-(C)->(D) (2 transposes) */
 
 	FT_FilterNode *filters;
-	QGNode *A = QGNode_New(NULL, "A");
-	QGNode *B = QGNode_New(NULL, "B");
-	QGNode *C = QGNode_New(NULL, "C");
-	QGNode *D = QGNode_New(NULL, "D");
+	QGNode *A = QGNode_New("A");
+	QGNode *B = QGNode_New("B");
+	QGNode *C = QGNode_New("C");
+	QGNode *D = QGNode_New("D");
 
 	QGEdge *AB = QGEdge_New(A, B, "E", "AB");
 	QGEdge *BC = QGEdge_New(B, C, "E", "BC");
@@ -197,7 +197,7 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	QueryGraph_ConnectNodes(qg, C, D, CD);
 
 	AlgebraicExpression *set[3];
-    AlgebraicExpression *ExpAB = AlgebraicExpression_NewOperand(GrB_NULL, false, "A", "B", NULL, NULL);
+	AlgebraicExpression *ExpAB = AlgebraicExpression_NewOperand(GrB_NULL, false, "A", "B", NULL, NULL);
 	AlgebraicExpression *ExpBC = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "C", NULL, NULL);
 	AlgebraicExpression *ExpCD = AlgebraicExpression_NewOperand(GrB_NULL, false, "C", "D", NULL, NULL);
 
@@ -224,8 +224,8 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	filters = build_filter_tree_from_query("MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE B.val = 1 RETURN *");
 
 	orderExpressions(qg, set, 3, filters, NULL);
-    
-    ASSERT_STREQ(AlgebraicExpression_Source(set[0]), "B");
+
+	ASSERT_STREQ(AlgebraicExpression_Source(set[0]), "B");
 
 	FilterTree_Free(filters);
 
@@ -237,7 +237,7 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	filters = build_filter_tree_from_query("MATCH (A)-[]->(B)-[]->(C)-[]->(D) WHERE C.val = 1 RETURN *");
 
 	orderExpressions(qg, set, 3, filters, NULL);
-    ASSERT_STREQ(AlgebraicExpression_Source(set[0]), "C");
+	ASSERT_STREQ(AlgebraicExpression_Source(set[0]), "C");
 
 	FilterTree_Free(filters);
 
@@ -259,3 +259,4 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	AlgebraicExpression_Free(ExpCD);
 	QueryGraph_Free(qg);
 }
+

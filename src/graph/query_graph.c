@@ -23,7 +23,7 @@ static void _BuildQueryGraphAddNode(QueryGraph *qg, const cypher_astnode_t *ast_
 
 	if(n == NULL) {
 		// Node has not been mapped; create it.
-		n = QGNode_New(NULL, alias);
+		n = QGNode_New(alias);
 		QueryGraph_AddNode(qg, n);
 	}
 

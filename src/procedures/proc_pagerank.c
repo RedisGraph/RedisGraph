@@ -47,6 +47,7 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx, const SIValue *args) {
 	pdata->n = n;
 	pdata->i = 0;
 	pdata->g = g;
+	pdata->node = GE_NEW_NODE();
 	pdata->mappings = mappings;
 	pdata->rankings = rankings;
 	pdata->output = array_new(SIValue, 4);
@@ -156,3 +157,4 @@ ProcedureCtx *Proc_PagerankCtx() {
 								   true);
 	return ctx;
 }
+
