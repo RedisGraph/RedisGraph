@@ -243,10 +243,12 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 	// If the entity is a node, set its label if possible.
 	if(type == GETYPE_NODE) {
 		Node *n = (Node *)entity;
+		// Retrieve the node's local label if present.
 		label = NODE_GET_LABEL(n);
+		// Retrieve the node's Label ID from a local member or the graph.
 		label_id = NODE_GET_LABEL_ID(n, gc->g);
-		if(label_id != GRAPH_NO_LABEL) {
-			// Label ID has been found, retrieve its name and update the node.
+		if((label == NULL) && (label_id != GRAPH_NO_LABEL)) {
+			// Label ID has been found but its name is unknown, retrieve its name and update the node.
 			s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);
 			label = Schema_GetName(s);
 			n->label = label;
