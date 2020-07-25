@@ -67,9 +67,7 @@ class QueryGraphTest: public ::testing::Test {
 		size_t edge_cap = 0;
 
 		// Create nodes.
-		const char *label = "L";
-
-		QGNode *A = QGNode_New(label, "A");
+		QGNode *A = QGNode_New("A");
 		QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
 		QueryGraph_AddNode(g, A);
 
@@ -83,12 +81,11 @@ class QueryGraphTest: public ::testing::Test {
 		size_t edge_cap = 3;
 
 		// Create nodes.
-		const char *label = "L";
 		const char *relation = "R";
 
-		QGNode *A = QGNode_New(label, "A");
-		QGNode *B = QGNode_New(label, "B");
-		QGNode *C = QGNode_New(label, "C");
+		QGNode *A = QGNode_New("A");
+		QGNode *B = QGNode_New("B");
+		QGNode *C = QGNode_New("C");
 
 		QGEdge *AB = QGEdge_New(A, B, relation, "AB");
 		QGEdge *BC = QGEdge_New(B, C, relation, "BC");
@@ -113,12 +110,11 @@ class QueryGraphTest: public ::testing::Test {
 		size_t edge_cap = 1;
 
 		// Create nodes.
-		const char *label = "L";
 		const char *relation = "R";
 
-		QGNode *A = QGNode_New(label, "A");
-		QGNode *B = QGNode_New(label, "B");
-		QGNode *C = QGNode_New(label, "C");
+		QGNode *A = QGNode_New("A");
+		QGNode *B = QGNode_New("B");
+		QGNode *C = QGNode_New("C");
 
 		QGEdge *AB = QGEdge_New(A, B, relation, "AB");
 
@@ -139,10 +135,9 @@ class QueryGraphTest: public ::testing::Test {
 		size_t edge_cap = 1;
 
 		// Create nodes.
-		const char *label = "L";
 		const char *relation = "R";
 
-		QGNode *A = QGNode_New(label, "A");
+		QGNode *A = QGNode_New("A");
 		QGEdge *AA = QGEdge_New(A, A, relation, "AA");
 
 		QueryGraph *g = QueryGraph_New(node_cap, edge_cap);
@@ -161,12 +156,11 @@ TEST_F(QueryGraphTest, QueryGraphClone) {
 	size_t edge_cap = 3;
 
 	// Create nodes.
-	const char *label = "L";
 	const char *relation = "R";
 
-	QGNode *A = QGNode_New(label, "A");
-	QGNode *B = QGNode_New(label, "B");
-	QGNode *C = QGNode_New(label, "C");
+	QGNode *A = QGNode_New("A");
+	QGNode *B = QGNode_New("B");
+	QGNode *C = QGNode_New("C");
 
 	QGEdge *AB = QGEdge_New(A, B, relation, "AB");
 	QGEdge *BC = QGEdge_New(B, C, relation, "BC");
@@ -214,12 +208,11 @@ TEST_F(QueryGraphTest, QueryGraphRemoveEntities) {
 	size_t edge_cap = 3;
 
 	// Create nodes.
-	const char *label = "L";
 	const char *relation = "R";
 
-	QGNode *A = QGNode_New(label, "A");
-	QGNode *B = QGNode_New(label, "B");
-	QGNode *C = QGNode_New(label, "C");
+	QGNode *A = QGNode_New("A");
+	QGNode *B = QGNode_New("B");
+	QGNode *C = QGNode_New("C");
 
 	QGEdge *AB = QGEdge_New(A, B, relation, "AB");
 	QGEdge *BC = QGEdge_New(B, C, relation, "BC");
@@ -342,3 +335,4 @@ TEST_F(QueryGraphTest, QueryGraphConnectedComponents) {
 	}
 	array_free(connected_components);
 }
+

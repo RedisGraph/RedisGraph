@@ -7,7 +7,6 @@
 #include "op_merge_create.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
-#include "../../schema/schema.h"
 #include <assert.h>
 
 /* Forward declarations. */
@@ -93,11 +92,8 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		QGNode *n = op->pending.nodes_to_create[i].node;
 
 		/* Create a new node. */
-		Node newNode = {
-			.entity = NULL,
-			.label = n->label,
-			.labelID = n->labelID
-		};
+		Node newNode = GE_NEW_LABELED_NODE(n->label, n->labelID);
+
 		/* Add new node to Record and save a reference to it. */
 		Node *node_ref = Record_AddNode(r, op->pending.nodes_to_create[i].node_idx, newNode);
 

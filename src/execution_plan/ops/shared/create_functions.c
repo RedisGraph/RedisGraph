@@ -52,6 +52,7 @@ static void _CommitNodes(PendingCreations *pending) {
 		if(n->label != NULL) {
 			s = GraphContext_GetSchema(gc, n->label, SCHEMA_NODE);
 			assert(s);
+			n->labelID = s->id; // Update the label ID within the node.
 			labelID = s->id;
 		}
 
