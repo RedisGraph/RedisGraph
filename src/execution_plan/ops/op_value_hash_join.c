@@ -32,14 +32,14 @@ static bool _record_islt(Record l, Record r, uint idx) {
 #define RECORD_SORT_ON_ENTRY(a, b) (_record_islt((*a), (*b), idx))
 
 // Performs binary search, returns the leftmost index of a match.
-static bool _binarySearchLeftmost(int64_t *idx, Record *array, int join_key_idx, SIValue v) {
+static bool _binarySearchLeftmost(uint *idx, Record *array, uint array_len,
+		int join_key_idx, SIValue v) {
 	assert(idx != NULL);
 
-	SIValue  x;
-	int64_t  len    =  array_len(array);
-	int64_t  pos    =  0;
-	int64_t  left   =  0;
-	int64_t  right  =  len;
+	SIValue x;
+	uint pos = 0;
+	uint left = 0;
+	uint right = array_len;
 
 	while(left < right) {
 		pos = (right + left) / 2;
@@ -50,26 +50,26 @@ static bool _binarySearchLeftmost(int64_t *idx, Record *array, int join_key_idx,
 
 	// Make sure value was found.
 	*idx = left;
-	int disjointOrNull = 0;
 
-	if(left == len) return false;
+	if(left == array_len) return false;
 
 	x = Record_Get(array[*idx], join_key_idx);
 	// Return false if the value wasn't found or evaluated to NULL.
+	int disjointOrNull = 0;
 	return (SIValue_Compare(x, v, &disjointOrNull) == 0 &&
 			disjointOrNull != COMPARED_NULL);
 }
 
 // Performs binary search, returns the rightmost index of a match.
 // assuming 'v' exists in 'array'
-static bool _binarySearchRightmost(int64_t *idx, Record *array, int64_t array_len, int join_key_idx,
+static bool _binarySearchRightmost(uint *idx, Record *array, uint array_len, int join_key_idx,
 								   SIValue v) {
 	assert(idx != NULL);
 
-	SIValue  x;
-	int64_t  pos    =  0;
-	int64_t  left   =  0;
-	int64_t  right  =  array_len;
+	SIValue x;
+	uint pos = 0;
+	uint left = 0;
+	uint right = array_len;
 
 	while(left < right) {
 		pos = (right + left) / 2;
@@ -105,11 +105,13 @@ static bool _set_intersection_idx(OpValueHashJoin *op, SIValue v) {
 	op->number_of_intersections = 0;
 	uint record_count = array_len(op->cached_records);
 
-	int64_t leftmost_idx = 0;
-	int64_t rightmost_idx = 0;
+	uint leftmost_idx = 0;
+	uint rightmost_idx = 0;
 
 	if(!_binarySearchLeftmost(&leftmost_idx, op->cached_records,
-							  op->join_value_rec_idx, v)) return false;
+				array_len(op->cached_records), op->join_value_rec_idx, v)) {
+		return false;
+	}
 
 	/* Value was found
 	 * idx points to the first intersecting record.
