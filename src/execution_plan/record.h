@@ -47,7 +47,7 @@ Record Record_New(rax *mapping);
 void Record_Clone(const Record r, Record clone);
 
 // Merge record b into a, sharing any nested references in b with a.
-void Record_Merge(Record *a, const Record b);
+void Record_Merge(Record a, const Record b);
 
 // Merge record b into a, transfer value ownership from b to a.
 void Record_TransferEntries(Record *to, Record from);
