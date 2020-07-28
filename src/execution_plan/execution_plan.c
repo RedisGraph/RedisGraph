@@ -825,7 +825,7 @@ void _ProjectOpExtendMapping(OpBase *opBase) {
 			AR_ExpNode *exp = op->exps[i];
 			AR_EXP_MapIdentifier(plan_to_extend, exp);
 		}
-	} else {
+	} else if(opBase->type == OPType_AGGREGATE) {
 		// Aggregate ops should always extend their own plan.
 		// TODO this will be untrue if we disambiguate aggregate+project ops better, as in:
 		// MATCH p=()-[*]->() RETURN [n IN nodes(p) WHERE n.v <> 'b' | n.v]
@@ -899,6 +899,8 @@ ExecutionPlan *NewExecutionPlan(void) {
 	// Place filter ops required by first ExecutionPlan segment.
 	QueryCtx_SetAST(ast_segments[0]);
 	if(segments[0]->filter_tree) ExecutionPlan_PlaceFilterOps(segments[0], NULL);
+
+	_ProjectOpExtendMapping(segments[0]->root);
 
 	OpBase *connecting_op = NULL;
 	OpBase *prev_scope_end = NULL;
