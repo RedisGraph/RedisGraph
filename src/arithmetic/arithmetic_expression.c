@@ -90,6 +90,11 @@ static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 	if(exp->op.type == AR_OP_FUNC) {
 		clone->op.f = exp->op.f;
 		clone->op.type = AR_OP_FUNC;
+		if(exp->op.f->bclone) {
+			// If a function has its own clone routine, it will handle all of its children.
+			exp->op.f->bclone(exp, clone);
+			return clone;
+		}
 	} else {
 		clone->op.agg_func = Agg_CloneCtx(exp->op.agg_func);
 		clone->op.type = AR_OP_AGGREGATE;

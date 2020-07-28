@@ -17,12 +17,15 @@ typedef SIValue(*AR_Func)(SIValue *argv, int argc);
 typedef struct AR_ExpNode AR_ExpNode;
 /* AR_Func_Free - Function pointer to a routine for freeing a function's arithmetic expression subtree. */
 typedef void (*AR_Func_Free)(AR_ExpNode *exp);
+/* AR_Func_Clone - Function pointer to a routine for cloning a function's arithmetic expression subtree. */
+typedef void (*AR_Func_Clone)(AR_ExpNode *orig, AR_ExpNode *clone);
 
 typedef struct {
 	uint min_argc;      // Minimal number of arguments function expects
 	uint max_argc;      // Maximal number of arguments function expects
 	AR_Func func;       // Function pointer to actual function routine.
 	AR_Func_Free bfree; // Function pointer to function cleanup routine.
+	AR_Func_Clone bclone; // Function pointer to function cleanup routine.
 	SIType *types;      // Types of arguments.
 	const char *name;   // Function name.
 	bool reducible;     // Can be reduced using static evaluation.

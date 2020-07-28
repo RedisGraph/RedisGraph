@@ -5,6 +5,7 @@
 */
 
 #include "ast_build_ar_exp.h"
+#include "ast_build_filter_tree.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../arithmetic/funcs.h"
@@ -400,9 +401,12 @@ static AR_ExpNode *_AR_ExpNodeFromListComprehension(const cypher_astnode_t *comp
 	const cypher_astnode_t *predicate_node = cypher_ast_list_comprehension_get_predicate(comp_exp);
 	if(predicate_node) {
 		// TODO consider using _AST_ConvertFilters instead to build FilterTree.
-		AR_ExpNode *predicate = _AR_EXP_FromExpression(predicate_node);
+		// AR_ExpNode *predicate = _AR_EXP_FromExpression(predicate_node);
 		// Store the predicate as a pointer value so it does not get prematurely evaluated.
-		op->op.children[2] = AR_EXP_NewConstOperandNode(SI_PtrVal(predicate));
+		// op->op.children[2] = AR_EXP_NewConstOperandNode(SI_PtrVal(predicate));
+		FT_FilterNode *ft = NULL;
+		AST_ConvertFilters(&ft, predicate_node);
+		op->op.children[2] = AR_EXP_NewConstOperandNode(SI_PtrVal(ft));
 	} else {
 		op->op.children[2] = AR_EXP_NewConstOperandNode(SI_NullVal());
 	}

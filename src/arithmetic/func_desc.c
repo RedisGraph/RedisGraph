@@ -32,6 +32,7 @@ AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint min_argc, uint 
 	desc->name = name;
 	desc->func = func;
 	desc->bfree = NULL;
+	desc->bclone = NULL;
 	desc->min_argc = min_argc;
 	desc->max_argc = max_argc;
 	desc->types = types;

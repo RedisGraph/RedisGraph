@@ -281,7 +281,7 @@ void _AST_ConvertGraphPatternToFilter(const AST *ast, FT_FilterNode **root,
 	}
 }
 
-void _AST_ConvertFilters(const AST *ast, FT_FilterNode **root, const cypher_astnode_t *entity) {
+void AST_ConvertFilters(FT_FilterNode **root, const cypher_astnode_t *entity) {
 	if(!entity) return;
 
 	cypher_astnode_type_t type = cypher_astnode_type(entity);
@@ -309,7 +309,7 @@ void _AST_ConvertFilters(const AST *ast, FT_FilterNode **root, const cypher_astn
 		for(uint i = 0; i < child_count; i++) {
 			const cypher_astnode_t *child = cypher_astnode_get_child(entity, i);
 			// Recursively continue searching
-			_AST_ConvertFilters(ast, root, child);
+			AST_ConvertFilters(root, child);
 		}
 	}
 	if(node) _FT_Append(root, node);
@@ -326,7 +326,7 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 			const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match_clauses[i]);
 			_AST_ConvertGraphPatternToFilter(ast, &filter_tree, pattern);
 			const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(match_clauses[i]);
-			if(predicate) _AST_ConvertFilters(ast, &filter_tree, predicate);
+			if(predicate) AST_ConvertFilters(&filter_tree, predicate);
 		}
 		array_free(match_clauses);
 	}
@@ -336,7 +336,7 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 		uint with_count = array_len(with_clauses);
 		for(uint i = 0; i < with_count; i ++) {
 			const cypher_astnode_t *predicate = cypher_ast_with_get_predicate(with_clauses[i]);
-			if(predicate) _AST_ConvertFilters(ast, &filter_tree, predicate);
+			if(predicate) AST_ConvertFilters(&filter_tree, predicate);
 		}
 		array_free(with_clauses);
 	}
@@ -346,7 +346,7 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 		uint call_count = array_len(call_clauses);
 		for(uint i = 0; i < call_count; i ++) {
 			const cypher_astnode_t *where_predicate = cypher_ast_call_get_predicate(call_clauses[i]);
-			if(where_predicate) _AST_ConvertFilters(ast, &filter_tree, where_predicate);
+			if(where_predicate) AST_ConvertFilters(&filter_tree, where_predicate);
 		}
 		array_free(call_clauses);
 	}

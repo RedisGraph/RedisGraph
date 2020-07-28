@@ -5,41 +5,79 @@
  */
 
 #include "comprehension_funcs.h"
+#include "../../RG.h"
 #include "../func_desc.h"
 #include "../arithmetic_expression.h"
 #include "../../value.h"
 #include "../../util/arr.h"
 #include "../../datatypes/array.h"
 #include "../../execution_plan/record.h"
+#include "../../filter_tree/filter_tree.h"
 
+/* Routine for freeing a list comprehension's subtree of arithmetic expressions.
+ * The predicate and eval routines require special handling to be freed properly. */
 void ListComprehension_Free(AR_ExpNode *exp) {
-	// TODO
-	// AR_ExpNode *predicate = exp->op.children[2];
-	// assert(predicate->type == AR_EXP_OPERAND && predicate->operand.type == AR_EXP_CONSTANT);
-	// SIValue predicate_val = predicate->operand.constant;
-	// if(SI_TYPE(predicate_val) & T_PTR) AR_EXP_Free(predicate->operand.constant.ptrval);
-	// predicate->operand.constant = SI_NullVal();
+	// The second child contains the filter tree, if any.
+	AR_ExpNode *predicate = exp->op.children[2];
+	ASSERT(predicate->type == AR_EXP_OPERAND && predicate->operand.type == AR_EXP_CONSTANT);
+	SIValue predicate_val = predicate->operand.constant;
+	// If this list comprehension has a filter tree, free it.
+	if(SI_TYPE(predicate_val) & T_PTR) FilterTree_Free(predicate_val.ptrval);
 
-	// AR_ExpNode *eval = exp->op.children[3];
-	// assert(eval->type == AR_EXP_OPERAND && eval->operand.type == AR_EXP_CONSTANT);
-	// SIValue eval_val = eval->operand.constant;
-	// if(SI_TYPE(eval_val) & T_PTR) AR_EXP_Free(eval->operand.constant.ptrval);
-	// eval->operand.constant = SI_NullVal();
+	// The third child contains the eval routine, if any.
+	AR_ExpNode *eval = exp->op.children[3];
+	assert(eval->type == AR_EXP_OPERAND && eval->operand.type == AR_EXP_CONSTANT);
+	SIValue eval_val = eval->operand.constant;
+	// If this list comprehension has an eval routine, free it.
+	if(SI_TYPE(eval_val) & T_PTR) AR_EXP_Free(eval_val.ptrval);
+}
+
+/* Routine for cloning a list comprehension's subtree of arithmetic expressions.
+ * The predicate and eval routines require special handling to be cloned properly. */
+void ListComprehension_Clone(AR_ExpNode *orig, AR_ExpNode *clone) {
+	// Use the normal clone routine for all children except the predicate and eval routine.
+	clone->op.children[0] = AR_EXP_Clone(orig->op.children[0]);
+	clone->op.children[1] = AR_EXP_Clone(orig->op.children[1]);
+	clone->op.children[4] = AR_EXP_Clone(orig->op.children[4]);
+
+	AR_ExpNode *predicate = orig->op.children[2];
+	ASSERT(predicate->type == AR_EXP_OPERAND && predicate->operand.type == AR_EXP_CONSTANT);
+	SIValue predicate_val = predicate->operand.constant;
+	if(SI_TYPE(predicate_val) & T_PTR) {
+		/* If the comprehension has a filter tree, clone it and wrap it in a
+		 * constant node in the new tree. */
+		FT_FilterNode *ft_clone = FilterTree_Clone(predicate->operand.constant.ptrval);
+		clone->op.children[2] = AR_EXP_NewConstOperandNode(SI_PtrVal(ft_clone));
+	} else {
+		// If the comprehension has no filters, simply clone the NULL placeholder.
+		clone->op.children[2] = AR_EXP_Clone(orig->op.children[2]);
+	}
+
+	AR_ExpNode *eval = orig->op.children[3];
+	ASSERT(eval->type == AR_EXP_OPERAND && eval->operand.type == AR_EXP_CONSTANT);
+	SIValue eval_val = eval->operand.constant;
+	if(SI_TYPE(eval_val) & T_PTR) {
+		/* If the comprehension has an eval routine, clone it and wrap it in a
+		 * constant node in the new tree. */
+		AR_ExpNode *eval_clone = AR_EXP_Clone(eval->operand.constant.ptrval);
+		clone->op.children[3] = AR_EXP_NewConstOperandNode(SI_PtrVal(eval_clone));
+	} else {
+		// Otherwise, simply clone the NULL placeholder.
+		clone->op.children[3] = AR_EXP_Clone(orig->op.children[3]);
+	}
 }
 
 SIValue AR_LIST_COMPREHENSION(SIValue *argv, int argc) {
-	SIValue variable_val = argv[0];
+	// Unpack the arguments to the list comprehension.
+	const char *variable = argv[0].stringval;
 	SIValue list = argv[1];
-	SIValue predicate = argv[2];
-	SIValue eval = argv[3];
-	SIValue record = argv[4];
+	FT_FilterNode *ft = SIValue_IsNull(argv[2]) ? NULL : argv[2].ptrval;
+	AR_ExpNode *eval_exp = SIValue_IsNull(argv[3]) ? NULL : argv[3].ptrval;
+	Record r = argv[4].ptrval;
 
-	const char *variable = variable_val.stringval;
-	AR_ExpNode *eval_exp = (SI_TYPE(eval) == T_NULL) ? NULL : eval.ptrval;
-	AR_ExpNode *predicate_exp = (SI_TYPE(predicate) == T_NULL) ? NULL : predicate.ptrval;
-	Record r = record.ptrval;
 	int elem_idx = Record_GetEntryIdx(r, variable);
 
+	// Instantiate the array to be returned.
 	SIValue retval = SI_Array(0);
 
 	uint len = SIArray_Length(list);
@@ -49,32 +87,24 @@ SIValue AR_LIST_COMPREHENSION(SIValue *argv, int argc) {
 		// Add the current element to the record at position elem_idx.
 		Record_AddScalar(r, elem_idx, current_elem);
 
-		if(predicate_exp) {
-			SIValue passed_predicate = AR_EXP_Evaluate(predicate_exp, r);
-			// TODO can be null? I don't think so...
-			// if(SI_TYPE(passed_predicate) == T_NULL || passed_predicate.longval != 1) continue;
-			assert(SI_TYPE(passed_predicate) & T_BOOL);
-			// Skip failing elements
-			if(passed_predicate.longval != 1) continue;
+		if(ft) {
+			// If the comprehension has a filter tree, run the current element through it.
+			bool passed_predicate = FilterTree_applyFilters(ft, r);
+			// If it did not pass, skip this element.
+			if(!passed_predicate) continue;
 		}
 
 		if(eval_exp) {
-			// Compute the current element to return.
+			// Compute the current element to append to the return list.
 			SIValue newval = AR_EXP_Evaluate(eval_exp, r);
 			SIArray_Append(&retval, newval);
 			SIValue_Free(newval);
 		} else {
+			// If the comprehension has no eval routine, add each element unmodified.
 			SIArray_Append(&retval, current_elem);
 		}
-		/* Free the record's current entries in case they were heap-allocated,
-		 * as in cases like using reduce to concatenate strings. */
-		// Record_FreeEntries(ctx->reduce_record);
-
-		// Update the Record with the new accumulator value.
-		// Record_AddScalar(ctx->reduce_record, 0, accumulator_val);
 	}
-	// TODO think about
-	// Record_RemoveFromMapping(r, variable.stringval);
+
 	return retval;
 }
 
@@ -91,4 +121,6 @@ void Register_ComprehensionFuncs() {
 	func_desc = AR_FuncDescNew("list_comprehension", AR_LIST_COMPREHENSION, 5, 5, types, false);
 	AR_RegFunc(func_desc);
 	func_desc->bfree = ListComprehension_Free;
+	func_desc->bclone = ListComprehension_Clone;
 }
+
