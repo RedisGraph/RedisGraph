@@ -376,8 +376,7 @@ static AR_ExpNode *_AR_ExpNodeFromListComprehension(const cypher_astnode_t *comp
 	// Build an operation node to represent the list comprehension.
 	AR_ExpNode *op = AR_EXP_NewOpNode(func_name, 5);
 
-	/* Retrieve the variable or alias of the list expression this comprehension operates on.
-	 * In the query:
+	/* Using the sample query:
 	 * WITH [1,2,3] AS arr RETURN [val IN arr WHERE val % 2 = 1 | val * 2] AS comp
 	 */
 
@@ -385,10 +384,10 @@ static AR_ExpNode *_AR_ExpNodeFromListComprehension(const cypher_astnode_t *comp
 	 * In the above query, this is 'val'. */
 	const cypher_astnode_t *variable_node = cypher_ast_list_comprehension_get_identifier(comp_exp);
 	assert(cypher_astnode_type(variable_node) == CYPHER_AST_IDENTIFIER);
-	// The variable string is the function's first child.
-	const char *variable = cypher_ast_identifier_get_name(variable_node);
-	op->op.children[0] = AR_EXP_NewConstOperandNode(SI_ConstStringVal((char *)variable));
-	// op->op.children[0] = _AR_EXP_FromExpression(variable_node);
+	// Build a variadic node to represent this variable.
+	AR_ExpNode *variable = _AR_EXP_FromExpression(variable_node);
+	// Store the variadic as a pointer value so it does not get prematurely evaluated.
+	op->op.children[0] = AR_EXP_NewConstOperandNode(SI_PtrVal(variable));
 
 	/* 'arr' is the list expression.
 	 * Note that this value could resolve to an alias, a literal array, a function call, and so on. */
@@ -400,12 +399,10 @@ static AR_ExpNode *_AR_ExpNodeFromListComprehension(const cypher_astnode_t *comp
 	/* The predicate node is the set of WHERE conditions in the comprehension, if any. */
 	const cypher_astnode_t *predicate_node = cypher_ast_list_comprehension_get_predicate(comp_exp);
 	if(predicate_node) {
-		// TODO consider using _AST_ConvertFilters instead to build FilterTree.
-		// AR_ExpNode *predicate = _AR_EXP_FromExpression(predicate_node);
-		// Store the predicate as a pointer value so it does not get prematurely evaluated.
-		// op->op.children[2] = AR_EXP_NewConstOperandNode(SI_PtrVal(predicate));
+		// Build a FilterTree to represent this predicate.
 		FT_FilterNode *ft = NULL;
 		AST_ConvertFilters(&ft, predicate_node);
+		// Store the filter tree as a pointer value so it does not get prematurely evaluated.
 		op->op.children[2] = AR_EXP_NewConstOperandNode(SI_PtrVal(ft));
 	} else {
 		op->op.children[2] = AR_EXP_NewConstOperandNode(SI_NullVal());

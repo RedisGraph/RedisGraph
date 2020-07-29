@@ -5,6 +5,7 @@
  */
 
 #include "execution_plan.h"
+#include "../RG.h"
 #include "./ops/ops.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
@@ -317,6 +318,22 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 	}
 }
 
+static void _ExecutionPlan_MapIdentifier(const ExecutionPlan *plan, AR_ExpNode *exp) {
+	AR_ExpNode *comprehension = AR_EXP_SeekFunc(exp, "LIST_COMPREHENSION");
+	if(comprehension) {
+		// The first child is a variadic node wrapped in a pointer value.
+		AR_ExpNode *variable_wrapper = comprehension->op.children[0];
+		ASSERT(variable_wrapper->type == AR_EXP_OPERAND &&
+			   variable_wrapper->operand.type == AR_EXP_CONSTANT);
+		AR_ExpNode *variable = variable_wrapper->operand.constant.ptrval;
+		ASSERT(variable->type == AR_EXP_OPERAND && variable->operand.type == AR_EXP_VARIADIC);
+
+		// Add the entity's alias to the Record mapping and update it with the index.
+		const char *name = variable->operand.variadic.entity_alias;
+		variable->operand.variadic.entity_alias_idx = ExecutionPlan_AddToMapping(plan, name);
+	}
+}
+
 static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
 	OpBase **filter_ops = ExecutionPlan_CollectOps(plan->root, OPType_FILTER);
 	uint filter_ops_count = array_len(filter_ops);
@@ -384,12 +401,9 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_lim
 		FT_FilterNode *tree;
 		Vector_Get(sub_trees, i, &tree);
 		// Update the ExecutionPlan mapping with the list comprehension's local variable.
-		// TODO come up with better
 		FT_FilterNode *list_comp_node;
 		if(FilterTree_ContainsFunc(tree, "LIST_COMPREHENSION", &list_comp_node)) {
-			AR_ExpNode *comprehension = AR_EXP_SeekFunc(list_comp_node->exp.exp, "LIST_COMPREHENSION");
-			const char *variable = comprehension->op.children[0]->operand.constant.stringval;
-			ExecutionPlan_AddToMapping(plan, variable);
+			_ExecutionPlan_MapIdentifier(plan, list_comp_node->exp.exp);
 		}
 		OpBase *filter_op = NewFilterOp(plan, tree);
 		ExecutionPlan_RePositionFilterOp(plan, plan->root, recurse_limit, filter_op);
@@ -421,18 +435,6 @@ static void _combine_projection_arrays(AR_ExpNode ***exps_ptr, AR_ExpNode **orde
 
 	raxFree(projection_names);
 	*exps_ptr = project_exps;
-}
-
-// TODO move somewhere, maybe not ar_exp because it is not aware of ExecutionPlan
-void AR_EXP_MapIdentifier(const ExecutionPlan *plan, AR_ExpNode *exp) {
-	AR_ExpNode *comprehension = AR_EXP_SeekFunc(exp, "LIST_COMPREHENSION");
-	if(comprehension) {
-		// TODO tmp
-		AR_ExpNode *variable_exp = comprehension->op.children[0];
-		const char *name = variable_exp->operand.constant.stringval;
-		// variable_exp->operand.variadic.entity_alias_idx = ExecutionPlan_AddToMapping(plan, name);
-		ExecutionPlan_AddToMapping(plan, name);
-	}
 }
 
 // Build an aggregate or project operation and any required modifying operations.
@@ -812,7 +814,8 @@ static OpBase *_ExecutionPlan_FindLastWriter(OpBase *root) {
 	return NULL;
 }
 
-void _ProjectOpExtendMapping(OpBase *opBase) {
+/* Extend the Record mapping for projected expressions that modify the Record. */
+static void _ProjectOpExtendMapping(OpBase *opBase) {
 	const ExecutionPlan *plan_to_extend;
 
 	if(opBase->type == OPType_PROJECT) {
@@ -823,7 +826,7 @@ void _ProjectOpExtendMapping(OpBase *opBase) {
 		uint exp_count = array_len(op->exps);
 		for(uint i = 0; i < exp_count; i ++) {
 			AR_ExpNode *exp = op->exps[i];
-			AR_EXP_MapIdentifier(plan_to_extend, exp);
+			_ExecutionPlan_MapIdentifier(plan_to_extend, exp);
 		}
 	} else if(opBase->type == OPType_AGGREGATE) {
 		// Aggregate ops should always extend their own plan.
@@ -834,12 +837,12 @@ void _ProjectOpExtendMapping(OpBase *opBase) {
 
 		for(uint i = 0; i < op->key_count; i ++) {
 			AR_ExpNode *exp = op->key_exps[i];
-			AR_EXP_MapIdentifier(plan_to_extend, exp);
+			_ExecutionPlan_MapIdentifier(plan_to_extend, exp);
 		}
 
 		for(uint i = 0; i < op->aggregate_count; i ++) {
 			AR_ExpNode *exp = op->aggregate_exps[i];
-			AR_EXP_MapIdentifier(plan_to_extend, exp);
+			_ExecutionPlan_MapIdentifier(plan_to_extend, exp);
 		}
 	}
 

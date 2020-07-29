@@ -21,14 +21,14 @@ typedef void (*AR_Func_Free)(AR_ExpNode *exp);
 typedef void (*AR_Func_Clone)(AR_ExpNode *orig, AR_ExpNode *clone);
 
 typedef struct {
-	uint min_argc;      // Minimal number of arguments function expects
-	uint max_argc;      // Maximal number of arguments function expects
-	AR_Func func;       // Function pointer to actual function routine.
-	AR_Func_Free bfree; // Function pointer to function cleanup routine.
-	AR_Func_Clone bclone; // Function pointer to function cleanup routine.
-	SIType *types;      // Types of arguments.
-	const char *name;   // Function name.
-	bool reducible;     // Can be reduced using static evaluation.
+	uint min_argc;          // Minimal number of arguments function expects
+	uint max_argc;          // Maximal number of arguments function expects
+	AR_Func func;           // Function pointer to actual function routine.
+	AR_Func_Free bfree;     // Function pointer to function cleanup routine.
+	AR_Func_Clone bclone;   // Function pointer to function clone routine.
+	SIType *types;          // Types of arguments.
+	const char *name;       // Function name.
+	bool reducible;         // Can be reduced using static evaluation.
 } AR_FuncDesc;
 
 AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint min_argc, uint max_argc,

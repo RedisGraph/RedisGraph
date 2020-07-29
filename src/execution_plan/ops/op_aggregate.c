@@ -258,8 +258,8 @@ static OpBase *AggregateClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	AR_ExpNode **exps = array_new(AR_ExpNode *, aggregate_count + key_count);
 
 	for(uint i = 0; i < key_count; i++) exps = array_append(exps, AR_EXP_Clone(op->key_exps[i]));
-	for(uint i = 0; i < aggregate_count;
-		i++) exps = array_append(exps, AR_EXP_Clone(op->aggregate_exps[i]));
+	for(uint i = 0; i < aggregate_count; i++)
+		exps = array_append(exps, AR_EXP_Clone(op->aggregate_exps[i]));
 	return NewAggregateOp(plan, exps, op->should_cache_records);
 }
 

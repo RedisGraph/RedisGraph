@@ -17,14 +17,20 @@
 /* Routine for freeing a list comprehension's subtree of arithmetic expressions.
  * The predicate and eval routines require special handling to be freed properly. */
 void ListComprehension_Free(AR_ExpNode *exp) {
-	// The second child contains the filter tree, if any.
+	// The child at index 0 contains the local variable as a variadic node.
+	AR_ExpNode *variable = exp->op.children[0];
+	ASSERT(variable->type == AR_EXP_OPERAND && variable->operand.type == AR_EXP_CONSTANT);
+	SIValue variable_val = variable->operand.constant;
+	AR_EXP_Free(variable_val.ptrval);
+
+	// The child at index 2 contains the filter tree, if any.
 	AR_ExpNode *predicate = exp->op.children[2];
 	ASSERT(predicate->type == AR_EXP_OPERAND && predicate->operand.type == AR_EXP_CONSTANT);
 	SIValue predicate_val = predicate->operand.constant;
 	// If this list comprehension has a filter tree, free it.
 	if(SI_TYPE(predicate_val) & T_PTR) FilterTree_Free(predicate_val.ptrval);
 
-	// The third child contains the eval routine, if any.
+	// The child at index 3 contains the eval routine, if any.
 	AR_ExpNode *eval = exp->op.children[3];
 	assert(eval->type == AR_EXP_OPERAND && eval->operand.type == AR_EXP_CONSTANT);
 	SIValue eval_val = eval->operand.constant;
@@ -35,11 +41,17 @@ void ListComprehension_Free(AR_ExpNode *exp) {
 /* Routine for cloning a list comprehension's subtree of arithmetic expressions.
  * The predicate and eval routines require special handling to be cloned properly. */
 void ListComprehension_Clone(AR_ExpNode *orig, AR_ExpNode *clone) {
-	// Use the normal clone routine for all children except the predicate and eval routine.
-	clone->op.children[0] = AR_EXP_Clone(orig->op.children[0]);
+	// Use the normal clone routine for all children that are not pointers.
 	clone->op.children[1] = AR_EXP_Clone(orig->op.children[1]);
 	clone->op.children[4] = AR_EXP_Clone(orig->op.children[4]);
 
+	// Clone the variadic representing the local variable.
+	AR_ExpNode *variable_exp = orig->op.children[0];
+	ASSERT(variable->type == AR_EXP_OPERAND && variable->operand.type == AR_EXP_CONSTANT);
+	AR_ExpNode *variable_clone = AR_EXP_Clone(variable_exp->operand.constant.ptrval);
+	clone->op.children[0] = AR_EXP_NewConstOperandNode(SI_PtrVal(variable_clone));
+
+	// Clone the predicate filter tree.
 	AR_ExpNode *predicate = orig->op.children[2];
 	ASSERT(predicate->type == AR_EXP_OPERAND && predicate->operand.type == AR_EXP_CONSTANT);
 	SIValue predicate_val = predicate->operand.constant;
@@ -53,6 +65,7 @@ void ListComprehension_Clone(AR_ExpNode *orig, AR_ExpNode *clone) {
 		clone->op.children[2] = AR_EXP_Clone(orig->op.children[2]);
 	}
 
+	// Clone the eval routine.
 	AR_ExpNode *eval = orig->op.children[3];
 	ASSERT(eval->type == AR_EXP_OPERAND && eval->operand.type == AR_EXP_CONSTANT);
 	SIValue eval_val = eval->operand.constant;
@@ -69,13 +82,13 @@ void ListComprehension_Clone(AR_ExpNode *orig, AR_ExpNode *clone) {
 
 SIValue AR_LIST_COMPREHENSION(SIValue *argv, int argc) {
 	// Unpack the arguments to the list comprehension.
-	const char *variable = argv[0].stringval;
+	AR_ExpNode *variable = argv[0].ptrval;
 	SIValue list = argv[1];
 	FT_FilterNode *ft = SIValue_IsNull(argv[2]) ? NULL : argv[2].ptrval;
 	AR_ExpNode *eval_exp = SIValue_IsNull(argv[3]) ? NULL : argv[3].ptrval;
 	Record r = argv[4].ptrval;
 
-	int elem_idx = Record_GetEntryIdx(r, variable);
+	int elem_idx = variable->operand.variadic.entity_alias_idx;
 
 	// Instantiate the array to be returned.
 	SIValue retval = SI_Array(0);
@@ -113,7 +126,7 @@ void Register_ComprehensionFuncs() {
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 5);
-	types = array_append(types, T_STRING);
+	types = array_append(types, T_PTR);
 	types = array_append(types, T_ARRAY | T_NULL);
 	types = array_append(types, T_PTR | T_NULL);
 	types = array_append(types, T_PTR | T_NULL);
