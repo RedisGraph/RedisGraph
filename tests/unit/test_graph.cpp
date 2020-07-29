@@ -630,14 +630,17 @@ TEST_F(GraphTest, RemoveEdges) {
 TEST_F(GraphTest, GetNode) {
 	/* Create a graph with nodeCount nodes,
 	 * Make sure node retrival works as expected:
-	 * 1. try to get nodes (0 - nodeCount)
-	 * 2. try to get node with ID >= nodeCount. */
+	 * try to get nodes (0 - nodeCount) */
 
 	Node n;
 	size_t nodeCount = 16;
 	Graph *g = Graph_New(nodeCount, nodeCount);
+
 	Graph_AcquireWriteLock(g);
+	{
 	for(int i = 0 ; i < nodeCount; i++) Graph_CreateNode(g, GRAPH_NO_LABEL, &n);
+	}
+	Graph_ReleaseLock(g);
 
 	// Get nodes 0 - nodeCount.
 	NodeID i = 0;
@@ -646,11 +649,6 @@ TEST_F(GraphTest, GetNode) {
 		ASSERT_TRUE(n.entity != NULL);
 	}
 
-	// Get a none existing node.
-	ASSERT_EQ(Graph_GetNode(g, i, &n), 0);
-	ASSERT_TRUE(n.entity == NULL);
-
-	Graph_ReleaseLock(g);
 	Graph_Free(g);
 }
 

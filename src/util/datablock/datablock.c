@@ -4,6 +4,7 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
+#include "RG.h"
 #include "datablock.h"
 #include "datablock_iterator.h"
 #include "../arr.h"
@@ -94,7 +95,7 @@ void DataBlock_Accommodate(DataBlock *dataBlock, int64_t k) {
 void *DataBlock_GetItem(const DataBlock *dataBlock, uint64_t idx) {
 	assert(dataBlock);
 
-	if(_DataBlock_IndexOutOfBounds(dataBlock, idx)) return NULL;
+	ASSERT(!_DataBlock_IndexOutOfBounds(dataBlock, idx));
 
 	Block *block = GET_ITEM_BLOCK(dataBlock, idx);
 	idx = ITEM_POSITION_WITHIN_BLOCK(idx);
@@ -137,7 +138,7 @@ void *DataBlock_AllocateItem(DataBlock *dataBlock, uint64_t *idx) {
 
 void DataBlock_DeleteItem(DataBlock *dataBlock, uint64_t idx) {
 	assert(dataBlock);
-	if(_DataBlock_IndexOutOfBounds(dataBlock, idx)) return;
+	ASSERT(!_DataBlock_IndexOutOfBounds(dataBlock, idx));
 
 	// Get block.
 	uint blockIdx = ITEM_INDEX_TO_BLOCK_INDEX(idx);
