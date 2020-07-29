@@ -40,7 +40,7 @@ unsigned short Schema_IndexCount(const Schema *s);
 
 /* Retrieves index from attribute.
  * Returns NULL if index wasn't found. */
-Index *Schema_GetIndex(const Schema *s, Attribute_ID attribute_id, IndexType type);
+Index *Schema_GetIndex(const Schema *s, Attribute_ID *attribute_id, IndexType type);
 
 /* Assign a new index to attribute
  * attribute must already exists and not associated with an index. */

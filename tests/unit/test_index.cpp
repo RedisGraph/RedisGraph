@@ -80,20 +80,20 @@ TEST_F(IndexTest, Index_New) {
 	ASSERT_STREQ(label, l);
 
 	const char *field = "name";
-	Attribute_ID name_id = GraphContext_GetAttributeID(gc, "name");
-	ASSERT_FALSE(Index_ContainsAttribute(idx, name_id));
+	Attribute_ID name_attribute_id = GraphContext_GetAttributeID(gc, "name");
+	ASSERT_FALSE(Index_ContainsAttribute(idx, name_attribute_id));
 	Index_AddField(idx, field);
 	Index_AddField(idx, field);
-	name_id = GraphContext_GetAttributeID(gc, "name");
-	ASSERT_TRUE(Index_ContainsAttribute(idx, name_id));
+	name_attribute_id = GraphContext_GetAttributeID(gc, "name");
+	ASSERT_TRUE(Index_ContainsAttribute(idx, name_attribute_id));
 
 	field = "age";
-	Attribute_ID age_id = GraphContext_GetAttributeID(gc, "age");
-	ASSERT_FALSE(Index_ContainsAttribute(idx, age_id));
+	Attribute_ID age_attribute_id = GraphContext_GetAttributeID(gc, "age");
+	ASSERT_FALSE(Index_ContainsAttribute(idx, age_attribute_id));
 	Index_AddField(idx, field);
 	Index_AddField(idx, field);
-	age_id = GraphContext_GetAttributeID(gc, "age");
-	ASSERT_TRUE(Index_ContainsAttribute(idx, age_id));
+	age_attribute_id = GraphContext_GetAttributeID(gc, "age");
+	ASSERT_TRUE(Index_ContainsAttribute(idx, age_attribute_id));
 
 	// Returns number of fields indexed.
 	uint field_count = Index_FieldsCount(idx);
@@ -106,13 +106,13 @@ TEST_F(IndexTest, Index_New) {
 
 	Index_RemoveField(idx, "age");
 	Index_RemoveField(idx, "age");
-	ASSERT_FALSE(Index_ContainsAttribute(idx, age_id));
-	ASSERT_TRUE(Index_ContainsAttribute(idx, name_id));
+	ASSERT_FALSE(Index_ContainsAttribute(idx, age_attribute_id));
+	ASSERT_TRUE(Index_ContainsAttribute(idx, name_attribute_id));
 
 	Index_RemoveField(idx, "name");
 	Index_RemoveField(idx, "name");
-	ASSERT_FALSE(Index_ContainsAttribute(idx, age_id));
-	ASSERT_FALSE(Index_ContainsAttribute(idx, name_id));
+	ASSERT_FALSE(Index_ContainsAttribute(idx, age_attribute_id));
+	ASSERT_FALSE(Index_ContainsAttribute(idx, name_attribute_id));
 
 	Index_Free(idx);
 }

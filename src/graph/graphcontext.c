@@ -319,7 +319,7 @@ bool GraphContext_HasIndices(GraphContext *gc) {
 	return false;
 }
 
-Index *GraphContext_GetIndex(const GraphContext *gc, const char *label, Attribute_ID attribute_id,
+Index *GraphContext_GetIndex(const GraphContext *gc, const char *label, Attribute_ID *attribute_id,
 							 IndexType type) {
 	// Retrieve the schema for this label
 	Schema *schema = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
@@ -369,9 +369,9 @@ void GraphContext_DeleteNodeFromIndices(GraphContext *gc, Node *n) {
 	}
 
 	// Update any indices this entity is represented in
-	Index *idx = Schema_GetIndex(s, ATTRIBUTE_NOTFOUND, IDX_FULLTEXT);
+	Index *idx = Schema_GetIndex(s, NULL, IDX_FULLTEXT);
 	if(idx) Index_RemoveNode(idx, n);
-	idx = Schema_GetIndex(s, ATTRIBUTE_NOTFOUND, IDX_EXACT_MATCH);
+	idx = Schema_GetIndex(s, NULL, IDX_EXACT_MATCH);
 	if(idx) Index_RemoveNode(idx, n);
 }
 

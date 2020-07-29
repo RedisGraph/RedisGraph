@@ -218,7 +218,7 @@ const char **Index_GetFields(const Index *idx) {
 
 bool Index_ContainsAttribute(const Index *idx, Attribute_ID attribute_id) {
 	assert(idx);
-
+	if(attribute_id == ATTRIBUTE_NOTFOUND) return false;
 	for(uint i = 0; i < idx->fields_count; i++) {
 		if(idx->fields_ids[i] == attribute_id) return true;
 	}
