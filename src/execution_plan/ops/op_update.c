@@ -264,9 +264,8 @@ static void _EvalEntityUpdates(EntityUpdateCtx *ctx, GraphContext *gc,
 		 * If at least one property being updated is indexed, each node will be reindexed. */
 		if(!update_index && label) {
 			Attribute_ID attr_id = update_ctx->attribute_id;
-			const char *field = GraphContext_GetAttributeString(gc, attr_id);
 			// If the label-index combination has an index, we must reindex this entity.
-			update_index = GraphContext_GetIndex(gc, label, field, IDX_ANY) != NULL;
+			update_index = GraphContext_GetIndex(gc, label, &attr_id, IDX_ANY) != NULL;
 			if(update_index && (i > 0)) {
 				/* Swap the current update expression with the first one
 				 * so that subsequent searches will find the index immediately. */

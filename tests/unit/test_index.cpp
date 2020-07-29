@@ -71,6 +71,7 @@ class IndexTest: public ::testing::Test {
 };
 
 TEST_F(IndexTest, Index_New) {
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	const char *l = "Person";
 	Index *idx = Index_New(l, IDX_EXACT_MATCH);
 
@@ -79,16 +80,20 @@ TEST_F(IndexTest, Index_New) {
 	ASSERT_STREQ(label, l);
 
 	const char *field = "name";
-	ASSERT_FALSE(Index_ContainsField(idx, field));
+	Attribute_ID name_attribute_id = GraphContext_GetAttributeID(gc, "name");
+	ASSERT_FALSE(Index_ContainsAttribute(idx, name_attribute_id));
 	Index_AddField(idx, field);
 	Index_AddField(idx, field);
-	ASSERT_TRUE(Index_ContainsField(idx, field));
+	name_attribute_id = GraphContext_GetAttributeID(gc, "name");
+	ASSERT_TRUE(Index_ContainsAttribute(idx, name_attribute_id));
 
 	field = "age";
-	ASSERT_FALSE(Index_ContainsField(idx, field));
+	Attribute_ID age_attribute_id = GraphContext_GetAttributeID(gc, "age");
+	ASSERT_FALSE(Index_ContainsAttribute(idx, age_attribute_id));
 	Index_AddField(idx, field);
 	Index_AddField(idx, field);
-	ASSERT_TRUE(Index_ContainsField(idx, field));
+	age_attribute_id = GraphContext_GetAttributeID(gc, "age");
+	ASSERT_TRUE(Index_ContainsAttribute(idx, age_attribute_id));
 
 	// Returns number of fields indexed.
 	uint field_count = Index_FieldsCount(idx);
@@ -101,13 +106,13 @@ TEST_F(IndexTest, Index_New) {
 
 	Index_RemoveField(idx, "age");
 	Index_RemoveField(idx, "age");
-	ASSERT_FALSE(Index_ContainsField(idx, "age"));
-	ASSERT_TRUE(Index_ContainsField(idx, "name"));
+	ASSERT_FALSE(Index_ContainsAttribute(idx, age_attribute_id));
+	ASSERT_TRUE(Index_ContainsAttribute(idx, name_attribute_id));
 
 	Index_RemoveField(idx, "name");
 	Index_RemoveField(idx, "name");
-	ASSERT_FALSE(Index_ContainsField(idx, "age"));
-	ASSERT_FALSE(Index_ContainsField(idx, "name"));
+	ASSERT_FALSE(Index_ContainsAttribute(idx, age_attribute_id));
+	ASSERT_FALSE(Index_ContainsAttribute(idx, name_attribute_id));
 
 	Index_Free(idx);
 }
