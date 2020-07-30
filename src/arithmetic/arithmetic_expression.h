@@ -31,17 +31,13 @@ typedef enum {
 	AR_OP_FUNC,
 } AR_OPType;
 
-/* AR_OperandNodeType - Type of an expression tree's leaf node. Can be:
- * A constant, e.g. 3
- * A variable, e.g. node.property
- * A parameter, e.g. $p.
- * A directive to store the current record. */
+/* AR_OperandNodeType - Type of an expression tree's leaf node. */
 typedef enum {
-	AR_EXP_OP_UNKNOWN,
-	AR_EXP_CONSTANT,
-	AR_EXP_VARIADIC,
-	AR_EXP_PARAM,
-	AR_EXP_BORROW_RECORD
+	AR_EXP_OP_UNKNOWN,     // Should not occur.
+	AR_EXP_CONSTANT,       // A constant, e.g. 3
+	AR_EXP_VARIADIC,       // A variable, e.g. node.property
+	AR_EXP_PARAM,          // A parameter, e.g. $p.
+	AR_EXP_BORROW_RECORD   // A directive to store the current record.
 } AR_OperandNodeType;
 
 /* Success of an evaluation. */

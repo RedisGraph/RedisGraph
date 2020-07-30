@@ -14,7 +14,8 @@
 
 /* Routine for freeing a list comprehension's subtree of arithmetic expressions.
  * The predicate and eval routines require special handling to be freed properly. */
-void ListComprehension_Free(AR_ExpNode *exp) {
+void ListComprehension_Free(void *exp_ptr) {
+	AR_ExpNode *exp = exp_ptr;
 	// The child at index 0 contains the list comprehension's context.
 	AR_ExpNode *ctx_node = exp->op.children[0];
 	ASSERT(ctx_node->type == AR_EXP_OPERAND && ctx_node->operand.type == AR_EXP_CONSTANT);
@@ -34,7 +35,10 @@ void ListComprehension_Free(AR_ExpNode *exp) {
 
 /* Routine for cloning a list comprehension's subtree of arithmetic expressions.
  * The predicate and eval routines require special handling to be cloned properly. */
-void ListComprehension_Clone(AR_ExpNode *orig, AR_ExpNode *clone) {
+void ListComprehension_Clone(void *orig_ptr, void *clone_ptr) {
+	AR_ExpNode *orig = orig_ptr;
+	AR_ExpNode *clone = clone_ptr;
+
 	// Use the normal clone routine for all children that are not pointers.
 	clone->op.children[1] = AR_EXP_Clone(orig->op.children[1]);
 	clone->op.children[2] = AR_EXP_Clone(orig->op.children[2]);

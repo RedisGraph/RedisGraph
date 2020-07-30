@@ -331,7 +331,7 @@ static void _ExecutionPlan_MapIdentifier(const ExecutionPlan *plan, AR_ExpNode *
 
 		// Add the entity's alias to the Record mapping and update it with the index.
 		const char *name = ctx->variable->operand.variadic.entity_alias;
-		ctx->variable->operand.variadic.entity_alias_idx = ExecutionPlan_AddToMapping(plan, name);
+		ctx->variable->operand.variadic.entity_alias_idx = ExecutionPlan_MapAlias(plan, name);
 	}
 }
 
@@ -971,7 +971,7 @@ inline rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan) {
 	return plan->record_map;
 }
 
-int ExecutionPlan_AddToMapping(const ExecutionPlan *plan, const char *alias) {
+int ExecutionPlan_MapAlias(const ExecutionPlan *plan, const char *alias) {
 	/* Make sure alias has an entry associated with it
 	 * within the record mapping. */
 	rax *mapping = ExecutionPlan_GetMappings(plan);

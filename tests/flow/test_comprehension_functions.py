@@ -8,8 +8,9 @@ class testComprehensionFunctions(FlowTestsBase):
     def __init__(self):
         self.env = Env()
         global redis_graph
+        graph_id = "list_comprehension"
         redis_con = self.env.getConnection()
-        redis_graph = Graph("G", redis_con)
+        redis_graph = Graph(graph_id, redis_con)
         self.populate_graph()
 
     def populate_graph(self):

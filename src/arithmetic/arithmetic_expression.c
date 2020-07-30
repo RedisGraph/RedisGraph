@@ -148,11 +148,15 @@ bool AR_EXP_PerformDistinct(AR_ExpNode *op) {
 	return op->type == AR_EXP_OP && op->op.type == AR_OP_AGGREGATE && op->op.agg_func->isDistinct;
 }
 
-AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias, const char *prop) {
-	AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
-	node->resolved_name = NULL;
+static inline AR_ExpNode *_AR_EXP_InitializeOperand(AR_OperandNodeType type) {
+	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
 	node->type = AR_EXP_OPERAND;
-	node->operand.type = AR_EXP_VARIADIC;
+	node->operand.type = type;
+	return node;
+}
+
+AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias, const char *prop) {
+	AR_ExpNode *node = _AR_EXP_InitializeOperand(AR_EXP_VARIADIC);
 	node->operand.variadic.entity_alias = alias;
 	node->operand.variadic.entity_alias_idx = IDENTIFIER_NOT_FOUND;
 	node->operand.variadic.entity_prop = prop;
@@ -162,27 +166,19 @@ AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias, const char *prop) {
 }
 
 AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant) {
-	AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
-	node->resolved_name = NULL;
-	node->type = AR_EXP_OPERAND;
-	node->operand.type = AR_EXP_CONSTANT;
+	AR_ExpNode *node = _AR_EXP_InitializeOperand(AR_EXP_CONSTANT);
 	node->operand.constant = constant;
 	return node;
 }
 
 AR_ExpNode *AR_EXP_NewParameterOperandNode(const char *param_name) {
-	AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
-	node->resolved_name = NULL;
-	node->type = AR_EXP_OPERAND;
-	node->operand.type = AR_EXP_PARAM;
+	AR_ExpNode *node = _AR_EXP_InitializeOperand(AR_EXP_PARAM);
 	node->operand.param_name = param_name;
 	return node;
 }
 
 AR_ExpNode *AR_EXP_NewRecordNode() {
-	AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
-	node->resolved_name = NULL;
-	node->type = AR_EXP_OPERAND;
+	AR_ExpNode *node = _AR_EXP_InitializeOperand(AR_EXP_OPERAND);
 	node->operand.type = AR_EXP_BORROW_RECORD;
 	return node;
 }
@@ -442,6 +438,14 @@ static AR_EXP_Result _AR_EXP_EvaluateParam(AR_ExpNode *node, SIValue *result) {
 	*result = node->operand.constant;
 	return EVAL_FOUND_PARAM;
 }
+
+static inline AR_EXP_Result _AR_EXP_EvaluateBorrowRecord(AR_ExpNode *node, const Record r,
+														 SIValue *result) {
+	// Wrap the current Record in an SI pointer.
+	*result = SI_PtrVal(r);
+	return EVAL_OK;
+}
+
 /* Evaluate an expression tree, placing the calculated value in 'result' and returning
  * whether an error occurred during evaluation. */
 static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue *result) {
@@ -460,9 +464,7 @@ static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue 
 		case AR_EXP_PARAM:
 			return _AR_EXP_EvaluateParam(root, result);
 		case AR_EXP_BORROW_RECORD:
-			// Wrap the current Record in an SI pointer.
-			*result = SI_PtrVal(r);
-			return res;
+			return _AR_EXP_EvaluateBorrowRecord(root, r, result);
 		default:
 			assert(false && "Invalid expression type");
 		}
