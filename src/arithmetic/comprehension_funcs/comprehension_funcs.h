@@ -6,4 +6,14 @@
 
 #pragma once
 
-void Register_ComprehensionFuncs();
+#include "../arithmetic_expression.h"
+#include "../../filter_tree/filter_tree.h"
+
+typedef struct {
+	AR_ExpNode *variable;
+	FT_FilterNode *ft;
+	AR_ExpNode *eval_exp;
+} AR_ComprehensionCtx;
+
+void Register_ComprehensionFuncs(void);
+

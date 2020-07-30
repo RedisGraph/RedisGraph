@@ -318,19 +318,20 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 	}
 }
 
+// TODO replace with abstraction
+#include "../arithmetic/comprehension_funcs/comprehension_funcs.h"
 static void _ExecutionPlan_MapIdentifier(const ExecutionPlan *plan, AR_ExpNode *exp) {
 	AR_ExpNode *comprehension = AR_EXP_SeekFunc(exp, "LIST_COMPREHENSION");
 	if(comprehension) {
 		// The first child is a variadic node wrapped in a pointer value.
-		AR_ExpNode *variable_wrapper = comprehension->op.children[0];
-		ASSERT(variable_wrapper->type == AR_EXP_OPERAND &&
-			   variable_wrapper->operand.type == AR_EXP_CONSTANT);
-		AR_ExpNode *variable = variable_wrapper->operand.constant.ptrval;
-		ASSERT(variable->type == AR_EXP_OPERAND && variable->operand.type == AR_EXP_VARIADIC);
+		AR_ExpNode *ctx_wrapper = comprehension->op.children[0];
+		ASSERT(ctx_wrapper->type == AR_EXP_OPERAND && ctx_wrapper->operand.type == AR_EXP_CONSTANT);
+		AR_ComprehensionCtx *ctx = ctx_wrapper->operand.constant.ptrval;
+		ASSERT(ctx->type == AR_EXP_OPERAND && ctx->operand.type == AR_EXP_VARIADIC);
 
 		// Add the entity's alias to the Record mapping and update it with the index.
-		const char *name = variable->operand.variadic.entity_alias;
-		variable->operand.variadic.entity_alias_idx = ExecutionPlan_AddToMapping(plan, name);
+		const char *name = ctx->variable->operand.variadic.entity_alias;
+		ctx->variable->operand.variadic.entity_alias_idx = ExecutionPlan_AddToMapping(plan, name);
 	}
 }
 
