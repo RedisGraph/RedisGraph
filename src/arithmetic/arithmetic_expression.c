@@ -6,6 +6,7 @@
 
 #include "./arithmetic_expression.h"
 
+#include "../RG.h"
 #include "funcs.h"
 #include "rax.h"
 #include "./aggregate.h"
@@ -579,15 +580,30 @@ bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
 	return false;
 }
 
-AR_ExpNode *AR_EXP_SeekFunc(AR_ExpNode *root, const char *func) {
+void AR_EXP_MapAliases(AR_ExpNode *root, rax *mapping) {
 	if(root->type == AR_EXP_OP) {
-		if(strcasecmp(root->op.func_name, func) == 0) return root;
+		if(strcasecmp(root->op.func_name, "LIST_COMPREHENSION") == 0) {
+			AR_ExpNode *ctx_wrapper = root->op.children[0];
+			ASSERT(ctx_wrapper->type == AR_EXP_OPERAND && ctx_wrapper->operand.type == AR_EXP_CONSTANT);
+			AR_ComprehensionCtx *ctx = ctx_wrapper->operand.constant.ptrval;
+			ASSERT(ctx->type == AR_EXP_OPERAND && ctx->operand.type == AR_EXP_VARIADIC);
+
+			// Add the entity's alias to the Record mapping and update it with the index.
+			const char *alias = ctx->variable->operand.variadic.entity_alias;
+
+			// Update the mapping with a new ID
+			void *id = raxFind(mapping, (unsigned char *)alias, strlen(alias));
+			if(id == raxNotFound) {
+				id = (void *)raxSize(mapping);
+				raxInsert(mapping, (unsigned char *)alias, strlen(alias), id, NULL);
+			}
+			ctx->variable->operand.variadic.entity_alias_idx = (intptr_t)id;
+		}
+
 		for(int i = 0; i < root->op.child_count; i++) {
-			AR_ExpNode *exp = AR_EXP_SeekFunc(root->op.children[i], func);
-			if(exp) return exp;
+			AR_EXP_MapAliases(root->op.children[i], mapping);
 		}
 	}
-	return NULL;
 }
 
 bool inline AR_EXP_IsConstant(const AR_ExpNode *exp) {
