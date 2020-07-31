@@ -92,9 +92,12 @@ static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 		clone->op.f = exp->op.f;
 		clone->op.type = AR_OP_FUNC;
 		if(exp->op.f->bclone) {
-			// If a function has its own clone routine, it will handle all of its children.
-			exp->op.f->bclone(exp, clone);
-			return clone;
+			/* If the expression has a clone routine, the function descriptor
+			 * itself should be cloned. */
+			clone->op.f = rm_malloc(sizeof(AR_FuncDesc));
+			memcpy(clone->op.f, exp->op.f, sizeof(AR_FuncDesc));
+			// Clone the function's private data.
+			clone->op.f->privdata = exp->op.f->bclone(exp->op.f->privdata);
 		}
 	} else {
 		clone->op.agg_func = Agg_CloneCtx(exp->op.agg_func);
@@ -309,8 +312,12 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node, const Record
 		return EVAL_OK;
 	}
 
+	// Functions with private data will have it appended as an additional child.
+	bool include_privdata = (node->op.f->privdata != NULL);
+	int child_count = node->op.child_count + include_privdata;
 	/* Evaluate each child before evaluating current node. */
-	SIValue sub_trees[node->op.child_count];
+	SIValue sub_trees[child_count];
+
 	for(int child_idx = 0; child_idx < node->op.child_count; child_idx++) {
 		SIValue v;
 		AR_EXP_Result eval_result = _AR_EXP_Evaluate(node->op.children[child_idx], r, &v);
@@ -325,15 +332,18 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node, const Record
 		sub_trees[child_idx] = v;
 	}
 
+	// Add the function's private data, if any.
+	if(include_privdata) sub_trees[child_count - 1] = SI_PtrVal(node->op.f->privdata);
+
 	/* Validate before evaluation. */
-	if(!_AR_EXP_ValidateInvocation(node->op.f, sub_trees, node->op.child_count)) {
+	if(!_AR_EXP_ValidateInvocation(node->op.f, sub_trees, child_count)) {
 		// The expression tree failed its validations and set an error message.
 		res = EVAL_ERR;
 		goto cleanup;
 	}
 
 	/* Evaluate self. */
-	*result = node->op.f->func(sub_trees, node->op.child_count);
+	*result = node->op.f->func(sub_trees, child_count);
 
 	if(SIValue_IsNull(*result) && QueryCtx_EncounteredError()) {
 		/* An error was encountered while evaluating this function, and has already been set in
@@ -582,11 +592,10 @@ bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
 
 void AR_EXP_MapAliases(AR_ExpNode *root, rax *mapping) {
 	if(root->type == AR_EXP_OP) {
+		// TODO generalize logic
 		if(strcasecmp(root->op.func_name, "LIST_COMPREHENSION") == 0) {
-			AR_ExpNode *ctx_wrapper = root->op.children[0];
-			ASSERT(ctx_wrapper->type == AR_EXP_OPERAND && ctx_wrapper->operand.type == AR_EXP_CONSTANT);
-			AR_ComprehensionCtx *ctx = ctx_wrapper->operand.constant.ptrval;
-			ASSERT(ctx->type == AR_EXP_OPERAND && ctx->operand.type == AR_EXP_VARIADIC);
+			AR_ComprehensionCtx *ctx = root->op.f->privdata;
+			assert(ctx);
 
 			// Add the entity's alias to the Record mapping and update it with the index.
 			const char *alias = ctx->variable->operand.variadic.entity_alias;
@@ -718,7 +727,8 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
 
 static inline void _AR_EXP_FreeOpInternals(AR_ExpNode *op_node) {
 	if(op_node->op.type == AR_OP_FUNC && op_node->op.f->bfree) {
-		op_node->op.f->bfree(op_node);
+		op_node->op.f->bfree(op_node->op.f->privdata); // Free the function's private data.
+		rm_free(op_node->op.f); // The function descriptor itself is an allocation in this case.
 	}
 	for(int child_idx = 0; child_idx < op_node->op.child_count; child_idx++) {
 		AR_EXP_Free(op_node->op.children[child_idx]);

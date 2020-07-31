@@ -14,15 +14,16 @@
 /* AR_Func - Function pointer to an operation with an arithmetic expression */
 typedef SIValue(*AR_Func)(SIValue *argv, int argc);
 
-/* AR_Func_Free - Function pointer to a routine for freeing a function's context. */
+/* AR_Func_Free - Function pointer to a routine for freeing a function's private data. */
 typedef void (*AR_Func_Free)(void *ctx);
-/* AR_Func_Clone - Function pointer to a routine for cloning a function's context. */
-typedef void (*AR_Func_Clone)(void *orig, void *clone);
+/* AR_Func_Clone - Function pointer to a routine for cloning a function's private data. */
+typedef void *(*AR_Func_Clone)(void *orig);
 
 typedef struct {
 	uint min_argc;          // Minimal number of arguments function expects
 	uint max_argc;          // Maximal number of arguments function expects
 	AR_Func func;           // Function pointer to actual function routine.
+	void *privdata;         // [Optional] Private data used in evaluating this function.
 	AR_Func_Free bfree;     // [optional] Function pointer to function cleanup routine.
 	AR_Func_Clone bclone;   // [optional] Function pointer to function clone routine.
 	SIType *types;          // Types of arguments.
@@ -42,4 +43,7 @@ AR_FuncDesc *AR_GetFunc(const char *func_name);
 /* Check to see if function exists.
  * TODO: move this function to more appropriate place. */
 bool AR_FuncExists(const char *func_name);
+
+/* Clone a function descriptor and populate it with the given private data. */
+void AR_SetPrivateData(AR_FuncDesc **func, void *privdata);
 

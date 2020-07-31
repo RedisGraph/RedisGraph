@@ -12,60 +12,45 @@
 #include "../../datatypes/array.h"
 #include "../../execution_plan/record.h"
 
-/* Routine for freeing a list comprehension's subtree of arithmetic expressions.
- * The predicate and eval routines require special handling to be freed properly. */
-void ListComprehension_Free(void *exp_ptr) {
-	AR_ExpNode *exp = exp_ptr;
-	// The child at index 0 contains the list comprehension's context.
-	AR_ExpNode *ctx_node = exp->op.children[0];
-	ASSERT(ctx_node->type == AR_EXP_OPERAND && ctx_node->operand.type == AR_EXP_CONSTANT);
-	AR_ComprehensionCtx *ctx = ctx_node->operand.constant.ptrval;
+// Routine for freeing a list comprehension's private data.
+void ListComprehension_Free(void *ctx_ptr) {
+	AR_ComprehensionCtx *ctx = ctx_ptr;
 
-	// Free the variadic.
+	// Free the variadic expression node.
 	AR_EXP_Free(ctx->variable);
-
 	// If this list comprehension has a filter tree, free it.
 	if(ctx->ft) FilterTree_Free(ctx->ft);
-
 	// If this list comprehension has an eval routine, free it.
 	if(ctx->eval_exp) AR_EXP_Free(ctx->eval_exp);
 
 	rm_free(ctx);
 }
 
-/* Routine for cloning a list comprehension's subtree of arithmetic expressions.
- * The predicate and eval routines require special handling to be cloned properly. */
-void ListComprehension_Clone(void *orig_ptr, void *clone_ptr) {
-	AR_ExpNode *orig = orig_ptr;
-	AR_ExpNode *clone = clone_ptr;
-
-	// Use the normal clone routine for all children that are not pointers.
-	clone->op.children[1] = AR_EXP_Clone(orig->op.children[1]);
-	clone->op.children[2] = AR_EXP_Clone(orig->op.children[2]);
-
-	// The child at index 0 contains the list comprehension's context.
-	AR_ExpNode *ctx_node = orig->op.children[0];
-	ASSERT(ctx_node->type == AR_EXP_OPERAND && ctx_node->operand.type == AR_EXP_CONSTANT);
-	AR_ComprehensionCtx *ctx = ctx_node->operand.constant.ptrval;
-
+// Routine for cloning a list comprehension's private data.
+void *ListComprehension_Clone(void *orig) {
+	AR_ComprehensionCtx *ctx = orig;
+	// Allocate space for the clone.
 	AR_ComprehensionCtx *ctx_clone = rm_malloc(sizeof(AR_ComprehensionCtx));
 
+	// Clone the variadic node.
 	ctx_clone->variable = AR_EXP_Clone(ctx->variable);
-
 	// Clone the predicate filter tree.
 	ctx_clone->ft = FilterTree_Clone(ctx->ft);
-
 	// Clone the eval routine.
 	ctx_clone->eval_exp = AR_EXP_Clone(ctx->eval_exp);
 
-	clone->op.children[0] = AR_EXP_NewConstOperandNode(SI_PtrVal(ctx_clone));
+	return ctx_clone;
 }
 
 SIValue AR_LIST_COMPREHENSION(SIValue *argv, int argc) {
-	// Retrieve the context.
-	AR_ComprehensionCtx *ctx = argv[0].ptrval;
-	SIValue list = argv[1];
-	Record r = argv[2].ptrval;
+	if(SI_TYPE(argv[0]) == T_NULL) return SI_NullVal();
+	/* List comprehensions are invoked with three children:
+	 * The list to iterate over.
+	 * The current Record.
+	 * The function context. */
+	SIValue list = argv[0];
+	Record r = argv[1].ptrval;
+	AR_ComprehensionCtx *ctx = argv[2].ptrval;
 
 	int elem_idx = ctx->variable->operand.variadic.entity_alias_idx;
 
@@ -105,8 +90,8 @@ void Register_ComprehensionFuncs() {
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 3);
-	types = array_append(types, T_PTR);
 	types = array_append(types, T_ARRAY | T_NULL);
+	types = array_append(types, T_PTR);
 	types = array_append(types, T_PTR);
 	func_desc = AR_FuncDescNew("list_comprehension", AR_LIST_COMPREHENSION, 3, 3, types, false);
 	AR_RegFunc(func_desc);

@@ -33,6 +33,7 @@ AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint min_argc, uint 
 	desc->func = func;
 	desc->bfree = NULL;
 	desc->bclone = NULL;
+	desc->privdata = NULL;
 	desc->min_argc = min_argc;
 	desc->max_argc = max_argc;
 	desc->types = types;
@@ -62,5 +63,17 @@ AR_FuncDesc *AR_GetFunc(const char *func_name) {
 
 bool AR_FuncExists(const char *func_name) {
 	return (AR_GetFunc(func_name) != NULL);
+}
+
+void AR_SetPrivateData(AR_FuncDesc **func_ptr, void *privdata) {
+	// Clone the function descriptor.
+	AR_FuncDesc *func = rm_malloc(sizeof(AR_FuncDesc));
+	memcpy(func, *func_ptr, sizeof(AR_FuncDesc));
+
+	// Set the private data pointer.
+	func->privdata = privdata;
+
+	// Replace the given function descriptor with the clone.
+	*func_ptr = func;
 }
 
