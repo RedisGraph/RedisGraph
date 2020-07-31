@@ -86,19 +86,21 @@ static AR_ExpNode *_AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 	return node;
 }
 
+static inline void _AR_Exp_CloneOpPrivateData(AR_ExpNode *clone, AR_ExpNode *orig) {
+	/* If the function has private data, the function descriptor
+	 * itself should be cloned. */
+	clone->op.f = rm_malloc(sizeof(AR_FuncDesc));
+	memcpy(clone->op.f, orig->op.f, sizeof(AR_FuncDesc));
+	// Clone the function's private data.
+	clone->op.f->privdata = orig->op.f->bclone(orig->op.f->privdata);
+}
+
 static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 	AR_ExpNode *clone = _AR_EXP_NewOpNode(exp->op.func_name, exp->op.child_count);
 	if(exp->op.type == AR_OP_FUNC) {
 		clone->op.f = exp->op.f;
 		clone->op.type = AR_OP_FUNC;
-		if(exp->op.f->bclone) {
-			/* If the expression has a clone routine, the function descriptor
-			 * itself should be cloned. */
-			clone->op.f = rm_malloc(sizeof(AR_FuncDesc));
-			memcpy(clone->op.f, exp->op.f, sizeof(AR_FuncDesc));
-			// Clone the function's private data.
-			clone->op.f->privdata = exp->op.f->bclone(exp->op.f->privdata);
-		}
+		if(exp->op.f->bclone) _AR_Exp_CloneOpPrivateData(clone, exp);
 	} else {
 		clone->op.agg_func = Agg_CloneCtx(exp->op.agg_func);
 		clone->op.type = AR_OP_AGGREGATE;
