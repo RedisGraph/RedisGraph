@@ -196,6 +196,7 @@ void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int
 		// Discard most significate bit.
 		edgeId = SINGLE_EDGE_ID(edgeId);
 		e.entity = DataBlock_GetItem(g->edges, edgeId);
+		e.id = edgeId;
 		assert(e.entity);
 		*edges = array_append(*edges, e);
 	} else {
@@ -207,6 +208,7 @@ void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int
 		for(int i = 0; i < edgeCount; i++) {
 			edgeId = edgeIds[i];
 			e.entity = DataBlock_GetItem(g->edges, edgeId);
+			e.id = edgeId;
 			assert(e.entity);
 			*edges = array_append(*edges, e);
 		}
@@ -428,12 +430,14 @@ void Graph_AllocateEdges(Graph *g, size_t n) {
 int Graph_GetNode(const Graph *g, NodeID id, Node *n) {
 	assert(g);
 	n->entity = _Graph_GetEntity(g->nodes, id);
+	n->id = id;
 	return (n->entity != NULL);
 }
 
 int Graph_GetEdge(const Graph *g, EdgeID id, Edge *e) {
 	assert(g && id < _Graph_EdgeCap(g));
 	e->entity = _Graph_GetEntity(g->edges, id);
+	e->id = id;
 	return (e->entity != NULL);
 }
 
@@ -522,10 +526,10 @@ void Graph_CreateNode(Graph *g, int label, Node *n) {
 
 	NodeID id;
 	Entity *en = DataBlock_AllocateItem(g->nodes, &id);
-	en->id = id;
+	n->id = id;
+	n->entity = en;
 	en->prop_count = 0;
 	en->properties = NULL;
-	n->entity = en;
 
 	if(label != GRAPH_NO_LABEL) {
 		// Try to set matrix at position [id, id]
@@ -595,9 +599,9 @@ int Graph_ConnectNodes(Graph *g, NodeID src, NodeID dest, int r, Edge *e) {
 
 	EdgeID id;
 	Entity *en = DataBlock_AllocateItem(g->edges, &id);
-	en->id = id;
 	en->prop_count = 0;
 	en->properties = NULL;
+	e->id = id;
 	e->entity = en;
 	e->relationID = r;
 	e->srcNodeID = src;
@@ -1274,13 +1278,13 @@ void Graph_Free(Graph *g) {
 	array_free(g->labels);
 
 	it = Graph_ScanNodes(g);
-	while((en = (Entity *)DataBlockIterator_Next(it)) != NULL)
+	while((en = (Entity *)DataBlockIterator_Next(it, NULL)) != NULL)
 		FreeEntity(en);
 
 	DataBlockIterator_Free(it);
 
 	it = Graph_ScanEdges(g);
-	while((en = DataBlockIterator_Next(it)) != NULL)
+	while((en = DataBlockIterator_Next(it, NULL)) != NULL)
 		FreeEntity(en);
 
 	DataBlockIterator_Free(it);

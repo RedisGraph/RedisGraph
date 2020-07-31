@@ -15,7 +15,7 @@
 #define ENTITY_ID_ISLT(a, b) ((*a) < (*b))
 #define INVALID_ENTITY_ID -1l
 
-#define ENTITY_GET_ID(graphEntity) ((graphEntity)->entity ? (graphEntity)->entity->id : INVALID_ENTITY_ID)
+#define ENTITY_GET_ID(graphEntity) (graphEntity)->id
 #define ENTITY_PROP_COUNT(graphEntity) ((graphEntity)->entity->prop_count)
 #define ENTITY_PROPS(graphEntity) ((graphEntity)->entity->properties)
 
@@ -51,7 +51,6 @@ typedef struct {
 // Essence of a graph entity.
 // TODO: see if pragma pack 0 will cause memory access violation on ARM.
 typedef struct {
-	EntityID id;                // Unique id
 	int prop_count;             // Number of properties.
 	EntityProperty *properties; // Key value pair of attributes.
 } Entity;
@@ -59,6 +58,7 @@ typedef struct {
 // Common denominator between nodes and edges.
 typedef struct {
 	Entity *entity;
+	EntityID id;
 } GraphEntity;
 
 /* Adds property to entity
