@@ -22,7 +22,7 @@ static void MergeFree(OpBase *opBase);
 //------------------------------------------------------------------------------
 // Perform necessary index updates.
 static void _UpdateIndices(GraphContext *gc, Node *n) {
-	int label_id = Graph_GetNodeLabel(gc->g, n->entity->id);
+	int label_id = Graph_GetNodeLabel(gc->g, ENTITY_GET_ID(n));
 	if(label_id == GRAPH_NO_LABEL) return; // Unlabeled node, no need to update.
 
 	Schema *s = GraphContext_GetSchemaByID(gc, label_id, SCHEMA_NODE);

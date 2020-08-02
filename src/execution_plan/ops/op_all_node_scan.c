@@ -53,8 +53,9 @@ static Record AllNodeScanConsumeFromChild(OpBase *opBase) {
 		}
 	}
 
-	Entity *en = (Entity *)DataBlockIterator_Next(op->iter);
-	if(en == NULL) {
+	Node n = GE_NEW_NODE();
+	n.entity = (Entity *)DataBlockIterator_Next(op->iter, &n.id);
+	if(n.entity == NULL) {
 		OpBase_DeleteRecord(op->child_record); // Free old record.
 		// Pull a new record from child.
 		op->child_record = OpBase_Consume(op->op.children[0]);
@@ -62,16 +63,14 @@ static Record AllNodeScanConsumeFromChild(OpBase *opBase) {
 
 		// Reset iterator and evaluate again.
 		DataBlockIterator_Reset(op->iter);
-		en = DataBlockIterator_Next(op->iter);
-		if(!en) return NULL; // Iterator was empty; return immediately.
+		n.entity = DataBlockIterator_Next(op->iter, &n.id);
+		if(n.entity == NULL) return NULL; // Iterator was empty; return immediately.
 	}
 
 	// Clone the held Record, as it will be freed upstream.
 	Record r = OpBase_CloneRecord(op->child_record);
 
 	// Populate the Record with the graph entity data.
-	Node n = GE_NEW_NODE();
-	n.entity = en;
 	Record_AddNode(r, op->nodeRecIdx, n);
 
 	return r;
@@ -80,12 +79,11 @@ static Record AllNodeScanConsumeFromChild(OpBase *opBase) {
 static Record AllNodeScanConsume(OpBase *opBase) {
 	AllNodeScan *op = (AllNodeScan *)opBase;
 
-	Entity *en = (Entity *)DataBlockIterator_Next(op->iter);
-	if(en == NULL) return NULL;
+	Node n = GE_NEW_NODE();
+	n.entity = (Entity *)DataBlockIterator_Next(op->iter, &n.id);
+	if(n.entity == NULL) return NULL;
 
 	Record r = OpBase_CreateRecord((OpBase *)op);
-	Node n = GE_NEW_NODE();
-	n.entity = en;
 	Record_AddNode(r, op->nodeRecIdx, n);
 
 	return r;
