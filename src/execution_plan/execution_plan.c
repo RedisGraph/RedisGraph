@@ -1004,6 +1004,7 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 	return QueryCtx_GetResultSet();
 }
 
+// NOP operation consume routine for immediately terminating execution.
 static Record deplete_consume(struct OpBase *op) {
 	return NULL;
 }

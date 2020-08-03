@@ -72,13 +72,16 @@ static int _read_flags(CommandCtx *command_ctx, bool *compact, long long *timeou
 
 		// query timeout
 		if(!strcasecmp(arg, "--timeout")) {
+			int err = REDISMODULE_ERR;
 			if(i < command_ctx->argc - 1) {
 				i++; // Set the current argument to the timeout value.
-				int err = RedisModule_StringToLongLong(command_ctx->argv[i], timeout);
-				if(err != REDISMODULE_OK || *timeout < 0) {
-					QueryCtx_SetError("Failed to parse query timeout value");
-					return REDISMODULE_ERR;
-				}
+				err = RedisModule_StringToLongLong(command_ctx->argv[i], timeout);
+			}
+
+			// Emit error on missing, negative, or non-numeric timeout values.
+			if(err != REDISMODULE_OK || *timeout < 0) {
+				QueryCtx_SetError("Failed to parse query timeout value");
+				return REDISMODULE_ERR;
 			}
 		}
 	}
@@ -140,7 +143,15 @@ void Graph_Query(void *args) {
 
 	// Set the query timeout if one was specified.
 	RedisModuleTimerID timer_id = -1;
-	if(timeout != 0 && readonly) timer_id = Query_SetTimeOut(ctx, timeout, plan);
+	if(timeout != 0) {
+		if(!readonly) {
+			// Disallow timeouts on write operations to avoid leaving the graph in an inconsistent state.
+			QueryCtx_SetError("Query timeouts may only be specified on read-only queries");
+			QueryCtx_EmitException();
+			goto cleanup;
+		}
+		timer_id = Query_SetTimeOut(ctx, timeout, plan);
+	}
 
 	ResultSetFormatterType resultset_format = (compact) ? FORMATTER_COMPACT : FORMATTER_VERBOSE;
 
