@@ -8,7 +8,6 @@
 #include "../RG.h"
 #include "../ast/ast.h"
 #include "../util/arr.h"
-#include "../util/cron.h"
 #include "cmd_context.h"
 #include "../query_ctx.h"
 #include "../graph/graph.h"
@@ -54,8 +53,8 @@ static void _read_flags(CommandCtx *command_ctx, bool *compact, uint *timeout) {
 	ASSERT(timeout);
 
 	// set defaults
-	*timeout  =  0;      // no timeout
-	*compact  =  false;  // verbose
+	*timeout = 0;      // no timeout
+	*compact = false;  // verbose
 
 	// GRAPH.QUERY <GRAPH_KEY> <QUERY>
 	// make sure we've got more than 3 arguments
@@ -73,7 +72,7 @@ static void _read_flags(CommandCtx *command_ctx, bool *compact, uint *timeout) {
 
 		// query timeout
 		if(!strcasecmp(arg, "--timeout")) {
-			if(i < command_ctx->argc-1) {
+			if(i < command_ctx->argc - 1) {
 				i++;
 				arg = RedisModule_StringPtrLen(command_ctx->argv[i], NULL);
 				*timeout = MAX(0, atoi(arg));
@@ -82,15 +81,19 @@ static void _read_flags(CommandCtx *command_ctx, bool *compact, uint *timeout) {
 	}
 }
 
-void QueryTimedOut(void *pdata) {
-	ExecutionPlan *plan = (ExecutionPlan*)pdata;
+void QueryTimedOut(RedisModuleCtx *ctx, void *pdata) {
+	ExecutionPlan *plan = (ExecutionPlan *)pdata;
 	ExecutionPlan_Drain(plan);
 	ExecutionPlan_Free(plan);
 }
 
-void Query_SetTimeOut(uint timeout, ExecutionPlan *plan) {
+void Query_SetTimeOut(RedisModuleCtx *ctx, uint timeout, ExecutionPlan *plan) {
 	ExecutionPlan_IncreaseRefCount(plan);
-	Cron_AddTask(timeout, QueryTimedOut, plan);
+	RedisModule_CreateTimer(ctx, timeout, QueryTimedOut, plan);
+}
+
+void Query_StopTimeOut(RedisModuleCtx *ctx, RedisModuleTimerID id) {
+	RedisModule_StopTimer(ctx, id, NULL);
 }
 
 void Graph_Query(void *args) {
@@ -155,8 +158,10 @@ void Graph_Query(void *args) {
 	QueryCtx_SetResultSet(result_set);
 	if(exec_type == EXECUTION_TYPE_QUERY) {  // query operation
 		ExecutionPlan_PreparePlan(plan);
-		if(timeout != 0 && readonly) Query_SetTimeOut(timeout, plan);
+		RedisModuleTimerID timer_id = -1;
+		if(timeout != 0 && readonly) Query_SetTimeOut(ctx, timeout, plan);
 		result_set = ExecutionPlan_Execute(plan);
+		if(timer_id != -1) Query_StopTimeOut(ctx, timer_id);
 		if(plan->drained) QueryCtx_SetError("Query timed out");
 		ExecutionPlan_Free(plan);
 		plan = NULL;
@@ -182,7 +187,7 @@ cleanup:
 	// Log query to slowlog.
 	SlowLog *slowlog = GraphContext_GetSlowLog(gc);
 	SlowLog_Add(slowlog, command_ctx->command_name, command_ctx->query,
-			QueryCtx_GetExecutionTime(), NULL);
+				QueryCtx_GetExecutionTime(), NULL);
 	ExecutionPlan_Free(plan);
 	ResultSet_Free(result_set);
 	AST_Free(ast);

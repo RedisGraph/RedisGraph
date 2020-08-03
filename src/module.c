@@ -10,7 +10,6 @@
 #include "config.h"
 #include "version.h"
 #include "util/arr.h"
-#include "util/cron.h"
 #include "query_ctx.h"
 #include "arithmetic/funcs.h"
 #include "commands/commands.h"
@@ -105,7 +104,6 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	Proc_Register();         // Register procedures.
 	AR_RegisterFuncs();      // Register arithmetic functions.
 	Agg_RegisterFuncs();     // Register aggregation functions.
-	Cron_Start();            // Start CRON
 	// Set up global lock and variables scoped to the entire module.
 	_PrepareModuleGlobals(ctx, argv, argc);
 
