@@ -142,8 +142,8 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str);
  * func - function name to lookup. */
 bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func);
 
-// TODO add comment if keeping
-void AR_EXP_MapAliases(AR_ExpNode *root, rax *mapping);
+/* Build an array containing the names of all local variables in an expression tree. */
+const char **AR_EXP_CollectVariableNames(AR_ExpNode *root);
 
 /* Returns true if an arithmetic expression node is a constant. */
 bool AR_EXP_IsConstant(const AR_ExpNode *exp);

@@ -318,10 +318,16 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 	}
 }
 
-static void _ExecutionPlan_MapIdentifier(const ExecutionPlan *plan, AR_ExpNode *exp) {
+static void _ExecutionPlan_MapLocalVariables(const ExecutionPlan *plan, AR_ExpNode *exp) {
 	if(AR_EXP_ContainsFunc(exp, "LIST_COMPREHENSION")) {
-		rax *mapping = ExecutionPlan_GetMappings(plan);
-		AR_EXP_MapAliases(exp, mapping);
+		// Collect all local variable names in the expression tree.
+		const char **expression_variables = AR_EXP_CollectVariableNames(exp);
+		uint variable_count = array_len(expression_variables);
+		for(uint i = 0; i < variable_count; i ++) {
+			// Add each variable name to the Record mapping.
+			ExecutionPlan_MapAlias(plan, expression_variables[i]);
+		}
+		array_free(expression_variables);
 	}
 }
 
@@ -394,7 +400,7 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_lim
 		// Update the ExecutionPlan mapping with the list comprehension's local variable.
 		FT_FilterNode *list_comp_node;
 		if(FilterTree_ContainsFunc(tree, "LIST_COMPREHENSION", &list_comp_node)) {
-			_ExecutionPlan_MapIdentifier(plan, list_comp_node->exp.exp);
+			_ExecutionPlan_MapLocalVariables(plan, list_comp_node->exp.exp);
 		}
 		OpBase *filter_op = NewFilterOp(plan, tree);
 		ExecutionPlan_RePositionFilterOp(plan, plan->root, recurse_limit, filter_op);
@@ -817,7 +823,7 @@ static void _ProjectOpExtendMapping(OpBase *opBase) {
 		uint exp_count = array_len(op->exps);
 		for(uint i = 0; i < exp_count; i ++) {
 			AR_ExpNode *exp = op->exps[i];
-			_ExecutionPlan_MapIdentifier(plan_to_extend, exp);
+			_ExecutionPlan_MapLocalVariables(plan_to_extend, exp);
 		}
 	} else if(opBase->type == OPType_AGGREGATE) {
 		// Aggregate ops should always extend their own plan.
@@ -828,12 +834,12 @@ static void _ProjectOpExtendMapping(OpBase *opBase) {
 
 		for(uint i = 0; i < op->key_count; i ++) {
 			AR_ExpNode *exp = op->key_exps[i];
-			_ExecutionPlan_MapIdentifier(plan_to_extend, exp);
+			_ExecutionPlan_MapLocalVariables(plan_to_extend, exp);
 		}
 
 		for(uint i = 0; i < op->aggregate_count; i ++) {
 			AR_ExpNode *exp = op->aggregate_exps[i];
-			_ExecutionPlan_MapIdentifier(plan_to_extend, exp);
+			_ExecutionPlan_MapLocalVariables(plan_to_extend, exp);
 		}
 	}
 

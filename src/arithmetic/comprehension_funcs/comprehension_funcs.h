@@ -10,10 +10,11 @@
 #include "../../filter_tree/filter_tree.h"
 
 typedef struct {
-	AR_ExpNode *variable;
-	FT_FilterNode *ft;
-	AR_ExpNode *eval_exp;
-} AR_ComprehensionCtx;
+	const char *variable_str;  // String name of the comprehension's local variable
+	int variable_idx;          // Record index of the comprehension's local variable
+	FT_FilterNode *ft;         // [optional] The predicate tree to evaluate each element against.
+	AR_ExpNode *eval_exp;      // [optional] The projection routine to build each return element.
+} ListComprehensionCtx;
 
 void Register_ComprehensionFuncs(void);
 

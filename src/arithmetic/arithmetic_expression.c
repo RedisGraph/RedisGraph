@@ -86,21 +86,14 @@ static AR_ExpNode *_AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 	return node;
 }
 
-static inline void _AR_Exp_CloneOpPrivateData(AR_ExpNode *clone, AR_ExpNode *orig) {
-	/* If the function has private data, the function descriptor
-	 * itself should be cloned. */
-	clone->op.f = rm_malloc(sizeof(AR_FuncDesc));
-	memcpy(clone->op.f, orig->op.f, sizeof(AR_FuncDesc));
-	// Clone the function's private data.
-	clone->op.f->privdata = orig->op.f->bclone(orig->op.f->privdata);
-}
-
 static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 	AR_ExpNode *clone = _AR_EXP_NewOpNode(exp->op.func_name, exp->op.child_count);
 	if(exp->op.type == AR_OP_FUNC) {
 		clone->op.f = exp->op.f;
 		clone->op.type = AR_OP_FUNC;
-		if(exp->op.f->bclone) _AR_Exp_CloneOpPrivateData(clone, exp);
+		/* If the function has private data, the function descriptor
+		 * itself should be cloned. */
+		if(exp->op.f->privdata) clone->op.f = AR_CloneFuncDesc(exp->op.f);
 	} else {
 		clone->op.agg_func = Agg_CloneCtx(exp->op.agg_func);
 		clone->op.type = AR_OP_AGGREGATE;
@@ -314,9 +307,10 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node, const Record
 		return EVAL_OK;
 	}
 
+	int child_count = node->op.child_count;
 	// Functions with private data will have it appended as an additional child.
 	bool include_privdata = (node->op.f->privdata != NULL);
-	int child_count = node->op.child_count + include_privdata;
+	if(include_privdata) child_count ++;
 	/* Evaluate each child before evaluating current node. */
 	SIValue sub_trees[child_count];
 
@@ -592,29 +586,25 @@ bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
 	return false;
 }
 
-void AR_EXP_MapAliases(AR_ExpNode *root, rax *mapping) {
+static void _AR_EXP_CollectVariableNames(const char ***names, AR_ExpNode *root) {
 	if(root->type == AR_EXP_OP) {
 		// TODO generalize logic
 		if(strcasecmp(root->op.func_name, "LIST_COMPREHENSION") == 0) {
-			AR_ComprehensionCtx *ctx = root->op.f->privdata;
+			ListComprehensionCtx *ctx = root->op.f->privdata;
 			assert(ctx);
-
-			// Add the entity's alias to the Record mapping and update it with the index.
-			const char *alias = ctx->variable->operand.variadic.entity_alias;
-
-			// Update the mapping with a new ID
-			void *id = raxFind(mapping, (unsigned char *)alias, strlen(alias));
-			if(id == raxNotFound) {
-				id = (void *)raxSize(mapping);
-				raxInsert(mapping, (unsigned char *)alias, strlen(alias), id, NULL);
-			}
-			ctx->variable->operand.variadic.entity_alias_idx = (intptr_t)id;
+			*names = array_append(*names, ctx->variable_str);
 		}
 
 		for(int i = 0; i < root->op.child_count; i++) {
-			AR_EXP_MapAliases(root->op.children[i], mapping);
+			_AR_EXP_CollectVariableNames(names, root->op.children[i]);
 		}
 	}
+}
+
+const char **AR_EXP_CollectVariableNames(AR_ExpNode *root) {
+	const char **names = array_new(const char *, 1);
+	_AR_EXP_CollectVariableNames(&names, root);
+	return names;
 }
 
 bool inline AR_EXP_IsConstant(const AR_ExpNode *exp) {

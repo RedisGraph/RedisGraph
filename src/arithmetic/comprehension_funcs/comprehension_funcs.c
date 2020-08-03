@@ -14,10 +14,8 @@
 
 // Routine for freeing a list comprehension's private data.
 void ListComprehension_Free(void *ctx_ptr) {
-	AR_ComprehensionCtx *ctx = ctx_ptr;
+	ListComprehensionCtx *ctx = ctx_ptr;
 
-	// Free the variadic expression node.
-	AR_EXP_Free(ctx->variable);
 	// If this list comprehension has a filter tree, free it.
 	if(ctx->ft) FilterTree_Free(ctx->ft);
 	// If this list comprehension has an eval routine, free it.
@@ -28,12 +26,14 @@ void ListComprehension_Free(void *ctx_ptr) {
 
 // Routine for cloning a list comprehension's private data.
 void *ListComprehension_Clone(void *orig) {
-	AR_ComprehensionCtx *ctx = orig;
+	ListComprehensionCtx *ctx = orig;
 	// Allocate space for the clone.
-	AR_ComprehensionCtx *ctx_clone = rm_malloc(sizeof(AR_ComprehensionCtx));
+	ListComprehensionCtx *ctx_clone = rm_malloc(sizeof(ListComprehensionCtx));
 
 	// Clone the variadic node.
-	ctx_clone->variable = AR_EXP_Clone(ctx->variable);
+	ctx_clone->variable_str = ctx->variable_str;
+	ctx_clone->variable_idx = ctx->variable_idx;
+
 	// Clone the predicate filter tree.
 	ctx_clone->ft = FilterTree_Clone(ctx->ft);
 	// Clone the eval routine.
@@ -50,9 +50,9 @@ SIValue AR_LIST_COMPREHENSION(SIValue *argv, int argc) {
 	 * The function context. */
 	SIValue list = argv[0];
 	Record r = argv[1].ptrval;
-	AR_ComprehensionCtx *ctx = argv[2].ptrval;
+	ListComprehensionCtx *ctx = argv[2].ptrval;
 
-	int elem_idx = ctx->variable->operand.variadic.entity_alias_idx;
+	if(ctx->variable_idx == INVALID_INDEX) ctx->variable_idx = Record_GetEntryIdx(r, ctx->variable_str);
 
 	// Instantiate the array to be returned.
 	SIValue retval = SI_Array(0);
@@ -61,8 +61,8 @@ SIValue AR_LIST_COMPREHENSION(SIValue *argv, int argc) {
 	for(uint i = 0; i < len; i++) {
 		// Retrieve the current element.
 		SIValue current_elem = SIArray_Get(list, i);
-		// Add the current element to the record at position elem_idx.
-		Record_AddScalar(r, elem_idx, current_elem);
+		// Add the current element to the record at its allocated position.
+		Record_AddScalar(r, ctx->variable_idx, current_elem);
 
 		if(ctx->ft) {
 			// If the comprehension has a filter tree, run the current element through it.
@@ -94,6 +94,7 @@ void Register_ComprehensionFuncs() {
 	types = array_append(types, T_PTR);
 	types = array_append(types, T_PTR);
 	func_desc = AR_FuncDescNew("list_comprehension", AR_LIST_COMPREHENSION, 3, 3, types, false);
+	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
 	func_desc->bfree = ListComprehension_Free;
 	func_desc->bclone = ListComprehension_Clone;

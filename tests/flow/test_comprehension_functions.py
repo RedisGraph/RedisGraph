@@ -17,24 +17,22 @@ class testComprehensionFunctions(FlowTestsBase):
         global redis_graph
 
         # Construct a graph with the form:
-        # (v1)-[:E]->(v2)-[:E]->(v3)
+        # (v1)-[e1]->(v2)-[e2]->(v3)
         node_props = ['v1', 'v2', 'v3']
 
-        redis_graph.query("CREATE (:L {val: 'v1'})-[:E {edgeval: 1}]->(:L {val: 'v2'})-[:E {edgeval: 2}]->(:L {val: 'v3'})")
-        # TODO functional, but creation is non-deterministic
-        #  nodes = []
-        #  for idx, v in enumerate(node_props):
-            #  node = Node(label="L", properties={"val": v})
-            #  nodes.append(node)
-            #  redis_graph.add_node(node)
+        nodes = []
+        for idx, v in enumerate(node_props):
+            node = Node(label="L", properties={"val": v})
+            nodes.append(node)
+            redis_graph.add_node(node)
 
-        #  edge = Edge(nodes[0], "E", nodes[1], properties={"edge_val": 1})
-        #  redis_graph.add_edge(edge)
+        edge = Edge(nodes[0], "E", nodes[1], properties={"edge_val": ['v1', 'v2']})
+        redis_graph.add_edge(edge)
 
-        #  edge = Edge(nodes[1], "E", nodes[2], properties={"edge_val": 2})
-        #  redis_graph.add_edge(edge)
+        edge = Edge(nodes[1], "E", nodes[2], properties={"edge_val": ['v2', 'v3']})
+        redis_graph.add_edge(edge)
 
-        #  redis_graph.commit()
+        redis_graph.commit()
 
     # Test list comprehension queries with scalar inputs and a single result row
     def test01_list_comprehension_single_return(self):
@@ -54,9 +52,12 @@ class testComprehensionFunctions(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
     def test02_list_comprehension_no_filter_no_map(self):
+        expected_result = [[[1, 2, 3]]]
         query = """WITH [1,2,3] AS arr RETURN [elem IN arr]"""
         actual_result = redis_graph.query(query)
-        expected_result = [[[1, 2, 3]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+        query = """RETURN [elem IN [1,2,3]]"""
+        actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set, expected_result)
 
     def test03_list_comprehension_map_no_filter(self):
@@ -92,7 +93,7 @@ class testComprehensionFunctions(FlowTestsBase):
         actual_result = redis_graph.query(query)
         self.env.assertEquals(len(actual_result.result_set), 3)
 
-        query = """MATCH p=()-[*]->() WITH nodes(p) AS nodes RETURN [elem IN nodes | elem.val]"""
+        query = """MATCH p=()-[*]->() WITH nodes(p) AS nodes WITH [elem IN nodes | elem.val] AS vals RETURN vals ORDER BY vals"""
         actual_result = redis_graph.query(query)
         expected_result = [[['v1', 'v2']],
                            [['v1', 'v2', 'v3']],
@@ -114,8 +115,21 @@ class testComprehensionFunctions(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
     def test07_list_comprehension_in_where_predicate(self):
-        query = """MATCH (n) WHERE n.val IN [x in ['v1', 'v3']] RETURN n.val"""
+        query = """MATCH (n) WHERE n.val IN [x in ['v1', 'v3']] RETURN n.val ORDER BY n.val"""
         actual_result = redis_graph.query(query)
         expected_result = [['v1'],
                            ['v3']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test08_list_comprehension_on_property_array(self):
+        query = """MATCH (n)-[e]->() WITH n, e ORDER BY n.val RETURN [elem IN e.edge_val WHERE elem = n.val]"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[['v1']],
+                           [['v2']]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test09_nested_list_comprehension(self):
+        query = """RETURN [elem IN [nested_val IN range(0, 6) WHERE nested_val % 2 = 0] WHERE elem * 2 >= 4 | elem * 2]"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[[4, 8, 12]]]
         self.env.assertEquals(actual_result.result_set, expected_result)

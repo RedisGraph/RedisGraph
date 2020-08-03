@@ -23,7 +23,7 @@ typedef struct {
 	uint min_argc;          // Minimal number of arguments function expects
 	uint max_argc;          // Maximal number of arguments function expects
 	AR_Func func;           // Function pointer to actual function routine.
-	void *privdata;         // [Optional] Private data used in evaluating this function.
+	void *privdata;         // [optional] Private data used in evaluating this function.
 	AR_Func_Free bfree;     // [optional] Function pointer to function cleanup routine.
 	AR_Func_Clone bclone;   // [optional] Function pointer to function clone routine.
 	SIType *types;          // Types of arguments.
@@ -44,6 +44,12 @@ AR_FuncDesc *AR_GetFunc(const char *func_name);
  * TODO: move this function to more appropriate place. */
 bool AR_FuncExists(const char *func_name);
 
-/* Clone a function descriptor and populate it with the given private data. */
+/* Set the function pointers for cloning and freeing a function's private data. */
+void AR_SetPrivateDataRoutines(AR_FuncDesc *func_desc, AR_Func_Free bfree, AR_Func_Clone bclone);
+
+/* Duplicate a function descriptor and populate it with the given private data. */
 void AR_SetPrivateData(AR_FuncDesc **func, void *privdata);
+
+/* Clone the given function descriptor and its private data. */
+AR_FuncDesc *AR_CloneFuncDesc(const AR_FuncDesc *orig);
 

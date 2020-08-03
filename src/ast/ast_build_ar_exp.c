@@ -382,13 +382,14 @@ static AR_ExpNode *_AR_ExpNodeFromListComprehension(const cypher_astnode_t *comp
 
 	/* The comprehension's local variable, WHERE expression, and eval routine
 	 * do not change for each invocation, so are bundled together in the function's context. */
-	AR_ComprehensionCtx *ctx = rm_malloc(sizeof(AR_ComprehensionCtx));
+	ListComprehensionCtx *ctx = rm_malloc(sizeof(ListComprehensionCtx));
 	/* Retrieve the variable name introduced in this context to iterate over list elements.
 	 * In the above query, this is 'val'. */
 	const cypher_astnode_t *variable_node = cypher_ast_list_comprehension_get_identifier(comp_exp);
 	assert(cypher_astnode_type(variable_node) == CYPHER_AST_IDENTIFIER);
-	// Build a variadic node to represent this variable.
-	ctx->variable = _AR_EXP_FromExpression(variable_node);
+	// Retrieve the variable string for the local variable.
+	ctx->variable_str = cypher_ast_identifier_get_name(variable_node);
+	ctx->variable_idx = INVALID_INDEX;
 
 	/* The predicate node is the set of WHERE conditions in the comprehension, if any. */
 	const cypher_astnode_t *predicate_node = cypher_ast_list_comprehension_get_predicate(comp_exp);

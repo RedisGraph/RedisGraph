@@ -5,6 +5,7 @@
 */
 
 #include "func_desc.h"
+#include "../RG.h"
 #include "../util/rmalloc.h"
 #include "../../deps/rax/rax.h"
 #include <ctype.h>
@@ -65,6 +66,12 @@ bool AR_FuncExists(const char *func_name) {
 	return (AR_GetFunc(func_name) != NULL);
 }
 
+inline void AR_SetPrivateDataRoutines(AR_FuncDesc *func_desc, AR_Func_Free bfree,
+									  AR_Func_Clone bclone) {
+	func_desc->bfree = bfree;
+	func_desc->bclone = bclone;
+}
+
 void AR_SetPrivateData(AR_FuncDesc **func_ptr, void *privdata) {
 	// Clone the function descriptor.
 	AR_FuncDesc *func = rm_malloc(sizeof(AR_FuncDesc));
@@ -75,5 +82,16 @@ void AR_SetPrivateData(AR_FuncDesc **func_ptr, void *privdata) {
 
 	// Replace the given function descriptor with the clone.
 	*func_ptr = func;
+}
+
+AR_FuncDesc *AR_CloneFuncDesc(const AR_FuncDesc *orig) {
+	ASSERT(orig->privdata && orig->bclone);
+	// Perform a shallow copy of the input function descriptor.
+	AR_FuncDesc *clone = rm_malloc(sizeof(AR_FuncDesc));
+	memcpy(clone, orig, sizeof(AR_FuncDesc));
+	// Clone the function's private data.
+	clone->privdata = orig->bclone(orig->privdata);
+
+	return clone;
 }
 
