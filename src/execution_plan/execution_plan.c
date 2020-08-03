@@ -881,7 +881,6 @@ ExecutionPlan *NewExecutionPlan(void) {
 	}
 
 	plan->segments = segments;
-	plan->ref_count = 0;
 	plan->drained = false;
 
 	return plan;
@@ -1005,11 +1004,11 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 	return QueryCtx_GetResultSet();
 }
 
-Record deplete_consume(struct OpBase *op) {
+static Record deplete_consume(struct OpBase *op) {
 	return NULL;
 }
 
-void _ExecutionPlan_Drain(OpBase *root) {
+static void _ExecutionPlan_Drain(OpBase *root) {
 	root->consume = deplete_consume;
 	for(int i = 0; i < root->childCount; i++) {
 		_ExecutionPlan_Drain(root->children[i]);
@@ -1020,8 +1019,8 @@ void _ExecutionPlan_Drain(OpBase *root) {
 // this will cause the execution-plan to quickly deplete
 void ExecutionPlan_Drain(ExecutionPlan *plan) {
 	ASSERT(plan && plan->root);
-	_ExecutionPlan_Drain(plan->root);
 	plan->drained = true;
+	_ExecutionPlan_Drain(plan->root);
 }
 
 static void _ExecutionPlan_InitProfiling(OpBase *root) {
@@ -1087,19 +1086,8 @@ static void _ExecutionPlan_FreeSubPlan(ExecutionPlan *plan) {
 	rm_free(plan);
 }
 
-void ExecutionPlan_IncreaseRefCount(ExecutionPlan *plan) {
-	ASSERT(plan);
-	__atomic_fetch_add(&plan->ref_count, 1, __ATOMIC_RELAXED);
-}
-
-int ExecutionPlan_DecRefCount(ExecutionPlan *plan) {
-	ASSERT(plan);
-	return __atomic_sub_fetch(&plan->ref_count, 1, __ATOMIC_RELAXED);
-}
-
 void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) return;
-	if(ExecutionPlan_DecRefCount(plan) >= 0) return;
 
 	if(plan->root) {
 		_ExecutionPlan_FreeOperations(plan->root);

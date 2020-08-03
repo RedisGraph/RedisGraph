@@ -46,8 +46,8 @@ static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
 	}
 }
 
-// Read configuration flags
-static void _read_flags(CommandCtx *command_ctx, bool *compact, uint *timeout) {
+// Read configuration flags, returning REDIS_MODULE_ERR if flag parsing failed.
+static int _read_flags(CommandCtx *command_ctx, bool *compact, long long *timeout) {
 	ASSERT(command_ctx);
 	ASSERT(compact);
 	ASSERT(timeout);
@@ -58,7 +58,7 @@ static void _read_flags(CommandCtx *command_ctx, bool *compact, uint *timeout) {
 
 	// GRAPH.QUERY <GRAPH_KEY> <QUERY>
 	// make sure we've got more than 3 arguments
-	if(command_ctx->argc <= 3) return;
+	if(command_ctx->argc <= 3) return REDISMODULE_OK;
 
 	// scan arguments
 	for(int i = 3; i < command_ctx->argc; i++) {
@@ -73,23 +73,25 @@ static void _read_flags(CommandCtx *command_ctx, bool *compact, uint *timeout) {
 		// query timeout
 		if(!strcasecmp(arg, "--timeout")) {
 			if(i < command_ctx->argc - 1) {
-				i++;
-				arg = RedisModule_StringPtrLen(command_ctx->argv[i], NULL);
-				*timeout = MAX(0, atoi(arg));
+				i++; // Set the current argument to the timeout value.
+				int err = RedisModule_StringToLongLong(command_ctx->argv[i], timeout);
+				if(err != REDISMODULE_OK || *timeout < 0) {
+					QueryCtx_SetError("Failed to parse query timeout value");
+					return REDISMODULE_ERR;
+				}
 			}
 		}
 	}
+	return REDISMODULE_OK;
 }
 
 void QueryTimedOut(RedisModuleCtx *ctx, void *pdata) {
 	ExecutionPlan *plan = (ExecutionPlan *)pdata;
 	ExecutionPlan_Drain(plan);
-	ExecutionPlan_Free(plan);
 }
 
-void Query_SetTimeOut(RedisModuleCtx *ctx, uint timeout, ExecutionPlan *plan) {
-	ExecutionPlan_IncreaseRefCount(plan);
-	RedisModule_CreateTimer(ctx, timeout, QueryTimedOut, plan);
+RedisModuleTimerID Query_SetTimeOut(RedisModuleCtx *ctx, uint timeout, ExecutionPlan *plan) {
+	return RedisModule_CreateTimer(ctx, timeout, QueryTimedOut, plan);
 }
 
 void Query_StopTimeOut(RedisModuleCtx *ctx, RedisModuleTimerID id) {
@@ -128,8 +130,17 @@ void Graph_Query(void *args) {
 	bool readonly = AST_ReadOnly(ast->root);
 
 	bool compact;
-	uint timeout;
-	_read_flags(command_ctx, &compact, &timeout);
+	long long timeout;
+	int res = _read_flags(command_ctx, &compact, &timeout);
+	if(res == REDISMODULE_ERR) {
+		// Emit error and exit if argument parsing failed.
+		QueryCtx_EmitException();
+		goto cleanup;
+	}
+
+	// Set the query timeout if one was specified.
+	RedisModuleTimerID timer_id = -1;
+	if(timeout != 0 && readonly) timer_id = Query_SetTimeOut(ctx, timeout, plan);
 
 	ResultSetFormatterType resultset_format = (compact) ? FORMATTER_COMPACT : FORMATTER_VERBOSE;
 
@@ -158,11 +169,11 @@ void Graph_Query(void *args) {
 	QueryCtx_SetResultSet(result_set);
 	if(exec_type == EXECUTION_TYPE_QUERY) {  // query operation
 		ExecutionPlan_PreparePlan(plan);
-		RedisModuleTimerID timer_id = -1;
-		if(timeout != 0 && readonly) Query_SetTimeOut(ctx, timeout, plan);
 		result_set = ExecutionPlan_Execute(plan);
-		if(timer_id != -1) Query_StopTimeOut(ctx, timer_id);
-		if(plan->drained) QueryCtx_SetError("Query timed out");
+
+		if(plan->drained) QueryCtx_SetError("Query timed out"); // Emit error if query timed out.
+		else if(timer_id != -1) Query_StopTimeOut(ctx, timer_id); // Stop timeout if set but not reached.
+
 		ExecutionPlan_Free(plan);
 		plan = NULL;
 	} else if(exec_type == EXECUTION_TYPE_INDEX_CREATE ||

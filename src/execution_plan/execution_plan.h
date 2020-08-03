@@ -26,7 +26,6 @@ struct ExecutionPlan {
 	bool prepared;                      // Indicates if the execution plan is ready for execute.
 	bool drained;                       // Indicates if the execution plan been drained
 	bool is_union;                      // Indicates if the execution plan is a union of execution plans.
-	int ref_count;                      // Number of active references.
 };
 
 /* execution_plan_modify.c
