@@ -24,7 +24,9 @@ struct ExecutionPlan {
 	ExecutionPlan **segments;           // Partial execution plans scoped to a subset of operations.
 	ObjectPool *record_pool;
 	bool prepared;                      // Indicates if the execution plan is ready for execute.
+	bool drained;                       // Indicates if the execution plan been drained
 	bool is_union;                      // Indicates if the execution plan is a union of execution plans.
+	int ref_count;                      // Number of active references.
 };
 
 /* execution_plan_modify.c
@@ -33,6 +35,7 @@ struct ExecutionPlan {
 /*
  * API for restructuring the op tree.
  */
+
 /* Removes operation from execution plan. */
 void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op);
 
@@ -55,6 +58,7 @@ void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b);
  * ExecutionPlan_Locate API:
  * For performing existence checks and looking up individual operations in tree.
  */
+
 /* Traverse upwards until an operation that resolves the given alias is found.
  * Returns NULL if alias is not resolved. */
 OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias);
@@ -149,8 +153,17 @@ void ExecutionPlan_Init(ExecutionPlan *plan);
 /* Executes plan */
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan);
 
+/* Drains execution plan*/
+void ExecutionPlan_Drain(ExecutionPlan *plan);
+
 /* Profile executes plan */
 ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan);
+
+/* Increase execution plan reference count */
+void ExecutionPlan_IncreaseRefCount(ExecutionPlan *plan);
+
+/* Decrease execution plan reference count */
+int ExecutionPlan_DecRefCount(ExecutionPlan *plan);
 
 /* Free execution plan */
 void ExecutionPlan_Free(ExecutionPlan *plan);
