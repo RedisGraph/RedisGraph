@@ -91,14 +91,41 @@ static int _read_flags(CommandCtx *command_ctx, bool *compact, long long *timeou
 void QueryTimedOut(RedisModuleCtx *ctx, void *pdata) {
 	ExecutionPlan *plan = (ExecutionPlan *)pdata;
 	ExecutionPlan_Drain(plan);
+
+	/* Timer may have triggered after execution-plan ran to completion
+	 * in which case the original query thread had called ExecutionPlan_Free
+	 * decreasing the plan's ref count, but did not free the execution-plan
+	 * it is our responsibility to call ExecutionPlan_Free
+	 *
+	 * Incase execution-plan timedout we'll call ExecutionPlan_Free
+	 * to drop plan's ref count. */
+	ExecutionPlan_Free(plan);
 }
 
 RedisModuleTimerID Query_SetTimeOut(RedisModuleCtx *ctx, uint timeout, ExecutionPlan *plan) {
-	return RedisModule_CreateTimer(ctx, timeout, QueryTimedOut, plan);
+	// Increase execution plan ref count.
+	ExecutionPlan_IncreaseRefCount(plan);
+
+	RedisModule_ThreadSafeContextLock(ctx);
+	int res = RedisModule_CreateTimer(ctx, timeout, QueryTimedOut, plan);
+	RedisModule_ThreadSafeContextUnlock(ctx);
+
+	return res;
 }
 
 void Query_StopTimeOut(RedisModuleCtx *ctx, RedisModuleTimerID id) {
-	RedisModule_StopTimer(ctx, id, NULL);
+	ExecutionPlan *plan = NULL;
+
+	RedisModule_ThreadSafeContextLock(ctx);
+	int res = RedisModule_StopTimer(ctx, id, (void**)&plan);
+	RedisModule_ThreadSafeContextUnlock(ctx);
+
+	// Try to stop the timer, might be too late as timer may have triggered.
+	if(res == REDISMODULE_OK) {
+		// Managed to stop timer, decrease plan's ref count.
+		ASSERT(plan);
+		ExecutionPlan_DecRefCount(plan);
+	}
 }
 
 void Graph_Query(void *args) {
@@ -150,6 +177,7 @@ void Graph_Query(void *args) {
 			QueryCtx_EmitException();
 			goto cleanup;
 		}
+
 		timer_id = Query_SetTimeOut(ctx, timeout, plan);
 	}
 
@@ -183,7 +211,7 @@ void Graph_Query(void *args) {
 		result_set = ExecutionPlan_Execute(plan);
 
 		if(plan->drained) QueryCtx_SetError("Query timed out"); // Emit error if query timed out.
-		else if(timer_id != -1) Query_StopTimeOut(ctx, timer_id); // Stop timeout if set but not reached.
+		else if(timer_id != -1) Query_StopTimeOut(ctx, timer_id); // Stop timeout if set.
 
 		ExecutionPlan_Free(plan);
 		plan = NULL;

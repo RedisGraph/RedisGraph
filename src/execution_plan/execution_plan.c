@@ -1087,8 +1087,19 @@ static void _ExecutionPlan_FreeSubPlan(ExecutionPlan *plan) {
 	rm_free(plan);
 }
 
+void ExecutionPlan_IncreaseRefCount(ExecutionPlan *plan) {
+	ASSERT(plan);
+	__atomic_fetch_add(&plan->ref_count, 1, __ATOMIC_RELAXED);
+}
+
+int ExecutionPlan_DecRefCount(ExecutionPlan *plan) {
+	ASSERT(plan);
+	return __atomic_sub_fetch(&plan->ref_count, 1, __ATOMIC_RELAXED);
+}
+
 void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) return;
+	if(ExecutionPlan_DecRefCount(plan) >= 0) return;
 
 	if(plan->root) {
 		_ExecutionPlan_FreeOperations(plan->root);
