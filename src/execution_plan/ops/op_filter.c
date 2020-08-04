@@ -11,9 +11,27 @@ static Record FilterConsume(OpBase *opBase);
 static OpBase *FilterClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void FilterFree(OpBase *opBase);
 
+// Extend the record mapping with local variables in filter tree expressions if necessary.
+static inline void _Filter_MapLocalVariables(const ExecutionPlan *plan, FT_FilterNode *ft) {
+	// If the filter tree contains a list comprehension node, retrieve a pointer to it.
+	FT_FilterNode *list_comp_node;
+	if(FilterTree_ContainsFunc(ft, "LIST_COMPREHENSION", &list_comp_node)) {
+		AR_ExpNode *exp = list_comp_node->exp.exp;
+		// Collect all local variable names in the arithmetic expression.
+		const char **expression_variables = AR_EXP_CollectLocalVariables(exp);
+		uint variable_count = array_len(expression_variables);
+		for(uint i = 0; i < variable_count; i ++) {
+			// Add each variable name to the Record mapping.
+			ExecutionPlan_MapAlias(plan, expression_variables[i]);
+		}
+		array_free(expression_variables);
+	}
+}
+
 OpBase *NewFilterOp(const ExecutionPlan *plan, FT_FilterNode *filterTree) {
 	OpFilter *op = rm_malloc(sizeof(OpFilter));
 	op->filterTree = filterTree;
+	_Filter_MapLocalVariables(plan, filterTree);
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_FILTER, "Filter", NULL, FilterConsume,

@@ -318,19 +318,6 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 	}
 }
 
-static void _ExecutionPlan_MapLocalVariables(const ExecutionPlan *plan, AR_ExpNode *exp) {
-	if(AR_EXP_ContainsFunc(exp, "LIST_COMPREHENSION")) {
-		// Collect all local variable names in the expression tree.
-		const char **expression_variables = AR_EXP_CollectLocalVariables(exp);
-		uint variable_count = array_len(expression_variables);
-		for(uint i = 0; i < variable_count; i ++) {
-			// Add each variable name to the Record mapping.
-			ExecutionPlan_MapAlias(plan, expression_variables[i]);
-		}
-		array_free(expression_variables);
-	}
-}
-
 static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
 	OpBase **filter_ops = ExecutionPlan_CollectOps(plan->root, OPType_FILTER);
 	uint filter_ops_count = array_len(filter_ops);
@@ -397,11 +384,6 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_lim
 	for(int i = 0; i < Vector_Size(sub_trees); i++) {
 		FT_FilterNode *tree;
 		Vector_Get(sub_trees, i, &tree);
-		// Update the ExecutionPlan mapping with the list comprehension's local variable.
-		FT_FilterNode *list_comp_node;
-		if(FilterTree_ContainsFunc(tree, "LIST_COMPREHENSION", &list_comp_node)) {
-			_ExecutionPlan_MapLocalVariables(plan, list_comp_node->exp.exp);
-		}
 		OpBase *filter_op = NewFilterOp(plan, tree);
 		ExecutionPlan_RePositionFilterOp(plan, plan->root, recurse_limit, filter_op);
 	}
@@ -812,37 +794,9 @@ static OpBase *_ExecutionPlan_FindLastWriter(OpBase *root) {
 }
 
 /* Extend the Record mapping for projected expressions that modify the Record. */
-static void _ProjectOpExtendMapping(OpBase *opBase) {
-	const ExecutionPlan *plan_to_extend;
-
-	if(opBase->type == OPType_PROJECT) {
-		// If the Project op has a child, the child's record map should be extended.
-		if(opBase->childCount == 0) plan_to_extend = opBase->plan;
-		else plan_to_extend = opBase->children[0]->plan;
-		OpProject *op = (OpProject *)opBase;
-		uint exp_count = array_len(op->exps);
-		for(uint i = 0; i < exp_count; i ++) {
-			AR_ExpNode *exp = op->exps[i];
-			_ExecutionPlan_MapLocalVariables(plan_to_extend, exp);
-		}
-	} else if(opBase->type == OPType_AGGREGATE) {
-		// Aggregate ops should always extend their own plan.
-		// TODO this will be untrue if we disambiguate aggregate+project ops better, as in:
-		// MATCH p=()-[*]->() RETURN [n IN nodes(p) WHERE n.v <> 'b' | n.v]
-		plan_to_extend = opBase->plan;
-		OpAggregate *op = (OpAggregate *)opBase;
-
-		for(uint i = 0; i < op->key_count; i ++) {
-			AR_ExpNode *exp = op->key_exps[i];
-			_ExecutionPlan_MapLocalVariables(plan_to_extend, exp);
-		}
-
-		for(uint i = 0; i < op->aggregate_count; i ++) {
-			AR_ExpNode *exp = op->aggregate_exps[i];
-			_ExecutionPlan_MapLocalVariables(plan_to_extend, exp);
-		}
-	}
-
+static inline void _ProjectOpExtendMapping(OpBase *op) {
+	if(op->type == OPType_PROJECT) Project_MapProjectionLocalVariables((OpProject *)op);
+	else if(op->type == OPType_AGGREGATE) Aggregate_MapProjectionLocalVariables((OpAggregate *)op);
 }
 
 ExecutionPlan *NewExecutionPlan(void) {

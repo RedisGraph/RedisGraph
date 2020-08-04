@@ -590,6 +590,7 @@ static void _AR_EXP_CollectLocalVariables(const char ***names, AR_ExpNode *root)
 		if(strcasecmp(root->op.func_name, "LIST_COMPREHENSION") == 0) {
 			ListComprehensionCtx *ctx = root->op.f->privdata;
 			assert(ctx);
+			if(*names == NULL) *names = array_new(const char *, 1);
 			*names = array_append(*names, ctx->variable_str);
 		}
 
@@ -600,7 +601,7 @@ static void _AR_EXP_CollectLocalVariables(const char ***names, AR_ExpNode *root)
 }
 
 const char **AR_EXP_CollectLocalVariables(AR_ExpNode *root) {
-	const char **names = array_new(const char *, 1);
+	const char **names = NULL;
 	_AR_EXP_CollectLocalVariables(&names, root);
 	return names;
 }

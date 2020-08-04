@@ -15,6 +15,28 @@ static Record ProjectConsume(OpBase *opBase);
 static OpBase *ProjectClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void ProjectFree(OpBase *opBase);
 
+/* Iterate over the projected expressions and, if they rely upon local variables,
+ * extend the appropriate record mapping to accommodate them. */
+void Project_MapProjectionLocalVariables(OpProject *op) {
+	const ExecutionPlan *plan_to_extend;
+	/* If the Project op has a child, the child's record map should be extended.
+	 * Otherwise, extend this op's record map.  */
+	if(op->op.childCount == 0) plan_to_extend = op->op.plan;
+	else plan_to_extend = op->op.children[0]->plan;
+	uint exp_count = array_len(op->exps);
+	for(uint i = 0; i < exp_count; i ++) {
+		AR_ExpNode *exp = op->exps[i];
+		// Collect all local variable names in the expression tree.
+		const char **expression_variables = AR_EXP_CollectLocalVariables(exp);
+		uint variable_count = array_len(expression_variables);
+		for(uint i = 0; i < variable_count; i ++) {
+			// Add each variable name to the Record mapping.
+			ExecutionPlan_MapAlias(plan_to_extend, expression_variables[i]);
+		}
+		array_free(expression_variables);
+	}
+}
+
 OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
 	OpProject *op = rm_malloc(sizeof(OpProject));
 	op->exps = exps;

@@ -180,6 +180,27 @@ static Record _handoff(OpAggregate *op) {
 	return r;
 }
 
+static void _MapLocalVariables(const ExecutionPlan *plan, AR_ExpNode **exps, uint exp_count) {
+	for(uint i = 0; i < exp_count; i ++) {
+		AR_ExpNode *exp = exps[i];
+		// Collect all local variable names in the expression tree.
+		const char **expression_variables = AR_EXP_CollectLocalVariables(exp);
+		uint variable_count = array_len(expression_variables);
+		for(uint i = 0; i < variable_count; i ++) {
+			// Add each variable name to the Record mapping.
+			ExecutionPlan_MapAlias(plan, expression_variables[i]);
+		}
+		array_free(expression_variables);
+	}
+}
+
+/* Iterate over all the Aggregate op's expressions and, if they rely upon local variables,
+ * extend the record mapping to accommodate them. */
+inline void Aggregate_MapProjectionLocalVariables(OpAggregate *op) {
+	_MapLocalVariables(op->op.plan, op->key_exps, op->key_count);
+	_MapLocalVariables(op->op.plan, op->aggregate_exps, op->aggregate_count);
+}
+
 OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should_cache_records) {
 	OpAggregate *op = rm_malloc(sizeof(OpAggregate));
 	op->group = NULL;

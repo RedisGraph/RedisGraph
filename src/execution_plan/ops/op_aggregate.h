@@ -27,5 +27,9 @@ typedef struct {
 	bool should_cache_records;          /* Records should be cached if we're sorting after aggregation. */
 } OpAggregate;
 
+/* Iterate over all the Aggregate op's expressions and, if they rely upon local variables,
+ * extend the record mapping to accommodate them. */
+void Aggregate_MapProjectionLocalVariables(OpAggregate *op);
+
 OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should_cache_records);
 
