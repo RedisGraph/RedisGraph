@@ -793,12 +793,6 @@ static OpBase *_ExecutionPlan_FindLastWriter(OpBase *root) {
 	return NULL;
 }
 
-/* Extend the Record mapping for projected expressions that modify the Record. */
-static inline void _ProjectOpExtendMapping(OpBase *op) {
-	if(op->type == OPType_PROJECT) Project_MapProjectionLocalVariables((OpProject *)op);
-	else if(op->type == OPType_AGGREGATE) Aggregate_MapProjectionLocalVariables((OpAggregate *)op);
-}
-
 ExecutionPlan *NewExecutionPlan(void) {
 	AST *ast = QueryCtx_GetAST();
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
@@ -854,7 +848,10 @@ ExecutionPlan *NewExecutionPlan(void) {
 	QueryCtx_SetAST(ast_segments[0]);
 	if(segments[0]->filter_tree) ExecutionPlan_PlaceFilterOps(segments[0], NULL);
 
-	_ProjectOpExtendMapping(segments[0]->root);
+	// If the first segment's root is Project, as in a query beginning with RETURN or WITH,
+	// map local variables in its projections.
+	if(segments[0]->root->type == OPType_PROJECT)
+		Project_MapProjectionLocalVariables((OpProject *)segments[0]->root);
 
 	OpBase *connecting_op = NULL;
 	OpBase *prev_scope_end = NULL;
@@ -870,7 +867,8 @@ ExecutionPlan *NewExecutionPlan(void) {
 
 		ExecutionPlan_AddOp(connecting_op, prev_root);
 
-		_ProjectOpExtendMapping(connecting_op);
+		if(connecting_op->type == OPType_PROJECT)
+			Project_MapProjectionLocalVariables((OpProject *)connecting_op);
 
 		// Place filter ops required by current segment.
 		QueryCtx_SetAST(ast_segments[i]);

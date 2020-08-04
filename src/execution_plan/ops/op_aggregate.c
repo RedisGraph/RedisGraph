@@ -180,25 +180,14 @@ static Record _handoff(OpAggregate *op) {
 	return r;
 }
 
-static void _MapLocalVariables(const ExecutionPlan *plan, AR_ExpNode **exps, uint exp_count) {
-	for(uint i = 0; i < exp_count; i ++) {
-		AR_ExpNode *exp = exps[i];
-		// Collect all local variable names in the expression tree.
-		const char **expression_variables = AR_EXP_CollectLocalVariables(exp);
-		uint variable_count = array_len(expression_variables);
-		for(uint i = 0; i < variable_count; i ++) {
-			// Add each variable name to the Record mapping.
-			ExecutionPlan_MapAlias(plan, expression_variables[i]);
-		}
-		array_free(expression_variables);
-	}
-}
-
-/* Iterate over all the Aggregate op's expressions and, if they rely upon local variables,
- * extend the record mapping to accommodate them. */
-inline void Aggregate_MapProjectionLocalVariables(OpAggregate *op) {
-	_MapLocalVariables(op->op.plan, op->key_exps, op->key_count);
-	_MapLocalVariables(op->op.plan, op->aggregate_exps, op->aggregate_count);
+// Extend the record mapping with local variables in arithmetic expressions if necessary.
+static inline void _MapLocalVariables(OpBase *op, AR_ExpNode *exp) {
+	// Collect all local variable names in the expression tree.
+	const char **expression_variables = AR_EXP_CollectLocalVariables(exp);
+	uint variable_count = array_len(expression_variables);
+	// Add each variable name to the Record mapping.
+	for(uint i = 0; i < variable_count; i ++) OpBase_Modifies(op, expression_variables[i]);
+	array_free(expression_variables);
 }
 
 OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should_cache_records) {
@@ -226,11 +215,13 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should
 		// Store the index of each key expression.
 		int record_idx = OpBase_Modifies((OpBase *)op, op->key_exps[i]->resolved_name);
 		op->record_offsets = array_append(op->record_offsets, record_idx);
+		_MapLocalVariables((OpBase *)op, op->key_exps[i]);
 	}
 	for(uint i = 0; i < op->aggregate_count; i ++) {
 		// Store the index of each aggregating expression.
 		int record_idx = OpBase_Modifies((OpBase *)op, op->aggregate_exps[i]->resolved_name);
 		op->record_offsets = array_append(op->record_offsets, record_idx);
+		_MapLocalVariables((OpBase *)op, op->aggregate_exps[i]);
 	}
 
 	return (OpBase *)op;
