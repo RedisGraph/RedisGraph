@@ -72,20 +72,19 @@ inline void AR_SetPrivateDataRoutines(AR_FuncDesc *func_desc, AR_Func_Free bfree
 	func_desc->bclone = bclone;
 }
 
-void AR_SetPrivateData(AR_FuncDesc **func_ptr, void *privdata) {
-	// Clone the function descriptor.
+AR_FuncDesc *AR_SetPrivateData(const AR_FuncDesc *orig, void *privdata) {
+	// Create a new function descriptor.
 	AR_FuncDesc *func = rm_malloc(sizeof(AR_FuncDesc));
-	memcpy(func, *func_ptr, sizeof(AR_FuncDesc));
+	memcpy(func, orig, sizeof(AR_FuncDesc));
 
 	// Set the private data pointer.
 	func->privdata = privdata;
 
-	// Replace the given function descriptor with the clone.
-	*func_ptr = func;
+	return func;
 }
 
 AR_FuncDesc *AR_CloneFuncDesc(const AR_FuncDesc *orig) {
-	ASSERT(orig->privdata && orig->bclone);
+	ASSERT(orig->bclone);
 	// Perform a shallow copy of the input function descriptor.
 	AR_FuncDesc *clone = rm_malloc(sizeof(AR_FuncDesc));
 	memcpy(clone, orig, sizeof(AR_FuncDesc));

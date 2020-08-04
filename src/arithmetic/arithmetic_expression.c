@@ -89,11 +89,11 @@ static AR_ExpNode *_AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 	AR_ExpNode *clone = _AR_EXP_NewOpNode(exp->op.func_name, exp->op.child_count);
 	if(exp->op.type == AR_OP_FUNC) {
-		clone->op.f = exp->op.f;
 		clone->op.type = AR_OP_FUNC;
 		/* If the function has private data, the function descriptor
-		 * itself should be cloned. */
+		 * itself should be cloned. Otherwise, we can perform a direct assignment. */
 		if(exp->op.f->privdata) clone->op.f = AR_CloneFuncDesc(exp->op.f);
+		else clone->op.f = exp->op.f;
 	} else {
 		clone->op.agg_func = Agg_CloneCtx(exp->op.agg_func);
 		clone->op.type = AR_OP_AGGREGATE;
@@ -177,9 +177,7 @@ AR_ExpNode *AR_EXP_NewParameterOperandNode(const char *param_name) {
 }
 
 AR_ExpNode *AR_EXP_NewRecordNode() {
-	AR_ExpNode *node = _AR_EXP_InitializeOperand(AR_EXP_OPERAND);
-	node->operand.type = AR_EXP_BORROW_RECORD;
-	return node;
+	return _AR_EXP_InitializeOperand(AR_EXP_BORROW_RECORD);
 }
 
 /* Compact tree by evaluating constant expressions
@@ -374,7 +372,7 @@ static bool _AR_EXP_UpdateEntityIdx(AR_OperandNode *node, const Record r) {
 static AR_EXP_Result _AR_EXP_EvaluateProperty(AR_ExpNode *node, const Record r, SIValue *result) {
 	RecordEntryType t = Record_GetType(r, node->operand.variadic.entity_alias_idx);
 	GraphEntity *ge = NULL;
-	if(t == REC_TYPE_NODE && t == REC_TYPE_EDGE) {
+	if(t == REC_TYPE_NODE || t == REC_TYPE_EDGE) {
 		ge = Record_GetGraphEntity(r, node->operand.variadic.entity_alias_idx);
 	} else {
 		if(t == REC_TYPE_UNKNOWN) {
@@ -586,7 +584,7 @@ bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
 	return false;
 }
 
-static void _AR_EXP_CollectVariableNames(const char ***names, AR_ExpNode *root) {
+static void _AR_EXP_CollectLocalVariables(const char ***names, AR_ExpNode *root) {
 	if(root->type == AR_EXP_OP) {
 		// TODO generalize logic
 		if(strcasecmp(root->op.func_name, "LIST_COMPREHENSION") == 0) {
@@ -596,14 +594,14 @@ static void _AR_EXP_CollectVariableNames(const char ***names, AR_ExpNode *root) 
 		}
 
 		for(int i = 0; i < root->op.child_count; i++) {
-			_AR_EXP_CollectVariableNames(names, root->op.children[i]);
+			_AR_EXP_CollectLocalVariables(names, root->op.children[i]);
 		}
 	}
 }
 
-const char **AR_EXP_CollectVariableNames(AR_ExpNode *root) {
+const char **AR_EXP_CollectLocalVariables(AR_ExpNode *root) {
 	const char **names = array_new(const char *, 1);
-	_AR_EXP_CollectVariableNames(&names, root);
+	_AR_EXP_CollectLocalVariables(&names, root);
 	return names;
 }
 

@@ -57,24 +57,19 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 	cypher_astnode_type_t type = cypher_astnode_type(node);
 	if(type == CYPHER_AST_PROJECTION) child_count = 1;
 
-	if(type == CYPHER_AST_LIST_COMPREHENSION) {
-		// A list comprehension has a local variable that should only be accessed within its scope.
-		// Temporarily add it to the rax, then remove it after validating the other elements.
-		const cypher_astnode_t *variable_node = cypher_ast_list_comprehension_get_identifier(node);
-		const char *variable = cypher_ast_identifier_get_name(variable_node);
-		raxInsert(identifiers, (unsigned char *)variable, strlen(variable), NULL, NULL);
-		for(uint i = 0; i < child_count; i++) {
-			const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
-			_AST_GetIdentifiers(child, identifiers);
-		}
-		raxRemove(identifiers, (unsigned char *)variable, strlen(variable), NULL);
-		return;
-	}
-
 	for(uint i = 0; i < child_count; i++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
 		_AST_GetIdentifiers(child, identifiers);
 	}
+
+	if(type == CYPHER_AST_LIST_COMPREHENSION) {
+		// A list comprehension has a local variable that should only be accessed within its scope;
+		// do not leave it in the identifiers map.
+		const cypher_astnode_t *variable_node = cypher_ast_list_comprehension_get_identifier(node);
+		const char *variable = cypher_ast_identifier_get_name(variable_node);
+		raxRemove(identifiers, (unsigned char *)variable, strlen(variable), NULL);
+	}
+
 }
 
 static void _AST_GetWithAliases(const cypher_astnode_t *node, rax *aliases) {

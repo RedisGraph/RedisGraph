@@ -53,6 +53,7 @@ SIValue AR_LIST_COMPREHENSION(SIValue *argv, int argc) {
 	ListComprehensionCtx *ctx = argv[2].ptrval;
 
 	if(ctx->variable_idx == INVALID_INDEX) ctx->variable_idx = Record_GetEntryIdx(r, ctx->variable_str);
+	ASSERT(ctx->variable_idx != INVALID_INDEX);
 
 	// Instantiate the array to be returned.
 	SIValue retval = SI_Array(0);
@@ -64,12 +65,9 @@ SIValue AR_LIST_COMPREHENSION(SIValue *argv, int argc) {
 		// Add the current element to the record at its allocated position.
 		Record_AddScalar(r, ctx->variable_idx, current_elem);
 
-		if(ctx->ft) {
-			// If the comprehension has a filter tree, run the current element through it.
-			bool passed_predicate = FilterTree_applyFilters(ctx->ft, r);
-			// If it did not pass, skip this element.
-			if(!passed_predicate) continue;
-		}
+		/* If the comprehension has a filter tree, run the current element through it.
+		 * If it does not pass, skip this element. */
+		if(ctx->ft && !(FilterTree_applyFilters(ctx->ft, r))) continue;
 
 		if(ctx->eval_exp) {
 			// Compute the current element to append to the return list.
@@ -93,7 +91,7 @@ void Register_ComprehensionFuncs() {
 	types = array_append(types, T_ARRAY | T_NULL);
 	types = array_append(types, T_PTR);
 	types = array_append(types, T_PTR);
-	func_desc = AR_FuncDescNew("list_comprehension", AR_LIST_COMPREHENSION, 3, 3, types, false);
+	func_desc = AR_FuncDescNew("list_comprehension", AR_LIST_COMPREHENSION, 3, 3, types, true);
 	AR_SetPrivateDataRoutines(func_desc, ListComprehension_Free, ListComprehension_Clone);
 	AR_RegFunc(func_desc);
 	func_desc->bfree = ListComprehension_Free;

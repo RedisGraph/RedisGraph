@@ -321,7 +321,7 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 static void _ExecutionPlan_MapLocalVariables(const ExecutionPlan *plan, AR_ExpNode *exp) {
 	if(AR_EXP_ContainsFunc(exp, "LIST_COMPREHENSION")) {
 		// Collect all local variable names in the expression tree.
-		const char **expression_variables = AR_EXP_CollectVariableNames(exp);
+		const char **expression_variables = AR_EXP_CollectLocalVariables(exp);
 		uint variable_count = array_len(expression_variables);
 		for(uint i = 0; i < variable_count; i ++) {
 			// Add each variable name to the Record mapping.

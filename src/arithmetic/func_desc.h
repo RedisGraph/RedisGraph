@@ -47,8 +47,8 @@ bool AR_FuncExists(const char *func_name);
 /* Set the function pointers for cloning and freeing a function's private data. */
 void AR_SetPrivateDataRoutines(AR_FuncDesc *func_desc, AR_Func_Free bfree, AR_Func_Clone bclone);
 
-/* Duplicate a function descriptor and populate it with the given private data. */
-void AR_SetPrivateData(AR_FuncDesc **func, void *privdata);
+/* Duplicate a function descriptor and populate the clone with the given private data. */
+AR_FuncDesc *AR_SetPrivateData(const AR_FuncDesc *orig, void *privdata);
 
 /* Clone the given function descriptor and its private data. */
 AR_FuncDesc *AR_CloneFuncDesc(const AR_FuncDesc *orig);

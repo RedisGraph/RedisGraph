@@ -143,7 +143,7 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str);
 bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func);
 
 /* Build an array containing the names of all local variables in an expression tree. */
-const char **AR_EXP_CollectVariableNames(AR_ExpNode *root);
+const char **AR_EXP_CollectLocalVariables(AR_ExpNode *root);
 
 /* Returns true if an arithmetic expression node is a constant. */
 bool AR_EXP_IsConstant(const AR_ExpNode *exp);

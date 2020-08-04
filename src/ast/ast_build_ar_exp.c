@@ -6,11 +6,11 @@
 
 #include "ast_build_ar_exp.h"
 #include "ast_build_filter_tree.h"
+#include "../RG.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../arithmetic/funcs.h"
 #include <assert.h>
-#include "../query_ctx.h"
 
 // Forward declaration
 static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr);
@@ -383,28 +383,28 @@ static AR_ExpNode *_AR_ExpNodeFromListComprehension(const cypher_astnode_t *comp
 	/* The comprehension's local variable, WHERE expression, and eval routine
 	 * do not change for each invocation, so are bundled together in the function's context. */
 	ListComprehensionCtx *ctx = rm_malloc(sizeof(ListComprehensionCtx));
+	ctx->ft = NULL;
+	ctx->eval_exp = NULL;
+	ctx->variable_idx = INVALID_INDEX;
 	/* Retrieve the variable name introduced in this context to iterate over list elements.
 	 * In the above query, this is 'val'. */
 	const cypher_astnode_t *variable_node = cypher_ast_list_comprehension_get_identifier(comp_exp);
-	assert(cypher_astnode_type(variable_node) == CYPHER_AST_IDENTIFIER);
+	ASSERT(cypher_astnode_type(variable_node) == CYPHER_AST_IDENTIFIER);
 	// Retrieve the variable string for the local variable.
 	ctx->variable_str = cypher_ast_identifier_get_name(variable_node);
-	ctx->variable_idx = INVALID_INDEX;
 
 	/* The predicate node is the set of WHERE conditions in the comprehension, if any. */
 	const cypher_astnode_t *predicate_node = cypher_ast_list_comprehension_get_predicate(comp_exp);
-	ctx->ft = NULL;
 	// Build a FilterTree to represent this predicate.
 	if(predicate_node) AST_ConvertFilters(&ctx->ft, predicate_node);
 
 	/* Construct the operator node that will generate updated values, if one is provided.
 	 * In the above query, this will be an operation node representing "val * 2". */
 	const cypher_astnode_t *eval_node = cypher_ast_list_comprehension_get_eval(comp_exp);
-	ctx->eval_exp = NULL;
 	if(eval_node) ctx->eval_exp = _AR_EXP_FromExpression(eval_node);
 
 	// Add the context to the function descriptor as the function's private data.
-	AR_SetPrivateData(&op->op.f, ctx);
+	op->op.f = AR_SetPrivateData(op->op.f, ctx);
 
 	/* 'arr' is the list expression.
 	 * Note that this value could resolve to an alias, a literal array, a function call, and so on. */
