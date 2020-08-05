@@ -88,7 +88,6 @@ class ExecutionPlanCloneTest: public ::testing::Test {
 	 * tests only the segments and operations cloning. */
 	static void ExecutionPlan_Equal(const ExecutionPlan *plan_a, const ExecutionPlan *plan_b) {
 
-		ASSERT_TRUE(plan_a->is_union == plan_b->is_union);
 		uint plan_a_segment_count = array_len(plan_a->segments);
 		uint plan_b_segment_count = array_len(plan_b->segments);
 		ASSERT_EQ(plan_a_segment_count, plan_b_segment_count);

@@ -11,7 +11,6 @@
 static ExecutionPlan *_ClonePlanInternals(const ExecutionPlan *template) {
 	ExecutionPlan *clone = ExecutionPlan_NewEmptyExecutionPlan();
 
-	clone->is_union = template->is_union;
 	clone->record_map = raxClone(template->record_map);
 	if(template->ast_segment) clone->ast_segment = AST_ShallowCopy(template->ast_segment);
 	if(template->query_graph) clone->query_graph = QueryGraph_Clone(template->query_graph);
@@ -64,10 +63,12 @@ static ExecutionPlan *_ExecutionPlan_Clone(const ExecutionPlan *template) {
  * and its internal members (FilterTree, record mapping, query graphs, and AST segment) are also cloned. */
 ExecutionPlan *ExecutionPlan_Clone(const ExecutionPlan *template) {
 	if(template == NULL) return NULL;
+	// Store the original AST pointer.
 	AST *master_ast = QueryCtx_GetAST();
 	// Verify that the execution plan template is not prepared yet.
 	assert(template->prepared == false && "Execution plan cloning should be only on templates");
 	ExecutionPlan *clone = _ExecutionPlan_Clone(template);
+	// Restore the original AST pointer.
 	QueryCtx_SetAST(master_ast);
 	return clone;
 }
