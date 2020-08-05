@@ -911,19 +911,6 @@ inline rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan) {
 	return plan->record_map;
 }
 
-int ExecutionPlan_MapAlias(const ExecutionPlan *plan, const char *alias) {
-	/* Make sure alias has an entry associated with it
-	 * within the record mapping. */
-	rax *mapping = ExecutionPlan_GetMappings(plan);
-
-	void *id = raxFind(mapping, (unsigned char *)alias, strlen(alias));
-	if(id == raxNotFound) {
-		id = (void *)raxSize(mapping);
-		raxInsert(mapping, (unsigned char *)alias, strlen(alias), id, NULL);
-	}
-	return (intptr_t)id;
-}
-
 Record ExecutionPlan_BorrowRecord(ExecutionPlan *plan) {
 	rax *mapping = ExecutionPlan_GetMappings(plan);
 	assert(plan->record_pool);
