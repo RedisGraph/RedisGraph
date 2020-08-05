@@ -20,9 +20,5 @@ typedef struct {
 	uint exp_count;                 // Number of projected expressions.
 } OpProject;
 
-/* Iterate over the projected expressions and, if they rely upon local variables,
- * extend the appropriate record mapping to accommodate them. */
-void Project_MapProjectionLocalVariables(OpProject *op);
-
 OpBase *NewProjectOp(const ExecutionPlan *plan, AR_ExpNode **exps);
 

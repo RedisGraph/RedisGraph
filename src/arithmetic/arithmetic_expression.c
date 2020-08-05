@@ -584,28 +584,6 @@ bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
 	return false;
 }
 
-static void _AR_EXP_CollectLocalVariables(const char ***names, AR_ExpNode *root) {
-	if(root->type == AR_EXP_OP) {
-		// TODO generalize logic
-		if(strcasecmp(root->op.func_name, "LIST_COMPREHENSION") == 0) {
-			ListComprehensionCtx *ctx = root->op.f->privdata;
-			assert(ctx);
-			if(*names == NULL) *names = array_new(const char *, 1);
-			*names = array_append(*names, ctx->variable_str);
-		}
-
-		for(int i = 0; i < root->op.child_count; i++) {
-			_AR_EXP_CollectLocalVariables(names, root->op.children[i]);
-		}
-	}
-}
-
-const char **AR_EXP_CollectLocalVariables(AR_ExpNode *root) {
-	const char **names = NULL;
-	_AR_EXP_CollectLocalVariables(&names, root);
-	return names;
-}
-
 bool inline AR_EXP_IsConstant(const AR_ExpNode *exp) {
 	return exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_CONSTANT;
 }

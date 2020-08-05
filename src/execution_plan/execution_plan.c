@@ -848,11 +848,6 @@ ExecutionPlan *NewExecutionPlan(void) {
 	QueryCtx_SetAST(ast_segments[0]);
 	if(segments[0]->filter_tree) ExecutionPlan_PlaceFilterOps(segments[0], NULL);
 
-	// If the first segment's root is Project, as in a query beginning with RETURN or WITH,
-	// map local variables in its projections.
-	if(segments[0]->root->type == OPType_PROJECT)
-		Project_MapProjectionLocalVariables((OpProject *)segments[0]->root);
-
 	OpBase *connecting_op = NULL;
 	OpBase *prev_scope_end = NULL;
 	// Merge segments.
@@ -866,9 +861,6 @@ ExecutionPlan *NewExecutionPlan(void) {
 		assert(connecting_op->childCount == 0);
 
 		ExecutionPlan_AddOp(connecting_op, prev_root);
-
-		if(connecting_op->type == OPType_PROJECT)
-			Project_MapProjectionLocalVariables((OpProject *)connecting_op);
 
 		// Place filter ops required by current segment.
 		QueryCtx_SetAST(ast_segments[i]);

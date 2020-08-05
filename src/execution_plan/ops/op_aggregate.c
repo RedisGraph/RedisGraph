@@ -180,16 +180,6 @@ static Record _handoff(OpAggregate *op) {
 	return r;
 }
 
-// Extend the record mapping with local variables in arithmetic expressions if necessary.
-static inline void _MapLocalVariables(OpBase *op, AR_ExpNode *exp) {
-	// Collect all local variable names in the expression tree.
-	const char **expression_variables = AR_EXP_CollectLocalVariables(exp);
-	uint variable_count = array_len(expression_variables);
-	// Add each variable name to the Record mapping.
-	for(uint i = 0; i < variable_count; i ++) OpBase_Modifies(op, expression_variables[i]);
-	array_free(expression_variables);
-}
-
 OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should_cache_records) {
 	OpAggregate *op = rm_malloc(sizeof(OpAggregate));
 	op->group = NULL;
@@ -215,13 +205,11 @@ OpBase *NewAggregateOp(const ExecutionPlan *plan, AR_ExpNode **exps, bool should
 		// Store the index of each key expression.
 		int record_idx = OpBase_Modifies((OpBase *)op, op->key_exps[i]->resolved_name);
 		op->record_offsets = array_append(op->record_offsets, record_idx);
-		_MapLocalVariables((OpBase *)op, op->key_exps[i]);
 	}
 	for(uint i = 0; i < op->aggregate_count; i ++) {
 		// Store the index of each aggregating expression.
 		int record_idx = OpBase_Modifies((OpBase *)op, op->aggregate_exps[i]->resolved_name);
 		op->record_offsets = array_append(op->record_offsets, record_idx);
-		_MapLocalVariables((OpBase *)op, op->aggregate_exps[i]);
 	}
 
 	return (OpBase *)op;

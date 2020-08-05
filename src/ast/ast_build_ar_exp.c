@@ -385,6 +385,7 @@ static AR_ExpNode *_AR_ExpNodeFromListComprehension(const cypher_astnode_t *comp
 	ListComprehensionCtx *ctx = rm_malloc(sizeof(ListComprehensionCtx));
 	ctx->ft = NULL;
 	ctx->eval_exp = NULL;
+	ctx->local_record = NULL;
 	ctx->variable_idx = INVALID_INDEX;
 	/* Retrieve the variable name introduced in this context to iterate over list elements.
 	 * In the above query, this is 'val'. */

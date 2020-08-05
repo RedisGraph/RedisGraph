@@ -9,7 +9,9 @@
 #include "../func_desc.h"
 #include "../../value.h"
 #include "../../util/arr.h"
+#include "../../query_ctx.h"
 #include "../../datatypes/array.h"
+#include "../../util/rax_extensions.h"
 #include "../../execution_plan/record.h"
 
 // Routine for freeing a list comprehension's private data.
@@ -20,6 +22,12 @@ void ListComprehension_Free(void *ctx_ptr) {
 	if(ctx->ft) FilterTree_Free(ctx->ft);
 	// If this list comprehension has an eval routine, free it.
 	if(ctx->eval_exp) AR_EXP_Free(ctx->eval_exp);
+
+	if(ctx->local_record) {
+		rax *mapping = ctx->local_record->mapping;
+		Record_Free(ctx->local_record);
+		raxFree(mapping);
+	}
 
 	rm_free(ctx);
 }
@@ -33,6 +41,7 @@ void *ListComprehension_Clone(void *orig) {
 	// Clone the variadic node.
 	ctx_clone->variable_str = ctx->variable_str;
 	ctx_clone->variable_idx = ctx->variable_idx;
+	ctx_clone->local_record = ctx->local_record;
 
 	// Clone the predicate filter tree.
 	ctx_clone->ft = FilterTree_Clone(ctx->ft);
@@ -49,12 +58,33 @@ SIValue AR_LIST_COMPREHENSION(SIValue *argv, int argc) {
 	 * The current Record.
 	 * The function context. */
 	SIValue list = argv[0];
-	Record r = argv[1].ptrval;
+	Record outer_record = argv[1].ptrval;
 	ListComprehensionCtx *ctx = argv[2].ptrval;
 
-	if(ctx->variable_idx == INVALID_INDEX) ctx->variable_idx = Record_GetEntryIdx(r, ctx->variable_str);
-	ASSERT(ctx->variable_idx != INVALID_INDEX);
+	Record r = ctx->local_record;
+	if(r == NULL) {
+		// On the first invocation, build the local Record.
+		rax *local_record_map = raxClone(outer_record->mapping);
+		intptr_t id = raxSize(local_record_map);
+		int rc = raxTryInsert(local_record_map, (unsigned char *)ctx->variable_str,
+							  strlen(ctx->variable_str), (void *)id, NULL);
+		if(rc == 0) {
+			// The local variable's name shadows an outer variable, emit an error.
+			QueryCtx_SetError("Variable '%s' redefined inside of list comprehension");
+			QueryCtx_RaiseRuntimeException();
+			return SI_NullVal();
+		}
 
+		r = Record_New(local_record_map);
+		ctx->local_record = r;
+
+		// This could just be assigned to 'id', but for safety we'll use a Record lookup.
+		ctx->variable_idx = Record_GetEntryIdx(r, ctx->variable_str);
+		ASSERT(ctx->variable_idx != INVALID_INDEX);
+	}
+
+	// Populate the local Record with the contents of the outer Record.
+	Record_Clone(outer_record, r);
 	// Instantiate the array to be returned.
 	SIValue retval = SI_Array(0);
 
