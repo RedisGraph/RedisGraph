@@ -12,20 +12,20 @@
 /* Datablock iterator iterates over items within a datablock. */
 
 typedef struct {
-	Block *_start_block;         // First block accessed by iterator.
-	Block *_current_block;       // Current block.
-	uint _start_pos;             // Iterator initial position.
-	uint _current_pos;           // Iterator current position.
-	uint _block_pos;             // Position within a block.
-	uint _end_pos;               // Iterator won't pass end position.
-	uint _step;                  // Increase current_pos by step each iteration.
+	Block *_start_block;			// First block accessed by iterator.
+	Block *_current_block;			// Current block.
+	uint _block_pos;				// Position within a block.
+	uint64_t _start_pos;			// Iterator initial position.
+	uint64_t _current_pos;			// Iterator current position.
+	uint64_t _end_pos;				// Iterator won't pass end position.
+	uint _step;						// Increase current_pos by step each iteration.
 } DataBlockIterator;
 
 // Creates a new datablock iterator.
 DataBlockIterator *DataBlockIterator_New(
 	Block *block,       // Block from which iteration begins.
-	uint start_pos,     // Iteration starts here.
-	uint end_pos,       // Iteration stops here.
+	uint64_t start_pos,	// Iteration starts here.
+	uint64_t end_pos,	// Iteration stops here.
 	uint step           // To scan entire range, set step to 1.
 );
 
@@ -38,7 +38,9 @@ DataBlockIterator *DataBlockIterator_Clone(
 
 // Returns the next item, unless we've reached the end
 // in which case NULL is returned.
-void *DataBlockIterator_Next(DataBlockIterator *iter);
+// if `id` is provided and an item is located
+// `id` will be set to the returned item index
+void *DataBlockIterator_Next(DataBlockIterator *iter, uint64_t *id);
 
 // Reset iterator to original position.
 void DataBlockIterator_Reset(DataBlockIterator *iter);

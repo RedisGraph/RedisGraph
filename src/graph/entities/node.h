@@ -11,16 +11,29 @@
 #include "../../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 typedef struct {
-	Entity *entity;    /* MUST be the first member of Node. */
-	const char *label; /* Label attached to Node. */
-	int labelID;       /* Label ID. */
+	Entity *entity;     // MUST be the first member of Node
+	EntityID id;        // Unique id, MUST be the second member
+	const char *label;  // Label attached to Node
+	int labelID;        // Label ID
 } Node;
 
-/* Instantiate a new unpopulated node. */
-#define GE_NEW_NODE() (Node){.entity = NULL, .label = NULL, .labelID = GRAPH_NO_LABEL}
+// Instantiate a new unpopulated node.
+#define GE_NEW_NODE()			\
+(Node) {						\
+	.entity = NULL,				\
+	.id = INVALID_ENTITY_ID,	\
+	.label = NULL,				\
+	.labelID = GRAPH_NO_LABEL	\
+}
 
-/* Instantiate a new node with label data. */
-#define GE_NEW_LABELED_NODE(l_str, l_id) (Node){.entity = NULL, .label = (l_str), .labelID = (l_id)}
+// Instantiate a new node with label data.
+#define GE_NEW_LABELED_NODE(l_str, l_id)	\
+(Node) {									\
+	.entity = NULL,							\
+	.id = INVALID_ENTITY_ID,				\
+	.label = (l_str),						\
+	.labelID = (l_id)						\
+}											\
 
 /* Resolves to the label string of the given Node. */
 #define NODE_GET_LABEL(n) (n)->label

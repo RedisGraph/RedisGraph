@@ -150,7 +150,7 @@ class GraphTest : public ::testing::Test {
 		Node *n;
 		unsigned int new_node_count = 0;
 		DataBlockIterator *it = Graph_ScanNodes(g);
-		while((n = (Node *)DataBlockIterator_Next(it)) != NULL) new_node_count++;
+		while((n = (Node *)DataBlockIterator_Next(it, NULL)) != NULL) new_node_count++;
 		ASSERT_EQ(new_node_count, prev_node_count + additional_node_count);
 		DataBlockIterator_Free(it);
 
@@ -695,7 +695,7 @@ TEST_F(GraphTest, GetEdge) {
 	for(EdgeID i = 0; i < edgeCount; i++) {
 		Graph_GetEdge(g, i, &e);
 		ASSERT_TRUE(e.entity != NULL);
-		ASSERT_EQ(e.entity->id, i);
+		ASSERT_EQ(e.id, i);
 	}
 
 	// Try to get edges connecting source to destination node.
