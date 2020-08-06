@@ -58,10 +58,10 @@ CacheListNode *CacheList_RemoveTail(CacheList *list) {
 	return tail;
 }
 
-CacheListNode *CacheList_PopulateNode(CacheList *list, CacheListNode *node, uint64_t hashval,
+CacheListNode *CacheList_PopulateNode(CacheList *list, CacheListNode *node, const char *key,
 									  void *value) {
 	// Assign data members to the new node.
-	node->hashval = hashval;
+	node->key = key;
 	node->value = value;
 
 	if(list->head == NULL) {

@@ -5,32 +5,44 @@
  */
 
 #include "cache.h"
-#include "xxhash.h"
 #include "../rmalloc.h"
 
-/**
- * @brief  Hash a key using XXHASH into a 64 bit.
- * @param  *key - string to be hashed.
- * @param  len: key length
- * @retval hash value
- */
-static inline uint64_t _Cache_HashKey(const char *key, uint len) {
-	return XXH64(key, len, 0);
+//------------------------------------------------------------------------------
+// dict type callbacks
+//------------------------------------------------------------------------------
+
+// dict key compare
+int dictStringKeyCompare(void *privdata, const void *key1, const void *key2) {
+    return strcmp(key1, key2) == 0;
 }
+
+// dict key hash function
+uint64_t dictStringHash(const void *key) {
+    return dictGenHashFunction(key, strlen(key));
+}
+
+// dict type
+dictType dictTypeHeapStrings = {
+    dictStringHash,             // hash function
+    NULL,                       // key dup
+    NULL,                       // val dup
+    dictStringKeyCompare,       // key compare
+    NULL,                       // key destructor
+    NULL                        // val destructor
+};
 
 Cache *Cache_New(uint size, CacheItemFreeFunc freeCB) {
 	Cache *cache = rm_malloc(sizeof(Cache));
 	// Instantiate a new list to store cached values.
 	cache->list = CacheList_New(size, freeCB);
 	// Instantiate the lookup map for fast cache retrievals.
-	cache->lookup = raxNew();
+	cache->lookup = dictCreate(&dictTypeHeapStrings, NULL);
 	return cache;
 }
 
 inline void *Cache_GetValue(const Cache *cache, const char *key) {
-	uint64_t hashKey = _Cache_HashKey(key, strlen(key));
-	CacheListNode *elem = raxFind(cache->lookup, (unsigned char *)&hashKey, HASH_KEY_LENGTH);
-	if(elem == raxNotFound) return NULL;
+	CacheListNode *elem = dictFetchValue(cache->lookup, key);
+	if(elem == NULL) return NULL;
 
 	// Element is now the most recently used; promote it.
 	CacheList_Promote(cache->list, elem);
@@ -38,29 +50,28 @@ inline void *Cache_GetValue(const Cache *cache, const char *key) {
 }
 
 void Cache_SetValue(Cache *cache, const char *key, void *value) {
-	uint64_t hashval = _Cache_HashKey(key, strlen(key));
 	CacheListNode *node;
 	if(CacheList_IsFull(cache->list)) {
 		/* The list is full, evict the least-recently-used element
 		 * and reuse its space for the new entry. */
 		node = CacheList_RemoveTail(cache->list);
 		// Remove evicted element from the lookup map.
-		raxRemove(cache->lookup, (unsigned char *)&node->hashval, HASH_KEY_LENGTH, NULL);
+		dictDelete(cache->lookup, node->key);
 	} else {
 		// The list has not yet been filled, introduce a new node.
 		node = CacheList_GetUnused(cache->list);
 	}
 
 	// Populate the node.
-	CacheList_PopulateNode(cache->list, node, hashval, value);
+	CacheList_PopulateNode(cache->list, node, key, value);
 
 	// Add the new node to the mapping.
-	raxInsert(cache->lookup, (unsigned char *)&hashval, HASH_KEY_LENGTH, node, NULL);
+	dictAdd(cache->lookup, (void*)key, node);
 }
 
 void Cache_Free(Cache *cache) {
 	CacheList_Free(cache->list);
-	raxFree(cache->lookup);
+	dictRelease(cache->lookup);
 	rm_free(cache);
 }
 

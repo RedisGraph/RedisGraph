@@ -7,16 +7,14 @@
 #pragma once
 
 #include "cache_list.h"
-#include "../../deps/rax/rax.h"
-
-#define HASH_KEY_LENGTH 8
+#include "../dict.h"
 
 /**
  * @brief Key-value cache with hard limit of items stored. Uses LRU policy for cache eviction.
  * Stores actual copy (memcpy) of the object itself.
  */
 typedef struct Cache {
-	rax *lookup;            // Map of hash keys to cache values for fast lookups.
+	dict *lookup;           // Map of hash keys to cache values for fast lookups.
 	CacheList *list;        // Doubly-linked list container for cache elements.
 } Cache;
 
