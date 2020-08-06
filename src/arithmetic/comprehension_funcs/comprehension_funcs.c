@@ -41,7 +41,7 @@ void *ListComprehension_Clone(void *orig) {
 	// Clone the variadic node.
 	ctx_clone->variable_str = ctx->variable_str;
 	ctx_clone->variable_idx = ctx->variable_idx;
-	ctx_clone->local_record = ctx->local_record;
+	ctx_clone->local_record = NULL;
 
 	// Clone the predicate filter tree.
 	ctx_clone->ft = FilterTree_Clone(ctx->ft);
