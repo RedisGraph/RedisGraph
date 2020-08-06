@@ -166,7 +166,9 @@ SIValue AR_HEAD(SIValue *argv, int argc) {
 	assert(SI_TYPE(value) == T_ARRAY);
 	uint arrayLen = SIArray_Length(value);
 	if(arrayLen == 0) return SI_NullVal();
-	return SIArray_Get(value, 0);
+	SIValue retval = SIArray_Get(value, 0);
+	SIValue_Persist(&retval);
+	return retval;
 }
 
 /* Return a sublist of a list, which contains all the values withiout the first value.

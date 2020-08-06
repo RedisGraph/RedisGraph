@@ -83,6 +83,7 @@ We do not support any of these properties at the type level, meaning nodes and r
 + timestamp
 + type
 + coalesce
++ [list comprehensions](commands.md#list-comprehensions)
 
   **Unsupported:**
 

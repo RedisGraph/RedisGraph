@@ -5,6 +5,7 @@
  */
 
 #include "execution_plan.h"
+#include "../RG.h"
 #include "./ops/ops.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"

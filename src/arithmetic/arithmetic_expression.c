@@ -6,6 +6,7 @@
 
 #include "./arithmetic_expression.h"
 
+#include "../RG.h"
 #include "funcs.h"
 #include "rax.h"
 #include "./aggregate.h"
@@ -64,6 +65,9 @@ static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 		clone->operand.type = AR_EXP_PARAM;
 		clone->operand.param_name = exp->operand.param_name;
 		break;
+	case AR_EXP_BORROW_RECORD:
+		clone->operand.type = AR_EXP_BORROW_RECORD;
+		break;
 	default:
 		assert(false);
 		break;
@@ -85,8 +89,11 @@ static AR_ExpNode *_AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 	AR_ExpNode *clone = _AR_EXP_NewOpNode(exp->op.func_name, exp->op.child_count);
 	if(exp->op.type == AR_OP_FUNC) {
-		clone->op.f = exp->op.f;
 		clone->op.type = AR_OP_FUNC;
+		/* If the function has private data, the function descriptor
+		 * itself should be cloned. Otherwise, we can perform a direct assignment. */
+		if(exp->op.f->privdata) clone->op.f = AR_CloneFuncDesc(exp->op.f);
+		else clone->op.f = exp->op.f;
 	} else {
 		clone->op.agg_func = Agg_CloneCtx(exp->op.agg_func);
 		clone->op.type = AR_OP_AGGREGATE;
@@ -140,11 +147,15 @@ bool AR_EXP_PerformDistinct(AR_ExpNode *op) {
 	return op->type == AR_EXP_OP && op->op.type == AR_OP_AGGREGATE && op->op.agg_func->isDistinct;
 }
 
-AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias, const char *prop) {
-	AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
-	node->resolved_name = NULL;
+static inline AR_ExpNode *_AR_EXP_InitializeOperand(AR_OperandNodeType type) {
+	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
 	node->type = AR_EXP_OPERAND;
-	node->operand.type = AR_EXP_VARIADIC;
+	node->operand.type = type;
+	return node;
+}
+
+AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias, const char *prop) {
+	AR_ExpNode *node = _AR_EXP_InitializeOperand(AR_EXP_VARIADIC);
 	node->operand.variadic.entity_alias = alias;
 	node->operand.variadic.entity_alias_idx = IDENTIFIER_NOT_FOUND;
 	node->operand.variadic.entity_prop = prop;
@@ -154,21 +165,19 @@ AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias, const char *prop) {
 }
 
 AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant) {
-	AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
-	node->resolved_name = NULL;
-	node->type = AR_EXP_OPERAND;
-	node->operand.type = AR_EXP_CONSTANT;
+	AR_ExpNode *node = _AR_EXP_InitializeOperand(AR_EXP_CONSTANT);
 	node->operand.constant = constant;
 	return node;
 }
 
 AR_ExpNode *AR_EXP_NewParameterOperandNode(const char *param_name) {
-	AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
-	node->resolved_name = NULL;
-	node->type = AR_EXP_OPERAND;
-	node->operand.type = AR_EXP_PARAM;
+	AR_ExpNode *node = _AR_EXP_InitializeOperand(AR_EXP_PARAM);
 	node->operand.param_name = param_name;
 	return node;
+}
+
+AR_ExpNode *AR_EXP_NewRecordNode() {
+	return _AR_EXP_InitializeOperand(AR_EXP_BORROW_RECORD);
 }
 
 /* Compact tree by evaluating constant expressions
@@ -296,8 +305,13 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node, const Record
 		return EVAL_OK;
 	}
 
+	int child_count = node->op.child_count;
+	// Functions with private data will have it appended as an additional child.
+	bool include_privdata = (node->op.f->privdata != NULL);
+	if(include_privdata) child_count ++;
 	/* Evaluate each child before evaluating current node. */
-	SIValue sub_trees[node->op.child_count];
+	SIValue sub_trees[child_count];
+
 	for(int child_idx = 0; child_idx < node->op.child_count; child_idx++) {
 		SIValue v;
 		AR_EXP_Result eval_result = _AR_EXP_Evaluate(node->op.children[child_idx], r, &v);
@@ -312,15 +326,18 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node, const Record
 		sub_trees[child_idx] = v;
 	}
 
+	// Add the function's private data, if any.
+	if(include_privdata) sub_trees[child_count - 1] = SI_PtrVal(node->op.f->privdata);
+
 	/* Validate before evaluation. */
-	if(!_AR_EXP_ValidateInvocation(node->op.f, sub_trees, node->op.child_count)) {
+	if(!_AR_EXP_ValidateInvocation(node->op.f, sub_trees, child_count)) {
 		// The expression tree failed its validations and set an error message.
 		res = EVAL_ERR;
 		goto cleanup;
 	}
 
 	/* Evaluate self. */
-	*result = node->op.f->func(sub_trees, node->op.child_count);
+	*result = node->op.f->func(sub_trees, child_count);
 
 	if(SIValue_IsNull(*result) && QueryCtx_EncounteredError()) {
 		/* An error was encountered while evaluating this function, and has already been set in
@@ -354,7 +371,10 @@ static bool _AR_EXP_UpdateEntityIdx(AR_OperandNode *node, const Record r) {
 
 static AR_EXP_Result _AR_EXP_EvaluateProperty(AR_ExpNode *node, const Record r, SIValue *result) {
 	RecordEntryType t = Record_GetType(r, node->operand.variadic.entity_alias_idx);
-	if(t != REC_TYPE_NODE && t != REC_TYPE_EDGE) {
+	GraphEntity *ge = NULL;
+	if(t == REC_TYPE_NODE || t == REC_TYPE_EDGE) {
+		ge = Record_GetGraphEntity(r, node->operand.variadic.entity_alias_idx);
+	} else {
 		if(t == REC_TYPE_UNKNOWN) {
 			/* If we attempt to access an unset Record entry as a graph entity
 			 * (due to a scenario like a failed OPTIONAL MATCH), return a null value. */
@@ -362,15 +382,18 @@ static AR_EXP_Result _AR_EXP_EvaluateProperty(AR_ExpNode *node, const Record r, 
 			return EVAL_OK;
 		}
 
-		/* Attempted to access a scalar value as a map.
-		 * Set an error and invoke the exception handler. */
 		SIValue v = Record_Get(r, node->operand.variadic.entity_alias_idx);
-		// Set the query-level error.
-		QueryCtx_SetError("Type mismatch: expected a map but was %s", SIType_ToString(SI_TYPE(v)));
-		return EVAL_ERR;
+		if(!(SI_TYPE(v) & (T_NODE | T_EDGE))) {
+			/* Attempted to access a scalar value as a map.
+			 * Set an error and invoke the exception handler. */
+			QueryCtx_SetError("Type mismatch: expected a map but was %s", SIType_ToString(SI_TYPE(v)));
+			return EVAL_ERR;
+		}
+
+		// Node or Edge SIValue; the pointer can be accessed as a graph entity.
+		ge = (GraphEntity *)v.ptrval;
 	}
 
-	GraphEntity *ge = Record_GetGraphEntity(r, node->operand.variadic.entity_alias_idx);
 	if(node->operand.variadic.entity_prop_idx == ATTRIBUTE_UNSET) {
 		_AR_EXP_UpdatePropIdx(node, NULL);
 	}
@@ -420,6 +443,14 @@ static AR_EXP_Result _AR_EXP_EvaluateParam(AR_ExpNode *node, SIValue *result) {
 	*result = node->operand.constant;
 	return EVAL_FOUND_PARAM;
 }
+
+static inline AR_EXP_Result _AR_EXP_EvaluateBorrowRecord(AR_ExpNode *node, const Record r,
+														 SIValue *result) {
+	// Wrap the current Record in an SI pointer.
+	*result = SI_PtrVal(r);
+	return EVAL_OK;
+}
+
 /* Evaluate an expression tree, placing the calculated value in 'result' and returning
  * whether an error occurred during evaluation. */
 static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue *result) {
@@ -437,6 +468,8 @@ static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue 
 			return _AR_EXP_EvaluateVariadic(root, r, result);
 		case AR_EXP_PARAM:
 			return _AR_EXP_EvaluateParam(root, result);
+		case AR_EXP_BORROW_RECORD:
+			return _AR_EXP_EvaluateBorrowRecord(root, r, result);
 		default:
 			assert(false && "Invalid expression type");
 		}
@@ -551,11 +584,11 @@ bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
 	return false;
 }
 
-bool inline  AR_EXP_IsConstant(const AR_ExpNode *exp) {
+bool inline AR_EXP_IsConstant(const AR_ExpNode *exp) {
 	return exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_CONSTANT;
 }
 
-bool inline  AR_EXP_IsParameter(const AR_ExpNode *exp) {
+bool inline AR_EXP_IsParameter(const AR_ExpNode *exp) {
 	return exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_PARAM;
 }
 
@@ -662,6 +695,10 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
 }
 
 static inline void _AR_EXP_FreeOpInternals(AR_ExpNode *op_node) {
+	if(op_node->op.type == AR_OP_FUNC && op_node->op.f->bfree) {
+		op_node->op.f->bfree(op_node->op.f->privdata); // Free the function's private data.
+		rm_free(op_node->op.f); // The function descriptor itself is an allocation in this case.
+	}
 	for(int child_idx = 0; child_idx < op_node->op.child_count; child_idx++) {
 		AR_EXP_Free(op_node->op.children[child_idx]);
 	}
