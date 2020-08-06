@@ -71,7 +71,7 @@ static int _read_flags(CommandCtx *command_ctx, bool *compact, long long *timeou
 		}
 
 		// query timeout
-		if(!strcasecmp(arg, "--timeout")) {
+		if(!strcasecmp(arg, "timeout")) {
 			int err = REDISMODULE_ERR;
 			if(i < command_ctx->argc - 1) {
 				i++; // Set the current argument to the timeout value.
