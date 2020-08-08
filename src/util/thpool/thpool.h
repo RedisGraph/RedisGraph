@@ -181,6 +181,15 @@ int thpool_num_threads_working(threadpool);
 
 
 /**
+ * @brief Return number of threads in pool
+ *
+ * @param                 the threadpool of interest
+ * @return integer        thread pool size
+ */
+int thpool_size(threadpool);
+
+
+/**
  * @brief Returns number of threads in pool.
  *
  * Alive threads are the threads that are either performing work or are idle.
@@ -193,7 +202,7 @@ int thpool_num_threads(threadpool);
 
 /**
  * @brief Returns friendly id associated with thread.
- * 
+ *
  * @param threadpool    the threadpool of interest
  * @param pthread_t     the thread of interest
  * @return integer      friendly thread id

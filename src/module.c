@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include "redismodule.h"
+#include "debug.h"
 #include "config.h"
 #include "version.h"
 #include "util/arr.h"
@@ -43,6 +44,8 @@ bool process_is_child;              // Flag indicating whether the running proce
 // Thread pool variables
 //------------------------------------------------------------------------------
 threadpool _thpool = NULL;
+
+extern CommandCtx **command_ctxs;
 
 /* Set up thread pool,
  * number of threads within pool should be
@@ -120,6 +123,9 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	if(!_Setup_ThreadPOOL(threadCount)) return REDISMODULE_ERR;
 	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", threadCount);
 
+	// Initialize array of command contexts
+	command_ctxs = calloc(threadCount + 1, sizeof(CommandCtx*));
+
 	int ompThreadCount = Config_GetOMPThreadCount();
 	if(GxB_set(GxB_NTHREADS, ompThreadCount) != GrB_SUCCESS) {
 		RedisModule_Log(ctx, "warning", "Failed to set OpenMP thread count to %d", ompThreadCount);
@@ -158,6 +164,8 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 								 1) == REDISMODULE_ERR) {
 		return REDISMODULE_ERR;
 	}
+
+	setupSignalHandlers();
 
 	return REDISMODULE_OK;
 }

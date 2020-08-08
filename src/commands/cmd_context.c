@@ -1,8 +1,17 @@
 #include "cmd_context.h"
+#include "../RG.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
+#include "../util/thpool/thpool.h"
 #include "../slow_log/slow_log.h"
 #include <assert.h>
+
+extern threadpool _thpool; // Declared in module.c
+
+/* Array with one entry per worker thread
+ * keeps track after currently executing commands
+ * initialized at module.c accessed via cmd_* and debug.c */
+CommandCtx **command_ctxs = NULL;
 
 CommandCtx *CommandCtx_New
 (
@@ -43,6 +52,36 @@ CommandCtx *CommandCtx_New
 	}
 
 	return context;
+}
+
+// place given 'ctx' in 'command_ctxs' at position 'tid'
+// representing the current thread
+void CommandCtx_TrackCtx(CommandCtx *ctx) {
+	ASSERT(ctx != NULL);
+	ASSERT(command_ctxs != NULL);
+
+	int tid = thpool_get_thread_id(_thpool, pthread_self());
+	tid += 1 // +1 to compensate for Redis main thread.
+
+	ASSERT(command_ctxs[tid] == NULL);
+
+	// set ctx at the current thread entry
+	// CommandCtx_Free will remove it eventually
+	command_ctxs[tid] = ctx;
+}
+
+void CommandCtx_UntrackCtx(CommandCtx *ctx) {
+	ASSERT(ctx != NULL);
+	ASSERT(command_ctxs != NULL);
+
+	int tid = thpool_get_thread_id(_thpool, pthread_self());
+	tid += 1 // +1 to compensate for Redis main thread.
+
+	ASSERT(command_ctxs[tid] == ctx);
+
+	// set ctx at the current thread entry
+	// CommandCtx_Free will remove it eventually
+	command_ctxs[tid] = NULL;
 }
 
 RedisModuleCtx *CommandCtx_GetRedisCtx(CommandCtx *command_ctx) {
@@ -96,6 +135,9 @@ void CommandCtx_Free(CommandCtx *command_ctx) {
 		RedisModule_UnblockClient(command_ctx->bc, NULL);
 		RedisModule_FreeThreadSafeContext(command_ctx->ctx);
 	}
+
+	CommandCtx_UntrackCtx(command_ctx);
+
 	if(command_ctx->query) rm_free(command_ctx->query);
 	rm_free(command_ctx->command_name);
 	rm_free(command_ctx);
