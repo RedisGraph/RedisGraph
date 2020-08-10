@@ -102,10 +102,11 @@ void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b) {
 	// Insert the new operation between the original and its parent.
 	ExecutionPlan_PushBelow(a, b);
 	// Delete the original operation.
-	ExecutionPlan_RemoveOp(plan, a);
+	ExecutionPlan_RemoveOp(a);
 }
 
-void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
+void ExecutionPlan_RemoveOp(OpBase *op) {
+	ExecutionPlan *plan = (ExecutionPlan *)plan;
 	if(op->parent == NULL) {
 		// Removing execution plan root.
 		assert(op->childCount == 1);

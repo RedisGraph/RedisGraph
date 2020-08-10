@@ -112,10 +112,10 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 	OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps);
 
 	// New execution plan: "Project -> Results"
-	ExecutionPlan_RemoveOp(plan, (OpBase *)opScan);
+	ExecutionPlan_RemoveOp((OpBase *)opScan);
 	OpBase_Free(opScan);
 
-	ExecutionPlan_RemoveOp(plan, (OpBase *)opAggregate);
+	ExecutionPlan_RemoveOp((OpBase *)opAggregate);
 	OpBase_Free((OpBase *)opAggregate);
 
 	ExecutionPlan_AddOp((OpBase *)opResult, opProject);
@@ -246,13 +246,13 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 	OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps);
 
 	// New execution plan: "Project -> Results"
-	ExecutionPlan_RemoveOp(plan, (OpBase *)opScan);
+	ExecutionPlan_RemoveOp((OpBase *)opScan);
 	OpBase_Free(opScan);
 
-	ExecutionPlan_RemoveOp(plan, (OpBase *)opTraverse);
+	ExecutionPlan_RemoveOp((OpBase *)opTraverse);
 	OpBase_Free(opTraverse);
 
-	ExecutionPlan_RemoveOp(plan, (OpBase *)opAggregate);
+	ExecutionPlan_RemoveOp((OpBase *)opAggregate);
 	OpBase_Free((OpBase *)opAggregate);
 
 	ExecutionPlan_AddOp((OpBase *)opResult, opProject);

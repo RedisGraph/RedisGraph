@@ -43,7 +43,7 @@ static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
 			ExecutionPlan_ReplaceOp(plan, scan, traverse);
 		} else {
 			// Remove the redundant scan op.
-			ExecutionPlan_RemoveOp(plan, scan);
+			ExecutionPlan_RemoveOp(scan);
 		}
 		OpBase_Free(scan);
 	}

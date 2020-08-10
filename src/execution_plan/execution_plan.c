@@ -359,7 +359,7 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 	if(filter->childCount > 0) {
 		// If the located op is not the filter child, re position the filter.
 		if(op != filter->children[0]) {
-			ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
+			ExecutionPlan_RemoveOp((OpBase *)filter);
 			ExecutionPlan_PushBelow(op, (OpBase *)filter);
 		}
 	} else {
@@ -776,10 +776,8 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 
 		// Remove OP_Result.
 		OpBase *op_result = sub_plan->root;
-		ExecutionPlan_RemoveOp(sub_plan, sub_plan->root);
+		ExecutionPlan_ReplaceOp(sub_plan, op_result, join_op);
 		OpBase_Free(op_result);
-
-		ExecutionPlan_AddOp(join_op, sub_plan->root);
 	}
 
 	return plan;

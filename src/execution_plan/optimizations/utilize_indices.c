@@ -549,7 +549,7 @@ cleanup:
 	 * avoiding problems with stream-sensitive ops like SemiApply. */
 	for(uint i = 0; i < filters_count; i++) {
 		OpFilter *filter = filters[i];
-		ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
+		ExecutionPlan_RemoveOp((OpBase *)filter);
 		OpBase_Free((OpBase *)filter);
 	}
 	array_free(filters);

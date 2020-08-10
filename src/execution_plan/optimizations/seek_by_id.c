@@ -73,7 +73,7 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 			UnsignedRange_TightenRange(id_range, op, id);
 
 			// Free replaced operations.
-			ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
+			ExecutionPlan_RemoveOp((OpBase *)filter);
 			OpBase_Free((OpBase *)filter);
 		}
 		// Advance.

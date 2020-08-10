@@ -16,7 +16,7 @@ void reduceDistinct(ExecutionPlan *plan) {
 		if(distinct->children[0]->type == OPType_AGGREGATE) {
 			// We can remove the Distinct op if its child is an aggregate operation,
 			// as its results will inherently be unique.
-			ExecutionPlan_RemoveOp(plan, distinct);
+			ExecutionPlan_RemoveOp(distinct);
 			OpBase_Free(distinct);
 		}
 	}

@@ -26,7 +26,7 @@ static void _removeTrueFilter(ExecutionPlan *plan, OpBase *op) {
 	SIValue bool_val = AR_EXP_Evaluate(root->exp.exp, NULL);
 	assert(SI_TYPE(bool_val) == T_BOOL);
 	if(SIValue_IsTrue(bool_val)) {
-		ExecutionPlan_RemoveOp(plan, op);
+		ExecutionPlan_RemoveOp(op);
 		OpBase_Free(op);
 	}
 }
@@ -52,3 +52,4 @@ static void _compactFilters(ExecutionPlan *plan, OpBase *op) {
 void compactFilters(ExecutionPlan *plan) {
 	_compactFilters(plan, plan->root);
 }
+

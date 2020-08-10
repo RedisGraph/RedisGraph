@@ -83,7 +83,7 @@ static void _optimize_cartesian_product(ExecutionPlan *plan, OpBase *cp) {
 		}
 
 		// The filter needs to be repositioned.
-		ExecutionPlan_RemoveOp(plan, (OpBase *)filter_op);
+		ExecutionPlan_RemoveOp((OpBase *)filter_op);
 		// This filter is solved by a single cartesian product child and needs to be propagated up.
 		if(solving_branch_count == 1) {
 			OpBase *solving_op = solving_branches[0];
@@ -140,3 +140,4 @@ void reduceCartesianProductStreamCount(ExecutionPlan *plan) {
 	}
 	array_free(cps);
 }
+

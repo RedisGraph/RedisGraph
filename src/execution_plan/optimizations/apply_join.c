@@ -129,7 +129,7 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 
 		// This filter is solved by a single cartesian product child and needs to be propagated up.
 		if(lhs_resolving_stream == rhs_resolving_stream) {
-			ExecutionPlan_RemoveOp(plan, (OpBase *)filter_op);
+			ExecutionPlan_RemoveOp((OpBase *)filter_op);
 			ExecutionPlan_PushBelow(cp->children[rhs_resolving_stream], (OpBase *)filter_op);
 			continue;
 		}
@@ -149,7 +149,7 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 								  (cp->plan, left_branch, right_branch, lhs, rhs);
 
 		// The filter will now be resolved by the join operation; remove it.
-		ExecutionPlan_RemoveOp(plan, (OpBase *)filter_op);
+		ExecutionPlan_RemoveOp((OpBase *)filter_op);
 		OpBase_Free((OpBase *)filter_op);
 
 		// Place hash join op.
@@ -201,3 +201,4 @@ void applyJoin(ExecutionPlan *plan) {
 	}
 	array_free(cps);
 }
+
