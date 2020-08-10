@@ -16,22 +16,39 @@ extern CommandCtx **command_ctxs;
 
 static struct sigaction old_act;
 
+static void startCrashReport(void) {
+	RedisModule_Log(NULL, "warning", "=== REDISGRAPH BUG REPORT START: ===");
+}
+
+static void endCrashReport(void) {
+	RedisModule_Log(NULL, "warning", "=== REDISGRAPH BUG REPORT END. ===");
+}
+
 static void logCommands(void) {
-	int nthreads = thpool_size(_thpool);
+	int nthreads = thpool_num_threads(_thpool);
 
 	for(int i = 0; i < nthreads; i++) {
 		CommandCtx *cmd = command_ctxs[i];
 		if(cmd != NULL) {
-			printf("%s %s\n", cmd->command_name, cmd->query);
+			RedisModule_Log(NULL, "warning", "%s %s", cmd->command_name,
+					cmd->query);
 		}
 	}
 }
 
 void sigsegvHandler(int sig, siginfo_t *info, void *ucontext) {
-	// Log currently executing GRAPH commands
+	// pause all working threads
+	// NOTE: pausing is an async operation
+	thpool_pause(_thpool);
+
+	startCrashReport();
+
+	// log currently executing GRAPH commands
 	logCommands();
 
-	// Call previous handler
+	endCrashReport();
+
+	// call previous (Redis original) signal handler
 	(*old_act.sa_sigaction)(sig, info, ucontext);
 }
 

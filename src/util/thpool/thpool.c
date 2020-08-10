@@ -226,8 +226,13 @@ void thpool_destroy(thpool_* thpool_p) {
 /* Pause all threads in threadpool */
 void thpool_pause(thpool_* thpool_p) {
 	int n;
+	pthread_t caller = pthread_self();
+
 	for(n = 0; n < thpool_p->num_threads_alive; n++) {
-		pthread_kill(thpool_p->threads[n]->pthread, SIGUSR2);
+		// do not pause caller
+		if(thpool_p->threads[n]->pthread != caller) {
+			pthread_kill(thpool_p->threads[n]->pthread, SIGUSR2);
+		}
 	}
 }
 
@@ -243,10 +248,6 @@ void thpool_resume(thpool_* thpool_p) {
 
 int thpool_num_threads_working(thpool_* thpool_p) {
 	return thpool_p->num_threads_working;
-}
-
-int thpool_size(thpool_* thpool_p) {
-	return thpool_p->num_threads_alive;
 }
 
 int thpool_num_threads(thpool_* thpool_p) {
