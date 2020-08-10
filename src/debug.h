@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include "redismodule.h"
+
 // Register sigsegv signal hander
-void setupSignalHandlers(void);
+void setupSignalHandlers(RedisModuleCtx *ctx);
 
