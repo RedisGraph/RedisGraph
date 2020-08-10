@@ -371,8 +371,14 @@ static AR_ExpNode *_AR_ExpNodeFromParameter(const cypher_astnode_t *param) {
 	return AR_EXP_NewParameterOperandNode(identifier);
 }
 
-static AR_ExpNode *_AR_ExpNodeFromListComprehension(const cypher_astnode_t *comp_exp) {
-	const char *func_name = "LIST_COMPREHENSION";
+static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *comp_exp,
+														cypher_astnode_type_t type) {
+	// Set the appropriate function name according to the node type.
+	const char *func_name;
+	if(type == CYPHER_AST_ANY) func_name = "ANY";
+	else if(type == CYPHER_AST_ALL) func_name = "ALL";
+	else func_name = "LIST_COMPREHENSION";
+
 	// Build an operation node to represent the list comprehension.
 	AR_ExpNode *op = AR_EXP_NewOpNode(func_name, 2);
 
@@ -397,10 +403,17 @@ static AR_ExpNode *_AR_ExpNodeFromListComprehension(const cypher_astnode_t *comp
 	/* The predicate node is the set of WHERE conditions in the comprehension, if any. */
 	const cypher_astnode_t *predicate_node = cypher_ast_list_comprehension_get_predicate(comp_exp);
 	// Build a FilterTree to represent this predicate.
-	if(predicate_node) AST_ConvertFilters(&ctx->ft, predicate_node);
+	if(predicate_node) {
+		AST_ConvertFilters(&ctx->ft, predicate_node);
+	} else if(type != CYPHER_AST_LIST_COMPREHENSION) {
+		// Functions like any() and all() must have a predicate node.
+		QueryCtx_SetError("'%s' function requires a WHERE predicate", func_name);
+		return AR_EXP_NewConstOperandNode(SI_NullVal());
+	}
 
 	/* Construct the operator node that will generate updated values, if one is provided.
-	 * In the above query, this will be an operation node representing "val * 2". */
+	 * In the above query, this will be an operation node representing "val * 2".
+	 * This will always be NULL for comprehensions like any() and all(). */
 	const cypher_astnode_t *eval_node = cypher_ast_list_comprehension_get_eval(comp_exp);
 	if(eval_node) ctx->eval_exp = _AR_EXP_FromExpression(eval_node);
 
@@ -480,8 +493,9 @@ static AR_ExpNode *_AR_EXP_FromExpression(const cypher_astnode_t *expr) {
 		return _AR_ExpNodeFromGraphEntity(expr);
 	} else if(type == CYPHER_AST_PARAMETER) {
 		return _AR_ExpNodeFromParameter(expr);
-	} else if(type == CYPHER_AST_LIST_COMPREHENSION) {
-		return _AR_ExpNodeFromListComprehension(expr);
+	} else if(type == CYPHER_AST_LIST_COMPREHENSION || type == CYPHER_AST_ANY ||
+			  type == CYPHER_AST_ALL) {
+		return _AR_ExpNodeFromComprehensionFunction(expr, type);
 	} else {
 		/*
 		   Unhandled types:

@@ -101,8 +101,8 @@ static void _buildTypesWhitelist(void) {
 		// CYPHER_AST_FILTER,  // Deprecated, will not be supported
 		// CYPHER_AST_EXTRACT, // Deprecated, will not be supported
 		// CYPHER_AST_REDUCE,
-		// CYPHER_AST_ALL,
-		// CYPHER_AST_ANY,
+		CYPHER_AST_ALL,
+		CYPHER_AST_ANY,
 		// CYPHER_AST_SINGLE,
 		// CYPHER_AST_NONE,
 		CYPHER_AST_COLLECTION,
