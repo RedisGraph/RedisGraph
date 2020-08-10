@@ -92,7 +92,7 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 			OpBase *opNodeByIdSeek = NewNodeByIdSeekOp(scan_op->plan, node, id_range);
 
 			// Managed to reduce!
-			ExecutionPlan_ReplaceOp(plan, scan_op, opNodeByIdSeek);
+			ExecutionPlan_ReplaceOp(scan_op, opNodeByIdSeek);
 			OpBase_Free(scan_op);
 		}
 		UnsignedRange_Free(id_range);

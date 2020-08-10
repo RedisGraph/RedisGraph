@@ -93,7 +93,7 @@ void ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpFilter *filter) {
 	// Reduce.
 	OpBase *apply_op = _ReduceFilterToOp(plan, vars, filter->filterTree);
 	// Replace operations.
-	ExecutionPlan_ReplaceOp(plan, (OpBase *)filter, apply_op);
+	ExecutionPlan_ReplaceOp((OpBase *)filter, apply_op);
 	// Bounded branch is now the last child (after ops replacement). Make it the first.
 	_OpBaseSwapChildren(apply_op, 0, apply_op->childCount - 1);
 	if((OpBase *)filter == plan->root) plan->root = apply_op;

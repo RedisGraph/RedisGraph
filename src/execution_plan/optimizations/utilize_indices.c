@@ -540,7 +540,7 @@ cleanup:
 		OpBase *indexOp = NewIndexScanOp(scan->op.plan, scan->g, scan->n, rs_idx, root);
 
 		/* Replace the redundant scan op with the newly-constructed Index Scan. */
-		ExecutionPlan_ReplaceOp(plan, (OpBase *)scan, indexOp);
+		ExecutionPlan_ReplaceOp((OpBase *)scan, indexOp);
 		OpBase_Free((OpBase *)scan);
 	}
 

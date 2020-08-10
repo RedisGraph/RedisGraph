@@ -108,7 +108,7 @@ static void _optimize_cartesian_product(ExecutionPlan *plan, OpBase *cp) {
 
 		if(cp->childCount == 0) {
 			// The entire Cartesian Product can be removed.
-			ExecutionPlan_ReplaceOp(plan, cp, (OpBase *)filter_op);
+			ExecutionPlan_ReplaceOp(cp, (OpBase *)filter_op);
 			OpBase_Free(cp);
 			/* The optimization has depleted all of the cartesian product children, merged them and replaced the
 			 * cartesian product with the filter op.

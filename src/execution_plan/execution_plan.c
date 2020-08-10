@@ -316,10 +316,6 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 			_ExecutionPlan_UpdateRoot(plan, root);
 		}
 	}
-
-	// uint connected_component_count = array_len(connectedComponents);
-	// for(uint i = 0; i < connected_component_count; i ++) QueryGraph_Free(connectedComponents[i]);
-	// array_free(connectedComponents);
 }
 
 static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
@@ -721,13 +717,13 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 
 	/* Placeholder for each execution plan, these all will be joined
 	 * via a single UNION operation. */
-	ExecutionPlan **plans = array_new(ExecutionPlan *, union_count);
+	ExecutionPlan *plans[union_count];
 
 	for(int i = 0; i < union_count; i++) {
 		// Create an AST segment from which we will build an execution plan.
 		end_offset = union_indices[i];
 		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
-		plans = array_append(plans, NewExecutionPlan());
+		plans[i] = NewExecutionPlan();
 		AST_Free(ast_segment); // Free the AST segment.
 
 		// Next segment starts where this one ends.
@@ -776,8 +772,10 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 
 		// Remove OP_Result.
 		OpBase *op_result = sub_plan->root;
-		ExecutionPlan_ReplaceOp(sub_plan, op_result, join_op);
+		ExecutionPlan_RemoveOp(sub_plan->root);
 		OpBase_Free(op_result);
+
+		ExecutionPlan_AddOp(join_op, sub_plan->root);
 	}
 
 	return plan;
@@ -1058,11 +1056,17 @@ static void _ExecutionPlan_FreeSegment(ExecutionPlan *plan) {
 static ExecutionPlan *_ExecutionPlan_Free(OpBase *op) {
 	if(op == NULL) return NULL;
 	ExecutionPlan *child_plan = NULL;
+	ExecutionPlan *prev_child_plan = NULL;
 	// Store a reference to the current plan.
 	ExecutionPlan *current_plan = (ExecutionPlan *)op->plan;
 	for(uint i = 0; i < op->childCount; i ++) {
-		// All children share the same plan, so we only need one reference to it.
 		child_plan = _ExecutionPlan_Free(op->children[i]);
+		// In most cases all children will share the same plan, but if they don't
+		// (for an operation like UNION) then free the now-obsolete previous child plan.
+		if(prev_child_plan != child_plan) {
+			_ExecutionPlan_FreeSegment(prev_child_plan);
+			prev_child_plan = child_plan;
+		}
 	}
 
 	// Free this op.

@@ -155,7 +155,7 @@ static void _reduce_cp_to_hashjoin(ExecutionPlan *plan, OpBase *cp) {
 		// Place hash join op.
 		if(cp->childCount == 0) {
 			// The entire Cartesian Product can be replaced with the join op.
-			ExecutionPlan_ReplaceOp(plan, cp, value_hash_join);
+			ExecutionPlan_ReplaceOp(cp, value_hash_join);
 			OpBase_Free(cp);
 			/* The optimization has depleted all of the cartesian product children, merged them and replaced the
 			 * cartesian product with the new operation.

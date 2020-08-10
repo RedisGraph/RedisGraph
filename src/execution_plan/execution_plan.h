@@ -21,7 +21,6 @@ struct ExecutionPlan {
 	QueryGraph *query_graph;            // QueryGraph representing all graph entities in this segment.
 	FT_FilterNode *filter_tree;         // FilterTree containing filters to be applied to this segment.
 	QueryGraph **connected_components;  // Array of all connected components in this segment.
-	ExecutionPlan **segments;           // Partial execution plans scoped to a subset of operations.
 	ObjectPool *record_pool;
 	bool prepared;                      // Indicates if the execution plan is ready for execute.
 };
@@ -48,7 +47,7 @@ void ExecutionPlan_PushBelow(OpBase *a, OpBase *b);
 void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root);
 
 /* Replace a with b. */
-void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b);
+void ExecutionPlan_ReplaceOp(OpBase *a, OpBase *b);
 
 /*
  * ExecutionPlan_Locate API:

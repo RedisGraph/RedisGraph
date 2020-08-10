@@ -86,7 +86,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 
 			// Set traverse algebraic_expression to NULL to avoid early free.
 			traverse->ae = NULL;
-			ExecutionPlan_ReplaceOp(plan, (OpBase *)traverse, expand_into);
+			ExecutionPlan_ReplaceOp((OpBase *)traverse, expand_into);
 			OpBase_Free((OpBase *)traverse);
 		} else {
 			CondVarLenTraverse *traverse = (CondVarLenTraverse *)op;
