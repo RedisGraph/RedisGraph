@@ -379,9 +379,6 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 	else if(type == CYPHER_AST_ALL) func_name = "ALL";
 	else func_name = "LIST_COMPREHENSION";
 
-	// Build an operation node to represent the list comprehension.
-	AR_ExpNode *op = AR_EXP_NewOpNode(func_name, 2);
-
 	/* Using the sample query:
 	 * WITH [1,2,3] AS arr RETURN [val IN arr WHERE val % 2 = 1 | val * 2] AS comp
 	 */
@@ -408,6 +405,7 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 	} else if(type != CYPHER_AST_LIST_COMPREHENSION) {
 		// Functions like any() and all() must have a predicate node.
 		QueryCtx_SetError("'%s' function requires a WHERE predicate", func_name);
+		rm_free(ctx);
 		return AR_EXP_NewConstOperandNode(SI_NullVal());
 	}
 
@@ -416,6 +414,9 @@ static AR_ExpNode *_AR_ExpNodeFromComprehensionFunction(const cypher_astnode_t *
 	 * This will always be NULL for comprehensions like any() and all(). */
 	const cypher_astnode_t *eval_node = cypher_ast_list_comprehension_get_eval(comp_exp);
 	if(eval_node) ctx->eval_exp = _AR_EXP_FromExpression(eval_node);
+
+	// Build an operation node to represent the list comprehension.
+	AR_ExpNode *op = AR_EXP_NewOpNode(func_name, 2);
 
 	// Add the context to the function descriptor as the function's private data.
 	op->op.f = AR_SetPrivateData(op->op.f, ctx);
