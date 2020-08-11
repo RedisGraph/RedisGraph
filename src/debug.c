@@ -61,7 +61,7 @@ void InfoFunc(RedisModuleInfoCtx *ctx, int for_crash_report) {
 	}
 }
 
-void sigsegvHandler(int sig, siginfo_t *info, void *ucontext) {
+void crashHandler(int sig, siginfo_t *info, void *ucontext) {
 	// pause all working threads
 	// NOTE: pausing is an async operation
 	thpool_pause(_thpool);
@@ -93,7 +93,7 @@ void setupCrashHandlers(RedisModuleCtx *ctx) {
 
 		sigemptyset(&act.sa_mask);
 		act.sa_flags = SA_NODEFER | SA_RESETHAND | SA_SIGINFO;
-		act.sa_sigaction = sigsegvHandler;
+		act.sa_sigaction = crashHandler;
 
 		sigaction(SIGSEGV, &act, &old_act);
 	}
