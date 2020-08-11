@@ -138,6 +138,8 @@ We do not support any of these properties at the type level, meaning nodes and r
 
 ### Predicate functions
 + exists
++ any
++ all
 
 ### Expression functions
 + case...when

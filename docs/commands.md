@@ -580,9 +580,11 @@ This section contains information on all supported functions from the Cypher que
 
 ## Predicate functions
 
-|Function | Description|
-| ------- |:-----------|
-|exists() | Returns true if the specified property exists in the node or relationship. |
+| Function                                      | Description                                                                               |
+| -------                                       | :-----------                                                                              |
+| exists()                                      | Returns true if the specified property exists in the node or relationship.                |
+| [any()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for any element in the input array.  |
+| [all()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for all elements in the input array. |
 
 ## Scalar functions
 
@@ -592,7 +594,7 @@ This section contains information on all supported functions from the Cypher que
 | labels()            | Returns a string representation of the label of a node.                     |
 | timestamp()         | Returns the the amount of milliseconds since epoch.                         |
 | type()              | Returns a string representation of the type of a relation.                  |
-| list comprehensions | [See documentation](#list-comprehensions.md)                                |
+| list comprehensions | [See documentation](#list-comprehensions)                                   |
 
 ## Aggregating functions
 
@@ -674,6 +676,19 @@ The following query collects all paths of any length, then for each produces an 
 
 ```sh
 MATCH p=()-[*]->() RETURN [node IN nodes(p) WHERE node.rank > 10 | node.name]
+```
+
+#### Existential comprehension functions
+The functions `any()` and `all()` use a simplified form of the list comprehension syntax and return a boolean value.
+
+```sh
+any(element IN array WHERE condition)
+```
+
+They can operate on any form of input array, but are particularly useful for path filtering. The following query collects all paths of any length in which all traversed edges have a weight less than 3:
+
+```sh
+MATCH p=()-[*]->() WHERE all(edge IN relationships(p) WHERE edge.weight < 3) RETURN p
 ```
 
 ## Procedures

@@ -296,7 +296,10 @@ void AST_ConvertFilters(FT_FilterNode **root, const cypher_astnode_t *entity) {
 		node = _convertBinaryOperator(entity);
 	} else if(type == CYPHER_AST_UNARY_OPERATOR) {
 		node = _convertUnaryOperator(entity);
-	} else if(type == CYPHER_AST_APPLY_OPERATOR) {
+	} else if(type == CYPHER_AST_APPLY_OPERATOR ||
+			  type == CYPHER_AST_ANY            ||
+			  type == CYPHER_AST_ALL            ||
+			  type == CYPHER_AST_LIST_COMPREHENSION) {
 		node = _convertApplyOperator(entity);
 	} else if(type == CYPHER_AST_TRUE) {
 		node = _convertTrueOperator();
