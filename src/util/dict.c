@@ -53,7 +53,7 @@
 #include <assert.h>
 #endif
 
-/* Using dictEnableResize() / dictDisableResize() we make possible to
+/* Using HT_dictEnableResize() / HT_dictDisableResize() we make possible to
  * enable/disable resizing of the hash table as needed. This is very important
  * for Redis, as we use copy-on-write and don't want to move too much memory
  * around when there is a child performing saving operations.
@@ -66,8 +66,8 @@ static unsigned int dict_force_resize_ratio = 5;
 
 /* -------------------------- private prototypes ---------------------------- */
 
-static int _dictExpandIfNeeded(dict *ht);
-static unsigned long _dictNextPower(unsigned long size);
+static int _HT_dictExpandIfNeeded(dict *ht);
+static unsigned long _HT_dictNextPower(unsigned long size);
 static long _dictKeyIndex(dict *ht, const void *key, uint64_t hash, dictEntry **existing);
 static int _dictInit(dict *ht, dictType *type, void *privDataPtr);
 
@@ -75,11 +75,11 @@ static int _dictInit(dict *ht, dictType *type, void *privDataPtr);
 
 static uint8_t dict_hash_function_seed[16];
 
-void dictSetHashFunctionSeed(uint8_t *seed) {
+void HT_dictSetHashFunctionSeed(uint8_t *seed) {
     memcpy(dict_hash_function_seed,seed,sizeof(dict_hash_function_seed));
 }
 
-uint8_t *dictGetHashFunctionSeed(void) {
+uint8_t *HT_dictGetHashFunctionSeed(void) {
     return dict_hash_function_seed;
 }
 
@@ -89,11 +89,11 @@ uint8_t *dictGetHashFunctionSeed(void) {
 uint64_t siphash(const uint8_t *in, const size_t inlen, const uint8_t *k);
 uint64_t siphash_nocase(const uint8_t *in, const size_t inlen, const uint8_t *k);
 
-uint64_t dictGenHashFunction(const void *key, int len) {
+uint64_t HT_dictGenHashFunction(const void *key, int len) {
     return siphash(key,len,dict_hash_function_seed);
 }
 
-uint64_t dictGenCaseHashFunction(const unsigned char *buf, int len) {
+uint64_t HT_dictGenCaseHashFunction(const unsigned char *buf, int len) {
     return siphash_nocase(buf,len,dict_hash_function_seed);
 }
 
@@ -110,7 +110,7 @@ static void _dictReset(dictht *ht)
 }
 
 /* Create a new hash table */
-dict *dictCreate(dictType *type,
+dict *HT_dictCreate(dictType *type,
         void *privDataPtr)
 {
     dict *d = rm_malloc(sizeof(*d));
@@ -134,7 +134,7 @@ int _dictInit(dict *d, dictType *type,
 
 /* Resize the table to the minimal size that contains all the elements,
  * but with the invariant of a USED/BUCKETS ratio near to <= 1 */
-int dictResize(dict *d)
+int HT_dictResize(dict *d)
 {
     unsigned long minimal;
 
@@ -142,11 +142,11 @@ int dictResize(dict *d)
     minimal = d->ht[0].used;
     if (minimal < DICT_HT_INITIAL_SIZE)
         minimal = DICT_HT_INITIAL_SIZE;
-    return dictExpand(d, minimal);
+    return HT_dictExpand(d, minimal);
 }
 
 /* Expand or create the hash table */
-int dictExpand(dict *d, unsigned long size)
+int HT_dictExpand(dict *d, unsigned long size)
 {
     /* the size is invalid if it is smaller than the number of
      * elements already inside the hash table */
@@ -154,7 +154,7 @@ int dictExpand(dict *d, unsigned long size)
         return DICT_ERR;
 
     dictht n; /* the new hash table */
-    unsigned long realsize = _dictNextPower(size);
+    unsigned long realsize = _HT_dictNextPower(size);
 
     /* Rehashing to the same table size is not useful. */
     if (realsize == d->ht[0].size) return DICT_ERR;
@@ -187,7 +187,7 @@ int dictExpand(dict *d, unsigned long size)
  * guaranteed that this function will rehash even a single bucket, since it
  * will visit at max N*10 empty buckets in total, otherwise the amount of
  * work it does would be unbound and the function may block for a long time. */
-int dictRehash(dict *d, int n) {
+int HT_dictRehash(dict *d, int n) {
     int empty_visits = n*10; /* Max number of empty buckets to visit. */
     if (!dictIsRehashing(d)) return 0;
 
@@ -232,7 +232,7 @@ int dictRehash(dict *d, int n) {
     return 1;
 }
 
-long long timeInMilliseconds(void) {
+static long long timeInMilliseconds(void) {
     struct timeval tv;
 
     gettimeofday(&tv,NULL);
@@ -240,11 +240,11 @@ long long timeInMilliseconds(void) {
 }
 
 /* Rehash for an amount of time between ms milliseconds and ms+1 milliseconds */
-int dictRehashMilliseconds(dict *d, int ms) {
+int HT_dictRehashMilliseconds(dict *d, int ms) {
     long long start = timeInMilliseconds();
     int rehashes = 0;
 
-    while(dictRehash(d,100)) {
+    while(HT_dictRehash(d,100)) {
         rehashes += 100;
         if (timeInMilliseconds()-start > ms) break;
     }
@@ -260,13 +260,13 @@ int dictRehashMilliseconds(dict *d, int ms) {
  * dictionary so that the hash table automatically migrates from H1 to H2
  * while it is actively used. */
 static void _dictRehashStep(dict *d) {
-    if (d->iterators == 0) dictRehash(d,1);
+    if (d->iterators == 0) HT_dictRehash(d,1);
 }
 
 /* Add an element to the target hash table */
-int dictAdd(dict *d, void *key, void *val)
+int HT_dictAdd(dict *d, void *key, void *val)
 {
-    dictEntry *entry = dictAddRaw(d,key,NULL);
+    dictEntry *entry = HT_dictAddRaw(d,key,NULL);
 
     if (!entry) return DICT_ERR;
     dictSetVal(d, entry, val);
@@ -281,7 +281,7 @@ int dictAdd(dict *d, void *key, void *val)
  * This function is also directly exposed to the user API to be called
  * mainly in order to store non-pointers inside the hash value, example:
  *
- * entry = dictAddRaw(dict,mykey,NULL);
+ * entry = HT_dictAddRaw(dict,mykey,NULL);
  * if (entry != NULL) dictSetSignedIntegerVal(entry,1000);
  *
  * Return values:
@@ -291,7 +291,7 @@ int dictAdd(dict *d, void *key, void *val)
  *
  * If key was added, the hash entry is returned to be manipulated by the caller.
  */
-dictEntry *dictAddRaw(dict *d, void *key, dictEntry **existing)
+dictEntry *HT_dictAddRaw(dict *d, void *key, dictEntry **existing)
 {
     long index;
     dictEntry *entry;
@@ -322,15 +322,15 @@ dictEntry *dictAddRaw(dict *d, void *key, dictEntry **existing)
 /* Add or Overwrite:
  * Add an element, discarding the old value if the key already exists.
  * Return 1 if the key was added from scratch, 0 if there was already an
- * element with such key and dictReplace() just performed a value update
+ * element with such key and HT_dictReplace() just performed a value update
  * operation. */
-int dictReplace(dict *d, void *key, void *val)
+int HT_dictReplace(dict *d, void *key, void *val)
 {
     dictEntry *entry, *existing, auxentry;
 
     /* Try to add the element. If the key
-     * does not exists dictAdd will succeed. */
-    entry = dictAddRaw(d,key,&existing);
+     * does not exists HT_dictAdd will succeed. */
+    entry = HT_dictAddRaw(d,key,&existing);
     if (entry) {
         dictSetVal(d, entry, val);
         return 1;
@@ -348,20 +348,20 @@ int dictReplace(dict *d, void *key, void *val)
 }
 
 /* Add or Find:
- * dictAddOrFind() is simply a version of dictAddRaw() that always
+ * HT_dictAddOrFind() is simply a version of HT_dictAddRaw() that always
  * returns the hash entry of the specified key, even if the key already
  * exists and can't be added (in that case the entry of the already
  * existing key is returned.)
  *
- * See dictAddRaw() for more information. */
-dictEntry *dictAddOrFind(dict *d, void *key) {
+ * See HT_dictAddRaw() for more information. */
+dictEntry *HT_dictAddOrFind(dict *d, void *key) {
     dictEntry *entry, *existing;
-    entry = dictAddRaw(d,key,&existing);
+    entry = HT_dictAddRaw(d,key,&existing);
     return entry ? entry : existing;
 }
 
 /* Search and remove an element. This is an helper function for
- * dictDelete() and dictUnlink(), please check the top comment
+ * HT_dictDelete() and HT_dictUnlink(), please check the top comment
  * of those functions. */
 static dictEntry *dictGenericDelete(dict *d, const void *key, int nofree) {
     uint64_t h, idx;
@@ -402,38 +402,38 @@ static dictEntry *dictGenericDelete(dict *d, const void *key, int nofree) {
 
 /* Remove an element, returning DICT_OK on success or DICT_ERR if the
  * element was not found. */
-int dictDelete(dict *ht, const void *key) {
+int HT_dictDelete(dict *ht, const void *key) {
     return dictGenericDelete(ht,key,0) ? DICT_OK : DICT_ERR;
 }
 
 /* Remove an element from the table, but without actually releasing
  * the key, value and dictionary entry. The dictionary entry is returned
  * if the element was found (and unlinked from the table), and the user
- * should later call `dictFreeUnlinkedEntry()` with it in order to release it.
+ * should later call `HT_dictFreeUnlinkedEntry()` with it in order to release it.
  * Otherwise if the key is not found, NULL is returned.
  *
  * This function is useful when we want to remove something from the hash
  * table but want to use its value before actually deleting the entry.
  * Without this function the pattern would require two lookups:
  *
- *  entry = dictFind(...);
+ *  entry = HT_dictFind(...);
  *  // Do something with entry
- *  dictDelete(dictionary,entry);
+ *  HT_dictDelete(dictionary,entry);
  *
  * Thanks to this function it is possible to avoid this, and use
  * instead:
  *
- * entry = dictUnlink(dictionary,entry);
+ * entry = HT_dictUnlink(dictionary,entry);
  * // Do something with entry
- * dictFreeUnlinkedEntry(entry); // <- This does not need to lookup again.
+ * HT_dictFreeUnlinkedEntry(entry); // <- This does not need to lookup again.
  */
-dictEntry *dictUnlink(dict *ht, const void *key) {
+dictEntry *HT_dictUnlink(dict *ht, const void *key) {
     return dictGenericDelete(ht,key,1);
 }
 
 /* You need to call this function to really free the entry after a call
- * to dictUnlink(). It's safe to call this function with 'he' = NULL. */
-void dictFreeUnlinkedEntry(dict *d, dictEntry *he) {
+ * to HT_dictUnlink(). It's safe to call this function with 'he' = NULL. */
+void HT_dictFreeUnlinkedEntry(dict *d, dictEntry *he) {
     if (he == NULL) return;
     dictFreeKey(d, he);
     dictFreeVal(d, he);
@@ -441,7 +441,7 @@ void dictFreeUnlinkedEntry(dict *d, dictEntry *he) {
 }
 
 /* Destroy an entire dictionary */
-int _dictClear(dict *d, dictht *ht, void(callback)(void *)) {
+static int _dictClear(dict *d, dictht *ht, void(callback)(void *)) {
     unsigned long i;
 
     /* Free all the elements */
@@ -468,14 +468,14 @@ int _dictClear(dict *d, dictht *ht, void(callback)(void *)) {
 }
 
 /* Clear & Release the hash table */
-void dictRelease(dict *d)
+void HT_dictRelease(dict *d)
 {
     _dictClear(d,&d->ht[0],NULL);
     _dictClear(d,&d->ht[1],NULL);
     rm_free(d);
 }
 
-dictEntry *dictFind(dict *d, const void *key)
+dictEntry *HT_dictFind(dict *d, const void *key)
 {
     dictEntry *he;
     uint64_t h, idx, table;
@@ -496,10 +496,10 @@ dictEntry *dictFind(dict *d, const void *key)
     return NULL;
 }
 
-void *dictFetchValue(dict *d, const void *key) {
+void *HT_dictFetchValue(dict *d, const void *key) {
     dictEntry *he;
 
-    he = dictFind(d,key);
+    he = HT_dictFind(d,key);
     return he ? dictGetVal(he) : NULL;
 }
 
@@ -509,7 +509,7 @@ void *dictFetchValue(dict *d, const void *key) {
  * the fingerprint again when the iterator is released.
  * If the two fingerprints are different it means that the user of the iterator
  * performed forbidden operations against the dictionary while iterating. */
-long long dictFingerprint(dict *d) {
+static long long dictFingerprint(dict *d) {
     long long integers[6], hash = 0;
     int j;
 
@@ -541,7 +541,7 @@ long long dictFingerprint(dict *d) {
     return hash;
 }
 
-dictIterator *dictGetIterator(dict *d)
+dictIterator *HT_dictGetIterator(dict *d)
 {
     dictIterator *iter = rm_malloc(sizeof(*iter));
 
@@ -554,14 +554,14 @@ dictIterator *dictGetIterator(dict *d)
     return iter;
 }
 
-dictIterator *dictGetSafeIterator(dict *d) {
-    dictIterator *i = dictGetIterator(d);
+dictIterator *HT_dictGetSafeIterator(dict *d) {
+    dictIterator *i = HT_dictGetIterator(d);
 
     i->safe = 1;
     return i;
 }
 
-dictEntry *dictNext(dictIterator *iter)
+dictEntry *HT_dictNext(dictIterator *iter)
 {
     while (1) {
         if (iter->entry == NULL) {
@@ -596,7 +596,7 @@ dictEntry *dictNext(dictIterator *iter)
     return NULL;
 }
 
-void dictReleaseIterator(dictIterator *iter)
+void HT_dictReleaseIterator(dictIterator *iter)
 {
     if (!(iter->index == -1 && iter->table == 0)) {
         if (iter->safe)
@@ -609,7 +609,7 @@ void dictReleaseIterator(dictIterator *iter)
 
 /* Return a random entry from the hash table. Useful to
  * implement randomized algorithms */
-dictEntry *dictGetRandomKey(dict *d)
+dictEntry *HT_dictGetRandomKey(dict *d)
 {
     dictEntry *he, *orighe;
     unsigned long h;
@@ -670,9 +670,9 @@ dictEntry *dictGetRandomKey(dict *d)
  * Note that this function is not suitable when you need a good distribution
  * of the returned items, but only when you need to "sample" a given number
  * of continuous elements to run some kind of algorithm or to produce
- * statistics. However the function is much faster than dictGetRandomKey()
+ * statistics. However the function is much faster than HT_dictGetRandomKey()
  * at producing N elements. */
-unsigned int dictGetSomeKeys(dict *d, dictEntry **des, unsigned int count) {
+unsigned int HT_dictGetSomeKeys(dict *d, dictEntry **des, unsigned int count) {
     unsigned long j; /* internal hash table id, 0 or 1. */
     unsigned long tables; /* 1 or 2 tables? */
     unsigned long stored = 0, maxsizemask;
@@ -741,10 +741,10 @@ unsigned int dictGetSomeKeys(dict *d, dictEntry **des, unsigned int count) {
     return stored;
 }
 
-/* This is like dictGetRandomKey() from the POV of the API, but will do more
+/* This is like HT_dictGetRandomKey() from the POV of the API, but will do more
  * work to ensure a better distribution of the returned element.
  *
- * This function improves the distribution because the dictGetRandomKey()
+ * This function improves the distribution because the HT_dictGetRandomKey()
  * problem is that it selects a random bucket, then it selects a random
  * element from the chain in the bucket. However elements being in different
  * chain lengths will have different probabilities of being reported. With
@@ -753,14 +753,14 @@ unsigned int dictGetSomeKeys(dict *d, dictEntry **des, unsigned int count) {
  * appearing one after the other. Then we report a random element in the range.
  * In this way we smooth away the problem of different chain lenghts. */
 #define GETFAIR_NUM_ENTRIES 15
-dictEntry *dictGetFairRandomKey(dict *d) {
+dictEntry *HT_dictGetFairRandomKey(dict *d) {
     dictEntry *entries[GETFAIR_NUM_ENTRIES];
-    unsigned int count = dictGetSomeKeys(d,entries,GETFAIR_NUM_ENTRIES);
-    /* Note that dictGetSomeKeys() may return zero elements in an unlucky
+    unsigned int count = HT_dictGetSomeKeys(d,entries,GETFAIR_NUM_ENTRIES);
+    /* Note that HT_dictGetSomeKeys() may return zero elements in an unlucky
      * run() even if there are actually elements inside the hash table. So
-     * when we get zero, we call the true dictGetRandomKey() that will always
+     * when we get zero, we call the true HT_dictGetRandomKey() that will always
      * yeld the element if the hash table has at least one. */
-    if (count == 0) return dictGetRandomKey(d);
+    if (count == 0) return HT_dictGetRandomKey(d);
     unsigned int idx = rand() % count;
     return entries[idx];
 }
@@ -777,7 +777,7 @@ static unsigned long rev(unsigned long v) {
     return v;
 }
 
-/* dictScan() is used to iterate over the elements of a dictionary.
+/* HT_dictScan() is used to iterate over the elements of a dictionary.
  *
  * Iterating works the following way:
  *
@@ -861,7 +861,7 @@ static unsigned long rev(unsigned long v) {
  * 3) The reverse cursor is somewhat hard to understand at first, but this
  *    comment is supposed to help.
  */
-unsigned long dictScan(dict *d,
+unsigned long HT_dictScan(dict *d,
                        unsigned long v,
                        dictScanFunction *fn,
                        dictScanBucketFunction* bucketfn,
@@ -874,7 +874,7 @@ unsigned long dictScan(dict *d,
     if (dictSize(d) == 0) return 0;
 
     /* Having a safe iterator means no rehashing can happen, see _dictRehashStep.
-     * This is needed in case the scan callback tries to do dictFind or alike. */
+     * This is needed in case the scan callback tries to do HT_dictFind or alike. */
     d->iterators++;
 
     if (!dictIsRehashing(d)) {
@@ -952,13 +952,13 @@ unsigned long dictScan(dict *d,
 /* ------------------------- private functions ------------------------------ */
 
 /* Expand the hash table if needed */
-static int _dictExpandIfNeeded(dict *d)
+static int _HT_dictExpandIfNeeded(dict *d)
 {
     /* Incremental rehashing already in progress. Return. */
     if (dictIsRehashing(d)) return DICT_OK;
 
     /* If the hash table is empty expand it to the initial size. */
-    if (d->ht[0].size == 0) return dictExpand(d, DICT_HT_INITIAL_SIZE);
+    if (d->ht[0].size == 0) return HT_dictExpand(d, DICT_HT_INITIAL_SIZE);
 
     /* If we reached the 1:1 ratio, and we are allowed to resize the hash
      * table (global setting) or we should avoid it but the ratio between
@@ -968,13 +968,13 @@ static int _dictExpandIfNeeded(dict *d)
         (dict_can_resize ||
          d->ht[0].used/d->ht[0].size > dict_force_resize_ratio))
     {
-        return dictExpand(d, d->ht[0].used*2);
+        return HT_dictExpand(d, d->ht[0].used*2);
     }
     return DICT_OK;
 }
 
 /* Our hash table capability is a power of two */
-static unsigned long _dictNextPower(unsigned long size)
+static unsigned long _HT_dictNextPower(unsigned long size)
 {
     unsigned long i = DICT_HT_INITIAL_SIZE;
 
@@ -1000,7 +1000,7 @@ static long _dictKeyIndex(dict *d, const void *key, uint64_t hash, dictEntry **e
     if (existing) *existing = NULL;
 
     /* Expand the hash table if needed */
-    if (_dictExpandIfNeeded(d) == DICT_ERR)
+    if (_HT_dictExpandIfNeeded(d) == DICT_ERR)
         return -1;
     for (table = 0; table <= 1; table++) {
         idx = hash & d->ht[table].sizemask;
@@ -1018,31 +1018,31 @@ static long _dictKeyIndex(dict *d, const void *key, uint64_t hash, dictEntry **e
     return idx;
 }
 
-void dictEmpty(dict *d, void(callback)(void*)) {
+void HT_dictEmpty(dict *d, void(callback)(void*)) {
     _dictClear(d,&d->ht[0],callback);
     _dictClear(d,&d->ht[1],callback);
     d->rehashidx = -1;
     d->iterators = 0;
 }
 
-void dictEnableResize(void) {
+void HT_dictEnableResize(void) {
     dict_can_resize = 1;
 }
 
-void dictDisableResize(void) {
+void HT_dictDisableResize(void) {
     dict_can_resize = 0;
 }
 
-uint64_t dictGetHash(dict *d, const void *key) {
+uint64_t HT_dictGetHash(dict *d, const void *key) {
     return dictHashKey(d, key);
 }
 
 /* Finds the dictEntry reference by using pointer and pre-calculated hash.
  * oldkey is a dead pointer and should not be accessed.
- * the hash value should be provided using dictGetHash.
+ * the hash value should be provided using HT_dictGetHash.
  * no string / key comparison is performed.
  * return value is the reference to the dictEntry if found, or NULL if not found. */
-dictEntry **dictFindEntryRefByPtrAndHash(dict *d, const void *oldptr, uint64_t hash) {
+dictEntry **HT_dictFindEntryRefByPtrAndHash(dict *d, const void *oldptr, uint64_t hash) {
     dictEntry *he, **heref;
     unsigned long idx, table;
 
@@ -1065,7 +1065,7 @@ dictEntry **dictFindEntryRefByPtrAndHash(dict *d, const void *oldptr, uint64_t h
 /* ------------------------------- Debugging ---------------------------------*/
 
 #define DICT_STATS_VECTLEN 50
-size_t _dictGetStatsHt(char *buf, size_t bufsize, dictht *ht, int tableid) {
+static size_t _dictGetStatsHt(char *buf, size_t bufsize, dictht *ht, int tableid) {
     unsigned long i, slots = 0, chainlen, maxchainlen = 0;
     unsigned long totchainlen = 0;
     unsigned long clvector[DICT_STATS_VECTLEN];
@@ -1126,7 +1126,7 @@ size_t _dictGetStatsHt(char *buf, size_t bufsize, dictht *ht, int tableid) {
     return strlen(buf);
 }
 
-void dictGetStats(char *buf, size_t bufsize, dict *d) {
+void HT_dictGetStats(char *buf, size_t bufsize, dict *d) {
     size_t l;
     char *orig_buf = buf;
     size_t orig_bufsize = bufsize;
@@ -1148,7 +1148,7 @@ void dictGetStats(char *buf, size_t bufsize, dict *d) {
 #include "sds.h"
 
 uint64_t hashCallback(const void *key) {
-    return dictGenHashFunction((unsigned char*)key, sdslen((char*)key));
+    return HT_dictGenHashFunction((unsigned char*)key, sdslen((char*)key));
 }
 
 int compareCallback(void *privdata, const void *key1, const void *key2) {
@@ -1186,7 +1186,7 @@ dictType BenchmarkDictType = {
 int main(int argc, char **argv) {
     long j;
     long long start, elapsed;
-    dict *dict = dictCreate(&BenchmarkDictType,NULL);
+    dict *dict = HT_dictCreate(&BenchmarkDictType,NULL);
     long count = 0;
 
     if (argc == 2) {
@@ -1197,7 +1197,7 @@ int main(int argc, char **argv) {
 
     start_benchmark();
     for (j = 0; j < count; j++) {
-        int retval = dictAdd(dict,sdsfromlonglong(j),(void*)j);
+        int retval = HT_dictAdd(dict,sdsfromlonglong(j),(void*)j);
         assert(retval == DICT_OK);
     }
     end_benchmark("Inserting");
@@ -1205,13 +1205,13 @@ int main(int argc, char **argv) {
 
     /* Wait for rehashing. */
     while (dictIsRehashing(dict)) {
-        dictRehashMilliseconds(dict,100);
+        HT_dictRehashMilliseconds(dict,100);
     }
 
     start_benchmark();
     for (j = 0; j < count; j++) {
         sds key = sdsfromlonglong(j);
-        dictEntry *de = dictFind(dict,key);
+        dictEntry *de = HT_dictFind(dict,key);
         assert(de != NULL);
         sdsfree(key);
     }
@@ -1220,7 +1220,7 @@ int main(int argc, char **argv) {
     start_benchmark();
     for (j = 0; j < count; j++) {
         sds key = sdsfromlonglong(j);
-        dictEntry *de = dictFind(dict,key);
+        dictEntry *de = HT_dictFind(dict,key);
         assert(de != NULL);
         sdsfree(key);
     }
@@ -1229,7 +1229,7 @@ int main(int argc, char **argv) {
     start_benchmark();
     for (j = 0; j < count; j++) {
         sds key = sdsfromlonglong(rand() % count);
-        dictEntry *de = dictFind(dict,key);
+        dictEntry *de = HT_dictFind(dict,key);
         assert(de != NULL);
         sdsfree(key);
     }
@@ -1239,7 +1239,7 @@ int main(int argc, char **argv) {
     for (j = 0; j < count; j++) {
         sds key = sdsfromlonglong(rand() % count);
         key[0] = 'X';
-        dictEntry *de = dictFind(dict,key);
+        dictEntry *de = HT_dictFind(dict,key);
         assert(de == NULL);
         sdsfree(key);
     }
@@ -1248,10 +1248,10 @@ int main(int argc, char **argv) {
     start_benchmark();
     for (j = 0; j < count; j++) {
         sds key = sdsfromlonglong(j);
-        int retval = dictDelete(dict,key);
+        int retval = HT_dictDelete(dict,key);
         assert(retval == DICT_OK);
         key[0] += 17; /* Change first number to letter. */
-        retval = dictAdd(dict,key,(void*)j);
+        retval = HT_dictAdd(dict,key,(void*)j);
         assert(retval == DICT_OK);
     }
     end_benchmark("Removing and adding");

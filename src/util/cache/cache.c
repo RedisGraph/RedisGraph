@@ -18,11 +18,11 @@ int dictStringKeyCompare(void *privdata, const void *key1, const void *key2) {
 
 // dict key hash function
 uint64_t dictStringHash(const void *key) {
-    return dictGenHashFunction(key, strlen(key));
+    return HT_dictGenHashFunction(key, strlen(key));
 }
 
 // dict type
-dictType dictTypeHeapStrings = {
+dictType HT_dictTypeHeapStrings = {
     dictStringHash,             // hash function
     NULL,                       // key dup
     NULL,                       // val dup
@@ -36,12 +36,12 @@ Cache *Cache_New(uint size, CacheItemFreeFunc freeCB) {
 	// Instantiate a new list to store cached values.
 	cache->list = CacheList_New(size, freeCB);
 	// Instantiate the lookup map for fast cache retrievals.
-	cache->lookup = dictCreate(&dictTypeHeapStrings, NULL);
+	cache->lookup = HT_dictCreate(&HT_dictTypeHeapStrings, NULL);
 	return cache;
 }
 
 inline void *Cache_GetValue(const Cache *cache, const char *key) {
-	CacheListNode *elem = dictFetchValue(cache->lookup, key);
+	CacheListNode *elem = HT_dictFetchValue(cache->lookup, key);
 	if(elem == NULL) return NULL;
 
 	// Element is now the most recently used; promote it.
@@ -56,7 +56,7 @@ void Cache_SetValue(Cache *cache, const char *key, void *value) {
 		 * and reuse its space for the new entry. */
 		node = CacheList_RemoveTail(cache->list);
 		// Remove evicted element from the lookup map.
-		dictDelete(cache->lookup, node->key);
+		HT_dictDelete(cache->lookup, node->key);
 	} else {
 		// The list has not yet been filled, introduce a new node.
 		node = CacheList_GetUnused(cache->list);
@@ -66,12 +66,12 @@ void Cache_SetValue(Cache *cache, const char *key, void *value) {
 	CacheList_PopulateNode(cache->list, node, key, value);
 
 	// Add the new node to the mapping.
-	dictAdd(cache->lookup, (void*)key, node);
+	HT_dictAdd(cache->lookup, (void*)key, node);
 }
 
 void Cache_Free(Cache *cache) {
 	CacheList_Free(cache->list);
-	dictRelease(cache->lookup);
+	HT_dictRelease(cache->lookup);
 	rm_free(cache);
 }
 

@@ -47,7 +47,7 @@
 
 /* Fast tolower() alike function that does not care about locale
  * but just returns a-z insetad of A-Z. */
-int siptlw(int c) {
+static int siptlw(int c) {
     if (c >= 'A' && c <= 'Z') {
         return c+('a'-'A');
     } else {
@@ -113,7 +113,7 @@ int siptlw(int c) {
         v2 = ROTL(v2, 32);                                                     \
     } while (0)
 
-uint64_t siphash(const uint8_t *in, const size_t inlen, const uint8_t *k) {
+static uint64_t siphash(const uint8_t *in, const size_t inlen, const uint8_t *k) {
 #ifndef UNALIGNED_LE_CPU
     uint64_t hash;
     uint8_t *out = (uint8_t*) &hash;
@@ -172,7 +172,7 @@ uint64_t siphash(const uint8_t *in, const size_t inlen, const uint8_t *k) {
 #endif
 }
 
-uint64_t siphash_nocase(const uint8_t *in, const size_t inlen, const uint8_t *k)
+static uint64_t siphash_nocase(const uint8_t *in, const size_t inlen, const uint8_t *k)
 {
 #ifndef UNALIGNED_LE_CPU
     uint64_t hash;
