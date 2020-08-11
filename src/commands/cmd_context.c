@@ -61,7 +61,7 @@ void CommandCtx_TrackCtx(CommandCtx *ctx) {
 	ASSERT(command_ctxs != NULL);
 
 	int tid = thpool_get_thread_id(_thpool, pthread_self());
-	tid += 1 // +1 to compensate for Redis main thread.
+	tid += 1; // +1 to compensate for Redis main thread.
 
 	ASSERT(command_ctxs[tid] == NULL);
 
@@ -75,7 +75,7 @@ void CommandCtx_UntrackCtx(CommandCtx *ctx) {
 	ASSERT(command_ctxs != NULL);
 
 	int tid = thpool_get_thread_id(_thpool, pthread_self());
-	tid += 1 // +1 to compensate for Redis main thread.
+	tid += 1; // +1 to compensate for Redis main thread.
 
 	ASSERT(command_ctxs[tid] == ctx);
 

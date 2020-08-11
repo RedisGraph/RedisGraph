@@ -42,7 +42,8 @@ void InfoFunc(RedisModuleInfoCtx *ctx, int for_crash_report) {
 	if(!for_crash_report) return;
 
 	// pause all working threads
-	// NOTE: pausing is an async operation
+	// NOTE: pausing is not an atomic action;
+	// other threads can potentially change states before being interrupted.
 	thpool_pause(_thpool);
 
 	char *command_desc = NULL;
@@ -76,7 +77,7 @@ void sigsegvHandler(int sig, siginfo_t *info, void *ucontext) {
 	(*old_act.sa_sigaction)(sig, info, ucontext);
 }
 
-void setupSignalHandlers(RedisModuleCtx *ctx) {
+void setupCrashHandlers(RedisModuleCtx *ctx) {
 	// if RedisModule_RegisterInfoFunc is available use it
 	// to report RedisGraph additional information in case of a crash
 	// otherwise overwrite Redis signal handler
