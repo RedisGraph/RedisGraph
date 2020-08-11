@@ -211,12 +211,14 @@ int FilterTree_applyFilters(const FT_FilterNode *root, const Record r) {
 			if(SI_GET_NUMERIC(res) == 0) return FILTER_FAIL;
 		} else if(SI_TYPE(res) & T_ARRAY) {
 			/* An empty array is falsey, all other arrays should return true. */
-			uint len = SIArray_Length(res);
-			SIValue_Free(res); // Free dangling pointer.
-			if(len == 0) return FILTER_FAIL;
+			if(SIArray_Length(res) == 0) {
+				SIValue_Free(res); // Free dangling pointer.
+				return FILTER_FAIL;
+			}
 		}
 
 		/* Boolean or Numeric != 0, String, Node, Edge, Ptr all evaluate to true. */
+		SIValue_Free(res); // If this was a heap allocation, free it.
 		return FILTER_PASS;
 	}
 	default:
