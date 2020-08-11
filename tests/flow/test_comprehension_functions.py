@@ -1,3 +1,4 @@
+import redis
 from RLTest import Env
 from base import FlowTestsBase
 from redisgraph import Graph, Node, Edge
@@ -115,10 +116,35 @@ class testComprehensionFunctions(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
     def test07_list_comprehension_in_where_predicate(self):
+        # List comprehension with predicate in WHERE predicate on MATCH clause - evaluates to true
         query = """MATCH (n) WHERE n.val IN [x in ['v1', 'v3']] RETURN n.val ORDER BY n.val"""
         actual_result = redis_graph.query(query)
         expected_result = [['v1'],
                            ['v3']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # List comprehension with predicate in WHERE predicate - evaluates to true
+        query = """WITH 1 AS a WHERE a IN [x in [1, 2]] RETURN a"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # List comprehension with predicate in WHERE predicate - evaluates to false
+        query = """WITH 1 AS a WHERE a IN [x in [2,3]] RETURN a"""
+        actual_result = redis_graph.query(query)
+        expected_result = []
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # List comprehension with predicate and eval in WHERE predicate - evaluates to false
+        query = """WITH 1 AS a WHERE [i in [2,3] WHERE i > 5] RETURN a"""
+        actual_result = redis_graph.query(query)
+        expected_result = []
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # List comprehension without predicate or eval in WHERE predicate - evaluates to true
+        query = """WITH 1 AS a WHERE [i in [2,3]] RETURN a"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[1]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
     def test08_list_comprehension_on_property_array(self):
@@ -132,4 +158,90 @@ class testComprehensionFunctions(FlowTestsBase):
         query = """RETURN [elem IN [nested_val IN range(0, 6) WHERE nested_val % 2 = 0] WHERE elem * 2 >= 4 | elem * 2]"""
         actual_result = redis_graph.query(query)
         expected_result = [[[4, 8, 12]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test10_any_all_comprehension_acceptance(self):
+        # Reject ANY and ALL comprehensions that don't include a WHERE predicate.
+        try:
+            redis_graph.query("RETURN any(x IN [1,2])")
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting a type error.
+            self.env.assertIn("requires a WHERE predicate", e.message)
+
+        try:
+            redis_graph.query("RETURN all(x IN [1,2])")
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting a type error.
+            self.env.assertIn("requires a WHERE predicate", e.message)
+
+    def test11_any_all_truth_table(self):
+        # Test inputs and predicates where ANY and ALL are both false.
+        query = """RETURN any(x IN [0,1] WHERE x = 2)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, [[False]])
+
+        query = """RETURN all(x IN [0,1] WHERE x = 2)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, [[False]])
+
+        # Test inputs and predicates where ANY is true and ALL is false.
+        query = """RETURN any(x IN [0,1] WHERE x = 1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, [[True]])
+
+        query = """RETURN all(x IN [0,1] WHERE x = 1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, [[False]])
+
+        # Test inputs and predicates where ANY and ALL are both true.
+        query = """RETURN any(x IN [0,1] WHERE x = 0 OR x = 1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, [[True]])
+
+        query = """RETURN all(x IN [0,1] WHERE x = 0 OR x = 1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, [[True]])
+
+        # Test inputs and predicates where ANY and ALL are both NULL.
+        query = """RETURN any(x IN NULL WHERE x = 1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, [[None]])
+
+        query = """RETURN all(x IN NULL WHERE x = 1)"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, [[None]])
+
+    def test12_any_all_on_property_arrays(self):
+        # The first array evaluates to ['v1', 'v2'] and the second evaluates to ['v2', 'v3']
+        query = """MATCH ()-[e]->() WITH e ORDER BY e.edge_val RETURN ANY(elem IN e.edge_val WHERE elem = 'v2' OR elem = 'v3')"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, [[True], [True]])
+
+        query = """MATCH ()-[e]->() WITH e ORDER BY e.edge_val RETURN ALL(elem IN e.edge_val WHERE elem = 'v2' OR elem = 'v3')"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, [[False], [True]])
+
+    def test13_any_all_path_filtering(self):
+        # Use ANY and ALL to introspect on named variable-length paths.
+        # All paths should be returned using both ANY and ALL filters.
+        expected_result = [['v1'], ['v1'], ['v2']]
+        query = """MATCH p=()-[*]->() WHERE any(node IN nodes(p) WHERE node.val STARTS WITH 'v') WITH head(nodes(p)) AS n RETURN n.val ORDER BY n.val"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """MATCH p=()-[*]->() WHERE all(node IN nodes(p) WHERE node.val STARTS WITH 'v') WITH head(nodes(p)) AS n RETURN n.val ORDER BY n.val"""
+        actual_result = redis_graph.query(query)
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Run a query in which 2 paths pass an ANY filter and 1 path passes an ALL filter.
+        query = """MATCH p=()-[*0..1]->() WHERE any(node IN nodes(p) WHERE node.val = 'v1') RETURN length(p) ORDER BY length(p)"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[0], [1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """MATCH p=()-[*0..1]->() WHERE all(node IN nodes(p) WHERE node.val = 'v1') RETURN length(p) ORDER BY length(p)"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[0]]
         self.env.assertEquals(actual_result.result_set, expected_result)
