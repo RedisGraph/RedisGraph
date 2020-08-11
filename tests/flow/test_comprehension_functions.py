@@ -116,20 +116,35 @@ class testComprehensionFunctions(FlowTestsBase):
         self.env.assertEquals(actual_result.result_set, expected_result)
 
     def test07_list_comprehension_in_where_predicate(self):
+        # List comprehension with predicate in WHERE predicate on MATCH clause - evaluates to true
         query = """MATCH (n) WHERE n.val IN [x in ['v1', 'v3']] RETURN n.val ORDER BY n.val"""
         actual_result = redis_graph.query(query)
         expected_result = [['v1'],
                            ['v3']]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
+        # List comprehension with predicate in WHERE predicate - evaluates to true
         query = """WITH 1 AS a WHERE a IN [x in [1, 2]] RETURN a"""
         actual_result = redis_graph.query(query)
         expected_result = [[1]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
+        # List comprehension with predicate in WHERE predicate - evaluates to false
         query = """WITH 1 AS a WHERE a IN [x in [2,3]] RETURN a"""
         actual_result = redis_graph.query(query)
         expected_result = []
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # List comprehension with predicate and eval in WHERE predicate - evaluates to false
+        query = """WITH 1 AS a WHERE [i in [2,3] WHERE i > 5] RETURN a"""
+        actual_result = redis_graph.query(query)
+        expected_result = []
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # List comprehension without predicate or eval in WHERE predicate - evaluates to true
+        query = """WITH 1 AS a WHERE [i in [2,3]] RETURN a"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[1]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
     def test08_list_comprehension_on_property_array(self):
