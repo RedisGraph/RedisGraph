@@ -122,6 +122,16 @@ class testComprehensionFunctions(FlowTestsBase):
                            ['v3']]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
+        query = """WITH 1 AS a WHERE a IN [x in [1, 2]] RETURN a"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """WITH 1 AS a WHERE a IN [x in [2,3]] RETURN a"""
+        actual_result = redis_graph.query(query)
+        expected_result = []
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
     def test08_list_comprehension_on_property_array(self):
         query = """MATCH (n)-[e]->() WITH n, e ORDER BY n.val RETURN [elem IN e.edge_val WHERE elem = n.val]"""
         actual_result = redis_graph.query(query)

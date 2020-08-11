@@ -9,6 +9,7 @@
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 #include "../ast/ast_shared.h"
+#include "../datatypes/array.h"
 #include <assert.h>
 
 /* forward declarations */
@@ -205,9 +206,14 @@ int FilterTree_applyFilters(const FT_FilterNode *root, const Record r) {
 			/* Expression evaluated to NULL should return false. */
 			return FILTER_FAIL;
 		} else if(SI_TYPE(res) & (SI_NUMERIC | T_BOOL)) {
-			/* Numeric or Boolean evaluated to anuthing but 0
+			/* Numeric or Boolean evaluated to anything but 0
 			* should return true. */
 			if(SI_GET_NUMERIC(res) == 0) return FILTER_FAIL;
+		} else if(SI_TYPE(res) & T_ARRAY) {
+			/* An empty array is falsey, all other arrays should return true. */
+			uint len = SIArray_Length(res);
+			SIValue_Free(res); // Free dangling pointer.
+			if(len == 0) return FILTER_FAIL;
 		}
 
 		/* Boolean or Numeric != 0, String, Node, Edge, Ptr all evaluate to true. */
@@ -669,3 +675,4 @@ void FilterTree_Free(FT_FilterNode *root) {
 
 	rm_free(root);
 }
+
