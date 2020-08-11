@@ -12,10 +12,13 @@ void Graph_Slowlog(void *args) {
 	CommandCtx *command_ctx = (CommandCtx *)args;
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(command_ctx);
 	GraphContext *gc = CommandCtx_GetGraphContext(command_ctx);
-	SlowLog *slowlog = GraphContext_GetSlowLog(gc);
 
+	CommandCtx_TrackCtx(command_ctx);
+
+	SlowLog *slowlog = GraphContext_GetSlowLog(gc);
 	SlowLog_Replay(slowlog, ctx);
 
 	GraphContext_Release(gc);
 	CommandCtx_Free(command_ctx);
 }
+

@@ -13,6 +13,8 @@
 void _MGraph_BulkInsert(void *args) {
 	// Establish thread-safe environment for batch insertion
 	CommandCtx *command_ctx = (CommandCtx *)args;
+	CommandCtx_TrackCtx(command_ctx);
+
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(command_ctx);
 
 	RedisModuleString **argv = command_ctx->argv + 1; // skip "GRAPH.BULK"
@@ -108,3 +110,4 @@ int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
+
