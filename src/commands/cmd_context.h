@@ -35,6 +35,10 @@ CommandCtx *CommandCtx_New
 	bool replicated_command         // Whether this instance was spawned by a replication command.
 );
 
+// Tracks given 'ctx' such that in case of a crash we will be able to report
+// back all of the currently running commands
+void CommandCtx_TrackCtx(CommandCtx *ctx);
+
 // Get Redis module context
 RedisModuleCtx *CommandCtx_GetRedisCtx
 (

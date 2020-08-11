@@ -23,6 +23,8 @@ void Graph_Explain(void *args) {
 	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(command_ctx);
 	GraphContext *gc = CommandCtx_GetGraphContext(command_ctx);
 	QueryCtx_SetGlobalExecutionCtx(command_ctx);
+
+	CommandCtx_TrackCtx(command_ctx);
 	QueryCtx_BeginTimer(); // Start query timing.
 
 	/* Retrieve the required execution items and information:
@@ -33,7 +35,7 @@ void Graph_Explain(void *args) {
 	bool cached = false;
 	ExecutionPlan *plan = NULL;
 	ExecutionCtx exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
-	
+
 	ExecutionType exec_type = exec_ctx.exec_type;
 	ast = exec_ctx.ast;
 	plan = exec_ctx.plan;
