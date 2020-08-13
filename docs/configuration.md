@@ -65,3 +65,21 @@ If enabled, RedisGraph will maintain transposed copies of relationship matrices.
 ```
 $ redis-server --loadmodule ./redisgraph.so MAINTAIN_TRANSPOSED_MATRICES no
 ```
+
+# Query Configurations
+
+Some configurations may be set per query in the form of additional arguments after the query string. All per-query configurations are off by default unless using a language-specific client, which may establish its own defaults.
+
+## Query Timeout
+
+The query flag `timeout` allows the user to specify the maximum runtime allowed for a query in milliseconds. This configuration can only be set for read queries to avoid leaving the graph in an inconsistent state.
+
+`timeout` may still return partial results followed by an error message indicating the timeout.
+
+### Example
+
+Retrieve all paths in a graph with a timeout of 1000 milliseconds.
+
+```
+GRAPH.QUERY wikipedia "MATCH p=()-[*]->() RETURN p" timeout 1000
+```
