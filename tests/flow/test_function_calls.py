@@ -242,3 +242,13 @@ class testFunctionCallsFlow(FlowTestsBase):
         actual_result = graph.query(query)
         expected_result = [[[]]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Verify that nested functions that perform heap allocations return properly.
+    def test12_nested_heap_functions(self):
+        query = """MATCH p = (n) WITH head(nodes(p)) AS node RETURN node.name ORDER BY node.name"""
+        actual_result = graph.query(query)
+        expected_result = [['Ailon'],
+                           ['Alon'],
+                           ['Boaz'],
+                           ['Roi']]
+        self.env.assertEquals(actual_result.result_set, expected_result)

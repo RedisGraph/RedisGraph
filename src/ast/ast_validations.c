@@ -54,12 +54,22 @@ static void _AST_GetIdentifiers(const cypher_astnode_t *node, rax *identifiers) 
 	 * @12  20..23  > > > > > function name    `max`
 	 * @13  24..25  > > > > > identifier       `z`
 	 * @14  20..26  > > > > identifier         `max(z)` */
-	if(cypher_astnode_type(node) == CYPHER_AST_PROJECTION) child_count = 1;
+	cypher_astnode_type_t type = cypher_astnode_type(node);
+	if(type == CYPHER_AST_PROJECTION) child_count = 1;
 
 	for(uint i = 0; i < child_count; i++) {
 		const cypher_astnode_t *child = cypher_astnode_get_child(node, i);
 		_AST_GetIdentifiers(child, identifiers);
 	}
+
+	if(type == CYPHER_AST_LIST_COMPREHENSION || type == CYPHER_AST_ANY || type == CYPHER_AST_ALL) {
+		// A list comprehension has a local variable that should only be accessed within its scope;
+		// do not leave it in the identifiers map.
+		const cypher_astnode_t *variable_node = cypher_ast_list_comprehension_get_identifier(node);
+		const char *variable = cypher_ast_identifier_get_name(variable_node);
+		raxRemove(identifiers, (unsigned char *)variable, strlen(variable), NULL);
+	}
+
 }
 
 static void _AST_GetWithAliases(const cypher_astnode_t *node, rax *aliases) {

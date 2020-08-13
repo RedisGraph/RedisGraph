@@ -13,6 +13,7 @@
 #include "boolean_funcs/boolean_funcs.h"
 #include "numeric_funcs/numeric_funcs.h"
 #include "conditional_funcs/conditional_funcs.h"
+#include "comprehension_funcs/comprehension_funcs.h"
 #include "path_funcs/path_funcs.h"
 #include "placeholder_funcs/placeholder_funcs.h"
 

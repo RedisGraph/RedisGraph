@@ -147,7 +147,6 @@ Feature: TypeConversionFunctions
       | null | null  |
     And no side effects
 
-@skip
   Scenario: `toInteger()` handling mixed number types
     Given any graph
     When executing query:
@@ -160,7 +159,6 @@ Feature: TypeConversionFunctions
       | [2, 2]      |
     And no side effects
 
-@skip
   Scenario: `toInteger()` handling Any type
     Given any graph
     When executing query:
@@ -173,7 +171,6 @@ Feature: TypeConversionFunctions
       | [2, 2, 1]   |
     And no side effects
 
-@skip
   Scenario: `toInteger()` on a list of strings
     Given any graph
     When executing query:
@@ -388,7 +385,6 @@ Feature: TypeConversionFunctions
       | ['1', '2.3', 'true', 'apa'] |
     And no side effects
 
-@skip
   Scenario: `toString()` on a list of integers
     Given any graph
     When executing query:

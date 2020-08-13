@@ -580,18 +580,21 @@ This section contains information on all supported functions from the Cypher que
 
 ## Predicate functions
 
-|Function | Description|
-| ------- |:-----------|
-|exists() | Returns true if the specified property exists in the node or relationship. |
+| Function                                      | Description                                                                               |
+| -------                                       | :-----------                                                                              |
+| exists()                                      | Returns true if the specified property exists in the node or relationship.                |
+| [any()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for any element in the input array.  |
+| [all()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for all elements in the input array. |
 
 ## Scalar functions
 
-|Function | Description|
-| ------- |:-----------|
-|id() | Returns the internal ID of a relationship or node (which is not immutable.) |
-|labels() | Returns a string representation of the label of a node. |
-|timestamp() | Returns the the amount of milliseconds since epoch. |
-|type() | Returns a string representation of the type of a relation. |
+| Function            | Description                                                                 |
+| -------             | :-----------                                                                |
+| id()                | Returns the internal ID of a relationship or node (which is not immutable.) |
+| labels()            | Returns a string representation of the label of a node.                     |
+| timestamp()         | Returns the the amount of milliseconds since epoch.                         |
+| type()              | Returns a string representation of the type of a relation.                  |
+| list comprehensions | [See documentation](#list-comprehensions)                                   |
 
 ## Aggregating functions
 
@@ -654,6 +657,39 @@ This section contains information on all supported functions from the Cypher que
 | nodes() | Return a new list of nodes, of a given path. |
 | relationships() | Return a new list of edges, of a given path. |
 | length() | Return the length (number of edges) of the path|
+
+### List comprehensions
+List comprehensions are a syntactical construct that accepts an array and produces another based on the provided map and filter directives.
+
+They are a common construct in functional languages and modern high-level languages. In Cypher, they use the syntax:
+
+```sh
+[element IN array WHERE condition | output elem]
+```
+
+- `array` can be any expression that produces an array: a literal, a property reference, or a function call.
+- `WHERE condition` is an optional argument to only project elements that pass a certain criteria. If omitted, all elements in the array will be represented in the output.
+- `| output elem` is an optional argument that allows elements to be transformed in the output array. If omitted, the output elements will be the same as their corresponding inputs.
+
+
+The following query collects all paths of any length, then for each produces an array containing the `name` property of every node with a `rank` property greater than 10:
+
+```sh
+MATCH p=()-[*]->() RETURN [node IN nodes(p) WHERE node.rank > 10 | node.name]
+```
+
+#### Existential comprehension functions
+The functions `any()` and `all()` use a simplified form of the list comprehension syntax and return a boolean value.
+
+```sh
+any(element IN array WHERE condition)
+```
+
+They can operate on any form of input array, but are particularly useful for path filtering. The following query collects all paths of any length in which all traversed edges have a weight less than 3:
+
+```sh
+MATCH p=()-[*]->() WHERE all(edge IN relationships(p) WHERE edge.weight < 3) RETURN p
+```
 
 ## Procedures
 Procedures are invoked using the syntax:
