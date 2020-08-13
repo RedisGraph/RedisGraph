@@ -1036,7 +1036,7 @@ ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan) {
 }
 
 
-static void _ExecutionPlan_FreeSegment(ExecutionPlan *plan) {
+static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
 	if(plan == NULL) return;
 
 	if(plan->connected_components) {
@@ -1053,18 +1053,18 @@ static void _ExecutionPlan_FreeSegment(ExecutionPlan *plan) {
 }
 
 // Free an op tree and its associated ExecutionPlan segments.
-static ExecutionPlan *_ExecutionPlan_Free(OpBase *op) {
+static ExecutionPlan *_ExecutionPlan_FreeOpTree(OpBase *op) {
 	if(op == NULL) return NULL;
 	ExecutionPlan *child_plan = NULL;
 	ExecutionPlan *prev_child_plan = NULL;
 	// Store a reference to the current plan.
 	ExecutionPlan *current_plan = (ExecutionPlan *)op->plan;
 	for(uint i = 0; i < op->childCount; i ++) {
-		child_plan = _ExecutionPlan_Free(op->children[i]);
+		child_plan = _ExecutionPlan_FreeOpTree(op->children[i]);
 		// In most cases all children will share the same plan, but if they don't
 		// (for an operation like UNION) then free the now-obsolete previous child plan.
 		if(prev_child_plan != child_plan) {
-			_ExecutionPlan_FreeSegment(prev_child_plan);
+			_ExecutionPlan_FreeInternals(prev_child_plan);
 			prev_child_plan = child_plan;
 		}
 	}
@@ -1073,7 +1073,7 @@ static ExecutionPlan *_ExecutionPlan_Free(OpBase *op) {
 	OpBase_Free(op);
 
 	// Free each ExecutionPlan segment once all ops associated with it have been freed.
-	if(current_plan != child_plan) _ExecutionPlan_FreeSegment(child_plan);
+	if(current_plan != child_plan) _ExecutionPlan_FreeInternals(child_plan);
 
 	return current_plan;
 }
@@ -1082,9 +1082,9 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) return;
 
 	// Free all ops and ExecutionPlan segments.
-	_ExecutionPlan_Free(plan->root);
+	_ExecutionPlan_FreeOpTree(plan->root);
 
 	// Free the final ExecutionPlan segment.
-	_ExecutionPlan_FreeSegment(plan);
+	_ExecutionPlan_FreeInternals(plan);
 }
 

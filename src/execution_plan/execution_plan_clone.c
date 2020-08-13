@@ -5,6 +5,7 @@
 */
 
 #include "execution_plan_clone.h"
+#include "../RG.h"
 #include "../query_ctx.h"
 #include "../util/rax_extensions.h"
 
@@ -53,7 +54,7 @@ static ExecutionPlan *_ExecutionPlan_Clone(const ExecutionPlan *template) {
 	OpBase *clone_root = _CloneOpTree(NULL, template->root, NULL);
 	// The "master" execution plan is the one constructed with the root op.
 	ExecutionPlan *clone = (ExecutionPlan *)clone_root->plan;
-	// Set the root op pointer.
+	// The root op is currently NULL; set it now.
 	clone->root = clone_root;
 
 	return clone;
@@ -63,11 +64,11 @@ static ExecutionPlan *_ExecutionPlan_Clone(const ExecutionPlan *template) {
  * When an op is encountered that was constructed as part of a different ExecutionPlan segment, that segment
  * and its internal members (FilterTree, record mapping, query graphs, and AST segment) are also cloned. */
 ExecutionPlan *ExecutionPlan_Clone(const ExecutionPlan *template) {
-	if(template == NULL) return NULL;
+	ASSERT(template != NULL);
 	// Store the original AST pointer.
 	AST *master_ast = QueryCtx_GetAST();
 	// Verify that the execution plan template is not prepared yet.
-	assert(template->prepared == false && "Execution plan cloning should be only on templates");
+	ASSERT(template->prepared == false && "Execution plan cloning should be only on templates");
 	ExecutionPlan *clone = _ExecutionPlan_Clone(template);
 	// Restore the original AST pointer.
 	QueryCtx_SetAST(master_ast);

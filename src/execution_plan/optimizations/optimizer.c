@@ -8,7 +8,7 @@
 #include "./optimizations.h"
 #include "../../query_ctx.h"
 
-void _optimizePlan(ExecutionPlan *plan) {
+void optimizePlan(ExecutionPlan *plan) {
 	// Tries to compact filter trees, and remove redundant filters.
 	compactFilters(plan);
 
@@ -46,9 +46,5 @@ void _optimizePlan(ExecutionPlan *plan) {
 
 	/* Try to reduce execution plan incase it perform node or edge counting. */
 	reduceCount(plan);
-}
-
-void optimizePlan(ExecutionPlan *plan) {
-	_optimizePlan(plan);
 }
 
