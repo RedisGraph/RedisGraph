@@ -881,7 +881,6 @@ ExecutionPlan *NewExecutionPlan(void) {
 	}
 
 	plan->segments = segments;
-	plan->drained = false;
 
 	return plan;
 }
@@ -1009,6 +1008,14 @@ static Record deplete_consume(struct OpBase *op) {
 	return NULL;
 }
 
+// return true if execution plan been drained
+// false otherwise
+bool ExecutionPlan_Drained(ExecutionPlan *plan) {
+	ASSERT(plan != NULL);
+	ASSERT(plan->root != NULL);
+	return (plan->root->consume == deplete_consume);
+}
+
 static void _ExecutionPlan_Drain(OpBase *root) {
 	root->consume = deplete_consume;
 	for(int i = 0; i < root->childCount; i++) {
@@ -1020,7 +1027,6 @@ static void _ExecutionPlan_Drain(OpBase *root) {
 // this will cause the execution-plan to quickly deplete
 void ExecutionPlan_Drain(ExecutionPlan *plan) {
 	ASSERT(plan && plan->root);
-	plan->drained = true;
 	_ExecutionPlan_Drain(plan->root);
 }
 

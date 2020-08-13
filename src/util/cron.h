@@ -13,7 +13,7 @@
  * a task is defined by:
  * when it should run; delta in ms from the time it's introduced
  * a callback to call when it is time to execute the task
- * and an optional private data passed to the callbacl */
+ * and an optional private data passed to the callback */
 
 // task callback function
 typedef void (*CronTaskCB)(void *pdata);

@@ -24,7 +24,6 @@ struct ExecutionPlan {
 	ExecutionPlan **segments;           // Partial execution plans scoped to a subset of operations.
 	ObjectPool *record_pool;
 	bool prepared;                      // Indicates if the execution plan is ready for execute.
-	bool drained;                       // Indicates if the execution plan been drained
 	bool is_union;                      // Indicates if the execution plan is a union of execution plans.
 	int ref_count;                      // Number of active references.
 };
@@ -153,7 +152,10 @@ void ExecutionPlan_Init(ExecutionPlan *plan);
 /* Executes plan */
 ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan);
 
-/* Drains execution plan*/
+/* Checks if execution plan been drained */
+bool ExecutionPlan_Drained(ExecutionPlan *plan);
+
+/* Drains execution plan */
 void ExecutionPlan_Drain(ExecutionPlan *plan);
 
 /* Profile executes plan */
@@ -161,9 +163,6 @@ ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan);
 
 /* Increase execution plan reference count */
 void ExecutionPlan_IncreaseRefCount(ExecutionPlan *plan);
-
-/* Decrease execution plan reference count */
-int ExecutionPlan_DecRefCount(ExecutionPlan *plan);
 
 /* Free execution plan */
 void ExecutionPlan_Free(ExecutionPlan *plan);

@@ -32,6 +32,7 @@ typedef struct {
 // single static CRON instance, initialized at CRON_Start
 static CRON *cron = NULL;
 
+// compares two time objects
 static int cmp_timespec(struct timespec a, struct timespec b) {
 	if(a.tv_sec == b.tv_sec) {
 		return a.tv_nsec - b.tv_nsec;
@@ -75,7 +76,7 @@ static bool CRON_TaskDue(const CRON_TASK *t) {
 
 	struct timespec now;
     clock_gettime(CLOCK_REALTIME, &now);
-	return cmp_timespec(now, t->due) > 0;
+	return cmp_timespec(now, t->due) >= 0;
 }
 
 static CRON_TASK *CRON_Peek() {
@@ -115,7 +116,6 @@ static void clear_tasks() {
 	while((task = CRON_RemoveTask())) {
 		CRON_FreeTask(task);
 	}
-	heap_free(cron->tasks);
 }
 
 //------------------------------------------------------------------------------
@@ -168,6 +168,8 @@ void Cron_Stop(void) {
 	pthread_join(cron->thread, NULL);
 
 	clear_tasks();
+
+	heap_free(cron->tasks);
 	pthread_mutex_destroy(&cron->mutex);
 	pthread_mutex_destroy(&cron->condv_mutex);
 	pthread_cond_destroy(&cron->condv);

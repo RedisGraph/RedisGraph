@@ -191,7 +191,8 @@ void Graph_Query(void *args) {
 		ExecutionPlan_PreparePlan(plan);
 		result_set = ExecutionPlan_Execute(plan);
 
-		if(plan->drained) QueryCtx_SetError("Query timed out"); // Emit error if query timed out.
+		// Emit error if query timed out.
+		if(ExecutionPlan_Drained(plan)) QueryCtx_SetError("Query timed out");
 
 		ExecutionPlan_Free(plan);
 		plan = NULL;
