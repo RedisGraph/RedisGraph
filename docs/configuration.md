@@ -72,14 +72,14 @@ Some configurations may be set per query in the form of additional arguments aft
 
 ## Query Timeout
 
-The query flag `--timeout` allows the user to specify the maximum runtime allowed for a query in milliseconds. This configuration can only be set for read queries to avoid leaving the graph in an inconsistent state.
+The query flag `timeout` allows the user to specify the maximum runtime allowed for a query in milliseconds. This configuration can only be set for read queries to avoid leaving the graph in an inconsistent state.
 
-`--timeout` may still return partial results followed by an error message indicating the timeout.
+`timeout` may still return partial results followed by an error message indicating the timeout.
 
 ### Example
 
 Retrieve all paths in a graph with a timeout of 1000 milliseconds.
 
 ```
-GRAPH.QUERY wikipedia "MATCH p=()-[*]->() RETURN p" --timeout 1000
+GRAPH.QUERY wikipedia "MATCH p=()-[*]->() RETURN p" timeout 1000
 ```

@@ -90,6 +90,7 @@ static int _read_flags(CommandCtx *command_ctx, bool *compact, long long *timeou
 }
 
 void QueryTimedOut(void *pdata) {
+	ASSERT(pdata);
 	ExecutionPlan *plan = (ExecutionPlan *)pdata;
 	ExecutionPlan_Drain(plan);
 
@@ -103,7 +104,7 @@ void QueryTimedOut(void *pdata) {
 	ExecutionPlan_Free(plan);
 }
 
-void Query_SetTimeOut(RedisModuleCtx *ctx, uint timeout, ExecutionPlan *plan) {
+void Query_SetTimeOut(uint timeout, ExecutionPlan *plan) {
 	// Increase execution plan ref count.
 	ExecutionPlan_IncreaseRefCount(plan);
 	Cron_AddTask(timeout, QueryTimedOut, plan);
@@ -158,7 +159,7 @@ void Graph_Query(void *args) {
 			goto cleanup;
 		}
 
-		Query_SetTimeOut(ctx, timeout, plan);
+		Query_SetTimeOut(timeout, plan);
 	}
 
 	ResultSetFormatterType resultset_format = (compact) ? FORMATTER_COMPACT : FORMATTER_VERBOSE;
