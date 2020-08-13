@@ -32,7 +32,7 @@ struct ExecutionPlan {
  * API for restructuring the op tree.
  */
 /* Removes operation from execution plan. */
-void ExecutionPlan_RemoveOp(OpBase *op);
+void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op);
 
 /* Detaches operation from its parent. */
 void ExecutionPlan_DetachOp(OpBase *op);
@@ -47,7 +47,7 @@ void ExecutionPlan_PushBelow(OpBase *a, OpBase *b);
 void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root);
 
 /* Replace a with b. */
-void ExecutionPlan_ReplaceOp(OpBase *a, OpBase *b);
+void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b);
 
 /*
  * ExecutionPlan_Locate API:

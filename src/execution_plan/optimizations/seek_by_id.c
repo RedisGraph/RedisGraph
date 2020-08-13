@@ -73,7 +73,7 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 			UnsignedRange_TightenRange(id_range, op, id);
 
 			// Free replaced operations.
-			ExecutionPlan_RemoveOp((OpBase *)filter);
+			ExecutionPlan_RemoveOp(plan, (OpBase *)filter);
 			OpBase_Free((OpBase *)filter);
 		}
 		// Advance.
@@ -92,7 +92,7 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 			OpBase *opNodeByIdSeek = NewNodeByIdSeekOp(scan_op->plan, node, id_range);
 
 			// Managed to reduce!
-			ExecutionPlan_ReplaceOp(scan_op, opNodeByIdSeek);
+			ExecutionPlan_ReplaceOp(plan, scan_op, opNodeByIdSeek);
 			OpBase_Free(scan_op);
 		}
 		UnsignedRange_Free(id_range);

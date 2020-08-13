@@ -113,12 +113,12 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 
 	// New execution plan: "Project -> Results"
 	ExecutionPlan *disconnected_plan = (ExecutionPlan *)opScan->plan;
-	ExecutionPlan_RemoveOp(opScan);
+	ExecutionPlan_RemoveOp(disconnected_plan, opScan);
 	OpBase_Free(opScan);
 	// The plan segment that the scan and traverse op had been built with is now disconnected and should be freed.
 	ExecutionPlan_Free(disconnected_plan);
 
-	ExecutionPlan_RemoveOp((OpBase *)opAggregate);
+	ExecutionPlan_RemoveOp(disconnected_plan, (OpBase *)opAggregate);
 	OpBase_Free((OpBase *)opAggregate);
 
 	ExecutionPlan_AddOp((OpBase *)opResult, opProject);
@@ -250,16 +250,16 @@ void _reduceEdgeCount(ExecutionPlan *plan) {
 
 	// New execution plan: "Project -> Results"
 	ExecutionPlan *disconnected_plan = (ExecutionPlan *)opScan->plan;
-	ExecutionPlan_RemoveOp(opScan);
+	ExecutionPlan_RemoveOp(disconnected_plan, opScan);
 	OpBase_Free(opScan);
 
-	ExecutionPlan_RemoveOp((OpBase *)opTraverse);
+	ExecutionPlan_RemoveOp(disconnected_plan, (OpBase *)opTraverse);
 	OpBase_Free(opTraverse);
 
 	// The plan segment that the scan and traverse op had been built with is now disconnected and should be freed.
 	ExecutionPlan_Free(disconnected_plan);
 
-	ExecutionPlan_RemoveOp((OpBase *)opAggregate);
+	ExecutionPlan_RemoveOp(disconnected_plan, (OpBase *)opAggregate);
 	OpBase_Free((OpBase *)opAggregate);
 
 	ExecutionPlan_AddOp((OpBase *)opResult, opProject);

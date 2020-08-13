@@ -98,14 +98,14 @@ void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root) {
 	_OpBase_AddChild(tail, old_root);
 }
 
-void ExecutionPlan_ReplaceOp(OpBase *a, OpBase *b) {
+void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b) {
 	// Insert the new operation between the original and its parent.
 	ExecutionPlan_PushBelow(a, b);
 	// Delete the original operation.
-	ExecutionPlan_RemoveOp(a);
+	ExecutionPlan_RemoveOp(plan, a);
 }
 
-void ExecutionPlan_RemoveOp(OpBase *op) {
+void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
 	if(op->parent == NULL) {
 		ExecutionPlan *plan = (ExecutionPlan *)op->plan;
 		// Removing execution plan root.

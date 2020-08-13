@@ -21,7 +21,7 @@ static void _removeRedundantTraversal(ExecutionPlan *plan, CondTraverse *travers
 	AlgebraicExpression *ae =  traverse->ae;
 	if(AlgebraicExpression_OperandCount(ae) == 1 &&
 	   !RG_STRCMP(AlgebraicExpression_Source(ae), AlgebraicExpression_Destination(ae))) {
-		ExecutionPlan_RemoveOp((OpBase *)traverse);
+		ExecutionPlan_RemoveOp(plan, (OpBase *)traverse);
 		OpBase_Free((OpBase *)traverse);
 	}
 }
@@ -86,7 +86,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 
 			// Set traverse algebraic_expression to NULL to avoid early free.
 			traverse->ae = NULL;
-			ExecutionPlan_ReplaceOp((OpBase *)traverse, expand_into);
+			ExecutionPlan_ReplaceOp(plan, (OpBase *)traverse, expand_into);
 			OpBase_Free((OpBase *)traverse);
 		} else {
 			CondVarLenTraverse *traverse = (CondVarLenTraverse *)op;

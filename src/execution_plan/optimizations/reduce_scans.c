@@ -40,10 +40,10 @@ static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
 		if(scan->type == OPType_NODE_BY_LABEL_SCAN) {
 			// If we are performing a label scan, introduce a conditional traversal to filter by label.
 			OpBase *traverse = _LabelScanToConditionalTraverse((NodeByLabelScan *)scan);
-			ExecutionPlan_ReplaceOp(scan, traverse);
+			ExecutionPlan_ReplaceOp(plan, scan, traverse);
 		} else {
 			// Remove the redundant scan op.
-			ExecutionPlan_RemoveOp(scan);
+			ExecutionPlan_RemoveOp(plan, scan);
 		}
 		OpBase_Free(scan);
 	}
