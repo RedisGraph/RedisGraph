@@ -170,21 +170,21 @@ RSQNode *_filterTreeToInQueryNode(FT_FilterNode *filter, RSIndex *sp) {
 		double d;
 		SIValue v = SIArray_Get(list, i);
 		switch(SI_TYPE(v)) {
-			case T_STRING:
-				parent = RediSearch_CreateTagNode(sp, field);
-				node = RediSearch_CreateTokenNode(sp, field, v.stringval);
-				RediSearch_QueryNodeAddChild(parent, node);
-				node = parent;
-				break;
-			case T_DOUBLE:
-			case T_INT64:
-			case T_BOOL:
-				d = SI_GET_NUMERIC(v);
-				node = RediSearch_CreateNumericNode(sp, field, d, d, true, true);
-				break;
-			default:
-				assert(false && "unexpected conditional operation");
-				break;
+		case T_STRING:
+			parent = RediSearch_CreateTagNode(sp, field);
+			node = RediSearch_CreateTokenNode(sp, field, v.stringval);
+			RediSearch_QueryNodeAddChild(parent, node);
+			node = parent;
+			break;
+		case T_DOUBLE:
+		case T_INT64:
+		case T_BOOL:
+			d = SI_GET_NUMERIC(v);
+			node = RediSearch_CreateNumericNode(sp, field, d, d, true, true);
+			break;
+		default:
+			assert(false && "unexpected conditional operation");
+			break;
 		}
 		RediSearch_QueryNodeAddChild(U, node);
 	}
@@ -446,21 +446,21 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 		RSQNode *rsqnode = NULL;
 
 		switch(filter_tree->t) {
-			case FT_N_PRED:
-				_predicateTreeToRange(filter_tree, string_ranges, numeric_ranges);
-				break;
-			case FT_N_COND:
-				// OR trees are directly converted into RSQnodes.
-				rsqnode = _filterTreeToQueryNode(filter_tree, rs_idx);
-				rsqnodes = array_append(rsqnodes, rsqnode);
-				break;
-			case FT_N_EXP:
-				rsqnode = _filterTreeToInQueryNode(filter_tree, rs_idx);
-				rsqnodes = array_append(rsqnodes, rsqnode);
-				break;
-			default:
-				ASSERT("Unknown filter type" && false);
-				break;
+		case FT_N_PRED:
+			_predicateTreeToRange(filter_tree, string_ranges, numeric_ranges);
+			break;
+		case FT_N_COND:
+			// OR trees are directly converted into RSQnodes.
+			rsqnode = _filterTreeToQueryNode(filter_tree, rs_idx);
+			rsqnodes = array_append(rsqnodes, rsqnode);
+			break;
+		case FT_N_EXP:
+			rsqnode = _filterTreeToInQueryNode(filter_tree, rs_idx);
+			rsqnodes = array_append(rsqnodes, rsqnode);
+			break;
+		default:
+			ASSERT("Unknown filter type" && false);
+			break;
 		}
 	}
 

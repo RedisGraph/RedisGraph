@@ -718,13 +718,13 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 
 	/* Placeholder for each execution plan, these all will be joined
 	 * via a single UNION operation. */
-	ExecutionPlan **plans = array_new(ExecutionPlan *, union_count);
+	ExecutionPlan *plans[union_count];
 
 	for(int i = 0; i < union_count; i++) {
 		// Create an AST segment from which we will build an execution plan.
 		end_offset = union_indices[i];
 		AST *ast_segment = AST_NewSegment(ast, start_offset, end_offset);
-		plans = array_append(plans, NewExecutionPlan());
+		plans[i] = NewExecutionPlan();
 		AST_Free(ast_segment); // Free the AST segment.
 
 		// Next segment starts where this one ends.
@@ -745,9 +745,7 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 	 * right stream:    [Scan]->[Project]
 	 *                  [Union]->[Distinct]->[Result] */
 	ExecutionPlan *plan = ExecutionPlan_NewEmptyExecutionPlan();
-	plan->segments = plans;
 	plan->record_map = raxNew();
-	plan->is_union = true;
 
 	OpBase *results_op = NewResultsOp(plan);
 	OpBase *parent = results_op;
@@ -825,7 +823,7 @@ ExecutionPlan *NewExecutionPlan(void) {
 	segment_indices = array_append(segment_indices, clause_count);
 
 	uint segment_count = array_len(segment_indices);
-	ExecutionPlan **segments = array_new(ExecutionPlan *, segment_count);
+	ExecutionPlan *segments[segment_count];
 	AST *ast_segments[segment_count];
 	start_offset = 0;
 	for(int i = 0; i < segment_count; i++) {
@@ -837,7 +835,7 @@ ExecutionPlan *NewExecutionPlan(void) {
 		ExecutionPlan *segment = ExecutionPlan_NewEmptyExecutionPlan();
 		ExecutionPlan_PopulateExecutionPlan(segment);
 		segment->ast_segment = ast_segment;
-		segments = array_append(segments, segment);
+		segments[i] = segment;
 		start_offset = end_offset;
 	}
 
@@ -873,14 +871,12 @@ ExecutionPlan *NewExecutionPlan(void) {
 
 	array_free(segment_indices);
 
-	ExecutionPlan *plan = array_pop(segments);
+	ExecutionPlan *plan = segments[segment_count - 1];
 	// The root operation is OpResults only if the query culminates in a RETURN or CALL clause.
 	if(query_has_return || last_clause_type == CYPHER_AST_CALL) {
 		OpBase *results_op = NewResultsOp(plan);
 		_ExecutionPlan_UpdateRoot(plan, results_op);
 	}
-
-	plan->segments = segments;
 
 	return plan;
 }
@@ -1063,36 +1059,6 @@ ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan) {
 	return rs;
 }
 
-static void _ExecutionPlan_FreeOperations(OpBase *op) {
-	for(int i = 0; i < op->childCount; i++) {
-		_ExecutionPlan_FreeOperations(op->children[i]);
-	}
-	OpBase_Free(op);
-}
-
-static void _ExecutionPlan_FreeSubPlan(ExecutionPlan *plan) {
-	if(plan == NULL) return;
-
-	if(plan->segments) {
-		uint segment_count = array_len(plan->segments);
-		for(int i = 0; i < segment_count; i++) _ExecutionPlan_FreeSubPlan(plan->segments[i]);
-		array_free(plan->segments);
-	}
-
-	if(plan->connected_components) {
-		uint connected_component_count = array_len(plan->connected_components);
-		for(uint i = 0; i < connected_component_count; i ++) QueryGraph_Free(plan->connected_components[i]);
-		array_free(plan->connected_components);
-		plan->connected_components = NULL;
-	}
-
-	QueryGraph_Free(plan->query_graph);
-	if(plan->record_map) raxFree(plan->record_map);
-	if(plan->record_pool) ObjectPool_Free(plan->record_pool);
-	if(plan->ast_segment) AST_Free(plan->ast_segment);
-	rm_free(plan);
-}
-
 void ExecutionPlan_IncreaseRefCount(ExecutionPlan *plan) {
 	ASSERT(plan);
 	__atomic_fetch_add(&plan->ref_count, 1, __ATOMIC_RELAXED);
@@ -1103,30 +1069,14 @@ int ExecutionPlan_DecRefCount(ExecutionPlan *plan) {
 	return __atomic_sub_fetch(&plan->ref_count, 1, __ATOMIC_RELAXED);
 }
 
-void ExecutionPlan_Free(ExecutionPlan *plan) {
+
+static void _ExecutionPlan_FreeInternals(ExecutionPlan *plan) {
 	if(plan == NULL) return;
-	if(ExecutionPlan_DecRefCount(plan) >= 0) return;
-
-	if(plan->root) {
-		_ExecutionPlan_FreeOperations(plan->root);
-		plan->root = NULL;
-	}
-
-	/* All segments but the last should have everything but
-	 * their operation chain freed.
-	 * The last segment is the actual plan passed as an argument to this function.
-	 * TODO this logic isn't ideal, try to improve. */
-	if(plan->segments) {
-		uint segment_count = array_len(plan->segments);
-		for(int i = 0; i < segment_count; i++) _ExecutionPlan_FreeSubPlan(plan->segments[i]);
-		array_free(plan->segments);
-	}
 
 	if(plan->connected_components) {
 		uint connected_component_count = array_len(plan->connected_components);
 		for(uint i = 0; i < connected_component_count; i ++) QueryGraph_Free(plan->connected_components[i]);
 		array_free(plan->connected_components);
-		plan->connected_components = NULL;
 	}
 
 	QueryGraph_Free(plan->query_graph);
@@ -1134,5 +1084,41 @@ void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan->record_pool) ObjectPool_Free(plan->record_pool);
 	if(plan->ast_segment) AST_Free(plan->ast_segment);
 	rm_free(plan);
+}
+
+// Free an op tree and its associated ExecutionPlan segments.
+static ExecutionPlan *_ExecutionPlan_FreeOpTree(OpBase *op) {
+	if(op == NULL) return NULL;
+	ExecutionPlan *child_plan = NULL;
+	ExecutionPlan *prev_child_plan = NULL;
+	// Store a reference to the current plan.
+	ExecutionPlan *current_plan = (ExecutionPlan *)op->plan;
+	for(uint i = 0; i < op->childCount; i ++) {
+		child_plan = _ExecutionPlan_FreeOpTree(op->children[i]);
+		// In most cases all children will share the same plan, but if they don't
+		// (for an operation like UNION) then free the now-obsolete previous child plan.
+		if(prev_child_plan != child_plan) {
+			_ExecutionPlan_FreeInternals(prev_child_plan);
+			prev_child_plan = child_plan;
+		}
+	}
+
+	// Free this op.
+	OpBase_Free(op);
+
+	// Free each ExecutionPlan segment once all ops associated with it have been freed.
+	if(current_plan != child_plan) _ExecutionPlan_FreeInternals(child_plan);
+
+	return current_plan;
+}
+void ExecutionPlan_Free(ExecutionPlan *plan) {
+	if(plan == NULL) return;
+	if(ExecutionPlan_DecRefCount(plan) >= 0) return;
+
+	// Free all ops and ExecutionPlan segments.
+	_ExecutionPlan_FreeOpTree(plan->root);
+
+	// Free the final ExecutionPlan segment.
+	_ExecutionPlan_FreeInternals(plan);
 }
 
