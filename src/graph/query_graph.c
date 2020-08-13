@@ -39,7 +39,11 @@ static void _BuildQueryGraphAddNode(QueryGraph *qg, const cypher_astnode_t *ast_
 			Schema *s = GraphContext_GetSchema(gc, label, SCHEMA_NODE);
 			uint label_id = GRAPH_UNKNOWN_LABEL;
 			// If a schema is found, the AST refers to a real label.
-			if(s) label_id = s->id;
+			if(s) {
+				label_id = s->id;
+			} else {
+				qg->unkown_label_ids++;
+			}
 			n->label = label;
 			n->labelID = label_id;
 		} else {
@@ -71,6 +75,7 @@ static void _BuildQueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_
 		Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
 		if(!s) {
 			edge->reltypeIDs = array_append(edge->reltypeIDs, GRAPH_UNKNOWN_RELATION);
+			qg->unkown_label_ids++;
 			continue;
 		}
 		edge->reltypeIDs = array_append(edge->reltypeIDs, s->id);
@@ -97,6 +102,7 @@ QueryGraph *QueryGraph_New(uint node_cap, uint edge_cap) {
 
 	qg->nodes = array_new(QGNode *, node_cap);
 	qg->edges = array_new(QGEdge *, edge_cap);
+	qg->unkown_label_ids = 0;
 
 	return qg;
 }
@@ -220,6 +226,55 @@ EntityType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *ali
 	if(QueryGraph_GetNodeByAlias(qg, alias) != NULL) return ENTITY_NODE;
 	if(QueryGraph_GetEdgeByAlias(qg, alias) != NULL) return ENTITY_EDGE;
 	return ENTITY_UNKNOWN;
+}
+
+// Returns if there was an update for an unkown label id.
+static bool _QGNode_Update(QGNode *node) {
+	bool updated = false;
+	if(node->labelID == GRAPH_UNKNOWN_LABEL) {
+		GraphContext *gc = QueryCtx_GetGraphCtx();
+		Schema *s = GraphContext_GetSchema(gc, node->label, SCHEMA_NODE);
+		if(s) {
+			node->labelID = s->id;
+			updated = true;
+		}
+	}
+	return updated;
+}
+
+// Returns the amount of updates to unkowns relationship types of the query graph edge.
+static uint _QGEdge_Update(QGEdge *edge) {
+	uint updates = 0;
+	GraphContext *gc = NULL;
+	uint rel_types_count = array_len(edge->reltypeIDs);
+	for(uint i = 0; i < rel_types_count; i++) {
+		if(edge->reltypeIDs[i] == GRAPH_UNKNOWN_RELATION) {
+			gc = gc ? gc : QueryCtx_GetGraphCtx();
+			Schema *s = GraphContext_GetSchema(gc, edge->reltypes[i], SCHEMA_EDGE);
+			if(s) {
+				edge->reltypeIDs[i] = s->id;
+				updates++;
+			}
+		}
+	}
+	return updates;
+}
+
+void QueryGraph_Update(QueryGraph *qg) {
+	// No unknown labels or relationships - no need to updated.
+	if(qg->unkown_label_ids == 0) return;
+	uint node_count = QueryGraph_NodeCount(qg);
+	uint edge_count = QueryGraph_EdgeCount(qg);
+
+	// Update nodes.
+	for(uint i = 0; i < node_count; i++) {
+		if(_QGNode_Update(qg->nodes[i])) qg->unkown_label_ids--;
+	}
+
+	// Update edges.
+	for(uint i = 0; i < edge_count; i++) {
+		qg->unkown_label_ids -= _QGEdge_Update(qg->edges[i]);
+	}
 }
 
 QueryGraph *QueryGraph_Clone(const QueryGraph *qg) {
