@@ -36,7 +36,8 @@ static inline void _ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_ro
 
 // Allocate a new ExecutionPlan segment.
 inline ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void) {
-	return rm_calloc(1, sizeof(ExecutionPlan));
+	ExecutionPlan *plan = rm_calloc(1, sizeof(ExecutionPlan));
+	return plan;
 }
 
 // Given a WITH/RETURN * clause, generate the array of expressions to populate.
@@ -743,12 +744,8 @@ static ExecutionPlan *_ExecutionPlan_UnionPlans(AST *ast) {
 	 * left stream:     [Scan]->[Project]
 	 * right stream:    [Scan]->[Project]
 	 *                  [Union]->[Distinct]->[Result] */
-
-	ExecutionPlan *plan = rm_calloc(1, sizeof(ExecutionPlan));
-	plan->root = NULL;
-	plan->query_graph = NULL;
+	ExecutionPlan *plan = ExecutionPlan_NewEmptyExecutionPlan();
 	plan->record_map = raxNew();
-	plan->connected_components = NULL;
 
 	OpBase *results_op = NewResultsOp(plan);
 	OpBase *parent = results_op;
@@ -1002,6 +999,33 @@ ResultSet *ExecutionPlan_Execute(ExecutionPlan *plan) {
 	return QueryCtx_GetResultSet();
 }
 
+// NOP operation consume routine for immediately terminating execution.
+static Record deplete_consume(struct OpBase *op) {
+	return NULL;
+}
+
+// return true if execution plan been drained
+// false otherwise
+bool ExecutionPlan_Drained(ExecutionPlan *plan) {
+	ASSERT(plan != NULL);
+	ASSERT(plan->root != NULL);
+	return (plan->root->consume == deplete_consume);
+}
+
+static void _ExecutionPlan_Drain(OpBase *root) {
+	root->consume = deplete_consume;
+	for(int i = 0; i < root->childCount; i++) {
+		_ExecutionPlan_Drain(root->children[i]);
+	}
+}
+
+// Resets each operation consume function to simply return NULL
+// this will cause the execution-plan to quickly deplete
+void ExecutionPlan_Drain(ExecutionPlan *plan) {
+	ASSERT(plan && plan->root);
+	_ExecutionPlan_Drain(plan->root);
+}
+
 static void _ExecutionPlan_InitProfiling(OpBase *root) {
 	root->profile = root->consume;
 	root->consume = OpBase_Profile;
@@ -1033,6 +1057,16 @@ ResultSet *ExecutionPlan_Profile(ExecutionPlan *plan) {
 	ResultSet *rs = ExecutionPlan_Execute(plan);
 	_ExecutionPlan_FinalizeProfiling(plan->root);
 	return rs;
+}
+
+void ExecutionPlan_IncreaseRefCount(ExecutionPlan *plan) {
+	ASSERT(plan);
+	__atomic_fetch_add(&plan->ref_count, 1, __ATOMIC_RELAXED);
+}
+
+int ExecutionPlan_DecRefCount(ExecutionPlan *plan) {
+	ASSERT(plan);
+	return __atomic_sub_fetch(&plan->ref_count, 1, __ATOMIC_RELAXED);
 }
 
 
@@ -1077,9 +1111,9 @@ static ExecutionPlan *_ExecutionPlan_FreeOpTree(OpBase *op) {
 
 	return current_plan;
 }
-
 void ExecutionPlan_Free(ExecutionPlan *plan) {
 	if(plan == NULL) return;
+	if(ExecutionPlan_DecRefCount(plan) >= 0) return;
 
 	// Free all ops and ExecutionPlan segments.
 	_ExecutionPlan_FreeOpTree(plan->root);
