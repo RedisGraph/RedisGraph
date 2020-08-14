@@ -171,4 +171,19 @@ class testCache(FlowTestsBase):
         self.env.assertEqual([[3, 4]], cached_result.result_set)
         graph.delete()
 
+    def test09_test_edge_merge(self):
+        # In this scenario, the same query is executed twice.
+        # In the first time, the relationship `leads` is unknown to the graph so it is created.
+        # In the second time the relationship should be known to the graph, so it will be returned by the match.
+        # The test validates that a valid edge is returned.
+        graph = Graph('Cache_Test_Edge_Merge', redis_con)
+        query = "CREATE ({val:1}), ({val:2})"
+        graph.query(query)
+        query = "MATCH (a {val:1}), (b {val:2}) MERGE (a)-[e:leads]->(b) RETURN e"
+        self.compare_uncached_to_cached_query_plans(query)
+        uncached_result = graph.query(query)
+        self.env.assertEqual(1, uncached_result.relationships_created)
+        cached_result = graph.query(query)
+        self.env.assertEqual(0, cached_result.relationships_created)
+        self.env.assertEqual(uncached_result.result_set, cached_result.result_set)
 

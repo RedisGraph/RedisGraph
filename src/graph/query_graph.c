@@ -71,6 +71,7 @@ static void _BuildQueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_
 		Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
 		if(!s) {
 			edge->reltypeIDs = array_append(edge->reltypeIDs, GRAPH_UNKNOWN_RELATION);
+			qg->unknown_reltype_ids = true;
 			continue;
 		}
 		edge->reltypeIDs = array_append(edge->reltypeIDs, s->id);
@@ -97,6 +98,7 @@ QueryGraph *QueryGraph_New(uint node_cap, uint edge_cap) {
 
 	qg->nodes = array_new(QGNode *, node_cap);
 	qg->edges = array_new(QGEdge *, edge_cap);
+	qg->unknown_reltype_ids = false;
 
 	return qg;
 }
@@ -220,6 +222,31 @@ EntityType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *ali
 	if(QueryGraph_GetNodeByAlias(qg, alias) != NULL) return ENTITY_NODE;
 	if(QueryGraph_GetEdgeByAlias(qg, alias) != NULL) return ENTITY_EDGE;
 	return ENTITY_UNKNOWN;
+}
+
+void QueryGraph_ResolveUnknownRelIDs(QueryGraph *qg) {
+	// No unknown relationships - no need to updated.
+	if(!qg->unknown_reltype_ids) return;
+
+	Schema *s = NULL;
+	bool unkown_relationships = false;
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	uint edge_count = QueryGraph_EdgeCount(qg);
+
+	// Update edges.
+	for(uint i = 0; i < edge_count; i++) {
+		QGEdge *edge = qg->edges[i];
+		uint rel_types_count = array_len(edge->reltypeIDs);
+		for(uint j = 0; j < rel_types_count; j++) {
+			if(edge->reltypeIDs[j] == GRAPH_UNKNOWN_RELATION) {
+				s = GraphContext_GetSchema(gc, edge->reltypes[j], SCHEMA_EDGE);
+				if(s) edge->reltypeIDs[j] = s->id;
+				else unkown_relationships = true; // Cannot update the unkown relationship.
+			}
+		}
+	}
+
+	qg->unknown_reltype_ids = unkown_relationships;
 }
 
 QueryGraph *QueryGraph_Clone(const QueryGraph *qg) {

@@ -18,6 +18,7 @@
 typedef struct {
 	QGNode **nodes;             // Nodes contained in QueryGraph
 	QGEdge **edges;             // Edges contained in QueryGraph
+	bool unknown_reltype_ids;   // Indicates if the query graph contains unknown relationship ids.
 } QueryGraph;
 
 typedef enum {
@@ -57,6 +58,9 @@ QGEdge *QueryGraph_GetEdgeByAlias(const QueryGraph *qg, const char *alias);
 
 /* Determine whether a given alias refers to a node or relation. */
 EntityType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *alias);
+
+/* Tries to update the query graph's unknown relationship ids. */
+void QueryGraph_ResolveUnknownRelIDs(QueryGraph *g);
 
 /* Performs deep copy of input query graph. */
 QueryGraph *QueryGraph_Clone(const QueryGraph *g);
