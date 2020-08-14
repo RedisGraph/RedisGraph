@@ -227,27 +227,25 @@ EntityType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *ali
 void QueryGraph_ResolveUnknownRelIDs(QueryGraph *qg) {
 	// No unknown relationships - no need to updated.
 	if(!qg->unknown_reltype_ids) return;
-	uint edge_count = QueryGraph_EdgeCount(qg);
+
+	Schema *s = NULL;
 	bool unkown_relationships = false;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
+	uint edge_count = QueryGraph_EdgeCount(qg);
+
 	// Update edges.
 	for(uint i = 0; i < edge_count; i++) {
 		QGEdge *edge = qg->edges[i];
 		uint rel_types_count = array_len(edge->reltypeIDs);
-		if(rel_types_count == 0) continue;
 		for(uint j = 0; j < rel_types_count; j++) {
 			if(edge->reltypeIDs[j] == GRAPH_UNKNOWN_RELATION) {
-				gc = gc ? gc : QueryCtx_GetGraphCtx();
-				Schema *s = GraphContext_GetSchema(gc, edge->reltypes[j], SCHEMA_EDGE);
-				if(s) {
-					edge->reltypeIDs[j] = s->id;
-				} else {
-					// Cannot update the unkown relationship.
-					unkown_relationships = true;
-				}
+				s = GraphContext_GetSchema(gc, edge->reltypes[j], SCHEMA_EDGE);
+				if(s) edge->reltypeIDs[j] = s->id;
+				else unkown_relationships = true; // Cannot update the unkown relationship.
 			}
 		}
 	}
+
 	qg->unknown_reltype_ids = unkown_relationships;
 }
 
