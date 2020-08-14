@@ -15,7 +15,7 @@ static ExecutionPlan *_ClonePlanInternals(const ExecutionPlan *template) {
 	clone->record_map = raxClone(template->record_map);
 	if(template->ast_segment) clone->ast_segment = AST_ShallowCopy(template->ast_segment);
 	if(template->query_graph) {
-		QueryGraph_Update(template->query_graph);
+		QueryGraph_ResolveUnknownRelIDs(template->query_graph);
 		clone->query_graph = QueryGraph_Clone(template->query_graph);
 	}
 	// TODO improve QueryGraph logic so that we do not need to store or clone connected_components.
