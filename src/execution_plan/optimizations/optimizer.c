@@ -13,10 +13,12 @@ void optimizePlan(ExecutionPlan *plan) {
 	compactFilters(plan);
 
 	/* Scan optimizations order:
-	 * 1. First try to use the indices. Given a label scan and an indexed property, apply index scan.
-	 * 2. Given a filter which checks id condition, and full or label scan, reduce it to id scan or label with id scan.
-	 *    Note: Due to the scan optimization order, label scan will be replaced with index scan when possible, so the id filter remains.
-	 * 3. Remove redundant scans which checks for the same node. */
+	 * 1. Remove redundant scans which checks for the same node.
+	 * 2. Try to use the indices. Given a label scan and an indexed property, apply index scan.
+	 * 3. Given a filter which checks id condition, and full or label scan, reduce it to id scan or label with id scan.
+	 *    Note: Due to the scan optimization order, label scan will be replaced with index scan when possible, so the id filter remains. */
+	/* Remove redundant SCAN operations. */
+	reduceScans(plan);
 
 	/* When possible, replace label scan and filter ops
 	 * with index scans. */
@@ -24,9 +26,6 @@ void optimizePlan(ExecutionPlan *plan) {
 
 	// Try to reduce SCAN + FILTER to a node seek operation.
 	seekByID(plan);
-
-	/* Remove redundant SCAN operations. */
-	reduceScans(plan);
 
 	/* Try to optimize cartesian product */
 	reduceCartesianProductStreamCount(plan);
