@@ -276,3 +276,10 @@ class testIndexScanFlow(FlowTestsBase):
         query_result = redis_graph.query(query)
         # Two new nodes should be created.
         self.env.assertEquals(query_result.nodes_created, 2)
+
+    def test12_remove_scans_before_index(self):
+        query = "MATCH (a:person {age: 32})-[]->(b) WHERE (b:person)-[]->(a) RETURN a"
+        plan = redis_graph.execution_plan(query)
+        # One index scan should be performed.
+        self.env.assertEqual(plan.count("Index Scan"), 1)
+
