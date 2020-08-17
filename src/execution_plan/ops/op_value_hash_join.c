@@ -33,7 +33,7 @@ static bool _record_islt(Record l, Record r, uint idx) {
 
 // Performs binary search, returns the leftmost index of a match.
 static bool _binarySearchLeftmost(uint *idx, Record *array, uint array_len,
-		int join_key_idx, SIValue v) {
+								  int join_key_idx, SIValue v) {
 	assert(idx != NULL);
 
 	SIValue x;
@@ -109,7 +109,7 @@ static bool _set_intersection_idx(OpValueHashJoin *op, SIValue v) {
 	uint rightmost_idx = 0;
 
 	if(!_binarySearchLeftmost(&leftmost_idx, op->cached_records,
-				array_len(op->cached_records), op->join_value_rec_idx, v)) {
+							  array_len(op->cached_records), op->join_value_rec_idx, v)) {
 		return false;
 	}
 
@@ -175,6 +175,11 @@ static int ValueHashJoinToString(const OpBase *ctx, char *buff, uint buff_len) {
 
 	int offset = 0;
 	offset += snprintf(buff + offset, buff_len - offset, "%s | ", op->op.name);
+
+	/* Return early if we don't have arithmetic expressions to print.
+	 * This can occur when an upstream op like MERGE has
+	 * already freed this operation with PropagateFree. */
+	if(!(op->lhs_exp && op->rhs_exp)) return offset;
 
 	AR_EXP_ToString(op->lhs_exp, &exp_str);
 	offset += snprintf(buff + offset, buff_len - offset, "%s", exp_str);
