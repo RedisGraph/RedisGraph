@@ -72,3 +72,19 @@ class testAlgebraicExpressionOrder(FlowTestsBase):
         self.env.assertIn("All Node Scan | (a)", plan)
         result = graph.query(query)
         self.env.assertEquals(result.result_set, expected_result)
+
+        # The subsequent queries will only return one record.
+        expected_result = [[3, 2]]
+        # Both are labeled and source is filtered, perform a LabelScan from the source node.
+        query = """MATCH (a:C)-[:E]->(b:B) WHERE a.v = 3 RETURN a.v, b.v ORDER BY a.v, b.v"""
+        plan = graph.execution_plan(query)
+        self.env.assertIn("Node By Label Scan | (a:C)", plan)
+        result = graph.query(query)
+        self.env.assertEquals(result.result_set, expected_result)
+
+        # Both are labeled and dest is filtered, perform a LabelScan from the dest node.
+        query = """MATCH (a:C)-[:E]->(b:B) WHERE b.v = 2 RETURN a.v, b.v ORDER BY a.v, b.v"""
+        plan = graph.execution_plan(query)
+        self.env.assertIn("Node By Label Scan | (b:B)", plan)
+        result = graph.query(query)
+        self.env.assertEquals(result.result_set, expected_result)
