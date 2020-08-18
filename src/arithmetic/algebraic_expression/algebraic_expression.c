@@ -347,12 +347,15 @@ AlgebraicExpression *AlgebraicExpression_RemoveLeftmostNode
 	AlgebraicExpression **root  // Root from which to remove left most child.
 ) {
 	assert(*root);
+	bool transpose = false;
 	AlgebraicExpression *prev = *root;
 	AlgebraicExpression *current = *root;
 
 	while(current->type == AL_OPERATION) {
+		if(current->operation.op == AL_EXP_TRANSPOSE) transpose = !transpose;
 		prev = current;
-		current = FIRST_CHILD(current);
+		if(transpose) current = LAST_CHILD(current);
+		else current = FIRST_CHILD(current);
 	}
 	assert(current->type == AL_OPERAND);
 
@@ -368,7 +371,8 @@ AlgebraicExpression *AlgebraicExpression_RemoveLeftmostNode
 	 * MUL(A,B) after removing A will become just B
 	 * TRANSPOSE(A) after removing A should become NULL. */
 	if(prev->type == AL_OPERATION) {
-		_AlgebraicExpression_OperationRemoveLeftmostChild(prev);
+		if(transpose) _AlgebraicExpression_OperationRemoveRightmostChild(prev);
+		else _AlgebraicExpression_OperationRemoveLeftmostChild(prev);
 		uint child_count = AlgebraicExpression_ChildCount(prev);
 		if(child_count < 2) {
 			if(child_count == 1) {
@@ -388,12 +392,15 @@ AlgebraicExpression *AlgebraicExpression_RemoveRightmostNode
 	AlgebraicExpression **root  // Root from which to remove left most child.
 ) {
 	assert(*root);
+	bool transpose = false;
 	AlgebraicExpression *prev = *root;
 	AlgebraicExpression *current = *root;
 
 	while(current->type == AL_OPERATION) {
+		if(current->operation.op == AL_EXP_TRANSPOSE) transpose = !transpose;
 		prev = current;
-		current = LAST_CHILD(current);
+		if(transpose) current = FIRST_CHILD(current);
+		else current = LAST_CHILD(current);
 	}
 	assert(current->type == AL_OPERAND);
 
@@ -409,7 +416,8 @@ AlgebraicExpression *AlgebraicExpression_RemoveRightmostNode
 	 * MUL(A,B) after removing A the expression will become just B.
 	 * TRANSPOSE(A) after removing A should become NULL. */
 	if(prev->type == AL_OPERATION) {
-		_AlgebraicExpression_OperationRemoveRightmostChild(prev);
+		if(transpose) _AlgebraicExpression_OperationRemoveLeftmostChild(prev);
+		else _AlgebraicExpression_OperationRemoveRightmostChild(prev);
 		uint child_count = AlgebraicExpression_ChildCount(prev);
 		if(child_count == 1) {
 			AlgebraicExpression *replacement = _AlgebraicExpression_OperationRemoveRightmostChild(prev);
