@@ -12,6 +12,7 @@ capabilities:
     - failover_migrate
     - persistence_rdb
     - persistence_aof
+    - clustering
     - replica_of
     - clustering
     - backup_restore
