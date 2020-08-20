@@ -88,7 +88,6 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidAggregation
 
-@skip
   Scenario: Failing when not aliasing expressions in WITH
     When executing query:
       """
@@ -98,7 +97,6 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: NoExpressionAlias
 
-@skip
   Scenario: Failing when using undefined variable in pattern
     When executing query:
       """
@@ -108,7 +106,6 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: UndefinedVariable
 
-@skip
   Scenario: Failing when using undefined variable in SET
     When executing query:
       """
@@ -118,7 +115,6 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: UndefinedVariable
 
-@skip
   Scenario: Failing when using undefined variable in DELETE
     When executing query:
       """
@@ -170,7 +166,6 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidArgumentType
 
-@skip
   Scenario: Failing when UNION has different columns
     When executing query:
       """
@@ -180,7 +175,6 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: DifferentColumnsInUnion
 
-@skip
   Scenario: Failing when mixing UNION and UNION ALL
     When executing query:
       """
@@ -192,7 +186,6 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidClauseComposition
 
-@skip
   Scenario: Failing when creating without direction
     When executing query:
       """
@@ -200,7 +193,6 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: RequiresDirectedRelationship
 
-@skip
   Scenario: Failing when creating with two directions
     When executing query:
       """
@@ -226,6 +218,7 @@ Feature: MiscellaneousErrorAcceptance
       """
     Then a TypeError should be raised at compile time: InvalidPropertyType
 
+@crash
 @skip
   Scenario: Failing when multiple columns have the same name
     When executing query:

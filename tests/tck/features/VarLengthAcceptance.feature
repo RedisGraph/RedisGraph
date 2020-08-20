@@ -126,7 +126,6 @@ Feature: VarLengthAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidRelationshipPattern
 
-@skip
   Scenario: Handling single bounded variable length match 1
     When executing query:
       """
@@ -202,7 +201,6 @@ Feature: VarLengthAcceptance
       | 'n011' |
     And no side effects
 
-@skip
   Scenario: Handling symmetrically bounded variable length match, bounds are zero
     When executing query:
       """

@@ -2,7 +2,7 @@
 // GB_subref_phase0: find vectors of C = A(I,J) and determine I,J properties
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -25,16 +25,16 @@ static inline void GB_find_Ap_start_end
 (
     // input, not modified
     const int64_t kA,
-    const int64_t *restrict Ap,
-    const int64_t *restrict Ai,
+    const int64_t *GB_RESTRICT Ap,
+    const int64_t *GB_RESTRICT Ai,
     const int64_t avlen,
     const int64_t imin,
     const int64_t imax,
     const int64_t kC,
     const int64_t nzombies,
     // output: Ap_start [kC] and Ap_end [kC]:
-    int64_t *restrict Ap_start,
-    int64_t *restrict Ap_end
+    int64_t *GB_RESTRICT Ap_start,
+    int64_t *GB_RESTRICT Ap_end
 )
 {
 
@@ -42,11 +42,9 @@ static inline void GB_find_Ap_start_end
     // get A(:,kA)
     //--------------------------------------------------------------------------
 
-    // printf ("kC: "GBd" kA: "GBd"\n", kA, kC) ;
     int64_t pA = Ap [kA] ;
     int64_t pA_end = Ap [kA+1] ;
     int64_t ajnz = pA_end - pA ;
-    // printf ("pA "GBd" pA_end "GBd"\n", pA, pA_end) ;
 
     //--------------------------------------------------------------------------
     // trim it to A(imin:imax,kA)
@@ -59,7 +57,6 @@ static inline void GB_find_Ap_start_end
         // A (:,kA) is dense; use pA and pA_end as-is
         //----------------------------------------------------------------------
 
-        // printf ("A dense\n") ;
         ;
 
     }
@@ -72,7 +69,6 @@ static inline void GB_find_Ap_start_end
 
         pA = -1 ;
         pA_end = -1 ;
-        // printf ("A empty\n") ;
 
     }
     else
@@ -87,8 +83,8 @@ static inline void GB_find_Ap_start_end
         { 
             bool found, is_zombie ;
             int64_t pright = pA_end - 1 ;
-            GB_BINARY_SPLIT_ZOMBIE (imin, Ai, pA, pright, found, nzombies,
-                is_zombie) ;
+            GB_SPLIT_BINARY_SEARCH_ZOMBIE (imin, Ai,
+                pA, pright, found, nzombies, is_zombie) ;
         }
 
         // trim the trailing part of A (:,kA)
@@ -111,8 +107,8 @@ static inline void GB_find_Ap_start_end
             bool found, is_zombie ;
             int64_t pleft = pA ;
             int64_t pright = pA_end - 1 ;
-            GB_BINARY_SPLIT_ZOMBIE (imax, Ai, pleft, pright, found, nzombies,
-                is_zombie) ;
+            GB_SPLIT_BINARY_SEARCH_ZOMBIE (imax, Ai,
+                pleft, pright, found, nzombies, is_zombie) ;
             pA_end = (found) ? (pleft + 1) : pleft ;
         }
 
@@ -144,12 +140,15 @@ static inline void GB_find_Ap_start_end
 // GB_subref_phase0
 //------------------------------------------------------------------------------
 
+#define GB_FREE_WORK \
+    GB_FREE_MEMORY (Count, max_ntasks+1, sizeof (int64_t)) ;
+
 GrB_Info GB_subref_phase0
 (
     // output
-    int64_t *restrict *p_Ch,         // Ch = C->h hyperlist, or NULL standard
-    int64_t *restrict *p_Ap_start,   // A(:,kA) starts at Ap_start [kC]
-    int64_t *restrict *p_Ap_end,     // ... and ends at Ap_end [kC] - 1
+    int64_t *GB_RESTRICT *p_Ch,         // Ch = C->h hyperlist, or NULL standard
+    int64_t *GB_RESTRICT *p_Ap_start,   // A(:,kA) starts at Ap_start [kC]
+    int64_t *GB_RESTRICT *p_Ap_end,     // ... and ends at Ap_end [kC] - 1
     int64_t *p_Cnvec,       // # of vectors in C
     bool *p_need_qsort,     // true if C must be sorted
     int *p_Ikind,           // kind of I
@@ -182,19 +181,28 @@ GrB_Info GB_subref_phase0
     ASSERT (p_nI != NULL) ;
     ASSERT (Icolon != NULL) ;
 
-    ASSERT_OK (GB_check (A, "A for subref phase 0", GB0)) ;
+    ASSERT_MATRIX_OK (A, "A for subref phase 0", GB0) ;
     ASSERT (I != NULL) ;
     ASSERT (J != NULL) ;
 
     GrB_Info info ;
 
+    (*p_Ch        ) = NULL ;
+    (*p_Ap_start  ) = NULL ;
+    (*p_Ap_end    ) = NULL ;
+    (*p_Cnvec     ) = 0 ;
+    (*p_need_qsort) = false ;
+    (*p_Ikind     ) = 0 ;
+    (*p_nI        ) = 0 ;
+    (*p_nJ        ) = 0 ;
+
     //--------------------------------------------------------------------------
     // get A
     //--------------------------------------------------------------------------
 
-    int64_t *restrict Ap = A->p ;   // Ap (but not A->p) may be trimmed
-    int64_t *restrict Ah = A->h ;   // Ah (but not A->h) may be trimmed
-    int64_t *restrict Ai = A->i ;
+    int64_t *GB_RESTRICT Ap = A->p ;   // Ap (but not A->p) may be trimmed
+    int64_t *GB_RESTRICT Ah = A->h ;   // Ah (but not A->h) may be trimmed
+    int64_t *GB_RESTRICT Ai = A->i ;
     int64_t anvec = A->nvec ;       // may be trimmed
     int64_t avlen = A->vlen ;
     int64_t avdim = A->vdim ;
@@ -213,7 +221,6 @@ GrB_Info GB_subref_phase0
     bool I_unsorted, I_has_dupl, I_contig, J_unsorted, J_has_dupl, J_contig ;
     int64_t imin, imax, jmin, jmax ;
 
-    // printf ("\n================================================= I:\n") ;
     info = GB_ijproperties (I, ni, nI, avlen, &Ikind, Icolon,
         &I_unsorted, &I_has_dupl, &I_contig, &imin, &imax, Context) ;
     if (info != GrB_SUCCESS)
@@ -222,7 +229,6 @@ GrB_Info GB_subref_phase0
         return (info) ;
     }
 
-    // printf ("\n================================================= J:\n") ;
     info = GB_ijproperties (J, nj, nJ, avdim, &Jkind, Jcolon,
         &J_unsorted, &J_has_dupl, &J_contig, &jmin, &jmax, Context) ;
     if (info != GrB_SUCCESS)
@@ -272,7 +278,7 @@ GrB_Info GB_subref_phase0
             bool found ;
             int64_t kleft = 0 ;
             int64_t kright = anvec-1 ;
-            GB_BINARY_SPLIT_SEARCH (jmin, Ah, kleft, kright, found) ;
+            GB_SPLIT_BINARY_SEARCH (jmin, Ah, kleft, kright, found) ;
             Ah += kleft ;
             Ap += kleft ;
             anvec -= kleft ;
@@ -287,7 +293,7 @@ GrB_Info GB_subref_phase0
             bool found ;
             int64_t kleft = 0 ;
             int64_t kright = anvec-1 ;
-            GB_BINARY_SPLIT_SEARCH (jmax, Ah, kleft, kright, found) ;
+            GB_SPLIT_BINARY_SEARCH (jmax, Ah, kleft, kright, found) ;
             anvec = (found) ? (kleft + 1) : kleft ;
         }
 
@@ -305,7 +311,7 @@ GrB_Info GB_subref_phase0
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
     int nthreads = 1, ntasks = 1 ;
     int max_ntasks = nthreads_max * 8 ;
-    int64_t Count [max_ntasks+1] ;
+    int64_t *GB_RESTRICT Count = NULL ;        // size max_ntasks+1
 
     #define GB_GET_NTHREADS_AND_NTASKS(work)                    \
     {                                                           \
@@ -316,6 +322,17 @@ GrB_Info GB_subref_phase0
     }
 
     //--------------------------------------------------------------------------
+    // allocate workspace
+    //--------------------------------------------------------------------------
+
+    GB_CALLOC_MEMORY (Count, max_ntasks+1, sizeof (int64_t)) ;
+    if (Count == NULL)
+    {
+        // out of memory
+        return (GB_OUT_OF_MEMORY) ;
+    }
+
+    //--------------------------------------------------------------------------
     // compute Cnvec and determine the format of Ch
     //--------------------------------------------------------------------------
 
@@ -323,9 +340,9 @@ GrB_Info GB_subref_phase0
     // if C(:,jC) is the (kC)th vector of C.  If NULL, then C is standard, and
     // jC == kC.  jC is in the range 0 to nJ-1.
 
-    int64_t *restrict Ch = NULL ;
-    int64_t *restrict Ap_start = NULL ;
-    int64_t *restrict Ap_end   = NULL ;
+    int64_t *GB_RESTRICT Ch = NULL ;
+    int64_t *GB_RESTRICT Ap_start = NULL ;
+    int64_t *GB_RESTRICT Ap_end   = NULL ;
     int64_t Cnvec = 0 ;
 
     int64_t jbegin = Jcolon [GxB_BEGIN] ;
@@ -387,8 +404,9 @@ GrB_Info GB_subref_phase0
         GB_GET_NTHREADS_AND_NTASKS (anvec) ;
 
         // scan all of Ah and check each entry if it appears in J
+        int tid ;
         #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-        for (int tid = 0 ; tid < ntasks ; tid++)
+        for (tid = 0 ; tid < ntasks ; tid++)
         {
             int64_t kA_start, kA_end, my_Cnvec = 0 ;
             GB_PARTITION (kA_start, kA_end, anvec,
@@ -423,8 +441,9 @@ GrB_Info GB_subref_phase0
         GB_GET_NTHREADS_AND_NTASKS (nJ) ;
 
         // scan all of J and check each entry if it appears in Ah
+        int tid ;
         #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-        for (int tid = 0 ; tid < ntasks ; tid++)
+        for (tid = 0 ; tid < ntasks ; tid++)
         {
             int64_t jC_start, jC_end, my_Cnvec = 0 ;
             GB_PARTITION (jC_start, jC_end, nJ, tid, ntasks) ;
@@ -452,13 +471,13 @@ GrB_Info GB_subref_phase0
 
     // C is hypersparse if A is hypersparse, or if C is empty
     bool C_is_hyper = A_is_hyper || C_empty ;
-    // printf ("C_is_hyper %d C_empty %d\n", C_is_hyper, C_empty) ;
 
     if (C_is_hyper)
     {
         GB_MALLOC_MEMORY (Ch, Cnvec, sizeof (int64_t)) ;
         if (Ch == NULL)
         { 
+            GB_FREE_WORK ;
             return (GB_OUT_OF_MEMORY) ;
         }
     }
@@ -470,6 +489,7 @@ GrB_Info GB_subref_phase0
         if (Ap_start == NULL || Ap_end == NULL)
         { 
             // out of memory
+            GB_FREE_WORK ;
             GB_FREE_MEMORY (Ch, Cnvec, sizeof (int64_t)) ;
             GB_FREE_MEMORY (Ap_start, Cnvec, sizeof (int64_t)) ;
             GB_FREE_MEMORY (Ap_end,   Cnvec, sizeof (int64_t)) ;
@@ -502,8 +522,9 @@ GrB_Info GB_subref_phase0
         // both C and A are standard matrices
         //----------------------------------------------------------------------
 
+        int64_t jC ;
         #pragma omp parallel for num_threads(nthreads) schedule(static)
-        for (int64_t jC = 0 ; jC < nJ ; jC++)
+        for (jC = 0 ; jC < nJ ; jC++)
         { 
             int64_t jA = GB_ijlist (J, jC, Jkind, Jcolon) ;
             GB_find_Ap_start_end (jA, Ap, Ai, avlen, imin, imax,
@@ -521,8 +542,9 @@ GrB_Info GB_subref_phase0
         // C and A are both hypersparse.  Ch is a shifted copy of the trimmed
         // Ah, of length Cnvec = anvec.  so kA = kC.  Ap has also been trimmed.
 
+        int64_t kC ;
         #pragma omp parallel for num_threads(nthreads) schedule(static)
-        for (int64_t kC = 0 ; kC < Cnvec ; kC++)
+        for (kC = 0 ; kC < Cnvec ; kC++)
         { 
             int64_t kA = kC ;
             int64_t jA = Ah [kA] ;
@@ -546,8 +568,9 @@ GrB_Info GB_subref_phase0
 
         if (jinc > 0)
         {
+            int tid ;
             #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-            for (int tid = 0 ; tid < ntasks ; tid++)
+            for (tid = 0 ; tid < ntasks ; tid++)
             {
                 int64_t kA_start, kA_end ;
                 GB_PARTITION (kA_start, kA_end, anvec, tid, ntasks) ;
@@ -568,8 +591,9 @@ GrB_Info GB_subref_phase0
         }
         else
         {
+            int tid;
             #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-            for (int tid = 0 ; tid < ntasks ; tid++)
+            for (tid = 0 ; tid < ntasks ; tid++)
             {
                 int64_t kA_start, kA_end ;
                 GB_PARTITION (kA_start, kA_end, anvec, ntasks-tid-1, ntasks) ;
@@ -601,8 +625,9 @@ GrB_Info GB_subref_phase0
         // list J, or the entire jbegin:jinc:jend sequence.  Each vector is
         // then found in Ah, via binary search.
 
+        int tid ;
         #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-        for (int tid = 0 ; tid < ntasks ; tid++)
+        for (tid = 0 ; tid < ntasks ; tid++)
         {
             int64_t jC_start, jC_end ;
             GB_PARTITION (jC_start, jC_end, nJ, tid, ntasks) ;
@@ -646,8 +671,6 @@ GrB_Info GB_subref_phase0
         {
             ASSERT (jA == A->h [kA]) ;
         }
-        // printf ("kC "GBd" jC "GBd" kA "GBd" jA "GBd" found %d\n",
-        //     kC, jC, kA, jA, found) ;
         int64_t pA      = Ap_start [kC] ;
         int64_t pA_end  = Ap_end   [kC] ;
         int64_t ajnz = pA_end - pA ;
@@ -662,8 +685,6 @@ GrB_Info GB_subref_phase0
         else if (ajnz > 0)
         {
             // A(imin:imax,kA) has at least one entry, in Ai [pA:pA_end-1]
-            // printf ("pA_start_all "GBd" pA "GBd" pA_end "GBd" pA_end_all "
-            //     GBd"\n", pA_start_all, pA, pA_end, pA_end_all) ;
             ASSERT (imin <= GB_Ai (pA)) ;
             ASSERT (GB_Ai (pA_end-1) <= imax) ;
             ASSERT (pA_start_all <= pA && pA < pA_end && pA_end <= pA_end_all) ;
@@ -677,9 +698,10 @@ GrB_Info GB_subref_phase0
     #endif
 
     //--------------------------------------------------------------------------
-    // return result
+    // free workspace and return result
     //--------------------------------------------------------------------------
 
+    GB_FREE_WORK ;
     (*p_Ch        ) = Ch ;
     (*p_Ap_start  ) = Ap_start ;
     (*p_Ap_end    ) = Ap_end ;
@@ -688,7 +710,6 @@ GrB_Info GB_subref_phase0
     (*p_Ikind     ) = Ikind ;
     (*p_nI        ) = nI ;
     (*p_nJ        ) = nJ ;
-
     return (GrB_SUCCESS) ;
 }
 

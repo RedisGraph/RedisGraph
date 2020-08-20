@@ -1,14 +1,20 @@
 function test90
-%TEST90 test AxB with pre-compiled semirings: plus_rdiv and plus_rdiv2
+%TEST90 test AxB with user-defined semirings: plus_rdiv and plus_rdiv2
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-fprintf ('\n -------------- GB_AxB_meta with pre-compiled semiring\n') ;
+fprintf ('\n -------------- A*B plus_rdiv (user-defined semiring)\n') ;
+
+    % 1001: Gustavson
+    % 1002: heap
+    % 1003: dot
+    % 1004: hash
+    % 1005: saxpy
 
 rng ('default') ;
 
-for N = [10 100 1000]
+for N = [10 100] % 1000]
 
     N
 
@@ -30,16 +36,16 @@ for N = [10 100 1000]
     tic
     C2 = GB_mex_rdiv (A, B) ;
     toc
-    t = gbresults ; fprintf ('GB time %g\n', t) ;
+    t = grbresults ; fprintf ('GB time %g\n', t) ;
     assert (norm (C1-C2,1) / norm (C1,1) < 1e-10) ;
 
-    for method = 1001:1003
+    for method = 1001:1005
         fprintf ('method: %d\n', method) ;
         cprint = (N <= 10) ;
         tic
         C2 = GB_mex_rdiv (A, B, method, cprint) ;
         toc
-        t = gbresults ; fprintf ('GB time %g\n', t) ;
+        t = grbresults ; fprintf ('GB time %g\n', t) ;
         assert (norm (C1-C2,1) / norm (C1,1) < 1e-10) ;
     end
 
@@ -76,10 +82,6 @@ for N = [10 100 1000]
     [i j x] = find (B) ;
     Y = sparse (i, j, 1./x, n, n) ;
 
-    % 1001: Gustavson
-    % 1002: heap
-    % 1003: dot
-
     flipxy = 0 ;
     at = 0 ; 
     bt = 0 ;
@@ -87,12 +89,12 @@ for N = [10 100 1000]
     tic
     C0 = X*B ;
     toc
-    for method = 1001:1003
+    for method = 1001:1005
         fprintf ('method %d\n', method) ;
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
         % toc
-        t = gbresults ; fprintf ('GB time %g\n', t) ;
+        t = grbresults ; fprintf ('GB time %g\n', t) ;
         assert (norm (C0-C5,1) / norm (C5,1) < 1e-5) ;
     end
 
@@ -103,12 +105,12 @@ for N = [10 100 1000]
     tic
     C0 = X'*B ;
     toc
-    for method = 1001:1003
+    for method = 1001:1005
         fprintf ('method %d\n', method) ;
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
         % toc
-        t = gbresults ; fprintf ('GB time %g\n', t) ;
+        t = grbresults ; fprintf ('GB time %g\n', t) ;
         assert (norm (C0-C5,1) / norm (C5,1) < 1e-5) ;
     end
 
@@ -119,12 +121,12 @@ for N = [10 100 1000]
     tic
     C0 = X*B' ;
     toc
-    for method = 1001:1003
+    for method = 1001:1005
         fprintf ('method %d\n', method) ;
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
         % toc
-        t = gbresults ; fprintf ('GB time %g\n', t) ;
+        t = grbresults ; fprintf ('GB time %g\n', t) ;
         assert (norm (C0-C5,1) / norm (C5,1) < 1e-5) ;
     end
 
@@ -135,12 +137,12 @@ for N = [10 100 1000]
     tic
     C0 = X'*B' ;
     toc
-    for method = 1001:1003
+    for method = 1001:1005
         fprintf ('method %d\n', method) ;
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
         % toc
-        t = gbresults ; fprintf ('GB time %g\n', t) ;
+        t = grbresults ; fprintf ('GB time %g\n', t) ;
         assert (norm (C0-C5,1) / norm (C5,1) < 1e-5) ;
     end
 
@@ -151,12 +153,12 @@ for N = [10 100 1000]
     tic
     C0 = A*Y ;
     toc
-    for method = 1001:1003
+    for method = 1001:1005
         fprintf ('method %d\n', method) ;
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
         % toc
-        t = gbresults ; fprintf ('GB time %g\n', t) ;
+        t = grbresults ; fprintf ('GB time %g\n', t) ;
         assert (norm (C0-C5,1) / norm (C5,1) < 1e-5) ;
     end
 
@@ -167,12 +169,12 @@ for N = [10 100 1000]
     tic
     C0 = A'*Y ;
     toc
-    for method = 1001:1003
+    for method = 1001:1005
         fprintf ('method %d\n', method) ;
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
         % toc
-        t = gbresults ; fprintf ('GB time %g\n', t) ;
+        t = grbresults ; fprintf ('GB time %g\n', t) ;
         assert (norm (C0-C5,1) / norm (C5,1) < 1e-5) ;
     end
 
@@ -183,12 +185,12 @@ for N = [10 100 1000]
     tic
     C0 = A*Y' ;
     toc
-    for method = 1001:1003
+    for method = 1001:1005
         fprintf ('method %d\n', method) ;
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
         % toc
-        t = gbresults ; fprintf ('GB time %g\n', t) ;
+        t = grbresults ; fprintf ('GB time %g\n', t) ;
         assert (norm (C0-C5,1) / norm (C5,1) < 1e-5) ;
     end
 
@@ -199,12 +201,12 @@ for N = [10 100 1000]
     tic
     C0 = A'*Y' ;
     toc
-    for method = 1001:1003
+    for method = 1001:1005
         fprintf ('method %d\n', method) ;
         tic
         C5 = GB_mex_rdiv2 (A, B, at, bt, method, flipxy) ;
         % toc
-        t = gbresults ; fprintf ('GB time %g\n', t) ;
+        t = grbresults ; fprintf ('GB time %g\n', t) ;
         assert (norm (C0-C5,1) / norm (C5,1) < 1e-5) ;
     end
 

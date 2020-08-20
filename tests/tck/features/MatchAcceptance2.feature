@@ -73,7 +73,6 @@ Feature: MatchAcceptance2
       | (:TextNode {var: 'text'}) |
     And no side effects
 
-@skip
   Scenario: Do not fail when evaluating predicates with illegal operations if the OR'd predicate evaluates to true
     Given an empty graph
     And having executed:
@@ -96,7 +95,6 @@ Feature: MatchAcceptance2
       | (:IntNode {var: 0})       |
     And no side effects
 
-@skip
   Scenario: Aggregation with named paths
     Given an empty graph
     And having executed:
@@ -163,7 +161,6 @@ Feature: MatchAcceptance2
       | ({name: 'D'}) |
     And no side effects
 
-@skip
   Scenario: Variable length relationship without lower bound
     Given an empty graph
     And having executed:
@@ -184,7 +181,6 @@ Feature: MatchAcceptance2
       | <({name: 'A'})-[:KNOWS]->({name: 'B'})-[:KNOWS]->({name: 'C'})> |
     And no side effects
 
-@skip
   Scenario: Variable length relationship without bounds
     Given an empty graph
     And having executed:
@@ -224,7 +220,6 @@ Feature: MatchAcceptance2
       | ({name: 'A'}) | ({name: 'B'}) | ({name: 'C'}) |
     And no side effects
 
-@skip
   Scenario: Two bound nodes pointing to the same node
     Given an empty graph
     And having executed:
@@ -328,7 +323,6 @@ Feature: MatchAcceptance2
       | ({name: 'C'}) |
     And no side effects
 
-@skip
   Scenario: Optionally matching named paths
     Given an empty graph
     And having executed:
@@ -349,7 +343,6 @@ Feature: MatchAcceptance2
       | ({name: 'C'}) | null                                |
     And no side effects
 
-@skip
   Scenario: Optionally matching named paths with single and variable length patterns
     Given an empty graph
     And having executed:
@@ -429,7 +422,6 @@ Feature: MatchAcceptance2
       | (:B {id: 2}) |
     And no side effects
 
-@skip
   Scenario: Do not fail when predicates on optionally matched and missed nodes are invalid
     Given an empty graph
     And having executed:
@@ -541,7 +533,6 @@ Feature: MatchAcceptance2
       | b |
     And no side effects
 
-@skip
   Scenario: Variable length relationship in OPTIONAL MATCH
     Given an empty graph
     And having executed:
@@ -578,7 +569,6 @@ Feature: MatchAcceptance2
       | (:B) |
     And no side effects
 
-@skip
   Scenario: ORDER BY with LIMIT
     Given an empty graph
     And having executed:
@@ -620,7 +610,6 @@ Feature: MatchAcceptance2
       | ({name: 'bar'}) |
     And no side effects
 
-@skip
   Scenario: Handling direction of named paths
     Given an empty graph
     And having executed:
@@ -637,7 +626,6 @@ Feature: MatchAcceptance2
       | <(:B)<-[:T]-(:A)> |
     And no side effects
 
-@skip
   Scenario: Simple OPTIONAL MATCH on empty graph
     Given an empty graph
     When executing query:
@@ -650,7 +638,6 @@ Feature: MatchAcceptance2
       | null |
     And no side effects
 
-@skip
   Scenario: OPTIONAL MATCH with previously bound nodes
     Given an empty graph
     And having executed:
@@ -668,7 +655,6 @@ Feature: MatchAcceptance2
       | () | null |
     And no side effects
 
-@skip
   Scenario: `collect()` filtering nulls
     Given an empty graph
     And having executed:
@@ -776,7 +762,6 @@ Feature: MatchAcceptance2
       | false   |
     And no side effects
 
-@skip
   Scenario: Matching with many predicates and larger pattern
     Given an empty graph
     And having executed:
@@ -793,8 +778,9 @@ Feature: MatchAcceptance2
              (p2)-[:AP_HAS_VALUE]->(red)
       """
     And parameters are:
-      | 1 | 0 |
-      | 2 | 1 |
+      | name | value |
+      | 1    | 0     |
+      | 2    | 1     |
     When executing query:
       """
       MATCH (advertiser)-[:ADV_HAS_PRODUCT]->(out)-[:AP_HAS_VALUE]->(red)<-[:AA_HAS_VALUE]-(a)
@@ -851,7 +837,6 @@ Feature: MatchAcceptance2
       | (:A) | (:C) | (:A) | (:C) |
     And no side effects
 
-@skip
   Scenario: Non-optional matches should not return nulls
     Given an empty graph
     And having executed:
@@ -932,7 +917,6 @@ Feature: MatchAcceptance2
       | [[:T]] |
     And no side effects
 
-@skip
   Scenario: Matching from null nodes should return no results owing to finding no matches
     Given an empty graph
     When executing query:
@@ -946,7 +930,6 @@ Feature: MatchAcceptance2
       | b |
     And no side effects
 
-@skip
   Scenario: Matching from null nodes should return no results owing to matches being filtered out
     Given an empty graph
     And having executed:
@@ -964,7 +947,6 @@ Feature: MatchAcceptance2
       | b |
     And no side effects
 
-@skip
   Scenario: Optionally matching from null nodes should return null
     Given an empty graph
     When executing query:
@@ -979,7 +961,6 @@ Feature: MatchAcceptance2
       | null |
     And no side effects
 
-@skip
   Scenario: OPTIONAL MATCH returns null
     Given an empty graph
     When executing query:
@@ -992,7 +973,6 @@ Feature: MatchAcceptance2
       | null |
     And no side effects
 
-@skip
   Scenario: Zero-length named path
     Given an empty graph
     And having executed:
@@ -1009,7 +989,6 @@ Feature: MatchAcceptance2
       | <()> |
     And no side effects
 
-@skip
   Scenario: Variable-length named path
     Given an empty graph
     And having executed:
@@ -1085,6 +1064,7 @@ Feature: MatchAcceptance2
       | [:T2] |
     And no side effects
 
+@crash
 @skip
   Scenario: Matching using a relationship that is already bound, in conjunction with aggregation and ORDER BY
     Given an empty graph
@@ -1108,7 +1088,6 @@ Feature: MatchAcceptance2
       | [:T2 {id: 1}] |
     And no side effects
 
-@skip
   Scenario: Matching with LIMIT and optionally matching using a relationship that is already bound
     Given an empty graph
     And having executed:
@@ -1128,7 +1107,6 @@ Feature: MatchAcceptance2
       | (:A) | [:T] | (:B) |
     And no side effects
 
-@skip
   Scenario: Matching with LIMIT and optionally matching using a relationship and node that are both already bound
     Given an empty graph
     And having executed:
@@ -1148,7 +1126,6 @@ Feature: MatchAcceptance2
       | (:A) | [:T] | (:B) |
     And no side effects
 
-@skip
   Scenario: Matching with LIMIT, then matching again using a relationship and node that are both already bound along with an additional predicate
     Given an empty graph
     And having executed:
@@ -1187,7 +1164,6 @@ Feature: MatchAcceptance2
       | (:X:Y) | [:T] | () |
     And no side effects
 
-@skip
   Scenario: Matching twice with conflicting relationship types on same relationship
     Given an empty graph
     And having executed:
@@ -1206,7 +1182,6 @@ Feature: MatchAcceptance2
       | a1 | r | b2 |
     And no side effects
 
-@skip
   Scenario: Matching twice with duplicate relationship types on same relationship
     Given an empty graph
     And having executed:
@@ -1290,7 +1265,6 @@ Feature: MatchAcceptance2
       | first | second |
     And no side effects
 
-@skip
   Scenario: Matching and optionally matching with bound nodes in reverse direction
     Given an empty graph
     And having executed:
@@ -1310,7 +1284,6 @@ Feature: MatchAcceptance2
       | (:A) | [:T] | null |
     And no side effects
 
-@skip
   Scenario: Matching and optionally matching with unbound nodes and equality predicate in reverse direction
     Given an empty graph
     And having executed:
@@ -1439,7 +1412,6 @@ Feature: MatchAcceptance2
       | 1        |
     And no side effects
 
-@skip
   Scenario: Undirected named path
     Given an empty graph
     And having executed:
@@ -1458,7 +1430,6 @@ Feature: MatchAcceptance2
       | <(:Movie)<-[:T]-()> |
     And no side effects
 
-@skip
   Scenario: Named path with WITH
     Given an empty graph
     And having executed:
@@ -1621,7 +1592,6 @@ Feature: MatchAcceptance2
       | null    |
     And no side effects
 
-@skip
   Scenario: Returning multiple node property values
     Given an empty graph
     And having executed:
@@ -1654,7 +1624,6 @@ Feature: MatchAcceptance2
       | 2   |
     And no side effects
 
-@skip
   Scenario: Adding list properties in projection
     Given an empty graph
     And having executed:
@@ -1693,7 +1662,6 @@ Feature: MatchAcceptance2
       | null |
     And no side effects
 
-@skip
   Scenario: Variable length patterns and nulls
     Given an empty graph
     And having executed:
@@ -1712,7 +1680,6 @@ Feature: MatchAcceptance2
       | (:A) | null | null |
     And no side effects
 
-@skip
   Scenario: Projecting a list of nodes and relationships
     Given an empty graph
     And having executed:
@@ -1748,7 +1715,6 @@ Feature: MatchAcceptance2
       | {node1: (:A), rel: [:T], node2: (:B)} |
     And no side effects
 
-@skip
   Scenario: Respecting direction when matching existing path
     Given an empty graph
     And having executed:
@@ -1766,7 +1732,6 @@ Feature: MatchAcceptance2
       | <({name: 'a'})-[:T]->({name: 'b'})> |
     And no side effects
 
-@skip
   Scenario: Respecting direction when matching non-existent path
     Given an empty graph
     And having executed:

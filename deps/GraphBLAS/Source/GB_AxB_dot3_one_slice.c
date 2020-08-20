@@ -2,7 +2,7 @@
 // GB_AxB_dot3_one_slice: slice the entries and vectors of a single matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -13,14 +13,18 @@
 // simple general-purpose method for slicing a single matrix.  It could be
 // called GB_one_slice, and used for other methods as well.
 
+#define GB_FREE_WORK \
+    GB_FREE_MEMORY (Coarse, ntasks1+1, sizeof (int64_t)) ;
+
 #define GB_FREE_ALL                                                     \
 {                                                                       \
+    GB_FREE_WORK ;                                                      \
     GB_FREE_MEMORY (TaskList, max_ntasks+1, sizeof (GB_task_struct)) ;  \
 }
 
 #include "GB_mxm.h"
 
-#define GB_TASKS_PER_THREAD 256
+#define GB_NTASKS_PER_THREAD 256
 
 //------------------------------------------------------------------------------
 // GB_AxB_dot3_one_slice
@@ -37,7 +41,7 @@ GrB_Info GB_AxB_dot3_one_slice
     const GrB_Matrix M,             // matrix to slice
     GB_Context Context
 )
-{ 
+{
 
     //--------------------------------------------------------------------------
     // check inputs
@@ -47,7 +51,7 @@ GrB_Info GB_AxB_dot3_one_slice
     ASSERT (p_max_ntasks != NULL) ;
     ASSERT (p_ntasks != NULL) ;
     ASSERT (p_nthreads != NULL) ;
-    ASSERT_OK (GB_check (M, "M for dot3_one_slice", GB0)) ;
+    ASSERT_MATRIX_OK (M, "M for dot3_one_slice", GB0) ;
 
     (*p_TaskList  ) = NULL ;
     (*p_max_ntasks) = 0 ;
@@ -64,7 +68,7 @@ GrB_Info GB_AxB_dot3_one_slice
     // get M
     //--------------------------------------------------------------------------
 
-    const int64_t *restrict Mp = M->p ;
+    const int64_t *GB_RESTRICT Mp = M->p ;
     const int64_t mnz = GB_NNZ (M) ;
     const int64_t mnvec = M->nvec ;
 
@@ -72,11 +76,13 @@ GrB_Info GB_AxB_dot3_one_slice
     // allocate the initial TaskList
     //--------------------------------------------------------------------------
 
+    int64_t *GB_RESTRICT Coarse = NULL ;
+    int ntasks1 = 0 ;
     int nthreads = GB_nthreads (mnz, chunk, nthreads_max) ;
-    GB_task_struct *restrict TaskList = NULL ;
+    GB_task_struct *GB_RESTRICT TaskList = NULL ;
     int max_ntasks = 0 ;
     int ntasks = 0 ;
-    int ntasks0 = (nthreads == 1) ? 1 : (GB_TASKS_PER_THREAD * nthreads) ;
+    int ntasks0 = (nthreads == 1) ? 1 : (GB_NTASKS_PER_THREAD * nthreads) ;
     GB_REALLOC_TASK_LIST (TaskList, ntasks0, max_ntasks) ;
 
     //--------------------------------------------------------------------------
@@ -101,15 +107,19 @@ GrB_Info GB_AxB_dot3_one_slice
 
     double target_task_size = ((double) mnz) / (double) (ntasks0) ;
     target_task_size = GB_IMAX (target_task_size, chunk) ;
-    int ntasks1 = ((double) mnz) / target_task_size ;
+    ntasks1 = ((double) mnz) / target_task_size ;
     ntasks1 = GB_IMAX (ntasks1, 1) ;
 
     //--------------------------------------------------------------------------
     // slice the work into coarse tasks
     //--------------------------------------------------------------------------
 
-    int64_t Coarse [ntasks1+1] ;
-    GB_pslice (Coarse, Mp, mnvec, ntasks1) ;
+    if (!GB_pslice (&Coarse, Mp, mnvec, ntasks1))
+    { 
+        // out of memory
+        GB_FREE_ALL ;
+        return (GB_OUT_OF_MEMORY) ;
+    }
 
     //--------------------------------------------------------------------------
     // construct all tasks, both coarse and fine
@@ -238,9 +248,10 @@ GrB_Info GB_AxB_dot3_one_slice
     ASSERT (ntasks <= max_ntasks) ;
 
     //--------------------------------------------------------------------------
-    // return result
+    // free workspace and return result
     //--------------------------------------------------------------------------
 
+    GB_FREE_WORK ;
     (*p_TaskList  ) = TaskList ;
     (*p_max_ntasks) = max_ntasks ;
     (*p_ntasks    ) = ntasks ;

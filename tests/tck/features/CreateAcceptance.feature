@@ -57,7 +57,6 @@ Feature: CreateAcceptance
     And the side effects should be:
       | +nodes | 2 |
 
-@skip
   Scenario: Combine MATCH, WITH and CREATE
     Given an empty graph
     And having executed:
@@ -247,7 +246,6 @@ Feature: CreateAcceptance
       | x        |
       | (:Begin) |
 
-@skip
   Scenario: Create a single node after a WITH
     Given an empty graph
     And having executed:
@@ -364,7 +362,6 @@ Feature: CreateAcceptance
       | r1    | r2    | r3    |
       | [:R1] | [:R2] | [:R3] |
 
-@skip
   Scenario: Nodes are not created when aliases are applied to variable names
     Given an empty graph
     And having executed:
@@ -385,7 +382,6 @@ Feature: CreateAcceptance
     And the side effects should be:
       | +relationships | 1 |
 
-@skip
   Scenario: Only a single node is created when an alias is applied to a variable name
     Given an empty graph
     And having executed:
@@ -406,7 +402,6 @@ Feature: CreateAcceptance
       | +nodes         | 1 |
       | +relationships | 1 |
 
-@skip
   Scenario: Nodes are not created when aliases are applied to variable names multiple times
     Given an empty graph
     And having executed:
@@ -429,7 +424,6 @@ Feature: CreateAcceptance
     And the side effects should be:
       | +relationships | 2 |
 
-@skip
   Scenario: Only a single node is created when an alias is applied to a variable name multiple times
     Given an empty graph
     And having executed:
@@ -452,7 +446,6 @@ Feature: CreateAcceptance
       | +nodes         | 2 |
       | +relationships | 2 |
 
-@skip
   Scenario: A bound node should be recognized after projection with WITH + WITH
     Given any graph
     When executing query:
@@ -468,7 +461,6 @@ Feature: CreateAcceptance
       | +nodes         | 2 |
       | +relationships | 1 |
 
-@skip
   Scenario: A bound node should be recognized after projection with WITH + UNWIND
     Given any graph
     When executing query:
@@ -484,7 +476,6 @@ Feature: CreateAcceptance
       | +nodes         | 2 |
       | +relationships | 1 |
 
-@skip
   Scenario: A bound node should be recognized after projection with WITH + MERGE node
     Given an empty graph
     When executing query:
@@ -500,7 +491,6 @@ Feature: CreateAcceptance
       | +nodes         | 2 |
       | +relationships | 1 |
 
-@skip
   Scenario: A bound node should be recognized after projection with WITH + MERGE pattern
     Given an empty graph
     When executing query:
@@ -518,7 +508,6 @@ Feature: CreateAcceptance
       | +nodes         | 2 |
       | +relationships | 2 |
 
-@skip
   Scenario: Fail when trying to create using an undirected relationship pattern
     Given any graph
     When executing query:
@@ -528,7 +517,6 @@ Feature: CreateAcceptance
       """
     Then a SyntaxError should be raised at compile time: RequiresDirectedRelationship
 
-@skip
   Scenario: Creating a pattern with multiple hops and changing directions
     Given an empty graph
     When executing query:

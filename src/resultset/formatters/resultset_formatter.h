@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -14,8 +14,8 @@
 typedef enum {
 	COLUMN_UNKNOWN = 0,
 	COLUMN_SCALAR = 1,
-	COLUMN_NODE = 2,
-	COLUMN_RELATION = 3,
+	COLUMN_NODE = 2,      // Unused, retained for client compatibility.
+	COLUMN_RELATION = 3,  // Unused, retained for client compatibility.
 } ColumnType;
 
 typedef enum {
@@ -27,14 +27,17 @@ typedef enum {
 	VALUE_DOUBLE = 5,
 	VALUE_ARRAY = 6,
 	VALUE_EDGE = 7,
-	VALUE_NODE = 8
+	VALUE_NODE = 8,
+	VALUE_PATH = 9
 } ValueType;
 
 // Typedef for header formatters.
-typedef void (*EmitHeaderFunc)(RedisModuleCtx *ctx, const char **columns, const Record r);
+typedef void (*EmitHeaderFunc)(RedisModuleCtx *ctx, const char **columns, const Record r,
+							   uint *col_rec_map);
 
 // Typedef for record formatters.
-typedef void (*EmitRecordFunc)(RedisModuleCtx *ctx, GraphContext *gc, const Record r, uint numcols);
+typedef void (*EmitRecordFunc)(RedisModuleCtx *ctx, GraphContext *gc, const Record r, uint numcols,
+							   uint *col_rec_map);
 
 typedef struct {
 	EmitRecordFunc EmitRecord;

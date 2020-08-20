@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -22,7 +22,7 @@ typedef struct {
 } QGNode;
 
 /* Creates a new node. */
-QGNode *QGNode_New(const char *label, const char *alias);
+QGNode *QGNode_New(const char *alias);
 
 /* Returns number of edges pointing into node. */
 int QGNode_IncomeDegree(const QGNode *n);

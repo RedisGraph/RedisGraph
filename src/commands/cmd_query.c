@@ -1,94 +1,171 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
 #include "cmd_query.h"
+#include "../RG.h"
+#include "cmd_context.h"
 #include "../ast/ast.h"
 #include "../util/arr.h"
-#include "cmd_context.h"
+#include "../util/cron.h"
 #include "../query_ctx.h"
 #include "../graph/graph.h"
 #include "../util/rmalloc.h"
+#include "../util/cache/cache.h"
 #include "../execution_plan/execution_plan.h"
+#include "execution_ctx.h"
 
-static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc,
-							 const cypher_astnode_t *index_op) {
-	/* Set up nested array response for index creation and deletion,
-	 * Following the response struture of other queries:
-	 * First element is an empty result-set followed by statistics.
-	 * We'll enqueue one string response to indicate the operation's success,
-	 * and the query runtime will be appended after this call returns. */
-	RedisModule_ReplyWithArray(ctx, 2); // Two Arrays
-	RedisModule_ReplyWithArray(ctx, 0); // Empty result-set
-	RedisModule_ReplyWithArray(ctx, 2); // Statistics.
+static void _index_operation(RedisModuleCtx *ctx, GraphContext *gc, AST *ast,
+							 ExecutionType exec_type) {
 	Index *idx = NULL;
-
-	if(cypher_astnode_type(index_op) == CYPHER_AST_CREATE_NODE_PROPS_INDEX) {
+	const cypher_astnode_t *index_op = ast->root;
+	if(exec_type == EXECUTION_TYPE_INDEX_CREATE) {
 		// Retrieve strings from AST node
 		const char *label = cypher_ast_label_get_name(cypher_ast_create_node_props_index_get_label(
 														  index_op));
 		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_create_node_props_index_get_prop_name(
 															  index_op, 0));
-		if(GraphContext_AddIndex(&idx, gc, label, prop, IDX_EXACT_MATCH) != INDEX_OK) {
-			// Index creation may have failed if the label or property was invalid, or the index already exists.
-			RedisModule_ReplyWithSimpleString(ctx, "(no changes, no records)");
-		} else {
-			Index_Construct(idx);
-			RedisModule_ReplyWithSimpleString(ctx, "Indices added: 1");
-		}
-	} else {
+		QueryCtx_LockForCommit();
+		if(GraphContext_AddIndex(&idx, gc, label, prop, IDX_EXACT_MATCH) == INDEX_OK) Index_Construct(idx);
+		QueryCtx_UnlockCommit(NULL);
+	} else if(exec_type == EXECUTION_TYPE_INDEX_DROP) {
 		// Retrieve strings from AST node
 		const char *label = cypher_ast_label_get_name(cypher_ast_drop_node_props_index_get_label(index_op));
 		const char *prop = cypher_ast_prop_name_get_value(cypher_ast_drop_node_props_index_get_prop_name(
 															  index_op, 0));
-		if(GraphContext_DeleteIndex(gc, label, prop, IDX_EXACT_MATCH) == INDEX_OK) {
-			RedisModule_ReplyWithSimpleString(ctx, "Indices removed: 1");
-		} else {
-			char *reply;
-			asprintf(&reply, "ERR Unable to drop index on :%s(%s): no such index.", label, prop);
-			RedisModule_ReplyWithError(ctx, reply);
-			free(reply);
-		}
-	}
+		QueryCtx_LockForCommit();
+		int res = GraphContext_DeleteIndex(gc, label, prop, IDX_EXACT_MATCH);
+		QueryCtx_UnlockCommit(NULL);
 
-	/* Report execution timing. */
-	ResultSet_ReportQueryRuntime(ctx);
+		if(res != INDEX_OK) {
+			QueryCtx_SetError("ERR Unable to drop index on :%s(%s): no such index.", label, prop);
+		}
+	} else {
+		QueryCtx_SetError("ERR Encountered unknown query execution type.");
+	}
 }
 
-static inline bool _check_compact_flag(CommandCtx *qctx) {
-	// The only additional argument to check currently is whether the query results
-	// should be returned in compact form
-	return (qctx->argc > 3 &&
-			!strcasecmp(RedisModule_StringPtrLen(qctx->argv[3], NULL), "--compact"));
+// Read configuration flags, returning REDIS_MODULE_ERR if flag parsing failed.
+static int _read_flags(CommandCtx *command_ctx, bool *compact, long long *timeout) {
+	ASSERT(command_ctx);
+	ASSERT(compact);
+	ASSERT(timeout);
+
+	// set defaults
+	*timeout = 0;      // no timeout
+	*compact = false;  // verbose
+
+	// GRAPH.QUERY <GRAPH_KEY> <QUERY>
+	// make sure we've got more than 3 arguments
+	if(command_ctx->argc <= 3) return REDISMODULE_OK;
+
+	// scan arguments
+	for(int i = 3; i < command_ctx->argc; i++) {
+		const char *arg = RedisModule_StringPtrLen(command_ctx->argv[i], NULL);
+
+		// compact result-set
+		if(!strcasecmp(arg, "--compact")) {
+			*compact = true;
+			continue;
+		}
+
+		// query timeout
+		if(!strcasecmp(arg, "timeout")) {
+			int err = REDISMODULE_ERR;
+			if(i < command_ctx->argc - 1) {
+				i++; // Set the current argument to the timeout value.
+				err = RedisModule_StringToLongLong(command_ctx->argv[i], timeout);
+			}
+
+			// Emit error on missing, negative, or non-numeric timeout values.
+			if(err != REDISMODULE_OK || *timeout < 0) {
+				QueryCtx_SetError("Failed to parse query timeout value");
+				return REDISMODULE_ERR;
+			}
+		}
+	}
+	return REDISMODULE_OK;
+}
+
+void QueryTimedOut(void *pdata) {
+	ASSERT(pdata);
+	ExecutionPlan *plan = (ExecutionPlan *)pdata;
+	ExecutionPlan_Drain(plan);
+
+	/* Timer may have triggered after execution-plan ran to completion
+	 * in which case the original query thread had called ExecutionPlan_Free
+	 * decreasing the plan's ref count, but did not free the execution-plan
+	 * it is our responsibility to call ExecutionPlan_Free
+	 *
+	 * Incase execution-plan timedout we'll call ExecutionPlan_Free
+	 * to drop plan's ref count. */
+	ExecutionPlan_Free(plan);
+}
+
+void Query_SetTimeOut(uint timeout, ExecutionPlan *plan) {
+	// Increase execution plan ref count.
+	ExecutionPlan_IncreaseRefCount(plan);
+	Cron_AddTask(timeout, QueryTimedOut, plan);
 }
 
 void Graph_Query(void *args) {
-	AST *ast = NULL;
 	bool lockAcquired = false;
 	ResultSet *result_set = NULL;
-	CommandCtx *qctx = (CommandCtx *)args;
-	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
-	GraphContext *gc = CommandCtx_GetGraphContext(qctx);
-	QueryCtx_SetGraphCtx(gc);
+	CommandCtx *command_ctx = (CommandCtx *)args;
+	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(command_ctx);
+	GraphContext *gc = CommandCtx_GetGraphContext(command_ctx);
+
+	CommandCtx_TrackCtx(command_ctx);
+	QueryCtx_SetGlobalExecutionCtx(command_ctx);
 
 	QueryCtx_BeginTimer(); // Start query timing.
-	QueryCtx_SetRedisModuleCtx(ctx);
+	/* Retrive the required execution items and information:
+	 * 1. AST
+	 * 2. Execution plan (if any)
+	 * 3. Whether these items were cached or not */
+	AST *ast = NULL;
+	bool cached = false;
+	ExecutionPlan *plan = NULL;
+	ExecutionCtx exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
 
-	// Parse the query to construct an AST.
-	cypher_parse_result_t *parse_result = parse(qctx->query);
-	if(parse_result == NULL) goto cleanup;
-	bool readonly = AST_ReadOnly(parse_result);
-	// If we are a replica and the query is read-only, no work needs to be done.
-	if(readonly && qctx->replicated_command) goto cleanup;
+	ast = exec_ctx.ast;
+	plan = exec_ctx.plan;
+	cached = exec_ctx.cached;
+	ExecutionType exec_type = exec_ctx.exec_type;
+	// See if there were any query compile time errors
+	if(QueryCtx_EncounteredError()) {
+		QueryCtx_EmitException();
+		goto cleanup;
+	}
+	if(exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
 
-	// Perform query validations
-	if(AST_Validate(ctx, parse_result) != AST_VALID) goto cleanup;
-	// Prepare the constructed AST for accesses from the module
-	ast = AST_Build(parse_result);
+	bool readonly = AST_ReadOnly(ast->root);
 
-	bool compact = _check_compact_flag(qctx);
+	bool compact;
+	long long timeout;
+	int res = _read_flags(command_ctx, &compact, &timeout);
+	if(res == REDISMODULE_ERR) {
+		// Emit error and exit if argument parsing failed.
+		QueryCtx_EmitException();
+		goto cleanup;
+	}
+
+	// Set the query timeout if one was specified.
+	if(timeout != 0) {
+		if(!readonly) {
+			// Disallow timeouts on write operations to avoid leaving the graph in an inconsistent state.
+			QueryCtx_SetError("Query timeouts may only be specified on read-only queries");
+			QueryCtx_EmitException();
+			goto cleanup;
+		}
+
+		Query_SetTimeOut(timeout, plan);
+	}
+
+	ResultSetFormatterType resultset_format = (compact) ? FORMATTER_COMPACT : FORMATTER_VERBOSE;
+
 	// Acquire the appropriate lock.
 	if(readonly) {
 		Graph_AcquireReadLock(gc->g);
@@ -97,27 +174,38 @@ void Graph_Query(void *args) {
 		/* If this is a writer query we need to re-open the graph key with write flag
 		* this notifies Redis that the key is "dirty" any watcher on that key will
 		* be notified. */
-		CommandCtx_ThreadSafeContextLock(qctx);
+		CommandCtx_ThreadSafeContextLock(command_ctx);
 		{
 			GraphContext_MarkWriter(ctx, gc);
 		}
-		CommandCtx_ThreadSafeContextUnlock(qctx);
+		CommandCtx_ThreadSafeContextUnlock(command_ctx);
 	}
 	lockAcquired = true;
-	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
-	if(root_type == CYPHER_AST_QUERY) {  // query operation
-		result_set = NewResultSet(ctx, compact);
-		ExecutionPlan *plan = NewExecutionPlan(ctx, gc, result_set);
-		if(!plan) goto cleanup;
+
+	// Set policy after lock acquisition, avoid resetting policies between readers and writers.
+	Graph_SetMatrixPolicy(gc->g, SYNC_AND_MINIMIZE_SPACE);
+	result_set = NewResultSet(ctx, resultset_format);
+	// Indicate a cached execution.
+	if(cached) ResultSet_CachedExecution(result_set);
+
+	QueryCtx_SetResultSet(result_set);
+	if(exec_type == EXECUTION_TYPE_QUERY) {  // query operation
+		ExecutionPlan_PreparePlan(plan);
 		result_set = ExecutionPlan_Execute(plan);
+
+		// Emit error if query timed out.
+		if(ExecutionPlan_Drained(plan)) QueryCtx_SetError("Query timed out");
+
 		ExecutionPlan_Free(plan);
-		ResultSet_Replay(result_set);    // Send result-set back to client.
-	} else if(root_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX ||
-			  root_type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {
-		_index_operation(ctx, gc, ast->root);
+		plan = NULL;
+	} else if(exec_type == EXECUTION_TYPE_INDEX_CREATE ||
+			  exec_type == EXECUTION_TYPE_INDEX_DROP) {
+		_index_operation(ctx, gc, ast, exec_type);
 	} else {
 		assert("Unhandled query type" && false);
 	}
+	QueryCtx_ForceUnlockCommit();
+	ResultSet_Reply(result_set);    // Send result-set back to client.
 
 	// Clean up.
 cleanup:
@@ -125,15 +213,19 @@ cleanup:
 	if(lockAcquired) {
 		// TODO In the case of a failing writing query, we may hold both locks:
 		// "CREATE (a {num: 1}) MERGE ({v: a.num})"
-		if(readonly)Graph_ReleaseLock(gc->g);
+		if(readonly) Graph_ReleaseLock(gc->g);
 		else Graph_WriterLeave(gc->g);
 	}
 
+	// Log query to slowlog.
+	SlowLog *slowlog = GraphContext_GetSlowLog(gc);
+	SlowLog_Add(slowlog, command_ctx->command_name, command_ctx->query,
+				QueryCtx_GetExecutionTime(), NULL);
+	if(plan) ExecutionPlan_Free(plan);
 	ResultSet_Free(result_set);
 	AST_Free(ast);
-	parse_result_free(parse_result);
 	GraphContext_Release(gc);
-	CommandCtx_Free(qctx);
+	CommandCtx_Free(command_ctx);
 	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 }
 

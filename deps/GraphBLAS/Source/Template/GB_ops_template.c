@@ -2,7 +2,7 @@
 // GB_ops_template.c: built-in unary and binary functions and operators
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -35,28 +35,36 @@ GB_UNARY_OP_DEFINE (GrB_, MINV,     "minv")
 GB_UNARY_OP_DEFINE (GxB_, LNOT,     "not")
 
 //------------------------------------------------------------------------------
-// 10 binary functions z=f(x,y) where x,y,z have the same type
+// 12 binary functions z=f(x,y) where x,y,z have the same type
 //------------------------------------------------------------------------------
 
 extern void GB (FIRST_f)  (GB_Z_X_Y_ARGS) ;
 extern void GB (SECOND_f) (GB_Z_X_Y_ARGS) ;
-extern void GB (MIN_f)    (GB_Z_X_Y_ARGS) ;
-extern void GB (MAX_f)    (GB_Z_X_Y_ARGS) ;
+extern void GB (PAIR_f)   (GB_Z_X_Y_ARGS) ;
+extern void GB (ANY_f)    (GB_Z_X_Y_ARGS) ;
+
 extern void GB (PLUS_f)   (GB_Z_X_Y_ARGS) ;
 extern void GB (MINUS_f)  (GB_Z_X_Y_ARGS) ;
 extern void GB (RMINUS_f) (GB_Z_X_Y_ARGS) ;
 extern void GB (TIMES_f)  (GB_Z_X_Y_ARGS) ;
+
+extern void GB (MIN_f)    (GB_Z_X_Y_ARGS) ;
+extern void GB (MAX_f)    (GB_Z_X_Y_ARGS) ;
 extern void GB (DIV_f)    (GB_Z_X_Y_ARGS) ;
 extern void GB (RDIV_f)   (GB_Z_X_Y_ARGS) ;
 
 GB_BINARY_OP_DEFINE (GrB_, FIRST,  "first" )
 GB_BINARY_OP_DEFINE (GrB_, SECOND, "second")
-GB_BINARY_OP_DEFINE (GrB_, MIN,    "min"   )
-GB_BINARY_OP_DEFINE (GrB_, MAX,    "max"   )
+GB_BINARY_OP_DEFINE (GxB_, PAIR,   "pair"  )
+GB_BINARY_OP_DEFINE (GxB_, ANY,    "any"   )
+
 GB_BINARY_OP_DEFINE (GrB_, PLUS,   "plus"  )
 GB_BINARY_OP_DEFINE (GrB_, MINUS,  "minus" )
 GB_BINARY_OP_DEFINE (GxB_, RMINUS, "rminus")
 GB_BINARY_OP_DEFINE (GrB_, TIMES,  "times" )
+
+GB_BINARY_OP_DEFINE (GrB_, MIN,    "min"   )
+GB_BINARY_OP_DEFINE (GrB_, MAX,    "max"   )
 GB_BINARY_OP_DEFINE (GrB_, DIV,    "div"   )
 GB_BINARY_OP_DEFINE (GxB_, RDIV,   "rdiv"  )
 

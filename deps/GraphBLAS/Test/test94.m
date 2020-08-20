@@ -1,6 +1,9 @@
 function test94
 %TEST94 test pagerank
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 T = load ('../Demo/Matrix/west0067') ;
 n = max (max (T (:, 1:2))) + 1 ;
 A = sparse (1+T(:,1), 1+T(:,2), T(:,3), n, n) ;
@@ -30,7 +33,7 @@ C.class = 'logical' ;
 tic ;
 [r3, ir3] = GB_mex_dpagerank (C) ;
 toc
-t = gbresults
+t = grbresults
 
 ir_diff = length (find (ir2 ~= ir3))
 
@@ -43,7 +46,7 @@ for method = [0 1001 1002 1003]
     tic ;
     [r4, ir4] = GB_mex_dpagerank (C, method) ;
     toc
-    t = gbresults
+    t = grbresults
     assert (norm (r4 - r3) < 1e-5) ;
     assert (isequal (ir3, ir4)) ;
 end

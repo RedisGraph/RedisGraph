@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -12,6 +12,8 @@
 
 /* Forward declarations. */
 static Record DeleteConsume(OpBase *opBase);
+static OpResult DeleteInit(OpBase *opBase);
+static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void DeleteFree(OpBase *opBase);
 
 void _DeleteEntities(OpDelete *op) {
@@ -22,10 +24,10 @@ void _DeleteEntities(OpDelete *op) {
 	uint edge_count = array_len(op->deleted_edges);
 
 	/* Nothing to delete, quickly return. */
-	if((node_count + edge_count) == 0) return;
+	if((node_count + edge_count) == 0) goto cleanup;
 
 	/* Lock everything. */
-	Graph_AcquireWriteLock(g);
+	QueryCtx_LockForCommit();
 
 	if(GraphContext_HasIndices(op->gc)) {
 		for(int i = 0; i < node_count; i++) {
@@ -37,48 +39,37 @@ void _DeleteEntities(OpDelete *op) {
 	Graph_BulkDelete(g, op->deleted_nodes, node_count, op->deleted_edges,
 					 edge_count, &node_deleted, &relationships_deleted);
 
-	/* Release lock. */
-	Graph_ReleaseLock(g);
+	if(op->stats) {
+		op->stats->nodes_deleted += node_deleted;
+		op->stats->relationships_deleted += relationships_deleted;
+	}
 
-	if(op->stats) op->stats->nodes_deleted += node_deleted;
-	if(op->stats) op->stats->relationships_deleted += relationships_deleted;
+cleanup:
+	/* Release lock, no harm in trying to release an unlocked lock. */
+	QueryCtx_UnlockCommit(&op->op);
 }
 
-OpBase *NewDeleteOp(const ExecutionPlan *plan, const char **nodes_ref, const char **edges_ref,
-					ResultSetStatistics *stats) {
-	OpDelete *op = malloc(sizeof(OpDelete));
+OpBase *NewDeleteOp(const ExecutionPlan *plan, AR_ExpNode **exps) {
+	OpDelete *op = rm_malloc(sizeof(OpDelete));
 
 	op->gc = QueryCtx_GetGraphCtx();
-
-	op->nodes_to_delete = array_new(int, array_len(nodes_ref));
-	op->edges_to_delete = array_new(int, array_len(edges_ref));
-
+	op->exps = exps;
+	op->stats = NULL;
+	op->exp_count = array_len(exps);
 	op->deleted_nodes = array_new(Node, 32);
 	op->deleted_edges = array_new(Edge, 32);
-	op->stats = stats;
 
 	// Set our Op operations
-	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", NULL, DeleteConsume,
-				NULL, NULL, DeleteFree, plan);
-
-	// Set nodes/edges to be deleted record indices.
-	int idx;
-	int node_count = array_len(nodes_ref);
-	for(int i = 0; i < node_count; i++) {
-		assert(OpBase_Aware((OpBase *)op, nodes_ref[i], &idx));
-		op->nodes_to_delete = array_append(op->nodes_to_delete, idx);
-	}
-
-	int edge_count = array_len(edges_ref);
-	for(int i = 0; i < edge_count; i++) {
-		assert(OpBase_Aware((OpBase *)op, edges_ref[i], &idx));
-		op->edges_to_delete = array_append(op->edges_to_delete, idx);
-	}
-
-	op->node_count = array_len(op->nodes_to_delete);
-	op->edge_count = array_len(op->edges_to_delete);
+	OpBase_Init((OpBase *)op, OPType_DELETE, "Delete", DeleteInit, DeleteConsume,
+				NULL, NULL, DeleteClone, DeleteFree, true, plan);
 
 	return (OpBase *)op;
+}
+
+static OpResult DeleteInit(OpBase *opBase) {
+	OpDelete *op = (OpDelete *)opBase;
+	op->stats = QueryCtx_GetResultSetStatistics();
+	return OP_OK;
 }
 
 static Record DeleteConsume(OpBase *opBase) {
@@ -88,34 +79,51 @@ static Record DeleteConsume(OpBase *opBase) {
 	Record r = OpBase_Consume(child);
 	if(!r) return NULL;
 
-	/* Enqueue entities for deletion. */
-	for(int i = 0; i < op->node_count; i++) {
-		Node *n = Record_GetNode(r, op->nodes_to_delete[i]);
-		op->deleted_nodes = array_append(op->deleted_nodes, *n);
-	}
+	/* Expression should be evaluated to either a node or an edge
+	 * which will be marked for deletion, if an expression is evaluated
+	 * to a different value type e.g. Numeric a run-time expection is thrown. */
+	for(int i = 0; i < op->exp_count; i++) {
+		AR_ExpNode *exp = op->exps[i];
+		SIValue value = AR_EXP_Evaluate(exp, r);
+		SIType type = SI_TYPE(value);
+		/* Enqueue entities for deletion. */
+		if(type & T_NODE) {
+			Node *n = (Node *)value.ptrval;
+			op->deleted_nodes = array_append(op->deleted_nodes, *n);
+		} else if(type & T_EDGE) {
+			Edge *e = (Edge *)value.ptrval;
+			op->deleted_edges = array_append(op->deleted_edges, *e);
+		} else if(type & T_NULL) {
+			continue; // Ignore null values.
+		} else {
+			/* Expression evaluated to a non-graph entity type
+			 * clear pending deletions and raise an exception. */
+			array_clear(op->deleted_nodes);
+			array_clear(op->deleted_edges);
+			// If evaluating the expression allocated any memory, free it.
+			SIValue_Free(value);
 
-	for(int i = 0; i < op->edge_count; i++) {
-		Edge *e = Record_GetEdge(r, op->edges_to_delete[i]);
-		op->deleted_edges = array_append(op->deleted_edges, *e);
+			QueryCtx_SetError("Delete type mismatch, expecting either Node or Relationship.");
+			QueryCtx_RaiseRuntimeException();
+			break;
+		}
 	}
 
 	return r;
 }
 
+static OpBase *DeleteClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_DELETE);
+	OpDelete *op = (OpDelete *)opBase;
+	AR_ExpNode **exps;
+	array_clone_with_cb(exps, op->exps, AR_EXP_Clone);
+	return NewDeleteOp(plan, exps);
+}
+
 static void DeleteFree(OpBase *ctx) {
 	OpDelete *op = (OpDelete *)ctx;
 
-	if(op->deleted_nodes || op->deleted_edges) _DeleteEntities(op);
-
-	if(op->nodes_to_delete) {
-		array_free(op->nodes_to_delete);
-		op->nodes_to_delete = NULL;
-	}
-
-	if(op->edges_to_delete) {
-		array_free(op->edges_to_delete);
-		op->edges_to_delete = NULL;
-	}
+	_DeleteEntities(op);
 
 	if(op->deleted_nodes) {
 		array_free(op->deleted_nodes);
@@ -125,6 +133,12 @@ static void DeleteFree(OpBase *ctx) {
 	if(op->deleted_edges) {
 		array_free(op->deleted_edges);
 		op->deleted_edges = NULL;
+	}
+
+	if(op->exps) {
+		for(int i = 0; i < op->exp_count; i++) AR_EXP_Free(op->exps[i]);
+		array_free(op->exps);
+		op->exps = NULL;
 	}
 }
 

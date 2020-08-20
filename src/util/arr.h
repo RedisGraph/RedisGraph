@@ -44,12 +44,12 @@ extern "C" {
 #endif
 
 typedef struct {
-  uint32_t len;
-  // TODO: optimize memory by making cap a 16-bit delta from len, and elem_sz 16 bit as well. This
-  // makes the whole header fit in 64 bit
-  uint32_t cap;
-  uint32_t elem_sz;
-  char buf[];
+	uint32_t len;
+	// TODO: optimize memory by making cap a 16-bit delta from len, and elem_sz 16 bit as well. This
+	// makes the whole header fit in 64 bit
+	uint32_t cap;
+	uint32_t elem_sz;
+	char buf[];
 } array_hdr_t;
 
 typedef void *array_t;
@@ -65,11 +65,11 @@ static inline uint32_t array_len(array_t arr);
 /* Initialize a new array with a given element size and capacity. Should not be used directly - use
  * array_new instead */
 static array_t array_new_sz(uint32_t elem_sz, uint32_t cap, uint32_t len) {
-  array_hdr_t *hdr = (array_hdr_t *)array_alloc_fn(sizeof(array_hdr_t) + cap * elem_sz);
-  hdr->cap = cap;
-  hdr->elem_sz = elem_sz;
-  hdr->len = len;
-  return (array_t)(hdr->buf);
+	array_hdr_t *hdr = (array_hdr_t *)array_alloc_fn(sizeof(array_hdr_t) + cap * elem_sz);
+	hdr->cap = cap;
+	hdr->elem_sz = elem_sz;
+	hdr->len = len;
+	return (array_t)(hdr->buf);
 }
 
 /* Functions declared as symbols for use in debugger */
@@ -90,26 +90,26 @@ void array_debug(void *pp);
 #define array_newlen(T, len) (T *)(array_new_sz(sizeof(T), len, len))
 
 static inline array_t array_ensure_cap(array_t arr, uint32_t cap) {
-  array_hdr_t *hdr = array_hdr(arr);
-  if (cap > hdr->cap) {
-    hdr->cap = MAX(hdr->cap * 2, cap);
-    hdr = (array_hdr_t *)array_realloc_fn(hdr, array_sizeof(hdr));
-  }
-  return (array_t)hdr->buf;
+	array_hdr_t *hdr = array_hdr(arr);
+	if(cap > hdr->cap) {
+		hdr->cap = MAX(hdr->cap * 2, cap);
+		hdr = (array_hdr_t *)array_realloc_fn(hdr, array_sizeof(hdr));
+	}
+	return (array_t)hdr->buf;
 }
 
 /* Ensure capacity for the array to grow by one */
 static inline array_t array_grow(array_t arr, size_t n) {
-  array_hdr(arr)->len += n;
-  return array_ensure_cap(arr, array_hdr(arr)->len);
+	array_hdr(arr)->len += n;
+	return array_ensure_cap(arr, array_hdr(arr)->len);
 }
 
 static inline array_t array_ensure_len(array_t arr, size_t len) {
-  if (len <= array_len(arr)) {
-    return arr;
-  }
-  len -= array_len(arr);
-  return array_grow(arr, len);
+	if(len <= array_len(arr)) {
+		return arr;
+	}
+	len -= array_len(arr);
+	return array_grow(arr, len);
 }
 
 /* Ensures that array_tail will always point to a valid element. */
@@ -203,21 +203,21 @@ static inline array_t array_ensure_len(array_t arr, size_t len) {
 
 /* Get the length of the array */
 static inline uint32_t array_len(array_t arr) {
-  return arr ? array_hdr(arr)->len : 0;
+	return arr ? array_hdr(arr)->len : 0;
 }
 
 #define ARR_CAP_NOSHRINK ((uint32_t)-1)
 static inline void *array_trimm(array_t arr, uint32_t len, uint32_t cap) {
-  array_hdr_t *arr_hdr = array_hdr(arr);
-  assert((cap == ARR_CAP_NOSHRINK || cap > 0 || len == cap) && "trimming capacity is illegal");
-  assert((cap == ARR_CAP_NOSHRINK || cap >= len) && "trimming len is greater then capacity");
-  assert((len <= arr_hdr->len) && "trimming len is greater then current len");
-  arr_hdr->len = len;
-  if (cap != ARR_CAP_NOSHRINK) {
-    arr_hdr->cap = cap;
-    arr_hdr = (array_hdr_t *)array_realloc_fn(arr_hdr, array_sizeof(arr_hdr));
-  }
-  return arr_hdr->buf;
+	array_hdr_t *arr_hdr = array_hdr(arr);
+	assert((cap == ARR_CAP_NOSHRINK || cap > 0 || len == cap) && "trimming capacity is illegal");
+	assert((cap == ARR_CAP_NOSHRINK || cap >= len) && "trimming len is greater then capacity");
+	assert((len <= arr_hdr->len) && "trimming len is greater then current len");
+	arr_hdr->len = len;
+	if(cap != ARR_CAP_NOSHRINK) {
+		arr_hdr->cap = cap;
+		arr_hdr = (array_hdr_t *)array_realloc_fn(arr_hdr, array_sizeof(arr_hdr));
+	}
+	return arr_hdr->buf;
 }
 
 #define array_trimm_len(arr, len) (__typeof__(arr)) array_trimm(arr, len, ARR_CAP_NOSHRINK)
@@ -225,10 +225,10 @@ static inline void *array_trimm(array_t arr, uint32_t len, uint32_t cap) {
 
 /* Free the array, without dealing with individual elements */
 static void array_free(array_t arr) {
-  if (arr != NULL) {
-    // like free(), shouldn't explode if NULL
-    array_free_fn(array_hdr(arr));
-  }
+	if(arr != NULL) {
+		// like free(), shouldn't explode if NULL
+		array_free_fn(array_hdr(arr));
+	}
 }
 
 #define array_clear(arr) array_hdr(arr)->len = 0
@@ -293,6 +293,26 @@ static void array_free(array_t arr) {
    dest = array_newlen(typeof(*arr), array_len(arr));     \
    memcpy(dest, arr, sizeof(*arr) * (array_len(arr)));    \
   })
+
+/* Duplicate an array with a dedicated value clone callback. */
+#define array_clone_with_cb(dest, arr, clone_cb)        \
+({                                                      \
+    uint arrayLen = array_len((arr));                   \
+    dest = array_new(__typeof__(*arr), arrayLen);       \
+    for(uint i = 0; i < arrayLen; i++)                  \
+        dest = array_append(dest, (clone_cb(arr[i])));  \
+})
+
+#define array_reverse(arr)                      \
+    ({                                          \
+        uint arrayLen = array_len(arr);         \
+        for(uint i = 0; i < arrayLen/2; i++) {    \
+            __typeof__(*arr) tmp = arr[i];      \
+            uint j = arrayLen -1 -i;            \
+            arr[i] = arr[j];                    \
+            arr[j] = tmp;                       \
+        }                                       \
+    })                                          \
 
 #ifdef __cplusplus
 }

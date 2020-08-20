@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -18,38 +18,43 @@
 #ifndef _ALL_PATHS_H_
 #define _ALL_PATHS_H_
 
-#include "./path.h"
+#include "../datatypes/path/path.h"
 #include "../graph/graph.h"
 #include "../graph/entities/node.h"
 
 typedef struct {
-	Node **levels;          // Nodes reached at depth i.
-	Path path;              // Current path.
-	Graph *g;               // Graph to traverse.
-	Edge *neighbors;        // Reusable buffer of edges along the current path.
-	int *relationIDs;       // edge type(s) to traverse.
-	int relationCount;      // length of relationIDs.
-	GRAPH_EDGE_DIR dir;     // traverse direction.
-	unsigned int minLen;    // Path minimum length.
-	unsigned int maxLen;    // Path max length.
+	Node node;
+	Edge edge;
+} LevelConnection;
+
+typedef struct {
+	LevelConnection **levels;   // Nodes reached at depth i, and edges leading to them.
+	Path *path;                 // Current path.
+	Graph *g;                   // Graph to traverse.
+	Edge *neighbors;            // Reusable buffer of edges along the current path.
+	int *relationIDs;           // edge type(s) to traverse.
+	int relationCount;          // length of relationIDs.
+	GRAPH_EDGE_DIR dir;         // traverse direction.
+	unsigned int minLen;        // Path minimum length.
+	unsigned int maxLen;        // Path max length.
+	Node *dst;                  // Destination node, defaults to NULL in case of general all paths execution.
 } AllPathsCtx;
 
 // Create a new All paths context object.
 AllPathsCtx *AllPathsCtx_New(
-	Node *src,              // Source node to traverse.
-	Graph *g,               // Graph to traverse.
-	int *relationIDs,       // Edge type(s) on which we'll traverse.
-	int relationCount,      // Length of relationIDs.
-	GRAPH_EDGE_DIR dir,     // Traversal direction.
-	unsigned int minLen,    // Path length must contain be at least minLen + 1 nodes.
-	unsigned int maxLen     // Path length must not exceed maxLen + 1 nodes.
+	Node *src,           // Source node to traverse.
+	Node *dst,           // Destination node of the paths
+	Graph *g,            // Graph to traverse.
+	int *relationIDs,    // Edge type(s) on which we'll traverse.
+	int relationCount,   // Length of relationIDs.
+	GRAPH_EDGE_DIR dir,  // Traversal direction.
+	unsigned int minLen, // Path length must contain be at least minLen + 1 nodes.
+	unsigned int maxLen  // Path length must not exceed maxLen + 1 nodes.
 );
 
 // Tries to produce a new path from given context
 // If no additional path can be computed return NULL.
-Path AllPathsCtx_NextPath(
-	AllPathsCtx *ctx
-);
+Path *AllPathsCtx_NextPath(AllPathsCtx *ctx);
 
 // Free context object.
 void AllPathsCtx_Free(AllPathsCtx *ctx);

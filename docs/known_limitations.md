@@ -6,53 +6,42 @@ When a relation in a match pattern is not referenced elsewhere in the query, Red
 
 In some queries, this will cause unexpected behaviors. Consider a graph with 2 nodes and 2 relations between them:
 
-```sh
+```
 CREATE (a)-[:e {val: '1'}]->(b), (a)-[:e {val: '2'}]->(b)
 ```
 
 Counting the number of explicit edges returns 2, as expected.
 
-```sh
+```
 MATCH (a)-[e]->(b) RETURN COUNT(e)
 ```
 
 However, if we count the nodes in this pattern without explicitly referencing the relation, we receive a value of 1.
 
-```sh
+```
 MATCH (a)-[e]->(b) RETURN COUNT(b)
 ```
 
 We are researching designs that resolve this problem without negatively impacting performance. As a temporary workaround, queries that must operate on every relation matching a pattern should explicitly refer to that relation's alias elsewhere in the query. Two options for this are:
 
-```sh
+```
 MATCH (a)-[e]->(b) WHERE ID(e) >= 0 RETURN COUNT(b)
 MATCH (a)-[e]->(b) RETURN COUNT(b), e.dummyval
 ```
 
-## WITH clause limitations
+## LIMIT clause does not affect eager operations
 
-### Using nodes and relationships specified in WITH clause in multiple patterns
+When a WITH or RETURN clause introduces a LIMIT value, this value ought to be respected by all preceding operations.
 
-```sh
-MATCH (src {val: 1}) WITH src MATCH (src)-[]->(dest) RETURN dest
+For example, given the query:
+
+```
+UNWIND [1,2,3] AS value CREATE (a {property: value}) RETURN a LIMIT 1
 ```
 
-Will return a validation error.
+One node should be created with its 'property' set to 1. RedisGraph will currently create three nodes, and only return the first.
 
-### Specifying WITH entities in curly braces:
-
-```sh
-UNWIND [1,2,3] AS value WITH value CREATE (:label_a {val: value})
-UNWIND [1,2,3] AS value WITH value MATCH (a {val: value})
-```
-
-Will return a syntax error.
-
-WITH entities may be used in other contexts, such as:
-
-```sh
-UNWIND [1,2,3] AS value WITH value MATCH (b) WHERE b.val = value RETURN b
-```
+This limitation affects all eager operations: CREATE, SET, DELETE, MERGE, and projections with aggregate functions.
 
 ## Indexing limitations
 

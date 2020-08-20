@@ -1,7 +1,7 @@
 function testc2(quick)
 %TESTC2 test complex A*B, A'*B, A*B', A'*B', A+B
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 rng ('default') ;
@@ -51,7 +51,7 @@ semiring.class = 'complex' ;
 dtn.inp0 = 'tran' ;
 
 anum = [0 1001 1002 1003] ;
-algos = {'auto', 'gustavson', 'dot', 'heap'} ;
+algos = {'auto', 'gustavson', 'dot', 'hash'} ;
 
 seed = 1 ;
 
@@ -85,7 +85,7 @@ for m = nlist
                         B (2,3) = 4 ;
                     end
 
-                    for aa = 1:4
+                    for aa = 1:length(algos)
 
                         C = GB_mex_AxB (A, B, at, bt, anum (aa)) ;
 

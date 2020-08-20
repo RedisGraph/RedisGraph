@@ -2,7 +2,7 @@
 // GB_wait:  finish all pending computations on a single matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -10,11 +10,11 @@
 // CALLS:     GB_builder
 
 // This function is typically called via the GB_WAIT(A) macro, except for
-// GB_assign and GB_subassign.
+// GB_assign, GB_subassign, and GB_mxm.
 
 // The matrix A has zombies and/or pending tuples placed there by
-// GrB_setElement and GrB_*assign.  Zombies must now be deleted, and pending
-// tuples must now be assembled together and added into the matrix.
+// GrB_setElement, GrB_*assign, or GB_mxm.  Zombies must now be deleted, and
+// pending tuples must now be assembled together and added into the matrix.
 
 // When the function returns, the matrix has been removed from the queue
 // and all pending tuples and zombies have been deleted.  This is true even
@@ -64,10 +64,10 @@ GrB_Info GB_wait                // finish all pending computations
     ASSERT (A != NULL) ;
 
     // The matrix A might have pending operations but not be in the queue.
-    // GB_check expects the matrix to be in the queue.  As a result, GB_check
-    // can report an inconsistency, and thus this assert must be made
-    // with a negative pr.
-    ASSERT_OK (GB_check (A, "A to wait", GB_FLIP (GB0))) ;
+    // GB_Matrix_check expects the matrix to be in the queue.  As a result,
+    // GB_Matrix_check can report an inconsistency, and thus this assert must
+    // be made with a negative pr.
+    ASSERT_MATRIX_OK (A, "A to wait", GB_FLIP (GB0)) ;
 
     //--------------------------------------------------------------------------
     // determine the max # of threads to use
@@ -89,6 +89,13 @@ GrB_Info GB_wait                // finish all pending computations
     GrB_Info info = GrB_SUCCESS ;
 
     int64_t nzombies = A->nzombies ;
+    int64_t npending = GB_Pending_n (A) ;
+
+    if (nzombies > 0 || npending > 0)
+    { 
+        GB_BURBLE_MATRIX (A, "wait (zombies: "GBd", pending: "GBd") ",
+            nzombies, npending) ;
+    }
 
     if (nzombies > 0)
     { 
@@ -197,10 +204,10 @@ GrB_Info GB_wait                // finish all pending computations
     ASSERT (!GB_ZOMBIES (A)) ;
     GB_CRITICAL (GB_queue_remove (A)) ;
 
-    // No pending operations on A, and A is not in the queue, so GB_check can
-    // now see the conditions it expects.
+    // No pending operations on A, and A is not in the queue, so
+    // GB_Matrix_check can now see the conditions it expects.
     ASSERT (!(A->enqueued)) ;
-    ASSERT_OK (GB_check (A, "A after moving pending tuples to T", GB0)) ;
+    ASSERT_MATRIX_OK (A, "A after moving pending tuples to T", GB0) ;
 
     //--------------------------------------------------------------------------
     // check the status of the builder
@@ -208,9 +215,14 @@ GrB_Info GB_wait                // finish all pending computations
 
     // Finally check the status of the builder.  The pending tuples, must
     // be freed (just above), whether or not the builder is successful.
-    GB_OK (info) ;
+    if (info != GrB_SUCCESS)
+    { 
+        // out of memory in GB_builder
+        GB_FREE_ALL ;
+        return (info) ;
+    }
 
-    ASSERT_OK (GB_check (T, "T = matrix of pending tuples", GB0)) ;
+    ASSERT_MATRIX_OK (T, "T = matrix of pending tuples", GB0) ;
     ASSERT (!GB_PENDING (T)) ;
     ASSERT (!GB_ZOMBIES (T)) ;
     ASSERT (GB_NNZ (T) > 0) ;
@@ -250,8 +262,8 @@ GrB_Info GB_wait                // finish all pending computations
         // find tjfirst in A->h 
         int64_t pright = A->nvec - 1 ;
         bool found ;
-        int64_t *restrict Ah = A->h ;
-        GB_BINARY_SPLIT_SEARCH (tjfirst, Ah, kA, pright, found) ;
+        int64_t *GB_RESTRICT Ah = A->h ;
+        GB_SPLIT_BINARY_SEARCH (tjfirst, Ah, kA, pright, found) ;
         // Ah [0 ... kA-1] excludes vector tjfirst.  The list
         // Ah [kA ... A->nvec-1] includes tjfirst.
         ASSERT (kA >= 0 && kA <= A->nvec) ;
@@ -318,16 +330,16 @@ GrB_Info GB_wait                // finish all pending computations
             Slice [2] = A->nvec ;   // A->nvec-1 is the last vector in A1
             GB_OK (GB_slice (A, 2, Slice, Aslice, Context)) ;
 
-            ASSERT_OK (GB_check (Aslice [1], "A1 slice for GB_wait", GB0)) ;
+            ASSERT_MATRIX_OK (Aslice [1], "A1 slice for GB_wait", GB0) ;
 
             // free A0, which is not used
             GB_MATRIX_FREE (&(Aslice [0])) ;
 
             // S = A1 + T, but with no operator
-            GB_OK (GB_add (&S, A->type, A->is_csc, NULL, Aslice [1], T, NULL,
-                Context)) ;
+            GB_OK (GB_add (&S, A->type, A->is_csc, NULL, 0, Aslice [1], T,
+                NULL, Context)) ;
 
-            ASSERT_OK (GB_check (S, "S = A1+T", GB0)) ;
+            ASSERT_MATRIX_OK (S, "S = A1+T", GB0) ;
 
             // free A1 and T
             GB_MATRIX_FREE (&T) ;
@@ -348,14 +360,14 @@ GrB_Info GB_wait                // finish all pending computations
         // append T to the end of A0
         //----------------------------------------------------------------------
 
-        int64_t *restrict Ai = A->i ;
-        GB_void *restrict Ax = A->x ;
+        int64_t *GB_RESTRICT Ai = A->i ;
+        GB_void *GB_RESTRICT Ax = A->x ;
         int64_t asize = A->type->size ;
 
-        const int64_t *restrict Tp = T->p ;
-        const int64_t *restrict Th = T->h ;
-        const int64_t *restrict Ti = T->i ;
-        const GB_void *restrict Tx = T->x ;
+        const int64_t *GB_RESTRICT Tp = T->p ;
+        const int64_t *GB_RESTRICT Th = T->h ;
+        const int64_t *GB_RESTRICT Ti = T->i ;
+        const GB_void *GB_RESTRICT Tx = T->x ;
         int64_t tnvec = T->nvec ;
         int64_t tnz = GB_NNZ (T) ;
 
@@ -383,7 +395,7 @@ GrB_Info GB_wait                // finish all pending computations
         // recompute the # of non-empty vectors
         A->nvec_nonempty = GB_nvec_nonempty (A, Context) ;
 
-        ASSERT_OK (GB_check (A, "A after GB_wait:append", GB0)) ;
+        ASSERT_MATRIX_OK (A, "A after GB_wait:append", GB0) ;
 
         GB_MATRIX_FREE (&T) ;
 
@@ -406,9 +418,9 @@ GrB_Info GB_wait                // finish all pending computations
         // FUTURE:: if GB_add could tolerate zombies in A, then the initial
         // prune of zombies can be skipped.
 
-        GB_OK (GB_add (&S, A->type, A->is_csc, NULL, A, T, NULL, Context)) ;
+        GB_OK (GB_add (&S, A->type, A->is_csc, NULL, 0, A, T, NULL, Context)) ;
         GB_MATRIX_FREE (&T) ;
-        ASSERT_OK (GB_check (S, "S after GB_wait:add", GB0)) ;
+        ASSERT_MATRIX_OK (S, "S after GB_wait:add", GB0) ;
         return (GB_transplant_conform (A, A->type, &S, Context)) ;
     }
 }

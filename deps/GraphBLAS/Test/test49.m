@@ -1,7 +1,7 @@
 function test49
 %TEST49 performance test of GrB_mxm (dot product method, A'*B)
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 [save save_chunk] = nthreads_get ;
@@ -36,7 +36,7 @@ for m = 1:4
         tic ;
         C2 = GB_mex_mxm (W, [], [], semiring, A, B, d) ;
         % t2 = toc ;
-        t2 = gbresults ;
+        t2 = grbresults ;
 
         e = norm (C - C2.matrix, 1) ;
         fprintf (...

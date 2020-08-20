@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -25,10 +25,12 @@ typedef struct {
 	SIValue *output;                // Array with 4 entries ["node", node, "score", score].
 } PagerankContext;
 
-ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx, const char **args) {
-	if(array_len(args) != 2) return PROCEDURE_ERR;
-	const char *label = args[0];
-	const char *relation = args[1];
+ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx, const SIValue *args) {
+	if(array_len((SIValue *)args) != 2) return PROCEDURE_ERR;
+	if(!(SI_TYPE(args[0]) & SI_TYPE(args[1]) & T_STRING)) return PROCEDURE_ERR;
+
+	const char *label = args[0].stringval;
+	const char *relation = args[1].stringval;
 
 	GrB_Index n = 0;
 	Schema *s = NULL;
@@ -45,6 +47,7 @@ ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx, const char **args) {
 	pdata->n = n;
 	pdata->i = 0;
 	pdata->g = g;
+	pdata->node = GE_NEW_NODE();
 	pdata->mappings = mappings;
 	pdata->rankings = rankings;
 	pdata->output = array_new(SIValue, 4);
@@ -144,12 +147,14 @@ ProcedureCtx *Proc_PagerankCtx() {
 
 	outputs = array_append(outputs, output_node);
 	outputs = array_append(outputs, output_score);
-	ProcedureCtx *ctx = ProcCtxNew("db.pageRank",
+	ProcedureCtx *ctx = ProcCtxNew("algo.pageRank",
 								   2,
 								   outputs,
 								   Proc_PagerankStep,
 								   Proc_PagerankInvoke,
 								   Proc_PagerankFree,
-								   privateData);
+								   privateData,
+								   true);
 	return ctx;
 }
+

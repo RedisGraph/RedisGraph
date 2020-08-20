@@ -21,8 +21,8 @@ function test70 (f)
 %
 % depends on functions in ../Demo/MATLAB
 
-%  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
-%  http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 addpath ('../Demo/MATLAB') ;
 
@@ -143,7 +143,7 @@ for k = 1:nmat
         dothis = true (1,12) ;
     end
 
-    for gb = 0:1
+    for use_grb = 0:1
         for kk = 1:6
             method = method_list {kk} ;
             m = m + 1 ;
@@ -158,7 +158,7 @@ for k = 1:nmat
             t = inf ;
             if (dothis (m))
                 try
-                    if (gb)
+                    if (use_grb)
                         % use GraphBLAS (note that L and U are swapped since
                         % L in row form is the same as U in column form.
                         % The mexFunction interface to GraphBLAS passes in
@@ -181,7 +181,7 @@ for k = 1:nmat
                 end
                 assert (nt == ntri) ;
             end
-            if (gb)
+            if (use_grb)
                 fprintf ('GraphBLAS: %10s %10.4f\n', method, t) ;
             else
                 fprintf ('MATLAB:    %10s %10.4f\n', method, t) ;

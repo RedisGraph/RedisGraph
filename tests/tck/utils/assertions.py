@@ -1,6 +1,6 @@
 from numbers import Number
 from collections import Counter
-from redisgraph import Node, Edge
+from redisgraph import Node, Edge, Path
 
 # Returns True if value is a number or string representation of a number.
 
@@ -70,6 +70,19 @@ def listToString(listToConvert):
     strValue += ']'
     return strValue
 
+def pathToString(pathToConvert):
+    strValue = "<"
+    nodes_count = pathToConvert.nodes_count()
+    for i in range(0, nodes_count - 1):
+        node = pathToConvert.get_node(i)
+        node_str = nodeToString(node)
+        edge = pathToConvert.get_relationship(i)
+        edge_str = edgeToString(edge)
+        strValue += node_str + "-" + edge_str + "->" if edge.src_node == node.id else node_str + "<-" + edge_str + "-"
+
+    strValue += nodeToString(pathToConvert.get_node(nodes_count - 1)) if nodes_count > 0 else ""
+    strValue +=">"
+    return strValue
 
 def toString(value):
     if isinstance(value, bool):
@@ -90,6 +103,8 @@ def toString(value):
         return edgeToString(value)
     elif isinstance(value, list):
         return listToString(value)
+    elif isinstance(value, Path):
+        return pathToString(value)
     elif value == None:
         return "null"
 
@@ -113,6 +128,8 @@ def prepareActualValue(actualValue):
         actualValue = edgeToString(actualValue)
     elif isinstance(actualValue, list):
         actualValue = listToString(actualValue)
+    elif isinstance(actualValue, Path):
+        actualValue = pathToString(actualValue)
     else:
         # actual value is null or boolean
         assert isinstance(actualValue, (type(None), bool))

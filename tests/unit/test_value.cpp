@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -54,7 +54,7 @@ TEST_F(ValueTest, TestNumerics) {
 	ASSERT_TRUE(v.type == T_DOUBLE);
 	ASSERT_EQ(v.doubleval, 10);
 
-	SIValue_Free(&v);
+	SIValue_Free(v);
 }
 
 TEST_F(ValueTest, TestStrings) {
@@ -64,14 +64,14 @@ TEST_F(ValueTest, TestStrings) {
 	v = SIValue_FromString(str);
 	ASSERT_TRUE(v.type == T_STRING);
 	ASSERT_STREQ(v.stringval, "Test!");
-	SIValue_Free(&v);
+	SIValue_Free(v);
 
 	/* Out of double range */
 	str = "1.0001e10001";
 	v = SIValue_FromString(str);
 	ASSERT_TRUE(v.type == T_STRING);
 	ASSERT_STREQ(v.stringval, "1.0001e10001");
-	SIValue_Free(&v);
+	SIValue_Free(v);
 }
 
 // Idempotence and correctness tests for null, bool, long, double, edge, node, array.
@@ -129,14 +129,13 @@ TEST_F(ValueTest, TestHashDouble) {
 
 TEST_F(ValueTest, TestEdge) {
 	Entity entity;
-	entity.id = 0;
 
 	Edge e0;
+	e0.id = 0;
 	e0.entity = &entity;
 	SIValue edge = SI_Edge(&e0);
 
-	Edge e0Other;
-	e0Other.entity = &entity;
+	Edge e0Other = e0;
 	SIValue edgeOther = SI_Edge(&e0Other);
 
 	// Validate same hashCode for the same value, different address.
@@ -145,9 +144,8 @@ TEST_F(ValueTest, TestEdge) {
 	ASSERT_EQ(origHashCode, otherHashCode);
 
 	// Change entity id.
-	Edge e1;
-	entity.id = 1;
-	e1.entity = &entity;
+	Edge e1 = e0;
+	e1.id = 1;
 	edgeOther = SI_Edge(&e1);
 	otherHashCode = SIValue_HashCode(edgeOther);
 	ASSERT_NE(origHashCode, otherHashCode);
@@ -155,14 +153,13 @@ TEST_F(ValueTest, TestEdge) {
 
 TEST_F(ValueTest, TestNode) {
 	Entity entity;
-	entity.id = 0;
 
 	Node n0;
+	n0.id = 0;
 	n0.entity = &entity;
 	SIValue node = SI_Node(&n0);
 
-	Node n0Other;
-	n0Other.entity = &entity;
+	Node n0Other = n0;
 	SIValue nodeOther = SI_Node(&n0Other);
 
 	// Validate same hashCode for the same value, different address.
@@ -171,9 +168,8 @@ TEST_F(ValueTest, TestNode) {
 	ASSERT_EQ(origHashCode, otherHashCode);
 
 	// Change entity id.
-	entity.id = 1;
-	Node n1;
-	n1.entity = & entity;
+	Node n1 = n0;
+	n1.id = 1;
 	nodeOther = SI_Node(&n1);
 	otherHashCode = SIValue_HashCode(nodeOther);
 	ASSERT_NE(origHashCode, otherHashCode);
@@ -240,9 +236,9 @@ TEST_F(ValueTest, TestHashLongAndDouble) {
 // Test for entities with same id, different types
 TEST_F(ValueTest, TestEdgeAndNode) {
 	Entity entity;
-	entity.id = 0;
 
 	Edge e0;
+	e0.id = 0;
 	e0.entity = &entity;
 	SIValue edge = SI_Edge(&e0);
 
@@ -264,8 +260,9 @@ TEST_F(ValueTest, TestSet) {
 	Node n;
 	Edge e;
 	Entity entity;
-	entity.id = 0;
+	n.id = 0;
 	n.entity = &entity;
+	e.id = 0;
 	e.entity = &entity;
 	SIValue arr = SI_Array(2);
 
@@ -338,3 +335,4 @@ TEST_F(ValueTest, TestSet) {
 	ASSERT_EQ(Set_Size(set), 0);
 	Set_Free(set);
 }
+

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -11,12 +11,13 @@ extern "C"
 {
 #endif
 
-#include "../../src/graph/graph.h"
+#include "../../src/config.h"
 #include "../../src/util/arr.h"
+#include "../../src/graph/graph.h"
+#include "../../src/util/rmalloc.h"
 #include "../../src/util/simple_timer.h"
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 #include "../../src/util/datablock/datablock_iterator.h"
-#include "../../src/util/rmalloc.h"
 
 #ifdef __cplusplus
 }
@@ -26,6 +27,8 @@ extern "C"
 #define KGRN "\x1B[32m"
 #define KRED "\x1B[31m"
 #define KNRM "\x1B[0m"
+
+RG_Config config; // Global module configuration
 
 // Encapsulate the essence of an edge.
 typedef struct {
@@ -39,6 +42,9 @@ class GraphTest : public ::testing::Test {
 	static void SetUpTestCase() {
 		// Use the malloc family for allocations
 		Alloc_Reset();
+
+		// Set global variables
+		config.maintain_transposed_matrices = true; // Ensure that transposed matrices are constructed.
 
 		// Initialize GraphBLAS.
 		GrB_init(GrB_NONBLOCKING);
@@ -144,7 +150,7 @@ class GraphTest : public ::testing::Test {
 		Node *n;
 		unsigned int new_node_count = 0;
 		DataBlockIterator *it = Graph_ScanNodes(g);
-		while((n = (Node *)DataBlockIterator_Next(it)) != NULL) new_node_count++;
+		while((n = (Node *)DataBlockIterator_Next(it, NULL)) != NULL) new_node_count++;
 		ASSERT_EQ(new_node_count, prev_node_count + additional_node_count);
 		DataBlockIterator_Free(it);
 
@@ -311,10 +317,10 @@ TEST_F(GraphTest, NewGraph) {
 	GrB_Index ncols, nrows, nvals;
 	Graph *g = Graph_New(GRAPH_DEFAULT_NODE_CAP, GRAPH_DEFAULT_EDGE_CAP);
 	Graph_AcquireWriteLock(g);
-
-	ASSERT_EQ(GrB_Matrix_ncols(&ncols, g->adjacency_matrix), GrB_SUCCESS);
-	ASSERT_EQ(GrB_Matrix_nrows(&nrows, g->adjacency_matrix), GrB_SUCCESS);
-	ASSERT_EQ(GrB_Matrix_nvals(&nvals, g->adjacency_matrix), GrB_SUCCESS);
+	GrB_Matrix adj_matrix = g->adjacency_matrix->grb_matrix;
+	ASSERT_EQ(GrB_Matrix_ncols(&ncols, adj_matrix), GrB_SUCCESS);
+	ASSERT_EQ(GrB_Matrix_nrows(&nrows, adj_matrix), GrB_SUCCESS);
+	ASSERT_EQ(GrB_Matrix_nvals(&nvals, adj_matrix), GrB_SUCCESS);
 
 	ASSERT_TRUE(g->nodes != NULL);
 	ASSERT_TRUE(g->relations != NULL);
@@ -630,14 +636,17 @@ TEST_F(GraphTest, RemoveEdges) {
 TEST_F(GraphTest, GetNode) {
 	/* Create a graph with nodeCount nodes,
 	 * Make sure node retrival works as expected:
-	 * 1. try to get nodes (0 - nodeCount)
-	 * 2. try to get node with ID >= nodeCount. */
+	 * try to get nodes (0 - nodeCount) */
 
 	Node n;
 	size_t nodeCount = 16;
 	Graph *g = Graph_New(nodeCount, nodeCount);
+
 	Graph_AcquireWriteLock(g);
+	{
 	for(int i = 0 ; i < nodeCount; i++) Graph_CreateNode(g, GRAPH_NO_LABEL, &n);
+	}
+	Graph_ReleaseLock(g);
 
 	// Get nodes 0 - nodeCount.
 	NodeID i = 0;
@@ -646,11 +655,6 @@ TEST_F(GraphTest, GetNode) {
 		ASSERT_TRUE(n.entity != NULL);
 	}
 
-	// Get a none existing node.
-	ASSERT_EQ(Graph_GetNode(g, i, &n), 0);
-	ASSERT_TRUE(n.entity == NULL);
-
-	Graph_ReleaseLock(g);
 	Graph_Free(g);
 }
 
@@ -691,7 +695,7 @@ TEST_F(GraphTest, GetEdge) {
 	for(EdgeID i = 0; i < edgeCount; i++) {
 		Graph_GetEdge(g, i, &e);
 		ASSERT_TRUE(e.entity != NULL);
-		ASSERT_EQ(e.entity->id, i);
+		ASSERT_EQ(e.id, i);
 	}
 
 	// Try to get edges connecting source to destination node.
@@ -881,3 +885,4 @@ TEST_F(GraphTest, BulkDelete) {
 	// Clean up.
 	Graph_Free(g);
 }
+

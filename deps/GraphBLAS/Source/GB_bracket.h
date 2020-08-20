@@ -2,7 +2,7 @@
 // GB_bracket.h: definitions for GB_bracket
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -25,7 +25,7 @@
 static inline void GB_bracket_left
 (
     const int64_t imin,
-    const int64_t *restrict X,  // input list is in X [kleft:kright]
+    const int64_t *GB_RESTRICT X,  // input list is in X [kleft:kright]
     int64_t *kleft,
     const int64_t kright
 )
@@ -38,7 +38,7 @@ static inline void GB_bracket_left
         // search for imin in X [kleft:kright]
         int64_t pleft = (*kleft) ;
         int64_t pright = kright ;
-        GB_BINARY_TRIM_SEARCH (imin, X, pleft, pright) ;
+        GB_TRIM_BINARY_SEARCH (imin, X, pleft, pright) ;
         (*kleft) = pleft ;
     }
 }
@@ -55,7 +55,7 @@ static inline void GB_bracket_left
 static inline void GB_bracket_right
 (
     const int64_t imax,
-    const int64_t *restrict X,  // input list is in X [kleft:kright]
+    const int64_t *GB_RESTRICT X,  // input list is in X [kleft:kright]
     const int64_t kleft,
     int64_t *kright
 )
@@ -67,7 +67,7 @@ static inline void GB_bracket_right
         // search for imax in X [kleft:kright]
         int64_t pleft = kleft ;
         int64_t pright = (*kright) ;
-        GB_BINARY_TRIM_SEARCH (imax, X, pleft, pright) ;
+        GB_TRIM_BINARY_SEARCH (imax, X, pleft, pright) ;
         (*kright) = pleft ;
     }
 }
@@ -88,7 +88,7 @@ static inline void GB_bracket
 (
     const int64_t imin,         // search for entries in the range imin:imax
     const int64_t imax,
-    const int64_t *restrict X,  // input list is in X [kleft:kright]
+    const int64_t *GB_RESTRICT X,  // input list is in X [kleft:kright]
     const int64_t kleft_in,
     const int64_t kright_in,
     int64_t *kleft_new,         // output list is in X [kleft_new:kright_new]

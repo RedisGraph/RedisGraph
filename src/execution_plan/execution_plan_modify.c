@@ -1,33 +1,9 @@
 #include "execution_plan.h"
-#include "../util/qsort.h"
+#include "ops/ops.h"
+#include "../query_ctx.h"
+#include "../ast/ast_mock.h"
 
-// Sort an array and remove duplicate entries.
-static void _uniqueArray(const char **arr) {
-#define MODIFIES_ISLT(a,b) (strcmp((*a),(*b)) > 0)
-	int count = array_len(arr);
-	QSORT(const char *, arr, count, MODIFIES_ISLT);
-	uint unique_idx = 0;
-	for(int i = 0; i < count - 1; i ++) {
-		if(arr[i] != arr[i + 1]) {
-			arr[unique_idx++] = arr[i];
-		}
-	}
-	arr[unique_idx++] = arr[count - 1];
-	array_trimm_len(arr, unique_idx);
-}
-
-/* Checks if parent has given child, if so returns 1
- * otherwise returns 0 */
-int _OpBase_ContainsChild(const OpBase *parent, const OpBase *child) {
-	for(int i = 0; i < parent->childCount; i++) {
-		if(parent->children[i] == child) {
-			return 1;
-		}
-	}
-	return 0;
-}
-
-void _OpBase_AddChild(OpBase *parent, OpBase *child) {
+static void _OpBase_AddChild(OpBase *parent, OpBase *child) {
 	// Add child to parent
 	if(parent->children == NULL) {
 		parent->children = rm_malloc(sizeof(OpBase *));
@@ -40,9 +16,27 @@ void _OpBase_AddChild(OpBase *parent, OpBase *child) {
 	child->parent = parent;
 }
 
+/* Remove the operation old_child from its parent and replace it
+ * with the new child without reordering elements. */
+static void _ExecutionPlan_ParentReplaceChild(OpBase *parent, OpBase *old_child,
+											  OpBase *new_child) {
+	assert(parent->childCount > 0);
+
+	for(int i = 0; i < parent->childCount; i ++) {
+		/* Scan the children array to find the op being replaced. */
+		if(parent->children[i] != old_child) continue;
+		/* Replace the original child with the new one. */
+		parent->children[i] = new_child;
+		new_child->parent = parent;
+		return;
+	}
+
+	assert(false && "failed to locate the operation to be replaced");
+}
+
 /* Removes node b from a and update child parent lists
  * Assuming B is a child of A. */
-void _OpBase_RemoveNode(OpBase *parent, OpBase *child) {
+static void _OpBase_RemoveChild(OpBase *parent, OpBase *child) {
 	// Remove child from parent.
 	int i = 0;
 	for(; i < parent->childCount; i++) {
@@ -68,117 +62,40 @@ void _OpBase_RemoveNode(OpBase *parent, OpBase *child) {
 	child->parent = NULL;
 }
 
-const char **_ExecutionPlan_LocateReferences(OpBase *root, OpBase **op, rax *references) {
-	/* List of entities which had their ID resolved
-	 * at this point of execution, should include all
-	 * previously modified entities (up the execution plan). */
-	const char **seen = array_new(const char *, 0);
-
-	uint modifies_count = array_len(root->modifies);
-	/* Append current op modified entities. */
-	for(uint i = 0; i < modifies_count; i++) {
-		seen = array_append(seen, root->modifies[i]);
-		// printf("%u\n", root->modifies[i]);
-	}
-
-	/* Traverse execution plan, upwards. */
-	for(int i = 0; i < root->childCount; i++) {
-		const char **saw = _ExecutionPlan_LocateReferences(root->children[i], op, references);
-
-		/* Quick return if op was located. */
-		if(*op) {
-			array_free(saw);
-			return seen;
-		}
-
-		uint saw_count = array_len(saw);
-		/* Append current op modified entities. */
-		for(uint i = 0; i < saw_count; i++) {
-			seen = array_append(seen, saw[i]);
-		}
-		array_free(saw);
-	}
-
-	// Sort the 'seen' array and remove duplicate entries.
-	// This is necessary to properly intersect 'seen' with the 'references' rax.
-	_uniqueArray(seen);
-
-	uint seen_count = array_len(seen);
-
-	/* See if all references have been resolved. */
-	uint match = raxSize(references);
-
-	for(uint i = 0; i < seen_count; i++) {
-		// Too many unmatched references.
-		if(match > (seen_count - i)) break;
-		const char *seen_id = seen[i];
-
-		if(raxFind(references, (unsigned char *)seen_id, strlen(seen_id)) != raxNotFound) {
-			match--;
-			// All references have been resolved.
-			if(match == 0) {
-				*op = root;
-				break;
-			}
-		}
-	}
-
-	// if(!match) *op = root; // TODO might be necessary for post-WITH segments
-	return seen;
-}
-
-void _OpBase_RemoveChild(OpBase *parent, OpBase *child) {
-	_OpBase_RemoveNode(parent, child);
-}
-
-void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
+inline void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
 	_OpBase_AddChild(parent, newOp);
-}
-
-void _ExecutionPlan_LocateOps(OpBase *root, OPType type, OpBase ***ops) {
-	if(!root) return;
-
-	if(root->type & type)(*ops) = array_append((*ops), root);
-
-	for(int i = 0; i < root->childCount; i++) {
-		_ExecutionPlan_LocateOps(root->children[i], type, ops);
-	}
-}
-
-OpBase **ExecutionPlan_LocateOps(OpBase *root, OPType type) {
-	OpBase **ops = array_new(OpBase *, 0);
-	_ExecutionPlan_LocateOps(root, type, &ops);
-	return ops;
 }
 
 // Introduce the new operation B between A and A's parent op.
 void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
-	/* B is a new operation. */
-	assert(!(b->parent || b->children));
-
 	if(a->parent == NULL) {
 		/* A is the root operation. */
 		_OpBase_AddChild(b, a);
 		return;
 	}
 
-	/* Replace A's former parent. */
-	OpBase *a_former_parent = a->parent;
-
-	/* Disconnect A from its former parent. */
-	_OpBase_RemoveChild(a_former_parent, a);
-
-	/* Add A's former parent as parent of B. */
-	_OpBase_AddChild(a_former_parent, b);
+	/* Disconnect A from its parent and replace it with B. */
+	_ExecutionPlan_ParentReplaceChild(a->parent, a, b);
 
 	/* Add A as a child of B. */
 	_OpBase_AddChild(b, a);
 }
 
 void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root) {
-	/* child is the current root operation and parent is a new operation. */
-	assert(!old_root->parent && !new_root->parent && !new_root->children);
-	_OpBase_AddChild(new_root, old_root);
+	/* The new root should have no parent, but may have children if we've constructed
+	 * a chain of traversals/scans. */
+	assert(!old_root->parent && !new_root->parent);
+
+	/* Find the deepest child of the new root operation.
+	 * Currently, we can only follow the first child, since we don't call this function when
+	 * introducing Cartesian Products (the only multiple-stream operation at this stage.)
+	 * This may be inadequate later. */
+	OpBase *tail = new_root;
+	assert(tail->childCount <= 1);
+	while(tail->childCount > 0) tail = tail->children[0];
+
+	// Append the old root to the tail of the new root's chain.
+	_OpBase_AddChild(tail, old_root);
 }
 
 void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b) {
@@ -190,6 +107,7 @@ void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b) {
 
 void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
 	if(op->parent == NULL) {
+		ExecutionPlan *plan = (ExecutionPlan *)op->plan;
 		// Removing execution plan root.
 		assert(op->childCount == 1);
 		// Assign child as new root.
@@ -197,13 +115,15 @@ void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op) {
 		// Remove new root's parent pointer.
 		plan->root->parent = NULL;
 	} else {
-		// Remove op from its parent.
 		OpBase *parent = op->parent;
-		_OpBase_RemoveChild(op->parent, op);
-
-		// Add each of op's children as a child of op's parent.
-		for(int i = 0; i < op->childCount; i++) {
-			_OpBase_AddChild(parent, op->children[i]);
+		if(op->childCount > 0) {
+			// In place replacement of the op first branch instead of op.
+			_ExecutionPlan_ParentReplaceChild(op->parent, op, op->children[0]);
+			// Add each of op's children as a child of op's parent.
+			for(int i = 1; i < op->childCount; i++) _OpBase_AddChild(parent, op->children[i]);
+		} else {
+			// Remove op from its parent.
+			_OpBase_RemoveChild(op->parent, op);
 		}
 	}
 
@@ -219,7 +139,6 @@ void ExecutionPlan_DetachOp(OpBase *op) {
 	if(op->parent == NULL) return;
 
 	// Remove op from its parent.
-	OpBase *parent = op->parent;
 	_OpBase_RemoveChild(op->parent, op);
 
 	op->parent = NULL;
@@ -228,7 +147,7 @@ void ExecutionPlan_DetachOp(OpBase *op) {
 OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
 	if(!root) return NULL;
 
-	uint count = (root->modifies) ? array_len(root->modifies) : 0;
+	uint count = array_len(root->modifies);
 
 	for(uint i = 0; i < count; i++) {
 		const char *resolved_alias = root->modifies[i];
@@ -245,50 +164,193 @@ OpBase *ExecutionPlan_LocateOpResolvingAlias(OpBase *root, const char *alias) {
 	return NULL;
 }
 
-
-OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type) {
-	if(!root) return NULL;
-
-	if(root->type & type) { // NOTE - this will fail if OPType is later changed to not be a bitmask.
-		return root;
+OpBase *ExecutionPlan_LocateOpMatchingType(OpBase *root, const OPType *types, uint type_count) {
+	for(int i = 0; i < type_count; i++) {
+		// Return the current op if it matches any of the types we're searching for.
+		if(root->type == types[i]) return root;
 	}
 
 	for(int i = 0; i < root->childCount; i++) {
-		OpBase *op = ExecutionPlan_LocateOp(root->children[i], type);
+		// Recursively visit children.
+		OpBase *op = ExecutionPlan_LocateOpMatchingType(root->children[i], types, type_count);
 		if(op) return op;
 	}
 
 	return NULL;
 }
 
-void ExecutionPlan_Taps(OpBase *root, OpBase ***taps) {
-	if(root == NULL) return;
-	if(root->type & OP_SCAN) *taps = array_append(*taps, root);
+OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type) {
+	if(!root) return NULL;
 
-	for(int i = 0; i < root->childCount; i++) {
-		ExecutionPlan_Taps(root->children[i], taps);
-	}
+	const OPType type_arr[1] = {type};
+	return ExecutionPlan_LocateOpMatchingType(root, type_arr, 1);
 }
 
-OpBase *ExecutionPlan_LocateReferences(OpBase *root, rax *references) {
-	OpBase *op = NULL;
-	const char **temp = _ExecutionPlan_LocateReferences(root, &op, references);
-	array_free(temp);
+static OpBase *_ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
+											   rax *refs_to_resolve) {
+	if(root == recurse_limit) return NULL; // Don't traverse into earlier ExecutionPlan scopes.
+
+	int dependency_count = 0;
+	OpBase *resolving_op = NULL;
+	bool all_refs_resolved = false;
+	for(int i = 0; i < root->childCount && !all_refs_resolved; i++) {
+		// Visit each child and try to resolve references, storing a pointer to the child if successful.
+		OpBase *tmp_op = _ExecutionPlan_LocateReferences(root->children[i], recurse_limit, refs_to_resolve);
+		if(tmp_op) dependency_count ++; // Count how many children resolved references.
+		// If there is more than one child resolving an op, set the root as the resolver.
+		resolving_op = resolving_op ? root : tmp_op;
+		all_refs_resolved = (raxSize(refs_to_resolve) == 0); // We're done when the rax is empty.
+	}
+
+	// If we've resolved all references, our work is done.
+	if(all_refs_resolved) return resolving_op;
+
+	// Try to resolve references in the current operation.
+	bool refs_resolved = false;
+	uint modifies_count = array_len(root->modifies);
+	for(uint i = 0; i < modifies_count; i++) {
+		const char *ref = root->modifies[i];
+		// Attempt to remove the current op's references, marking whether any removal was succesful.
+		refs_resolved |= raxRemove(refs_to_resolve, (unsigned char *)ref, strlen(ref), NULL);
+	}
+
+	if(refs_resolved) resolving_op = root;
+	return resolving_op;
+}
+
+OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
+									   rax *refs_to_resolve) {
+	OpBase *op = _ExecutionPlan_LocateReferences(root, recurse_limit, refs_to_resolve);
 	return op;
 }
 
-// Collect all resolved entities on an operation chain.
-void ExecutionPlan_ResolvedModifiers(const OpBase *op, rax *modifiers) {
+
+static void _ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *types, int type_count,
+												  OpBase ***ops) {
+	for(int i = 0; i < type_count; i++) {
+		// Check to see if the op's type matches any of the types we're searching for.
+		if(root->type == types[i]) {
+			*ops = array_append(*ops, root);
+			break;
+		}
+	}
+
+	for(int i = 0; i < root->childCount; i++) {
+		// Recursively visit children.
+		_ExecutionPlan_CollectOpsMatchingType(root->children[i], types, type_count, ops);
+	}
+}
+
+OpBase **ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *types, uint type_count) {
+	OpBase **ops = array_new(OpBase *, 0);
+	_ExecutionPlan_CollectOpsMatchingType(root, types, type_count, &ops);
+	return ops;
+}
+
+OpBase **ExecutionPlan_CollectOps(OpBase *root, OPType type) {
+	OpBase **ops = array_new(OpBase *, 0);
+	const OPType type_arr[1] = {type};
+	_ExecutionPlan_CollectOpsMatchingType(root, type_arr, 1, &ops);
+	return ops;
+}
+
+// Collect all aliases that have been resolved by the given tree of operations.
+void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers) {
 	assert(op && modifiers);
 	if(op->modifies) {
 		uint modifies_count = array_len(op->modifies);
 		for(uint i = 0; i < modifies_count; i++) {
 			const char *modified = op->modifies[i];
-			raxTryInsert(modifiers, (unsigned char *)modified, strlen(modified), NULL, NULL);
+			raxTryInsert(modifiers, (unsigned char *)modified, strlen(modified), (void *)modified, NULL);
 		}
 	}
 
+	/* Project and Aggregate operations demarcate variable scopes,
+	 * collect their projections but do not recurse into their children.
+	 * Note that future optimizations which operate across scopes will require different logic
+	 * than this for application. */
+	if(op->type == OPType_PROJECT || op->type == OPType_AGGREGATE) return;
+
 	for(int i = 0; i < op->childCount; i++) {
-		ExecutionPlan_ResolvedModifiers(op->children[i], modifiers);
+		ExecutionPlan_BoundVariables(op->children[i], modifiers);
 	}
 }
+
+// For all ops that refer to QG entities, rebind them with the matching entity
+// in the provided QueryGraph.
+// (This logic is ugly, but currently necessary.)
+static void _RebindQueryGraphReferences(OpBase *op, const QueryGraph *qg) {
+	switch(op->type) {
+	case OPType_INDEX_SCAN:
+		((IndexScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((IndexScan *)op)->n->alias);
+		return;
+	case OPType_ALL_NODE_SCAN:
+		((AllNodeScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((AllNodeScan *)op)->n->alias);
+		return;
+	case OPType_NODE_BY_LABEL_SCAN:
+		((NodeByLabelScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((NodeByLabelScan *)op)->n->alias);
+		return;
+	case OPType_NODE_BY_ID_SEEK:
+		((NodeByIdSeek *)op)->n = QueryGraph_GetNodeByAlias(qg, ((NodeByIdSeek *)op)->n->alias);
+		return;
+	default:
+		return;
+	}
+}
+
+void ExecutionPlan_BindPlanToOps(ExecutionPlan *plan, OpBase *root) {
+	if(!root) return;
+	// If the temporary execution plan has added new QueryGraph entities,
+	// migrate them to the master plan's QueryGraph.
+	// (This is only necessary for producing EXPLAIN outputs.)
+	QueryGraph_MergeGraphs(plan->query_graph, root->plan->query_graph);
+
+	root->plan = plan;
+	_RebindQueryGraphReferences(root, plan->query_graph);
+	for(int i = 0; i < root->childCount; i ++) {
+		ExecutionPlan_BindPlanToOps(plan, root->children[i]);
+	}
+}
+
+OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_vars,
+									   const cypher_astnode_t *node) {
+	// Initialize an ExecutionPlan that shares this plan's Record mapping.
+	ExecutionPlan *match_stream_plan = ExecutionPlan_NewEmptyExecutionPlan();
+	match_stream_plan->record_map = plan->record_map;
+
+	// If we have bound variables, build an Argument op that represents them.
+	if(bound_vars) match_stream_plan->root = NewArgumentOp(plan, bound_vars);
+
+	AST *ast = QueryCtx_GetAST();
+	// Build a temporary AST holding a MATCH clause.
+	cypher_astnode_type_t type = cypher_astnode_type(node);
+
+	/* The AST node we're building a mock MATCH clause for will be a path
+	 * if we're converting a MERGE clause or WHERE filter, and we must build
+	 * and later free a CYPHER_AST_PATTERN node to contain it.
+	 * If instead we're converting an OPTIONAL MATCH, the node is itself a MATCH clause,
+	 * and we will reuse its CYPHER_AST_PATTERN node rather than building a new one. */
+	bool node_is_path = (type == CYPHER_AST_PATTERN_PATH || type == CYPHER_AST_NAMED_PATH);
+	AST *match_stream_ast = AST_MockMatchClause(ast, (cypher_astnode_t *)node, node_is_path);
+
+	ExecutionPlan_PopulateExecutionPlan(match_stream_plan);
+
+	AST_MockFree(match_stream_ast, node_is_path);
+	QueryCtx_SetAST(ast); // Reset the AST.
+	// Add filter ops to sub-ExecutionPlan.
+	if(match_stream_plan->filter_tree) ExecutionPlan_PlaceFilterOps(match_stream_plan, NULL);
+
+	OpBase *match_stream_root = match_stream_plan->root;
+
+	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
+	ExecutionPlan_BindPlanToOps(plan, match_stream_root);
+
+	// NULL-set variables shared between the match_stream_plan and the overall plan.
+	match_stream_plan->root = NULL;
+	match_stream_plan->record_map = NULL;
+	// Free the temporary plan.
+	ExecutionPlan_Free(match_stream_plan);
+
+	return match_stream_root;
+}
+

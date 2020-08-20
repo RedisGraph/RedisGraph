@@ -1,7 +1,7 @@
 function test02
 %TEST02 test GrB_*_dup
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 [~, ~, ~, classes, ~, ~] = GB_spec_opsall ;
@@ -30,7 +30,7 @@ for k1 = 1:length (classes)
 
                 C = GB_mex_dup (A, cclass) ;
                 C_matrix = full (C.matrix) ;
-                C_pattern = full (spones (C.matrix)) ;
+                C_pattern = full (GB_spones_mex (C.matrix)) ;
                 assert (spok (1*C.matrix) == 1) ;
 
                 if (k1 == k2)
@@ -40,7 +40,7 @@ for k1 = 1:length (classes)
 
                     C2 = GB_mex_dup (A, cclass, 1) ;
                     C2_matrix = full (C2.matrix) ;
-                    C2_pattern = full (spones (C2.matrix)) ;
+                    C2_pattern = full (GB_spones_mex (C2.matrix)) ;
                     assert (isequal (C, C2))  ;
                     assert (spok (1*C2.matrix) == 1) ;
                 end

@@ -2,7 +2,7 @@
 // GB_ewise_slice: slice the entries and vectors for an ewise operation
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -12,10 +12,16 @@
 // C=op(A,B).  The mask is ignored for computing where to slice the work, but
 // it is sliced once the location has been found.
 
+#define GB_FREE_WORK                                                    \
+{                                                                       \
+    GB_FREE_MEMORY (Coarse, ntasks1+1, sizeof (int64_t)) ;              \
+    GB_FREE_MEMORY (Cwork, Cnvec+1, sizeof (int64_t)) ;                 \
+}
+
 #define GB_FREE_ALL                                                     \
 {                                                                       \
+    GB_FREE_WORK ;                                                      \
     GB_FREE_MEMORY (TaskList, max_ntasks+1, sizeof (GB_task_struct)) ;  \
-    GB_FREE_MEMORY (Cwork, Cnvec+1, sizeof (int64_t)) ;                 \
 }
 
 #include "GB.h"
@@ -33,10 +39,10 @@ GrB_Info GB_ewise_slice
     int *p_nthreads,                // # of threads for eWise operation
     // input:
     const int64_t Cnvec,            // # of vectors of C
-    const int64_t *restrict Ch,     // vectors of C, if hypersparse
-    const int64_t *restrict C_to_M, // mapping of C to M
-    const int64_t *restrict C_to_A, // mapping of C to A
-    const int64_t *restrict C_to_B, // mapping of C to B
+    const int64_t *GB_RESTRICT Ch,     // vectors of C, if hypersparse
+    const int64_t *GB_RESTRICT C_to_M, // mapping of C to M
+    const int64_t *GB_RESTRICT C_to_A, // mapping of C to A
+    const int64_t *GB_RESTRICT C_to_B, // mapping of C to B
     bool Ch_is_Mh,                  // if true, then Ch == Mh; GB_add only
     const GrB_Matrix M,             // mask matrix to slice (optional)
     const GrB_Matrix A,             // matrix to slice
@@ -53,15 +59,17 @@ GrB_Info GB_ewise_slice
     ASSERT (p_max_ntasks != NULL) ;
     ASSERT (p_ntasks != NULL) ;
     ASSERT (p_nthreads != NULL) ;
-    ASSERT_OK (GB_check (A, "A for ewise_slice", GB0)) ;
-    ASSERT_OK (GB_check (B, "B for ewise_slice", GB0)) ;
+    ASSERT_MATRIX_OK (A, "A for ewise_slice", GB0) ;
+    ASSERT_MATRIX_OK (B, "B for ewise_slice", GB0) ;
 
     (*p_TaskList  ) = NULL ;
     (*p_max_ntasks) = 0 ;
     (*p_ntasks    ) = 0 ;
     (*p_nthreads  ) = 1 ;
 
-    int64_t *restrict Cwork = NULL ;
+    int64_t *GB_RESTRICT Cwork = NULL ;
+    int64_t *GB_RESTRICT Coarse = NULL ; // size ntasks1+1
+    int ntasks1 = 0 ;
 
     //--------------------------------------------------------------------------
     // determine # of threads to use
@@ -81,7 +89,7 @@ GrB_Info GB_ewise_slice
     // When the mask is present, it is often fastest to break the work up
     // into tasks, even when nthreads_max is 1.
 
-    GB_task_struct *restrict TaskList = NULL ;
+    GB_task_struct *GB_RESTRICT TaskList = NULL ;
     int max_ntasks = 0 ;
     int ntasks0 = (M == NULL && nthreads_max == 1) ? 1 : (32 * nthreads_max) ;
     GB_REALLOC_TASK_LIST (TaskList, ntasks0, max_ntasks) ;
@@ -107,15 +115,15 @@ GrB_Info GB_ewise_slice
     //--------------------------------------------------------------------------
 
     const int64_t vlen = A->vlen ;
-    const int64_t *restrict Ap = A->p ;
-    const int64_t *restrict Ai = A->i ;
-    const int64_t *restrict Bp = B->p ;
-    const int64_t *restrict Bi = B->i ;
+    const int64_t *GB_RESTRICT Ap = A->p ;
+    const int64_t *GB_RESTRICT Ai = A->i ;
+    const int64_t *GB_RESTRICT Bp = B->p ;
+    const int64_t *GB_RESTRICT Bi = B->i ;
     bool Ch_is_Ah = (Ch != NULL && A->h != NULL && Ch == A->h) ;
     bool Ch_is_Bh = (Ch != NULL && B->h != NULL && Ch == B->h) ;
 
-    const int64_t *restrict Mp = NULL ;
-    const int64_t *restrict Mi = NULL ;
+    const int64_t *GB_RESTRICT Mp = NULL ;
+    const int64_t *GB_RESTRICT Mi = NULL ;
     if (M != NULL)
     { 
         Mp = M->p ;
@@ -142,8 +150,10 @@ GrB_Info GB_ewise_slice
     //--------------------------------------------------------------------------
 
     int nthreads_for_Cwork = GB_nthreads (Cnvec, chunk, nthreads_max) ;
+
+    int64_t k ;
     #pragma omp parallel for num_threads(nthreads_for_Cwork) schedule(static)
-    for (int64_t k = 0 ; k < Cnvec ; k++)
+    for (k = 0 ; k < Cnvec ; k++)
     {
 
         //----------------------------------------------------------------------
@@ -242,15 +252,19 @@ GrB_Info GB_ewise_slice
     ntasks0 = (M == NULL && nthreads == 1) ? 1 : (32 * nthreads) ;
     double target_task_size = cwork / (double) (ntasks0) ;
     target_task_size = GB_IMAX (target_task_size, chunk) ;
-    int ntasks1 = cwork / target_task_size ;
+    ntasks1 = cwork / target_task_size ;
     ntasks1 = GB_IMAX (ntasks1, 1) ;
 
     //--------------------------------------------------------------------------
     // slice the work into coarse tasks
     //--------------------------------------------------------------------------
 
-    int64_t Coarse [ntasks1+1] ;
-    GB_pslice (Coarse, Cwork, Cnvec, ntasks1) ;
+    if (!GB_pslice (&Coarse, Cwork, Cnvec, ntasks1))
+    { 
+        // out of memory
+        GB_FREE_ALL ;
+        return (GB_OUT_OF_MEMORY) ;
+    }
 
     //--------------------------------------------------------------------------
     // construct all tasks, both coarse and fine
@@ -495,7 +509,7 @@ GrB_Info GB_ewise_slice
     // free workspace and return result
     //--------------------------------------------------------------------------
 
-    GB_FREE_MEMORY (Cwork, Cnvec+1, sizeof (int64_t)) ;
+    GB_FREE_WORK ;
     (*p_TaskList  ) = TaskList ;
     (*p_max_ntasks) = max_ntasks ;
     (*p_ntasks    ) = ntasks ;

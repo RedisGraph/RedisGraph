@@ -1,6 +1,9 @@
 function test122
 %TEST122 performance tests for GrB_assign
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 fprintf ('test120:-------------------  C(I,J)<!M> += A:\n') ;
 
 [save save_chunk] = nthreads_get ;
@@ -78,7 +81,7 @@ for dc = [2 0 1e-6 1e-5 1e-4 1e-3 1e-2 0.1 1]
 
             C2 = GB_mex_subassign (C0, M, 'plus', A, I0, I0, d) ;
             C2 = GB_mex_subassign (C0, M, 'plus', A, I0, I0, d) ;
-            tg = gbresults ;
+            tg = grbresults ;
             if (n < 500)
                 assert (isequal (C1, C2.matrix)) ;
             end

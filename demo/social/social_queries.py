@@ -155,7 +155,7 @@ friends_who_are_older_than_average = QueryInfo(
              MATCH(:person)-[:friend]->(f:person) 
              WHERE f.age > average_age 
              RETURN f.name, f.age, round(f.age - average_age) AS age_diff 
-             ORDER BY age_diff, f.name DESC
+             ORDER BY age_diff DESC, f.name DESC
              LIMIT 4""",
     description='Friends who are older then the average age.',
     max_run_time_ms=0.35,
@@ -236,7 +236,7 @@ who_was_on_business_trip_query = QueryInfo(
 number_of_vacations_per_person_query = QueryInfo(
     query="""MATCH (p:person)-[v:visited {purpose:"pleasure"}]->(c:country)
              RETURN p.name, count(v.purpose) AS vacations
-             ORDER BY COUNT(v.purpose), p.name DESC
+             ORDER BY COUNT(v.purpose) DESC, p.name DESC
              LIMIT 6""",
     description='Count number of vacations per person?',
     max_run_time_ms=0.5,

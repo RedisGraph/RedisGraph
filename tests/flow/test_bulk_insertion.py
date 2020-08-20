@@ -3,6 +3,7 @@ import os
 import sys
 import csv
 import click
+from RLTest import Env
 from click.testing import CliRunner
 
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -19,13 +20,12 @@ redis_graph = None
 
 class testGraphBulkInsertFlow(FlowTestsBase):
     def __init__(self):
-        super(testGraphBulkInsertFlow, self).__init__()
+        self.env = Env()
         global redis_graph
         global redis_con
         redis_con = self.env.getConnection()
         port = self.env.envRunner.port
         redis_graph = Graph("graph", redis_con)
-
 
     # Run bulk loader script and validate terminal output
     def test01_run_script(self):

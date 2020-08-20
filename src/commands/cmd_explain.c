@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -7,6 +7,7 @@
 #include "cmd_explain.h"
 #include "cmd_context.h"
 #include "../query_ctx.h"
+#include "execution_ctx.h"
 #include "../index/index.h"
 #include "../util/rmalloc.h"
 #include "../execution_plan/execution_plan.h"
@@ -17,33 +18,38 @@
  * argv[1] graph name
  * argv[2] query */
 void Graph_Explain(void *args) {
-	AST *ast = NULL;
 	bool lock_acquired = false;
+	CommandCtx *command_ctx = (CommandCtx *)args;
+	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(command_ctx);
+	GraphContext *gc = CommandCtx_GetGraphContext(command_ctx);
+	QueryCtx_SetGlobalExecutionCtx(command_ctx);
+
+	CommandCtx_TrackCtx(command_ctx);
+	QueryCtx_BeginTimer(); // Start query timing.
+
+	/* Retrieve the required execution items and information:
+	 * 1. AST
+	 * 2. Execution plan (if any)
+	 * 3. Whether these items were cached or not */
+	AST *ast = NULL;
+	bool cached = false;
 	ExecutionPlan *plan = NULL;
-	CommandCtx *qctx = (CommandCtx *)args;
-	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(qctx);
-	GraphContext *gc = CommandCtx_GetGraphContext(qctx);
-	QueryCtx_SetGraphCtx(gc);
-	const char *query = qctx->query;
+	ExecutionCtx exec_ctx = ExecutionCtx_FromQuery(command_ctx->query);
 
-	QueryCtx_SetRedisModuleCtx(ctx);
+	ExecutionType exec_type = exec_ctx.exec_type;
+	ast = exec_ctx.ast;
+	plan = exec_ctx.plan;
+	// See if there were any query compile time errors
+	if(QueryCtx_EncounteredError()) {
+		QueryCtx_EmitException();
+		goto cleanup;
+	}
+	if(exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
 
-	// Parse the query to construct an AST
-	cypher_parse_result_t *parse_result = parse(qctx->query);
-	if(parse_result == NULL) goto cleanup;
-
-	// Perform query validations
-	if(AST_Validate(ctx, parse_result) != AST_VALID) goto cleanup;
-
-	// Prepare the constructed AST for accesses from the module
-	ast = AST_Build(parse_result);
-
-	// Handle replies for index creation/deletion
-	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
-	if(root_type == CYPHER_AST_CREATE_NODE_PROPS_INDEX) {
+	if(exec_type == EXECUTION_TYPE_INDEX_CREATE) {
 		RedisModule_ReplyWithSimpleString(ctx, "Create Index");
 		goto cleanup;
-	} else if(root_type == CYPHER_AST_DROP_NODE_PROPS_INDEX) {
+	} else if(exec_type == EXECUTION_TYPE_INDEX_DROP) {
 		RedisModule_ReplyWithSimpleString(ctx, "Drop Index");
 		goto cleanup;
 	}
@@ -51,17 +57,16 @@ void Graph_Explain(void *args) {
 	Graph_AcquireReadLock(gc->g);
 	lock_acquired = true;
 
-	plan = NewExecutionPlan(ctx, gc, NULL);
-	if(plan) ExecutionPlan_Print(plan, ctx);
+	ExecutionPlan_PreparePlan(plan);
+	ExecutionPlan_Init(plan);       // Initialize the plan's ops.
+	ExecutionPlan_Print(plan, ctx); // Print the execution plan.
 
 cleanup:
 	if(lock_acquired) Graph_ReleaseLock(gc->g);
-	if(plan) ExecutionPlan_Free(plan);
 
 	AST_Free(ast);
-	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
+	ExecutionPlan_Free(plan);
 	GraphContext_Release(gc);
-	CommandCtx_Free(qctx);
-	parse_result_free(parse_result);
+	CommandCtx_Free(command_ctx);
+	QueryCtx_Free(); // Reset the QueryCtx and free its allocations.
 }
-

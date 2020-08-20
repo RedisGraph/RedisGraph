@@ -77,7 +77,6 @@ Feature: NullAcceptance
       | null              |
     And no side effects
 
-@skip
   Scenario: Ignore null when setting property
     Given an empty graph
     When executing query:
@@ -161,7 +160,6 @@ Feature: NullAcceptance
       | null |
     And no side effects
 
-@skip
   Scenario: Ignore null when deleting node
     Given an empty graph
     When executing query:
@@ -175,7 +173,6 @@ Feature: NullAcceptance
       | null |
     And no side effects
 
-@skip
   Scenario: Ignore null when deleting relationship
     Given an empty graph
     When executing query:

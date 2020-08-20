@@ -1,7 +1,7 @@
 function test37
 %TEST37 performance test of qsort
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\n------------ testing GB_mex_qsort performance\n') ;
@@ -23,7 +23,7 @@ for n = [1 10 19 20 21 100 1000 1e5 1e6 1e7 1e8]
         tic
         J1 = GB_mex_qsort (I) ;
         t1 = toc ;
-        t1b = gbresults ;
+        t1b = grbresults ;
 
         tic
         J4 = sort (I) ;
@@ -39,7 +39,7 @@ for n = [1 10 19 20 21 100 1000 1e5 1e6 1e7 1e8]
         tic
         J1 = GB_mex_qsort (I) ;
         t1 = toc ;
-        t1b = gbresults ;
+        t1b = grbresults ;
 
         tic
         J4 = sort (I) ;

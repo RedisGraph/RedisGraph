@@ -2,7 +2,7 @@
 // GxB_Desc_get: get a field in a descriptor
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -84,7 +84,7 @@ GrB_Info GxB_Desc_get           // get a parameter from a descriptor
                 va_end (ap) ;
                 GB_RETURN_IF_NULL (nthreads) ;
                 int nth = (desc == NULL) ? GxB_DEFAULT : desc->nthreads_max ;
-                (*nthreads) = GB_IMIN (nth, GxB_NTHREADS_MAX) ;
+                (*nthreads) = nth ;
             }
             break ;
 

@@ -83,11 +83,11 @@ Feature: TernaryLogicAcceptanceTest
             | null  |
         And no side effects
 
-    @skip
     Scenario Outline: Using null in AND
         And parameters are:
-            | lhs | <lhs> |
-            | rhs | <rhs> |
+            | name | value |
+            | lhs  | <lhs> |
+            | rhs  | <rhs> |
         When executing query:
             """
             RETURN $lhs AND $rhs AS result
@@ -105,11 +105,11 @@ Feature: TernaryLogicAcceptanceTest
             | null  | false | false  |
             | false | null  | false  |
 
-    @skip
     Scenario Outline: Using null in OR
         And parameters are:
-            | lhs | <lhs> |
-            | rhs | <rhs> |
+            | name | value |
+            | lhs  | <lhs> |
+            | rhs  | <rhs> |
         When executing query:
             """
             RETURN $lhs OR $rhs AS result
@@ -127,11 +127,11 @@ Feature: TernaryLogicAcceptanceTest
             | null  | false | null   |
             | false | null  | null   |
 
-    @skip
     Scenario Outline: Using null in XOR
         And parameters are:
-            | lhs | <lhs> |
-            | rhs | <rhs> |
+            | name | value |
+            | lhs  | <lhs> |
+            | rhs  | <rhs> |
         When executing query:
             """
             RETURN $lhs XOR $rhs AS result
@@ -149,9 +149,9 @@ Feature: TernaryLogicAcceptanceTest
             | null  | false | null   |
             | false | null  | null   |
 
-    @skip
     Scenario Outline: Using null in IN
         And parameters are:
+            | name | value  |
             | elt  | <elt>  |
             | coll | <coll> |
         When executing query:

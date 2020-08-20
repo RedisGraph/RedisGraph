@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -10,6 +10,7 @@
 #include "../../util/rmalloc.h"
 
 #include <math.h>
+#include <errno.h>
 
 /* Returns 1 if the operand is a numeric type, and 0 otherwise.
  * This also rejects NULL values. */
@@ -20,52 +21,30 @@ static inline int _validate_numeric(const SIValue v) {
 /* The '+' operator is overloaded to perform string concatenation
  * as well as arithmetic addition. */
 SIValue AR_ADD(SIValue *argv, int argc) {
-	// Don't modify input.
-	SIValue result = SI_CloneValue(argv[0]);
-	char buffer[512];
-	char *string_arg = NULL;
-
-	if(SIValue_IsNull(argv[0])) return SI_NullVal();
-	for(int i = 1; i < argc; i++) {
-		result = SIValue_Add(result, argv[i]);
-	}
-	return result;
+	return SIValue_Add(argv[0], argv[1]);
 }
 
 /* returns the subtracting given values. */
 SIValue AR_SUB(SIValue *argv, int argc) {
-	SIValue result = argv[0];
-	if(!_validate_numeric(result)) return SI_NullVal();
-
-	for(int i = 1; i < argc; i++) {
-		if(!_validate_numeric(argv[i])) return SI_NullVal();
-		result = SIValue_Subtract(result, argv[i]);
-	}
-	return result;
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
+	return SIValue_Subtract(argv[0], argv[1]);
 }
 
 /* returns the multiplication of given values. */
 SIValue AR_MUL(SIValue *argv, int argc) {
-	SIValue result = argv[0];
-	if(!_validate_numeric(result)) return SI_NullVal();
-
-	for(int i = 1; i < argc; i++) {
-		if(!_validate_numeric(argv[i])) return SI_NullVal();
-		result = SIValue_Multiply(result, argv[i]);
-	}
-	return result;
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
+	return SIValue_Multiply(argv[0], argv[1]);
 }
 
 /* returns the division of given values. */
 SIValue AR_DIV(SIValue *argv, int argc) {
-	SIValue result = argv[0];
-	if(!_validate_numeric(result)) return SI_NullVal();
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
+	return SIValue_Divide(argv[0], argv[1]);
+}
 
-	for(int i = 1; i < argc; i++) {
-		if(!_validate_numeric(argv[i])) return SI_NullVal();
-		result = SIValue_Divide(result, argv[i]);
-	}
-	return result;
+SIValue AR_MODULO(SIValue *argv, int argc) {
+	if(SIValue_IsNull(argv[0]) || SIValue_IsNull(argv[1])) return SI_NullVal();
+	return SIValue_Modulo(argv[0], argv[1]);
 }
 
 /* TODO All AR_* functions need to emit appropriate failures when provided
@@ -120,56 +99,92 @@ SIValue AR_SIGN(SIValue *argv, int argc) {
 	return SI_LongVal(sign);
 }
 
+SIValue AR_TOINTEGER(SIValue *argv, int argc) {
+	SIValue arg = argv[0];
+	char *sEnd = NULL;
+
+	switch(SI_TYPE(arg)) {
+	case T_NULL:
+		return SI_NullVal();
+	case T_INT64:
+		return arg;
+	case T_DOUBLE:
+		// Remove floating point.
+		return SI_LongVal(floor(arg.doubleval));
+	case T_STRING:
+		errno = 0;
+		double parsedval = strtod(arg.stringval, &sEnd);
+		/* The input was not a complete number or represented a number that
+		 * cannot be represented as a double. */
+		if(sEnd[0] != '\0' || errno == ERANGE) return SI_NullVal();
+		// Remove floating point.
+		return SI_LongVal(floor(parsedval));
+	default:
+		assert(false);
+	}
+}
+
 void Register_NumericFuncs() {
 	SIType *types;
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (SI_NUMERIC | T_STRING | T_ARRAY | T_BOOL | T_NULL));
-	func_desc = AR_FuncDescNew("add", AR_ADD, VAR_ARG_LEN, types, true);
+	func_desc = AR_FuncDescNew("add", AR_ADD, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (SI_NUMERIC | T_NULL));
-	func_desc = AR_FuncDescNew("sub", AR_SUB, VAR_ARG_LEN, types, true);
+	func_desc = AR_FuncDescNew("sub", AR_SUB, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (SI_NUMERIC | T_NULL));
-	func_desc = AR_FuncDescNew("mul", AR_MUL, VAR_ARG_LEN, types, true);
+	func_desc = AR_FuncDescNew("mul", AR_MUL, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (SI_NUMERIC | T_NULL));
-	func_desc = AR_FuncDescNew("div", AR_DIV, VAR_ARG_LEN, types, true);
+	func_desc = AR_FuncDescNew("div", AR_DIV, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (SI_NUMERIC | T_NULL));
-	func_desc = AR_FuncDescNew("abs", AR_ABS, 1, types, true);
+	func_desc = AR_FuncDescNew("mod", AR_MODULO, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (SI_NUMERIC | T_NULL));
-	func_desc = AR_FuncDescNew("ceil", AR_CEIL, 1, types, true);
+	func_desc = AR_FuncDescNew("abs", AR_ABS, 1, 1, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (SI_NUMERIC | T_NULL));
-	func_desc = AR_FuncDescNew("floor", AR_FLOOR, 1, types, true);
+	func_desc = AR_FuncDescNew("ceil", AR_CEIL, 1, 1, types, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	types = array_append(types, (SI_NUMERIC | T_NULL));
+	func_desc = AR_FuncDescNew("floor", AR_FLOOR, 1, 1, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 0);
-	func_desc = AR_FuncDescNew("rand", AR_RAND, 0, types, false);
+	func_desc = AR_FuncDescNew("rand", AR_RAND, 0, 0, types, false);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (SI_NUMERIC | T_NULL));
-	func_desc = AR_FuncDescNew("round", AR_ROUND, 1, types, true);
+	func_desc = AR_FuncDescNew("round", AR_ROUND, 1, 1, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, (SI_NUMERIC | T_NULL));
-	func_desc = AR_FuncDescNew("sign", AR_SIGN, 1, types, true);
+	func_desc = AR_FuncDescNew("sign", AR_SIGN, 1, 1, types, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	types = array_append(types, (SI_NUMERIC | T_STRING | T_NULL));
+	func_desc = AR_FuncDescNew("tointeger", AR_TOINTEGER, 1, 1, types, true);
 	AR_RegFunc(func_desc);
 }
+

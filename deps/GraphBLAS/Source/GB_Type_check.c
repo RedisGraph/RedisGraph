@@ -2,7 +2,7 @@
 // GB_Type_check: print a built-in type
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -12,10 +12,7 @@
 // matrix A:", for example.  The internal name is the C typedef with which the
 // GraphBLAS GrB_Type was created.
 
-// for additional diagnostics, use:
-// #define GB_DEVELOPER 1
-
-#include "GB.h"
+#include "GB_printf.h"
 
 GrB_Info GB_Type_check      // check a GraphBLAS Type
 (
@@ -32,7 +29,7 @@ GrB_Info GB_Type_check      // check a GraphBLAS Type
     // check inputs
     //--------------------------------------------------------------------------
 
-    GBPR0 ("GraphBLAS type: ") ;
+    GBPR0 ("    GraphBLAS type: ") ;
     if (pr > 0 && name != NULL) GBPR ("%s ", name) ;
 
     if (type == NULL)
@@ -61,12 +58,7 @@ GrB_Info GB_Type_check      // check a GraphBLAS Type
         case GB_UINT64_code : GBPR0 ("uint64_t" ) ; break ;
         case GB_FP32_code   : GBPR0 ("float"    ) ; break ;
         case GB_FP64_code   : GBPR0 ("double"   ) ; break ;
-        case GB_UCT_code    :
-            GBPR0 ("compile-time user-defined: [%s]", type->name) ;
-            break ;
-        case GB_UDT_code    :
-            GBPR0 ("run-time user-defined: [%s]", type->name) ;
-            break ;
+        case GB_UDT_code    : GBPR0 ("user-defined: [%s]", type->name) ; break ;
         default             : GBPR0 ("unknown type\n") ;
             return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
                 "Type code %d is unknown: %s [%s]",
@@ -77,7 +69,7 @@ GrB_Info GB_Type_check      // check a GraphBLAS Type
 
     if (type->size == 0 || type->size != GB_code_size (type->code, type->size))
     { 
-        GBPR0 ("Type has an invalid size\n") ;
+        GBPR0 ("    Type has an invalid size\n") ;
         return (GB_ERROR (GrB_INVALID_OBJECT, (GB_LOG,
             "Type has an invalid size: %s [%s]", GB_NAME, type->name))) ;
     }

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -20,7 +20,8 @@ typedef struct {
 	const QGNode *n;
 	uint nodeRecIdx;
 	DataBlockIterator *iter;
+	Record child_record;        /* The Record this op acts on if it is not a tap. */
 } AllNodeScan;
 
-OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const Graph *g, const QGNode *n);
+OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const QGNode *n);
 

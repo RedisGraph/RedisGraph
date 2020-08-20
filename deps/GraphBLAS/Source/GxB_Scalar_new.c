@@ -2,7 +2,7 @@
 // GxB_Scalar_new: create a new GxB_Scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -17,7 +17,7 @@ GrB_Info GxB_Scalar_new     // create a new GxB_Scalar with no entries
     GxB_Scalar *s,          // handle of GxB_Scalar to create
     GrB_Type type           // type of GxB_Scalar to create
 )
-{
+{ 
 
     //--------------------------------------------------------------------------
     // check inputs

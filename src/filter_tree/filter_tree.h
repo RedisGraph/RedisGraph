@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -34,7 +34,7 @@ typedef struct {
 } FT_ExpressionNode;
 
 /* The FT_PredicateNode represents a leaf node within the filter tree
- * it holds an operator: [<. <=, =, >, >=]
+ * it holds an operator: [<. <=, =, <>, >, >=]
  * a left and right hand-side arithmetic expressions
  * which are evaluated and compared to one another using the operator. */
 typedef struct {
@@ -68,10 +68,10 @@ typedef struct FT_FilterNode FT_FilterNode;
 int IsNodePredicate(const FT_FilterNode *node);
 
 /* Appends a left hand-side node to root. */
-FT_FilterNode *AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child);
+FT_FilterNode *FilterTree_AppendLeftChild(FT_FilterNode *root, FT_FilterNode *child);
 
 /* Appends a right hand-side node to root. */
-FT_FilterNode *AppendRightChild(FT_FilterNode *root, FT_FilterNode *child);
+FT_FilterNode *FilterTree_AppendRightChild(FT_FilterNode *root, FT_FilterNode *child);
 
 /* Creates a new expression node. */
 FT_FilterNode *FilterTree_CreateExpressionFilter(AR_ExpNode *exp);
@@ -96,6 +96,12 @@ rax *FilterTree_CollectAttributes(const FT_FilterNode *root);
 /* Checks to see if tree contains given operation. */
 bool FilterTree_containsOp(const FT_FilterNode *root, AST_Operator op);
 
+/* Checks to see if tree contains given function.
+ * root - tree root to traverse.
+ * func - function name to lookup.
+ * node - point to tree node in which func was located, null if func isn't located. */
+bool FilterTree_ContainsFunc(const FT_FilterNode *root, const char *func, FT_FilterNode **node);
+
 /* Prints tree. */
 void FilterTree_Print(const FT_FilterNode *root);
 
@@ -105,8 +111,18 @@ void FilterTree_Print(const FT_FilterNode *root);
  * components possible following the two rules above. */
 Vector *FilterTree_SubTrees(const FT_FilterNode *root);
 
+/* Verifies tree structure
+ * a condition or predicate node can't be childless. */
+bool FilterTree_Valid(const FT_FilterNode *root);
+
 /* Remove NOT nodes by applying DeMorgan laws */
 void FilterTree_DeMorgan(FT_FilterNode **root);
+
+/* Try to compress a given filter tree. */
+bool FilterTree_Compact(FT_FilterNode *root);
+
+/* Clones tree. */
+FT_FilterNode *FilterTree_Clone(FT_FilterNode *root);
 
 /* Prints tree. */
 void FilterTree_Print(const FT_FilterNode *root);

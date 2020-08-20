@@ -1,22 +1,24 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
 
 #include "resultset_formatters.h"
 #include "../../util/arr.h"
+#include "../../datatypes/path/sipath.h"
 
 // Forward declarations.
 static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *gc, Node *n);
 static void _ResultSet_VerboseReplyWithEdge(RedisModuleCtx *ctx, GraphContext *gc, Edge *e);
 static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, SIValue array);
+static void _ResultSet_VerboseReplyWithPath(RedisModuleCtx *ctx, SIValue path);
+
 /* This function has handling for all SIValue scalar types.
  * The current RESP protocol only has unique support for strings, 8-byte integers,
  * and NULL values. */
 static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext *gc,
 											   const SIValue v) {
-	// Emit the actual value, then the value type (to facilitate client-side parsing)
 	switch(SI_TYPE(v)) {
 	case T_STRING:
 		RedisModule_ReplyWithStringBuffer(ctx, v.stringval, strlen(v.stringval));
@@ -42,6 +44,9 @@ static void _ResultSet_VerboseReplyWithSIValue(RedisModuleCtx *ctx, GraphContext
 		return;
 	case T_ARRAY:
 		_ResultSet_VerboseReplyWithArray(ctx, v);
+		return;
+	case T_PATH:
+		_ResultSet_VerboseReplyWithPath(ctx, v);
 		return;
 	default:
 		assert("Unhandled value type" && false);
@@ -84,14 +89,15 @@ static void _ResultSet_VerboseReplyWithNode(RedisModuleCtx *ctx, GraphContext *g
 	// ["labels", [label (string)]]
 	RedisModule_ReplyWithArray(ctx, 2);
 	RedisModule_ReplyWithStringBuffer(ctx, "labels", 6);
-	// Print label in nested array for multi-label support
-	// Retrieve label
+	const char *label = NODE_GET_LABEL(n);
+	// Retrieve label if it is not set on the node.
 	// TODO Make a more efficient lookup for this string
-	const char *label = GraphContext_GetNodeLabel(gc, n);
+	if(label == NULL) label = GraphContext_GetNodeLabel(gc, n);
 	if(label == NULL) {
-		// Emit an empty array for unlabeled nodes
+		// Emit an empty array for unlabeled nodes.
 		RedisModule_ReplyWithArray(ctx, 0);
 	} else {
+		// Print label in nested array for multi-label support.
 		RedisModule_ReplyWithArray(ctx, 1);
 		RedisModule_ReplyWithStringBuffer(ctx, label, strlen(label));
 	}
@@ -153,28 +159,35 @@ static void _ResultSet_VerboseReplyWithArray(RedisModuleCtx *ctx, SIValue array)
 	rm_free(str);
 }
 
+static void _ResultSet_VerboseReplyWithPath(RedisModuleCtx *ctx, SIValue path) {
+	SIValue path_array = SIPath_ToList(path);
+	_ResultSet_VerboseReplyWithArray(ctx, path_array);
+	SIValue_Free(path_array);
+}
+
 void ResultSet_EmitVerboseRecord(RedisModuleCtx *ctx, GraphContext *gc, const Record r,
-								 uint numcols) {
+								 uint numcols, uint *col_rec_map) {
 	// Prepare return array sized to the number of RETURN entities
 	RedisModule_ReplyWithArray(ctx, numcols);
 
 	for(int i = 0; i < numcols; i++) {
-		switch(Record_GetType(r, i)) {
+		uint idx = col_rec_map[i];
+		switch(Record_GetType(r, idx)) {
 		case REC_TYPE_NODE:
-			_ResultSet_VerboseReplyWithNode(ctx, gc, Record_GetNode(r, i));
+			_ResultSet_VerboseReplyWithNode(ctx, gc, Record_GetNode(r, idx));
 			break;
 		case REC_TYPE_EDGE:
-			_ResultSet_VerboseReplyWithEdge(ctx, gc, Record_GetEdge(r, i));
+			_ResultSet_VerboseReplyWithEdge(ctx, gc, Record_GetEdge(r, idx));
 			break;
 		default:
-			_ResultSet_VerboseReplyWithSIValue(ctx, gc, Record_GetScalar(r, i));
+			_ResultSet_VerboseReplyWithSIValue(ctx, gc, Record_Get(r, idx));
 		}
 	}
 }
 
 // Emit the alias or descriptor for each column in the header.
 void ResultSet_ReplyWithVerboseHeader(RedisModuleCtx *ctx, const char **columns,
-									  const Record unused) {
+									  const Record unused, uint *col_rec_map) {
 	uint columns_len = array_len(columns);
 	RedisModule_ReplyWithArray(ctx, columns_len);
 	for(uint i = 0; i < columns_len; i++) {

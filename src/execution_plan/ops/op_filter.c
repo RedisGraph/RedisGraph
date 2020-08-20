@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -8,15 +8,16 @@
 
 /* Forward declarations. */
 static Record FilterConsume(OpBase *opBase);
+static OpBase *FilterClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void FilterFree(OpBase *opBase);
 
 OpBase *NewFilterOp(const ExecutionPlan *plan, FT_FilterNode *filterTree) {
-	OpFilter *op = malloc(sizeof(OpFilter));
+	OpFilter *op = rm_malloc(sizeof(OpFilter));
 	op->filterTree = filterTree;
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_FILTER, "Filter", NULL, FilterConsume,
-				NULL, NULL, FilterFree, plan);
+				NULL, NULL, FilterClone, FilterFree, false, plan);
 
 	return (OpBase *)op;
 }
@@ -34,10 +35,16 @@ static Record FilterConsume(OpBase *opBase) {
 
 		/* Pass graph through filter tree */
 		if(FilterTree_applyFilters(filter->filterTree, r) == FILTER_PASS) break;
-		else Record_Free(r);
+		else OpBase_DeleteRecord(r);
 	}
 
 	return r;
+}
+
+static inline OpBase *FilterClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_FILTER);
+	OpFilter *op = (OpFilter *)opBase;
+	return NewFilterOp(plan, FilterTree_Clone(op->filterTree));
 }
 
 /* Frees OpFilter*/

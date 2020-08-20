@@ -47,7 +47,6 @@ Feature: MatchingSelfRelationships
       | (:A) | [:LOOP] | (:A) |
     And no side effects
 
-@skip
   Scenario: Undirected match in self-relationship graph, count
     Given an empty graph
     And having executed:
@@ -81,7 +80,6 @@ Feature: MatchingSelfRelationships
       | (:A) | [:LOOP] |
     And no side effects
 
-@skip
   Scenario: Undirected match of self-relationship in self-relationship graph, count
     Given an empty graph
     And having executed:
@@ -98,7 +96,6 @@ Feature: MatchingSelfRelationships
       | 1        |
     And no side effects
 
-@skip
   Scenario: Undirected match on simple relationship graph
     Given an empty graph
     And having executed:
@@ -116,7 +113,6 @@ Feature: MatchingSelfRelationships
       | (:B) | [:LOOP] | (:A) |
     And no side effects
 
-@skip
   Scenario: Undirected match on simple relationship graph, count
     Given an empty graph
     And having executed:
@@ -149,7 +145,6 @@ Feature: MatchingSelfRelationships
       | (:A) | [:LOOP] | (:A) |
     And no side effects
 
-@skip
   Scenario: Directed match on self-relationship graph, count
     Given an empty graph
     And having executed:
@@ -182,7 +177,6 @@ Feature: MatchingSelfRelationships
       | (:A) | [:LOOP] |
     And no side effects
 
-@skip
   Scenario: Directed match of self-relationship on self-relationship graph, count
     Given an empty graph
     And having executed:
@@ -216,7 +210,6 @@ Feature: MatchingSelfRelationships
       | 1        |
     And no side effects
 
-@skip
   Scenario: Counting distinct undirected self-relationships in self-relationship graph
     Given an empty graph
     And having executed:
@@ -249,7 +242,6 @@ Feature: MatchingSelfRelationships
       | (:A) | [:LOOP] | (:B) |
     And no side effects
 
-@skip
   Scenario: Directed match of a simple relationship, count
     Given an empty graph
     And having executed:
@@ -266,7 +258,6 @@ Feature: MatchingSelfRelationships
       | 1        |
     And no side effects
 
-@skip
   Scenario: Counting directed self-relationships
     Given an empty graph
     And having executed:

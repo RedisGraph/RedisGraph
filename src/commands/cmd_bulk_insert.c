@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -12,13 +12,15 @@
 
 void _MGraph_BulkInsert(void *args) {
 	// Establish thread-safe environment for batch insertion
-	CommandCtx *cmd_ctx = (CommandCtx *)args;
-	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(cmd_ctx);
+	CommandCtx *command_ctx = (CommandCtx *)args;
+	CommandCtx_TrackCtx(command_ctx);
 
-	RedisModuleString **argv = cmd_ctx->argv + 1; // skip "GRAPH.BULK"
+	RedisModuleCtx *ctx = CommandCtx_GetRedisCtx(command_ctx);
+
+	RedisModuleString **argv = command_ctx->argv + 1; // skip "GRAPH.BULK"
 	RedisModuleString *rs_graph_name = *argv++;
 	const char *graphname = RedisModule_StringPtrLen(rs_graph_name, NULL);
-	int argc = cmd_ctx->argc - 2; // skip "GRAPH.BULK [GRAPHNAME]"
+	int argc = command_ctx->argc - 2; // skip "GRAPH.BULK [GRAPHNAME]"
 	RedisModuleKey *key;
 
 	char reply[1024] = {0}; // Prepare the Redis string response
@@ -94,8 +96,8 @@ cleanup:
 		Graph_ReleaseLock(gc->g);
 		GraphContext_Release(gc);
 	}
-	CommandCtx_ThreadSafeContextUnlock(cmd_ctx);
-	CommandCtx_Free(cmd_ctx);
+	CommandCtx_ThreadSafeContextUnlock(command_ctx);
+	CommandCtx_Free(command_ctx);
 }
 
 int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -103,8 +105,9 @@ int MGraph_BulkInsert(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 	CommandCtx *context;
 	// Bulk commands should always modify slaves.
 	bool is_replicated = false;
-	context = CommandCtx_New(ctx, NULL, NULL, NULL, argv, argc, is_replicated);
+	context = CommandCtx_New(ctx, NULL, NULL, NULL, argc, argv, NULL, is_replicated);
 	_MGraph_BulkInsert(context);
 	RedisModule_ReplicateVerbatim(ctx);
 	return REDISMODULE_OK;
 }
+

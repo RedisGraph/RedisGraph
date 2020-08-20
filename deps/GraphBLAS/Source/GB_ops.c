@@ -2,13 +2,13 @@
 // GB_builtin.c: built-in types, functions, operators, and other externs
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
 
-// This file defines the predefined built-in objects: 11 types, 45 unary
-// operators, 256 binary operators, 44 monoids, and 960 semirings.
+// This file defines the predefined built-in types, descriptors, unary
+// operators, binary operators, monoids, and semirings.
 
 #include "GB.h"
 
@@ -43,6 +43,66 @@ GrB_Type
     GrB_UINT64 = & GB_opaque_GrB_UINT64 ,
     GrB_FP32   = & GB_opaque_GrB_FP32   ,
     GrB_FP64   = & GB_opaque_GrB_FP64   ;
+
+//------------------------------------------------------------------------------
+// built-in descriptors
+//------------------------------------------------------------------------------
+
+#define o GxB_DEFAULT
+
+#define GB_DESC(name,out,mask,in0,in1)                          \
+struct GB_Descriptor_opaque GB_opaque_desc_ ## name =           \
+{                                                               \
+    GB_MAGIC,               /* initialized */                   \
+    out, mask, in0, in1,    /* settings in the spec */          \
+    o, o, o,                /* default: axb, #threads, chunk */ \
+    true                    /* pre-defined */                   \
+} ;                                                             \
+GrB_Descriptor GrB_DESC_ ## name = & GB_opaque_desc_ ## name ;
+
+//       name     outp         structure       comp      in0       in1
+
+// GrB_NULL     , o          , o             + o       , o       , o
+GB_DESC (T1     , o          , o             + o       , o       , GrB_TRAN )
+GB_DESC (T0     , o          , o             + o       , GrB_TRAN, o        )
+GB_DESC (T0T1   , o          , o             + o       , GrB_TRAN, GrB_TRAN )
+
+GB_DESC (C      , o          , o             + GrB_COMP, o       , o        )
+GB_DESC (CT1    , o          , o             + GrB_COMP, o       , GrB_TRAN )
+GB_DESC (CT0    , o          , o             + GrB_COMP, GrB_TRAN, o        )
+GB_DESC (CT0T1  , o          , o             + GrB_COMP, GrB_TRAN, GrB_TRAN )
+
+GB_DESC (S      , o          , GrB_STRUCTURE + o       , o       , o        )
+GB_DESC (ST1    , o          , GrB_STRUCTURE + o       , o       , GrB_TRAN )
+GB_DESC (ST0    , o          , GrB_STRUCTURE + o       , GrB_TRAN, o        )
+GB_DESC (ST0T1  , o          , GrB_STRUCTURE + o       , GrB_TRAN, GrB_TRAN )
+
+GB_DESC (SC     , o          , GrB_STRUCTURE + GrB_COMP, o       , o        )
+GB_DESC (SCT1   , o          , GrB_STRUCTURE + GrB_COMP, o       , GrB_TRAN )
+GB_DESC (SCT0   , o          , GrB_STRUCTURE + GrB_COMP, GrB_TRAN, o        )
+GB_DESC (SCT0T1 , o          , GrB_STRUCTURE + GrB_COMP, GrB_TRAN, GrB_TRAN )
+
+GB_DESC (R      , GrB_REPLACE, o             + o       , o       , o        )
+GB_DESC (RT1    , GrB_REPLACE, o             + o       , o       , GrB_TRAN )
+GB_DESC (RT0    , GrB_REPLACE, o             + o       , GrB_TRAN, o        )
+GB_DESC (RT0T1  , GrB_REPLACE, o             + o       , GrB_TRAN, GrB_TRAN )
+
+GB_DESC (RC     , GrB_REPLACE, o             + GrB_COMP, o       , o        )
+GB_DESC (RCT1   , GrB_REPLACE, o             + GrB_COMP, o       , GrB_TRAN )
+GB_DESC (RCT0   , GrB_REPLACE, o             + GrB_COMP, GrB_TRAN, o        )
+GB_DESC (RCT0T1 , GrB_REPLACE, o             + GrB_COMP, GrB_TRAN, GrB_TRAN )
+
+GB_DESC (RS     , GrB_REPLACE, GrB_STRUCTURE + o       , o       , o        )
+GB_DESC (RST1   , GrB_REPLACE, GrB_STRUCTURE + o       , o       , GrB_TRAN )
+GB_DESC (RST0   , GrB_REPLACE, GrB_STRUCTURE + o       , GrB_TRAN, o        )
+GB_DESC (RST0T1 , GrB_REPLACE, GrB_STRUCTURE + o       , GrB_TRAN, GrB_TRAN )
+
+GB_DESC (RSC    , GrB_REPLACE, GrB_STRUCTURE + GrB_COMP, o       , o        )
+GB_DESC (RSCT1  , GrB_REPLACE, GrB_STRUCTURE + GrB_COMP, o       , GrB_TRAN )
+GB_DESC (RSCT0  , GrB_REPLACE, GrB_STRUCTURE + GrB_COMP, GrB_TRAN, o        )
+GB_DESC (RSCT0T1, GrB_REPLACE, GrB_STRUCTURE + GrB_COMP, GrB_TRAN, GrB_TRAN )
+
+#undef o
 
 //------------------------------------------------------------------------------
 // built-in unary and binary operators
@@ -360,7 +420,7 @@ GB_MONOID_DEFINE_TERM ( GrB_, MAX_UINT16   , uint16_t , 0          , UINT16_MAX)
 GB_MONOID_DEFINE_TERM ( GrB_, MAX_UINT32   , uint32_t , 0          , UINT32_MAX)
 GB_MONOID_DEFINE_TERM ( GrB_, MAX_UINT64   , uint64_t , 0          , UINT64_MAX)
 GB_MONOID_DEFINE_TERM ( GrB_, MAX_FP32     , float    , -INFINITY  , INFINITY  )
-GB_MONOID_DEFINE_TERM ( GrB_, MAX_FP64     , double   , 
+GB_MONOID_DEFINE_TERM ( GrB_, MAX_FP64     , double   ,
     ((double) -INFINITY)  , ((double) INFINITY)  )
 
 // PLUS monoids:
@@ -386,6 +446,19 @@ GB_MONOID_DEFINE_TERM ( GrB_, TIMES_UINT32 , uint32_t , 1          , 0)
 GB_MONOID_DEFINE_TERM ( GrB_, TIMES_UINT64 , uint64_t , 1          , 0)
 GB_MONOID_DEFINE      ( GrB_, TIMES_FP32   , float    , 1          )
 GB_MONOID_DEFINE      ( GrB_, TIMES_FP64   , double   , 1          )
+
+// ANY monoids:
+GB_MONOID_DEFINE_TERM ( GxB_, ANY_INT8     , int8_t   , 0, 0)
+GB_MONOID_DEFINE_TERM ( GxB_, ANY_INT16    , int16_t  , 0, 0)
+GB_MONOID_DEFINE_TERM ( GxB_, ANY_INT32    , int32_t  , 0, 0)
+GB_MONOID_DEFINE_TERM ( GxB_, ANY_INT64    , int64_t  , 0, 0)
+GB_MONOID_DEFINE_TERM ( GxB_, ANY_UINT8    , uint8_t  , 0, 0)
+GB_MONOID_DEFINE_TERM ( GxB_, ANY_UINT16   , uint16_t , 0, 0)
+GB_MONOID_DEFINE_TERM ( GxB_, ANY_UINT32   , uint32_t , 0, 0)
+GB_MONOID_DEFINE_TERM ( GxB_, ANY_UINT64   , uint64_t , 0, 0)
+GB_MONOID_DEFINE_TERM ( GxB_, ANY_FP32     , float    , 0, 0)
+GB_MONOID_DEFINE_TERM ( GxB_, ANY_FP64     , double   , 0, 0)
+GB_MONOID_DEFINE_TERM ( GxB_, ANY_BOOL     , bool     , 0, 0)
 
 // Boolean monoids:
 GB_MONOID_DEFINE_TERM ( GxB_, LOR_BOOL     , bool     , false      , true )

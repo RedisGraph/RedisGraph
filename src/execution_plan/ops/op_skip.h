@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -15,4 +15,4 @@ typedef struct {
 	unsigned int skipped;
 } OpSkip;
 
-OpBase *NewSkipOp(const ExecutionPlan *plan, unsigned int rec_to_skip);
+OpBase *NewSkipOp(const ExecutionPlan *plan);

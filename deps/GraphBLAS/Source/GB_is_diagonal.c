@@ -2,7 +2,7 @@
 // GB_is_diagonal: check if A is a diagonal matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -11,6 +11,7 @@
 // present.  All pending tuples are ignored.  Zombies are treated as entries.
 
 #include "GB_mxm.h"
+#include "GB_atomics.h"
 
 bool GB_is_diagonal             // true if A is diagonal
 (
@@ -24,7 +25,7 @@ bool GB_is_diagonal             // true if A is diagonal
     //--------------------------------------------------------------------------
 
     ASSERT (A != NULL) ;
-    ASSERT_OK (GB_check (A, "A check diag", GB0)) ;
+    ASSERT_MATRIX_OK (A, "A check diag", GB0) ;
 
     //--------------------------------------------------------------------------
     // trivial cases
@@ -66,13 +67,14 @@ bool GB_is_diagonal             // true if A is diagonal
     // examine each vector of A
     //--------------------------------------------------------------------------
 
-    const int64_t *restrict Ap = A->p ;
-    const int64_t *restrict Ai = A->i ;
+    const int64_t *GB_RESTRICT Ap = A->p ;
+    const int64_t *GB_RESTRICT Ai = A->i ;
 
     int diagonal = true ;
 
+    int tid ;
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1)
-    for (int tid = 0 ; tid < ntasks ; tid++)
+    for (tid = 0 ; tid < ntasks ; tid++)
     {
 
         //----------------------------------------------------------------------
@@ -81,8 +83,13 @@ bool GB_is_diagonal             // true if A is diagonal
 
         int diag = true ;
         { 
-            #pragma omp atomic read
-            diag = diagonal ;
+            #if GB_MICROSOFT
+                #pragma omp critical (GB_is_diagonal)
+                diag = diagonal ;
+            #else
+                GB_ATOMIC_READ
+                diag = diagonal ;
+            #endif
         }
         if (!diag) continue ;
 
@@ -115,8 +122,13 @@ bool GB_is_diagonal             // true if A is diagonal
 
         if (!diag)
         { 
-            #pragma omp atomic write
-            diagonal = false ;
+            #if GB_MICROSOFT
+                #pragma omp critical (GB_is_diagonal)
+                diagonal = false ;
+            #else
+                GB_ATOMIC_WRITE
+                diagonal = false ;
+            #endif
         }
     }
 

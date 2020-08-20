@@ -789,10 +789,10 @@ Feature: ListOperations
 
     # List lookup based on parameters
 
-    @skip
     Scenario: Use list lookup based on parameters when there is no type information
         Given any graph
         And parameters are:
+            | name | value   |
             | expr | ['Apa'] |
             | idx  | 0       |
         When executing query:
@@ -805,11 +805,11 @@ Feature: ListOperations
             | 'Apa' |
         And no side effects
 
-    @skip
     Scenario: Use list lookup based on parameters when there is lhs type information
         Given any graph
         And parameters are:
-            | idx | 0 |
+            | name | value |
+            | idx  | 0     |
         When executing query:
             """
             WITH ['Apa'] AS expr
@@ -820,10 +820,10 @@ Feature: ListOperations
             | 'Apa' |
         And no side effects
 
-    @skip
     Scenario: Use list lookup based on parameters when there is rhs type information
         Given any graph
         And parameters are:
+            | name | value   |
             | expr | ['Apa'] |
             | idx  | 0       |
         When executing query:
@@ -963,12 +963,12 @@ Feature: ListOperations
             |       | null  |
             | null  |       |
 
-    @skip
     Scenario: List slice with parameterised range
         Given any graph
         And parameters are:
-            | from | 1 |
-            | to   | 3 |
+            | name | value |
+            | from | 1     |
+            | to   | 3     |
         When executing query:
             """
             WITH [1, 2, 3] AS list
@@ -979,12 +979,12 @@ Feature: ListOperations
             | [2, 3] |
         And no side effects
 
-    @skip
     Scenario: List slice with parameterised invalid range
         Given any graph
         And parameters are:
-            | from | 3 |
-            | to   | 1 |
+            | name | value |
+            | from | 3     |
+            | to   | 1     |
         When executing query:
             """
             WITH [1, 2, 3] AS list
@@ -997,10 +997,10 @@ Feature: ListOperations
 
     # Failures at runtime
 
-    @skip
     Scenario: Fail at runtime when attempting to index with a String into a List
         Given any graph
         And parameters are:
+            | name | value   |
             | expr | ['Apa'] |
             | idx  | 'name'  |
         When executing query:
@@ -1010,10 +1010,10 @@ Feature: ListOperations
             """
         Then a TypeError should be raised at runtime: ListElementAccessByNonInteger
 
-    @skip
     Scenario: Fail at runtime when trying to index into a list with a list
         Given any graph
         And parameters are:
+            | name | value   |
             | expr | ['Apa'] |
             | idx  | ['Apa'] |
         When executing query:

@@ -2,7 +2,7 @@
 // GrB_Matrix_reduce_scalar: reduce a matrix to a scalar
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -29,8 +29,12 @@ GrB_Info GrB_Matrix_reduce_ ## T    /* c = accum (c, reduce_to_scalar (A))  */ \
 )                                                                              \
 {                                                                              \
     GB_WHERE ("GrB_Matrix_reduce_" GB_STR(T) " (&c, accum, reduce, A, desc)") ;\
+    GB_BURBLE_START ("GrB_reduce") ;                                           \
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;                                          \
-    return (GB_reduce_to_scalar (c, GrB_ ## T, accum, reduce, A, Context)) ;   \
+    GrB_Info info = GB_reduce_to_scalar (c, GrB_ ## T, accum, reduce, A,       \
+        Context) ;                                                             \
+    GB_BURBLE_END ;                                                            \
+    return (info) ;                                                            \
 }
 
 GB_MATRIX_TO_SCALAR (bool     , BOOL   )
@@ -62,9 +66,12 @@ GrB_Info GrB_Matrix_reduce_UDT      // c = accum (c, reduce_to_scalar (A))
     // Thus, the type of c must be the same as the reduce monoid.
 
     GB_WHERE ("GrB_Matrix_reduce_UDT (&c, accum, reduce, A, desc)") ;
+    GB_BURBLE_START ("GrB_reduce") ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
     GB_RETURN_IF_NULL_OR_FAULTY (reduce) ;
-    return (GB_reduce_to_scalar (c, reduce->op->ztype, accum, reduce, A,
-        Context)) ;
+    GrB_Info info = GB_reduce_to_scalar (c, reduce->op->ztype, accum, reduce,
+        A, Context) ;
+    GB_BURBLE_END ;
+    return (info) ;
 }
 

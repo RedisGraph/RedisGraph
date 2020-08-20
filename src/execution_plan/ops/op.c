@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -11,10 +11,13 @@
 #include <assert.h>
 
 /* Forward declarations */
+Record ExecutionPlan_BorrowRecord(struct ExecutionPlan *plan);
 rax *ExecutionPlan_GetMappings(const struct ExecutionPlan *plan);
+void ExecutionPlan_ReturnRecord(struct ExecutionPlan *plan, Record r);
 
-void OpBase_Init(OpBase *op, OPType type, char *name, fpInit init, fpConsume consume, fpReset reset,
-				 fpToString toString, fpFree free, const struct ExecutionPlan *plan) {
+void OpBase_Init(OpBase *op, OPType type, const char *name, fpInit init, fpConsume consume,
+				 fpReset reset, fpToString toString, fpClone clone, fpFree free, bool writer,
+				 const struct ExecutionPlan *plan) {
 
 	op->type = type;
 	op->name = name;
@@ -26,15 +29,17 @@ void OpBase_Init(OpBase *op, OPType type, char *name, fpInit init, fpConsume con
 	op->parent = NULL;
 	op->stats = NULL;
 	op->op_initialized = false;
-	op->dangling_records = NULL;
 	op->modifies = NULL;
+	op->writer = writer;
 
 	// Function pointers.
 	op->init = init;
 	op->consume = consume;
 	op->reset = reset;
 	op->toString = toString;
+	op->clone = clone;
 	op->free = free;
+	op->profile = NULL;
 }
 
 inline Record OpBase_Consume(OpBase *op) {
@@ -53,6 +58,19 @@ int OpBase_Modifies(OpBase *op, const char *alias) {
 	if(id == raxNotFound) {
 		id = (void *)raxSize(mapping);
 		raxInsert(mapping, (unsigned char *)alias, strlen(alias), id, NULL);
+	}
+
+	return (intptr_t)id;
+}
+
+int OpBase_AliasModifier(OpBase *op, const char *modifier, const char *alias) {
+	rax *mapping = ExecutionPlan_GetMappings(op->plan);
+	void *id = raxFind(mapping, (unsigned char *)modifier, strlen(modifier));
+	assert(id != raxNotFound);
+
+	// Make sure to not introduce the same modifier twice.
+	if(raxInsert(mapping, (unsigned char *)alias, strlen(alias), id, NULL)) {
+		op->modifies = array_append(op->modifies, alias);
 	}
 
 	return (intptr_t)id;
@@ -108,20 +126,35 @@ Record OpBase_Profile(OpBase *op) {
 	return r;
 }
 
-void OpBase_AddVolatileRecord(OpBase *op, const Record r) {
-	if(op->dangling_records == NULL) op->dangling_records = array_new(Record, 1);
-	op->dangling_records = array_append(op->dangling_records, r);
+bool OpBase_IsWriter(OpBase *op) {
+	return op->writer;
 }
 
-void OpBase_RemoveVolatileRecords(OpBase *op) {
-	if(!op->dangling_records) return;
-
-	array_clear(op->dangling_records);
+void OpBase_UpdateConsume(OpBase *op, fpConsume consume) {
+	assert(op);
+	/* If Operation is profiled, update profiled function.
+	 * otherwise update consume function. */
+	if(op->profile != NULL) op->profile = consume;
+	else op->consume = consume;
 }
 
-Record OpBase_CreateRecord(const OpBase *op) {
-	rax *mapping = ExecutionPlan_GetMappings(op->plan);
-	return Record_New(mapping);
+inline Record OpBase_CreateRecord(const OpBase *op) {
+	return ExecutionPlan_BorrowRecord((struct ExecutionPlan *)op->plan);
+}
+
+Record OpBase_CloneRecord(Record r) {
+	Record clone = ExecutionPlan_BorrowRecord((struct ExecutionPlan *)r->owner);
+	Record_Clone(r, clone);
+	return clone;
+}
+
+inline void OpBase_DeleteRecord(Record r) {
+	ExecutionPlan_ReturnRecord(r->owner, r);
+}
+
+OpBase *OpBase_Clone(const struct ExecutionPlan *plan, const OpBase *op) {
+	if(op->clone) return op->clone(plan, op);
+	return NULL;
 }
 
 void OpBase_Free(OpBase *op) {
@@ -130,14 +163,6 @@ void OpBase_Free(OpBase *op) {
 	if(op->children) rm_free(op->children);
 	if(op->modifies) array_free(op->modifies);
 	if(op->stats) rm_free(op->stats);
-	// If we are storing dangling references to Records, free them now.
-	if(op->dangling_records) {
-		uint count = array_len(op->dangling_records);
-		for(uint i = 0; i < count; i ++) {
-			Record_Free(op->dangling_records[i]);
-		}
-		array_free(op->dangling_records);
-	}
-	free(op);
+	rm_free(op);
 }
 

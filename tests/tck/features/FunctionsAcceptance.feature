@@ -30,7 +30,6 @@
 
 Feature: FunctionsAcceptance
 
-    @skip
     Scenario: Run coalesce
         Given an empty graph
         And having executed:
@@ -48,7 +47,6 @@ Feature: FunctionsAcceptance
             | 'Nobody'                  |
         And no side effects
 
-    @skip
     Scenario: Functions should return null if they get path containing unbound
         Given any graph
         When executing query:
@@ -228,7 +226,6 @@ Feature: FunctionsAcceptance
             | {name: null}                    | false  |
             | {notName: 0, notName2: null}    | false  |
 
-    @skip
     Scenario Outline: `percentileDisc()`
         Given an empty graph
         And having executed:
@@ -238,7 +235,8 @@ Feature: FunctionsAcceptance
             ({price: 30.0})
             """
         And parameters are:
-            | percentile | <p> |
+            | name       | value |
+            | percentile |  <p>  |
         When executing query:
             """
             MATCH (n)
@@ -255,7 +253,6 @@ Feature: FunctionsAcceptance
             | 0.5 | 20.0   |
             | 1.0 | 30.0   |
 
-    @skip
     Scenario Outline: `percentileCont()`
         Given an empty graph
         And having executed:
@@ -265,6 +262,7 @@ Feature: FunctionsAcceptance
             ({price: 30.0})
             """
         And parameters are:
+            | name       | value |
             | percentile | <p> |
         When executing query:
             """
@@ -290,6 +288,7 @@ Feature: FunctionsAcceptance
             CREATE ({price: 10.0})
             """
         And parameters are:
+            | name  | value        |
             | param | <percentile> |
         When executing query:
             """
@@ -312,6 +311,7 @@ Feature: FunctionsAcceptance
             CREATE ({price: 10.0})
             """
         And parameters are:
+            | name  | value        |
             | param | <percentile> |
         When executing query:
             """
@@ -326,6 +326,8 @@ Feature: FunctionsAcceptance
             | -1         |
             | 1.1        |
 
+    # Fails in create query
+    @crash
     @skip
     Scenario: `percentileDisc()` failing in more involved query
         Given an empty graph
@@ -380,7 +382,6 @@ Feature: FunctionsAcceptance
             | 'T1'     | 'T2'     |
         And no side effects
 
-    @skip
     Scenario: `type()` on null relationship
         Given an empty graph
         And having executed:
@@ -398,7 +399,6 @@ Feature: FunctionsAcceptance
             | null    |
         And no side effects
 
-    @skip
     Scenario: `type()` on mixed null and non-null relationships
         Given an empty graph
         And having executed:
@@ -476,7 +476,6 @@ Feature: FunctionsAcceptance
             | ['Foo', 'Bar'] |
         And no side effects
 
-    @skip
     Scenario: `labels()` failing on a path
         Given an empty graph
         And having executed:

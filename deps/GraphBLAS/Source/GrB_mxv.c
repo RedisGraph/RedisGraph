@@ -2,7 +2,7 @@
 // GrB_mxv: matrix-vector multiply
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -32,6 +32,7 @@ GrB_Info GrB_mxv                    // w<M> = accum (w, A*u)
     //--------------------------------------------------------------------------
 
     GB_WHERE ("GrB_mxv (w, M, accum, semiring, A, u, desc)") ;
+    GB_BURBLE_START ("GrB_mxv") ;
     GB_RETURN_IF_NULL_OR_FAULTY (w) ;
     GB_RETURN_IF_FAULTY (M) ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
@@ -41,24 +42,26 @@ GrB_Info GrB_mxv                    // w<M> = accum (w, A*u)
     ASSERT (GB_VECTOR_OK (u)) ;
 
     // get the descriptor
-    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, A_transpose, xx,
-        AxB_method) ;
+    GB_GET_DESCRIPTOR (info, desc, C_replace, Mask_comp, Mask_struct,
+        A_transpose, xx, AxB_method) ;
 
     //--------------------------------------------------------------------------
     // w<M> = accum (w,A*u) and variations, using the mxm kernel
     //--------------------------------------------------------------------------
 
     // w, M, and u are passed as matrices to GB_mxm.
-
-    return (GB_mxm (
+    info = GB_mxm (
         (GrB_Matrix) w,     C_replace,      // w and its descriptor
-        (GrB_Matrix) M,     Mask_comp,      // mask and its descriptor
+        (GrB_Matrix) M, Mask_comp, Mask_struct,     // mask and its descriptor
         accum,                              // for accum (w,t)
         semiring,                           // definition of matrix multiply
         A,                  A_transpose,    // allow A to be transposed
         (GrB_Matrix) u,     false,          // u is never transposed
         false,                              // fmult(x,y), flipxy false
         AxB_method,                         // algorithm selector
-        Context)) ;
+        Context) ;
+
+    GB_BURBLE_END ;
+    return (info) ;
 }
 

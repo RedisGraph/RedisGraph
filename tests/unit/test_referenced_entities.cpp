@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -191,13 +191,14 @@ TEST_F(TestReferencedEntities, TestSet) {
 	AST_Free(astSegment);
 
 	// Path match and set property.
-	q = "MATCH (n)-[e]->(m) SET n.v=1";
+	q = "MATCH (n)-[e]->(x)-[]->(m) SET n.v=x.v";
 	ast = buildAST(q);
 	segmentIndices = getASTSegmentIndices(ast);
 	ASSERT_EQ(1, array_len(segmentIndices));
 	astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
-	ASSERT_EQ(1, raxSize(astSegment->referenced_entities));
+	ASSERT_EQ(2, raxSize(astSegment->referenced_entities));
 	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
 	AST_Free(astSegment);
@@ -320,7 +321,6 @@ TEST_F(TestReferencedEntities, TestMerge) {
 	AST_Free(astSegment);
 }
 
-
 TEST_F(TestReferencedEntities, TestUnwind) {
 	char *q = "UNWIND [1,2] as x";
 	AST *ast = buildAST(q);
@@ -332,7 +332,6 @@ TEST_F(TestReferencedEntities, TestUnwind) {
 	ASSERT_EQ(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"x", 1));
 	AST_Free(astSegment);
 }
-
 
 TEST_F(TestReferencedEntities, TestWith) {
 	char *q = "MATCH (n),(m) with n as x";
@@ -378,7 +377,6 @@ TEST_F(TestReferencedEntities, TestWith) {
 	AST_Free(astSegment);
 }
 
-
 TEST_F(TestReferencedEntities, TestReturn) {
 	char *q = "MATCH (n),(m) RETURN n as x";
 	AST *ast = buildAST(q);
@@ -423,3 +421,51 @@ TEST_F(TestReferencedEntities, TestReturn) {
 	AST_Free(astSegment);
 }
 
+TEST_F(TestReferencedEntities, TestNamedPath) {
+	char *q = "MATCH p=()";
+	AST *ast = buildAST(q);
+	uint *segmentIndices = getASTSegmentIndices(ast);
+	ASSERT_EQ(1, array_len(segmentIndices));
+
+	AST *astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
+	ASSERT_EQ(1, raxSize(astSegment->referenced_entities));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"anon_0", 6));
+	AST_Free(astSegment);
+
+	q = "MATCH p =()-[]-()";
+	ast = buildAST(q);
+	segmentIndices = getASTSegmentIndices(ast);
+	ASSERT_EQ(1, array_len(segmentIndices));
+
+	astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
+	ASSERT_EQ(3, raxSize(astSegment->referenced_entities));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"anon_0", 6));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"anon_1", 6));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"anon_2", 6));
+	AST_Free(astSegment);
+
+	q = "MATCH p =(n)-[e]-(m)";
+	ast = buildAST(q);
+	segmentIndices = getASTSegmentIndices(ast);
+	ASSERT_EQ(1, array_len(segmentIndices));
+
+	astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
+	ASSERT_EQ(3, raxSize(astSegment->referenced_entities));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"n", 1));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
+
+	q = "MATCH p =(:Label1 {value:1})-[e:Rel*]-(m:Label2 {value:2})";
+	ast = buildAST(q);
+	segmentIndices = getASTSegmentIndices(ast);
+	ASSERT_EQ(1, array_len(segmentIndices));
+
+	astSegment = AST_NewSegment(ast, 0, segmentIndices[0]);
+	ASSERT_EQ(3, raxSize(astSegment->referenced_entities));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"anon_0", 6));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"e", 1));
+	ASSERT_NE(raxNotFound, raxFind(astSegment->referenced_entities, (unsigned char *)"m", 1));
+	AST_Free(astSegment);
+
+}

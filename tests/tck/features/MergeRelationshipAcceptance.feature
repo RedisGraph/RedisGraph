@@ -30,7 +30,6 @@
 
 Feature: MergeRelationshipAcceptance
 
-@skip
   Scenario: Creating a relationship
     Given an empty graph
     And having executed:
@@ -49,7 +48,6 @@ Feature: MergeRelationshipAcceptance
     And the side effects should be:
       | +relationships | 1 |
 
-@skip
   Scenario: Matching a relationship
     Given an empty graph
     And having executed:
@@ -68,7 +66,6 @@ Feature: MergeRelationshipAcceptance
       | 1        |
     And no side effects
 
-@skip
   Scenario: Matching two relationships
     Given an empty graph
     And having executed:
@@ -88,7 +85,6 @@ Feature: MergeRelationshipAcceptance
       | 2        |
     And no side effects
 
-@skip
   Scenario: Filtering relationships
     Given an empty graph
     And having executed:
@@ -108,7 +104,6 @@ Feature: MergeRelationshipAcceptance
       | 1        |
     And no side effects
 
-@skip
   Scenario: Creating relationship when all matches filtered out
     Given an empty graph
     And having executed:
@@ -129,7 +124,6 @@ Feature: MergeRelationshipAcceptance
       | +relationships | 1 |
       | +properties    | 1 |
 
-@skip
   Scenario: Matching incoming relationship
     Given an empty graph
     And having executed:
@@ -149,7 +143,6 @@ Feature: MergeRelationshipAcceptance
       | 1        |
     And no side effects
 
-@skip
   Scenario: Creating relationship with property
     Given an empty graph
     And having executed:
@@ -169,7 +162,6 @@ Feature: MergeRelationshipAcceptance
       | +relationships | 1 |
       | +properties    | 1 |
 
-@skip
   Scenario: Using ON CREATE on a node
     Given an empty graph
     And having executed:
@@ -187,7 +179,6 @@ Feature: MergeRelationshipAcceptance
       | +relationships | 1 |
       | +properties    | 1 |
 
-@skip
   Scenario: Using ON CREATE on a relationship
     Given an empty graph
     And having executed:
@@ -208,7 +199,6 @@ Feature: MergeRelationshipAcceptance
       | +relationships | 1 |
       | +properties    | 1 |
 
-@skip
   Scenario: Using ON MATCH on created node
     Given an empty graph
     And having executed:
@@ -225,7 +215,6 @@ Feature: MergeRelationshipAcceptance
     And the side effects should be:
       | +relationships | 1 |
 
-@skip
   Scenario: Using ON MATCH on created relationship
     Given an empty graph
     And having executed:
@@ -242,7 +231,6 @@ Feature: MergeRelationshipAcceptance
     And the side effects should be:
       | +relationships | 1 |
 
-@skip
   Scenario: Using ON MATCH on a relationship
     Given an empty graph
     And having executed:
@@ -263,7 +251,6 @@ Feature: MergeRelationshipAcceptance
     And the side effects should be:
       | +properties | 1 |
 
-@skip
   Scenario: Using ON CREATE and ON MATCH
     Given an empty graph
     And having executed:
@@ -287,7 +274,6 @@ Feature: MergeRelationshipAcceptance
       | +relationships | 3 |
       | +properties    | 4 |
 
-@skip
   Scenario: Creating relationship using merged nodes
     Given an empty graph
     And having executed:
@@ -322,7 +308,6 @@ Feature: MergeRelationshipAcceptance
       | +relationships | 2 |
       | +labels        | 3 |
 
-@skip
   Scenario: Introduce named paths 1
     Given an empty graph
     When executing query:
@@ -340,7 +325,6 @@ Feature: MergeRelationshipAcceptance
       | +relationships | 1 |
       | +properties    | 2 |
 
-@skip
   Scenario: Introduce named paths 2
     Given an empty graph
     When executing query:
@@ -372,7 +356,6 @@ Feature: MergeRelationshipAcceptance
       | +relationships | 1 |
       | +properties    | 2 |
 
-@skip
   Scenario: Match outgoing relationship when direction unspecified
     Given an empty graph
     And having executed:
@@ -391,7 +374,6 @@ Feature: MergeRelationshipAcceptance
       | [:KNOWS] |
     And no side effects
 
-@skip
   Scenario: Match both incoming and outgoing relationships when direction unspecified
     Given an empty graph
     And having executed:
@@ -412,7 +394,6 @@ Feature: MergeRelationshipAcceptance
       | [:KNOWS {name: 'cd'}] |
     And no side effects
 
-@skip
   Scenario: Fail when imposing new predicates on a variable that is already bound
     Given any graph
     When executing query:
@@ -443,7 +424,6 @@ Feature: MergeRelationshipAcceptance
       | +labels        | 2 |
       | +properties    | 1 |
 
-@skip
   Scenario: Matching using list property
     Given an empty graph
     And having executed:
@@ -462,7 +442,6 @@ Feature: MergeRelationshipAcceptance
       | 1        |
     And no side effects
 
-@skip
   Scenario: Using bound variables from other updating clause
     Given an empty graph
     When executing query:
@@ -495,6 +474,7 @@ Feature: MergeRelationshipAcceptance
       | +labels        | 2 |
       | +properties    | 5 |
 
+@crash
 @skip
   Scenario: Do not match on deleted entities
     Given an empty graph
@@ -552,7 +532,6 @@ Feature: MergeRelationshipAcceptance
       | +properties    | 1 |
       | -properties    | 2 |
 
-@skip
   Scenario: Aliasing of existing nodes 1
     Given an empty graph
     And having executed:
@@ -573,7 +552,6 @@ Feature: MergeRelationshipAcceptance
     And the side effects should be:
       | +relationships | 1 |
 
-@skip
   Scenario: Aliasing of existing nodes 2
     Given an empty graph
     And having executed:
@@ -593,7 +571,6 @@ Feature: MergeRelationshipAcceptance
     And the side effects should be:
       | +relationships | 1 |
 
-@skip
   Scenario: Double aliasing of existing nodes 1
     Given an empty graph
     And having executed:
@@ -618,7 +595,6 @@ Feature: MergeRelationshipAcceptance
     And the side effects should be:
       | +relationships | 1 |
 
-@skip
   Scenario: Double aliasing of existing nodes 2
     Given an empty graph
     And having executed:

@@ -1,11 +1,12 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
 #include "./arithmetic_expression.h"
 
+#include "../RG.h"
 #include "funcs.h"
 #include "rax.h"
 #include "./aggregate.h"
@@ -17,12 +18,18 @@
 #include "../graph/graphcontext.h"
 #include "../datatypes/temporal_value.h"
 #include "../datatypes/array.h"
+#include "../ast/ast_shared.h"
 
 #include <ctype.h>
 #include <assert.h>
 
+// Property keys in variadic expressions will be ATTRIBUTE_UNSET until the first lookup.
+#define ATTRIBUTE_UNSET (ATTRIBUTE_NOTFOUND - 1)
+
 // Forward declaration
 static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue *result);
+// Clear an op node internals, without free the node allocation itself.
+static void _AR_EXP_FreeOpInternals(AR_ExpNode *op_node);
 
 /* Update arithmetic expression variable node by setting node's property index.
  * when constructing an arithmetic expression we'll delay setting graph entity
@@ -43,7 +50,7 @@ static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 	switch(exp->operand.type) {
 	case AR_EXP_CONSTANT:
 		clone->operand.type = AR_EXP_CONSTANT;
-		clone->operand.constant = exp->operand.constant;
+		clone->operand.constant = SI_CloneValue(exp->operand.constant);
 		break;
 	case AR_EXP_VARIADIC:
 		clone->operand.type = exp->operand.type;
@@ -53,6 +60,13 @@ static AR_ExpNode *_AR_EXP_CloneOperand(AR_ExpNode *exp) {
 			clone->operand.variadic.entity_prop = exp->operand.variadic.entity_prop;
 		}
 		clone->operand.variadic.entity_prop_idx = exp->operand.variadic.entity_prop_idx;
+		break;
+	case AR_EXP_PARAM:
+		clone->operand.type = AR_EXP_PARAM;
+		clone->operand.param_name = exp->operand.param_name;
+		break;
+	case AR_EXP_BORROW_RECORD:
+		clone->operand.type = AR_EXP_BORROW_RECORD;
 		break;
 	default:
 		assert(false);
@@ -75,8 +89,11 @@ static AR_ExpNode *_AR_EXP_NewOpNode(const char *func_name, uint child_count) {
 static AR_ExpNode *_AR_EXP_CloneOp(AR_ExpNode *exp) {
 	AR_ExpNode *clone = _AR_EXP_NewOpNode(exp->op.func_name, exp->op.child_count);
 	if(exp->op.type == AR_OP_FUNC) {
-		clone->op.f = exp->op.f;
 		clone->op.type = AR_OP_FUNC;
+		/* If the function has private data, the function descriptor
+		 * itself should be cloned. Otherwise, we can perform a direct assignment. */
+		if(exp->op.f->privdata) clone->op.f = AR_CloneFuncDesc(exp->op.f);
+		else clone->op.f = exp->op.f;
 	} else {
 		clone->op.agg_func = Agg_CloneCtx(exp->op.agg_func);
 		clone->op.type = AR_OP_AGGREGATE;
@@ -130,55 +147,69 @@ bool AR_EXP_PerformDistinct(AR_ExpNode *op) {
 	return op->type == AR_EXP_OP && op->op.type == AR_OP_AGGREGATE && op->op.agg_func->isDistinct;
 }
 
-AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias, const char *prop) {
-	AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
-	node->resolved_name = NULL;
+static inline AR_ExpNode *_AR_EXP_InitializeOperand(AR_OperandNodeType type) {
+	AR_ExpNode *node = rm_calloc(1, sizeof(AR_ExpNode));
 	node->type = AR_EXP_OPERAND;
-	node->operand.type = AR_EXP_VARIADIC;
+	node->operand.type = type;
+	return node;
+}
+
+AR_ExpNode *AR_EXP_NewVariableOperandNode(const char *alias, const char *prop) {
+	AR_ExpNode *node = _AR_EXP_InitializeOperand(AR_EXP_VARIADIC);
 	node->operand.variadic.entity_alias = alias;
 	node->operand.variadic.entity_alias_idx = IDENTIFIER_NOT_FOUND;
 	node->operand.variadic.entity_prop = prop;
-	node->operand.variadic.entity_prop_idx = ATTRIBUTE_NOTFOUND;
+	node->operand.variadic.entity_prop_idx = ATTRIBUTE_UNSET;
 
 	return node;
 }
 
 AR_ExpNode *AR_EXP_NewConstOperandNode(SIValue constant) {
-	AR_ExpNode *node = rm_malloc(sizeof(AR_ExpNode));
-	node->resolved_name = NULL;
-	node->type = AR_EXP_OPERAND;
-	node->operand.type = AR_EXP_CONSTANT;
+	AR_ExpNode *node = _AR_EXP_InitializeOperand(AR_EXP_CONSTANT);
 	node->operand.constant = constant;
 	return node;
 }
 
-int AR_EXP_GetOperandType(AR_ExpNode *exp) {
-	if(exp->type == AR_EXP_OPERAND) return exp->operand.type;
-	return -1;
+AR_ExpNode *AR_EXP_NewParameterOperandNode(const char *param_name) {
+	AR_ExpNode *node = _AR_EXP_InitializeOperand(AR_EXP_PARAM);
+	node->operand.param_name = param_name;
+	return node;
+}
+
+AR_ExpNode *AR_EXP_NewRecordNode() {
+	return _AR_EXP_InitializeOperand(AR_EXP_BORROW_RECORD);
 }
 
 /* Compact tree by evaluating constant expressions
  * e.g. MINUS(X) where X is a constant number will be reduced to
  * a single node with the value -X
  * PLUS(MINUS(A), B) will be reduced to a single constant: B-A. */
-bool AR_EXP_ReduceToScalar(AR_ExpNode **root) {
-	if((*root)->type == AR_EXP_OPERAND) {
-		if((*root)->operand.type == AR_EXP_CONSTANT) {
+bool AR_EXP_ReduceToScalar(AR_ExpNode *root, bool reduce_params, SIValue *val) {
+	if(val != NULL) *val = SI_NullVal();
+	if(root->type == AR_EXP_OPERAND) {
+		// In runtime, parameters are set so they can be evaluated
+		if(reduce_params && AR_EXP_IsParameter(root)) {
+			SIValue v = AR_EXP_Evaluate(root, NULL);
+			if(val != NULL) *val = v;
+			return true;
+		}
+		if(AR_EXP_IsConstant(root)) {
 			// Root is already a constant
+			if(val != NULL) *val = root->operand.constant;
 			return true;
 		}
 		// Root is variadic, no way to reduce.
 		return false;
 	} else {
 		// root represents an operation.
-		assert((*root)->type == AR_EXP_OP);
+		assert(root->type == AR_EXP_OP);
 
-		if((*root)->op.type == AR_OP_FUNC) {
+		if(root->op.type == AR_OP_FUNC) {
 			/* See if we're able to reduce each child of root
 			 * if so we'll be able to reduce root. */
 			bool reduce_children = true;
-			for(int i = 0; i < (*root)->op.child_count; i++) {
-				if(!AR_EXP_ReduceToScalar((*root)->op.children + i)) {
+			for(int i = 0; i < root->op.child_count; i++) {
+				if(!AR_EXP_ReduceToScalar(root->op.children[i], reduce_params, NULL)) {
 					// Root reduce is not possible, but continue to reduce every reducable child.
 					reduce_children = false;
 				}
@@ -187,17 +218,22 @@ bool AR_EXP_ReduceToScalar(AR_ExpNode **root) {
 			if(!reduce_children) return false;
 
 			// All child nodes are constants, make sure function is marked as reducible.
-			AR_FuncDesc *func_desc = AR_GetFunc((*root)->op.func_name);
+			AR_FuncDesc *func_desc = AR_GetFunc(root->op.func_name);
 			assert(func_desc);
 			if(!func_desc->reducible) return false;
 
 			// Evaluate function.
-			SIValue v = AR_EXP_Evaluate(*root, NULL);
+			SIValue v = AR_EXP_Evaluate(root, NULL);
+			if(val != NULL) *val = v;
 			if(SIValue_IsNull(v)) return false;
 
 			// Reduce.
-			AR_EXP_Free(*root);
-			*root = AR_EXP_NewConstOperandNode(v);
+			// Clear children and function context.
+			_AR_EXP_FreeOpInternals(root);
+			// In-place update, set as constant.
+			root->type = AR_EXP_OPERAND;
+			root->operand.type = AR_EXP_CONSTANT;
+			root->operand.constant = v;
 			return true;
 		}
 		// Root is an aggregation function, can't reduce.
@@ -210,50 +246,40 @@ static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint a
 	SIType expected_type = T_NULL;
 
 	// Make sure number of arguments is as expected.
-	if(fdesc->argc != VAR_ARG_LEN) {
-		if(fdesc->argc != argc) {
-			char *error;
-			asprintf(&error, "Received %d arguments to function '%s', expected %d", argc, fdesc->name,
-					 fdesc->argc);
-			QueryCtx_SetError(error); // Set the query-level error.
+	if(fdesc->min_argc > argc) {
+		// Set the query-level error.
+		QueryCtx_SetError("Received %d arguments to function '%s', expected at least %d", argc, fdesc->name,
+						  fdesc->min_argc);
+		return false;
+	}
+
+	if(fdesc->max_argc < argc) {
+		// Set the query-level error.
+		QueryCtx_SetError("Received %d arguments to function '%s', expected at most %d", argc, fdesc->name,
+						  fdesc->max_argc);
+		return false;
+	}
+
+	uint expected_types_count = array_len(fdesc->types);
+	for(int i = 0; i < argc; i++) {
+		actual_type = SI_TYPE(argv[i]);
+		/* For a function that accepts a variable number of arguments.
+		* the last specified type in fdesc->types is repeatable. */
+		if(i < expected_types_count) {
+			expected_type = fdesc->types[i];
+		}
+		if(!(actual_type & expected_type)) {
+			const char *actual_type_str = SIType_ToString(actual_type);
+			const char *expected_type_str = SIType_ToString(expected_type);
+			/* TODO extend string-building logic to better express multiple acceptable types, like:
+			 * RETURN 'a' * 2
+			 * "Type mismatch: expected Float, Integer or Duration but was String" */
+			// Set the query-level error.
+			QueryCtx_SetError("Type mismatch: expected %s but was %s", expected_type_str, actual_type_str);
 			return false;
 		}
-		// Make sure each argument is of the expected type.
-		for(int i = 0; i < argc; i++) {
-			actual_type = SI_TYPE(argv[i]);
-			expected_type = fdesc->types[i];
-
-			if(!(SI_TYPE(argv[i]) & fdesc->types[i])) {
-				const char *actual_type_str = SIType_ToString(actual_type);
-				/* TODO extend string-building logic to better express multiple acceptable types, like:
-				 * RETURN 'a' * 2
-				 * "Type mismatch: expected Float, Integer or Duration but was String" */
-				const char *expected_type_str = SIType_ToString(expected_type);
-				char *error;
-				asprintf(&error, "Type mismatch: expected %s but was %s", expected_type_str, actual_type_str);
-				QueryCtx_SetError(error); // Set the query-level error.
-				return false;
-			}
-		}
-	} else {
-		/* Function accepts a variable number of arguments.
-		 * the last specified type in fdesc->types is repeatable. */
-		uint expected_types_count = array_len(fdesc->types);
-		for(int i = 0; i < argc; i++) {
-			actual_type = SI_TYPE(argv[i]);
-			if(i < expected_types_count) {
-				expected_type = fdesc->types[i];
-			}
-			if(!(actual_type & expected_type)) {
-				const char *actual_type_str = SIType_ToString(actual_type);
-				const char *expected_type_str = SIType_ToString(expected_type);
-				char *error;
-				asprintf(&error, "Type mismatch: expected %s but was %s", expected_type_str, actual_type_str);
-				QueryCtx_SetError(error); // Set the query-level error.
-				return false;
-			}
-		}
 	}
+
 
 	return true;
 }
@@ -265,7 +291,7 @@ static bool _AR_EXP_ValidateInvocation(AR_FuncDesc *fdesc, SIValue *argv, uint a
  * the result of toUpper() is allocated within this tree, and will leak if not freed here. */
 static inline void _AR_EXP_FreeResultsArray(SIValue *results, int count) {
 	for(int i = 0; i < count; i ++) {
-		SIValue_Free(&results[i]);
+		SIValue_Free(results[i]);
 	}
 }
 
@@ -279,25 +305,39 @@ static AR_EXP_Result _AR_EXP_EvaluateFunctionCall(AR_ExpNode *node, const Record
 		return EVAL_OK;
 	}
 
+	int child_count = node->op.child_count;
+	// Functions with private data will have it appended as an additional child.
+	bool include_privdata = (node->op.f->privdata != NULL);
+	if(include_privdata) child_count ++;
 	/* Evaluate each child before evaluating current node. */
-	SIValue sub_trees[node->op.child_count];
+	SIValue sub_trees[child_count];
+
 	for(int child_idx = 0; child_idx < node->op.child_count; child_idx++) {
 		SIValue v;
-		res = _AR_EXP_Evaluate(node->op.children[child_idx], r, &v);
-		// Encountered an error while evaluating a subtree.
-		if(res != EVAL_OK) goto cleanup;
+		AR_EXP_Result eval_result = _AR_EXP_Evaluate(node->op.children[child_idx], r, &v);
+		if(eval_result == EVAL_ERR) {
+			/* Encountered an error while evaluating a subtree.
+			 * Free all values generated up to this point. */
+			_AR_EXP_FreeResultsArray(sub_trees, child_idx);
+			// Propagate the error upwards.
+			return eval_result;
+		}
+		if(eval_result == EVAL_FOUND_PARAM) res = EVAL_FOUND_PARAM;
 		sub_trees[child_idx] = v;
 	}
 
+	// Add the function's private data, if any.
+	if(include_privdata) sub_trees[child_count - 1] = SI_PtrVal(node->op.f->privdata);
+
 	/* Validate before evaluation. */
-	if(!_AR_EXP_ValidateInvocation(node->op.f, sub_trees, node->op.child_count)) {
+	if(!_AR_EXP_ValidateInvocation(node->op.f, sub_trees, child_count)) {
 		// The expression tree failed its validations and set an error message.
 		res = EVAL_ERR;
 		goto cleanup;
 	}
 
 	/* Evaluate self. */
-	*result = node->op.f->func(sub_trees, node->op.child_count);
+	*result = node->op.f->func(sub_trees, child_count);
 
 	if(SIValue_IsNull(*result) && QueryCtx_EncounteredError()) {
 		/* An error was encountered while evaluating this function, and has already been set in
@@ -310,25 +350,51 @@ cleanup:
 	return res;
 }
 
-static inline void _AR_EXP_UpdateEntityIdx(AR_OperandNode *node, const Record r) {
-	node->variadic.entity_alias_idx = Record_GetEntryIdx(r, node->variadic.entity_alias);
+static bool _AR_EXP_UpdateEntityIdx(AR_OperandNode *node, const Record r) {
+	if(!r) {
+// Set the query-level error.
+		QueryCtx_SetError("_AR_EXP_UpdateEntityIdx: No record was given to locate a value with alias %s",
+						  node->variadic.entity_alias);
+		return false;
+	}
+	int entry_alias_idx = Record_GetEntryIdx(r, node->variadic.entity_alias);
+	if(entry_alias_idx == INVALID_INDEX) {
+		// Set the query-level error.
+		QueryCtx_SetError("_AR_EXP_UpdateEntityIdx: Unable to locate a value with alias %s within the record",
+						  node->variadic.entity_alias);
+		return false;
+	} else {
+		node->variadic.entity_alias_idx = entry_alias_idx;
+		return true;
+	}
 }
 
 static AR_EXP_Result _AR_EXP_EvaluateProperty(AR_ExpNode *node, const Record r, SIValue *result) {
 	RecordEntryType t = Record_GetType(r, node->operand.variadic.entity_alias_idx);
-	// Property requested on a scalar value.
-	if(!(t & (REC_TYPE_NODE | REC_TYPE_EDGE))) {
-		/* Attempted to access a scalar value as a map.
-		 * Set an error and invoke the exception handler. */
-		char *error;
-		SIValue v = Record_GetScalar(r, node->operand.variadic.entity_alias_idx);
-		asprintf(&error, "Type mismatch: expected a map but was %s", SIType_ToString(SI_TYPE(v)));
-		QueryCtx_SetError(error); // Set the query-level error.
-		return EVAL_ERR;
+	GraphEntity *ge = NULL;
+	if(t == REC_TYPE_NODE || t == REC_TYPE_EDGE) {
+		ge = Record_GetGraphEntity(r, node->operand.variadic.entity_alias_idx);
+	} else {
+		if(t == REC_TYPE_UNKNOWN) {
+			/* If we attempt to access an unset Record entry as a graph entity
+			 * (due to a scenario like a failed OPTIONAL MATCH), return a null value. */
+			*result = SI_NullVal();
+			return EVAL_OK;
+		}
+
+		SIValue v = Record_Get(r, node->operand.variadic.entity_alias_idx);
+		if(!(SI_TYPE(v) & (T_NODE | T_EDGE))) {
+			/* Attempted to access a scalar value as a map.
+			 * Set an error and invoke the exception handler. */
+			QueryCtx_SetError("Type mismatch: expected a map but was %s", SIType_ToString(SI_TYPE(v)));
+			return EVAL_ERR;
+		}
+
+		// Node or Edge SIValue; the pointer can be accessed as a graph entity.
+		ge = (GraphEntity *)v.ptrval;
 	}
 
-	GraphEntity *ge = Record_GetGraphEntity(r, node->operand.variadic.entity_alias_idx);
-	if(node->operand.variadic.entity_prop_idx == ATTRIBUTE_NOTFOUND) {
+	if(node->operand.variadic.entity_prop_idx == ATTRIBUTE_UNSET) {
 		_AR_EXP_UpdatePropIdx(node, NULL);
 	}
 
@@ -346,10 +412,10 @@ static AR_EXP_Result _AR_EXP_EvaluateProperty(AR_ExpNode *node, const Record r, 
 static AR_EXP_Result _AR_EXP_EvaluateVariadic(AR_ExpNode *node, const Record r, SIValue *result) {
 	// Make sure entity record index is known.
 	if(node->operand.variadic.entity_alias_idx == IDENTIFIER_NOT_FOUND) {
-		_AR_EXP_UpdateEntityIdx(&node->operand, r);
+		if(!_AR_EXP_UpdateEntityIdx(&node->operand, r)) return EVAL_ERR;
 	}
 
-	// Fetch entity property value.
+// Fetch entity property value.
 	if(node->operand.variadic.entity_prop != NULL) {
 		return _AR_EXP_EvaluateProperty(node, r, result);
 	} else {
@@ -359,6 +425,29 @@ static AR_EXP_Result _AR_EXP_EvaluateVariadic(AR_ExpNode *node, const Record r, 
 		// The value was not created here; share with the caller.
 		*result = SI_ShareValue(Record_Get(r, aliasIdx));
 	}
+	return EVAL_OK;
+}
+
+static AR_EXP_Result _AR_EXP_EvaluateParam(AR_ExpNode *node, SIValue *result) {
+	rax *params = QueryCtx_GetParams();
+	AR_ExpNode *param_node = raxFind(params, (unsigned char *)node->operand.param_name,
+									 strlen(node->operand.param_name));
+	if(param_node == raxNotFound) {
+		// Set the query-level error.
+		QueryCtx_SetError("Missing parameters");
+		return EVAL_ERR;
+	}
+	// In place replacement;
+	node->operand.type = AR_EXP_CONSTANT;
+	node->operand.constant = SI_ShareValue(param_node->operand.constant);
+	*result = node->operand.constant;
+	return EVAL_FOUND_PARAM;
+}
+
+static inline AR_EXP_Result _AR_EXP_EvaluateBorrowRecord(AR_ExpNode *node, const Record r,
+														 SIValue *result) {
+	// Wrap the current Record in an SI pointer.
+	*result = SI_PtrVal(r);
 	return EVAL_OK;
 }
 
@@ -377,6 +466,10 @@ static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue 
 			return res;
 		case AR_EXP_VARIADIC:
 			return _AR_EXP_EvaluateVariadic(root, r, result);
+		case AR_EXP_PARAM:
+			return _AR_EXP_EvaluateParam(root, result);
+		case AR_EXP_BORROW_RECORD:
+			return _AR_EXP_EvaluateBorrowRecord(root, r, result);
 		default:
 			assert(false && "Invalid expression type");
 		}
@@ -390,10 +483,13 @@ static AR_EXP_Result _AR_EXP_Evaluate(AR_ExpNode *root, const Record r, SIValue 
 SIValue AR_EXP_Evaluate(AR_ExpNode *root, const Record r) {
 	SIValue result;
 	AR_EXP_Result res = _AR_EXP_Evaluate(root, r, &result);
-	if(res != EVAL_OK) {
+	if(res == EVAL_ERR) {
 		QueryCtx_RaiseRuntimeException();  // Raise an exception if we're in a run-time context.
 		return SI_NullVal(); // Otherwise return NULL; the query-level error will be emitted after cleanup.
 	}
+	// At least one param node was encountered during evaluation, tree should be param node free.
+	// Try reducing the tree.
+	if(res == EVAL_FOUND_PARAM) AR_EXP_ReduceToScalar(root, true, NULL);
 	return result;
 }
 
@@ -411,6 +507,7 @@ void AR_EXP_Aggregate(const AR_ExpNode *root, const Record r) {
 			/* Aggregate. */
 			AggCtx *agg = root->op.agg_func;
 			agg->Step(agg, sub_trees, root->op.child_count);
+			_AR_EXP_FreeResultsArray(sub_trees, root->op.child_count);
 		} else {
 			/* Keep searching for aggregation nodes. */
 			for(int i = 0; i < root->op.child_count; i++) {
@@ -463,22 +560,36 @@ void AR_EXP_CollectAttributes(AR_ExpNode *root, rax *attributes) {
 	}
 }
 
-bool AR_EXP_ContainsAggregation(AR_ExpNode *root, AR_ExpNode **agg_node) {
-	if(root->type == AR_EXP_OP && root->op.type == AR_OP_AGGREGATE) {
-		if(agg_node != NULL) *agg_node = root;
-		return true;
-	}
+bool AR_EXP_ContainsAggregation(AR_ExpNode *root) {
+	if(root->type == AR_EXP_OP && root->op.type == AR_OP_AGGREGATE) return true;
 
 	if(root->type == AR_EXP_OP) {
 		for(int i = 0; i < root->op.child_count; i++) {
 			AR_ExpNode *child = root->op.children[i];
-			if(AR_EXP_ContainsAggregation(child, agg_node)) {
-				return true;
-			}
+			if(AR_EXP_ContainsAggregation(child)) return true;
 		}
 	}
 
 	return false;
+}
+
+bool AR_EXP_ContainsFunc(const AR_ExpNode *root, const char *func) {
+	if(root == NULL) return false;
+	if(root->type == AR_EXP_OP) {
+		if(strcasecmp(root->op.func_name, func) == 0) return true;
+		for(int i = 0; i < root->op.child_count; i++) {
+			if(AR_EXP_ContainsFunc(root->op.children[i], func)) return true;
+		}
+	}
+	return false;
+}
+
+bool inline AR_EXP_IsConstant(const AR_ExpNode *exp) {
+	return exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_CONSTANT;
+}
+
+bool inline AR_EXP_IsParameter(const AR_ExpNode *exp) {
+	return exp->type == AR_EXP_OPERAND && exp->operand.type == AR_EXP_PARAM;
 }
 
 void _AR_EXP_ToString(const AR_ExpNode *root, char **str, size_t *str_size,
@@ -559,12 +670,14 @@ void AR_EXP_ToString(const AR_ExpNode *root, char **str) {
 
 // Generate a heap-allocated name for an arithmetic expression.
 // This routine is only used to name ORDER BY expressions.
-void AR_EXP_BuildResolvedName(AR_ExpNode *root) {
-	if(root->resolved_name) return;
-	AR_EXP_ToString(root, (char **)&root->resolved_name); // Note that this string must be freed!
+char *AR_EXP_BuildResolvedName(AR_ExpNode *root) {
+	char *name = NULL;
+	AR_EXP_ToString(root, &name);
+	return name;
 }
 
 AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
+	if(exp == NULL) return NULL;
 	AR_ExpNode *clone;
 	switch(exp->type) {
 	case AR_EXP_OPERAND:
@@ -581,17 +694,25 @@ AR_ExpNode *AR_EXP_Clone(AR_ExpNode *exp) {
 	return clone;
 }
 
-void AR_EXP_Free(AR_ExpNode *root) {
+static inline void _AR_EXP_FreeOpInternals(AR_ExpNode *op_node) {
+	if(op_node->op.type == AR_OP_FUNC && op_node->op.f->bfree) {
+		op_node->op.f->bfree(op_node->op.f->privdata); // Free the function's private data.
+		rm_free(op_node->op.f); // The function descriptor itself is an allocation in this case.
+	}
+	for(int child_idx = 0; child_idx < op_node->op.child_count; child_idx++) {
+		AR_EXP_Free(op_node->op.children[child_idx]);
+	}
+	rm_free(op_node->op.children);
+	if(op_node->op.type == AR_OP_AGGREGATE) {
+		AggCtx_Free(op_node->op.agg_func);
+	}
+}
+
+inline void AR_EXP_Free(AR_ExpNode *root) {
 	if(root->type == AR_EXP_OP) {
-		for(int child_idx = 0; child_idx < root->op.child_count; child_idx++) {
-			AR_EXP_Free(root->op.children[child_idx]);
-		}
-		rm_free(root->op.children);
-		if(root->op.type == AR_OP_AGGREGATE) {
-			AggCtx_Free(root->op.agg_func);
-		}
+		_AR_EXP_FreeOpInternals(root);
 	} else if(root->operand.type == AR_EXP_CONSTANT) {
-		SIValue_Free(&root->operand.constant);
+		SIValue_Free(root->operand.constant);
 	}
 	rm_free(root);
 }

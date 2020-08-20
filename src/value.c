@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -16,6 +16,7 @@
 #include <assert.h>
 #include "util/rmalloc.h"
 #include "datatypes/array.h"
+#include "datatypes/path/sipath.h"
 
 static inline void _SIString_ToString(SIValue str, char **buf, size_t *bufferLen,
 									  size_t *bytesWritten) {
@@ -68,6 +69,12 @@ SIValue SI_Edge(void *e) {
 		.ptrval = e, .type = T_EDGE, .allocation = M_VOLATILE
 	};
 }
+
+SIValue SI_Path(void *p) {
+	Path *path = (Path *)p;
+	return SIPath_New(path);
+}
+
 SIValue SI_Array(u_int64_t initialCapacity) {
 	return SIArray_New(initialCapacity);
 }
@@ -117,6 +124,10 @@ SIValue SI_CloneValue(const SIValue v) {
 
 	if(v.type == T_ARRAY) {
 		return SIArray_Clone(v);
+	}
+
+	if(v.type == T_PATH) {
+		return SIPath_Clone(v);
 	}
 
 	// Copy the memory region for Node and Edge values. This does not modify the
@@ -170,6 +181,16 @@ inline bool SIValue_IsNull(SIValue v) {
 	return v.type == T_NULL;
 }
 
+inline bool SIValue_IsFalse(SIValue v) {
+	assert(SI_TYPE(v) ==  T_BOOL && "SIValue_IsFalse: Expected boolean");
+	return !v.longval;
+}
+
+inline bool SIValue_IsTrue(SIValue v) {
+	assert(SI_TYPE(v) ==  T_BOOL && "SIValue_IsTrue: Expected boolean");
+	return v.longval;
+}
+
 inline bool SIValue_IsNullPtr(SIValue *v) {
 	return v == NULL || v->type == T_NULL;
 }
@@ -191,6 +212,8 @@ const char *SIType_ToString(SIType t) {
 		return "Edge";
 	} else if(t & T_ARRAY) {
 		return "List";
+	} else if(t & T_PATH) {
+		return "Path";
 	} else if(t & T_NULL) {
 		return "Null";
 	} else {
@@ -229,13 +252,19 @@ void SIValue_ToString(SIValue v, char **buf, size_t *bufferLen, size_t *bytesWri
 	case T_ARRAY:
 		SIArray_ToString(v, buf, bufferLen, bytesWritten);
 		break;
+	case T_PATH:
+		SIPath_ToString(v, buf, bufferLen, bytesWritten);
+		break;
 	case T_NULL:
 		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "NULL");
 		break;
+	case T_PTR:
+		*bytesWritten += snprintf(*buf + *bytesWritten, *bufferLen, "POINTER");
+		break;
 	default:
 		// unrecognized type
+		printf("unrecognized type: %d\n", v.type);
 		assert(false);
-
 	}
 }
 
@@ -372,6 +401,18 @@ SIValue SIValue_Divide(const SIValue a, const SIValue b) {
 	return SI_DoubleVal(SI_GET_NUMERIC(a) / (double)SI_GET_NUMERIC(b));
 }
 
+// Calculate a mod n for integer and floating-point inputs.
+SIValue SIValue_Modulo(const SIValue a, const SIValue n) {
+	bool inputs_are_integers = SI_TYPE(a) & SI_TYPE(n) & T_INT64;
+	if(inputs_are_integers) {
+		// The modulo machine instruction may be used if a and n are both integers.
+		return SI_LongVal(a.longval % n.longval);
+	} else {
+		// Otherwise, use the library function fmod to calculate the modulo and return a double.
+		return SI_DoubleVal(fmod(SI_GET_NUMERIC(a), SI_GET_NUMERIC(n)));
+	}
+}
+
 int SIArray_Compare(SIValue arrayA, SIValue arrayB, int *disjointOrNull) {
 	uint arrayALen = SIArray_Length(arrayA);
 	uint arrayBLen = SIArray_Length(arrayB);
@@ -431,7 +472,7 @@ int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull) {
 		switch(a.type) {
 		case T_INT64:
 		case T_BOOL:
-			return a.longval - b.longval;
+			return SAFE_COMPARISON_RESULT(a.longval - b.longval);
 		case T_DOUBLE:
 			return SAFE_COMPARISON_RESULT(a.doubleval - b.doubleval);
 		case T_STRING:
@@ -441,6 +482,8 @@ int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull) {
 			return ENTITY_GET_ID((GraphEntity *)a.ptrval) - ENTITY_GET_ID((GraphEntity *)b.ptrval);
 		case T_ARRAY:
 			return SIArray_Compare(a, b, disjointOrNull);
+		case T_PATH:
+			return SIPath_Compare(a, b);
 		case T_NULL:
 			break;
 		default:
@@ -504,77 +547,97 @@ XXH64_hash_t SIEdge_HashCode(const SIValue v) {
 	return hashCode;
 }
 
-/* This method hashes primitive types in place. Compound types have their own
- * hashing method */
-XXH64_hash_t SIValue_HashCode(SIValue v) {
-	XXH_errorcode res;
-	XXH64_state_t state;
-	res = XXH64_reset(&state, 0);
-	assert(res != XXH_ERROR);
+void SIValue_HashUpdate(SIValue v, XXH64_state_t *state) {
 	// Handles null value and defaults.
 	int64_t null = 0;
+	XXH64_hash_t inner_hash;
 	/* In case of identical binary representation of the value,
 	* we should hash the type as well. */
 	SIType t = SI_TYPE(v);
 
-	switch(v.type) {
+	switch(t) {
 	case T_NULL:
-		XXH64_update(&state, &t, sizeof(t));
-		XXH64_update(&state, &null, sizeof(null));
-		break;
+		XXH64_update(state, &t, sizeof(t));
+		XXH64_update(state, &null, sizeof(null));
+		return;
 	case T_STRING:
-		XXH64_update(&state, &t, sizeof(t));
-		XXH64_update(&state, v.stringval, strlen(v.stringval));
-		break;
+		XXH64_update(state, &t, sizeof(t));
+		XXH64_update(state, v.stringval, strlen(v.stringval));
+		return;
 	case T_INT64:
 		// Change type to numeric.
 		t = SI_NUMERIC;
-		XXH64_update(&state, &t, sizeof(t));
-		XXH64_update(&state, &v.longval, sizeof(v.longval));
-		break;
+		XXH64_update(state, &t, sizeof(t));
+		XXH64_update(state, &v.longval, sizeof(v.longval));
+		return;
 	case T_BOOL:
-		XXH64_update(&state, &t, sizeof(t));
-		XXH64_update(&state, &v.longval, sizeof(v.longval));
-		break;
+		XXH64_update(state, &t, sizeof(t));
+		XXH64_update(state, &v.longval, sizeof(v.longval));
+		return;
 	case T_DOUBLE: {
 		t = SI_NUMERIC;
-		XXH64_update(&state, &t, sizeof(t));
-		// Check if the double value is actually an interger. If so, hash it as Long.
+		XXH64_update(state, &t, sizeof(t));
+		// Check if the double value is actually an integer. If so, hash it as Long.
 		int64_t casted = (int64_t) v.doubleval;
 		double diff = v.doubleval - casted;
-		if(diff != 0) XXH64_update(&state, &v.doubleval, sizeof(v.doubleval));
-		else XXH64_update(&state, &casted, sizeof(casted));
-		break;
+		if(diff != 0) XXH64_update(state, &v.doubleval, sizeof(v.doubleval));
+		else XXH64_update(state, &casted, sizeof(casted));
+		return;
 	}
 	case T_EDGE:
-		return SIEdge_HashCode(v);
+		inner_hash = SIEdge_HashCode(v);
+		XXH64_update(state, &inner_hash, sizeof(inner_hash));
+		return;
 	case T_NODE:
-		return SINode_HashCode(v);
+		inner_hash = SINode_HashCode(v);
+		XXH64_update(state, &inner_hash, sizeof(inner_hash));
+		return;
 	case T_ARRAY:
-		return SIArray_HashCode(v);
+		inner_hash = SIArray_HashCode(v);
+		XXH64_update(state, &inner_hash, sizeof(inner_hash));
+		return;
+	case T_PATH:
+		inner_hash = SIPath_HashCode(v);
+		XXH64_update(state, &inner_hash, sizeof(inner_hash));
+		return;
 	// TODO: Implement for Map and temporal types once we support them.
 	default:
 		assert(false);
 	}
-	XXH64_hash_t hashCode =  XXH64_digest(&state);
-	return hashCode;
 }
 
-void SIValue_Free(SIValue *v) {
-	// The free routine only performs work if it owns a heap allocation.
-	if(v->allocation != M_SELF) return;
+/* This method hashes a single SIValue. */
+XXH64_hash_t SIValue_HashCode(SIValue v) {
+	// Initialize the hash state.
+	XXH64_state_t state;
+	assert(XXH64_reset(&state, 0) != XXH_ERROR);
 
-	switch(v->type) {
+	// Update the state with the SIValue.
+	SIValue_HashUpdate(v, &state);
+
+	// Generate and return the hash.
+	return XXH64_digest(&state);
+}
+
+void SIValue_Free(SIValue v) {
+	// The free routine only performs work if it owns a heap allocation.
+	if(v.allocation != M_SELF) return;
+
+	switch(v.type) {
 	case T_STRING:
-		rm_free(v->stringval);
-		v->stringval = NULL;
+		rm_free(v.stringval);
+		v.stringval = NULL;
 		return;
 	case T_NODE:
 	case T_EDGE:
-		rm_free(v->ptrval);
+		rm_free(v.ptrval);
 		return;
 	case T_ARRAY:
-		SIArray_Free(*v);
+		SIArray_Free(v);
+		return;
+	case T_PATH:
+		SIPath_Free(v);
+		return;
 	default:
 		return;
 	}

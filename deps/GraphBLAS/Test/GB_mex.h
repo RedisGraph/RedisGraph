@@ -2,7 +2,7 @@
 // GB_mex.h: definitions for the MATLAB interface to GraphBLAS
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -18,7 +18,6 @@
 // #include "GB.h"
 #include "GB_mxm.h"
 #include "GB_Pending.h"
-#include "GB_Sauna.h"
 #include "GB_add.h"
 #include "GB_subref.h"
 #include "GB_transpose.h"
@@ -49,14 +48,14 @@
 #define MATCH(s,t) (strcmp(s,t) == 0)
 
 // timer functions, and result statistics
-extern double gbtime, tic [2] ;
+extern double grbtime, tic [2] ;
 void GB_mx_put_time
 (
     GrB_Desc_Value AxB_method_used
 ) ;
 void GB_mx_clear_time (void) ;          // clear the time and start the tic
 #define GB_MEX_TIC { GB_mx_clear_time ( ) ; }
-#define GB_MEX_TOC { gbtime = simple_toc (tic) ; }
+#define GB_MEX_TOC { grbtime = simple_toc (tic) ; }
 
 void GB_mx_abort (void) ;               // assertion failure
 
@@ -278,13 +277,32 @@ bool GB_mx_xsame    // true if arrays X and Y are the same (ignoring zombies)
     int64_t *I      // row indices (for zombies), same length as X and Y
 ) ;
 
+bool GB_mx_xsame32  // true if arrays X and Y are the same (ignoring zombies)
+(
+    float *X,
+    float *Y,
+    int64_t len,    // length of X and Y
+    int64_t *I,     // row indices (for zombies), same length as X and Y
+    float eps       // error tolerance allowed (eps > 0)
+) ;
+
+bool GB_mx_xsame64  // true if arrays X and Y are the same (ignoring zombies)
+(
+    double *X,
+    double *Y,
+    int64_t len,    // length of X and Y
+    int64_t *I,     // row indices (for zombies), same length as X and Y
+    double eps      // error tolerance allowed (eps > 0)
+) ;
+
 bool GB_mx_isequal  // true if A and B are exactly the same
 (
     GrB_Matrix A,
-    GrB_Matrix B
+    GrB_Matrix B,
+    double eps      // if A and B are both FP32 or FP64, and if eps > 0,
+                    // then the values are considered equal if their relative
+                    // difference is less than or equal to eps.
 ) ;
-
-int GB_mx_Sauna_nmalloc (void) ;  // return # of mallocs in Saunas in use
 
 GrB_Matrix GB_mx_alias      // output matrix (NULL if no match found)
 (
@@ -354,7 +372,7 @@ GrB_Matrix GB_mx_alias      // output matrix (NULL if no match found)
         GB_MEX_TIC ;                                                        \
         GrB_Info info = GRAPHBLAS_OPERATION ;                               \
         /* Finish the work since we're returning to MATLAB. */              \
-        /* This allows proper timing with gbresults.m */                    \
+        /* This allows proper timing with grbresults.m */                   \
         GrB_wait ( ) ;                                                      \
         GB_MEX_TOC ;                                                        \
         if (info == GrB_PANIC) mexErrMsgTxt ("panic!") ;                    \
@@ -368,7 +386,6 @@ GrB_Matrix GB_mx_alias      // output matrix (NULL if no match found)
     {                                                                       \
         /* brutal malloc debug */                                           \
         int nmalloc_start = (int) GB_Global_nmalloc_get ( ) ;               \
-        int nmalloc_Sauna_start = GB_mx_Sauna_nmalloc ( ) ;                 \
         for (int tries = 0 ; ; tries++)                                     \
         {                                                                   \
             /* give GraphBLAS the ability to do a # of mallocs, */          \
@@ -397,20 +414,15 @@ GrB_Matrix GB_mx_alias      // output matrix (NULL if no match found)
                 FREE_DEEP_COPY ;                                            \
                 GET_DEEP_COPY ;                                             \
                 int nmalloc_end = (int) GB_Global_nmalloc_get ( ) ;         \
-                int nmalloc_Sauna_end = GB_mx_Sauna_nmalloc ( ) ;           \
-                int nleak = ((nmalloc_end   - nmalloc_Sauna_end  ) -        \
-                             (nmalloc_start - nmalloc_Sauna_start)) ;       \
+                int nleak = nmalloc_end - nmalloc_start ;                   \
                 if (nleak > 0)                                              \
                 {                                                           \
                     /* memory leak */                                       \
                     printf ("Leak! tries %d : nleak %d\n"                   \
                         "nmalloc_end:        %d\n"                          \
-                        "nmalloc_Sauna_end   %d\n"                          \
                         "nmalloc_start:      %d\n"                          \
-                        "nmalloc_Sauna_start %d\n"                          \
                         "method [%s]\n",                                    \
-                        tries, nleak, nmalloc_end, nmalloc_Sauna_end,       \
-                        nmalloc_start, nmalloc_Sauna_start,                 \
+                        tries, nleak, nmalloc_end, nmalloc_start,           \
                         GB_STR (GRAPHBLAS_OPERATION)) ;                     \
                     mexWarnMsgIdAndTxt ("GB:leak", GrB_error ( )) ;         \
                     FREE_ALL ;                                              \
@@ -433,14 +445,14 @@ GrB_Matrix GB_mx_alias      // output matrix (NULL if no match found)
 // statement coverage
 //------------------------------------------------------------------------------
 
-// GB_cover_get copies GraphBLAS_gbcov from the MATLAB global workspace into
+// GB_cover_get copies GraphBLAS_grbcov from the MATLAB global workspace into
 // the internal GB_cov array.  The MATLAB array is created if it doesn't exist.
-// Thus, to clear the counts simply clear GraphBLAS_gbcov from the MATLAB
+// Thus, to clear the counts simply clear GraphBLAS_grbcov from the MATLAB
 // global workpace.
 void GB_cover_get (void) ;
 
 // GB_cover_put copies the internal GB_cov array back into the MATLAB
-// GraphBLAS_gbcov array, for analysis and for subsequent statement counting.
+// GraphBLAS_grbcov array, for analysis and for subsequent statement counting.
 // This way, multiple tests in MATLAB can be accumulated into a single array
 // of counters.
 void GB_cover_put (void) ;

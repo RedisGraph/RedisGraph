@@ -1,18 +1,18 @@
 function test109
 %TEST109 terminal monoid with user-defined type
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 fprintf ('\ntest109: terminal monoid with user-defined type\n') ;
 
 rng ('default') ;
-
-% clear all
-% delete GB_mex_reduce_complex.mex*
-% make
 
 A = sparse (rand (4) + 1i * rand (4)) ;
 
 [i j x] = find (A) ;
 s = prod (prod (x)) ;
+A
 t = GB_mex_reduce_complex (A) ;
 err = norm (s-t) ;
 assert (err < 1e-12)

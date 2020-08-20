@@ -1,7 +1,7 @@
 function test52
 %TEST52 test AdotB vs AxB
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\n----------------------- AdotB versus AxB\n') ;
@@ -75,13 +75,13 @@ for n = [1 10 20:10:60 61:65 70:10:100]
     tic
     C2 = GB_mex_AdotB (A,B) ;
     t2 = toc ;
-    % [tt method] = gbresults ;
+    % [tt method] = grbresults ;
 
     % fprintf ('GrB A''*B native:\n') ;
     tic
     C4 = GB_mex_AxB (A,B, true) ;
     t4 = toc ;
-    [t4 method] = gbresults ;
+    [t4 method] = grbresults ;
 
     % fprintf ('GrB A''*B native:\n') ;
     tic

@@ -2,7 +2,7 @@
 // GB_mex_eWiseAdd_Matrix: C<M> = accum(C,A+B)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -115,17 +115,6 @@ void mexFunction
         B->nvec_nonempty = -1 ;
         C->nvec_nonempty = -1 ;
     }
-
-//      GB_check (A, "A for ewiseAdd", GB0) ;
-//      GB_check (B, "B for ewiseAdd", GB0) ;
-//      printf ("nvec_nonempty: %g %g\n",
-//          (double) A->nvec_nonempty,
-//          (double) B->nvec_nonempty) ;
-//      if (M != NULL)
-//      {
-//          GB_check (B, "B for ewiseAdd", GB0) ;
-//          printf ("M->nvec_nonempty: %g \n", (double) M->nvec_nonempty) ;
-//      }
 
     // C<M> = accum(C,A+B)
     METHOD (GrB_eWiseAdd (C, M, accum, add, A, B, desc)) ;

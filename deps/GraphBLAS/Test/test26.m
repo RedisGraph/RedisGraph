@@ -1,7 +1,7 @@
 function test26(longtests)
 %TEST26 performance test for GxB_select
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\ntest26 ------------------------------performance of GxB_select\n') ;
@@ -63,7 +63,7 @@ for probs = 1:nprobs
 
             tic
             C1 = GB_mex_select (Cin, [], [], op, A, k, []) ;
-            t1 = gbresults ; % toc ;
+            t1 = grbresults ; % toc ;
             fprintf ('GB: %10.6f ', t1) ;
 
             C3 = 'none' ;
@@ -76,14 +76,14 @@ for probs = 1:nprobs
                     t2 = toc ;
                     tic
                     C3 = GB_mex_tril (A, k) ;
-                    t3 = gbresults ; % toc ;
+                    t3 = grbresults ; % toc ;
                 case 'triu'
                     tic
                     C2 = triu (A,k) ;
                     t2 = toc ;
                     tic
                     C3 = GB_mex_triu (A, k) ;
-                    t3 = gbresults ; % toc ;
+                    t3 = grbresults ; % toc ;
                 case 'diag'
                     if (size (A,2) > 1)
                         tic
@@ -92,7 +92,7 @@ for probs = 1:nprobs
                     end
                     tic
                     C3 = GB_mex_diag (A, k) ;
-                    t3 = gbresults ; % toc ;
+                    t3 = grbresults ; % toc ;
                 case 'offdiag'
                     if (size (A,2) > 1)
                         tic
@@ -101,7 +101,7 @@ for probs = 1:nprobs
                     end
                     tic
                     C3 = GB_mex_offdiag (A, k) ;
-                    t3 = gbresults ; % toc ;
+                    t3 = grbresults ; % toc ;
                 case 'nonzero'
                     tic
                     C2 = A .* (A ~= 0) ;
@@ -109,7 +109,7 @@ for probs = 1:nprobs
                     assert (isequal (1*C2,1*A)) ;
                     tic
                     C3 = GB_mex_nonzero (A) ;
-                    t3 = gbresults ; % toc ;
+                    t3 = grbresults ; % toc ;
                     assert (isequal (1*C3,1*A)) ;
             end
 
@@ -131,6 +131,15 @@ for probs = 1:nprobs
 
         end
     end
+end
+
+ok = true ;
+A = sparse (ones (4)) ;
+try
+    C = GB_mex_select (A, [ ], [ ], 'tril', A, A, [ ]) ;
+    ok = false ;
+catch me
+    fprintf ('\nexpected error: %s\n', me.message) ;
 end
 
 nthreads_set (save_nthreads, save_chunk) ;

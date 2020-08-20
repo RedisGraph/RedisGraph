@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -10,14 +10,15 @@
 
 /* Forward declarations. */
 static Record DistinctConsume(OpBase *opBase);
+static OpBase *DistinctClone(const ExecutionPlan *plan, const OpBase *opBase);
 static void DistinctFree(OpBase *opBase);
 
 OpBase *NewDistinctOp(const ExecutionPlan *plan) {
-	OpDistinct *op = malloc(sizeof(OpDistinct));
+	OpDistinct *op = rm_malloc(sizeof(OpDistinct));
 	op->found = raxNew();
 
 	OpBase_Init((OpBase *)op, OPType_DISTINCT, "Distinct", NULL, DistinctConsume,
-				NULL, NULL, DistinctFree, plan);
+				NULL, NULL, DistinctClone, DistinctFree, false, plan);
 
 	return (OpBase *)op;
 }
@@ -33,8 +34,13 @@ static Record DistinctConsume(OpBase *opBase) {
 		unsigned long long const hash = Record_Hash64(r);
 		int is_new = raxInsert(self->found, (unsigned char *) &hash, sizeof(hash), NULL, NULL);
 		if(is_new) return r;
-		Record_Free(r);
+		OpBase_DeleteRecord(r);
 	}
+}
+
+static inline OpBase *DistinctClone(const ExecutionPlan *plan, const OpBase *opBase) {
+	assert(opBase->type == OPType_DISTINCT);
+	return NewDistinctOp(plan);
 }
 
 static void DistinctFree(OpBase *ctx) {

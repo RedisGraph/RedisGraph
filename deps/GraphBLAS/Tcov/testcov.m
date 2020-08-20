@@ -1,7 +1,7 @@
 %TESTCOV run all GraphBLAS tests, with statement coverage
 
-%  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
-%  http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 all_tcov_time = tic ;
 try
@@ -11,8 +11,9 @@ try
     cd ../Test/spok
     spok_install ;
     cd ../../Tcov
+    mex -O -R2018a ../Test/GB_spones_mex.c
     debug_on ;
-    gbcover ;
+    grbcover ;
     testall ;
 catch me
     debug_off ;

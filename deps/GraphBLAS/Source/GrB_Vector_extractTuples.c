@@ -2,7 +2,7 @@
 // GrB_Vector_extractTuples: extract all tuples from a vector
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -29,11 +29,14 @@ GrB_Info GrB_Vector_extractTuples_ ## T     /* [I,~,X] = find (A) */          \
 )                                                                             \
 {                                                                             \
     GB_WHERE ("GrB_Vector_extractTuples_" GB_STR(T) " (I, X, nvals, v)") ;    \
+    GB_BURBLE_START ("GrB_Vector_extractTuples") ;                            \
     GB_RETURN_IF_NULL_OR_FAULTY (v) ;                                         \
     GB_RETURN_IF_NULL (p_nvals) ;                                             \
     ASSERT (GB_VECTOR_OK (v)) ;                                               \
-    return (GB_extractTuples (I, NULL, X, p_nvals, GB_ ## T ## _code,         \
-        (GrB_Matrix) v, Context)) ;                                           \
+    GrB_Info info = GB_extractTuples (I, NULL, X, p_nvals, GB_ ## T ## _code, \
+        (GrB_Matrix) v, Context) ;                                            \
+    GB_BURBLE_END ;                                                           \
+    return (info) ;                                                           \
 }
 
 GB_EXTRACT (bool     , BOOL   )

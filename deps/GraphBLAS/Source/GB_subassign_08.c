@@ -2,7 +2,7 @@
 // GB_subassign_08: C(I,J)<M> += A ; no S
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -93,6 +93,7 @@ GrB_Info GB_subassign_08
     const int Jkind,
     const int64_t Jcolon [3],
     const GrB_Matrix M,
+    const bool Mask_struct,
     const GrB_BinaryOp accum,
     const GrB_Matrix A,
     GB_Context Context
@@ -108,11 +109,12 @@ GrB_Info GB_subassign_08
     const bool C_is_hyper = C->is_hyper ;
     const int64_t Cnvec = C->nvec ;
     const int64_t cvlen = C->vlen ;
-    const int64_t *restrict Ch = C->h ;
-    const int64_t *restrict Cp = C->p ;
+    const int64_t *GB_RESTRICT Ch = C->h ;
+    const int64_t *GB_RESTRICT Cp = C->p ;
     GB_GET_MASK ;
+    // const int64_t mvlen = M->vlen ;
     GB_GET_A ;
-    const int64_t *restrict Ah = A->h ;
+    const int64_t *GB_RESTRICT Ah = A->h ;
     GB_GET_ACCUM ;
 
     //--------------------------------------------------------------------------
@@ -124,8 +126,8 @@ GrB_Info GB_subassign_08
     // M(:,j) or A(:,j) are very sparse compared to the other, then the shorter
     // is traversed with a linear-time scan and a binary search is used for the
     // other.  If the number of nonzeros is comparable, a linear-time scan is
-    // used for both.  Once a pair of entries M(i,j)=1 and A(i,j), is found,
-    // the entry A(i,j) is accumulated or inserted into C.
+    // used for both.  Once two entries M(i,j)=1 and A(i,j) are found with the
+    // same index i, the entry A(i,j) is accumulated or inserted into C.
 
     // The algorithm is very much like the eWise multiplication of A.*M, so the
     // parallel scheduling relies on GB_emult_phase0(AA and GB_ewise_slice.
@@ -140,9 +142,10 @@ GrB_Info GB_subassign_08
     // phase 1: create zombies, update entries, and count pending tuples
     //--------------------------------------------------------------------------
 
+    int taskid ;
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) \
         reduction(+:nzombies)
-    for (int taskid = 0 ; taskid < ntasks ; taskid++)
+    for (taskid = 0 ; taskid < ntasks ; taskid++)
     {
 
         //----------------------------------------------------------------------
@@ -200,14 +203,13 @@ GrB_Info GB_subassign_08
 
                 for ( ; pM < pM_end ; pM++)
                 {
-                    bool mij ;
-                    cast_M (&mij, Mx +(pM*msize), 0) ;
-                    if (mij)
+                    if (GB_mcast (Mx, pM, msize))
                     { 
                         int64_t iA = Mi [pM] ;
                         // find iA in A(:,j)
                         int64_t pright = pA_end - 1 ;
                         bool found ;
+                        // FUTURE::: exploit dense A(:,j)
                         GB_BINARY_SEARCH (iA, Ai, pA, pright, found) ;
                         if (found) GB_PHASE1_ACTION ;
                     }
@@ -221,10 +223,13 @@ GrB_Info GB_subassign_08
                 // M(:,j) is much denser than A(:,j)
                 //--------------------------------------------------------------
 
+                // FUTURE::: exploit dense mask
+                bool mjdense = false ;
+
                 for ( ; pA < pA_end ; pA++)
                 { 
                     int64_t iA = Ai [pA] ;
-                    GB_MIJ_BINARY_SEARCH (iA) ;
+                    GB_MIJ_BINARY_SEARCH_OR_DENSE_LOOKUP (iA) ;
                     if (mij) GB_PHASE1_ACTION ;
                 }
 
@@ -255,9 +260,7 @@ GrB_Info GB_subassign_08
                     else
                     { 
                         // both A(i,j) and M(i,j) exist
-                        bool mij ;
-                        cast_M (&mij, Mx +(pM*msize), 0) ;
-                        if (mij) GB_PHASE1_ACTION ;
+                        if (GB_mcast (Mx, pM, msize)) GB_PHASE1_ACTION ;
                         GB_NEXT (A) ;
                         GB_NEXT (M) ;
                     }
@@ -277,7 +280,7 @@ GrB_Info GB_subassign_08
 
     #pragma omp parallel for num_threads(nthreads) schedule(dynamic,1) \
         reduction(&&:pending_sorted)
-    for (int taskid = 0 ; taskid < ntasks ; taskid++)
+    for (taskid = 0 ; taskid < ntasks ; taskid++)
     {
 
         //----------------------------------------------------------------------
@@ -336,14 +339,13 @@ GrB_Info GB_subassign_08
 
                 for ( ; pM < pM_end ; pM++)
                 {
-                    bool mij ;
-                    cast_M (&mij, Mx +(pM*msize), 0) ;
-                    if (mij)
+                    if (GB_mcast (Mx, pM, msize))
                     { 
                         int64_t iA = Mi [pM] ;
                         // find iA in A(:,j)
                         int64_t pright = pA_end - 1 ;
                         bool found ;
+                        // FUTURE::: exploit dense A(:,j)
                         GB_BINARY_SEARCH (iA, Ai, pA, pright, found) ;
                         if (found) GB_PHASE2_ACTION ;
                     }
@@ -357,10 +359,13 @@ GrB_Info GB_subassign_08
                 // M(:,j) is much denser than A(:,j)
                 //--------------------------------------------------------------
 
+                // FUTURE::: exploit dense mask
+                bool mjdense = false ;
+
                 for ( ; pA < pA_end ; pA++)
                 { 
                     int64_t iA = Ai [pA] ;
-                    GB_MIJ_BINARY_SEARCH (iA) ;
+                    GB_MIJ_BINARY_SEARCH_OR_DENSE_LOOKUP (iA) ;
                     if (mij) GB_PHASE2_ACTION ;
                 }
 
@@ -391,9 +396,7 @@ GrB_Info GB_subassign_08
                     else
                     { 
                         // both A(i,j) and M(i,j) exist
-                        bool mij ;
-                        cast_M (&mij, Mx +(pM*msize), 0) ;
-                        if (mij) GB_PHASE2_ACTION ;
+                        if (GB_mcast (Mx, pM, msize)) GB_PHASE2_ACTION ;
                         GB_NEXT (A) ;
                         GB_NEXT (M) ;
                     }

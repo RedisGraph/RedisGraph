@@ -1,6 +1,9 @@
 function test116
 %TEST116 performance tests for GrB_assign
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 fprintf ('test116:---------------- C(I,J)=A and C=A(I,J) performance\n') ;
 
 [save save_chunk] = nthreads_get ;
@@ -45,7 +48,7 @@ for nthreads = [1 2 4 8 16 20 32 40 64]
     % warmup
     C2 = GB_mex_assign (C0, [ ], [ ], A, I, I) ;
     C2 = GB_mex_assign (C0, [ ], [ ], A, I, I) ;
-    tg = gbresults ;
+    tg = grbresults ;
 
     if (nthreads == 1)
         t1 = tg ;
@@ -79,7 +82,7 @@ for nthreads = [1 2 4 8 16 20 32 40 64]
     B2 = GB_mex_Matrix_extract (S, [ ], [ ], C1, I, I) ;
 
     B2 = GB_mex_Matrix_extract (S, [ ], [ ], C1, I, I) ;
-    tg = gbresults ;
+    tg = grbresults ;
 
     if (nthreads == 1)
         t1 = tg ;

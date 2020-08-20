@@ -1,9 +1,9 @@
 # SuiteSparse:GraphBLAS
 
-SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
-VERSION 3.0.2, July 26, 2019
+VERSION 3.2.0, Feb 20, 2020 GB_control used for size reduction.
 
 SuiteSparse:GraphBLAS is an full implementation of the GraphBLAS standard,
 which defines a set of sparse matrix operations on an extended algebra of
@@ -15,12 +15,12 @@ sparse matrix operations on a semiring.
 
 See the user guide in `Doc/GraphBLAS_UserGuide.pdf` for documentation on the
 SuiteSparse implementation of GraphBLAS, and how to use it in your
-applications.  The doxygen documentation at Doc/html/index.html gives details
-on the internals of SuiteSparse:GraphBLAS (use "make dox" first, to create
-the doxygen documentation).
+applications.
 
 See http://graphblas.org for more information on GraphBLAS, including the
-GraphBLAS C API (also in `Doc/GraphBLAS_API_C.pdf`).
+GraphBLAS C API (also in `Doc/GraphBLAS_API_C.pdf`).  See
+https://github.com/szarnyasg/graphblas-pointers for additional resources on
+GraphBLAS.
 
 QUICK START: To compile, run several demos, and install, do these commands in
 this directory:
@@ -47,15 +47,8 @@ To compile the library without running the demos or installing it:
 
     make library
 
-To create the doxygen documentation in Doc/html, first do the following in
-MATLAB (while in the Doc/ directory) if you have modified anything in the
-Source/ or Include/ folders:
-
-    dox_headers
-
-Then do:
-
-    make dox
+See the GraphBLAS/ subfolder for the MATLAB interface, which contains a
+README.md file with further details.
 
 --------------------------------------------------------------------------------
 ## Files and folders in this GraphBLAS directory:
@@ -68,13 +61,15 @@ Demo:           a set of demos on how to use GraphBLAS
 
 Doc:            SuiteSparse:GraphBLAS User Guide and license
 
-Doxyfile:       instructions for doxygen, and "make dox"
-
 Extras:         parallel methods: triangle counting, k-truss, and a
                 massively parallel (MPI) Kronecker product matrix generator.
                 These are stand-along package that rely on GraphBLAS.  They
                 are not compiled by the cmake script.  See Extras/README.txt
                 for more details.
+
+GraphBLAS:      the MATLAB interface.  This folder is called 'GraphBLAS' so
+                that typing 'help graphblas' or 'doc graphblas' in the MATLAB
+                Command Window can locate the Contents.m file.
 
 Include:        user-accessible include file, GraphBLAS.h
 
@@ -88,9 +83,7 @@ Tcov:           test coverage, requires MATLAB
 
 Test:           Extensive tests, not meant for general usage.  To compile
                 SuiteSparse:GraphBLAS and test in MATLAB, go to this directory
-                and type gbmake;testall in MATLAB.
-
-User:           user-defined objects at compile-time (.m4 files)
+                and type make;testall in MATLAB.
 
 build:          build directory for CMake, initially empty
 
@@ -108,3 +101,12 @@ keyword SPEC: in the code and in the User Guide, and in the Include/GraphBLAS.h
 file.  All functions, objects, and macros with the prefix GxB are extensions to
 the spec.  Functions, objects, and macros with prefix GB must not be accessed
 by user code.  They are for internal use in GraphBLAS only.
+
+
+--------------------------------------------------------------------------------
+## For Windows users:
+
+This version is not compatible with Microsoft Visual Studio.  Use another
+compiler, or use SuiteSparse:GraphBLAS v3.1.2 instead.  See the User Guide
+for more details.
+

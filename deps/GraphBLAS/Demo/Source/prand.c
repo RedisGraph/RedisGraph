@@ -2,6 +2,11 @@
 // GraphBLAS/Demo/Source/prand: parallel random number generator
 //------------------------------------------------------------------------------
 
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+//------------------------------------------------------------------------------
+
 // A simple thread-safe parallel pseudo-random nuumber generator.
 
 #include "prand.h"
@@ -101,11 +106,11 @@ void prand_dup_f (prand_t *z, /* unused: */ const prand_t *x, const prand_t *y)
 
 #define PRAND_FREE_ALL                                      \
 {                                                           \
-    GrB_free (&prand_type) ;                                \
-    GrB_free (&prand_next_op) ;                             \
-    GrB_free (&prand_iget_op) ;                             \
-    GrB_free (&prand_xget_op) ;                             \
-    GrB_free (&prand_dup_op) ;                              \
+    GrB_Type_free (&prand_type) ;                                \
+    GrB_UnaryOp_free (&prand_next_op) ;                             \
+    GrB_UnaryOp_free (&prand_iget_op) ;                             \
+    GrB_UnaryOp_free (&prand_xget_op) ;                             \
+    GrB_BinaryOp_free (&prand_dup_op) ;                              \
 }
 
 #undef  OK
@@ -158,7 +163,7 @@ GrB_Info prand_next
     GrB_Vector Seed
 )
 {
-    return (GrB_apply (Seed, NULL, NULL, prand_next_op, Seed, NULL)) ;
+    return (GrB_Vector_apply (Seed, NULL, NULL, prand_next_op, Seed, NULL)) ;
 }
 
 //------------------------------------------------------------------------------
@@ -177,7 +182,7 @@ GrB_Info prand_next
 #define PRAND_FREE_ALL                                      \
 {                                                           \
     PRAND_FREE_WORK ;                                       \
-    GrB_free (Seed) ;                                       \
+    GrB_Vector_free (Seed) ;                                \
 }
 
 GrB_Info prand_seed
@@ -215,8 +220,9 @@ GrB_Info prand_seed
     }
 
     // construct the tuples for the initial seeds
+    int64_t i, len = (int64_t) n  ;
     #pragma omp parallel for num_threads(nthreads) schedule(static)
-    for (int64_t i = 0 ; i < (int64_t) n ; i++)
+    for (i = 0 ; i < len ; i++)
     {
         I [i] = i ;
         for (int k = 0 ; k < 5 ; k++)
@@ -286,7 +292,7 @@ GrB_Info prand_iget
     GrB_Vector Seed
 )
 {
-    OK (GrB_apply (X, NULL, NULL, prand_iget_op, Seed, NULL)) ;
+    OK (GrB_Vector_apply (X, NULL, NULL, prand_iget_op, Seed, NULL)) ;
     return (prand_next (Seed)) ;
 }
 
@@ -300,7 +306,7 @@ GrB_Info prand_xget
     GrB_Vector Seed
 )
 {
-    OK (GrB_apply (X, NULL, NULL, prand_xget_op, Seed, NULL)) ;
+    OK (GrB_Vector_apply (X, NULL, NULL, prand_xget_op, Seed, NULL)) ;
     return (prand_next (Seed)) ;
 }
 

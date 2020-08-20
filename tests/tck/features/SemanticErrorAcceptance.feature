@@ -33,7 +33,6 @@ Feature: SemanticErrorAcceptance
   Background:
     Given any graph
 
-@skip
   Scenario: Failing when returning an undefined variable
     When executing query:
       """
@@ -42,7 +41,6 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: UndefinedVariable
 
-@skip
   Scenario: Failing when comparing to an undefined variable
     When executing query:
       """
@@ -139,7 +137,6 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: RelationshipUniquenessViolation
 
-@skip
   Scenario: Failing when using NOT on string literal
     When executing query:
       """
@@ -230,7 +227,6 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
-@skip
   Scenario: Failing when using CREATE on a relationship that is already bound
     When executing query:
       """
@@ -239,7 +235,6 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
-@skip
   Scenario: Failing when using MERGE on a relationship that is already bound
     When executing query:
       """
@@ -248,7 +243,6 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: VariableAlreadyBound
 
-@skip
   Scenario: Failing when using undefined variable in ON CREATE
     When executing query:
       """
@@ -257,7 +251,6 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: UndefinedVariable
 
-@skip
   Scenario: Failing when using undefined variable in ON MATCH
     When executing query:
       """
@@ -323,7 +316,6 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidArgumentExpression
 
-@skip
   Scenario: Bad arguments for `range()`
     When executing query:
       """
@@ -357,7 +349,6 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: InvalidAggregation
 
-@skip
   Scenario: Failing when using non-constants in SKIP
     When executing query:
       """
@@ -377,7 +368,6 @@ Feature: SemanticErrorAcceptance
       """
     Then a SyntaxError should be raised at compile time: NegativeIntegerArgument
 
-@skip
   Scenario: Failing when using non-constants in LIMIT
     When executing query:
       """

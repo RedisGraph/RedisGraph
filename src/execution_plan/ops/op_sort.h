@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -17,9 +17,10 @@ typedef struct {
 	heap_t *heap;               // Holds top n records.
 	Record *buffer;             // Holds all records.
 	uint limit;                 // Total number of records to produce, 0 no limit.
-	int direction;              // Ascending / desending.
+	int *directions;            // Array of sort directions(ascending / desending) for each item.
+	AR_ExpNode **exps;          // Projected expressons.
 } OpSort;
 
 /* Creates a new Sort operation */
-OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int direction, uint limit);
+OpBase *NewSortOp(const ExecutionPlan *plan, AR_ExpNode **exps, int *directions);
 

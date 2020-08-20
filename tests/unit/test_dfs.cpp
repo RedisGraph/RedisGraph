@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -44,13 +44,12 @@ class DFSTest: public ::testing::Test {
 		size_t edge_cap = 3;
 
 		// Create nodes.
-		const char *label = "L";
 		const char *relation = "R";
 
-		A = QGNode_New(label, "A");
-		B = QGNode_New(label, "B");
-		C = QGNode_New(label, "C");
-		D = QGNode_New(label, "D");
+		A = QGNode_New("A");
+		B = QGNode_New("B");
+		C = QGNode_New("C");
+		D = QGNode_New("D");
 
 		AB = QGEdge_New(A, B, relation, "AB");
 		BC = QGEdge_New(B, C, relation, "BC");
@@ -71,8 +70,8 @@ class DFSTest: public ::testing::Test {
 };
 
 TEST_F(DFSTest, DFSLevels) {
-	QGNode *S;        // DFS starts here.
-	QGEdge **path;    // Path reached by DFS.
+	QGNode *S;      // DFS starts here.
+	QGEdge **path;  // Path reached by DFS.
 	QueryGraph *g;  // Graph traversed.
 
 	g = BuildGraph();
@@ -97,7 +96,7 @@ TEST_F(DFSTest, DFSLevels) {
 	//------------------------------------------------------------------------------
 
 	for(int level = 0; level < 5; level++) {
-		path = DFS(S, level);
+		path = DFS(S, level, true);
 		QGEdge **expectation = expected[level];
 
 		int edge_count = array_len(path);
@@ -127,3 +126,4 @@ QGNode *DFSTest::D;
 QGEdge *DFSTest::AB;
 QGEdge *DFSTest::BC;
 QGEdge *DFSTest::CD;
+

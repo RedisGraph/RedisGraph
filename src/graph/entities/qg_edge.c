@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -19,6 +19,7 @@ QGEdge *QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const ch
 	e->dest = NULL;
 	e->minHops = 1;
 	e->maxHops = 1;
+	e->bidirectional = false;
 
 	return e;
 }
@@ -32,6 +33,7 @@ QGEdge *QGEdge_Clone(const QGEdge *orig) {
 	e->maxHops = orig->maxHops;
 	e->src = NULL;
 	e->dest = NULL;
+	e->bidirectional = orig->bidirectional;
 
 	return e;
 }

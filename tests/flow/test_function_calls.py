@@ -1,6 +1,7 @@
 import redis
 import os
 import sys
+from RLTest import Env
 from base import FlowTestsBase
 from redisgraph import Graph, Node, Edge
 
@@ -11,7 +12,7 @@ people = ["Roi", "Alon", "Ailon", "Boaz"]
 
 class testFunctionCallsFlow(FlowTestsBase):
     def __init__(self):
-        super(testFunctionCallsFlow, self).__init__()
+        self.env = Env()
         global graph
         global redis_con
         redis_con = self.env.getConnection()
@@ -51,6 +52,14 @@ class testFunctionCallsFlow(FlowTestsBase):
         except redis.exceptions.ResponseError as e:
             # Expecting a type error.
             self.env.assertIn("Type mismatch", e.message)
+    
+    def expect_error(self, query, expected_err_msg):
+        try:
+            graph.query(query)
+            assert(False)
+        except redis.exceptions.ResponseError as e:
+            # Expecting a type error.
+            self.env.assertIn(expected_err_msg, e.message)
 
     # Validate capturing of errors prior to query execution.
     def test01_compile_time_errors(self):
@@ -59,6 +68,9 @@ class testFunctionCallsFlow(FlowTestsBase):
 
         query = """RETURN 'a' * 2"""
         self.expect_type_error(query)
+
+        query = """RETURN max(1 + min(2))"""
+        self.expect_error(query, "Can't use aggregate functions inside of aggregate functions")
 
     def test02_boolean_comparisons(self):
         query = """RETURN true = 5"""
@@ -128,3 +140,115 @@ class testFunctionCallsFlow(FlowTestsBase):
     def test07_nonmap_errors(self):
         query = """MATCH (a) WITH a.name AS scalar RETURN scalar.name"""
         self.expect_type_error(query)
+
+    def test08_apply_all_function(self):
+        query = "MATCH () RETURN COUNT(*)"
+        actual_result = graph.query(query)
+        expected_result = [[4]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = "UNWIND [1, 2] AS a RETURN COUNT(*)"
+        actual_result = graph.query(query)
+        expected_result = [[2]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+    
+    def test09_static_aggregation(self):
+        query = "RETURN count(*)"
+        actual_result = graph.query(query)
+        expected_result = [[1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = "RETURN max(2)"
+        actual_result = graph.query(query)
+        expected_result = [[2]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = "RETURN min(3)"
+        actual_result = graph.query(query)
+        expected_result = [[3]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test10_modulo_inputs(self):
+        # Validate modulo with integer inputs.
+        query = "RETURN 5 % 2"
+        actual_result = graph.query(query)
+        expected_result = [[1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate modulo with a floating-point dividend.
+        query = "RETURN 5.5 % 2"
+        actual_result = graph.query(query)
+        expected_result = [[1.5]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate modulo with a floating-point divisor.
+        query = "RETURN 5 % 2.5"
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate modulo with both a floating-point dividen and a floating-point divisor.
+        query = "RETURN 5.5 % 2.5"
+        actual_result = graph.query(query)
+        expected_result = [[0.5]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate modulo with negative integer inputs.
+        query = "RETURN -5 % -2"
+        actual_result = graph.query(query)
+        expected_result = [[-1]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Validate modulo with negative floating-point inputs.
+        query = "RETURN -5.5 % -2.5"
+        actual_result = graph.query(query)
+        expected_result = [[-0.5]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Aggregate functions should handle null inputs appropriately.
+    def test11_null_aggregate_function_inputs(self):
+        # SUM should sum all non-null inputs.
+        query = """UNWIND [1, NULL, 3] AS a RETURN sum(a)"""
+        actual_result = graph.query(query)
+        expected_result = [[4]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # SUM should return 0 given a fully NULL input.
+        query = """WITH NULL AS a RETURN sum(a)"""
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # COUNT should count all non-null inputs.
+        query = """UNWIND [1, NULL, 3] AS a RETURN count(a)"""
+        actual_result = graph.query(query)
+        expected_result = [[2]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # COUNT should return 0 given a fully NULL input.
+        query = """WITH NULL AS a RETURN count(a)"""
+        actual_result = graph.query(query)
+        expected_result = [[0]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # COLLECT should ignore null inputs.
+        query = """UNWIND [1, NULL, 3] AS a RETURN collect(a)"""
+        actual_result = graph.query(query)
+        expected_result = [[[1, 3]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # COLLECT should return an empty array on all null inputs.
+        query = """WITH NULL AS a RETURN collect(a)"""
+        actual_result = graph.query(query)
+        expected_result = [[[]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Verify that nested functions that perform heap allocations return properly.
+    def test12_nested_heap_functions(self):
+        query = """MATCH p = (n) WITH head(nodes(p)) AS node RETURN node.name ORDER BY node.name"""
+        actual_result = graph.query(query)
+        expected_result = [['Ailon'],
+                           ['Alon'],
+                           ['Boaz'],
+                           ['Roi']]
+        self.env.assertEquals(actual_result.result_set, expected_result)

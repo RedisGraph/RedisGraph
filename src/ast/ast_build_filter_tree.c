@@ -1,6 +1,7 @@
 #include "ast_build_filter_tree.h"
 #include "ast_shared.h"
 #include "../util/arr.h"
+#include "../query_ctx.h"
 #include "ast_build_ar_exp.h"
 
 // Forward declaration
@@ -23,18 +24,20 @@ void _FT_Append(FT_FilterNode **root_ptr, FT_FilterNode *child) {
 
 	if(root->t == FT_N_COND) {
 		if(root->cond.left == NULL) {
-			AppendLeftChild(root, child);
+			FilterTree_AppendLeftChild(root, child);
 			return;
 		}
-		if(root->cond.right == NULL) {
-			AppendRightChild(root, child);
+
+		// NOT condition nodes should always have a NULL right child; do not replace it.
+		if(root->cond.right == NULL && root->cond.op != OP_NOT) {
+			FilterTree_AppendRightChild(root, child);
 			return;
 		}
 	}
 
 	FT_FilterNode *new_root = FilterTree_CreateConditionFilter(OP_AND);
-	AppendLeftChild(new_root, root);
-	AppendRightChild(new_root, child);
+	FilterTree_AppendLeftChild(new_root, root);
+	FilterTree_AppendRightChild(new_root, child);
 	*root_ptr = new_root;
 }
 
@@ -45,13 +48,13 @@ FT_FilterNode *_CreateFilterSubtree(AST_Operator op, const cypher_astnode_t *lhs
 	case OP_OR:
 	case OP_AND:
 		filter = FilterTree_CreateConditionFilter(op);
-		AppendLeftChild(filter, _FilterNode_FromAST(lhs));
-		AppendRightChild(filter, _FilterNode_FromAST(rhs));
+		FilterTree_AppendLeftChild(filter, _FilterNode_FromAST(lhs));
+		FilterTree_AppendRightChild(filter, _FilterNode_FromAST(rhs));
 		return filter;
 	case OP_NOT:
 		filter = FilterTree_CreateConditionFilter(op);
-		AppendLeftChild(filter, _FilterNode_FromAST(lhs));
-		AppendRightChild(filter, NULL);
+		FilterTree_AppendLeftChild(filter, _FilterNode_FromAST(lhs));
+		FilterTree_AppendRightChild(filter, NULL);
 		return filter;
 	case OP_EQUAL:
 	case OP_NEQUAL:
@@ -61,7 +64,12 @@ FT_FilterNode *_CreateFilterSubtree(AST_Operator op, const cypher_astnode_t *lhs
 	case OP_GE:
 		return _CreatePredicateFilterNode(op, lhs, rhs);
 	default:
-		assert("attempted to convert unhandled type into filter" && false);
+		/* Probably an invalid query
+		 * e.g. MATCH (u) where u.v NOT NULL RETURN u
+		 * this will cause the constructed tree to form an illegal structure
+		 * which will be caught later on by `FilterTree_Valid`
+		 * and set a compile-time error. */
+		return NULL;
 	}
 }
 
@@ -152,8 +160,8 @@ static FT_FilterNode *_convertComparison(const cypher_astnode_t *comparison_node
 		FT_FilterNode *b = array_pop(filters);
 		FT_FilterNode *intersec = FilterTree_CreateConditionFilter(OP_AND);
 
-		AppendLeftChild(intersec, a);
-		AppendRightChild(intersec, b);
+		FilterTree_AppendLeftChild(intersec, a);
+		FilterTree_AppendRightChild(intersec, b);
 
 		filters = array_append(filters, intersec);
 	}
@@ -198,6 +206,26 @@ static FT_FilterNode *_convertInlinedProperties(const AST *ast, const cypher_ast
 	return root;
 }
 
+static FT_FilterNode *_convertPatternPath(const cypher_astnode_t *entity) {
+	// Collect aliases specified in pattern.
+	const char **aliases = array_new(const char *, 1);
+	AST_CollectAliases(&aliases, entity);
+	uint alias_count = array_len(aliases);
+
+	/* Create a function call expression
+	 * First argument is a pointer to the original AST pattern node.
+	 * argument 1..alias_count are the referenced aliases,
+	 * required for filter positioning when constructing an execution plan. */
+	AR_ExpNode *exp = AR_EXP_NewOpNode("path_filter", 1 + alias_count);
+	exp->op.children[0] = AR_EXP_NewConstOperandNode(SI_PtrVal((void *)entity));
+	for(uint i = 0; i < alias_count; i++) {
+		AR_ExpNode *child = AR_EXP_NewVariableOperandNode(aliases[i], NULL);
+		exp->op.children[1 + i] = child;
+	}
+	array_free(aliases);
+	return FilterTree_CreateExpressionFilter(exp);
+}
+
 FT_FilterNode *_FilterNode_FromAST(const cypher_astnode_t *expr) {
 	assert(expr);
 	cypher_astnode_type_t type = cypher_astnode_type(expr);
@@ -216,30 +244,62 @@ FT_FilterNode *_FilterNode_FromAST(const cypher_astnode_t *expr) {
 		return _convertFalseOperator();
 	} else if(type == CYPHER_AST_INTEGER) {
 		return _convertIntegerOperator(expr);
+	} else if(type == CYPHER_AST_PATTERN_PATH) {
+		return _convertPatternPath(expr);
 	} else {
-		assert(false);
+		/* Probably an invalid query
+		 * e.g. MATCH (u) where u.v NOT NULL RETURN u
+		 * this will cause the constructed tree to form an illegal structure
+		 * which will be caught later on by `FilterTree_Valid`
+		 * and set a compile-time error. */
 		return NULL;
 	}
 }
 
-void _AST_ConvertFilters(const AST *ast, FT_FilterNode **root, const cypher_astnode_t *entity) {
+void _AST_ConvertGraphPatternToFilter(const AST *ast, FT_FilterNode **root,
+									  const cypher_astnode_t *pattern) {
+	if(!pattern) return;
+	FT_FilterNode *ft_node = NULL;
+	uint npaths = cypher_ast_pattern_npaths(pattern);
+	// Go over each path in the pattern.
+	for(uint i = 0; i < npaths; i++) {
+		const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, i);
+		// Go over each element in the path pattern and check if there is an inline filter.
+		uint nelements = cypher_ast_pattern_path_nelements(path);
+		// Nodes are in even places.
+		for(uint n = 0; n < nelements; n += 2) {
+			const cypher_astnode_t *node = cypher_ast_pattern_path_get_element(path, n);
+			ft_node = _convertInlinedProperties(ast, node, GETYPE_NODE);
+			if(ft_node) _FT_Append(root, ft_node);
+		}
+		// Edges are in odd places.
+		for(uint e = 1; e < nelements; e += 2) {
+			const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, e);
+			ft_node = _convertInlinedProperties(ast, edge, GETYPE_EDGE);
+			if(ft_node) _FT_Append(root, ft_node);
+		}
+	}
+}
+
+void AST_ConvertFilters(FT_FilterNode **root, const cypher_astnode_t *entity) {
 	if(!entity) return;
 
 	cypher_astnode_type_t type = cypher_astnode_type(entity);
 
 	FT_FilterNode *node = NULL;
-	// If the current entity is a node or edge pattern, capture its properties map (if any)
-	if(type == CYPHER_AST_NODE_PATTERN) {
-		node = _convertInlinedProperties(ast, entity, GETYPE_NODE);
-	} else if(type == CYPHER_AST_REL_PATTERN) {
-		node = _convertInlinedProperties(ast, entity, GETYPE_EDGE);
+
+	if(type == CYPHER_AST_PATTERN_PATH) {
+		node = _convertPatternPath(entity);
 	} else if(type == CYPHER_AST_COMPARISON) {
 		node = _convertComparison(entity);
 	} else if(type == CYPHER_AST_BINARY_OPERATOR) {
 		node = _convertBinaryOperator(entity);
 	} else if(type == CYPHER_AST_UNARY_OPERATOR) {
 		node = _convertUnaryOperator(entity);
-	} else if(type == CYPHER_AST_APPLY_OPERATOR) {
+	} else if(type == CYPHER_AST_APPLY_OPERATOR ||
+			  type == CYPHER_AST_ANY            ||
+			  type == CYPHER_AST_ALL            ||
+			  type == CYPHER_AST_LIST_COMPREHENSION) {
 		node = _convertApplyOperator(entity);
 	} else if(type == CYPHER_AST_TRUE) {
 		node = _convertTrueOperator();
@@ -252,7 +312,7 @@ void _AST_ConvertFilters(const AST *ast, FT_FilterNode **root, const cypher_astn
 		for(uint i = 0; i < child_count; i++) {
 			const cypher_astnode_t *child = cypher_astnode_get_child(entity, i);
 			// Recursively continue searching
-			_AST_ConvertFilters(ast, root, child);
+			AST_ConvertFilters(root, child);
 		}
 	}
 	if(node) _FT_Append(root, node);
@@ -264,7 +324,12 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 	if(match_clauses) {
 		uint match_count = array_len(match_clauses);
 		for(uint i = 0; i < match_count; i ++) {
-			_AST_ConvertFilters(ast, &filter_tree, match_clauses[i]);
+			// Optional match clauses are handled separately.
+			if(cypher_ast_match_is_optional(match_clauses[i])) continue;
+			const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match_clauses[i]);
+			_AST_ConvertGraphPatternToFilter(ast, &filter_tree, pattern);
+			const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(match_clauses[i]);
+			if(predicate) AST_ConvertFilters(&filter_tree, predicate);
 		}
 		array_free(match_clauses);
 	}
@@ -274,18 +339,9 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 		uint with_count = array_len(with_clauses);
 		for(uint i = 0; i < with_count; i ++) {
 			const cypher_astnode_t *predicate = cypher_ast_with_get_predicate(with_clauses[i]);
-			if(predicate) _AST_ConvertFilters(ast, &filter_tree, predicate);
+			if(predicate) AST_ConvertFilters(&filter_tree, predicate);
 		}
 		array_free(with_clauses);
-	}
-
-	const cypher_astnode_t **merge_clauses = AST_GetClauses(ast, CYPHER_AST_MERGE);
-	if(merge_clauses) {
-		uint merge_count = array_len(merge_clauses);
-		for(uint i = 0; i < merge_count; i ++) {
-			_AST_ConvertFilters(ast, &filter_tree, merge_clauses[i]);
-		}
-		array_free(merge_clauses);
 	}
 
 	const cypher_astnode_t **call_clauses = AST_GetClauses(ast, CYPHER_AST_CALL);
@@ -293,9 +349,16 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 		uint call_count = array_len(call_clauses);
 		for(uint i = 0; i < call_count; i ++) {
 			const cypher_astnode_t *where_predicate = cypher_ast_call_get_predicate(call_clauses[i]);
-			if(where_predicate) _AST_ConvertFilters(ast, &filter_tree, where_predicate);
+			if(where_predicate) AST_ConvertFilters(&filter_tree, where_predicate);
 		}
 		array_free(call_clauses);
+	}
+
+	if(!FilterTree_Valid(filter_tree)) {
+		// Invalid filter tree structure, set a compile-time error.
+		QueryCtx_SetError("Invalid filter statement.");
+		FilterTree_Free(filter_tree);
+		return NULL;
 	}
 
 	// Apply De Morgan's laws

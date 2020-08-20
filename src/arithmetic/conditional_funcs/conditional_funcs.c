@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -52,12 +52,31 @@ SIValue AR_CASEWHEN(SIValue *argv, int argc) {
 	return d;
 }
 
+// Coalesce - return the first value which is not null. Defaults to null.
+SIValue AR_COALESCE(SIValue *argv, int argc) {
+	for(int i = 0; i < argc; i++)
+		if(!SIValue_IsNull(argv[i])) {
+			/* Avoid double free, since the value is propagated and will be free twice:
+			 * 1. Argument array free.
+			 * 2. Record free. */
+			SIValue copy = argv[i];
+			SIValue_MakeVolatile(argv + i);
+			return copy;
+		}
+	return SI_NullVal();
+}
+
 void Register_ConditionalFuncs() {
 	SIType *types;
 	AR_FuncDesc *func_desc;
 
 	types = array_new(SIType, 1);
 	types = array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("case", AR_CASEWHEN, VAR_ARG_LEN, types, true);
+	func_desc = AR_FuncDescNew("case", AR_CASEWHEN, 2, VAR_ARG_LEN, types, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 1);
+	types = array_append(types, SI_ALL);
+	func_desc = AR_FuncDescNew("coalesce", AR_COALESCE, 1, VAR_ARG_LEN, types, true);
 	AR_RegFunc(func_desc);
 }

@@ -2,7 +2,7 @@
 // GB_BinaryOp_compatible: check binary operator for type compatibility
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -37,7 +37,7 @@ GrB_Info GB_BinaryOp_compatible     // check for domain mismatch
     // first input A is cast into the type of op->xtype
     //--------------------------------------------------------------------------
 
-    if (op->opcode == GB_SECOND_opcode)
+    if (op->opcode == GB_SECOND_opcode || op->opcode == GB_PAIR_opcode)
     { 
         // first input is unused, so A is always compatible
         ;
@@ -55,7 +55,7 @@ GrB_Info GB_BinaryOp_compatible     // check for domain mismatch
     // second input B is cast into the type of op->ytype
     //--------------------------------------------------------------------------
 
-    if (op->opcode == GB_FIRST_opcode)
+    if (op->opcode == GB_FIRST_opcode || op->opcode == GB_PAIR_opcode)
     { 
         // second input is unused, so B is always compatible
         ;

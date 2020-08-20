@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -8,6 +8,7 @@
 #include "../../deps/libcypher-parser/lib/src/operators.h" // TODO safe?
 #include "rax.h"
 #include <assert.h>
+#include "../query_ctx.h"
 
 /* Whitelist of all accepted cypher_astnode types:
  * Includes entities like CREATE clauses and node patterns,
@@ -27,9 +28,9 @@ static void _buildTypesWhitelist(void) {
 	// When we introduce support for one of these, simply remove it from the list.
 	cypher_astnode_type_t supported_types[] = {
 		CYPHER_AST_STATEMENT,
-		// CYPHER_AST_STATEMENT_OPTION,
-		// CYPHER_AST_CYPHER_OPTION,
-		// CYPHER_AST_CYPHER_OPTION_PARAM,
+		CYPHER_AST_STATEMENT_OPTION,
+		CYPHER_AST_CYPHER_OPTION,
+		CYPHER_AST_CYPHER_OPTION_PARAM,
 		// CYPHER_AST_EXPLAIN_OPTION,
 		// CYPHER_AST_PROFILE_OPTION,
 		// CYPHER_AST_SCHEMA_COMMAND,
@@ -60,9 +61,9 @@ static void _buildTypesWhitelist(void) {
 		// CYPHER_AST_USING_JOIN,
 		// CYPHER_AST_USING_SCAN,
 		CYPHER_AST_MERGE,
-		// CYPHER_AST_MERGE_ACTION,
-		// CYPHER_AST_ON_MATCH,
-		// CYPHER_AST_ON_CREATE,
+		CYPHER_AST_MERGE_ACTION,
+		CYPHER_AST_ON_MATCH,
+		CYPHER_AST_ON_CREATE,
 		CYPHER_AST_CREATE,
 		CYPHER_AST_SET,
 		CYPHER_AST_SET_ITEM,
@@ -83,31 +84,31 @@ static void _buildTypesWhitelist(void) {
 		CYPHER_AST_PROJECTION,
 		CYPHER_AST_ORDER_BY,
 		CYPHER_AST_SORT_ITEM,
-		// CYPHER_AST_UNION,
+		CYPHER_AST_UNION,
 		CYPHER_AST_EXPRESSION,
 		CYPHER_AST_UNARY_OPERATOR,
 		CYPHER_AST_BINARY_OPERATOR,
 		CYPHER_AST_COMPARISON,
 		CYPHER_AST_APPLY_OPERATOR,
-		// CYPHER_AST_APPLY_ALL_OPERATOR,
+		CYPHER_AST_APPLY_ALL_OPERATOR,
 		CYPHER_AST_PROPERTY_OPERATOR,
 		CYPHER_AST_SUBSCRIPT_OPERATOR,
 		CYPHER_AST_SLICE_OPERATOR,
 		// CYPHER_AST_LABELS_OPERATOR,
-		// CYPHER_AST_LIST_COMPREHENSION,
+		CYPHER_AST_LIST_COMPREHENSION,
 		// CYPHER_AST_PATTERN_COMPREHENSION,
 		CYPHER_AST_CASE,
-		// CYPHER_AST_FILTER,
-		// CYPHER_AST_EXTRACT,
+		// CYPHER_AST_FILTER,  // Deprecated, will not be supported
+		// CYPHER_AST_EXTRACT, // Deprecated, will not be supported
 		// CYPHER_AST_REDUCE,
-		// CYPHER_AST_ALL,
-		// CYPHER_AST_ANY,
+		CYPHER_AST_ALL,
+		CYPHER_AST_ANY,
 		// CYPHER_AST_SINGLE,
 		// CYPHER_AST_NONE,
 		CYPHER_AST_COLLECTION,
 		CYPHER_AST_MAP,
 		CYPHER_AST_IDENTIFIER,
-		// CYPHER_AST_PARAMETER,
+		CYPHER_AST_PARAMETER,
 		CYPHER_AST_STRING,
 		CYPHER_AST_INTEGER,
 		CYPHER_AST_FLOAT,
@@ -122,7 +123,7 @@ static void _buildTypesWhitelist(void) {
 		// CYPHER_AST_INDEX_NAME,
 		CYPHER_AST_PROC_NAME,
 		CYPHER_AST_PATTERN,
-		// CYPHER_AST_NAMED_PATH,
+		CYPHER_AST_NAMED_PATH,
 		// CYPHER_AST_SHORTEST_PATH,
 		CYPHER_AST_PATTERN_PATH,
 		CYPHER_AST_NODE_PATTERN,
@@ -171,7 +172,7 @@ static void _buildOperatorsWhitelist(void) {
 		CYPHER_OP_MINUS,
 		CYPHER_OP_MULT,
 		CYPHER_OP_DIV,
-		// CYPHER_OP_MOD,
+		CYPHER_OP_MOD,
 		// CYPHER_OP_POW,
 		CYPHER_OP_UNARY_PLUS,
 		CYPHER_OP_UNARY_MINUS,
@@ -199,12 +200,12 @@ static void _buildOperatorsWhitelist(void) {
 
 }
 
-static AST_Validation _CypherWhitelist_ValidateQuery(const cypher_astnode_t *elem, char **reason) {
+static AST_Validation _CypherWhitelist_ValidateQuery(const cypher_astnode_t *elem) {
 	if(elem == NULL) return AST_VALID;
 	cypher_astnode_type_t type = cypher_astnode_type(elem);
 	// Validate the type of the AST node
 	if(raxFind(_astnode_type_whitelist, (unsigned char *)&type, sizeof(type)) == raxNotFound) {
-		asprintf(reason, "RedisGraph does not currently support %s", cypher_astnode_typestr(type));
+		QueryCtx_SetError("RedisGraph does not currently support %s", cypher_astnode_typestr(type));
 		return AST_INVALID;
 	}
 
@@ -220,7 +221,7 @@ static AST_Validation _CypherWhitelist_ValidateQuery(const cypher_astnode_t *ele
 	}
 	if(operator) {
 		if(raxFind(_operator_whitelist, (unsigned char *)operator, sizeof(*operator)) == raxNotFound) {
-			asprintf(reason, "RedisGraph does not currently support %s", operator->str);
+			QueryCtx_SetError("RedisGraph does not currently support %s", operator->str);
 			return AST_INVALID;
 		}
 	}
@@ -228,7 +229,7 @@ static AST_Validation _CypherWhitelist_ValidateQuery(const cypher_astnode_t *ele
 	// Recursively visit children
 	uint nchildren = cypher_astnode_nchildren(elem);
 	for(uint i = 0; i < nchildren; i ++) {
-		if(CypherWhitelist_ValidateQuery(cypher_astnode_get_child(elem, i), reason) != AST_VALID) {
+		if(CypherWhitelist_ValidateQuery(cypher_astnode_get_child(elem, i)) != AST_VALID) {
 			return AST_INVALID;
 		}
 	}
@@ -236,8 +237,8 @@ static AST_Validation _CypherWhitelist_ValidateQuery(const cypher_astnode_t *ele
 	return AST_VALID;
 }
 
-AST_Validation CypherWhitelist_ValidateQuery(const cypher_astnode_t *root, char **reason) {
-	return _CypherWhitelist_ValidateQuery(root, reason);
+AST_Validation CypherWhitelist_ValidateQuery(const cypher_astnode_t *root) {
+	return _CypherWhitelist_ValidateQuery(root);
 }
 
 void CypherWhitelist_Build() {
@@ -247,3 +248,4 @@ void CypherWhitelist_Build() {
 	_buildTypesWhitelist();
 	_buildOperatorsWhitelist();
 }
+

@@ -1,7 +1,7 @@
 function test31
 %TEST31 test GrB_transpose
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 fprintf ('\n------------------- simple tests of GB_mex_transpose\n') ;
@@ -40,14 +40,15 @@ C = GB_mex_transpose (Cin, [ ], 'plus', A, D) ;
 assert (isequal (C.matrix,Cin+A)) ;
 
 ops = {
-    'first',    0,
-    'second',   0,
-    'min',      1,
-    'max',      1,
-    'plus',     1,
-    'minus',    0,
-    'times',    1,
-    'div',      0 } ;
+    'first',
+    'second',
+    'pair',
+    'min',
+    'max',
+    'plus',
+    'minus',
+    'times',
+    'div',   } ;
 
 for k = 1:length(ops)
     op = ops {k} ;
@@ -57,25 +58,25 @@ for k = 1:length(ops)
     C = GB_mex_transpose  (Cin2, [ ], op, A, D)  ;
     S = GB_spec_transpose (Cin2, [ ], op, A, D)  ;
     assert (isequal (C.matrix, sparse (S.matrix))) ;
-    assert (isequal (spones (C.matrix), sparse (S.pattern))) ;
+    assert (isequal (GB_spones_mex (C.matrix), sparse (S.pattern))) ;
 
     % C = A', ignore the op
     D = struct ('outp', 'replace') ;
     C = GB_mex_transpose  (Cin2, [ ], op, A, D) ;
     S = GB_spec_transpose (Cin2, [ ], op, A, D) ;
-    assert (isequal (spones (C.matrix), sparse (S.pattern))) ;
+    assert (isequal (GB_spones_mex (C.matrix), sparse (S.pattern))) ;
 
     % C = A, ignore the op
     D = struct ('inp0', 'tran', 'outp', 'replace') ;
     C = GB_mex_transpose  (Cin, [ ], op, A, D) ;
     S = GB_spec_transpose (Cin, [ ], op, A, D) ;
-    assert (isequal (spones (C.matrix), sparse (S.pattern))) ;
+    assert (isequal (GB_spones_mex (C.matrix), sparse (S.pattern))) ;
 
     % C = op (Cin,A)
     D = struct ('inp0', 'tran') ;
     C = GB_mex_transpose  (Cin, [ ], op, A, D) ;
     S = GB_spec_transpose (Cin, [ ], op, A, D) ;
-    assert (isequal (spones (C.matrix), sparse (S.pattern))) ;
+    assert (isequal (GB_spones_mex (C.matrix), sparse (S.pattern))) ;
 
 end
 

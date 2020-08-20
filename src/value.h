@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdbool.h>
+#include <sys/types.h>
 #include "xxhash.h"
 
 /* Type defines the supported types by the indexing system. The types are powers
@@ -60,7 +61,8 @@ typedef enum {
 
 /* Build an integer return value for a comparison routine in the style of strcmp.
  * This is necessary to construct safe returns when the delta between
- * two values is < 1.0 (and would thus be rounded to 0). */
+ * two values is < 1.0 (and would thus be rounded to 0)
+ * or the delta is too large to fit in a 32-bit integer. */
 #define SAFE_COMPARISON_RESULT(a) SIGN(a)
 
 /* Returns 1 if argument is positive, -1 if argument is negative,
@@ -90,6 +92,7 @@ SIValue SI_BoolVal(int b);
 SIValue SI_PtrVal(void *v);
 SIValue SI_Node(void *n);
 SIValue SI_Edge(void *e);
+SIValue SI_Path(void *p);
 SIValue SI_Array(u_int64_t initialCapacity);
 SIValue SI_EmptyArray();
 
@@ -118,6 +121,8 @@ void SIValue_Persist(SIValue *v);
 
 bool SIValue_IsNull(SIValue v);
 bool SIValue_IsNullPtr(SIValue *v);
+bool SIValue_IsFalse(SIValue v);
+bool SIValue_IsTrue(SIValue v);
 
 const char *SIType_ToString(SIType t);
 
@@ -151,16 +156,21 @@ SIValue SIValue_Subtract(const SIValue a, const SIValue b);
 SIValue SIValue_Multiply(const SIValue a, const SIValue b);
 /* SIValue_Divide always returns a double value. */
 SIValue SIValue_Divide(const SIValue a, const SIValue b);
+/* SIValue_Modulo always gets integer values as input and return integer value. */
+SIValue SIValue_Modulo(const SIValue a, const SIValue b);
 
 /* Compares two SIValues and returns a value similar to strcmp.
  * If one of the values is null, the macro COMPARED_NULL is returned in disjointOrNull value.
  * If the the values are not of the same type, the macro DISJOINT is returned in disjointOrNull value. */
 int SIValue_Compare(const SIValue a, const SIValue b, int *disjointOrNull);
 
-/* Returns a hash code for a given SIValue */
+/* Update the provided hash state with the given SIValue. */
+void SIValue_HashUpdate(SIValue v, XXH64_state_t *state);
+
+/* Returns a hash code for a given SIValue. */
 XXH64_hash_t SIValue_HashCode(SIValue v);
 
 /* Free an SIValue's internal property if that property is a heap allocation owned
  * by this object. */
-void SIValue_Free(SIValue *v);
+void SIValue_Free(SIValue v);
 

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -14,6 +14,7 @@
 typedef struct {
 	char *query;                    // Query string.
 	RedisModuleCtx *ctx;            // Redis module context.
+	char *command_name;             // Command to execute.
 	GraphContext *graph_ctx;        // Graph context.
 	RedisModuleString **argv;       // Arguments.
 	RedisModuleBlockedClient *bc;   // Blocked client.
@@ -26,40 +27,62 @@ CommandCtx *CommandCtx_New
 (
 	RedisModuleCtx *ctx,            // Redis module context.
 	RedisModuleBlockedClient *bc,   // Blocked client.
-	GraphContext *graph_ctx,        // Graph context.
+	RedisModuleString *cmd_name,    // Command to execute.
 	RedisModuleString *query,       // Query string.
-	RedisModuleString **argv,       // Arguments.
 	int argc,                       // Argument count.
+	RedisModuleString **argv,       // Arguments.
+	GraphContext *graph_ctx,        // Graph context.
 	bool replicated_command         // Whether this instance was spawned by a replication command.
 );
+
+// Tracks given 'ctx' such that in case of a crash we will be able to report
+// back all of the currently running commands
+void CommandCtx_TrackCtx(CommandCtx *ctx);
 
 // Get Redis module context
 RedisModuleCtx *CommandCtx_GetRedisCtx
 (
-	CommandCtx *qctx
+	CommandCtx *command_ctx
+);
+
+// Get blocking client.
+RedisModuleBlockedClient *CommandCtx_GetBlockingClient
+(
+	const CommandCtx *command_ctx
 );
 
 // Get GraphContext.
-GraphContext* CommandCtx_GetGraphContext
+GraphContext *CommandCtx_GetGraphContext
 (
-	const CommandCtx *qctx
+	const CommandCtx *command_ctx
+);
+
+// Get command name.
+const char *CommandCtx_GetCommandName
+(
+	const CommandCtx *command_ctx
+);
+
+const char *CommandCtx_GetQuery
+(
+	const CommandCtx *command_ctx
 );
 
 // Acquire Redis global lock.
 void CommandCtx_ThreadSafeContextLock
 (
-	const CommandCtx *qctx
+	const CommandCtx *command_ctx
 );
 
 // Release Redis global lock.
 void CommandCtx_ThreadSafeContextUnlock
 (
-	const CommandCtx *qctx
+	const CommandCtx *command_ctx
 );
 
 // Free command context.
 void CommandCtx_Free
 (
-	CommandCtx *qctx
+	CommandCtx *command_ctx
 );
 

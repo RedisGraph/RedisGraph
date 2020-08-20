@@ -30,7 +30,6 @@
 
 Feature: WithAcceptance
 
-    @skip
     Scenario: Passing on pattern nodes
         Given an empty graph
         And having executed:
@@ -49,7 +48,6 @@ Feature: WithAcceptance
             | (:A) | (:B) |
         And no side effects
 
-    @skip
     Scenario: ORDER BY and LIMIT can be used
         Given an empty graph
         And having executed:
@@ -71,7 +69,6 @@ Feature: WithAcceptance
             | (:A) |
         And no side effects
 
-    @skip
     Scenario: No dependencies between the query parts
         Given an empty graph
         And having executed:
@@ -114,6 +111,7 @@ Feature: WithAcceptance
             | (:End {num: 42}) |
         And no side effects
 
+@crash
     @skip
     Scenario: Handle dependencies across WITH
         Given an empty graph
@@ -137,6 +135,7 @@ Feature: WithAcceptance
             | (:End {num: 42, id: 0}) |
         And no side effects
 
+@crash
     @skip
     Scenario: Handle dependencies across WITH with SKIP
         Given an empty graph
@@ -161,7 +160,6 @@ Feature: WithAcceptance
             | ({name: 'A', num: 0, id: 0}) |
         And no side effects
 
-    @skip
     Scenario: WHERE after WITH should filter results
         Given an empty graph
         And having executed:
@@ -182,7 +180,6 @@ Feature: WithAcceptance
             | ({name: 'B'}) |
         And no side effects
 
-    @skip
     Scenario: WHERE after WITH can filter on top of an aggregation
         Given an empty graph
         And having executed:
@@ -206,7 +203,6 @@ Feature: WithAcceptance
             | ({name: 'A'}) |
         And no side effects
 
-    @skip
     Scenario: ORDER BY on an aggregating key
         Given an empty graph
         And having executed:
@@ -249,7 +245,6 @@ Feature: WithAcceptance
             | 'B'  |
         And no side effects
 
-    @skip
     Scenario: WHERE on a DISTINCT column
         Given an empty graph
         And having executed:
@@ -270,7 +265,6 @@ Feature: WithAcceptance
             | 'B'  |
         And no side effects
 
-    @skip
     Scenario: A simple pattern with one bound endpoint
         Given an empty graph
         And having executed:
@@ -291,7 +285,6 @@ Feature: WithAcceptance
             | (:A) | [:REL] | (:B) |
         And no side effects
 
-    @skip
     Scenario: Null handling
         Given an empty graph
         When executing query:
@@ -318,7 +311,6 @@ Feature: WithAcceptance
             | 'baz'                |
         And no side effects
 
-    @skip
     Scenario: Connected components succeeding WITH
         Given an empty graph
         And having executed:
@@ -339,7 +331,6 @@ Feature: WithAcceptance
             | (:B) | (:A) | (:X) |
         And no side effects
 
-    @skip
     Scenario: Single WITH using a predicate and aggregation
         Given an empty graph
         And having executed:
@@ -358,7 +349,6 @@ Feature: WithAcceptance
             | 1        |
         And no side effects
 
-    @skip
     Scenario: Multiple WITHs using a predicate and aggregation
         Given an empty graph
         And having executed:

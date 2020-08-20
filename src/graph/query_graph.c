@@ -1,11 +1,12 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
 #include "query_graph.h"
 #include "../util/arr.h"
+#include "../util/strcmp.h"
 #include "../query_ctx.h"
 #include "../schema/schema.h"
 #include "../../deps/rax/rax.h"
@@ -22,7 +23,7 @@ static void _BuildQueryGraphAddNode(QueryGraph *qg, const cypher_astnode_t *ast_
 
 	if(n == NULL) {
 		// Node has not been mapped; create it.
-		n = QGNode_New(NULL, alias);
+		n = QGNode_New(alias);
 		QueryGraph_AddNode(qg, n);
 	}
 
@@ -53,48 +54,43 @@ static void _BuildQueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	AST *ast = QueryCtx_GetAST();
 	const char *alias = AST_GetEntityName(ast, ast_entity);
+	enum cypher_rel_direction dir = cypher_ast_rel_pattern_get_direction(ast_entity);
 
 	// Each edge can only appear once in a QueryGraph.
 	assert(QueryGraph_GetEdgeByAlias(qg, alias) == NULL);
 
-	QGEdge *e = QGEdge_New(NULL, NULL, NULL, alias);
-
-	// Swap the source and destination for left-pointing relations
-	if(cypher_ast_rel_pattern_get_direction(ast_entity) == CYPHER_REL_INBOUND) {
-		QGNode *tmp = src;
-		src = dest;
-		dest = tmp;
-	}
+	QGEdge *edge = QGEdge_New(NULL, NULL, NULL, alias);
+	edge->bidirectional = (dir == CYPHER_REL_BIDIRECTIONAL);
 
 	// Add the IDs of all reltype matrixes
 	uint nreltypes = cypher_ast_rel_pattern_nreltypes(ast_entity);
 	for(uint i = 0; i < nreltypes; i ++) {
 		const char *reltype = cypher_ast_reltype_get_name(cypher_ast_rel_pattern_get_reltype(ast_entity,
 														  i));
-		e->reltypes = array_append(e->reltypes, reltype);
+		edge->reltypes = array_append(edge->reltypes, reltype);
 		Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
 		if(!s) {
-			e->reltypeIDs = array_append(e->reltypeIDs, GRAPH_UNKNOWN_RELATION);
+			edge->reltypeIDs = array_append(edge->reltypeIDs, GRAPH_UNKNOWN_RELATION);
+			qg->unknown_reltype_ids = true;
 			continue;
 		}
-		e->reltypeIDs = array_append(e->reltypeIDs, s->id);
+		edge->reltypeIDs = array_append(edge->reltypeIDs, s->id);
 	}
 
 	// Incase of a variable length edge, set edge min/max hops.
 	const cypher_astnode_t *range = cypher_ast_rel_pattern_get_varlength(ast_entity);
 	if(range) {
 		const cypher_astnode_t *start = cypher_ast_range_get_start(range);
-		if(start) e->minHops = AST_ParseIntegerNode(start);
-
 		const cypher_astnode_t *end = cypher_ast_range_get_end(range);
-		if(end) {
-			e->maxHops = AST_ParseIntegerNode(end);
-		} else {
-			e->maxHops = EDGE_LENGTH_INF;
-		}
+		if(start) edge->minHops = AST_ParseIntegerNode(start);
+		if(end) edge->maxHops = AST_ParseIntegerNode(end);
+		else edge->maxHops = EDGE_LENGTH_INF;
 	}
 
-	QueryGraph_ConnectNodes(qg, src, dest, e);
+	// Build and add a QGEdge representing this entity to the QueryGraph.
+	// Swap the source and destination for left-pointing relations
+	if(dir != CYPHER_REL_INBOUND) QueryGraph_ConnectNodes(qg, src, dest, edge);
+	else QueryGraph_ConnectNodes(qg, dest, src, edge);
 }
 
 QueryGraph *QueryGraph_New(uint node_cap, uint edge_cap) {
@@ -102,6 +98,7 @@ QueryGraph *QueryGraph_New(uint node_cap, uint edge_cap) {
 
 	qg->nodes = array_new(QGNode *, node_cap);
 	qg->edges = array_new(QGEdge *, edge_cap);
+	qg->unknown_reltype_ids = false;
 
 	return qg;
 }
@@ -141,10 +138,8 @@ void QueryGraph_AddPath(QueryGraph *qg, const GraphContext *gc, const cypher_ast
 		QGNode *right = QueryGraph_GetNodeByAlias(qg, r_alias);
 
 		// Retrieve the AST reference to this edge.
-		const cypher_astnode_t *entity = cypher_ast_pattern_path_get_element(path, i);
-
-		// Build and add a QGEdge representing this entity to the QueryGraph.
-		_BuildQueryGraphAddEdge(qg, entity, left, right);
+		const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
+		_BuildQueryGraphAddEdge(qg, edge, left, right);
 	}
 }
 
@@ -157,13 +152,13 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 	node_count = edge_count = raxSize(ast->referenced_entities);
 	QueryGraph *qg = QueryGraph_New(node_count, edge_count);
 
-	// We are interested in every path held in a MATCH pattern,
-	// and the (single) path described by a MERGE clause.
-
+	// We are interested in every path held in a MATCH pattern.
 	const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
 	if(match_clauses) {
 		uint match_count = array_len(match_clauses);
 		for(uint i = 0; i < match_count; i ++) {
+			// OPTIONAL MATCH clauses are handled separately.
+			if(cypher_ast_match_is_optional(match_clauses[i])) continue;
 			const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match_clauses[i]);
 			uint npaths = cypher_ast_pattern_npaths(pattern);
 			for(uint j = 0; j < npaths; j ++) {
@@ -174,24 +169,43 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 		array_free(match_clauses);
 	}
 
-	// MERGE clauses
-	const cypher_astnode_t **merge_clauses = AST_GetClauses(ast, CYPHER_AST_MERGE);
-	if(merge_clauses) {
-		uint merge_count = array_len(merge_clauses);
-		for(uint i = 0; i < merge_count; i ++) {
-			const cypher_astnode_t *path = cypher_ast_merge_get_pattern_path(merge_clauses[i]);
-			QueryGraph_AddPath(qg, gc, path);
-		}
-		array_free(merge_clauses);
+	return qg;
+}
+
+void QueryGraph_MergeGraphs(QueryGraph *to, QueryGraph *from) {
+	uint node_count = QueryGraph_NodeCount(from);
+	uint edge_count = QueryGraph_EdgeCount(from);
+
+	for(uint i = 0; i < node_count; i++) {
+		QGNode *n = from->nodes[i];
+		/* If the entity already exists in the "to" graph, do nothing.
+		 * We could have more complex logic to merge entity data, but this is not
+		 * currently necessary as this logic only benefits toString calls like EXPLAIN. */
+		if(QueryGraph_GetNodeByAlias(to, n->alias)) continue;
+		// New entity, clone and add it.
+		QueryGraph_AddNode(to, QGNode_Clone(n));
 	}
 
-	return qg;
+	for(uint i = 0; i < edge_count; i++) {
+		QGEdge *e = from->edges[i];
+		/* If the entity already exists in the "to" graph, do nothing.
+		 * We could have more complex logic to merge entity data, but this is not
+		 * currently necessary as this logic only benefits toString calls like EXPLAIN. */
+		if(QueryGraph_GetEdgeByAlias(to, e->alias)) continue;
+
+		// Retrieve the edge's endpoints in the "to" graph.
+		QGNode *src = QueryGraph_GetNodeByAlias(to, e->src->alias);
+		QGNode *dest = QueryGraph_GetNodeByAlias(to, e->dest->alias);
+		// Clone and add the unmatched edge.
+		QGEdge *clone_edge = QGEdge_Clone(e);
+		QueryGraph_ConnectNodes(to, src, dest, clone_edge);
+	}
 }
 
 QGNode *QueryGraph_GetNodeByAlias(const QueryGraph *qg, const char *alias) {
 	uint node_count = QueryGraph_NodeCount(qg);
 	for(uint i = 0; i < node_count; i ++) {
-		if(strcmp(qg->nodes[i]->alias, alias) == 0) return qg->nodes[i];
+		if(!RG_STRCMP(qg->nodes[i]->alias, alias)) return qg->nodes[i];
 	}
 	return NULL;
 }
@@ -199,7 +213,7 @@ QGNode *QueryGraph_GetNodeByAlias(const QueryGraph *qg, const char *alias) {
 QGEdge *QueryGraph_GetEdgeByAlias(const QueryGraph *qg, const char *alias) {
 	uint edge_count = QueryGraph_EdgeCount(qg);
 	for(uint i = 0; i < edge_count; i ++) {
-		if(strcmp(qg->edges[i]->alias, alias) == 0) return qg->edges[i];
+		if(!RG_STRCMP(qg->edges[i]->alias, alias)) return qg->edges[i];
 	}
 	return NULL;
 }
@@ -208,6 +222,31 @@ EntityType QueryGraph_GetEntityTypeByAlias(const QueryGraph *qg, const char *ali
 	if(QueryGraph_GetNodeByAlias(qg, alias) != NULL) return ENTITY_NODE;
 	if(QueryGraph_GetEdgeByAlias(qg, alias) != NULL) return ENTITY_EDGE;
 	return ENTITY_UNKNOWN;
+}
+
+void QueryGraph_ResolveUnknownRelIDs(QueryGraph *qg) {
+	// No unknown relationships - no need to updated.
+	if(!qg->unknown_reltype_ids) return;
+
+	Schema *s = NULL;
+	bool unkown_relationships = false;
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	uint edge_count = QueryGraph_EdgeCount(qg);
+
+	// Update edges.
+	for(uint i = 0; i < edge_count; i++) {
+		QGEdge *edge = qg->edges[i];
+		uint rel_types_count = array_len(edge->reltypeIDs);
+		for(uint j = 0; j < rel_types_count; j++) {
+			if(edge->reltypeIDs[j] == GRAPH_UNKNOWN_RELATION) {
+				s = GraphContext_GetSchema(gc, edge->reltypes[j], SCHEMA_EDGE);
+				if(s) edge->reltypeIDs[j] = s->id;
+				else unkown_relationships = true; // Cannot update the unkown relationship.
+			}
+		}
+	}
+
+	qg->unknown_reltype_ids = unkown_relationships;
 }
 
 QueryGraph *QueryGraph_Clone(const QueryGraph *qg) {
@@ -238,21 +277,20 @@ QueryGraph *QueryGraph_Clone(const QueryGraph *qg) {
 QGNode *QueryGraph_RemoveNode(QueryGraph *qg, QGNode *n) {
 	assert(qg && n);
 
-	// Make sure node exists.
-	// if(!QueryGraph_ContainsNode(qg, n)) return NULL;
-
 	/* Remove node from query graph.
-	 * Remove all edges associated with node. */
+	 * Remove and free all edges associated with node. */
 	uint incoming_edge_count = array_len(n->incoming_edges);
-	uint outgoing_edge_count = array_len(n->outgoing_edges);
-
 	for(uint i = 0; i < incoming_edge_count; i++) {
 		QGEdge *e = n->incoming_edges[i];
 		QueryGraph_RemoveEdge(qg, e);
+		QGEdge_Free(e);
 	}
+
+	uint outgoing_edge_count = array_len(n->outgoing_edges);
 	for(uint i = 0; i < outgoing_edge_count; i++) {
 		QGEdge *e = n->outgoing_edges[i];
 		QueryGraph_RemoveEdge(qg, e);
+		QGEdge_Free(e);
 	}
 
 	// Remove node from graph nodes.
@@ -330,7 +368,7 @@ QueryGraph **QueryGraph_ConnectedComponents(const QueryGraph *qg) {
 		}
 
 		/* Visited comprise the connected component defined by S.
-		 * Remove all none reachable nodes from current connected component.
+		 * Remove all non-reachable nodes from current connected component.
 		 * Remove connected component from graph. */
 		QueryGraph *cc = QueryGraph_Clone(g);
 		uint node_count = QueryGraph_NodeCount(g);
@@ -349,6 +387,7 @@ QueryGraph **QueryGraph_ConnectedComponents(const QueryGraph *qg) {
 			} else {
 				n = QueryGraph_GetNodeByAlias(cc, n->alias);
 				QueryGraph_RemoveNode(cc, n);
+				QGNode_Free(n);
 			}
 		}
 
@@ -374,6 +413,62 @@ uint QueryGraph_NodeCount(const QueryGraph *qg) {
 /* Retrieve the number of edges in a QueryGraph. */
 uint QueryGraph_EdgeCount(const QueryGraph *qg) {
 	return array_len(qg->edges);
+}
+
+GrB_Matrix QueryGraph_MatrixRepresentation(const QueryGraph *qg) {
+	assert(qg);
+
+	// Make a clone of the given graph as we're about to modify it.
+	QueryGraph *qg_clone = QueryGraph_Clone(qg);
+
+	// Give an ID for each node, abuse of `labelID`.
+	uint node_count = QueryGraph_NodeCount(qg_clone);
+	for(uint i = 0; i < node_count; i++) qg_clone->nodes[i]->labelID = i;
+
+	GrB_Matrix m;   // Matrix representation of QueryGraph.
+	GrB_Info res = GrB_Matrix_new(&m, GrB_BOOL, node_count, node_count);
+	assert(res == GrB_SUCCESS);
+
+	// Build matrix representation of query graph.
+	for(uint i = 0; i < node_count; i++) {
+		const QGNode *n = qg_clone->nodes[i];
+		GrB_Index src = n->labelID;
+		uint outgoing_degree = QGNode_OutgoingDegree(n);
+
+		for(uint j = 0; j < outgoing_degree; j++) {
+			const QGEdge *e = n->outgoing_edges[j];
+			GrB_Index dest = e->dest->labelID;
+			// Populate `m`.
+			res = GrB_Matrix_setElement_BOOL(m, true, src, dest);
+			assert(res == GrB_SUCCESS);
+		}
+	}
+
+	QueryGraph_Free(qg_clone);
+	return m;
+}
+
+void QueryGraph_Print(const QueryGraph *qg) {
+	char *buff = calloc(1024, sizeof(char));
+
+	uint node_count = QueryGraph_NodeCount(qg);
+	uint edge_count = QueryGraph_EdgeCount(qg);
+
+	for(int i = 0; i < node_count; i++) {
+		QGNode *n = qg->nodes[i];
+		if(QGNode_IncomeDegree(n) + QGNode_OutgoingDegree(n) == 0) {
+			// Floating node.
+			asprintf(&buff, "%s%s;\n", buff, n->alias);
+		}
+	}
+
+	for(int i = 0; i < edge_count; i++) {
+		QGEdge *e = qg->edges[i];
+		asprintf(&buff, "%s%s -> %s;\n", buff, e->src->alias, e->dest->alias);
+	}
+
+	printf("%s\n", buff);
+	free(buff);
 }
 
 /* Frees entire graph. */

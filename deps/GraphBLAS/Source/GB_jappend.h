@@ -2,7 +2,7 @@
 // GB_jappend.h: definitions of GB_jstartup, GB_jappend, and GB_jwrapup
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -21,7 +21,8 @@
 // GB_jstartup logs the start of C(:,0); it also acts as if it logs the end of
 // the sentinal vector C(:,-1).
 
-static inline void GB_jstartup
+#if 0
+static inline void GB_jstartup          // no longer used in v3.2.0
 (
     GrB_Matrix C,           // matrix to start creating
     int64_t *jlast,         // last vector appended, set to -1
@@ -34,11 +35,12 @@ static inline void GB_jstartup
     (*cnz_last) = 0 ;
     (*jlast) = -1 ;         // last sentinal vector is -1
     if (C->is_hyper)
-    { 
+    {
         C->nvec = 0 ;       // clear all existing vectors from C
     }
     C->nvec_nonempty = 0 ;  // # of non-empty vectors will be counted
 }
+#endif
 
 //------------------------------------------------------------------------------
 // GB_jappend:  append a new vector to the end of a matrix
@@ -76,7 +78,7 @@ static inline GrB_Info GB_jappend
     ASSERT (C->p != NULL) ;
 
     if (cnz <= (*cnz_last))
-    { 
+    {
         // nothing to do
         return (GrB_SUCCESS) ;
     }
@@ -125,7 +127,7 @@ static inline GrB_Info GB_jappend
         // C is non-hypersparse
         //----------------------------------------------------------------------
 
-        int64_t *restrict Cp = C->p ;
+        int64_t *GB_RESTRICT Cp = C->p ;
 
         ASSERT (C->nvec == C->plen && C->plen == C->vdim) ;
         ASSERT (C->h == NULL) ;
@@ -175,7 +177,7 @@ static inline void GB_jwrapup
         // log the end of C(:,jlast+1) to C(:,n-1), in case the last vector
         // j=n-1 has not yet been seen, or has been seen but was empty.
 
-        int64_t *restrict Cp = C->p ;
+        int64_t *GB_RESTRICT Cp = C->p ;
         int64_t j = C->vdim - 1 ;
 
         for (int64_t jprior = jlast+1 ; jprior <= j ; jprior++)

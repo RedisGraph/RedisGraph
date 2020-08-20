@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -19,8 +19,8 @@ typedef struct {
 	SIValue *output;    // Output label.
 } RelationsContext;
 
-ProcedureResult Proc_RelationsInvoke(ProcedureCtx *ctx, const char **args) {
-	if(array_len(args) != 0) return PROCEDURE_ERR;
+ProcedureResult Proc_RelationsInvoke(ProcedureCtx *ctx, const SIValue *args) {
+	if(array_len((SIValue *)args) != 0) return PROCEDURE_ERR;
 
 	RelationsContext *pdata = rm_malloc(sizeof(RelationsContext));
 	pdata->schema_id = 0;
@@ -74,7 +74,8 @@ ProcedureCtx *Proc_RelationsCtx() {
 								   Proc_RelationsStep,
 								   Proc_RelationsInvoke,
 								   Proc_RelationsFree,
-								   privateData);
+								   privateData,
+								   true);
 	return ctx;
 }
 

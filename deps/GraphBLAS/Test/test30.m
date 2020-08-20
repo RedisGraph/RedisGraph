@@ -1,7 +1,7 @@
 function test30
 %TEST30 test GxB_subassign
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
     [save save_chunk] = nthreads_get ;
@@ -33,7 +33,7 @@ function test30
     tic 
     C2 = GB_mex_subassign (A, [], [], scalar, I0, J0, []) ;
     toc
-    t = gbresults
+    t = grbresults
 
     C = A ; 
     fprintf ('start MATLAB:\n') ;

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -79,10 +79,8 @@ SIValue AR_GT(SIValue *argv, int argc) {
 		return SI_NullVal();
 	} else if(disjointOrNull == DISJOINT) {
 		// Emit error when attempting to compare invalid types
-		char *error;
-		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
-				 SIType_ToString(SI_TYPE(b)));
-		QueryCtx_SetError(error);
+		QueryCtx_SetError("Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
+						  SIType_ToString(SI_TYPE(b)));
 		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
 
@@ -95,10 +93,8 @@ SIValue AR_GE(SIValue *argv, int argc) {
 
 	// Emit error when attempting to compare invalid types
 	if(!SI_VALUES_ARE_COMPARABLE(a, b)) {
-		char *error;
-		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
-				 SIType_ToString(SI_TYPE(b)));
-		QueryCtx_SetError(error);
+		QueryCtx_SetError("Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
+						  SIType_ToString(SI_TYPE(b)));
 		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
 
@@ -121,10 +117,8 @@ SIValue AR_LT(SIValue *argv, int argc) {
 		return SI_NullVal();
 	} else if(disjointOrNull == DISJOINT) {
 		// Emit error when attempting to compare invalid types
-		char *error;
-		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
-				 SIType_ToString(SI_TYPE(b)));
-		QueryCtx_SetError(error);
+		QueryCtx_SetError("Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
+						  SIType_ToString(SI_TYPE(b)));
 		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
 
@@ -142,10 +136,8 @@ SIValue AR_LE(SIValue *argv, int argc) {
 		return SI_NullVal();
 	} else if(disjointOrNull == DISJOINT) {
 		// Emit error when attempting to compare invalid types
-		char *error;
-		asprintf(&error, "Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
-				 SIType_ToString(SI_TYPE(b)));
-		QueryCtx_SetError(error);
+		QueryCtx_SetError("Type mismatch: expected %s but was %s", SIType_ToString(SI_TYPE(a)),
+						  SIType_ToString(SI_TYPE(b)));
 		return SI_NullVal(); // The return doesn't matter, as the caller will check for errors.
 	}
 
@@ -193,69 +185,69 @@ void Register_BooleanFuncs() {
 	types = array_new(SIType, 2);
 	types = array_append(types, T_BOOL | T_NULL);
 	types = array_append(types, T_BOOL | T_NULL);
-	func_desc = AR_FuncDescNew("and", AR_AND, 2, types, true);
+	func_desc = AR_FuncDescNew("and", AR_AND, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	types = array_append(types, T_BOOL | T_NULL);
 	types = array_append(types, T_BOOL | T_NULL);
-	func_desc = AR_FuncDescNew("or", AR_OR, 2, types, true);
+	func_desc = AR_FuncDescNew("or", AR_OR, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	types = array_append(types, T_BOOL | T_NULL);
 	types = array_append(types, T_BOOL | T_NULL);
-	func_desc = AR_FuncDescNew("xor", AR_XOR, 2, types, true);
+	func_desc = AR_FuncDescNew("xor", AR_XOR, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, T_BOOL | T_NULL);
-	func_desc = AR_FuncDescNew("not", AR_NOT, 1, types, true);
+	func_desc = AR_FuncDescNew("not", AR_NOT, 1, 1, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_NULL));
 	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_NULL));
-	func_desc = AR_FuncDescNew("gt", AR_GT, 2, types, true);
+	func_desc = AR_FuncDescNew("gt", AR_GT, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_NULL));
 	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_NULL));
-	func_desc = AR_FuncDescNew("ge", AR_GE, 2, types, true);
+	func_desc = AR_FuncDescNew("ge", AR_GE, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_NULL));
 	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_NULL));
-	func_desc = AR_FuncDescNew("lt", AR_LT, 2, types, true);
+	func_desc = AR_FuncDescNew("lt", AR_LT, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_NULL));
 	types = array_append(types, (SI_NUMERIC | T_STRING | T_BOOL | T_ARRAY | T_NULL));
-	func_desc = AR_FuncDescNew("le", AR_LE, 2, types, true);
-	AR_RegFunc(func_desc);
-
-	types = array_new(SIType, 2);
-	types = array_append(types, SI_ALL);
-	types = array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("eq", AR_EQ, 2, types, true);
+	func_desc = AR_FuncDescNew("le", AR_LE, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 2);
 	types = array_append(types, SI_ALL);
 	types = array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("neq", AR_NE, 2, types, true);
+	func_desc = AR_FuncDescNew("eq", AR_EQ, 2, 2, types, true);
+	AR_RegFunc(func_desc);
+
+	types = array_new(SIType, 2);
+	types = array_append(types, SI_ALL);
+	types = array_append(types, SI_ALL);
+	func_desc = AR_FuncDescNew("neq", AR_NE, 2, 2, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("is null", AR_IS_NULL, 1, types, true);
+	func_desc = AR_FuncDescNew("is null", AR_IS_NULL, 1, 1, types, true);
 	AR_RegFunc(func_desc);
 
 	types = array_new(SIType, 1);
 	types = array_append(types, SI_ALL);
-	func_desc = AR_FuncDescNew("is not null", AR_IS_NOT_NULL, 1, types, true);
+	func_desc = AR_FuncDescNew("is not null", AR_IS_NOT_NULL, 1, 1, types, true);
 	AR_RegFunc(func_desc);
 }

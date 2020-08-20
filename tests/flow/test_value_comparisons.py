@@ -10,7 +10,7 @@ values = ["str1", "str2", False, True, 5, 10.5]
 
 class testValueComparison(FlowTestsBase):
     def __init__(self):
-        super(testValueComparison, self).__init__()
+        self.env = Env()
         global redis_graph
         redis_con = self.env.getConnection()
         redis_graph = Graph("G", redis_con)
@@ -77,6 +77,13 @@ class testValueComparison(FlowTestsBase):
         expected_result_count = (node_count - 1) * (node_count - 2)
         self.env.assertEquals(
             len(actual_result.result_set), expected_result_count)
+
+    # Verify that comparisons between very small and very large values are ordered properly.
+    def test_large_comparisons(self):
+        query = """UNWIND [933, 1099511628237] AS val RETURN val ORDER BY val"""
+        actual_result = redis_graph.query(query)
+        expected = [[933], [1099511628237]]
+        self.env.assertEquals(actual_result.result_set, expected)
 
     # Verify that AND conditions on true, false, and NULL values evaluate appropriately
     def test_AND_truth_tables(self):
@@ -158,3 +165,21 @@ class testValueComparison(FlowTestsBase):
         query = """RETURN NOT NULL"""
         actual_result = redis_graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], None)
+
+    def test_coalesce(self):
+        query = """MATCH (n) RETURN COALESCE(n.a, n.b, n.c)"""
+        actual_result = redis_graph.query(query)
+        # Test default value - everything is null.
+        self.env.assertEquals([[None], [None], [None], [None], [None], [None], [None]], actual_result.result_set)
+        query = """MATCH (n) SET n.c = 'c' RETURN COALESCE(n.a, n.b, n.c)"""
+        actual_result = redis_graph.query(query)
+        # Test value search, last expressions is not null.
+        self.env.assertEquals([['c'], ['c'], ['c'], ['c'], ['c'], ['c'], ['c']], actual_result.result_set)
+        query = """MATCH (n) SET n.b = 2 RETURN COALESCE(n.a, n.b, n.c)"""
+        actual_result = redis_graph.query(query)
+        # Test value search, second expressions is not null.
+        self.env.assertEquals([[2], [2], [2], [2], [2], [2], [2]], actual_result.result_set)
+        query = """MATCH (n) SET n.a = 1.1 RETURN COALESCE(n.a, n.b, n.c)"""
+        actual_result = redis_graph.query(query)
+        # Test value search, first expressions is not null.
+        self.env.assertEquals([[1.1], [1.1], [1.1], [1.1], [1.1], [1.1], [1.1]], actual_result.result_set)

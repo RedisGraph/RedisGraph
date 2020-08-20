@@ -23,6 +23,7 @@ supported.
 ### Query structure
 
 - MATCH
+- OPTIONAL MATCH
 - WHERE
 - RETURN
 - ORDER BY
@@ -33,6 +34,7 @@ supported.
 - DELETE
 - SET
 - WITH
+- UNION
 
 #### MATCH
 
@@ -84,7 +86,7 @@ Nodes can have more than one relationship coming in or out of them, for instance
 
 Here we're interested in knowing which of my friends have visited at least one country I've been to.
 
-#### Variable length relationships
+##### Variable length relationships
 
 Nodes that are a variable number of relationship→node hops away can be found using the following syntax:
 
@@ -100,11 +102,88 @@ Example:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"MATCH (martin:actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]->(colleague:actor)
+"MATCH (charlie:actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]->(colleague:actor)
 RETURN colleague"
 ```
 
 Returns all actors related to 'Charlie Sheen' by 1 to 3 hops.
+
+##### Bidirectional path traversal
+
+If a relationship pattern does not specify a direction, it will match regardless of which node is the source and which is the destination:
+```sh
+-[:type]-
+```
+
+Example:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (person_a:Person)-[:KNOWS]-(person_b:Person)
+RETURN person_a, person_b"
+```
+
+Returns all pairs of people connected by a `KNOWS` relationship. Note that each pair will be returned twice, once with each node in the `person_a` field and once in the `person_b` field.
+
+The syntactic sugar `(person_a)<-[:KNOWS]->(person_b)` will return the same results.
+
+The bracketed edge description can be omitted if all relations should be considered: `(person_a)--(person_b)`.
+
+##### Named paths
+
+Named path variables are created by assigning a path in a MATCH clause to a single alias with the syntax:
+`MATCH named_path = (path)-[to]->(capture)`
+
+The named path includes all entities in the path, regardless of whether they have been explicitly aliased. Named paths can be accessed using [designated built-in functions](#path-functions) or returned directly if using a language-specific client.
+
+Example:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH p=(charlie:actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]->(:actor)
+RETURN nodes(p) as actors"
+```
+
+This query will produce all the paths matching the pattern contained in the named path `p`. All of these paths will share the same starting point, the actor node representing Charlie Sheen, but will otherwise vary in length and contents. Though the variable-length traversal and `(:actor)` endpoint are not explicitly aliased, all nodes and edges traversed along the path will be included in `p`. In this case, we are only interested in the nodes of each path, which we'll collect using the built-in function `nodes()`. The returned value will contain, in order, Charlie Sheen, between 0 and 2 intermediate nodes, and the unaliased endpoint.
+
+#### OPTIONAL MATCH
+
+The OPTIONAL MATCH clause is a MATCH variant that produces null values for elements that do not match successfully, rather than the all-or-nothing logic for patterns in MATCH clauses.
+
+It can be considered to fill the same role as LEFT/RIGHT JOIN does in SQL, as MATCH entities must be resolved but nodes and edges introduced in OPTIONAL MATCH will be returned as nulls if they cannot be found.
+
+OPTIONAL MATCH clauses accept the same patterns as standard MATCH clauses, and may similarly be modified by WHERE clauses.
+
+Multiple MATCH and OPTIONAL MATCH clauses can be chained together, though a mandatory MATCH cannot follow an optional one.
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (p:Person) OPTIONAL MATCH (p)-[w:WORKS_AT]->(c:Company)
+WHERE w.start_date > 2016
+RETURN p, w, c"
+```
+
+All `Person` nodes are returned, as well as any `WORKS_AT` relations and `Company` nodes that can be resolved and satisfy the `start_date` constraint. For each `Person` that does not resolve the optional pattern, the person will be returned as normal and the non-matching elements will be returned as null.
+
+Cypher is lenient in its handling of null values, so actions like property accesses and function calls on null values will return null values rather than emit errors.
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (p:Person) OPTIONAL MATCH (p)-[w:WORKS_AT]->(c:Company)
+RETURN p, w.department, ID(c) as ID"
+```
+
+In this case, `w.department` and `ID` will be returned if the OPTIONAL MATCH was successful, and will be null otherwise.
+
+Clauses like SET, CREATE, MERGE, and DELETE will ignore null inputs and perform the expected updates on real inputs. One exception to this is that attempting to create a relation with a null endpoint will cause an error:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (p:Person) OPTIONAL MATCH (p)-[w:WORKS_AT]->(c:Company)
+CREATE (c)-[:NEW_RELATION]->(:NEW_NODE)"
+```
+
+If `c` is null for any record, this query will emit an error. In this case, no changes to the graph are committed, even if some values for `c` were resolved.
 
 #### WHERE
 
@@ -129,23 +208,41 @@ Be sure to wrap predicates within parentheses to control precedence.
 
 Examples:
 
-```sh
+```
 WHERE (actor.name = "john doe" OR movie.rating > 8.8) AND movie.votes <= 250)
 ```
 
-```sh
+```
 WHERE actor.age >= director.age AND actor.age > 32
 ```
 
 It is also possible to specify equality predicates within nodes using the curly braces as such:
 
-```sh
+```
 (:president {name:"Jed Bartlett"})-[:won]->(:state)
 ```
 
 Here we've required that the president node's name will have the value "Jed Bartlett".
 
 There's no difference between inline predicates and predicates specified within the WHERE clause.
+
+It is also possible to filter on graph patterns. The following queries, which return all presidents and the states they won in, produce the same results:
+
+```sh
+MATCH (p:president), (s:state) WHERE (p)-[:won]->(s) RETURN p, s
+```
+
+and
+
+```sh
+MATCH (p:president)-[:won]->(s:state) RETURN p, s
+```
+
+Pattern predicates can be also negated and combined with the logical operators AND, OR, and NOT. The following query returns all the presidents that did not win in the states where they were governors:
+
+```sh
+MATCH (p:president), (s:state) WHERE NOT (p)-[:won]->(s) AND (p)->[:governor]->(s) RETURN p, s
+```
 
 #### RETURN
 
@@ -204,13 +301,14 @@ Order by specifies that the output be sorted and how.
 
 You can order by multiple properties by stating each variable in the ORDER BY clause.
 
+Each property may specify its sort order with `ASC`/`ASCENDING` or `DESC`/`DESCENDING`. If no order is specified, it defaults to ascending.
+
 The result will be sorted by the first variable listed.
 
-For equal values, it will go to the next property in the ORDER BY
-clause, and so on.
+For equal values, it will go to the next property in the ORDER BY clause, and so on.
 
 ```sh
-ORDER BY <alias.property list> [ASC/DESC]
+ORDER BY <alias.property [ASC/DESC] list>
 ```
 
 Below we sort our friends by height. For equal heights, weight is used to break ties.
@@ -238,7 +336,7 @@ GRAPH.QUERY DEMO_GRAPH "MATCH (p:person) RETURN p ORDER BY p.name SKIP 100 LIMIT
 Although not mandatory, you can use the limit clause
 to limit the number of records returned by a query:
 
-```sh
+```
 LIMIT <max records to return>
 ```
 
@@ -334,9 +432,7 @@ GRAPH.QUERY DEMO_GRAPH "MATCH (n { name: 'Jim' }) SET n.name = NULL"
 
 #### MERGE
 
-The MERGE clause ensures that a pattern exists in the graph (either the pattern already exists, or it needs to be created).
-
-Currently, MERGE only functions as a standalone clause so it cannot be combined with other directives such as MATCH or RETURN.
+The MERGE clause ensures that a path exists in the graph (either the path already exists, or it needs to be created).
 
 MERGE either matches existing nodes and binds them, or it creates new data and binds that.
 
@@ -346,9 +442,15 @@ For example, you can specify that the graph must contain a node for a user with 
 
 If there isn’t a node with the correct name, a new node will be created and its name property set.
 
-When using MERGE on full patterns, either the whole pattern matches or the whole pattern is created.
+Any aliases in the MERGE path that were introduced by earlier clauses can only be matched; MERGE will not create them.
 
-MERGE will not partially use existing patterns — it’s all or nothing.
+When the MERGE path doesn't rely on earlier clauses, the whole path will always either be matched or created.
+
+If all path elements are introduced by MERGE, a match failure will cause all elements to be created, even if part of the match succeeded.
+
+The MERGE path can be followed by ON MATCH SET and ON CREATE SET directives to conditionally set properties depending on whether or not the match succeeded.
+
+**Merging nodes**
 
 To merge a single node with a label:
 
@@ -368,12 +470,51 @@ To merge a single node, specifying both label and property:
 GRAPH.QUERY DEMO_GRAPH "MERGE (michael:Person { name: 'Michael Douglas' })""
 ```
 
-To merge on a relation:
+**Merging paths**
+
+Because MERGE either matches or creates a full path, it is easy to accidentally create duplicate nodes.
+
+For example, if we run the following query on our sample graph:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"MERGE (charlie { name: 'Charlie Sheen', age: 10 })-[r:ACTED_IN]->(wallStreet:MOVIE)"
+"MERGE (charlie { name: 'Charlie Sheen '})-[r:ACTED_IN]->(wallStreet:Movie { name: 'Wall Street' })"
 ```
+
+Even though a node with the name 'Charlie Sheen' already exists, the full pattern does not match, so 1 relation and 2 nodes - including a duplicate 'Charlie Sheen' node - will be created.
+
+We should use multiple MERGE clauses to merge a relation and only create non-existent endpoints:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MERGE (charlie { name: 'Charlie Sheen' })
+ MERGE (wallStreet:Movie { name: 'Wall Street' })
+ MERGE (charlie)-[r:ACTED_IN]->(wallStreet)"
+```
+
+If we don't want to create anything if pattern elements don't exist, we can combine MATCH and MERGE clauses. The following query merges a relation only if both of its endpoints already exist:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (charlie { name: 'Charlie Sheen' })
+ MATCH (wallStreet:Movie { name: 'Wall Street' })
+ MERGE (charlie)-[r:ACTED_IN]->(wallStreet)"
+```
+
+**On Match and On Create directives**
+
+Using ON MATCH and ON CREATE, MERGE can set properties differently depending on whether a pattern is matched or created.
+
+In this query, we'll merge paths based on a list of properties and conditionally set a property when creating new entities:
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"UNWIND ['Charlie Sheen', 'Michael Douglas', 'Tamara Tunie'] AS actor_name
+ MATCH (movie:Movie { name: 'Wall Street' })
+ MERGE (person {name: actor_name})-[:ACTED_IN]->(movie)
+ ON CREATE SET person.first_role = movie.name"
+```
+
 #### WITH
 The WITH clause allows parts of queries to be independently executed and have their results handled uniquely.
 
@@ -392,8 +533,6 @@ GRAPH.QUERY DEMO_GRAPH
 "MATCH (u:User)  WITH u AS nonrecent ORDER BY u.lastVisit LIMIT 3 SET nonrecent.should_contact = true"
 ```
 
-Extended `WITH` functionality is currently in development, see [known limitations](known_limitations.md).
-
 #### UNWIND
 The UNWIND clause breaks down a given list into a sequence of records; each contains a single element in the list.
 
@@ -407,6 +546,24 @@ GRAPH.QUERY DEMO_GRAPH
 ```sh
 GRAPH.QUERY DEMO_GRAPH
 "MATCH (p) UNWIND p.array AS y RETURN y"
+```
+
+#### UNION
+The UNION clause is used to combine the result of multiple queries.
+
+UNION combines the results of two or more queries into a single result set that includes all the rows that belong to all queries in the union.
+
+The number and the names of the columns must be identical in all queries combined by using UNION.
+
+To keep all the result rows, use UNION ALL.
+
+Using just UNION will combine and remove duplicates from the result set.
+
+```sh
+GRAPH.QUERY DEMO_GRAPH
+"MATCH (n:Actor) RETURN n.name AS name
+UNION ALL
+MATCH (n:Movie) RETURN n.title AS name"
 ```
 
 ### Functions
@@ -423,18 +580,21 @@ This section contains information on all supported functions from the Cypher que
 
 ## Predicate functions
 
-|Function | Description|
-| ------- |:-----------|
-|exists() | Returns true if the specified property exists in the node or relationship. |
+| Function                                      | Description                                                                               |
+| -------                                       | :-----------                                                                              |
+| exists()                                      | Returns true if the specified property exists in the node or relationship.                |
+| [any()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for any element in the input array.  |
+| [all()](#existential-comprehension-functions) | Returns true if the inner WHERE predicate holds true for all elements in the input array. |
 
 ## Scalar functions
 
-|Function | Description|
-| ------- |:-----------|
-|id() | Returns the internal ID of a relationship or node (which is not immutable.) |
-|labels() | Returns a string representation of the label of a node. |
-|timestamp() | Returns the the amount of milliseconds since epoch. |
-|type() | Returns a string representation of the type of a relation. |
+| Function            | Description                                                                 |
+| -------             | :-----------                                                                |
+| id()                | Returns the internal ID of a relationship or node (which is not immutable.) |
+| labels()            | Returns a string representation of the label of a node.                     |
+| timestamp()         | Returns the the amount of milliseconds since epoch.                         |
+| type()              | Returns a string representation of the type of a relation.                  |
+| list comprehensions | [See documentation](#list-comprehensions)                                   |
 
 ## Aggregating functions
 
@@ -453,10 +613,10 @@ This section contains information on all supported functions from the Cypher que
 ## List functions
 |Function| Description|
 | ------- |:-----------|
-| head()  | return the first member of a list |
-| range() | create a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval.|
-| size()  | return a list size |
-| tail()  | return a sublist of a list, which contains all the values withiout the first value |
+| head()  | Return the first member of a list |
+| range() | Create a new list of integers in the range of [start, end]. If an interval was given, the interval between two consecutive list members will be this interval.|
+| size()  | Return a list size |
+| tail()  | Return a sublist of a list, which contains all the values withiout the first value |
 
 ## Mathematical functions
 
@@ -468,6 +628,7 @@ This section contains information on all supported functions from the Cypher que
 |rand() | Returns a random floating point number in the range from 0 to 1; i.e. [0,1] |
 |round() | Returns the value of a number rounded to the nearest integer |
 |sign() | Returns the signum of a number: 0 if the number is 0, -1 for any negative number, and 1 for any positive number |
+|toInteger() | Converts a floating point or string value to an integer value. |
 
 ## String functions
 
@@ -489,6 +650,46 @@ This section contains information on all supported functions from the Cypher que
 | ------- |:-----------|
 |indegree() | Returns the number of node's incoming edges. |
 |outdegree() | Returns the number of node's outgoing edges. |
+
+## Path functions
+|Function | Description|
+| ------- |:-----------|
+| nodes() | Return a new list of nodes, of a given path. |
+| relationships() | Return a new list of edges, of a given path. |
+| length() | Return the length (number of edges) of the path|
+
+### List comprehensions
+List comprehensions are a syntactical construct that accepts an array and produces another based on the provided map and filter directives.
+
+They are a common construct in functional languages and modern high-level languages. In Cypher, they use the syntax:
+
+```sh
+[element IN array WHERE condition | output elem]
+```
+
+- `array` can be any expression that produces an array: a literal, a property reference, or a function call.
+- `WHERE condition` is an optional argument to only project elements that pass a certain criteria. If omitted, all elements in the array will be represented in the output.
+- `| output elem` is an optional argument that allows elements to be transformed in the output array. If omitted, the output elements will be the same as their corresponding inputs.
+
+
+The following query collects all paths of any length, then for each produces an array containing the `name` property of every node with a `rank` property greater than 10:
+
+```sh
+MATCH p=()-[*]->() RETURN [node IN nodes(p) WHERE node.rank > 10 | node.name]
+```
+
+#### Existential comprehension functions
+The functions `any()` and `all()` use a simplified form of the list comprehension syntax and return a boolean value.
+
+```sh
+any(element IN array WHERE condition)
+```
+
+They can operate on any form of input array, but are particularly useful for path filtering. The following query collects all paths of any length in which all traversed edges have a weight less than 3:
+
+```sh
+MATCH p=()-[*]->() WHERE all(edge IN relationships(p) WHERE edge.weight < 3) RETURN p
+```
 
 ## Procedures
 Procedures are invoked using the syntax:
@@ -552,7 +753,7 @@ GRAPH.QUERY DEMO_GRAPH "DROP INDEX ON :person(age)"
 
 ## Full-text indexes
 
-RedisGraph leverages the indexing capabilities of RediSearch to provide full-text indexes through procedure calls. To construct a full-text index on the `title` property of all nodes with label `movie`, use the syntax:
+RedisGraph leverages the indexing capabilities of [RediSearch](https://oss.redislabs.com/redisearch/index.html) to provide full-text indices through procedure calls. To construct a full-text index on the `title` property of all nodes with label `movie`, use the syntax:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('movie', 'title')"
@@ -596,6 +797,31 @@ RETURN m ORDER BY m.rating"
 3) 1) "Query internal execution time: 0.226914 milliseconds"
 ```
 
+## GRAPH.PROFILE
+
+Executes a query and produces an execution plan augmented with metrics for each operation's execution.
+
+Arguments: `Graph name, Query`
+
+Returns: `String representation of a query execution plan, with details on results produced by and time spent in each operation.`
+
+`GRAPH.PROFILE` is a parallel entrypoint to `GRAPH.QUERY`. It accepts and executes the same queries, but it will not emit results,
+instead returning the operation tree structure alongside the number of records produced and total runtime of each operation.
+
+It is important to note that this blends elements of [GRAPH.QUERY](#graphquery) and [GRAPH.EXPLAIN](#graphexplain).
+It is not a dry run and will perform all graph modifications expected of the query, but will not output results produced by a `RETURN` clause or query statistics.
+
+```sh
+GRAPH.PROFILE imdb
+"MATCH (actor_a:actor)-[:act]->(:movie)<-[:act]-(actor_b:actor)
+WHERE actor_a <> actor_b
+CREATE (actor_a)-[:COSTARRED_WITH]->(actor_b)"
+1) "Create | Records produced: 11208, Execution time: 168.208661 ms"
+2) "    Filter | Records produced: 11208, Execution time: 1.250565 ms"
+3) "        Conditional Traverse | Records produced: 12506, Execution time: 7.705860 ms"
+4) "            Node By Label Scan | (actor_a:actor) | Records produced: 1317, Execution time: 0.104346 ms"
+```
+
 ## GRAPH.DELETE
 
 Completely removes the graph and all of its entities.
@@ -627,4 +853,26 @@ Returns: `String representation of a query execution plan`
 
 ```sh
 GRAPH.EXPLAIN us_government "MATCH (p:president)-[:born]->(h:state {name:'Hawaii'}) RETURN p"
+```
+
+## GRAPH.SLOWLOG
+
+Returns a list containing up to 10 of the slowest queries issued against given graph id.
+
+Each item in the list has the following structure:
+1. A unix timestamp at which the logged was processed.
+2. The issued command.
+3. The issued query.
+4. The amount of time needed for its execution, in milliseconds.
+
+```sh
+GRAPH.SLOWLOG graph_id
+ 1) 1) "1581932396"
+    2) "GRAPH.QUERY"
+    3) "MATCH (a:person)-[:friend]->(e) RETURN e.name"
+    4) "0.831"
+ 2) 1) "1581932396"
+    2) "GRAPH.QUERY"
+    3) "MATCH (ME:person)-[:friend]->(:person)-[:friend]->(fof:person) RETURN fof.name"
+    4) "0.288"
 ```

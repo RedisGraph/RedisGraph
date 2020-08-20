@@ -2,7 +2,7 @@
 // GB_AxB_dot3_slice: slice the entries and vectors for C<M>=A'*B
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -23,8 +23,12 @@
 // of a single entry C(i,j) can be broken into multiple tasks.  The slice of
 // A(:,i) and B(:,j) would use GB_slice_vector, where no mask would be used.
 
+#define GB_FREE_WORK \
+    GB_FREE_MEMORY (Coarse, ntasks1+1, sizeof (int64_t)) ;
+
 #define GB_FREE_ALL                                                     \
 {                                                                       \
+    GB_FREE_WORK ;                                                      \
     GB_FREE_MEMORY (TaskList, max_ntasks+1, sizeof (GB_task_struct)) ;  \
 }
 
@@ -56,7 +60,8 @@ GrB_Info GB_AxB_dot3_slice
     ASSERT (p_max_ntasks != NULL) ;
     ASSERT (p_ntasks != NULL) ;
     ASSERT (p_nthreads != NULL) ;
-    ASSERT_OK (GB_check (C, "C for dot3_slice", GB0)) ;
+    // ASSERT_MATRIX_OK (C, ...) cannot be done since C->i is the work need to
+    // compute the entry, not the row index itself.
 
     (*p_TaskList  ) = NULL ;
     (*p_max_ntasks) = 0 ;
@@ -70,17 +75,11 @@ GrB_Info GB_AxB_dot3_slice
     GB_GET_NTHREADS_MAX (nthreads_max, chunk, Context) ;
 
     //--------------------------------------------------------------------------
-    // get M and Cwork
+    // get C
     //--------------------------------------------------------------------------
 
-    // const int64_t *restrict Mp = M->p ;
-    // const int64_t *restrict Mh = M->h ;
-    // const int64_t *restrict Mi = M->i ;
-    // const int64_t mnvec = M->nvec ;
-    // const int64_t mnz = GB_NNZ (M) ;
-
-    const int64_t *restrict Cp = C->p ;
-    int64_t *restrict Cwork = C->i ;
+    const int64_t *GB_RESTRICT Cp = C->p ;
+    int64_t *GB_RESTRICT Cwork = C->i ;
     const int64_t cnvec = C->nvec ;
     const int64_t cnz = GB_NNZ (C) ;
 
@@ -97,8 +96,10 @@ GrB_Info GB_AxB_dot3_slice
     // allocate the initial TaskList
     //--------------------------------------------------------------------------
 
+    int64_t *GB_RESTRICT Coarse = NULL ;
+    int ntasks1 = 0 ;
     int nthreads = GB_nthreads (total_work, chunk, nthreads_max) ;
-    GB_task_struct *restrict TaskList = NULL ;
+    GB_task_struct *GB_RESTRICT TaskList = NULL ;
     int max_ntasks = 0 ;
     int ntasks = 0 ;
     int ntasks0 = (nthreads == 1) ? 1 : (32 * nthreads) ;
@@ -128,15 +129,20 @@ GrB_Info GB_AxB_dot3_slice
 
     double target_task_size = total_work / (double) (ntasks0) ;
     target_task_size = GB_IMAX (target_task_size, chunk) ;
-    int ntasks1 = total_work / target_task_size ;
+    ntasks1 = total_work / target_task_size ;
+    ntasks1 = GB_IMIN (ntasks1, cnz) ;
     ntasks1 = GB_IMAX (ntasks1, 1) ;
 
     //--------------------------------------------------------------------------
     // slice the work into coarse tasks
     //--------------------------------------------------------------------------
 
-    int64_t Coarse [ntasks1+1] ;
-    GB_pslice (Coarse, Cwork, cnz, ntasks1) ;
+    if (!GB_pslice (&Coarse, Cwork, cnz, ntasks1))
+    { 
+        // out of memory
+        GB_FREE_ALL ;
+        return (GB_OUT_OF_MEMORY) ;
+    }
 
     //--------------------------------------------------------------------------
     // construct all tasks, both coarse and fine
@@ -193,9 +199,10 @@ GrB_Info GB_AxB_dot3_slice
     ASSERT (ntasks <= max_ntasks) ;
 
     //--------------------------------------------------------------------------
-    // return result
+    // free workspace and return result
     //--------------------------------------------------------------------------
 
+    GB_FREE_WORK ;
     (*p_TaskList  ) = TaskList ;
     (*p_max_ntasks) = max_ntasks ;
     (*p_ntasks    ) = ntasks ;

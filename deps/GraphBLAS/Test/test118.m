@@ -3,6 +3,9 @@ function test118
 
 % test C(:,:)<M> = A
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 fprintf ('test118 ----------------------------------- C(:,:)<M> = A\n') ;
 
 [save save_chunk] = nthreads_get ;
@@ -61,7 +64,7 @@ for dc = [0 1e-5 1e-4 1e-3 1e-2 1e-1 0.5]
                 % if (nnz(A)<nnz(M)) use method 06s, else method 06n
                 C2 = GB_mex_assign (C0, M, [ ], A, I, I) ;
                 C2 = GB_mex_assign (C0, M, [ ], A, I, I) ;
-                tg = gbresults ;
+                tg = grbresults ;
                 assert (isequal (C1, C2.matrix)) ;
                 if (nthreads == 1)
                     t1 = tg ;

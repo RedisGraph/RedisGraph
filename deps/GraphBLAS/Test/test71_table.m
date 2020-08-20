@@ -1,8 +1,8 @@
 function test71_table
 %TEST71_TABLE print the table for triangle counting results
 
-%  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
-%  http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 load test71_results
 
@@ -39,16 +39,16 @@ for k = 1:nmat
         Nnodes (i), Nedges (i), Ntri (i)) ;
 
     t_matlab  = T (i,3) ;
-    t_gbdot   = T (i,2) ;
-    t_gbouter = T (i,1) ;
+    t_grbdot   = T (i,2) ;
+    t_grbouter = T (i,1) ;
     t_kokkos  = Kokkos (k,2) ;
 
     e = Nedges (i) / 1e6 ;
 
     fprintf ('%10.3f & %8.2f &  %% MATLAB\n',   t_matlab,  e/t_matlab) ;
-    fprintf ('%10.3f & %8.2f &  %% GB:dot\n',   t_gbdot,   e/t_gbdot) ;
-    fprintf ('%10.3f & %8.2f &  %% GB:outer\n', t_gbouter, e/t_gbouter) ;
-    fprintf ('%10.3f & %8.2f & %8.1f \\\\ %% Kokkos\n', t_kokkos,  e/t_kokkos, t_gbouter / t_kokkos) ;
+    fprintf ('%10.3f & %8.2f &  %% GB:dot\n',   t_grbdot,   e/t_grbdot) ;
+    fprintf ('%10.3f & %8.2f &  %% GB:outer\n', t_grbouter, e/t_grbouter) ;
+    fprintf ('%10.3f & %8.2f & %8.1f \\\\ %% Kokkos\n', t_kokkos,  e/t_kokkos, t_grbouter / t_kokkos) ;
 
     % r_kokkos   = Kokkos (k,3) ;
     % t_kokkos = e / r_kokkos ;

@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -51,22 +51,28 @@ typedef enum {
 	DISABLED,
 } MATRIX_POLICY;
 
+// Forward declaration of RG_Matrix type. Internal to graph.
+typedef struct {
+	GrB_Matrix grb_matrix;              // Underlying GrB_Matrix.
+	pthread_mutex_t mutex;              // Lock.
+} _RG_Matrix;
+typedef _RG_Matrix *RG_Matrix;
+
 // Forward declaration of Graph struct
 typedef struct Graph Graph;
 // typedef for synchronization function pointer
-typedef void (*SyncMatrixFunc)(const Graph *, GrB_Matrix);
+typedef void (*SyncMatrixFunc)(const Graph *, RG_Matrix);
 
 struct Graph {
 	DataBlock *nodes;                   // Graph nodes stored in blocks.
 	DataBlock *edges;                   // Graph edges stored in blocks.
-	GrB_Matrix adjacency_matrix;        // Adjacency matrix, holds all graph connections.
-	GrB_Matrix _t_adjacency_matrix;     // Transposed Adjacency matrix.
-	GrB_Matrix *labels;                 // Label matrices.
-	GrB_Matrix *relations;              // Relation matrices.
-	GrB_Matrix *_relations_map;         // Maps from (relation, row, col) to edge id.
-	GrB_Matrix _zero_matrix;            // Zero matrix.
+	RG_Matrix adjacency_matrix;         // Adjacency matrix, holds all graph connections.
+	RG_Matrix _t_adjacency_matrix;      // Transposed Adjacency matrix.
+	RG_Matrix *labels;                  // Label matrices.
+	RG_Matrix *relations;               // Relation matrices.
+	RG_Matrix *t_relations;             // Transposed relation matrices.
+	RG_Matrix _zero_matrix;             // Zero matrix.
 	pthread_mutex_t _writers_mutex;     // Mutex restrict single writer.
-	pthread_mutex_t _mutex;             // Mutex for accessing critical sections.
 	pthread_rwlock_t _rwlock;           // Read-write lock scoped to this specific graph
 	bool _writelocked;                  // true if the read-write lock was acquired by a writer
 	SyncMatrixFunc SynchronizeMatrix;   // Function pointer to matrix synchronization routine.
@@ -81,14 +87,14 @@ void Graph_AcquireReadLock(Graph *g);
 /* Acquire a lock for exclusive access to this graph's data */
 void Graph_AcquireWriteLock(Graph *g);
 
+/* Release the held lock */
+void Graph_ReleaseLock(Graph *g);
+
 /* Writer request access to graph. */
 void Graph_WriterEnter(Graph *g);
 
 /* Writer release access to graph. */
 void Graph_WriterLeave(Graph *g);
-
-/* Release the held lock */
-void Graph_ReleaseLock(Graph *g);
 
 /* Choose the current matrix synchronization policy. */
 void Graph_SetMatrixPolicy(Graph *g, MATRIX_POLICY policy);
@@ -188,6 +194,11 @@ size_t Graph_NodeCount(
 	const Graph *g
 );
 
+// Returns number of deleted nodes in the graph.
+uint Graph_DeletedNodeCount(
+	const Graph *g
+);
+
 // Returns number of nodes with given label.
 size_t Graph_LabeledNodeCount(
 	const Graph *g,
@@ -196,6 +207,11 @@ size_t Graph_LabeledNodeCount(
 
 // Returns number of edges in the graph.
 size_t Graph_EdgeCount(
+	const Graph *g
+);
+
+// Returns number of deleted edges in the graph.
+uint Graph_DeletedEdgeCount(
 	const Graph *g
 );
 
@@ -275,6 +291,12 @@ GrB_Matrix Graph_GetAdjacencyMatrix(
 	const Graph *g
 );
 
+// Retrieves the transposed adjacency matrix.
+// Matrix is resized if its size doesn't match graph's node count.
+GrB_Matrix Graph_GetTransposedAdjacencyMatrix(
+	const Graph *g
+);
+
 // Retrieves a label matrix.
 // Matrix is resized if its size doesn't match graph's node count.
 GrB_Matrix Graph_GetLabelMatrix(
@@ -289,10 +311,11 @@ GrB_Matrix Graph_GetRelationMatrix(
 	int relation        // Relation described by matrix.
 );
 
-// Retrieve a relation mapping matrix coresponding to relation_idx
-GrB_Matrix Graph_GetRelationMap(
-	const Graph *g,     // Graph from which to get mapping matrix.
-	int relation_idx    // Relation id
+// Retrieves a transposed typed adjacency matrix.
+// Matrix is resized if its size doesn't match graph's node count.
+GrB_Matrix Graph_GetTransposedRelationMatrix(
+	const Graph *g,     // Graph from which to get adjacency matrix.
+	int relation        // Relation described by matrix.
 );
 
 // Retrieves the zero matrix.
@@ -306,3 +329,4 @@ void Graph_Free(
 );
 
 #endif
+

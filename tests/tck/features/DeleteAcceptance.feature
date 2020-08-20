@@ -115,6 +115,7 @@ Feature: DeleteAcceptance
       | -relationships | 3 |
       | -labels        | 1 |
 
+@crash
 @skip
   Scenario: Detach deleting paths
     Given an empty graph
@@ -194,7 +195,6 @@ Feature: DeleteAcceptance
     Then the result should be empty
     And no side effects
 
-@skip
   Scenario: Delete optionally matched relationship
     Given an empty graph
     And having executed:
@@ -231,7 +231,6 @@ Feature: DeleteAcceptance
     Then the result should be empty
     And no side effects
 
-@skip
   Scenario: Delete on null path
     Given an empty graph
     When executing query:
@@ -254,7 +253,8 @@ Feature: DeleteAcceptance
       CREATE (u)-[:FRIEND]->()
       """
     And parameters are:
-      | friendIndex | 1 |
+      | name        | value |
+      | friendIndex |    1  |
     When executing query:
       """
       MATCH (:User)-[:FRIEND]->(n)
@@ -278,7 +278,8 @@ Feature: DeleteAcceptance
       CREATE (u)-[:FRIEND]->()
       """
     And parameters are:
-      | friendIndex | 1 |
+      | name        | value |
+      | friendIndex |   1   |
     When executing query:
       """
       MATCH (:User)-[r:FRIEND]->()

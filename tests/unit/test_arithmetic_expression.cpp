@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -146,6 +146,21 @@ TEST_F(ArithmeticTest, ExpressionTest) {
 	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_TRUE(strcmp(result.stringval, "4a9") == 0);
 	AR_EXP_Free(arExp);
+
+	query = "RETURN 9 % 5";
+	arExp = _exp_from_query(query);
+	ASSERT_EQ(arExp->type, AR_EXP_OPERAND);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	ASSERT_EQ(result.longval, 4);
+	AR_EXP_Free(arExp);
+
+	query = "RETURN 9 % 5 % 3";
+	arExp = _exp_from_query(query);
+	ASSERT_EQ(arExp->type, AR_EXP_OPERAND);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	ASSERT_EQ(result.longval, 1);
+	AR_EXP_Free(arExp);
+
 }
 
 TEST_F(ArithmeticTest, NullArithmetic) {
@@ -208,6 +223,19 @@ TEST_F(ArithmeticTest, NullArithmetic) {
 	result = AR_EXP_Evaluate(arExp, NULL);
 	ASSERT_TRUE(SIValue_IsNull(result));
 	AR_EXP_Free(arExp);
+
+	query = "RETURN 5 % null";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	ASSERT_TRUE(SIValue_IsNull(result));
+	AR_EXP_Free(arExp);
+
+	query = "RETURN null % 5";
+	arExp = _exp_from_query(query);
+	result = AR_EXP_Evaluate(arExp, NULL);
+	ASSERT_TRUE(SIValue_IsNull(result));
+	AR_EXP_Free(arExp);
+
 }
 
 TEST_F(ArithmeticTest, AggregateTest) {
@@ -412,6 +440,68 @@ TEST_F(ArithmeticTest, SignTest) {
 
 	/* SIGN() */
 	query = "RETURN SIGN(NULL)";
+	arExp = _exp_from_query(query);
+	expected = SI_NullVal();
+	_test_ar_func(arExp, expected, NULL);
+	AR_EXP_Free(arExp);
+}
+
+TEST_F(ArithmeticTest, ToIntegerTest) {
+	SIValue expected;
+	const char *query;
+	AR_ExpNode *arExp;
+
+	/* toInteger(1) */
+	query = "RETURN toInteger(1)";
+	arExp = _exp_from_query(query);
+	expected = SI_LongVal(1);
+	_test_ar_func(arExp, expected, NULL);
+	AR_EXP_Free(arExp);
+
+	/* toInteger(1.1) */
+	query = "RETURN toInteger(1.1)";
+	arExp = _exp_from_query(query);
+	expected = SI_LongVal(1);
+	_test_ar_func(arExp, expected, NULL);
+	AR_EXP_Free(arExp);
+
+	/* toInteger(1.9) */
+	query = "RETURN toInteger(1.9)";
+	arExp = _exp_from_query(query);
+	expected = SI_LongVal(1);
+	_test_ar_func(arExp, expected, NULL);
+	AR_EXP_Free(arExp);
+
+	/* toInteger('1') */
+	query = "RETURN toInteger('1')";
+	arExp = _exp_from_query(query);
+	expected = SI_LongVal(1);
+	_test_ar_func(arExp, expected, NULL);
+	AR_EXP_Free(arExp);
+
+	/* toInteger('1.1') */
+	query = "RETURN toInteger('1.1')";
+	arExp = _exp_from_query(query);
+	expected = SI_LongVal(1);
+	_test_ar_func(arExp, expected, NULL);
+	AR_EXP_Free(arExp);
+
+	/* toInteger('1.9') */
+	query = "RETURN toInteger('1.9')";
+	arExp = _exp_from_query(query);
+	expected = SI_LongVal(1);
+	_test_ar_func(arExp, expected, NULL);
+	AR_EXP_Free(arExp);
+
+	/* toInteger('z') */
+	query = "RETURN toInteger('z')";
+	arExp = _exp_from_query(query);
+	expected = SI_NullVal();
+	_test_ar_func(arExp, expected, NULL);
+	AR_EXP_Free(arExp);
+
+	/* toInteger(NULL) */
+	query = "RETURN toInteger(null)";
 	arExp = _exp_from_query(query);
 	expected = SI_NullVal();
 	_test_ar_func(arExp, expected, NULL);
@@ -1368,3 +1458,21 @@ TEST_F(ArithmeticTest, ReduceTest) {
 	ASSERT_EQ(T_ARRAY, rhs->operand.constant.type);
 }
 
+TEST_F(ArithmeticTest, CoalesceTest) {
+	const char *query;
+	AR_ExpNode *arExp;
+
+	// Test reduction of coalesce over static values.
+	query = "RETURN coalesce(1)";
+	arExp = _exp_from_query(query);
+	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
+	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
+	ASSERT_EQ(0, SIValue_Compare(SI_LongVal(1), arExp->operand.constant, NULL));
+
+	// Test reduction of coalesce over static values.
+	query = "RETURN coalesce(null, 1)";
+	arExp = _exp_from_query(query);
+	ASSERT_EQ(AR_EXP_OPERAND, arExp->type);
+	ASSERT_EQ(AR_EXP_CONSTANT, arExp->operand.type);
+	ASSERT_EQ(0, SIValue_Compare(SI_LongVal(1), arExp->operand.constant, NULL));
+}

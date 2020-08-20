@@ -7,7 +7,7 @@ function w = GB_spec_eWiseMult_Vector (w, mask, accum, mult, u, v, descriptor)
 % Computes w<mask> = accum(w,t), in GraphBLAS notation, where t =u.*v,
 % The pattern of t is the union of u and v.
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 %-------------------------------------------------------------------------------

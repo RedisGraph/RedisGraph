@@ -2,7 +2,7 @@
 // GB_subassign_one_slice: slice the entries and vectors for subassign
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -22,9 +22,14 @@
 
 #include "GB_subassign_methods.h"
 
+#undef  GB_FREE_WORK
+#define GB_FREE_WORK \
+    GB_FREE_MEMORY (Coarse, ntasks1+1, sizeof (int64_t)) ;
+
 #undef  GB_FREE_ALL
 #define GB_FREE_ALL                                                     \
 {                                                                       \
+    GB_FREE_WORK ;                                                      \
     GB_FREE_MEMORY (TaskList, max_ntasks+1, sizeof (GB_task_struct)) ;  \
 }
 
@@ -62,8 +67,8 @@ GrB_Info GB_subassign_one_slice
     ASSERT (p_max_ntasks != NULL) ;
     ASSERT (p_ntasks != NULL) ;
     ASSERT (p_nthreads != NULL) ;
-    ASSERT_OK (GB_check (C, "C for 1_slice", GB0)) ;
-    ASSERT_OK (GB_check (A, "A/M for 1_slice", GB0)) ;
+    ASSERT_MATRIX_OK (C, "C for 1_slice", GB0) ;
+    ASSERT_MATRIX_OK (A, "A/M for 1_slice", GB0) ;
 
     (*p_TaskList  ) = NULL ;
     (*p_max_ntasks) = 0 ;
@@ -80,42 +85,28 @@ GrB_Info GB_subassign_one_slice
     // get A and C
     //--------------------------------------------------------------------------
 
-    const int64_t *restrict Ap = A->p ;
-    const int64_t *restrict Ah = A->h ;
-    const int64_t *restrict Ai = A->i ;
+    const int64_t *GB_RESTRICT Ap = A->p ;
+    const int64_t *GB_RESTRICT Ah = A->h ;
+    const int64_t *GB_RESTRICT Ai = A->i ;
     const int64_t anz = GB_NNZ (A) ;
     const int64_t anvec = A->nvec ;
 
-    const int64_t *restrict Cp = C->p ;
-    const int64_t *restrict Ch = C->h ;
-    const int64_t *restrict Ci = C->i ;
+    const int64_t *GB_RESTRICT Cp = C->p ;
+    const int64_t *GB_RESTRICT Ch = C->h ;
+    const int64_t *GB_RESTRICT Ci = C->i ;
     const bool C_is_hyper = C->is_hyper ;
     const int64_t nzombies = C->nzombies ;
     const int64_t Cnvec = C->nvec ;
     const int64_t cvlen = C->vlen ;
 
-    // printf ("nI "GBd" Ikind "GBd" Icolon "GBd" "GBd" "GBd"\n", nI, Ikind,
-    //     Icolon [0], Icolon [1], Icolon [2]) ;
-    // for (int64_t iA = 0 ; iA < nI ; iA++)
-    // {
-    //     int64_t iC = GB_ijlist (I, iA, Ikind, Icolon) ;
-    //     printf ("   iA "GBd" iC "GBd"\n", iA, iC) ;
-    // }
-
-    // printf ("nJ "GBd" Jkind "GBd" Jcolon "GBd" "GBd" "GBd"\n", nJ, Jkind,
-    //     Jcolon [0], Jcolon [1], Jcolon [2]) ;
-    // for (int64_t jA = 0 ; jA < nJ ; jA++)
-    // {
-    //     int64_t jC = GB_ijlist (J, jA, Jkind, Jcolon) ;
-    //     printf ("   jA "GBd" jC "GBd"\n", jA, jC) ;
-    // }
-
     //--------------------------------------------------------------------------
     // allocate the initial TaskList
     //--------------------------------------------------------------------------
 
+    int64_t *GB_RESTRICT Coarse = NULL ; // size ntasks1+1
+    int ntasks1 = 0 ;
     int nthreads = GB_nthreads (anz, chunk, nthreads_max) ;
-    GB_task_struct *restrict TaskList = NULL ;
+    GB_task_struct *GB_RESTRICT TaskList = NULL ;
     int max_ntasks = 0 ;
     int ntasks = 0 ;
     int ntasks0 = (nthreads == 1) ? 1 : (32 * nthreads) ;
@@ -143,15 +134,19 @@ GrB_Info GB_subassign_one_slice
 
     double target_task_size = ((double) anz) / (double) (ntasks0) ;
     target_task_size = GB_IMAX (target_task_size, chunk) ;
-    int ntasks1 = ((double) anz) / target_task_size ;
+    ntasks1 = ((double) anz) / target_task_size ;
     ntasks1 = GB_IMAX (ntasks1, 1) ;
 
     //--------------------------------------------------------------------------
     // slice the work into coarse tasks
     //--------------------------------------------------------------------------
 
-    int64_t Coarse [ntasks1+1] ;
-    GB_pslice (Coarse, /* A */ A->p, A->nvec, ntasks1) ;
+    if (!GB_pslice (&Coarse, /* A */ A->p, A->nvec, ntasks1))
+    { 
+        // out of memory
+        GB_FREE_ALL ;
+        return (GB_OUT_OF_MEMORY) ;
+    }
 
     //--------------------------------------------------------------------------
     // construct all tasks, both coarse and fine
@@ -189,7 +184,6 @@ GrB_Info GB_subassign_one_slice
             GB_REALLOC_TASK_LIST (TaskList, ntasks + 1, max_ntasks) ;
             TaskList [ntasks].kfirst = k ;
             TaskList [ntasks].klast  = klast ;
-            // printf ("%d: coarse "GBd":"GBd"\n", ntasks, k, klast) ;
             ntasks++ ;
 
         }
@@ -227,8 +221,6 @@ GrB_Info GB_subassign_one_slice
             ASSERT (k >= 0 && k < anvec) ;
             int64_t j = (Ah == NULL) ? k : Ah [k] ;
             ASSERT (j >= 0 && j < nJ) ;
-            // printf ("J %p j "GBd" jkind %d Jcolon "GBd" "GBd" "GBd"\n",
-            //     J, j, Jkind, Jcolon [0], Jcolon [1], Jcolon [2]) ;
             int64_t GB_LOOKUP_jC ;
 
             bool jC_dense = (pC_end - pC_start == cvlen) ;
@@ -257,7 +249,6 @@ GrB_Info GB_subassign_one_slice
 
                 TaskList [ntasks].kfirst = k ;
                 TaskList [ntasks].klast  = k ;
-                // printf ("%d: thin coarse "GBd":"GBd"\n", ntasks, k, k) ;
                 ntasks++ ;
 
             }
@@ -308,32 +299,20 @@ GrB_Info GB_subassign_one_slice
                         int64_t iC_start = GB_IMIN (iC1, iC2) ;
                         int64_t iC_end   = GB_IMAX (iC1, iC2) ;
 
-                        // printf ("\niA_start "GBd"\n", iA_start) ;
-                        // printf ("iA_end   "GBd"\n", iA_end) ;
-
-                        // printf ("\niC_start "GBd"\n", iC_start) ;
-                        // printf ("iC_end   "GBd"\n", iC_end) ;
-
                         // this task works on Ci,Cx [pC:pC_end-1]
                         int64_t pleft = pC_start ;
                         int64_t pright = pC_end - 1 ;
                         bool found, is_zombie ;
-                        GB_BINARY_SPLIT_ZOMBIE (iC_start, Ci, pleft, pright,
-                            found, nzombies, is_zombie) ;
+                        GB_SPLIT_BINARY_SEARCH_ZOMBIE (iC_start, Ci,
+                            pleft, pright, found, nzombies, is_zombie) ;
                         TaskList [ntasks].pC = pleft ;
 
                         pleft = pC_start ;
                         pright = pC_end - 1 ;
-                        GB_BINARY_SPLIT_ZOMBIE (iC_end, Ci, pleft, pright,
-                            found, nzombies, is_zombie) ;
+                        GB_SPLIT_BINARY_SEARCH_ZOMBIE (iC_end, Ci,
+                            pleft, pright, found, nzombies, is_zombie) ;
                         TaskList [ntasks].pC_end = (found) ? (pleft+1) : pleft ;
                     }
-
-                    // printf ("%d: fine "GBd": pA "GBd" pA_end "GBd
-                    //    " pC "GBd" pC_end "GBd"\n",
-                    //    ntasks, k,
-                    //    TaskList [ntasks].pA, TaskList [ntasks].pA_end,
-                    //    TaskList [ntasks].pC, TaskList [ntasks].pC_end) ;
 
                     ASSERT (TaskList [ntasks].pA <= TaskList [ntasks].pA_end) ;
                     ASSERT (TaskList [ntasks].pC <= TaskList [ntasks].pC_end) ;
@@ -346,9 +325,10 @@ GrB_Info GB_subassign_one_slice
     ASSERT (ntasks <= max_ntasks) ;
 
     //--------------------------------------------------------------------------
-    // return result
+    // free workspace and return result
     //--------------------------------------------------------------------------
 
+    GB_FREE_WORK ;
     (*p_TaskList  ) = TaskList ;
     (*p_max_ntasks) = max_ntasks ;
     (*p_ntasks    ) = ntasks ;

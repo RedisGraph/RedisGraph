@@ -1,58 +1,61 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
 #include "./traverse_order.h"
 #include "../../util/arr.h"
+#include "../../util/strcmp.h"
 #include "../../util/vector.h"
 #include "../../util/rmalloc.h"
 #include <assert.h>
 
-#define T 1     // Transpose penalty.
-#define F 4 * T // Filter score.
-#define L 2 * T // Label score.
+#define T 1           // Transpose penalty.
+#define L 2 * T       // Label score.
+#define F 4 * T       // Filter score.
+#define B 8 * F       // Bound variable bonus.
 
 typedef AlgebraicExpression **Arrangement;
 
 // Create a new arrangement.
-static inline Arrangement Arrangement_New(uint size) {
+static inline Arrangement _Arrangement_New(uint size) {
 	return rm_malloc(sizeof(AlgebraicExpression *) * size);
 }
 
 // Clone arrangement.
-static inline Arrangement Arrangement_Clone(const Arrangement arrangement, uint size) {
+static inline Arrangement _Arrangement_Clone(const Arrangement arrangement, uint size) {
 	assert(arrangement);
-	Arrangement clone = Arrangement_New(size);
+	Arrangement clone = _Arrangement_New(size);
 	memcpy(clone, arrangement, sizeof(AlgebraicExpression *) * size);
 	return clone;
 }
 
 // Print arrangement.
-static inline void Arrangement_Print(Arrangement arrangement, uint size) {
+static inline void _Arrangement_Print(Arrangement arrangement, uint size) {
 	printf("Arrangement_Print\n");
 	for(uint i = 0; i < size; i++) {
 		AlgebraicExpression *exp = arrangement[i];
-		printf("%d, src: %s, dest: %s\n", i, exp->src_node->alias, exp->dest_node->alias);
+		printf("%d, src: %s, dest: %s\n", i, AlgebraicExpression_Source(exp),
+			   AlgebraicExpression_Destination(exp));
 	}
 }
 
 // Free arrangement.
-static inline void Arrangement_Free(Arrangement arrangement) {
+static inline void _Arrangement_Free(Arrangement arrangement) {
 	assert(arrangement);
 	rm_free(arrangement);
 }
 
 // Computes x!
-static inline unsigned long factorial(uint x) {
+static inline unsigned long _factorial(uint x) {
 	unsigned long res = 1;
 	for(int i = 2; i <= x; i++) res *= i;
 	return res;
 }
 
 // Function to swap values at two pointers.
-static inline void swap(Arrangement exps, uint i, uint  j) {
+static inline void _swap(Arrangement exps, uint i, uint  j) {
 	AlgebraicExpression *temp;
 	temp = exps[i];
 	exps[i] = exps[j];
@@ -60,28 +63,28 @@ static inline void swap(Arrangement exps, uint i, uint  j) {
 }
 
 // Computes all permutations of set exps.
-static inline void permute(Arrangement set, int l, int r, Arrangement **permutations) {
+static inline void _permute(Arrangement set, int l, int r, Arrangement **permutations) {
 	int i;
 	if(l == r) {
-		Arrangement permutation = Arrangement_Clone(set, r + 1);
+		Arrangement permutation = _Arrangement_Clone(set, r + 1);
 		*permutations = array_append(*permutations, permutation);
 	} else {
 		for(i = l; i <= r; i++) {
-			swap(set, l, i);
-			permute(set, l + 1, r, permutations);
-			swap(set, l, i);   // backtrack.
+			_swap(set, l, i);
+			_permute(set, l + 1, r, permutations);
+			_swap(set, l, i);   // backtrack.
 		}
 	}
 }
 
 // Computes all possible permutations of exps.
-static Arrangement *permutations(const Arrangement exps, uint exps_count) {
+static Arrangement *_permutations(const Arrangement exps, uint exps_count) {
 	// Number of permutations of a set S is |S|!.
-	unsigned long permutation_count = factorial(exps_count);
+	unsigned long permutation_count = _factorial(exps_count);
 	Arrangement *permutations = array_new(Arrangement, permutation_count);
 
 	// Compute permutations.
-	permute(exps, 0, exps_count - 1, &permutations);
+	_permute(exps, 0, exps_count - 1, &permutations);
 	assert(array_len(permutations) == permutation_count);
 
 	return permutations;
@@ -89,7 +92,7 @@ static Arrangement *permutations(const Arrangement exps, uint exps_count) {
 
 /* A valid arrangement of expressions is one in which the ith expression
  * source or destination nodes appear in a previous expression k where k < i. */
-static bool valid_arrangement(const Arrangement arrangement, uint exps_count) {
+static bool _valid_arrangement(const Arrangement arrangement, uint exps_count, QueryGraph *qg) {
 	AlgebraicExpression *exp = arrangement[0];
 	/* A 1 hop traversals where either the source node
 	 * or destination node is labeled, can't be the opening expression
@@ -106,23 +109,30 @@ static bool valid_arrangement(const Arrangement arrangement, uint exps_count) {
 	 * exp2: [L1]
 	 * Isn't valid, as currently the first expression is converted
 	 * into a scan operation. */
-	if((exp->src_node->label || exp->dest_node->label) &&
-	   exp->edge &&
-	   exp->operand_count == 1) return false;
+	QGNode *src = QueryGraph_GetNodeByAlias(qg,
+											AlgebraicExpression_Source(exp)); // TODO unwisely expensive
+	QGNode *dest = QueryGraph_GetNodeByAlias(qg,
+											 AlgebraicExpression_Destination(exp)); // TODO unwisely expensive
+	if((src->label || dest->label) &&
+	   AlgebraicExpression_Edge(exp) &&
+	   AlgebraicExpression_OperandCount(exp) == 1) return false;
 
 	for(int i = 1; i < exps_count; i++) {
 		exp = arrangement[i];
-		QGNode *src = exp->src_node;
-		QGNode *dest = exp->dest_node;
 		int j = i - 1;
 
 		// Scan previous expressions.
 		for(; j >= 0; j--) {
 			AlgebraicExpression *prev_exp = arrangement[j];
-			if(prev_exp->src_node == src ||
-			   prev_exp->dest_node == src ||
-			   prev_exp->src_node == dest ||
-			   prev_exp->dest_node == dest) break;
+			const char *exp_src = AlgebraicExpression_Source(exp);
+			const char *exp_dest = AlgebraicExpression_Destination(exp);
+			const char *prev_exp_src = AlgebraicExpression_Source(prev_exp);
+			const char *prev_exp_dest = AlgebraicExpression_Destination(prev_exp);
+
+			if(!RG_STRCMP(prev_exp_src, exp_src)     ||
+			   !RG_STRCMP(prev_exp_dest, exp_src)    ||
+			   !RG_STRCMP(prev_exp_src, exp_dest)    ||
+			   !RG_STRCMP(prev_exp_dest, exp_dest)) break;
 		}
 		/* Nither src or dest nodes are mentioned in previous expressions
 		 * as such the arrangement is invalid. */
@@ -131,81 +141,91 @@ static bool valid_arrangement(const Arrangement arrangement, uint exps_count) {
 	return true;
 }
 
-static int penalty_arrangement(Arrangement arrangement, uint exp_count) {
+static int _penalty_arrangement(Arrangement arrangement, uint exp_count) {
 	int penalty = 0;
 	AlgebraicExpression *exp;
 
 	// Account for first expression transposes.
 	exp = arrangement[0];
-	for(uint i = 0; i < exp->operand_count; i++) {
-		if(arrangement[0]->operands[i].transpose) penalty += T;
-	}
+	uint transpose_count = AlgebraicExpression_OperationCount(exp, AL_EXP_TRANSPOSE);
+	penalty += transpose_count * T;
 
 	for(uint i = 1; i < exp_count; i++) {
 		exp = arrangement[i];
 		bool src_resolved = false;
-		QGNode *src = exp->src_node;
 
 		// See if source is already resolved.
 		for(int j = i - 1; j >= 0; j--) {
 			AlgebraicExpression *prev_exp = arrangement[j];
-			if(prev_exp->src_node == src || prev_exp->dest_node == src) {
+			if(!RG_STRCMP(AlgebraicExpression_Source(prev_exp), AlgebraicExpression_Source(exp)) ||
+			   !RG_STRCMP(AlgebraicExpression_Destination(prev_exp), AlgebraicExpression_Source(exp))) {
 				src_resolved = true;
 				break;
 			}
 		}
 
-		// dest_node must be resolved as we're working with valid arrangemet.
+		// dest must be resolved as we're working with valid arrangemet.
 		if(src_resolved) {
 			// Count how many transposes are performed.
-			for(uint k = 0; k < exp->operand_count; k++) {
-				if(exp->operands[k].transpose) penalty += T;
-			}
+			transpose_count = AlgebraicExpression_OperationCount(exp, AL_EXP_TRANSPOSE);
+			penalty += transpose_count * T;
 		} else {
 			// Count how many transposes we require to perform.
-			for(uint k = 0; k < exp->operand_count; k++) {
-				if(!exp->operands[k].transpose) penalty += T;
-			}
+			transpose_count = AlgebraicExpression_OperationCount(exp, AL_EXP_TRANSPOSE);
+			uint operand_count = AlgebraicExpression_OperandCount(exp);
+			penalty += (operand_count - transpose_count) * T;
 		}
 	}
 
 	return penalty;
 }
 
-static int reward_arrangement(Arrangement arrangement, uint exp_count,
-							  const FT_FilterNode *filters) {
-	// Arrangement_Print(arrangement, exp_count);
+static int _reward_arrangement(Arrangement arrangement, uint exp_count, QueryGraph *qg,
+							   rax *filtered_entities, rax *bound_vars) {
+	// _Arrangement_Print(arrangement, exp_count);
 	int reward = 0;
-	rax *filtered_entities = FilterTree_CollectModified(filters);
 
 	// A bit naive at the moment.
 	for(uint i = 0; i < exp_count; i++) {
 		AlgebraicExpression *exp = arrangement[i];
-		if(raxFind(filtered_entities, (unsigned char *)exp->src_node->alias,
-				   strlen(exp->src_node->alias)) != raxNotFound) {
-			reward += F * (exp_count - i);
-			raxRemove(filtered_entities, (unsigned char *)exp->src_node->alias, strlen(exp->src_node->alias),
-					  NULL);
+
+		// Reward bound variables such that any expression with a bound variable
+		// will be preferred over any expression without.
+		if(bound_vars) {
+			if(raxFind(bound_vars, (unsigned char *)AlgebraicExpression_Source(exp),
+					   strlen(AlgebraicExpression_Source(exp))) != raxNotFound) {
+				reward += B * (exp_count - i);
+			}
+
+			if(raxFind(bound_vars, (unsigned char *)AlgebraicExpression_Destination(exp),
+					   strlen(AlgebraicExpression_Destination(exp))) != raxNotFound) {
+				reward += B * (exp_count - i);
+			}
 		}
-		if(raxFind(filtered_entities, (unsigned char *)exp->dest_node->alias,
-				   strlen(exp->dest_node->alias)) != raxNotFound) {
+
+		// Reward filters in expression.
+		if(raxFind(filtered_entities, (unsigned char *)AlgebraicExpression_Source(exp),
+				   strlen(AlgebraicExpression_Source(exp))) != raxNotFound) {
 			reward += F * (exp_count - i);
-			raxRemove(filtered_entities, (unsigned char *)exp->dest_node->alias, strlen(exp->dest_node->alias),
-					  NULL);
 		}
-		if(exp->src_node->label) reward += L * (exp_count - i);
+		if(raxFind(filtered_entities, (unsigned char *)AlgebraicExpression_Destination(exp),
+				   strlen(AlgebraicExpression_Destination(exp))) != raxNotFound) {
+			reward += F * (exp_count - i);
+		}
+		QGNode *src = QueryGraph_GetNodeByAlias(qg,
+												AlgebraicExpression_Source(exp)); // TODO unwisely expensive
+		if(src->label) reward += L * (exp_count - i);
 	}
 
 	// printf("reward: %d\n", reward);
-	raxFree(filtered_entities);
 	return reward;
 }
 
-static int score_arrangement(Arrangement arrangement, uint exp_count,
-							 const FT_FilterNode *filters) {
+static int _score_arrangement(Arrangement arrangement, uint exp_count, QueryGraph *qg,
+							  rax *filtered_entities, rax *bound_vars) {
 	int score = 0;
-	int penalty = penalty_arrangement(arrangement, exp_count);
-	int reward = reward_arrangement(arrangement, exp_count, filters);
+	int penalty = _penalty_arrangement(arrangement, exp_count);
+	int reward = _reward_arrangement(arrangement, exp_count, qg, filtered_entities, bound_vars);
 	score -= penalty;
 	score += reward;
 	return score;
@@ -213,21 +233,76 @@ static int score_arrangement(Arrangement arrangement, uint exp_count,
 
 // Transpose out-of-order expressions so that each expresson's source is resolved
 // in the winning sequence.
-static void resolve_winning_sequence(AlgebraicExpression **exps, uint exp_count) {
+static void _resolve_winning_sequence(AlgebraicExpression **exps, uint exp_count) {
 	for(uint i = 1; i < exp_count; i ++) {
 		AlgebraicExpression *exp = exps[i];
 		bool src_resolved = false;
-		QGNode *src = exp->src_node;
 
 		// See if source is already resolved.
 		for(int j = i - 1; j >= 0; j--) {
 			AlgebraicExpression *prev_exp = exps[j];
-			if(prev_exp->src_node == src || prev_exp->dest_node == src) {
+			if(!RG_STRCMP(AlgebraicExpression_Source(prev_exp), AlgebraicExpression_Source(exp)) ||
+			   !RG_STRCMP(AlgebraicExpression_Destination(prev_exp), AlgebraicExpression_Source(exp))) {
 				src_resolved = true;
 				break;
 			}
 		}
-		if(!src_resolved) AlgebraicExpression_Transpose(exp);
+		if(!src_resolved) AlgebraicExpression_Transpose(exps + i);
+	}
+}
+
+/* Having chosen which algebraic expression will be evaluated first, determine whether
+ * it is worthwhile to transpose it and thus swap the source and destination.
+ * If the source is bounded, we will not transpose, if only the destination is bounded, we will.
+ * If neither are bounded, we fall back to label and filter heuristics.
+ * We'll choose to transpose if the destination is filtered and the source is not, or
+ * if neither is filtered, if the destination is labeled and the source is not. */
+static void _select_entry_point(QueryGraph *qg, AlgebraicExpression **ae, rax *filtered_entities,
+								rax *bound_vars) {
+	if(AlgebraicExpression_OperandCount(*ae) == 1 &&
+	   !RG_STRCMP(AlgebraicExpression_Source(*ae), AlgebraicExpression_Destination(*ae))) return;
+
+	// Always start at a bound variable if one is present.
+	if(bound_vars) {
+		if(raxFind(bound_vars, (unsigned char *)AlgebraicExpression_Source(*ae),
+				   strlen(AlgebraicExpression_Source(*ae))) != raxNotFound) return;
+
+		if(raxFind(bound_vars, (unsigned char *)AlgebraicExpression_Destination(*ae),
+				   strlen(AlgebraicExpression_Destination(*ae))) != raxNotFound) {
+			AlgebraicExpression_Transpose(ae);
+			return;
+		}
+	}
+
+	// See if either source or destination nodes are filtered.
+	if(raxFind(filtered_entities, (unsigned char *)AlgebraicExpression_Source(*ae),
+			   strlen(AlgebraicExpression_Source(*ae))) != raxNotFound) {
+		return; // The source node is filtered, making the current order most appealing.
+	}
+
+	if(raxFind(filtered_entities, (unsigned char *)AlgebraicExpression_Destination(*ae),
+			   strlen(AlgebraicExpression_Destination(*ae))) != raxNotFound) {
+		AlgebraicExpression_Transpose(ae); // The destination is filtered and the source is not, transpose.
+		return;
+	}
+
+	/* Prefer filter over label
+	 * if no filters are applied prefer labeled entity. */
+	QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(*ae));
+	QGNode *dest = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Destination(*ae));
+	bool srcLabeled = src->label != NULL;
+	bool destLabeled = dest->label != NULL;
+
+	/* TODO: when additional statistics are available
+	 * do not use label scan if for every node N such that
+	 * (N)-[relation]->(T) N is of the same type T, and type of
+	 * either source or destination node is T. */
+	if(srcLabeled) {
+		// Neither end is filtered and the source is labeled, making the current order most appealing.
+		return;
+	} else if(destLabeled) {
+		// The destination is labeled and the source is not, transpose.
+		AlgebraicExpression_Transpose(ae);
 	}
 }
 
@@ -235,21 +310,29 @@ static void resolve_winning_sequence(AlgebraicExpression **exps, uint exp_count)
  * we pick the order in which the expressions will be evaluated
  * taking into account filters and transposes.
  * exps will reordered. */
-void orderExpressions(AlgebraicExpression **exps, uint exps_count, const FT_FilterNode *filters) {
-	assert(exps && exps_count > 0);
+void orderExpressions(QueryGraph *qg, AlgebraicExpression **exps, uint exp_count,
+					  const FT_FilterNode *filters, rax *bound_vars) {
+	assert(exps && exp_count > 0);
 
-	// Single expression, return quickly.
-	if(exps_count == 1) return;
+	/* Return early if we only have one expression that represents a scan rather than a traversal.
+	 * e.g. MATCH (n:L) RETURN n */
+	if(exp_count == 1 && AlgebraicExpression_OperandCount(exps[0]) == 1 &&
+	   !RG_STRCMP(AlgebraicExpression_Source(exps[0]), AlgebraicExpression_Destination(exps[0]))) return;
 
+	// Collect all filtered aliases.
+	rax *filtered_entities = FilterTree_CollectModified(filters);
 	// Compute all possible permutations of algebraic expressions.
-	Arrangement *arrangements = permutations(exps, exps_count);
+	Arrangement *arrangements = _permutations(exps, exp_count);
 	uint arrangement_count = array_len(arrangements);
-	if(arrangement_count == 1) goto cleanup;
+
+	/* If we only have one arrangement, we still want to select the optimal entry point
+	 * but have no other work to do. */
+	if(arrangement_count == 1) goto select_entry_point;
 
 	// Remove invalid arrangements.
 	Arrangement *valid_arrangements = array_new(Arrangement, arrangement_count);
 	for(int i = 0; i < arrangement_count; i++) {
-		if(valid_arrangement(arrangements[i], exps_count)) {
+		if(_valid_arrangement(arrangements[i], exp_count, qg)) {
 			valid_arrangements = array_append(valid_arrangements, arrangements[i]);
 		}
 	}
@@ -263,9 +346,9 @@ void orderExpressions(AlgebraicExpression **exps, uint exps_count, const FT_Filt
 
 	for(uint i = 0; i < valid_arrangement_count; i++) {
 		Arrangement arrangement = valid_arrangements[i];
-		int score = score_arrangement(arrangement, exps_count, filters);
+		int score = _score_arrangement(arrangement, exp_count, qg, filtered_entities, bound_vars);
 		// printf("score: %d\n", score);
-		// Arrangement_Print(arrangement, exps_count);
+		// _Arrangement_Print(arrangement, exp_count);
 		if(max_score < score) {
 			max_score = score;
 			top_arrangement = arrangement;
@@ -275,14 +358,18 @@ void orderExpressions(AlgebraicExpression **exps, uint exps_count, const FT_Filt
 	array_free(valid_arrangements);
 
 	// Update input.
-	for(uint i = 0; i < exps_count; i++) exps[i] = top_arrangement[i];
+	for(uint i = 0; i < exp_count; i++) exps[i] = top_arrangement[i];
 
 	// Depending on how the expressions have been ordered, we may have to transpose expressions
 	// so that their source nodes have already been resolved by previous expressions.
-	resolve_winning_sequence(exps, exps_count);
+	_resolve_winning_sequence(exps, exp_count);
 
-cleanup:
-	for(uint i = 0; i < arrangement_count; i++) Arrangement_Free(arrangements[i]);
+select_entry_point:
+	// Transpose the winning expression if the destination node is a more efficient starting place.
+	_select_entry_point(qg, exps + 0, filtered_entities, bound_vars);
+
+	raxFree(filtered_entities);
+	for(uint i = 0; i < arrangement_count; i++) _Arrangement_Free(arrangements[i]);
 	array_free(arrangements);
 }
 

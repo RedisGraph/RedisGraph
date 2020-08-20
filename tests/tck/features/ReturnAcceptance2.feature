@@ -137,7 +137,6 @@ Feature: ReturnAcceptance2
             """
         Then a SyntaxError should be raised at compile time: UndefinedVariable
 
-    @skip
     Scenario: Ordering with aggregation
         Given an empty graph
         And having executed:
@@ -300,7 +299,6 @@ Feature: ReturnAcceptance2
             | {a: 1, b: 'foo'} |
         And no side effects
 
-    @skip
     Scenario: Returning an expression
         Given an empty graph
         And having executed:
@@ -317,7 +315,6 @@ Feature: ReturnAcceptance2
             | false        | true          |
         And no side effects
 
-    @skip
     Scenario: Limiting amount of rows when there are fewer left than the LIMIT argument
         Given an empty graph
         And having executed:
@@ -469,7 +466,6 @@ Feature: ReturnAcceptance2
             | +nodes      | 1 |
             | +properties | 1 |
 
-    @skip
     Scenario: Aggregating by a list property has a correct definition of equality
         Given an empty graph
         And having executed:

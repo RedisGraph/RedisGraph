@@ -2,7 +2,7 @@
 // GB_matvec_build: check inputs and build a matrix or vector
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -19,10 +19,10 @@ GrB_Info GB_matvec_build        // check inputs then build matrix or vector
     GrB_Matrix C,               // matrix or vector to build
     const GrB_Index *I,         // row indices of tuples
     const GrB_Index *J,         // col indices of tuples (NULL for vector)
-    const void *S,              // array of values of tuples
+    const void *X,              // array of values of tuples
     const GrB_Index nvals,      // number of tuples
     const GrB_BinaryOp dup,     // binary function to assemble duplicates
-    const GB_Type_code scode,   // GB_Type_code of S array
+    const GB_Type_code scode,   // GB_Type_code of X array
     const bool is_matrix,       // true if C is a matrix, false if GrB_Vector
     GB_Context Context
 )
@@ -32,7 +32,7 @@ GrB_Info GB_matvec_build        // check inputs then build matrix or vector
     // check inputs
     //--------------------------------------------------------------------------
 
-    ASSERT_OK (GB_check (C, "C for GB_matvec_build", GB0)) ;
+    ASSERT_MATRIX_OK (C, "C for GB_matvec_build", GB0) ;
     GB_RETURN_IF_NULL (I) ;
     if (I == GrB_ALL)
     { 
@@ -61,10 +61,10 @@ GrB_Info GB_matvec_build        // check inputs then build matrix or vector
         ASSERT (J == NULL) ;
     }
 
-    GB_RETURN_IF_NULL (S) ;
+    GB_RETURN_IF_NULL (X) ;
     GB_RETURN_IF_NULL_OR_FAULTY (dup) ;
 
-    ASSERT_OK (GB_check (dup, "dup operator for assembling duplicates", GB0)) ;
+    ASSERT_BINARYOP_OK (dup, "dup operator for assembling duplicates", GB0) ;
     ASSERT (scode <= GB_UDT_code) ;
 
     if (nvals > GB_INDEX_MAX)
@@ -95,13 +95,13 @@ GrB_Info GB_matvec_build        // check inputs then build matrix or vector
         dup->name, dup->ztype->name, C->type->name))) ;
     }
 
-    // C and S must be compatible
+    // C and X must be compatible
     if (!GB_code_compatible (scode, dup->ztype->code))
     { 
-        // All types must be compatible with each other: C, dup, and S.
+        // All types must be compatible with each other: C, dup, and X.
         // User-defined types are only compatible with themselves; they are not
         // compatible with any built-in type nor any other user-defined type.
-        // Thus, if C, dup, or S have any user-defined type, this
+        // Thus, if C, dup, or X have any user-defined type, this
         // condition requires all three types to be identical: the same
         // user-defined type.  No casting will be done in this case.
         return (GB_ERROR (GrB_DOMAIN_MISMATCH, (GB_LOG,
@@ -126,8 +126,8 @@ GrB_Info GB_matvec_build        // check inputs then build matrix or vector
     // build the matrix
     //--------------------------------------------------------------------------
 
-    // GB_build treats I, J, and S as read-only; they must not be modified
+    // GB_build treats I, J, and X as read-only; they must not be modified
 
-    return (GB_build (C, I, J, S, nvals, dup, scode, is_matrix, true, Context));
+    return (GB_build (C, I, J, X, nvals, dup, scode, is_matrix, true, Context));
 }
 

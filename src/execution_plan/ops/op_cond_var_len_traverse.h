@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -19,6 +19,7 @@ typedef struct {
 	Record r;
 	AlgebraicExpression *ae;
 	int srcNodeIdx;                 /* Node set by operation. */
+	int edgesIdx;                   /* Edges set by operation. */
 	int destNodeIdx;                /* Node set by operation. */
 	bool expandInto;                /* Both src and dest already resolved. */
 	unsigned int minHops;           /* Maximum number of hops to perform. */
@@ -34,3 +35,4 @@ OpBase *NewCondVarLenTraverseOp(const ExecutionPlan *plan, Graph *g, AlgebraicEx
 /* Transform operation from Conditional Variable Length Traverse
  * to Expand Into Conditional Variable Length Traverse */
 void CondVarLenTraverseOp_ExpandInto(CondVarLenTraverse *op);
+

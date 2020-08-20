@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -39,7 +39,8 @@ ProcedureCtx *ProcCtxNew(const char *name,
 						 ProcStep fStep,
 						 ProcInvoke fInvoke,
 						 ProcFree fFree,
-						 void *privateData) {
+						 void *privateData,
+						 bool readOnly) {
 
 	ProcedureCtx *ctx = rm_malloc(sizeof(ProcedureCtx));
 	ctx->argc = argc;
@@ -49,6 +50,7 @@ ProcedureCtx *ProcCtxNew(const char *name,
 	ctx->Invoke = fInvoke;
 	ctx->Free = fFree;
 	ctx->privateData = privateData;
+	ctx->readOnly = readOnly;
 	return ctx;
 }
 
@@ -57,24 +59,39 @@ ProcedureCtx *Proc_Get(const char *proc_name) {
 	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name, strlen(proc_name));
 	if(gen == raxNotFound) return NULL;
 	ProcedureCtx *ctx = gen();
+
+	// Set procedure state to not initialized.
+	ctx->state = PROCEDURE_NOT_INIT;
 	return ctx;
 }
 
-ProcedureResult Proc_Invoke(ProcedureCtx *proc, const char **args) {
+ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args) {
 	assert(proc);
-	if(proc->argc != PROCEDURE_VARIABLE_ARG_COUNT) assert(proc->argc == array_len(args));
-	// TODO: procedure can only be invoke once.
-	return proc->Invoke(proc, args);
+
+	// Procedure is expected to be in the `PROCEDURE_NOT_INIT` state.
+	if(proc->state != PROCEDURE_NOT_INIT) {
+		proc->state = PROCEDURE_ERROR;
+		return PROCEDURE_ERR;
+	}
+
+	if(proc->argc != PROCEDURE_VARIABLE_ARG_COUNT) assert(proc->argc == array_len((SIValue *)args));
+
+	ProcedureResult res = proc->Invoke(proc, args);
+	// Set state to initialized.
+	if(res == PROCEDURE_OK) proc->state = PROCEDURE_INIT;
+	return res;
 }
 
 SIValue *Proc_Step(ProcedureCtx *proc) {
 	assert(proc);
-	return proc->Step(proc);
-}
+	// Validate procedure state, can only consumed if state is initialized.
+	if(proc->state != PROCEDURE_INIT) return NULL;
 
-ProcedureResult ProcedureReset(ProcedureCtx *proc) {
-	// return proc->restart(proc);
-	return PROCEDURE_OK;
+	SIValue *val = proc->Step(proc);
+	/* Set procedure state to depleted if NULL is returned.
+	 * NOTE: we might have errored. */
+	if(val == NULL) proc->state = PROCEDURE_DEPLETED;
+	return val;
 }
 
 uint Procedure_Argc(const ProcedureCtx *proc) {
@@ -101,12 +118,27 @@ bool Procedure_ContainsOutput(const ProcedureCtx *proc, const char *output) {
 	return false;
 }
 
+bool Proc_ReadOnly(const char *proc_name) {
+	assert(__procedures);
+	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name, strlen(proc_name));
+	if(gen == raxNotFound) return false; // Invalid procedure specified, handled elsewhere.
+	/* TODO It would be preferable to be able to determine whether a procedure is read-only
+	 * without creating its entire context; this is wasteful. */
+	ProcedureCtx *ctx = gen();
+	bool read_only = ctx->readOnly;
+	Proc_Free(ctx);
+	return read_only;
+}
+
 void Proc_Free(ProcedureCtx *proc) {
 	if(!proc) return;
 	proc->Free(proc);
-	for(uint i = 0; i < array_len(proc->output); i++) {
-		rm_free(proc->output[i]);
+
+	if(proc->output) {
+		for(uint i = 0; i < array_len(proc->output); i++) rm_free(proc->output[i]);
+		array_free(proc->output);
 	}
-	if(proc->output) array_free(proc->output);
+
 	rm_free(proc);
 }
+

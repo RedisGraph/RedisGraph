@@ -1,6 +1,9 @@
 function test114
 %TEST114 performance of reduce-to-scalar
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 rng ('default') ;
 
 [save save_chunk] = nthreads_get ;
@@ -63,7 +66,7 @@ for k1 = 1:4
         tic
         for trial = 1:ntrials
             c1 = GB_mex_reduce_to_scalar (cin, [ ], op, S) ;
-            t = t + gbresults ;
+            t = t + grbresults ;
         end
         if (nthreads == 1)
             t1 = t ;
@@ -114,7 +117,7 @@ for k1 = 1:4
             tic
             for trial = 1:ntrials
                 c1 = GB_mex_reduce_to_scalar (cin, [ ], op, S) ;
-                t = t + gbresults ;
+                t = t + grbresults ;
             end
             if (nthreads == 1)
                 t1 = t ;

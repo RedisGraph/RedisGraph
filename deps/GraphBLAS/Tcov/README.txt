@@ -1,29 +1,26 @@
-SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 GraphBLAS/Tcov: statement coverage tests
+
+Requirements:  the mex command must use a C compiler supporting ANSI C11.
 
 Since nearly all GraphBLAS tests are in MATLAB, I have taken the unusual step
 of creating a statement coverage mechanism to use within a MATLAB mexFunction.
 To compile GraphBLAS for statement coverage testing, and to run the tests, type
 this in the MATLAB command window.
 
-    gbmake ; testcov
+    grbmake ; testcov
 
 If you get a linking problem on linux, add this directory to your
-LD_LIBRARY_PATCH, so that the libgraphblas_tcov.so constructed by gbmake can be
+LD_LIBRARY_PATH, so that the libgraphblas_tcov.so constructed by grbmake can be
 found by the mexFunctions.
 
-Statement coverage tests results will be saved in Tcov/log.txt.  Note that full
-coverage requires some or all of the GraphBLAS/User/Examples/*.m4 files to
-first be moved into the GraphBLAS/User/ directory (and then run "make cmake" in
-the shell before doing testcov in MATLAB).  The tests will work without this
-step, but some statements that handle compile-time user-defined semirings in
-the User/*m4 files will not be tested.
+Statement coverage tests results will be saved in Tcov/log.txt.
 
 To list the lines covered by the test, do this in MATLAB:
 
-    gbshow
+    grbshow
 
 To remove all compiled files, type this in the Unix/Linux shell:
 
@@ -31,7 +28,7 @@ To remove all compiled files, type this in the Unix/Linux shell:
 
 Or, delete these files manually:
 
-    *.o *.obj *.mex* cover_*.c errlog.txt gbstat.mat tmp*/*
+    *.o *.obj *.mex* cover_*.c errlog.txt grbstat.mat tmp*/*
 
 To also remove the log.txt file:
 
@@ -43,10 +40,10 @@ Files in GraphBLAS/Tcov:
 
     Contents.m     for 'help Tcov' in MATLAB; list of files
 
-    gbcover.m      compile GraphBLAS for statement coverage testing
-    gbcover_edit.m create a version of GraphBLAS for statement coverage tests
+    grbcover.m     compile GraphBLAS for statement coverage testing
+    grbcover_edit.m create a version of GraphBLAS for statement coverage tests
     testcov.m      run all GraphBLAS tests, with statement coverage
-    gbshow.m       create a test coverage report in tmp_cover/
+    grbshow.m      create a test coverage report in tmp_cover/
     Makefile       just for 'make clean' and 'make purge'
     README.txt     this file
 

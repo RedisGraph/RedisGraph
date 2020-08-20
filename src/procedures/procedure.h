@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -20,7 +20,7 @@ void Proc_Register();
 ProcedureCtx *Proc_Get(const char *proc_name);
 
 // Invokes procedure.
-ProcedureResult Proc_Invoke(ProcedureCtx *proc, const char **args);
+ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args);
 
 /* Single step theough procedure iterator
  * Returns array of key value pairs. */
@@ -35,11 +35,15 @@ uint Procedure_Argc(const ProcedureCtx *proc);
 /* Return number of outputs yield by procedure. */
 uint Procedure_OutputCount(const ProcedureCtx *proc);
 
-/* Retrieves procedure ith output */
+/* Return the name of the procedure's output at position output_idx. */
 const char *Procedure_GetOutput(const ProcedureCtx *proc, uint output_idx);
 
 /* Returns true if given output can be yield by procedure */
 bool Procedure_ContainsOutput(const ProcedureCtx *proc, const char *output);
 
+/* Returns true if procedure is read-only. */
+bool Proc_ReadOnly(const char *proc_name);
+
 // Free procedure context.
 void Proc_Free(ProcedureCtx *proc);
+

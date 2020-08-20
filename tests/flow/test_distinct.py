@@ -1,3 +1,4 @@
+from RLTest import Env
 from redisgraph import Graph, Node, Edge
 
 from base import FlowTestsBase
@@ -9,7 +10,7 @@ graph3 = None
 class testReturnDistinctFlow1(FlowTestsBase):
 
     def __init__(self):
-        super(testReturnDistinctFlow1, self).__init__()
+        self.env = Env()
         global graph1
         redis_con = self.env.getConnection()
         graph1 = Graph("G1", redis_con)
@@ -75,7 +76,7 @@ class testReturnDistinctFlow1(FlowTestsBase):
 class testReturnDistinctFlow2(FlowTestsBase):
 
     def __init__(self):
-        super(testReturnDistinctFlow2, self).__init__()
+        self.env = Env()
         global graph2
         redis_con = self.env.getConnection()
         graph2 = Graph("G2", redis_con)
@@ -134,7 +135,7 @@ class testReturnDistinctFlow2(FlowTestsBase):
 class testDistinct(FlowTestsBase):
     def __init__(self):
         global graph3
-        super(testDistinct, self).__init__()
+        self.env = Env()
         redis_con = self.env.getConnection()
         graph3 = Graph("G3", redis_con)
         self.populate_graph()
@@ -171,4 +172,21 @@ class testDistinct(FlowTestsBase):
         query = "UNWIND ['a', 'a', null, 1, 2, 2, 3, 3, 3] AS x RETURN collect(distinct x)"
         actual_result = graph3.query(query)
         expected_result = [[['a', 1, 2, 3]]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test_distinct_path(self):
+        global graph3
+        # Create duplicate paths using a Cartesian Product, collapse into 1 column,
+        # and unique the paths.
+        query = """MATCH p1 = ()-[]->(), p2 = ()-[]->() UNWIND [p1, p2] AS a RETURN DISTINCT a"""
+        actual_result = graph3.query(query)
+        # Only three paths should be returned, one for each edge.
+        self.env.assertEquals(len(actual_result.result_set), 3)
+
+    def test_distinct_multiple_nulls(self):
+        global graph3
+        # DISTINCT should remove multiple null values.
+        query = """UNWIND [null, null, null] AS x RETURN DISTINCT x"""
+        actual_result = graph3.query(query)
+        expected_result = [[None]]
         self.env.assertEquals(actual_result.result_set, expected_result)

@@ -1,6 +1,9 @@
 function test93b
 %TEST93B test dpagerank and ipagerank
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 rng ('default') ;
 addpath ('../Test') ;
 addpath ('../Test/spok') ;
@@ -23,7 +26,7 @@ n = 10 ;
     t1 = toc ;
 
     [r2, i2] = GB_mex_dpagerank (A) ;
-    t2 = gbresults ;
+    t2 = grbresults ;
 
 %{
     % [i1' i2']
@@ -49,7 +52,7 @@ n = 10 ;
     C.is_csc = false ;
 
     [r3, i3, iter3] = GB_mex_dpagerank (C, 0) ;
-    t3 = gbresults ;
+    t3 = grbresults ;
     fprintf ('GraphBLAS method 2: time %g speedup %g iters %g\n', ...
         t3, t4/t3, iter3) ;
     e = norm (r2 - r3) / norm (r3) ;
@@ -72,7 +75,7 @@ n = 10 ;
     ti1 = toc ;
 
     [ir2, ii2] = GB_mex_ipagerank (A) ;
-    ti2 = gbresults ;
+    ti2 = grbresults ;
 
     % [ii1' ii2']
 

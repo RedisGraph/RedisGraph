@@ -2,6 +2,9 @@
 #include "../util/arr.h"
 #include <assert.h>
 
+// Forward declerations:
+static void _AST_MapReferencedEntitiesInPath(AST *ast, const cypher_astnode_t *path);
+
 // Adds an identifier or an alias to the reference map.
 static inline void _AST_UpdateRefMap(AST *ast, const char *name) {
 	raxInsert(ast->referenced_entities, (unsigned char *)name, strlen(name), NULL, NULL);
@@ -21,6 +24,9 @@ static void _AST_MapExpression(AST *ast, const cypher_astnode_t *exp) {
 		assert(cypher_astnode_type(exp) == CYPHER_AST_IDENTIFIER);
 		const char *identifier_name = cypher_ast_identifier_get_name(exp);
 		_AST_UpdateRefMap(ast, identifier_name);
+	} else if(type == CYPHER_AST_PATTERN_PATH) {
+		// In case of pattern filter.
+		_AST_MapReferencedEntitiesInPath(ast, exp);
 	} else {
 		// Recurse over children.
 		uint child_count = cypher_astnode_nchildren(exp);
@@ -57,44 +63,48 @@ static void _AST_MapOrderByReferences(AST *ast, const cypher_astnode_t *order_by
 }
 
 // Adds a node to the referenced entities rax, in case it has labels or properties (inline filter).
-static void _AST_MapReferencedNode(AST *ast, const cypher_astnode_t *node) {
+static void _AST_MapReferencedNode(AST *ast, const cypher_astnode_t *node, bool force_mapping) {
+
 	const cypher_astnode_t *properties = cypher_ast_node_pattern_get_properties(node);
 	// A node with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
-	if(properties) {
+	if(properties || force_mapping) {
 		const char *alias = AST_GetEntityName(ast, node);
 		_AST_UpdateRefMap(ast, alias);
 
 		// Map any references within the properties map, such as 'b' in:
 		// ({val: ID(b)})
-		_AST_MapExpression(ast, properties);
+		if(properties) _AST_MapExpression(ast, properties);
 	}
 }
 
 // Adds an edge to the referenced entities rax if it has multiple types or any properties (inline filter).
-static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge) {
+static void _AST_MapReferencedEdge(AST *ast, const cypher_astnode_t *edge, bool force_mapping) {
+
 	const cypher_astnode_t *properties = cypher_ast_rel_pattern_get_properties(edge);
 	// An edge with inlined filters is always referenced for the FilterTree.
 	// (In the case of a CREATE path, these are properties being set)
-	if(properties) {
+	if(properties || force_mapping) {
 		const char *alias = AST_GetEntityName(ast, edge);
 		_AST_UpdateRefMap(ast, alias);
 
 		// Map any references within the properties map, such as 'b' in:
 		// ({val: ID(b)})
-		_AST_MapExpression(ast, properties);
+		if(properties) _AST_MapExpression(ast, properties);
 	}
 }
 
 // Maps entities in a given path.
 static void _AST_MapReferencedEntitiesInPath(AST *ast, const cypher_astnode_t *path) {
 	uint path_len = cypher_ast_pattern_path_nelements(path);
+	// Check if the path is a named path. If so, map all entities, else map only referenced entities.
+	bool force_mapping = cypher_astnode_type(path) == CYPHER_AST_NAMED_PATH;
 	// Node are in even positions.
 	for(uint i = 0; i < path_len; i += 2)
-		_AST_MapReferencedNode(ast, cypher_ast_pattern_path_get_element(path, i));
+		_AST_MapReferencedNode(ast, cypher_ast_pattern_path_get_element(path, i), force_mapping);
 	// Edges are in odd positions.
 	for(uint i = 1; i < path_len; i += 2)
-		_AST_MapReferencedEdge(ast, cypher_ast_pattern_path_get_element(path, i));
+		_AST_MapReferencedEdge(ast, cypher_ast_pattern_path_get_element(path, i), force_mapping);
 }
 
 // Add referenced aliases from MATCH clause - inline filtered and explicit WHERE filter.
@@ -131,6 +141,10 @@ static void _AST_MapSetPropertyReferences(AST *ast, const cypher_astnode_t *set_
 
 	const char *alias = cypher_ast_identifier_get_name(ast_entity);
 	_AST_UpdateRefMap(ast, alias);
+
+	// Map expression right hand side, e.g. a.v = 1, a.x = b.x
+	const cypher_astnode_t *set_exp = cypher_ast_set_property_get_expression(set_item);
+	_AST_MapExpression(ast, set_exp);
 }
 
 // Maps entities in SET clause.
@@ -149,11 +163,7 @@ static void _AST_MapDeleteClauseReferences(AST *ast, const cypher_astnode_t *del
 	uint nitems = cypher_ast_delete_nexpressions(delete_clause);
 	for(uint i = 0; i < nitems; i++) {
 		const cypher_astnode_t *delete_exp = cypher_ast_delete_get_expression(delete_clause, i);
-
-		assert(cypher_astnode_type(delete_exp) == CYPHER_AST_IDENTIFIER);
-
-		const char *alias = cypher_ast_identifier_get_name(delete_exp);
-		_AST_UpdateRefMap(ast, alias);
+		_AST_MapExpression(ast, delete_exp);
 	}
 }
 

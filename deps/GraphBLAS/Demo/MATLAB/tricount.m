@@ -42,7 +42,7 @@ function [ntri t] = tricount (method, A, E)
 % sparse column form, so the MATLAB equivalent of the Sandia method is
 % sum(sum((U*U).*U)).
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 %-------------------------------------------------------------------------------

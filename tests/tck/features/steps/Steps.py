@@ -1,5 +1,6 @@
 import sys
 import os
+import ast
 
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../../utils/')
 
@@ -8,6 +9,11 @@ import graphs
 
 resultset = None
 exception = None
+params = None
+
+def before_feature(context):
+    global params
+    params = None
 
 @given(u'the binary-tree-1 graph')
 def step_impl(context):
@@ -25,70 +31,33 @@ def step_impl(context):
 def step_impl(context):
     graphs.any_graph()
 
+@then(u'parameters are')
+@given(u'parameters are')
+def set_params(context):
+    global params
+
+    params = {}
+    for row in context.table.rows:
+        params[row[0]]=row[1]
+
 @given(u'having executed')
-def step_impl(context):
-    global resultset
-    global exception
-
-    exception = None
-    query = context.text
-    try:
-        resultset = graphs.query(query)
-    except Exception as error:
-        resultset = None
-        exception = error
-
 @when(u'having executed')
-def step_impl(context):
-    global resultset
-    global exception
-
-    exception = None
-    query = context.text
-    try:
-        resultset = graphs.query(query)
-    except Exception as error:
-        resultset = None
-        exception = error
-
 @then(u'having executed')
-def step_impl(context):
-    global resultset
-    global exception
-
-    exception = None
-    query = context.text
-    try:
-        resultset = graphs.query(query)
-    except Exception as error:
-        resultset = None
-        exception = error
-
 @when(u'executing control query')
-def step_impl(context):
-    global resultset
-    global exception
-
-    exception = None
-    query = context.text
-    try:
-        resultset = graphs.query(query)
-    except Exception as error:
-        resultset = None
-        exception = error
-
 @when(u'executing query')
 def step_impl(context):
     global resultset
     global exception
+    global params
 
     exception = None
     query = context.text
     try:
-        resultset = graphs.query(query)
+        resultset = graphs.query(query, params)
     except Exception as error:
         resultset = None
         exception = error
+    params = None
 
 @then(u'the result should be empty')
 def step_impl(context):
@@ -131,6 +100,12 @@ def step_impl(context):
     assert exception != None
     assert "expected a map" in exception.message
 
+@then(u'a ArgumentError should be raised at runtime: NumberOutOfRange')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "ArgumentError" in exception.message
+
 @then(u'a SyntaxError should be raised at compile time: InvalidAggregation')
 def step_impl(context):
     assert exception != None
@@ -141,12 +116,17 @@ def step_impl(context):
     assert exception != None
     assert "not defined" in exception.message
 
+@then(u'a SyntaxError should be raised at compile time: VariableAlreadyBound')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "can't be redeclared" in exception.message
+
 @then(u'a TypeError should be raised at runtime: ListElementAccessByNonInteger')
 def step_impl(context):
     global exception
     assert exception != None
     assert "expected Integer" in exception.message
-
 
 @then(u'a SyntaxError should be raised at compile time: InvalidArgumentType')
 def step_impl(context):
@@ -160,3 +140,51 @@ def step_impl(context):
     global exception
     assert exception != None
     assert "Type mismatch" in exception.message
+
+@then(u'a SyntaxError should be raised at compile time: DifferentColumnsInUnion')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "must have the same column names." in exception.message
+
+@then(u'a SyntaxError should be raised at compile time: InvalidClauseComposition')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Invalid combination" in exception.message
+
+@then(u'a SyntaxError should be raised at compile time: NestedAggregation')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Can't use aggregate functions inside of aggregate functions" in exception.message
+
+@then(u'a SyntaxError should be raised at compile time: UnknownFunction')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Unknown function" in exception.message
+
+@then(u'a SyntaxError should be raised at compile time: NonConstantExpression')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "invalid type" in exception.message
+
+@then(u'a SyntaxError should be raised at compile time: NoExpressionAlias')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "must be aliased" in exception.message
+
+@then(u'a SyntaxError should be raised at compile time: InvalidNumberLiteral')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Invalid numeric value" in exception.message
+
+@then(u'a SyntaxError should be raised at compile time: RequiresDirectedRelationship')
+def step_impl(context):
+    global exception
+    assert exception != None
+    assert "Only directed relationships" in exception.message

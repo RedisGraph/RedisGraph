@@ -1,5 +1,5 @@
 /*
- * Copyright 2018-2019 Redis Labs Ltd. and Contributors
+ * Copyright 2018-2020 Redis Labs Ltd. and Contributors
  *
  * This file is available under the Redis Labs Source Available License Agreement
  */
@@ -21,10 +21,10 @@ static void _QGNode_RemoveEdge(QGEdge **edges, QGEdge *e) {
 	}
 }
 
-QGNode *QGNode_New(const char *label, const char *alias) {
+QGNode *QGNode_New(const char *alias) {
 	QGNode *n = rm_malloc(sizeof(QGNode));
+	n->label = NULL;
 	n->labelID = GRAPH_NO_LABEL;
-	n->label = label;
 	n->alias = alias;
 	n->incoming_edges = array_new(QGEdge *, 0);
 	n->outgoing_edges = array_new(QGEdge *, 0);

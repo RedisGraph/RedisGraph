@@ -2,7 +2,7 @@
 // GB_pslice: partition Ap for a parallel loop
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -15,14 +15,33 @@
 
 #include "GB.h"
 
-void GB_pslice                      // find how to slice Ap
+bool GB_pslice          // slice Ap; return true if ok, false if out of memory
 (
-    int64_t *Slice,                 // size ntasks+1
-    const int64_t *restrict Ap,     // array of size n+1
+    int64_t *GB_RESTRICT *Slice_handle,    // size ntasks+1
+    const int64_t *GB_RESTRICT Ap,         // array of size n+1
     const int64_t n,
-    const int ntasks                // # of tasks
+    const int ntasks                    // # of tasks
 )
 {
+
+    // allocate result, unless it is already allocated on input
+    int64_t *Slice ;
+    if ((*Slice_handle) == NULL)
+    {
+        Slice = NULL ;
+        (*Slice_handle) = NULL ;
+        GB_MALLOC_MEMORY (Slice, ntasks+1, sizeof (int64_t)) ;
+        if (Slice == NULL)
+        { 
+            // out of memory
+            return (false) ;
+        }
+        (*Slice_handle) = Slice ;
+    }
+    else
+    { 
+        Slice = (*Slice_handle) ;
+    }
 
     const double work = (Ap == NULL) ? 0 : Ap [n] ;
 
@@ -46,10 +65,11 @@ void GB_pslice                      // find how to slice Ap
             // just pick what the binary search comes up with.
             int64_t wtask = ((taskid * work) / (double) ntasks) ;
             int64_t pright = n ;
-            GB_BINARY_TRIM_SEARCH (wtask, Ap, k, pright) ;
+            GB_TRIM_BINARY_SEARCH (wtask, Ap, k, pright) ;
             Slice [taskid] = k ;
         }
     }
     Slice [ntasks] = n ;
+    return (true) ;
 }
 

@@ -7,6 +7,9 @@ google_analytics:
   - 'UA-92003007-1'
   - 'auto'
 
+extra_javascript:
+  - gtm.js
+
 use_directory_urls: true
 
 theme:
@@ -23,17 +26,19 @@ theme:
   feature:
     tabs: false
 
-pages:
-    - 'Quickstart': index.md
-    - 'Commands': commands.md
-    - 'Clients': clients.md
-    - 'Design Documents':
-        - 'Result Set structure': result_structure.md
-        - 'Client Specification': client_spec.md
-    - 'Design': design.md
-    - 'Contributor agreement': contrib.md
-    - 'Cypher coverage': cypher_support.md
-    - 'Known limitations': known_limitations.md
+nav:
+  - 'Quickstart': index.md
+  - 'Commands': commands.md
+  - 'Clients': clients.md
+  - 'Configuration': configuration.md
+  - 'Design Documents':
+      - 'Result Set structure': result_structure.md
+      - 'Client Specification': client_spec.md
+  - 'Design': design.md
+  - 'Contributor agreement': contrib.md
+  - 'Cypher coverage': cypher_support.md
+  - 'References': References.md
+  - 'Known limitations': known_limitations.md
 
 markdown_extensions:
   - admonition
@@ -41,3 +46,8 @@ markdown_extensions:
       guess_lang: False
   - toc:
       permalink: True
+
+plugins:
+  - search
+  - versions-menu
+

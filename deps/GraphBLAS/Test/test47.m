@@ -1,7 +1,7 @@
 function test47
 %TEST47 prformance test of GrB_vxm
 
-% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 % http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 rng ('default') ;
@@ -42,7 +42,7 @@ for xnz = [100:100:1000 2000:1000:72000]
     tic
     c2 = GB_mex_vxm (w, [],[], semiring, x, A, d2) ;
     t2 = toc ;
-    [t2 method] = gbresults ;
+    [t2 method] = grbresults ;
 
     tic
     c0 = x'*A ;

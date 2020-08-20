@@ -2,7 +2,7 @@
 // GxB_Matrix_Option_get: get an option in a matrix
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -23,7 +23,7 @@ GrB_Info GxB_Matrix_Option_get      // gets the current option of a matrix
 
     GB_WHERE ("GxB_Matrix_Option_get (A, field, &value)") ;
     GB_RETURN_IF_NULL_OR_FAULTY (A) ;
-    ASSERT_OK (GB_check (A, "A to get option", GB0)) ;
+    ASSERT_MATRIX_OK (A, "A to get option", GB0) ;
 
     //--------------------------------------------------------------------------
     // get the option

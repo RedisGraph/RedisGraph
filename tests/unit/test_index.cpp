@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -44,6 +44,7 @@ class IndexTest: public ::testing::Test {
 		gc->index_count = 0;
 		gc->graph_name = strdup("G");
 		gc->attributes = raxNew();
+		pthread_rwlock_init(&gc->_attribute_rwlock, NULL);
 		gc->string_mapping = (char **)array_new(char *, 64);
 		gc->node_schemas = (Schema **)array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
 		gc->relation_schemas = (Schema **)array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
@@ -70,6 +71,7 @@ class IndexTest: public ::testing::Test {
 };
 
 TEST_F(IndexTest, Index_New) {
+	GraphContext *gc = QueryCtx_GetGraphCtx();
 	const char *l = "Person";
 	Index *idx = Index_New(l, IDX_EXACT_MATCH);
 
@@ -78,16 +80,20 @@ TEST_F(IndexTest, Index_New) {
 	ASSERT_STREQ(label, l);
 
 	const char *field = "name";
-	ASSERT_FALSE(Index_ContainsField(idx, field));
+	Attribute_ID name_attribute_id = GraphContext_GetAttributeID(gc, "name");
+	ASSERT_FALSE(Index_ContainsAttribute(idx, name_attribute_id));
 	Index_AddField(idx, field);
 	Index_AddField(idx, field);
-	ASSERT_TRUE(Index_ContainsField(idx, field));
+	name_attribute_id = GraphContext_GetAttributeID(gc, "name");
+	ASSERT_TRUE(Index_ContainsAttribute(idx, name_attribute_id));
 
 	field = "age";
-	ASSERT_FALSE(Index_ContainsField(idx, field));
+	Attribute_ID age_attribute_id = GraphContext_GetAttributeID(gc, "age");
+	ASSERT_FALSE(Index_ContainsAttribute(idx, age_attribute_id));
 	Index_AddField(idx, field);
 	Index_AddField(idx, field);
-	ASSERT_TRUE(Index_ContainsField(idx, field));
+	age_attribute_id = GraphContext_GetAttributeID(gc, "age");
+	ASSERT_TRUE(Index_ContainsAttribute(idx, age_attribute_id));
 
 	// Returns number of fields indexed.
 	uint field_count = Index_FieldsCount(idx);
@@ -100,13 +106,13 @@ TEST_F(IndexTest, Index_New) {
 
 	Index_RemoveField(idx, "age");
 	Index_RemoveField(idx, "age");
-	ASSERT_FALSE(Index_ContainsField(idx, "age"));
-	ASSERT_TRUE(Index_ContainsField(idx, "name"));
+	ASSERT_FALSE(Index_ContainsAttribute(idx, age_attribute_id));
+	ASSERT_TRUE(Index_ContainsAttribute(idx, name_attribute_id));
 
 	Index_RemoveField(idx, "name");
 	Index_RemoveField(idx, "name");
-	ASSERT_FALSE(Index_ContainsField(idx, "age"));
-	ASSERT_FALSE(Index_ContainsField(idx, "name"));
+	ASSERT_FALSE(Index_ContainsAttribute(idx, age_attribute_id));
+	ASSERT_FALSE(Index_ContainsAttribute(idx, name_attribute_id));
 
 	Index_Free(idx);
 }

@@ -1,15 +1,13 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#ifndef __EXECUTION_PLAN_OPTIMIZER_H__
-#define __EXECUTION_PLAN_OPTIMIZER_H__
+#pragma once
 
 #include "../execution_plan.h"
 
 /* Try to optimize an execution plan segment. */
-void optimizePlan(GraphContext *gc, ExecutionPlan *plan);
+void optimizePlan(ExecutionPlan *plan);
 
-#endif

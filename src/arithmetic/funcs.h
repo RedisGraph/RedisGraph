@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -13,6 +13,9 @@
 #include "boolean_funcs/boolean_funcs.h"
 #include "numeric_funcs/numeric_funcs.h"
 #include "conditional_funcs/conditional_funcs.h"
+#include "comprehension_funcs/comprehension_funcs.h"
+#include "path_funcs/path_funcs.h"
+#include "placeholder_funcs/placeholder_funcs.h"
 
 /* Registers all arithmetic functions. */
 void AR_RegisterFuncs();

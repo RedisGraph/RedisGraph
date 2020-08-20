@@ -1,4 +1,8 @@
 % test GxB_select
+
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 clear all
 make
 
@@ -6,7 +10,7 @@ for k = [1 2 4 8 ] % 16 32]
     nthreads_set (k)
 
     debug_on
-    gb
+    grbinfo
     stat
 
     test129 %GxB_select (tril and nonzero, hypersparse)
@@ -17,7 +21,7 @@ for k = [1 2 4 8 ] % 16 32]
     test25  % built-in, exhaustive test
 
     debug_off
-    gb
+    grbinfo
     stat
 
     test129 %GxB_select (tril and nonzero, hypersparse)

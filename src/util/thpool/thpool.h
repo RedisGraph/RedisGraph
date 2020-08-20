@@ -180,6 +180,26 @@ void thpool_destroy(threadpool);
 int thpool_num_threads_working(threadpool);
 
 
+/**
+ * @brief Returns number of threads in pool.
+ *
+ * Alive threads are the threads that are either performing work or are idle.
+ *
+ * @param threadpool     the threadpool of interest
+ * @return integer       number of alive threads
+ */
+int thpool_num_threads(threadpool);
+
+
+/**
+ * @brief Returns friendly id associated with thread.
+ *
+ * @param threadpool    the threadpool of interest
+ * @param pthread_t     the thread of interest
+ * @return integer      friendly thread id
+ */
+int thpool_get_thread_id(threadpool, pthread_t);
+
 #ifdef __cplusplus
 }
 #endif

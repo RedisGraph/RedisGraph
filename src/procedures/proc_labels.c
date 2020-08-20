@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -19,8 +19,8 @@ typedef struct {
 	SIValue *output;    // Output label.
 } LabelsContext;
 
-ProcedureResult Proc_LabelsInvoke(ProcedureCtx *ctx, const char **args) {
-	if(array_len(args) != 0) return PROCEDURE_ERR;
+ProcedureResult Proc_LabelsInvoke(ProcedureCtx *ctx, const SIValue *args) {
+	if(array_len((SIValue *)args) != 0) return PROCEDURE_ERR;
 
 	LabelsContext *pdata = rm_malloc(sizeof(LabelsContext));
 	pdata->schema_id = 0;
@@ -74,7 +74,8 @@ ProcedureCtx *Proc_LabelsCtx() {
 								   Proc_LabelsStep,
 								   Proc_LabelsInvoke,
 								   Proc_LabelsFree,
-								   privateData);
+								   privateData,
+								   true);
 	return ctx;
 }
 

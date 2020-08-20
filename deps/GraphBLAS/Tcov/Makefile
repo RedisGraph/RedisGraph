@@ -2,8 +2,8 @@
 # GraphBLAS/Tcov/Makefile
 #-------------------------------------------------------------------------------
 
-#  SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
-#  http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+# SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+# http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 #-------------------------------------------------------------------------------
 
@@ -56,7 +56,7 @@ clean:
 	$(RM) *.o
 
 distclean: clean
-	$(RM) *.mex* tmp*/* errlog*.txt gbstat.mat fprint.txt
+	$(RM) *.mex* tmp*/* errlog*.txt grbstat.mat fprint.txt
 	$(RM) libgraphblas_tcov.*
 
 purge: distclean

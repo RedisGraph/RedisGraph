@@ -2,7 +2,7 @@
 // GxB_UnaryOp_xtype: return the type of x for z=f(x)
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -23,7 +23,7 @@ GrB_Info GxB_UnaryOp_xtype          // return the type of x
     GB_WHERE ("GxB_UnaryOp_xtype (&xtype, unaryop)") ;
     GB_RETURN_IF_NULL (xtype) ;
     GB_RETURN_IF_NULL_OR_FAULTY (unaryop) ;
-    ASSERT_OK (GB_check (unaryop, "unaryop for xtype", GB0)) ;
+    ASSERT_UNARYOP_OK (unaryop, "unaryop for xtype", GB0) ;
 
     //--------------------------------------------------------------------------
     // return the xtype

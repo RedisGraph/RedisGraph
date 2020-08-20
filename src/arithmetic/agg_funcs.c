@@ -1,5 +1,5 @@
 /*
-* Copyright 2018-2019 Redis Labs Ltd. and Contributors
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
 *
 * This file is available under the Redis Labs Source Available License Agreement
 */
@@ -194,6 +194,7 @@ void __agg_maxCtxFree(AggCtx *ctx) {
 
 void *__agg_maxCtxNew() {
 	__agg_maxCtx *ac = rm_malloc(sizeof(__agg_maxCtx));
+	ac->max = SI_NullVal();
 	ac->init = false;
 	return ac;
 }
@@ -238,6 +239,7 @@ int __agg_minReduceNext(AggCtx *ctx) {
 
 void *__agg_minCtxNew() {
 	__agg_minCtx *ac = rm_malloc(sizeof(__agg_minCtx));
+	ac->min = SI_NullVal();
 	ac->init = false;
 	return ac;
 }
@@ -370,6 +372,11 @@ int __agg_percDistinctStep(AggCtx *ctx, SIValue *argv, int argc) {
 int __agg_percDiscReduceNext(AggCtx *ctx) {
 	__agg_percCtx *ac = Agg_FuncCtx(ctx);
 
+	if(ac->count == 0) {
+		Agg_SetResult(ctx, SI_NullVal());
+		return AGG_OK;
+	}
+
 	QSORT(double, ac->values, ac->count, ISLT);
 
 	// If ac->percentile == 0, employing this formula would give an index of -1
@@ -384,6 +391,11 @@ int __agg_percContReduceNext(AggCtx *ctx) {
 	__agg_percCtx *ac = Agg_FuncCtx(ctx);
 
 	QSORT(double, ac->values, ac->count, ISLT);
+
+	if(ac->count == 0) {
+		Agg_SetResult(ctx, SI_NullVal());
+		return AGG_OK;
+	}
 
 	if(ac->percentile == 1.0 || ac->count == 1) {
 		Agg_SetResult(ctx, SI_DoubleVal(ac->values[ac->count - 1]));
@@ -569,6 +581,8 @@ int __agg_collectStep(AggCtx *ctx, SIValue *argv, int argc) {
 
 	SIValue value = argv[0];
 	if(value.type == T_NULL) return AGG_OK;
+	/* SIArray_Append will clone the added value, ensuring it can be
+	 * safely accessed for the lifetime of the Collect context. */
 	SIArray_Append(&ac->list, value);
 	return AGG_OK;
 }
@@ -584,7 +598,11 @@ int __agg_collectDistinctStep(AggCtx *ctx, SIValue *argv, int argc) {
 
 int __agg_collectReduceNext(AggCtx *ctx) {
 	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
-	Agg_SetResult(ctx, ac->list);
+	/* Share the Collect context's internal list with the caller,
+	 * as the Collect context owns this allocation. The caller is responsible for
+	 * persisting the value if it will be accessed after the Collect context is freed. */
+	SIValue result = SI_ShareValue(ac->list);
+	Agg_SetResult(ctx, result);
 	return AGG_OK;
 }
 
@@ -599,6 +617,7 @@ void *__agg_collectCtxNew(AggCtx *ctx) {
 void __agg_collectCtxFree(AggCtx *ctx) {
 	__agg_collectCtx *ac = Agg_FuncCtx(ctx);
 	if(ac->hashSet) Set_Free(ac->hashSet);
+	SIValue_Free(ac->list);
 	rm_free(ac);
 }
 
@@ -626,3 +645,4 @@ void Agg_RegisterFuncs() {
 	Agg_RegisterFunc("stDevP", Agg_StdevPFunc);
 	Agg_RegisterFunc("collect", Agg_CollectFunc);
 }
+

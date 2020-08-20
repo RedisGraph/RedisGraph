@@ -1,6 +1,9 @@
 function test121
 %TEST121 performance tests for GrB_assign
 
+% SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+% http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
 fprintf ('test121:---------------- C(I,J)+=A performance\n') ;
 
 [save save_chunk] = nthreads_get ;
@@ -49,7 +52,7 @@ for dc = [ 0 1e-6 1e-5 1e-4 ]
 
             C2 = GB_mex_assign (C0, [ ], 'plus', A, I0, I0) ;
             C2 = GB_mex_assign (C0, [ ], 'plus', A, I0, I0) ;
-            tg = gbresults ;
+            tg = grbresults ;
             assert (isequal (C1, C2.matrix)) ;
             if (nthreads == 1)
                 t1 = tg ;

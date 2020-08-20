@@ -2,6 +2,11 @@
 // GraphBLAS/Demo/Program/pthread_demo: example of user multithreading
 //------------------------------------------------------------------------------
 
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
+// http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
+
+//------------------------------------------------------------------------------
+
 // This demo requires pthreads, and should work if GraphBLAS is compiled to
 // use either OpenMP or pthreads to synchronize multiple user threadds.
 
@@ -60,7 +65,7 @@ void *worker (void *arg)
     GrB_Matrix A = my->A ;
 
     // worker generates an intentional error message
-    GrB_Matrix_setElement (A, 42, 1000+id, 1000+id) ;
+    GrB_Matrix_setElement_INT32 (A, 42, 1000+id, 1000+id) ;
 
     // print the intentional error generated when the worker started
     pthread_mutex_lock (&sync) ;
@@ -78,7 +83,7 @@ void *worker (void *arg)
             for (int j = 0 ; j < N ; j++)
             {
                 double x = (i+1)*100000 + (j+1)*1000 + id ;
-                OK (GrB_Matrix_setElement (A, x, i, j)) ;
+                OK (GrB_Matrix_setElement_FP64 (A, x, i, j)) ;
             } 
         }
 
@@ -98,13 +103,13 @@ void *worker (void *arg)
     {
         // critical section
         printf ("\n----------------- worker %d is done:\n", id) ;
-        info2 = GxB_print (A, GxB_SHORT) ;
+        info2 = GxB_Matrix_fprint (A, "A", GxB_SHORT, stdout) ;
     }
     pthread_mutex_unlock (&sync) ;
     OK (info2) ;
 
     // worker generates an intentional error message
-    GrB_Matrix_setElement (A, 42, 1000+id, 1000+id) ;
+    GrB_Matrix_setElement_INT32 (A, 42, 1000+id, 1000+id) ;
 
     // print the intentional error generated when the worker started
     // It should be unchanged.
@@ -133,10 +138,13 @@ int main (int argc, char **argv)
 
     // start GraphBLAS
     OK (GrB_init (GrB_NONBLOCKING)) ;
+    int nthreads ;
+    OK (GxB_get (GxB_NTHREADS, &nthreads)) ;
+    printf ("pthread demo, nthreads: %d\n", nthreads) ;
 
     // Determine which user-threading model is being used.
     GxB_Thread_Model thread_safety ;
-    GxB_get (GxB_THREAD_SAFETY, &thread_safety) ;
+    GxB_Global_Option_get (GxB_THREAD_SAFETY, &thread_safety) ;
     printf ("GraphBLAS is using ") ;
     switch (thread_safety)
     {
@@ -180,8 +188,8 @@ int main (int argc, char **argv)
     {
         GrB_Matrix A = arg [id].A ;
         printf ("\n---- Master prints matrix %d\n", id) ;
-        OK (GxB_print (A, GxB_SHORT)) ;
-        GrB_free (&A) ;
+        OK (GxB_Matrix_fprint (A, "A", GxB_SHORT, stdout)) ;
+        GrB_Matrix_free (&A) ;
     }
 
     // print an error message

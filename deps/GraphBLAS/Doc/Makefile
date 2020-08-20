@@ -18,9 +18,6 @@ GraphBLAS_UserGuide.pdf: GraphBLAS_UserGuide.tex GraphBLAS_UserGuide.bib \
 	pdflatex GraphBLAS_UserGuide.tex
 
 clean:
-	- $(RM) -rf html/*.png
-	- $(RM) -rf html/*.html
-	- $(RM) -rf html/*
 	- $(RM) -r *.out *.aux *.log *.bbl *.blg *.toc
 
 purge: clean

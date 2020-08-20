@@ -59,7 +59,6 @@ Feature: UnwindAcceptance
             | 3 |
         And no side effects
 
-    @skip
     Scenario: Unwinding a concatenation of lists
         Given any graph
         When executing query:
@@ -78,7 +77,6 @@ Feature: UnwindAcceptance
             | 6 |
         And no side effects
 
-    @skip
     Scenario: Unwinding a collected unwound expression
         Given any graph
         When executing query:
@@ -94,7 +92,6 @@ Feature: UnwindAcceptance
             | 2 |
         And no side effects
 
-    @skip
     Scenario: Unwinding a collected expression
         Given an empty graph
         And having executed:
@@ -114,6 +111,7 @@ Feature: UnwindAcceptance
             | 2       |
         And no side effects
 
+    @crash
     @skip
     Scenario: Creating nodes from an unwound parameter list
         Given an empty graph
@@ -122,6 +120,7 @@ Feature: UnwindAcceptance
             CREATE (:Year {year: 2016})
             """
         And parameters are:
+            | name   | value                                      |
             | events | [{year: 2016, id: 1}, {year: 2016, id: 2}] |
         When executing query:
             """
@@ -142,7 +141,6 @@ Feature: UnwindAcceptance
             | +labels        | 1 |
             | +properties    | 2 |
 
-    @skip
     Scenario: Double unwinding a list of lists
         Given any graph
         When executing query:
@@ -206,7 +204,6 @@ Feature: UnwindAcceptance
             | 5         |
         And no side effects
 
-    @skip
     Scenario: Unwind does not prune context
         Given any graph
         When executing query:
@@ -222,7 +219,6 @@ Feature: UnwindAcceptance
             | [1, 2, 3] | 3 |
         And no side effects
 
-    @skip
     Scenario: Unwind does not remove variables from scope
         Given an empty graph
         And having executed:
@@ -247,7 +243,6 @@ Feature: UnwindAcceptance
             | (:S) | (:E) |
         And no side effects
 
-    @skip
     Scenario: Multiple unwinds after each other
         Given any graph
         When executing query:
@@ -270,10 +265,12 @@ Feature: UnwindAcceptance
             | 2 | [1, 2] | 4 | [3, 4] | 6 | [5, 6] |
         And no side effects
 
+    @crash
     @skip
     Scenario: Unwind with merge
         Given an empty graph
         And parameters are:
+            | name  | value                                                                |
             | props | [{login: 'login1', name: 'name1'}, {login: 'login2', name: 'name2'}] |
         When executing query:
             """

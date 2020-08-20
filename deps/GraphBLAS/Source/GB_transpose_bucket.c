@@ -2,7 +2,7 @@
 // GB_transpose_bucket: transpose and optionally typecast and/or apply operator
 //------------------------------------------------------------------------------
 
-// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2019, All Rights Reserved.
+// SuiteSparse:GraphBLAS, Timothy A. Davis, (c) 2017-2020, All Rights Reserved.
 // http://suitesparse.com   See GraphBLAS/Doc/License.txt for license.
 
 //------------------------------------------------------------------------------
@@ -38,12 +38,17 @@
 
 #include "GB_transpose.h"
 
-#define GB_FREE_WORK                                                    \
-{                                                                       \
-    for (int taskid = 0 ; taskid < naslice ; taskid++)                  \
-    {                                                                   \
-        GB_FREE_MEMORY (Rowcounts [taskid], vlen+1, sizeof (int64_t)) ; \
-    }                                                                   \
+#define GB_FREE_WORK                                                        \
+{                                                                           \
+    if (Rowcounts != NULL)                                                  \
+    {                                                                       \
+        for (int taskid = 0 ; taskid < naslice ; taskid++)                  \
+        {                                                                   \
+            GB_FREE_MEMORY (Rowcounts [taskid], vlen+1, sizeof (int64_t)) ; \
+        }                                                                   \
+    }                                                                       \
+    GB_FREE_MEMORY (Rowcounts, naslice, sizeof (int64_t *)) ;               \
+    GB_FREE_MEMORY (A_slice, naslice+1, sizeof (int64_t)) ;                 \
 }
 
 #define GB_FREE_ALL                                                     \
@@ -69,14 +74,14 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
 
     ASSERT (Chandle != NULL) ;
     (*Chandle) = NULL ;
-    ASSERT_OK (GB_check (ctype, "ctype for transpose", GB0)) ;
+    ASSERT_TYPE_OK (ctype, "ctype for transpose", GB0) ;
     // OK if the matrix A is jumbled; this function is intended to sort it.
-    ASSERT_OK_OR_JUMBLED (GB_check (A, "A input for transpose_bucket", GB0)) ;
+    ASSERT_MATRIX_OK_OR_JUMBLED (A, "A input for transpose_bucket", GB0) ;
     ASSERT (!GB_PENDING (A)) ; ASSERT (!GB_ZOMBIES (A)) ;
 
     if (op != NULL)
     { 
-        ASSERT_OK (GB_check (op, "op for transpose", GB0)) ;
+        ASSERT_UNARYOP_OK (op, "op for transpose", GB0) ;
         ASSERT (ctype == op->ztype) ;
         ASSERT (GB_Type_compatible (A->type, op->xtype)) ;
     }
@@ -108,15 +113,8 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
 
     int naslice = GB_nthreads (anz, GB_IMAX (vlen, chunk), nthreads_max) ;
 
-    //--------------------------------------------------------------------------
-    // initialze the row count arrays
-    //--------------------------------------------------------------------------
-
-    int64_t *Rowcounts [naslice] ;
-    for (int taskid = 0 ; taskid < naslice ; taskid++)
-    {
-        Rowcounts [taskid] = NULL ;
-    }
+    int64_t *GB_RESTRICT A_slice = NULL ;          // size naslice+1
+    int64_t *GB_RESTRICT *Rowcounts = NULL ;       // size naslice
 
     //--------------------------------------------------------------------------
     // allocate C: always non-hypersparse
@@ -132,11 +130,19 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
         GB_FORCE_NONHYPER, A->hyper_ratio, vlen, anz, true, Context) ;
     GB_OK (info) ;
 
-    int64_t *restrict Cp = C->p ;
+    int64_t *GB_RESTRICT Cp = C->p ;
 
     //--------------------------------------------------------------------------
     // allocate workspace
     //--------------------------------------------------------------------------
+
+    GB_CALLOC_MEMORY (Rowcounts, naslice, sizeof (int64_t *)) ;
+    if (Rowcounts == NULL)
+    { 
+        // out of memory
+        GB_FREE_ALL ;
+        return (GB_OUT_OF_MEMORY) ;
+    }
 
     for (int taskid = 0 ; taskid < naslice ; taskid++)
     {
@@ -157,8 +163,13 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
 
     // create the iterator for A
     GBI_single_iterator Iter ;
-    int64_t A_slice [naslice+1] ;
-    GB_pslice (A_slice, /* A */ A->p, A->nvec, naslice) ;
+    if (!GB_pslice (&A_slice, /* A */ A->p, A->nvec, naslice))
+    { 
+        // out of memory
+        GB_FREE_ALL ;
+        return (GB_OUT_OF_MEMORY) ;
+    }
+
     GBI1_init (&Iter, A) ;
 
     // sum up the row counts and find C->p
@@ -170,8 +181,8 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
         //----------------------------------------------------------------------
 
         // compute the row counts of A.  No need to scan the A->p pointers
-        int64_t *restrict rowcount = Rowcounts [0] ;
-        const int64_t *restrict Ai = A->i ;
+        int64_t *GB_RESTRICT rowcount = Rowcounts [0] ;
+        const int64_t *GB_RESTRICT Ai = A->i ;
         for (int64_t p = 0 ; p < anz ; p++)
         { 
             rowcount [Ai [p]]++ ;
@@ -194,13 +205,14 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
         #include "GB_unaryop_transpose.c"
 
         // cumulative sum of the rowcounts across the slices
+        int64_t i ;
         #pragma omp parallel for num_threads(nthreads) schedule(static)
-        for (int64_t i = 0 ; i < vlen ; i++)
+        for (i = 0 ; i < vlen ; i++)
         {
             int64_t s = 0 ;
             for (int taskid = 0 ; taskid < naslice ; taskid++)
             { 
-                int64_t *restrict rowcount = Rowcounts [taskid] ;
+                int64_t *GB_RESTRICT rowcount = Rowcounts [taskid] ;
                 int64_t c = rowcount [i] ;
                 rowcount [i] = s ;
                 s += c ;
@@ -214,14 +226,14 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
 
         // add Cp back to all Rowcounts
         #pragma omp parallel for num_threads(nthreads) schedule(static)
-        for (int64_t i = 0 ; i < vlen ; i++)
+        for (i = 0 ; i < vlen ; i++)
         {
             int64_t s = Cp [i] ;
-            int64_t *restrict rowcount = Rowcounts [0] ;
+            int64_t *GB_RESTRICT rowcount = Rowcounts [0] ;
             rowcount [i] = s ;
             for (int taskid = 1 ; taskid < naslice ; taskid++)
             { 
-                int64_t *restrict rowcount = Rowcounts [taskid] ;
+                int64_t *GB_RESTRICT rowcount = Rowcounts [taskid] ;
                 rowcount [i] += s ;
             }
         }
@@ -250,7 +262,7 @@ GrB_Info GB_transpose_bucket    // bucket transpose; typecast and apply op
     //--------------------------------------------------------------------------
 
     GB_FREE_WORK ;
-    ASSERT_OK (GB_check (C, "C transpose of A", GB0)) ;
+    ASSERT_MATRIX_OK (C, "C transpose of A", GB0) ;
     ASSERT (!C->is_hyper) ;
     (*Chandle) = C ;
     return (GrB_SUCCESS) ;

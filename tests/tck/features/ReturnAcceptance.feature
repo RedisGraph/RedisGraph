@@ -108,7 +108,6 @@ Feature: ReturnAcceptanceTest
       | ({name: 'E'}) |
     And no side effects
 
-@skip
   Scenario: Start the result from the second row by param
     Given an empty graph
     And having executed:
@@ -120,7 +119,8 @@ Feature: ReturnAcceptanceTest
         ({name: 'E'})
       """
     And parameters are:
-      | skipAmount | 2 |
+      | name       | value |
+      | skipAmount |  2    |
     When executing query:
       """
       MATCH (n)
@@ -159,7 +159,6 @@ Feature: ReturnAcceptanceTest
       | ({name: 'D'}) |
     And no side effects
 
-@skip
   Scenario: Get rows in the middle by param
     Given an empty graph
     And having executed:
@@ -171,8 +170,9 @@ Feature: ReturnAcceptanceTest
         ({name: 'E'})
       """
     And parameters are:
-      | s | 2 |
-      | l | 2 |
+      | name | value |
+      | s    | 2     |
+      | l    | 2     |
     When executing query:
       """
       MATCH (n)
@@ -285,7 +285,6 @@ Feature: ReturnAcceptanceTest
       | -15                  |
     And no side effects
 
-@skip
   Scenario: Count star should count everything in scope
     Given an empty graph
     And having executed:
