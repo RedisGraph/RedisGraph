@@ -17,11 +17,10 @@
  * Scans entire graph */
 typedef struct {
 	OpBase op;
-	const QGNode *n;
 	uint nodeRecIdx;
 	DataBlockIterator *iter;
 	Record child_record;        /* The Record this op acts on if it is not a tap. */
 } AllNodeScan;
 
-OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const QGNode *n);
+OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const char *alias);
 

@@ -17,7 +17,7 @@ static OpBase *NodeByIdSeekClone(const ExecutionPlan *plan, const OpBase *opBase
 static void NodeByIdSeekFree(OpBase *opBase);
 
 static inline int NodeByIdSeekToString(const OpBase *ctx, char *buf, uint buf_len) {
-	return ScanToString(ctx, buf, buf_len, ((const NodeByIdSeek *)ctx)->n);
+	return ScanToString(ctx, buf, buf_len, ctx->modifies[0], NULL);
 }
 
 // Checks to see if operation index is within its bounds.
@@ -28,11 +28,10 @@ static inline bool _outOfBounds(NodeByIdSeek *op) {
 	return false;
 }
 
-OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const QGNode *n, UnsignedRange *id_range) {
+OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const char *alias, UnsignedRange *id_range) {
 
 	NodeByIdSeek *op = rm_malloc(sizeof(NodeByIdSeek));
 	op->g = QueryCtx_GetGraph();
-	op->n = n;
 	op->child_record = NULL;
 
 	op->minId = id_range->include_min ? id_range->min : id_range->min + 1;
@@ -47,7 +46,7 @@ OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const QGNode *n, UnsignedRa
 				NodeByIdSeekConsume, NodeByIdSeekReset, NodeByIdSeekToString, NodeByIdSeekClone, NodeByIdSeekFree,
 				false, plan);
 
-	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
+	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, alias);
 
 	return (OpBase *)op;
 }
@@ -144,7 +143,7 @@ static OpBase *NodeByIdSeekClone(const ExecutionPlan *plan, const OpBase *opBase
 	 * the clone will set its values to be the same as in the origin. */
 	range.include_min = true;
 	range.include_max = true;
-	return NewNodeByIdSeekOp(plan, op->n, &range);
+	return NewNodeByIdSeekOp(plan, opBase->modifies[0], &range);
 }
 
 static void NodeByIdSeekFree(OpBase *opBase) {

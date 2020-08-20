@@ -78,7 +78,7 @@ void reduceTraversal(ExecutionPlan *plan) {
 		}
 
 		/* Both src and dest are already known
-		 * perform expand into instaed of traverse. */
+		 * perform expand into instead of traverse. */
 		if(op->type == OPType_CONDITIONAL_TRAVERSE) {
 			CondTraverse *traverse = (CondTraverse *)op;
 			const ExecutionPlan *traverse_plan = traverse->op.plan;

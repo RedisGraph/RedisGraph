@@ -15,10 +15,11 @@ static OpResult IndexScanReset(OpBase *opBase);
 static void IndexScanFree(OpBase *opBase);
 
 static int IndexScanToString(const OpBase *ctx, char *buf, uint buf_len) {
-	return ScanToString(ctx, buf, buf_len, ((const IndexScan *)ctx)->n);
+	IndexScan *op = (IndexScan *)ctx;
+	return ScanToString(ctx, buf, buf_len, ctx->modifies[0], op->n.label);
 }
 
-OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, const QGNode *n, RSIndex *idx,
+OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, LabeledNodeCtx n, RSIndex *idx,
 					   RSQNode *rs_query_node) {
 	IndexScan *op = rm_malloc(sizeof(IndexScan));
 	op->g = g;
@@ -32,7 +33,7 @@ OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, const QGNode *n, RSI
 	OpBase_Init((OpBase *)op, OPType_INDEX_SCAN, "Index Scan", IndexScanInit, IndexScanConsume,
 				IndexScanReset, IndexScanToString, NULL, IndexScanFree, false, plan);
 
-	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
+	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n.alias);
 	return (OpBase *)op;
 }
 
@@ -43,7 +44,7 @@ static OpResult IndexScanInit(OpBase *opBase) {
 
 static inline void _UpdateRecord(IndexScan *op, Record r, EntityID node_id) {
 	// Populate the Record with the graph entity data.
-	Node n = GE_NEW_LABELED_NODE(op->n->label, op->n->labelID);
+	Node n = GE_NEW_LABELED_NODE(op->n.label, op->n.label_id);
 	assert(Graph_GetNode(op->g, node_id, &n));
 	// Get a pointer to the node's allocated space within the Record.
 	Record_AddNode(r, op->nodeRecIdx, n);

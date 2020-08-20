@@ -17,12 +17,11 @@ static OpBase *AllNodeScanClone(const ExecutionPlan *plan, const OpBase *opBase)
 static void AllNodeScanFree(OpBase *opBase);
 
 static inline int AllNodeScanToString(const OpBase *ctx, char *buf, uint buf_len) {
-	return ScanToString(ctx, buf, buf_len, ((const AllNodeScan *)ctx)->n);
+	return ScanToString(ctx, buf, buf_len, ctx->modifies[0], NULL);
 }
 
-OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const QGNode *n) {
+OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const char *alias) {
 	AllNodeScan *op = rm_malloc(sizeof(AllNodeScan));
-	op->n = n;
 	op->iter = NULL;
 	op->child_record = NULL;
 
@@ -30,7 +29,7 @@ OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const QGNode *n) {
 	OpBase_Init((OpBase *)op, OPType_ALL_NODE_SCAN, "All Node Scan", AllNodeScanInit,
 				AllNodeScanConsume, AllNodeScanReset, AllNodeScanToString, AllNodeScanClone, AllNodeScanFree, false,
 				plan);
-	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, n->alias);
+	op->nodeRecIdx = OpBase_Modifies((OpBase *)op, alias);
 	return (OpBase *)op;
 }
 
@@ -97,8 +96,7 @@ static OpResult AllNodeScanReset(OpBase *op) {
 
 static inline OpBase *AllNodeScanClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	assert(opBase->type == OPType_ALL_NODE_SCAN);
-	AllNodeScan *allNodeScan = (AllNodeScan *)opBase;
-	return NewAllNodeScanOp(plan, allNodeScan->n);
+	return NewAllNodeScanOp(plan, opBase->modifies[0]);
 }
 
 static void AllNodeScanFree(OpBase *ctx) {

@@ -43,9 +43,13 @@ int TraversalToString(const OpBase *op, char *buf, uint buf_len, AlgebraicExpres
 	return offset;
 }
 
-int ScanToString(const OpBase *op, char *buf, uint buf_len, const QGNode *n) {
+int ScanToString(const OpBase *op, char *buf, uint buf_len, const char *alias, const char *label) {
 	int offset = snprintf(buf, buf_len, "%s | ", op->name);
-	offset += QGNode_ToString(n, buf + offset, buf_len - offset);
+
+	offset += snprintf(buf + offset, buf_len - offset, "(");
+	if(alias) offset += snprintf(buf + offset, buf_len - offset, "%s", alias);
+	if(label) offset += snprintf(buf + offset, buf_len - offset, ":%s", label);
+	offset += snprintf(buf + offset, buf_len - offset, ")");
 	return offset;
 }
 

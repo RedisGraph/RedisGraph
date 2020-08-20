@@ -12,13 +12,12 @@
 #include <assert.h>
 #include "../../query_ctx.h"
 
-static OpBase *_LabelScanToConditionalTraverse(NodeByLabelScan *label_scan) {
-	AST *ast = QueryCtx_GetAST();
+static OpBase *_LabelScanToConditionalTraverse(NodeByLabelScan *op) {
 	Graph *g = QueryCtx_GetGraph();
-	const QGNode *n = label_scan->n;
-	AlgebraicExpression *ae = AlgebraicExpression_NewOperand(GrB_NULL, true, n->alias, n->alias, NULL,
-															 n->label);
-	return NewCondTraverseOp(label_scan->op.plan, g, ae);
+	const char *alias = op->op.modifies[0];
+	AlgebraicExpression *ae = AlgebraicExpression_NewOperand(GrB_NULL, true, alias, alias, NULL,
+															 op->n.label);
+	return NewCondTraverseOp(op->op.plan, g, ae);
 }
 
 static void _reduceScans(ExecutionPlan *plan, OpBase *scan) {
