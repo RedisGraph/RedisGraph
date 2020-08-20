@@ -247,3 +247,20 @@ class testPathFilter(FlowTestsBase):
         expected_result = [['a'],
                            ['b']]
         self.env.assertEquals(result_set.result_set, expected_result)
+
+    def test12_label_introduced_in_path_filter(self):
+        # Build a graph with 2 nodes connected by 1 edge.
+        node0 = Node(node_id=0, label="L", properties={'x': 'a'})
+        node1 = Node(node_id=1, label="L", properties={'x': 'b'})
+        edge01 = Edge(src_node=node0, dest_node=node1, relation="R")
+        redis_graph.add_node(node0)
+        redis_graph.add_node(node1)
+        redis_graph.add_edge(edge01)
+        redis_graph.flush()
+
+        # Write a WHERE filter that introduces label data.
+        query = "MATCH (a1)-[]->(a2) WHERE (a1:L)-[]->(a2:L) return a1.x, a2.x"
+        result_set = redis_graph.query(query)
+        # The WHERE filter evaluates to false, no results should be returned.
+        expected_result = [['a', 'b']]
+        self.env.assertEquals(result_set.result_set, expected_result)

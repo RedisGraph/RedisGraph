@@ -215,3 +215,13 @@ class testOptionalFlow(FlowTestsBase):
                            [nodes['v1'], nodes['v2'], 'E1'],
                            [nodes['v2'], nodes['v3'], 'E2']]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test17_optional_label_introductions(self):
+        global redis_graph
+        query = """MATCH (a) OPTIONAL MATCH (a:L)-[]->(b:L) RETURN a.v, b.v ORDER BY a.v, b.v"""
+        actual_result = redis_graph.query(query)
+        expected_result = [['v1', 'v2'],
+                           ['v2', 'v3'],
+                           ['v3', None],
+                           ['v4', None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
