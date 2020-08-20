@@ -68,10 +68,10 @@ static bool __AlgebraicExpression_MulOverAdd(AlgebraicExpression **root) {
 			AlgebraicExpression **right_ops = array_new(AlgebraicExpression *, right_op_count);
 
 			for(uint i = 0; i < left_op_count; i++) {
-				left_ops = array_append(left_ops, _AlgebraicExpression_OperationRemoveLeftmostChild(l));
+				left_ops = array_append(left_ops, _AlgebraicExpression_OperationRemoveSource(l));
 			}
 			for(uint i = 0; i < right_op_count; i++) {
-				right_ops = array_append(right_ops, _AlgebraicExpression_OperationRemoveLeftmostChild(r));
+				right_ops = array_append(right_ops, _AlgebraicExpression_OperationRemoveSource(r));
 			}
 
 			assert(AlgebraicExpression_ChildCount(l) == 0 && AlgebraicExpression_ChildCount(r) == 0);
@@ -113,8 +113,8 @@ static bool __AlgebraicExpression_MulOverAdd(AlgebraicExpression **root) {
 				(_AlgebraicExpression_IsAdditionNode(r) && !_AlgebraicExpression_IsAdditionNode(l))) {
 
 			// Disconnect left and right children from root.
-			r = _AlgebraicExpression_OperationRemoveRightmostChild((*root));
-			l = _AlgebraicExpression_OperationRemoveRightmostChild((*root));
+			r = _AlgebraicExpression_OperationRemoveDest((*root));
+			l = _AlgebraicExpression_OperationRemoveDest((*root));
 			assert(AlgebraicExpression_ChildCount(*root) == 0);
 
 			AlgebraicExpression *add = AlgebraicExpression_NewOperation(AL_EXP_ADD);
@@ -132,8 +132,8 @@ static bool __AlgebraicExpression_MulOverAdd(AlgebraicExpression **root) {
 				// Lefthand side is addition.
 				// (A + B) * C = (A * C) + (B * C)
 
-				A = _AlgebraicExpression_OperationRemoveLeftmostChild(l);
-				B = _AlgebraicExpression_OperationRemoveRightmostChild(l);
+				A = _AlgebraicExpression_OperationRemoveSource(l);
+				B = _AlgebraicExpression_OperationRemoveDest(l);
 				C = r;
 
 				AlgebraicExpression_Free(l);
@@ -145,8 +145,8 @@ static bool __AlgebraicExpression_MulOverAdd(AlgebraicExpression **root) {
 				// Righthand side is addition.
 				// C * (A + B) = (C * A) + (C * B)
 
-				A = _AlgebraicExpression_OperationRemoveLeftmostChild(r);
-				B = _AlgebraicExpression_OperationRemoveRightmostChild(r);
+				A = _AlgebraicExpression_OperationRemoveSource(r);
+				B = _AlgebraicExpression_OperationRemoveDest(r);
 				C = l;
 
 				AlgebraicExpression_Free(r);
@@ -276,7 +276,7 @@ static void _Pushdown_TransposeTranspose
 	// T(T(A)) = A
 	// Expecting just a single operand.
 	assert(AlgebraicExpression_ChildCount(exp) == 1);
-	AlgebraicExpression *only_child = _AlgebraicExpression_OperationRemoveRightmostChild(exp);
+	AlgebraicExpression *only_child = _AlgebraicExpression_OperationRemoveDest(exp);
 
 	// Replace Transpose operation with its child.
 	_AlgebraicExpression_InplaceRepurpose(exp, only_child);
@@ -397,7 +397,7 @@ static void _AlgebraicExpression_PushDownTranspose(AlgebraicExpression *root) {
 				_Pushdown_TransposeExp(child);
 				/* Replace Transpose root with transposed expression.
 				 * Remove root only child. */
-				_AlgebraicExpression_OperationRemoveRightmostChild(root);
+				_AlgebraicExpression_OperationRemoveDest(root);
 				_AlgebraicExpression_InplaceRepurpose(root, child);
 
 				/* It is possible for `root` to contain a transpose subexpression
@@ -502,7 +502,7 @@ static void _AlgebraicExpression_ApplyTranspose(AlgebraicExpression *root) {
 		case AL_EXP_TRANSPOSE:
 			assert(AlgebraicExpression_ChildCount(root) == 1 &&
 				   "transpose operation had invalid number of children");
-			child = _AlgebraicExpression_OperationRemoveRightmostChild(root);
+			child = _AlgebraicExpression_OperationRemoveDest(root);
 			// Transpose operands will currently always have an operand child.
 			assert(child->type == AL_OPERAND && "encountered unexpected operation as transpose child");
 			// Transpose the child operand.
