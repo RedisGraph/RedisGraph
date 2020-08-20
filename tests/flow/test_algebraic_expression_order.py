@@ -21,20 +21,20 @@ class testAlgebraicExpressionOrder(FlowTestsBase):
 
     def populate_graph(self):
         # Construct a graph with the form:
-        # (v1:A)-[:E]->(v2:B), (v3:C)-[:E]->(v2)
-        v1 = Node(label="A", properties={"v": 1})
-        graph.add_node(v1)
+        # (a:A)-[:E]->(b:B), (c:C)-[:E]->(b)
+        a = Node(label="A", properties={"v": 1})
+        graph.add_node(a)
 
-        v2 = Node(label="B", properties={"v": 2})
-        graph.add_node(v2)
+        b = Node(label="B", properties={"v": 2})
+        graph.add_node(b)
 
-        v3 = Node(label="C", properties={"v": 3})
-        graph.add_node(v3)
+        c = Node(label="C", properties={"v": 3})
+        graph.add_node(c)
 
-        edge = Edge(v1, "E", v2)
+        edge = Edge(a, "E", b)
         graph.add_edge(edge)
 
-        edge = Edge(v3, "E", v2)
+        edge = Edge(c, "E", b)
         graph.add_edge(edge)
 
         graph.commit()
