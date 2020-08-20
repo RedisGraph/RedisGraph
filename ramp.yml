@@ -14,5 +14,4 @@ capabilities:
     - persistence_aof
     - clustering
     - replica_of
-    - clustering
     - backup_restore
