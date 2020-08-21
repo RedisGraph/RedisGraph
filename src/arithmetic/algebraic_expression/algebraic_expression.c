@@ -347,16 +347,30 @@ AlgebraicExpression *AlgebraicExpression_RemoveSource
 (
 	AlgebraicExpression **root  // Root from which to remove left most child.
 ) {
-	assert(*root);
+	ASSERT(*root);
 	bool transpose = false;
 	AlgebraicExpression *prev = *root;
 	AlgebraicExpression *current = *root;
 
 	while(current->type == AL_OPERATION) {
-		if(current->operation.op == AL_EXP_TRANSPOSE) transpose = !transpose;
 		prev = current;
-		if(transpose) current = LAST_CHILD(current);
-		else current = FIRST_CHILD(current);
+		switch(current->operation.op) {
+			case AL_EXP_TRANSPOSE:
+				transpose = !transpose;
+				current = FIRST_CHILD(current); // transpose have only one child
+				break;
+			case AL_EXP_ADD:
+				// Addition order of operands is not effected by transpose
+				current = FIRST_CHILD(current);
+				break;
+			case AL_EXP_MUL:
+				// Multiplication order of operands depends on transpose
+				if(transpose) current = LAST_CHILD(current);
+				else current = FIRST_CHILD(current);
+				break;
+			default:
+				ASSERT("Unknown algebraic expression operation" && false);
+		}
 	}
 	ASSERT(current->type == AL_OPERAND);
 
@@ -372,13 +386,13 @@ AlgebraicExpression *AlgebraicExpression_RemoveSource
 	case AL_EXP_ADD:
 		/* Transpose ops only have one child and the order of operands for
 		 * addition is not modified by transposition, so always remove the source. */
-		_AlgebraicExpression_OperationRemoveSource(prev);
+		current = _AlgebraicExpression_OperationRemoveSource(prev);
 		break;
 	case AL_EXP_MUL:
-		// Remove the destination if we're in a transposed context,
-		// otherwise remove the source.
-		if(transpose) _AlgebraicExpression_OperationRemoveDest(prev);
-		else _AlgebraicExpression_OperationRemoveSource(prev);
+		/* Remove the destination if we're in a transposed context,
+		 * otherwise remove the source. */
+		if(transpose) current = _AlgebraicExpression_OperationRemoveDest(prev);
+		else current = _AlgebraicExpression_OperationRemoveSource(prev);
 		break;
 	default:
 		ASSERT("Unknown algebraic expression operation" && false);
@@ -396,6 +410,7 @@ AlgebraicExpression *AlgebraicExpression_RemoveSource
 		AlgebraicExpression *replacement = _AlgebraicExpression_OperationRemoveDest(prev);
 		_AlgebraicExpression_InplaceRepurpose(prev, replacement);
 	}
+
 	return current;
 }
 
@@ -410,10 +425,24 @@ AlgebraicExpression *AlgebraicExpression_RemoveDest
 	AlgebraicExpression *current = *root;
 
 	while(current->type == AL_OPERATION) {
-		if(current->operation.op == AL_EXP_TRANSPOSE) transpose = !transpose;
 		prev = current;
-		if(transpose) current = FIRST_CHILD(current);
-		else current = LAST_CHILD(current);
+		switch(current->operation.op) {
+			case AL_EXP_TRANSPOSE:
+				transpose = !transpose;
+				current = LAST_CHILD(current); // transpose have only one child
+				break;
+			case AL_EXP_ADD:
+				// Addition order of operands is not effected by transpose
+				current = LAST_CHILD(current);
+				break;
+			case AL_EXP_MUL:
+				// Multiplication order of operands depends on transpose
+				if(transpose) current = FIRST_CHILD(current);
+				else current = LAST_CHILD(current);
+				break;
+			default:
+				ASSERT("Unknown algebraic expression operation" && false);
+		}
 	}
 	ASSERT(current->type == AL_OPERAND);
 
@@ -425,20 +454,23 @@ AlgebraicExpression *AlgebraicExpression_RemoveDest
 	}
 
 	switch(prev->operation.op) {
-	case AL_EXP_TRANSPOSE:
-	case AL_EXP_ADD:
-		/* Transpose ops only have one child and the order of operands for
-		 * addition is not modified by transposition, so always remove the destination. */
-		_AlgebraicExpression_OperationRemoveDest(prev);
-		break;
-	case AL_EXP_MUL:
-		// Remove the source if we're in a transposed context,
-		// otherwise remove the destination.
-		if(transpose) _AlgebraicExpression_OperationRemoveSource(prev);
-		else _AlgebraicExpression_OperationRemoveDest(prev);
-		break;
-	default:
-		ASSERT("Unknown algebraic expression operation" && false);
+		case AL_EXP_TRANSPOSE:
+		case AL_EXP_ADD:
+			/* Transpose ops only have one child and the order of operands for
+			 * addition is not modified by transposition, so always remove the destination. */
+			current = _AlgebraicExpression_OperationRemoveDest(prev);
+			break;
+		case AL_EXP_MUL:
+			// Remove the source if we're in a transposed context,
+			// otherwise remove the destination.
+			if(transpose) {
+				current = _AlgebraicExpression_OperationRemoveSource(prev);
+			} else {
+				current = _AlgebraicExpression_OperationRemoveDest(prev);
+			}
+			break;
+		default:
+			ASSERT("Unknown algebraic expression operation" && false);
 	}
 
 	uint child_count = AlgebraicExpression_ChildCount(prev);
@@ -453,6 +485,7 @@ AlgebraicExpression *AlgebraicExpression_RemoveDest
 		AlgebraicExpression *replacement = _AlgebraicExpression_OperationRemoveDest(prev);
 		_AlgebraicExpression_InplaceRepurpose(prev, replacement);
 	}
+
 	return current;
 }
 
