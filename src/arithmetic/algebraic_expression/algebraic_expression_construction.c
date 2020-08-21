@@ -112,7 +112,7 @@ static AlgebraicExpression **_AlgebraicExpression_IsolateVariableLenExps(
 		// src is the destination of the previous expression.
 		if(expIdx == 0 && src->label) {
 			// Remove src node matrix from expression.
-			AlgebraicExpression *op = AlgebraicExpression_RemoveLeftmostNode(&exp);
+			AlgebraicExpression *op = AlgebraicExpression_RemoveSource(&exp);
 			res = array_append(res, op);
 		}
 
@@ -122,7 +122,7 @@ static AlgebraicExpression **_AlgebraicExpression_IsolateVariableLenExps(
 		QGNode *dest = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Destination(exp));
 		if(dest->label) {
 			// Remove dest node matrix from expression.
-			AlgebraicExpression *op = AlgebraicExpression_RemoveRightmostNode(&exp);
+			AlgebraicExpression *op = AlgebraicExpression_RemoveDest(&exp);
 
 			/* See if dest mat can be prepended to the following expression.
 			 * If not create a new expression. */
@@ -503,7 +503,7 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 				if(src->label) {
 					/* exp[i] shares a label matrix with exp[i-1]
 					 * remove redundancy. */
-					AlgebraicExpression *redundent = AlgebraicExpression_RemoveLeftmostNode(&exp);
+					AlgebraicExpression *redundent = AlgebraicExpression_RemoveSource(&exp);
 					AlgebraicExpression_Free(redundent);
 				}
 			}
