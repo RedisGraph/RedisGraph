@@ -276,37 +276,13 @@ void ExecutionPlan_BoundVariables(const OpBase *op, rax *modifiers) {
 	}
 }
 
-// For all ops that refer to QG entities, rebind them with the matching entity
-// in the provided QueryGraph.
-// (This logic is ugly, but currently necessary.)
-static void _RebindQueryGraphReferences(OpBase *op, const QueryGraph *qg) {
-	switch(op->type) {
-	case OPType_INDEX_SCAN:
-		((IndexScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((IndexScan *)op)->n->alias);
-		return;
-	case OPType_ALL_NODE_SCAN:
-		((AllNodeScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((AllNodeScan *)op)->n->alias);
-		return;
-	case OPType_NODE_BY_LABEL_SCAN:
-		((NodeByLabelScan *)op)->n = QueryGraph_GetNodeByAlias(qg, ((NodeByLabelScan *)op)->n->alias);
-		return;
-	case OPType_NODE_BY_ID_SEEK:
-		((NodeByIdSeek *)op)->n = QueryGraph_GetNodeByAlias(qg, ((NodeByIdSeek *)op)->n->alias);
-		return;
-	default:
-		return;
-	}
-}
-
 void ExecutionPlan_BindPlanToOps(ExecutionPlan *plan, OpBase *root) {
 	if(!root) return;
 	// If the temporary execution plan has added new QueryGraph entities,
 	// migrate them to the master plan's QueryGraph.
-	// (This is only necessary for producing EXPLAIN outputs.)
 	QueryGraph_MergeGraphs(plan->query_graph, root->plan->query_graph);
 
 	root->plan = plan;
-	_RebindQueryGraphReferences(root, plan->query_graph);
 	for(int i = 0; i < root->childCount; i ++) {
 		ExecutionPlan_BindPlanToOps(plan, root->children[i]);
 	}

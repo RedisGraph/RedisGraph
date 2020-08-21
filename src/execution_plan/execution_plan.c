@@ -17,6 +17,7 @@
 #include "../graph/entities/edge.h"
 #include "../ast/ast_build_ar_exp.h"
 #include "./optimizations/optimizer.h"
+#include "ops/shared/scan_functions.h"
 #include "../ast/ast_build_op_contexts.h"
 #include "../ast/ast_build_filter_tree.h"
 #include "./optimizations/optimizations.h"
@@ -261,8 +262,12 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 		if(edge_count == 0) {
 			/* If there are no edges in the component, we only need a node scan. */
 			QGNode *n = cc->nodes[0];
-			if(n->labelID != GRAPH_NO_LABEL) root = NewNodeByLabelScanOp(plan, n);
-			else root = NewAllNodeScanOp(plan, n);
+			if(n->labelID != GRAPH_NO_LABEL) {
+				NodeScanCtx ctx = NODE_CTX_NEW(n->alias, n->label, n->labelID);
+				root = NewNodeByLabelScanOp(plan, ctx);
+			} else {
+				root = NewAllNodeScanOp(plan, n->alias);
+			}
 		} else {
 			/* The component has edges, so we'll build a node scan and a chain of traversals. */
 			AlgebraicExpression **exps = AlgebraicExpression_FromQueryGraph(cc);
@@ -280,9 +285,10 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 				if(AlgebraicExpression_DiagonalOperand(exps[0], 0)) {
 					AlgebraicExpression_Free(AlgebraicExpression_RemoveSource(&exps[0]));
 				}
-				root = tail = NewNodeByLabelScanOp(plan, src);
+				NodeScanCtx ctx = NODE_CTX_NEW(src->alias, src->label, src->labelID);
+				root = tail = NewNodeByLabelScanOp(plan, ctx);
 			} else {
-				root = tail = NewAllNodeScanOp(plan, src);
+				root = tail = NewAllNodeScanOp(plan, src->alias);
 			}
 
 			/* For each expression, build the appropriate traversal operation. */

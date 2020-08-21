@@ -88,8 +88,8 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 			NodeByLabelScan *label_scan = (NodeByLabelScan *) scan_op;
 			NodeByLabelScanOp_SetIDRange(label_scan, id_range);
 		} else {
-			const QGNode *node = ((AllNodeScan *)scan_op)->n;
-			OpBase *opNodeByIdSeek = NewNodeByIdSeekOp(scan_op->plan, node, id_range);
+			const char *alias = ((AllNodeScan *)scan_op)->alias;
+			OpBase *opNodeByIdSeek = NewNodeByIdSeekOp(scan_op->plan, alias, id_range);
 
 			// Managed to reduce!
 			ExecutionPlan_ReplaceOp(plan, scan_op, opNodeByIdSeek);

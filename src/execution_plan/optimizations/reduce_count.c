@@ -67,8 +67,7 @@ static int _identifyNodeCountPattern(OpBase *root, OpResult **opResult, OpAggreg
 	*opScan = op;
 	if(op->type == OPType_NODE_BY_LABEL_SCAN) {
 		NodeByLabelScan *labelScan = (NodeByLabelScan *)op;
-		assert(labelScan->n->label);
-		*label = labelScan->n->label;
+		*label = labelScan->n.label;
 	}
 
 	return 1;

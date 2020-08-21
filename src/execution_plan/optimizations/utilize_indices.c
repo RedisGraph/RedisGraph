@@ -419,7 +419,7 @@ void reduce_scan_op(ExecutionPlan *plan, NodeByLabelScan *scan) {
 	rax *numeric_ranges = NULL;
 
 	// Make sure there's an index for scanned label.
-	const char *label = scan->n->label;
+	const char *label = scan->n.label;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	Index *idx = GraphContext_GetIndex(gc, label, NULL, IDX_EXACT_MATCH);
 	if(idx == NULL) return;
