@@ -11,11 +11,11 @@ typedef struct {
 	const char *alias;   // Alias of the node being traversed.
 	const char *label;   // Label of the node being traversed.
 	int label_id;        // Label ID of the node being traversed.
-} LabeledNodeCtx;
+} NodeScanCtx;
 
 // Instantiate a new labeled node context.
 #define NODE_CTX_NEW(_alias, _label, _label_id)  \
-(LabeledNodeCtx) {                               \
+(NodeScanCtx) {                                  \
 	.alias = (_alias),                           \
 	.label = (_label),                           \
 	.label_id = (_label_id)                      \

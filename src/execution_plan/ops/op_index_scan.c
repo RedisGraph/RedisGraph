@@ -16,10 +16,10 @@ static void IndexScanFree(OpBase *opBase);
 
 static int IndexScanToString(const OpBase *ctx, char *buf, uint buf_len) {
 	IndexScan *op = (IndexScan *)ctx;
-	return ScanToString(ctx, buf, buf_len, ctx->modifies[0], op->n.label);
+	return ScanToString(ctx, buf, buf_len, op->n.alias, op->n.label);
 }
 
-OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, LabeledNodeCtx n, RSIndex *idx,
+OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n, RSIndex *idx,
 					   RSQNode *rs_query_node) {
 	IndexScan *op = rm_malloc(sizeof(IndexScan));
 	op->g = g;

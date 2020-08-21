@@ -17,12 +17,13 @@ static OpBase *AllNodeScanClone(const ExecutionPlan *plan, const OpBase *opBase)
 static void AllNodeScanFree(OpBase *opBase);
 
 static inline int AllNodeScanToString(const OpBase *ctx, char *buf, uint buf_len) {
-	return ScanToString(ctx, buf, buf_len, ctx->modifies[0], NULL);
+	return ScanToString(ctx, buf, buf_len, ((AllNodeScan *)ctx)->alias, NULL);
 }
 
 OpBase *NewAllNodeScanOp(const ExecutionPlan *plan, const char *alias) {
 	AllNodeScan *op = rm_malloc(sizeof(AllNodeScan));
 	op->iter = NULL;
+	op->alias = alias;
 	op->child_record = NULL;
 
 	// Set our Op operations
@@ -96,7 +97,7 @@ static OpResult AllNodeScanReset(OpBase *op) {
 
 static inline OpBase *AllNodeScanClone(const ExecutionPlan *plan, const OpBase *opBase) {
 	assert(opBase->type == OPType_ALL_NODE_SCAN);
-	return NewAllNodeScanOp(plan, opBase->modifies[0]);
+	return NewAllNodeScanOp(plan, ((AllNodeScan *)opBase)->alias);
 }
 
 static void AllNodeScanFree(OpBase *ctx) {

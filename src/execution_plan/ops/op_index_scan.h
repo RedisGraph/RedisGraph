@@ -17,7 +17,7 @@ typedef struct {
 	OpBase op;
 	Graph *g;
 	RSIndex *idx;
-	LabeledNodeCtx n;           /* Label data of node being scanned. */
+	NodeScanCtx n;           /* Label data of node being scanned. */
 	uint nodeRecIdx;            /* Index of the node being scanned in the Record. */
 	RSQNode *rs_query_node;     /* RediSearch query node used to construct iterator. */
 	RSResultsIterator *iter;    /* RediSearch iterator over an index with the appropriate filters. */
@@ -25,6 +25,6 @@ typedef struct {
 } IndexScan;
 
 /* Creates a new IndexScan operation */
-OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, LabeledNodeCtx n, RSIndex *idx,
+OpBase *NewIndexScanOp(const ExecutionPlan *plan, Graph *g, NodeScanCtx n, RSIndex *idx,
 					   RSQNode *rs_query_node);
 

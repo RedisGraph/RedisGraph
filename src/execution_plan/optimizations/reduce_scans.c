@@ -14,7 +14,7 @@
 
 static OpBase *_LabelScanToConditionalTraverse(NodeByLabelScan *op) {
 	Graph *g = QueryCtx_GetGraph();
-	const char *alias = op->op.modifies[0];
+	const char *alias = op->n.alias;
 	AlgebraicExpression *ae = AlgebraicExpression_NewOperand(GrB_NULL, true, alias, alias, NULL,
 															 op->n.label);
 	return NewCondTraverseOp(op->op.plan, g, ae);

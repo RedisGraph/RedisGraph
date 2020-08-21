@@ -20,10 +20,10 @@ static void NodeByLabelScanFree(OpBase *opBase);
 
 static inline int NodeByLabelScanToString(const OpBase *ctx, char *buf, uint buf_len) {
 	NodeByLabelScan *op = (NodeByLabelScan *)ctx;
-	return ScanToString(ctx, buf, buf_len, ctx->modifies[0], op->n.label);
+	return ScanToString(ctx, buf, buf_len, op->n.alias, op->n.label);
 }
 
-OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, LabeledNodeCtx n) {
+OpBase *NewNodeByLabelScanOp(const ExecutionPlan *plan, NodeScanCtx n) {
 	NodeByLabelScan *op = rm_malloc(sizeof(NodeByLabelScan));
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	op->g = gc->g;

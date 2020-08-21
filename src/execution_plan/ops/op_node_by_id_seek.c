@@ -17,7 +17,7 @@ static OpBase *NodeByIdSeekClone(const ExecutionPlan *plan, const OpBase *opBase
 static void NodeByIdSeekFree(OpBase *opBase);
 
 static inline int NodeByIdSeekToString(const OpBase *ctx, char *buf, uint buf_len) {
-	return ScanToString(ctx, buf, buf_len, ctx->modifies[0], NULL);
+	return ScanToString(ctx, buf, buf_len, ((NodeByIdSeek *)ctx)->alias, NULL);
 }
 
 // Checks to see if operation index is within its bounds.
@@ -33,6 +33,7 @@ OpBase *NewNodeByIdSeekOp(const ExecutionPlan *plan, const char *alias, Unsigned
 	NodeByIdSeek *op = rm_malloc(sizeof(NodeByIdSeek));
 	op->g = QueryCtx_GetGraph();
 	op->child_record = NULL;
+	op->alias = alias;
 
 	op->minId = id_range->include_min ? id_range->min : id_range->min + 1;
 	/* The largest possible entity ID is the same as Graph_RequiredMatrixDim.
@@ -143,7 +144,7 @@ static OpBase *NodeByIdSeekClone(const ExecutionPlan *plan, const OpBase *opBase
 	 * the clone will set its values to be the same as in the origin. */
 	range.include_min = true;
 	range.include_max = true;
-	return NewNodeByIdSeekOp(plan, opBase->modifies[0], &range);
+	return NewNodeByIdSeekOp(plan, op->alias, &range);
 }
 
 static void NodeByIdSeekFree(OpBase *opBase) {

@@ -88,7 +88,7 @@ static void _UseIdOptimization(ExecutionPlan *plan, OpBase *scan_op) {
 			NodeByLabelScan *label_scan = (NodeByLabelScan *) scan_op;
 			NodeByLabelScanOp_SetIDRange(label_scan, id_range);
 		} else {
-			const char *alias = scan_op->modifies[0];
+			const char *alias = ((AllNodeScan *)scan_op)->alias;
 			OpBase *opNodeByIdSeek = NewNodeByIdSeekOp(scan_op->plan, alias, id_range);
 
 			// Managed to reduce!

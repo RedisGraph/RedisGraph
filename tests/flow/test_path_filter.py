@@ -261,6 +261,5 @@ class testPathFilter(FlowTestsBase):
         # Write a WHERE filter that introduces label data.
         query = "MATCH (a1)-[]->(a2) WHERE (a1:L)-[]->(a2:L) return a1.x, a2.x"
         result_set = redis_graph.query(query)
-        # The WHERE filter evaluates to false, no results should be returned.
         expected_result = [['a', 'b']]
         self.env.assertEquals(result_set.result_set, expected_result)
