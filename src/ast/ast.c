@@ -8,6 +8,7 @@
 #include <assert.h>
 #include <pthread.h>
 
+#include "../RG.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/qsort.h"
@@ -110,6 +111,16 @@ static void _AST_Extract_Params(const cypher_parse_result_t *parse_result) {
 			raxInsert(params, (unsigned char *) paramName, strlen(paramName), (void *)exp, NULL);
 		}
 	}
+}
+
+static void AST_IncreaseRefCount(AST *ast) {
+	ASSERT(ast);
+	__atomic_fetch_add(&ast->ref_count, 1, __ATOMIC_RELAXED);
+}
+
+static int AST_DecRefCount(AST *ast) {
+	ASSERT(ast);
+	return __atomic_sub_fetch(&ast->ref_count, 1, __ATOMIC_RELAXED);
 }
 
 bool AST_ReadOnly(const cypher_astnode_t *root) {
@@ -330,7 +341,7 @@ void AST_SetParamsParseResult(AST *ast, cypher_parse_result_t *params_parse_resu
 }
 
 AST *AST_ShallowCopy(AST *orig) {
-	orig->ref_count++;
+	AST_IncreaseRefCount(orig);
 	return orig;
 }
 
@@ -473,14 +484,17 @@ inline AST_AnnotationCtxCollection *AST_GetAnnotationCtxCollection(AST *ast) {
 
 void AST_Free(AST *ast) {
 	if(ast == NULL) return;
-	ast->ref_count--;
+	int ref_count = AST_DecRefCount(ast);
+
 	// Free and nullify parameters parse result if needed, after execution, as they are only save for the execution lifetime.
 	if(ast->params_parse_result) {
 		parse_result_free(ast->params_parse_result);
 		ast->params_parse_result = NULL;
 	}
+
 	// Check if the ast is still referenced.
-	if(ast->ref_count > 0) return;
+	if(ref_count > 0) return;
+
 	// No valid references - the struct can be disposed completely.
 	if(ast->referenced_entities) raxFree(ast->referenced_entities);
 	if(ast->free_root) {
