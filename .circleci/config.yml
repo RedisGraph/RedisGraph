@@ -165,7 +165,7 @@ jobs:
           command: >-
             aws s3 cp /workspace/build/ s3://redismodules/$PACKAGE_NAME/ --acl
             public-read --recursive --exclude "*" --include "*.zip"
-            
+
   run_automation:
     docker:
       - image: 'redisfab/rmbuilder:6.0.1-x64-bionic'
@@ -175,9 +175,8 @@ jobs:
           command: >-
             apt-get update &&
             apt-get -y install curl &&
-            curl -k -X POST
+            curl -k -u $QA_AUTOMATION_USERNAME:$QA_AUTOMATION_PASS -X POST
             -H "Content-Type: application/json"
-            -H "Authorization: Bearer $QA_AUTOMATION_ACCESS_TOKEN"
             -d '{"service_id":"single_module_test_cycle_sanity_and_extended", "name":"redisgraph automation-testing", "properties":{"sut_version":"5.6.0", "email_recipients":"graph@redislabs.com", "sut_environments":[], "tools_environment":{}, "module_name": "RedisGraph", "module_version":"master", "cycle_environments_setup":[{"teardown":true, "name":"rhel7.5-x86_64-aws", "concurrency":1}, {"teardown":true, "name":"bionic-amd64-aws", "concurrency":1}]}}'
             https://qa-automation-center.redislabs.com/processes
 
