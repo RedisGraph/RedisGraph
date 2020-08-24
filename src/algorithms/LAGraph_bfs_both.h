@@ -23,7 +23,6 @@
 #pragma once
 
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
-#include "LAGraph.h"
 
 GrB_Info LAGraph_bfs_both       // push-pull BFS, or push-only if AT = NULL
 (
@@ -34,7 +33,6 @@ GrB_Info LAGraph_bfs_both       // push-pull BFS, or push-only if AT = NULL
 	GrB_Matrix AT,          // transpose of A (optional; push-only if NULL)
 	int64_t source,         // starting node of the BFS
 	int64_t max_level,      // optional limit of # levels to search
-	bool vsparse,           // if true, v is expected to be very sparse
-	FILE *logfile
+	bool vsparse            // if true, v is expected to be very sparse
 );
 

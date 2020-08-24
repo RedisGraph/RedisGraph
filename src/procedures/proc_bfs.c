@@ -77,7 +77,7 @@ ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx, const SIValue *args) {
 	GrB_Vector PI;
 	if(track_parents == false) PI = GrB_NULL;
 
-	assert(LAGraph_bfs_both(&V, &PI, R, TR, source_id, max_level, false, NULL) == GrB_SUCCESS);
+	assert(LAGraph_bfs_both(&V, &PI, R, TR, source_id, max_level, false) == GrB_SUCCESS);
 
 	// Update context.
 	pdata->V = V;
