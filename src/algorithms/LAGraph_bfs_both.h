@@ -23,6 +23,7 @@
 #pragma once
 
 #include "../../deps/GraphBLAS/Include/GraphBLAS.h"
+#include "LAGraph.h"
 
 GrB_Info LAGraph_bfs_both       // push-pull BFS, or push-only if AT = NULL
 (
