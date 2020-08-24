@@ -29,7 +29,7 @@ GrB_Info LAGraph_bfs_both       // push-pull BFS, or push-only if AT = NULL
 (
 	GrB_Vector *v_output,   // v(i) is the BFS level of node i in the graph
 	GrB_Vector *pi_output,  /* pi(i) = p+1 if p is the parent of node i.
-							   If NULL, the parent is not computed. */
+							 * If NULL, the parent is not computed. */
 	GrB_Matrix A,           // input graph, treated as if boolean in semiring
 	GrB_Matrix AT,          // transpose of A (optional; push-only if NULL)
 	int64_t source,         // starting node of the BFS
