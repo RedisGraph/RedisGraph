@@ -1,0 +1,8 @@
+
+TODO add LAGraph_Matrix_print and LAGraph_Vector_print, and fprint variants.
+    If using SuiteSparse:GraphBLAS, these are just GxB_print and GxB_fprint.
+    Otherwise, use extractTuples and print the tuples.
+
+TODO write a function that computes the in-degree and/or out-degree of a
+    matrix.
+
