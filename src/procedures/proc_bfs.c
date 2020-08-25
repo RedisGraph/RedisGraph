@@ -4,15 +4,14 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "proc_pagerank.h"
+#include "proc_bfs.h"
 #include "../value.h"
+#include "../config.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
-#include "../config.h"
 #include "../algorithms/LAGraph_bfs_both.h"
-#include "../../deps/GraphBLAS/Include/GraphBLAS.h"
 
 // CALL algo.pageRank('Page', 'LINKS', {iterations: 20, dampingFactor: 0.85}) YIELD node, score
 // CALL algo.pageRank('Page', 'LINKS') YIELD node, score
@@ -79,6 +78,8 @@ ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx, const SIValue *args) {
 
 	assert(LAGraph_bfs_both(&V, &PI, R, TR, source_id, max_level, false) == GrB_SUCCESS);
 
+	// Remove all values with a level of 0, as they are not connected to the source.
+	GxB_Vector_select(V, GrB_NULL, GrB_NULL, GxB_NONZERO, V, GrB_NULL, GrB_NULL);
 	// Update context.
 	pdata->V = V;
 	pdata->PI = PI;
@@ -92,6 +93,7 @@ ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx, const SIValue *args) {
 	GrB_Index *node_ids = rm_malloc(nvals * sizeof(GrB_Index));
 	int64_t *node_levels = rm_malloc(nvals * sizeof(GrB_Index));
 	GrB_Vector_extractTuples_INT64(node_ids, node_levels, &nvals, V);
+
 	pdata->node_ids = node_ids;
 	pdata->node_levels = node_levels;
 	if(track_parents) {
@@ -145,9 +147,9 @@ ProcedureCtx *Proc_BFS_Ctx() {
 	output_parent->type = T_NODE;
 
 	outputs = array_append(outputs, output_node);
-	outputs = array_append(outputs, output_parent);
+	outputs = array_append(outputs, output_level);
 	ProcedureCtx *ctx = ProcCtxNew("algo.BFS",
-								   3,
+								   4,
 								   outputs,
 								   Proc_BFS_Step,
 								   Proc_BFS_Invoke,
