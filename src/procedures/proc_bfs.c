@@ -17,23 +17,21 @@
 // CALL algo.pageRank('Page', 'LINKS') YIELD node, score
 
 typedef struct {
+	Graph *g;                       // Graph.
 	GrB_Index n;                    // Total number of results.
 	GrB_Index i;                    // Current index into output arrays.
-	Graph *g;                       // Graph.
-	GrB_Index *node_ids;
-	int64_t *node_levels;
+	GrB_Index *node_ids;            // Array of connected nodes.
+	int64_t *node_levels;           // Level of each node in node_ids.
 	Node node;                      // Node.
-	GrB_Vector V;                   // Output vector.
-	GrB_Vector PI;                  // Parent vector.
-	SIValue *output;                // Array with 4 entries ["node", node, "score", score].
+	SIValue *output;                // Array with 4 entries ["node", node, "level", level].
 } BFSContext;
 
 ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx, const SIValue *args) {
 	if(array_len((SIValue *)args) != 4) return PROCEDURE_ERR;
-	if(SI_TYPE(args[0]) != T_NODE                ||
-	   SI_TYPE(args[1]) != T_INT64               ||
-	   !(SI_TYPE(args[2]) & (T_NULL | T_STRING)) ||
-	   SI_TYPE(args[3]) != T_BOOL)
+	if(SI_TYPE(args[0]) != T_NODE                ||   // Source node.
+	   SI_TYPE(args[1]) != T_INT64               ||   // Max level to iterate to, unlimited if 0.
+	   !(SI_TYPE(args[2]) & (T_NULL | T_STRING)) ||   // Relationship type to traverse if not NULL.
+	   SI_TYPE(args[3]) != T_BOOL)                    // True if node parents should be tracked.
 		return PROCEDURE_ERR;
 
 	Node *source_node = args[0].ptrval;
@@ -47,15 +45,17 @@ ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx, const SIValue *args) {
 	// Setup context.
 	BFSContext *pdata = rm_malloc(sizeof(BFSContext));
 	pdata->i = 0;
+	pdata->n = 0;
 	pdata->g = gc->g;
 	pdata->node = GE_NEW_NODE();
-	pdata->output = array_new(SIValue, 6);
+	// pdata->output = array_new(SIValue, 6);
+	pdata->output = array_new(SIValue, 4);
 	pdata->output = array_append(pdata->output, SI_ConstStringVal("node"));
 	pdata->output = array_append(pdata->output, SI_Node(NULL)); // Place holder.
 	pdata->output = array_append(pdata->output, SI_ConstStringVal("level"));
 	pdata->output = array_append(pdata->output, SI_LongVal(0)); // Place holder.
-	pdata->output = array_append(pdata->output, SI_ConstStringVal("parent"));
-	pdata->output = array_append(pdata->output, SI_Node(NULL)); // Place holder.
+	// pdata->output = array_append(pdata->output, SI_ConstStringVal("parent"));
+	// pdata->output = array_append(pdata->output, SI_Node(NULL)); // Place holder.
 	ctx->privateData = pdata;
 
 	// Get edge matrix and transpose matrix, if available.
@@ -66,7 +66,7 @@ ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx, const SIValue *args) {
 		TR = Graph_GetTransposedAdjacencyMatrix(gc->g);
 	} else {
 		Schema *s = GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE);
-		if(!s) return PROCEDURE_OK;
+		if(!s) return PROCEDURE_OK; // Failed to find schema, first step will return NULL.
 		R = Graph_GetRelationMatrix(gc->g, s->id);
 		if(Config_MaintainTranspose()) TR = Graph_GetTransposedRelationMatrix(gc->g, s->id);
 		else TR = GrB_NULL;
@@ -80,9 +80,6 @@ ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx, const SIValue *args) {
 
 	// Remove all values with a level of 0, as they are not connected to the source.
 	GxB_Vector_select(V, GrB_NULL, GrB_NULL, GxB_NONZERO, V, GrB_NULL, GrB_NULL);
-	// Update context.
-	pdata->V = V;
-	pdata->PI = PI;
 
 	// Get number of entries.
 	GrB_Index nvals;
@@ -99,6 +96,8 @@ ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx, const SIValue *args) {
 	if(track_parents) {
 
 	}
+	GrB_Vector_free(&V);
+	if(PI) GrB_Vector_free(&PI);
 	return PROCEDURE_OK;
 }
 
@@ -138,16 +137,17 @@ ProcedureCtx *Proc_BFS_Ctx() {
 	ProcedureOutput **outputs = array_new(ProcedureOutput *, 3);
 	ProcedureOutput *output_node = rm_malloc(sizeof(ProcedureOutput));
 	ProcedureOutput *output_level = rm_malloc(sizeof(ProcedureOutput));
-	ProcedureOutput *output_parent = rm_malloc(sizeof(ProcedureOutput));
+	// ProcedureOutput *output_parent = rm_malloc(sizeof(ProcedureOutput));
 	output_node->name = "node";
 	output_node->type = T_NODE;
 	output_level->name = "level";
 	output_level->type = T_INT64;
-	output_parent->name = "parent";
-	output_parent->type = T_NODE;
+	// output_parent->name = "parent";
+	// output_parent->type = T_NODE;
 
 	outputs = array_append(outputs, output_node);
 	outputs = array_append(outputs, output_level);
+	// outputs = array_append(outputs, output_parent);
 	ProcedureCtx *ctx = ProcCtxNew("algo.BFS",
 								   4,
 								   outputs,
