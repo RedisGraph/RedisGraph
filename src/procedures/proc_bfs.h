@@ -8,4 +8,9 @@
 
 #include "proc_ctx.h"
 
-ProcedureCtx *Proc_BFS_Ctx();
+// Perform BFS without tracking paths.
+ProcedureCtx *Proc_BFS_Ctx(void);
+
+// Perform BFS while tracking the path to each reachable node.
+ProcedureCtx *Proc_BFSTree_Ctx(void);
+

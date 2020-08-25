@@ -27,6 +27,7 @@ void Proc_Register() {
 	// Register graph algorithms.
 	_procRegister("algo.pageRank", Proc_PagerankCtx);
 	_procRegister("algo.BFS", Proc_BFS_Ctx);
+	_procRegister("algo.BFSTree", Proc_BFSTree_Ctx);
 
 	// Register FullText Search generator.
 	_procRegister("db.idx.fulltext.drop", Proc_FulltextDropIdxGen);
