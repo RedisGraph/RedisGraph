@@ -424,20 +424,17 @@ GrB_Info LAGraph_bfs_both       // push-pull BFS, or push-only if AT = NULL
 	GrB_Descriptor desc_r  = GxB_desc_ooor ;
 #endif
 
-	bool use_vxm_with_A ;
 	GrB_Index nrows, ncols, nvalA, ignore, nvals ;
 	if(A == NULL) {
 		// only AT is provided
 		GrB_Matrix_ncols(&nrows, AT) ;
 		GrB_Matrix_nrows(&ncols, AT) ;
 		GrB_Matrix_nvals(&nvalA, AT) ;
-		use_vxm_with_A = false ;
 	} else {
 		// A is provided.  AT may or may not be provided
 		GrB_Matrix_nrows(&nrows, A) ;
 		GrB_Matrix_ncols(&ncols, A) ;
 		GrB_Matrix_nvals(&nvalA, A) ;
-		use_vxm_with_A = true ;
 	}
 
 	// push/pull requires both A and AT
@@ -451,8 +448,6 @@ GrB_Info LAGraph_bfs_both       // push-pull BFS, or push-only if AT = NULL
 	//--------------------------------------------------------------------------
 	// check the format of A and AT
 	//--------------------------------------------------------------------------
-
-	bool csr = true ;
 
 	// csr is true if A and AT are known (or assumed) to be in CSR format; if
 	// false, they are known to be in CSC format.
@@ -483,7 +478,6 @@ GrB_Info LAGraph_bfs_both       // push-pull BFS, or push-only if AT = NULL
 	}
 	// Assume CSR if A(i,:) and AT(i,:) are both fast.  If csr is false,
 	// then the algorithm below will reverse the use of vxm and mxv.
-	csr = A_csr && AT_csr ;
 	if(push_pull) {
 		// both A and AT are provided.  Require they have the same format.
 		// Either both A(i,:) and AT(i,:) are efficient to accesss, or both
