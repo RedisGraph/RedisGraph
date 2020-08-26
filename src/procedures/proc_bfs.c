@@ -45,14 +45,11 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx, const SIValue *args) {
 	pdata->n = 0;
 	pdata->g = gc->g;
 	pdata->node = GE_NEW_NODE();
-	// pdata->output = array_new(SIValue, 6);
 	pdata->output = array_new(SIValue, 4);
 	pdata->output = array_append(pdata->output, SI_ConstStringVal("node"));
 	pdata->output = array_append(pdata->output, SI_Node(NULL)); // Place holder.
 	pdata->output = array_append(pdata->output, SI_ConstStringVal("level"));
 	pdata->output = array_append(pdata->output, SI_LongVal(0)); // Place holder.
-	// pdata->output = array_append(pdata->output, SI_ConstStringVal("parent"));
-	// pdata->output = array_append(pdata->output, SI_Node(NULL)); // Place holder.
 	ctx->privateData = pdata;
 
 	// Get edge matrix and transpose matrix, if available.
