@@ -7,10 +7,8 @@
 #pragma once
 
 #include "proc_ctx.h"
+#include "../arithmetic/arithmetic_expression.h"
 
-// Perform BFS without tracking paths.
-ProcedureCtx *Proc_BFS_Ctx(void);
-
-// Perform BFS while tracking the path to each reachable node.
-ProcedureCtx *Proc_BFSTree_Ctx(void);
+// Perform BFS from a source node.
+ProcedureCtx *Proc_BFS_Ctx(AR_ExpNode **args, const char **yields);
 

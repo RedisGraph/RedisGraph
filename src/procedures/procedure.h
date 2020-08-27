@@ -7,6 +7,7 @@
 #pragma once
 
 #include "proc_ctx.h"
+#include "../arithmetic/arithmetic_expression.h"
 #include <sys/types.h>
 #include <stdbool.h>
 
@@ -18,6 +19,8 @@ void Proc_Register();
  * does not exists, it is the callers responsibility
  * to free returned procedure */
 ProcedureCtx *Proc_Get(const char *proc_name);
+
+ProcedureCtx *Proc_BuildContext(const char *proc_name, AR_ExpNode **args, const char **yields);
 
 // Invokes procedure.
 ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args);

@@ -6,6 +6,7 @@ from base import FlowTestsBase
 
 graph = None
 nodes = {}
+edges = {}
 
 class testBFS(FlowTestsBase):
     def __init__(self):
@@ -17,6 +18,7 @@ class testBFS(FlowTestsBase):
 
     def populate_graph(self):
         global nodes
+        global edges 
         # Construct a graph with the form:
         # (a)-[:E1]->(b:B)-[:E1]->(c), (b)-[:E2]->(d)-[:E1]->(e)
         nodes['a'] = Node(label="A", properties={"v": 'a'})
@@ -34,125 +36,123 @@ class testBFS(FlowTestsBase):
         nodes['e'] = Node(label="A", properties={"v": 'e'})
         graph.add_node(nodes['e'])
 
-        edge = Edge(nodes['a'], "E1", nodes['b'])
-        graph.add_edge(edge)
+        # Edges have the same property as their destination
+        edges[0] = Edge(nodes['a'], "E1", nodes['b'], properties={"v": 'b'})
+        graph.add_edge(edges[0])
 
-        edge = Edge(nodes['b'], "E1", nodes['c'])
-        graph.add_edge(edge)
+        edges[1] = Edge(nodes['b'], "E1", nodes['c'], properties={"v": 'c'})
+        graph.add_edge(edges[1])
 
-        edge = Edge(nodes['b'], "E2", nodes['d'])
-        graph.add_edge(edge)
+        edges[2] = Edge(nodes['b'], "E2", nodes['d'], properties={"v": 'd'})
+        graph.add_edge(edges[2])
 
-        edge = Edge(nodes['d'], "E1", nodes['e'])
-        graph.add_edge(edge)
+        edges[3] = Edge(nodes['d'], "E1", nodes['e'], properties={"v": 'e'})
+        graph.add_edge(edges[3])
 
         graph.flush()
+
+    # Verify that 
+    def compare_unsorted_arrays(self, a, b):
+        self.env.assertEquals(len(a), len(b))
+        for elem in a:
+            # Each element in a should appear in b exactly once.
+            self.env.assertEquals(b.count(elem), 1)
+
 
     # Test BFS from a single source without specifying a relationship type.
     def test01_bfs_single_source_all_reltypes(self):
         global graph
-        # Test BFS reachability algorithm
-        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 0, NULL) YIELD node, level RETURN node.v, level ORDER BY node.v"""
+        # Test BFS algorithm for node collection.
+        # The results array must be sorted, since the order is non-deterministic (due to creations occurring in any order).
+        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 0, NULL, false) YIELD nodes UNWIND nodes AS n WITH n.v AS v ORDER BY n.v RETURN COLLECT(v)"""
         actual_result = graph.query(query)
-        expected_result = [['a', 1],
-                           ['b', 2],
-                           ['c', 3],
-                           ['d', 3],
-                           ['e', 4]]
+        expected_result = [[['b', 'c', 'd', 'e']]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 0, NULL, false) YIELD nodes RETURN nodes"""
+        self.compare_unsorted_arrays(actual_result.result_set[0][0], expected_result[0][0])
+
+        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 0, NULL, false) YIELD start_node, nodes UNWIND nodes AS n WITH start_node, n.v AS v ORDER BY n.v RETURN start_node.v, COLLECT(v)"""
+        actual_result = graph.query(query)
+        expected_result = [['a', ['b', 'c', 'd', 'e']]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-        # Test BFS path-tracking algorithm
-        query = """MATCH (a {v: 'a'}) CALL algo.BFSTree(a, 0, NULL) YIELD node, level, path RETURN node.v, level, path ORDER BY node.v"""
+        # Test BFS algorithm for node and edge collection.
+        # Parity between nodes and edges can be validated by testing the properties of each for equality,
+        # as edges have the same property as their destination node.
+        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 0, NULL, true) YIELD nodes, edges RETURN [n IN nodes | n.v], [e IN edges | e.v]"""
         actual_result = graph.query(query)
-        expected_result = [['a', 1, [nodes['a']]],
-                           ['b', 2, [nodes['a'], nodes['b']]],
-                           ['c', 3, [nodes['a'], nodes['b'], nodes['c']]],
-                           ['d', 3, [nodes['a'], nodes['b'], nodes['d']]],
-                           ['e', 4, [nodes['a'], nodes['b'], nodes['d'], nodes['e']]]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
+        self.env.assertEquals(actual_result.result_set[0][0], actual_result.result_set[0][1])
+        #  import ipdb
+        #  ipdb.set_trace()
 
     # Test BFS from a single source traversing a single relationship type.
     def test02_bfs_single_source_restricted_reltype(self):
         global graph
-        # Test BFS reachability algorithm
-        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 0, 'E1') YIELD node, level RETURN node.v, level ORDER BY node.v"""
+        # Test BFS algorithm for node collection.
+        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 0, 'E1', false) YIELD nodes RETURN [n IN nodes | n.v]"""
         actual_result = graph.query(query)
-        expected_result = [['a', 1],
-                           ['b', 2],
-                           ['c', 3]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
+        expected_result = ['b', 'c']
+        self.compare_unsorted_arrays(actual_result.result_set[0][0], expected_result)
 
-        # Test BFS path-tracking algorithm
-        query = """MATCH (a {v: 'a'}) CALL algo.BFSTree(a, 0, 'E1') YIELD node, level, path RETURN node.v, level, path ORDER BY node.v"""
+        # Test BFS algorithm for node and edge collection.
+        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 0, 'E1', true) YIELD nodes, edges RETURN [n IN nodes | n.v], [e IN edges | e.v]"""
         actual_result = graph.query(query)
-        expected_result = [['a', 1, [nodes['a']]],
-                           ['b', 2, [nodes['a'], nodes['b']]],
-                           ['c', 3, [nodes['a'], nodes['b'], nodes['c']]]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
+        self.env.assertEquals(actual_result.result_set[0][0], actual_result.result_set[0][1])
 
-    # Test BFS from all sources traversing a single relationship type, ignoring 0-hop paths.
+    #  # Test BFS from all sources traversing a single relationship type, ignoring 0-hop paths.
     def test03_bfs_all_sources_restricted_reltype(self):
         global graph
-        # We do not expect to see 'd' as a destination or intermediate node, as it's connected by an 'E2' edge.
-        query = """MATCH (a) CALL algo.BFS(a, 0, 'E1') YIELD node, level WHERE level > 1 RETURN node.v, level ORDER BY node.v, level"""
+        # We only expect to see 'd' as a source node, as it is connected as a destination by an 'E2' edge.
+        query = """MATCH (a) CALL algo.BFS(a, 0, 'E1', false) YIELD start_node, nodes RETURN start_node.v, [n IN nodes | n.v] ORDER BY start_node.v"""
         actual_result = graph.query(query)
-        expected_result = [['b', 2],
-                           ['c', 2],
-                           ['c', 3],
-                           ['e', 2]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
+        expected_result = [['a', ['b', 'c']],
+                           ['b', ['c']],
+                           ['d', ['e']]]
+        for idx, row in enumerate(actual_result.result_set):
+            self.env.assertEquals(row[0], expected_result[idx][0])
+            self.compare_unsorted_arrays(row[1], expected_result[idx][1])
 
         # Test BFS path-tracking algorithm
-        query = """MATCH (a) CALL algo.BFSTree(a, 0, 'E1') YIELD node, level, path WHERE level > 1 RETURN node.v, level, path ORDER BY node.v, level"""
-        actual_result = graph.query(query)
-        expected_result = [['b', 2, [nodes['a'], nodes['b']]],
-                           ['c', 2, [nodes['b'], nodes['c']]],
-                           ['c', 3, [nodes['a'], nodes['b'], nodes['c']]],
-                           ['e', 2, [nodes['d'], nodes['e']]]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
+        query = """MATCH (a) CALL algo.BFS(a, 0, 'E1', true) YIELD start_node, nodes, edges RETURN start_node.v, [n IN nodes | n.v], [e IN edges | e.v] ORDER BY start_node.v"""
 
-    # Test BFS from a single source with a maximum depeth.
+        actual_result = graph.query(query)
+        expected_result = [['a', ['b', 'c'], ['b', 'c']],
+                           ['b', ['c'], ['c']],
+                           ['d', ['e'], ['e']]]
+        for idx, row in enumerate(actual_result.result_set):
+            self.env.assertEquals(row[0], expected_result[idx][0])
+            self.compare_unsorted_arrays(row[1], expected_result[idx][1])
+            self.compare_unsorted_arrays(row[2], expected_result[idx][2])
+
+    #  # Test BFS from a single source with a maximum depth.
     def test04_bfs_single_source_max_depth(self):
-        # Test BFS reachability algorithm
-        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 2, NULL) YIELD node, level RETURN node.v, level ORDER BY node.v"""
+        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 2, NULL, false) YIELD nodes RETURN [n IN nodes | n.v]"""
         actual_result = graph.query(query)
-        expected_result = [['a', 1],
-                           ['b', 2]]
+        expected_result = [[['b']]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-        # Test BFS path-tracking algorithm
-        query = """MATCH (a {v: 'a'}) CALL algo.BFSTree(a, 2, NULL) YIELD node, level, path RETURN node.v, level, path ORDER BY node.v"""
+        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 2, NULL, true) YIELD nodes, edges RETURN [n IN nodes | n.v], [e IN edges | e.v]"""
         actual_result = graph.query(query)
-        expected_result = [['a', 1, [nodes['a']]],
-                           ['b', 2, [nodes['a'], nodes['b']]]]
+        expected_result = [[['b'], ['b']]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-    # Test BFS from all sources with a maximum depeth.
+    #  # Test BFS from all sources with a maximum depeth.
     def test05_bfs_all_sources_max_depth(self):
-        # Test BFS reachability algorithm
-        query = """MATCH (a) CALL algo.BFS(a, 2, NULL) YIELD node, level RETURN node.v, level ORDER BY node.v, level"""
+        query = """MATCH (a) CALL algo.BFS(a, 2, NULL, false) YIELD start_node, nodes RETURN start_node.v, [n IN nodes | n.v] ORDER BY start_node.v"""
         actual_result = graph.query(query)
-        expected_result = [['a', 1],
-                           ['b', 1],
-                           ['b', 2],
-                           ['c', 1],
-                           ['c', 2],
-                           ['d', 1],
-                           ['d', 2],
-                           ['e', 1],
-                           ['e', 2]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
+        expected_result = [['a', ['b']],
+                           ['b', ['c', 'd']],
+                           ['d', ['e']]]
+        for idx, row in enumerate(actual_result.result_set):
+            self.env.assertEquals(row[0], expected_result[idx][0])
+            self.compare_unsorted_arrays(row[1], expected_result[idx][1])
 
-        # Test BFS path-tracking algorithm
-        query = """MATCH (a) CALL algo.BFSTree(a, 2, NULL) YIELD node, level, path RETURN node.v, level, path ORDER BY node.v, level"""
+        query = """MATCH (a) CALL algo.BFS(a, 2, NULL, true) YIELD start_node, nodes, edges RETURN start_node.v, [n IN nodes | n.v], [e IN edges | e.v] ORDER BY start_node.v"""
         actual_result = graph.query(query)
-        expected_result = [['a', 1, [nodes['a']]],
-                           ['b', 1, [nodes['b']]],
-                           ['b', 2, [nodes['a'], nodes['b']]],
-                           ['c', 1, [nodes['c']]],
-                           ['c', 2, [nodes['b'], nodes['c']]],
-                           ['d', 1, [nodes['d']]],
-                           ['d', 2, [nodes['b'], nodes['d']]],
-                           ['e', 1, [nodes['e']]],
-                           ['e', 2, [nodes['d'], nodes['e']]]]
-        self.env.assertEquals(actual_result.result_set, expected_result)
+        expected_result = [['a', ['b'], ['b']],
+                           ['b', ['c', 'd'], ['c', 'd']],
+                           ['d', ['e'], ['e']]]
+        for idx, row in enumerate(actual_result.result_set):
+            self.env.assertEquals(row[0], expected_result[idx][0])
+            self.compare_unsorted_arrays(row[1], expected_result[idx][1])
+            self.compare_unsorted_arrays(row[2], expected_result[idx][2])

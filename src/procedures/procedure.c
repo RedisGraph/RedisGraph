@@ -27,7 +27,6 @@ void Proc_Register() {
 	// Register graph algorithms.
 	_procRegister("algo.pageRank", Proc_PagerankCtx);
 	_procRegister("algo.BFS", Proc_BFS_Ctx);
-	_procRegister("algo.BFSTree", Proc_BFSTree_Ctx);
 
 	// Register FullText Search generator.
 	_procRegister("db.idx.fulltext.drop", Proc_FulltextDropIdxGen);
@@ -60,7 +59,17 @@ ProcedureCtx *Proc_Get(const char *proc_name) {
 	if(!__procedures) return NULL;
 	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name, strlen(proc_name));
 	if(gen == raxNotFound) return NULL;
-	ProcedureCtx *ctx = gen();
+	ProcedureCtx *ctx = gen(NULL, NULL);
+
+	// Set procedure state to not initialized.
+	ctx->state = PROCEDURE_NOT_INIT;
+	return ctx;
+}
+
+ProcedureCtx *Proc_BuildContext(const char *proc_name, AR_ExpNode **args, const char **yields) {
+	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name, strlen(proc_name));
+	if(gen == raxNotFound) return NULL;
+	ProcedureCtx *ctx = gen(args, yields);
 
 	// Set procedure state to not initialized.
 	ctx->state = PROCEDURE_NOT_INIT;
@@ -126,7 +135,7 @@ bool Proc_ReadOnly(const char *proc_name) {
 	if(gen == raxNotFound) return false; // Invalid procedure specified, handled elsewhere.
 	/* TODO It would be preferable to be able to determine whether a procedure is read-only
 	 * without creating its entire context; this is wasteful. */
-	ProcedureCtx *ctx = gen();
+	ProcedureCtx *ctx = gen(NULL, NULL);
 	bool read_only = ctx->readOnly;
 	Proc_Free(ctx);
 	return read_only;

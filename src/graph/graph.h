@@ -266,6 +266,16 @@ void Graph_GetEdgesConnectingNodes(
 	Edge **edges        // array_t of edges connecting src to dest of type r.
 );
 
+// Retrieves a single edge ID connecting source to destination,
+// relation is optional, pass GRAPH_NO_RELATION if you do not care
+// about edge type.
+EdgeID Graph_GetSingleEdgeConnectingNodes(
+	const Graph *g,     // Graph to get edges from.
+	NodeID srcID,       // Source node of edge
+	NodeID destID,      // Destination node of edge
+	int r               // Edge type.
+);
+
 // Checks if src is connected to dest via edge of type r
 // set r to GRAPH_NO_RELATION if you do not care
 // about edge type.

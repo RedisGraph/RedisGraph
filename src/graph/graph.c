@@ -174,6 +174,32 @@ size_t _Graph_EdgeCap(const Graph *g) {
 	return g->edges->itemCap;
 }
 
+EdgeID _Graph_GetSingleEdgeConnectingNodes(const Graph *g, NodeID src, NodeID dest, int r) {
+	assert(g && src < Graph_RequiredMatrixDim(g) && dest < Graph_RequiredMatrixDim(g) &&
+		   r < Graph_RelationTypeCount(g));
+
+	EdgeID edgeId;
+
+	GrB_Matrix relation = Graph_GetRelationMatrix(g, r);
+	GrB_Info res = GrB_Matrix_extractElement_UINT64(&edgeId, relation, src, dest);
+
+	// No entry at [dest, src], src is not connected to dest with relation R.
+	if(res == GrB_NO_VALUE) return INVALID_ENTITY_ID;
+
+	if(SINGLE_EDGE(edgeId)) {
+		// Discard most significant bit.
+		edgeId = SINGLE_EDGE_ID(edgeId);
+		// Return the edge ID.
+		return edgeId;
+	} else {
+		/* Multiple edges connecting src to dest,
+		 * entry is a pointer to an array of edge IDs.
+		 * Return the ID of the first edge. */
+		EdgeID *edgeIds = (EdgeID *)edgeId;
+		return edgeIds[0];
+	}
+}
+
 // Locates edges connecting src to destination.
 void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int r, Edge **edges) {
 	assert(g && src < Graph_RequiredMatrixDim(g) && dest < Graph_RequiredMatrixDim(g) &&
@@ -519,6 +545,26 @@ void Graph_GetEdgesConnectingNodes(const Graph *g, NodeID srcID, NodeID destID, 
 			_Graph_GetEdgesConnectingNodes(g, srcID, destID, i, edges);
 		}
 	}
+}
+
+EdgeID Graph_GetSingleEdgeConnectingNodes(const Graph *g, NodeID srcID, NodeID destID, int r) {
+	assert(g && r < Graph_RelationTypeCount(g));
+
+	// Invalid relation type specified; this can occur on multi-type traversals like:
+	// MATCH ()-[:real_type|fake_type]->()
+	if(r == GRAPH_UNKNOWN_RELATION) return INVALID_ENTITY_ID;
+
+	if(r != GRAPH_NO_RELATION) {
+		return _Graph_GetSingleEdgeConnectingNodes(g, srcID, destID, r);
+	} else {
+		// Relation type missing, scan through each edge type.
+		int relationCount = Graph_RelationTypeCount(g);
+		for(int i = 0; i < relationCount; i++) {
+			EdgeID id = _Graph_GetSingleEdgeConnectingNodes(g, srcID, destID, i);
+			if(id != INVALID_ENTITY_ID) return id;
+		}
+	}
+	return INVALID_ENTITY_ID;
 }
 
 void Graph_CreateNode(Graph *g, int label, Node *n) {

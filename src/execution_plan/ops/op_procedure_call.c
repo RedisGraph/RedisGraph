@@ -75,13 +75,17 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNo
 	op->first_call = true;
 	op->arg_count = array_len(arg_exps);
 	op->args = array_new(SIValue, op->arg_count);
-
-	// Procedure must exist.
-	op->procedure = Proc_Get(proc_name);
-	assert(op->procedure);
-
 	uint yield_count = array_len(yield_exps);
 	op->output = array_new(const char *, yield_count);
+	for(uint i = 0; i < yield_count; i ++) {
+		const char *yield = yield_exps[i]->operand.variadic.entity_alias;
+		op->output = array_append(op->output, yield);
+	}
+
+	// Procedure must exist.
+	op->procedure = Proc_BuildContext(proc_name, arg_exps, op->output);
+	assert(op->procedure);
+
 
 	// Set our Op operations
 	OpBase_Init((OpBase *)op, OPType_PROC_CALL, "ProcedureCall", NULL, ProcCallConsume,
@@ -92,7 +96,6 @@ OpBase *NewProcCallOp(const ExecutionPlan *plan, const char *proc_name, AR_ExpNo
 		const char *alias = yield_exps[i]->resolved_name;
 		const char *yield = yield_exps[i]->operand.variadic.entity_alias;
 
-		op->output = array_append(op->output, yield);
 		OpBase_Modifies((OpBase *)op, yield);
 		if(alias && strcmp(alias, yield) != 0) OpBase_AliasModifier((OpBase *)op, yield, alias);
 	}
