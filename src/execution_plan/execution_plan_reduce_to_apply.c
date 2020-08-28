@@ -90,8 +90,9 @@ void ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpFilter *filter) {
 	// Collect the variable names from bound_vars to populate the Argument ops we will build.
 	const char **vars = (const char **)raxValues(bound_vars);
 
+	ExecutionPlan *filter_plan = (ExecutionPlan *)filter->op.plan;
 	// Reduce.
-	OpBase *apply_op = _ReduceFilterToOp(plan, vars, filter->filterTree);
+	OpBase *apply_op = _ReduceFilterToOp(filter_plan, vars, filter->filterTree);
 	// Replace operations.
 	ExecutionPlan_ReplaceOp(plan, (OpBase *)filter, apply_op);
 	// Bounded branch is now the last child (after ops replacement). Make it the first.
