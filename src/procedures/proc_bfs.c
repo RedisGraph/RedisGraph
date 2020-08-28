@@ -14,18 +14,17 @@
 #include "../graph/graphcontext.h"
 #include "../algorithms/LAGraph_bfs_both.h"
 
-// MATCH (a:User {id: 1}) CALL algo.bfs(a, 0, 'MANAGES', true) YIELD start_node, nodes, edges
+// MATCH (a:User {id: 1}) CALL algo.bfs(a, 0, 'MANAGES', true) YIELD nodes, edges
 typedef struct {
 	Graph *g;                       // Graph.
 	GrB_Index n;                    // Total number of results.
 	GrB_Index *node_ids;            // Array of connected nodes.
 	GrB_Vector parents;             // Vector associating each node in the BFS tree with its parent.
 	int reltype_id;                 // ID of relationship matrix to traverse.
-	int start_node_output_idx;      // Offset of start node in outputs
 	int nodes_output_idx;           // Offset of nodes array in outputs
 	int edges_output_idx;           // Offset of edges array in outputs
-	SIValue *output;                // Array with a maximum of 6 entries: ["node", node, "level", level, "path", path].
-	bool depleted;
+	SIValue *output;                // Array with a maximum of 4 entries: ["nodes", nodes, "edges", edges].
+	bool depleted;                  // True if BFS has already been performed for this node.
 } BFSContext;
 
 static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx, const SIValue *args) {
@@ -39,15 +38,15 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx, const SIValue *args) {
 	BFSContext *pdata = ctx->privateData;
 	pdata->depleted = false;
 	Node *source_node = args[0].ptrval;
-	pdata->output[pdata->start_node_output_idx] = SI_Node(source_node);
 	GrB_Index source_id = ENTITY_GET_ID(source_node);
-	// TODO a level of 1 means "just the source", which I think may be unintuitive - consider adding 1 to make it "just neighbors".
 	int64_t max_level = args[1].longval;
+	/* The BFS algorithm uses a level of 1 to indicate the source node. If this value is not
+	 * zero (unlimited), increment it by 1 to make level 1 indicate the source's direct neighbors. */
+	if(max_level > 0) max_level++;
 	const char *reltype = SIValue_IsNull(args[2]) ? NULL : args[2].stringval;
 	bool collect_edges = args[3].longval;
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
-
 	// Get edge matrix and transpose matrix, if available.
 	GrB_Matrix R;
 	GrB_Matrix TR;
@@ -67,11 +66,13 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx, const SIValue *args) {
 	GrB_Vector PI = NULL; // Vector backtracking results to their parents.
 	GrB_Vector *PI_ptr = &PI;
 	if(!collect_edges) {
+		/* If we're not collecting edges, pass a NULL parent pointer so that the algorithm will
+		 * not perform unnecessary work. */
 		PI_ptr = GrB_NULL;
 		pdata->edges_output_idx = -1;
 	}
 	assert(LAGraph_bfs_both(&V, PI_ptr, R, TR, source_id, max_level, false) == GrB_SUCCESS);
-	/* Remove all values with a level less than 2.
+	/* Remove all values with a level less than or equal to 1.
 	 * Values of 0 are not connected to the source, and values of 1 are the source. */
 	GxB_Scalar thunk;
 	GxB_Scalar_new(&thunk, GrB_UINT64);
@@ -99,22 +100,19 @@ static SIValue *Proc_BFS_Step(ProcedureCtx *ctx) {
 
 	BFSContext *pdata = (BFSContext *)ctx->privateData;
 
-	// Return NULL if this source has been mapped or there are no connected nodes.
+	// Return NULL if this source has already been mapped or there are no connected nodes.
 	if(pdata->depleted || pdata->n == 0) return NULL;
 
-	if(pdata->nodes_output_idx >= 0) {
-		pdata->output[pdata->nodes_output_idx] = SI_Array(pdata->n);
-	}
-
-	if(pdata->edges_output_idx >= 0) {
-		pdata->output[pdata->edges_output_idx] = SI_Array(pdata->n);
-	}
+	// Build arrays for the outputs the user has requested.
+	if(pdata->nodes_output_idx >= 0) pdata->output[pdata->nodes_output_idx] = SI_Array(pdata->n);
+	if(pdata->edges_output_idx >= 0) pdata->output[pdata->edges_output_idx] = SI_Array(pdata->n);
 
 	for(int i = 0; i < pdata->n; i ++) {
+		// Get the reached node.
 		NodeID node_id = pdata->node_ids[i];
 
 		if(pdata->nodes_output_idx >= 0) {
-			// Get the reached node.
+			// Append each reachable node to the nodes output array.
 			Node n = GE_NEW_NODE();
 			Graph_GetNode(pdata->g, node_id, &n);
 			SIArray_Append(&pdata->output[pdata->nodes_output_idx], SI_Node(&n));
@@ -122,63 +120,55 @@ static SIValue *Proc_BFS_Step(ProcedureCtx *ctx) {
 
 		if(pdata->edges_output_idx >= 0) {
 			GrB_Index parent_id;
+			// Find the parent of the reached node.
 			assert(GrB_Vector_extractElement(&parent_id, pdata->parents, node_id) == GrB_SUCCESS);
-			EdgeID id = Graph_GetSingleEdgeConnectingNodes(pdata->g, parent_id - 1, node_id, pdata->reltype_id);
-			Edge e = GE_NEW_EDGE(parent_id - 1, node_id);
+			parent_id --; // Decrement the parent ID by 1 to correct 1-indexing.
+			// Retrieve any edge connecting the parent node to the current node.
+			EdgeID id = Graph_GetSingleEdgeConnectingNodes(pdata->g, parent_id, node_id, pdata->reltype_id);
+			Edge e = GE_NEW_EDGE(parent_id, node_id);
 			Graph_GetEdge(pdata->g, id, &e);
+			// Append the edge to the edges output array.
 			SIArray_Append(&pdata->output[pdata->edges_output_idx], SI_Edge(&e));
 		}
 	}
 
-	pdata->depleted = true;
+	pdata->depleted = true; // Mark that this node has been mapped.
 
 	return pdata->output;
 }
 
 static ProcedureResult Proc_BFS_Free(ProcedureCtx *ctx) {
 	// Clean up.
-	if(ctx->privateData) {
-		BFSContext *pdata = ctx->privateData;
-		if(pdata->output) array_free(pdata->output);
-		if(pdata->node_ids) rm_free(pdata->node_ids);
-		if(pdata->parents) GrB_Vector_free(&pdata->parents);
-		rm_free(ctx->privateData);
-	}
+	BFSContext *pdata = ctx->privateData;
+	if(pdata->output) array_free(pdata->output);
+	if(pdata->node_ids) rm_free(pdata->node_ids);
+	if(pdata->parents) GrB_Vector_free(&pdata->parents);
+	rm_free(ctx->privateData);
 
 	return PROCEDURE_OK;
 }
 
 static BFSContext *_Proc_BFS_BuildContext(const char **yields, ProcedureOutput ***outputs) {
-	// Setup context.
+	// Set up the BFS context.
 	BFSContext *pdata = rm_calloc(1, sizeof(BFSContext));
 	pdata->g = QueryCtx_GetGraph();
 	pdata->n = 0;
-	pdata->reltype_id = GRAPH_NO_RELATION;
-
 	pdata->nodes_output_idx = -1;
 	pdata->edges_output_idx = -1;
+	pdata->reltype_id = GRAPH_NO_RELATION;
 
 	uint yield_count = array_len(yields);
 	pdata->output = array_new(SIValue, yield_count * 2);
 	for(uint i = 0; i < yield_count; i++) {
 		ProcedureOutput *output = rm_malloc(sizeof(ProcedureOutput));
 		// TODO Improve output logic to remove redundancy of internal and external outputs.
-		if(!strcasecmp(yields[i], "start_node")) {
-			// Internal
-			pdata->output = array_append(pdata->output, SI_ConstStringVal("start_node"));
-			pdata->start_node_output_idx = array_len(pdata->output);
-			pdata->output = array_append(pdata->output, SI_Node(NULL)); // Place holder.
-
-			// External
-			output->name = "start_node";
-			output->type = T_NODE;
-		} else if(!strcasecmp(yields[i], "nodes")) {
-			// Internal
+		if(!strcasecmp(yields[i], "nodes")) {
+			// Internal outputs array.
 			pdata->output = array_append(pdata->output, SI_ConstStringVal("nodes"));
 			pdata->nodes_output_idx = array_len(pdata->output);
 			pdata->output = array_append(pdata->output, SI_NullVal()); // Place holder.
 
-			// External
+			// External outputs array.
 			output->name = "nodes";
 			output->type = T_ARRAY;
 		} else if(!strcasecmp(yields[i], "edges")) {
@@ -189,6 +179,7 @@ static BFSContext *_Proc_BFS_BuildContext(const char **yields, ProcedureOutput *
 			output->name = "edges";
 			output->type = T_ARRAY;
 		} else {
+			// Unreachable, yield strings have been validated in the AST.
 			assert(false);
 		}
 		*outputs = array_append(*outputs, output);
@@ -199,19 +190,22 @@ static BFSContext *_Proc_BFS_BuildContext(const char **yields, ProcedureOutput *
 ProcedureCtx *Proc_BFS_Ctx(AR_ExpNode **args, const char **yields) {
 	bool yield_edges = true;
 	if(args) {
+		// If we have the CALL arguments (because we're not in a validation context),
+		// check if the user wants to yield edges.
 		SIValue yield_edges_val = AR_EXP_Evaluate(args[3], NULL);
 		yield_edges = yield_edges_val.longval;
 	}
 	bool default_yields = (yields == NULL);
 	if(default_yields) {
-		int yield_count = 2;
+		// If the user did not add an explicit YIELD, use the default yields.
+		int yield_count = 1;
 		if(yield_edges) yield_count ++;
 		yields = array_new(const char *, yield_count);
-		yields = array_append(yields, "start_node");
 		yields = array_append(yields, "nodes");
 		if(yield_edges) yields = array_append(yields, "edges");
 	}
 	ProcedureOutput **outputs = array_new(ProcedureOutput *, array_len(yields));
+	// Populate the BFSContext held within this procedure.
 	void *privdata = _Proc_BFS_BuildContext(yields, &outputs);
 	if(default_yields) array_free(yields);
 
