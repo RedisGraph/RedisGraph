@@ -354,10 +354,15 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 			char *entities_str;
 			asprintf(&entities_str, "%s", entities[0]);
 			for(uint64_t i = 1; i < references_count; i++) {
-				asprintf(&entities_str, "%s, %s", entities_str, entities[0]);
+				asprintf(&entities_str, "%s, %s", entities_str, entities[i]);
 			}
 			QueryCtx_SetError("Unable to place filter op for entities: %s", entities_str);
+			// Cleanup.
+			OpBase_Free(filter);
 			free(entities_str);
+			for(uint64_t i = 0; i < references_count; i++) {
+				rm_free(entities[i]);
+			}
 			array_free(entities);
 			raxFree(references);
 			return;
