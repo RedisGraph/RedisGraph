@@ -16,7 +16,7 @@ endif
 # Default CFLAGS
 CFLAGS = \
 	-Wall -Wno-unused-function -Wno-unused-variable -Wno-unused-result \
-	-fPIC \
+	-fPIC -fcommon \
 	-D_GNU_SOURCE -DREDIS_MODULE_TARGET -DREDISMODULE_EXPERIMENTAL_API -DXXH_STATIC_LINKING_ONLY
 CFLAGS += $(DEBUGFLAGS)
 
