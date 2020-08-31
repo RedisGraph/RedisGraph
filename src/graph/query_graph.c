@@ -62,6 +62,10 @@ static void _BuildQueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_
 	QGEdge *edge = QGEdge_New(NULL, NULL, NULL, alias);
 	edge->bidirectional = (dir == CYPHER_REL_BIDIRECTIONAL);
 
+	// Increment the degrees of the endpoints.
+	src->degree++;
+	dest->degree++;
+
 	// Add the IDs of all reltype matrixes
 	uint nreltypes = cypher_ast_rel_pattern_nreltypes(ast_entity);
 	for(uint i = 0; i < nreltypes; i ++) {
@@ -143,6 +147,34 @@ void QueryGraph_AddPath(QueryGraph *qg, const GraphContext *gc, const cypher_ast
 	}
 }
 
+/* Find every pre-existing node referenced in an OPTIONAL MATCH and,
+ * if it's used as an endpoint of a new edge, update its degree. */
+static void _QueryGraph_UpdateNodeDegrees(QueryGraph *qg, const AST *ast,
+										  const cypher_astnode_t *path) {
+	uint nelems = cypher_ast_pattern_path_nelements(path);
+	// Check every edge in the path.
+	for(uint i = 1; i < nelems; i += 2) {
+		// Skip edges that appeared in a mandatory MATCH.
+		const cypher_astnode_t *edge = cypher_ast_pattern_path_get_element(path, i);
+		const char *alias = AST_GetEntityName(ast, edge);
+		if(QueryGraph_GetEdgeByAlias(qg, alias) != NULL) continue;
+
+		// Retrieve the QGNode corresponding to the node left of this edge.
+		const cypher_astnode_t *l_node = cypher_ast_pattern_path_get_element(path, i - 1);
+		const char *l_alias = AST_GetEntityName(ast, l_node);
+		QGNode *left = QueryGraph_GetNodeByAlias(qg, l_alias);
+		// If this node was not introduced by the OPTIONAL MATCH, increment its degree.
+		if(left) left->degree++;
+
+		// Retrieve the QGNode corresponding to the node right of this edge.
+		const cypher_astnode_t *r_node = cypher_ast_pattern_path_get_element(path, i + 1);
+		const char *r_alias = AST_GetEntityName(ast, r_node);
+		QGNode *right = QueryGraph_GetNodeByAlias(qg, r_alias);
+		// If this node was not introduced by the OPTIONAL MATCH, increment its degree.
+		if(right) right->degree++;
+	}
+}
+
 /* Build a query graph from MATCH and MERGE clauses. */
 QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 	uint node_count;
@@ -156,9 +188,14 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 	const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
 	if(match_clauses) {
 		uint match_count = array_len(match_clauses);
+		const cypher_astnode_t **optional_match_clauses = NULL;
 		for(uint i = 0; i < match_count; i ++) {
-			// OPTIONAL MATCH clauses are handled separately.
-			if(cypher_ast_match_is_optional(match_clauses[i])) continue;
+			// Collect OPTIONAL MATCH clauses but do not use them now to update the QueryGraph.
+			if(cypher_ast_match_is_optional(match_clauses[i])) {
+				if(optional_match_clauses == NULL) optional_match_clauses = array_new(const cypher_astnode_t *, 1);
+				optional_match_clauses = array_append(optional_match_clauses, match_clauses[i]);
+				continue;
+			}
 			const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match_clauses[i]);
 			uint npaths = cypher_ast_pattern_npaths(pattern);
 			for(uint j = 0; j < npaths; j ++) {
@@ -166,6 +203,19 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 				QueryGraph_AddPath(qg, gc, path);
 			}
 		}
+
+		// We only want to use OPTIONAL MATCH clauses to update the overall degree of pre-existing nodes.
+		uint optional_match_count = array_len(optional_match_clauses);
+		for(uint i = 0; i < optional_match_count; i ++) {
+			const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(optional_match_clauses[i]);
+			uint npaths = cypher_ast_pattern_npaths(pattern);
+			for(uint j = 0; j < npaths; j ++) {
+				const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
+				_QueryGraph_UpdateNodeDegrees(qg, ast, path);
+			}
+		}
+
+		array_free(optional_match_clauses);
 		array_free(match_clauses);
 	}
 

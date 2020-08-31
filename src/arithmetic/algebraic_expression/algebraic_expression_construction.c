@@ -14,7 +14,7 @@
 static bool _highly_connected_node(const QueryGraph *qg, const char *alias) {
 	// Look up node in qg.
 	QGNode *n = QueryGraph_GetNodeByAlias(qg, alias);
-	return ((array_len(n->incoming_edges) + array_len(n->outgoing_edges)) > 2);
+	return (n->degree > 2);
 }
 
 static inline bool _referred_entity(const char *alias) {
@@ -537,3 +537,4 @@ AlgebraicExpression **AlgebraicExpression_FromQueryGraph
 	QueryGraph_Free(g);
 	return exps;
 }
+

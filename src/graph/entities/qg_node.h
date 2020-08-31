@@ -14,6 +14,7 @@
 struct QGEdge;
 
 typedef struct {
+	int degree;                /* Total degree of edge. */
 	int labelID;               /* Label ID */
 	const char *label;         /* Label string */
 	const char *alias;         /* User-provided alias associated with this node */

@@ -225,3 +225,17 @@ class testOptionalFlow(FlowTestsBase):
                            ['v3', None],
                            ['v4', None]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    def test18_optional_highly_connected_node(self):
+        global redis_graph
+        # If we only had the mandatory MATCH clause, we'd have only one traversal operation
+        # since 'b' is not referenced or highly connected. It is reused in the optional MATCH, however,
+        # so it should be made the endpoint of a traverse op and not introduce an erroneous Scan.
+        query = """MATCH (a)-[]->(b)-[]->(c) OPTIONAL MATCH (b)-[]->(d) RETURN d.v ORDER BY d.v"""
+        plan = redis_graph.execution_plan(query)
+        self.env.assertEquals(plan.count("Scan"), 1)
+        self.env.assertEquals(plan.count("Conditional Traverse | (b)"), 2)
+
+        actual_result = redis_graph.query(query)
+        expected_result = [['v3']]
+        self.env.assertEquals(actual_result.result_set, expected_result)
