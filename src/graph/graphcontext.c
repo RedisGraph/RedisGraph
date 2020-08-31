@@ -7,6 +7,7 @@
 #include <sys/param.h>
 #include <pthread.h>
 #include "graphcontext.h"
+#include "../config.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../redismodule.h"
