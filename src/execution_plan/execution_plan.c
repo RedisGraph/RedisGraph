@@ -332,13 +332,33 @@ static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
 
 void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 									  const OpBase *upper_bound, OpBase *filter) {
-	assert(filter->type == OPType_FILTER);
+	ASSERT(filter->type == OPType_FILTER);
+	OpBase *op = NULL;
 	rax *references = FilterTree_CollectModified(((OpFilter *)filter)->filterTree);
-	OpBase *op;
-	if(raxSize(references) > 0) {
+	uint64_t references_count = raxSize(references);
+	
+	if(references_count > 0) {
 		/* Scan execution plan, locate the earliest position where all
 		 * references been resolved. */
 		op = ExecutionPlan_LocateReferences(lower_bound, upper_bound, references);
+		if(!op) {
+			// Something is wrong - could not find a matching op where all references are solved.
+			unsigned char **entities = raxKeys(references);
+			char *entities_str;
+			asprintf(&entities_str, "%s", entities[0]);
+			for(uint64_t i = 1; i < references_count; i++) {
+				asprintf(&entities_str, "%s, %s", entities_str, entities[i]);
+			}
+			// Build-time error - execution plan will not run.
+			QueryCtx_SetError("Unable to place filter op for entities: %s", entities_str);
+			// Cleanup.
+			OpBase_Free(filter);
+			free(entities_str);
+			for(uint64_t i = 0; i < references_count; i++) rm_free(entities[i]);
+			array_free(entities);
+			raxFree(references);
+			return;
+		}
 	} else {
 		/* The filter tree does not contain references, like:
 		 * WHERE 1=1
@@ -349,7 +369,8 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 			op = op->children[0];
 		}
 	}
-	assert(op);
+	ASSERT(op != NULL);
+
 	// In case this is a pre-existing filter (this function is not called out from ExecutionPlan_PlaceFilterOps)
 	if(filter->childCount > 0) {
 		// If the located op is not the filter child, re position the filter.
