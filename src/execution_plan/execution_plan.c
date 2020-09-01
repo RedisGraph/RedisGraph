@@ -340,10 +340,11 @@ static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
 
 void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 									  const OpBase *upper_bound, OpBase *filter) {
-	assert(filter->type == OPType_FILTER);
+	ASSERT(filter->type == OPType_FILTER);
+	OpBase *op = NULL;
 	rax *references = FilterTree_CollectModified(((OpFilter *)filter)->filterTree);
-	OpBase *op;
 	uint64_t references_count = raxSize(references);
+	
 	if(references_count > 0) {
 		/* Scan execution plan, locate the earliest position where all
 		 * references been resolved. */
@@ -376,6 +377,7 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 			op = op->children[0];
 		}
 	}
+	ASSERT(op != NULL);
 
 	// In case this is a pre-existing filter (this function is not called out from ExecutionPlan_PlaceFilterOps)
 	if(filter->childCount > 0) {
