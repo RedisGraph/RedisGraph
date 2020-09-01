@@ -31,6 +31,7 @@ typedef enum {
 typedef struct AlgebraicExpression AlgebraicExpression;
 
 struct AlgebraicExpression {
+	AlgebraicExpressionType type;   // Type of node, either an operation or an operand.
 	union {
 		struct {
 			bool diagonal;          // Diagonal matrix.
@@ -46,7 +47,6 @@ struct AlgebraicExpression {
 			AlgebraicExpression **children; // Child nodes.
 		} operation;
 	};
-	AlgebraicExpressionType type;   // Type of node, either an operation or an operand.
 };
 
 //------------------------------------------------------------------------------
