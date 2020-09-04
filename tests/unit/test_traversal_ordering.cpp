@@ -200,7 +200,7 @@ TEST_F(TraversalOrderingTest, ValidateScoring) {
 	AlgebraicExpression *ExpBD = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "D", NULL, "L");
 
 	filters = build_filter_tree_from_query(
-				  "MATCH (A)-[]->(B)-[]->(C)-[]->(D), (B)-[]->(E) WHERE A.val = 1 AND D.val = 1 RETURN *");
+				  "MATCH (A:L {v: 1})-[]->(B)-[]->(C), (B)-[]->(D:L {v: 1})) RETURN *");
 
 	// Test every permutation of the set.
 	set[0] = ExpAB;
