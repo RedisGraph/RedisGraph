@@ -61,118 +61,6 @@ class TraversalOrderingTest: public ::testing::Test {
 	}
 };
 
-TEST_F(TraversalOrderingTest, TransposeFree) {
-	/* Given the ordered (left to right) set of algebraic expression:
-	 * { [CD], [BC], [AB] }
-	 * Which represents the traversal:
-	 * (A)->(B)->(C)->(D)
-	 * If we choose to start at C
-	 * we can continue to D.
-	 * Retract from C to B
-	 * Retract from B to A.
-	 * Overall we've performed 2 transposes:
-	 * (A)<-(B) and (B)<-(C).
-	 *
-	 * We can reorder this set in such away
-	 * that we won't perform any transposes.
-	 *
-	 * Here are all of the possible permutations of the set:
-	 * { [AB], [BC], [CD] } (A)->(B)->(C)->(D)
-	 * { [AB], [CD], [BC] } Invalid arrangement.
-	 * { [BC], [AB], [CD] } (A)<-(B)->(C)->(D)
-	 * { [BC], [CD], [AB] } (A)<-(B)->(C)->(D)
-	 * { [CD], [AB], [BC] } Invalid arrangement.
-	 * { [CD], [BC], [AB] } (A)<-(B)<-(C)->(D)
-	 *
-	 * Arrangement { [AB], [BC], [CD] }
-	 * Is the only one that doesn't requires any transposes. */
-
-	QGNode *A = QGNode_New("A");
-	QGNode *B = QGNode_New("B");
-	QGNode *C = QGNode_New("C");
-	QGNode *D = QGNode_New("D");
-
-	QGEdge *AB = QGEdge_New(A, B, "E", "AB");
-	QGEdge *BC = QGEdge_New(B, C, "E", "BC");
-	QGEdge *CD = QGEdge_New(C, D, "E", "CD");
-
-	QueryGraph *qg = QueryGraph_New(4, 3);
-
-	QueryGraph_AddNode(qg, A);
-	QueryGraph_AddNode(qg, B);
-	QueryGraph_AddNode(qg, C);
-	QueryGraph_AddNode(qg, D);
-	QueryGraph_ConnectNodes(qg, A, B, AB);
-	QueryGraph_ConnectNodes(qg, B, C, BC);
-	QueryGraph_ConnectNodes(qg, C, D, CD);
-
-	AlgebraicExpression *set[3];
-	AlgebraicExpression *ExpAB = AlgebraicExpression_NewOperand(GrB_NULL, false, "A", "B", NULL, NULL);
-	AlgebraicExpression *ExpBC = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "C", NULL, NULL);
-	AlgebraicExpression *ExpCD = AlgebraicExpression_NewOperand(GrB_NULL, false, "C", "D", NULL, NULL);
-
-	// { [CD], [BC], [AB] }
-	set[0] = ExpCD;
-	set[1] = ExpBC;
-	set[2] = ExpAB;
-
-	orderExpressions(qg, set, 3, NULL, NULL);
-	ASSERT_EQ(set[0], ExpAB);
-	ASSERT_EQ(set[1], ExpBC);
-	ASSERT_EQ(set[2], ExpCD);
-
-	// { [AB], [BC], [CD] }
-	set[0] = ExpAB;
-	set[1] = ExpBC;
-	set[2] = ExpCD;
-	orderExpressions(qg, set, 3, NULL, NULL);
-	ASSERT_EQ(set[0], ExpAB);
-	ASSERT_EQ(set[1], ExpBC);
-	ASSERT_EQ(set[2], ExpCD);
-
-	// { [AB], [CD], [BC] }
-	set[0] = ExpAB;
-	set[1] = ExpCD;
-	set[2] = ExpBC;
-	orderExpressions(qg, set, 3, NULL, NULL);
-	ASSERT_EQ(set[0], ExpAB);
-	ASSERT_EQ(set[1], ExpBC);
-	ASSERT_EQ(set[2], ExpCD);
-
-	// { [BC], [AB], [CD] }
-	set[0] = ExpBC;
-	set[1] = ExpAB;
-	set[2] = ExpCD;
-	orderExpressions(qg, set, 3, NULL, NULL);
-	ASSERT_EQ(set[0], ExpAB);
-	ASSERT_EQ(set[1], ExpBC);
-	ASSERT_EQ(set[2], ExpCD);
-
-	// { [BC], [CD], [AB] }
-	set[0] = ExpBC;
-	set[1] = ExpCD;
-	set[2] = ExpAB;
-	orderExpressions(qg, set, 3, NULL, NULL);
-	ASSERT_EQ(set[0], ExpAB);
-	ASSERT_EQ(set[1], ExpBC);
-	ASSERT_EQ(set[2], ExpCD);
-
-	// { [CD], [AB], [BC] }
-	set[0] = ExpCD;
-	set[1] = ExpAB;
-	set[2] = ExpBC;
-	orderExpressions(qg, set, 3, NULL, NULL);
-	ASSERT_EQ(set[0], ExpAB);
-	ASSERT_EQ(set[1], ExpBC);
-	ASSERT_EQ(set[2], ExpCD);
-
-	// Clean up.
-	AlgebraicExpression_Free(ExpAB);
-	AlgebraicExpression_Free(ExpBC);
-	AlgebraicExpression_Free(ExpCD);
-	QueryGraph_Free(qg);
-}
-
 TEST_F(TraversalOrderingTest, FilterFirst) {
 	/* Given the ordered (left to right) set of algebraic expression:
 	 * { [AB], [BC], [CD] }
@@ -274,50 +162,101 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	QueryGraph_Free(qg);
 }
 
-TEST_F(TraversalOrderingTest, OptimalStartingPoint) {
-	/* Given the single algebraic expression that represents the traversal:
-	 * (A)->(B:L)->(C:L)
-	 * And a set of filters:
-	 * A.V = X, C.V = Y
-	 *
-	 * The starting point of the traversal should be C,
-	 * as it is both labeled and filtered. */
+TEST_F(TraversalOrderingTest, ValidateScoring) {
+	/* Given the set of algebraic expressions:
+	 * { [AB], [BC], [BD] }
+	 * We represent the traversal:
+	 * (A:L {v: 1})->(B)->(C), (B)->(D:L {v: 1})
+	 * The optimal order of traversals should always be:
+	 * { [AB], [BD], [BC] }
+	 * Validate this for all input permutations.
+	 */
 
 	FT_FilterNode *filters;
-	QGNode *A  = QGNode_New("A");
-	QGNode *B  = QGNode_New("B");
-	QGNode *C  = QGNode_New("C");
+	QGNode *A = QGNode_New("A");
+	QGNode *B = QGNode_New("B");
+	QGNode *C = QGNode_New("C");
+	QGNode *D = QGNode_New("D");
+	A->label = "L";
+	D->label = "L";
+
 	QGEdge *AB = QGEdge_New(A, B, "E", "AB");
 	QGEdge *BC = QGEdge_New(B, C, "E", "BC");
+	QGEdge *BD = QGEdge_New(B, D, "E", "BD");
 
-	B->label = "L";
-	C->label = "L";
-
-	QueryGraph *qg = QueryGraph_New(3, 2);
+	QueryGraph *qg = QueryGraph_New(4, 3);
 
 	QueryGraph_AddNode(qg, A);
 	QueryGraph_AddNode(qg, B);
 	QueryGraph_AddNode(qg, C);
+	QueryGraph_AddNode(qg, D);
 	QueryGraph_ConnectNodes(qg, A, B, AB);
 	QueryGraph_ConnectNodes(qg, B, C, BC);
+	QueryGraph_ConnectNodes(qg, C, D, BD);
 
-	AlgebraicExpression *root = AlgebraicExpression_NewOperation(AL_EXP_MUL);
-	AlgebraicExpression *ExpAB = AlgebraicExpression_NewOperand(GrB_NULL, false, "A", "B", NULL, NULL);
+	AlgebraicExpression *set[3];
+	AlgebraicExpression *ExpAB = AlgebraicExpression_NewOperand(GrB_NULL, false, "A", "B", NULL, "L");
 	AlgebraicExpression *ExpBC = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "C", NULL, NULL);
-	AlgebraicExpression_AddChild(root, ExpAB);
-	AlgebraicExpression_AddChild(root, ExpBC);
+	AlgebraicExpression *ExpBD = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "D", NULL, "L");
 
 	filters = build_filter_tree_from_query(
-				  "MATCH (A {val: 'v1'})-[]-(B:L)-[]->(C:L {val: 'v3'}) RETURN A");
+				  "MATCH (A)-[]->(B)-[]->(C)-[]->(D), (B)-[]->(E) WHERE A.val = 1 AND D.val = 1 RETURN *");
 
-	ASSERT_STRNE(AlgebraicExpression_Source(root), "C");
-	orderExpressions(qg, &root, 1, filters, NULL);
-	ASSERT_STREQ(AlgebraicExpression_Source(root), "C");
+	// Test every permutation of the set.
+	set[0] = ExpAB;
+	set[1] = ExpBC;
+	set[2] = ExpBD;
+	orderExpressions(qg, set, 3, filters, NULL);
+	ASSERT_EQ(set[0], ExpAB);
+	ASSERT_EQ(set[1], ExpBD);
+	ASSERT_EQ(set[2], ExpBC);
+
+	set[0] = ExpAB;
+	set[1] = ExpBD;
+	set[2] = ExpBC;
+	orderExpressions(qg, set, 3, filters, NULL);
+	ASSERT_EQ(set[0], ExpAB);
+	ASSERT_EQ(set[1], ExpBD);
+	ASSERT_EQ(set[2], ExpBC);
+
+	set[0] = ExpBC;
+	set[1] = ExpBD;
+	set[2] = ExpAB;
+	orderExpressions(qg, set, 3, filters, NULL);
+	ASSERT_EQ(set[0], ExpAB);
+	ASSERT_EQ(set[1], ExpBD);
+	ASSERT_EQ(set[2], ExpBC);
+
+	set[0] = ExpBC;
+	set[1] = ExpAB;
+	set[2] = ExpBD;
+	orderExpressions(qg, set, 3, filters, NULL);
+	ASSERT_EQ(set[0], ExpAB);
+	ASSERT_EQ(set[1], ExpBD);
+	ASSERT_EQ(set[2], ExpBC);
+
+	set[0] = ExpBD;
+	set[1] = ExpAB;
+	set[2] = ExpBC;
+	orderExpressions(qg, set, 3, filters, NULL);
+	ASSERT_EQ(set[0], ExpAB);
+	ASSERT_EQ(set[1], ExpBD);
+	ASSERT_EQ(set[2], ExpBC);
+
+	set[0] = ExpBD;
+	set[1] = ExpBC;
+	set[2] = ExpAB;
+	orderExpressions(qg, set, 3, filters, NULL);
+	ASSERT_EQ(set[0], ExpAB);
+	ASSERT_EQ(set[1], ExpBD);
+	ASSERT_EQ(set[2], ExpBC);
+
+	FilterTree_Free(filters);
 
 	// Clean up.
-	FilterTree_Free(filters);
 	AlgebraicExpression_Free(ExpAB);
 	AlgebraicExpression_Free(ExpBC);
+	AlgebraicExpression_Free(ExpBD);
 	QueryGraph_Free(qg);
 }
 
