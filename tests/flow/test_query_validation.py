@@ -281,3 +281,12 @@ class testQueryValidationFlow(FlowTestsBase):
             assert("Unable to place filter op for entities" in e.message)
             pass
 
+    # Comments should not affect query functionality.
+    def test21_ignore_query_comments(self):
+        query = """MATCH (n)  // This is a comment
+                   /* This is a block comment */
+                   WHERE EXISTS(n.age)
+                   RETURN n.age /* Also a block comment*/"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[34]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
