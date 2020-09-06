@@ -4,7 +4,8 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "../../config.h"
+#include "./traverse_order.h"
+#include "../../RG.h"
 #include "../../util/arr.h"
 #include "../../util/strcmp.h"
 #include "../../util/rmalloc.h"
@@ -26,16 +27,17 @@ static inline void _Arrangement_Print(AlgebraicExpression **arrangement, uint si
 	}
 }
 
-static bool _valid_position(AlgebraicExpression **exps, uint exp_count, int pos, QueryGraph *qg) {
+static bool _valid_position(AlgebraicExpression **exps, int pos, QueryGraph *qg) {
 	AlgebraicExpression *exp = exps[pos];
 	if(pos == 0) {
 		// The first operand cannot be a variable-length edge with a labeled source or destination,
 		// as a labeled endpoint must be first to get replaced by a LabelScan op.
-		QGNode *src = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(exp));
-		QGNode *dest = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Destination(exp));
-		if((src->label || dest->label) &&
+		QGNode *src_node = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Source(exp));
+		QGNode *dest_node = QueryGraph_GetNodeByAlias(qg, AlgebraicExpression_Destination(exp));
+		if((src_node->label || dest_node->label) &&
 		   AlgebraicExpression_Edge(exp) &&
 		   AlgebraicExpression_OperandCount(exp) == 1) return false;
+
 		// Since the first operand has no previous variables to check, it is assumed to be valid.
 		return true;
 	}
@@ -57,20 +59,23 @@ static bool _valid_position(AlgebraicExpression **exps, uint exp_count, int pos,
 
 // Promote a selected operand to the given position while otherwise maintaining the optimal order.
 static void _promote_next_operand(AlgebraicExpression **exps, uint exp_count, uint to, uint from) {
-	AlgebraicExpression *tmp = exps[to];
-	// Migrate 'from' to 'to'
-	exps[to] = exps[from];
-	// Move all expressions between 'to' and 'from' 1 to the right.
-	for(uint i = to + 1; i < from; i ++) exps[i + 1] = exps[i];
-	// Set the replaced expression directly after its original position.
-	exps[to + 1] = tmp;
+	// Validate index range
+	ASSERT(from > to);
+	ASSERT(from < exp_count && to < exp_count);
+
+	AlgebraicExpression *tmp = exps[from];
+	// Shift right
+	for(uint i = from; i > to; i --) exps[i] = exps[i-1];
+
+	// Overide `to` with `from`
+	exps[to] = tmp;
 }
 
 static void _order_expressions(AlgebraicExpression **exps, uint exp_count, QueryGraph *qg) {
 	int first_operand = 0;
 	for(uint i = 0; i < exp_count - 1; i ++) {
 		int j = i + 1;
-		while(!_valid_position(exps, exp_count, i, qg)) {
+		while(!_valid_position(exps, i, qg)) {
 			if(j >= exp_count) {
 				// Failed to resolve a valid sequence with the first operand,
 				// swap the first operand and reset.
@@ -88,38 +93,39 @@ static void _order_expressions(AlgebraicExpression **exps, uint exp_count, Query
 static int _score_arrangement(AlgebraicExpression **arrangement, uint exp_count, QueryGraph *qg,
 							  rax *filtered_entities, rax *bound_vars) {
 	int score = 0;
-
 	// A bit naive at the moment.
 	for(uint i = 0; i < exp_count; i++) {
 		uint reward_factor = exp_count - i;
 		AlgebraicExpression *exp = arrangement[i];
+		const char *src = AlgebraicExpression_Source(exp);
+		const char *dest = AlgebraicExpression_Destination(exp);
+		uint src_len = strlen(src);
+		uint dest_len = strlen(dest);
+		int factor = exp_count - i;
 
-		// Reward bound variables such that any expression with a bound variable
-		// will be preferred over any expression without.
+		/* Reward bound variables such that any expression with a bound variable
+		 * will be preferred over any expression without. */
 		if(bound_vars) {
-			if(raxFind(bound_vars, (unsigned char *)AlgebraicExpression_Source(exp),
-					   strlen(AlgebraicExpression_Source(exp))) != raxNotFound) {
-				score += B * (exp_count - i);
+			if(raxFind(bound_vars, (unsigned char *)src, src_len) != raxNotFound) {
+				score += B * factor;
 			}
-
-			if(raxFind(bound_vars, (unsigned char *)AlgebraicExpression_Destination(exp),
-					   strlen(AlgebraicExpression_Destination(exp))) != raxNotFound) {
-				score += B * (exp_count - i);
+			if(raxFind(bound_vars, (unsigned char *)dest, dest_len) != raxNotFound) {
+				score += B * factor;
 			}
 		}
 
 		// Reward filters in expression.
-		if(raxFind(filtered_entities, (unsigned char *)AlgebraicExpression_Source(exp),
-				   strlen(AlgebraicExpression_Source(exp))) != raxNotFound) {
-			score += F * (exp_count - i);
+		if(filtered_entities) {
+			if(raxFind(filtered_entities, (unsigned char *)src, src_len) != raxNotFound) {
+				score += F * factor;
+			}
+			if(raxFind(filtered_entities, (unsigned char *)dest, dest_len) != raxNotFound) {
+				score += F * factor;
+			}
 		}
-		if(raxFind(filtered_entities, (unsigned char *)AlgebraicExpression_Destination(exp),
-				   strlen(AlgebraicExpression_Destination(exp))) != raxNotFound) {
-			score += F * (exp_count - i);
-		}
-		QGNode *src = QueryGraph_GetNodeByAlias(qg,
-												AlgebraicExpression_Source(exp)); // TODO unwisely expensive
-		if(src->label) score += L * (exp_count - i);
+
+		QGNode *src_node = QueryGraph_GetNodeByAlias(qg, src); // TODO unwisely expensive
+		if(src_node->label) score += L * factor;
 	}
 
 	return score;
@@ -129,9 +135,9 @@ static int _score_arrangement(AlgebraicExpression **arrangement, uint exp_count,
 // such that each expresson's source is resolved by a previous expression.
 static void _resolve_winning_sequence(AlgebraicExpression **exps, uint exp_count) {
 	for(uint i = 1; i < exp_count; i ++) {
+		bool src_resolved = false;
 		AlgebraicExpression *exp = exps[i];
-		bool src_resolved        = false;
-		const char *src          = AlgebraicExpression_Source(exp);
+		const char *src = AlgebraicExpression_Source(exp);
 
 		// see if source is already resolved
 		for(int j = i - 1; j >= 0; j--) {
@@ -160,51 +166,52 @@ static void _resolve_winning_sequence(AlgebraicExpression **exps, uint exp_count
 static void _select_entry_point(QueryGraph *qg, AlgebraicExpression **ae, rax *filtered_entities,
 								rax *bound_vars) {
 
-	AlgebraicExpression *exp = *ae;
-	const char *src = AlgebraicExpression_Source(exp);
-	const char *dest = AlgebraicExpression_Destination(exp);
-	size_t src_len = strlen(src);
-	size_t dest_len = strlen(dest);
+	const char *src = AlgebraicExpression_Source(*ae);
+	const char *dest = AlgebraicExpression_Destination(*ae);
+	uint src_len = strlen(src);
+	uint dest_len = strlen(dest);
 
-	// MATCH (a)-[]->(a)
-	if(AlgebraicExpression_OperandCount(exp) == 1 && !RG_STRCMP(src, dest)) {
-		return;
-	}
-
-	// always start at a bound variable if one is present
-	void *lookup = NULL;
+	// Always start at a bound variable if one is present.
 	if(bound_vars) {
-		lookup = raxFind(bound_vars, (unsigned char *)src, src_len);
-		if(lookup != raxNotFound) {
+		// Source is bounded.
+		if(raxFind(bound_vars, (unsigned char*)src, src_len) != raxNotFound) {
 			return;
 		}
 
-		lookup = raxFind(bound_vars, (unsigned char *)dest, dest_len);
-		if(lookup != raxNotFound) {
+		// Destination is bounded.
+		if(raxFind(bound_vars, (unsigned char*)dest, dest_len) != raxNotFound) {
 			AlgebraicExpression_Transpose(ae);
 			return;
 		}
 	}
 
-	int src_score  = 0;
-	int dest_score = 0;
+	// See if either source or destination nodes are filtered.
+	if(filtered_entities) {
+		// The source node is filtered, making the current order most appealing.
+		if(raxFind(filtered_entities, (unsigned char*)src, src_len) != raxNotFound) {
+			return;
+		}
 
-	// see if either source or destination nodes are filtered
-	lookup = raxFind(filtered_entities, (unsigned char *)src, src_len);
-	src_score += (lookup != raxNotFound) ? F : 0;
+		if(raxFind(filtered_entities, (unsigned char*)dest, dest_len) != raxNotFound) {
+			// The destination is filtered and the source is not, transpose.
+			AlgebraicExpression_Transpose(ae);
+			return;
+		}
+	}
 
-	lookup = raxFind(filtered_entities, (unsigned char *)dest, dest_len);
-	dest_score += (lookup != raxNotFound) ? F : 0;
-
-	// see if either source or destination nodes are labeled
-	QGNode *src_node  = QueryGraph_GetNodeByAlias(qg, src);
-	src_score += (src_node->label != NULL) ? L : 0;
-
+	// No filters are applied prefer labeled entity.
+	QGNode *src_node = QueryGraph_GetNodeByAlias(qg, src);
 	QGNode *dest_node = QueryGraph_GetNodeByAlias(qg, dest);
-	dest_score += (dest_node->label != NULL) ? L : 0;
+	bool srcLabeled = src_node->label != NULL;
+	bool destLabeled = dest_node->label != NULL;
 
-	// if the destination is a superior starting point, transpose expression
-	if(dest_score > src_score) AlgebraicExpression_Transpose(ae);
+	if(srcLabeled) {
+		// Source is labeled, making the current order most appealing.
+		return;
+	} else if(destLabeled) {
+		// Destination is labeled and the source is not, transpose.
+		AlgebraicExpression_Transpose(ae);
+	}
 }
 
 // Insertion sort to order exps arrays by score descending.
