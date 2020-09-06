@@ -38,7 +38,7 @@ $ redis-server --loadmodule ./redisgraph.so THREAD_COUNT 4
 
 ## CACHE_SIZE
 
-The number of execution plans cached for each RedisGraph thread. Each thread in RedisGraph thread pool holds an execution plan cache where it stores execution plan templates for previously seen queries. When a new query and execution plan are needed to be store, and the cache is full, meaning the cache has reached the size of `CACHE_SIZE`, it will evict the least recently used (LRU) entry.
+The number of queries cached in RedisGraph. When a new query is needed to be store, and the cache is full, meaning the cache has reached the size of `CACHE_SIZE`, it will evict the least recently used (LRU) entry.
 
 ### Default
 
