@@ -36,7 +36,6 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx, const SIValue *args) {
 		return PROCEDURE_ERR;
 
 	BFSContext *pdata = ctx->privateData;
-	pdata->depleted = false;
 	Node *source_node = args[0].ptrval;
 	GrB_Index source_id = ENTITY_GET_ID(source_node);
 	int64_t max_level = args[1].longval;
@@ -62,15 +61,12 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx, const SIValue *args) {
 		else TR = GrB_NULL;
 	}
 
-	GrB_Vector V;  // Vector of results
+	GrB_Vector V;         // Vector of results
 	GrB_Vector PI = NULL; // Vector backtracking results to their parents.
 	GrB_Vector *PI_ptr = &PI;
-	if(!collect_edges) {
-		/* If we're not collecting edges, pass a NULL parent pointer so that the algorithm will
-		 * not perform unnecessary work. */
-		PI_ptr = GrB_NULL;
-		pdata->edges_output_idx = -1;
-	}
+	/* If we're not collecting edges, pass a NULL parent pointer so that the algorithm will
+	 * not perform unnecessary work. */
+	if(!collect_edges) PI_ptr = GrB_NULL;
 	assert(LAGraph_bfs_both(&V, PI_ptr, R, TR, source_id, max_level, false) == GrB_SUCCESS);
 	/* Remove all values with a level less than or equal to 1.
 	 * Values of 0 are not connected to the source, and values of 1 are the source. */
@@ -100,7 +96,7 @@ static SIValue *Proc_BFS_Step(ProcedureCtx *ctx) {
 
 	BFSContext *pdata = (BFSContext *)ctx->privateData;
 
-	// Return NULL if this source has already been mapped or there are no connected nodes.
+	// Return NULL if the BFS for thise source has already been emitted or there are no connected nodes.
 	if(pdata->depleted || pdata->n == 0) return NULL;
 
 	// Build arrays for the outputs the user has requested.
@@ -153,6 +149,7 @@ static BFSContext *_Proc_BFS_BuildContext(const char **yields, ProcedureOutput *
 	BFSContext *pdata = rm_calloc(1, sizeof(BFSContext));
 	pdata->g = QueryCtx_GetGraph();
 	pdata->n = 0;
+	pdata->depleted = false;
 	pdata->nodes_output_idx = -1;
 	pdata->edges_output_idx = -1;
 	pdata->reltype_id = GRAPH_NO_RELATION;
@@ -191,13 +188,13 @@ ProcedureCtx *Proc_BFS_Ctx(AR_ExpNode **args, const char **yields) {
 	bool yield_edges = true;
 	if(args) {
 		// If we have the CALL arguments (because we're not in a validation context),
-		// check if the user wants to yield edges.
+		// check if the user doesn't want to yield edges, which are included by default.
 		SIValue yield_edges_val = AR_EXP_Evaluate(args[3], NULL);
 		yield_edges = yield_edges_val.longval;
 	}
 	bool default_yields = (yields == NULL);
 	if(default_yields) {
-		// If the user did not add an explicit YIELD, use the default yields.
+		// If the user did not add an explicit YIELD, use the default yields - both nodes and edges.
 		int yield_count = 1;
 		if(yield_edges) yield_count ++;
 		yields = array_new(const char *, yield_count);

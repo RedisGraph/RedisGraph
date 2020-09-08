@@ -138,7 +138,7 @@ static Record ProcCallConsume(OpBase *opBase) {
 		 * TODO: replace with Proc_Reset */
 		const char *proc_name = op->procedure->name;
 		Proc_Free(op->procedure);
-		op->procedure = Proc_Get(proc_name);
+		op->procedure = Proc_BuildContext(proc_name, op->arg_exps, op->output);
 		ProcedureResult res = Proc_Invoke(op->procedure, op->args);
 		/* TODO: should rise run-time exception?
 		 * op->r will be freed in ProcCallFree. */
