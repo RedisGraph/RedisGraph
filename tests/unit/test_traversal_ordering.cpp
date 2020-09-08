@@ -192,7 +192,7 @@ TEST_F(TraversalOrderingTest, ValidateScoring) {
 	QueryGraph_AddNode(qg, D);
 	QueryGraph_ConnectNodes(qg, A, B, AB);
 	QueryGraph_ConnectNodes(qg, B, C, BC);
-	QueryGraph_ConnectNodes(qg, C, D, BD);
+	QueryGraph_ConnectNodes(qg, B, D, BD);
 
 	AlgebraicExpression *set[3];
 	AlgebraicExpression *ExpAB = AlgebraicExpression_NewOperand(GrB_NULL, false, "A", "B", NULL, "L");
@@ -251,9 +251,8 @@ TEST_F(TraversalOrderingTest, ValidateScoring) {
 	ASSERT_EQ(set[1], ExpBD);
 	ASSERT_EQ(set[2], ExpBC);
 
-	FilterTree_Free(filters);
-
 	// Clean up.
+	FilterTree_Free(filters);
 	AlgebraicExpression_Free(ExpAB);
 	AlgebraicExpression_Free(ExpBC);
 	AlgebraicExpression_Free(ExpBD);
