@@ -64,14 +64,14 @@ class testBFS(FlowTestsBase):
         global graph
         # Test BFS algorithm for node collection.
         # The results array must be sorted, since the order is non-deterministic (due to creations occurring in any order).
-        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 0, NULL, false) YIELD nodes UNWIND nodes AS n WITH n.v AS v ORDER BY n.v RETURN COLLECT(v)"""
+        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 0, NULL) YIELD nodes UNWIND nodes AS n WITH n.v AS v ORDER BY n.v RETURN COLLECT(v)"""
         actual_result = graph.query(query)
         expected_result = [[['b', 'c', 'd', 'e']]]
         self.env.assertEquals(actual_result.result_set, expected_result)
-        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 0, NULL, false) YIELD nodes RETURN nodes"""
+        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 0, NULL) YIELD nodes RETURN nodes"""
         self.compare_unsorted_arrays(actual_result.result_set[0][0], expected_result[0][0])
 
-        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 0, NULL, false) YIELD nodes UNWIND nodes AS n WITH a, n.v AS v ORDER BY n.v RETURN a.v, COLLECT(v)"""
+        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 0, NULL) YIELD nodes UNWIND nodes AS n WITH a, n.v AS v ORDER BY n.v RETURN a.v, COLLECT(v)"""
         actual_result = graph.query(query)
         expected_result = [['a', ['b', 'c', 'd', 'e']]]
         self.env.assertEquals(actual_result.result_set, expected_result)
@@ -79,7 +79,7 @@ class testBFS(FlowTestsBase):
         # Test BFS algorithm for node and edge collection.
         # Parity between nodes and edges can be validated by testing the properties of each for equality,
         # as edges have the same property as their destination node.
-        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 0, NULL, true) YIELD nodes, edges RETURN [n IN nodes | n.v], [e IN edges | e.v]"""
+        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 0, NULL) YIELD nodes, edges RETURN [n IN nodes | n.v], [e IN edges | e.v]"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], actual_result.result_set[0][1])
 
@@ -87,13 +87,13 @@ class testBFS(FlowTestsBase):
     def test02_bfs_single_source_restricted_reltype(self):
         global graph
         # Test BFS algorithm for node collection.
-        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 0, 'E1', false) YIELD nodes RETURN [n IN nodes | n.v]"""
+        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 0, 'E1') YIELD nodes RETURN [n IN nodes | n.v]"""
         actual_result = graph.query(query)
         expected_result = ['b', 'c']
         self.compare_unsorted_arrays(actual_result.result_set[0][0], expected_result)
 
         # Test BFS algorithm for node and edge collection.
-        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 0, 'E1', true) YIELD nodes, edges RETURN [n IN nodes | n.v], [e IN edges | e.v]"""
+        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 0, 'E1') YIELD nodes, edges RETURN [n IN nodes | n.v], [e IN edges | e.v]"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], actual_result.result_set[0][1])
 
@@ -101,7 +101,7 @@ class testBFS(FlowTestsBase):
     def test03_bfs_all_sources_restricted_reltype(self):
         global graph
         # We only expect to see 'd' as a source node, as it is connected as a destination by an 'E2' edge.
-        query = """MATCH (a) CALL algo.BFS(a, 0, 'E1', false) YIELD nodes RETURN a.v, [n IN nodes | n.v] ORDER BY a.v"""
+        query = """MATCH (a) CALL algo.BFS(a, 0, 'E1') YIELD nodes RETURN a.v, [n IN nodes | n.v] ORDER BY a.v"""
         actual_result = graph.query(query)
         expected_result = [['a', ['b', 'c']],
                            ['b', ['c']],
@@ -111,7 +111,7 @@ class testBFS(FlowTestsBase):
             self.compare_unsorted_arrays(row[1], expected_result[idx][1])
 
         # Test BFS path-tracking algorithm
-        query = """MATCH (a) CALL algo.BFS(a, 0, 'E1', true) YIELD nodes, edges RETURN a.v, [n IN nodes | n.v], [e IN edges | e.v] ORDER BY a.v"""
+        query = """MATCH (a) CALL algo.BFS(a, 0, 'E1') YIELD nodes, edges RETURN a.v, [n IN nodes | n.v], [e IN edges | e.v] ORDER BY a.v"""
 
         actual_result = graph.query(query)
         expected_result = [['a', ['b', 'c'], ['b', 'c']],
@@ -124,19 +124,19 @@ class testBFS(FlowTestsBase):
 
     #  # Test BFS from a single source with a maximum depth.
     def test04_bfs_single_source_max_depth(self):
-        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 1, NULL, false) YIELD nodes RETURN [n IN nodes | n.v]"""
+        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 1, NULL) YIELD nodes RETURN [n IN nodes | n.v]"""
         actual_result = graph.query(query)
         expected_result = [[['b']]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 1, NULL, true) YIELD nodes, edges RETURN [n IN nodes | n.v], [e IN edges | e.v]"""
+        query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 1, NULL) YIELD nodes, edges RETURN [n IN nodes | n.v], [e IN edges | e.v]"""
         actual_result = graph.query(query)
         expected_result = [[['b'], ['b']]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
     #  # Test BFS from all sources with a maximum depeth.
     def test05_bfs_all_sources_max_depth(self):
-        query = """MATCH (a) CALL algo.BFS(a, 1, NULL, false) YIELD nodes RETURN a.v, [n IN nodes | n.v] ORDER BY a.v"""
+        query = """MATCH (a) CALL algo.BFS(a, 1, NULL) YIELD nodes RETURN a.v, [n IN nodes | n.v] ORDER BY a.v"""
         actual_result = graph.query(query)
         expected_result = [['a', ['b']],
                            ['b', ['c', 'd']],
@@ -145,7 +145,7 @@ class testBFS(FlowTestsBase):
             self.env.assertEquals(row[0], expected_result[idx][0])
             self.compare_unsorted_arrays(row[1], expected_result[idx][1])
 
-        query = """MATCH (a) CALL algo.BFS(a, 1, NULL, true) YIELD nodes, edges RETURN a.v, [n IN nodes | n.v], [e IN edges | e.v] ORDER BY a.v"""
+        query = """MATCH (a) CALL algo.BFS(a, 1, NULL) YIELD nodes, edges RETURN a.v, [n IN nodes | n.v], [e IN edges | e.v] ORDER BY a.v"""
         actual_result = graph.query(query)
         expected_result = [['a', ['b'], ['b']],
                            ['b', ['c', 'd'], ['c', 'd']],

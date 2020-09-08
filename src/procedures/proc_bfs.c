@@ -14,7 +14,7 @@
 #include "../graph/graphcontext.h"
 #include "../algorithms/LAGraph_bfs_both.h"
 
-// MATCH (a:User {id: 1}) CALL algo.bfs(a, 0, 'MANAGES', true) YIELD nodes, edges
+// MATCH (a:User {id: 1}) CALL algo.bfs(a, 0, 'MANAGES') YIELD nodes, edges
 typedef struct {
 	Graph *g;                       // Graph.
 	GrB_Index n;                    // Total number of results.
@@ -28,11 +28,10 @@ typedef struct {
 } BFSContext;
 
 static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx, const SIValue *args) {
-	if(array_len((SIValue *)args) != 4) return PROCEDURE_ERR;
+	if(array_len((SIValue *)args) != 3) return PROCEDURE_ERR;
 	if(SI_TYPE(args[0]) != T_NODE                 ||   // Source node.
 	   SI_TYPE(args[1]) != T_INT64                ||   // Max level to iterate to, unlimited if 0.
-	   !(SI_TYPE(args[2]) & (T_NULL | T_STRING))  ||   // Relationship type to traverse if not NULL.
-	   SI_TYPE(args[3]) != T_BOOL)                     // Whether traversed edges should be returned.
+	   !(SI_TYPE(args[2]) & (T_NULL | T_STRING)))      // Relationship type to traverse if not NULL.
 		return PROCEDURE_ERR;
 
 	BFSContext *pdata = ctx->privateData;
@@ -43,7 +42,7 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx, const SIValue *args) {
 	 * zero (unlimited), increment it by 1 to make level 1 indicate the source's direct neighbors. */
 	if(max_level > 0) max_level++;
 	const char *reltype = SIValue_IsNull(args[2]) ? NULL : args[2].stringval;
-	bool collect_edges = args[3].longval;
+	bool collect_edges = (pdata->edges_output_idx >= 0);
 
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 	// Get edge matrix and transpose matrix, if available.
@@ -185,21 +184,13 @@ static BFSContext *_Proc_BFS_BuildContext(const char **yields, ProcedureOutput *
 }
 
 ProcedureCtx *Proc_BFS_Ctx(AR_ExpNode **args, const char **yields) {
-	bool yield_edges = true;
-	if(args) {
-		// If we have the CALL arguments (because we're not in a validation context),
-		// check if the user doesn't want to yield edges, which are included by default.
-		SIValue yield_edges_val = AR_EXP_Evaluate(args[3], NULL);
-		yield_edges = yield_edges_val.longval;
-	}
 	bool default_yields = (yields == NULL);
 	if(default_yields) {
 		// If the user did not add an explicit YIELD, use the default yields - both nodes and edges.
-		int yield_count = 1;
-		if(yield_edges) yield_count ++;
+		int yield_count = 2;
 		yields = array_new(const char *, yield_count);
 		yields = array_append(yields, "nodes");
-		if(yield_edges) yields = array_append(yields, "edges");
+		yields = array_append(yields, "edges");
 	}
 	ProcedureOutput **outputs = array_new(ProcedureOutput *, array_len(yields));
 	// Populate the BFSContext held within this procedure.
@@ -207,7 +198,7 @@ ProcedureCtx *Proc_BFS_Ctx(AR_ExpNode **args, const char **yields) {
 	if(default_yields) array_free(yields);
 
 	ProcedureCtx *ctx = ProcCtxNew("algo.BFS",
-								   4,
+								   3,
 								   outputs,
 								   Proc_BFS_Step,
 								   Proc_BFS_Invoke,
