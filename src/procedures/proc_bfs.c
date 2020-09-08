@@ -5,6 +5,7 @@
 */
 
 #include "proc_bfs.h"
+#include "../RG.h"
 #include "../value.h"
 #include "../config.h"
 #include "../util/arr.h"
@@ -66,7 +67,8 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx, const SIValue *args) {
 	/* If we're not collecting edges, pass a NULL parent pointer so that the algorithm will
 	 * not perform unnecessary work. */
 	if(!collect_edges) PI_ptr = GrB_NULL;
-	assert(LAGraph_bfs_both(&V, PI_ptr, R, TR, source_id, max_level, false) == GrB_SUCCESS);
+	GrB_Info res = LAGraph_bfs_both(&V, PI_ptr, R, TR, source_id, max_level, false);
+	ASSERT(res == GrB_SUCCESS);
 	/* Remove all values with a level less than or equal to 1.
 	 * Values of 0 are not connected to the source, and values of 1 are the source. */
 	GxB_Scalar thunk;
@@ -91,7 +93,7 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx, const SIValue *args) {
 }
 
 static SIValue *Proc_BFS_Step(ProcedureCtx *ctx) {
-	assert(ctx->privateData);
+	ASSERT(ctx->privateData);
 
 	BFSContext *pdata = (BFSContext *)ctx->privateData;
 
@@ -102,6 +104,7 @@ static SIValue *Proc_BFS_Step(ProcedureCtx *ctx) {
 	if(pdata->nodes_output_idx >= 0) pdata->output[pdata->nodes_output_idx] = SI_Array(pdata->n);
 	if(pdata->edges_output_idx >= 0) pdata->output[pdata->edges_output_idx] = SI_Array(pdata->n);
 
+	Edge *edges = array_new(Edge, 1);
 	for(int i = 0; i < pdata->n; i ++) {
 		// Get the reached node.
 		NodeID node_id = pdata->node_ids[i];
@@ -113,19 +116,20 @@ static SIValue *Proc_BFS_Step(ProcedureCtx *ctx) {
 			SIArray_Append(&pdata->output[pdata->nodes_output_idx], SI_Node(&n));
 		}
 
+		array_clear(edges);
 		if(pdata->edges_output_idx >= 0) {
 			GrB_Index parent_id;
 			// Find the parent of the reached node.
-			assert(GrB_Vector_extractElement(&parent_id, pdata->parents, node_id) == GrB_SUCCESS);
+			GrB_Info res = GrB_Vector_extractElement(&parent_id, pdata->parents, node_id);
+			ASSERT(res == GrB_SUCCESS);
 			parent_id --; // Decrement the parent ID by 1 to correct 1-indexing.
-			// Retrieve any edge connecting the parent node to the current node.
-			EdgeID id = Graph_GetSingleEdgeConnectingNodes(pdata->g, parent_id, node_id, pdata->reltype_id);
-			Edge e = GE_NEW_EDGE(parent_id, node_id);
-			Graph_GetEdge(pdata->g, id, &e);
-			// Append the edge to the edges output array.
-			SIArray_Append(&pdata->output[pdata->edges_output_idx], SI_Edge(&e));
+			// Retrieve edges connecting the parent node to the current node.
+			Graph_GetEdgesConnectingNodes(pdata->g, parent_id, node_id, pdata->reltype_id, &edges);
+			// Append one edge to the edges output array.
+			SIArray_Append(&pdata->output[pdata->edges_output_idx], SI_Edge(&edges[0]));
 		}
 	}
+	array_free(edges);
 
 	pdata->depleted = true; // Mark that this node has been mapped.
 
@@ -176,7 +180,7 @@ static BFSContext *_Proc_BFS_BuildContext(const char **yields, ProcedureOutput *
 			output->type = T_ARRAY;
 		} else {
 			// Unreachable, yield strings have been validated in the AST.
-			assert(false);
+			ASSERT(false);
 		}
 		*outputs = array_append(*outputs, output);
 	}

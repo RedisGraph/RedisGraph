@@ -18,7 +18,7 @@ class testBFS(FlowTestsBase):
 
     def populate_graph(self):
         global nodes
-        global edges 
+        global edges
         # Construct a graph with the form:
         # (a)-[:E1]->(b:B)-[:E1]->(c), (b)-[:E2]->(d)-[:E1]->(e)
         nodes['a'] = Node(label="A", properties={"v": 'a'})
@@ -51,13 +51,12 @@ class testBFS(FlowTestsBase):
 
         graph.flush()
 
-    # Verify that 
+    # Verify that the contents of two arrays are equal without respect to order.
     def compare_unsorted_arrays(self, a, b):
         self.env.assertEquals(len(a), len(b))
         for elem in a:
             # Each element in a should appear in b exactly once.
             self.env.assertEquals(b.count(elem), 1)
-
 
     # Test BFS from a single source without specifying a relationship type.
     def test01_bfs_single_source_all_reltypes(self):

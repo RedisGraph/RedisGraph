@@ -31,7 +31,7 @@
     See LICENSE file for more details.
 
 */
-#include "LAGraph_bfs_both.h"
+#include "LAGraph_bfs_pushpull.h"
 #include "../config.h"
 
 //------------------------------------------------------------------------------

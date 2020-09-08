@@ -30,20 +30,6 @@ struct Edge {
 
 typedef struct Edge Edge;
 
-// Instantiate a new unpopulated edge.
-#define GE_NEW_EDGE(src_id, dest_id)   \
-(Edge) {                               \
-	.entity = NULL,                    \
-	.id = INVALID_ENTITY_ID,           \
-	.relationship = NULL,              \
-	.relationID = GRAPH_NO_RELATION,   \
-	.src = NULL,                       \
-	.dest = NULL,                      \
-	.srcNodeID = src_id,               \
-	.destNodeID = dest_id,             \
-	.mat = NULL                        \
-}
-
 /* Creates a new edge, connecting src to dest node. */
 // Edge* Edge_New(Node *src, Node *dest, const char *relationship, const char *alias);
 
