@@ -13,7 +13,7 @@
 #include "../util/rmalloc.h"
 #include "../datatypes/array.h"
 #include "../graph/graphcontext.h"
-#include "../algorithms/LAGraph_bfs_both.h"
+#include "../algorithms/LAGraph_bfs_pushpull.h"
 
 // MATCH (a:User {id: 1}) CALL algo.bfs(a, 0, 'MANAGES') YIELD nodes, edges
 typedef struct {
@@ -67,7 +67,7 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx, const SIValue *args) {
 	/* If we're not collecting edges, pass a NULL parent pointer so that the algorithm will
 	 * not perform unnecessary work. */
 	if(!collect_edges) PI_ptr = GrB_NULL;
-	GrB_Info res = LAGraph_bfs_both(&V, PI_ptr, R, TR, source_id, max_level, false);
+	GrB_Info res = LAGraph_bfs_pushpull(&V, PI_ptr, R, TR, source_id, max_level, false);
 	ASSERT(res == GrB_SUCCESS);
 	/* Remove all values with a level less than or equal to 1.
 	 * Values of 0 are not connected to the source, and values of 1 are the source. */

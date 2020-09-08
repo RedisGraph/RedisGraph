@@ -381,11 +381,11 @@
 #define LAGRAPH_MAX(x,y) (((x) > (y)) ? (x) : (y))
 #define LAGRAPH_MIN(x,y) (((x) < (y)) ? (x) : (y))
 
-GrB_Info LAGraph_bfs_both       // push-pull BFS, or push-only if AT = NULL
+GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 (
 	GrB_Vector *v_output,   // v(i) is the BFS level of node i in the graph
-	GrB_Vector *pi_output,  /* pi(i) = p+1 if p is the parent of node i.
-							 * If NULL, the parent is not computed. */
+	GrB_Vector *pi_output,  // pi(i) = p+1 if p is the parent of node i.
+	// if NULL, the parent is not computed.
 	GrB_Matrix A,           // input graph, treated as if boolean in semiring
 	GrB_Matrix AT,          // transpose of A (optional; push-only if NULL)
 	int64_t source,         // starting node of the BFS
@@ -419,22 +419,25 @@ GrB_Info LAGraph_bfs_both       // push-pull BFS, or push-only if AT = NULL
 	GrB_Descriptor desc_r  = GrB_DESC_R ;
 #else
 	GrB_Descriptor desc_s  = NULL ;
-	GrB_Descriptor desc_sc = GxB_desc_ooco ;
-	GrB_Descriptor desc_rc = GxB_desc_oocr ;
-	GrB_Descriptor desc_r  = GxB_desc_ooor ;
+	GrB_Descriptor desc_sc = LAGraph_desc_ooco ;
+	GrB_Descriptor desc_rc = LAGraph_desc_oocr ;
+	GrB_Descriptor desc_r  = LAGraph_desc_ooor ;
 #endif
 
+	bool use_vxm_with_A ;
 	GrB_Index nrows, ncols, nvalA, ignore, nvals ;
 	if(A == NULL) {
 		// only AT is provided
 		GrB_Matrix_ncols(&nrows, AT) ;
 		GrB_Matrix_nrows(&ncols, AT) ;
 		GrB_Matrix_nvals(&nvalA, AT) ;
+		use_vxm_with_A = false ;
 	} else {
 		// A is provided.  AT may or may not be provided
 		GrB_Matrix_nrows(&nrows, A) ;
 		GrB_Matrix_ncols(&ncols, A) ;
 		GrB_Matrix_nvals(&nvalA, A) ;
+		use_vxm_with_A = true ;
 	}
 
 	// push/pull requires both A and AT
@@ -449,13 +452,15 @@ GrB_Info LAGraph_bfs_both       // push-pull BFS, or push-only if AT = NULL
 	// check the format of A and AT
 	//--------------------------------------------------------------------------
 
+	bool csr = true ;
+
 	// csr is true if A and AT are known (or assumed) to be in CSR format; if
 	// false, they are known to be in CSC format.
 
 	// This can be tested in SuiteSparse:GraphBLAS.  Other libraries can use
 	// this section for their own library-specific tests, if they have them.
 
-	// GxB_bfs_pushpull will work just fine if nothing is changed or if the
+	// LAGraph_bfs_pushpull will work just fine if nothing is changed or if the
 	// following is disabled (even SuiteSparse:GraphBLAS).  The push/pull
 	// behaviour will be unpredicatble, however, unless the library default
 	// format is CSR.
@@ -478,6 +483,7 @@ GrB_Info LAGraph_bfs_both       // push-pull BFS, or push-only if AT = NULL
 	}
 	// Assume CSR if A(i,:) and AT(i,:) are both fast.  If csr is false,
 	// then the algorithm below will reverse the use of vxm and mxv.
+	csr = A_csr && AT_csr ;
 	if(push_pull) {
 		// both A and AT are provided.  Require they have the same format.
 		// Either both A(i,:) and AT(i,:) are efficient to accesss, or both
@@ -548,8 +554,8 @@ GrB_Info LAGraph_bfs_both       // push-pull BFS, or push-only if AT = NULL
 			second_semiring = GxB_ANY_SECOND_INT64 ;
 #else
 			// deterministic, but cannot terminate early
-			first_semiring  = GxB_MIN_FIRST_INT64 ;
-			second_semiring = GxB_MIN_SECOND_INT64 ;
+			first_semiring  = LAGraph_MIN_FIRST_INT64 ;
+			second_semiring = LAGraph_MIN_SECOND_INT64 ;
 #endif
 		} else {
 #if defined ( GxB_SUITESPARSE_GRAPHBLAS ) \
@@ -559,8 +565,8 @@ GrB_Info LAGraph_bfs_both       // push-pull BFS, or push-only if AT = NULL
 			second_semiring = GxB_ANY_SECOND_INT32 ;
 #else
 			// deterministic, but cannot terminate early
-			first_semiring  = GxB_MIN_FIRST_INT32 ;
-			second_semiring = GxB_MIN_SECOND_INT32 ;
+			first_semiring  = LAGraph_MIN_FIRST_INT32 ;
+			second_semiring = LAGraph_MIN_SECOND_INT32 ;
 #endif
 		}
 
@@ -584,8 +590,8 @@ GrB_Info LAGraph_bfs_both       // push-pull BFS, or push-only if AT = NULL
 		second_semiring = GxB_ANY_PAIR_BOOL ;
 #else
 		// can terminate early, but requires more data movement internally
-		first_semiring  = GxB_LOR_FIRST_BOOL ;
-		second_semiring = GxB_LOR_SECOND_BOOL ;
+		first_semiring  = LAGraph_LOR_FIRST_BOOL ;
+		second_semiring = LAGraph_LOR_SECOND_BOOL ;
 #endif
 	}
 
@@ -641,41 +647,34 @@ GrB_Info LAGraph_bfs_both       // push-pull BFS, or push-only if AT = NULL
 		// select push vs pull
 		//----------------------------------------------------------------------
 
-//      if (push_pull)
-//      {
-		double pushwork = d * nq ;
-		double expected = (double) n / (double)(nvisited + 1) ;
-		double per_dot = LAGRAPH_MIN(d, expected) ;
-		double binarysearch = (3 * (1 + log2((double) nq))) ;
-		double pullwork = (n - nvisited) * per_dot * binarysearch ;
-//          use_vxm_with_A = (pushwork < pullwork) ;
+		if(push_pull) {
+			double pushwork = d * nq ;
+			double expected = (double) n / (double)(nvisited + 1) ;
+			double per_dot = LAGRAPH_MIN(d, expected) ;
+			double binarysearch = (3 * (1 + log2((double) nq))) ;
+			double pullwork = (n - nvisited) * per_dot * binarysearch ;
+			use_vxm_with_A = (pushwork < pullwork) ;
 
-//          if (!csr)
-//          {
-//              // Neither A(i,:) nor AT(i,:) is efficient.  Instead, both
-//              // A(:,j) and AT(:,j) is fast (that is, the two matrices
-//              // are in CSC format).  Swap the
-//              use_vxm_with_A = !use_vxm_with_A ;
-//          }
-//      }
+			if(!csr) {
+				// Neither A(i,:) nor AT(i,:) is efficient.  Instead, both
+				// A(:,j) and AT(:,j) is fast (that is, the two matrices
+				// are in CSC format).  Swap the
+				use_vxm_with_A = !use_vxm_with_A ;
+			}
+		}
 
 		//----------------------------------------------------------------------
 		// q = next level of the BFS
 		//----------------------------------------------------------------------
 
-		{
-			// q<!v> = AT*q
-			// this is a pull step if AT is in CSR format; push if CSC
-			GrB_Vector q2 ;
-			GrB_Vector_new(&q2, compute_tree ? int_type : GrB_BOOL, n) ;
-			GrB_mxv(q2, v, NULL, second_semiring, AT, q, desc_rc) ;
-			GrB_free(&q2) ;
-		}
-
-		{
+		if(use_vxm_with_A) {
 			// q'<!v> = q'*A
 			// this is a push step if A is in CSR format; pull if CSC
 			GrB_vxm(q, v, NULL, first_semiring, q, A, desc_rc) ;
+		} else {
+			// q<!v> = AT*q
+			// this is a pull step if AT is in CSR format; push if CSC
+			GrB_mxv(q, v, NULL, second_semiring, AT, q, desc_rc) ;
 		}
 
 		//----------------------------------------------------------------------
