@@ -1592,29 +1592,35 @@ bool AST_ContainsErrors(const cypher_parse_result_t *result) {
 	return cypher_parse_result_nerrors(result) > 0;
 }
 
-static AST_Validation _AST_Validate_ParseResultRoot(const cypher_parse_result_t *result) {
+static AST_Validation _AST_Validate_ParseResultRoot(const cypher_parse_result_t *result,
+													int *index) {
 	// Check for failures in libcypher-parser
 	if(AST_ContainsErrors(result)) {
 		_AST_ReportErrors(result);
 		return AST_INVALID;
 	}
 
-	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
-	// Check for empty query
-	if(root == NULL) {
-		QueryCtx_SetError("Error: empty query.");
-		return AST_INVALID;
+	uint nroots = cypher_parse_result_nroots(result);
+	for(uint i = 0; i < nroots; i++) {
+		const cypher_astnode_t *root = cypher_parse_result_get_root(result, i);
+		cypher_astnode_type_t root_type = cypher_astnode_type(root);
+		if(root_type == CYPHER_AST_LINE_COMMENT || root_type == CYPHER_AST_BLOCK_COMMENT ||
+		   root_type == CYPHER_AST_COMMENT) {
+			continue;
+		} else if(root_type != CYPHER_AST_STATEMENT) {
+			// This should be unnecessary, as we're currently parsing
+			// with the CYPHER_PARSE_ONLY_STATEMENTS flag.
+			QueryCtx_SetError("Encountered unsupported query type '%s'", cypher_astnode_typestr(root_type));
+			return AST_INVALID;
+		} else {
+			// We got a statement.
+			*index = i;
+			return AST_VALID;
+		}
 	}
 
-	cypher_astnode_type_t root_type = cypher_astnode_type(root);
-	if(root_type != CYPHER_AST_STATEMENT) {
-		// This should be unnecessary, as we're currently parsing
-		// with the CYPHER_PARSE_ONLY_STATEMENTS flag.
-		QueryCtx_SetError("Encountered unsupported query type '%s'", cypher_astnode_typestr(root_type));
-		return AST_INVALID;
-	}
-
-	return AST_VALID;
+	QueryCtx_SetError("Error: empty query.");
+	return AST_INVALID;
 }
 
 static AST_Validation _AST_ValidateUnionQuery(AST *mock_ast) {
@@ -1646,11 +1652,12 @@ cleanup:
 }
 
 AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
-	if(_AST_Validate_ParseResultRoot(result) != AST_VALID) {
+	int index;
+	if(_AST_Validate_ParseResultRoot(result, &index) != AST_VALID) {
 		return AST_INVALID;
 	}
 
-	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
+	const cypher_astnode_t *root = cypher_parse_result_get_root(result, index);
 
 	// Verify that the query does not contain any expressions not in the RedisGraph support whitelist
 	if(CypherWhitelist_ValidateQuery(root) != AST_VALID) return AST_INVALID;
@@ -1680,9 +1687,10 @@ AST_Validation AST_Validate_Query(const cypher_parse_result_t *result) {
 
 AST_Validation AST_Validate_QueryParams(const cypher_parse_result_t *result) {
 	char *err;
-	if(_AST_Validate_ParseResultRoot(result) != AST_VALID) return AST_INVALID;
+	int index;
+	if(_AST_Validate_ParseResultRoot(result, &index) != AST_VALID) return AST_INVALID;
 
-	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
+	const cypher_astnode_t *root = cypher_parse_result_get_root(result, index);
 
 	// In case of no parameters.
 	if(cypher_ast_statement_noptions(root) == 0) return AST_VALID;
