@@ -411,34 +411,17 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 	(*v_output) = NULL ;
 	bool compute_tree = (pi_output != NULL) ;
 
-#if defined ( GxB_SUITESPARSE_GRAPHBLAS ) \
-        && ( GxB_IMPLEMENTATION >= GxB_VERSION (3,2,0) )
 	GrB_Descriptor desc_s  = GrB_DESC_S ;
 	GrB_Descriptor desc_sc = GrB_DESC_SC ;
 	GrB_Descriptor desc_rc = GrB_DESC_RC ;
 	GrB_Descriptor desc_r  = GrB_DESC_R ;
-#else
-	GrB_Descriptor desc_s  = NULL ;
-	GrB_Descriptor desc_sc = LAGraph_desc_ooco ;
-	GrB_Descriptor desc_rc = LAGraph_desc_oocr ;
-	GrB_Descriptor desc_r  = LAGraph_desc_ooor ;
-#endif
 
-	bool use_vxm_with_A ;
 	GrB_Index nrows, ncols, nvalA, ignore, nvals ;
-	if(A == NULL) {
-		// only AT is provided
-		GrB_Matrix_ncols(&nrows, AT) ;
-		GrB_Matrix_nrows(&ncols, AT) ;
-		GrB_Matrix_nvals(&nvalA, AT) ;
-		use_vxm_with_A = false ;
-	} else {
-		// A is provided.  AT may or may not be provided
-		GrB_Matrix_nrows(&nrows, A) ;
-		GrB_Matrix_ncols(&ncols, A) ;
-		GrB_Matrix_nvals(&nvalA, A) ;
-		use_vxm_with_A = true ;
-	}
+	// A is provided.  AT may or may not be provided
+	GrB_Matrix_nrows(&nrows, A) ;
+	GrB_Matrix_ncols(&ncols, A) ;
+	GrB_Matrix_nvals(&nvalA, A) ;
+	bool use_vxm_with_A = true ;
 
 	// push/pull requires both A and AT
 	bool push_pull = (A != NULL && AT != NULL) ;
@@ -447,73 +430,6 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 		// A must be square
 		LAGRAPH_ERROR("A must be square", GrB_NULL_POINTER) ;
 	}
-
-	//--------------------------------------------------------------------------
-	// check the format of A and AT
-	//--------------------------------------------------------------------------
-
-	bool csr = true ;
-
-	// csr is true if A and AT are known (or assumed) to be in CSR format; if
-	// false, they are known to be in CSC format.
-
-	// This can be tested in SuiteSparse:GraphBLAS.  Other libraries can use
-	// this section for their own library-specific tests, if they have them.
-
-	// LAGraph_bfs_pushpull will work just fine if nothing is changed or if the
-	// following is disabled (even SuiteSparse:GraphBLAS).  The push/pull
-	// behaviour will be unpredicatble, however, unless the library default
-	// format is CSR.
-
-#ifdef GxB_SUITESPARSE_GRAPHBLAS
-
-	// The CSR vs CSC status can be tested in SuiteSparse:GraphBLAS.
-	// However, even with SuiteSparse:GraphBLAS, this step is optional.
-	GxB_Format_Value A_format = -1, AT_format = -1 ;
-	bool A_csr = true, AT_csr = true ;
-	if(A != NULL) {
-		// A_csr is true if accessing A(i,:) is fast
-		GxB_get(A, GxB_FORMAT, &A_format) ;
-		A_csr = (A_format == GxB_BY_ROW) ;
-	}
-	if(AT != NULL) {
-		// AT_csr is true if accessing AT(i,:) is fast
-		GxB_get(AT, GxB_FORMAT, &AT_format) ;
-		AT_csr = (AT_format == GxB_BY_ROW) ;
-	}
-	// Assume CSR if A(i,:) and AT(i,:) are both fast.  If csr is false,
-	// then the algorithm below will reverse the use of vxm and mxv.
-	csr = A_csr && AT_csr ;
-	if(push_pull) {
-		// both A and AT are provided.  Require they have the same format.
-		// Either both A(i,:) and AT(i,:) are efficient to accesss, or both
-		// A(:,j) and AT(:,j) are efficient to access.
-		if(A_csr != AT_csr) {
-			LAGRAPH_ERROR("A and AT must in the same format:\n"
-						  "both GxB_BY_ROW, or both GxB_BY_COL",
-						  GrB_INVALID_VALUE) ;
-		}
-	} else {
-		// only A or AT are provided.  Refuse to do the pull-only version.
-		if(A != NULL && A_format == GxB_BY_COL) {
-			// this would result in a pull-only BFS ... exceedingly slow
-			LAGRAPH_ERROR(
-				"SuiteSparse: AT not provided, so A must be GxB_BY_ROW\n"
-				"(or provide both A and AT, both in the same format,\n"
-				"either both GxB_BY_COL or both GxB_BY_ROW)",
-				GrB_INVALID_VALUE) ;
-		}
-		if(AT != NULL && AT_format == GxB_BY_ROW) {
-			// this would result in a pull-only BFS ... exceedingly slow
-			LAGRAPH_ERROR(
-				"SuiteSparse: A not provided, so AT must be GxB_BY_COL\n"
-				"(or provide both A and AT, both in the same format,\n"
-				"either both GxB_BY_COL or both GxB_BY_ROW)",
-				GrB_INVALID_VALUE) ;
-		}
-	}
-
-#endif
 
 	//--------------------------------------------------------------------------
 	// initializations
@@ -547,27 +463,13 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 		GrB_Vector_setElement(q, source + 1, source) ;
 
 		if(n > INT32_MAX) {
-#if defined ( GxB_SUITESPARSE_GRAPHBLAS ) \
-                && ( GxB_IMPLEMENTATION >= GxB_VERSION (3,2,0) )
 			// terminates as soon as it finds any parent; nondeterministic
 			first_semiring  = GxB_ANY_FIRST_INT64 ;
 			second_semiring = GxB_ANY_SECOND_INT64 ;
-#else
-			// deterministic, but cannot terminate early
-			first_semiring  = LAGraph_MIN_FIRST_INT64 ;
-			second_semiring = LAGraph_MIN_SECOND_INT64 ;
-#endif
 		} else {
-#if defined ( GxB_SUITESPARSE_GRAPHBLAS ) \
-                && ( GxB_IMPLEMENTATION >= GxB_VERSION (3,2,0) )
 			// terminates as soon as it finds any parent; nondeterministic
 			first_semiring  = GxB_ANY_FIRST_INT32 ;
 			second_semiring = GxB_ANY_SECOND_INT32 ;
-#else
-			// deterministic, but cannot terminate early
-			first_semiring  = LAGraph_MIN_FIRST_INT32 ;
-			second_semiring = LAGraph_MIN_SECOND_INT32 ;
-#endif
 		}
 
 		// create the empty parent vector
@@ -583,16 +485,9 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 		GrB_Vector_new(&q, GrB_BOOL, n) ;
 		GrB_Vector_setElement(q, true, source) ;
 
-#if defined ( GxB_SUITESPARSE_GRAPHBLAS ) \
-            && ( GxB_IMPLEMENTATION >= GxB_VERSION (3,2,0) )
 		// terminates as soon as it finds any pair
 		first_semiring  = GxB_ANY_PAIR_BOOL ;
 		second_semiring = GxB_ANY_PAIR_BOOL ;
-#else
-		// can terminate early, but requires more data movement internally
-		first_semiring  = LAGraph_LOR_FIRST_BOOL ;
-		second_semiring = LAGraph_LOR_SECOND_BOOL ;
-#endif
 	}
 
 	// average node degree
@@ -654,13 +549,6 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 			double binarysearch = (3 * (1 + log2((double) nq))) ;
 			double pullwork = (n - nvisited) * per_dot * binarysearch ;
 			use_vxm_with_A = (pushwork < pullwork) ;
-
-			if(!csr) {
-				// Neither A(i,:) nor AT(i,:) is efficient.  Instead, both
-				// A(:,j) and AT(:,j) is fast (that is, the two matrices
-				// are in CSC format).  Swap the
-				use_vxm_with_A = !use_vxm_with_A ;
-			}
 		}
 
 		//----------------------------------------------------------------------
@@ -699,7 +587,6 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 			// TODO this could be a unaryop
 			// q(i) = i+1 for all entries in q.
 
-#ifdef GxB_SUITESPARSE_GRAPHBLAS
 			GrB_Index *qi ;
 			if(n > INT32_MAX) {
 				int64_t *qx ;
@@ -726,19 +613,6 @@ GrB_Info LAGraph_bfs_pushpull   // push-pull BFS, or push-only if AT = NULL
 				GxB_Vector_import(&q, int_type, n, nq, &qi,
 								  (void **)(&qx), NULL) ;
 			}
-
-#else
-
-			// TODO: use extractTuples and build instead
-
-			// Or use something like:
-			// extract tuples into I
-			// let e = 1:n be created once, in initialization phase
-			// q<q> = e (I)
-			fprintf(stderr, "TODO: use extractTuples here\n") ;
-			abort() ;
-
-#endif
 
 		} else {
 
