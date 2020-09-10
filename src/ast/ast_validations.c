@@ -1608,8 +1608,6 @@ static AST_Validation _AST_Validate_ParseResultRoot(const cypher_parse_result_t 
 		   root_type == CYPHER_AST_COMMENT) {
 			continue;
 		} else if(root_type != CYPHER_AST_STATEMENT) {
-			// This should be unnecessary, as we're currently parsing
-			// with the CYPHER_PARSE_ONLY_STATEMENTS flag.
 			QueryCtx_SetError("Encountered unsupported query type '%s'", cypher_astnode_typestr(root_type));
 			return AST_INVALID;
 		} else {
