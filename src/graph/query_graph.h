@@ -40,12 +40,17 @@ void QueryGraph_ConnectNodes(QueryGraph *qg, QGNode *src, QGNode *dest, QGEdge *
 /* Add all nodes and relationships from a single path
  * (from part of a MATCH or CREATE pattern, or a MERGE clause)
  * to the QueryGraph. */
-void QueryGraph_AddPath(QueryGraph *qg, const GraphContext *gc, const cypher_astnode_t *path);
+void QueryGraph_AddPath(QueryGraph *qg, const cypher_astnode_t *path);
+
+/* Extract a sub-graph of 'qg'
+ * the sub-graph is defined by the traversal pattern(s) within 'clauses'. */
+QueryGraph *QueryGraph_ExtractSubGraph(const QueryGraph *qg,
+		const cypher_astnode_t **patterns, uint n);
 
 /* Adds all paths described in an AST pattern node (from a
  * MATCH or MERGE clause) to a meta-graph that describes all
  * nodes and relationships in a query. */
-QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast);
+QueryGraph *BuildQueryGraph(const AST *ast);
 
 // Make sure that all entities in the "from" QueryGraph are represented in the "to" QueryGraph.
 void QueryGraph_MergeGraphs(QueryGraph *to, QueryGraph *from);

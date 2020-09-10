@@ -26,14 +26,11 @@ QGEdge *QGEdge_New(QGNode *src, QGNode *dest, const char *relationship, const ch
 
 QGEdge *QGEdge_Clone(const QGEdge *orig) {
 	QGEdge *e = rm_malloc(sizeof(QGEdge));
-	e->alias = orig->alias;
-	array_clone(e->reltypes, orig->reltypes);
-	array_clone(e->reltypeIDs, orig->reltypeIDs);
-	e->minHops = orig->minHops;
-	e->maxHops = orig->maxHops;
+	memcpy(e, orig, sizeof(QGEdge));
 	e->src = NULL;
 	e->dest = NULL;
-	e->bidirectional = orig->bidirectional;
+	array_clone(e->reltypes, orig->reltypes);
+	array_clone(e->reltypeIDs, orig->reltypeIDs);
 
 	return e;
 }

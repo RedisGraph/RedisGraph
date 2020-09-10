@@ -5,6 +5,7 @@
 */
 
 #include "query_graph.h"
+#include "../RG.h"
 #include "../util/arr.h"
 #include "../util/strcmp.h"
 #include "../query_ctx.h"
@@ -93,6 +94,56 @@ static void _BuildQueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_
 	else QueryGraph_ConnectNodes(qg, dest, src, edge);
 }
 
+// Clones path from 'qg' into 'graph'
+static void _QueryGraph_ExtractPath(const QueryGraph *qg, QueryGraph *graph,
+		const cypher_astnode_t *path) {
+
+	// Validate input.
+	ASSERT(qg && graph && path);
+
+	const char *alias;
+	const cypher_astnode_t *ast_node;
+	AST *ast = QueryCtx_GetAST();
+	uint nelems = cypher_ast_pattern_path_nelements(path);
+
+	/* Introduce nodes to graph
+	 * Nodes are at even indecies */
+	for(uint i = 0; i < nelems; i += 2) {
+		ast_node = cypher_ast_pattern_path_get_element(path, i);
+		alias = AST_GetEntityName(ast, ast_node);
+
+		// Skip if node already in graph.
+		if(QueryGraph_GetNodeByAlias(graph, alias) != NULL) continue;
+
+		QGNode *n = QueryGraph_GetNodeByAlias(qg, alias);
+		ASSERT(n != NULL);
+
+		// Add a clone of the original node.
+		n = QGNode_Clone(n);
+		QueryGraph_AddNode(graph, n);
+	}
+
+	/* Introduce edges to graph
+	 * edges are at odd indecies */
+	for(uint i = 1; i < nelems; i += 2) {
+		ast_node = cypher_ast_pattern_path_get_element(path, i);
+		alias = AST_GetEntityName(ast, ast_node);
+
+		// Skip if edge already in graph.
+		if(QueryGraph_GetEdgeByAlias(graph, alias) != NULL) continue;
+
+		QGEdge *e = QueryGraph_GetEdgeByAlias(qg, alias);
+		ASSERT(e != NULL);
+
+		QGNode *src = QueryGraph_GetNodeByAlias(graph, e->src->alias);
+		QGNode *dest = QueryGraph_GetNodeByAlias(graph, e->dest->alias);
+		ASSERT(src != NULL && dest != NULL);
+
+		e = QGEdge_Clone(e);
+		QueryGraph_ConnectNodes(graph, src, dest, e);
+	}
+}
+
 QueryGraph *QueryGraph_New(uint node_cap, uint edge_cap) {
 	QueryGraph *qg = rm_malloc(sizeof(QueryGraph));
 
@@ -114,7 +165,7 @@ void QueryGraph_ConnectNodes(QueryGraph *qg, QGNode *src, QGNode *dest, QGEdge *
 	qg->edges = array_append(qg->edges, e);
 }
 
-void QueryGraph_AddPath(QueryGraph *qg, const GraphContext *gc, const cypher_astnode_t *path) {
+void QueryGraph_AddPath(QueryGraph *qg, const cypher_astnode_t *path) {
 	uint nelems = cypher_ast_pattern_path_nelements(path);
 	/* Introduce nodes first. Nodes are positioned at every even offset
 	 * into the path (0, 2, ...) */
@@ -143,8 +194,33 @@ void QueryGraph_AddPath(QueryGraph *qg, const GraphContext *gc, const cypher_ast
 	}
 }
 
-/* Build a query graph from MATCH and MERGE clauses. */
-QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
+QueryGraph *QueryGraph_ExtractSubGraph(const QueryGraph *qg,
+		const cypher_astnode_t **patterns, uint n) {
+
+	// Validate inputs.
+	ASSERT(qg != NULL && clauses != NULL);
+
+	// Create an empty query graph.
+	uint node_count = QueryGraph_NodeCount(qg);
+	uint edge_count = QueryGraph_EdgeCount(qg);
+	QueryGraph *graph = QueryGraph_New(node_count, edge_count);
+	ASSERT(graph != NULL);
+
+	// extract paths described by each pattern
+	for(uint i = 0; i < n; i++) {
+		const cypher_astnode_t *pattern = patterns[i];
+		uint npaths = cypher_ast_pattern_npaths(pattern);
+		for(uint j = 0; j < npaths; j ++) {
+			const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
+			_QueryGraph_ExtractPath(qg, graph, path);
+		}
+	}
+
+	return graph;
+}
+
+/* Build a query graph from MATCH clauses. */
+QueryGraph *BuildQueryGraph(const AST *ast) {
 	uint node_count;
 	uint edge_count;
 	// The initial node and edge arrays will be large enough to accommodate all AST entities
@@ -154,21 +230,20 @@ QueryGraph *BuildQueryGraph(const GraphContext *gc, const AST *ast) {
 
 	// We are interested in every path held in a MATCH pattern.
 	const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
-	if(match_clauses) {
-		uint match_count = array_len(match_clauses);
-		for(uint i = 0; i < match_count; i ++) {
-			// OPTIONAL MATCH clauses are handled separately.
-			if(cypher_ast_match_is_optional(match_clauses[i])) continue;
-			const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match_clauses[i]);
-			uint npaths = cypher_ast_pattern_npaths(pattern);
-			for(uint j = 0; j < npaths; j ++) {
-				const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
-				QueryGraph_AddPath(qg, gc, path);
-			}
+	if(!match_clauses) return qg;
+
+	uint match_count = array_len(match_clauses);
+	for(uint i = 0; i < match_count; i ++) {
+		const cypher_astnode_t *match_clause = match_clauses[i];
+		const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match_clause);
+		uint npaths = cypher_ast_pattern_npaths(pattern);
+		for(uint j = 0; j < npaths; j ++) {
+			const cypher_astnode_t *path = cypher_ast_pattern_get_path(pattern, j);
+			QueryGraph_AddPath(qg, path);
 		}
-		array_free(match_clauses);
 	}
 
+	array_free(match_clauses);
 	return qg;
 }
 

@@ -134,7 +134,7 @@ void AST_PreparePathCreation(const cypher_astnode_t *path, QueryGraph *qg, rax *
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
 	// Add the path to the QueryGraph
-	QueryGraph_AddPath(qg, gc, path);
+	QueryGraph_AddPath(qg, path);
 
 	uint path_elem_count = cypher_ast_pattern_path_nelements(path);
 	for(uint i = 0; i < path_elem_count; i ++) {
