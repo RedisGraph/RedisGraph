@@ -307,3 +307,9 @@ class testQueryValidationFlow(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected_result = [[34]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """MATCH (n)  /* This is a block comment */ WHERE EXISTS(n.age)
+                RETURN n.age /* Also a block comment*/"""
+        actual_result = redis_graph.query(query)
+        expected_result = [[34]]
+        self.env.assertEquals(actual_result.result_set, expected_result)

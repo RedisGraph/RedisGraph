@@ -1592,6 +1592,9 @@ bool AST_ContainsErrors(const cypher_parse_result_t *result) {
 	return cypher_parse_result_nerrors(result) > 0;
 }
 
+/* This function checks for the existence a valid root in the query.
+ * As cypher_parse_result_t can have multiple roots such as comments, only a query that has
+ * a root with type CYPHER_AST_STATEMENT is considered valid. Comment roots are ignored. */
 static AST_Validation _AST_Validate_ParseResultRoot(const cypher_parse_result_t *result,
 													int *index) {
 	// Check for failures in libcypher-parser

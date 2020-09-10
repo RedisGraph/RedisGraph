@@ -91,6 +91,9 @@ static void _AST_LimitResults(AST *ast, const cypher_astnode_t *root_clause,
 	}
 }
 
+/* This function returns the actual root of the query.
+ * As cypher_parse_result_t can have multiple roots such as comments, only a root with type
+ * CYPHER_AST_STATEMENT is considered as the actual root. Comment roots are ignored. */
 static const cypher_astnode_t *_AST_parse_result_root(const cypher_parse_result_t *parse_result) {
 	uint nroots = cypher_parse_result_nroots(parse_result);
 	for(uint i = 0; i < nroots; i++) {
