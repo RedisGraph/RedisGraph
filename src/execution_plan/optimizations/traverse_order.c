@@ -65,7 +65,7 @@ static void _promote_next_operand(AlgebraicExpression **exps, uint exp_count, ui
 
 	AlgebraicExpression *tmp = exps[from];
 	// Shift right
-	for(uint i = from; i > to; i --) exps[i] = exps[i-1];
+	for(uint i = from; i > to; i --) exps[i] = exps[i - 1];
 
 	// Overide `to` with `from`
 	exps[to] = tmp;
@@ -90,8 +90,8 @@ static void _order_expressions(AlgebraicExpression **exps, uint exp_count, Query
 	}
 }
 
-static int _score_arrangement(AlgebraicExpression **arrangement, uint exp_count, QueryGraph *qg,
-							  rax *filtered_entities, rax *bound_vars) {
+int score_arrangement(AlgebraicExpression **arrangement, uint exp_count, QueryGraph *qg,
+					  rax *filtered_entities, rax *bound_vars) {
 	int score = 0;
 	// A bit naive at the moment.
 	for(uint i = 0; i < exp_count; i++) {
@@ -174,12 +174,12 @@ static void _select_entry_point(QueryGraph *qg, AlgebraicExpression **ae, rax *f
 	// Always start at a bound variable if one is present.
 	if(bound_vars) {
 		// Source is bounded.
-		if(raxFind(bound_vars, (unsigned char*)src, src_len) != raxNotFound) {
+		if(raxFind(bound_vars, (unsigned char *)src, src_len) != raxNotFound) {
 			return;
 		}
 
 		// Destination is bounded.
-		if(raxFind(bound_vars, (unsigned char*)dest, dest_len) != raxNotFound) {
+		if(raxFind(bound_vars, (unsigned char *)dest, dest_len) != raxNotFound) {
 			AlgebraicExpression_Transpose(ae);
 			return;
 		}
@@ -188,11 +188,11 @@ static void _select_entry_point(QueryGraph *qg, AlgebraicExpression **ae, rax *f
 	// See if either source or destination nodes are filtered.
 	if(filtered_entities) {
 		// The source node is filtered, making the current order most appealing.
-		if(raxFind(filtered_entities, (unsigned char*)src, src_len) != raxNotFound) {
+		if(raxFind(filtered_entities, (unsigned char *)src, src_len) != raxNotFound) {
 			return;
 		}
 
-		if(raxFind(filtered_entities, (unsigned char*)dest, dest_len) != raxNotFound) {
+		if(raxFind(filtered_entities, (unsigned char *)dest, dest_len) != raxNotFound) {
 			// The destination is filtered and the source is not, transpose.
 			AlgebraicExpression_Transpose(ae);
 			return;
@@ -237,7 +237,7 @@ static void _sort_exps_by_score(AlgebraicExpression **exps, uint exp_count, Quer
 	int exp_scores[exp_count];
 	// Score each individual expression.
 	for(uint i = 0; i < exp_count; i ++) {
-		exp_scores[i] = _score_arrangement(&exps[i], 1, qg, filtered_entities, bound_vars);
+		exp_scores[i] = score_arrangement(&exps[i], 1, qg, filtered_entities, bound_vars);
 	}
 
 	// Sort expressions array in order of descending score.
@@ -258,7 +258,8 @@ void orderExpressions(QueryGraph *qg, AlgebraicExpression **exps, uint exp_count
 	   !RG_STRCMP(AlgebraicExpression_Source(exps[0]), AlgebraicExpression_Destination(exps[0]))) return;
 
 	// Collect all filtered aliases.
-	rax *filtered_entities = FilterTree_CollectModified(filters);
+	rax *filtered_entities = NULL;
+	if(filters) filtered_entities = FilterTree_CollectModified(filters);
 
 	/* If we only have one arrangement, we still want to select the optimal entry point
 	 * but have no other work to do. */
@@ -277,6 +278,6 @@ select_entry_point:
 	// Transpose the winning expression if the destination node is a more efficient starting place.
 	_select_entry_point(qg, exps + 0, filtered_entities, bound_vars);
 
-	raxFree(filtered_entities);
+	if(filtered_entities) raxFree(filtered_entities);
 }
 
