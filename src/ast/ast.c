@@ -90,12 +90,30 @@ static void _AST_LimitResults(AST *ast, const cypher_astnode_t *root_clause,
 	}
 }
 
+/* This function returns the actual root of the query.
+ * As cypher_parse_result_t can have multiple roots such as comments, only a root with type
+ * CYPHER_AST_STATEMENT is considered as the actual root. Comment roots are ignored. */
+static const cypher_astnode_t *_AST_parse_result_root(const cypher_parse_result_t *parse_result) {
+	uint nroots = cypher_parse_result_nroots(parse_result);
+	for(uint i = 0; i < nroots; i++) {
+		const cypher_astnode_t *root = cypher_parse_result_get_root(parse_result, i);
+		cypher_astnode_type_t root_type = cypher_astnode_type(root);
+		if(root_type != CYPHER_AST_STATEMENT) {
+			continue;
+		} else {
+			return root;
+		}
+	}
+	ASSERT("_AST_parse_result_root: Parse result should have a valid root" && false);
+	return NULL;
+}
+
 /* This method extracts the query given parameters values, convert them into
  * constant arithmetic expressions and store them in a map of <name, value>
  * in the query context. */
 static void _AST_Extract_Params(const cypher_parse_result_t *parse_result) {
 	// Retrieve the AST root node from a parsed query.
-	const cypher_astnode_t *statement = cypher_parse_result_get_root(parse_result, 0);
+	const cypher_astnode_t *statement = _AST_parse_result_root(parse_result);
 	uint noptions = cypher_ast_statement_noptions(statement);
 	if(noptions == 0) return;
 	rax *params = QueryCtx_GetParams();
@@ -271,7 +289,7 @@ AST *AST_Build(cypher_parse_result_t *parse_result) {
 	ast->skip = NULL;
 
 	// Retrieve the AST root node from a parsed query.
-	const cypher_astnode_t *statement = cypher_parse_result_get_root(parse_result, 0);
+	const cypher_astnode_t *statement = _AST_parse_result_root(parse_result);
 	// We are parsing with the CYPHER_PARSE_ONLY_STATEMENTS flag,
 	// and double-checking this in AST validations
 	assert(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
@@ -450,7 +468,7 @@ const char **AST_BuildCallColumnNames(const cypher_astnode_t *call_clause) {
 
 const char *_AST_ExtractQueryString(const cypher_parse_result_t *partial_result) {
 	// Retrieve the AST root node from a parsed query.
-	const cypher_astnode_t *statement = cypher_parse_result_get_root(partial_result, 0);
+	const cypher_astnode_t *statement = _AST_parse_result_root(partial_result);
 	// We are parsing with the CYPHER_PARSE_ONLY_PARAMETERS flag.
 	// Given that, only the parameters were processed. extract the actual query and return to caller.
 	assert(cypher_astnode_type(statement) == CYPHER_AST_STATEMENT);
@@ -527,6 +545,7 @@ cypher_parse_result_t *parse_query(const char *query) {
 	}
 	return result;
 }
+
 
 cypher_parse_result_t *parse_params(const char *query, const char **query_body) {
 	cypher_parse_result_t *result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_PARAMETERS);
