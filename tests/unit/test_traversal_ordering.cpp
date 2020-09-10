@@ -84,9 +84,9 @@ TEST_F(TraversalOrderingTest, FilterFirst) {
 	QGNode *C = QGNode_New("C");
 	QGNode *D = QGNode_New("D");
 
-	QGEdge *AB = QGEdge_New(A, B, "E", "AB");
-	QGEdge *BC = QGEdge_New(B, C, "E", "BC");
-	QGEdge *CD = QGEdge_New(C, D, "E", "CD");
+	QGEdge *AB = QGEdge_New("E", "AB");
+	QGEdge *BC = QGEdge_New("E", "BC");
+	QGEdge *CD = QGEdge_New("E", "CD");
 
 	QueryGraph *qg = QueryGraph_New(4, 3);
 
@@ -180,9 +180,9 @@ TEST_F(TraversalOrderingTest, SingleOptimalArrangement) {
 	A->label = "L";
 	D->label = "L";
 
-	QGEdge *AB = QGEdge_New(A, B, "E", "AB");
-	QGEdge *BC = QGEdge_New(B, C, "E", "BC");
-	QGEdge *BD = QGEdge_New(B, D, "E", "BD");
+	QGEdge *AB = QGEdge_New("E", "AB");
+	QGEdge *BC = QGEdge_New("E", "BC");
+	QGEdge *BD = QGEdge_New("E", "BD");
 
 	QueryGraph *qg = QueryGraph_New(4, 3);
 
@@ -261,15 +261,15 @@ TEST_F(TraversalOrderingTest, ValidateLabelScoring) {
 		QueryGraph_AddNode(qg, nodes[i]);
 	}
 
-	QGEdge *AB = QGEdge_New(NULL, NULL, "E", "AB");
+	QGEdge *AB = QGEdge_New("E", "AB");
 	QueryGraph_ConnectNodes(qg, nodes[0], nodes[1], AB);
-	QGEdge *BC = QGEdge_New(NULL, NULL, "E", "BC");
+	QGEdge *BC = QGEdge_New("E", "BC");
 	QueryGraph_ConnectNodes(qg, nodes[1], nodes[2], BC);
-	QGEdge *CD = QGEdge_New(NULL, NULL, "E", "CD");
+	QGEdge *CD = QGEdge_New("E", "CD");
 	QueryGraph_ConnectNodes(qg, nodes[2], nodes[3], CD);
-	QGEdge *CA = QGEdge_New(NULL, NULL, "E", "CA");
+	QGEdge *CA = QGEdge_New("E", "CA");
 	QueryGraph_ConnectNodes(qg, nodes[3], nodes[0], CA);
-	QGEdge *BD = QGEdge_New(NULL, NULL, "E", "BD");
+	QGEdge *BD = QGEdge_New("E", "BD");
 	QueryGraph_ConnectNodes(qg, nodes[1], nodes[3], BD);
 
 	AlgebraicExpression *ExpAB = AlgebraicExpression_NewOperand(GrB_NULL, false, "A", "B", NULL, NULL);
