@@ -90,6 +90,7 @@ We do not support any of these properties at the type level, meaning nodes and r
 - Some casting functions (toBoolean, toFloat)
 - Relationship functions (startNode, endNode)
 - Temporal arithmetic functions
+- Functions returning maps (properties)
 
 ### Aggregating functions
 + avg
