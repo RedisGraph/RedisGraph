@@ -176,9 +176,11 @@ We do not support any of these properties at the type level, meaning nodes and r
 ## Parameters
 Parameters may be specified to allow for more flexible query construction:
 ```sh
-MATCH (p:Person {name: $name_param}) RETURN p
+CYPHER name_param = "Niccolò Machiavelli"; MATCH (p:Person {name: $name_param}) RETURN p
 ```
-Each RedisGraph client introduces a language-appropriate method for setting parameters, and is described in their documentation.
+The example above shows the syntax used by `redis-cli` to set parameters, but 
+each RedisGraph client introduces a language-appropriate method for setting parameters,
+and is described in their documentation.
 
 ## Non-Cypher queries
 + RedisGraph provides the `GRAPH.EXPLAIN` command to print the execution plan of a provided query.
