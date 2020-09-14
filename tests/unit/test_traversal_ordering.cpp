@@ -28,6 +28,13 @@ class TraversalOrderingTest: public ::testing::Test {
 	static void SetUpTestCase() {
 		// Use the malloc family for allocations
 		Alloc_Reset();
+
+		// Initialize GraphBLAS.
+		GrB_init(GrB_NONBLOCKING);
+		GxB_Global_Option_set(GxB_FORMAT, GxB_BY_COL); // all matrices in CSC format
+		GxB_Global_Option_set(GxB_HYPER, GxB_NEVER_HYPER); // matrices are never hypersparse
+
+		// Create a GraphContext.
 		_fake_graph_context();
 	}
 
@@ -35,23 +42,27 @@ class TraversalOrderingTest: public ::testing::Test {
 	}
 
 	static void _fake_graph_context() {
-		/* Filter tree construction requires access to schemas,
-		 * those inturn resides within graph context
-		 * accessible via thread local storage, as such we're creating a
-		 * fake graph context and placing it within thread local storage. */
-		GraphContext *gc = (GraphContext *)calloc(1, sizeof(GraphContext));
+		GraphContext *gc = (GraphContext *)malloc(sizeof(GraphContext));
+
+		gc->g = Graph_New(16, 16);
+		gc->index_count = 0;
+		gc->graph_name = strdup("G");
 		gc->attributes = raxNew();
 		pthread_rwlock_init(&gc->_attribute_rwlock, NULL);
+		gc->string_mapping = (char **)array_new(char *, 64);
+		gc->node_schemas = (Schema **)array_new(Schema *, GRAPH_DEFAULT_LABEL_CAP);
+		gc->relation_schemas = (Schema **)array_new(Schema *, GRAPH_DEFAULT_RELATION_TYPE_CAP);
 
-		// Prepare thread-local variables
+		GraphContext_AddSchema(gc, "L", SCHEMA_NODE);
+
 		ASSERT_TRUE(QueryCtx_Init());
 		QueryCtx_SetGraphCtx(gc);
-		AR_RegisterFuncs();
 	}
 
 	AST *_build_ast(const char *query) {
 		cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
-		AST *ast = AST_Build(parse_result);
+		AST *master_ast = AST_Build(parse_result);
+		AST *ast = AST_NewSegment(master_ast, 0, cypher_ast_query_nclauses(master_ast->root));
 		return ast;
 	}
 
@@ -173,26 +184,10 @@ TEST_F(TraversalOrderingTest, SingleOptimalArrangement) {
 	 */
 
 	FT_FilterNode *filters;
-	QGNode *A = QGNode_New("A");
-	QGNode *B = QGNode_New("B");
-	QGNode *C = QGNode_New("C");
-	QGNode *D = QGNode_New("D");
-	A->label = "L";
-	D->label = "L";
-
-	QGEdge *AB = QGEdge_New("E", "AB");
-	QGEdge *BC = QGEdge_New("E", "BC");
-	QGEdge *BD = QGEdge_New("E", "BD");
-
-	QueryGraph *qg = QueryGraph_New(4, 3);
-
-	QueryGraph_AddNode(qg, A);
-	QueryGraph_AddNode(qg, B);
-	QueryGraph_AddNode(qg, C);
-	QueryGraph_AddNode(qg, D);
-	QueryGraph_ConnectNodes(qg, A, B, AB);
-	QueryGraph_ConnectNodes(qg, B, C, BC);
-	QueryGraph_ConnectNodes(qg, B, D, BD);
+	char *query = "MATCH (A:L {v: 1})-->(B)-->(C), (B)-->(D:L {v: 1}) RETURN 1";
+	AST *ast = _build_ast(query);
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	QueryGraph *qg = BuildQueryGraph(gc, ast);
 
 	AlgebraicExpression *ExpAB = AlgebraicExpression_NewOperand(GrB_NULL, false, "A", "B", NULL, "L");
 	AlgebraicExpression *ExpBC = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "C", NULL, NULL);
@@ -240,29 +235,13 @@ TEST_F(TraversalOrderingTest, ValidateLabelScoring) {
 	 * Test all permutations of labeled nodes and
 	 * validate that all produce an optimal scoring. */
 	uint exp_count = 5;
-	int node_count = 4;
-	int edge_count = 5;
-	QueryGraph *qg = QueryGraph_New(node_count, edge_count);
+	uint node_count = 4;
 
-	// Build QGNodes
-	QGNode *nodes[node_count];
-	for(int i = 0; i < node_count + 1; i ++) {
-		char *alias;
-		asprintf(&alias, "%c", i + 'A');
-		nodes[i] = QGNode_New(alias);
-		QueryGraph_AddNode(qg, nodes[i]);
-	}
-
-	QGEdge *AB = QGEdge_New("E", "AB");
-	QueryGraph_ConnectNodes(qg, nodes[0], nodes[1], AB);
-	QGEdge *BC = QGEdge_New("E", "BC");
-	QueryGraph_ConnectNodes(qg, nodes[1], nodes[2], BC);
-	QGEdge *CD = QGEdge_New("E", "CD");
-	QueryGraph_ConnectNodes(qg, nodes[2], nodes[3], CD);
-	QGEdge *CA = QGEdge_New("E", "CA");
-	QueryGraph_ConnectNodes(qg, nodes[3], nodes[0], CA);
-	QGEdge *BD = QGEdge_New("E", "BD");
-	QueryGraph_ConnectNodes(qg, nodes[1], nodes[3], BD);
+	char *query = "MATCH (A)-->(B)-->(C)-->(D), (D)-->(A), (B)-->(D) RETURN 1";
+	AST *ast = _build_ast(query);
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	QueryGraph *qg = BuildQueryGraph(gc, ast);
+	QGNode **nodes = qg->nodes;
 
 	AlgebraicExpression *ExpAB = AlgebraicExpression_NewOperand(GrB_NULL, false, "A", "B", NULL, NULL);
 	AlgebraicExpression *ExpBC = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "C", NULL, NULL);
@@ -342,30 +321,15 @@ TEST_F(TraversalOrderingTest, ValidateFilterAndLabelScoring) {
 	 * Test all permutations of labeled and filtered nodes and
 	 * validate that all produce an optimal scoring. */
 	uint exp_count = 5;
-	int node_count = 4;
-	int edge_count = 5;
-	QueryGraph *qg = QueryGraph_New(node_count, edge_count);
+	uint node_count = 4;
 
-	// Build QGNodes
-	QGNode *nodes[node_count];
-	for(int i = 0; i < node_count + 1; i ++) {
-		char *alias;
-		asprintf(&alias, "%c", i + 'A');
-		nodes[i] = QGNode_New(alias);
-		QueryGraph_AddNode(qg, nodes[i]);
-	}
+	char *query = "MATCH (A)-->(B)-->(C)-->(D), (D)-->(A), (B)-->(D) RETURN 1";
+	AST *ast = _build_ast(query);
+	GraphContext *gc = QueryCtx_GetGraphCtx();
+	QueryGraph *qg = BuildQueryGraph(gc, ast);
+	QGNode **nodes = qg->nodes;
 
-	QGEdge *AB = QGEdge_New("E", "AB");
-	QueryGraph_ConnectNodes(qg, nodes[0], nodes[1], AB);
-	QGEdge *BC = QGEdge_New("E", "BC");
-	QueryGraph_ConnectNodes(qg, nodes[1], nodes[2], BC);
-	QGEdge *CD = QGEdge_New("E", "CD");
-	QueryGraph_ConnectNodes(qg, nodes[2], nodes[3], CD);
-	QGEdge *CA = QGEdge_New("E", "CA");
-	QueryGraph_ConnectNodes(qg, nodes[3], nodes[0], CA);
-	QGEdge *BD = QGEdge_New("E", "BD");
-	QueryGraph_ConnectNodes(qg, nodes[1], nodes[3], BD);
-
+	// AlgebraicExpression *exp = AlgebraicExpression_FromString("A*B*C*D, D*A, B*D", matrices);
 	AlgebraicExpression *ExpAB = AlgebraicExpression_NewOperand(GrB_NULL, false, "A", "B", NULL, NULL);
 	AlgebraicExpression *ExpBC = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "C", NULL, NULL);
 	AlgebraicExpression *ExpCD = AlgebraicExpression_NewOperand(GrB_NULL, false, "C", "D", NULL, NULL);
