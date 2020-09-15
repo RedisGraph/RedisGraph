@@ -370,7 +370,7 @@ class testGraphMergeFlow(FlowTestsBase):
         # Starting with an empty graph.
         # Create 2 nodes and connect them to one another.
         self.env.flush()
-        query = """MERGE (a:Person {name: 'a'}) MERGE (b:Person {name: 'b'}) MERGE (a)-[:FRIEND]->(b) MERGE (b)-[:FRIEND]->(a) RETURN a,b"""
+        query = """MERGE (a:Person {name: 'a'}) MERGE (b:Person {name: 'b'}) MERGE (a)-[:FRIEND]->(b) MERGE (b)-[:FRIEND]->(a)"""
         result = graph.query(query)
 
         # Verify that every entity was created.

@@ -387,7 +387,7 @@ TEST_F(QueryGraphTest, QueryGraphExtractSubGraph) {
 	patterns[1] = cypher_ast_match_get_pattern(match_clauses[1]);
 
 	// Empty sub graph
-	QueryGraph *sub = QueryGraph_ExtractSubGraph(qg, patterns, 0);
+	QueryGraph *sub = QueryGraph_ExtractPatterns(qg, patterns, 0);
 
 	// Validation, expecting an empty query graph.
 	ASSERT_EQ(QueryGraph_NodeCount(sub), 0);
@@ -395,7 +395,7 @@ TEST_F(QueryGraphTest, QueryGraphExtractSubGraph) {
 	QueryGraph_Free(sub);
 
 	// Single pattern, 2 paths, sub graph: a->b->c
-	sub = QueryGraph_ExtractSubGraph(qg, patterns, 1);
+	sub = QueryGraph_ExtractPatterns(qg, patterns, 1);
 	ASSERT_EQ(QueryGraph_NodeCount(sub), 3);
 	ASSERT_EQ(QueryGraph_EdgeCount(sub), 2);
 	ASSERT_TRUE(QueryGraph_GetNodeByAlias(sub, "A") != NULL);
@@ -406,7 +406,7 @@ TEST_F(QueryGraphTest, QueryGraphExtractSubGraph) {
 	QueryGraph_Free(sub);
 
 	// Multi path sub graph a->b->c->d
-	sub = QueryGraph_ExtractSubGraph(qg, patterns, 2);
+	sub = QueryGraph_ExtractPatterns(qg, patterns, 2);
 	ASSERT_EQ(QueryGraph_NodeCount(sub), 4);
 	ASSERT_EQ(QueryGraph_EdgeCount(sub), 3);
 	ASSERT_TRUE(QueryGraph_GetNodeByAlias(sub, "A") != NULL);

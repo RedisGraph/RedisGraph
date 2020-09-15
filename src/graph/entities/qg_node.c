@@ -24,8 +24,9 @@ static void _QGNode_RemoveEdge(QGEdge **edges, QGEdge *e) {
 QGNode *QGNode_New(const char *alias) {
 	QGNode *n = rm_malloc(sizeof(QGNode));
 	n->label = NULL;
-	n->labelID = GRAPH_NO_LABEL;
 	n->alias = alias;
+	n->highly_connected = false;
+	n->labelID = GRAPH_NO_LABEL;
 	n->incoming_edges = array_new(QGEdge *, 0);
 	n->outgoing_edges = array_new(QGEdge *, 0);
 	return n;

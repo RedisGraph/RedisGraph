@@ -235,7 +235,8 @@ static AR_ExpNode **_BuildCallArguments(const cypher_astnode_t *call_clause) {
 }
 
 static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg,
-											 AST *ast, FT_FilterNode *ft) {
+											 AST *ast) {
+	FT_FilterNode *ft = plan->filter_tree;
 	GraphContext *gc = QueryCtx_GetGraphCtx();
 
 	QueryGraph **connectedComponents = QueryGraph_ConnectedComponents(qg);
@@ -565,8 +566,8 @@ static void _buildMergeCreateStream(ExecutionPlan *plan, AST_MergeContext *merge
 	}
 }
 
-static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
-						  const cypher_astnode_t *clause) {
+static void _buildMergeOp(ExecutionPlan *plan, AST *ast,
+		const cypher_astnode_t *clause, GraphContext *gc) {
 	/*
 	 * A MERGE clause provides a single path that must exist or be created.
 	 * If we have built ops already, they will form the first stream into the Merge op.
@@ -607,7 +608,7 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 		arguments = (const char **)raxValues(bound_vars);
 	}
 
-	// Convert all the AST data required to populate our operations tree.
+	// Convert all AST data required to populate our operations tree.
 	AST_MergeContext merge_ctx = AST_PrepareMergeOp(clause, gc, plan->query_graph, bound_vars);
 
 	// Create a Merge operation. It will store no information at this time except for any graph updates
@@ -630,8 +631,9 @@ static void _buildMergeOp(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 }
 
 static void _buildOptionalMatchOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
-	OpBase *optional = NewOptionalOp(plan);
 	const char **arguments = NULL;
+	OpBase *optional = NewOptionalOp(plan);
+
 	// The root will be non-null unless the first clause is an OPTIONAL MATCH.
 	if(plan->root) {
 		// Collect the variables that are bound at this point.
@@ -675,20 +677,49 @@ static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
+static void _buildMatchOp(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause) {
+	if(cypher_ast_match_is_optional(clause)) {
+		_buildOptionalMatchOps(plan, clause);
+		return;
+	}
+
+	/* Only add at most one set of traversals per plan.
+	 * TODO Revisit and improve this logic. */
+	if(plan->root && ExecutionPlan_LocateOpMatchingType(plan->root, SCAN_OPS, SCAN_OP_COUNT)) {
+		return;
+	}
+
+	//--------------------------------------------------------------------------
+	// Extract mandatory patterns
+	//--------------------------------------------------------------------------
+
+	uint n = 0; // Number of mandatory patterns
+	const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
+	uint match_clause_count = array_len(match_clauses);
+	const cypher_astnode_t *patterns[match_clause_count];
+
+	for(uint i = 0; i < match_clause_count; i++) {
+		const cypher_astnode_t *match_clause = match_clauses[i];
+		if(cypher_ast_match_is_optional(match_clause)) continue;
+		patterns[n++] = cypher_ast_match_get_pattern(match_clause);
+	}
+
+	QueryGraph *qg = plan->query_graph;
+	QueryGraph *sub_qg = QueryGraph_ExtractPatterns(qg, patterns, n);
+
+	_ExecutionPlan_ProcessQueryGraph(plan, sub_qg, ast);
+
+	// Clean up
+	QueryGraph_Free(sub_qg);
+	array_free(match_clauses);
+}
+
 static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 												const cypher_astnode_t *clause) {
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
 	// Because 't' is set using the offsetof() call, it cannot be used in switch statements.
 	if(t == CYPHER_AST_MATCH) {
-		if(cypher_ast_match_is_optional(clause)) {
-			_buildOptionalMatchOps(plan, clause);
-			return;
-		}
-		// Only add at most one set of traversals per plan. TODO Revisit and improve this logic.
-		if(plan->root && ExecutionPlan_LocateOpMatchingType(plan->root, SCAN_OPS, SCAN_OP_COUNT)) {
-			return;
-		}
-		_ExecutionPlan_ProcessQueryGraph(plan, plan->query_graph, ast, plan->filter_tree);
+		_buildMatchOp(plan, ast, clause);
 	} else if(t == CYPHER_AST_CALL) {
 		_buildCallOp(ast, plan, clause);
 	} else if(t == CYPHER_AST_CREATE) {
@@ -698,7 +729,7 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, Exec
 	} else if(t == CYPHER_AST_UNWIND) {
 		_buildUnwindOp(plan, clause);
 	} else if(t == CYPHER_AST_MERGE) {
-		_buildMergeOp(gc, ast, plan, clause);
+		_buildMergeOp(plan, ast, clause, gc);
 	} else if(t == CYPHER_AST_SET) {
 		_buildUpdateOp(gc, plan, clause);
 	} else if(t == CYPHER_AST_DELETE) {
@@ -721,7 +752,8 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan) {
 	if(plan->record_map == NULL) plan->record_map = raxNew();
 
 	// Build query graph
-	plan->query_graph = BuildQueryGraph(gc, ast);
+	// Query graph is set if this ExecutionPlan has been created to populate a single stream.
+	if(plan->query_graph == NULL) plan->query_graph = BuildQueryGraph(ast);
 
 	// Build filter tree
 	plan->filter_tree = AST_BuildFilterTree(ast);

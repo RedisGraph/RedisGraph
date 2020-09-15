@@ -212,20 +212,18 @@ uint AST_GetClauseCount(const AST *ast, cypher_astnode_type_t clause_type) {
 /* Collect references to all clauses of the specified type in the query. Since clauses
  * cannot be nested, we only need to check the immediate children of the query node. */
 const cypher_astnode_t **AST_GetClauses(const AST *ast, cypher_astnode_type_t type) {
-	uint count = AST_GetClauseCount(ast, type);
-	if(count == 0) return NULL;
-
-	const cypher_astnode_t **found = array_new(const cypher_astnode_t *, count);
+	const cypher_astnode_t **clauses = NULL;
 
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	for(uint i = 0; i < clause_count; i ++) {
 		const cypher_astnode_t *child = cypher_ast_query_get_clause(ast->root, i);
 		if(cypher_astnode_type(child) != type) continue;
 
-		found = array_append(found, child);
+		if(clauses == NULL) clauses = array_new(const cypher_astnode_t *, 1);
+		clauses = array_append(clauses, child);
 	}
 
-	return found;
+	return clauses;
 }
 
 static void _AST_GetTypedNodes(const cypher_astnode_t  ***nodes, const cypher_astnode_t *root,

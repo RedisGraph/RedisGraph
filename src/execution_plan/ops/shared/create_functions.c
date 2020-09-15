@@ -31,7 +31,7 @@ static void _CommitNodes(PendingCreations *pending) {
 	for(uint i = 0; i < blueprint_node_count; i++) {
 		NodeCreateCtx *node_ctx = pending->nodes_to_create + i;
 
-		const char *label = node_ctx->node->label;
+		const char *label = node_ctx->label;
 		if(label) {
 			if(GraphContext_GetSchema(gc, label, SCHEMA_NODE) == NULL) {
 				Schema *s = GraphContext_AddSchema(gc, label, SCHEMA_NODE);
@@ -79,14 +79,10 @@ static void _CommitEdges(PendingCreations *pending) {
 	for(uint i = 0; i < blueprint_edge_count; i++) {
 		EdgeCreateCtx *edge_ctx = pending->edges_to_create + i;
 
-		const char **reltypes = edge_ctx->edge->reltypes;
-		if(reltypes) {
-			uint reltype_count = array_len(reltypes);
-			for(uint j = 0; j < reltype_count; j ++) {
-				const char *reltype = reltypes[j];
-				if(GraphContext_GetSchema(gc, reltype, SCHEMA_EDGE) == NULL) {
-					Schema *s = GraphContext_AddSchema(gc, reltype, SCHEMA_EDGE);
-				}
+		const char *relation = edge_ctx->relation;
+		if(relation) {
+			if(GraphContext_GetSchema(gc, relation, SCHEMA_EDGE) == NULL) {
+				Schema *s = GraphContext_AddSchema(gc, relation, SCHEMA_EDGE);
 			}
 		}
 	}
