@@ -17,6 +17,26 @@ class testPagerankFlow(FlowTestsBase):
         redis_con = self.env.getConnection()
         redis_graph = Graph(GRAPH_ID, redis_con)
 
+    def test_pagerank_no_connections(self):
+        # Pagerank only considers connections where both ends
+        # are of the same type, as such it might happen that pagerank
+        # is executed against an empty matrix.
+        queries = [
+            # No data, no edges with both src and dest of type 'L'
+            "CREATE (a {v:1})-[:R]->(b {v:2})",
+            "CREATE (a:L {v:1})-[:R]->(b {v:2})",
+            "CREATE (a {v:1})-[:R]->(b:L {v:2})",
+            "CREATE (a:L {v:1})-[:R]->(b {v:2})-[:R]->(c:L {v:3})",
+        ]
+
+        for q in queries:
+            self.env.cmd('flushall')
+            redis_graph.query(q)
+            q = """CALL algo.pageRank('L', 'R') YIELD node, score RETURN node.v, score"""
+            resultset = redis_graph.query(q).result_set
+
+            self.env.assertEqual(len(resultset), 0)
+
     def test_pagerank(self):
         # Pagerank considers only nodes of given label and
         # relation of given relationship type
