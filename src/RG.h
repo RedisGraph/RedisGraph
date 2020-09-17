@@ -38,3 +38,10 @@
 
 #endif
 
+
+// The unused macro should be applied to avoid compiler warnings
+// on set but unused variables
+
+#undef UNUSED
+#define UNUSED(V) ((void)V)
+

@@ -712,7 +712,7 @@ YIELD modifiers are only required if explicitly specified; by default the value 
 |db.idx.fulltext.createNodeIndex | `label`, `property` [, `property` ...] | none | Builds a full-text searchable index on a label and the 1 or more specified properties. |
 |db.idx.fulltext.drop | `label` | none | Deletes the full-text index associated with the given label. |
 |db.idx.fulltext.queryNodes | `label`, `string` | `node` | Retrieve all nodes that contain the specified string in the full-text indexes on the given label. |
-|algo.pageRank | `label`, `relationship-type` | `node`, `score` | Runs the pagerank algorithm over nodes of given label, considering only edges of given relationship type. |
+|algo.pageRank | `label`, `relationship-type` | `node`, `score` | Runs the pagerank algorithm over nodes of given label (NULL to consider all nodes), inspecting only edges of given relationship type (NULL to consider all edges). |
 
 ## Indexing
 RedisGraph supports single-property indexes for node labels.
