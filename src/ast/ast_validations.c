@@ -673,6 +673,9 @@ static AST_Validation _ValidateMergeRelation(const cypher_astnode_t *entity, rax
 		return AST_INVALID;
 	}
 
+	// We don't need to validate the MERGE edge's direction, as an undirected edge in MERGE
+	// should cause a single outgoing edge to be created.
+
 	return AST_VALID;
 }
 
@@ -776,6 +779,12 @@ static AST_Validation _Validate_CREATE_Entities(const cypher_astnode_t *clause,
 			uint reltype_count = cypher_ast_rel_pattern_nreltypes(rel);
 			if(reltype_count != 1) {
 				asprintf(reason, "Exactly one relationship type must be specified for CREATE");
+				return AST_INVALID;
+			}
+
+			// Validate that each relation being created is directed.
+			if(cypher_ast_rel_pattern_get_direction(rel) == CYPHER_REL_BIDIRECTIONAL) {
+				asprintf(reason, "Only directed relationships are supported in CREATE");
 				return AST_INVALID;
 			}
 		}
@@ -1497,6 +1506,22 @@ static void _collect_query_parameters_names(const cypher_astnode_t *root, rax *k
 	}
 }
 
+static AST_Validation _ValidateParamsOnly(const cypher_astnode_t *statement, char **reason) {
+	uint noptions = cypher_ast_statement_noptions(statement);
+	for(uint i = 0; i < noptions; i++) {
+		const cypher_astnode_t *option = cypher_ast_statement_get_option(statement, i);
+		const cypher_astnode_type_t type = cypher_astnode_type(option);
+		if((type == CYPHER_AST_EXPLAIN_OPTION) || (type == CYPHER_AST_PROFILE_OPTION)) {
+			const char *invalid_option_name = cypher_astnode_typestr(type);
+			asprintf(reason,
+					 "Please use GRAPH.%s 'key' 'query' command instead of GRAPH.QUERY 'key' '%s query'",
+					 invalid_option_name, invalid_option_name);
+			return AST_INVALID;
+		}
+	}
+	return AST_VALID;
+}
+
 static AST_Validation _ValidateDuplicateParameters(const cypher_astnode_t *statement,
 												   char **reason) {
 	rax *param_names = raxNew();
@@ -1600,8 +1625,11 @@ bool AST_ContainsErrors(const cypher_parse_result_t *result) {
 	return cypher_parse_result_nerrors(result) > 0;
 }
 
+/* This function checks for the existence a valid root in the query.
+ * As cypher_parse_result_t can have multiple roots such as comments, only a query that has
+ * a root with type CYPHER_AST_STATEMENT is considered valid. Comment roots are ignored. */
 static AST_Validation _AST_Validate_ParseResultRoot(RedisModuleCtx *ctx,
-													const cypher_parse_result_t *result) {
+													const cypher_parse_result_t *result, int *index) {
 	// Check for failures in libcypher-parser
 	if(AST_ContainsErrors(result)) {
 		char *errMsg = _AST_ReportErrors(result);
@@ -1610,33 +1638,36 @@ static AST_Validation _AST_Validate_ParseResultRoot(RedisModuleCtx *ctx,
 		free(errMsg);
 		return AST_INVALID;
 	}
-
-	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
-	// Check for empty query
-	if(root == NULL) {
-		RedisModule_ReplyWithError(ctx, "Error: empty query.");
-		return AST_INVALID;
-	}
-
 	char *reason;
-	cypher_astnode_type_t root_type = cypher_astnode_type(root);
-	if(root_type != CYPHER_AST_STATEMENT) {
-		// This should be unnecessary, as we're currently parsing
-		// with the CYPHER_PARSE_ONLY_STATEMENTS flag.
-		asprintf(&reason, "Encountered unsupported query type '%s'", cypher_astnode_typestr(root_type));
-		RedisModule_ReplyWithError(ctx, reason);
-		free(reason);
-		return AST_INVALID;
+	uint nroots = cypher_parse_result_nroots(result);
+	for(uint i = 0; i < nroots; i++) {
+		const cypher_astnode_t *root = cypher_parse_result_get_root(result, i);
+		cypher_astnode_type_t root_type = cypher_astnode_type(root);
+		if(root_type == CYPHER_AST_LINE_COMMENT || root_type == CYPHER_AST_BLOCK_COMMENT ||
+		   root_type == CYPHER_AST_COMMENT) {
+			continue;
+		} else if(root_type != CYPHER_AST_STATEMENT) {
+			asprintf(&reason, "Encountered unsupported query type '%s'", cypher_astnode_typestr(root_type));
+			RedisModule_ReplyWithError(ctx, reason);
+			free(reason);
+			return AST_INVALID;
+		} else {
+			// We got a statement.
+			*index = i;
+			return AST_VALID;
+		}
 	}
 
-	return AST_VALID;
+	RedisModule_ReplyWithError(ctx, "Error: empty query.");
+	return AST_INVALID;
 }
 
 AST_Validation AST_Validate_Query(RedisModuleCtx *ctx, const cypher_parse_result_t *result) {
-	if(_AST_Validate_ParseResultRoot(ctx, result) != AST_VALID) return AST_INVALID;
-
 	char *reason;
-	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
+	int index;
+	if(_AST_Validate_ParseResultRoot(ctx, result, &index) != AST_VALID) return AST_INVALID;
+
+	const cypher_astnode_t *root = cypher_parse_result_get_root(result, index);
 
 	// Verify that the query does not contain any expressions not in the RedisGraph support whitelist
 	if(CypherWhitelist_ValidateQuery(root, &reason) != AST_VALID) {
@@ -1672,13 +1703,19 @@ AST_Validation AST_Validate_Query(RedisModuleCtx *ctx, const cypher_parse_result
 }
 
 AST_Validation AST_Validate_QueryParams(RedisModuleCtx *ctx, const cypher_parse_result_t *result) {
-	if(_AST_Validate_ParseResultRoot(ctx, result) != AST_VALID) return AST_INVALID;
-
-	char *reason;
-	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
+	int index;
+	if(_AST_Validate_ParseResultRoot(ctx, result, &index) != AST_VALID) return AST_INVALID;
+	const cypher_astnode_t *root = cypher_parse_result_get_root(result, index);
 
 	// In case of no parameters.
 	if(cypher_ast_statement_noptions(root) == 0) return AST_VALID;
+
+	char *reason;
+	if(_ValidateParamsOnly(root, &reason) != AST_VALID) {
+		RedisModule_ReplyWithError(ctx, reason);
+		free(reason);
+		return AST_INVALID;
+	}
 
 	if(_ValidateDuplicateParameters(root, &reason) != AST_VALID) {
 		RedisModule_ReplyWithError(ctx, reason);
