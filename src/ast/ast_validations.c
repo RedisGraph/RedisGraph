@@ -784,7 +784,7 @@ static AST_Validation _Validate_CREATE_Entities(const cypher_astnode_t *clause,
 
 			// Validate that each relation being created is directed.
 			if(cypher_ast_rel_pattern_get_direction(rel) == CYPHER_REL_BIDIRECTIONAL) {
-				QueryCtx_SetError("Only directed relationships are supported in CREATE");
+				asprintf(reason, "Only directed relationships are supported in CREATE");
 				return AST_INVALID;
 			}
 		}
