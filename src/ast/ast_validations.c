@@ -1604,7 +1604,7 @@ bool AST_ContainsErrors(const cypher_parse_result_t *result) {
  * As cypher_parse_result_t can have multiple roots such as comments, only a query that has
  * a root with type CYPHER_AST_STATEMENT is considered valid. Comment roots are ignored. */
 static AST_Validation _AST_Validate_ParseResultRoot(RedisModuleCtx *ctx,
-													const cypher_parse_result_t *result, 	int *index) {
+													const cypher_parse_result_t *result, int *index) {
 	// Check for failures in libcypher-parser
 	if(AST_ContainsErrors(result)) {
 		char *errMsg = _AST_ReportErrors(result);
@@ -1613,7 +1613,7 @@ static AST_Validation _AST_Validate_ParseResultRoot(RedisModuleCtx *ctx,
 		free(errMsg);
 		return AST_INVALID;
 	}
-
+	char *reason;
 	uint nroots = cypher_parse_result_nroots(result);
 	for(uint i = 0; i < nroots; i++) {
 		const cypher_astnode_t *root = cypher_parse_result_get_root(result, i);
@@ -1638,13 +1638,9 @@ static AST_Validation _AST_Validate_ParseResultRoot(RedisModuleCtx *ctx,
 }
 
 AST_Validation AST_Validate_Query(RedisModuleCtx *ctx, const cypher_parse_result_t *result) {
-	if(_AST_Validate_ParseResultRoot(ctx, result) != AST_VALID) return AST_INVALID;
-
 	char *reason;
 	int index;
-	if(_AST_Validate_ParseResultRoot(result, &index) != AST_VALID) {
-		return AST_INVALID;
-	}
+	if(_AST_Validate_ParseResultRoot(ctx, result, &index) != AST_VALID) return AST_INVALID;
 
 	const cypher_astnode_t *root = cypher_parse_result_get_root(result, index);
 
@@ -1682,17 +1678,14 @@ AST_Validation AST_Validate_Query(RedisModuleCtx *ctx, const cypher_parse_result
 }
 
 AST_Validation AST_Validate_QueryParams(RedisModuleCtx *ctx, const cypher_parse_result_t *result) {
-	if(_AST_Validate_ParseResultRoot(ctx, result) != AST_VALID) return AST_INVALID;
-
-	char *reason;
-	const cypher_astnode_t *root = cypher_parse_result_get_root(result, 0);
 	int index;
-	if(_AST_Validate_ParseResultRoot(result, &index) != AST_VALID) return AST_INVALID;
+	if(_AST_Validate_ParseResultRoot(ctx, result, &index) != AST_VALID) return AST_INVALID;
 	const cypher_astnode_t *root = cypher_parse_result_get_root(result, index);
 
 	// In case of no parameters.
 	if(cypher_ast_statement_noptions(root) == 0) return AST_VALID;
 
+	char *reason;
 	if(_ValidateDuplicateParameters(root, &reason) != AST_VALID) {
 		RedisModule_ReplyWithError(ctx, reason);
 		free(reason);

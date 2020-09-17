@@ -5,9 +5,9 @@
  */
 
 #include "ast.h"
+#include "../RG.h"
 #include <assert.h>
 #include <pthread.h>
-
 #include "../util/arr.h"
 #include "../query_ctx.h"
 #include "../util/qsort.h"

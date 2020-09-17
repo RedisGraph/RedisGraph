@@ -5,6 +5,7 @@
  */
 
 #include "execution_plan.h"
+#include "../RG.h"
 #include "./ops/ops.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
@@ -336,7 +337,7 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 	OpBase *op = NULL;
 	rax *references = FilterTree_CollectModified(((OpFilter *)filter)->filterTree);
 	uint64_t references_count = raxSize(references);
-	
+
 	if(references_count > 0) {
 		/* Scan execution plan, locate the earliest position where all
 		 * references been resolved. */
@@ -349,8 +350,10 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 			for(uint64_t i = 1; i < references_count; i++) {
 				asprintf(&entities_str, "%s, %s", entities_str, entities[i]);
 			}
+			char *error;
+			asprintf(&error, "Unable to place filter op for entities: %s", entities_str);
 			// Build-time error - execution plan will not run.
-			QueryCtx_SetError("Unable to place filter op for entities: %s", entities_str);
+			QueryCtx_SetError(error);
 			// Cleanup.
 			OpBase_Free(filter);
 			free(entities_str);
