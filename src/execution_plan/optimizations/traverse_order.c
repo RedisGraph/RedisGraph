@@ -27,7 +27,7 @@ static inline void _Arrangement_Print(AlgebraicExpression **arrangement, uint si
 	}
 }
 
-static bool _valid_position(AlgebraicExpression **exps, int pos, QueryGraph *qg) {
+bool valid_position(AlgebraicExpression **exps, int pos, QueryGraph *qg) {
 	AlgebraicExpression *exp = exps[pos];
 	if(pos == 0) {
 		// The first operand cannot be a variable-length edge with a labeled source or destination,
@@ -75,7 +75,7 @@ static void _order_expressions(AlgebraicExpression **exps, uint exp_count, Query
 	int first_operand = 0;
 	for(uint i = 0; i < exp_count - 1; i ++) {
 		int j = i + 1;
-		while(!_valid_position(exps, i, qg)) {
+		while(!valid_position(exps, i, qg)) {
 			if(j >= exp_count) {
 				// Failed to resolve a valid sequence with the first operand,
 				// swap the first operand and reset.
@@ -126,6 +126,8 @@ int score_arrangement(AlgebraicExpression **arrangement, uint exp_count, QueryGr
 
 		QGNode *src_node = QueryGraph_GetNodeByAlias(qg, src); // TODO unwisely expensive
 		if(src_node->label) score += L * factor;
+		// QGNode *dest_node = QueryGraph_GetNodeByAlias(qg, dest); // TODO unwisely expensive
+		// if(dest_node->label) score += L * factor;
 	}
 
 	return score;

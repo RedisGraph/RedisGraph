@@ -23,6 +23,10 @@ extern "C" {
 }
 #endif
 
+// void _sort_exps_by_score(AlgebraicExpression **exps, uint exp_count, QueryGraph *qg,
+// rax *filtered_entities, rax *bound_vars);
+// void _order_expressions(AlgebraicExpression **exps, uint exp_count, QueryGraph *qg);
+
 class TraversalOrderingTest: public ::testing::Test {
   protected:
 	static void SetUpTestCase() {
@@ -59,6 +63,20 @@ class TraversalOrderingTest: public ::testing::Test {
 		QueryCtx_SetGraphCtx(gc);
 	}
 
+	/* Build a truth table as a 1-dimensional boolean array.
+	 * Every sequence of n values constitutes a row,
+	 * and altogether the rows demonstrate every permutation
+	 * of true/false for each input. */
+	static void _populate_truth_table(bool *table, int n) {
+		int idx = 0; // Index into the overall table
+		for(int i = 0; i < 1 << n; i ++) {          // For every value in 2^n
+			for(int j = 0; j < sizeof(int); j ++) { // For each of the 4 bits in the value.
+				bool x = (i & (1 << j));            // See if the bit at position i is set.
+				table[idx++] = x;                   // If it is, this input will be true in this row.
+			}
+		}
+	}
+
 	AST *_build_ast(const char *query) {
 		cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 		AST *master_ast = AST_Build(parse_result);
@@ -69,6 +87,27 @@ class TraversalOrderingTest: public ::testing::Test {
 	FT_FilterNode *build_filter_tree_from_query(const char *query) {
 		AST *ast = _build_ast(query);
 		return AST_BuildFilterTree(ast);
+	}
+
+	QueryGraph *build_query_graph_from_query(const char *query) {
+		AST *ast = _build_ast(query);
+		GraphContext *gc = QueryCtx_GetGraphCtx();
+		return BuildQueryGraph(gc, ast);
+	}
+
+	bool *build_truth_table(int node_count) {
+		/* Build a truth table to test every combination of labeled nodes.
+		 * As we have 4 nodes, this will be a 16x4 table,
+		 * going from:
+		 * 0000
+		 * 0001
+		 * [...]
+		 * 1111 */
+		int combination_count = 1 << node_count; // Calculate 2^n (16 for 4)
+		int array_size = combination_count * 4; // 16 (rows) * 4 (cols)
+		bool *truth_table = (bool *)malloc(array_size);
+		_populate_truth_table(truth_table, node_count);
+		return truth_table;
 	}
 };
 
@@ -215,26 +254,11 @@ TEST_F(TraversalOrderingTest, SingleOptimalArrangement) {
 	QueryGraph_Free(qg);
 }
 
-/* Build a truth table as a 1-dimensional boolean array.
- * Every sequence of n values constitutes a row,
- * and altogether the rows demonstrate every permutation
- * of true/false for each input. */
-static void populate_truth_table(bool *table, int n) {
-	int idx = 0; // Index into the overall table
-	for(int i = 0; i < 1 << n; i ++) {          // For every value in 2^n
-		for(int j = 0; j < sizeof(int); j ++) { // For each of the 4 bits in the value.
-			bool x = (i & (1 << j));            // See if the bit at position i is set.
-			table[idx++] = x;                   // If it is, this input will be true in this row.
-		}
-	}
-}
-
 TEST_F(TraversalOrderingTest, ValidateLabelScoring) {
 	/* Given the graph with the structure:
 	 * (A)->(B)->(C)->(D), (D)->(A), (B)->(D)
 	 * Test all permutations of labeled nodes and
 	 * validate that all produce an optimal scoring. */
-	uint exp_count = 5;
 	uint node_count = 4;
 
 	char *query = "MATCH (A)-->(B)-->(C)-->(D), (D)-->(A), (B)-->(D) RETURN 1";
@@ -243,47 +267,21 @@ TEST_F(TraversalOrderingTest, ValidateLabelScoring) {
 	QueryGraph *qg = BuildQueryGraph(gc, ast);
 	QGNode **nodes = qg->nodes;
 
-	AlgebraicExpression *ExpAB = AlgebraicExpression_NewOperand(GrB_NULL, false, "A", "B", NULL, NULL);
-	AlgebraicExpression *ExpBC = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "C", NULL, NULL);
-	AlgebraicExpression *ExpCD = AlgebraicExpression_NewOperand(GrB_NULL, false, "C", "D", NULL, NULL);
-	AlgebraicExpression *ExpCA = AlgebraicExpression_NewOperand(GrB_NULL, false, "C", "A", NULL, NULL);
-	AlgebraicExpression *ExpBD = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "D", NULL, NULL);
-
-	// Store unmodified versions of operands, as ordering can modify them by introducing transposes.
-	AlgebraicExpression *ExpAB_orig = AlgebraicExpression_NewOperand(GrB_NULL, false, "A", "B", NULL,
-																	 NULL);
-	AlgebraicExpression *ExpBC_orig = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "C", NULL,
-																	 NULL);
-	AlgebraicExpression *ExpCD_orig = AlgebraicExpression_NewOperand(GrB_NULL, false, "C", "D", NULL,
-																	 NULL);
-	AlgebraicExpression *ExpCA_orig = AlgebraicExpression_NewOperand(GrB_NULL, false, "C", "A", NULL,
-																	 NULL);
-	AlgebraicExpression *ExpBD_orig = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "D", NULL,
-																	 NULL);
-	AlgebraicExpression *orig_set[5] = {ExpAB_orig, ExpBC_orig, ExpCD_orig, ExpCA_orig, ExpBD_orig};
-
-	/* Build a truth table to test every combination of labeled nodes.
-	 * As we have 4 nodes, this will be a 16x4 table,
-	 * going from:
-	 * 0000
-	 * 1000
-	 * [...]
-	 * 1111 */
 	int combination_count = 1 << node_count; // Calculate 2^4 (16)
-	int array_size = combination_count * 4; // 16 (rows) * 4 (cols)
-	bool truth_table[array_size];
-	populate_truth_table(truth_table, node_count);
-
-	// Populate the initial set.
-	AlgebraicExpression *set[5];
-	memcpy(set, orig_set, exp_count * sizeof(AlgebraicExpression *));
+	bool *truth_table = build_truth_table(combination_count);
 
 	for(int to_label = 0; to_label < combination_count; to_label ++) {
 		// Label the appropriate nodes in the sequence.
-		for(int j = 0; j < node_count; j ++) {
-			if(truth_table[to_label * 4 + j]) nodes[j]->label = "L";
-			else nodes[j]->label = NULL;
+		for(int i = 0; i < node_count; i ++) {
+			if(truth_table[to_label * 4 + i]) nodes[i]->label = "L";
+			else nodes[i]->label = NULL;
 		}
+		// Generate the set of AlgebraicExpressions.
+		AlgebraicExpression **orig_set = AlgebraicExpression_FromQueryGraph(qg);
+		uint exp_count = array_len(orig_set);
+		// Copy the initial set.
+		AlgebraicExpression *set[exp_count];
+		memcpy(set, orig_set, exp_count * sizeof(AlgebraicExpression *));
 
 		// Order the expressions and obtain the score.
 		orderExpressions(qg, set, exp_count, NULL, NULL);
@@ -294,8 +292,10 @@ TEST_F(TraversalOrderingTest, ValidateLabelScoring) {
 		std::sort(set, set + exp_count);
 		do {
 			AlgebraicExpression *tmp[exp_count];
-			memcpy(tmp, orig_set, exp_count * sizeof(AlgebraicExpression *));
+			memcpy(tmp, set, exp_count * sizeof(AlgebraicExpression *));
 			orderExpressions(qg, tmp, exp_count, NULL, NULL);
+			// _sort_exps_by_score(tmp, exp_count, qg, NULL, NULL);
+			// _order_expressions(tmp, exp_count, qg);
 			int score = score_arrangement(tmp, exp_count, qg, NULL, NULL);
 			/*
 			if(score != first_score) {
@@ -307,11 +307,6 @@ TEST_F(TraversalOrderingTest, ValidateLabelScoring) {
 		} while(std::next_permutation(set, set + exp_count));
 	}
 	// Clean up.
-	AlgebraicExpression_Free(ExpAB);
-	AlgebraicExpression_Free(ExpBC);
-	AlgebraicExpression_Free(ExpCD);
-	AlgebraicExpression_Free(ExpCA);
-	AlgebraicExpression_Free(ExpBD);
 	QueryGraph_Free(qg);
 }
 
@@ -320,52 +315,16 @@ TEST_F(TraversalOrderingTest, ValidateFilterAndLabelScoring) {
 	 * (A)->(B)->(C)->(D), (D)->(A), (B)->(D)
 	 * Test all permutations of labeled and filtered nodes and
 	 * validate that all produce an optimal scoring. */
-	uint exp_count = 5;
-	uint node_count = 4;
 
 	char *query = "MATCH (A)-->(B)-->(C)-->(D), (D)-->(A), (B)-->(D) RETURN 1";
-	AST *ast = _build_ast(query);
-	GraphContext *gc = QueryCtx_GetGraphCtx();
-	QueryGraph *qg = BuildQueryGraph(gc, ast);
+	QueryGraph *qg = build_query_graph_from_query(query); // Build the QueryGraph.
 	QGNode **nodes = qg->nodes;
+	uint node_count = array_len(nodes);
 
-	// AlgebraicExpression *exp = AlgebraicExpression_FromString("A*B*C*D, D*A, B*D", matrices);
-	AlgebraicExpression *ExpAB = AlgebraicExpression_NewOperand(GrB_NULL, false, "A", "B", NULL, NULL);
-	AlgebraicExpression *ExpBC = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "C", NULL, NULL);
-	AlgebraicExpression *ExpCD = AlgebraicExpression_NewOperand(GrB_NULL, false, "C", "D", NULL, NULL);
-	AlgebraicExpression *ExpCA = AlgebraicExpression_NewOperand(GrB_NULL, false, "C", "A", NULL, NULL);
-	AlgebraicExpression *ExpBD = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "D", NULL, NULL);
-
-	// Store unmodified versions of operands, as ordering can modify them by introducing transposes.
-	AlgebraicExpression *ExpAB_orig = AlgebraicExpression_NewOperand(GrB_NULL, false, "A", "B", NULL,
-																	 NULL);
-	AlgebraicExpression *ExpBC_orig = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "C", NULL,
-																	 NULL);
-	AlgebraicExpression *ExpCD_orig = AlgebraicExpression_NewOperand(GrB_NULL, false, "C", "D", NULL,
-																	 NULL);
-	AlgebraicExpression *ExpCA_orig = AlgebraicExpression_NewOperand(GrB_NULL, false, "C", "A", NULL,
-																	 NULL);
-	AlgebraicExpression *ExpBD_orig = AlgebraicExpression_NewOperand(GrB_NULL, false, "B", "D", NULL,
-																	 NULL);
-	AlgebraicExpression *orig_set[5] = {ExpAB_orig, ExpBC_orig, ExpCD_orig, ExpCA_orig, ExpBD_orig};
-
-	/* Build a truth table to test every combination of labeled nodes.
-	 * As we have 4 nodes, this will be a 16x4 table,
-	 * going from:
-	 * 0000
-	 * 1000
-	 * [...]
-	 * 1111 */
+	// Build the truth table for making label and filter combinations.
 	int combination_count = 1 << node_count; // Calculate 2^4 (16)
-	int array_size = combination_count * 4; // 16 (rows) * 4 (cols)
-	bool truth_table[array_size];
-	populate_truth_table(truth_table, node_count);
+	bool *truth_table = build_truth_table(combination_count);
 
-	// Populate the initial set.
-	AlgebraicExpression *set[5];
-	memcpy(set, orig_set, exp_count * sizeof(AlgebraicExpression *));
-
-	FT_FilterNode *filters;
 	// Set up the filter string
 	int len = 1000;
 	char filter_str[len];
@@ -373,14 +332,18 @@ TEST_F(TraversalOrderingTest, ValidateFilterAndLabelScoring) {
 							   "MATCH (A)-->(B)-->(C)-->(D), (D)-->(A), (B)-->(D) WHERE ");
 	// For every label combination
 	for(int to_label = 0; to_label < combination_count; to_label ++) {
+		// Label the appropriate nodes in the sequence.
+		for(int i = 0; i < node_count; i ++) {
+			if(truth_table[to_label * 4 + i]) nodes[i]->label = "L";
+			else nodes[i]->label = NULL;
+		}
+		AlgebraicExpression **orig_set = AlgebraicExpression_FromQueryGraph(qg);
+		uint exp_count = array_len(orig_set);
+		// Populate the initial set.
+		AlgebraicExpression *set[exp_count];
+		memcpy(set, orig_set, exp_count * sizeof(AlgebraicExpression *));
 		// For every filter combination
 		for(int to_filter = 1; to_filter < combination_count; to_filter ++) {
-			// Label the appropriate nodes in the sequence.
-			for(int j = 0; j < node_count; j ++) {
-				if(truth_table[to_label * 4 + j]) nodes[j]->label = "L";
-				else nodes[j]->label = NULL;
-			}
-
 			// Reset the filter string to its base section.
 			int offset = base_offset;
 			// Filter the appropriate nodes in the sequence.
@@ -395,7 +358,7 @@ TEST_F(TraversalOrderingTest, ValidateFilterAndLabelScoring) {
 			// Finalize the query
 			offset += snprintf(filter_str + offset, len - offset, "RETURN 1");
 			// Build the filter tree to represent the query.
-			filters = build_filter_tree_from_query(filter_str);
+			FT_FilterNode *filters = build_filter_tree_from_query(filter_str);
 			rax *filters_rax = FilterTree_CollectModified(filters);
 			// Order the expressions and obtain the score.
 			orderExpressions(qg, set, exp_count, filters, NULL);
@@ -405,15 +368,29 @@ TEST_F(TraversalOrderingTest, ValidateFilterAndLabelScoring) {
 			// Test every permutation of the set.
 			std::sort(set, set + exp_count);
 			do {
+				// Check if the current 'set' arrangement is valid.
+				bool valid = true;
+				for(int i = 0; i < exp_count; i ++) {
+					if(valid_position(set, i, qg)) continue;
+					valid = false;
+					break;
+				}
+				// No valid arrangement should have a higher score than the first computed one.
+				if(valid) {
+					int score = score_arrangement(set, exp_count, qg, filters_rax, NULL);
+					ASSERT_LE(score, first_score);
+				}
+
+				// Copy the current sequence into the tmp array.
 				AlgebraicExpression *tmp[exp_count];
-				memcpy(tmp, orig_set, exp_count * sizeof(AlgebraicExpression *));
+				memcpy(tmp, set, exp_count * sizeof(AlgebraicExpression *));
+				// Reorder the expressions.
 				orderExpressions(qg, tmp, exp_count, filters, NULL);
+				// Each order should produce the optimal result.
 				int score = score_arrangement(tmp, exp_count, qg, filters_rax, NULL);
-				/*
 				if(score != first_score) {
 					printf("Scored %d, first score was %d\n", score, first_score);
 				}
-				*/
 				// Every sequence of expressions should achieve the same score.
 				ASSERT_EQ(score, first_score);
 			} while(std::next_permutation(set, set + exp_count));
@@ -425,11 +402,69 @@ TEST_F(TraversalOrderingTest, ValidateFilterAndLabelScoring) {
 	}
 
 	// Clean up.
-	AlgebraicExpression_Free(ExpAB);
-	AlgebraicExpression_Free(ExpBC);
-	AlgebraicExpression_Free(ExpCD);
-	AlgebraicExpression_Free(ExpCA);
-	AlgebraicExpression_Free(ExpBD);
+	QueryGraph_Free(qg);
+}
+
+TEST_F(TraversalOrderingTest, SuboptimalOrder) {
+	char *query =
+		"MATCH (A)-->(B)-->(C:L {v: 1})-->(F), (A)-->(B)-->(D {v: 1})-->(E {v: 1})-->(F) RETURN *";
+	QueryGraph *qg = build_query_graph_from_query(query); // Build the QueryGraph.
+
+	// Build the AlgebraicExpressions.
+	AlgebraicExpression **orig_set = AlgebraicExpression_FromQueryGraph(qg);
+	uint exp_count = array_len(orig_set);
+
+	// Build the filter tree to represent the query.
+	FT_FilterNode *filters = build_filter_tree_from_query(query);
+	rax *filters_rax = FilterTree_CollectModified(filters);
+
+	// Populate the initial set.
+	AlgebraicExpression *set[exp_count];
+	memcpy(set, orig_set, exp_count * sizeof(AlgebraicExpression *));
+
+	// Set A as a bound variable so that it will always start the sequence.
+	rax *bound_vars = raxNew();
+	raxInsert(bound_vars, (unsigned char *)"A", strlen("A"), NULL, NULL);
+
+	// Order the expressions and obtain the score.
+	orderExpressions(qg, set, exp_count, filters, bound_vars);
+	int first_score = score_arrangement(set, exp_count, qg, filters_rax, bound_vars);
+	memcpy(set, orig_set, exp_count * sizeof(AlgebraicExpression *));
+
+	// Test every permutation of the set.
+	std::sort(set, set + exp_count);
+	do {
+		// Check if the current 'set' arrangement is valid.
+		bool valid = true;
+		for(int i = 0; i < exp_count; i ++) {
+			if(valid_position(set, i, qg)) continue;
+			valid = false;
+			break;
+		}
+		// No valid arrangement should have a higher score than the first computed one.
+		if(valid) {
+			int score = score_arrangement(set, exp_count, qg, filters_rax, bound_vars);
+			ASSERT_LE(score, first_score); // TODO TODO should fail!
+		}
+
+		// Copy the current sequence into the tmp array.
+		AlgebraicExpression *tmp[exp_count];
+		memcpy(tmp, set, exp_count * sizeof(AlgebraicExpression *));
+		// Reorder the expressions.
+		orderExpressions(qg, tmp, exp_count, filters, bound_vars);
+		// Each order should produce the optimal result.
+		int score = score_arrangement(tmp, exp_count, qg, filters_rax, bound_vars);
+		if(score != first_score) {
+			printf("Scored %d, first score was %d\n", score, first_score);
+		}
+		// Every sequence of expressions should achieve the same score.
+		ASSERT_EQ(score, first_score);
+	} while(std::next_permutation(set, set + exp_count));
+
+
+	// Clean up.
+	FilterTree_Free(filters);
+	raxFree(filters_rax);
 	QueryGraph_Free(qg);
 }
 
