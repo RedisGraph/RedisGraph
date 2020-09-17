@@ -252,3 +252,37 @@ class testFunctionCallsFlow(FlowTestsBase):
                            ['Boaz'],
                            ['Roi']]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # CASE...WHEN statements should properly handle NULL, false, and true evaluations.
+    def test13_case_when_inputs(self):
+        # Simple case form: single value evaluation.
+        query = """UNWIND [NULL, true, false] AS v RETURN v, CASE v WHEN true THEN v END"""
+        actual_result = graph.query(query)
+        expected_result = [[None, None],
+                           [True, True],
+                           [False, None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """UNWIND [NULL, true, false] AS v RETURN v, CASE v WHEN true THEN v WHEN false THEN v END"""
+        actual_result = graph.query(query)
+        expected_result = [[None, None],
+                           [True, True],
+                           [False, False]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        # Generic case form: evaluation for each case.
+        query = """UNWIND [NULL, true, false] AS v RETURN v, CASE WHEN v THEN v END"""
+        actual_result = graph.query(query)
+        # Only the true value should return non-NULL.
+        expected_result = [[None, None],
+                           [True, True],
+                           [False, None]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
+
+        query = """UNWIND [NULL, true, false] AS v RETURN v, CASE WHEN v IS NOT NULL THEN v END"""
+        actual_result = graph.query(query)
+        # The true and false values should both return non-NULL.
+        expected_result = [[None, None],
+                           [True, True],
+                           [False, False]]
+        self.env.assertEquals(actual_result.result_set, expected_result)
