@@ -267,25 +267,33 @@ TEST_F(TraversalOrderingTest, ValidateLabelScoring) {
 	QueryGraph *qg = BuildQueryGraph(gc, ast);
 	QGNode **nodes = qg->nodes;
 
+	// Generate the set of AlgebraicExpressions.
+	AlgebraicExpression **orig_set = AlgebraicExpression_FromQueryGraph(qg);
+	uint exp_count = array_len(orig_set);
+
 	int combination_count = 1 << node_count; // Calculate 2^4 (16)
 	bool *truth_table = build_truth_table(combination_count);
 
+	OrderScoreCtx score_ctx = {.qg = qg,
+							   .filtered_entities = NULL,
+							   .bound_vars = NULL,
+							   .best_arrangement = (AlgebraicExpression **)rm_malloc(exp_count * sizeof(AlgebraicExpression *)),
+							   .max_score = INT_MIN
+							  };
+	int ctr = 0;
 	for(int to_label = 0; to_label < combination_count; to_label ++) {
 		// Label the appropriate nodes in the sequence.
 		for(int i = 0; i < node_count; i ++) {
 			if(truth_table[to_label * 4 + i]) nodes[i]->label = "L";
 			else nodes[i]->label = NULL;
 		}
-		// Generate the set of AlgebraicExpressions.
-		AlgebraicExpression **orig_set = AlgebraicExpression_FromQueryGraph(qg);
-		uint exp_count = array_len(orig_set);
 		// Copy the initial set.
 		AlgebraicExpression *set[exp_count];
 		memcpy(set, orig_set, exp_count * sizeof(AlgebraicExpression *));
 
 		// Order the expressions and obtain the score.
 		orderExpressions(qg, set, exp_count, NULL, NULL);
-		int first_score = score_arrangement(set, exp_count, qg, NULL, NULL);
+		int first_score = score_arrangement(&score_ctx, set, exp_count);
 		memcpy(set, orig_set, exp_count * sizeof(AlgebraicExpression *));
 
 		// Test every permutation of the set.
@@ -293,15 +301,14 @@ TEST_F(TraversalOrderingTest, ValidateLabelScoring) {
 		do {
 			AlgebraicExpression *tmp[exp_count];
 			memcpy(tmp, set, exp_count * sizeof(AlgebraicExpression *));
+			ctr ++;
 			orderExpressions(qg, tmp, exp_count, NULL, NULL);
 			// _sort_exps_by_score(tmp, exp_count, qg, NULL, NULL);
 			// _order_expressions(tmp, exp_count, qg);
-			int score = score_arrangement(tmp, exp_count, qg, NULL, NULL);
-			/*
+			int score = score_arrangement(&score_ctx, tmp, exp_count);
 			if(score != first_score) {
 				printf("Scored %d, first score was %d\n", score, first_score);
 			}
-			*/
 			// Every sequence of expressions should achieve the same score.
 			ASSERT_EQ(score, first_score);
 		} while(std::next_permutation(set, set + exp_count));
@@ -330,6 +337,7 @@ TEST_F(TraversalOrderingTest, ValidateFilterAndLabelScoring) {
 	char filter_str[len];
 	int base_offset = snprintf(filter_str, len,
 							   "MATCH (A)-->(B)-->(C)-->(D), (D)-->(A), (B)-->(D) WHERE ");
+	int ctr = 0;
 	// For every label combination
 	for(int to_label = 0; to_label < combination_count; to_label ++) {
 		// Label the appropriate nodes in the sequence.
@@ -342,6 +350,13 @@ TEST_F(TraversalOrderingTest, ValidateFilterAndLabelScoring) {
 		// Populate the initial set.
 		AlgebraicExpression *set[exp_count];
 		memcpy(set, orig_set, exp_count * sizeof(AlgebraicExpression *));
+		AlgebraicExpression *tmp[exp_count];
+		OrderScoreCtx score_ctx = {.qg = qg,
+								   .filtered_entities = NULL,
+								   .bound_vars = NULL,
+								   .best_arrangement = (AlgebraicExpression **)rm_malloc(exp_count * sizeof(AlgebraicExpression *)),
+								   .max_score = INT_MIN
+								  };
 		// For every filter combination
 		for(int to_filter = 1; to_filter < combination_count; to_filter ++) {
 			// Reset the filter string to its base section.
@@ -356,13 +371,28 @@ TEST_F(TraversalOrderingTest, ValidateFilterAndLabelScoring) {
 				}
 			}
 			// Finalize the query
-			offset += snprintf(filter_str + offset, len - offset, "RETURN 1");
+			offset += snprintf(filter_str + offset, len - offset, "RETURN *");
 			// Build the filter tree to represent the query.
 			FT_FilterNode *filters = build_filter_tree_from_query(filter_str);
 			rax *filters_rax = FilterTree_CollectModified(filters);
+			score_ctx.filtered_entities = filters_rax;
+			if(to_label == 1 && to_filter == 2) {
+				// printf("%s\n", filter_str);
+			}
 			// Order the expressions and obtain the score.
 			orderExpressions(qg, set, exp_count, filters, NULL);
-			int first_score = score_arrangement(set, exp_count, qg, filters_rax, NULL);
+			int first_score = score_arrangement(&score_ctx, set, exp_count);
+			if(to_label == 5 && to_filter == 5) {
+				printf("%s\n", filter_str);
+				for(uint j = 0; j < node_count; j ++) {
+					printf("Node %d:%s, ", j, nodes[j]->label ? "L" : "");
+				}
+				printf("\n");
+				for(uint j = 0; j < exp_count; j ++) {
+					printf("Expression %d:\n", j);
+					AlgebraicExpression_PrintTree(set[j]);
+				}
+			}
 			memcpy(set, orig_set, exp_count * sizeof(AlgebraicExpression *));
 
 			// Test every permutation of the set.
@@ -371,24 +401,38 @@ TEST_F(TraversalOrderingTest, ValidateFilterAndLabelScoring) {
 				// Check if the current 'set' arrangement is valid.
 				bool valid = true;
 				for(int i = 0; i < exp_count; i ++) {
-					if(valid_position(set, i, qg)) continue;
+					if(valid_position(set, i, set[i], qg)) continue;
 					valid = false;
 					break;
 				}
 				// No valid arrangement should have a higher score than the first computed one.
 				if(valid) {
-					int score = score_arrangement(set, exp_count, qg, filters_rax, NULL);
+					ctr++;
+					if(ctr == 6507) {
+						printf("i ");
+					}
+					int score = score_arrangement(&score_ctx, set, exp_count);
+					if(score > first_score) {
+						printf("aah\n");
+						for(uint j = 0; j < exp_count; j ++) {
+							printf("Expression %d:\n", j);
+							AlgebraicExpression_PrintTree(set[j]);
+						}
+					}
 					ASSERT_LE(score, first_score);
 				}
 
 				// Copy the current sequence into the tmp array.
-				AlgebraicExpression *tmp[exp_count];
 				memcpy(tmp, set, exp_count * sizeof(AlgebraicExpression *));
 				// Reorder the expressions.
 				orderExpressions(qg, tmp, exp_count, filters, NULL);
 				// Each order should produce the optimal result.
-				int score = score_arrangement(tmp, exp_count, qg, filters_rax, NULL);
+				int score = score_arrangement(&score_ctx, tmp, exp_count);
 				if(score != first_score) {
+					for(uint j = 0; j < exp_count; j ++) {
+						printf("Expression %d:\n", j);
+						AlgebraicExpression_PrintTree(set[j]);
+					}
 					printf("Scored %d, first score was %d\n", score, first_score);
 				}
 				// Every sequence of expressions should achieve the same score.
@@ -426,9 +470,15 @@ TEST_F(TraversalOrderingTest, SuboptimalOrder) {
 	rax *bound_vars = raxNew();
 	raxInsert(bound_vars, (unsigned char *)"A", strlen("A"), NULL, NULL);
 
+	OrderScoreCtx score_ctx = {.qg = qg,
+							   .filtered_entities = filters_rax,
+							   .bound_vars = bound_vars,
+							   .best_arrangement = (AlgebraicExpression **)rm_malloc(exp_count * sizeof(AlgebraicExpression *)),
+							   .max_score = INT_MIN
+							  };
 	// Order the expressions and obtain the score.
 	orderExpressions(qg, set, exp_count, filters, bound_vars);
-	int first_score = score_arrangement(set, exp_count, qg, filters_rax, bound_vars);
+	int first_score = score_arrangement(&score_ctx, set, exp_count);
 	memcpy(set, orig_set, exp_count * sizeof(AlgebraicExpression *));
 
 	// Test every permutation of the set.
@@ -437,13 +487,13 @@ TEST_F(TraversalOrderingTest, SuboptimalOrder) {
 		// Check if the current 'set' arrangement is valid.
 		bool valid = true;
 		for(int i = 0; i < exp_count; i ++) {
-			if(valid_position(set, i, qg)) continue;
+			if(valid_position(set, i, set[i], qg)) continue;
 			valid = false;
 			break;
 		}
 		// No valid arrangement should have a higher score than the first computed one.
 		if(valid) {
-			int score = score_arrangement(set, exp_count, qg, filters_rax, bound_vars);
+			int score = score_arrangement(&score_ctx, set, exp_count);
 			ASSERT_LE(score, first_score); // TODO TODO should fail!
 		}
 
@@ -453,7 +503,7 @@ TEST_F(TraversalOrderingTest, SuboptimalOrder) {
 		// Reorder the expressions.
 		orderExpressions(qg, tmp, exp_count, filters, bound_vars);
 		// Each order should produce the optimal result.
-		int score = score_arrangement(tmp, exp_count, qg, filters_rax, bound_vars);
+		int score = score_arrangement(&score_ctx, tmp, exp_count);
 		if(score != first_score) {
 			printf("Scored %d, first score was %d\n", score, first_score);
 		}
