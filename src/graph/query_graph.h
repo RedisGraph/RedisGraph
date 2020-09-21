@@ -42,15 +42,13 @@ void QueryGraph_ConnectNodes(QueryGraph *qg, QGNode *src, QGNode *dest, QGEdge *
  * to the QueryGraph. */
 void QueryGraph_AddPath(QueryGraph *qg, const cypher_astnode_t *path);
 
-/* Extract a sub-graph of 'qg'
- * the sub-graph is defined by the path(s) within 'paths'
- * Elements missing from 'qg' will be created */
+/* Extract a sub-graph of 'qg' according to the path(s) definitions within
+ * 'paths' variable, elements missing from 'qg' will be created */
 QueryGraph *QueryGraph_ExtractPaths(const QueryGraph *qg,
 		const cypher_astnode_t **paths, uint n);
 
-/* Extract a sub-graph of 'qg'
- * the sub-graph is defined by the traversal pattern(s) within 'patterns'.
- * Elements missing from 'qg' will be created */
+/* Extract a sub-graph of 'qg' according to the path(s) difinitions within
+ * 'patterns' variable, elements missing from 'qg' will be created */
 QueryGraph *QueryGraph_ExtractPatterns(const QueryGraph *qg,
 		const cypher_astnode_t **patterns, uint n);
 

@@ -1,5 +1,4 @@
 #pragma once
-#include <assert.h>
 
 //------------------------------------------------------------------------------
 // code development settings
@@ -38,4 +37,11 @@
 	#define ASSERT(X)
 
 #endif
+
+
+// The unused macro should be applied to avoid compiler warnings
+// on set but unused variables
+
+#undef UNUSED
+#define UNUSED(V) ((void)V)
 

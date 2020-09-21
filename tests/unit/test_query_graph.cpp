@@ -11,7 +11,6 @@ extern "C" {
 #endif
 #include "../../src/ast/ast.h"
 #include "../../src/util/arr.h"
-// #include "../../src/query_ctx.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/graph/query_graph.h"
 #ifdef __cplusplus
@@ -23,9 +22,6 @@ class QueryGraphTest: public ::testing::Test {
 	static void SetUpTestCase() {
 		// Use the malloc family for allocations
 		Alloc_Reset();
-
-		// Prepare thread-local variables
-		// ASSERT_TRUE(QueryCtx_Init());
 	}
 
 	void compare_nodes(const QGNode *a, const QGNode *b) {
@@ -374,19 +370,20 @@ TEST_F(QueryGraphTest, QueryGraphExtractSubGraph) {
 	// Extract portions of the original query graph
 	//--------------------------------------------------------------------------
 
-	const char *query = "MATCH (A)-[AB]->(B), (B)-[BC]->(C) MATCH (C)-[CD]->(D) RETURN D";
+	const char *query = "MATCH (A)-[AB]->(B), (B)-[BC]->(C) MATCH (C)-[CD]->(D) MATCH (D)-[DE]->(E)RETURN D";
 	cypher_parse_result_t *parse_result = cypher_parse(query, NULL, NULL, CYPHER_PARSE_ONLY_STATEMENTS);
 	AST *ast = AST_Build(parse_result);
 	ast->referenced_entities = raxNew();
 
 	const cypher_astnode_t **match_clauses = AST_GetClauses(ast, CYPHER_AST_MATCH);
-	const cypher_astnode_t *patterns[2];
+	const cypher_astnode_t *patterns[3];
 
 	// Extract patterns, one per MATCH clause
 	patterns[0] = cypher_ast_match_get_pattern(match_clauses[0]);
 	patterns[1] = cypher_ast_match_get_pattern(match_clauses[1]);
+	patterns[2] = cypher_ast_match_get_pattern(match_clauses[2]);
 
-	// Empty sub graph
+	// Empty sub graph, as the number of patterns specified is 0.
 	QueryGraph *sub = QueryGraph_ExtractPatterns(qg, patterns, 0);
 
 	// Validation, expecting an empty query graph.
@@ -416,6 +413,16 @@ TEST_F(QueryGraphTest, QueryGraphExtractSubGraph) {
 	ASSERT_TRUE(QueryGraph_GetEdgeByAlias(sub, "AB") != NULL);
 	ASSERT_TRUE(QueryGraph_GetEdgeByAlias(sub, "BC") != NULL);
 	ASSERT_TRUE(QueryGraph_GetEdgeByAlias(sub, "CD") != NULL);
+	QueryGraph_Free(sub);
+
+	/* Extract path which is partially contained in 'qg'
+	 * d->e where only 'd' is in 'qg' */
+	sub = QueryGraph_ExtractPatterns(qg, &patterns[2], 1);
+	ASSERT_EQ(QueryGraph_NodeCount(sub), 2);
+	ASSERT_EQ(QueryGraph_EdgeCount(sub), 1);
+	ASSERT_TRUE(QueryGraph_GetNodeByAlias(sub, "D") != NULL);
+	ASSERT_TRUE(QueryGraph_GetNodeByAlias(sub, "E") != NULL);
+	ASSERT_TRUE(QueryGraph_GetEdgeByAlias(sub, "DE") != NULL);
 	QueryGraph_Free(sub);
 
 	// Clean up

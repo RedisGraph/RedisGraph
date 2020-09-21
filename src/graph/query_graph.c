@@ -117,7 +117,14 @@ static void _QueryGraph_ExtractNode(const QueryGraph *qg, QueryGraph *graph,
 		// Node is missing from 'graph', try getting it from 'qg'.
 		n = QueryGraph_GetNodeByAlias(qg, alias);
 		if(n == NULL) {
-			// Node is missing from 'qg', create it.
+			/* Node is missing from 'qg', create it.
+			 * It is possible to get into a situation where we try to extract
+			 * a path which contains entities that are missing from the
+			 * "holistic" query graph consider:
+			 * MATCH (a) WITH a WHERE (a)-[]->(:L1) in this case due to
+			 * clause scoping only node 'a' is in 'qg' the filtered pattern
+			 * which is being extracted from 'qg' has additional entities:
+			 * an anonymous edge and node. */
 			_QueryGraphAddNode(graph, ast_node);
 		} else {
 			// Add a clone of the original node.
@@ -142,20 +149,12 @@ static void _QueryGraph_ExtractEdge(const QueryGraph *qg, QueryGraph *graph,
 	// Validate input, edge shouldn't be in graph.
 	ASSERT(left != NULL && right != NULL);
 	ASSERT(QueryGraph_GetEdgeByAlias(graph, alias) == NULL);
-
-	// Try getting edge from 'qg'
-	QGEdge *e = QueryGraph_GetEdgeByAlias(qg, alias);
-	if(e == NULL) {
-		// Edge is missing from 'qg' create it.
-		_QueryGraphAddEdge(graph, ast_edge, left, right);
-	} else {
-		// Edge is part of 'qg', add a clone of it to 'graph'
-		QGNode *src = QueryGraph_GetNodeByAlias(graph, e->src->alias);
-		QGNode *dest = QueryGraph_GetNodeByAlias(graph, e->dest->alias);
-		ASSERT(src != NULL && dest != NULL);
-		e = QGEdge_Clone(e);
-		QueryGraph_ConnectNodes(graph, src, dest, e);
-	}
+	/* Unlike nodes that can show up multiple times within a pattern
+	 * e.g. MATCH (a), (a:L)
+	 * where each occurance might add an additional piece of information
+	 * an edge can only be mentioned once, as such there's no value in
+	 * cloning an edge. therefor we simply add it.*/
+	_QueryGraphAddEdge(graph, ast_edge, left, right);
 }
 
 // Clones path from 'qg' into 'graph'.
@@ -171,14 +170,14 @@ static void _QueryGraph_ExtractPath(const QueryGraph *qg, QueryGraph *graph,
 	uint nelems = cypher_ast_pattern_path_nelements(path);
 
 	/* Introduce nodes to graph
-	 * Nodes are at even indecies */
+	 * Nodes are at even indices */
 	for(uint i = 0; i < nelems; i += 2) {
 		ast_node = cypher_ast_pattern_path_get_element(path, i);
 		_QueryGraph_ExtractNode(qg, graph, ast, ast_node);
 	}
 
 	/* Introduce edges to graph
-	 * edges are at odd indecies */
+	 * edges are at odd indices */
 	for(uint i = 1; i < nelems; i += 2) {
 		// Retrieve the QGNode corresponding to the node left of this edge.
 		const cypher_astnode_t *l_node = cypher_ast_pattern_path_get_element(path, i - 1);
@@ -565,6 +564,7 @@ GrB_Matrix QueryGraph_MatrixRepresentation(const QueryGraph *qg) {
 
 	GrB_Matrix m;   // Matrix representation of QueryGraph.
 	GrB_Info res = GrB_Matrix_new(&m, GrB_BOOL, node_count, node_count);
+	UNUSED(res);
 	ASSERT(res == GrB_SUCCESS);
 
 	// Build matrix representation of query graph.

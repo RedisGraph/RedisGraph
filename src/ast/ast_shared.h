@@ -48,22 +48,22 @@ typedef struct {
 
 // Context describing an update expression.
 typedef struct {
-	int record_idx;             // record offset this entity is stored at
 	const char *alias;          // alias of entity being updated
-	struct AR_ExpNode *exp;     // expression to evaluate
 	Attribute_ID attribute_id;  // id of attribute to update
+	int record_idx;             // record offset this entity is stored at
+	struct AR_ExpNode *exp;     // expression to evaluate
 } EntityUpdateEvalCtx;
 
 // Context describing a node in a CREATE or MERGE clause
 typedef struct {
-	int src_idx;			    // source node record index
-	int dest_idx;			    // destination node record index
-	int edge_idx;			    // edge record index
-	int reltypeId;			    // edge relationship type id
-	const char *src;		    // source node alias
-	const char *dest;		    // destination node alias
-	const char *alias;          // node alias
-	const char *relation;	    // edge relationship type
+	int src_idx;                // source node record index
+	int dest_idx;               // destination node record index
+	int edge_idx;               // edge record index
+	int reltypeId;              // edge relationship type id
+	const char *src;            // source node alias
+	const char *dest;           // destination node alias
+	const char *alias;          // edge alias
+	const char *relation;       // edge relationship type
 	PropertyMap *properties;    // edge properties set
 } EdgeCreateCtx;
 
@@ -71,7 +71,7 @@ typedef struct {
 typedef struct {
 	int labelId;                // node label id
 	int node_idx;               // node record index
-	const char *alias;          // edge alias
+	const char *alias;          // node alias
 	const char *label;          // node label
 	PropertyMap *properties;    // node properties set
 } NodeCreateCtx;

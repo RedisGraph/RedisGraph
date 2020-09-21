@@ -16,7 +16,7 @@ struct QGEdge;
 
 typedef struct {
 	int labelID;               // Label ID
-	const char *label;         // Label etring
+	const char *label;         // Label string
 	const char *alias;         // User-provided alias associated with this node
 	bool highly_connected;     // Node degree > 2
 	struct QGEdge **outgoing_edges;   // Array of incoming edges (ME)<-(SRC)
