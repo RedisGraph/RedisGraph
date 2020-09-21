@@ -23,10 +23,6 @@ extern "C" {
 }
 #endif
 
-// void _sort_exps_by_score(AlgebraicExpression **exps, uint exp_count, QueryGraph *qg,
-// rax *filtered_entities, rax *bound_vars);
-// void _order_expressions(AlgebraicExpression **exps, uint exp_count, QueryGraph *qg);
-
 class TraversalOrderingTest: public ::testing::Test {
   protected:
 	static void SetUpTestCase() {
@@ -67,7 +63,7 @@ class TraversalOrderingTest: public ::testing::Test {
 	 * Every sequence of n values constitutes a row,
 	 * and altogether the rows demonstrate every permutation
 	 * of true/false for each input. */
-	static void _populate_truth_table(bool *table, int n) {
+	static void _populate_combination_table(bool *table, int n) {
 		int idx = 0; // Index into the overall table
 		for(int i = 0; i < 1 << n; i ++) {          // For every value in 2^n
 			for(int j = 0; j < sizeof(int); j ++) { // For each of the 4 bits in the value.
@@ -95,9 +91,9 @@ class TraversalOrderingTest: public ::testing::Test {
 		return BuildQueryGraph(gc, ast);
 	}
 
-	bool *build_truth_table(int node_count) {
-		/* Build a truth table to test every combination of labeled nodes.
-		 * As we have 4 nodes, this will be a 16x4 table,
+	bool *build_combination_table(int node_count) {
+		/* Build a table to test every combination of labeled nodes.
+		 * If we have 4 nodes, this will be a 16x4 table,
 		 * going from:
 		 * 0000
 		 * 0001
@@ -105,9 +101,9 @@ class TraversalOrderingTest: public ::testing::Test {
 		 * 1111 */
 		int combination_count = 1 << node_count; // Calculate 2^n (16 for 4)
 		int array_size = combination_count * 4; // 16 (rows) * 4 (cols)
-		bool *truth_table = (bool *)malloc(array_size);
-		_populate_truth_table(truth_table, node_count);
-		return truth_table;
+		bool *combination_table = (bool *)malloc(array_size);
+		_populate_combination_table(combination_table, node_count);
+		return combination_table;
 	}
 };
 
@@ -272,7 +268,7 @@ TEST_F(TraversalOrderingTest, ValidateLabelScoring) {
 	uint exp_count = array_len(orig_set);
 
 	int combination_count = 1 << node_count; // Calculate 2^4 (16)
-	bool *truth_table = build_truth_table(combination_count);
+	bool *combination_table = build_combination_table(combination_count);
 
 	OrderScoreCtx score_ctx = {.qg = qg,
 							   .filtered_entities = NULL,
@@ -284,7 +280,7 @@ TEST_F(TraversalOrderingTest, ValidateLabelScoring) {
 	for(int to_label = 0; to_label < combination_count; to_label ++) {
 		// Label the appropriate nodes in the sequence.
 		for(int i = 0; i < node_count; i ++) {
-			if(truth_table[to_label * 4 + i]) nodes[i]->label = "L";
+			if(combination_table[to_label * 4 + i]) nodes[i]->label = "L";
 			else nodes[i]->label = NULL;
 		}
 		// Copy the initial set.
@@ -330,7 +326,7 @@ TEST_F(TraversalOrderingTest, ValidateFilterAndLabelScoring) {
 
 	// Build the truth table for making label and filter combinations.
 	int combination_count = 1 << node_count; // Calculate 2^4 (16)
-	bool *truth_table = build_truth_table(combination_count);
+	bool *combination_table = build_combination_table(combination_count);
 
 	// Set up the filter string
 	int len = 1000;
@@ -342,7 +338,7 @@ TEST_F(TraversalOrderingTest, ValidateFilterAndLabelScoring) {
 	for(int to_label = 0; to_label < combination_count; to_label ++) {
 		// Label the appropriate nodes in the sequence.
 		for(int i = 0; i < node_count; i ++) {
-			if(truth_table[to_label * 4 + i]) nodes[i]->label = "L";
+			if(combination_table[to_label * 4 + i]) nodes[i]->label = "L";
 			else nodes[i]->label = NULL;
 		}
 		AlgebraicExpression **orig_set = AlgebraicExpression_FromQueryGraph(qg);
@@ -363,7 +359,7 @@ TEST_F(TraversalOrderingTest, ValidateFilterAndLabelScoring) {
 			int offset = base_offset;
 			// Filter the appropriate nodes in the sequence.
 			for(int j = 0; j < node_count; j ++) {
-				if(truth_table[to_filter * 4 + j]) {
+				if(combination_table[to_filter * 4 + j]) {
 					// If this isn't the first filter, precede it with "AND ".
 					if(offset != base_offset) offset += snprintf(filter_str + offset, len - offset, "AND ");
 					// Add a filter for the current node's alias.

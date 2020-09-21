@@ -86,34 +86,35 @@ static bool _should_transpose_entry_point(QueryGraph *qg, AlgebraicExpression *a
 		}
 	}
 
+	bool src_filtered = false;
+	bool dest_filtered = false;
 	// See if either source or destination nodes are filtered.
 	if(filtered_entities) {
-		// The source node is filtered, making the current order most appealing.
-		if(raxFind(filtered_entities, (unsigned char *)src, src_len) != raxNotFound) {
-			return false;
-		}
-
-		if(raxFind(filtered_entities, (unsigned char *)dest, dest_len) != raxNotFound) {
-			// The destination is filtered and the source is not, transpose.
-			return true;
-		}
+		src_filtered = raxFind(filtered_entities, (unsigned char *)src, src_len) != raxNotFound;
+		dest_filtered = raxFind(filtered_entities, (unsigned char *)dest, dest_len) != raxNotFound;
 	}
 
 	// No filters are applied prefer labeled entity.
 	QGNode *src_node = QueryGraph_GetNodeByAlias(qg, src);
 	QGNode *dest_node = QueryGraph_GetNodeByAlias(qg, dest);
-	bool srcLabeled = src_node->label != NULL;
-	bool destLabeled = dest_node->label != NULL;
+	bool src_labeled = src_node->label != NULL;
+	bool dest_labeled = dest_node->label != NULL;
 
-	if(srcLabeled) {
-		// Source is labeled, making the current order most appealing.
+	if((src_filtered && !(dest_filtered && dest_labeled)) ||
+	   (src_labeled && !dest_filtered)) {
+		// Do not transpose if the destination lacks a label specification or filter
+		// that the source possesses.
 		return false;
-	} else if(destLabeled) {
-		// Destination is labeled and the source is not, transpose.
+	} else if((dest_filtered && !(src_filtered && src_labeled)) ||
+			  (dest_labeled && !src_labeled)) {
+		// Transpose if the destination has a filter and/or label and the source does not,
+		// as this will shrink the scan results.
 		return true;
 	}
 	return false;
 }
+
+// TODO delete when definitely unused
 /*
 // Promote a selected operand to the given position while otherwise maintaining the optimal order.
 static void _promote_next_operand(AlgebraicExpression **exps, uint exp_count, uint to, uint from) {
@@ -157,8 +158,8 @@ static inline void _swap(AlgebraicExpression **exps, uint i, uint  j) {
 }
 
 // Computes all permutations of set exps.
-static inline void _permute(OrderScoreCtx *score_ctx, AlgebraicExpression **exps, uint exp_count,
-							int l, int r) {
+static void _find_best_arrangement(OrderScoreCtx *score_ctx, AlgebraicExpression **exps,
+								   uint exp_count, int l, int r) {
 	if(l == r) {
 		int score = score_arrangement(score_ctx, exps, exp_count);
 		if(score > score_ctx->max_score) {
@@ -169,67 +170,15 @@ static inline void _permute(OrderScoreCtx *score_ctx, AlgebraicExpression **exps
 		for(int i = l; i <= r; i++) {
 			// If the swapped element is invalid in this position, don't try to build arrangements with it.
 			if(!valid_position(exps, l, exps[i], score_ctx->qg)) continue;
+			/* TODO
+			 * Replace with lexicographic permutation logic.
+			 * In the permutation loop, compute the maximum score still achievable,
+			 * and return early if that score is reached. */
 			_swap(exps, l, i);
-			_permute(score_ctx, exps, exp_count, l + 1, r);
+			_find_best_arrangement(score_ctx, exps, exp_count, l + 1, r);
 			_swap(exps, l, i);   // backtrack.
 		}
 	}
-}
-
-/*
-static int _recurse(OrderScoreCtx *score_ctx, AlgebraicExpression **exps, uint exp_count,
-					uint pos, uint cur) {
-	if(pos == exp_count) {
-
-		int score = score_arrangement(score_ctx, exps, exp_count);
-		for(int i = 0; i < exp_count; i++) {
-			printf("%s,", AlgebraicExpression_Source(exps[i]));
-		}
-		printf("\nGot score %d\n", score);
-		return score;
-	}
-	// uint options = exp_count - pos;
-	AlgebraicExpression *exp = exps[cur];
-	if(!valid_position(exps, pos, exp, score_ctx->qg)) return -1;
-	exps[cur] = exps[pos];
-	exps[pos] = exp;
-	// printf("swapping %u into %u\n", cur, pos);
-	int max_score = INT_MIN;
-	AlgebraicExpression *arrangement[exp_count];
-	// memcpy(arrangement, exps, exp_count * sizeof(AlgebraicExpression *));
-	for(int i = pos; i <= exp_count; i ++) {
-		// TODO TODO failing to visit first or last in recursion, currently recursing too far?
-		int score = _recurse(score_ctx, exps, exp_count, pos + 1, i);
-		if(score > max_score) {
-			max_score = score;
-			memcpy(arrangement, exps, exp_count * sizeof(AlgebraicExpression *));
-		}
-	}
-	memcpy(exps, arrangement, exp_count * sizeof(AlgebraicExpression *));
-	return max_score;
-}
-*/
-
-static void _find_best_arrangement(OrderScoreCtx *score_ctx, AlgebraicExpression **exps,
-								   uint exp_count, int *scores) {
-	// _order_expressions(exps, exp_count, score_ctx->qg);
-	// int score = score_arrangement(score_ctx, exps, exp_count);
-	int max_score = INT_MIN;
-	// AlgebraicExpression *arrangement[exp_count];
-	_permute(score_ctx, exps, exp_count, 0, exp_count - 1);
-	/*
-	for(int i = 0; i < exp_count; i ++) {
-		// int score = _recurse(score_ctx, exps, exp_count, 0, i);
-		int score = _permute(score_ctx, exps, exp_count, 0, i);
-		if(score > max_score) {
-			max_score = score;
-			memcpy(arrangement, exps, exp_count * sizeof(AlgebraicExpression *));
-		}
-	}
-	*/
-	// memcpy(exps, arrangement, exp_count * sizeof(AlgebraicExpression *));
-	// printf("best score: %d\n\n", max_score);
-
 }
 
 static int _penalty_arrangement(OrderScoreCtx *score_ctx, AlgebraicExpression **arrangement,
@@ -312,6 +261,7 @@ static int _reward_expression(OrderScoreCtx *score_ctx, AlgebraicExpression *exp
 	// }
 	if(src_node->label) score += L;
 
+	// TODO should destination labels be considered or not?
 	QGNode *dest_node = QueryGraph_GetNodeByAlias(score_ctx->qg, dest);
 	if(dest_node->label) score += L;
 
@@ -324,7 +274,7 @@ int _reward_arrangement(OrderScoreCtx *score_ctx, AlgebraicExpression **exps, ui
 	// A bit naive at the moment.
 	for(uint i = 0; i < exp_count; i++) {
 		AlgebraicExpression *exp = exps[i];
-		int factor = exp_count - i;
+		// TODO all currently unnecessary; will be necessary if destination label doesn't contribute to score
 		bool transpose = false;
 		if(i == 0) {
 			transpose = _should_transpose_entry_point(score_ctx->qg, exp, score_ctx->filtered_entities,
@@ -345,7 +295,11 @@ int _reward_arrangement(OrderScoreCtx *score_ctx, AlgebraicExpression **exps, ui
 			}
 			transpose = !src_resolved;
 		}
+
+		// Score this expression.
 		int exp_score = _reward_expression(score_ctx, exp, transpose);
+		// Multiply this expression's score to reward it according to its position in the sequence.
+		int factor = exp_count - i;
 		score += exp_score * factor;
 	}
 
@@ -401,7 +355,8 @@ static void _sort_exp_array(AlgebraicExpression **exps, int *exp_scores, int exp
 
 // Score each individual expression and reorder the array in order of score.
 static void _sort_exps_by_score(OrderScoreCtx *score_ctx, AlgebraicExpression **exps,
-								uint exp_count, int *exp_scores) {
+								uint exp_count) {
+	int exp_scores[exp_count];
 	// Score each individual expression.
 	for(uint i = 0; i < exp_count; i ++) {
 		exp_scores[i] = _reward_expression(score_ctx, exps[i], i == 0);
@@ -431,21 +386,21 @@ void orderExpressions(QueryGraph *qg, AlgebraicExpression **exps, uint exp_count
 	/* If we only have one arrangement, we still want to select the optimal entry point
 	 * but have no other work to do. */
 	if(exp_count > 1) {
+		AlgebraicExpression *best_arrangement[exp_count];
 		OrderScoreCtx score_ctx = {.qg = qg,
 								   .filtered_entities = filtered_entities,
 								   .bound_vars = bound_vars,
-								   .best_arrangement = rm_malloc(exp_count * sizeof(AlgebraicExpression *)),
+								   .best_arrangement = best_arrangement,
 								   .max_score = INT_MIN
 								  };
-		int scores[exp_count];
 		// Reorder the expressions by descending score.
-		_sort_exps_by_score(&score_ctx, exps, exp_count, scores);
+		_sort_exps_by_score(&score_ctx, exps, exp_count);
 
 		// Reorder the array until it forms a valid arrangement with an optimal score.
-		_find_best_arrangement(&score_ctx, exps, exp_count, scores);
+		_find_best_arrangement(&score_ctx, exps, exp_count, 0, exp_count - 1);
 
+		// Overwrite the original expressions array with the optimal arrangement.
 		memcpy(exps, score_ctx.best_arrangement, exp_count * sizeof(AlgebraicExpression *));
-		rm_free(score_ctx.best_arrangement);
 		// Transpose expressions as necessary so that the traversals will work in the selected order.
 		_resolve_winning_sequence(exps, exp_count);
 	}

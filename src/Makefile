@@ -204,7 +204,7 @@ endif
 package: redisgraph.so
 	@../sbin/pack.sh
 
-test:
+test: redisgraph.so
 	# check valgrind flag is not empty
 ifneq ($(VALGRIND),)
 	# valgrind is requested, check that host's os is not Linux
