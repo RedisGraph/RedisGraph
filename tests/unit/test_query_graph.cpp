@@ -11,8 +11,10 @@ extern "C" {
 #endif
 #include "../../src/ast/ast.h"
 #include "../../src/util/arr.h"
+#include "../../src/query_ctx.h"
 #include "../../src/util/rmalloc.h"
 #include "../../src/graph/query_graph.h"
+#include "../../src/graph/graphcontext.h"
 #ifdef __cplusplus
 }
 #endif
@@ -22,6 +24,13 @@ class QueryGraphTest: public ::testing::Test {
 	static void SetUpTestCase() {
 		// Use the malloc family for allocations
 		Alloc_Reset();
+		_fake_graph_context();
+	}
+
+	static void _fake_graph_context() {
+		ASSERT_TRUE(QueryCtx_Init());
+		GraphContext *gc = (GraphContext *)calloc(1, sizeof(GraphContext));
+		QueryCtx_SetGraphCtx(gc);
 	}
 
 	void compare_nodes(const QGNode *a, const QGNode *b) {

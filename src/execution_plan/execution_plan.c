@@ -677,7 +677,7 @@ static inline void _buildDeleteOp(ExecutionPlan *plan, const cypher_astnode_t *c
 	_ExecutionPlan_UpdateRoot(plan, op);
 }
 
-static void _buildMatchOp(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause) {
+static void _buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause) {
 	if(cypher_ast_match_is_optional(clause)) {
 		_buildOptionalMatchOps(plan, clause);
 		return;
@@ -704,6 +704,7 @@ static void _buildMatchOp(ExecutionPlan *plan, AST *ast, const cypher_astnode_t 
 		patterns[n++] = cypher_ast_match_get_pattern(match_clause);
 	}
 
+	// Collect the QueryGraph entities referenced in the clauses being converted.
 	QueryGraph *qg = plan->query_graph;
 	QueryGraph *sub_qg = QueryGraph_ExtractPatterns(qg, patterns, n);
 
@@ -719,7 +720,7 @@ static void _ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, Exec
 	cypher_astnode_type_t t = cypher_astnode_type(clause);
 	// Because 't' is set using the offsetof() call, it cannot be used in switch statements.
 	if(t == CYPHER_AST_MATCH) {
-		_buildMatchOp(plan, ast, clause);
+		_buildMatchOpTree(plan, ast, clause);
 	} else if(t == CYPHER_AST_CALL) {
 		_buildCallOp(ast, plan, clause);
 	} else if(t == CYPHER_AST_CREATE) {
