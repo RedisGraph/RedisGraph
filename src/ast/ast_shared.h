@@ -48,26 +48,32 @@ typedef struct {
 
 // Context describing an update expression.
 typedef struct {
-	const char *alias;          /* Alias of entity being updated. */
-	Attribute_ID attribute_id;  /* ID of attribute to update. */
-	int record_idx;             /* Record offset this entity is stored at. */
-	struct AR_ExpNode *exp;     /* Expression to evaluate. */
+	const char *alias;          // alias of entity being updated
+	Attribute_ID attribute_id;  // id of attribute to update
+	int record_idx;             // record offset this entity is stored at
+	struct AR_ExpNode *exp;     // expression to evaluate
 } EntityUpdateEvalCtx;
 
 // Context describing a node in a CREATE or MERGE clause
 typedef struct {
-	QGEdge *edge;
-	PropertyMap *properties;
-	int edge_idx;
-	int src_idx;
-	int dest_idx;
+	int src_idx;                // source node record index
+	int dest_idx;               // destination node record index
+	int edge_idx;               // edge record index
+	int reltypeId;              // edge relationship type id
+	const char *src;            // source node alias
+	const char *dest;           // destination node alias
+	const char *alias;          // edge alias
+	const char *relation;       // edge relationship type
+	PropertyMap *properties;    // edge properties set
 } EdgeCreateCtx;
 
 // Context describing a relationship in a CREATE or MERGE clause
 typedef struct {
-	QGNode *node;
-	PropertyMap *properties;
-	int node_idx;
+	int labelId;                // node label id
+	int node_idx;               // node record index
+	const char *alias;          // node alias
+	const char *label;          // node label
+	PropertyMap *properties;    // node properties set
 } NodeCreateCtx;
 
 AST_Operator AST_ConvertOperatorNode(const cypher_operator_t *op);
