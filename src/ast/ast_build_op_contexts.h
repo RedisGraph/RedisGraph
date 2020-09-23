@@ -46,8 +46,8 @@ void AST_PrepareSortOp(const cypher_astnode_t *order_clause, int **sort_directio
 // Extract the necessary information to populate a unwind operation from an UNWIND clause.
 AST_UnwindContext AST_PrepareUnwindOp(const cypher_astnode_t *unwind_clause);
 
-void AST_PreparePathCreation(const cypher_astnode_t *path, QueryGraph *qg, rax *bound_vars,
-							 NodeCreateCtx **nodes, EdgeCreateCtx **edges);
+void AST_PreparePathCreation(const cypher_astnode_t *path, const QueryGraph *qg,
+							 rax *bound_vars, NodeCreateCtx **nodes, EdgeCreateCtx **edges);
 
 // Extract the necessary information to populate a merge operation from a MERGE clause.
 AST_MergeContext AST_PrepareMergeOp(const cypher_astnode_t *merge_clause, GraphContext *gc,

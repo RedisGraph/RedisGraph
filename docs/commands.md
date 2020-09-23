@@ -40,30 +40,30 @@ supported.
 
 Match describes the relationship between queried entities, using ascii art to represent pattern(s) to match against.
 
-Nodes are represented by parenthesis `()`,
+Nodes are represented by parentheses `()`,
 and Relationships are represented by brackets `[]`.
 
 Each graph entity node/relationship can contain an alias and a label/relationship type, but both can be left empty if necessary.
 
 Entity structure: `alias:label {filters}`.
 
-Alias, label/relationship type and filters are all optional.
+Alias, label/relationship type, and filters are all optional.
 
 Example:
 
 ```sh
-(a:actor)-[:act]->(m:movie {title:"straight outta compton"})
+(a:Actor)-[:ACT]->(m:Movie {title:"straight outta compton"})
 ```
 
 `a` is an alias for the source node, which we'll be able to refer to at different places within our query.
 
-`actor` is the label under which this node is marked.
+`Actor` is the label under which this node is marked.
 
-`act` is the relationship type.
+`ACT` is the relationship type.
 
 `m` is an alias for the destination node.
 
-`movie` destination node is of "type" movie.
+`Movie` destination node is of "type" movie.
 
 `{title:"straight outta compton"}` requires the node's title attribute to equal "straight outta compton".
 
@@ -73,7 +73,7 @@ In this example, we're interested in actor entities which have the relation "act
 It is possible to describe broader relationships by composing a multi-hop query such as:
 
 ```sh
-(me {name:'swilly'})-[:friends_with]->()-[:friends_with]->(foaf)
+(me {name:'swilly'})-[:FRIENDS_WITH]->()-[:FRIENDS_WITH]->(foaf)
 ```
 
 Here we're interested in finding out who my friends' friends are.
@@ -81,7 +81,7 @@ Here we're interested in finding out who my friends' friends are.
 Nodes can have more than one relationship coming in or out of them, for instance:
 
 ```sh
-(me {name:'swilly'})-[:visited]->(c:country)<-[:visited]-(friend)<-[:friends_with]-({name:'swilly'})
+(me {name:'swilly'})-[:VISITED]->(c:Country)<-[:VISITED]-(friend)<-[:FRIENDS_WITH]-(me)
 ```
 
 Here we're interested in knowing which of my friends have visited at least one country I've been to.
@@ -91,10 +91,10 @@ Here we're interested in knowing which of my friends have visited at least one c
 Nodes that are a variable number of relationship→node hops away can be found using the following syntax:
 
 ```sh
--[:type*minHops..maxHops]->
+-[:TYPE*minHops..maxHops]->
 ```
 
-`type`, `minHops` and `maxHops` are all optional and default to type agnostic, 1 and infinity, respectively.
+`TYPE`, `minHops` and `maxHops` are all optional and default to type agnostic, 1 and infinity, respectively.
 
 When no bounds are given the dots may be omitted. The dots may also be omitted when setting only one bound and this implies a fixed length pattern.
 
@@ -102,7 +102,7 @@ Example:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"MATCH (charlie:actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]->(colleague:actor)
+"MATCH (charlie:Actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]->(colleague:Actor)
 RETURN colleague"
 ```
 
@@ -112,7 +112,7 @@ Returns all actors related to 'Charlie Sheen' by 1 to 3 hops.
 
 If a relationship pattern does not specify a direction, it will match regardless of which node is the source and which is the destination:
 ```sh
--[:type]-
+-[:TYPE]-
 ```
 
 Example:
@@ -140,11 +140,11 @@ Example:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"MATCH p=(charlie:actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]->(:actor)
+"MATCH p=(charlie:Actor { name: 'Charlie Sheen' })-[:PLAYED_WITH*1..3]->(:Actor)
 RETURN nodes(p) as actors"
 ```
 
-This query will produce all the paths matching the pattern contained in the named path `p`. All of these paths will share the same starting point, the actor node representing Charlie Sheen, but will otherwise vary in length and contents. Though the variable-length traversal and `(:actor)` endpoint are not explicitly aliased, all nodes and edges traversed along the path will be included in `p`. In this case, we are only interested in the nodes of each path, which we'll collect using the built-in function `nodes()`. The returned value will contain, in order, Charlie Sheen, between 0 and 2 intermediate nodes, and the unaliased endpoint.
+This query will produce all the paths matching the pattern contained in the named path `p`. All of these paths will share the same starting point, the actor node representing Charlie Sheen, but will otherwise vary in length and contents. Though the variable-length traversal and `(:Actor)` endpoint are not explicitly aliased, all nodes and edges traversed along the path will be included in `p`. In this case, we are only interested in the nodes of each path, which we'll collect using the built-in function `nodes()`. The returned value will contain, in order, Charlie Sheen, between 0 and 2 intermediate nodes, and the unaliased endpoint.
 
 #### OPTIONAL MATCH
 
@@ -219,7 +219,7 @@ WHERE actor.age >= director.age AND actor.age > 32
 It is also possible to specify equality predicates within nodes using the curly braces as such:
 
 ```
-(:president {name:"Jed Bartlett"})-[:won]->(:state)
+(:President {name:"Jed Bartlett"})-[:WON]->(:State)
 ```
 
 Here we've required that the president node's name will have the value "Jed Bartlett".
@@ -229,19 +229,19 @@ There's no difference between inline predicates and predicates specified within 
 It is also possible to filter on graph patterns. The following queries, which return all presidents and the states they won in, produce the same results:
 
 ```sh
-MATCH (p:president), (s:state) WHERE (p)-[:won]->(s) RETURN p, s
+MATCH (p:President), (s:State) WHERE (p)-[:WON]->(s) RETURN p, s
 ```
 
 and
 
 ```sh
-MATCH (p:president)-[:won]->(s:state) RETURN p, s
+MATCH (p:President)-[:WON]->(s:State) RETURN p, s
 ```
 
 Pattern predicates can be also negated and combined with the logical operators AND, OR, and NOT. The following query returns all the presidents that did not win in the states where they were governors:
 
 ```sh
-MATCH (p:president), (s:state) WHERE NOT (p)-[:won]->(s) AND (p)->[:governor]->(s) RETURN p, s
+MATCH (p:President), (s:State) WHERE NOT (p)-[:WON]->(s) AND (p)->[:governor]->(s) RETURN p, s
 ```
 
 #### RETURN
@@ -325,10 +325,10 @@ The optional skip clause allows a specified number of records to be omitted from
 SKIP <number of records to skip>
 ```
 
-This can be useful when processing results in batches. A query that would examine the second 100-element batch of nodes with the label `person`, for example, would be:
+This can be useful when processing results in batches. A query that would examine the second 100-element batch of nodes with the label `Person`, for example, would be:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "MATCH (p:person) RETURN p ORDER BY p.name SKIP 100 LIMIT 100"
+GRAPH.QUERY DEMO_GRAPH "MATCH (p:Person) RETURN p ORDER BY p.name SKIP 100 LIMIT 100"
 ```
 
 #### LIMIT
@@ -359,16 +359,16 @@ CREATE (n),(m)
 ```
 
 ```sh
-CREATE (:person {name: 'Kurt', age:27})
+CREATE (:Person {name: 'Kurt', age: 27})
 ```
 
 To add relations between nodes, in the following example we first find an existing source node. After it's found, we create a new relationship and destination node.
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"MATCH(a:person)
+"MATCH (a:Person)
 WHERE a.name = 'Kurt'
-CREATE (a)-[:member]->(:band {name:'Nirvana'})"
+CREATE (a)-[:MEMBER]->(:Band {name:'Nirvana'})"
 ```
 
 Here the source node is a bounded node, while the destination node is unbounded.
@@ -381,7 +381,7 @@ All entities within the pattern which are not bounded will be created.
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"CREATE (jim:person{name:'Jim', age:29})-[:friends]->(pam:person {name:'Pam', age:27})-[:works]->(:employer {name:'Dunder Mifflin'})"
+"CREATE (jim:Person{name:'Jim', age:29})-[:FRIENDS]->(pam:Person {name:'Pam', age:27})-[:WORKS]->(:Employer {name:'Dunder Mifflin'})"
 ```
 
 This query will create three nodes and two relationships.
@@ -395,13 +395,13 @@ Note that deleting a node also deletes all of its incoming and outgoing relation
 To delete a node and all of its relationships:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "MATCH (p:person {name:'Jim'}) DELETE p"
+GRAPH.QUERY DEMO_GRAPH "MATCH (p:Person {name:'Jim'}) DELETE p"
 ```
 
 To delete relationship:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "MATCH (:person {name:'Jim'})-[r:friends]->() DELETE r"
+GRAPH.QUERY DEMO_GRAPH "MATCH (:Person {name:'Jim'})-[r:FRIENDS]->() DELETE r"
 ```
 
 This query will delete all `friend` outgoing relationships from the node with the name 'Jim'.
@@ -712,51 +712,51 @@ YIELD modifiers are only required if explicitly specified; by default the value 
 |db.idx.fulltext.createNodeIndex | `label`, `property` [, `property` ...] | none | Builds a full-text searchable index on a label and the 1 or more specified properties. |
 |db.idx.fulltext.drop | `label` | none | Deletes the full-text index associated with the given label. |
 |db.idx.fulltext.queryNodes | `label`, `string` | `node` | Retrieve all nodes that contain the specified string in the full-text indexes on the given label. |
-|algo.pageRank | `label`, `relationship-type` | `node`, `score` | Runs the pagerank algorithm over nodes of given label, considering only edges of given relationship type. |
+|algo.pageRank | `label`, `relationship-type` | `node`, `score` | Runs the pagerank algorithm over nodes of given label (NULL to consider all nodes), inspecting only edges of given relationship type (NULL to consider all edges). |
 
 ## Indexing
 RedisGraph supports single-property indexes for node labels.
 The creation syntax is:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "CREATE INDEX ON :person(age)"
+GRAPH.QUERY DEMO_GRAPH "CREATE INDEX ON :Person(age)"
 ```
 
 After an index is explicitly created, it will automatically be used by queries that reference that label and any indexed property in a filter.
 
 ```sh
-GRAPH.EXPLAIN G "MATCH (p:person) WHERE p.age > 80 RETURN p"
+GRAPH.EXPLAIN G "MATCH (p:Person) WHERE p.age > 80 RETURN p"
 1) "Results"
 2) "    Project"
-3) "        Index Scan | (p:person)"
+3) "        Index Scan | (p:Person)"
 ```
 
 This can significantly improve the runtime of queries with very specific filters. An index on `:employer(name)`, for example, will dramatically benefit the query:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"MATCH (:employer {name: 'Dunder Mifflin'})-[:employs]->(p:person) RETURN p"
+"MATCH (:Employer {name: 'Dunder Mifflin'})-[:EMPLOYS]->(p:Person) RETURN p"
 ```
 
 RedisGraph can use multiple indexes as ad-hoc composite indexes at query time. For example, if `age` and `years_employed` are both indexed, then both indexes will be utilized in the query:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"MATCH (p:person) WHERE p.age < 30 OR p.years_employed < 3 RETURN p"
+"MATCH (p:Person) WHERE p.age < 30 OR p.years_employed < 3 RETURN p"
 ```
 
 Individual indexes can be deleted using the matching syntax:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "DROP INDEX ON :person(age)"
+GRAPH.QUERY DEMO_GRAPH "DROP INDEX ON :Person(age)"
 ```
 
 ## Full-text indexes
 
-RedisGraph leverages the indexing capabilities of [RediSearch](https://oss.redislabs.com/redisearch/index.html) to provide full-text indices through procedure calls. To construct a full-text index on the `title` property of all nodes with label `movie`, use the syntax:
+RedisGraph leverages the indexing capabilities of [RediSearch](https://oss.redislabs.com/redisearch/index.html) to provide full-text indices through procedure calls. To construct a full-text index on the `title` property of all nodes with label `Movie`, use the syntax:
 
 ```sh
-GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('movie', 'title')"
+GRAPH.QUERY DEMO_GRAPH "CALL db.idx.fulltext.createNodeIndex('Movie', 'title')"
 ```
 
 (More properties can be added to this index by adding their names to the above set of arguments, or using this syntax again with the additional names.)
@@ -765,7 +765,7 @@ Now this index can be invoked to match any whole words contained within:
 
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"CALL db.idx.fulltext.queryNodes('movie', 'Book') YIELD node RETURN node.title"
+"CALL db.idx.fulltext.queryNodes('Movie', 'Book') YIELD node RETURN node.title"
 1) 1) "node.title"
 2) 1) 1) "The Jungle Book"
    2) 1) "The Book of Life"
@@ -775,14 +775,14 @@ GRAPH.QUERY DEMO_GRAPH
 This CALL clause can be interleaved with other Cypher clauses to perform more elaborate manipulations:
 ```sh
 GRAPH.QUERY DEMO_GRAPH
-"CALL db.idx.fulltext.queryNodes('movie', 'Book') YIELD node AS m
+"CALL db.idx.fulltext.queryNodes('Movie', 'Book') YIELD node AS m
 WHERE m.genre = 'Adventure'
 RETURN m ORDER BY m.rating"
 1) 1) "m"
 2) 1) 1) 1) 1) "id"
             2) (integer) 1168
          2) 1) "labels"
-            2) 1) "movie"
+            2) 1) "Movie"
          3) 1) "properties"
             2) 1) 1) "genre"
                   2) "Adventure"
@@ -813,13 +813,13 @@ It is not a dry run and will perform all graph modifications expected of the que
 
 ```sh
 GRAPH.PROFILE imdb
-"MATCH (actor_a:actor)-[:act]->(:movie)<-[:act]-(actor_b:actor)
+"MATCH (actor_a:Actor)-[:ACT]->(:Movie)<-[:ACT]-(actor_b:Actor)
 WHERE actor_a <> actor_b
 CREATE (actor_a)-[:COSTARRED_WITH]->(actor_b)"
 1) "Create | Records produced: 11208, Execution time: 168.208661 ms"
 2) "    Filter | Records produced: 11208, Execution time: 1.250565 ms"
 3) "        Conditional Traverse | Records produced: 12506, Execution time: 7.705860 ms"
-4) "            Node By Label Scan | (actor_a:actor) | Records produced: 1317, Execution time: 0.104346 ms"
+4) "            Node By Label Scan | (actor_a:Actor) | Records produced: 1317, Execution time: 0.104346 ms"
 ```
 
 ## GRAPH.DELETE
@@ -837,7 +837,7 @@ GRAPH.DELETE us_government
 Note: To delete a node from the graph (not the entire graph), execute a `MATCH` query and pass the alias to the `DELETE` clause:
 
 ```
-GRAPH.QUERY DEMO_GRAPH "MATCH (x:y {propname: propvalue}) DELETE x"
+GRAPH.QUERY DEMO_GRAPH "MATCH (x:Y {propname: propvalue}) DELETE x"
 ```
 
 WARNING: When you delete a node, all of the node's incoming/outgoing relationships are also removed.
@@ -852,15 +852,16 @@ Arguments: `Graph name, Query`
 Returns: `String representation of a query execution plan`
 
 ```sh
-GRAPH.EXPLAIN us_government "MATCH (p:president)-[:born]->(h:state {name:'Hawaii'}) RETURN p"
+GRAPH.EXPLAIN us_government "MATCH (p:President)-[:BORN]->(h:State {name:'Hawaii'}) RETURN p"
 ```
 
 ## GRAPH.SLOWLOG
 
-Returns a list containing up to 10 of the slowest queries issued against given graph id.
+Returns a list containing up to 10 of the slowest queries issued against the given graph ID.
 
 Each item in the list has the following structure:
-1. A unix timestamp at which the logged was processed.
+
+1. A unix timestamp at which the log entry was processed.
 2. The issued command.
 3. The issued query.
 4. The amount of time needed for its execution, in milliseconds.
@@ -869,10 +870,10 @@ Each item in the list has the following structure:
 GRAPH.SLOWLOG graph_id
  1) 1) "1581932396"
     2) "GRAPH.QUERY"
-    3) "MATCH (a:person)-[:friend]->(e) RETURN e.name"
+    3) "MATCH (a:Person)-[:FRIEND]->(e) RETURN e.name"
     4) "0.831"
  2) 1) "1581932396"
     2) "GRAPH.QUERY"
-    3) "MATCH (ME:person)-[:friend]->(:person)-[:friend]->(fof:person) RETURN fof.name"
+    3) "MATCH (me:Person)-[:FRIEND]->(:Person)-[:FRIEND]->(fof:Person) RETURN fof.name"
     4) "0.288"
 ```
