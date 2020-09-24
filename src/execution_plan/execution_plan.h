@@ -48,6 +48,9 @@ void ExecutionPlan_PushBelow(OpBase *a, OpBase *b);
 /* Introduce new_root as the parent of old_root. */
 void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root);
 
+/* Update the root op of the execution plan. */
+void ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_root);
+
 /* Replace a with b. */
 void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b);
 

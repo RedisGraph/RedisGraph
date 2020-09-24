@@ -1,8 +1,8 @@
-#include "execution_plan.h"
-#include "../RG.h"
-#include "ops/ops.h"
-#include "../query_ctx.h"
-#include "../ast/ast_mock.h"
+#include "../execution_plan.h"
+#include "../../RG.h"
+#include "../ops/ops.h"
+#include "../../query_ctx.h"
+#include "../../ast/ast_mock.h"
 
 static void _OpBase_AddChild(OpBase *parent, OpBase *child) {
 	// Add child to parent
@@ -98,6 +98,12 @@ void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root) {
 	// Append the old root to the tail of the new root's chain.
 	_OpBase_AddChild(tail, old_root);
 }
+
+inline void ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_root) {
+	if(plan->root) ExecutionPlan_NewRoot(plan->root, new_root);
+	plan->root = new_root;
+}
+
 
 void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b) {
 	// Insert the new operation between the original and its parent.

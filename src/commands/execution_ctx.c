@@ -6,7 +6,7 @@
 
 #include "execution_ctx.h"
 #include "../query_ctx.h"
-#include "../execution_plan/execution_plan_clone.h"
+#include "../execution_plan/execution_plan_build/execution_plan_clone.h"
 
 static ExecutionType _GetExecutionTypeFromAST(AST *ast) {
 	const cypher_astnode_type_t root_type = cypher_astnode_type(ast->root);
