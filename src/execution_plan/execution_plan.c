@@ -12,14 +12,10 @@
 #include "../util/rmalloc.h"
 #include "./optimizations/optimizer.h"
 #include "../ast/ast_build_filter_tree.h"
-#include "./optimizations/optimizations.h"
+#include "execution_plan_build/convert_clauses.h"
 
 #include <assert.h>
 #include <setjmp.h>
-
-// Forward declaration for clause conversion logic.
-void ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, ExecutionPlan *plan,
-										const cypher_astnode_t *clause);
 
 // Allocate a new ExecutionPlan segment.
 inline ExecutionPlan *ExecutionPlan_NewEmptyExecutionPlan(void) {

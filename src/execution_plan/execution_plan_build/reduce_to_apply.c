@@ -1,3 +1,4 @@
+#include "convert_clauses.h"
 #include "../execution_plan.h"
 #include "../ops/ops.h"
 #include "../../query_ctx.h"

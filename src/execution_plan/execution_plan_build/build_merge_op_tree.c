@@ -1,3 +1,4 @@
+#include "convert_clauses.h"
 #include "../execution_plan.h"
 #include "../ops/ops.h"
 #include "../../query_ctx.h"
@@ -80,3 +81,4 @@ void buildMergeOp(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause,
 	if(bound_vars) raxFree(bound_vars);
 	array_free(arguments);
 }
+

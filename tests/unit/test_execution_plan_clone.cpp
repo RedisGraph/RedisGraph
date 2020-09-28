@@ -18,7 +18,7 @@ extern "C" {
 #include "../../src/arithmetic/funcs.h"
 #include "../../src/arithmetic/agg_funcs.h"
 #include "../../src/procedures/procedure.h"
-#include "../../src/execution_plan/execution_plan_build/execution_plan_clone.h"
+#include "../../src/execution_plan/execution_plan_clone.h"
 
 #ifdef __cplusplus
 }

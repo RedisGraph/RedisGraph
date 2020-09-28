@@ -1,3 +1,4 @@
+#include "convert_clauses.h"
 #include "../execution_plan.h"
 #include "../ops/ops.h"
 #include "../../query_ctx.h"
@@ -238,3 +239,4 @@ void buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause) {
 	}
 	_buildProjectionOps(plan, projections, order_exps, sort_directions, aggregate, distinct);
 }
+

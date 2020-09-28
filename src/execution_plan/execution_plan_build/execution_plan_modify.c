@@ -104,7 +104,6 @@ inline void ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_root) {
 	plan->root = new_root;
 }
 
-
 void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b) {
 	// Insert the new operation between the original and its parent.
 	ExecutionPlan_PushBelow(a, b);

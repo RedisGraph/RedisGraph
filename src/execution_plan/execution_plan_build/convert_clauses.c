@@ -1,20 +1,11 @@
+#include "convert_clauses.h"
 #include "../execution_plan.h"
 #include "../../RG.h"
 #include "../ops/ops.h"
 #include "../../query_ctx.h"
 #include "../../util/rax_extensions.h"
 #include "../../ast/ast_build_ar_exp.h"
-#include "../ops/shared/scan_functions.h"
 #include "../../ast/ast_build_op_contexts.h"
-
-/* Reduces a filter operation into an apply operation. */
-void ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpFilter *filter);
-
-/* Clause conversion logic in other files. */
-void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause);
-void buildReturnOps(ExecutionPlan *plan, const cypher_astnode_t *clause);
-void buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause);
-void buildMergeOp(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause, GraphContext *gc);
 
 /* _BuildCallProjections creates an array of expression nodes to populate a Project operation with.
  * All Strings in the YIELD block of a CALL clause are represented, or the procedure-registered
