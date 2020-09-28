@@ -12,6 +12,7 @@
 #include "../ops/op_expand_into.h"
 #include "../ops/op_conditional_traverse.h"
 #include "../ops/op_cond_var_len_traverse.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 
 static inline bool _isInSubExecutionPlan(OpBase *op) {
 	return ExecutionPlan_LocateOp(op, OPType_ARGUMENT) != NULL;

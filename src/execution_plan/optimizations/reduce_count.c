@@ -8,6 +8,7 @@
 #include "../ops/ops.h"
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 
 static GrB_UnaryOp countMultipleEdges = NULL;
 

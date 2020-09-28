@@ -9,6 +9,7 @@
 #include "../../query_ctx.h"
 #include "../../schema/schema.h"
 #include "../../arithmetic/arithmetic_expression.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 #include <assert.h>
 
 /* Forward declarations. */
