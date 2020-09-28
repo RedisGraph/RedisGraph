@@ -77,6 +77,8 @@ static OpResult NodeByLabelScanInit(OpBase *opBase) {
 		OpBase_UpdateConsume(opBase, NodeByLabelScanNoOp);
 		return OP_OK;
 	}
+	// For reused (cloned) NodeScanCtx, label_id needs to be updated.
+	op->n.label_id = schema->id;
 
 	// The iterator build may fail if the ID range does not match the matrix dimensions.
 	GrB_Info iterator_built = _ConstructIterator(op, schema);
