@@ -59,6 +59,13 @@ void SIArray_ToString(SIValue list, char **buf, size_t *bufferLen, size_t *bytes
 XXH64_hash_t SIArray_HashCode(SIValue siarray);
 
 /**
+ * @brief  Reverse the order of the array.
+ * @param  siarray: SIArray.
+ * @retval None
+ */
+void SIArray_Reverse(SIValue siarray);
+
+/**
   * @brief  delete an array
   * @param  siarray:
   * @retval None

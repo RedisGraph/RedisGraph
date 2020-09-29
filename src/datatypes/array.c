@@ -73,6 +73,10 @@ XXH64_hash_t SIArray_HashCode(SIValue siarray) {
 	return hashCode;
 }
 
+void SIArray_Reverse(SIValue siarray) {
+	array_reverse(siarray.array);
+}
+
 void SIArray_Free(SIValue siarray) {
 	uint arrayLen = SIArray_Length(siarray);
 	for(uint i = 0; i < arrayLen; i++) {

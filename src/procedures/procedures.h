@@ -7,6 +7,7 @@
 #include "proc_labels.h"
 #include "proc_pagerank.h"
 #include "proc_relations.h"
+#include "proc_shortest_path.h"
 #include "proc_property_keys.h"
 #include "proc_fulltext_query.h"
 #include "proc_fulltext_drop_index.h"

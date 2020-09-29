@@ -36,6 +36,8 @@ export CFLAGS
 SOURCEDIR=$(shell pwd -P)
 CC_SOURCES = $(wildcard $(SOURCEDIR)/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/algorithms/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/algorithms/LAGraph/*.c)
+CC_SOURCES += $(wildcard $(SOURCEDIR)/algorithms/LAGraph/Utility/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/path_funcs/*.c)
 CC_SOURCES += $(wildcard $(SOURCEDIR)/arithmetic/list_funcs/*.c)
