@@ -20,13 +20,8 @@ void Proc_Register();
  * to free returned procedure */
 ProcedureCtx *Proc_Get(const char *proc_name);
 
-/* Retrieve an instance of a procedure and populate it appropriately given the user-specified
- * inputs and outputs.
- * TODO The logic differentiating this from Proc_Get should be improved. */
-ProcedureCtx *Proc_BuildContext(const char *proc_name, AR_ExpNode **args, const char **yields);
-
 // Invokes procedure.
-ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args);
+ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args, const char **yield);
 
 /* Single step theough procedure iterator
  * Returns array of key value pairs. */

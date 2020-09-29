@@ -960,7 +960,7 @@ static void _AST_RegisterCallOutputs(const cypher_astnode_t *call_clause, rax *i
 
 	unsigned int output_count = array_len(proc->output);
 	for(uint i = 0; i < output_count; i++) {
-		const char *name = proc->output[i]->name;
+		const char *name = Procedure_GetOutput(proc, i);
 		raxInsert(identifiers, (unsigned char *)name, strlen(name), NULL, NULL);
 	}
 }

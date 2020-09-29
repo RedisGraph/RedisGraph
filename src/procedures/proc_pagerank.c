@@ -25,7 +25,8 @@ typedef struct {
 	SIValue *output;                // Array with 4 entries ["node", node, "score", score].
 } PagerankContext;
 
-ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx, const SIValue *args) {
+ProcedureResult Proc_PagerankInvoke(ProcedureCtx *ctx,
+		const SIValue *args, const char **yield) {
 	if(array_len((SIValue *)args) != 2) return PROCEDURE_ERR;
 	if(!(SI_TYPE(args[0]) & SI_TYPE(args[1]) & T_STRING)) return PROCEDURE_ERR;
 
@@ -137,16 +138,12 @@ ProcedureResult Proc_PagerankFree(ProcedureCtx *ctx) {
 
 ProcedureCtx *Proc_PagerankCtx() {
 	void *privateData = NULL;
-	ProcedureOutput **outputs = array_new(ProcedureOutput *, 2);
-	ProcedureOutput *output_node = rm_malloc(sizeof(ProcedureOutput));
-	ProcedureOutput *output_score = rm_malloc(sizeof(ProcedureOutput));
-	output_node->name = "node";
-	output_node->type = T_NODE;
-	output_score->name = "score";
-	output_score->type = T_DOUBLE;
-
+	ProcedureOutput *outputs = array_new(ProcedureOutput, 2);
+	ProcedureOutput output_node = {name: "node", type: T_NODE};
+	ProcedureOutput output_score = {name: "score", type: T_DOUBLE};
 	outputs = array_append(outputs, output_node);
 	outputs = array_append(outputs, output_score);
+
 	ProcedureCtx *ctx = ProcCtxNew("algo.pageRank",
 								   2,
 								   outputs,
