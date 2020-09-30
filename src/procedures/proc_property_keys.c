@@ -61,7 +61,7 @@ ProcedureResult Proc_PropKeysFree(ProcedureCtx *ctx) {
 
 ProcedureCtx *Proc_PropKeysCtx() {
 	void *privateData = NULL;
-	ProcedureOutput *outputs = array_new(ProcedureOutput *, 1);
+	ProcedureOutput *outputs = array_new(ProcedureOutput, 1);
 	ProcedureOutput output = {name: "propertyKey", type: T_STRING};
 	outputs = array_append(outputs, output);
 

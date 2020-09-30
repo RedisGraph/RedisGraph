@@ -165,12 +165,10 @@ class testBFS(FlowTestsBase):
         # Missing relationship type
         query = """MATCH (a) CALL algo.BFS(a, 0, 'NONE_EXISTING_RELATION') YIELD nodes"""
         actual_result = graph.query(query)
-        print("actual...")
-        print(actual_result)
         self.env.assertEquals(actual_result.result_set, empty_result_set)
 
         # Leaf node
-        query = """MATCH (e {v:'e'}) CALL algo.BFS(e, 0, NULL) YIELD nodes"""
+        query = """MATCH (leaf {v:'e'}) CALL algo.BFS(leaf, 0, NULL) YIELD nodes"""
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set, empty_result_set)
 

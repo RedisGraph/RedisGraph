@@ -130,7 +130,6 @@ static ProcedureResult Proc_BFS_Invoke(ProcedureCtx *ctx,
 	GrB_Vector PI = GrB_NULL; // Vector backtracking results to their parents.
 	GrB_Vector *pPI = &PI;
 	if(!bfs_ctx->yield_edges) pPI = NULL;
-	//GrB_Info res = LAGraph_bfs_pushpull(&V, pPI, R, TR, src_id, max_level, false);
 	GrB_Info res = LAGraph_bfs_pushpull(&V, pPI, R, TR, src_id, max_level, true);
 	ASSERT(res == GrB_SUCCESS);
 
