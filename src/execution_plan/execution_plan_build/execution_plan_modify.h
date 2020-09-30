@@ -9,12 +9,13 @@
 #include "../ops/op.h"
 typedef struct ExecutionPlan ExecutionPlan;
 
-/*
- * Helper functions to move and analyze operations in an ExecutionPlan. */
+//------------------------------------------------------------------------------
+// Helper functions to move and analyze operations in an ExecutionPlan.
+//------------------------------------------------------------------------------
 
-/*
- * API for restructuring the op tree.
- */
+//------------------------------------------------------------------------------
+//  API for restructuring the op tree.
+//------------------------------------------------------------------------------
 
 /* Removes operation from execution plan. */
 void ExecutionPlan_RemoveOp(ExecutionPlan *plan, OpBase *op);
@@ -37,10 +38,10 @@ void ExecutionPlan_UpdateRoot(ExecutionPlan *plan, OpBase *new_root);
 /* Replace a with b. */
 void ExecutionPlan_ReplaceOp(ExecutionPlan *plan, OpBase *a, OpBase *b);
 
-/*
- * ExecutionPlan_Locate API:
- * For performing existence checks and looking up individual operations in tree.
- */
+//------------------------------------------------------------------------------
+// ExecutionPlan_Locate API:
+// For performing existence checks and looking up individual operations in tree.
+//------------------------------------------------------------------------------
 
 /* Traverse upwards until an operation that resolves the given alias is found.
  * Returns NULL if alias is not resolved. */
@@ -60,8 +61,11 @@ OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type);
 OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
 									   rax *references_to_resolve);
 
-/* ExecutionPlan_Collect API:
- * For collecting all matching operations in tree. */
+//------------------------------------------------------------------------------
+// ExecutionPlan_Collect API:
+// For collecting all matching operations in tree.
+//------------------------------------------------------------------------------
+
 /* Collect all operations matching the given types in the op tree.
  * Returns an array of operations. */
 OpBase **ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *types, uint type_count);
@@ -71,9 +75,10 @@ OpBase **ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *types,
  * Returns an array of operations. */
 OpBase **ExecutionPlan_CollectOps(OpBase *root, OPType type);
 
-/*
- * API for building and relocating operations in transient ExecutionPlans.
- */
+//------------------------------------------------------------------------------
+// API for building and relocating operations in transient ExecutionPlans.
+//------------------------------------------------------------------------------
+
 /* Populate a rax with all aliases that have been resolved by the given operation
  * and its children. These are the bound variables at this point in execution, and
  * subsequent operations should not introduce them as new entities. For example, in the query:
@@ -89,3 +94,4 @@ void ExecutionPlan_BindPlanToOps(ExecutionPlan *plan, OpBase *root);
  * and filter operations required to represent it. */
 OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **vars,
 									   const cypher_astnode_t *path);
+

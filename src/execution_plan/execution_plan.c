@@ -12,7 +12,7 @@
 #include "../util/rmalloc.h"
 #include "./optimizations/optimizer.h"
 #include "../ast/ast_build_filter_tree.h"
-#include "execution_plan_build/convert_clauses.h"
+#include "execution_plan_build/execution_plan_construct.h"
 #include "execution_plan_build/execution_plan_modify.h"
 
 #include <assert.h>
