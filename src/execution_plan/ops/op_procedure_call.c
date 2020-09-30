@@ -20,7 +20,7 @@ static void _construct_output_mappings(OpProcCall *op, SIValue *outputs) {
 	// Map procedure outputs to record indices.
 	uint n = array_len(op->output);
 	uint m = array_len(outputs);
-	op->yield_map = rm_malloc(sizeof(OutputMap) * array_len(op->output));
+	op->yield_map = rm_malloc(sizeof(OutputMap) * n);
 
 	for(uint i = 0; i < n; i++) {
 		const char *output = op->output[i];
