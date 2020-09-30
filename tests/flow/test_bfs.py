@@ -21,33 +21,39 @@ class testBFS(FlowTestsBase):
         global edges
         # Construct a graph with the form:
         # (a)-[:E1]->(b:B)-[:E1]->(c), (b)-[:E2]->(d)-[:E1]->(e)
-        nodes['a'] = Node(label="A", properties={"v": 'a'})
-        graph.add_node(nodes['a'])
+        a = Node(label="A", properties={"v": 'a'})
+        b = Node(label="A", properties={"v": 'b'})
+        c = Node(label="A", properties={"v": 'c'})
+        d = Node(label="A", properties={"v": 'd'})
+        e = Node(label="A", properties={"v": 'e'})
 
-        nodes['b'] = Node(label="A", properties={"v": 'b'})
-        graph.add_node(nodes['b'])
+        nodes['a'] = a
+        nodes['b'] = b
+        nodes['c'] = c
+        nodes['d'] = d
+        nodes['e'] = e
 
-        nodes['c'] = Node(label="A", properties={"v": 'c'})
-        graph.add_node(nodes['c'])
-
-        nodes['d'] = Node(label="A", properties={"v": 'd'})
-        graph.add_node(nodes['d'])
-
-        nodes['e'] = Node(label="A", properties={"v": 'e'})
-        graph.add_node(nodes['e'])
+        graph.add_node(a)
+        graph.add_node(b)
+        graph.add_node(c)
+        graph.add_node(d)
+        graph.add_node(e)
 
         # Edges have the same property as their destination
-        edges[0] = Edge(nodes['a'], "E1", nodes['b'], properties={"v": 'b'})
-        graph.add_edge(edges[0])
+        ab = Edge(a, "E1", b, properties={"v": 'b'})
+        bc = Edge(b, "E1", c, properties={"v": 'c'})
+        bd = Edge(b, "E2", d, properties={"v": 'd'})
+        de = Edge(d, "E1", e, properties={"v": 'e'})
 
-        edges[1] = Edge(nodes['b'], "E1", nodes['c'], properties={"v": 'c'})
-        graph.add_edge(edges[1])
+        edges[0] = ab
+        edges[1] = bc
+        edges[2] = bd
+        edges[3] = de
 
-        edges[2] = Edge(nodes['b'], "E2", nodes['d'], properties={"v": 'd'})
-        graph.add_edge(edges[2])
-
-        edges[3] = Edge(nodes['d'], "E1", nodes['e'], properties={"v": 'e'})
-        graph.add_edge(edges[3])
+        graph.add_edge(ab)
+        graph.add_edge(bc)
+        graph.add_edge(bd)
+        graph.add_edge(de)
 
         graph.flush()
 
@@ -96,7 +102,7 @@ class testBFS(FlowTestsBase):
         actual_result = graph.query(query)
         self.env.assertEquals(actual_result.result_set[0][0], actual_result.result_set[0][1])
 
-    #  # Test BFS from all sources traversing a single relationship type, ignoring 0-hop paths.
+    # Test BFS from all sources traversing a single relationship type, ignoring 0-hop paths.
     def test03_bfs_all_sources_restricted_reltype(self):
         global graph
         # We only expect to see 'd' as a source node, as it is connected as a destination by an 'E2' edge.
@@ -121,7 +127,7 @@ class testBFS(FlowTestsBase):
             self.compare_unsorted_arrays(row[1], expected_result[idx][1])
             self.compare_unsorted_arrays(row[2], expected_result[idx][2])
 
-    #  # Test BFS from a single source with a maximum depth.
+    # Test BFS from a single source with a maximum depth.
     def test04_bfs_single_source_max_depth(self):
         query = """MATCH (a {v: 'a'}) CALL algo.BFS(a, 1, NULL) YIELD nodes RETURN [n IN nodes | n.v]"""
         actual_result = graph.query(query)
@@ -133,7 +139,7 @@ class testBFS(FlowTestsBase):
         expected_result = [[['b'], ['b']]]
         self.env.assertEquals(actual_result.result_set, expected_result)
 
-    #  # Test BFS from all sources with a maximum depeth.
+    # Test BFS from all sources with a maximum depeth.
     def test05_bfs_all_sources_max_depth(self):
         query = """MATCH (a) CALL algo.BFS(a, 1, NULL) YIELD nodes RETURN a.v, [n IN nodes | n.v] ORDER BY a.v"""
         actual_result = graph.query(query)
@@ -153,3 +159,23 @@ class testBFS(FlowTestsBase):
             self.env.assertEquals(row[0], expected_result[idx][0])
             self.compare_unsorted_arrays(row[1], expected_result[idx][1])
             self.compare_unsorted_arrays(row[2], expected_result[idx][2])
+
+    def test06_bfs_no_results(self):
+        empty_result_set = []
+        # Missing relationship type
+        query = """MATCH (a) CALL algo.BFS(a, 0, 'NONE_EXISTING_RELATION') YIELD nodes"""
+        actual_result = graph.query(query)
+        print("actual...")
+        print(actual_result)
+        self.env.assertEquals(actual_result.result_set, empty_result_set)
+
+        # Leaf node
+        query = """MATCH (e {v:'e'}) CALL algo.BFS(e, 0, NULL) YIELD nodes"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set, empty_result_set)
+
+        # NULL node
+        query = """OPTIONAL MATCH (n:NONE_EXISTING_LABEL) CALL algo.BFS(n, 0, NULL) YIELD nodes"""
+        actual_result = graph.query(query)
+        self.env.assertEquals(actual_result.result_set, empty_result_set)
+
