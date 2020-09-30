@@ -23,7 +23,7 @@ class testParams(FlowTestsBase):
         self.env.flush()
     
     def test_simple_params(self):
-        params = [1, 2.3, "str", True, False, None, [0, 1, 2]]
+        params = [1, 2.3, -1, -2.3, "str", True, False, None, [0, 1, 2]]
         query = "RETURN $param"
         for param in params:    
             expected_results = [[param]]

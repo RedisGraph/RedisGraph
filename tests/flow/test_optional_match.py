@@ -225,3 +225,14 @@ class testOptionalFlow(FlowTestsBase):
                            ['v3', None],
                            ['v4', None]]
         self.env.assertEquals(actual_result.result_set, expected_result)
+
+    # Make sure highly connected nodes aren't lost
+    def test18_optional_over_intermidate(self):
+        global redis_graph
+        query = """MATCH (a)-[]->(b)-[]->(c) OPTIONAL MATCH (b)-[]->(c) RETURN a"""
+        plan = redis_graph.execution_plan(query)
+        # Expecting to find "Expand Into" operation as both 'b' and 'c'
+        # are bounded, which means 'b' is treated as an intermidate node
+        # that needs to be tracked.
+        self.env.assertIn("Expand Into", plan)
+

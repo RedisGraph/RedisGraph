@@ -1,4 +1,5 @@
 #include "execution_plan.h"
+#include "../RG.h"
 #include "ops/ops.h"
 #include "../query_ctx.h"
 #include "../ast/ast_mock.h"
@@ -308,6 +309,18 @@ OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_v
 	 * and we will reuse its CYPHER_AST_PATTERN node rather than building a new one. */
 	bool node_is_path = (type == CYPHER_AST_PATTERN_PATH || type == CYPHER_AST_NAMED_PATH);
 	AST *match_stream_ast = AST_MockMatchClause(ast, (cypher_astnode_t *)node, node_is_path);
+
+	//--------------------------------------------------------------------------
+	// Build plan's query graph
+	//--------------------------------------------------------------------------
+
+	// Extract pattern from holistic query graph.
+	const cypher_astnode_t **match_clauses = AST_GetClauses(match_stream_ast, CYPHER_AST_MATCH);
+	ASSERT(array_len(match_clauses) == 1);
+	const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(match_clauses[0]);
+	array_free(match_clauses);
+	QueryGraph *sub_qg = QueryGraph_ExtractPatterns(plan->query_graph, &pattern, 1);
+	match_stream_plan->query_graph = sub_qg;
 
 	ExecutionPlan_PopulateExecutionPlan(match_stream_plan);
 

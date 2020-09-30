@@ -69,12 +69,14 @@ OpBase *NewMergeCreateOp(const ExecutionPlan *plan, NodeCreateCtx *nodes, EdgeCr
 
 	// Construct the array of IDs this operation modifies
 	for(uint i = 0; i < node_blueprint_count; i ++) {
-		nodes[i].node_idx = OpBase_Modifies((OpBase *)op, nodes[i].node->alias);
+		NodeCreateCtx *n = nodes + i;
+		n->node_idx = OpBase_Modifies((OpBase *)op, n->alias);
 	}
 	for(uint i = 0; i < edge_blueprint_count; i ++) {
-		edges[i].edge_idx = OpBase_Modifies((OpBase *)op, edges[i].edge->alias);
-		assert(OpBase_Aware((OpBase *)op, edges[i].edge->src->alias, &edges[i].src_idx));
-		assert(OpBase_Aware((OpBase *)op, edges[i].edge->dest->alias, &edges[i].dest_idx));
+		EdgeCreateCtx *e = edges + i;
+		e->edge_idx = OpBase_Modifies((OpBase *)op, e->alias);
+		assert(OpBase_Aware((OpBase *)op, e->src, &e->src_idx));
+		assert(OpBase_Aware((OpBase *)op, e->dest, &e->dest_idx));
 	}
 
 	return (OpBase *)op;
@@ -89,16 +91,16 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 	uint nodes_to_create_count = array_len(op->pending.nodes_to_create);
 	for(uint i = 0; i < nodes_to_create_count; i++) {
 		/* Get specified node to create. */
-		QGNode *n = op->pending.nodes_to_create[i].node;
+		NodeCreateCtx *n = op->pending.nodes_to_create + i;
 
 		/* Create a new node. */
-		Node newNode = GE_NEW_LABELED_NODE(n->label, n->labelID);
+		Node newNode = GE_NEW_LABELED_NODE(n->label, n->labelId);
 
 		/* Add new node to Record and save a reference to it. */
-		Node *node_ref = Record_AddNode(r, op->pending.nodes_to_create[i].node_idx, newNode);
+		Node *node_ref = Record_AddNode(r, n->node_idx, newNode);
 
 		/* Convert query-level properties. */
-		PropertyMap *map = op->pending.nodes_to_create[i].properties;
+		PropertyMap *map = n->properties;
 		PendingProperties *converted_properties = NULL;
 		if(map) converted_properties = ConvertPropertyMap(r, map);
 
@@ -114,29 +116,29 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 
 	uint edges_to_create_count = array_len(op->pending.edges_to_create);
 	for(uint i = 0; i < edges_to_create_count; i++) {
-		/* Get specified edge to create. */
-		QGEdge *e = op->pending.edges_to_create[i].edge;
+		// get specified edge to create
+		EdgeCreateCtx *e = op->pending.edges_to_create + i;
 
-		/* Retrieve source and dest nodes. */
-		Node *src_node = Record_GetNode(r, op->pending.edges_to_create[i].src_idx);
-		Node *dest_node = Record_GetNode(r, op->pending.edges_to_create[i].dest_idx);
+		// retrieve source and dest nodes
+		Node *src_node = Record_GetNode(r, e->src_idx);
+		Node *dest_node = Record_GetNode(r, e->dest_idx);
 
-		/* Verify that the endpoints of the new edge resolved properly; fail otherwise. */
+		// verify that the endpoints of the new edge resolved properly; fail otherwise
 		if(!src_node || !dest_node) {
 			QueryCtx_SetError("Failed to create relationship; endpoint was not found.");
 			QueryCtx_RaiseRuntimeException();
 		}
 
-		/* Create the actual edge. */
+		// create the actual edge
 		Edge newEdge = {0};
-		if(array_len(e->reltypes) > 0) newEdge.relationship = e->reltypes[0];
+		newEdge.relationship = e->relation;
 		Edge_SetSrcNode(&newEdge, src_node);
 		Edge_SetDestNode(&newEdge, dest_node);
 
-		Edge *edge_ref = Record_AddEdge(r, op->pending.edges_to_create[i].edge_idx, newEdge);
+		Edge *edge_ref = Record_AddEdge(r, e->edge_idx, newEdge);
 
-		/* Convert query-level properties. */
-		PropertyMap *map = op->pending.edges_to_create[i].properties;
+		// convert query-level properties
+		PropertyMap *map = e->properties;
 		PendingProperties *converted_properties = NULL;
 		if(map) converted_properties = ConvertPropertyMap(r, map);
 
@@ -145,7 +147,7 @@ static bool _CreateEntities(OpMergeCreate *op, Record r) {
 		 * Note that unbounded nodes were already presented to the hash.
 		 * Incase node has its internal entity set, this means the node has been retrieved from the graph
 		 * i.e. bounded node. */
-		_IncrementalHashEntity(op->hash_state, e->reltypes[0], converted_properties);
+		_IncrementalHashEntity(op->hash_state, e->relation, converted_properties);
 		if(src_node->entity != NULL) {
 			EntityID id = ENTITY_GET_ID(src_node);
 			void *data = &id;
