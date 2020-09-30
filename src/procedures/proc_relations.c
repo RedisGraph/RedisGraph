@@ -19,7 +19,7 @@ typedef struct {
 	SIValue *output;    // Output label.
 } RelationsContext;
 
-ProcedureResult Proc_RelationsInvoke(ProcedureCtx *ctx, const SIValue *args) {
+ProcedureResult Proc_RelationsInvoke(ProcedureCtx *ctx, const SIValue *args, const char **yield) {
 	if(array_len((SIValue *)args) != 0) return PROCEDURE_ERR;
 
 	RelationsContext *pdata = rm_malloc(sizeof(RelationsContext));
@@ -62,12 +62,10 @@ ProcedureResult Proc_RelationsFree(ProcedureCtx *ctx) {
 
 ProcedureCtx *Proc_RelationsCtx() {
 	void *privateData = NULL;
-	ProcedureOutput **outputs = array_new(ProcedureOutput *, 1);
-	ProcedureOutput *output = rm_malloc(sizeof(ProcedureOutput));
-	output->name = "relationshipType";
-	output->type = T_STRING;
-
+	ProcedureOutput *outputs = array_new(ProcedureOutput, 1);
+	ProcedureOutput output = {name: "relationshipType", type: T_STRING};
 	outputs = array_append(outputs, output);
+
 	ProcedureCtx *ctx = ProcCtxNew("db.relationshipTypes",
 								   0,
 								   outputs,

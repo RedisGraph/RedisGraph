@@ -18,7 +18,8 @@
 
 // CALL db.idx.fulltext.createNodeIndex(label, fields...)
 // CALL db.idx.fulltext.createNodeIndex('book', 'title', 'authors')
-ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx, const SIValue *args) {
+ProcedureResult Proc_FulltextCreateNodeIdxInvoke(ProcedureCtx *ctx,
+		const SIValue *args, const char **yield) {
 	uint arg_count = array_len((SIValue *)args);
 	if(arg_count < 2) return PROCEDURE_ERR;
 
@@ -64,7 +65,7 @@ ProcedureResult Proc_FulltextCreateNodeIdxFree(ProcedureCtx *ctx) {
 
 ProcedureCtx *Proc_FulltextCreateNodeIdxGen() {
 	void *privateData = NULL;
-	ProcedureOutput **output = array_new(ProcedureOutput *, 0);
+	ProcedureOutput *output = array_new(ProcedureOutput, 0);
 	ProcedureCtx *ctx = ProcCtxNew("db.idx.fulltext.createNodeIndex",
 								   PROCEDURE_VARIABLE_ARG_COUNT,
 								   output,
