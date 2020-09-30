@@ -187,3 +187,18 @@ class testCache(FlowTestsBase):
         self.env.assertEqual(0, cached_result.relationships_created)
         self.env.assertEqual(uncached_result.result_set, cached_result.result_set)
 
+    def test10_test_labelscan_update(self):
+        # In this scenario a label scan is made for non existing label
+        # than the label is created and the label scan query is re-used.
+        graph = Graph('Cache_test_labelscan_update', redis_con)
+        query = "MATCH (n:Label) return n"
+        result = graph.query(query)
+        self.env.assertEqual(0, len(result.result_set))
+        query = "MERGE (n:Label)"
+        result = graph.query(query)
+        self.env.assertEqual(1, result.nodes_created)
+        query = "MATCH (n:Label) return n"
+        result = graph.query(query)
+        self.env.assertEqual(1, len(result.result_set))
+        self.env.assertEqual("Label", result.result_set[0][0].label)
+

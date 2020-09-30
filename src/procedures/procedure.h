@@ -7,6 +7,7 @@
 #pragma once
 
 #include "proc_ctx.h"
+#include "../arithmetic/arithmetic_expression.h"
 #include <sys/types.h>
 #include <stdbool.h>
 
@@ -20,7 +21,7 @@ void Proc_Register();
 ProcedureCtx *Proc_Get(const char *proc_name);
 
 // Invokes procedure.
-ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args);
+ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args, const char **yield);
 
 /* Single step theough procedure iterator
  * Returns array of key value pairs. */

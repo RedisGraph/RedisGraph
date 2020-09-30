@@ -68,3 +68,4 @@ void Edge_ToString(const Edge *e, char **buffer, size_t *bufferLen, size_t *byte
 void Edge_Free(Edge *edge);
 
 #endif
+
