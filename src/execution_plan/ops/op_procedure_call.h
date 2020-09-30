@@ -27,6 +27,7 @@ typedef struct {
     AR_ExpNode **arg_exps;      // Expression representing arguments to procedure.
     SIValue *args;              // Computed arguments.
 	const char **output;        // Procedure output.
+	const char *proc_name;      // Procedure name.
     AR_ExpNode **yield_exps;    // Yield expressions.
 	ProcedureCtx *procedure;    // Procedure to call.
 	OutputMap *yield_map;       // Maps between yield to procedure output and record idx.
@@ -36,6 +37,6 @@ typedef struct {
 OpBase *NewProcCallOp(
 	const ExecutionPlan *plan,  // Execution plan this operation belongs to.
 	const char *proc_name,      // Procedure name.
-    AR_ExpNode **arg_exps,          // Arguments passed to procedure invocation.
+    AR_ExpNode **arg_exps,      // Arguments passed to procedure invocation.
 	AR_ExpNode **yield_exps     // Procedure output.
 );

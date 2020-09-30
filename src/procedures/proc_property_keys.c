@@ -19,7 +19,7 @@ typedef struct {
 	SIValue *output;    // Output label.
 } RelationsContext;
 
-ProcedureResult Proc_PropKeysInvoke(ProcedureCtx *ctx, const SIValue *args) {
+ProcedureResult Proc_PropKeysInvoke(ProcedureCtx *ctx, const SIValue *args, const char **yield) {
 	if(array_len((SIValue *)args) != 0) return PROCEDURE_ERR;
 
 	RelationsContext *pdata = rm_malloc(sizeof(RelationsContext));
@@ -61,12 +61,10 @@ ProcedureResult Proc_PropKeysFree(ProcedureCtx *ctx) {
 
 ProcedureCtx *Proc_PropKeysCtx() {
 	void *privateData = NULL;
-	ProcedureOutput **outputs = array_new(ProcedureOutput *, 1);
-	ProcedureOutput *output = rm_malloc(sizeof(ProcedureOutput));
-	output->name = "propertyKey";
-	output->type = T_STRING;
-
+	ProcedureOutput *outputs = array_new(ProcedureOutput, 1);
+	ProcedureOutput output = {name: "propertyKey", type: T_STRING};
 	outputs = array_append(outputs, output);
+
 	ProcedureCtx *ctx = ProcCtxNew("db.propertyKeys",
 								   0,
 								   outputs,
@@ -77,3 +75,4 @@ ProcedureCtx *Proc_PropKeysCtx() {
 								   true);
 	return ctx;
 }
+
