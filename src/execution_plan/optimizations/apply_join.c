@@ -11,6 +11,7 @@
 #include "../ops/op_value_hash_join.h"
 #include "../ops/op_cartesian_product.h"
 #include "../../util/rax_extensions.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 
 
 // To be used as a possible output of _relate_exp_to_stream.
@@ -201,3 +202,4 @@ void applyJoin(ExecutionPlan *plan) {
 	}
 	array_free(cps);
 }
+
