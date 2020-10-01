@@ -307,8 +307,12 @@ bool FilterTree_FiltersAlias(const FT_FilterNode *root, const cypher_astnode_t *
 	raxSeek(&it, "^", NULL, 0);
 	bool alias_is_filtered = false;
 	while(raxNext(&it)) {
+		// Build string on the stack to add null terminator.
+		char variable[it.key_len + 1];
+		memcpy(variable, it.key, it.key_len);
+		variable[it.key_len] = 0;
 		// Check if the filtered variable is an alias.
-		if(AST_IdentifierIsAlias(ast, (const char *)it.key)) {
+		if(AST_IdentifierIsAlias(ast, variable)) {
 			alias_is_filtered = true;
 			break;
 		}
