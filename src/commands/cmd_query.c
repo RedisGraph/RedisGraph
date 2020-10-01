@@ -142,6 +142,11 @@ void Graph_Query(void *args) {
 	if(exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
 
 	bool readonly = AST_ReadOnly(ast->root);
+	if(!readonly && strcasecmp(CommandCtx_GetCommandName(command_ctx), "graph.RO_QUERY") == 0) {
+		QueryCtx_SetError("graph.RO_QUERY is to be executed only on read-only queries");
+		QueryCtx_EmitException();
+		goto cleanup;
+	}
 
 	bool compact;
 	long long timeout;
