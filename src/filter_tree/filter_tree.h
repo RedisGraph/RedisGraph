@@ -93,6 +93,9 @@ rax *FilterTree_CollectModified(const FT_FilterNode *root);
  * without duplications. */
 rax *FilterTree_CollectAttributes(const FT_FilterNode *root);
 
+/* Check if any filtered variable is an alias. */
+bool FilterTree_FiltersAlias(const FT_FilterNode *root, const cypher_astnode_t *ast);
+
 /* Checks to see if tree contains given operation. */
 bool FilterTree_containsOp(const FT_FilterNode *root, AST_Operator op);
 
@@ -129,3 +132,4 @@ void FilterTree_Print(const FT_FilterNode *root);
 
 /* Free tree. */
 void FilterTree_Free(FT_FilterNode *root);
+

@@ -18,6 +18,5 @@ typedef struct {
 	Argument *op_arg;               // Right-hand branch tap.
 } Apply;
 
-// OpBase* NewApplyOp(uint *modifies);
-OpBase *NewApplyOp(const ExecutionPlan *plan);
+OpBase *NewApplyOp(const ExecutionPlan *plan, const char **modifies);
 

@@ -368,6 +368,33 @@ inline bool AST_AliasIsReferenced(AST *ast, const char *alias) {
 	return (raxFind(ast->referenced_entities, (unsigned char *)alias, strlen(alias)) != raxNotFound);
 }
 
+bool AST_IdentifierIsAlias(const cypher_astnode_t *root, const char *identifier) {
+	if(cypher_astnode_type(root) == CYPHER_AST_PROJECTION) {
+		const cypher_astnode_t *alias_node = cypher_ast_projection_get_alias(root);
+		// If this projection is aliased, check the alias.
+		if(alias_node) {
+			const char *alias = cypher_ast_identifier_get_name(alias_node);
+			if(!strcmp(alias, identifier)) return true; // The identifier is an alias.
+		} else {
+			// Retrieve the projected expression.
+			const cypher_astnode_t *expression_node = cypher_ast_projection_get_expression(root);
+			if(cypher_astnode_type(root) == CYPHER_AST_IDENTIFIER) {
+				// If the projection itself is the identifier, it is not an alias.
+				const char *current_identifier = cypher_ast_identifier_get_name(alias_node);
+				if(!strcmp(current_identifier, identifier)) return false;
+			}
+		}
+	}
+
+	// Recursively visit children.
+	uint child_count = cypher_astnode_nchildren(root);
+	for(uint i = 0; i < child_count; i ++) {
+		bool alias_found = AST_IdentifierIsAlias(cypher_astnode_get_child(root, i), identifier);
+		if(alias_found) return true;
+	}
+	return false;
+}
+
 // TODO Consider augmenting libcypher-parser so that we don't need to perform this
 // work in-module.
 inline long AST_ParseIntegerNode(const cypher_astnode_t *int_node) {

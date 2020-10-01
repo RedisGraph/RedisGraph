@@ -207,6 +207,7 @@ class testWithClause(FlowTestsBase):
         expected = [[2]]
         self.env.assertEqual(actual_result.result_set, expected)
 
+    def test10_filter_placement_validate_scopes(self):
         # Verify that filters cannot be placed in earlier scopes.
         query = """UNWIND ['scope1'] AS a WITH a AS b UNWIND ['scope2'] AS a WITH a WHERE a = 'scope1' RETURN a"""
         actual_result = redis_graph.query(query)
@@ -223,6 +224,20 @@ class testWithClause(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected = [] # No results should be returned
         self.env.assertEqual(actual_result.result_set, expected)
-        # Verify that the Filter op is not placed directly above the scan operation in the ExecutionPlan.
+        # Verify that the Filter op appears directly above the Apply operation in the ExecutionPlan.
         plan = redis_graph.execution_plan(query)
-        self.env.assertFalse(re.search('Filter\s+All Node Scan', plan))
+        self.env.assertTrue(re.search('Filter\s+Apply', plan))
+
+        # Verify that filters on projected aliases do not get placed before the projection op.
+        query = """UNWIND [1] AS a WITH a AS b, 'projected' AS a WHERE a = 1 RETURN a"""
+        plan = redis_graph.execution_plan(query)
+        actual_result = redis_graph.query(query)
+        expected = [] # No results should be returned
+        self.env.assertEqual(actual_result.result_set, expected)
+        self.env.assertTrue(re.search('Filter\s+Project', plan))
+
+        query = """UNWIND [1] AS a WITH a AS b, 'projected' AS a WHERE a = 'projected' RETURN a"""
+        plan = redis_graph.execution_plan(query)
+        actual_result = redis_graph.query(query)
+        expected = [['projected']] # The projected string should be returned
+        self.env.assertTrue(re.search('Filter\s+Project', plan))

@@ -206,9 +206,18 @@ ExecutionPlan *NewExecutionPlan(void) {
 		// Retrieve the current projection clause to build any necessary Filter ops.
 		const cypher_astnode_t *with_clause = cypher_ast_query_get_clause(ast->root,
 																		  segment_indices[i - 1]);
-		// Place filter ops required by current segment.
+		// Build filters required by current segment.
 		FT_FilterNode *ft = AST_BuildFilterTreeFromClauses(ast_segments[i], &with_clause, 1);
-		if(ft) ExecutionPlan_PlaceFilterOps(current_segment, current_segment->root, prev_scope_end, ft);
+		if(ft) {
+			// If any of the filtered variables operate on a WITH alias, place the filter op above the projection.
+			if(FilterTree_FiltersAlias(ft, with_clause)) {
+				OpBase *filter_op = NewFilterOp(current_segment, ft);
+				ExecutionPlan_UpdateRoot(current_segment, filter_op);
+			} else {
+				// None of the filtered variables are aliases; filter ops may be placed anywhere in the scope.
+				ExecutionPlan_PlaceFilterOps(current_segment, current_segment->root, prev_scope_end, ft);
+			}
+		}
 
 		prev_scope_end = prev_root; // Track the previous scope's end so filter placement doesn't overreach.
 	}

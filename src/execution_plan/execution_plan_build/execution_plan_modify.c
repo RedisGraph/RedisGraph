@@ -234,21 +234,29 @@ OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit
 static OpBase *_ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
 														   const OpBase *recurse_limit, const OPType *ops, int op_count, rax *refs_to_resolve) {
 	if(root == recurse_limit) return NULL; // Don't traverse into earlier ExecutionPlan scopes.
-	for(int i = 0; i < op_count; i++) {
-		if(root->type == ops[i]) return NULL;
-	}
-
 	int dependency_count = 0;
 	OpBase *resolving_op = NULL;
 	bool all_refs_resolved = false;
-	for(int i = 0; i < root->childCount && !all_refs_resolved; i++) {
-		// Visit each child and try to resolve references, storing a pointer to the child if successful.
-		OpBase *tmp_op = _ExecutionPlan_LocateReferencesExcludingOps(root->children[i], recurse_limit, ops,
-																	 op_count, refs_to_resolve);
-		if(tmp_op) dependency_count ++; // Count how many children resolved references.
-		// If there is more than one child resolving an op, set the root as the resolver.
-		resolving_op = resolving_op ? root : tmp_op;
-		all_refs_resolved = (raxSize(refs_to_resolve) == 0); // We're done when the rax is empty.
+	bool op_is_blacklisted = false;
+	// Check if this op is on the blacklist.
+	for(int i = 0; i < op_count; i++) {
+		if(root->type == ops[i]) {
+			op_is_blacklisted = true;
+			break;
+		}
+	}
+
+	// If an operation is blacklisted, we shouldn't recurse into its children.
+	if(op_is_blacklisted == false) {
+		for(int i = 0; i < root->childCount && !all_refs_resolved; i++) {
+			// Visit each child and try to resolve references, storing a pointer to the child if successful.
+			OpBase *tmp_op = _ExecutionPlan_LocateReferencesExcludingOps(root->children[i], recurse_limit, ops,
+																		 op_count, refs_to_resolve);
+			if(tmp_op) dependency_count ++; // Count how many children resolved references.
+			// If there is more than one child resolving an op, set the root as the resolver.
+			resolving_op = resolving_op ? root : tmp_op;
+			all_refs_resolved = (raxSize(refs_to_resolve) == 0); // We're done when the rax is empty.
+		}
 	}
 
 	// If we've resolved all references, our work is done.
@@ -266,6 +274,7 @@ static OpBase *_ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
 	if(refs_resolved) resolving_op = root;
 	return resolving_op;
 }
+
 OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root, const OpBase *recurse_limit,
 												   const OPType *ops, int op_count, rax *refs_to_resolve) {
 	OpBase *op = _ExecutionPlan_LocateReferencesExcludingOps(root, recurse_limit, ops, op_count,

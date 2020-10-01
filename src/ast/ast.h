@@ -96,6 +96,9 @@ void AST_AttachName(AST *ast, const cypher_astnode_t *node, const char *name);
 // Returns true if the given alias is referenced within this AST segment.
 bool AST_AliasIsReferenced(AST *ast, const char *alias);
 
+// Returns true if the given identifier is used as an alias within this tree.
+bool AST_IdentifierIsAlias(const cypher_astnode_t *root, const char *identifier);
+
 // Convert an AST integer node (which is stored internally as a string) into an integer.
 long AST_ParseIntegerNode(const cypher_astnode_t *int_node);
 

@@ -298,6 +298,27 @@ rax *FilterTree_CollectAttributes(const FT_FilterNode *root) {
 	return attributes;
 }
 
+bool FilterTree_FiltersAlias(const FT_FilterNode *root, const cypher_astnode_t *ast) {
+	// Collect all filtered variables.
+	rax *filtered_variables = FilterTree_CollectModified(root);
+	raxIterator it;
+	raxStart(&it, filtered_variables);
+	// Iterate over all keys in the rax.
+	raxSeek(&it, "^", NULL, 0);
+	bool alias_is_filtered = false;
+	while(raxNext(&it)) {
+		// Check if the filtered variable is an alias.
+		if(AST_IdentifierIsAlias(ast, (const char *)it.key)) {
+			alias_is_filtered = true;
+			break;
+		}
+	}
+	raxStop(&it);
+	raxFree(filtered_variables);
+
+	return alias_is_filtered;
+}
+
 bool FilterTree_containsOp(const FT_FilterNode *root, AST_Operator op) {
 	switch(root->t) {
 	case FT_N_COND:
