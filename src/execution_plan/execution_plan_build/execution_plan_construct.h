@@ -20,6 +20,10 @@ void buildWithOps(ExecutionPlan *plan, const cypher_astnode_t *clause);
 void buildMergeOp(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause, GraphContext *gc);
 /* Reduce a filter operation into an apply operation. */
 void ExecutionPlan_ReduceFilterToApply(ExecutionPlan *plan, OpFilter *filter);
+/* Place filter ops at the appropriate positions within the op tree. */
+void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, OpBase *root, const OpBase *recurse_limit,
+								  FT_FilterNode *ft);
 /* Convert a clause into the appropriate sequence of ops. */
 void ExecutionPlanSegment_ConvertClause(GraphContext *gc, AST *ast, ExecutionPlan *plan,
 										const cypher_astnode_t *clause);
+

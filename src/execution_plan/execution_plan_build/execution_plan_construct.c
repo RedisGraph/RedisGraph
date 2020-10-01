@@ -6,6 +6,7 @@
 #include "../../query_ctx.h"
 #include "../../util/rax_extensions.h"
 #include "../../ast/ast_build_ar_exp.h"
+#include "../../ast/ast_build_filter_tree.h"
 #include "../../ast/ast_build_op_contexts.h"
 
 /* _BuildCallProjections creates an array of expression nodes to populate a Project operation with.
@@ -96,7 +97,8 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 	if(references_count > 0) {
 		/* Scan execution plan, locate the earliest position where all
 		 * references been resolved. */
-		op = ExecutionPlan_LocateReferences(lower_bound, upper_bound, references);
+		op = ExecutionPlan_LocateReferencesExcludingOps(lower_bound, upper_bound, FILTER_RECURSE_BLACKLIST,
+														FILTER_RECURSE_BLACKLIST_COUNT, references);
 		if(!op) {
 			// Something is wrong - could not find a matching op where all references are solved.
 			unsigned char **entities = raxKeys(references);
@@ -152,8 +154,9 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 	raxFree(references);
 }
 
-void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_limit) {
-	Vector *sub_trees = FilterTree_SubTrees(plan->filter_tree);
+void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, OpBase *root, const OpBase *recurse_limit,
+								  FT_FilterNode *ft) {
+	Vector *sub_trees = FilterTree_SubTrees(ft);
 
 	/* For each filter tree find the earliest position along the execution
 	 * after which the filter tree can be applied. */
@@ -161,7 +164,7 @@ void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_lim
 		FT_FilterNode *tree;
 		Vector_Get(sub_trees, i, &tree);
 		OpBase *filter_op = NewFilterOp(plan, tree);
-		ExecutionPlan_RePositionFilterOp(plan, plan->root, recurse_limit, filter_op);
+		ExecutionPlan_RePositionFilterOp(plan, root, recurse_limit, filter_op);
 	}
 	Vector_Free(sub_trees);
 	_ExecutionPlan_PlaceApplyOps(plan);
@@ -176,6 +179,9 @@ static inline void _buildCallOp(AST *ast, ExecutionPlan *plan,
 	AR_ExpNode **yield_exps = _BuildCallProjections(call_clause, ast); // TODO only need strings
 	OpBase *op = NewProcCallOp(plan, proc_name, arguments, yield_exps);
 	ExecutionPlan_UpdateRoot(plan, op);
+	// Build the FilterTree to model any WHERE predicates on this clause and place ops appropriately.
+	FT_FilterNode *sub_ft = AST_BuildFilterTreeFromClauses(ast, &call_clause, 1);
+	ExecutionPlan_PlaceFilterOps(plan, plan->root, NULL, sub_ft);
 }
 
 static inline void _buildCreateOp(GraphContext *gc, AST *ast, ExecutionPlan *plan) {

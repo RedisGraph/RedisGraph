@@ -19,7 +19,6 @@ struct ExecutionPlan {
 	AST *ast_segment;                   // The segment which the current ExecutionPlan segment is built from.
 	rax *record_map;                    // Mapping between identifiers and record indices.
 	QueryGraph *query_graph;            // QueryGraph representing all graph entities in this segment.
-	FT_FilterNode *filter_tree;         // FilterTree containing filters to be applied to this segment.
 	QueryGraph **connected_components;  // Array of all connected components in this segment.
 	ObjectPool *record_pool;
 	bool prepared;                      // Indicates if the execution plan is ready for execute.
@@ -47,10 +46,6 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan);
 /* Re position filter op. */
 void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 									  const OpBase *upper_bound, OpBase *filter);
-
-// TODO: Remove this once filter are placed after their respective clause.
-/* Place filter ops*/
-void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, const OpBase *recurse_limit);
 
 /* Retrieve the map of aliases to Record offsets in this ExecutionPlan segment. */
 rax *ExecutionPlan_GetMappings(const ExecutionPlan *plan);

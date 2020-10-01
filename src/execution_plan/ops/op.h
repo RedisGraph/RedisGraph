@@ -21,7 +21,7 @@ typedef enum {
 	OPType_NODE_BY_LABEL_SCAN,
 	OPType_INDEX_SCAN,
 	OPType_NODE_BY_ID_SEEK,
-	OpType_NODE_BY_LABEL_AND_ID_SCAN,
+	OPType_NODE_BY_LABEL_AND_ID_SCAN,
 	OPType_EXPAND_INTO,
 	OPType_CONDITIONAL_TRAVERSE,
 	OPType_CONDITIONAL_VAR_LEN_TRAVERSE,
@@ -47,7 +47,7 @@ typedef enum {
 	OPType_APPLY,
 	OPType_JOIN,
 	OPType_SEMI_APPLY,
-	OpType_ANTI_SEMI_APPLY,
+	OPType_ANTI_SEMI_APPLY,
 	OPType_OR_APPLY_MULTIPLEXER,
 	OPType_AND_APPLY_MULTIPLEXER,
 	OPType_OPTIONAL,
@@ -61,7 +61,7 @@ typedef enum {
 } OpResult;
 
 // Macro for checking whether an operation is an Apply variant.
-#define OP_IS_APPLY(op) ((op)->type == OPType_OR_APPLY_MULTIPLEXER || (op)->type == OPType_AND_APPLY_MULTIPLEXER || (op)->type == OPType_SEMI_APPLY || (op)->type == OpType_ANTI_SEMI_APPLY)
+#define OP_IS_APPLY(op) ((op)->type == OPType_OR_APPLY_MULTIPLEXER || (op)->type == OPType_AND_APPLY_MULTIPLEXER || (op)->type == OPType_SEMI_APPLY || (op)->type == OPType_ANTI_SEMI_APPLY)
 
 #define PROJECT_OP_COUNT 2
 static const OPType PROJECT_OPS[] = {OPType_PROJECT, OPType_AGGREGATE};
@@ -70,7 +70,16 @@ static const OPType PROJECT_OPS[] = {OPType_PROJECT, OPType_AGGREGATE};
 static const OPType TRAVERSE_OPS[] = {OPType_CONDITIONAL_TRAVERSE, OPType_CONDITIONAL_VAR_LEN_TRAVERSE};
 
 #define SCAN_OP_COUNT 5
-static const OPType SCAN_OPS[] = {OPType_ALL_NODE_SCAN, OPType_NODE_BY_LABEL_SCAN, OPType_INDEX_SCAN, OPType_NODE_BY_ID_SEEK, OpType_NODE_BY_LABEL_AND_ID_SCAN};
+static const OPType SCAN_OPS[] = {OPType_ALL_NODE_SCAN, OPType_NODE_BY_LABEL_SCAN, OPType_INDEX_SCAN, OPType_NODE_BY_ID_SEEK, OPType_NODE_BY_LABEL_AND_ID_SCAN};
+
+/* When placing filters, we should not recurse into certain operation's subtrees that would cause
+ * logical errors. The cases we currently need to be concerned with are:
+ * Merge - the results which should only be filtered after the entity is matched or created - and
+ * Apply - which has an Optional child that should project results or NULL before being filtered.
+ * The family of SemiApply ops (including the Apply Multiplexers) does not require this restriction
+ * since they are always exclusively performing filtering. */
+#define FILTER_RECURSE_BLACKLIST_COUNT 2
+static const OPType FILTER_RECURSE_BLACKLIST[] = {OPType_APPLY, OPType_MERGE};
 
 struct OpBase;
 struct ExecutionPlan;

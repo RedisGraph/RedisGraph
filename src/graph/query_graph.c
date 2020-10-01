@@ -21,7 +21,7 @@ static void _QueryGraphSetNodeLabel(QGNode *n, const cypher_astnode_t *ast_entit
 	uint nlabels = cypher_ast_node_pattern_nlabels(ast_entity);
 	// We currently only support 0 or 1 labels per node, so if any are specified just select the first.
 	const char *label = (nlabels > 0) ? cypher_ast_label_get_name(cypher_ast_node_pattern_get_label(
-				ast_entity, 0)) : NULL;
+																	  ast_entity, 0)) : NULL;
 
 	// Set node label ID.
 	if(label) {
@@ -57,7 +57,7 @@ static void _QueryGraphAddNode(QueryGraph *qg, const cypher_astnode_t *ast_entit
 
 // Adds edge to query graph
 static void _QueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_entity,
-									QGNode *src, QGNode *dest) {
+							   QGNode *src, QGNode *dest) {
 
 	AST *ast = QueryCtx_GetAST();
 	GraphContext *gc = QueryCtx_GetGraphCtx();
@@ -104,7 +104,7 @@ static void _QueryGraphAddEdge(QueryGraph *qg, const cypher_astnode_t *ast_entit
 
 // Extracts node from 'qg' and places a copy of into 'graph'
 static void _QueryGraph_ExtractNode(const QueryGraph *qg, QueryGraph *graph,
-		AST *ast, const cypher_astnode_t *ast_node) {
+									AST *ast, const cypher_astnode_t *ast_node) {
 
 	// Validate inputs.
 	ASSERT(qg != NULL && graph != NULL && ast != NULL && ast_node != NULL);
@@ -143,7 +143,7 @@ static void _QueryGraph_ExtractNode(const QueryGraph *qg, QueryGraph *graph,
 
 // Extracts edge from 'qg' and places a copy of into 'graph'
 static void _QueryGraph_ExtractEdge(const QueryGraph *qg, QueryGraph *graph,
-		QGNode *left, QGNode *right, AST *ast, const cypher_astnode_t *ast_edge) {
+									QGNode *left, QGNode *right, AST *ast, const cypher_astnode_t *ast_edge) {
 	const char *alias = AST_GetEntityName(ast, ast_edge);
 
 	// Validate input, edge shouldn't be in graph.
@@ -159,7 +159,7 @@ static void _QueryGraph_ExtractEdge(const QueryGraph *qg, QueryGraph *graph,
 
 // Clones path from 'qg' into 'graph'.
 static void _QueryGraph_ExtractPath(const QueryGraph *qg, QueryGraph *graph,
-		const cypher_astnode_t *path) {
+									const cypher_astnode_t *path) {
 
 	// Validate input.
 	ASSERT(qg != NULL && graph != NULL && path != NULL);
@@ -264,7 +264,7 @@ QueryGraph *QueryGraph_ExtractPaths(const QueryGraph *qg, const cypher_astnode_t
 
 // Clones patterns from 'qg' into 'graph'
 QueryGraph *QueryGraph_ExtractPatterns(const QueryGraph *qg,
-		const cypher_astnode_t **patterns, uint n) {
+									   const cypher_astnode_t **patterns, uint n) {
 
 	// Validate inputs.
 	ASSERT(qg != NULL && patterns != NULL);

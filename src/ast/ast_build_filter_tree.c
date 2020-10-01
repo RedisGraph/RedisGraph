@@ -367,3 +367,30 @@ FT_FilterNode *AST_BuildFilterTree(AST *ast) {
 	return filter_tree;
 }
 
+FT_FilterNode *AST_BuildFilterTreeFromClauses(const AST *ast, const cypher_astnode_t **clauses,
+											  uint count) {
+	FT_FilterNode *filter_tree = NULL;
+	cypher_astnode_type_t type = cypher_astnode_type(clauses[0]);
+	for(uint i = 0; i < count; i ++) {
+		if(type == CYPHER_AST_MATCH) {
+			const cypher_astnode_t *pattern = cypher_ast_match_get_pattern(clauses[i]);
+			_AST_ConvertGraphPatternToFilter(ast, &filter_tree, pattern);
+			const cypher_astnode_t *predicate = cypher_ast_match_get_predicate(clauses[i]);
+			if(predicate) AST_ConvertFilters(&filter_tree, predicate);
+		} else if(type == CYPHER_AST_WITH) {
+			const cypher_astnode_t *predicate = cypher_ast_with_get_predicate(clauses[i]);
+			if(predicate) AST_ConvertFilters(&filter_tree, predicate);
+		} else if(type == CYPHER_AST_CALL) {
+			const cypher_astnode_t *where_predicate = cypher_ast_call_get_predicate(clauses[i]);
+			if(where_predicate) AST_ConvertFilters(&filter_tree, where_predicate);
+		} else {
+			assert(false);
+		}
+	}
+
+	// Apply De Morgan's laws
+	FilterTree_DeMorgan(&filter_tree);
+
+	return filter_tree;
+}
+

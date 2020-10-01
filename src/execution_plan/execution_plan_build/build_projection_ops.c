@@ -4,6 +4,7 @@
 #include "../ops/ops.h"
 #include "../../query_ctx.h"
 #include "../../ast/ast_build_ar_exp.h"
+#include "../../ast/ast_build_filter_tree.h"
 
 // Given a WITH/RETURN * clause, generate the array of expressions to populate.
 static AR_ExpNode **_PopulateProjectAll(const cypher_astnode_t *clause) {

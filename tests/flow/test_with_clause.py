@@ -1,3 +1,4 @@
+import re
 from RLTest import Env
 from redisgraph import Graph, Node, Edge
 from base import FlowTestsBase
@@ -216,3 +217,12 @@ class testWithClause(FlowTestsBase):
         actual_result = redis_graph.query(query)
         expected = [['scope2']]
         self.env.assertEqual(actual_result.result_set, expected)
+
+        # Verify that WITH filters are properly placed in scope without violating Apply restrictions.
+        query = """MATCH (a) OPTIONAL MATCH (b) WITH a, b WHERE b.fakeprop = true RETURN a, b"""
+        actual_result = redis_graph.query(query)
+        expected = [] # No results should be returned
+        self.env.assertEqual(actual_result.result_set, expected)
+        # Verify that the Filter op is not placed directly above the scan operation in the ExecutionPlan.
+        plan = redis_graph.execution_plan(query)
+        self.env.assertFalse(re.search('Filter\s+All Node Scan', plan))

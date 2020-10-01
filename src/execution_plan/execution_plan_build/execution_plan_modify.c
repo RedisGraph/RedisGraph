@@ -231,6 +231,47 @@ OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit
 	return op;
 }
 
+static OpBase *_ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
+														   const OpBase *recurse_limit, const OPType *ops, int op_count, rax *refs_to_resolve) {
+	if(root == recurse_limit) return NULL; // Don't traverse into earlier ExecutionPlan scopes.
+	for(int i = 0; i < op_count; i++) {
+		if(root->type == ops[i]) return NULL;
+	}
+
+	int dependency_count = 0;
+	OpBase *resolving_op = NULL;
+	bool all_refs_resolved = false;
+	for(int i = 0; i < root->childCount && !all_refs_resolved; i++) {
+		// Visit each child and try to resolve references, storing a pointer to the child if successful.
+		OpBase *tmp_op = _ExecutionPlan_LocateReferencesExcludingOps(root->children[i], recurse_limit, ops,
+																	 op_count, refs_to_resolve);
+		if(tmp_op) dependency_count ++; // Count how many children resolved references.
+		// If there is more than one child resolving an op, set the root as the resolver.
+		resolving_op = resolving_op ? root : tmp_op;
+		all_refs_resolved = (raxSize(refs_to_resolve) == 0); // We're done when the rax is empty.
+	}
+
+	// If we've resolved all references, our work is done.
+	if(all_refs_resolved) return resolving_op;
+
+	// Try to resolve references in the current operation.
+	bool refs_resolved = false;
+	uint modifies_count = array_len(root->modifies);
+	for(uint i = 0; i < modifies_count; i++) {
+		const char *ref = root->modifies[i];
+		// Attempt to remove the current op's references, marking whether any removal was succesful.
+		refs_resolved |= raxRemove(refs_to_resolve, (unsigned char *)ref, strlen(ref), NULL);
+	}
+
+	if(refs_resolved) resolving_op = root;
+	return resolving_op;
+}
+OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root, const OpBase *recurse_limit,
+												   const OPType *ops, int op_count, rax *refs_to_resolve) {
+	OpBase *op = _ExecutionPlan_LocateReferencesExcludingOps(root, recurse_limit, ops, op_count,
+															 refs_to_resolve);
+	return op;
+}
 
 static void _ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *types, int type_count,
 												  OpBase ***ops) {
@@ -332,12 +373,9 @@ OpBase *ExecutionPlan_BuildOpsFromPath(ExecutionPlan *plan, const char **bound_v
 
 	AST_MockFree(match_stream_ast, node_is_path);
 	QueryCtx_SetAST(ast); // Reset the AST.
-	// Add filter ops to sub-ExecutionPlan.
-	if(match_stream_plan->filter_tree) ExecutionPlan_PlaceFilterOps(match_stream_plan, NULL);
-
-	OpBase *match_stream_root = match_stream_plan->root;
 
 	// Associate all new ops with the correct ExecutionPlan and QueryGraph.
+	OpBase *match_stream_root = match_stream_plan->root;
 	ExecutionPlan_BindPlanToOps(plan, match_stream_root);
 
 	// NULL-set variables shared between the match_stream_plan and the overall plan.

@@ -36,9 +36,6 @@ void ExecutionPlan_PopulateExecutionPlan(ExecutionPlan *plan) {
 	// Query graph is set if this ExecutionPlan has been created to populate a single stream.
 	if(plan->query_graph == NULL) plan->query_graph = BuildQueryGraph(ast);
 
-	// Build filter tree
-	plan->filter_tree = AST_BuildFilterTree(ast);
-
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
 	for(uint i = 0; i < clause_count; i ++) {
 		// Build the appropriate operation(s) for each clause in the query.
@@ -146,10 +143,13 @@ ExecutionPlan *NewExecutionPlan(void) {
 
 	// Retrieve the indices of each WITH clause to properly set the bounds of each segment.
 	uint *segment_indices = AST_GetClauseIndices(ast, CYPHER_AST_WITH);
+	uint with_clause_count = array_len(segment_indices);
 
+	bool with_is_first_clause = false;
 	// If the first clause of the query is WITH, remove its index from the segment list.
 	if(array_len(segment_indices) > 0 && segment_indices[0] == 0) {
 		segment_indices = array_del(segment_indices, 0);
+		with_is_first_clause = true;
 	}
 
 	/* The RETURN clause is converted into an independent final segment.
@@ -179,9 +179,12 @@ ExecutionPlan *NewExecutionPlan(void) {
 		start_offset = end_offset;
 	}
 
-	// Place filter ops required by first ExecutionPlan segment.
-	QueryCtx_SetAST(ast_segments[0]);
-	if(segments[0]->filter_tree) ExecutionPlan_PlaceFilterOps(segments[0], NULL);
+	// The first segment only requires filter ops at this point if the first clause is WITH.
+	if(with_is_first_clause) {
+		const cypher_astnode_t *with_clause = cypher_ast_query_get_clause(ast->root, 0);
+		FT_FilterNode *ft = AST_BuildFilterTreeFromClauses(ast_segments[0], &with_clause, 1);
+		if(ft) ExecutionPlan_PlaceFilterOps(segments[0], segments[0]->root, NULL, ft);
+	}
 
 	OpBase *connecting_op = NULL;
 	OpBase *prev_scope_end = NULL;
@@ -197,17 +200,18 @@ ExecutionPlan *NewExecutionPlan(void) {
 
 		ExecutionPlan_AddOp(connecting_op, prev_root);
 
+		// The final segment cannot culminate in a WITH clause, so has no additional filters to process.
+		if(i == segment_count - 1) continue;
+
+		// Retrieve the current projection clause to build any necessary Filter ops.
+		const cypher_astnode_t *with_clause = cypher_ast_query_get_clause(ast->root,
+																		  segment_indices[i - 1]);
 		// Place filter ops required by current segment.
-		QueryCtx_SetAST(ast_segments[i]);
-		if(current_segment->filter_tree) {
-			ExecutionPlan_PlaceFilterOps(current_segment, prev_scope_end);
-			current_segment->filter_tree = NULL;
-		}
+		FT_FilterNode *ft = AST_BuildFilterTreeFromClauses(ast_segments[i], &with_clause, 1);
+		if(ft) ExecutionPlan_PlaceFilterOps(current_segment, current_segment->root, prev_scope_end, ft);
 
 		prev_scope_end = prev_root; // Track the previous scope's end so filter placement doesn't overreach.
 	}
-
-	QueryCtx_SetAST(ast); // AST segments have been freed, set master AST in QueryCtx.
 
 	array_free(segment_indices);
 
