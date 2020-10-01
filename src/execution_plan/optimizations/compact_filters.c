@@ -7,6 +7,7 @@
 #include "compact_filters.h"
 #include "../ops/op_filter.h"
 #include "../../filter_tree/filter_tree.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 
 // Try to compact a filter.
 static inline bool _compactFilter(OpBase *op) {
@@ -52,3 +53,4 @@ static void _compactFilters(ExecutionPlan *plan, OpBase *op) {
 void compactFilters(ExecutionPlan *plan) {
 	_compactFilters(plan, plan->root);
 }
+

@@ -1,9 +1,11 @@
-#include "execution_plan.h"
-#include "ops/ops.h"
-#include "../query_ctx.h"
-#include "../ast/ast_mock.h"
-#include "../util/rax_extensions.h"
-#include "./optimizations/optimizer.h"
+#include "execution_plan_construct.h"
+#include "execution_plan_modify.h"
+#include "../execution_plan.h"
+#include "../ops/ops.h"
+#include "../../query_ctx.h"
+#include "../../ast/ast_mock.h"
+#include "../../util/rax_extensions.h"
+#include "../optimizations/optimizer.h"
 
 /* Swap operation on operation children. If two valid indices, a and b, are given, this operation
  * swap the child in index a with the child in index b. */

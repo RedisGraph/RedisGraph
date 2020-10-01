@@ -4,6 +4,7 @@
 #include "../../util/arr.h"
 #include "../../query_ctx.h"
 #include "../ops/op_index_scan.h"
+#include "../execution_plan_build/execution_plan_modify.h"
 #include "../../ast/ast_shared.h"
 #include "../../util/range/string_range.h"
 #include "../../util/range/numeric_range.h"
