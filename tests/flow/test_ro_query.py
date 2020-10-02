@@ -24,8 +24,23 @@ class test_read_only_query(FlowTestsBase):
         raw_result_set = master_con.execute_command("GRAPH.RO_QUERY", graph_name, "MATCH (n) RETURN COUNT(n)", "--compact")
         result_set = query_result.QueryResult(graph, raw_result_set).result_set
         self.env.assertEqual(21, result_set[0][0])
+        # Try execute write commands with RO_QUERY
         try:
             raw_result_set = master_con.execute_command("GRAPH.RO_QUERY", graph_name, "CREATE()", "--compact")
+            result_set = query_result.QueryResult(graph, raw_result_set).result_set
+            assert(False)
+        except:
+            # Expecting an error.
+            pass
+        try:
+            raw_result_set = master_con.execute_command("GRAPH.RO_QUERY", graph_name, "MERGE()", "--compact")
+            result_set = query_result.QueryResult(graph, raw_result_set).result_set
+            assert(False)
+        except:
+            # Expecting an error.
+            pass
+        try:
+            raw_result_set = master_con.execute_command("GRAPH.RO_QUERY", graph_name, "MATCH(n) DELETE n", "--compact")
             result_set = query_result.QueryResult(graph, raw_result_set).result_set
             assert(False)
         except:
@@ -49,3 +64,5 @@ class test_read_only_query(FlowTestsBase):
         except:
             # Expecting an error.
             pass
+        # Close replica to avoid memcheck
+        slave_con.shutdown()
