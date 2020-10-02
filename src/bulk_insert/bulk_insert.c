@@ -14,12 +14,12 @@
 // The first byte of each property in the binary stream
 // is used to indicate the type of the subsequent SIValue
 typedef enum {
-	BI_NULL,
-	BI_BOOL,
-	BI_DOUBLE,
-	BI_STRING,
-	BI_LONG,
-	BI_ARRAY,
+	BI_NULL = 0,
+	BI_BOOL = 1,
+	BI_DOUBLE = 2,
+	BI_STRING = 3,
+	BI_LONG = 4,
+	BI_ARRAY = 5,
 } TYPE;
 
 // Read the header of a data stream to parse its property keys and update schemas.
