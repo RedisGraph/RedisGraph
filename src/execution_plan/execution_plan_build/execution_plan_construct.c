@@ -89,9 +89,15 @@ static void _ExecutionPlan_PlaceApplyOps(ExecutionPlan *plan) {
 
 void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 									  const OpBase *upper_bound, OpBase *filter) {
+	// validate inputs
+	ASSERT(plan != NULL);
 	ASSERT(filter->type == OPType_FILTER);
-	OpBase *op = NULL;
-	rax *references = FilterTree_CollectModified(((OpFilter *)filter)->filterTree);
+
+	OpBase *op = NULL; // Operation after which filter will be located.
+	FT_FilterNode *filter_tree = ((OpFilter *)filter)->filterTree;
+
+	// collect all filtered entities.
+	rax *references = FilterTree_CollectModified(filter_tree);
 	uint64_t references_count = raxSize(references);
 
 	if(references_count > 0) {
@@ -156,12 +162,15 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 
 void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, OpBase *root, const OpBase *recurse_limit,
 								  FT_FilterNode *ft) {
+	/* Break filter tree into the smallest possible subtrees, following
+	 * the AND,OR logic. */
 	FT_FilterNode **sub_trees = FilterTree_SubTrees(ft);
 
 	/* For each filter tree find the earliest position along the execution
 	 * after which the filter tree can be applied. */
-	while(array_len(sub_trees) > 0) {
-		FT_FilterNode *tree = array_pop(sub_trees);
+	uint nfilters = array_len(sub_trees);
+	for(uint i = 0; i < nfilters; i++) {
+		FT_FilterNode *tree = sub_trees[i];
 		OpBase *filter_op = NewFilterOp(plan, tree);
 		ExecutionPlan_RePositionFilterOp(plan, root, recurse_limit, filter_op);
 	}
