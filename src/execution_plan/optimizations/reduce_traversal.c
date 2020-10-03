@@ -7,7 +7,6 @@
 #include "reduce_traversal.h"
 
 #include "../../util/arr.h"
-#include "../../util/vector.h"
 #include "../../util/strcmp.h"
 #include "../ops/op_expand_into.h"
 #include "../ops/op_conditional_traverse.h"

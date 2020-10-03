@@ -4,8 +4,9 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "../value.h"
 #include "filter_tree.h"
+#include "../RG.h"
+#include "../value.h"
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 #include "../ast/ast_shared.h"
@@ -94,14 +95,14 @@ FT_FilterNode *FilterTree_CreateConditionFilter(AST_Operator op) {
 	return filterNode;
 }
 
-void _FilterTree_SubTrees(const FT_FilterNode *root, Vector *sub_trees) {
+void _FilterTree_SubTrees(FT_FilterNode *root, FT_FilterNode ***sub_trees) {
 	if(root == NULL) return;
 
 	switch(root->t) {
 	case FT_N_EXP:
 	case FT_N_PRED:
 		/* This is a simple predicate tree, can not traverse further. */
-		Vector_Push(sub_trees, root);
+		*sub_trees = array_append(*sub_trees, root);
 		break;
 	case FT_N_COND:
 		switch(root->cond.op) {
@@ -113,21 +114,22 @@ void _FilterTree_SubTrees(const FT_FilterNode *root, Vector *sub_trees) {
 			break;
 		case OP_OR:
 			/* OR tree must be return as is. */
-			Vector_Push(sub_trees, root);
+			*sub_trees = array_append(*sub_trees, root);
 			break;
 		default:
-			assert(0);
+			ASSERT(0);
+			break;
 		}
 		break;
 	default:
-		assert(0);
+		ASSERT(0);
 		break;
 	}
 }
 
-Vector *FilterTree_SubTrees(const FT_FilterNode *root) {
-	Vector *sub_trees = NewVector(FT_FilterNode *, 1);
-	_FilterTree_SubTrees(root, sub_trees);
+FT_FilterNode **FilterTree_SubTrees(FT_FilterNode *root) {
+	FT_FilterNode **sub_trees = array_new(FT_FilterNode *, 1);
+	_FilterTree_SubTrees(root, &sub_trees);
 	return sub_trees;
 }
 

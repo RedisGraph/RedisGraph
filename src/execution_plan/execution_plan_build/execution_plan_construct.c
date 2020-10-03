@@ -156,17 +156,16 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 
 void ExecutionPlan_PlaceFilterOps(ExecutionPlan *plan, OpBase *root, const OpBase *recurse_limit,
 								  FT_FilterNode *ft) {
-	Vector *sub_trees = FilterTree_SubTrees(ft);
+	FT_FilterNode **sub_trees = FilterTree_SubTrees(ft);
 
 	/* For each filter tree find the earliest position along the execution
 	 * after which the filter tree can be applied. */
-	for(int i = 0; i < Vector_Size(sub_trees); i++) {
-		FT_FilterNode *tree;
-		Vector_Get(sub_trees, i, &tree);
+	while(array_len(sub_trees) > 0) {
+		FT_FilterNode *tree = array_pop(sub_trees);
 		OpBase *filter_op = NewFilterOp(plan, tree);
 		ExecutionPlan_RePositionFilterOp(plan, root, recurse_limit, filter_op);
 	}
-	Vector_Free(sub_trees);
+	array_free(sub_trees);
 	_ExecutionPlan_PlaceApplyOps(plan);
 }
 
