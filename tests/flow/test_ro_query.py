@@ -12,6 +12,8 @@ slave_con = None
 class test_read_only_query(FlowTestsBase):
     def __init__(self):
         self.env = Env(moduleArgs='VKEY_MAX_ENTITY_COUNT 3', useSlaves=True)
+        self.env.skipOnCluster()
+
         global master_con
         global slave_con
         master_con = self.env.getConnection()
@@ -64,5 +66,3 @@ class test_read_only_query(FlowTestsBase):
         except:
             # Expecting an error.
             pass
-        # Close replica to avoid memcheck
-        slave_con.shutdown()
