@@ -126,7 +126,7 @@ int RedisModule_OnLoad(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) 
 	RedisModule_Log(ctx, "notice", "Thread pool created, using %d threads.", threadCount);
 
 	// Initialize array of command contexts
-	command_ctxs = calloc(threadCount + 1, sizeof(CommandCtx *));
+	command_ctxs = calloc(threadCount + 1, sizeof(CommandCtx*));
 
 	int ompThreadCount = Config_GetOMPThreadCount();
 	if(GxB_set(GxB_NTHREADS, ompThreadCount) != GrB_SUCCESS) {
