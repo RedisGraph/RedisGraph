@@ -89,6 +89,10 @@ static int _read_flags(CommandCtx *command_ctx, bool *compact, long long *timeou
 	return REDISMODULE_OK;
 }
 
+inline static bool _readonly_cmd_mode(CommandCtx *ctx) {
+	return strcasecmp(CommandCtx_GetCommandName(ctx), "graph.RO_QUERY") == 0;
+}
+
 void QueryTimedOut(void *pdata) {
 	ASSERT(pdata);
 	ExecutionPlan *plan = (ExecutionPlan *)pdata;
@@ -142,6 +146,11 @@ void Graph_Query(void *args) {
 	if(exec_type == EXECUTION_TYPE_INVALID) goto cleanup;
 
 	bool readonly = AST_ReadOnly(ast->root);
+	if(!readonly && _readonly_cmd_mode(command_ctx)) {
+		QueryCtx_SetError("graph.RO_QUERY is to be executed only on read-only queries");
+		QueryCtx_EmitException();
+		goto cleanup;
+	}
 
 	bool compact;
 	long long timeout;
