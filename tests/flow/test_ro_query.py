@@ -42,7 +42,8 @@ def checkSlaveSynced(env, slaveConn, command, expected_result, time_out=5):
 class test_read_only_query(FlowTestsBase):
     def __init__(self):
         self.env = Env(useSlaves=True)
-        self.env.skipOnDebugger()
+        if self.env.envRunner.debugger is not None:
+            self.env.skip() # valgrind is not working correctly with replication
         global master_con
         global slave_con
         master_con = self.env.getConnection()
@@ -83,6 +84,18 @@ class test_read_only_query(FlowTestsBase):
             pass
         try:
             master_con.execute_command("GRAPH.RO_QUERY", graph_name, "MATCH(n) DELETE n", "--compact")
+            assert(False)
+        except:
+            # Expecting an error.
+            pass
+        try:
+            master_con.execute_command("GRAPH.RO_QUERY", graph_name, "CREATE INDEX ON :person(age)", "--compact")
+            assert(False)
+        except:
+            # Expecting an error.
+            pass
+        try:
+            master_con.execute_command("GRAPH.RO_QUERY", graph_name, "DROP INDEX ON :Person(age)", "--compact")
             assert(False)
         except:
             # Expecting an error.
