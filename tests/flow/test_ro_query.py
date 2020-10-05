@@ -2,48 +2,22 @@ from base import FlowTestsBase
 import os
 import sys
 import time
-import signal
 from RLTest import Env
 from redisgraph import Graph, Node, Edge, query_result
 
 slave_con = None
 master_con = None
 
-class TimeoutException(Exception):
-  pass
-
-class TimeLimit(object):
-    """
-    A context manager that fires a TimeExpired exception if it does not
-    return within the specified amount of time.
-    """
-    def __init__(self, timeout):
-        self.timeout = timeout
-    def __enter__(self):
-        signal.signal(signal.SIGALRM, self.handler)
-        signal.setitimer(signal.ITIMER_REAL, self.timeout, 0)
-    def __exit__(self, exc_type, exc_value, traceback):
-        signal.setitimer(signal.ITIMER_REAL, 0)
-        signal.signal(signal.SIGALRM, signal.SIG_DFL)
-    def handler(self, signum, frame):
-        raise TimeoutException()
-
-def checkSlaveSynced(env, slaveConn, command, expected_result, time_out=5):
-    try:
-        with TimeLimit(time_out):
-            res = slaveConn.execute_command(*command)
-            while res != expected_result:
-                res = slaveConn.execute_command(*command)
-    except TimeoutException:
-        env.assertTrue(False, message='Failed waiting for command to be executed on slave')
-    except Exception as e:
-        env.assertTrue(False, message=e.message)
+def checkSlaveSynced(env, slaveConn, graph_name, time_out=5):
+    time.sleep(time_out)
+    res = slaveConn.execute_command("keys", graph_name)
+    env.assertEqual(res, [graph_name])
 
 class test_read_only_query(FlowTestsBase):
     def __init__(self):
+        if Env().envRunner.debugger is not None:
+            Env().skip() # valgrind is not working correctly with replication
         self.env = Env(useSlaves=True)
-        if self.env.envRunner.debugger is not None:
-            self.env.skip() # valgrind is not working correctly with replication
         global master_con
         global slave_con
         master_con = self.env.getConnection()
@@ -107,7 +81,7 @@ class test_read_only_query(FlowTestsBase):
         graph = Graph(graph_name, master_con)
         graph.query("UNWIND range(0,20) as i CREATE ()")
         slave_con.execute_command("REPLICAOF", "localhost", "6379")
-        checkSlaveSynced(self.env, slave_con, ("keys", graph_name), [graph_name])
+        checkSlaveSynced(self.env, slave_con, graph_name)
         raw_result_set = slave_con.execute_command("GRAPH.RO_QUERY", graph_name, "MATCH (n) RETURN COUNT(n)", "--compact")
         result_set = query_result.QueryResult(graph, raw_result_set).result_set
         self.env.assertEqual(21, result_set[0][0])
