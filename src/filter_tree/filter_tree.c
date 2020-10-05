@@ -107,7 +107,7 @@ void _FilterTree_SubTrees(FT_FilterNode *root, FT_FilterNode ***sub_trees) {
 	case FT_N_COND:
 		switch(root->cond.op) {
 		case OP_AND:
-			/* Break AND down to its components. */
+			// Break AND down to its components.
 			_FilterTree_SubTrees(root->cond.left, sub_trees);
 			_FilterTree_SubTrees(root->cond.right, sub_trees);
 			rm_free((FT_FilterNode *)root);

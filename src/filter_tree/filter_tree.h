@@ -6,9 +6,9 @@
 
 #pragma once
 
+#include "rax.h"
 #include "../redismodule.h"
 #include "../ast/ast_shared.h"
-#include "rax.h"
 #include "../execution_plan/record.h"
 #include "../arithmetic/arithmetic_expression.h"
 

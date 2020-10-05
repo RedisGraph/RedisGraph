@@ -145,12 +145,10 @@ static void _AlgebraicExpression_PrintTree
 		}
 		break;
 	case AL_OPERAND:
-		if(exp->operand.edge) {
-			printf("%s\n", exp->operand.edge);
-			break;
-		}
-		printf("%s", exp->operand.src);
-		printf("%s\n", exp->operand.dest);
+		if(exp->operand.edge) alias = exp->operand.edge;
+		else alias = exp->operand.src;
+		printf("%s\n", alias);
+		break;
 	default:
 		ASSERT("Unknown algebraic expression node type");
 		break;
