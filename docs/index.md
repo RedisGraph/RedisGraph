@@ -173,6 +173,12 @@ Language-specific clients have been written by the community and the RedisGraph 
 
 The full list and links can be found on [the Clients page](clients.md).
 
+## Data import
+
+The RedisGraph team maintains the [redisgraph-bulk-loader](https://github.com/redisgraph/redisgraph-bulk-loader) for importing new graphs from CSV files.
+
+The data format used by this tool is described in the [GRAPH.BULK implementation details](bulk_spec.md).
+
 ## Mailing List / Forum
 
 Got questions? Feel free to ask at the [RedisGraph forum](https://forum.redislabs.com/c/modules/redisgraph).
