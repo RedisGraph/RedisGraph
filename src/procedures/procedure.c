@@ -11,6 +11,7 @@
 #include "../util/arr.h"
 #include "../util/rmalloc.h"
 #include "../graph/graphcontext.h"
+#include <ctype.h>
 
 static rax *__procedures = NULL;
 
@@ -22,17 +23,17 @@ static void _procRegister(const char *procedure, ProcGenerator gen) {
 void Proc_Register() {
 	__procedures = raxNew();
 	_procRegister("db.labels", Proc_LabelsCtx);
-	_procRegister("db.propertyKeys", Proc_PropKeysCtx);
-	_procRegister("db.relationshipTypes", Proc_RelationsCtx);
+	_procRegister("db.propertykeys", Proc_PropKeysCtx);
+	_procRegister("db.relationshiptypes", Proc_RelationsCtx);
 
 	// Register graph algorithms.
-	_procRegister("algo.pageRank", Proc_PagerankCtx);
-	_procRegister("algo.BFS", Proc_BFS_Ctx);
+	_procRegister("algo.pagerank", Proc_PagerankCtx);
+	_procRegister("algo.bfs", Proc_BFS_Ctx);
 
 	// Register FullText Search generator.
 	_procRegister("db.idx.fulltext.drop", Proc_FulltextDropIdxGen);
-	_procRegister("db.idx.fulltext.queryNodes", Proc_FulltextQueryNodeGen);
-	_procRegister("db.idx.fulltext.createNodeIndex", Proc_FulltextCreateNodeIdxGen);
+	_procRegister("db.idx.fulltext.querynodes", Proc_FulltextQueryNodeGen);
+	_procRegister("db.idx.fulltext.createnodeindex", Proc_FulltextCreateNodeIdxGen);
 }
 
 ProcedureCtx *ProcCtxNew(const char *name,
@@ -58,7 +59,10 @@ ProcedureCtx *ProcCtxNew(const char *name,
 
 ProcedureCtx *Proc_Get(const char *proc_name) {
 	if(!__procedures) return NULL;
-	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name, strlen(proc_name));
+	char *proc_name_lower = rm_malloc(strlen(proc_name)+1);
+    for (int i=0; i<strlen(proc_name); i++) proc_name_lower[i] = tolower(proc_name[i]);
+	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name_lower, strlen(proc_name));
+	rm_free(proc_name_lower);
 	if(gen == raxNotFound) return NULL;
 	ProcedureCtx *ctx = gen(NULL, NULL);
 
