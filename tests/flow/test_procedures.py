@@ -296,3 +296,25 @@ class testProcedures(FlowTestsBase):
         except redis.exceptions.ResponseError:
             # Expecting an error.
             pass
+
+    def test_procedure_lookup_case_insensitive(self):
+        try:
+            redis_graph.call_procedure("db.LABELS")
+            # This should not cause an error
+        except redis.exceptions.ResponseError:
+            self.env.assertEquals(1, 0)
+            pass
+
+        try:
+            redis_graph.call_procedure("dblabels")
+            self.env.assertEquals(1, 0)
+        except redis.exceptions.ResponseError:
+            # Expecting an error.
+            pass
+
+        try:
+            redis_graph.call_procedure("db.IDX.FullText.QueryNodes", "fruit", "or")
+            # this should not cause an error
+        except redis.exceptions.ResponseError:
+            self.env.assertEquals(1, 0)
+            pass
