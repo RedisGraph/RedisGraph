@@ -63,8 +63,9 @@ OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit
 
 /* Find the earliest operation at which all references are resolved, if any,
  * both above the provided recurse_limit and without recursing past a blacklisted op. */
-OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root, const OpBase *recurse_limit,
-												   const OPType *ops, int op_count, rax *refs_to_resolve);
+OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
+		const OpBase *recurse_limit, const OPType *blacklisted_ops,
+		int nblacklisted_ops, rax *refs_to_resolve);
 
 //------------------------------------------------------------------------------
 // ExecutionPlan_Collect API:

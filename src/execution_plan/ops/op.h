@@ -72,15 +72,6 @@ static const OPType TRAVERSE_OPS[] = {OPType_CONDITIONAL_TRAVERSE, OPType_CONDIT
 #define SCAN_OP_COUNT 5
 static const OPType SCAN_OPS[] = {OPType_ALL_NODE_SCAN, OPType_NODE_BY_LABEL_SCAN, OPType_INDEX_SCAN, OPType_NODE_BY_ID_SEEK, OPType_NODE_BY_LABEL_AND_ID_SCAN};
 
-/* When placing filters, we should not recurse into certain operation's subtrees that would cause
- * logical errors. The cases we currently need to be concerned with are:
- * Merge - the results which should only be filtered after the entity is matched or created - and
- * Apply - which has an Optional child that should project results or NULL before being filtered.
- * The family of SemiApply ops (including the Apply Multiplexers) does not require this restriction
- * since they are always exclusively performing filtering. */
-#define FILTER_RECURSE_BLACKLIST_COUNT 2
-static const OPType FILTER_RECURSE_BLACKLIST[] = {OPType_APPLY, OPType_MERGE};
-
 struct OpBase;
 struct ExecutionPlan;
 

@@ -93,6 +93,20 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 	ASSERT(plan != NULL);
 	ASSERT(filter->type == OPType_FILTER);
 
+	/* When placing filters, we should not recurse into certain operation's
+	 * subtrees that would cause logical errors.
+	 * The cases we currently need to be concerned with are:
+	 * Merge - the results which should only be filtered after the entity
+	 * is matched or created.
+	 *
+	 * Apply - which has an Optional child that should project results or NULL
+	 * before being filtered.
+	 *
+	 * The family of SemiApply ops (including the Apply Multiplexers)
+	 * does not require this restriction since they are always exclusively
+	 * performing filtering. */
+	OPType filter_recurse_blacklist[2] = {OPType_APPLY, OPType_MERGE};
+
 	OpBase *op = NULL; // Operation after which filter will be located.
 	FT_FilterNode *filter_tree = ((OpFilter *)filter)->filterTree;
 
@@ -103,8 +117,8 @@ void ExecutionPlan_RePositionFilterOp(ExecutionPlan *plan, OpBase *lower_bound,
 	if(references_count > 0) {
 		/* Scan execution plan, locate the earliest position where all
 		 * references been resolved. */
-		op = ExecutionPlan_LocateReferencesExcludingOps(lower_bound, upper_bound, FILTER_RECURSE_BLACKLIST,
-														FILTER_RECURSE_BLACKLIST_COUNT, references);
+		op = ExecutionPlan_LocateReferencesExcludingOps(lower_bound,
+				upper_bound, filter_recurse_blacklist, 2, references);
 		if(!op) {
 			// Something is wrong - could not find a matching op where all references are solved.
 			unsigned char **entities = raxKeys(references);

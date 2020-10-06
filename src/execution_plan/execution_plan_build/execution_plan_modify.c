@@ -193,7 +193,7 @@ OpBase *ExecutionPlan_LocateOp(OpBase *root, OPType type) {
 	return ExecutionPlan_LocateOpMatchingType(root, type_arr, 1);
 }
 
-static OpBase *_ExecutionPlan_LocateReferences(OpBase *root,
+OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root,
 		const OpBase *recurse_limit, const OPType *blacklisted_ops,
 		int nblacklisted_ops, rax *refs_to_resolve) {
 
@@ -214,7 +214,7 @@ static OpBase *_ExecutionPlan_LocateReferences(OpBase *root,
 	if(blacklisted == false) {
 		for(int i = 0; i < root->childCount && !all_refs_resolved; i++) {
 			// Visit each child and try to resolve references, storing a pointer to the child if successful.
-			OpBase *tmp_op = _ExecutionPlan_LocateReferences(root->children[i],
+			OpBase *tmp_op = ExecutionPlan_LocateReferencesExcludingOps(root->children[i],
 					recurse_limit, blacklisted_ops, nblacklisted_ops, refs_to_resolve);
 
 			if(tmp_op) dependency_count ++; // Count how many children resolved references.
@@ -239,17 +239,11 @@ static OpBase *_ExecutionPlan_LocateReferences(OpBase *root,
 	if(refs_resolved) resolving_op = root;
 	return resolving_op;
 }
+
 OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit,
 									   rax *refs_to_resolve) {
-	return _ExecutionPlan_LocateReferences(root, recurse_limit,
+	return ExecutionPlan_LocateReferencesExcludingOps(root, recurse_limit,
 			NULL, 0, refs_to_resolve);
-}
-
-
-OpBase *ExecutionPlan_LocateReferencesExcludingOps(OpBase *root, const OpBase *recurse_limit,
-												   const OPType *ops, int op_count, rax *refs_to_resolve) {
-	return _ExecutionPlan_LocateReferences(root, recurse_limit, ops, op_count,
-															 refs_to_resolve);
 }
 
 static void _ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *types, int type_count,

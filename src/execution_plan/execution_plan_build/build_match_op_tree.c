@@ -104,11 +104,12 @@ static void _ExecutionPlan_ProcessQueryGraph(ExecutionPlan *plan, QueryGraph *qg
 static void _buildOptionalMatchOps(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause) {
 	const char **arguments = NULL;
 	OpBase *optional = NewOptionalOp(plan);
+	rax *bound_vars = NULL;
 
 	// The root will be non-null unless the first clause is an OPTIONAL MATCH.
 	if(plan->root) {
 		// Collect the variables that are bound at this point.
-		rax *bound_vars = raxNew();
+		bound_vars = raxNew();
 		// Rather than cloning the record map, collect the bound variables along with their
 		// parser-generated constant strings.
 		ExecutionPlan_BoundVariables(plan->root, bound_vars);
@@ -131,7 +132,7 @@ static void _buildOptionalMatchOps(ExecutionPlan *plan, AST *ast, const cypher_a
 		/* Collect all variable names in the Apply sub-tree.
 		 * Since the Argument op holds the variables from the left-hand stream,
 		 * these can all be found in the match stream. */
-		rax *bound_vars = raxNew();
+		bound_vars = raxNew();
 		ExecutionPlan_BoundVariables(match_stream, bound_vars);
 		arguments = (const char **)raxValues(bound_vars);
 		raxFree(bound_vars);
@@ -148,7 +149,6 @@ static void _buildOptionalMatchOps(ExecutionPlan *plan, AST *ast, const cypher_a
 		ExecutionPlan_UpdateRoot(plan, optional);
 	}
 }
-
 
 void buildMatchOpTree(ExecutionPlan *plan, AST *ast, const cypher_astnode_t *clause) {
 	if(cypher_ast_match_is_optional(clause)) {
