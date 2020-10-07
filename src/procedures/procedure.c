@@ -62,13 +62,13 @@ ProcedureCtx *ProcCtxNew(const char *name,
 }
 
 ProcedureCtx *Proc_Get(const char *proc_name) {
-	if (!__procedures) return NULL;
+	if(!__procedures) return NULL;
 	size_t proc_name_len = strlen(proc_name);
 	char *proc_name_lower = rm_malloc(proc_name_len + 1);
 	str_tolower(proc_name, &proc_name_lower[0], &proc_name_len);
 	ProcGenerator gen = raxFind(__procedures, (unsigned char *) proc_name_lower, proc_name_len);
 	rm_free(proc_name_lower);
-	if (gen == raxNotFound) return NULL;
+	if(gen == raxNotFound) return NULL;
 	ProcedureCtx *ctx = gen(NULL, NULL);
 
 	// Set procedure state to not initialized.
@@ -80,27 +80,27 @@ ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args, const char 
 	ASSERT(proc != NULL);
 
 	// Procedure is expected to be in the `PROCEDURE_NOT_INIT` state.
-	if (proc->state != PROCEDURE_NOT_INIT) {
+	if(proc->state != PROCEDURE_NOT_INIT) {
 		proc->state = PROCEDURE_ERROR;
 		return PROCEDURE_ERR;
 	}
-	if (proc->argc != PROCEDURE_VARIABLE_ARG_COUNT) assert(proc->argc == array_len((SIValue *) args));
+	if(proc->argc != PROCEDURE_VARIABLE_ARG_COUNT) assert(proc->argc == array_len((SIValue *) args));
 
 	ProcedureResult res = proc->Invoke(proc, args, yield);
 	// Set state to initialized.
-	if (res == PROCEDURE_OK) proc->state = PROCEDURE_INIT;
+	if(res == PROCEDURE_OK) proc->state = PROCEDURE_INIT;
 	return res;
 }
 
 SIValue *Proc_Step(ProcedureCtx *proc) {
 	assert(proc);
 	// Validate procedure state, can only consumed if state is initialized.
-	if (proc->state != PROCEDURE_INIT) return NULL;
+	if(proc->state != PROCEDURE_INIT) return NULL;
 
 	SIValue *val = proc->Step(proc);
 	/* Set procedure state to depleted if NULL is returned.
 	* NOTE: we might have errored. */
-	if (val == NULL) proc->state = PROCEDURE_DEPLETED;
+	if(val == NULL) proc->state = PROCEDURE_DEPLETED;
 	return val;
 }
 
