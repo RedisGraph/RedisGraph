@@ -84,7 +84,7 @@ ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args, const char 
 		proc->state = PROCEDURE_ERROR;
 		return PROCEDURE_ERR;
 	}
-	if(proc->argc != PROCEDURE_VARIABLE_ARG_COUNT) assert(proc->argc == array_len((SIValue *) args));
+	if(proc->argc != PROCEDURE_VARIABLE_ARG_COUNT) assert(proc->argc == array_len((SIValue *)args));
 
 	ProcedureResult res = proc->Invoke(proc, args, yield);
 	// Set state to initialized.
@@ -99,7 +99,7 @@ SIValue *Proc_Step(ProcedureCtx *proc) {
 
 	SIValue *val = proc->Step(proc);
 	/* Set procedure state to depleted if NULL is returned.
-	* NOTE: we might have errored. */
+	 * NOTE: we might have errored. */
 	if(val == NULL) proc->state = PROCEDURE_DEPLETED;
 	return val;
 }
@@ -132,7 +132,8 @@ bool Procedure_ContainsOutput(const ProcedureCtx *proc, const char *output) {
 
 bool Proc_ReadOnly(const char *proc_name) {
 	assert(__procedures);
-	ProcGenerator gen = raxFind(__procedures, (unsigned char *) proc_name, strlen(proc_name));
+	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name,
+							 strlen(proc_name));
 	if(gen == raxNotFound) return false; // Invalid procedure specified, handled elsewhere.
 	/* TODO It would be preferable to be able to determine whether a procedure is read-only
 	 * without creating its entire context; this is wasteful. */
