@@ -189,8 +189,13 @@ package: redisgraph.so
 	@mkdir -p ../build
 	@ramp pack -m "`pwd`/../ramp_manifest.yml" -v -o "../build/redisgraph.{os}-{architecture}.latest.zip" "`pwd`/redisgraph.so"
 
+.PHONY: test-build
+test-build: redisgraph.so
+	@$(MAKE) -C ../tests test-build
+
+.PHONY: test
 test: redisgraph.so
-	# check valgrind flag is not empty
+	# check valgrind <flag is not empty
 ifneq ($(VALGRIND),)
 	# valgrind is requested, check that host's os is not Linux
 ifneq ($(OS),Linux)
@@ -201,6 +206,7 @@ endif
 endif
 	@$(MAKE) -C ../tests test
 
+.PHONY: memcheck
 memcheck: CFLAGS += -fno-omit-frame-pointer -g -ggdb -O0 -D MEMCHECK
 memcheck: SHOBJ_LDFLAGS += -u RediSearch_CleanupModule
 memcheck: redisgraph.so

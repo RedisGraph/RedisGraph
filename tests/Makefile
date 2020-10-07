@@ -1,7 +1,7 @@
 
 MAKEFLAGS += --no-builtin-rules
 
-.PHONY: test unit flow tck memcheck clean
+.PHONY: test build unit unit-build flow tck memcheck clean
 
 TEST_ARGS+=--clear-logs
 
@@ -24,6 +24,11 @@ endif
 MEMCHECK_ARGS = $(TEST_ARGS) --vg --vg-no-fail-on-errors --vg-suppressions=$(shell pwd)/../src/valgrind.supp
 
 test: unit flow tck
+
+test-build:	unit-build
+
+unit-build:
+	@$(MAKE) -C unit build
 
 unit:
 	### unit tests
