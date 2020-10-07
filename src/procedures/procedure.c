@@ -19,7 +19,8 @@ static void _procRegister(const char *procedure, ProcGenerator gen) {
 	char lower_proc_name[128];
 	size_t lower_proc_name_len = 128;
 	str_tolower(procedure, &lower_proc_name[0], &lower_proc_name_len);
-	raxInsert(__procedures, (unsigned char *) lower_proc_name, strlen(procedure), gen, NULL);
+	raxInsert(__procedures, (unsigned char *)lower_proc_name, strlen(procedure),
+		   gen, NULL);
 }
 
 // Register procedures.
@@ -40,39 +41,39 @@ void Proc_Register() {
 }
 
 ProcedureCtx *ProcCtxNew(const char *name,
-                         unsigned int argc,
-                         ProcedureOutput *output,
-                         ProcStep fStep,
-                         ProcInvoke fInvoke,
-                         ProcFree fFree,
-                         void *privateData,
-                         bool readOnly) {
+						 unsigned int argc,
+						 ProcedureOutput *output,
+						 ProcStep fStep,
+						 ProcInvoke fInvoke,
+						 ProcFree fFree,
+						 void *privateData,
+						 bool readOnly) {
 
-    ProcedureCtx *ctx = rm_malloc(sizeof(ProcedureCtx));
-    ctx->argc = argc;
-    ctx->name = name;
-    ctx->Step = fStep;
-    ctx->Free = fFree;
-    ctx->output = output;
-    ctx->Invoke = fInvoke;
-    ctx->privateData = privateData;
-    ctx->readOnly = readOnly;
-    return ctx;
+	ProcedureCtx *ctx = rm_malloc(sizeof(ProcedureCtx));
+	ctx->argc = argc;
+	ctx->name = name;
+	ctx->Step = fStep;
+	ctx->Free = fFree;
+	ctx->output = output;
+	ctx->Invoke = fInvoke;
+	ctx->privateData = privateData;
+	ctx->readOnly = readOnly;
+	return ctx;
 }
 
 ProcedureCtx *Proc_Get(const char *proc_name) {
-    if (!__procedures) return NULL;
-    size_t proc_name_len = strlen(proc_name);
-    char *proc_name_lower = rm_malloc(proc_name_len + 1);
-    str_tolower(proc_name, &proc_name_lower[0], &proc_name_len);
-    ProcGenerator gen = raxFind(__procedures, (unsigned char *) proc_name_lower, proc_name_len);
-    rm_free(proc_name_lower);
-    if (gen == raxNotFound) return NULL;
-    ProcedureCtx *ctx = gen(NULL, NULL);
+	if (!__procedures) return NULL;
+	size_t proc_name_len = strlen(proc_name);
+	char *proc_name_lower = rm_malloc(proc_name_len + 1);
+	str_tolower(proc_name, &proc_name_lower[0], &proc_name_len);
+	ProcGenerator gen = raxFind(__procedures, (unsigned char *) proc_name_lower, proc_name_len);
+	rm_free(proc_name_lower);
+	if (gen == raxNotFound) return NULL;
+	ProcedureCtx *ctx = gen(NULL, NULL);
 
-    // Set procedure state to not initialized.
-    ctx->state = PROCEDURE_NOT_INIT;
-    return ctx;
+	// Set procedure state to not initialized.
+	ctx->state = PROCEDURE_NOT_INIT;
+	return ctx;
 }
 
 ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args, const char **yield) {
@@ -80,10 +81,9 @@ ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args, const char 
 
     // Procedure is expected to be in the `PROCEDURE_NOT_INIT` state.
     if (proc->state != PROCEDURE_NOT_INIT) {
-        proc->state = PROCEDURE_ERROR;
-        return PROCEDURE_ERR;
+    	proc->state = PROCEDURE_ERROR;
+    	return PROCEDURE_ERR;
     }
-
     if (proc->argc != PROCEDURE_VARIABLE_ARG_COUNT) assert(proc->argc == array_len((SIValue *) args));
 
     ProcedureResult res = proc->Invoke(proc, args, yield);
@@ -93,11 +93,11 @@ ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args, const char 
 }
 
 SIValue *Proc_Step(ProcedureCtx *proc) {
-    assert(proc);
-    // Validate procedure state, can only consumed if state is initialized.
-    if (proc->state != PROCEDURE_INIT) return NULL;
+	assert(proc);
+	// Validate procedure state, can only consumed if state is initialized.
+	if (proc->state != PROCEDURE_INIT) return NULL;
 
-    SIValue *val = proc->Step(proc);
+	SIValue *val = proc->Step(proc);
     /* Set procedure state to depleted if NULL is returned.
      * NOTE: we might have errored. */
     if (val == NULL) proc->state = PROCEDURE_DEPLETED;
@@ -105,13 +105,13 @@ SIValue *Proc_Step(ProcedureCtx *proc) {
 }
 
 uint Procedure_Argc(const ProcedureCtx *proc) {
-    assert(proc);
-    return proc->argc;
+	assert(proc);
+	return proc->argc;
 }
 
 uint Procedure_OutputCount(const ProcedureCtx *proc) {
-    assert(proc);
-    return array_len(proc->output);
+	assert(proc);
+	return array_len(proc->output);
 }
 
 const char *Procedure_GetOutput(const ProcedureCtx *proc, uint output_idx) {
@@ -125,7 +125,7 @@ bool Procedure_ContainsOutput(const ProcedureCtx *proc, const char *output) {
     ASSERT(output != NULL);
     uint output_count = array_len(proc->output);
     for (uint i = 0; i < output_count; i++) {
-        if (strcmp(proc->output[i].name, output) == 0) return true;
+    	if (strcmp(proc->output[i].name, output) == 0) return true;
     }
     return false;
 }
