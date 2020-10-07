@@ -24,25 +24,25 @@ void Proc_Register() {
 	__procedures = raxNew();
 	char proc_name_lower[128] = {0};
 	short proc_name_lower_len = 128;
-    str_tolower("db.labels", &proc_name_lower[0], &proc_name_lower_len);
+	str_tolower("db.labels", &proc_name_lower[0], &proc_name_lower_len);
 	_procRegister(proc_name_lower, Proc_LabelsCtx);
-    str_tolower("db.propertyKeys", &proc_name_lower[0], &proc_name_lower_len);
-    _procRegister(proc_name_lower, Proc_PropKeysCtx);
-    str_tolower("db.relationshipTypes", &proc_name_lower[0], &proc_name_lower_len);
+	str_tolower("db.propertyKeys", &proc_name_lower[0], &proc_name_lower_len);
+	_procRegister(proc_name_lower, Proc_PropKeysCtx);
+	str_tolower("db.relationshipTypes", &proc_name_lower[0], &proc_name_lower_len);
 	_procRegister(proc_name_lower, Proc_RelationsCtx);
 
 	// Register graph algorithms.
-    str_tolower("algo.pageRank", &proc_name_lower[0], &proc_name_lower_len);
+	str_tolower("algo.pageRank", &proc_name_lower[0], &proc_name_lower_len);
 	_procRegister(proc_name_lower, Proc_PagerankCtx);
-    str_tolower("algo.BFS", &proc_name_lower[0], &proc_name_lower_len);
+	str_tolower("algo.BFS", &proc_name_lower[0], &proc_name_lower_len);
 	_procRegister(proc_name_lower, Proc_BFS_Ctx);
 
 	// Register FullText Search generator.
-    str_tolower("db.idx.fulltext.drop", &proc_name_lower[0], &proc_name_lower_len);
+	str_tolower("db.idx.fulltext.drop", &proc_name_lower[0], &proc_name_lower_len);
 	_procRegister(proc_name_lower, Proc_FulltextDropIdxGen);
-    str_tolower("db.idx.fulltext.queryNodes", &proc_name_lower[0], &proc_name_lower_len);
+	str_tolower("db.idx.fulltext.queryNodes", &proc_name_lower[0], &proc_name_lower_len);
 	_procRegister(proc_name_lower, Proc_FulltextQueryNodeGen);
-    str_tolower("db.idx.fulltext.createNodeIndex", &proc_name_lower[0], &proc_name_lower_len);
+	str_tolower("db.idx.fulltext.createNodeIndex", &proc_name_lower[0], &proc_name_lower_len);
 	_procRegister(proc_name_lower, Proc_FulltextCreateNodeIdxGen);
 }
 
@@ -71,7 +71,7 @@ ProcedureCtx *Proc_Get(const char *proc_name) {
 	if(!__procedures) return NULL;
 	short proc_name_len = strlen(proc_name);
 	char *proc_name_lower = rm_malloc(proc_name_len + 1);
-    str_tolower(proc_name, proc_name_lower, &proc_name_len);
+	str_tolower(proc_name, proc_name_lower, &proc_name_len);
 	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name_lower, proc_name_len);
 	rm_free(proc_name_lower);
 	if(gen == raxNotFound) return NULL;
