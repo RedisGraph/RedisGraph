@@ -9,20 +9,9 @@
 #include "../../util/arr.h"
 #include "../../util/rmalloc.h"
 #include "../../util/uuid.h"
-#include <ctype.h>
+#include "../../util/strutil.h"
 #include <assert.h>
 
-static inline void _toLower(const char *str, char *lower, size_t lower_len) {
-	size_t i = 0;
-	for(; i < lower_len; i++) lower[i] = tolower(str[i]);
-	lower[i] = 0;
-}
-
-static inline void _toUpper(const char *str, char *upper, size_t upper_len) {
-	size_t i = 0;
-	for(; i < upper_len; i++) upper[i] = toupper(str[i]);
-	upper[i] = 0;
-}
 
 /* returns a string containing the specified number of leftmost characters of the original string. */
 SIValue AR_LEFT(SIValue *argv, int argc) {
@@ -146,7 +135,7 @@ SIValue AR_TOLOWER(SIValue *argv, int argc) {
 	char *original = argv[0].stringval;
 	short lower_len = strlen(original);
 	char *lower = rm_malloc((lower_len + 1) * sizeof(char));
-	_toLower(original, lower, lower_len);
+    str_tolower(original, lower, &lower_len);
 	return SI_TransferStringVal(lower);
 }
 
@@ -154,9 +143,9 @@ SIValue AR_TOLOWER(SIValue *argv, int argc) {
 SIValue AR_TOUPPER(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *original = argv[0].stringval;
-	size_t upper_len = strlen(original);
+	short upper_len = strlen(original);
 	char *upper = rm_malloc((upper_len + 1) * sizeof(char));
-	_toUpper(original, upper, upper_len);
+    str_toupper(original, upper, &upper_len);
 	return SI_TransferStringVal(upper);
 }
 

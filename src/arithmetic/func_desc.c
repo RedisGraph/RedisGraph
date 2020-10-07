@@ -7,25 +7,13 @@
 #include "func_desc.h"
 #include "../RG.h"
 #include "../util/rmalloc.h"
+#include "../util/strutil.h"
 #include "../../deps/rax/rax.h"
 #include <ctype.h>
 #include <assert.h>
 
 /* Arithmetic function repository. */
 rax *__aeRegisteredFuncs = NULL;
-
-static void inline _toLower(const char *str, char *lower, short *lower_len) {
-	size_t str_len = strlen(str);
-	/* Avoid overflow. */
-	assert(*lower_len > str_len);
-
-	/* Update lower len*/
-	*lower_len = str_len;
-
-	int i = 0;
-	for(; i < str_len; i++) lower[i] = tolower(str[i]);
-	lower[i] = 0;
-}
 
 AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint min_argc, uint max_argc,
 							SIType *types, bool reducible) {
@@ -46,7 +34,7 @@ AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint min_argc, uint 
 void AR_RegFunc(AR_FuncDesc *func) {
 	char lower_func_name[32] = {0};
 	short lower_func_name_len = 32;
-	_toLower(func->name, &lower_func_name[0], &lower_func_name_len);
+    str_tolower(func->name, &lower_func_name[0], &lower_func_name_len);
 	assert(raxInsert(__aeRegisteredFuncs, (unsigned char *)lower_func_name, lower_func_name_len, func,
 					 NULL) == 1);
 }
@@ -55,7 +43,7 @@ void AR_RegFunc(AR_FuncDesc *func) {
 AR_FuncDesc *AR_GetFunc(const char *func_name) {
 	char lower_func_name[32] = {0};
 	short lower_func_name_len = 32;
-	_toLower(func_name, &lower_func_name[0], &lower_func_name_len);
+    str_tolower(func_name, &lower_func_name[0], &lower_func_name_len);
 	void *f = raxFind(__aeRegisteredFuncs, (unsigned char *)lower_func_name, lower_func_name_len);
 
 	if(f != raxNotFound) return f;
