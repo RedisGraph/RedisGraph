@@ -9,6 +9,8 @@ This endpoint could be used to write bespoke import tools for other data formats
 ## Caveats
 The main complicating factor in writing bulk importers is that Redis has a maximum string length of 512 megabytes and a default maximum query size of 1 gigabyte. As such, large imports must be written incrementally.
 
+The RedisGraph team will do their best to ensure that future updates to this logic do not break current implementations, but cannot guarantee it.
+
 ## Query Format
 
 ```
