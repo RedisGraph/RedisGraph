@@ -1,14 +1,15 @@
-//
-// Created by alon on 07/10/2020.
-//
+/*
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Redis Labs Source Available License Agreement
+*/
 
-#ifndef REDISGRAPH_STRUTIL_H
-#define REDISGRAPH_STRUTIL_H
+#pragma once
 
-void str_tolower(const char *str, char *lower, short *lower_len);
+#include <glob.h>
 
-void str_toupper(const char *str, char *lower, short *lower_len);
+//convert str to a lower case string, save it in lower and return lower
+void str_tolower(const char *str, char *lower, size_t *lower_len);
 
-
-
-#endif //REDISGRAPH_STRUTIL_H
+//convert str to a n upper case string, save it in upper and return upper
+void str_toupper(const char *str, char *upper, size_t *upper_len);

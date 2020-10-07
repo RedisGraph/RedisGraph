@@ -1,18 +1,20 @@
-//
-// Created by alon on 07/10/2020.
-//
+/*
+* Copyright 2018-2020 Redis Labs Ltd. and Contributors
+*
+* This file is available under the Redis Labs Source Available License Agreement
+*/
+
 #include "strutil.h"
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
 
-
-void str_tolower(const char *str, char *lower, short *lower_len) {
+void str_tolower(const char *str, char *lower, size_t *lower_len) {
     size_t str_len = strlen(str);
-    /* Avoid overflow. */
-    assert(*lower_len > str_len);
+    //Avoid overflow
+    assert(*lower_len >= str_len);
 
-    /* Update lower len*/
+    //Update lower len
     *lower_len = str_len;
 
     size_t i = 0;
@@ -20,13 +22,14 @@ void str_tolower(const char *str, char *lower, short *lower_len) {
     lower[i] = 0;
 }
 
-void str_toupper(const char *str, char *upper, short *upper_len) {
+void str_toupper(const char *str, char *upper, size_t *upper_len) {
     size_t str_len = strlen(str);
-    /* Avoid overflow. */
-    assert(*upper_len > str_len);
+    //Avoid overflow
+    assert(*upper_len >= str_len);
 
-    /* Update lower len*/
+    //Update lower len
     *upper_len = str_len;
+
     size_t i = 0;
     for(; i < str_len; i++) upper[i] = toupper(str[i]);
     upper[i] = 0;
