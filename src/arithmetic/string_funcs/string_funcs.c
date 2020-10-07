@@ -135,7 +135,7 @@ SIValue AR_TOLOWER(SIValue *argv, int argc) {
 	char *original = argv[0].stringval;
 	short lower_len = strlen(original);
 	char *lower = rm_malloc((lower_len + 1) * sizeof(char));
-    str_tolower(original, lower, &lower_len);
+	str_tolower(original, lower, &lower_len);
 	return SI_TransferStringVal(lower);
 }
 
@@ -145,7 +145,7 @@ SIValue AR_TOUPPER(SIValue *argv, int argc) {
 	char *original = argv[0].stringval;
 	short upper_len = strlen(original);
 	char *upper = rm_malloc((upper_len + 1) * sizeof(char));
-    str_toupper(original, upper, &upper_len);
+	str_toupper(original, upper, &upper_len);
 	return SI_TransferStringVal(upper);
 }
 

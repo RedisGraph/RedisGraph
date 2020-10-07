@@ -34,7 +34,7 @@ AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint min_argc, uint 
 void AR_RegFunc(AR_FuncDesc *func) {
 	char lower_func_name[32] = {0};
 	short lower_func_name_len = 32;
-    str_tolower(func->name, &lower_func_name[0], &lower_func_name_len);
+	str_tolower(func->name, &lower_func_name[0], &lower_func_name_len);
 	assert(raxInsert(__aeRegisteredFuncs, (unsigned char *)lower_func_name, lower_func_name_len, func,
 					 NULL) == 1);
 }
@@ -43,7 +43,7 @@ void AR_RegFunc(AR_FuncDesc *func) {
 AR_FuncDesc *AR_GetFunc(const char *func_name) {
 	char lower_func_name[32] = {0};
 	short lower_func_name_len = 32;
-    str_tolower(func_name, &lower_func_name[0], &lower_func_name_len);
+	str_tolower(func_name, &lower_func_name[0], &lower_func_name_len);
 	void *f = raxFind(__aeRegisteredFuncs, (unsigned char *)lower_func_name, lower_func_name_len);
 
 	if(f != raxNotFound) return f;
