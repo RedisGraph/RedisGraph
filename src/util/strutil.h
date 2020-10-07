@@ -8,8 +8,8 @@
 
 #include <glob.h>
 
-//convert str to a lower case string, save it in lower and return lower
+//convert str to a lower case string and save it in lower
 void str_tolower(const char *str, char *lower, size_t *lower_len);
 
-//convert str to a n upper case string, save it in upper and return upper
+//convert str to a n upper case string and save it in upper
 void str_toupper(const char *str, char *upper, size_t *upper_len);

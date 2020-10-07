@@ -133,7 +133,7 @@ SIValue AR_SUBSTRING(SIValue *argv, int argc) {
 SIValue AR_TOLOWER(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *original = argv[0].stringval;
-    size_t lower_len = strlen(original);
+	size_t lower_len = strlen(original);
 	char *lower = rm_malloc((lower_len + 1) * sizeof(char));
 	str_tolower(original, lower, &lower_len);
 	return SI_TransferStringVal(lower);
@@ -143,7 +143,7 @@ SIValue AR_TOLOWER(SIValue *argv, int argc) {
 SIValue AR_TOUPPER(SIValue *argv, int argc) {
 	if(SIValue_IsNull(argv[0])) return SI_NullVal();
 	char *original = argv[0].stringval;
-    size_t upper_len = strlen(original);
+	size_t upper_len = strlen(original);
 	char *upper = rm_malloc((upper_len + 1) * sizeof(char));
 	str_toupper(original, upper, &upper_len);
 	return SI_TransferStringVal(upper);
