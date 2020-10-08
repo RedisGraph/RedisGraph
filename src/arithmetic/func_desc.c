@@ -32,7 +32,7 @@ AR_FuncDesc *AR_FuncDescNew(const char *name, AR_Func func, uint min_argc, uint 
 
 /* Register an arithmetic function. */
 void AR_RegFunc(AR_FuncDesc *func) {
-	char lower_func_name[32] = {0};
+	char lower_func_name[32];
 	size_t lower_func_name_len = 32;
 	str_tolower(func->name, lower_func_name, &lower_func_name_len);
 	assert(raxInsert(__aeRegisteredFuncs, (unsigned char *)lower_func_name, lower_func_name_len, func,
@@ -41,7 +41,7 @@ void AR_RegFunc(AR_FuncDesc *func) {
 
 /* Get arithmetic function. */
 AR_FuncDesc *AR_GetFunc(const char *func_name) {
-	char lower_func_name[32] = {0};
+	char lower_func_name[32];
 	size_t lower_func_name_len = 32;
 	str_tolower(func_name, lower_func_name, &lower_func_name_len);
 	void *f = raxFind(__aeRegisteredFuncs, (unsigned char *)lower_func_name, lower_func_name_len);

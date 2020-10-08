@@ -63,8 +63,8 @@ ProcedureCtx *ProcCtxNew(const char *name,
 
 ProcedureCtx *Proc_Get(const char *proc_name) {
 	if(!__procedures) return NULL;
-	size_t proc_name_len = strlen(proc_name);
-	char proc_name_lowercase [proc_name_len + 1];
+	size_t proc_name_len = strlen(proc_name) + 1;
+	char proc_name_lowercase [proc_name_len];
 	str_tolower(proc_name, proc_name_lowercase, &proc_name_len);
 	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name_lowercase,
 	  			proc_name_len);

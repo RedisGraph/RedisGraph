@@ -21,7 +21,7 @@ static void __agg_initRegistry() {
 
 void Agg_RegisterFunc(const char *name, AggFuncInit f) {
 	__agg_initRegistry();
-	char lower_func_name[32] = {0};
+	char lower_func_name[32];
 	size_t lower_func_name_len = 32;
 	str_tolower(name, lower_func_name, &lower_func_name_len);
 	raxInsert(__aggRegisteredFuncs, (unsigned char *)lower_func_name, lower_func_name_len, f, NULL);
@@ -30,7 +30,7 @@ void Agg_RegisterFunc(const char *name, AggFuncInit f) {
 bool Agg_FuncExists(const char *name) {
 	if(!__aggRegisteredFuncs) return false;
 
-	char lower_func_name[32] = {0};
+	char lower_func_name[32];
 	size_t lower_func_name_len = 32;
 	str_tolower(name, lower_func_name, &lower_func_name_len);
 	return raxFind(__aggRegisteredFuncs, (unsigned char *)lower_func_name,
@@ -41,7 +41,7 @@ void Agg_GetFunc(const char *name, bool distinct, AggCtx **ctx) {
 	*ctx = NULL;
 	if(!__aggRegisteredFuncs) return;
 
-	char lower_func_name[32] = {0};
+	char lower_func_name[32];
 	size_t lower_func_name_len = 32;
 	str_tolower(name, lower_func_name, &lower_func_name_len);
 	AggFuncInit f = raxFind(__aggRegisteredFuncs, (unsigned char *)lower_func_name,
