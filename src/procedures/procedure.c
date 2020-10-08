@@ -16,11 +16,11 @@
 static rax *__procedures = NULL;
 
 static void _procRegister(const char *procedure, ProcGenerator gen) {
-	char lower_proc_name[128];
-	size_t lower_proc_name_len = 128;
-	str_tolower(procedure, &lower_proc_name[0], &lower_proc_name_len);
-	raxInsert(__procedures, (unsigned char *)lower_proc_name, strlen(procedure),
-		   gen, NULL);
+	char lowercase_proc_name[128];
+	size_t lowercase_proc_name_len = 128;
+	str_tolower(procedure, lowercase_proc_name, &lowercase_proc_name_len);
+	raxInsert(__procedures, (unsigned char *)lowercase_proc_name,
+		   lowercase_proc_name_len, gen, NULL);
 }
 
 // Register procedures.
@@ -64,10 +64,10 @@ ProcedureCtx *ProcCtxNew(const char *name,
 ProcedureCtx *Proc_Get(const char *proc_name) {
 	if(!__procedures) return NULL;
 	size_t proc_name_len = strlen(proc_name);
-	char *proc_name_lower = rm_malloc(proc_name_len + 1);
-	str_tolower(proc_name, &proc_name_lower[0], &proc_name_len);
-	ProcGenerator gen = raxFind(__procedures, (unsigned char *) proc_name_lower, proc_name_len);
-	rm_free(proc_name_lower);
+	char proc_name_lowercase [proc_name_len + 1];
+	str_tolower(proc_name, proc_name_lowercase, &proc_name_len);
+	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name_lowercase,
+							 proc_name_len);
 	if(gen == raxNotFound) return NULL;
 	ProcedureCtx *ctx = gen(NULL, NULL);
 

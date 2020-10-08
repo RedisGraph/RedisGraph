@@ -4,7 +4,6 @@
 * This file is available under the Redis Labs Source Available License Agreement
 */
 
-#include "strutil.h"
 #include <string.h>
 #include <ctype.h>
 #include <assert.h>
