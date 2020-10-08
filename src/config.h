@@ -15,6 +15,7 @@ typedef struct {
 	bool async_delete;                 // If true, graph deletion is done asynchronously.
 	uint64_t cache_size;               // The cache size for each thread, per graph.
 	int omp_thread_count;              // Maximum number of OpenMP threads.
+	bool node_creation_buffer;         // If true, size matrices to accommodate future node creations.
 	uint64_t vkey_entity_count;        // The limit of number of entities encoded at once for each RDB key.
 	bool maintain_transposed_matrices; // If true, maintain a transposed version of each relationship matrix.
 } RG_Config;
@@ -40,3 +41,7 @@ uint64_t Config_GetCacheSize(void);
 
 // Return true if graph deletion is done asynchronously.
 bool Config_GetAsyncDelete(void);
+
+// Return true if keeping overhead to accommodate future node creations.
+bool Config_GetNodeCreationBuffer(void);
+

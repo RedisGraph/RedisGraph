@@ -14,6 +14,8 @@
 #define CACHE_SIZE "CACHE_SIZE"  // Config param, the size of each thread cache size, per graph.
 #define THREAD_COUNT "THREAD_COUNT" // Config param, number of threads in thread pool
 #define OMP_THREAD_COUNT "OMP_THREAD_COUNT" // Config param, max number of OpenMP threads
+#define PRIORITIZE_MEMORY "PRIORITIZE_MEMORY" // Config param, set all configs that reduce memory overhead
+#define NODE_CREATION_BUFFER "NODE_CREATION_BUFFER" // Config param, true if we save space for future nodes
 #define VKEY_MAX_ENTITY_COUNT "VKEY_MAX_ENTITY_COUNT" // Config param, max number of entities in each virtual key
 #define MAINTAIN_TRANSPOSED_MATRICES "MAINTAIN_TRANSPOSED_MATRICES" // Whether the module should maintain transposed relationship matrices
 
@@ -88,23 +90,18 @@ static int _Config_SetVirtualKeyEntitiesThreshold(RedisModuleCtx *ctx,
 		return REDISMODULE_ERR;
 	}
 
-	// Log the new entity threshold.
-	RedisModule_Log(ctx, "notice", "Max number of entities per graph meta key set to %lld.",
-					entity_count);
-
 	// Update the entity count in the configuration.
 	config.vkey_entity_count = entity_count;
 
 	return REDISMODULE_OK;
 }
+
 static int _Config_BuildTransposedMatrices(RedisModuleCtx *ctx, RedisModuleString *build_str) {
 	const char *should_build = RedisModule_StringPtrLen(build_str, NULL);
 	if(!strcasecmp(should_build, "yes")) {
 		config.maintain_transposed_matrices = true;
-		RedisModule_Log(ctx, "notice", "Maintaining transposed copies of relationship matrices.");
 	} else if(!strcasecmp(should_build, "no")) {
 		config.maintain_transposed_matrices = false;
-		RedisModule_Log(ctx, "notice", "Not maintaining transposed copies of relationship matrices.");
 	} else {
 		// Exit with error if argument was not "yes" or "no".
 		RedisModule_Log(ctx, "warning",
@@ -127,13 +124,41 @@ static int _Config_SetCacheSize(RedisModuleCtx *ctx, RedisModuleString *cache_si
 		return REDISMODULE_ERR;
 	}
 
-	// Log the cache size.
-	RedisModule_Log(ctx, "notice", "Cache size is set to %lld.",
-					cache_size);
-
 	// Update the cache size in the configuration.
 	config.cache_size = cache_size;
 
+	return REDISMODULE_OK;
+}
+
+static int _Config_MaintainNodeCreationBuffer(RedisModuleCtx *ctx, RedisModuleString *buffer_str) {
+	const char *maintain_node_buffer = RedisModule_StringPtrLen(buffer_str, NULL);
+	if(!strcasecmp(maintain_node_buffer, "yes")) {
+		config.maintain_transposed_matrices = true;
+	} else if(!strcasecmp(maintain_node_buffer, "no")) {
+		config.maintain_transposed_matrices = false;
+	} else {
+		// Exit with error if argument was not "yes" or "no".
+		RedisModule_Log(ctx, "warning",
+						"Invalid argument '%s' for node_creation_buffer, expected 'yes' or 'no'", maintain_node_buffer);
+		return REDISMODULE_ERR;
+	}
+	return REDISMODULE_OK;
+}
+
+static int _Config_SetPrioritizeMemory(RedisModuleCtx *ctx, RedisModuleString *buffer_str) {
+	const char *prioritize_memory = RedisModule_StringPtrLen(buffer_str, NULL);
+	if(!strcasecmp(prioritize_memory, "yes")) {
+		config.maintain_transposed_matrices = false;
+		config.node_creation_buffer = false;
+	} else if(!strcasecmp(prioritize_memory, "no")) {
+		config.maintain_transposed_matrices = true;
+		config.node_creation_buffer = true;
+	} else {
+		// Exit with error if argument was not "yes" or "no".
+		RedisModule_Log(ctx, "warning",
+						"Invalid argument '%s' for prioritize_memory, expected 'yes' or 'no'", prioritize_memory);
+		return REDISMODULE_ERR;
+	}
 	return REDISMODULE_OK;
 }
 
@@ -164,9 +189,30 @@ static void _Config_SetToDefaults(RedisModuleCtx *ctx) {
 		config.async_delete = true;
 		RedisModule_Log(ctx, "notice", "Graph deletion will be done asynchronously.");
 	#endif
-	// Always build transposed matrices by default.
-	config.maintain_transposed_matrices = true;
+	config.node_creation_buffer = true;
 	config.cache_size = CACHE_SIZE_DEFAULT;
+	config.maintain_transposed_matrices = true;
+}
+
+static void _Config_LogSettings(RedisModuleCtx *ctx) {
+	// Log the new entity threshold.
+	RedisModule_Log(ctx, "notice", "Max number of entities per graph meta key set to %lld.",
+					config.vkey_entity_count);
+
+	if(config.maintain_transposed_matrices) {
+		RedisModule_Log(ctx, "notice", "Maintaining transposed copies of relationship matrices.");
+	} else {
+		RedisModule_Log(ctx, "notice", "Not maintaining transposed copies of relationship matrices.");
+	}
+
+	if(config.node_creation_buffer) {
+		RedisModule_Log(ctx, "notice", "Maintaining node creation buffer");
+	} else {
+		RedisModule_Log(ctx, "notice", "Not maintaining node creation buffer");
+	}
+
+	// Log the cache size.
+	RedisModule_Log(ctx, "notice", "Cache size is set to %lld.", config.cache_size);
 }
 
 int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
@@ -200,6 +246,10 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 			res = _Config_BuildTransposedMatrices(ctx, val);
 		} else if(!(strcasecmp(param, CACHE_SIZE))) {
 			res = _Config_SetCacheSize(ctx, val);
+		} else if(!(strcasecmp(param, NODE_CREATION_BUFFER))) {
+			res = _Config_MaintainNodeCreationBuffer(ctx, val);
+		} else if(!(strcasecmp(param, PRIORITIZE_MEMORY))) {
+			res = _Config_SetPrioritizeMemory(ctx, val);
 		} else {
 			RedisModule_Log(ctx, "warning", "Encountered unknown module argument '%s'", param);
 			return REDISMODULE_ERR;
@@ -209,6 +259,7 @@ int Config_Init(RedisModuleCtx *ctx, RedisModuleString **argv, int argc) {
 		if(res != REDISMODULE_OK) return res;
 	}
 
+	_Config_LogSettings(ctx);
 	return res;
 }
 
@@ -235,3 +286,8 @@ uint64_t Config_GetCacheSize() {
 bool Config_GetAsyncDelete(void) {
 	return config.async_delete;
 }
+
+bool Config_GetNodeCreationBuffer() {
+	return config.node_creation_buffer;
+}
+

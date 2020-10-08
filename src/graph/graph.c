@@ -174,6 +174,12 @@ size_t _Graph_EdgeCap(const Graph *g) {
 	return g->edges->itemCap;
 }
 
+static inline void _Graph_UpdateMatrixDimensions(Graph *g, size_t node_count) {
+	bool build_with_overhead = Config_GetNodeCreationBuffer();
+	if(build_with_overhead) node_count += node_count * 0.001;
+	if(node_count > g->matrix_dims) g->matrix_dims = node_count;
+}
+
 // Locates edges connecting src to destination.
 void _Graph_GetEdgesConnectingNodes(const Graph *g, NodeID src, NodeID dest, int r, Edge **edges) {
 	assert(g && src < Graph_RequiredMatrixDim(g) && dest < Graph_RequiredMatrixDim(g) &&
@@ -241,11 +247,15 @@ void _MatrixSynchronize(const Graph *g, RG_Matrix rg_matrix) {
 	GrB_Matrix_ncols(&n_cols, m);
 	GrB_Index dims = Graph_RequiredMatrixDim(g);
 
+	bool allow_empty_space = Config_GetNodeCreationBuffer();
+	/* The matrix must be resized if its dimensions are smaller than the required
+	 * or if we don't allow empty space and the matrix dimensions do not match the required precisely. */
+	bool require_resize = ((n_rows < dims || n_cols < dims) ||
+						   (!allow_empty_space && (n_rows != dims || n_cols != dims)));
+
 	// If the graph belongs to one thread, we don't need to lock the mutex.
 	if(g->_writelocked) {
-		if((n_rows != dims) || (n_cols != dims)) {
-			assert(GxB_Matrix_resize(m, dims, dims) == GrB_SUCCESS);
-		}
+		if(require_resize) assert(GxB_Matrix_resize(m, dims, dims) == GrB_SUCCESS);
 
 		// Writer under write lock, no need to flush pending changes.
 		return;
@@ -258,14 +268,15 @@ void _MatrixSynchronize(const Graph *g, RG_Matrix rg_matrix) {
 
 	// If the matrix has pending operations or requires
 	// a resize, enter critical section.
-	if(pending || (n_rows != dims) || (n_cols != dims)) {
+	if(pending || require_resize) {
 		// Double-check if resize is necessary.
 		GrB_Matrix_nrows(&n_rows, m);
 		GrB_Matrix_ncols(&n_cols, m);
 		dims = Graph_RequiredMatrixDim(g);
-		if((n_rows != dims) || (n_cols != dims)) {
-			assert(GxB_Matrix_resize(m, dims, dims) == GrB_SUCCESS);
-		}
+		require_resize = ((n_rows < dims || n_cols < dims) ||
+						  (!allow_empty_space && (n_rows != dims || n_cols != dims)));
+		if(require_resize) assert(GxB_Matrix_resize(m, dims, dims) == GrB_SUCCESS);
+
 		// Flush changes to matrix.
 		_Graph_ApplyPending(m);
 	}
@@ -280,7 +291,7 @@ void _MatrixResizeToCapacity(const Graph *g, RG_Matrix matrix) {
 	GrB_Index ncols;
 	GrB_Matrix_ncols(&ncols, m);
 	GrB_Matrix_nrows(&nrows, m);
-	GrB_Index cap = _Graph_NodeCap(g);
+	GrB_Index cap = Graph_RequiredMatrixDim(g);
 
 	// This policy should only be used in a thread-safe context, so no locking is required.
 	if(ncols != cap || nrows != cap) {
@@ -353,6 +364,7 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 	// If we're maintaining transposed relation matrices, allocate a new array, otherwise NULL-set the pointer.
 	g->t_relations = Config_MaintainTranspose() ?
 					 array_new(RG_Matrix, GRAPH_DEFAULT_RELATION_TYPE_CAP) : NULL;
+	g->matrix_dims = node_cap;
 
 	// Initialize a read-write lock scoped to the individual graph
 	assert(pthread_rwlock_init(&g->_rwlock, NULL) == 0);
@@ -376,10 +388,8 @@ Graph *Graph_New(size_t node_cap, size_t edge_cap) {
 
 // All graph matrices are required to be squared NXN
 // where N is Graph_RequiredMatrixDim.
-size_t Graph_RequiredMatrixDim(const Graph *g) {
-	// Matrix dimensions should be at least:
-	// Number of nodes + number of deleted nodes.
-	return g->nodes->itemCount + array_len(g->nodes->deletedIdx);
+inline size_t Graph_RequiredMatrixDim(const Graph *g) {
+	return g->matrix_dims;
 }
 
 size_t Graph_NodeCount(const Graph *g) {
@@ -390,6 +400,10 @@ size_t Graph_NodeCount(const Graph *g) {
 uint Graph_DeletedNodeCount(const Graph *g) {
 	assert(g);
 	return DataBlock_DeletedItemsCount(g->nodes);
+}
+
+size_t Graph_UncompactedNodeCount(const Graph *g) {
+	return Graph_NodeCount(g) + Graph_DeletedNodeCount(g);
 }
 
 size_t Graph_LabeledNodeCount(const Graph *g, int label) {
@@ -420,6 +434,9 @@ int Graph_LabelTypeCount(const Graph *g) {
 void Graph_AllocateNodes(Graph *g, size_t n) {
 	assert(g);
 	DataBlock_Accommodate(g->nodes, n);
+	// Updated the required matrix size if this creation will trigger a resize.
+	size_t new_count = Graph_RequiredMatrixDim(g) + n;
+	if(new_count > Graph_RequiredMatrixDim(g)) _Graph_UpdateMatrixDimensions(g, new_count);
 }
 
 void Graph_AllocateEdges(Graph *g, size_t n) {
