@@ -319,3 +319,12 @@ class testProcedures(FlowTestsBase):
             # This should not cause an error
             self.env.assertFalse(1)
             pass
+
+    def test_procedure_get_all_procedures(self):
+        actual_resultset = redis_graph.call_procedure("dbms.procedures").result_set
+
+        # The following two procedure are a part of the expected results
+        expected_result = ["db.labels", "READ"]
+        self.env.assertContains(expected_result, actual_resultset)
+        expected_result = ["db.idx.fulltext.createNodeIndex", "WRITE"]
+        self.env.assertContains(expected_result, actual_resultset)

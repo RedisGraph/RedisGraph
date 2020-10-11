@@ -12,4 +12,4 @@
 #include "proc_fulltext_query.h"
 #include "proc_fulltext_drop_index.h"
 #include "proc_fulltext_create_index.h"
-
+#include "proc_procedures.h"

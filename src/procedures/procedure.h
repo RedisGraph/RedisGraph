@@ -47,3 +47,12 @@ bool Proc_ReadOnly(const char *proc_name);
 
 // Free procedure context.
 void Proc_Free(ProcedureCtx *proc);
+
+// Returns the rax that contains all the procedures
+rax *Proc_Get_All();
+
+// Returns true if the procedure is read-only
+bool Procedure_IsReadOnly(const ProcedureCtx *proc);
+
+//Returns the procedure's name
+const char *Procedure_GetName(const ProcedureCtx *proc);

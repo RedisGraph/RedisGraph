@@ -29,6 +29,7 @@ void Proc_Register() {
 	_procRegister("db.labels", Proc_LabelsCtx);
 	_procRegister("db.propertyKeys", Proc_PropKeysCtx);
 	_procRegister("db.relationshipTypes", Proc_RelationsCtx);
+	_procRegister("dbms.procedures", Proc_ProceduresCtx);
 
 	// Register graph algorithms.
 	_procRegister("algo.pageRank", Proc_PagerankCtx);
@@ -69,11 +70,15 @@ ProcedureCtx *Proc_Get(const char *proc_name) {
 	ProcGenerator gen = raxFind(__procedures, (unsigned char *)proc_name_lowercase,
 	  			proc_name_len);
 	if(gen == raxNotFound) return NULL;
-	ProcedureCtx *ctx = gen(NULL, NULL);
+	ProcedureCtx *ctx = gen();
 
 	// Set procedure state to not initialized.
 	ctx->state = PROCEDURE_NOT_INIT;
 	return ctx;
+}
+
+rax *Proc_Get_All() {
+	return __procedures;
 }
 
 ProcedureResult Proc_Invoke(ProcedureCtx *proc, const SIValue *args, const char **yield) {
@@ -137,10 +142,20 @@ bool Proc_ReadOnly(const char *proc_name) {
 	if(gen == raxNotFound) return false; // Invalid procedure specified, handled elsewhere.
 	/* TODO It would be preferable to be able to determine whether a procedure is read-only
 	 * without creating its entire context; this is wasteful. */
-	ProcedureCtx *ctx = gen(NULL, NULL);
+	ProcedureCtx *ctx = gen();
 	bool read_only = ctx->readOnly;
 	Proc_Free(ctx);
 	return read_only;
+}
+
+const char *Procedure_GetName(const ProcedureCtx *proc) {
+	assert(proc);
+	return proc->name;
+}
+
+bool Procedure_IsReadOnly(const ProcedureCtx *proc) {
+	assert(proc);
+	return proc->readOnly;
 }
 
 void Proc_Free(ProcedureCtx *proc) {
