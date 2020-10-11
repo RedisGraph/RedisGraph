@@ -70,9 +70,14 @@ inline void ExecutionPlan_AddOp(OpBase *parent, OpBase *newOp) {
 
 // Introduce the new operation B between A and A's parent op.
 void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
+	// B belongs to A's plan. 
+	ExecutionPlan *plan = (ExecutionPlan*)a->plan;
+	b->plan = plan;
+
 	if(a->parent == NULL) {
-		/* A is the root operation. */
+		// A is the root operation.
 		_OpBase_AddChild(b, a);
+		plan->root = b;
 		return;
 	}
 
@@ -86,14 +91,14 @@ void ExecutionPlan_PushBelow(OpBase *a, OpBase *b) {
 void ExecutionPlan_NewRoot(OpBase *old_root, OpBase *new_root) {
 	/* The new root should have no parent, but may have children if we've constructed
 	 * a chain of traversals/scans. */
-	assert(!old_root->parent && !new_root->parent);
+	ASSERT(!old_root->parent && !new_root->parent);
 
 	/* Find the deepest child of the new root operation.
 	 * Currently, we can only follow the first child, since we don't call this function when
 	 * introducing Cartesian Products (the only multiple-stream operation at this stage.)
 	 * This may be inadequate later. */
 	OpBase *tail = new_root;
-	assert(tail->childCount <= 1);
+	ASSERT(tail->childCount <= 1);
 	while(tail->childCount > 0) tail = tail->children[0];
 
 	// Append the old root to the tail of the new root's chain.
@@ -244,6 +249,29 @@ OpBase *ExecutionPlan_LocateReferences(OpBase *root, const OpBase *recurse_limit
 									   rax *refs_to_resolve) {
 	return ExecutionPlan_LocateReferencesExcludingOps(root, recurse_limit,
 			NULL, 0, refs_to_resolve);
+}
+
+void _ExecutionPlan_LocateTaps(OpBase *root, OpBase ***taps) {
+	if(root == NULL) return;
+
+	if(root->childCount == 0) {
+		// Op Argument isn't considered a tap.
+		if(root->type != OPType_ARGUMENT) {
+			*taps = array_append(*taps, root);
+		}
+	}
+
+	// Recursively visit children.
+	for(int i = 0; i < root->childCount; i++) {
+		_ExecutionPlan_LocateTaps(root->children[i], taps);
+	}
+}
+
+OpBase **ExecutionPlan_LocateTaps(const ExecutionPlan *plan) {
+	ASSERT(plan != NULL);
+	OpBase **taps = array_new(OpBase*, 1);
+	_ExecutionPlan_LocateTaps(plan->root, &taps);
+	return taps;
 }
 
 static void _ExecutionPlan_CollectOpsMatchingType(OpBase *root, const OPType *types, int type_count,

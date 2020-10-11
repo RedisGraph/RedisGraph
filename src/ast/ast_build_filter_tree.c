@@ -2,14 +2,14 @@
 #include "ast_shared.h"
 #include "../util/arr.h"
 #include "../query_ctx.h"
-#include "ast_build_ar_exp.h"
+#include "arithmetic/arithmetic_expression_construct.h"
 
 // Forward declaration
 FT_FilterNode *_FilterNode_FromAST(const cypher_astnode_t *expr);
 
 FT_FilterNode *_CreatePredicateFilterNode(AST_Operator op, const cypher_astnode_t *lhs,
 										  const cypher_astnode_t *rhs) {
-	return FilterTree_CreatePredicateFilter(op, AR_EXP_FromExpression(lhs), AR_EXP_FromExpression(rhs));
+	return FilterTree_CreatePredicateFilter(op, AR_EXP_FromASTNode(lhs), AR_EXP_FromASTNode(rhs));
 }
 
 void _FT_Append(FT_FilterNode **root_ptr, FT_FilterNode *child) {
@@ -97,7 +97,7 @@ static FT_FilterNode *_convertBinaryOperator(const cypher_astnode_t *op_node) {
 		rhs = cypher_ast_binary_operator_get_argument2(op_node);
 		return _CreateFilterSubtree(op, lhs, rhs);
 	default:
-		return FilterTree_CreateExpressionFilter(AR_EXP_FromExpression(op_node));
+		return FilterTree_CreateExpressionFilter(AR_EXP_FromASTNode(op_node));
 	}
 }
 
@@ -109,14 +109,14 @@ static FT_FilterNode *_convertUnaryOperator(const cypher_astnode_t *op_node) {
 	switch(op) {
 	case OP_IS_NULL:
 	case OP_IS_NOT_NULL:
-		return FilterTree_CreateExpressionFilter(AR_EXP_FromExpression(op_node));
+		return FilterTree_CreateExpressionFilter(AR_EXP_FromASTNode(op_node));
 	default:
 		return _CreateFilterSubtree(op, arg, NULL);
 	}
 }
 
 static FT_FilterNode *_convertApplyOperator(const cypher_astnode_t *op_node) {
-	return FilterTree_CreateExpressionFilter(AR_EXP_FromExpression(op_node));
+	return FilterTree_CreateExpressionFilter(AR_EXP_FromASTNode(op_node));
 }
 
 static FT_FilterNode *_convertTrueOperator() {
@@ -130,7 +130,7 @@ static FT_FilterNode *_convertFalseOperator() {
 }
 
 static FT_FilterNode *_convertIntegerOperator(const cypher_astnode_t *expr) {
-	AR_ExpNode *exp = AR_EXP_FromExpression(expr);
+	AR_ExpNode *exp = AR_EXP_FromASTNode(expr);
 	return FilterTree_CreateExpressionFilter(exp);
 }
 
@@ -195,7 +195,7 @@ static FT_FilterNode *_convertInlinedProperties(const AST *ast, const cypher_ast
 		lhs->operand.variadic.entity_alias_idx = IDENTIFIER_NOT_FOUND;
 		// val is of type CYPHER_AST_EXPRESSION
 		const cypher_astnode_t *val = cypher_ast_map_get_value(props, i);
-		AR_ExpNode *rhs = AR_EXP_FromExpression(val);
+		AR_ExpNode *rhs = AR_EXP_FromASTNode(val);
 		/* TODO In a query like:
 		 * "MATCH (r:person {name:"Roi"}) RETURN r"
 		 * (note the repeated double quotes) - this creates a variable rather than a scalar.

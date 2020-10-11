@@ -101,8 +101,7 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 		nodeCount = SI_LongVal(Graph_NodeCount(gc->g));
 	}
 
-	/* Construct a constant expression, used by a new
-	 * projection operation. */
+	// Construct a constant expression, used by a new projection operation
 	AR_ExpNode *exp = AR_EXP_NewConstOperandNode(nodeCount);
 	// The new expression must be aliased to populate the Record.
 	exp->resolved_name = opAggregate->aggregate_exps[0]->resolved_name;
@@ -112,13 +111,10 @@ bool _reduceNodeCount(ExecutionPlan *plan) {
 	OpBase *opProject = NewProjectOp(opAggregate->op.plan, exps);
 
 	// New execution plan: "Project -> Results"
-	ExecutionPlan *disconnected_plan = (ExecutionPlan *)opScan->plan;
-	ExecutionPlan_RemoveOp(disconnected_plan, opScan);
+	ExecutionPlan_RemoveOp(plan, opScan);
 	OpBase_Free(opScan);
-	// The plan segment that the scan and traverse op had been built with is now disconnected and should be freed.
-	ExecutionPlan_Free(disconnected_plan);
 
-	ExecutionPlan_RemoveOp(disconnected_plan, (OpBase *)opAggregate);
+	ExecutionPlan_RemoveOp(plan, (OpBase *)opAggregate);
 	OpBase_Free((OpBase *)opAggregate);
 
 	ExecutionPlan_AddOp((OpBase *)opResult, opProject);

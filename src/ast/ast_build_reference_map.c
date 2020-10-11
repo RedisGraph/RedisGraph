@@ -1,4 +1,5 @@
 #include "ast.h"
+#include "../RG.h"
 #include "../util/arr.h"
 #include <assert.h>
 
@@ -279,7 +280,7 @@ static void _ASTClause_BuildReferenceMap(AST *ast, const cypher_astnode_t *claus
 // Map the referred aliases (LHS) in entities projected by a WITH or RETURN clause.
 static void _AST_MapProjectionClause(AST *ast_segment, const cypher_astnode_t *projection) {
 	cypher_astnode_type_t type = cypher_astnode_type(projection);
-	assert(type == CYPHER_AST_WITH || type == CYPHER_AST_RETURN);
+	ASSERT(type == CYPHER_AST_WITH || type == CYPHER_AST_RETURN);
 
 	if(type == CYPHER_AST_WITH) {
 		// If the projection clause is WITH *, all user-defined aliases are referenced.
@@ -297,7 +298,12 @@ void AST_BuildReferenceMap(AST *ast, const cypher_astnode_t *project_clause) {
 	ast->referenced_entities = raxNew();
 
 	// If this segment is followed by a projection clause, map that clause's references.
-	if(project_clause) _AST_MapProjectionClause(ast, project_clause);
+	if(project_clause) {
+		cypher_astnode_type_t t = cypher_astnode_type(project_clause);
+		if(t == CYPHER_AST_WITH || t == CYPHER_AST_RETURN) {
+			_AST_MapProjectionClause(ast, project_clause);
+		}
+	}
 
 	// Check every clause in this AST.
 	uint clause_count = cypher_ast_query_nclauses(ast->root);
